@@ -86,7 +86,7 @@ if (${CLUSTER_ENV} STREQUAL "ZID")
         #set(LAPACK_LIB -llapack)
         #set(BLAS_LIB -lblas)
 
-        set(PROJLIBS ${PROJECT_SOURCE_DIR}/../../Libs/)
+        set(PROJLIBS "/home/gernot_k/Src/Libs/")
         set(SUPERLU_VER 4.1)
         set(SUPERLU_DIR ${PROJLIBS}SuperLU_${SUPERLU_VER}/)
         set(SUPERLU_HDR ${SUPERLU_DIR}SRC/)

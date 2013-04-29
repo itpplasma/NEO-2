@@ -1,17 +1,21 @@
-1. Edit the files
+1. Copy the file
+   BuildConfig.sample
+   to
    BuildConfig.txt
-   and
+   and customize the environment and compiler settings.   
+
+2. For more customization of the build-process edit
    CMakeLists.txt
-   to select the cluster environment and the compiler.
+   .
    
-2. If you have changed the files, then call
+3. If you have changed the files, then call
    rm CMakeCache.txt
    rm -r CMakeFiles/
    in order to ensure that the files are re-read by cmake.
    
-3. Run 
+4. Run 
    cmake .
    to let cmake create a make-file for the environment.
   
-4. Run 
-   make or make.openmpi (on ITP-Cluster)
+5. Run 
+   make or make.openmpi (on ITP-Cluster).
