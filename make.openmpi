@@ -1,2 +1,2 @@
 #!/bin/bash
-OMPI_FC=/usr/local/bin/gfortran-4.7.0 make
+OMPI_CC=/usr/local/bin/gcc-4.7.2 OMPI_FC=/usr/local/bin/gfortran-4.7.2 make
