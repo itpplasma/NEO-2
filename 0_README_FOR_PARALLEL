@@ -1,0 +1,17 @@
+1. Edit the files
+   BuildConfig.txt
+   and
+   CMakeLists.txt
+   to select the cluster environment and the compiler.
+   
+2. If you have changed the files, then call
+   rm CMakeCache.txt
+   rm -r CMakeFiles/
+   in order to ensure that the files are re-read by cmake.
+   
+3. Run 
+   cmake .
+   to let cmake create a make-file for the environment.
+  
+4. Run 
+   make or make.openmpi (on ITP-Cluster)
