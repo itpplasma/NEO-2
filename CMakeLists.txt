@@ -18,8 +18,11 @@ if (${CLUSTER_ENV} STREQUAL "ITP")
 	set(F90 mpif90.openmpi)
 	set(NAME_EXT "gfortran-4.7")
 
-	set(MYMPILIB_PATH "/proj/plasma/Fortran/OwnLibraries/MyMPILib")
-	set(OPENMPI_PATH "proj/plasma/Libs/openmpi-gfortran-4.7")
+	if (NOT DEFINED MYMPILIB_PATH)
+		set(MYMPILIB_PATH /proj/plasma/Fortran/OwnLibraries/MyMPILib)
+	endif (NOT DEFINED MYMPILIB_PATH)
+
+	set(OPENMPI_PATH "/proj/plasma/Libs/openmpi-gfortran-4.7")
 	set(COMPILER_LIBS_PATH "/afs/itp.tugraz.at/opt/gcc/4.7.2/arch-amd64/lib64")
 	set(MPE_PATH "/afs/itp.tugraz.at/opt/mpe/1.3.0")
 	
@@ -221,7 +224,14 @@ add_executable(neo_2.x${NAME_EXT}
 
 ### Linking
 if (${CLUSTER_ENV} STREQUAL "ITP")
-	target_link_libraries(neo_2.x${NAME_EXT} lapack blas superlu_4.1 umfpack amd cholmod colamd camd metis ccolamd ${DBGLIBS} ${MYMPILIB_PATH}/libMyMPILib.a)
+	target_link_libraries(neo_2.x${NAME_EXT} 
+		${MYMPILIB_PATH}/libMyMPILib.a
+       		${MPE_PATH}/lib/libmpe.a
+		lapack 
+		blas 
+		superlu_4.1 umfpack amd cholmod colamd camd metis ccolamd
+		${DBGLIBS}
+	)
 	install (TARGETS neo_2.x${NAME_EXT} DESTINATION /temp/gernot_k/)
 endif (${CLUSTER_ENV} STREQUAL "ITP")
 
