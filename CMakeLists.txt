@@ -15,15 +15,17 @@ if (${MPE_SUPPORT})
 endif (${MPE_SUPPORT})
 
 if (${CLUSTER_ENV} STREQUAL "ITP")
-	set(F90 mpif90.openmpi)
-	set(NAME_EXT "gfortran-4.7")
+	set(GFORTRAN_FULL_VERSION 4.7.2)
+	set(OPENMPI_FULL_VERSION 1.4.5)
+	set(F90 mpif90)
+	set(NAME_EXT "gfortran-${GFORTRAN_FULL_VERSION}")
 
 	if (NOT DEFINED MYMPILIB_PATH)
 		set(MYMPILIB_PATH /proj/plasma/Fortran/OwnLibraries/MyMPILib)
 	endif (NOT DEFINED MYMPILIB_PATH)
 
-	set(OPENMPI_PATH "/proj/plasma/Libs/openmpi-gfortran-4.7")
-	set(COMPILER_LIBS_PATH "/afs/itp.tugraz.at/opt/gcc/4.7.2/arch-amd64/lib64")
+	set(OPENMPI_PATH "/proj/plasma/Libs/openmpi/openmpi-${OPENMPI_FULL_VERSION}-gfortran-${GFORTRAN_FULL_VERSION}")
+	set(COMPILER_LIBS_PATH "/afs/itp.tugraz.at/opt/gcc/${GFORTRAN_FULL_VERSION}/arch-amd64/lib64")
 	set(MPE_PATH "/afs/itp.tugraz.at/opt/mpe/1.3.0")
 	
 	set(CFLAGS "-O3 -D DOUBLE_APPEND_FORTRAN")
@@ -44,7 +46,7 @@ if (${CLUSTER_ENV} STREQUAL "ITP")
 	set(SUITESPARSE_F90 ${SUITESPARSE_DIR}F90/)
 	set(SUITESPARSE_LIB "-L${SUITESPARSE_DIR}lib/ -lumfpack -L${SUITESPARSE_DIR}lib/AMD/Lib/ -lamd -L${SUITESPARSE_DIR}lib/ -lcholmod -L${SUITESPARSE_DIR}lib/ -lcolamd -L${SUITESPARSE_DIR}lib/ -lcamd -L${SUITESPARSE_DIR}lib/ -lmetis -L${SUITESPARSE_DIR}lib/ -lccolamd")
 
-        set(MPIFLAGS "${MPIFLAGS} -L${OPENMPI_PATH}/lib -Wl,-rpath,${COMPILER_LIBS_PATH}")
+        set(MPIFLAGS "${MPIFLAGS} -L${OPENMPI_PATH}/lib ${CLUSTER_FLAG} -Wl,-rpath,${COMPILER_LIBS_PATH}")
 
 endif (${CLUSTER_ENV} STREQUAL "ITP")
 
@@ -66,6 +68,8 @@ if (${CLUSTER_ENV} STREQUAL "VSC2")
 	set(SUITESPARSE_DIR ${PROJLIBS}SuiteSparse_3_6_0/)
 	set(SUITESPARSE_HDR ${SUITESPARSE_DIR}include/)
 	set(SUITESPARSE_F90 ${SUITESPARSE_DIR}F90/)
+
+        set(MPIFLAGS "${MPIFLAGS} ${CLUSTER_FLAG}")
 
 endif (${CLUSTER_ENV} STREQUAL "VSC2")
 
@@ -99,6 +103,7 @@ if (${CLUSTER_ENV} STREQUAL "ZID")
         set(SUITESPARSE_HDR ${SUITESPARSE_DIR}include/)
         set(SUITESPARSE_F90 ${SUITESPARSE_DIR}F90/)
 
+        set(MPIFLAGS "${MPIFLAGS} ${CLUSTER_FLAG}")
 endif (${CLUSTER_ENV} STREQUAL "ZID")
 
 set(DEBUG 0) # Enable/Disable debug mode
@@ -158,6 +163,7 @@ set_source_files_properties(${SUITESPARSE_F90}umf4_f77wrapper.c  PROPERTIES COMP
 set_source_files_properties(${SUITESPARSE_F90}umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
 
+if (${MPI_SUPPORT})
 ### MPI FILES ###
 set (MPI_SRC_FILES
         ./neo2scheduler_module.f90
@@ -165,7 +171,7 @@ set (MPI_SRC_FILES
         ./wuGenericNeo2Workunit_module.f90
 )
 set_source_files_properties(${MPI_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
-
+endif (${MPI_SUPPORT})
 
 ### NEO2 ###
 set(NEO2_SRC_FILES
@@ -212,7 +218,7 @@ set(NEO2_SRC_FILES
 	./vvn_legendre.f 
 	./neo2.f90
 )
-set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS} ${CLUSTER_FLAG}")
+set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 
 ### Define executable
 add_executable(neo_2.x${NAME_EXT}
@@ -225,11 +231,11 @@ add_executable(neo_2.x${NAME_EXT}
 ### Linking
 if (${CLUSTER_ENV} STREQUAL "ITP")
 	target_link_libraries(neo_2.x${NAME_EXT} 
-		${MYMPILIB_PATH}/libMyMPILib.a
-       		${MPE_PATH}/lib/libmpe.a
-		lapack 
-		blas 
+		lapack
+		blas
 		superlu_4.1 umfpack amd cholmod colamd camd metis ccolamd
+       		${MPE_PATH}/lib/libmpe.a
+		${MYMPILIB_PATH}/libMyMPILib.a
 		${DBGLIBS}
 	)
 	install (TARGETS neo_2.x${NAME_EXT} DESTINATION /temp/gernot_k/)
