@@ -80,7 +80,7 @@ if (${CLUSTER_ENV} STREQUAL "ZID")
 	endif (${COMPILER} STREQUAL "IFORT")
 	if (${COMPILER} STREQUAL "GFORTRAN")
 		set(F90 "mpif90")
-		set(NAME_EXT "gfortran-4.7")
+		set(NAME_EXT "gfortran-4.7.2")
 	endif (${COMPILER} STREQUAL "GFORTRAN")
 
         set(MYMPILIB_PATH "/home/gernot_k/Src/Libs/MyMPILib")

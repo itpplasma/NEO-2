@@ -63,7 +63,7 @@ MODULE collop
   CHARACTER(len=100), PUBLIC :: collop_path = '/home/lv70337/gernot_k/Neo2/data-MatrixElements/'
 #else
 #if defined(ZID)
-  CHARACTER(len=100), PUBLIC :: collop_path = /home/gernot_k/Neo2/data-MatrixElements/'
+  CHARACTER(len=100), PUBLIC :: collop_path = '/home/gernot_k/Neo2/data-MatrixElements/'
 #else
   ! This is ITP-Cluster
   CHARACTER(len=100), PUBLIC :: collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
