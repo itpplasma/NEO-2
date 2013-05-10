@@ -21,7 +21,7 @@ if (${CLUSTER_ENV} STREQUAL "ITP")
 	set(NAME_EXT "gfortran-${GFORTRAN_FULL_VERSION}")
 
 	if (NOT DEFINED MYMPILIB_PATH)
-		set(MYMPILIB_PATH /proj/plasma/Fortran/OwnLibraries/MyMPILib)
+		set(MYMPILIB_PATH /proj/plasma/Libs/MyMPILib)
 	endif (NOT DEFINED MYMPILIB_PATH)
 
 	set(OPENMPI_PATH "/proj/plasma/Libs/openmpi/openmpi-${OPENMPI_FULL_VERSION}-gfortran-${GFORTRAN_FULL_VERSION}")
@@ -29,7 +29,7 @@ if (${CLUSTER_ENV} STREQUAL "ITP")
 	set(MPE_PATH "/afs/itp.tugraz.at/opt/mpe/1.3.0")
 	
 	set(CFLAGS "-O3 -D DOUBLE_APPEND_FORTRAN")
-	set(FFLAGS "-O3 -cpp -g")	
+	set(FFLAGS "-O3 -cpp")	
 	set(CLUSTER_FLAG "-DITP")
 
 	### Build library paths
@@ -231,8 +231,8 @@ if (${CLUSTER_ENV} STREQUAL "ITP")
 		lapack
 		blas
 		superlu_4.1 umfpack amd cholmod colamd camd metis ccolamd
-       		${MPE_PATH}/lib/libmpe.a
 		${MYMPILIB_PATH}/libMyMPILib.a
+       		${MPE_PATH}/lib/libmpe.a
 		${DBGLIBS}
 	)
 	install (TARGETS neo_2.x${NAME_EXT} DESTINATION /temp/gernot_k/)
