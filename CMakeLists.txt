@@ -90,9 +90,6 @@ if (${CLUSTER_ENV} STREQUAL "ZID")
         set(FFLAGS "-cpp -O2")
         set(CLUSTER_FLAG "-DZID")
 
-        #set(LAPACK_LIB -llapack)
-        #set(BLAS_LIB -lblas)
-
         set(PROJLIBS "/home/gernot_k/Src/Libs/")
         set(SUPERLU_VER 4.1)
         set(SUPERLU_DIR ${PROJLIBS}SuperLU_${SUPERLU_VER}/)
