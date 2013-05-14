@@ -22,7 +22,6 @@ module wuGenericNeo2Workunit_module
   type, extends(wuGenericNeo2Workunit) :: wuSolvePropagator
     integer :: proptag_start_client   !< Defines the tag of the first propagator in the fieldperiod
     integer :: proptag_end_client     !< Defines the tag of the last propagator in the fieldperiod
-
   contains
     procedure :: init   => init_wuSolvePropagator     !< Initialize the workunit
     procedure :: process => process_wuSolvePropagator !< Call propsolve_all with the start and end tag
@@ -48,6 +47,8 @@ module wuGenericNeo2Workunit_module
     procedure :: process => process_wuExternalJoin  !< Call the joining process
     procedure :: print   => print_wuExternalJoin    !< Print debug information
 
+    procedure :: setMergeInfo => setMergeInfo_wuExternalJoin
+
   end type wuExternalJoin
 
   contains
@@ -58,6 +59,7 @@ module wuGenericNeo2Workunit_module
 
     call this%genericWorkunit%init()
     this%type = "wuSolvePropagator"
+    this%isAllowedToBeBalanced = .true.
   end subroutine init_wuSolvePropagator
 
   !> Solve propagators on the client
@@ -252,6 +254,21 @@ module wuGenericNeo2Workunit_module
 
     write (*,*) trim(this%type), this%uid, this%fieldperiod1_uid, this%fieldperiod2_uid
   end subroutine print_wuExternalJoin
+
+  subroutine setMergeInfo_wuExternalJoin(this, left_uid, right_uid)
+      class(wuExternalJoin) :: this
+      integer :: left_uid, right_uid
+
+      this%fieldperiod1_uid = left_uid
+      this%fieldperiod2_uid = right_uid
+      this%iend = 0
+      if (this%leftNeighbor == this%rightNeighbor) then
+          this%iend = 1
+          write (*,*) "Scheduler detected last joining process, setting iend = 1 and calling final join"
+      end if
+
+
+  end subroutine setMergeInfo_wuExternalJoin
 
   !> Helper function to pack a propagator
   subroutine packPropagator_wuGenericNeo2Workunit(this)
