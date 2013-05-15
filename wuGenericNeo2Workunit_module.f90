@@ -57,7 +57,7 @@ module wuGenericNeo2Workunit_module
   subroutine init_wuSolvePropagator(this)
     class(wuSolvePropagator) :: this
 
-    call this%genericWorkunit%init()
+    call this%wuMergeWorkunit%init()
     this%type = "wuSolvePropagator"
     this%isAllowedToBeBalanced = .true.
   end subroutine init_wuSolvePropagator
@@ -141,7 +141,7 @@ module wuGenericNeo2Workunit_module
   subroutine init_wuExternalJoin(this)
     class(wuExternalJoin) :: this
 
-    call this%genericWorkunit%init()
+    call this%wuMergeWorkunit%init()
     this%type = "wuExternalJoin"
   end subroutine init_wuExternalJoin
 
