@@ -29,7 +29,7 @@ if (${CLUSTER_ENV} STREQUAL "ITP")
 	set(MPE_PATH "/afs/itp.tugraz.at/opt/mpe/1.3.0")
 	
 	set(CFLAGS "-O3 -D DOUBLE_APPEND_FORTRAN")
-	set(FFLAGS "-O3 -cpp")	
+	set(FFLAGS "-g -cpp")	
 	set(CLUSTER_FLAG "-DITP")
 
 	### Build library paths

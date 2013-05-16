@@ -1297,7 +1297,7 @@ CONTAINS
     !type(propagator), pointer :: prop1
     !type(propagator), pointer :: prop2
 
-    ! Note that most of the commented lines take now place in the workunit itself
+    ! Note that most of the commented lines were moved to the workunit (wuGenericNeo2Workunit.f90)
 
     print *, ' '
     print *, 'EXTERNAL JOINING'
@@ -1322,7 +1322,7 @@ CONTAINS
     CALL join_ripples_interface(ierr_join)
     ! output after joining
     prop_a => prop_c_old     !For all outputs to files
-    CALL diag_propagator_result(iend_sol) ! UNSOLVED PROBLEM
+    CALL diag_propagator_result(iend_sol)                   ! UNSOLVED PROBLEM
 
     ! now the result of joining is stored in prop_s%prev
     ! it is ready for further joining with next groups of fieldperiods

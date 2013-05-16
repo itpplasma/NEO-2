@@ -79,11 +79,12 @@ module wuGenericNeo2Workunit_module
     parallel_Storage%countSolver = parallel_Storage%countSolver + 1
     parallel_Storage%timeSolver = parallel_Storage%timeSolver + (MPI_WTime() - stime)
 
-    nullify(this%prop_res)
-    allocate(this%prop_res)
+    !Fixed Memory Leak
+    !nullify(this%prop_res)
+    !allocate(this%prop_res)
 
     ! Remember the pointer to the result
-    if (associated(this%prop_res) .and. associated(prop_c)) then
+    if (associated(prop_c)) then!(associated(this%prop_res) .and. associated(prop_c)) then
 
       ! Relinking pointers for storing the propagator without copying its content
       this%prop_res => prop_c%prev
@@ -94,7 +95,7 @@ module wuGenericNeo2Workunit_module
       !call assign_propagator_content(this%prop_res, prop_c%prev)
 
     else
-      write (*,*) "An error occured in process_wuSolvePropagator, one of the propagators is null", &
+      write (*,*) "An error occurred in process_wuSolvePropagator, one of the propagators is null", &
                    associated(this%prop_res), associated(prop_c)
       stop
     end if
@@ -161,7 +162,7 @@ module wuGenericNeo2Workunit_module
       class is (wuGenericNeo2Workunit)
         prop1 => wu%prop_res
       class default
-        write (*,*) "An error occured in wuExternal_join, undefined workunit type"
+        write (*,*) "An error occurred in wuExternal_join, undefined work unit type"
         stop
     end select
 
@@ -171,7 +172,7 @@ module wuGenericNeo2Workunit_module
       class is (wuGenericNeo2Workunit)
         prop2 => wu%prop_res
       class default
-        write (*,*) "An error occured in wuExternal_join, undefined workunit type"
+        write (*,*) "An error occurred in wuExternal_join, undefined work unit type"
         stop
     end select
 
@@ -195,10 +196,13 @@ module wuGenericNeo2Workunit_module
 
       ! If uncommenting the following two lines, a segmentation fault will happen...?
       !deallocate(prop1)
+      !prop1 => null()
       !deallocate(prop2)
+      !prop2 => null()
 
-      nullify(this%prop_res)
-      allocate(this%prop_res)
+      ! Fixed memory leak
+      !nullify(this%prop_res)
+      !allocate(this%prop_res)
 
       ! Relinking pointers for storing the propagator without copying its content
       this%prop_res => prop_c_old
@@ -215,7 +219,7 @@ module wuGenericNeo2Workunit_module
 
       this%isProcessed = .true.
     else
-      write (*,*) "An error occured in process_wuExternalJoin, some of the propagators are not associated", &
+      write (*,*) "An error occurred in process_wuExternalJoin, some of the propagators are not associated", &
                   associated(prop1), associated(prop2)
       stop
     end if
