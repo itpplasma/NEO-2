@@ -127,10 +127,10 @@ contains
   subroutine deinit_neo2scheduler(this)
     class(neo2scheduler) :: this
 
-    !write (*,*) "Client", mpro%getRank(), " Solver: ", parallel_Storage%timeSolver / parallel_Storage%countSolver, &
-    !                                                   parallel_Storage%countSolver, &
-    !                                      " Joiner: ", parallel_Storage%timeJoiner / parallel_Storage%countJoiner, &
-    !                                                   parallel_Storage%countJoiner
+!    write (*,*) "Client", mpro%getRank(), " Solver: ", parallel_Storage%timeSolver / parallel_Storage%countSolver, &
+!                                                       parallel_Storage%countSolver, &
+!                                          " Joiner: ", parallel_Storage%timeJoiner / parallel_Storage%countJoiner, &
+!                                                       parallel_Storage%countJoiner
 
     call this%scheduler%deinit()
   end subroutine deinit_neo2scheduler
