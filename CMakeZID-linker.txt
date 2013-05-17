@@ -1,0 +1,33 @@
+        if (${COMPILER} STREQUAL "GFORTRAN")
+
+                target_link_libraries(neo_2.x${NAME_EXT}
+                        ${MYMPILIB_PATH}/libMyMPILib.a
+                        ${MPE_PATH}/lib/libmpe.a
+                        blas
+                        lapack
+                        ${SUPERLU_DIR}lib/libsuperlu_4.1.a
+                        ${SUITESPARSE_DIR}lib/libumfpack.a
+                        ${SUITESPARSE_DIR}lib/libamd.a ${SUITESPARSE_DIR}lib/libcholmod.a ${SUITESPARSE_DIR}lib/libcolamd.a ${SUITESPARSE_DIR}li$
+                        ${SUITESPARSE_DIR}/../metis-4.0/libmetis.a ${SUITESPARSE_DIR}lib/libccolamd.a ${DBGLIBS}
+                )
+
+
+        endif (${COMPILER} STREQUAL "GFORTRAN")
+
+        if (${COMPILER} STREQUAL "IFORT")
+
+                set(CMAKE_EXE_LINKER_FLAGS "-mkl")
+                target_link_libraries(neo_2.x${NAME_EXT}
+                        ${MYMPILIB_PATH}/libMyMPILib.a
+                        ${MPE_PATH}/lib/libmpe.a
+                        #mkl_intel_lp64 mkl_sequential mkl_core
+                        ${SUPERLU_DIR}lib/libsuperlu_4.1.a
+                        ${SUITESPARSE_DIR}lib/libumfpack.a
+                        ${SUITESPARSE_DIR}lib/libamd.a ${SUITESPARSE_DIR}lib/libcholmod.a ${SUITESPARSE_DIR}lib/libcolamd.a ${SUITESPARSE_DIR}li$
+                        ${SUITESPARSE_DIR}/../metis-4.0/libmetis.a ${SUITESPARSE_DIR}lib/libccolamd.a ${DBGLIBS}
+                )
+
+        endif (${COMPILER} STREQUAL "IFORT")
+
+        install (TARGETS neo_2.x${NAME_EXT} DESTINATION /home/gernot_k/Neo2)
+

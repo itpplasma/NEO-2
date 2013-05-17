@@ -1,0 +1,15 @@
+        set(MKL_PATH $env(MKLROOT)/lib/intel64)
+        set(BLAS_LIB "-Wl,--start-group /opt/goto/libgoto.a $(MKL_PATH)/libmkl_intel_thread.a $(MKL_PATH)/libmkl_core.a -Wl,--end-group  -liomp5$
+        set(LAPACK_LIB "/opt/goto/libgoto.a $(MKL_PATH)/libmkl_intel_lp64.a")
+
+        set(CMAKE_EXE_LINKER_FLAGS "-mkl")
+
+        target_link_libraries(neo_2.x${NAME_EXT} ${MYMPILIB_PATH}/libMyMPILib.a mpe /opt/goto/libgoto.a mkl_intel_lp64 mkl_sequential mkl_core
+        ${SUPERLU_DIR}lib/libsuperlu_4.1.a
+        ${SUITESPARSE_DIR}lib/libumfpack.a
+        ${SUITESPARSE_DIR}lib/libamd.a ${SUITESPARSE_DIR}lib/libcholmod.a ${SUITESPARSE_DIR}lib/libcolamd.a ${SUITESPARSE_DIR}lib/libcamd.a
+        ${SUITESPARSE_DIR}/../metis-4.0/libmetis.a ${SUITESPARSE_DIR}lib/libccolamd.a ${DBGLIBS}
+        )
+
+        install (TARGETS neo_2.x${NAME_EXT} DESTINATION "/home/lv70337/gernot_k/Neo2")
+
