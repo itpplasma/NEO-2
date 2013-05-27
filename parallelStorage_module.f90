@@ -18,7 +18,7 @@ module parallelStorage_module
           integer :: countSolver = 0
           integer :: countJoiner = 0
 
-          double precision :: dgesvTime = 0
+          !double precision :: dgesvTime = 0
 
           character(len=32) :: evolveFilename
      end type

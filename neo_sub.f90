@@ -1,6 +1,5 @@
 MODULE neo_sub_mod
-use mpiprovider_module
-use parallelStorage_module
+  use mpiprovider_module
 
 CONTAINS
 
@@ -17,6 +16,7 @@ SUBROUTINE neo_init(npsi)
   USE neo_parameters
   USE neo_control
   USE neo_spline
+
 ! **********************************************************************
 ! Local Definitions
 ! **********************************************************************
@@ -101,6 +101,8 @@ SUBROUTINE neo_init_spline()
   USE neo_input
   USE neo_exchange
   USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf
+  use timinginfo
+
 !  Test
 !  USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf,      &
 !       splint_horner3, tfp, tfpp, tfppp 
@@ -171,7 +173,7 @@ SUBROUTINE neo_init_spline()
   CALL splinecof3_hi_driv(es, bmnc, r_mhalf,                         &
        a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
   write (*,*) "Time for 4 calls of splinecof3_hi_driv(): ", MPI_WTime() - timea
-  write (*,*) "All in DGESV(): ", parallel_storage%dgesvTime
+  write (*,*) "All in DGESV(): ", dgesvTime
   !
   ! Testing
   !

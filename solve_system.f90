@@ -27,7 +27,7 @@ CONTAINS
 
 !    USE inter_interfaces, ONLY: ludcmp, lubksb 
     use mpiprovider_module
-    use parallelStorage_module
+    use timinginfo
 
     IMPLICIT NONE
 
@@ -50,7 +50,7 @@ CONTAINS
     IF(i_alloc /= 0) STOP 'solve_eqsys: Allocation for array failed!'
     atime = MPI_WTime()
     CALL dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-    parallel_storage%dgesvTime = parallel_storage%dgesvTime + MPI_WTime() - atime
+    dgesvTime = dgesvTime + MPI_WTime() - atime
     info = 0
 
     DEALLOCATE(ipiv,  stat = i_alloc)
