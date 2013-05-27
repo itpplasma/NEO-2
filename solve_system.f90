@@ -51,6 +51,7 @@ CONTAINS
     atime = MPI_WTime()
     CALL dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
     dgesvTime = dgesvTime + MPI_WTime() - atime
+    dgesvCalls = dgesvCalls + 1
     info = 0
 
     DEALLOCATE(ipiv,  stat = i_alloc)
