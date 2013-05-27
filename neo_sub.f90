@@ -173,7 +173,7 @@ SUBROUTINE neo_init_spline()
   CALL splinecof3_hi_driv(es, bmnc, r_mhalf,                         &
        a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
   write (*,*) "Time for 4 calls of splinecof3_hi_driv(): ", MPI_WTime() - timea
-  write (*,*) "All in DGESV(): ", dgesvTime
+  write (*,*) "All in DGESV(): ", dgesvTime, dgesvCalls
   !
   ! Testing
   !
