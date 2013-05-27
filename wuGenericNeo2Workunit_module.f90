@@ -59,7 +59,7 @@ module wuGenericNeo2Workunit_module
 
     call this%wuMergeWorkunit%init()
     this%type = "wuSolvePropagator"
-    this%isAllowedToBeBalanced = .true.
+    this%balance = .true.
   end subroutine init_wuSolvePropagator
 
   !> Solve propagators on the client
@@ -67,7 +67,7 @@ module wuGenericNeo2Workunit_module
     class(wuSolvePropagator) :: this
     double precision :: stime
 
-    write (*,*) "Client", mpro%getRank(), " calls propagator_solver with", this%proptag_start_client, this%proptag_end_client
+    write (*,*) "Client", mpro%getRank(), " calls propagator_solver() with", this%proptag_start_client, this%proptag_end_client
 
     stime = MPI_WTime()
 
@@ -82,7 +82,6 @@ module wuGenericNeo2Workunit_module
     !Fixed Memory Leak
     !nullify(this%prop_res)
     !allocate(this%prop_res)
-
     ! Remember the pointer to the result
     if (associated(prop_c)) then!(associated(this%prop_res) .and. associated(prop_c)) then
 
@@ -102,7 +101,6 @@ module wuGenericNeo2Workunit_module
 
     ! Free the source propagators
     call destruct_all_propagators()
-
     this%isProcessed = .true.
   end subroutine process_wuSolvePropagator
 
@@ -112,9 +110,10 @@ module wuGenericNeo2Workunit_module
 
     call this%genericWorkunit%pack()
 
-    call mpro%packBuffer%add(this%proptag_start_client)
-    call mpro%packBuffer%add(this%proptag_end_client)
-
+    associate (b => mpro%packbuffer)
+      call b%add(this%proptag_start_client)
+      call b%add(this%proptag_end_client)
+    end associate
     call this%packPropagator()
   end subroutine pack_wuSolvePropagator
 
@@ -124,9 +123,10 @@ module wuGenericNeo2Workunit_module
 
     call this%genericWorkunit%unpack()
 
-    call mpro%packBuffer%get(this%proptag_start_client)
-    call mpro%packBuffer%get(this%proptag_end_client)
-
+    associate (b => mpro%packbuffer)
+      call b%get(this%proptag_start_client)
+      call b%get(this%proptag_end_client)
+    end associate
     call this%unpackPropagator()
   end subroutine unpack_wuSolvePropagator
 
@@ -231,10 +231,11 @@ module wuGenericNeo2Workunit_module
     class(wuExternalJoin) :: this
 
     call this%genericWorkunit%pack()
-    call mpro%packBuffer%add(this%iend)
-    call mpro%packBuffer%add(this%fieldperiod1_uid)
-    call mpro%packBuffer%add(this%fieldperiod2_uid)
-
+    associate (b => mpro%packbuffer)
+      call b%add(this%iend)
+      call b%add(this%fieldperiod1_uid)
+      call b%add(this%fieldperiod2_uid)
+    end associate
     call this%packPropagator()
 
   end subroutine pack_wuExternalJoin
@@ -244,10 +245,11 @@ module wuGenericNeo2Workunit_module
     class(wuExternalJoin) :: this
 
     call this%genericWorkunit%unpack()
-    call mpro%packBuffer%get(this%iend)
-    call mpro%packBuffer%get(this%fieldperiod1_uid)
-    call mpro%packBuffer%get(this%fieldperiod2_uid)
-
+    associate (b => mpro%packbuffer)
+      call b%get(this%iend)
+      call b%get(this%fieldperiod1_uid)
+      call b%get(this%fieldperiod2_uid)
+    end associate
     call this%unpackPropagator()
 
   end subroutine unpack_wuExternalJoin
