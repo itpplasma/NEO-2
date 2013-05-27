@@ -1,5 +1,6 @@
 MODULE neo_sub_mod
 use mpiprovider_module
+use parallelStorage_module
 
 CONTAINS
 
@@ -170,6 +171,7 @@ SUBROUTINE neo_init_spline()
   CALL splinecof3_hi_driv(es, bmnc, r_mhalf,                         &
        a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
   write (*,*) "Time for 4 calls of splinecof3_hi_driv(): ", MPI_WTime() - timea
+  write (*,*) "All in DGESV(): ", parallel_storage%dgesvTime
   !
   ! Testing
   !
