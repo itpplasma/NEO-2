@@ -1,4 +1,5 @@
 MODULE neo_sub_mod
+use mpiprovider_module
 
 CONTAINS
 
@@ -21,6 +22,7 @@ SUBROUTINE neo_init(npsi)
   IMPLICIT NONE
   INTEGER, INTENT(out)       :: npsi
   INTEGER                    :: imn
+  double precision           :: timea, timeb
 ! **********************************************************************
 ! Read input from data file and allocate necessary arrays
 ! **********************************************************************
@@ -44,17 +46,21 @@ SUBROUTINE neo_init(npsi)
 ! **********************************************************************
 ! Allocate and prepare necessary arrays
 ! **********************************************************************
+  timea = MPI_WTime()
   IF (write_progress .NE. 0) WRITE (w_us,*) 'before neo_prep'
   CALL neo_prep
   IF (write_progress .NE. 0) WRITE (w_us,*) 'after  neo_prep'
+  write (*,*) "Time in NEO_PREP: ", MPI_WTime() - timea
 ! **********************************************************************
 ! Allocate and prepare spline along s
 ! **********************************************************************
+  timea = MPI_WTime()
   IF (fluxs_interp .NE. 0) THEN
      IF (write_progress .NE. 0) WRITE (w_us,*) 'before neo_init_spline'
      CALL neo_init_spline()
      IF (write_progress .NE. 0) WRITE (w_us,*) 'after  neo_init_spline'
   END IF
+  write (*,*) "Time in NEO_INIT_SPLINE: ", MPI_WTime() - timea
 ! **********************************************************************
 ! Calculation of rt0 and bmref (innermost flux surface)
 ! might be changed later
