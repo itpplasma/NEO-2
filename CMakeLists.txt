@@ -1,6 +1,5 @@
 ### Basic settings
 cmake_minimum_required (VERSION 2.6)
-project (Neo2-parallel)
 
 ### Edit these lines for customization
 include (BuildConfig.txt)
@@ -28,8 +27,13 @@ if (${CLUSTER_ENV} STREQUAL "ZID")
 endif (${CLUSTER_ENV} STREQUAL "ZID")
 
 ### CMake compiler configuration
+set(CMAKE_C_COMPILER ${CC})
+set(CMAKE_CXX_COMPILER ${CC})
 set(CMAKE_Fortran_COMPILER ${F90})
+
+project (Neo2-parallel)
 enable_language(Fortran)
+enable_language(C)
 
 ### MPI Settings
 if (${MPI_SUPPORT})
@@ -57,13 +61,14 @@ set(NAME_EXT ".${NAME_EXT}_${ARCH}")
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 find_library(SuperLU_lib superlu_4.1 ${SUPERLU_DIR}lib NO_DEFAULT_PATH)
-find_library(Umfpack_lib umfpack /proj/plasma/Libs/SuiteSparse_libandinclude/lib/ NO_DEFAULT_PATH)
+find_library(Umfpack_lib umfpack ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(Amd_lib amd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(Cholmod_lib cholmod ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(Colamd_lib colamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(Camd_lib camd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Metis_lib metis ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
+find_library(Metis_lib metis ${SUITESPARSE_DIR}lib ${METIS_PATH} NO_DEFAULT_PATH)
 find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
+find_library(SuiteSparseConfig_lib suitesparseconfig ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
 

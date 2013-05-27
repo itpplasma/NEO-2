@@ -2722,6 +2722,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
       ! Schedule will run initMaster on the master process to create the workunits and
       ! will set the clients into ready-mode to receive commands
+      ! call omp_set_num_threads(1)
       call sched%schedule()
 
       ! Deallocate memory and stop the clients
