@@ -111,6 +111,7 @@ SUBROUTINE neo_init_spline()
   REAL(dp), DIMENSION(:), ALLOCATABLE :: lambda
   INTEGER(I4B) :: m
   INTEGER,  PARAMETER                 :: m_max_sp = 12
+  double precision :: timea
 !
 ! Testing
 !
@@ -158,6 +159,7 @@ SUBROUTINE neo_init_spline()
   END DO
   sp_index = (/ (i, i=1,ns) /) 
 
+  timea = MPI_WTime()
   ! 1-d splines of 2-d arrays
   CALL splinecof3_hi_driv(es, rmnc, r_mhalf,                         &
        a_rmnc, b_rmnc, c_rmnc, d_rmnc, sp_index, tf)
@@ -167,6 +169,7 @@ SUBROUTINE neo_init_spline()
        a_lmnc, b_lmnc, c_lmnc, d_lmnc, sp_index, tf)
   CALL splinecof3_hi_driv(es, bmnc, r_mhalf,                         &
        a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
+  write (*,*) "Time for 4 calls of splinecof3_hi_driv(): ", MPI_WTime() - timea
   !
   ! Testing
   !
@@ -197,6 +200,7 @@ SUBROUTINE neo_init_spline()
   ALLOCATE ( lambda(ns) )
   lambda = 1.0D0
 ! 1-d splines of 1-d arrays
+  timea = MPI_WTime()
   CALL splinecof3(es, iota, c1, cn, lambda, sp_index, sw1, sw2, &
        a_iota, b_iota, c_iota, d_iota, m0, tf)
   CALL splinecof3(es, pprime, c1, cn, lambda, sp_index, sw1, sw2, &
@@ -207,6 +211,8 @@ SUBROUTINE neo_init_spline()
        a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, m0, tf)
   CALL splinecof3(es, curr_pol, c1, cn, lambda, sp_index, sw1, sw2, &
        a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, m0, tf)
+  write (*,*) "Time for 4 calls of splinecof3(): ", MPI_WTime() - timea
+
 !
   DEALLOCATE( lambda )
 
