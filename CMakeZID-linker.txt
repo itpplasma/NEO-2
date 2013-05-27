@@ -1,33 +1,28 @@
-        if (${COMPILER} STREQUAL "GFORTRAN")
+set(MKLROOT /opt/intel/composer_xe_2013.0.079/mkl)
+set(LINKER_FLAGS "-Wl,-rpath,/opt/intel/composer_xe_2013.0.079/compiler/lib/intel64 -Wl,-rpath,/opt/intel/composer_xe_2013.0.079/mkl/lib/intel64/")
+set(CMAKE_EXE_LINKER_FLAGS "${LINKER_FLAGS}")
 
-                target_link_libraries(neo_2.x${NAME_EXT}
-                        ${MYMPILIB_PATH}/libMyMPILib.a
-                        ${MPE_PATH}/lib/libmpe.a
-                        blas
-                        lapack
-                        ${SUPERLU_DIR}lib/libsuperlu_4.1.a
-                        ${SUITESPARSE_DIR}lib/libumfpack.a
-                        ${SUITESPARSE_DIR}lib/libamd.a ${SUITESPARSE_DIR}lib/libcholmod.a ${SUITESPARSE_DIR}lib/libcolamd.a ${SUITESPARSE_DIR}li$
-                        ${SUITESPARSE_DIR}/../metis-4.0/libmetis.a ${SUITESPARSE_DIR}lib/libccolamd.a ${DBGLIBS}
-                )
+target_link_libraries(neo_2.x${NAME_EXT}
+	#blas
+	#lapack
+	${SuperLU_lib}
+	${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
+	#${SuiteSparseConfig_lib}
+	${MyMPILib_lib}
+	${MPE_lib}
+	${DBGLIBS}
+	-Wl,--start-group  ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -liomp5 -lpthread -lm
+	${MKLROOT}/../compiler/lib/intel64/libmatmul.a
 
+)
 
-        endif (${COMPILER} STREQUAL "GFORTRAN")
+if (${COMPILER} STREQUAL "GFORTRAN")
 
-        if (${COMPILER} STREQUAL "IFORT")
+endif (${COMPILER} STREQUAL "GFORTRAN")
 
-                set(CMAKE_EXE_LINKER_FLAGS "-mkl")
-                target_link_libraries(neo_2.x${NAME_EXT}
-                        ${MYMPILIB_PATH}/libMyMPILib.a
-                        ${MPE_PATH}/lib/libmpe.a
-                        #mkl_intel_lp64 mkl_sequential mkl_core
-                        ${SUPERLU_DIR}lib/libsuperlu_4.1.a
-                        ${SUITESPARSE_DIR}lib/libumfpack.a
-                        ${SUITESPARSE_DIR}lib/libamd.a ${SUITESPARSE_DIR}lib/libcholmod.a ${SUITESPARSE_DIR}lib/libcolamd.a ${SUITESPARSE_DIR}li$
-                        ${SUITESPARSE_DIR}/../metis-4.0/libmetis.a ${SUITESPARSE_DIR}lib/libccolamd.a ${DBGLIBS}
-                )
+if (${COMPILER} STREQUAL "IFORT")
 
-        endif (${COMPILER} STREQUAL "IFORT")
+endif (${COMPILER} STREQUAL "IFORT")
 
-        install (TARGETS neo_2.x${NAME_EXT} DESTINATION /home/gernot_k/Neo2)
-
+install (TARGETS neo_2.x${NAME_EXT} DESTINATION /home/gernot_k/Neo2)
+set_property(TARGET neo_2.x${NAME_EXT} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
