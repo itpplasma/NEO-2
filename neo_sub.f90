@@ -47,21 +47,21 @@ SUBROUTINE neo_init(npsi)
 ! **********************************************************************
 ! Allocate and prepare necessary arrays
 ! **********************************************************************
-  timea = MPI_WTime()
+  !timea = MPI_WTime()
   IF (write_progress .NE. 0) WRITE (w_us,*) 'before neo_prep'
   CALL neo_prep
   IF (write_progress .NE. 0) WRITE (w_us,*) 'after  neo_prep'
-  write (*,*) "Time in NEO_PREP: ", MPI_WTime() - timea
+  !write (*,*) "Time in NEO_PREP: ", MPI_WTime() - timea
 ! **********************************************************************
 ! Allocate and prepare spline along s
 ! **********************************************************************
-  timea = MPI_WTime()
+  !timea = MPI_WTime()
   IF (fluxs_interp .NE. 0) THEN
      IF (write_progress .NE. 0) WRITE (w_us,*) 'before neo_init_spline'
      CALL neo_init_spline()
      IF (write_progress .NE. 0) WRITE (w_us,*) 'after  neo_init_spline'
   END IF
-  write (*,*) "Time in NEO_INIT_SPLINE: ", MPI_WTime() - timea
+  !write (*,*) "Time in NEO_INIT_SPLINE: ", MPI_WTime() - timea
 ! **********************************************************************
 ! Calculation of rt0 and bmref (innermost flux surface)
 ! might be changed later
@@ -162,7 +162,7 @@ SUBROUTINE neo_init_spline()
   END DO
   sp_index = (/ (i, i=1,ns) /) 
 
-  timea = MPI_WTime()
+  !timea = MPI_WTime()
   ! 1-d splines of 2-d arrays
   CALL splinecof3_hi_driv(es, rmnc, r_mhalf,                         &
        a_rmnc, b_rmnc, c_rmnc, d_rmnc, sp_index, tf)
@@ -172,8 +172,8 @@ SUBROUTINE neo_init_spline()
        a_lmnc, b_lmnc, c_lmnc, d_lmnc, sp_index, tf)
   CALL splinecof3_hi_driv(es, bmnc, r_mhalf,                         &
        a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
-  write (*,*) "Time for 4 calls of splinecof3_hi_driv(): ", MPI_WTime() - timea
-  write (*,*) "All in DGESV(): ", dgesvTime, dgesvCalls
+  !write (*,*) "Time for 4 calls of splinecof3_hi_driv(): ", MPI_WTime() - timea
+  !write (*,*) "All in DGESV(): ", dgesvTime, dgesvCalls
   !
   ! Testing
   !
@@ -204,7 +204,7 @@ SUBROUTINE neo_init_spline()
   ALLOCATE ( lambda(ns) )
   lambda = 1.0D0
 ! 1-d splines of 1-d arrays
-  timea = MPI_WTime()
+  !timea = MPI_WTime()
   CALL splinecof3(es, iota, c1, cn, lambda, sp_index, sw1, sw2, &
        a_iota, b_iota, c_iota, d_iota, m0, tf)
   CALL splinecof3(es, pprime, c1, cn, lambda, sp_index, sw1, sw2, &
@@ -215,7 +215,7 @@ SUBROUTINE neo_init_spline()
        a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, m0, tf)
   CALL splinecof3(es, curr_pol, c1, cn, lambda, sp_index, sw1, sw2, &
        a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, m0, tf)
-  write (*,*) "Time for 4 calls of splinecof3(): ", MPI_WTime() - timea
+  !write (*,*) "Time for 4 calls of splinecof3(): ", MPI_WTime() - timea
 
 !
   DEALLOCATE( lambda )

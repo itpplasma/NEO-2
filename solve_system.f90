@@ -48,10 +48,10 @@ CONTAINS
 
     ALLOCATE(ipiv(n),  stat = i_alloc)
     IF(i_alloc /= 0) STOP 'solve_eqsys: Allocation for array failed!'
-    atime = MPI_WTime()
+    !atime = MPI_WTime()
     CALL dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-    dgesvTime = dgesvTime + MPI_WTime() - atime
-    dgesvCalls = dgesvCalls + 1
+    !dgesvTime = dgesvTime + MPI_WTime() - atime
+    !dgesvCalls = dgesvCalls + 1
     info = 0
 
     DEALLOCATE(ipiv,  stat = i_alloc)
