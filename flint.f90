@@ -736,13 +736,13 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   END IF
 
   !PRINT *, 'eta_ori',eta_ori
-#if !defined(MPI_SUPPORT)
+  !#if !defined(MPI_SUPPORT)
   OPEN(9999,file='eta_ori.dat')
   DO i = LBOUND(eta_ori,1),UBOUND(eta_ori,1)
      WRITE(9999,*) i, eta_ori(i)
   END DO
   CLOSE(9999)
-#endif
+  !#endif
   !PAUSE
 
 
