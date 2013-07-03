@@ -2,17 +2,17 @@
         target_link_libraries(neo_2.x${NAME_EXT}
                 ${SuperLU_lib}
                 ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
-		${SuiteSparseConfig_lib}
+		#${SuiteSparseConfig_lib}
                 ${MyMPILib_lib}
                 ${MPE_lib}
                 ${DBGLIBS}
-                /afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/liblapack.a
-                /afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/libf77blas.a
-                /afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/libcblas.a
-                /afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/libatlas.a
-		rt
-		#lapack
-		#blas
+                #/afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/liblapack.a
+                #/afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/libf77blas.a
+                #/afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/libcblas.a
+                #/afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/libatlas.a
+		#rt
+		lapack
+		blas
         )
         install (TARGETS neo_2.x${NAME_EXT} DESTINATION /temp/gernot_k/)
 	set_property(TARGET neo_2.x${NAME_EXT} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
