@@ -3,7 +3,7 @@ set(SUPERLU_SRC_FILES
         ${SUPERLU_F90}c_fortran_dgssv.c
         ${SUPERLU_F90}c_fortran_zgssv.c
 )
-set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CLFAGS} -I${SUPERLU_HDR}")
+set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFAGS} -I${SUPERLU_HDR}")
 set_source_files_properties(${SUPERLU_SRC_FILES} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
 
 ### SUITESPARSE###
@@ -11,7 +11,7 @@ set(SUITESPARSE_SRC_FILES
         ${SUITESPARSE_F90}umf4_f77wrapper.c
         ${SUITESPARSE_F90}umf4_f77zwrapper.c
 )
-set(SUITESPARSE_FLAGS "${CFLAGS} -I${SUITESPARSE_HDR}")
+set(SUITESPARSE_FLAGS "-I${SUITESPARSE_HDR}")
 set_source_files_properties(${SUITESPARSE_F90}umf4_f77wrapper.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(${SUITESPARSE_F90}umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
