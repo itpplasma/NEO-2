@@ -173,7 +173,7 @@ PRINT *,'nl,nr = ',nl,nr
       PRINT *,'after  : ',dqflux(1:2,1:2)
 !
 ! GOTO 1 
-#if !defined(MPI_SUPPORT)
+! #if !defined(MPI_SUPPORT)
 OPEN(111,file='delta_eta_l.dat')
 DO i=1,nl
 WRITE(111,*) delta_eta_l(i)
@@ -226,7 +226,7 @@ DO i=1,nl
 WRITE(111,*) amat_m_m(i,1:nr)
 ENDDO
 CLOSE(111)
-#endif
+! #endif
 
 !PAUSE 'written'
 1 CONTINUE
@@ -308,7 +308,7 @@ CLOSE(111)
                      =MATMUL(c_backward,o%p%source_m(kl+1:kl+nl,1:3))
   ENDDO
   !
-#if !defined(MPI_SUPPORT)
+! #if !defined(MPI_SUPPORT)
 OPEN(751,file='amat_before.dat')
 OPEN(752,file='bvec_before.dat')
 DO i=1,ndim
@@ -317,7 +317,7 @@ WRITE(752,*) bvec_lapack(i,:)
 ENDDO
 CLOSE(751)
 CLOSE(752)
-#endif
+! #endif
 ! System is overdefined, one equation is redundant. Replace the redundant 
 ! equation with zero perturbed density condition at the joining point.
 !  amat(nl,:)=0.d0
@@ -347,7 +347,7 @@ if(nvel.gt.0) then
   amat(nts_l+2*nr,nts_l+nr+1:nts_l+2*nr)=1.d0
   bvec_lapack(nts_l+2*nr,:)=0.d0
 endif
-#if !defined(MPI_SUPPORT)
+! #if !defined(MPI_SUPPORT)
 OPEN(751,file='amat_after.dat')
 OPEN(752,file='bvec_after.dat')
 DO i=1,ndim
@@ -356,7 +356,7 @@ WRITE(752,*) bvec_lapack(i,:)
 ENDDO
 CLOSE(751)
 CLOSE(752)
-#endif
+!#endif
   ! 
   CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
   IF(info.NE.0) THEN
@@ -390,13 +390,13 @@ CLOSE(752)
 !  do i=1,ntranseq
 !    bvec_lapack(:,i)=bvec_lapack(:,i)-totlev(:)*totfun(i)
 !  enddo
-#if !defined(MPI_SUPPORT)
+! #if !defined(MPI_SUPPORT)
 OPEN(752,file='bvec_solution.dat')
 DO i=1,ndim
 WRITE(752,*) bvec_lapack(i,:)
 ENDDO
 CLOSE(752)
-#endif
+! #endif
   !
   ! Now sources from outgoing become incoming, dimensions switch places !!!
   !
@@ -411,7 +411,7 @@ CLOSE(752)
   transmat=o%p%qflux+MATMUL(o%p%flux_p,o%p%source_p)           &
                     +MATMUL(o%p%flux_m,o%p%source_m)
 
-#if !defined(MPI_SUPPORT)
+! #if !defined(MPI_SUPPORT)
 OPEN(751,file='fin_source_p.dat')
 OPEN(752,file='fin_flux_p.dat')
 DO i=1,nts_l
@@ -431,7 +431,7 @@ CLOSE(752)
 OPEN(751,file='fin_dims.dat')
 WRITE(751,*) nts_l,nts_r
 CLOSE(751)
-#endif
+! #endif
   !
   o%p%qflux=transmat
   !

@@ -94,15 +94,16 @@ MODULE propagator_mod
   REAL(kind=dp), PARAMETER, PRIVATE :: pi=3.14159265358979d0
   INTEGER,            PRIVATE :: propagator_tag_counter = 0
 
-  CHARACTER(len=9),   PARAMETER, PRIVATE         :: prop_format = 'formatted'
-  CHARACTER(len=4),   PARAMETER, PRIVATE         :: prop_cext = 'prop'
+  CHARACTER(len=9),   PARAMETER, PUBLIC          :: prop_format = 'formatted'
+  CHARACTER(len=4),   PARAMETER, PUBLIC          :: prop_cext = 'prop'
   CHARACTER(len=6),   PARAMETER, PRIVATE         :: prop_cperiod = 'period'
   CHARACTER(len=10),  PARAMETER, PRIVATE         :: prop_cpropagator = 'propagator'
   CHARACTER(len=8),   PARAMETER, PRIVATE         :: prop_cboundary = 'boundary'
-  CHARACTER(len=12),  PARAMETER, PRIVATE         :: prop_ctaginfo = 'taginfo.prop'
+  CHARACTER(len=11),  PARAMETER, PRIVATE         :: prop_cbinarysplit = 'binarysplit'
+  CHARACTER(len=12),  PARAMETER, PUBLIC          :: prop_ctaginfo = 'taginfo.prop'
   CHARACTER(len=16),  PARAMETER, PRIVATE         :: prop_cresult = 'reconstruct'
-  CHARACTER(len=100),            PRIVATE         :: prop_cfilename
-  INTEGER,                       PRIVATE         :: prop_unit = 150
+  CHARACTER(len=100),            PUBLIC          :: prop_cfilename
+  INTEGER,                       PUBLIC          :: prop_unit = 150
   INTEGER,                       PRIVATE         :: prop_first_tag = 0
   INTEGER,                       PRIVATE         :: prop_last_tag = 0
 
@@ -248,6 +249,12 @@ MODULE propagator_mod
      MODULE PROCEDURE write_propagator_cont
   END INTERFACE
 
+  PUBLIC write_binarysplit_content
+  PRIVATE write_binarysplit_cont
+  INTERFACE write_binarysplit_content
+     MODULE PROCEDURE write_binarysplit_cont
+  END INTERFACE
+
   PUBLIC reconstruct_prop_dist
   PRIVATE reconstruct_propagator_dist,reconstruct_propagator_dist_1
   INTERFACE reconstruct_prop_dist
@@ -266,6 +273,12 @@ MODULE propagator_mod
      MODULE PROCEDURE read_propagator_cont
   END INTERFACE
 
+  PUBLIC read_binarysplit_content
+  PRIVATE read_binarysplit_cont
+  INTERFACE read_binarysplit_content
+     MODULE PROCEDURE read_binarysplit_cont
+  END INTERFACE
+
   PUBLIC read_prop_bound_content
   PRIVATE read_prop_bound_cont
   INTERFACE read_prop_bound_content
@@ -278,15 +291,19 @@ MODULE propagator_mod
      MODULE PROCEDURE read_prop_recon_cont
   END INTERFACE
   ! ---------------------------------------------------------------------------
-  ! Private helpers
-  PRIVATE unit_propagator
-  PRIVATE unit_prop
+  ! Public helpers
+  !PRIVATE unit_propagator
+  !PRIVATE unit_prop
+  PUBLIC unit_propagator
+  PUBLIC unit_prop
   INTERFACE unit_propagator
      MODULE PROCEDURE unit_prop
   END INTERFACE
 
-  PRIVATE filename_propagator
-  PRIVATE filename_prop
+  !PRIVATE filename_propagator
+  !PRIVATE filename_prop
+  PUBLIC filename_propagator
+  PUBLIC filename_prop
   INTERFACE filename_propagator
      MODULE PROCEDURE filename_prop
   END INTERFACE
@@ -1358,19 +1375,26 @@ CONTAINS
         ! final joining
         CALL write_propagator_content(prop_a,2)
       ELSEIF (prop_write .EQ. 2) THEN
-        ! final joining
-        CALL write_propagator_content(prop_a,4)
+         ! final joining
+         ! WINNY PAR
+#if defined(MPI_SUPPORT)
+         if (.not. mpro%isParallel()) then
+            ! This should only be done in a sequential run
+            CALL write_propagator_content(prop_a,4)
+         end if
+#endif
+        ! WINNY PAR END
       END IF
-      IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
-        ! taginfo
-        CALL unit_propagator
-        OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-          form=prop_format,action='write')
-        WRITE(prop_unit,*) prop_write
-        WRITE(prop_unit,*) prop_first_tag   ! UNSOLVED PROBLEM
-        WRITE(prop_unit,*) prop_last_tag    ! UNSOLVED PROBLEM
-        CLOSE(unit=prop_unit)
-      END IF
+!!$      IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
+!!$        ! taginfo
+!!$        CALL unit_propagator
+!!$        OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
+!!$          form=prop_format,action='write')
+!!$        WRITE(prop_unit,*) prop_write
+!!$        WRITE(prop_unit,*) prop_first_tag   ! UNSOLVED PROBLEM
+!!$        WRITE(prop_unit,*) prop_last_tag    ! UNSOLVED PROBLEM
+!!$        CLOSE(unit=prop_unit)
+!!$      END IF
     end subroutine final_joining
 
   ! --- Paralled support end ------
@@ -1659,8 +1683,19 @@ CONTAINS
        ! link actual to current (mainly for results and diagnostic)
        prop_a => prop_c
        ! writing of propagators
+       print *, 'I am before IF (prop_write .EQ. 2) THEN'
        IF (prop_write .EQ. 2) THEN
+          print *, 'I am before CALL write_propagator_content(prop_a,3)'
           CALL write_propagator_content(prop_a,3)
+          ! WINNY PAR
+          ! This should only be done in a parallel run
+#if defined(MPI_SUPPORT)
+          if (mpro%isParallel()) then
+             print *, 'I am before write_binarysplit_content(prop_a)' 
+             CALL write_binarysplit_content(prop_a)
+          end if
+#endif
+          ! WINNY PAR END
           IF (prop_first_tag .EQ. 0) prop_first_tag = fieldpropagator%tag
           prop_last_tag = fieldpropagator%tag
        END IF
@@ -1711,8 +1746,15 @@ CONTAINS
              prop_a => prop_c%prev
              ! writing of propagators (joined within period)
              IF (prop_write .EQ. 2) THEN 
-                CALL write_prop_bound_content(prop_c%prev,prop_c,3)
-                CALL write_propagator_content(prop_c%prev,3,2) ! reduced for joined
+                ! WINNY PAR
+                ! This should only be done in a sequential run
+#if defined(MPI_SUPPORT)
+                if (.not. mpro%isParallel()) then
+                   CALL write_prop_bound_content(prop_c%prev,prop_c,3)
+                   CALL write_propagator_content(prop_c%prev,3,2) ! reduced for joined
+                end if
+#endif
+                ! END WINNY PAR
              END IF
              IF (ALLOCATED(prop_c%prev%p%cmat)) DEALLOCATE(prop_c%prev%p%cmat)
              IF (ALLOCATED(prop_c%p%cmat)) DEALLOCATE(prop_c%p%cmat)
@@ -1856,16 +1898,26 @@ CONTAINS
                    CALL write_propagator_content(prop_a,2)
                 ELSEIF (prop_write .EQ. 2) THEN
                    ! final joining
-                   CALL write_propagator_content(prop_a,4)
+                   ! WINNY PAR
+#if defined(MPI_SUPPORT)
+                   if (.not. mpro%isParallel()) then
+                      ! This should only be done in a sequential run
+                      CALL write_propagator_content(prop_a,4)
+                      ! WINNY PAR END
+                   end if
+#endif
                 END IF
                 IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
                    ! taginfo
                    CALL unit_propagator
                    OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
                         form=prop_format,action='write')
+                   ! WINNY PAR
+                   ! The last tag is wrong in a parallel run
                    WRITE(prop_unit,*) prop_write
                    WRITE(prop_unit,*) prop_first_tag
                    WRITE(prop_unit,*) prop_last_tag
+                   ! WINNY PAR END
                    CLOSE(unit=prop_unit)
                 END IF
                 EXIT
@@ -2231,7 +2283,7 @@ CONTAINS
        PRINT *, ' '    
     END IF
 
-    ! here the two array c_forward and c_backward should be finished
+    ! here the two arrays c_forward and c_backward should be finished
     ! and passed on to the join_ripples program
     CALL join_ripples_nn(ierr,cstat)
     IF (ierr .NE. 0) THEN
@@ -2244,12 +2296,14 @@ CONTAINS
        o%fieldpropagator_tag_e = n%fieldpropagator_tag_e
     END IF
 
-
+    ! WINNY PAR
+    ! unclear
     ! final cleaning
     IF (deall .EQ. 1) THEN
        IF (ALLOCATED(o%p%cmat)) DEALLOCATE(o%p%cmat)
        IF (ALLOCATED(n%p%cmat)) DEALLOCATE(n%p%cmat)
     END IF
+    ! WINNY PAR END
 
     NULLIFY(o)
     NULLIFY(n)
@@ -2260,6 +2314,7 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   SUBROUTINE write_propagator_cont(o,prop_type,prop_showall_in)
+    ! writes the content of a propagator, which is specified in pointer o
     TYPE(propagator), POINTER  :: o
 
     INTEGER, INTENT(in) :: prop_type
@@ -2277,13 +2332,13 @@ CONTAINS
     END IF
 
     prop_bound = 0
-    IF (prop_type .EQ. 1) THEN
+    IF (prop_type .EQ. 1) THEN ! period
        prop_start = o%fieldperiod_tag_s
        prop_end   = o%fieldperiod_tag_e
-    ELSEIF (prop_type .EQ. 2 .OR. prop_type .EQ. 4) THEN
+    ELSEIF (prop_type .EQ. 2 .OR. prop_type .EQ. 4) THEN ! final
        prop_start = 0
        prop_end   = 0
-    ELSEIF (prop_type .EQ. 3) THEN ! final
+    ELSEIF (prop_type .EQ. 3) THEN ! normal propagator
        prop_start = o%fieldpropagator_tag_s
        prop_end   = o%fieldpropagator_tag_e
     ELSE
@@ -2295,6 +2350,31 @@ CONTAINS
     CALL unit_propagator
     OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
          form=prop_format,action='write')
+    
+    ! what is written for prop_showall = 1
+    !    tags  : prop_start,prop_end
+    !    info  : o%nr_joined ....  o%phi_r
+    !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
+    !    amat_p_p
+    !    amat_m_m
+    !    amat_p_m
+    !    amat_m_p
+    !    source_p
+    !    source_m
+    !    flux_p
+    !    flux_m
+    !    qflux
+    !    eta
+
+    !
+    ! what is written for prop_showall > 1 (reduced for joined)
+    !    tags  : prop_start,prop_end
+    !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
+    !    amat_p_p
+    !    amat_m_p
+    !    source_p
+
+
     ! tags
     WRITE(prop_unit,*) prop_start
     WRITE(prop_unit,*) prop_end
@@ -2316,7 +2396,8 @@ CONTAINS
        WRITE(prop_unit,*) o%phi_r
     END IF
 
-    ! Binarysplit stuff is not dumped
+    ! Binarysplit stuff is not dumped / this is the only thing with prop_showall = 0
+    ! It is not really used
     IF (prop_showall .EQ. 0) THEN
        WRITE(prop_unit,*) o%bin_split_mode
     END IF
@@ -2450,6 +2531,13 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   SUBROUTINE write_prop_bound_cont(o,n,prop_type)
+    ! writes the conversion matrices 
+    !   o%p%cmat (forward) and
+    !   n%p%cmat (backward) 
+    ! between two propagators
+    !
+    ! pointer o - old, left
+    ! pointer n - new, right
     TYPE(propagator), POINTER  :: o,n
 
     INTEGER, INTENT(in) :: prop_type
@@ -2504,7 +2592,177 @@ CONTAINS
   END SUBROUTINE write_prop_bound_cont
   ! ---------------------------------------------------------------------------
 
+  SUBROUTINE write_binarysplit_cont(o)
+    ! writes the content of a binarysplit, which is specified in pointer o
+    TYPE(propagator), POINTER  :: o
+
+    INTEGER :: prop_type
+
+    INTEGER :: prop_bound
+    INTEGER :: prop_start
+    INTEGER :: prop_end
+
+
+    prop_bound = 0
+    prop_type = 6
+    prop_start = o%fieldpropagator_tag_s
+    prop_end   = o%fieldpropagator_tag_e
+
+
+    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end) 
+    CALL unit_propagator
+    OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
+         form=prop_format,action='write')
+
+    WRITE(prop_unit,*) o%bin_split_mode
+
+    ! binarysplit left
+    WRITE(prop_unit,*) o%eta_bs_l%n_ori
+    WRITE(prop_unit,*) o%eta_bs_l%n_split
+    ! x_ori_bin
+    IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,1),UBOUND(o%eta_bs_l%x_ori_bin,1)
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,2),UBOUND(o%eta_bs_l%x_ori_bin,2)
+       WRITE(prop_unit,*) o%eta_bs_l%x_ori_bin
+    ELSE
+       WRITE(prop_unit,*) 0,0
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! x_ori_poi
+    IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_poi,1),UBOUND(o%eta_bs_l%x_ori_poi,1)
+       WRITE(prop_unit,*) o%eta_bs_l%x_ori_poi
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! x_poi
+    IF (ALLOCATED(o%eta_bs_l%x_poi)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_poi,1),UBOUND(o%eta_bs_l%x_poi,1)
+       WRITE(prop_unit,*) o%eta_bs_l%x_poi
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! x_split
+    IF (ALLOCATED(o%eta_bs_l%x_split)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_split,1),UBOUND(o%eta_bs_l%x_split,1)
+       WRITE(prop_unit,*) o%eta_bs_l%x_split
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! x_pos
+    IF (ALLOCATED(o%eta_bs_l%x_pos)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_pos,1),UBOUND(o%eta_bs_l%x_pos,1)
+       WRITE(prop_unit,*) o%eta_bs_l%x_pos
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! x
+    IF (ALLOCATED(o%eta_bs_l%x)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x,1),UBOUND(o%eta_bs_l%x,1)
+       WRITE(prop_unit,*) o%eta_bs_l%x
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! y
+    IF (ALLOCATED(o%eta_bs_l%y)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%y,1),UBOUND(o%eta_bs_l%y,1)
+       WRITE(prop_unit,*) o%eta_bs_l%y
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! int
+    IF (ALLOCATED(o%eta_bs_l%int)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%int,1),UBOUND(o%eta_bs_l%int,1)
+       WRITE(prop_unit,*) o%eta_bs_l%int
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! err
+    IF (ALLOCATED(o%eta_bs_l%err)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%err,1),UBOUND(o%eta_bs_l%err,1)
+       WRITE(prop_unit,*) o%eta_bs_l%err
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+
+    ! binarysplit right
+    WRITE(prop_unit,*) o%eta_bs_r%n_ori
+    WRITE(prop_unit,*) o%eta_bs_r%n_split
+    ! x_ori_bin
+    IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,1),UBOUND(o%eta_bs_r%x_ori_bin,1)
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,2),UBOUND(o%eta_bs_r%x_ori_bin,2)
+       WRITE(prop_unit,*) o%eta_bs_r%x_ori_bin
+    ELSE
+       WRITE(prop_unit,*) 0,0
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! x_ori_poi
+    IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_poi,1),UBOUND(o%eta_bs_r%x_ori_poi,1)
+       WRITE(prop_unit,*) o%eta_bs_r%x_ori_poi
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! x_poi
+    IF (ALLOCATED(o%eta_bs_r%x_poi)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_poi,1),UBOUND(o%eta_bs_r%x_poi,1)
+       WRITE(prop_unit,*) o%eta_bs_r%x_poi
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! x_split
+    IF (ALLOCATED(o%eta_bs_r%x_split)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_split,1),UBOUND(o%eta_bs_r%x_split,1)
+       WRITE(prop_unit,*) o%eta_bs_r%x_split
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! x_pos
+    IF (ALLOCATED(o%eta_bs_r%x_pos)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_pos,1),UBOUND(o%eta_bs_r%x_pos,1)
+       WRITE(prop_unit,*) o%eta_bs_r%x_pos
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! x
+    IF (ALLOCATED(o%eta_bs_r%x)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x,1),UBOUND(o%eta_bs_r%x,1)
+       WRITE(prop_unit,*) o%eta_bs_r%x
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! y
+    IF (ALLOCATED(o%eta_bs_r%y)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%y,1),UBOUND(o%eta_bs_r%y,1)
+       WRITE(prop_unit,*) o%eta_bs_r%y
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! int
+    IF (ALLOCATED(o%eta_bs_r%int)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%int,1),UBOUND(o%eta_bs_r%int,1)
+       WRITE(prop_unit,*) o%eta_bs_r%int
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+    ! err
+    IF (ALLOCATED(o%eta_bs_r%err)) THEN
+       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%err,1),UBOUND(o%eta_bs_r%err,1)
+       WRITE(prop_unit,*) o%eta_bs_r%err
+    ELSE
+       WRITE(prop_unit,*) 0,0
+    END IF
+
+    close(unit=prop_unit)
+    
+  end SUBROUTINE write_binarysplit_cont
+  ! ---------------------------------------------------------------------------
+
   SUBROUTINE read_propagator_cont(o,prop_type,prop_start,prop_end,prop_showall_in)
+    !
+    ! reads the content of a propagator 
+    !
     TYPE(propagator), POINTER  :: o
     INTEGER, INTENT(in), OPTIONAL :: prop_showall_in
 
@@ -2653,8 +2911,10 @@ CONTAINS
        END IF
     END IF
 
-    ! qflux
+    ! qflux - Winny not fully ok
     IF (prop_showall .EQ. 1) THEN
+       IF (ALLOCATED(o%p%qflux)) DEALLOCATE(o%p%qflux)
+       ALLOCATE(o%p%qflux(3,3))
        READ(prop_unit,*) o%p%qflux
     END IF
 
@@ -2682,6 +2942,9 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   SUBROUTINE read_prop_bound_cont(b,prop_type,prop_left,prop_right)
+    !
+    ! reads the content of a boundary between propagators
+    !
     TYPE(prop_boundary)  :: b
     
     INTEGER, INTENT(in) :: prop_type
@@ -2725,10 +2988,179 @@ CONTAINS
   END SUBROUTINE read_prop_bound_cont
   ! ---------------------------------------------------------------------------
 
+  SUBROUTINE read_binarysplit_cont(o)
+    ! reads the  binarysplit content of a propagator, which is specified in pointer o
+    TYPE(propagator), POINTER  :: o
+
+    INTEGER :: prop_type
+
+    INTEGER :: prop_bound
+    INTEGER :: prop_start
+    INTEGER :: prop_end
+
+    integer :: lb1,ub1,lb2,ub2
+
+    prop_bound = 0
+    prop_type = 6
+    prop_start = o%fieldpropagator_tag_s
+    prop_end   = o%fieldpropagator_tag_e
+
+
+    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end) 
+    CALL unit_propagator
+    OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
+         form=prop_format,action='read')
+
+    READ(prop_unit,*) o%bin_split_mode
+
+    ! binarysplit left
+    READ(prop_unit,*) o%eta_bs_l%n_ori
+    READ(prop_unit,*) o%eta_bs_l%n_split
+    ! x_ori_bin
+    READ(prop_unit,*) lb1,ub1
+    READ(prop_unit,*) lb2,ub2
+    IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) DEALLOCATE(o%eta_bs_l%x_ori_bin)
+       ALLOCATE(o%eta_bs_l%x_ori_bin(lb1:ub1,lb2:ub2))
+       READ(prop_unit,*) o%eta_bs_l%x_ori_bin
+    END IF
+    ! x_ori_poi
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) DEALLOCATE(o%eta_bs_l%x_ori_poi)
+       ALLOCATE(o%eta_bs_l%x_ori_poi(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_l%x_ori_poi
+    END IF
+    ! x_poi
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_l%x_poi)) DEALLOCATE(o%eta_bs_l%x_poi)
+       ALLOCATE(o%eta_bs_l%x_poi(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_l%x_poi
+    END IF
+    ! x_split
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_l%x_split)) DEALLOCATE(o%eta_bs_l%x_split)
+       ALLOCATE(o%eta_bs_l%x_split(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_l%x_split
+    END IF
+    ! x_pos
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_l%x_pos)) DEALLOCATE(o%eta_bs_l%x_pos)
+       ALLOCATE(o%eta_bs_l%x_pos(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_l%x_pos
+    END IF
+    ! x
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_l%x)) DEALLOCATE(o%eta_bs_l%x)
+       ALLOCATE(o%eta_bs_l%x(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_l%x
+    END IF
+    ! y
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_l%y)) DEALLOCATE(o%eta_bs_l%y)
+       ALLOCATE(o%eta_bs_l%y(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_l%y
+    END IF
+    ! int
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_l%int)) DEALLOCATE(o%eta_bs_l%int)
+       ALLOCATE(o%eta_bs_l%int(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_l%int
+    END IF
+    ! err
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_l%err)) DEALLOCATE(o%eta_bs_l%err)
+       ALLOCATE(o%eta_bs_l%err(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_l%err
+    END IF
+
+    ! binarysplit right
+    READ(prop_unit,*) o%eta_bs_r%n_ori
+    READ(prop_unit,*) o%eta_bs_r%n_split
+    ! x_ori_bin
+    READ(prop_unit,*) lb1,ub1
+    READ(prop_unit,*) lb2,ub2
+    IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_r%x_ori_bin)) DEALLOCATE(o%eta_bs_r%x_ori_bin)
+       ALLOCATE(o%eta_bs_r%x_ori_bin(lb1:ub1,lb2:ub2))
+       READ(prop_unit,*) o%eta_bs_r%x_ori_bin
+    END IF
+    ! x_ori_poi
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) DEALLOCATE(o%eta_bs_r%x_ori_poi)
+       ALLOCATE(o%eta_bs_r%x_ori_poi(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_r%x_ori_poi
+    END IF
+    ! x_poi
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_r%x_poi)) DEALLOCATE(o%eta_bs_r%x_poi)
+       ALLOCATE(o%eta_bs_r%x_poi(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_r%x_poi
+    END IF
+    ! x_split
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_r%x_split)) DEALLOCATE(o%eta_bs_r%x_split)
+       ALLOCATE(o%eta_bs_r%x_split(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_r%x_split
+    END IF
+    ! x_pos
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_r%x_pos)) DEALLOCATE(o%eta_bs_r%x_pos)
+       ALLOCATE(o%eta_bs_r%x_pos(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_r%x_pos
+    END IF
+    ! x
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_r%x)) DEALLOCATE(o%eta_bs_r%x)
+       ALLOCATE(o%eta_bs_r%x(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_r%x
+    END IF
+    ! y
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_r%y)) DEALLOCATE(o%eta_bs_r%y)
+       ALLOCATE(o%eta_bs_r%y(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_r%y
+    END IF
+    ! int
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_r%int)) DEALLOCATE(o%eta_bs_r%int)
+       ALLOCATE(o%eta_bs_r%int(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_r%int
+    END IF
+    ! err
+    READ(prop_unit,*) lb1,ub1
+    IF (ub1 .GT. 0) THEN
+       IF (ALLOCATED(o%eta_bs_r%err)) DEALLOCATE(o%eta_bs_r%err)
+       ALLOCATE(o%eta_bs_r%err(lb1:ub1))
+       READ(prop_unit,*) o%eta_bs_r%err
+    END IF
+
+    close(unit=prop_unit)
+    
+  end SUBROUTINE read_binarysplit_cont
+  ! ---------------------------------------------------------------------------
+
   SUBROUTINE read_prop_recon_cont(tag)
+    ! reads fluxes for a given propagator (from results file)
     INTEGER, INTENT(in) :: tag
     INTEGER :: dummy,lb1,ub1,lb2,ub2
 
+    ! 5: result
+    ! 0: no boundary
     CALL filename_propagator(5,0,tag,tag)
     OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
          form=prop_format,action='read')
@@ -2767,6 +3199,8 @@ CONTAINS
     INTEGER :: lb1,ub1,lb2,ub2
 
     INTEGER :: ierr_join
+    LOGICAL :: parallel_storage
+
 
     ! from the finally joined propagator
     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_0               
@@ -2782,6 +3216,7 @@ CONTAINS
     READ(prop_unit,*) prop_write
     READ(prop_unit,*) prop_first_tag
     READ(prop_unit,*) prop_last_tag
+    READ(prop_unit,*) parallel_storage
     CLOSE(unit=prop_unit)
     
     IF (prop_write .EQ. 1) THEN
@@ -2793,6 +3228,70 @@ CONTAINS
        PRINT *, 'Set prop_write to 1 (period) or 2 (propagator)'
        STOP
     END IF
+
+    if (parallel_storage) then
+       ! this is now something which has to be done if the initial results were 
+       ! generated by a parallel version of the code
+       ! WINNY PAR
+       prop_showall = 1
+       ! first propagator
+       N = prop_first_tag
+       CALL construct_propagator
+       print *, 'first'
+       PRINT *, N,prop_first_tag, prop_last_tag
+       prop_start = N
+       prop_end   = N
+       CALL read_propagator_content(prop_c,prop_type,prop_start,prop_end,prop_showall)
+       CALL read_binarysplit_content(prop_c)
+       
+       print *, prop_c%p%npart,prop_c%p%npass_l,prop_c%p%npass_r
+       !print *, prop_c%eta_bs_l%n_ori,prop_c%eta_bs_l%n_split
+       !print *, prop_c%eta_bs_r%n_ori,prop_c%eta_bs_r%n_split
+       !print *, prop_c%eta_bs_l%x_ori_poi
+       !print *, prop_c%eta_bs_r%x_ori_poi
+       
+       
+       print *, ''
+       ! other propagators
+       CALL construct_propagator    
+       DO N = prop_first_tag + 1, prop_last_tag, +1
+          print *, 'cont'
+          PRINT *, N,prop_first_tag, prop_last_tag
+          ! read information
+          prop_start = N
+          prop_end   = N
+          print *, ''
+          CALL read_propagator_content(prop_c,prop_type,prop_start,prop_end,prop_showall)
+          CALL read_binarysplit_content(prop_c)
+          print *, prop_c%prev%p%npart,prop_c%prev%p%npass_l,prop_c%prev%p%npass_r
+          print *, prop_c%p%npart,prop_c%p%npass_l,prop_c%p%npass_r
+          !print *, prop_c%eta_bs_l%n_ori,prop_c%eta_bs_l%n_split
+          !print *, prop_c%eta_bs_r%n_ori,prop_c%eta_bs_r%n_split
+          !print *, prop_c%eta_bs_l%x_ori_poi
+          !print *, prop_c%eta_bs_r%x_ori_poi
+          ! join propagators - intermediate - do not clean c_mat
+          prop_c_old => prop_c%prev
+          prop_c_new => prop_c
+          CALL join_ripples_interface(ierr_join,'inter',0)
+          ! write propagator end boundaries
+          CALL write_prop_bound_content(prop_c%prev,prop_c,3) ! boundary
+          CALL write_propagator_content(prop_c%prev,3,2) ! reduced for joined (2)
+       END DO
+       !final joining
+       print *, ''
+       print *, 'final'
+       CALL assign_propagator_content(prop_c,prop_c%prev)
+       prop_c_old => prop_c%prev
+       prop_c_new => prop_c
+       CALL join_ripples_interface(ierr_join,'final')
+       !prop_a => prop_c%prev    
+       CALL write_propagator_content(prop_c%prev,4)
+       
+       print *, ''
+       print *, 'destruct'
+       call destruct_all_prop
+       ! WINNY PAR END
+    end if
 
     ! read the final joined propagator (from join_ends)
     ! and keep only the fluxes (which are in source)
@@ -3043,7 +3542,18 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   SUBROUTINE filename_prop(prop_type,prop_bound,prop_start,prop_end)
-
+    !
+    ! constructs filenames for Spitzer output
+    !
+    ! prop_type  - 1,2 : period
+    !            - 3,4 : propagator
+    !            - 5   : result
+    !            - 6   : binarysplit
+    ! prop_bound - 0   : is no boundary
+    !              1   : is boundary
+    !
+    ! output is written on prop_cfilename
+    !
     INTEGER, INTENT(in) :: prop_type
     INTEGER, INTENT(in) :: prop_bound
     INTEGER, INTENT(in) :: prop_start
@@ -3059,8 +3569,10 @@ CONTAINS
        prop_cfilename = prop_cperiod
     ELSEIF (prop_type .EQ. 3 .OR. prop_type .EQ. 4) THEN ! propagator
        prop_cfilename = prop_cpropagator
-    ELSEIF (prop_type .EQ. 5) THEN ! propagator
+    ELSEIF (prop_type .EQ. 5) THEN ! result
        prop_cfilename = prop_cresult
+    ELSEIF (prop_type .EQ. 6) THEN ! binarysplit
+       prop_cfilename = prop_cbinarysplit
     END IF
 
     ! add boundary to name

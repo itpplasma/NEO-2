@@ -420,9 +420,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   USE magnetics_mod
   USE device_mod
   USE mag_interface_mod, ONLY : mag_save_memory,mag_start_special,magnetic_device, &
-       mag_magfield,ripple_prop_joiner
+       mag_magfield,ripple_prop_joiner,boozer_phi_beg,boozer_theta_beg
   USE propagator_mod, ONLY : prop_ibegperiod,prop_count_call,propagator_solver, &
-       prop_reconstruct, prop_reconstruct_levels
+       prop_reconstruct, prop_reconstruct_levels, prop_write, prop_ctaginfo
   USE collisionality_mod, ONLY : isw_lorentz,isw_axisymm,y_axi_averages, &
        isw_momentum
        !vel_distri_swi,vel_num,vel_max,nvel,vel_array
@@ -454,6 +454,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   INTEGER, INTENT(inout) :: proptag_start,proptag_end
   INTEGER, INTENT(in)       :: eta_part_global,eta_part_trapped
   
+  REAL(kind=dp), PARAMETER :: twopi = 6.28318530717959_dp
+
   ! locals
   INTEGER :: rippletag_old,rippletag,proptag
   INTEGER :: iend,iendperiod,ierr_solv,ierr_join
@@ -547,6 +549,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   integer :: save_binarysplit_fsplitdepth
 
   REAL(kind=dp) :: fieldline_phi_l,fieldline_phi_r,y_conv_factor
+
+  REAL(kind=dp) :: phi_l,phi_r,phi_per,theta_l,theta_r
 
   ! Local variable for parallel mode
 #if defined(MPI_SUPPORT)
@@ -2618,6 +2622,85 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   print *, '--------------------------------------------'
   !pause
   ! End of fixing magnetics in all propagators 
+
+  ! Write taginfo.prop
+  IF ( (prop_write .EQ. 1 .OR. prop_write .EQ. 2) .and. prop_reconstruct .eq. 0) THEN
+     ! taginfo
+     CALL unit_propagator
+     OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
+          form=prop_format,action='write')
+     WRITE(prop_unit,*) prop_write
+!!$     WRITE(prop_unit,*) prop_first_tag   ! UNSOLVED PROBLEM
+!!$     WRITE(prop_unit,*) prop_last_tag    ! UNSOLVED PROBLEM
+     WRITE(prop_unit,*) fieldline%ch_fir%ch_fir%tag
+     WRITE(prop_unit,*) fieldline%ch_las%ch_las%tag
+     ! This was the end of the old write
+#if defined(MPI_SUPPORT)
+     if (mpro%isParallel()) then
+        WRITE(prop_unit,*) .TRUE.
+     else
+        WRITE(prop_unit,*) .FALSE.
+     end if
+#else
+     WRITE(prop_unit,*) .FALSE.
+#endif
+     ! 
+     phi_per = twopi / device%nfp
+
+
+     WRITE(prop_unit,*) surface%aiota
+     WRITE(prop_unit,*) surface%bmod0
+     WRITE(prop_unit,*) surface%b_abs_min
+     WRITE(prop_unit,*) surface%b_abs_max
+     WRITE(prop_unit,*) phi_per
+     WRITE(prop_unit,*) device%nfp
+     WRITE(prop_unit,*) boozer_phi_beg
+     WRITE(prop_unit,*) boozer_theta_beg
+
+     fieldperiod => fieldline%ch_fir 
+     fieldpropagator => fieldperiod%ch_fir
+     allprops_taginfo: DO WHILE (fieldpropagator%tag .LE. fieldline%ch_las%ch_las%tag)
+        
+        fieldperiod => fieldpropagator%parent
+
+        phi_l = fieldpropagator%phi_l
+        phi_r = fieldpropagator%phi_r
+        theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
+        theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
+        if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
+           phi_l = 0.0_dp
+        else
+           phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
+        end if
+        if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
+           phi_r = phi_per
+        else
+           phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
+        end if
+
+        WRITE(prop_unit,*) fieldpropagator%tag, fieldpropagator%parent%tag,&
+             fieldperiod%phi_l, &
+             phi_l, phi_r, theta_l, theta_r
+        IF (ASSOCIATED(fieldpropagator%next)) THEN
+           fieldpropagator => fieldpropagator%next
+        else
+           exit allprops_taginfo
+        end IF
+     end DO allprops_taginfo
+
+     CLOSE(unit=prop_unit)
+  
+     !fieldpropagator%tag
+
+     ! stop
+     ! One can activate the stop here, if one just wants a new
+     ! taginfo.prop written. Then no harm is done to all
+     ! propagator output files
+     
+
+  END IF
+
+
 
   ! Now do the real computation
 
