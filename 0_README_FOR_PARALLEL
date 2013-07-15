@@ -15,7 +15,9 @@
    
 4. Run 
    cmake .
-   to let cmake create a make-file for the environment.
+   to force cmake to create a make-file for the environment.
   
 5. Run 
-   make or make.openmpi (on ITP-Cluster).
+   make
+   or 
+   ./make.openmpi (on ITP-Cluster).

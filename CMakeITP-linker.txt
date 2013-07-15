@@ -6,11 +6,6 @@
                 ${MyMPILib_lib}
                 ${MPE_lib}
                 ${DBGLIBS}
-                #/afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/liblapack.a
-                #/afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/libf77blas.a
-                #/afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/libcblas.a
-                #/afs/itp.tugraz.at/user/gernot_k/Src/Atlas_lib/lib/libatlas.a
-		#rt
 		lapack
 		blas
         )
