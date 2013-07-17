@@ -5,6 +5,9 @@ cmake_minimum_required (VERSION 2.6)
 include (BuildConfig.txt)
 set(DEBUG 0) # Enable/Disable debug mode
 
+set (Neo2_Version "v2.1.0")
+configure_file(./version.f90.in ./version.f90)
+
 set(MPIFLAGS "")
 if (${MPI_SUPPORT})
 	set(MPIFLAGS "${MPIFLAGS} -DMPI_SUPPORT")

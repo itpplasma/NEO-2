@@ -57,6 +57,7 @@ PROGRAM neo2
   ! Used for MPI support
   ! This string is used to give every client an own evolve.dat file
   character(len=32) :: strEvolveFilename
+  include "version.f90"
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
