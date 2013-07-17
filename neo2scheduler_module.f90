@@ -117,6 +117,7 @@ contains
     wu%fracIndex            = proptag_start
     wu%proptag_start_client = proptag_start
     wu%proptag_end_client   = proptag_end
+    wu%doNotMerge           = (prop_reconstruct == 2)
 
     ! Add the workunit to the unprocessed list
     call this%addWorkunit(wu)
