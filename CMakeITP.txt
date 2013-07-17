@@ -11,8 +11,8 @@
         #set(COMPILER_LIBS_PATH "/afs/itp.tugraz.at/opt/gcc/${GFORTRAN_FULL_VERSION}/arch-amd64/lib64")
         set(MPE_PATH "/afs/itp.tugraz.at/opt/mpe/1.3.0")
 
-        set(CFLAGS "-O2 -D DOUBLE_APPEND_FORTRAN")
-        set(FFLAGS "-O2 -cpp")
+        set(CFLAGS "-g -O2 -D DOUBLE_APPEND_FORTRAN")
+        set(FFLAGS "-g -O2 -cpp")
         set(CLUSTER_FLAG "-DITP")
 	set(LINKER_FLAGS "-Wl,-rpath,${COMPILER_LIBS_PATH}")
 

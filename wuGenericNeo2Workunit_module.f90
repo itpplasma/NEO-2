@@ -29,9 +29,9 @@ module wuGenericNeo2Workunit_module
     procedure :: unpack => unpack_wuSolvePropagator   !< Unpack a received result
 
     procedure :: print => print_wuSolvePropagator     !< Print debug information
-
+    
   end type wuSolvePropagator
-
+  
   !> Workunit for joining two fieldperiods
   type, extends(wuGenericNeo2Workunit) :: wuExternalJoin
 
@@ -85,17 +85,26 @@ module wuGenericNeo2Workunit_module
     ! Remember the pointer to the result
     if (associated(prop_c)) then!(associated(this%prop_res) .and. associated(prop_c)) then
 
-      ! Relinking pointers for storing the propagator without copying its content
-      this%prop_res => prop_c%prev
-      this%prop_res%next => null()
-      prop_c%prev => null()
-      prop_r => prop_c
+       if (associated(prop_c%prev)) then
+       
+          ! Relinking pointers for storing the propagator without copying its content
+          this%prop_res => prop_c%prev
+          this%prop_res%next => null()
+          prop_c%prev => null()
+          prop_r => prop_c
 
-      !call assign_propagator_content(this%prop_res, prop_c%prev)
-
+          !call assign_propagator_content(this%prop_res, prop_c%prev)
+       else
+          if (prop_reconstruct == 2) then
+             write (*,*) "prop_c%prev is not associated because of prop_reconstruct==2"
+          else
+             write (*,*) "ERROR: prop_c%prev is not associated"
+             stop 
+          end if
+       end if
     else
-      write (*,*) "An error occurred in process_wuSolvePropagator, one of the propagators is null", &
-                   associated(this%prop_res), associated(prop_c)
+       write (*,*) "An error occurred in process_wuSolvePropagator, one of the propagators is null", &
+            associated(this%prop_res), associated(prop_c)
       stop
     end if
 
@@ -109,7 +118,7 @@ module wuGenericNeo2Workunit_module
     class(wuSolvePropagator) :: this
 
     call this%genericWorkunit%pack()
-
+  
     associate (b => mpro%packbuffer)
       call b%add(this%proptag_start_client)
       call b%add(this%proptag_end_client)
