@@ -70,7 +70,7 @@ find_library(Camd_lib camd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(Metis_lib metis ${SUITESPARSE_DIR}lib ${METIS_PATH} NO_DEFAULT_PATH)
 find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(SuiteSparseConfig_lib suitesparseconfig ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
+find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH}/lib)
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
 
 ### Source files
