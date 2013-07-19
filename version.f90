@@ -1,2 +1,2 @@
-character(len=10) :: Neo2_Version = "2013-07-18.1"
+character(len=12) :: Neo2_Version = "2013-07-18.1"
 
