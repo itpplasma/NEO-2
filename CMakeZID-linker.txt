@@ -1,17 +1,24 @@
-set(MKLROOT /opt/intel/composer_xe_2013.0.079/mkl)
-set(LINKER_FLAGS "-Wl,-rpath,/opt/intel/composer_xe_2013.0.079/compiler/lib/intel64 -Wl,-rpath,/opt/intel/composer_xe_2013.0.079/mkl/lib/intel64/")
-set(CMAKE_EXE_LINKER_FLAGS "${LINKER_FLAGS}")
+#set(MKLROOT /opt/intel/composer_xe_2013.0.079/mkl)
+#set(LINKER_FLAGS "-Wl,-rpath,/opt/intel/composer_xe_2013.0.079/compiler/lib/intel64 -Wl,-rpath,/opt/intel/composer_xe_2013.0.079/mkl/lib/intel64/")
+#set(CMAKE_EXE_LINKER_FLAGS "${LINKER_FLAGS}")
 
 target_link_libraries(neo_2.x${NAME_EXT}
-	blas
-	lapack
 	${SuperLU_lib}
-	${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
+	${Umfpack_lib} 
+	${Amd_lib} 
+	${Cholmod_lib} 
+	${Colamd_lib} 
+	${Camd_lib} 
+	${Metis_lib} 
+	${Ccolamd_lib}
 	#${SuiteSparseConfig_lib}
 	${MyMPILib_lib}
 	${MPE_lib}
 	${DBGLIBS}
-	#-Wl,--start-group  ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -liomp5 -lpthread -lm
+	blas
+	lapack
+	#-Wl,--start-group  ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -liomp5 -lpthread -lm
+	#-mkl:parallel
 )
 
 if (${COMPILER} STREQUAL "GFORTRAN")
