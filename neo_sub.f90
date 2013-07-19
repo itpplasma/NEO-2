@@ -2606,8 +2606,10 @@ SUBROUTINE neo_filenames
 
   CALL add_extension(o_file2,'chk.dat',chk_file)
   IF (chk_swi .EQ. 1) THEN
-     OPEN(unit=w_u3, file=chk_file, status='replace', action='write')
-     CLOSE(unit=w_u3)
+     if (mpro%isMaster()) then
+        OPEN(unit=w_u3, file=chk_file, status='replace', action='write')
+        CLOSE(unit=w_u3)
+     end if
   END IF
   CALL add_extension(o_file2,'dat',out_file)
   CALL add_extension(o_file2,'log.dat',epslog_file)
@@ -2618,32 +2620,42 @@ SUBROUTINE neo_filenames
   CALL add_extension(o_file2,'cur.int.dat',curint_file)
   CALL add_extension(o_file2,'cur.dis.dat',curdis_file)
   IF (calc_eps .EQ. 1) THEN
-     OPEN(unit=w_u3, file=out_file, status='replace', action='write')
-     CLOSE(unit=w_u3)
-     OPEN(unit=w_u3, file=epslog_file, status='replace', action='write')
-     CLOSE(unit=w_u3)
+     if (mpro%isMaster()) then
+        OPEN(unit=w_u3, file=out_file, status='replace', action='write')
+        CLOSE(unit=w_u3)
+        OPEN(unit=w_u3, file=epslog_file, status='replace', action='write')
+        CLOSE(unit=w_u3)
+     end if
   END IF
 
   CALL add_extension(o_file2,'cur.dat',cur_file)
   IF (calc_cur .EQ. 1) THEN
-     OPEN(unit=w_u9, file=cur_file, status='replace', action='write')
-     CLOSE(unit=w_u9)
+     if (mpro%isMaster()) then
+        OPEN(unit=w_u9, file=cur_file, status='replace', action='write')
+        CLOSE(unit=w_u9)
+     end if
      IF (write_cur_inte .EQ. 1) THEN
-        OPEN(unit=w_u9, file=curcon_file, status='replace', action='write')
-        CLOSE(unit=w_u9)
-        OPEN(unit=w_u9, file=curint_file, status='replace', action='write')
-        CLOSE(unit=w_u9)
+        if (mpro%isMaster()) then
+           OPEN(unit=w_u9, file=curcon_file, status='replace', action='write')
+           CLOSE(unit=w_u9)
+           OPEN(unit=w_u9, file=curint_file, status='replace', action='write')
+           CLOSE(unit=w_u9)
+        end if
      END IF
      IF (write_cur_disp .EQ. 1) THEN
-        OPEN(unit=w_u9, file=curdis_file, status='replace', action='write')
-        CLOSE(unit=w_u9)
+        if (mpro%isMaster()) then
+           OPEN(unit=w_u9, file=curdis_file, status='replace', action='write')
+           CLOSE(unit=w_u9)
+        end if
      END IF
   END IF
 
   CALL add_extension(o_file2,'pla.dat',pla_file)
   IF (calc_pla .EQ. 1) THEN
-     OPEN(unit=w_u9, file=pla_file, status='replace', action='write')
-     CLOSE(unit=w_u9)
+     if (mpro%isMaster()) then
+        OPEN(unit=w_u9, file=pla_file, status='replace', action='write')
+        CLOSE(unit=w_u9)
+     end if
   END IF
 
   CALL add_extension(o_file1,'s.bc',sbc_file)

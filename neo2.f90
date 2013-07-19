@@ -300,6 +300,11 @@ PROGRAM neo2
   ! MPI support
 #if defined(MPI_SUPPORT)
   call mpro%init()
+
+  if (mpro%getRank() == 1) then
+     write (*,*) "NEO-2 Version ", Neo2_Version
+  end if
+
 #endif
 
 
