@@ -16,14 +16,14 @@ set_source_files_properties(${SUITESPARSE_F90}umf4_f77wrapper.c  PROPERTIES COMP
 set_source_files_properties(${SUITESPARSE_F90}umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
 ### MPI FILES ###
-if (${MPI_SUPPORT})
+if (MPI_SUPPORT)
 set (MPI_SRC_FILES
         ./neo2scheduler_module.f90
         ./parallelStorage_module.f90
         ./wuGenericNeo2Workunit_module.f90
 )
 set_source_files_properties(${MPI_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
-endif (${MPI_SUPPORT})
+endif ()
 
 ### NEO2 ###
 set(NEO2_SRC_FILES

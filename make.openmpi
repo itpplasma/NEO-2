@@ -1,2 +1,0 @@
-#!/bin/bash
-CC=gcc-4.7.2 FC=gfortran-4.7.2 CXX=gcc-4.7.2 OMPI_CC=/usr/local/bin/gcc-4.7.2 OMPI_FC=/usr/local/bin/gfortran-4.7.2 make VERBOSE=1

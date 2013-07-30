@@ -1,63 +1,73 @@
-### Basic settings
 cmake_minimum_required (VERSION 2.6)
+project (NEO-2-Par)
+enable_language (Fortran)
 
-### Edit these lines for customization
-include (BuildConfig.txt)
-include (Version.txt)
+include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
+include (${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
+include (${CMAKE_SOURCE_DIR}/ProjectVersion.cmake.in)
 
-set(DEBUG 0) # Enable/Disable debug mode
-set(MPIFLAGS "")
-if (${MPI_SUPPORT})
-	set(MPIFLAGS "${MPIFLAGS} -DMPI_SUPPORT")
-endif (${MPI_SUPPORT})
+option(MPI_SUPPORT "Should NEO-2 be built with MPI-Support?" ON)
+option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
 
-if (${MPE_SUPPORT})
-	set(MPIFLAGS "${MPIFLAGS} -DMPE_SUPPORT")
-endif (${MPE_SUPPORT})
+message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
-if (${CLUSTER_ENV} STREQUAL "ITP")
-	include (CMakeITP.txt)
-endif (${CLUSTER_ENV} STREQUAL "ITP")
+if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 
-if (${CLUSTER_ENV} STREQUAL "VSC2")
-	include (CMakeVSC2.txt)
-endif (${CLUSTER_ENV} STREQUAL "VSC2")
+        #gfortran -I/usr/lib/openmpi/include -pthread -I/usr/lib/openmpi/lib -L/usr//lib -L/usr/lib/openmpi/lib -lmpi_f90 -lmpi_f77 -lmpi -ldl -lhwloc
 
-if (${CLUSTER_ENV} STREQUAL "ZID")
-	include (CMakeZID.txt)
-endif (${CLUSTER_ENV} STREQUAL "ZID")
+        include_directories(${INCLUDEDIRS_MPI_GNU})
+        link_directories(${LINKDIRS_MPI_GNU})
+	set(MPI_lib -lmpi_f90 -lmpi_f77 -lmpi -lopen-rte -lopen-pal -ldl -Wl,--export-dynamic -lnsl -lutil -lm -ldl)
 
-### CMake compiler configuration
-set(CMAKE_C_COMPILER ${CC})
-set(CMAKE_CXX_COMPILER ${CC})
-set(CMAKE_Fortran_COMPILER ${F90})
+        set (CMAKE_Fortran_FLAGS "-cpp -pthread")
+        #set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
+        #set (CMAKE_Fortran_FLAGS_DEBUG "")
 
-project (Neo2-parallel)
-enable_language(Fortran)
-enable_language(C)
+elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
-### MPI Settings
-if (${MPI_SUPPORT})
-	include_directories(${MYMPILIB_PATH})
-	include_directories(${MYMPILIB_PATH}/OBJS)
-	#add_subdirectory(${MYMPILIB_PATH})
-endif (${MPI_SUPPORT})
+        #ifort -I/usr/local/openmpi-1.6.3-intel/include -I/usr/local/openmpi-1.6.3-intel/lib -L/usr/local/openmpi-1.6.3-intel/lib -lmpi_f90 -lmpi_f77 -lmpi -ldl -lm -lnuma -Wl,--export-$
 
-### Set compiler flags
+        include_directories(${INCLUDEDIRS_MPI_INTEL})
+        link_directories(${LINKDIRS_MPI_INTEL})
+
+        set (CMAKE_Fortran_FLAGS "-cpp -heap-arrays")
+        #set (CMAKE_Fortran_FLAGS_RELEASE "")
+        #set (CMAKE_Fortran_FLAGS_DEBUG "")
+
+endif ()
+
+include_directories("${PROJECT_SOURCE_DIR}")
+include_directories("${MYMPILIB_PATH}/OBJS")
+
 set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
 
+if (MPI_SUPPORT)
+        message(STATUS "MPI-Support activated")
+        if (DEFINED MPI_PATH)
+                include_directories(${MPI_PATH}/include)
+        endif ()
+        add_definitions(-DMPI_SUPPORT)
+endif ()
+if (MPE_SUPPORT)
+        message(STATUS "MPE-Support activated, MPE-Path: ${MPE_PATH}")
+        if (DEFINED MPE_PATH)
+                include_directories(${MPE_PATH}/include)
+        endif ()
+        add_definitions(-DMPE_SUPPORT)
+endif ()
+
 ### Debug settings
-if(DEBUG)
-	set(DEBUGFLAG "-g -ggdb -C -p -pg -fbacktrace -ffpe-trap=invalid,zero,overflow,underflow")
-	set(FFLAG_DEBUG "-Waliasing -Wampersand  -Wline-truncation  -Wsurprising -Wno-tabs  -Wunderflow -cpp")  #-Wnonstd-intrinsics removed in 4.7, had to add -cpp, had to remove -MJOBS
-	set(CDEBUG_DEBUG "-g -ggdb -C -p -fbacktrace")
-	set(CFLAGS_DEBUG "-O0") 
-	set(DBGLIBS "efence")
-endif(DEBUG)
+#if(DEBUG)
+#	set(DEBUGFLAG "-g -ggdb -C -p -pg -fbacktrace -ffpe-trap=invalid,zero,overflow,underflow")
+#	set(FFLAG_DEBUG "-Waliasing -Wampersand  -Wline-truncation  -Wsurprising -Wno-tabs  -Wunderflow -cpp")  #-Wnonstd-intrinsics removed in 4.7, had to add -cpp, had to remove -MJOBS
+#	set(CDEBUG_DEBUG "-g -ggdb -C -p -fbacktrace")
+#	set(CFLAGS_DEBUG "-O0") 
+#	set(DBGLIBS "efence")
+#endif(DEBUG)
 
 ### Build name extension
 exec_program("uname -m" OUTPUT_VARIABLE ARCH)
-set(NAME_EXT ".${NAME_EXT}_${ARCH}")
+set(EXE_NAME "neo_2.x-${CMAKE_Fortran_COMPILER_ID}_${ARCH}")
 
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -70,29 +80,30 @@ find_library(Camd_lib camd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(Metis_lib metis ${SUITESPARSE_DIR}lib ${METIS_PATH} NO_DEFAULT_PATH)
 find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(SuiteSparseConfig_lib suitesparseconfig ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH}/lib)
+find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
 
 ### Source files
 include (CMakeSources.txt)
 
 ### Define executable
-add_executable(neo_2.x${NAME_EXT}
+add_executable(${EXE_NAME}
 	${NEO2_SRC_FILES} 
   	${SUITESPARSE_SRC_FILES}
 	${SUPERLU_SRC_FILES}
 	${MPI_SRC_FILES}
 )
 
-### Linking
-if (${CLUSTER_ENV} STREQUAL "ITP")
-	include (CMakeITP-linker.txt)
-endif (${CLUSTER_ENV} STREQUAL "ITP")
+        target_link_libraries(${EXE_NAME}
+                ${SuperLU_lib}
+                ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
+		#${SuiteSparseConfig_lib}
+                ${MyMPILib_lib}
+                ${MPE_lib}
+		${MPI_lib}
+		lapack
+		blas
+        )
+        install (TARGETS ${EXE_NAME} DESTINATION /temp/gernot_k/)
+	set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-if (${CLUSTER_ENV} STREQUAL "VSC2")
-	include (CMakeVSC2-linker.txt)
-endif (${CLUSTER_ENV} STREQUAL "VSC2")
-
-if (${CLUSTER_ENV} STREQUAL "ZID")
-	include (CMakeZID-linker.txt)
-endif (${CLUSTER_ENV} STREQUAL "ZID")
