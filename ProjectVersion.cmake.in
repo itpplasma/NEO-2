@@ -1,2 +1,2 @@
-set (Neo2_Version 2013-07-30.1)
+set (Neo2_Version 2013-08-07.1)
 configure_file(${CMAKE_SOURCE_DIR}/version.f90.in ${CMAKE_SOURCE_DIR}/version.f90)
