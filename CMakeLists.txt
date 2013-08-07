@@ -1,4 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+
 project (NEO-2-Par)
 enable_language (Fortran)
 
@@ -16,6 +18,7 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
         #gfortran -I/usr/lib/openmpi/include -pthread -I/usr/lib/openmpi/lib -L/usr//lib -L/usr/lib/openmpi/lib -lmpi_f90 -lmpi_f77 -lmpi -ldl -lhwloc
 
         include_directories(${INCLUDEDIRS_MPI_GNU})
+	include_directories(/usr/include)
         link_directories(${LINKDIRS_MPI_GNU})
 	set(MPI_lib -lmpi_f90 -lmpi_f77 -lmpi -lopen-rte -lopen-pal -ldl -Wl,--export-dynamic -lnsl -lutil -lm -ldl)
 
@@ -82,6 +85,8 @@ find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(SuiteSparseConfig_lib suitesparseconfig ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
+find_library(NetCDF_lib netcdf)
+find_library(NetCDFf_lib netcdff)
 
 ### Source files
 include (CMakeSources.txt)
@@ -101,6 +106,7 @@ add_executable(${EXE_NAME}
                 ${MyMPILib_lib}
                 ${MPE_lib}
 		${MPI_lib}
+		-Wl,--start-group -L/usr/lib/ -lnetcdf -lnetcdff -Wl,--end-group
 		lapack
 		blas
         )

@@ -82,6 +82,10 @@ MODULE propagator_mod
   USE mpiprovider_module
 #endif
 
+  ! Experimental NetCDF Support
+  USE netcdf
+  ! ---
+
   IMPLICIT NONE
   
   ! ---------------------------------------------------------------------------
@@ -135,7 +139,12 @@ MODULE propagator_mod
   !
   ! new switch for reconstruction of levels
   INTEGER,            PUBLIC  :: prop_reconstruct_levels = 0
-  
+
+  ! --- NetCDF Support ---
+  LOGICAL :: netcdf_files     = .true.
+  LOGICAL :: nc_deflate       = .true.
+  INTEGER :: nc_deflate_level = 1
+  ! ---
 
 
   ! ---------------------------------------------------------------------------
@@ -885,6 +894,10 @@ CONTAINS
     USE collop, ONLY : z_eff
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield
 
+    ! --- Experimental NetCDF Demonstration ---
+    use netcdf
+    ! ---
+    
     INTEGER, INTENT(in) :: iend
 
     LOGICAL :: opened
@@ -913,6 +926,20 @@ CONTAINS
     INTEGER :: i, i_p, j, j_p
     INTEGER :: full_version
 
+    ! --- Experimental NetCDF Demonstration ---
+      
+    ! efinal
+    integer :: ncid, ierr
+    integer :: scalar_dimid, y_dimid
+    integer :: var_phi_id, var_y_id, var_aiota_loc_id, var_dmono_over_dplateau_id, var_epseff3_2_id
+    integer :: var_alambda_b_id, var_qflux_g_id, var_qflux_e_id, var_qcurr_g_id, var_qcurr_e_id, var_alambda_bb_id
+    integer :: var_gamma_E_id, var_g_bs_id, var_r0_id, var_bmod0_id
+    
+    ! fulltransp
+    integer :: gamma_out_dimid(2)
+    integer :: var_collpar_id, var_z_eff_id, var_avnabpsi_id, var_avbhat2_id, var_dl1obhat_id, var_gamma_out_id
+    
+    
     ! taken from Sergei
 !->out    qflux_g = prop_a%p%qflux_g
 !->out    qcurr_g = prop_a%p%qcurr_g
@@ -1017,6 +1044,40 @@ CONTAINS
             gamma_out
        CLOSE(uw)
 
+       ! ----------- Experimental NetCDF Demonstration ------
+       
+       ierr = nf90_create('fulltransp.nc', NF90_CLOBBER, ncid)
+       ierr = nf90_def_dim(ncid, "scalar", 1, scalar_dimid)
+       ierr = nf90_def_dim(ncid, "gamma_out_dim1", size(gamma_out,1), gamma_out_dimid(1))
+       ierr = nf90_def_dim(ncid, "gamma_out_dim2", size(gamma_out,2), gamma_out_dimid(2))
+       
+       ierr = nf90_put_att(ncid, NF90_GLOBAL, 'full_version',  full_version)
+       ierr = nf90_put_att(ncid, NF90_GLOBAL, 'isw_lorentz',   isw_lorentz)
+       ierr = nf90_put_att(ncid, NF90_GLOBAL, 'isw_integral',  isw_integral)       
+       ierr = nf90_put_att(ncid, NF90_GLOBAL, 'isw_energy',    isw_energy)
+       ierr = nf90_put_att(ncid, NF90_GLOBAL, 'lag',           lag)
+       ierr = nf90_put_att(ncid, NF90_GLOBAL, 'leg',           leg)
+       ierr = nf90_put_att(ncid, NF90_GLOBAL, 'conl_over_mfp', conl_over_mfp)
+       
+       ierr = nf90_def_var(ncid, 'collpar',   NF90_DOUBLE, scalar_dimid, var_collpar_id)
+       ierr = nf90_def_var(ncid, 'z_eff',     NF90_DOUBLE, scalar_dimid, var_z_eff_id)
+       ierr = nf90_def_var(ncid, 'avnabpsi',  NF90_DOUBLE, scalar_dimid, var_avnabpsi_id)
+       ierr = nf90_def_var(ncid, 'avbhat2',   NF90_DOUBLE, scalar_dimid, var_avbhat2_id)
+       ierr = nf90_def_var(ncid, 'dl1obhat',  NF90_DOUBLE, scalar_dimid, var_dl1obhat_id)
+       ierr = nf90_def_var(ncid, 'gamma_out', NF90_DOUBLE, gamma_out_dimid, var_gamma_out_id)
+       
+       ierr = nf90_enddef(ncid)
+       
+       ierr = nf90_put_var(ncid, var_collpar_id, collpar)
+       ierr = nf90_put_var(ncid, var_z_eff_id, z_eff)
+       ierr = nf90_put_var(ncid, var_avnabpsi_id, avnabpsi)
+       ierr = nf90_put_var(ncid, var_avbhat2_id, avbhat2)
+       ierr = nf90_put_var(ncid, var_dl1obhat_id, dl1obhat)
+       ierr = nf90_put_var(ncid, var_gamma_out_id, gamma_out)     
+       
+       ierr = nf90_close(ncid)
+       
+
        OPEN(uw,file='efinal.dat',status='replace')
        WRITE (uw,'(1000(1x,e18.5))')                                   &
          (phi),(y(1:2)),(aiota_loc),                    &
@@ -1027,6 +1088,51 @@ CONTAINS
          (device%r0),(surface%bmod0), &
          y(6),y(7),y(9),y(13),y(14)
        CLOSE(uw)
+
+       
+       ! ----------- Experimental NetCDF Demonstration ----------
+       ierr = nf90_create("efinal.nc", NF90_CLOBBER, ncid)
+
+       ierr = nf90_def_dim(ncid, "scalar", 1, scalar_dimid)
+       ierr = nf90_def_dim(ncid, "y_dim", size(y), y_dimid)
+
+       ierr = nf90_def_var(ncid, "phi",                 NF90_DOUBLE, scalar_dimid, var_phi_id)
+       !ierr = nf90_def_var(ncid, "y(1:2)",              NF90_DOUBLE, y2_dimid, var_y12_id)
+       ierr = nf90_def_var(ncid, "aiota_loc",           NF90_DOUBLE, scalar_dimid, var_aiota_loc_id)
+       ierr = nf90_def_var(ncid, "dmono_over_dplateau", NF90_DOUBLE, scalar_dimid, var_dmono_over_dplateau_id)
+       ierr = nf90_def_var(ncid, "epseff3_2",           NF90_DOUBLE, scalar_dimid, var_epseff3_2_id)
+       ierr = nf90_def_var(ncid, "alambda_b",           NF90_DOUBLE, scalar_dimid, var_alambda_b_id)
+       ierr = nf90_def_var(ncid, "qflux_g",             NF90_DOUBLE, scalar_dimid, var_qflux_g_id)
+       ierr = nf90_def_var(ncid, "qflux_e",             NF90_DOUBLE, scalar_dimid, var_qflux_e_id)
+       ierr = nf90_def_var(ncid, "qcurr_g",             NF90_DOUBLE, scalar_dimid, var_qcurr_g_id)
+       ierr = nf90_def_var(ncid, "qcurr_e",             NF90_DOUBLE, scalar_dimid, var_qcurr_e_id)
+       ierr = nf90_def_var(ncid, "alambda_bb",          NF90_DOUBLE, scalar_dimid, var_alambda_bb_id)
+       ierr = nf90_def_var(ncid, "gamma_E",             NF90_DOUBLE, scalar_dimid, var_gamma_E_id)
+       ierr = nf90_def_var(ncid, "g_bs",                NF90_DOUBLE, scalar_dimid, var_g_bs_id)
+       ierr = nf90_def_var(ncid, "r0",                  NF90_DOUBLE, scalar_dimid, var_r0_id)
+       ierr = nf90_def_var(ncid, "bmod0",               NF90_DOUBLE, scalar_dimid, var_bmod0_id)
+       ierr = nf90_def_var(ncid, "y",                   NF90_DOUBLE, y_dimid, var_y_id)
+
+       ierr = nf90_enddef(ncid)
+
+       ierr = nf90_put_var(ncid, var_phi_id, phi)
+       !ierr = nf90_put_var(ncid, var_y_id, y(1:2))
+       ierr = nf90_put_var(ncid, var_aiota_loc_id, aiota_loc)
+       ierr = nf90_put_var(ncid, var_dmono_over_dplateau_id, dmono_over_dplateau)
+       ierr = nf90_put_var(ncid, var_epseff3_2_id, epseff3_2)
+       ierr = nf90_put_var(ncid, var_alambda_b_id, alambda_b)
+       ierr = nf90_put_var(ncid, var_qflux_g_id, qflux_g)
+       ierr = nf90_put_var(ncid, var_qflux_e_id, qflux_e)
+       ierr = nf90_put_var(ncid, var_qcurr_g_id, qcurr_g)
+       ierr = nf90_put_var(ncid, var_qcurr_e_id, qcurr_e)
+       ierr = nf90_put_var(ncid, var_alambda_bb_id, alambda_bb)
+       ierr = nf90_put_var(ncid, var_gamma_E_id, gamma_E)
+       ierr = nf90_put_var(ncid, var_g_bs_id, g_bs)
+       ierr = nf90_put_var(ncid, var_r0_id, device%r0)
+       ierr = nf90_put_var(ncid, var_bmod0_id, surface%bmod0)
+       ierr = nf90_put_var(ncid, var_y_id, y)
+
+       ierr = nf90_close(ncid)
 
     END IF
 
@@ -2314,8 +2420,9 @@ CONTAINS
   END SUBROUTINE join_ripples_int
   ! ---------------------------------------------------------------------------
 
-  SUBROUTINE write_propagator_cont(o,prop_type,prop_showall_in)
+  subroutine write_propagator_cont(o,prop_type,prop_showall_in)
     ! writes the content of a propagator, which is specified in pointer o
+    
     TYPE(propagator), POINTER  :: o
 
     INTEGER, INTENT(in) :: prop_type
@@ -2326,12 +2433,31 @@ CONTAINS
     INTEGER :: prop_end
     INTEGER :: prop_showall
 
-    IF (PRESENT(prop_showall_in)) THEN
-       prop_showall = prop_showall_in
-    ELSE
-       prop_showall = 1
-    END IF
+    ! Experimental NetCDF Support
 
+    character(len=100) :: prop_cfilename_nc
+    integer :: ncid, ierr
+    integer :: scalar_dimid, y_dimid
+    integer :: amat_p_p_dimid(2), amat_m_m_dimid(2), amat_p_m_dimid(2), amat_m_p_dimid(2)
+    integer :: source_p_dimid(2), source_m_dimid(2)
+    integer :: flux_p_dimid(2), flux_m_dimid(2)
+    integer :: qflux_dimid(2)
+    integer :: eta_l_dimid, eta_r_dimid
+
+    integer :: var_y_id, var_amat_p_p_id, var_amat_m_m_id, var_amat_p_m_id, var_amat_m_p_id
+    integer :: var_source_p_id, var_source_m_id
+    integer :: var_flux_p_id, var_flux_m_id
+    integer :: var_qflux_id
+    integer :: var_eta_l_id, var_eta_r_id
+    
+    ! ---
+     
+    if (present(prop_showall_in)) then
+       prop_showall = prop_showall_in
+    else
+       prop_showall = 1
+    end if
+    
     prop_bound = 0
     IF (prop_type .EQ. 1) THEN ! period
        prop_start = o%fieldperiod_tag_s
@@ -2348,184 +2474,395 @@ CONTAINS
     END IF
 
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end) 
-    CALL unit_propagator
-    OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
-         form=prop_format,action='write')
-    
-    ! what is written for prop_showall = 1
-    !    tags  : prop_start,prop_end
-    !    info  : o%nr_joined ....  o%phi_r
-    !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
-    !    amat_p_p
-    !    amat_m_m
-    !    amat_p_m
-    !    amat_m_p
-    !    source_p
-    !    source_m
-    !    flux_p
-    !    flux_m
-    !    qflux
-    !    eta
 
-    !
-    ! what is written for prop_showall > 1 (reduced for joined)
-    !    tags  : prop_start,prop_end
-    !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
-    !    amat_p_p
-    !    amat_m_p
-    !    source_p
+    if (netcdf_files) then
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+       
+       ierr = nf90_create(prop_cfilename_nc, nf90_hdf5, ncid)
+       ierr = nf90_def_dim(ncid, "scalar_dim", 1, scalar_dimid)
+
+       ierr = nf90_put_att(ncid, NF90_GLOBAL, 'prop_start', prop_start)
+       ierr = nf90_put_att(ncid, NF90_GLOBAL, 'prop_end', prop_end)
+
+       if (prop_showall .EQ. 1) then
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'nr_joined', o%nr_joined)
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'fieldpropagator_tag_s', o%fieldpropagator_tag_s)
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'fieldpropagator_tag_e', o%fieldpropagator_tag_e)
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'fieldperiod_tag_s',     o%fieldperiod_tag_s)
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'fieldperiod_tag_e',     o%fieldperiod_tag_e )
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'nr_joined', o%nr_joined)
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'phi_l', o%phi_l)
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'phi_r', o%phi_r)
+
+          if (allocated(o%y)) then
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'y_lbound', lbound(o%y,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'y_ubound', ubound(o%y,1))
+             ierr = nf90_def_dim(ncid, "y_dim", size(o%y), y_dimid)
+
+             ierr = nf90_def_var(ncid, "y", NF90_DOUBLE, y_dimid, var_y_id)
+          end if
+
+          if (allocated(o%p%amat_m_m)) then
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_m_m_lbound_1', LBOUND(o%p%amat_m_m,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_m_m_ubound_1', UBOUND(o%p%amat_m_m,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_m_m_lbound_2', LBOUND(o%p%amat_m_m,2))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_m_m_ubound_2', UBOUND(o%p%amat_m_m,2))
+             ierr = nf90_def_dim(ncid, "amat_m_m_dim1", size(o%p%amat_m_m,1), amat_m_m_dimid(1))
+             ierr = nf90_def_dim(ncid, "amat_m_m_dim2", size(o%p%amat_m_m,2), amat_m_m_dimid(2))
+             ierr = nf90_def_var(ncid, 'amat_m_m', NF90_DOUBLE, amat_m_m_dimid, var_amat_m_m_id, & 
+                  shuffle = .true., deflate_level = nc_deflate_level)
+          end if
+
+          if (allocated(o%p%amat_p_m)) then
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_p_m_lbound_1', LBOUND(o%p%amat_p_m,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_p_m_ubound_1', UBOUND(o%p%amat_p_m,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_p_m_lbound_2', LBOUND(o%p%amat_p_m,2))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_p_m_ubound_2', UBOUND(o%p%amat_p_m,2))
+             ierr = nf90_def_dim(ncid, "amat_p_m_dim1", size(o%p%amat_p_m,1), amat_p_m_dimid(1))
+             ierr = nf90_def_dim(ncid, "amat_p_m_dim2", size(o%p%amat_p_m,2), amat_p_m_dimid(2))
+             ierr = nf90_def_var(ncid, 'amat_p_m', NF90_DOUBLE, amat_p_m_dimid, var_amat_p_m_id, & 
+                  shuffle = .true., deflate_level = nc_deflate_level)
+          end if
+
+         if (allocated(o%p%source_m)) then
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'source_m_lbound_1', LBOUND(o%p%source_m,1))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'source_m_ubound_1', UBOUND(o%p%source_m,1))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'source_m_lbound_2', LBOUND(o%p%source_m,2))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'source_m_ubound_2', UBOUND(o%p%source_m,2))
+            ierr = nf90_def_dim(ncid, "source_m_dim1", size(o%p%source_m,1), source_m_dimid(1))
+            ierr = nf90_def_dim(ncid, "source_m_dim2", size(o%p%source_m,2), source_m_dimid(2))
+            ierr = nf90_def_var(ncid, 'source_m', NF90_DOUBLE, source_m_dimid, var_source_m_id, & 
+                  shuffle = .true., deflate_level = nc_deflate_level)
+          end if
+
+         if (allocated(o%p%flux_m)) then
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'flux_m_lbound_1', LBOUND(o%p%flux_m,1))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'flux_m_ubound_1', UBOUND(o%p%flux_m,1))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'flux_m_lbound_2', LBOUND(o%p%flux_m,2))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'flux_m_ubound_2', UBOUND(o%p%flux_m,2))
+            ierr = nf90_def_dim(ncid, "flux_m_dim1", size(o%p%flux_m,1), flux_m_dimid(1))
+            ierr = nf90_def_dim(ncid, "flux_m_dim2", size(o%p%flux_m,2), flux_m_dimid(2))
+            ierr = nf90_def_var(ncid, 'flux_m', NF90_DOUBLE, flux_m_dimid, var_flux_m_id, & 
+                  shuffle = .true., deflate_level = nc_deflate_level)
+          end if
+
+         if (allocated(o%p%flux_p)) then
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'flux_p_lbound_1', LBOUND(o%p%flux_p,1))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'flux_p_ubound_1', UBOUND(o%p%flux_p,1))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'flux_p_lbound_2', LBOUND(o%p%flux_p,2))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'flux_p_ubound_2', UBOUND(o%p%flux_p,2))
+            ierr = nf90_def_dim(ncid, "flux_p_dim1", size(o%p%flux_p,1), flux_p_dimid(1))
+            ierr = nf90_def_dim(ncid, "flux_p_dim2", size(o%p%flux_p,2), flux_p_dimid(2))
+            ierr = nf90_def_var(ncid, 'flux_p', NF90_DOUBLE, flux_p_dimid, var_flux_p_id, & 
+                  shuffle = .true., deflate_level = nc_deflate_level)
+          end if
+          
+          ierr = nf90_def_dim(ncid, "qflux_dim1", size(o%p%qflux, 1), qflux_dimid(1))
+          ierr = nf90_def_dim(ncid, "qflux_dim2", size(o%p%qflux, 2), qflux_dimid(2))
+
+          ierr = nf90_def_var(ncid, "qflux", NF90_DOUBLE, qflux_dimid, var_qflux_id) 
+
+          if (allocated(o%p%eta_l)) then
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'eta_l_lbound', lbound(o%p%eta_l,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'eta_l_ubound', ubound(o%p%eta_l,1))
+             ierr = nf90_def_dim(ncid, "eta_l_dim", size(o%p%eta_l), eta_l_dimid)
+             
+             ierr = nf90_def_var(ncid, "eta_l", NF90_DOUBLE, eta_l_dimid, var_eta_l_id)
+          end if
+          if (allocated(o%p%eta_r)) then
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'eta_r_lbound', lbound(o%p%eta_r,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'eta_r_ubound', ubound(o%p%eta_r,1))
+             ierr = nf90_def_dim(ncid, "eta_r_dim", size(o%p%eta_r), eta_r_dimid)
+             
+             ierr = nf90_def_var(ncid, "eta_r", NF90_DOUBLE, eta_r_dimid, var_eta_r_id)
+          end if
+
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'eta_boundary_l', o%p%eta_boundary_l)
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'eta_boundary_r', o%p%eta_boundary_r)
+     
+       end if
+
+       if (prop_showall .eq. 0) then
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode)
+       end if
+     
+       ! sizes
+       IF (prop_showall .GE. 1) THEN
+
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'npart',     o%p%npart)
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'npass_l',   o%p%npass_l)
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'npass_r',   o%p%npass_r)
+          ierr = nf90_put_att(ncid, NF90_GLOBAL, 'nvelocity', o%p%nvelocity)
+
+          IF (ALLOCATED(o%p%amat_p_p)) THEN
+
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_p_p_lbound_1', LBOUND(o%p%amat_p_p,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_p_p_ubound_1', UBOUND(o%p%amat_p_p,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_p_p_lbound_2', LBOUND(o%p%amat_p_p,2))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_p_p_ubound_2', UBOUND(o%p%amat_p_p,2))
+             ierr = nf90_def_dim(ncid, "amat_p_p_dim1", size(o%p%amat_p_p,1), amat_p_p_dimid(1))
+             ierr = nf90_def_dim(ncid, "amat_p_p_dim2", size(o%p%amat_p_p,2), amat_p_p_dimid(2))
+             ierr = nf90_def_var(ncid, 'amat_p_p', NF90_DOUBLE, amat_p_p_dimid, var_amat_p_p_id, & 
+                  shuffle = .true., deflate_level = nc_deflate_level)
+          end if
+
+         if (allocated(o%p%amat_m_p)) then
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_m_p_lbound_1', LBOUND(o%p%amat_m_p,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_m_p_ubound_1', UBOUND(o%p%amat_m_p,1))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_m_p_lbound_2', LBOUND(o%p%amat_m_p,2))
+             ierr = nf90_put_att(ncid, NF90_GLOBAL, 'amat_m_p_ubound_2', UBOUND(o%p%amat_m_p,2))
+             ierr = nf90_def_dim(ncid, "amat_m_p_dim1", size(o%p%amat_m_p,1), amat_m_p_dimid(1))
+             ierr = nf90_def_dim(ncid, "amat_m_p_dim2", size(o%p%amat_m_p,2), amat_m_p_dimid(2))
+             ierr = nf90_def_var(ncid, 'amat_m_p', NF90_DOUBLE, amat_m_p_dimid, var_amat_m_p_id, & 
+                  shuffle = .true., deflate_level = nc_deflate_level)
+          end if
+
+         if (allocated(o%p%source_p)) then
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'source_p_lbound_1', LBOUND(o%p%source_p,1))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'source_p_ubound_1', UBOUND(o%p%source_p,1))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'source_p_lbound_2', LBOUND(o%p%source_p,2))
+            ierr = nf90_put_att(ncid, NF90_GLOBAL, 'source_p_ubound_2', UBOUND(o%p%source_p,2))
+            ierr = nf90_def_dim(ncid, "source_p_dim1", size(o%p%source_p,1), source_p_dimid(1))
+            ierr = nf90_def_dim(ncid, "source_p_dim2", size(o%p%source_p,2), source_p_dimid(2))
+            ierr = nf90_def_var(ncid, 'source_p', NF90_DOUBLE, source_p_dimid, var_source_p_id, &
+                 shuffle = .true., deflate_level = nc_deflate_level)
+           end if
+
+       END IF
+       
+       ierr = nf90_enddef(ncid)
+       
+       
+       ! Put Variables
+
+       if (prop_showall .EQ. 1) then
+          if (allocated(o%y)) then
+             ierr = nf90_put_var(ncid, var_y_id, o%y)
+          end if
+          IF (ALLOCATED(o%p%amat_m_m)) THEN
+             ierr = nf90_put_var(ncid, var_amat_m_m_id, o%p%amat_m_m)
+          end if
+          IF (ALLOCATED(o%p%amat_p_m)) THEN
+             ierr = nf90_put_var(ncid, var_amat_p_m_id, o%p%amat_p_m)
+          end if
+          IF (ALLOCATED(o%p%source_m)) THEN
+             ierr = nf90_put_var(ncid, var_source_m_id, o%p%source_m)
+          end if
+          IF (ALLOCATED(o%p%flux_m)) THEN
+             ierr = nf90_put_var(ncid, var_flux_m_id, o%p%flux_m)
+          end if
+          IF (ALLOCATED(o%p%flux_p)) THEN
+             ierr = nf90_put_var(ncid, var_flux_p_id, o%p%flux_p)
+          end if
+
+          ierr = nf90_put_var(ncid, var_qflux_id, o%p%qflux)
+
+          if (allocated(o%p%eta_l)) then
+             ierr = nf90_put_var(ncid, var_eta_l_id, o%p%eta_l)
+          end if
+          if (allocated(o%p%eta_r)) then
+             ierr = nf90_put_var(ncid, var_eta_r_id, o%p%eta_r)
+          end if
+
+       end if
+
+       IF (prop_showall .GE. 1) THEN
+          IF (ALLOCATED(o%p%amat_p_p)) THEN
+            ierr = nf90_put_var(ncid, var_amat_p_p_id, o%p%amat_p_p)
+          end if
+          IF (ALLOCATED(o%p%amat_m_p)) THEN
+            ierr = nf90_put_var(ncid, var_amat_m_p_id, o%p%amat_m_p)
+          end if
+          IF (ALLOCATED(o%p%source_p)) THEN
+            ierr = nf90_put_var(ncid, var_source_p_id, o%p%source_p)
+          end if
+       end if
+       ierr = nf90_close(ncid)
+
+    else
+       
+       CALL unit_propagator
+       OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
+            form=prop_format,action='write')
+
+       ! what is written for prop_showall = 1
+       !    tags  : prop_start,prop_end
+       !    info  : o%nr_joined ....  o%phi_r
+       !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
+       !    amat_p_p
+       !    amat_m_m
+       !    amat_p_m
+       !    amat_m_p
+       !    source_p
+       !    source_m
+       !    flux_p
+       !    flux_m
+       !    qflux
+       !    eta
+
+       !
+       ! what is written for prop_showall > 1 (reduced for joined)
+       !    tags  : prop_start,prop_end
+       !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
+       !    amat_p_p
+       !    amat_m_p
+       !    source_p
 
 
-    ! tags
-    WRITE(prop_unit,*) prop_start
-    WRITE(prop_unit,*) prop_end
-    
-    ! info
-    IF (prop_showall .EQ. 1) THEN
-       WRITE(prop_unit,*) o%nr_joined
-       WRITE(prop_unit,*) o%fieldpropagator_tag_s
-       WRITE(prop_unit,*) o%fieldpropagator_tag_e
-       WRITE(prop_unit,*) o%fieldperiod_tag_s
-       WRITE(prop_unit,*) o%fieldperiod_tag_e
-       IF (ALLOCATED(o%y)) THEN
-          WRITE(prop_unit,*) LBOUND(o%y,1),UBOUND(o%y,1)
-          WRITE(prop_unit,*) o%y
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       WRITE(prop_unit,*) o%phi_l
-       WRITE(prop_unit,*) o%phi_r
-    END IF
+       ! tags
+       WRITE(prop_unit,*) prop_start
+       WRITE(prop_unit,*) prop_end
 
-    ! Binarysplit stuff is not dumped / this is the only thing with prop_showall = 0
-    ! It is not really used
-    IF (prop_showall .EQ. 0) THEN
-       WRITE(prop_unit,*) o%bin_split_mode
-    END IF
+       ! info
+       IF (prop_showall .EQ. 1) THEN
+          WRITE(prop_unit,*) o%nr_joined
+          WRITE(prop_unit,*) o%fieldpropagator_tag_s
+          WRITE(prop_unit,*) o%fieldpropagator_tag_e
+          WRITE(prop_unit,*) o%fieldperiod_tag_s
+          WRITE(prop_unit,*) o%fieldperiod_tag_e
 
-    ! sizes
-    IF (prop_showall .GE. 1) THEN
-       WRITE(prop_unit,*) o%p%npart
-       WRITE(prop_unit,*) o%p%npass_l
-       WRITE(prop_unit,*) o%p%npass_r
-       WRITE(prop_unit,*) o%p%nvelocity
-    END IF
-    ! amat_p_p
-    IF (prop_showall .GE. 1) THEN
-       IF (ALLOCATED(o%p%amat_p_p)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%amat_p_p,1),UBOUND(o%p%amat_p_p,1)
-          WRITE(prop_unit,*) LBOUND(o%p%amat_p_p,2),UBOUND(o%p%amat_p_p,2)
-          WRITE(prop_unit,*) o%p%amat_p_p
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
+          if (allocated(o%y)) then
+             WRITE(prop_unit,*) LBOUND(o%y,1),UBOUND(o%y,1)
+             WRITE(prop_unit,*) o%y
+          ELSE
+             WRITE(prop_unit,*) 0,0
+          END IF
+          WRITE(prop_unit,*) o%phi_l
+          WRITE(prop_unit,*) o%phi_r
        END IF
-    END IF
-    ! amat_m_m
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%amat_m_m)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%amat_m_m,1),UBOUND(o%p%amat_m_m,1)
-          WRITE(prop_unit,*) LBOUND(o%p%amat_m_m,2),UBOUND(o%p%amat_m_m,2)
-          WRITE(prop_unit,*) o%p%amat_m_m
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
-    ! amat_p_m
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%amat_p_m)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%amat_p_m,1),UBOUND(o%p%amat_p_m,1)
-          WRITE(prop_unit,*) LBOUND(o%p%amat_p_m,2),UBOUND(o%p%amat_p_m,2)
-          WRITE(prop_unit,*) o%p%amat_p_m
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
-    ! amat_m_p
-    IF (prop_showall .GE. 1) THEN
-       IF (ALLOCATED(o%p%amat_m_p)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%amat_m_p,1),UBOUND(o%p%amat_m_p,1)
-          WRITE(prop_unit,*) LBOUND(o%p%amat_m_p,2),UBOUND(o%p%amat_m_p,2)
-          WRITE(prop_unit,*) o%p%amat_m_p
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
-    
-    ! source_p
-    IF (prop_showall .GE. 1) THEN
-       IF (ALLOCATED(o%p%source_p)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%source_p,1),UBOUND(o%p%source_p,1)
-          WRITE(prop_unit,*) LBOUND(o%p%source_p,2),UBOUND(o%p%source_p,2)
-          WRITE(prop_unit,*) o%p%source_p
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
-    ! source_m
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%source_m)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%source_m,1),UBOUND(o%p%source_m,1)
-          WRITE(prop_unit,*) LBOUND(o%p%source_m,2),UBOUND(o%p%source_m,2)
-          WRITE(prop_unit,*) o%p%source_m
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
 
-    
-    ! flux_p
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%flux_p)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%flux_p,1),UBOUND(o%p%flux_p,1)
-          WRITE(prop_unit,*) LBOUND(o%p%flux_p,2),UBOUND(o%p%flux_p,2)
-          WRITE(prop_unit,*) o%p%flux_p
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
+       ! Binarysplit stuff is not dumped / this is the only thing with prop_showall = 0
+       ! It is not really used
+       IF (prop_showall .EQ. 0) THEN
+          WRITE(prop_unit,*) o%bin_split_mode
        END IF
-    END IF
-    ! flux_m
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%flux_m)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%flux_m,1),UBOUND(o%p%flux_m,1)
-          WRITE(prop_unit,*) LBOUND(o%p%flux_m,2),UBOUND(o%p%flux_m,2)
-          WRITE(prop_unit,*) o%p%flux_m
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
 
-    ! qflux
-    IF (prop_showall .EQ. 1) THEN
-       WRITE(prop_unit,*) o%p%qflux
-    END IF
+       ! sizes
+       IF (prop_showall .GE. 1) THEN
+          WRITE(prop_unit,*) o%p%npart
+          WRITE(prop_unit,*) o%p%npass_l
+          WRITE(prop_unit,*) o%p%npass_r
+          WRITE(prop_unit,*) o%p%nvelocity
+       END IF
+       ! amat_p_p
+       IF (prop_showall .GE. 1) THEN
+          IF (ALLOCATED(o%p%amat_p_p)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%amat_p_p,1),UBOUND(o%p%amat_p_p,1)
+             WRITE(prop_unit,*) LBOUND(o%p%amat_p_p,2),UBOUND(o%p%amat_p_p,2)
+             WRITE(prop_unit,*) o%p%amat_p_p
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+       ! amat_m_m
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%amat_m_m)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%amat_m_m,1),UBOUND(o%p%amat_m_m,1)
+             WRITE(prop_unit,*) LBOUND(o%p%amat_m_m,2),UBOUND(o%p%amat_m_m,2)
+             WRITE(prop_unit,*) o%p%amat_m_m
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+       ! amat_p_m
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%amat_p_m)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%amat_p_m,1),UBOUND(o%p%amat_p_m,1)
+             WRITE(prop_unit,*) LBOUND(o%p%amat_p_m,2),UBOUND(o%p%amat_p_m,2)
+             WRITE(prop_unit,*) o%p%amat_p_m
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+       ! amat_m_p
+       IF (prop_showall .GE. 1) THEN
+          IF (ALLOCATED(o%p%amat_m_p)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%amat_m_p,1),UBOUND(o%p%amat_m_p,1)
+             WRITE(prop_unit,*) LBOUND(o%p%amat_m_p,2),UBOUND(o%p%amat_m_p,2)
+             WRITE(prop_unit,*) o%p%amat_m_p
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
 
-    ! eta
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%eta_l)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%eta_l,1),UBOUND(o%p%eta_l,1)
-          WRITE(prop_unit,*) o%p%eta_l
-       ELSE
-          WRITE(prop_unit,*) 0,0
+       ! source_p
+       IF (prop_showall .GE. 1) THEN
+          IF (ALLOCATED(o%p%source_p)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%source_p,1),UBOUND(o%p%source_p,1)
+             WRITE(prop_unit,*) LBOUND(o%p%source_p,2),UBOUND(o%p%source_p,2)
+             WRITE(prop_unit,*) o%p%source_p
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
        END IF
-       IF (ALLOCATED(o%p%eta_r)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%eta_r,1),UBOUND(o%p%eta_r,1)
-          WRITE(prop_unit,*) o%p%eta_r
-       ELSE
-          WRITE(prop_unit,*) 0,0
+       ! source_m
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%source_m)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%source_m,1),UBOUND(o%p%source_m,1)
+             WRITE(prop_unit,*) LBOUND(o%p%source_m,2),UBOUND(o%p%source_m,2)
+             WRITE(prop_unit,*) o%p%source_m
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
        END IF
-       WRITE(prop_unit,*) o%p%eta_boundary_l
-       WRITE(prop_unit,*) o%p%eta_boundary_r
-    END IF
-    
-    CLOSE(unit=prop_unit)
+
+
+       ! flux_p
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%flux_p)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%flux_p,1),UBOUND(o%p%flux_p,1)
+             WRITE(prop_unit,*) LBOUND(o%p%flux_p,2),UBOUND(o%p%flux_p,2)
+             WRITE(prop_unit,*) o%p%flux_p
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+       ! flux_m
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%flux_m)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%flux_m,1),UBOUND(o%p%flux_m,1)
+             WRITE(prop_unit,*) LBOUND(o%p%flux_m,2),UBOUND(o%p%flux_m,2)
+             WRITE(prop_unit,*) o%p%flux_m
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+
+       ! qflux
+       IF (prop_showall .EQ. 1) THEN
+          WRITE(prop_unit,*) o%p%qflux
+       END IF
+
+
+       ! eta
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%eta_l)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%eta_l,1),UBOUND(o%p%eta_l,1)
+             WRITE(prop_unit,*) o%p%eta_l
+          ELSE
+             WRITE(prop_unit,*) 0,0
+          END IF
+          IF (ALLOCATED(o%p%eta_r)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%eta_r,1),UBOUND(o%p%eta_r,1)
+             WRITE(prop_unit,*) o%p%eta_r
+          ELSE
+             WRITE(prop_unit,*) 0,0
+          END IF
+          WRITE(prop_unit,*) o%p%eta_boundary_l
+          WRITE(prop_unit,*) o%p%eta_boundary_r
+       END IF
+
+       CLOSE(unit=prop_unit)
+
+    end if
 
 
   END SUBROUTINE write_propagator_cont
@@ -2989,7 +3326,7 @@ CONTAINS
   END SUBROUTINE read_prop_bound_cont
   ! ---------------------------------------------------------------------------
 
-  SUBROUTINE read_binarysplit_cont(o)
+  subroutine read_binarysplit_cont(o)
     ! reads the  binarysplit content of a propagator, which is specified in pointer o
     TYPE(propagator), POINTER  :: o
 
@@ -3151,6 +3488,7 @@ CONTAINS
     END IF
 
     close(unit=prop_unit)
+
     
   end SUBROUTINE read_binarysplit_cont
   ! ---------------------------------------------------------------------------
@@ -3584,12 +3922,13 @@ CONTAINS
     END IF
 
     ! add numbers and extension
+    
     WRITE(prop_cfilename,'(100A)') &
          TRIM(ADJUSTL(prop_cfilename)),'_', &
          TRIM(ADJUSTL(ctag1)),'_', &
          TRIM(ADJUSTL(ctag2)),'.', &
          TRIM(ADJUSTL(prop_cext))
-
+    
 
   END SUBROUTINE filename_prop
   ! ---------------------------------------------------------------------------
