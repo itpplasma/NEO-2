@@ -3019,7 +3019,7 @@ CONTAINS
     ! x_ori_bin
     READ(prop_unit,*) lb1,ub1
     READ(prop_unit,*) lb2,ub2
-    IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+    IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
        IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) DEALLOCATE(o%eta_bs_l%x_ori_bin)
        ALLOCATE(o%eta_bs_l%x_ori_bin(lb1:ub1,lb2:ub2))
        READ(prop_unit,*) o%eta_bs_l%x_ori_bin
@@ -3087,7 +3087,7 @@ CONTAINS
     ! x_ori_bin
     READ(prop_unit,*) lb1,ub1
     READ(prop_unit,*) lb2,ub2
-    IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+    IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
        IF (ALLOCATED(o%eta_bs_r%x_ori_bin)) DEALLOCATE(o%eta_bs_r%x_ori_bin)
        ALLOCATE(o%eta_bs_r%x_ori_bin(lb1:ub1,lb2:ub2))
        READ(prop_unit,*) o%eta_bs_r%x_ori_bin
