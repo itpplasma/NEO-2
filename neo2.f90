@@ -25,7 +25,7 @@ PROGRAM neo2
        prop_diagnostic,prop_binary,                                 &
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
-       prop_reconstruct_levels
+       prop_reconstruct_levels, ncid_propagators, netcdf_files
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
        mag_magfield,mag_nperiod_min,mag_save_memory,                &
@@ -48,6 +48,8 @@ PROGRAM neo2
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
 
+  USE netcdf
+
   IMPLICIT NONE
 
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -57,6 +59,10 @@ PROGRAM neo2
   ! Used for MPI support
   ! This string is used to give every client an own evolve.dat file
   character(len=32) :: strEvolveFilename
+
+  ! Experimental NetCDF
+  integer :: ierr
+
   include "version.f90"
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
@@ -369,7 +375,10 @@ PROGRAM neo2
         OPEN(uw,file='evolve.dat',status='replace')
         CLOSE(uw)
 #endif
-
+        if (netcdf_files) then
+           ierr = nf90_create('propagators.nc', NF90_HDF5, ncid_propagators)
+           ierr = nf90_enddef(ncid_propagators)
+        end if
   END IF
   ! ---------------------------------------------------------------------------
      
@@ -454,6 +463,9 @@ PROGRAM neo2
   !   PRINT *, 'NOTHING TO COMPUTE'
   !END IF
 
+     if (netcdf_files) then
+        ierr = nf90_close(ncid_propagators)
+     end if
   ! MPI support
 #if defined(MPI_SUPPORT)
   call mpro%deinit()

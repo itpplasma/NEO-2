@@ -111,5 +111,6 @@ add_executable(${EXE_NAME}
 		blas
         )
         install (TARGETS ${EXE_NAME} DESTINATION /temp/gernot_k/)
+        #install (TARGETS ${EXE_NAME} DESTINATION /afs/itp.tugraz.at/user/gernot_k/Src/)
 	set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
 

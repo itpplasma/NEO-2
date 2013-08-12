@@ -2814,7 +2814,10 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
     end if
 #endif
 
-
+    !write (*,*) "Merge of NetCDF Files, please wait..."
+    !call system("ncecat --gag *.nc final.nc")
+    !write (*,*) "Merge done. Neo2-par closing"
+    
 !!$     allprops_comp: DO      ! WHILE (fieldpropagator%tag .LE. proptag_end)
 !!$        ! information about propagator
 !!$        CALL info_magnetics(fieldpropagator)
