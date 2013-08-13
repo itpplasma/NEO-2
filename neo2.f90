@@ -324,7 +324,15 @@ PROGRAM neo2
 
   IF (prop_reconstruct .EQ. 1) THEN
      PRINT *, 'Reconstruction run!'
+
+     if (netcdf_files) then
+        ierr = nf90_open('propagators.nc', NF90_NOWRITE, ncid_propagators)
+     end if
+     
      CALL reconstruct_prop_dist
+
+     ierr = nf90_close(ncid_propagators)
+     
      PRINT *, 'No further calculations!'
      STOP
   END IF
@@ -380,6 +388,8 @@ PROGRAM neo2
            ierr = nf90_enddef(ncid_propagators)
         end if
   END IF
+
+
   ! ---------------------------------------------------------------------------
      
  
