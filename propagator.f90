@@ -141,7 +141,7 @@ MODULE propagator_mod
   INTEGER,            PUBLIC  :: prop_reconstruct_levels = 0
 
   ! --- NetCDF Support ---
-  LOGICAL :: netcdf_files     = .true.
+  LOGICAL :: netcdf_files     = .false.
   INTEGER :: nc_deflate_level = 1
   INTEGER :: ncid_propagators
   ! ---
@@ -1992,7 +1992,7 @@ CONTAINS
                    CALL cpu_time(time_jf)
                    stime_jf = stime_jf + time_jf - time_o
                 END IF
-             ELSE
+             ELSE 
                 ! join ends
                 IF (prop_join_ends .EQ. 1) THEN
                    i_joined = 1
@@ -2027,7 +2027,7 @@ CONTAINS
 		   ! taginfo
                    !CALL unit_propagator
                    !OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-                        form=prop_format,action='write')
+                   !     form=prop_format,action='write')
                    ! WINNY PAR
                    ! The last tag is wrong in a parallel run
                    !WRITE(prop_unit,*) prop_write
@@ -2519,66 +2519,75 @@ CONTAINS
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_r', o%phi_r))
 
           if (allocated(o%y)) then
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'y_lbound', lbound(o%y,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'y_ubound', ubound(o%y,1)))
              call nf90_check(nf90_def_dim(grpid, "y_dim", size(o%y), y_dimid))
-
              call nf90_check(nf90_def_var(grpid, "y", NF90_DOUBLE, y_dimid, var_y_id))
+             call nf90_check(nf90_put_att(grpid, var_y_id, 'lbound', lbound(o%y,1)))
+             call nf90_check(nf90_put_att(grpid, var_y_id, 'ubound', ubound(o%y,1)))
           end if
 
           if (allocated(o%p%amat_m_m)) then
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_m_m_lbound_1', LBOUND(o%p%amat_m_m,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_m_m_ubound_1', UBOUND(o%p%amat_m_m,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_m_m_lbound_2', LBOUND(o%p%amat_m_m,2)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_m_m_ubound_2', UBOUND(o%p%amat_m_m,2)))
              call nf90_check(nf90_def_dim(grpid, "amat_m_m_dim1", size(o%p%amat_m_m,1), amat_m_m_dimid(1)))
              call nf90_check(nf90_def_dim(grpid, "amat_m_m_dim2", size(o%p%amat_m_m,2), amat_m_m_dimid(2)))
              call nf90_check(nf90_def_var(grpid, 'amat_m_m', NF90_DOUBLE, amat_m_m_dimid, var_amat_m_m_id, & 
                   shuffle = .false., deflate_level = nc_deflate_level))
+             
+             call nf90_check(nf90_put_att(grpid, var_amat_m_m_id, 'lbound_1', LBOUND(o%p%amat_m_m,1)))
+             call nf90_check(nf90_put_att(grpid, var_amat_m_m_id, 'ubound_1', UBOUND(o%p%amat_m_m,1)))
+             call nf90_check(nf90_put_att(grpid, var_amat_m_m_id, 'lbound_2', LBOUND(o%p%amat_m_m,2)))
+             call nf90_check(nf90_put_att(grpid, var_amat_m_m_id, 'ubound_2', UBOUND(o%p%amat_m_m,2)))
+
           end if
 
           if (allocated(o%p%amat_p_m)) then
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_p_m_lbound_1', LBOUND(o%p%amat_p_m,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_p_m_ubound_1', UBOUND(o%p%amat_p_m,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_p_m_lbound_2', LBOUND(o%p%amat_p_m,2)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_p_m_ubound_2', UBOUND(o%p%amat_p_m,2)))
              call nf90_check(nf90_def_dim(grpid, "amat_p_m_dim1", size(o%p%amat_p_m,1), amat_p_m_dimid(1)))
              call nf90_check(nf90_def_dim(grpid, "amat_p_m_dim2", size(o%p%amat_p_m,2), amat_p_m_dimid(2)))
              call nf90_check(nf90_def_var(grpid, 'amat_p_m', NF90_DOUBLE, amat_p_m_dimid, var_amat_p_m_id, & 
                   shuffle = .false., deflate_level = nc_deflate_level))
+
+             call nf90_check(nf90_put_att(grpid, var_amat_p_m_id, 'lbound_1', LBOUND(o%p%amat_p_m,1)))
+             call nf90_check(nf90_put_att(grpid, var_amat_p_m_id, 'ubound_1', UBOUND(o%p%amat_p_m,1)))
+             call nf90_check(nf90_put_att(grpid, var_amat_p_m_id, 'lbound_2', LBOUND(o%p%amat_p_m,2)))
+             call nf90_check(nf90_put_att(grpid, var_amat_p_m_id, 'ubound_2', UBOUND(o%p%amat_p_m,2)))
+ 
           end if
 
          if (allocated(o%p%source_m)) then
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'source_m_lbound_1', LBOUND(o%p%source_m,1)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'source_m_ubound_1', UBOUND(o%p%source_m,1)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'source_m_lbound_2', LBOUND(o%p%source_m,2)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'source_m_ubound_2', UBOUND(o%p%source_m,2)))
             call nf90_check(nf90_def_dim(grpid, "source_m_dim1", size(o%p%source_m,1), source_m_dimid(1)))
             call nf90_check(nf90_def_dim(grpid, "source_m_dim2", size(o%p%source_m,2), source_m_dimid(2)))
             call nf90_check(nf90_def_var(grpid, 'source_m', NF90_DOUBLE, source_m_dimid, var_source_m_id, & 
                   shuffle = .false., deflate_level = nc_deflate_level))
+
+            call nf90_check(nf90_put_att(grpid, var_source_m_id, 'lbound_1', LBOUND(o%p%source_m,1)))
+            call nf90_check(nf90_put_att(grpid, var_source_m_id, 'ubound_1', UBOUND(o%p%source_m,1)))
+            call nf90_check(nf90_put_att(grpid, var_source_m_id, 'lbound_2', LBOUND(o%p%source_m,2)))
+            call nf90_check(nf90_put_att(grpid, var_source_m_id, 'ubound_2', UBOUND(o%p%source_m,2)))
+  
           end if
 
          if (allocated(o%p%flux_m)) then
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'flux_m_lbound_1', LBOUND(o%p%flux_m,1)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'flux_m_ubound_1', UBOUND(o%p%flux_m,1)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'flux_m_lbound_2', LBOUND(o%p%flux_m,2)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'flux_m_ubound_2', UBOUND(o%p%flux_m,2)))
             call nf90_check(nf90_def_dim(grpid, "flux_m_dim1", size(o%p%flux_m,1), flux_m_dimid(1)))
             call nf90_check(nf90_def_dim(grpid, "flux_m_dim2", size(o%p%flux_m,2), flux_m_dimid(2)))
             call nf90_check(nf90_def_var(grpid, 'flux_m', NF90_DOUBLE, flux_m_dimid, var_flux_m_id, & 
                   shuffle = .false., deflate_level = nc_deflate_level))
+
+            call nf90_check(nf90_put_att(grpid, var_flux_m_id, 'lbound_1', lbound(o%p%flux_m,1)))
+            call nf90_check(nf90_put_att(grpid, var_flux_m_id, 'ubound_1', UBOUND(o%p%flux_m,1)))
+            call nf90_check(nf90_put_att(grpid, var_flux_m_id, 'lbound_2', LBOUND(o%p%flux_m,2)))
+            call nf90_check(nf90_put_att(grpid, var_flux_m_id, 'ubound_2', UBOUND(o%p%flux_m,2)))
+
           end if
 
          if (allocated(o%p%flux_p)) then
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'flux_p_lbound_1', LBOUND(o%p%flux_p,1)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'flux_p_ubound_1', UBOUND(o%p%flux_p,1)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'flux_p_lbound_2', LBOUND(o%p%flux_p,2)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'flux_p_ubound_2', UBOUND(o%p%flux_p,2)))
             call nf90_check(nf90_def_dim(grpid, "flux_p_dim1", size(o%p%flux_p,1), flux_p_dimid(1)))
             call nf90_check(nf90_def_dim(grpid, "flux_p_dim2", size(o%p%flux_p,2), flux_p_dimid(2)))
             call nf90_check(nf90_def_var(grpid, 'flux_p', NF90_DOUBLE, flux_p_dimid, var_flux_p_id, & 
                   shuffle = .false., deflate_level = nc_deflate_level))
+
+            call nf90_check(nf90_put_att(grpid, var_flux_p_id, 'lbound_1', lbound(o%p%flux_p,1)))
+            call nf90_check(nf90_put_att(grpid, var_flux_p_id ,'ubound_1', UBOUND(o%p%flux_p,1)))
+            call nf90_check(nf90_put_att(grpid, var_flux_p_id ,'lbound_2', LBOUND(o%p%flux_p,2)))
+            call nf90_check(nf90_put_att(grpid, var_flux_p_id, 'ubound_2', UBOUND(o%p%flux_p,2)))
+
           end if
           
           call nf90_check(nf90_def_dim(grpid, "qflux_dim1", size(o%p%qflux, 1), qflux_dimid(1)))
@@ -2587,18 +2596,19 @@ CONTAINS
           call nf90_check(nf90_def_var(grpid, "qflux", NF90_DOUBLE, qflux_dimid, var_qflux_id) )
 
           if (allocated(o%p%eta_l)) then
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_l_lbound', lbound(o%p%eta_l,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_l_ubound', ubound(o%p%eta_l,1)))
              call nf90_check(nf90_def_dim(grpid, "eta_l_dim", size(o%p%eta_l), eta_l_dimid))
-             
              call nf90_check(nf90_def_var(grpid, "eta_l", NF90_DOUBLE, eta_l_dimid, var_eta_l_id))
+
+             call nf90_check(nf90_put_att(grpid, var_eta_l_id, 'lbound', lbound(o%p%eta_l,1)))
+             call nf90_check(nf90_put_att(grpid, var_eta_l_id, 'ubound', ubound(o%p%eta_l,1)))
+ 
           end if
           if (allocated(o%p%eta_r)) then
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_r_lbound', lbound(o%p%eta_r,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_r_ubound', ubound(o%p%eta_r,1)))
              call nf90_check(nf90_def_dim(grpid, "eta_r_dim", size(o%p%eta_r), eta_r_dimid))
-             
              call nf90_check(nf90_def_var(grpid, "eta_r", NF90_DOUBLE, eta_r_dimid, var_eta_r_id))
+
+             call nf90_check(nf90_put_att(grpid, var_eta_r_id, 'lbound', lbound(o%p%eta_r,1)))
+             call nf90_check(nf90_put_att(grpid, var_eta_r_id, 'ubound', ubound(o%p%eta_r,1)))
           end if
 
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_boundary_l', o%p%eta_boundary_l))
@@ -2620,36 +2630,42 @@ CONTAINS
 
           IF (ALLOCATED(o%p%amat_p_p)) THEN
 
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_p_p_lbound_1', LBOUND(o%p%amat_p_p,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_p_p_ubound_1', UBOUND(o%p%amat_p_p,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_p_p_lbound_2', LBOUND(o%p%amat_p_p,2)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_p_p_ubound_2', UBOUND(o%p%amat_p_p,2)))
              call nf90_check(nf90_def_dim(grpid, "amat_p_p_dim1", size(o%p%amat_p_p,1), amat_p_p_dimid(1)))
              call nf90_check(nf90_def_dim(grpid, "amat_p_p_dim2", size(o%p%amat_p_p,2), amat_p_p_dimid(2)))
              call nf90_check(nf90_def_var(grpid, 'amat_p_p', NF90_DOUBLE, amat_p_p_dimid, var_amat_p_p_id, & 
                   shuffle = .false., deflate_level = nc_deflate_level))
+             
+             call nf90_check(nf90_put_att(grpid, var_amat_p_p_id, 'lbound_1', LBOUND(o%p%amat_p_p,1)))
+             call nf90_check(nf90_put_att(grpid, var_amat_p_p_id, 'ubound_1', UBOUND(o%p%amat_p_p,1)))
+             call nf90_check(nf90_put_att(grpid, var_amat_p_p_id, 'lbound_2', LBOUND(o%p%amat_p_p,2)))
+             call nf90_check(nf90_put_att(grpid, var_amat_p_p_id, 'ubound_2', UBOUND(o%p%amat_p_p,2)))
+
           end if
 
          if (allocated(o%p%amat_m_p)) then
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_m_p_lbound_1', LBOUND(o%p%amat_m_p,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_m_p_ubound_1', UBOUND(o%p%amat_m_p,1)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_m_p_lbound_2', LBOUND(o%p%amat_m_p,2)))
-             call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'amat_m_p_ubound_2', UBOUND(o%p%amat_m_p,2)))
              call nf90_check(nf90_def_dim(grpid, "amat_m_p_dim1", size(o%p%amat_m_p,1), amat_m_p_dimid(1)))
              call nf90_check(nf90_def_dim(grpid, "amat_m_p_dim2", size(o%p%amat_m_p,2), amat_m_p_dimid(2)))
              call nf90_check(nf90_def_var(grpid, 'amat_m_p', NF90_DOUBLE, amat_m_p_dimid, var_amat_m_p_id, & 
                   shuffle = .false., deflate_level = nc_deflate_level))
+
+             call nf90_check(nf90_put_att(grpid, var_amat_m_p_id, 'lbound_1', lbound(o%p%amat_m_p,1)))
+             call nf90_check(nf90_put_att(grpid, var_amat_m_p_id, 'ubound_1', UBOUND(o%p%amat_m_p,1)))
+             call nf90_check(nf90_put_att(grpid, var_amat_m_p_id, 'lbound_2', LBOUND(o%p%amat_m_p,2)))
+             call nf90_check(nf90_put_att(grpid, var_amat_m_p_id, 'ubound_2', UBOUND(o%p%amat_m_p,2)))
+
           end if
 
          if (allocated(o%p%source_p)) then
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'source_p_lbound_1', LBOUND(o%p%source_p,1)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'source_p_ubound_1', UBOUND(o%p%source_p,1)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'source_p_lbound_2', LBOUND(o%p%source_p,2)))
-            call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'source_p_ubound_2', UBOUND(o%p%source_p,2)))
             call nf90_check(nf90_def_dim(grpid, "source_p_dim1", size(o%p%source_p,1), source_p_dimid(1)))
             call nf90_check(nf90_def_dim(grpid, "source_p_dim2", size(o%p%source_p,2), source_p_dimid(2)))
             call nf90_check(nf90_def_var(grpid, 'source_p', NF90_DOUBLE, source_p_dimid, var_source_p_id, &
                  shuffle = .false., deflate_level = nc_deflate_level))
+
+            call nf90_check(nf90_put_att(grpid, var_source_p_id, 'lbound_1', lbound(o%p%source_p,1)))
+            call nf90_check(nf90_put_att(grpid, var_source_p_id, 'ubound_1', UBOUND(o%p%source_p,1)))
+            call nf90_check(nf90_put_att(grpid, var_source_p_id, 'lbound_2', LBOUND(o%p%source_p,2)))
+            call nf90_check(nf90_put_att(grpid, var_source_p_id, 'ubound_2', UBOUND(o%p%source_p,2)))
+
            end if
 
        END IF
@@ -2706,10 +2722,10 @@ CONTAINS
           end if
        end if
 
-       write (*,*) "Time after writing: ", MPI_WTime() - stime
+       !write (*,*) "Time after writing: ", MPI_WTime() - stime
        stime = MPI_WTime()
        !call nf90_check(nf90_close(ncid_propagators))
-       write (*,*) "Time for closing: ", MPI_WTime() - stime
+       !write (*,*) "Time for closing: ", MPI_WTime() - stime
     else
        
        CALL unit_propagator
@@ -3146,8 +3162,23 @@ CONTAINS
 
     INTEGER :: prop_showall
 
-    integer :: ncid, ierr, grpid
+    integer :: grpid, ierr
+    integer :: y_dimid
+    integer :: amat_p_p_dimid(2), amat_m_m_dimid(2), amat_p_m_dimid(2), amat_m_p_dimid(2)
+    integer :: source_p_dimid(2), source_m_dimid(2)
+    integer :: flux_p_dimid(2), flux_m_dimid(2)
+    integer :: qflux_dimid(2)
+    integer :: eta_l_dimid, eta_r_dimid
 
+    integer :: var_y_id, var_amat_p_p_id, var_amat_m_m_id, var_amat_p_m_id, var_amat_m_p_id
+    integer :: var_source_p_id, var_source_m_id
+    integer :: var_flux_p_id, var_flux_m_id
+    integer :: var_qflux_id
+    integer :: var_eta_l_id, var_eta_r_id
+    integer :: var_id
+
+    double precision :: stime
+    
     IF (PRESENT(prop_showall_in)) THEN
        prop_showall = prop_showall_in
     ELSE
@@ -3159,15 +3190,187 @@ CONTAINS
     call filename_propagator(prop_type,prop_bound,prop_start,prop_end)
     
     if (netcdf_files) then
-       call nf90_check(nf90_open('propagators.nc', NF90_nowrite, ncid))
-       call nf90_check(nf90_inq_ncid(ncid, prop_cfilename(1:len_trim(prop_cfilename)-5), grpid))
+       stime = MPI_WTime()
 
+       call nf90_check(nf90_inq_ncid(ncid_propagators, prop_cfilename(1:len_trim(prop_cfilename)-5), grpid))
+       write (*,*) "Reading NetCDF-Group: ", prop_cfilename
        if (prop_showall .eq. 1) then
           call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
-          write (*,*) o%nr_joined
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_s', o%fieldpropagator_tag_s))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_e', o%fieldpropagator_tag_e))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_s', o%fieldperiod_tag_s))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_e', o%fieldperiod_tag_e))
+
+          call nf90_check(nf90_inq_varid(grpid, "y", var_y_id))
+          call nf90_check(nf90_get_att(grpid, var_y_id, "lbound", lb1))
+          call nf90_check(nf90_get_att(grpid, var_y_id, "ubound", ub1))
+          if (ub1 .gt. 0) then
+             if (allocated(o%y)) deallocate(o%y)
+             allocate(o%y(lb1:ub1))
+             call nf90_check(nf90_get_var(grpid, var_y_id, o%y))           
+          end if
+
+         call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'phi_l', o%phi_l))
+         call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'phi_r', o%phi_r))          
+          
        end if
+
+       if (prop_showall .eq.0) then
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode))
+       end if
+
+       if (prop_showall .ge. 1) then
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'npart', o%p%npart))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'npass_l', o%p%npass_l))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'npass_r', o%p%npass_r))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'nvelocity', o%p%nvelocity))
+       end if
+
+       if (prop_showall .ge. 1) then
+          call nf90_check(nf90_inq_varid(grpid, "amat_p_p", var_id))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_1", lb1))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_1", ub1))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_2", lb2))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_2", ub2))    
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_p_p)) deallocate(o%p%amat_p_p)
+             allocate(o%p%amat_p_p(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, var_id, o%p%amat_p_p))
+          end if
+       end if
+
+       if (prop_showall .eq. 1) then
+          call nf90_check(nf90_inq_varid(grpid, "amat_m_m", var_id))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_1", lb1))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_1", ub1))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_2", lb2))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_2", ub2))    
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_m_m)) deallocate(o%p%amat_m_m)
+             allocate(o%p%amat_m_m(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, var_id, o%p%amat_m_m))
+          end if
+       end if
+
+       if (prop_showall .eq. 1) then
+          call nf90_check(nf90_inq_varid(grpid, "amat_p_m", var_id))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_1", lb1))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_1", ub1))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_2", lb2))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_2", ub2))    
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_p_m)) deallocate(o%p%amat_p_m)
+             allocate(o%p%amat_p_m(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, var_id, o%p%amat_p_m))
+          end if
+       end if
+
+       if (prop_showall .ge. 1) then
+          call nf90_check(nf90_inq_varid(grpid, "amat_m_p", var_id))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_1", lb1))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_1", ub1))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_2", lb2))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_2", ub2))    
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_m_p)) deallocate(o%p%amat_m_p)
+             allocate(o%p%amat_m_p(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, var_id, o%p%amat_m_p))
+          end if
+       end if       
+
+       if (prop_showall .ge. 1) then
+          call nf90_check(nf90_inq_varid(grpid, "source_p", var_id))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_1", lb1))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_1", ub1))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_2", lb2))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_2", ub2))    
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%source_p)) deallocate(o%p%source_p)
+             allocate(o%p%source_p(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, var_id, o%p%source_p))
+          end if
+       end if       
+
+       if (prop_showall .eq. 1) then
+          call nf90_check(nf90_inq_varid(grpid, "source_m", var_id))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_1", lb1))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_1", ub1))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_2", lb2))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_2", ub2))    
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%source_m)) deallocate(o%p%source_m)
+             allocate(o%p%source_m(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, var_id, o%p%source_m))
+          end if
+       end if   
+
+       if (prop_showall .eq. 1) then
+          call nf90_check(nf90_inq_varid(grpid, "flux_p", var_id))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_1", lb1))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_1", ub1))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_2", lb2))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_2", ub2))    
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%flux_p)) deallocate(o%p%flux_p)
+             allocate(o%p%flux_p(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, var_id, o%p%flux_p))
+          end if
+       end if   
+
+       if (prop_showall .eq. 1) then
+          call nf90_check(nf90_inq_varid(grpid, "flux_m", var_id))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_1", lb1))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_1", ub1))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound_2", lb2))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound_2", ub2))
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%flux_m)) deallocate(o%p%flux_m)
+             allocate(o%p%flux_m(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, var_id, o%p%flux_m))
+          end if
+       end if
+
+      if (prop_showall .eq. 1) then
+          call nf90_check(nf90_inq_varid(grpid, "qflux", var_id))
+          call nf90_check(nf90_inq_dimid(grpid, "qflux_dim1", qflux_dimid(1)))
+          call nf90_check(nf90_inq_dimid(grpid, "qflux_dim2", qflux_dimid(2)))
+
+          call nf90_check(nf90_inquire_dimension(grpid, qflux_dimid(1), len = ub1))
+          call nf90_check(nf90_inquire_dimension(grpid, qflux_dimid(2), len = ub2))
+
+           if (allocated(o%p%qflux)) deallocate(o%p%qflux)
+           allocate(o%p%qflux(1:ub1,1:ub2))
+           call nf90_check(nf90_get_var(grpid, var_id, o%p%qflux))
+       end if
+
+       if (prop_showall .eq. 1) then
+          call nf90_check(nf90_inq_varid(grpid, "eta_l", var_id))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound", lb1))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound", ub1))
+
+          if (ub1 .gt. 0) then
+             IF (ALLOCATED(o%p%eta_l)) DEALLOCATE(o%p%eta_l)
+             ALLOCATE(o%p%eta_l(lb1:ub1))
+             call nf90_check(nf90_get_var(grpid, var_id, o%p%eta_l))
+          end if
+
+          call nf90_check(nf90_inq_varid(grpid, "eta_r", var_id))
+          call nf90_check(nf90_get_att(grpid, var_id, "lbound", lb1))
+          call nf90_check(nf90_get_att(grpid, var_id, "ubound", ub1))
+
+          if (ub1 .gt. 0) then
+             IF (ALLOCATED(o%p%eta_r)) DEALLOCATE(o%p%eta_r)
+             ALLOCATE(o%p%eta_r(lb1:ub1))
+             call nf90_check(nf90_get_var(grpid, var_id, o%p%eta_r))
+          end if
+
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'eta_boundary_l', o%p%eta_boundary_l))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'eta_boundary_r', o%p%eta_boundary_r))
+          
+       end if
+            
+       !call nf90_check(nf90_close(ncid))
        
-       call nf90_check(nf90_close(ncid))
     else
 
        CALL unit_propagator
