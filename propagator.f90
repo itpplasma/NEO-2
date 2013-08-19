@@ -141,8 +141,13 @@ MODULE propagator_mod
   INTEGER,            PUBLIC  :: prop_reconstruct_levels = 0
 
   ! --- NetCDF Support ---
-  LOGICAL :: netcdf_files     = .false.
-  INTEGER :: nc_deflate_level = 1
+  LOGICAL :: netcdf_files     = .true.
+
+  ! Compression settings for matrices
+  integer :: nc_deflate_level = 0
+  LOGICAL :: nc_shuffle = .false.
+
+  ! Global ncid for propagator_*_*.prop -> propagators.nc
   INTEGER :: ncid_propagators
   ! ---
 
@@ -2529,7 +2534,7 @@ CONTAINS
              call nf90_check(nf90_def_dim(grpid, "amat_m_m_dim1", size(o%p%amat_m_m,1), amat_m_m_dimid(1)))
              call nf90_check(nf90_def_dim(grpid, "amat_m_m_dim2", size(o%p%amat_m_m,2), amat_m_m_dimid(2)))
              call nf90_check(nf90_def_var(grpid, 'amat_m_m', NF90_DOUBLE, amat_m_m_dimid, var_amat_m_m_id, & 
-                  shuffle = .false., deflate_level = nc_deflate_level))
+                  shuffle = nc_shuffle, deflate_level = nc_deflate_level))
              
              call nf90_check(nf90_put_att(grpid, var_amat_m_m_id, 'lbound_1', LBOUND(o%p%amat_m_m,1)))
              call nf90_check(nf90_put_att(grpid, var_amat_m_m_id, 'ubound_1', UBOUND(o%p%amat_m_m,1)))
@@ -2542,7 +2547,7 @@ CONTAINS
              call nf90_check(nf90_def_dim(grpid, "amat_p_m_dim1", size(o%p%amat_p_m,1), amat_p_m_dimid(1)))
              call nf90_check(nf90_def_dim(grpid, "amat_p_m_dim2", size(o%p%amat_p_m,2), amat_p_m_dimid(2)))
              call nf90_check(nf90_def_var(grpid, 'amat_p_m', NF90_DOUBLE, amat_p_m_dimid, var_amat_p_m_id, & 
-                  shuffle = .false., deflate_level = nc_deflate_level))
+                  shuffle = nc_shuffle, deflate_level = nc_deflate_level))
 
              call nf90_check(nf90_put_att(grpid, var_amat_p_m_id, 'lbound_1', LBOUND(o%p%amat_p_m,1)))
              call nf90_check(nf90_put_att(grpid, var_amat_p_m_id, 'ubound_1', UBOUND(o%p%amat_p_m,1)))
@@ -2555,7 +2560,7 @@ CONTAINS
             call nf90_check(nf90_def_dim(grpid, "source_m_dim1", size(o%p%source_m,1), source_m_dimid(1)))
             call nf90_check(nf90_def_dim(grpid, "source_m_dim2", size(o%p%source_m,2), source_m_dimid(2)))
             call nf90_check(nf90_def_var(grpid, 'source_m', NF90_DOUBLE, source_m_dimid, var_source_m_id, & 
-                  shuffle = .false., deflate_level = nc_deflate_level))
+                  shuffle = nc_shuffle, deflate_level = nc_deflate_level))
 
             call nf90_check(nf90_put_att(grpid, var_source_m_id, 'lbound_1', LBOUND(o%p%source_m,1)))
             call nf90_check(nf90_put_att(grpid, var_source_m_id, 'ubound_1', UBOUND(o%p%source_m,1)))
@@ -2568,7 +2573,7 @@ CONTAINS
             call nf90_check(nf90_def_dim(grpid, "flux_m_dim1", size(o%p%flux_m,1), flux_m_dimid(1)))
             call nf90_check(nf90_def_dim(grpid, "flux_m_dim2", size(o%p%flux_m,2), flux_m_dimid(2)))
             call nf90_check(nf90_def_var(grpid, 'flux_m', NF90_DOUBLE, flux_m_dimid, var_flux_m_id, & 
-                  shuffle = .false., deflate_level = nc_deflate_level))
+                  shuffle = nc_shuffle, deflate_level = nc_deflate_level))
 
             call nf90_check(nf90_put_att(grpid, var_flux_m_id, 'lbound_1', lbound(o%p%flux_m,1)))
             call nf90_check(nf90_put_att(grpid, var_flux_m_id, 'ubound_1', UBOUND(o%p%flux_m,1)))
@@ -2581,7 +2586,7 @@ CONTAINS
             call nf90_check(nf90_def_dim(grpid, "flux_p_dim1", size(o%p%flux_p,1), flux_p_dimid(1)))
             call nf90_check(nf90_def_dim(grpid, "flux_p_dim2", size(o%p%flux_p,2), flux_p_dimid(2)))
             call nf90_check(nf90_def_var(grpid, 'flux_p', NF90_DOUBLE, flux_p_dimid, var_flux_p_id, & 
-                  shuffle = .false., deflate_level = nc_deflate_level))
+                  shuffle = nc_shuffle, deflate_level = nc_deflate_level))
 
             call nf90_check(nf90_put_att(grpid, var_flux_p_id, 'lbound_1', lbound(o%p%flux_p,1)))
             call nf90_check(nf90_put_att(grpid, var_flux_p_id ,'ubound_1', UBOUND(o%p%flux_p,1)))
@@ -2633,7 +2638,7 @@ CONTAINS
              call nf90_check(nf90_def_dim(grpid, "amat_p_p_dim1", size(o%p%amat_p_p,1), amat_p_p_dimid(1)))
              call nf90_check(nf90_def_dim(grpid, "amat_p_p_dim2", size(o%p%amat_p_p,2), amat_p_p_dimid(2)))
              call nf90_check(nf90_def_var(grpid, 'amat_p_p', NF90_DOUBLE, amat_p_p_dimid, var_amat_p_p_id, & 
-                  shuffle = .false., deflate_level = nc_deflate_level))
+                  shuffle = nc_shuffle, deflate_level = nc_deflate_level))
              
              call nf90_check(nf90_put_att(grpid, var_amat_p_p_id, 'lbound_1', LBOUND(o%p%amat_p_p,1)))
              call nf90_check(nf90_put_att(grpid, var_amat_p_p_id, 'ubound_1', UBOUND(o%p%amat_p_p,1)))
@@ -2646,7 +2651,7 @@ CONTAINS
              call nf90_check(nf90_def_dim(grpid, "amat_m_p_dim1", size(o%p%amat_m_p,1), amat_m_p_dimid(1)))
              call nf90_check(nf90_def_dim(grpid, "amat_m_p_dim2", size(o%p%amat_m_p,2), amat_m_p_dimid(2)))
              call nf90_check(nf90_def_var(grpid, 'amat_m_p', NF90_DOUBLE, amat_m_p_dimid, var_amat_m_p_id, & 
-                  shuffle = .false., deflate_level = nc_deflate_level))
+                  shuffle = nc_shuffle, deflate_level = nc_deflate_level))
 
              call nf90_check(nf90_put_att(grpid, var_amat_m_p_id, 'lbound_1', lbound(o%p%amat_m_p,1)))
              call nf90_check(nf90_put_att(grpid, var_amat_m_p_id, 'ubound_1', UBOUND(o%p%amat_m_p,1)))
@@ -2659,7 +2664,7 @@ CONTAINS
             call nf90_check(nf90_def_dim(grpid, "source_p_dim1", size(o%p%source_p,1), source_p_dimid(1)))
             call nf90_check(nf90_def_dim(grpid, "source_p_dim2", size(o%p%source_p,2), source_p_dimid(2)))
             call nf90_check(nf90_def_var(grpid, 'source_p', NF90_DOUBLE, source_p_dimid, var_source_p_id, &
-                 shuffle = .false., deflate_level = nc_deflate_level))
+                 shuffle = nc_shuffle, deflate_level = nc_deflate_level))
 
             call nf90_check(nf90_put_att(grpid, var_source_p_id, 'lbound_1', lbound(o%p%source_p,1)))
             call nf90_check(nf90_put_att(grpid, var_source_p_id, 'ubound_1', UBOUND(o%p%source_p,1)))

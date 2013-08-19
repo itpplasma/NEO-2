@@ -60,9 +60,11 @@ PROGRAM neo2
   ! This string is used to give every client an own evolve.dat file
   character(len=32) :: strEvolveFilename
 
-  ! Experimental NetCDF
-  integer :: ierr
-
+  ! --- Experimental NetCDF ---
+  integer :: ierr, i
+  character(len=100) :: propagators_ncfilename, tempstr
+  ! ---
+  
   include "version.f90"
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
@@ -384,8 +386,16 @@ PROGRAM neo2
         CLOSE(uw)
 #endif
         if (netcdf_files) then
-           ierr = nf90_create('propagators.nc', NF90_HDF5, ncid_propagators)
-           ierr = nf90_enddef(ncid_propagators)
+           if (mpro%isParallel()) then
+              write (propagators_ncfilename, "(A, I3.3, A)") 'propagators.', mpro%getRank(), '.nc' 
+           else
+              write (propagators_ncfilename, "(A)") "propagators.nc"
+           end if
+
+           if ((mpro%isParallel() .and. .not. mpro%isMaster()) .or. (.not. mpro%isParallel())) then
+              ierr = nf90_create(propagators_ncfilename, NF90_NetCDF4, ncid_propagators)
+              ierr = nf90_enddef(ncid_propagators)
+           end if
         end if
   END IF
 
@@ -475,6 +485,25 @@ PROGRAM neo2
 
      if (netcdf_files) then
         ierr = nf90_close(ncid_propagators)
+
+        if (mpro%isParallel()) then
+           if (mpro%isMaster()) then
+              write (*,*) "Merging NetCDF-Files, please wait..."
+              write (*,*) "Deleting old propagators.nc"
+              call system("rm propagators.nc")
+              
+              do i=1,mpro%getNumProcs()-1
+                 write (tempstr, "(A, I3.3, A)") "ncks --deflate 1 -A propagators.", i, ".nc propagators.nc"
+                 write (*,*) tempstr
+                 call system(tempstr)
+              end do
+
+              !write (*,*) "Deleting propagators.*.nc files"
+              !call system("rm propagators.*.nc")
+              
+              write (*,*) "Merge done. Neo2-par is closing."
+           end if
+        end if
      end if
   ! MPI support
 #if defined(MPI_SUPPORT)
