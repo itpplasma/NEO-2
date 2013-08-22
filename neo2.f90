@@ -25,7 +25,9 @@ PROGRAM neo2
        prop_diagnostic,prop_binary,                                 &
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
-       prop_reconstruct_levels, ncid_propagators, netcdf_files
+       prop_reconstruct_levels,                                     & 
+       ncid_propagators, netcdf_files, mergeNCFiles,                &
+       ncid_binarysplits, ncid_propbounds, ncid_recon
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
        mag_magfield,mag_nperiod_min,mag_save_memory,                &
@@ -329,15 +331,29 @@ PROGRAM neo2
 
      if (netcdf_files) then
         ierr = nf90_open('propagators.nc', NF90_NOWRITE, ncid_propagators)
+        ierr = nf90_open('propagator_boundaries.nc', NF90_NOWRITE, ncid_propbounds)
+        ierr = nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits)
      end if
      
      CALL reconstruct_prop_dist
 
-     ierr = nf90_close(ncid_propagators)
+     if (netcdf_files) then
+        ierr = nf90_close(ncid_propagators)
+        ierr = nf90_close(ncid_propbounds)
+        ierr = nf90_close(ncid_binarysplits)
+     end if
+
+     call mergeNCFiles()
      
      PRINT *, 'No further calculations!'
      STOP
   END IF
+
+  if (prop_reconstruct .eq. 2) then
+     if (netcdf_files) then
+        ierr = nf90_open('reconstructs.nc', NF90_NOWRITE, ncid_recon)
+     end if
+  end if
 
   ! ---------------------------------------------------------------------------
   ! matrix elements
@@ -387,14 +403,14 @@ PROGRAM neo2
 #endif
         if (netcdf_files) then
            if (mpro%isParallel()) then
-              write (propagators_ncfilename, "(A, I3.3, A)") 'propagators.', mpro%getRank(), '.nc' 
+           !   write (propagators_ncfilename, "(A, I3.3, A)") 'propagators.', mpro%getRank(), '.nc' 
            else
-              write (propagators_ncfilename, "(A)") "propagators.nc"
+           !   write (propagators_ncfilename, "(A)") "propagators.nc"
            end if
 
            if ((mpro%isParallel() .and. .not. mpro%isMaster()) .or. (.not. mpro%isParallel())) then
-              ierr = nf90_create(propagators_ncfilename, NF90_NetCDF4, ncid_propagators)
-              ierr = nf90_enddef(ncid_propagators)
+           !   ierr = nf90_create(propagators_ncfilename, NF90_NetCDF4, ncid_propagators)
+           !   ierr = nf90_enddef(ncid_propagators)
            end if
         end if
   END IF
@@ -481,30 +497,17 @@ PROGRAM neo2
      ! ------------------------------------------------------------------------
   !ELSE
   !   PRINT *, 'NOTHING TO COMPUTE'
-  !END IF
+     !END IF
 
+  if (prop_reconstruct .eq. 2) then
      if (netcdf_files) then
-        ierr = nf90_close(ncid_propagators)
-
-        if (mpro%isParallel()) then
-           if (mpro%isMaster()) then
-              write (*,*) "Merging NetCDF-Files, please wait..."
-              write (*,*) "Deleting old propagators.nc"
-              call system("rm propagators.nc")
-              
-              do i=1,mpro%getNumProcs()-1
-                 write (tempstr, "(A, I3.3, A)") "ncks --deflate 1 -A propagators.", i, ".nc propagators.nc"
-                 write (*,*) tempstr
-                 call system(tempstr)
-              end do
-
-              !write (*,*) "Deleting propagators.*.nc files"
-              !call system("rm propagators.*.nc")
-              
-              write (*,*) "Merge done. Neo2-par is closing."
-           end if
-        end if
+        ierr = nf90_close(ncid_recon)
      end if
+  end if
+     
+     call mergeNCFiles()
+
+  !end if
   ! MPI support
 #if defined(MPI_SUPPORT)
   call mpro%deinit()
