@@ -41,7 +41,7 @@ PROGRAM neo2
        bsfunc_sigma_mult, bsfunc_sigma_min, bsfunc_local_solver   
   USE binarysplit_int, ONLY : linspace
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
-       collop_load, collop_unload, z_eff
+       collop_load, collop_unload, z_eff, collop_path
   USE rkstep_mod, ONLY : lag,leg,legmax
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
@@ -181,7 +181,8 @@ PROGRAM neo2
   boozer_phi_beg = 0.0_dp
   sparse_talk = .FALSE.
 !  sparse_solve_method = 0
-  ! collision 
+  ! collision
+  collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
   conl_over_mfp = 1.0d-3
   lag=10
   leg=20
