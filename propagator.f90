@@ -1912,7 +1912,7 @@ CONTAINS
 		   ! taginfo
                    !CALL unit_propagator
                    !OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-                        form=prop_format,action='write')
+                   !     form=prop_format,action='write')
                    ! WINNY PAR
                    ! The last tag is wrong in a parallel run
                    !WRITE(prop_unit,*) prop_write
