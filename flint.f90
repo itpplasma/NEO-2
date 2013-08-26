@@ -2798,6 +2798,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
       parallel_storage%fieldline => fieldline
 
       ! Initialize the scheduler
+      sched%configFilename = 'neo2.in'
       call sched%init()
 
       ! Prepare runs the initial workunit, if defined
