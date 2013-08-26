@@ -26,7 +26,7 @@ PROGRAM neo2
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
        prop_reconstruct_levels,                                     & 
-       ncid_propagators, netcdf_files, mergeNCFiles,                &
+       ncid_propagators, prop_fileformat, mergeNCFiles,             &
        ncid_binarysplits, ncid_propbounds, ncid_recon
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
@@ -140,7 +140,8 @@ PROGRAM neo2
        mag_talk,mag_infotalk,                                                 &
        hphi_lim,                                                              &
        prop_write,prop_reconstruct,prop_ripple_plot,                          &
-       prop_reconstruct_levels
+       prop_reconstruct_levels,                                               &
+       prop_fileformat
   NAMELIST /plotting/                                                         &
        plot_gauss,plot_prop
   ! ---------------------------------------------------------------------------
@@ -247,6 +248,7 @@ PROGRAM neo2
   prop_join_ends = 0
   prop_fluxsplitmode = 1
   prop_write = 0
+  prop_fileformat = 0 ! 0... ACSII, 1... NetCDF
   prop_reconstruct = 0
   prop_ripple_plot = 0
   prop_reconstruct_levels = 0
@@ -329,7 +331,7 @@ PROGRAM neo2
   IF (prop_reconstruct .EQ. 1) THEN
      PRINT *, 'Reconstruction run!'
 
-     if (netcdf_files) then
+     if (prop_fileformat .eq. 1) then
         ierr = nf90_open('propagators.nc', NF90_NOWRITE, ncid_propagators)
         ierr = nf90_open('propagator_boundaries.nc', NF90_NOWRITE, ncid_propbounds)
         ierr = nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits)
@@ -337,7 +339,7 @@ PROGRAM neo2
      
      CALL reconstruct_prop_dist
 
-     if (netcdf_files) then
+     if (prop_fileformat .eq. 1) then
         ierr = nf90_close(ncid_propagators)
         ierr = nf90_close(ncid_propbounds)
         ierr = nf90_close(ncid_binarysplits)
@@ -350,7 +352,7 @@ PROGRAM neo2
   END IF
 
   if (prop_reconstruct .eq. 2) then
-     if (netcdf_files) then
+     if (prop_fileformat .eq. 1) then
         ierr = nf90_open('reconstructs.nc', NF90_NOWRITE, ncid_recon)
      end if
   end if
@@ -401,7 +403,7 @@ PROGRAM neo2
         OPEN(uw,file='evolve.dat',status='replace')
         CLOSE(uw)
 #endif
-        if (netcdf_files) then
+        if (prop_fileformat .eq. 1) then
            if (mpro%isParallel()) then
            !   write (propagators_ncfilename, "(A, I3.3, A)") 'propagators.', mpro%getRank(), '.nc' 
            else
@@ -500,7 +502,7 @@ PROGRAM neo2
      !END IF
 
   if (prop_reconstruct .eq. 2) then
-     if (netcdf_files) then
+     if (prop_fileformat .eq. 1) then
         ierr = nf90_close(ncid_recon)
      end if
   end if

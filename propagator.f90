@@ -125,6 +125,7 @@ MODULE propagator_mod
   INTEGER,            PUBLIC  :: prop_join_ends = 0
   INTEGER,            PUBLIC  :: prop_fluxsplitmode = 1
   INTEGER,            PUBLIC  :: prop_write = 0
+  integer,            public  :: prop_fileformat = 0   ! 0... ACSII, 1... NetCDF
   INTEGER,            PUBLIC  :: prop_reconstruct = 0
   INTEGER,            PUBLIC  :: prop_ripple_plot = 0
   ! usage for communication purposes
@@ -141,7 +142,6 @@ MODULE propagator_mod
   INTEGER,            PUBLIC  :: prop_reconstruct_levels = 0
 
   ! --- NetCDF Support ---
-  LOGICAL :: netcdf_files     = .true.
 
   ! Compression settings for matrices
   integer :: nc_deflate_level = 0
@@ -2458,7 +2458,7 @@ CONTAINS
 
   subroutine mergeNCFiles
     integer :: status
-    if (netcdf_files) then
+    if (prop_fileformat .eq. 1) then
 
        if ((mpro%isParallel() .and. (mpro%isMaster()) ) .or. (.not. mpro%isParallel())) then
 
@@ -2562,7 +2562,7 @@ CONTAINS
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end) 
 
 
-    if (netcdf_files) then
+    if (prop_fileformat .eq. 1) then
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
 
        call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_propagator))
@@ -3030,7 +3030,7 @@ CONTAINS
 
     CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
 
-    if (netcdf_files) then
+    if (prop_fileformat .eq. 1) then
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
 
        call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_propbounds))
@@ -3261,7 +3261,7 @@ CONTAINS
 
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
 
-    if (netcdf_files) then
+    if (prop_fileformat .eq. 1) then
 
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
        
@@ -3473,7 +3473,7 @@ CONTAINS
 
     call filename_propagator(prop_type,prop_bound,prop_start,prop_end)
     
-    if (netcdf_files) then
+    if (prop_fileformat .eq. 1) then
        stime = MPI_WTime()
 
        write (*,*) "Reading NetCDF-Group: ", prop_cfilename
@@ -3843,7 +3843,7 @@ CONTAINS
     prop_bound = 1
 
     CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
-    if (netcdf_files) then
+    if (prop_fileformat .eq. 1) then
 
        groupNotFound = .false.
        if (nf90_inq_ncid(ncid_propbounds, prop_cfilename, grpid) /= NF90_NOERR) then
@@ -3945,7 +3945,7 @@ CONTAINS
 
 
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
-    if (netcdf_files) then
+    if (prop_fileformat .eq. 1) then
        groupNotFound = .false.
        if (nf90_inq_ncid(ncid_binarysplits, prop_cfilename, grpid) /= NF90_NOERR) then
           ! Group not found, searching for appropriate file
@@ -4298,7 +4298,7 @@ CONTAINS
     ! 5: result
     ! 0: no boundary
     CALL filename_propagator(5,0,tag,tag)
-    if (netcdf_files) then
+    if (prop_fileformat .eq. 1) then
        groupNotFound = .false.
        if (nf90_inq_ncid(ncid_recon, prop_cfilename, grpid) /= NF90_NOERR) then
           ! Group not found, searching for appropriate file
@@ -4496,7 +4496,7 @@ CONTAINS
     ! write the results - starting point
     CALL filename_propagator(5,0,prop_last_tag,prop_last_tag)
     
-    if (netcdf_files) then
+    if (prop_fileformat .eq. 1) then
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
        call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_recon))
        grpid = ncid_recon
@@ -4559,7 +4559,7 @@ CONTAINS
        ! output of new results
        CALL filename_propagator(5,0,N,N)
 
-       if (netcdf_files) then
+       if (prop_fileformat .eq. 1) then
           write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
 
           call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
@@ -4608,7 +4608,7 @@ CONTAINS
        
        CALL filename_propagator(5,0,N-1,N-1)
 
-       if (netcdf_files) then
+       if (prop_fileformat .eq. 1) then
 
           write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
 
@@ -4653,7 +4653,7 @@ CONTAINS
     ! write the results - final point (from join_ends)
     CALL filename_propagator(5,0,prop_first_tag,prop_first_tag)
 
-    if (netcdf_files) then
+    if (prop_fileformat .eq. 1) then
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
        call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
        if (.not. exists) then
