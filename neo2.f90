@@ -26,7 +26,7 @@ PROGRAM neo2
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
        prop_reconstruct_levels,                                     & 
-       ncid_propagators, prop_fileformat, mergeNCFiles,             &
+       ncid_propagators, prop_fileformat, mergeAllNCFiles,          &
        ncid_binarysplits, ncid_propbounds, ncid_recon
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
@@ -49,7 +49,7 @@ PROGRAM neo2
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
-
+  USE nctools_module
   USE netcdf
 
   IMPLICIT NONE
@@ -64,7 +64,7 @@ PROGRAM neo2
 
   ! --- Experimental NetCDF ---
   integer :: ierr, i
-  character(len=100) :: propagators_ncfilename, tempstr
+  !character(len=100) :: propagators_ncfilename, tempstr
   ! ---
   
   include "version.f90"
@@ -141,7 +141,7 @@ PROGRAM neo2
        hphi_lim,                                                              &
        prop_write,prop_reconstruct,prop_ripple_plot,                          &
        prop_reconstruct_levels,                                               &
-       prop_fileformat
+       prop_fileformat, nco_path
   NAMELIST /plotting/                                                         &
        plot_gauss,plot_prop
   ! ---------------------------------------------------------------------------
@@ -249,6 +249,7 @@ PROGRAM neo2
   prop_fluxsplitmode = 1
   prop_write = 0
   prop_fileformat = 0 ! 0... ACSII, 1... NetCDF
+  nco_path = '/usr/bin/'
   prop_reconstruct = 0
   prop_ripple_plot = 0
   prop_reconstruct_levels = 0
@@ -345,7 +346,7 @@ PROGRAM neo2
         ierr = nf90_close(ncid_binarysplits)
      end if
 
-     call mergeNCFiles()
+     call mergeAllNCFiles()
      
      PRINT *, 'No further calculations!'
      STOP
@@ -507,7 +508,7 @@ PROGRAM neo2
      end if
   end if
      
-     call mergeNCFiles()
+     call mergeAllNCFiles()
 
   !end if
   ! MPI support
