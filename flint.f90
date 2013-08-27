@@ -2816,6 +2816,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 #endif
 
 
+    
 !!$     allprops_comp: DO      ! WHILE (fieldpropagator%tag .LE. proptag_end)
 !!$        ! information about propagator
 !!$        CALL info_magnetics(fieldpropagator)
