@@ -70,7 +70,7 @@ endif ()
 
 ### Build name extension
 exec_program("uname -m" OUTPUT_VARIABLE ARCH)
-set(EXE_NAME "neo_2.x-${CMAKE_Fortran_COMPILER_ID}_${ARCH}")
+set(EXE_NAME "neo_2.x-${CMAKE_Fortran_COMPILER_ID}_${ARCH}_${CMAKE_BUILD_TYPE}")
 
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -99,18 +99,15 @@ add_executable(${EXE_NAME}
 	${MPI_SRC_FILES}
 )
 
-        target_link_libraries(${EXE_NAME}
-                ${SuperLU_lib}
-                ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
-		#${SuiteSparseConfig_lib}
-                ${MyMPILib_lib}
-                ${MPE_lib}
-		${MPI_lib}
-		-Wl,--start-group -L/usr/lib/ -lnetcdf -lnetcdff -Wl,--end-group
-		lapack
-		blas
+target_link_libraries(${EXE_NAME}
+        ${SuperLU_lib}
+        ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
+	#${SuiteSparseConfig_lib}
+        ${MyMPILib_lib}
+        ${MPE_lib}
+	${MPI_lib}
+	-Wl,--start-group -L/usr/lib/ -lnetcdf -lnetcdff -Wl,--end-group
+	${BLAS_lib}
         )
-        install (TARGETS ${EXE_NAME} DESTINATION /temp/gernot_k/)
-        #install (TARGETS ${EXE_NAME} DESTINATION /afs/itp.tugraz.at/user/gernot_k/Src/)
-	set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
-
+install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
+set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
