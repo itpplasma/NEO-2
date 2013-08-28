@@ -119,7 +119,8 @@ PROGRAM neo2
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
-       isw_momentum,vel_distri_swi,vel_num,vel_max
+       isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
+       collop_path
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
