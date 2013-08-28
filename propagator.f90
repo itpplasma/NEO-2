@@ -1908,17 +1908,18 @@ CONTAINS
 #endif
                 END IF
                 IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
-                   ! taginfo
-                   CALL unit_propagator
-                   OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-                        form=prop_format,action='write')
+                   ! Lines commented out by Gernot
+		   ! taginfo
+                   !CALL unit_propagator
+                   !OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
+                   !    form=prop_format,action='write')
                    ! WINNY PAR
                    ! The last tag is wrong in a parallel run
-                   WRITE(prop_unit,*) prop_write
-                   WRITE(prop_unit,*) prop_first_tag
-                   WRITE(prop_unit,*) prop_last_tag
+                   !WRITE(prop_unit,*) prop_write
+                   !WRITE(prop_unit,*) prop_first_tag
+                   !WRITE(prop_unit,*) prop_last_tag
                    ! WINNY PAR END
-                   CLOSE(unit=prop_unit)
+                   !CLOSE(unit=prop_unit)
                 END IF
                 EXIT
              END IF
