@@ -70,7 +70,9 @@ endif ()
 
 ### Build name extension
 exec_program("uname -m" OUTPUT_VARIABLE ARCH)
-set(EXE_NAME "neo_2.x-${CMAKE_Fortran_COMPILER_ID}_${ARCH}_${CMAKE_BUILD_TYPE}")
+exec_program("git rev-parse --abbrev-ref HEAD" OUTPUT_VARIABLE BRANCH)
+exec_program("date +%Y-%m-%d" OUTPUT_VARIABLE DATE)
+set(EXE_NAME "neo_2.x-${CMAKE_Fortran_COMPILER_ID}_${CMAKE_BUILD_TYPE}_${BRANCH}_${DATE}")
 
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")

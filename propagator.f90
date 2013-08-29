@@ -2445,14 +2445,14 @@ CONTAINS
           call mergeNCFiles('\.\/propagator_boundary_[0-9]*_[0-9]*\.prop\.nc*$', 'propagators_boundaries.nc')
           call mergeNCFiles('\.\/binarysplit_[0-9]*_[0-9]*\.prop\.nc*$', 'binarysplits.nc')
           call mergeNCFiles('\.\/reconstruct_[0-9]*_[0-9]*\.prop\.nc*$', 'reconstructs.nc')
-          call mergeNCFiles('\.\/phi_mesh\.[0-9]*\.nc*$', 'phi_mesh.nc')
-          call mergeNCFiles('\.\/spitf_p\.[0-9]*\.nc*$', 'spitf_p.nc')
-          call mergeNCFiles('\.\/spitf_m\.[0-9]*\.nc*$', 'spitf_m.nc')
-          call mergeNCFiles('\.\/enetf_p\.[0-9]*\.nc*$', 'enetf_p.nc')
-          call mergeNCFiles('\.\/enetf_m\.[0-9]*\.nc*$', 'enetf_m.nc')
-          call mergeNCFiles('\.\/dentf_p\.[0-9]*\.nc*$', 'dentf_p.nc')
-          call mergeNCFiles('\.\/dentf_m\.[0-9]*\.nc*$', 'dentf_m.nc')
-          call mergeNCFiles('\.\/sizeplot_etalev\.[0-9]*\.nc*$', 'sizeplot_etalev.nc')
+          call mergeNCFiles('\.\/phi_mesh\.[0-9]*\.dat.nc*$', 'phi_mesh.nc')
+          call mergeNCFiles('\.\/spitf_p\.[0-9]*\.dat\.nc*$', 'spitf_p.nc')
+          call mergeNCFiles('\.\/spitf_m\.[0-9]*\.dat\.nc*$', 'spitf_m.nc')
+          call mergeNCFiles('\.\/enetf_p\.[0-9]*\.dat\.nc*$', 'enetf_p.nc')
+          call mergeNCFiles('\.\/enetf_m\.[0-9]*\.dat\.nc*$', 'enetf_m.nc')
+          call mergeNCFiles('\.\/dentf_p\.[0-9]*\.dat\.nc*$', 'dentf_p.nc')
+          call mergeNCFiles('\.\/dentf_m\.[0-9]*\.dat\.nc*$', 'dentf_m.nc')
+          call mergeNCFiles('\.\/sizeplot_etalev\.[0-9]*\.dat\.nc*$', 'sizeplot_etalev.nc')
 
           write (*,*) "NetCDF-Files merged."
        end if
