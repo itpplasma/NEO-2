@@ -2445,51 +2445,14 @@ CONTAINS
           call mergeNCFiles('\.\/propagator_boundary_[0-9]*_[0-9]*\.prop\.nc*$', 'propagators_boundaries.nc')
           call mergeNCFiles('\.\/binarysplit_[0-9]*_[0-9]*\.prop\.nc*$', 'binarysplits.nc')
           call mergeNCFiles('\.\/reconstruct_[0-9]*_[0-9]*\.prop\.nc*$', 'reconstructs.nc')
-          
-!!$          write (command, *) "find -regex '\.\/propagator_[0-9]*_[0-9]*\.prop\.nc*$' &
-!!$               &-type f -print0 | xargs -r -0 "// trim(nco_path) // "/ncecat -A --gag -o propagators.nc > nc.log 2>&1"
-!!$          call system(command, status)
-!!$
-!!$          if (status .eq. 0) then
-!!$             call system("find -regex '\.\/propagator_[0-9]*_[0-9]*\.prop\.nc*$' -type f -delete")
-!!$          else
-!!$             write (*,*) "An error occurred merging the propagator-files. Skipping deletion of files. &
-!!$                  &See nc.log for more information."
-!!$          end if
-!!$
-!!$          write (command, *) "find -regex '\.\/propagator_boundary_[0-9]*_[0-9]*\.prop\.nc*$' &
-!!$               &-type f -print0 | xargs -r -0 " // trim(nco_path) // "/ncecat -A --gag -o &
-!!$               &propagator_boundaries.nc >> nc.log 2>&1"
-!!$          call system(command, status)
-!!$
-!!$          if (status .eq. 0) then
-!!$             call system("find -regex '\.\/propagator_boundary_[0-9]*_[0-9]*\.prop\.nc*' -type f -delete")
-!!$          else
-!!$             write (*,*) "An error occurred merging the boundary-files. Skipping deletion of files. &
-!!$                  &See nc.log for more information."
-!!$          end if
-!!$
-!!$          write (command, *) "find -regex '\.\/binarysplit_[0-9]*_[0-9]*\.prop\.nc*$' &
-!!$               &-type f -print0 | xargs -r -0 " // trim(nco_path) // "/ncecat -A --gag -o binarysplits.nc >> nc.log 2>&1"
-!!$          call system(command, status)
-!!$
-!!$          if (status .eq. 0) then
-!!$             call system("find -regex '\.\/binarysplit_[0-9]*_[0-9]*\.prop\.nc*' -type f -delete")
-!!$          else
-!!$             write (*,*) "An error occurred merging the binarysplit-files. Skipping deletion of files. &
-!!$                  &See nc.log for more information."
-!!$          end if
-!!$
-!!$          write (command, *) "find -regex '\.\/reconstruct_[0-9]*_[0-9]*\.prop\.nc*$' &
-!!$               &-type f -print0 | xargs -r -0 " // trim(nco_path) // "/ncecat -A --gag -o reconstructs.nc >> nc.log 2>&1"
-!!$          call system(command, status)
-!!$
-!!$          if (status .eq. 0) then
-!!$             call system("find -regex '\.\/reconstruct_[0-9]*_[0-9]*\.prop\.nc*' -type f -delete")
-!!$          else
-!!$             write (*,*) "An error occurred merging the reconstruct-files. Skipping deletion of files. &
-!!$                  &See nc.log for more information."
-!!$          end if
+          call mergeNCFiles('\.\/phi_mesh\.[0-9]*\.nc*$', 'phi_mesh.nc')
+          call mergeNCFiles('\.\/spitf_p\.[0-9]*\.nc*$', 'spitf_p.nc')
+          call mergeNCFiles('\.\/spitf_m\.[0-9]*\.nc*$', 'spitf_m.nc')
+          call mergeNCFiles('\.\/enetf_p\.[0-9]*\.nc*$', 'enetf_p.nc')
+          call mergeNCFiles('\.\/enetf_m\.[0-9]*\.nc*$', 'enetf_m.nc')
+          call mergeNCFiles('\.\/dentf_p\.[0-9]*\.nc*$', 'dentf_p.nc')
+          call mergeNCFiles('\.\/dentf_m\.[0-9]*\.nc*$', 'dentf_m.nc')
+          call mergeNCFiles('\.\/sizeplot_etalev\.[0-9]*\.nc*$', 'sizeplot_etalev.nc')
 
           write (*,*) "NetCDF-Files merged."
        end if
