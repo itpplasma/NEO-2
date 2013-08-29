@@ -2320,27 +2320,27 @@ call cpu_time(time1)
     write(propname,*) fieldpropagator%tag
 
     if (prop_fileformat .eq. 1) then
-       call nf90_check(nf90_create('phi_mesh.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_phi_mesh))
+       call nf90_check(nf90_create('phi_mesh.' // trim(adjustl(propname)) // '.dat.nc', NF90_HDF5, ncid_phi_mesh))
        call nc_defineUnlimited(ncid_phi_mesh, 'phi_mfl', NF90_DOUBLE, var_phi_mfl_id)
        call nc_defineUnlimited(ncid_phi_mesh, 'bhat_mfl', NF90_DOUBLE, var_bhat_mfl_id)
        call nc_defineUnlimited(ncid_phi_mesh, 'npassing', NF90_INT, var_npassing_id)
 
-       call nf90_check(nf90_create('dentf_p.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_dentf_p))
+       call nf90_check(nf90_create('dentf_p.' // trim(adjustl(propname)) // '.dat.nc', NF90_HDF5, ncid_dentf_p))
        call nc_define(ncid_dentf_p, 'dentf_p', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_dentf_p_id)
 
-       call nf90_check(nf90_create('dentf_m.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_dentf_m))
+       call nf90_check(nf90_create('dentf_m.' // trim(adjustl(propname)) // '.dat.nc', NF90_HDF5, ncid_dentf_m))
        call nc_define(ncid_dentf_m, 'dentf_m', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_dentf_m_id)
 
-       call nf90_check(nf90_create('spitf_p.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_spitf_p))
+       call nf90_check(nf90_create('spitf_p.' // trim(adjustl(propname)) // '.dat.nc', NF90_HDF5, ncid_spitf_p))
        call nc_define(ncid_spitf_p, 'spitf_p', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_spitf_p_id)
 
-       call nf90_check(nf90_create('spitf_m.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_spitf_m))
+       call nf90_check(nf90_create('spitf_m.' // trim(adjustl(propname)) // '.dat.nc', NF90_HDF5, ncid_spitf_m))
        call nc_define(ncid_spitf_m, 'spitf_m', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_spitf_m_id)
 
-       call nf90_check(nf90_create('enetf_p.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_enetf_p))
+       call nf90_check(nf90_create('enetf_p.' // trim(adjustl(propname)) // '.dat.nc', NF90_HDF5, ncid_enetf_p))
        call nc_define(ncid_enetf_p, 'enetf_p', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_enetf_p_id)
 
-       call nf90_check(nf90_create('enetf_m.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_enetf_m))
+       call nf90_check(nf90_create('enetf_m.' // trim(adjustl(propname)) // '.dat.nc', NF90_HDF5, ncid_enetf_m))
        call nc_define(ncid_enetf_m, 'enetf_m', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_enetf_m_id)
     else
        open(iunit_phi,file='phi_mesh.'                        &
@@ -2443,7 +2443,7 @@ call cpu_time(time1)
     end if
 
     if (prop_fileformat .eq. 1) then
-       call nf90_check(nf90_create('sizeplot_etalev.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_sizeplot_etalev))
+       call nf90_check(nf90_create('sizeplot_etalev.' // trim(adjustl(propname)) // '.dat.nc', NF90_HDF5, ncid_sizeplot_etalev))
 
        call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'lag', lag))
        call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'nplp1', nplp1))
