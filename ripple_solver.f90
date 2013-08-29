@@ -29,14 +29,19 @@ SUBROUTINE ripple_solver(                                 &
   USE propagator_mod,ONLY : prop_ripple_plot,prop_reconstruct,flux_mr,flux_pl, &
                             eta_modboundary_l,eta_modboundary_r,               &
                             sw_first_prop,sw_last_prop,                        &
-                            prop_reconstruct_levels
+                            prop_reconstruct_levels,                           &
+                            prop_fileformat
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
        column_full2pointer,remap_rc,sparse_solver_test
   USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
                                surface_boozer_B00,travis_convfac,              &
                                mag_magfield
        
-USE development
+  USE development
+
+  ! --- NetCDF ---
+  USE nctools_module
+  ! ---
   
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -186,6 +191,15 @@ USE development
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_b,fact_neg_b
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_e,fact_neg_e
 
+  ! --- NetCDF ---
+  integer :: ncid_phi_mesh, ncid_dentf_p, ncid_dentf_m, ncid_spitf_p, ncid_spitf_m, ncid_enetf_p, ncid_enetf_m
+  integer :: ncid_sizeplot_etalev
+  integer :: var_phi_mfl_id, var_bhat_mfl_id, var_npassing_id, var_dentf_p_id, var_dentf_m_id
+  integer :: var_spitf_p_id, var_spitf_m_id, var_enetf_p_id, var_enetf_m_id
+  integer :: dimid4(4)
+  integer :: start(1), start4(4)
+  ! ---
+  
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
   niter=10
   epserr_iter=1.d-3
@@ -2304,29 +2318,65 @@ call cpu_time(time1)
     phiplot=phi_mfl(ibeg)-1.d0
 !
     write(propname,*) fieldpropagator%tag
-    OPEN(iunit_phi,file='phi_mesh.'                        &
-         //trim(adjustl(propname))//'.dat')
-    OPEN(iunit_dt_p,form='unformatted',file='dentf_p.'     &
-         //trim(adjustl(propname))//'.dat')
-    OPEN(iunit_dt_m,form='unformatted',file='dentf_m.'     &
-         //trim(adjustl(propname))//'.dat')
-    OPEN(iunit_sp_p,form='unformatted',file='spitf_p.'     &
-         //trim(adjustl(propname))//'.dat')
-    OPEN(iunit_sp_m,form='unformatted',file='spitf_m.'     &
-         //trim(adjustl(propname))//'.dat')
-    OPEN(iunit_et_p,form='unformatted',file='enetf_p.'     &
-         //trim(adjustl(propname))//'.dat')
-    OPEN(iunit_et_m,form='unformatted',file='enetf_m.'     &
-         //trim(adjustl(propname))//'.dat')
-!
+
+    if (prop_fileformat .eq. 1) then
+       call nf90_check(nf90_create('phi_mesh.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_phi_mesh))
+       call nc_defineUnlimited(ncid_phi_mesh, 'phi_mfl', NF90_DOUBLE, var_phi_mfl_id)
+       call nc_defineUnlimited(ncid_phi_mesh, 'bhat_mfl', NF90_DOUBLE, var_bhat_mfl_id)
+       call nc_defineUnlimited(ncid_phi_mesh, 'npassing', NF90_INT, var_npassing_id)
+
+       call nf90_check(nf90_create('dentf_p.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_dentf_p))
+       call nc_define(ncid_dentf_p, 'dentf_p', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_dentf_p_id)
+
+       call nf90_check(nf90_create('dentf_m.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_dentf_m))
+       call nc_define(ncid_dentf_m, 'dentf_m', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_dentf_m_id)
+
+       call nf90_check(nf90_create('spitf_p.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_spitf_p))
+       call nc_define(ncid_spitf_p, 'spitf_p', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_spitf_p_id)
+
+       call nf90_check(nf90_create('spitf_m.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_spitf_m))
+       call nc_define(ncid_spitf_m, 'spitf_m', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_spitf_m_id)
+
+       call nf90_check(nf90_create('enetf_p.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_enetf_p))
+       call nc_define(ncid_enetf_p, 'enetf_p', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_enetf_p_id)
+
+       call nf90_check(nf90_create('enetf_m.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_enetf_m))
+       call nc_define(ncid_enetf_m, 'enetf_m', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_enetf_m_id)
+    else
+       open(iunit_phi,file='phi_mesh.'                        &
+            //trim(adjustl(propname))//'.dat')
+       open(iunit_dt_p,form='unformatted',file='dentf_p.'     &
+            //trim(adjustl(propname))//'.dat')
+       open(iunit_dt_m,form='unformatted',file='dentf_m.'     &
+            //trim(adjustl(propname))//'.dat')       
+       open(iunit_sp_p,form='unformatted',file='spitf_p.'     &
+            //trim(adjustl(propname))//'.dat')
+       open(iunit_sp_m,form='unformatted',file='spitf_m.'     &
+            //trim(adjustl(propname))//'.dat')
+       open(iunit_et_p,form='unformatted',file='enetf_p.'     &
+            //trim(adjustl(propname))//'.dat')
+       open(iunit_et_m,form='unformatted',file='enetf_m.'     &
+            //trim(adjustl(propname))//'.dat')
+    end if
+
+
+    !
     do istep=ibeg,iend
       if(phi_mfl(istep).lt.phiplot.and.istep.ne.iend) cycle
       icounter=icounter+1
       phiplot=phi_mfl(istep)+delphiplot
       npassing=npl(istep)
       eta0=1.d0/bhat_mfl(istep)
-      WRITE (iunit_phi,*) phi_mfl(istep),npassing,bhat_mfl(istep)
-!
+
+      if (prop_fileformat .eq. 1) then
+         start = icounter
+         call nf90_check(nf90_put_var(ncid_phi_mesh, var_phi_mfl_id, phi_mfl(istep), start))
+         call nf90_check(nf90_put_var(ncid_phi_mesh, var_npassing_id, npassing, start))
+         call nf90_check(nf90_put_var(ncid_phi_mesh, var_bhat_mfl_id, bhat_mfl(istep), start))
+      else
+         write (iunit_phi,*) phi_mfl(istep),npassing,bhat_mfl(istep)
+      end if
+      !
       fun_write=0.d0
       do m=0,lag
         k=ind_start(istep)+2*(npassing+1)*m
@@ -2337,9 +2387,18 @@ call cpu_time(time1)
                                     source_vector(k+i-1:k+i+2,:))
         enddo
       enddo
-      WRITE(iunit_dt_p) fun_write(:,:,:,1)
-      WRITE(iunit_sp_p) fun_write(:,:,:,2)/surface_boozer_B00
-      WRITE(iunit_et_p) fun_write(:,:,:,3)
+
+      if (prop_fileformat .eq. 1) then
+         start4 = (/1,1,1,icounter/)
+         call nf90_check(nf90_put_var(ncid_dentf_p, var_dentf_p_id, fun_write(:,:,:,1), start4))
+         call nf90_check(nf90_put_var(ncid_spitf_p, var_spitf_p_id, fun_write(:,:,:,2)/surface_boozer_B00, start4))
+         call nf90_check(nf90_put_var(ncid_enetf_p, var_enetf_p_id, fun_write(:,:,:,3), start4))
+      else
+         write(iunit_dt_p) fun_write(:,:,:,1)
+         write(iunit_sp_p) fun_write(:,:,:,2)/surface_boozer_B00
+         write(iunit_et_p) fun_write(:,:,:,3)
+      end if
+      
 !
       fun_write=0.d0
       do m=0,lag
@@ -2351,24 +2410,56 @@ call cpu_time(time1)
                                     source_vector(k-i+2:k-i-1:-1,:))
         enddo
       enddo
-      WRITE(iunit_dt_m) fun_write(:,:,:,1)
-      WRITE(iunit_sp_m) fun_write(:,:,:,2)/surface_boozer_B00
-      WRITE(iunit_et_m) fun_write(:,:,:,3)
-!
+
+      if (prop_fileformat .eq. 1) then
+         start4 = (/1,1,1,icounter/)      
+         call nf90_check(nf90_put_var(ncid_dentf_m, var_dentf_m_id, fun_write(:,:,:,1), start4))
+         call nf90_check(nf90_put_var(ncid_spitf_m, var_spitf_m_id, fun_write(:,:,:,2)/surface_boozer_B00, start4))
+         call nf90_check(nf90_put_var(ncid_enetf_m, var_enetf_m_id, fun_write(:,:,:,3), start4))
+     else
+         write(iunit_dt_m) fun_write(:,:,:,1)
+         write(iunit_sp_m) fun_write(:,:,:,2)/surface_boozer_B00
+         write(iunit_et_m) fun_write(:,:,:,3)
+      end if
+
     enddo
 !
-    CLOSE(iunit_phi)
-    CLOSE(iunit_dt_p)
-    CLOSE(iunit_dt_m)
-    CLOSE(iunit_sp_p)
-    CLOSE(iunit_sp_m)
-    CLOSE(iunit_et_p)
-    CLOSE(iunit_et_m)
-    OPEN(iunit_sizes,file='sizeplot_etalev.'               &
-         //trim(adjustl(propname))//'.dat')
-    WRITE(iunit_sizes,*) lag,nplp1,icounter,collpar,travis_convfac
-    WRITE(iunit_sizes,*) eta(0:nplp1)
-    CLOSE(iunit_sizes)
+    if (prop_fileformat .eq. 1) then
+       call nf90_check(nf90_close(ncid_phi_mesh))
+       call nf90_check(nf90_close(ncid_dentf_p))
+       call nf90_check(nf90_close(ncid_dentf_m))
+       call nf90_check(nf90_close(ncid_spitf_m))
+       call nf90_check(nf90_close(ncid_spitf_p))
+       call nf90_check(nf90_close(ncid_enetf_p))
+       call nf90_check(nf90_close(ncid_enetf_m))
+    else
+       close(iunit_phi)
+       close(iunit_dt_p)
+       close(iunit_dt_m)
+       close(iunit_sp_p)
+       close(iunit_sp_m)
+       close(iunit_et_p)
+       close(iunit_et_m)
+    end if
+
+    if (prop_fileformat .eq. 1) then
+       call nf90_check(nf90_create('sizeplot_etalev.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_sizeplot_etalev))
+
+       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'lag', lag))
+       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'nplp1', nplp1))
+       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'icounter', icounter))
+       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'collpar', collpar))
+       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'travis_convfac', travis_convfac))
+       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'eta', eta(0:nplp1)))
+       
+       call nf90_check(nf90_close(ncid_sizeplot_etalev))
+    else
+       open(iunit_sizes,file='sizeplot_etalev.'               &
+            //trim(adjustl(propname))//'.dat')
+       write(iunit_sizes,*) lag,nplp1,icounter,collpar,travis_convfac
+       write(iunit_sizes,*) eta(0:nplp1)
+       close(iunit_sizes)       
+    end if
 !
     DEALLOCATE(fun_write)
 !
