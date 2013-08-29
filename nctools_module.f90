@@ -11,7 +11,12 @@ module nctools_module
      module procedure nc_defineMatrix_int
      module procedure nc_defineArray_double
      module procedure nc_defineArray_int
+     module procedure nc_defineMultiDim
   end interface nc_define
+
+  interface nc_defineUnlimited
+     module procedure nc_defineUnlimitedArray
+  end interface nc_defineUnlimited
 
   interface nc_inquire
      module procedure nc_inquireMatrix_double
@@ -84,6 +89,35 @@ contains
     end if
 
   end subroutine mergeNCFiles
+
+  subroutine nc_defineMultiDim(ncid, name, type, dims, varid)
+    integer :: ncid
+    character(len=*) :: name
+    integer :: type
+    integer, dimension(:) :: dims
+    integer, intent(out) :: varid
+
+    integer, dimension(:), allocatable :: dimid
+    integer :: i
+    character(len=32) :: dimname
+    allocate(dimid(size(dims)))
+
+    do i=1,size(dims)
+       write (dimname, '(A,A,I1)') name, '_dim', i
+       call nf90_check(nf90_def_dim(ncid, dimname, dims(i), dimid(i)))
+    end do
+    call nf90_check(nf90_def_var(ncid, name, type, dimid, varid))
+
+    deallocate(dimid)
+    
+  end subroutine nc_defineMultiDim
+
+       !call nf90_check(nf90_def_dim(ncid_dentf_p, 'dentf_p_dim1', lag+1, dimid4(1)))
+       !call nf90_check(nf90_def_dim(ncid_dentf_p, 'dentf_p_dim2', 4, dimid4(2)))
+       !call nf90_check(nf90_def_dim(ncid_dentf_p, 'dentf_p_dim3', nplp1+1, dimid4(3)))
+       !call nf90_check(nf90_def_dim(ncid_dentf_p, 'dentf_p_dim4', NF90_UNLIMITED, dimid4(4)))
+       !call nc_define(ncid_dentf_p, 'dentf_p', NF90_DOUBLE, (/lag+1, 4, nplp1+1, NF90_UNLIMITED/), var_dentf_p_id)
+       !call nf90_check(nf90_def_var(ncid_dentf_p, 'dentf_p', NF90_DOUBLE, dimid4, var_dentf_p_id))
 
   subroutine nc_defineMatrix_int(ncid, name, var, varid)
     integer :: ncid
@@ -198,5 +232,17 @@ contains
     call nf90_check(nf90_get_att(ncid, varid, "lbound", lb))
     call nf90_check(nf90_get_att(ncid, varid, "ubound", ub))
   end subroutine nc_inquireArray_double
+
+  subroutine nc_defineUnlimitedArray(ncid, name, type, varid)
+    integer :: ncid
+    character(len=*) :: name
+    integer :: type
+    integer, intent(out) :: varid
+
+    integer :: dimid
+
+    call nf90_check(nf90_def_dim(ncid, name // '_dim', NF90_UNLIMITED, dimid))
+    call nf90_check(nf90_def_var(ncid, name, type, dimid, varid))
+  end subroutine nc_defineUnlimitedArray
   
 end module nctools_module
