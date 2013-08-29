@@ -71,7 +71,7 @@ contains
     character(len=300) :: command
 
     write (command, *) "find -regex '"// regex //"' -type f -print0 | xargs -r -0 "// &
-         &trim(nco_path) // "/ncecat -A --gag -o "// resultfilename //" > nc.log 2>&1"
+         &trim(nco_path) // "/ncecat -A --gag -o "// resultfilename //" >> nc.log 2>&1"
     !write (*,*) command
     call system(command, status)
 
