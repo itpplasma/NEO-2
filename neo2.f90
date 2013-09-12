@@ -67,7 +67,7 @@ PROGRAM neo2
   !character(len=100) :: propagators_ncfilename, tempstr
   ! ---
   
-  include "version.f90"
+  !include "version.f90"
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
@@ -316,9 +316,9 @@ PROGRAM neo2
 #if defined(MPI_SUPPORT)
   call mpro%init()
 
-  if (mpro%getRank() == 1) then
-     write (*,*) "NEO-2 Version ", Neo2_Version
-  end if
+  !if (mpro%getRank() == 1) then
+  !   write (*,*) "NEO-2 Version ", Neo2_Version
+  !end if
 
 #endif
 
