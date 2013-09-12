@@ -1800,15 +1800,15 @@ CONTAINS
        ! link actual to current (mainly for results and diagnostic)
        prop_a => prop_c
        ! writing of propagators
-       print *, 'I am before IF (prop_write .EQ. 2) THEN'
+       !print *, 'I am before IF (prop_write .EQ. 2) THEN'
        IF (prop_write .EQ. 2) THEN
-          print *, 'I am before CALL write_propagator_content(prop_a,3)'
+          !print *, 'I am before CALL write_propagator_content(prop_a,3)'
           CALL write_propagator_content(prop_a,3)
           ! WINNY PAR
           ! This should only be done in a parallel run
 #if defined(MPI_SUPPORT)
           if (mpro%isParallel()) then
-             print *, 'I am before write_binarysplit_content(prop_a)' 
+             !print *, 'I am before write_binarysplit_content(prop_a)' 
              CALL write_binarysplit_content(prop_a)
           end if
 #endif
