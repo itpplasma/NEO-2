@@ -59,9 +59,11 @@ contains
     integer, intent(out) :: grpid
     logical, intent(out) :: found
     character(len=256) :: filename
+    integer :: ierr
 
     found = .true.
-    if (nf90_inq_ncid(ncid, name, grpid) /= NF90_NOERR) then
+    ierr = nf90_inq_ncid(ncid, trim(name), grpid);
+    if (ierr /= NF90_NOERR) then
        write(filename,'(100A)') trim(adjustl(name)), '.nc'
        call nf90_check(nf90_open(filename, NF90_NOWRITE, grpid))
        found = .false.

@@ -330,14 +330,15 @@ PROGRAM neo2
 !!$  CALL sparse_example(2)
 !!$  STOP
 !!$  ! ---------------------------------------------------------------------------
-
   IF (prop_reconstruct .EQ. 1) THEN
      PRINT *, 'Reconstruction run!'
 
      if (prop_fileformat .eq. 1) then
-        ierr = nf90_open('propagators.nc', NF90_NOWRITE, ncid_propagators)
-        ierr = nf90_open('propagator_boundaries.nc', NF90_NOWRITE, ncid_propbounds)
-        ierr = nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits)
+        write (*,*) "Opening NetCDF-Files..."
+        call nf90_check(nf90_open('propagators.nc', NF90_NOWRITE, ncid_propagators))
+        call nf90_check(nf90_open('propagators_boundaries.nc', NF90_NOWRITE, ncid_propbounds))
+        ierr =  nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits)
+        write (*,*) "Done!"
      end if
      
      CALL reconstruct_prop_dist
