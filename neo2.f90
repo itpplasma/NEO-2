@@ -4,7 +4,7 @@ PROGRAM neo2
 ! To compile the -cpp flag has to be added for c preprocessor
 #if defined(MPI_SUPPORT)
   USE mpiprovider_module
-  USE parallelstorage_module, ONLY : parallel_storage
+  USE parallelstorage_module, ONLY : globalstorage
 #endif
 
   USE size_mod
@@ -361,8 +361,8 @@ PROGRAM neo2
 
 #if defined(MPI_SUPPORT)
         ! Give every client an own evolve.dat file
-        write (parallel_storage%evolveFilename, "(A, I3.3, A)"), 'evolve', mpro%getRank(), '.dat'
-        OPEN(uw,file=parallel_storage%evolveFilename, status='replace')
+        write (globalstorage%evolveFilename, "(A, I3.3, A)"), 'evolve', mpro%getRank(), '.dat'
+        OPEN(uw,file=globalstorage%evolveFilename, status='replace')
         CLOSE(uw)
 #else
         ! Sequential behaviour

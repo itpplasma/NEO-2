@@ -2792,10 +2792,10 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
       ! Run program in parallel mode
 
       ! Set some variables the scheduler needs to access
-      parallel_storage%bin_split_mode = bin_split_mode
-      parallel_storage%eta_ori = eta_ori
-      parallel_storage%fieldperiod => fieldperiod
-      parallel_storage%fieldline => fieldline
+      globalstorage%bin_split_mode = bin_split_mode
+      globalstorage%eta_ori = eta_ori
+      globalstorage%fieldperiod => fieldperiod
+      globalstorage%fieldline => fieldline
 
       ! Initialize the scheduler
       call sched%init()
