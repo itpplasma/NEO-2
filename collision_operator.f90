@@ -59,17 +59,9 @@ MODULE collop
   LOGICAL, PUBLIC :: collop_talk_much =  .TRUE. 
 
   ! path to data
-#if defined(VSC2)
-  CHARACTER(len=100), PUBLIC :: collop_path = '/home/lv70337/gernot_k/Neo2/data-MatrixElements/'
-#else
-#if defined(ZID)
-  CHARACTER(len=100), PUBLIC :: collop_path = '/home/gernot_k/Neo2/data-MatrixElements/'
-#else
-  ! This is ITP-Cluster
-  ! CHARACTER(len=100), PUBLIC :: collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
-  CHARACTER(len=100), PUBLIC :: collop_path = '/temp/gernot_k/Neo2/data-MatrixElements/'
-#endif
-#endif
+  !CHARACTER(len=100), PUBLIC :: collop_path = '/home/lv70337/gernot_k/Neo2/data-MatrixElements/'
+  !CHARACTER(len=100), PUBLIC :: collop_path = '/home/gernot_k/Neo2/data-MatrixElements/'
+  CHARACTER(len=300), PUBLIC :: collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
 
 ! file names
   CHARACTER(len=100), PUBLIC :: collop_file_A        = 'SourceAa123m_Cm.dat'

@@ -114,7 +114,7 @@ contains
     
   end subroutine nc_defineMultiDim
 
-   subroutine nc_defineMatrix_int(ncid, name, var, varid)
+  subroutine nc_defineMatrix_int(ncid, name, var, varid)
     integer :: ncid
     character(len=*) :: name
     integer, dimension(:,:), allocatable :: var

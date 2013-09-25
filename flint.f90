@@ -2798,6 +2798,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
       globalstorage%fieldline => fieldline
 
       ! Initialize the scheduler
+      sched%configFilename = 'neo2.in'
       call sched%init()
 
       ! Prepare runs the initial workunit, if defined
@@ -2815,6 +2816,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 #endif
 
 
+    
 !!$     allprops_comp: DO      ! WHILE (fieldpropagator%tag .LE. proptag_end)
 !!$        ! information about propagator
 !!$        CALL info_magnetics(fieldpropagator)

@@ -25,7 +25,9 @@ PROGRAM neo2
        prop_diagnostic,prop_binary,                                 &
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
-       prop_reconstruct_levels
+       prop_reconstruct_levels,                                     & 
+       ncid_propagators, prop_fileformat, mergeAllNCFiles,          &
+       ncid_binarysplits, ncid_propbounds, ncid_recon
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
        mag_magfield,mag_nperiod_min,mag_save_memory,                &
@@ -41,12 +43,14 @@ PROGRAM neo2
        bsfunc_sigma_mult, bsfunc_sigma_min, bsfunc_local_solver   
   USE binarysplit_int, ONLY : linspace
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
-       collop_load, collop_unload, z_eff
+       collop_load, collop_unload, z_eff, collop_path
   USE rkstep_mod, ONLY : lag,leg,legmax
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
+  USE nctools_module
+  USE netcdf
 
   IMPLICIT NONE
 
@@ -57,7 +61,13 @@ PROGRAM neo2
   ! Used for MPI support
   ! This string is used to give every client an own evolve.dat file
   character(len=32) :: strEvolveFilename
-  include "version.f90"
+
+  ! --- Experimental NetCDF ---
+  integer :: ierr, i
+  !character(len=100) :: propagators_ncfilename, tempstr
+  ! ---
+  
+  !include "version.f90"
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
@@ -109,7 +119,8 @@ PROGRAM neo2
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
-       isw_momentum,vel_distri_swi,vel_num,vel_max
+       isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
+       collop_path
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -130,7 +141,8 @@ PROGRAM neo2
        mag_talk,mag_infotalk,                                                 &
        hphi_lim,                                                              &
        prop_write,prop_reconstruct,prop_ripple_plot,                          &
-       prop_reconstruct_levels
+       prop_reconstruct_levels,                                               &
+       prop_fileformat, nco_path
   NAMELIST /plotting/                                                         &
        plot_gauss,plot_prop
   ! ---------------------------------------------------------------------------
@@ -181,7 +193,8 @@ PROGRAM neo2
   boozer_phi_beg = 0.0_dp
   sparse_talk = .FALSE.
 !  sparse_solve_method = 0
-  ! collision 
+  ! collision
+  collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
   conl_over_mfp = 1.0d-3
   lag=10
   leg=20
@@ -237,6 +250,8 @@ PROGRAM neo2
   prop_join_ends = 0
   prop_fluxsplitmode = 1
   prop_write = 0
+  prop_fileformat = 0 ! 0... ACSII, 1... NetCDF
+  nco_path = '/usr/bin/'
   prop_reconstruct = 0
   prop_ripple_plot = 0
   prop_reconstruct_levels = 0
@@ -301,9 +316,9 @@ PROGRAM neo2
 #if defined(MPI_SUPPORT)
   call mpro%init()
 
-  if (mpro%getRank() == 1) then
-     write (*,*) "NEO-2 Version ", Neo2_Version
-  end if
+  !if (mpro%getRank() == 1) then
+  !   write (*,*) "NEO-2 Version ", Neo2_Version
+  !end if
 
 #endif
 
@@ -315,13 +330,36 @@ PROGRAM neo2
 !!$  CALL sparse_example(2)
 !!$  STOP
 !!$  ! ---------------------------------------------------------------------------
-
   IF (prop_reconstruct .EQ. 1) THEN
      PRINT *, 'Reconstruction run!'
+
+     if (prop_fileformat .eq. 1) then
+        write (*,*) "Opening NetCDF-Files..."
+        call nf90_check(nf90_open('propagators.nc', NF90_NOWRITE, ncid_propagators))
+        call nf90_check(nf90_open('propagators_boundaries.nc', NF90_NOWRITE, ncid_propbounds))
+        ierr =  nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits)
+        write (*,*) "Done!"
+     end if
+     
      CALL reconstruct_prop_dist
+
+     if (prop_fileformat .eq. 1) then
+        ierr = nf90_close(ncid_propagators)
+        ierr = nf90_close(ncid_propbounds)
+        ierr = nf90_close(ncid_binarysplits)
+     end if
+
+     call mergeAllNCFiles()
+     
      PRINT *, 'No further calculations!'
      STOP
   END IF
+
+  if (prop_reconstruct .eq. 2) then
+     if (prop_fileformat .eq. 1) then
+        ierr = nf90_open('reconstructs.nc', NF90_NOWRITE, ncid_recon)
+     end if
+  end if
 
   ! ---------------------------------------------------------------------------
   ! matrix elements
@@ -369,8 +407,21 @@ PROGRAM neo2
         OPEN(uw,file='evolve.dat',status='replace')
         CLOSE(uw)
 #endif
+        if (prop_fileformat .eq. 1) then
+           if (mpro%isParallel()) then
+           !   write (propagators_ncfilename, "(A, I3.3, A)") 'propagators.', mpro%getRank(), '.nc' 
+           else
+           !   write (propagators_ncfilename, "(A)") "propagators.nc"
+           end if
 
+           if ((mpro%isParallel() .and. .not. mpro%isMaster()) .or. (.not. mpro%isParallel())) then
+           !   ierr = nf90_create(propagators_ncfilename, NF90_NetCDF4, ncid_propagators)
+           !   ierr = nf90_enddef(ncid_propagators)
+           end if
+        end if
   END IF
+
+
   ! ---------------------------------------------------------------------------
      
  
@@ -452,8 +503,17 @@ PROGRAM neo2
      ! ------------------------------------------------------------------------
   !ELSE
   !   PRINT *, 'NOTHING TO COMPUTE'
-  !END IF
+     !END IF
 
+  if (prop_reconstruct .eq. 2) then
+     if (prop_fileformat .eq. 1) then
+        ierr = nf90_close(ncid_recon)
+     end if
+  end if
+     
+     call mergeAllNCFiles()
+
+  !end if
   ! MPI support
 #if defined(MPI_SUPPORT)
   call mpro%deinit()
