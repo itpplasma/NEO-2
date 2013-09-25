@@ -6,7 +6,7 @@ enable_language (Fortran)
 
 include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 include (${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
-#include (${CMAKE_SOURCE_DIR}/ProjectVersion.cmake.in)
+include (${CMAKE_SOURCE_DIR}/ProjectVersion.cmake.in)
 
 option(MPI_SUPPORT "Should NEO-2 be built with MPI-Support?" ON)
 option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
