@@ -73,11 +73,11 @@ module wuGenericNeo2Workunit_module
 
     ! Call the Neo-2 algorithm for solving propagators from propagator.f90
     call propagator_solver(this%proptag_start_client, this%proptag_end_client, &
-                           parallel_storage%bin_split_mode, parallel_storage%eta_ori, parallelMode = .true.)
+                           globalstorage%bin_split_mode, globalstorage%eta_ori, parallelMode = .true.)
 
     ! Do some performance recordings
-    parallel_Storage%countSolver = parallel_Storage%countSolver + 1
-    parallel_Storage%timeSolver = parallel_Storage%timeSolver + (MPI_WTime() - stime)
+    globalstorage%countSolver = globalstorage%countSolver + 1
+    globalstorage%timeSolver = globalstorage%timeSolver + (MPI_WTime() - stime)
 
     !Fixed Memory Leak
     !nullify(this%prop_res)
@@ -200,8 +200,8 @@ module wuGenericNeo2Workunit_module
       call external_joining()
 
       ! Do some performance recordings
-      parallel_Storage%timeJoiner = parallel_Storage%timeJoiner + (MPI_WTime() - stime)
-      parallel_Storage%countJoiner = parallel_Storage%countJoiner + 1
+      globalstorage%timeJoiner = globalstorage%timeJoiner + (MPI_WTime() - stime)
+      globalstorage%countJoiner = globalstorage%countJoiner + 1
 
       ! If uncommenting the following two lines, a segmentation fault will happen...?
       !deallocate(prop1)

@@ -23,6 +23,6 @@ module parallelStorage_module
           character(len=32) :: evolveFilename
      end type
 
-     type(parallelStorage) :: parallel_storage
+     type(parallelStorage) :: globalstorage
 
 end module parallelStorage_module

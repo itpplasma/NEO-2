@@ -32,13 +32,13 @@ contains
 
     ! Calculate client count and fieldperiods count
     client_count = mpro%getNumProcs() - 1
-    fperiod_count = parallel_storage%fieldline%ch_las%tag - parallel_storage%fieldline%ch_fir%tag + 1
+    fperiod_count = globalstorage%fieldline%ch_las%tag - globalstorage%fieldline%ch_fir%tag + 1
 
     ! Part the number of fieldperiods to the number of clients
     call this%partNearlyFair(fperiod_count)
 
     ! Store some global variables
-    parallel_storage%fieldperiod => parallel_storage%fieldline%ch_fir
+    globalstorage%fieldperiod => globalstorage%fieldline%ch_fir
 
     ! Iterate through the number of clients
     do current_client = 1, client_count
@@ -47,8 +47,8 @@ contains
       do current_workunit_client = 1, this%workunits_per_client(current_client)
 
         ! Fill workunit with data
-        proptag_start_client = parallel_storage%fieldperiod%ch_fir%tag
-        proptag_end_client   = parallel_storage%fieldperiod%ch_las%tag
+        proptag_start_client = globalstorage%fieldperiod%ch_fir%tag
+        proptag_end_client   = globalstorage%fieldperiod%ch_las%tag
 
         !write (*,*) "Client", current_client, proptag_start_client, proptag_end_client
 
@@ -56,8 +56,8 @@ contains
         call this%createWorkunit(current_client, proptag_start_client, proptag_end_client)
 
         ! Go to the next fieldperiod
-        if (associated(parallel_storage%fieldperiod%next)) then
-          parallel_storage%fieldperiod => parallel_storage%fieldperiod%next
+        if (associated(globalstorage%fieldperiod%next)) then
+          globalstorage%fieldperiod => globalstorage%fieldperiod%next
         else
           write (*,*) "This was the last fieldperiod!"
         end if
@@ -128,10 +128,10 @@ contains
   subroutine deinit_neo2scheduler(this)
     class(neo2scheduler) :: this
 
-!    write (*,*) "Client", mpro%getRank(), " Solver: ", parallel_Storage%timeSolver / parallel_Storage%countSolver, &
-!                                                       parallel_Storage%countSolver, &
-!                                          " Joiner: ", parallel_Storage%timeJoiner / parallel_Storage%countJoiner, &
-!                                                       parallel_Storage%countJoiner
+!    write (*,*) "Client", mpro%getRank(), " Solver: ", globalstorage%timeSolver / globalstorage%countSolver, &
+!                                                       globalstorage%countSolver, &
+!                                          " Joiner: ", globalstorage%timeJoiner / globalstorage%countJoiner, &
+!                                                       globalstorage%countJoiner
 
     call this%scheduler%deinit()
   end subroutine deinit_neo2scheduler
