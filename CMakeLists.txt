@@ -1,10 +1,12 @@
 cmake_minimum_required (VERSION 2.6)
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+
 project (NEO-2-Par)
 enable_language (Fortran)
 
 include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 include (${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
-include (${CMAKE_SOURCE_DIR}/ProjectVersion.cmake.in)
+#include (${CMAKE_SOURCE_DIR}/ProjectVersion.cmake.in)
 
 option(MPI_SUPPORT "Should NEO-2 be built with MPI-Support?" ON)
 option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
@@ -16,6 +18,7 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
         #gfortran -I/usr/lib/openmpi/include -pthread -I/usr/lib/openmpi/lib -L/usr//lib -L/usr/lib/openmpi/lib -lmpi_f90 -lmpi_f77 -lmpi -ldl -lhwloc
 
         include_directories(${INCLUDEDIRS_MPI_GNU})
+	include_directories(/usr/include)
         link_directories(${LINKDIRS_MPI_GNU})
 	set(MPI_lib -lmpi_f90 -lmpi_f77 -lmpi -lopen-rte -lopen-pal -ldl -Wl,--export-dynamic -lnsl -lutil -lm -ldl)
 
@@ -67,7 +70,9 @@ endif ()
 
 ### Build name extension
 exec_program("uname -m" OUTPUT_VARIABLE ARCH)
-set(EXE_NAME "neo_2.x-${CMAKE_Fortran_COMPILER_ID}_${ARCH}")
+exec_program("git rev-parse --abbrev-ref HEAD" OUTPUT_VARIABLE BRANCH)
+exec_program("date +%Y-%m-%d" OUTPUT_VARIABLE DATE)
+set(EXE_NAME "neo_2.x-${CMAKE_Fortran_COMPILER_ID}_${CMAKE_BUILD_TYPE}_${BRANCH}_${DATE}")
 
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -82,6 +87,8 @@ find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(SuiteSparseConfig_lib suitesparseconfig ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
+find_library(NetCDF_lib netcdf)
+find_library(NetCDFf_lib netcdff)
 
 ### Source files
 include (CMakeSources.txt)
@@ -94,16 +101,15 @@ add_executable(${EXE_NAME}
 	${MPI_SRC_FILES}
 )
 
-        target_link_libraries(${EXE_NAME}
-                ${SuperLU_lib}
-                ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
-		#${SuiteSparseConfig_lib}
-                ${MyMPILib_lib}
-                ${MPE_lib}
-		${MPI_lib}
-		lapack
-		blas
+target_link_libraries(${EXE_NAME}
+        ${SuperLU_lib}
+        ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
+	#${SuiteSparseConfig_lib}
+        ${MyMPILib_lib}
+        ${MPE_lib}
+	${MPI_lib}
+	-Wl,--start-group -L/usr/lib/ -lnetcdf -lnetcdff -Wl,--end-group
+	${BLAS_lib}
         )
-        install (TARGETS ${EXE_NAME} DESTINATION /temp/gernot_k/)
-	set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
-
+install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
+set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)

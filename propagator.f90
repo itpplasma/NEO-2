@@ -82,6 +82,11 @@ MODULE propagator_mod
   USE mpiprovider_module
 #endif
 
+  ! Experimental NetCDF Support
+  USE nctools_module
+  USE netcdf
+  ! ---
+
   IMPLICIT NONE
   
   ! ---------------------------------------------------------------------------
@@ -108,7 +113,7 @@ MODULE propagator_mod
   INTEGER,                       PRIVATE         :: prop_last_tag = 0
 
 
-
+  
   ! ---------------------------------------------------------------------------
 
 
@@ -121,6 +126,8 @@ MODULE propagator_mod
   INTEGER,            PUBLIC  :: prop_join_ends = 0
   INTEGER,            PUBLIC  :: prop_fluxsplitmode = 1
   INTEGER,            PUBLIC  :: prop_write = 0
+  integer,            public  :: prop_fileformat = 0     ! 0... ACSII, 1... NetCDF
+  !character(len=300), public  :: nco_path = '/usr/bin'   ! Location of NCO-Tools (used for merging the NetCDF-Files)
   INTEGER,            PUBLIC  :: prop_reconstruct = 0
   INTEGER,            PUBLIC  :: prop_ripple_plot = 0
   ! usage for communication purposes
@@ -135,7 +142,19 @@ MODULE propagator_mod
   !
   ! new switch for reconstruction of levels
   INTEGER,            PUBLIC  :: prop_reconstruct_levels = 0
-  
+
+  ! --- NetCDF Support ---
+
+  ! Compression settings for matrices
+  integer :: nc_deflate_level = 0
+  LOGICAL :: nc_shuffle = .false.
+
+  ! Global ncids for open NetCDF-Files
+  INTEGER :: ncid_propagators
+  INTEGER :: ncid_propbounds
+  INTEGER :: ncid_binarysplits
+  INTEGER :: ncid_recon
+  ! ---
 
 
   ! ---------------------------------------------------------------------------
@@ -384,6 +403,8 @@ MODULE propagator_mod
 CONTAINS
 
   ! ---------------------------------------------------------------------------
+
+
   SUBROUTINE construct_prop(before_in)
 
     INTEGER, OPTIONAL :: before_in
@@ -885,6 +906,10 @@ CONTAINS
     USE collop, ONLY : z_eff
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield
 
+    ! --- Experimental NetCDF Demonstration ---
+    use netcdf
+    ! ---
+    
     INTEGER, INTENT(in) :: iend
 
     LOGICAL :: opened
@@ -913,6 +938,20 @@ CONTAINS
     INTEGER :: i, i_p, j, j_p
     INTEGER :: full_version
 
+    ! --- Experimental NetCDF Demonstration ---
+      
+    ! efinal
+    integer :: ncid, ierr
+    integer :: y_dimid
+    integer :: var_phi_id, var_y_id, var_aiota_loc_id, var_dmono_over_dplateau_id, var_epseff3_2_id
+    integer :: var_alambda_b_id, var_qflux_g_id, var_qflux_e_id, var_qcurr_g_id, var_qcurr_e_id, var_alambda_bb_id
+    integer :: var_gamma_E_id, var_g_bs_id, var_r0_id, var_bmod0_id
+    
+    ! fulltransp
+    integer :: gamma_out_dimid(2)
+    integer :: var_collpar_id, var_z_eff_id, var_avnabpsi_id, var_avbhat2_id, var_dl1obhat_id, var_gamma_out_id
+    
+    
     ! taken from Sergei
 !->out    qflux_g = prop_a%p%qflux_g
 !->out    qcurr_g = prop_a%p%qcurr_g
@@ -1017,6 +1056,40 @@ CONTAINS
             gamma_out
        CLOSE(uw)
 
+       ! ----------- Experimental NetCDF Demonstration ------
+       
+       call nf90_check(nf90_create('fulltransp.nc', NF90_CLOBBER, ncid))
+       !call nf90_check(nf90_def_dim(ncid, "scalar", 1, scalar_dimid))
+       call nf90_check(nf90_def_dim(ncid, "gamma_out_dim1", size(gamma_out,1), gamma_out_dimid(1)))
+       call nf90_check(nf90_def_dim(ncid, "gamma_out_dim2", size(gamma_out,2), gamma_out_dimid(2)))
+       
+       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'full_version',  full_version))
+       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_lorentz',   isw_lorentz))
+       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_integral',  isw_integral)       )
+       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_energy',    isw_energy))
+       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'lag',           lag))
+       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'leg',           leg))
+       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'conl_over_mfp', conl_over_mfp))
+       
+       call nf90_check(nf90_def_var(ncid, 'collpar',   NF90_DOUBLE, varid = var_collpar_id))
+       call nf90_check(nf90_def_var(ncid, 'z_eff',     NF90_DOUBLE, varid = var_z_eff_id))
+       call nf90_check(nf90_def_var(ncid, 'avnabpsi',  NF90_DOUBLE, varid = var_avnabpsi_id))
+       call nf90_check(nf90_def_var(ncid, 'avbhat2',   NF90_DOUBLE, varid = var_avbhat2_id))
+       call nf90_check(nf90_def_var(ncid, 'dl1obhat',  NF90_DOUBLE, varid = var_dl1obhat_id))
+       call nf90_check(nf90_def_var(ncid, 'gamma_out', NF90_DOUBLE, gamma_out_dimid, var_gamma_out_id))
+       
+       call nf90_check(nf90_enddef(ncid))
+       
+       call nf90_check(nf90_put_var(ncid, var_collpar_id, collpar))
+       call nf90_check(nf90_put_var(ncid, var_z_eff_id, z_eff))
+       call nf90_check(nf90_put_var(ncid, var_avnabpsi_id, avnabpsi))
+       call nf90_check(nf90_put_var(ncid, var_avbhat2_id, avbhat2))
+       call nf90_check(nf90_put_var(ncid, var_dl1obhat_id, dl1obhat))
+       call nf90_check(nf90_put_var(ncid, var_gamma_out_id, gamma_out)   )  
+       
+       call nf90_check(nf90_close(ncid))
+       
+
        OPEN(uw,file='efinal.dat',status='replace')
        WRITE (uw,'(1000(1x,e18.5))')                                   &
          (phi),(y(1:2)),(aiota_loc),                    &
@@ -1027,6 +1100,50 @@ CONTAINS
          (device%r0),(surface%bmod0), &
          y(6),y(7),y(9),y(13),y(14)
        CLOSE(uw)
+
+       
+       ! ----------- Experimental NetCDF Demonstration ----------
+       call nf90_check(nf90_create("efinal.nc", NF90_CLOBBER, ncid))
+
+       call nf90_check(nf90_def_dim(ncid, "y_dim", size(y), y_dimid))
+
+       call nf90_check(nf90_def_var(ncid, "phi",                 NF90_DOUBLE, varid = var_phi_id))
+       !call nf90_check(nf90_def_var(ncid, "y(1:2)",              NF90_DOUBLE, y2_dimid, var_y12_id))
+       call nf90_check(nf90_def_var(ncid, "aiota_loc",           NF90_DOUBLE, varid = var_aiota_loc_id))
+       call nf90_check(nf90_def_var(ncid, "dmono_over_dplateau", NF90_DOUBLE, varid = var_dmono_over_dplateau_id))
+       call nf90_check(nf90_def_var(ncid, "epseff3_2",           NF90_DOUBLE, varid = var_epseff3_2_id))
+       call nf90_check(nf90_def_var(ncid, "alambda_b",           NF90_DOUBLE, varid = var_alambda_b_id))
+       call nf90_check(nf90_def_var(ncid, "qflux_g",             NF90_DOUBLE, varid = var_qflux_g_id))
+       call nf90_check(nf90_def_var(ncid, "qflux_e",             NF90_DOUBLE, varid = var_qflux_e_id))
+       call nf90_check(nf90_def_var(ncid, "qcurr_g",             NF90_DOUBLE, varid = var_qcurr_g_id))
+       call nf90_check(nf90_def_var(ncid, "qcurr_e",             NF90_DOUBLE, varid = var_qcurr_e_id))
+       call nf90_check(nf90_def_var(ncid, "alambda_bb",          NF90_DOUBLE, varid = var_alambda_bb_id))
+       call nf90_check(nf90_def_var(ncid, "gamma_E",             NF90_DOUBLE, varid = var_gamma_E_id))
+       call nf90_check(nf90_def_var(ncid, "g_bs",                NF90_DOUBLE, varid = var_g_bs_id))
+       call nf90_check(nf90_def_var(ncid, "r0",                  NF90_DOUBLE, varid = var_r0_id))
+       call nf90_check(nf90_def_var(ncid, "bmod0",               NF90_DOUBLE, varid = var_bmod0_id))
+       call nf90_check(nf90_def_var(ncid, "y",                   NF90_DOUBLE, y_dimid, var_y_id))
+
+       call nf90_check(nf90_enddef(ncid))
+
+       call nf90_check(nf90_put_var(ncid, var_phi_id, phi))
+       !call nf90_check(nf90_put_var(ncid, var_y_id, y(1:2)))
+       call nf90_check(nf90_put_var(ncid, var_aiota_loc_id, aiota_loc))
+       call nf90_check(nf90_put_var(ncid, var_dmono_over_dplateau_id, dmono_over_dplateau))
+       call nf90_check(nf90_put_var(ncid, var_epseff3_2_id, epseff3_2))
+       call nf90_check(nf90_put_var(ncid, var_alambda_b_id, alambda_b))
+       call nf90_check(nf90_put_var(ncid, var_qflux_g_id, qflux_g))
+       call nf90_check(nf90_put_var(ncid, var_qflux_e_id, qflux_e))
+       call nf90_check(nf90_put_var(ncid, var_qcurr_g_id, qcurr_g))
+       call nf90_check(nf90_put_var(ncid, var_qcurr_e_id, qcurr_e))
+       call nf90_check(nf90_put_var(ncid, var_alambda_bb_id, alambda_bb))
+       call nf90_check(nf90_put_var(ncid, var_gamma_E_id, gamma_E))
+       call nf90_check(nf90_put_var(ncid, var_g_bs_id, g_bs))
+       call nf90_check(nf90_put_var(ncid, var_r0_id, device%r0))
+       call nf90_check(nf90_put_var(ncid, var_bmod0_id, surface%bmod0))
+       call nf90_check(nf90_put_var(ncid, var_y_id, y))
+
+       call nf90_check(nf90_close(ncid))
 
     END IF
 
@@ -1683,15 +1800,15 @@ CONTAINS
        ! link actual to current (mainly for results and diagnostic)
        prop_a => prop_c
        ! writing of propagators
-       print *, 'I am before IF (prop_write .EQ. 2) THEN'
+       !print *, 'I am before IF (prop_write .EQ. 2) THEN'
        IF (prop_write .EQ. 2) THEN
-          print *, 'I am before CALL write_propagator_content(prop_a,3)'
+          !print *, 'I am before CALL write_propagator_content(prop_a,3)'
           CALL write_propagator_content(prop_a,3)
           ! WINNY PAR
           ! This should only be done in a parallel run
 #if defined(MPI_SUPPORT)
           if (mpro%isParallel()) then
-             print *, 'I am before write_binarysplit_content(prop_a)' 
+             !print *, 'I am before write_binarysplit_content(prop_a)' 
              CALL write_binarysplit_content(prop_a)
           end if
 #endif
@@ -1877,7 +1994,7 @@ CONTAINS
                    CALL cpu_time(time_jf)
                    stime_jf = stime_jf + time_jf - time_o
                 END IF
-             ELSE
+             ELSE 
                 ! join ends
                 IF (prop_join_ends .EQ. 1) THEN
                    i_joined = 1
@@ -1907,12 +2024,13 @@ CONTAINS
                    end if
 #endif
                 END IF
-                IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
-                   ! Lines commented out by Gernot
+                !IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
+                   ! --- Lines commented out by Gernot ---
+                   ! --- otherwise taginfo.prop is replaced by a wrong version ---
 		   ! taginfo
                    !CALL unit_propagator
                    !OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-                   !    form=prop_format,action='write')
+                   !     form=prop_format,action='write')
                    ! WINNY PAR
                    ! The last tag is wrong in a parallel run
                    !WRITE(prop_unit,*) prop_write
@@ -1920,7 +2038,7 @@ CONTAINS
                    !WRITE(prop_unit,*) prop_last_tag
                    ! WINNY PAR END
                    !CLOSE(unit=prop_unit)
-                END IF
+                !END IF
                 EXIT
              END IF
           END DO
@@ -2314,8 +2432,36 @@ CONTAINS
   END SUBROUTINE join_ripples_int
   ! ---------------------------------------------------------------------------
 
-  SUBROUTINE write_propagator_cont(o,prop_type,prop_showall_in)
+  subroutine mergeAllNCFiles
+    integer :: status
+    character(len=300) :: command
+    if (prop_fileformat .eq. 1) then
+       
+       if ((mpro%isParallel() .and. (mpro%isMaster()) ) .or. (.not. mpro%isParallel())) then
+
+          write (*,*) "Merging NetCDF-Files, please wait..."
+
+          call mergeNCFiles('\.\/propagator_[0-9]*_[0-9]*\.prop\.nc*$', 'propagators.nc')
+          call mergeNCFiles('\.\/propagator_boundary_[0-9]*_[0-9]*\.prop\.nc*$', 'propagators_boundaries.nc')
+          call mergeNCFiles('\.\/binarysplit_[0-9]*_[0-9]*\.prop\.nc*$', 'binarysplits.nc')
+          call mergeNCFiles('\.\/reconstruct_[0-9]*_[0-9]*\.prop\.nc*$', 'reconstructs.nc')
+          call mergeNCFiles('\.\/phi_mesh\.[0-9]*\.dat.nc*$', 'phi_mesh.nc')
+          call mergeNCFiles('\.\/spitf_p\.[0-9]*\.dat\.nc*$', 'spitf_p.nc')
+          call mergeNCFiles('\.\/spitf_m\.[0-9]*\.dat\.nc*$', 'spitf_m.nc')
+          call mergeNCFiles('\.\/enetf_p\.[0-9]*\.dat\.nc*$', 'enetf_p.nc')
+          call mergeNCFiles('\.\/enetf_m\.[0-9]*\.dat\.nc*$', 'enetf_m.nc')
+          call mergeNCFiles('\.\/dentf_p\.[0-9]*\.dat\.nc*$', 'dentf_p.nc')
+          call mergeNCFiles('\.\/dentf_m\.[0-9]*\.dat\.nc*$', 'dentf_m.nc')
+          call mergeNCFiles('\.\/sizeplot_etalev\.[0-9]*\.dat\.nc*$', 'sizeplot_etalev.nc')
+
+          write (*,*) "NetCDF-Files merged."
+       end if
+    end if
+  end subroutine mergeAllNCFiles
+     
+  subroutine write_propagator_cont(o,prop_type,prop_showall_in)
     ! writes the content of a propagator, which is specified in pointer o
+
     TYPE(propagator), POINTER  :: o
 
     INTEGER, INTENT(in) :: prop_type
@@ -2326,12 +2472,26 @@ CONTAINS
     INTEGER :: prop_end
     INTEGER :: prop_showall
 
-    IF (PRESENT(prop_showall_in)) THEN
-       prop_showall = prop_showall_in
-    ELSE
-       prop_showall = 1
-    END IF
+    ! Experimental NetCDF Support
 
+    character(len=100) :: prop_cfilename_nc
+    integer :: ncid_propagator, grpid
+
+    integer :: var_y_id, var_amat_p_p_id, var_amat_m_m_id, var_amat_p_m_id, var_amat_m_p_id
+    integer :: var_source_p_id, var_source_m_id
+    integer :: var_flux_p_id, var_flux_m_id
+    integer :: var_qflux_id
+    integer :: var_eta_l_id, var_eta_r_id
+    double precision :: stime, etime
+     
+    ! ---
+     
+    if (present(prop_showall_in)) then
+       prop_showall = prop_showall_in
+    else
+       prop_showall = 1
+    end if
+    
     prop_bound = 0
     IF (prop_type .EQ. 1) THEN ! period
        prop_start = o%fieldperiod_tag_s
@@ -2348,184 +2508,311 @@ CONTAINS
     END IF
 
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end) 
-    CALL unit_propagator
-    OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
-         form=prop_format,action='write')
-    
-    ! what is written for prop_showall = 1
-    !    tags  : prop_start,prop_end
-    !    info  : o%nr_joined ....  o%phi_r
-    !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
-    !    amat_p_p
-    !    amat_m_m
-    !    amat_p_m
-    !    amat_m_p
-    !    source_p
-    !    source_m
-    !    flux_p
-    !    flux_m
-    !    qflux
-    !    eta
-
-    !
-    ! what is written for prop_showall > 1 (reduced for joined)
-    !    tags  : prop_start,prop_end
-    !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
-    !    amat_p_p
-    !    amat_m_p
-    !    source_p
 
 
-    ! tags
-    WRITE(prop_unit,*) prop_start
-    WRITE(prop_unit,*) prop_end
-    
-    ! info
-    IF (prop_showall .EQ. 1) THEN
-       WRITE(prop_unit,*) o%nr_joined
-       WRITE(prop_unit,*) o%fieldpropagator_tag_s
-       WRITE(prop_unit,*) o%fieldpropagator_tag_e
-       WRITE(prop_unit,*) o%fieldperiod_tag_s
-       WRITE(prop_unit,*) o%fieldperiod_tag_e
-       IF (ALLOCATED(o%y)) THEN
-          WRITE(prop_unit,*) LBOUND(o%y,1),UBOUND(o%y,1)
-          WRITE(prop_unit,*) o%y
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       WRITE(prop_unit,*) o%phi_l
-       WRITE(prop_unit,*) o%phi_r
-    END IF
+    if (prop_fileformat .eq. 1) then
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
 
-    ! Binarysplit stuff is not dumped / this is the only thing with prop_showall = 0
-    ! It is not really used
-    IF (prop_showall .EQ. 0) THEN
-       WRITE(prop_unit,*) o%bin_split_mode
-    END IF
+       call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_propagator))
+       grpid = ncid_propagator
+       
+!       stime = MPI_WTIME()
+!       call nf90_check(nf90_open('propagators.nc', nf90_write, ncid_propagators)
+!       if (ierr /= NF90_NOERR) then
+!          call nf90_check(nf90_create('propagators.nc', nf90_hdf5, ncid_propagators)
+!       end if
+!       write (*,*) "Time for creation or opening: ", MPI_WTime() - stime
 
-    ! sizes
-    IF (prop_showall .GE. 1) THEN
-       WRITE(prop_unit,*) o%p%npart
-       WRITE(prop_unit,*) o%p%npass_l
-       WRITE(prop_unit,*) o%p%npass_r
-       WRITE(prop_unit,*) o%p%nvelocity
-    END IF
-    ! amat_p_p
-    IF (prop_showall .GE. 1) THEN
-       IF (ALLOCATED(o%p%amat_p_p)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%amat_p_p,1),UBOUND(o%p%amat_p_p,1)
-          WRITE(prop_unit,*) LBOUND(o%p%amat_p_p,2),UBOUND(o%p%amat_p_p,2)
-          WRITE(prop_unit,*) o%p%amat_p_p
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
-    ! amat_m_m
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%amat_m_m)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%amat_m_m,1),UBOUND(o%p%amat_m_m,1)
-          WRITE(prop_unit,*) LBOUND(o%p%amat_m_m,2),UBOUND(o%p%amat_m_m,2)
-          WRITE(prop_unit,*) o%p%amat_m_m
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
-    ! amat_p_m
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%amat_p_m)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%amat_p_m,1),UBOUND(o%p%amat_p_m,1)
-          WRITE(prop_unit,*) LBOUND(o%p%amat_p_m,2),UBOUND(o%p%amat_p_m,2)
-          WRITE(prop_unit,*) o%p%amat_p_m
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
-    ! amat_m_p
-    IF (prop_showall .GE. 1) THEN
-       IF (ALLOCATED(o%p%amat_m_p)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%amat_m_p,1),UBOUND(o%p%amat_m_p,1)
-          WRITE(prop_unit,*) LBOUND(o%p%amat_m_p,2),UBOUND(o%p%amat_m_p,2)
-          WRITE(prop_unit,*) o%p%amat_m_p
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
-    
-    ! source_p
-    IF (prop_showall .GE. 1) THEN
-       IF (ALLOCATED(o%p%source_p)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%source_p,1),UBOUND(o%p%source_p,1)
-          WRITE(prop_unit,*) LBOUND(o%p%source_p,2),UBOUND(o%p%source_p,2)
-          WRITE(prop_unit,*) o%p%source_p
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
-    ! source_m
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%source_m)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%source_m,1),UBOUND(o%p%source_m,1)
-          WRITE(prop_unit,*) LBOUND(o%p%source_m,2),UBOUND(o%p%source_m,2)
-          WRITE(prop_unit,*) o%p%source_m
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
+       stime = MPI_WTime()
+       
+       !call nf90_check(nf90_redef(ncid_propagators))
+       
+       !call nf90_check(nf90_def_grp(ncid_propagators, prop_cfilename(1:len_trim(prop_cfilename)-5), grpid))
 
-    
-    ! flux_p
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%flux_p)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%flux_p,1),UBOUND(o%p%flux_p,1)
-          WRITE(prop_unit,*) LBOUND(o%p%flux_p,2),UBOUND(o%p%flux_p,2)
-          WRITE(prop_unit,*) o%p%flux_p
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
-    ! flux_m
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%flux_m)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%flux_m,1),UBOUND(o%p%flux_m,1)
-          WRITE(prop_unit,*) LBOUND(o%p%flux_m,2),UBOUND(o%p%flux_m,2)
-          WRITE(prop_unit,*) o%p%flux_m
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-    END IF
+       call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_start', prop_start))
+       call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_end', prop_end))
 
-    ! qflux
-    IF (prop_showall .EQ. 1) THEN
-       WRITE(prop_unit,*) o%p%qflux
-    END IF
+       !write (*,*) "Time for Group creation: ", MPI_WTime() - stime
 
-    ! eta
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%eta_l)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%eta_l,1),UBOUND(o%p%eta_l,1)
-          WRITE(prop_unit,*) o%p%eta_l
-       ELSE
-          WRITE(prop_unit,*) 0,0
+       stime = MPI_WTime()
+       if (prop_showall .EQ. 1) then
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_s', o%fieldpropagator_tag_s))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_e', o%fieldpropagator_tag_e))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_s',     o%fieldperiod_tag_s))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_e',     o%fieldperiod_tag_e ))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_l', o%phi_l))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_r', o%phi_r))
+          
+          call nc_define(grpid, 'y', o%y, var_y_id)          
+          call nc_define(grpid, 'amat_m_m', o%p%amat_m_m, var_amat_m_m_id)
+          call nc_define(grpid, 'amat_p_m', o%p%amat_p_m, var_amat_p_m_id)
+          call nc_define(grpid, 'source_m', o%p%source_m, var_source_m_id)
+          call nc_define(grpid, 'flux_m', o%p%flux_m, var_flux_m_id)
+          call nc_define(grpid, 'flux_p', o%p%flux_p, var_flux_p_id)
+          call nc_define(grpid, 'qflux', o%p%qflux, var_qflux_id)
+          call nc_define(grpid, 'eta_l', o%p%eta_l, var_eta_l_id)
+          call nc_define(grpid, 'eta_r', o%p%eta_r, var_eta_r_id)
+          
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_boundary_l', o%p%eta_boundary_l))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_boundary_r', o%p%eta_boundary_r))
+       end if
+
+       if (prop_showall .eq. 0) then
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode))
+       end if
+     
+       ! sizes
+       if (prop_showall .ge. 1) then
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'npart',     o%p%npart))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'npass_l',   o%p%npass_l))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'npass_r',   o%p%npass_r))
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'nvelocity', o%p%nvelocity))
+
+          call nc_define(grpid, 'amat_p_p', o%p%amat_p_p, var_amat_p_p_id)
+          call nc_define(grpid, 'amat_m_p', o%p%amat_m_p, var_amat_m_p_id)
+          call nc_define(grpid, 'source_p', o%p%source_p, var_source_p_id)
+       end if
+       !write (*,*) "Time before enddef: ", MPI_WTime() - stime
+       stime = MPI_Wtime()
+       call nf90_check(nf90_enddef(ncid_propagator))
+       !write (*,*) "Time after enddef: ", MPI_WTime() - stime
+             
+       ! Put Variables
+       stime = MPI_WTime()
+
+       if (prop_showall .EQ. 1) then
+          if (allocated(o%y)) then
+             call nf90_check(nf90_put_var(grpid, var_y_id, o%y))
+          end if
+          IF (ALLOCATED(o%p%amat_m_m)) THEN
+             call nf90_check(nf90_put_var(grpid, var_amat_m_m_id, o%p%amat_m_m))
+          end if
+          IF (ALLOCATED(o%p%amat_p_m)) THEN
+             call nf90_check(nf90_put_var(grpid, var_amat_p_m_id, o%p%amat_p_m))
+          end if
+          IF (ALLOCATED(o%p%source_m)) THEN
+             call nf90_check(nf90_put_var(grpid, var_source_m_id, o%p%source_m))
+          end if
+          IF (ALLOCATED(o%p%flux_m)) THEN
+             call nf90_check(nf90_put_var(grpid, var_flux_m_id, o%p%flux_m))
+          end if
+          IF (ALLOCATED(o%p%flux_p)) THEN
+             call nf90_check(nf90_put_var(grpid, var_flux_p_id, o%p%flux_p))
+          end if
+
+          call nf90_check(nf90_put_var(grpid, var_qflux_id, o%p%qflux))
+
+          if (allocated(o%p%eta_l)) then
+             call nf90_check(nf90_put_var(grpid, var_eta_l_id, o%p%eta_l))
+          end if
+          if (allocated(o%p%eta_r)) then
+             call nf90_check(nf90_put_var(grpid, var_eta_r_id, o%p%eta_r))
+          end if
+
+       end if
+
+       IF (prop_showall .GE. 1) THEN
+          IF (ALLOCATED(o%p%amat_p_p)) THEN
+            call nf90_check(nf90_put_var(grpid, var_amat_p_p_id, o%p%amat_p_p))
+          end if
+          IF (ALLOCATED(o%p%amat_m_p)) THEN
+            call nf90_check(nf90_put_var(grpid, var_amat_m_p_id, o%p%amat_m_p))
+          end if
+          IF (ALLOCATED(o%p%source_p)) THEN
+            call nf90_check(nf90_put_var(grpid, var_source_p_id, o%p%source_p))
+          end if
+       end if
+
+       !write (*,*) "Time after writing: ", MPI_WTime() - stime
+       stime = MPI_WTime()
+       call nf90_check(nf90_close(ncid_propagator))
+       !write (*,*) "Time for closing: ", MPI_WTime() - stime
+    else
+       
+       CALL unit_propagator
+       OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
+            form=prop_format,action='write')
+
+       ! what is written for prop_showall = 1
+       !    tags  : prop_start,prop_end
+       !    info  : o%nr_joined ....  o%phi_r
+       !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
+       !    amat_p_p
+       !    amat_m_m
+       !    amat_p_m
+       !    amat_m_p
+       !    source_p
+       !    source_m
+       !    flux_p
+       !    flux_m
+       !    qflux
+       !    eta
+
+       !
+       ! what is written for prop_showall > 1 (reduced for joined)
+       !    tags  : prop_start,prop_end
+       !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
+       !    amat_p_p
+       !    amat_m_p
+       !    source_p
+
+
+       ! tags
+       WRITE(prop_unit,*) prop_start
+       WRITE(prop_unit,*) prop_end
+
+       ! info
+       IF (prop_showall .EQ. 1) THEN
+          WRITE(prop_unit,*) o%nr_joined
+          WRITE(prop_unit,*) o%fieldpropagator_tag_s
+          WRITE(prop_unit,*) o%fieldpropagator_tag_e
+          WRITE(prop_unit,*) o%fieldperiod_tag_s
+          WRITE(prop_unit,*) o%fieldperiod_tag_e
+
+          if (allocated(o%y)) then
+             WRITE(prop_unit,*) LBOUND(o%y,1),UBOUND(o%y,1)
+             WRITE(prop_unit,*) o%y
+          ELSE
+             WRITE(prop_unit,*) 0,0
+          END IF
+          WRITE(prop_unit,*) o%phi_l
+          WRITE(prop_unit,*) o%phi_r
        END IF
-       IF (ALLOCATED(o%p%eta_r)) THEN
-          WRITE(prop_unit,*) LBOUND(o%p%eta_r,1),UBOUND(o%p%eta_r,1)
-          WRITE(prop_unit,*) o%p%eta_r
-       ELSE
-          WRITE(prop_unit,*) 0,0
+
+       ! Binarysplit stuff is not dumped / this is the only thing with prop_showall = 0
+       ! It is not really used
+       IF (prop_showall .EQ. 0) THEN
+          WRITE(prop_unit,*) o%bin_split_mode
        END IF
-       WRITE(prop_unit,*) o%p%eta_boundary_l
-       WRITE(prop_unit,*) o%p%eta_boundary_r
-    END IF
-    
-    CLOSE(unit=prop_unit)
+
+       ! sizes
+       IF (prop_showall .GE. 1) THEN
+          WRITE(prop_unit,*) o%p%npart
+          WRITE(prop_unit,*) o%p%npass_l
+          WRITE(prop_unit,*) o%p%npass_r
+          WRITE(prop_unit,*) o%p%nvelocity
+       END IF
+       ! amat_p_p
+       IF (prop_showall .GE. 1) THEN
+          IF (ALLOCATED(o%p%amat_p_p)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%amat_p_p,1),UBOUND(o%p%amat_p_p,1)
+             WRITE(prop_unit,*) LBOUND(o%p%amat_p_p,2),UBOUND(o%p%amat_p_p,2)
+             WRITE(prop_unit,*) o%p%amat_p_p
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+       ! amat_m_m
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%amat_m_m)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%amat_m_m,1),UBOUND(o%p%amat_m_m,1)
+             WRITE(prop_unit,*) LBOUND(o%p%amat_m_m,2),UBOUND(o%p%amat_m_m,2)
+             WRITE(prop_unit,*) o%p%amat_m_m
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+       ! amat_p_m
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%amat_p_m)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%amat_p_m,1),UBOUND(o%p%amat_p_m,1)
+             WRITE(prop_unit,*) LBOUND(o%p%amat_p_m,2),UBOUND(o%p%amat_p_m,2)
+             WRITE(prop_unit,*) o%p%amat_p_m
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+       ! amat_m_p
+       IF (prop_showall .GE. 1) THEN
+          IF (ALLOCATED(o%p%amat_m_p)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%amat_m_p,1),UBOUND(o%p%amat_m_p,1)
+             WRITE(prop_unit,*) LBOUND(o%p%amat_m_p,2),UBOUND(o%p%amat_m_p,2)
+             WRITE(prop_unit,*) o%p%amat_m_p
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+
+       ! source_p
+       IF (prop_showall .GE. 1) THEN
+          IF (ALLOCATED(o%p%source_p)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%source_p,1),UBOUND(o%p%source_p,1)
+             WRITE(prop_unit,*) LBOUND(o%p%source_p,2),UBOUND(o%p%source_p,2)
+             WRITE(prop_unit,*) o%p%source_p
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+       ! source_m
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%source_m)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%source_m,1),UBOUND(o%p%source_m,1)
+             WRITE(prop_unit,*) LBOUND(o%p%source_m,2),UBOUND(o%p%source_m,2)
+             WRITE(prop_unit,*) o%p%source_m
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+
+
+       ! flux_p
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%flux_p)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%flux_p,1),UBOUND(o%p%flux_p,1)
+             WRITE(prop_unit,*) LBOUND(o%p%flux_p,2),UBOUND(o%p%flux_p,2)
+             WRITE(prop_unit,*) o%p%flux_p
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+       ! flux_m
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%flux_m)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%flux_m,1),UBOUND(o%p%flux_m,1)
+             WRITE(prop_unit,*) LBOUND(o%p%flux_m,2),UBOUND(o%p%flux_m,2)
+             WRITE(prop_unit,*) o%p%flux_m
+          ELSE
+             WRITE(prop_unit,*) 0,0
+             WRITE(prop_unit,*) 0,0
+          END IF
+       END IF
+
+       ! qflux
+       IF (prop_showall .EQ. 1) THEN
+          WRITE(prop_unit,*) o%p%qflux
+       END IF
+
+
+       ! eta
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%eta_l)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%eta_l,1),UBOUND(o%p%eta_l,1)
+             WRITE(prop_unit,*) o%p%eta_l
+          ELSE
+             WRITE(prop_unit,*) 0,0
+          END IF
+          IF (ALLOCATED(o%p%eta_r)) THEN
+             WRITE(prop_unit,*) LBOUND(o%p%eta_r,1),UBOUND(o%p%eta_r,1)
+             WRITE(prop_unit,*) o%p%eta_r
+          ELSE
+             WRITE(prop_unit,*) 0,0
+          END IF
+          WRITE(prop_unit,*) o%p%eta_boundary_l
+          WRITE(prop_unit,*) o%p%eta_boundary_r
+       END IF
+
+       CLOSE(unit=prop_unit)
+
+    end if
 
 
   END SUBROUTINE write_propagator_cont
@@ -2546,6 +2833,10 @@ CONTAINS
     INTEGER :: prop_left
     INTEGER :: prop_right
 
+    integer :: grpid
+    integer :: var_o_p_cmat_id, var_n_p_cmat_id
+    character(len=256) :: prop_cfilename_nc
+    
     prop_bound = 1
     IF (prop_type .EQ. 1) THEN
        prop_right = n%fieldperiod_tag_s
@@ -2560,38 +2851,132 @@ CONTAINS
        RETURN
     END IF
 
-    CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right) 
-    CALL unit_propagator
-    OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
-         form=prop_format,action='write')
-    ! tags
-    WRITE(prop_unit,*) n%fieldpropagator_tag_s - 1
-    WRITE(prop_unit,*) n%fieldpropagator_tag_s
-    WRITE(prop_unit,*) n%fieldperiod_tag_s - 1
-    WRITE(prop_unit,*) n%fieldperiod_tag_s
-    ! forward
-    IF (ALLOCATED(o%p%cmat)) THEN
-       WRITE(prop_unit,*) LBOUND(o%p%cmat,1),UBOUND(o%p%cmat,1)
-       WRITE(prop_unit,*) LBOUND(o%p%cmat,2),UBOUND(o%p%cmat,2)
-       WRITE(prop_unit,*) o%p%cmat
-    ELSE
-       WRITE(prop_unit,*) 0,0
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! backward
-    IF (ALLOCATED(n%p%cmat)) THEN
-       WRITE(prop_unit,*) LBOUND(n%p%cmat,1),UBOUND(n%p%cmat,1)
-       WRITE(prop_unit,*) LBOUND(n%p%cmat,2),UBOUND(n%p%cmat,2)
-       WRITE(prop_unit,*) n%p%cmat    
-    ELSE
-       WRITE(prop_unit,*) 0,0
-       WRITE(prop_unit,*) 0,0
-    END IF
+    CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
 
-    CLOSE(unit=prop_unit)
+    if (prop_fileformat .eq. 1) then
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+
+       call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_propbounds))
+       grpid = ncid_propbounds
+
+       call nf90_check(nf90_put_att(ncid_propbounds, NF90_GLOBAL, 'fieldpropagator_tag_left',  n%fieldpropagator_tag_s - 1))
+       call nf90_check(nf90_put_att(ncid_propbounds, NF90_GLOBAL, 'fieldpropagator_tag_right', n%fieldpropagator_tag_s))
+       call nf90_check(nf90_put_att(ncid_propbounds, NF90_GLOBAL, 'fieldperiod_tag_left',      n%fieldperiod_tag_s - 1))
+       call nf90_check(nf90_put_att(ncid_propbounds, NF90_GLOBAL, 'fieldperiod_tag_right',     n%fieldperiod_tag_s))
+
+       call nc_define(grpid, 'c_forward',  o%p%cmat, var_o_p_cmat_id)
+       call nc_define(grpid, 'c_backward', n%p%cmat, var_n_p_cmat_id)
+     
+       call nf90_check(nf90_enddef(ncid_propbounds))
+
+       if (allocated(o%p%cmat)) then
+          call nf90_check(nf90_put_var(grpid, var_o_p_cmat_id, o%p%cmat))
+       end if
+
+       if (allocated(n%p%cmat)) then
+          call nf90_check(nf90_put_var(grpid, var_n_p_cmat_id, n%p%cmat))
+       end if
+       
+       call nf90_check(nf90_close(ncid_propbounds))
+    else
+       CALL unit_propagator
+       OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
+            form=prop_format,action='write')
+       ! tags
+       WRITE(prop_unit,*) n%fieldpropagator_tag_s - 1
+       WRITE(prop_unit,*) n%fieldpropagator_tag_s
+       WRITE(prop_unit,*) n%fieldperiod_tag_s - 1
+       WRITE(prop_unit,*) n%fieldperiod_tag_s
+       ! forward
+       IF (ALLOCATED(o%p%cmat)) THEN
+          WRITE(prop_unit,*) LBOUND(o%p%cmat,1),UBOUND(o%p%cmat,1)
+          WRITE(prop_unit,*) LBOUND(o%p%cmat,2),UBOUND(o%p%cmat,2)
+          WRITE(prop_unit,*) o%p%cmat
+       ELSE
+          WRITE(prop_unit,*) 0,0
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! backward
+       IF (ALLOCATED(n%p%cmat)) THEN
+          WRITE(prop_unit,*) LBOUND(n%p%cmat,1),UBOUND(n%p%cmat,1)
+          WRITE(prop_unit,*) LBOUND(n%p%cmat,2),UBOUND(n%p%cmat,2)
+          WRITE(prop_unit,*) n%p%cmat    
+       ELSE
+          WRITE(prop_unit,*) 0,0
+          WRITE(prop_unit,*) 0,0
+       END IF
+
+       CLOSE(unit=prop_unit)
+
+    end if
     
   END SUBROUTINE write_prop_bound_cont
   ! ---------------------------------------------------------------------------
+
+  subroutine write_binarysplit_side_nc(ncid_binarysplit, grpname, binsplit)
+    integer :: ncid_binarysplit
+    character(len=*) :: grpname
+    type(binarysplit) :: binsplit
+    
+    integer :: grpid, varid
+    integer :: var_x_ori_bin, var_x_ori_poi, var_x_poi, var_x_split, var_x_pos, var_x, var_y, var_int, var_err
+    
+    call nf90_check(nf90_def_grp(ncid_binarysplit, grpname, grpid))
+    
+    call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'n_ori', binsplit%n_ori))
+    call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'n_split', binsplit%n_split))
+    
+    call nc_define(grpid, 'x_ori_bin', binsplit%x_ori_bin, var_x_ori_bin)
+    call nc_define(grpid, 'x_ori_poi', binsplit%x_ori_poi, var_x_ori_poi)
+    call nc_define(grpid, 'x_poi', binsplit%x_poi, var_x_poi)
+    call nc_define(grpid, 'x_split', binsplit%x_split, var_x_split)
+    call nc_define(grpid, 'x_pos', binsplit%x_pos, var_x_pos)
+    call nc_define(grpid, 'x', binsplit%x, var_x)
+    call nc_define(grpid, 'y', binsplit%y, var_y)
+    call nc_define(grpid, 'int', binsplit%int, var_int)
+    call nc_define(grpid, 'err', binsplit%err, var_err)
+
+    call nf90_check(nf90_enddef(ncid_binarysplit))
+
+    if (allocated(binsplit%x_ori_bin)) then
+       call nf90_check(nf90_put_var(grpid, var_x_ori_bin, binsplit%x_ori_bin))
+    end if
+
+    if (allocated(binsplit%x_ori_poi)) then
+       call nf90_check(nf90_put_var(grpid, var_x_ori_poi, binsplit%x_ori_poi))
+    end if
+
+    if (allocated(binsplit%x_poi)) then
+       call nf90_check(nf90_put_var(grpid, var_x_poi, binsplit%x_poi))
+    end if
+
+    if (allocated(binsplit%x_split)) then
+       call nf90_check(nf90_put_var(grpid, var_x_split, binsplit%x_split))
+    end if
+
+    if (allocated(binsplit%x_pos)) then
+       call nf90_check(nf90_put_var(grpid, var_x_pos, binsplit%x_pos))
+    end if
+
+    if (allocated(binsplit%x)) then
+       call nf90_check(nf90_put_var(grpid, var_x, binsplit%x))
+    end if
+
+    if (allocated(binsplit%y)) then
+       call nf90_check(nf90_put_var(grpid, var_y, binsplit%y))
+    end if
+
+    if (allocated(binsplit%int)) then
+       call nf90_check(nf90_put_var(grpid, var_int, binsplit%int))
+    end if
+
+    if (allocated(binsplit%err)) then
+       call nf90_check(nf90_put_var(grpid, var_err, binsplit%err))
+    end if
+
+    call nf90_check(nf90_redef(ncid_binarysplit))
+
+  end subroutine write_binarysplit_side_nc
 
   SUBROUTINE write_binarysplit_cont(o)
     ! writes the content of a binarysplit, which is specified in pointer o
@@ -2603,159 +2988,177 @@ CONTAINS
     INTEGER :: prop_start
     INTEGER :: prop_end
 
+    integer :: ncid_binarysplit
+    character(len=100) :: prop_cfilename_nc
 
     prop_bound = 0
     prop_type = 6
     prop_start = o%fieldpropagator_tag_s
     prop_end   = o%fieldpropagator_tag_e
 
+    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
 
-    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end) 
-    CALL unit_propagator
-    OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
-         form=prop_format,action='write')
+    if (prop_fileformat .eq. 1) then
 
-    WRITE(prop_unit,*) o%bin_split_mode
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+       
+       call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_binarysplit))
 
-    ! binarysplit left
-    WRITE(prop_unit,*) o%eta_bs_l%n_ori
-    WRITE(prop_unit,*) o%eta_bs_l%n_split
-    ! x_ori_bin
-    IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,1),UBOUND(o%eta_bs_l%x_ori_bin,1)
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,2),UBOUND(o%eta_bs_l%x_ori_bin,2)
-       WRITE(prop_unit,*) o%eta_bs_l%x_ori_bin
-    ELSE
-       WRITE(prop_unit,*) 0,0
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! x_ori_poi
-    IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_poi,1),UBOUND(o%eta_bs_l%x_ori_poi,1)
-       WRITE(prop_unit,*) o%eta_bs_l%x_ori_poi
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! x_poi
-    IF (ALLOCATED(o%eta_bs_l%x_poi)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_poi,1),UBOUND(o%eta_bs_l%x_poi,1)
-       WRITE(prop_unit,*) o%eta_bs_l%x_poi
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! x_split
-    IF (ALLOCATED(o%eta_bs_l%x_split)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_split,1),UBOUND(o%eta_bs_l%x_split,1)
-       WRITE(prop_unit,*) o%eta_bs_l%x_split
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! x_pos
-    IF (ALLOCATED(o%eta_bs_l%x_pos)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_pos,1),UBOUND(o%eta_bs_l%x_pos,1)
-       WRITE(prop_unit,*) o%eta_bs_l%x_pos
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! x
-    IF (ALLOCATED(o%eta_bs_l%x)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x,1),UBOUND(o%eta_bs_l%x,1)
-       WRITE(prop_unit,*) o%eta_bs_l%x
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! y
-    IF (ALLOCATED(o%eta_bs_l%y)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%y,1),UBOUND(o%eta_bs_l%y,1)
-       WRITE(prop_unit,*) o%eta_bs_l%y
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! int
-    IF (ALLOCATED(o%eta_bs_l%int)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%int,1),UBOUND(o%eta_bs_l%int,1)
-       WRITE(prop_unit,*) o%eta_bs_l%int
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! err
-    IF (ALLOCATED(o%eta_bs_l%err)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_l%err,1),UBOUND(o%eta_bs_l%err,1)
-       WRITE(prop_unit,*) o%eta_bs_l%err
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
+       call nf90_check(nf90_put_att(ncid_binarysplit, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode))
 
-    ! binarysplit right
-    WRITE(prop_unit,*) o%eta_bs_r%n_ori
-    WRITE(prop_unit,*) o%eta_bs_r%n_split
-    ! x_ori_bin
-    IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,1),UBOUND(o%eta_bs_r%x_ori_bin,1)
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,2),UBOUND(o%eta_bs_r%x_ori_bin,2)
-       WRITE(prop_unit,*) o%eta_bs_r%x_ori_bin
-    ELSE
-       WRITE(prop_unit,*) 0,0
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! x_ori_poi
-    IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_poi,1),UBOUND(o%eta_bs_r%x_ori_poi,1)
-       WRITE(prop_unit,*) o%eta_bs_r%x_ori_poi
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! x_poi
-    IF (ALLOCATED(o%eta_bs_r%x_poi)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_poi,1),UBOUND(o%eta_bs_r%x_poi,1)
-       WRITE(prop_unit,*) o%eta_bs_r%x_poi
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! x_split
-    IF (ALLOCATED(o%eta_bs_r%x_split)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_split,1),UBOUND(o%eta_bs_r%x_split,1)
-       WRITE(prop_unit,*) o%eta_bs_r%x_split
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! x_pos
-    IF (ALLOCATED(o%eta_bs_r%x_pos)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_pos,1),UBOUND(o%eta_bs_r%x_pos,1)
-       WRITE(prop_unit,*) o%eta_bs_r%x_pos
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! x
-    IF (ALLOCATED(o%eta_bs_r%x)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x,1),UBOUND(o%eta_bs_r%x,1)
-       WRITE(prop_unit,*) o%eta_bs_r%x
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! y
-    IF (ALLOCATED(o%eta_bs_r%y)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%y,1),UBOUND(o%eta_bs_r%y,1)
-       WRITE(prop_unit,*) o%eta_bs_r%y
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! int
-    IF (ALLOCATED(o%eta_bs_r%int)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%int,1),UBOUND(o%eta_bs_r%int,1)
-       WRITE(prop_unit,*) o%eta_bs_r%int
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
-    ! err
-    IF (ALLOCATED(o%eta_bs_r%err)) THEN
-       WRITE(prop_unit,*) LBOUND(o%eta_bs_r%err,1),UBOUND(o%eta_bs_r%err,1)
-       WRITE(prop_unit,*) o%eta_bs_r%err
-    ELSE
-       WRITE(prop_unit,*) 0,0
-    END IF
+       call write_binarysplit_side_nc(ncid_binarysplit, 'left',  o%eta_bs_l)
+       call write_binarysplit_side_nc(ncid_binarysplit, 'right', o%eta_bs_r)
 
-    close(unit=prop_unit)
+       call nf90_check(nf90_close(ncid_binarysplit))
+    else
+
+       CALL unit_propagator
+       OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
+            form=prop_format,action='write')
+
+       WRITE(prop_unit,*) o%bin_split_mode
+
+       ! binarysplit left
+       WRITE(prop_unit,*) o%eta_bs_l%n_ori
+       WRITE(prop_unit,*) o%eta_bs_l%n_split
+       ! x_ori_bin
+       IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,1),UBOUND(o%eta_bs_l%x_ori_bin,1)
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,2),UBOUND(o%eta_bs_l%x_ori_bin,2)
+          WRITE(prop_unit,*) o%eta_bs_l%x_ori_bin
+       ELSE
+          WRITE(prop_unit,*) 0,0
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! x_ori_poi
+       IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_poi,1),UBOUND(o%eta_bs_l%x_ori_poi,1)
+          WRITE(prop_unit,*) o%eta_bs_l%x_ori_poi
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! x_poi
+       IF (ALLOCATED(o%eta_bs_l%x_poi)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_poi,1),UBOUND(o%eta_bs_l%x_poi,1)
+          WRITE(prop_unit,*) o%eta_bs_l%x_poi
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! x_split
+       IF (ALLOCATED(o%eta_bs_l%x_split)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_split,1),UBOUND(o%eta_bs_l%x_split,1)
+          WRITE(prop_unit,*) o%eta_bs_l%x_split
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! x_pos
+       IF (ALLOCATED(o%eta_bs_l%x_pos)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_pos,1),UBOUND(o%eta_bs_l%x_pos,1)
+          WRITE(prop_unit,*) o%eta_bs_l%x_pos
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! x
+       IF (ALLOCATED(o%eta_bs_l%x)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x,1),UBOUND(o%eta_bs_l%x,1)
+          WRITE(prop_unit,*) o%eta_bs_l%x
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! y
+       IF (ALLOCATED(o%eta_bs_l%y)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%y,1),UBOUND(o%eta_bs_l%y,1)
+          WRITE(prop_unit,*) o%eta_bs_l%y
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! int
+       IF (ALLOCATED(o%eta_bs_l%int)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%int,1),UBOUND(o%eta_bs_l%int,1)
+          WRITE(prop_unit,*) o%eta_bs_l%int
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! err
+       IF (ALLOCATED(o%eta_bs_l%err)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%err,1),UBOUND(o%eta_bs_l%err,1)
+          WRITE(prop_unit,*) o%eta_bs_l%err
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+
+       ! binarysplit right
+       WRITE(prop_unit,*) o%eta_bs_r%n_ori
+       WRITE(prop_unit,*) o%eta_bs_r%n_split
+       ! x_ori_bin
+       IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,1),UBOUND(o%eta_bs_r%x_ori_bin,1)
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,2),UBOUND(o%eta_bs_r%x_ori_bin,2)
+          WRITE(prop_unit,*) o%eta_bs_r%x_ori_bin
+       ELSE
+          WRITE(prop_unit,*) 0,0
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! x_ori_poi
+       IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_poi,1),UBOUND(o%eta_bs_r%x_ori_poi,1)
+          WRITE(prop_unit,*) o%eta_bs_r%x_ori_poi
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! x_poi
+       IF (ALLOCATED(o%eta_bs_r%x_poi)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_poi,1),UBOUND(o%eta_bs_r%x_poi,1)
+          WRITE(prop_unit,*) o%eta_bs_r%x_poi
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! x_split
+       IF (ALLOCATED(o%eta_bs_r%x_split)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_split,1),UBOUND(o%eta_bs_r%x_split,1)
+          WRITE(prop_unit,*) o%eta_bs_r%x_split
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! x_pos
+       IF (ALLOCATED(o%eta_bs_r%x_pos)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_pos,1),UBOUND(o%eta_bs_r%x_pos,1)
+          WRITE(prop_unit,*) o%eta_bs_r%x_pos
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! x
+       IF (ALLOCATED(o%eta_bs_r%x)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x,1),UBOUND(o%eta_bs_r%x,1)
+          WRITE(prop_unit,*) o%eta_bs_r%x
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! y
+       IF (ALLOCATED(o%eta_bs_r%y)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%y,1),UBOUND(o%eta_bs_r%y,1)
+          WRITE(prop_unit,*) o%eta_bs_r%y
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! int
+       IF (ALLOCATED(o%eta_bs_r%int)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%int,1),UBOUND(o%eta_bs_r%int,1)
+          WRITE(prop_unit,*) o%eta_bs_r%int
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+       ! err
+       IF (ALLOCATED(o%eta_bs_r%err)) THEN
+          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%err,1),UBOUND(o%eta_bs_r%err,1)
+          WRITE(prop_unit,*) o%eta_bs_r%err
+       ELSE
+          WRITE(prop_unit,*) 0,0
+       END IF
+
+       close(unit=prop_unit)
+
+    end if
     
   end SUBROUTINE write_binarysplit_cont
   ! ---------------------------------------------------------------------------
@@ -2778,6 +3181,12 @@ CONTAINS
 
     INTEGER :: prop_showall
 
+    ! --- NetCDF ---
+    integer :: grpid, varid
+    double precision :: stime
+    logical :: foundGroup
+    ! ---
+    
     IF (PRESENT(prop_showall_in)) THEN
        prop_showall = prop_showall_in
     ELSE
@@ -2786,159 +3195,319 @@ CONTAINS
 
     prop_bound = 0
 
-    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
-    CALL unit_propagator
-
-    !PRINT *, prop_cfilename
-
-    OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
-         form=prop_format,action='read')
-
-    ! tags
-    READ(prop_unit,*) dummy
-    READ(prop_unit,*) dummy
+    call filename_propagator(prop_type,prop_bound,prop_start,prop_end)
     
-    ! info
-    IF (prop_showall .EQ. 1) THEN
-       READ(prop_unit,*) o%nr_joined
-       READ(prop_unit,*) o%fieldpropagator_tag_s
-       READ(prop_unit,*) o%fieldpropagator_tag_e
-       READ(prop_unit,*) o%fieldperiod_tag_s
-       READ(prop_unit,*) o%fieldperiod_tag_e
+    if (prop_fileformat .eq. 1) then
+       !stime = MPI_WTime()
+       !write (*,*) "Reading NetCDF-Group: ", prop_cfilename
 
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%y)) DEALLOCATE(o%y)
-          ALLOCATE(o%y(lb1:ub1))
-          READ(prop_unit,*) o%y
-       END IF
-       READ(prop_unit,*) o%phi_l
-       READ(prop_unit,*) o%phi_r
-    END IF
+       call nc_findGroup(ncid_propagators, prop_cfilename, grpid, foundGroup)
 
-    ! Binarysplit stuff is not dumped
-    IF (prop_showall .EQ. 0) THEN
-       READ(prop_unit,*) o%bin_split_mode
-    END IF
+       if (prop_showall .eq. 1) then
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_s', o%fieldpropagator_tag_s))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_e', o%fieldpropagator_tag_e))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_s', o%fieldperiod_tag_s))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_e', o%fieldperiod_tag_e))
 
-    ! sizes
-    IF (prop_showall .GE. 1) THEN
-       READ(prop_unit,*) o%p%npart
-       READ(prop_unit,*) o%p%npass_l
-       READ(prop_unit,*) o%p%npass_r
-       READ(prop_unit,*) o%p%nvelocity
-    END IF
+          call nc_inquire(grpid, 'y', varid, lb1, ub1)
+           if (ub1 .gt. 0) then
+             if (allocated(o%y)) deallocate(o%y)
+             allocate(o%y(lb1:ub1))
+             call nf90_check(nf90_get_var(grpid, varid, o%y))           
+          end if
 
-    ! amat_p_p
-    IF (prop_showall .GE. 1) THEN
-       READ(prop_unit,*) lb1,ub1
-       READ(prop_unit,*) lb2,ub2
-       IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-          IF (ALLOCATED(o%p%amat_p_p)) DEALLOCATE(o%p%amat_p_p)
-          ALLOCATE(o%p%amat_p_p(lb1:ub1,lb2:ub2))
-          READ(prop_unit,*) o%p%amat_p_p
-       END IF
-    END IF
-    ! amat_m_m
-    IF (prop_showall .EQ. 1) THEN
-       READ(prop_unit,*) lb1,ub1
-       READ(prop_unit,*) lb2,ub2
-       IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-          IF (ALLOCATED(o%p%amat_m_m)) DEALLOCATE(o%p%amat_m_m)
-          ALLOCATE(o%p%amat_m_m(lb1:ub1,lb2:ub2))
-          READ(prop_unit,*) o%p%amat_m_m
-       END IF
-    END IF
-    ! amat_p_m
-    IF (prop_showall .EQ. 1) THEN
-       READ(prop_unit,*) lb1,ub1
-       READ(prop_unit,*) lb2,ub2
-       IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-          IF (ALLOCATED(o%p%amat_p_m)) DEALLOCATE(o%p%amat_p_m)
-          ALLOCATE(o%p%amat_p_m(lb1:ub1,lb2:ub2))
-          READ(prop_unit,*) o%p%amat_p_m
-       END IF
-    END IF
-    ! amat_m_p
-    IF (prop_showall .GE. 1) THEN
-       READ(prop_unit,*) lb1,ub1
-       READ(prop_unit,*) lb2,ub2
-       IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-          IF (ALLOCATED(o%p%amat_m_p)) DEALLOCATE(o%p%amat_m_p)
-          ALLOCATE(o%p%amat_m_p(lb1:ub1,lb2:ub2))
-          READ(prop_unit,*) o%p%amat_m_p
-       END IF
-    END IF
-    
-    ! source_p
-    IF (prop_showall .GE. 1) THEN
-       READ(prop_unit,*) lb1,ub1
-       READ(prop_unit,*) lb2,ub2
-       IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-          IF (ALLOCATED(o%p%source_p)) DEALLOCATE(o%p%source_p)
-          ALLOCATE(o%p%source_p(lb1:ub1,lb2:ub2))
-          READ(prop_unit,*) o%p%source_p
-       END IF
-    END IF
-    ! source_m
-    IF (prop_showall .EQ. 1) THEN
-       READ(prop_unit,*) lb1,ub1
-       READ(prop_unit,*) lb2,ub2
-       IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-          IF (ALLOCATED(o%p%source_m)) DEALLOCATE(o%p%source_m)
-          ALLOCATE(o%p%source_m(lb1:ub1,lb2:ub2))
-          READ(prop_unit,*) o%p%source_m
-       END IF
-    END IF
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'phi_l', o%phi_l))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'phi_r', o%phi_r))
+       end if
 
-    ! flux_p
-    IF (prop_showall .EQ. 1) THEN
-       READ(prop_unit,*) lb1,ub1
-       READ(prop_unit,*) lb2,ub2
-       IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-          IF (ALLOCATED(o%p%flux_p)) DEALLOCATE(o%p%flux_p)
-          ALLOCATE(o%p%flux_p(lb1:ub1,lb2:ub2))
-          READ(prop_unit,*) o%p%flux_p
-       END IF
-    END IF
-    ! flux_m
-    IF (prop_showall .EQ. 1) THEN
-       READ(prop_unit,*) lb1,ub1
-       READ(prop_unit,*) lb2,ub2
-       IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-          IF (ALLOCATED(o%p%flux_m)) DEALLOCATE(o%p%flux_m)
-          ALLOCATE(o%p%flux_m(lb1:ub1,lb2:ub2))
-          READ(prop_unit,*) o%p%flux_m
-       END IF
-    END IF
+       if (prop_showall .eq.0) then
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode))
+       end if
 
-    ! qflux - Winny not fully ok
-    IF (prop_showall .EQ. 1) THEN
-       IF (ALLOCATED(o%p%qflux)) DEALLOCATE(o%p%qflux)
-       ALLOCATE(o%p%qflux(3,3))
-       READ(prop_unit,*) o%p%qflux
-    END IF
+       if (prop_showall .ge. 1) then
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'npart', o%p%npart))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'npass_l', o%p%npass_l))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'npass_r', o%p%npass_r))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'nvelocity', o%p%nvelocity))
+       end if
 
-    ! eta
-    IF (prop_showall .EQ. 1) THEN
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%p%eta_l)) DEALLOCATE(o%p%eta_l)
-          ALLOCATE(o%p%eta_l(lb1:ub1))
-          READ(prop_unit,*) o%p%eta_l
-       END IF
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%p%eta_r)) DEALLOCATE(o%p%eta_r)
-          ALLOCATE(o%p%eta_r(lb1:ub1))
-          READ(prop_unit,*) o%p%eta_r
-       END IF
-       READ(prop_unit,*) o%p%eta_boundary_l
-       READ(prop_unit,*) o%p%eta_boundary_r
-    END IF
-    
-    CLOSE(unit=prop_unit)
+       if (prop_showall .ge. 1) then
 
+          call nc_inquire(grpid, 'amat_p_p', varid, lb1, ub1, lb2, ub2)
+ 
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_p_p)) deallocate(o%p%amat_p_p)
+             allocate(o%p%amat_p_p(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, varid, o%p%amat_p_p))
+          end if
+       end if
+
+       if (prop_showall .eq. 1) then
+          call nc_inquire(grpid, 'amat_m_m', varid, lb1, ub1, lb2, ub2)
+  
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_m_m)) deallocate(o%p%amat_m_m)
+             allocate(o%p%amat_m_m(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, varid, o%p%amat_m_m))
+          end if
+       end if
+
+       if (prop_showall .eq. 1) then
+
+          call nc_inquire(grpid, 'amat_p_m', varid, lb1, ub1, lb2, ub2)
+          
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_p_m)) deallocate(o%p%amat_p_m)
+             allocate(o%p%amat_p_m(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, varid, o%p%amat_p_m))
+          end if
+       end if
+
+       if (prop_showall .ge. 1) then
+
+          call nc_inquire(grpid, 'amat_m_p', varid, lb1, ub1, lb2, ub2)
+
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_m_p)) deallocate(o%p%amat_m_p)
+             allocate(o%p%amat_m_p(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, varid, o%p%amat_m_p))
+          end if
+       end if       
+
+       if (prop_showall .ge. 1) then
+          
+          call nc_inquire(grpid, 'source_p', varid, lb1, ub1, lb2, ub2)
+          
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%source_p)) deallocate(o%p%source_p)
+             allocate(o%p%source_p(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, varid, o%p%source_p))
+          end if
+       end if       
+
+       if (prop_showall .eq. 1) then
+
+          call nc_inquire(grpid, 'source_m', varid, lb1, ub1, lb2, ub2)
+
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%source_m)) deallocate(o%p%source_m)
+             allocate(o%p%source_m(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, varid, o%p%source_m))
+          end if
+       end if   
+
+       if (prop_showall .eq. 1) then
+
+          call nc_inquire(grpid, 'flux_p', varid, lb1, ub1, lb2, ub2)
+
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%flux_p)) deallocate(o%p%flux_p)
+             allocate(o%p%flux_p(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, varid, o%p%flux_p))
+          end if
+       end if   
+
+       if (prop_showall .eq. 1) then
+
+          call nc_inquire(grpid, 'flux_m', varid, lb1, ub1, lb2, ub2)
+          
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%flux_m)) deallocate(o%p%flux_m)
+             allocate(o%p%flux_m(lb1:ub1,lb2:ub2))
+             call nf90_check(nf90_get_var(grpid, varid, o%p%flux_m))
+          end if
+       end if
+
+      if (prop_showall .eq. 1) then
+
+         call nc_inquire(grpid, 'qflux', varid, lb1, ub1, lb2, ub2)
+
+           if (allocated(o%p%qflux)) deallocate(o%p%qflux)
+           allocate(o%p%qflux(1:ub1,1:ub2))
+           call nf90_check(nf90_get_var(grpid, varid, o%p%qflux))
+       end if
+
+       if (prop_showall .eq. 1) then
+
+          call nc_inquire(grpid, 'eta_l', varid, lb1, ub1)
+
+          if (ub1 .gt. 0) then
+             IF (ALLOCATED(o%p%eta_l)) DEALLOCATE(o%p%eta_l)
+             ALLOCATE(o%p%eta_l(lb1:ub1))
+             call nf90_check(nf90_get_var(grpid, varid, o%p%eta_l))
+          end if
+
+          call nc_inquire(grpid, 'eta_r', varid, lb1, ub1)
+
+          if (ub1 .gt. 0) then
+             IF (ALLOCATED(o%p%eta_r)) DEALLOCATE(o%p%eta_r)
+             ALLOCATE(o%p%eta_r(lb1:ub1))
+             call nf90_check(nf90_get_var(grpid, varid, o%p%eta_r))
+          end if
+
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'eta_boundary_l', o%p%eta_boundary_l))
+          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'eta_boundary_r', o%p%eta_boundary_r))
+          
+       end if
+
+       if (.not. foundGroup) then
+          call nf90_check(nf90_close(grpid))
+       end if
+    else
+
+       CALL unit_propagator
+
+       !PRINT *, prop_cfilename
+
+       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
+            form=prop_format,action='read')
+
+       ! tags
+       READ(prop_unit,*) dummy
+       READ(prop_unit,*) dummy
+
+       ! info
+       IF (prop_showall .EQ. 1) THEN
+          READ(prop_unit,*) o%nr_joined
+          READ(prop_unit,*) o%fieldpropagator_tag_s
+          READ(prop_unit,*) o%fieldpropagator_tag_e
+          READ(prop_unit,*) o%fieldperiod_tag_s
+          READ(prop_unit,*) o%fieldperiod_tag_e
+
+          READ(prop_unit,*) lb1,ub1
+          IF (ub1 .GT. 0) THEN
+             IF (ALLOCATED(o%y)) DEALLOCATE(o%y)
+             ALLOCATE(o%y(lb1:ub1))
+             READ(prop_unit,*) o%y
+          END IF
+          READ(prop_unit,*) o%phi_l
+          READ(prop_unit,*) o%phi_r
+       END IF
+
+       ! Binarysplit stuff is not dumped
+       IF (prop_showall .EQ. 0) THEN
+          READ(prop_unit,*) o%bin_split_mode
+       END IF
+
+       ! sizes
+       IF (prop_showall .GE. 1) THEN
+          READ(prop_unit,*) o%p%npart
+          READ(prop_unit,*) o%p%npass_l
+          READ(prop_unit,*) o%p%npass_r
+          READ(prop_unit,*) o%p%nvelocity
+       END IF
+
+       ! amat_p_p
+       IF (prop_showall .GE. 1) THEN
+          READ(prop_unit,*) lb1,ub1
+          READ(prop_unit,*) lb2,ub2
+          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+             IF (ALLOCATED(o%p%amat_p_p)) DEALLOCATE(o%p%amat_p_p)
+             ALLOCATE(o%p%amat_p_p(lb1:ub1,lb2:ub2))
+             READ(prop_unit,*) o%p%amat_p_p
+          END IF
+       END IF
+       ! amat_m_m
+       IF (prop_showall .EQ. 1) THEN
+          READ(prop_unit,*) lb1,ub1
+          READ(prop_unit,*) lb2,ub2
+          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+             IF (ALLOCATED(o%p%amat_m_m)) DEALLOCATE(o%p%amat_m_m)
+             ALLOCATE(o%p%amat_m_m(lb1:ub1,lb2:ub2))
+             READ(prop_unit,*) o%p%amat_m_m
+          END IF
+       END IF
+       ! amat_p_m
+       IF (prop_showall .EQ. 1) THEN
+          READ(prop_unit,*) lb1,ub1
+          READ(prop_unit,*) lb2,ub2
+          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+             IF (ALLOCATED(o%p%amat_p_m)) DEALLOCATE(o%p%amat_p_m)
+             ALLOCATE(o%p%amat_p_m(lb1:ub1,lb2:ub2))
+             READ(prop_unit,*) o%p%amat_p_m
+          END IF
+       END IF
+       ! amat_m_p
+       IF (prop_showall .GE. 1) THEN
+          READ(prop_unit,*) lb1,ub1
+          READ(prop_unit,*) lb2,ub2
+          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+             IF (ALLOCATED(o%p%amat_m_p)) DEALLOCATE(o%p%amat_m_p)
+             ALLOCATE(o%p%amat_m_p(lb1:ub1,lb2:ub2))
+             READ(prop_unit,*) o%p%amat_m_p
+          END IF
+       END IF
+
+       ! source_p
+       IF (prop_showall .GE. 1) THEN
+          READ(prop_unit,*) lb1,ub1
+          READ(prop_unit,*) lb2,ub2
+          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+             IF (ALLOCATED(o%p%source_p)) DEALLOCATE(o%p%source_p)
+             ALLOCATE(o%p%source_p(lb1:ub1,lb2:ub2))
+             READ(prop_unit,*) o%p%source_p
+          END IF
+       END IF
+       ! source_m
+       IF (prop_showall .EQ. 1) THEN
+          READ(prop_unit,*) lb1,ub1
+          READ(prop_unit,*) lb2,ub2
+          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+             IF (ALLOCATED(o%p%source_m)) DEALLOCATE(o%p%source_m)
+             ALLOCATE(o%p%source_m(lb1:ub1,lb2:ub2))
+             READ(prop_unit,*) o%p%source_m
+          END IF
+       END IF
+
+       ! flux_p
+       IF (prop_showall .EQ. 1) THEN
+          READ(prop_unit,*) lb1,ub1
+          READ(prop_unit,*) lb2,ub2
+          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+             IF (ALLOCATED(o%p%flux_p)) DEALLOCATE(o%p%flux_p)
+             ALLOCATE(o%p%flux_p(lb1:ub1,lb2:ub2))
+             READ(prop_unit,*) o%p%flux_p
+          END IF
+       END IF
+       ! flux_m
+       IF (prop_showall .EQ. 1) THEN
+          READ(prop_unit,*) lb1,ub1
+          READ(prop_unit,*) lb2,ub2
+          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+             IF (ALLOCATED(o%p%flux_m)) DEALLOCATE(o%p%flux_m)
+             ALLOCATE(o%p%flux_m(lb1:ub1,lb2:ub2))
+             READ(prop_unit,*) o%p%flux_m
+          END IF
+       END IF
+
+       ! qflux - Winny not fully ok
+       IF (prop_showall .EQ. 1) THEN
+          IF (ALLOCATED(o%p%qflux)) DEALLOCATE(o%p%qflux)
+          ALLOCATE(o%p%qflux(3,3))
+          READ(prop_unit,*) o%p%qflux
+       END IF
+
+       ! eta
+       IF (prop_showall .EQ. 1) THEN
+          READ(prop_unit,*) lb1,ub1
+          IF (ub1 .GT. 0) THEN
+             IF (ALLOCATED(o%p%eta_l)) DEALLOCATE(o%p%eta_l)
+             ALLOCATE(o%p%eta_l(lb1:ub1))
+             READ(prop_unit,*) o%p%eta_l
+          END IF
+          READ(prop_unit,*) lb1,ub1
+          IF (ub1 .GT. 0) THEN
+             IF (ALLOCATED(o%p%eta_r)) DEALLOCATE(o%p%eta_r)
+             ALLOCATE(o%p%eta_r(lb1:ub1))
+             READ(prop_unit,*) o%p%eta_r
+          END IF
+          READ(prop_unit,*) o%p%eta_boundary_l
+          READ(prop_unit,*) o%p%eta_boundary_r
+       END IF
+
+       close(unit=prop_unit)
+    end if
   END SUBROUTINE read_propagator_cont
   ! ---------------------------------------------------------------------------
 
@@ -2956,40 +3525,154 @@ CONTAINS
     INTEGER :: lb1,ub1
     INTEGER :: lb2,ub2
 
+    integer :: grpid, varid
+    logical :: foundGroup
+    
     prop_bound = 1
 
     CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
-    CALL unit_propagator
-    OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
-         form=prop_format,action='read')
-    ! tags
-    READ(prop_unit,*) b%fieldpropagator_tag_left
-    READ(prop_unit,*) b%fieldpropagator_tag_right
-    READ(prop_unit,*) b%fieldperiod_tag_left
-    READ(prop_unit,*) b%fieldperiod_tag_right
-    ! forward
-    READ(prop_unit,*) lb1,ub1
-    READ(prop_unit,*) lb2,ub2
-    IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-       IF (ALLOCATED(b%c_forward)) DEALLOCATE(b%c_forward)
-       ALLOCATE(b%c_forward(lb1:ub1,lb2:ub2))
-       READ(prop_unit,*) b%c_forward
-    END IF
-    ! backward
-    READ(prop_unit,*) lb1,ub1
-    READ(prop_unit,*) lb2,ub2
-    IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-       IF (ALLOCATED(b%c_backward)) DEALLOCATE(b%c_backward)
-       ALLOCATE(b%c_backward(lb1:ub1,lb2:ub2))
-       READ(prop_unit,*) b%c_backward
-    END IF
-   
-    CLOSE(unit=prop_unit)
+    if (prop_fileformat .eq. 1) then
+
+       call nc_findGroup(ncid_propbounds, prop_cfilename, grpid, foundGroup)
+
+       call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_left', b%fieldpropagator_tag_left))
+       call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_right', b%fieldpropagator_tag_right))
+       call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_left', b%fieldperiod_tag_left))
+       call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_right', b%fieldperiod_tag_right))
+
+       call nc_inquire(grpid, 'c_forward', varid, lb1, ub1, lb2, ub2)
+       
+       if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+          if (allocated(b%c_forward)) deallocate(b%c_forward)
+          allocate(b%c_forward(lb1:ub1,lb2:ub2))
+          call nf90_check(nf90_get_var(grpid, varid, b%c_forward))
+       end if
+       
+       call nc_inquire(grpid, 'c_backward', varid, lb1, ub1, lb2, ub2)
+       if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+          if (allocated(b%c_backward)) deallocate(b%c_backward)
+          allocate(b%c_backward(lb1:ub1,lb2:ub2))
+          call nf90_check(nf90_get_var(grpid, varid, b%c_backward))
+       end if
+       
+       if (.not. foundGroup) then
+          call nf90_check(nf90_close(grpid))
+       end if
+       
+    else
+
+       CALL unit_propagator
+       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
+            form=prop_format,action='read')
+       ! tags
+       READ(prop_unit,*) b%fieldpropagator_tag_left
+       READ(prop_unit,*) b%fieldpropagator_tag_right
+       READ(prop_unit,*) b%fieldperiod_tag_left
+       READ(prop_unit,*) b%fieldperiod_tag_right
+       ! forward
+       READ(prop_unit,*) lb1,ub1
+       READ(prop_unit,*) lb2,ub2
+       IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+          IF (ALLOCATED(b%c_forward)) DEALLOCATE(b%c_forward)
+          ALLOCATE(b%c_forward(lb1:ub1,lb2:ub2))
+          READ(prop_unit,*) b%c_forward
+       END IF
+       ! backward
+       READ(prop_unit,*) lb1,ub1
+       READ(prop_unit,*) lb2,ub2
+       IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+          IF (ALLOCATED(b%c_backward)) DEALLOCATE(b%c_backward)
+          ALLOCATE(b%c_backward(lb1:ub1,lb2:ub2))
+          READ(prop_unit,*) b%c_backward
+       END IF
+
+       CLOSE(unit=prop_unit)
+
+    end if
   
   END SUBROUTINE read_prop_bound_cont
   ! ---------------------------------------------------------------------------
 
-  SUBROUTINE read_binarysplit_cont(o)
+  subroutine read_binarysplit_side_nc(ncid, grpname, binsplit)
+    integer :: ncid
+    character(len=*) :: grpname
+    type(binarysplit), intent(inout) :: binsplit
+
+    integer :: sideid, varid
+    integer :: lb1, ub1, lb2, ub2
+    
+    call nf90_check(nf90_inq_ncid(ncid, grpname, sideid))
+    
+    call nf90_check(nf90_get_att(sideid, NF90_GLOBAL, 'n_ori',   binsplit%n_ori))
+    call nf90_check(nf90_get_att(sideid, NF90_GLOBAL, 'n_split', binsplit%n_split))
+
+    call nc_inquire(sideid, 'x_ori_bin', varid, lb1, ub1, lb2, ub2)
+    if (ub1 .gt. lb1 .or. ub2 .gt. lb2) then
+       if (allocated(binsplit%x_ori_bin)) deallocate(binsplit%x_ori_bin)
+       allocate(binsplit%x_ori_bin(lb1:ub1,lb2:ub2))
+       call nf90_check(nf90_get_var(sideid, varid, binsplit%x_ori_bin))
+    end if
+
+    call nc_inquire(sideid, 'x_ori_poi', varid, lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%x_ori_poi)) deallocate(binsplit%x_ori_poi)
+       allocate(binsplit%x_ori_poi(lb1:ub1))
+       call nf90_check(nf90_get_var(sideid, varid, binsplit%x_ori_poi))
+    end if
+
+    call nc_inquire(sideid, 'x_poi', varid, lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%x_poi)) deallocate(binsplit%x_poi)
+       allocate(binsplit%x_poi(lb1:ub1))
+       call nf90_check(nf90_get_var(sideid, varid, binsplit%x_poi))
+    end if
+
+     call nc_inquire(sideid, 'x_split', varid, lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%x_split)) deallocate(binsplit%x_split)
+       allocate(binsplit%x_split(lb1:ub1))
+       call nf90_check(nf90_get_var(sideid, varid, binsplit%x_split))
+    end if
+
+    call nc_inquire(sideid, 'x_pos', varid, lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%x_pos)) deallocate(binsplit%x_pos)
+       allocate(binsplit%x_pos(lb1:ub1))
+       call nf90_check(nf90_get_var(sideid, varid, binsplit%x_pos))
+    end if
+
+    call nc_inquire(sideid, 'x', varid, lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%x)) deallocate(binsplit%x)
+       allocate(binsplit%x(lb1:ub1))
+       call nf90_check(nf90_get_var(sideid, varid, binsplit%x))
+    end if
+
+    call nc_inquire(sideid, 'y', varid, lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%y)) deallocate(binsplit%y)
+       allocate(binsplit%y(lb1:ub1))
+       call nf90_check(nf90_get_var(sideid, varid, binsplit%y))
+    end if
+ 
+    call nc_inquire(sideid, 'int', varid, lb1, ub1)   
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%int)) deallocate(binsplit%int)
+       allocate(binsplit%int(lb1:ub1))
+       call nf90_check(nf90_get_var(sideid, varid, binsplit%int))
+    end if
+
+    call nc_inquire(sideid, 'err', varid, lb1, ub1)   
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%err)) deallocate(binsplit%err)
+       allocate(binsplit%err(lb1:ub1))
+       call nf90_check(nf90_get_var(sideid, varid, binsplit%err))
+    end if
+
+
+  end subroutine read_binarysplit_side_nc
+
+  subroutine read_binarysplit_cont(o)
     ! reads the  binarysplit content of a propagator, which is specified in pointer o
     TYPE(propagator), POINTER  :: o
 
@@ -3001,156 +3684,180 @@ CONTAINS
 
     integer :: lb1,ub1,lb2,ub2
 
+    logical :: foundGroup
+    integer :: grpid, sideid
+    integer :: var_id
+
     prop_bound = 0
     prop_type = 6
     prop_start = o%fieldpropagator_tag_s
     prop_end   = o%fieldpropagator_tag_e
 
 
-    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end) 
-    CALL unit_propagator
-    OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
-         form=prop_format,action='read')
+    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
+    if (prop_fileformat .eq. 1) then
+  
+       call nc_findGroup(ncid_binarysplits, prop_cfilename, grpid, foundGroup)
 
-    READ(prop_unit,*) o%bin_split_mode
+       !write (*,*) "Reading Binarysplit-Group ", prop_cfilename
 
-    ! binarysplit left
-    READ(prop_unit,*) o%eta_bs_l%n_ori
-    READ(prop_unit,*) o%eta_bs_l%n_split
-    ! x_ori_bin
-    READ(prop_unit,*) lb1,ub1
-    READ(prop_unit,*) lb2,ub2
-    IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
-       IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) DEALLOCATE(o%eta_bs_l%x_ori_bin)
-       ALLOCATE(o%eta_bs_l%x_ori_bin(lb1:ub1,lb2:ub2))
-       READ(prop_unit,*) o%eta_bs_l%x_ori_bin
-    END IF
-    ! x_ori_poi
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) DEALLOCATE(o%eta_bs_l%x_ori_poi)
-       ALLOCATE(o%eta_bs_l%x_ori_poi(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_l%x_ori_poi
-    END IF
-    ! x_poi
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_l%x_poi)) DEALLOCATE(o%eta_bs_l%x_poi)
-       ALLOCATE(o%eta_bs_l%x_poi(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_l%x_poi
-    END IF
-    ! x_split
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_l%x_split)) DEALLOCATE(o%eta_bs_l%x_split)
-       ALLOCATE(o%eta_bs_l%x_split(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_l%x_split
-    END IF
-    ! x_pos
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_l%x_pos)) DEALLOCATE(o%eta_bs_l%x_pos)
-       ALLOCATE(o%eta_bs_l%x_pos(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_l%x_pos
-    END IF
-    ! x
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_l%x)) DEALLOCATE(o%eta_bs_l%x)
-       ALLOCATE(o%eta_bs_l%x(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_l%x
-    END IF
-    ! y
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_l%y)) DEALLOCATE(o%eta_bs_l%y)
-       ALLOCATE(o%eta_bs_l%y(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_l%y
-    END IF
-    ! int
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_l%int)) DEALLOCATE(o%eta_bs_l%int)
-       ALLOCATE(o%eta_bs_l%int(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_l%int
-    END IF
-    ! err
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_l%err)) DEALLOCATE(o%eta_bs_l%err)
-       ALLOCATE(o%eta_bs_l%err(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_l%err
-    END IF
+       call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode))
 
-    ! binarysplit right
-    READ(prop_unit,*) o%eta_bs_r%n_ori
-    READ(prop_unit,*) o%eta_bs_r%n_split
-    ! x_ori_bin
-    READ(prop_unit,*) lb1,ub1
-    READ(prop_unit,*) lb2,ub2
-    IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
-       IF (ALLOCATED(o%eta_bs_r%x_ori_bin)) DEALLOCATE(o%eta_bs_r%x_ori_bin)
-       ALLOCATE(o%eta_bs_r%x_ori_bin(lb1:ub1,lb2:ub2))
-       READ(prop_unit,*) o%eta_bs_r%x_ori_bin
-    END IF
-    ! x_ori_poi
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) DEALLOCATE(o%eta_bs_r%x_ori_poi)
-       ALLOCATE(o%eta_bs_r%x_ori_poi(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_r%x_ori_poi
-    END IF
-    ! x_poi
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_r%x_poi)) DEALLOCATE(o%eta_bs_r%x_poi)
-       ALLOCATE(o%eta_bs_r%x_poi(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_r%x_poi
-    END IF
-    ! x_split
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_r%x_split)) DEALLOCATE(o%eta_bs_r%x_split)
-       ALLOCATE(o%eta_bs_r%x_split(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_r%x_split
-    END IF
-    ! x_pos
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_r%x_pos)) DEALLOCATE(o%eta_bs_r%x_pos)
-       ALLOCATE(o%eta_bs_r%x_pos(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_r%x_pos
-    END IF
-    ! x
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_r%x)) DEALLOCATE(o%eta_bs_r%x)
-       ALLOCATE(o%eta_bs_r%x(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_r%x
-    END IF
-    ! y
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_r%y)) DEALLOCATE(o%eta_bs_r%y)
-       ALLOCATE(o%eta_bs_r%y(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_r%y
-    END IF
-    ! int
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_r%int)) DEALLOCATE(o%eta_bs_r%int)
-       ALLOCATE(o%eta_bs_r%int(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_r%int
-    END IF
-    ! err
-    READ(prop_unit,*) lb1,ub1
-    IF (ub1 .GT. 0) THEN
-       IF (ALLOCATED(o%eta_bs_r%err)) DEALLOCATE(o%eta_bs_r%err)
-       ALLOCATE(o%eta_bs_r%err(lb1:ub1))
-       READ(prop_unit,*) o%eta_bs_r%err
-    END IF
+       call read_binarysplit_side_nc(grpid, 'left', o%eta_bs_l)
+       call read_binarysplit_side_nc(grpid, 'right', o%eta_bs_r)
 
-    close(unit=prop_unit)
+       if (.not. foundGroup) then
+          call nf90_check(nf90_close(ncid_binarysplits))
+       end if
+       
+    else
+
+       CALL unit_propagator
+       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
+            form=prop_format,action='read')
+
+       READ(prop_unit,*) o%bin_split_mode
+
+       ! binarysplit left
+       READ(prop_unit,*) o%eta_bs_l%n_ori
+       READ(prop_unit,*) o%eta_bs_l%n_split
+       ! x_ori_bin
+       READ(prop_unit,*) lb1,ub1
+       READ(prop_unit,*) lb2,ub2
+       IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
+          IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) DEALLOCATE(o%eta_bs_l%x_ori_bin)
+          ALLOCATE(o%eta_bs_l%x_ori_bin(lb1:ub1,lb2:ub2))
+          READ(prop_unit,*) o%eta_bs_l%x_ori_bin
+       END IF
+       ! x_ori_poi
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) DEALLOCATE(o%eta_bs_l%x_ori_poi)
+          ALLOCATE(o%eta_bs_l%x_ori_poi(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_l%x_ori_poi
+       END IF
+       ! x_poi
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_l%x_poi)) DEALLOCATE(o%eta_bs_l%x_poi)
+          ALLOCATE(o%eta_bs_l%x_poi(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_l%x_poi
+       END IF
+       ! x_split
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_l%x_split)) DEALLOCATE(o%eta_bs_l%x_split)
+          ALLOCATE(o%eta_bs_l%x_split(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_l%x_split
+       END IF
+       ! x_pos
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_l%x_pos)) DEALLOCATE(o%eta_bs_l%x_pos)
+          ALLOCATE(o%eta_bs_l%x_pos(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_l%x_pos
+       END IF
+       ! x
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_l%x)) DEALLOCATE(o%eta_bs_l%x)
+          ALLOCATE(o%eta_bs_l%x(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_l%x
+       END IF
+       ! y
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_l%y)) DEALLOCATE(o%eta_bs_l%y)
+          ALLOCATE(o%eta_bs_l%y(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_l%y
+       END IF
+       ! int
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_l%int)) DEALLOCATE(o%eta_bs_l%int)
+          ALLOCATE(o%eta_bs_l%int(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_l%int
+       END IF
+       ! err
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_l%err)) DEALLOCATE(o%eta_bs_l%err)
+          ALLOCATE(o%eta_bs_l%err(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_l%err
+       END IF
+
+       ! binarysplit right
+       READ(prop_unit,*) o%eta_bs_r%n_ori
+       READ(prop_unit,*) o%eta_bs_r%n_split
+       ! x_ori_bin
+       READ(prop_unit,*) lb1,ub1
+       READ(prop_unit,*) lb2,ub2
+       IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
+          IF (ALLOCATED(o%eta_bs_r%x_ori_bin)) DEALLOCATE(o%eta_bs_r%x_ori_bin)
+          ALLOCATE(o%eta_bs_r%x_ori_bin(lb1:ub1,lb2:ub2))
+          READ(prop_unit,*) o%eta_bs_r%x_ori_bin
+       END IF
+       ! x_ori_poi
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) DEALLOCATE(o%eta_bs_r%x_ori_poi)
+          ALLOCATE(o%eta_bs_r%x_ori_poi(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_r%x_ori_poi
+       END IF
+       ! x_poi
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_r%x_poi)) DEALLOCATE(o%eta_bs_r%x_poi)
+          ALLOCATE(o%eta_bs_r%x_poi(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_r%x_poi
+       END IF
+       ! x_split
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_r%x_split)) DEALLOCATE(o%eta_bs_r%x_split)
+          ALLOCATE(o%eta_bs_r%x_split(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_r%x_split
+       END IF
+       ! x_pos
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_r%x_pos)) DEALLOCATE(o%eta_bs_r%x_pos)
+          ALLOCATE(o%eta_bs_r%x_pos(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_r%x_pos
+       END IF
+       ! x
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_r%x)) DEALLOCATE(o%eta_bs_r%x)
+          ALLOCATE(o%eta_bs_r%x(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_r%x
+       END IF
+       ! y
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_r%y)) DEALLOCATE(o%eta_bs_r%y)
+          ALLOCATE(o%eta_bs_r%y(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_r%y
+       END IF
+       ! int
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_r%int)) DEALLOCATE(o%eta_bs_r%int)
+          ALLOCATE(o%eta_bs_r%int(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_r%int
+       END IF
+       ! err
+       READ(prop_unit,*) lb1,ub1
+       IF (ub1 .GT. 0) THEN
+          IF (ALLOCATED(o%eta_bs_r%err)) DEALLOCATE(o%eta_bs_r%err)
+          ALLOCATE(o%eta_bs_r%err(lb1:ub1))
+          READ(prop_unit,*) o%eta_bs_r%err
+       END IF
+
+       close(unit=prop_unit)
+
+    end if
+
     
   end SUBROUTINE read_binarysplit_cont
   ! ---------------------------------------------------------------------------
@@ -3160,26 +3867,49 @@ CONTAINS
     INTEGER, INTENT(in) :: tag
     INTEGER :: dummy,lb1,ub1,lb2,ub2
 
+    integer :: varid, grpid
+    logical :: foundGroup
+    
     ! 5: result
     ! 0: no boundary
     CALL filename_propagator(5,0,tag,tag)
-    OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
-         form=prop_format,action='read')
-    READ(prop_unit,*) dummy
-    ! flux_mr for tag
-    READ(prop_unit,*) lb1,ub1
-    READ(prop_unit,*) lb2,ub2
-    IF (ALLOCATED(flux_mr)) DEALLOCATE(flux_mr)
-    ALLOCATE(flux_mr(lb1:ub1,lb2:ub2))
-    READ(prop_unit,*) flux_mr
-    ! flux_pl for tag
-    READ(prop_unit,*) lb1,ub1
-    READ(prop_unit,*) lb2,ub2
-    IF (ALLOCATED(flux_pl)) DEALLOCATE(flux_pl)
-    ALLOCATE(flux_pl(lb1:ub1,lb2:ub2))
-    READ(prop_unit,*) flux_pl
-    CLOSE(unit=prop_unit)
+    if (prop_fileformat .eq. 1) then
 
+       call nc_findGroup(ncid_recon, prop_cfilename, grpid, foundGroup)
+       
+       !write (*,*) "Reading NetCDF-Group ", prop_cfilename
+       call nc_inquire(grpid, 'flux_mr', varid, lb1, ub1, lb2, ub2)
+       if (allocated(flux_mr)) deallocate(flux_mr)
+       allocate(flux_mr(lb1:ub1,lb2:ub2))
+       call nf90_check(nf90_get_var(grpid, varid, flux_mr))
+
+       call nc_inquire(grpid, 'flux_pl', varid, lb1, ub1, lb2, ub2)
+       if (allocated(flux_pl)) deallocate(flux_pl)
+       allocate(flux_pl(lb1:ub1,lb2:ub2))
+       call nf90_check(nf90_get_var(grpid, varid, flux_pl))
+
+       if (.not. foundGroup) then
+          call nf90_check(nf90_close(ncid_recon))
+       end if
+    
+    else
+       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
+            form=prop_format,action='read')
+       READ(prop_unit,*) dummy
+       ! flux_mr for tag
+       READ(prop_unit,*) lb1,ub1
+       READ(prop_unit,*) lb2,ub2
+       IF (ALLOCATED(flux_mr)) DEALLOCATE(flux_mr)
+       ALLOCATE(flux_mr(lb1:ub1,lb2:ub2))
+       READ(prop_unit,*) flux_mr
+       ! flux_pl for tag
+       READ(prop_unit,*) lb1,ub1
+       READ(prop_unit,*) lb2,ub2
+       IF (ALLOCATED(flux_pl)) DEALLOCATE(flux_pl)
+       ALLOCATE(flux_pl(lb1:ub1,lb2:ub2))
+       READ(prop_unit,*) flux_pl
+       CLOSE(unit=prop_unit)
+    end if
   END SUBROUTINE read_prop_recon_cont
 
   ! ---------------------------------------------------------------------------
@@ -3208,7 +3938,13 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N  
     ! 
     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_N               
-    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N1  
+    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N1
+
+    character(len=100) :: prop_cfilename_nc
+    integer :: grpid, var_source_m_N, var_source_p_N, var_source_m_N1, var_source_p_0
+    integer :: var_flux_mr, var_flux_pl
+    logical :: exists
+    
 
     ! read the information about tags
     CALL unit_propagator
@@ -3322,15 +4058,30 @@ CONTAINS
 
     ! write the results - starting point
     CALL filename_propagator(5,0,prop_last_tag,prop_last_tag)
-    CALL unit_propagator
-    OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
-         form=prop_format,action='write')
-    WRITE(prop_unit,*) prop_last_tag
-    WRITE(prop_unit,*) LBOUND(source_m_N,1),UBOUND(source_m_N,1)
-    WRITE(prop_unit,*) LBOUND(source_m_N,2),UBOUND(source_m_N,2)
-    WRITE(prop_unit,*) source_m_N
-    CLOSE(unit=prop_unit)
     
+    if (prop_fileformat .eq. 1) then
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+       call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_recon))
+       grpid = ncid_recon
+
+       call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_last_tag', prop_last_tag))
+       
+       call nc_define(grpid, 'flux_mr', source_m_N, var_flux_mr)
+       
+       call nf90_check(nf90_enddef(ncid_recon))
+       call nf90_check(nf90_put_var(grpid, var_flux_mr, source_m_N))
+       call nf90_check(nf90_close(ncid_recon))
+    else
+       call unit_propagator
+       open(unit=prop_unit,file=prop_cfilename,status='replace', &
+            form=prop_format,action='write')
+       write(prop_unit,*) prop_last_tag
+       write(prop_unit,*) lbound(source_m_N,1),ubound(source_m_N,1)
+       write(prop_unit,*) lbound(source_m_N,2),ubound(source_m_N,2)
+       write(prop_unit,*) source_m_N
+       close(unit=prop_unit)
+
+    end if
     ! propagators
     r => prop_c ! the first one is the right one
     CALL construct_propagator(1)
@@ -3364,25 +4115,78 @@ CONTAINS
        
        ! output of new results
        CALL filename_propagator(5,0,N,N)
-       CALL unit_propagator
-       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
-            form=prop_format,action='write',position='append')
-       ! source_p for N
-       WRITE(prop_unit,*) LBOUND(source_p_N,1),UBOUND(source_p_N,1)
-       WRITE(prop_unit,*) LBOUND(source_p_N,2),UBOUND(source_p_N,2)
-       WRITE(prop_unit,*) source_p_N
-       CLOSE(prop_unit)
 
+       if (prop_fileformat .eq. 1) then
+          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+
+          call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
+          grpid = ncid_recon
+          if (.not. exists) then
+             write (*,*) "NetCDF-File does not exist, while expected"
+             call abort()
+             stop
+             !all nf90_check(nf90_def_dim(grpid, "flux_mr_dim1", size(source_p_N, 1), dimid2(1)))
+             !all nf90_check(nf90_def_dim(grpid, "flux_mr_dim2", size(source_p_N, 2), dimid2(2)))
+             !all nf90_check(nf90_def_var(grpid, "flux_mr", NF90_DOUBLE, dimid2, var_flux_mr))
+             !all nf90_check(nf90_put_att(grpid, var_flux_mr, 'lbound_1', lbound(source_p_N,1)))
+             !all nf90_check(nf90_put_att(grpid, var_flux_mr, 'ubound_1', ubound(source_p_N,1)))
+             !all nf90_check(nf90_put_att(grpid, var_flux_mr, 'lbound_2', lbound(source_p_N,2)))
+             !all nf90_check(nf90_put_att(grpid, var_flux_mr, 'ubound_2', ubound(source_p_N,2)))
+
+             !all nf90_check(nf90_enddef(ncid_recon))
+             !all nf90_check(nf90_put_var(grpid, var_flux_mr, source_p_N))
+             !all nf90_check(nf90_close(ncid_recon))                 
+          else
+                      
+             call nc_define(grpid, 'flux_pl', source_p_N, var_flux_pl)
+
+             call nf90_check(nf90_enddef(ncid_recon))
+             call nf90_check(nf90_put_var(grpid, var_flux_pl, source_p_N))
+             call nf90_check(nf90_close(ncid_recon))                    
+          end if
+          
+        
+       else
+
+          CALL unit_propagator
+          OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
+               form=prop_format,action='write',position='append')
+          ! source_p for N
+          WRITE(prop_unit,*) LBOUND(source_p_N,1),UBOUND(source_p_N,1)
+          WRITE(prop_unit,*) LBOUND(source_p_N,2),UBOUND(source_p_N,2)
+          WRITE(prop_unit,*) source_p_N
+          CLOSE(prop_unit)
+       end if
+       
        CALL filename_propagator(5,0,N-1,N-1)
-       CALL unit_propagator
-       OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
-            form=prop_format,action='write')
-       WRITE(prop_unit,*) N - 1
-       ! source_m for N-1       
-       WRITE(prop_unit,*) LBOUND(source_m_N1,1),UBOUND(source_m_N1,1)
-       WRITE(prop_unit,*) LBOUND(source_m_N1,2),UBOUND(source_m_N1,2)
-       WRITE(prop_unit,*) source_m_N1
-       CLOSE(unit=prop_unit)
+
+       if (prop_fileformat .eq. 1) then
+
+          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+
+          call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_recon))
+          grpid = ncid_recon
+
+          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_last_tag', N - 1))
+
+          call nc_define(grpid, 'flux_mr', source_m_N1, var_source_m_N1)
+                   
+          call nf90_check(nf90_enddef(ncid_recon))
+          call nf90_check(nf90_put_var(grpid, var_flux_mr, source_m_N1))
+          call nf90_check(nf90_close(ncid_recon))
+          
+       else
+          CALL unit_propagator
+          OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
+               form=prop_format,action='write')
+          WRITE(prop_unit,*) N - 1
+          ! source_m for N-1       
+          WRITE(prop_unit,*) LBOUND(source_m_N1,1),UBOUND(source_m_N1,1)
+          WRITE(prop_unit,*) LBOUND(source_m_N1,2),UBOUND(source_m_N1,2)
+          WRITE(prop_unit,*) source_m_N1
+          CLOSE(unit=prop_unit)
+
+       end if
       
        ! now make source_m or N-1 the new starting value
        DEALLOCATE(source_m_N)
@@ -3394,15 +4198,31 @@ CONTAINS
 
     ! write the results - final point (from join_ends)
     CALL filename_propagator(5,0,prop_first_tag,prop_first_tag)
-    CALL unit_propagator
-    OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
-         form=prop_format,action='write',position='append')
-    WRITE(prop_unit,*) LBOUND(source_p_0,1),UBOUND(source_p_0,1)
-    WRITE(prop_unit,*) LBOUND(source_p_0,2),UBOUND(source_p_0,2)
-    WRITE(prop_unit,*) source_p_0
-    CLOSE(unit=prop_unit)
 
+    if (prop_fileformat .eq. 1) then
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+       call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
+       if (.not. exists) then
+          write (*,*) "NetCDF-File does not exist, while expected"
+          call abort()
+          stop
+       end if
 
+       call nc_define(grpid, 'flux_pl', source_p_0, var_flux_pl)
+
+       call nf90_check(nf90_enddef(ncid_recon))
+       call nf90_check(nf90_put_var(grpid, var_flux_pl, source_p_0))
+       call nf90_check(nf90_close(ncid_recon))
+    else
+       call unit_propagator
+       open(unit=prop_unit,file=prop_cfilename,status='old', &
+            form=prop_format,action='write',position='append')
+       write(prop_unit,*) lbound(source_p_0,1),ubound(source_p_0,1)
+       write(prop_unit,*) lbound(source_p_0,2),ubound(source_p_0,2)
+       write(prop_unit,*) source_p_0
+       close(unit=prop_unit)
+    end if
+ 
 
 !!$    ! for joining the cmat must go into the propagator
 !!$    ! forward goes to the left - l(eft)
@@ -3584,12 +4404,13 @@ CONTAINS
     END IF
 
     ! add numbers and extension
+    
     WRITE(prop_cfilename,'(100A)') &
          TRIM(ADJUSTL(prop_cfilename)),'_', &
          TRIM(ADJUSTL(ctag1)),'_', &
          TRIM(ADJUSTL(ctag2)),'.', &
          TRIM(ADJUSTL(prop_cext))
-
+    
 
   END SUBROUTINE filename_prop
   ! ---------------------------------------------------------------------------
