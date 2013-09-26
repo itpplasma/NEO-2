@@ -558,6 +558,12 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   type(neo2scheduler) :: sched
 #endif
 
+  ! --- NetCDF ---
+  integer :: ncid_taginfo, grpid
+  character(len=128) :: grpname
+  ! ---
+  
+
   !print *, 'flint: begin of program'
   ! this is not very sophisticated at the moment
   !  mainly puts the fieldpropagator pointer to the first one
@@ -2626,70 +2632,142 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   ! Write taginfo.prop
   IF ( (prop_write .EQ. 1 .OR. prop_write .EQ. 2) .and. prop_reconstruct .eq. 0) THEN
      ! taginfo
-     CALL unit_propagator
-     OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-          form=prop_format,action='write')
-     WRITE(prop_unit,*) prop_write
+     
+     if (prop_fileformat .eq. 1) then
+
+        call nf90_check(nf90_create(prop_ctaginfo_nc, nf90_hdf5, ncid_taginfo))
+
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'prop_write', prop_write))
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'tag_first', fieldline%ch_fir%ch_fir%tag))
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'tag_last',  fieldline%ch_las%ch_las%tag))
+        if (mpro%isParallel()) then
+           call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'parallel_storage', 1))
+        else
+           call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'parallel_storage', 0))
+        end if
+        phi_per = twopi / device%nfp
+
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'aiota', surface%aiota))
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'bmod0', surface%bmod0))
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'b_abs_min', surface%b_abs_min))
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'b_abs_max', surface%b_abs_max))
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'phi_per', phi_per))
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'nfp', device%nfp))
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'boozer_phi_beg', boozer_phi_beg))
+        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'boozer_theta_beg',boozer_theta_beg ))
+
+        !call nf90_check(nf90_enddef(ncid_taginfo))
+
+        fieldperiod => fieldline%ch_fir 
+        fieldpropagator => fieldperiod%ch_fir
+        allprops_taginfo_nc: DO WHILE (fieldpropagator%tag .LE. fieldline%ch_las%ch_las%tag)
+
+           fieldperiod => fieldpropagator%parent
+
+           phi_l = fieldpropagator%phi_l
+           phi_r = fieldpropagator%phi_r
+           theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
+           theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
+           if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
+              phi_l = 0.0_dp
+           else
+              phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
+           end if
+           if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
+              phi_r = phi_per
+           else
+              phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
+           end if
+
+           write (grpname, '(A, I0)') 'fieldpropagator_', fieldpropagator%tag
+           write (*,*) '_' // trim(grpname) // '_'
+           
+           call nf90_check(nf90_def_grp(ncid_taginfo, trim(grpname), grpid))
+
+           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'tag', fieldpropagator%tag))
+           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'parent_tag', fieldpropagator%parent%tag))
+           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldperiod_phi_l', fieldperiod%phi_l))
+           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_l', phi_l))
+           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_r', phi_r))
+           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'theta_l', theta_l))
+           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'theta_r', theta_r))
+           
+           IF (ASSOCIATED(fieldpropagator%next)) THEN
+              fieldpropagator => fieldpropagator%next
+           else
+              exit allprops_taginfo_nc
+           end IF
+        end DO allprops_taginfo_nc
+        
+        call nf90_check(nf90_close(ncid_taginfo))
+        
+     else
+
+        CALL unit_propagator
+        OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
+             form=prop_format,action='write')
+        WRITE(prop_unit,*) prop_write
 !!$     WRITE(prop_unit,*) prop_first_tag   ! UNSOLVED PROBLEM
 !!$     WRITE(prop_unit,*) prop_last_tag    ! UNSOLVED PROBLEM
-     WRITE(prop_unit,*) fieldline%ch_fir%ch_fir%tag
-     WRITE(prop_unit,*) fieldline%ch_las%ch_las%tag
-     ! This was the end of the old write
+        WRITE(prop_unit,*) fieldline%ch_fir%ch_fir%tag
+        WRITE(prop_unit,*) fieldline%ch_las%ch_las%tag
+        ! This was the end of the old write
 #if defined(MPI_SUPPORT)
-     if (mpro%isParallel()) then
-        WRITE(prop_unit,*) .TRUE.
-     else
-        WRITE(prop_unit,*) .FALSE.
-     end if
+        if (mpro%isParallel()) then
+           WRITE(prop_unit,*) .TRUE.
+        else
+           WRITE(prop_unit,*) .FALSE.
+        end if
 #else
-     WRITE(prop_unit,*) .FALSE.
+        WRITE(prop_unit,*) .FALSE.
 #endif
-     ! 
-     phi_per = twopi / device%nfp
+        ! 
+        phi_per = twopi / device%nfp
 
+        WRITE(prop_unit,*) surface%aiota
+        WRITE(prop_unit,*) surface%bmod0
+        WRITE(prop_unit,*) surface%b_abs_min
+        WRITE(prop_unit,*) surface%b_abs_max
+        WRITE(prop_unit,*) phi_per
+        WRITE(prop_unit,*) device%nfp
+        WRITE(prop_unit,*) boozer_phi_beg
+        WRITE(prop_unit,*) boozer_theta_beg
 
-     WRITE(prop_unit,*) surface%aiota
-     WRITE(prop_unit,*) surface%bmod0
-     WRITE(prop_unit,*) surface%b_abs_min
-     WRITE(prop_unit,*) surface%b_abs_max
-     WRITE(prop_unit,*) phi_per
-     WRITE(prop_unit,*) device%nfp
-     WRITE(prop_unit,*) boozer_phi_beg
-     WRITE(prop_unit,*) boozer_theta_beg
+        fieldperiod => fieldline%ch_fir 
+        fieldpropagator => fieldperiod%ch_fir
+        allprops_taginfo: DO WHILE (fieldpropagator%tag .LE. fieldline%ch_las%ch_las%tag)
 
-     fieldperiod => fieldline%ch_fir 
-     fieldpropagator => fieldperiod%ch_fir
-     allprops_taginfo: DO WHILE (fieldpropagator%tag .LE. fieldline%ch_las%ch_las%tag)
-        
-        fieldperiod => fieldpropagator%parent
+           fieldperiod => fieldpropagator%parent
 
-        phi_l = fieldpropagator%phi_l
-        phi_r = fieldpropagator%phi_r
-        theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
-        theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
-        if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
-           phi_l = 0.0_dp
-        else
-           phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
-        end if
-        if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
-           phi_r = phi_per
-        else
-           phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
-        end if
+           phi_l = fieldpropagator%phi_l
+           phi_r = fieldpropagator%phi_r
+           theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
+           theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
+           if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
+              phi_l = 0.0_dp
+           else
+              phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
+           end if
+           if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
+              phi_r = phi_per
+           else
+              phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
+           end if
 
-        WRITE(prop_unit,*) fieldpropagator%tag, fieldpropagator%parent%tag,&
-             fieldperiod%phi_l, &
-             phi_l, phi_r, theta_l, theta_r
-        IF (ASSOCIATED(fieldpropagator%next)) THEN
-           fieldpropagator => fieldpropagator%next
-        else
-           exit allprops_taginfo
-        end IF
-     end DO allprops_taginfo
+           WRITE(prop_unit,*) fieldpropagator%tag, fieldpropagator%parent%tag,&
+                fieldperiod%phi_l, &
+                phi_l, phi_r, theta_l, theta_r
+           IF (ASSOCIATED(fieldpropagator%next)) THEN
+              fieldpropagator => fieldpropagator%next
+           else
+              exit allprops_taginfo
+           end IF
+        end DO allprops_taginfo
 
-     CLOSE(unit=prop_unit)
-  
+        CLOSE(unit=prop_unit)
+
+     end if
+
      !fieldpropagator%tag
 
      ! stop

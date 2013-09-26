@@ -316,7 +316,7 @@ PROGRAM neo2
 #if defined(MPI_SUPPORT)
   call mpro%init()
 
-  if (mpro%getRank() == 1) then
+  if (mpro%isMaster()) then
      write (*,*) "NEO-2 Git Revision: [", Neo2_Version, "]"
   end if
 

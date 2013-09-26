@@ -106,6 +106,7 @@ MODULE propagator_mod
   CHARACTER(len=8),   PARAMETER, PRIVATE         :: prop_cboundary = 'boundary'
   CHARACTER(len=11),  PARAMETER, PRIVATE         :: prop_cbinarysplit = 'binarysplit'
   CHARACTER(len=12),  PARAMETER, PUBLIC          :: prop_ctaginfo = 'taginfo.prop'
+  character(len=10),  parameter, PUBLIC          :: prop_ctaginfo_nc = 'taginfo.nc'   ! NetCDF
   CHARACTER(len=16),  PARAMETER, PRIVATE         :: prop_cresult = 'reconstruct'
   CHARACTER(len=100),            PUBLIC          :: prop_cfilename
   INTEGER,                       PUBLIC          :: prop_unit = 150
@@ -1047,103 +1048,112 @@ CONTAINS
           END DO
        END DO
 
-       OPEN(uw,file='fulltransp.dat',status='replace')
-       WRITE (uw,'(6(1x,i4),1000(1x,e18.5))')  &
-            full_version, &
-            isw_lorentz, isw_integral, isw_energy, lag, leg, &
-            conl_over_mfp, collpar, z_eff, &
-            avnabpsi, avbhat2, dl1obhat, &
-            gamma_out
-       CLOSE(uw)
-
        ! ----------- Experimental NetCDF Demonstration ------
-       
-       call nf90_check(nf90_create('fulltransp.nc', NF90_CLOBBER, ncid))
-       !call nf90_check(nf90_def_dim(ncid, "scalar", 1, scalar_dimid))
-       call nf90_check(nf90_def_dim(ncid, "gamma_out_dim1", size(gamma_out,1), gamma_out_dimid(1)))
-       call nf90_check(nf90_def_dim(ncid, "gamma_out_dim2", size(gamma_out,2), gamma_out_dimid(2)))
-       
-       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'full_version',  full_version))
-       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_lorentz',   isw_lorentz))
-       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_integral',  isw_integral)       )
-       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_energy',    isw_energy))
-       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'lag',           lag))
-       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'leg',           leg))
-       call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'conl_over_mfp', conl_over_mfp))
-       
-       call nf90_check(nf90_def_var(ncid, 'collpar',   NF90_DOUBLE, varid = var_collpar_id))
-       call nf90_check(nf90_def_var(ncid, 'z_eff',     NF90_DOUBLE, varid = var_z_eff_id))
-       call nf90_check(nf90_def_var(ncid, 'avnabpsi',  NF90_DOUBLE, varid = var_avnabpsi_id))
-       call nf90_check(nf90_def_var(ncid, 'avbhat2',   NF90_DOUBLE, varid = var_avbhat2_id))
-       call nf90_check(nf90_def_var(ncid, 'dl1obhat',  NF90_DOUBLE, varid = var_dl1obhat_id))
-       call nf90_check(nf90_def_var(ncid, 'gamma_out', NF90_DOUBLE, gamma_out_dimid, var_gamma_out_id))
-       
-       call nf90_check(nf90_enddef(ncid))
-       
-       call nf90_check(nf90_put_var(ncid, var_collpar_id, collpar))
-       call nf90_check(nf90_put_var(ncid, var_z_eff_id, z_eff))
-       call nf90_check(nf90_put_var(ncid, var_avnabpsi_id, avnabpsi))
-       call nf90_check(nf90_put_var(ncid, var_avbhat2_id, avbhat2))
-       call nf90_check(nf90_put_var(ncid, var_dl1obhat_id, dl1obhat))
-       call nf90_check(nf90_put_var(ncid, var_gamma_out_id, gamma_out)   )  
-       
-       call nf90_check(nf90_close(ncid))
-       
 
-       OPEN(uw,file='efinal.dat',status='replace')
-       WRITE (uw,'(1000(1x,e18.5))')                                   &
-         (phi),(y(1:2)),(aiota_loc),                    &
-         (dmono_over_dplateau),(epseff3_2),(alambda_b), &
-         (qflux_g),(qflux_e),(qcurr_g),(qcurr_e),    &
-         (alambda_bb),(gamma_E), &
-         (g_bs),    &
-         (device%r0),(surface%bmod0), &
-         y(6),y(7),y(9),y(13),y(14)
-       CLOSE(uw)
+       if (prop_fileformat .eq. 1) then
 
-       
-       ! ----------- Experimental NetCDF Demonstration ----------
-       call nf90_check(nf90_create("efinal.nc", NF90_CLOBBER, ncid))
+          call nf90_check(nf90_create('fulltransp.nc', NF90_HDF5, ncid))
+          !call nf90_check(nf90_def_dim(ncid, "scalar", 1, scalar_dimid))
+          call nf90_check(nf90_def_dim(ncid, "gamma_out_dim1", size(gamma_out,1), gamma_out_dimid(1)))
+          call nf90_check(nf90_def_dim(ncid, "gamma_out_dim2", size(gamma_out,2), gamma_out_dimid(2)))
 
-       call nf90_check(nf90_def_dim(ncid, "y_dim", size(y), y_dimid))
+          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'full_version',  full_version))
+          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_lorentz',   isw_lorentz))
+          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_integral',  isw_integral))
+          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_energy',    isw_energy))
+          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'lag',           lag))
+          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'leg',           leg))
+          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'conl_over_mfp', conl_over_mfp))
 
-       call nf90_check(nf90_def_var(ncid, "phi",                 NF90_DOUBLE, varid = var_phi_id))
-       !call nf90_check(nf90_def_var(ncid, "y(1:2)",              NF90_DOUBLE, y2_dimid, var_y12_id))
-       call nf90_check(nf90_def_var(ncid, "aiota_loc",           NF90_DOUBLE, varid = var_aiota_loc_id))
-       call nf90_check(nf90_def_var(ncid, "dmono_over_dplateau", NF90_DOUBLE, varid = var_dmono_over_dplateau_id))
-       call nf90_check(nf90_def_var(ncid, "epseff3_2",           NF90_DOUBLE, varid = var_epseff3_2_id))
-       call nf90_check(nf90_def_var(ncid, "alambda_b",           NF90_DOUBLE, varid = var_alambda_b_id))
-       call nf90_check(nf90_def_var(ncid, "qflux_g",             NF90_DOUBLE, varid = var_qflux_g_id))
-       call nf90_check(nf90_def_var(ncid, "qflux_e",             NF90_DOUBLE, varid = var_qflux_e_id))
-       call nf90_check(nf90_def_var(ncid, "qcurr_g",             NF90_DOUBLE, varid = var_qcurr_g_id))
-       call nf90_check(nf90_def_var(ncid, "qcurr_e",             NF90_DOUBLE, varid = var_qcurr_e_id))
-       call nf90_check(nf90_def_var(ncid, "alambda_bb",          NF90_DOUBLE, varid = var_alambda_bb_id))
-       call nf90_check(nf90_def_var(ncid, "gamma_E",             NF90_DOUBLE, varid = var_gamma_E_id))
-       call nf90_check(nf90_def_var(ncid, "g_bs",                NF90_DOUBLE, varid = var_g_bs_id))
-       call nf90_check(nf90_def_var(ncid, "r0",                  NF90_DOUBLE, varid = var_r0_id))
-       call nf90_check(nf90_def_var(ncid, "bmod0",               NF90_DOUBLE, varid = var_bmod0_id))
-       call nf90_check(nf90_def_var(ncid, "y",                   NF90_DOUBLE, y_dimid, var_y_id))
+          call nf90_check(nf90_def_var(ncid, 'collpar',   NF90_DOUBLE, varid = var_collpar_id))
+          call nf90_check(nf90_def_var(ncid, 'z_eff',     NF90_DOUBLE, varid = var_z_eff_id))
+          call nf90_check(nf90_def_var(ncid, 'avnabpsi',  NF90_DOUBLE, varid = var_avnabpsi_id))
+          call nf90_check(nf90_def_var(ncid, 'avbhat2',   NF90_DOUBLE, varid = var_avbhat2_id))
+          call nf90_check(nf90_def_var(ncid, 'dl1obhat',  NF90_DOUBLE, varid = var_dl1obhat_id))
+          call nf90_check(nf90_def_var(ncid, 'gamma_out', NF90_DOUBLE, gamma_out_dimid, var_gamma_out_id))
 
-       call nf90_check(nf90_enddef(ncid))
+          call nf90_check(nf90_enddef(ncid))
 
-       call nf90_check(nf90_put_var(ncid, var_phi_id, phi))
-       !call nf90_check(nf90_put_var(ncid, var_y_id, y(1:2)))
-       call nf90_check(nf90_put_var(ncid, var_aiota_loc_id, aiota_loc))
-       call nf90_check(nf90_put_var(ncid, var_dmono_over_dplateau_id, dmono_over_dplateau))
-       call nf90_check(nf90_put_var(ncid, var_epseff3_2_id, epseff3_2))
-       call nf90_check(nf90_put_var(ncid, var_alambda_b_id, alambda_b))
-       call nf90_check(nf90_put_var(ncid, var_qflux_g_id, qflux_g))
-       call nf90_check(nf90_put_var(ncid, var_qflux_e_id, qflux_e))
-       call nf90_check(nf90_put_var(ncid, var_qcurr_g_id, qcurr_g))
-       call nf90_check(nf90_put_var(ncid, var_qcurr_e_id, qcurr_e))
-       call nf90_check(nf90_put_var(ncid, var_alambda_bb_id, alambda_bb))
-       call nf90_check(nf90_put_var(ncid, var_gamma_E_id, gamma_E))
-       call nf90_check(nf90_put_var(ncid, var_g_bs_id, g_bs))
-       call nf90_check(nf90_put_var(ncid, var_r0_id, device%r0))
-       call nf90_check(nf90_put_var(ncid, var_bmod0_id, surface%bmod0))
-       call nf90_check(nf90_put_var(ncid, var_y_id, y))
+          call nf90_check(nf90_put_var(ncid, var_collpar_id, collpar))
+          call nf90_check(nf90_put_var(ncid, var_z_eff_id, z_eff))
+          call nf90_check(nf90_put_var(ncid, var_avnabpsi_id, avnabpsi))
+          call nf90_check(nf90_put_var(ncid, var_avbhat2_id, avbhat2))
+          call nf90_check(nf90_put_var(ncid, var_dl1obhat_id, dl1obhat))
+          call nf90_check(nf90_put_var(ncid, var_gamma_out_id, gamma_out)   )  
 
-       call nf90_check(nf90_close(ncid))
+          call nf90_check(nf90_close(ncid))
+
+       else
+          
+          OPEN(uw,file='fulltransp.dat',status='replace')
+          WRITE (uw,'(6(1x,i4),1000(1x,e18.5))')  &
+               full_version, &
+               isw_lorentz, isw_integral, isw_energy, lag, leg, &
+               conl_over_mfp, collpar, z_eff, &
+               avnabpsi, avbhat2, dl1obhat, &
+               gamma_out
+          CLOSE(uw)
+          
+       end if
+
+       if (prop_fileformat .eq. 1) then
+
+          call nf90_check(nf90_create("efinal.nc", NF90_HDF5, ncid))
+
+          call nf90_check(nf90_def_dim(ncid, "y_dim", size(y), y_dimid))
+
+          call nf90_check(nf90_def_var(ncid, "phi",                 NF90_DOUBLE, varid = var_phi_id))
+          !call nf90_check(nf90_def_var(ncid, "y(1:2)",              NF90_DOUBLE, y2_dimid, var_y12_id))
+          call nf90_check(nf90_def_var(ncid, "aiota_loc",           NF90_DOUBLE, varid = var_aiota_loc_id))
+          call nf90_check(nf90_def_var(ncid, "dmono_over_dplateau", NF90_DOUBLE, varid = var_dmono_over_dplateau_id))
+          call nf90_check(nf90_def_var(ncid, "epseff3_2",           NF90_DOUBLE, varid = var_epseff3_2_id))
+          call nf90_check(nf90_def_var(ncid, "alambda_b",           NF90_DOUBLE, varid = var_alambda_b_id))
+          call nf90_check(nf90_def_var(ncid, "qflux_g",             NF90_DOUBLE, varid = var_qflux_g_id))
+          call nf90_check(nf90_def_var(ncid, "qflux_e",             NF90_DOUBLE, varid = var_qflux_e_id))
+          call nf90_check(nf90_def_var(ncid, "qcurr_g",             NF90_DOUBLE, varid = var_qcurr_g_id))
+          call nf90_check(nf90_def_var(ncid, "qcurr_e",             NF90_DOUBLE, varid = var_qcurr_e_id))
+          call nf90_check(nf90_def_var(ncid, "alambda_bb",          NF90_DOUBLE, varid = var_alambda_bb_id))
+          call nf90_check(nf90_def_var(ncid, "gamma_E",             NF90_DOUBLE, varid = var_gamma_E_id))
+          call nf90_check(nf90_def_var(ncid, "g_bs",                NF90_DOUBLE, varid = var_g_bs_id))
+          call nf90_check(nf90_def_var(ncid, "r0",                  NF90_DOUBLE, varid = var_r0_id))
+          call nf90_check(nf90_def_var(ncid, "bmod0",               NF90_DOUBLE, varid = var_bmod0_id))
+          call nf90_check(nf90_def_var(ncid, "y",                   NF90_DOUBLE, y_dimid, var_y_id))
+
+          call nf90_check(nf90_enddef(ncid))
+
+          call nf90_check(nf90_put_var(ncid, var_phi_id, phi))
+          !call nf90_check(nf90_put_var(ncid, var_y_id, y(1:2)))
+          call nf90_check(nf90_put_var(ncid, var_aiota_loc_id, aiota_loc))
+          call nf90_check(nf90_put_var(ncid, var_dmono_over_dplateau_id, dmono_over_dplateau))
+          call nf90_check(nf90_put_var(ncid, var_epseff3_2_id, epseff3_2))
+          call nf90_check(nf90_put_var(ncid, var_alambda_b_id, alambda_b))
+          call nf90_check(nf90_put_var(ncid, var_qflux_g_id, qflux_g))
+          call nf90_check(nf90_put_var(ncid, var_qflux_e_id, qflux_e))
+          call nf90_check(nf90_put_var(ncid, var_qcurr_g_id, qcurr_g))
+          call nf90_check(nf90_put_var(ncid, var_qcurr_e_id, qcurr_e))
+          call nf90_check(nf90_put_var(ncid, var_alambda_bb_id, alambda_bb))
+          call nf90_check(nf90_put_var(ncid, var_gamma_E_id, gamma_E))
+          call nf90_check(nf90_put_var(ncid, var_g_bs_id, g_bs))
+          call nf90_check(nf90_put_var(ncid, var_r0_id, device%r0))
+          call nf90_check(nf90_put_var(ncid, var_bmod0_id, surface%bmod0))
+          call nf90_check(nf90_put_var(ncid, var_y_id, y))
+
+          call nf90_check(nf90_close(ncid))
+
+       else
+          
+          OPEN(uw,file='efinal.dat',status='replace')
+          WRITE (uw,'(1000(1x,e18.5))')                                   &
+               (phi),(y(1:2)),(aiota_loc),                    &
+               (dmono_over_dplateau),(epseff3_2),(alambda_b), &
+               (qflux_g),(qflux_e),(qcurr_g),(qcurr_e),    &
+               (alambda_bb),(gamma_E), &
+               (g_bs),    &
+               (device%r0),(surface%bmod0), &
+               y(6),y(7),y(9),y(13),y(14)
+          CLOSE(uw)
+          
+       end if
 
     END IF
 
@@ -3940,21 +3950,37 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_N               
     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N1
 
+    ! --- NetCDF ---
     character(len=100) :: prop_cfilename_nc
     integer :: grpid, var_source_m_N, var_source_p_N, var_source_m_N1, var_source_p_0
     integer :: var_flux_mr, var_flux_pl
+    integer :: ncid_taginfo
+    integer :: iparallel_storage
     logical :: exists
-    
+    ! ---
 
     ! read the information about tags
-    CALL unit_propagator
-    OPEN(unit=prop_unit,file=prop_ctaginfo,status='old', &
-         form=prop_format,action='read')
-    READ(prop_unit,*) prop_write
-    READ(prop_unit,*) prop_first_tag
-    READ(prop_unit,*) prop_last_tag
-    READ(prop_unit,*) parallel_storage
-    CLOSE(unit=prop_unit)
+
+    if (prop_fileformat .eq. 1) then
+       call nf90_check(nf90_open(prop_ctaginfo_nc, NF90_NOWRITE, ncid_taginfo))
+
+       call nf90_check(nf90_get_att(ncid_taginfo, NF90_GLOBAL, 'prop_write', prop_write))
+       call nf90_check(nf90_get_att(ncid_taginfo, NF90_GLOBAL, 'tag_first',  prop_first_tag))
+       call nf90_check(nf90_get_att(ncid_taginfo, NF90_GLOBAL, 'tag_last',   prop_last_tag))
+       call nf90_check(nf90_get_att(ncid_taginfo, NF90_GLOBAL, 'parallel_storage', iparallel_storage))
+       parallel_storage = (iparallel_storage .eq. 1)
+       
+       call nf90_check(nf90_close(ncid_taginfo))
+    else
+       CALL unit_propagator
+       OPEN(unit=prop_unit,file=prop_ctaginfo,status='old', &
+            form=prop_format,action='read')
+       READ(prop_unit,*) prop_write
+       READ(prop_unit,*) prop_first_tag
+       READ(prop_unit,*) prop_last_tag
+       READ(prop_unit,*) parallel_storage
+       CLOSE(unit=prop_unit)
+    end if
     
     IF (prop_write .EQ. 1) THEN
        prop_type = 1
