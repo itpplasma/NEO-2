@@ -336,8 +336,8 @@ PROGRAM neo2
      if (prop_fileformat .eq. 1) then
         write (*,*) "Opening NetCDF-Files..."
         call nf90_check(nf90_open('propagators.nc', NF90_NOWRITE, ncid_propagators))
-        call nf90_check(nf90_open('propagators_boundaries.nc', NF90_NOWRITE, ncid_propbounds))
-        ierr =  nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits)
+        ierr = nf90_open('propagators_boundaries.nc', NF90_NOWRITE, ncid_propbounds)
+        ierr = nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits)
         write (*,*) "Done!"
      end if
      
