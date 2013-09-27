@@ -295,12 +295,12 @@ module wuGenericNeo2Workunit_module
 
       associate (b => mpro%packBuffer)
         associate (prop => this%prop_res)
-          write (*,*) "Packing propagator:"
+          !write (*,*) "Packing propagator:"
           call b%add(prop%tag)
           call b%add(prop%nr_joined)
           call b%add(prop%bin_split_mode)
 
-          write (*,*) prop%tag, prop%nr_joined, prop%bin_split_mode
+          !write (*,*) prop%tag, prop%nr_joined, prop%bin_split_mode
 
           call this%packBinarySplit(prop%eta_bs_l)
           call this%packBinarySplit(prop%eta_bs_r)
