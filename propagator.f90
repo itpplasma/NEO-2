@@ -1079,7 +1079,7 @@ CONTAINS
           call nf90_check(nf90_put_var(ncid, var_avnabpsi_id, avnabpsi))
           call nf90_check(nf90_put_var(ncid, var_avbhat2_id, avbhat2))
           call nf90_check(nf90_put_var(ncid, var_dl1obhat_id, dl1obhat))
-          call nf90_check(nf90_put_var(ncid, var_gamma_out_id, gamma_out)   )  
+          call nf90_check(nf90_put_var(ncid, var_gamma_out_id, gamma_out))  
 
           call nf90_check(nf90_close(ncid))
 
