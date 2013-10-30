@@ -92,12 +92,13 @@ contains
 
   end subroutine mergeNCFiles
 
-  subroutine nc_defineMultiDim(ncid, name, type, dims, varid)
+  subroutine nc_defineMultiDim(ncid, name, type, dims, varid, comment)
     integer :: ncid
     character(len=*) :: name
     integer :: type
     integer, dimension(:) :: dims
     integer, intent(out) :: varid
+    character(len=*), optional :: comment    
 
     integer, dimension(:), allocatable :: dimid
     integer :: i
@@ -109,36 +110,45 @@ contains
        call nf90_check(nf90_def_dim(ncid, dimname, dims(i), dimid(i)))
     end do
     call nf90_check(nf90_def_var(ncid, name, type, dimid, varid))
-
+    
+    if (present(comment)) then
+       call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
+    end if
+    
     deallocate(dimid)
     
   end subroutine nc_defineMultiDim
 
-  subroutine nc_defineMatrix_int(ncid, name, var, varid)
+  subroutine nc_defineMatrix_int(ncid, name, var, varid, comment)
     integer :: ncid
     character(len=*) :: name
     integer, dimension(:,:), allocatable :: var
     integer :: dimid(2)
     integer, intent(out) :: varid
+    character(len=*), optional :: comment
 
     if (allocated(var)) then
        call nf90_check(nf90_def_dim(ncid, name // "_dim1", size(var,1), dimid(1)))
-       call nf90_check(nf90_def_dim(ncid, name // "_dim2", size(var,2), dimid(2)))
+       call nf90_check(nf90_def_dim(ncid, name // "_dim2", size(var,2), dimid(2)))      
        call nf90_check(nf90_def_var(ncid, name, NF90_INT, dimid, varid))
 
-       call nf90_check(nf90_put_att(ncid, varid, 'lbound1', LBOUND(var,1)))
+       call nf90_check(nf90_put_att(ncid, varid, 'lbound1', lbound(var,1)))
        call nf90_check(nf90_put_att(ncid, varid, 'ubound1', UBOUND(var,1)))
        call nf90_check(nf90_put_att(ncid, varid, 'lbound2', LBOUND(var,2)))
        call nf90_check(nf90_put_att(ncid, varid, 'ubound2', UBOUND(var,2)))
+       if (present(comment)) then
+          call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
+       end if
     end if
   end subroutine nc_defineMatrix_int
   
-  subroutine nc_defineMatrix_long(ncid, name, var, varid)
+  subroutine nc_defineMatrix_long(ncid, name, var, varid, comment)
     integer :: ncid
     character(len=*) :: name
     integer(kind=8), dimension(:,:), allocatable :: var
     integer :: dimid(2)
     integer, intent(out) :: varid
+    character(len=*), optional :: comment    
 
     if (allocated(var)) then
        call nf90_check(nf90_def_dim(ncid, name // "_dim1", size(var,1), dimid(1)))
@@ -149,15 +159,19 @@ contains
        call nf90_check(nf90_put_att(ncid, varid, 'ubound1', UBOUND(var,1)))
        call nf90_check(nf90_put_att(ncid, varid, 'lbound2', LBOUND(var,2)))
        call nf90_check(nf90_put_att(ncid, varid, 'ubound2', UBOUND(var,2)))
+       if (present(comment)) then
+          call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
+       end if
     end if
   end subroutine nc_defineMatrix_long
 
-  subroutine nc_defineMatrix_double(ncid, name, var, varid)
+  subroutine nc_defineMatrix_double(ncid, name, var, varid, comment)
     integer :: ncid
     character(len=*) :: name
     double precision, dimension(:,:), allocatable :: var
     integer :: dimid(2)
     integer, intent(out) :: varid
+    character(len=*), optional :: comment
 
     if (allocated(var)) then
        call nf90_check(nf90_def_dim(ncid, name // "_dim1", size(var,1), dimid(1)))
@@ -168,16 +182,19 @@ contains
        call nf90_check(nf90_put_att(ncid, varid, 'ubound1', UBOUND(var,1)))
        call nf90_check(nf90_put_att(ncid, varid, 'lbound2', LBOUND(var,2)))
        call nf90_check(nf90_put_att(ncid, varid, 'ubound2', UBOUND(var,2)))
+       if (present(comment)) then
+          call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
+       end if       
     end if
-    
   end subroutine nc_defineMatrix_double
 
-   subroutine nc_defineArray_double(ncid, name, var, varid)
+   subroutine nc_defineArray_double(ncid, name, var, varid, comment)
     integer :: ncid
     character(len=*) :: name
     double precision, dimension(:), allocatable :: var
     integer :: dimid
     integer, intent(out) :: varid
+    character(len=*), optional :: comment
 
     if (allocated(var)) then
        call nf90_check(nf90_def_dim(ncid, name // "_dim", size(var,1), dimid))
@@ -185,16 +202,19 @@ contains
 
        call nf90_check(nf90_put_att(ncid, varid, 'lbound', LBOUND(var)))
        call nf90_check(nf90_put_att(ncid, varid, 'ubound', UBOUND(var)))
+       if (present(comment)) then
+          call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
+       end if
     end if
-    
   end subroutine nc_defineArray_double
 
-   subroutine nc_defineArray_int(ncid, name, var, varid)
+   subroutine nc_defineArray_int(ncid, name, var, varid, comment)
     integer :: ncid
     character(len=*) :: name
     integer, dimension(:), allocatable :: var
     integer :: dimid
     integer, intent(out) :: varid
+    character(len=*), optional :: comment
 
     if (allocated(var)) then
        call nf90_check(nf90_def_dim(ncid, name // "_dim", size(var,1), dimid))
@@ -202,10 +222,28 @@ contains
 
        call nf90_check(nf90_put_att(ncid, varid, 'lbound', LBOUND(var)))
        call nf90_check(nf90_put_att(ncid, varid, 'ubound', UBOUND(var)))
+       if (present(comment)) then
+          call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
+       end if
     end if
-    
   end subroutine nc_defineArray_int  
 
+  subroutine nc_defineUnlimitedArray(ncid, name, type, varid, comment)
+    integer :: ncid
+    character(len=*) :: name
+    integer :: type
+    integer, intent(out) :: varid
+    character(len=*), optional :: comment
+
+    integer :: dimid
+
+    call nf90_check(nf90_def_dim(ncid, name // '_dim', NF90_UNLIMITED, dimid))
+    call nf90_check(nf90_def_var(ncid, name, type, dimid, varid))
+     if (present(comment)) then
+          call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
+       end if    
+  end subroutine nc_defineUnlimitedArray
+  
   subroutine nc_inquireMatrix_double(ncid, name, varid, lb1, ub1, lb2, ub2)
     integer :: ncid
     character(len=*) :: name
@@ -227,17 +265,5 @@ contains
     call nf90_check(nf90_get_att(ncid, varid, "lbound", lb))
     call nf90_check(nf90_get_att(ncid, varid, "ubound", ub))
   end subroutine nc_inquireArray_double
-
-  subroutine nc_defineUnlimitedArray(ncid, name, type, varid)
-    integer :: ncid
-    character(len=*) :: name
-    integer :: type
-    integer, intent(out) :: varid
-
-    integer :: dimid
-
-    call nf90_check(nf90_def_dim(ncid, name // '_dim', NF90_UNLIMITED, dimid))
-    call nf90_check(nf90_def_var(ncid, name, type, dimid, varid))
-  end subroutine nc_defineUnlimitedArray
   
 end module nctools_module
