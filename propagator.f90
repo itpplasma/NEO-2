@@ -931,7 +931,7 @@ CONTAINS
 
     ! Declarations for final output
     REAL(kind=dp) :: gamma_fco(3,3)
-    REAL(kind=dp) :: gamma_out(3,3)
+    real(kind=dp), allocatable :: gamma_out(:,:)
     REAL(kind=dp) :: beta_out(3)
     REAL(kind=dp) :: avnabpsi,avbhat2,dl1obhat
 
@@ -951,7 +951,8 @@ CONTAINS
     ! fulltransp
     integer :: gamma_out_dimid(2)
     integer :: var_collpar_id, var_z_eff_id, var_avnabpsi_id, var_avbhat2_id, var_dl1obhat_id, var_gamma_out_id
-    
+
+    allocate(gamma_out(3,3))
     
     ! taken from Sergei
 !->out    qflux_g = prop_a%p%qflux_g
@@ -1053,36 +1054,25 @@ CONTAINS
        if (prop_fileformat .eq. 1) then
 
           call nf90_check(nf90_create('fulltransp.nc', NF90_HDF5, ncid))
-          !call nf90_check(nf90_def_dim(ncid, "scalar", 1, scalar_dimid))
-          call nf90_check(nf90_def_dim(ncid, "gamma_out_dim1", size(gamma_out,1), gamma_out_dimid(1)))
-          call nf90_check(nf90_def_dim(ncid, "gamma_out_dim2", size(gamma_out,2), gamma_out_dimid(2)))
 
+          ! Attributes
           call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'full_version',  full_version))
           call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_lorentz',   isw_lorentz))
           call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_integral',  isw_integral))
           call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_energy',    isw_energy))
           call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'lag',           lag))
           call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'leg',           leg))
-          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'conl_over_mfp', conl_over_mfp))
 
-          call nf90_check(nf90_def_var(ncid, 'collpar',   NF90_DOUBLE, varid = var_collpar_id))
-          call nf90_check(nf90_def_var(ncid, 'z_eff',     NF90_DOUBLE, varid = var_z_eff_id))
-          call nf90_check(nf90_def_var(ncid, 'avnabpsi',  NF90_DOUBLE, varid = var_avnabpsi_id))
-          call nf90_check(nf90_def_var(ncid, 'avbhat2',   NF90_DOUBLE, varid = var_avbhat2_id))
-          call nf90_check(nf90_def_var(ncid, 'dl1obhat',  NF90_DOUBLE, varid = var_dl1obhat_id))
-          call nf90_check(nf90_def_var(ncid, 'gamma_out', NF90_DOUBLE, gamma_out_dimid, var_gamma_out_id))
-
-          call nf90_check(nf90_enddef(ncid))
-
-          call nf90_check(nf90_put_var(ncid, var_collpar_id, collpar))
-          call nf90_check(nf90_put_var(ncid, var_z_eff_id, z_eff))
-          call nf90_check(nf90_put_var(ncid, var_avnabpsi_id, avnabpsi))
-          call nf90_check(nf90_put_var(ncid, var_avbhat2_id, avbhat2))
-          call nf90_check(nf90_put_var(ncid, var_dl1obhat_id, dl1obhat))
-          call nf90_check(nf90_put_var(ncid, var_gamma_out_id, gamma_out))  
-
+          ! Variables
+          call nc_quickAdd(ncid, 'collpar', collpar, 'Define comment here', 'Define unit here')
+          call nc_quickAdd(ncid, 'conl_over_mfp', conl_over_mfp)
+          call nc_quickAdd(ncid, 'z_eff', z_eff)
+          call nc_quickAdd(ncid, 'avnabpsi', avnabpsi)
+          call nc_quickAdd(ncid, 'avbhat2', avbhat2)
+          call nc_quickAdd(ncid, 'dl1obhat', dl1obhat)
+          call nc_quickAdd(ncid, 'gamma_out', gamma_out)
+          
           call nf90_check(nf90_close(ncid))
-
        else
           
           OPEN(uw,file='fulltransp.dat',status='replace')
@@ -1098,47 +1088,25 @@ CONTAINS
 
        if (prop_fileformat .eq. 1) then
 
-          call nf90_check(nf90_create("efinal.nc", NF90_HDF5, ncid))
+          call nc_create('efinal.nc', ncid)
 
-          call nf90_check(nf90_def_dim(ncid, "y_dim", size(y), y_dimid))
+          call nc_quickAdd(ncid, 'phi', phi)
+          call nc_quickAdd(ncid, 'aiota_loc', aiota_loc)
+          call nc_quickAdd(ncid, 'dmono_over_dplateau', dmono_over_dplateau)
+          call nc_quickAdd(ncid, 'epseff3_2', epseff3_2)
+          call nc_quickAdd(ncid, 'alambda_b', alambda_b)
+          call nc_quickAdd(ncid, 'qflux_g', nckqflux_g)
+          call nc_quickAdd(ncid, 'qflux_e', qflux_e)
+          call nc_quickAdd(ncid, 'qcurr_g', qcurr_g)
+          call nc_quickAdd(ncid, 'qcurr_e', qcurr_e)
+          call nc_quickAdd(ncid, 'alambda_bb', alambda_bb)
+          call nc_quickAdd(ncid, 'gamma_E',gamma_E )
+          call nc_quickAdd(ncid, 'g_bs', g_bs)
+          call nc_quickAdd(ncid, 'r0', device%r0)
+          call nc_quickAdd(ncid, 'bmod0', surface%bmod0)
+          call nc_quickAdd(ncid, 'y', y)
 
-          call nf90_check(nf90_def_var(ncid, "phi",                 NF90_DOUBLE, varid = var_phi_id))
-          !call nf90_check(nf90_def_var(ncid, "y(1:2)",              NF90_DOUBLE, y2_dimid, var_y12_id))
-          call nf90_check(nf90_def_var(ncid, "aiota_loc",           NF90_DOUBLE, varid = var_aiota_loc_id))
-          call nf90_check(nf90_def_var(ncid, "dmono_over_dplateau", NF90_DOUBLE, varid = var_dmono_over_dplateau_id))
-          call nf90_check(nf90_def_var(ncid, "epseff3_2",           NF90_DOUBLE, varid = var_epseff3_2_id))
-          call nf90_check(nf90_def_var(ncid, "alambda_b",           NF90_DOUBLE, varid = var_alambda_b_id))
-          call nf90_check(nf90_def_var(ncid, "qflux_g",             NF90_DOUBLE, varid = var_qflux_g_id))
-          call nf90_check(nf90_def_var(ncid, "qflux_e",             NF90_DOUBLE, varid = var_qflux_e_id))
-          call nf90_check(nf90_def_var(ncid, "qcurr_g",             NF90_DOUBLE, varid = var_qcurr_g_id))
-          call nf90_check(nf90_def_var(ncid, "qcurr_e",             NF90_DOUBLE, varid = var_qcurr_e_id))
-          call nf90_check(nf90_def_var(ncid, "alambda_bb",          NF90_DOUBLE, varid = var_alambda_bb_id))
-          call nf90_check(nf90_def_var(ncid, "gamma_E",             NF90_DOUBLE, varid = var_gamma_E_id))
-          call nf90_check(nf90_def_var(ncid, "g_bs",                NF90_DOUBLE, varid = var_g_bs_id))
-          call nf90_check(nf90_def_var(ncid, "r0",                  NF90_DOUBLE, varid = var_r0_id))
-          call nf90_check(nf90_def_var(ncid, "bmod0",               NF90_DOUBLE, varid = var_bmod0_id))
-          call nf90_check(nf90_def_var(ncid, "y",                   NF90_DOUBLE, y_dimid, var_y_id))
-
-          call nf90_check(nf90_enddef(ncid))
-
-          call nf90_check(nf90_put_var(ncid, var_phi_id, phi))
-          !call nf90_check(nf90_put_var(ncid, var_y_id, y(1:2)))
-          call nf90_check(nf90_put_var(ncid, var_aiota_loc_id, aiota_loc))
-          call nf90_check(nf90_put_var(ncid, var_dmono_over_dplateau_id, dmono_over_dplateau))
-          call nf90_check(nf90_put_var(ncid, var_epseff3_2_id, epseff3_2))
-          call nf90_check(nf90_put_var(ncid, var_alambda_b_id, alambda_b))
-          call nf90_check(nf90_put_var(ncid, var_qflux_g_id, qflux_g))
-          call nf90_check(nf90_put_var(ncid, var_qflux_e_id, qflux_e))
-          call nf90_check(nf90_put_var(ncid, var_qcurr_g_id, qcurr_g))
-          call nf90_check(nf90_put_var(ncid, var_qcurr_e_id, qcurr_e))
-          call nf90_check(nf90_put_var(ncid, var_alambda_bb_id, alambda_bb))
-          call nf90_check(nf90_put_var(ncid, var_gamma_E_id, gamma_E))
-          call nf90_check(nf90_put_var(ncid, var_g_bs_id, g_bs))
-          call nf90_check(nf90_put_var(ncid, var_r0_id, device%r0))
-          call nf90_check(nf90_put_var(ncid, var_bmod0_id, surface%bmod0))
-          call nf90_check(nf90_put_var(ncid, var_y_id, y))
-
-          call nf90_check(nf90_close(ncid))
+          call nc_close(ncid)
 
        else
           
@@ -1157,8 +1125,8 @@ CONTAINS
 
     END IF
 
-    
-    DEALLOCATE(y)
+    deallocate(gamma_out)
+    deallocate(y)
   END SUBROUTINE diag_propagator_res
   ! ---------------------------------------------------------------------------
   SUBROUTINE diag_propagator_dis
