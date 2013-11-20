@@ -146,11 +146,7 @@ MODULE propagator_mod
 
   ! --- NetCDF Support ---
 
-  ! Compression settings for matrices
-  integer :: nc_deflate_level = 0
-  LOGICAL :: nc_shuffle = .false.
-
-  ! Global ncids for open NetCDF-Files
+  ! Global ncids for open NetCDF-Files, which should be be opened and closed all the time during a run
   INTEGER :: ncid_propagators
   INTEGER :: ncid_propbounds
   INTEGER :: ncid_binarysplits
@@ -1053,18 +1049,18 @@ CONTAINS
 
        if (prop_fileformat .eq. 1) then
 
-          call nf90_check(nf90_create('fulltransp.nc', NF90_HDF5, ncid))
-
+          call nc_create('fulltransp.nc', ncid, '1.0')
+          
           ! Attributes
           call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'full_version',  full_version))
           call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_lorentz',   isw_lorentz))
           call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_integral',  isw_integral))
           call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_energy',    isw_energy))
-          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'lag',           lag))
-          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'leg',           leg))
 
           ! Variables
-          call nc_quickAdd(ncid, 'collpar', collpar, 'Define comment here', 'Define unit here')
+          call nc_quickAdd(ncid, 'lag', lag, 'Degree of the Laguerre Polynomials')
+          call nc_quickAdd(ncid, 'leg', leg, 'Degree of the Legendre Polynomials')
+          call nc_quickAdd(ncid, 'collpar', collpar)
           call nc_quickAdd(ncid, 'conl_over_mfp', conl_over_mfp)
           call nc_quickAdd(ncid, 'z_eff', z_eff)
           call nc_quickAdd(ncid, 'avnabpsi', avnabpsi)
@@ -1088,14 +1084,14 @@ CONTAINS
 
        if (prop_fileformat .eq. 1) then
 
-          call nc_create('efinal.nc', ncid)
+          call nc_create('efinal.nc', ncid, '1.0')
 
           call nc_quickAdd(ncid, 'phi', phi)
           call nc_quickAdd(ncid, 'aiota_loc', aiota_loc)
           call nc_quickAdd(ncid, 'dmono_over_dplateau', dmono_over_dplateau)
           call nc_quickAdd(ncid, 'epseff3_2', epseff3_2)
           call nc_quickAdd(ncid, 'alambda_b', alambda_b)
-          call nc_quickAdd(ncid, 'qflux_g', nckqflux_g)
+          call nc_quickAdd(ncid, 'qflux_g', qflux_g)
           call nc_quickAdd(ncid, 'qflux_e', qflux_e)
           call nc_quickAdd(ncid, 'qcurr_g', qcurr_g)
           call nc_quickAdd(ncid, 'qcurr_e', qcurr_e)
@@ -3930,12 +3926,13 @@ CONTAINS
     ! read the information about tags
 
     if (prop_fileformat .eq. 1) then
-       call nf90_check(nf90_open(prop_ctaginfo_nc, NF90_NOWRITE, ncid_taginfo))
-
-       call nf90_check(nf90_get_att(ncid_taginfo, NF90_GLOBAL, 'prop_write', prop_write))
-       call nf90_check(nf90_get_att(ncid_taginfo, NF90_GLOBAL, 'tag_first',  prop_first_tag))
-       call nf90_check(nf90_get_att(ncid_taginfo, NF90_GLOBAL, 'tag_last',   prop_last_tag))
-       call nf90_check(nf90_get_att(ncid_taginfo, NF90_GLOBAL, 'parallel_storage', iparallel_storage))
+       call nc_open(prop_ctaginfo_nc, ncid_taginfo)
+       
+       call nc_quickGet(ncid_taginfo, 'prop_write', prop_write)
+       call nc_quickGet(ncid_taginfo, 'tag_first', prop_first_tag)
+       call nc_quickGet(ncid_taginfo, 'tag_last', prop_last_tag)
+       call nc_quickGet(ncid_taginfo, 'parallel_storage', iparallel_storage)
+       
        parallel_storage = (iparallel_storage .eq. 1)
        
        call nf90_check(nf90_close(ncid_taginfo))
