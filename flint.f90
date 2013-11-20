@@ -2635,28 +2635,27 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      
      if (prop_fileformat .eq. 1) then
 
-        call nf90_check(nf90_create(prop_ctaginfo_nc, nf90_hdf5, ncid_taginfo))
+        call nc_create(prop_ctaginfo_nc, ncid_taginfo, '1.0')
 
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'prop_write', prop_write))
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'tag_first', fieldline%ch_fir%ch_fir%tag))
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'tag_last',  fieldline%ch_las%ch_las%tag))
+        call nc_quickAdd(ncid_taginfo, 'prop_write', prop_write)
+        call nc_quickAdd(ncid_taginfo, 'tag_first',  fieldline%ch_fir%ch_fir%tag)
+        call nc_quickAdd(ncid_taginfo, 'tag_last',   fieldline%ch_las%ch_las%tag)
+
         if (mpro%isParallel()) then
-           call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'parallel_storage', 1))
+           call nc_quickAdd(ncid_taginfo, 'parallel_storage', 1)
         else
-           call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'parallel_storage', 0))
+           call nc_quickAdd(ncid_taginfo, 'parallel_storage', 0)
         end if
         phi_per = twopi / device%nfp
 
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'aiota', surface%aiota))
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'bmod0', surface%bmod0))
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'b_abs_min', surface%b_abs_min))
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'b_abs_max', surface%b_abs_max))
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'phi_per', phi_per))
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'nfp', device%nfp))
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'boozer_phi_beg', boozer_phi_beg))
-        call nf90_check(nf90_put_att(ncid_taginfo, NF90_GLOBAL, 'boozer_theta_beg',boozer_theta_beg ))
-
-        !call nf90_check(nf90_enddef(ncid_taginfo))
+        call nc_quickAdd(ncid_taginfo, 'aiota',      surface%aiota )
+        call nc_quickAdd(ncid_taginfo, 'bmod0',      surface%bmod0)
+        call nc_quickAdd(ncid_taginfo, 'b_abs_min',  surface%b_abs_min)
+        call nc_quickAdd(ncid_taginfo, 'b_abs_max',  surface%b_abs_max )
+        call nc_quickAdd(ncid_taginfo, 'phi_per',    phi_per)
+        call nc_quickAdd(ncid_taginfo, 'nfp',        device%nfp)
+        call nc_quickAdd(ncid_taginfo, 'boozer_phi_beg',    boozer_phi_beg)
+        call nc_quickAdd(ncid_taginfo, 'boozer_theta_beg',  boozer_theta_beg )
 
         fieldperiod => fieldline%ch_fir 
         fieldpropagator => fieldperiod%ch_fir
@@ -2681,17 +2680,17 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
            write (grpname, '(A, I0)') 'fieldpropagator_', fieldpropagator%tag
            write (*,*) '_' // trim(grpname) // '_'
-           
-           call nf90_check(nf90_def_grp(ncid_taginfo, trim(grpname), grpid))
 
-           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'tag', fieldpropagator%tag))
-           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'parent_tag', fieldpropagator%parent%tag))
-           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldperiod_phi_l', fieldperiod%phi_l))
-           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_l', phi_l))
-           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_r', phi_r))
-           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'theta_l', theta_l))
-           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'theta_r', theta_r))
-           
+           call nc_defineGroup(ncid_taginfo, grpname, grpid)
+
+           call nc_quickAdd(grpid, 'tag',               fieldpropagator%tag )
+           call nc_quickAdd(grpid, 'parent_tag',        fieldpropagator%parent%tag)
+           call nc_quickAdd(grpid, 'fieldperiod_phi_l', fieldperiod%phi_l)
+           call nc_quickAdd(grpid, 'phi_l',             phi_l)
+           call nc_quickAdd(grpid, 'phi_r',             phi_r)
+           call nc_quickAdd(grpid, 'theta_l',           theta_l)
+           call nc_quickAdd(grpid, 'theta_r',           theta_r)
+                      
            IF (ASSOCIATED(fieldpropagator%next)) THEN
               fieldpropagator => fieldpropagator%next
            else

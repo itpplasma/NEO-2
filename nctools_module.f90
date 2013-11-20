@@ -31,9 +31,34 @@ module nctools_module
      module procedure nc_quickAddMatrix_double
      module procedure nc_quickAddArray_double
   end interface nc_quickAdd
+
+  interface nc_quickGet
+     module procedure nc_quickGetScalar_int
+     module procedure nc_quickGetScalar_double
+  end interface nc_quickGet
   
 contains
 
+  subroutine nc_quickGetScalar_int(ncid, name, var)
+    integer :: ncid
+    character(len=*) :: name
+    integer, intent(out) :: var
+    integer :: varid
+    
+    call nf90_check(nf90_inq_varid(ncid, name, varid))
+    call nf90_check(nf90_get_var(ncid, varid, var))
+  end subroutine nc_quickGetScalar_int
+
+  subroutine nc_quickGetScalar_double(ncid, name, var)
+    integer :: ncid
+    character(len=*) :: name
+    double precision, intent(out) :: var
+    integer :: varid
+    
+    call nf90_check(nf90_inq_varid(ncid, name, varid))
+    call nf90_check(nf90_get_var(ncid, varid, var))
+  end subroutine nc_quickGetScalar_double
+  
   subroutine nc_quickAddScalar_int(ncid, name, var, comment, unit)
     integer :: ncid
     character(len=*) :: name
@@ -89,6 +114,8 @@ contains
     call nf90_check(nf90_put_var(ncid, varid, var))
     
   end subroutine nc_quickAddArray_double
+
+  
   
   subroutine nf90_check(status)
     integer, intent ( in) :: status
@@ -100,11 +127,17 @@ contains
     end if
   end subroutine nf90_check
 
-  subroutine nc_create(filename, ncid)
+  subroutine nc_create(filename, ncid, fileformat_version)
     character(len=*) :: filename
     integer, intent(out) :: ncid
+    character(len=*), optional :: fileformat_version
 
+    if (.not. present(fileformat_version)) then
+       fileformat_version = '1.0'
+    end if
+    
     call nf90_check(nf90_create(filename, NF90_HDF5, ncid))
+    call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'Version', fileformat_version))
   end subroutine nc_create
 
   subroutine nc_close(ncid)
@@ -160,6 +193,15 @@ contains
     end if
     
   end subroutine nc_findGroup
+
+  subroutine nc_defineGroup(ncid, grpname, ncid_grp)
+    integer :: ncid
+    character(len=*) :: grpname
+    integer, intent(out) :: ncid_grp
+
+    call nf90_check(nf90_def_grp(ncid, trim(grpname), ncid_grp))
+    
+  end subroutine nc_defineGroup
   
   subroutine mergeNCFiles(regex, resultfilename)
     character(len=*) :: regex, resultfilename
