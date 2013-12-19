@@ -2632,141 +2632,141 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   ! Write taginfo.prop
   IF ( (prop_write .EQ. 1 .OR. prop_write .EQ. 2) .and. prop_reconstruct .eq. 0) THEN
      ! taginfo
-     
-     if (prop_fileformat .eq. 1) then
+     if (mpro%isMaster()) then
+        if (prop_fileformat .eq. 1) then
 
-        call nc_create(prop_ctaginfo_nc, ncid_taginfo, '1.0')
+           call nc_create(prop_ctaginfo_nc, ncid_taginfo, '1.0')
 
-        call nc_quickAdd(ncid_taginfo, 'prop_write', prop_write)
-        call nc_quickAdd(ncid_taginfo, 'tag_first',  fieldline%ch_fir%ch_fir%tag)
-        call nc_quickAdd(ncid_taginfo, 'tag_last',   fieldline%ch_las%ch_las%tag)
+           call nc_quickAdd(ncid_taginfo, 'prop_write', prop_write)
+           call nc_quickAdd(ncid_taginfo, 'tag_first',  fieldline%ch_fir%ch_fir%tag)
+           call nc_quickAdd(ncid_taginfo, 'tag_last',   fieldline%ch_las%ch_las%tag)
 
-        if (mpro%isParallel()) then
-           call nc_quickAdd(ncid_taginfo, 'parallel_storage', 1)
+           if (mpro%isParallel()) then
+              call nc_quickAdd(ncid_taginfo, 'parallel_storage', 1)
+           else
+              call nc_quickAdd(ncid_taginfo, 'parallel_storage', 0)
+           end if
+           phi_per = twopi / device%nfp
+
+           call nc_quickAdd(ncid_taginfo, 'aiota',      surface%aiota )
+           call nc_quickAdd(ncid_taginfo, 'bmod0',      surface%bmod0)
+           call nc_quickAdd(ncid_taginfo, 'b_abs_min',  surface%b_abs_min)
+           call nc_quickAdd(ncid_taginfo, 'b_abs_max',  surface%b_abs_max )
+           call nc_quickAdd(ncid_taginfo, 'phi_per',    phi_per)
+           call nc_quickAdd(ncid_taginfo, 'nfp',        device%nfp)
+           call nc_quickAdd(ncid_taginfo, 'boozer_phi_beg',    boozer_phi_beg)
+           call nc_quickAdd(ncid_taginfo, 'boozer_theta_beg',  boozer_theta_beg )
+
+           fieldperiod => fieldline%ch_fir 
+           fieldpropagator => fieldperiod%ch_fir
+           allprops_taginfo_nc: DO WHILE (fieldpropagator%tag .LE. fieldline%ch_las%ch_las%tag)
+
+              fieldperiod => fieldpropagator%parent
+
+              phi_l = fieldpropagator%phi_l
+              phi_r = fieldpropagator%phi_r
+              theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
+              theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
+              if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
+                 phi_l = 0.0_dp
+              else
+                 phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
+              end if
+              if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
+                 phi_r = phi_per
+              else
+                 phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
+              end if
+
+              write (grpname, '(A, I0)') 'fieldpropagator_', fieldpropagator%tag
+              write (*,*) '_' // trim(grpname) // '_'
+
+              call nc_defineGroup(ncid_taginfo, grpname, grpid)
+
+              call nc_quickAdd(grpid, 'tag',               fieldpropagator%tag )
+              call nc_quickAdd(grpid, 'parent_tag',        fieldpropagator%parent%tag)
+              call nc_quickAdd(grpid, 'fieldperiod_phi_l', fieldperiod%phi_l)
+              call nc_quickAdd(grpid, 'phi_l',             phi_l)
+              call nc_quickAdd(grpid, 'phi_r',             phi_r)
+              call nc_quickAdd(grpid, 'theta_l',           theta_l)
+              call nc_quickAdd(grpid, 'theta_r',           theta_r)
+
+              IF (ASSOCIATED(fieldpropagator%next)) THEN
+                 fieldpropagator => fieldpropagator%next
+              else
+                 exit allprops_taginfo_nc
+              end IF
+           end DO allprops_taginfo_nc
+
+           call nf90_check(nf90_close(ncid_taginfo))
+
         else
-           call nc_quickAdd(ncid_taginfo, 'parallel_storage', 0)
-        end if
-        phi_per = twopi / device%nfp
 
-        call nc_quickAdd(ncid_taginfo, 'aiota',      surface%aiota )
-        call nc_quickAdd(ncid_taginfo, 'bmod0',      surface%bmod0)
-        call nc_quickAdd(ncid_taginfo, 'b_abs_min',  surface%b_abs_min)
-        call nc_quickAdd(ncid_taginfo, 'b_abs_max',  surface%b_abs_max )
-        call nc_quickAdd(ncid_taginfo, 'phi_per',    phi_per)
-        call nc_quickAdd(ncid_taginfo, 'nfp',        device%nfp)
-        call nc_quickAdd(ncid_taginfo, 'boozer_phi_beg',    boozer_phi_beg)
-        call nc_quickAdd(ncid_taginfo, 'boozer_theta_beg',  boozer_theta_beg )
-
-        fieldperiod => fieldline%ch_fir 
-        fieldpropagator => fieldperiod%ch_fir
-        allprops_taginfo_nc: DO WHILE (fieldpropagator%tag .LE. fieldline%ch_las%ch_las%tag)
-
-           fieldperiod => fieldpropagator%parent
-
-           phi_l = fieldpropagator%phi_l
-           phi_r = fieldpropagator%phi_r
-           theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
-           theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
-           if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
-              phi_l = 0.0_dp
-           else
-              phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
-           end if
-           if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
-              phi_r = phi_per
-           else
-              phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
-           end if
-
-           write (grpname, '(A, I0)') 'fieldpropagator_', fieldpropagator%tag
-           write (*,*) '_' // trim(grpname) // '_'
-
-           call nc_defineGroup(ncid_taginfo, grpname, grpid)
-
-           call nc_quickAdd(grpid, 'tag',               fieldpropagator%tag )
-           call nc_quickAdd(grpid, 'parent_tag',        fieldpropagator%parent%tag)
-           call nc_quickAdd(grpid, 'fieldperiod_phi_l', fieldperiod%phi_l)
-           call nc_quickAdd(grpid, 'phi_l',             phi_l)
-           call nc_quickAdd(grpid, 'phi_r',             phi_r)
-           call nc_quickAdd(grpid, 'theta_l',           theta_l)
-           call nc_quickAdd(grpid, 'theta_r',           theta_r)
-                      
-           IF (ASSOCIATED(fieldpropagator%next)) THEN
-              fieldpropagator => fieldpropagator%next
-           else
-              exit allprops_taginfo_nc
-           end IF
-        end DO allprops_taginfo_nc
-        
-        call nf90_check(nf90_close(ncid_taginfo))
-        
-     else
-
-        CALL unit_propagator
-        OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-             form=prop_format,action='write')
-        WRITE(prop_unit,*) prop_write
+           CALL unit_propagator
+           OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
+                form=prop_format,action='write')
+           WRITE(prop_unit,*) prop_write
 !!$     WRITE(prop_unit,*) prop_first_tag   ! UNSOLVED PROBLEM
 !!$     WRITE(prop_unit,*) prop_last_tag    ! UNSOLVED PROBLEM
-        WRITE(prop_unit,*) fieldline%ch_fir%ch_fir%tag
-        WRITE(prop_unit,*) fieldline%ch_las%ch_las%tag
-        ! This was the end of the old write
+           WRITE(prop_unit,*) fieldline%ch_fir%ch_fir%tag
+           WRITE(prop_unit,*) fieldline%ch_las%ch_las%tag
+           ! This was the end of the old write
 #if defined(MPI_SUPPORT)
-        if (mpro%isParallel()) then
-           WRITE(prop_unit,*) .TRUE.
-        else
-           WRITE(prop_unit,*) .FALSE.
-        end if
+           if (mpro%isParallel()) then
+              WRITE(prop_unit,*) .TRUE.
+           else
+              WRITE(prop_unit,*) .FALSE.
+           end if
 #else
-        WRITE(prop_unit,*) .FALSE.
+           WRITE(prop_unit,*) .FALSE.
 #endif
-        ! 
-        phi_per = twopi / device%nfp
+           ! 
+           phi_per = twopi / device%nfp
 
-        WRITE(prop_unit,*) surface%aiota
-        WRITE(prop_unit,*) surface%bmod0
-        WRITE(prop_unit,*) surface%b_abs_min
-        WRITE(prop_unit,*) surface%b_abs_max
-        WRITE(prop_unit,*) phi_per
-        WRITE(prop_unit,*) device%nfp
-        WRITE(prop_unit,*) boozer_phi_beg
-        WRITE(prop_unit,*) boozer_theta_beg
+           WRITE(prop_unit,*) surface%aiota
+           WRITE(prop_unit,*) surface%bmod0
+           WRITE(prop_unit,*) surface%b_abs_min
+           WRITE(prop_unit,*) surface%b_abs_max
+           WRITE(prop_unit,*) phi_per
+           WRITE(prop_unit,*) device%nfp
+           WRITE(prop_unit,*) boozer_phi_beg
+           WRITE(prop_unit,*) boozer_theta_beg
 
-        fieldperiod => fieldline%ch_fir 
-        fieldpropagator => fieldperiod%ch_fir
-        allprops_taginfo: DO WHILE (fieldpropagator%tag .LE. fieldline%ch_las%ch_las%tag)
+           fieldperiod => fieldline%ch_fir 
+           fieldpropagator => fieldperiod%ch_fir
+           allprops_taginfo: DO WHILE (fieldpropagator%tag .LE. fieldline%ch_las%ch_las%tag)
 
-           fieldperiod => fieldpropagator%parent
+              fieldperiod => fieldpropagator%parent
 
-           phi_l = fieldpropagator%phi_l
-           phi_r = fieldpropagator%phi_r
-           theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
-           theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
-           if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
-              phi_l = 0.0_dp
-           else
-              phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
-           end if
-           if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
-              phi_r = phi_per
-           else
-              phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
-           end if
+              phi_l = fieldpropagator%phi_l
+              phi_r = fieldpropagator%phi_r
+              theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
+              theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
+              if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
+                 phi_l = 0.0_dp
+              else
+                 phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
+              end if
+              if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
+                 phi_r = phi_per
+              else
+                 phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
+              end if
 
-           WRITE(prop_unit,*) fieldpropagator%tag, fieldpropagator%parent%tag,&
-                fieldperiod%phi_l, &
-                phi_l, phi_r, theta_l, theta_r
-           IF (ASSOCIATED(fieldpropagator%next)) THEN
-              fieldpropagator => fieldpropagator%next
-           else
-              exit allprops_taginfo
-           end IF
-        end DO allprops_taginfo
+              WRITE(prop_unit,*) fieldpropagator%tag, fieldpropagator%parent%tag,&
+                   fieldperiod%phi_l, &
+                   phi_l, phi_r, theta_l, theta_r
+              IF (ASSOCIATED(fieldpropagator%next)) THEN
+                 fieldpropagator => fieldpropagator%next
+              else
+                 exit allprops_taginfo
+              end IF
+           end DO allprops_taginfo
 
-        CLOSE(unit=prop_unit)
+           CLOSE(unit=prop_unit)
 
+        end if
      end if
-
      !fieldpropagator%tag
 
      ! stop
