@@ -115,8 +115,6 @@ contains
     
   end subroutine nc_quickAddArray_double
 
-  
-  
   subroutine nf90_check(status)
     integer, intent ( in) :: status
 
@@ -135,8 +133,9 @@ contains
     if (.not. present(fileformat_version)) then
        fileformat_version = '1.0'
     end if
-    
-    call nf90_check(nf90_create(filename, NF90_HDF5, ncid))
+
+    write (*,*) "Creating NetCDF-4 File: ", filename
+    call nf90_check(nf90_create(filename, NF90_NETCDF4, ncid))
     call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'Version', fileformat_version))
   end subroutine nc_create
 
