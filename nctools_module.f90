@@ -115,13 +115,20 @@ contains
     
   end subroutine nc_quickAddArray_double
 
-  subroutine nf90_check(status)
+  subroutine nf90_check(status, optException)
     integer, intent ( in) :: status
+    logical, optional :: optException
+    logical :: exception
+
+    exception = .true.
+    if (present(optException)) exception = optException   
 
     if(status /= nf90_noerr) then
        print *, trim(nf90_strerror(status))
-       call abort
-       stop
+       if (exception) then
+          call abort
+          stop
+       end if
     end if
   end subroutine nf90_check
 
@@ -145,11 +152,16 @@ contains
     call nf90_check(nf90_close(ncid))
   end subroutine nc_close
 
-  subroutine nc_open(filename, ncid)
+  subroutine nc_open(filename, ncid, optException)
     character(len=*) :: filename
     integer :: ncid
+    logical, optional :: optException
+    logical :: exception
 
-    call nf90_check(nf90_open(filename, NF90_NOWRITE, ncid))
+    exception = .true.
+    if (present(optException)) exception = optException
+    
+    call nf90_check(nf90_open(filename, NF90_NOWRITE, ncid), exception)
   end subroutine nc_open
   
   subroutine nc_enddef(ncid)
