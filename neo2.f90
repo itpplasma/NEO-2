@@ -58,17 +58,14 @@ PROGRAM neo2
 
   LOGICAL :: opened
 
-  ! Used for MPI support
-  ! This string is used to give every client an own evolve.dat file
-  character(len=32) :: strEvolveFilename
-
-  ! --- Experimental NetCDF ---
-  integer :: ierr, i
-  !character(len=100) :: propagators_ncfilename, tempstr
+  ! --- MPI SUPPORT ---
+  character(len=32) :: strEvolveFilename    ! This string is used to give every client an own evolve.dat file
   ! ---
   
+  ! --- Version information (Git version) ---
   include "version.f90"
-
+  ! ---
+  
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
   REAL(kind=dp) :: rbeg,zbeg
@@ -250,8 +247,8 @@ PROGRAM neo2
   prop_join_ends = 0
   prop_fluxsplitmode = 1
   prop_write = 0
-  prop_fileformat = 0 ! 0... ACSII, 1... NetCDF
-  nco_path = '/usr/bin/'
+  prop_fileformat = 0      ! 0... ACSII, 1... NetCDF
+  nco_path = '/usr/bin/'   ! Path to NCO Utils for merging NetCDF Files
   prop_reconstruct = 0
   prop_ripple_plot = 0
   prop_reconstruct_levels = 0
@@ -312,15 +309,19 @@ PROGRAM neo2
   ! end of reading
   ! ---------------------------------------------------------------------------
 
-  ! MPI support
+  ! --- MPI SUPPORT ---
 #if defined(MPI_SUPPORT)
+
+  ! Initialize the MPI-Provider module, establish connection to all processes
   call mpro%init()
 
+  ! Write out version information
   if (mpro%isMaster()) then
      write (*,*) "NEO-2 Git Revision: [", Neo2_Version, "]"
   end if
 
 #endif
+  ! ---
 
 
 !!$  ! ---------------------------------------------------------------------------
@@ -330,34 +331,43 @@ PROGRAM neo2
 !!$  CALL sparse_example(2)
 !!$  STOP
 !!$  ! ---------------------------------------------------------------------------
+
+
+  ! RECONSTRUCTION RUN 1
   IF (prop_reconstruct .EQ. 1) THEN
      PRINT *, 'Reconstruction run!'
 
+     ! --- NetCDF SUPPORT ---
      if (prop_fileformat .eq. 1) then
-        write (*,*) "Opening NetCDF-Files..."
+        write (*,*) "Opening NetCDF-Files for faster access..."
         call nf90_check(nf90_open('propagators.nc', NF90_NOWRITE, ncid_propagators))
-        ierr = nf90_open('propagators_boundaries.nc', NF90_NOWRITE, ncid_propbounds)
-        ierr = nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits)
+        call nf90_check(nf90_open('propagators_boundaries.nc', NF90_NOWRITE, ncid_propbounds), optException = .false.)
+        call nf90_check(nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits), optException = .false.)
         write (*,*) "Done!"
      end if
      
      CALL reconstruct_prop_dist
 
+     ! --- NetCDF SUPPORT
      if (prop_fileformat .eq. 1) then
-        ierr = nf90_close(ncid_propagators)
-        ierr = nf90_close(ncid_propbounds)
-        ierr = nf90_close(ncid_binarysplits)
+        call nf90_check(nf90_close(ncid_propagators))
+        call nf90_check(nf90_close(ncid_propbounds), optException = .false.)
+        call nf90_check(nf90_close(ncid_binarysplits), optException = .false.)
      end if
 
+     ! Call NCO utils to merge NetCDF files
      call mergeAllNCFiles()
      
      PRINT *, 'No further calculations!'
      STOP
   END IF
 
+
+  ! Preparations for reconstruction run 2
   if (prop_reconstruct .eq. 2) then
      if (prop_fileformat .eq. 1) then
-        ierr = nf90_open('reconstructs.nc', NF90_NOWRITE, ncid_recon)
+        ! Open NetCDF file for faster read access than opening and closing it in the loop over the propagators
+        call nf90_check(nf90_open('reconstructs.nc', NF90_NOWRITE, ncid_recon), optException = .false.)
      end if
   end if
 
@@ -385,6 +395,7 @@ PROGRAM neo2
      print *, 'isw_momentum = ',isw_momentum,' not implemented!'
      stop
   end if
+  
   ! ---------------------------------------------------------------------------
   ! erase arrays
   ! ---------------------------------------------------------------------------
@@ -397,34 +408,22 @@ PROGRAM neo2
         uw = uw + 100
      END DO
 
+     ! --- MPI SUPPORT ---
 #if defined(MPI_SUPPORT)
-        ! Give every client an own evolve.dat file
-        write (globalstorage%evolveFilename, "(A, I3.3, A)"), 'evolve', mpro%getRank(), '.dat'
-        OPEN(uw,file=globalstorage%evolveFilename, status='replace')
-        CLOSE(uw)
+     ! Every client has its own evolve.dat file, propably not the best solution yet
+     write (globalstorage%evolveFilename, "(A, I3.3, A)"), 'evolve', mpro%getRank(), '.dat'
+     open(uw,file=globalstorage%evolveFilename, status='replace')
+     close(uw)
 #else
-        ! Sequential behaviour
-        OPEN(uw,file='evolve.dat',status='replace')
-        CLOSE(uw)
+     ! Sequential behaviour
+     open(uw,file='evolve.dat',status='replace')
+     close(uw)
 #endif
-        if (prop_fileformat .eq. 1) then
-           if (mpro%isParallel()) then
-           !   write (propagators_ncfilename, "(A, I3.3, A)") 'propagators.', mpro%getRank(), '.nc' 
-           else
-           !   write (propagators_ncfilename, "(A)") "propagators.nc"
-           end if
+     ! --- 
 
-           if ((mpro%isParallel() .and. .not. mpro%isMaster()) .or. (.not. mpro%isParallel())) then
-           !   ierr = nf90_create(propagators_ncfilename, NF90_NetCDF4, ncid_propagators)
-           !   ierr = nf90_enddef(ncid_propagators)
-           end if
-        end if
   END IF
 
-
   ! ---------------------------------------------------------------------------
-     
- 
 
   ! ---------------------------------------------------------------------------
   ! some settings
@@ -436,13 +435,9 @@ PROGRAM neo2
   CALL kin_allocate(ialloc)
   ! ---------------------------------------------------------------------------
 
-
-
-
   ! ---------------------------------------------------------------------------
   ! prepare the whole configuration
   CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
-
 
   ! ---------------------------------------------------------------------------
   ! this is just for christian, sergie please switch it off
@@ -450,8 +445,6 @@ PROGRAM neo2
   ! nr,nz,nphi
   !CALL write_volume_data(40,40,100,'w7as_vol.dat')
   !CALL write_surface_data('w7as_sur_181.dat')
-
-
 
   ! ---------------------------------------------------------------------------
   ! these are the tags of the first and last fieldpropagator
@@ -492,44 +485,51 @@ PROGRAM neo2
   END IF
   !
   !IF (proptag_start .LE. proptag_end) THEN
-     ! ------------------------------------------------------------------------
-     ! real computation
-     CALL flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
-          eta_alpha_p,eta_alpha_t,                                            &
-          xetami,xetama,eta_part,lambda_equi,                                 &
-          eta_part_global,eta_part_trapped,                                   &
-          bin_split_mode,                                                     &
-          proptag_start,proptag_end)
-     ! ------------------------------------------------------------------------
+  ! ------------------------------------------------------------------------
+  ! real computation
+  CALL flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
+       eta_alpha_p,eta_alpha_t,                                            &
+       xetami,xetama,eta_part,lambda_equi,                                 &
+       eta_part_global,eta_part_trapped,                                   &
+       bin_split_mode,                                                     &
+       proptag_start,proptag_end)
+  ! ------------------------------------------------------------------------
   !ELSE
   !   PRINT *, 'NOTHING TO COMPUTE'
-     !END IF
+  !END IF
+
+  ! Postprocessing of reconstruction run 2 (close NetCDF files)   
+  ! --- NetCDF SUPPORT
 
   if (prop_reconstruct .eq. 2) then
      if (prop_fileformat .eq. 1) then
-        ierr = nf90_close(ncid_recon)
+        call nf90_check(nf90_close(ncid_recon), optException = .false.)
      end if
+     ! ---
   end if
-     
-     call mergeAllNCFiles()
 
+  call mergeAllNCFiles()
+     ! ---
+  
   !end if
-  ! MPI support
+  ! ---MPI SUPPORT ---
 #if defined(MPI_SUPPORT)
+  ! Deinit MPI session
   call mpro%deinit()
 #endif
+  ! ---
   ! ---------------------------------------------------------------------------
   ! final deallocation of device and all its children
   !PRINT *, 'Before destruct_magnetics'
   !CALL destruct_magnetics(device)
   ! ---------------------------------------------------------------------------
-     ! final deallocation of device
-     !PRINT *, 'Beforecollop_unload'
-     if (isw_momentum .eq. 0) then
-        CALL collop_unload
-        !PRINT *, 'Beforecollop_deconstruct'
-        CALL collop_deconstruct
-     end if
+  ! final deallocation of device
+  !PRINT *, 'Beforecollop_unload'
+  if (isw_momentum .eq. 0) then
+     CALL collop_unload
+     !PRINT *, 'Beforecollop_deconstruct'
+     CALL collop_deconstruct
+  end if
 
   STOP
 
