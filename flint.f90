@@ -434,12 +434,13 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   USE binarysplit_mod
   !
 
-  ! For parallel support
-  ! Source has to be compiled with -cpp flag for c preprocessor directives
+  ! --- MPI SUPPORT ---
+  ! Source has to be compiled with -cpp flag for C preprocessor directives
 #if defined(MPI_SUPPORT)
   USE neo2scheduler_module
   USE parallelStorage_module
 #endif
+  ! ---
 
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -552,17 +553,17 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
   REAL(kind=dp) :: phi_l,phi_r,phi_per,theta_l,theta_r
 
-  ! Local variable for parallel mode
+  ! --- MPI SUPPORT ---
 #if defined(MPI_SUPPORT)
   ! Define the scheduler
   type(neo2scheduler) :: sched
 #endif
+  ! ---
 
-  ! --- NetCDF ---
+  ! --- NetCDF SUPPORT ---
   integer :: ncid_taginfo, grpid
   character(len=128) :: grpname
   ! ---
-  
 
   !print *, 'flint: begin of program'
   ! this is not very sophisticated at the moment
@@ -2631,8 +2632,12 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
   ! Write taginfo.prop
   IF ( (prop_write .EQ. 1 .OR. prop_write .EQ. 2) .and. prop_reconstruct .eq. 0) THEN
-     ! taginfo
+
+     ! --- MPI SUPPORT ---
+     ! Only master (or in sequential mode) writes the taginfo.prop file
      if (mpro%isMaster()) then
+
+        ! --- NetCDF SUPPORT ---
         if (prop_fileformat .eq. 1) then
 
            call nc_create(prop_ctaginfo_nc, ncid_taginfo, '1.0')
@@ -2699,8 +2704,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            end DO allprops_taginfo_nc
 
            call nf90_check(nf90_close(ncid_taginfo))
-
-        else
+           ! ---
+        else !  if (prop_fileformat .eq. 1) 
 
            CALL unit_propagator
            OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
@@ -2711,6 +2716,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            WRITE(prop_unit,*) fieldline%ch_fir%ch_fir%tag
            WRITE(prop_unit,*) fieldline%ch_las%ch_las%tag
            ! This was the end of the old write
+           ! --- MPI SUPPORT ---
+           ! Indicate if NEO-2 ran in parallelized mode
 #if defined(MPI_SUPPORT)
            if (mpro%isParallel()) then
               WRITE(prop_unit,*) .TRUE.
@@ -2720,7 +2727,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 #else
            WRITE(prop_unit,*) .FALSE.
 #endif
-           ! 
+           ! ---
+
+           
            phi_per = twopi / device%nfp
 
            WRITE(prop_unit,*) surface%aiota
@@ -2858,8 +2867,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      !print *, 'flint:  after propagator_solver'
   else
 
+  ! --- MPI SUPPORT
 #if defined(MPI_SUPPORT)
-    ! This is for the case that the program has been build with MPI support, but was started in a sequential way
+    ! This is for the case that the program is built with MPI support, but is started in a sequential way
     if (.not. mpro%isParallel()) then
 #endif
       ! Sequential program mode
@@ -2869,6 +2879,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
       ! Run program in parallel mode
 
       ! Set some variables the scheduler needs to access
+      ! This should be replaced in the future
       globalstorage%bin_split_mode = bin_split_mode
       globalstorage%eta_ori = eta_ori
       globalstorage%fieldperiod => fieldperiod
@@ -2891,6 +2902,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
     end if
 #endif
+    ! ---
 
 
     
