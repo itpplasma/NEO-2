@@ -75,14 +75,15 @@ MODULE propagator_mod
 
   USE binarysplit_mod
 
-  ! MPI support
+  ! --- MPI SUPPORT ---
   ! Sources have to be compiled with -cpp flag
   ! For using this parallel framework the compiler has to support Fortran 2003 standards
 #if defined(MPI_SUPPORT)
   USE mpiprovider_module
 #endif
+  ! ---
 
-  ! Experimental NetCDF Support
+  ! --- NetCDF SUPPORT ---
   USE nctools_module
   USE netcdf
   ! ---
@@ -1131,6 +1132,9 @@ CONTAINS
 
   END SUBROUTINE diag_propagator_dis
   ! ---------------------------------------------------------------------------
+
+  ! --- MPI SUPPORT ---
+  
   SUBROUTINE propagator_solver_all(proptag_start,proptag_end, & 
        bin_split_mode,eta_ori, parallelmode)
     USE device_mod
@@ -1139,6 +1143,8 @@ CONTAINS
     INTEGER, INTENT(in) :: proptag_start,proptag_end
     INTEGER, INTENT(in) :: bin_split_mode
     REAL(kind=dp), ALLOCATABLE :: eta_ori(:)
+
+    ! This switch is true if the function is called from a parallel workunit
     logical :: parallelmode
 
     integer :: iend,iendperiod
@@ -1146,14 +1152,15 @@ CONTAINS
     integer :: clear_old_ripple,rippletag_old
     integer :: ierr_solv,ierr_join
     integer :: period_count
-    integer :: period_limit = 5
-    integer :: client_count = 0
-    integer :: parallel = 0
     integer :: iend_sol
 
-    !CHARACTER(len=20)  :: c_ripple_tag,c_period_tag,c_propagator_tag
+    ! This switch was used to trigger a fake parallelization (all happens on one client)
+    ! process during development of the parallel NEO-2.
+    ! However, it is not used anymore by the parallel NEO-2, but will stay in the code
+    ! in an uncommented form for studies of the parallelization.
+    integer :: fakeparallel = 0 
 
-    if (parallel .eq. 0) then ! without parallelization
+    if (fakeparallel .eq. 0) then 
        ! this is a version of the code which runs in the usual way
        ! all joining is done in propagator_solver
        ! see below for the case 1, which is divided into pieces
@@ -1208,8 +1215,10 @@ CONTAINS
           END IF
           
           if (iendperiod .eq. 1) period_count = period_count + 1 
-          
+
+          ! This is special if the function is called from a parallel workunit
           if (.not. parallelMode) iend_sol = iend
+          
           CALL propagator_solver(                                  &
                iend_sol,iendperiod,bin_split_mode,eta_ori,             &
                ierr_solv,ierr_join                                 &
@@ -1232,172 +1241,175 @@ CONTAINS
        prop_count_call = 0
        !call destruct_all_propagators
           
-    elseif (parallel .eq. 1) then ! fake parallelization
-       ! here the fieldline is divided into parts, which consist
-       ! of several fieldperiods (period_limit)
-       ! within this parts everything is handled as before and
-       ! propagator_solver is responsible for solving a propagator,
-       ! joining within a fieldperiod and joining of fieldperiods
-       
-       ! go to the first propagator which is wanted
-       fieldperiod => fieldline%ch_fir 
-       fieldpropagator => fieldperiod%ch_fir
-       DO WHILE (fieldpropagator%tag .LT. proptag_start)
-          IF (.NOT. ASSOCIATED(fieldpropagator%next)) EXIT
-          fieldpropagator => fieldpropagator%next
-       END DO
-       fieldripple => fieldpropagator%ch_act
-       iend = 0
-       iendperiod = 0
-       rippletag_old = 0
-       ! now the fieldpropagator points to the fieldpropagator
-       ! with the tag proptag_start
-
-       ! we now go through groups of fieldperiods. the number of
-       ! fieldperiods in group is period_limit (or less in the last one).
-       ! these could be viewed as a group which is handled by a client.
-       ! therefore client_count is used as a variable.
-       !
-       ! this can be viewed as an idea for parallelization. most of the necessary 
-       ! elements are here. ne can see how to join two groups of fieldperiods.
-       ! of course, a send and receive routine has to be programmed, because here
-       ! it is only done through copying within the same client. 
-       allperiods_p: do while (iend .eq. 0) 
-          client_count = client_count + 1
-          period_count = 0 ! counts the periods in a group of periods
-
-          ! we now go through all propagators in this group of fieldperiods
-          allprops_comp_p: DO
-             ! information about propagator is written out to the screen
-             CALL info_magnetics(fieldpropagator)
-             CALL info_magnetics(fieldpropagator%parent)
-             
-             ! fielperiod and fieldripple which belong the actual fieldpropagator
-             fieldperiod => fieldpropagator%parent
-             fieldripple => fieldpropagator%ch_act
-             ! tags
-             rippletag = fieldripple%tag
-             proptag = fieldpropagator%tag
-             
-             ! here it is determined whether the end is reached (iend=1) or
-             ! whether the end of a fieldperiod is reached (iendperiod=1) 
-             IF (fieldpropagator%tag .EQ. proptag_end) THEN 
-                iend = 1
-                iendperiod = 1
-             ELSE
-                IF (ASSOCIATED(fieldpropagator%next)) THEN
-                   IF (fieldpropagator%parent%tag .NE. fieldpropagator%next%parent%tag) THEN 
-                      iendperiod = 1
-                   ELSE
-                      iendperiod = 0
-                   END IF
-                ELSE
-                   iendperiod = 1
-                END IF
-             END IF
-             
-             ! at the end of a fieldperiod period_count is increased
-             if (iendperiod .eq. 1) period_count = period_count + 1 
-             
-             ! propagator_solver now solves for one propagator, joins
-             ! within periods and joins periods within a group of periods
-             ! iend_sol=0 is passed to solver instead of iend. with this
-             ! the final ends will not be joined
-             iend_sol = 0
-
-             CALL propagator_solver(                                  &
-                  iend_sol,iendperiod,bin_split_mode,eta_ori,         &
-                  ierr_solv,ierr_join                                 &
-                  )
-
-             
-             ! go to the next propagator or exit
-             IF (fieldpropagator%tag .EQ. proptag_end) EXIT allprops_comp_p
-             IF (.NOT.(ASSOCIATED(fieldpropagator%next))) THEN
-                fieldpropagator => fieldline%ch_fir%ch_fir
-             ELSE
-                IF (fieldpropagator%next%tag .LE. fieldline%ch_las%ch_las%tag) THEN
-                   fieldpropagator => fieldpropagator%next
-                ELSE
-                   fieldpropagator => fieldline%ch_fir%ch_fir
-                END IF
-             END IF
-             ! exit this loop when the period_limit is reached
-             IF (period_count .EQ. period_limit) EXIT allprops_comp_p
-          END DO allprops_comp_p
-          ! the joined result now for the group of fieldperiods is available in
-          ! prop_c%prev
-
-           !call store_propagator()
-
-          if (client_count .eq. 1) then
-
-          else
-               !call external_joining(iend, ierr_join)
-          end if
-
-          ! final joining
-          ! the variable iend is 1 only at the very end when everthing is joined
-          ! and the result is available in prop_s%prev
-          !
-          ! this has to happen only once to finalize everything
-          if (iend .eq. 1) then
-!             print *, ' '
-!             print *, 'FINAL JOINING'
-!             print *, ' '
-!             ! for internal reasons the result has to be duplicated also to the
-!             ! second entry of prop_s
-!             CALL assign_propagator_content(prop_s,prop_s%prev)
-!             ! now comes the final joining
-!             prop_c_old => prop_s%prev
-!             prop_c_new => prop_s
-!             CALL join_ripples_interface(ierr_join,'final')
-!             prop_s => prop_s%prev
-!             ! and the final result is in prop_s now
-!
-!             ! this is just for final output
-!             prop_a => prop_s
-!
-!             CALL diag_propagator_result(iend)
-!             CALL diag_propagator_distrf
-!
-!             IF (prop_write .EQ. 1) THEN
-!                ! final joining
-!                CALL write_propagator_content(prop_a,2)
-!             ELSEIF (prop_write .EQ. 2) THEN
-!                ! final joining
-!                CALL write_propagator_content(prop_a,4)
-!             END IF
-!             IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
-!                ! taginfo
-!                CALL unit_propagator
-!                OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-!                     form=prop_format,action='write')
-!                WRITE(prop_unit,*) prop_write
-!                WRITE(prop_unit,*) prop_first_tag   ! UNSOLVED PROBLEM
-!                WRITE(prop_unit,*) prop_last_tag    ! UNSOLVED PROBLEM
-!                CLOSE(unit=prop_unit)
-!             END IF
-
-          end if
-
-          ! deallocate
-          ! here everything is related to prop_c is deconstructed to be able
-          ! to start again for a new group of fieldperiods
-          propagator_tag_counter = 0
-          prop_count_call = 0
-          call destruct_all_propagators
-
-       end do allperiods_p
-       ! this is the end of the while-loop, which terminates at iend=1
+    elseif (fakeparallel .eq. 1) then ! fake parallelization
+       write (*,*) 'This parallel mode is the fake parallelization on one client.'
+       write (*,*) 'This part of the code is outsourced to the corresponding workunits.'
+       write (*,*) 'However it can be used to study the parallelization process in the code. Stopping propgram.'
+       stop
+!!$       ! here the fieldline is divided into parts, which consist
+!!$       ! of several fieldperiods (period_limit)
+!!$       ! within this parts everything is handled as before and
+!!$       ! propagator_solver is responsible for solving a propagator,
+!!$       ! joining within a fieldperiod and joining of fieldperiods
+!!$       
+!!$       ! go to the first propagator which is wanted
+!!$       fieldperiod => fieldline%ch_fir 
+!!$       fieldpropagator => fieldperiod%ch_fir
+!!$       DO WHILE (fieldpropagator%tag .LT. proptag_start)
+!!$          IF (.NOT. ASSOCIATED(fieldpropagator%next)) EXIT
+!!$          fieldpropagator => fieldpropagator%next
+!!$       END DO
+!!$       fieldripple => fieldpropagator%ch_act
+!!$       iend = 0
+!!$       iendperiod = 0
+!!$       rippletag_old = 0
+!!$       ! now the fieldpropagator points to the fieldpropagator
+!!$       ! with the tag proptag_start
+!!$
+!!$       ! we now go through groups of fieldperiods. the number of
+!!$       ! fieldperiods in group is period_limit (or less in the last one).
+!!$       ! these could be viewed as a group which is handled by a client.
+!!$       ! therefore client_count is used as a variable.
+!!$       !
+!!$       ! this can be viewed as an idea for parallelization. most of the necessary 
+!!$       ! elements are here. ne can see how to join two groups of fieldperiods.
+!!$       ! of course, a send and receive routine has to be programmed, because here
+!!$       ! it is only done through copying within the same client. 
+!!$       allperiods_p: do while (iend .eq. 0) 
+!!$          client_count = client_count + 1
+!!$          period_count = 0 ! counts the periods in a group of periods
+!!$
+!!$          ! we now go through all propagators in this group of fieldperiods
+!!$          allprops_comp_p: DO
+!!$             ! information about propagator is written out to the screen
+!!$             CALL info_magnetics(fieldpropagator)
+!!$             CALL info_magnetics(fieldpropagator%parent)
+!!$             
+!!$             ! fielperiod and fieldripple which belong the actual fieldpropagator
+!!$             fieldperiod => fieldpropagator%parent
+!!$             fieldripple => fieldpropagator%ch_act
+!!$             ! tags
+!!$             rippletag = fieldripple%tag
+!!$             proptag = fieldpropagator%tag
+!!$             
+!!$             ! here it is determined whether the end is reached (iend=1) or
+!!$             ! whether the end of a fieldperiod is reached (iendperiod=1) 
+!!$             IF (fieldpropagator%tag .EQ. proptag_end) THEN 
+!!$                iend = 1
+!!$                iendperiod = 1
+!!$             ELSE
+!!$                IF (ASSOCIATED(fieldpropagator%next)) THEN
+!!$                   IF (fieldpropagator%parent%tag .NE. fieldpropagator%next%parent%tag) THEN 
+!!$                      iendperiod = 1
+!!$                   ELSE
+!!$                      iendperiod = 0
+!!$                   END IF
+!!$                ELSE
+!!$                   iendperiod = 1
+!!$                END IF
+!!$             END IF
+!!$             
+!!$             ! at the end of a fieldperiod period_count is increased
+!!$             if (iendperiod .eq. 1) period_count = period_count + 1 
+!!$             
+!!$             ! propagator_solver now solves for one propagator, joins
+!!$             ! within periods and joins periods within a group of periods
+!!$             ! iend_sol=0 is passed to solver instead of iend. with this
+!!$             ! the final ends will not be joined
+!!$             iend_sol = 0
+!!$
+!!$             CALL propagator_solver(                                  &
+!!$                  iend_sol,iendperiod,bin_split_mode,eta_ori,         &
+!!$                  ierr_solv,ierr_join                                 &
+!!$                  )
+!!$
+!!$             
+!!$             ! go to the next propagator or exit
+!!$             IF (fieldpropagator%tag .EQ. proptag_end) EXIT allprops_comp_p
+!!$             IF (.NOT.(ASSOCIATED(fieldpropagator%next))) THEN
+!!$                fieldpropagator => fieldline%ch_fir%ch_fir
+!!$             ELSE
+!!$                IF (fieldpropagator%next%tag .LE. fieldline%ch_las%ch_las%tag) THEN
+!!$                   fieldpropagator => fieldpropagator%next
+!!$                ELSE
+!!$                   fieldpropagator => fieldline%ch_fir%ch_fir
+!!$                END IF
+!!$             END IF
+!!$             ! exit this loop when the period_limit is reached
+!!$             IF (period_count .EQ. period_limit) EXIT allprops_comp_p
+!!$          END DO allprops_comp_p
+!!$          ! the joined result now for the group of fieldperiods is available in
+!!$          ! prop_c%prev
+!!$
+!!$           !call store_propagator()
+!!$
+!!$          if (client_count .eq. 1) then
+!!$
+!!$          else
+!!$               !call external_joining(iend, ierr_join)
+!!$          end if
+!!$
+!!$          ! final joining
+!!$          ! the variable iend is 1 only at the very end when everthing is joined
+!!$          ! and the result is available in prop_s%prev
+!!$          !
+!!$          ! this has to happen only once to finalize everything
+!!$          if (iend .eq. 1) then
+!!$!             print *, ' '
+!!$!             print *, 'FINAL JOINING'
+!!$!             print *, ' '
+!!$!             ! for internal reasons the result has to be duplicated also to the
+!!$!             ! second entry of prop_s
+!!$!             CALL assign_propagator_content(prop_s,prop_s%prev)
+!!$!             ! now comes the final joining
+!!$!             prop_c_old => prop_s%prev
+!!$!             prop_c_new => prop_s
+!!$!             CALL join_ripples_interface(ierr_join,'final')
+!!$!             prop_s => prop_s%prev
+!!$!             ! and the final result is in prop_s now
+!!$!
+!!$!             ! this is just for final output
+!!$!             prop_a => prop_s
+!!$!
+!!$!             CALL diag_propagator_result(iend)
+!!$!             CALL diag_propagator_distrf
+!!$!
+!!$!             IF (prop_write .EQ. 1) THEN
+!!$!                ! final joining
+!!$!                CALL write_propagator_content(prop_a,2)
+!!$!             ELSEIF (prop_write .EQ. 2) THEN
+!!$!                ! final joining
+!!$!                CALL write_propagator_content(prop_a,4)
+!!$!             END IF
+!!$!             IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
+!!$!                ! taginfo
+!!$!                CALL unit_propagator
+!!$!                OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
+!!$!                     form=prop_format,action='write')
+!!$!                WRITE(prop_unit,*) prop_write
+!!$!                WRITE(prop_unit,*) prop_first_tag   ! UNSOLVED PROBLEM
+!!$!                WRITE(prop_unit,*) prop_last_tag    ! UNSOLVED PROBLEM
+!!$!                CLOSE(unit=prop_unit)
+!!$!             END IF
+!!$
+!!$          end if
+!!$
+!!$          ! deallocate
+!!$          ! here everything is related to prop_c is deconstructed to be able
+!!$          ! to start again for a new group of fieldperiods
+!!$          propagator_tag_counter = 0
+!!$          prop_count_call = 0
+!!$          call destruct_all_propagators
+!!$
+!!$       end do allperiods_p
+!!$       ! this is the end of the while-loop, which terminates at iend=1
     else
-       print *, 'NOT IMPLEMENTED parallel'
+       write (*,*) 'This parallel mode is not implemented! Stopping program!'
+       write (*,*) 'Please have a look at propagator.f90'
        stop
     end if
   end SUBROUTINE propagator_solver_all
   ! ---------------------------------------------------------------------------
-
-  ! --- Used functions for parallel support ---
 
   subroutine external_joining()!, prop1, prop2)
     integer :: iend_sol = 0
@@ -1411,23 +1423,25 @@ CONTAINS
     print *, 'EXTERNAL JOINING'
     print *, ' '
 
-    !call construct_propagator(prop_s)
+    ! call construct_propagator(prop_s)
 
     ! the result of the new group of fieldperiods is stored in the
     ! second entry of prop_s
-    !CALL assign_propagator_content(prop_s,prop_c%prev)
+
+    ! CALL assign_propagator_content(prop_s,prop_c%prev)
     ! prop_c_old and prop_c_new are pointers two propagators, which
     ! have to be joined. here it points to the two results stored in
     ! prop_s
 
-    !write (*,*) allocated(prop1%p%cmat), allocated(prop2%p%cmat)
+    ! write (*,*) allocated(prop1%p%cmat), allocated(prop2%p%cmat)
 
-    !prop_c_old => prop1!prop_s%prev
-    !prop_c_new => prop2!prop_s
+    ! prop_c_old => prop1 !prop_s%prev
+    ! prop_c_new => prop2 !prop_s
 
-    !write (*,*) allocated(prop_c_old%p%cmat), allocated(prop_c_new%p%cmat)
+    ! write (*,*) allocated(prop_c_old%p%cmat), allocated(prop_c_new%p%cmat)
 
     CALL join_ripples_interface(ierr_join)
+
     ! output after joining
     prop_a => prop_c_old     !For all outputs to files
     CALL diag_propagator_result(iend_sol)                   ! UNSOLVED PROBLEM
@@ -1446,14 +1460,15 @@ CONTAINS
       print *, ' '
       print *, 'FINAL JOINING'
       print *, ' '
+
       ! for internal reasons the result has to be duplicated also to the
       ! second entry of prop_s
-      !CALL assign_propagator_content(prop_s,prop_s%prev)
+      ! CALL assign_propagator_content(prop_s,prop_s%prev)
       ! now comes the final joining
-      !prop_c_old => prop_s%prev
-      !prop_c_new => prop_s
+      ! prop_c_old => prop_s%prev
+      ! prop_c_new => prop_s
       CALL join_ripples_interface(ierr_join,'final')
-      !prop_s => prop_s%prev
+      ! prop_s => prop_s%prev
       ! and the final result is in prop_s now
 
       ! this is just for final output
@@ -1476,6 +1491,7 @@ CONTAINS
 #endif
         ! WINNY PAR END
       END IF
+      
 !!$      IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
 !!$        ! taginfo
 !!$        CALL unit_propagator
@@ -1486,9 +1502,10 @@ CONTAINS
 !!$        WRITE(prop_unit,*) prop_last_tag    ! UNSOLVED PROBLEM
 !!$        CLOSE(unit=prop_unit)
 !!$      END IF
+      
     end subroutine final_joining
 
-  ! --- Paralled support end ------
+  ! --- MPI SUPPORT END ---
 
 
   ! ---------------------------------------------------------------------------
