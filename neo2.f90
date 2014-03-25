@@ -25,7 +25,7 @@ PROGRAM neo2
        prop_diagnostic,prop_binary,                                 &
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
-       prop_reconstruct_levels,                                     & 
+       prop_reconstruct_levels,                                     &
        ncid_propagators, prop_fileformat, mergeAllNCFiles,          &
        ncid_binarysplits, ncid_propbounds, ncid_recon
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk
@@ -40,7 +40,7 @@ PROGRAM neo2
   USE binarysplit_mod, ONLY : bsfunc_message,bsfunc_modelfunc,      &
        bsfunc_total_err, bsfunc_local_err, bsfunc_min_distance,     &
        bsfunc_max_index, bsfunc_max_splitlevel,                     &
-       bsfunc_sigma_mult, bsfunc_sigma_min, bsfunc_local_solver   
+       bsfunc_sigma_mult, bsfunc_sigma_min, bsfunc_local_solver
   USE binarysplit_int, ONLY : linspace
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
        collop_load, collop_unload, z_eff, collop_path
@@ -61,11 +61,11 @@ PROGRAM neo2
   ! --- MPI SUPPORT ---
   character(len=32) :: strEvolveFilename    ! This string is used to give every client an own evolve.dat file
   ! ---
-  
+
   ! --- Version information (Git version) ---
   include "version.f90"
   ! ---
-  
+
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
   REAL(kind=dp) :: rbeg,zbeg
@@ -108,7 +108,7 @@ PROGRAM neo2
        eta_part_globalfac_p,eta_part_globalfac_t,                             &
        eta_alpha_p,eta_alpha_t,eta_part_trapped,                              &
        mag_coordinates,boozer_s,boozer_theta_beg,boozer_phi_beg,              &
-       mag_dbhat_min,mag_dphi_inf_min,mag_inflection_mult,                    & 
+       mag_dbhat_min,mag_dphi_inf_min,mag_inflection_mult,                    &
        solver_talk,switch_off_asymp,                                          &
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
@@ -165,7 +165,7 @@ PROGRAM neo2
   asymp_margin_npass = 4
   asymp_pardeleta = 10.0d0
   ripple_solver_accurfac = 3.0d0
-  phimi=0.d0 
+  phimi=0.d0
   nstep=480
   nperiod=500
   xetami=0.0d0
@@ -213,7 +213,7 @@ PROGRAM neo2
   phi_place_mode = 2
   phi_split_min = 1
   max_solver_try = 1
-  hphi_mult = 1.0d0 
+  hphi_mult = 1.0d0
   bin_split_mode = 1
   bsfunc_message = 0
   bsfunc_modelfunc = 1
@@ -222,14 +222,14 @@ PROGRAM neo2
   boundary_dist_limit_factor = 1.e-2
   bsfunc_local_shield_factor = 1.0d0
   bsfunc_shield = .false.
-  bsfunc_divide = 0  
+  bsfunc_divide = 0
   bsfunc_total_err = 1.0d-1
   bsfunc_local_err = 1.0d-2
   bsfunc_local_err_max_mult = 1.0d0
   bsfunc_max_mult_reach = 3.0d0
-  bsfunc_min_distance = 0.0d0 
+  bsfunc_min_distance = 0.0d0
   bsfunc_max_index = 20*eta_part
-  bsfunc_max_splitlevel = 32    
+  bsfunc_max_splitlevel = 32
   bsfunc_sigma_mult = 1.0_dp
   bsfunc_sigma_min = 0.0_dp
   bsfunc_local_solver = 0
@@ -243,7 +243,7 @@ PROGRAM neo2
   prop_overwrite   = 1
   prop_diagnostic = 1
   prop_binary = 0
-  prop_timing = 1 
+  prop_timing = 1
   prop_join_ends = 0
   prop_fluxsplitmode = 1
   prop_write = 0
@@ -252,12 +252,12 @@ PROGRAM neo2
   prop_reconstruct = 0
   prop_ripple_plot = 0
   prop_reconstruct_levels = 0
-  mag_talk = .TRUE. 
+  mag_talk = .TRUE.
   mag_infotalk = .TRUE.
   hphi_lim = 1.0d-6
   ! plotting
-  plot_gauss = 0 
-  plot_prop  = 0 
+  plot_gauss = 0
+  plot_prop  = 0
 
   ! reading
   DO jf = 1,SIZE(fnames)
@@ -317,7 +317,17 @@ PROGRAM neo2
 
   ! Write out version information
   if (mpro%isMaster()) then
-     write (*,*) "NEO-2 Git Revision: [", Neo2_Version, "]"
+     write (*,*) ''
+     write (*,*) "---------- NEO-2 Git Revision ----------"
+     write (*,*) Neo2_Version
+     write (*,*) "----------------------------------------"
+     write (*,*) ''
+     if (len_trim(Neo2_Version_Additional) /= 0) then
+          write (*,*) "#################################### NEO-2 Git Additional Information ####################################"
+          write (*,*) Neo2_Version_Additional
+          write (*,*) "##########################################################################################################"
+          write (*,*) ''
+     end if
   end if
 
 #endif
@@ -345,7 +355,7 @@ PROGRAM neo2
         call nf90_check(nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits), optException = .false.)
         write (*,*) "Done!"
      end if
-     
+
      CALL reconstruct_prop_dist
 
      ! --- NetCDF SUPPORT
@@ -357,7 +367,7 @@ PROGRAM neo2
 
      ! Call NCO utils to merge NetCDF files
      call mergeAllNCFiles()
-     
+
      PRINT *, 'No further calculations!'
      STOP
   END IF
@@ -395,7 +405,7 @@ PROGRAM neo2
      print *, 'isw_momentum = ',isw_momentum,' not implemented!'
      stop
   end if
-  
+
   ! ---------------------------------------------------------------------------
   ! erase arrays
   ! ---------------------------------------------------------------------------
@@ -419,7 +429,7 @@ PROGRAM neo2
      open(uw,file='evolve.dat',status='replace')
      close(uw)
 #endif
-     ! --- 
+     ! ---
 
   END IF
 
@@ -430,7 +440,7 @@ PROGRAM neo2
   ! nmat=npart*npart
   ndim=ndim0
   ! allocation of some arrays (should be moved)
-  ! this part was not touched 
+  ! this part was not touched
   ialloc=1
   CALL kin_allocate(ialloc)
   ! ---------------------------------------------------------------------------
@@ -454,13 +464,13 @@ PROGRAM neo2
   !  for each structure there is a tag which numbers it in
   !   ascending order
   fieldperiod => fieldline%ch_fir
-  DO WHILE (fieldperiod%extra .EQ. 1) 
+  DO WHILE (fieldperiod%extra .EQ. 1)
      fieldperiod => fieldperiod%next
   END DO
   proptag_first = fieldperiod%ch_fir%tag
 
   fieldperiod => fieldline%ch_las
-  DO WHILE (fieldperiod%extra .EQ. 1) 
+  DO WHILE (fieldperiod%extra .EQ. 1)
      fieldperiod => fieldperiod%prev
   END DO
   proptag_last = fieldperiod%ch_las%tag
@@ -498,7 +508,7 @@ PROGRAM neo2
   !   PRINT *, 'NOTHING TO COMPUTE'
   !END IF
 
-  ! Postprocessing of reconstruction run 2 (close NetCDF files)   
+  ! Postprocessing of reconstruction run 2 (close NetCDF files)
   ! --- NetCDF SUPPORT
 
   if (prop_reconstruct .eq. 2) then
@@ -510,7 +520,7 @@ PROGRAM neo2
 
   call mergeAllNCFiles()
      ! ---
-  
+
   !end if
   ! ---MPI SUPPORT ---
 #if defined(MPI_SUPPORT)

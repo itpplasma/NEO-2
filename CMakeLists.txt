@@ -3,10 +3,11 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 project (NEO-2-Par)
 enable_language (Fortran)
+enable_testing()
 
 include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 include (${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
-include (${CMAKE_SOURCE_DIR}/ProjectVersion.cmake.in)
+#include (${CMAKE_SOURCE_DIR}/ProjectVersion.cmake.in)
 
 option(MPI_SUPPORT "Should NEO-2 be built with MPI-Support?" ON)
 option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
@@ -69,10 +70,7 @@ endif ()
 #endif(DEBUG)
 
 ### Build name extension
-exec_program("uname -m" OUTPUT_VARIABLE ARCH)
-exec_program("git rev-parse --abbrev-ref HEAD" OUTPUT_VARIABLE BRANCH)
-exec_program("date +%Y-%m-%d" OUTPUT_VARIABLE DATE)
-set(EXE_NAME "neo_2.x-${CMAKE_Fortran_COMPILER_ID}_${CMAKE_BUILD_TYPE}_${BRANCH}_${DATE}")
+set(EXE_NAME "neo_2.x")
 
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -111,5 +109,43 @@ target_link_libraries(${EXE_NAME}
 	-Wl,--start-group -L/usr/lib/ -lnetcdf -lnetcdff -Wl,--end-group
 	${BLAS_lib}
         )
+
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
+get_target_property(EXE_LOC ${EXE_NAME} LOCATION)
+
+macro (do_versioning)
+
+	### Build name extension
+	exec_program("uname -m" OUTPUT_VARIABLE ARCH)
+	exec_program("git rev-parse --abbrev-ref HEAD" OUTPUT_VARIABLE BRANCH)
+	exec_program("date +%Y-%m-%d" OUTPUT_VARIABLE DATE)
+	exec_program("git rev-parse --short HEAD" OUTPUT_VARIABLE SHORTHASH)
+	exec_program("git diff --exit-code --quiet || echo $?" OUTPUT_VARIABLE UNCOMMITTED)
+	
+	set(UNCOMMITTED_STR "")
+	if(${UNCOMMITTED} STREQUAL "1")
+		set(UNCOMMITTED_STR "_INKL_UNCOMMITTED")
+	endif ()
+
+	set(EXE_NAME_FULL "neo_2.x-${CMAKE_Fortran_COMPILER_ID}_${CMAKE_BUILD_TYPE}_${BRANCH}_${SHORTHASH}${UNCOMMITTED_STR}")
+	
+endmacro ()
+
+add_custom_target(
+    NEO-2-Versioning
+    COMMAND ./do_versioning.sh
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+add_dependencies(${EXE_NAME} NEO-2-Versioning)
+do_versioning()
+add_custom_command(
+	TARGET ${EXE_NAME}
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND}
+	ARGS -E copy ${EXE_LOC} /temp/gernot_k/Executables/${EXE_NAME_FULL}
+	)
+
+### TESTING
+#ADD_TEST(ctest_build_test_code "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR} --target ${EXE_NAME})
