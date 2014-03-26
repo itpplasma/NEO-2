@@ -114,24 +114,6 @@ install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
 get_target_property(EXE_LOC ${EXE_NAME} LOCATION)
 
-macro (do_versioning)
-
-	### Build name extension
-	exec_program("uname -m" OUTPUT_VARIABLE ARCH)
-	exec_program("git rev-parse --abbrev-ref HEAD" OUTPUT_VARIABLE BRANCH)
-	exec_program("date +%Y-%m-%d" OUTPUT_VARIABLE DATE)
-	exec_program("git rev-parse --short HEAD" OUTPUT_VARIABLE SHORTHASH)
-	exec_program("git diff --exit-code --quiet; echo $?" OUTPUT_VARIABLE UNCOMMITTED)
-	
-	set(UNCOMMITTED_STR "")
-	if(${UNCOMMITTED} STREQUAL "1")
-		set(UNCOMMITTED_STR "_INKL_UNCOMMITTED")
-	endif ()
-
-	set(EXE_NAME_FULL "neo_2.x-${CMAKE_Fortran_COMPILER_ID}_${CMAKE_BUILD_TYPE}_${BRANCH}_${SHORTHASH}${UNCOMMITTED_STR}")
-	
-endmacro ()
-
 add_custom_target(
     NEO-2-Versioning
     COMMAND ./Scripts/do_versioning.sh
@@ -140,13 +122,12 @@ add_custom_target(
 
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
 
-do_versioning()
-
 add_custom_command(
 	TARGET ${EXE_NAME}
 	POST_BUILD
-	COMMAND ${CMAKE_COMMAND}
-	ARGS -E copy ${EXE_LOC} /temp/gernot_k/Executables/${EXE_NAME_FULL}
+	COMMAND ../Scripts/cp_to_archive.sh
+	ARGS ${EXE_NAME} ${EXE_ARCHIVE_PATH} ${CMAKE_Fortran_COMPILER_ID} ${CMAKE_BUILD_TYPE}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 	)
 
 ### TESTING
