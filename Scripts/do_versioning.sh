@@ -17,4 +17,8 @@ if [ -n "$GITCHANGEDFILES" ]; then
     done <<< "$GITCHANGEDFILES"
     echo '&"' >> ./version.f90
 
+else
+
+    echo 'character(len=*), parameter :: Neo2_Version_Additional = ""' >> ./version.f90
+
 fi
