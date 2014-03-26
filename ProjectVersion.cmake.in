@@ -1,2 +1,0 @@
-exec_program("git rev-parse --short HEAD" OUTPUT_VARIABLE Neo2_Version)
-configure_file(${CMAKE_SOURCE_DIR}/version.f90.in ${CMAKE_SOURCE_DIR}/version.f90)
