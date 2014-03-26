@@ -1,2 +1,0 @@
-character(len=7) :: Neo2_Version = "@Neo2_Version@"
-

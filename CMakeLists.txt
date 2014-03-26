@@ -139,7 +139,9 @@ add_custom_target(
 )
 
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
+
 do_versioning()
+
 add_custom_command(
 	TARGET ${EXE_NAME}
 	POST_BUILD
@@ -148,7 +150,7 @@ add_custom_command(
 	)
 
 ### TESTING
-ADD_TEST(Test_Build_Code    "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR} --target ${EXE_NAME})
+ADD_TEST(Test_Build_Code     "make")
 ADD_TEST(Test_Testcase1      ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase1" "0")
 ADD_TEST(Test_Testcase2      ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "0")
 ADD_TEST(Test_Testcase2-par  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "4")

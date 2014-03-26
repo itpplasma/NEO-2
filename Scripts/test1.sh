@@ -18,6 +18,8 @@ if [ ${2} -eq 0 ]; then
 else
 	echo "Parallel mode np=${2}"
 	mpirun -np ${2} ../neo_2.x >> job.log 2>&1
+	switch_reconstruction.sh 1
+	../neo_2.x >> job.log 2>&1
 fi
 
 if md5sum -c ../../../Reference/${1}/MD5sums ; then
