@@ -121,7 +121,7 @@ macro (do_versioning)
 	exec_program("git rev-parse --abbrev-ref HEAD" OUTPUT_VARIABLE BRANCH)
 	exec_program("date +%Y-%m-%d" OUTPUT_VARIABLE DATE)
 	exec_program("git rev-parse --short HEAD" OUTPUT_VARIABLE SHORTHASH)
-	exec_program("git diff --exit-code --quiet || echo $?" OUTPUT_VARIABLE UNCOMMITTED)
+	exec_program("git diff --exit-code --quiet; echo $?" OUTPUT_VARIABLE UNCOMMITTED)
 	
 	set(UNCOMMITTED_STR "")
 	if(${UNCOMMITTED} STREQUAL "1")
