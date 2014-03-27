@@ -1,6 +1,7 @@
 #!/bin/bash
 
-testpath=`mktemp -d /temp/gernot_k/Neo2/Testing/Runs/Test-XXXXXXXX`
+testpath=`mktemp -d /temp/gernot_k/Neo2/Testing/Runs/Test-XXXXXX`
+echo "Testpath created: ${testpath}!"
 #testpath='/temp/gernot_k/Neo2/Testing/Runs/000'
 
 cp ./neo_2.x $testpath

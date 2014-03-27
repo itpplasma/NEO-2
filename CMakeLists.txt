@@ -131,7 +131,8 @@ add_custom_command(
 	)
 
 ### TESTING
-ADD_TEST(Test_Build_Code     "make")
-ADD_TEST(Test_Testcase1      ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase1" "0")
-ADD_TEST(Test_Testcase2      ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "0")
-ADD_TEST(Test_Testcase2-par  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "4")
+ADD_TEST(Test_Build_Code      "make clean && make")
+ADD_TEST(Test_Testcase1       ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase1" "0")
+ADD_TEST(Test_Testcase2       ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "0")
+ADD_TEST(Test_Testcase2-par4  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "4")
+ADD_TEST(Test_Testcase3-par6  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase3" "6")
