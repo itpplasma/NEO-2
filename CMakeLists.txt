@@ -26,6 +26,7 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
         set (CMAKE_Fortran_FLAGS "-cpp -pthread")
         #set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
         #set (CMAKE_Fortran_FLAGS_DEBUG "")
+	set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
 
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
@@ -131,7 +132,7 @@ add_custom_command(
 	)
 
 ### TESTING
-ADD_TEST(Test_Build_Code      "make clean && make")
+ADD_TEST(Test_Build_Code      "make")
 ADD_TEST(Test_Testcase1       ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase1" "0")
 ADD_TEST(Test_Testcase2       ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "0")
 ADD_TEST(Test_Testcase2-par4  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "4")
