@@ -26,6 +26,7 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
         set (CMAKE_Fortran_FLAGS "-cpp -pthread")
         #set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
         #set (CMAKE_Fortran_FLAGS_DEBUG "")
+	set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
 
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
