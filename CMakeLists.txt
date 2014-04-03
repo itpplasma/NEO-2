@@ -117,7 +117,7 @@ get_target_property(EXE_LOC ${EXE_NAME} LOCATION)
 
 add_custom_target(
     NEO-2-Versioning
-    COMMAND ./Scripts/do_versioning.sh
+    COMMAND ./Scripts/tag_version.sh
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
