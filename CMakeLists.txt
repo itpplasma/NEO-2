@@ -26,7 +26,6 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
         set (CMAKE_Fortran_FLAGS "-cpp -pthread")
         #set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
         #set (CMAKE_Fortran_FLAGS_DEBUG "")
-	set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
 
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
@@ -40,6 +39,9 @@ elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
         #set (CMAKE_Fortran_FLAGS_DEBUG "")
 
 endif ()
+
+set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
+set (CMAKE_Fortran_FLAGS_TEST "-O3 --coverage")
 
 include_directories("${PROJECT_SOURCE_DIR}")
 include_directories("${MYMPILIB_PATH}/OBJS")
@@ -133,7 +135,12 @@ add_custom_command(
 
 ### TESTING
 ADD_TEST(Test_Build_Code      "make")
-ADD_TEST(Test_Testcase1       ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase1" "0")
-ADD_TEST(Test_Testcase2       ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "0")
-ADD_TEST(Test_Testcase2-par4  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "4")
-ADD_TEST(Test_Testcase3-par6  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase3" "6")
+ADD_TEST(Test_Testcase1-Seq       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase1" "0")
+ADD_TEST(Test_Testcase1-Par       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase1" "6")
+ADD_TEST(Test_Testcase2-Seq       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase2" "0")
+ADD_TEST(Test_Testcase2-Par       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase2" "6")
+
+
+#ADD_TEST(Test_Testcase2       ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "0")
+#ADD_TEST(Test_Testcase2-par4  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "4")
+#ADD_TEST(Test_Testcase3-par6  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase3" "6")
