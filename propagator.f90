@@ -101,13 +101,13 @@ MODULE propagator_mod
   INTEGER,            PRIVATE :: propagator_tag_counter = 0
 
   CHARACTER(len=9),   PARAMETER, PUBLIC          :: prop_format = 'formatted'
-  CHARACTER(len=4),   PARAMETER, PUBLIC          :: prop_cext = 'prop'
+  CHARACTER(len=4),   PUBLIC                     :: prop_cext = 'prop'
   CHARACTER(len=6),   PARAMETER, PRIVATE         :: prop_cperiod = 'period'
   CHARACTER(len=10),  PARAMETER, PRIVATE         :: prop_cpropagator = 'propagator'
   CHARACTER(len=8),   PARAMETER, PRIVATE         :: prop_cboundary = 'boundary'
   CHARACTER(len=11),  PARAMETER, PRIVATE         :: prop_cbinarysplit = 'binarysplit'
   CHARACTER(len=12),  PARAMETER, PUBLIC          :: prop_ctaginfo = 'taginfo.prop'
-  character(len=10),  parameter, PUBLIC          :: prop_ctaginfo_nc = 'taginfo.nc'   ! NetCDF
+  CHARACTER(len=10),  PARAMETER, PUBLIC          :: prop_ctaginfo_nc = 'taginfo.nc'   ! NetCDF
   CHARACTER(len=16),  PARAMETER, PRIVATE         :: prop_cresult = 'reconstruct'
   CHARACTER(len=100),            PUBLIC          :: prop_cfilename
   INTEGER,                       PUBLIC          :: prop_unit = 150
@@ -2427,29 +2427,34 @@ CONTAINS
     integer :: status
     character(len=300) :: command
     if (prop_fileformat .eq. 1) then
-       
+
        if ((mpro%isParallel() .and. (mpro%isMaster()) ) .or. (.not. mpro%isParallel())) then
 
           write (*,*) "Merging NetCDF-Files, please wait..."
 
-          call mergeNCFiles('\.\/propagator_[0-9]*_[0-9]*\.prop\.nc*$', 'propagators.nc')
-          call mergeNCFiles('\.\/propagator_boundary_[0-9]*_[0-9]*\.prop\.nc*$', 'propagators_boundaries.nc')
-          call mergeNCFiles('\.\/binarysplit_[0-9]*_[0-9]*\.prop\.nc*$', 'binarysplits.nc')
-          call mergeNCFiles('\.\/reconstruct_[0-9]*_[0-9]*\.prop\.nc*$', 'reconstructs.nc')
-          call mergeNCFiles('\.\/phi_mesh\.[0-9]*\.dat.nc*$', 'phi_mesh.nc')
-          call mergeNCFiles('\.\/spitf_p\.[0-9]*\.dat\.nc*$', 'spitf_p.nc')
-          call mergeNCFiles('\.\/spitf_m\.[0-9]*\.dat\.nc*$', 'spitf_m.nc')
-          call mergeNCFiles('\.\/enetf_p\.[0-9]*\.dat\.nc*$', 'enetf_p.nc')
-          call mergeNCFiles('\.\/enetf_m\.[0-9]*\.dat\.nc*$', 'enetf_m.nc')
-          call mergeNCFiles('\.\/dentf_p\.[0-9]*\.dat\.nc*$', 'dentf_p.nc')
-          call mergeNCFiles('\.\/dentf_m\.[0-9]*\.dat\.nc*$', 'dentf_m.nc')
-          call mergeNCFiles('\.\/sizeplot_etalev\.[0-9]*\.dat\.nc*$', 'sizeplot_etalev.nc')
+          call mergeNCFiles('\.\/propagator_[0-9]*_[0-9]*\.nc*$', 'propagators.nc')
+          call mergeNCFiles('\.\/propagator_boundary_[0-9]*_[0-9]*\.nc*$', 'propagators_boundaries.nc')
+          call mergeNCFiles('\.\/binarysplit_[0-9]*_[0-9]*\.nc*$', 'binarysplits.nc')
+          call mergeNCFiles('\.\/reconstruct_[0-9]*_[0-9]*\.nc*$', 'reconstructs.nc')
+          call mergeNCFiles('\.\/phi_mesh\.[0-9]*\.nc*$', 'phi_mesh.nc')
+          call mergeNCFiles('\.\/spitf_p_[0-9]*\.nc*$', 'spitf_p.nc')
+          call mergeNCFiles('\.\/spitf_m_[0-9]*\.nc*$', 'spitf_m.nc')
+          call mergeNCFiles('\.\/enetf_p_[0-9]*\.nc*$', 'enetf_p.nc')
+          call mergeNCFiles('\.\/enetf_m_[0-9]*\.nc*$', 'enetf_m.nc')
+          call mergeNCFiles('\.\/dentf_p_[0-9]*\.nc*$', 'dentf_p.nc')
+          call mergeNCFiles('\.\/dentf_m_[0-9]*\.nc*$', 'dentf_m.nc')
+          call mergeNCFiles('\.\/sizeplot_etalev_[0-9]*\.nc*$', 'sizeplot_etalev.nc')
+
+          call mergeNCFiles('\.\/enetf_[mp]\.*\.nc*$', 'enetf.nc')
+          call mergeNCFiles('\.\/dentf_[mp]\.*\.nc*$', 'dentf.nc')
+          call mergeNCFiles('\.\/spitf_[mp]\.*\.nc*$', 'spitf.nc')
+          write (*,*) 'spitf'
 
           write (*,*) "NetCDF-Files merged."
        end if
     end if
   end subroutine mergeAllNCFiles
-     
+
   subroutine write_propagator_cont(o,prop_type,prop_showall_in)
     ! writes the content of a propagator, which is specified in pointer o
 
@@ -2498,15 +2503,15 @@ CONTAINS
        RETURN
     END IF
 
-    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end) 
+    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
 
 
     if (prop_fileformat .eq. 1) then
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
 
        call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_propagator))
        grpid = ncid_propagator
-       
+
 !       stime = MPI_WTIME()
 !       call nf90_check(nf90_open('propagators.nc', nf90_write, ncid_propagators)
 !       if (ierr /= NF90_NOERR) then
@@ -2515,9 +2520,9 @@ CONTAINS
 !       write (*,*) "Time for creation or opening: ", MPI_WTime() - stime
 
        stime = MPI_WTime()
-       
+
        !call nf90_check(nf90_redef(ncid_propagators))
-       
+
        !call nf90_check(nf90_def_grp(ncid_propagators, prop_cfilename(1:len_trim(prop_cfilename)-5), grpid))
 
        call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_start', prop_start))
@@ -2535,8 +2540,8 @@ CONTAINS
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_l', o%phi_l))
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_r', o%phi_r))
-          
-          call nc_define(grpid, 'y', o%y, var_y_id)          
+
+          call nc_define(grpid, 'y', o%y, var_y_id)
           call nc_define(grpid, 'amat_m_m', o%p%amat_m_m, var_amat_m_m_id)
           call nc_define(grpid, 'amat_p_m', o%p%amat_p_m, var_amat_p_m_id)
           call nc_define(grpid, 'source_m', o%p%source_m, var_source_m_id)
@@ -2545,7 +2550,7 @@ CONTAINS
           call nc_define(grpid, 'qflux', o%p%qflux, var_qflux_id)
           call nc_define(grpid, 'eta_l', o%p%eta_l, var_eta_l_id)
           call nc_define(grpid, 'eta_r', o%p%eta_r, var_eta_r_id)
-          
+
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_boundary_l', o%p%eta_boundary_l))
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_boundary_r', o%p%eta_boundary_r))
        end if
@@ -2845,7 +2850,7 @@ CONTAINS
     CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
 
     if (prop_fileformat .eq. 1) then
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
 
        call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_propbounds))
        grpid = ncid_propbounds
@@ -2908,15 +2913,15 @@ CONTAINS
     integer :: ncid_binarysplit
     character(len=*) :: grpname
     type(binarysplit) :: binsplit
-    
+
     integer :: grpid, varid
     integer :: var_x_ori_bin, var_x_ori_poi, var_x_poi, var_x_split, var_x_pos, var_x, var_y, var_int, var_err
-    
+
     call nf90_check(nf90_def_grp(ncid_binarysplit, grpname, grpid))
-    
+
     call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'n_ori', binsplit%n_ori))
     call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'n_split', binsplit%n_split))
-    
+
     call nc_define(grpid, 'x_ori_bin', binsplit%x_ori_bin, var_x_ori_bin)
     call nc_define(grpid, 'x_ori_poi', binsplit%x_ori_poi, var_x_ori_poi)
     call nc_define(grpid, 'x_poi', binsplit%x_poi, var_x_poi)
@@ -2991,8 +2996,8 @@ CONTAINS
 
     if (prop_fileformat .eq. 1) then
 
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
-       
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+
        call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_binarysplit))
 
        call nf90_check(nf90_put_att(ncid_binarysplit, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode))
@@ -3187,12 +3192,12 @@ CONTAINS
     prop_bound = 0
 
     call filename_propagator(prop_type,prop_bound,prop_start,prop_end)
-    
+
     if (prop_fileformat .eq. 1) then
        !stime = MPI_WTime()
        !write (*,*) "Reading NetCDF-Group: ", prop_cfilename
-
-       call nc_findGroup(ncid_propagators, prop_cfilename, grpid, foundGroup)
+       !write (*,*) prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1)
+       call nc_findGroup(ncid_propagators, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
 
        if (prop_showall .eq. 1) then
           call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
@@ -3518,13 +3523,13 @@ CONTAINS
 
     integer :: grpid, varid
     logical :: foundGroup
-    
+
     prop_bound = 1
 
     CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
     if (prop_fileformat .eq. 1) then
 
-       call nc_findGroup(ncid_propbounds, prop_cfilename, grpid, foundGroup)
+       call nc_findGroup(ncid_propbounds, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
 
        call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_left', b%fieldpropagator_tag_left))
        call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_right', b%fieldpropagator_tag_right))
@@ -3687,8 +3692,8 @@ CONTAINS
 
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
     if (prop_fileformat .eq. 1) then
-  
-       call nc_findGroup(ncid_binarysplits, prop_cfilename, grpid, foundGroup)
+
+       call nc_findGroup(ncid_binarysplits, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
 
        !write (*,*) "Reading Binarysplit-Group ", prop_cfilename
 
@@ -3860,14 +3865,14 @@ CONTAINS
 
     integer :: varid, grpid
     logical :: foundGroup
-    
+
     ! 5: result
     ! 0: no boundary
     CALL filename_propagator(5,0,tag,tag)
     if (prop_fileformat .eq. 1) then
 
-       call nc_findGroup(ncid_recon, prop_cfilename, grpid, foundGroup)
-       
+       call nc_findGroup(ncid_recon, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
+
        !write (*,*) "Reading NetCDF-Group ", prop_cfilename
        call nc_inquire(grpid, 'flux_mr', varid, lb1, ub1, lb2, ub2)
        if (allocated(flux_mr)) deallocate(flux_mr)
@@ -4066,16 +4071,16 @@ CONTAINS
 
     ! write the results - starting point
     CALL filename_propagator(5,0,prop_last_tag,prop_last_tag)
-    
+
     if (prop_fileformat .eq. 1) then
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
        call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_recon))
        grpid = ncid_recon
 
        call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_last_tag', prop_last_tag))
-       
+
        call nc_define(grpid, 'flux_mr', source_m_N, var_flux_mr)
-       
+
        call nf90_check(nf90_enddef(ncid_recon))
        call nf90_check(nf90_put_var(grpid, var_flux_mr, source_m_N))
        call nf90_check(nf90_close(ncid_recon))
@@ -4120,12 +4125,12 @@ CONTAINS
        ! do the computation with left (l), right (r), boundary (b)
        CALL reconstruct_prop_dist(l,r,b, &
             source_p_0,source_m_N,source_m_N1,source_p_N)
-       
+
        ! output of new results
        CALL filename_propagator(5,0,N,N)
 
        if (prop_fileformat .eq. 1) then
-          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
 
           call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
           grpid = ncid_recon
@@ -4143,17 +4148,17 @@ CONTAINS
 
              !all nf90_check(nf90_enddef(ncid_recon))
              !all nf90_check(nf90_put_var(grpid, var_flux_mr, source_p_N))
-             !all nf90_check(nf90_close(ncid_recon))                 
+             !all nf90_check(nf90_close(ncid_recon))
           else
-                      
+
              call nc_define(grpid, 'flux_pl', source_p_N, var_flux_pl)
 
              call nf90_check(nf90_enddef(ncid_recon))
              call nf90_check(nf90_put_var(grpid, var_flux_pl, source_p_N))
-             call nf90_check(nf90_close(ncid_recon))                    
+             call nf90_check(nf90_close(ncid_recon))
           end if
-          
-        
+
+
        else
 
           CALL unit_propagator
@@ -4208,7 +4213,7 @@ CONTAINS
     CALL filename_propagator(5,0,prop_first_tag,prop_first_tag)
 
     if (prop_fileformat .eq. 1) then
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
        call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
        if (.not. exists) then
           write (*,*) "NetCDF-File does not exist, while expected"
@@ -4230,7 +4235,7 @@ CONTAINS
        write(prop_unit,*) source_p_0
        close(unit=prop_unit)
     end if
- 
+
 
 !!$    ! for joining the cmat must go into the propagator
 !!$    ! forward goes to the left - l(eft)
@@ -4393,6 +4398,15 @@ CONTAINS
     WRITE(ctag1,*) prop_start
     WRITE(ctag2,*) prop_end
 
+    ! NetCDF
+    IF (prop_fileformat .EQ. 1) THEN
+      prop_cext = 'nc'
+    ELSE
+      prop_cext = 'prop'
+    END IF
+
+    write (*,*) 'Setting prop extension to ', prop_cext
+
     ! choose basename
     IF (prop_type .EQ. 1 .OR. prop_type .EQ. 2) THEN ! period
        prop_cfilename = prop_cperiod
@@ -4412,13 +4426,13 @@ CONTAINS
     END IF
 
     ! add numbers and extension
-    
+
     WRITE(prop_cfilename,'(100A)') &
          TRIM(ADJUSTL(prop_cfilename)),'_', &
          TRIM(ADJUSTL(ctag1)),'_', &
          TRIM(ADJUSTL(ctag2)),'.', &
          TRIM(ADJUSTL(prop_cext))
-    
+
 
   END SUBROUTINE filename_prop
   ! ---------------------------------------------------------------------------

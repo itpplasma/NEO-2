@@ -49,8 +49,13 @@ PROGRAM neo2
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
+
+  ! --- NetCDF ---
   USE nctools_module
   USE netcdf
+  USE neo_input, ONLY: es
+  USE neo_exchange, ONLY: iota
+  ! ---
 
   IMPLICIT NONE
 
@@ -64,6 +69,11 @@ PROGRAM neo2
 
   ! --- Version information (Git version) ---
   include "version.f90"
+  ! ---
+
+  ! --- NetCDF support ---
+  integer :: ncid_config
+  integer :: ncid_config_group
   ! ---
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
@@ -333,6 +343,37 @@ PROGRAM neo2
 #endif
   ! ---
 
+  ! --- Write information about the run to a NetCDF file ---
+  if (prop_fileformat .eq. 1) then
+    call nc_create('neo2_configuration.nc', ncid_config, '1.0')
+
+    call nc_defineGroup(ncid_config, 'settings', ncid_config_group)
+    call nc_quickAdd(ncid_config_group, 'phimi', phimi, 'Beginning of period', 'Rad')
+    call nc_quickAdd(ncid_config_group, 'nstep', nstep, 'Number of integration steps per period')
+    call nc_quickAdd(ncid_config_group, 'nperiod', nperiod, 'Number of periods')
+    call nc_quickAdd(ncid_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
+    call nc_quickAdd(ncid_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
+    call nc_quickAdd(ncid_config_group, 'boozer_s', boozer_s, 'Flux surface')
+
+    call nc_defineGroup(ncid_config, 'collision', ncid_config_group)
+    call nc_quickAdd(ncid_config_group, 'conl_over_mfp', conl_over_mfp, 'Collisionality parameter')
+    call nc_quickAdd(ncid_config_group, 'lag', lag, 'Number of Laguerre polynomials')
+    call nc_quickAdd(ncid_config_group, 'leg', leg, 'Number of Legendre polynomials')
+    call nc_quickAdd(ncid_config_group, 'legmax', legmax, 'Maximum number of Legendre polynomials')
+    call nc_quickAdd(ncid_config_group, 'z_eff', z_eff, 'Effective charge')
+    call nc_quickAdd(ncid_config_group, 'isw_lorentz', isw_lorentz, '')
+    call nc_quickAdd(ncid_config_group, 'isw_integral', isw_integral, '')
+    call nc_quickAdd(ncid_config_group, 'isw_energy', isw_energy, '')
+    call nc_quickAdd(ncid_config_group, 'isw_axisymm', isw_axisymm, '')
+    !call nc_quickAdd(ncid_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
+
+    call nc_defineGroup(ncid_config, 'binsplit', ncid_config_group)
+    call nc_quickAdd(ncid_config_group, 'bsfunc_local_err', bsfunc_local_err, '')
+
+    call nc_close(ncid_config)
+  end if
+  ! ------------
+
 
 !!$  ! ---------------------------------------------------------------------------
 !!$  ! test sparse solver
@@ -449,6 +490,15 @@ PROGRAM neo2
   ! prepare the whole configuration
   CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
 
+  if (prop_fileformat .eq. 1) then
+    call nc_create('flux_surface.nc', ncid_config, '1.0')
+
+    call nc_quickAdd(ncid_config, 'es', es)
+    call nc_quickAdd(ncid_config, 'iota', iota)
+
+    call nc_close(ncid_config)
+  end if
+
   ! ---------------------------------------------------------------------------
   ! this is just for christian, sergie please switch it off
   ! CALL sort_theta
@@ -510,7 +560,6 @@ PROGRAM neo2
 
   ! Postprocessing of reconstruction run 2 (close NetCDF files)
   ! --- NetCDF SUPPORT
-
   if (prop_reconstruct .eq. 2) then
      if (prop_fileformat .eq. 1) then
         call nf90_check(nf90_close(ncid_recon), optException = .false.)
@@ -519,7 +568,7 @@ PROGRAM neo2
   end if
 
   call mergeAllNCFiles()
-     ! ---
+  ! ---
 
   !end if
   ! ---MPI SUPPORT ---
