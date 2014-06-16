@@ -111,6 +111,7 @@ target_link_libraries(${EXE_NAME}
 	${MPI_lib}
 	-Wl,--start-group -L/usr/lib/ -lnetcdf -lnetcdff -Wl,--end-group
 	${BLAS_lib}
+	#debug efence
         )
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
