@@ -344,33 +344,35 @@ PROGRAM neo2
   ! ---
 
   ! --- Write information about the run to a NetCDF file ---
-  if (prop_fileformat .eq. 1) then
-    call nc_create('neo2_configuration.nc', ncid_config, '1.0')
+  if (mpro%isMaster()) then
+     if (prop_fileformat .eq. 1) then
+        call nc_create('neo2_configuration.nc', ncid_config, '1.0')
 
-    call nc_defineGroup(ncid_config, 'settings', ncid_config_group)
-    call nc_quickAdd(ncid_config_group, 'phimi', phimi, 'Beginning of period', 'Rad')
-    call nc_quickAdd(ncid_config_group, 'nstep', nstep, 'Number of integration steps per period')
-    call nc_quickAdd(ncid_config_group, 'nperiod', nperiod, 'Number of periods')
-    call nc_quickAdd(ncid_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
-    call nc_quickAdd(ncid_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
-    call nc_quickAdd(ncid_config_group, 'boozer_s', boozer_s, 'Flux surface')
+        call nc_defineGroup(ncid_config, 'settings', ncid_config_group)
+        call nc_quickAdd(ncid_config_group, 'phimi', phimi, 'Beginning of period', 'Rad')
+        call nc_quickAdd(ncid_config_group, 'nstep', nstep, 'Number of integration steps per period')
+        call nc_quickAdd(ncid_config_group, 'nperiod', nperiod, 'Number of periods')
+        call nc_quickAdd(ncid_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
+        call nc_quickAdd(ncid_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
+        call nc_quickAdd(ncid_config_group, 'boozer_s', boozer_s, 'Flux surface')
 
-    call nc_defineGroup(ncid_config, 'collision', ncid_config_group)
-    call nc_quickAdd(ncid_config_group, 'conl_over_mfp', conl_over_mfp, 'Collisionality parameter')
-    call nc_quickAdd(ncid_config_group, 'lag', lag, 'Number of Laguerre polynomials')
-    call nc_quickAdd(ncid_config_group, 'leg', leg, 'Number of Legendre polynomials')
-    call nc_quickAdd(ncid_config_group, 'legmax', legmax, 'Maximum number of Legendre polynomials')
-    call nc_quickAdd(ncid_config_group, 'z_eff', z_eff, 'Effective charge')
-    call nc_quickAdd(ncid_config_group, 'isw_lorentz', isw_lorentz, '')
-    call nc_quickAdd(ncid_config_group, 'isw_integral', isw_integral, '')
-    call nc_quickAdd(ncid_config_group, 'isw_energy', isw_energy, '')
-    call nc_quickAdd(ncid_config_group, 'isw_axisymm', isw_axisymm, '')
-    !call nc_quickAdd(ncid_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
+        call nc_defineGroup(ncid_config, 'collision', ncid_config_group)
+        call nc_quickAdd(ncid_config_group, 'conl_over_mfp', conl_over_mfp, 'Collisionality parameter')
+        call nc_quickAdd(ncid_config_group, 'lag', lag, 'Number of Laguerre polynomials')
+        call nc_quickAdd(ncid_config_group, 'leg', leg, 'Number of Legendre polynomials')
+        call nc_quickAdd(ncid_config_group, 'legmax', legmax, 'Maximum number of Legendre polynomials')
+        call nc_quickAdd(ncid_config_group, 'z_eff', z_eff, 'Effective charge')
+        call nc_quickAdd(ncid_config_group, 'isw_lorentz', isw_lorentz, '')
+        call nc_quickAdd(ncid_config_group, 'isw_integral', isw_integral, '')
+        call nc_quickAdd(ncid_config_group, 'isw_energy', isw_energy, '')
+        call nc_quickAdd(ncid_config_group, 'isw_axisymm', isw_axisymm, '')
+        !call nc_quickAdd(ncid_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
 
-    call nc_defineGroup(ncid_config, 'binsplit', ncid_config_group)
-    call nc_quickAdd(ncid_config_group, 'bsfunc_local_err', bsfunc_local_err, '')
+        call nc_defineGroup(ncid_config, 'binsplit', ncid_config_group)
+        call nc_quickAdd(ncid_config_group, 'bsfunc_local_err', bsfunc_local_err, '')
 
-    call nc_close(ncid_config)
+        call nc_close(ncid_config)
+     end if
   end if
   ! ------------
 
