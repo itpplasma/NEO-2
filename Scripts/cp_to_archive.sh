@@ -10,3 +10,4 @@ if [ $gituncommitted -eq "1" ]; then
 fi
 
 cp ${1} ${2}/neo_2.x-${3}-${4}-${branch}-${shorthash}${gituncommittedstr}
+echo "Copy file to ${2}/neo_2.x-${3}-${4}-${branch}-${shorthash}${gituncommittedstr}"
