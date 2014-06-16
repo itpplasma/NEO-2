@@ -14,6 +14,7 @@ module nctools_module
      module procedure nc_defineScalar_int
      module procedure nc_defineScalar_double
      module procedure nc_defineMultiDim
+     module procedure nc_defineString
   end interface nc_define
 
   interface nc_defineUnlimited
@@ -30,13 +31,14 @@ module nctools_module
      module procedure nc_quickAddScalar_double
      module procedure nc_quickAddMatrix_double
      module procedure nc_quickAddArray_double
+     module procedure nc_quickAddString
   end interface nc_quickAdd
 
   interface nc_quickGet
      module procedure nc_quickGetScalar_int
      module procedure nc_quickGetScalar_double
   end interface nc_quickGet
-  
+
 contains
 
   subroutine nc_quickGetScalar_int(ncid, name, var)
@@ -44,7 +46,7 @@ contains
     character(len=*) :: name
     integer, intent(out) :: var
     integer :: varid
-    
+
     call nf90_check(nf90_inq_varid(ncid, name, varid))
     call nf90_check(nf90_get_var(ncid, varid, var))
   end subroutine nc_quickGetScalar_int
@@ -54,11 +56,11 @@ contains
     character(len=*) :: name
     double precision, intent(out) :: var
     integer :: varid
-    
+
     call nf90_check(nf90_inq_varid(ncid, name, varid))
     call nf90_check(nf90_get_var(ncid, varid, var))
   end subroutine nc_quickGetScalar_double
-  
+
   subroutine nc_quickAddScalar_int(ncid, name, var, comment, unit)
     integer :: ncid
     character(len=*) :: name
@@ -70,7 +72,7 @@ contains
     call nc_define(ncid, name, var, varid, comment, unit)
     ierr = nf90_enddef(ncid)
     call nf90_check(nf90_put_var(ncid, varid, var))
-        
+
   end subroutine nc_quickAddScalar_int
 
   subroutine nc_quickAddScalar_double(ncid, name, var, comment, unit)
@@ -84,7 +86,7 @@ contains
     call nc_define(ncid, name, var, varid, comment, unit)
     ierr = nf90_enddef(ncid)
     call nf90_check(nf90_put_var(ncid, varid, var))
-        
+
   end subroutine nc_quickAddScalar_double
 
   subroutine nc_quickAddMatrix_double(ncid, name, var, comment, unit)
@@ -98,7 +100,7 @@ contains
     call nc_define(ncid, name, var, varid, comment, unit)
     ierr = nf90_enddef(ncid)
     call nf90_check(nf90_put_var(ncid, varid, var))
-    
+
   end subroutine nc_quickAddMatrix_double
 
   subroutine nc_quickAddArray_double(ncid, name, var, comment, unit)
@@ -112,8 +114,22 @@ contains
     call nc_define(ncid, name, var, varid, comment, unit)
     ierr = nf90_enddef(ncid)
     call nf90_check(nf90_put_var(ncid, varid, var))
-    
+
   end subroutine nc_quickAddArray_double
+
+  subroutine nc_quickAddString(ncid, name, var, comment, unit)
+    integer :: ncid
+    character(len=*) :: name
+    character(len=*) :: var
+    character(len=*), optional :: comment, unit
+    integer :: ierr, varid
+
+    ierr = nf90_redef(ncid)
+    call nc_define(ncid, name, varid, comment, unit)
+    ierr = nf90_enddef(ncid)
+    call nf90_check(nf90_put_var(ncid, varid, var))
+
+  end subroutine nc_quickAddString
 
   subroutine nf90_check(status, optException)
     integer, intent ( in) :: status
@@ -121,7 +137,7 @@ contains
     logical :: exception
 
     exception = .true.
-    if (present(optException)) exception = optException   
+    if (present(optException)) exception = optException
 
     if(status /= nf90_noerr) then
        print *, trim(nf90_strerror(status))
@@ -148,7 +164,7 @@ contains
 
   subroutine nc_close(ncid)
     integer :: ncid
-    
+
     call nf90_check(nf90_close(ncid))
   end subroutine nc_close
 
@@ -160,16 +176,16 @@ contains
 
     exception = .true.
     if (present(optException)) exception = optException
-    
+
     call nf90_check(nf90_open(filename, NF90_NOWRITE, ncid), exception)
   end subroutine nc_open
-  
+
   subroutine nc_enddef(ncid)
     integer :: ncid
 
     call nf90_check(nf90_enddef(ncid))
   end subroutine nc_enddef
-  
+
   subroutine nf90_createOrAppend(filename, ncid, exists)
     character(len=*) :: filename
     integer, intent(out) :: ncid
@@ -202,7 +218,7 @@ contains
        call nf90_check(nf90_open(filename, NF90_NOWRITE, grpid))
        found = .false.
     end if
-    
+
   end subroutine nc_findGroup
 
   subroutine nc_defineGroup(ncid, grpname, ncid_grp)
@@ -211,18 +227,18 @@ contains
     integer, intent(out) :: ncid_grp
 
     call nf90_check(nf90_def_grp(ncid, trim(grpname), ncid_grp))
-    
+
   end subroutine nc_defineGroup
-  
+
   subroutine mergeNCFiles(regex, resultfilename)
     character(len=*) :: regex, resultfilename
-    
+
     integer :: status
     character(len=300) :: command
 
     write (command, *) "find -regex '"// regex //"' -type f -print0 | xargs -r -0 "// &
          &trim(nco_path) // "/ncecat -A --gag -o "// resultfilename //" >> nc.log 2>&1"
-    !write (*,*) command
+    write (*,*) command
     call system(command, status)
 
     if (status .eq. 0) then
@@ -242,7 +258,7 @@ contains
     integer, dimension(:) :: dims
     integer, intent(out) :: varid
     character(len=*), optional :: comment, unit
-    
+
     integer, dimension(:), allocatable :: dimid
     integer :: i
     character(len=32) :: dimname
@@ -253,18 +269,18 @@ contains
        call nf90_check(nf90_def_dim(ncid, dimname, dims(i), dimid(i)))
     end do
     call nf90_check(nf90_def_var(ncid, name, type, dimid, varid))
-    
+
     if (present(comment)) then
        call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
     end if
-    
+
     if (present(unit)) then
        call nf90_check(nf90_put_att(ncid, varid, "unit", unit))
     end if
-    
-    
+
+
     deallocate(dimid)
-    
+
   end subroutine nc_defineMultiDim
 
   subroutine nc_defineMatrix_int(ncid, name, var, varid, comment, unit)
@@ -277,7 +293,7 @@ contains
 
     if (allocated(var)) then
        call nf90_check(nf90_def_dim(ncid, name // "_dim1", size(var,1), dimid(1)))
-       call nf90_check(nf90_def_dim(ncid, name // "_dim2", size(var,2), dimid(2)))      
+       call nf90_check(nf90_def_dim(ncid, name // "_dim2", size(var,2), dimid(2)))
        call nf90_check(nf90_def_var(ncid, name, NF90_INT, dimid, varid))
 
        call nf90_check(nf90_put_att(ncid, varid, 'lbound1', lbound(var,1)))
@@ -292,7 +308,7 @@ contains
        end if
     end if
   end subroutine nc_defineMatrix_int
-  
+
   subroutine nc_defineMatrix_long(ncid, name, var, varid, comment, unit)
     integer :: ncid
     character(len=*) :: name
@@ -341,7 +357,7 @@ contains
        end if
        if (present(unit)) then
           call nf90_check(nf90_put_att(ncid, varid, "unit", unit))
-       end if    
+       end if
     end if
   end subroutine nc_defineMatrix_double
 
@@ -399,7 +415,7 @@ contains
     character(len=*), optional :: comment, unit
 
     call nf90_check(nf90_def_var(ncid, name, NF90_INT, varid = varid))
-    
+
     if (present(comment)) then
        call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
     end if
@@ -416,7 +432,7 @@ contains
     character(len=*), optional :: comment, unit
 
     call nf90_check(nf90_def_var(ncid, name, NF90_DOUBLE, varid = varid))
-    
+
     if (present(comment)) then
        call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
     end if
@@ -424,7 +440,7 @@ contains
        call nf90_check(nf90_put_att(ncid, varid, "unit", unit))
     end if
   end subroutine nc_defineScalar_double
-  
+
   subroutine nc_defineUnlimitedArray(ncid, name, type, varid, comment, unit)
     integer :: ncid
     character(len=*) :: name
@@ -443,7 +459,23 @@ contains
        call nf90_check(nf90_put_att(ncid, varid, "unit", unit))
     end if
   end subroutine nc_defineUnlimitedArray
-  
+
+  subroutine nc_defineString(ncid, name, varid, comment, unit)
+    integer :: ncid
+    character(len=*) :: name
+    integer, intent(out) :: varid
+    character(len=*), optional :: comment, unit
+
+    call nf90_check(nf90_def_var(ncid, name, NF90_STRING, varid = varid))
+
+    if (present(comment)) then
+       call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
+    end if
+    if (present(unit)) then
+       call nf90_check(nf90_put_att(ncid, varid, "unit", unit))
+    end if
+  end subroutine nc_defineString
+
   subroutine nc_inquireMatrix_double(ncid, name, varid, lb1, ub1, lb2, ub2)
     integer :: ncid
     character(len=*) :: name
@@ -455,7 +487,7 @@ contains
     call nf90_check(nf90_get_att(ncid, varid, "lbound2", lb2))
     call nf90_check(nf90_get_att(ncid, varid, "ubound2", ub2))
   end subroutine nc_inquireMatrix_double
-  
+
   subroutine nc_inquireArray_double(ncid, name, varid, lb, ub)
     integer :: ncid
     character(len=*) :: name
@@ -465,5 +497,5 @@ contains
     call nf90_check(nf90_get_att(ncid, varid, "lbound", lb))
     call nf90_check(nf90_get_att(ncid, varid, "ubound", ub))
   end subroutine nc_inquireArray_double
-  
+
 end module nctools_module
