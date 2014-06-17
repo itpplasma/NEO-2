@@ -393,8 +393,11 @@ PROGRAM neo2
      ! --- NetCDF SUPPORT ---
      if (prop_fileformat .eq. 1) then
         write (*,*) "Opening NetCDF-Files for faster access..."
+        write (*,*) "Opening propagators.nc"
         call nf90_check(nf90_open('propagators.nc', NF90_NOWRITE, ncid_propagators))
+        write (*,*) "Opening propagators_boundaries.nc"
         call nf90_check(nf90_open('propagators_boundaries.nc', NF90_NOWRITE, ncid_propbounds), optException = .false.)
+        write (*,*) "Opening binarysplits.nc"
         call nf90_check(nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits), optException = .false.)
         write (*,*) "Done!"
      end if
