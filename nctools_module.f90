@@ -140,8 +140,8 @@ contains
     if (present(optException)) exception = optException
 
     if(status /= nf90_noerr) then
-       print *, trim(nf90_strerror(status))
        if (exception) then
+          print *, trim(nf90_strerror(status))
           call abort
           stop
        end if
@@ -238,7 +238,7 @@ contains
 
     write (command, *) "find -regex '"// regex //"' -type f -print0 | xargs -r -0 "// &
          &trim(nco_path) // "/ncecat -A --gag -o "// resultfilename //" >> nc.log 2>&1"
-    write (*,*) command
+    !write (*,*) command
     call system(command, status)
 
     if (status .eq. 0) then
