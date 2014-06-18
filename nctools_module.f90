@@ -107,6 +107,7 @@ contains
     integer :: ncid
     character(len=*) :: name
     double precision, dimension(:) :: var
+    !double precision, dimension(:), allocatable :: var
     character(len=*), optional :: comment, unit
     integer :: ierr, varid
 
@@ -193,11 +194,11 @@ contains
     integer :: ierr
 
     exists = .false.
+    !write (*,*) "Create or append ", filename
     ierr = nf90_create(filename, ior(NF90_HDF5, NF90_NOCLOBBER), ncid)
     if (ierr .eq. NF90_EEXIST) then
        call nf90_check(nf90_open(filename, NF90_WRITE, ncid))
        exists = .true.
-       !write (*,*) "APPENDING TO ", filename
     else
        call nf90_check(ierr)
     end if
@@ -364,6 +365,7 @@ contains
   subroutine nc_defineArray_double(ncid, name, var, varid, comment, unit)
     integer :: ncid
     character(len=*) :: name
+    !double precision, dimension(:), allocatable :: var
     double precision, dimension(:) :: var
     integer :: dimid
     integer, intent(out) :: varid
