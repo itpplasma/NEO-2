@@ -2320,7 +2320,7 @@ call cpu_time(time1)
     write(propname,*) fieldpropagator%tag
 
     if (prop_fileformat .eq. 1) then
-       call nf90_check(nf90_create('phi_mesh.' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_phi_mesh))
+       call nf90_check(nf90_create('phi_mesh_' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_phi_mesh))
        call nc_defineUnlimited(ncid_phi_mesh, 'phi_mfl', NF90_DOUBLE, var_phi_mfl_id)
        call nc_defineUnlimited(ncid_phi_mesh, 'bhat_mfl', NF90_DOUBLE, var_bhat_mfl_id)
        call nc_defineUnlimited(ncid_phi_mesh, 'npassing', NF90_INT, var_npassing_id)
@@ -2445,14 +2445,14 @@ call cpu_time(time1)
     if (prop_fileformat .eq. 1) then
        call nf90_check(nf90_create('sizeplot_etalev_' // trim(adjustl(propname)) // '.nc', NF90_HDF5, ncid_sizeplot_etalev))
 
-       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'lag', lag))
-       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'nplp1', nplp1))
-       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'icounter', icounter))
-       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'collpar', collpar))
-       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'travis_convfac', travis_convfac))
-       call nf90_check(nf90_put_att(ncid_sizeplot_etalev, NF90_GLOBAL, 'eta', eta(0:nplp1)))
+       call nc_quickAdd(ncid_sizeplot_etalev, 'lag', lag)
+       call nc_quickAdd(ncid_sizeplot_etalev, 'nplp1', nplp1)
+       call nc_quickAdd(ncid_sizeplot_etalev, 'icounter', icounter)
+       call nc_quickAdd(ncid_sizeplot_etalev, 'collpar', collpar)
+       call nc_quickAdd(ncid_sizeplot_etalev, 'travis_convfac', travis_convfac)
+       call nc_quickAdd(ncid_sizeplot_etalev, 'eta', eta(0:nplp1))
        
-       call nf90_check(nf90_close(ncid_sizeplot_etalev))
+       call nc_close(ncid_sizeplot_etalev)
     else
        open(iunit_sizes,file='sizeplot_etalev.'               &
             //trim(adjustl(propname))//'.dat')

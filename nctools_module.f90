@@ -106,7 +106,7 @@ contains
   subroutine nc_quickAddArray_double(ncid, name, var, comment, unit)
     integer :: ncid
     character(len=*) :: name
-    double precision, dimension(:), allocatable :: var
+    double precision, dimension(:) :: var
     character(len=*), optional :: comment, unit
     integer :: ierr, varid
 
@@ -360,16 +360,16 @@ contains
        end if
     end if
   end subroutine nc_defineMatrix_double
-
+  
   subroutine nc_defineArray_double(ncid, name, var, varid, comment, unit)
     integer :: ncid
     character(len=*) :: name
-    double precision, dimension(:), allocatable :: var
+    double precision, dimension(:) :: var
     integer :: dimid
     integer, intent(out) :: varid
     character(len=*), optional :: comment, unit
 
-    if (allocated(var)) then
+    !if associated(var) then!(allocated(var)) then
        call nf90_check(nf90_def_dim(ncid, name // "_dim", size(var,1), dimid))
        call nf90_check(nf90_def_var(ncid, name, NF90_DOUBLE, dimid, varid))
 
@@ -381,7 +381,7 @@ contains
        if (present(unit)) then
           call nf90_check(nf90_put_att(ncid, varid, "unit", unit))
        end if
-    end if
+    !end if
   end subroutine nc_defineArray_double
 
    subroutine nc_defineArray_int(ncid, name, var, varid, comment, unit)
