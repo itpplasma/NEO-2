@@ -2683,7 +2683,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
               end if
 
-              !write (grpname, '(A, I0)') 'fieldpropagator_', fieldpropagator%tag
+              write (grpname, '(A, I0)') 'fieldpropagator_', fieldpropagator%tag
               !write (*,*) '_' // trim(grpname) // '_'
 
               call nc_defineGroup(ncid_taginfo, grpname, grpid)
