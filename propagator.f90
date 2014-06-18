@@ -2448,7 +2448,6 @@ CONTAINS
           call mergeNCFiles('\.\/enetf_[mp]\.*\.nc*$', 'enetf.nc')
           call mergeNCFiles('\.\/dentf_[mp]\.*\.nc*$', 'dentf.nc')
           call mergeNCFiles('\.\/spitf_[mp]\.*\.nc*$', 'spitf.nc')
-          write (*,*) 'spitf'
 
           write (*,*) "NetCDF-Files merged."
        end if
@@ -3192,7 +3191,7 @@ CONTAINS
     prop_bound = 0
 
     call filename_propagator(prop_type,prop_bound,prop_start,prop_end)
-
+    
     if (prop_fileformat .eq. 1) then
        !stime = MPI_WTime()
        !write (*,*) "Reading NetCDF-Group: ", prop_cfilename
@@ -3207,6 +3206,7 @@ CONTAINS
           call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_e', o%fieldperiod_tag_e))
 
           call nc_inquire(grpid, 'y', varid, lb1, ub1)
+          
            if (ub1 .gt. 0) then
              if (allocated(o%y)) deallocate(o%y)
              allocate(o%y(lb1:ub1))
@@ -4075,7 +4075,7 @@ CONTAINS
 
     if (prop_fileformat .eq. 1) then
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-       call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_recon))
+       call nc_create(prop_cfilename_nc, ncid_recon)
        grpid = ncid_recon
 
        call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_last_tag', prop_last_tag))
@@ -4132,7 +4132,6 @@ CONTAINS
 
        if (prop_fileformat .eq. 1) then
           write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-
           call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
           grpid = ncid_recon
           if (.not. exists) then
@@ -4176,7 +4175,7 @@ CONTAINS
 
        if (prop_fileformat .eq. 1) then
 
-          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename)), '.nc'
+          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
 
           call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_recon))
           grpid = ncid_recon
