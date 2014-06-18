@@ -3871,6 +3871,7 @@ CONTAINS
     CALL filename_propagator(5,0,tag,tag)
     if (prop_fileformat .eq. 1) then
 
+       !write (*,*) prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1)
        call nc_findGroup(ncid_recon, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
 
        !write (*,*) "Reading NetCDF-Group ", prop_cfilename
@@ -4405,7 +4406,7 @@ CONTAINS
       prop_cext = 'prop'
     END IF
 
-    write (*,*) 'Setting prop extension to ', prop_cext
+    !write (*,*) 'Setting prop extension to ', prop_cext
 
     ! choose basename
     IF (prop_type .EQ. 1 .OR. prop_type .EQ. 2) THEN ! period
