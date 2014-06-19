@@ -106,8 +106,8 @@ contains
   subroutine nc_quickAddArray_double(ncid, name, var, comment, unit)
     integer :: ncid
     character(len=*) :: name
-    double precision, dimension(:) :: var
-    !double precision, dimension(:), allocatable :: var
+    !double precision, dimension(:) :: var
+    double precision, dimension(:), allocatable :: var
     character(len=*), optional :: comment, unit
     integer :: ierr, varid
 
@@ -118,6 +118,21 @@ contains
 
   end subroutine nc_quickAddArray_double
 
+  subroutine nc_quickAddArrayNonAlloc_double(ncid, name, var, comment, unit)
+    integer :: ncid
+    character(len=*) :: name
+    double precision, dimension(:) :: var
+    !double precision, dimension(:), allocatable :: var
+    character(len=*), optional :: comment, unit
+    integer :: ierr, varid
+    
+    ierr = nf90_redef(ncid)
+    call nc_defineArrayNonAlloc_double(ncid, name, var, varid, comment, unit)
+    ierr = nf90_enddef(ncid)
+    call nf90_check(nf90_put_var(ncid, varid, var))
+    
+  end subroutine nc_quickAddArrayNonAlloc_double
+  
   subroutine nc_quickAddString(ncid, name, var, comment, unit)
     integer :: ncid
     character(len=*) :: name
@@ -279,7 +294,6 @@ contains
        call nf90_check(nf90_put_att(ncid, varid, "unit", unit))
     end if
 
-
     deallocate(dimid)
 
   end subroutine nc_defineMultiDim
@@ -365,13 +379,13 @@ contains
   subroutine nc_defineArray_double(ncid, name, var, varid, comment, unit)
     integer :: ncid
     character(len=*) :: name
-    !double precision, dimension(:), allocatable :: var
-    double precision, dimension(:) :: var
+    double precision, dimension(:), allocatable :: var
+    !double precision, dimension(:) :: var
     integer :: dimid
     integer, intent(out) :: varid
     character(len=*), optional :: comment, unit
 
-    !if associated(var) then!(allocated(var)) then
+    if (allocated(var)) then
        call nf90_check(nf90_def_dim(ncid, name // "_dim", size(var,1), dimid))
        call nf90_check(nf90_def_var(ncid, name, NF90_DOUBLE, dimid, varid))
 
@@ -383,10 +397,34 @@ contains
        if (present(unit)) then
           call nf90_check(nf90_put_att(ncid, varid, "unit", unit))
        end if
-    !end if
+    end if
   end subroutine nc_defineArray_double
 
-   subroutine nc_defineArray_int(ncid, name, var, varid, comment, unit)
+  subroutine nc_defineArrayNonAlloc_double(ncid, name, var, varid, comment, unit)
+    integer :: ncid
+    character(len=*) :: name
+    !double precision, dimension(:), allocatable :: var
+    double precision, dimension(:) :: var
+    integer :: dimid
+    integer, intent(out) :: varid
+    character(len=*), optional :: comment, unit
+    
+    !if associated(var) then
+    call nf90_check(nf90_def_dim(ncid, name // "_dim", size(var,1), dimid))
+    call nf90_check(nf90_def_var(ncid, name, NF90_DOUBLE, dimid, varid))
+    
+    call nf90_check(nf90_put_att(ncid, varid, 'lbound', lbound(var)))
+    call nf90_check(nf90_put_att(ncid, varid, 'ubound', ubound(var)))
+    if (present(comment)) then
+       call nf90_check(nf90_put_att(ncid, varid, "comment", comment))
+    end if
+    if (present(unit)) then
+       call nf90_check(nf90_put_att(ncid, varid, "unit", unit))
+    end if
+    !end if
+  end subroutine nc_defineArrayNonAlloc_double
+  
+  subroutine nc_defineArray_int(ncid, name, var, varid, comment, unit)
     integer :: ncid
     character(len=*) :: name
     integer, dimension(:), allocatable :: var
