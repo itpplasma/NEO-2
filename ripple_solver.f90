@@ -2450,7 +2450,8 @@ call cpu_time(time1)
        call nc_quickAdd(ncid_sizeplot_etalev, 'icounter', icounter)
        call nc_quickAdd(ncid_sizeplot_etalev, 'collpar', collpar)
        call nc_quickAdd(ncid_sizeplot_etalev, 'travis_convfac', travis_convfac)
-       call nc_quickAdd(ncid_sizeplot_etalev, 'eta', eta(0:nplp1))
+       call nc_quickAddArrayNonAlloc_double(ncid_sizeplot_etalev, 'eta', eta(0:nplp1))
+       ! call nc_quickAdd(ncid_sizeplot_etalev, 'eta', eta(0:nplp1))
        
        call nc_close(ncid_sizeplot_etalev)
     else
