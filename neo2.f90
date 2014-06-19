@@ -495,7 +495,7 @@ PROGRAM neo2
   ! prepare the whole configuration
   CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
 
-  if (prop_fileformat .eq. 1) then
+  if (mpro%isMaster() .and. prop_fileformat .eq. 1) then
     call nc_create('flux_surface.nc', ncid_config, '1.0')
 
     call nc_quickAdd(ncid_config, 'es', es)
