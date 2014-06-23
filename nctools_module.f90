@@ -37,6 +37,7 @@ module nctools_module
   interface nc_quickGet
      module procedure nc_quickGetScalar_int
      module procedure nc_quickGetScalar_double
+     module procedure nc_quickGetArray_double
   end interface nc_quickGet
 
 contains
@@ -61,6 +62,19 @@ contains
     call nf90_check(nf90_get_var(ncid, varid, var))
   end subroutine nc_quickGetScalar_double
 
+  subroutine nc_quickGetArray_double(ncid, name, var)
+    integer :: ncid
+    character(len=*) :: name
+    double precision, dimension(:), allocatable :: var
+    integer :: varid, lb1, ub1
+    
+    call nc_inquire(ncid, name, varid, lb1, ub1)
+    !if (allocated(binsplit%x_ori_poi)) deallocate(binsplit%x_ori_poi)
+    !allocate(binsplit%x_ori_poi(lb1:ub1))
+    call nf90_check(nf90_get_var(ncid, varid, var))
+    !end if
+  end subroutine nc_quickGetArray_double
+  
   subroutine nc_quickAddScalar_int(ncid, name, var, comment, unit)
     integer :: ncid
     character(len=*) :: name
@@ -218,6 +232,15 @@ contains
        call nf90_check(ierr)
     end if
   end subroutine nf90_createOrAppend
+
+  subroutine nc_inquireGroup(ncid, name, grp_ncid)
+    integer :: ncid
+    character(len=*) :: name
+    integer :: grp_ncid
+
+    call nf90_check(nf90_inq_ncid(ncid, trim(name), grp_ncid))
+    
+  end subroutine nc_inquireGroup
 
   subroutine nc_findGroup(ncid, name, grpid, found)
     integer :: ncid
