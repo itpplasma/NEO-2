@@ -2436,7 +2436,7 @@ CONTAINS
           call mergeNCFiles('\.\/propagator_boundary_[0-9]*_[0-9]*\.nc*$', 'propagators_boundaries.nc')
           call mergeNCFiles('\.\/binarysplit_[0-9]*_[0-9]*\.nc*$', 'binarysplits.nc')
           call mergeNCFiles('\.\/reconstruct_[0-9]*_[0-9]*\.nc*$', 'reconstructs.nc')
-          call mergeNCFiles('\.\/phi_mesh\.[0-9]*\.nc*$', 'phi_mesh.nc')
+          call mergeNCFiles('\.\/phi_mesh_[0-9]*\.nc*$', 'phi_mesh.nc')
           call mergeNCFiles('\.\/spitf_p_[0-9]*\.nc*$', 'spitf_p.nc')
           call mergeNCFiles('\.\/spitf_m_[0-9]*\.nc*$', 'spitf_m.nc')
           call mergeNCFiles('\.\/enetf_p_[0-9]*\.nc*$', 'enetf_p.nc')
