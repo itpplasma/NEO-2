@@ -562,6 +562,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
   ! --- NetCDF SUPPORT ---
   integer :: ncid_taginfo, grpid
+  integer, dimension(1:10) :: varids
+  integer :: k
   character(len=128) :: grpname
   ! ---
 
@@ -2662,10 +2664,21 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            call nc_quickAdd(ncid_taginfo, 'boozer_phi_beg',    boozer_phi_beg)
            call nc_quickAdd(ncid_taginfo, 'boozer_theta_beg',  boozer_theta_beg )
 
+           call nc_defineUnlimitedArray(ncid_taginfo, 'tag', NF90_INT, varids(1))
+           call nc_defineUnlimitedArray(ncid_taginfo, 'parent_tag', NF90_INT, varids(2))
+           call nc_defineUnlimitedArray(ncid_taginfo, 'fieldperiod_phi_l', NF90_DOUBLE, varids(3))
+           call nc_defineUnlimitedArray(ncid_taginfo, 'phi_l', NF90_DOUBLE, varids(4))
+           call nc_defineUnlimitedArray(ncid_taginfo, 'phi_r', NF90_DOUBLE, varids(5))
+           call nc_defineUnlimitedArray(ncid_taginfo, 'theta_l', NF90_DOUBLE, varids(6))
+           call nc_defineUnlimitedArray(ncid_taginfo, 'theta_r', NF90_DOUBLE, varids(7))
+
+           
            fieldperiod => fieldline%ch_fir 
            fieldpropagator => fieldperiod%ch_fir
-           allprops_taginfo_nc: DO WHILE (fieldpropagator%tag .LE. fieldline%ch_las%ch_las%tag)
-
+           k = 0
+           allprops_taginfo_nc: do while (fieldpropagator%tag .le. fieldline%ch_las%ch_las%tag)
+              k = k + 1
+              
               fieldperiod => fieldpropagator%parent
 
               phi_l = fieldpropagator%phi_l
@@ -2686,15 +2699,23 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               write (grpname, '(A, I0)') 'fieldpropagator_', fieldpropagator%tag
               !write (*,*) '_' // trim(grpname) // '_'
 
-              call nc_defineGroup(ncid_taginfo, grpname, grpid)
+              !call nc_defineGroup(ncid_taginfo, grpname, grpid)
 
-              call nc_quickAdd(grpid, 'tag',               fieldpropagator%tag )
-              call nc_quickAdd(grpid, 'parent_tag',        fieldpropagator%parent%tag)
-              call nc_quickAdd(grpid, 'fieldperiod_phi_l', fieldperiod%phi_l)
-              call nc_quickAdd(grpid, 'phi_l',             phi_l)
-              call nc_quickAdd(grpid, 'phi_r',             phi_r)
-              call nc_quickAdd(grpid, 'theta_l',           theta_l)
-              call nc_quickAdd(grpid, 'theta_r',           theta_r)
+              !call nc_quickAdd(grpid, 'tag',               fieldpropagator%tag )
+              !call nc_quickAdd(grpid, 'parent_tag',        fieldpropagator%parent%tag)
+              !call nc_quickAdd(grpid, 'fieldperiod_phi_l', fieldperiod%phi_l)
+              !call nc_quickAdd(grpid, 'phi_l',             phi_l)
+              !call nc_quickAdd(grpid, 'phi_r',             phi_r)
+              !call nc_quickAdd(grpid, 'theta_l',           theta_l)
+              !call nc_quickAdd(grpid, 'theta_r',           theta_r)
+
+              call nf90_check(nf90_put_var(ncid_taginfo, varids(1), fieldpropagator%tag, start = (/ k /)))
+              call nf90_check(nf90_put_var(ncid_taginfo, varids(2), fieldpropagator%parent%tag, start = (/ k /)))
+              call nf90_check(nf90_put_var(ncid_taginfo, varids(3), fieldperiod%phi_l, start = (/ k /)))
+              call nf90_check(nf90_put_var(ncid_taginfo, varids(4), phi_l, start = (/ k /)))
+              call nf90_check(nf90_put_var(ncid_taginfo, varids(5), phi_r, start = (/ k /)))
+              call nf90_check(nf90_put_var(ncid_taginfo, varids(6), theta_l, start = (/ k /)))
+              call nf90_check(nf90_put_var(ncid_taginfo, varids(7), theta_r, start = (/ k /)))
 
               IF (ASSOCIATED(fieldpropagator%next)) THEN
                  fieldpropagator => fieldpropagator%next
