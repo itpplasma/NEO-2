@@ -3703,7 +3703,7 @@ CONTAINS
        call read_binarysplit_side_nc(grpid, 'right', o%eta_bs_r)
 
        if (.not. foundGroup) then
-          call nf90_check(nf90_close(ncid_binarysplits))
+          call nf90_check(nf90_close(grpid))
        end if
        
     else
@@ -3886,7 +3886,7 @@ CONTAINS
        call nf90_check(nf90_get_var(grpid, varid, flux_pl))
 
        if (.not. foundGroup) then
-          call nf90_check(nf90_close(ncid_recon))
+          call nf90_check(nf90_close(grpid))
        end if
     
     else
