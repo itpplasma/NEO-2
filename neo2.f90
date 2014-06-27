@@ -412,7 +412,7 @@ PROGRAM neo2
      end if
 
      ! Call NCO utils to merge NetCDF files
-     call mergeAllNCFiles()
+     !call mergeAllNCFiles()
 
      PRINT *, 'No further calculations!'
      STOP
@@ -572,7 +572,7 @@ PROGRAM neo2
      ! ---
   end if
 
-  call mergeAllNCFiles()
+  !call mergeAllNCFiles()
   ! ---
 
   !end if
