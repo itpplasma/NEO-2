@@ -27,7 +27,7 @@ PROGRAM neo2
        prop_write,prop_reconstruct,prop_ripple_plot,                &
        prop_reconstruct_levels,                                     &
        ncid_propagators, prop_fileformat, mergeAllNCFiles,          &
-       ncid_binarysplits, ncid_propbounds, ncid_recon
+       ncid_binarysplits, ncid_propbounds, ncid_recon, ncid_results
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
        mag_magfield,mag_nperiod_min,mag_save_memory,                &
@@ -74,6 +74,7 @@ PROGRAM neo2
   ! --- NetCDF support ---
   integer :: ncid_config
   integer :: ncid_config_group
+  integer :: k ! General purpose loop index
   ! ---
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
@@ -346,8 +347,11 @@ PROGRAM neo2
   ! --- Write information about the run to a NetCDF file ---
   if (mpro%isMaster()) then
      if (prop_fileformat .eq. 1) then
+        !call nc_create('results.nc', ncid_results, '1.0')
+        
         call nc_create('neo2_configuration.nc', ncid_config, '1.0')
-
+        !call nc_defineGroup(ncid_results, 'neo2_configuration', ncid_config)
+        
         call nc_defineGroup(ncid_config, 'settings', ncid_config_group)
         call nc_quickAdd(ncid_config_group, 'phimi', phimi, 'Beginning of period', 'Rad')
         call nc_quickAdd(ncid_config_group, 'nstep', nstep, 'Number of integration steps per period')
@@ -502,6 +506,15 @@ PROGRAM neo2
     call nc_quickAdd(ncid_config, 'iota', iota)
 
     call nc_close(ncid_config)
+  end if
+
+  if (mpro%isMaster()) then
+     open(654, file='iota.dat', status='replace')
+     write (654, *) ubound(es,1) - lbound(es,1)
+     do k = lbound(es,1), ubound(es,1)
+        write(654, *) es(k), iota(k)
+     end do
+     close(654)
   end if
 
   ! ---------------------------------------------------------------------------
