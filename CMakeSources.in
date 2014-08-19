@@ -71,5 +71,6 @@ set(NEO2_SRC_FILES
         ./neo2.f90
 	./timingInfo.f90
 	./nctools_module.f90
+	./hdf5_tools_module.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")

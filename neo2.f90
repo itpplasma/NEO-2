@@ -53,6 +53,7 @@ PROGRAM neo2
   ! --- NetCDF ---
   USE nctools_module
   USE netcdf
+  USE hdf5_tools_module
   USE neo_input, ONLY: es
   USE neo_exchange, ONLY: iota
   ! ---
@@ -71,11 +72,15 @@ PROGRAM neo2
   include "version.f90"
   ! ---
 
-  ! --- NetCDF support ---
+  ! ******** NetCDF **********
   integer :: ncid_config
   integer :: ncid_config_group
-  integer :: k ! General purpose loop index
-  ! ---
+  !integer :: k ! General purpose loop index
+  ! **************************
+
+  ! *********** HDF5 **********
+  integer(HID_T) :: h5_config_id, h5_config_group
+  ! ***************************
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
@@ -270,6 +275,9 @@ PROGRAM neo2
   plot_gauss = 0
   plot_prop  = 0
 
+  call h5_init()
+
+
   ! reading
   DO jf = 1,SIZE(fnames)
      OPEN(unit=u1,file=fnames(jf),status='old',iostat=ios)
@@ -344,11 +352,11 @@ PROGRAM neo2
 #endif
   ! ---
 
+  ! ********************************************************
   ! --- Write information about the run to a NetCDF file ---
   if (mpro%isMaster()) then
-     if (prop_fileformat .eq. 1) then
-        !call nc_create('results.nc', ncid_results, '1.0')
-        
+     if (prop_fileformat .eq. 2) then
+                   
         call nc_create('neo2_configuration.nc', ncid_config, '1.0')
         !call nc_defineGroup(ncid_results, 'neo2_configuration', ncid_config)
         
@@ -370,15 +378,49 @@ PROGRAM neo2
         call nc_quickAdd(ncid_config_group, 'isw_integral', isw_integral, '')
         call nc_quickAdd(ncid_config_group, 'isw_energy', isw_energy, '')
         call nc_quickAdd(ncid_config_group, 'isw_axisymm', isw_axisymm, '')
+
+        ! Not possible, Bug in NetCDF -> Another reason to change to HDF5
         !call nc_quickAdd(ncid_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
 
         call nc_defineGroup(ncid_config, 'binsplit', ncid_config_group)
         call nc_quickAdd(ncid_config_group, 'bsfunc_local_err', bsfunc_local_err, '')
 
         call nc_close(ncid_config)
+        
+     elseif (prop_fileformat .eq. 1) then
+
+        ! Write information about run to a HDF5 file
+                
+        call h5_create('neo2_config.h5', h5_config_id, '1.0')
+        call h5_define_group(h5_config_id, 'settings', h5_config_group)
+        call h5_add(h5_config_group, 'phimi', phimi, 'Beginning of period', 'Rad')
+        call h5_add(h5_config_group, 'nstep', nstep, 'Number of integration steps per period', 'Rad')
+        call h5_add(h5_config_group, 'nperiod', nperiod, 'Number of periods')
+        call h5_add(h5_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
+        call h5_add(h5_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
+        call h5_add(h5_config_group, 'boozer_s', boozer_s, 'Flux surface')
+
+        call h5_define_group(h5_config_id, 'collision', h5_config_group)
+        call h5_add(h5_config_group, 'conl_over_mfp', conl_over_mfp, 'Collisionality parameter')
+        call h5_add(h5_config_group, 'lag', lag, 'Number of Laguerre polynomials')
+        call h5_add(h5_config_group, 'leg', leg, 'Number of Legendre polynomials')
+        call h5_add(h5_config_group, 'legmax', legmax, 'Maximum number of Legendre polynomials')
+        call h5_add(h5_config_group, 'z_eff', z_eff, 'Effective charge')
+        call h5_add(h5_config_group, 'isw_lorentz', isw_lorentz, '')
+        call h5_add(h5_config_group, 'isw_integral', isw_integral, '')
+        call h5_add(h5_config_group, 'isw_energy', isw_energy, '')
+        call h5_add(h5_config_group, 'isw_axisymm', isw_axisymm, '')
+        call h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix') 
+
+        call h5_define_group(h5_config_id, 'binsplit', h5_config_group)
+        call h5_add(h5_config_group, 'bsfunc_local_err', bsfunc_local_err)
+
+        call h5_close(h5_config_id)
+        
      end if
   end if
-  ! ------------
+  
+  ! ***********************************************
 
 
 !!$  ! ---------------------------------------------------------------------------
@@ -499,23 +541,23 @@ PROGRAM neo2
   ! prepare the whole configuration
   CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
 
-  if (mpro%isMaster() .and. prop_fileformat .eq. 1) then
-    call nc_create('flux_surface.nc', ncid_config, '1.0')
+  !if (mpro%isMaster() .and. prop_fileformat .eq. 1) then
+  !  call nc_create('flux_surface.nc', ncid_config, '1.0')
+  !
+  !  call nc_quickAdd(ncid_config, 'es', es)
+  !  call nc_quickAdd(ncid_config, 'iota', iota)
+  !
+  !  call nc_close(ncid_config)
+  !end if
 
-    call nc_quickAdd(ncid_config, 'es', es)
-    call nc_quickAdd(ncid_config, 'iota', iota)
-
-    call nc_close(ncid_config)
-  end if
-
-  if (mpro%isMaster()) then
-     open(654, file='iota.dat', status='replace')
-     write (654, *) ubound(es,1) - lbound(es,1)
-     do k = lbound(es,1), ubound(es,1)
-        write(654, *) es(k), iota(k)
-     end do
-     close(654)
-  end if
+  !if (mpro%isMaster()) then
+  !   open(654, file='iota.dat', status='replace')
+  !   write (654, *) ubound(es,1) - lbound(es,1)
+  !   do k = lbound(es,1), ubound(es,1)
+  !      write(654, *) es(k), iota(k)
+  !   end do
+  !   close(654)
+  !end if
 
   ! ---------------------------------------------------------------------------
   ! this is just for christian, sergie please switch it off
@@ -608,6 +650,8 @@ PROGRAM neo2
      CALL collop_deconstruct
   end if
 
+  call h5_deinit()
+  
   STOP
 
 END PROGRAM neo2
