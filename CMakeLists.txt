@@ -14,6 +14,8 @@ option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
 
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
+include_directories("/proj/plasma/Libs/hdf5/include")
+
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 
         #gfortran -I/usr/lib/openmpi/include -pthread -I/usr/lib/openmpi/lib -L/usr//lib -L/usr/lib/openmpi/lib -lmpi_f90 -lmpi_f77 -lmpi -ldl -lhwloc
@@ -90,9 +92,13 @@ find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
 find_library(NetCDF_lib netcdf)
 find_library(NetCDFf_lib netcdff)
+find_library(HDF5_lib hdf5 ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR}/lib NO_DEFAULT_PATH)
 
 ### Source files
-include (CMakeSources.txt)
+include (CMakeSources.in)
 
 ### Define executable
 add_executable(${EXE_NAME}
@@ -110,6 +116,10 @@ target_link_libraries(${EXE_NAME}
         ${MPE_lib}
 	${MPI_lib}
 	-Wl,--start-group -L/usr/lib/ -lnetcdf -lnetcdff -Wl,--end-group
+	${HDF5HL_fortran_lib}
+	${HDF5HL_lib}
+	${HDF5_fortran_lib} 
+	${HDF5_lib}
 	${BLAS_lib}
 	#debug efence
         )

@@ -83,10 +83,14 @@ MODULE propagator_mod
 #endif
   ! ---
 
-  ! --- NetCDF SUPPORT ---
+  ! ********** NetCDF **********
   USE nctools_module
   USE netcdf
-  ! ---
+  ! ****************************
+
+  ! *********** HDF5 ***********
+  USE hdf5_tools_module
+  ! ****************************
 
   IMPLICIT NONE
   
@@ -145,14 +149,17 @@ MODULE propagator_mod
   ! new switch for reconstruction of levels
   INTEGER,            PUBLIC  :: prop_reconstruct_levels = 0
 
-  ! --- NetCDF Support ---
-
+  ! ********** NetCDF Support **********
   ! Global ncids for open NetCDF-Files, which should be be opened and closed all the time during a run
   INTEGER :: ncid_propagators
   INTEGER :: ncid_propbounds
   INTEGER :: ncid_binarysplits
   INTEGER :: ncid_recon
-  ! ---
+  ! ************************************
+
+  ! *********** HDF5 **********
+  integer(HID_T) :: h5id
+  ! ***************************
 
 
   ! ---------------------------------------------------------------------------
@@ -1046,10 +1053,9 @@ CONTAINS
           END DO
        END DO
 
-       ! ----------- Experimental NetCDF Demonstration ------
+       if (prop_fileformat .eq. 2) then
 
-       if (prop_fileformat .eq. 1) then
-
+          ! Write to NetCDF file
           call nc_create('fulltransp.nc', ncid, '1.0')
           
           ! Attributes
@@ -1070,8 +1076,31 @@ CONTAINS
           call nc_quickAdd(ncid, 'gamma_out', gamma_out)
           
           call nf90_check(nf90_close(ncid))
-       else
           
+       elseif (prop_fileformat .eq. 1) then
+
+          ! Write to HDF5 file
+          call h5_create('fulltransp.h5', h5id, '1.0')
+
+          call h5_add(h5id, 'full_version', full_version)
+          call h5_add(h5id, 'isw_lorentz', isw_lorentz)
+          call h5_add(h5id, 'isw_integral', isw_integral)
+          call h5_add(h5id,  'isw_energy', isw_energy)         
+          call h5_add(h5id, 'lag', lag, 'Degree of the Laguerre Polynomials')
+          call h5_add(h5id, 'leg', leg, 'Degree of the Legendre Polynomials')
+          call h5_add(h5id, 'collpar', collpar)
+          call h5_add(h5id, 'conl_over_mfp', conl_over_mfp)
+          call h5_add(h5id, 'z_eff', z_eff)
+          call h5_add(h5id, 'avnabpsi', avnabpsi)
+          call h5_add(h5id, 'avbhat2', avbhat2)
+          call h5_add(h5id, 'dl1obhat', dl1obhat)
+          call h5_add(h5id, 'gamma_out', gamma_out, lbound(gamma_out), ubound(gamma_out))
+
+          call h5_close(h5id)
+          
+       else
+
+          ! Write to ASCII file
           OPEN(uw,file='fulltransp.dat',status='replace')
           WRITE (uw,'(6(1x,i4),1000(1x,e18.5))')  &
                full_version, &
@@ -1083,8 +1112,9 @@ CONTAINS
           
        end if
 
-       if (prop_fileformat .eq. 1) then
+       if (prop_fileformat .eq. 2) then
 
+          ! Write to NetCDF file
           call nc_create('efinal.nc', ncid, '1.0')
 
           call nc_quickAdd(ncid, 'phi', phi)
@@ -1105,8 +1135,32 @@ CONTAINS
 
           call nc_close(ncid)
 
+       elseif (prop_fileformat .eq. 1) then
+
+          ! Write to HDF5 file
+          call h5_create('efinal.h5', h5id, '1.0')
+
+          call h5_add(h5id, 'phi', phi)
+          call h5_add(h5id, 'aiota_loc', aiota_loc)
+          call h5_add(h5id, 'dmono_over_dplateau', dmono_over_dplateau)
+          call h5_add(h5id, 'epseff3_2', epseff3_2)
+          call h5_add(h5id, 'alambda_b', alambda_b)
+          call h5_add(h5id, 'qflux_g', qflux_g)
+          call h5_add(h5id, 'qflux_e', qflux_e)
+          call h5_add(h5id, 'qcurr_g', qcurr_g)
+          call h5_add(h5id, 'qcurr_e', qcurr_e)
+          call h5_add(h5id, 'alambda_bb', alambda_bb)
+          call h5_add(h5id, 'gamma_E',gamma_E )
+          call h5_add(h5id, 'g_bs', g_bs)
+          call h5_add(h5id, 'r0', device%r0)
+          call h5_add(h5id, 'bmod0', surface%bmod0)
+          call h5_add(h5id, 'y', y, lbound(y), ubound(y))
+
+          call h5_close(h5id)      
+
        else
-          
+
+          ! Write to ASCII file
           OPEN(uw,file='efinal.dat',status='replace')
           WRITE (uw,'(1000(1x,e18.5))')                                   &
                (phi),(y(1:2)),(aiota_loc),                    &
@@ -2503,9 +2557,58 @@ CONTAINS
     END IF
 
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
-
-
+    write (*,*) "prop_showall: ", prop_showall
+    
     if (prop_fileformat .eq. 1) then
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+
+       call h5_create(prop_cfilename_nc, h5id)
+
+       call h5_add(h5id, 'prop_start', prop_start)
+       call h5_add(h5id, 'prop_end', prop_end)
+
+       if (prop_showall .eq. 1) then
+          call h5_add(h5id, 'nr_joined', o%nr_joined)
+          call h5_add(h5id, 'fieldpropagator_tag_s', o%fieldpropagator_tag_s)
+          call h5_add(h5id, 'fieldpropagator_tag_e', o%fieldpropagator_tag_e)
+          call h5_add(h5id, 'fieldperiod_tag_s', o%fieldperiod_tag_s)
+          call h5_add(h5id, 'fieldperiod_tag_e',  o%fieldperiod_tag_e )
+          call h5_add(h5id, 'phi_l', o%phi_l)
+          call h5_add(h5id, 'phi_r', o%phi_r)
+
+          if (allocated(o%y))          call h5_add(h5id, 'y', o%y, lbound(o%y), ubound(o%y))
+          if (allocated(o%p%amat_m_m)) call h5_add(h5id, 'amat_m_m', o%p%amat_m_m, lbound(o%p%amat_m_m), ubound(o%p%amat_m_m))
+          if (allocated(o%p%amat_p_m)) call h5_add(h5id, 'amat_p_m', o%p%amat_p_m, lbound(o%p%amat_p_m), ubound(o%p%amat_p_m))
+          if (allocated(o%p%source_m)) call h5_add(h5id, 'source_m', o%p%source_m, lbound(o%p%source_m), ubound(o%p%source_m))
+          if (allocated(o%p%flux_m))   call h5_add(h5id, 'flux_m', o%p%flux_m, lbound(o%p%flux_m), ubound(o%p%flux_m))
+          if (allocated(o%p%flux_p))   call h5_add(h5id, 'flux_p', o%p%flux_p, lbound(o%p%flux_p), ubound(o%p%flux_p))
+          if (allocated(o%p%qflux))    call h5_add(h5id, 'qflux', o%p%qflux, lbound(o%p%qflux), ubound(o%p%qflux))
+          if (allocated(o%p%eta_l))    call h5_add(h5id, 'eta_l', o%p%eta_l, lbound(o%p%eta_l), ubound(o%p%eta_l))
+          if (allocated(o%p%eta_r))    call h5_add(h5id, 'eta_r', o%p%eta_r, lbound(o%p%eta_r), ubound(o%p%eta_r))
+
+          call h5_add(h5id, 'eta_boundary_l', o%p%eta_boundary_l)
+          call h5_add(h5id, 'eta_boundary_r', o%p%eta_boundary_r)
+
+       end if
+
+       if (prop_showall .eq. 0) then
+          call h5_add(h5id, 'bin_split_mode', o%bin_split_mode)
+       end if
+
+       if (prop_showall .ge. 1) then
+          call h5_add(h5id, 'npart',     o%p%npart)
+          call h5_add(h5id, 'npass_l',   o%p%npass_l)
+          call h5_add(h5id, 'npass_r',   o%p%npass_r)
+          call h5_add(h5id, 'nvelocity', o%p%nvelocity)
+
+          if (allocated(o%p%amat_p_p)) call h5_add(h5id, 'amat_p_p', o%p%amat_p_p, lbound(o%p%amat_p_p), ubound(o%p%amat_p_p))
+          if (allocated(o%p%amat_m_p)) call h5_add(h5id, 'amat_m_p', o%p%amat_m_p, lbound(o%p%amat_m_p), ubound(o%p%amat_m_p))
+          if (allocated(o%p%source_p)) call h5_add(h5id, 'source_p', o%p%source_p, lbound(o%p%source_p), ubound(o%p%source_p))
+       end if
+
+       call h5_close(h5id)
+       
+    elseif (prop_fileformat .eq. 2) then
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
 
        call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_propagator))
@@ -2536,7 +2639,7 @@ CONTAINS
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_e', o%fieldpropagator_tag_e))
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_s',     o%fieldperiod_tag_s))
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_e',     o%fieldperiod_tag_e ))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
+          !call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_l', o%phi_l))
           call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_r', o%phi_r))
 
@@ -2849,6 +2952,22 @@ CONTAINS
     CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
 
     if (prop_fileformat .eq. 1) then
+       
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+
+       call h5_create(prop_cfilename_nc, h5id)
+
+       call h5_add(h5id, 'fieldpropagator_tag_left',  n%fieldpropagator_tag_s - 1)
+       call h5_add(h5id, 'fieldpropagator_tag_right', n%fieldpropagator_tag_s)
+       call h5_add(h5id, 'fieldperiod_tag_left',      n%fieldperiod_tag_s - 1)
+       call h5_add(h5id, 'fieldperiod_tag_right',     n%fieldperiod_tag_s)
+
+       if (allocated(o%p%cmat)) call h5_add(h5id, 'c_forward',  o%p%cmat, lbound(o%p%cmat), ubound(o%p%cmat))
+       if (allocated(n%p%cmat)) call h5_add(h5id, 'c_backward', n%p%cmat, lbound(n%p%cmat), ubound(n%p%cmat))
+
+       call h5_close(h5id)
+
+    elseif (prop_fileformat .eq. 2) then
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
 
        call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_propbounds))
@@ -2973,6 +3092,30 @@ CONTAINS
 
   end subroutine write_binarysplit_side_nc
 
+  subroutine write_binarysplit_side_h5(h5id_binsplit, grpname, binsplit)
+    integer :: h5id_binsplit
+    character(len=*) :: grpname
+    type(binarysplit) :: binsplit
+
+    integer :: h5id_grp
+
+    call h5_define_group(h5id_binsplit, grpname, h5id_grp)
+
+    call h5_add(h5id_grp, 'n_ori', binsplit%n_ori)
+    call h5_add(h5id_grp, 'n_split', binsplit%n_split)
+
+    call h5_add(h5id_grp, 'x_ori_bin', binsplit%x_ori_bin, lbound(binsplit%x_ori_bin), ubound(binsplit%x_ori_bin))
+    call h5_add(h5id_grp, 'x_ori_poi', binsplit%x_ori_poi, lbound(binsplit%x_ori_poi), ubound(binsplit%x_ori_poi))
+    call h5_add(h5id_grp, 'x_poi', binsplit%x_poi, lbound(binsplit%x_poi), ubound(binsplit%x_poi))
+    call h5_add(h5id_grp, 'x_split', binsplit%x_split, lbound( binsplit%x_split), ubound(binsplit%x_split))
+    call h5_add(h5id_grp, 'x_pos', binsplit%x_pos, lbound(binsplit%x_pos), ubound(binsplit%x_pos))
+    call h5_add(h5id_grp, 'x', binsplit%x, lbound(binsplit%x), ubound(binsplit%x))
+    call h5_add(h5id_grp, 'y', binsplit%y, lbound(binsplit%y), ubound(binsplit%y))
+    call h5_add(h5id_grp, 'int', binsplit%int, lbound(binsplit%int), ubound(binsplit%int))
+    call h5_add(h5id_grp, 'err', binsplit%err, lbound(binsplit%err), ubound(binsplit%err))
+
+  end subroutine write_binarysplit_side_h5
+
   SUBROUTINE write_binarysplit_cont(o)
     ! writes the content of a binarysplit, which is specified in pointer o
     TYPE(propagator), POINTER  :: o
@@ -2994,6 +3137,17 @@ CONTAINS
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
 
     if (prop_fileformat .eq. 1) then
+
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+
+       call h5_create(prop_cfilename_nc, h5id)
+       call h5_add(h5id, 'bin_split_mode', o%bin_split_mode)
+
+       call write_binarysplit_side_h5(h5id, 'left',  o%eta_bs_l)
+       call write_binarysplit_side_h5(h5id, 'right', o%eta_bs_r)
+
+       call h5_close(h5id)
+    elseif (prop_fileformat .eq. 2) then
 
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
 
@@ -3189,10 +3343,131 @@ CONTAINS
     END IF
 
     prop_bound = 0
-
     call filename_propagator(prop_type,prop_bound,prop_start,prop_end)
-    
+
     if (prop_fileformat .eq. 1) then
+       call h5_open(prop_cfilename, h5id)
+       
+       if (prop_showall .eq. 1) then
+          call h5_get(h5id, 'nr_joined', o%nr_joined)
+          call h5_get(h5id, 'fieldpropagator_tag_s', o%fieldpropagator_tag_s)
+          call h5_get(h5id, 'fieldpropagator_tag_e', o%fieldpropagator_tag_e)
+          call h5_get(h5id, 'fieldperiod_tag_s', o%fieldperiod_tag_s)
+          call h5_get(h5id, 'fieldperiod_tag_e', o%fieldperiod_tag_e)
+
+          call h5_get_bounds(h5id, 'y', lb1, ub1)
+          if (ub1 .gt. 0) then
+             if (allocated(o%y)) deallocate(o%y)
+             allocate(o%y(lb1:ub1))
+             call h5_get(h5id, 'y', o%y)
+          end if
+
+          call h5_get(h5id, 'phi_l', o%phi_l)
+          call h5_get(h5id, 'phi_r', o%phi_r)
+       end if
+
+       if (prop_showall .eq. 0) then
+          call h5_get(h5id, 'bin_split_mode', o%bin_split_mode)
+       end if
+
+       if (prop_showall .ge. 1) then
+          call h5_get(h5id, 'npart', o%p%npart)
+          call h5_get(h5id, 'npass_l', o%p%npass_l)
+          call h5_get(h5id, 'npass_r', o%p%npass_r)
+          call h5_get(h5id, 'nvelocity', o%p%nvelocity)
+       end if
+
+       if (prop_showall .ge. 1) then
+          call h5_get_bounds(h5id, 'amat_p_p', lb1, lb2, ub1, ub2)
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_p_p)) deallocate(o%p%amat_p_p)
+             allocate(o%p%amat_p_p(lb1:ub1,lb2:ub2))
+             call h5_get(h5id, 'amat_p_p',  o%p%amat_p_p)
+          end if
+          
+          call h5_get_bounds(h5id, 'amat_m_p', lb1, lb2, ub1, ub2)
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_m_p)) deallocate(o%p%amat_m_p)
+             allocate(o%p%amat_m_p(lb1:ub1,lb2:ub2))
+             call h5_get(h5id, 'amat_m_p',  o%p%amat_m_p)
+          end if
+       end if
+       
+       if (prop_showall .eq. 1) then
+          call h5_get_bounds(h5id, 'amat_m_m', lb1, lb2, ub1, ub2)
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_m_m)) deallocate(o%p%amat_m_m)
+             allocate(o%p%amat_m_m(lb1:ub1,lb2:ub2))
+             call h5_get(h5id, 'amat_m_m',  o%p%amat_m_m)
+          end if
+
+          call h5_get_bounds(h5id, 'amat_p_m', lb1, lb2, ub1, ub2)
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%amat_p_m)) deallocate(o%p%amat_p_m)
+             allocate(o%p%amat_p_m(lb1:ub1,lb2:ub2))
+             call h5_get(h5id, 'amat_p_m',  o%p%amat_p_m)
+          end if
+       end if
+
+       if (prop_showall .ge. 1) then
+          call h5_get_bounds(h5id, 'source_p', lb1, lb2, ub1, ub2)
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%source_p)) deallocate(o%p%source_p)
+             allocate(o%p%source_p(lb1:ub1,lb2:ub2))
+             call h5_get(h5id, 'source_p',  o%p%source_p)
+          end if
+       end if
+
+       if (prop_showall .eq. 1) then
+          call h5_get_bounds(h5id, 'source_m', lb1, lb2, ub1, ub2)
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%source_m)) deallocate(o%p%source_m)
+             allocate(o%p%source_m(lb1:ub1,lb2:ub2))
+             call h5_get(h5id, 'source_m',  o%p%source_m)
+          end if
+
+          call h5_get_bounds(h5id, 'flux_p', lb1, lb2, ub1, ub2)
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%flux_p)) deallocate(o%p%flux_p)
+             allocate(o%p%flux_p(lb1:ub1,lb2:ub2))
+             call h5_get(h5id, 'flux_p',  o%p%flux_p)
+          end if
+          
+          call h5_get_bounds(h5id, 'flux_m', lb1, lb2, ub1, ub2)
+          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+             if (allocated(o%p%flux_m)) deallocate(o%p%flux_m)
+             allocate(o%p%flux_m(lb1:ub1,lb2:ub2))
+             call h5_get(h5id, 'flux_m',  o%p%flux_m)
+          end if
+
+          call h5_get_bounds(h5id, 'qflux', lb1, lb2, ub1, ub2)
+          if (allocated(o%p%qflux)) deallocate(o%p%qflux)
+          allocate(o%p%qflux(lb1:ub1,lb2:ub2))
+          call h5_get(h5id, 'qflux',  o%p%qflux)
+
+          call h5_get_bounds(h5id, 'eta_l', lb1, ub1)
+          if (ub1 .gt. 0) then
+             if (allocated(o%p%eta_l)) deallocate(o%p%eta_l)
+             allocate(o%p%eta_l(lb1:ub1))
+             call h5_get(h5id, 'eta_l', o%p%eta_l)           
+          end if
+          
+          call h5_get_bounds(h5id, 'eta_r', lb1, ub1)
+          if (ub1 .gt. 0) then
+             if (allocated(o%p%eta_r)) deallocate(o%p%eta_r)
+             allocate(o%p%eta_r(lb1:ub1))
+             call h5_get(h5id, 'eta_r', o%p%eta_r)           
+          end if
+
+          call h5_get(h5id, 'eta_boundary_l', o%p%eta_boundary_l)
+          call h5_get(h5id, 'eta_boundary_r', o%p%eta_boundary_r)
+          
+       end if
+
+       !write (*,*) "dims:", lbound(o%p%amat_p_p), ubound(o%p%amat_p_p)
+       
+       call h5_close(h5id)
+    elseif (prop_fileformat .eq. 2) then
        !stime = MPI_WTime()
        !write (*,*) "Reading NetCDF-Group: ", prop_cfilename
        !write (*,*) prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1)
@@ -3350,6 +3625,7 @@ CONTAINS
        if (.not. foundGroup) then
           call nf90_check(nf90_close(grpid))
        end if
+       
     else
 
        CALL unit_propagator
@@ -3527,7 +3803,33 @@ CONTAINS
     prop_bound = 1
 
     CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
+
     if (prop_fileformat .eq. 1) then
+
+       call h5_open(prop_cfilename, h5id)
+       
+       call h5_get(h5id, 'fieldpropagator_tag_left', b%fieldpropagator_tag_left)
+       call h5_get(h5id, 'fieldpropagator_tag_right', b%fieldpropagator_tag_right)
+       call h5_get(h5id, 'fieldperiod_tag_left', b%fieldperiod_tag_left)
+       call h5_get(h5id, 'fieldperiod_tag_right', b%fieldperiod_tag_right)
+
+       call h5_get_bounds(h5id, 'c_forward', lb1, lb2, ub1, ub2)
+       if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+          if (allocated(b%c_forward)) deallocate(b%c_forward)
+          allocate(b%c_forward(lb1:ub1,lb2:ub2))
+          call h5_get(h5id, 'c_forward', b%c_forward)
+       end if
+
+       call h5_get_bounds(h5id, 'c_backward', lb1, lb2, ub1, ub2)
+       if (ub1 .gt. 0 .and. ub2 .gt. 0) then
+          if (allocated(b%c_backward)) deallocate(b%c_backward)
+          allocate(b%c_backward(lb1:ub1,lb2:ub2))
+          call h5_get(h5id, 'c_backward', b%c_backward)
+       end if
+       
+       call h5_close(h5id)
+       
+    elseif (prop_fileformat .eq. 2) then
 
        call nc_findGroup(ncid_propbounds, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
 
@@ -3668,6 +3970,88 @@ CONTAINS
 
   end subroutine read_binarysplit_side_nc
 
+
+  subroutine read_binarysplit_side_h5(h5id, grpname, binsplit)
+    integer(HID_T) :: h5id
+    character(len=*) :: grpname
+    type(binarysplit), intent(inout) :: binsplit
+
+    integer(HID_T) :: h5id_grp
+    integer :: lb1, ub1, lb2, ub2
+
+    call h5_open_group(h5id, grpname, h5id_grp)
+
+    call h5_get(h5id_grp, 'n_ori', binsplit%n_ori)
+    call h5_get(h5id_grp, 'n_split', binsplit%n_split)
+    
+    call h5_get_bounds(h5id_grp, 'x_ori_bin', lb1, lb2, ub1, ub2)
+    if (ub1 .gt. lb1 .or. ub2 .gt. lb2) then
+       if (allocated(binsplit%x_ori_bin)) deallocate(binsplit%x_ori_bin)
+       allocate(binsplit%x_ori_bin(lb1:ub1,lb2:ub2))
+       call h5_get(h5id_grp, 'x_ori_bin', binsplit%x_ori_bin)
+    end if
+    
+    call h5_get_bounds(h5id_grp, 'x_ori_poi', lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%x_ori_poi)) deallocate(binsplit%x_ori_poi)
+       allocate(binsplit%x_ori_poi(lb1:ub1))
+       call h5_get(h5id_grp, 'x_ori_poi', binsplit%x_ori_poi)
+    end if
+
+    call h5_get_bounds(h5id_grp, 'x_poi', lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%x_poi)) deallocate(binsplit%x_poi)
+       allocate(binsplit%x_poi(lb1:ub1))
+       call h5_get(h5id_grp, 'x_poi', binsplit%x_poi)
+    end if
+
+     call h5_get_bounds(h5id_grp, 'x_split', lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%x_split)) deallocate(binsplit%x_split)
+       allocate(binsplit%x_split(lb1:ub1))
+       call h5_get(h5id_grp, 'x_split', binsplit%x_split)
+    end if
+
+   call h5_get_bounds(h5id_grp, 'x_pos', lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%x_pos)) deallocate(binsplit%x_pos)
+       allocate(binsplit%x_pos(lb1:ub1))
+       call h5_get(h5id_grp, 'x_pos', binsplit%x_pos)
+    end if
+    
+    call h5_get_bounds(h5id_grp, 'x', lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%x)) deallocate(binsplit%x)
+       allocate(binsplit%x(lb1:ub1))
+       call h5_get(h5id_grp, 'x', binsplit%x)
+    end if
+
+    call h5_get_bounds(h5id_grp, 'y', lb1, ub1)
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%y)) deallocate(binsplit%y)
+       allocate(binsplit%y(lb1:ub1))
+       call h5_get(h5id_grp, 'y', binsplit%y)
+    end if
+ 
+    call h5_get_bounds(h5id_grp, 'int', lb1, ub1)   
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%int)) deallocate(binsplit%int)
+       allocate(binsplit%int(lb1:ub1))
+       call h5_get(h5id_grp, 'int', binsplit%int)
+    end if
+
+    call h5_get_bounds(h5id_grp, 'err', lb1, ub1)   
+    if (ub1 .gt. 0) then
+       if (allocated(binsplit%err)) deallocate(binsplit%err)
+       allocate(binsplit%err(lb1:ub1))
+       call h5_get(h5id_grp, 'err', binsplit%err)
+    end if
+
+    !write (*,*) "Reconstruct binsplit", binsplit%x_pos, 'AA', lbound(binsplit%x_pos)
+    
+  end subroutine read_binarysplit_side_h5
+  
+
   subroutine read_binarysplit_cont(o)
     ! reads the  binarysplit content of a propagator, which is specified in pointer o
     TYPE(propagator), POINTER  :: o
@@ -3690,8 +4074,19 @@ CONTAINS
     prop_end   = o%fieldpropagator_tag_e
 
 
-    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
+    call filename_propagator(prop_type,prop_bound,prop_start,prop_end)
+
     if (prop_fileformat .eq. 1) then
+
+       call h5_open(prop_cfilename, h5id)
+
+       call h5_get(h5id, 'bin_split_mode', o%bin_split_mode)
+       call read_binarysplit_side_h5(h5id, 'left', o%eta_bs_l)
+       call read_binarysplit_side_h5(h5id, 'right', o%eta_bs_r)
+       
+       call h5_close(h5id)
+    
+    elseif (prop_fileformat .eq. 2) then
 
        call nc_findGroup(ncid_binarysplits, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
 
@@ -3711,7 +4106,7 @@ CONTAINS
        CALL unit_propagator
        OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
             form=prop_format,action='read')
-
+       
        READ(prop_unit,*) o%bin_split_mode
 
        ! binarysplit left
@@ -3869,7 +4264,24 @@ CONTAINS
     ! 5: result
     ! 0: no boundary
     CALL filename_propagator(5,0,tag,tag)
+
     if (prop_fileformat .eq. 1) then
+
+       call h5_open(prop_cfilename, h5id)
+
+       call h5_get_bounds(h5id, 'flux_mr', lb1, lb2, ub1, ub2)
+       if (allocated(flux_mr)) deallocate(flux_mr)
+       allocate(flux_mr(lb1:ub1,lb2:ub2))
+       call h5_get(h5id, 'flux_mr', flux_mr)
+
+       call h5_get_bounds(h5id, 'flux_pl', lb1, lb2, ub1, ub2)
+       if (allocated(flux_pl)) deallocate(flux_pl)
+       allocate(flux_pl(lb1:ub1,lb2:ub2))
+       call h5_get(h5id, 'flux_pl', flux_pl)      
+       
+       call h5_close(h5id)
+       
+    elseif (prop_fileformat .eq. 2) then
 
        !write (*,*) prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1)
        call nc_findGroup(ncid_recon, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
@@ -3949,6 +4361,19 @@ CONTAINS
     ! read the information about tags
 
     if (prop_fileformat .eq. 1) then
+
+       call h5_open('taginfo.h5', h5id)
+
+       call h5_get(h5id, 'prop_write', prop_write)
+       call h5_get(h5id, 'tag_first', prop_first_tag)
+       call h5_get(h5id, 'tag_last',  prop_last_tag)
+       call h5_get(h5id, 'parallel_storage', iparallel_storage)
+
+       parallel_storage = (iparallel_storage .eq. 1)
+       
+       call h5_close(h5id)
+       
+    elseif (prop_fileformat .eq. 2) then
        call nc_open(prop_ctaginfo_nc, ncid_taginfo)
        
        call nc_quickGet(ncid_taginfo, 'prop_write', prop_write)
@@ -4075,6 +4500,15 @@ CONTAINS
 
     if (prop_fileformat .eq. 1) then
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+       call h5_create(prop_cfilename_nc, h5id)
+
+       call h5_add(h5id, 'prop_last_tag', prop_last_tag)
+       call h5_add(h5id, 'flux_mr', source_m_N, lbound(source_m_N), ubound(source_m_N))
+       
+       call h5_close(h5id)       
+       
+    elseif (prop_fileformat .eq. 2) then
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
        call nc_create(prop_cfilename_nc, ncid_recon)
        grpid = ncid_recon
 
@@ -4132,6 +4566,13 @@ CONTAINS
 
        if (prop_fileformat .eq. 1) then
           write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+          call h5_open_rw(prop_cfilename_nc, h5id)
+
+          call h5_add(h5id, 'flux_pl', source_p_N, lbound(source_p_N), ubound(source_p_N))
+          
+          call h5_close(h5id)          
+       elseif (prop_fileformat .eq. 2) then
+          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
           call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
           grpid = ncid_recon
           if (.not. exists) then
@@ -4172,8 +4613,18 @@ CONTAINS
        end if
        
        CALL filename_propagator(5,0,N-1,N-1)
-
+       
        if (prop_fileformat .eq. 1) then
+
+          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+          call h5_create(prop_cfilename_nc, h5id)
+
+          call h5_add(h5id, 'prop_last_tag', N - 1)
+          call h5_add(h5id, 'flux_mr', source_m_N1, lbound(source_m_N1), ubound(source_m_N1))
+
+          call h5_close(h5id)  
+          
+       elseif (prop_fileformat .eq. 2) then
 
           write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
 
@@ -4213,6 +4664,15 @@ CONTAINS
     CALL filename_propagator(5,0,prop_first_tag,prop_first_tag)
 
     if (prop_fileformat .eq. 1) then
+
+       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+       call h5_open_rw(prop_cfilename_nc, h5id)
+
+       call h5_add(h5id, 'flux_pl', source_p_0, lbound(source_p_0), ubound(source_p_0))
+       
+       call h5_close(h5id)
+    
+    elseif (prop_fileformat .eq. 2) then
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
        call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
        if (.not. exists) then
@@ -4399,12 +4859,14 @@ CONTAINS
     WRITE(ctag2,*) prop_end
 
     ! NetCDF
-    IF (prop_fileformat .EQ. 1) THEN
-      prop_cext = 'nc'
-    ELSE
-      prop_cext = 'prop'
-    END IF
-
+    if (prop_fileformat .eq. 2) then
+       prop_cext = 'nc'
+    elseif (prop_fileformat .eq. 1) then
+       prop_cext = 'h5'
+    else
+       prop_cext = 'prop'
+    end if
+    
     !write (*,*) 'Setting prop extension to ', prop_cext
 
     ! choose basename
