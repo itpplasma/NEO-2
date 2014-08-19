@@ -27,7 +27,7 @@ PROGRAM neo2
        prop_write,prop_reconstruct,prop_ripple_plot,                &
        prop_reconstruct_levels,                                     &
        ncid_propagators, prop_fileformat, mergeAllNCFiles,          &
-       ncid_binarysplits, ncid_propbounds, ncid_recon, ncid_results
+       ncid_binarysplits, ncid_propbounds, ncid_recon
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
        mag_magfield,mag_nperiod_min,mag_save_memory,                &

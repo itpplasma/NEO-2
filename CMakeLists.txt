@@ -14,7 +14,7 @@ option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
 
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
-include_directories("/proj/plasma/Libs/hdf5/include")
+include_directories("${HDF5_DIR}/include")
 
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 
