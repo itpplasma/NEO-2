@@ -553,19 +553,23 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
   REAL(kind=dp) :: phi_l,phi_r,phi_per,theta_l,theta_r
 
-  ! --- MPI SUPPORT ---
+  ! ****************** MPI SUPPORT ***************
 #if defined(MPI_SUPPORT)
   ! Define the scheduler
   type(neo2scheduler) :: sched
 #endif
-  ! ---
+  ! **********************************************
 
-  ! --- NetCDF SUPPORT ---
+  ! ******************** HDF5 ********************
+  integer(HID_T), dimension(1:10) :: h5ids
+  ! **********************************************
+  
+  ! **************** NetCDF SUPPORT ************** 
   integer :: ncid_taginfo, grpid
   integer, dimension(1:10) :: varids
   integer :: k
   character(len=128) :: grpname
-  ! ---
+  ! **********************************************
 
   !print *, 'flint: begin of program'
   ! this is not very sophisticated at the moment
@@ -2636,11 +2640,86 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   IF ( (prop_write .EQ. 1 .OR. prop_write .EQ. 2) .and. prop_reconstruct .eq. 0) THEN
 
      ! --- MPI SUPPORT ---
+
      ! Only master (or in sequential mode) writes the taginfo.prop file
      if (mpro%isMaster()) then
 
-        ! --- NetCDF SUPPORT ---
+        ! *********** HDF5 **********
         if (prop_fileformat .eq. 1) then
+
+         call h5_create('taginfo.h5', h5id)
+
+         call h5_add(h5id, 'prop_write', prop_write)
+         call h5_add(h5id, 'tag_first', fieldline%ch_fir%ch_fir%tag)
+         call h5_add(h5id, 'tag_last',  fieldline%ch_las%ch_las%tag)
+         
+         if (mpro%isParallel()) then
+            call h5_add(h5id, 'parallel_storage', 1)
+         else
+            call h5_add(h5id, 'parallel_storage', 0)
+         end if
+
+          phi_per = twopi / device%nfp
+
+          call h5_add(h5id, 'aiota',      surface%aiota )
+          call h5_add(h5id, 'bmod0',      surface%bmod0)
+          call h5_add(h5id, 'b_abs_min',  surface%b_abs_min)
+          call h5_add(h5id, 'b_abs_max',  surface%b_abs_max )
+          call h5_add(h5id, 'phi_per',    phi_per)
+          call h5_add(h5id, 'nfp',        device%nfp)
+          call h5_add(h5id, 'boozer_phi_beg',    boozer_phi_beg)
+          call h5_add(h5id, 'boozer_theta_beg',  boozer_theta_beg )
+
+          call h5_define_unlimited_array(h5id, 'tag', H5T_NATIVE_INTEGER, h5ids(1))
+          call h5_define_unlimited_array(h5id, 'parent_tag', H5T_NATIVE_INTEGER, h5ids(2))
+          call h5_define_unlimited_array(h5id, 'fieldperiod_phi_l', H5T_NATIVE_DOUBLE, h5ids(3))
+          call h5_define_unlimited_array(h5id, 'phi_l',   H5T_NATIVE_DOUBLE, h5ids(4))
+          call h5_define_unlimited_array(h5id, 'phi_r',   H5T_NATIVE_DOUBLE, h5ids(5))
+          call h5_define_unlimited_array(h5id, 'theta_l', H5T_NATIVE_DOUBLE, h5ids(6))
+          call h5_define_unlimited_array(h5id, 'theta_r', H5T_NATIVE_DOUBLE, h5ids(7))
+          
+          fieldperiod => fieldline%ch_fir 
+          fieldpropagator => fieldperiod%ch_fir
+          k = 0
+          allprops_taginfo_nc: do while (fieldpropagator%tag .le. fieldline%ch_las%ch_las%tag)
+             k = k + 1
+
+             fieldperiod => fieldpropagator%parent
+
+             phi_l = fieldpropagator%phi_l
+             phi_r = fieldpropagator%phi_r
+             theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
+             theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
+             if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
+                phi_l = 0.0_dp
+             else
+                phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
+             end if
+             if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
+                phi_r = phi_per
+             else
+                phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
+             end if
+
+             call h5_append(h5ids(1), fieldpropagator%tag, k)
+             call h5_append(h5ids(2), fieldpropagator%parent%tag, k)
+             call h5_append(h5ids(3), fieldperiod%phi_l, k)
+             call h5_append(h5ids(4), phi_l, k)
+             call h5_append(h5ids(5), phi_r, k)
+             call h5_append(h5ids(6), theta_l, k)
+             call h5_append(h5ids(7), theta_r, k)
+
+             IF (ASSOCIATED(fieldpropagator%next)) THEN
+                fieldpropagator => fieldpropagator%next
+             else
+                exit allprops_taginfo_nc
+             end IF
+          end DO allprops_taginfo_nc
+          
+          call h5_close(h5id)
+           
+        ! ********** NetCDF **********
+        elseif (prop_fileformat .eq. 2) then
 
            call nc_create(prop_ctaginfo_nc, ncid_taginfo, '1.0')
 
@@ -2671,12 +2750,11 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            call nc_defineUnlimitedArray(ncid_taginfo, 'phi_r', NF90_DOUBLE, varids(5))
            call nc_defineUnlimitedArray(ncid_taginfo, 'theta_l', NF90_DOUBLE, varids(6))
            call nc_defineUnlimitedArray(ncid_taginfo, 'theta_r', NF90_DOUBLE, varids(7))
-
            
            fieldperiod => fieldline%ch_fir 
            fieldpropagator => fieldperiod%ch_fir
            k = 0
-           allprops_taginfo_nc: do while (fieldpropagator%tag .le. fieldline%ch_las%ch_las%tag)
+           allprops_taginfo_h5: do while (fieldpropagator%tag .le. fieldline%ch_las%ch_las%tag)
               k = k + 1
               
               fieldperiod => fieldpropagator%parent
@@ -2720,14 +2798,15 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               IF (ASSOCIATED(fieldpropagator%next)) THEN
                  fieldpropagator => fieldpropagator%next
               else
-                 exit allprops_taginfo_nc
+                 exit allprops_taginfo_h5
               end IF
-           end DO allprops_taginfo_nc
+           end do allprops_taginfo_h5
 
            call nf90_check(nf90_close(ncid_taginfo))
            ! ---
         else !  if (prop_fileformat .eq. 1) 
-
+           ! ASCII
+           
            CALL unit_propagator
            OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
                 form=prop_format,action='write')
@@ -2749,7 +2828,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            WRITE(prop_unit,*) .FALSE.
 #endif
            ! ---
-
            
            phi_per = twopi / device%nfp
 
