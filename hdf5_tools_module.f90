@@ -24,6 +24,7 @@ module hdf5_tools_module
      module procedure h5_get_double_0
      module procedure h5_get_double_1
      module procedure h5_get_double_2
+     module procedure h5_get_double_4
   end interface h5_get
 
   interface h5_get_bounds
@@ -71,7 +72,7 @@ contains
        fileformat_version = '1.0'
     end if
 
-    write (*,*) "Creating HDF-5 File: ", filename
+    write (*,*) "Creating HDF-5 File: ", trim(filename)
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, h5id, h5error)
     call h5ltmake_dataset_string_f(h5id, 'version', fileformat_version, h5error)
 
@@ -87,8 +88,8 @@ contains
     character(len=*)      :: filename
     integer(HID_T)        :: h5id
     
-    write (*,*) "Opening HDF-5 File: ", filename
-    call h5fopen_f(filename, H5F_ACC_RDONLY_F, h5id, h5error)    
+    write (*,*) "Opening HDF-5 File: ", trim(filename)
+    call h5fopen_f(trim(filename), H5F_ACC_RDONLY_F, h5id, h5error)    
   end subroutine h5_open
   
   subroutine h5_open_rw(filename, h5id)
@@ -96,7 +97,7 @@ contains
     integer(HID_T)        :: h5id
     
     write (*,*) "Opening HDF-5 File: ", filename
-    call h5fopen_f(filename, H5F_ACC_RDWR_F, h5id, h5error)    
+    call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, h5id, h5error)    
   end subroutine h5_open_rw
 
   subroutine h5_define_group(h5id, grpname, h5grpid)
@@ -113,10 +114,35 @@ contains
     character(len=*)     :: grpname
     integer(HID_T)       :: h5id_grp
 
-    call h5gopen_f(h5id, grpname, h5id_grp, h5error)
+    !write (*,*) "Opening group ", grpname, "."
+    call h5gopen_f(h5id, trim(grpname), h5id_grp, h5error)
     call h5_check()
   end subroutine h5_open_group
 
+  subroutine h5_close_group(h5id_grp)
+    integer(HID_T) :: h5id_grp
+
+    call h5gclose_f(h5id_grp, h5error)
+  end subroutine h5_close_group
+  
+  subroutine h5_get_nmembers(h5id, grpname, nmembers)
+    integer(HID_T)       :: h5id
+    character(len=*)     :: grpname
+    integer              :: nmembers
+
+    call h5gn_members_f(h5id, grpname, nmembers, h5error)
+  end subroutine h5_get_nmembers
+
+  subroutine h5_get_objinfo(h5id, grpname, idx, objname, type)
+    integer(HID_T)       :: h5id
+    character(len=*)     :: grpname, objname
+    integer              :: idx
+    integer              :: type
+    
+    call h5gget_obj_info_idx_f(h5id, grpname , idx, objname, type, &
+         h5error)
+  end subroutine h5_get_objinfo
+  
   subroutine h5_define_unlimited_matrix(h5id, dataset, datatype, dims, dsetid)
     integer(HID_T)         :: h5id
     character(len=*)       :: dataset
@@ -176,22 +202,25 @@ contains
     
   end subroutine h5_define_unlimited_array
 
-  subroutine h5_get_bounds_1(h5id, dataset, lb1, ub1)
+  subroutine h5_get_bounds_1(h5id, dataset, lb1, ub1, unlimited)
     integer(HID_T)         :: h5id
     character(len=*)       :: dataset
     integer, dimension(1)  :: lbounds, ubounds
-    integer, intent(inout)   :: lb1, ub1
+    integer, intent(inout) :: lb1, ub1
+    logical, optional      :: unlimited
 
-    call h5ltget_attribute_int_f(h5id, dataset,'lbounds', lbounds(1), h5error)
-    !write (*,*) "Get bounds in ", dataset, lbounds, "e", h5error
-    call h5_check()
-    
+    if (present(unlimited)) unlimited = .false.
+    call h5eset_auto_f(0, h5error)
+    call h5ltget_attribute_int_f(h5id, dataset,'lbounds', lbounds(1), h5error)    
     call h5ltget_attribute_int_f(h5id, dataset,'ubounds', ubounds(1), h5error)
-    call h5_check()
+    call h5eset_auto_f(1, h5error)
 
-    lb1 = lbounds(1)
-    ub1 = ubounds(1)
-    
+    if (h5error .gt. 0) then
+       lb1 = lbounds(1)
+       ub1 = ubounds(1)
+    else
+       if (present(unlimited)) unlimited = .true.
+    end if
     !write (*,*) "get_bounds: ", dataset, lbounds, ubounds
 
   end subroutine h5_get_bounds_1
@@ -298,7 +327,6 @@ contains
     integer(HID_T)                :: dspaceid
 
     integer(HSIZE_T), dimension(4) :: offsetd
-    integer(HSIZE_T), dimension(4) :: countd
 
     double precision :: start, end
     double precision, save :: diff = 0
@@ -432,8 +460,6 @@ contains
     integer(HID_T)                    :: h5id
     character(len=*)                  :: dataset
     integer(kind=8), dimension(:,:), target  :: value
-    integer(SIZE_T)                   :: size
-    integer                           :: rank = 2
     integer                           :: lb1, lb2, ub1, ub2
     integer(HSIZE_T), dimension(2)    :: dims
     integer(HID_T) :: dspace_id, dset_id
@@ -478,8 +504,6 @@ contains
     integer(HID_T)                    :: h5id
     character(len=*)                  :: dataset
     integer, dimension(:)             :: value
-    integer(SIZE_T)                   :: size
-    integer                           :: rank = 1
     integer                           :: lb1, ub1
     integer(HSIZE_T), dimension(1)    :: dims
     
@@ -560,15 +584,18 @@ contains
     integer(HID_T)                    :: h5id
     character(len=*)                  :: dataset
     double precision, dimension(:)    :: value
-    integer(SIZE_T)                   :: size
-    integer                           :: rank = 1
     integer                           :: lb1, ub1
     integer(HSIZE_T), dimension(1)    :: dims
+    logical                           :: unlimited
 
-    call h5_get_bounds(h5id, dataset, lb1, ub1)
-    dims = (/ub1 - lb1 + 1/)
+    call h5_get_bounds(h5id, dataset, lb1, ub1, unlimited)
+    if (.not. unlimited) then
+       dims = (/ub1 - lb1 + 1/)
+    else
+       dims = shape(value)
+       !write (*,*) "Unlimited dimension ", dims
+    end if
     call h5ltread_dataset_double_f(h5id, dataset, value, dims, h5error)
-
     call h5_check()
         
   end subroutine h5_get_double_1
@@ -577,8 +604,6 @@ contains
     integer(HID_T)                    :: h5id
     character(len=*)                  :: dataset
     double precision, dimension(:,:)  :: value
-    integer(SIZE_T)                   :: size
-    integer                           :: rank = 2
     integer                           :: lb1, lb2, ub1, ub2
     integer(HSIZE_T), dimension(2)    :: dims
 
@@ -588,6 +613,19 @@ contains
 
     call h5_check()
   end subroutine h5_get_double_2
+
+  subroutine h5_get_double_4(h5id, dataset, value)
+    integer(HID_T)                    :: h5id
+    character(len=*)                  :: dataset
+    double precision, dimension(:,:,:,:)  :: value
+    integer(HSIZE_T), dimension(4)    :: dims
+
+    dims = shape(value)
+    call h5ltread_dataset_double_f(h5id, dataset, value, dims, h5error)
+
+    call h5_check()
+  end subroutine h5_get_double_4
+  
   
   subroutine h5_add_double_2(h5id, dataset, value, lbounds, ubounds, comment, unit)
     integer(HID_T)                    :: h5id
