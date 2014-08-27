@@ -14,7 +14,7 @@ option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
 
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
-include_directories("${HDF5_DIR}/include")
+#include_directories("${HDF5_DIR}/include")
 
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 
@@ -92,10 +92,11 @@ find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
 find_library(NetCDF_lib netcdf)
 find_library(NetCDFf_lib netcdff)
-find_library(HDF5_lib hdf5 ${HDF5_DIR}/lib NO_DEFAULT_PATH)
-find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR}/lib NO_DEFAULT_PATH)
-find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR}/lib NO_DEFAULT_PATH)
-find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5_lib hdf5)# ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5_fortran_lib hdf5_fortran)# ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5HL_lib hdf5_hl)# ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5HL_fortran_lib hdf5hl_fortran)# ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+set(NetCDF_dyn_lib -lnetcdf -lnetcdff -lhdf5)
 
 ### Source files
 include (CMakeSources.in)
@@ -111,11 +112,11 @@ add_executable(${EXE_NAME}
 target_link_libraries(${EXE_NAME}
         ${SuperLU_lib}
         ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
-	#${SuiteSparseConfig_lib}
+	${SuiteSparseConfig_lib}
         ${MyMPILib_lib}
         ${MPE_lib}
 	${MPI_lib}
-	-Wl,--start-group -L/usr/lib/ -lnetcdf -lnetcdff -Wl,--end-group
+	${NetCDF_dyn_lib}
 	${HDF5HL_fortran_lib}
 	${HDF5HL_lib}
 	${HDF5_fortran_lib} 
@@ -136,13 +137,15 @@ add_custom_target(
 
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
 
-add_custom_command(
-	TARGET ${EXE_NAME}
-	POST_BUILD
-	COMMAND ../Scripts/cp_to_archive.sh
-	ARGS ${EXE_NAME} ${EXE_ARCHIVE_PATH} ${CMAKE_Fortran_COMPILER_ID} ${CMAKE_BUILD_TYPE}
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-	)
+if (COPY_TO_ARCHIVE)
+	add_custom_command(
+		TARGET ${EXE_NAME}
+		POST_BUILD
+		COMMAND ../Scripts/cp_to_archive.sh
+		ARGS ${EXE_NAME} ${EXE_ARCHIVE_PATH} ${CMAKE_Fortran_COMPILER_ID} ${CMAKE_BUILD_TYPE}
+        	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+		)
+endif()
 
 ### TESTING
 ADD_TEST(Test_Build_Code      "make")
