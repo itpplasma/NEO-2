@@ -2934,6 +2934,9 @@ CONTAINS
     integer :: grpid
     integer :: var_o_p_cmat_id, var_n_p_cmat_id
     character(len=256) :: prop_cfilename_nc
+
+    integer(SIZE_T) :: obj_count
+
     
     prop_bound = 1
     IF (prop_type .EQ. 1) THEN
@@ -2966,6 +2969,17 @@ CONTAINS
        if (allocated(n%p%cmat)) call h5_add(h5id, 'c_backward', n%p%cmat, lbound(n%p%cmat), ubound(n%p%cmat))
 
        call h5_close(h5id)
+
+       !call h5fget_obj_count_f(H5F_OBJ_ALL_F, H5F_OBJ_ALL_F, obj_count, h5error)
+       !write (*,*) "Open HDF5 objects (all): ", obj_count, h5error
+       !call h5fget_obj_count_f(H5F_OBJ_ALL_F, H5F_OBJ_DATASET_F, obj_count, h5error)
+       !write (*,*) "Open HDF5 objects (dataset): ", obj_count, h5error
+       !call h5fget_obj_count_f(H5F_OBJ_ALL_F, H5F_OBJ_GROUP_F, obj_count, h5error)
+       !write (*,*) "Open HDF5 objects (groups): ", obj_count, h5error
+       !call h5fget_obj_count_f(H5F_OBJ_ALL_F, H5F_OBJ_DATATYPE_F, obj_count, h5error)
+       !write (*,*) "Open HDF5 objects (datatypes): ", obj_count, h5error
+
+
 
     elseif (prop_fileformat .eq. 2) then
        write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
@@ -3113,6 +3127,8 @@ CONTAINS
     call h5_add(h5id_grp, 'y', binsplit%y, lbound(binsplit%y), ubound(binsplit%y))
     call h5_add(h5id_grp, 'int', binsplit%int, lbound(binsplit%int), ubound(binsplit%int))
     call h5_add(h5id_grp, 'err', binsplit%err, lbound(binsplit%err), ubound(binsplit%err))
+
+    call h5_close_group(h5id_grp)
 
   end subroutine write_binarysplit_side_h5
 
@@ -4046,6 +4062,8 @@ CONTAINS
        allocate(binsplit%err(lb1:ub1))
        call h5_get(h5id_grp, 'err', binsplit%err)
     end if
+
+    call h5_close_group(h5id_grp)
 
     !write (*,*) "Reconstruct binsplit", binsplit%x_pos, 'AA', lbound(binsplit%x_pos)
     
