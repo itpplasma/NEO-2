@@ -870,7 +870,6 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
 
   USE inter_precision,  ONLY: I4B, DP
   USE inter_interfaces, ONLY: splinecof3_lo_driv
-  use mpiprovider_module
 
 !-----------------------------------------------------------------------
 
@@ -896,7 +895,6 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   INTEGER(I4B)  :: ns, no_cur
   INTEGER(I4B)  :: i, sw1, sw2, i_alloc
   REAL(DP)      :: c1, cn
-  !double precision :: timea
 
 !-----------------------------------------------------------------------
 
