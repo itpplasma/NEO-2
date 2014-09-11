@@ -47,11 +47,13 @@ contains
 
 
   subroutine h5_init()
+    write (*,*) "Initializing HDF-5 interface"
     call h5open_f(h5error)
     call h5eset_auto_f(1, h5error)
   end subroutine h5_init
 
   subroutine h5_deinit()
+    write (*,*) "Deinitializing HDF-5 Interface"
     call h5close_f(h5error)
   end subroutine h5_deinit
 
@@ -66,15 +68,16 @@ contains
   subroutine h5_create(filename, h5id, fileformat_version)
     character(len=*)           :: filename
     integer(HID_T)             :: h5id
-    character(len=*), optional :: fileformat_version
+    integer, optional          :: fileformat_version
 
     if (.not. present(fileformat_version)) then
-       fileformat_version = '1.0'
+       fileformat_version = 1
     end if
 
     write (*,*) "Creating HDF-5 File: ", trim(filename)
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, h5id, h5error)
-    call h5ltmake_dataset_string_f(h5id, 'version', fileformat_version, h5error)
+    call h5_add(h5id, 'version', fileformat_version)
+    !call h5ltmake_dataset_string_f(h5id, 'version', fileformat_version, h5error)
 
   end subroutine h5_create
 
@@ -214,13 +217,13 @@ contains
     call h5ltget_attribute_int_f(h5id, dataset,'lbounds', lbounds(1), h5error)    
     call h5ltget_attribute_int_f(h5id, dataset,'ubounds', ubounds(1), h5error)
     call h5eset_auto_f(1, h5error)
-
-    if (h5error .gt. 0) then
+    !call h5_check()
+    !if (h5error .gt. 0) then
        lb1 = lbounds(1)
        ub1 = ubounds(1)
-    else
+    !else
        if (present(unlimited)) unlimited = .true.
-    end if
+    !end if
     !write (*,*) "get_bounds: ", dataset, lbounds, ubounds
 
   end subroutine h5_get_bounds_1
@@ -263,7 +266,6 @@ contains
     size    = (/offset/)
     offsetd = (/offset-1/)
     countd  = (/1/)
-    
     call h5dset_extent_f(dsetid, size, h5error)
     call h5_check()
     call h5screate_simple_f(rank, dims, memspace, h5error)

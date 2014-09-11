@@ -75,22 +75,20 @@ MODULE propagator_mod
 
   USE binarysplit_mod
 
-  ! --- MPI SUPPORT ---
+  !*********************************************
+  ! MPI Support
   ! Sources have to be compiled with -cpp flag
   ! For using this parallel framework the compiler has to support Fortran 2003 standards
+  !*********************************************
 #if defined(MPI_SUPPORT)
   USE mpiprovider_module
 #endif
   ! ---
 
-  ! ********** NetCDF **********
-  USE nctools_module
-  USE netcdf
-  ! ****************************
-
-  ! *********** HDF5 ***********
-  USE hdf5_tools_module
-  ! ****************************
+  !****************************
+  ! HDF5 Interface
+  !****************************
+  use hdf5_tools_module
 
   IMPLICIT NONE
   
@@ -132,8 +130,7 @@ MODULE propagator_mod
   INTEGER,            PUBLIC  :: prop_join_ends = 0
   INTEGER,            PUBLIC  :: prop_fluxsplitmode = 1
   INTEGER,            PUBLIC  :: prop_write = 0
-  integer,            public  :: prop_fileformat = 0     ! 0... ACSII, 1... NetCDF
-  !character(len=300), public  :: nco_path = '/usr/bin'   ! Location of NCO-Tools (used for merging the NetCDF-Files)
+  INTEGER,            PUBLIC  :: prop_fileformat = 0     ! 0... ACSII, 1... HDF5
   INTEGER,            PUBLIC  :: prop_reconstruct = 0
   INTEGER,            PUBLIC  :: prop_ripple_plot = 0
   ! usage for communication purposes
@@ -149,17 +146,10 @@ MODULE propagator_mod
   ! new switch for reconstruction of levels
   INTEGER,            PUBLIC  :: prop_reconstruct_levels = 0
 
-  ! ********** NetCDF Support **********
-  ! Global ncids for open NetCDF-Files, which should be be opened and closed all the time during a run
-  INTEGER :: ncid_propagators
-  INTEGER :: ncid_propbounds
-  INTEGER :: ncid_binarysplits
-  INTEGER :: ncid_recon
-  ! ************************************
-
-  ! *********** HDF5 **********
-  integer(HID_T) :: h5id
   ! ***************************
+  ! HDF5
+  ! ***************************
+  integer(HID_T) :: h5id
 
 
   ! ---------------------------------------------------------------------------
@@ -910,10 +900,6 @@ CONTAINS
     USE rkstep_mod, ONLY : asource,anumm,ailmm,lag,leg
     USE collop, ONLY : z_eff
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield
-
-    ! --- Experimental NetCDF Demonstration ---
-    use netcdf
-    ! ---
     
     INTEGER, INTENT(in) :: iend
 
@@ -942,19 +928,6 @@ CONTAINS
     INTEGER, PARAMETER, DIMENSION(3) :: ind_map = (/1,3,2/)
     INTEGER :: i, i_p, j, j_p
     INTEGER :: full_version
-
-    ! --- Experimental NetCDF Demonstration ---
-      
-    ! efinal
-    integer :: ncid, ierr
-    integer :: y_dimid
-    integer :: var_phi_id, var_y_id, var_aiota_loc_id, var_dmono_over_dplateau_id, var_epseff3_2_id
-    integer :: var_alambda_b_id, var_qflux_g_id, var_qflux_e_id, var_qcurr_g_id, var_qcurr_e_id, var_alambda_bb_id
-    integer :: var_gamma_E_id, var_g_bs_id, var_r0_id, var_bmod0_id
-    
-    ! fulltransp
-    integer :: gamma_out_dimid(2)
-    integer :: var_collpar_id, var_z_eff_id, var_avnabpsi_id, var_avbhat2_id, var_dl1obhat_id, var_gamma_out_id
 
     allocate(gamma_out(3,3))
     
@@ -1053,34 +1026,10 @@ CONTAINS
           END DO
        END DO
 
-       if (prop_fileformat .eq. 2) then
-
-          ! Write to NetCDF file
-          call nc_create('fulltransp.nc', ncid, '1.0')
-          
-          ! Attributes
-          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'full_version',  full_version))
-          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_lorentz',   isw_lorentz))
-          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_integral',  isw_integral))
-          call nf90_check(nf90_put_att(ncid, NF90_GLOBAL, 'isw_energy',    isw_energy))
-
-          ! Variables
-          call nc_quickAdd(ncid, 'lag', lag, 'Degree of the Laguerre Polynomials')
-          call nc_quickAdd(ncid, 'leg', leg, 'Degree of the Legendre Polynomials')
-          call nc_quickAdd(ncid, 'collpar', collpar)
-          call nc_quickAdd(ncid, 'conl_over_mfp', conl_over_mfp)
-          call nc_quickAdd(ncid, 'z_eff', z_eff)
-          call nc_quickAdd(ncid, 'avnabpsi', avnabpsi)
-          call nc_quickAdd(ncid, 'avbhat2', avbhat2)
-          call nc_quickAdd(ncid, 'dl1obhat', dl1obhat)
-          call nc_quickAdd(ncid, 'gamma_out', gamma_out)
-          
-          call nf90_check(nf90_close(ncid))
-          
-       elseif (prop_fileformat .eq. 1) then
+       if (prop_fileformat .eq. 1) then
 
           ! Write to HDF5 file
-          call h5_create('fulltransp.h5', h5id, '1.0')
+          call h5_create('fulltransp.h5', h5id, 1)
 
           call h5_add(h5id, 'full_version', full_version)
           call h5_add(h5id, 'isw_lorentz', isw_lorentz)
@@ -1112,33 +1061,10 @@ CONTAINS
           
        end if
 
-       if (prop_fileformat .eq. 2) then
-
-          ! Write to NetCDF file
-          call nc_create('efinal.nc', ncid, '1.0')
-
-          call nc_quickAdd(ncid, 'phi', phi)
-          call nc_quickAdd(ncid, 'aiota_loc', aiota_loc)
-          call nc_quickAdd(ncid, 'dmono_over_dplateau', dmono_over_dplateau)
-          call nc_quickAdd(ncid, 'epseff3_2', epseff3_2)
-          call nc_quickAdd(ncid, 'alambda_b', alambda_b)
-          call nc_quickAdd(ncid, 'qflux_g', qflux_g)
-          call nc_quickAdd(ncid, 'qflux_e', qflux_e)
-          call nc_quickAdd(ncid, 'qcurr_g', qcurr_g)
-          call nc_quickAdd(ncid, 'qcurr_e', qcurr_e)
-          call nc_quickAdd(ncid, 'alambda_bb', alambda_bb)
-          call nc_quickAdd(ncid, 'gamma_E',gamma_E )
-          call nc_quickAdd(ncid, 'g_bs', g_bs)
-          call nc_quickAdd(ncid, 'r0', device%r0)
-          call nc_quickAdd(ncid, 'bmod0', surface%bmod0)
-          call nc_quickAdd(ncid, 'y', y)
-
-          call nc_close(ncid)
-
-       elseif (prop_fileformat .eq. 1) then
+       if (prop_fileformat .eq. 1) then
 
           ! Write to HDF5 file
-          call h5_create('efinal.h5', h5id, '1.0')
+          call h5_create('efinal.h5', h5id, 1)
 
           call h5_add(h5id, 'phi', phi)
           call h5_add(h5id, 'aiota_loc', aiota_loc)
@@ -2477,37 +2403,6 @@ CONTAINS
   END SUBROUTINE join_ripples_int
   ! ---------------------------------------------------------------------------
 
-  subroutine mergeAllNCFiles
-    integer :: status
-    character(len=300) :: command
-    if (prop_fileformat .eq. 1) then
-
-       if ((mpro%isParallel() .and. (mpro%isMaster()) ) .or. (.not. mpro%isParallel())) then
-
-          write (*,*) "Merging NetCDF-Files, please wait..."
-
-          call mergeNCFiles('\.\/propagator_[0-9]*_[0-9]*\.nc*$', 'propagators.nc')
-          call mergeNCFiles('\.\/propagator_boundary_[0-9]*_[0-9]*\.nc*$', 'propagators_boundaries.nc')
-          call mergeNCFiles('\.\/binarysplit_[0-9]*_[0-9]*\.nc*$', 'binarysplits.nc')
-          call mergeNCFiles('\.\/reconstruct_[0-9]*_[0-9]*\.nc*$', 'reconstructs.nc')
-          call mergeNCFiles('\.\/phi_mesh_[0-9]*\.nc*$', 'phi_mesh.nc')
-          call mergeNCFiles('\.\/spitf_p_[0-9]*\.nc*$', 'spitf_p.nc')
-          call mergeNCFiles('\.\/spitf_m_[0-9]*\.nc*$', 'spitf_m.nc')
-          call mergeNCFiles('\.\/enetf_p_[0-9]*\.nc*$', 'enetf_p.nc')
-          call mergeNCFiles('\.\/enetf_m_[0-9]*\.nc*$', 'enetf_m.nc')
-          call mergeNCFiles('\.\/dentf_p_[0-9]*\.nc*$', 'dentf_p.nc')
-          call mergeNCFiles('\.\/dentf_m_[0-9]*\.nc*$', 'dentf_m.nc')
-          call mergeNCFiles('\.\/sizeplot_etalev_[0-9]*\.nc*$', 'sizeplot_etalev.nc')
-
-          call mergeNCFiles('\.\/enetf_[mp]\.*\.nc*$', 'enetf.nc')
-          call mergeNCFiles('\.\/dentf_[mp]\.*\.nc*$', 'dentf.nc')
-          call mergeNCFiles('\.\/spitf_[mp]\.*\.nc*$', 'spitf.nc')
-
-          write (*,*) "NetCDF-Files merged."
-       end if
-    end if
-  end subroutine mergeAllNCFiles
-
   subroutine write_propagator_cont(o,prop_type,prop_showall_in)
     ! writes the content of a propagator, which is specified in pointer o
 
@@ -2521,19 +2416,8 @@ CONTAINS
     INTEGER :: prop_end
     INTEGER :: prop_showall
 
-    ! Experimental NetCDF Support
+    CHARACTER(len=100) :: prop_cfilename_h5
 
-    character(len=100) :: prop_cfilename_nc
-    integer :: ncid_propagator, grpid
-
-    integer :: var_y_id, var_amat_p_p_id, var_amat_m_m_id, var_amat_p_m_id, var_amat_m_p_id
-    integer :: var_source_p_id, var_source_m_id
-    integer :: var_flux_p_id, var_flux_m_id
-    integer :: var_qflux_id
-    integer :: var_eta_l_id, var_eta_r_id
-    double precision :: stime, etime
-     
-    ! ---
      
     if (present(prop_showall_in)) then
        prop_showall = prop_showall_in
@@ -2557,12 +2441,11 @@ CONTAINS
     END IF
 
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
-    write (*,*) "prop_showall: ", prop_showall
     
     if (prop_fileformat .eq. 1) then
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+       write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
 
-       call h5_create(prop_cfilename_nc, h5id)
+       call h5_create(prop_cfilename_h5, h5id)
 
        call h5_add(h5id, 'prop_start', prop_start)
        call h5_add(h5id, 'prop_end', prop_end)
@@ -2608,125 +2491,6 @@ CONTAINS
 
        call h5_close(h5id)
        
-    elseif (prop_fileformat .eq. 2) then
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-
-       call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_propagator))
-       grpid = ncid_propagator
-
-!       stime = MPI_WTIME()
-!       call nf90_check(nf90_open('propagators.nc', nf90_write, ncid_propagators)
-!       if (ierr /= NF90_NOERR) then
-!          call nf90_check(nf90_create('propagators.nc', nf90_hdf5, ncid_propagators)
-!       end if
-!       write (*,*) "Time for creation or opening: ", MPI_WTime() - stime
-
-       stime = MPI_WTime()
-
-       !call nf90_check(nf90_redef(ncid_propagators))
-
-       !call nf90_check(nf90_def_grp(ncid_propagators, prop_cfilename(1:len_trim(prop_cfilename)-5), grpid))
-
-       call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_start', prop_start))
-       call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_end', prop_end))
-
-       !write (*,*) "Time for Group creation: ", MPI_WTime() - stime
-
-       stime = MPI_WTime()
-       if (prop_showall .EQ. 1) then
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_s', o%fieldpropagator_tag_s))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_e', o%fieldpropagator_tag_e))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_s',     o%fieldperiod_tag_s))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_e',     o%fieldperiod_tag_e ))
-          !call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_l', o%phi_l))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'phi_r', o%phi_r))
-
-          call nc_define(grpid, 'y', o%y, var_y_id)
-          call nc_define(grpid, 'amat_m_m', o%p%amat_m_m, var_amat_m_m_id)
-          call nc_define(grpid, 'amat_p_m', o%p%amat_p_m, var_amat_p_m_id)
-          call nc_define(grpid, 'source_m', o%p%source_m, var_source_m_id)
-          call nc_define(grpid, 'flux_m', o%p%flux_m, var_flux_m_id)
-          call nc_define(grpid, 'flux_p', o%p%flux_p, var_flux_p_id)
-          call nc_define(grpid, 'qflux', o%p%qflux, var_qflux_id)
-          call nc_define(grpid, 'eta_l', o%p%eta_l, var_eta_l_id)
-          call nc_define(grpid, 'eta_r', o%p%eta_r, var_eta_r_id)
-
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_boundary_l', o%p%eta_boundary_l))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'eta_boundary_r', o%p%eta_boundary_r))
-       end if
-
-       if (prop_showall .eq. 0) then
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode))
-       end if
-     
-       ! sizes
-       if (prop_showall .ge. 1) then
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'npart',     o%p%npart))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'npass_l',   o%p%npass_l))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'npass_r',   o%p%npass_r))
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'nvelocity', o%p%nvelocity))
-
-          call nc_define(grpid, 'amat_p_p', o%p%amat_p_p, var_amat_p_p_id)
-          call nc_define(grpid, 'amat_m_p', o%p%amat_m_p, var_amat_m_p_id)
-          call nc_define(grpid, 'source_p', o%p%source_p, var_source_p_id)
-       end if
-       !write (*,*) "Time before enddef: ", MPI_WTime() - stime
-       stime = MPI_Wtime()
-       call nf90_check(nf90_enddef(ncid_propagator))
-       !write (*,*) "Time after enddef: ", MPI_WTime() - stime
-             
-       ! Put Variables
-       stime = MPI_WTime()
-
-       if (prop_showall .EQ. 1) then
-          if (allocated(o%y)) then
-             call nf90_check(nf90_put_var(grpid, var_y_id, o%y))
-          end if
-          IF (ALLOCATED(o%p%amat_m_m)) THEN
-             call nf90_check(nf90_put_var(grpid, var_amat_m_m_id, o%p%amat_m_m))
-          end if
-          IF (ALLOCATED(o%p%amat_p_m)) THEN
-             call nf90_check(nf90_put_var(grpid, var_amat_p_m_id, o%p%amat_p_m))
-          end if
-          IF (ALLOCATED(o%p%source_m)) THEN
-             call nf90_check(nf90_put_var(grpid, var_source_m_id, o%p%source_m))
-          end if
-          IF (ALLOCATED(o%p%flux_m)) THEN
-             call nf90_check(nf90_put_var(grpid, var_flux_m_id, o%p%flux_m))
-          end if
-          IF (ALLOCATED(o%p%flux_p)) THEN
-             call nf90_check(nf90_put_var(grpid, var_flux_p_id, o%p%flux_p))
-          end if
-
-          call nf90_check(nf90_put_var(grpid, var_qflux_id, o%p%qflux))
-
-          if (allocated(o%p%eta_l)) then
-             call nf90_check(nf90_put_var(grpid, var_eta_l_id, o%p%eta_l))
-          end if
-          if (allocated(o%p%eta_r)) then
-             call nf90_check(nf90_put_var(grpid, var_eta_r_id, o%p%eta_r))
-          end if
-
-       end if
-
-       IF (prop_showall .GE. 1) THEN
-          IF (ALLOCATED(o%p%amat_p_p)) THEN
-            call nf90_check(nf90_put_var(grpid, var_amat_p_p_id, o%p%amat_p_p))
-          end if
-          IF (ALLOCATED(o%p%amat_m_p)) THEN
-            call nf90_check(nf90_put_var(grpid, var_amat_m_p_id, o%p%amat_m_p))
-          end if
-          IF (ALLOCATED(o%p%source_p)) THEN
-            call nf90_check(nf90_put_var(grpid, var_source_p_id, o%p%source_p))
-          end if
-       end if
-
-       !write (*,*) "Time after writing: ", MPI_WTime() - stime
-       stime = MPI_WTime()
-       call nf90_check(nf90_close(ncid_propagator))
-       !write (*,*) "Time for closing: ", MPI_WTime() - stime
     else
        
        CALL unit_propagator
@@ -2931,9 +2695,7 @@ CONTAINS
     INTEGER :: prop_left
     INTEGER :: prop_right
 
-    integer :: grpid
-    integer :: var_o_p_cmat_id, var_n_p_cmat_id
-    character(len=256) :: prop_cfilename_nc
+    character(len=256) :: prop_cfilename_h5
 
     integer(SIZE_T) :: obj_count
 
@@ -2956,9 +2718,9 @@ CONTAINS
 
     if (prop_fileformat .eq. 1) then
        
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+       write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
 
-       call h5_create(prop_cfilename_nc, h5id)
+       call h5_create(prop_cfilename_h5, h5id)
 
        call h5_add(h5id, 'fieldpropagator_tag_left',  n%fieldpropagator_tag_s - 1)
        call h5_add(h5id, 'fieldpropagator_tag_right', n%fieldpropagator_tag_s)
@@ -2980,32 +2742,6 @@ CONTAINS
        !write (*,*) "Open HDF5 objects (datatypes): ", obj_count, h5error
 
 
-
-    elseif (prop_fileformat .eq. 2) then
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-
-       call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_propbounds))
-       grpid = ncid_propbounds
-
-       call nf90_check(nf90_put_att(ncid_propbounds, NF90_GLOBAL, 'fieldpropagator_tag_left',  n%fieldpropagator_tag_s - 1))
-       call nf90_check(nf90_put_att(ncid_propbounds, NF90_GLOBAL, 'fieldpropagator_tag_right', n%fieldpropagator_tag_s))
-       call nf90_check(nf90_put_att(ncid_propbounds, NF90_GLOBAL, 'fieldperiod_tag_left',      n%fieldperiod_tag_s - 1))
-       call nf90_check(nf90_put_att(ncid_propbounds, NF90_GLOBAL, 'fieldperiod_tag_right',     n%fieldperiod_tag_s))
-
-       call nc_define(grpid, 'c_forward',  o%p%cmat, var_o_p_cmat_id)
-       call nc_define(grpid, 'c_backward', n%p%cmat, var_n_p_cmat_id)
-     
-       call nf90_check(nf90_enddef(ncid_propbounds))
-
-       if (allocated(o%p%cmat)) then
-          call nf90_check(nf90_put_var(grpid, var_o_p_cmat_id, o%p%cmat))
-       end if
-
-       if (allocated(n%p%cmat)) then
-          call nf90_check(nf90_put_var(grpid, var_n_p_cmat_id, n%p%cmat))
-       end if
-       
-       call nf90_check(nf90_close(ncid_propbounds))
     else
        CALL unit_propagator
        OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
@@ -3040,71 +2776,6 @@ CONTAINS
     
   END SUBROUTINE write_prop_bound_cont
   ! ---------------------------------------------------------------------------
-
-  subroutine write_binarysplit_side_nc(ncid_binarysplit, grpname, binsplit)
-    integer :: ncid_binarysplit
-    character(len=*) :: grpname
-    type(binarysplit) :: binsplit
-
-    integer :: grpid, varid
-    integer :: var_x_ori_bin, var_x_ori_poi, var_x_poi, var_x_split, var_x_pos, var_x, var_y, var_int, var_err
-
-    call nf90_check(nf90_def_grp(ncid_binarysplit, grpname, grpid))
-
-    call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'n_ori', binsplit%n_ori))
-    call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'n_split', binsplit%n_split))
-
-    call nc_define(grpid, 'x_ori_bin', binsplit%x_ori_bin, var_x_ori_bin)
-    call nc_define(grpid, 'x_ori_poi', binsplit%x_ori_poi, var_x_ori_poi)
-    call nc_define(grpid, 'x_poi', binsplit%x_poi, var_x_poi)
-    call nc_define(grpid, 'x_split', binsplit%x_split, var_x_split)
-    call nc_define(grpid, 'x_pos', binsplit%x_pos, var_x_pos)
-    call nc_define(grpid, 'x', binsplit%x, var_x)
-    call nc_define(grpid, 'y', binsplit%y, var_y)
-    call nc_define(grpid, 'int', binsplit%int, var_int)
-    call nc_define(grpid, 'err', binsplit%err, var_err)
-
-    call nf90_check(nf90_enddef(ncid_binarysplit))
-
-    if (allocated(binsplit%x_ori_bin)) then
-       call nf90_check(nf90_put_var(grpid, var_x_ori_bin, binsplit%x_ori_bin))
-    end if
-
-    if (allocated(binsplit%x_ori_poi)) then
-       call nf90_check(nf90_put_var(grpid, var_x_ori_poi, binsplit%x_ori_poi))
-    end if
-
-    if (allocated(binsplit%x_poi)) then
-       call nf90_check(nf90_put_var(grpid, var_x_poi, binsplit%x_poi))
-    end if
-
-    if (allocated(binsplit%x_split)) then
-       call nf90_check(nf90_put_var(grpid, var_x_split, binsplit%x_split))
-    end if
-
-    if (allocated(binsplit%x_pos)) then
-       call nf90_check(nf90_put_var(grpid, var_x_pos, binsplit%x_pos))
-    end if
-
-    if (allocated(binsplit%x)) then
-       call nf90_check(nf90_put_var(grpid, var_x, binsplit%x))
-    end if
-
-    if (allocated(binsplit%y)) then
-       call nf90_check(nf90_put_var(grpid, var_y, binsplit%y))
-    end if
-
-    if (allocated(binsplit%int)) then
-       call nf90_check(nf90_put_var(grpid, var_int, binsplit%int))
-    end if
-
-    if (allocated(binsplit%err)) then
-       call nf90_check(nf90_put_var(grpid, var_err, binsplit%err))
-    end if
-
-    call nf90_check(nf90_redef(ncid_binarysplit))
-
-  end subroutine write_binarysplit_side_nc
 
   subroutine write_binarysplit_side_h5(h5id_binsplit, grpname, binsplit)
     integer :: h5id_binsplit
@@ -3143,7 +2814,7 @@ CONTAINS
     INTEGER :: prop_end
 
     integer :: ncid_binarysplit
-    character(len=100) :: prop_cfilename_nc
+    character(len=100) :: prop_cfilename_h5
 
     prop_bound = 0
     prop_type = 6
@@ -3154,27 +2825,16 @@ CONTAINS
 
     if (prop_fileformat .eq. 1) then
 
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
+       write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
 
-       call h5_create(prop_cfilename_nc, h5id)
+       call h5_create(prop_cfilename_h5, h5id)
        call h5_add(h5id, 'bin_split_mode', o%bin_split_mode)
 
        call write_binarysplit_side_h5(h5id, 'left',  o%eta_bs_l)
        call write_binarysplit_side_h5(h5id, 'right', o%eta_bs_r)
 
        call h5_close(h5id)
-    elseif (prop_fileformat .eq. 2) then
 
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-
-       call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_binarysplit))
-
-       call nf90_check(nf90_put_att(ncid_binarysplit, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode))
-
-       call write_binarysplit_side_nc(ncid_binarysplit, 'left',  o%eta_bs_l)
-       call write_binarysplit_side_nc(ncid_binarysplit, 'right', o%eta_bs_r)
-
-       call nf90_check(nf90_close(ncid_binarysplit))
     else
 
        CALL unit_propagator
@@ -3345,12 +3005,6 @@ CONTAINS
     INTEGER :: dummy
 
     INTEGER :: prop_showall
-
-    ! --- NetCDF ---
-    integer :: grpid, varid
-    double precision :: stime
-    logical :: foundGroup
-    ! ---
     
     IF (PRESENT(prop_showall_in)) THEN
        prop_showall = prop_showall_in
@@ -3483,164 +3137,6 @@ CONTAINS
        !write (*,*) "dims:", lbound(o%p%amat_p_p), ubound(o%p%amat_p_p)
        
        call h5_close(h5id)
-    elseif (prop_fileformat .eq. 2) then
-       !stime = MPI_WTime()
-       !write (*,*) "Reading NetCDF-Group: ", prop_cfilename
-       !write (*,*) prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1)
-       call nc_findGroup(ncid_propagators, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
-
-       if (prop_showall .eq. 1) then
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'nr_joined', o%nr_joined))
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_s', o%fieldpropagator_tag_s))
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_e', o%fieldpropagator_tag_e))
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_s', o%fieldperiod_tag_s))
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_e', o%fieldperiod_tag_e))
-
-          call nc_inquire(grpid, 'y', varid, lb1, ub1)
-          
-           if (ub1 .gt. 0) then
-             if (allocated(o%y)) deallocate(o%y)
-             allocate(o%y(lb1:ub1))
-             call nf90_check(nf90_get_var(grpid, varid, o%y))           
-          end if
-
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'phi_l', o%phi_l))
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'phi_r', o%phi_r))
-       end if
-
-       if (prop_showall .eq.0) then
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode))
-       end if
-
-       if (prop_showall .ge. 1) then
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'npart', o%p%npart))
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'npass_l', o%p%npass_l))
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'npass_r', o%p%npass_r))
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'nvelocity', o%p%nvelocity))
-       end if
-
-       if (prop_showall .ge. 1) then
-
-          call nc_inquire(grpid, 'amat_p_p', varid, lb1, ub1, lb2, ub2)
- 
-          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
-             if (allocated(o%p%amat_p_p)) deallocate(o%p%amat_p_p)
-             allocate(o%p%amat_p_p(lb1:ub1,lb2:ub2))
-             call nf90_check(nf90_get_var(grpid, varid, o%p%amat_p_p))
-          end if
-       end if
-
-       if (prop_showall .eq. 1) then
-          call nc_inquire(grpid, 'amat_m_m', varid, lb1, ub1, lb2, ub2)
-  
-          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
-             if (allocated(o%p%amat_m_m)) deallocate(o%p%amat_m_m)
-             allocate(o%p%amat_m_m(lb1:ub1,lb2:ub2))
-             call nf90_check(nf90_get_var(grpid, varid, o%p%amat_m_m))
-          end if
-       end if
-
-       if (prop_showall .eq. 1) then
-
-          call nc_inquire(grpid, 'amat_p_m', varid, lb1, ub1, lb2, ub2)
-          
-          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
-             if (allocated(o%p%amat_p_m)) deallocate(o%p%amat_p_m)
-             allocate(o%p%amat_p_m(lb1:ub1,lb2:ub2))
-             call nf90_check(nf90_get_var(grpid, varid, o%p%amat_p_m))
-          end if
-       end if
-
-       if (prop_showall .ge. 1) then
-
-          call nc_inquire(grpid, 'amat_m_p', varid, lb1, ub1, lb2, ub2)
-
-          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
-             if (allocated(o%p%amat_m_p)) deallocate(o%p%amat_m_p)
-             allocate(o%p%amat_m_p(lb1:ub1,lb2:ub2))
-             call nf90_check(nf90_get_var(grpid, varid, o%p%amat_m_p))
-          end if
-       end if       
-
-       if (prop_showall .ge. 1) then
-          
-          call nc_inquire(grpid, 'source_p', varid, lb1, ub1, lb2, ub2)
-          
-          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
-             if (allocated(o%p%source_p)) deallocate(o%p%source_p)
-             allocate(o%p%source_p(lb1:ub1,lb2:ub2))
-             call nf90_check(nf90_get_var(grpid, varid, o%p%source_p))
-          end if
-       end if       
-
-       if (prop_showall .eq. 1) then
-
-          call nc_inquire(grpid, 'source_m', varid, lb1, ub1, lb2, ub2)
-
-          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
-             if (allocated(o%p%source_m)) deallocate(o%p%source_m)
-             allocate(o%p%source_m(lb1:ub1,lb2:ub2))
-             call nf90_check(nf90_get_var(grpid, varid, o%p%source_m))
-          end if
-       end if   
-
-       if (prop_showall .eq. 1) then
-
-          call nc_inquire(grpid, 'flux_p', varid, lb1, ub1, lb2, ub2)
-
-          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
-             if (allocated(o%p%flux_p)) deallocate(o%p%flux_p)
-             allocate(o%p%flux_p(lb1:ub1,lb2:ub2))
-             call nf90_check(nf90_get_var(grpid, varid, o%p%flux_p))
-          end if
-       end if   
-
-       if (prop_showall .eq. 1) then
-
-          call nc_inquire(grpid, 'flux_m', varid, lb1, ub1, lb2, ub2)
-          
-          if (ub1 .gt. 0 .and. ub2 .gt. 0) then
-             if (allocated(o%p%flux_m)) deallocate(o%p%flux_m)
-             allocate(o%p%flux_m(lb1:ub1,lb2:ub2))
-             call nf90_check(nf90_get_var(grpid, varid, o%p%flux_m))
-          end if
-       end if
-
-      if (prop_showall .eq. 1) then
-
-         call nc_inquire(grpid, 'qflux', varid, lb1, ub1, lb2, ub2)
-
-           if (allocated(o%p%qflux)) deallocate(o%p%qflux)
-           allocate(o%p%qflux(1:ub1,1:ub2))
-           call nf90_check(nf90_get_var(grpid, varid, o%p%qflux))
-       end if
-
-       if (prop_showall .eq. 1) then
-
-          call nc_inquire(grpid, 'eta_l', varid, lb1, ub1)
-
-          if (ub1 .gt. 0) then
-             IF (ALLOCATED(o%p%eta_l)) DEALLOCATE(o%p%eta_l)
-             ALLOCATE(o%p%eta_l(lb1:ub1))
-             call nf90_check(nf90_get_var(grpid, varid, o%p%eta_l))
-          end if
-
-          call nc_inquire(grpid, 'eta_r', varid, lb1, ub1)
-
-          if (ub1 .gt. 0) then
-             IF (ALLOCATED(o%p%eta_r)) DEALLOCATE(o%p%eta_r)
-             ALLOCATE(o%p%eta_r(lb1:ub1))
-             call nf90_check(nf90_get_var(grpid, varid, o%p%eta_r))
-          end if
-
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'eta_boundary_l', o%p%eta_boundary_l))
-          call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'eta_boundary_r', o%p%eta_boundary_r))
-          
-       end if
-
-       if (.not. foundGroup) then
-          call nf90_check(nf90_close(grpid))
-       end if
        
     else
 
@@ -3813,9 +3309,6 @@ CONTAINS
     INTEGER :: lb1,ub1
     INTEGER :: lb2,ub2
 
-    integer :: grpid, varid
-    logical :: foundGroup
-
     prop_bound = 1
 
     CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
@@ -3844,34 +3337,6 @@ CONTAINS
        end if
        
        call h5_close(h5id)
-       
-    elseif (prop_fileformat .eq. 2) then
-
-       call nc_findGroup(ncid_propbounds, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
-
-       call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_left', b%fieldpropagator_tag_left))
-       call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldpropagator_tag_right', b%fieldpropagator_tag_right))
-       call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_left', b%fieldperiod_tag_left))
-       call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'fieldperiod_tag_right', b%fieldperiod_tag_right))
-
-       call nc_inquire(grpid, 'c_forward', varid, lb1, ub1, lb2, ub2)
-       
-       if (ub1 .gt. 0 .and. ub2 .gt. 0) then
-          if (allocated(b%c_forward)) deallocate(b%c_forward)
-          allocate(b%c_forward(lb1:ub1,lb2:ub2))
-          call nf90_check(nf90_get_var(grpid, varid, b%c_forward))
-       end if
-       
-       call nc_inquire(grpid, 'c_backward', varid, lb1, ub1, lb2, ub2)
-       if (ub1 .gt. 0 .and. ub2 .gt. 0) then
-          if (allocated(b%c_backward)) deallocate(b%c_backward)
-          allocate(b%c_backward(lb1:ub1,lb2:ub2))
-          call nf90_check(nf90_get_var(grpid, varid, b%c_backward))
-       end if
-       
-       if (.not. foundGroup) then
-          call nf90_check(nf90_close(grpid))
-       end if
        
     else
 
@@ -3906,86 +3371,6 @@ CONTAINS
   
   END SUBROUTINE read_prop_bound_cont
   ! ---------------------------------------------------------------------------
-
-  subroutine read_binarysplit_side_nc(ncid, grpname, binsplit)
-    integer :: ncid
-    character(len=*) :: grpname
-    type(binarysplit), intent(inout) :: binsplit
-
-    integer :: sideid, varid
-    integer :: lb1, ub1, lb2, ub2
-    
-    call nf90_check(nf90_inq_ncid(ncid, grpname, sideid))
-    
-    call nf90_check(nf90_get_att(sideid, NF90_GLOBAL, 'n_ori',   binsplit%n_ori))
-    call nf90_check(nf90_get_att(sideid, NF90_GLOBAL, 'n_split', binsplit%n_split))
-
-    call nc_inquire(sideid, 'x_ori_bin', varid, lb1, ub1, lb2, ub2)
-    if (ub1 .gt. lb1 .or. ub2 .gt. lb2) then
-       if (allocated(binsplit%x_ori_bin)) deallocate(binsplit%x_ori_bin)
-       allocate(binsplit%x_ori_bin(lb1:ub1,lb2:ub2))
-       call nf90_check(nf90_get_var(sideid, varid, binsplit%x_ori_bin))
-    end if
-
-    call nc_inquire(sideid, 'x_ori_poi', varid, lb1, ub1)
-    if (ub1 .gt. 0) then
-       if (allocated(binsplit%x_ori_poi)) deallocate(binsplit%x_ori_poi)
-       allocate(binsplit%x_ori_poi(lb1:ub1))
-       call nf90_check(nf90_get_var(sideid, varid, binsplit%x_ori_poi))
-    end if
-
-    call nc_inquire(sideid, 'x_poi', varid, lb1, ub1)
-    if (ub1 .gt. 0) then
-       if (allocated(binsplit%x_poi)) deallocate(binsplit%x_poi)
-       allocate(binsplit%x_poi(lb1:ub1))
-       call nf90_check(nf90_get_var(sideid, varid, binsplit%x_poi))
-    end if
-
-     call nc_inquire(sideid, 'x_split', varid, lb1, ub1)
-    if (ub1 .gt. 0) then
-       if (allocated(binsplit%x_split)) deallocate(binsplit%x_split)
-       allocate(binsplit%x_split(lb1:ub1))
-       call nf90_check(nf90_get_var(sideid, varid, binsplit%x_split))
-    end if
-
-    call nc_inquire(sideid, 'x_pos', varid, lb1, ub1)
-    if (ub1 .gt. 0) then
-       if (allocated(binsplit%x_pos)) deallocate(binsplit%x_pos)
-       allocate(binsplit%x_pos(lb1:ub1))
-       call nf90_check(nf90_get_var(sideid, varid, binsplit%x_pos))
-    end if
-
-    call nc_inquire(sideid, 'x', varid, lb1, ub1)
-    if (ub1 .gt. 0) then
-       if (allocated(binsplit%x)) deallocate(binsplit%x)
-       allocate(binsplit%x(lb1:ub1))
-       call nf90_check(nf90_get_var(sideid, varid, binsplit%x))
-    end if
-
-    call nc_inquire(sideid, 'y', varid, lb1, ub1)
-    if (ub1 .gt. 0) then
-       if (allocated(binsplit%y)) deallocate(binsplit%y)
-       allocate(binsplit%y(lb1:ub1))
-       call nf90_check(nf90_get_var(sideid, varid, binsplit%y))
-    end if
- 
-    call nc_inquire(sideid, 'int', varid, lb1, ub1)   
-    if (ub1 .gt. 0) then
-       if (allocated(binsplit%int)) deallocate(binsplit%int)
-       allocate(binsplit%int(lb1:ub1))
-       call nf90_check(nf90_get_var(sideid, varid, binsplit%int))
-    end if
-
-    call nc_inquire(sideid, 'err', varid, lb1, ub1)   
-    if (ub1 .gt. 0) then
-       if (allocated(binsplit%err)) deallocate(binsplit%err)
-       allocate(binsplit%err(lb1:ub1))
-       call nf90_check(nf90_get_var(sideid, varid, binsplit%err))
-    end if
-
-
-  end subroutine read_binarysplit_side_nc
-
 
   subroutine read_binarysplit_side_h5(h5id, grpname, binsplit)
     integer(HID_T) :: h5id
@@ -4080,11 +3465,7 @@ CONTAINS
     INTEGER :: prop_start
     INTEGER :: prop_end
 
-    integer :: lb1,ub1,lb2,ub2
-
-    logical :: foundGroup
-    integer :: grpid, sideid
-    integer :: var_id
+    integer :: lb1,ub1,lb2,ub2 
 
     prop_bound = 0
     prop_type = 6
@@ -4104,21 +3485,6 @@ CONTAINS
        
        call h5_close(h5id)
     
-    elseif (prop_fileformat .eq. 2) then
-
-       call nc_findGroup(ncid_binarysplits, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
-
-       !write (*,*) "Reading Binarysplit-Group ", prop_cfilename
-
-       call nf90_check(nf90_get_att(grpid, NF90_GLOBAL, 'bin_split_mode', o%bin_split_mode))
-
-       call read_binarysplit_side_nc(grpid, 'left', o%eta_bs_l)
-       call read_binarysplit_side_nc(grpid, 'right', o%eta_bs_r)
-
-       if (.not. foundGroup) then
-          call nf90_check(nf90_close(grpid))
-       end if
-       
     else
 
        CALL unit_propagator
@@ -4276,9 +3642,6 @@ CONTAINS
     INTEGER, INTENT(in) :: tag
     INTEGER :: dummy,lb1,ub1,lb2,ub2
 
-    integer :: varid, grpid
-    logical :: foundGroup
-
     ! 5: result
     ! 0: no boundary
     CALL filename_propagator(5,0,tag,tag)
@@ -4299,26 +3662,6 @@ CONTAINS
        
        call h5_close(h5id)
        
-    elseif (prop_fileformat .eq. 2) then
-
-       !write (*,*) prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1)
-       call nc_findGroup(ncid_recon, prop_cfilename(1:len_trim(prop_cfilename)-len_trim(prop_cext)-1), grpid, foundGroup)
-
-       !write (*,*) "Reading NetCDF-Group ", prop_cfilename
-       call nc_inquire(grpid, 'flux_mr', varid, lb1, ub1, lb2, ub2)
-       if (allocated(flux_mr)) deallocate(flux_mr)
-       allocate(flux_mr(lb1:ub1,lb2:ub2))
-       call nf90_check(nf90_get_var(grpid, varid, flux_mr))
-
-       call nc_inquire(grpid, 'flux_pl', varid, lb1, ub1, lb2, ub2)
-       if (allocated(flux_pl)) deallocate(flux_pl)
-       allocate(flux_pl(lb1:ub1,lb2:ub2))
-       call nf90_check(nf90_get_var(grpid, varid, flux_pl))
-
-       if (.not. foundGroup) then
-          call nf90_check(nf90_close(grpid))
-       end if
-    
     else
        OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
             form=prop_format,action='read')
@@ -4357,6 +3700,7 @@ CONTAINS
     INTEGER :: lb1,ub1,lb2,ub2
 
     INTEGER :: ierr_join
+    INTEGER :: iparallel_storage
     LOGICAL :: parallel_storage
 
 
@@ -4367,15 +3711,8 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_N               
     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N1
 
-    ! --- NetCDF ---
-    character(len=100) :: prop_cfilename_nc
-    integer :: grpid, var_source_m_N, var_source_p_N, var_source_m_N1, var_source_p_0
-    integer :: var_flux_mr, var_flux_pl
-    integer :: ncid_taginfo
-    integer :: iparallel_storage
-    logical :: exists
-    ! ---
-
+    CHARACTER(len=100) :: prop_cfilename_h5
+ 
     ! read the information about tags
 
     if (prop_fileformat .eq. 1) then
@@ -4390,18 +3727,7 @@ CONTAINS
        parallel_storage = (iparallel_storage .eq. 1)
        
        call h5_close(h5id)
-       
-    elseif (prop_fileformat .eq. 2) then
-       call nc_open(prop_ctaginfo_nc, ncid_taginfo)
-       
-       call nc_quickGet(ncid_taginfo, 'prop_write', prop_write)
-       call nc_quickGet(ncid_taginfo, 'tag_first', prop_first_tag)
-       call nc_quickGet(ncid_taginfo, 'tag_last', prop_last_tag)
-       call nc_quickGet(ncid_taginfo, 'parallel_storage', iparallel_storage)
-       
-       parallel_storage = (iparallel_storage .eq. 1)
-       
-       call nf90_check(nf90_close(ncid_taginfo))
+
     else
        CALL unit_propagator
        OPEN(unit=prop_unit,file=prop_ctaginfo,status='old', &
@@ -4517,26 +3843,14 @@ CONTAINS
     CALL filename_propagator(5,0,prop_last_tag,prop_last_tag)
 
     if (prop_fileformat .eq. 1) then
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-       call h5_create(prop_cfilename_nc, h5id)
+       write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
+       call h5_create(prop_cfilename_h5, h5id)
 
        call h5_add(h5id, 'prop_last_tag', prop_last_tag)
        call h5_add(h5id, 'flux_mr', source_m_N, lbound(source_m_N), ubound(source_m_N))
        
        call h5_close(h5id)       
-       
-    elseif (prop_fileformat .eq. 2) then
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-       call nc_create(prop_cfilename_nc, ncid_recon)
-       grpid = ncid_recon
 
-       call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_last_tag', prop_last_tag))
-
-       call nc_define(grpid, 'flux_mr', source_m_N, var_flux_mr)
-
-       call nf90_check(nf90_enddef(ncid_recon))
-       call nf90_check(nf90_put_var(grpid, var_flux_mr, source_m_N))
-       call nf90_check(nf90_close(ncid_recon))
     else
        call unit_propagator
        open(unit=prop_unit,file=prop_cfilename,status='replace', &
@@ -4583,40 +3897,12 @@ CONTAINS
        CALL filename_propagator(5,0,N,N)
 
        if (prop_fileformat .eq. 1) then
-          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-          call h5_open_rw(prop_cfilename_nc, h5id)
+          write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
+          call h5_open_rw(prop_cfilename_h5, h5id)
 
           call h5_add(h5id, 'flux_pl', source_p_N, lbound(source_p_N), ubound(source_p_N))
           
           call h5_close(h5id)          
-       elseif (prop_fileformat .eq. 2) then
-          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-          call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
-          grpid = ncid_recon
-          if (.not. exists) then
-             write (*,*) "NetCDF-File does not exist, while expected"
-             call abort()
-             stop
-             !all nf90_check(nf90_def_dim(grpid, "flux_mr_dim1", size(source_p_N, 1), dimid2(1)))
-             !all nf90_check(nf90_def_dim(grpid, "flux_mr_dim2", size(source_p_N, 2), dimid2(2)))
-             !all nf90_check(nf90_def_var(grpid, "flux_mr", NF90_DOUBLE, dimid2, var_flux_mr))
-             !all nf90_check(nf90_put_att(grpid, var_flux_mr, 'lbound_1', lbound(source_p_N,1)))
-             !all nf90_check(nf90_put_att(grpid, var_flux_mr, 'ubound_1', ubound(source_p_N,1)))
-             !all nf90_check(nf90_put_att(grpid, var_flux_mr, 'lbound_2', lbound(source_p_N,2)))
-             !all nf90_check(nf90_put_att(grpid, var_flux_mr, 'ubound_2', ubound(source_p_N,2)))
-
-             !all nf90_check(nf90_enddef(ncid_recon))
-             !all nf90_check(nf90_put_var(grpid, var_flux_mr, source_p_N))
-             !all nf90_check(nf90_close(ncid_recon))
-          else
-
-             call nc_define(grpid, 'flux_pl', source_p_N, var_flux_pl)
-
-             call nf90_check(nf90_enddef(ncid_recon))
-             call nf90_check(nf90_put_var(grpid, var_flux_pl, source_p_N))
-             call nf90_check(nf90_close(ncid_recon))
-          end if
-
 
        else
 
@@ -4634,28 +3920,13 @@ CONTAINS
        
        if (prop_fileformat .eq. 1) then
 
-          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-          call h5_create(prop_cfilename_nc, h5id)
+          write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
+          call h5_create(prop_cfilename_h5, h5id)
 
           call h5_add(h5id, 'prop_last_tag', N - 1)
           call h5_add(h5id, 'flux_mr', source_m_N1, lbound(source_m_N1), ubound(source_m_N1))
 
           call h5_close(h5id)  
-          
-       elseif (prop_fileformat .eq. 2) then
-
-          write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-
-          call nf90_check(nf90_create(prop_cfilename_nc, nf90_hdf5, ncid_recon))
-          grpid = ncid_recon
-
-          call nf90_check(nf90_put_att(grpid, NF90_GLOBAL, 'prop_last_tag', N - 1))
-
-          call nc_define(grpid, 'flux_mr', source_m_N1, var_source_m_N1)
-                   
-          call nf90_check(nf90_enddef(ncid_recon))
-          call nf90_check(nf90_put_var(grpid, var_flux_mr, source_m_N1))
-          call nf90_check(nf90_close(ncid_recon))
           
        else
           CALL unit_propagator
@@ -4683,27 +3954,13 @@ CONTAINS
 
     if (prop_fileformat .eq. 1) then
 
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-       call h5_open_rw(prop_cfilename_nc, h5id)
+       write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
+       call h5_open_rw(prop_cfilename_h5, h5id)
 
        call h5_add(h5id, 'flux_pl', source_p_0, lbound(source_p_0), ubound(source_p_0))
        
        call h5_close(h5id)
-    
-    elseif (prop_fileformat .eq. 2) then
-       write(prop_cfilename_nc,'(100A)') trim(adjustl(prop_cfilename))
-       call nf90_createOrAppend(prop_cfilename_nc, ncid_recon, exists)
-       if (.not. exists) then
-          write (*,*) "NetCDF-File does not exist, while expected"
-          call abort()
-          stop
-       end if
-
-       call nc_define(grpid, 'flux_pl', source_p_0, var_flux_pl)
-
-       call nf90_check(nf90_enddef(ncid_recon))
-       call nf90_check(nf90_put_var(grpid, var_flux_pl, source_p_0))
-       call nf90_check(nf90_close(ncid_recon))
+ 
     else
        call unit_propagator
        open(unit=prop_unit,file=prop_cfilename,status='old', &
