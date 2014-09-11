@@ -195,7 +195,7 @@ SUBROUTINE ripple_solver(                                 &
   !***************************
   ! HDF5
   !***************************
-  integer(HID_T) :: h5id_final, h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
+  integer(HID_T) :: h5id_final_spitzer, h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
   integer(HID_T) :: h5id_phi_mfl, h5id_bhat_mfl, h5id_npassing
   integer(HID_T) :: h5id_dentf_p, h5id_dentf_m, h5id_enetf_p, h5id_enetf_m, h5id_spitf_p, h5id_spitf_m
   
@@ -2320,30 +2320,30 @@ call cpu_time(time1)
 
     if (prop_fileformat .eq. 1) then
 
-       call h5_create('propagatorfinal_' // trim(adjustl(propname)) // '.h5', h5id_final)
+       call h5_create('spitzer_' // trim(adjustl(propname)) // '.h5', h5id_final_spitzer)
        
        ! Create unlimited arrays in HDF5 file
        !call h5_create('phi_mesh_' // trim(adjustl(propname)) // '.h5', h5id_phi_mesh)
-       call h5_define_group(h5id_final, 'phi_mesh', h5id_phi_mesh)
+       call h5_define_group(h5id_final_spitzer, 'phi_mesh', h5id_phi_mesh)
        call h5_define_unlimited(h5id_phi_mesh, 'phi_mfl',  H5T_NATIVE_DOUBLE, h5id_phi_mfl)
        call h5_define_unlimited(h5id_phi_mesh, 'bhat_mfl', H5T_NATIVE_DOUBLE, h5id_bhat_mfl)
        call h5_define_unlimited(h5id_phi_mesh, 'npassing', H5T_NATIVE_DOUBLE, h5id_npassing)
 
-       !call h5_create('dentf_' // trim(adjustl(propname)) // '.h5', h5id_dentf)
-       call h5_define_group(h5id_final, 'dentf', h5id_dentf)
+       call h5_create('dentf_' // trim(adjustl(propname)) // '.h5', h5id_dentf)
+       !call h5_define_group(h5id_final, 'dentf', h5id_dentf)
        call h5_define_unlimited_matrix(h5id_dentf, 'dentf_p', H5T_NATIVE_DOUBLE, &
             & (/lag+1, 4, nplp1+1, -1/), h5id_dentf_p)
        call h5_define_unlimited_matrix(h5id_dentf, 'dentf_m', H5T_NATIVE_DOUBLE, &
             & (/lag+1, 4, nplp1+1, -1/), h5id_dentf_m)
 
-       !call h5_create('enetf_' // trim(adjustl(propname)) // '.h5', h5id_enetf)
-       call h5_define_group(h5id_final, 'enetf', h5id_enetf)
+       call h5_create('enetf_' // trim(adjustl(propname)) // '.h5', h5id_enetf)
+       !call h5_define_group(h5id_final, 'enetf', h5id_enetf)
        call h5_define_unlimited_matrix(h5id_enetf, 'enetf_p', H5T_NATIVE_DOUBLE, &
             & (/lag+1, 4, nplp1+1, -1/), h5id_enetf_p)
        call h5_define_unlimited_matrix(h5id_enetf, 'enetf_m', H5T_NATIVE_DOUBLE, &
             & (/lag+1, 4, nplp1+1, -1/), h5id_enetf_m)
 
-       call h5_define_group(h5id_final, 'spitf', h5id_spitf)
+       call h5_define_group(h5id_final_spitzer, 'spitf', h5id_spitf)
        !call h5_create('spitf_' // trim(adjustl(propname)) // '.h5', h5id_spitf)
        call h5_define_unlimited_matrix(h5id_spitf, 'spitf_p', H5T_NATIVE_DOUBLE, &
             & (/lag+1, 4, nplp1+1, -1/), h5id_spitf_p)
@@ -2429,9 +2429,9 @@ call cpu_time(time1)
     enddo
 !
     if (prop_fileformat .eq. 1) then
-       call h5_close_group(h5id_enetf)
+       call h5_close(h5id_enetf)
        call h5_close_group(h5id_spitf)
-       call h5_close_group(h5id_dentf)
+       call h5_close(h5id_dentf)
     else
        close(iunit_phi)
        close(iunit_dt_p)
@@ -2444,7 +2444,7 @@ call cpu_time(time1)
 !
     if (prop_fileformat .eq. 1) then
        !call h5_create('sizeplot_etalev_' // trim(adjustl(propname)) // '.h5', h5id_sizeplot)
-       call h5_define_group(h5id_final, 'sizeplot_etalev', h5id_sizeplot)
+       call h5_define_group(h5id_final_spitzer, 'sizeplot_etalev', h5id_sizeplot)
        call h5_add(h5id_sizeplot, 'lag', lag)
        call h5_add(h5id_sizeplot, 'nplp1', nplp1)
        call h5_add(h5id_sizeplot, 'icounter', icounter)
@@ -2452,7 +2452,7 @@ call cpu_time(time1)
        call h5_add(h5id_sizeplot, 'travis_convfac', travis_convfac )
        call h5_add(h5id_sizeplot, 'eta', eta(0:nplp1), lbound(eta(0:nplp1)), ubound(eta(0:nplp1)))
        call h5_close_group(h5id_sizeplot)
-       call h5_close(h5id_final)
+       call h5_close(h5id_final_spitzer)
     else
        open(iunit_sizes,file='sizeplot_etalev.'               &
             //trim(adjustl(propname))//'.dat')
