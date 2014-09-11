@@ -90,13 +90,13 @@ find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(SuiteSparseConfig_lib suitesparseconfig ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
-find_library(NetCDF_lib netcdf)
-find_library(NetCDFf_lib netcdff)
+#find_library(NetCDF_lib netcdf)
+#find_library(NetCDFf_lib netcdff)
 find_library(HDF5_lib hdf5 ${HDF5_DIR}/lib NO_DEFAULT_PATH)
 find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR}/lib NO_DEFAULT_PATH)
 find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR}/lib NO_DEFAULT_PATH)
 find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR}/lib NO_DEFAULT_PATH)
-set(NetCDF_dyn_lib -lnetcdf -lnetcdff -lhdf5)
+#set(NetCDF_dyn_lib -lnetcdff -lnetcdf)# -lhdf5)
 
 ### Source files
 include (CMakeSources.in)
@@ -116,11 +116,11 @@ target_link_libraries(${EXE_NAME}
         ${MyMPILib_lib}
         ${MPE_lib}
 	${MPI_lib}
-	${NetCDF_dyn_lib}
 	${HDF5HL_fortran_lib}
 	${HDF5HL_lib}
 	${HDF5_fortran_lib} 
-	${HDF5_lib}
+	${HDF5_lib} -lpthread -lz -lrt -lm 
+	#${NetCDF_dyn_lib}
 	${BLAS_lib}
 	#debug efence
         )

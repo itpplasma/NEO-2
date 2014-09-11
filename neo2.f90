@@ -25,9 +25,7 @@ PROGRAM neo2
        prop_diagnostic,prop_binary,                                 &
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
-       prop_reconstruct_levels,                                     &
-       ncid_propagators, prop_fileformat, mergeAllNCFiles,          &
-       ncid_binarysplits, ncid_propbounds, ncid_recon
+       prop_reconstruct_levels, prop_fileformat                                     
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
        mag_magfield,mag_nperiod_min,mag_save_memory,                &
@@ -50,13 +48,10 @@ PROGRAM neo2
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
 
-  ! --- NetCDF ---
-  USE nctools_module
-  USE netcdf
+  !************************************
+  ! HDF5
+  !************************************
   USE hdf5_tools_module
-  USE neo_input, ONLY: es
-  USE neo_exchange, ONLY: iota
-  ! ---
 
   IMPLICIT NONE
 
@@ -72,15 +67,11 @@ PROGRAM neo2
   include "version.f90"
   ! ---
 
-  ! ******** NetCDF **********
-  integer :: ncid_config
-  integer :: ncid_config_group
-  !integer :: k ! General purpose loop index
-  ! **************************
-
-  ! *********** HDF5 **********
-  integer(HID_T) :: h5_config_id, h5_config_group
-  ! ***************************
+  !************************************************
+  ! HDF5
+  !************************************************
+  integer(HID_T) :: h5_config_id
+  integer(HID_T) :: h5_config_group
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
@@ -155,7 +146,7 @@ PROGRAM neo2
        hphi_lim,                                                              &
        prop_write,prop_reconstruct,prop_ripple_plot,                          &
        prop_reconstruct_levels,                                               &
-       prop_fileformat, nco_path
+       prop_fileformat
   NAMELIST /plotting/                                                         &
        plot_gauss,plot_prop
   ! ---------------------------------------------------------------------------
@@ -263,8 +254,7 @@ PROGRAM neo2
   prop_join_ends = 0
   prop_fluxsplitmode = 1
   prop_write = 0
-  prop_fileformat = 0      ! 0... ACSII, 1... NetCDF
-  nco_path = '/usr/bin/'   ! Path to NCO Utils for merging NetCDF Files
+  prop_fileformat = 0      ! 0... ACSII, 1... HDF5
   prop_reconstruct = 0
   prop_ripple_plot = 0
   prop_reconstruct_levels = 0
@@ -275,8 +265,10 @@ PROGRAM neo2
   plot_gauss = 0
   plot_prop  = 0
 
+  !**********************************
+  ! Init HDF5 Fortran interface
+  !**********************************
   call h5_init()
-
 
   ! reading
   DO jf = 1,SIZE(fnames)
@@ -352,42 +344,12 @@ PROGRAM neo2
 #endif
   ! ---
 
-  ! ********************************************************
-  ! --- Write information about the run to a NetCDF file ---
+  !*********************************************************
+  ! Write information about the run to a HDF5 file
+  !*********************************************************
   if (mpro%isMaster()) then
-     if (prop_fileformat .eq. 2) then
-                   
-        call nc_create('neo2_configuration.nc', ncid_config, '1.0')
-        !call nc_defineGroup(ncid_results, 'neo2_configuration', ncid_config)
-        
-        call nc_defineGroup(ncid_config, 'settings', ncid_config_group)
-        call nc_quickAdd(ncid_config_group, 'phimi', phimi, 'Beginning of period', 'Rad')
-        call nc_quickAdd(ncid_config_group, 'nstep', nstep, 'Number of integration steps per period')
-        call nc_quickAdd(ncid_config_group, 'nperiod', nperiod, 'Number of periods')
-        call nc_quickAdd(ncid_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
-        call nc_quickAdd(ncid_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
-        call nc_quickAdd(ncid_config_group, 'boozer_s', boozer_s, 'Flux surface')
-
-        call nc_defineGroup(ncid_config, 'collision', ncid_config_group)
-        call nc_quickAdd(ncid_config_group, 'conl_over_mfp', conl_over_mfp, 'Collisionality parameter')
-        call nc_quickAdd(ncid_config_group, 'lag', lag, 'Number of Laguerre polynomials')
-        call nc_quickAdd(ncid_config_group, 'leg', leg, 'Number of Legendre polynomials')
-        call nc_quickAdd(ncid_config_group, 'legmax', legmax, 'Maximum number of Legendre polynomials')
-        call nc_quickAdd(ncid_config_group, 'z_eff', z_eff, 'Effective charge')
-        call nc_quickAdd(ncid_config_group, 'isw_lorentz', isw_lorentz, '')
-        call nc_quickAdd(ncid_config_group, 'isw_integral', isw_integral, '')
-        call nc_quickAdd(ncid_config_group, 'isw_energy', isw_energy, '')
-        call nc_quickAdd(ncid_config_group, 'isw_axisymm', isw_axisymm, '')
-
-        ! Not possible, Bug in NetCDF -> Another reason to change to HDF5
-        !call nc_quickAdd(ncid_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
-
-        call nc_defineGroup(ncid_config, 'binsplit', ncid_config_group)
-        call nc_quickAdd(ncid_config_group, 'bsfunc_local_err', bsfunc_local_err, '')
-
-        call nc_close(ncid_config)
-        
-     elseif (prop_fileformat .eq. 1) then
+       
+     if (prop_fileformat .eq. 1) then
 
         ! Write information about run to a HDF5 file
                 
@@ -420,8 +382,6 @@ PROGRAM neo2
      end if
   end if
   
-  ! ***********************************************
-
 
 !!$  ! ---------------------------------------------------------------------------
 !!$  ! test sparse solver
@@ -436,42 +396,11 @@ PROGRAM neo2
   IF (prop_reconstruct .EQ. 1) THEN
      PRINT *, 'Reconstruction run!'
 
-     ! --- NetCDF SUPPORT ---
-     if (prop_fileformat .eq. 1) then
-        write (*,*) "Opening NetCDF-Files for faster access..."
-        write (*,*) "Opening propagators.nc"
-        call nf90_check(nf90_open('propagators.nc', NF90_NOWRITE, ncid_propagators), optException = .false.)
-        write (*,*) "Opening propagators_boundaries.nc"
-        call nf90_check(nf90_open('propagators_boundaries.nc', NF90_NOWRITE, ncid_propbounds), optException = .false.)
-        write (*,*) "Opening binarysplits.nc"
-        call nf90_check(nf90_open('binarysplits.nc', NF90_NOWRITE, ncid_binarysplits), optException = .false.)
-        write (*,*) "Done!"
-     end if
-
      CALL reconstruct_prop_dist
-
-     ! --- NetCDF SUPPORT
-     if (prop_fileformat .eq. 1) then
-        call nf90_check(nf90_close(ncid_propagators), optException = .false.)
-        call nf90_check(nf90_close(ncid_propbounds), optException = .false.)
-        call nf90_check(nf90_close(ncid_binarysplits), optException = .false.)
-     end if
-
-     ! Call NCO utils to merge NetCDF files
-     !call mergeAllNCFiles()
 
      PRINT *, 'No further calculations!'
      STOP
   END IF
-
-
-  ! Preparations for reconstruction run 2
-  if (prop_reconstruct .eq. 2) then
-     if (prop_fileformat .eq. 1) then
-        ! Open NetCDF file for faster read access than opening and closing it in the loop over the propagators
-        call nf90_check(nf90_open('reconstructs.nc', NF90_NOWRITE, ncid_recon), optException = .false.)
-     end if
-  end if
 
   ! ---------------------------------------------------------------------------
   ! matrix elements
@@ -510,7 +439,9 @@ PROGRAM neo2
         uw = uw + 100
      END DO
 
-     ! --- MPI SUPPORT ---
+     !*******************************************
+     ! MPI Support
+     !*******************************************
 #if defined(MPI_SUPPORT)
      ! Every client has its own evolve.dat file, propably not the best solution yet
      write (globalstorage%evolveFilename, "(A, I3.3, A)"), 'evolve', mpro%getRank(), '.dat'
@@ -521,7 +452,6 @@ PROGRAM neo2
      open(uw,file='evolve.dat',status='replace')
      close(uw)
 #endif
-     ! ---
 
   END IF
 
@@ -618,20 +548,9 @@ PROGRAM neo2
   !   PRINT *, 'NOTHING TO COMPUTE'
   !END IF
 
-  ! Postprocessing of reconstruction run 2 (close NetCDF files)
-  ! --- NetCDF SUPPORT
-  if (prop_reconstruct .eq. 2) then
-     if (prop_fileformat .eq. 1) then
-        call nf90_check(nf90_close(ncid_recon), optException = .false.)
-     end if
-     ! ---
-  end if
-
-  !call mergeAllNCFiles()
-  ! ---
-
-  !end if
-  ! ---MPI SUPPORT ---
+  !*******************************************
+  ! MPI SUPPORT
+  !*******************************************
 #if defined(MPI_SUPPORT)
   ! Deinit MPI session
   call mpro%deinit()
