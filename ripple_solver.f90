@@ -2320,7 +2320,7 @@ call cpu_time(time1)
 
     if (prop_fileformat .eq. 1) then
 
-       call h5_create('propagator_final_' // trim(adjustl(propname)) // '.h5', h5id_final)
+       call h5_create('propagatorfinal_' // trim(adjustl(propname)) // '.h5', h5id_final)
        
        ! Create unlimited arrays in HDF5 file
        !call h5_create('phi_mesh_' // trim(adjustl(propname)) // '.h5', h5id_phi_mesh)
