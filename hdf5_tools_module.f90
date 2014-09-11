@@ -65,13 +65,17 @@ contains
     end if
   end subroutine h5_check
 
-  subroutine h5_create(filename, h5id, fileformat_version)
+  subroutine h5_create(filename, h5id, opt_fileformat_version)
     character(len=*)           :: filename
     integer(HID_T)             :: h5id
-    integer, optional          :: fileformat_version
+    integer, optional          :: opt_fileformat_version
 
-    if (.not. present(fileformat_version)) then
+    integer                    :: fileformat_version
+
+    if (.not. present(opt_fileformat_version)) then
        fileformat_version = 1
+    else
+       fileformat_version = opt_fileformat_version
     end if
 
     write (*,*) "Creating HDF-5 File: ", trim(filename)
@@ -168,7 +172,7 @@ contains
        if (maxdims(k) == -1) maxdims(k) = H5S_UNLIMITED_F
        if (maxdims(k) == -1) startdims(k)  = 1
     end do
-    write (*,*) "Defining chunk: ", startdims
+    !write (*,*) "Defining chunk: ", startdims
     call h5screate_simple_f(rank, startdims, dspaceid, h5error, maxdims)
     call h5pcreate_f(H5P_DATASET_CREATE_F, crp_list, h5error)
     call h5pset_chunk_f(crp_list, rank, startdims, h5error)
