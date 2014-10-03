@@ -4,7 +4,6 @@ PROGRAM neo2
 ! To compile the -cpp flag has to be added for c preprocessor
 #if defined(MPI_SUPPORT)
   USE mpiprovider_module
-  use scheduler_module, only: bufferSize, activateMPE, loadBalancing
   USE parallelstorage_module, ONLY : globalstorage
 #endif
 
@@ -351,6 +350,95 @@ PROGRAM neo2
 
 #endif
   ! ---
+  
+
+!!$  ! ---------------------------------------------------------------------------
+!!$  ! test sparse solver
+!!$  sparse_talk = .TRUE.
+!!$  sparse_solve_method = 1
+!!$  CALL sparse_example(2)
+!!$  STOP
+!!$  ! ---------------------------------------------------------------------------
+
+
+  ! RECONSTRUCTION RUN 1
+  IF (prop_reconstruct .EQ. 1) THEN
+     PRINT *, 'Reconstruction run!'
+
+     CALL reconstruct_prop_dist
+
+     PRINT *, 'No further calculations!'
+     STOP
+  END IF
+
+  ! ---------------------------------------------------------------------------
+  ! matrix elements
+  ! ---------------------------------------------------------------------------
+  !IF (isw_integral .EQ. 0 .AND. isw_energy .EQ. 0) THEN
+  !   isw_lorentz = 1
+  !END IF
+  if (isw_momentum .eq. 0) then ! Laguerre
+     CALL collop_construct
+     CALL collop_load
+     nvel = lag
+  elseif (isw_momentum .eq. 1) then ! Grid
+     nvel = vel_num
+     if (vel_distri_swi .eq. 0) then
+        CALL linspace(0.0_dp,vel_max,vel_num+1,vel_array)
+        !print *, 'vel_array ',lbound(vel_array,1),ubound(vel_array,1)
+        !print *, vel_array
+     else
+        print *, 'vel_distri_swi = ',vel_distri_swi,' not implemented!'
+        stop
+     end if
+  else
+     print *, 'isw_momentum = ',isw_momentum,' not implemented!'
+     stop
+  end if
+
+  ! ---------------------------------------------------------------------------
+  ! erase arrays
+  ! ---------------------------------------------------------------------------
+  IF (prop_reconstruct .EQ. 0) THEN
+     ! find free unit
+     uw = 100
+     DO
+        INQUIRE(unit=uw,opened=opened)
+        IF(.NOT. opened) EXIT
+        uw = uw + 100
+     END DO
+
+     !*******************************************
+     ! MPI Support
+     !*******************************************
+#if defined(MPI_SUPPORT)
+     ! Every client has its own evolve.dat file, propably not the best solution yet
+     write (globalstorage%evolveFilename, "(A, I3.3, A)"), 'evolve', mpro%getRank(), '.dat'
+     open(uw,file=globalstorage%evolveFilename, status='replace')
+     close(uw)
+#else
+     ! Sequential behaviour
+     open(uw,file='evolve.dat',status='replace')
+     close(uw)
+#endif
+
+  END IF
+
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
+  ! some settings
+  ! nmat=npart*npart
+  ndim=ndim0
+  ! allocation of some arrays (should be moved)
+  ! this part was not touched
+  ialloc=1
+  CALL kin_allocate(ialloc)
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
+  ! prepare the whole configuration
+  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
 
   !*********************************************************
   ! Write information about the run to a HDF5 file
@@ -460,109 +548,14 @@ PROGRAM neo2
         call h5_define_group(h5_config_id, 'plotting', h5_config_group)
         call h5_add(h5_config_group, 'plot_gauss', plot_gauss)
         call h5_add(h5_config_group, 'plot_prop', plot_prop)
-        call h5_close_group(h5_config_group)
-
-        call h5_define_group(h5_config_id, 'parallel', h5_config_group)
-        call h5_add(h5_config_group, 'bufferSize', bufferSize)
-        call h5_add(h5_config_group, 'activateMPE', activateMPE)
-        call h5_add(h5_config_group, 'loadBalancing', loadBalancing)
-        call h5_close_group(h5_config_group)
-        
+        call h5_close_group(h5_config_group)        
         
         call h5_close(h5_config_id)
         
      end if
   end if
+
   
-
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! test sparse solver
-!!$  sparse_talk = .TRUE.
-!!$  sparse_solve_method = 1
-!!$  CALL sparse_example(2)
-!!$  STOP
-!!$  ! ---------------------------------------------------------------------------
-
-
-  ! RECONSTRUCTION RUN 1
-  IF (prop_reconstruct .EQ. 1) THEN
-     PRINT *, 'Reconstruction run!'
-
-     CALL reconstruct_prop_dist
-
-     PRINT *, 'No further calculations!'
-     STOP
-  END IF
-
-  ! ---------------------------------------------------------------------------
-  ! matrix elements
-  ! ---------------------------------------------------------------------------
-  !IF (isw_integral .EQ. 0 .AND. isw_energy .EQ. 0) THEN
-  !   isw_lorentz = 1
-  !END IF
-  if (isw_momentum .eq. 0) then ! Laguerre
-     CALL collop_construct
-     CALL collop_load
-     nvel = lag
-  elseif (isw_momentum .eq. 1) then ! Grid
-     nvel = vel_num
-     if (vel_distri_swi .eq. 0) then
-        CALL linspace(0.0_dp,vel_max,vel_num+1,vel_array)
-        !print *, 'vel_array ',lbound(vel_array,1),ubound(vel_array,1)
-        !print *, vel_array
-     else
-        print *, 'vel_distri_swi = ',vel_distri_swi,' not implemented!'
-        stop
-     end if
-  else
-     print *, 'isw_momentum = ',isw_momentum,' not implemented!'
-     stop
-  end if
-
-  ! ---------------------------------------------------------------------------
-  ! erase arrays
-  ! ---------------------------------------------------------------------------
-  IF (prop_reconstruct .EQ. 0) THEN
-     ! find free unit
-     uw = 100
-     DO
-        INQUIRE(unit=uw,opened=opened)
-        IF(.NOT. opened) EXIT
-        uw = uw + 100
-     END DO
-
-     !*******************************************
-     ! MPI Support
-     !*******************************************
-#if defined(MPI_SUPPORT)
-     ! Every client has its own evolve.dat file, propably not the best solution yet
-     write (globalstorage%evolveFilename, "(A, I3.3, A)"), 'evolve', mpro%getRank(), '.dat'
-     open(uw,file=globalstorage%evolveFilename, status='replace')
-     close(uw)
-#else
-     ! Sequential behaviour
-     open(uw,file='evolve.dat',status='replace')
-     close(uw)
-#endif
-
-  END IF
-
-  ! ---------------------------------------------------------------------------
-
-  ! ---------------------------------------------------------------------------
-  ! some settings
-  ! nmat=npart*npart
-  ndim=ndim0
-  ! allocation of some arrays (should be moved)
-  ! this part was not touched
-  ialloc=1
-  CALL kin_allocate(ialloc)
-  ! ---------------------------------------------------------------------------
-
-  ! ---------------------------------------------------------------------------
-  ! prepare the whole configuration
-  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
-
   !if (mpro%isMaster() .and. prop_fileformat .eq. 1) then
   !  call nc_create('flux_surface.nc', ncid_config, '1.0')
   !
