@@ -4,6 +4,7 @@ PROGRAM neo2
 ! To compile the -cpp flag has to be added for c preprocessor
 #if defined(MPI_SUPPORT)
   USE mpiprovider_module
+  use scheduler_module, only: bufferSize, activateMPE, loadBalancing
   USE parallelstorage_module, ONLY : globalstorage
 #endif
 
@@ -47,7 +48,8 @@ PROGRAM neo2
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
-
+  use neo_control, only: in_file, inp_swi, lab_swi
+ 
   !************************************
   ! HDF5
   !************************************
@@ -72,6 +74,12 @@ PROGRAM neo2
   !************************************************
   integer(HID_T) :: h5_config_id
   integer(HID_T) :: h5_config_group
+  character(8)  :: date
+  character(10) :: time
+  character(50) :: datetimestring
+  double precision :: randomstamp
+  character(50) :: randomstamp_string
+  integer :: loopindex
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
@@ -348,19 +356,52 @@ PROGRAM neo2
   ! Write information about the run to a HDF5 file
   !*********************************************************
   if (mpro%isMaster()) then
-       
+     
      if (prop_fileformat .eq. 1) then
 
         ! Write information about run to a HDF5 file
                 
         call h5_create('neo2_config.h5', h5_config_id, 1)
+
+        call h5_define_group(h5_config_id, 'metadata', h5_config_group)
+        call h5_add(h5_config_group, 'NEO-2 Version', Neo2_Version)
+        call h5_add(h5_config_group, 'MPILib Version', MyMPILib_Version)
+
+        call date_and_time(date,time)
+        write (datetimestring, '(A, A)') date, time
+        call h5_add(h5_config_group, 'Timestamp', datetimestring)
+        call h5_close_group(h5_config_group)
+        
+        call h5_define_group(h5_config_id, 'neo', h5_config_group)
+        call h5_add(h5_config_group, 'in_file', in_file, 'Boozer file')
+        call h5_add(h5_config_group, 'lab_swi', lab_swi)
+        call h5_add(h5_config_group, 'inp_swi', lab_swi)
+        call h5_close_group(h5_config_group)
+        
         call h5_define_group(h5_config_id, 'settings', h5_config_group)
         call h5_add(h5_config_group, 'phimi', phimi, 'Beginning of period', 'Rad')
         call h5_add(h5_config_group, 'nstep', nstep, 'Number of integration steps per period', 'Rad')
         call h5_add(h5_config_group, 'nperiod', nperiod, 'Number of periods')
+        call h5_add(h5_config_group, 'mag_nperiod_min', mag_nperiod_min)
+        call h5_add(h5_config_group, 'mag_magfield', mag_magfield)
+        call h5_add(h5_config_group, 'boozer_theta_beg', boozer_theta_beg)
+        call h5_add(h5_config_group, 'boozer_phi_beg', boozer_phi_beg)
+        call h5_add(h5_config_group, 'mag_start_special', mag_start_special)
+        call h5_add(h5_config_group, 'mag_cycle_ripples', mag_cycle_ripples)
+        call h5_add(h5_config_group, 'mag_close_fieldline', mag_close_fieldline)
+        call h5_add(h5_config_group, 'aiota_tokamak', aiota_tokamak)
+        call h5_add(h5_config_group, 'eta_part_global', eta_part_global)
+        call h5_add(h5_config_group, 'eta_part_globalfac', eta_part_globalfac)
+        call h5_add(h5_config_group, 'eta_part_globalfac_p',eta_part_globalfac_p )
+        call h5_add(h5_config_group, 'eta_part_globalfac_t', eta_part_globalfac_t)
+        call h5_add(h5_config_group, 'eta_part_trapped',eta_part_trapped )
+        call h5_add(h5_config_group, 'eta_alpha_p', eta_alpha_p)
+        call h5_add(h5_config_group, 'eta_alpha_t', eta_alpha_t)
+        call h5_add(h5_config_group, 'sparse_solve_method', sparse_solve_method)
         call h5_add(h5_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
         call h5_add(h5_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
         call h5_add(h5_config_group, 'boozer_s', boozer_s, 'Flux surface')
+        call h5_close_group(h5_config_group)
 
         call h5_define_group(h5_config_id, 'collision', h5_config_group)
         call h5_add(h5_config_group, 'conl_over_mfp', conl_over_mfp, 'Collisionality parameter')
@@ -373,10 +414,61 @@ PROGRAM neo2
         call h5_add(h5_config_group, 'isw_energy', isw_energy, '')
         call h5_add(h5_config_group, 'isw_axisymm', isw_axisymm, '')
         call h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix') 
+        call h5_close_group(h5_config_group)
 
         call h5_define_group(h5_config_id, 'binsplit', h5_config_group)
+        call h5_add(h5_config_group, 'eta_s_lim', eta_s_lim)
+        call h5_add(h5_config_group, 'eta_part',eta_part )
+        call h5_add(h5_config_group, 'lambda_equi', lambda_equi)
+        call h5_add(h5_config_group, 'phi_split_mode', phi_split_mode)
+        call h5_add(h5_config_group, 'phi_place_mode', phi_place_mode)
+        call h5_add(h5_config_group, 'phi_split_min', phi_split_min)
+        call h5_add(h5_config_group, 'max_solver_try', max_solver_try)
+        call h5_add(h5_config_group, 'hphi_mult', hphi_mult)
+        call h5_add(h5_config_group, 'bin_split_mode', bin_split_mode)
+        call h5_add(h5_config_group, 'bsfunc_message', bsfunc_message)
+        call h5_add(h5_config_group, 'bsfunc_modelfunc', bsfunc_modelfunc)
         call h5_add(h5_config_group, 'bsfunc_local_err', bsfunc_local_err)
+        call h5_add(h5_config_group, 'bsfunc_min_distance',bsfunc_min_distance )
+        call h5_add(h5_config_group, 'bsfunc_max_index',bsfunc_max_index )
+        call h5_add(h5_config_group, 'bsfunc_max_splitlevel', bsfunc_max_splitlevel)
+        call h5_add(h5_config_group, 'bsfunc_sigma_mult',bsfunc_sigma_mult)
+        call h5_add(h5_config_group, 'bsfunc_sigma_min', bsfunc_sigma_min)
+        call h5_add(h5_config_group, 'bsfunc_local_solver', bsfunc_local_solver)
+        call h5_add(h5_config_group, 'mag_local_sigma',mag_local_sigma )
+        call h5_add(h5_config_group, 'bsfunc_divide', bsfunc_divide)
+        call h5_add(h5_config_group, 'mag_ripple_contribution', mag_ripple_contribution)
+        call h5_close_group(h5_config_group)
 
+        call h5_define_group(h5_config_id, 'propagator', h5_config_group)
+        call h5_add(h5_config_group, 'prop_diagphys', prop_diagphys)
+        call h5_add(h5_config_group, 'prop_overwrite', prop_overwrite)
+        call h5_add(h5_config_group, 'prop_diagnostic', prop_diagnostic)
+        call h5_add(h5_config_group, 'prop_binary', prop_binary)
+        call h5_add(h5_config_group, 'prop_timing', prop_timing)
+        call h5_add(h5_config_group, 'prop_join_ends',prop_join_ends )
+        call h5_add(h5_config_group, 'prop_fluxsplitmode', prop_fluxsplitmode)
+        call h5_add(h5_config_group, 'mag_talk', mag_talk)
+        call h5_add(h5_config_group, 'mag_infotalk',mag_infotalk )
+        call h5_add(h5_config_group, 'hphi_lim', hphi_lim)
+        call h5_add(h5_config_group, 'prop_write', prop_write)
+        call h5_add(h5_config_group, 'prop_reconstruct',prop_reconstruct )
+        call h5_add(h5_config_group, 'prop_fileformat',prop_fileformat )
+        call h5_add(h5_config_group, 'prop_ripple_plot',prop_ripple_plot )
+        call h5_close_group(h5_config_group)
+
+        call h5_define_group(h5_config_id, 'plotting', h5_config_group)
+        call h5_add(h5_config_group, 'plot_gauss', plot_gauss)
+        call h5_add(h5_config_group, 'plot_prop', plot_prop)
+        call h5_close_group(h5_config_group)
+
+        call h5_define_group(h5_config_id, 'parallel', h5_config_group)
+        call h5_add(h5_config_group, 'bufferSize', bufferSize)
+        call h5_add(h5_config_group, 'activateMPE', activateMPE)
+        call h5_add(h5_config_group, 'loadBalancing', loadBalancing)
+        call h5_close_group(h5_config_group)
+        
+        
         call h5_close(h5_config_id)
         
      end if
