@@ -310,9 +310,9 @@ contains
     lbounds(1) = 0
     ubounds(1) = 0
     
-    call h5aexists_f(h5id, 'lbounds', attr_exists, h5error)
+    call h5aexists_by_name_f(h5id, dataset, 'lbounds', attr_exists, h5error)
     if (attr_exists) call h5ltget_attribute_int_f(h5id, dataset,'lbounds', lbounds(1), h5error)
-    call h5aexists_f(h5id, 'ubounds', attr_exists, h5error)
+    call h5aexists_by_name_f(h5id, dataset, 'ubounds', attr_exists, h5error)
     if (attr_exists) call h5ltget_attribute_int_f(h5id, dataset,'ubounds', ubounds(1), h5error)
 
     lb1 = lbounds(1)
@@ -335,9 +335,9 @@ contains
     ubounds(1) = 0
     ubounds(2) = 0
     
-    call h5aexists_f(h5id, 'lbounds', attr_exists, h5error)
+    call h5aexists_by_name_f(h5id, dataset, 'lbounds', attr_exists, h5error)
     if (attr_exists) call h5ltget_attribute_int_f(h5id, dataset,'lbounds', lbounds, h5error)
-    call h5aexists_f(h5id, 'ubounds', attr_exists, h5error)
+    call h5aexists_by_name_f(h5id, dataset, 'ubounds', attr_exists, h5error)
     if (attr_exists) call h5ltget_attribute_int_f(h5id, dataset,'ubounds', ubounds, h5error)
 
     lb1 = lbounds(1)
