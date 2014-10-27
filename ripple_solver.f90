@@ -198,6 +198,10 @@ SUBROUTINE ripple_solver(                                 &
   integer(HID_T) :: h5id_final_spitzer, h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
   integer(HID_T) :: h5id_phi_mfl, h5id_bhat_mfl, h5id_npassing
   integer(HID_T) :: h5id_dentf_p, h5id_dentf_m, h5id_enetf_p, h5id_enetf_m, h5id_spitf_p, h5id_spitf_m
+
+  double precision, dimension(:), allocatable     :: phi_mfl_h5, bhat_mfl_h5, npassing_h5
+  double precision, dimension(:,:,:,:), allocatable :: dentf_p_h5, enetf_p_h5, spitf_p_h5
+  double precision, dimension(:,:,:,:), allocatable :: dentf_m_h5, enetf_m_h5, spitf_m_h5
   
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
   niter=10
@@ -2325,30 +2329,31 @@ call cpu_time(time1)
        ! Create unlimited arrays in HDF5 file
        !call h5_create('phi_mesh_' // trim(adjustl(propname)) // '.h5', h5id_phi_mesh)
        call h5_define_group(h5id_final_spitzer, 'phi_mesh', h5id_phi_mesh)
-       call h5_define_unlimited(h5id_phi_mesh, 'phi_mfl',  H5T_NATIVE_DOUBLE, h5id_phi_mfl)
-       call h5_define_unlimited(h5id_phi_mesh, 'bhat_mfl', H5T_NATIVE_DOUBLE, h5id_bhat_mfl)
-       call h5_define_unlimited(h5id_phi_mesh, 'npassing', H5T_NATIVE_DOUBLE, h5id_npassing)
+
+       !call h5_define_unlimited(h5id_phi_mesh, 'phi_mfl',  H5T_NATIVE_DOUBLE, h5id_phi_mfl)
+       !call h5_define_unlimited(h5id_phi_mesh, 'bhat_mfl', H5T_NATIVE_DOUBLE, h5id_bhat_mfl)
+       !call h5_define_unlimited(h5id_phi_mesh, 'npassing', H5T_NATIVE_DOUBLE, h5id_npassing)
 
        call h5_create('dentf_' // trim(adjustl(propname)) // '.h5', h5id_dentf)
        !call h5_define_group(h5id_final, 'dentf', h5id_dentf)
-       call h5_define_unlimited_matrix(h5id_dentf, 'dentf_p', H5T_NATIVE_DOUBLE, &
-            & (/lag+1, 4, nplp1+1, -1/), h5id_dentf_p)
-       call h5_define_unlimited_matrix(h5id_dentf, 'dentf_m', H5T_NATIVE_DOUBLE, &
-            & (/lag+1, 4, nplp1+1, -1/), h5id_dentf_m)
+       !call h5_define_unlimited_matrix(h5id_dentf, 'dentf_p', H5T_NATIVE_DOUBLE, &
+       !     & (/lag+1, 4, nplp1+1, -1/), h5id_dentf_p)
+       !call h5_define_unlimited_matrix(h5id_dentf, 'dentf_m', H5T_NATIVE_DOUBLE, &
+       !     & (/lag+1, 4, nplp1+1, -1/), h5id_dentf_m)
 
        call h5_create('enetf_' // trim(adjustl(propname)) // '.h5', h5id_enetf)
        !call h5_define_group(h5id_final, 'enetf', h5id_enetf)
-       call h5_define_unlimited_matrix(h5id_enetf, 'enetf_p', H5T_NATIVE_DOUBLE, &
-            & (/lag+1, 4, nplp1+1, -1/), h5id_enetf_p)
-       call h5_define_unlimited_matrix(h5id_enetf, 'enetf_m', H5T_NATIVE_DOUBLE, &
-            & (/lag+1, 4, nplp1+1, -1/), h5id_enetf_m)
+       !call h5_define_unlimited_matrix(h5id_enetf, 'enetf_p', H5T_NATIVE_DOUBLE, &
+       !     & (/lag+1, 4, nplp1+1, -1/), h5id_enetf_p)
+       !call h5_define_unlimited_matrix(h5id_enetf, 'enetf_m', H5T_NATIVE_DOUBLE, &
+       !     & (/lag+1, 4, nplp1+1, -1/), h5id_enetf_m)
 
        call h5_define_group(h5id_final_spitzer, 'spitf', h5id_spitf)
        !call h5_create('spitf_' // trim(adjustl(propname)) // '.h5', h5id_spitf)
-       call h5_define_unlimited_matrix(h5id_spitf, 'spitf_p', H5T_NATIVE_DOUBLE, &
-            & (/lag+1, 4, nplp1+1, -1/), h5id_spitf_p)
-       call h5_define_unlimited_matrix(h5id_spitf, 'spitf_m', H5T_NATIVE_DOUBLE, &
-            & (/lag+1, 4, nplp1+1, -1/), h5id_spitf_m)
+       !call h5_define_unlimited_matrix(h5id_spitf, 'spitf_p', H5T_NATIVE_DOUBLE, &
+       !     & (/lag+1, 4, nplp1+1, -1/), h5id_spitf_p)
+       !call h5_define_unlimited_matrix(h5id_spitf, 'spitf_m', H5T_NATIVE_DOUBLE, &
+       !     & (/lag+1, 4, nplp1+1, -1/), h5id_spitf_m)
        
     else
 
@@ -2369,6 +2374,29 @@ call cpu_time(time1)
             //trim(adjustl(propname))//'.dat')
     end if
     !
+
+    if (allocated(phi_mfl_h5))  deallocate(phi_mfl_h5)
+    if (allocated(bhat_mfl_h5)) deallocate(bhat_mfl_h5)
+    if (allocated(npassing_h5)) deallocate(npassing_h5)
+    allocate(phi_mfl_h5(iend-ibeg+1))
+    allocate(bhat_mfl_h5(iend-ibeg+1))
+    allocate(npassing_h5(iend-ibeg+1))
+
+    if (allocated(dentf_p_h5)) deallocate(dentf_p_h5)
+    if (allocated(spitf_p_h5)) deallocate(spitf_p_h5)
+    if (allocated(enetf_p_h5)) deallocate(enetf_p_h5)
+    if (allocated(dentf_m_h5)) deallocate(dentf_m_h5)
+    if (allocated(spitf_m_h5)) deallocate(spitf_m_h5)
+    if (allocated(enetf_m_h5)) deallocate(enetf_m_h5)
+    allocate(dentf_p_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+    allocate(spitf_p_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+    allocate(enetf_p_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+
+    allocate(dentf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+    allocate(spitf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+    allocate(enetf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+
+      
     do istep=ibeg,iend
       if(phi_mfl(istep).lt.phiplot.and.istep.ne.iend) cycle
       icounter=icounter+1
@@ -2377,9 +2405,9 @@ call cpu_time(time1)
       eta0=1.d0/bhat_mfl(istep)
       !
       if (prop_fileformat .eq. 1) then
-         call h5_append(h5id_phi_mfl,  phi_mfl(istep), icounter)
-         call h5_append(h5id_bhat_mfl, bhat_mfl(istep), icounter)
-         call h5_append(h5id_npassing, npassing, icounter)
+         phi_mfl_h5(icounter)  = phi_mfl(istep)
+         bhat_mfl_h5(icounter) = bhat_mfl(istep)
+         npassing_h5(icounter) = npassing
       else
          write (iunit_phi,*) phi_mfl(istep),npassing,bhat_mfl(istep)
       end if
@@ -2396,9 +2424,14 @@ call cpu_time(time1)
       enddo
       !
       if (prop_fileformat .eq. 1) then
-         call h5_append_double_4(h5id_dentf_p, fun_write(:,:,:,1), icounter)
-         call h5_append_double_4(h5id_spitf_p, fun_write(:,:,:,2)/surface_boozer_B00, icounter)         
-         call h5_append_double_4(h5id_enetf_p, fun_write(:,:,:,3), icounter)
+         !call h5_append_double_4(h5id_dentf_p, fun_write(:,:,:,1), icounter)
+         !call h5_append_double_4(h5id_spitf_p, fun_write(:,:,:,2)/surface_boozer_B00, icounter)         
+         !call h5_append_double_4(h5id_enetf_p, fun_write(:,:,:,3), icounter)
+
+         dentf_p_h5(:,:,:,icounter) = fun_write(:,:,:,1)
+         spitf_p_h5(:,:,:,icounter) = fun_write(:,:,:,2)/surface_boozer_B00
+         enetf_p_h5(:,:,:,icounter) = fun_write(:,:,:,3)
+
       else
          write(iunit_dt_p) fun_write(:,:,:,1)
          write(iunit_sp_p) fun_write(:,:,:,2)/surface_boozer_B00
@@ -2417,9 +2450,14 @@ call cpu_time(time1)
       enddo
       !
       if (prop_fileformat .eq. 1) then
-         call h5_append_double_4(h5id_dentf_m, fun_write(:,:,:,1), icounter)
-         call h5_append_double_4(h5id_spitf_m, fun_write(:,:,:,2)/surface_boozer_B00, icounter)         
-         call h5_append_double_4(h5id_enetf_m, fun_write(:,:,:,3), icounter)         
+         !call h5_append_double_4(h5id_dentf_m, fun_write(:,:,:,1), icounter)
+         !call h5_append_double_4(h5id_spitf_m, fun_write(:,:,:,2)/surface_boozer_B00, icounter)         
+         !call h5_append_double_4(h5id_enetf_m, fun_write(:,:,:,3), icounter)
+
+         dentf_m_h5(:,:,:,icounter) = fun_write(:,:,:,1)
+         spitf_m_h5(:,:,:,icounter) = fun_write(:,:,:,2)/surface_boozer_B00
+         enetf_m_h5(:,:,:,icounter) = fun_write(:,:,:,3)
+         
      else
          write(iunit_dt_m) fun_write(:,:,:,1)
          write(iunit_sp_m) fun_write(:,:,:,2)/surface_boozer_B00
@@ -2427,11 +2465,36 @@ call cpu_time(time1)
       end if
       !
     enddo
-!
+
     if (prop_fileformat .eq. 1) then
+       call h5_add(h5id_phi_mesh, 'phi_mfl',  phi_mfl_h5(1:icounter),  &
+            lbound(phi_mfl_h5(1:icounter)),  ubound(phi_mfl_h5(1:icounter)))
+       call h5_add(h5id_phi_mesh, 'bhat_mfl', bhat_mfl_h5(1:icounter), &
+            lbound(bhat_mfl_h5(1:icounter)), ubound(bhat_mfl_h5(1:icounter)))
+       call h5_add(h5id_phi_mesh, 'npassing', npassing_h5(1:icounter), &
+            lbound(npassing_h5(1:icounter)), ubound(npassing_h5(1:icounter)))
+
+       call h5_add(h5id_dentf, 'dentf_p', dentf_p_h5(:,:,:,1:icounter), &
+            lbound(dentf_p_h5(:,:,:,1:icounter)), ubound(dentf_p_h5(:,:,:,1:icounter)))
+       call h5_add(h5id_spitf, 'spitf_p', spitf_p_h5(:,:,:,1:icounter), &
+            lbound(spitf_p_h5(:,:,:,1:icounter)), ubound(spitf_p_h5(:,:,:,1:icounter)))
+       call h5_add(h5id_enetf, 'enetf_p', enetf_p_h5(:,:,:,1:icounter), &
+            lbound(enetf_p_h5(:,:,:,1:icounter)), ubound(enetf_p_h5(:,:,:,1:icounter)))
+
+       call h5_add(h5id_dentf, 'dentf_m', dentf_m_h5(:,:,:,1:icounter), &
+            lbound(dentf_m_h5(:,:,:,1:icounter)), ubound(dentf_m_h5(:,:,:,1:icounter)))
+       call h5_add(h5id_spitf, 'spitf_m', spitf_m_h5(:,:,:,1:icounter), &
+            lbound(spitf_m_h5(:,:,:,1:icounter)), ubound(spitf_m_h5(:,:,:,1:icounter)))
+       call h5_add(h5id_enetf, 'enetf_m', enetf_m_h5(:,:,:,1:icounter), &
+            lbound(enetf_m_h5(:,:,:,1:icounter)), ubound(enetf_m_h5(:,:,:,1:icounter)))
+
        call h5_close(h5id_enetf)
        call h5_close_group(h5id_spitf)
        call h5_close(h5id_dentf)
+
+       deallocate(phi_mfl_h5, bhat_mfl_h5, npassing_h5)
+       deallocate(dentf_p_h5, spitf_p_h5, enetf_p_h5)
+       deallocate(dentf_m_h5, spitf_m_h5, enetf_m_h5)
     else
        close(iunit_phi)
        close(iunit_dt_p)
@@ -2441,7 +2504,7 @@ call cpu_time(time1)
        close(iunit_et_p)
        close(iunit_et_m)
     end if
-!
+    !
     if (prop_fileformat .eq. 1) then
        !call h5_create('sizeplot_etalev_' // trim(adjustl(propname)) // '.h5', h5id_sizeplot)
        call h5_define_group(h5id_final_spitzer, 'sizeplot_etalev', h5id_sizeplot)
