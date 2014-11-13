@@ -196,6 +196,7 @@ SUBROUTINE ripple_solver(                                 &
   ! HDF5
   !***************************
   integer(HID_T) :: h5id_final_spitzer, h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
+  integer(HID_T) :: h5id_bhat_mfl
 
   !**********************************************************
   ! For faster read/write of whole HDF5 dataset
@@ -715,7 +716,7 @@ PRINT *,'right boundary layer ignored'
   ALLOCATE(qflux(3,3))
 
      PRINT *, 'propagator tag         ', fieldpropagator%tag
-solver_talk=0
+     solver_talk=0
   IF (solver_talk .EQ. 1) THEN
      PRINT *, ' '
      PRINT *, 'I am in ripple_solver'
@@ -740,13 +741,30 @@ solver_talk=0
      PRINT *, 'xetami,xetama          ', xetami,xetama
      PRINT *, 'rt0                    ', rt0
      PRINT *, 'collpar,conl_over_mfp  ', collpar,conl_over_mfp
+     
+     if (prop_fileformat .eq. 0) then
+        OPEN(123,file='bhat_mfl.dat')
+        DO i=ibeg,iend
+           WRITE(123,*) phi_mfl(i),bhat_mfl(i),geodcu_mfl(i),h_phi_mfl(i),dlogbdphi_mfl(i)
+        ENDDO
+        CLOSE(123)
 
-     OPEN(123,file='bhat_mfl.dat')
-     DO i=ibeg,iend
-        WRITE(123,*) phi_mfl(i),bhat_mfl(i),geodcu_mfl(i),h_phi_mfl(i),dlogbdphi_mfl(i)
-     ENDDO
-     CLOSE(123)
+     elseif (prop_fileformat .eq. 1) then
+        !**********************************************************
+        ! HDF5 of bhat_mfl
+        !**********************************************************
+        write(propname,*) fieldpropagator%tag
+        call h5_create('bhat_mfl_' // trim(adjustl(propname)) // '.h5', h5id_bhat_mfl)
 
+        call h5_add(h5id_bhat_mfl, 'phi_mfl', phi_mfl(ibeg:iend), lbound(phi_mfl), ubound(phi_mfl))
+        call h5_add(h5id_bhat_mfl, 'bhat_mfl', bhat_mfl(ibeg:iend), lbound(bhat_mfl), ubound(bhat_mfl))
+        call h5_add(h5id_bhat_mfl, 'geodcu_mfl', geodcu_mfl(ibeg:iend), lbound(geodcu_mfl), ubound(geodcu_mfl))
+        call h5_add(h5id_bhat_mfl, 'h_phi_mfl', h_phi_mfl(ibeg:iend), lbound(h_phi_mfl), ubound(h_phi_mfl))
+        call h5_add(h5id_bhat_mfl, 'dlogbdphi_mfl', dlogbdphi_mfl(ibeg:iend), lbound(dlogbdphi_mfl), ubound(dlogbdphi_mfl))
+
+        call h5_close(h5id_bhat_mfl)
+  end if
+     
      OPEN(123,file='eta.dat')
      DO i=0,ub_eta
         WRITE(123,*) phi_mfl(ibeg),eta(i)
@@ -1027,7 +1045,7 @@ solver_talk=0
         bvec_lapack(k,k)=1.d0
       ENDDO
 !
-      CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
+      CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)         
 !
 ! bvec_lapack(j,k) - contribution to the derivative of the distribution 
 ! function $\hat f^\sigma$ of the order j-1=0,1,2,3 at the boundary 
