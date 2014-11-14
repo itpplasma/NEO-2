@@ -73,13 +73,14 @@ module hdf5_tools_module
      module procedure h5_append_double_4
   end interface h5_append
 
+
 contains
 
   !**********************************************************
   ! Initialize HDF-5 Fortran interface
   !**********************************************************
   subroutine h5_init()
-    !write (*,*) "Initializing HDF-5 interface"
+    !write (*,*) "Initializing HDF5 interface"
     call h5open_f(h5error)
     call h5eset_auto_f(1, h5error)
   end subroutine h5_init
@@ -88,7 +89,7 @@ contains
   ! Deinitialize HDF-5 Fortran interface
   !**********************************************************
   subroutine h5_deinit()
-    write (*,*) "Deinitializing HDF-5 Interface"
+    !write (*,*) "Deinitializing HDF5 Interface"
     call h5close_f(h5error)
   end subroutine h5_deinit
 
@@ -119,7 +120,7 @@ contains
        fileformat_version = opt_fileformat_version
     end if
 
-    write (*,*) "Creating HDF-5 File: ", trim(filename)
+    !write (*,*) "Creating HDF5 file: ", trim(filename)
     call h5fcreate_f(filename, H5F_ACC_TRUNC_F, h5id, h5error)
     call h5_add(h5id, 'version', fileformat_version)
 
@@ -142,13 +143,13 @@ contains
     integer(HID_T)        :: h5id
     logical               :: f_exists
     
-    write (*,*) "Opening HDF-5 File: ", trim(filename)
+    !write (*,*) "Opening HDF5 File: ", trim(filename)
 
     inquire (file=filename, exist=f_exists)
     if (f_exists) then    
        call h5fopen_f(trim(filename), H5F_ACC_RDONLY_F, h5id, h5error)
     else
-       write (*,*) "File does not exists!"
+       write (*,*) "HDF5 file does not exists:", filename
        stop
     end if
   end subroutine h5_open
@@ -156,18 +157,23 @@ contains
   !**********************************************************
   ! Open file to read-write
   !**********************************************************
-  subroutine h5_open_rw(filename, h5id)
+  subroutine h5_open_rw(filename, h5id, opt_fileformat_version)
     character(len=*)      :: filename
     integer(HID_T)        :: h5id
     logical               :: f_exists
+    integer, optional     :: opt_fileformat_version
+    integer               :: fileformat_version
     
-    write (*,*) "Opening HDF-5 File: ", filename
+    !write (*,*) "Opening HDF5 File: ", filename
     inquire (file=filename, exist=f_exists)
     if (f_exists) then
        call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, h5id, h5error)
     else
-       write (*,*) "File does not exists!"
-       stop      
+       fileformat_version = 1
+       if (present(opt_fileformat_version)) fileformat_version = opt_fileformat_version
+       call h5_create(filename, h5id, fileformat_version)
+       !write (*,*) "File does not exists!"
+       !stop      
     end if
   end subroutine h5_open_rw
 
