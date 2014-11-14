@@ -26,6 +26,14 @@ module hdf5_tools_f2003_module
 
 contains
 
+  
+  subroutine h5_copy(h5id_src, srcname, h5id_dest, destname)
+    integer(HID_T)   :: h5id_src, h5id_dest
+    character(len=*) :: srcname, destname
+
+    call h5ocopy_f(h5id_src, srcname, h5id_dest, destname, h5error)
+  end subroutine h5_copy
+
   !**********************************************************
   ! Add long integer matrix. This function makes use of the
   ! HDF-5 Fortran 2003 interface, since the default HDF-5
