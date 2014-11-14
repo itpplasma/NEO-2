@@ -2325,11 +2325,11 @@ call cpu_time(time1)
 
     if (prop_fileformat .eq. 1) then
 
-       call h5_create('spitzer_' // trim(adjustl(propname)) // '.h5', h5id_final_spitzer)
+       !call h5_create('spitzer_' // trim(adjustl(propname)) // '.h5', h5id_final_spitzer)
        
        ! Create unlimited arrays in HDF5 file
-       !call h5_create('phi_mesh_' // trim(adjustl(propname)) // '.h5', h5id_phi_mesh)
-       call h5_define_group(h5id_final_spitzer, 'phi_mesh', h5id_phi_mesh)
+       call h5_create('phi_mesh_' // trim(adjustl(propname)) // '.h5', h5id_phi_mesh)
+       !call h5_define_group(h5id_final_spitzer, 'phi_mesh', h5id_phi_mesh)
 
        call h5_create('dentf_' // trim(adjustl(propname)) // '.h5', h5id_dentf)
        !call h5_define_group(h5id_final, 'dentf', h5id_dentf)
@@ -2337,8 +2337,8 @@ call cpu_time(time1)
        call h5_create('enetf_' // trim(adjustl(propname)) // '.h5', h5id_enetf)
        !call h5_define_group(h5id_final, 'enetf', h5id_enetf)
 
-       call h5_define_group(h5id_final_spitzer, 'spitf', h5id_spitf)
-       !call h5_create('spitf_' // trim(adjustl(propname)) // '.h5', h5id_spitf)
+       call h5_create('spitf_' // trim(adjustl(propname)) // '.h5', h5id_spitf)
+       !call h5_define_group(h5id_final_spitzer, 'spitf', h5id_spitf)
        
     else
 
@@ -2465,8 +2465,9 @@ call cpu_time(time1)
             lbound(enetf_m_h5(:,:,:,1:icounter)), ubound(enetf_m_h5(:,:,:,1:icounter)))
 
        call h5_close(h5id_enetf)
-       call h5_close_group(h5id_spitf)
+       !call h5_close_group(h5id_spitf)
        call h5_close(h5id_dentf)
+       call h5_close(h5id_spitf)
 
        deallocate(phi_mfl_h5, bhat_mfl_h5, npassing_h5)
        deallocate(dentf_p_h5, spitf_p_h5, enetf_p_h5)
@@ -2482,16 +2483,16 @@ call cpu_time(time1)
     end if
     !
     if (prop_fileformat .eq. 1) then
-       !call h5_create('sizeplot_etalev_' // trim(adjustl(propname)) // '.h5', h5id_sizeplot)
-       call h5_define_group(h5id_final_spitzer, 'sizeplot_etalev', h5id_sizeplot)
+       call h5_create('sizeplot_etalev_' // trim(adjustl(propname)) // '.h5', h5id_sizeplot)
+       !call h5_define_group(h5id_final_spitzer, 'sizeplot_etalev', h5id_sizeplot)
        call h5_add(h5id_sizeplot, 'lag', lag)
        call h5_add(h5id_sizeplot, 'nplp1', nplp1)
        call h5_add(h5id_sizeplot, 'icounter', icounter)
        call h5_add(h5id_sizeplot, 'collpar', collpar)
        call h5_add(h5id_sizeplot, 'travis_convfac', travis_convfac )
        call h5_add(h5id_sizeplot, 'eta', eta(0:nplp1), lbound(eta(0:nplp1)), ubound(eta(0:nplp1)))
-       call h5_close_group(h5id_sizeplot)
-       call h5_close(h5id_final_spitzer)
+       !call h5_close_group(h5id_sizeplot)
+       call h5_close(h5id_sizeplot)
     else
        open(iunit_sizes,file='sizeplot_etalev.'               &
             //trim(adjustl(propname))//'.dat')
