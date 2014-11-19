@@ -482,7 +482,10 @@ PROGRAM neo2
            if (ios .eq. 0) close(unit=1234, status='delete')
 
            open(unit=1234, iostat=ios, file="reconstruct_" // trim(h5_filename) // ".h5", status='old')
-        if (ios .eq. 0) close(unit=1234, status='delete')
+           if (ios .eq. 0) close(unit=1234, status='delete')
+
+           open(unit=1234, iostat=ios, file="binarysplit_" // trim(h5_filename) // ".h5", status='old')
+           if (ios .eq. 0) close(unit=1234, status='delete')
         end do
 
      end do
