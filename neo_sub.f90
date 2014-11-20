@@ -1347,7 +1347,14 @@ SUBROUTINE neo_read
      i_m =  - i_m
   ELSE IF  (lab_swi .EQ. 4) THEN         ! W7X file
      curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -
-     curr_tor = curr_tor * 2.d-7 
+     !**********************************************************
+     ! Patch from  TU Graz ITPcp Plasma- 20.11.2014
+     ! See mail from Winfried Kernbichler archived at
+     ! /proj/plasma/DOCUMENTS/Neo2/Archive/
+     !**********************************************************
+     ! curr_tor = curr_tor * 2.d-7      ! Before patch
+     curr_tor = - curr_tor * 2.d-7 
+
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
      i_n =  i_n * nfp
@@ -1365,7 +1372,14 @@ SUBROUTINE neo_read
      iota     = iota
   ELSE IF  (lab_swi .EQ. 6) THEN         ! NEW IPP, HSX
      curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -
-     curr_tor = curr_tor * 2.d-7 * nfp ! Henning  
+     !**********************************************************
+     ! Patch from  TU Graz ITPcp Plasma- 20.11.2014
+     ! See mail from Winfried Kernbichler archived at
+     ! /proj/plasma/DOCUMENTS/Neo2/Archive/
+     !**********************************************************
+     ! curr_tor = curr_tor * 2.d-7 * nfp ! Henning   ! Before patch
+     curr_tor = - curr_tor * 2.d-7         ! Henning
+
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
      i_n =  i_n * nfp
@@ -1381,7 +1395,14 @@ SUBROUTINE neo_read
      psi_pr = ABS(flux) / twopi * nfp
   ELSE IF  (lab_swi .EQ. 8) THEN         ! NEW IPP TOKAMAKK
      curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -
-     curr_tor = curr_tor * 2.d-7 * nfp ! Henning  
+     !**********************************************************
+     ! Patch from  TU Graz ITPcp Plasma- 20.11.2014
+     ! See mail from Winfried Kernbichler archived at
+     ! /proj/plasma/DOCUMENTS/Neo2/Archive/
+     !**********************************************************
+     ! curr_tor = curr_tor * 2.d-7 * nfp ! Henning   ! Before patch
+     curr_tor = - curr_tor * 2.d-7         ! Henning
+     
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
      i_n =  i_n * nfp
