@@ -29,6 +29,13 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
         #set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
         #set (CMAKE_Fortran_FLAGS_DEBUG "")
 
+	execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
+                    OUTPUT_VARIABLE GCC_VERSION)
+
+	string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
+        list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
+        list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
+
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
         #ifort -I/usr/local/openmpi-1.6.3-intel/include -I/usr/local/openmpi-1.6.3-intel/lib -L/usr/local/openmpi-1.6.3-intel/lib -lmpi_f90 -lmpi_f77 -lmpi -ldl -lm -lnuma -Wl,--export-$
@@ -41,6 +48,22 @@ elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
         #set (CMAKE_Fortran_FLAGS_DEBUG "")
 
 endif ()
+
+if (CMAKE_COMPILER_IS_GNUCC)
+    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
+                    OUTPUT_VARIABLE GCC_VERSION)
+    string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
+    list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
+    list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
+
+    message(STATUS ${GCC_MAJOR})
+    message(STATUS ${GCC_MINOR})
+endif()
+
+configure_file (
+  "${PROJECT_SOURCE_DIR}/version.f90.in"
+  "${PROJECT_SOURCE_DIR}/version.f90"
+  )
 
 set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
 set (CMAKE_Fortran_FLAGS_TEST "-O3 --coverage")
