@@ -386,7 +386,7 @@ PROGRAM neo2
      ! This might only work with gfortran
      !**********************************************************
      call getcwd(cwd)
-     write (surfname,*) trim(adjustl(cwd(index(cwd, '/', .true.)+1:)))
+     write (surfname,'(A)') trim(adjustl(cwd(index(cwd, '/', .true.)+1:)))
      write (*,*) "Using " // trim(adjustl(surfname)) // " as surfname."
 
      !**********************************************************
@@ -465,8 +465,8 @@ PROGRAM neo2
      open(unit=1234, iostat=ios, file="fulltransp.h5", status='old')
      if (ios .eq. 0) close(unit=1234, status='delete')
 
-     open(unit=1234, iostat=ios, file="neo2_config.h5", status='old')
-     if (ios .eq. 0) close(unit=1234, status='delete')
+     !open(unit=1234, iostat=ios, file="neo2_config.h5", status='old')
+     !if (ios .eq. 0) close(unit=1234, status='delete')
 
      open(unit=1234, iostat=ios, file="taginfo.h5", status='old')
      if (ios .eq. 0) close(unit=1234, status='delete')    
@@ -610,10 +610,28 @@ PROGRAM neo2
         call h5_define_group(h5_config_id, 'metadata', h5_config_group)
         call h5_add(h5_config_group, 'NEO-2 Version', Neo2_Version)
         call h5_add(h5_config_group, 'MPILib Version', MyMPILib_Version)
-
+        call h5_add(h5_config_group, 'CMake_Compiler', CMake_Compiler)
+        call h5_add(h5_config_group, 'CMake_Compiler_Version', CMake_Compiler_Version)
+        call h5_add(h5_config_group, 'CMake_Build_Type', CMake_Build_Type)
+        call h5_add(h5_config_group, 'CMake_Flags', CMake_Flags)
+        call h5_add(h5_config_group, 'CMake_Flags_Release', CMake_Flags_Release)
+        call h5_add(h5_config_group, 'CMake_Flags_Debug', CMake_Flags_Debug)
+        call h5_add(h5_config_group, 'CMake_System', CMake_System)
+        call h5_add(h5_config_group, 'CMake_SuiteSparse_Dir', CMake_SuiteSparse_Dir)
+        call h5_add(h5_config_group, 'CMake_Blas_Lib', CMake_Blas_Lib)
+        
         call date_and_time(date,time)
         write (datetimestring, '(A, A)') date, time
-        call h5_add(h5_config_group, 'Timestamp', datetimestring)
+        if (prop_reconstruct .eq.0) then
+           call h5_add(h5_config_group, 'Timestamp_start_0', datetimestring)
+           call h5_add(h5_config_group, 'Nodes_0', mpro%getNumProcs())
+        elseif (prop_reconstruct .eq.1) then
+           call h5_add(h5_config_group, 'Timestamp_start_1', datetimestring)
+           call h5_add(h5_config_group, 'Nodes_1', mpro%getNumProcs())
+        elseif (prop_reconstruct .eq.2) then
+           call h5_add(h5_config_group, 'Timestamp_start_2', datetimestring)
+           call h5_add(h5_config_group, 'Nodes_2', mpro%getNumProcs())
+        end if
         call h5_close_group(h5_config_group)
         
         call h5_define_group(h5_config_id, 'neo', h5_config_group)
