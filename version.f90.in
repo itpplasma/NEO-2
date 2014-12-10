@@ -1,0 +1,17 @@
+character(len=*), parameter :: CMake_Compiler = '@CMAKE_Fortran_COMPILER_ID@'
+character(len=*), parameter :: CMake_Compiler_Version = '@GCC_MAJOR@.@GCC_MINOR@'
+character(len=*), parameter :: CMake_Build_Type = '@CMAKE_BUILD_TYPE@'
+character(len=*), parameter :: CMake_Flags = '@CMAKE_Fortran_FLAGS@'
+character(len=*), parameter :: CMake_Flags_Release = '@CMAKE_Fortran_FLAGS_RELEASE@'
+character(len=*), parameter :: CMake_Flags_Debug = '@CMAKE_Fortran_FLAGS_DEBUG@'
+character(len=*), parameter :: CMake_System = '@CMAKE_SYSTEM@'
+character(len=*), parameter :: CMake_SuiteSparse_Dir = '@SUITESPARSE_DIR@'
+character(len=*), parameter :: CMake_Blas_Lib = '@BLAS_lib@'
+character(len=*), parameter :: Neo2_Version = '219060fe8b7907067e3ed44162059439d431aee2'
+character(len=*), parameter :: Neo2_Version_Additional = "WARNING, &
+&THERE ARE UNCOMMITTED CHANGES. Run may not be reproduceable: &
+&CMakeLists.txt &
+&Scripts/tag_version.sh &
+&hdf5_tools_module.f90 &
+&neo2.f90 &
+&"
