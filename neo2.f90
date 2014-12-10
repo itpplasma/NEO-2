@@ -61,13 +61,16 @@ PROGRAM neo2
 
   LOGICAL :: opened
 
-  ! --- MPI SUPPORT ---
+  !**********************************************************
+  ! Filenames for parallel version
+  !**********************************************************
   character(len=32) :: strEvolveFilename    ! This string is used to give every client an own evolve.dat file
-  ! ---
 
-  ! --- Version information (Git version) ---
+  !**********************************************************
+  ! Include version information
+  !**********************************************************
+  include "cmake_version.f90"
   include "version.f90"
-  ! ---
 
   !************************************************
   ! HDF5
