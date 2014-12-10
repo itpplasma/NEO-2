@@ -185,7 +185,7 @@ contains
     character(len=*)     :: grpname
     integer(HID_T)       :: h5grpid
 
-    call h5gcreate_f(h5id, grpname, h5grpid, h5error)
+    call h5gcreate_f(h5id, trim(adjustl(grpname)), h5grpid, h5error)
     call h5_check()
   end subroutine h5_define_group
 
@@ -198,7 +198,7 @@ contains
     integer(HID_T)       :: h5id_grp
 
     !write (*,*) "Opening group ", grpname, "."
-    call h5gopen_f(h5id, trim(grpname), h5id_grp, h5error)
+    call h5gopen_f(h5id, trim(adjustl(grpname)), h5id_grp, h5error)
     call h5_check()
   end subroutine h5_open_group
 
