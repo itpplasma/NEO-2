@@ -61,8 +61,8 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif()
 
 configure_file (
-  "${PROJECT_SOURCE_DIR}/version.f90.in"
-  "${PROJECT_SOURCE_DIR}/version.f90"
+  "${PROJECT_SOURCE_DIR}/cmake_version.f90.in"
+  "${PROJECT_SOURCE_DIR}/cmake_version.f90"
   )
 
 set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
