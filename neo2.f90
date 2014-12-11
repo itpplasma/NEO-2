@@ -80,6 +80,9 @@ PROGRAM neo2
   character(8)  :: date
   character(10) :: time
   character(50) :: datetimestring
+  real(kind=dp) :: rand_num
+  character(6)  :: rand_hash
+  character(32) :: fieldname
 
   integer(HID_T)  :: h5id_taginfo, h5id_propfile, h5id_final, h5id_surf, h5id_neo2
   integer(HID_T)  :: h5id_propagators, h5id_prop
@@ -524,7 +527,49 @@ PROGRAM neo2
   IF (prop_reconstruct .EQ. 1) THEN
      PRINT *, 'Reconstruction run!'
 
+     !**********************************************************
+     ! If HDF5 is enabled, save information about run
+     !**********************************************************
+     if (mpro%isMaster() .and. prop_fileformat .eq. 1) then
+        call h5_open_rw('neo2_config.h5', h5_config_id)
+        call h5_open_group(h5_config_id, 'metadata', h5_config_group)
+
+        call random_number(rand_num)
+        write (rand_hash,'(Z6.6)') ceiling(16**6 * rand_num)
+
+        write (fieldname, '(A,I1)') "Run_", prop_reconstruct
+        call h5_add(h5_config_group, fieldname, rand_hash)
+
+        call date_and_time(date,time)
+        write (datetimestring, '(A, A)') date, time
+
+        write (fieldname, '(A,I1)') "Timestamp_start_", prop_reconstruct
+        call h5_add(h5_config_group, fieldname, datetimestring)
+        write (fieldname, '(A,I1)') "Nodes_", prop_reconstruct
+        call h5_add(h5_config_group, fieldname, mpro%getNumProcs())
+
+        call h5_close_group(h5_config_group)
+        call h5_close(h5_config_id)
+     end if
+     
      CALL reconstruct_prop_dist
+
+     !**********************************************************
+     ! If HDF5 is enabled, save runtime in file
+     !**********************************************************
+     if (mpro%isMaster() .and. prop_fileformat .eq. 1) then
+        call h5_open_rw('neo2_config.h5', h5_config_id)
+        call h5_open_group(h5_config_id, 'metadata', h5_config_group)
+
+        call date_and_time(date,time)
+        write (datetimestring, '(A, A)') date, time
+        write (fieldname, '(A,I1)') "Timestamp_stop_", prop_reconstruct
+        call h5_add(h5_config_group, fieldname, datetimestring)
+
+        call h5_close_group(h5_config_group)
+        call h5_close(h5_config_id)
+     end if
+        
 
      PRINT *, 'No further calculations!'
      STOP
@@ -602,12 +647,9 @@ PROGRAM neo2
   !*********************************************************
   ! Write information about the run to a HDF5 file
   !*********************************************************
-  if (mpro%isMaster()) then
+  if (mpro%isMaster() .and. prop_fileformat .eq. 1) then
      
-     if (prop_fileformat .eq. 1) then
-
-        ! Write information about run to a HDF5 file
-                
+     if (prop_reconstruct .eq. 0 ) then
         call h5_create('neo2_config.h5', h5_config_id, 1)
 
         call h5_define_group(h5_config_id, 'metadata', h5_config_group)
@@ -622,27 +664,14 @@ PROGRAM neo2
         call h5_add(h5_config_group, 'CMake_System', CMake_System)
         call h5_add(h5_config_group, 'CMake_SuiteSparse_Dir', CMake_SuiteSparse_Dir)
         call h5_add(h5_config_group, 'CMake_Blas_Lib', CMake_Blas_Lib)
-        
-        call date_and_time(date,time)
-        write (datetimestring, '(A, A)') date, time
-        if (prop_reconstruct .eq.0) then
-           call h5_add(h5_config_group, 'Timestamp_start_0', datetimestring)
-           call h5_add(h5_config_group, 'Nodes_0', mpro%getNumProcs())
-        elseif (prop_reconstruct .eq.1) then
-           call h5_add(h5_config_group, 'Timestamp_start_1', datetimestring)
-           call h5_add(h5_config_group, 'Nodes_1', mpro%getNumProcs())
-        elseif (prop_reconstruct .eq.2) then
-           call h5_add(h5_config_group, 'Timestamp_start_2', datetimestring)
-           call h5_add(h5_config_group, 'Nodes_2', mpro%getNumProcs())
-        end if
         call h5_close_group(h5_config_group)
-        
+
         call h5_define_group(h5_config_id, 'neo', h5_config_group)
         call h5_add(h5_config_group, 'in_file', in_file, 'Boozer file')
         call h5_add(h5_config_group, 'lab_swi', lab_swi)
         call h5_add(h5_config_group, 'inp_swi', lab_swi)
         call h5_close_group(h5_config_group)
-        
+
         call h5_define_group(h5_config_id, 'settings', h5_config_group)
         call h5_add(h5_config_group, 'phimi', phimi, 'Beginning of period', 'Rad')
         call h5_add(h5_config_group, 'nstep', nstep, 'Number of integration steps per period', 'Rad')
@@ -726,10 +755,34 @@ PROGRAM neo2
         call h5_add(h5_config_group, 'plot_gauss', plot_gauss)
         call h5_add(h5_config_group, 'plot_prop', plot_prop)
         call h5_close_group(h5_config_group)        
-        
+
         call h5_close(h5_config_id)
-        
+
      end if
+
+     !**********************************************************
+     ! Save timestamps
+     !**********************************************************
+     call h5_open_rw('neo2_config.h5', h5_config_id)
+     call h5_open_group(h5_config_id, 'metadata', h5_config_group)
+
+     call random_number(rand_num)
+     write (rand_hash,'(Z6.6)') ceiling(16**6 * rand_num)
+
+     write (fieldname, '(A,I1)') "Run_", prop_reconstruct
+     call h5_add(h5_config_group, fieldname, rand_hash)
+
+     call date_and_time(date,time)
+     write (datetimestring, '(A, A)') date, time
+
+     write (fieldname, '(A,I1)') "Timestamp_start_", prop_reconstruct
+     call h5_add(h5_config_group, fieldname, datetimestring)
+     write (fieldname, '(A,I1)') "Nodes_", prop_reconstruct
+     call h5_add(h5_config_group, fieldname, mpro%getNumProcs())
+
+     call h5_close_group(h5_config_group)
+     call h5_close(h5_config_id)
+
   end if
 
   
@@ -810,6 +863,26 @@ PROGRAM neo2
   !   PRINT *, 'NOTHING TO COMPUTE'
   !END IF
 
+  !**********************************************************
+  ! Save run time to HDF5 neo2_config file
+  !**********************************************************
+  if (mpro%isMaster()) then
+
+     if (prop_fileformat .eq. 1) then
+        call h5_open_rw('neo2_config.h5', h5_config_id)
+        call h5_open_group(h5_config_id, 'metadata', h5_config_group)
+
+        call date_and_time(date,time)
+        write (datetimestring, '(A, A)') date, time
+        write (fieldname, '(A,I1)') "Timestamp_stop_", prop_reconstruct
+        call h5_add(h5_config_group, fieldname, datetimestring)
+ 
+        call h5_close_group(h5_config_group)
+        call h5_close(h5_config_id)
+     end if
+
+  end if
+  
   !*******************************************
   ! MPI SUPPORT
   !*******************************************
