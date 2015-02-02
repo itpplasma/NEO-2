@@ -2484,6 +2484,7 @@ call cpu_time(time1)
 
        call h5_close(h5id_enetf)
        !call h5_close_group(h5id_spitf)
+       call h5_close(h5id_phi_mesh)
        call h5_close(h5id_dentf)
        call h5_close(h5id_spitf)
 
