@@ -1,5 +1,4 @@
-module hdf5_tools_module
-
+module hdf5_tools
   !**********************************************************
   ! Compilation of useful HDF-5 wrapper functions
   !**********************************************************
@@ -12,6 +11,16 @@ module hdf5_tools_module
   use h5lt
   implicit none
 
+  !**********************************************************
+  ! Definition of complex type
+  !**********************************************************
+  integer, parameter :: dpp = kind(1.0d0)
+  integer, parameter :: dcp=kind(complex(1.0_dpp,1.0_dpp))
+  type complex_t
+     real(kind=dpp) re  
+     real(kind=dpp) im
+  end type complex_t
+  
   !**********************************************************
   ! Records the error code of the HDF-5 functions
   !**********************************************************
@@ -29,6 +38,8 @@ module hdf5_tools_module
      module procedure h5_add_double_2
      module procedure h5_add_double_3
      module procedure h5_add_double_4
+     module procedure h5_add_double_5
+     module procedure h5_add_complex_2
      module procedure h5_add_string
      module procedure h5_add_logical
   end interface h5_add
@@ -44,6 +55,7 @@ module hdf5_tools_module
      module procedure h5_get_double_1
      module procedure h5_get_double_2
      module procedure h5_get_double_4
+     module procedure h5_get_double_4_hyperslab
   end interface h5_get
 
   !**********************************************************
@@ -73,7 +85,6 @@ module hdf5_tools_module
      module procedure h5_append_double_4
   end interface h5_append
 
-
 contains
 
   !**********************************************************
@@ -89,7 +100,7 @@ contains
   ! Deinitialize HDF-5 Fortran interface
   !**********************************************************
   subroutine h5_deinit()
-    !write (*,*) "Deinitializing HDF5 Interface"
+    !write (*,*) "Deinitializing HDF5 interface"
     call h5close_f(h5error)
   end subroutine h5_deinit
 
@@ -104,6 +115,14 @@ contains
     end if
   end subroutine h5_check
 
+  subroutine h5_disable_exceptions()
+    call h5eset_auto_f(0, h5error)
+  end subroutine h5_disable_exceptions
+
+ subroutine h5_enable_exceptions()
+    call h5eset_auto_f(1, h5error)
+  end subroutine h5_enable_exceptions
+  
   !**********************************************************
   ! Create file
   !**********************************************************
@@ -143,7 +162,7 @@ contains
     integer(HID_T)        :: h5id
     logical               :: f_exists
     
-    !write (*,*) "Opening HDF5 File: ", trim(filename)
+    !write (*,*) "Opening HDF5 file: ", trim(filename)
 
     inquire (file=filename, exist=f_exists)
     if (f_exists) then    
@@ -164,7 +183,7 @@ contains
     integer, optional     :: opt_fileformat_version
     integer               :: fileformat_version
     
-    !write (*,*) "Opening HDF5 File: ", filename
+    !write (*,*) "Opening HDF5 file: ", filename
     inquire (file=filename, exist=f_exists)
     if (f_exists) then
        call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, h5id, h5error)
@@ -238,6 +257,28 @@ contains
          h5error)
   end subroutine h5_get_objinfo
 
+  subroutine h5_obj_exists(h5id, name, exists)
+    integer(HID_T)       :: h5id
+    character(len=*)     :: name
+    logical              :: exists
+    integer              :: storage_type, nlinks, max_corder
+
+    call h5_disable_exceptions()
+    call h5gget_info_by_name_f(h5id, trim(name), &
+         storage_type, nlinks, max_corder, h5error)
+    exists = h5error .eq. 0
+    call h5_enable_exceptions()
+  end subroutine h5_obj_exists
+  
+  subroutine h5_write_opened_obj_count(h5id)
+    integer(HID_T)       :: h5id
+    integer(SIZE_T)      :: obj_count
+
+    call h5fget_obj_count_f(h5id, H5F_OBJ_ALL_F, obj_count, h5error)
+    write (*,*) "Opened HDF5 objects: ", obj_count
+    
+  end subroutine h5_write_opened_obj_count
+  
   !**********************************************************
   ! Define matrix with unlimited dimensions. Used for
   ! appending data with an unknown number of elements.
@@ -796,6 +837,50 @@ contains
 
     call h5_check()
   end subroutine h5_get_double_4
+
+ !**********************************************************
+  ! Get double 4-dim-matrix
+  !**********************************************************
+  subroutine h5_get_double_4_hyperslab(h5id, dataset, value, offset_par, count_par)
+    integer(HID_T)                        :: h5id
+    character(len=*)                      :: dataset
+    double precision, dimension(:,:,:,:)  :: value
+    integer,dimension(4)                  :: offset_par, count_par
+    integer(HSIZE_T), dimension(4)        :: offset, count, startout
+    integer(HSIZE_T), dimension(4)        :: dims
+    integer(HID_T)                        :: dset_id, dataspace, memspace
+    integer                               :: memrank = 4
+
+    offset = offset_par
+    count = count_par
+    dims = shape(value)
+    
+    call h5dopen_f(h5id, dataset, dset_id, h5error)
+    call h5dget_space_f(dset_id, dataspace, h5error)
+
+    call h5sselect_hyperslab_f(dataspace, H5S_SELECT_SET_F, &
+         offset, count, h5error)
+
+    call h5screate_simple_f(memrank, dims, memspace, h5error)
+
+    startout = (/0,0,0,0/)
+    call h5sselect_hyperslab_f(memspace, H5S_SELECT_SET_F, &
+         startout, count, h5error)
+
+    call H5dread_f(dset_id, H5T_NATIVE_DOUBLE, value, dims,h5error, &
+         memspace, dataspace)
+    call h5_check()
+
+    call h5sclose_f(dataspace, h5error)
+    call h5sclose_f(memspace, h5error)
+    call h5dclose_f(dset_id, h5error)
+    
+    !write (*,*) "Read", value
+    !write (*,*) "Shape", shape(value)
+    !write (*,*) "Dimns", offset, count, startout, dims
+    call h5_check()
+  end subroutine h5_get_double_4_hyperslab
+ 
   
   !**********************************************************
   ! Add double matrix
@@ -862,7 +947,7 @@ contains
   end subroutine h5_add_double_3
 
   !**********************************************************
-  ! Add 3-dim double matrix
+  ! Add 4-dim double matrix
   !**********************************************************
   subroutine h5_add_double_4(h5id, dataset, value, lbounds, ubounds, comment, unit)
     integer(HID_T)                              :: h5id
@@ -894,6 +979,126 @@ contains
   end subroutine h5_add_double_4  
   
   !**********************************************************
+  ! Add 5-dim double matrix
+  !**********************************************************
+  subroutine h5_add_double_5(h5id, dataset, value, lbounds, ubounds, comment, unit)
+    integer(HID_T)                              :: h5id
+    character(len=*)                            :: dataset
+    double precision, dimension(:,:,:,:,:)      :: value
+    integer, dimension(:)                       :: lbounds, ubounds
+    character(len=*), optional                  :: comment
+    character(len=*), optional                  :: unit
+    integer(HSIZE_T), dimension(:), allocatable :: dims
+    integer(SIZE_T)                             :: size
+    integer                                     :: rank = 5
+
+    allocate(dims(rank))
+    dims = ubounds - lbounds + 1
+    size = rank
+    call h5ltmake_dataset_double_f(h5id, dataset, rank, dims, value, h5error)
+    call h5ltset_attribute_int_f(h5id, dataset, 'lbounds', lbounds, size, h5error)
+    call h5ltset_attribute_int_f(h5id, dataset, 'ubounds', ubounds, size, h5error)   
+
+    if (present(comment)) then
+       call h5ltset_attribute_string_f(h5id, dataset, 'comment', comment, h5error)
+    end if
+    if (present(unit)) then
+       call h5ltset_attribute_string_f(h5id, dataset, 'unit', unit, h5error)
+    end if
+    deallocate(dims)
+    
+    call h5_check()
+  end subroutine h5_add_double_5
+
+  !**********************************************************
+  ! Add 2-dim complex double matrix
+  !**********************************************************
+  subroutine h5_add_complex_2(h5id, dataset, value, lbounds, ubounds, comment, unit)
+    integer(HID_T)                              :: h5id
+    character(len=*)                            :: dataset
+    complex(kind=dcp), dimension(:,:)           :: value
+    integer, dimension(:)                       :: lbounds, ubounds
+    character(len=*), optional                  :: comment
+    character(len=*), optional                  :: unit
+    integer(HSIZE_T), dimension(:), allocatable :: dims
+    integer(SIZE_T)                             :: size
+    integer                                     :: rank = 2
+    integer(SIZE_T)                             :: re_size, im_size, complex_t_size
+    integer(SIZE_T)                             :: offset
+    integer ::type_id
+    integer(HID_T) :: dspace_id, dset_id, dt1_id, dt2_id
+
+    !**********************************************************
+    ! Get sizes
+    !**********************************************************
+    call h5tget_size_f(H5T_NATIVE_DOUBLE, re_size, h5error)
+    call h5tget_size_f(H5T_NATIVE_DOUBLE, im_size, h5error)
+    complex_t_size = re_size + im_size
+
+    !**********************************************************
+    ! Create compound type
+    !**********************************************************
+    call h5tcreate_f(H5T_COMPOUND_F, complex_t_size, type_id, h5error)
+    offset = 0
+    call h5tinsert_f(type_id, 'real', offset, H5T_NATIVE_DOUBLE, h5error)
+    offset = offset + re_size
+    call h5tinsert_f(type_id, 'imag', offset, H5T_NATIVE_DOUBLE, h5error)
+
+    !**********************************************************
+    ! Get dimension of value to be stored
+    !**********************************************************
+    allocate(dims(rank))
+    dims = ubounds - lbounds + 1
+    size = rank
+
+    !**********************************************************
+    ! Create dataset
+    !**********************************************************
+    call h5screate_simple_f(rank, dims, dspace_id, h5error)
+    call h5dcreate_f(h5id, dataset, type_id, dspace_id, &
+         dset_id, h5error)
+
+    !**********************************************************
+    ! Create sub datasets
+    !**********************************************************
+    call h5tcreate_f(H5T_COMPOUND_F, re_size, dt1_id, h5error)
+    offset = 0
+    call h5tinsert_f(dt1_id, "real", offset, H5T_NATIVE_DOUBLE, h5error)
+    !
+    call h5tcreate_f(H5T_COMPOUND_F, im_size, dt2_id, h5error)
+    offset = 0
+    call h5tinsert_f(dt2_id, "imag", offset, H5T_NATIVE_DOUBLE, h5error)
+
+    !**********************************************************
+    ! Write data
+    !**********************************************************
+    call h5dwrite_f(dset_id, dt1_id, real(value),  dims, h5error)
+    call h5dwrite_f(dset_id, dt2_id, aimag(value), dims, h5error)
+
+    !**********************************************************
+    ! Set additional attributes
+    !**********************************************************
+    call h5ltset_attribute_int_f(h5id, dataset, 'lbounds', lbounds, size, h5error)
+    call h5ltset_attribute_int_f(h5id, dataset, 'ubounds', ubounds, size, h5error)  
+    
+    if (present(comment)) then
+       call h5ltset_attribute_string_f(h5id, dataset, 'comment', comment, h5error)
+    end if
+    if (present(unit)) then
+       call h5ltset_attribute_string_f(h5id, dataset, 'unit', unit, h5error)
+    end if
+    deallocate(dims)
+
+    call h5dclose_f(dset_id, h5error)
+    call h5sclose_f(dspace_id, h5error)
+    call h5tclose_f(type_id, h5error)
+    call h5tclose_f(dt1_id, h5error)
+    call h5tclose_f(dt2_id, h5error)
+    
+    call h5_check()
+  end subroutine h5_add_complex_2
+  
+  !**********************************************************
   ! Add string
   !**********************************************************
   subroutine h5_add_string(h5id, dataset, value, comment, unit)
@@ -914,4 +1119,4 @@ contains
     call h5_check()
   end subroutine h5_add_string
 
-end module hdf5_tools_module
+end module hdf5_tools
