@@ -52,8 +52,8 @@ PROGRAM neo2
   !************************************
   ! HDF5
   !************************************
-  USE hdf5_tools_module
-  USE hdf5_tools_f2003_module
+  USE hdf5_tools
+  USE hdf5_tools_f2003
 
   IMPLICIT NONE
 

@@ -42,7 +42,7 @@ SUBROUTINE ripple_solver(                                 &
   !*****************************
   ! HDF5
   !*****************************
-  USE hdf5_tools_module
+  USE hdf5_tools
   
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
