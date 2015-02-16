@@ -1,10 +1,10 @@
-module hdf5_tools_f2003_module
+module hdf5_tools_f2003
 
   !**********************************************************
   ! Include hdf5 module, hdf5 lite interface and
   ! ISO_C_BINDING for long-integer support
   !**********************************************************
-  use hdf5_tools_module
+  use hdf5_tools
   use ISO_C_BINDING
 
   implicit none
@@ -23,9 +23,7 @@ module hdf5_tools_f2003_module
      module procedure h5_add_int8_2
   end interface h5_add
 
-
 contains
-
   
   subroutine h5_copy(h5id_src, srcname, h5id_dest, destname)
     integer(HID_T)   :: h5id_src, h5id_dest
@@ -119,4 +117,4 @@ contains
 
   end subroutine h5_get_int8_2
     
-end module hdf5_tools_f2003_module
+end module hdf5_tools_f2003
