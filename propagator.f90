@@ -88,8 +88,8 @@ MODULE propagator_mod
   !****************************
   ! HDF5 Interface
   !****************************
-  use hdf5_tools_module
-  use hdf5_tools_f2003_module
+  use hdf5_tools
+  use hdf5_tools_f2003
 
   IMPLICIT NONE
   
