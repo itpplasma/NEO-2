@@ -1023,22 +1023,22 @@ contains
     integer(HSIZE_T), dimension(:), allocatable :: dims
     integer(SIZE_T)                             :: size
     integer                                     :: rank = 2
-    integer(SIZE_T)                             :: re_size, im_size, complex_t_size
+    integer(SIZE_T)                             :: re_size, im_size, t_size
     integer(SIZE_T)                             :: offset
-    integer ::type_id
-    integer(HID_T) :: dspace_id, dset_id, dt1_id, dt2_id
+    integer                                     :: type_id
+    integer(HID_T)                              :: dspace_id, dset_id, dt_re_id, dt_im_id
 
     !**********************************************************
     ! Get sizes
     !**********************************************************
     call h5tget_size_f(H5T_NATIVE_DOUBLE, re_size, h5error)
     call h5tget_size_f(H5T_NATIVE_DOUBLE, im_size, h5error)
-    complex_t_size = re_size + im_size
+    t_size = re_size + im_size
 
     !**********************************************************
     ! Create compound type
     !**********************************************************
-    call h5tcreate_f(H5T_COMPOUND_F, complex_t_size, type_id, h5error)
+    call h5tcreate_f(H5T_COMPOUND_F, t_size, type_id, h5error)
     offset = 0
     call h5tinsert_f(type_id, 'real', offset, H5T_NATIVE_DOUBLE, h5error)
     offset = offset + re_size
@@ -1055,25 +1055,24 @@ contains
     ! Create dataset
     !**********************************************************
     call h5screate_simple_f(rank, dims, dspace_id, h5error)
-    call h5dcreate_f(h5id, dataset, type_id, dspace_id, &
-         dset_id, h5error)
+    call h5dcreate_f(h5id, dataset, type_id, dspace_id, dset_id, h5error)
 
     !**********************************************************
     ! Create sub datasets
     !**********************************************************
-    call h5tcreate_f(H5T_COMPOUND_F, re_size, dt1_id, h5error)
+    call h5tcreate_f(H5T_COMPOUND_F, re_size, dt_re_id, h5error)
     offset = 0
-    call h5tinsert_f(dt1_id, "real", offset, H5T_NATIVE_DOUBLE, h5error)
-    !
-    call h5tcreate_f(H5T_COMPOUND_F, im_size, dt2_id, h5error)
+    call h5tinsert_f(dt_re_id, "real", offset, H5T_NATIVE_DOUBLE, h5error)
+    
+    call h5tcreate_f(H5T_COMPOUND_F, im_size, dt_im_id, h5error)
     offset = 0
-    call h5tinsert_f(dt2_id, "imag", offset, H5T_NATIVE_DOUBLE, h5error)
+    call h5tinsert_f(dt_im_id, "imag", offset, H5T_NATIVE_DOUBLE, h5error)
 
     !**********************************************************
     ! Write data
     !**********************************************************
-    call h5dwrite_f(dset_id, dt1_id, real(value),  dims, h5error)
-    call h5dwrite_f(dset_id, dt2_id, aimag(value), dims, h5error)
+    call h5dwrite_f(dset_id, dt_re_id, real(value),  dims, h5error)
+    call h5dwrite_f(dset_id, dt_im_id, aimag(value), dims, h5error)
 
     !**********************************************************
     ! Set additional attributes
@@ -1092,8 +1091,8 @@ contains
     call h5dclose_f(dset_id, h5error)
     call h5sclose_f(dspace_id, h5error)
     call h5tclose_f(type_id, h5error)
-    call h5tclose_f(dt1_id, h5error)
-    call h5tclose_f(dt2_id, h5error)
+    call h5tclose_f(dt_re_id, h5error)
+    call h5tclose_f(dt_im_id, h5error)
     
     call h5_check()
   end subroutine h5_add_complex_2
