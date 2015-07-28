@@ -1,0 +1,83 @@
+### SUPERLU ###
+set(SUPERLU_SRC_FILES
+        ${SUPERLU_F90}c_fortran_dgssv.c
+        ${SUPERLU_F90}c_fortran_zgssv.c
+)
+set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFLAGS} -I${SUPERLU_HDR}")
+set_source_files_properties(${SUPERLU_SRC_FILES} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
+
+### SUITESPARSE###
+set(SUITESPARSE_SRC_FILES
+        ${SUITESPARSE_F90}umf4_f77wrapper.c
+        ${SUITESPARSE_F90}umf4_f77zwrapper.c
+)
+set(SUITESPARSE_FLAGS "-I${SUITESPARSE_HDR}")
+set_source_files_properties(${SUITESPARSE_F90}umf4_f77wrapper.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
+set_source_files_properties(${SUITESPARSE_F90}umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
+
+### FGSL user-defined interface###
+set(FGSL_USERINTER_SRC_FILES
+        ./gsl_roots_routines_mod.f90
+	./gsl_integration_routines_mod.f90
+)
+set(FGSL_USERINTER_FLAGS "-I${FGSL_INC}")
+set_source_files_properties(${FGSL_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTER_FLAGS})
+
+### PSPLINE user-defined interface###
+set(PSPLINE_USERINTER_SRC_FILES
+        ./pspline_routines_mod.f90
+)
+set(PSPLINE_USERINTER_FLAGS "-I${PSPLINE_INC}")
+set_source_files_properties(${PSPLINE_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${PSPLINE_USERINTER_FLAGS})
+
+### NEO2 ###
+set(NEO2_SRC_FILES
+        ./field_divB0.f90
+        ./bdivfree.f90
+        ./spline5_RZ.f90
+        ./compute_aiota.f90
+        ./neo_modules.f90
+        ./nrutil.f90
+        ./inter_interfaces.f90
+        ./solve_system.f90
+        ./test_function.f90
+        ./spline_cof.f90
+        ./spline_int.f90
+        ./pspline.f90
+        ./neo_sub.f90
+        ./neo_magfie.f90
+        ./magfie.f90
+        ./neo_mod.f90
+        ./polleg.f90
+        ./collision_operator.f90
+        ./lapack_band.f90
+        ./sparse_mod.f90
+        ./binarysplit_mod.f90
+        ./magnetics.f90
+        ./device_mod.f90
+        ./mag_interface.f90
+        ./fluxsplitter.f90
+        ./propagator.f90
+        ./prodband.f90
+        ./mag.f90
+        ./flint.f90
+        ./kin_allocate.f90
+        ./rhs_kin.f90
+        ./magdata_for_particles.f90
+        ./rk4_kin.f90
+        ./ripple_solver.f90
+        ./ripple_solver_ArnoldiOrder1.f90
+        ./ripple_solver_ArnoldiOrder2.f90	
+        ./join_ripples_int.f90
+        ./join_ripples.f90
+        ./join_ends.f90
+        ./plot_distrf.f90
+        ./vvn_tok.f90
+        ./vvn_w7as.f
+        ./vvn_legendre.f
+	./lagxmm.f90
+###	./compute_resonance_conditions.f90
+	./neo_magfie_perturbation.f90
+        ./neo2.f90
+)
+set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS}")
