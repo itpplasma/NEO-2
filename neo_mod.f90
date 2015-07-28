@@ -64,7 +64,10 @@
     ! DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
     ! New Version - up to now only differential part
     DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: asource
-    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: anumm,denmm
+    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: anumm_ms
+    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: denmm_ms
+    DOUBLE PRECISION, DIMENSION(:,:),     POINTER     :: anumm
+    DOUBLE PRECISION, DIMENSION(:,:),     POINTER     :: denmm
     DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: ailmm
     DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
     !**********************************************************
