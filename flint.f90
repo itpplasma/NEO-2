@@ -812,7 +812,11 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   IF (isw_lorentz .EQ. 1 .OR. isw_momentum .EQ. 1) THEN
      lag_sigma = 0
      ! This is for the grid-version because anumm then is not allocated
-     IF (.NOT. ALLOCATED(anumm)) ALLOCATE(anumm(0:0,0:0))
+     !**********************************************************
+     ! anumm is now a pointer for the multispecies version
+     !**********************************************************
+     ! IF (.NOT. ALLOCATED(anumm)) ALLOCATE(anumm(0:0,0:0))
+     IF (.NOT. ASSOCIATED(anumm)) ALLOCATE(anumm(0:0,0:0))
      anumm(0,0) = 1.0_dp
   ELSE
      lag_sigma = lag

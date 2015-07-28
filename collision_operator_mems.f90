@@ -1,4 +1,5 @@
 module collop
+  use rkstep_mod, only : lag,leg,asource,anumm,denmm,ailmm,weightlag,anumm_ms, denmm_ms
 
   implicit none
   
@@ -19,14 +20,12 @@ module collop
   
   contains
     
-    subroutine collop_construct()
-      use rkstep_mod, only : lag,leg,asource,anumm,denmm,ailmm,weightlag
-      
-      if(allocated(anumm)) deallocate(anumm)
-      allocate(anumm(0:lag,0:lag,0:num_spec-1))
+    subroutine collop_construct()     
+      if(allocated(anumm_ms)) deallocate(anumm_ms)
+      allocate(anumm_ms(0:lag,0:lag,0:num_spec-1))
       !allocate(anumm(0:lag,0:lag))
-      if(allocated(denmm)) deallocate(denmm)
-      allocate(denmm(0:lag,0:lag,0:num_spec-1))
+      if(allocated(denmm_ms)) deallocate(denmm_ms)
+      allocate(denmm_ms(0:lag,0:lag,0:num_spec-1))
       !allocate(denmm(0:lag,0:lag))
       if(allocated(asource)) deallocate(asource)
       allocate(asource(0:lag,3))
@@ -36,9 +35,19 @@ module collop
       allocate(weightlag(3,0:lag))
     end subroutine collop_construct
 
+    subroutine collop_set_species(ispec)
+      integer :: ispec
+
+      write (*,*) "Setting species to ", ispec
+      anumm => anumm_ms(:,:,ispec)      
+      denmm => denmm_ms(:,:,ispec)
+    end subroutine collop_set_species
+    
     subroutine collop_load()
-      use rkstep_mod, only : lag,leg,asource,anumm,denmm,ailmm,weightlag
+
       
+      
+      call collop_set_species(0)
     end subroutine collop_load
 
     subroutine collop_unload()
