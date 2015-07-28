@@ -101,8 +101,6 @@ find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
 ### Source files (load external file)
 include (CMakeSources.txt)
 
-message(${FGSL_USERINTER_SRC_FILES})
-
 ### Define executable
 add_executable(${EXE_NAME}
 	${NEO2_SRC_FILES} 

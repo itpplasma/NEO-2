@@ -831,7 +831,7 @@ CONTAINS
     ! Nullify param0_ptr
     param0_ptr = c_null_ptr
     IF(C_ASSOCIATED(param0_ptr)) &
-         STOP '***Error*** in fint1d_param0_qag'
+         STOP '***Error*** in fint1d_param0_qagiu'
     !
     ! Initialize fgsl_function and workspace
     stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
