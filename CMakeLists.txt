@@ -90,15 +90,25 @@ find_library(pspline_lib pspline ${PSPLINE_LIB} NO_DEFAULT_PATH)
 find_library(gsl_lib gsl ${GSL_LIB} NO_DEFAULT_PATH)
 find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
 
+### HDF5
+set(HDF5_DIR /usr/lib/x86_64-linux-gnu/hdf5/serial/)
+include_directories(/usr/include/hdf5/serial/)
+find_library(HDF5_lib hdf5 ${HDF5_DIR} NO_DEFAULT_PATH)
+find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
+find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR} NO_DEFAULT_PATH)
+find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
+
 ### Source files (load external file)
 include (CMakeSources.txt)
+
+message(${FGSL_USERINTER_SRC_FILES})
 
 ### Define executable
 add_executable(${EXE_NAME}
 	${NEO2_SRC_FILES} 
   	${SUITESPARSE_SRC_FILES}
 	${SUPERLU_SRC_FILES}
-#	${FGSL_USERINTER_SRC_FILES}
+	${FGSL_USERINTER_SRC_FILES}
 #	${PSPLINE_USERINTER_SRC_FILES}
 )
 
@@ -111,6 +121,10 @@ target_link_libraries(${EXE_NAME}
         ${MyMPILib_lib}
         ${MPE_lib}
         ${MPI_lib}
+        ${HDF5HL_fortran_lib}
+        ${HDF5HL_lib}
+        ${HDF5_fortran_lib}
+        ${HDF5_lib} -lpthread -lz -lrt -lm 
 	blas
 	lapack
 	#debug efence

@@ -16,9 +16,9 @@ set(SUITESPARSE_F90 ${SUITESPARSE_DIR}F90/)
 
 set(METIS_PATH ${PROJLIBS}/metis-4.0)
 
-set(GSL_PATH ${PROJLIBS}GSL/gsl-1.16/LIB)
+set(GSL_PATH ${PROJLIBS}GSL_gcc-4.9.2/gsl-1.16/LIB)
 set(GSL_LIB ${GSL_PATH}/lib/)
-set(FGSL_PATH ${PROJLIBS}FGSL/fgsl-0.9.4/LIB)
+set(FGSL_PATH ${PROJLIBS}FGSL_gcc-4.9.2/fgsl-0.9.4/LIB)
 set(FGSL_LIB ${FGSL_PATH}/lib/)
 set(FGSL_INC ${FGSL_PATH}/include/gfortran/)
 
