@@ -29,8 +29,8 @@ module collop_definitions
   !**********************************************************
   ! Matrix size
   !**********************************************************
-  integer, parameter :: lagmax = 5
-  integer, parameter :: legmax = 5
+  integer :: lagmax
+  integer :: legmax
 
   !**********************************************************
   ! Integration settings
