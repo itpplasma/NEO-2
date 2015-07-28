@@ -49,7 +49,8 @@ set(NEO2_SRC_FILES
         ./magfie.f90
         ./neo_mod.f90
         ./polleg.f90
-        ./collision_operator.f90
+#        ./collision_operator.f90
+	./collision_operator_mems.f90    # Replaces collision_operator.f90
         ./lapack_band.f90
         ./sparse_mod.f90
         ./binarysplit_mod.f90
@@ -78,6 +79,9 @@ set(NEO2_SRC_FILES
 	./lagxmm.f90
 ###	./compute_resonance_conditions.f90
 	./neo_magfie_perturbation.f90
+	./collop_definitions.f90
+	./collop_compute.f90
+	./hdf5_tools.f90
         ./neo2.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS}")

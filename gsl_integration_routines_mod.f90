@@ -1,15 +1,26 @@
 !-----------------------------------------------------------------------------------------!
 ! module: gsl_integration_routines_mod                                                    !
-! author: Andreas F. Martitsch                                                            !
-! date: 23.01.2014                                                                        !
-! version: 0.1                                                                            !
+! authors: Andreas F. Martitsch, Gernot Kapper                                            !
+! date: 27.07.2015                                                                        !
+! version: 0.3                                                                            !
 ! description:                                                                            !
 ! Module gsl_integration_routines_mod provides routines for integrating 1d functions      !
 ! The numerical routines used here rely on the GNU Scientific Library (GSL).              !
 ! The C-interface between the GSL and the Fortran code is provided by FGSL                !
 ! (See http://www.lrz.de/services/software/mathematik/gsl/fortran/                        !
 ! for further information)                                                                !
+! changes: Global procedure pointers and wrapper-functions are replaced by internal       !
+! subroutines attached to the integration routines. This allows for a nested call of      !
+! integration routines from outside (e.g, 2d integration)                                 !
 !-----------------------------------------------------------------------------------------!
+
+!-----------------------------------------------------------------------------------------!
+! History                                                                                 !
+! 0.1 - Initial version                                                                   !
+! 0.2 - Support for 2D integration                                                        !
+! 0.3 - Added recursive keyword to functions for 2D integration                           !
+!-----------------------------------------------------------------------------------------!
+
 
 MODULE gsl_integration_routines_mod
   !
@@ -47,18 +58,20 @@ MODULE gsl_integration_routines_mod
        REAL(fgsl_double) :: x, param1
      END FUNCTION func1d_param1
   END INTERFACE
-  ! declare global procedure pointers (maybe there is a better solution)
-  PRIVATE func1d_param0_ptr_int_rout
-  PROCEDURE(func1d_param0), POINTER :: func1d_param0_ptr_int_rout => NULL()
-  PRIVATE func1d_param1_ptr_int_rout
-  PROCEDURE(func1d_param1), POINTER :: func1d_param1_ptr_int_rout => NULL()
+  ! This part is replaced by internal subroutines (01.04.2015)
+!!$  ! declare global procedure pointers (maybe there is a better solution)
+!!$  PRIVATE func1d_param0_ptr
+!!$  PROCEDURE(func1d_param0), POINTER :: func1d_param0_ptr => NULL()
+!!$  PRIVATE func1d_param1_ptr
+!!$  PROCEDURE(func1d_param1), POINTER :: func1d_param1_ptr => NULL()
   !
   ! Activate messages from root solver
   PUBLIC integration_solver_talk
   LOGICAL :: integration_solver_talk = .FALSE.
   !
-  ! Internal Fortran-to-C wrapper functions (public, because of c-binding)
-  PUBLIC f2c_wrapper_func1d_param0_int_rout, f2c_wrapper_func1d_param1_int_rout
+  ! This part is replaced by internal subroutines (01.04.2015)
+!!$  ! Internal Fortran-to-C wrapper functions (public, because of c-binding)
+!!$  PUBLIC f2c_wrapper_func1d_param0, f2c_wrapper_func1d_param1
   !
   ! Selection of test cases
   PUBLIC test_func1d_param0, test2_func1d_param0, test3_func1d_param0, &
@@ -95,48 +108,58 @@ MODULE gsl_integration_routines_mod
      MODULE PROCEDURE fint1d_param0_cquad, fint1d_param1_cquad
   END INTERFACE fint1d_cquad
   !
+  ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure for interval from x_low to infinity
+  PUBLIC fint1d_qagiu
+  PRIVATE fint1d_param0_qagiu, fint1d_param1_qagiu
+  INTERFACE fint1d_qagiu
+     MODULE PROCEDURE fint1d_param0_qagiu, fint1d_param1_qagiu
+  END INTERFACE fint1d_qagiu
+  !
+  
 CONTAINS
   !--------------------------------------------------------------------------------------!
-  ! Fortran-to-C wrapper function in order to guarantee interoperability between
-  ! Fortran and C
-  FUNCTION f2c_wrapper_func1d_param0_int_rout(x, params) BIND(c)
-    !
-    REAL(c_double), VALUE :: x
-    TYPE(c_ptr), VALUE :: params
-    REAL(c_double) :: f2c_wrapper_func1d_param0_int_rout
-    !
-    ! Check, whether C-pointer 'params' is not associated (no parameter passed)
-    IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0_int_rout'
-    !
-    ! Wrap user-specified function to a C-interoperable function
-    f2c_wrapper_func1d_param0_int_rout = func1d_param0_ptr_int_rout(x)
-    !
-  END FUNCTION f2c_wrapper_func1d_param0_int_rout
+  ! This part is replaced by internal subroutines (01.04.2015)
+!!$  ! Fortran-to-C wrapper function in order to guarantee interoperability between
+!!$  ! Fortran and C
+!!$  FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+!!$    !
+!!$    REAL(c_double), VALUE :: x
+!!$    TYPE(c_ptr), VALUE :: params
+!!$    REAL(c_double) :: f2c_wrapper_func1d_param0
+!!$    !
+!!$    ! Check, whether C-pointer 'params' is not associated (no parameter passed)
+!!$    IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
+!!$    !
+!!$    ! Wrap user-specified function to a C-interoperable function
+!!$    f2c_wrapper_func1d_param0 = func1d_param0_ptr(x)
+!!$    !
+!!$  END FUNCTION f2c_wrapper_func1d_param0
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
-  ! Fortran-to-C wrapper function in order to guarantee interoperability between
-  ! Fortran and C
-  FUNCTION f2c_wrapper_func1d_param1_int_rout(x, params) BIND(c)
-    !
-    REAL(c_double), VALUE :: x
-    TYPE(c_ptr), VALUE :: params
-    REAL(c_double) :: f2c_wrapper_func1d_param1_int_rout
-    !
-    REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
-    !
-    ! Check, whether C-pointer 'params' is associated
-    IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1_int_rout'
-    !
-    ! Cast C-pointer to the above-defined Fortran pointer
-    CALL C_F_POINTER(params, p)
-    ! Wrap user-specified function to a C-interoperable function
-    f2c_wrapper_func1d_param1_int_rout = func1d_param1_ptr_int_rout(x,p)
-    !
-  END FUNCTION f2c_wrapper_func1d_param1_int_rout
+  ! This part is replaced by internal subroutines (01.04.2015)
+!!$  ! Fortran-to-C wrapper function in order to guarantee interoperability between
+!!$  ! Fortran and C
+!!$  FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+!!$    !
+!!$    REAL(c_double), VALUE :: x
+!!$    TYPE(c_ptr), VALUE :: params
+!!$    REAL(c_double) :: f2c_wrapper_func1d_param1
+!!$    !
+!!$    REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
+!!$    !
+!!$    ! Check, whether C-pointer 'params' is associated
+!!$    IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
+!!$    !
+!!$    ! Cast C-pointer to the above-defined Fortran pointer
+!!$    CALL C_F_POINTER(params, p)
+!!$    ! Wrap user-specified function to a C-interoperable function
+!!$    f2c_wrapper_func1d_param1 = func1d_param1_ptr(x,p)
+!!$    !
+!!$  END FUNCTION f2c_wrapper_func1d_param1
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
-  FUNCTION fint1d_param0_qag(func1d_param0_user,x_low,x_up,epsabs,epsrel,sw_qag_rule)
+  RECURSIVE FUNCTION fint1d_param0_qag(func1d_param0_user,x_low,x_up,epsabs,epsrel,sw_qag_rule)
     !
     INTERFACE  
        FUNCTION func1d_param0_user(x)
@@ -165,10 +188,11 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! Associate global procedure pointer with user-specified function
-    func1d_param0_ptr_int_rout => func1d_param0_user
-    IF(.NOT. ASSOCIATED(func1d_param0_ptr_int_rout)) &
-         STOP '***Error*** in fint1d_param0_qag'
+    ! This part is replaced by internal subroutines (01.04.2015)
+!!$    ! Associate global procedure pointer with user-specified function
+!!$    func1d_param0_ptr => func1d_param0_user
+!!$    IF(.NOT. ASSOCIATED(func1d_param0_ptr)) &
+!!$         STOP '***Error*** in fint1d_param0_qag'
     !
     ! Nullify param0_ptr
     param0_ptr = c_null_ptr
@@ -176,7 +200,7 @@ CONTAINS
          STOP '***Error*** in fint1d_param0_qag'
     !
     ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0_int_rout, param0_ptr)
+    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
     integ_wk = fgsl_integration_workspace_alloc(limit)
     !
     ! Initialize solver 'fgsl_integration_qag' to use the function 'stdfunc' and
@@ -192,12 +216,28 @@ CONTAINS
     CALL fgsl_function_free(stdfunc)
     CALL fgsl_integration_workspace_free(integ_wk)
     !
+  CONTAINS
+    ! Fortran-to-C wrapper function in order to guarantee interoperability between
+    ! Fortran and C
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+      !
+      REAL(c_double), VALUE :: x
+      TYPE(c_ptr), VALUE :: params
+      REAL(c_double) :: f2c_wrapper_func1d_param0
+      !
+      ! Check, whether C-pointer 'params' is not associated (no parameter passed)
+      IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
+      !
+      ! Wrap user-specified function to a C-interoperable function
+      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
+      !
+    END FUNCTION f2c_wrapper_func1d_param0
   END FUNCTION fint1d_param0_qag
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! (parameter-valued input function)
-  FUNCTION fint1d_param1_qag(func1d_param1_user,param1,x_low,x_up,&
+  RECURSIVE FUNCTION fint1d_param1_qag(func1d_param1_user,param1,x_low,x_up,&
        epsabs,epsrel,sw_qag_rule)
     !
     INTERFACE  
@@ -228,18 +268,19 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! Associate global procedure pointer with user-specified function
-    func1d_param1_ptr_int_rout => func1d_param1_user
-    IF(.NOT. ASSOCIATED(func1d_param1_ptr_int_rout)) &
-         STOP '***Error*** in fint1d_param1_qag'
+    ! This part is replaced by internal subroutines (01.04.2015)
+!!$    ! Associate global procedure pointer with user-specified function
+!!$    func1d_param1_ptr => func1d_param1_user
+!!$    IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
+!!$         STOP '***Error*** in fint1d_param1_qag'
     !
     ! Get C-location of 'param1'
-    param1_ptr = c_loc(param1)
+    param1_ptr = c_LOC(param1)
     IF(.NOT. C_ASSOCIATED(param1_ptr)) &
          STOP '***Error*** in fint1d_param1_qag'
     !
     ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1_int_rout, param1_ptr)
+    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1, param1_ptr)
     integ_wk = fgsl_integration_workspace_alloc(limit)
     !
     ! Initialize solver 'fgsl_integration_qag' to use the function 'stdfunc' and
@@ -255,12 +296,32 @@ CONTAINS
     CALL fgsl_function_free(stdfunc)
     CALL fgsl_integration_workspace_free(integ_wk)
     !
+  CONTAINS
+    ! Fortran-to-C wrapper function in order to guarantee interoperability between
+    ! Fortran and C
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+      !
+      REAL(c_double), VALUE :: x
+      TYPE(c_ptr), VALUE :: params
+      REAL(c_double) :: f2c_wrapper_func1d_param1
+      !
+      REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
+      !
+      ! Check, whether C-pointer 'params' is associated
+      IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
+      !
+      ! Cast C-pointer to the above-defined Fortran pointer
+      CALL C_F_POINTER(params, p)
+      ! Wrap user-specified function to a C-interoperable function
+      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
+      !
+    END FUNCTION f2c_wrapper_func1d_param1
   END FUNCTION fint1d_param1_qag
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with singularities
-  FUNCTION fint1d_param0_qags(func1d_param0_user,x_low,x_up,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param0_qags(func1d_param0_user,x_low,x_up,epsabs,epsrel)
     !
     INTERFACE  
        FUNCTION func1d_param0_user(x)
@@ -287,10 +348,11 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! Associate global procedure pointer with user-specified function
-    func1d_param0_ptr_int_rout => func1d_param0_user
-    IF(.NOT. ASSOCIATED(func1d_param0_ptr_int_rout)) &
-         STOP '***Error*** in fint1d_param0_qags'
+    ! This part is replaced by internal subroutines (01.04.2015)
+!!$    ! Associate global procedure pointer with user-specified function
+!!$    func1d_param0_ptr => func1d_param0_user
+!!$    IF(.NOT. ASSOCIATED(func1d_param0_ptr)) &
+!!$         STOP '***Error*** in fint1d_param0_qags'
     !
     ! Nullify param0_ptr
     param0_ptr = c_null_ptr
@@ -298,7 +360,7 @@ CONTAINS
          STOP '***Error*** in fint1d_param0_qags'
     !
     ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0_int_rout, param0_ptr)
+    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
     integ_wk = fgsl_integration_workspace_alloc(limit)
     !
     ! Initialize solver 'fgsl_integration_qags' to use the function 'stdfunc' and
@@ -314,12 +376,28 @@ CONTAINS
     CALL fgsl_function_free(stdfunc)
     CALL fgsl_integration_workspace_free(integ_wk)
     !
+  CONTAINS
+    ! Fortran-to-C wrapper function in order to guarantee interoperability between
+    ! Fortran and C
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+      !
+      REAL(c_double), VALUE :: x
+      TYPE(c_ptr), VALUE :: params
+      REAL(c_double) :: f2c_wrapper_func1d_param0
+      !
+      ! Check, whether C-pointer 'params' is not associated (no parameter passed)
+      IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
+      !
+      ! Wrap user-specified function to a C-interoperable function
+      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
+      !
+    END FUNCTION f2c_wrapper_func1d_param0
   END FUNCTION fint1d_param0_qags
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with singularities (parameter-valued input function)
-  FUNCTION fint1d_param1_qags(func1d_param1_user,param1,x_low,x_up,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param1_qags(func1d_param1_user,param1,x_low,x_up,epsabs,epsrel)
     !
     INTERFACE  
        FUNCTION func1d_param1_user(x,param1)
@@ -347,18 +425,19 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! Associate global procedure pointer with user-specified function
-    func1d_param1_ptr_int_rout => func1d_param1_user
-    IF(.NOT. ASSOCIATED(func1d_param1_ptr_int_rout)) &
-         STOP '***Error*** in fint1d_param1_qags'
+    ! This part is replaced by internal subroutines (01.04.2015)
+!!$    ! Associate global procedure pointer with user-specified function
+!!$    func1d_param1_ptr => func1d_param1_user
+!!$    IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
+!!$         STOP '***Error*** in fint1d_param1_qags'
     !
     ! Get C-location of 'param1'
-    param1_ptr = c_loc(param1)
+    param1_ptr = c_LOC(param1)
     IF(.NOT. C_ASSOCIATED(param1_ptr)) &
          STOP '***Error*** in fint1d_param1_qags'
     !
     ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1_int_rout, param1_ptr)
+    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1, param1_ptr)
     integ_wk = fgsl_integration_workspace_alloc(limit)
     !
     ! Initialize solver 'fgsl_integration_qags' to use the function 'stdfunc' and
@@ -374,12 +453,32 @@ CONTAINS
     CALL fgsl_function_free(stdfunc)
     CALL fgsl_integration_workspace_free(integ_wk)
     !
+    CONTAINS
+    ! Fortran-to-C wrapper function in order to guarantee interoperability between
+    ! Fortran and C
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+      !
+      REAL(c_double), VALUE :: x
+      TYPE(c_ptr), VALUE :: params
+      REAL(c_double) :: f2c_wrapper_func1d_param1
+      !
+      REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
+      !
+      ! Check, whether C-pointer 'params' is associated
+      IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
+      !
+      ! Cast C-pointer to the above-defined Fortran pointer
+      CALL C_F_POINTER(params, p)
+      ! Wrap user-specified function to a C-interoperable function
+      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
+      !
+    END FUNCTION f2c_wrapper_func1d_param1
   END FUNCTION fint1d_param1_qags
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with known singular points
-  FUNCTION fint1d_param0_qagp(func1d_param0_user,pts,siz_pts,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param0_qagp(func1d_param0_user,pts,siz_pts,epsabs,epsrel)
     !
     INTERFACE  
        FUNCTION func1d_param0_user(x)
@@ -407,10 +506,11 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! Associate global procedure pointer with user-specified function
-    func1d_param0_ptr_int_rout => func1d_param0_user
-    IF(.NOT. ASSOCIATED(func1d_param0_ptr_int_rout)) &
-         STOP '***Error*** in fint1d_param0_qagp'
+    ! This part is replaced by internal subroutines (01.04.2015)
+!!$    ! Associate global procedure pointer with user-specified function
+!!$    func1d_param0_ptr => func1d_param0_user
+!!$    IF(.NOT. ASSOCIATED(func1d_param0_ptr)) &
+!!$         STOP '***Error*** in fint1d_param0_qagp'
     !
     ! Nullify param0_ptr
     param0_ptr = c_null_ptr
@@ -418,7 +518,7 @@ CONTAINS
          STOP '***Error*** in fint1d_param0_qagp'
     !
     ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0_int_rout, param0_ptr)
+    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
     integ_wk = fgsl_integration_workspace_alloc(limit)
     !
     ! Initialize solver 'fgsl_integration_qagp' to use the function 'stdfunc' and
@@ -434,12 +534,28 @@ CONTAINS
     CALL fgsl_function_free(stdfunc)
     CALL fgsl_integration_workspace_free(integ_wk)
     !
+  CONTAINS
+    ! Fortran-to-C wrapper function in order to guarantee interoperability between
+    ! Fortran and C
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+      !
+      REAL(c_double), VALUE :: x
+      TYPE(c_ptr), VALUE :: params
+      REAL(c_double) :: f2c_wrapper_func1d_param0
+      !
+      ! Check, whether C-pointer 'params' is not associated (no parameter passed)
+      IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
+      !
+      ! Wrap user-specified function to a C-interoperable function
+      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
+      !
+    END FUNCTION f2c_wrapper_func1d_param0
   END FUNCTION fint1d_param0_qagp
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with known singular points (parameter-valued input function)
-  FUNCTION fint1d_param1_qagp(func1d_param1_user,param1,pts,siz_pts,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param1_qagp(func1d_param1_user,param1,pts,siz_pts,epsabs,epsrel)
     !
     INTERFACE  
        FUNCTION func1d_param1_user(x,param1)
@@ -468,18 +584,19 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! Associate global procedure pointer with user-specified function
-    func1d_param1_ptr_int_rout => func1d_param1_user
-    IF(.NOT. ASSOCIATED(func1d_param1_ptr_int_rout)) &
-         STOP '***Error*** in fint1d_param1_qagp'
+    ! This part is replaced by internal subroutines (01.04.2015)
+!!$    ! Associate global procedure pointer with user-specified function
+!!$    func1d_param1_ptr => func1d_param1_user
+!!$    IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
+!!$         STOP '***Error*** in fint1d_param1_qagp'
     !
     ! Get C-location of 'param1'
-    param1_ptr = c_loc(param1)
+    param1_ptr = c_LOC(param1)
     IF(.NOT. C_ASSOCIATED(param1_ptr)) &
          STOP '***Error*** in fint1d_param1_qagp'
     !
     ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1_int_rout, param1_ptr)
+    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1, param1_ptr)
     integ_wk = fgsl_integration_workspace_alloc(limit)
     !
     ! Initialize solver 'fgsl_integration_qagp' to use the function 'stdfunc' and
@@ -495,11 +612,31 @@ CONTAINS
     CALL fgsl_function_free(stdfunc)
     CALL fgsl_integration_workspace_free(integ_wk)
     !
+  CONTAINS
+    ! Fortran-to-C wrapper function in order to guarantee interoperability between
+    ! Fortran and C
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+      !
+      REAL(c_double), VALUE :: x
+      TYPE(c_ptr), VALUE :: params
+      REAL(c_double) :: f2c_wrapper_func1d_param1
+      !
+      REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
+      !
+      ! Check, whether C-pointer 'params' is associated
+      IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
+      !
+      ! Cast C-pointer to the above-defined Fortran pointer
+      CALL C_F_POINTER(params, p)
+      ! Wrap user-specified function to a C-interoperable function
+      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
+      !
+    END FUNCTION f2c_wrapper_func1d_param1
   END FUNCTION fint1d_param1_qagp
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! CQUAD doubly-adaptive integration
-  FUNCTION fint1d_param0_cquad(func1d_param0_user,x_low,x_up,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param0_cquad(func1d_param0_user,x_low,x_up,epsabs,epsrel)
     !
     INTERFACE  
        FUNCTION func1d_param0_user(x)
@@ -527,10 +664,11 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! Associate global procedure pointer with user-specified function
-    func1d_param0_ptr_int_rout => func1d_param0_user
-    IF(.NOT. ASSOCIATED(func1d_param0_ptr_int_rout)) &
-         STOP '***Error*** in fint1d_param0_cquad'
+    ! This part is replaced by internal subroutines (01.04.2015)
+!!$    ! Associate global procedure pointer with user-specified function
+!!$    func1d_param0_ptr => func1d_param0_user
+!!$    IF(.NOT. ASSOCIATED(func1d_param0_ptr)) &
+!!$         STOP '***Error*** in fint1d_param0_cquad'
     !
     ! Nullify param0_ptr
     param0_ptr = c_null_ptr
@@ -538,7 +676,7 @@ CONTAINS
          STOP '***Error*** in fint1d_param0_cquad'
     !
     ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0_int_rout, param0_ptr)
+    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
     integ_cq = fgsl_integration_cquad_workspace_alloc(limit_cq)
     !
     ! Initialize solver 'fgsl_integration_cquad' to use the function 'stdfunc' and
@@ -555,11 +693,27 @@ CONTAINS
     CALL fgsl_function_free(stdfunc)
     CALL fgsl_integration_cquad_workspace_free(integ_cq)
     !
+  CONTAINS
+    ! Fortran-to-C wrapper function in order to guarantee interoperability between
+    ! Fortran and C
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+      !
+      REAL(c_double), VALUE :: x
+      TYPE(c_ptr), VALUE :: params
+      REAL(c_double) :: f2c_wrapper_func1d_param0
+      !
+      ! Check, whether C-pointer 'params' is not associated (no parameter passed)
+      IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
+      !
+      ! Wrap user-specified function to a C-interoperable function
+      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
+      !
+    END FUNCTION f2c_wrapper_func1d_param0
   END FUNCTION fint1d_param0_cquad
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! CQUAD doubly-adaptive integration (parameter-valued input function)
-  FUNCTION fint1d_param1_cquad(func1d_param1_user,param1,x_low,x_up,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param1_cquad(func1d_param1_user,param1,x_low,x_up,epsabs,epsrel)
     !
     INTERFACE  
        FUNCTION func1d_param1_user(x,param1)
@@ -588,18 +742,19 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! Associate global procedure pointer with user-specified function
-    func1d_param1_ptr_int_rout => func1d_param1_user
-    IF(.NOT. ASSOCIATED(func1d_param1_ptr_int_rout)) &
-         STOP '***Error*** in fint1d_param1_cquad'
+    ! This part is replaced by internal subroutines (01.04.2015)
+!!$    ! Associate global procedure pointer with user-specified function
+!!$    func1d_param1_ptr => func1d_param1_user
+!!$    IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
+!!$         STOP '***Error*** in fint1d_param1_cquad'
     !
     ! Get C-location of 'param1'
-    param1_ptr = c_loc(param1)
+    param1_ptr = c_LOC(param1)
     IF(.NOT. C_ASSOCIATED(param1_ptr)) &
          STOP '***Error*** in fint1d_param1_cquad'
     !
     ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1_int_rout, param1_ptr)
+    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1, param1_ptr)
     integ_cq = fgsl_integration_cquad_workspace_alloc(limit_cq)
     !
     ! Initialize solver 'fgsl_integration_cquad' to use the function 'stdfunc' and
@@ -616,7 +771,184 @@ CONTAINS
     CALL fgsl_function_free(stdfunc)
     CALL fgsl_integration_cquad_workspace_free(integ_cq)
     !
+  CONTAINS
+    ! Fortran-to-C wrapper function in order to guarantee interoperability between
+    ! Fortran and C
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+      !
+      REAL(c_double), VALUE :: x
+      TYPE(c_ptr), VALUE :: params
+      REAL(c_double) :: f2c_wrapper_func1d_param1
+      !
+      REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
+      !
+      ! Check, whether C-pointer 'params' is associated
+      IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
+      !
+      ! Cast C-pointer to the above-defined Fortran pointer
+      CALL C_F_POINTER(params, p)
+      ! Wrap user-specified function to a C-interoperable function
+      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
+      !
+    END FUNCTION f2c_wrapper_func1d_param1
   END FUNCTION fint1d_param1_cquad
+  !--------------------------------------------------------------------------------------!
+  !--------------------------------------------------------------------------------------!
+  ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure for interval from x_low to infinity
+  RECURSIVE FUNCTION fint1d_param0_qagiu(func1d_param0_user,x_low,epsabs,epsrel)
+    !
+    INTERFACE  
+       FUNCTION func1d_param0_user(x)
+         USE fgsl
+         REAL(fgsl_double) :: func1d_param0_user
+         REAL(fgsl_double) :: x
+       END FUNCTION func1d_param0_user
+    END INTERFACE
+    ! x_low: lower boundary, x_up: infinity
+    REAL(fgsl_double) :: x_low
+    ! epsabs: absolute error, epsrel: relative error
+    REAL(fgsl_double) :: epsabs, epsrel
+    REAL(fgsl_double), DIMENSION(2) :: fint1d_param0_qagiu
+    !
+    INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
+    REAL(fgsl_double) :: ra, rda ! result and absolute error
+    TYPE(fgsl_error_handler_t) :: std
+    INTEGER(fgsl_int) :: status
+    TYPE(fgsl_function) :: stdfunc
+    TYPE(fgsl_integration_workspace) :: integ_wk
+    TYPE(c_ptr) :: param0_ptr ! This pointer holds the C-location of user-specified
+    !                         ! parameter (here is no parameter specified -> c_null_ptr)
+    !
+    ! Turn off error handler
+    std = fgsl_set_error_handler_off()
+    !
+    ! This part is replaced by internal subroutines (01.04.2015)
+!!$    ! Associate global procedure pointer with user-specified function
+!!$    func1d_param0_ptr => func1d_param0_user
+!!$    IF(.NOT. ASSOCIATED(func1d_param0_ptr)) &
+!!$         STOP '***Error*** in fint1d_param0_qag'
+    !
+    ! Nullify param0_ptr
+    param0_ptr = c_null_ptr
+    IF(C_ASSOCIATED(param0_ptr)) &
+         STOP '***Error*** in fint1d_param0_qag'
+    !
+    ! Initialize fgsl_function and workspace
+    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
+    integ_wk = fgsl_integration_workspace_alloc(limit)
+    !
+    ! Initialize solver 'fgsl_integration_qag' to use the function 'stdfunc' and
+    ! the user-specified parameters
+    status = fgsl_integration_qagiu(stdfunc, x_low, &
+       epsabs, epsrel, limit, integ_wk, ra, rda)
+    !
+    ! Return the results (ra,rda)
+    fint1d_param0_qagiu(1) = ra
+    fint1d_param0_qagiu(2) = rda
+    !
+    ! Free memory
+    CALL fgsl_function_free(stdfunc)
+    CALL fgsl_integration_workspace_free(integ_wk)
+    !
+  CONTAINS
+    ! Fortran-to-C wrapper function in order to guarantee interoperability between
+    ! Fortran and C
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+      !
+      REAL(c_double), VALUE :: x
+      TYPE(c_ptr), VALUE :: params
+      REAL(c_double) :: f2c_wrapper_func1d_param0
+      !
+      ! Check, whether C-pointer 'params' is not associated (no parameter passed)
+      IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
+      !
+      ! Wrap user-specified function to a C-interoperable function
+      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
+      !
+    END FUNCTION f2c_wrapper_func1d_param0
+  END FUNCTION fint1d_param0_qagiu
+  !--------------------------------------------------------------------------------------!
+  !--------------------------------------------------------------------------------------!
+  ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure for interval from x_low to infinity
+  ! (parameter-valued input function)
+  RECURSIVE FUNCTION fint1d_param1_qagiu(func1d_param1_user,param1,x_low,&
+       epsabs,epsrel)
+    !
+    INTERFACE  
+       FUNCTION func1d_param1_user(x,param1)
+         USE fgsl
+         REAL(fgsl_double) :: func1d_param1_user
+         REAL(fgsl_double) :: x, param1
+       END FUNCTION func1d_param1_user
+    END INTERFACE
+    REAL(fgsl_double), TARGET :: param1
+    ! x_low: lower boundary, x_up: infinity
+    REAL(fgsl_double) :: x_low
+    ! epsabs: absolute error, epsrel: relative error
+    REAL(fgsl_double) :: epsabs, epsrel
+    REAL(fgsl_double), DIMENSION(2) :: fint1d_param1_qagiu
+    !
+    INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
+    REAL(fgsl_double) :: ra, rda ! result and absolute error
+    TYPE(fgsl_error_handler_t) :: std
+    INTEGER(fgsl_int) :: status
+    TYPE(fgsl_function) :: stdfunc
+    TYPE(fgsl_integration_workspace) :: integ_wk
+    TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of user-specified
+    !                         ! parameter
+    !
+    ! Turn off error handler
+    std = fgsl_set_error_handler_off()
+    !
+    ! This part is replaced by internal subroutines (01.04.2015)
+!!$    ! Associate global procedure pointer with user-specified function
+!!$    func1d_param1_ptr => func1d_param1_user
+!!$    IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
+!!$         STOP '***Error*** in fint1d_param1_qag'
+    !
+    ! Get C-location of 'param1'
+    param1_ptr = c_LOC(param1)
+    IF(.NOT. C_ASSOCIATED(param1_ptr)) &
+         STOP '***Error*** in fint1d_param1_qag'
+    !
+    ! Initialize fgsl_function and workspace
+    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1, param1_ptr)
+    integ_wk = fgsl_integration_workspace_alloc(limit)
+    !
+    ! Initialize solver 'fgsl_integration_qag' to use the function 'stdfunc' and
+    ! the user-specified parameters
+    status = fgsl_integration_qagiu(stdfunc, x_low, &
+       epsabs, epsrel, limit, integ_wk, ra, rda)
+    !
+    ! Return the results (ra,rda)
+    fint1d_param1_qagiu(1) = ra
+    fint1d_param1_qagiu(2) = rda
+    !
+    ! Free memory
+    CALL fgsl_function_free(stdfunc)
+    CALL fgsl_integration_workspace_free(integ_wk)
+    !
+  CONTAINS
+    ! Fortran-to-C wrapper function in order to guarantee interoperability between
+    ! Fortran and C
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+      !
+      REAL(c_double), VALUE :: x
+      TYPE(c_ptr), VALUE :: params
+      REAL(c_double) :: f2c_wrapper_func1d_param1
+      !
+      REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
+      !
+      ! Check, whether C-pointer 'params' is associated
+      IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
+      !
+      ! Cast C-pointer to the above-defined Fortran pointer
+      CALL C_F_POINTER(params, p)
+      ! Wrap user-specified function to a C-interoperable function
+      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
+      !
+    END FUNCTION f2c_wrapper_func1d_param1
+  END FUNCTION fint1d_param1_qagiu
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Test function without a parameter for 1d integrators
