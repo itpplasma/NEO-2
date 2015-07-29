@@ -1,6 +1,7 @@
 module collop
   use rkstep_mod, only : lag,leg,asource,anumm,denmm,ailmm,weightlag,anumm_ms, denmm_ms
   use collop_compute, only : compute_collop, m_d, m_C
+  use mpiprovider_module
 
   implicit none
   
@@ -29,7 +30,7 @@ module collop
       !**********************************************************
       ! Test configuration two species
       !**********************************************************
-      num_spec = 2
+      num_spec = mpro%getNumProcs()
       
       if(allocated(anumm_ms)) deallocate(anumm_ms)
       allocate(anumm_ms(0:lag,0:lag,0:num_spec-1))
