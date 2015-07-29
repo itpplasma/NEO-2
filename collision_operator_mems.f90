@@ -1,6 +1,6 @@
 module collop
   use rkstep_mod, only : lag,leg,asource,anumm,denmm,ailmm,weightlag,anumm_ms, denmm_ms
-  use collop_compute, only : compute_collop, m_d, m_C
+  use collop_compute, only : compute_collop, m_d, m_C, m_ele
   use mpiprovider_module
 
   implicit none
@@ -88,10 +88,15 @@ module collop
       end if
 
       if (mpro%getNumProcs() .ge. 3) then
-         write (*,*) "More than two species not yet supported"
-         stop
+         call collop_set_species(2, .false.)
+         call compute_collop('d', 'e' , m_d, m_ele, 1d0, 1d0, asource, weightlag, anumm, denmm, ailmm)     
       end if
 
+      if (mpro%getNumProcs() .ge. 4) then
+         write (*,*) "More than three species not yet supported"
+         stop
+      end if
+      
       !**********************************************************
       ! Swap sources for NEO-2 convention
       !**********************************************************
