@@ -837,7 +837,7 @@ CONTAINS
     stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
     integ_wk = fgsl_integration_workspace_alloc(limit)
     !
-    ! Initialize solver 'fgsl_integration_qag' to use the function 'stdfunc' and
+    ! Initialize solver 'fgsl_integration_qagiu' to use the function 'stdfunc' and
     ! the user-specified parameters
     status = fgsl_integration_qagiu(stdfunc, x_low, &
        epsabs, epsrel, limit, integ_wk, ra, rda)

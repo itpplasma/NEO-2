@@ -53,11 +53,10 @@ contains
     
   end subroutine init_collop
   
-  subroutine compute_sources(asource_s)
-    real(kind=dp), dimension(:,:) :: asource_s
-  
+  subroutine compute_sources(asource_s, weightlag_s)
+    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
     real(kind=dp), dimension(2) :: res_int
-    integer :: m, k
+    integer :: m, k, j
 
     write (*,*) "Computing sources..."
     
@@ -67,33 +66,50 @@ contains
     
     do k = 1, 3
        do m = 0, lagmax
-          res_int = fint1d_qagiu(integrand, 0d0, epsabs, epsrel)
+          res_int = fint1d_qagiu(am, 0d0, epsabs, epsrel)
           asource_s(m+1, k) = res_int(1)
        end do
     end do
 
     write (*,*) "Done."
+    write (*,*) "Computing weighting coefficients..."
+
+    do j = 1, 3
+       do m = 0, lagmax
+          write (*,*) j, m, lbound(weightlag_s), ubound(weightlag_s)
+          res_int = fint1d_qagiu(bm, 0d0, epsabs, epsrel)
+          weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int(1)
+       end do
+    end do   
+    
+    write (*,*) "Done."
 
     contains
 
-      function integrand(x)
-        real(kind=dp) :: x, integrand
+      function am(x)
+        real(kind=dp) :: x, am
 
-        integrand = pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi(m, x) * x**(2*k - 1 - 5*kdelta(3,k))
-      end function integrand
-     
-    function kdelta(a,b)
-      integer :: a, b
-      integer :: kdelta
+        am = pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi(m, x) * x**(2*k - 1 - 5*kdelta(3,k))
+      end function am
 
-      kdelta = 0
-      if (a .eq. b) kdelta = 1
-    end function kdelta
+      function bm(x)
+        real(kind=dp) :: x, bm
 
-  end subroutine compute_sources
+        bm = exp(-x**2) * x**(2*(j+1)-5*kdelta(3,j)) * phi(m,x)
+      end function bm
 
-  subroutine compute_lorentz(anumm_s)
-    real(kind=dp), dimension(:,:) :: anumm_s
+      function kdelta(a,b)
+        integer :: a, b
+        integer :: kdelta
+
+        kdelta = 0
+        if (a .eq. b) kdelta = 1
+      end function kdelta
+
+    end subroutine compute_sources
+
+    subroutine compute_lorentz(anumm_s)
+      real(kind=dp), dimension(:,:) :: anumm_s
     real(kind=dp), dimension(2) :: res_int
     integer :: m, mp
 
@@ -432,11 +448,11 @@ contains
 
   end subroutine write_collop
   
-  subroutine compute_collop(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, asource_s, anumm_s, denmm_s, ailmm_s)
+  subroutine compute_collop(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, asource_s, weightlag_s, anumm_s, denmm_s, ailmm_s)
     character(len=*) :: tag_a, tag_b
     real(kind=dp)    :: m_a0, m_b0
     real(kind=dp)    :: T_a0, T_b0
-    real(kind=dp), dimension(:,:) :: asource_s, anumm_s, denmm_s
+    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, anumm_s, denmm_s
     real(kind=dp), dimension(:,:,:) :: ailmm_s
 
     m_a = m_a0
@@ -446,7 +462,7 @@ contains
     
     call init_collop()
 
-    call compute_sources(asource_s)
+    call compute_sources(asource_s, weightlag_s)
     call compute_lorentz(anumm_s)
     call compute_energyscattering(denmm_s)
     call compute_integralpart(ailmm_s)
