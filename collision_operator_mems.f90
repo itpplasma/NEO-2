@@ -31,7 +31,8 @@ module collop
       ! Test configuration two species
       !**********************************************************
       num_spec = mpro%getNumProcs()
-      
+      !write (*,*) "Number of species ", num_spec
+
       if(allocated(anumm_ms)) deallocate(anumm_ms)
       allocate(anumm_ms(0:lag,0:lag,0:num_spec-1))
 
@@ -80,10 +81,17 @@ module collop
       !**********************************************************   
       call collop_set_species(0, .false.)
       call compute_collop('d', 'd' , m_d, m_d, 1d0, 1d0, asource, weightlag, anumm, denmm, ailmm)
-      
-      call collop_set_species(1, .false.)
-      call compute_collop('d', 'C' , m_d, m_C, 1d0, 1d0, asource, weightlag, anumm, denmm, ailmm)
-     
+
+      if (mpro%getNumProcs() .ge. 2) then
+         call collop_set_species(1, .false.)
+         call compute_collop('d', 'C' , m_d, m_C, 1d0, 1d0, asource, weightlag, anumm, denmm, ailmm)
+      end if
+
+      if (mpro%getNumProcs() .ge. 3) then
+         write (*,*) "More than two species not yet supported"
+         stop
+      end if
+
       !**********************************************************
       ! Swap sources for NEO-2 convention
       !**********************************************************
@@ -97,10 +105,10 @@ module collop
       weightlag(3,:) = asource_temp
       deallocate(asource_temp)
 
-      write (*,*) weightlag(1,:)
-      write (*,*) weightlag(2,:)
-      write (*,*) weightlag(3,:)
-      stop
+      !write (*,*) weightlag(1,:)
+      !write (*,*) weightlag(2,:)
+      !write (*,*) weightlag(3,:)
+      !stop
       
       !**********************************************************
       ! Set to main species
