@@ -76,7 +76,7 @@ contains
 
     do j = 1, 3
        do m = 0, lagmax
-          write (*,*) j, m, lbound(weightlag_s), ubound(weightlag_s)
+          !write (*,*) j, m, lbound(weightlag_s), ubound(weightlag_s)
           res_int = fint1d_qagiu(bm, 0d0, epsabs, epsrel)
           weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int(1)
        end do
