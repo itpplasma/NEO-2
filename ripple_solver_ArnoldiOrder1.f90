@@ -107,6 +107,12 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
        m_phi,  qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val
   !USE neo_precision, ONLY : PI
   !! End Modification by Andreas F. Martitsch (14.07.2015)
+  !! Modification by Andreas F. Martitsch (28.07.2015)
+  ! MPI SUPPORT for multi-species part
+  ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
+  USE mpiprovider_module
+  USE collop
+  !! Modification by Andreas F. Martitsch (28.07.2015)
   
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -283,6 +289,10 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   ! poloidal mode number
   INTEGER :: m_theta = 0 
   !! End Modifications by Andreas F. Martitsch (13.06.2014)
+  !! Modification by Andreas F. Martitsch (28.07.2015)
+  !  multi-species part
+  INTEGER :: ispec ! species index
+  !! Modification by Andreas F. Martitsch (28.07.2015)
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: ttmpfact
   DOUBLE COMPLEX :: fluxincompr,coefincompr
   LOGICAL :: colltest=.FALSE.
@@ -292,7 +302,18 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
 !  logical :: nobounceaver=.false.
 !
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
- 
+!
+  !! Modification by Andreas F. Martitsch (28.07.2015)
+  ! multi-species part - MPI rank determines species
+  ispec = mpro%getRank()
+  PRINT *,"Species: ", ispec
+  CALL collop_set_species(ispec)
+  !PRINT *,'asource: ',asource(:,1)
+  !PRINT *,'anumm:',anumm(1,:)
+  !PRINT *,'denmm:',denmm(1,:)
+  !STOP
+  !! Modification by Andreas F. Martitsch (28.07.2015)
+!
   niter=100       !maximum number of integral part iterations
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
   n_arnoldi=700      !maximum number of Arnoldi iterations
@@ -3812,6 +3833,12 @@ PRINT *,' '
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 !
     CALL  remap_rc(nz,nz_sq,irow,icol,amat_sp)
+!!$    OPEN(unit=280715,file='amat_sp.dat')
+!!$    DO k=1,nz_sq
+!!$       WRITE(280715,*) irow(k),icol(k),REAL(amat_sp(k))
+!!$    END DO
+!!$    CLOSE(unit=280715)
+!!$    STOP
 !
     PRINT *,'system size = ',n_2d_size
     PRINT *,'non-zeros before and after truncation = ',nz,nz_sq
