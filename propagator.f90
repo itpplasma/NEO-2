@@ -70,6 +70,10 @@ CONTAINS
     USE mag_sub, ONLY: mag
     USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : collpar
+    ! MPI SUPPORT for multi-species part
+    ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
+    USE mpiprovider_module  
+    !! Modification by Andreas F. Martitsch (28.07.2015)
     !
     ! input:
     INTEGER, INTENT(in) :: isw_qflux_NA_in
@@ -104,6 +108,17 @@ CONTAINS
     REAL(kind=dp) :: Mt_val, nu_star, sqrtg_bctrvr_phi
     ! Physical output ($B_\varphi$,$B_\vartheta$,\langle{B^2}\rangle)
     REAL(kind=dp) :: bcovar_phi, bcovar_tht, avbhat2, avb2
+    !! Modification by Andreas F. Martitsch (28.07.2015)
+    !  multi-species part
+    INTEGER :: ispec ! species index
+    CHARACTER(len=3) :: ispec_str
+    CHARACTER(len=30) :: file_name
+    !! Modification by Andreas F. Martitsch (28.07.2015)
+    !
+    !! Modification by Andreas F. Martitsch (28.07.2015)
+    ! multi-species part - MPI rank determines species
+    ispec = mpro%getRank()
+    !! Modification by Andreas F. Martitsch (28.07.2015)    
     !
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
@@ -228,7 +243,9 @@ CONTAINS
     avb2=avbhat2*((bmod_tmp*1.0e4_dp)**2)
     !
     !PRINT *,'2'
-    OPEN(uw,file='ntv_out.dat',status='replace')
+    WRITE(ispec_str,'(I3.3)') ispec
+    file_name='ntv_out_'//ispec_str //'.dat'
+    OPEN(uw,file=TRIM(ADJUSTL(file_name)),status='replace')
     WRITE (uw,'(1000(1x,e18.5))') &
          boozer_s, Mt_val, nu_star, B_rho_L_loc, &
          D31_AX_D31ref, D32_AX_D31ref, k_cof, &
@@ -1932,6 +1949,7 @@ CONTAINS
     !! Modification by Andreas F. Martitsch (27.07.2015)
     ! Select ripple_solver version
     IF (isw_ripple_solver .EQ. 1) THEN
+       STOP "Currently not supported by MPI version of NEO2-NTV! Set isw_ripple_solver=2"
        CALL ripple_solver(                                                  &
 !->out         prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%npart_halfband,      &
             prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,            & !<-in
@@ -1964,6 +1982,7 @@ CONTAINS
             ierr                                                            &
             )
     ELSEIF (isw_ripple_solver .EQ. 3) THEN
+       STOP "Currently not supported by MPI version of NEO2-NTV! Set isw_ripple_solver=2"
        CALL ripple_solver_ArnoldiO2(                                        &
 !->out         prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%npart_halfband,      &
             prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,            & !<-in
