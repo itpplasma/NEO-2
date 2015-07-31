@@ -56,8 +56,8 @@ if (CMAKE_COMPILER_IS_GNUCC)
     list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
     list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
 
-    message(STATUS ${GCC_MAJOR})
-    message(STATUS ${GCC_MINOR})
+    #message(STATUS ${GCC_MAJOR})
+    #message(STATUS ${GCC_MINOR})
 endif()
 
 configure_file (
@@ -115,10 +115,10 @@ find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
 #find_library(NetCDF_lib netcdf)
 #find_library(NetCDFf_lib netcdff)
-find_library(HDF5_lib hdf5 ${HDF5_DIR}/lib NO_DEFAULT_PATH)
-find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR}/lib NO_DEFAULT_PATH)
-find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR}/lib NO_DEFAULT_PATH)
-find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5_lib hdf5 ${HDF5_DIR} NO_DEFAULT_PATH)
+find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
+find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR} NO_DEFAULT_PATH)
+find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
 #set(NetCDF_dyn_lib -lnetcdff -lnetcdf)# -lhdf5)
 
 ### Source files
@@ -150,7 +150,6 @@ target_link_libraries(${EXE_NAME}
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
-get_target_property(EXE_LOC ${EXE_NAME} LOCATION)
 
 add_custom_target(
     NEO-2-Versioning
