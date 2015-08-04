@@ -15,6 +15,14 @@ set(SUITESPARSE_FLAGS "-I${SUITESPARSE_HDR}")
 set_source_files_properties(${SUITESPARSE_F90}umf4_f77wrapper.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(${SUITESPARSE_F90}umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
+### FGSL user-defined interface###
+set(FGSL_USERINTER_SRC_FILES
+        ./gsl_roots_routines_mod.f90
+	./gsl_integration_routines_mod.f90
+)
+set(FGSL_USERINTER_FLAGS "-I${FGSL_INC}")
+set_source_files_properties(${FGSL_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTER_FLAGS})
+
 ### MPI FILES ###
 if (MPI_SUPPORT)
 set (MPI_SRC_FILES
@@ -44,7 +52,7 @@ set(NEO2_SRC_FILES
         ./magfie.f90
         ./neo_mod.f90
         ./polleg.f90
-        ./collision_operator.f90
+#        ./collision_operator.f90
         ./lapack_band.f90
         ./sparse_mod.f90
         ./binarysplit_mod.f90
@@ -73,5 +81,8 @@ set(NEO2_SRC_FILES
 #	./nctools_module.f90
 	./hdf5_tools.f90
 	./hdf5_tools_f2003.f90
+	./collision_operator_mems.f90
+	./collop_compute.f90
+	./collop_definitions.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")

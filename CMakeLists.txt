@@ -119,6 +119,8 @@ find_library(HDF5_lib hdf5 ${HDF5_DIR} NO_DEFAULT_PATH)
 find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
 find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR} NO_DEFAULT_PATH)
 find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
+find_library(gsl_lib gsl ${GSL_LIB} NO_DEFAULT_PATH)
+find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
 #set(NetCDF_dyn_lib -lnetcdff -lnetcdf)# -lhdf5)
 
 ### Source files
@@ -129,10 +131,12 @@ add_executable(${EXE_NAME}
 	${NEO2_SRC_FILES} 
   	${SUITESPARSE_SRC_FILES}
 	${SUPERLU_SRC_FILES}
+	${FGSL_USERINTER_SRC_FILES}
 	${MPI_SRC_FILES}
 )
 
 target_link_libraries(${EXE_NAME}
+        ${fgsl_lib} ${gsl_lib}
         ${SuperLU_lib}
         ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
 	${SuiteSparseConfig_lib}

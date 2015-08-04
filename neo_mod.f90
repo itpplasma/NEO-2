@@ -48,16 +48,35 @@
     DOUBLE PRECISION :: collpar
     DOUBLE PRECISION :: conl_over_mfp
     DOUBLE PRECISION :: coeps
-    DOUBLE PRECISION, allocatable, dimension(:) :: y_axi_averages
+    DOUBLE PRECISION, ALLOCATABLE, DIMENSION(:) :: y_axi_averages
 
-    DOUBLE PRECISION, allocatable, dimension(:) :: vel_array
+    DOUBLE PRECISION, ALLOCATABLE, DIMENSION(:) :: vel_array
   END MODULE
 !
   MODULE rkstep_mod
     INTEGER :: legmax,leg,lag
-    DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: anumm,denmm,asource
-    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: ailmm
+    !**********************************************************
+    ! Change for multispecies support
+    !**********************************************************
+    ! Old Version
+    ! DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: anumm,denmm,asource
+    ! DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: ailmm
+    ! DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
+
+    ! New Version - up to now only differential part
+    CHARACTER(len=3), DIMENSION(:), ALLOCATABLE       :: species_tags
+    DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: asource
+    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: anumm_a
+    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: denmm_a
+    DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: anumm_aa
+    DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: denmm_aa
+    double precision, dimension(:,:,:,:,:),allocatable, TARGET:: ailmm_aa    
+    DOUBLE PRECISION, DIMENSION(:,:),     POINTER     :: anumm
+    DOUBLE PRECISION, DIMENSION(:,:),     POINTER     :: denmm
+    DOUBLE PRECISION, DIMENSION(:,:,:),   POINTER     :: ailmm
     DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
+    !**********************************************************
+    
     DOUBLE PRECISION, DIMENSION(3) :: fluxes
   END MODULE
 !
@@ -112,7 +131,7 @@ MODULE flint_mod
   ! WINNY
   DOUBLE PRECISION :: bsfunc_local_err_max_mult
   DOUBLE PRECISION :: bsfunc_max_mult_reach
-  double precision :: boundary_dist_limit_factor
+  DOUBLE PRECISION :: boundary_dist_limit_factor
 
   INTEGER :: bsfunc_modelfunc_num
   INTEGER :: bsfunc_divide
