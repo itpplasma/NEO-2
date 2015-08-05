@@ -136,7 +136,6 @@ add_executable(${EXE_NAME}
 )
 
 target_link_libraries(${EXE_NAME}
-        ${fgsl_lib} ${gsl_lib}
         ${SuperLU_lib}
         ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
 	${SuiteSparseConfig_lib}
@@ -146,9 +145,11 @@ target_link_libraries(${EXE_NAME}
 	${HDF5HL_fortran_lib}
 	${HDF5HL_lib}
 	${HDF5_fortran_lib} 
-	${HDF5_lib} -lpthread -lz -lrt -lm 
-	#${NetCDF_dyn_lib}
+	${HDF5_lib} -lpthread -lz
+        ${fgsl_lib} ${gsl_lib}
 	${BLAS_lib}
+	#${NetCDF_dyn_lib}
+	-lz -lrt -lm
 	#debug efence
         )
 

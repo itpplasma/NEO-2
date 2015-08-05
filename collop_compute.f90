@@ -25,6 +25,7 @@ module collop_compute
   integer :: ispec
   real(kind=dp), dimension(:,:),   allocatable :: asource_s, anumm_s, denmm_s
   real(kind=dp), dimension(:,:,:), allocatable :: I1_mmp_s, I2_mmp_s, I3_mmp_s, I4_mmp_s, ailmm_s
+  real(kind=dp), dimension(:,:),   allocatable :: M_inv
 
   !**********************************************************
   ! Profile
@@ -51,11 +52,70 @@ contains
     real(kind=dp) :: x, chop
 
     chop = x
-    if (x .lt. epsabs) then
+    if (abs(x) .lt. epsabs) then
        chop = 0d0
     end if
     
   end function chop
+  
+  subroutine inv(A)
+    real(dp), dimension(:,:) :: A
+    integer,  dimension(size(A,1)) :: ipiv
+    real(dp), dimension(size(A,1)) :: work  
+    integer :: n, info
+
+    n = size(A,1)
+
+    !**********************************************************
+    ! LU Factorization (LAPACK)
+    !**********************************************************
+    call DGETRF(n, n, A, n, ipiv, info)
+
+    !**********************************************************
+    ! Check state
+    !**********************************************************
+    if (info /= 0) then
+       stop 'Error: Matrix is numerically singular!'
+    end if
+
+    !**********************************************************
+    ! Compute inverse matrix (LAPACK)
+    !**********************************************************
+    call DGETRI(n, A, n, ipiv, work, n, info)
+
+    !**********************************************************
+    ! Check state
+    !**********************************************************
+    if (info /= 0) then
+       stop 'Error: Matrix inversion failed!'
+    end if
+  end subroutine inv
+  
+  subroutine compute_Minv(Minv)
+    real(kind=dp), dimension(:,:) :: Minv
+    real(kind=dp), dimension(2)   :: res_int
+    integer :: m, mp
+
+    write (*,*) "Computing phi transformation matrix..."
+    
+    do m = 0, lagmax
+      do mp = 0, lagmax
+        res_int = fint1d_qagiu(phim_phimp, 0d0, epsabs, epsrel)
+        Minv(m+1,mp+1) = chop(res_int(1))
+      end do
+    end do
+
+    call inv(Minv)
+    
+  contains
+
+    function phim_phimp(x)
+      real(kind=dp) :: x, phim_phimp
+
+      phim_phimp =  pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi(m,x) * phi(mp,x)
+      
+    end function phim_phimp
+  end subroutine compute_Minv
 
   subroutine compute_sources(asource_s, weightlag_s)
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
@@ -71,18 +131,19 @@ contains
     do k = 1, 3
        do m = 0, lagmax
           res_int = fint1d_qagiu(am, 0d0, epsabs, epsrel)
-          asource_s(m+1, k) = res_int(1)
+          asource_s(m+1, k) = chop(res_int(1))
        end do
+       asource_s(:,k) = matmul(M_inv, asource_s(:,k))
     end do
 
-    !write (*,*) "Done."
+   !write (*,*) "Done."
     write (*,*) "Computing weighting coefficients..."
 
     do j = 1, 3
        do m = 0, lagmax
           !write (*,*) j, m, lbound(weightlag_s), ubound(weightlag_s)
           res_int = fint1d_qagiu(bm, 0d0, epsabs, epsrel)
-          weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int(1)
+          weightlag_s(j,m+1) = chop(1d0/sqrt(pi) * res_int(1))
        end do
     end do   
     
@@ -125,9 +186,11 @@ contains
       do m = 0, lagmax
          do mp = 0, lagmax
             res_int = fint1d_qagiu(integrand, 0d0, epsabs, epsrel)
-            anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * res_int(1) 
+            anumm_s(m+1, mp+1) = chop(3d0/(4d0 * pi) * res_int(1)) 
          end do
       end do
+
+      anumm_s = matmul(M_inv, anumm_s)
 
       !write (*,*) "Done."
 
@@ -157,9 +220,11 @@ contains
     do m = 0, lagmax
        do mp = 0, lagmax
           res_int = fint1d_qagiu(integrand_inf, 0d0, epsabs, epsrel)
-          anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * res_int(1) 
+          anumm_s(m+1, mp+1) = chop(3d0/(4d0 * pi) * res_int(1)) 
        end do
     end do
+
+    anumm_s = matmul(M_inv, anumm_s)
 
     !write (*,*) "Done."
 
@@ -190,12 +255,14 @@ contains
        do mp = 0, lagmax
           res_int = fint1d_qagiu(integrand, 0d0, epsabs, epsrel)
           !res_int = fint1d_qag(integrand, 0d0, 100d0, epsabs, epsrel, 2)       
-          denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * res_int(1)
+          denmm_s(m+1, mp+1) = chop(3d0/(4d0 * pi) * res_int(1))
 
           !write (*,*) "denmm_s", m, mp, integrand(2d0), denmm_s(m, mp)
           !write (*,*) G(2d0), d_G(2d0), gamma_ab, phi(m, 2d0), d_phi(m, 2d0), dd_phi(m,2d0)
        end do
     end do
+
+    denmm_s = matmul(M_inv, denmm_s)
     
   contains
     
@@ -219,6 +286,7 @@ contains
 
   subroutine compute_integralpart(ailmm_s)
     real(kind=dp), dimension(:,:,:) :: ailmm_s
+    integer                         :: l
 
     write (*,*) "Computing momentum conservation part..."
 
@@ -230,8 +298,9 @@ contains
     !if (allocated(ailmm_s)) deallocate(ailmm_s)
     !allocate(ailmm_s(0:lagmax, 0:lagmax, 0:legmax))
 
-    ailmm_s = I1_mmp_s + I2_mmp_s + I3_mmp_s + I4_mmp_s
-
+    do l = 0, legmax
+       ailmm_s(:,:,l+1) = matmul(M_inv, I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l))
+    end do
     !write (*,*) "Done."
     
   end subroutine compute_integralpart
@@ -249,7 +318,7 @@ contains
              !res_int = fint1d_qag(int_I1_mmp_s, 0d0, 10d0, epsabs, epsrel, sw_qag_rule)
              res_int = fint1d_qagiu(int_I1_mmp_s, 0d0, epsabs, epsrel)
 
-             I1_mmp_s(m, mp, l) = 3d0/pi**(3d0/2d0) * (2d0*l+1)/2d0 * gamma_ab**3 * m_a/m_b * res_int(1)
+             I1_mmp_s(m, mp, l) = chop(3d0/pi**(3d0/2d0) * (2d0*l+1)/2d0 * gamma_ab**3 * m_a/m_b * res_int(1))
              
           end do
        end do
@@ -279,7 +348,7 @@ contains
              !res_int = fint1d_qag(I_phi, 0d0, 10d0, epsabs, epsrel, sw_qag_rule)
              res_int = fint1d_qagiu(I_phi, 0d0, epsabs, epsrel)
 
-             I2_mmp_s(m, mp, l) = -3d0/pi**(1.5d0) * gamma_ab**3 * res_int(1)
+             I2_mmp_s(m, mp, l) = chop(-3d0/pi**(1.5d0) * gamma_ab**3 * res_int(1))
           end do
        end do
     end do
@@ -331,7 +400,7 @@ contains
              !res_int = fint1d_qag(I_phi, 0d0, 10d0, epsabs, epsrel, sw_qag_rule)
              res_int = fint1d_qagiu(I_phi, 0d0, epsabs, epsrel)
 
-             I3_mmp_s(m, mp, l) = 3d0/pi**(1.5d0) * (1-m_a/m_b) * gamma_ab**3 * res_int(1)
+             I3_mmp_s(m, mp, l) = chop(3d0/pi**(1.5d0) * (1-m_a/m_b) * gamma_ab**3 * res_int(1))
           end do
        end do
     end do
@@ -385,7 +454,7 @@ contains
           do mp = 0, lagmax  
              !res_int = fint1d_qag(I_psi, 0d0, 10d0, epsabs, epsrel, sw_qag_rule)
              res_int = fint1d_qagiu(I_psi, 0d0, epsabs, epsrel)
-             I4_mmp_s(m, mp, l) = 3d0/pi**(1.5d0) * gamma_ab**3 * res_int(1)
+             I4_mmp_s(m, mp, l) = chop(3d0/pi**(1.5d0) * gamma_ab**3 * res_int(1))
           end do
        end do
     end do
@@ -490,8 +559,13 @@ contains
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
 
     call init_collop()
-    call compute_sources(asource_s, weightlag_s)
+
+    if (allocated(M_inv)) deallocate(M_inv)
+    allocate(M_inv(0:lagmax, 0:lagmax))
     
+    call compute_Minv(M_inv)
+    call compute_sources(asource_s, weightlag_s)
+  
   end subroutine compute_source
   
   subroutine compute_collop(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, anumm_s, denmm_s, ailmm_s)

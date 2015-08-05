@@ -87,6 +87,7 @@ module collop
       if(allocated(weightlag)) deallocate(weightlag)
       allocate(weightlag(3,0:lag))
 
+      if (allocated(anumm_inf)) deallocate(anumm_inf)
       allocate(anumm_inf(0:lag, 0:lag))
 
       !**********************************************************
@@ -104,7 +105,7 @@ module collop
       ! Sum up matrices
       !**********************************************************
       anumm_a(:,:,0) = anumm_aa(:,:,0,0) + Z_eff * anumm_inf(:,:)
-      denmm_a(:,:,0) = anumm_aa(:,:,0,0)
+      denmm_a(:,:,0) = denmm_aa(:,:,0,0)
      
       !**********************************************************
       ! Swap sources for NEO-2 convention
@@ -118,12 +119,21 @@ module collop
       weightlag(2,:) = weightlag(3,:)
       weightlag(3,:) = asource_temp
       deallocate(asource_temp)
-
+      
       !**********************************************************
       ! Set pointers to main species
       !**********************************************************
       call collop_set_species(0)
 
+      !**********************************************************
+      ! Write to screen
+      !**********************************************************
+      !write (*,*) asource
+      !write (*,*) anumm
+      !write (*,*) denmm
+      !write (*,*) ailmm
+      !write (*,*) weightlag
+      
     end subroutine collop_load
 
     subroutine collop_unload()

@@ -70,7 +70,7 @@
     DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: denmm_a
     DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: anumm_aa
     DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: denmm_aa
-    double precision, dimension(:,:,:,:,:),allocatable, TARGET:: ailmm_aa    
+    DOUBLE PRECISION, DIMENSION(:,:,:,:,:),ALLOCATABLE, TARGET:: ailmm_aa    
     DOUBLE PRECISION, DIMENSION(:,:),     POINTER     :: anumm
     DOUBLE PRECISION, DIMENSION(:,:),     POINTER     :: denmm
     DOUBLE PRECISION, DIMENSION(:,:,:),   POINTER     :: ailmm
