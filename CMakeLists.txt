@@ -25,7 +25,7 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
         link_directories(${LINKDIRS_MPI_GNU})
 	set(MPI_lib -lmpi_f90 -lmpi_f77 -lmpi -lopen-rte -lopen-pal -ldl -Wl,--export-dynamic -lnsl -lutil -lm -ldl)
 
-        set (CMAKE_Fortran_FLAGS "-cpp -pthread")
+        set (CMAKE_Fortran_FLAGS "-cpp -pthread -ffpe-summary=invalid,zero,overflow")
         #set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
         #set (CMAKE_Fortran_FLAGS_DEBUG "")
 
