@@ -1,34 +1,42 @@
-cmake_minimum_required (VERSION 2.6)
-set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+cmake_minimum_required (VERSION 2.8.9)
 
+# Enable project
 project (NEO-2-Par)
 enable_language (Fortran)
-enable_testing()
+#enable_testing()
 
-include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
+# MPI is required by this NEO-2 version
+find_package(MPI REQUIRED)
+
+# HDF5 is required by this NEO-2 version
+find_package(HDF5 COMPONENTS Fortran Fortran_HL)
+
+# Include BuildConfig, where paths are defined
+if (EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
+  include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
+endif()
 include (${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
-#include (${CMAKE_SOURCE_DIR}/ProjectVersion.cmake.in)
 
-option(MPI_SUPPORT "Should NEO-2 be built with MPI-Support?" ON)
+# MPE allows graphical work load evaluation of parallel processes 
 option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
 
+# Print the current compiler
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
-include_directories("${HDF5_DIR}/include")
+# Include directories for NEO-2
+include_directories(${HDF5_INCLUDE_DIRS})
+include_directories(${MPI_Fortran_INCLUDE_PATH})
+include_directories(${NEO2_Libs}/hdf5_tools/include)
+include_directories("${MYMPILIB_PATH}/OBJS")
 
+# Generic compiler flags
+set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
+
+# Compiler dependent settings
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
-
-        #gfortran -I/usr/lib/openmpi/include -pthread -I/usr/lib/openmpi/lib -L/usr//lib -L/usr/lib/openmpi/lib -lmpi_f90 -lmpi_f77 -lmpi -ldl -lhwloc
-
-        include_directories(${INCLUDEDIRS_MPI_GNU})
-	include_directories(/usr/include)
-        link_directories(${LINKDIRS_MPI_GNU})
-	set(MPI_lib -lmpi_f90 -lmpi_f77 -lmpi -lopen-rte -lopen-pal -ldl -Wl,--export-dynamic -lnsl -lutil -lm -ldl)
-
-        set (CMAKE_Fortran_FLAGS "-cpp -pthread -ffpe-summary=invalid,zero,overflow")
-        #set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
-        #set (CMAKE_Fortran_FLAGS_DEBUG "")
-
+        set (CMAKE_Fortran_FLAGS "-cpp -ffpe-summary=invalid,zero,overflow")
+        
+	# Determine compiler version
 	execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
                     OUTPUT_VARIABLE GCC_VERSION)
 
@@ -38,41 +46,28 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
 
-        #ifort -I/usr/local/openmpi-1.6.3-intel/include -I/usr/local/openmpi-1.6.3-intel/lib -L/usr/local/openmpi-1.6.3-intel/lib -lmpi_f90 -lmpi_f77 -lmpi -ldl -lm -lnuma -Wl,--export-$
-
-        include_directories(${INCLUDEDIRS_MPI_INTEL})
-        link_directories(${LINKDIRS_MPI_INTEL})
-
         set (CMAKE_Fortran_FLAGS "-cpp -heap-arrays")
-        #set (CMAKE_Fortran_FLAGS_RELEASE "")
-        #set (CMAKE_Fortran_FLAGS_DEBUG "")
 
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC)
-    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
-                    OUTPUT_VARIABLE GCC_VERSION)
-    string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
-    list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
-    list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
-
-    #message(STATUS ${GCC_MAJOR})
-    #message(STATUS ${GCC_MINOR})
-endif()
-
+# Create Fortran file with build information
 configure_file (
   "${PROJECT_SOURCE_DIR}/cmake_version.f90.in"
   "${PROJECT_SOURCE_DIR}/cmake_version.f90"
   )
 
+# Unit tests
 set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
 set (CMAKE_Fortran_FLAGS_TEST "-O3 --coverage")
 
-include_directories("${PROJECT_SOURCE_DIR}")
-include_directories("${MYMPILIB_PATH}/OBJS")
+#include_directories("${PROJECT_SOURCE_DIR}")
 
 set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
 
+set_target_properties(${EXE_NAME} PROPERTIES COMPILE_FLAGS "${MPI_Fortran_COMPILE_FLAGS}")
+set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAGS}")
+
+set (MPI_SUPPORT 1)
 if (MPI_SUPPORT)
         message(STATUS "MPI-Support activated")
         if (DEFINED MPI_PATH)
@@ -113,12 +108,7 @@ find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(SuiteSparseConfig_lib suitesparseconfig ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
-#find_library(NetCDF_lib netcdf)
-#find_library(NetCDFf_lib netcdff)
-find_library(HDF5_lib hdf5 ${HDF5_DIR} NO_DEFAULT_PATH)
-find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
-find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR} NO_DEFAULT_PATH)
-find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
+find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/hdf5_tools/lib NO_DEFAULT_PATH)
 find_library(gsl_lib gsl ${GSL_LIB} NO_DEFAULT_PATH)
 find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
 #set(NetCDF_dyn_lib -lnetcdff -lnetcdf)# -lhdf5)
@@ -134,6 +124,9 @@ add_executable(${EXE_NAME}
 	${FGSL_USERINTER_SRC_FILES}
 	${MPI_SRC_FILES}
 )
+                                                                                                 
+set_target_properties(${EXE_NAME} PROPERTIES COMPILE_FLAGS "${MPI_Fortran_COMPILE_FLAGS}")
+set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAGS}")
 
 target_link_libraries(${EXE_NAME}
         ${SuperLU_lib}
@@ -141,17 +134,15 @@ target_link_libraries(${EXE_NAME}
 	${SuiteSparseConfig_lib}
         ${MyMPILib_lib}
         ${MPE_lib}
-	${MPI_lib}
-	${HDF5HL_fortran_lib}
-	${HDF5HL_lib}
-	${HDF5_fortran_lib} 
-	${HDF5_lib} -lpthread -lz
+	${MPI_Fortran_LIBRARIES}
+	${HDF5_tools_lib}
+	${HDF5_Fortran_LIBRARIES}
+	${HDF5_Fortran_HL_LIBRARIES}
         ${fgsl_lib} ${gsl_lib}
 	${BLAS_lib}
 	#${NetCDF_dyn_lib}
-	-lz -lrt -lm
 	#debug efence
-        )
+)
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -180,7 +171,6 @@ ADD_TEST(Test_Testcase1-Seq       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstr
 ADD_TEST(Test_Testcase1-Par       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase1" "6")
 ADD_TEST(Test_Testcase2-Seq       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase2" "0")
 ADD_TEST(Test_Testcase2-Par       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase2" "6")
-
 
 #ADD_TEST(Test_Testcase2       ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "0")
 #ADD_TEST(Test_Testcase2-par4  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "4")
