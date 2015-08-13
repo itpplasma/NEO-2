@@ -40,7 +40,8 @@ PROGRAM neo2
        bsfunc_sigma_mult, bsfunc_sigma_min, bsfunc_local_solver
   USE binarysplit_int, ONLY : linspace
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
-       collop_load, collop_unload, z_eff, collop_path
+       collop_load, collop_unload, z_eff, collop_path, collop_base, &
+       scalprod_alpha, scalprod_beta
   USE rkstep_mod, ONLY : lag,leg,legmax
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
@@ -143,7 +144,7 @@ PROGRAM neo2
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
-       collop_path
+       collop_path, collop_base, scalprod_alpha, scalprod_beta
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -218,6 +219,9 @@ PROGRAM neo2
 !  sparse_solve_method = 0
   ! collision
   collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
+  collop_base = 0
+  scalprod_alpha = 0d0
+  scalprod_beta  = 0d0
   conl_over_mfp = 1.0d-3
   lag=10
   leg=20
@@ -283,7 +287,7 @@ PROGRAM neo2
   ! plotting
   plot_gauss = 0
   plot_prop  = 0
-
+ 
   !**********************************
   ! Init HDF5 Fortran interface
   !**********************************
@@ -342,7 +346,9 @@ PROGRAM neo2
   ! Initialize the MPI-Provider module, establish connection to all processes
   CALL mpro%init()
 
-  ! Write out version information
+  !**********************************************************
+  ! Write run information to HDF5
+  !**********************************************************
   IF (mpro%isMaster()) THEN
      CALL write_version_info()
   END IF
@@ -370,53 +376,62 @@ PROGRAM neo2
   
   ! RECONSTRUCTION RUN 1
   IF (prop_reconstruct .EQ. 1) THEN
-     PRINT *, 'Reconstruction run!'
+     IF (mpro%isMaster()) THEN
+        PRINT *, 'Reconstruction run!'
 
-     !**********************************************************
-     ! If HDF5 is enabled, save information about run
-     !**********************************************************
-     IF (mpro%isMaster() .AND. prop_fileformat .EQ. 1) THEN
-        CALL h5_open_rw('neo2_config.h5', h5_config_id)
-        CALL h5_open_group(h5_config_id, 'metadata', h5_config_group)
+        !**********************************************************
+        ! If HDF5 is enabled, save information about run
+        !**********************************************************
+        IF (mpro%isMaster() .AND. prop_fileformat .EQ. 1) THEN
+           CALL h5_open_rw('neo2_config.h5', h5_config_id)
+           CALL h5_open_group(h5_config_id, 'metadata', h5_config_group)
 
-        CALL random_NUMBER(rand_num)
-        WRITE (rand_hash,'(Z6.6)') CEILING(16**6 * rand_num)
+           CALL random_NUMBER(rand_num)
+           WRITE (rand_hash,'(Z6.6)') CEILING(16**6 * rand_num)
 
-        WRITE (fieldname, '(A,I1)') "Run_", prop_reconstruct
-        CALL h5_add(h5_config_group, fieldname, rand_hash)
+           WRITE (fieldname, '(A,I1)') "Run_", prop_reconstruct
+           CALL h5_delete(h5_config_group, fieldname)
+           CALL h5_add(h5_config_group, fieldname, rand_hash)
 
-        CALL date_and_TIME(date,time)
-        WRITE (datetimestring, '(A, A)') date, time
+           CALL date_and_TIME(date,time)
+           WRITE (datetimestring, '(A, A)') date, time
 
-        WRITE (fieldname, '(A,I1)') "Timestamp_start_", prop_reconstruct
-        CALL h5_add(h5_config_group, fieldname, datetimestring)
-        WRITE (fieldname, '(A,I1)') "Nodes_", prop_reconstruct
-        CALL h5_add(h5_config_group, fieldname, mpro%getNumProcs())
+           WRITE (fieldname, '(A,I1)') "Timestamp_start_", prop_reconstruct
+           CALL h5_delete(h5_config_group, fieldname)
+           CALL h5_add(h5_config_group, fieldname, datetimestring)
+           WRITE (fieldname, '(A,I1)') "Nodes_", prop_reconstruct
+           CALL h5_delete(h5_config_group, fieldname)
+           CALL h5_add(h5_config_group, fieldname, mpro%getNumProcs())
 
-        CALL h5_close_group(h5_config_group)
-        CALL h5_close(h5_config_id)
+           CALL h5_close_group(h5_config_group)
+           CALL h5_close(h5_config_id)
+        END IF
+
+        CALL reconstruct_prop_dist
+
+        !**********************************************************
+        ! If HDF5 is enabled, save runtime in file
+        !**********************************************************
+        IF (mpro%isMaster() .AND. prop_fileformat .EQ. 1) THEN
+           CALL h5_open_rw('neo2_config.h5', h5_config_id)
+           CALL h5_open_group(h5_config_id, 'metadata', h5_config_group)
+
+           CALL date_and_TIME(date,time)
+           WRITE (datetimestring, '(A, A)') date, time
+           WRITE (fieldname, '(A,I1)') "Timestamp_stop_", prop_reconstruct
+           CALL h5_delete(h5_config_group, fieldname)
+           CALL h5_add(h5_config_group, fieldname, datetimestring)
+
+           CALL h5_close_group(h5_config_group)
+           CALL h5_close(h5_config_id)
+        END IF
+
+
+        PRINT *, 'No further calculations!'
      END IF
-     
-     CALL reconstruct_prop_dist
-
-     !**********************************************************
-     ! If HDF5 is enabled, save runtime in file
-     !**********************************************************
-     IF (mpro%isMaster() .AND. prop_fileformat .EQ. 1) THEN
-        CALL h5_open_rw('neo2_config.h5', h5_config_id)
-        CALL h5_open_group(h5_config_id, 'metadata', h5_config_group)
-
-        CALL date_and_TIME(date,time)
-        WRITE (datetimestring, '(A, A)') date, time
-        WRITE (fieldname, '(A,I1)') "Timestamp_stop_", prop_reconstruct
-        CALL h5_add(h5_config_group, fieldname, datetimestring)
-
-        CALL h5_close_group(h5_config_group)
-        CALL h5_close(h5_config_id)
-     END IF
-        
-
-     PRINT *, 'No further calculations!'
+     CALL mpro%barrier()
+     CALL mpro%deinit()
+     CALL h5_deinit()
      STOP
   END IF
 
@@ -586,6 +601,7 @@ PROGRAM neo2
         CALL date_and_TIME(date,time)
         WRITE (datetimestring, '(A, A)') date, time
         WRITE (fieldname, '(A,I1)') "Timestamp_stop_", prop_reconstruct
+        CALL h5_delete(h5_config_group, fieldname)
         CALL h5_add(h5_config_group, fieldname, datetimestring)
  
         CALL h5_close_group(h5_config_group)
@@ -597,10 +613,8 @@ PROGRAM neo2
   !*******************************************
   ! MPI SUPPORT
   !*******************************************
-#if defined(MPI_SUPPORT)
   ! Deinit MPI session
   CALL mpro%deinit()
-#endif
   ! ---
   ! ---------------------------------------------------------------------------
   ! final deallocation of device and all its children
@@ -622,150 +636,155 @@ PROGRAM neo2
 CONTAINS
 
   SUBROUTINE prop_reconstruct_3()
+
+    IF (mpro%isMaster()) THEN
+       WRITE (*,*) "Merging HDF5 files..."
+
+       !**********************************************************
+       ! Open taginfo
+       !**********************************************************
+       CALL h5_open('taginfo.h5', h5id_taginfo)
+       CALL h5_get(h5id_taginfo, 'tag_first', tag_first)
+       CALL h5_get(h5id_taginfo, 'tag_last',  tag_last)
+       CALL h5_close(h5id_taginfo)
+
+       !**********************************************************
+       ! Get current working directory
+       ! This might only work with gfortran
+       !**********************************************************
+       CALL getcwd(cwd)
+       WRITE (surfname,'(A)') TRIM(ADJUSTL(cwd(INDEX(cwd, '/', .TRUE.)+1:)))
+       WRITE (*,*) "Using " // TRIM(ADJUSTL(surfname)) // " as surfname."
+
+       !**********************************************************
+       ! Create result file
+       !**********************************************************
+       CALL h5_create('final.h5', h5id_final, 2)
+       CALL h5_define_group(h5id_final, surfname, h5id_surf)
+       CALL h5_define_group(h5id_surf, 'NEO-2', h5id_neo2)
+       CALL h5_define_group(h5id_neo2, 'propagators', h5id_propagators)
+
+       !**********************************************************
+       ! Iterate over all propagators and merge files
+       !**********************************************************
+       DO k = tag_first, tag_last
+          WRITE (h5_filename, '(I0)') k
+          CALL h5_define_group(h5id_propagators, h5_filename, h5id_prop)
+
+          CALL h5_open("spitf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+          CALL h5_copy(h5id_propfile, '/', h5id_prop, "spitf")
+          CALL h5_close(h5id_propfile)
+
+          !call h5_open("dentf_" // trim(h5_filename) // ".h5", h5id_propfile)
+          !call h5_copy(h5id_propfile, '/', h5id_prop, "dentf")
+          !call h5_close(h5id_propfile)
+
+          !all h5_open("enetf_" // trim(h5_filename) // ".h5", h5id_propfile)
+          !call h5_copy(h5id_propfile, '/', h5id_prop, "enetf")
+          !call h5_close(h5id_propfile)
+
+          CALL h5_open("phi_mesh_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+          CALL h5_copy(h5id_propfile, '/', h5id_prop, "phi_mesh")
+          CALL h5_close(h5id_propfile)
+
+          CALL h5_open("sizeplot_etalev_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+          CALL h5_copy(h5id_propfile, '/', h5id_prop, "sizeplot_etalev")
+          CALL h5_close(h5id_propfile)
+
+          CALL h5_close_group(h5id_prop)
+       END DO
+
+       !**********************************************************
+       ! Merge additional files
+       !**********************************************************
+       CALL h5_open("efinal.h5", h5id_propfile)
+       CALL h5_copy(h5id_propfile, '/', h5id_neo2, "efinal")
+       CALL h5_close(h5id_propfile)
+
+       CALL h5_open("fulltransp.h5", h5id_propfile)
+       CALL h5_copy(h5id_propfile, '/', h5id_neo2, "fulltransp")
+       CALL h5_close(h5id_propfile)
+
+       CALL h5_open("neo2_config.h5", h5id_propfile)
+       CALL h5_copy(h5id_propfile, '/', h5id_neo2, "neo2_config")
+       CALL h5_close(h5id_propfile)
+
+       CALL h5_open("taginfo.h5", h5id_propfile)
+       CALL h5_copy(h5id_propfile, '/', h5id_neo2, "taginfo")
+       CALL h5_close(h5id_propfile)
+
+       CALL h5_close_group(h5id_propagators)
+       CALL h5_close_group(h5id_neo2)
+       CALL h5_close_group(h5id_surf)
+       CALL h5_close(h5id_final)
+
+       WRITE (*,*) "Result file created. Deleting old files...."
+
+       !**********************************************************
+       ! Delete single HDF5 files
+       !**********************************************************
+       OPEN(unit=1234, iostat=ios, file="propagator_0_0.h5", status='old')
+       IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+       OPEN(unit=1234, iostat=ios, file="efinal.h5", status='old')
+       IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+       OPEN(unit=1234, iostat=ios, file="fulltransp.h5", status='old')
+       IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+       !open(unit=1234, iostat=ios, file="neo2_config.h5", status='old')
+       !if (ios .eq. 0) close(unit=1234, status='delete')
+
+       OPEN(unit=1234, iostat=ios, file="taginfo.h5", status='old')
+       IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')    
+
+       DO k = tag_first, tag_last
+          DO l = tag_first, tag_last
+             WRITE (h5_filename, '(I0,A,I0)') k, "_", l
+
+             OPEN(unit=1234, iostat=ios, file="propagator_" // TRIM(h5_filename) // ".h5", status='old')
+             IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+             OPEN(unit=1234, iostat=ios, file="propagator_boundary_" // TRIM(h5_filename) // ".h5", status='old')
+             IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+             OPEN(unit=1234, iostat=ios, file="reconstruct_" // TRIM(h5_filename) // ".h5", status='old')
+             IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+             OPEN(unit=1234, iostat=ios, file="binarysplit_" // TRIM(h5_filename) // ".h5", status='old')
+             IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          END DO
+
+       END DO
+
+       DO k = tag_first, tag_last
+          WRITE (h5_filename, '(I0)') k
+
+          OPEN(unit=1234, iostat=ios, file="spitf_" // TRIM(h5_filename) // ".h5", status='old')
+          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+          OPEN(unit=1234, iostat=ios, file="spitf_" // TRIM(h5_filename) // ".h5", status='old')
+          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+          OPEN(unit=1234, iostat=ios, file="enetf_" // TRIM(h5_filename) // ".h5", status='old')
+          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+          OPEN(unit=1234, iostat=ios, file="dentf_" // TRIM(h5_filename) // ".h5", status='old')
+          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+          OPEN(unit=1234, iostat=ios, file="phi_mesh_" // TRIM(h5_filename) // ".h5", status='old')
+          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+          OPEN(unit=1234, iostat=ios, file="sizeplot_etalev_" // TRIM(h5_filename) // ".h5", status='old')
+          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+
+       END DO
+       WRITE (*,*) "Done."
+
+    END IF
+
+    call mpro%barrier()
     
-     WRITE (*,*) "Merging HDF5 files..."
-     
-     !**********************************************************
-     ! Open taginfo
-     !**********************************************************
-     CALL h5_open('taginfo.h5', h5id_taginfo)
-     CALL h5_get(h5id_taginfo, 'tag_first', tag_first)
-     CALL h5_get(h5id_taginfo, 'tag_last',  tag_last)
-     CALL h5_close(h5id_taginfo)
-
-     !**********************************************************
-     ! Get current working directory
-     ! This might only work with gfortran
-     !**********************************************************
-     CALL getcwd(cwd)
-     WRITE (surfname,'(A)') TRIM(ADJUSTL(cwd(INDEX(cwd, '/', .TRUE.)+1:)))
-     WRITE (*,*) "Using " // TRIM(ADJUSTL(surfname)) // " as surfname."
-
-     !**********************************************************
-     ! Create result file
-     !**********************************************************
-     CALL h5_create('final.h5', h5id_final, 2)
-     CALL h5_define_group(h5id_final, surfname, h5id_surf)
-     CALL h5_define_group(h5id_surf, 'NEO-2', h5id_neo2)
-     CALL h5_define_group(h5id_neo2, 'propagators', h5id_propagators)
-
-     !**********************************************************
-     ! Iterate over all propagators and merge files
-     !**********************************************************
-     DO k = tag_first, tag_last
-        WRITE (h5_filename, '(I0)') k
-        CALL h5_define_group(h5id_propagators, h5_filename, h5id_prop)
-
-        CALL h5_open("spitf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
-        CALL h5_copy(h5id_propfile, '/', h5id_prop, "spitf")
-        CALL h5_close(h5id_propfile)
-
-        !call h5_open("dentf_" // trim(h5_filename) // ".h5", h5id_propfile)
-        !call h5_copy(h5id_propfile, '/', h5id_prop, "dentf")
-        !call h5_close(h5id_propfile)
-
-        !all h5_open("enetf_" // trim(h5_filename) // ".h5", h5id_propfile)
-        !call h5_copy(h5id_propfile, '/', h5id_prop, "enetf")
-        !call h5_close(h5id_propfile)
-         
-        CALL h5_open("phi_mesh_" // TRIM(h5_filename) // ".h5", h5id_propfile)
-        CALL h5_copy(h5id_propfile, '/', h5id_prop, "phi_mesh")
-        CALL h5_close(h5id_propfile)
-
-        CALL h5_open("sizeplot_etalev_" // TRIM(h5_filename) // ".h5", h5id_propfile)
-        CALL h5_copy(h5id_propfile, '/', h5id_prop, "sizeplot_etalev")
-        CALL h5_close(h5id_propfile)
-        
-        CALL h5_close_group(h5id_prop)
-     END DO
-
-     !**********************************************************
-     ! Merge additional files
-     !**********************************************************
-     CALL h5_open("efinal.h5", h5id_propfile)
-     CALL h5_copy(h5id_propfile, '/', h5id_neo2, "efinal")
-     CALL h5_close(h5id_propfile)
-
-     CALL h5_open("fulltransp.h5", h5id_propfile)
-     CALL h5_copy(h5id_propfile, '/', h5id_neo2, "fulltransp")
-     CALL h5_close(h5id_propfile)
-
-     CALL h5_open("neo2_config.h5", h5id_propfile)
-     CALL h5_copy(h5id_propfile, '/', h5id_neo2, "neo2_config")
-     CALL h5_close(h5id_propfile)
-
-     CALL h5_open("taginfo.h5", h5id_propfile)
-     CALL h5_copy(h5id_propfile, '/', h5id_neo2, "taginfo")
-     CALL h5_close(h5id_propfile)
-          
-     CALL h5_close_group(h5id_propagators)
-     CALL h5_close_group(h5id_neo2)
-     CALL h5_close_group(h5id_surf)
-     CALL h5_close(h5id_final)
-
-     WRITE (*,*) "Result file created. Deleting old files...."
-     
-     !**********************************************************
-     ! Delete single HDF5 files
-     !**********************************************************
-     OPEN(unit=1234, iostat=ios, file="propagator_0_0.h5", status='old')
-     IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-     
-     OPEN(unit=1234, iostat=ios, file="efinal.h5", status='old')
-     IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-     OPEN(unit=1234, iostat=ios, file="fulltransp.h5", status='old')
-     IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-     !open(unit=1234, iostat=ios, file="neo2_config.h5", status='old')
-     !if (ios .eq. 0) close(unit=1234, status='delete')
-
-     OPEN(unit=1234, iostat=ios, file="taginfo.h5", status='old')
-     IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')    
-     
-     DO k = tag_first, tag_last
-        DO l = tag_first, tag_last
-           WRITE (h5_filename, '(I0,A,I0)') k, "_", l
-
-           OPEN(unit=1234, iostat=ios, file="propagator_" // TRIM(h5_filename) // ".h5", status='old')
-           IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-           OPEN(unit=1234, iostat=ios, file="propagator_boundary_" // TRIM(h5_filename) // ".h5", status='old')
-           IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-           OPEN(unit=1234, iostat=ios, file="reconstruct_" // TRIM(h5_filename) // ".h5", status='old')
-           IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-           OPEN(unit=1234, iostat=ios, file="binarysplit_" // TRIM(h5_filename) // ".h5", status='old')
-           IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-        END DO
-
-     END DO
-     
-     DO k = tag_first, tag_last
-        WRITE (h5_filename, '(I0)') k
-        
-        OPEN(unit=1234, iostat=ios, file="spitf_" // TRIM(h5_filename) // ".h5", status='old')
-        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-        
-        OPEN(unit=1234, iostat=ios, file="spitf_" // TRIM(h5_filename) // ".h5", status='old')
-        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-        OPEN(unit=1234, iostat=ios, file="enetf_" // TRIM(h5_filename) // ".h5", status='old')
-        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-        OPEN(unit=1234, iostat=ios, file="dentf_" // TRIM(h5_filename) // ".h5", status='old')
-        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-        OPEN(unit=1234, iostat=ios, file="phi_mesh_" // TRIM(h5_filename) // ".h5", status='old')
-        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-        OPEN(unit=1234, iostat=ios, file="sizeplot_etalev_" // TRIM(h5_filename) // ".h5", status='old')
-        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-        
-     END DO
-     WRITE (*,*) "Done."
-
   END SUBROUTINE prop_reconstruct_3
   
   SUBROUTINE write_version_info()
@@ -843,7 +862,8 @@ CONTAINS
         CALL h5_add(h5_config_group, 'isw_integral', isw_integral, '')
         CALL h5_add(h5_config_group, 'isw_energy', isw_energy, '')
         CALL h5_add(h5_config_group, 'isw_axisymm', isw_axisymm, '')
-        CALL h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix') 
+        call h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
+        call h5_add(h5_config_group, 'collop_base', collop_base, 'Base functions of collision operator')
         CALL h5_close_group(h5_config_group)
 
         CALL h5_define_group(h5_config_id, 'binsplit', h5_config_group)
@@ -906,14 +926,17 @@ CONTAINS
      WRITE (rand_hash,'(Z6.6)') CEILING(16**6 * rand_num)
 
      WRITE (fieldname, '(A,I1)') "Run_", prop_reconstruct
+     CALL h5_delete(h5_config_group, fieldname)
      CALL h5_add(h5_config_group, fieldname, rand_hash)
 
      CALL date_and_TIME(date,time)
      WRITE (datetimestring, '(A, A)') date, time
 
      WRITE (fieldname, '(A,I1)') "Timestamp_start_", prop_reconstruct
+     CALL h5_delete(h5_config_group, fieldname)
      CALL h5_add(h5_config_group, fieldname, datetimestring)
      WRITE (fieldname, '(A,I1)') "Nodes_", prop_reconstruct
+     CALL h5_delete(h5_config_group, fieldname)
      CALL h5_add(h5_config_group, fieldname, mpro%getNumProcs())
 
      CALL h5_close_group(h5_config_group)

@@ -1,13 +1,15 @@
 module collop_definitions
   use nrtype, only : dp, pi
   use gsl_integration_routines_mod
+  use collop_laguerre
+  use collop_polynomial
   implicit none
 
   !**********************************************************
   ! Weighting
   !**********************************************************
-  real(kind=dp)    :: alpha  = 0
-  real(kind=dp)    :: beta   = 0
+  real(kind=dp)    :: alpha  = 0d0
+  real(kind=dp)    :: beta   = 0d0
 
   !**********************************************************
   ! Species
@@ -20,12 +22,8 @@ module collop_definitions
   !**********************************************************
   ! Test function
   !**********************************************************
-  character(len=128) :: phi_m_desc = 'Associated Laguerre polynomials (Default)'
-  integer            :: phi_m_tag  = 0
-  real(kind=dp), dimension(:),     allocatable :: phi_hm
   real(kind=dp), dimension(:,:),   allocatable :: coefleg
-  real(kind=dp), dimension(:,:,:), allocatable :: gencoeflag, phitrans
-  
+   
   !**********************************************************
   ! Matrix size
   !**********************************************************
@@ -39,6 +37,39 @@ module collop_definitions
   real(kind=dp) :: epsrel = 1d-10
   integer       :: sw_qag_rule = 2
   !real(kind=dp) :: x_max    = 20
+
+  abstract interface
+     subroutine init_phi_interface(lagmax, legmax)
+       integer :: lagmax, legmax
+     end subroutine init_phi_interface
+
+     function phi_interface(m,x)
+       use nrtype, only : dp
+       integer :: m
+       real(kind=dp) :: x, phi_interface
+     end function phi_interface
+
+     function d_phi_interface(m,x)
+       use nrtype, only : dp
+       integer :: m
+       real(kind=dp) :: x, d_phi_interface
+     end function d_phi_interface
+
+     function dd_phi_interface(m,x)
+       use nrtype, only : dp
+       integer :: m
+       real(kind=dp) :: x, dd_phi_interface
+     end function dd_phi_interface
+  end interface
+
+  !**********************************************************
+  ! Function pointers for different base functions
+  !**********************************************************
+  procedure(init_phi_interface), pointer :: init_phi => null()
+  procedure(phi_interface),      pointer :: phi      => null()
+  procedure(d_phi_interface),    pointer :: d_phi    => null()
+  procedure(dd_phi_interface),   pointer :: dd_phi   => null()
+  
 contains
   
   subroutine init_legendre(n)
@@ -74,107 +105,7 @@ contains
           coefleg(i,j)=rearfac
        enddo
     enddo
-    write (*,*) "Done."
   end subroutine init_legendre
-  
-  subroutine init_laguerre(lagmax, legmax)
-    integer :: lagmax, legmax
-    integer :: i, j, k, l
-    real(kind=dp) :: bincoef
-
-    if (allocated(gencoeflag)) return
-    write (*,*) "Initializing Laguerre coefficients..."
-    allocate(gencoeflag(0:lagmax, 0:lagmax, 0:legmax))
-    gencoeflag=0.d0
-    gencoeflag(0,0,:)=1.d0
-
-    do l=1, legmax
-       do i=1, lagmax
-          do k=0, i
-             bincoef=1.d0
-             do j=1,i-k
-                bincoef=bincoef*(1.d0+(k+l+0.5d0)/j)
-             enddo
-             do j=1,k
-                bincoef=-bincoef/j
-             enddo
-             gencoeflag(i,k,l)=bincoef
-          enddo
-       enddo
-    enddo
-    write (*,*) "Done."
-  end subroutine init_laguerre
-
-  subroutine init_phi(n)
-    integer :: n
-    integer :: m
-    if (allocated(phi_hm)) deallocate(phi_hm)
-    allocate(phi_hm(0:n))
-
-    do m = 0, n
-       phi_hm(m) = 1d0/sqrt(gamma(m + 2.5d0) / (2d0 * gamma(m+1d0)))
-    end do
-
-  end subroutine init_phi
-
-  function phi(m, x)
-    integer       :: m, k
-    real(kind=dp) :: phi
-    real(kind=dp) :: x, plag, xpow, add
-    real(kind=dp) :: x2
-
-    x2 = x**2
-    plag=gencoeflag(m,0,1)
-    xpow=1.d0
-
-    do k=1,m
-       add=gencoeflag(m,k,1)*xpow
-       plag=plag+add*x2
-       xpow=xpow*x2
-    enddo
-
-    phi = plag * pi**(3d0/4d0) * phi_hm(m)
-  end function phi
-
-  function d_phi(m, x)
-    integer       :: m, k
-    real(kind=dp) :: d_phi
-    real(kind=dp) :: x, dplag, xpow, add
-    real(kind=dp) :: x2
-
-    x2 = x**2
-    dplag=0.d0
-    xpow=1.d0
-
-    do k=1,m
-       add=gencoeflag(m,k,1)*xpow
-       dplag=dplag+k*add
-       xpow=xpow*x2
-    enddo
-    
-    d_phi = 2d0 * x * dplag * pi**(3d0/4d0) * phi_hm(m)
-  end function d_phi
-  
-  function dd_phi(m, x)
-    integer :: m,k
-    real(kind=dp) :: dd_phi
-    real(kind=dp) :: x, dplag, ddplag, xpow,add
-    real(kind=dp) :: x2
-
-    x2 = x**2
-    dplag=0.d0
-    ddplag=0d0
-    xpow=1.d0
-
-    do k=1,m
-       add=gencoeflag(m,k,1)*xpow
-       dplag=dplag+k*add
-       ddplag = ddplag + k*(k-1)*add/x2
-       xpow=xpow*x2
-    enddo
-
-    dd_phi = (2d0 * dplag + 4d0*x**2*ddplag) * pi**(3d0/4d0) * phi_hm(m)
-  end function dd_phi
 
   function G(x) result(y)
     real(kind=dp) :: x

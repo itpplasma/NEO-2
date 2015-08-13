@@ -83,7 +83,7 @@ set(NEO2_SRC_FILES
 #	./hdf5_tools_f2003.f90
 	./collision_operator_mems.f90
 	./collop_compute.f90
-	./collop_definitions.f90
+#	./collop_definitions.f90
 	./collop_laguerre.f90
 	./collop_polynomial.f90
 )

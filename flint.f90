@@ -19,7 +19,7 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   USE device_mod
   USE mag_interface_mod
   USE collisionality_mod, ONLY : collpar,conl_over_mfp
-  use compute_aiota_mod, only : compute_aiota
+  USE compute_aiota_mod, ONLY : compute_aiota
 
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -53,25 +53,25 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   REAL(kind=dp), DIMENSION(3,3) :: hcoder,hctder
 
   ! efit
-  integer :: ierr
+  INTEGER :: ierr
   !
 
   IF (mag_coordinates .EQ. 0) THEN
-     if (mag_magfield .eq. 3) then ! EFIT
+     IF (mag_magfield .EQ. 3) THEN ! EFIT
         ! only to provide efit_raxis,efit_zaxis,aiota_tokamak
         x(1) = rbeg
         x(2) = 0.0d0
         x(3) = 0.0d0
-        call compute_aiota(rbeg,efit_raxis,efit_zaxis,aiota_tokamak,ierr)
+        CALL compute_aiota(rbeg,efit_raxis,efit_zaxis,aiota_tokamak,ierr)
         !print *, 'aiota_tokamak = ', aiota_tokamak
-        if (ierr .eq. 1) then
-           print *, 'Wrong radius for EFIT - I better stop'
-           stop
-        end if
+        IF (ierr .EQ. 1) THEN
+           PRINT *, 'Wrong radius for EFIT - I better stop'
+           STOP
+        END IF
         zbeg = efit_zaxis
         x(3) = zbeg
         CALL mag(x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder)
-     end if
+     END IF
      ! cylindrical coordinates
      ! this is only here because of this call to mag
      ! for computation of bmod0 (we should get rid of this)
@@ -119,11 +119,11 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   END IF
 
   ! negative input for conl_over_mfp should provide collpar directly
-  if (conl_over_mfp .gt. 0.0d0) then
+  IF (conl_over_mfp .GT. 0.0d0) THEN
      collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
-  else
+  ELSE
      collpar=-conl_over_mfp
-  end if
+  END IF
 
   ! find the eta values for splitting
   !  for this the collision parameter is needed
@@ -427,7 +427,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
        isw_momentum
        !vel_distri_swi,vel_num,vel_max,nvel,vel_array
 
-  USE rkstep_mod, ONLY : lag, anumm
+  USE rkstep_mod, ONLY : lag, anumm => anumm_lag
   USE collisionality_mod, ONLY : collpar
   !
   ! types and routines for splitting
@@ -510,18 +510,18 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   REAL(kind=dp) :: previous_dist,boundary_dist,boundary_dist_limit
   REAL(kind=dp) :: next_dist
   REAL(kind=dp) :: old_eta,new_eta,move_eta,opp_limit,opp_limit_safe
-  integer :: eb_ind
-  integer :: eb_ind_left,eb_ind_right
-  integer :: boundary_counter_fixed = 0
-  integer :: boundary_counter_partly_fixed = 0
-  integer :: boundary_counter_not_fixed = 0
+  INTEGER :: eb_ind
+  INTEGER :: eb_ind_left,eb_ind_right
+  INTEGER :: boundary_counter_fixed = 0
+  INTEGER :: boundary_counter_partly_fixed = 0
+  INTEGER :: boundary_counter_not_fixed = 0
 
-  integer :: boundary_fix_mode
-  integer :: b_loop_1,b_loop_2
-  integer :: boundary_fix_counter
-  integer :: boundary_fix_counter_max = 3
-  integer :: boundary_eta_fix_counter
-  logical :: first_ripple,boundary_has_to_be_fixed
+  INTEGER :: boundary_fix_mode
+  INTEGER :: b_loop_1,b_loop_2
+  INTEGER :: boundary_fix_counter
+  INTEGER :: boundary_fix_counter_max = 3
+  INTEGER :: boundary_eta_fix_counter
+  LOGICAL :: first_ripple,boundary_has_to_be_fixed
   TYPE(dnumber_struct), POINTER :: pointer_eta_close_to_boundary => NULL()
   TYPE(dnumber_struct), POINTER :: pointer_all_bmax => NULL()
   TYPE(dnumber_struct), POINTER :: pointer_ripple_close_to_boundary => NULL()
@@ -540,16 +540,16 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   REAL(kind=dp), ALLOCATABLE :: array_eta_move(:)
   REAL(kind=dp), ALLOCATABLE :: array_next_dist(:)
   REAL(kind=dp), ALLOCATABLE :: array_boundary_dist_limit(:)
-  logical,       allocatable :: array_eta_used(:)
+  LOGICAL,       ALLOCATABLE :: array_eta_used(:)
 
   REAL(kind=dp), ALLOCATABLE :: eta_shield_hlp(:)
-  integer,       ALLOCATABLE :: eta_shield(:)
+  INTEGER,       ALLOCATABLE :: eta_shield(:)
   REAL(kind=dp), ALLOCATABLE :: eta_type_hlp(:)
-  integer,       ALLOCATABLE :: eta_type(:)
+  INTEGER,       ALLOCATABLE :: eta_type(:)
   REAL(kind=dp) :: eta_trapped_passing,sigma_trapped_passing 
   REAL(kind=dp) :: eta_highest_local_max 
   REAL(kind=dp) :: save_bsfunc_local_err
-  integer :: save_binarysplit_fsplitdepth
+  INTEGER :: save_binarysplit_fsplitdepth
 
   REAL(kind=dp) :: fieldline_phi_l,fieldline_phi_r,y_conv_factor
 
@@ -560,14 +560,14 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   !*********************************************
 #if defined(MPI_SUPPORT)
   ! Define the scheduler
-  type(neo2scheduler) :: sched
+  TYPE(neo2scheduler) :: sched
 #endif
 
   !**********************************************
   ! HDF5 Support
   !**********************************************
-  integer(HID_T), dimension(1:10) :: h5ids
-  integer                         :: k
+  INTEGER(HID_T), DIMENSION(1:10) :: h5ids
+  INTEGER                         :: k
 
   !print *, 'flint: begin of program'
   ! this is not very sophisticated at the moment
@@ -581,11 +581,11 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   proptag_last  = fieldline%ch_las%ch_las%tag
 
   fieldperiod => fieldline%ch_fir
-  if (mag_magfield .eq. 0) then ! homogeneous
+  IF (mag_magfield .EQ. 0) THEN ! homogeneous
      fieldpropagator => fieldperiod%ch_fir
-  else
+  ELSE
      fieldpropagator => fieldperiod%ch_ext
-  end if
+  END IF
   !print *, 'flint: before fieldpropagator do'
   DO
      IF (fieldpropagator%tag .EQ. fieldline%abs_max_ptag) EXIT
@@ -612,7 +612,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   eta_min_global = 1.0d0/fieldline%b_abs_max
   xetama = 1.0_dp / fieldline%b_abs_min / 0.999_dp
 
-  if (bin_split_mode .ne. 0) then
+  IF (bin_split_mode .NE. 0) THEN
      ! Moved outside the following if-construct
      !print *, 'flint: before extract_array'
      CALL extract_array(fieldripple%eta_x0,eta_x0,1)
@@ -648,7 +648,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      DEALLOCATE(eta_x0,eta_x0_hlp,eta_s)
      ! Moved outside the following if-construct - End
      ! eta_s_relevant = 0.0_dp
-  end if
+  END IF
 
   IF (eta_part_global .LT. 0 ) THEN
      ! create linspace of eta_ori values (equidistanz in eta)
@@ -793,10 +793,10 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   eta_b_abs_max = 1.0_dp / fieldline%b_abs_max
 
   ! for modification of sigma values for binarysplit
-  IF (isw_lorentz .EQ. 1 .or. isw_momentum .eq. 1) THEN
+  IF (isw_lorentz .EQ. 1 .OR. isw_momentum .EQ. 1) THEN
      lag_sigma = 0
      ! This is for the grid-version because anumm then is not allocated
-     if (.not. associated(anumm)) allocate(anumm(0:0,0:0))
+     IF (.NOT. ALLOCATED(anumm)) ALLOCATE(anumm(0:0,0:0))
      anumm(0,0) = 1.0_dp
   ELSE
      lag_sigma = lag
@@ -837,15 +837,15 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            CALL extract_array(fieldripple%eta_x0,eta_x0_hlp,1)
            CALL extract_array(fieldripple%eta_s, eta_s, 1)
            CALL extract_array(fieldripple%eta_shield, eta_shield_hlp, 1)
-           if (allocated(eta_shield)) deallocate(eta_shield)
-           allocate(eta_shield(lbound(eta_shield_hlp,1):ubound(eta_shield_hlp,1)))
-           eta_shield = int(eta_shield_hlp)
-           deallocate(eta_shield_hlp)
+           IF (ALLOCATED(eta_shield)) DEALLOCATE(eta_shield)
+           ALLOCATE(eta_shield(LBOUND(eta_shield_hlp,1):UBOUND(eta_shield_hlp,1)))
+           eta_shield = INT(eta_shield_hlp)
+           DEALLOCATE(eta_shield_hlp)
            CALL extract_array(fieldripple%eta_type, eta_type_hlp, 1)
-           if (allocated(eta_type)) deallocate(eta_type)
-           allocate(eta_type(lbound(eta_type_hlp,1):ubound(eta_type_hlp,1)))
-           eta_type = int(eta_type_hlp)
-           deallocate(eta_type_hlp)
+           IF (ALLOCATED(eta_type)) DEALLOCATE(eta_type)
+           ALLOCATE(eta_type(LBOUND(eta_type_hlp,1):UBOUND(eta_type_hlp,1)))
+           eta_type = INT(eta_type_hlp)
+           DEALLOCATE(eta_type_hlp)
            ! modify the sigma-values eta_s
            ! eta_s = eta_s * bsfunc_sigma_mult
            fix_sigma: DO i = LBOUND(eta_s,1),UBOUND(eta_s,1)
@@ -1139,7 +1139,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               ! with shielding for bootstrap current
               prop_reconstruct_levels = 0
               bsfunc_modelfunc = 1
-              bsfunc_base_distance = maxval(eta_ori(1:ubound(eta_ori,1))-eta_ori(0:ubound(eta_ori,1)-1))
+              bsfunc_base_distance = MAXVAL(eta_ori(1:UBOUND(eta_ori,1))-eta_ori(0:UBOUND(eta_ori,1)-1))
               !print *, 'bsfunc_base_distance ',bsfunc_base_distance
               ! First LOCAL, then the ABSOLUTE MAXIMUM, then the REST
               ! all splitting for one level only
@@ -1160,15 +1160,15 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               i_construct_d = 1
               loc_construct4: DO i_construct = i_construct_s,i_construct_e,i_construct_d
                  eta_x0_val(1) = eta_x0_loc(i_construct)
-                 if (eta_shield_loc(i_construct) .eq. 2) then
+                 IF (eta_shield_loc(i_construct) .EQ. 2) THEN
                     bsfunc_local_err = save_bsfunc_local_err * bsfunc_local_shield_factor
-                 else
+                 ELSE
                     bsfunc_local_err = save_bsfunc_local_err
-                 end if
+                 END IF
                  loc_laguerre4: DO ilag = 0,lag_sigma
                     eta_s_val(1)  = eta_s_loc(i_construct) * anumm(ilag,ilag)
                     !print *, 'loca   ',fieldripple%tag,eta_x0_val,eta_s_val,bsfunc_local_err
-                    call multiple_binarysplit(eta_bs_loc,eta_x0_val,eta_s_val)
+                    CALL multiple_binarysplit(eta_bs_loc,eta_x0_val,eta_s_val)
                  END DO loc_laguerre4
                  bsfunc_local_err = save_bsfunc_local_err
               END DO loc_construct4
@@ -1215,17 +1215,17 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
               ! then the rest
               DO i_construct = LBOUND(eta_x0,1),UBOUND(eta_x0,1)
-                 if (eta_type(i_construct) .eq. 4) cycle ! inflection level
-                 if (eta_type(i_construct) .eq. 5) cycle ! local inflection level
-                 if (eta_type(i_construct) .eq. 6) cycle ! intersection with boundary
-                 IF (eta_x0_hlp(i_construct) .ge. 1000._dp) cycle
+                 IF (eta_type(i_construct) .EQ. 4) CYCLE ! inflection level
+                 IF (eta_type(i_construct) .EQ. 5) CYCLE ! local inflection level
+                 IF (eta_type(i_construct) .EQ. 6) CYCLE ! intersection with boundary
+                 IF (eta_x0_hlp(i_construct) .GE. 1000._dp) CYCLE
                  eta_x0_val(1) = eta_x0(i_construct)
                  DO ilag = 0,lag_sigma
                     eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
-                    if (eta_shield(i_construct) .eq. 1 .and. bsfunc_shield) cycle !<= NEW Winny
+                    IF (eta_shield(i_construct) .EQ. 1 .AND. bsfunc_shield) CYCLE !<= NEW Winny
                     !print *, 'rest   ',eta_x0_val,eta_s_val,bsfunc_local_err
                     ! IF(bsfunc_ignore_trap_levels .EQ. 1 .AND. eta_x0_val(1) .GT. eta_min_relevant) CYCLE
-                    call multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
+                    CALL multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
 !!$                    DO ibmf = bsfunc_modelfunc_num,1,-1
 !!$                       bsfunc_modelfunc = ibmf
 !!$                       CALL construct_bsfunc(eta_x0_val,eta_s_val) 
@@ -1246,13 +1246,13 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               ! inflection levels
               bsfunc_local_err = save_bsfunc_local_err * bsfunc_local_shield_factor
               DO i_construct = LBOUND(eta_x0,1),UBOUND(eta_x0,1)
-                 if (eta_type(i_construct) .ne. 4) cycle ! no inflection level
+                 IF (eta_type(i_construct) .NE. 4) CYCLE ! no inflection level
                  eta_x0_val(1) = eta_x0(i_construct)
                  DO ilag = 0,lag_sigma
                     eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
-                    if (eta_shield(i_construct) .eq. 1 .and. bsfunc_shield) cycle !<= NEW Winny
+                    IF (eta_shield(i_construct) .EQ. 1 .AND. bsfunc_shield) CYCLE !<= NEW Winny
                     !print *, 'inf    ',eta_x0_val,eta_s_val,bsfunc_local_err
-                    call multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
+                    CALL multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
                     !DO ibmf = bsfunc_modelfunc_num,1,-1
                     !   bsfunc_modelfunc = ibmf
                     !   CALL construct_bsfunc(eta_x0_val,eta_s_val) 
@@ -1265,14 +1265,14 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               ! local inflection levels
               bsfunc_local_err = save_bsfunc_local_err * bsfunc_local_shield_factor
               DO i_construct = LBOUND(eta_x0,1),UBOUND(eta_x0,1)
-                 if (eta_type(i_construct) .ne. 5) cycle ! no local inflection level
+                 IF (eta_type(i_construct) .NE. 5) CYCLE ! no local inflection level
                  eta_x0_val(1) = eta_x0(i_construct)
                  DO ilag = 0,lag_sigma
                     eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
                     !print *, 'infl   ',eta_x0_val,eta_s_val,bsfunc_local_err
                     !print *, 'local inflection ',eta_s_val
-                    if (eta_shield(i_construct) .eq. 1 .and. bsfunc_shield) cycle !<= NEW Winny
-                    call multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
+                    IF (eta_shield(i_construct) .EQ. 1 .AND. bsfunc_shield) CYCLE !<= NEW Winny
+                    CALL multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
                     !DO ibmf = bsfunc_modelfunc_num,1,-1
                     !   bsfunc_modelfunc = ibmf
                     !   CALL construct_bsfunc(eta_x0_val,eta_s_val) 
@@ -1285,14 +1285,14 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               ! local intersection levels
               bsfunc_local_err = save_bsfunc_local_err * bsfunc_local_shield_factor
               DO i_construct = LBOUND(eta_x0,1),UBOUND(eta_x0,1)
-                 if (eta_type(i_construct) .ne. 6) cycle ! no local inflection level
+                 IF (eta_type(i_construct) .NE. 6) CYCLE ! no local inflection level
                  ! print *, 'flint inter ',fieldripple%tag
                  eta_x0_val(1) = eta_x0(i_construct)
                  DO ilag = 0,lag_sigma
                     eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
                     !print *, 'intl   ',eta_x0_val,eta_s_val,bsfunc_local_err
                     !print *, eta_s_val(1)
-                    call multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
+                    CALL multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
                     !bsfunc_modelfunc = 2
                     !CALL construct_bsfunc(eta_x0_val,eta_s_val) 
                     !CALL find_binarysplit(eta_bs,eta_x0_val)
@@ -1340,7 +1340,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                          fieldripple%b_max_r / fieldripple%d2bp_max_r / &
                          fieldpropagator%mdata%h_phi(UBOUND(fieldpropagator%mdata%h_phi,1))**2 &
                          )
-                    eta_highest_local_max=min(eta_highest_local_max,eta_x0_val(1)) !<=NEW
+                    eta_highest_local_max=MIN(eta_highest_local_max,eta_x0_val(1)) !<=NEW
                  END IF
                  eta_s_loc_min = eta_x0_val(1) * SQRT(eta_s_loc_min) * collpar
                  ! minimum local eta_s - end
@@ -1419,12 +1419,12 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     DO ilag = 0,lag_sigma
                        eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
                        ! new exit by Sergei
-                       if(abs(eta_x0_val(1)-eta_trapped_passing).gt. & !<=NEW
-                            3.d0*(sigma_trapped_passing+eta_s_val(1))) then !<=NEW
-                          cycle !<=NEW
-                       elseif(eta_x0_val(1)-3.d0*eta_s_val(1).lt.eta_highest_local_max) then !<=NEW
-                          cycle !<=NEW
-                       endif !<=NEW
+                       IF(ABS(eta_x0_val(1)-eta_trapped_passing).GT. & !<=NEW
+                            3.d0*(sigma_trapped_passing+eta_s_val(1))) THEN !<=NEW
+                          CYCLE !<=NEW
+                       ELSEIF(eta_x0_val(1)-3.d0*eta_s_val(1).LT.eta_highest_local_max) THEN !<=NEW
+                          CYCLE !<=NEW
+                       ENDIF !<=NEW
                        ! end - new exit by Sergei                       
                        IF(bsfunc_ignore_trap_levels .EQ. 1 .AND. eta_x0_val(1) .GT. eta_min_relevant) CYCLE
                        DO ibmf = 1,bsfunc_modelfunc_num
@@ -1788,126 +1788,126 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 !!$     CALL deconstruct_binarysplit(fieldripple%eta_bs_loc)
 !!$  END IFg
 
-  if (bin_split_mode .ne. 0) then
+  IF (bin_split_mode .NE. 0) THEN
      ! check for the boundary problem
      boundary_fix_mode = 3
      !boundary_fix_counter_max = 50
-     if (boundary_fix_mode .eq. 2) then ! this was the global solution which failed
-        print *, '--------------------------------------------'
-        boundaryfixcounter: do boundary_fix_counter = 1,boundary_fix_counter_max+1
+     IF (boundary_fix_mode .EQ. 2) THEN ! this was the global solution which failed
+        PRINT *, '--------------------------------------------'
+        boundaryfixcounter: DO boundary_fix_counter = 1,boundary_fix_counter_max+1
            PRINT *, 'Setting up propagators for boundary check:',' boundary_fix_counter ',boundary_fix_counter
            fieldperiod => fieldline%ch_fir
            fieldpropagator => fieldperiod%ch_fir
            fieldripple => fieldpropagator%ch_act
-           first_ripple = .true.
+           first_ripple = .TRUE.
            allripplesetadetect: DO      
               rippletag = fieldripple%tag
               ! left
-              if (first_ripple .and. boundary_fix_counter .eq. 1) then
-                 call set_new(pointer_all_bmax,fieldripple%b_max_l)
-                 call set_new(pointer_ripple_all_bmax,dble(rippletag))
-                 first_ripple = .false.
-              end if
-              do i = lbound(fieldripple%eta,1)+1,ubound(fieldripple%eta,1)-1
+              IF (first_ripple .AND. boundary_fix_counter .EQ. 1) THEN
+                 CALL set_new(pointer_all_bmax,fieldripple%b_max_l)
+                 CALL set_new(pointer_ripple_all_bmax,DBLE(rippletag))
+                 first_ripple = .FALSE.
+              END IF
+              DO i = LBOUND(fieldripple%eta,1)+1,UBOUND(fieldripple%eta,1)-1
                  boundary_dist = 1.0d0 / fieldripple%b_max_l - fieldripple%eta(i)
                  previous_dist = fieldripple%eta(i) - fieldripple%eta(i-1)
                  next_dist = fieldripple%eta(i+1) - fieldripple%eta(i)
                  boundary_dist_limit = next_dist * boundary_dist_limit_factor
-                 if (boundary_dist .ge. 0.0d0 .and. boundary_dist .le. boundary_dist_limit) then
+                 IF (boundary_dist .GE. 0.0d0 .AND. boundary_dist .LE. boundary_dist_limit) THEN
                     !if (abs(boundary_dist) .le. boundary_dist_limit) then
-                    print *, ' left:   ','rippletag: ',rippletag, &
+                    PRINT *, ' left:   ','rippletag: ',rippletag, &
                          ' proptag ',fieldripple%pa_fir%tag,' - ' ,fieldripple%pa_las%tag ,' level' ,i
-                    print *, ' 1.0d0/fieldripple%b_max_l ',1.0d0/fieldripple%b_max_l
-                    print *, ' fieldripple%eta(i)        ',fieldripple%eta(i)
-                    print *, ' boundary_dist             ',boundary_dist
-                    print *, ' boundary_dist_limit       ',boundary_dist_limit
-                    call set_new(pointer_index_eta_close_to_boundary,dble(i))
-                    call set_new(pointer_boundary_dist,boundary_dist)
-                    call set_new(pointer_eta_move,2.0d0 * boundary_dist_limit)
-                    call set_new(pointer_next_dist,next_dist)
-                    call set_new(pointer_boundary_dist_limit,boundary_dist_limit)
-                    call set_new(pointer_eta_close_to_boundary,fieldripple%eta(i))
-                    call set_new(pointer_ripple_close_to_boundary,dble(rippletag))
-                 end if
-              end do
+                    PRINT *, ' 1.0d0/fieldripple%b_max_l ',1.0d0/fieldripple%b_max_l
+                    PRINT *, ' fieldripple%eta(i)        ',fieldripple%eta(i)
+                    PRINT *, ' boundary_dist             ',boundary_dist
+                    PRINT *, ' boundary_dist_limit       ',boundary_dist_limit
+                    CALL set_new(pointer_index_eta_close_to_boundary,DBLE(i))
+                    CALL set_new(pointer_boundary_dist,boundary_dist)
+                    CALL set_new(pointer_eta_move,2.0d0 * boundary_dist_limit)
+                    CALL set_new(pointer_next_dist,next_dist)
+                    CALL set_new(pointer_boundary_dist_limit,boundary_dist_limit)
+                    CALL set_new(pointer_eta_close_to_boundary,fieldripple%eta(i))
+                    CALL set_new(pointer_ripple_close_to_boundary,DBLE(rippletag))
+                 END IF
+              END DO
               ! right
-              first_ripple = .false.
-              if (boundary_fix_counter .eq. 1) then
-                 call set_new(pointer_all_bmax,fieldripple%b_max_r)
-                 call set_new(pointer_ripple_all_bmax,dble(rippletag))
-              end if
-              do i = lbound(fieldripple%eta,1)+1,ubound(fieldripple%eta,1)-1
+              first_ripple = .FALSE.
+              IF (boundary_fix_counter .EQ. 1) THEN
+                 CALL set_new(pointer_all_bmax,fieldripple%b_max_r)
+                 CALL set_new(pointer_ripple_all_bmax,DBLE(rippletag))
+              END IF
+              DO i = LBOUND(fieldripple%eta,1)+1,UBOUND(fieldripple%eta,1)-1
                  boundary_dist = 1.0d0 / fieldripple%b_max_r - fieldripple%eta(i)
                  previous_dist = fieldripple%eta(i) - fieldripple%eta(i-1)
                  next_dist = fieldripple%eta(i+1) - fieldripple%eta(i)
                  boundary_dist_limit = next_dist * boundary_dist_limit_factor
-                 if (boundary_dist .ge. 0.0d0 .and. boundary_dist .le. boundary_dist_limit) then
+                 IF (boundary_dist .GE. 0.0d0 .AND. boundary_dist .LE. boundary_dist_limit) THEN
                     !if (abs(boundary_dist) .le. boundary_dist_limit) then
-                    print *, ' right:  ','rippletag: ',rippletag, &
+                    PRINT *, ' right:  ','rippletag: ',rippletag, &
                          ' proptag ',fieldripple%pa_fir%tag,' - ',fieldripple%pa_las%tag ,' level' ,i
-                    print *, ' 1.0d0/fieldripple%b_max_r ',1.0d0/fieldripple%b_max_r
-                    print *, ' fieldripple%eta(i)        ',fieldripple%eta(i)
-                    print *, ' boundary_dist             ',boundary_dist
-                    print *, ' boundary_dist_limit       ',boundary_dist_limit
-                    call set_new(pointer_index_eta_close_to_boundary,dble(i))
-                    call set_new(pointer_boundary_dist,boundary_dist)
-                    call set_new(pointer_eta_move,2.0d0 * boundary_dist_limit)
-                    call set_new(pointer_next_dist,next_dist)
-                    call set_new(pointer_boundary_dist_limit,boundary_dist_limit)
-                    call set_new(pointer_eta_close_to_boundary,fieldripple%eta(i))
-                    call set_new(pointer_ripple_close_to_boundary,dble(rippletag))
-                 end if
-              end do
+                    PRINT *, ' 1.0d0/fieldripple%b_max_r ',1.0d0/fieldripple%b_max_r
+                    PRINT *, ' fieldripple%eta(i)        ',fieldripple%eta(i)
+                    PRINT *, ' boundary_dist             ',boundary_dist
+                    PRINT *, ' boundary_dist_limit       ',boundary_dist_limit
+                    CALL set_new(pointer_index_eta_close_to_boundary,DBLE(i))
+                    CALL set_new(pointer_boundary_dist,boundary_dist)
+                    CALL set_new(pointer_eta_move,2.0d0 * boundary_dist_limit)
+                    CALL set_new(pointer_next_dist,next_dist)
+                    CALL set_new(pointer_boundary_dist_limit,boundary_dist_limit)
+                    CALL set_new(pointer_eta_close_to_boundary,fieldripple%eta(i))
+                    CALL set_new(pointer_ripple_close_to_boundary,DBLE(rippletag))
+                 END IF
+              END DO
 
-              if ( associated(fieldripple%next) ) then
+              IF ( ASSOCIATED(fieldripple%next) ) THEN
                  fieldripple => fieldripple%next
-              else
+              ELSE
                  EXIT allripplesetadetect
-              end if
+              END IF
            END DO allripplesetadetect
 
-           call extract_array(pointer_eta_close_to_boundary,array_eta_close_to_boundary)
-           call extract_array(pointer_all_bmax,array_all_bmax)
-           call extract_array(pointer_ripple_close_to_boundary,array_ripple_close_to_boundary)
-           call extract_array(pointer_ripple_all_bmax,array_ripple_all_bmax)
-           call extract_array(pointer_index_eta_close_to_boundary,array_index_eta_close_to_boundary)
-           call extract_array(pointer_boundary_dist,array_boundary_dist)
-           call extract_array(pointer_boundary_dist_limit,array_boundary_dist_limit)
-           call extract_array(pointer_eta_move,array_eta_move)
-           call extract_array(pointer_next_dist,array_next_dist)
+           CALL extract_array(pointer_eta_close_to_boundary,array_eta_close_to_boundary)
+           CALL extract_array(pointer_all_bmax,array_all_bmax)
+           CALL extract_array(pointer_ripple_close_to_boundary,array_ripple_close_to_boundary)
+           CALL extract_array(pointer_ripple_all_bmax,array_ripple_all_bmax)
+           CALL extract_array(pointer_index_eta_close_to_boundary,array_index_eta_close_to_boundary)
+           CALL extract_array(pointer_boundary_dist,array_boundary_dist)
+           CALL extract_array(pointer_boundary_dist_limit,array_boundary_dist_limit)
+           CALL extract_array(pointer_eta_move,array_eta_move)
+           CALL extract_array(pointer_next_dist,array_next_dist)
 
-           if (allocated(array_eta_close_to_boundary)) then
-              boundary_has_to_be_fixed = .true.
-           else
-              boundary_has_to_be_fixed = .false.
-           end if
+           IF (ALLOCATED(array_eta_close_to_boundary)) THEN
+              boundary_has_to_be_fixed = .TRUE.
+           ELSE
+              boundary_has_to_be_fixed = .FALSE.
+           END IF
 
-           if (boundary_fix_counter .eq. 1) then
-              print *, array_all_bmax
-           end if
+           IF (boundary_fix_counter .EQ. 1) THEN
+              PRINT *, array_all_bmax
+           END IF
 
-           call delete_all(pointer_eta_close_to_boundary)
-           call delete_all(pointer_all_bmax)
-           call delete_all(pointer_ripple_close_to_boundary)
-           call delete_all(pointer_ripple_all_bmax)
-           call delete_all(pointer_index_eta_close_to_boundary)
-           call delete_all(pointer_boundary_dist)
-           call delete_all(pointer_boundary_dist_limit)
-           call delete_all(pointer_eta_move)
-           call delete_all(pointer_next_dist)
+           CALL delete_all(pointer_eta_close_to_boundary)
+           CALL delete_all(pointer_all_bmax)
+           CALL delete_all(pointer_ripple_close_to_boundary)
+           CALL delete_all(pointer_ripple_all_bmax)
+           CALL delete_all(pointer_index_eta_close_to_boundary)
+           CALL delete_all(pointer_boundary_dist)
+           CALL delete_all(pointer_boundary_dist_limit)
+           CALL delete_all(pointer_eta_move)
+           CALL delete_all(pointer_next_dist)
            PRINT *, 'Setting up propagators for boundary check - End'
            ! check for the boundary problem - end
 
-           if (boundary_has_to_be_fixed .and. boundary_fix_counter .gt. boundary_fix_counter_max) then
-              print *, ''
-              print *, 'eta conflicts with boundary could not be solved!'
-              stop
-           end if
+           IF (boundary_has_to_be_fixed .AND. boundary_fix_counter .GT. boundary_fix_counter_max) THEN
+              PRINT *, ''
+              PRINT *, 'eta conflicts with boundary could not be solved!'
+              STOP
+           END IF
 
-           if (.not. boundary_has_to_be_fixed) then
-              print *, ' all conflicts are fixed'
-              exit boundaryfixcounter
-           end if
+           IF (.NOT. boundary_has_to_be_fixed) THEN
+              PRINT *, ' all conflicts are fixed'
+              EXIT boundaryfixcounter
+           END IF
 !!$        print *, 'array_all_bmax'
 !!$        print *, array_all_bmax
 !!$        print *, 'array_ripple_all_bmax'
@@ -1934,23 +1934,23 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            fieldpropagator => fieldperiod%ch_fir
            fieldripple => fieldpropagator%ch_act
            ! which etas have to be processed
-           allocate(array_eta_used(lbound(array_eta_close_to_boundary,1):ubound(array_eta_close_to_boundary,1)))
-           array_eta_used = .true.
-           do b_loop_1 = lbound(array_eta_close_to_boundary,1),ubound(array_eta_close_to_boundary,1)
-              if (array_eta_used(b_loop_1)) then
-                 do b_loop_2 = lbound(array_eta_close_to_boundary,1),ubound(array_eta_close_to_boundary,1)
-                    if (array_eta_used(b_loop_2) .and. b_loop_1 .ne. b_loop_2) then
-                       if (array_eta_close_to_boundary(b_loop_1) .eq. array_eta_close_to_boundary(b_loop_2)) then
+           ALLOCATE(array_eta_used(LBOUND(array_eta_close_to_boundary,1):UBOUND(array_eta_close_to_boundary,1)))
+           array_eta_used = .TRUE.
+           DO b_loop_1 = LBOUND(array_eta_close_to_boundary,1),UBOUND(array_eta_close_to_boundary,1)
+              IF (array_eta_used(b_loop_1)) THEN
+                 DO b_loop_2 = LBOUND(array_eta_close_to_boundary,1),UBOUND(array_eta_close_to_boundary,1)
+                    IF (array_eta_used(b_loop_2) .AND. b_loop_1 .NE. b_loop_2) THEN
+                       IF (array_eta_close_to_boundary(b_loop_1) .EQ. array_eta_close_to_boundary(b_loop_2)) THEN
                           !print *, 'same eta found'
-                          array_eta_used(b_loop_2) = .false.
-                          array_eta_move(b_loop_1) = max(array_eta_move(b_loop_1),array_eta_move(b_loop_2))
+                          array_eta_used(b_loop_2) = .FALSE.
+                          array_eta_move(b_loop_1) = MAX(array_eta_move(b_loop_1),array_eta_move(b_loop_2))
                           ! for rare cases here should be a check whether this for sure causes no conflict
                           ! not necessary because there is now a check in the loop
-                       end if
-                    end if
-                 end do
-              end if
-           end do
+                       END IF
+                    END IF
+                 END DO
+              END IF
+           END DO
            !print *, array_eta_used
            !print *, array_eta_close_to_boundary
            !print *, array_eta_move
@@ -1958,47 +1958,47 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            ! here now all etas which are in conflict with boundaries should be known
            ! they have to be moved now in all ripples
            boundary_eta_fix_counter = 0
-           allripplesfixetabound: do
+           allripplesfixetabound: DO
               rippletag = fieldripple%tag
-              do b_loop_1 = lbound(array_eta_close_to_boundary,1),ubound(array_eta_close_to_boundary,1)
-                 if (array_eta_used(b_loop_1)) then
-                    do b_loop_2 = lbound(fieldripple%eta,1),ubound(fieldripple%eta,1)
-                       if (array_eta_close_to_boundary(b_loop_1) .eq. fieldripple%eta(b_loop_2)) then
+              DO b_loop_1 = LBOUND(array_eta_close_to_boundary,1),UBOUND(array_eta_close_to_boundary,1)
+                 IF (array_eta_used(b_loop_1)) THEN
+                    DO b_loop_2 = LBOUND(fieldripple%eta,1),UBOUND(fieldripple%eta,1)
+                       IF (array_eta_close_to_boundary(b_loop_1) .EQ. fieldripple%eta(b_loop_2)) THEN
                           !print *, 'eta ',array_eta_close_to_boundary(b_loop_1),' found in ',rippletag
                           boundary_eta_fix_counter = boundary_eta_fix_counter + 1
                           fieldripple%eta(b_loop_2) = fieldripple%eta(b_loop_2) + array_eta_move(b_loop_1)
-                       end if
-                    end do
-                 end if
-              end do
-              if ( associated(fieldripple%next) ) then
+                       END IF
+                    END DO
+                 END IF
+              END DO
+              IF ( ASSOCIATED(fieldripple%next) ) THEN
                  fieldripple => fieldripple%next
-              else
+              ELSE
                  EXIT  allripplesfixetabound
-              end if
-           end do allripplesfixetabound
+              END IF
+           END DO allripplesfixetabound
            ! deallocate arrays
-           if (allocated(array_eta_close_to_boundary)) deallocate(array_eta_close_to_boundary)
-           if (allocated(array_ripple_close_to_boundary)) deallocate(array_ripple_close_to_boundary)
-           if (allocated(array_index_eta_close_to_boundary)) deallocate(array_index_eta_close_to_boundary)
-           if (allocated(array_boundary_dist)) deallocate(array_boundary_dist)
-           if (allocated(array_eta_move)) deallocate(array_eta_move)
-           if (allocated(array_next_dist)) deallocate(array_next_dist)
-           if (allocated(array_boundary_dist_limit)) deallocate(array_boundary_dist_limit)
-           if (allocated(array_eta_used)) deallocate(array_eta_used)
-           print *, ' boundary_eta_fix_counter = ',boundary_eta_fix_counter
+           IF (ALLOCATED(array_eta_close_to_boundary)) DEALLOCATE(array_eta_close_to_boundary)
+           IF (ALLOCATED(array_ripple_close_to_boundary)) DEALLOCATE(array_ripple_close_to_boundary)
+           IF (ALLOCATED(array_index_eta_close_to_boundary)) DEALLOCATE(array_index_eta_close_to_boundary)
+           IF (ALLOCATED(array_boundary_dist)) DEALLOCATE(array_boundary_dist)
+           IF (ALLOCATED(array_eta_move)) DEALLOCATE(array_eta_move)
+           IF (ALLOCATED(array_next_dist)) DEALLOCATE(array_next_dist)
+           IF (ALLOCATED(array_boundary_dist_limit)) DEALLOCATE(array_boundary_dist_limit)
+           IF (ALLOCATED(array_eta_used)) DEALLOCATE(array_eta_used)
+           PRINT *, ' boundary_eta_fix_counter = ',boundary_eta_fix_counter
            PRINT *, 'Fixing the boundary problem - End'
-           print *, '--------------------------------------------'        
-        end do boundaryfixcounter
+           PRINT *, '--------------------------------------------'        
+        END DO boundaryfixcounter
 
-        if (allocated(array_all_bmax)) deallocate(array_all_bmax)
-        if (allocated(array_ripple_all_bmax)) deallocate(array_ripple_all_bmax)
+        IF (ALLOCATED(array_all_bmax)) DEALLOCATE(array_all_bmax)
+        IF (ALLOCATED(array_ripple_all_bmax)) DEALLOCATE(array_ripple_all_bmax)
 
-        print *, '--------------------------------------------'        
+        PRINT *, '--------------------------------------------'        
 
-     end if
+     END IF
 
-     if (boundary_fix_mode .eq. 3) then ! new stuff - this is the movement in minus direction
+     IF (boundary_fix_mode .EQ. 3) THEN ! new stuff - this is the movement in minus direction
         ! check for the boundary problem
         ! go to the first propagator which is wanted
         fieldperiod => fieldline%ch_fir 
@@ -2007,7 +2007,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            IF (.NOT. ASSOCIATED(fieldpropagator%next)) EXIT
            fieldpropagator => fieldpropagator%next
         END DO
-        print *, '--------------------------------------------'
+        PRINT *, '--------------------------------------------'
         PRINT *, 'Setting up propagators for boundary check'
         allpropsbound3: DO      
            fieldperiod => fieldpropagator%parent
@@ -2015,13 +2015,13 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            rippletag = fieldripple%tag
            proptag = fieldpropagator%tag
            ! leftmost propagator in ripple
-           if (proptag .eq. fieldripple%pa_fir%tag) then
-              do i = lbound(fieldripple%eta,1)+1,ubound(fieldripple%eta,1)-1
+           IF (proptag .EQ. fieldripple%pa_fir%tag) THEN
+              DO i = LBOUND(fieldripple%eta,1)+1,UBOUND(fieldripple%eta,1)-1
                  boundary_dist = 1.0d0 / fieldripple%b_max_l - fieldripple%eta(i)
                  previous_dist = fieldripple%eta(i) - fieldripple%eta(i-1)
                  next_dist = fieldripple%eta(i+1) - fieldripple%eta(i)
                  boundary_dist_limit = previous_dist * boundary_dist_limit_factor
-                 if (boundary_dist .ge. 0.0d0 .and. boundary_dist .le. boundary_dist_limit) then
+                 IF (boundary_dist .GE. 0.0d0 .AND. boundary_dist .LE. boundary_dist_limit) THEN
                     !print *, ' left:   ','rippletag: ',rippletag, &
                     !     ' proptag ',fieldripple%pa_fir%tag,' - ',fieldripple%pa_las%tag,' level' ,i
                     !print *, '         ',fieldripple%eta(i),1.0d0/fieldripple%b_max_l,boundary_dist
@@ -2029,18 +2029,18 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     fieldripple%eta_boundary_left = fieldripple%eta(i)
                     fieldripple%eta_boundary_modification_left = boundary_dist_limit
                     fieldripple%eta_boundary_index_left = i
-                 end if
-              end do
-           end if
+                 END IF
+              END DO
+           END IF
 
            ! rightmost propagator in ripple
-           if (proptag .eq. fieldripple%pa_las%tag) then
-              do i = lbound(fieldripple%eta,1)+1,ubound(fieldripple%eta,1)-1
+           IF (proptag .EQ. fieldripple%pa_las%tag) THEN
+              DO i = LBOUND(fieldripple%eta,1)+1,UBOUND(fieldripple%eta,1)-1
                  boundary_dist = 1.0d0 / fieldripple%b_max_r - fieldripple%eta(i)
                  previous_dist = fieldripple%eta(i) - fieldripple%eta(i-1)
                  next_dist = fieldripple%eta(i+1) - fieldripple%eta(i)
                  boundary_dist_limit = previous_dist * boundary_dist_limit_factor
-                 if (boundary_dist .ge. 0.0d0 .and. boundary_dist .le. boundary_dist_limit) then
+                 IF (boundary_dist .GE. 0.0d0 .AND. boundary_dist .LE. boundary_dist_limit) THEN
                     !print *, ' right:  ','rippletag: ',rippletag, &
                     !     ' proptag ',fieldripple%pa_fir%tag,' - ',fieldripple%pa_las%tag,' level' ,i
                     !print *, '          ',fieldripple%eta(i),1.0d0/fieldripple%b_max_r,boundary_dist
@@ -2048,9 +2048,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     fieldripple%eta_boundary_right = fieldripple%eta(i)
                     fieldripple%eta_boundary_modification_right = boundary_dist_limit
                     fieldripple%eta_boundary_index_right = i
-                 end if
-              end do
-           end if
+                 END IF
+              END DO
+           END IF
 
            IF (fieldpropagator%tag .EQ. proptag_last) THEN 
               iend = 1
@@ -2096,122 +2096,122 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            rippletag = fieldripple%tag
 
            opp_limit_safe = 1.e-4
-           if ( fieldripple%eta_boundary_index_left .ne. 0 .and. fieldripple%eta_boundary_index_right .eq. 0) then
+           IF ( fieldripple%eta_boundary_index_left .NE. 0 .AND. fieldripple%eta_boundary_index_right .EQ. 0) THEN
               ! only left side affected
               eb_ind_left = fieldripple%eta_boundary_index_left
               move_eta = fieldripple%eta_boundary_modification_left
               old_eta = fieldripple%eta(eb_ind_left)
               new_eta = old_eta - move_eta
               opp_limit = 1.0d0 / fieldripple%b_max_r
-              if (old_eta .ge. opp_limit .and. new_eta .lt. opp_limit) then ! problem on other side
+              IF (old_eta .GE. opp_limit .AND. new_eta .LT. opp_limit) THEN ! problem on other side
                  new_eta = opp_limit + opp_limit_safe
-                 if (new_eta .lt. old_eta) then
+                 IF (new_eta .LT. old_eta) THEN
                     fieldripple%eta(eb_ind_left) = new_eta
                     boundary_counter_partly_fixed = boundary_counter_partly_fixed + 1
-                    print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - partly fixed'
-                 else
+                    PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - partly fixed'
+                 ELSE
                     boundary_counter_not_fixed = boundary_counter_not_fixed + 1
-                    print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - not fixed'
-                 end if
-              else ! no problem on other side
+                    PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - not fixed'
+                 END IF
+              ELSE ! no problem on other side
                  fieldripple%eta(eb_ind_left) = new_eta
                  boundary_counter_fixed = boundary_counter_fixed + 1
-                 print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - fixed'
-              end if
-           elseif ( fieldripple%eta_boundary_index_left .eq. 0 .and. fieldripple%eta_boundary_index_right .ne. 0) then
+                 PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - fixed'
+              END IF
+           ELSEIF ( fieldripple%eta_boundary_index_left .EQ. 0 .AND. fieldripple%eta_boundary_index_right .NE. 0) THEN
               ! only right side affected
               eb_ind_right = fieldripple%eta_boundary_index_right
               move_eta = fieldripple%eta_boundary_modification_right
               old_eta = fieldripple%eta(eb_ind_right)
               new_eta = old_eta - move_eta
               opp_limit = 1.0d0 / fieldripple%b_max_l
-              if (old_eta .ge. opp_limit .and. new_eta .lt. opp_limit) then ! problem on other side
+              IF (old_eta .GE. opp_limit .AND. new_eta .LT. opp_limit) THEN ! problem on other side
                  new_eta = opp_limit + opp_limit_safe
-                 if (new_eta .lt. old_eta) then
+                 IF (new_eta .LT. old_eta) THEN
                     fieldripple%eta(eb_ind_right) = new_eta
                     boundary_counter_partly_fixed = boundary_counter_partly_fixed + 1
-                    print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - partly fixed'
-                 else
+                    PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - partly fixed'
+                 ELSE
                     boundary_counter_not_fixed = boundary_counter_not_fixed + 1
-                    print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - not fixed'
-                 end if
-              else ! no problem on other side
+                    PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - not fixed'
+                 END IF
+              ELSE ! no problem on other side
                  fieldripple%eta(eb_ind_right) = new_eta
                  boundary_counter_fixed = boundary_counter_fixed + 1
-                 print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - fixed'
-              end if
-           elseif ( fieldripple%eta_boundary_index_left .ne. 0 .and. fieldripple%eta_boundary_index_right .ne. 0) then
+                 PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - fixed'
+              END IF
+           ELSEIF ( fieldripple%eta_boundary_index_left .NE. 0 .AND. fieldripple%eta_boundary_index_right .NE. 0) THEN
               ! both sides affected
               eb_ind_left = fieldripple%eta_boundary_index_left
               eb_ind_right = fieldripple%eta_boundary_index_right
-              if (eb_ind_left .eq. eb_ind_left) then ! same index on both sides
-                 move_eta = max(fieldripple%eta_boundary_modification_right,fieldripple%eta_boundary_modification_left)
+              IF (eb_ind_left .EQ. eb_ind_left) THEN ! same index on both sides
+                 move_eta = MAX(fieldripple%eta_boundary_modification_right,fieldripple%eta_boundary_modification_left)
                  new_eta = fieldripple%eta(eb_ind_right) - move_eta
                  fieldripple%eta(eb_ind_right) = new_eta
                  boundary_counter_fixed = boundary_counter_fixed + 1
-                 print *, ' ripple ',fieldripple%tag,' propagator ', &
+                 PRINT *, ' ripple ',fieldripple%tag,' propagator ', &
                       fieldripple%pa_fir%tag,'-',fieldripple%pa_las%tag,' left,right - fixed'
-              else ! different indices
+              ELSE ! different indices
                  ! right
                  move_eta = fieldripple%eta_boundary_modification_right
                  old_eta = fieldripple%eta(eb_ind_right)
                  new_eta = old_eta - move_eta
                  opp_limit = 1.0d0 / fieldripple%b_max_l
-                 if (old_eta .ge. opp_limit .and. new_eta .lt. opp_limit) then ! problem on other side
+                 IF (old_eta .GE. opp_limit .AND. new_eta .LT. opp_limit) THEN ! problem on other side
                     new_eta = opp_limit + opp_limit_safe
-                    if (new_eta .lt. old_eta) then
+                    IF (new_eta .LT. old_eta) THEN
                        fieldripple%eta(eb_ind_right) = new_eta
                        boundary_counter_partly_fixed = boundary_counter_partly_fixed + 1
-                       print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - partly fixed'
-                    else
+                       PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - partly fixed'
+                    ELSE
                        boundary_counter_not_fixed = boundary_counter_not_fixed + 1
-                       print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - not fixed'
-                    end if
-                 else ! no problem on other side
+                       PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - not fixed'
+                    END IF
+                 ELSE ! no problem on other side
                     fieldripple%eta(eb_ind_right) = new_eta
                     boundary_counter_fixed = boundary_counter_fixed + 1
-                    print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - fixed'
-                 end if
+                    PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_las%tag,' right - fixed'
+                 END IF
                  ! left
                  move_eta = fieldripple%eta_boundary_modification_left
                  old_eta = fieldripple%eta(eb_ind_left)
                  new_eta = old_eta - move_eta
                  opp_limit = 1.0d0 / fieldripple%b_max_r
-                 if (old_eta .ge. opp_limit .and. new_eta .lt. opp_limit) then ! problem on other side
+                 IF (old_eta .GE. opp_limit .AND. new_eta .LT. opp_limit) THEN ! problem on other side
                     new_eta = opp_limit + opp_limit_safe
-                    if (new_eta .lt. old_eta) then
+                    IF (new_eta .LT. old_eta) THEN
                        fieldripple%eta(eb_ind_left) = new_eta
                        boundary_counter_partly_fixed = boundary_counter_partly_fixed + 1
-                       print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - partly fixed'
-                    else
+                       PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - partly fixed'
+                    ELSE
                        boundary_counter_not_fixed = boundary_counter_not_fixed + 1
-                       print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - not fixed'
-                    end if
-                 else ! no problem on other side
+                       PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - not fixed'
+                    END IF
+                 ELSE ! no problem on other side
                     fieldripple%eta(eb_ind_left) = new_eta
                     boundary_counter_fixed = boundary_counter_fixed + 1
-                    print *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - fixed'
-                 end if
-              end if
-           end if
+                    PRINT *, ' ripple ',fieldripple%tag,' propagator ',fieldripple%pa_fir%tag,' left  - fixed'
+                 END IF
+              END IF
+           END IF
 
-           if ( associated(fieldripple%next) ) then
+           IF ( ASSOCIATED(fieldripple%next) ) THEN
               fieldripple => fieldripple%next
-           else
+           ELSE
               EXIT allripplesbound3
-           end if
+           END IF
 
         END DO allripplesbound3
-        print *, ' boundary_counter_fixed:        ',boundary_counter_fixed
-        print *, ' boundary_counter_partly_fixed: ',boundary_counter_partly_fixed
-        print *, ' boundary_counter_not_fixed:    ',boundary_counter_not_fixed
+        PRINT *, ' boundary_counter_fixed:        ',boundary_counter_fixed
+        PRINT *, ' boundary_counter_partly_fixed: ',boundary_counter_partly_fixed
+        PRINT *, ' boundary_counter_not_fixed:    ',boundary_counter_not_fixed
         PRINT *, 'Fixing the boundary problem - End'
-        print *, '--------------------------------------------'
-     end if
+        PRINT *, '--------------------------------------------'
+     END IF
      ! End of new code
      ! fix the boundary problem - end
 
-     if (boundary_fix_mode .eq. 1) then ! old stuff - this is the movement in plus direction
+     IF (boundary_fix_mode .EQ. 1) THEN ! old stuff - this is the movement in plus direction
         ! check for the boundary problem
         ! go to the first propagator which is wanted
         fieldperiod => fieldline%ch_fir 
@@ -2220,8 +2220,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            IF (.NOT. ASSOCIATED(fieldpropagator%next)) EXIT
            fieldpropagator => fieldpropagator%next
         END DO
-        print *, ' '
-        print *, '--------------------------------------------'
+        PRINT *, ' '
+        PRINT *, '--------------------------------------------'
         PRINT *, 'Setting up propagators for boundary check'
         allpropsbound: DO      
            fieldperiod => fieldpropagator%parent
@@ -2229,17 +2229,17 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            rippletag = fieldripple%tag
            proptag = fieldpropagator%tag
            ! leftmost propagator in ripple
-           if (proptag .eq. fieldripple%pa_fir%tag) then
-              do i = lbound(fieldripple%eta,1)+1,ubound(fieldripple%eta,1)-1
+           IF (proptag .EQ. fieldripple%pa_fir%tag) THEN
+              DO i = LBOUND(fieldripple%eta,1)+1,UBOUND(fieldripple%eta,1)-1
                  boundary_dist = 1.0d0 / fieldripple%b_max_l - fieldripple%eta(i)
                  previous_dist = fieldripple%eta(i) - fieldripple%eta(i-1)
                  next_dist = fieldripple%eta(i+1) - fieldripple%eta(i)
                  boundary_dist_limit = next_dist * boundary_dist_limit_factor
-                 if (boundary_dist .ge. 0.0d0 .and. boundary_dist .le. boundary_dist_limit) then
+                 IF (boundary_dist .GE. 0.0d0 .AND. boundary_dist .LE. boundary_dist_limit) THEN
                     !if (abs(boundary_dist) .le. boundary_dist_limit) then
-                    print *, 'left:   ','rippletag: ',rippletag, &
+                    PRINT *, 'left:   ','rippletag: ',rippletag, &
                          ' proptag ',fieldripple%pa_fir%tag,' - ',fieldripple%pa_las%tag,' level' ,i
-                    print *, '        ',fieldripple%eta(i),1.0d0/fieldripple%b_max_l,boundary_dist
+                    PRINT *, '        ',fieldripple%eta(i),1.0d0/fieldripple%b_max_l,boundary_dist
 !!$              open(9890,file='eta_left.dat')
 !!$              write(9890,*)  fieldripple%eta
 !!$              close(9890)
@@ -2253,22 +2253,22 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     !boundary_dist = 1.0d0 / fieldripple%b_max_l - fieldripple%eta(i)
                     !print *, 'leftc:  ',rippletag,proptag,i,fieldripple%eta(i),1.0d0/fieldripple%b_max_l,boundary_dist
 !!$              pause
-                 end if
-              end do
-           end if
+                 END IF
+              END DO
+           END IF
 
            ! rightmost propagator in ripple
-           if (proptag .eq. fieldripple%pa_las%tag) then
-              do i = lbound(fieldripple%eta,1)+1,ubound(fieldripple%eta,1)-1
+           IF (proptag .EQ. fieldripple%pa_las%tag) THEN
+              DO i = LBOUND(fieldripple%eta,1)+1,UBOUND(fieldripple%eta,1)-1
                  boundary_dist = 1.0d0 / fieldripple%b_max_r - fieldripple%eta(i)
                  previous_dist = fieldripple%eta(i) - fieldripple%eta(i-1)
                  next_dist = fieldripple%eta(i+1) - fieldripple%eta(i)
                  boundary_dist_limit = next_dist * boundary_dist_limit_factor
-                 if (boundary_dist .ge. 0.0d0 .and. boundary_dist .le. boundary_dist_limit) then
+                 IF (boundary_dist .GE. 0.0d0 .AND. boundary_dist .LE. boundary_dist_limit) THEN
                     !if (abs(boundary_dist) .le. boundary_dist_limit) then
-                    print *, 'right:  ','rippletag: ',rippletag, &
+                    PRINT *, 'right:  ','rippletag: ',rippletag, &
                          ' proptag ',fieldripple%pa_fir%tag,' - ',fieldripple%pa_las%tag,' level' ,i
-                    print *, '        ',fieldripple%eta(i),1.0d0/fieldripple%b_max_l,boundary_dist
+                    PRINT *, '        ',fieldripple%eta(i),1.0d0/fieldripple%b_max_l,boundary_dist
 !!$              open(9990,file='eta_right.dat')
 !!$              write(9990,*)  fieldripple%eta
 !!$              close(9990)
@@ -2282,9 +2282,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     !boundary_dist = 1.0d0 / fieldripple%b_max_r - fieldripple%eta(i)
                     !print *, 'rightc: ',rippletag,proptag,i,fieldripple%eta(i),1.0d0/fieldripple%b_max_r,boundary_dist
 !!$              pause
-                 end if
-              end do
-           end if
+                 END IF
+              END DO
+           END IF
 
            IF (fieldpropagator%tag .EQ. proptag_last) THEN 
               iend = 1
@@ -2316,7 +2316,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            END IF
         END DO allpropsbound
 
-        print *, '--------------------------------------------'
+        PRINT *, '--------------------------------------------'
         PRINT *, 'Setting up propagators for boundary check - End'
 !!$  pause
         ! check for the boundary problem - end
@@ -2326,98 +2326,98 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
         fieldperiod => fieldline%ch_fir 
         fieldpropagator => fieldperiod%ch_fir
         fieldripple => fieldpropagator%ch_act
-        print *, ' '
-        print *, '--------------------------------------------'
+        PRINT *, ' '
+        PRINT *, '--------------------------------------------'
         PRINT *, 'Fixing the boundary problem'
 
         allripplesbound: DO      
            rippletag = fieldripple%tag
 
            ! left and right ripples
-           if ( associated(fieldripple%prev) ) then
+           IF ( ASSOCIATED(fieldripple%prev) ) THEN
               fieldripple_left => fieldripple%prev
-           else
+           ELSE
               fieldripple_left => fieldline%ch_las%ch_las%ch_act ! last
-           end if
-           if ( associated(fieldripple%next) ) then
+           END IF
+           IF ( ASSOCIATED(fieldripple%next) ) THEN
               fieldripple_right => fieldripple%next
-           else
+           ELSE
               fieldripple_right => fieldline%ch_fir%ch_fir%ch_act ! first
-           end if
+           END IF
 
            ! left
-           if ( fieldripple%eta_boundary_index_left .ne. 0 ) then
+           IF ( fieldripple%eta_boundary_index_left .NE. 0 ) THEN
               ! left side affected
-              print *, 'fieldripple ',fieldripple%tag,' fieldpropagator ',fieldripple%pa_fir%tag
-              if ( fieldripple%eta_boundary_index_left .eq. fieldripple%eta_boundary_index_right ) then
+              PRINT *, 'fieldripple ',fieldripple%tag,' fieldpropagator ',fieldripple%pa_fir%tag
+              IF ( fieldripple%eta_boundary_index_left .EQ. fieldripple%eta_boundary_index_right ) THEN
                  ! both sides equal
-                 if ( fieldripple%eta_boundary_left .eq. fieldripple_left%eta_boundary_right &
-                      .and. &
-                      fieldripple%eta_boundary_right .eq. fieldripple_right%eta_boundary_left & 
-                      ) then
+                 IF ( fieldripple%eta_boundary_left .EQ. fieldripple_left%eta_boundary_right &
+                      .AND. &
+                      fieldripple%eta_boundary_right .EQ. fieldripple_right%eta_boundary_left & 
+                      ) THEN
                     ! can be moved
                     eb_ind = fieldripple%eta_boundary_index_left
                     fieldripple%eta(eb_ind) = fieldripple%eta(eb_ind) + fieldripple%eta_boundary_modification_left
                     boundary_counter_fixed = boundary_counter_fixed + 1
-                    print *, 'fieldripple ',fieldripple%tag,' left,right - fixed'
-                 else
+                    PRINT *, 'fieldripple ',fieldripple%tag,' left,right - fixed'
+                 ELSE
                     ! can not be moved
                     boundary_counter_not_fixed = boundary_counter_not_fixed + 1
-                    print *, 'fieldripple ',fieldripple%tag,' left,right - not fixed'
-                 end if
-              else
+                    PRINT *, 'fieldripple ',fieldripple%tag,' left,right - not fixed'
+                 END IF
+              ELSE
                  ! only left side
-                 if ( fieldripple%eta_boundary_left .eq. fieldripple_left%eta_boundary_right ) then
+                 IF ( fieldripple%eta_boundary_left .EQ. fieldripple_left%eta_boundary_right ) THEN
                     ! can be moved
                     eb_ind = fieldripple%eta_boundary_index_left
                     fieldripple%eta(eb_ind) = fieldripple%eta(eb_ind) + fieldripple%eta_boundary_modification_left
                     boundary_counter_fixed = boundary_counter_fixed + 1
-                    print *, 'fieldripple ',fieldripple%tag,' left - fixed'
-                 else
+                    PRINT *, 'fieldripple ',fieldripple%tag,' left - fixed'
+                 ELSE
                     ! can not be moved
                     boundary_counter_not_fixed = boundary_counter_not_fixed + 1
-                    print *, 'fieldripple ',fieldripple%tag,' left - not fixed'
-                 end if
-              end if
-           end if
+                    PRINT *, 'fieldripple ',fieldripple%tag,' left - not fixed'
+                 END IF
+              END IF
+           END IF
 
            ! right
-           if ( fieldripple%eta_boundary_index_right .ne. 0 &
-                .and. &
-                fieldripple%eta_boundary_index_right .ne. fieldripple%eta_boundary_index_left &
-                ) then
+           IF ( fieldripple%eta_boundary_index_right .NE. 0 &
+                .AND. &
+                fieldripple%eta_boundary_index_right .NE. fieldripple%eta_boundary_index_left &
+                ) THEN
               ! right side affected
-              print *, 'fieldripple ',fieldripple%tag,' fieldpropagator ',fieldripple%pa_las%tag
-              if ( fieldripple%eta_boundary_right .eq. fieldripple_right%eta_boundary_left ) then
+              PRINT *, 'fieldripple ',fieldripple%tag,' fieldpropagator ',fieldripple%pa_las%tag
+              IF ( fieldripple%eta_boundary_right .EQ. fieldripple_right%eta_boundary_left ) THEN
                  ! can be moved
                  eb_ind = fieldripple%eta_boundary_index_right
                  fieldripple%eta(eb_ind) = fieldripple%eta(eb_ind) + fieldripple%eta_boundary_modification_right
                  boundary_counter_fixed = boundary_counter_fixed + 1
-                 print *, 'fieldripple ',fieldripple%tag,' right - fixed'
-              else
+                 PRINT *, 'fieldripple ',fieldripple%tag,' right - fixed'
+              ELSE
                  ! can not be moved
                  boundary_counter_not_fixed = boundary_counter_not_fixed + 1
-                 print *, 'fieldripple ',fieldripple%tag,' right - not fixed'
-              end if
-           end if
+                 PRINT *, 'fieldripple ',fieldripple%tag,' right - not fixed'
+              END IF
+           END IF
 
-           if ( associated(fieldripple%next) ) then
+           IF ( ASSOCIATED(fieldripple%next) ) THEN
               fieldripple => fieldripple%next
-           else
+           ELSE
               EXIT allripplesbound
-           end if
+           END IF
 
         END DO allripplesbound
-        print *, ' '
-        print *, 'boundary_counter_fixed:     ',boundary_counter_fixed
-        print *, 'boundary_counter_not_fixed: ',boundary_counter_not_fixed
-        print *, ' '
+        PRINT *, ' '
+        PRINT *, 'boundary_counter_fixed:     ',boundary_counter_fixed
+        PRINT *, 'boundary_counter_not_fixed: ',boundary_counter_not_fixed
+        PRINT *, ' '
         PRINT *, 'Fixing the boundary problem - End'
-        print *, '--------------------------------------------'
-     end if
+        PRINT *, '--------------------------------------------'
+     END IF
      ! End of now the best code
      ! fix the boundary problem - end
-  end if ! bin_split_mode .ne. 0
+  END IF ! bin_split_mode .ne. 0
   ! Now the magentic field in the propagators is fixed
 
 !!$    ! Testing of Ripple and print
@@ -2630,58 +2630,58 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      END IF
   END DO allpropsfixmag
   PRINT *, 'Fixing Magnetics in all Propagators - End'
-  print *, '--------------------------------------------'
+  PRINT *, '--------------------------------------------'
   !pause
   ! End of fixing magnetics in all propagators 
 
   ! Write taginfo.prop
-  IF ( (prop_write .EQ. 1 .OR. prop_write .EQ. 2) .and. prop_reconstruct .eq. 0) THEN
+  IF ( (prop_write .EQ. 1 .OR. prop_write .EQ. 2) .AND. prop_reconstruct .EQ. 0) THEN
 
      ! --- MPI SUPPORT ---
 
      ! Only master (or in sequential mode) writes the taginfo.prop file
-     if (mpro%isMaster()) then
+     IF (mpro%isMaster()) THEN
 
         !*******************************
         ! HDF5
         !*******************************
-        if (prop_fileformat .eq. 1) then
+        IF (prop_fileformat .EQ. 1) THEN
 
-         call h5_create('taginfo.h5', h5id)
+         CALL h5_create('taginfo.h5', h5id)
 
-         call h5_add(h5id, 'prop_write', prop_write)
-         call h5_add(h5id, 'tag_first', fieldline%ch_fir%ch_fir%tag)
-         call h5_add(h5id, 'tag_last',  fieldline%ch_las%ch_las%tag)
+         CALL h5_add(h5id, 'prop_write', prop_write)
+         CALL h5_add(h5id, 'tag_first', fieldline%ch_fir%ch_fir%tag)
+         CALL h5_add(h5id, 'tag_last',  fieldline%ch_las%ch_las%tag)
          
-         if (mpro%isParallel()) then
-            call h5_add(h5id, 'parallel_storage', 1)
-         else
-            call h5_add(h5id, 'parallel_storage', 0)
-         end if
+         IF (mpro%isParallel()) THEN
+            CALL h5_add(h5id, 'parallel_storage', 1)
+         ELSE
+            CALL h5_add(h5id, 'parallel_storage', 0)
+         END IF
 
           phi_per = twopi / device%nfp
 
-          call h5_add(h5id, 'aiota',      surface%aiota )
-          call h5_add(h5id, 'bmod0',      surface%bmod0)
-          call h5_add(h5id, 'b_abs_min',  surface%b_abs_min)
-          call h5_add(h5id, 'b_abs_max',  surface%b_abs_max )
-          call h5_add(h5id, 'phi_per',    phi_per)
-          call h5_add(h5id, 'nfp',        device%nfp)
-          call h5_add(h5id, 'boozer_phi_beg',    boozer_phi_beg)
-          call h5_add(h5id, 'boozer_theta_beg',  boozer_theta_beg )
+          CALL h5_add(h5id, 'aiota',      surface%aiota )
+          CALL h5_add(h5id, 'bmod0',      surface%bmod0)
+          CALL h5_add(h5id, 'b_abs_min',  surface%b_abs_min)
+          CALL h5_add(h5id, 'b_abs_max',  surface%b_abs_max )
+          CALL h5_add(h5id, 'phi_per',    phi_per)
+          CALL h5_add(h5id, 'nfp',        device%nfp)
+          CALL h5_add(h5id, 'boozer_phi_beg',    boozer_phi_beg)
+          CALL h5_add(h5id, 'boozer_theta_beg',  boozer_theta_beg )
 
-          call h5_define_unlimited_array(h5id, 'tag', H5T_NATIVE_INTEGER, h5ids(1))
-          call h5_define_unlimited_array(h5id, 'parent_tag', H5T_NATIVE_INTEGER, h5ids(2))
-          call h5_define_unlimited_array(h5id, 'fieldperiod_phi_l', H5T_NATIVE_DOUBLE, h5ids(3))
-          call h5_define_unlimited_array(h5id, 'phi_l',   H5T_NATIVE_DOUBLE, h5ids(4))
-          call h5_define_unlimited_array(h5id, 'phi_r',   H5T_NATIVE_DOUBLE, h5ids(5))
-          call h5_define_unlimited_array(h5id, 'theta_l', H5T_NATIVE_DOUBLE, h5ids(6))
-          call h5_define_unlimited_array(h5id, 'theta_r', H5T_NATIVE_DOUBLE, h5ids(7))
+          CALL h5_define_unlimited_array(h5id, 'tag', H5T_NATIVE_INTEGER, h5ids(1))
+          CALL h5_define_unlimited_array(h5id, 'parent_tag', H5T_NATIVE_INTEGER, h5ids(2))
+          CALL h5_define_unlimited_array(h5id, 'fieldperiod_phi_l', H5T_NATIVE_DOUBLE, h5ids(3))
+          CALL h5_define_unlimited_array(h5id, 'phi_l',   H5T_NATIVE_DOUBLE, h5ids(4))
+          CALL h5_define_unlimited_array(h5id, 'phi_r',   H5T_NATIVE_DOUBLE, h5ids(5))
+          CALL h5_define_unlimited_array(h5id, 'theta_l', H5T_NATIVE_DOUBLE, h5ids(6))
+          CALL h5_define_unlimited_array(h5id, 'theta_r', H5T_NATIVE_DOUBLE, h5ids(7))
           
           fieldperiod => fieldline%ch_fir 
           fieldpropagator => fieldperiod%ch_fir
           k = 0
-          allprops_taginfo_nc: do while (fieldpropagator%tag .le. fieldline%ch_las%ch_las%tag)
+          allprops_taginfo_nc: DO WHILE (fieldpropagator%tag .LE. fieldline%ch_las%ch_las%tag)
              k = k + 1
 
              fieldperiod => fieldpropagator%parent
@@ -2690,35 +2690,35 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
              phi_r = fieldpropagator%phi_r
              theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
              theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
-             if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
+             IF (fieldpropagator%tag .EQ. fieldpropagator%parent%ch_fir%tag) THEN
                 phi_l = 0.0_dp
-             else
-                phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
-             end if
-             if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
+             ELSE
+                phi_l = MODULO(phi_l-boozer_phi_beg,phi_per)
+             END IF
+             IF (fieldpropagator%tag .EQ. fieldpropagator%parent%ch_las%tag) THEN
                 phi_r = phi_per
-             else
-                phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
-             end if
+             ELSE
+                phi_r = MODULO(phi_r-boozer_phi_beg,phi_per)
+             END IF
 
-             call h5_append(h5ids(1), fieldpropagator%tag, k)
-             call h5_append(h5ids(2), fieldpropagator%parent%tag, k)
-             call h5_append(h5ids(3), fieldperiod%phi_l, k)
-             call h5_append(h5ids(4), phi_l, k)
-             call h5_append(h5ids(5), phi_r, k)
-             call h5_append(h5ids(6), theta_l, k)
-             call h5_append(h5ids(7), theta_r, k)
+             CALL h5_append(h5ids(1), fieldpropagator%tag, k)
+             CALL h5_append(h5ids(2), fieldpropagator%parent%tag, k)
+             CALL h5_append(h5ids(3), fieldperiod%phi_l, k)
+             CALL h5_append(h5ids(4), phi_l, k)
+             CALL h5_append(h5ids(5), phi_r, k)
+             CALL h5_append(h5ids(6), theta_l, k)
+             CALL h5_append(h5ids(7), theta_r, k)
 
              IF (ASSOCIATED(fieldpropagator%next)) THEN
                 fieldpropagator => fieldpropagator%next
-             else
-                exit allprops_taginfo_nc
-             end IF
-          end DO allprops_taginfo_nc
+             ELSE
+                EXIT allprops_taginfo_nc
+             END IF
+          END DO allprops_taginfo_nc
           
-          call h5_close(h5id)
+          CALL h5_close(h5id)
            
-        else !  if (prop_fileformat .eq. 1) 
+        ELSE !  if (prop_fileformat .eq. 1) 
            ! ASCII
            
            CALL unit_propagator
@@ -2733,11 +2733,11 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            ! --- MPI SUPPORT ---
            ! Indicate if NEO-2 ran in parallelized mode
 #if defined(MPI_SUPPORT)
-           if (mpro%isParallel()) then
+           IF (mpro%isParallel()) THEN
               WRITE(prop_unit,*) .TRUE.
-           else
+           ELSE
               WRITE(prop_unit,*) .FALSE.
-           end if
+           END IF
 #else
            WRITE(prop_unit,*) .FALSE.
 #endif
@@ -2764,31 +2764,31 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               phi_r = fieldpropagator%phi_r
               theta_l = boozer_theta_beg + surface%aiota*(phi_l-boozer_phi_beg)
               theta_r = boozer_theta_beg + surface%aiota*(phi_r-boozer_phi_beg)
-              if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_fir%tag) then
+              IF (fieldpropagator%tag .EQ. fieldpropagator%parent%ch_fir%tag) THEN
                  phi_l = 0.0_dp
-              else
-                 phi_l = modulo(phi_l-boozer_phi_beg,phi_per)
-              end if
-              if (fieldpropagator%tag .eq. fieldpropagator%parent%ch_las%tag) then
+              ELSE
+                 phi_l = MODULO(phi_l-boozer_phi_beg,phi_per)
+              END IF
+              IF (fieldpropagator%tag .EQ. fieldpropagator%parent%ch_las%tag) THEN
                  phi_r = phi_per
-              else
-                 phi_r = modulo(phi_r-boozer_phi_beg,phi_per)
-              end if
+              ELSE
+                 phi_r = MODULO(phi_r-boozer_phi_beg,phi_per)
+              END IF
 
               WRITE(prop_unit,*) fieldpropagator%tag, fieldpropagator%parent%tag,&
                    fieldperiod%phi_l, &
                    phi_l, phi_r, theta_l, theta_r
               IF (ASSOCIATED(fieldpropagator%next)) THEN
                  fieldpropagator => fieldpropagator%next
-              else
-                 exit allprops_taginfo
-              end IF
-           end DO allprops_taginfo
+              ELSE
+                 EXIT allprops_taginfo
+              END IF
+           END DO allprops_taginfo
 
            CLOSE(unit=prop_unit)
 
-        end if
-     end if
+        END IF
+     END IF
      !fieldpropagator%tag
 
      ! stop
@@ -2825,20 +2825,20 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 !!$     stop
 !!$  end IF
   PRINT *, 'Do the real computation - ripple_solver'
-  IF ( (magnetic_device .EQ. 0 .and. isw_axisymm .eq. 1) .or. mag_magfield .eq. 0 ) THEN
-     if (mag_magfield .eq. 0) then
+  IF ( (magnetic_device .EQ. 0 .AND. isw_axisymm .EQ. 1) .OR. mag_magfield .EQ. 0 ) THEN
+     IF (mag_magfield .EQ. 0) THEN
         PRINT *, 'Use only one propagator for homogeneous field'
-     else
+     ELSE
         PRINT *, 'Use only one propagator for tokamak'
-     end if
-     do while(associated(fieldripple%prev)) 
+     END IF
+     DO WHILE(ASSOCIATED(fieldripple%prev)) 
         fieldripple => fieldripple%prev
-     end do
+     END DO
  
      fieldripple => fieldripple%next
-     print *, 'fieldripple%tag            ',fieldripple%tag
-     print *, 'fieldripple%pa_fir%tag     ',fieldripple%pa_fir%tag
-     print *, 'fieldripple%pa_las%tag     ',fieldripple%pa_las%tag
+     PRINT *, 'fieldripple%tag            ',fieldripple%tag
+     PRINT *, 'fieldripple%pa_fir%tag     ',fieldripple%pa_fir%tag
+     PRINT *, 'fieldripple%pa_las%tag     ',fieldripple%pa_las%tag
      fieldpropagator => fieldripple%pa_fir
      
 
@@ -2852,7 +2852,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      fieldline_phi_r = fieldperiod%phi_r
      ! length of relevant propagator (ripple) / length of fieldline 
      y_conv_factor = (fieldpropagator%phi_r - fieldpropagator%phi_l) / (fieldline_phi_r - fieldline_phi_l)
-     allocate(y_axi_averages(size(fieldperiod%mdata%yend)))
+     ALLOCATE(y_axi_averages(SIZE(fieldperiod%mdata%yend)))
      ! this is used in propagator.f90 for final output to handle the fact
      ! that only one propagator is computed and not all props are computed
      ! and joined - in some sense it is a hack
@@ -2878,17 +2878,17 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
           ierr_solv,ierr_join                                 &
           )
      !print *, 'flint:  after propagator_solver'
-  else
+  ELSE
 
   ! --- MPI SUPPORT
 #if defined(MPI_SUPPORT)
     ! This is for the case that the program is built with MPI support, but is started in a sequential way
-    if (.not. mpro%isParallel()) then
+    IF (.NOT. mpro%isParallel()) THEN
 #endif
       ! Sequential program mode
-      call propagator_solver(proptag_start,proptag_end,bin_split_mode,eta_ori, parallelMode = .false.)
+      CALL propagator_solver(proptag_start,proptag_end,bin_split_mode,eta_ori, parallelMode = .FALSE.)
 #if defined(MPI_SUPPORT)
-    else
+    ELSE
       ! Run program in parallel mode
 
       ! Set some variables the scheduler needs to access
@@ -2900,20 +2900,20 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
       ! Initialize the scheduler
       sched%configFilename = 'neo2.in'
-      call sched%init()
+      CALL sched%init()
 
       ! Prepare runs the initial workunit, if defined
-      call sched%prepare()
+      CALL sched%prepare()
 
       ! Schedule will run initMaster on the master process to create the workunits and
       ! will set the clients into ready-mode to receive commands
       ! call omp_set_num_threads(1)
-      call sched%schedule()
+      CALL sched%schedule()
 
       ! Deallocate memory and stop the clients
-      call sched%deinit()
+      CALL sched%deinit()
 
-    end if
+    END IF
 #endif
     ! ---
 
@@ -2975,7 +2975,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 !!$           END IF
 !!$        END IF
 !!$     END DO allprops_comp
-  end IF
+  END IF
   !PRINT *, 'Final End i Flint before deallocation!'
 
 
