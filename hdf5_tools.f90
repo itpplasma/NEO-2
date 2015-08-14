@@ -1,6 +1,8 @@
 module hdf5_tools
   !**********************************************************
   ! Compilation of useful HDF-5 wrapper functions
+  ! Author: Gernot Kapper
+  ! Date:   06.08.2015
   !**********************************************************
 
   !**********************************************************
@@ -32,9 +34,13 @@ module hdf5_tools
   interface h5_add
      module procedure h5_add_int
      module procedure h5_add_int_1
+     module procedure h5_add_int_1_nobounds
+     module procedure h5_add_int_2
+     module procedure h5_add_int_2_nobounds
      !module procedure h5_add_int8_2
      module procedure h5_add_double_0
      module procedure h5_add_double_1
+     module procedure h5_add_double_1_nobounds
      module procedure h5_add_double_2
      module procedure h5_add_double_3
      module procedure h5_add_double_4
@@ -257,18 +263,36 @@ contains
          h5error)
   end subroutine h5_get_objinfo
 
+  function h5_isvalid(h5id) result(valid)
+    integer(HID_T)       :: h5id
+    logical              :: valid
+
+    call h5iis_valid_f(h5id, valid, h5error)
+    call h5_check()
+  end function h5_isvalid
+
   subroutine h5_obj_exists(h5id, name, exists)
     integer(HID_T)       :: h5id
     character(len=*)     :: name
     logical              :: exists
-    integer              :: storage_type, nlinks, max_corder
+    !integer              :: storage_type, nlinks, max_corder
 
-    call h5_disable_exceptions()
-    call h5gget_info_by_name_f(h5id, trim(name), &
-         storage_type, nlinks, max_corder, h5error)
-    exists = h5error .eq. 0
-    call h5_enable_exceptions()
+    !call h5_disable_exceptions()
+    !call h5gget_info_by_name_f(h5id, trim(name), &
+    !     storage_type, nlinks, max_corder, h5error)
+    !exists = h5error .eq. 0
+    !call h5_enable_exceptions()
+    exists = h5_exists(h5id, name)
   end subroutine h5_obj_exists
+  
+  function h5_exists(h5id, name) result(exists)
+    integer(HID_T)       :: h5id
+    character(len=*)     :: name
+    logical              :: exists
+
+    call h5lexists_f(h5id, name, exists, h5error)
+    call h5_check()
+  end function h5_exists
   
   subroutine h5_write_opened_obj_count(h5id)
     integer(HID_T)       :: h5id
@@ -278,6 +302,20 @@ contains
     write (*,*) "Opened HDF5 objects: ", obj_count
     
   end subroutine h5_write_opened_obj_count
+
+  subroutine h5_delete(h5id, name)
+    integer(HID_T)       :: h5id
+    character(len=*)     :: name
+    logical              :: exists
+
+    !write (*,*) "Trying to delete ", name
+    call h5lexists_f(h5id, name, exists, h5error)
+    if (exists) then    
+       call h5ldelete_f(h5id, name, h5error)
+       call h5_check()
+    end if
+    !write (*,*) exists
+  end subroutine h5_delete
   
   !**********************************************************
   ! Define matrix with unlimited dimensions. Used for
@@ -591,6 +629,120 @@ contains
 
   end subroutine h5_add_int_1
 
+  subroutine h5_add_int_1_nobounds(h5id, dataset, value, comment, unit, default)
+    integer(HID_T)                    :: h5id
+    character(len=*)                  :: dataset
+    integer, allocatable, dimension(:)    :: value
+    !integer, dimension(:)             :: lbounds, ubounds
+    character(len=*), optional        :: comment
+    character(len=*), optional        :: unit
+    integer, optional        :: default
+    integer(HSIZE_T), dimension(:), allocatable    :: dims
+    integer(SIZE_T)                   :: size
+    integer                           :: rank = 1
+
+    if ( allocated(value) ) then
+       allocate(dims(rank))
+       dims = ubound(value) - lbound(value) + 1
+       size = rank
+       call h5ltmake_dataset_int_f(h5id, dataset, rank, dims, value, h5error)
+       call h5ltset_attribute_int_f(h5id, dataset, 'lbounds', lbound(value), size, h5error)
+       call h5ltset_attribute_int_f(h5id, dataset, 'ubounds', ubound(value), size, h5error)   
+
+       if (present(comment)) then
+          call h5ltset_attribute_string_f(h5id, dataset, 'comment', comment, h5error)
+       end if
+       if (present(unit)) then
+          call h5ltset_attribute_string_f(h5id, dataset, 'unit', unit, h5error)
+       end if
+
+       deallocate(dims)
+    else
+       ! value is not allocated
+       if (present(default) ) then
+          call h5_add(h5id, dataset, default)
+       else
+          call h5_add(h5id, dataset, 0)
+       end if
+       call h5ltset_attribute_string_f(h5id, dataset, 'comment', 'value not allocated', h5error)
+    end if
+    call h5_check()
+  end subroutine h5_add_int_1_nobounds
+
+  !**********************************************************
+  ! Add integer matrix
+  !**********************************************************
+  subroutine h5_add_int_2(h5id, dataset, value, lbounds, ubounds, comment, unit)
+    integer(HID_T)                    :: h5id
+    character(len=*)                  :: dataset
+    integer, dimension(:,:)           :: value
+    integer, dimension(:)             :: lbounds, ubounds
+    character(len=*), optional        :: comment
+    character(len=*), optional        :: unit
+    integer(HSIZE_T), dimension(:), allocatable    :: dims
+    integer(SIZE_T)                   :: size
+    integer                           :: rank = 2
+
+    allocate(dims(rank))
+    dims = ubounds - lbounds + 1
+    size = rank
+    call h5ltmake_dataset_int_f(h5id, dataset, rank, dims, value, h5error)
+    call h5ltset_attribute_int_f(h5id, dataset, 'lbounds', lbounds, size, h5error)
+    call h5ltset_attribute_int_f(h5id, dataset, 'ubounds', ubounds, size, h5error)   
+    
+    if (present(comment)) then
+       call h5ltset_attribute_string_f(h5id, dataset, 'comment', comment, h5error)
+    end if
+    if (present(unit)) then
+       call h5ltset_attribute_string_f(h5id, dataset, 'unit', unit, h5error)
+    end if
+
+    deallocate(dims)
+    call h5_check()
+
+  end subroutine h5_add_int_2
+
+  subroutine h5_add_int_2_nobounds(h5id, dataset, value, comment, unit, default)
+    integer(HID_T)                    :: h5id
+    character(len=*)                  :: dataset
+    integer, allocatable, dimension(:,:)    :: value
+    !integer, dimension(:)             :: lbounds, ubounds
+    character(len=*), optional        :: comment
+    character(len=*), optional        :: unit
+    integer, optional        :: default
+    integer(HSIZE_T), dimension(:), allocatable    :: dims
+    integer(SIZE_T)                   :: size
+    integer                           :: rank = 2
+
+    if ( allocated(value) ) then
+       allocate(dims(rank))
+       dims = ubound(value) - lbound(value) + 1
+       size = rank
+       call h5ltmake_dataset_int_f(h5id, dataset, rank, dims, value, h5error)
+       call h5ltset_attribute_int_f(h5id, dataset, 'lbounds', lbound(value), size, h5error)
+       call h5ltset_attribute_int_f(h5id, dataset, 'ubounds', ubound(value), size, h5error)   
+
+       if (present(comment)) then
+          call h5ltset_attribute_string_f(h5id, dataset, 'comment', comment, h5error)
+       end if
+       if (present(unit)) then
+          call h5ltset_attribute_string_f(h5id, dataset, 'unit', unit, h5error)
+       end if
+
+       deallocate(dims)
+    else
+       ! value is not allocated
+       if (present(default) ) then
+          call h5_add(h5id, dataset, default)
+       else
+          call h5_add(h5id, dataset, 0)
+       end if
+       call h5ltset_attribute_string_f(h5id, dataset, 'comment', 'value not allocated', h5error)
+    end if
+    call h5_check()
+  end subroutine h5_add_int_2_nobounds
+
+
   !**********************************************************
   ! Add long integer matrix. This function makes use of the
   ! HDF-5 Fortran 2003 interface, since the default HDF-5
@@ -767,6 +919,48 @@ contains
     call h5_check()
 
   end subroutine h5_add_double_1
+
+  subroutine h5_add_double_1_nobounds(h5id, dataset, value, comment, unit, default)
+    integer(HID_T)                    :: h5id
+    character(len=*)                  :: dataset
+    double precision, allocatable, dimension(:)    :: value
+    !integer, dimension(:)             :: lbounds, ubounds
+    character(len=*), optional        :: comment
+    character(len=*), optional        :: unit
+    double precision, optional        :: default
+    integer(HSIZE_T), dimension(:), allocatable    :: dims
+    integer(SIZE_T)                   :: size
+    integer                           :: rank = 1
+
+    if ( allocated(value) ) then
+       allocate(dims(rank))
+       dims = ubound(value) - lbound(value) + 1
+       size = rank
+       call h5ltmake_dataset_double_f(h5id, dataset, rank, dims, value, h5error)
+       call h5ltset_attribute_int_f(h5id, dataset, 'lbounds', lbound(value), size, h5error)
+       call h5ltset_attribute_int_f(h5id, dataset, 'ubounds', ubound(value), size, h5error)   
+
+       if (present(comment)) then
+          call h5ltset_attribute_string_f(h5id, dataset, 'comment', comment, h5error)
+       end if
+       if (present(unit)) then
+          call h5ltset_attribute_string_f(h5id, dataset, 'unit', unit, h5error)
+       end if
+
+       deallocate(dims)
+    else
+       ! value is not allocated
+       if (present(default) ) then
+          call h5_add(h5id, dataset, default)
+       else
+          call h5_add(h5id, dataset, 0.0d0)
+       end if
+       call h5ltset_attribute_string_f(h5id, dataset, 'comment', 'value not allocated', h5error)
+    end if
+    call h5_check()
+  end subroutine h5_add_double_1_nobounds
+
+
 
   !**********************************************************
   ! Get double scalar
