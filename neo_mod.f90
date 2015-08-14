@@ -140,6 +140,7 @@ MODULE flint_mod
 
   DOUBLE PRECISION :: bsfunc_local_shield_factor
   LOGICAL :: bsfunc_shield
+  LOGICAL :: bsfunc_lambda_loc_res
 END MODULE flint_mod
 
 !!$MODULE join_ripples_simple_mod

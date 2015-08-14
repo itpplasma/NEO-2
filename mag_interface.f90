@@ -1123,6 +1123,7 @@ MODULE mag_interface_mod
   LOGICAL, PUBLIC       :: mag_symmetric = .FALSE.
   LOGICAL, PUBLIC       :: mag_symmetric_shorten = .FALSE.
   LOGICAL, PUBLIC       :: split_inflection_points = .TRUE.
+  LOGICAL, PUBLIC       :: split_at_period_boundary = .FALSE.
   REAL(kind=dp), PUBLIC :: hphi_lim = 1.0d-10
   REAL(kind=dp), PUBLIC :: sigma_shield_factor = 5.0d0  
   INTEGER, PUBLIC       :: mag_magfield = 1
@@ -2299,6 +2300,8 @@ CONTAINS
     REAL(kind=dp) :: nstep_phi
     REAL(kind=dp) :: phi_1,phi_2,phi_extrem,bhat_extrem
     REAL(kind=dp) :: dphi = 1.0d-16
+    !REAL(kind=dp) :: bhatm,bhatp,der1im,d2er1im,der1ip,d2er1ip
+    !print *, 'I am in find_extrema'
 
     fieldperiod => fieldline%ch_fir
     nstep = fieldperiod%parent%parent%nstep
@@ -2335,6 +2338,7 @@ CONTAINS
           !print *, (bhat_p-bhat_m) / (2.0d0 * delta_phi),(bhat_p+bhat_m-2.0d0*bhat) / delta_phi**2
           !pause
           ! find extrema
+          ! print *, 'split_inflection_points ',split_inflection_points
           IF (der0*der1 .LE. 0.0_dp .AND. der1 .NE. 0.0_dp) THEN
              !PRINT *, 'fieldperiod%tag ',fieldperiod%tag
              !PRINT *, 'der0,der1 ',der0,der1
@@ -2350,79 +2354,6 @@ CONTAINS
                 CALL plagrange_interp(fieldperiod,phi,nlagrange,bhat,der1i,d2er1i)
                 !if (abs(phi) .lt. 0.1) print *, phi,bhat,fieldperiod%phi_r-phi
              END DO iteration_ext
-             !phi_2 = fieldperiod%coords%x2(i)
-             !phi_1 = fieldperiod%coords%x2(i-1)
-             !call find_extremum(fieldperiod,phi_1,phi_2,dphi,phi_extrem,bhat_extrem)
-             !phi = phi_extrem
-             !CALL plagrange_interp(fieldperiod,phi,nlagrange,bhat,der1i,d2er1i)
-!!$             print *, 'phi,bhat    ',phi,bhat
-!!$             print *, 'phi,bhat e  ',phi_extrem,bhat_extrem
-!!$             print *, 'phi_1,phi_2 ',phi_1,phi_2
-!!$             print *, ''
-             
-!!$             if (abs(phi_1) .lt. 0.1) then
-!!$                print *, ''
-!!$                print *, fieldperiod%coords%x2(nstep),fieldperiod%mdata%bhat(nstep)
-!!$                
-!!$                phi_1 = -1.d-10;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = -1.d-11;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = -1.d-12;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = -1.d-13;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = -1.d-14;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = -1.d-15;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = 0;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = +1.d-15;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = +1.d-14;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = +1.d-13;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = +1.d-12;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = +1.d-11;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$                phi_1 = +1.d-10;
-!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
-!!$                print *, phi_1,bhat_extrem
-!!$               
-!!$                print *, ''
-!!$                pause
-!!$             end if
-
-!!$             ! Winny very experimental
-!!$             if ( abs(fieldperiod%phi_l - phi) .lt. 1.d-12) then
-!!$                print *, 'problem left'
-!!$                phi = fieldperiod%phi_l
-!!$                CALL plagrange_interp(fieldperiod,phi,nlagrange,bhat,der1i,d2er1i)
-!!$                !print *, phi,bhat
-!!$             end if
-!!$             if ( abs(fieldperiod%phi_r - phi) .lt. 1.d-12) then
-!!$                print *, 'problem right'
-!!$                phi = fieldperiod%phi_r
-!!$                CALL plagrange_interp(fieldperiod,phi,nlagrange,bhat,der1i,d2er1i)
-!!$                !print *, phi,bhat
-!!$             end if
-!!$             ! End - Winny very experimental
-
 
              IF (count .EQ. 0) THEN
                 count = count + 1
@@ -2445,7 +2376,10 @@ CONTAINS
              ELSE
                 minmax_ext(count) = 0 ! Minimum
              END IF
+             
           ELSEIF (d2er0*d2er1 .LE. 0.0_dp .AND. d2er1 .NE. 0.0_dp .AND. split_inflection_points) THEN
+          ! ELSEIF (d2er0*d2er1 .LE. 0.0_dp .AND. d2er1 .NE. 0.0_dp) THEN
+             ! print *, 'inflection points'
              ! find inflection points
              d2er1i = d2er1
              hh = h
@@ -2455,7 +2389,8 @@ CONTAINS
                 phi = phi + hh
                 CALL plagrange_interp(fieldperiod,phi,nlagrange,bhat,der1i,d2er1i)
              END DO iteration_inf
-             !PRINT *, 'inflection found ',bhat,der1i,d2er1i
+
+             ! PRINT *, 'inflection found ',bhat,der1i,d2er1i,mag_dbhat_min
              IF (ABS(der1i) .LT.  mag_dbhat_min) THEN
                 reg_ext = .FALSE.
                 IF (count .EQ. 0) THEN
@@ -2506,33 +2441,7 @@ CONTAINS
           fieldperiod%width_left = 0.0_dp
           ALLOCATE(fieldperiod%width_right(count))
           fieldperiod%width_right = 0.0_dp
-!!$          DO j = 1, count
-!!$             b_arr(0) = bhat_ext(j)
-!!$             phi = phi_ext(j)
-!!$             CALL plagrange_interp(fieldperiod,phi-h_mul*h,nlagrange,b_arr(-1),der1i)
-!!$             CALL plagrange_interp(fieldperiod,phi+h_mul*h,nlagrange,b_arr(+1),der1i)
-!!$             d2bdp2 = (b_arr(1)-2.0_dp*b_arr(0)+b_arr(-1))/(h_mul*h)**2
-!!$             fieldperiod%d2bp_ext(j) = d2bdp2
-!!$             IF (d2bdp2 .LT. 0.0_dp) fieldperiod%minmax(j) = 1
-!!$             !IF (b_arr(-1) .LT. b_arr(0) .AND. b_arr(1) .LT. b_arr(0)) fieldperiod%minmax(j) = 1
-!!$          END DO
        END IF
-
-!!$       OPEN(unit=777,file='period.dat')
-!!$       DO i = 0, UBOUND(fieldperiod%coords%x2,1)
-!!$          WRITE(777,*) fieldperiod%coords%x2(i),fieldperiod%mdata%bhat(i)
-!!$       END DO
-!!$       CLOSE(unit=777)
-!!$       OPEN(unit=777,file='period_extra.dat')
-!!$       IF (ALLOCATED(fieldperiod%phi_ext)) THEN
-!!$          PRINT *, 'extra exists'
-!!$          DO i = 1,count
-!!$             WRITE(777,*) fieldperiod%phi_ext(i),fieldperiod%bhat_ext(i), &
-!!$                  fieldperiod%dbp_ext(i),fieldperiod%d2bp_ext(i),fieldperiod%minmax(i)
-!!$          END DO
-!!$       END IF
-!!$       CLOSE(unit=777)
-!!$       PAUSE
 
        IF (ASSOCIATED(fieldperiod%next)) THEN
           fieldperiod => fieldperiod%next
@@ -2555,12 +2464,6 @@ CONTAINS
        cycle_through_minmax: DO i = 1,count
           IF (fieldperiod%minmax(i) .NE. 0) THEN
              ! maximum or inflection point found
-!!$             OPEN(unit=987,file='period.dat')
-!!$             DO ii = LBOUND(fieldperiod%coords%x2,1),UBOUND(fieldperiod%coords%x2,1)
-!!$                WRITE(987,*) fieldperiod%coords%x2(ii) - fieldperiod%phi_ext(i), &
-!!$                     fieldperiod%mdata%bhat(ii)
-!!$             END DO
-!!$             CLOSE(unit=987)
              CALL find_width(i,count)
           END IF
        END DO cycle_through_minmax
@@ -2898,12 +2801,6 @@ CONTAINS
        END IF
     END DO last_periods
     ! test
-!!$    IF (last_min) THEN
-!!$       PRINT *, 'last_phi_min  ',last_phi_min
-!!$       PRINT *, 'last_bhat_min ',last_bhat_min
-!!$    END IF
-!!$    PRINT *, 'last_phi_max  ',last_phi_max
-!!$    PRINT *, 'last_bhat_max ',last_bhat_max
 
     ! find first maximum at the beginning
     !PRINT *, 'find first maximum at the beginning'
@@ -2941,12 +2838,6 @@ CONTAINS
        END IF
     END DO first_periods
     ! test
-!!$    IF (first_min) THEN
-!!$       PRINT *, 'first_phi_min  ',first_phi_min
-!!$       PRINT *, 'first_bhat_min ',first_bhat_min
-!!$    END IF
-!!$    PRINT *, 'first_phi_max  ',first_phi_max
-!!$    PRINT *, 'first_bhat_max ',first_bhat_max
 
     ! setup the fieldpropagators and fieldripples
     fieldperiod => fieldline%ch_fir
@@ -3813,9 +3704,9 @@ CONTAINS
   ! place eta in ripples 
   ! SUBROUTINE ripple_eta_mag(fieldline,collpar,eta_s_lim)
   SUBROUTINE ripple_eta_mag(collpar,eta_s_lim)
-    
+
     USE gfactor_mod, ONLY : ienter,garr,gfactor
-    
+
     !TYPE(fieldline_struct),   POINTER :: fieldline
     REAL(kind=dp), INTENT(in) :: collpar
     REAL(kind=dp), INTENT(in) :: eta_s_lim
@@ -3839,7 +3730,7 @@ CONTAINS
     REAL(kind=dp), ALLOCATABLE :: eta_cl_left(:),eta_cl_right(:)
     REAL(kind=dp), ALLOCATABLE :: eta_shield_left(:)
     REAL(kind=dp), ALLOCATABLE :: eta_type_left(:)
-    
+
     REAL(kind=dp) :: ripple_phi_left,ripple_phi_right
     REAL(kind=dp) :: period_phi_right
 
@@ -3862,7 +3753,7 @@ CONTAINS
     fieldperiod     => fieldline%ch_fir
     fieldpropagator => fieldperiod%ch_fir
     fieldripple     => fieldpropagator%ch_act
-    
+
     r0 = fieldline%parent%parent%r0
     eta_b_abs_max = 1.0d0 / fieldline%b_abs_max
 
@@ -3961,39 +3852,39 @@ CONTAINS
                    ! set the values
                    etas = SQRT(etas2)
                    !IF (etas .LT. eta_s_lim) THEN
+                   count = count + 1
+                   !PRINT *, 'SET_NEW tags',fieldripple%tag,ripplewalker%tag
+                   !PRINT *, 'SET_NEW vals',1.0_dp/b_max_loc,etas
+                   CALL set_new(fieldripple%eta_x0,1.0_dp/b_max_loc)
+                   !PRINT *, 'SET_NEW'
+                   CALL set_new(fieldripple%eta_s,etas)
+                   !PRINT *, 'SET_NEW'
+                   IF (add_extra_contr .EQ. 1) CALL set_new(fieldripple%eta_cl,DBLE(count))
+                   !PRINT *,'sigma: ',fieldripple%tag,etas
+                   !PAUSE
+                   IF (add_extra_contr .EQ. 1 .AND. mag_local_sigma .EQ. 1) THEN
+                      etas = collpar * r0 * phi_b
+                      !etas = etas / 3.0d0  
+                   ELSEIF (add_extra_contr .EQ. 1 .AND. mag_local_sigma .EQ. 2) THEN
+                      etas = SQRT(collpar * r0 * phi_b)
+                      etas = etas * (etas + rippleback%width/r0/ABS(phi_b))
+                   END IF
+                   IF (add_extra_contr .EQ. 1 .AND. &
+                        (mag_local_sigma .EQ. 1 .OR. mag_local_sigma .EQ. 2) ) THEN
                       count = count + 1
-                      !PRINT *, 'SET_NEW tags',fieldripple%tag,ripplewalker%tag
-                      !PRINT *, 'SET_NEW vals',1.0_dp/b_max_loc,etas
+                      !PRINT *, 'SET_NEW'
                       CALL set_new(fieldripple%eta_x0,1.0_dp/b_max_loc)
                       !PRINT *, 'SET_NEW'
                       CALL set_new(fieldripple%eta_s,etas)
                       !PRINT *, 'SET_NEW'
-                      IF (add_extra_contr .EQ. 1) CALL set_new(fieldripple%eta_cl,DBLE(count))
-                      !PRINT *,'sigma: ',fieldripple%tag,etas
-                      !PAUSE
-                      IF (add_extra_contr .EQ. 1 .AND. mag_local_sigma .EQ. 1) THEN
-                         etas = collpar * r0 * phi_b
-                         !etas = etas / 3.0d0  
-                      ELSEIF (add_extra_contr .EQ. 1 .AND. mag_local_sigma .EQ. 2) THEN
-                         etas = SQRT(collpar * r0 * phi_b)
-                         etas = etas * (etas + rippleback%width/r0/ABS(phi_b))
-                      END IF
-                      IF (add_extra_contr .EQ. 1 .AND. &
-                           (mag_local_sigma .EQ. 1 .OR. mag_local_sigma .EQ. 2) ) THEN
-                         count = count + 1
-                         !PRINT *, 'SET_NEW'
-                         CALL set_new(fieldripple%eta_x0,1.0_dp/b_max_loc)
-                         !PRINT *, 'SET_NEW'
-                         CALL set_new(fieldripple%eta_s,etas)
-                         !PRINT *, 'SET_NEW'
-                         CALL set_new(fieldripple%eta_cl,DBLE(count))
-                      END IF
-                      
-                      ! local contribution at absolut maximum
-                      
-                      ! IF (iwfirst .EQ. 1 .AND. mag_local_sigma .EQ. 3) 
-                      
-                      
+                      CALL set_new(fieldripple%eta_cl,DBLE(count))
+                   END IF
+
+                   ! local contribution at absolut maximum
+
+                   ! IF (iwfirst .EQ. 1 .AND. mag_local_sigma .EQ. 3) 
+
+
                    !END IF
                 END IF
                 ! next ripple when walking away or exit
@@ -4122,7 +4013,7 @@ CONTAINS
                    !print *, 'exit eta_b_abs_max'
                    EXIT walk2pre
                 END IF
-                
+
                 IF (ilr .EQ. 1) THEN ! left
                    IF (ASSOCIATED(ripplewalker%prev)) THEN
                       ripplewalker => ripplewalker%prev
@@ -4271,7 +4162,7 @@ CONTAINS
                          b_max_locb = rippleback%b_max_r
                          phi_b = SQRT(2.0_dp * b_max_locb / ABS(rippleback%d2bp_max_r))
                       END IF
- 
+
                       ! local b_min
                       b_min_locb = rippleback%b_min
                       ! local lambda
@@ -4388,7 +4279,7 @@ CONTAINS
                       END IF
                    END IF
                    !PAUSE
-                   
+
                    IF (add_extra_contr .EQ. 1 .AND. mag_local_sigma .EQ. 1) THEN
                       etas = collpar * r0 * phi_b
                       etas = etas / 3.0d0 ! Sergei ?
@@ -4405,7 +4296,7 @@ CONTAINS
                       CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
                       CALL set_new(fieldripple%eta_type,3.0d0)                       
                    END IF
-                      
+
                 END IF
                 ! next ripple when walking away or exit
                 IF (mag_cycle_ripples .EQ. 0) THEN
@@ -4456,265 +4347,269 @@ CONTAINS
           END DO leftright2
 
           ! Here now inflection points are handled
-          leftright2inf: DO ilr = 1,2 ! first left then right
-             iwfirst = 1
-             ripplewalker => fieldripple
-             IF (ilr .EQ. 1) THEN ! go left
-                b_shade = ripplewalker%b_max_l
-             ELSE ! go right
-                b_shade = ripplewalker%b_max_r
-             END IF
-             ! now walk away
-             walk2inf: DO
-                walker_tag = ripplewalker%tag
-
-                IF ( ALLOCATED(ripplewalker%b_inflection) ) THEN
-                   inf_start = LBOUND(ripplewalker%b_inflection,1)
-                   inf_end   = UBOUND(ripplewalker%b_inflection,1)
-                ELSE ! nothing to do
-                   inf_start = 0
-                   inf_end   = -1
+          if (split_inflection_points) then
+             leftright2inf: DO ilr = 1,2 ! first left then right
+                iwfirst = 1
+                ripplewalker => fieldripple
+                IF (ilr .EQ. 1) THEN ! go left
+                   b_shade = ripplewalker%b_max_l
+                ELSE ! go right
+                   b_shade = ripplewalker%b_max_r
                 END IF
+                ! now walk away
+                walk2inf: DO
+                   walker_tag = ripplewalker%tag
 
-                infloop: DO inf_ind = inf_start,inf_end
-                   phi_inf_loc = ripplewalker%phi_inflection(inf_ind)
-                   ! find out if inflection point is left or right of minimum
-                   IF (phi_inf_loc .LT. ripplewalker%pa_fir%phi_l + ripplewalker%width_l) THEN
-                      ! I am left of min
-                      IF (ilr .EQ. 2) CYCLE infloop 
-                   ELSE
-                      ! I am right of min
-                      IF (ilr .EQ. 1) CYCLE infloop
+                   IF ( ALLOCATED(ripplewalker%b_inflection) ) THEN
+                      inf_start = LBOUND(ripplewalker%b_inflection,1)
+                      inf_end   = UBOUND(ripplewalker%b_inflection,1)
+                   ELSE ! nothing to do
+                      inf_start = 0
+                      inf_end   = -1
                    END IF
-                   b_inf_loc = ripplewalker%b_inflection(inf_ind)
-                   eta_loc = 1.0d0 / b_inf_loc
-                   dbdp_inf_loc = ripplewalker%dbdp_inflection(inf_ind)
-
-                   IF (ilr .EQ. 1) THEN ! left
-                      b_max_loc = ripplewalker%b_max_l
-                   ELSE ! right
-                      b_max_loc = ripplewalker%b_max_r
-                   END IF
-                   !eta_loc = 1.0_dp /  b_max_loc
-                   ! 
-                   IF (iwfirst .EQ. 1 .OR. b_inf_loc .GT. b_shade) THEN ! contributes
-                      !print *, 'inf tags ',fieldripple%tag,ripplewalker%tag,dbdp_inf_loc
-                      IF (iwfirst .EQ. 1) THEN
-                         add_extra_contr = 1
+                   ! print *, 'inf_start,inf_end ',inf_start,inf_end
+                   infloop: DO inf_ind = inf_start,inf_end
+                      ! print *, 'In inf loop'
+                      phi_inf_loc = ripplewalker%phi_inflection(inf_ind)
+                      ! find out if inflection point is left or right of minimum
+                      IF (phi_inf_loc .LT. ripplewalker%pa_fir%phi_l + ripplewalker%width_l) THEN
+                         ! I am left of min
+                         IF (ilr .EQ. 2) CYCLE infloop 
                       ELSE
-                         add_extra_contr = 0
+                         ! I am right of min
+                         IF (ilr .EQ. 1) CYCLE infloop
                       END IF
-                      b_shade = b_max_loc
-                      rippleback => ripplewalker
-                      etas2 = 0.0_dp
-                      walkback2inf: DO
-                         back_tag = rippleback%tag
-                         !print *, ripple_tag,walker_tag,back_tag
- 
-                         ! local b_min
-                         b_min_locb = rippleback%b_min
-                         ! local lambda
-                         lam_loc = 1.0d0 - b_min_locb * eta_loc
-                         IF (lam_loc .GT. 0.0d0) THEN
-                            lam_loc = SQRT(lam_loc)
+                      b_inf_loc = ripplewalker%b_inflection(inf_ind)
+                      eta_loc = 1.0d0 / b_inf_loc
+                      dbdp_inf_loc = ripplewalker%dbdp_inflection(inf_ind)
+
+                      IF (ilr .EQ. 1) THEN ! left
+                         b_max_loc = ripplewalker%b_max_l
+                      ELSE ! right
+                         b_max_loc = ripplewalker%b_max_r
+                      END IF
+                      !eta_loc = 1.0_dp /  b_max_loc
+                      ! 
+                      IF (iwfirst .EQ. 1 .OR. b_inf_loc .GT. b_shade) THEN ! contributes
+                         !print *, 'inf tags ',fieldripple%tag,ripplewalker%tag,dbdp_inf_loc
+                         IF (iwfirst .EQ. 1) THEN
+                            add_extra_contr = 1
                          ELSE
-                            lam_loc = 0.0d0
+                            add_extra_contr = 0
                          END IF
-                         ! always two contributions
-                         IF (rippleback%tag .EQ. ripplewalker%tag) THEN
-                            IF (ilr .EQ. 1) THEN
-                               b_max_locb_left  = b_inf_loc
-                               b_max_locb_right = rippleback%b_max_r
-                               width_left  = rippleback%width_l - (phi_inf_loc - rippleback%pa_fir%phi_l)
-                               width_right = rippleback%width_r
+                         b_shade = b_max_loc
+                         rippleback => ripplewalker
+                         etas2 = 0.0_dp
+                         walkback2inf: DO
+                            back_tag = rippleback%tag
+                            !print *, ripple_tag,walker_tag,back_tag
+
+                            ! local b_min
+                            b_min_locb = rippleback%b_min
+                            ! local lambda
+                            lam_loc = 1.0d0 - b_min_locb * eta_loc
+                            IF (lam_loc .GT. 0.0d0) THEN
+                               lam_loc = SQRT(lam_loc)
+                            ELSE
+                               lam_loc = 0.0d0
+                            END IF
+                            ! always two contributions
+                            IF (rippleback%tag .EQ. ripplewalker%tag) THEN
+                               IF (ilr .EQ. 1) THEN
+                                  b_max_locb_left  = b_inf_loc
+                                  b_max_locb_right = rippleback%b_max_r
+                                  width_left  = rippleback%width_l - (phi_inf_loc - rippleback%pa_fir%phi_l)
+                                  width_right = rippleback%width_r
+                               ELSE
+                                  b_max_locb_left  = rippleback%b_max_l
+                                  b_max_locb_right = b_inf_loc
+                                  width_left  = rippleback%width_l
+                                  width_right = rippleback%width_r - (rippleback%pa_las%phi_r-phi_inf_loc)
+                               END IF
                             ELSE
                                b_max_locb_left  = rippleback%b_max_l
-                               b_max_locb_right = b_inf_loc
+                               b_max_locb_right = rippleback%b_max_r
                                width_left  = rippleback%width_l
-                               width_right = rippleback%width_r - (rippleback%pa_las%phi_r-phi_inf_loc)
+                               width_right = rippleback%width_r
                             END IF
-                         ELSE
-                            b_max_locb_left  = rippleback%b_max_l
-                            b_max_locb_right = rippleback%b_max_r
-                            width_left  = rippleback%width_l
-                            width_right = rippleback%width_r
-                         END IF
-                         ! the left side of the ripple
-                         col_loc = 2.0_dp * width_left * collpar
-                         gamma1 = eta_loc * (b_max_locb_left - b_min_locb) / (1.0_dp - eta_loc * b_min_locb)
-                         gamma1 = MIN(1.0d0,gamma1)
-                         gamma2 = (b_max_locb_left - b_min_locb) / b_max_locb_left
-                         etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb_left * gfactor(gamma1,gamma2)
-                         etas2 = etas2 + etas2_contrib                      
-                         IF (etas2_contrib .LT. 0.0_dp) THEN
-                            PRINT *, 'negative etas2 contribution left',ripple_tag,walker_tag
-                            PRINT *, 'width ',width_left
-                            PRINT *, 'col_loc ',col_loc,eta_loc,lam_loc
-                            PRINT *, 'gamma ',gamma1,gamma2,gfactor(gamma1,gamma2)
-                            STOP
-                         END IF
-                         ! the right half of the ripple
-                         col_loc = 2.0_dp * width_right * collpar
-                         gamma1 = eta_loc * (b_max_locb_right - b_min_locb) / (1.0_dp - eta_loc * b_min_locb)
-                         gamma1 = MIN(1.0d0,gamma1)
-                         gamma2 = (b_max_locb_right - b_min_locb) / b_max_locb_right
-                         etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb_right * gfactor(gamma1,gamma2)
-                         etas2 = etas2 + etas2_contrib                      
-                         IF (etas2_contrib .LT. 0.0_dp) THEN
-                            PRINT *, 'negative etas2 contribution right',ripple_tag,walker_tag
-                            STOP
-                         END IF
+                            ! the left side of the ripple
+                            col_loc = 2.0_dp * width_left * collpar
+                            gamma1 = eta_loc * (b_max_locb_left - b_min_locb) / (1.0_dp - eta_loc * b_min_locb)
+                            gamma1 = MIN(1.0d0,gamma1)
+                            gamma2 = (b_max_locb_left - b_min_locb) / b_max_locb_left
+                            etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb_left * gfactor(gamma1,gamma2)
+                            etas2 = etas2 + etas2_contrib                      
+                            IF (etas2_contrib .LT. 0.0_dp) THEN
+                               PRINT *, 'negative etas2 contribution left',ripple_tag,walker_tag
+                               PRINT *, 'width ',width_left
+                               PRINT *, 'col_loc ',col_loc,eta_loc,lam_loc
+                               PRINT *, 'gamma ',gamma1,gamma2,gfactor(gamma1,gamma2)
+                               STOP
+                            END IF
+                            ! the right half of the ripple
+                            col_loc = 2.0_dp * width_right * collpar
+                            gamma1 = eta_loc * (b_max_locb_right - b_min_locb) / (1.0_dp - eta_loc * b_min_locb)
+                            gamma1 = MIN(1.0d0,gamma1)
+                            gamma2 = (b_max_locb_right - b_min_locb) / b_max_locb_right
+                            etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb_right * gfactor(gamma1,gamma2)
+                            etas2 = etas2 + etas2_contrib                      
+                            IF (etas2_contrib .LT. 0.0_dp) THEN
+                               PRINT *, 'negative etas2 contribution right',ripple_tag,walker_tag
+                               STOP
+                            END IF
 
-                         IF (back_tag .EQ. ripple_tag) THEN
-                            EXIT walkback2inf
-                         ELSE
-                            IF (ilr .EQ. 1) THEN ! left now back to the right
-                               IF (ASSOCIATED(rippleback%next)) THEN
-                                  rippleback => rippleback%next
-                                  ! Winny avoid double counting of last and first ripple which are identical
-                                  IF (.NOT. ASSOCIATED(rippleback%next) .AND. &
-                                       rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act%tag .EQ. ripple_tag) &
-                                       rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act
-                               ELSE
-                                  rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act 
-                                  ! if the first is not connected to a propagator (max at the beginning)
-                                  IF (ASSOCIATED(rippleback%prev)) rippleback => rippleback%prev
-                                  ! Winny avoid double counting of last and first ripple which are identical
-                                  IF ( rippleback%tag .NE. ripple_tag) rippleback => rippleback%next
-                               END IF
-                            ELSE ! right now back to the left
-                               IF (ASSOCIATED(rippleback%prev)) THEN
-                                  rippleback => rippleback%prev
-                                  ! Winny avoid double counting of last and first ripple which are identical
-                                  IF (.NOT. ASSOCIATED(rippleback%prev) .AND. &
-                                       rippleback%parent%parent%parent%ch_las%ch_las%ch_act%tag .EQ. ripple_tag) &
-                                       rippleback => rippleback%parent%parent%parent%ch_las%ch_las%ch_act
-                               ELSE
-                                  rippleback => rippleback%parent%parent%parent%ch_las%ch_las%ch_act
-                                  ! if the last is not connected to a propagator (max at the end)
-                                  IF (ASSOCIATED(rippleback%next)) rippleback => rippleback%next
-                                  ! Winny avoid double counting of last and first ripple which are identical
-                                  IF ( rippleback%tag .NE. ripple_tag) rippleback => rippleback%prev
+                            IF (back_tag .EQ. ripple_tag) THEN
+                               EXIT walkback2inf
+                            ELSE
+                               IF (ilr .EQ. 1) THEN ! left now back to the right
+                                  IF (ASSOCIATED(rippleback%next)) THEN
+                                     rippleback => rippleback%next
+                                     ! Winny avoid double counting of last and first ripple which are identical
+                                     IF (.NOT. ASSOCIATED(rippleback%next) .AND. &
+                                          rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act%tag .EQ. ripple_tag) &
+                                          rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act
+                                  ELSE
+                                     rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act 
+                                     ! if the first is not connected to a propagator (max at the beginning)
+                                     IF (ASSOCIATED(rippleback%prev)) rippleback => rippleback%prev
+                                     ! Winny avoid double counting of last and first ripple which are identical
+                                     IF ( rippleback%tag .NE. ripple_tag) rippleback => rippleback%next
+                                  END IF
+                               ELSE ! right now back to the left
+                                  IF (ASSOCIATED(rippleback%prev)) THEN
+                                     rippleback => rippleback%prev
+                                     ! Winny avoid double counting of last and first ripple which are identical
+                                     IF (.NOT. ASSOCIATED(rippleback%prev) .AND. &
+                                          rippleback%parent%parent%parent%ch_las%ch_las%ch_act%tag .EQ. ripple_tag) &
+                                          rippleback => rippleback%parent%parent%parent%ch_las%ch_las%ch_act
+                                  ELSE
+                                     rippleback => rippleback%parent%parent%parent%ch_las%ch_las%ch_act
+                                     ! if the last is not connected to a propagator (max at the end)
+                                     IF (ASSOCIATED(rippleback%next)) rippleback => rippleback%next
+                                     ! Winny avoid double counting of last and first ripple which are identical
+                                     IF ( rippleback%tag .NE. ripple_tag) rippleback => rippleback%prev
+                                  END IF
                                END IF
                             END IF
-                         END IF
-                      END DO walkback2inf
+                         END DO walkback2inf
 
-                      ! set the values
-                      etas = SQRT(etas2)
-                      !if (ripple_tag .eq. 1 .or. ripple_tag .eq. 128) then
-                      !   print *, ripple_tag,walker_tag,ilr,1.0_dp/b_max_loc,etas
-                      !end if
-                      count = count + 1
-                      !PRINT *, 'SET_NEW'
-                      CALL set_new(fieldripple%eta_x0,eta_loc)
-                      !PRINT *, 'SET_NEW'
-                      CALL set_new(fieldripple%eta_s,etas)
-                      !PRINT *, 'SET_NEW'
-                      IF (add_extra_contr .EQ. 1) THEN
-                         CALL set_new(fieldripple%eta_type,5.0d0) ! local level
-                         !CALL set_new(fieldripple%eta_cl,DBLE(count))
-                         IF (ilr .EQ. 1) THEN ! go left
-                            IF (ripplewalker%shielding_lr .AND. ripplewalker%shielding_ll) THEN
-                               CALL set_new(fieldripple%eta_shield,2.0d0) ! shielded
-                            ELSE
-                               CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                         ! set the values
+                         etas = SQRT(etas2)
+                         !if (ripple_tag .eq. 1 .or. ripple_tag .eq. 128) then
+                         !   print *, ripple_tag,walker_tag,ilr,1.0_dp/b_max_loc,etas
+                         !end if
+                         count = count + 1
+                         !PRINT *, 'SET_NEW'
+                         CALL set_new(fieldripple%eta_x0,eta_loc)
+                         !PRINT *, 'SET_NEW'
+                         CALL set_new(fieldripple%eta_s,etas)
+                         !PRINT *, 'SET_NEW'
+                         IF (add_extra_contr .EQ. 1) THEN
+                            CALL set_new(fieldripple%eta_type,5.0d0) ! local level
+                            !CALL set_new(fieldripple%eta_cl,DBLE(count))
+                            IF (ilr .EQ. 1) THEN ! go left
+                               IF (ripplewalker%shielding_lr .AND. ripplewalker%shielding_ll) THEN
+                                  CALL set_new(fieldripple%eta_shield,2.0d0) ! shielded
+                               ELSE
+                                  CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                               END IF
+                            ELSE ! go right
+                               IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
+                                  CALL set_new(fieldripple%eta_shield,2.0d0) ! shielded
+                               ELSE  
+                                  CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                               END IF
                             END IF
-                         ELSE ! go right
-                            IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
-                               CALL set_new(fieldripple%eta_shield,2.0d0) ! shielded
-                            ELSE  
-                               CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                         ELSE
+                            CALL set_new(fieldripple%eta_type,4.0d0) ! normal level
+                            IF (ilr .EQ. 1) THEN ! go left
+                               IF (ripplewalker%shielding_lr .AND. ripplewalker%shielding_ll) THEN
+                                  CALL set_new(fieldripple%eta_shield,1.0d0) ! shielded
+                               ELSE
+                                  CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                               END IF
+                            ELSE ! go right
+                               IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
+                                  CALL set_new(fieldripple%eta_shield,1.0d0) ! shielded
+                               ELSE  
+                                  CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                               END IF
                             END IF
                          END IF
-                      ELSE
-                         CALL set_new(fieldripple%eta_type,4.0d0) ! normal level
-                         IF (ilr .EQ. 1) THEN ! go left
-                            IF (ripplewalker%shielding_lr .AND. ripplewalker%shielding_ll) THEN
-                               CALL set_new(fieldripple%eta_shield,1.0d0) ! shielded
-                            ELSE
-                               CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
-                            END IF
-                         ELSE ! go right
-                            IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
-                               CALL set_new(fieldripple%eta_shield,1.0d0) ! shielded
-                            ELSE  
-                               CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
-                            END IF
-                         END IF
+                         !PAUSE
                       END IF
-                   !PAUSE
-                   END IF
-                END DO infloop
-                ! next ripple when walking away or exit
-                IF (mag_cycle_ripples .EQ. 0) THEN
-                   IF (ilr .EQ. 1) THEN ! left
-                      IF (ASSOCIATED(ripplewalker%prev)) THEN
-                         ripplewalker => ripplewalker%prev
-                      ELSE
-                         EXIT walk2inf
-                      END IF
-                   ELSE ! right
-                      IF (ASSOCIATED(ripplewalker%next)) THEN
-                         ripplewalker => ripplewalker%next
-                      ELSE
-                         EXIT walk2inf
-                      END IF
-                   END IF
-                ELSE
-                   !print *, 'before if ',ripplewalker%tag,ripple_tag,iwfirst
-                   IF (ripplewalker%tag .EQ. ripple_tag .AND. iwfirst .NE. 1) THEN
-                      EXIT walk2inf
-                   ELSE
+                   END DO infloop
+                   ! next ripple when walking away or exit
+                   IF (mag_cycle_ripples .EQ. 0) THEN
                       IF (ilr .EQ. 1) THEN ! left
                          IF (ASSOCIATED(ripplewalker%prev)) THEN
                             ripplewalker => ripplewalker%prev
                          ELSE
-                            ripplewalker => ripplewalker%parent%parent%parent%ch_las%ch_las%ch_act
-                            ! if the last is not connected to a propagator (max at the end)
-                            IF (ASSOCIATED(ripplewalker%next)) ripplewalker => ripplewalker%next
-                            IF (ripplewalker%tag .NE. ripple_tag) THEN
-                               ripplewalker => ripplewalker%prev ! there is one extra
-                            END IF
+                            EXIT walk2inf
                          END IF
                       ELSE ! right
                          IF (ASSOCIATED(ripplewalker%next)) THEN
                             ripplewalker => ripplewalker%next
                          ELSE
-                            ripplewalker => ripplewalker%parent%parent%parent%ch_fir%ch_fir%ch_act
-                            ! if the first is not connected to a propagator (max at the beginning)
-                            IF (ASSOCIATED(ripplewalker%prev)) ripplewalker => ripplewalker%prev
+                            EXIT walk2inf
+                         END IF
+                      END IF
+                   ELSE
+                      !print *, 'before if ',ripplewalker%tag,ripple_tag,iwfirst
+                      IF (ripplewalker%tag .EQ. ripple_tag .AND. iwfirst .NE. 1) THEN
+                         EXIT walk2inf
+                      ELSE
+                         IF (ilr .EQ. 1) THEN ! left
+                            IF (ASSOCIATED(ripplewalker%prev)) THEN
+                               ripplewalker => ripplewalker%prev
+                            ELSE
+                               ripplewalker => ripplewalker%parent%parent%parent%ch_las%ch_las%ch_act
+                               ! if the last is not connected to a propagator (max at the end)
+                               IF (ASSOCIATED(ripplewalker%next)) ripplewalker => ripplewalker%next
+                               IF (ripplewalker%tag .NE. ripple_tag) THEN
+                                  ripplewalker => ripplewalker%prev ! there is one extra
+                               END IF
+                            END IF
+                         ELSE ! right
+                            IF (ASSOCIATED(ripplewalker%next)) THEN
+                               ripplewalker => ripplewalker%next
+                            ELSE
+                               ripplewalker => ripplewalker%parent%parent%parent%ch_fir%ch_fir%ch_act
+                               ! if the first is not connected to a propagator (max at the beginning)
+                               IF (ASSOCIATED(ripplewalker%prev)) ripplewalker => ripplewalker%prev
+                            END IF
                          END IF
                       END IF
                    END IF
-                END IF
-                !PRINT *, ripplewalker%tag,ripple_tag
-                iwfirst = 0
-             END DO walk2inf
-             !PAUSE
-          END DO leftright2inf
+                   !PRINT *, ripplewalker%tag,ripple_tag
+                   iwfirst = 0
+                END DO walk2inf
+                !PAUSE
+             END DO leftright2inf
+          end if
           ! End of inflection handling
 
-          ! Handling of intersections with period boundaries
-          ripple_phi_left  = fieldripple%pa_fir%phi_l
-          ripple_phi_right = fieldripple%pa_las%phi_r
-          fieldperiod => fieldripple%pa_fir%parent
-          DO
-             period_phi_right = fieldperiod%phi_r
-             IF (period_phi_right .LT. ripple_phi_right) THEN
-                etas = 1.0d-4
-                CALL set_new(fieldripple%eta_x0,1.0_dp/fieldperiod%ch_las%b_r)
-                CALL set_new(fieldripple%eta_s,etas)
-                CALL set_new(fieldripple%eta_type,6.0d0)   ! intersection level
-                CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
-             END IF
-             IF (fieldperiod%ch_las%tag .GE. fieldripple%pa_las%tag) EXIT
-             IF (.NOT. ASSOCIATED(fieldperiod%next)) EXIT
-             fieldperiod => fieldperiod%next
-          END DO
-          !print *, 'end of intersection handling'
-          ! End of handling of intersections with period boundaries
-
+          if (split_at_period_boundary) then
+             ! Handling of intersections with period boundaries
+             ripple_phi_left  = fieldripple%pa_fir%phi_l
+             ripple_phi_right = fieldripple%pa_las%phi_r
+             fieldperiod => fieldripple%pa_fir%parent
+             DO
+                period_phi_right = fieldperiod%phi_r
+                IF (period_phi_right .LT. ripple_phi_right) THEN
+                   etas = 1.0d-4
+                   CALL set_new(fieldripple%eta_x0,1.0_dp/fieldperiod%ch_las%b_r)
+                   CALL set_new(fieldripple%eta_s,etas)
+                   CALL set_new(fieldripple%eta_type,6.0d0)   ! intersection level
+                   CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                END IF
+                IF (fieldperiod%ch_las%tag .GE. fieldripple%pa_las%tag) EXIT
+                IF (.NOT. ASSOCIATED(fieldperiod%next)) EXIT
+                fieldperiod => fieldperiod%next
+             END DO
+             !print *, 'end of intersection handling'
+             ! End of handling of intersections with period boundaries
+          end if
 
           ! sort the eta_x0 from small to large (together with eta_s)
           ! CALL sort(fieldripple%eta_s)
@@ -4731,7 +4626,7 @@ CONTAINS
        ! There is a Tokamak-problem with this matching of left and right - Winny
        ! print *, 'magnetic_device ',magnetic_device
        IF (magnetic_device .NE. 0) THEN
-       
+
           ! modification of local sigmas to have a match at the common boundary
           ! last ripple
           fieldperiod     => fieldline%ch_las
@@ -4902,7 +4797,7 @@ CONTAINS
           IF (ALLOCATED(eta_shield_left)) DEALLOCATE(eta_shield_left)
           IF (ALLOCATED(eta_type_left)) DEALLOCATE(eta_type_left)
        END IF ! This is this Tokamak if
-              
+
     END IF
     !
     NULLIFY(fieldripple)

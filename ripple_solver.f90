@@ -2510,7 +2510,13 @@ call cpu_time(time1)
        call h5_add(h5id_sizeplot, 'collpar', collpar)
        call h5_add(h5id_sizeplot, 'travis_convfac', travis_convfac )
        call h5_add(h5id_sizeplot, 'eta', eta(0:nplp1), lbound(eta(0:nplp1)), ubound(eta(0:nplp1)))
+       !call h5_add(h5id_sizeplot, 'eta_all', eta, lbound(eta), ubound(eta))
+       !call h5_add(h5id_sizeplot, 'eta_glob', eta_glob, lbound(eta_glob), ubound(eta_glob))
+       !call h5_add(h5id_sizeplot, 'eta_loc', eta_loc, lbound(eta_loc), ubound(eta_loc))
        !call h5_close_group(h5id_sizeplot)
+       call h5_add(h5id_sizeplot, 'ripple_tag',fieldpropagator%ch_act%tag)
+       call h5_add(h5id_sizeplot, 'ripple_b_max_l',fieldpropagator%ch_act%b_max_l)
+       call h5_add(h5id_sizeplot, 'ripple_b_max_r',fieldpropagator%ch_act%b_max_r)
        call h5_close(h5id_sizeplot)
     else
        open(iunit_sizes,file='sizeplot_etalev.'               &
