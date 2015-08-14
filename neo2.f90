@@ -13,7 +13,8 @@ PROGRAM neo2
        bsfunc_local_err_max_mult,bsfunc_max_mult_reach,             &
        bsfunc_modelfunc_num,bsfunc_divide,                          &
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,        &
-       bsfunc_local_shield_factor,bsfunc_shield
+       bsfunc_local_shield_factor,bsfunc_shield,                    &
+       bsfunc_lambda_loc_res
   USE device_mod
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
@@ -25,7 +26,7 @@ PROGRAM neo2
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
        prop_reconstruct_levels, prop_fileformat
-  USE magnetics_mod, ONLY : mag_talk,mag_infotalk
+  USE magnetics_mod, ONLY : mag_talk,mag_infotalk,mag_write_hdf5
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
        mag_magfield,mag_nperiod_min,mag_save_memory,                &
        magnetic_device,mag_cycle_ripples,mag_start_special,         &
@@ -33,7 +34,8 @@ PROGRAM neo2
        mag_coordinates,boozer_s,boozer_theta_beg,boozer_phi_beg,    &
        mag_dbhat_min,mag_dphi_inf_min,mag_inflection_mult,          &
        mag_symmetric,mag_symmetric_shorten,                         &
-       sigma_shield_factor,split_inflection_points
+       sigma_shield_factor,split_inflection_points,                 &
+       split_at_period_boundary
   USE binarysplit_mod, ONLY : bsfunc_message,bsfunc_modelfunc,      &
        bsfunc_total_err, bsfunc_local_err, bsfunc_min_distance,     &
        bsfunc_max_index, bsfunc_max_splitlevel,                     &
@@ -157,12 +159,13 @@ PROGRAM neo2
        bsfunc_modelfunc_num,bsfunc_divide,                                    &
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,                  &
        bsfunc_local_shield_factor,bsfunc_shield,sigma_shield_factor,          &
-       split_inflection_points
+       split_inflection_points,split_at_period_boundary,                      &
+       bsfunc_lambda_loc_res,mag_dbhat_min
   NAMELIST /propagator/                                                       &
        prop_diagphys,prop_overwrite,                                          &
        prop_diagnostic,prop_binary,prop_timing,prop_join_ends,                &
        prop_fluxsplitmode,                                                    &
-       mag_talk,mag_infotalk,                                                 &
+       mag_talk,mag_infotalk,mag_write_hdf5,                                  &
        hphi_lim,                                                              &
        prop_write,prop_reconstruct,prop_ripple_plot,                          &
        prop_reconstruct_levels,                                               &
@@ -247,6 +250,7 @@ PROGRAM neo2
   bin_split_mode = 1
   bsfunc_message = 0
   bsfunc_modelfunc = 1
+  bsfunc_lambda_loc_res = .FALSE.
   bsfunc_modelfunc_num = 1
   bsfunc_ignore_trap_levels = 0
   boundary_dist_limit_factor = 1.e-2
@@ -265,6 +269,7 @@ PROGRAM neo2
   bsfunc_local_solver = 0
   sigma_shield_factor = 3.0d0
   split_inflection_points = .TRUE.
+  split_at_period_boundary = .FALSE.
   mag_local_sigma = 0
   mag_symmetric = .FALSE.
   mag_symmetric_shorten = .FALSE.
@@ -283,6 +288,7 @@ PROGRAM neo2
   prop_reconstruct_levels = 0
   mag_talk = .TRUE.
   mag_infotalk = .TRUE.
+  mag_write_hdf5 = .FALSE.
   hphi_lim = 1.0d-6
   ! plotting
   plot_gauss = 0
@@ -432,6 +438,7 @@ PROGRAM neo2
      CALL mpro%barrier()
      CALL mpro%deinit()
      CALL h5_deinit()
+
      STOP
   END IF
 
