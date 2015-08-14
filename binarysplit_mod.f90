@@ -432,6 +432,13 @@ CONTAINS
        DO k = 1, SIZE(x0,1)
           g = g * (1.0_dp + EXP(- ((x-x0(k)) / s(k))**2 / 2) / s(k))
        END DO
+    ELSEIF (bsfunc_modelfunc .EQ. 5) THEN
+       g = 1.0_dp
+       DO k = 1, SIZE(x0,1)
+          !g = g * (1.0_dp + EXP(- ((x-x0(k)) / s(k))**2 / 2) / s(k))
+          g = g * sign(x-x0(k),1.0d0) * (s(k) * abs(x-x0(k)))**(8.0d0/8.0d0)
+       END DO
+       g = (s(k) * abs(x0(k)))**(8.0d0/8.0d0) - g
     ELSE
        PRINT *,'Error from binarysplit: bsfunc_modelfunc wrong: ', &
             bsfunc_modelfunc
