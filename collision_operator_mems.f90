@@ -14,7 +14,8 @@ module collop
   logical, public             :: collop_talk      =  .true. 
   logical, public             :: collop_talk_much =  .true.
   character(len=100), public  :: collop_path
-  integer                     :: collop_base      = 0 ! 0...Laguerre (Default), 1...Polynomial
+  integer                     :: collop_base_prj  = 0 ! 0...Laguerre (Default), 1...Polynomial
+  integer                     :: collop_base_exp  = 0 
   real(kind=dp)               :: scalprod_alpha = 0d0
   real(kind=dp)               :: scalprod_beta  = 0d0
 
@@ -102,7 +103,7 @@ module collop
       ! Compute collision operator with Laguerre base for
       ! eta-level positioning of flint
       !**********************************************************
-      call init_collop(0, 0d0, 0d0)
+      call init_collop(0, 0, 0d0, 0d0)
       call compute_source(asource, weightlag)
       call compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
            denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
@@ -111,7 +112,7 @@ module collop
       !**********************************************************
       ! Now compute collision operator with desired base
       !**********************************************************
-      call init_collop(collop_base, scalprod_alpha, scalprod_beta)
+      call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
       
       !**********************************************************
       ! Compute sources
@@ -192,7 +193,8 @@ module collop
       call h5_add(h5id_meta, 'gamma_ab', gamma_ab)
       !call h5_add(h5id_meta, 'tag_a', tag_a)
       !call h5_add(h5id_meta, 'tag_b', tag_b)
-      call h5_add(h5id_meta, 'collop_base', collop_base)
+      call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj)
+      call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp)
       call h5_close_group(h5id_meta)
       
       call h5_add(h5id_collop, 'asource', asource, lbound(asource), ubound(asource))

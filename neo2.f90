@@ -42,8 +42,8 @@ PROGRAM neo2
        bsfunc_sigma_mult, bsfunc_sigma_min, bsfunc_local_solver
   USE binarysplit_int, ONLY : linspace
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
-       collop_load, collop_unload, z_eff, collop_path, collop_base, &
-       scalprod_alpha, scalprod_beta
+       collop_load, collop_unload, z_eff, collop_path,              &
+       collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta
   USE rkstep_mod, ONLY : lag,leg,legmax
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
@@ -146,7 +146,8 @@ PROGRAM neo2
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
-       collop_path, collop_base, scalprod_alpha, scalprod_beta
+       collop_path, collop_base_prj, collop_base_exp,                         &
+       scalprod_alpha, scalprod_beta
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -222,7 +223,8 @@ PROGRAM neo2
 !  sparse_solve_method = 0
   ! collision
   collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
-  collop_base = 0
+  collop_base_prj = 0
+  collop_base_exp = 0
   scalprod_alpha = 0d0
   scalprod_beta  = 0d0
   conl_over_mfp = 1.0d-3
@@ -870,7 +872,8 @@ CONTAINS
         CALL h5_add(h5_config_group, 'isw_energy', isw_energy, '')
         CALL h5_add(h5_config_group, 'isw_axisymm', isw_axisymm, '')
         call h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
-        call h5_add(h5_config_group, 'collop_base', collop_base, 'Base functions of collision operator')
+        call h5_add(h5_config_group, 'collop_base_prj', collop_base_prj, 'Projection base of collision operator')
+        call h5_add(h5_config_group, 'collop_base_exp', collop_base_exp, 'Expansion base of collision operator')
         CALL h5_close_group(h5_config_group)
 
         CALL h5_define_group(h5_config_id, 'binsplit', h5_config_group)
