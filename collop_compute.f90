@@ -107,16 +107,21 @@ module collop_compute
   !**********************************************************
   ! Function pointers for different base functions
   !**********************************************************
-  procedure(init_phi_interface), pointer :: init_phi => null()
-  procedure(phi_interface),      pointer :: phi      => null()
-  procedure(d_phi_interface),    pointer :: d_phi    => null()
-  procedure(dd_phi_interface),   pointer :: dd_phi   => null()
+  procedure(init_phi_interface), pointer :: init_phi_prj => null()
+  procedure(phi_interface),      pointer :: phi_prj      => null()
+  procedure(d_phi_interface),    pointer :: d_phi_prj    => null()
+  procedure(dd_phi_interface),   pointer :: dd_phi_prj   => null()
+
+  procedure(init_phi_interface), pointer :: init_phi_exp => null()
+  procedure(phi_interface),      pointer :: phi_exp      => null()
+  procedure(d_phi_interface),    pointer :: d_phi_exp    => null()
+  procedure(dd_phi_interface),   pointer :: dd_phi_exp   => null()
   
 contains
 
-  subroutine init_collop(collop_base, scalprod_alpha, scalprod_beta)
+  subroutine init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
     use rkstep_mod, only : lag, leg
-    integer :: collop_base
+    integer :: collop_base_prj, collop_base_exp
     real(kind=dp) :: scalprod_alpha
     real(kind=dp) :: scalprod_beta
 
@@ -124,39 +129,69 @@ contains
     beta  = scalprod_beta
     lagmax = lag
     legmax = leg
-
-    if (collop_base .eq. 0) then
-       write (*,*) "Using Laguerre polynomials as collision operator base."
-       init_phi => init_phi_laguerre
-       phi      => phi_laguerre
-       d_phi    => d_phi_laguerre
-       dd_phi   => dd_phi_laguerre
-    elseif (collop_base .eq. 1) then
-        write (*,*) "Using standard polynomials as collision operator base."
-       init_phi => init_phi_polynomial
-       phi      => phi_polynomial
-       d_phi    => d_phi_polynomial
-       dd_phi   => dd_phi_polynomial     
-    elseif (collop_base .eq. 2) then
-       write (*,*) "Using squared polynomials as collision operator base."
-       init_phi => init_phi_polynomial_2
-       phi      => phi_polynomial_2
-       d_phi    => d_phi_polynomial_2
-       dd_phi   => dd_phi_polynomial_2
-    elseif (collop_base .eq. 3) then
-       write (*,*) "Using squared polynomials without zeroth order as collision operator base."
-       init_phi => init_phi_polynomial_3
-       phi      => phi_polynomial_3
-       d_phi    => d_phi_polynomial_3
-       dd_phi   => dd_phi_polynomial_3
+    
+    if (collop_base_prj .eq. 0) then
+       write (*,*) "Using Laguerre polynomials as collision operator projection base."
+       init_phi_prj => init_phi_laguerre
+       phi_prj      => phi_laguerre
+       d_phi_prj    => d_phi_laguerre
+       dd_phi_prj   => dd_phi_laguerre
+    elseif (collop_base_prj .eq. 1) then
+        write (*,*) "Using standard polynomials as collision operator projection base."
+       init_phi_prj => init_phi_polynomial
+       phi_prj      => phi_polynomial
+       d_phi_prj    => d_phi_polynomial
+       dd_phi_prj   => dd_phi_polynomial     
+    elseif (collop_base_prj .eq. 2) then
+       write (*,*) "Using squared polynomials as collision operator projection base."
+       init_phi_prj => init_phi_polynomial_2
+       phi_prj      => phi_polynomial_2
+       d_phi_prj    => d_phi_polynomial_2
+       dd_phi_prj   => dd_phi_polynomial_2
+    elseif (collop_base_prj .eq. 3) then
+       write (*,*) "Using squared polynomials without zeroth order as collision operator projection base."
+       init_phi_prj => init_phi_polynomial_3
+       phi_prj      => phi_polynomial_3
+       d_phi_prj    => d_phi_polynomial_3
+       dd_phi_prj   => dd_phi_polynomial_3
     else
-       write (*,*) "Undefined collision operator base functions ", collop_base
+       write (*,*) "Undefined collision operator projection base ", collop_base_prj
+       stop
+    end if
+
+    if (collop_base_exp .eq. 0) then
+       write (*,*) "Using Laguerre polynomials as collision operator expansion base."
+       init_phi_exp => init_phi_laguerre
+       phi_exp      => phi_laguerre
+       d_phi_exp    => d_phi_laguerre
+       dd_phi_exp   => dd_phi_laguerre
+    elseif (collop_base_exp .eq. 1) then
+        write (*,*) "Using standard polynomials as collision operator expansion base."
+       init_phi_exp => init_phi_polynomial
+       phi_exp      => phi_polynomial
+       d_phi_exp    => d_phi_polynomial
+       dd_phi_exp   => dd_phi_polynomial     
+    elseif (collop_base_exp .eq. 2) then
+       write (*,*) "Using squared polynomials as collision operator expansion base."
+       init_phi_exp => init_phi_polynomial_2
+       phi_exp      => phi_polynomial_2
+       d_phi_exp    => d_phi_polynomial_2
+       dd_phi_exp   => dd_phi_polynomial_2
+    elseif (collop_base_exp .eq. 3) then
+       write (*,*) "Using squared polynomials without zeroth order as collision operator expansion base."
+       init_phi_exp => init_phi_polynomial_3
+       phi_exp      => phi_polynomial_3
+       d_phi_exp    => d_phi_polynomial_3
+       dd_phi_exp   => dd_phi_polynomial_3
+    else
+       write (*,*) "Undefined collision operator expansion base ", collop_base_exp
        stop
     end if
     
     call init_legendre(legmax)
-    call init_phi(lagmax, legmax)
-
+    call init_phi_prj(lagmax, legmax)
+    call init_phi_exp(lagmax, legmax)
+    
   end subroutine init_collop
 
   subroutine chop_0(x)
@@ -342,7 +377,7 @@ contains
     function phim_phimp(x)
       real(kind=dp) :: x, phim_phimp
 
-      phim_phimp =  pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi(mm,x) * phi(mp,x)
+      phim_phimp =  pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(mm,x) * phi_exp(mp,x)
       
     end function phim_phimp
   end subroutine compute_Minv
@@ -386,12 +421,12 @@ contains
       function am(x)
         real(kind=dp) :: x, am
 
-        am = pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi(m, x) * x**(2*k - 1 - 5*kdelta(3,k))
+        am = pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * x**(2*k - 1 - 5*kdelta(3,k))
       end function am
 
       function bm(x)
         real(kind=dp) :: x, bm
-        bm = exp(-x**2) * x**(2*(j+1)-5*kdelta(3,j)) * phi(m,x)
+        bm = exp(-x**2) * x**(2*(j+1)-5*kdelta(3,j)) * phi_prj(m,x)
       end function bm
 
       function kdelta(a,b)
@@ -432,7 +467,7 @@ contains
       real(kind=dp) :: integrand
 
       y = x * gamma_ab
-      integrand = x**(alpha) * exp(-(1+beta)*x**2) * phi(m, x) * (erf(y) - G(y)) * phi(mp, x)
+      integrand = x**(alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * (erf(y) - G(y)) * phi_exp(mp, x)
 
     end function integrand
     
@@ -467,7 +502,7 @@ contains
       real(kind=dp) :: integrand_inf
 
       y = x * gamma_ab
-      integrand_inf = x**(alpha) * exp(-(1+beta)*x**2) * phi(m, x) * (1 - 0) * phi(mp, x)
+      integrand_inf = x**(alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * (1 - 0) * phi_exp(mp, x)
 
     end function integrand_inf
 
@@ -506,14 +541,14 @@ contains
       
       y = x * gamma_ab
 
-      D_1 = d_G(y) * gamma_ab * x * d_phi(mp, x) &
-           + G(y) * (-2*x * x * d_phi(mp, x) + x * dd_phi(mp, x) &
-           + d_phi(mp, x))
+      D_1 = d_G(y) * gamma_ab * x * d_phi_exp(mp, x) &
+           + G(y) * (-2*x * x * d_phi_exp(mp, x) + x * dd_phi_exp(mp, x) &
+           + d_phi_exp(mp, x))
 
-      D_2 = 2 * (1 - T_a/T_b) * (d_G(y) * gamma_ab * x**2 *phi(mp, x) + &
-           G(y) * (2*x*phi(mp, x) - 2*x**3*phi(mp, x) + x**2 * d_phi(mp, x)))
+      D_2 = 2 * (1 - T_a/T_b) * (d_G(y) * gamma_ab * x**2 *phi_exp(mp, x) + &
+           G(y) * (2*x*phi_exp(mp, x) - 2*x**3*phi_exp(mp, x) + x**2 * d_phi_exp(mp, x)))
       
-      integrand = x**(1+alpha)*exp(-(1+beta)*x**2) * phi(m, x) * (D_1 - D_2)
+      integrand = x**(1+alpha)*exp(-(1+beta)*x**2) * phi_prj(m, x) * (D_1 - D_2)
     end function integrand
   end subroutine compute_energyscattering
 
@@ -565,7 +600,7 @@ contains
       real(kind=dp) :: x
       real(kind=dp) :: integrand
 
-      integrand = x**(3+alpha) * exp(-(beta + 1)*x**2) * exp(-(gamma_ab*x)**2) * phi(m, x) * phi(mp, x)
+      integrand = x**(3+alpha) * exp(-(beta + 1)*x**2) * exp(-(gamma_ab*x)**2) * phi_prj(m, x) * phi_exp(mp, x)
     end function int_I1_mmp_s
     
   end subroutine compute_I1_mmp_s
@@ -602,7 +637,7 @@ contains
 
       I2 = res_int(1)
       
-      I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi(m,x) * (x**(-l-1) * I1 + x**l * I2)
+      I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi_prj(m,x) * (x**(-l-1) * I1 + x**l * I2)
       
     end function I_phi
     
@@ -610,14 +645,14 @@ contains
       real(kind=dp) :: xp, yp, I_phi_1
 
       yp = gamma_ab * xp
-      I_phi_1 = exp(-yp**2) * phi(mp, xp) * xp**(l+2)
+      I_phi_1 = exp(-yp**2) * phi_exp(mp, xp) * xp**(l+2)
     end function I_phi_1
     
     function I_phi_2(xp)
       real(kind=dp) :: xp, yp, I_phi_2
 
       yp = gamma_ab * xp
-      I_phi_2 = exp(-yp**2) * phi(mp, xp) * xp**(-l+1)
+      I_phi_2 = exp(-yp**2) * phi_exp(mp, xp) * xp**(-l+1)
     end function I_phi_2
     
   end subroutine compute_I2_mmp_s
@@ -655,8 +690,8 @@ contains
       I2 = res_int(1)
       
       I_phi = ((x**(3+alpha)) * exp(-(beta+1)*(x**2)) * &
-           (alpha-2*(beta+1)*(x**2)+4) * phi(m,x) + &
-           (x**(4+alpha))  * exp(-(beta+1)*(x**2)) * d_phi(m,x)) * &
+           (alpha-2*(beta+1)*(x**2)+4) * phi_prj(m,x) + &
+           (x**(4+alpha))  * exp(-(beta+1)*(x**2)) * d_phi_prj(m,x)) * &
            ((x**(-l-1)) * I1 + (x**l) * I2)      
     end function I_phi
 
@@ -664,14 +699,14 @@ contains
       real(kind=dp) :: xp, yp, I_phi_1
 
       yp = gamma_ab * xp
-      I_phi_1 = exp(-yp**2) * phi(mp, xp) * xp**(l+2)
+      I_phi_1 = exp(-yp**2) * phi_exp(mp, xp) * xp**(l+2)
     end function I_phi_1
     
     function I_phi_2(xp)
       real(kind=dp) :: xp, yp, I_phi_2
 
       yp = gamma_ab * xp
-      I_phi_2 = exp(-yp**2) * phi(mp, xp) * xp**(-l+1)
+      I_phi_2 = exp(-yp**2) * phi_exp(mp, xp) * xp**(-l+1)
     end function I_phi_2
     
   end subroutine compute_I3_mmp_s
@@ -717,8 +752,8 @@ contains
       I4 = res_int(1)
       
       I_psi = exp(-c*x**2)*x**(3+alpha) * ((20+9*alpha + &
-           alpha**2 - 2*(11+2*alpha) * c*x**2 + 4*c**2*x**4) * phi(m,x) + &
-           x*(2*(5+alpha-2*c*x**2) * d_phi(m, x) + x*dd_phi(m,x))) * &
+           alpha**2 - 2*(11+2*alpha) * c*x**2 + 4*c**2*x**4) * phi_prj(m,x) + &
+           x*(2*(5+alpha-2*c*x**2) * d_phi_prj(m, x) + x*dd_phi_prj(m,x))) * &
            (x**(-l-1)/(2*l+3)*I1 - x**(-l+1)/(2*l-1)*I2 + x**(l+2)/(2*l+3)*I3 - x**l/(2*l-1)*I4)
       
     end function I_psi
@@ -727,28 +762,28 @@ contains
       real(kind=dp) :: xp, yp, I_psi_1
       
       yp = gamma_ab * xp
-      I_psi_1 = xp**(l+4)*exp(-yp**2)*phi(mp,xp)
+      I_psi_1 = xp**(l+4)*exp(-yp**2)*phi_exp(mp,xp)
     end function I_psi_1
     
     function I_psi_2(xp)
       real(kind=dp) :: xp, yp, I_psi_2
 
       yp = gamma_ab * xp
-      I_psi_2 = xp**(l+2)*exp(-yp**2)*phi(mp,xp)
+      I_psi_2 = xp**(l+2)*exp(-yp**2)*phi_exp(mp,xp)
     end function I_psi_2
 
     function I_psi_3(xp)
       real(kind=dp) :: xp, yp, I_psi_3
 
       yp = gamma_ab * xp
-      I_psi_3 = xp**(-l+1)*exp(-yp**2)*phi(mp,xp)
+      I_psi_3 = xp**(-l+1)*exp(-yp**2)*phi_exp(mp,xp)
     end function I_psi_3
     
     function I_psi_4(xp)
       real(kind=dp) :: xp, yp, I_psi_4
 
       yp = gamma_ab * xp
-      I_psi_4 = xp**(-l+3)*exp(-yp**2)*phi(mp,xp)
+      I_psi_4 = xp**(-l+3)*exp(-yp**2)*phi_exp(mp,xp)
     end function I_psi_4
     
   end subroutine compute_I4_mmp_s
