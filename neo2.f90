@@ -42,9 +42,11 @@ PROGRAM neo2
   ! Path for the collision operator matrices is now specified via neo2.in
   ! (necessary for computations with Condor)  
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
-       collop_load, collop_unload, z_eff, collop_path
+       collop_load, collop_unload, z_eff, collop_path,              &
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
-  USE rkstep_mod, ONLY : lag,leg,legmax
+       collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta     
+  use rkstep_mod, only : lag,leg,legmax                            
+      
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
@@ -114,8 +116,9 @@ PROGRAM neo2
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
-       isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path
-  !! End Modifications by Andreas F. Martitsch (15.07.2014)
+       isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &      
+       !! End Modifications by Andreas F. Martitsch (15.07.2014)
+       collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta       
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -211,6 +214,10 @@ PROGRAM neo2
   ! Default path for the collision operator matrices
   collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
+  collop_base_prj = 0
+  collop_base_exp = 0
+  scalprod_alpha = 0d0
+  scalprod_beta  = 0d0
   ! binsplit
   eta_s_lim = 1.2d0
   eta_part = 100
@@ -333,7 +340,7 @@ PROGRAM neo2
   ! Initialize MPI module
   !**********************************************************
   call mpro%init()
-  
+ 
   !! Modification by Andreas F. Martitsch (31.07.2014)
   ! Save here starting point of the field line for cylindircal
   ! coordinates (used for normalizations for final NTV output)

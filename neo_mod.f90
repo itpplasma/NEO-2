@@ -62,13 +62,19 @@
     ! DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: anumm,denmm,asource
     ! DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: ailmm
     ! DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
+
     ! New Version - up to now only differential part
+    CHARACTER(len=3), DIMENSION(:), ALLOCATABLE       :: species_tags
     DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: asource
-    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: anumm_ms
-    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: denmm_ms
+    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: anumm_a
+    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: denmm_a
+    DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: anumm_aa
+    DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: denmm_aa
+    DOUBLE PRECISION, DIMENSION(:,:,:,:,:),ALLOCATABLE, TARGET:: ailmm_aa
+    DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: anumm_lag
     DOUBLE PRECISION, DIMENSION(:,:),     POINTER     :: anumm
     DOUBLE PRECISION, DIMENSION(:,:),     POINTER     :: denmm
-    DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: ailmm
+    DOUBLE PRECISION, DIMENSION(:,:,:),   POINTER     :: ailmm
     DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
     !**********************************************************
     

@@ -81,7 +81,9 @@ set(NEO2_SRC_FILES
 	./neo_magfie_perturbation.f90
 	./collop_definitions.f90
 	./collop_compute.f90
-	./hdf5_tools.f90
+#	./hdf5_tools.f90     # Is now a library
         ./neo2.f90
+	./collop_laguerre.f90
+	./collop_polynomial.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS}")
