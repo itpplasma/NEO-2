@@ -1,48 +1,48 @@
-MODULE collop
-  USE rkstep_mod
+module collop
+  use rkstep_mod
   !use nrtype, only, private : pi, dp
-  USE hdf5_tools
-  USE collop_compute, ONLY : init_collop, &
+  use hdf5_tools
+  use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
        m_ele, m_d, m_C, compute_collop_inf
-  USE mpiprovider_module
+  use mpiprovider_module
 
-  IMPLICIT NONE
+  implicit none
   
   !**********************************************************
   ! From old module, mainly for compatibility
   !**********************************************************
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
-  INTEGER, PARAMETER, PRIVATE :: dummy_read = 20
-  REAL(kind=dp), PUBLIC       :: z_eff = 1.0_dp
-  LOGICAL, PUBLIC             :: collop_talk      =  .TRUE. 
-  LOGICAL, PUBLIC             :: collop_talk_much =  .TRUE.
-  CHARACTER(len=100), PUBLIC  :: collop_path
-  INTEGER                     :: collop_base_prj  = 0 ! 0...Laguerre (Default), 1...Polynomial
-  INTEGER                     :: collop_base_exp  = 0 
-  REAL(kind=dp)               :: scalprod_alpha = 0d0
-  REAL(kind=dp)               :: scalprod_beta  = 0d0
+  integer, parameter :: dp = kind(1.0d0)
+  integer, parameter, private :: dummy_read = 20
+  real(kind=dp), public       :: z_eff = 1.0_dp
+  logical, public             :: collop_talk      =  .true. 
+  logical, public             :: collop_talk_much =  .true.
+  character(len=100), public  :: collop_path
+  integer                     :: collop_base_prj  = 0 ! 0...Laguerre (Default), 1...Polynomial
+  integer                     :: collop_base_exp  = 0 
+  real(kind=dp)               :: scalprod_alpha = 0d0
+  real(kind=dp)               :: scalprod_beta  = 0d0
 
   !**********************************************************
   ! Number of species
   !**********************************************************
-  INTEGER :: num_spec
+  integer :: num_spec
 
-  REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: anumm_inf
+  real(kind=dp), dimension(:,:), allocatable :: anumm_inf
 
-  CONTAINS
+  contains
     
-    SUBROUTINE collop_construct()     
+    subroutine collop_construct()     
 
-    END SUBROUTINE collop_construct
+    end subroutine collop_construct
 
-    SUBROUTINE collop_set_species(ispec, opt_talk)
-      INTEGER :: ispec
-      LOGICAL, OPTIONAL :: opt_talk
-      LOGICAL :: talk
+    subroutine collop_set_species(ispec, opt_talk)
+      integer :: ispec
+      logical, optional :: opt_talk
+      logical :: talk
 
-      talk = .TRUE.
-      IF (PRESENT(opt_talk)) talk = opt_talk
+      talk = .true.
+      if (present(opt_talk)) talk = opt_talk
       
       !write (*,*) "Setting species to ", ispec
 
@@ -51,87 +51,87 @@ MODULE collop
       !**********************************************************
       anumm(0:lag, 0:lag) => anumm_a(:,:,ispec)      
       denmm(0:lag, 0:lag) => denmm_a(:,:,ispec)
-      IF (Z_eff .NE. 0) THEN
+      if (Z_eff .ne. 0) then
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,ispec,ispec)
-      ELSE
+      else
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,mpro%getRank(),ispec)
-      END IF
+      end if
       !**********************************************************
       ! Switch collisionality parameter
       !**********************************************************
       ! Not yet implemented
       
-    END SUBROUTINE collop_set_species
+    end subroutine collop_set_species
     
-    SUBROUTINE collop_load()
-      REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: asource_temp
-      REAL(kind=dp) :: alpha_temp, beta_temp
-      INTEGER       :: a,b
+    subroutine collop_load()
+      real(kind=dp), dimension(:), allocatable :: asource_temp
+      real(kind=dp) :: alpha_temp, beta_temp
+      integer       :: a,b
 
-      IF (Z_eff .NE. 0 ) THEN
-         WRITE (*,*) "Standard mode."
+      if (Z_eff .ne. 0 ) then
+         write (*,*) "Standard mode."
          num_spec = 1
-      ELSE
-         WRITE (*,*) "Test mode for two species."
+      else
+         write (*,*) "Test mode for two species."
          num_spec = 2
-      END IF
+      end if
       
       !**********************************************************
       ! Allocation of matrices
       !**********************************************************
-      IF(ALLOCATED(anumm_aa)) DEALLOCATE(anumm_aa)
-      ALLOCATE(anumm_aa(0:lag,0:lag,0:num_spec-1,0:num_spec-1))
+      if(allocated(anumm_aa)) deallocate(anumm_aa)
+      allocate(anumm_aa(0:lag,0:lag,0:num_spec-1,0:num_spec-1))
 
-      IF(ALLOCATED(anumm_a)) DEALLOCATE(anumm_a)
-      ALLOCATE(anumm_a(0:lag,0:lag,0:num_spec-1))
+      if(allocated(anumm_a)) deallocate(anumm_a)
+      allocate(anumm_a(0:lag,0:lag,0:num_spec-1))
       
-      IF(ALLOCATED(anumm_lag)) DEALLOCATE(anumm_lag)
-      ALLOCATE(anumm_lag(0:lag,0:lag))
+      if(allocated(anumm_lag)) deallocate(anumm_lag)
+      allocate(anumm_lag(0:lag,0:lag))
       
-      IF(ALLOCATED(denmm_aa)) DEALLOCATE(denmm_aa)
-      ALLOCATE(denmm_aa(0:lag,0:lag,0:num_spec-1,0:num_spec-1))
+      if(allocated(denmm_aa)) deallocate(denmm_aa)
+      allocate(denmm_aa(0:lag,0:lag,0:num_spec-1,0:num_spec-1))
 
-      IF(ALLOCATED(denmm_a)) DEALLOCATE(denmm_aa)
-      ALLOCATE(denmm_a(0:lag,0:lag,0:num_spec-1))
+      if(allocated(denmm_a)) deallocate(denmm_aa)
+      allocate(denmm_a(0:lag,0:lag,0:num_spec-1))
       
-      IF(ALLOCATED(asource)) DEALLOCATE(asource)
-      ALLOCATE(asource(0:lag,3))
+      if(allocated(asource)) deallocate(asource)
+      allocate(asource(0:lag,3))
       
-      IF(ALLOCATED(ailmm_aa)) DEALLOCATE(ailmm_aa)
-      ALLOCATE(ailmm_aa(0:lag,0:lag,0:leg,0:num_spec-1,0:num_spec-1))
+      if(allocated(ailmm_aa)) deallocate(ailmm_aa)
+      allocate(ailmm_aa(0:lag,0:lag,0:leg,0:num_spec-1,0:num_spec-1))
       
-      IF(ALLOCATED(weightlag)) DEALLOCATE(weightlag)
-      ALLOCATE(weightlag(3,0:lag))
+      if(allocated(weightlag)) deallocate(weightlag)
+      allocate(weightlag(3,0:lag))
 
-      IF (ALLOCATED(anumm_inf)) DEALLOCATE(anumm_inf)
-      ALLOCATE(anumm_inf(0:lag, 0:lag))
+      if (allocated(anumm_inf)) deallocate(anumm_inf)
+      allocate(anumm_inf(0:lag, 0:lag))
 
-      IF (Z_eff .NE. 0) THEN
+      if (Z_eff .ne. 0) then
 
          !**********************************************************
          ! Compute collision operator with Laguerre base for
          ! eta-level positioning of flint
          !**********************************************************
-         CALL init_collop(0, 0, 0d0, 0d0)
-         CALL compute_source(asource, weightlag)
-         CALL compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
+         call init_collop(0, 0, 0d0, 0d0)
+         call compute_source(asource, weightlag)
+         call compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
               denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
          anumm_lag(:,:) = anumm_aa(:,:,0,0) + Z_eff * anumm_inf(:,:)
 
          !**********************************************************
          ! Now compute collision operator with desired base
          !**********************************************************
-         CALL init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
+         call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
 
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         CALL compute_source(asource, weightlag)
+         call compute_source(asource, weightlag)
 
          !**********************************************************
          ! Compute collision operator
          !**********************************************************
-         CALL compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
+         call compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
               denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
 
          !**********************************************************
@@ -140,30 +140,30 @@ MODULE collop
          anumm_a(:,:,0) = anumm_aa(:,:,0,0) + Z_eff * anumm_inf(:,:)
          denmm_a(:,:,0) = denmm_aa(:,:,0,0)
 
-      ELSE
+      else
 
-         WRITE (*,*) "Multispecies test mode."
+         write (*,*) "Multispecies test mode."
          
          !**********************************************************
          ! Now compute collision operator with desired base
          !**********************************************************
-         CALL init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
+         call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
 
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         CALL compute_source(asource, weightlag)
+         call compute_source(asource, weightlag)
 
          !**********************************************************
          ! Compute collision operator
          !**********************************************************
-         CALL compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
+         call compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
               denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
-         CALL compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
+         call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
               denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         CALL compute_collop('C', 'C', m_c, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
+         call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
               denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         CALL compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+         call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
               denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
          
          !**********************************************************
@@ -171,20 +171,20 @@ MODULE collop
          !**********************************************************
          anumm_a = 0d0
          denmm_a = 0d0
-         DO a = 0, num_spec-1
-            DO b = 0, num_spec-1
-               !IF (a .NE. b) THEN
+         do a = 1, num_spec
+            do b = 1, num_spec
+               !if (a .ne. b) then
                   anumm_a(:,:,a) = anumm_a(:,:,a) + anumm_aa(:,:,a,b)
                   denmm_a(:,:,a) = denmm_a(:,:,a) + denmm_aa(:,:,a,b)
-               !END IF
-            END DO
-         END DO
-      END IF
-     
+               !end if
+            end do
+         end do
+      end if
+
       !**********************************************************
       ! Swap sources for NEO-2 convention
       !**********************************************************
-      ALLOCATE(asource_temp(0:lag))
+      allocate(asource_temp(0:lag))
       asource_temp = asource(:, 2)
       asource(:,2) = asource(:,3)
       asource(:,3) = asource_temp
@@ -192,12 +192,12 @@ MODULE collop
       asource_temp = weightlag(2,:)
       weightlag(2,:) = weightlag(3,:)
       weightlag(3,:) = asource_temp
-      DEALLOCATE(asource_temp)
+      deallocate(asource_temp)
       
       !**********************************************************
       ! Set pointers to main species
       !**********************************************************
-      CALL collop_set_species(0)
+      call collop_set_species(0)
 
       !**********************************************************
       ! Write to screen
@@ -208,65 +208,63 @@ MODULE collop
       !write (*,*) ailmm
       !write (*,*) weightlag
 
-      !IF (mpro%isMaster()) CALL write_collop('collop.h5')
-    END SUBROUTINE collop_load
+      !if (mpro%isMaster()) call write_collop('collop.h5')
+    end subroutine collop_load
 
-    SUBROUTINE collop_unload()
-      DEALLOCATE(anumm_aa)
-      DEALLOCATE(denmm_aa)
-      DEALLOCATE(anumm_a)
-      DEALLOCATE(denmm_a)
-      DEALLOCATE(asource)
-      DEALLOCATE(weightlag)
-    END SUBROUTINE collop_unload
+    subroutine collop_unload()
+      deallocate(anumm_aa)
+      deallocate(denmm_aa)
+      deallocate(anumm_a)
+      deallocate(denmm_a)
+      deallocate(asource)
+      deallocate(weightlag)
+    end subroutine collop_unload
   
-    SUBROUTINE collop_deconstruct()
+    subroutine collop_deconstruct()
       
-    END SUBROUTINE collop_deconstruct
+    end subroutine collop_deconstruct
 
-    SUBROUTINE write_collop(h5filename)
-      CHARACTER(len=*) :: h5filename
-      INTEGER(HID_T)   :: h5id_collop, h5id_meta, h5id_species
+    subroutine write_collop(h5filename)
+      character(len=*) :: h5filename
+      integer(HID_T)   :: h5id_collop, h5id_meta, h5id_species
 
-      WRITE (*,*) "Rank: ", mpro%getRank()
-
-      CALL h5_create(h5filename, h5id_collop)
+      call h5_create(h5filename, h5id_collop)
       !call h5_define_group(h5id_collop, trim(tag_a) //'-'// trim(tag_b), h5id_species)
-      CALL h5_define_group(h5id_collop, 'meta', h5id_meta)
+      call h5_define_group(h5id_collop, 'meta', h5id_meta)
 
-      CALL h5_add(h5id_meta, 'lag', lag)
-      CALL h5_add(h5id_meta, 'leg', leg)
-      CALL h5_add(h5id_meta, 'scalprod_alpha', scalprod_alpha)
-      CALL h5_add(h5id_meta, 'scalprod_beta',  scalprod_beta)
+      call h5_add(h5id_meta, 'lag', lag)
+      call h5_add(h5id_meta, 'leg', leg)
+      call h5_add(h5id_meta, 'scalprod_alpha', scalprod_alpha)
+      call h5_add(h5id_meta, 'scalprod_beta',  scalprod_beta)
       !call h5_add(h5id_meta, 'm_a', m_a)
       !call h5_add(h5id_meta, 'm_b', m_b)
       !call h5_add(h5id_meta, 'T_a', T_a)
       !call h5_add(h5id_meta, 'T_b', T_b)
-      CALL h5_add(h5id_meta, 'gamma_ab', gamma_ab)
+      call h5_add(h5id_meta, 'gamma_ab', gamma_ab)
       !call h5_add(h5id_meta, 'tag_a', tag_a)
       !call h5_add(h5id_meta, 'tag_b', tag_b)
-      CALL h5_add(h5id_meta, 'collop_base_prj', collop_base_prj)
-      CALL h5_add(h5id_meta, 'collop_base_exp', collop_base_exp)
-      CALL h5_close_group(h5id_meta)
+      call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj)
+      call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp)
+      call h5_close_group(h5id_meta)
       
-      CALL h5_add(h5id_collop, 'asource', asource, LBOUND(asource), UBOUND(asource))
-      CALL h5_add(h5id_collop, 'anumm_a', anumm_a, LBOUND(anumm_a), UBOUND(anumm_a))
-      CALL h5_add(h5id_collop, 'denmm_a', denmm_a, LBOUND(denmm_a), UBOUND(denmm_a))
-      CALL h5_add(h5id_collop, 'anumm_aa', anumm_aa, LBOUND(anumm_aa), UBOUND(anumm_aa))
-      CALL h5_add(h5id_collop, 'denmm_aa', denmm_aa, LBOUND(denmm_aa), UBOUND(denmm_aa))
-      CALL h5_add(h5id_collop, 'ailmm_aa', ailmm_aa, LBOUND(ailmm_aa), UBOUND(ailmm_aa))
-      CALL h5_add(h5id_collop, 'anumm', anumm, LBOUND(anumm), UBOUND(anumm))
-      CALL h5_add(h5id_collop, 'anumm_lag', anumm_lag, LBOUND(anumm_lag), UBOUND(anumm_lag))
-      CALL h5_add(h5id_collop, 'anumm_aa0', anumm_aa(:,:,0,0), LBOUND(anumm_aa(:,:,0,0)), UBOUND(anumm_aa(:,:,0,0)))
-      CALL h5_add(h5id_collop, 'anumm_inf', anumm_inf, LBOUND(anumm_inf), UBOUND(anumm_inf))
-      CALL h5_add(h5id_collop, 'denmm', denmm, LBOUND(denmm), UBOUND(denmm))
-      CALL h5_add(h5id_collop, 'ailmm', ailmm, LBOUND(ailmm), UBOUND(ailmm))
-      CALL h5_add(h5id_collop, 'weightlag', weightlag, LBOUND(weightlag), UBOUND(weightlag))
-      CALL h5_add(h5id_collop, 'M_transform_', M_transform, LBOUND(M_transform), UBOUND(M_transform))
-      CALL h5_add(h5id_collop, 'M_transform_inv', M_transform_inv, LBOUND(M_transform_inv), UBOUND(M_transform_inv))
+      call h5_add(h5id_collop, 'asource', asource, lbound(asource), ubound(asource))
+      call h5_add(h5id_collop, 'anumm_a', anumm_a, lbound(anumm_a), ubound(anumm_a))
+      call h5_add(h5id_collop, 'denmm_a', denmm_a, lbound(denmm_a), ubound(denmm_a))
+      call h5_add(h5id_collop, 'anumm_aa', anumm_aa, lbound(anumm_aa), ubound(anumm_aa))
+      call h5_add(h5id_collop, 'denmm_aa', denmm_aa, lbound(denmm_aa), ubound(denmm_aa))
+      call h5_add(h5id_collop, 'ailmm_aa', ailmm_aa, lbound(ailmm_aa), ubound(ailmm_aa))
+      call h5_add(h5id_collop, 'anumm', anumm, lbound(anumm), ubound(anumm))
+      call h5_add(h5id_collop, 'anumm_lag', anumm_lag, lbound(anumm_lag), ubound(anumm_lag))
+      call h5_add(h5id_collop, 'anumm_aa0', anumm_aa(:,:,0,0), lbound(anumm_aa(:,:,0,0)), ubound(anumm_aa(:,:,0,0)))
+      call h5_add(h5id_collop, 'anumm_inf', anumm_inf, lbound(anumm_inf), ubound(anumm_inf))
+      call h5_add(h5id_collop, 'denmm', denmm, lbound(denmm), ubound(denmm))
+      call h5_add(h5id_collop, 'ailmm', ailmm, lbound(ailmm), ubound(ailmm))
+      call h5_add(h5id_collop, 'weightlag', weightlag, lbound(weightlag), ubound(weightlag))
+      call h5_add(h5id_collop, 'M_transform_', M_transform, lbound(M_transform), ubound(M_transform))
+      call h5_add(h5id_collop, 'M_transform_inv', M_transform_inv, lbound(M_transform_inv), ubound(M_transform_inv))
 
-      CALL h5_close(h5id_collop)
+      call h5_close(h5id_collop)
 
-    END SUBROUTINE write_collop
+    end subroutine write_collop
     
-END MODULE collop
+end module collop
