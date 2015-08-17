@@ -170,13 +170,13 @@ module collop
          ! Sum up matrices
          !**********************************************************
          anumm_a = 0d0
-
-         do a = 1, num_spec
-            do b = 1, num_spec
-               if (a .ne. b) then
+         denmm_a = 0d0
+         do a = 0, num_spec-1
+            do b = 0, num_spec-1
+               !IF (a .NE. b) THEN
                   anumm_a(:,:,a) = anumm_a(:,:,a) + anumm_aa(:,:,a,b)
                   denmm_a(:,:,a) = denmm_a(:,:,a) + denmm_aa(:,:,a,b)
-               end if
+               !END IF
             end do
          end do
       end if
@@ -208,7 +208,7 @@ module collop
       !write (*,*) ailmm
       !write (*,*) weightlag
 
-      if (mpro%isMaster()) call write_collop('collop.h5')
+      !IF (mpro%isMaster()) CALL write_collop('collop.h5')
     end subroutine collop_load
 
     subroutine collop_unload()
@@ -227,6 +227,8 @@ module collop
     subroutine write_collop(h5filename)
       character(len=*) :: h5filename
       integer(HID_T)   :: h5id_collop, h5id_meta, h5id_species
+
+      write (*,*) "Rank: ", mpro%getRank()
 
       call h5_create(h5filename, h5id_collop)
       !call h5_define_group(h5id_collop, trim(tag_a) //'-'// trim(tag_b), h5id_species)
