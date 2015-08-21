@@ -19,14 +19,15 @@ PROGRAM neo2
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
-       nvel,vel_array
+       nvel,vel_array,v_max_resolution
   USE propagator_mod, ONLY : reconstruct_prop_dist,   &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
        prop_reconstruct_levels, prop_fileformat
-  USE magnetics_mod, ONLY : mag_talk,mag_infotalk,mag_write_hdf5
+  USE magnetics_mod, ONLY : mag_talk,mag_infotalk,mag_write_hdf5,   &
+       h5_magnetics_file_name
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
        mag_magfield,mag_nperiod_min,mag_save_memory,                &
        magnetic_device,mag_cycle_ripples,mag_start_special,         &
@@ -126,7 +127,8 @@ PROGRAM neo2
   INTEGER :: u1=10
   INTEGER :: ios
   INTEGER :: jf
-  CHARACTER(len=20), DIMENSION(2) :: fnames
+  !CHARACTER(len=20), DIMENSION(2) :: fnames  ! removed because it is not used
+  CHARACTER(len=20), DIMENSION(1) :: fnames
   ! groups for namelist
   NAMELIST /settings/                                                         &
        phimi,nstep,nperiod,xetami,xetama,ndim0,zbeg,rbeg,                     &
@@ -147,7 +149,7 @@ PROGRAM neo2
        isw_integral,isw_energy,isw_axisymm,                                   &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
        collop_path, collop_base_prj, collop_base_exp,                         &
-       scalprod_alpha, scalprod_beta
+       scalprod_alpha, scalprod_beta, v_max_resolution
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -175,7 +177,9 @@ PROGRAM neo2
        plot_gauss,plot_prop
   ! ---------------------------------------------------------------------------
   ! filenames (default file and specific input file) for namelist
-  fnames = (/'neo2.def','neo2.in '/)
+  !fnames = (/'neo2.def','neo2.in '/) ! removed because it is not used
+  fnames = (/'neo2.in '/)
+  
   ! ---------------------------------------------------------------------------
   ! defaults
   !
@@ -186,7 +190,7 @@ PROGRAM neo2
   mag_save_memory = 1
   mag_cycle_ripples = 0
   mag_close_fieldline = 1
-  mag_ripple_contribution = 1
+  mag_ripple_contribution = 2 ! 1 is not in use any more
   mag_dbhat_min = 0.1d0
   mag_dphi_inf_min = 0.05d0
   mag_inflection_mult = 3.0d0
@@ -228,6 +232,7 @@ PROGRAM neo2
   scalprod_alpha = 0d0
   scalprod_beta  = 0d0
   conl_over_mfp = 1.0d-3
+  v_max_resolution = 5.0d0
   lag=10
   leg=20
   legmax=20
@@ -372,6 +377,22 @@ PROGRAM neo2
 !!$  ! ---------------------------------------------------------------------------
 
   !**********************************************************
+  ! magnetics HDF5-preparation
+  !**********************************************************
+  IF (prop_reconstruct .EQ. 0) THEN
+     if ( mpro%isMaster() ) then
+        ! close HDF5-File for magnetics
+        OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+     else
+        mag_write_hdf5 = .FALSE.
+     end if
+  else
+     mag_write_hdf5 = .FALSE.
+  end IF
+
+
+  !**********************************************************
   ! Reconstruction 3: Collect HDF5 files
   !**********************************************************
   IF (prop_reconstruct .EQ. 3) THEN
@@ -445,6 +466,20 @@ PROGRAM neo2
   END IF
 
   ! ---------------------------------------------------------------------------
+  ! some settings
+  ! nmat=npart*npart
+  ndim=ndim0
+  ! allocation of some arrays (should be moved)
+  ! this part was not touched
+  ialloc=1
+  CALL kin_allocate(ialloc)
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
+  ! prepare the whole configuration
+  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
+
+  ! ---------------------------------------------------------------------------
   ! matrix elements
   ! ---------------------------------------------------------------------------
   !IF (isw_integral .EQ. 0 .AND. isw_energy .EQ. 0) THEN
@@ -499,19 +534,22 @@ PROGRAM neo2
 
   ! ---------------------------------------------------------------------------
 
-  ! ---------------------------------------------------------------------------
-  ! some settings
-  ! nmat=npart*npart
-  ndim=ndim0
-  ! allocation of some arrays (should be moved)
-  ! this part was not touched
-  ialloc=1
-  CALL kin_allocate(ialloc)
-  ! ---------------------------------------------------------------------------
+!!$  ! THIS PART WAS MOVED BEFORE COLLOP
+!!$  ! ---------------------------------------------------------------------------
+!!$  ! some settings
+!!$  ! nmat=npart*npart
+!!$  ndim=ndim0
+!!$  ! allocation of some arrays (should be moved)
+!!$  ! this part was not touched
+!!$  ialloc=1
+!!$  CALL kin_allocate(ialloc)
+!!$  ! ---------------------------------------------------------------------------
+!!$
+!!$  ! ---------------------------------------------------------------------------
+!!$  ! prepare the whole configuration
+!!$  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
+  CALL flint_prepare_2(bin_split_mode,eta_s_lim)
 
-  ! ---------------------------------------------------------------------------
-  ! prepare the whole configuration
-  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
 
   !*********************************************************
   ! Write information about the run to a HDF5 file
@@ -859,6 +897,26 @@ CONTAINS
         CALL h5_add(h5_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
         CALL h5_add(h5_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
         CALL h5_add(h5_config_group, 'boozer_s', boozer_s, 'Flux surface')
+        CALL h5_add(h5_config_group, 'xetami', xetami)
+        CALL h5_add(h5_config_group, 'xetama', xetama)
+        CALL h5_add(h5_config_group, 'ndim0', ndim0)
+        CALL h5_add(h5_config_group, 'zbeg', zbeg)
+        CALL h5_add(h5_config_group, 'rbeg', rbeg)
+        CALL h5_add(h5_config_group, 'proptag_begin', proptag_begin)
+        CALL h5_add(h5_config_group, 'proptag_final', proptag_final)
+        CALL h5_add(h5_config_group, 'mag_save_memory', mag_save_memory)
+        CALL h5_add(h5_config_group, 'mag_dbhat_min', mag_dbhat_min)
+        CALL h5_add(h5_config_group, 'mag_dphi_inf_min', mag_dphi_inf_min)
+        CALL h5_add(h5_config_group, 'mag_inflection_mult', mag_inflection_mult)
+        CALL h5_add(h5_config_group, 'solver_talk', solver_talk)
+        CALL h5_add(h5_config_group, ',switch_off_asymp', switch_off_asymp) 
+        CALL h5_add(h5_config_group, 'asymp_margin_zero', asymp_margin_zero)
+        CALL h5_add(h5_config_group, 'asymp_margin_npass', asymp_margin_npass)
+        CALL h5_add(h5_config_group, 'asymp_pardeleta', asymp_pardeleta)
+        CALL h5_add(h5_config_group, 'ripple_solver_accurfac', ripple_solver_accurfac)
+        CALL h5_add(h5_config_group, 'sparse_talk', sparse_talk)
+        CALL h5_add(h5_config_group, 'mag_symmetric', mag_symmetric)
+        CALL h5_add(h5_config_group, 'mag_symmetric_shorten', mag_symmetric_shorten)
         CALL h5_close_group(h5_config_group)
 
         CALL h5_define_group(h5_config_id, 'collision', h5_config_group)

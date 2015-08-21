@@ -49,8 +49,14 @@
     DOUBLE PRECISION :: conl_over_mfp
     DOUBLE PRECISION :: coeps
     DOUBLE PRECISION, ALLOCATABLE, DIMENSION(:) :: y_axi_averages
-
     DOUBLE PRECISION, ALLOCATABLE, DIMENSION(:) :: vel_array
+    !**********************************************************
+    ! WINNY - for flint
+    DOUBLE PRECISION :: collpar_min,collpar_max,v_max_resolution
+    ! WINNY - for flint
+    !**********************************************************
+
+
   END MODULE
 !
   MODULE rkstep_mod
@@ -76,6 +82,10 @@
     DOUBLE PRECISION, DIMENSION(:,:),     POINTER     :: denmm
     DOUBLE PRECISION, DIMENSION(:,:,:),   POINTER     :: ailmm
     DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
+    !**********************************************************
+    ! WINNY - for flint
+    ! DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: collision_sigma_multiplier
+    ! WINNY - for flint
     !**********************************************************
     
     DOUBLE PRECISION, DIMENSION(3) :: fluxes
