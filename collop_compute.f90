@@ -1,7 +1,7 @@
 module collop_compute
 
   use hdf5_tools
-  use nrtype, only : dp, pi
+  !use nrtype, only : dp, pi
   use gsl_integration_routines_mod
   use collop_laguerre
   use collop_polynomial
@@ -28,7 +28,8 @@ module collop_compute
   integer :: ispec
   real(kind=dp), dimension(:,:),   allocatable :: asource_s, anumm_s, denmm_s
   real(kind=dp), dimension(:,:,:), allocatable :: I1_mmp_s, I2_mmp_s, I3_mmp_s, I4_mmp_s, ailmm_s
-  real(kind=dp), dimension(:,:),   allocatable :: M, M_inv
+  real(kind=dp), dimension(:,:),   allocatable :: M_transform, M_transform_inv
+  real(kind=dp), dimension(:),     allocatable :: C_m
 
   !**********************************************************
   ! Profile
@@ -356,18 +357,18 @@ contains
   subroutine compute_Minv(Minv)
     real(kind=dp), dimension(:,:) :: Minv
     real(kind=dp), dimension(2)   :: res_int
-    integer :: mm, mp
+    integer :: m, mp
 
     write (*,*) "Computing phi transformation matrix..."
     
-    do mm = 0, lagmax
+    do m = 0, lagmax
        do mp = 0, lagmax
           res_int = fint1d_qagiu(phim_phimp, 0d0, epsabs, epsrel)
-          Minv(mm+1,mp+1) = res_int(1)
+          Minv(m+1,mp+1) = res_int(1)
        end do
     end do
 
-    M = Minv
+    M_transform = Minv
 
     call inv(Minv)
     call chop(Minv)
@@ -377,7 +378,7 @@ contains
     function phim_phimp(x)
       real(kind=dp) :: x, phim_phimp
 
-      phim_phimp =  pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(mm,x) * phi_exp(mp,x)
+      phim_phimp =  pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(m,x) * phi_exp(mp,x)
       
     end function phim_phimp
   end subroutine compute_Minv
@@ -398,18 +399,22 @@ contains
           res_int = fint1d_qagiu(am, 0d0, epsabs, epsrel)
           asource_s(m+1, k) = res_int(1)
        end do
-       asource_s(:,k) = matmul(M_inv, asource_s(:,k))
+       asource_s(:,k) = matmul(M_transform_inv, asource_s(:,k))
     end do
 
     call chop(asource_s)
    !write (*,*) "Done."
     write (*,*) "Computing weighting coefficients..."
 
+    if (allocated(C_m)) deallocate(C_m)
+    allocate(C_m(0:lagmax))
+    
     do j = 1, 3
        do m = 0, lagmax
           !write (*,*) j, m, lbound(weightlag_s), ubound(weightlag_s)
           res_int = fint1d_qagiu(bm, 0d0, epsabs, epsrel)
           weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int(1)
+          if (j .eq. 3) C_m(m) = res_int(1)
        end do
     end do
     call chop(weightlag_s)
@@ -426,7 +431,7 @@ contains
 
       function bm(x)
         real(kind=dp) :: x, bm
-        bm = exp(-x**2) * x**(2*(j+1)-5*kdelta(3,j)) * phi_prj(m,x)
+        bm = exp(-x**2) * x**(2*(j+1)-5*kdelta(3,j)) * phi_exp(m,x)
       end function bm
 
       function kdelta(a,b)
@@ -456,7 +461,7 @@ contains
          end do
       end do
 
-      anumm_s = matmul(M_inv, anumm_s)
+      anumm_s = matmul(M_transform_inv, anumm_s)
       call chop(anumm_s)
       !write (*,*) "Done."
 
@@ -490,7 +495,7 @@ contains
        end do
     end do
 
-    anumm_s = matmul(M_inv, anumm_s)
+    anumm_s = matmul(M_transform_inv, anumm_s)
     call chop(anumm_s)
 
     !write (*,*) "Done."
@@ -529,7 +534,7 @@ contains
        end do
     end do
 
-    denmm_s = matmul(M_inv, denmm_s)
+    denmm_s = matmul(M_transform_inv, denmm_s)
     call chop(denmm_s)
     
   contains
@@ -568,7 +573,7 @@ contains
 
     do l = 0, legmax
        !ailmm_s(:,:,l+1) = I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l)
-       ailmm_s(:,:,l+1) = matmul(M_inv, I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l))
+       ailmm_s(:,:,l+1) = matmul(M_transform_inv, I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l))
     end do
     call chop(ailmm_s)
     !write (*,*) "Done."
@@ -791,10 +796,10 @@ contains
   subroutine compute_source(asource_s, weightlag_s)
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
 
-    if (allocated(M_inv)) deallocate(M_inv)
-    allocate(M_inv(0:lagmax, 0:lagmax))
+    if (allocated(M_transform_inv)) deallocate(M_transform_inv)
+    allocate(M_transform_inv(0:lagmax, 0:lagmax))
     
-    call compute_Minv(M_inv)
+    call compute_Minv(M_transform_inv)
     call compute_sources(asource_s, weightlag_s)
   
   end subroutine compute_source

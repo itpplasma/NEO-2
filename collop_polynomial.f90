@@ -18,7 +18,7 @@ contains
     real(kind=dp) :: x, phi_polynomial
 
     !phi_polynomial = sqrt(pi**1.5d0) * sqrt(2d0/gamma(5d0/2d0 + m)) * x**(m)
-    phi_polynomial = x**(m)
+    phi_polynomial = x**m
   end function phi_polynomial
 
   function d_phi_polynomial(m, x)
