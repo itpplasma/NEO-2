@@ -377,8 +377,9 @@ PROGRAM neo2
   IF (prop_reconstruct .EQ. 3) THEN
 
      CALL prop_reconstruct_3()
-     
+     CALL mpro%deinit()
      STOP
+     
   END IF
 
   
