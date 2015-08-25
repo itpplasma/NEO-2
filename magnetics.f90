@@ -40,7 +40,7 @@ MODULE magnetics_mod
   CHARACTER(len=100), PRIVATE :: h5_fieldperiod_name     = 'fieldperiod'
   CHARACTER(len=100), PRIVATE :: h5_fieldpropagator_name = 'fieldpropagator'
   CHARACTER(len=100), PRIVATE :: h5_fieldripple_name     = 'fieldripple'
-  CHARACTER(len=100), PRIVATE :: h5_magnetics_file_name  = 'magnetics.h5'
+  CHARACTER(len=100), PUBLIC  :: h5_magnetics_file_name  = 'magnetics.h5'
 
   ! internal constants
   REAL(kind=dp), PARAMETER, PRIVATE :: pi=3.14159265358979_dp
@@ -321,6 +321,7 @@ MODULE magnetics_mod
   ! info
   PUBLIC h5_magnetics
   PRIVATE                             &
+       h5_mag_general_d1a,            &
        h5_mag_device,                 &
        h5_mag_surface,                &
        h5_mag_fieldline,              &
@@ -329,11 +330,12 @@ MODULE magnetics_mod
        h5_mag_fieldripple
   INTERFACE h5_magnetics
      MODULE PROCEDURE                      &
+          h5_mag_general_d1a,              &
           h5_mag_device,                   &
           h5_mag_surface,                  &
           h5_mag_fieldline,                &
           h5_mag_fieldperiod,              &
-          h5_mag_fieldpropagator,        &
+          h5_mag_fieldpropagator,          &
           h5_mag_fieldripple
   END INTERFACE 
   ! ---------------------------------------------------------------------------
@@ -1460,6 +1462,56 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   ! ---------------------------------------------------------------------------
+  SUBROUTINE h5_mag_general_d1a(name,var,groupname_1_opt,groupname_2_opt)
+    character(len=*) :: name
+    real(kind=dp), dimension(:), allocatable :: var
+    !class(*) :: var
+    character(len=*), optional :: groupname_1_opt,groupname_2_opt
+    character(len=100) :: groupname_1,groupname_2
+    integer(HID_T) :: h5_file_id,h5_group_id,h5_group_1_id,h5_group_2_id
+
+    IF ( mag_write_hdf5 ) THEN
+
+       if ( present(groupname_1_opt) ) then
+          groupname_1 = groupname_1_opt
+       else
+          groupname_1 = 'general'
+       end if
+
+       call h5_open_rw(h5_magnetics_file_name, h5_file_id)
+
+       ! open group name for device
+       if ( h5_exists(h5_file_id, groupname_1) ) then
+          CALL h5_open_group(h5_file_id, groupname_1, h5_group_1_id)
+       else
+          CALL h5_define_group(h5_file_id, groupname_1, h5_group_1_id)
+       end if
+       h5_group_id = h5_group_1_id
+
+       if ( present(groupname_2_opt) ) then
+          groupname_2 = groupname_2_opt
+          if ( h5_exists(h5_group_1_id, groupname_2) ) then
+             CALL h5_open_group(h5_group_1_id, groupname_2, h5_group_2_id)
+          else
+             CALL h5_define_group(h5_group_1_id, groupname_2, h5_group_2_id)
+          end if
+          h5_group_id = h5_group_2_id
+       end if
+
+       CALL h5_add(h5_group_id, name,  var)
+
+       if ( present(groupname_2_opt) ) then
+          call h5_close_group(h5_group_2_id)
+       end if
+
+       call h5_close_group(h5_group_1_id)
+
+       call h5_close(h5_file_id)
+    end IF
+  end SUBROUTINE h5_mag_general_d1a
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
   SUBROUTINE h5_mag_device(device,h5_file_id_opt,one_opt)
     TYPE(device_struct), POINTER :: device
     integer(HID_T), INTENT(inout), optional :: h5_file_id_opt
@@ -1494,8 +1546,8 @@ CONTAINS
        if (.not. h5_isvalid(h5_file_id)) then
           ! inquire (file=h5_magnetics_file_name, exist=f_exists)
           ! how does delete of file now work in modern fortran
-          OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
-          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
           close_file = .true.
           call h5_open_rw(h5_magnetics_file_name, h5_file_id)
        else
@@ -1586,8 +1638,8 @@ CONTAINS
        if (.not. h5_isvalid(h5_file_id)) then
           ! inquire (file=h5_magnetics_file_name, exist=f_exists)
           ! how does delete of file now work in modern fortran
-          OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
-          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
           close_file = .true.
           call h5_open_rw(h5_magnetics_file_name, h5_file_id)
        else
@@ -1691,8 +1743,8 @@ CONTAINS
        if (.not. h5_isvalid(h5_file_id)) then
           ! inquire (file=h5_magnetics_file_name, exist=f_exists)
           ! how does delete of file now work in modern fortran
-          OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
-          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
           close_file = .true.
           call h5_open_rw(h5_magnetics_file_name, h5_file_id)
        else
@@ -1791,8 +1843,8 @@ CONTAINS
        if (.not. h5_isvalid(h5_file_id)) then
           ! inquire (file=h5_magnetics_file_name, exist=f_exists)
           ! how does delete of file now work in modern fortran
-          OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
-          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
           close_file = .true.
           call h5_open_rw(h5_magnetics_file_name, h5_file_id)
        else
@@ -1923,8 +1975,8 @@ CONTAINS
        if (.not. h5_isvalid(h5_file_id)) then
           ! inquire (file=h5_magnetics_file_name, exist=f_exists)
           ! how does delete of file now work in modern fortran
-          OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
-          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
           close_file = .true.
           call h5_open_rw(h5_magnetics_file_name, h5_file_id)
        else
@@ -2039,8 +2091,8 @@ CONTAINS
        if (.not. h5_isvalid(h5_file_id)) then
           ! inquire (file=h5_magnetics_file_name, exist=f_exists)
           ! how does delete of file now work in modern fortran
-          OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
-          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
           call h5_open_rw(h5_magnetics_file_name, h5_file_id)
           close_file = .true.
        else

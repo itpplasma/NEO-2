@@ -1,8 +1,8 @@
 ### Installation directory
-set (CMAKE_INSTALL_PREFIX /temp/gernot_k/)
+#set (CMAKE_INSTALL_PREFIX /temp/gernot_k/)
 
-set (COPY_TO_ARCHIVE 1)
-set (EXE_ARCHIVE_PATH /temp/gernot_k/Executables/Archive/)
+#set (COPY_TO_ARCHIVE 1)
+#set (EXE_ARCHIVE_PATH /temp/gernot_k/Executables/Archive/)
 
 ### MPI directories for GNU and INTEL compiler
 set (INCLUDEDIRS_MPI_GNU /usr/lib/openmpi/include /usr/lib/openmpi/lib)
