@@ -1,4 +1,6 @@
 module collop
+  use device_mod, only : device
+  use collisionality_mod, only : collpar, conl_over_mfp
   use rkstep_mod
   !use nrtype, only, private : pi, dp
   use hdf5_tools
@@ -30,6 +32,8 @@ module collop
 
   real(kind=dp), dimension(:,:), allocatable :: anumm_inf
 
+  real(kind=dp), dimension(:),   allocatable :: conl_over_mfp_spec
+  
   contains
     
     subroutine collop_construct()     
@@ -39,6 +43,8 @@ module collop
     subroutine collop_set_species(ispec, opt_talk)
       integer :: ispec
       logical, optional :: opt_talk
+      ! parameter
+      real(kind=dp), parameter :: pi=3.14159265358979d0
       logical :: talk
 
       talk = .true.
@@ -59,7 +65,13 @@ module collop
       !**********************************************************
       ! Switch collisionality parameter
       !**********************************************************
-      ! Not yet implemented
+      ! negative input for conl_over_mfp should provide collpar directly
+      conl_over_mfp=conl_over_mfp_spec(ispec)
+      if (conl_over_mfp .gt. 0.0d0) then
+         collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
+      else
+         collpar=-conl_over_mfp
+      end if
       
     end subroutine collop_set_species
     
@@ -171,8 +183,8 @@ module collop
          !**********************************************************
          anumm_a = 0d0
          denmm_a = 0d0
-         do a = 1, num_spec
-            do b = 1, num_spec
+         do a = 0, num_spec-1
+            do b = 0, num_spec-1
                !if (a .ne. b) then
                   anumm_a(:,:,a) = anumm_a(:,:,a) + anumm_aa(:,:,a,b)
                   denmm_a(:,:,a) = denmm_a(:,:,a) + denmm_aa(:,:,a,b)
@@ -208,7 +220,7 @@ module collop
       !write (*,*) ailmm
       !write (*,*) weightlag
 
-      !if (mpro%isMaster()) call write_collop('collop.h5')
+      if (mpro%isMaster()) call write_collop('collop.h5')
     end subroutine collop_load
 
     subroutine collop_unload()
@@ -218,6 +230,7 @@ module collop
       deallocate(denmm_a)
       deallocate(asource)
       deallocate(weightlag)
+      deallocate(conl_over_mfp_spec)
     end subroutine collop_unload
   
     subroutine collop_deconstruct()

@@ -4,6 +4,7 @@ PROGRAM neo2
   ! MPI Support
   !**********************************************************
   USE mpiprovider_module
+  USE hdf5_tools
 
   USE size_mod
   !USE partpa_mod, ONLY : hxeta
@@ -44,8 +45,9 @@ PROGRAM neo2
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
        collop_load, collop_unload, z_eff, collop_path,              &
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
-       collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta     
-  use rkstep_mod, only : lag,leg,legmax                            
+       collop_base_prj, collop_base_exp, scalprod_alpha,            &
+       scalprod_beta, num_spec, conl_over_mfp_spec
+  USE rkstep_mod, ONLY : lag,leg,legmax                            
       
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
@@ -95,6 +97,11 @@ PROGRAM neo2
   INTEGER :: ios
   INTEGER :: jf
   CHARACTER(len=20), DIMENSION(2) :: fnames
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  ! multi-species part:
+  ! -> read species-relevant info into a large array (allocatable not supported)
+  REAL(kind=dp), DIMENSION(1000) :: conl_over_mfp_vec
+  !! End Modification by Andreas F. Martitsch (23.08.2015)  
   ! groups for namelist
   NAMELIST /settings/                                                         &
        phimi,nstep,nperiod,xetami,xetama,ndim0,zbeg,rbeg,                     &
@@ -118,7 +125,8 @@ PROGRAM neo2
        isw_integral,isw_energy,isw_axisymm,                                   &
        isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &      
        !! End Modifications by Andreas F. Martitsch (15.07.2014)
-       collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta       
+       collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta,       &
+       num_spec, conl_over_mfp_vec
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -218,6 +226,11 @@ PROGRAM neo2
   collop_base_exp = 0
   scalprod_alpha = 0d0
   scalprod_beta  = 0d0
+  !! Modification by Andreas F. Martitsch (25.08.2015)
+  !  multi-species part
+  num_spec = 1
+  conl_over_mfp_vec = 0.0d0
+  !! End Modification by Andreas F. Martitsch (25.08.2015)
   ! binsplit
   eta_s_lim = 1.2d0
   eta_part = 100
@@ -234,7 +247,7 @@ PROGRAM neo2
   bsfunc_ignore_trap_levels = 0
   boundary_dist_limit_factor = 1.e-2
   bsfunc_local_shield_factor = 1.0d0
-  bsfunc_shield = .false.
+  bsfunc_shield = .FALSE.
   bsfunc_divide = 0  
   bsfunc_total_err = 1.0d-1
   bsfunc_local_err = 1.0d-2
@@ -247,10 +260,10 @@ PROGRAM neo2
   bsfunc_sigma_min = 0.0_dp
   bsfunc_local_solver = 0
   sigma_shield_factor = 3.0d0
-  split_inflection_points = .true.
+  split_inflection_points = .TRUE.
   mag_local_sigma = 0
-  mag_symmetric = .false.
-  mag_symmetric_shorten = .false.
+  mag_symmetric = .FALSE.
+  mag_symmetric_shorten = .FALSE.
   ! propagator
   prop_diagphys = 1
   prop_overwrite   = 1
@@ -278,6 +291,8 @@ PROGRAM neo2
   isw_ripple_solver = 1
   !! End Modification by Andreas F. Martitsch (14.07.2015)
 
+  CALL h5_init()
+  
   ! reading
   DO jf = 1,SIZE(fnames)
      OPEN(unit=u1,file=fnames(jf),status='old',iostat=ios)
@@ -323,6 +338,16 @@ PROGRAM neo2
      CLOSE(unit=u1)
   END DO
   ! PAUSE
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  ! multi-species part:
+  ! -> read species-relevant info into a large array (allocatable not supported)
+  IF(ALLOCATED(conl_over_mfp_spec)) DEALLOCATE(conl_over_mfp_spec)
+  ALLOCATE(conl_over_mfp_spec(0:num_spec-1))
+  conl_over_mfp_spec(0:num_spec-1)=conl_over_mfp_vec(1:num_spec)
+  IF(num_spec .EQ. 1) conl_over_mfp_spec(0)=conl_over_mfp
+  PRINT *,conl_over_mfp_spec
+  STOP
+  !! End Modification by Andreas F. Martitsch (23.08.2015) 
 
   IF (mag_magfield .EQ. 0) THEN ! homogeneous case
      PRINT *, 'WARNING: some input quantities modified - homogeneous case!'
@@ -330,7 +355,7 @@ PROGRAM neo2
      phi_place_mode = 1
      bin_split_mode = 0
      mag_coordinates = 0 ! cylindrical
-     mag_symmetric = .false.
+     mag_symmetric = .FALSE.
   END IF
   ! ---------------------------------------------------------------------------
   ! end of reading
@@ -339,7 +364,7 @@ PROGRAM neo2
   !**********************************************************
   ! Initialize MPI module
   !**********************************************************
-  call mpro%init()
+  CALL mpro%init()
  
   !! Modification by Andreas F. Martitsch (31.07.2014)
   ! Save here starting point of the field line for cylindircal
@@ -369,24 +394,24 @@ PROGRAM neo2
   !IF (isw_integral .EQ. 0 .AND. isw_energy .EQ. 0) THEN
   !   isw_lorentz = 1
   !END IF
-  if (isw_momentum .eq. 0) then ! Laguerre
+  IF (isw_momentum .EQ. 0) THEN ! Laguerre
      CALL collop_construct
      CALL collop_load
      nvel = lag
-  elseif (isw_momentum .eq. 1) then ! Grid
+  ELSEIF (isw_momentum .EQ. 1) THEN ! Grid
      nvel = vel_num
-     if (vel_distri_swi .eq. 0) then
+     IF (vel_distri_swi .EQ. 0) THEN
         CALL linspace(0.0_dp,vel_max,vel_num+1,vel_array)
         !print *, 'vel_array ',lbound(vel_array,1),ubound(vel_array,1)
         !print *, vel_array
-     else
-        print *, 'vel_distri_swi = ',vel_distri_swi,' not implemented!'
-        stop
-     end if
-  else
-     print *, 'isw_momentum = ',isw_momentum,' not implemented!'
-     stop
-  end if
+     ELSE
+        PRINT *, 'vel_distri_swi = ',vel_distri_swi,' not implemented!'
+        STOP
+     END IF
+  ELSE
+     PRINT *, 'isw_momentum = ',isw_momentum,' not implemented!'
+     STOP
+  END IF
   ! ---------------------------------------------------------------------------
   ! erase arrays
   ! ---------------------------------------------------------------------------
@@ -492,7 +517,7 @@ PROGRAM neo2
   ! ---------------------------------------------------------------------------
   ! final deallocation of device
   !PRINT *, 'Beforecollop_unload'
-  IF (isw_momentum .eq. 0) THEN
+  IF (isw_momentum .EQ. 0) THEN
      CALL collop_unload
      !PRINT *, 'Beforecollop_deconstruct'
      CALL collop_deconstruct
@@ -501,7 +526,8 @@ PROGRAM neo2
   !*******************************************
   ! Deinitialize MPI module
   !*******************************************
-  CALL mpro%deinit(.false.)
+  CALL mpro%deinit(.FALSE.)
+  CALL h5_deinit()
   
   !! Modification by Andreas F. Martitsch (17.07.2014)
   ! Uncomment "STOP" to see IEEE floating-point exceptions (underflow is present).
