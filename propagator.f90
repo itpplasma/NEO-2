@@ -42,6 +42,15 @@ MODULE ntv_mod
   REAL(kind=dp), PUBLIC :: av_inv_bhat_val
   !
   ! LOCAL DEFINITIONS
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+  ! (at the moment these arrays cannot be handled correctly using the
+  ! propagator structure -> global variables used):
+  ! storage array for qflux_symm
+  REAL(kind=dp), DIMENSION(:,:,:,:),  ALLOCATABLE, PUBLIC :: qflux_symm_allspec
+  ! storage array for qflux_ntv
+  REAL(kind=dp), DIMENSION(:,:,:,:),  ALLOCATABLE, PUBLIC :: qflux_ntv_allspec
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
   ! storage array for qflux_symm (If isw_qflux_symm=0, this quantity stores the
   ! qflux-matrix for the symmetric field. If isw_qflux_symm=1, ripple_solver
   ! returns to the calling routine after the computation of the qflux-matrix
@@ -54,9 +63,9 @@ MODULE ntv_mod
   INTEGER, PUBLIC :: m_phi
   !
   PUBLIC write_ntv_output
-  PRIVATE write_ntv_output_a
+  PRIVATE write_ntv_output_a!, write_ntv_output_b
   INTERFACE write_ntv_output
-     MODULE PROCEDURE write_ntv_output_a
+     MODULE PROCEDURE write_ntv_output_a!, write_ntv_output_b
   END INTERFACE write_ntv_output
   !
 CONTAINS
@@ -70,10 +79,11 @@ CONTAINS
     USE mag_sub, ONLY: mag
     USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : collpar
+    !! Modification by Andreas F. Martitsch (28.07.2015)
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
     USE mpiprovider_module  
-    !! Modification by Andreas F. Martitsch (28.07.2015)
+    !! End Modification by Andreas F. Martitsch (28.07.2015)
     !
     ! input:
     INTEGER, INTENT(in) :: isw_qflux_NA_in
@@ -107,18 +117,18 @@ CONTAINS
     ! Physical output (Mach number, collisionality, $\sqrt{g}B^\varphi$)
     REAL(kind=dp) :: Mt_val, nu_star, sqrtg_bctrvr_phi
     ! Physical output ($B_\varphi$,$B_\vartheta$,\langle{B^2}\rangle)
-    REAL(kind=dp) :: bcovar_phi, bcovar_tht, avbhat2, avb2
+    REAL(kind=dp) :: bcovar_phi, bcovar_tht, avbhat2, avb2, avbhat
     !! Modification by Andreas F. Martitsch (28.07.2015)
     !  multi-species part
     INTEGER :: ispec ! species index
     CHARACTER(len=3) :: ispec_str
     CHARACTER(len=30) :: file_name
-    !! Modification by Andreas F. Martitsch (28.07.2015)
+    !! End Modification by Andreas F. Martitsch (28.07.2015)
     !
     !! Modification by Andreas F. Martitsch (28.07.2015)
     ! multi-species part - MPI rank determines species
     ispec = mpro%getRank()
-    !! Modification by Andreas F. Martitsch (28.07.2015)    
+    !! End Modification by Andreas F. Martitsch (28.07.2015)    
     !
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
@@ -240,7 +250,8 @@ CONTAINS
     bcovar_phi=hcovar_tmp(2)*(bmod_tmp*1.0e4_dp)
     bcovar_tht=hcovar_tmp(3)*(bmod_tmp*1.0e4_dp)
     avbhat2=y_in(9)/y_in(6)
-    avb2=avbhat2*((bmod_tmp*1.0e4_dp)**2)
+    avb2=avbhat2*((bmod0*1.0e4_dp)**2)
+    avbhat=y_in(14)/y_in(13)
     !
     !PRINT *,'2'
     WRITE(ispec_str,'(I3.3)') ispec
@@ -250,10 +261,11 @@ CONTAINS
          boozer_s, Mt_val, nu_star, B_rho_L_loc, &
          D31_AX_D31ref, D32_AX_D31ref, k_cof, &
          D11_NA_Dpl, D12_NA_Dpl, D13_NA_D31ref, &
-         aiota_loc_in, rt0_in, (bmod_tmp*1.0e4_dp), &
+         aiota_loc_in, rt0_in, (bmod0*1.0e4_dp), &
          boozer_psi_pr_hat, avnabpsi_in, &
          sqrtg_bctrvr_tht, sqrtg_bctrvr_phi, bcovar_tht, bcovar_phi, &
-         DBLE(m_phi), avbhat2, av_inv_bhat_val, eps_M_2_val, av_gphph_val
+         DBLE(m_phi), avbhat2, av_inv_bhat_val, eps_M_2_val, &
+         av_gphph_val, avbhat
     CLOSE(uw)
     !PRINT *,'3'
     !

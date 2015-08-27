@@ -2,17 +2,18 @@
 !! Modifications by Andreas F. Martitsch (27.07.2015)
 ! Multiple definitions avoided
 !!$  MODULE ntv_eqmat_mod
-!!$    INTEGER                                       :: nz_symm,nz_asymm,nz_regper
-!!$    INTEGER                                       :: nz_per_pos,nz_per_neg
-!!$    INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow_symm,icol_symm
-!!$    INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow_regper,icol_regper
-!!$    INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow_asymm,icol_asymm
-!!$    INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow_per_pos,icol_per_pos
-!!$    INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow_per_neg,icol_per_neg
-!!$    DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_symm
-!!$    DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_regper
-!!$    DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: amat_asymm
-!!$    DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: f0_coll,f0_ttmp
+!!$    INTEGER                                         :: nz_symm,nz_asymm,nz_regper
+!!$    INTEGER                                         :: nz_per_pos,nz_per_neg
+!!$    INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_symm,icol_symm
+!!$    INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_regper,icol_regper
+!!$    INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_asymm,icol_asymm
+!!$    INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_per_pos,icol_per_pos
+!!$    INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_per_neg,icol_per_neg
+!!$    DOUBLE PRECISION, DIMENSION(:),     ALLOCATABLE :: amat_symm
+!!$    DOUBLE PRECISION, DIMENSION(:),     ALLOCATABLE :: amat_regper
+!!$    DOUBLE COMPLEX,   DIMENSION(:),     ALLOCATABLE :: amat_asymm
+!!$    DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: f0_coll,f0_ttmp
+!!$    DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: f0_coll_all,f0_ttmp_all
 !!$  END MODULE ntv_eqmat_mod
 !
 !!$  MODULE arnoldi_mod
@@ -2310,10 +2311,10 @@ rotfactor=imun*m_phi
                   ENDIF
                 ENDIF
 !
-                if(ipart.LE.npassing_prev+1) then
+                IF(ipart.LE.npassing_prev+1) THEN
                   nz=nz+1
                   irow(nz)=k+ipart
-                  icol(nz)=k_prev+max(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
+                  icol(nz)=k_prev+MAX(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
                   amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep-1) &
                              *fact_pos_e(istep)*0.5d0
                   IF(.NOT.colltest.AND.mm.EQ.m) THEN
@@ -2322,7 +2323,7 @@ rotfactor=imun*m_phi
                     icol_ttmp(nz_ttmp)=icol(nz)
                     amat_ttmp(nz_ttmp)=-ttmp_mat(kk,ipart,istep-1)*0.5d0
                   ENDIF
-                endif
+                ENDIF
               ENDDO
             ENDDO
           ENDDO
@@ -2637,10 +2638,10 @@ rotfactor=imun*m_phi
                   ENDIF
                 ENDIF
 !
-                if(ipart.LE.npassing_prev+1) then
+                IF(ipart.LE.npassing_prev+1) THEN
                   nz=nz+1
                   irow(nz)=k-ipart
-                  icol(nz)=k_prev-max(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
+                  icol(nz)=k_prev-MAX(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
                   amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep+1) &
                              *fact_neg_e(istep)*0.5d0
                   IF(.NOT.colltest.AND.mm.EQ.m) THEN
@@ -2649,7 +2650,7 @@ rotfactor=imun*m_phi
                     icol_ttmp(nz_ttmp)=icol(nz)
                     amat_ttmp(nz_ttmp)=ttmp_mat(kk,ipart,istep+1)*0.5d0
                   ENDIF
-                endif
+                ENDIF
 !
               ENDDO
             ENDDO
