@@ -153,6 +153,9 @@ MODULE sparse_mod
   PUBLIC sparse_example
 
   PUBLIC remap_rc
+  INTERFACE remap_rc
+     MODULE PROCEDURE remap_rc_real, remap_rc_cmplx
+  END INTERFACE remap_rc
 
   ! helper
   PRIVATE find_unit
@@ -3901,7 +3904,7 @@ CONTAINS
   !-------------------------------------------------------------------------------
 
   !-------------------------------------------------------------------------------
-  SUBROUTINE remap_rc(nz,nz_sqeezed,irow,icol,amat)
+  SUBROUTINE remap_rc_real(nz,nz_sqeezed,irow,icol,amat)
     !
     ! Re-arranges matrix elements which may be unordered and may have
     ! different elements with the same row and column indices is such
@@ -3922,13 +3925,13 @@ CONTAINS
     INTEGER, INTENT(in)                          :: nz
     INTEGER, INTENT(out)                         :: nz_sqeezed
     INTEGER, DIMENSION(nz), INTENT(inout)        :: irow,icol
-    !    REAL(kind=dp), DIMENSION(nz), INTENT(inout)  :: amat
-    DOUBLE COMPLEX, DIMENSION(nz), INTENT(inout)  :: amat
+    REAL(kind=dp), DIMENSION(nz), INTENT(inout)  :: amat
 
     INTEGER                            :: ncol,i,j,k,kbeg,kend,ips,iflag,ksq
     INTEGER, DIMENSION(:), ALLOCATABLE :: nrows,icount,ipoi
     !
     ncol=MAXVAL(icol)
+    !PRINT *,ncol,nz
     ALLOCATE(nrows(ncol),icount(ncol),ipoi(nz))
     nrows=0
     !
@@ -3984,12 +3987,16 @@ CONTAINS
     !
     DO k=2,nz
        IF(irow(k).EQ.irow(k-1).AND.icol(k).EQ.icol(k-1)) THEN
+          IF((amat(ksq)+amat(k)) .EQ. 0.0d0) CYCLE ! skip zeros (27.08.2015)
           amat(ksq)=amat(ksq)+amat(k)
+          !IF(amat(ksq) .EQ. 0.0d0) PRINT *,k,amat(ksq)
        ELSE
+          IF(amat(k) .EQ. 0.0d0) CYCLE ! skip zeros (27.08.2015)
           ksq=ksq+1
           irow(ksq)=irow(k)
           icol(ksq)=icol(k)
           amat(ksq)=amat(k)
+          !IF(amat(ksq) .EQ. 0.0d0) PRINT *,k,amat(ksq)
        ENDIF
     ENDDO
     !
@@ -3997,6 +4004,112 @@ CONTAINS
     DEALLOCATE(nrows,icount,ipoi)
     RETURN
     !
-  END SUBROUTINE remap_rc
+  END SUBROUTINE remap_rc_real
+  !-------------------------------------------------------------------------------
+  
+  !-------------------------------------------------------------------------------
+  SUBROUTINE remap_rc_cmplx(nz,nz_sqeezed,irow,icol,amat)
+    !
+    ! Re-arranges matrix elements which may be unordered and may have
+    ! different elements with the same row and column indices is such
+    ! a way that column index, icol, forms a non-decreasing sequence
+    ! and row index, irow, forms increasing sub-sequences for itervals
+    ! with a fixed column index. Sums up elements of the matrix which
+    ! have the same row and column indices to one element with these
+    ! indices
+    !
+    ! Arguments:
+    ! nz          - (input)  number of elements in irow,icol,amat
+    ! nz_sqeezed  - (output) number of elements with different (irow(k),icol(k))
+    ! irow        - (inout)  row indices
+    ! icol        - (inout)  column indices
+    ! amat        - (inout)  matrix values
+    !
+    !
+    INTEGER, INTENT(in)                          :: nz
+    INTEGER, INTENT(out)                         :: nz_sqeezed
+    INTEGER, DIMENSION(nz), INTENT(inout)        :: irow,icol
+    !    REAL(kind=dp), DIMENSION(nz), INTENT(inout)  :: amat
+    DOUBLE COMPLEX, DIMENSION(nz), INTENT(inout)  :: amat
+
+    INTEGER                            :: ncol,i,j,k,kbeg,kend,ips,iflag,ksq
+    INTEGER, DIMENSION(:), ALLOCATABLE :: nrows,icount,ipoi
+    !
+    ncol=MAXVAL(icol)
+    !PRINT *,ncol,nz
+    ALLOCATE(nrows(ncol),icount(ncol),ipoi(nz))
+    nrows=0
+    !
+    ! count number of rows in a given column:
+    !
+    DO k=1,nz
+       j=icol(k)
+       nrows(j)=nrows(j)+1
+    ENDDO
+    !
+    ! compute starting index - 1 of rows in a general list for each column:
+    !
+    icount(1)=0
+    !
+    DO i=1,ncol-1
+       icount(i+1)=icount(i)+nrows(i)
+    ENDDO
+    !
+    ! compute the pointer from the list ordered by columns to a general list
+    !
+    DO k=1,nz
+       j=icol(k)
+       icount(j)=icount(j)+1
+       ipoi(icount(j))=k
+    ENDDO
+    !
+    ! re-order row indices to non-decreasing sub-sequences
+    !
+    DO i=1,ncol
+       kend=icount(i)
+       kbeg=kend-nrows(i)+1
+       DO j=1,kend-kbeg
+          iflag=0
+          DO k=kbeg+1,kend
+             IF(irow(ipoi(k)).LT.irow(ipoi(k-1))) THEN
+                iflag=1
+                ips=ipoi(k)
+                ipoi(k)=ipoi(k-1)
+                ipoi(k-1)=ips
+             ENDIF
+          ENDDO
+          IF(iflag.EQ.0) EXIT
+       ENDDO
+    ENDDO
+    !
+    irow=irow(ipoi)
+    icol=icol(ipoi)
+    amat=amat(ipoi)
+    !
+    ! squeese the data - sum up matrix elements with the same indices
+    !
+    ksq=1
+    !
+    DO k=2,nz
+       IF(irow(k).EQ.irow(k-1).AND.icol(k).EQ.icol(k-1)) THEN
+          IF((amat(ksq)+amat(k)) .EQ. 0.0d0) CYCLE ! skip zeros (27.08.2015)
+          amat(ksq)=amat(ksq)+amat(k)
+          !IF(amat(ksq) .EQ. 0.0d0) PRINT *,k,amat(ksq)
+       ELSE
+          IF(amat(k) .EQ. 0.0d0) CYCLE ! skip zeros (27.08.2015)
+          ksq=ksq+1
+          irow(ksq)=irow(k)
+          icol(ksq)=icol(k)
+          amat(ksq)=amat(k)
+          !IF(amat(ksq) .EQ. 0.0d0) PRINT *,k,amat(ksq)
+       ENDIF
+    ENDDO
+    !
+    nz_sqeezed=ksq
+    DEALLOCATE(nrows,icount,ipoi)
+    RETURN
+    !
+  END SUBROUTINE remap_rc_cmplx
+  !-------------------------------------------------------------------------------
   !
 END MODULE sparse_mod

@@ -345,8 +345,8 @@ PROGRAM neo2
   ALLOCATE(conl_over_mfp_spec(0:num_spec-1))
   conl_over_mfp_spec(0:num_spec-1)=conl_over_mfp_vec(1:num_spec)
   IF(num_spec .EQ. 1) conl_over_mfp_spec(0)=conl_over_mfp
-  PRINT *,conl_over_mfp_spec
-  STOP
+  !PRINT *,conl_over_mfp_spec
+  !STOP
   !! End Modification by Andreas F. Martitsch (23.08.2015) 
 
   IF (mag_magfield .EQ. 0) THEN ! homogeneous case
