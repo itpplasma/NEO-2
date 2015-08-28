@@ -327,7 +327,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
 !                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
 !                    $\kappa$ is inverse m.f.p. times 4 ("collpar")
-  sparse_solve_method = 3 !2 !2,3 - with and without iterative refinement, resp.
+  sparse_solve_method = 2 !2 !2,3 - with and without iterative refinement, resp.
 !
   !! Modifications by Andreas F. Martitsch (14.07.2015)
   ! normalized electric rotation frequency ($\hat{\Omega}_{tE}$)
