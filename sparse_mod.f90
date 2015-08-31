@@ -3902,7 +3902,7 @@ CONTAINS
     RETURN
   END SUBROUTINE sp_testComplex_A_b2
   !-------------------------------------------------------------------------------
-
+  
   !-------------------------------------------------------------------------------
   SUBROUTINE remap_rc_real(nz,nz_sqeezed,irow,icol,amat)
     !
@@ -3929,9 +3929,10 @@ CONTAINS
 
     INTEGER                            :: ncol,i,j,k,kbeg,kend,ips,iflag,ksq
     INTEGER, DIMENSION(:), ALLOCATABLE :: nrows,icount,ipoi
+    INTEGER                            :: ksq_ne0
+    INTEGER, DIMENSION(:), ALLOCATABLE :: kne0
     !
     ncol=MAXVAL(icol)
-    !PRINT *,ncol,nz
     ALLOCATE(nrows(ncol),icount(ncol),ipoi(nz))
     nrows=0
     !
@@ -3987,21 +3988,35 @@ CONTAINS
     !
     DO k=2,nz
        IF(irow(k).EQ.irow(k-1).AND.icol(k).EQ.icol(k-1)) THEN
-          IF((amat(ksq)+amat(k)) .EQ. 0.0d0) CYCLE ! skip zeros (27.08.2015)
           amat(ksq)=amat(ksq)+amat(k)
-          !IF(amat(ksq) .EQ. 0.0d0) PRINT *,k,amat(ksq)
        ELSE
-          IF(amat(k) .EQ. 0.0d0) CYCLE ! skip zeros (27.08.2015)
           ksq=ksq+1
           irow(ksq)=irow(k)
           icol(ksq)=icol(k)
           amat(ksq)=amat(k)
-          !IF(amat(ksq) .EQ. 0.0d0) PRINT *,k,amat(ksq)
        ENDIF
     ENDDO
     !
-    nz_sqeezed=ksq
-    DEALLOCATE(nrows,icount,ipoi)
+    ! remove zeros from the sparse vector
+    !
+    ALLOCATE(kne0(ksq))
+    ksq_ne0=0
+    DO k=1,ksq
+       IF(amat(k) .NE. 0.0d0) THEN
+          ksq_ne0=ksq_ne0+1
+          kne0(ksq_ne0)=k
+       ENDIF
+    ENDDO
+    IF(ksq_ne0 .EQ. 0) THEN
+       PRINT *,'sparse_mod.f90/remap_rc: All entries of the sparse vector are zero!'
+    ELSE
+       irow(1:ksq_ne0)=irow(kne0(1:ksq_ne0))
+       icol(1:ksq_ne0)=icol(kne0(1:ksq_ne0))
+       amat(1:ksq_ne0)=amat(kne0(1:ksq_ne0))
+    ENDIF
+    !
+    nz_sqeezed=ksq_ne0
+    DEALLOCATE(nrows,icount,ipoi,kne0)
     RETURN
     !
   END SUBROUTINE remap_rc_real
@@ -4029,14 +4044,14 @@ CONTAINS
     INTEGER, INTENT(in)                          :: nz
     INTEGER, INTENT(out)                         :: nz_sqeezed
     INTEGER, DIMENSION(nz), INTENT(inout)        :: irow,icol
-    !    REAL(kind=dp), DIMENSION(nz), INTENT(inout)  :: amat
-    DOUBLE COMPLEX, DIMENSION(nz), INTENT(inout)  :: amat
+    DOUBLE COMPLEX, DIMENSION(nz), INTENT(inout) :: amat
 
     INTEGER                            :: ncol,i,j,k,kbeg,kend,ips,iflag,ksq
     INTEGER, DIMENSION(:), ALLOCATABLE :: nrows,icount,ipoi
+    INTEGER                            :: ksq_ne0
+    INTEGER, DIMENSION(:), ALLOCATABLE :: kne0
     !
     ncol=MAXVAL(icol)
-    !PRINT *,ncol,nz
     ALLOCATE(nrows(ncol),icount(ncol),ipoi(nz))
     nrows=0
     !
@@ -4092,21 +4107,35 @@ CONTAINS
     !
     DO k=2,nz
        IF(irow(k).EQ.irow(k-1).AND.icol(k).EQ.icol(k-1)) THEN
-          IF((amat(ksq)+amat(k)) .EQ. 0.0d0) CYCLE ! skip zeros (27.08.2015)
           amat(ksq)=amat(ksq)+amat(k)
-          !IF(amat(ksq) .EQ. 0.0d0) PRINT *,k,amat(ksq)
        ELSE
-          IF(amat(k) .EQ. 0.0d0) CYCLE ! skip zeros (27.08.2015)
           ksq=ksq+1
           irow(ksq)=irow(k)
           icol(ksq)=icol(k)
           amat(ksq)=amat(k)
-          !IF(amat(ksq) .EQ. 0.0d0) PRINT *,k,amat(ksq)
        ENDIF
     ENDDO
     !
-    nz_sqeezed=ksq
-    DEALLOCATE(nrows,icount,ipoi)
+    ! remove zeros from the sparse vector
+    !
+    ALLOCATE(kne0(ksq))
+    ksq_ne0=0
+    DO k=1,ksq
+       IF(amat(k) .NE. (0.d0,0.d0)) THEN
+          ksq_ne0=ksq_ne0+1
+          kne0(ksq_ne0)=k
+       ENDIF
+    ENDDO
+    IF(ksq_ne0 .EQ. 0) THEN
+       PRINT *,'sparse_mod.f90/remap_rc: All entries of the sparse vector are zero!'       
+    ELSE
+       irow(1:ksq_ne0)=irow(kne0(1:ksq_ne0))
+       icol(1:ksq_ne0)=icol(kne0(1:ksq_ne0))
+       amat(1:ksq_ne0)=amat(kne0(1:ksq_ne0))
+    ENDIF
+    !
+    nz_sqeezed=ksq_ne0
+    DEALLOCATE(nrows,icount,ipoi,kne0)
     RETURN
     !
   END SUBROUTINE remap_rc_cmplx
