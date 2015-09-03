@@ -86,5 +86,6 @@ set(NEO2_SRC_FILES
 #	./collop_definitions.f90
 	./collop_laguerre.f90
 	./collop_polynomial.f90
+	./collop_spline.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")

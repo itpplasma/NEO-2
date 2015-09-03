@@ -27,6 +27,15 @@ MODULE neo_magfie_mod
        theta_start, theta_end, phi_start, phi_end
   USE neo_actual_fluxs, ONLY : s_sqrtg00
   USE spline_mod, ONLY: spl2d, poi2d, eva2d
+  !! Modifications by Andreas F. Martitsch (12.03.2014)
+  ! Use this quantity for normalization. Note:
+  ! Variable is computed in mag_interface.f90 ("boozer_bmod0").
+  ! It is available for the first time after 1st call
+  ! of "make_magnetics". Therefore, within the first two calls
+  ! of "neo_magfie" this variable is zero, but these calls are
+  ! not used for the computation of physical quantities.
+  USE partpa_mod,  ONLY : bmod0
+  !! End Modifications by Andreas F. Martitsch (12.03.2014)
 
   !---------------------------------------------------------------------------
   !USE var_sub_misc, ONLY: fac_c,iota_m ! fac_m
@@ -65,6 +74,17 @@ MODULE neo_magfie_mod
   REAL(dp) :: boozer_psi_pr
   REAL(dp) :: boozer_sqrtg11 ! Test
   REAL(dp) :: boozer_isqrg
+  !! Modifications by Andreas F. Martitsch (12.03.2014)
+  ! boozer_curr_tor, boozer_curr_pol, boozer_psi_pr,
+  ! boozer_sqrtg11 and boozer_isqrg are now converted
+  ! to cgs-units.
+  ! This step requires changes within rhs_kin.f90 and
+  ! ripple_solver.f90!
+  REAL(dp) :: boozer_curr_pol_hat
+  REAL(dp) :: boozer_curr_tor_hat
+  REAL(dp) :: boozer_psi_pr_hat
+  !! End Modifications by Andreas F. Martitsch (12.03.2014)
+    
  
   REAL(dp), PRIVATE :: av_b2_m ! Klaus
 
@@ -635,6 +655,24 @@ CONTAINS
        hcurl(3)  = (curr_pol * bb_s       - bmod     * curr_pol_s) / fac 
        hcurl(2)  = (bmod     * curr_tor_s - curr_tor * bb_s      ) / fac 
        hcurl=hcurl * 1d-4                                                 !!!
+       !! Modifications by Andreas F. Martitsch (12.03.2014)
+       ! boozer_curr_tor, boozer_curr_pol, boozer_psi_pr,
+       ! boozer_sqrtg11 and boozer_isqrg are now converted
+       ! to cgs-units.
+       ! This step requires changes within rhs_kin.f90 and
+       ! ripple_solver.f90!
+       IF (bmod0 .EQ. 0.0d0) THEN
+          !PRINT *,bmod0
+          boozer_curr_tor_hat=0.0d0
+          boozer_curr_pol_hat=0.0d0
+          boozer_psi_pr_hat=0.0d0
+       ELSE
+          !PRINT *,bmod0
+          boozer_curr_tor_hat = (curr_tor/bmod0)*1.0d2
+          boozer_curr_pol_hat = (curr_pol/bmod0)*1.0d2
+          boozer_psi_pr_hat = (psi_pr/bmod0)*1.0d4
+       END IF
+       !! End Modifications by Andreas F. Martitsch (12.03.2014)
     END IF
     
     boozer_iota = iota

@@ -206,7 +206,7 @@ SUBROUTINE ripple_solver(                                 &
   double precision, dimension(:,:,:,:), allocatable :: dentf_m_h5, enetf_m_h5, spitf_m_h5
   
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
-  niter=10
+  niter=50
   epserr_iter=1.d-3
 !
   !------------------------------------------------------------------------
@@ -2310,11 +2310,14 @@ call cpu_time(time1)
 
 !
         source_vector(:,k)=bvec_lor+bvec_iter
+        !write (*,*) "1 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
           exit
         endif
-      enddo
+     enddo
+     if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver."
     enddo
 !
   endif
@@ -2611,13 +2614,16 @@ time3 = time3 + (time5-time4)
           time3 = time3 + (time5-time4)
 !
           bvec_sp=bvec_lor+bvec_iter
+          !write (*,*) "2 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
             exit
           endif
 !
         enddo
-!
+        !
+        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver." 
       endif
 !
       do mm=0,lag
@@ -2665,13 +2671,16 @@ time3 = time3 + (time5-time4)
           time3 = time3 + (time5-time4)
 !
           bvec_sp=bvec_lor+bvec_iter
+          !write (*,*) "3 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
             exit
           endif
 !
         enddo
-!
+        !
+        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver." 
       endif
 !
       do mm=0,lag

@@ -143,10 +143,14 @@ SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
 ! if (klo .ge. n) klo = n - 1
 ! khi = klo + 1
 
+  !**************************************************************
+  ! Patch from Gernot Kapper
+  ! Here always a linear spline was used in all NEO-2 versions
+  !**************************************************************
+  p = a(klo) + h * (b(klo) + h * (c(klo) + h * d(klo)))
 !  Attention linear interpolation
-!  p = a(klo) + h * (b(klo) + h * (c(klo) + h * d(klo)))
-  delta = xa(khi) - xa(klo)
-  p = a(klo) + h * (b(klo) + delta * (c(klo) + delta * d(klo)))
+!  delta = xa(khi) - xa(klo)
+!  p = a(klo) + h * (b(klo) + delta * (c(klo) + delta * d(klo)))
 
   y = f(x,m) * p
 
