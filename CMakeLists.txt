@@ -72,6 +72,7 @@ if (MPE_SUPPORT)
                 include_directories(${MPE_PATH}/include)
         endif ()
         add_definitions(-DMPE_SUPPORT)
+	find_library(MPE_lib mpe ${MPE_PATH}/lib)
 endif ()
 
 ### Debug settings
@@ -95,7 +96,6 @@ find_library(Metis_lib metis ${SUITESPARSE_DIR}/lib ${METIS_PATH} NO_DEFAULT_PAT
 find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}/lib NO_DEFAULT_PATH)
 find_library(SuiteSparseConfig_lib suitesparseconfig ${SUITESPARSE_DIR}/lib NO_DEFAULT_PATH)
 find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
-find_library(MPE_lib mpe ${MPE_PATH}/lib)
 find_library(HDF5_tools_lib hdf5_tools ${HDF5_TOOLS}/lib NO_DEFAULT_PATH)
 find_library(gsl_lib gsl ${GSL_LIB} NO_DEFAULT_PATH)
 find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
