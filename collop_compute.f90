@@ -5,6 +5,7 @@ module collop_compute
   use gsl_integration_routines_mod
   use collop_laguerre
   use collop_polynomial
+  use collop_spline
   
   implicit none
   
@@ -155,6 +156,12 @@ contains
        phi_prj      => phi_polynomial_3
        d_phi_prj    => d_phi_polynomial_3
        dd_phi_prj   => dd_phi_polynomial_3
+    elseif (collop_base_prj .eq. 10) then
+       write (*,*) "Using splines as collision operator projection base."
+       init_phi_prj => init_phi_spline
+       phi_prj      => phi_spline
+       d_phi_prj    => d_phi_spline
+       dd_phi_prj   => dd_phi_spline
     else
        write (*,*) "Undefined collision operator projection base ", collop_base_prj
        stop
@@ -184,6 +191,12 @@ contains
        phi_exp      => phi_polynomial_3
        d_phi_exp    => d_phi_polynomial_3
        dd_phi_exp   => dd_phi_polynomial_3
+    elseif (collop_base_prj .eq. 10) then
+       write (*,*) "Using splines as collision operator expansion base."
+       init_phi_exp => init_phi_spline
+       phi_exp      => phi_spline
+       d_phi_exp    => d_phi_spline
+       dd_phi_exp   => dd_phi_spline
     else
        write (*,*) "Undefined collision operator expansion base ", collop_base_exp
        stop
@@ -198,9 +211,9 @@ contains
   subroutine chop_0(x)
     real(kind=dp) :: x, chop
 
-    if (abs(x) .lt. epsabs) then
+    if (abs(x) .lt. 10d0*epsabs) then
        x = 0d0
-    elseif (abs(x - 1d0) .lt. epsabs) then
+    elseif (abs(x - 1d0) .lt. 10d0*epsabs) then
        x = 1d0
     end if
 
@@ -444,6 +457,52 @@ contains
 
     end subroutine compute_sources
 
+    subroutine compute_xmmp(x1mm_s,x2mm_s)
+      real(kind=dp), dimension(:,:) :: x1mm_s, x2mm_s
+      real(kind=dp), dimension(2) :: res_int
+      real(kind=dp) :: cnorm
+      integer :: m, mp
+
+      write(*,*) "Computing x1mm and x2mm ..."
+
+      cnorm=1.d0/(pi*sqrt(pi))
+
+      do m = 0, lagmax
+         do mp = 0, lagmax
+            res_int = fint1d_qagiu(integrand_x1mmp, 0d0, epsabs, epsrel)
+            x1mm_s(m+1, mp+1) = cnorm * res_int(1)
+            res_int = fint1d_qagiu(integrand_x2mmp, 0d0, epsabs, epsrel)
+            x2mm_s(m+1, mp+1) = cnorm * res_int(1)
+         end do
+      end do
+
+      x1mm_s = matmul(M_transform_inv, x1mm_s)
+      call chop(x1mm_s)
+      x2mm_s = matmul(M_transform_inv, x2mm_s)
+      call chop(x2mm_s)
+
+    contains
+      
+      function integrand_x1mmp(x)
+        real(kind=dp) :: x
+        real(kind=dp) :: integrand_x1mmp
+
+        integrand_x1mmp= x**(alpha) * exp(-(1+beta)*x**2) * &
+             x**(3) * phi_prj(m, x) * phi_exp(mp, x)
+
+      end function integrand_x1mmp
+
+      function integrand_x2mmp(x)
+        real(kind=dp) :: x
+        real(kind=dp) :: integrand_x2mmp
+
+        integrand_x2mmp= x**(alpha) * exp(-(1+beta)*x**2) * &
+             x**(5) * phi_prj(m, x) * phi_exp(mp, x)
+
+      end function integrand_x2mmp
+      
+    end subroutine compute_xmmp
+    
     subroutine compute_lorentz(anumm_s)
       real(kind=dp), dimension(:,:) :: anumm_s
       real(kind=dp), dimension(2) :: res_int

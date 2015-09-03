@@ -4,7 +4,7 @@ module collop
   use hdf5_tools
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
-       m_ele, m_d, m_C, compute_collop_inf, C_m
+       m_ele, m_d, m_C, compute_collop_inf, C_m, compute_xmmp
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
@@ -32,7 +32,8 @@ module collop
   integer :: num_spec
 
   real(kind=dp), dimension(:,:), allocatable :: anumm_inf
-
+  real(kind=dp), dimension(:,:), allocatable :: x1mm, x2mm
+  
   contains
     
     subroutine collop_construct()     
@@ -99,6 +100,12 @@ module collop
       
       if(allocated(asource)) deallocate(asource)
       allocate(asource(0:lag,3))
+
+      if(allocated(x1mm)) deallocate(x1mm)
+      allocate(x1mm(0:lag,0:lag))
+
+      if(allocated(x2mm)) deallocate(x2mm)
+      allocate(x2mm(0:lag,0:lag))
       
       if(allocated(ailmm_aa)) deallocate(ailmm_aa)
       allocate(ailmm_aa(0:lag,0:lag,0:leg,0:num_spec-1,0:num_spec-1))
@@ -141,7 +148,17 @@ module collop
 !!$         collision_sigma_multiplier(k) = collision_sigma_multiplier(k-1)*1.618033988749895d0
 !!$      end do
 
-         ! WINNY - for flint - end
+!!$         ! WINNY - for flint - end
+!!$         !**********************************************************
+!!$         ! Now compute collision operator with desired base
+!!$         !**********************************************************
+!!$         call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
+!!$
+!!$         !**********************************************************
+!!$         ! Compute sources
+!!$         !**********************************************************
+!!$         call compute_source(asource, weightlag)
+
          !**********************************************************
          ! Now compute collision operator with desired base
          !**********************************************************
@@ -153,15 +170,10 @@ module collop
          call compute_source(asource, weightlag)
 
          !**********************************************************
-         ! Now compute collision operator with desired base
+         ! Compute x1mm and x2mm
          !**********************************************************
-         call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
-
-         !**********************************************************
-         ! Compute sources
-         !**********************************************************
-         call compute_source(asource, weightlag)
-
+         call compute_xmmp(x1mm, x2mm)
+         
          !**********************************************************
          ! Compute collision operator
          !**********************************************************
@@ -188,6 +200,11 @@ module collop
          !**********************************************************
          call compute_source(asource, weightlag)
 
+         !**********************************************************
+         ! Compute x1mm and x2mm
+         !**********************************************************
+         call compute_xmmp(x1mm, x2mm)
+         
          !**********************************************************
          ! Compute collision operator
          !**********************************************************
@@ -252,6 +269,8 @@ module collop
       deallocate(denmm_a)
       deallocate(asource)
       deallocate(weightlag)
+      deallocate(x1mm)
+      deallocate(x2mm)
     end subroutine collop_unload
   
     subroutine collop_deconstruct()
@@ -326,7 +345,7 @@ module collop
          do mp=0,lag
             write (f,'(1(es23.15E02))', advance='NO') anumm_aa(m, mp, 0, 0)
          end do
-         write (f,*) NEW_LINE('A')
+         write (f,*) NEW_line('A')
       end do
       close(f)    
       

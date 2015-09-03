@@ -3,13 +3,16 @@ cmake_minimum_required (VERSION 2.8.9)
 # Enable project
 project (NEO-2-Par)
 enable_language (Fortran)
-#enable_testing()
+enable_testing()
+
+### Build name
+set(EXE_NAME "neo_2.x")
 
 # MPI is required by this NEO-2 version
 find_package(MPI REQUIRED)
 
-# HDF5 is required by this NEO-2 version
-find_package(HDF5 COMPONENTS Fortran Fortran_HL)
+# MPE allows graphical work load evaluation of parallel processes 
+option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" OFF)
 
 # Include BuildConfig, where paths are defined
 if (EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
@@ -17,17 +20,14 @@ if (EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 endif()
 include (${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
 
-# MPE allows graphical work load evaluation of parallel processes 
-option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
-
 # Print the current compiler
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
 # Include directories for NEO-2
-include_directories(${HDF5_INCLUDE_DIRS})
+include_directories(${HDF5_DIR}/include)
 include_directories(${MPI_Fortran_INCLUDE_PATH})
-include_directories(${NEO2_Libs}/hdf5_tools/include)
-include_directories("${MYMPILIB_PATH}/OBJS")
+include_directories(${HDF5_TOOLS}/include)
+include_directories(${MYMPILIB_PATH}/OBJS)
 
 # Generic compiler flags
 set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
@@ -35,20 +35,18 @@ set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
 # Compiler dependent settings
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
         set (CMAKE_Fortran_FLAGS "-cpp -ffpe-summary=invalid,zero,overflow")
+	set (CMAKE_Fortran_FLAGS_DEBUG "-g -fcheck=all")
         
 	# Determine compiler version
 	execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
                     OUTPUT_VARIABLE GCC_VERSION)
-
 	string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
         list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
         list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
-
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
-
         set (CMAKE_Fortran_FLAGS "-cpp -heap-arrays")
-
 endif ()
+set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
 
 # Create Fortran file with build information
 configure_file (
@@ -56,16 +54,9 @@ configure_file (
   "${PROJECT_SOURCE_DIR}/cmake_version.f90"
   )
 
-# Unit tests
+# Coverage and unit tests
 set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
-set (CMAKE_Fortran_FLAGS_TEST "-O3 --coverage")
-
-#include_directories("${PROJECT_SOURCE_DIR}")
-
-set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
-
-set_target_properties(${EXE_NAME} PROPERTIES COMPILE_FLAGS "${MPI_Fortran_COMPILE_FLAGS}")
-set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAGS}")
+set (CMAKE_Fortran_FLAGS_TEST "-O2 --coverage")
 
 set (MPI_SUPPORT 1)
 if (MPI_SUPPORT)
@@ -92,26 +83,28 @@ endif ()
 #	set(DBGLIBS "efence")
 #endif(DEBUG)
 
-### Build name extension
-set(EXE_NAME "neo_2.x")
-
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-find_library(SuperLU_lib superlu_4.1 ${SUPERLU_DIR}lib NO_DEFAULT_PATH)
-find_library(Umfpack_lib umfpack ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Amd_lib amd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Cholmod_lib cholmod ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Colamd_lib colamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Camd_lib camd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Metis_lib metis ${SUITESPARSE_DIR}lib ${METIS_PATH} NO_DEFAULT_PATH)
-find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(SuiteSparseConfig_lib suitesparseconfig ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
+find_library(SuperLU_lib superlu_4.1 ${SUPERLU_DIR}/lib NO_DEFAULT_PATH)
+find_library(Umfpack_lib umfpack ${SUITESPARSE_DIR}/lib NO_DEFAULT_PATH)
+find_library(Amd_lib amd ${SUITESPARSE_DIR}/lib NO_DEFAULT_PATH)
+find_library(Cholmod_lib cholmod ${SUITESPARSE_DIR}/lib NO_DEFAULT_PATH)
+find_library(Colamd_lib colamd ${SUITESPARSE_DIR}/lib NO_DEFAULT_PATH)
+find_library(Camd_lib camd ${SUITESPARSE_DIR}/lib NO_DEFAULT_PATH)
+find_library(Metis_lib metis ${SUITESPARSE_DIR}/lib ${METIS_PATH} NO_DEFAULT_PATH)
+find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}/lib NO_DEFAULT_PATH)
+find_library(SuiteSparseConfig_lib suitesparseconfig ${SUITESPARSE_DIR}/lib NO_DEFAULT_PATH)
 find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(MPE_lib mpe ${MPE_PATH}/lib)
-find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/hdf5_tools/lib NO_DEFAULT_PATH)
+find_library(HDF5_tools_lib hdf5_tools ${HDF5_TOOLS}/lib NO_DEFAULT_PATH)
 find_library(gsl_lib gsl ${GSL_LIB} NO_DEFAULT_PATH)
 find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
-#set(NetCDF_dyn_lib -lnetcdff -lnetcdf)# -lhdf5)
+find_library(HDF5_lib hdf5 ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR}/lib NO_DEFAULT_PATH)
+set(HDF5_Fortran_LIBRARIES ${HDF5_lib} ${HDF5_fortran_lib})
+set(HDF5_Fortran_HL_LIBRARIES ${HDF5HL_lib} ${HDF5HL_fortran_lib})
 
 ### Source files
 include (CMakeSources.in)
@@ -124,10 +117,9 @@ add_executable(${EXE_NAME}
 	${FGSL_USERINTER_SRC_FILES}
 	${MPI_SRC_FILES}
 )
-                                                                                                 
 set_target_properties(${EXE_NAME} PROPERTIES COMPILE_FLAGS "${MPI_Fortran_COMPILE_FLAGS}")
 set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAGS}")
-
+                                                                                                 
 target_link_libraries(${EXE_NAME}
         ${SuperLU_lib}
         ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
@@ -136,11 +128,10 @@ target_link_libraries(${EXE_NAME}
         ${MPE_lib}
 	${MPI_Fortran_LIBRARIES}
 	${HDF5_tools_lib}
-	${HDF5_Fortran_LIBRARIES}
-	${HDF5_Fortran_HL_LIBRARIES}
+	${HDF5_fortran_lib} ${HDF5HL_fortran_lib}
+	${HDF5_lib} ${HDF5HL_lib}
         ${fgsl_lib} ${gsl_lib}
-	${BLAS_lib}
-	#${NetCDF_dyn_lib}
+	${BLAS_lib} -lz -lpthread
 	#debug efence
 )
 
@@ -152,7 +143,6 @@ add_custom_target(
     COMMAND ./Scripts/tag_version.sh
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
-
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
 
 if (COPY_TO_ARCHIVE)
@@ -165,7 +155,7 @@ if (COPY_TO_ARCHIVE)
 		)
 endif()
 
-### TESTING
+### Testing section
 ADD_TEST(Test_Build_Code      "make")
 ADD_TEST(Test_Testcase1-Seq       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase1" "0")
 ADD_TEST(Test_Testcase1-Par       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase1" "6")

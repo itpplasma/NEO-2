@@ -2903,7 +2903,12 @@ CONTAINS
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: x !vector to store the solution
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: bloc
 
-    ALLOCATE( x(SIZE(b)) )
+    !**********************************************************
+    ! Patch from  TU Graz ITPcp Plasma- 01.09.2015
+    ! Wrong allocation size of x fixed
+    !**********************************************************
+    !ALLOCATE( x(SIZE(b)) )
+    ALLOCATE( x(nrow) )
     ALLOCATE( Ai(SIZE(irow)) )
     ALLOCATE( Ap(SIZE(pcol)) )
     ALLOCATE(bloc(nrow))

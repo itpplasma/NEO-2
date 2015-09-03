@@ -128,7 +128,8 @@ PROGRAM neo2
   INTEGER :: ios
   INTEGER :: jf
   !CHARACTER(len=20), DIMENSION(2) :: fnames  ! removed because it is not used
-  CHARACTER(len=20), DIMENSION(1) :: fnames
+  character(len=20), dimension(1) :: fnames
+  
   ! groups for namelist
   NAMELIST /settings/                                                         &
        phimi,nstep,nperiod,xetami,xetama,ndim0,zbeg,rbeg,                     &
@@ -358,7 +359,7 @@ PROGRAM neo2
 
   ! Initialize the MPI-Provider module, establish connection to all processes
   CALL mpro%init()
-
+  
   !**********************************************************
   ! Write run information to HDF5
   !**********************************************************
@@ -933,6 +934,7 @@ CONTAINS
         call h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
         call h5_add(h5_config_group, 'collop_base_prj', collop_base_prj, 'Projection base of collision operator')
         call h5_add(h5_config_group, 'collop_base_exp', collop_base_exp, 'Expansion base of collision operator')
+        call h5_add(h5_config_group, 'v_max_resolution', v_max_resolution, 'Maximum velocity for level placement')
         CALL h5_close_group(h5_config_group)
 
         CALL h5_define_group(h5_config_id, 'binsplit', h5_config_group)
