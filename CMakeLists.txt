@@ -34,15 +34,20 @@ set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
 
 # Compiler dependent settings
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
-        set (CMAKE_Fortran_FLAGS "-cpp -ffpe-summary=invalid,zero,overflow")
-	set (CMAKE_Fortran_FLAGS_DEBUG "-g -fcheck=all")
-        
 	# Determine compiler version
 	execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
                     OUTPUT_VARIABLE GCC_VERSION)
 	string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
         list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
         list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
+
+	if (GCC_MINOR GREATER 8)
+		set (CMAKE_Fortran_FLAGS "-cpp -ffpe-summary=invalid,zero,overflow")
+	else()
+		set (CMAKE_Fortran_FLAGS "-cpp")
+	endif()
+	set (CMAKE_Fortran_FLAGS_DEBUG "-g -fcheck=all")     
+
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
         set (CMAKE_Fortran_FLAGS "-cpp -heap-arrays")
 endif ()
