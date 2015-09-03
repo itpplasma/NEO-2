@@ -6,4 +6,4 @@ character(len=*), parameter :: CMake_Flags_Release = '@CMAKE_Fortran_FLAGS_RELEA
 character(len=*), parameter :: CMake_Flags_Debug = '@CMAKE_Fortran_FLAGS_DEBUG@'
 character(len=*), parameter :: CMake_System = '@CMAKE_SYSTEM@'
 character(len=*), parameter :: CMake_SuiteSparse_Dir = '@SUITESPARSE_DIR@'
-character(len=*), parameter :: CMake_Blas_Lib = '@BLAS_lib@'
+character(len=*), parameter :: CMake_Blas_Lib = ''
