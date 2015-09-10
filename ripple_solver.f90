@@ -206,8 +206,8 @@ SUBROUTINE ripple_solver(                                 &
   double precision, dimension(:,:,:,:), allocatable :: dentf_m_h5, enetf_m_h5, spitf_m_h5
   
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
-  niter=50
-  epserr_iter=1.d-3
+  niter=100
+  epserr_iter=1.d-5
 !
   !------------------------------------------------------------------------
   ! END SERGEI
