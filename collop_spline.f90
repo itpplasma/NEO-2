@@ -4,9 +4,9 @@ module collop_spline
   use inter_interfaces, only : splinecof3, splint_horner3, tf, tfzero, tfone
   implicit none
 
+  real(kind=dp) :: gam
   real(kind=dp), dimension(:),   allocatable, private :: x_dat
   real(kind=dp), dimension(:,:), allocatable, private :: y_dat
-
   real(kind=dp), dimension(:,:), allocatable, private :: a_spl, b_spl, c_spl, d_spl
   
 contains
@@ -22,7 +22,14 @@ contains
     real(kind=dp) :: m0, c1, cn
     real(kind=dp), dimension(:), allocatable :: lambda
     integer, dimension(:), allocatable :: sp_index
-
+    real(kind=dp) :: gam_all
+    
+    gam = 1.00d0
+    gam_all = 0d0
+    do k = 1, lagmax
+       gam_all = gam_all + gam**k
+    end do
+    
     if (allocated(x_dat)) deallocate(x_dat)
     if (allocated(y_dat)) deallocate(y_dat)
     
@@ -30,9 +37,13 @@ contains
     allocate(y_dat(0:lagmax, 0:lagmax))
     x_dat = 0d0
     y_dat = 0d0
-    x_del = v_max_resolution / lagmax
-    do k = 0, lagmax
-       x_dat(k) = k*x_del
+    !x_del = v_max_resolution / lagmax
+    x_del = v_max_resolution / gam_all
+    x_dat(0) = 0d0
+    y_dat(0,0) = 1d0
+    do k = 1, lagmax
+       !x_dat(k) = k*x_del
+       x_dat(k) = x_dat(k-1) + x_del * gam**k
        y_dat(k,k) = 1.0d0
     end do
 
@@ -68,6 +79,9 @@ contains
 
     deallocate(sp_index)
     deallocate(lambda)
+
+    !write (*,*) x_dat
+    !stop
     
   end subroutine init_phi_spline
 
