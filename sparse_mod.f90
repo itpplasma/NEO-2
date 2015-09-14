@@ -2903,10 +2903,10 @@ CONTAINS
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: x !vector to store the solution
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: bloc
 
-    ALLOCATE( x(SIZE(b)) )
     ALLOCATE( Ai(SIZE(irow)) )
     ALLOCATE( Ap(SIZE(pcol)) )
-    ALLOCATE(bloc(nrow))
+    ALLOCATE( x(nrow) )
+    ALLOCATE( bloc(nrow) )
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
