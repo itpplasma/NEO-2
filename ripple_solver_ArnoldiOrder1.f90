@@ -5511,505 +5511,505 @@ END SUBROUTINE ripple_solver_ArnoldiO1
 !
 !! Modifications by Andreas F. Martitsch (27.07.2015)
 ! Multiple definitions avoided
-!!$SUBROUTINE rearrange_phideps(ibeg,iend,npart,ncomp,nreal,subsqmin,phi_divide, &
-!!$                             phi_mfl,bhat_mfl,arr_real,arr_comp,eta,          &
-!!$                             delt_pos,delt_neg,                               &
-!!$                             fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
-!!$!
-!!$! Mnemonics: 
-!!$! fact_pos_b(i) - integration step in positive direction starts at point i
-!!$! fact_pos_e(i) - integration step in positive direction ends at point i
-!!$! fact_neg_b(i) - integration step in negative direction starts at point i
-!!$! fact_neg_e(i) - integration step in negative direction ends at point i
-!!$!
-!!$  USE plagrange_mod
-!!$!
-!!$  IMPLICIT NONE
-!!$!
-!!$!  logical, parameter :: stepmode=.true.
-!!$  LOGICAL, PARAMETER :: stepmode=.FALSE.
-!!$  INTEGER, PARAMETER :: npoi=6, nder=0, npoihalf=npoi/2, nstepmin=8
-!!$  DOUBLE PRECISION, PARAMETER :: bparabmax=0.2d0
-!!$!
-!!$  INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
-!!$  INTEGER :: ncomp,nreal
-!!$  INTEGER :: ncross_l,ncross_r,ib,ie,intb,inte,k,imid,isplit
-!!$!
-!!$  DOUBLE PRECISION :: subsqmin,ht,ht2,bparab,x1,x2,f1,f2
-!!$!
-!!$  INTEGER, DIMENSION(1)              :: idummy
-!!$  INTEGER, DIMENSION(1:iend)         :: phi_divide
-!!$  INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
-!!$!
-!!$  DOUBLE PRECISION, DIMENSION(0:nder,npoi)      :: coeff
-!!$  DOUBLE PRECISION, DIMENSION(0:npart)          :: eta
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: phi_mfl,bhat_mfl
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend,nreal)  :: arr_real
-!!$  DOUBLE COMPLEX,   DIMENSION(ibeg:iend,ncomp)  :: arr_comp
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: delt_pos,delt_neg
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: fact_pos_b,fact_neg_b
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: fact_pos_e,fact_neg_e
-!!$  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE   :: phi_new,bhat_new
-!!$  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: arr_real_new
-!!$  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: arr_comp_new
-!!$!
-!!$  CALL fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
-!!$                                phi_mfl,bhat_mfl,eta)
-!!$!
-!!$  phi_divide=1
-!!$!
-!!$  delt_pos(ibeg+1:iend)=phi_mfl(ibeg+1:iend)-phi_mfl(ibeg:iend-1)
-!!$  fact_pos_b=1.d0
-!!$  fact_pos_e=1.d0
-!!$!
-!!$! determine level crossings:
-!!$!
-!!$  idummy=MINLOC(bhat_mfl(ibeg:iend))
-!!$  ibmin=idummy(1)+ibeg-1
-!!$!
-!!$  ncross_l=0
-!!$  IF(ibmin.GT.ibeg) THEN
-!!$    istep=ibmin
-!!$    DO i=0,npart
-!!$      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$        npassing=i
-!!$      ELSE
-!!$        EXIT
-!!$      ENDIF
-!!$    ENDDO
-!!$    npassing_prev=npassing
-!!$    DO istep=ibmin-1,ibeg,-1
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      IF(npassing.LT.npassing_prev) THEN
-!!$        ncross_l=ncross_l+1
-!!$        npassing_prev=npassing
-!!$      ENDIF
-!!$    ENDDO
-!!$    IF(ncross_l.GT.0) THEN
-!!$      ALLOCATE(icross_l(ncross_l))
-!!$      ncross_l=0
-!!$      istep=ibmin
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      npassing_prev=npassing
-!!$      DO istep=ibmin-1,ibeg,-1
-!!$        DO i=0,npart
-!!$          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$            npassing=i
-!!$          ELSE
-!!$            EXIT
-!!$          ENDIF
-!!$        ENDDO
-!!$        IF(npassing.LT.npassing_prev) THEN
-!!$          ncross_l=ncross_l+1
-!!$          icross_l(ncross_l)=istep
-!!$          npassing_prev=npassing
-!!$        ENDIF
-!!$      ENDDO
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$  ncross_r=0
-!!$  IF(ibmin.LT.iend) THEN
-!!$    istep=ibmin
-!!$    DO i=0,npart
-!!$      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$        npassing=i
-!!$      ELSE
-!!$        EXIT
-!!$      ENDIF
-!!$    ENDDO
-!!$    npassing_prev=npassing
-!!$    DO istep=ibmin+1,iend
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      IF(npassing.LT.npassing_prev) THEN
-!!$        ncross_r=ncross_r+1
-!!$        npassing_prev=npassing
-!!$      ENDIF
-!!$    ENDDO
-!!$    IF(ncross_r.GT.0) THEN
-!!$      ALLOCATE(icross_r(ncross_r))
-!!$      ncross_r=0
-!!$      istep=ibmin
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      npassing_prev=npassing
-!!$      DO istep=ibmin+1,iend
-!!$        DO i=0,npart
-!!$          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$            npassing=i
-!!$          ELSE
-!!$            EXIT
-!!$          ENDIF
-!!$        ENDDO
-!!$        IF(npassing.LT.npassing_prev) THEN
-!!$          ncross_r=ncross_r+1
-!!$          icross_r(ncross_r)=istep
-!!$          npassing_prev=npassing
-!!$        ENDIF
-!!$      ENDDO
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$! place ibmin to an odd point:
-!!$!
-!!$  IF(MOD(ibmin-ibeg,2).EQ.1) THEN
-!!$    IF(ncross_l.GT.0.AND.ncross_r.GT.0) THEN
-!!$      IF(icross_r(1)-ibmin.GT.ibmin-icross_l(1)) THEN
-!!$        ibmin=ibmin+1
-!!$      ELSE
-!!$        ibmin=ibmin-1
-!!$      ENDIF
-!!$    ELSEIF(ncross_l.GT.0) THEN
-!!$      ibmin=ibmin+1
-!!$    ELSEIF(ncross_r.GT.0) THEN
-!!$      ibmin=ibmin-1
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$! check the number of steps in sub-intervals for parabolic bhat term:
-!!$!
-!!$  IF(ncross_l.GT.0) THEN
-!!$    ie=icross_l(1)
-!!$    DO i=2,ncross_l
-!!$      ib=icross_l(i)
-!!$      IF(ie-ib.LT.nstepmin) THEN
-!!$        imid=(ib+ie)/2
-!!$        x1=phi_mfl(imid)-phi_mfl(ib)
-!!$        x2=phi_mfl(ie)-phi_mfl(ib)
-!!$        f1=bhat_mfl(imid)-bhat_mfl(ib)
-!!$        f2=bhat_mfl(ie)-bhat_mfl(ib)
-!!$        bparab=ABS((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
-!!$        IF(bparab.GT.bparabmax) THEN
-!!$          isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
-!!$          phi_divide(ib+1:ie)=isplit
-!!$        ENDIF
-!!$      ENDIF
-!!$      ie=ib
-!!$    ENDDO
-!!$    ib=ibeg
-!!$    IF(ie-ib.LT.nstepmin) THEN
-!!$      isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
-!!$      phi_divide(ib+1:ie)=isplit
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$  IF(ncross_r.GT.0) THEN
-!!$    ib=icross_r(1)
-!!$    DO i=2,ncross_r
-!!$      ie=icross_r(i)
-!!$      IF(ie-ib.LT.nstepmin) THEN
-!!$        imid=(ib+ie)/2
-!!$        x1=phi_mfl(imid)-phi_mfl(ib)
-!!$        x2=phi_mfl(ie)-phi_mfl(ib)
-!!$        f1=bhat_mfl(imid)-bhat_mfl(ib)
-!!$        f2=bhat_mfl(ie)-bhat_mfl(ib)
-!!$        bparab=ABS((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
-!!$        IF(bparab.GT.bparabmax) THEN
-!!$          isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
-!!$          phi_divide(ib+1:ie)=isplit
-!!$        ENDIF
-!!$      ENDIF
-!!$      ib=ie
-!!$    ENDDO
-!!$    ie=iend
-!!$    IF(ie-ib.LT.nstepmin) THEN
-!!$      isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
-!!$      phi_divide(ib+1:ie)=isplit
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$  IF(MAXVAL(phi_divide).GT.1) RETURN
-!!$!
-!!$! change the integration variable phi -> sqrt(phi-phi0):
-!!$!
-!!$  IF(stepmode) THEN
-!!$!
-!!$    ALLOCATE(phi_new(ibeg:iend),bhat_new(ibeg:iend))
-!!$    ALLOCATE(arr_real_new(ibeg:iend,nreal))
-!!$    ALLOCATE(arr_comp_new(ibeg:iend,ncomp))
-!!$    phi_new=phi_mfl
-!!$    bhat_new=bhat_mfl
-!!$    arr_real_new=arr_real
-!!$    arr_comp_new=arr_comp
-!!$!
-!!$    ie=ibmin
-!!$    DO i=1,ncross_l
-!!$      ib=icross_l(i)
-!!$      ht=SQRT(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
-!!$      ht2=ht**2
-!!$      k=ib
-!!$      DO istep=ib+1,ie-1
-!!$        phi_new(istep)=phi_mfl(ib)+ht2*float(istep-ib)**2
-!!$        fact_pos_e(istep)=2.d0*ht*float(istep-ib)
-!!$        delt_pos(istep)=ht
-!!$        DO WHILE(phi_mfl(k).LT.phi_new(istep))
-!!$          k=k+1
-!!$        ENDDO
-!!$        intb=MAX(ibeg,MIN(iend-npoi+1,k-npoihalf))
-!!$        inte=intb+npoi-1
-!!$!
-!!$        CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
-!!$!
-!!$        bhat_new(istep)=SUM(coeff(0,:)*bhat_mfl(intb:inte))
-!!$        arr_real_new(istep,:)=MATMUL(coeff(0,:),arr_real(intb:inte,:))
-!!$        arr_comp_new(istep,:)=MATMUL(coeff(0,:),arr_comp(intb:inte,:))
-!!$      ENDDO
-!!$      delt_pos(ie)=ht
-!!$      fact_pos_e(ie)=2.d0*ht*float(ie-ib)
-!!$      fact_pos_b(ib)=0.d0
-!!$      fact_pos_b(ib+1:ie-1)=fact_pos_e(ib+1:ie-1)
-!!$      ie=ib
-!!$    ENDDO
-!!$!
-!!$    ib=ibmin
-!!$    DO i=1,ncross_r
-!!$      ie=icross_r(i)
-!!$      ht=SQRT(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
-!!$      ht2=ht**2
-!!$      k=ib
-!!$      DO istep=ib+1,ie-1
-!!$        phi_new(istep)=phi_mfl(ie)-ht2*float(ie-istep)**2
-!!$        delt_pos(istep)=ht
-!!$        fact_pos_b(istep)=2.d0*ht*float(ie-istep)
-!!$        DO WHILE(phi_mfl(k).LT.phi_new(istep))
-!!$          k=k+1
-!!$        ENDDO
-!!$        intb=MAX(ibeg,MIN(iend-npoi+1,k-npoihalf))
-!!$        inte=intb+npoi-1
-!!$!
-!!$        CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
-!!$!
-!!$        bhat_new(istep)=SUM(coeff(0,:)*bhat_mfl(intb:inte))
-!!$        arr_real_new(istep,:)=MATMUL(coeff(0,:),arr_real(intb:inte,:))
-!!$        arr_comp_new(istep,:)=MATMUL(coeff(0,:),arr_comp(intb:inte,:))
-!!$      ENDDO
-!!$      delt_pos(ie)=ht
-!!$      fact_pos_b(ib)=2.d0*ht*float(ie-ib)
-!!$      fact_pos_e(ie)=0.d0
-!!$      fact_pos_e(ib+1:ie-1)=fact_pos_b(ib+1:ie-1)
-!!$      ib=ie
-!!$    ENDDO
-!!$!
-!!$    phi_mfl=phi_new
-!!$    bhat_mfl=bhat_new
-!!$    arr_real=arr_real_new
-!!$    arr_comp=arr_comp_new
-!!$!
-!!$    DEALLOCATE(phi_new,bhat_new,arr_real_new,arr_comp_new)
-!!$!
-!!$  ENDIF
-!!$!
-!!$  delt_neg(ibeg:iend-1)=delt_pos(ibeg+1:iend)
-!!$  fact_neg_b=fact_pos_e
-!!$  fact_neg_e=fact_pos_b
-!!$!
-!!$  IF(ALLOCATED(icross_l)) DEALLOCATE(icross_l)
-!!$  IF(ALLOCATED(icross_r)) DEALLOCATE(icross_r)
-!!$!
-!!$END SUBROUTINE rearrange_phideps
-!!$!
-!!$!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!!$!
-!!$SUBROUTINE fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
-!!$                                    phi_mfl,bhat_mfl,eta)
-!!$!
-!!$  USE device_mod
-!!$!
-!!$  IMPLICIT NONE
-!!$!
-!!$  INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
-!!$  INTEGER :: ncross_l,ncross_r
-!!$!
-!!$  DOUBLE PRECISION :: subsqmin
-!!$!
-!!$  INTEGER, DIMENSION(1)              :: idummy
-!!$  INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
-!!$!
-!!$  DOUBLE PRECISION, DIMENSION(0:npart)        :: eta
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: phi_mfl,bhat_mfl
-!!$  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: eta_cross_l,eta_cross_r
-!!$!
-!!$! determine level crossings:
-!!$!
-!!$  idummy=MINLOC(bhat_mfl(ibeg:iend))
-!!$  ibmin=idummy(1)+ibeg-1
-!!$!
-!!$  ncross_l=0
-!!$  IF(ibmin.GT.ibeg) THEN
-!!$    istep=ibmin
-!!$    DO i=0,npart
-!!$      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$        npassing=i
-!!$      ELSE
-!!$        EXIT
-!!$      ENDIF
-!!$    ENDDO
-!!$    npassing_prev=npassing
-!!$    DO istep=ibmin-1,ibeg,-1
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      IF(npassing.LT.npassing_prev) THEN
-!!$        ncross_l=ncross_l+1
-!!$        npassing_prev=npassing
-!!$      ENDIF
-!!$    ENDDO
-!!$    IF(ncross_l.GT.0) THEN
-!!$      ALLOCATE(icross_l(ncross_l),eta_cross_l(ncross_l))
-!!$      ncross_l=0
-!!$      istep=ibmin
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      npassing_prev=npassing
-!!$      DO istep=ibmin-1,ibeg,-1
-!!$        DO i=0,npart
-!!$          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$            npassing=i
-!!$          ELSE
-!!$            EXIT
-!!$          ENDIF
-!!$        ENDDO
-!!$        IF(npassing.LT.npassing_prev) THEN
-!!$          ncross_l=ncross_l+1
-!!$          icross_l(ncross_l)=istep
-!!$          eta_cross_l(ncross_l)=eta(npassing_prev)
-!!$          npassing_prev=npassing
-!!$        ENDIF
-!!$      ENDDO
-!!$      DO i=1,ncross_l
-!!$        istep=icross_l(i)
-!!$        IF(ABS(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).LT. &
-!!$           ABS(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) THEN
-!!$          OPEN(111,file='phi_placement_problem.dat',position='append')
-!!$          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
-!!$                       ' step number = ',istep-1,                &
-!!$                       ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
-!!$                       ' eta = ',eta_cross_l(i)
-!!$          CLOSE(111)
-!!$          bhat_mfl(istep-1)=1/eta_cross_l(i)
-!!$        ELSEIF(ABS(bhat_mfl(istep+1)*eta_cross_l(i)-1.d0).LT. &
-!!$               ABS(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) THEN
-!!$          OPEN(111,file='phi_placement_problem.dat',position='append')
-!!$          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
-!!$                       ' step number = ',istep+1,                &
-!!$                       ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
-!!$                       ' eta = ',eta_cross_l(i)
-!!$          bhat_mfl(istep+1)=1/eta_cross_l(i)
-!!$          CLOSE(111)
-!!$        ENDIF
-!!$      ENDDO
-!!$      DEALLOCATE(icross_l,eta_cross_l)
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$  ncross_r=0
-!!$  IF(ibmin.LT.iend) THEN
-!!$    istep=ibmin
-!!$    DO i=0,npart
-!!$      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$        npassing=i
-!!$      ELSE
-!!$        EXIT
-!!$      ENDIF
-!!$    ENDDO
-!!$    npassing_prev=npassing
-!!$    DO istep=ibmin+1,iend
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      IF(npassing.LT.npassing_prev) THEN
-!!$        ncross_r=ncross_r+1
-!!$        npassing_prev=npassing
-!!$      ENDIF
-!!$    ENDDO
-!!$    IF(ncross_r.GT.0) THEN
-!!$      ALLOCATE(icross_r(ncross_r),eta_cross_r(ncross_r))
-!!$      ncross_r=0
-!!$      istep=ibmin
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      npassing_prev=npassing
-!!$      DO istep=ibmin+1,iend
-!!$        DO i=0,npart
-!!$          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$            npassing=i
-!!$          ELSE
-!!$            EXIT
-!!$          ENDIF
-!!$        ENDDO
-!!$        IF(npassing.LT.npassing_prev) THEN
-!!$          ncross_r=ncross_r+1
-!!$          icross_r(ncross_r)=istep
-!!$          eta_cross_r(ncross_r)=eta(npassing_prev)
-!!$          npassing_prev=npassing
-!!$        ENDIF
-!!$      ENDDO
-!!$      DO i=1,ncross_r
-!!$        istep=icross_r(i)
-!!$        IF(ABS(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).LT. &
-!!$           ABS(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) THEN
-!!$          OPEN(111,file='phi_placement_problem.dat',position='append')
-!!$          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
-!!$                       ' step number = ',istep-1,                &
-!!$                       ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
-!!$                       ' eta = ',eta_cross_r(i)
-!!$          CLOSE(111)
-!!$          bhat_mfl(istep-1)=1/eta_cross_r(i)
-!!$        ELSEIF(ABS(bhat_mfl(istep+1)*eta_cross_r(i)-1.d0).LT. &
-!!$               ABS(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) THEN
-!!$          OPEN(111,file='phi_placement_problem.dat',position='append')
-!!$          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
-!!$                       ' step number = ',istep+1,                &
-!!$                       ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
-!!$                       ' eta = ',eta_cross_r(i)
-!!$          CLOSE(111)
-!!$          bhat_mfl(istep+1)=1/eta_cross_r(i)
-!!$        ENDIF
-!!$      ENDDO
-!!$      DEALLOCATE(icross_r,eta_cross_r)
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$END SUBROUTINE fix_phiplacement_problem
+SUBROUTINE rearrange_phideps(ibeg,iend,npart,ncomp,nreal,subsqmin,phi_divide, &
+                             phi_mfl,bhat_mfl,arr_real,arr_comp,eta,          &
+                             delt_pos,delt_neg,                               &
+                             fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
+!
+! Mnemonics: 
+! fact_pos_b(i) - integration step in positive direction starts at point i
+! fact_pos_e(i) - integration step in positive direction ends at point i
+! fact_neg_b(i) - integration step in negative direction starts at point i
+! fact_neg_e(i) - integration step in negative direction ends at point i
+!
+  USE plagrange_mod
+!
+  IMPLICIT NONE
+!
+!  logical, parameter :: stepmode=.true.
+  LOGICAL, PARAMETER :: stepmode=.FALSE.
+  INTEGER, PARAMETER :: npoi=6, nder=0, npoihalf=npoi/2, nstepmin=8
+  DOUBLE PRECISION, PARAMETER :: bparabmax=0.2d0
+!
+  INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
+  INTEGER :: ncomp,nreal
+  INTEGER :: ncross_l,ncross_r,ib,ie,intb,inte,k,imid,isplit
+!
+  DOUBLE PRECISION :: subsqmin,ht,ht2,bparab,x1,x2,f1,f2
+!
+  INTEGER, DIMENSION(1)              :: idummy
+  INTEGER, DIMENSION(1:iend)         :: phi_divide
+  INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
+!
+  DOUBLE PRECISION, DIMENSION(0:nder,npoi)      :: coeff
+  DOUBLE PRECISION, DIMENSION(0:npart)          :: eta
+  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: phi_mfl,bhat_mfl
+  DOUBLE PRECISION, DIMENSION(ibeg:iend,nreal)  :: arr_real
+  DOUBLE COMPLEX,   DIMENSION(ibeg:iend,ncomp)  :: arr_comp
+  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: delt_pos,delt_neg
+  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: fact_pos_b,fact_neg_b
+  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: fact_pos_e,fact_neg_e
+  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE   :: phi_new,bhat_new
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: arr_real_new
+  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: arr_comp_new
+!
+  CALL fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
+                                phi_mfl,bhat_mfl,eta)
+!
+  phi_divide=1
+!
+  delt_pos(ibeg+1:iend)=phi_mfl(ibeg+1:iend)-phi_mfl(ibeg:iend-1)
+  fact_pos_b=1.d0
+  fact_pos_e=1.d0
+!
+! determine level crossings:
+!
+  idummy=MINLOC(bhat_mfl(ibeg:iend))
+  ibmin=idummy(1)+ibeg-1
+!
+  ncross_l=0
+  IF(ibmin.GT.ibeg) THEN
+    istep=ibmin
+    DO i=0,npart
+      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+        npassing=i
+      ELSE
+        EXIT
+      ENDIF
+    ENDDO
+    npassing_prev=npassing
+    DO istep=ibmin-1,ibeg,-1
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      IF(npassing.LT.npassing_prev) THEN
+        ncross_l=ncross_l+1
+        npassing_prev=npassing
+      ENDIF
+    ENDDO
+    IF(ncross_l.GT.0) THEN
+      ALLOCATE(icross_l(ncross_l))
+      ncross_l=0
+      istep=ibmin
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      npassing_prev=npassing
+      DO istep=ibmin-1,ibeg,-1
+        DO i=0,npart
+          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+            npassing=i
+          ELSE
+            EXIT
+          ENDIF
+        ENDDO
+        IF(npassing.LT.npassing_prev) THEN
+          ncross_l=ncross_l+1
+          icross_l(ncross_l)=istep
+          npassing_prev=npassing
+        ENDIF
+      ENDDO
+    ENDIF
+  ENDIF
+!
+  ncross_r=0
+  IF(ibmin.LT.iend) THEN
+    istep=ibmin
+    DO i=0,npart
+      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+        npassing=i
+      ELSE
+        EXIT
+      ENDIF
+    ENDDO
+    npassing_prev=npassing
+    DO istep=ibmin+1,iend
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      IF(npassing.LT.npassing_prev) THEN
+        ncross_r=ncross_r+1
+        npassing_prev=npassing
+      ENDIF
+    ENDDO
+    IF(ncross_r.GT.0) THEN
+      ALLOCATE(icross_r(ncross_r))
+      ncross_r=0
+      istep=ibmin
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      npassing_prev=npassing
+      DO istep=ibmin+1,iend
+        DO i=0,npart
+          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+            npassing=i
+          ELSE
+            EXIT
+          ENDIF
+        ENDDO
+        IF(npassing.LT.npassing_prev) THEN
+          ncross_r=ncross_r+1
+          icross_r(ncross_r)=istep
+          npassing_prev=npassing
+        ENDIF
+      ENDDO
+    ENDIF
+  ENDIF
+!
+! place ibmin to an odd point:
+!
+  IF(MOD(ibmin-ibeg,2).EQ.1) THEN
+    IF(ncross_l.GT.0.AND.ncross_r.GT.0) THEN
+      IF(icross_r(1)-ibmin.GT.ibmin-icross_l(1)) THEN
+        ibmin=ibmin+1
+      ELSE
+        ibmin=ibmin-1
+      ENDIF
+    ELSEIF(ncross_l.GT.0) THEN
+      ibmin=ibmin+1
+    ELSEIF(ncross_r.GT.0) THEN
+      ibmin=ibmin-1
+    ENDIF
+  ENDIF
+!
+! check the number of steps in sub-intervals for parabolic bhat term:
+!
+  IF(ncross_l.GT.0) THEN
+    ie=icross_l(1)
+    DO i=2,ncross_l
+      ib=icross_l(i)
+      IF(ie-ib.LT.nstepmin) THEN
+        imid=(ib+ie)/2
+        x1=phi_mfl(imid)-phi_mfl(ib)
+        x2=phi_mfl(ie)-phi_mfl(ib)
+        f1=bhat_mfl(imid)-bhat_mfl(ib)
+        f2=bhat_mfl(ie)-bhat_mfl(ib)
+        bparab=ABS((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
+        IF(bparab.GT.bparabmax) THEN
+          isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+          phi_divide(ib+1:ie)=isplit
+        ENDIF
+      ENDIF
+      ie=ib
+    ENDDO
+    ib=ibeg
+    IF(ie-ib.LT.nstepmin) THEN
+      isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+      phi_divide(ib+1:ie)=isplit
+    ENDIF
+  ENDIF
+!
+  IF(ncross_r.GT.0) THEN
+    ib=icross_r(1)
+    DO i=2,ncross_r
+      ie=icross_r(i)
+      IF(ie-ib.LT.nstepmin) THEN
+        imid=(ib+ie)/2
+        x1=phi_mfl(imid)-phi_mfl(ib)
+        x2=phi_mfl(ie)-phi_mfl(ib)
+        f1=bhat_mfl(imid)-bhat_mfl(ib)
+        f2=bhat_mfl(ie)-bhat_mfl(ib)
+        bparab=ABS((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
+        IF(bparab.GT.bparabmax) THEN
+          isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+          phi_divide(ib+1:ie)=isplit
+        ENDIF
+      ENDIF
+      ib=ie
+    ENDDO
+    ie=iend
+    IF(ie-ib.LT.nstepmin) THEN
+      isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+      phi_divide(ib+1:ie)=isplit
+    ENDIF
+  ENDIF
+!
+  IF(MAXVAL(phi_divide).GT.1) RETURN
+!
+! change the integration variable phi -> sqrt(phi-phi0):
+!
+  IF(stepmode) THEN
+!
+    ALLOCATE(phi_new(ibeg:iend),bhat_new(ibeg:iend))
+    ALLOCATE(arr_real_new(ibeg:iend,nreal))
+    ALLOCATE(arr_comp_new(ibeg:iend,ncomp))
+    phi_new=phi_mfl
+    bhat_new=bhat_mfl
+    arr_real_new=arr_real
+    arr_comp_new=arr_comp
+!
+    ie=ibmin
+    DO i=1,ncross_l
+      ib=icross_l(i)
+      ht=SQRT(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
+      ht2=ht**2
+      k=ib
+      DO istep=ib+1,ie-1
+        phi_new(istep)=phi_mfl(ib)+ht2*float(istep-ib)**2
+        fact_pos_e(istep)=2.d0*ht*float(istep-ib)
+        delt_pos(istep)=ht
+        DO WHILE(phi_mfl(k).LT.phi_new(istep))
+          k=k+1
+        ENDDO
+        intb=MAX(ibeg,MIN(iend-npoi+1,k-npoihalf))
+        inte=intb+npoi-1
+!
+        CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
+!
+        bhat_new(istep)=SUM(coeff(0,:)*bhat_mfl(intb:inte))
+        arr_real_new(istep,:)=MATMUL(coeff(0,:),arr_real(intb:inte,:))
+        arr_comp_new(istep,:)=MATMUL(coeff(0,:),arr_comp(intb:inte,:))
+      ENDDO
+      delt_pos(ie)=ht
+      fact_pos_e(ie)=2.d0*ht*float(ie-ib)
+      fact_pos_b(ib)=0.d0
+      fact_pos_b(ib+1:ie-1)=fact_pos_e(ib+1:ie-1)
+      ie=ib
+    ENDDO
+!
+    ib=ibmin
+    DO i=1,ncross_r
+      ie=icross_r(i)
+      ht=SQRT(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
+      ht2=ht**2
+      k=ib
+      DO istep=ib+1,ie-1
+        phi_new(istep)=phi_mfl(ie)-ht2*float(ie-istep)**2
+        delt_pos(istep)=ht
+        fact_pos_b(istep)=2.d0*ht*float(ie-istep)
+        DO WHILE(phi_mfl(k).LT.phi_new(istep))
+          k=k+1
+        ENDDO
+        intb=MAX(ibeg,MIN(iend-npoi+1,k-npoihalf))
+        inte=intb+npoi-1
+!
+        CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
+!
+        bhat_new(istep)=SUM(coeff(0,:)*bhat_mfl(intb:inte))
+        arr_real_new(istep,:)=MATMUL(coeff(0,:),arr_real(intb:inte,:))
+        arr_comp_new(istep,:)=MATMUL(coeff(0,:),arr_comp(intb:inte,:))
+      ENDDO
+      delt_pos(ie)=ht
+      fact_pos_b(ib)=2.d0*ht*float(ie-ib)
+      fact_pos_e(ie)=0.d0
+      fact_pos_e(ib+1:ie-1)=fact_pos_b(ib+1:ie-1)
+      ib=ie
+    ENDDO
+!
+    phi_mfl=phi_new
+    bhat_mfl=bhat_new
+    arr_real=arr_real_new
+    arr_comp=arr_comp_new
+!
+    DEALLOCATE(phi_new,bhat_new,arr_real_new,arr_comp_new)
+!
+  ENDIF
+!
+  delt_neg(ibeg:iend-1)=delt_pos(ibeg+1:iend)
+  fact_neg_b=fact_pos_e
+  fact_neg_e=fact_pos_b
+!
+  IF(ALLOCATED(icross_l)) DEALLOCATE(icross_l)
+  IF(ALLOCATED(icross_r)) DEALLOCATE(icross_r)
+!
+END SUBROUTINE rearrange_phideps
+!
+!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!
+SUBROUTINE fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
+                                    phi_mfl,bhat_mfl,eta)
+!
+  USE device_mod
+!
+  IMPLICIT NONE
+!
+  INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
+  INTEGER :: ncross_l,ncross_r
+!
+  DOUBLE PRECISION :: subsqmin
+!
+  INTEGER, DIMENSION(1)              :: idummy
+  INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
+!
+  DOUBLE PRECISION, DIMENSION(0:npart)        :: eta
+  DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: phi_mfl,bhat_mfl
+  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: eta_cross_l,eta_cross_r
+!
+! determine level crossings:
+!
+  idummy=MINLOC(bhat_mfl(ibeg:iend))
+  ibmin=idummy(1)+ibeg-1
+!
+  ncross_l=0
+  IF(ibmin.GT.ibeg) THEN
+    istep=ibmin
+    DO i=0,npart
+      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+        npassing=i
+      ELSE
+        EXIT
+      ENDIF
+    ENDDO
+    npassing_prev=npassing
+    DO istep=ibmin-1,ibeg,-1
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      IF(npassing.LT.npassing_prev) THEN
+        ncross_l=ncross_l+1
+        npassing_prev=npassing
+      ENDIF
+    ENDDO
+    IF(ncross_l.GT.0) THEN
+      ALLOCATE(icross_l(ncross_l),eta_cross_l(ncross_l))
+      ncross_l=0
+      istep=ibmin
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      npassing_prev=npassing
+      DO istep=ibmin-1,ibeg,-1
+        DO i=0,npart
+          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+            npassing=i
+          ELSE
+            EXIT
+          ENDIF
+        ENDDO
+        IF(npassing.LT.npassing_prev) THEN
+          ncross_l=ncross_l+1
+          icross_l(ncross_l)=istep
+          eta_cross_l(ncross_l)=eta(npassing_prev)
+          npassing_prev=npassing
+        ENDIF
+      ENDDO
+      DO i=1,ncross_l
+        istep=icross_l(i)
+        IF(ABS(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).LT. &
+           ABS(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) THEN
+          OPEN(111,file='phi_placement_problem.dat',position='append')
+          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                       ' step number = ',istep-1,                &
+                       ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
+                       ' eta = ',eta_cross_l(i)
+          CLOSE(111)
+          bhat_mfl(istep-1)=1/eta_cross_l(i)
+        ELSEIF(ABS(bhat_mfl(istep+1)*eta_cross_l(i)-1.d0).LT. &
+               ABS(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) THEN
+          OPEN(111,file='phi_placement_problem.dat',position='append')
+          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                       ' step number = ',istep+1,                &
+                       ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
+                       ' eta = ',eta_cross_l(i)
+          bhat_mfl(istep+1)=1/eta_cross_l(i)
+          CLOSE(111)
+        ENDIF
+      ENDDO
+      DEALLOCATE(icross_l,eta_cross_l)
+    ENDIF
+  ENDIF
+!
+  ncross_r=0
+  IF(ibmin.LT.iend) THEN
+    istep=ibmin
+    DO i=0,npart
+      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+        npassing=i
+      ELSE
+        EXIT
+      ENDIF
+    ENDDO
+    npassing_prev=npassing
+    DO istep=ibmin+1,iend
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      IF(npassing.LT.npassing_prev) THEN
+        ncross_r=ncross_r+1
+        npassing_prev=npassing
+      ENDIF
+    ENDDO
+    IF(ncross_r.GT.0) THEN
+      ALLOCATE(icross_r(ncross_r),eta_cross_r(ncross_r))
+      ncross_r=0
+      istep=ibmin
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      npassing_prev=npassing
+      DO istep=ibmin+1,iend
+        DO i=0,npart
+          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+            npassing=i
+          ELSE
+            EXIT
+          ENDIF
+        ENDDO
+        IF(npassing.LT.npassing_prev) THEN
+          ncross_r=ncross_r+1
+          icross_r(ncross_r)=istep
+          eta_cross_r(ncross_r)=eta(npassing_prev)
+          npassing_prev=npassing
+        ENDIF
+      ENDDO
+      DO i=1,ncross_r
+        istep=icross_r(i)
+        IF(ABS(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).LT. &
+           ABS(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) THEN
+          OPEN(111,file='phi_placement_problem.dat',position='append')
+          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                       ' step number = ',istep-1,                &
+                       ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
+                       ' eta = ',eta_cross_r(i)
+          CLOSE(111)
+          bhat_mfl(istep-1)=1/eta_cross_r(i)
+        ELSEIF(ABS(bhat_mfl(istep+1)*eta_cross_r(i)-1.d0).LT. &
+               ABS(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) THEN
+          OPEN(111,file='phi_placement_problem.dat',position='append')
+          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                       ' step number = ',istep+1,                &
+                       ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
+                       ' eta = ',eta_cross_r(i)
+          CLOSE(111)
+          bhat_mfl(istep+1)=1/eta_cross_r(i)
+        ENDIF
+      ENDDO
+      DEALLOCATE(icross_r,eta_cross_r)
+    ENDIF
+  ENDIF
+!
+END SUBROUTINE fix_phiplacement_problem
 !! End Modifications by Andreas F. Martitsch (27.07.2015)
