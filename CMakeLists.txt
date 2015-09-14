@@ -54,14 +54,15 @@ else(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
 endif(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
 
 ### Define flags for Fortran/C compiler
-set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -ffpe-summary=invalid,zero,overflow")
+set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
 set(MY_DEBUG_FLAG_LIST
-  " -O0 -g"   
+  " -O0 -cpp -g"   
 # " -O0 -g -ggdb -C -p -pg -fbacktrace " 
 # " -ffpe-trap=invalid,zero,overflow,underflow "
  " -ffpe-trap=invalid,zero,overflow "
  " -ffpe-summary=invalid,zero,overflow "
- " -fcheck=bounds,mem,array-temps,pointer "
+ " -fcheck=all "
+# " -fcheck=bounds,mem,array-temps,pointer "
  " -fbacktrace "
 # " -Werror " 
 # " -fmem-report " 

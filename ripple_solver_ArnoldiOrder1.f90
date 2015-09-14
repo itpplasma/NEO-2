@@ -77,7 +77,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
        column_full2pointer,remap_rc,sparse_solver_test
 !  USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
 !                               surface_boozer_B00,travis_convfac
-  USE mag_interface_mod, ONLY: surface_boozer_B00,travis_convfac
+  USE mag_interface_mod, ONLY: surface_boozer_B00,travis_convfac,boozer_s
   USE ntv_eqmat_mod, ONLY : nz_symm,nz_asymm,nz_per_pos,nz_per_neg,            &
                             irow_symm,icol_symm,amat_symm,                     &
                             irow_per_pos,icol_per_pos,                         &
@@ -250,7 +250,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: convol_flux,convol_curr
   DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: convol_flux_0
   DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: scalprod_pleg
-  DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: x1mm,x2mm
+!!$  DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: x1mm,x2mm
   DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: scalprod
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: phi_mfl
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: bhat_mfl,h_phi_mfl
@@ -294,12 +294,14 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   !! Modification by Andreas F. Martitsch (28.07.2015)
   !  multi-species part
   INTEGER :: ispec, ispecp ! species indices
+  INTEGER :: drive_spec
   DOUBLE COMPLEX,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all
   REAL(kind=dp), DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec
   LOGICAL :: problem_type
   !! End Modification by Andreas F. Martitsch (28.07.2015)
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: ttmpfact
   DOUBLE COMPLEX :: fluxincompr,coefincompr
+  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: fluxincompr_spec, coefincompr_spec
   LOGICAL :: colltest=.FALSE.
   LOGICAL :: ttmptest=.FALSE.
 !  logical :: ttmptest=.true.
@@ -321,13 +323,13 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
 !
   niter=100       !maximum number of integral part iterations
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
-  n_arnoldi=30      !maximum number of Arnoldi iterations
+  n_arnoldi=100      !maximum number of Arnoldi iterations
   isw_regper=1       !regulariization by periodic boundary condition
   epserr_sink=0.d0 !1.d-12 !sink for regularization, it is equal to
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
 !                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
 !                    $\kappa$ is inverse m.f.p. times 4 ("collpar")
-  sparse_solve_method = 2 !2 !2,3 - with and without iterative refinement, resp.
+  sparse_solve_method = 3 !2 !2,3 - with and without iterative refinement, resp.
 !
   !! Modifications by Andreas F. Martitsch (14.07.2015)
   ! normalized electric rotation frequency ($\hat{\Omega}_{tE}$)
@@ -1566,10 +1568,10 @@ rotfactor=imun*m_phi
 ! Compute vectors for convolution of fluxes and source vectors:
 !
   ALLOCATE(flux_vector(3,n_2d_size),source_vector(n_2d_size,4),bvec_parflow(n_2d_size))
-  ALLOCATE(x1mm(0:lag,0:lag))
-  ALLOCATE(x2mm(0:lag,0:lag))
+!!$  ALLOCATE(x1mm(0:lag,0:lag))
+!!$  ALLOCATE(x2mm(0:lag,0:lag))
 !
-  CALL lagxmm(lag,x1mm,x2mm)
+!!$  CALL lagxmm(lag,x1mm,x2mm)
 !
   IF(isw_lorentz.EQ.1) THEN
     x1mm(0,0)=1.d0
@@ -2184,7 +2186,7 @@ rotfactor=imun*m_phi
           !! Modification by Andreas F. Martitsch (17.07.2015)
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)           
         ENDIF
       ENDDO
@@ -2201,7 +2203,7 @@ rotfactor=imun*m_phi
           !! Modification by Andreas F. Martitsch (17.07.2015)
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)          
         ENDIF
       ENDDO
@@ -2218,7 +2220,7 @@ rotfactor=imun*m_phi
           !! Modification by Andreas F. Martitsch (17.07.2015)
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)          
         ENDIF
       ENDIF
@@ -2239,7 +2241,7 @@ rotfactor=imun*m_phi
             !! Modification by Andreas F. Martitsch (17.07.2015)
             ! fixed warning: Possible change of value in conversion
             ! from COMPLEX(8) to REAL(8)
-            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
             !! End Modification by Andreas F. Martitsch (17.07.2015)            
           ENDIF
         ENDDO
@@ -2256,7 +2258,7 @@ rotfactor=imun*m_phi
             !! Modification by Andreas F. Martitsch (17.07.2015)
             ! fixed warning: Possible change of value in conversion
             ! from COMPLEX(8) to REAL(8)
-            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
             !! End Modification by Andreas F. Martitsch (17.07.2015)            
           ENDIF
         ENDDO
@@ -2273,7 +2275,7 @@ rotfactor=imun*m_phi
           !! Modification by Andreas F. Martitsch (17.07.2015)
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)
         ENDIF
       ENDIF
@@ -2391,7 +2393,7 @@ rotfactor=imun*m_phi
         !! Modification by Andreas F. Martitsch (17.07.2015)
         ! fixed warning: Possible change of value in conversion
         ! from COMPLEX(8) to REAL(8)
-        amat_coll(nz_coll_beg:nz_coll)=REAL(amat_sp(nz_beg:nz))
+        amat_coll(nz_coll_beg:nz_coll)=REAL(amat_sp(nz_beg:nz),dp)
         !! End Modification by Andreas F. Martitsch (17.07.2015)        
 !
         amat_sp(nz_beg:nz)=fact_pos_e(istep)*amat_sp(nz_beg:nz)
@@ -2517,7 +2519,7 @@ rotfactor=imun*m_phi
           !! Modification by Andreas F. Martitsch (17.07.2015)
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)     
         ENDIF
       ENDDO
@@ -2534,7 +2536,7 @@ rotfactor=imun*m_phi
           !! Modification by Andreas F. Martitsch (17.07.2015)
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)          
         ENDIF
       ENDDO
@@ -2551,7 +2553,7 @@ rotfactor=imun*m_phi
           !! Modification by Andreas F. Martitsch (17.07.2015)
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)          
         ENDIF
       ENDIF
@@ -2572,7 +2574,7 @@ rotfactor=imun*m_phi
             !! Modification by Andreas F. Martitsch (17.07.2015)
             ! fixed warning: Possible change of value in conversion
             ! from COMPLEX(8) to REAL(8)
-            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
             !! End Modification by Andreas F. Martitsch (17.07.2015)            
           ENDIF
         ENDDO
@@ -2589,7 +2591,7 @@ rotfactor=imun*m_phi
             !! Modification by Andreas F. Martitsch (17.07.2015)
             ! fixed warning: Possible change of value in conversion
             ! from COMPLEX(8) to REAL(8)
-            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
             !! End Modification by Andreas F. Martitsch (17.07.2015)            
           ENDIF
         ENDDO
@@ -2606,7 +2608,7 @@ rotfactor=imun*m_phi
           !! Modification by Andreas F. Martitsch (17.07.2015)
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)          
         ENDIF
       ENDIF
@@ -2724,7 +2726,7 @@ rotfactor=imun*m_phi
         !! Modification by Andreas F. Martitsch (17.07.2015)
         ! fixed warning: Possible change of value in conversion
         ! from COMPLEX(8) to REAL(8)
-        amat_coll(nz_coll_beg:nz_coll)=REAL(amat_sp(nz_beg:nz))
+        amat_coll(nz_coll_beg:nz_coll)=REAL(amat_sp(nz_beg:nz),dp)
         !! End Modification by Andreas F. Martitsch (17.07.2015)        
 !
         amat_sp(nz_beg:nz)=fact_neg_e(istep)*amat_sp(nz_beg:nz)
@@ -2781,7 +2783,7 @@ rotfactor=imun*m_phi
   !! Modification by Andreas F. Martitsch (17.07.2015)
   ! fixed warning: Possible change of value in conversion
   ! from COMPLEX(8) to REAL(8)
-  amat_symm=REAL(amat_sp)
+  amat_symm=REAL(amat_sp,dp)
   !! End Modification by Andreas F. Martitsch (17.07.2015)  
 !
 ! End save symmetric matrix
@@ -3207,7 +3209,7 @@ rotfactor=imun*m_phi
 !
   ENDDO
 !
-  DEALLOCATE(x1mm,x2mm)
+!!$  DEALLOCATE(x1mm,x2mm)
 !
 !! Modifications by Andreas F. Martitsch (02.09.2014)
 ! For the computation of hatOmegaE from the profile
@@ -3263,7 +3265,7 @@ rotfactor=imun*m_phi
     !  multi-species part (allocate storage for source_vector)
     IF(ALLOCATED(source_vector_all)) DEALLOCATE(source_vector_all)
     ALLOCATE(source_vector_all(n_2d_size,1:4,0:num_spec-1))
-    source_vector_all=0.0d0
+    source_vector_all=(0.0d0,0.0d0)
     ! save solution of the differential part for species=ispec
     ! (diffusion coeff. driven by thermodyn. forces of other 
     ! species are zero -> interaction through integral part)
@@ -3310,8 +3312,31 @@ rotfactor=imun*m_phi
        ! (at the moment these arrays cannot be handled correctly using the
        ! propagator structure -> global variables used):
        IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
+       qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
        qflux_symm_allspec=qflux_allspec
        IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+       IF(mpro%getrank() .EQ. 0) THEN
+          ! D33
+!!$          PRINT *,qflux_symm_allspec(2,2,0,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,0,1)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,1)
+          ! D11
+          PRINT *,'qflux(1,1,0,0):'
+          PRINT *,qflux_symm_allspec(1,1,0,0)
+          PRINT *,'qflux(1,1,1,0):'
+          PRINT *,qflux_symm_allspec(1,1,1,0)
+          PRINT *,'qflux(1,1,0,1):'
+          PRINT *,qflux_symm_allspec(1,1,0,1)
+          PRINT *,'qflux(1,1,1,1):'
+          PRINT *,qflux_symm_allspec(1,1,1,1)
+          OPEN(070915,file='qflux_symm_allspec.dat')
+          WRITE(070915,*) boozer_s, collpar, &
+               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
+               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1)
+          CLOSE(070915)
+          !STOP
+       END IF
        RETURN
        !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE IF(isw_qflux_NA .EQ. 1) THEN
@@ -3329,10 +3354,25 @@ rotfactor=imun*m_phi
        qflux_symm_allspec=qflux_allspec
        IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
        IF(mpro%getrank() .EQ. 0) THEN
-          PRINT *,qflux_symm_allspec(2,2,0,0)
-          PRINT *,qflux_symm_allspec(2,2,1,0)
-          PRINT *,qflux_symm_allspec(2,2,0,1)
-          PRINT *,qflux_symm_allspec(2,2,1,1)          
+          ! D33
+!!$          PRINT *,qflux_symm_allspec(2,2,0,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,0,1)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,1)
+          ! D11
+          PRINT *,'qflux(1,1,0,0):'
+          PRINT *,qflux_symm_allspec(1,1,0,0)
+          PRINT *,'qflux(1,1,1,0):'
+          PRINT *,qflux_symm_allspec(1,1,1,0)
+          PRINT *,'qflux(1,1,0,1):'
+          PRINT *,qflux_symm_allspec(1,1,0,1)
+          PRINT *,'qflux(1,1,1,1):'
+          PRINT *,qflux_symm_allspec(1,1,1,1)
+          OPEN(070915,file='qflux_symm_allspec.dat')
+          WRITE(070915,*) boozer_s, collpar, &
+               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
+               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1)
+          CLOSE(070915)
           !STOP
        END IF
        !! End Modification by Andreas F. Martitsch (23.08.2015)
@@ -3355,7 +3395,7 @@ rotfactor=imun*m_phi
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
           f0_coll(irow_coll(nz),:)=f0_coll(irow_coll(nz),:)+amat_coll(nz)  &
-               *REAL(source_vector_all(icol_coll(nz),1:3,ispecp))
+               *REAL(source_vector_all(icol_coll(nz),1:3,ispecp),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)
        ENDDO
 !
@@ -3370,7 +3410,7 @@ rotfactor=imun*m_phi
              !! Modification by Andreas F. Martitsch (17.07.2015)
              ! fixed warning: Possible change of value in conversion
              ! from COMPLEX(8) to REAL(8)
-             f0_coll(:,i)=f0_coll(:,i)-REAL(bvec_iter)
+             f0_coll(:,i)=f0_coll(:,i)-REAL(bvec_iter,dp)
              !! End Modification by Andreas F. Martitsch (17.07.2015)
           ENDDO
 !
@@ -3384,7 +3424,7 @@ rotfactor=imun*m_phi
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
           f0_ttmp(irow_ttmp(nz),:)=f0_ttmp(irow_ttmp(nz),:)+amat_ttmp(nz)  &
-               *REAL(source_vector_all(icol_ttmp(nz),1:3,ispecp))
+               *REAL(source_vector_all(icol_ttmp(nz),1:3,ispecp),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)
        ENDDO
        f0_ttmp_all(:,:,ispecp)=f0_ttmp(:,:)
@@ -3567,14 +3607,14 @@ RETURN
       ! fixed warning: Possible change of value in conversion
       ! from COMPLEX(8) to REAL(8)
       source_m(npass_l*m+1:npass_l*m+npass_l,kk) &
-          =REAL(source_vector(k+2*npass_l:k+npass_l+1:-1,kk))
+          =REAL(source_vector(k+2*npass_l:k+npass_l+1:-1,kk),dp)
       !! End Modification by Andreas F. Martitsch (17.07.2015) 
       k=ind_start(iend)+2*npass_r*m
       !! Modification by Andreas F. Martitsch (17.07.2015)
       ! fixed warning: Possible change of value in conversion
       ! from COMPLEX(8) to REAL(8)
       source_p(npass_r*m+1:npass_r*m+npass_r,kk) &
-          =REAL(source_vector(k+1:k+npass_r,kk))
+          =REAL(source_vector(k+1:k+npass_r,kk),dp)
       !! End Modification by Andreas F. Martitsch (17.07.2015)      
     ENDDO
   ENDDO
@@ -3643,7 +3683,7 @@ RETURN
         ! fixed warning: Possible change of value in conversion
         ! from COMPLEX(8) to REAL(8)
         amat_plus_plus(npass_r*mm+1:npass_r*mm+npass_r,npass_l*m+i)    &
-                     =REAL(bvec_sp(kk+1:kk+npass_r))
+                     =REAL(bvec_sp(kk+1:kk+npass_r),dp)
         !! End Modification by Andreas F. Martitsch (17.07.2015) 
       ENDDO
       DO mm=0,lag
@@ -3652,13 +3692,13 @@ RETURN
         ! fixed warning: Possible change of value in conversion
         ! from COMPLEX(8) to REAL(8)
         amat_plus_minus(npass_l*mm+1:npass_l*mm+npass_l,npass_l*m+i)   &
-                     =REAL(bvec_sp(kk+2*npass_l:kk+npass_l+1:-1))
+                     =REAL(bvec_sp(kk+2*npass_l:kk+npass_l+1:-1),dp)
         !! End Modification by Andreas F. Martitsch (17.07.2015) 
       ENDDO
       !! Modification by Andreas F. Martitsch (17.07.2015)
       ! fixed warning: Possible change of value in conversion
       ! from COMPLEX(8) to REAL(8)      
-      flux_p(:,npass_l*m+i)=REAL(MATMUL(flux_vector,bvec_sp(:)))
+      flux_p(:,npass_l*m+i)=REAL(MATMUL(flux_vector,bvec_sp(:)),dp)
       !! End Modification by Andreas F. Martitsch (17.07.2015)      
     ENDDO
   ENDDO
@@ -3688,7 +3728,7 @@ RETURN
         ! fixed warning: Possible change of value in conversion
         ! from COMPLEX(8) to REAL(8)
         amat_minus_plus(npass_r*mm+1:npass_r*mm+npass_r,npass_r*m+i)   &
-                     =REAL(bvec_sp(kk+1:kk+npass_r))
+                     =REAL(bvec_sp(kk+1:kk+npass_r),dp)
         !! End Modification by Andreas F. Martitsch (17.07.2015))  
       ENDDO
       DO mm=0,lag
@@ -3697,13 +3737,13 @@ RETURN
         ! fixed warning: Possible change of value in conversion
         ! from COMPLEX(8) to REAL(8)
         amat_minus_minus(npass_l*mm+1:npass_l*mm+npass_l,npass_r*m+i)  &
-                     =REAL(bvec_sp(kk+2*npass_l:kk+npass_l+1:-1))
+                     =REAL(bvec_sp(kk+2*npass_l:kk+npass_l+1:-1),dp)
         !! End Modification by Andreas F. Martitsch (17.07.2015))  
       ENDDO
       !! Modification by Andreas F. Martitsch (17.07.2015)
       ! fixed warning: Possible change of value in conversion
       ! from COMPLEX(8) to REAL(8) 
-      flux_m(:,npass_r*m+i)=REAL(MATMUL(flux_vector,bvec_sp(:)))
+      flux_m(:,npass_r*m+i)=REAL(MATMUL(flux_vector,bvec_sp(:)),dp)
       !! End Modification by Andreas F. Martitsch (17.07.2015))
     ENDDO
   ENDDO
@@ -3963,8 +4003,8 @@ PRINT *,' '
 !
       ! old behavior (for a single species):
       !fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector(:,4))
-      !  multi-species part (4th column is the same for all drives):
-      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector_all(:,4,ispec)) 
+      !  multi-species part :
+      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector_all(:,4,ispec))
 !
       DO k=1,3
 !
@@ -3982,10 +4022,13 @@ PRINT *,' '
         !  multi-species part:
         DO ispecp=0,num_spec-1
           PRINT *,'species',ispecp,':'
+          drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
                         source_vector_all(:,k,ispecp))
-          source_vector_all(:,k,ispecp)=&
-               source_vector_all(:,k,ispecp)+coefincompr*bvec_parflow
+          !IF(drive_spec .EQ. ispec) THEN
+             source_vector_all(:,k,ispecp)=&
+                  source_vector_all(:,k,ispecp)+coefincompr*bvec_parflow
+          !ENDIF
         ENDDO
         !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
@@ -4052,14 +4095,14 @@ PRINT *,' '
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8)
           fun_write(m,:,1,:)=REAL(MATMUL(derivs_plot(:,:,1,istep),             &
-                                  source_vector(k+1:k+4,1:3)))
+                                  source_vector(k+1:k+4,1:3)),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)  
           DO i=2,npassing+1
             !! Modification by Andreas F. Martitsch (17.07.2015)
             ! fixed warning: Possible change of value in conversion
             ! from COMPLEX(8) to REAL(8)
             fun_write(m,:,i,:)=REAL(MATMUL(derivs_plot(:,:,i,istep),           &
-                                    source_vector(k+i-1:k+i+2,1:3)))
+                                    source_vector(k+i-1:k+i+2,1:3)),dp)
             !! End Modification by Andreas F. Martitsch (17.07.2015) 
           ENDDO
         ENDDO
@@ -4074,14 +4117,14 @@ PRINT *,' '
           ! fixed warning: Possible change of value in conversion
           ! from COMPLEX(8) to REAL(8) 
           fun_write(m,:,1,:)=REAL(MATMUL(derivs_plot(:,:,1,istep),             &
-                                  source_vector(k:k-3:-1,1:3)))
+                                  source_vector(k:k-3:-1,1:3)),dp)
           !! End Modification by Andreas F. Martitsch (17.07.2015)  
           DO i=2,npassing+1
             !! Modification by Andreas F. Martitsch (17.07.2015)
             ! fixed warning: Possible change of value in conversion
             ! from COMPLEX(8) to REAL(8)
             fun_write(m,:,i,:)=REAL(MATMUL(derivs_plot(:,:,i,istep),           &
-                                    source_vector(k-i+2:k-i-1:-1,1:3)))
+                                    source_vector(k-i+2:k-i-1:-1,1:3)),dp)
             !! End Modification by Andreas F. Martitsch (17.07.2015)
           ENDDO
         ENDDO
@@ -4116,7 +4159,7 @@ PRINT *,' '
     ALLOCATE(qflux_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
     qflux_allspec=0.0d0
     DO ispecp=0,num_spec-1
-      qflux=0.5d0*REAL(MATMUL(CONJG(flux_vector),source_vector_all(:,1:3,ispecp)))
+      qflux=0.5d0*REAL(MATMUL(CONJG(flux_vector),source_vector_all(:,1:3,ispecp)),dp)
       qflux_allspec(:,:,ispecp,ispec)=qflux 
     ENDDO
     ! order of species inidices (ispecp,ispec) interchanged
@@ -4935,11 +4978,14 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
                     fnew,iopt)
 !
-  coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
   ! old behavior (for a single species):
+  !coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
   !fnew=fnew-coefincompr*source_vector(:,4)
   !  multi-species part (4th column is the same for all drives):
-  fnew=fnew-coefincompr*source_vector_all(:,4,ispec)
+  coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
+  !IF(drive_spec .EQ. ispec) THEN
+    fnew=fnew-coefincompr*source_vector_all(:,4,ispec)
+  !ENDIF
 !
   END SUBROUTINE next_iteration
 !
@@ -5216,6 +5262,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
 !  external :: next_iteration
   INTEGER                                       :: n,m,k,j,mmax,mbeg,ncount
+  INTEGER :: driv_spec
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
   DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
 !

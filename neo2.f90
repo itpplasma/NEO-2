@@ -46,7 +46,7 @@ PROGRAM neo2
        collop_load, collop_unload, z_eff, collop_path,              &
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
-       scalprod_beta, num_spec, conl_over_mfp_spec
+       scalprod_beta, num_spec, conl_over_mfp_spec, z_spec
   USE rkstep_mod, ONLY : lag,leg,legmax                            
       
   USE development, ONLY : solver_talk,switch_off_asymp, &
@@ -101,6 +101,7 @@ PROGRAM neo2
   ! multi-species part:
   ! -> read species-relevant info into a large array (allocatable not supported)
   REAL(kind=dp), DIMENSION(1000) :: conl_over_mfp_vec
+  REAL(kind=dp), DIMENSION(1000) :: z_vec
   !! End Modification by Andreas F. Martitsch (23.08.2015)  
   ! groups for namelist
   NAMELIST /settings/                                                         &
@@ -126,7 +127,7 @@ PROGRAM neo2
        isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &      
        !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta,       &
-       num_spec, conl_over_mfp_vec
+       num_spec, conl_over_mfp_vec, z_vec
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -230,6 +231,7 @@ PROGRAM neo2
   !  multi-species part
   num_spec = 1
   conl_over_mfp_vec = 0.0d0
+  z_vec = 0.0d0
   !! End Modification by Andreas F. Martitsch (25.08.2015)
   ! binsplit
   eta_s_lim = 1.2d0
@@ -345,7 +347,13 @@ PROGRAM neo2
   ALLOCATE(conl_over_mfp_spec(0:num_spec-1))
   conl_over_mfp_spec(0:num_spec-1)=conl_over_mfp_vec(1:num_spec)
   IF(num_spec .EQ. 1) conl_over_mfp_spec(0)=conl_over_mfp
+  !
+  IF(ALLOCATED(z_spec)) DEALLOCATE(z_spec)
+  ALLOCATE(z_spec(0:num_spec-1))
+  z_spec(0:num_spec-1)=z_vec(1:num_spec)
+  !
   !PRINT *,conl_over_mfp_spec
+  !PRINT *,z_spec
   !STOP
   !! End Modification by Andreas F. Martitsch (23.08.2015) 
 
