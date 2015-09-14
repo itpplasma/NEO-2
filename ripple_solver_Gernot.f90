@@ -883,7 +883,7 @@ PRINT *,'right boundary layer ignored'
   ALLOCATE(fact_pos_b(ibeg:iend),fact_neg_b(ibeg:iend))
   ALLOCATE(fact_pos_e(ibeg:iend),fact_neg_e(ibeg:iend))
 !
-  CALL rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
+  CALL rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,    &
                          phi_mfl,bhat_mfl,geodcu_mfl,h_phi_mfl,eta,  &
                          delt_pos,delt_neg,                          &
                          fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
@@ -3243,7 +3243,7 @@ END SUBROUTINE integral_part
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-SUBROUTINE rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
+SUBROUTINE rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,        &
                              phi_mfl,bhat_mfl,geodcu_mfl,h_phi_mfl,eta,  &
                              delt_pos,delt_neg,                          &
                              fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
@@ -3283,7 +3283,7 @@ SUBROUTINE rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: phi_new,bhat_new
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: geodcu_new,h_phi_new
 !
-  CALL fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
+  CALL fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
                                 phi_mfl,bhat_mfl,eta)
 !
   phi_divide=1
@@ -3558,11 +3558,11 @@ SUBROUTINE rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
   IF(ALLOCATED(icross_l)) DEALLOCATE(icross_l)
   IF(ALLOCATED(icross_r)) DEALLOCATE(icross_r)
 !
-END SUBROUTINE rearrange_phideps
+END SUBROUTINE rearrange_phideps_old
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-SUBROUTINE fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
+SUBROUTINE fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
                                     phi_mfl,bhat_mfl,eta)
 !
   USE device_mod
@@ -3740,4 +3740,4 @@ SUBROUTINE fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
     ENDIF
   ENDIF
 !
-END SUBROUTINE fix_phiplacement_problem
+END SUBROUTINE fix_phiplacement_problem_old
