@@ -4,11 +4,11 @@ module collop
   use hdf5_tools
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
-       m_ele, m_d, m_C, compute_collop_inf, C_m, compute_xmmp
+       m_ele, m_d, m_C, compute_collop_inf, C_m, compute_xmmp, nu_D_hat
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
-       v_max_resolution
+       v_max_resolution, v_min_resolution
 
   implicit none
   
@@ -95,7 +95,7 @@ module collop
       if(allocated(denmm_aa)) deallocate(denmm_aa)
       allocate(denmm_aa(0:lag,0:lag,0:num_spec-1,0:num_spec-1))
 
-      if(allocated(denmm_a)) deallocate(denmm_aa)
+      if(allocated(denmm_a)) deallocate(denmm_a)
       allocate(denmm_a(0:lag,0:lag,0:num_spec-1))
       
       if(allocated(asource)) deallocate(asource)
@@ -117,52 +117,22 @@ module collop
       allocate(anumm_inf(0:lag, 0:lag))
 
       if (Z_eff .ne. 0) then
-         
-         ! WINNY - for flint
-         ! without any formula at the moment
-         ! This 2.4 was anumm(1,1) 
-         collpar_max = collpar * sqrt(2.4d0)
-         ! I just used that collpar is proportional to 1/x with x = v/v_th
-         ! v_max_resolution can be set in neo2.in in section collisions
-         collpar_min = collpar_max / v_max_resolution**3
-
-!!$      if ( allocated(collision_sigma_multiplier) ) deallocate( collision_sigma_multiplier )
-
-!!$      ! same as before
-!!$      ALLOCATE(collision_sigma_multiplier(LBOUND(anumm_lag,1):UBOUND(anumm_lag,1)))      
-!!$      do k = LBOUND(anumm_lag,1),UBOUND(anumm_lag,1)
-!!$         collision_sigma_multiplier(k) = anumm_lag(k,k)
-!!$      end do
-
-!!$      ! start with 1
-!!$      ALLOCATE(collision_sigma_multiplier(LBOUND(anumm_lag,1):UBOUND(anumm_lag,1)+1))
-!!$      collision_sigma_multiplier(LBOUND(anumm_lag,1)) = 1.0d0
-!!$      do k = LBOUND(anumm_lag,1),UBOUND(anumm_lag,1)
-!!$         collision_sigma_multiplier(k+1) = anumm_lag(k,k)
-!!$      end do
-
-!!$      ! nothing to do with anumm_lag
-!!$      ALLOCATE(collision_sigma_multiplier(0:20))
-!!$      collision_sigma_multiplier(0) = 2.4 ! start value for lag   1.0d0
-!!$      do k = 1,UBOUND(collision_sigma_multiplier,1)
-!!$         collision_sigma_multiplier(k) = collision_sigma_multiplier(k-1)*1.618033988749895d0
-!!$      end do
-
-!!$         ! WINNY - for flint - end
-!!$         !**********************************************************
-!!$         ! Now compute collision operator with desired base
-!!$         !**********************************************************
-!!$         call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
-!!$
-!!$         !**********************************************************
-!!$         ! Compute sources
-!!$         !**********************************************************
-!!$         call compute_source(asource, weightlag)
-
          !**********************************************************
          ! Now compute collision operator with desired base
          !**********************************************************
          call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
+         
+         ! WINNY - for flint
+         ! without any formula at the moment
+         ! This 2.4 was anumm(1,1) 
+         ! collpar_max = collpar * sqrt(2.4d0)
+         ! I just used that collpar is proportional to 1/x with x = v/v_th
+         ! v_max_resolution can be set in neo2.in in section collisions
+         ! collpar_min = collpar_max / v_max_resolution**3
+
+         ! New version with deflection frequency
+         collpar_max = collpar * nu_D_hat(v_min_resolution)
+         collpar_min = collpar * nu_D_hat(v_max_resolution)
 
          !**********************************************************
          ! Compute sources

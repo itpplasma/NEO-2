@@ -52,7 +52,7 @@
     DOUBLE PRECISION, ALLOCATABLE, DIMENSION(:) :: vel_array
     !**********************************************************
     ! WINNY - for flint
-    DOUBLE PRECISION :: collpar_min,collpar_max,v_max_resolution
+    DOUBLE PRECISION :: collpar_min,collpar_max,v_min_resolution,v_max_resolution
     ! WINNY - for flint
     !**********************************************************
 
