@@ -19,7 +19,7 @@ PROGRAM neo2
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
-       nvel,vel_array,v_max_resolution
+       nvel,vel_array,v_max_resolution,v_min_resolution
   USE propagator_mod, ONLY : reconstruct_prop_dist,   &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -233,6 +233,7 @@ PROGRAM neo2
   scalprod_alpha = 0d0
   scalprod_beta  = 0d0
   conl_over_mfp = 1.0d-3
+  v_min_resolution = 0.5d0
   v_max_resolution = 5.0d0
   lag=10
   leg=20
@@ -934,8 +935,9 @@ CONTAINS
         call h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
         call h5_add(h5_config_group, 'collop_base_prj', collop_base_prj, 'Projection base of collision operator')
         call h5_add(h5_config_group, 'collop_base_exp', collop_base_exp, 'Expansion base of collision operator')
+        call h5_add(h5_config_group, 'v_min_resolution', v_min_resolution, 'Minimum velocity for level placement')
         call h5_add(h5_config_group, 'v_max_resolution', v_max_resolution, 'Maximum velocity for level placement')
-        CALL h5_close_group(h5_config_group)
+        call h5_close_group(h5_config_group)
 
         CALL h5_define_group(h5_config_id, 'binsplit', h5_config_group)
         CALL h5_add(h5_config_group, 'eta_s_lim', eta_s_lim)

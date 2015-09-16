@@ -333,6 +333,15 @@ contains
     y = (4*x**2*d_erf(x) - 4*x*erf(x) - 2*x**3*dd_erf(x))
     y = y / (2*x**2)**2
   end function d_G
+
+  function nu_D_hat(x) result(nu)
+    real(kind=dp) :: x, y, nu
+
+    ! At the momement only for self-collisions
+    y = x * 1d0
+    
+    nu = 3*sqrt(pi)/4d0 * (erf(y) - G(y))/(x**3)
+  end function nu_D_hat
   
   subroutine inv(A)
     real(dp), dimension(:,:) :: A
