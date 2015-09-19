@@ -31,6 +31,7 @@ SUBROUTINE join_ends(ierr)
   !**********************************************************
   ! Definition of base functions
   !**********************************************************
+  use rkstep_mod, only : lag
   use collop, only : collop_construct, collop_load
   use collop_compute, only : phi_exp, phi_prj
 !
@@ -73,24 +74,15 @@ SUBROUTINE join_ends(ierr)
   INTEGER :: ndupl,idupl
   DOUBLE PRECISION :: facnorm
 
- 
-  !**********************************************************
-  ! Demonstration for Sergei
-  !**********************************************************
   real(kind=dp) :: x, r
   integer       :: mp
 
-  call collop_construct
-  call collop_load
-  !nvel = lag            !?
+  if (prop_extrajoincondition) then
+     call collop_construct
+     call collop_load
+     nvel = lag
+  end if
   
-  mp = 1
-  x  = 0d0
-  r  = phi_exp(mp, x)
-  x  = v_max_resolution
-  r  = phi_exp(mp, x)
-  !**********************************************************
-  !
   !
   ! initialize
   ierr = 0
@@ -356,38 +348,39 @@ CLOSE(752)
 !!!!  amat(1,nts_l+1:nts_l+nr)=1.d0
 !!!!  bvec_lapack(1,:)=0.d0
 
-!**********************************************************
-! Deactivated additional conditions, 
-! because particle sink in ripple_solver is implemented
-!**********************************************************
-!!$  amat(nl,:)=amat(nl,:)-amat(nts_l+nr,:)
-!!$  bvec_lapack(nl,:)=bvec_lapack(nl,:)-bvec_lapack(nts_l+nr,:)
-!!$  amat(nts_l+nr,:)=0.d0
-!!$!
-!!$  x  = 0d0                                       !<=new
-!!$  DO m=0,nvel                                    !<=new
-!!$    r  = phi_exp(m, x)                           !<=new
-!!$    amat(nts_l+nr,nl*m+1:nl*m+nl)=r              !<=new
-!!$    amat(nts_l+nr,nts_l+nr*m+1:nts_l+nr*m+nr)=r  !<=new
-!!$  ENDDO                                          !<=new
-!!$!
-!!$  bvec_lapack(nts_l+nr,:)=0.d0
-!!$if(nvel.gt.0) then
-!!$  amat(2*nl,:)=amat(2*nl,:)-amat(nts_l+2*nr,:)
-!!$  bvec_lapack(2*nl,:)=bvec_lapack(2*nl,:)-bvec_lapack(nts_l+2*nr,:)
-!!$  amat(nts_l+2*nr,:)=0.d0
-!!$!
-!!$  x  = v_max_resolution                            !<=new
-!!$  DO m=0,nvel                                      !<=new
-!!$    r  = phi_exp(m, x)                             !<=new
-!!$    amat(nts_l+2*nr,nl*m+1:nl*m+nl)=r              !<=new
-!!$    amat(nts_l+2*nr,nts_l+nr*m+1:nts_l+nr*m+nr)=r  !<=new
-!!$  ENDDO                                            !<=new
-!!$!
-!!$  bvec_lapack(nts_l+2*nr,:)=0.d0
-!!$endif
-!*****************************************************************
-
+if (prop_extrajoincondition) then
+   !**********************************************************
+   ! Additional conditions: 
+   ! Should be deactivated if particle sink in ripple_solver is active
+   !**********************************************************
+   amat(nl,:)=amat(nl,:)-amat(nts_l+nr,:)
+   bvec_lapack(nl,:)=bvec_lapack(nl,:)-bvec_lapack(nts_l+nr,:)
+   amat(nts_l+nr,:)=0.d0
+   !
+   x  = 0d0                                       !<=new
+   do m=0,nvel                                    !<=new
+      r  = phi_exp(m, x)                           !<=new
+      amat(nts_l+nr,nl*m+1:nl*m+nl)=r              !<=new
+      amat(nts_l+nr,nts_l+nr*m+1:nts_l+nr*m+nr)=r  !<=new
+   enddo                                          !<=new
+   !
+   bvec_lapack(nts_l+nr,:)=0.d0
+   if(nvel.gt.0) then
+      amat(2*nl,:)=amat(2*nl,:)-amat(nts_l+2*nr,:)
+      bvec_lapack(2*nl,:)=bvec_lapack(2*nl,:)-bvec_lapack(nts_l+2*nr,:)
+      amat(nts_l+2*nr,:)=0.d0
+      !
+      x  = v_max_resolution                            !<=new
+      do m=0,nvel                                      !<=new
+         r  = phi_exp(m, x)                             !<=new
+         amat(nts_l+2*nr,nl*m+1:nl*m+nl)=r              !<=new
+         amat(nts_l+2*nr,nts_l+nr*m+1:nts_l+nr*m+nr)=r  !<=new
+      enddo                                            !<=new
+      !
+      bvec_lapack(nts_l+2*nr,:)=0.d0
+   endif
+   !*****************************************************************
+end if
 ! #if !defined(MPI_SUPPORT)
 OPEN(751,file='amat_after.dat')
 OPEN(752,file='bvec_after.dat')

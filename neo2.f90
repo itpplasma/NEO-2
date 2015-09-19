@@ -25,7 +25,8 @@ PROGRAM neo2
        prop_diagnostic,prop_binary,                                 &
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
-       prop_reconstruct_levels, prop_fileformat
+       prop_reconstruct_levels, prop_fileformat,                    &
+       prop_extrajoincondition
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk,mag_write_hdf5,   &
        h5_magnetics_file_name
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
@@ -45,7 +46,7 @@ PROGRAM neo2
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
        collop_load, collop_unload, z_eff, collop_path,              &
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta
-  USE rkstep_mod, ONLY : lag,leg,legmax
+  use rkstep_mod, only : lag,leg,legmax, epserr_sink
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
@@ -144,13 +145,14 @@ PROGRAM neo2
        solver_talk,switch_off_asymp,                                          &
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
-       sparse_talk,sparse_solve_method,mag_symmetric,mag_symmetric_shorten
+       sparse_talk,sparse_solve_method,mag_symmetric,mag_symmetric_shorten,   &
+       epserr_sink
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
        collop_path, collop_base_prj, collop_base_exp,                         &
-       scalprod_alpha, scalprod_beta, v_max_resolution
+       scalprod_alpha, scalprod_beta, v_min_resolution, v_max_resolution
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -173,7 +175,7 @@ PROGRAM neo2
        hphi_lim,                                                              &
        prop_write,prop_reconstruct,prop_ripple_plot,                          &
        prop_reconstruct_levels,                                               &
-       prop_fileformat
+       prop_fileformat, prop_extrajoincondition
   NAMELIST /plotting/                                                         &
        plot_gauss,plot_prop
   ! ---------------------------------------------------------------------------
@@ -225,7 +227,8 @@ PROGRAM neo2
   boozer_theta_beg = 0.0_dp
   boozer_phi_beg = 0.0_dp
   sparse_talk = .FALSE.
-!  sparse_solve_method = 0
+  epserr_sink = 0d0          ! Regularization
+  !  sparse_solve_method = 0
   ! collision
   collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
   collop_base_prj = 0
@@ -295,6 +298,7 @@ PROGRAM neo2
   prop_reconstruct = 0
   prop_ripple_plot = 0
   prop_reconstruct_levels = 0
+  prop_extrajoincondition = .TRUE.
   mag_talk = .TRUE.
   mag_infotalk = .TRUE.
   mag_write_hdf5 = .FALSE.

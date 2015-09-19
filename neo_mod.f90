@@ -87,7 +87,7 @@
     ! DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: collision_sigma_multiplier
     ! WINNY - for flint
     !**********************************************************
-    
+    DOUBLE PRECISION               :: epserr_sink   ! Regularization
     DOUBLE PRECISION, DIMENSION(3) :: fluxes
   END MODULE
 !
