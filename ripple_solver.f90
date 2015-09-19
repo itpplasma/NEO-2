@@ -206,6 +206,8 @@ SUBROUTINE ripple_solver(                                 &
   double precision, dimension(:,:,:,:), allocatable :: dentf_m_h5, enetf_m_h5, spitf_m_h5
   
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
+  double precision :: epserr_sink  !<=REGULARIZATION
+  epserr_sink = 1.d-2              !<=REGULARIZATION
   niter=100
   epserr_iter=1.d-5
 !
@@ -2038,7 +2040,8 @@ PRINT *,'right boundary layer ignored'
                 nz=nz+1
                 irow(nz)=k+ipart
                 icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)                         !<=REGULARIZATION
+                amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep)!<=REGULARIZATION
               enddo
             enddo
           enddo
@@ -2048,7 +2051,8 @@ PRINT *,'right boundary layer ignored'
               nz=nz+1
               irow(nz)=k+npassing+1
               icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
-              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &                !<=REGULARIZATION
+              amat_sp(nz)=0.5d0*(denmm(m,mm)-epserr_sink*anumm(m,mm))        &                 !<=REGULARIZATION
                          *rhs_mat_energ(kk,npassing+1,istep)
             enddo
           enddo
@@ -2058,7 +2062,8 @@ PRINT *,'right boundary layer ignored'
               nz=nz+1
               irow(nz)=k+npassing+1
               icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
-              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &                !<=REGULARIZATION
+              amat_sp(nz)=0.5d0*(denmm(m,mm)-epserr_sink*anumm(m,mm))        &                 !<=REGULARIZATION
                          *rhs_mat_energ(kk,npassing_prev+1,istep-1)
             enddo
           enddo
@@ -2217,7 +2222,8 @@ PRINT *,'right boundary layer ignored'
                 nz=nz+1
                 irow(nz)=k-ipart
                 icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)                         !<=REGULARIZATION
+                amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep)!<=REGULARIZATION
               enddo
             enddo
           enddo
@@ -2227,7 +2233,8 @@ PRINT *,'right boundary layer ignored'
               nz=nz+1
               irow(nz)=k-npassing-1
               icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
-              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &                !<=REGULARIZATION
+              amat_sp(nz)=0.5d0*(denmm(m,mm)-epserr_sink*anumm(m,mm))        &                 !<=REGULARIZATION
                          *rhs_mat_energ(kk,npassing+1,istep)
             enddo
           enddo
@@ -2237,7 +2244,8 @@ PRINT *,'right boundary layer ignored'
               nz=nz+1
               irow(nz)=k-npassing-1
               icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
-              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &                !<=REGULARIZATION
+              amat_sp(nz)=0.5d0*(denmm(m,mm)-epserr_sink*anumm(m,mm))        &                 !<=REGULARIZATION
                          *rhs_mat_energ(kk,npassing_prev+1,istep+1)
             enddo
           enddo
@@ -2314,6 +2322,7 @@ call cpu_time(time1)
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
+  	   !write (*,*) "Number of iterations: ", iter
           exit
         endif
      enddo
@@ -2618,6 +2627,7 @@ time3 = time3 + (time5-time4)
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
+   	     !write (*,*) "Number of iterations: ", iter
             exit
           endif
 !
@@ -2675,7 +2685,8 @@ time3 = time3 + (time5-time4)
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
-            exit
+             !write (*,*) "Number of iterations: ", iter
+             exit
           endif
 !
         enddo
