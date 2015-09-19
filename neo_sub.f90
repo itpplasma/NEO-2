@@ -1123,10 +1123,12 @@ SUBROUTINE neo_read
         
         extra_zero = .FALSE.
         extra_count = 0
-        DO j=1,mnmax
-           IF (j .GT. 1 .AND. ixm(j-1) .EQ. 0 .AND. ixn(j-1) .EQ. 0) THEN
-               extra_zero = .TRUE.
-           ENDIF
+        do j=1,mnmax
+           if (j .gt. 1) then
+              if (ixm(j-1) .eq. 0 .and. ixn(j-1) .eq. 0) then
+                 extra_zero = .true.
+              endif
+           end if
            IF (extra_zero) THEN
                extra_count =  extra_count + 1
                IF (extra_count .EQ. n0b) extra_zero = .FALSE.
