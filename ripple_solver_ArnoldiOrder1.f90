@@ -1536,6 +1536,13 @@ rotfactor=imun*m_phi
 !
   DEALLOCATE(amat,bvec_lapack,ipivot)
 !
+!! Modification by Andreas F. Martitsch (16.09.2015)
+! NEO-2 can treat now multiple species
+! (move collpar from pleg_bra to pleg_ket to avoid mixing up
+! of species-dependent parameters)
+  pleg_bra=pleg_bra/collpar
+  pleg_ket=pleg_ket*collpar
+!! End Modification by Andreas F. Martitsch (16.09.2015)  
 !
 ! Preparation of data for sparce solver
 !
@@ -3330,10 +3337,21 @@ rotfactor=imun*m_phi
           PRINT *,qflux_symm_allspec(1,1,0,1)
           PRINT *,'qflux(1,1,1,1):'
           PRINT *,qflux_symm_allspec(1,1,1,1)
+          ! D12
+          PRINT *,'qflux(1,3,0,0):'
+          PRINT *,qflux_symm_allspec(1,3,0,0)
+          PRINT *,'qflux(1,3,1,0):'
+          PRINT *,qflux_symm_allspec(1,3,1,0)
+          PRINT *,'qflux(1,3,0,1):'
+          PRINT *,qflux_symm_allspec(1,3,0,1)
+          PRINT *,'qflux(1,3,1,1):'
+          PRINT *,qflux_symm_allspec(1,3,1,1)
           OPEN(070915,file='qflux_symm_allspec.dat')
           WRITE(070915,*) boozer_s, collpar, &
                qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
-               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1)
+               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
+               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
+               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
           CLOSE(070915)
           !STOP
        END IF
@@ -3368,10 +3386,21 @@ rotfactor=imun*m_phi
           PRINT *,qflux_symm_allspec(1,1,0,1)
           PRINT *,'qflux(1,1,1,1):'
           PRINT *,qflux_symm_allspec(1,1,1,1)
+          ! D12
+          PRINT *,'qflux(1,3,0,0):'
+          PRINT *,qflux_symm_allspec(1,3,0,0)
+          PRINT *,'qflux(1,3,1,0):'
+          PRINT *,qflux_symm_allspec(1,3,1,0)
+          PRINT *,'qflux(1,3,0,1):'
+          PRINT *,qflux_symm_allspec(1,3,0,1)
+          PRINT *,'qflux(1,3,1,1):'
+          PRINT *,qflux_symm_allspec(1,3,1,1)
           OPEN(070915,file='qflux_symm_allspec.dat')
           WRITE(070915,*) boozer_s, collpar, &
                qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
-               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1)
+               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
+               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
+               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
           CLOSE(070915)
           !STOP
        END IF
@@ -4025,10 +4054,8 @@ PRINT *,' '
           drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
                         source_vector_all(:,k,ispecp))
-          !IF(drive_spec .EQ. ispec) THEN
              source_vector_all(:,k,ispecp)=&
                   source_vector_all(:,k,ispecp)+coefincompr*bvec_parflow
-          !ENDIF
         ENDDO
         !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
@@ -4983,9 +5010,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   !fnew=fnew-coefincompr*source_vector(:,4)
   !  multi-species part (4th column is the same for all drives):
   coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
-  !IF(drive_spec .EQ. ispec) THEN
-    fnew=fnew-coefincompr*source_vector_all(:,4,ispec)
-  !ENDIF
+  fnew=fnew-coefincompr*source_vector_all(:,4,ispec)
 !
   END SUBROUTINE next_iteration
 !
