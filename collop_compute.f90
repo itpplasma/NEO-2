@@ -646,7 +646,8 @@ contains
       real(kind=dp) :: x
       real(kind=dp) :: integrand
 
-      integrand = x**(3+alpha) * exp(-(beta + 1)*x**2) * exp(-(gamma_ab*x)**2) * phi_prj(m, x) * phi_exp(mp, x)
+!!$      integrand = x**(3+alpha) * exp(-(beta + 1)*x**2) * exp(-(gamma_ab*x)**2) * phi_prj(m, x) * phi_exp(mp, x)
+      integrand = x**(3+alpha) * exp(-(beta + 1)*x**2) * exp(-(gamma_ab*x)**2) * phi_prj(m, x) * phi_exp(mp, gamma_ab*x)
     end function int_I1_mmp_s
     
   end subroutine compute_I1_mmp_s
@@ -691,14 +692,16 @@ contains
       real(kind=dp) :: xp, yp, I_phi_1
 
       yp = gamma_ab * xp
-      I_phi_1 = exp(-yp**2) * phi_exp(mp, xp) * xp**(l+2)
+!!$      I_phi_1 = exp(-yp**2) * phi_exp(mp, xp) * xp**(l+2)
+      I_phi_1 = exp(-yp**2) * phi_exp(mp, yp) * xp**(l+2)
     end function I_phi_1
     
     function I_phi_2(xp)
       real(kind=dp) :: xp, yp, I_phi_2
 
       yp = gamma_ab * xp
-      I_phi_2 = exp(-yp**2) * phi_exp(mp, xp) * xp**(-l+1)
+!!$      I_phi_2 = exp(-yp**2) * phi_exp(mp, xp) * xp**(-l+1)
+      I_phi_2 = exp(-yp**2) * phi_exp(mp, yp) * xp**(-l+1)
     end function I_phi_2
     
   end subroutine compute_I2_mmp_s
@@ -745,14 +748,16 @@ contains
       real(kind=dp) :: xp, yp, I_phi_1
 
       yp = gamma_ab * xp
-      I_phi_1 = exp(-yp**2) * phi_exp(mp, xp) * xp**(l+2)
+!!$      I_phi_1 = exp(-yp**2) * phi_exp(mp, xp) * xp**(l+2)
+      I_phi_1 = exp(-yp**2) * phi_exp(mp, yp) * xp**(l+2)
     end function I_phi_1
     
     function I_phi_2(xp)
       real(kind=dp) :: xp, yp, I_phi_2
 
       yp = gamma_ab * xp
-      I_phi_2 = exp(-yp**2) * phi_exp(mp, xp) * xp**(-l+1)
+!!$      I_phi_2 = exp(-yp**2) * phi_exp(mp, xp) * xp**(-l+1)
+      I_phi_2 = exp(-yp**2) * phi_exp(mp, yp) * xp**(-l+1)
     end function I_phi_2
     
   end subroutine compute_I3_mmp_s
@@ -808,28 +813,32 @@ contains
       real(kind=dp) :: xp, yp, I_psi_1
       
       yp = gamma_ab * xp
-      I_psi_1 = xp**(l+4)*exp(-yp**2)*phi_exp(mp,xp)
+!!$      I_psi_1 = xp**(l+4)*exp(-yp**2)*phi_exp(mp,xp)
+      I_psi_1 = xp**(l+4)*exp(-yp**2)*phi_exp(mp,yp)
     end function I_psi_1
     
     function I_psi_2(xp)
       real(kind=dp) :: xp, yp, I_psi_2
 
       yp = gamma_ab * xp
-      I_psi_2 = xp**(l+2)*exp(-yp**2)*phi_exp(mp,xp)
+!!$      I_psi_2 = xp**(l+2)*exp(-yp**2)*phi_exp(mp,xp)
+      I_psi_2 = xp**(l+2)*exp(-yp**2)*phi_exp(mp,yp)
     end function I_psi_2
 
     function I_psi_3(xp)
       real(kind=dp) :: xp, yp, I_psi_3
 
       yp = gamma_ab * xp
-      I_psi_3 = xp**(-l+1)*exp(-yp**2)*phi_exp(mp,xp)
+!!$      I_psi_3 = xp**(-l+1)*exp(-yp**2)*phi_exp(mp,xp)
+      I_psi_3 = xp**(-l+1)*exp(-yp**2)*phi_exp(mp,yp)
     end function I_psi_3
     
     function I_psi_4(xp)
       real(kind=dp) :: xp, yp, I_psi_4
 
       yp = gamma_ab * xp
-      I_psi_4 = xp**(-l+3)*exp(-yp**2)*phi_exp(mp,xp)
+!!$      I_psi_4 = xp**(-l+3)*exp(-yp**2)*phi_exp(mp,xp)
+      I_psi_4 = xp**(-l+3)*exp(-yp**2)*phi_exp(mp,yp)
     end function I_psi_4
     
   end subroutine compute_I4_mmp_s
