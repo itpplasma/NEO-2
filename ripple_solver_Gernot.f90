@@ -1216,6 +1216,13 @@ PRINT *,'right boundary layer ignored'
 !
   DEALLOCATE(amat,bvec_lapack,ipivot)
 !
+!! Modification by Andreas F. Martitsch (16.09.2015)
+! NEO-2 can treat now multiple species
+! (move collpar from pleg_bra to pleg_ket to avoid mixing up
+! of species-dependent parameters)
+  pleg_bra=pleg_bra/collpar
+  pleg_ket=pleg_ket*collpar
+!! End Modification by Andreas F. Martitsch (16.09.2015)
 !
 ! Preparation of data for sparce solver
 !
@@ -2770,15 +2777,27 @@ IF(mpro%getrank() .EQ. 0) THEN
   PRINT *,qflux_allspec(1,1,0,1)
   PRINT *,'qflux(1,1,1,1):'
   PRINT *,qflux_allspec(1,1,1,1)
+  ! D12
+  PRINT *,'qflux(1,3,0,0):'
+  PRINT *,qflux_allspec(1,3,0,0)
+  PRINT *,'qflux(1,3,1,0):'
+  PRINT *,qflux_allspec(1,3,1,0)
+  PRINT *,'qflux(1,3,0,1):'
+  PRINT *,qflux_allspec(1,3,0,1)
+  PRINT *,'qflux(1,3,1,1):'
+  PRINT *,qflux_allspec(1,3,1,1)
   OPEN(070915,file='qflux_symm_allspec.dat')
   WRITE(070915,*) boozer_s, collpar, &
         qflux_allspec(1,1,0,0), qflux_allspec(1,1,1,0), &
-        qflux_allspec(1,1,0,1), qflux_allspec(1,1,1,1)
+        qflux_allspec(1,1,0,1), qflux_allspec(1,1,1,1), &
+        qflux_allspec(1,3,0,0), qflux_allspec(1,3,1,0), &
+        qflux_allspec(1,3,0,1), qflux_allspec(1,3,1,1)
   CLOSE(070915)
-  STOP
+  !STOP
 END IF
 !! End Modification by Andreas F. Martitsch (23.08.2015)
 CALL cpu_TIME(time2)
+RETURN
 !write (*,*) "Time in matmul(): ", time2-time1, iplot
 !call gemm(qflux, flux_vector, source_vector)
 !write (*,*) flux_vector
