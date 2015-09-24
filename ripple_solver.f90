@@ -169,9 +169,9 @@ SUBROUTINE ripple_solver(                                 &
 !
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
-  INTEGER :: iter,niter,nphiequi,npassing_next
+  INTEGER :: iter,nphiequi,npassing_next
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
-  DOUBLE PRECISION :: epserr_iter
+ ! DOUBLE PRECISION :: epserr_iter
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
@@ -208,9 +208,9 @@ SUBROUTINE ripple_solver(                                 &
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
   ! double precision :: epserr_sink  !<=REGULARIZATION
   ! epserr_sink = 1.d-2              !<=REGULARIZATION
-  niter=100
-  epserr_iter=1.d-5
-!
+  ! niter=100
+  ! epserr_iter=1.d-5
+  !
   !------------------------------------------------------------------------
   ! END SERGEI
   !------------------------------------------------------------------------

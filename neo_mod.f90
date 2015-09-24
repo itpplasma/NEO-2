@@ -88,7 +88,9 @@
     ! WINNY - for flint
     !**********************************************************
     DOUBLE PRECISION               :: epserr_sink   ! Regularization
-    DOUBLE PRECISION, DIMENSION(3) :: fluxes
+    double precision               :: epserr_iter
+    integer                        :: niter
+    double precision, dimension(3) :: fluxes
   END MODULE
 !
 MODULE development
