@@ -46,7 +46,8 @@ PROGRAM neo2
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
        collop_load, collop_unload, z_eff, collop_path,              &
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta
-  use rkstep_mod, only : lag,leg,legmax, epserr_sink
+  use rkstep_mod, only : lag,leg,legmax, epserr_sink, epserr_iter, &
+       niter
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
@@ -146,7 +147,7 @@ PROGRAM neo2
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method,mag_symmetric,mag_symmetric_shorten,   &
-       epserr_sink
+       epserr_sink, epserr_iter, niter
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
@@ -228,6 +229,8 @@ PROGRAM neo2
   boozer_phi_beg = 0.0_dp
   sparse_talk = .FALSE.
   epserr_sink = 0d0          ! Regularization
+  epserr_iter = 1d-3
+  niter = 10
   !  sparse_solve_method = 0
   ! collision
   collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
