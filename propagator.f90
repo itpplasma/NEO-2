@@ -147,7 +147,7 @@ MODULE propagator_mod
   ! new switch for reconstruction of levels
   INTEGER,            PUBLIC  :: prop_reconstruct_levels = 0
 
-  LOGICAL                     :: prop_extrajoincondition
+  INTEGER                     :: prop_finaljoin_mode = 0
   
   ! ***************************
   ! HDF5

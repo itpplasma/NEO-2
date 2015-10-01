@@ -26,7 +26,7 @@ PROGRAM neo2
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
        prop_reconstruct_levels, prop_fileformat,                    &
-       prop_extrajoincondition
+       prop_finaljoin_mode
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk,mag_write_hdf5,   &
        h5_magnetics_file_name
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
@@ -176,7 +176,7 @@ PROGRAM neo2
        hphi_lim,                                                              &
        prop_write,prop_reconstruct,prop_ripple_plot,                          &
        prop_reconstruct_levels,                                               &
-       prop_fileformat, prop_extrajoincondition
+       prop_fileformat, prop_finaljoin_mode
   NAMELIST /plotting/                                                         &
        plot_gauss,plot_prop
   ! ---------------------------------------------------------------------------
@@ -301,7 +301,7 @@ PROGRAM neo2
   prop_reconstruct = 0
   prop_ripple_plot = 0
   prop_reconstruct_levels = 0
-  prop_extrajoincondition = .TRUE.
+  prop_finaljoin_mode = 0
   mag_talk = .TRUE.
   mag_infotalk = .TRUE.
   mag_write_hdf5 = .FALSE.
