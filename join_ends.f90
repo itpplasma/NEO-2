@@ -77,12 +77,11 @@ SUBROUTINE join_ends(ierr)
   real(kind=dp) :: x, r
   integer       :: mp
 
-  if (prop_extrajoincondition) then
+  if (prop_finaljoin_mode .eq. 2) then
      call collop_construct
      call collop_load
      nvel = lag
   end if
-  
   !
   ! initialize
   ierr = 0
@@ -347,8 +346,37 @@ CLOSE(752)
 !!!!  amat(1,1:nl)=1.d0
 !!!!  amat(1,nts_l+1:nts_l+nr)=1.d0
 !!!!  bvec_lapack(1,:)=0.d0
-
-if (prop_extrajoincondition) then
+if (prop_finaljoin_mode .eq. 0) then
+   amat(nl,:)=amat(nl,:)-amat(nts_l+nr,:)
+   bvec_lapack(nl,:)=bvec_lapack(nl,:)-bvec_lapack(nts_l+nr,:)
+   !  amat(nts_l+nr,1:nl)=0.d0
+   amat(nts_l+nr,1:nl)=1.d0
+   amat(nts_l+nr,nts_l+1:nts_l+nr)=1.d0
+   bvec_lapack(nts_l+nr,:)=0.d0
+   if(nvel.gt.0) then
+      amat(2*nl,:)=amat(2*nl,:)-amat(nts_l+2*nr,:)
+      bvec_lapack(2*nl,:)=bvec_lapack(2*nl,:)-bvec_lapack(nts_l+2*nr,:)
+      !  amat(nts_l+2*nr,1:nl)=0.d0
+      amat(nts_l+2*nr,nl+1:2*nl)=1.d0
+      amat(nts_l+2*nr,nts_l+nr+1:nts_l+2*nr)=1.d0
+      bvec_lapack(nts_l+2*nr,:)=0.d0
+   endif
+elseif (prop_finaljoin_mode .eq. 1) then
+   amat(nl,:)=amat(nl,:)-amat(nts_l+nr,:)
+   bvec_lapack(nl,:)=bvec_lapack(nl,:)-bvec_lapack(nts_l+nr,:)
+   amat(nts_l+nr,:)=0.d0
+   amat(nts_l+nr,1:nl)=1.d0
+   amat(nts_l+nr,nts_l+1:nts_l+nr)=1.d0
+   bvec_lapack(nts_l+nr,:)=0.d0
+   if(nvel.gt.0) then
+      amat(2*nl,:)=amat(2*nl,:)-amat(nts_l+2*nr,:)
+      bvec_lapack(2*nl,:)=bvec_lapack(2*nl,:)-bvec_lapack(nts_l+2*nr,:)
+      amat(nts_l+2*nr,:)=0.d0
+      amat(nts_l+2*nr,nl+1:2*nl)=1.d0
+      amat(nts_l+2*nr,nts_l+nr+1:nts_l+2*nr)=1.d0
+      bvec_lapack(nts_l+2*nr,:)=0.d0
+   endif
+elseif (prop_finaljoin_mode .eq. 2) then
    !**********************************************************
    ! Additional conditions: 
    ! Should be deactivated if particle sink in ripple_solver is active
