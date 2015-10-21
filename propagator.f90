@@ -181,6 +181,7 @@ CONTAINS
        fac1=16.0_dp*rt0_in*aiota_loc_in/PI
        ! normalization factor from gamma matrices
        fac2= - beta_out_in(1) * beta_out_in(1) / y_in(6)
+       !PRINT *,fac1,fac2
        ! convert indices for the gamma matrices according 
        ! to the paper Kernbichler(2008)
        i_p = ind_map_in(1)
@@ -252,6 +253,14 @@ CONTAINS
     avbhat2=y_in(9)/y_in(6)
     avb2=avbhat2*((bmod0*1.0e4_dp)**2)
     avbhat=y_in(14)/y_in(13)
+    !
+    IF(ispec .EQ. 0) THEN
+       PRINT *,'avbhat: ',avbhat
+       PRINT *,'avnabpsi: ',avnabpsi_in
+       PRINT *,'$\int \rd s / B$: ',y_in(6)
+       PRINT *,'R: ',rt0_in
+       PRINT *,'q: ',1/aiota_loc_in
+    ENDIF
     !
     !PRINT *,'2'
     WRITE(ispec_str,'(I3.3)') ispec
