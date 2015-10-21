@@ -59,17 +59,27 @@ SUBROUTINE neo_init(npsi)
 ! Calculation of rt0 and bmref (innermost flux surface)
 ! might be changed later
 ! **********************************************************************
+  !! Modifications by Andreas F. Martitsch (18.09.2015)
+  !--> compute normalization Bref
+  ! old (Bref=B00 on innermost flux surface):
+!!$  rt0=0.0_dp
+!!$  bmref=0.0_dp
+!!$  DO imn=1,mnmax
+!!$     IF(ixm(imn).EQ.0 .AND. ixn(imn).EQ.0) THEN
+!!$        rt0 = rmnc(1,imn)
+!!$        bmref = bmnc(1,imn)
+!!$        
+!!$        rt0_g = rt0
+!!$        bmref_g = bmref
+!!$     ENDIF
+!!$  ENDDO
+  ! new (Bref set according to ref_swi):
   rt0=0.0_dp
   bmref=0.0_dp
-  DO imn=1,mnmax
-     IF(ixm(imn).EQ.0 .AND. ixn(imn).EQ.0) THEN
-        rt0 = rmnc(1,imn)
-        bmref = bmnc(1,imn)
-
-        rt0_g = rt0
-        bmref_g = bmref
-     ENDIF
-  ENDDO
+  CALL calc_Bref(bmref,rt0)
+  rt0_g = rt0
+  bmref_g = bmref
+  !! End Modifications by Andreas F. Martitsch (18.09.2015)
   IF(rt0.EQ.0.0_dp .OR. bmref.EQ.0.0_dp) THEN
     WRITE (w_us,*) ' NEO_INIT: Fatal problem setting rt0 or bmref'
     STOP
@@ -82,6 +92,55 @@ SUBROUTINE neo_init(npsi)
   RETURN
 END SUBROUTINE neo_init
 ! **********************************************************************
+
+!! Modifications by Andreas F. Martitsch (18.09.2015)
+! compute normalization Bref
+SUBROUTINE calc_Bref(bref,rmajor)
+  USE neo_precision
+  USE neo_control, ONLY: fluxs_interp, ref_swi, no_fluxs, fluxs_arr 
+  USE neo_input, ONLY: b00, bmnc, rmnc, ixm, ixn, mnmax
+  USE neo_actual_fluxs, ONLY: s_es, s_b00
+  IMPLICIT NONE
+  REAL(kind=dp), INTENT(out) :: bref, rmajor
+  INTEGER :: s_ind, imn
+  !
+  ! compute rmajor
+  rmajor=0.0_dp
+  DO imn=1,mnmax
+     IF(ixm(imn).EQ.0 .AND. ixn(imn).EQ.0) THEN
+        rmajor = rmnc(1,imn)
+     ENDIF
+  ENDDO
+  !
+  ! compute bref
+  bref=0.0_dp
+  IF (ref_swi .EQ. 1) THEN
+     bref=b00(1)
+  ELSEIF (ref_swi .EQ. 2) THEN
+     STOP "Switch ref_swi=2 not yet implemented!"
+  ELSEIF (ref_swi .EQ. 3) THEN
+     IF (fluxs_interp .NE. 0) THEN
+        CALL neo_get_b00
+        bref=s_b00
+        !PRINT *,s_es,s_b00
+        !STOP
+     ELSE
+        IF (no_fluxs .EQ. 1) THEN
+           s_ind=fluxs_arr(1)
+           bref=b00(s_ind)
+        ELSE
+           bref=b00(1)
+        END IF
+        !PRINT *,fluxs_arr
+        !PRINT *,bref
+        !STOP
+     ENDIF
+  ELSE
+     STOP "Please enter a valid number for ref_swi!"
+  ENDIF
+  !
+END SUBROUTINE calc_Bref
+!! End Modifications by Andreas F. Martitsch (18.09.2015)
 
 ! **********************************************************************
 SUBROUTINE neo_init_spline()

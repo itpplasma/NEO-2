@@ -80,9 +80,9 @@ module collop
       real(kind=dp), dimension(:), allocatable :: asource_temp
       real(kind=dp) :: alpha_temp, beta_temp
       integer       :: a,b
-      REAL(kind=dp) :: taa_ov_tab_temp
-      REAL(kind=dp) :: coll_a_temp, coll_b_temp
-      REAL(kind=dp) :: za_temp, zb_temp
+      real(kind=dp) :: taa_ov_tab_temp
+      real(kind=dp) :: coll_a_temp, coll_b_temp
+      real(kind=dp) :: za_temp, zb_temp
       
       if (z_eff .ne. 0 ) then
          write (*,*) "Standard mode."
@@ -191,25 +191,25 @@ module collop
          !**********************************************************
          call compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
               denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
-         !call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
-         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         !call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
-         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         !call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
-         call compute_collop('d', 'alp', m_d, m_alp, 1d0, 1d0, anumm_aa(:,:,0,1), &
+         call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
               denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         call compute_collop('alp', 'alp', m_alp, m_alp, 1d0, 1d0, anumm_aa(:,:,1,1), &
+         call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
               denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         call compute_collop('alp', 'd', m_alp, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+         call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
               denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+         !call compute_collop('d', 'alp', m_d, m_alp, 1d0, 1d0, anumm_aa(:,:,0,1), &
+         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+         !call compute_collop('alp', 'alp', m_alp, m_alp, 1d0, 1d0, anumm_aa(:,:,1,1), &
+         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+         !call compute_collop('alp', 'd', m_alp, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
          
          !**********************************************************
          ! Sum up matrices
          !**********************************************************
          anumm_a = 0d0
          denmm_a = 0d0
-         DO a = 0, num_spec-1
+         do a = 0, num_spec-1
             coll_a_temp = conl_over_mfp_spec(a)
             za_temp = z_spec(a)
             do b = 0, num_spec-1
@@ -220,6 +220,9 @@ module collop
                ! --> should be replaced by the definition via densities!!! 
                taa_ov_tab_temp = &
                     (coll_b_temp/coll_a_temp) * ((za_temp/zb_temp)**2)
+               !PRINT *,'taa_ov_tab: ',a,b,taa_ov_tab_temp
+               !PRINT *,coll_a_temp,coll_b_temp
+               !PRINT *,za_temp,zb_temp
                anumm_a(:,:,a) = &
                     anumm_a(:,:,a) + anumm_aa(:,:,a,b) * taa_ov_tab_temp
                denmm_a(:,:,a) = &

@@ -1687,6 +1687,11 @@ CONTAINS
     USE neo_magfie_mod, ONLY: magfie_result,magfie_spline,magfie_sarray
     USE magfie_mod, ONLY : stevvo
     USE field_eq_mod, ONLY : rtf
+    !! Modifications by Andreas F. Martitsch (18.09.2015)
+    ! Used within neo_get_b00 (neo_sub.f90/Boozer coordinates)
+    ! to obtain the normalization of the magnetic field (Bref=B_00(s))
+    USE neo_actual_fluxs, ONLY: s_es
+    !! End Modifications by Andreas F. Martitsch (18.09.2015)
     CHARACTER(len=*),    INTENT(in), OPTIONAL :: name
     ! stevvo related stuff
     REAL(kind=dp) :: r0i,cbfi,bz0i,bf0
@@ -1734,6 +1739,11 @@ CONTAINS
        magfie_spline = 1
        ALLOCATE(magfie_sarray(1))
        magfie_sarray = boozer_s
+       !! Modifications by Andreas F. Martitsch (18.09.2015)
+       ! Used within neo_get_b00 (neo_sub.f90/Boozer coordinates)
+       ! to obtain the normalization of the magnetic field (Bref=B_00(s))
+       s_es = boozer_s
+       !! End Modifications by Andreas F. Martitsch (18.09.2015)
        CALL stevvo(device%r0,r0i,device%nfp,cbfi,bz0i,bf0)
        device%z0  = 0.0_dp
        boozer_bmod0 = bf0
