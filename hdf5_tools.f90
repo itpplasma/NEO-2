@@ -54,6 +54,7 @@ module hdf5_tools
      module procedure h5_get_double_0
      module procedure h5_get_double_1
      module procedure h5_get_double_2
+     module procedure h5_get_double_3
      module procedure h5_get_double_4
      module procedure h5_get_double_4_hyperslab
   end interface h5_get
@@ -338,7 +339,7 @@ contains
     call h5screate_simple_f(rank, dims, dspaceid, h5error, maxdims)
     call h5pcreate_f(H5P_DATASET_CREATE_F, crp_list, h5error)
     call h5pset_chunk_f(crp_list, rank, dims, h5error)
-    CALL h5dcreate_f(h5id, dataset, datatype, dspaceid, &
+    call h5dcreate_f(h5id, dataset, datatype, dspaceid, &
          dsetid, h5error, crp_list )
     call h5sclose_f(dspaceid, h5error)
     call h5pclose_f(crp_list, h5error)
@@ -809,7 +810,7 @@ contains
   !**********************************************************
   ! Get double matrix
   !**********************************************************
-   subroutine h5_get_double_2(h5id, dataset, value)
+  subroutine h5_get_double_2(h5id, dataset, value)
     integer(HID_T)                    :: h5id
     character(len=*)                  :: dataset
     double precision, dimension(:,:)  :: value
@@ -818,10 +819,28 @@ contains
 
     call h5_get_bounds(h5id, dataset, lb1, lb2, ub1, ub2)
     dims = (/ub1-lb1+1, ub2-lb2+1/)
+    !PRINT *,dims
     call h5ltread_dataset_double_f(h5id, dataset, value, dims, h5error)
 
     call h5_check()
   end subroutine h5_get_double_2
+
+  !**********************************************************
+  ! Get double 3-dim-matrix
+  !**********************************************************
+  subroutine h5_get_double_3(h5id, dataset, value)
+    integer(HID_T)                        :: h5id
+    character(len=*)                      :: dataset
+    double precision, dimension(:,:,:)    :: value
+    integer(HSIZE_T), dimension(3)        :: dims
+
+    dims = shape(value)
+    call h5ltread_dataset_double_f(h5id, dataset, value, dims, h5error)
+
+    !PRINT *,dims(1),dims(2),dims(3)
+
+    call h5_check()
+  end subroutine h5_get_double_3
 
   !**********************************************************
   ! Get double 4-dim-matrix

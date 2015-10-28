@@ -231,7 +231,7 @@ PROGRAM neo2
   !  multi-species part
   num_spec = 1
   conl_over_mfp_vec = 0.0d0
-  z_vec = 0.0d0
+  z_vec = 1.0d0
   !! End Modification by Andreas F. Martitsch (25.08.2015)
   ! binsplit
   eta_s_lim = 1.2d0
@@ -297,36 +297,43 @@ PROGRAM neo2
   
   ! reading
   DO jf = 1,SIZE(fnames)
+     IF(jf .EQ. 1) CYCLE ! skip neo2.def (Andreas F. Martitsch - 21.10.2015)
      OPEN(unit=u1,file=fnames(jf),status='old',iostat=ios)
      IF (ios .NE. 0) THEN
         PRINT *, 'WARNING: File ',fnames(jf),' cannot be OPENED!'
         PRINT *, ''
+        STOP
      ELSE
         ! Read variables from group settings
         READ(u1,nml=settings,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group settings in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
         READ(u1,nml=collision,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group collision in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
         READ(u1,nml=binsplit,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group binsplit in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
         READ(u1,nml=propagator,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group propagator in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
         READ(u1,nml=plotting,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group plotting in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
         !! Modification by Andreas F. Martitsch (17.07.2014)
         ! ntv_input
@@ -334,6 +341,7 @@ PROGRAM neo2
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group ntv_input in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
         !! End Modification by Andreas F. Martitsch (17.07.2014)
      END IF

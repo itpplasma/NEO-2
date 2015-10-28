@@ -323,7 +323,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
 !
   niter=100       !maximum number of integral part iterations
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
-  n_arnoldi=100      !maximum number of Arnoldi iterations
+  n_arnoldi=50     !maximum number of Arnoldi iterations
   isw_regper=1       !regulariization by periodic boundary condition
   epserr_sink=0.d0 !1.d-12 !sink for regularization, it is equal to
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where

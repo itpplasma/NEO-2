@@ -437,7 +437,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
        isw_momentum
        !vel_distri_swi,vel_num,vel_max,nvel,vel_array
 
-  USE rkstep_mod, ONLY : lag, anumm
+  USE rkstep_mod, ONLY : lag, anumm => anumm_lag
   USE collisionality_mod, ONLY : collpar
   !
   ! types and routines for splitting
@@ -815,8 +815,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      !**********************************************************
      ! anumm is now a pointer for the multispecies version
      !**********************************************************
-     ! IF (.NOT. ALLOCATED(anumm)) ALLOCATE(anumm(0:0,0:0))
-     IF (.NOT. ASSOCIATED(anumm)) ALLOCATE(anumm(0:0,0:0))
+     IF (.NOT. ALLOCATED(anumm)) ALLOCATE(anumm(0:0,0:0))
+     !IF (.NOT. ASSOCIATED(anumm)) ALLOCATE(anumm(0:0,0:0))
      anumm(0,0) = 1.0_dp
   ELSE
      lag_sigma = lag
