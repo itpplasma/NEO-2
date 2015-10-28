@@ -80,8 +80,8 @@ set(NEO2_SRC_FILES
 ###	./compute_resonance_conditions.f90
 	./neo_magfie_perturbation.f90
 	./collop_definitions.f90
+	./hdf5_tools.f90     # Is now a library
 	./collop_compute.f90
-#	./hdf5_tools.f90     # Is now a library
         ./neo2.f90
 	./collop_laguerre.f90
 	./collop_polynomial.f90

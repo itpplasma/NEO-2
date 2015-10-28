@@ -4,7 +4,8 @@ module collop
   use hdf5_tools
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
-       m_ele, m_d, m_C, m_alp, compute_collop_inf, compute_xmmp
+       m_ele, m_d, m_C, m_alp, compute_collop_inf, compute_xmmp, &
+       compute_collop_lorentz
   use mpiprovider_module
   use collisionality_mod, only : collpar, conl_over_mfp
   use device_mod, only : device
@@ -89,7 +90,7 @@ module collop
          num_spec = 1
       else
          write (*,*) "Test mode for two species."
-         num_spec = 2
+         num_spec = 1
       end if
       
       !**********************************************************
@@ -170,6 +171,15 @@ module collop
       else
 
          write (*,*) "Multispecies test mode."
+
+         !**********************************************************
+         ! Compute collision operator with Laguerre base for
+         ! eta-level positioning of flint
+         !**********************************************************
+         call init_collop(0, 0, 0d0, 0d0)
+         call compute_source(asource, weightlag)
+         call compute_collop_lorentz('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0))
+         anumm_lag(:,:) = anumm_aa(:,:,0,0)
          
          !**********************************************************
          ! Now compute collision operator with desired base
@@ -191,12 +201,12 @@ module collop
          !**********************************************************
          call compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
               denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
-         call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
-              denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
-              denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-              denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+         !call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
+         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+         !call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
+         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+         !call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
          !call compute_collop('d', 'alp', m_d, m_alp, 1d0, 1d0, anumm_aa(:,:,0,1), &
          !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
          !call compute_collop('alp', 'alp', m_alp, m_alp, 1d0, 1d0, anumm_aa(:,:,1,1), &
@@ -209,6 +219,8 @@ module collop
          !**********************************************************
          anumm_a = 0d0
          denmm_a = 0d0
+         !PRINT *,num_spec
+         !STOP
          do a = 0, num_spec-1
             coll_a_temp = conl_over_mfp_spec(a)
             za_temp = z_spec(a)

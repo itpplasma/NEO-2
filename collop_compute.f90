@@ -71,6 +71,23 @@ module collop_compute
   integer       :: sw_qag_rule = 2
   !real(kind=dp) :: x_max    = 20
 
+  !**********************************************************
+  ! Pre-computed matrix elements
+  !**********************************************************
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax6.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax6.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax4.h5'
+  character(len=100) :: matelem_name='MatElem_aa_hatfun_lag7_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax3.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag7_xmax3.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax3.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax2.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag7_xmax2.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax2.h5'
+  integer(HID_T) :: h5id_matelem
+  logical :: precomp=.false.
+
   interface chop
      module procedure chop_0
      module procedure chop_1
@@ -154,6 +171,9 @@ contains
        phi_prj      => phi_polynomial_3
        d_phi_prj    => d_phi_polynomial_3
        dd_phi_prj   => dd_phi_polynomial_3
+    elseif (collop_base_prj .eq. 10) then
+       write (*,*) "Using hat functions as collision operator projection base."
+       precomp=.true.
     else
        write (*,*) "Undefined collision operator projection base ", collop_base_prj
        stop
@@ -183,6 +203,8 @@ contains
        phi_exp      => phi_polynomial_3
        d_phi_exp    => d_phi_polynomial_3
        dd_phi_exp   => dd_phi_polynomial_3
+    elseif (collop_base_exp .eq. 10) then
+       write (*,*) "Using hat functions as collision operator expansion base."
     else
        write (*,*) "Undefined collision operator expansion base ", collop_base_exp
        stop
@@ -359,13 +381,23 @@ contains
     integer :: mm, mp
 
     write (*,*) "Computing phi transformation matrix..."
-    
-    do mm = 0, lagmax
-       do mp = 0, lagmax
-          res_int = fint1d_qagiu(phim_phimp, 0d0, epsabs, epsrel)
-          Minv(mm+1,mp+1) = res_int(1)
+
+    if (precomp) then ! load pre-computed M_transform
+       call h5_open(trim(adjustl(matelem_name)), h5id_matelem)
+       call h5_get(h5id_matelem,'Ammp',Minv)
+       call h5_close(h5id_matelem)
+       !DO mm=1,SIZE(Minv,1)
+       !   PRINT *,(Minv(mm,mp),mp=1,SIZE(Minv,2))
+       !END DO
+       !STOP
+    else
+       do mm = 0, lagmax
+          do mp = 0, lagmax
+             res_int = fint1d_qagiu(phim_phimp, 0d0, epsabs, epsrel)
+             Minv(mm+1,mp+1) = res_int(1)
+          end do
        end do
-    end do
+    end if
 
     M_transform = Minv
 
@@ -392,28 +424,56 @@ contains
     !if (allocated(asource_s)) deallocate(asource_s)
     !allocate(asource_s(0:lagmax, 1:3))
     !write (*,*) lbound(asource_s), ubound(asource_s)
-    
-    do k = 1, 3
-       do m = 0, lagmax
-          res_int = fint1d_qagiu(am, 0d0, epsabs, epsrel)
-          asource_s(m+1, k) = res_int(1)
+
+    if (precomp) then ! load pre-computed sources
+       call h5_open(trim(adjustl(matelem_name)), h5id_matelem)
+       call h5_get(h5id_matelem,'a1m',asource_s(:,1))
+       call h5_get(h5id_matelem,'a2m',asource_s(:,2))
+       call h5_get(h5id_matelem,'a3m',asource_s(:,3))
+       call h5_close(h5id_matelem)
+       !do m=1,size(asource_s,1)
+       !   print *,asource_s(m,1),asource_s(m,2),asource_s(m,3)
+       !end do
+       !stop
+    else
+       do k = 1, 3
+          do m = 0, lagmax
+             res_int = fint1d_qagiu(am, 0d0, epsabs, epsrel)
+             asource_s(m+1, k) = res_int(1)
+          end do
        end do
+    end if 
+
+    do k = 1, 3
        asource_s(:,k) = matmul(M_transform_inv, asource_s(:,k))
     end do
 
     call chop(asource_s)
-   !write (*,*) "Done."
+    !write (*,*) "Done."
+    
     write (*,*) "Computing weighting coefficients..."
 
-    do j = 1, 3
-       do m = 0, lagmax
-          !write (*,*) j, m, lbound(weightlag_s), ubound(weightlag_s)
-          res_int = fint1d_qagiu(bm, 0d0, epsabs, epsrel)
-          weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int(1)
+    if (precomp) then ! load pre-computed weighting coefficients
+       call h5_open(trim(adjustl(matelem_name)), h5id_matelem)
+       call h5_get(h5id_matelem,'b1m',weightlag_s(1,:))
+       call h5_get(h5id_matelem,'b2m',weightlag_s(2,:))
+       call h5_get(h5id_matelem,'b3m',weightlag_s(3,:))
+       call h5_close(h5id_matelem)
+       !do m=1,size(weightlag_s,2)
+       !   PRINT *,weightlag_s(1,m),weightlag_s(2,m),weightlag_s(3,m)
+       !end do
+       !stop
+    else
+       do j = 1, 3
+          do m = 0, lagmax
+             !write (*,*) j, m, lbound(weightlag_s), ubound(weightlag_s)
+             res_int = fint1d_qagiu(bm, 0d0, epsabs, epsrel)
+             weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int(1)
+          end do
        end do
-    end do
+    end if
+
     call chop(weightlag_s)
-    
     !write (*,*) "Done."
 
     contains
@@ -447,16 +507,31 @@ contains
 
       write(*,*) "Computing x1mm and x2mm ..."
 
-      cnorm=1.d0/(pi*sqrt(pi))
+      if (precomp) then ! load pre-computed x1mm / x2mm
+         call h5_open(trim(adjustl(matelem_name)), h5id_matelem)
+         call h5_get(h5id_matelem,'x1mmp',x1mm_s(:,:))
+         call h5_get(h5id_matelem,'x2mmp',x2mm_s(:,:))
+         call h5_close(h5id_matelem)
+         !do m=1,size(x1mm_s,1)
+         !   print *,(x1mm_s(m,mp),mp=1,size(x1mm_s,2))
+         !end do
+         !print *,' '
+         !do m=1,size(x2mm_s,1)
+         !   print *,(x2mm_s(m,mp),mp=1,size(x2mm_s,2))
+         !end do
+         !stop
+      else
+         cnorm=1.d0/(pi*sqrt(pi))
 
-      do m = 0, lagmax
-         do mp = 0, lagmax
-            res_int = fint1d_qagiu(integrand_x1mmp, 0d0, epsabs, epsrel)
-            x1mm_s(m+1, mp+1) = cnorm * res_int(1)
-            res_int = fint1d_qagiu(integrand_x2mmp, 0d0, epsabs, epsrel)
-            x2mm_s(m+1, mp+1) = cnorm * res_int(1)
+         do m = 0, lagmax
+            do mp = 0, lagmax
+               res_int = fint1d_qagiu(integrand_x1mmp, 0d0, epsabs, epsrel)
+               x1mm_s(m+1, mp+1) = cnorm * res_int(1)
+               res_int = fint1d_qagiu(integrand_x2mmp, 0d0, epsabs, epsrel)
+               x2mm_s(m+1, mp+1) = cnorm * res_int(1)
+            end do
          end do
-      end do
+      end if
 
       x1mm_s = matmul(M_transform_inv, x1mm_s)
       call chop(x1mm_s)
@@ -495,12 +570,22 @@ contains
 
       write (*,*) "Computing Lorentz part..."
 
-      do m = 0, lagmax
-         do mp = 0, lagmax
-            res_int = fint1d_qagiu(integrand, 0d0, epsabs, epsrel)
-            anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * res_int(1)
+      if (precomp) then ! load pre-computed Lorentz part
+         call h5_open(trim(adjustl(matelem_name)), h5id_matelem)
+         call h5_get(h5id_matelem,'NuabHat',anumm_s(:,:))
+         call h5_close(h5id_matelem)
+         !do m=1,size(anumm_s,1)
+         !   print *,(anumm_s(m,mp),mp=1,size(anumm_s,2))
+         !end do
+         !stop
+      else
+         do m = 0, lagmax
+            do mp = 0, lagmax
+               res_int = fint1d_qagiu(integrand, 0d0, epsabs, epsrel)
+               anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * res_int(1)
+            end do
          end do
-      end do
+      end if
 
       anumm_s = matmul(M_transform_inv, anumm_s)
       call chop(anumm_s)
@@ -563,17 +648,27 @@ contains
     !allocate(denmm_s(0:lagmax, 0:lagmax))
 
     write (*,*) "Computing energy scattering part..."
-    
-    do m = 0, lagmax
-       do mp = 0, lagmax
-          res_int = fint1d_qagiu(integrand, 0d0, epsabs, epsrel)
-          !res_int = fint1d_qag(integrand, 0d0, 100d0, epsabs, epsrel, 2)       
-          denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * res_int(1)
 
-          !write (*,*) "denmm_s", m, mp, integrand(2d0), denmm_s(m, mp)
-          !write (*,*) G(2d0), d_G(2d0), gamma_ab, phi(m, 2d0), d_phi(m, 2d0), dd_phi(m,2d0)
+    if (precomp) then ! load pre-computed energy scattering part
+       call h5_open(trim(adjustl(matelem_name)), h5id_matelem)
+       call h5_get(h5id_matelem,'DabHat',denmm_s(:,:))
+       call h5_close(h5id_matelem)
+       !do m=1,size(denmm_s,1)
+       !   print *,(denmm_s(m,mp),mp=1,size(denmm_s,2))
+       !end do
+       !stop
+    else
+       do m = 0, lagmax
+          do mp = 0, lagmax
+             res_int = fint1d_qagiu(integrand, 0d0, epsabs, epsrel)
+             !res_int = fint1d_qag(integrand, 0d0, 100d0, epsabs, epsrel, 2)       
+             denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * res_int(1)
+
+             !write (*,*) "denmm_s", m, mp, integrand(2d0), denmm_s(m, mp)
+             !write (*,*) G(2d0), d_G(2d0), gamma_ab, phi(m, 2d0), d_phi(m, 2d0), dd_phi(m,2d0)
+          end do
        end do
-    end do
+    end if
 
     denmm_s = matmul(M_transform_inv, denmm_s)
     call chop(denmm_s)
@@ -600,15 +695,48 @@ contains
 
   subroutine compute_integralpart(ailmm_s)
     real(kind=dp), dimension(:,:,:) :: ailmm_s
-    integer                         :: l
+    integer                         :: l, m, mp
 
     write (*,*) "Computing momentum conservation part..."
 
-    call compute_I1_mmp_s()
-    call compute_I2_mmp_s()
-    call compute_I3_mmp_s()
-    call compute_I4_mmp_s()
-    
+    if (precomp) then ! load pre-computed momentum conservation part
+       call h5_open(trim(adjustl(matelem_name)), h5id_matelem)
+       if (allocated(I1_mmp_s)) deallocate(I1_mmp_s) ! I1_mmp
+       allocate(I1_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
+       call h5_get(h5id_matelem,'Immp1',I1_mmp_s(:,:,:))
+       if (allocated(I2_mmp_s)) deallocate(I2_mmp_s) ! I2_mmp
+       allocate(I2_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
+       call h5_get(h5id_matelem,'Immp2',I2_mmp_s(:,:,:))
+       if (allocated(I3_mmp_s)) deallocate(I3_mmp_s) ! I3_mmp
+       allocate(I3_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
+       call h5_get(h5id_matelem,'Immp3',I3_mmp_s(:,:,:))
+       if (allocated(I4_mmp_s)) deallocate(I4_mmp_s) ! I4_mmp
+       allocate(I4_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
+       call h5_get(h5id_matelem,'Immp4',I4_mmp_s(:,:,:))
+       call h5_close(h5id_matelem)
+       !do m=1,size(I1_mmp_s,1)
+       !   print *,(I1_mmp_s(m-1,mp-1,5),mp=1,size(I1_mmp_s,2))
+       !end do
+       !print *,' '
+       !do m=1,size(I2_mmp_s,1)
+       !   print *,(I2_mmp_s(m-1,mp-1,5),mp=1,size(I2_mmp_s,2))
+       !end do
+       !print *,' '
+       !do m=1,size(I3_mmp_s,1)
+       !   print *,(I3_mmp_s(m-1,mp-1,5),mp=1,size(I3_mmp_s,2))
+       !end do
+       !print *,' '
+       !do m=1,size(I4_mmp_s,1)
+       !   print *,(I4_mmp_s(m-1,mp-1,5),mp=1,size(I4_mmp_s,2))
+       !end do
+       !stop
+    else
+       call compute_I1_mmp_s()
+       call compute_I2_mmp_s()
+       call compute_I3_mmp_s()
+       call compute_I4_mmp_s()
+    end if
+
     !if (allocated(ailmm_s)) deallocate(ailmm_s)
     !allocate(ailmm_s(0:lagmax, 0:lagmax, 0:legmax))
 
@@ -901,4 +1029,24 @@ contains
 
   end subroutine compute_collop_inf
 
+  SUBROUTINE compute_collop_lorentz(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, anumm_s)
+    character(len=*) :: tag_a, tag_b
+    real(kind=dp)    :: m_a0, m_b0
+    real(kind=dp)    :: T_a0, T_b0
+    real(kind=dp), dimension(:,:)   :: anumm_s
+
+    m_a = m_a0
+    m_b = m_b0
+    T_a = T_a0
+    T_b = T_b0
+
+    v_ta = sqrt(2*T_a / m_a)
+    v_tb = sqrt(2*T_b / m_b)
+    gamma_ab = v_ta/v_tb
+    write (*,'(A,A,A,A,A,1E13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
+
+    call compute_lorentz(anumm_s)
+
+  END SUBROUTINE compute_collop_lorentz
+  
 end module collop_compute
