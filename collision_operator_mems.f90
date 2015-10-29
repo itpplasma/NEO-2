@@ -96,6 +96,9 @@ module collop
       !**********************************************************
       ! Allocation of matrices
       !**********************************************************
+      if(allocated(Amm)) deallocate(Amm)
+      allocate(Amm(0:lag,0:lag))
+
       if(allocated(anumm_aa)) deallocate(anumm_aa)
       allocate(anumm_aa(0:lag,0:lag,0:num_spec-1,0:num_spec-1))
 
@@ -124,7 +127,7 @@ module collop
       allocate(ailmm_aa(0:lag,0:lag,0:leg,0:num_spec-1,0:num_spec-1))
       
       if(allocated(weightlag)) deallocate(weightlag)
-      allocate(weightlag(3,0:lag))
+      allocate(weightlag(4,0:lag)) ! includes now weightlag for bvec_parflow (4th entry)
 
       if (allocated(anumm_inf)) deallocate(anumm_inf)
       allocate(anumm_inf(0:lag, 0:lag))
@@ -136,7 +139,7 @@ module collop
          ! eta-level positioning of flint
          !**********************************************************
          call init_collop(0, 0, 0d0, 0d0)
-         call compute_source(asource, weightlag)
+         call compute_source(asource, weightlag, Amm)
          call compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
               denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
          anumm_lag(:,:) = anumm_aa(:,:,0,0) + z_eff * anumm_inf(:,:)
@@ -149,7 +152,7 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         call compute_source(asource, weightlag)
+         call compute_source(asource, weightlag, Amm)
 
          !**********************************************************
          ! Compute x1mm and x2mm
@@ -177,7 +180,7 @@ module collop
          ! eta-level positioning of flint
          !**********************************************************
          call init_collop(0, 0, 0d0, 0d0)
-         call compute_source(asource, weightlag)
+         call compute_source(asource, weightlag, Amm)
          call compute_collop_lorentz('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0))
          anumm_lag(:,:) = anumm_aa(:,:,0,0)
          
@@ -189,7 +192,7 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         call compute_source(asource, weightlag)
+         call compute_source(asource, weightlag, Amm)
 
          !**********************************************************
          ! Compute x1mm and x2mm

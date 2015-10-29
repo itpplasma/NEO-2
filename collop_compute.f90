@@ -77,8 +77,8 @@ module collop_compute
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax6.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax6.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax4.h5'
-  character(len=100) :: matelem_name='MatElem_aa_hatfun_lag7_xmax4.h5'
-  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag7_xmax4.h5'
+  character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax3.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag7_xmax3.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax3.h5'
@@ -87,7 +87,8 @@ module collop_compute
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax2.h5'
   integer(HID_T) :: h5id_matelem
   logical :: precomp=.false.
-
+  logical :: make_ortho=.true.
+  
   interface chop
      module procedure chop_0
      module procedure chop_1
@@ -174,6 +175,7 @@ contains
     elseif (collop_base_prj .eq. 10) then
        write (*,*) "Using hat functions as collision operator projection base."
        precomp=.true.
+       make_ortho=.false.
     else
        write (*,*) "Undefined collision operator projection base ", collop_base_prj
        stop
@@ -399,7 +401,19 @@ contains
        end do
     end if
 
-    M_transform = Minv
+    if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+       do mm = 0, lagmax
+          do mp = 0, lagmax
+             if (mm .eq. mp) then
+                M_transform(mm,mp)=1.0d0
+             else
+                M_transform(mm,mp)=0.0d0
+             end if
+          end do
+       end do
+    else
+       M_transform = Minv
+    end if
 
     call inv(Minv)
     call chop(Minv)
@@ -444,9 +458,11 @@ contains
        end do
     end if 
 
-    do k = 1, 3
-       asource_s(:,k) = matmul(M_transform_inv, asource_s(:,k))
-    end do
+    if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+       do k = 1, 3
+          asource_s(:,k) = matmul(M_transform_inv, asource_s(:,k))
+       end do
+    end if
 
     call chop(asource_s)
     !write (*,*) "Done."
@@ -471,6 +487,13 @@ contains
              weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int(1)
           end do
        end do
+    end if
+
+    ! weightlag for computation of bvec_parflow
+    if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+       weightlag_s(4,:) = asource_s(:,1)
+    ELSE
+       weightlag_s(4,:) = matmul(M_transform_inv, asource_s(:,1))
     end if
 
     call chop(weightlag_s)
@@ -533,9 +556,12 @@ contains
          end do
       end if
 
-      x1mm_s = matmul(M_transform_inv, x1mm_s)
+      if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+         x1mm_s = matmul(M_transform_inv, x1mm_s)
+         x2mm_s = matmul(M_transform_inv, x2mm_s)
+      end if
+
       call chop(x1mm_s)
-      x2mm_s = matmul(M_transform_inv, x2mm_s)
       call chop(x2mm_s)
 
     contains
@@ -587,7 +613,10 @@ contains
          end do
       end if
 
-      anumm_s = matmul(M_transform_inv, anumm_s)
+      if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+         anumm_s = matmul(M_transform_inv, anumm_s)
+      end if
+      
       call chop(anumm_s)
       !write (*,*) "Done."
 
@@ -621,7 +650,10 @@ contains
        end do
     end do
 
-    anumm_s = matmul(M_transform_inv, anumm_s)
+    if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+       anumm_s = matmul(M_transform_inv, anumm_s)
+    end if
+
     call chop(anumm_s)
 
     !write (*,*) "Done."
@@ -670,7 +702,10 @@ contains
        end do
     end if
 
-    denmm_s = matmul(M_transform_inv, denmm_s)
+    if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+       denmm_s = matmul(M_transform_inv, denmm_s)
+    end if
+
     call chop(denmm_s)
     
   contains
@@ -739,11 +774,18 @@ contains
 
     !if (allocated(ailmm_s)) deallocate(ailmm_s)
     !allocate(ailmm_s(0:lagmax, 0:lagmax, 0:legmax))
-
-    do l = 0, legmax
-       !ailmm_s(:,:,l+1) = I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l)
-       ailmm_s(:,:,l+1) = matmul(M_transform_inv, I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l))
-    end do
+    if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+       do l = 0, legmax
+          !ailmm_s(:,:,l+1) = I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l)
+          ailmm_s(:,:,l+1) = matmul(M_transform_inv, I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l))
+       end do
+    else
+       do l = 0, legmax
+          ailmm_s(:,:,l+1) = I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l)
+       end do
+    end if
+    
+    
     call chop(ailmm_s)
     !write (*,*) "Done."
     
@@ -971,15 +1013,18 @@ contains
     
   end subroutine compute_I4_mmp_s
   
-  subroutine compute_source(asource_s, weightlag_s)
-    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
+  subroutine compute_source(asource_s, weightlag_s, Amm_s)
+    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
 
     if (allocated(M_transform_inv)) deallocate(M_transform_inv)
     allocate(M_transform_inv(0:lagmax, 0:lagmax))
+    if (allocated(M_transform)) deallocate(M_transform)
+    allocate(M_transform(0:lagmax, 0:lagmax))
     
     call compute_Minv(M_transform_inv)
     call compute_sources(asource_s, weightlag_s)
-  
+    Amm_s=M_transform
+
   end subroutine compute_source
   
   subroutine compute_collop(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, anumm_s, denmm_s, ailmm_s)
@@ -1029,7 +1074,7 @@ contains
 
   end subroutine compute_collop_inf
 
-  SUBROUTINE compute_collop_lorentz(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, anumm_s)
+  subroutine compute_collop_lorentz(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, anumm_s)
     character(len=*) :: tag_a, tag_b
     real(kind=dp)    :: m_a0, m_b0
     real(kind=dp)    :: T_a0, T_b0
@@ -1047,6 +1092,6 @@ contains
 
     call compute_lorentz(anumm_s)
 
-  END SUBROUTINE compute_collop_lorentz
+  end subroutine compute_collop_lorentz
   
 end module collop_compute
