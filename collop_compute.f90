@@ -76,9 +76,13 @@ module collop_compute
   !**********************************************************
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax6.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax6.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag30_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag20_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag15_xmax4.h5'
+  character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag7_xmax4.h5'
-  character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax3.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag7_xmax3.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax3.h5'
@@ -492,7 +496,7 @@ contains
     ! weightlag for computation of bvec_parflow
     if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
        weightlag_s(4,:) = asource_s(:,1)
-    ELSE
+    else
        weightlag_s(4,:) = matmul(M_transform_inv, asource_s(:,1))
     end if
 
