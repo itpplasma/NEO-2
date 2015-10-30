@@ -1745,12 +1745,14 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing+1
             DO kk=1,5
               DO mm=0,lag
-                nz=nz+1
-                nz_coll=nz_coll+1
-!                irow(nz)=k+ipart
-!                icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+                IF(anumm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  nz_coll=nz_coll+1
+!                  irow(nz)=k+ipart
+!                  icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
+!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                           *fact_pos_e(istep)
+                ENDIF
                 IF(.NOT.colltest.AND.(Amm(m,mm) .NE. 0.0d0)) THEN
                   nz_ttmp=nz_ttmp+1
                 ENDIF
@@ -1762,23 +1764,27 @@ rotfactor=imun*m_phi
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              nz_coll=nz_coll+1
-!              irow(nz)=k+npassing+1
-!              icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k+npassing+1
+!                icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
+!                amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
 !                         *fact_pos_e(istep)
+              ENDIF
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              nz_coll=nz_coll+1
-!              irow(nz)=k+npassing+1
-!              icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1)
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k+npassing+1
+!                icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1)
 !                         *fact_pos_b(istep-1)
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -1793,34 +1799,40 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing
             DO kk=1,4
               DO mm=0,lag
-                nz=nz+1
-                nz_coll=nz_coll+1
-!                irow(nz)=k+ipart
-!                icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*6hs_mat_energ(kk,ipart,istep)
+                IF(denmm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  nz_coll=nz_coll+1
+!                  irow(nz)=k+ipart
+!                  icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
+!                  amat_sp(nz)=denmm(m,mm)*6hs_mat_energ(kk,ipart,istep)
+                ENDIF
               ENDDO
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              nz_coll=nz_coll+1
-!              irow(nz)=k+npassing+1
-!              icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k+npassing+1
+!                icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing+1,istep)
+              ENDIF
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              nz_coll=nz_coll+1
-!              irow(nz)=k+npassing+1
-!              icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k+npassing+1
+!                icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing_prev+1,istep-1)
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -2024,12 +2036,14 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing+1
             DO kk=1,5
               DO mm=0,lag
-                nz=nz+1
-                nz_coll=nz_coll+1
-!                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+                IF(anumm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  nz_coll=nz_coll+1
+!                  irow(nz)=k-ipart
+!                  icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
+!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                           *fact_neg_e(istep)
+                ENDIF
                 IF(.NOT.colltest.AND.(Amm(m,mm) .NE. 0.0d0)) THEN
                   nz_ttmp=nz_ttmp+1
                 ENDIF
@@ -2041,23 +2055,27 @@ rotfactor=imun*m_phi
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              nz_coll=nz_coll+1
-!              irow(nz)=k-npassing-1
-!              icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1) &
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k-npassing-1
+!                icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
+!                amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1) &
 !                         *fact_neg_e(istep)
+              ENDIF
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              nz_coll=nz_coll+1
-!              irow(nz)=k-npassing-1
-!              icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1) &
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k-npassing-1
+!                icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1) &
 !                         *fact_neg_b(istep+1)
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -2072,34 +2090,40 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing
             DO kk=1,4
               DO mm=0,lag
-                nz=nz+1
-                nz_coll=nz_coll+1
-!                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+                IF(denmm(m,mm) .NE. 0.0d0) THEN 
+                  nz=nz+1
+                  nz_coll=nz_coll+1
+!                  irow(nz)=k-ipart
+!                  icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
+!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+                ENDIF
               ENDDO
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              nz_coll=nz_coll+1
-!              irow(nz)=k-npassing-1
-!              icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k-npassing-1
+!                icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing+1,istep)
+              ENDIF
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              nz_coll=nz_coll+1
-!              irow(nz)=k-npassing-1
-!              icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k-npassing-1
+!                icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing_prev+1,istep+1)
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -2346,15 +2370,17 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing+1
             DO kk=1,5
               DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k+ipart
-                icol(nz)=k+MAX(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+                IF(anumm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  irow(nz)=k+ipart
+                  icol(nz)=k+MAX(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
+                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
                            *fact_pos_e(istep)
-                nz_coll=nz_coll+1
-                irow_coll(nz_coll)=irow(nz)
-                icol_coll(nz_coll)=icol(nz)
-                amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
+                  nz_coll=nz_coll+1
+                  irow_coll(nz_coll)=irow(nz)
+                  icol_coll(nz_coll)=icol(nz)
+                  amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
+                ENDIF
                 IF(.NOT.colltest.AND.(Amm(m,mm) .NE. 0.0d0)) THEN
                   nz_ttmp=nz_ttmp+1
                   irow_ttmp(nz_ttmp)=irow(nz)
@@ -2372,29 +2398,33 @@ rotfactor=imun*m_phi
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              irow(nz)=k+npassing+1
-              icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
-              amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k+npassing+1
+                icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
+                amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
                          *fact_pos_e(istep)
-              nz_coll=nz_coll+1
-              irow_coll(nz_coll)=irow(nz)
-              icol_coll(nz_coll)=icol(nz)
-              amat_coll(nz_coll)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)
+                nz_coll=nz_coll+1
+                irow_coll(nz_coll)=irow(nz)
+                icol_coll(nz_coll)=icol(nz)
+                amat_coll(nz_coll)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)
+              ENDIF
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              irow(nz)=k+npassing+1
-              icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
-              amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1) &
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k+npassing+1
+                icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
+                amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1) &
                          *fact_pos_b(istep-1)
-              nz_coll=nz_coll+1
-              irow_coll(nz_coll)=irow(nz)
-              icol_coll(nz_coll)=icol(nz)
-              amat_coll(nz_coll)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1)
+                nz_coll=nz_coll+1
+                irow_coll(nz_coll)=irow(nz)
+                icol_coll(nz_coll)=icol(nz)
+                amat_coll(nz_coll)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1)
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -2410,34 +2440,40 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing
             DO kk=1,4
               DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k+ipart
-                icol(nz)=k+MAX(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
-                nz_coll=nz_coll+1
+                IF(denmm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  irow(nz)=k+ipart
+                  icol(nz)=k+MAX(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
+                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+                  nz_coll=nz_coll+1
+                ENDIF
               ENDDO
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              irow(nz)=k+npassing+1
-              icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
-              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k+npassing+1
+                icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
+                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
                          *rhs_mat_energ(kk,npassing+1,istep)
-              nz_coll=nz_coll+1
+                nz_coll=nz_coll+1
+              ENDIF
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              irow(nz)=k+npassing+1
-              icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
-              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k+npassing+1
+                icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
+                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
                          *rhs_mat_energ(kk,npassing_prev+1,istep-1)
-              nz_coll=nz_coll+1
+                nz_coll=nz_coll+1
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -2679,15 +2715,17 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing+1
             DO kk=1,5
               DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k-ipart
-                icol(nz)=k-MAX(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+                IF(anumm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  irow(nz)=k-ipart
+                  icol(nz)=k-MAX(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
+                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
                            *fact_neg_e(istep)
-                nz_coll=nz_coll+1
-                irow_coll(nz_coll)=irow(nz)
-                icol_coll(nz_coll)=icol(nz)
-                amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
+                  nz_coll=nz_coll+1
+                  irow_coll(nz_coll)=irow(nz)
+                  icol_coll(nz_coll)=icol(nz)
+                  amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
+                ENDIF
                 IF(.NOT.colltest.AND.(Amm(m,mm) .NE. 0.0d0)) THEN
                   nz_ttmp=nz_ttmp+1
                   irow_ttmp(nz_ttmp)=irow(nz)
@@ -2705,29 +2743,33 @@ rotfactor=imun*m_phi
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              irow(nz)=k-npassing-1
-              icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
-              amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k-npassing-1
+                icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
+                amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
                          *fact_neg_e(istep)
-              nz_coll=nz_coll+1
-              irow_coll(nz_coll)=irow(nz)
-              icol_coll(nz_coll)=icol(nz)
-              amat_coll(nz_coll)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)
+                nz_coll=nz_coll+1
+                irow_coll(nz_coll)=irow(nz)
+                icol_coll(nz_coll)=icol(nz)
+                amat_coll(nz_coll)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)
+              ENDIF
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              irow(nz)=k-npassing-1
-              icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
-              amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1) &
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k-npassing-1
+                icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
+                amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1) &
                          *fact_neg_b(istep+1)
-              nz_coll=nz_coll+1
-              irow_coll(nz_coll)=irow(nz)
-              icol_coll(nz_coll)=icol(nz)
-              amat_coll(nz_coll)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1)
+                nz_coll=nz_coll+1
+                irow_coll(nz_coll)=irow(nz)
+                icol_coll(nz_coll)=icol(nz)
+                amat_coll(nz_coll)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1)
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -2743,34 +2785,40 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing
             DO kk=1,4
               DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k-ipart
-                icol(nz)=k-MAX(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
-                nz_coll=nz_coll+1
+                IF(denmm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  irow(nz)=k-ipart
+                  icol(nz)=k-MAX(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
+                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+                  nz_coll=nz_coll+1
+                ENDIF
               ENDDO
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              irow(nz)=k-npassing-1
-              icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
-              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k-npassing-1
+                icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
+                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
                          *rhs_mat_energ(kk,npassing+1,istep)
-              nz_coll=nz_coll+1
+                nz_coll=nz_coll+1
+              ENDIF
             ENDDO
           ENDDO
 !
           DO kk=1,4
             DO mm=0,lag
-              nz=nz+1
-              irow(nz)=k-npassing-1
-              icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
-              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k-npassing-1
+                icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
+                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
                          *rhs_mat_energ(kk,npassing_prev+1,istep+1)
-              nz_coll=nz_coll+1
+                nz_coll=nz_coll+1
+              ENDIF
             ENDDO
           ENDDO
 !
