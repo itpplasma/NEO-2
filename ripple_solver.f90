@@ -176,6 +176,14 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
+!
+!  Off-set:
+!
+  DOUBLE PRECISION :: denom_mflint,cg0_num,cg2_num
+  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: avden_vector,avpres_vector
+!
+!  End off-set
+!
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
   INTEGER :: isw_lor,isw_ene,isw_intp
   INTEGER,          DIMENSION(:),       ALLOCATABLE :: npl
@@ -1201,6 +1209,15 @@ PRINT *,'right boundary layer ignored'
   flux_vector=0.d0
   source_vector=0.d0
 !
+!  Off set:
+!
+  allocate(avden_vector(n_2d_size),avpres_vector(n_2d_size))
+  avden_vector=0.d0
+  avpres_vector=0.d0
+  denom_mflint=0.d0
+!
+!  End off-set
+!
   do istep=ibeg,iend
 !
     ioddeven=mod(istep-ibeg,2) !0 for full RK step, 1 for half RK step
@@ -1225,6 +1242,13 @@ PRINT *,'right boundary layer ignored'
 !
     npassing=npl(istep)
 !
+!  Off-set:
+!
+    denom_mflint = denom_mflint + 0.125d0*(step_factor_p+step_factor_m)     &
+                 / (bhat_mfl(istep)*h_phi_mfl(istep))
+!
+!  End off-set
+!
     do m=0,lag
       k=ind_start(istep)+2*(npassing+1)*m
 !
@@ -1242,6 +1266,26 @@ PRINT *,'right boundary layer ignored'
             step_factor_p*weightlag(3,m)*convol_flux(1:npassing+1,istep)
       flux_vector(3,k+npassing+2:k+2*npassing+2) =                          &
             step_factor_m*weightlag(3,m)*convol_flux(npassing+1:1:-1,istep)
+!
+!  Off-set:
+!
+      avden_vector(k+1:k+npassing+1) =                                      &
+            step_factor_p*weightden(m)*pleg_bra(0,1:npassing+1,istep)
+      avden_vector(k+npassing+2:k+2*npassing+2) =                           &
+            step_factor_m*weightden(m)*pleg_bra(0,npassing+1:1:-1,istep)
+!
+      avpres_vector(k+1:k+npassing+1) =                                     &
+            step_factor_p*weightlag(1,m)*pleg_bra(0,1:npassing+1,istep)
+      avpres_vector(k+npassing+2:k+2*npassing+2) =                          &
+            step_factor_m*weightlag(1,m)*pleg_bra(0,npassing+1:1:-1,istep)
+!
+      avden_vector(k+1:k+2*npassing+2) =                                    &
+            avden_vector(k+1:k+2*npassing+2)/(collpar*bhat_mfl(istep))
+      avpres_vector(k+1:k+2*npassing+2) =                                   &
+            avpres_vector(k+1:k+2*npassing+2)/(collpar*bhat_mfl(istep))
+!
+!  End off-set
+!
 !
       if(istep.gt.ibeg) then
         npassing_prev=npl(istep-1)
@@ -1524,6 +1568,34 @@ PRINT *,'right boundary layer ignored'
     enddo
   enddo
 !
+
+! Artificial Off-set:
+!!$do istep=ibeg,iend
+!!$npassing=npl(istep)
+!!$do m=0,lag
+!!$k=ind_start(istep)+2*(npassing+1)*m
+!!$if(m.eq.0) then
+!!$source_vector(k+1:k+npassing,1)=eta(1:npassing)-eta(0:npassing-1)
+!!$source_vector(k+npassing+1,1)=1.d0/bhat_mfl(istep)-eta(npassing)
+!!$!source_vector(k+1:k+npassing+1,1)=source_vector(k+1:k+npassing+1,1)/sqrt(8.d0*3.14159265358979d0/3.d0)
+!!$source_vector(k+1:k+npassing+1,2)=0d0
+!!$elseif(m.eq.2) then
+!!$source_vector(k+1:k+npassing+1,1)=0.d0
+!!$source_vector(k+1:k+npassing,2)=eta(1:npassing)-eta(0:npassing-1)
+!!$source_vector(k+npassing+1,2)=1.d0/bhat_mfl(istep)-eta(npassing)
+!!$!source_vector(k+1:k+npassing+1,2)=-source_vector(k+1:k+npassing+1,2)*0.25d0/sqrt(3.14159265358979d0/15.d0)
+!!$else
+!!$source_vector(k+1:k+npassing+1,1)=0.d0
+!!$endif
+!!$source_vector(k+2*npassing+2:k+npassing+2:-1,1)=source_vector(k+1:k+npassing+1,1)
+!!$source_vector(k+2*npassing+2:k+npassing+2:-1,2)=source_vector(k+1:k+npassing+1,2)
+!!$enddo
+!!$enddo
+!!$!print *,sum(avden_vector*source_vector(:,1))/denom_mflint,sum(avpres_vector*source_vector(:,1))/denom_mflint
+!!$!print *,sum(avden_vector*source_vector(:,2))/denom_mflint,sum(avpres_vector*source_vector(:,2))/denom_mflint
+!!$!stop
+!!$goto 11  
+
 !
 ! Determine the size of arrays (number of non-zero elements):
 !
@@ -2318,11 +2390,11 @@ call cpu_time(time1)
 
 !
         source_vector(:,k)=bvec_lor+bvec_iter
-        !write (*,*) "1 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+        write (*,*) "1 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
-  	   !write (*,*) "Number of iterations: ", iter
+  	   write (*,*) "Number of iterations: ", iter
           exit
         endif
      enddo
@@ -2333,6 +2405,23 @@ call cpu_time(time1)
   call cpu_time(time2)
   !write (*,*) "Time in integral part:", time2 - time1
 
+!  Off-set:
+!
+! 11 continue    
+  cg0_num=sum(avden_vector*source_vector(:,2))
+  cg2_num=sum(avpres_vector*source_vector(:,2))
+  cg0_num=2.5d0*cg0_num-cg2_num
+  cg2_num=(4.d0/15.d0)*cg2_num-0.4d0*cg0_num
+!
+  cg0_num=cg0_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
+  cg2_num=cg2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
+!
+  deallocate(avden_vector,avpres_vector)
+!
+  print *,'Local off-set: ',cg0_num/denom_mflint,cg2_num/denom_mflint, denom_mflint
+!  stop
+!
+!  End off-set
 !
 ! Plotting:
 !
@@ -2480,6 +2569,10 @@ call cpu_time(time1)
        call h5_add(h5id_phi_mesh, 'npassing', npassing_h5(1:icounter), &
             lbound(npassing_h5(1:icounter)), ubound(npassing_h5(1:icounter)))
 
+       call h5_add(h5id_phi_mesh, 'cg0_num', cg0_num)
+       call h5_add(h5id_phi_mesh, 'cg2_num', cg2_num)
+       call h5_add(h5id_phi_mesh, 'denom_mflint', denom_mflint)
+       
        call h5_add(h5id_dentf, 'dentf_p', dentf_p_h5(:,:,:,1:icounter), &
             lbound(dentf_p_h5(:,:,:,1:icounter)), ubound(dentf_p_h5(:,:,:,1:icounter)))
        call h5_add(h5id_spitf, 'spitf_p', spitf_p_h5(:,:,:,1:icounter), &
@@ -2623,11 +2716,11 @@ time3 = time3 + (time5-time4)
           time3 = time3 + (time5-time4)
 !
           bvec_sp=bvec_lor+bvec_iter
-          !write (*,*) "2 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+          write (*,*) "2 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
-   	     !write (*,*) "Number of iterations: ", iter
+   	     write (*,*) "Number of iterations: ", iter
             exit
           endif
 !
@@ -2681,11 +2774,11 @@ time3 = time3 + (time5-time4)
           time3 = time3 + (time5-time4)
 !
           bvec_sp=bvec_lor+bvec_iter
-          !write (*,*) "3 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+          write (*,*) "3 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
-             !write (*,*) "Number of iterations: ", iter
+             write (*,*) "Number of iterations: ", iter
              exit
           endif
 !
