@@ -19,7 +19,8 @@ PROGRAM neo2
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
-       nvel,vel_array,v_max_resolution,v_min_resolution
+       nvel,vel_array,v_max_resolution,v_min_resolution,            &
+       phi_x_max
   USE propagator_mod, ONLY : reconstruct_prop_dist,   &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -46,7 +47,7 @@ PROGRAM neo2
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
        collop_load, collop_unload, z_eff, collop_path,              &
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta
-  use rkstep_mod, only : lag,leg,legmax, epserr_sink, epserr_iter, &
+  USE rkstep_mod, ONLY : lag,leg,legmax, epserr_sink, epserr_iter, &
        niter
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
@@ -96,6 +97,8 @@ PROGRAM neo2
   CHARACTER(1024) :: cwd
   INTEGER         :: k,l
   INTEGER         :: tag_first, tag_last
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: cg0_num_prop, cg2_num_prop, denom_mflint_prop
+  REAL(kind=dp)   :: cg0_avg, cg2_avg
   !**********************************************************
   
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
@@ -130,7 +133,7 @@ PROGRAM neo2
   INTEGER :: ios
   INTEGER :: jf
   !CHARACTER(len=20), DIMENSION(2) :: fnames  ! removed because it is not used
-  character(len=20), dimension(1) :: fnames
+  CHARACTER(len=20), DIMENSION(1) :: fnames
   
   ! groups for namelist
   NAMELIST /settings/                                                         &
@@ -153,7 +156,8 @@ PROGRAM neo2
        isw_integral,isw_energy,isw_axisymm,                                   &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
        collop_path, collop_base_prj, collop_base_exp,                         &
-       scalprod_alpha, scalprod_beta, v_min_resolution, v_max_resolution
+       scalprod_alpha, scalprod_beta, v_min_resolution, v_max_resolution,     &
+       phi_x_max
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -239,8 +243,9 @@ PROGRAM neo2
   scalprod_alpha = 0d0
   scalprod_beta  = 0d0
   conl_over_mfp = 1.0d-3
-  v_min_resolution = 0.5d0
+  v_min_resolution = 0.1d0
   v_max_resolution = 5.0d0
+  phi_x_max        = 5.0d0
   lag=10
   leg=20
   legmax=20
@@ -389,16 +394,16 @@ PROGRAM neo2
   ! magnetics HDF5-preparation
   !**********************************************************
   IF (prop_reconstruct .EQ. 0) THEN
-     if ( mpro%isMaster() ) then
+     IF ( mpro%isMaster() ) THEN
         ! close HDF5-File for magnetics
         OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
         IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-     else
+     ELSE
         mag_write_hdf5 = .FALSE.
-     end if
-  else
+     END IF
+  ELSE
      mag_write_hdf5 = .FALSE.
-  end IF
+  END IF
 
 
   !**********************************************************
@@ -415,6 +420,12 @@ PROGRAM neo2
   
   ! RECONSTRUCTION RUN 1
   IF (prop_reconstruct .EQ. 1) THEN
+
+     IF (isw_axisymm .EQ. 1) THEN
+        WRITE (*,*) "Skipping reconstruction for axisymmetric mode"
+        !stop
+     END IF
+     
      IF (mpro%isMaster()) THEN
         PRINT *, 'Reconstruction run!'
 
@@ -705,6 +716,12 @@ CONTAINS
        CALL h5_get(h5id_taginfo, 'tag_last',  tag_last)
        CALL h5_close(h5id_taginfo)
 
+       IF (isw_axisymm .EQ. 1) THEN
+          ! Tokamak mode
+          tag_first = 3
+          tag_last  = 3
+       END IF
+       
        !**********************************************************
        ! Get current working directory
        ! This might only work with gfortran
@@ -721,6 +738,14 @@ CONTAINS
        CALL h5_define_group(h5id_surf, 'NEO-2', h5id_neo2)
        CALL h5_define_group(h5id_neo2, 'propagators', h5id_propagators)
 
+       IF (ALLOCATED(cg0_num_prop)) DEALLOCATE(cg0_num_prop)
+       IF (ALLOCATED(cg2_num_prop)) DEALLOCATE(cg2_num_prop)
+       IF (ALLOCATED(denom_mflint_prop)) DEALLOCATE(denom_mflint_prop)
+       
+       ALLOCATE(cg0_num_prop(tag_first:tag_last))
+       ALLOCATE(cg2_num_prop(tag_first:tag_last))
+       ALLOCATE(denom_mflint_prop(tag_first:tag_last))
+       
        !**********************************************************
        ! Iterate over all propagators and merge files
        !**********************************************************
@@ -741,7 +766,11 @@ CONTAINS
           !call h5_close(h5id_propfile)
 
           CALL h5_open("phi_mesh_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+          CALL h5_get(h5id_propfile, 'cg0_num', cg0_num_prop(k))
+          CALL h5_get(h5id_propfile, 'cg2_num', cg2_num_prop(k))
+          CALL h5_get(h5id_propfile, 'denom_mflint', denom_mflint_prop(k))
           CALL h5_copy(h5id_propfile, '/', h5id_prop, "phi_mesh")
+          
           CALL h5_close(h5id_propfile)
 
           CALL h5_open("sizeplot_etalev_" // TRIM(h5_filename) // ".h5", h5id_propfile)
@@ -751,6 +780,12 @@ CONTAINS
           CALL h5_close_group(h5id_prop)
        END DO
 
+       cg0_avg = SUM(cg0_num_prop(tag_first:tag_last)) / SUM(denom_mflint_prop(tag_first:tag_last))
+       cg2_avg = SUM(cg2_num_prop(tag_first:tag_last)) / SUM(denom_mflint_prop(tag_first:tag_last))
+
+       WRITE (*,*) "cg0 = ", cg0_avg
+       WRITE (*,*) "cg2 = ", cg2_avg
+       
        !**********************************************************
        ! Merge additional files
        !**********************************************************
@@ -766,7 +801,11 @@ CONTAINS
        CALL h5_copy(h5id_propfile, '/', h5id_neo2, "neo2_config")
        CALL h5_close(h5id_propfile)
 
-       CALL h5_open("taginfo.h5", h5id_propfile)
+       CALL h5_open_rw("taginfo.h5", h5id_propfile)
+       CALL h5_delete(h5id_propfile, 'cg0_avg')
+       CALL h5_add(h5id_propfile, 'cg0_avg', cg0_avg)
+       CALL h5_delete(h5id_propfile, 'cg2_avg')
+       CALL h5_add(h5id_propfile, 'cg2_avg', cg2_avg)
        CALL h5_copy(h5id_propfile, '/', h5id_neo2, "taginfo")
        CALL h5_close(h5id_propfile)
 
@@ -783,11 +822,11 @@ CONTAINS
        OPEN(unit=1234, iostat=ios, file="propagator_0_0.h5", status='old')
        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
 
-       OPEN(unit=1234, iostat=ios, file="efinal.h5", status='old')
-       IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+       !OPEN(unit=1234, iostat=ios, file="efinal.h5", status='old')
+       !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
 
-       OPEN(unit=1234, iostat=ios, file="fulltransp.h5", status='old')
-       IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+       !OPEN(unit=1234, iostat=ios, file="fulltransp.h5", status='old')
+       !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
 
        !open(unit=1234, iostat=ios, file="neo2_config.h5", status='old')
        !if (ios .eq. 0) close(unit=1234, status='delete')
@@ -840,7 +879,7 @@ CONTAINS
 
     END IF
 
-    call mpro%barrier()
+    CALL mpro%barrier()
     
   END SUBROUTINE prop_reconstruct_3
   
@@ -939,12 +978,13 @@ CONTAINS
         CALL h5_add(h5_config_group, 'isw_integral', isw_integral, '')
         CALL h5_add(h5_config_group, 'isw_energy', isw_energy, '')
         CALL h5_add(h5_config_group, 'isw_axisymm', isw_axisymm, '')
-        call h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
-        call h5_add(h5_config_group, 'collop_base_prj', collop_base_prj, 'Projection base of collision operator')
-        call h5_add(h5_config_group, 'collop_base_exp', collop_base_exp, 'Expansion base of collision operator')
-        call h5_add(h5_config_group, 'v_min_resolution', v_min_resolution, 'Minimum velocity for level placement')
-        call h5_add(h5_config_group, 'v_max_resolution', v_max_resolution, 'Maximum velocity for level placement')
-        call h5_close_group(h5_config_group)
+        CALL h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
+        CALL h5_add(h5_config_group, 'collop_base_prj', collop_base_prj, 'Projection base of collision operator')
+        CALL h5_add(h5_config_group, 'collop_base_exp', collop_base_exp, 'Expansion base of collision operator')
+        CALL h5_add(h5_config_group, 'v_min_resolution', v_min_resolution, 'Minimum velocity for level placement')
+        CALL h5_add(h5_config_group, 'v_max_resolution', v_max_resolution, 'Maximum velocity for level placement')
+        CALL h5_add(h5_config_group, 'phi_x_max', phi_x_max, 'Maximum velocity for base function')
+        CALL h5_close_group(h5_config_group)
 
         CALL h5_define_group(h5_config_id, 'binsplit', h5_config_group)
         CALL h5_add(h5_config_group, 'eta_s_lim', eta_s_lim)
