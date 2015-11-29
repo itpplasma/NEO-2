@@ -52,7 +52,8 @@
     DOUBLE PRECISION, ALLOCATABLE, DIMENSION(:) :: vel_array
     !**********************************************************
     ! WINNY - for flint
-    DOUBLE PRECISION :: collpar_min,collpar_max,v_min_resolution,v_max_resolution
+    double precision :: collpar_min,collpar_max,v_min_resolution,v_max_resolution
+    double precision :: phi_x_max
     ! WINNY - for flint
     !**********************************************************
 
@@ -82,15 +83,16 @@
     DOUBLE PRECISION, DIMENSION(:,:),     POINTER     :: denmm
     DOUBLE PRECISION, DIMENSION(:,:,:),   POINTER     :: ailmm
     DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
+    DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightden
     !**********************************************************
     ! WINNY - for flint
     ! DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: collision_sigma_multiplier
     ! WINNY - for flint
     !**********************************************************
     DOUBLE PRECISION               :: epserr_sink   ! Regularization
-    double precision               :: epserr_iter
-    integer                        :: niter
-    double precision, dimension(3) :: fluxes
+    DOUBLE PRECISION               :: epserr_iter
+    INTEGER                        :: niter
+    DOUBLE PRECISION, DIMENSION(3) :: fluxes
   END MODULE
 !
 MODULE development
