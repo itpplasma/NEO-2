@@ -89,6 +89,8 @@ contains
     enddo
 
     d_phi_laguerre = 2d0 * x * dplag * pi**(3d0/4d0) * phi_hm(m)
+
+    !write (*,*) x2, dplag, xpow, add, phi_hm(m)
   end function d_phi_laguerre
 
   function dd_phi_laguerre(m, x)
@@ -105,7 +107,7 @@ contains
     do k=1,m
        add=gencoeflag(m,k,1)*xpow
        dplag=dplag+k*add
-       ddplag = ddplag + k*(k-1)*add/x2
+       if (x .ne. 0d0) ddplag = ddplag + k*(k-1)*add/x2
        xpow=xpow*x2
     enddo
 
