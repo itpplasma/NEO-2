@@ -4,11 +4,11 @@ module collop
   use hdf5_tools
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
-       m_ele, m_d, m_C, compute_collop_inf, C_m, compute_xmmp, nu_D_hat
+       m_ele, m_d, m_C, compute_collop_inf, C_m, compute_xmmp, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
-       v_max_resolution, v_min_resolution
+       v_max_resolution, v_min_resolution, phi_x_max
 
   implicit none
   
@@ -33,6 +33,8 @@ module collop
 
   real(kind=dp), dimension(:,:), allocatable :: anumm_inf
   real(kind=dp), dimension(:,:), allocatable :: x1mm, x2mm
+
+  logical :: use_oldcollop = .false.
   
   contains
     
@@ -113,6 +115,9 @@ module collop
       if(allocated(weightlag)) deallocate(weightlag)
       allocate(weightlag(3,0:lag))
 
+      if(allocated(weightden)) deallocate(weightden)
+      allocate(weightden(0:lag))
+      
       if (allocated(anumm_inf)) deallocate(anumm_inf)
       allocate(anumm_inf(0:lag, 0:lag))
 
@@ -137,8 +142,9 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         call compute_source(asource, weightlag)
-
+         call compute_source(asource, weightlag, weightden)
+         write (*,*) "Weightden: ", weightden
+         
          !**********************************************************
          ! Compute x1mm and x2mm
          !**********************************************************
@@ -168,7 +174,7 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         call compute_source(asource, weightlag)
+         call compute_source(asource, weightlag, weightden)
 
          !**********************************************************
          ! Compute x1mm and x2mm
@@ -229,7 +235,7 @@ module collop
       !write (*,*) ailmm
       !write (*,*) weightlag
 
-      !if (mpro%isMaster()) call write_collop('collop.h5')
+      if (mpro%isMaster()) call write_collop('collop.h5')
     end subroutine collop_load
 
     subroutine collop_unload()
@@ -250,8 +256,10 @@ module collop
     subroutine write_collop(h5filename)
       character(len=*) :: h5filename
       integer(HID_T)   :: h5id_collop, h5id_meta, h5id_species
-      integer          :: m, mp, l
+      integer          :: m, mp, l, xi, n_x
       integer          :: f = 4234
+      real(kind=dp), dimension(:), allocatable :: x
+      real(kind=dp), dimension(:,:), allocatable :: phi_x, dphi_x, ddphi_x
 
       call h5_create(h5filename, h5id_collop)
       !call h5_define_group(h5id_collop, trim(tag_a) //'-'// trim(tag_b), h5id_species)
@@ -289,6 +297,30 @@ module collop
       call h5_add(h5id_collop, 'M_transform_inv', M_transform_inv, lbound(M_transform_inv), ubound(M_transform_inv))
       call h5_add(h5id_collop, 'C_m', C_m, lbound(C_m), ubound(C_m))
 
+      !**********************************************************
+      ! Write test functions
+      !**********************************************************
+      n_x = 999
+      allocate(x(n_x))
+      allocate(phi_x(0:lag, 1:n_x))
+      allocate(dphi_x(0:lag, 1:n_x))
+      allocate(ddphi_x(0:lag, 1:n_x))
+      
+      do m = 0, lag
+         do xi = 1, n_x
+            x(xi) = 10d0/(n_x-1) * (xi-1) 
+            phi_x(m,xi)   = phi_exp(m,x(xi))
+            dphi_x(m,xi)  = d_phi_exp(m,x(xi))
+            ddphi_x(m,xi) = dd_phi_exp(m,x(xi))
+            !write (*,*) x(xi), m, phi_exp(m,x(xi)), d_phi_exp(m,x(xi)), dd_phi_exp(m,x(xi))
+         end do
+      end do
+
+      call h5_add(h5id_collop, 'x', x, lbound(x), ubound(x))
+      call h5_add(h5id_collop, 'phi_x', phi_x, lbound(phi_x), ubound(phi_x))
+      call h5_add(h5id_collop, 'dphi_x', dphi_x, lbound(dphi_x), ubound(dphi_x))
+      call h5_add(h5id_collop, 'ddphi_x', ddphi_x, lbound(ddphi_x), ubound(ddphi_x))
+      
       call h5_close(h5id_collop)
 
       !**********************************************************
