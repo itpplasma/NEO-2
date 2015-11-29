@@ -19,6 +19,7 @@ set_source_files_properties(./umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUI
 set(FGSL_USERINTER_SRC_FILES
         ./gsl_roots_routines_mod.f90
 	./gsl_integration_routines_mod.f90
+	./gsl_bspline_routines_mod.f90
 )
 set(FGSL_USERINTER_FLAGS "-I${FGSL_INC}")
 set_source_files_properties(${FGSL_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTER_FLAGS})
@@ -87,5 +88,8 @@ set(NEO2_SRC_FILES
 	./collop_laguerre.f90
 	./collop_polynomial.f90
 	./collop_spline.f90
+	./collop_bspline.f90
+	./collop_spline4.f90
+	./collop_bspline2.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
