@@ -12,15 +12,10 @@ module parallelStorage_module
           TYPE(fieldperiod_struct), POINTER :: fieldperiod
           TYPE(fieldline_struct), POINTER :: fieldline
 
-
           double precision :: timeSolver = 0
           double precision :: timeJoiner = 0
           integer :: countSolver = 0
           integer :: countJoiner = 0
-
-          !double precision :: dgesvTime = 0
-
-          character(len=32) :: evolveFilename
  
      end type
 

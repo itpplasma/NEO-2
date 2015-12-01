@@ -930,10 +930,13 @@ CONTAINS
 
     INTEGER, PARAMETER, DIMENSION(3) :: ind_map = (/1,3,2/)
     INTEGER :: i, i_p, j, j_p
-    INTEGER :: full_version
+    integer :: full_version
+
+    character(len=100) :: cname,ctag_s,ctag_e
+    character(len=100) :: cadd,tags
 
     allocate(gamma_out(3,3))
-    
+   
     ! taken from Sergei
 !->out    qflux_g = prop_a%p%qflux_g
 !->out    qcurr_g = prop_a%p%qcurr_g
@@ -985,30 +988,63 @@ CONTAINS
        IF(.NOT. opened) EXIT
        uw = uw + 100
     END DO
-#if defined(MPI_SUPPORT)
-    write (evolveFilename, "(A, I3.3, A)"), 'evolve', mpro%getRank(), '.dat'
-    OPEN(uw,file=evolveFilename, position='append')
-#else
-    OPEN(uw,file='evolve.dat', position='append')
-#endif
-!!$    WRITE (uw,'(1000(1x,e12.5))')                                   &
+
+    !**********************************************************
+    ! New method to write evolve in parallel mode
+    !**********************************************************
+    write(ctag_s,*) prop_a%fieldpropagator_tag_s
+    write(ctag_e,*) prop_a%fieldpropagator_tag_e
+    !write(ctag_s,*) prop_c%tag
+    !write(ctag_e,*) prop_c%tag
+    
+    if (prop_a%fieldpropagator_tag_s .eq. prop_a%fieldpropagator_tag_e) then
+       cadd = '_'//trim(adjustl(ctag_s))
+    else
+       cadd = '_'//trim(adjustl(ctag_s))//'_'//trim(adjustl(ctag_e))
+    end if
+
+    if (prop_fileformat .eq. 1) then
+          call h5_create('evolve' // trim(adjustl(cadd)) // '.h5', h5id)
+
+          call h5_add(h5id, 'phi', phi)
+          call h5_add(h5id, 'y', y, lbound(y), ubound(y))
+          call h5_add(h5id, 'aiota_loc', aiota_loc)
+          call h5_add(h5id, 'dmono_over_dplateau', dmono_over_dplateau)
+          call h5_add(h5id, 'epseff3_2', epseff3_2)
+          call h5_add(h5id, 'alambda_b', alambda_b)
+          call h5_add(h5id, 'qflux_g', qflux_g)
+          call h5_add(h5id, 'qflux_e', qflux_e)
+          call h5_add(h5id, 'qcurr_g', qcurr_g)
+          call h5_add(h5id, 'qcurr_e', qcurr_e)
+          call h5_add(h5id, 'alambda_bb', alambda_bb)
+          call h5_add(h5id, 'g_bs', g_bs)
+          call h5_add(h5id, 'r0', device%r0)
+          call h5_add(h5id, 'bmod0', surface%bmod0)
+
+          call h5_close(h5id)       
+    else
+       open(uw,file='evolve' // trim(adjustl(cadd)) // '.dat', status='replace')
+       write (uw,'(1000(1x,e18.5))')                                   &
+            (phi),(y(1:2)),(aiota_loc),                    &
+            (dmono_over_dplateau),(epseff3_2),(alambda_b), &
+            (qflux_g),(qflux_e),(qcurr_g),(qcurr_e),    &
+            (alambda_bb),(gamma_E), &
+            (g_bs),    &                                              !<-GBS
+            (device%r0),(surface%bmod0)  !, &
+       !y(6),y(7),y(9),y(13),y(14)
+       ! WRITE (uw,*)                                   &
+       !     y
+!!$         WRITE (uw,'(1000(1x,e12.5))')                                   &
 !!$         REAL(phi),REAL(y(1:2)),REAL(aiota_loc),                    &
 !!$         REAL(dmono_over_dplateau),REAL(epseff3_2),REAL(alambda_b), &
 !!$         REAL(qflux_g),REAL(qflux_e),REAL(qcurr_g),REAL(qcurr_e)    &
 !!$         ,REAL(alambda_bb),REAL(3.d0*SQRT(pi)*qcurr_e*collpar/(32.d0*y(9)))*1.d0 &
 !!$         ,REAL(g_bs)    &                                              !<-GBS
 !!$         ,REAL(device%r0),REAL(surface%bmod0)
-    WRITE (uw,'(1000(1x,e18.5))')                                   &
-         (phi),(y(1:2)),(aiota_loc),                    &
-         (dmono_over_dplateau),(epseff3_2),(alambda_b), &
-         (qflux_g),(qflux_e),(qcurr_g),(qcurr_e),    &
-         (alambda_bb),(gamma_E), &
-         (g_bs),    &                                              !<-GBS
-         (device%r0),(surface%bmod0)  !, &
-         !y(6),y(7),y(9),y(13),y(14)
-    ! WRITE (uw,*)                                   &
-    !     y
-    CLOSE(uw)
+       close(uw)
+    end if
+
+    
 
     ! Final output
     IF ( iend .EQ. 1) THEN

@@ -68,11 +68,6 @@ PROGRAM neo2
   LOGICAL :: opened
 
   !**********************************************************
-  ! Filenames for parallel version
-  !**********************************************************
-  CHARACTER(len=32) :: strEvolveFilename    ! This string is used to give every client an own evolve.dat file
-
-  !**********************************************************
   ! Include version information
   !**********************************************************
   INCLUDE "cmake_version.f90"
@@ -536,20 +531,6 @@ PROGRAM neo2
         IF(.NOT. opened) EXIT
         uw = uw + 100
      END DO
-
-     !*******************************************
-     ! MPI Support
-     !*******************************************
-#if defined(MPI_SUPPORT)
-     ! Every client has its own evolve.dat file, propably not the best solution yet
-     WRITE (globalstorage%evolveFilename, "(A, I3.3, A)"), 'evolve', mpro%getRank(), '.dat'
-     OPEN(uw,file=globalstorage%evolveFilename, status='replace')
-     CLOSE(uw)
-#else
-     ! Sequential behaviour
-     OPEN(uw,file='evolve.dat',status='replace')
-     CLOSE(uw)
-#endif
 
   END IF
 
