@@ -642,8 +642,53 @@ PROGRAM neo2
   ! Save run time to HDF5 neo2_config file
   !**********************************************************
   IF (mpro%isMaster()) THEN
+     
+     if (prop_fileformat .eq. 1) then
 
-     IF (prop_fileformat .EQ. 1) THEN
+        !**********************************************************
+        ! Open taginfo
+        !**********************************************************
+        call h5_open('taginfo.h5', h5id_taginfo)
+        call h5_get(h5id_taginfo, 'tag_first', tag_first)
+        call h5_get(h5id_taginfo, 'tag_last',  tag_last)
+        call h5_close(h5id_taginfo)     
+
+        !**********************************************************
+        ! Merge evolve-files
+        !**********************************************************
+        call h5_create("evolve.h5", h5id_prop)
+
+        if (isw_axisymm .eq. 1) then
+           ! Tokamak mode
+           tag_first = 3
+           tag_last  = 3
+        end if
+        
+        do k = tag_first, tag_last
+           do l = tag_first, tag_last
+              write (h5_filename, '(I0,A,I0)') k, "_", l
+              
+              open(unit=1234, iostat=ios, file="evolve_" // trim(h5_filename) // ".h5", status='old')
+              close(unit=1234)
+              
+              !**********************************************************
+              ! Check if file exists
+              !**********************************************************
+              if (ios .eq. 0) then
+
+                 call h5_open("evolve_" // trim(h5_filename) // ".h5", h5id_propfile)
+                 call h5_copy(h5id_propfile, '/', h5id_prop, "/" // trim(h5_filename))
+                 call h5_close(h5id_propfile)
+                 
+                 ! Delete file
+                 open(unit=1234, iostat=ios, file="evolve_" // trim(h5_filename) // ".h5", status='old')
+                 close(unit=1234, status='delete')
+              end if
+           end do   
+        end do
+
+        call h5_close(h5id_prop)
+        
         CALL h5_open_rw('neo2_config.h5', h5_config_id)
         CALL h5_open_group(h5_config_id, 'metadata', h5_config_group)
 

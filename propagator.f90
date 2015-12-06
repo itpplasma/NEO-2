@@ -997,15 +997,18 @@ CONTAINS
     !write(ctag_s,*) prop_c%tag
     !write(ctag_e,*) prop_c%tag
     
-    if (prop_a%fieldpropagator_tag_s .eq. prop_a%fieldpropagator_tag_e) then
-       cadd = '_'//trim(adjustl(ctag_s))
-    else
-       cadd = '_'//trim(adjustl(ctag_s))//'_'//trim(adjustl(ctag_e))
-    end if
+    !if (prop_a%fieldpropagator_tag_s .eq. prop_a%fieldpropagator_tag_e) then
+    !   cadd = '_'//trim(adjustl(ctag_s))
+    !else
+    cadd = '_'//trim(adjustl(ctag_s))//'_'//trim(adjustl(ctag_e))
+    !end if
 
     if (prop_fileformat .eq. 1) then
           call h5_create('evolve' // trim(adjustl(cadd)) // '.h5', h5id)
 
+          call h5_add(h5id, 'tag_s', prop_a%fieldpropagator_tag_s)
+          call h5_add(h5id, 'tag_e', prop_a%fieldpropagator_tag_e)
+          
           call h5_add(h5id, 'phi', phi)
           call h5_add(h5id, 'y', y, lbound(y), ubound(y))
           call h5_add(h5id, 'aiota_loc', aiota_loc)
