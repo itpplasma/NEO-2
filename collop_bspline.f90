@@ -25,7 +25,7 @@ contains
 
     if (.not. bspline_initialized) then
        bspline_initialized = .true.
-       order = 5
+       order = 4
        knots = lagmax - order + 3
        nder  = order  ! Maximum derivative
 
@@ -37,6 +37,14 @@ contains
           x(i) = phi_x_max/(knots-1) * (i-1)
        end do
        x(knots) = phi_x_max
+
+       !x(1) = 0d0
+       !x(2) = 0.5d0
+       !x(3) = 1.0d0
+       !x(4) = 2d0
+       !x(knots-1) = 3d0
+       !x(knots)   = 5d0
+
        write (*,*) "Knots: ", x
        call init_bspline(order, knots)
        call set_bspline_knots(x)
@@ -56,8 +64,8 @@ contains
        ! Taylor expansion
        call bspline_eval(phi_x_max, b)
        call bspline_deriv_eval(phi_x_max, nder, db)
-       phi = b(m+1) + db(2, m+1)*(x-phi_x_max)+db(3,m+1)/2*(x-phi_x_max)**2 + &
-             db(4,m+1)/6*(x-phi_x_max)**3 + db(5,m+1)/24*(x-phi_x_max)**4
+       phi = b(m+1) + db(2, m+1)*(x-phi_x_max)+db(3,m+1)/2*(x-phi_x_max)**2! + &
+             !db(4,m+1)/6*(x-phi_x_max)**3 + db(5,m+1)/24*(x-phi_x_max)**4
     end if
     !write (*,*) x, phi
     !call bspline_deriv_eval(xd, nder, db)
@@ -73,8 +81,8 @@ contains
        d_phi = db(2, m+1)
     else
        call bspline_deriv_eval(phi_x_max, nder, db)
-       d_phi = db(2, m+1) + db(3,m+1)*(x-phi_x_max) + &
-             db(4,m+1)/2*(x-phi_x_max)**2 + db(5,m+1)/6*(x-phi_x_max)**3
+       d_phi = db(2, m+1) + db(3,m+1)*(x-phi_x_max)! + &
+             !db(4,m+1)/2*(x-phi_x_max)**2 + db(5,m+1)/6*(x-phi_x_max)**3
     end if
   end function d_phi_bspline
 
@@ -88,7 +96,7 @@ contains
        dd_phi = db(3, m+1)
     else
        call bspline_deriv_eval(phi_x_max, nder, db)
-       dd_phi = db(3,m+1) + db(4,m+1)*(x-phi_x_max) + db(5,m+1)/2*(x-phi_x_max)**2 
+       dd_phi = db(3,m+1)! + db(4,m+1)*(x-phi_x_max) + db(5,m+1)/2*(x-phi_x_max)**2 
     end if
     !write (*,*) dd_phi
   end function dd_phi_bspline
