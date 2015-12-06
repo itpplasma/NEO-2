@@ -2390,7 +2390,7 @@ call cpu_time(time1)
 
 !
         source_vector(:,k)=bvec_lor+bvec_iter
-        write (*,*) "1 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+        !write (*,*) "1 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
@@ -2716,7 +2716,7 @@ time3 = time3 + (time5-time4)
           time3 = time3 + (time5-time4)
 !
           bvec_sp=bvec_lor+bvec_iter
-          write (*,*) "2 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+          !write (*,*) "2 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
@@ -2774,7 +2774,7 @@ time3 = time3 + (time5-time4)
           time3 = time3 + (time5-time4)
 !
           bvec_sp=bvec_lor+bvec_iter
-          write (*,*) "3 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+          !write (*,*) "3 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
