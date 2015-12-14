@@ -20,7 +20,7 @@ PROGRAM neo2
        isw_integral,isw_energy,isw_axisymm,                         &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
-       phi_x_max
+       phi_x_max, collop_bspline_order, collop_bspline_dist
   USE propagator_mod, ONLY : reconstruct_prop_dist,   &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -152,7 +152,7 @@ PROGRAM neo2
        isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
        collop_path, collop_base_prj, collop_base_exp,                         &
        scalprod_alpha, scalprod_beta, v_min_resolution, v_max_resolution,     &
-       phi_x_max
+       phi_x_max, collop_bspline_order, collop_bspline_dist
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -241,6 +241,8 @@ PROGRAM neo2
   v_min_resolution = 0.1d0
   v_max_resolution = 5.0d0
   phi_x_max        = 5.0d0
+  collop_bspline_order = 4
+  collop_bspline_dist  = 1d0
   lag=10
   leg=20
   legmax=20
@@ -1010,7 +1012,9 @@ CONTAINS
         CALL h5_add(h5_config_group, 'v_min_resolution', v_min_resolution, 'Minimum velocity for level placement')
         CALL h5_add(h5_config_group, 'v_max_resolution', v_max_resolution, 'Maximum velocity for level placement')
         CALL h5_add(h5_config_group, 'phi_x_max', phi_x_max, 'Maximum velocity for base function')
-        CALL h5_close_group(h5_config_group)
+        CALL h5_add(h5_config_group, 'collop_bspline_order', collop_bspline_order, 'BSpline order')
+        CALL h5_add(h5_config_group, 'collop_bspline_dist', collop_bspline_dist, 'BSpline knots distribution factor')
+        call h5_close_group(h5_config_group)
 
         CALL h5_define_group(h5_config_id, 'binsplit', h5_config_group)
         CALL h5_add(h5_config_group, 'eta_s_lim', eta_s_lim)

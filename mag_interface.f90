@@ -1294,6 +1294,7 @@ CONTAINS
     USE neo_magfie_mod, ONLY: magfie_result,magfie_spline,magfie_sarray
     USE magfie_mod, ONLY : stevvo
     use field_eq_mod, only : rtf
+    use neo_actual_fluxs, only : s_es
     CHARACTER(len=*),    INTENT(in), OPTIONAL :: name
     ! stevvo related stuff
     REAL(kind=dp) :: r0i,cbfi,bz0i,bf0
@@ -1302,7 +1303,7 @@ CONTAINS
     IF (      PRESENT(name)) device%name = name
     IF (.NOT. PRESENT(name)) device%name = name_def
     ! this is still in a form I do not like at all
-    IF (mag_coordinates .EQ. 0) THEN
+    if (mag_coordinates .eq. 0) then
        ! cylindrical coordinates
        IF (mag_magfield .EQ. 0) THEN ! homogeneous case
           device%r0  = 200.0_dp
@@ -1341,10 +1342,16 @@ CONTAINS
        magfie_spline = 1
        ALLOCATE(magfie_sarray(1))
        magfie_sarray = boozer_s
+       !**********************************************************
+       ! For neo_fourier() consitency check
+       !**********************************************************
+       s_es = boozer_s
+       write (*,*) "Flux surface: ", s_es
+       !**********************************************************
        CALL stevvo(device%r0,r0i,device%nfp,cbfi,bz0i,bf0)
        device%z0  = 0.0_dp
        boozer_bmod0 = bf0
-    END IF
+    end if
   END SUBROUTINE make_mag_device
   ! ---------------------------------------------------------------------------
   

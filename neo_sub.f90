@@ -86,7 +86,15 @@ SUBROUTINE neo_init(npsi)
 ! **********************************************************************
   w_u6_open = 0
 ! **********************************************************************
-  RETURN
+
+  !**********************************************************
+  ! Consistency check
+  !**********************************************************
+  !call neo_init_fluxsurface()
+  !call neo_fourier()
+  !stop
+
+  return
 END SUBROUTINE neo_init
 ! **********************************************************************
 
@@ -1373,14 +1381,21 @@ SUBROUTINE neo_read
      curr_pol = curr_pol
      iota     = iota
   ELSE IF  (lab_swi .EQ. 6) THEN         ! NEW IPP, HSX
-     curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -
+     !**********************************************************
+     ! Change from Gernot Kapper - 02.12.2015
+     ! This corrects the direction of the poloidal current to
+     ! match the Boozer file w7x-m24li.bc
+     !**********************************************************
+     ! curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -   ! Before patch
+     curr_pol = curr_pol * 2.d-7 * nfp             ! After patch
+     
      !**********************************************************
      ! Patch from Gernot Kapper - 20.11.2014
      ! See mail from Winfried Kernbichler archived at
      ! /proj/plasma/DOCUMENTS/Neo2/Archive/
      !**********************************************************
-     ! curr_tor = curr_tor * 2.d-7 * nfp ! Henning   ! Before patch
-     curr_tor = - curr_tor * 2.d-7         ! Henning
+     ! curr_tor = curr_tor * 2.d-7 * nfp   ! Henning   ! Before patch
+     curr_tor = - curr_tor * 2.d-7         ! Henning   ! After patch
 
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
@@ -1852,8 +1867,8 @@ SUBROUTINE neo_fourier
               r_pb(it,ip) = r_pb(it,ip) + n*ri*sinv
               z_tb(it,ip) = z_tb(it,ip) + m*zi*cosv
               z_pb(it,ip) = z_pb(it,ip) - n*zi*cosv
-              p_tb(it,ip) = p_tb(it,ip) - m*li*cosv ! -l_tb
-              p_pb(it,ip) = p_pb(it,ip) + n*li*cosv ! -l_pb
+              p_tb(it,ip) = p_tb(it,ip) - m*li*cosv  !-l_tb
+              p_pb(it,ip) = p_pb(it,ip) + n*li*cosv  !-l_pb
               b_tb(it,ip) = b_tb(it,ip) - m*bi*sinv
               b_pb(it,ip) = b_pb(it,ip) + n*bi*sinv
            END DO
@@ -1864,9 +1879,9 @@ SUBROUTINE neo_fourier
   IF (lab_swi .EQ. 5 .OR. lab_swi .EQ. 3) THEN ! CHS, LHD
       p_tb = - p_tb
       p_pb = 1 - p_pb
-  ELSE
+   else    
      p_tb = p_tb * twopi / nfp
-     p_pb = 1.0_dp + p_pb * twopi / nfp
+     p_pb = 1.0_dp + p_pb * twopi / nfp   
   END IF
 
 ! **********************************************************************
