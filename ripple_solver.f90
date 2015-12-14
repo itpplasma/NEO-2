@@ -2394,7 +2394,7 @@ call cpu_time(time1)
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
-  	   write (*,*) "Number of iterations: ", iter
+  	   !write (*,*) "Number of iterations: ", iter
           exit
         endif
      enddo
@@ -2720,7 +2720,7 @@ time3 = time3 + (time5-time4)
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
-   	     write (*,*) "Number of iterations: ", iter
+   	     !write (*,*) "Number of iterations: ", iter
             exit
           endif
 !
@@ -2778,7 +2778,7 @@ time3 = time3 + (time5-time4)
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
-             write (*,*) "Number of iterations: ", iter
+             !write (*,*) "Number of iterations: ", iter
              exit
           endif
 !
