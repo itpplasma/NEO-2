@@ -785,13 +785,13 @@ CONTAINS
           CALL h5_copy(h5id_propfile, '/', h5id_prop, "spitf")
           CALL h5_close(h5id_propfile)
 
-          !call h5_open("dentf_" // trim(h5_filename) // ".h5", h5id_propfile)
-          !call h5_copy(h5id_propfile, '/', h5id_prop, "dentf")
-          !call h5_close(h5id_propfile)
+          call h5_open("dentf_" // trim(h5_filename) // ".h5", h5id_propfile)
+          call h5_copy(h5id_propfile, '/', h5id_prop, "dentf")
+          call h5_close(h5id_propfile)
 
-          !all h5_open("enetf_" // trim(h5_filename) // ".h5", h5id_propfile)
-          !call h5_copy(h5id_propfile, '/', h5id_prop, "enetf")
-          !call h5_close(h5id_propfile)
+          call h5_open("enetf_" // trim(h5_filename) // ".h5", h5id_propfile)
+          call h5_copy(h5id_propfile, '/', h5id_prop, "enetf")
+          call h5_close(h5id_propfile)
 
           CALL h5_open("phi_mesh_" // TRIM(h5_filename) // ".h5", h5id_propfile)
           CALL h5_get(h5id_propfile, 'cg0_num', cg0_num_prop(k))
