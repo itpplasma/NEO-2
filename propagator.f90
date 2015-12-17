@@ -1004,11 +1004,12 @@ CONTAINS
     !end if
 
     if (prop_fileformat .eq. 1) then
+       if (prop_write .lt. 2) then
           call h5_create('evolve' // trim(adjustl(cadd)) // '.h5', h5id)
 
           call h5_add(h5id, 'tag_s', prop_a%fieldpropagator_tag_s)
           call h5_add(h5id, 'tag_e', prop_a%fieldpropagator_tag_e)
-          
+
           call h5_add(h5id, 'phi', phi)
           call h5_add(h5id, 'y', y, lbound(y), ubound(y))
           call h5_add(h5id, 'aiota_loc', aiota_loc)
@@ -1024,7 +1025,8 @@ CONTAINS
           call h5_add(h5id, 'r0', device%r0)
           call h5_add(h5id, 'bmod0', surface%bmod0)
 
-          call h5_close(h5id)       
+          call h5_close(h5id)
+       end if
     else
        open(uw,file='evolve' // trim(adjustl(cadd)) // '.dat', status='replace')
        write (uw,'(1000(1x,e18.5))')                                   &
