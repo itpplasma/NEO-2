@@ -8,7 +8,7 @@ module collop
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
-       v_max_resolution, v_min_resolution, phi_x_max
+       v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz
 
   implicit none
   
@@ -136,9 +136,14 @@ module collop
          ! collpar_min = collpar_max / v_max_resolution**3
 
          ! New version with deflection frequency
-         collpar_max = collpar * nu_D_hat(v_min_resolution)
-         collpar_min = collpar * nu_D_hat(v_max_resolution)
-
+         if (isw_lorentz .eq. 1) then
+            collpar_min = collpar
+            collpar_max = collpar
+         else
+            collpar_max = collpar * nu_D_hat(v_min_resolution)
+            collpar_min = collpar * nu_D_hat(v_max_resolution)
+         end if
+         
          !**********************************************************
          ! Compute sources
          !**********************************************************
