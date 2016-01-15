@@ -2455,7 +2455,12 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   ! End of fixing magnetics in all propagators 
 
   ! Write taginfo.prop
-  IF ( (prop_write .EQ. 1 .OR. prop_write .EQ. 2) .AND. prop_reconstruct .EQ. 0) THEN
+  !IF ( (prop_write .EQ. 1 .OR. prop_write .EQ. 2) .AND. prop_reconstruct .EQ. 0) THEN
+
+  !**********************************************************
+  ! 15.01.2016 - taginfo is written also if prop_write .eq. 0
+  !**********************************************************
+  IF (prop_reconstruct .EQ. 0) THEN
 
      ! --- MPI SUPPORT ---
 

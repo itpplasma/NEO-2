@@ -240,7 +240,7 @@ module collop
       !write (*,*) ailmm
       !write (*,*) weightlag
 
-      if (mpro%isMaster()) call write_collop('collop.h5')
+      if (mpro%isMaster()) call write_collop()
     end subroutine collop_load
 
     subroutine collop_unload()
@@ -258,15 +258,14 @@ module collop
       
     end subroutine collop_deconstruct
 
-    subroutine write_collop(h5filename)
-      character(len=*) :: h5filename
+    subroutine write_collop()
       integer(HID_T)   :: h5id_collop, h5id_meta, h5id_species
       integer          :: m, mp, l, xi, n_x
       integer          :: f = 4234
       real(kind=dp), dimension(:), allocatable :: x
       real(kind=dp), dimension(:,:), allocatable :: phi_x, dphi_x, ddphi_x
 
-      call h5_create(h5filename, h5id_collop)
+      call h5_create('collop.h5', h5id_collop)
       !call h5_define_group(h5id_collop, trim(tag_a) //'-'// trim(tag_b), h5id_species)
       call h5_define_group(h5id_collop, 'meta', h5id_meta)
 

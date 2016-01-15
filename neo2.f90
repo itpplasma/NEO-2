@@ -650,7 +650,7 @@ PROGRAM neo2
         !**********************************************************
         ! Open taginfo
         !**********************************************************
-        call h5_open('taginfo.h5', h5id_taginfo)
+        call h5_open_rw('taginfo.h5', h5id_taginfo)
         call h5_get(h5id_taginfo, 'tag_first', tag_first)
         call h5_get(h5id_taginfo, 'tag_last',  tag_last)
         call h5_close(h5id_taginfo)     
