@@ -90,9 +90,9 @@ SUBROUTINE neo_init(npsi)
   !**********************************************************
   ! Consistency check
   !**********************************************************
-  !call neo_init_fluxsurface()
-  !call neo_fourier()
-  !stop
+  ! call neo_init_fluxsurface()
+  ! call neo_fourier()
+  ! stop
 
   return
 END SUBROUTINE neo_init
@@ -1387,7 +1387,7 @@ SUBROUTINE neo_read
      ! match the Boozer file w7x-m24li.bc
      !**********************************************************
      ! curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -   ! Before patch
-     curr_pol = curr_pol * 2.d-7 * nfp             ! After patch
+     curr_pol = curr_pol * 2.d-7 * nfp               ! After patch
      
      !**********************************************************
      ! Patch from Gernot Kapper - 20.11.2014

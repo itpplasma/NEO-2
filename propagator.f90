@@ -935,6 +935,11 @@ CONTAINS
     character(len=100) :: cname,ctag_s,ctag_e
     character(len=100) :: cadd,tags
 
+    !**********************************************************
+    ! For D11_ov_Dpl
+    !**********************************************************
+    real(kind=dp) :: fac1, fac2, D11_NA_Dpl
+    
     allocate(gamma_out(3,3))
    
     ! taken from Sergei
@@ -1106,7 +1111,19 @@ CONTAINS
        end if
 
        if (prop_fileformat .eq. 1) then
+          
+          ! normalization factor from plateau coefficient
+          fac1=16.0_dp*rt0*aiota_loc/PI
+          ! normalization factor from gamma matrices
+          fac2= - beta_out(1) * beta_out(1) / y(6)
+          !PRINT *,fac1,fac2
+          ! convert indices for the gamma matrices according 
+          ! to the paper Kernbichler(2008)
+          i_p = ind_map(1)
+          j_p = ind_map(1)
+          D11_NA_Dpl=fac1*fac2*prop_a%p%qflux(i_p,j_p)
 
+          
           ! Write to HDF5 file
           call h5_create('efinal.h5', h5id, 1)
 
@@ -1126,6 +1143,11 @@ CONTAINS
           call h5_add(h5id, 'bmod0', surface%bmod0)
           call h5_add(h5id, 'y', y, lbound(y), ubound(y))
 
+          !**********************************************************
+          ! D11_ov_Dpl
+          !**********************************************************
+          call h5_add(h5id, 'D11_ov_Dpl', D11_NA_Dpl)
+          
           call h5_close(h5id)      
 
        else

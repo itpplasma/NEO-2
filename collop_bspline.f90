@@ -49,6 +49,14 @@ contains
        write (*,*) "Knots: ", x
        call init_bspline(collop_bspline_order, knots)
        call set_bspline_knots(x)
+
+       ! Testing
+
+       !write (*,*) phi_bspline(2, 4d0)
+       !write (*,*) d_phi_bspline(2, 4d0)
+       !write (*,*) dd_phi_bspline(2, 4d0)
+
+       !stop
        
     end if
   end subroutine init_phi_bspline

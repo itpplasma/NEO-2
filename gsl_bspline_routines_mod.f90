@@ -84,6 +84,8 @@ contains
        status = fgsl_bspline_eval(x, b, sw)
        by = b
     elseif (taylorExpansion) then
+
+       !write (*,*) "Taylor Expansion of BSplines", x
        !status = fgsl_bspline_eval(x, b, sw)
 
        call bspline_eval(xd_end, by)
@@ -115,6 +117,7 @@ contains
        status = fgsl_bspline_deriv_eval(x, fgsl_nder, db, sw, dw)
        call fgsl_matrix_free(db)
     elseif (taylorExpansion) then
+       !write (*,*) "Taylor Expansion of BSplines (deriv)", nder, x
        call bspline_deriv_eval(xd_end, max_nder, rdb)
        dby = rdb
        do n = 1, nder
