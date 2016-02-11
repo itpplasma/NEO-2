@@ -446,15 +446,15 @@ contains
     end if
   end subroutine inv
 
-  subroutine compute_Minv(Minv)
-    real(kind=dp), dimension(:,:) :: Minv
+  subroutine compute_Minv(M)
+    real(kind=dp), dimension(:,:) :: M
     real(kind=dp), dimension(2)   :: res_int
     integer :: mm, mp
 
     write (*,*) "Computing phi transformation matrix..."
     if (precomp) then ! load pre-computed M_transform
        call h5_open(trim(adjustl(matelem_name)), h5id_matelem)
-       call h5_get(h5id_matelem,'Ammp',Minv)
+       call h5_get(h5id_matelem,'Ammp',M)
        call h5_close(h5id_matelem)
        !DO mm=1,SIZE(Minv,1)
        !   PRINT *,(Minv(mm,mp),mp=1,SIZE(Minv,2))
@@ -468,7 +468,7 @@ contains
              else
                 res_int = fint1d_qagiu(phim_phimp, 0d0, epsabs, epsrel)
              end if
-             Minv(mm+1,mp+1) = res_int(1)
+             M(mm+1,mp+1) = res_int(1)
           end do
        end do
     end if
@@ -484,11 +484,14 @@ contains
           end do
        end do
     else
-       M_transform = Minv
+       M_transform = M
     end if
 
-    call inv(Minv)
-    call chop(Minv)
+    !**********************************************************
+    ! M -> inv(M)
+    !**********************************************************
+    call inv(M)
+    call chop(M)
 
   contains
 
