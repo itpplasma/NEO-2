@@ -925,11 +925,11 @@ CONTAINS
           OPEN(unit=1234, iostat=ios, file="spitf_" // TRIM(h5_filename) // ".h5", status='old')
           IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
 
-          OPEN(unit=1234, iostat=ios, file="enetf_" // TRIM(h5_filename) // ".h5", status='old')
-          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          !OPEN(unit=1234, iostat=ios, file="enetf_" // TRIM(h5_filename) // ".h5", status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
 
-          OPEN(unit=1234, iostat=ios, file="dentf_" // TRIM(h5_filename) // ".h5", status='old')
-          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          !OPEN(unit=1234, iostat=ios, file="dentf_" // TRIM(h5_filename) // ".h5", status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
 
           OPEN(unit=1234, iostat=ios, file="phi_mesh_" // TRIM(h5_filename) // ".h5", status='old')
           IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
