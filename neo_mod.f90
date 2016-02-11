@@ -70,6 +70,7 @@
     
     ! New Version - up to now only differential part
     CHARACTER(len=3), DIMENSION(:), ALLOCATABLE       :: species_tags
+    DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: Amm
     DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: asource
     DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: anumm_a
     DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: denmm_a
