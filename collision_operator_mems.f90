@@ -8,7 +8,8 @@ module collop
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
-       v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz
+       v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz, conl_over_mfp
+  use device_mod, only : device
 
   implicit none
   
@@ -33,8 +34,8 @@ module collop
 
   real(kind=dp), dimension(:,:), allocatable :: anumm_inf
   real(kind=dp), dimension(:,:), allocatable :: x1mm, x2mm
-
-  logical :: use_oldcollop = .false.
+  real(kind=dp), dimension(:),   allocatable :: conl_over_mfp_spec
+  real(kind=dp), dimension(:),   allocatable :: z_spec
   
   contains
     
@@ -45,6 +46,8 @@ module collop
     subroutine collop_set_species(ispec, opt_talk)
       integer :: ispec
       logical, optional :: opt_talk
+      ! parameter
+      real(kind=dp), parameter :: pi=3.14159265358979d0
       logical :: talk
 
       talk = .true.
@@ -65,7 +68,13 @@ module collop
       !**********************************************************
       ! Switch collisionality parameter
       !**********************************************************
-      ! Not yet implemented
+      ! negative input for conl_over_mfp should provide collpar directly
+      conl_over_mfp=conl_over_mfp_spec(ispec)
+      if (conl_over_mfp .gt. 0.0d0) then
+         collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
+      else
+         collpar=-conl_over_mfp
+      end if
       
     end subroutine collop_set_species
     
@@ -73,18 +82,24 @@ module collop
       real(kind=dp), dimension(:), allocatable :: asource_temp
       real(kind=dp) :: alpha_temp, beta_temp
       integer       :: a,b
-
-      if (Z_eff .ne. 0 ) then
+      real(kind=dp) :: taa_ov_tab_temp
+      real(kind=dp) :: coll_a_temp, coll_b_temp
+      real(kind=dp) :: za_temp, zb_temp
+      
+      if (z_eff .ne. 0 ) then
          write (*,*) "Standard mode."
          num_spec = 1
       else
          write (*,*) "Test mode for two species."
-         num_spec = 2
+         num_spec = 1
       end if
       
       !**********************************************************
       ! Allocation of matrices
       !**********************************************************
+      if(allocated(Amm)) deallocate(Amm)
+      allocate(Amm(0:lag,0:lag))
+
       if(allocated(anumm_aa)) deallocate(anumm_aa)
       allocate(anumm_aa(0:lag,0:lag,0:num_spec-1,0:num_spec-1))
 
@@ -191,23 +206,46 @@ module collop
          !**********************************************************
          call compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
               denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
-         call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
-              denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
-              denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-              denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+         !call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
+         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+         !call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
+         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+         !call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+         !call compute_collop('d', 'alp', m_d, m_alp, 1d0, 1d0, anumm_aa(:,:,0,1), &
+         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+         !call compute_collop('alp', 'alp', m_alp, m_alp, 1d0, 1d0, anumm_aa(:,:,1,1), &
+         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+         !call compute_collop('alp', 'd', m_alp, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
          
          !**********************************************************
          ! Sum up matrices
          !**********************************************************
          anumm_a = 0d0
          denmm_a = 0d0
-         do a = 1, num_spec
-            do b = 1, num_spec
+         !PRINT *,num_spec
+         !STOP
+         do a = 0, num_spec-1
+            coll_a_temp = conl_over_mfp_spec(a)
+            za_temp = z_spec(a)
+            do b = 0, num_spec-1
                !if (a .ne. b) then
-                  anumm_a(:,:,a) = anumm_a(:,:,a) + anumm_aa(:,:,a,b)
-                  denmm_a(:,:,a) = denmm_a(:,:,a) + denmm_aa(:,:,a,b)
+               coll_b_temp = conl_over_mfp_spec(b)
+               zb_temp = z_spec(b)
+               ! this definition is not exact (only valid for equal temperatures)
+               ! --> should be replaced by the definition via densities!!! 
+               taa_ov_tab_temp = &
+                    (coll_b_temp/coll_a_temp) * ((za_temp/zb_temp)**2)
+               !PRINT *,'taa_ov_tab: ',a,b,taa_ov_tab_temp
+               !PRINT *,coll_a_temp,coll_b_temp
+               !PRINT *,za_temp,zb_temp
+               anumm_a(:,:,a) = &
+                    anumm_a(:,:,a) + anumm_aa(:,:,a,b) * taa_ov_tab_temp
+               denmm_a(:,:,a) = &
+                    denmm_a(:,:,a) + denmm_aa(:,:,a,b) * taa_ov_tab_temp
+               ailmm_aa(:,:,:,a,b) = &
+                    ailmm_aa(:,:,:,a,b) * taa_ov_tab_temp
                !end if
             end do
          end do
@@ -252,6 +290,7 @@ module collop
       deallocate(weightlag)
       deallocate(x1mm)
       deallocate(x2mm)
+      deallocate(conl_over_mfp_spec)
     end subroutine collop_unload
   
     subroutine collop_deconstruct()

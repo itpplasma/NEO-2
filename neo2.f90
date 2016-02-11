@@ -46,7 +46,8 @@ PROGRAM neo2
   USE binarysplit_int, ONLY : linspace
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
        collop_load, collop_unload, z_eff, collop_path,              &
-       collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta
+       collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta, &
+       num_spec, conl_over_mfp_spec, z_spec
   USE rkstep_mod, ONLY : lag,leg,legmax, epserr_sink, epserr_iter, &
        niter
   USE development, ONLY : solver_talk,switch_off_asymp, &
@@ -127,9 +128,13 @@ PROGRAM neo2
   INTEGER :: u1=10
   INTEGER :: ios
   INTEGER :: jf
-  !CHARACTER(len=20), DIMENSION(2) :: fnames  ! removed because it is not used
-  CHARACTER(len=20), DIMENSION(1) :: fnames
-  
+  CHARACTER(len=20), DIMENSION(2) :: fnames
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  ! multi-species part:
+  ! -> read species-relevant info into a large array (allocatable not supported)
+  REAL(kind=dp), DIMENSION(1000) :: conl_over_mfp_vec
+  REAL(kind=dp), DIMENSION(1000) :: z_vec
+  !! End Modification by Andreas F. Martitsch (23.08.2015)  
   ! groups for namelist
   NAMELIST /settings/                                                         &
        phimi,nstep,nperiod,xetami,xetama,ndim0,zbeg,rbeg,                     &
@@ -152,7 +157,8 @@ PROGRAM neo2
        isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
        collop_path, collop_base_prj, collop_base_exp,                         &
        scalprod_alpha, scalprod_beta, v_min_resolution, v_max_resolution,     &
-       phi_x_max, collop_bspline_order, collop_bspline_dist
+       phi_x_max, collop_bspline_order, collop_bspline_dist,                  &
+       num_spec, conl_over_mfp_vec, z_vec
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -180,8 +186,8 @@ PROGRAM neo2
        plot_gauss,plot_prop
   ! ---------------------------------------------------------------------------
   ! filenames (default file and specific input file) for namelist
-  !fnames = (/'neo2.def','neo2.in '/) ! removed because it is not used
-  fnames = (/'neo2.in '/)
+  fnames = (/'neo2.def','neo2.in '/) ! removed because it is not used
+  !fnames = (/'neo2.in '/)
   
   ! ---------------------------------------------------------------------------
   ! defaults
@@ -243,6 +249,12 @@ PROGRAM neo2
   phi_x_max        = 5.0d0
   collop_bspline_order = 4
   collop_bspline_dist  = 1d0
+  !! Modification by Andreas F. Martitsch (25.08.2015)
+  !  multi-species part
+  num_spec = 1
+  conl_over_mfp_vec = 0.0d0
+  z_vec = 1.0d0
+  !! End Modification by Andreas F. Martitsch (25.08.2015)
   lag=10
   leg=20
   legmax=20
@@ -319,41 +331,64 @@ PROGRAM neo2
 
   ! reading
   DO jf = 1,SIZE(fnames)
+     IF(jf .EQ. 1) CYCLE ! skip neo2.def (Andreas F. Martitsch - 21.10.2015)
      OPEN(unit=u1,file=fnames(jf),status='old',iostat=ios)
      IF (ios .NE. 0) THEN
         PRINT *, 'WARNING: File ',fnames(jf),' cannot be OPENED!'
         PRINT *, ''
+        STOP
      ELSE
         ! Read variables from group settings
         READ(u1,nml=settings,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group settings in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
         READ(u1,nml=collision,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group collision in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
         READ(u1,nml=binsplit,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group binsplit in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
         READ(u1,nml=propagator,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group propagator in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
         READ(u1,nml=plotting,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group plotting in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
+           STOP
         END IF
      END IF
      CLOSE(unit=u1)
   END DO
   ! PAUSE
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  ! multi-species part:
+  ! -> read species-relevant info into a large array (allocatable not supported)
+  IF(ALLOCATED(conl_over_mfp_spec)) DEALLOCATE(conl_over_mfp_spec)
+  ALLOCATE(conl_over_mfp_spec(0:num_spec-1))
+  conl_over_mfp_spec(0:num_spec-1)=conl_over_mfp_vec(1:num_spec)
+  IF(num_spec .EQ. 1) conl_over_mfp_spec(0)=conl_over_mfp
+  !
+  IF(ALLOCATED(z_spec)) DEALLOCATE(z_spec)
+  ALLOCATE(z_spec(0:num_spec-1))
+  z_spec(0:num_spec-1)=z_vec(1:num_spec)
+  !
+  !PRINT *,conl_over_mfp_spec
+  !PRINT *,z_spec
+  !STOP
+  !! End Modification by Andreas F. Martitsch (23.08.2015) 
 
   IF (mag_magfield .EQ. 0) THEN ! homogeneous case
      PRINT *, 'WARNING: some input quantities modified - homogeneous case!'
