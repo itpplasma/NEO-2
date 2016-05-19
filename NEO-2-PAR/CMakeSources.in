@@ -1,25 +1,25 @@
 ### SUPERLU ###
 set(SUPERLU_SRC_FILES
-        ./c_fortran_dgssv.c
-        ./c_fortran_zgssv.c
+        ../COMMON/c_fortran_dgssv.c
+        ../COMMON/c_fortran_zgssv.c
 )
 set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFAGS} -I${SUPERLU_HDR}")
 set_source_files_properties(${SUPERLU_SRC_FILES} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
 
 ### SUITESPARSE###
 set(SUITESPARSE_SRC_FILES
-        ./umf4_f77wrapper.c
-        ./umf4_f77zwrapper.c
+        ../COMMON/umf4_f77wrapper.c
+        ../COMMON/umf4_f77zwrapper.c
 )
 set(SUITESPARSE_FLAGS "-I${SUITESPARSE_HDR}")
-set_source_files_properties(./umf4_f77wrapper.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(./umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
+set_source_files_properties(../COMMON/umf4_f77wrapper.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
+set_source_files_properties(../COMMON/umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
 ### FGSL user-defined interface###
 set(FGSL_USERINTER_SRC_FILES
-        ./gsl_roots_routines_mod.f90
-	./gsl_integration_routines_mod.f90
-	./gsl_bspline_routines_mod.f90
+        ../COMMON/gsl_roots_routines_mod.f90
+	../COMMON/gsl_integration_routines_mod.f90
+	../COMMON/gsl_bspline_routines_mod.f90
 )
 set(FGSL_USERINTER_FLAGS "-I${FGSL_INC}")
 set_source_files_properties(${FGSL_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTER_FLAGS})
@@ -35,37 +35,50 @@ set_source_files_properties(${MPI_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFL
 endif ()
 
 ### NEO2 ###
+set(NEO2_COMMON_FILES
+	#../COMMON/A1drive_neo2.f90
+	#../COMMON/A2drive_neo2.f90
+	../COMMON/bdivfree.f90
+	../COMMON/device_mod.f90
+	../COMMON/fluxsplitter.f90
+	#../COMMON/gfunc_neo2.f90
+	#../COMMON/gfunc_neo2_jul_2010.f90
+	#../COMMON/gfunc_neo2_may_2011.f90
+	#../COMMON/gfunc_neo2_oct_2010.f90
+	../COMMON/inter_interfaces.f90
+	../COMMON/kin_allocate.f90
+	../COMMON/lapack_band.f90
+	#../COMMON/localizer.f90
+	#../COMMON/longint.f90
+	../COMMON/polleg.f90
+	../COMMON/prodband.f90
+	../COMMON/pspline.f90
+	../COMMON/spline5_RZ.f90
+	../COMMON/spline_cof.f90
+	../COMMON/test_function.f90
+	../COMMON/vvn_legendre.f
+	../COMMON/vvn_tok.f90
+	../COMMON/vvn_w7as.f
+)
+
 set(NEO2_SRC_FILES
         ./field_divB0.f90
-        ./bdivfree.f90
-        ./spline5_RZ.f90
         ./compute_aiota.f90
         ./neo_modules.f90
         ./nrutil.f90
-        ./inter_interfaces.f90
         ./solve_system.f90
-        ./test_function.f90
-        ./spline_cof.f90
         ./spline_int.f90
-        ./pspline.f90
         ./neo_sub.f90
         ./neo_magfie.f90
         ./magfie.f90
         ./neo_mod.f90
-        ./polleg.f90
-#        ./collision_operator.f90
-        ./lapack_band.f90
         ./sparse_mod.f90
         ./binarysplit_mod.f90
         ./magnetics.f90
-        ./device_mod.f90
         ./mag_interface.f90
-        ./fluxsplitter.f90
         ./propagator.f90
-        ./prodband.f90
         ./mag.f90
         ./flint.f90
-        ./kin_allocate.f90
         ./rhs_kin.f90
         ./magdata_for_particles.f90
         ./rk4_kin.f90
@@ -74,17 +87,10 @@ set(NEO2_SRC_FILES
         ./join_ripples.f90
         ./join_ends.f90
         ./plot_distrf.f90
-        ./vvn_tok.f90
-        ./vvn_w7as.f
-        ./vvn_legendre.f
         ./neo2.f90
 	./timingInfo.f90
-#	./nctools_module.f90
-#	./hdf5_tools.f90
-#	./hdf5_tools_f2003.f90
 	./collision_operator_mems.f90
 	./collop_compute.f90
-#	./collop_definitions.f90
 	./collop_laguerre.f90
 	./collop_polynomial.f90
 	./collop_spline.f90
@@ -92,4 +98,4 @@ set(NEO2_SRC_FILES
 	./collop_spline4.f90
 	./collop_bspline2.f90
 )
-set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
+set_source_files_properties(${NEO2_SRC_FILES} ${NEO2_COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
