@@ -116,6 +116,7 @@ include (CMakeSources.in)
 
 ### Define executable
 add_executable(${EXE_NAME}
+	${NEO2_COMMON_FILES}
 	${NEO2_SRC_FILES} 
   	${SUITESPARSE_SRC_FILES}
 	${SUPERLU_SRC_FILES}
