@@ -7,7 +7,7 @@ module collop_bspline
   implicit none
   
   real(fgsl_double), dimension(:), allocatable :: x, b
-  real(fgsl_double), dimension(:,:), allocatable :: db
+  real(fgsl_double), dimension(:), allocatable :: db
   real(fgsl_double) :: xd
   integer :: i, j, knots
   integer :: nder
@@ -31,7 +31,7 @@ contains
 
        if (.not. allocated(x))  allocate(x(knots))
        if (.not. allocated(b))  allocate(b(knots+collop_bspline_order-2))
-       if (.not. allocated(db)) allocate(db(nder+1, knots+collop_bspline_order-2))
+       if (.not. allocated(db)) allocate(db(knots+collop_bspline_order-2))
 
        gam_all = 0d0
        do k = 1, knots-1
@@ -66,6 +66,7 @@ contains
     real(kind=dp) :: x, phi
 
     call bspline_eval(x, b)
+    !call bspline_deriv_eval(x, 0, b)
     phi = b(m+1)
     
   end function phi_bspline
@@ -74,8 +75,8 @@ contains
     integer       :: m
     real(kind=dp) :: x, d_phi
 
-    call bspline_deriv_eval(x, nder, db)
-    d_phi = db(2, m+1)
+    call bspline_deriv_eval(x, 1, db)
+    d_phi = db(m+1)
 
   end function d_phi_bspline
 
@@ -83,8 +84,8 @@ contains
     integer       :: m
     real(kind=dp) :: x, dd_phi
     
-    call bspline_deriv_eval(x, nder, db)
-    dd_phi = db(3, m+1)
+    call bspline_deriv_eval(x, 2, db)
+    dd_phi = db(m+1)
     
   end function dd_phi_bspline
 
