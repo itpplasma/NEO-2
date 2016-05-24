@@ -59,6 +59,7 @@ set(NEO2_COMMON_FILES
 	../COMMON/vvn_legendre.f
 	../COMMON/vvn_tok.f90
 	../COMMON/vvn_w7as.f
+	../COMMON/solve_system.f90
 )
 
 set(NEO2_SRC_FILES
@@ -66,7 +67,6 @@ set(NEO2_SRC_FILES
         ./compute_aiota.f90
         ./neo_modules.f90
         ./nrutil.f90
-        ./solve_system.f90
         ./spline_int.f90
         ./neo_sub.f90
         ./neo_magfie.f90
@@ -95,7 +95,7 @@ set(NEO2_SRC_FILES
 	./collop_polynomial.f90
 	./collop_spline.f90
 	./collop_bspline.f90
-	./collop_spline4.f90
-	./collop_bspline2.f90
+	#./collop_spline4.f90
+	#./collop_bspline2.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} ${NEO2_COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")

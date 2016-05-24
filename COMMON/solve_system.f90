@@ -26,8 +26,6 @@ CONTAINS
   SUBROUTINE solve_eqsys(a, b, info)
 
 !    USE inter_interfaces, ONLY: ludcmp, lubksb 
-    use mpiprovider_module
-    use timinginfo
 
     IMPLICIT NONE
 
@@ -37,8 +35,6 @@ CONTAINS
     INTEGER(I4B) :: i_alloc
     INTEGER(I4B) :: n, nrhs, lda, ldb
     INTEGER(I4B), DIMENSION(:), ALLOCATABLE :: ipiv
-    double precision :: atime
-
 ! --------------------------------------------------------------------
 
     lda  = SIZE(a,1)
@@ -48,10 +44,9 @@ CONTAINS
 
     ALLOCATE(ipiv(n),  stat = i_alloc)
     IF(i_alloc /= 0) STOP 'solve_eqsys: Allocation for array failed!'
-    !atime = MPI_WTime()
+
     CALL dgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
-    !dgesvTime = dgesvTime + MPI_WTime() - atime
-    !dgesvCalls = dgesvCalls + 1
+
     info = 0
 
     DEALLOCATE(ipiv,  stat = i_alloc)

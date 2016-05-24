@@ -7,8 +7,8 @@ module collop_compute
   use collop_polynomial
   use collop_spline
   use collop_bspline
-  use collop_bspline2
-  use collop_spline4
+  !use collop_bspline2
+  !use collop_spline4
 
   implicit none
 
@@ -196,18 +196,18 @@ contains
        phi_prj      => phi_bspline
        d_phi_prj    => d_phi_bspline
        dd_phi_prj   => dd_phi_bspline
-    elseif (collop_base_prj .eq. 12) then
-       write (*,*) "Using 4th-order Splines as collision operator projection base."
-       init_phi_prj => init_phi_spline4
-       phi_prj      => phi_spline4
-       d_phi_prj    => d_phi_spline4
-       dd_phi_prj   => dd_phi_spline4
-    elseif (collop_base_prj .eq. 13) then
-       write (*,*) "Using B-Splines with x**2 as collision operator projection base."
-       init_phi_prj => init_phi_bspline2
-       phi_prj      => phi_bspline2
-       d_phi_prj    => d_phi_bspline2
-       dd_phi_prj   => dd_phi_bspline2
+    !elseif (collop_base_prj .eq. 12) then
+    !   write (*,*) "Using 4th-order Splines as collision operator projection base."
+    !   init_phi_prj => init_phi_spline4
+    !   phi_prj      => phi_spline4
+    !   d_phi_prj    => d_phi_spline4
+    !   dd_phi_prj   => dd_phi_spline4
+    !elseif (collop_base_prj .eq. 13) then
+    !   write (*,*) "Using B-Splines with x**2 as collision operator projection base."
+    !   init_phi_prj => init_phi_bspline2
+    !   phi_prj      => phi_bspline2
+    !   d_phi_prj    => d_phi_bspline2
+    !   dd_phi_prj   => dd_phi_bspline2
     elseif (collop_base_prj .eq. 100) then
        write (*,*) "Using hat functions as collision operator projection base."
        precomp=.true.
@@ -253,18 +253,18 @@ contains
        phi_exp      => phi_bspline
        d_phi_exp    => d_phi_bspline
        dd_phi_exp   => dd_phi_bspline
-    elseif (collop_base_exp .eq. 12) then
-       write (*,*) "Using 4th-order Splines as collision operator expansion base."
-       init_phi_exp => init_phi_spline4
-       phi_exp      => phi_spline4
-       d_phi_exp    => d_phi_spline4
-       dd_phi_exp   => dd_phi_spline4
-    elseif (collop_base_exp .eq. 13) then
-       write (*,*) "Using B-Splines with x**2 as collision operator expansion base."
-       init_phi_exp => init_phi_bspline2
-       phi_exp      => phi_bspline2
-       d_phi_exp    => d_phi_bspline2
-       dd_phi_exp   => dd_phi_bspline2
+    !elseif (collop_base_exp .eq. 12) then
+    !   write (*,*) "Using 4th-order Splines as collision operator expansion base."
+    !   init_phi_exp => init_phi_spline4
+    !   phi_exp      => phi_spline4
+    !   d_phi_exp    => d_phi_spline4
+    !   dd_phi_exp   => dd_phi_spline4
+    !elseif (collop_base_exp .eq. 13) then
+    !   write (*,*) "Using B-Splines with x**2 as collision operator expansion base."
+    !   init_phi_exp => init_phi_bspline2
+    !   phi_exp      => phi_bspline2
+    !   d_phi_exp    => d_phi_bspline2
+    !   dd_phi_exp   => dd_phi_bspline2
     elseif (collop_base_exp .eq. 100) then
        write (*,*) "Using hat functions as collision operator expansion base."
     else

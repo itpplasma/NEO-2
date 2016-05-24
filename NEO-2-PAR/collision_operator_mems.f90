@@ -26,6 +26,7 @@ module collop
   integer                     :: collop_base_exp  = 0 
   real(kind=dp)               :: scalprod_alpha = 0d0
   real(kind=dp)               :: scalprod_beta  = 0d0
+  logical                     :: collop_only_precompute = .false.
 
   !**********************************************************
   ! Number of species
@@ -69,11 +70,13 @@ module collop
       ! Switch collisionality parameter
       !**********************************************************
       ! negative input for conl_over_mfp should provide collpar directly
-      conl_over_mfp=conl_over_mfp_spec(ispec)
-      if (conl_over_mfp .gt. 0.0d0) then
-         collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
-      else
-         collpar=-conl_over_mfp
+      if (.not. collop_only_precompute) then
+         conl_over_mfp=conl_over_mfp_spec(ispec)
+         if (conl_over_mfp .gt. 0.0d0) then
+            collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
+         else
+            collpar=-conl_over_mfp
+         end if
       end if
       
     end subroutine collop_set_species
