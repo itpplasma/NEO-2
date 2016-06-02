@@ -1037,7 +1037,7 @@ contains
       I_phi = ((x**(3+alpha)) * exp(-(beta+1)*(x**2)) * &
            (alpha-2*(beta+1)*(x**2)+4) * phi_prj(m,x) + &
            (x**(4+alpha))  * exp(-(beta+1)*(x**2)) * d_phi_prj(m,x)) * &
-           ((x**(-l-1)) * I1 + (x**l) * I2)      
+           ((x**(-l-1)) * I1 + (x**l) * I2)
     end function I_phi
 
     function I_phi_1(xp)

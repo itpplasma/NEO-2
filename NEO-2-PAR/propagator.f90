@@ -1009,7 +1009,7 @@ CONTAINS
     !end if
 
     if (prop_fileformat .eq. 1) then
-       if (prop_write .lt. 2) then
+       if (prop_write .lt. 0) then
           call h5_create('evolve' // trim(adjustl(cadd)) // '.h5', h5id)
 
           call h5_add(h5id, 'tag_s', prop_a%fieldpropagator_tag_s)
@@ -2855,6 +2855,9 @@ CONTAINS
     call h5_add(h5id_grp, 'n_ori', binsplit%n_ori)
     call h5_add(h5id_grp, 'n_split', binsplit%n_split)
 
+    !write (*,*) "In write_binarysplit_side_h5", allocated(binsplit%x_ori_poi), binsplit%x_ori_poi
+    !stop
+    
     call h5_add(h5id_grp, 'x_ori_bin', binsplit%x_ori_bin, lbound(binsplit%x_ori_bin), ubound(binsplit%x_ori_bin))
     call h5_add(h5id_grp, 'x_ori_poi', binsplit%x_ori_poi, lbound(binsplit%x_ori_poi), ubound(binsplit%x_ori_poi))
     call h5_add(h5id_grp, 'x_poi', binsplit%x_poi, lbound(binsplit%x_poi), ubound(binsplit%x_poi))

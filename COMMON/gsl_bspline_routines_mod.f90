@@ -68,7 +68,6 @@ contains
 
     if (allocated(dby)) deallocate(dby)
     allocate(dby(1:fgsl_max_nder+1, 1:nbreak+order-2))
-
     fgsl_dby = fgsl_matrix_init(1.0_fgsl_double)
     call fgsl_check(fgsl_matrix_align(dby, fgsl_max_nder+1, fgsl_max_nder+1, fgsl_ncbf, fgsl_dby))
     
@@ -84,8 +83,8 @@ contains
     xd_end = xd(fgsl_nbreak)
     
     fgsl_xd = fgsl_vector_init(1.0_fgsl_double)
-    status  = fgsl_vector_align(xd, fgsl_nbreak, fgsl_xd, fgsl_nbreak, 0_fgsl_size_t, 1_fgsl_size_t)
-   status  = fgsl_bspline_knots(fgsl_xd, sw)
+    call fgsl_check(fgsl_vector_align(xd, fgsl_nbreak, fgsl_xd, fgsl_nbreak, 0_fgsl_size_t, 1_fgsl_size_t))
+    call fgsl_check(fgsl_bspline_knots(fgsl_xd, sw))
 
     fgsl_by  = fgsl_vector_init(1.0_fgsl_double)
 
@@ -97,18 +96,16 @@ contains
     write (*,*) fgsl_bspline_ncoeffs(sw)
 
     !**********************************************************
-    ! Initialize Taylor expansion
+    ! Initialize Taylor expansion coefficients
     !**********************************************************
     if (allocated(by_end)) deallocate(by_end)
     allocate(by_end(fgsl_ncbf))
-    
     fgsl_by_end = fgsl_vector_init(1.0_fgsl_double)
     call fgsl_check(fgsl_vector_align(by_end, fgsl_ncbf, fgsl_by_end, fgsl_ncbf, 0_fgsl_size_t, 1_fgsl_size_t))
     call fgsl_check(fgsl_bspline_eval(xd_end, fgsl_by_end, sw))
         
     if (allocated(dby_end)) deallocate(dby_end)
-   allocate(dby_end(0:fgsl_max_nder, 1:fgsl_ncbf))
-    
+    allocate(dby_end(0:fgsl_max_nder, 1:fgsl_ncbf))
     fgsl_dby_end = fgsl_matrix_init(1.0_fgsl_double)
     call fgsl_check(fgsl_matrix_align(dby_end, fgsl_max_nder+1, fgsl_max_nder+1, fgsl_ncbf, fgsl_dby_end))
     call fgsl_check(fgsl_bspline_deriv_eval(xd_end, fgsl_max_nder, fgsl_dby_end, sw, dw))

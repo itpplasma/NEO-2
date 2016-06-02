@@ -179,7 +179,8 @@ SUBROUTINE ripple_solver(                                 &
 !
 !  Off-set:
 !
-  DOUBLE PRECISION :: denom_mflint,cg0_num,cg2_num
+  double precision :: cg0_1_num,cg2_1_num, cg0_2_num, cg2_2_num, cg0_3_num, cg2_3_num
+  double precision :: denom_mflint
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: avden_vector,avpres_vector
 !
 !  End off-set
@@ -2406,19 +2407,38 @@ call cpu_time(time1)
   !write (*,*) "Time in integral part:", time2 - time1
 
 !  Off-set:
+  ! 11 continue
+! Drive 1
+  cg0_1_num=sum(avden_vector*source_vector(:,1))
+  cg2_1_num=sum(avpres_vector*source_vector(:,1))
+  cg0_1_num=2.5d0*cg0_1_num-cg2_1_num
+  cg2_1_num=(4.d0/15.d0)*cg2_1_num-0.4d0*cg0_1_num
 !
-! 11 continue    
-  cg0_num=sum(avden_vector*source_vector(:,2))
-  cg2_num=sum(avpres_vector*source_vector(:,2))
-  cg0_num=2.5d0*cg0_num-cg2_num
-  cg2_num=(4.d0/15.d0)*cg2_num-0.4d0*cg0_num
+  cg0_1_num=cg0_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
+  cg2_1_num=cg2_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
+  print *,'Local off-set drive 1: ',cg0_1_num/denom_mflint,cg2_1_num/denom_mflint, denom_mflint
+
+! Drive 2 (Spitzer)
+  cg0_2_num=sum(avden_vector*source_vector(:,2))
+  cg2_2_num=sum(avpres_vector*source_vector(:,2))
+  cg0_2_num=2.5d0*cg0_2_num-cg2_2_num
+  cg2_2_num=(4.d0/15.d0)*cg2_2_num-0.4d0*cg0_2_num
 !
-  cg0_num=cg0_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
-  cg2_num=cg2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
+  cg0_2_num=cg0_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
+  cg2_2_num=cg2_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
+  print *,'Local off-set drive 2: ',cg0_2_num/denom_mflint,cg2_2_num/denom_mflint, denom_mflint
+  
+! Drive 3
+  cg0_3_num=sum(avden_vector*source_vector(:,3))
+  cg2_3_num=sum(avpres_vector*source_vector(:,3))
+  cg0_3_num=2.5d0*cg0_3_num-cg2_3_num
+  cg2_3_num=(4.d0/15.d0)*cg2_3_num-0.4d0*cg0_3_num
+!
+  cg0_3_num=cg0_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
+  cg2_3_num=cg2_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
+  print *,'Local off-set drive 3: ',cg0_3_num/denom_mflint,cg2_3_num/denom_mflint, denom_mflint
 !
   deallocate(avden_vector,avpres_vector)
-!
-  print *,'Local off-set: ',cg0_num/denom_mflint,cg2_num/denom_mflint, denom_mflint
 !  stop
 !
 !  End off-set
@@ -2569,8 +2589,15 @@ call cpu_time(time1)
        call h5_add(h5id_phi_mesh, 'npassing', npassing_h5(1:icounter), &
             lbound(npassing_h5(1:icounter)), ubound(npassing_h5(1:icounter)))
 
-       call h5_add(h5id_phi_mesh, 'cg0_num', cg0_num)
-       call h5_add(h5id_phi_mesh, 'cg2_num', cg2_num)
+       call h5_add(h5id_phi_mesh, 'cg0_1_num', cg0_1_num)
+       call h5_add(h5id_phi_mesh, 'cg2_1_num', cg2_1_num)
+
+       call h5_add(h5id_phi_mesh, 'cg0_2_num', cg0_2_num)
+       call h5_add(h5id_phi_mesh, 'cg2_2_num', cg2_2_num)
+
+       call h5_add(h5id_phi_mesh, 'cg0_3_num', cg0_3_num)
+       call h5_add(h5id_phi_mesh, 'cg2_3_num', cg2_3_num)
+     
        call h5_add(h5id_phi_mesh, 'denom_mflint', denom_mflint)
        
        call h5_add(h5id_dentf, 'dentf_p', dentf_p_h5(:,:,:,1:icounter), &
