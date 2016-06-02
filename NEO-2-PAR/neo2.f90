@@ -93,8 +93,12 @@ PROGRAM neo2
   CHARACTER(1024) :: cwd
   INTEGER         :: k,l
   INTEGER         :: tag_first, tag_last
-  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: cg0_num_prop, cg2_num_prop, denom_mflint_prop
-  REAL(kind=dp)   :: cg0_avg, cg2_avg
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: cg0_1_num_prop, cg2_1_num_prop
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: cg0_2_num_prop, cg2_2_num_prop
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: cg0_3_num_prop, cg2_3_num_prop, denom_mflint_prop
+  REAL(kind=dp)   :: cg0_1_avg, cg2_1_avg
+  REAL(kind=dp)   :: cg0_2_avg, cg2_2_avg
+  REAL(kind=dp)   :: cg0_3_avg, cg2_3_avg
   !**********************************************************
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
@@ -332,12 +336,12 @@ PROGRAM neo2
   !**********************************************************
   ! Init MPI
   !**********************************************************
-  call mpro%init()
+  CALL mpro%init()
   
   !**********************************************************
   ! Read config files
   !**********************************************************
-  do jf = 1,size(fnames)
+  DO jf = 1,SIZE(fnames)
      IF(jf .EQ. 1) CYCLE ! skip neo2.def (Andreas F. Martitsch - 21.10.2015)
      OPEN(unit=u1,file=fnames(jf),status='old',iostat=ios)
      IF (ios .NE. 0) THEN
@@ -412,15 +416,15 @@ PROGRAM neo2
   !**********************************************************
   ! Only precomputation of collision operator
   !**********************************************************
-  if (collop_only_precompute) then
-     write (*,*) "Precomputation of collision operator..."
+  IF (collop_only_precompute) THEN
+     WRITE (*,*) "Precomputation of collision operator..."
      
-     call collop_construct
-     call collop_load
+     CALL collop_construct
+     CALL collop_load
      
-     write (*,*) "Done."     
-     stop
-  end if
+     WRITE (*,*) "Done."     
+     STOP
+  END IF
 
   
   !**********************************************************
@@ -441,18 +445,18 @@ PROGRAM neo2
   !**********************************************************
   ! Check reconstruction switch
   !**********************************************************
-  if (prop_reconstruct .eq. 0 .or. prop_reconstruct .eq. 2) then
-     if (prop_reconstruct .eq. 0) then
-        if ( mpro%isMaster() ) then
+  IF (prop_reconstruct .EQ. 0 .OR. prop_reconstruct .EQ. 2) THEN
+     IF (prop_reconstruct .EQ. 0) THEN
+        IF ( mpro%isMaster() ) THEN
            ! close HDF5-File for magnetics
-           open(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
-           if (ios .eq. 0) close(unit=1234, status='delete')
-        else
-           mag_write_hdf5 = .false.
-        end if
-     else
-        mag_write_hdf5 = .false.
-     end if
+           OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+           IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+        ELSE
+           mag_write_hdf5 = .FALSE.
+        END IF
+     ELSE
+        mag_write_hdf5 = .FALSE.
+     END IF
 
      ! ---------------------------------------------------------------------------
      ! some settings
@@ -595,51 +599,51 @@ PROGRAM neo2
      !**********************************************************
      IF (mpro%isMaster()) THEN
 
-        if (prop_fileformat .eq. 1) then
+        IF (prop_fileformat .EQ. 1) THEN
 
            !**********************************************************
            ! Open taginfo
            !**********************************************************
-           call h5_open_rw('taginfo.h5', h5id_taginfo)
-           call h5_get(h5id_taginfo, 'tag_first', tag_first)
-           call h5_get(h5id_taginfo, 'tag_last',  tag_last)
-           call h5_close(h5id_taginfo)     
+           CALL h5_open_rw('taginfo.h5', h5id_taginfo)
+           CALL h5_get(h5id_taginfo, 'tag_first', tag_first)
+           CALL h5_get(h5id_taginfo, 'tag_last',  tag_last)
+           CALL h5_close(h5id_taginfo)     
 
            !**********************************************************
            ! Merge evolve-files
            !**********************************************************
-           call h5_create("evolve.h5", h5id_prop)
+           CALL h5_create("evolve.h5", h5id_prop)
 
-           if (isw_axisymm .eq. 1) then
+           IF (isw_axisymm .EQ. 1) THEN
               ! Tokamak mode
               tag_first = 3
               tag_last  = 3
-           end if
+           END IF
 
-           do k = tag_first, tag_last
-              do l = tag_first, tag_last
-                 write (h5_filename, '(I0,A,I0)') k, "_", l
+           DO k = tag_first, tag_last
+              DO l = tag_first, tag_last
+                 WRITE (h5_filename, '(I0,A,I0)') k, "_", l
 
-                 open(unit=1234, iostat=ios, file="evolve_" // trim(h5_filename) // ".h5", status='old')
-                 close(unit=1234)
+                 OPEN(unit=1234, iostat=ios, file="evolve_" // TRIM(h5_filename) // ".h5", status='old')
+                 CLOSE(unit=1234)
 
                  !**********************************************************
                  ! Check if file exists
                  !**********************************************************
-                 if (ios .eq. 0) then
+                 IF (ios .EQ. 0) THEN
 
-                    call h5_open("evolve_" // trim(h5_filename) // ".h5", h5id_propfile)
-                    call h5_copy(h5id_propfile, '/', h5id_prop, "/" // trim(h5_filename))
-                    call h5_close(h5id_propfile)
+                    CALL h5_open("evolve_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+                    CALL h5_copy(h5id_propfile, '/', h5id_prop, "/" // TRIM(h5_filename))
+                    CALL h5_close(h5id_propfile)
 
                     ! Delete file
-                    open(unit=1234, iostat=ios, file="evolve_" // trim(h5_filename) // ".h5", status='old')
-                    close(unit=1234, status='delete')
-                 end if
-              end do
-           end do
+                    OPEN(unit=1234, iostat=ios, file="evolve_" // TRIM(h5_filename) // ".h5", status='old')
+                    CLOSE(unit=1234, status='delete')
+                 END IF
+              END DO
+           END DO
 
-           call h5_close(h5id_prop)
+           CALL h5_close(h5id_prop)
 
            CALL h5_open_rw('neo2_config.h5', h5_config_id)
            CALL h5_open_group(h5_config_id, 'metadata', h5_config_group)
@@ -670,13 +674,13 @@ PROGRAM neo2
         CALL collop_deconstruct
      END IF
 
-  elseif (prop_reconstruct .eq. 1) then
-     if (isw_axisymm .eq. 1) then
-        write (*,*) "Skipping reconstruction for axisymmetric mode"
+  ELSEIF (prop_reconstruct .EQ. 1) THEN
+     IF (isw_axisymm .EQ. 1) THEN
+        WRITE (*,*) "Skipping reconstruction for axisymmetric mode"
         !stop
-     end if
+     END IF
 
-     if (mpro%isMaster()) then
+     IF (mpro%isMaster()) THEN
         PRINT *, 'Reconstruction run!'
 
         !**********************************************************
@@ -731,27 +735,27 @@ PROGRAM neo2
      END IF
      CALL mpro%barrier()
 
-  elseif (prop_reconstruct .eq. 3) then
+  ELSEIF (prop_reconstruct .EQ. 3) THEN
      !**********************************************************
      ! Reconstruction 3: Collect HDF5 files
      !**********************************************************
-     call prop_reconstruct_3()
-  end if
+     CALL prop_reconstruct_3()
+  END IF
 
   !**********************************************************
   ! Deinitialize HDF5
   !**********************************************************
-  call h5_deinit()
+  CALL h5_deinit()
 
   !**********************************************************
   ! Deinitialize MPI
   !**********************************************************
-  call mpro%deinit()
+  CALL mpro%deinit()
 
   !**********************************************************
   ! Quit NEO-2 with STOP to show more compiler warnings
   !**********************************************************
-  stop
+  STOP
 
 CONTAINS
 
@@ -790,12 +794,21 @@ CONTAINS
        CALL h5_define_group(h5id_surf, 'NEO-2', h5id_neo2)
        CALL h5_define_group(h5id_neo2, 'propagators', h5id_propagators)
 
-       IF (ALLOCATED(cg0_num_prop)) DEALLOCATE(cg0_num_prop)
-       IF (ALLOCATED(cg2_num_prop)) DEALLOCATE(cg2_num_prop)
+       IF (ALLOCATED(cg0_1_num_prop)) DEALLOCATE(cg0_1_num_prop)
+       IF (ALLOCATED(cg2_1_num_prop)) DEALLOCATE(cg2_1_num_prop)
+       IF (ALLOCATED(cg0_2_num_prop)) DEALLOCATE(cg0_2_num_prop)
+       IF (ALLOCATED(cg2_2_num_prop)) DEALLOCATE(cg2_2_num_prop)
+       IF (ALLOCATED(cg0_3_num_prop)) DEALLOCATE(cg0_3_num_prop)
+       IF (ALLOCATED(cg2_3_num_prop)) DEALLOCATE(cg2_3_num_prop)
        IF (ALLOCATED(denom_mflint_prop)) DEALLOCATE(denom_mflint_prop)
 
-       ALLOCATE(cg0_num_prop(tag_first:tag_last))
-       ALLOCATE(cg2_num_prop(tag_first:tag_last))
+       ALLOCATE(cg0_1_num_prop(tag_first:tag_last))
+       ALLOCATE(cg2_1_num_prop(tag_first:tag_last))
+       ALLOCATE(cg0_2_num_prop(tag_first:tag_last))
+       ALLOCATE(cg2_2_num_prop(tag_first:tag_last))
+       ALLOCATE(cg0_3_num_prop(tag_first:tag_last))
+       ALLOCATE(cg2_3_num_prop(tag_first:tag_last))
+
        ALLOCATE(denom_mflint_prop(tag_first:tag_last))
 
        !**********************************************************
@@ -809,17 +822,21 @@ CONTAINS
           CALL h5_copy(h5id_propfile, '/', h5id_prop, "spitf")
           CALL h5_close(h5id_propfile)
 
-          call h5_open("dentf_" // trim(h5_filename) // ".h5", h5id_propfile)
-          call h5_copy(h5id_propfile, '/', h5id_prop, "dentf")
-          call h5_close(h5id_propfile)
+          CALL h5_open("dentf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+          CALL h5_copy(h5id_propfile, '/', h5id_prop, "dentf")
+          CALL h5_close(h5id_propfile)
 
-          call h5_open("enetf_" // trim(h5_filename) // ".h5", h5id_propfile)
-          call h5_copy(h5id_propfile, '/', h5id_prop, "enetf")
-          call h5_close(h5id_propfile)
+          CALL h5_open("enetf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+          CALL h5_copy(h5id_propfile, '/', h5id_prop, "enetf")
+          CALL h5_close(h5id_propfile)
 
           CALL h5_open("phi_mesh_" // TRIM(h5_filename) // ".h5", h5id_propfile)
-          CALL h5_get(h5id_propfile, 'cg0_num', cg0_num_prop(k))
-          CALL h5_get(h5id_propfile, 'cg2_num', cg2_num_prop(k))
+          CALL h5_get(h5id_propfile, 'cg0_1_num', cg0_1_num_prop(k))
+          CALL h5_get(h5id_propfile, 'cg2_1_num', cg2_1_num_prop(k))
+          CALL h5_get(h5id_propfile, 'cg0_2_num', cg0_2_num_prop(k))
+          CALL h5_get(h5id_propfile, 'cg2_2_num', cg2_2_num_prop(k))
+          CALL h5_get(h5id_propfile, 'cg0_3_num', cg0_3_num_prop(k))
+          CALL h5_get(h5id_propfile, 'cg2_3_num', cg2_3_num_prop(k))
           CALL h5_get(h5id_propfile, 'denom_mflint', denom_mflint_prop(k))
           CALL h5_copy(h5id_propfile, '/', h5id_prop, "phi_mesh")
 
@@ -832,11 +849,19 @@ CONTAINS
           CALL h5_close_group(h5id_prop)
        END DO
 
-       cg0_avg = SUM(cg0_num_prop(tag_first:tag_last)) / SUM(denom_mflint_prop(tag_first:tag_last))
-       cg2_avg = SUM(cg2_num_prop(tag_first:tag_last)) / SUM(denom_mflint_prop(tag_first:tag_last))
+       cg0_1_avg = SUM(cg0_1_num_prop(tag_first:tag_last)) / SUM(denom_mflint_prop(tag_first:tag_last))
+       cg2_1_avg = SUM(cg2_1_num_prop(tag_first:tag_last)) / SUM(denom_mflint_prop(tag_first:tag_last))
+       cg0_2_avg = SUM(cg0_2_num_prop(tag_first:tag_last)) / SUM(denom_mflint_prop(tag_first:tag_last))
+       cg2_2_avg = SUM(cg2_2_num_prop(tag_first:tag_last)) / SUM(denom_mflint_prop(tag_first:tag_last))
+       cg0_3_avg = SUM(cg0_3_num_prop(tag_first:tag_last)) / SUM(denom_mflint_prop(tag_first:tag_last))
+       cg2_3_avg = SUM(cg2_3_num_prop(tag_first:tag_last)) / SUM(denom_mflint_prop(tag_first:tag_last))
 
-       WRITE (*,*) "cg0 = ", cg0_avg
-       WRITE (*,*) "cg2 = ", cg2_avg
+       WRITE (*,*) "cg0_1 = ", cg0_1_avg
+       WRITE (*,*) "cg2_1 = ", cg2_1_avg
+       WRITE (*,*) "cg0_2 = ", cg0_2_avg
+       WRITE (*,*) "cg2_2 = ", cg2_2_avg
+       WRITE (*,*) "cg0_3 = ", cg0_3_avg
+       WRITE (*,*) "cg2_3 = ", cg2_3_avg
 
        !**********************************************************
        ! Merge additional files
@@ -854,10 +879,21 @@ CONTAINS
        CALL h5_close(h5id_propfile)
 
        CALL h5_open_rw("taginfo.h5", h5id_propfile)
-       CALL h5_delete(h5id_propfile, 'cg0_avg')
-       CALL h5_add(h5id_propfile, 'cg0_avg', cg0_avg)
-       CALL h5_delete(h5id_propfile, 'cg2_avg')
-       CALL h5_add(h5id_propfile, 'cg2_avg', cg2_avg)
+       CALL h5_delete(h5id_propfile, 'cg0_1_avg')
+       CALL h5_add(h5id_propfile, 'cg0_1_avg', cg0_1_avg)
+       CALL h5_delete(h5id_propfile, 'cg2_1_avg')
+       CALL h5_add(h5id_propfile, 'cg2_1_avg', cg2_1_avg)
+
+       CALL h5_delete(h5id_propfile, 'cg0_2_avg')
+       CALL h5_add(h5id_propfile, 'cg0_2_avg', cg0_2_avg)
+       CALL h5_delete(h5id_propfile, 'cg2_2_avg')
+       CALL h5_add(h5id_propfile, 'cg2_2_avg', cg2_2_avg)
+
+       CALL h5_delete(h5id_propfile, 'cg0_3_avg')
+       CALL h5_add(h5id_propfile, 'cg0_3_avg', cg0_3_avg)
+       CALL h5_delete(h5id_propfile, 'cg2_3_avg')
+       CALL h5_add(h5id_propfile, 'cg2_3_avg', cg2_3_avg)
+
        CALL h5_copy(h5id_propfile, '/', h5id_neo2, "taginfo")
        CALL h5_close(h5id_propfile)
 
@@ -1038,7 +1074,7 @@ CONTAINS
        CALL h5_add(h5_config_group, 'phi_x_max', phi_x_max, 'Maximum velocity for base function')
        CALL h5_add(h5_config_group, 'collop_bspline_order', collop_bspline_order, 'BSpline order')
        CALL h5_add(h5_config_group, 'collop_bspline_dist', collop_bspline_dist, 'BSpline knots distribution factor')
-       call h5_close_group(h5_config_group)
+       CALL h5_close_group(h5_config_group)
 
        CALL h5_define_group(h5_config_id, 'binsplit', h5_config_group)
        CALL h5_add(h5_config_group, 'eta_s_lim', eta_s_lim)

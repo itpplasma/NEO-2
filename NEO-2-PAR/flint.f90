@@ -184,8 +184,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   USE hdf5_tools
   USE hdf5_tools_f2003
 
-
-
   !**************************************
   ! MPI Support
   ! Source has to be compiled with -cpp flag for C preprocessor directives

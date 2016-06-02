@@ -60,6 +60,12 @@ set(NEO2_COMMON_FILES
 	../COMMON/vvn_tok.f90
 	../COMMON/vvn_w7as.f
 	../COMMON/solve_system.f90
+	../COMMON/collop_laguerre.f90
+	../COMMON/collop_polynomial.f90
+	../COMMON/collop_bspline.f90
+	#../COMMON/collop_bspline2.f90
+	#../COMMON/collop_spline4.f90
+	../COMMON/collop_spline.f90
 )
 
 set(NEO2_SRC_FILES
@@ -91,11 +97,5 @@ set(NEO2_SRC_FILES
 	./timingInfo.f90
 	./collision_operator_mems.f90
 	./collop_compute.f90
-	./collop_laguerre.f90
-	./collop_polynomial.f90
-	./collop_spline.f90
-	./collop_bspline.f90
-	#./collop_spline4.f90
-	#./collop_bspline2.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} ${NEO2_COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
