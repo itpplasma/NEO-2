@@ -593,7 +593,6 @@ PROGRAM neo2
      !ELSE
      !   PRINT *, 'NOTHING TO COMPUTE'
      !END IF
-
      !**********************************************************
      ! Save runtime to HDF5 neo2_config file
      !**********************************************************
@@ -620,28 +619,28 @@ PROGRAM neo2
               tag_last  = 3
            END IF
 
-           DO k = tag_first, tag_last
-              DO l = tag_first, tag_last
-                 WRITE (h5_filename, '(I0,A,I0)') k, "_", l
-
-                 OPEN(unit=1234, iostat=ios, file="evolve_" // TRIM(h5_filename) // ".h5", status='old')
-                 CLOSE(unit=1234)
-
-                 !**********************************************************
-                 ! Check if file exists
-                 !**********************************************************
-                 IF (ios .EQ. 0) THEN
-
-                    CALL h5_open("evolve_" // TRIM(h5_filename) // ".h5", h5id_propfile)
-                    CALL h5_copy(h5id_propfile, '/', h5id_prop, "/" // TRIM(h5_filename))
-                    CALL h5_close(h5id_propfile)
-
-                    ! Delete file
-                    OPEN(unit=1234, iostat=ios, file="evolve_" // TRIM(h5_filename) // ".h5", status='old')
-                    CLOSE(unit=1234, status='delete')
-                 END IF
-              END DO
-           END DO
+!!$           DO k = tag_first, tag_last
+!!$              DO l = tag_first, tag_last
+!!$                 WRITE (h5_filename, '(I0,A,I0)') k, "_", l
+!!$
+!!$                 OPEN(unit=1234, iostat=ios, file="evolve_" // TRIM(h5_filename) // ".h5", status='old')
+!!$                 CLOSE(unit=1234)
+!!$
+!!$                 !**********************************************************
+!!$                 ! Check if file exists
+!!$                 !**********************************************************
+!!$                 IF (ios .EQ. 0) THEN
+!!$
+!!$                    CALL h5_open("evolve_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+!!$                    CALL h5_copy(h5id_propfile, '/', h5id_prop, "/" // TRIM(h5_filename))
+!!$                    CALL h5_close(h5id_propfile)
+!!$
+!!$                    ! Delete file
+!!$                    OPEN(unit=1234, iostat=ios, file="evolve_" // TRIM(h5_filename) // ".h5", status='old')
+!!$                    CLOSE(unit=1234, status='delete')
+!!$                 END IF
+!!$              END DO
+!!$           END DO
 
            CALL h5_close(h5id_prop)
 
@@ -659,7 +658,6 @@ PROGRAM neo2
         END IF
 
      END IF
-
      ! ---------------------------------------------------------------------------
      ! final deallocation of device and all its children
      !PRINT *, 'Before destruct_magnetics'
@@ -673,7 +671,7 @@ PROGRAM neo2
         !PRINT *, 'Beforecollop_deconstruct'
         CALL collop_deconstruct
      END IF
-
+     
   ELSEIF (prop_reconstruct .EQ. 1) THEN
      IF (isw_axisymm .EQ. 1) THEN
         WRITE (*,*) "Skipping reconstruction for axisymmetric mode"
