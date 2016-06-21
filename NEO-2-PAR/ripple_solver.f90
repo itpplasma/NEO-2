@@ -800,6 +800,15 @@ PRINT *,'right boundary layer ignored'
     return
   endif
 !
+! Check for minimum number of levels:
+!
+  if ((npass_l .lt. 4) .or. (npass_r .lt. 4)) then
+     print *, 'npass_l,npass_r ',npass_l,npass_r
+     print *, 'Minimum number of levels in passing region has to be at least 4'
+     ierr=1
+     return
+  end if
+!
   iplot=prop_ripple_plot
 !
 ! Preparation of coefficients for the kinetic equation solver
