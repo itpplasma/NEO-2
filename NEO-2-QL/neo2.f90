@@ -18,7 +18,7 @@ PROGRAM neo2
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
-       nvel,vel_array
+       nvel,vel_array, v_max_resolution,v_min_resolution
   USE propagator_mod, ONLY : reconstruct_prop_dist,   &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -127,7 +127,7 @@ PROGRAM neo2
        isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &      
        !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta,       &
-       num_spec, conl_over_mfp_vec, z_vec
+       num_spec, conl_over_mfp_vec, z_vec, v_min_resolution, v_max_resolution
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -233,6 +233,8 @@ PROGRAM neo2
   conl_over_mfp_vec = 0.0d0
   z_vec = 1.0d0
   !! End Modification by Andreas F. Martitsch (25.08.2015)
+  v_min_resolution = 0.1d0
+  v_max_resolution = 5.0d0
   ! binsplit
   eta_s_lim = 1.2d0
   eta_part = 100

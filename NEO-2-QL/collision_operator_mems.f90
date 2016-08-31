@@ -5,9 +5,11 @@ module collop
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
        m_ele, m_d, m_C, m_alp, compute_collop_inf, compute_xmmp, &
-       compute_collop_lorentz
+       compute_collop_lorentz, nu_D_hat
   use mpiprovider_module
-  use collisionality_mod, only : collpar, conl_over_mfp
+  ! WINNY
+  use collisionality_mod, only : collpar,collpar_min,collpar_max, &
+       v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz, conl_over_mfp
   use device_mod, only : device
   
   implicit none
@@ -111,7 +113,7 @@ module collop
       if(allocated(denmm_aa)) deallocate(denmm_aa)
       allocate(denmm_aa(0:lag,0:lag,0:num_spec-1,0:num_spec-1))
 
-      if(allocated(denmm_a)) deallocate(denmm_aa)
+      if(allocated(denmm_a)) deallocate(denmm_a)
       allocate(denmm_a(0:lag,0:lag,0:num_spec-1))
       
       if(allocated(asource)) deallocate(asource)
@@ -148,7 +150,24 @@ module collop
          ! Now compute collision operator with desired base
          !**********************************************************
          call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
+         
+         ! WINNY - for flint
+         ! without any formula at the moment
+         ! This 2.4 was anumm(1,1) 
+         ! collpar_max = collpar * sqrt(2.4d0)
+         ! I just used that collpar is proportional to 1/x with x = v/v_th
+         ! v_max_resolution can be set in neo2.in in section collisions
+         ! collpar_min = collpar_max / v_max_resolution**3
 
+         ! New version with deflection frequency
+         if (isw_lorentz .eq. 1) then
+            collpar_min = collpar
+            collpar_max = collpar
+         else
+            collpar_max = collpar * nu_D_hat(v_min_resolution)
+            collpar_min = collpar * nu_D_hat(v_max_resolution)
+         end if
+         
          !**********************************************************
          ! Compute sources
          !**********************************************************

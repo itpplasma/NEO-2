@@ -18,7 +18,7 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   USE magnetics_mod
   USE device_mod
   USE mag_interface_mod
-  USE collisionality_mod, ONLY : collpar,conl_over_mfp
+  USE collisionality_mod, ONLY : collpar,conl_over_mfp,collpar_min,collpar_max
   USE compute_aiota_mod, ONLY : compute_aiota
   !! Modifications by Andreas F. Martitsch (09.03.2014)
   ! Collection of subroutines (mag.f90) converted to a module.
@@ -134,12 +134,14 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   ELSE
      collpar=-conl_over_mfp
   END IF
+  collpar_max = collpar
+  collpar_min = collpar
 
   ! find the eta values for splitting
   !  for this the collision parameter is needed
   ! print *, 'Before ripple_eta_magnetics'
   IF (bin_split_mode .EQ. 1) THEN
-     CALL ripple_eta_magnetics(collpar,eta_s_lim)
+     CALL ripple_eta_magnetics(collpar_min,eta_s_lim)
   END IF
   ! print *, 'After ripple_eta_magnetics'
 
@@ -426,7 +428,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
        bsfunc_local_err_max_mult,bsfunc_max_mult_reach,             &
        bsfunc_modelfunc_num,bsfunc_divide,                          &
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,        &
-       bsfunc_local_shield_factor,bsfunc_shield
+       bsfunc_local_shield_factor,bsfunc_shield            
   USE magnetics_mod
   USE device_mod
   USE mag_interface_mod, ONLY : mag_save_memory,mag_start_special,magnetic_device, &
@@ -437,8 +439,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
        isw_momentum
        !vel_distri_swi,vel_num,vel_max,nvel,vel_array
 
-  USE rkstep_mod, ONLY : lag, anumm => anumm_lag
-  USE collisionality_mod, ONLY : collpar
+  USE rkstep_mod, ONLY : lag ! anumm => anumm_lag
+  USE collisionality_mod, ONLY : collpar,collpar_min,collpar_max
   !
   ! types and routines for splitting
   USE binarysplit_mod
@@ -455,7 +457,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   INTEGER, INTENT(in) :: bin_split_mode
   INTEGER, INTENT(inout) :: proptag_start,proptag_end
   INTEGER, INTENT(in)       :: eta_part_global,eta_part_trapped
-  
+
+  REAL(kind=dp), PARAMETER :: twopi = 6.28318530717959_dp
+
   ! locals
   INTEGER :: rippletag_old,rippletag,proptag
   INTEGER :: iend,iendperiod,ierr_solv,ierr_join
@@ -468,7 +472,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   INTEGER :: eta_min_loc(1)
 
   INTEGER :: lag_sigma,ilag
-  
+  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: collision_sigma_multiplier
+  DOUBLE PRECISION :: mult_sigma, mult_sigma_mod
   TYPE(binarysplit) :: eta_bs,eta_bs_loc,   eta_bs_store
   REAL(kind=dp), ALLOCATABLE :: eta_x0(:),eta_s(:)
   REAL(kind=dp), ALLOCATABLE :: eta_x0_loc(:),eta_s_loc(:),eta_x0_hlp(:)
@@ -477,6 +482,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   REAL(kind=dp), ALLOCATABLE :: eta_ori(:),eta_split(:),eta_split_loc(:)
   REAL(kind=dp), ALLOCATABLE :: lam_ori(:)
   REAL(kind=dp), ALLOCATABLE :: eta_x0_val(:),eta_s_val(:)
+  REAL(kind=dp), ALLOCATABLE :: eta_x0_sqrt(:),eta_s_sqrt(:)
 
   REAL(kind=dp), ALLOCATABLE :: x2_sav(:),bhat_sav(:)
   REAL(kind=dp) :: eta_min_relevant, save_bsfunc_err                       !<-in
@@ -812,14 +818,25 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   IF (isw_lorentz .EQ. 1 .OR. isw_momentum .EQ. 1) THEN
      lag_sigma = 0
      ! This is for the grid-version because anumm then is not allocated
-     !**********************************************************
-     ! anumm is now a pointer for the multispecies version
-     !**********************************************************
-     IF (.NOT. ALLOCATED(anumm)) ALLOCATE(anumm(0:0,0:0))
-     !IF (.NOT. ASSOCIATED(anumm)) ALLOCATE(anumm(0:0,0:0))
-     anumm(0,0) = 1.0_dp
+     !IF (.NOT. ALLOCATED(anumm)) ALLOCATE(anumm(0:0,0:0))
+     !anumm(0,0) = 1.0_dp
+     
+     IF (ALLOCATED(collision_sigma_multiplier)) deallocate(collision_sigma_multiplier)
+     ALLOCATE(collision_sigma_multiplier(0:0))
+     collision_sigma_multiplier(0) = 1.0_dp 
   ELSE
-     lag_sigma = lag
+     mult_sigma = 1.618033988749895d0
+     lag_sigma = ceiling( log10( sqrt(collpar_max/collpar_min) ) / log10(mult_sigma) )
+     IF (ALLOCATED(collision_sigma_multiplier)) deallocate(collision_sigma_multiplier)
+     ALLOCATE(collision_sigma_multiplier(0:lag_sigma))
+     mult_sigma_mod = 10**( log10( sqrt(collpar_max/collpar_min) ) / dble(lag_sigma) )
+     collision_sigma_multiplier(0) = 1.0_dp
+     do ilag = 1, lag_sigma
+        collision_sigma_multiplier(ilag) = collision_sigma_multiplier(ilag-1) * mult_sigma_mod
+     end do
+     !print *, collpar_min,collpar_max,sqrt(collpar_max/collpar_min)
+     !print *, collision_sigma_multiplier
+     !print *, ' '
   END IF
 
   rippletag_old = 0
@@ -924,7 +941,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               DO i_construct = 1,UBOUND(eta_x0_loc,1)
                  eta_x0_val(1) = eta_x0_loc(i_construct)
                  DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s_loc(i_construct) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s_loc(i_construct) * collision_sigma_multiplier(ilag)
                     bsfunc_modelfunc = 1                                     !<-in
                     CALL construct_bsfunc(eta_x0_val,eta_s_val)               
                     CALL find_binarysplit(eta_bs_loc,eta_x0_val)
@@ -955,7 +972,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               DO i_construct = 1,UBOUND(eta_x0_loc,1)
                  eta_x0_val(1) = eta_x0_loc(i_construct)
                  DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s_loc(i_construct) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s_loc(i_construct) * collision_sigma_multiplier(ilag)
                     bsfunc_modelfunc = 1                                     !<-in
                     CALL construct_bsfunc(eta_x0_val,eta_s_val)               
                     CALL find_binarysplit(eta_bs_loc,eta_x0_val)
@@ -978,7 +995,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  eta_x0_hlp(eta_min_loc(1)) = 1000.0_dp
                  eta_x0_val(1) = eta_x0(eta_min_loc(1))
                  DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * collision_sigma_multiplier(ilag)
                     bsfunc_modelfunc = 1
                     CALL construct_bsfunc(eta_x0_val,eta_s_val) 
                     CALL find_binarysplit(eta_bs,eta_x0_val)
@@ -1040,7 +1057,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  eta_s_loc_min = eta_x0_val(1) * SQRT(eta_s_loc_min) * collpar
                  ! minimum local eta_s - end
                  loc_laguerre: DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s_loc(i_construct) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s_loc(i_construct) * collision_sigma_multiplier(ilag)
+                    ! print *, ilag,eta_s_val(1), eta_x0_val(1)
                     loc_divide: DO idiv = 0,bsfunc_divide
                        loc_modelfunc: DO ibmf = 1,bsfunc_modelfunc_num
                           bsfunc_modelfunc = ibmf
@@ -1064,6 +1082,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                        eta_s_val(1) = eta_s_val(1) / 1.618033988749895d0
                        !IF (eta_s_val(1) .LT. eta_s_loc_min) EXIT loc_divide
                     END DO loc_divide
+                    if ( eta_s_val(1) .gt. 2.0d0 * eta_x0_val(1) ) exit loc_laguerre
                  END DO loc_laguerre
               END DO loc_construct
               CALL get_binarysplit(eta_bs_loc,eta_split_loc,'x')
@@ -1080,8 +1099,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  eta_min_loc = MINLOC(eta_x0_hlp)
                  eta_x0_hlp(eta_min_loc(1)) = 1000.0_dp
                  eta_x0_val(1) = eta_x0(eta_min_loc(1))
-                 DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * anumm(ilag,ilag)
+                 max_laguerre : DO ilag = 0,lag_sigma
+                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * collision_sigma_multiplier(ilag)
                     DO ibmf = 1,bsfunc_modelfunc_num
                        bsfunc_modelfunc = ibmf
                        IF ( (eta_x0_val(1) .GE. eta_b_abs_max - bsfunc_max_mult_reach * eta_s_val(1)) .AND. &
@@ -1102,15 +1121,19 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                           eta_s_val(1)  =  eta_s_val(1) / bsfunc_sigma_mult
                        END IF
                     END DO
-                 END DO
+                    if ( eta_s_val(1) .gt. 2.0d0 * eta_x0_val(1) ) exit max_laguerre
+                 END DO max_laguerre
               END DO
+
+              CALL get_binarysplit(eta_bs,eta_split,'x')
+              !!! PRINT *, 'eta_split    before  rest: ', ubound(eta_split),' at ',fieldripple%tag
 
               ! then the rest
               DO i_construct = LBOUND(eta_x0,1),UBOUND(eta_x0,1)
                  IF (eta_x0_hlp(i_construct) .LT. 1000._dp) THEN
                     eta_x0_val(1) = eta_x0(i_construct)
-                    DO ilag = 0,lag_sigma
-                       eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
+                    rest_laguerre : DO ilag = 0,lag_sigma
+                       eta_s_val(1)  = eta_s(i_construct) * collision_sigma_multiplier(ilag)
                        IF(bsfunc_ignore_trap_levels .EQ. 1 .AND. eta_x0_val(1) .GT. eta_min_relevant) CYCLE
                        DO ibmf = 1,bsfunc_modelfunc_num
                           bsfunc_modelfunc = ibmf
@@ -1132,7 +1155,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                              eta_s_val(1)  =  eta_s_val(1) / bsfunc_sigma_mult
                           END IF
                        END DO
-                    END DO
+                       if ( eta_s_val(1) .gt. 2.0d0 * eta_x0_val(1) ) exit rest_laguerre
+                    END DO rest_laguerre
                  END IF
               END DO
 
@@ -1186,7 +1210,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     bsfunc_local_err = save_bsfunc_local_err
                  END IF
                  loc_laguerre4: DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s_loc(i_construct) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s_loc(i_construct) * collision_sigma_multiplier(ilag)
                     !print *, 'loca   ',fieldripple%tag,eta_x0_val,eta_s_val,bsfunc_local_err
                     CALL multiple_binarysplit(eta_bs_loc,eta_x0_val,eta_s_val)
                  END DO loc_laguerre4
@@ -1215,7 +1239,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 !!$                 eta_x0_hlp(eta_min_loc(1)) = 1000.0_dp
 !!$                 !sigma_trapped_passing=eta_s(eta_min_loc(1)) !<=NEW
 !!$                 DO ilag = 0,lag_sigma
-!!$                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * anumm(ilag,ilag)
+!!$                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * collision_sigma_multiplier(ilag)
 !!$                    !print *, 'amax   ',eta_x0_val,eta_s_val,bsfunc_local_err
 !!$                    DO ibmf = bsfunc_modelfunc_num,1,-1
 !!$                       bsfunc_modelfunc = ibmf
@@ -1241,7 +1265,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  IF (eta_x0_hlp(i_construct) .GE. 1000._dp) CYCLE
                  eta_x0_val(1) = eta_x0(i_construct)
                  DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s(i_construct) * collision_sigma_multiplier(ilag)
                     IF (eta_shield(i_construct) .EQ. 1 .AND. bsfunc_shield) CYCLE !<= NEW Winny
                     !print *, 'rest   ',eta_x0_val,eta_s_val,bsfunc_local_err
                     ! IF(bsfunc_ignore_trap_levels .EQ. 1 .AND. eta_x0_val(1) .GT. eta_min_relevant) CYCLE
@@ -1269,7 +1293,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  IF (eta_type(i_construct) .NE. 4) CYCLE ! no inflection level
                  eta_x0_val(1) = eta_x0(i_construct)
                  DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s(i_construct) * collision_sigma_multiplier(ilag)
                     IF (eta_shield(i_construct) .EQ. 1 .AND. bsfunc_shield) CYCLE !<= NEW Winny
                     !print *, 'inf    ',eta_x0_val,eta_s_val,bsfunc_local_err
                     CALL multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
@@ -1288,7 +1312,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  IF (eta_type(i_construct) .NE. 5) CYCLE ! no local inflection level
                  eta_x0_val(1) = eta_x0(i_construct)
                  DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s(i_construct) * collision_sigma_multiplier(ilag)
                     !print *, 'infl   ',eta_x0_val,eta_s_val,bsfunc_local_err
                     !print *, 'local inflection ',eta_s_val
                     IF (eta_shield(i_construct) .EQ. 1 .AND. bsfunc_shield) CYCLE !<= NEW Winny
@@ -1309,7 +1333,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  ! print *, 'flint inter ',fieldripple%tag
                  eta_x0_val(1) = eta_x0(i_construct)
                  DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s(i_construct) * collision_sigma_multiplier(ilag)
                     !print *, 'intl   ',eta_x0_val,eta_s_val,bsfunc_local_err
                     !print *, eta_s_val(1)
                     CALL multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
@@ -1365,7 +1389,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  eta_s_loc_min = eta_x0_val(1) * SQRT(eta_s_loc_min) * collpar
                  ! minimum local eta_s - end
                  loc_laguerre5: DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s_loc(i_construct) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s_loc(i_construct) * collision_sigma_multiplier(ilag)
                     loc_divide5: DO idiv = 0,bsfunc_divide
                        loc_modelfunc5: DO ibmf = 1,bsfunc_modelfunc_num
                           bsfunc_modelfunc = ibmf
@@ -1408,7 +1432,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  eta_trapped_passing=eta_x0_val(1) !<=NEW
                  sigma_trapped_passing=eta_s(eta_min_loc(1)) !<=NEW
                  DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * collision_sigma_multiplier(ilag)
                     DO ibmf = 1,bsfunc_modelfunc_num
                        bsfunc_modelfunc = ibmf
                        IF ( (eta_x0_val(1) .GE. eta_b_abs_max - bsfunc_max_mult_reach * eta_s_val(1)) .AND. &
@@ -1437,7 +1461,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  IF (eta_x0_hlp(i_construct) .LT. 1000._dp) THEN
                     eta_x0_val(1) = eta_x0(i_construct)
                     DO ilag = 0,lag_sigma
-                       eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
+                       eta_s_val(1)  = eta_s(i_construct) * collision_sigma_multiplier(ilag)
                        ! new exit by Sergei
                        IF(ABS(eta_x0_val(1)-eta_trapped_passing).GT. & !<=NEW
                             3.d0*(sigma_trapped_passing+eta_s_val(1))) THEN !<=NEW
@@ -1575,7 +1599,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               DO i_construct = 1,UBOUND(eta_x0_loc,1)
                  eta_x0_val(1) = eta_x0_loc(i_construct)
                  DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s_loc(i_construct) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s_loc(i_construct) * collision_sigma_multiplier(ilag)
                     bsfunc_modelfunc = 1                                     !<-in
                     CALL construct_bsfunc(eta_x0_val,eta_s_val)               
                     CALL find_binarysplit(eta_bs_loc,eta_x0_val)
@@ -1610,7 +1634,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  eta_x0_hlp(eta_min_loc(1)) = 1000.0_dp
                  eta_x0_val(1) = eta_x0(eta_min_loc(1))
                  DO ilag = 0,lag_sigma
-                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * anumm(ilag,ilag)
+                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * collision_sigma_multiplier(ilag)
                     !eta_min_relevant=MIN(eta_min_relevant,                &  !<-in
                     !                                      eta_x0_val(1)+2.d0*eta_s_val(1))    !<-in
                     !                     eta_x0_val(1)+3.d0*eta_s_val(1))    !<-in
@@ -1634,7 +1658,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  IF (eta_x0_hlp(i_construct) .LT. 1000._dp) THEN
                     eta_x0_val(1) = eta_x0(i_construct)
                     DO ilag = 0,lag_sigma
-                       eta_s_val(1)  = eta_s(i_construct) * anumm(ilag,ilag)
+                       eta_s_val(1)  = eta_s(i_construct) * collision_sigma_multiplier(ilag)
                        IF(eta_x0_val(1) .GT.                               &  !<-in
                             eta_min_relevant) CYCLE                            !<-in
                        bsfunc_modelfunc = 1                                  !<-in
