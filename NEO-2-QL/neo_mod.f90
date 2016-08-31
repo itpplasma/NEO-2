@@ -51,6 +51,12 @@
     DOUBLE PRECISION, ALLOCATABLE, DIMENSION(:) :: y_axi_averages
 
     DOUBLE PRECISION, ALLOCATABLE, DIMENSION(:) :: vel_array
+
+    DOUBLE PRECISION :: collpar_min,collpar_max,v_min_resolution,v_max_resolution
+    DOUBLE PRECISION :: phi_x_max
+    DOUBLE PRECISION :: collop_bspline_dist
+    INTEGER          :: collop_bspline_order
+
   END MODULE
 !
   MODULE rkstep_mod
