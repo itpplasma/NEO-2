@@ -55,12 +55,22 @@ MODULE neo_magfie_mod
   !  1:  output for NEO 
   INTEGER                                          :: magfie_result    = 0
   INTEGER                                          :: magfie_sarray_len
+  !! Modifications by Andreas F. Martitsch (17.03.2016)
+  ! derivative of iota for non-local NTV computations
+  ! (with magnetic shear)
+  INTEGER                                          :: isw_mag_shear = 0
+  !! End Modifications by Andreas F. Martitsch (17.03.2016)
 
   REAL(dp), DIMENSION(:), ALLOCATABLE              :: curr_tor_array
   REAL(dp), DIMENSION(:), ALLOCATABLE              :: curr_tor_s_array
   REAL(dp), DIMENSION(:), ALLOCATABLE              :: curr_pol_array
   REAL(dp), DIMENSION(:), ALLOCATABLE              :: curr_pol_s_array
   REAL(dp), DIMENSION(:), ALLOCATABLE              :: iota_array
+  !! Modifications by Andreas F. Martitsch (17.03.2016)
+  ! derivative of iota for non-local NTV computations
+  ! (with magnetic shear)
+  REAL(dp), DIMENSION(:), ALLOCATABLE              :: iota_s_array
+  !! End Modifications by Andreas F. Martitsch (17.03.2016)
   REAL(dp), DIMENSION(:), ALLOCATABLE              :: pprime_array
   REAL(dp), DIMENSION(:), ALLOCATABLE              :: sqrtg00_array
 
@@ -92,6 +102,11 @@ MODULE neo_magfie_mod
   !! End Modifications by Andreas F. Martitsch (13.11.2014)
   
   REAL(dp) :: boozer_iota
+  !! Modifications by Andreas F. Martitsch (17.03.2016)
+  ! derivative of iota for non-local NTV computations
+  ! (with magnetic shear)
+  REAL(dp) :: boozer_iota_s
+  !! End Modifications by Andreas F. Martitsch (17.03.2016)
   REAL(dp) :: boozer_sqrtg00
   !! Modifications by Andreas F. Martitsch (12.03.2014)
   ! boozer_curr_tor, boozer_curr_pol, boozer_psi_pr,
@@ -162,7 +177,7 @@ CONTAINS
 
     REAL(dp)                                         :: bmnc, bmnc_s
     REAL(dp)                                         :: sinv, cosv
-    REAL(dp)                                         :: iota
+    REAL(dp)                                         :: iota, iota_s
     REAL(dp)                                         :: curr_tor, curr_tor_s
     REAL(dp)                                         :: curr_pol, curr_pol_s
     REAL(dp)                                         :: bb_s, bb_tb, bb_pb
@@ -275,6 +290,12 @@ CONTAINS
        ALLOCATE( curr_pol_array(magfie_sarray_len) )
        ALLOCATE( curr_pol_s_array(magfie_sarray_len) )
        ALLOCATE( iota_array(magfie_sarray_len) )
+       !! Modifications by Andreas F. Martitsch (17.03.2016)
+       ! derivative of iota for non-local NTV computations
+       ! (with magnetic shear)
+       ALLOCATE( iota_s_array(magfie_sarray_len) )
+       !! End Modifications by Andreas F. Martitsch (17.03.2016)
+       
        ALLOCATE( pprime_array(magfie_sarray_len) )
        ALLOCATE( sqrtg00_array(magfie_sarray_len) )
        !****************************************************************
@@ -510,32 +531,110 @@ CONTAINS
                       r_pb(it,ip) = r_pb(it,ip) - n*ri*sinv + n*ris*cosv
                       z_tb(it,ip) = z_tb(it,ip) - m*zi*sinv + m*zis*cosv
                       z_pb(it,ip) = z_pb(it,ip) - n*zi*sinv + n*zis*cosv
-                      p_tb(it,ip) = p_tb(it,ip) + m*li*sinv - m*lis*cosv ! -l_tb
-                      p_pb(it,ip) = p_pb(it,ip) + n*li*sinv - n*lis*cosv ! -l_pb
+                      !! Modifications by Andreas F. Martitsch (12.11.2015)
+                      !According to Erika Strumberger (Email 11.10.2015)
+                      !the conversion from phi_b to phi is given by
+                      !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
+                      !where  \phi=2\pi/N_p v.
+                      !This expression differs by a minus sign from the
+                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !-> previous versions used this definition:
+                      !p_tb(it,ip) = p_tb(it,ip) + m*li*sinv - m*lis*cosv ! -l_tb
+                      !p_pb(it,ip) = p_pb(it,ip) + n*li*sinv - n*lis*cosv ! -l_pb
+                      !-> corrected formulas:
+                      p_tb(it,ip) = p_tb(it,ip) - m*li*sinv + m*lis*cosv ! +l_tb
+                      p_pb(it,ip) = p_pb(it,ip) - n*li*sinv + n*lis*cosv ! +l_pb
+                      !! End Modifications by Andreas F. Martitsch (12.11.2015)
 
                       r_s(it,ip) = r_s(it,ip) + ri_s*cosv + ris_s*sinv
                       z_s(it,ip) = z_s(it,ip) + zi_s*cosv + zis_s*sinv
-                      p_s(it,ip) = p_s(it,ip) + li_s*cosv + lis_s*sinv ! -l_s
-
+                      !! Modifications by Andreas F. Martitsch (12.11.2015)
+                      !According to Erika Strumberger (Email 11.10.2015)
+                      !the conversion from phi_b to phi is given by
+                      !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
+                      !where  \phi=2\pi/N_p v.
+                      !This expression differs by a minus sign from the
+                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !-> previous versions used this definition:
+                      !p_s(it,ip) = p_s(it,ip) - li_s*cosv - lis_s*sinv ! -l_s
+                      !-> corrected formulas:
+                      p_s(it,ip) = p_s(it,ip) + li_s*cosv + lis_s*sinv ! +l_s
+                      !! End Modifications by Andreas F. Martitsch (12.11.2015)
+                      
                       r_stb(it,ip) = r_stb(it,ip) - m*ri_s*sinv + m*ris_s*cosv
                       z_stb(it,ip) = z_stb(it,ip) - m*zi_s*sinv + m*zis_s*cosv
-                      p_stb(it,ip) = p_stb(it,ip) + m*li_s*sinv - m*lis_s*cosv ! -l_stb
+                      !! Modifications by Andreas F. Martitsch (12.11.2015)
+                      !According to Erika Strumberger (Email 11.10.2015)
+                      !the conversion from phi_b to phi is given by
+                      !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
+                      !where  \phi=2\pi/N_p v.
+                      !This expression differs by a minus sign from the
+                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !-> previous versions used this definition:
+                      !p_stb(it,ip) = p_stb(it,ip) + m*li_s*sinv - m*lis_s*cosv ! -l_stb
+                      !-> corrected formulas:
+                      p_stb(it,ip) = p_stb(it,ip) - m*li_s*sinv + m*lis_s*cosv ! +l_stb
+                      !! End Modifications by Andreas F. Martitsch (12.11.2015)
 
                       r_spb(it,ip) = r_spb(it,ip) - n*ri_s*sinv + n*ris_s*cosv
                       z_spb(it,ip) = z_spb(it,ip) - n*zi_s*sinv + n*zis_s*cosv
-                      p_spb(it,ip) = p_spb(it,ip) + n*li_s*sinv - n*lis_s*cosv ! -l_spb
+                      !! Modifications by Andreas F. Martitsch (12.11.2015)
+                      !According to Erika Strumberger (Email 11.10.2015)
+                      !the conversion from phi_b to phi is given by
+                      !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
+                      !where  \phi=2\pi/N_p v.
+                      !This expression differs by a minus sign from the
+                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !-> previous versions used this definition:
+                      !p_spb(it,ip) = p_spb(it,ip) + n*li_s*sinv - n*lis_s*cosv ! -l_spb
+                      !-> corrected formulas:
+                      p_spb(it,ip) = p_spb(it,ip) - n*li_s*sinv + n*lis_s*cosv ! +l_spb
+                      !! End Modifications by Andreas F. Martitsch (12.11.2015)
                       
                       r_tbtb(it,ip) = r_tbtb(it,ip) - m*m*ri*cosv - m*m*ris*sinv
-                      z_tbtb(it,ip) = z_tbtb(it,ip) - m*m*zi*cosv - m*m*zis*sinv                      
-                      p_tbtb(it,ip) = p_tbtb(it,ip) + m*m*li*cosv + m*m*lis*sinv ! -l_tbtb
+                      z_tbtb(it,ip) = z_tbtb(it,ip) - m*m*zi*cosv - m*m*zis*sinv
+                      !! Modifications by Andreas F. Martitsch (12.11.2015)
+                      !According to Erika Strumberger (Email 11.10.2015)
+                      !the conversion from phi_b to phi is given by
+                      !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
+                      !where  \phi=2\pi/N_p v.
+                      !This expression differs by a minus sign from the
+                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !-> previous versions used this definition:
+                      !p_tbtb(it,ip) = p_tbtb(it,ip) + m*m*li*cosv + m*m*lis*sinv ! -l_tbtb
+                      !-> corrected formulas:
+                      p_tbtb(it,ip) = p_tbtb(it,ip) - m*m*li*cosv - m*m*lis*sinv ! +l_tbtb
+                      !! End Modifications by Andreas F. Martitsch (12.11.2015)
 
                       r_pbtb(it,ip) = r_pbtb(it,ip) - m*n*ri*cosv - m*n*ris*sinv
-                      z_pbtb(it,ip) = z_pbtb(it,ip) - m*n*zi*cosv - m*n*zis*sinv                      
-                      p_pbtb(it,ip) = p_pbtb(it,ip) + m*n*li*cosv + m*n*lis*sinv ! -l_pbtb                      
+                      z_pbtb(it,ip) = z_pbtb(it,ip) - m*n*zi*cosv - m*n*zis*sinv
+                      !! Modifications by Andreas F. Martitsch (12.11.2015)
+                      !According to Erika Strumberger (Email 11.10.2015)
+                      !the conversion from phi_b to phi is given by
+                      !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
+                      !where  \phi=2\pi/N_p v.
+                      !This expression differs by a minus sign from the
+                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !-> previous versions used this definition:
+                      !p_pbtb(it,ip) = p_pbtb(it,ip) + m*n*li*cosv + m*n*lis*sinv ! -l_pbtb
+                      !-> corrected formulas:
+                      p_pbtb(it,ip) = p_pbtb(it,ip) - m*n*li*cosv - m*n*lis*sinv ! +l_pbtb
+                      !! End Modifications by Andreas F. Martitsch (12.11.2015)
                       
                       r_pbpb(it,ip) = r_pbpb(it,ip) - n*n*ri*cosv - n*n*ris*sinv
-                      z_pbpb(it,ip) = z_pbpb(it,ip) - n*n*zi*cosv - n*n*zis*sinv                      
-                      p_pbpb(it,ip) = p_pbpb(it,ip) + n*n*li*cosv + n*n*lis*sinv ! -l_pbpb
+                      z_pbpb(it,ip) = z_pbpb(it,ip) - n*n*zi*cosv - n*n*zis*sinv
+                      !! Modifications by Andreas F. Martitsch (12.11.2015)
+                      !According to Erika Strumberger (Email 11.10.2015)
+                      !the conversion from phi_b to phi is given by
+                      !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
+                      !where  \phi=2\pi/N_p v.
+                      !This expression differs by a minus sign from the
+                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !-> previous versions used this definition:
+                      !p_pbpb(it,ip) = p_pbpb(it,ip) + n*n*li*cosv + n*n*lis*sinv ! -l_pbpb
+                      !-> corrected formulas:
+                      p_pbpb(it,ip) = p_pbpb(it,ip) - n*n*li*cosv - n*n*lis*sinv ! +l_pbpb
+                      !! End Modifications by Andreas F. Martitsch (12.11.2015)
                    ELSE
                       cosv = cosmth(it,im) * cosnph(ip,in) + sinmth(it,im) * sinnph(ip,in)
                       sinv = sinmth(it,im) * cosnph(ip,in) - cosmth(it,im) * sinnph(ip,in)
@@ -904,18 +1003,23 @@ CONTAINS
                a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol,         &
                swd, m0,                                                &
                s, tfone, tfzero, tfzero, tfzero,                       &
-               curr_pol_array(k_es), curr_pol_s_array(k_es) ,ypp, yppp)    
-          swd = 0 ! no derivative
+               curr_pol_array(k_es), curr_pol_s_array(k_es) ,ypp, yppp)
+          !! Modifications by Andreas F. Martitsch (17.03.2016)
+          ! derivative of iota for non-local NTV computations
+          ! (with magnetic shear)
+          swd = 1 ! derivative
           CALL splint_horner3(es,                                      &
                a_iota, b_iota, c_iota, d_iota, swd, m0,                &
                s, tfone, tfzero, tfzero, tfzero,                       &
-               iota_array(k_es), yp, ypp, yppp)
+               iota_array(k_es), iota_s_array(k_es), ypp, yppp)
+          !! End Modifications by Andreas F. Martitsch (17.03.2016)
+          swd = 0 ! no derivative
           CALL splint_horner3(es,                                      &
-               a_pprime, b_pprime, c_pprime, d_pprime, swd, m0,                &
+               a_pprime, b_pprime, c_pprime, d_pprime, swd, m0,        &
                s, tfone, tfzero, tfzero, tfzero,                       &
                pprime_array(k_es), yp, ypp, yppp)
           CALL splint_horner3(es,                                      &
-               a_sqrtg00, b_sqrtg00, c_sqrtg00, d_sqrtg00, swd, m0,                &
+               a_sqrtg00, b_sqrtg00, c_sqrtg00, d_sqrtg00, swd, m0,    &
                s, tfone, tfzero, tfzero, tfzero,                       &
                sqrtg00_array(k_es), yp, ypp, yppp)
        END DO
@@ -942,6 +1046,11 @@ CONTAINS
           curr_pol   = curr_pol_array(k_es)
           curr_pol_s = curr_pol_s_array(k_es)
           iota       = iota_array(k_es)
+          !! Modifications by Andreas F. Martitsch (17.03.2016)
+          ! derivative of iota for non-local NTV computations
+          ! (with magnetic shear)
+          iota_s     = iota_s_array(k_es)
+          !! End Modifications by Andreas F. Martitsch (17.03.2016)
           s_pprime   = pprime_array(k_es) ! only local
           s_sqrtg00  = sqrtg00_array(k_es)
           ! ************************************************************
@@ -1201,7 +1310,7 @@ CONTAINS
           boozer_curr_pol_hat_s = (curr_pol_s/bmod0)*1.0d2
           !! End Modifications by Andreas F. Martitsch (24.04.2015)
           boozer_psi_pr_hat = (psi_pr/bmod0)*1.0d4
-       end if
+       END IF
        boozer_sqrtg11 = (1.0d0/psi_pr)*sqrg11*1.0d-2
        boozer_isqrg = (1.0d0/psi_pr)*isqrg*1.0d-6
        !! End Modifications by Andreas F. Martitsch (12.03.2014)
@@ -1209,6 +1318,17 @@ CONTAINS
     END IF
     
     boozer_iota = iota
+    !! Modifications by Andreas F. Martitsch (17.03.2016)
+    ! derivative of iota for non-local NTV computations
+    ! (with magnetic shear)
+    IF (isw_mag_shear .EQ. 0) THEN
+       boozer_iota_s = 0.0d0
+    ELSEIF (isw_mag_shear .EQ. 1) THEN
+       boozer_iota_s = iota_s
+    ELSE
+       STOP "neo_magfie.f90: Unknown option for isw_mag_shear (0/1)!"
+    END IF
+    !! End Modifications by Andreas F. Martitsch (17.03.2016)
     ! CAUTION: This quantity is only used by Klaus.
     ! Conversion from SI- to cgs-units has not yet been
     ! checked for this quantity
