@@ -66,8 +66,8 @@ module collop_compute
   !**********************************************************
   ! Integration settings
   !**********************************************************
-  real(kind=dp) :: epsabs = 1d-10
-  real(kind=dp) :: epsrel = 1d-10
+  real(kind=dp) :: epsabs = 1d-12
+  real(kind=dp) :: epsrel = 1d-12
   integer       :: sw_qag_rule = 2
   !real(kind=dp) :: x_max    = 20
 
@@ -76,10 +76,18 @@ module collop_compute
   !**********************************************************
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax6.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax6.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag14_xmax5.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag30_xmax4.h5'
+  character(len=100) :: matelem_name='MatElem_aa_hatfun_lag28_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag24_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag22_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag20_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag19_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag17_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag15_xmax4.h5'
-  character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag14_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag12_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag7_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax4.h5'
@@ -179,7 +187,6 @@ contains
     elseif (collop_base_prj .eq. 10) then
        write (*,*) "Using hat functions as collision operator projection base."
        precomp=.true.
-       make_ortho=.false.
     else
        write (*,*) "Undefined collision operator projection base ", collop_base_prj
        stop
@@ -225,10 +232,10 @@ contains
   subroutine chop_0(x)
     real(kind=dp) :: x, chop
 
-    if (abs(x) .lt. epsabs) then
+    IF (ABS(x) .LT. 1.0d-10) THEN
        x = 0d0
-    elseif (abs(x - 1d0) .lt. epsabs) then
-       x = 1d0
+    !elseif (abs(x - 1d0) .lt. epsabs) then
+    !   x = 1d0
     end if
 
   end subroutine chop_0
