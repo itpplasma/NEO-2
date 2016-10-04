@@ -85,6 +85,11 @@ SUBROUTINE neo_init(npsi)
     STOP
   ENDIF
 !
+  ! do consistency check
+  !CALL neo_init_fluxsurface()
+  !CALL neo_fourier()
+  !STOP
+!
   nper = nfp
 ! **********************************************************************
   w_u6_open = 0
@@ -2037,8 +2042,20 @@ SUBROUTINE neo_fourier
                  r_pb(it,ip) = r_pb(it,ip) - n*ri*sinv + n*ri_s*cosv
                  z_tb(it,ip) = z_tb(it,ip) - m*zi*sinv + m*zi_s*cosv
                  z_pb(it,ip) = z_pb(it,ip) - n*zi*sinv + n*zi_s*cosv
-                 p_tb(it,ip) = p_tb(it,ip) + m*li*sinv - m*li_s*cosv ! -l_tb
-                 p_pb(it,ip) = p_pb(it,ip) + n*li*sinv - n*li_s*cosv ! -l_pb
+                 !! Modifications by Andreas F. Martitsch (12.11.2015)
+                 !According to Erika Strumberger (Email 11.10.2015)
+                 !the conversion from phi_b to phi is given by
+                 !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
+                 !where  \phi=2\pi/N_p v.
+                 !This expression differs by a minus sign from the
+                 !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                 !-> previous versions used this definition:
+                 !p_tb(it,ip) = p_tb(it,ip) + m*li*sinv - m*li_s*cosv ! -l_tb
+                 !p_pb(it,ip) = p_pb(it,ip) + n*li*sinv - n*li_s*cosv ! -l_pb
+                 !-> corrected formulas:
+                 p_tb(it,ip) = p_tb(it,ip) - m*li*sinv + m*li_s*cosv ! +l_tb
+                 p_pb(it,ip) = p_pb(it,ip) - n*li*sinv + n*li_s*cosv ! +l_pb
+                 !! End Modifications by Andreas F. Martitsch (12.11.2015)
                  b_tb(it,ip) = b_tb(it,ip) - m*bi*sinv + m*bi_s*cosv
                  b_pb(it,ip) = b_pb(it,ip) - n*bi*sinv + n*bi_s*cosv                
               ELSE
@@ -2494,8 +2511,20 @@ SUBROUTINE neo_eval(theta,phi,bval,gval,kval,pval,qval,rval)
               rr_pb = rr_pb - n*ri*sinv + n*ri_s*cosv
               zz_tb = zz_tb - m*zi*sinv + m*zi_s*cosv
               zz_pb = zz_pb - n*zi*sinv + n*zi_s*cosv
-              pp_tb = pp_tb + m*li*sinv - m*li_s*cosv ! -l_tb
-              pp_pb = pp_pb + n*li*sinv - n*li_s*cosv ! -l_pb
+              !! Modifications by Andreas F. Martitsch (12.11.2015)
+              !According to Erika Strumberger (Email 11.10.2015)
+              !the conversion from phi_b to phi is given by
+              !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
+              !where  \phi=2\pi/N_p v.
+              !This expression differs by a minus sign from the
+              !expression used by J. Geiger ( phi_b-\phi = ... )! 
+              !-> previous versions used this definition:
+              !pp_tb = pp_tb + m*li*sinv - m*li_s*cosv ! -l_tb
+              !pp_pb = pp_pb + n*li*sinv - n*li_s*cosv ! -l_pb
+              !-> corrected formulas:
+              pp_tb = pp_tb - m*li*sinv + m*li_s*cosv ! +l_tb
+              pp_pb = pp_pb - n*li*sinv + n*li_s*cosv ! +l_pb                            
+              !! End Modifications by Andreas F. Martitsch (12.11.2015)
               bb_tb = bb_tb - m*bi*sinv + m*bi_s*cosv
               bb_pb = bb_pb - n*bi*sinv + n*bi_s*cosv                
            ELSE

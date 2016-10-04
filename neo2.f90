@@ -58,6 +58,12 @@ PROGRAM neo2
   USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,&
        MtOvR, B_rho_L_loc, xstart_cyl, isw_ripple_solver
   !! End Modification by Andreas F. Martitsch (14.07.2015)
+  !! Modifications by Andreas F. Martitsch (17.03.2016)
+  ! derivative of iota for non-local NTV computations
+  ! (with magnetic shear)
+  USE neo_magfie_mod, ONLY : isw_mag_shear
+  !! End Modifications by Andreas F. Martitsch (17.03.2016)
+  
   !
   IMPLICIT NONE
 
@@ -155,7 +161,7 @@ PROGRAM neo2
   ! Extra input for NTV computation
   NAMELIST /ntv_input/                                                        &
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, B_rho_L_loc,          &
-       isw_ripple_solver
+       isw_ripple_solver, isw_mag_shear
   !! End Modification by Andreas F. Martitsch (14.07.2015)  
   ! ---------------------------------------------------------------------------
   ! filenames (default file and specific input file) for namelist
@@ -291,6 +297,7 @@ PROGRAM neo2
   MtOvR = 0.0d0
   B_rho_L_loc = 0.0d0
   isw_ripple_solver = 1
+  isw_mag_shear = 0
   !! End Modification by Andreas F. Martitsch (14.07.2015)
 
   CALL h5_init()

@@ -2209,7 +2209,7 @@ CONTAINS
             ierr                                                            &
             )
     ELSEIF (isw_ripple_solver .EQ. 3) THEN
-       STOP "Currently not supported by MPI version of NEO2-NTV! Set isw_ripple_solver=1,2"
+       !STOP "Currently not supported by MPI version of NEO2-NTV! Set isw_ripple_solver=1,2"
        CALL ripple_solver_ArnoldiO2(                                        &
 !->out         prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%npart_halfband,      &
             prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,            & !<-in

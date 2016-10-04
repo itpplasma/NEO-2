@@ -95,7 +95,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   ! ripple_solver.f90!
   USE neo_magfie_mod, ONLY: boozer_iota,boozer_curr_pol_hat,&
        boozer_curr_tor_hat,boozer_psi_pr_hat,boozer_curr_pol_hat_s,&
-       boozer_curr_tor_hat_s
+       boozer_curr_tor_hat_s, boozer_iota_s
   !! End Modifications by Andreas F. Martitsch (12.03.2014)
   !! Modifications by Andreas F. Martitsch (12.06.2014)
   ! quantities of the perturbation field extracted
@@ -323,7 +323,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
 !
   niter=100       !maximum number of integral part iterations
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
-  n_arnoldi=50     !maximum number of Arnoldi iterations
+  n_arnoldi=100     !maximum number of Arnoldi iterations
   isw_regper=1       !regulariization by periodic boundary condition
   epserr_sink=0.d0 !1.d-12 !sink for regularization, it is equal to
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
@@ -983,6 +983,7 @@ PRINT *,ub_mag,ibeg,iend
 
 !     PAUSE 'bmod and eta written'
   END IF
+  !STOP
 
   !------------------------------------------------------------------------
   ! SERGEI
@@ -3139,9 +3140,19 @@ rotfactor=imun*m_phi
     !! Modifications by Andreas F. Martitsch (14.03.2014)
     ! Optional output (necessary for modeling the magnetic rotation)
     a1b=(bcovar_s_hat_mfl(istep)*dlogbdphi_mfl(istep)/denomjac                   &
-       - dlogbds_mfl(istep))/aiota 
+       - dlogbds_mfl(istep))/aiota
+    !! Modifications by Andreas F. Martitsch (17.03.2016)
+    ! derivative of iota for non-local NTV computations
+    ! (with magnetic shear)
+    !-> old:
+    !a2b=a1b+2.d0*(dbcovar_theta_hat_ds+dbcovar_phi_hat_ds/aiota                  &
+    !     -          dbcovar_s_hat_dphi_mfl(istep)/aiota)/denomjac    
+    !-> new [include radial derivative of iota if
+    !-> isw_mag_shear .eq. 0; otherwise set to zero]
     a2b=a1b+2.d0*(dbcovar_theta_hat_ds+dbcovar_phi_hat_ds/aiota                  &
-       -          dbcovar_s_hat_dphi_mfl(istep)/aiota)/denomjac
+         -          bcovar_phi_hat*boozer_iota_s/(aiota**2)                      &
+         -          dbcovar_s_hat_dphi_mfl(istep)/aiota)/denomjac        
+    !! End Modifications by Andreas F. Martitsch (17.03.2016)
     !! End Modifications by Andreas F. Martitsch (14.03.2014)
 !
     npassing_prev=npl(istep-1)
@@ -3231,8 +3242,18 @@ rotfactor=imun*m_phi
      ! Optional output (necessary for modeling the magnetic rotation)
      a1b=(bcovar_s_hat_mfl(istep)*dlogbdphi_mfl(istep)/denomjac                   &
           - dlogbds_mfl(istep))/aiota 
+     !! Modifications by Andreas F. Martitsch (17.03.2016)
+     ! derivative of iota for non-local NTV computations
+     ! (with magnetic shear)
+     !-> old:
+     !a2b=a1b+2.d0*(dbcovar_theta_hat_ds+dbcovar_phi_hat_ds/aiota                  &
+     !     -          dbcovar_s_hat_dphi_mfl(istep)/aiota)/denomjac
+     !-> new [include radial derivative of iota if
+     !-> isw_mag_shear .eq. 0; otherwise set to zero]
      a2b=a1b+2.d0*(dbcovar_theta_hat_ds+dbcovar_phi_hat_ds/aiota                  &
+          -          bcovar_phi_hat*boozer_iota_s/(aiota**2)                      &
           -          dbcovar_s_hat_dphi_mfl(istep)/aiota)/denomjac
+    !! End Modifications by Andreas F. Martitsch (17.03.2016)
      !! End Modifications by Andreas F. Martitsch (14.03.2014)
 !
     npassing_prev=npl(istep+1)
