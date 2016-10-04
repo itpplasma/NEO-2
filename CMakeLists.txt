@@ -93,6 +93,11 @@ find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(pspline_lib pspline ${PSPLINE_LIB} NO_DEFAULT_PATH)
 find_library(gsl_lib gsl ${GSL_LIB} NO_DEFAULT_PATH)
 find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
+find_library(lapack_lib lapack ${LAPACK_LIB} NO_DEFAULT_PATH)
+find_library(f77blas_lib f77blas ${F77BLAS_LIB} NO_DEFAULT_PATH)
+find_library(atlas_lib atlas ${ATLASBLAS_LIB} NO_DEFAULT_PATH)
+find_library(open_blas_lapack_lib lapack ${OPEN_BLAS_LAPACK_LIB} NO_DEFAULT_PATH)
+find_library(open_blas_lib blas ${OPEN_BLAS_LIB} NO_DEFAULT_PATH)
 
 ### HDF5
 set(HDF5_DIR /usr/lib/x86_64-linux-gnu/hdf5/serial/)
@@ -129,8 +134,12 @@ target_link_libraries(${EXE_NAME}
         ${HDF5HL_lib}
         ${HDF5_fortran_lib}
         ${HDF5_lib} -lpthread -lz -lrt -lm 
-	blas
-	lapack
+	#lapack
+	#${lapack_lib}
+	${open_blas_lapack_lib}
+	#blas
+	#${f77blas_lib} ${atlas_lib}
+	${open_blas_lib}
 	#debug efence
         )
 
