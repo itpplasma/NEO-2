@@ -4,14 +4,13 @@ module collop
   use hdf5_tools
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
-       m_ele, m_d, m_C, m_alp, compute_collop_inf, compute_xmmp, &
-       compute_collop_lorentz, nu_D_hat
+       m_ele, m_d, m_C, compute_collop_inf, C_m, compute_xmmp, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
        v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz, conl_over_mfp
   use device_mod, only : device
-  
+
   implicit none
   
   !**********************************************************
@@ -27,6 +26,7 @@ module collop
   integer                     :: collop_base_exp  = 0 
   real(kind=dp)               :: scalprod_alpha = 0d0
   real(kind=dp)               :: scalprod_beta  = 0d0
+  logical                     :: collop_only_precompute = .false.
 
   !**********************************************************
   ! Number of species
@@ -61,7 +61,7 @@ module collop
       !**********************************************************
       anumm(0:lag, 0:lag) => anumm_a(:,:,ispec)      
       denmm(0:lag, 0:lag) => denmm_a(:,:,ispec)
-      if (z_eff .ne. 0) then
+      if (Z_eff .ne. 0) then
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,ispec,ispec)
       else
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,mpro%getRank(),ispec)
@@ -70,11 +70,13 @@ module collop
       ! Switch collisionality parameter
       !**********************************************************
       ! negative input for conl_over_mfp should provide collpar directly
-      conl_over_mfp=conl_over_mfp_spec(ispec)
-      if (conl_over_mfp .gt. 0.0d0) then
-         collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
-      else
-         collpar=-conl_over_mfp
+      if (.not. collop_only_precompute) then
+         conl_over_mfp=conl_over_mfp_spec(ispec)
+         if (conl_over_mfp .gt. 0.0d0) then
+            collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
+         else
+            collpar=-conl_over_mfp
+         end if
       end if
       
     end subroutine collop_set_species
@@ -129,23 +131,15 @@ module collop
       allocate(ailmm_aa(0:lag,0:lag,0:leg,0:num_spec-1,0:num_spec-1))
       
       if(allocated(weightlag)) deallocate(weightlag)
-      allocate(weightlag(4,0:lag)) ! includes now weightlag for bvec_parflow (4th entry)
+      allocate(weightlag(3,0:lag))
 
+      if(allocated(weightden)) deallocate(weightden)
+      allocate(weightden(0:lag))
+      
       if (allocated(anumm_inf)) deallocate(anumm_inf)
       allocate(anumm_inf(0:lag, 0:lag))
 
-      if (z_eff .ne. 0) then
-
-         !**********************************************************
-         ! Compute collision operator with Laguerre base for
-         ! eta-level positioning of flint
-         !**********************************************************
-         call init_collop(0, 0, 0d0, 0d0)
-         call compute_source(asource, weightlag, Amm)
-         call compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
-              denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
-         anumm_lag(:,:) = anumm_aa(:,:,0,0) + z_eff * anumm_inf(:,:)
-
+      if (Z_eff .ne. 0) then
          !**********************************************************
          ! Now compute collision operator with desired base
          !**********************************************************
@@ -171,8 +165,9 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         call compute_source(asource, weightlag, Amm)
-
+         call compute_source(asource, weightlag, weightden)
+         write (*,*) "Weightden: ", weightden
+         
          !**********************************************************
          ! Compute x1mm and x2mm
          !**********************************************************
@@ -187,21 +182,12 @@ module collop
          !**********************************************************
          ! Sum up matrices
          !**********************************************************
-         anumm_a(:,:,0) = anumm_aa(:,:,0,0) + z_eff * anumm_inf(:,:)
+         anumm_a(:,:,0) = anumm_aa(:,:,0,0) + Z_eff * anumm_inf(:,:)
          denmm_a(:,:,0) = denmm_aa(:,:,0,0)
 
       else
 
          write (*,*) "Multispecies test mode."
-
-         !**********************************************************
-         ! Compute collision operator with Laguerre base for
-         ! eta-level positioning of flint
-         !**********************************************************
-         call init_collop(0, 0, 0d0, 0d0)
-         call compute_source(asource, weightlag, Amm)
-         call compute_collop_lorentz('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0))
-         anumm_lag(:,:) = anumm_aa(:,:,0,0)
          
          !**********************************************************
          ! Now compute collision operator with desired base
@@ -211,7 +197,7 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         call compute_source(asource, weightlag, Amm)
+         call compute_source(asource, weightlag, weightden)
 
          !**********************************************************
          ! Compute x1mm and x2mm
@@ -295,7 +281,7 @@ module collop
       !write (*,*) ailmm
       !write (*,*) weightlag
 
-      if (mpro%isMaster()) call write_collop('collop.h5')
+      if (mpro%isMaster()) call write_collop()
     end subroutine collop_load
 
     subroutine collop_unload()
@@ -314,11 +300,14 @@ module collop
       
     end subroutine collop_deconstruct
 
-    subroutine write_collop(h5filename)
-      character(len=*) :: h5filename
+    subroutine write_collop()
       integer(HID_T)   :: h5id_collop, h5id_meta, h5id_species
+      integer          :: m, mp, l, xi, n_x
+      integer          :: f = 4234
+      real(kind=dp), dimension(:), allocatable :: x
+      real(kind=dp), dimension(:,:), allocatable :: phi_x, dphi_x, ddphi_x
 
-      call h5_create(h5filename, h5id_collop)
+      call h5_create('collop.h5', h5id_collop)
       !call h5_define_group(h5id_collop, trim(tag_a) //'-'// trim(tag_b), h5id_species)
       call h5_define_group(h5id_collop, 'meta', h5id_meta)
 
@@ -352,9 +341,109 @@ module collop
       call h5_add(h5id_collop, 'weightlag', weightlag, lbound(weightlag), ubound(weightlag))
       call h5_add(h5id_collop, 'M_transform_', M_transform, lbound(M_transform), ubound(M_transform))
       call h5_add(h5id_collop, 'M_transform_inv', M_transform_inv, lbound(M_transform_inv), ubound(M_transform_inv))
+      call h5_add(h5id_collop, 'C_m', C_m, lbound(C_m), ubound(C_m))
 
+      !**********************************************************
+      ! Write test functions
+      !**********************************************************
+      n_x = 999
+      allocate(x(n_x))
+      allocate(phi_x(0:lag, 1:n_x))
+      allocate(dphi_x(0:lag, 1:n_x))
+      allocate(ddphi_x(0:lag, 1:n_x))
+      
+      do m = 0, lag
+         do xi = 1, n_x
+            x(xi) = 10d0/(n_x-1) * (xi-1) 
+            phi_x(m,xi)   = phi_exp(m,x(xi))
+            dphi_x(m,xi)  = d_phi_exp(m,x(xi))
+            ddphi_x(m,xi) = dd_phi_exp(m,x(xi))
+            !write (*,*) x(xi), m, phi_exp(m,x(xi)), d_phi_exp(m,x(xi)), dd_phi_exp(m,x(xi))
+         end do
+      end do
+
+      call h5_add(h5id_collop, 'x', x, lbound(x), ubound(x))
+      call h5_add(h5id_collop, 'phi_x', phi_x, lbound(phi_x), ubound(phi_x))
+      call h5_add(h5id_collop, 'dphi_x', dphi_x, lbound(dphi_x), ubound(dphi_x))
+      call h5_add(h5id_collop, 'ddphi_x', ddphi_x, lbound(ddphi_x), ubound(ddphi_x))
+      
       call h5_close(h5id_collop)
 
+      !**********************************************************
+      ! ASCII
+      !**********************************************************
+
+      open(f, file='SourceAa123m_Cm.dat', status='replace')
+      do m=0,19
+         write (f,'(A)') '!' 
+      end do
+      write (f,'(I0)') lag
+      do m=0,lag
+         write (f,'(4(es23.15E02))') asource(m, 1), asource(m, 3), asource(m, 2), C_m(m)
+      end do
+      close(f)
+
+      open(f, file='MatrixNu_mmp-gee.dat', status='replace')
+      do m=0,19
+         write (f,'(A)') '!' 
+      end do
+      write (f,'(I0)') lag
+      write (f,'(I0)') lag
+      do m=0,lag
+         do mp=0,lag
+            write (f,'(1(es23.15E02))', advance='NO') anumm_aa(m, mp, 0, 0)
+         end do
+         write (f,*) NEW_line('A')
+      end do
+      close(f)    
+      
+      open(f, file='MatrixNu_mmp-ginf.dat', status='replace')
+      do m=0,19
+         write (f,'(A)') '!' 
+      end do
+      write (f,'(I0)') lag
+      write (f,'(I0)') lag
+      do m=0,lag
+         do mp=0,lag
+            write (f,'(1(es23.15E02))', advance='NO') anumm_inf(m, mp)
+         end do
+         write (f, '(A)', advance='NO') NEW_line('A')
+      end do
+      close(f)    
+
+      open(f, file='MatrixD_mmp-gee.dat', status='replace')
+      do m=0,19
+         write (f,'(A)') '!' 
+      end do
+      write (f,'(I0)') lag
+      write (f,'(I0)') lag
+      do m=0,lag
+         do mp=0,lag
+            write (f,'(1(es23.15E02))', advance='NO') denmm(m, mp)
+         end do
+         write (f, '(A)', advance='NO') NEW_line('A')
+      end do
+      close(f)
+
+      open(f, file='MatrixI_mmp-gee.dat', status='replace')
+      do m=0,19
+         write (f,'(A)') '!' 
+      end do
+      write (f,'(I0)') lag
+      write (f,'(I0)') lag
+      write (f,'(I0)') leg
+      do l = 0,leg
+         write (f,'(I0)') l
+         do m=0,lag
+            do mp=0,lag
+               write (f,'(1(es23.15E02))', advance='NO') ailmm_aa(m, mp, l, 0, 0)
+            end do
+            write (f, '(A)', advance='NO') NEW_line('A')
+         end do
+      end do
+      close(f)    
+
+      !stop
     end subroutine write_collop
     
 end module collop
