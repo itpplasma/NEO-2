@@ -66,6 +66,8 @@ set(NEO2_COMMON_FILES
 	#../COMMON/collop_bspline2.f90
 	#../COMMON/collop_spline4.f90
 	../COMMON/collop_spline.f90
+	../COMMON/collision_operator_mems.f90
+	../COMMON/collop_compute.f90
 )
 
 set(NEO2_SRC_FILES
@@ -95,7 +97,5 @@ set(NEO2_SRC_FILES
         ./plot_distrf.f90
         ./neo2.f90
 	./timingInfo.f90
-	./collision_operator_mems.f90
-	./collop_compute.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} ${NEO2_COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")

@@ -82,10 +82,18 @@ module collop_compute
   !**********************************************************
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax6.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax6.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag14_xmax5.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag30_xmax4.h5'
+  character(len=100) :: matelem_name='MatElem_aa_hatfun_lag28_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag24_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag22_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag20_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag19_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag17_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag15_xmax4.h5'
-  character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag14_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag12_xmax4.h5'
+  !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag10_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag7_xmax4.h5'
   !character(len=100) :: matelem_name='MatElem_aa_hatfun_lag5_xmax4.h5'
@@ -131,7 +139,7 @@ module collop_compute
        real(kind=dp) :: x, dd_phi_interface
      end function dd_phi_interface
   end interface
- 
+
   !**********************************************************
   ! Function pointers for different base functions
   !**********************************************************
@@ -222,8 +230,7 @@ contains
     elseif (collop_base_prj .eq. 100) then
        write (*,*) "Using hat functions as collision operator projection base."
        precomp=.true.
-       make_ortho=.false.
-    else       
+    else
        write (*,*) "Undefined collision operator projection base ", collop_base_prj
        stop
     end if
@@ -684,9 +691,9 @@ contains
     end function phim_phimp
   end subroutine compute_Minv
 
-  subroutine compute_sources(asource_s, weightlag_s, weightden_s)
+  subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s)
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
-    real(kind=dp), dimension(:)   :: weightden_s
+    real(kind=dp), dimension(:)   :: weightden_s, weightparflow_s
     real(kind=dp) :: res_int
     integer :: m, k, j
 
@@ -745,12 +752,12 @@ contains
        end do
     end if
 
-    ! weightlag for computation of bvec_parflow
-    !if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
-    !   weightlag_s(4,:) = asource_s(:,1)
-    !else
-    !   weightlag_s(4,:) = matmul(M_transform_inv, asource_s(:,1))
-    !end if
+    ! weightparflow for computation of bvec_parflow
+    if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+       weightparflow_s = asource_s(:,1)
+    else
+       weightparflow_s = matmul(M_transform_inv, asource_s(:,1))
+    end if
 
     call chop(weightlag_s)
 
@@ -1323,9 +1330,9 @@ contains
 
   end subroutine compute_I4_mmp_s
 
-  subroutine compute_source(asource_s, weightlag_s, bzero_s)
-    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
-    real(kind=dp), dimension(:)   :: bzero_s
+  subroutine compute_source(asource_s, weightlag_s, bzero_s, weightparflow_s, Amm_s)
+    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
+    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s
 
     if (allocated(M_transform)) deallocate(M_transform)
     allocate(M_transform(0:lagmax, 0:lagmax))
@@ -1334,7 +1341,8 @@ contains
     allocate(M_transform_inv(0:lagmax, 0:lagmax))
 
     call compute_Minv(M_transform_inv)
-    call compute_sources(asource_s, weightlag_s, bzero_s)
+    call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s)
+    Amm_s=M_transform
 
   end subroutine compute_source
 

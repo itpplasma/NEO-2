@@ -2310,10 +2310,10 @@ rotfactor=imun*m_phi
                   ENDIF
                 ENDIF
 !
-                if(ipart.LE.npassing_prev+1) then
+                IF(ipart.LE.npassing_prev+1) THEN
                   nz=nz+1
                   irow(nz)=k+ipart
-                  icol(nz)=k_prev+max(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
+                  icol(nz)=k_prev+MAX(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
                   amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep-1) &
                              *fact_pos_e(istep)*0.5d0
                   IF(.NOT.colltest.AND.mm.EQ.m) THEN
@@ -2322,7 +2322,7 @@ rotfactor=imun*m_phi
                     icol_ttmp(nz_ttmp)=icol(nz)
                     amat_ttmp(nz_ttmp)=-ttmp_mat(kk,ipart,istep-1)*0.5d0
                   ENDIF
-                endif
+                ENDIF
               ENDDO
             ENDDO
           ENDDO
@@ -2637,10 +2637,10 @@ rotfactor=imun*m_phi
                   ENDIF
                 ENDIF
 !
-                if(ipart.LE.npassing_prev+1) then
+                IF(ipart.LE.npassing_prev+1) THEN
                   nz=nz+1
                   irow(nz)=k-ipart
-                  icol(nz)=k_prev-max(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
+                  icol(nz)=k_prev-MAX(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
                   amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep+1) &
                              *fact_neg_e(istep)*0.5d0
                   IF(.NOT.colltest.AND.mm.EQ.m) THEN
@@ -2649,7 +2649,7 @@ rotfactor=imun*m_phi
                     icol_ttmp(nz_ttmp)=icol(nz)
                     amat_ttmp(nz_ttmp)=ttmp_mat(kk,ipart,istep+1)*0.5d0
                   ENDIF
-                endif
+                ENDIF
 !
               ENDDO
             ENDDO
@@ -4121,8 +4121,13 @@ PRINT *,' '
         flux_vector(3,k+npassing+2:k+2*npassing+2) =                          &
               step_factor_m*weightlag(3,m)*convol_flux(npassing+1:1:-1,istep)
 !
-        bvec_parflow(k+1:k+npassing+1)           = asource(m,1)*q_rip_parflow(1:npassing+1,istep)
-        bvec_parflow(k+npassing+2:k+2*npassing+2)=-asource(m,1)*q_rip_parflow(npassing+1:1:-1,istep)
+        ! Computation of bvec_parflow generalized to non-orthogonal polynomials
+        !-> old version (orthogonal test functions):
+        !bvec_parflow(k+1:k+npassing+1)           = asource(m,1)*q_rip_parflow(1:npassing+1,istep)
+        !bvec_parflow(k+npassing+2:k+2*npassing+2)=-asource(m,1)*q_rip_parflow(npassing+1:1:-1,istep)
+        !-> new version (general test functions):
+        bvec_parflow(k+1:k+npassing+1)           = weightparflow(m)*q_rip_parflow(1:npassing+1,istep)
+        bvec_parflow(k+npassing+2:k+2*npassing+2)=-weightparflow(m)*q_rip_parflow(npassing+1:1:-1,istep)
 !
         IF(istep.GT.ibeg) THEN
           npassing_prev=npl(istep-1)
