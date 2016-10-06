@@ -71,11 +71,11 @@ module collop_compute
   !**********************************************************
   ! Integration settings
   !**********************************************************
-  real(kind=dp) :: epsabs = 1d-12
-  real(kind=dp) :: epsrel = 1d-12
+  real(kind=dp) :: epsabs = 1d-10
+  real(kind=dp) :: epsrel = 1d-10
   integer       :: sw_qag_rule = 2
-  logical       :: integral_cutoff = .false.  
-  real(kind=dp) :: x_cutoff = 50d0
+  logical       :: integral_cutoff = .true.  
+  real(kind=dp) :: x_cutoff = 20d0
 
   !**********************************************************
   ! Pre-computed matrix elements
@@ -131,7 +131,7 @@ module collop_compute
        real(kind=dp) :: x, dd_phi_interface
      end function dd_phi_interface
   end interface
-
+ 
   !**********************************************************
   ! Function pointers for different base functions
   !**********************************************************
@@ -145,10 +145,21 @@ module collop_compute
   procedure(d_phi_interface),    pointer :: d_phi_exp    => null()
   procedure(dd_phi_interface),   pointer :: dd_phi_exp   => null()
 
+  !**********************************************************
+  ! jump discontinuities
+  !**********************************************************
+  logical       :: d_phi_discont = .false.
+  real(kind=dp), dimension(:), allocatable :: t_vec
+
+  interface integrate
+     module procedure integrate_ainf, integrate_ab
+  end interface integrate
+  
 contains
 
   subroutine init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
     use rkstep_mod, only : lag, leg
+    use collop_bspline, only : xknots => x, nder
     integer :: collop_base_prj, collop_base_exp
     real(kind=dp) :: scalprod_alpha
     real(kind=dp) :: scalprod_beta
@@ -271,11 +282,40 @@ contains
        write (*,*) "Undefined collision operator expansion base ", collop_base_exp
        stop
     end if
-
+  
     call init_legendre(legmax)
     call init_phi_prj(lagmax, legmax)
     call init_phi_exp(lagmax, legmax)
 
+    !**********************************************************
+    ! Special for B-Splines
+    ! Inform integration routines about knots and continuity of
+    ! bases functions
+    !**********************************************************
+    if ((collop_base_prj .eq. 11) .or. (collop_base_exp .eq. 11)) then
+       write (*,*) nder
+       allocate(t_vec(lbound(xknots,1):ubound(xknots,1)))
+       t_vec = xknots
+
+       !**********************************************************
+       ! Detect if hat functions
+       !**********************************************************
+       if (nder .eq. 2) then  
+
+          !**********************************************************
+          ! Cutoff integration after last hat
+          !**********************************************************
+          integral_cutoff = .true.
+          x_cutoff = phi_x_max
+
+          !**********************************************************
+          ! Avoid second derivative in integral part (I4)
+          !**********************************************************
+          d_phi_discont = .true.
+       end if
+       
+    end if
+    
   end subroutine init_collop
 
   subroutine chop_0(x)
@@ -339,6 +379,152 @@ contains
 
   end subroutine chop_5
 
+  recursive function integrate_ab(func1d, a, b) result(y)
+    real(kind=dp) :: a, b
+    real(kind=dp) :: y
+    real(kind=dp), dimension(2) :: res_int
+    integer :: k, kmax
+    real(kind=dp), dimension(128) :: x_inter ! For performance issues is this preallocated with a sufficient number of knots
+    logical :: binknots
+    
+    interface  
+       function func1d(x)
+         use nrtype, only : dp
+         real(kind=dp) :: func1d
+         real(kind=dp) :: x
+       end function func1d
+    end interface
+
+    ! For debug
+    !res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
+    !y = res_int(1)
+    !return
+    
+    if (allocated(t_vec)) then
+       y = 0d0
+       kmax = 0
+       binknots = .false.
+       
+       if (a .lt. t_vec(1)) then
+          kmax = kmax + 1
+          x_inter(kmax) = a
+       end if
+       
+       do k = lbound(t_vec, 1), ubound(t_vec, 1)
+          if (a .gt. t_vec(k)) then
+             cycle
+          end if
+          
+          if (t_vec(k) .gt. b) then
+             kmax = kmax + 1
+             x_inter(kmax) = b
+             binknots = .true.
+             exit
+          end if
+
+          kmax = kmax + 1
+          x_inter(kmax) = t_vec(k)
+
+       end do
+
+       if (.not. binknots) then
+          kmax = kmax + 1
+          x_inter(kmax) = b
+       end if
+
+       !write (*,*) "***"
+       !write (*,*) t_vec
+       !write (*,*) a, b
+       !write (*,*) x_inter(1:kmax)
+       
+       do k = 1, kmax-1
+          res_int = fint1d_qag(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel, sw_qag_rule)
+          y = y + res_int(1)
+       end do
+    else
+       res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
+       y = res_int(1)
+    end if
+       
+  end function integrate_ab
+
+  recursive function integrate_ainf(func1d, a) result(y)
+    real(kind=dp) :: a
+    real(kind=dp) :: y
+    real(kind=dp), dimension(2) :: res_int
+    integer :: k
+    logical :: in_interval
+
+    interface  
+       function func1d(x)
+         use nrtype, only : dp
+         real(kind=dp) :: func1d
+         real(kind=dp) :: x
+       end function func1d
+    end interface
+
+    ! For debug
+    !if (integral_cutoff) then
+    !   res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+    !else
+    !   res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
+    !end if
+    !y = res_int(1)
+    !return
+    
+    if (allocated(t_vec)) then
+       
+       if (a .le. t_vec(ubound(t_vec,1))) then
+          y = 0d0
+          in_interval = .false.
+          !write (*,*) "Integration", a, t_vec
+          do k = lbound(t_vec, 1), ubound(t_vec, 1)
+             if (.not. in_interval) then
+                if (a .ge. t_vec(k)) then
+                   !write (*,*) "Cycle"
+                   cycle
+                else
+                   res_int = fint1d_qag(func1d, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
+                   y = y + res_int(1)
+                  ! write (*,*) "1. Int", a, t_vec(k), res_int
+                   in_interval = .true.
+                end if
+             end if
+             if (in_interval) then
+                if (k .lt. ubound(t_vec,1)) then
+                   res_int = fint1d_qag(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel, sw_qag_rule)
+                   y = y + res_int(1)
+                   !write (*,*) "Rest int", t_vec(k), t_vec(k+1), y
+                end if
+             end if
+
+          end do
+          res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
+          y = y + res_int(1)
+          !write (*,*) "Final int", t_vec(ubound(t_vec,1)), y
+       else
+          !write (*,*) "a outside domain", a, integral_cutoff, x_cutoff
+          if (integral_cutoff) then
+             res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+          else
+             res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
+          end if
+          y = res_int(1)
+       end if
+       
+    else
+       
+       if (integral_cutoff) then
+          res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+       else
+          res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
+       end if
+       y = res_int(1)
+       
+    end if
+    
+  end function integrate_ainf
+  
   subroutine init_legendre(n)
     !
     ! Computes coefficients of Legendre polynomials of orders from 0 to n
@@ -407,7 +593,7 @@ contains
   function nu_D_hat(x) result(nu)
     real(kind=dp) :: x, y, nu
 
-    ! At the momement only for self-collisions
+    ! At the momement only for self-collisions !!!!!!!
     y = x * 1d0
 
     nu = 3*sqrt(pi)/4d0 * (erf(y) - G(y))/(x**3)
@@ -448,7 +634,6 @@ contains
 
   subroutine compute_Minv(M)
     real(kind=dp), dimension(:,:) :: M
-    real(kind=dp), dimension(2)   :: res_int
     integer :: mm, mp
 
     write (*,*) "Computing phi transformation matrix..."
@@ -461,14 +646,10 @@ contains
        !END DO
        !STOP
     else
+       write(*,*) "Matrix:"
        do mm = 0, lagmax
           do mp = 0, lagmax
-             if (integral_cutoff) then
-                res_int = fint1d_qag(phim_phimp, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             else
-                res_int = fint1d_qagiu(phim_phimp, 0d0, epsabs, epsrel)
-             end if
-             M(mm+1,mp+1) = res_int(1)
+             M(mm+1,mp+1) = integrate(phim_phimp, 0d0)
           end do
        end do
     end if
@@ -506,7 +687,7 @@ contains
   subroutine compute_sources(asource_s, weightlag_s, weightden_s)
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
     real(kind=dp), dimension(:)   :: weightden_s
-    real(kind=dp), dimension(2)   :: res_int
+    real(kind=dp) :: res_int
     integer :: m, k, j
 
     write (*,*) "Computing sources..."
@@ -527,12 +708,7 @@ contains
     else
        do k = 1, 3
           do m = 0, lagmax
-             if (integral_cutoff) then
-                res_int = fint1d_qag(am, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             else
-                res_int = fint1d_qagiu(am, 0d0, epsabs, epsrel)
-             end if
-             asource_s(m+1, k) = res_int(1)
+             asource_s(m+1, k) = integrate(am, 0d0)
           end do
        end do
     end if
@@ -562,14 +738,9 @@ contains
     else
        do j = 1, 3
           do m = 0, lagmax
-             !write (*,*) j, m, lbound(weightlag_s), ubound(weightlag_s)
-             if (integral_cutoff) then
-                res_int = fint1d_qag(bm, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             else
-                res_int = fint1d_qagiu(bm, 0d0, epsabs, epsrel)
-             end if
-             weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int(1)
-             if (j .eq. 3) C_m(m) = res_int(1)
+             res_int = integrate(bm, 0d0)
+             weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int
+             if (j .eq. 3) C_m(m) = res_int
           end do
        end do
     end if
@@ -584,12 +755,7 @@ contains
     call chop(weightlag_s)
 
     do m = 0, lagmax
-       if (integral_cutoff) then
-          res_int = fint1d_qag(weightden_kernel, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-       else
-          res_int = fint1d_qagiu(weightden_kernel, 0d0, epsabs, epsrel)
-       end if
-       weightden_s(m+1) = 1d0/sqrt(pi) * res_int(1)
+       weightden_s(m+1) = 1d0/sqrt(pi) * integrate(weightden_kernel, 0d0)
     end do
 
   contains
@@ -623,7 +789,6 @@ contains
 
   subroutine compute_xmmp(x1mm_s,x2mm_s)
     real(kind=dp), dimension(:,:) :: x1mm_s, x2mm_s
-    real(kind=dp), dimension(2) :: res_int
     real(kind=dp) :: cnorm
     integer :: m, mp
 
@@ -646,19 +811,8 @@ contains
 
        do m = 0, lagmax
           do mp = 0, lagmax
-             if (integral_cutoff) then
-                res_int = fint1d_qag(integrand_x1mmp, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             else
-                res_int = fint1d_qagiu(integrand_x1mmp, 0d0, epsabs, epsrel)
-             end if
-             x1mm_s(m+1, mp+1) = cnorm * res_int(1)
-
-             if (integral_cutoff) then
-                res_int = fint1d_qag(integrand_x2mmp, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             else
-                res_int = fint1d_qagiu(integrand_x2mmp, 0d0, epsabs, epsrel)
-             end if
-             x2mm_s(m+1, mp+1) = cnorm * res_int(1)
+             x1mm_s(m+1, mp+1) = cnorm * integrate(integrand_x1mmp, 0d0)
+             x2mm_s(m+1, mp+1) = cnorm * integrate(integrand_x2mmp, 0d0)
           end do
        end do
     end if
@@ -695,7 +849,6 @@ contains
 
   subroutine compute_lorentz(anumm_s)
     real(kind=dp), dimension(:,:) :: anumm_s
-    real(kind=dp), dimension(2) :: res_int
     integer :: m, mp
 
     !if (allocated(anumm_s)) deallocate(anumm_s)
@@ -714,12 +867,7 @@ contains
     else
        do m = 0, lagmax
           do mp = 0, lagmax
-             if (integral_cutoff) then
-                res_int = fint1d_qag(integrand, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             else
-                res_int = fint1d_qagiu(integrand, 0d0, epsabs, epsrel)
-             end if
-             anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * res_int(1)
+             anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand, 0d0)
           end do
        end do
     end if
@@ -746,7 +894,6 @@ contains
 
   subroutine compute_lorentz_inf(anumm_s)
     real(kind=dp), dimension(:,:) :: anumm_s
-    real(kind=dp), dimension(2) :: res_int
     integer :: m, mp
 
     !if (allocated(anumm_s)) deallocate(anumm_s)
@@ -756,12 +903,7 @@ contains
 
     do m = 0, lagmax
        do mp = 0, lagmax
-          if (integral_cutoff) then
-             res_int = fint1d_qag(integrand_inf, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-          else
-             res_int = fint1d_qagiu(integrand_inf, 0d0, epsabs, epsrel)
-          end if
-          anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * res_int(1)
+          anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand_inf, 0d0)
        end do
     end do
 
@@ -807,13 +949,9 @@ contains
     else
        do m = 0, lagmax
           do mp = 0, lagmax
-             if (integral_cutoff) then
-                res_int = fint1d_qag(integrand, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)       
-             else
-                res_int = fint1d_qagiu(integrand, 0d0, epsabs, epsrel)
-             end if
-             denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * res_int(1)
-
+             denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand, 0d0)
+             !write (*,*) denmm_s(m+1, mp+1)
+             !stop
              !write (*,*) "denmm_s", m, mp, integrand(2d0), denmm_s(m, mp)
              !write (*,*) G(2d0), d_G(2d0), gamma_ab, phi(m, 2d0), d_phi(m, 2d0), dd_phi(m,2d0)
           end do
@@ -835,14 +973,22 @@ contains
 
       y = x * gamma_ab
 
-      D_1 = d_G(y) * gamma_ab * x * d_phi_exp(mp, x) &
-           + G(y) * (-2*x * x * d_phi_exp(mp, x) + x * dd_phi_exp(mp, x) &
-           + d_phi_exp(mp, x))
+      ! First approach - Use second derivates
+      !D_1 = d_G(y) * gamma_ab * x * d_phi_exp(mp, x) &
+      !     + G(y) * (-2*x * x * d_phi_exp(mp, x) + x * dd_phi_exp(mp, x) &
+      !     + d_phi_exp(mp, x))
 
-      D_2 = 2 * (1 - T_a/T_b) * (d_G(y) * gamma_ab * x**2 *phi_exp(mp, x) + &
-           G(y) * (2*x*phi_exp(mp, x) - 2*x**3*phi_exp(mp, x) + x**2 * d_phi_exp(mp, x)))
+      !D_2 = 2 * (1 - T_a/T_b) * (d_G(y) * gamma_ab * x**2 *phi_exp(mp, x) + &
+      !     G(y) * (2*x*phi_exp(mp, x) - 2*x**3*phi_exp(mp, x) + x**2 * d_phi_exp(mp, x)))
+      !integrand = x**(1+alpha)*exp(-(1+beta)*x**2) * phi_prj(m, x) * (D_1 - D_2)
 
-      integrand = x**(1+alpha)*exp(-(1+beta)*x**2) * phi_prj(m, x) * (D_1 - D_2)
+      ! Second approach - Use only first derivative
+      D_1 = x**(1+alpha) * exp(-beta*x**2) * phi_prj(m, x) * (T_a/T_b - 1) * (exp(-x**2) * x &
+           * (phi_exp(mp, x) * (-2*(-1+x**2)*G(y) + y*d_G(y)) + x*G(y)*d_phi_exp(mp, x)))
+
+      D_2 = (exp(-beta*x**2) * x**alpha * ((1 + alpha - 2*beta*x**2) * phi_prj(m, x) + x*d_phi_prj(m, x))) &
+           * (x * G(y) * exp(-x**2) * d_phi_exp(mp, x))
+      integrand = 2*D_1 - D_2
     end function integrand
   end subroutine compute_energyscattering
 
@@ -910,7 +1056,6 @@ contains
 
   subroutine compute_I1_mmp_s()
     integer :: l, m, mp
-    real(kind=dp), dimension(2) :: res_int
 
     if (allocated(I1_mmp_s)) deallocate(I1_mmp_s)
     allocate(I1_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
@@ -918,12 +1063,7 @@ contains
     do l = 0, legmax
        do m = 0, lagmax
           do mp = 0, lagmax
-             if (integral_cutoff) then
-                res_int = fint1d_qag(int_I1_mmp_s, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             else
-                res_int = fint1d_qagiu(int_I1_mmp_s, 0d0, epsabs, epsrel)
-             end if
-             I1_mmp_s(m, mp, l) = 3d0/pi**(3d0/2d0) * (2d0*l+1)/2d0 * gamma_ab**3 * m_a/m_b * res_int(1)
+             I1_mmp_s(m, mp, l) = 3d0/pi**(3d0/2d0) * (2d0*l+1)/2d0 * gamma_ab**3 * m_a/m_b * integrate(int_I1_mmp_s, 0d0)
           end do
        end do
     end do
@@ -942,7 +1082,6 @@ contains
 
   subroutine compute_I2_mmp_s()
     integer :: l, m, mp
-    real(kind=dp), dimension(2) :: res_int
 
     if (allocated(I2_mmp_s)) deallocate(I2_mmp_s)
     allocate(I2_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
@@ -950,12 +1089,7 @@ contains
     do l = 0, legmax
        do m = 0, lagmax
           do mp = 0, lagmax
-             if (integral_cutoff) then
-                res_int = fint1d_qag(I_phi, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             else
-                res_int = fint1d_qagiu(I_phi, 0d0, epsabs, epsrel)
-             end if
-             I2_mmp_s(m, mp, l) = -3d0/pi**(1.5d0) * gamma_ab**3 * res_int(1)
+             I2_mmp_s(m, mp, l) = -3d0/pi**(1.5d0) * gamma_ab**3 * integrate(I_phi, 0d0)
           end do
        end do
     end do
@@ -964,17 +1098,9 @@ contains
 
     function I_phi(x)
       real(kind=dp) :: x, I1, I2, I_phi
-      real(kind=dp), dimension(2) :: res_int
 
-      res_int = fint1d_qag(I_phi_1, 0d0, x, epsabs, epsrel, sw_qag_rule)
-      I1 = res_int(1)
-
-      if (integral_cutoff) then
-         res_int = fint1d_qag(I_phi_2, x, x_cutoff, epsabs, epsrel, sw_qag_rule)
-      else
-         res_int = fint1d_qagiu(I_phi_2, x, epsabs, epsrel)
-      end if
-      I2 = res_int(1)
+      I1 = integrate(I_phi_1, 0d0, x)
+      I2 = integrate(I_phi_2, x)
 
       I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi_prj(m,x) * (x**(-l-1) * I1 + x**l * I2)
 
@@ -1000,7 +1126,6 @@ contains
 
   subroutine compute_I3_mmp_s
     integer :: l, m, mp
-    real(kind=dp), dimension(2) :: res_int
 
     if (allocated(I3_mmp_s)) deallocate(I3_mmp_s)
     allocate(I3_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
@@ -1008,12 +1133,7 @@ contains
     do l = 0, legmax
        do m = 0, lagmax
           do mp = 0, lagmax
-             if (integral_cutoff) then
-                res_int = fint1d_qag(I_phi, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             else
-                res_int = fint1d_qagiu(I_phi, 0d0, epsabs, epsrel)
-             end if
-             I3_mmp_s(m, mp, l) = 3d0/pi**(1.5d0) * (1-m_a/m_b) * gamma_ab**3 * res_int(1)
+             I3_mmp_s(m, mp, l) = 3d0/pi**(1.5d0) * (1-m_a/m_b) * gamma_ab**3 * integrate(I_phi, 0d0)
           end do
        end do
     end do
@@ -1022,17 +1142,9 @@ contains
 
     function I_phi(x)
       real(kind=dp) :: x, I1, I2, I_phi
-      real(kind=dp), dimension(2) :: res_int
 
-      res_int = fint1d_qag(I_phi_1, 0d0, x, epsabs, epsrel, sw_qag_rule)
-      I1 = res_int(1)
-
-      if (integral_cutoff) then
-         res_int = fint1d_qag(I_phi_2, x, x_cutoff, epsabs, epsrel, sw_qag_rule)
-      else
-         res_int = fint1d_qagiu(I_phi_2, x, epsabs, epsrel)
-      end if
-      I2 = res_int(1)
+      I1 = integrate(I_phi_1, 0d0, x)
+      I2 = integrate(I_phi_2, x)
 
       I_phi = ((x**(3+alpha)) * exp(-(beta+1)*(x**2)) * &
            (alpha-2*(beta+1)*(x**2)+4) * phi_prj(m,x) + &
@@ -1060,58 +1172,121 @@ contains
 
   subroutine compute_I4_mmp_s()
     integer :: l, m, mp
-    real(kind=dp), dimension(2) :: res_int
+    real(kind=dp) :: ti, tip1, I4_1
 
     if (allocated(I4_mmp_s)) deallocate(I4_mmp_s)
     allocate(I4_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
-
-    do l = 0, legmax
-       do m = 0, lagmax
-          do mp = 0, lagmax
-             if (integral_cutoff) then
-                res_int = fint1d_qag(I_psi, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             else
-                res_int = fint1d_qagiu(I_psi, 0d0, epsabs, epsrel)
-             end if
-             I4_mmp_s(m, mp, l) = 3d0/pi**(1.5d0) * gamma_ab**3 * res_int(1)
+       
+    if (.not. d_phi_discont) then
+       do l = 0, legmax
+          do m = 0, lagmax
+             do mp = 0, lagmax
+                I4_mmp_s(m, mp, l) = 3d0/pi**(1.5d0) * gamma_ab**3 * integrate(I_psi, 0d0)
+             end do
           end do
        end do
-    end do
+    else
 
+        do l = 0, legmax
+          do m = 0, lagmax
+             do mp = 0, lagmax
+!!$                if (integral_cutoff) then
+!!$                   res_int = fint1d_qag(I_psi, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
+!!$                else
+!!$                   res_int = fint1d_qagiu(I_psi, 0d0, epsabs, epsrel)
+!!$                end if
+!!$                I4_mmp_s(m, mp, l) = 3d0/pi**(1.5d0) * gamma_ab**3 * res_int(1)
+
+                I4_mmp_s(m, mp, l) = 0d0
+                do i = lbound(t_vec, 1), ubound(t_vec, 1)-1
+                   ti = t_vec(i)
+                   tip1 = t_vec(i+1)
+                   
+                   I4_1 = I4_part(tip1 - 1d-10) - I4_part(ti + 1d-10)
+
+                   !write (*,*) ti, tip1, I4_part(ti), I4_part(tip1)
+                   
+                   !res_int = fint1d_qag(I_psi, ti, tip1, epsabs, epsrel, sw_qag_rule)
+                   I4_mmp_s(m, mp, l) = I4_mmp_s(m, mp, l) - 3d0/pi**(1.5d0) * gamma_ab**3 * (I4_1 - integrate(I_psi, ti, tip1))
+
+                   !write (*,*) d_phi_prj(1, 1.999999d0),   d_phi_prj(1, 2d0), d_phi_prj(1, 2.0001d0)
+                   !stop
+                   
+                end do
+                
+             end do
+          end do
+       end do      
+       
+    end if
+    
   contains
 
+    function I4_part(x)
+      real(kind=dp) :: I4_part, x
+
+      I4_part = ((x**(4 + alpha)*((5 + alpha - 2*(1 + beta)*x**2) * phi_prj(m,x) &
+           + x*d_phi_prj(m, x))) *  exp(-((1 + beta)*x**2))) * K(x)
+
+      ! (x**(4 + alpha)*((5 + alpha - 2*(1 + beta)*x**2)*Pattern(phi,Blank(m))(x) + x*Derivative(1)(Pattern(phi,Blank(m)))(x)))/E**((1 + beta)*x**2)
+    end function I4_part
+    
+    function K(x)
+      real(kind=dp) :: K, x
+      real(kind=dp) :: I1, I2, I3, I4
+
+      if (x .ne. 0d0) then
+
+         !res_int = fint1d_qag(I_psi_1, 0d0, x, epsabs, epsrel, sw_qag_rule)
+         I1 = integrate(I_psi_1, 0d0, x)
+
+         !res_int = fint1d_qag(I_psi_2, 0d0, x, epsabs, epsrel, sw_qag_rule)
+         I2 = integrate(I_psi_2, 0d0, x)
+
+         !if (integral_cutoff) then
+         !   res_int = fint1d_qag(I_psi_3, x, x_cutoff, epsabs, epsrel, sw_qag_rule)
+         !else
+         !   res_int = fint1d_qagiu(I_psi_3, x, epsabs, epsrel)
+         !end if
+         I3 = integrate(I_psi_3, x)
+
+         !if (integral_cutoff) then
+         !   res_int = fint1d_qag(I_psi_4, x, x_cutoff, epsabs, epsrel, sw_qag_rule)
+         !else
+         !   res_int = fint1d_qagiu(I_psi_4, x, epsabs, epsrel)
+         !end if
+         I4 = integrate(I_psi_4, x)
+
+         K = x**(-l-1)/(2*l+3)*I1 -  x**(-l+1)/(2*l-1)*I2 +  x**(l+2)/(2*l+3)*I3 - x**l/(2*l-1)*I4
+      else
+         ! Limit
+         K = 0d0
+      end if
+
+    end function K
+    
     function I_psi(x)
       real(kind=dp) :: x, I1, I2, I3, I4, I_psi
-      real(kind=dp), dimension(2) :: res_int
+      real(kind=dp) :: I4_1, I4_2
       real(kind=dp) :: c
 
-      c = 1 + beta
+     
+      ! First approach - use second derivates
+      !  c = 1 + beta
+!!$      I_psi = exp(-c*x**2)*x**(3+alpha) * ((20+9*alpha + &
+!!$           alpha**2 - 2*(11+2*alpha) * c*x**2 + 4*c**2*x**4) * phi_prj(m,x) + &
+!!$           x*(2*(5+alpha-2*c*x**2) * d_phi_prj(m, x) + x*dd_phi_prj(m,x))) * &
+!!$           (x**(-l-1)/(2*l+3)*I1 - x**(-l+1)/(2*l-1)*I2 + x**(l+2)/(2*l+3)*I3 - x**l/(2*l-1)*I4)
 
-      res_int = fint1d_qag(I_psi_1, 0d0, x, epsabs, epsrel, sw_qag_rule)
-      I1 = res_int(1)
+      ! Second approach - avoid second derivates
+      !K_temp = K(x)
+      !I4_1 = ((x**(4 + alpha)*((5 + alpha - 2*(1 + beta)*x**2) * phi_prj(m,x) &
+      !       + x*d_phi_prj(m, x))) *  exp(-((1 + beta)*x**2))) * K_temp
 
-      res_int = fint1d_qag(I_psi_2, 0d0, x, epsabs, epsrel, sw_qag_rule)
-      I2 = res_int(1)
-
-      if (integral_cutoff) then
-         res_int = fint1d_qag(I_psi_3, x, x_cutoff, epsabs, epsrel, sw_qag_rule)
-      else
-         res_int = fint1d_qagiu(I_psi_3, x, epsabs, epsrel)
-      end if
-      I3 = res_int(1)
-
-      if (integral_cutoff) then
-         res_int = fint1d_qag(I_psi_4, x, x_cutoff, epsabs, epsrel, sw_qag_rule)
-      else
-         res_int = fint1d_qagiu(I_psi_4, x, epsabs, epsrel)
-      end if
-      I4 = res_int(1)
-
-      I_psi = exp(-c*x**2)*x**(3+alpha) * ((20+9*alpha + &
-           alpha**2 - 2*(11+2*alpha) * c*x**2 + 4*c**2*x**4) * phi_prj(m,x) + &
-           x*(2*(5+alpha-2*c*x**2) * d_phi_prj(m, x) + x*dd_phi_prj(m,x))) * &
-           (x**(-l-1)/(2*l+3)*I1 - x**(-l+1)/(2*l-1)*I2 + x**(l+2)/(2*l+3)*I3 - x**l/(2*l-1)*I4)
-
+      I4_2 = ((x**(3 + alpha) * ((20 + 9*alpha + alpha**2 - 2*(11 + 2*alpha)*(1 + beta)*x**2 + 4*(1 + beta)**2*x**4)*phi_prj(m,x) &
+           + x*(2*(5 + alpha - 2*(1 + beta)*x**2)*d_phi_prj(m,x) + x*dd_phi_prj(m,x)))) * exp(-(1 + beta)*x**2)) * K(x)
+      
+      I_psi = I4_2
     end function I_psi
 
     function I_psi_1(xp)
@@ -1201,7 +1376,7 @@ contains
     v_ta = sqrt(2*T_a / m_a)
     v_tb = sqrt(2*T_b / m_b)
     gamma_ab = v_ta/v_tb
-    write (*,'(A,A,A,A,A,1E13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
+    write (*,'(A,A,A,A,A,ES13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
 
     call compute_lorentz(anumm_s)
     call compute_lorentz_inf(anumm_inf_s)
@@ -1224,7 +1399,7 @@ contains
     v_ta = sqrt(2*T_a / m_a)
     v_tb = sqrt(2*T_b / m_b)
     gamma_ab = v_ta/v_tb
-    write (*,'(A,A,A,A,A,1E13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
+    write (*,'(A,A,A,A,A,ES13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
 
     call compute_lorentz(anumm_s)
 
