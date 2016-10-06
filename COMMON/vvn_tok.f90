@@ -5,8 +5,7 @@ END MODULE vvn_period_mod
 !
   MODULE circtokfield_mod
 ! rbig - big radius, btor - toroidal field on the magnetic axis
-    !    DOUBLE PRECISION :: rbig=200.d0,rsmall=5.d1,btor=1.d0             !DEFAULT
-    double precision :: rbig=200.d0,rsmall=200.d0,btor=1.d0                !TEST for Andreas
+    DOUBLE PRECISION :: rbig=200.d0,rsmall=5.d1,btor=1.d0
   END MODULE circtokfield_mod
 !
   MODULE field_param_mod
