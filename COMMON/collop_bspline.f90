@@ -38,12 +38,15 @@ contains
           gam_all = gam_all + collop_bspline_dist**k
        end do
 
+       write (*,*) "Knots before initialization: ", x
+       
+       x(1) = 0d0
        x_del = phi_x_max / gam_all
        do k = 1, knots-1
           !x_dat(k) = k*x_del
           x(k+1) = x(k) + x_del * collop_bspline_dist**k
        end do
-       x(1)     = 0d0
+      
        x(knots) = phi_x_max
 
        write (*,*) "Knots: ", x
