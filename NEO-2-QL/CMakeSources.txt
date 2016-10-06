@@ -74,7 +74,7 @@ set(NEO2_SRC_FILES
         ./join_ripples.f90
         ./join_ends.f90
         ./plot_distrf.f90
-        ./vvn_tok.f90
+        ../COMMON/vvn_tok.f90
         ../COMMON/vvn_w7as.f
         ../COMMON/vvn_legendre.f
 	./lagxmm.f90
@@ -84,7 +84,7 @@ set(NEO2_SRC_FILES
 	./hdf5_tools.f90     # Is now a library
 	./collop_compute.f90
         ./neo2.f90
-	./collop_laguerre.f90
-	./collop_polynomial.f90
+	../COMMON/collop_laguerre.f90
+	../COMMON/collop_polynomial.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS}")
