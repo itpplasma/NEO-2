@@ -4411,8 +4411,8 @@ PRINT *,' '
         !bvec_parflow(k+1:k+npassing+1)           = asource(m,1)*q_rip_parflow(1:npassing+1,istep)
         !bvec_parflow(k+npassing+2:k+2*npassing+2)=-asource(m,1)*q_rip_parflow(npassing+1:1:-1,istep)
         !-> new version (general test functions):
-        bvec_parflow(k+1:k+npassing+1)           = weightlag(4,m)*q_rip_parflow(1:npassing+1,istep)
-        bvec_parflow(k+npassing+2:k+2*npassing+2)=-weightlag(4,m)*q_rip_parflow(npassing+1:1:-1,istep)
+        bvec_parflow(k+1:k+npassing+1)           = weightparflow(m)*q_rip_parflow(1:npassing+1,istep)
+        bvec_parflow(k+npassing+2:k+2*npassing+2)=-weightparflow(m)*q_rip_parflow(npassing+1:1:-1,istep)
 !
         IF(istep.GT.ibeg) THEN
           npassing_prev=npl(istep-1)

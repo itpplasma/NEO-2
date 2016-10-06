@@ -4,7 +4,8 @@ module collop
   use hdf5_tools
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
-       m_ele, m_d, m_C, compute_collop_inf, C_m, compute_xmmp, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp
+       m_ele, m_d, m_C, m_alp, compute_collop_inf, C_m, compute_xmmp, &
+       compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
@@ -61,7 +62,7 @@ module collop
       !**********************************************************
       anumm(0:lag, 0:lag) => anumm_a(:,:,ispec)      
       denmm(0:lag, 0:lag) => denmm_a(:,:,ispec)
-      if (Z_eff .ne. 0) then
+      if (z_eff .ne. 0) then
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,ispec,ispec)
       else
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,mpro%getRank(),ispec)
@@ -135,11 +136,14 @@ module collop
 
       if(allocated(weightden)) deallocate(weightden)
       allocate(weightden(0:lag))
-      
+
+      if(allocated(weightparflow)) deallocate(weightparflow)
+      allocate(weightparflow(0:lag))
+
       if (allocated(anumm_inf)) deallocate(anumm_inf)
       allocate(anumm_inf(0:lag, 0:lag))
 
-      if (Z_eff .ne. 0) then
+      if (z_eff .ne. 0) then
          !**********************************************************
          ! Now compute collision operator with desired base
          !**********************************************************
@@ -165,7 +169,7 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         call compute_source(asource, weightlag, weightden)
+         call compute_source(asource, weightlag, weightden, weightparflow, Amm)
          write (*,*) "Weightden: ", weightden
          
          !**********************************************************
@@ -182,7 +186,7 @@ module collop
          !**********************************************************
          ! Sum up matrices
          !**********************************************************
-         anumm_a(:,:,0) = anumm_aa(:,:,0,0) + Z_eff * anumm_inf(:,:)
+         anumm_a(:,:,0) = anumm_aa(:,:,0,0) + z_eff * anumm_inf(:,:)
          denmm_a(:,:,0) = denmm_aa(:,:,0,0)
 
       else
@@ -194,10 +198,20 @@ module collop
          !**********************************************************
          call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
 
+         ! New version with deflection frequency 
+         ! At the momement only for self-collisions !!!!!!!
+         if (isw_lorentz .eq. 1) then
+            collpar_min = collpar
+            collpar_max = collpar
+         else
+            collpar_max = collpar * nu_D_hat(v_min_resolution)
+            collpar_min = collpar * nu_D_hat(v_max_resolution)
+         end if
+         
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         call compute_source(asource, weightlag, weightden)
+         call compute_source(asource, weightlag, weightden, weightparflow, Amm)
 
          !**********************************************************
          ! Compute x1mm and x2mm
