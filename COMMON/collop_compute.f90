@@ -403,9 +403,9 @@ contains
     end interface
 
     ! For debug
-    !res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
-    !y = res_int(1)
-    !return
+    res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
+    y = res_int(1)
+    return
     
     if (allocated(t_vec)) then
        y = 0d0
@@ -471,13 +471,13 @@ contains
     end interface
 
     ! For debug
-    !if (integral_cutoff) then
-    !   res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-    !else
-    !   res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
-    !end if
-    !y = res_int(1)
-    !return
+    if (integral_cutoff) then
+       res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+    else
+       res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
+    end if
+    y = res_int(1)
+    return
     
     if (allocated(t_vec)) then
        
