@@ -137,6 +137,17 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   collpar_max = collpar
   collpar_min = collpar
 
+END SUBROUTINE flint_prepare
+
+subroutine flint_prepare_2(bin_split_mode,eta_s_lim)
+  USE collisionality_mod, ONLY : collpar_min
+  USE  mag_interface_mod, ONLY : ripple_eta_magnetics
+
+  IMPLICIT NONE
+  INTEGER, PARAMETER :: dp = KIND(1.0d0)
+  ! parameter
+  INTEGER,          INTENT(in) :: bin_split_mode
+  REAL(kind=dp),    INTENT(in) :: eta_s_lim
   ! find the eta values for splitting
   !  for this the collision parameter is needed
   ! print *, 'Before ripple_eta_magnetics'
@@ -412,7 +423,7 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
      CALL delete_all(eta_s )
   END IF! end testing
 
-END SUBROUTINE flint_prepare
+END SUBROUTINE flint_prepare_2
 
 
 SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &

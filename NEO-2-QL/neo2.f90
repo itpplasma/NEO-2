@@ -420,6 +420,20 @@ PROGRAM neo2
   END IF
 
   ! ---------------------------------------------------------------------------
+  ! some settings
+  ! nmat=npart*npart
+  ndim=ndim0
+  ! allocation of some arrays (should be moved)
+  ! this part was not touched
+  ialloc=1
+  CALL kin_allocate(ialloc)
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
+  ! prepare the whole configuration
+  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
+
+  ! ---------------------------------------------------------------------------
   ! matrix elements
   ! ---------------------------------------------------------------------------
   !IF (isw_integral .EQ. 0 .AND. isw_energy .EQ. 0) THEN
@@ -461,22 +475,23 @@ PROGRAM neo2
 
 
 
-  ! ---------------------------------------------------------------------------
-  ! some settings
-  ! nmat=npart*npart
-  ndim=ndim0
-  ! allocation of some arrays (should be moved)
-  ! this part was not touched 
-  ialloc=1
-  CALL kin_allocate(ialloc)
-  ! ---------------------------------------------------------------------------
+     ! ---------------------------------------------------------------------------
+!!$  ! THIS PART WAS MOVED BEFORE COLLOP
+!!$  ! ---------------------------------------------------------------------------
+!!$  ! some settings
+!!$  ! nmat=npart*npart
+!!$  ndim=ndim0
+!!$  ! allocation of some arrays (should be moved)
+!!$  ! this part was not touched
+!!$  ialloc=1
+!!$  CALL kin_allocate(ialloc)
+!!$  ! ---------------------------------------------------------------------------
+!!$
+!!$  ! ---------------------------------------------------------------------------
+!!$  ! prepare the whole configuration
+!!$  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
+     CALL flint_prepare_2(bin_split_mode,eta_s_lim)
 
-
-
-
-  ! ---------------------------------------------------------------------------
-  ! prepare the whole configuration
-  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
 
 
   ! ---------------------------------------------------------------------------
