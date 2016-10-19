@@ -3450,32 +3450,32 @@ rotfactor=imun*m_phi
 !!$          PRINT *,qflux_symm_allspec(2,2,1,0)
 !!$          PRINT *,qflux_symm_allspec(2,2,0,1)
 !!$          PRINT *,qflux_symm_allspec(2,2,1,1)
-          ! D11
-          PRINT *,'qflux(1,1,0,0):'
-          PRINT *,qflux_symm_allspec(1,1,0,0)
-          PRINT *,'qflux(1,1,1,0):'
-          PRINT *,qflux_symm_allspec(1,1,1,0)
-          PRINT *,'qflux(1,1,0,1):'
-          PRINT *,qflux_symm_allspec(1,1,0,1)
-          PRINT *,'qflux(1,1,1,1):'
-          PRINT *,qflux_symm_allspec(1,1,1,1)
-          ! D12
-          PRINT *,'qflux(1,3,0,0):'
-          PRINT *,qflux_symm_allspec(1,3,0,0)
-          PRINT *,'qflux(1,3,1,0):'
-          PRINT *,qflux_symm_allspec(1,3,1,0)
-          PRINT *,'qflux(1,3,0,1):'
-          PRINT *,qflux_symm_allspec(1,3,0,1)
-          PRINT *,'qflux(1,3,1,1):'
-          PRINT *,qflux_symm_allspec(1,3,1,1)
-          OPEN(070915,file='qflux_symm_allspec.dat')
-          WRITE(070915,*) boozer_s, collpar, &
-               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
-               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
-               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
-               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
-          CLOSE(070915)
-          !STOP
+!!$          ! D11
+!!$          PRINT *,'qflux(1,1,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,0)
+!!$          PRINT *,'qflux(1,1,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,0)
+!!$          PRINT *,'qflux(1,1,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,1)
+!!$          PRINT *,'qflux(1,1,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,1)
+!!$          ! D12
+!!$          PRINT *,'qflux(1,3,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,0)
+!!$          PRINT *,'qflux(1,3,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,0)
+!!$          PRINT *,'qflux(1,3,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,1)
+!!$          PRINT *,'qflux(1,3,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,1)
+!!$          OPEN(070915,file='qflux_symm_allspec.dat')
+!!$          WRITE(070915,*) boozer_s, collpar, &
+!!$               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
+!!$               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
+!!$               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
+!!$               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
+!!$          CLOSE(070915)
+!!$          !STOP
        END IF
        RETURN
        !! End Modification by Andreas F. Martitsch (23.08.2015)
@@ -3494,37 +3494,37 @@ rotfactor=imun*m_phi
        qflux_symm_allspec=qflux_allspec
        IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
        IF(mpro%getrank() .EQ. 0) THEN
-          ! D33
+!!$          ! D33
 !!$          PRINT *,qflux_symm_allspec(2,2,0,0)
 !!$          PRINT *,qflux_symm_allspec(2,2,1,0)
 !!$          PRINT *,qflux_symm_allspec(2,2,0,1)
 !!$          PRINT *,qflux_symm_allspec(2,2,1,1)
-          ! D11
-          PRINT *,'qflux(1,1,0,0):'
-          PRINT *,qflux_symm_allspec(1,1,0,0)
-          PRINT *,'qflux(1,1,1,0):'
-          PRINT *,qflux_symm_allspec(1,1,1,0)
-          PRINT *,'qflux(1,1,0,1):'
-          PRINT *,qflux_symm_allspec(1,1,0,1)
-          PRINT *,'qflux(1,1,1,1):'
-          PRINT *,qflux_symm_allspec(1,1,1,1)
-          ! D12
-          PRINT *,'qflux(1,3,0,0):'
-          PRINT *,qflux_symm_allspec(1,3,0,0)
-          PRINT *,'qflux(1,3,1,0):'
-          PRINT *,qflux_symm_allspec(1,3,1,0)
-          PRINT *,'qflux(1,3,0,1):'
-          PRINT *,qflux_symm_allspec(1,3,0,1)
-          PRINT *,'qflux(1,3,1,1):'
-          PRINT *,qflux_symm_allspec(1,3,1,1)
-          OPEN(070915,file='qflux_symm_allspec.dat')
-          WRITE(070915,*) boozer_s, collpar, &
-               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
-               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
-               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
-               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
-          CLOSE(070915)
-          !STOP
+!!$          ! D11
+!!$          PRINT *,'qflux(1,1,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,0)
+!!$          PRINT *,'qflux(1,1,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,0)
+!!$          PRINT *,'qflux(1,1,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,1)
+!!$          PRINT *,'qflux(1,1,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,1)
+!!$          ! D12
+!!$          PRINT *,'qflux(1,3,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,0)
+!!$          PRINT *,'qflux(1,3,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,0)
+!!$          PRINT *,'qflux(1,3,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,1)
+!!$          PRINT *,'qflux(1,3,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,1)
+!!$          OPEN(070915,file='qflux_symm_allspec.dat')
+!!$          WRITE(070915,*) boozer_s, collpar, &
+!!$               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
+!!$               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
+!!$               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
+!!$               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
+!!$          CLOSE(070915)
+!!$          !STOP
        END IF
        !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE
@@ -5572,7 +5572,13 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   DOUBLE COMPLEX   :: tmp
 !
   DOUBLE COMPLEX, DIMENSION(m)   :: ritznum
-  DOUBLE COMPLEX, DIMENSION(m,m) :: hmat,eigh
+  !! Modification by Andreas F. Martitsch (19.10.2016)
+  ! old:
+  !DOUBLE COMPLEX, DIMENSION(m,m) :: hmat,eigh
+  ! new:
+  DOUBLE COMPLEX, DIMENSION(:,:) :: hmat
+  DOUBLE COMPLEX, DIMENSION(m,m) :: eigh
+  !! End Modification by Andreas F. Martitsch (19.10.2016)
 !
   LOGICAL,          DIMENSION(:),   ALLOCATABLE :: selec
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ifailr
