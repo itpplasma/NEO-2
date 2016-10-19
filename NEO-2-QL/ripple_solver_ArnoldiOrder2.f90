@@ -5121,7 +5121,13 @@ PRINT *,'ritznum = ',ritznum
   DOUBLE COMPLEX   :: tmp
 !
   DOUBLE COMPLEX, DIMENSION(m)   :: ritznum
-  DOUBLE COMPLEX, DIMENSION(m,m) :: hmat,eigh
+  !! Modification by Andreas F. Martitsch (19.10.2016)
+  ! old:
+  !DOUBLE COMPLEX, DIMENSION(m,m) :: hmat,eigh
+  ! new:
+  DOUBLE COMPLEX, DIMENSION(:,:) :: hmat
+  DOUBLE COMPLEX, DIMENSION(m,m) :: eigh
+  !! End Modification by Andreas F. Martitsch (19.10.2016)
 !
   LOGICAL,          DIMENSION(:),   ALLOCATABLE :: selec
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ifailr
