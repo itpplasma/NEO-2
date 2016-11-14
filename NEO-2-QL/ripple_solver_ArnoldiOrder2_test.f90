@@ -1652,10 +1652,32 @@ rotfactor=imun*m_phi
 !        amat_sp(nz)=-delphim1
         IF(colltest) nz_ttmp=nz_ttmp+1
       ENDIF
+!!$!
+!!$! mirroring:
+!!$!
+!!$      IF(npassing_prev.LE.npassing) THEN
+!!$!
+!!$        DO kk=1,4
+!!$          nz=nz+1
+!!$!          irow(nz)=k+npassing+1
+!!$!          icol(nz)=k+npassing+kk-1
+!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
+!!$          IF(colltest) nz_ttmp=nz_ttmp+1
+!!$        ENDDO
+!!$!
+!!$        DO kk=1,4
+!!$          nz=nz+1
+!!$!          irow(nz)=k+npassing+1
+!!$!          icol(nz)=k_prev+npassing_prev+kk-1
+!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
+!!$          IF(colltest) nz_ttmp=nz_ttmp+1
+!!$        ENDDO
+!!$!
+!!$      ENDIF
 !
 ! mirroring:
 !
-      IF(npassing_prev.GE.npassing) THEN
+      IF(npassing_prev.EQ.npassing) THEN
 !
         DO kk=1,4
           nz=nz+1
@@ -1673,6 +1695,12 @@ rotfactor=imun*m_phi
           IF(colltest) nz_ttmp=nz_ttmp+1
         ENDDO
 !
+      ELSEIF(npassing_prev.GT.npassing) THEN
+        nz=nz+1
+!        irow(nz)=k_prev+npassing_prev+2
+!        icol(nz)=k_prev+npassing_prev+1
+!        amat_sp(nz)=-delphim1
+         IF(colltest) nz_ttmp=nz_ttmp+1
       ENDIF
 !
 ! collisions:
@@ -1906,10 +1934,32 @@ rotfactor=imun*m_phi
 !        amat_sp(nz)=-delphim1
         IF(colltest) nz_ttmp=nz_ttmp+1
       ENDIF
+!!$!
+!!$! mirroring:
+!!$!
+!!$      IF(npassing_prev.LE.npassing) THEN
+!!$!
+!!$        DO kk=1,4
+!!$          nz=nz+1
+!!$!          irow(nz)=k-npassing-1
+!!$!          icol(nz)=k-npassing-kk+1
+!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
+!!$          IF(colltest) nz_ttmp=nz_ttmp+1
+!!$        ENDDO
+!!$!
+!!$        DO kk=1,4
+!!$          nz=nz+1
+!!$!          irow(nz)=k-npassing-1
+!!$!          icol(nz)=k_prev-npassing_prev-kk+1
+!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
+!!$          IF(colltest) nz_ttmp=nz_ttmp+1
+!!$        ENDDO
+!!$!
+!!$      ENDIF
 !
 ! mirroring:
 !
-      IF(npassing_prev.GE.npassing) THEN
+      IF(npassing_prev.EQ.npassing) THEN
 !
         DO kk=1,4
           nz=nz+1
@@ -1927,6 +1977,12 @@ rotfactor=imun*m_phi
           IF(colltest) nz_ttmp=nz_ttmp+1
         ENDDO
 !
+      ELSEIF(npassing_prev.GT.npassing) THEN
+        nz=nz+1
+!        irow(nz)=k_prev-npassing_prev-2
+!        icol(nz)=k_prev-npassing_prev-1
+!        amat_sp(nz)=-delphim1
+        IF(colltest) nz_ttmp=nz_ttmp+1
       ENDIF
 !
 ! collisions:
@@ -2199,10 +2255,50 @@ rotfactor=imun*m_phi
           !! End Modification by Andreas F. Martitsch (17.07.2015)
         ENDIF
       ENDIF
+!!$!
+!!$! mirroring:
+!!$!
+!!$      IF(npassing_prev.LE.npassing) THEN
+!!$!
+!!$        DO kk=1,4
+!!$          nz=nz+1
+!!$          irow(nz)=k+npassing+1
+!!$          icol(nz)=k+npassing+kk-1
+!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
+!!$          IF(colltest) THEN
+!!$            nz_ttmp=nz_ttmp+1
+!!$            irow_ttmp(nz_ttmp)=irow(nz)
+!!$            icol_ttmp(nz_ttmp)=icol(nz)
+!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
+!!$            ! fixed warning: Possible change of value in conversion
+!!$            ! from COMPLEX(8) to REAL(8)
+!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
+!!$          ENDIF
+!!$        ENDDO
+!!$!
+!!$        DO kk=1,4
+!!$          nz=nz+1
+!!$          irow(nz)=k+npassing+1
+!!$          icol(nz)=k_prev+npassing_prev+kk-1
+!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
+!!$          IF(colltest) THEN
+!!$            nz_ttmp=nz_ttmp+1
+!!$            irow_ttmp(nz_ttmp)=irow(nz)
+!!$            icol_ttmp(nz_ttmp)=icol(nz)
+!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
+!!$            ! fixed warning: Possible change of value in conversion
+!!$            ! from COMPLEX(8) to REAL(8)
+!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
+!!$          ENDIF
+!!$        ENDDO
+!!$!
+!!$      ENDIF
 !
 ! mirroring:
 !
-      IF(npassing_prev.GE.npassing) THEN
+      IF(npassing_prev.EQ.npassing) THEN
 !
         DO kk=1,4
           nz=nz+1
@@ -2217,7 +2313,7 @@ rotfactor=imun*m_phi
             ! fixed warning: Possible change of value in conversion
             ! from COMPLEX(8) to REAL(8)
             amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-            !! End Modification by Andreas F. Martitsch (17.07.2015)
+            !! End Modification by Andreas F. Martitsch (17.07.2015)            
           ENDIF
         ENDDO
 !
@@ -2234,10 +2330,25 @@ rotfactor=imun*m_phi
             ! fixed warning: Possible change of value in conversion
             ! from COMPLEX(8) to REAL(8)
             amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-            !! End Modification by Andreas F. Martitsch (17.07.2015)
+            !! End Modification by Andreas F. Martitsch (17.07.2015)            
           ENDIF
         ENDDO
 !
+      ELSEIF(npassing_prev.GT.npassing) THEN
+        nz=nz+1
+        irow(nz)=k_prev+npassing_prev+2
+        icol(nz)=k_prev+npassing_prev+1
+        amat_sp(nz)=-delphim1
+        IF(colltest) THEN
+          nz_ttmp=nz_ttmp+1
+          irow_ttmp(nz_ttmp)=irow(nz)
+          icol_ttmp(nz_ttmp)=icol(nz)
+          !! Modification by Andreas F. Martitsch (17.07.2015)
+          ! fixed warning: Possible change of value in conversion
+          ! from COMPLEX(8) to REAL(8)
+          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+          !! End Modification by Andreas F. Martitsch (17.07.2015)
+        ENDIF
       ENDIF
 !
 ! collisions:
@@ -2528,10 +2639,50 @@ rotfactor=imun*m_phi
           !! End Modification by Andreas F. Martitsch (17.07.2015)
         ENDIF
       ENDIF
+!!$!
+!!$! mirroring:
+!!$!
+!!$      IF(npassing_prev.LE.npassing) THEN
+!!$!
+!!$        DO kk=1,4
+!!$          nz=nz+1
+!!$          irow(nz)=k-npassing-1
+!!$          icol(nz)=k-npassing-kk+1
+!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
+!!$          IF(colltest) THEN
+!!$            nz_ttmp=nz_ttmp+1
+!!$            irow_ttmp(nz_ttmp)=irow(nz)
+!!$            icol_ttmp(nz_ttmp)=icol(nz)
+!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
+!!$            ! fixed warning: Possible change of value in conversion
+!!$            ! from COMPLEX(8) to REAL(8)
+!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
+!!$          ENDIF
+!!$        ENDDO
+!!$!
+!!$        DO kk=1,4
+!!$          nz=nz+1
+!!$          irow(nz)=k-npassing-1
+!!$          icol(nz)=k_prev-npassing_prev-kk+1
+!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
+!!$          IF(colltest) THEN
+!!$            nz_ttmp=nz_ttmp+1
+!!$            irow_ttmp(nz_ttmp)=irow(nz)
+!!$            icol_ttmp(nz_ttmp)=icol(nz)
+!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
+!!$            ! fixed warning: Possible change of value in conversion
+!!$            ! from COMPLEX(8) to REAL(8)
+!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
+!!$          ENDIF
+!!$        ENDDO
+!!$!
+!!$      ENDIF
 !
 ! mirroring:
 !
-      IF(npassing_prev.GE.npassing) THEN
+      IF(npassing_prev.EQ.npassing) THEN
 !
         DO kk=1,4
           nz=nz+1
@@ -2546,7 +2697,7 @@ rotfactor=imun*m_phi
             ! fixed warning: Possible change of value in conversion
             ! from COMPLEX(8) to REAL(8)
             amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-            !! End Modification by Andreas F. Martitsch (17.07.2015)
+            !! End Modification by Andreas F. Martitsch (17.07.2015)            
           ENDIF
         ENDDO
 !
@@ -2563,10 +2714,25 @@ rotfactor=imun*m_phi
             ! fixed warning: Possible change of value in conversion
             ! from COMPLEX(8) to REAL(8)
             amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-            !! End Modification by Andreas F. Martitsch (17.07.2015)
+            !! End Modification by Andreas F. Martitsch (17.07.2015)            
           ENDIF
         ENDDO
 !
+      ELSEIF(npassing_prev.GT.npassing) THEN
+        nz=nz+1
+        irow(nz)=k_prev-npassing_prev-2
+        icol(nz)=k_prev-npassing_prev-1
+        amat_sp(nz)=-delphim1
+        IF(colltest) THEN
+          nz_ttmp=nz_ttmp+1
+          irow_ttmp(nz_ttmp)=irow(nz)
+          icol_ttmp(nz_ttmp)=icol(nz)
+          !! Modification by Andreas F. Martitsch (17.07.2015)
+          ! fixed warning: Possible change of value in conversion
+          ! from COMPLEX(8) to REAL(8)
+          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
+          !! End Modification by Andreas F. Martitsch (17.07.2015)          
+        ENDIF
       ENDIF
 !
 ! collisions:
