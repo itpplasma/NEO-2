@@ -68,8 +68,9 @@ set(NEO2_SRC_FILES
         ./rk4_kin.f90
         ./ripple_solver_Gernot.f90 # Currently not supported by MPI version
         ./ripple_solver_ArnoldiOrder1.f90
-        ./ripple_solver_ArnoldiOrder2.f90 # Currently not supported by MPI version
-        ./join_ripples_int.f90
+###        ./ripple_solver_ArnoldiOrder2.f90 # Currently not supported by MPI version
+        ./ripple_solver_ArnoldiOrder2_test.f90 # Currently not supported by MPI version
+	./join_ripples_int.f90
         ./join_ripples.f90
         ./join_ends.f90
         ./plot_distrf.f90
