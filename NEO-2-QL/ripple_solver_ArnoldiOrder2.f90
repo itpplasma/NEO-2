@@ -107,6 +107,12 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
        m_phi,  qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val
   !USE neo_precision, ONLY : PI
   !! End Modification by Andreas F. Martitsch (14.07.2015)
+  !! Modification by Andreas F. Martitsch (14.11.2016)
+  ! Load x1mm and x2mm (=energy dependence of drift frequencies)
+  ! from collision operator module. This step allows for
+  ! support of different basis functions and replaces routine "lagxmm".
+  USE collop, ONLY : x1mm, x2mm
+  !! End Modification by Andreas F. Martitsch (14.11.2016)
   
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -242,7 +248,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: convol_flux,convol_curr
   DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: convol_flux_0
   DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: scalprod_pleg
-  DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: x1mm,x2mm
+!!$  DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: x1mm,x2mm
   DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: scalprod
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: phi_mfl
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: bhat_mfl,h_phi_mfl
@@ -1540,10 +1546,10 @@ rotfactor=imun*m_phi
 ! Compute vectors for convolution of fluxes and source vectors:
 !
   ALLOCATE(flux_vector(3,n_2d_size),source_vector(n_2d_size,4),bvec_parflow(n_2d_size))
-  ALLOCATE(x1mm(0:lag,0:lag))
-  ALLOCATE(x2mm(0:lag,0:lag))
+!!$  ALLOCATE(x1mm(0:lag,0:lag))
+!!$  ALLOCATE(x2mm(0:lag,0:lag))
 !
-  CALL lagxmm(lag,x1mm,x2mm)
+!!$  CALL lagxmm(lag,x1mm,x2mm)
 !
   IF(isw_lorentz.EQ.1) THEN
     x1mm(0,0)=1.d0
@@ -3169,7 +3175,7 @@ rotfactor=imun*m_phi
 !
   ENDDO
 !
-  DEALLOCATE(x1mm,x2mm)
+!!$  DEALLOCATE(x1mm,x2mm)
 !
 !! Modifications by Andreas F. Martitsch (02.09.2014)
 ! For the computation of hatOmegaE from the profile
