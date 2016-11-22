@@ -3401,18 +3401,18 @@ rotfactor=imun*m_phi
     problem_type=.TRUE.
     CALL solve_eqs(.TRUE.)
 !
-!istep=(ibeg+iend)/2
-!call plotsource(10000,real(source_vector))
-!call plotsource(11000,dimag(source_vector))
-!istep=ibeg
-!call plotsource(10010,real(source_vector))
-!call plotsource(11010,dimag(source_vector))
-!istep=iend
-!call plotsource(10020,real(source_vector))
-!call plotsource(11020,dimag(source_vector))
-!istep=ibeg+1
-!call plotsource(10030,real(source_vector))
-!call plotsource(11030,dimag(source_vector))
+istep=(ibeg+iend)/2
+call plotsource(10000,real(source_vector))
+call plotsource(11000,dimag(source_vector))
+istep=ibeg
+call plotsource(10010,real(source_vector))
+call plotsource(11010,dimag(source_vector))
+istep=iend
+call plotsource(10020,real(source_vector))
+call plotsource(11020,dimag(source_vector))
+istep=ibeg+1
+call plotsource(10030,real(source_vector))
+call plotsource(11030,dimag(source_vector))
 !
 
     DEALLOCATE(irow,icol,amat_sp)
