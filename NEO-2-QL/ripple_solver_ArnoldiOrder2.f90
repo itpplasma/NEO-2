@@ -2097,7 +2097,7 @@ rotfactor=imun*m_phi
       nz=nz+1
       irow(nz)=k+ipart
       icol(nz)=k+ipart
-      amat_sp(nz)=1.d0
+      amat_sp(nz)=(1.d0,0.d0)
     ENDDO
 !
     IF(isw_axisymm.EQ.1) THEN
@@ -2426,7 +2426,7 @@ rotfactor=imun*m_phi
       nz=nz+1
       irow(nz)=k-ipart
       icol(nz)=k-ipart
-      amat_sp(nz)=1.d0
+      amat_sp(nz)=(1.d0,0.d0)
     ENDDO
 !
     IF(isw_axisymm.EQ.1) THEN
@@ -3195,7 +3195,10 @@ rotfactor=imun*m_phi
     irow(1:nz_symm)=irow_symm
     icol(1:nz_symm)=icol_symm
     amat_sp(1:nz_symm)=amat_symm
+    !PRINT *, nz_regper
     IF(nz_regper.GT.0) THEN
+      !PRINT *,nz_regper
+      !STOP 
       irow(nz_symm+1:nz)=irow_regper
       icol(nz_symm+1:nz)=icol_regper
       amat_sp(nz_symm+1:nz)=amat_regper
@@ -3245,12 +3248,12 @@ rotfactor=imun*m_phi
 !write(10000,*) ' '
 !enddo
 !stop
-!istep=(ibeg+iend)/2
-!call plotsource(10000,real(source_vector))
-!call plotsource(11000,dimag(source_vector))
-!istep=ibeg
-!call plotsource(10010,real(source_vector))
-!call plotsource(11010,dimag(source_vector))
+istep=(ibeg+iend)/2
+call plotsource(10000,real(source_vector))
+call plotsource(11000,dimag(source_vector))
+istep=ibeg
+call plotsource(10010,real(source_vector))
+call plotsource(11010,dimag(source_vector))
 !
 
     DEALLOCATE(irow,icol,amat_sp)
@@ -3786,6 +3789,7 @@ PRINT *,' '
     DO m=0,lag
       k=ind_start(istep)+2*(npassing+1)*m
       DO i=1,npassing+1
+         !PRINT *,i,npassing
         IF(i.LE.npassing) THEN
           alambd_save1=0.5d0*(alambd(i,istep)+alambd(i-1,istep))
           WRITE(iunit_base+m,*) -alambd_save1,alambd_save1 &
@@ -3797,6 +3801,7 @@ PRINT *,' '
         ENDIF
       ENDDO
       DO i=npassing+1,1,-1
+         !PRINT *,i,npassing
         IF(i.LE.npassing) THEN
           alambd_save1=0.5d0*(alambd(i,istep)+alambd(i-1,istep))
           WRITE(iunit_base+m,*) alambd_save1,alambd_save1  &
@@ -3808,6 +3813,8 @@ PRINT *,' '
         ENDIF
       ENDDO
     ENDDO
+!
+    CALL flush()
 !
     END SUBROUTINE plotsource
 !
