@@ -3893,7 +3893,23 @@ PRINT *,' '
 !
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 !
+!!$    PRINT *,'Check equation set (before remap_rc):'
+!!$    DO k=1,nz
+!!$       IF(dimag(amat_sp(k)) .GT. 1.0d-10) THEN
+!!$          PRINT *,'3951',amat_sp(k)
+!!$          STOP
+!!$       ENDIF
+!!$    ENDDO
+!
     CALL  remap_rc(nz,nz_sq,irow,icol,amat_sp)
+!
+!!$    PRINT *,'Check equation set (after remap_rc):'
+!!$    DO k=1,nz_sq
+!!$       IF(dimag(amat_sp(k)) .GT. 1.0d-10) THEN
+!!$          PRINT *,'3961',amat_sp(k)
+!!$          STOP
+!!$       ENDIF
+!!$    ENDDO
 !
     PRINT *,'system size = ',n_2d_size
     PRINT *,'non-zeros before and after truncation = ',nz,nz_sq
