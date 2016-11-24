@@ -301,13 +301,13 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
  
   niter=100       !maximum number of integral part iterations
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
-  n_arnoldi=500     !maximum number of Arnoldi iterations
+  n_arnoldi=100     !maximum number of Arnoldi iterations
   isw_regper=1       !regulariization by periodic boundary condition
   epserr_sink=0.d0 !1.d-12 !sink for regularization, it is equal to
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
 !                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
 !                    $\kappa$ is inverse m.f.p. times 4 ("collpar")
-  sparse_solve_method = 2 !2 !2,3 - with and without iterative refinement, resp.
+  sparse_solve_method = 3 !2 !2,3 - with and without iterative refinement, resp.
 !
   !! Modifications by Andreas F. Martitsch (14.07.2015)
   ! normalized electric rotation frequency ($\hat{\Omega}_{tE}$)
@@ -3249,11 +3249,11 @@ rotfactor=imun*m_phi
 !enddo
 !stop
 istep=(ibeg+iend)/2
-call plotsource(10000,real(source_vector))
-call plotsource(11000,dimag(source_vector))
+CALL plotsource(10000,REAL(source_vector))
+CALL plotsource(11000,dimag(source_vector))
 istep=ibeg
-call plotsource(10010,real(source_vector))
-call plotsource(11010,dimag(source_vector))
+CALL plotsource(10010,REAL(source_vector))
+CALL plotsource(11010,dimag(source_vector))
 !
 
     DEALLOCATE(irow,icol,amat_sp)
@@ -3814,7 +3814,7 @@ PRINT *,' '
       ENDDO
     ENDDO
 !
-    CALL flush()
+    CALL FLUSH()
 !
     END SUBROUTINE plotsource
 !
