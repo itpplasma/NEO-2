@@ -6,7 +6,7 @@ module collop_bspline
 
   implicit none
   
-  real(fgsl_double), dimension(:), allocatable :: x, b
+  REAL(fgsl_double), DIMENSION(:), ALLOCATABLE :: xknots, b
   real(fgsl_double), dimension(:), allocatable :: db
   real(fgsl_double) :: xd
   integer :: i, j, knots
@@ -29,7 +29,7 @@ contains
        knots = lagmax - collop_bspline_order + 3
        nder  = collop_bspline_order  ! Maximum derivative
 
-       if (.not. allocated(x))  allocate(x(knots))
+       if (.not. allocated(xknots))  allocate(xknots(knots))
        if (.not. allocated(b))  allocate(b(knots+collop_bspline_order-2))
        if (.not. allocated(db)) allocate(db(knots+collop_bspline_order-2))
 
@@ -38,20 +38,20 @@ contains
           gam_all = gam_all + collop_bspline_dist**k
        end do
 
-       write (*,*) "Knots before initialization: ", x
+!       write (*,*) "Knots before initialization: ", xknots
        
-       x(1) = 0d0
+       xknots(1) = 0d0
        x_del = phi_x_max / gam_all
        do k = 1, knots-1
           !x_dat(k) = k*x_del
-          x(k+1) = x(k) + x_del * collop_bspline_dist**k
+          xknots(k+1) = xknots(k) + x_del * collop_bspline_dist**k
        end do
       
-       x(knots) = phi_x_max
+       xknots(knots) = phi_x_max
 
-       write (*,*) "Knots: ", x
+       write (*,*) "Knots: ", xknots
        call init_bspline(collop_bspline_order, knots)
-       call set_bspline_knots(x)
+       call set_bspline_knots(xknots)
 
        ! Testing
 

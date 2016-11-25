@@ -289,6 +289,8 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   ! poloidal mode number
   INTEGER :: m_theta = 0 
   !! End Modifications by Andreas F. Martitsch (13.06.2014)
+  LOGICAL :: problem_type
+  DOUBLE PRECISION,   DIMENSION(:,:), ALLOCATABLE :: source_vector_real
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: ttmpfact
   DOUBLE COMPLEX :: fluxincompr,coefincompr
   LOGICAL :: colltest=.FALSE.
@@ -298,6 +300,9 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
 !  logical :: nobounceaver=.false.
 !
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
+! DEBUGGING
+  INTEGER :: i_ctr=0
+!
  
   niter=100       !maximum number of integral part iterations
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
@@ -3224,6 +3229,7 @@ rotfactor=imun*m_phi
 !
     CALL source_flux
 !
+    problem_type=.TRUE.
     CALL solve_eqs(.TRUE.)
 !
 !open(12345,form='unformatted',file='solution.dat')
@@ -3449,6 +3455,7 @@ CALL plotsource(11010,dimag(source_vector))
                             +amat_sp(i)*bvec_parflow(icol(i))
   ENDDO
 !
+  problem_type=.FALSE.
   CALL solve_eqs(.TRUE.)
 !
 !istep=(ibeg+iend)/2
@@ -3890,6 +3897,7 @@ PRINT *,' '
 ! Solve the linear equation set:
 ! 
     LOGICAL :: clean
+    DOUBLE PRECISION,   DIMENSION(:),   ALLOCATABLE :: bvec_sp_real
 !
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 !
@@ -3929,8 +3937,15 @@ PRINT *,' '
     iopt=1
 !
     CALL CPU_TIME(time_start)
-    CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                      bvec_sp,iopt)
+    IF(problem_type) THEN
+       ALLOCATE(bvec_sp_real(ncol))
+       bvec_sp_real=0.0d0
+       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
+                         bvec_sp_real,iopt)
+    ELSE
+       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
+                         bvec_sp,iopt)
+    ENDIF
 !
     CALL CPU_TIME(time_factorization)
     PRINT *,'factorization completed ',time_factorization - time_start,' sec'
@@ -3939,8 +3954,16 @@ PRINT *,' '
 !
 ! Solution of inhomogeneus equation (account of sources):
 !
-    CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                      source_vector(:,1:4),iopt)
+    IF(problem_type) THEN
+       ALLOCATE(source_vector_real(n_2d_size,4))
+       source_vector_real=DBLE(source_vector)
+       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
+                         source_vector_real(:,1:4),iopt)
+       source_vector=source_vector_real
+    ELSE
+       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
+                         source_vector(:,1:4),iopt)
+    ENDIF    
 !
 ! integral part:
 !
@@ -4082,7 +4105,13 @@ PRINT *,' '
 !
       iopt=3
 !
-      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
+      IF(problem_type) THEN
+         CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
+                           bvec_sp_real,iopt)
+         DEALLOCATE(bvec_sp_real,source_vector_real)
+      ELSE
+         CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
+      ENDIF
 !
       IF(isw_intp.EQ.1) THEN 
         DEALLOCATE(bvec_iter,bvec_prev)
@@ -4814,11 +4843,19 @@ PRINT *,' '
 !
   INTEGER :: n
   DOUBLE COMPLEX, DIMENSION(n) :: fold,fnew
+  DOUBLE PRECISION, DIMENSION(n) :: fnew_real
 !
   CALL integral_part(fold,fnew)
 !
-  CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
-                    fnew,iopt)
+  IF(problem_type) THEN
+     fnew_real=DBLE(fnew)
+     CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
+                       fnew_real,iopt)
+     fnew=fnew_real
+  ELSE
+     CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
+                       fnew,iopt)
+  ENDIF
 !
   coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
   fnew=fnew-coefincompr*source_vector(:,4)
@@ -4922,7 +4959,7 @@ PRINT *,' '
 !
 !    call arnoldi(n,narn,next_iteration)
     CALL arnoldi(n,narn)
-PRINT *,'ritznum = ',ritznum
+IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !
     IF(ierr.NE.0) THEN
       PRINT *,'iterator: error in arnoldi'
@@ -4942,7 +4979,7 @@ PRINT *,'ritznum = ',ritznum
 !
     DO iter=1,itermax
       CALL next_iteration(n,fold,fnew)
-      IF(mode.EQ.2) fnew=fnew+fzero
+      IF(mode.EQ.2 .OR. mode.EQ.0) fnew=fnew+fzero
       IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
       fold=fnew
       IF(iter.EQ.itermax) PRINT *, &

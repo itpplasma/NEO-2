@@ -167,7 +167,7 @@ contains
 
   subroutine init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
     use rkstep_mod, only : lag, leg
-    use collop_bspline, only : xknots => x, nder
+    use collop_bspline, only : xknots, nder
     integer :: collop_base_prj, collop_base_exp
     real(kind=dp) :: scalprod_alpha
     real(kind=dp) :: scalprod_beta
