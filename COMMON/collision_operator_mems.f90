@@ -349,7 +349,7 @@ module collop
       call h5_add(h5id_collop, 'anumm', anumm, lbound(anumm), ubound(anumm))
       !call h5_add(h5id_collop, 'anumm_lag', anumm_lag, lbound(anumm_lag), ubound(anumm_lag))
       call h5_add(h5id_collop, 'anumm_aa0', anumm_aa(:,:,0,0), lbound(anumm_aa(:,:,0,0)), ubound(anumm_aa(:,:,0,0)))
-      call h5_add(h5id_collop, 'anumm_inf', anumm_inf, lbound(anumm_inf), ubound(anumm_inf))
+      if (z_eff .ne. 0) call h5_add(h5id_collop, 'anumm_inf', anumm_inf, lbound(anumm_inf), ubound(anumm_inf))
       call h5_add(h5id_collop, 'denmm', denmm, lbound(denmm), ubound(denmm))
       call h5_add(h5id_collop, 'ailmm', ailmm, lbound(ailmm), ubound(ailmm))
       call h5_add(h5id_collop, 'weightlag', weightlag, lbound(weightlag), ubound(weightlag))
@@ -410,21 +410,23 @@ module collop
          write (f,*) NEW_line('A')
       end do
       close(f)    
-      
-      open(f, file='MatrixNu_mmp-ginf.dat', status='replace')
-      do m=0,19
-         write (f,'(A)') '!' 
-      end do
-      write (f,'(I0)') lag
-      write (f,'(I0)') lag
-      do m=0,lag
-         do mp=0,lag
-            write (f,'(1(es23.15E02))', advance='NO') anumm_inf(m, mp)
-         end do
-         write (f, '(A)', advance='NO') NEW_line('A')
-      end do
-      close(f)    
 
+      if (z_eff .ne. 0) then
+         open(f, file='MatrixNu_mmp-ginf.dat', status='replace')
+         do m=0,19
+            write (f,'(A)') '!' 
+         end do
+         write (f,'(I0)') lag
+         write (f,'(I0)') lag
+         do m=0,lag
+            do mp=0,lag
+               write (f,'(1(es23.15E02))', advance='NO') anumm_inf(m, mp)
+            end do
+            write (f, '(A)', advance='NO') NEW_line('A')
+         end do
+         close(f)    
+      end if
+   
       open(f, file='MatrixD_mmp-gee.dat', status='replace')
       do m=0,19
          write (f,'(A)') '!' 
