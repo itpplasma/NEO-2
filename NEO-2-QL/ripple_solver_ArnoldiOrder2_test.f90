@@ -920,7 +920,7 @@ PRINT *,ub_mag,ibeg,iend
   ALLOCATE(qflux(3,3))
 
      PRINT *, 'propagator tag         ', fieldpropagator%tag
-!solver_talk=1
+solver_talk=1
   IF (solver_talk .EQ. 1) THEN
      PRINT *, ' '
      PRINT *, 'I am in ripple_solver'
@@ -4120,7 +4120,7 @@ PRINT *,' '
       DO k=1,3
 !
         PRINT *,'source',k,':'
-        mode_iter=2
+        mode_iter=0
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,source_vector(:,k))
 !
@@ -5126,6 +5126,7 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
     DO iter=1,itermax
       CALL next_iteration(n,fold,fnew)
       IF(mode.EQ.2 .OR. mode.EQ.0) fnew=fnew+fzero
+      PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
       IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
       fold=fnew
       IF(iter.EQ.itermax) PRINT *, &
