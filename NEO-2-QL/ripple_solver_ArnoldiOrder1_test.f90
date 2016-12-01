@@ -4381,7 +4381,7 @@ PRINT *,' '
       IF(problem_type) THEN
          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
                            bvec_sp_real,iopt)
-         DEALLOCATE(bvec_sp_real,source_vector_real)
+         DEALLOCATE(bvec_sp_real,source_vector_all_real)
       ELSE
          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
       ENDIF
