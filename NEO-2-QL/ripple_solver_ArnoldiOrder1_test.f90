@@ -15,21 +15,21 @@
 !!$    DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: f0_coll,f0_ttmp
 !!$    DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: f0_coll_all,f0_ttmp_all
 !!$  END MODULE ntv_eqmat_mod
-!
-!!$  MODULE arnoldi_mod
-!!$    INTEGER :: ngrow,ierr
-!!$    INTEGER :: ntol,mode=0
-!!$    DOUBLE PRECISION :: tol
-!!$    DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
-!!$    DOUBLE COMPLEX, DIMENSION(:,:), ALLOCATABLE :: eigvecs
-!!$  END MODULE arnoldi_mod
 !! End Modifications by Andreas F. Martitsch (27.07.2015)
+!
+  MODULE arnoldi_mod
+    INTEGER :: ngrow,ierr
+    INTEGER :: ntol,mode=0
+    DOUBLE PRECISION :: tol
+    DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
+    DOUBLE COMPLEX, DIMENSION(:,:), ALLOCATABLE :: eigvecs
+  END MODULE arnoldi_mod
 !
 !Sergei 20.07.2006 : modification of boundary layer is done now locally,
 !                    filtering of the magnetic field maxima has been removed,
 !                    old unused lines which were commented have been removed
 
-SUBROUTINE ripple_solver_ArnoldiO2(                       &
+SUBROUTINE ripple_solver_ArnoldiO1(                       &
      npass_l,npass_r,nvelocity,                            &
      amat_plus_plus,amat_minus_minus,                     &
      amat_plus_minus,amat_minus_plus,                     &
@@ -83,7 +83,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
                             irow_per_pos,icol_per_pos,                         &
                             irow_per_neg,icol_per_neg,                         &
                             irow_asymm,icol_asymm,amat_asymm,                  &
-                            f0_coll,f0_ttmp,                                   &
+                            f0_coll,f0_ttmp,f0_coll_all,f0_ttmp_all,           &
                             nz_regper,irow_regper,icol_regper,amat_regper
   USE partpa_mod, ONLY : bmod0
   USE development
@@ -105,18 +105,19 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   !! Modification by Andreas F. Martitsch (14.07.2015)
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_qflux_NA, MtOvR, B_rho_L_loc, &
-       m_phi,  qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val
+       m_phi,  qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val, &
+       qflux_symm_allspec, qflux_ntv_allspec
   !USE neo_precision, ONLY : PI
   !! End Modification by Andreas F. Martitsch (14.07.2015)
-  !! Modification by Andreas F. Martitsch (14.11.2016)
-  ! Load x1mm and x2mm (=energy dependence of drift frequencies)
-  ! from collision operator module. This step allows for
-  ! support of different basis functions and replaces routine "lagxmm".
-  USE collop, ONLY : x1mm, x2mm
-  !! End Modification by Andreas F. Martitsch (14.11.2016)
+  !! Modification by Andreas F. Martitsch (28.07.2015)
+  ! MPI SUPPORT for multi-species part
+  ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
+  USE mpiprovider_module
+  USE collop
+  !! End Modification by Andreas F. Martitsch (28.07.2015)
   
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
+  !INTEGER, PARAMETER :: dp = KIND(1.0d0)
   DOUBLE COMPLEX, PARAMETER :: imun=(0.d0,1.d0)
   REAL(DP), PARAMETER :: PI=3.141592653589793238462643383279502884197_dp
 
@@ -290,10 +291,19 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   ! poloidal mode number
   INTEGER :: m_theta = 0 
   !! End Modifications by Andreas F. Martitsch (13.06.2014)
+  !! Modification by Andreas F. Martitsch (28.07.2015)
+  !  multi-species part
+  INTEGER :: ispec, ispecp ! species indices
+  INTEGER :: drive_spec
+  DOUBLE COMPLEX,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all
+  REAL(kind=dp), DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec
   LOGICAL :: problem_type
   DOUBLE PRECISION,   DIMENSION(:,:), ALLOCATABLE :: source_vector_real
+  DOUBLE PRECISION,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all_real
+  !! End Modification by Andreas F. Martitsch (28.07.2015)
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: ttmpfact
   DOUBLE COMPLEX :: fluxincompr,coefincompr
+  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: fluxincompr_spec, coefincompr_spec
   LOGICAL :: colltest=.FALSE.
   LOGICAL :: ttmptest=.FALSE.
 !  logical :: ttmptest=.true.
@@ -304,7 +314,17 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
 ! DEBUGGING
   INTEGER :: i_ctr=0
 !
- 
+  !! Modification by Andreas F. Martitsch (28.07.2015)
+  ! multi-species part - MPI rank determines species
+  ispec = mpro%getRank()
+  PRINT *,"Species: ", ispec
+  CALL collop_set_species(ispec)
+  !PRINT *,'asource: ',asource(:,1)
+  !PRINT *,'anumm:',anumm(1,:)
+  !PRINT *,'denmm:',denmm(1,:)
+  !STOP
+  !! End Modification by Andreas F. Martitsch (28.07.2015)
+!
   niter=100       !maximum number of integral part iterations
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
   n_arnoldi=100     !maximum number of Arnoldi iterations
@@ -1521,6 +1541,13 @@ rotfactor=imun*m_phi
 !
   DEALLOCATE(amat,bvec_lapack,ipivot)
 !
+!! Modification by Andreas F. Martitsch (16.09.2015)
+! NEO-2 can treat now multiple species
+! (move collpar from pleg_bra to pleg_ket to avoid mixing up
+! of species-dependent parameters)
+  pleg_bra=pleg_bra/collpar
+  pleg_ket=pleg_ket*collpar
+!! End Modification by Andreas F. Martitsch (16.09.2015)  
 !
 ! Preparation of data for sparce solver
 !
@@ -1637,116 +1664,84 @@ rotfactor=imun*m_phi
 ! free flight:
 !
       DO ipart=1,npassing+1
-        nz=nz+1
-!        irow(nz)=k+ipart
-!        icol(nz)=k+ipart
-!        amat_sp(nz)=delphim1
-        IF(colltest) nz_ttmp=nz_ttmp+1
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+!            irow(nz)=k+ipart
+!            icol(nz)=k+ipart+2*(npassing+1)*(mm-m)
+!            amat_sp(nz)=delphim1*Amm(m,mm)
+            IF(colltest) nz_ttmp=nz_ttmp+1
+          ENDIF
+        ENDDO
       ENDDO
 !
       DO ipart=1,npassing
-        nz=nz+1
-!        irow(nz)=k+ipart
-!        icol(nz)=k_prev+ipart
-!        amat_sp(nz)=-delphim1
-        IF(colltest) nz_ttmp=nz_ttmp+1
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+!            irow(nz)=k+ipart
+!            icol(nz)=k_prev+ipart+2*(npassing_prev+1)*(mm-m)
+!            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) nz_ttmp=nz_ttmp+1
+          ENDIF
+        ENDDO
       ENDDO
 !
       IF(npassing_prev.GE.npassing) THEN
-        nz=nz+1
-!        irow(nz)=k+npassing+1
-!        icol(nz)=k_prev+npassing+1
-!        amat_sp(nz)=-delphim1
-        IF(colltest) nz_ttmp=nz_ttmp+1
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+!            irow(nz)=k+npassing+1
+!            icol(nz)=k_prev+npassing+1+2*(npassing_prev+1)*(mm-m)
+!            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) nz_ttmp=nz_ttmp+1
+          ENDIF
+        ENDDO
       ENDIF
-!!$!
-!!$! mirroring:
-!!$!
-!!$      IF(npassing_prev.LE.npassing) THEN
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$!          irow(nz)=k+npassing+1
-!!$!          icol(nz)=k+npassing+kk-1
-!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-!!$          IF(colltest) nz_ttmp=nz_ttmp+1
-!!$        ENDDO
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$!          irow(nz)=k+npassing+1
-!!$!          icol(nz)=k_prev+npassing_prev+kk-1
-!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
-!!$          IF(colltest) nz_ttmp=nz_ttmp+1
-!!$        ENDDO
-!!$!
-!!$      ENDIF
 !
 ! mirroring:
 !
       IF(npassing_prev.EQ.npassing) THEN
 !
         DO kk=1,4
-          nz=nz+1
-!          irow(nz)=k+npassing+1
-!          icol(nz)=k+npassing+kk-1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-          IF(colltest) nz_ttmp=nz_ttmp+1
+          DO mm=0,lag
+            IF(Amm(m,mm) .NE. 0.0d0) THEN
+              nz=nz+1
+!              irow(nz)=k+npassing+1
+!              icol(nz)=k+npassing+kk-1+2*(npassing+1)*(mm-m)
+!              amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)*Amm(m,mm)
+              IF(colltest) nz_ttmp=nz_ttmp+1
+            ENDIF
+          ENDDO
         ENDDO
 !
         DO kk=1,4
-          nz=nz+1
-!          irow(nz)=k+npassing+1
-!          icol(nz)=k_prev+npassing_prev+kk-1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
-          IF(colltest) nz_ttmp=nz_ttmp+1
+          DO mm=0,lag
+            IF(Amm(m,mm) .NE. 0.0d0) THEN
+              nz=nz+1
+!              irow(nz)=k+npassing+1
+!              icol(nz)=k_prev+npassing_prev+kk-1+2*(npassing_prev+1)*(mm-m)
+!              amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)*Amm(m,mm)
+              IF(colltest) nz_ttmp=nz_ttmp+1
+            ENDIF
+          ENDDO
         ENDDO
 !
       ELSEIF(npassing_prev.GT.npassing) THEN
-        nz=nz+1
-!        irow(nz)=k_prev+npassing_prev+2
-!        icol(nz)=k_prev+npassing_prev+1
-!        amat_sp(nz)=-delphim1
-         IF(colltest) nz_ttmp=nz_ttmp+1
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+!            irow(nz)=k_prev+npassing_prev+2
+!            icol(nz)=k_prev+npassing_prev+1+2*(npassing_prev+1)*(mm-m)
+!            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) nz_ttmp=nz_ttmp+1
+          ENDIF
+        ENDDO
       ENDIF
 !
 ! collisions:
 !
       IF(fact_pos_e(istep).NE.0.d0) THEN
-!!$!
-!!$! Lorentz operator:
-!!$!
-!!$        IF(isw_lor.EQ.1) THEN
-!!$!
-!!$          DO ipart=1,npassing+1
-!!$            DO kk=1,5
-!!$              DO mm=0,lag
-!!$                nz=nz+1
-!!$                nz_coll=nz_coll+1
-!!$!                irow(nz)=k+ipart
-!!$!                icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-!!$!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)   &
-!!$!                           *fact_pos_e(istep)*0.5d0
-!!$!
-!!$                IF(ipart.LE.npassing_prev+1) THEN
-!!$                  nz=nz+1
-!!$!                  irow(nz)=k+ipart
-!!$!                  icol(nz)=k_prev+max(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
-!!$!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep-1) &
-!!$!                             *fact_pos_e(istep)*0.5d0
-!!$                ENDIF
-!!$!
-!!$                IF(.NOT.colltest.AND.mm.EQ.m) THEN
-!!$                  nz_ttmp=nz_ttmp+1
-!!$                ENDIF
-!!$              ENDDO
-!!$            ENDDO
-!!$          ENDDO
-!!$!
-!!$        ENDIF
-!!$!
-!!$!        nz_beg=nz+1
-!!$!         
 !
 ! Lorentz operator:
 !
@@ -1755,29 +1750,46 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing+1
             DO kk=1,5
               DO mm=0,lag
-                nz=nz+1
-                nz_coll=nz_coll+1
-!                irow(nz)=k+ipart
-!                icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)   &
-!                           *fact_pos_e(istep)*0.5d0
-!
-                IF(.NOT.colltest.AND.mm.EQ.m) THEN
+                IF(anumm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  nz_coll=nz_coll+1
+!                  irow(nz)=k+ipart
+!                  icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
+!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+!                           *fact_pos_e(istep)
+                ENDIF
+                IF(.NOT.colltest.AND.(Amm(m,mm) .NE. 0.0d0)) THEN
                   nz_ttmp=nz_ttmp+1
                 ENDIF
-!
-                IF(ipart.LE.npassing_prev+1) THEN
-                  nz=nz+1
-!                  irow(nz)=k+ipart
-!                  icol(nz)=k_prev+max(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep-1) &
-!                             *fact_pos_e(istep)*0.5d0
-!
-                  IF(.NOT.colltest.AND.mm.EQ.m) THEN
-                    nz_ttmp=nz_ttmp+1
-                  ENDIF
-                ENDIF
               ENDDO
+            ENDDO
+          ENDDO
+!
+! matching collisional flux through the boundary in backward Euler scheme:
+!
+          DO kk=1,4
+            DO mm=0,lag
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k+npassing+1
+!                icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
+!                amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
+!                         *fact_pos_e(istep)
+              ENDIF
+            ENDDO
+          ENDDO
+!
+          DO kk=1,4
+            DO mm=0,lag
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k+npassing+1
+!                icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1)
+!                         *fact_pos_b(istep-1)
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -1789,28 +1801,44 @@ rotfactor=imun*m_phi
 !
         IF(isw_ene.EQ.1) THEN
 !
-          DO ipart=1,npassing+1
+          DO ipart=1,npassing
             DO kk=1,4
               DO mm=0,lag
-                nz=nz+1
-                nz_coll=nz_coll+1
-!                irow(nz)=k+ipart
-!                icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+                IF(denmm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  nz_coll=nz_coll+1
+!                  irow(nz)=k+ipart
+!                  icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
+!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+                ENDIF
               ENDDO
             ENDDO
+          ENDDO
 !
-            IF(ipart.LE.npassing_prev+1) THEN
-              DO kk=1,4
-                DO mm=0,lag
-                  nz=nz+1
-!                  irow(nz)=k+ipart
-!                  icol(nz)=k_prev+max(0,ipart-2)+kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
-                ENDDO
-              ENDDO
-            ENDIF
+          DO kk=1,4
+            DO mm=0,lag
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k+npassing+1
+!                icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+!                         *rhs_mat_energ(kk,npassing+1,istep)
+              ENDIF
+            ENDDO
+          ENDDO
 !
+          DO kk=1,4
+            DO mm=0,lag
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k+npassing+1
+!                icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+!                         *rhs_mat_energ(kk,npassing_prev+1,istep-1)
+              ENDIF
+            ENDDO
           ENDDO
 !
         ENDIF
@@ -1821,27 +1849,35 @@ rotfactor=imun*m_phi
 !
 ! regularization sink:
 !
-        DO ipart=1,npassing+1
+        DO ipart=1,npassing
           DO kk=1,4
             DO mm=0,lag
               nz=nz+1
 !              irow(nz)=k+ipart
 !              icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+!              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)
             ENDDO
           ENDDO
+        ENDDO
 !
-          IF(ipart.LE.npassing_prev+1) THEN
-            DO kk=1,4
-              DO mm=0,lag
-                nz=nz+1
-!                irow(nz)=k+ipart
-!                icol(nz)=k_prev+max(0,ipart-2)+kk+2*(npassing_prev+1)*(mm-m)
-!                amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
-              ENDDO
-            ENDDO
-          ENDIF
+        DO kk=1,4
+          DO mm=0,lag
+            nz=nz+1
+!            irow(nz)=k+npassing+1
+!            icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
+!            amat_sp(nz)=0.5d0*x1mm(m,mm)                                  &
+!                       *rhs_mat_energ(kk,npassing+1,istep)
+          ENDDO
+        ENDDO
 !
+        DO kk=1,4
+          DO mm=0,lag
+            nz=nz+1
+!            irow(nz)=k+npassing+1
+!            icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
+!            amat_sp(nz)=0.5d0*x1mm(m,mm)                                  &
+!                       *rhs_mat_energ(kk,npassing_prev+1,istep-1)
+          ENDDO
         ENDDO
 !
 !        amat_sp(nz_beg:nz)=-epserr_sink*fact_pos_e(istep)*amat_sp(nz_beg:nz)
@@ -1919,115 +1955,84 @@ rotfactor=imun*m_phi
 ! free flight:
 !
       DO ipart=1,npassing+1
-        nz=nz+1
-!        irow(nz)=k-ipart
-!        icol(nz)=k-ipart
-!        amat_sp(nz)=delphim1
-        IF(colltest) nz_ttmp=nz_ttmp+1
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+!            irow(nz)=k-ipart
+!            icol(nz)=k-ipart+2*(npassing+1)*(mm-m)
+!            amat_sp(nz)=delphim1*Amm(m,mm)
+            IF(colltest) nz_ttmp=nz_ttmp+1
+          ENDIF
+        ENDDO
       ENDDO
 !
       DO ipart=1,npassing
-        nz=nz+1
-!        irow(nz)=k-ipart
-!        icol(nz)=k_prev-ipart
-!        amat_sp(nz)=-delphim1
-        IF(colltest) nz_ttmp=nz_ttmp+1
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+!            irow(nz)=k-ipart
+!            icol(nz)=k_prev-ipart+2*(npassing_prev+1)*(mm-m)
+!            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) nz_ttmp=nz_ttmp+1
+          ENDIF
+        ENDDO
       ENDDO
 !
       IF(npassing_prev.GE.npassing) THEN
-        nz=nz+1
-!        irow(nz)=k-npassing-1
-!        icol(nz)=k_prev-npassing-1
-!        amat_sp(nz)=-delphim1
-        IF(colltest) nz_ttmp=nz_ttmp+1
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+!            irow(nz)=k-npassing-1
+!            icol(nz)=k_prev-npassing-1+2*(npassing_prev+1)*(mm-m)
+!            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) nz_ttmp=nz_ttmp+1
+          ENDIF
+        ENDDO
       ENDIF
-!!$!
-!!$! mirroring:
-!!$!
-!!$      IF(npassing_prev.LE.npassing) THEN
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$!          irow(nz)=k-npassing-1
-!!$!          icol(nz)=k-npassing-kk+1
-!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-!!$          IF(colltest) nz_ttmp=nz_ttmp+1
-!!$        ENDDO
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$!          irow(nz)=k-npassing-1
-!!$!          icol(nz)=k_prev-npassing_prev-kk+1
-!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
-!!$          IF(colltest) nz_ttmp=nz_ttmp+1
-!!$        ENDDO
-!!$!
-!!$      ENDIF
 !
 ! mirroring:
 !
       IF(npassing_prev.EQ.npassing) THEN
 !
         DO kk=1,4
-          nz=nz+1
-!          irow(nz)=k-npassing-1
-!          icol(nz)=k-npassing-kk+1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-          IF(colltest) nz_ttmp=nz_ttmp+1
+          DO mm=0,lag
+            IF(Amm(m,mm) .NE. 0.0d0) THEN
+              nz=nz+1
+!              irow(nz)=k-npassing-1
+!              icol(nz)=k-npassing-kk+1+2*(npassing+1)*(mm-m)
+!              amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)*Amm(m,mm)
+              IF(colltest) nz_ttmp=nz_ttmp+1
+            ENDIF
+          ENDDO
         ENDDO
 !
         DO kk=1,4
-          nz=nz+1
-!          irow(nz)=k-npassing-1
-!          icol(nz)=k_prev-npassing_prev-kk+1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
-          IF(colltest) nz_ttmp=nz_ttmp+1
+          DO mm=0,lag
+            IF(Amm(m,mm) .NE. 0.0d0) THEN
+              nz=nz+1
+!              irow(nz)=k-npassing-1
+!              icol(nz)=k_prev-npassing_prev-kk+1+2*(npassing_prev+1)*(mm-m)
+!              amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)*Amm(m,mm)
+              IF(colltest) nz_ttmp=nz_ttmp+1
+            ENDIF
+          ENDDO
         ENDDO
 !
       ELSEIF(npassing_prev.GT.npassing) THEN
-        nz=nz+1
-!        irow(nz)=k_prev-npassing_prev-2
-!        icol(nz)=k_prev-npassing_prev-1
-!        amat_sp(nz)=-delphim1
-        IF(colltest) nz_ttmp=nz_ttmp+1
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+!            irow(nz)=k_prev-npassing_prev-2
+!            icol(nz)=k_prev-npassing_prev-1+2*(npassing_prev+1)*(mm-m)
+!            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) nz_ttmp=nz_ttmp+1
+          ENDIF
+        ENDDO
       ENDIF
 !
 ! collisions:
 !
       IF(fact_neg_e(istep).NE.0.d0) THEN
-!!$!
-!!$! Lorentz operator:
-!!$!
-!!$        IF(isw_lor.EQ.1) THEN
-!!$!
-!!$          DO ipart=1,npassing+1
-!!$            DO kk=1,5
-!!$              DO mm=0,lag
-!!$                nz=nz+1
-!!$                nz_coll=nz_coll+1
-!!$!                irow(nz)=k-ipart
-!!$!                icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-!!$!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
-!!$!                           *fact_neg_e(istep)*0.5d0
-!!$!
-!!$                IF(ipart.LE.npassing_prev+1) THEN
-!!$                  nz=nz+1
-!!$!                  irow(nz)=k-ipart
-!!$!                  icol(nz)=k_prev-max(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
-!!$!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep+1) &
-!!$!                             *fact_neg_e(istep)*0.5d0
-!!$                ENDIF
-!!$!
-!!$                IF(.NOT.colltest.AND.mm.EQ.m) THEN
-!!$                  nz_ttmp=nz_ttmp+1
-!!$                ENDIF
-!!$              ENDDO
-!!$            ENDDO
-!!$          ENDDO
-!!$!
-!!$        ENDIF
-!!$!
-!!$!        nz_beg=nz+1     
 !
 ! Lorentz operator:
 !
@@ -2036,29 +2041,46 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing+1
             DO kk=1,5
               DO mm=0,lag
-                nz=nz+1
-                nz_coll=nz_coll+1
-!                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
-!                           *fact_neg_e(istep)*0.5d0
-!
-                IF(.NOT.colltest.AND.mm.EQ.m) THEN
+                IF(anumm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  nz_coll=nz_coll+1
+!                  irow(nz)=k-ipart
+!                  icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
+!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+!                           *fact_neg_e(istep)
+                ENDIF
+                IF(.NOT.colltest.AND.(Amm(m,mm) .NE. 0.0d0)) THEN
                   nz_ttmp=nz_ttmp+1
                 ENDIF
-!
-                IF(ipart.LE.npassing_prev+1) THEN
-                  nz=nz+1
-!                  irow(nz)=k-ipart
-!                  icol(nz)=k_prev-max(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep+1) &
-!                             *fact_neg_e(istep)*0.5d0
-!
-                  IF(.NOT.colltest.AND.mm.EQ.m) THEN
-                    nz_ttmp=nz_ttmp+1
-                  ENDIF
-                ENDIF 
               ENDDO
+            ENDDO
+          ENDDO
+!
+! matching collisional flux through the boundary in backward Euler scheme:
+!
+          DO kk=1,4
+            DO mm=0,lag
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k-npassing-1
+!                icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
+!                amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1) &
+!                         *fact_neg_e(istep)
+              ENDIF
+            ENDDO
+          ENDDO
+!
+          DO kk=1,4
+            DO mm=0,lag
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k-npassing-1
+!                icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1) &
+!                         *fact_neg_b(istep+1)
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -2070,28 +2092,44 @@ rotfactor=imun*m_phi
 !
         IF(isw_ene.EQ.1) THEN
 !
-          DO ipart=1,npassing+1
+          DO ipart=1,npassing
             DO kk=1,4
               DO mm=0,lag
-                nz=nz+1
-                nz_coll=nz_coll+1
-!                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+                IF(denmm(m,mm) .NE. 0.0d0) THEN 
+                  nz=nz+1
+                  nz_coll=nz_coll+1
+!                  irow(nz)=k-ipart
+!                  icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
+!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+                ENDIF
               ENDDO
             ENDDO
+          ENDDO
 !
-            IF(ipart.LE.npassing_prev+1) THEN
-              DO kk=1,4
-                DO mm=0,lag
-                  nz=nz+1
-!                  irow(nz)=k-ipart
-!                  icol(nz)=k_prev-max(0,ipart-2)-kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
-                ENDDO
-              ENDDO
-            ENDIF
+          DO kk=1,4
+            DO mm=0,lag
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k-npassing-1
+!                icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+!                         *rhs_mat_energ(kk,npassing+1,istep)
+              ENDIF
+            ENDDO
+          ENDDO
 !
+          DO kk=1,4
+            DO mm=0,lag
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                nz_coll=nz_coll+1
+!                irow(nz)=k-npassing-1
+!                icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
+!                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+!                         *rhs_mat_energ(kk,npassing_prev+1,istep+1)
+              ENDIF
+            ENDDO
           ENDDO
 !
         ENDIF
@@ -2102,27 +2140,35 @@ rotfactor=imun*m_phi
 !
 ! regularization sink:
 !
-        DO ipart=1,npassing+1
+        DO ipart=1,npassing
           DO kk=1,4
             DO mm=0,lag
               nz=nz+1
 !              irow(nz)=k-ipart
 !              icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+!              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)
             ENDDO
           ENDDO
+        ENDDO
 !
-          IF(ipart.LE.npassing_prev+1) THEN
-            DO kk=1,4
-              DO mm=0,lag
-                nz=nz+1
-!                irow(nz)=k-ipart
-!                icol(nz)=k_prev-max(0,ipart-2)-kk+2*(npassing_prev+1)*(mm-m)
-!                amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
-              ENDDO
-            ENDDO
-          ENDIF
+        DO kk=1,4
+          DO mm=0,lag
+            nz=nz+1
+!            irow(nz)=k-npassing-1
+!            icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
+!            amat_sp(nz)=0.5d0*x1mm(m,mm)                                  &
+!                       *rhs_mat_energ(kk,npassing+1,istep)
+          ENDDO
+        ENDDO
 !
+        DO kk=1,4
+          DO mm=0,lag
+            nz=nz+1
+!            irow(nz)=k-npassing-1
+!            icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
+!            amat_sp(nz)=0.5d0*x1mm(m,mm)                                  &
+!                       *rhs_mat_energ(kk,npassing_prev+1,istep+1)
+          ENDDO
         ENDDO
 !
 !        amat_sp(nz_beg:nz)=-epserr_sink*fact_neg_e(istep)*amat_sp(nz_beg:nz)
@@ -2213,173 +2259,114 @@ rotfactor=imun*m_phi
 ! free flight:
 !
       DO ipart=1,npassing+1
-        nz=nz+1
-        irow(nz)=k+ipart
-        icol(nz)=k+ipart
-        amat_sp(nz)=delphim1
-        IF(colltest) THEN
-          nz_ttmp=nz_ttmp+1
-          irow_ttmp(nz_ttmp)=irow(nz)
-          icol_ttmp(nz_ttmp)=icol(nz)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-        ENDIF
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+            irow(nz)=k+ipart
+            icol(nz)=k+ipart+2*(npassing+1)*(mm-m)
+            amat_sp(nz)=delphim1*Amm(m,mm)
+            IF(colltest) THEN
+              nz_ttmp=nz_ttmp+1
+              irow_ttmp(nz_ttmp)=irow(nz)
+              icol_ttmp(nz_ttmp)=icol(nz)
+              amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+            ENDIF
+          ENDIF
+        ENDDO
       ENDDO
 !
       DO ipart=1,npassing
-        nz=nz+1
-        irow(nz)=k+ipart
-        icol(nz)=k_prev+ipart
-        amat_sp(nz)=-delphim1
-        IF(colltest) THEN
-          nz_ttmp=nz_ttmp+1
-          irow_ttmp(nz_ttmp)=irow(nz)
-          icol_ttmp(nz_ttmp)=icol(nz)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-        ENDIF
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+            irow(nz)=k+ipart
+            icol(nz)=k_prev+ipart+2*(npassing_prev+1)*(mm-m)
+            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) THEN
+              nz_ttmp=nz_ttmp+1
+              irow_ttmp(nz_ttmp)=irow(nz)
+              icol_ttmp(nz_ttmp)=icol(nz)
+              amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+            ENDIF
+          ENDIF
+        ENDDO
       ENDDO
 !
       IF(npassing_prev.GE.npassing) THEN
-        nz=nz+1
-        irow(nz)=k+npassing+1
-        icol(nz)=k_prev+npassing+1
-        amat_sp(nz)=-delphim1
-        IF(colltest) THEN
-          nz_ttmp=nz_ttmp+1
-          irow_ttmp(nz_ttmp)=irow(nz)
-          icol_ttmp(nz_ttmp)=icol(nz)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-        ENDIF
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+            irow(nz)=k+npassing+1
+            icol(nz)=k_prev+npassing+1+2*(npassing_prev+1)*(mm-m)
+            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) THEN
+              nz_ttmp=nz_ttmp+1
+              irow_ttmp(nz_ttmp)=irow(nz)
+              icol_ttmp(nz_ttmp)=icol(nz)
+              amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+            ENDIF
+          ENDIF
+        ENDDO
       ENDIF
-!!$!
-!!$! mirroring:
-!!$!
-!!$      IF(npassing_prev.LE.npassing) THEN
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$          irow(nz)=k+npassing+1
-!!$          icol(nz)=k+npassing+kk-1
-!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-!!$          IF(colltest) THEN
-!!$            nz_ttmp=nz_ttmp+1
-!!$            irow_ttmp(nz_ttmp)=irow(nz)
-!!$            icol_ttmp(nz_ttmp)=icol(nz)
-!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
-!!$            ! fixed warning: Possible change of value in conversion
-!!$            ! from COMPLEX(8) to REAL(8)
-!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
-!!$          ENDIF
-!!$        ENDDO
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$          irow(nz)=k+npassing+1
-!!$          icol(nz)=k_prev+npassing_prev+kk-1
-!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
-!!$          IF(colltest) THEN
-!!$            nz_ttmp=nz_ttmp+1
-!!$            irow_ttmp(nz_ttmp)=irow(nz)
-!!$            icol_ttmp(nz_ttmp)=icol(nz)
-!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
-!!$            ! fixed warning: Possible change of value in conversion
-!!$            ! from COMPLEX(8) to REAL(8)
-!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
-!!$          ENDIF
-!!$        ENDDO
-!!$!
-!!$      ENDIF
 !
 ! mirroring:
 !
       IF(npassing_prev.EQ.npassing) THEN
 !
         DO kk=1,4
-          nz=nz+1
-          irow(nz)=k+npassing+1
-          icol(nz)=k+npassing+kk-1
-          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-          IF(colltest) THEN
-            nz_ttmp=nz_ttmp+1
-            irow_ttmp(nz_ttmp)=irow(nz)
-            icol_ttmp(nz_ttmp)=icol(nz)
-            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-          ENDIF
+          DO mm=0,lag
+            IF(Amm(m,mm) .NE. 0.0d0) THEN
+              nz=nz+1
+              irow(nz)=k+npassing+1
+              icol(nz)=k+npassing+kk-1+2*(npassing+1)*(mm-m)
+              amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)*Amm(m,mm)
+              IF(colltest) THEN
+                nz_ttmp=nz_ttmp+1
+                irow_ttmp(nz_ttmp)=irow(nz)
+                icol_ttmp(nz_ttmp)=icol(nz)
+                amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+              ENDIF
+            ENDIF
+          ENDDO
         ENDDO
 !
         DO kk=1,4
-          nz=nz+1
-          irow(nz)=k+npassing+1
-          icol(nz)=k_prev+npassing_prev+kk-1
-          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
-          IF(colltest) THEN
-            nz_ttmp=nz_ttmp+1
-            irow_ttmp(nz_ttmp)=irow(nz)
-            icol_ttmp(nz_ttmp)=icol(nz)
-            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-          ENDIF
+          DO mm=0,lag
+            IF(Amm(m,mm) .NE. 0.0d0) THEN
+              nz=nz+1
+              irow(nz)=k+npassing+1
+              icol(nz)=k_prev+npassing_prev+kk-1+2*(npassing_prev+1)*(mm-m)
+              amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)*Amm(m,mm)
+              IF(colltest) THEN
+                nz_ttmp=nz_ttmp+1
+                irow_ttmp(nz_ttmp)=irow(nz)
+                icol_ttmp(nz_ttmp)=icol(nz)
+                amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+              ENDIF
+            ENDIF
+          ENDDO
         ENDDO
 !
       ELSEIF(npassing_prev.GT.npassing) THEN
-        nz=nz+1
-        irow(nz)=k_prev+npassing_prev+2
-        icol(nz)=k_prev+npassing_prev+1
-        amat_sp(nz)=-delphim1
-        IF(colltest) THEN
-          nz_ttmp=nz_ttmp+1
-          irow_ttmp(nz_ttmp)=irow(nz)
-          icol_ttmp(nz_ttmp)=icol(nz)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-        ENDIF
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+            irow(nz)=k_prev+npassing_prev+2
+            icol(nz)=k_prev+npassing_prev+1+2*(npassing_prev+1)*(mm-m)
+            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) THEN
+              nz_ttmp=nz_ttmp+1
+              irow_ttmp(nz_ttmp)=irow(nz)
+              icol_ttmp(nz_ttmp)=icol(nz)
+              amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+            ENDIF
+          ENDIF
+        ENDDO
       ENDIF
 !
 ! collisions:
 !
       IF(fact_pos_e(istep).NE.0.d0) THEN
-!!$!
-!!$! Lorentz operator:
-!!$!
-!!$        IF(isw_lor.EQ.1) THEN
-!!$!
-!!$          DO ipart=1,npassing+1
-!!$            DO kk=1,5
-!!$              DO mm=0,lag
-!!$                nz=nz+1
-!!$                irow(nz)=k+ipart
-!!$                icol(nz)=k+MAX(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-!!$                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
-!!$                           *fact_pos_e(istep)*0.5d0
-!!$                nz_coll=nz_coll+1
-!!$                irow_coll(nz_coll)=irow(nz)
-!!$                icol_coll(nz_coll)=icol(nz)
-!!$                amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
-!!$!
-!!$                IF(ipart.LE.npassing_prev+1) THEN
-!!$                  nz=nz+1
-!!$                  irow(nz)=k+ipart
-!!$                  icol(nz)=k_prev+MAX(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
-!!$                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep-1) &
-!!$                             *fact_pos_e(istep)*0.5d0
-!!$                ENDIF
-!!$!
-!!$                IF(.NOT.colltest.AND.mm.EQ.m) THEN
-!!$                  nz_ttmp=nz_ttmp+1
-!!$                  irow_ttmp(nz_ttmp)=irow(nz)
-!!$                  icol_ttmp(nz_ttmp)=icol(nz)
-!!$                  amat_ttmp(nz_ttmp)=-ttmp_mat(kk,ipart,istep)
-!!$                  IF(irow(nz).EQ.icol(nz)) THEN
-!!$                    amat_ttmp(nz_ttmp)=amat_ttmp(nz_ttmp)+1.d0
-!!$                  ENDIF
-!!$                ENDIF
-!!$              ENDDO
-!!$            ENDDO
-!!$          ENDDO
-!!$!
-!!$        ENDIF
-!!$!
-!!$        nz_beg=nz+1
-!!$        nz_coll_beg=nz_coll+1
 !
 ! Lorentz operator:
 !
@@ -2388,42 +2375,61 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing+1
             DO kk=1,5
               DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k+ipart
-                icol(nz)=k+MAX(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
-                           *fact_pos_e(istep)*0.5d0
-                nz_coll=nz_coll+1
-                irow_coll(nz_coll)=irow(nz)
-                icol_coll(nz_coll)=icol(nz)
-                amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
-!
-!
-                IF(.NOT.colltest.AND.mm.EQ.m) THEN
+                IF(anumm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  irow(nz)=k+ipart
+                  icol(nz)=k+MAX(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
+                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+                           *fact_pos_e(istep)
+                  nz_coll=nz_coll+1
+                  irow_coll(nz_coll)=irow(nz)
+                  icol_coll(nz_coll)=icol(nz)
+                  amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
+                ENDIF
+                IF(.NOT.colltest.AND.(Amm(m,mm) .NE. 0.0d0)) THEN
                   nz_ttmp=nz_ttmp+1
                   irow_ttmp(nz_ttmp)=irow(nz)
                   icol_ttmp(nz_ttmp)=icol(nz)
-!                  amat_ttmp(nz_ttmp)=-ttmp_mat(kk,ipart,istep)
-                  amat_ttmp(nz_ttmp)=-ttmp_mat(kk,ipart,istep)*0.5d0
-                  IF(irow(nz).EQ.icol(nz)) THEN
-                    amat_ttmp(nz_ttmp)=amat_ttmp(nz_ttmp)+1.d0
-                  ENDIF
-                ENDIF
-!
-                IF(ipart.LE.npassing_prev+1) THEN
-                  nz=nz+1
-                  irow(nz)=k+ipart
-                  icol(nz)=k_prev+MAX(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
-                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep-1) &
-                             *fact_pos_e(istep)*0.5d0
-                  IF(.NOT.colltest.AND.mm.EQ.m) THEN
-                    nz_ttmp=nz_ttmp+1
-                    irow_ttmp(nz_ttmp)=irow(nz)
-                    icol_ttmp(nz_ttmp)=icol(nz)
-                    amat_ttmp(nz_ttmp)=-ttmp_mat(kk,ipart,istep-1)*0.5d0
+                  amat_ttmp(nz_ttmp)=-ttmp_mat(kk,ipart,istep)*Amm(m,mm)
+                  IF(ipart .EQ. (MAX(0,ipart-3)+kk)) THEN
+                    amat_ttmp(nz_ttmp)=amat_ttmp(nz_ttmp)+Amm(m,mm)
                   ENDIF
                 ENDIF
               ENDDO
+            ENDDO
+          ENDDO
+!
+! matching collisional flux through the boundary in backward Euler scheme:
+!
+          DO kk=1,4
+            DO mm=0,lag
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k+npassing+1
+                icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
+                amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
+                         *fact_pos_e(istep)
+                nz_coll=nz_coll+1
+                irow_coll(nz_coll)=irow(nz)
+                icol_coll(nz_coll)=icol(nz)
+                amat_coll(nz_coll)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)
+              ENDIF
+            ENDDO
+          ENDDO
+!
+          DO kk=1,4
+            DO mm=0,lag
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k+npassing+1
+                icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
+                amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1) &
+                         *fact_pos_b(istep-1)
+                nz_coll=nz_coll+1
+                irow_coll(nz_coll)=irow(nz)
+                icol_coll(nz_coll)=icol(nz)
+                amat_coll(nz_coll)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1)
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -2436,38 +2442,55 @@ rotfactor=imun*m_phi
 !
         IF(isw_ene.EQ.1) THEN
 !
-          DO ipart=1,npassing+1
+          DO ipart=1,npassing
             DO kk=1,4
               DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k+ipart
-                icol(nz)=k+MAX(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
-                nz_coll=nz_coll+1
-                irow_coll(nz_coll)=irow(nz)
-                icol_coll(nz_coll)=icol(nz)
-                !! Modification by Andreas F. Martitsch (17.07.2015)
-                ! fixed warning: Possible change of value in conversion
-                ! from COMPLEX(8) to REAL(8)
-                amat_coll(nz_coll)=REAL(amat_sp(nz),dp)*2.d0
-                !! End Modification by Andreas F. Martitsch (17.07.2015)
-              ENDDO
-            ENDDO
-!
-            IF(ipart.LE.npassing_prev+1) THEN
-              DO kk=1,4
-                DO mm=0,lag
+                IF(denmm(m,mm) .NE. 0.0d0) THEN
                   nz=nz+1
                   irow(nz)=k+ipart
-                  icol(nz)=k_prev+MAX(0,ipart-2)+kk+2*(npassing_prev+1)*(mm-m)
-                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
-                ENDDO
+                  icol(nz)=k+MAX(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
+                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+                  nz_coll=nz_coll+1
+                ENDIF
               ENDDO
-            ENDIF
+            ENDDO
+          ENDDO
 !
+          DO kk=1,4
+            DO mm=0,lag
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k+npassing+1
+                icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
+                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+                         *rhs_mat_energ(kk,npassing+1,istep)
+                nz_coll=nz_coll+1
+              ENDIF
+            ENDDO
+          ENDDO
+!
+          DO kk=1,4
+            DO mm=0,lag
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k+npassing+1
+                icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
+                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+                         *rhs_mat_energ(kk,npassing_prev+1,istep-1)
+                nz_coll=nz_coll+1
+              ENDIF
+            ENDDO
           ENDDO
 !
         ENDIF
+!
+        irow_coll(nz_coll_beg:nz_coll)=irow(nz_beg:nz)
+        icol_coll(nz_coll_beg:nz_coll)=icol(nz_beg:nz)
+        !! Modification by Andreas F. Martitsch (17.07.2015)
+        ! fixed warning: Possible change of value in conversion
+        ! from COMPLEX(8) to REAL(8)
+        amat_coll(nz_coll_beg:nz_coll)=REAL(amat_sp(nz_beg:nz),dp)
+        !! End Modification by Andreas F. Martitsch (17.07.2015)        
 !
         amat_sp(nz_beg:nz)=fact_pos_e(istep)*amat_sp(nz_beg:nz)
 !
@@ -2475,27 +2498,35 @@ rotfactor=imun*m_phi
 !
 ! regularization sink:
 !
-        DO ipart=1,npassing+1
+        DO ipart=1,npassing
           DO kk=1,4
             DO mm=0,lag
               nz=nz+1
               irow(nz)=k+ipart
               icol(nz)=k+MAX(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)
             ENDDO
           ENDDO
+        ENDDO
 !
-          IF(ipart.LE.npassing_prev+1) THEN
-            DO kk=1,4
-              DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k+ipart
-                icol(nz)=k_prev+MAX(0,ipart-2)+kk+2*(npassing_prev+1)*(mm-m)
-                amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
-              ENDDO
-            ENDDO
-          ENDIF
+        DO kk=1,4
+          DO mm=0,lag
+            nz=nz+1
+            irow(nz)=k+npassing+1
+            icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
+            amat_sp(nz)=0.5d0*x1mm(m,mm)                                  &
+                       *rhs_mat_energ(kk,npassing+1,istep)
+          ENDDO
+        ENDDO
 !
+        DO kk=1,4
+          DO mm=0,lag
+            nz=nz+1
+            irow(nz)=k+npassing+1
+            icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
+            amat_sp(nz)=0.5d0*x1mm(m,mm)                                  &
+                       *rhs_mat_energ(kk,npassing_prev+1,istep-1)
+          ENDDO
         ENDDO
 !
         amat_sp(nz_beg:nz)=-epserr_sink*fact_pos_e(istep)*amat_sp(nz_beg:nz)
@@ -2573,173 +2604,114 @@ rotfactor=imun*m_phi
 ! free flight:
 !
       DO ipart=1,npassing+1
-        nz=nz+1
-        irow(nz)=k-ipart
-        icol(nz)=k-ipart
-        amat_sp(nz)=delphim1
-        IF(colltest) THEN
-          nz_ttmp=nz_ttmp+1
-          irow_ttmp(nz_ttmp)=irow(nz)
-          icol_ttmp(nz_ttmp)=icol(nz)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-        ENDIF
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+            irow(nz)=k-ipart
+            icol(nz)=k-ipart+2*(npassing+1)*(mm-m)
+            amat_sp(nz)=delphim1*Amm(m,mm)
+            IF(colltest) THEN
+              nz_ttmp=nz_ttmp+1
+              irow_ttmp(nz_ttmp)=irow(nz)
+              icol_ttmp(nz_ttmp)=icol(nz)
+              amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+            ENDIF
+          ENDIF
+        ENDDO
       ENDDO
 !
       DO ipart=1,npassing
-        nz=nz+1
-        irow(nz)=k-ipart
-        icol(nz)=k_prev-ipart
-        amat_sp(nz)=-delphim1
-        IF(colltest) THEN
-          nz_ttmp=nz_ttmp+1
-          irow_ttmp(nz_ttmp)=irow(nz)
-          icol_ttmp(nz_ttmp)=icol(nz)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-        ENDIF
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+            irow(nz)=k-ipart
+            icol(nz)=k_prev-ipart+2*(npassing_prev+1)*(mm-m)
+            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) THEN
+              nz_ttmp=nz_ttmp+1
+              irow_ttmp(nz_ttmp)=irow(nz)
+              icol_ttmp(nz_ttmp)=icol(nz)
+              amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+            ENDIF
+          ENDIF
+        ENDDO
       ENDDO
 !
       IF(npassing_prev.GE.npassing) THEN
-        nz=nz+1
-        irow(nz)=k-npassing-1
-        icol(nz)=k_prev-npassing-1
-        amat_sp(nz)=-delphim1
-        IF(colltest) THEN
-          nz_ttmp=nz_ttmp+1
-          irow_ttmp(nz_ttmp)=irow(nz)
-          icol_ttmp(nz_ttmp)=icol(nz)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-        ENDIF
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+            irow(nz)=k-npassing-1
+            icol(nz)=k_prev-npassing-1+2*(npassing_prev+1)*(mm-m)
+            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) THEN
+              nz_ttmp=nz_ttmp+1
+              irow_ttmp(nz_ttmp)=irow(nz)
+              icol_ttmp(nz_ttmp)=icol(nz)
+              amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+            ENDIF
+          ENDIF
+        ENDDO
       ENDIF
-!!$!
-!!$! mirroring:
-!!$!
-!!$      IF(npassing_prev.LE.npassing) THEN
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$          irow(nz)=k-npassing-1
-!!$          icol(nz)=k-npassing-kk+1
-!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-!!$          IF(colltest) THEN
-!!$            nz_ttmp=nz_ttmp+1
-!!$            irow_ttmp(nz_ttmp)=irow(nz)
-!!$            icol_ttmp(nz_ttmp)=icol(nz)
-!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
-!!$            ! fixed warning: Possible change of value in conversion
-!!$            ! from COMPLEX(8) to REAL(8)
-!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
-!!$          ENDIF
-!!$        ENDDO
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$          irow(nz)=k-npassing-1
-!!$          icol(nz)=k_prev-npassing_prev-kk+1
-!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
-!!$          IF(colltest) THEN
-!!$            nz_ttmp=nz_ttmp+1
-!!$            irow_ttmp(nz_ttmp)=irow(nz)
-!!$            icol_ttmp(nz_ttmp)=icol(nz)
-!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
-!!$            ! fixed warning: Possible change of value in conversion
-!!$            ! from COMPLEX(8) to REAL(8)
-!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
-!!$          ENDIF
-!!$        ENDDO
-!!$!
-!!$      ENDIF
 !
 ! mirroring:
 !
       IF(npassing_prev.EQ.npassing) THEN
 !
         DO kk=1,4
-          nz=nz+1
-          irow(nz)=k-npassing-1
-          icol(nz)=k-npassing-kk+1
-          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-          IF(colltest) THEN
-            nz_ttmp=nz_ttmp+1
-            irow_ttmp(nz_ttmp)=irow(nz)
-            icol_ttmp(nz_ttmp)=icol(nz)
-            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-          ENDIF
+          DO mm=0,lag
+            IF(Amm(m,mm) .NE. 0.0d0) THEN
+              nz=nz+1
+              irow(nz)=k-npassing-1
+              icol(nz)=k-npassing-kk+1+2*(npassing+1)*(mm-m)
+              amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)*Amm(m,mm)
+              IF(colltest) THEN
+                nz_ttmp=nz_ttmp+1
+                irow_ttmp(nz_ttmp)=irow(nz)
+                icol_ttmp(nz_ttmp)=icol(nz)
+                amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+              ENDIF
+            ENDIF
+          ENDDO
         ENDDO
 !
         DO kk=1,4
-          nz=nz+1
-          irow(nz)=k-npassing-1
-          icol(nz)=k_prev-npassing_prev-kk+1
-          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
-          IF(colltest) THEN
-            nz_ttmp=nz_ttmp+1
-            irow_ttmp(nz_ttmp)=irow(nz)
-            icol_ttmp(nz_ttmp)=icol(nz)
-            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
-          ENDIF
+          DO mm=0,lag
+            IF(Amm(m,mm) .NE. 0.0d0) THEN
+              nz=nz+1
+              irow(nz)=k-npassing-1
+              icol(nz)=k_prev-npassing_prev-kk+1+2*(npassing_prev+1)*(mm-m)
+              amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)*Amm(m,mm)
+              IF(colltest) THEN
+                nz_ttmp=nz_ttmp+1
+                irow_ttmp(nz_ttmp)=irow(nz)
+                icol_ttmp(nz_ttmp)=icol(nz)
+                amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+              ENDIF
+            ENDIF
+          ENDDO
         ENDDO
 !
       ELSEIF(npassing_prev.GT.npassing) THEN
-        nz=nz+1
-        irow(nz)=k_prev-npassing_prev-2
-        icol(nz)=k_prev-npassing_prev-1
-        amat_sp(nz)=-delphim1
-        IF(colltest) THEN
-          nz_ttmp=nz_ttmp+1
-          irow_ttmp(nz_ttmp)=irow(nz)
-          icol_ttmp(nz_ttmp)=icol(nz)
-          amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)        
-        ENDIF
+        DO mm=0,lag
+          IF(Amm(m,mm) .NE. 0.0d0) THEN
+            nz=nz+1
+            irow(nz)=k_prev-npassing_prev-2
+            icol(nz)=k_prev-npassing_prev-1+2*(npassing_prev+1)*(mm-m)
+            amat_sp(nz)=-delphim1*Amm(m,mm)
+            IF(colltest) THEN
+              nz_ttmp=nz_ttmp+1
+              irow_ttmp(nz_ttmp)=irow(nz)
+              icol_ttmp(nz_ttmp)=icol(nz)
+              amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
+            ENDIF
+          ENDIF
+        ENDDO
       ENDIF
 !
 ! collisions:
 !
       IF(fact_neg_e(istep).NE.0.d0) THEN
-!!$!
-!!$! Lorentz operator:
-!!$!
-!!$        IF(isw_lor.EQ.1) THEN
-!!$!
-!!$          DO ipart=1,npassing+1
-!!$            DO kk=1,5
-!!$              DO mm=0,lag
-!!$                nz=nz+1
-!!$                irow(nz)=k-ipart
-!!$                icol(nz)=k-MAX(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-!!$                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
-!!$                           *fact_neg_e(istep)*0.5d0
-!!$                nz_coll=nz_coll+1
-!!$                irow_coll(nz_coll)=irow(nz)
-!!$                icol_coll(nz_coll)=icol(nz)
-!!$                amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
-!!$!
-!!$                IF(ipart.LE.npassing_prev+1) THEN
-!!$                  nz=nz+1
-!!$                  irow(nz)=k-ipart
-!!$                  icol(nz)=k_prev-MAX(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
-!!$                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep+1) &
-!!$                             *fact_neg_e(istep)*0.5d0
-!!$                ENDIF
-!!$!
-!!$                IF(.NOT.colltest.AND.mm.EQ.m) THEN
-!!$                  nz_ttmp=nz_ttmp+1
-!!$                  irow_ttmp(nz_ttmp)=irow(nz)
-!!$                  icol_ttmp(nz_ttmp)=icol(nz)
-!!$                  amat_ttmp(nz_ttmp)=ttmp_mat(kk,ipart,istep)
-!!$                  IF(irow(nz).EQ.icol(nz)) THEN
-!!$                    amat_ttmp(nz_ttmp)=amat_ttmp(nz_ttmp)-1.d0
-!!$                  ENDIF
-!!$                ENDIF
-!!$              ENDDO
-!!$            ENDDO
-!!$          ENDDO
-!!$!
-!!$        ENDIF
-!!$!
-!!$        nz_beg=nz+1
-!!$        nz_coll_beg=nz_coll+1
 !
 ! Lorentz operator:
 !
@@ -2748,41 +2720,61 @@ rotfactor=imun*m_phi
           DO ipart=1,npassing+1
             DO kk=1,5
               DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k-ipart
-                icol(nz)=k-MAX(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
-                           *fact_neg_e(istep)*0.5d0
-                nz_coll=nz_coll+1
-                irow_coll(nz_coll)=irow(nz)
-                icol_coll(nz_coll)=icol(nz)
-                amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
-!
-                IF(.NOT.colltest.AND.mm.EQ.m) THEN
+                IF(anumm(m,mm) .NE. 0.0d0) THEN
+                  nz=nz+1
+                  irow(nz)=k-ipart
+                  icol(nz)=k-MAX(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
+                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+                           *fact_neg_e(istep)
+                  nz_coll=nz_coll+1
+                  irow_coll(nz_coll)=irow(nz)
+                  icol_coll(nz_coll)=icol(nz)
+                  amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
+                ENDIF
+                IF(.NOT.colltest.AND.(Amm(m,mm) .NE. 0.0d0)) THEN
                   nz_ttmp=nz_ttmp+1
                   irow_ttmp(nz_ttmp)=irow(nz)
                   icol_ttmp(nz_ttmp)=icol(nz)
-                  amat_ttmp(nz_ttmp)=ttmp_mat(kk,ipart,istep)*0.5d0
-                  IF(irow(nz).EQ.icol(nz)) THEN
-                    amat_ttmp(nz_ttmp)=amat_ttmp(nz_ttmp)-1.d0
+                  amat_ttmp(nz_ttmp)=ttmp_mat(kk,ipart,istep)*Amm(m,mm)
+                  IF(ipart.EQ.(MAX(0,ipart-3)+kk)) THEN
+                    amat_ttmp(nz_ttmp)=amat_ttmp(nz_ttmp)-Amm(m,mm)
                   ENDIF
                 ENDIF
-!
-                IF(ipart.LE.npassing_prev+1) THEN
-                  nz=nz+1
-                  irow(nz)=k-ipart
-                  icol(nz)=k_prev-MAX(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
-                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep+1) &
-                             *fact_neg_e(istep)*0.5d0
-                  IF(.NOT.colltest.AND.mm.EQ.m) THEN
-                    nz_ttmp=nz_ttmp+1
-                    irow_ttmp(nz_ttmp)=irow(nz)
-                    icol_ttmp(nz_ttmp)=icol(nz)
-                    amat_ttmp(nz_ttmp)=ttmp_mat(kk,ipart,istep+1)*0.5d0
-                  ENDIF
-                ENDIF
-!
               ENDDO
+            ENDDO
+          ENDDO
+!
+! matching collisional flux through the boundary in backward Euler scheme:
+!
+          DO kk=1,4
+            DO mm=0,lag
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k-npassing-1
+                icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
+                amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
+                         *fact_neg_e(istep)
+                nz_coll=nz_coll+1
+                irow_coll(nz_coll)=irow(nz)
+                icol_coll(nz_coll)=icol(nz)
+                amat_coll(nz_coll)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)
+              ENDIF
+            ENDDO
+          ENDDO
+!
+          DO kk=1,4
+            DO mm=0,lag
+              IF(anumm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k-npassing-1
+                icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
+                amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1) &
+                         *fact_neg_b(istep+1)
+                nz_coll=nz_coll+1
+                irow_coll(nz_coll)=irow(nz)
+                icol_coll(nz_coll)=icol(nz)
+                amat_coll(nz_coll)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1)
+              ENDIF
             ENDDO
           ENDDO
 !
@@ -2795,38 +2787,55 @@ rotfactor=imun*m_phi
 !
         IF(isw_ene.EQ.1) THEN
 !
-          DO ipart=1,npassing+1
+          DO ipart=1,npassing
             DO kk=1,4
               DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k-ipart
-                icol(nz)=k-MAX(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
-                nz_coll=nz_coll+1
-                irow_coll(nz_coll)=irow(nz)
-                icol_coll(nz_coll)=icol(nz)
-                !! Modification by Andreas F. Martitsch (17.07.2015)
-                ! fixed warning: Possible change of value in conversion
-                ! from COMPLEX(8) to REAL(8)
-                amat_coll(nz_coll)=REAL(amat_sp(nz),dp)*2.d0
-                !! End Modification by Andreas F. Martitsch (17.07.2015)
-              ENDDO
-            ENDDO
-!
-            IF(ipart.LE.npassing_prev+1) THEN
-              DO kk=1,4
-                DO mm=0,lag
+                IF(denmm(m,mm) .NE. 0.0d0) THEN
                   nz=nz+1
                   irow(nz)=k-ipart
-                  icol(nz)=k_prev-MAX(0,ipart-2)-kk+2*(npassing_prev+1)*(mm-m)
-                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
-                ENDDO
+                  icol(nz)=k-MAX(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
+                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+                  nz_coll=nz_coll+1
+                ENDIF
               ENDDO
-            ENDIF
+            ENDDO
+          ENDDO
 !
+          DO kk=1,4
+            DO mm=0,lag
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k-npassing-1
+                icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
+                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+                         *rhs_mat_energ(kk,npassing+1,istep)
+                nz_coll=nz_coll+1
+              ENDIF
+            ENDDO
+          ENDDO
+!
+          DO kk=1,4
+            DO mm=0,lag
+              IF(denmm(m,mm) .NE. 0.0d0) THEN
+                nz=nz+1
+                irow(nz)=k-npassing-1
+                icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
+                amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
+                         *rhs_mat_energ(kk,npassing_prev+1,istep+1)
+                nz_coll=nz_coll+1
+              ENDIF
+            ENDDO
           ENDDO
 !
         ENDIF
+!
+        irow_coll(nz_coll_beg:nz_coll)=irow(nz_beg:nz)
+        icol_coll(nz_coll_beg:nz_coll)=icol(nz_beg:nz)
+        !! Modification by Andreas F. Martitsch (17.07.2015)
+        ! fixed warning: Possible change of value in conversion
+        ! from COMPLEX(8) to REAL(8)
+        amat_coll(nz_coll_beg:nz_coll)=REAL(amat_sp(nz_beg:nz),dp)
+        !! End Modification by Andreas F. Martitsch (17.07.2015)        
 !
         amat_sp(nz_beg:nz)=fact_neg_e(istep)*amat_sp(nz_beg:nz)
 !
@@ -2834,27 +2843,35 @@ rotfactor=imun*m_phi
 !
 ! regularization sink:
 !
-        DO ipart=1,npassing+1
+        DO ipart=1,npassing
           DO kk=1,4
             DO mm=0,lag
               nz=nz+1
               irow(nz)=k-ipart
               icol(nz)=k-MAX(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)
             ENDDO
           ENDDO
+        ENDDO
 !
-          IF(ipart.LE.npassing_prev+1) THEN
-            DO kk=1,4
-              DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k-ipart
-                icol(nz)=k_prev-MAX(0,ipart-2)-kk+2*(npassing_prev+1)*(mm-m)
-                amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
-              ENDDO
-            ENDDO
-          ENDIF
+        DO kk=1,4
+          DO mm=0,lag
+            nz=nz+1
+            irow(nz)=k-npassing-1
+            icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
+            amat_sp(nz)=0.5d0*x1mm(m,mm)                                  &
+                       *rhs_mat_energ(kk,npassing+1,istep)
+          ENDDO
+        ENDDO
 !
+        DO kk=1,4
+          DO mm=0,lag
+            nz=nz+1
+            irow(nz)=k-npassing-1
+            icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
+            amat_sp(nz)=0.5d0*x1mm(m,mm)                                  &
+                       *rhs_mat_energ(kk,npassing_prev+1,istep+1)
+          ENDDO
         ENDDO
 !
         amat_sp(nz_beg:nz)=-epserr_sink*fact_neg_e(istep)*amat_sp(nz_beg:nz)
@@ -3331,6 +3348,19 @@ rotfactor=imun*m_phi
 ! Solve the axisymmetric equation set:
 !
   IF(ALLOCATED(qflux_symm)) DEALLOCATE(qflux_symm)
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  !  multi-species part (allocate storage for source_vector)
+  IF(ALLOCATED(source_vector_all)) DEALLOCATE(source_vector_all)
+  ALLOCATE(source_vector_all(n_2d_size,1:4,0:num_spec-1))
+  source_vector_all=(0.0d0,0.0d0)
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+  ! (at the moment these arrays cannot be handled correctly using the
+  ! propagator structure -> global variables used):
+  IF(ALLOCATED(qflux_symm_allspec)) DEALLOCATE(qflux_symm_allspec)
+  ALLOCATE(qflux_symm_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
   IF(nobounceaver) THEN
 !
     nz=nz_symm+nz_regper
@@ -3368,38 +3398,28 @@ rotfactor=imun*m_phi
     !! End Modifications by Andreas F. Martitsch (28.08.2014)
 !
     CALL source_flux
+    !! Modification by Andreas F. Martitsch (23.08.2015)
+    ! save solution of the differential part for species=ispec
+    ! (diffusion coeff. driven by thermodyn. forces of other 
+    ! species are zero -> interaction through integral part)
+    source_vector_all(:,1:4,ispec)=source_vector(:,1:4)
+    !! End Modification by Andreas F. Martitsch (23.08.2015)
 !
     problem_type=.TRUE.
     CALL solve_eqs(.TRUE.)
 !
-!open(12345,form='unformatted',file='solution.dat')
-!read(12345) source_vector
-!close(12345)
-!do
-!print *,'source number'
-!read *,i
-!bvec_sp=0.d0
-!do k=1,nz
-!bvec_sp(irow(k))=bvec_sp(irow(k))+amat_sp(k)*source_vector(icol(k),i)
-!enddo
-!CALL source_flux
-!bvec_sp=bvec_sp-source_vector(:,i)
-!!call matlabplot(real(source_vector(:,i)),0)
-!call matlabplot(real(bvec_sp),0)
-!enddo
-!stop
-!
-!do istep=ibeg,iend
-!call plotsource(10000,real(source_vector))
-!write(10000,*) ' '
-!enddo
-!stop
 istep=(ibeg+iend)/2
-CALL plotsource(10000,REAL(source_vector))
-CALL plotsource(11000,dimag(source_vector))
+call plotsource(10000,real(source_vector))
+call plotsource(11000,dimag(source_vector))
 istep=ibeg
-CALL plotsource(10010,REAL(source_vector))
-CALL plotsource(11010,dimag(source_vector))
+call plotsource(10010,real(source_vector))
+call plotsource(11010,dimag(source_vector))
+istep=iend
+call plotsource(10020,real(source_vector))
+call plotsource(11020,dimag(source_vector))
+istep=ibeg+1
+call plotsource(10030,real(source_vector))
+call plotsource(11030,dimag(source_vector))
 !
 
     DEALLOCATE(irow,icol,amat_sp)
@@ -3420,62 +3440,155 @@ CALL plotsource(11010,dimag(source_vector))
     ! return to calling routine propagator_solver.
     IF(isw_qflux_NA .EQ. 0) THEN
        ! compute qflux only for the axisymmetric equation set
+       !! Modification by Andreas F. Martitsch (23.08.2015)
+       ! old behavior:
        ! --> qflux already available from prop_a%p%qflux
+       !RETURN
+       ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+       ! (at the moment these arrays cannot be handled correctly using the
+       ! propagator structure -> global variables used):
+       IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
+       qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
+       qflux_symm_allspec=qflux_allspec
+       IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+       IF(mpro%getrank() .EQ. 0) THEN
+          ! D33
+!!$          PRINT *,qflux_symm_allspec(2,2,0,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,0,1)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,1)
+!!$          ! D11
+!!$          PRINT *,'qflux(1,1,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,0)
+!!$          PRINT *,'qflux(1,1,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,0)
+!!$          PRINT *,'qflux(1,1,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,1)
+!!$          PRINT *,'qflux(1,1,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,1)
+!!$          ! D12
+!!$          PRINT *,'qflux(1,3,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,0)
+!!$          PRINT *,'qflux(1,3,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,0)
+!!$          PRINT *,'qflux(1,3,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,1)
+!!$          PRINT *,'qflux(1,3,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,1)
+!!$          OPEN(070915,file='qflux_symm_allspec.dat')
+!!$          WRITE(070915,*) boozer_s, collpar, &
+!!$               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
+!!$               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
+!!$               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
+!!$               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
+!!$          CLOSE(070915)
+!!$          !STOP
+       END IF
        RETURN
+       !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE IF(isw_qflux_NA .EQ. 1) THEN
        ! save qflux for the axisymmetric equation set
        ! and proceed with the solution of the non-axisymmetric
        ! equation set (stored within prop_a%p%qflux)
        ALLOCATE(qflux_symm(3,3))
        qflux_symm=qflux
+       !! Modification by Andreas F. Martitsch (23.08.2015)
+       ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+       ! (at the moment these arrays cannot be handled correctly using the
+       ! propagator structure -> global variables used):
+       IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
+       qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
+       qflux_symm_allspec=qflux_allspec
+       IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+       IF(mpro%getrank() .EQ. 0) THEN
+!!$          ! D33
+!!$          PRINT *,qflux_symm_allspec(2,2,0,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,0,1)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,1)
+!!$          ! D11
+!!$          PRINT *,'qflux(1,1,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,0)
+!!$          PRINT *,'qflux(1,1,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,0)
+!!$          PRINT *,'qflux(1,1,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,1)
+!!$          PRINT *,'qflux(1,1,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,1)
+!!$          ! D12
+!!$          PRINT *,'qflux(1,3,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,0)
+!!$          PRINT *,'qflux(1,3,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,0)
+!!$          PRINT *,'qflux(1,3,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,1)
+!!$          PRINT *,'qflux(1,3,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,1)
+!!$          OPEN(070915,file='qflux_symm_allspec.dat')
+!!$          WRITE(070915,*) boozer_s, collpar, &
+!!$               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
+!!$               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
+!!$               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
+!!$               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
+!!$          CLOSE(070915)
+!!$          !STOP
+       END IF
+       !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE
        STOP "Invalid input for isw_qflux_symm (0/1)!"
     END IF
     !! End Modifications by Andreas F. Martitsch (28.07.2014)
 !
     ALLOCATE(f0_coll(n_2d_size,3),f0_ttmp(n_2d_size,3))
+    ALLOCATE(f0_coll_all(n_2d_size,3,0:num_spec-1),f0_ttmp_all(n_2d_size,3,0:num_spec-1))    
     f0_coll=0.d0
     f0_ttmp=0.d0
+    DO ispecp=0,num_spec-1
 !
 ! Here f0_coll=$-\frac{1}{h^\varphi}\sum_{m^\prime}\hat L_{mm^\prime}^c
 !                bar f_{m^\prime}^{\sigma (k)}$ :
 !
-    DO nz=1,nz_coll
-      !! Modification by Andreas F. Martitsch (17.07.2015)
-      ! fixed warning: Possible change of value in conversion
-      ! from COMPLEX(8) to REAL(8)
-      f0_coll(irow_coll(nz),:)=f0_coll(irow_coll(nz),:)+amat_coll(nz)  &
-                              *REAL(source_vector(icol_coll(nz),1:3),dp)
-      !! End Modification by Andreas F. Martitsch (17.07.2015)
-    ENDDO
+       DO nz=1,nz_coll
+          !! Modification by Andreas F. Martitsch (17.07.2015)
+          ! fixed warning: Possible change of value in conversion
+          ! from COMPLEX(8) to REAL(8)
+          f0_coll(irow_coll(nz),:)=f0_coll(irow_coll(nz),:)+amat_coll(nz)  &
+               *REAL(source_vector_all(icol_coll(nz),1:3,ispecp),dp)
+          !! End Modification by Andreas F. Martitsch (17.07.2015)
+       ENDDO
 !
-    IF(isw_intp.EQ.1) THEN
-      ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
+       IF(isw_intp.EQ.1) THEN
+          ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 !
-      DO i=1,3
-        bvec_prev=source_vector(:,i)
+          DO i=1,3
+             bvec_prev=source_vector_all(:,i,ispecp)
 !
-        CALL integral_part(bvec_prev,bvec_iter)
+             CALL integral_part(bvec_prev,bvec_iter)
 !
-        !! Modification by Andreas F. Martitsch (17.07.2015)
-        ! fixed warning: Possible change of value in conversion
-        ! from COMPLEX(8) to REAL(8)
-        f0_coll(:,i)=f0_coll(:,i)-REAL(bvec_iter,dp)
-        !! End Modification by Andreas F. Martitsch (17.07.2015)
-      ENDDO
+             !! Modification by Andreas F. Martitsch (17.07.2015)
+             ! fixed warning: Possible change of value in conversion
+             ! from COMPLEX(8) to REAL(8)
+             f0_coll(:,i)=f0_coll(:,i)-REAL(bvec_iter,dp)
+             !! End Modification by Andreas F. Martitsch (17.07.2015)
+          ENDDO
 !
-      DEALLOCATE(bvec_iter,bvec_prev)
-    ENDIF
+          DEALLOCATE(bvec_iter,bvec_prev)
+       ENDIF
 !
 ! Here f0_ttmp=$-\sigma \eta \difp{}{\eta} f_{m^\prime}^{\sigma (k)}$ :
 !
-    DO nz=1,nz_ttmp
-      !! Modification by Andreas F. Martitsch (17.07.2015)
-      ! fixed warning: Possible change of value in conversion
-      ! from COMPLEX(8) to REAL(8)
-      f0_ttmp(irow_ttmp(nz),:)=f0_ttmp(irow_ttmp(nz),:)+amat_ttmp(nz)  &
-                              *REAL(source_vector(icol_ttmp(nz),1:3),dp)
-      !! End Modification by Andreas F. Martitsch (17.07.2015)
+       DO nz=1,nz_ttmp
+          !! Modification by Andreas F. Martitsch (17.07.2015)
+          ! fixed warning: Possible change of value in conversion
+          ! from COMPLEX(8) to REAL(8)
+          f0_ttmp(irow_ttmp(nz),:)=f0_ttmp(irow_ttmp(nz),:)+amat_ttmp(nz)  &
+               *REAL(source_vector_all(icol_ttmp(nz),1:3,ispecp),dp)
+          !! End Modification by Andreas F. Martitsch (17.07.2015)
+       ENDDO
+
+       f0_ttmp_all(:,:,ispecp)=f0_ttmp(:,:)
+       f0_coll_all(:,:,ispecp)=f0_coll(:,:)
+!
     ENDDO
 !
     IF(colltest) THEN
@@ -3551,22 +3664,30 @@ CALL plotsource(11010,dimag(source_vector))
     !PRINT *,'geodcu_forw: ',geodcu_forw
   ENDIF
 !
-  CALL source_flux
+  DO ispecp=0,num_spec-1
+     IF(nobounceaver) THEN
+        f0_ttmp(:,:)=f0_ttmp_all(:,:,ispecp)
+        f0_coll(:,:)=f0_coll_all(:,:,ispecp)
+     ENDIF
 !
-  IF(nobounceaver) THEN
-    ALLOCATE(ttmpfact(ibeg:iend))
-    !! Modifications by Andreas F. Martitsch (13.06.2014)
-    ! derivative along the periodic Boozer angle theta has
-    ! been redefined to a derivative along the field line (phi_mfl)
-    ! (changes concerning dbnoverb0_dtheta are required!)
-    !ttmpfact=aiota*dbnoverb0_dtheta+imun*m_phi*bnoverb0
-    ttmpfact=dbnoverb0_dphi_mfl
-    !! End Modifications by Andreas F. Martitsch (13.06.2014)
+     CALL source_flux
 !
-    CALL add_f01_source
+     IF(nobounceaver) THEN
+        ALLOCATE(ttmpfact(ibeg:iend))
+        !! Modifications by Andreas F. Martitsch (13.06.2014)
+        ! derivative along the periodic Boozer angle theta has
+        ! been redefined to a derivative along the field line (phi_mfl)
+        ! (changes concerning dbnoverb0_dtheta are required!)
+        !ttmpfact=aiota*dbnoverb0_dtheta+imun*m_phi*bnoverb0
+        ttmpfact=dbnoverb0_dphi_mfl
+        !! End Modifications by Andreas F. Martitsch (13.06.2014)
 !
-    DEALLOCATE(ttmpfact)
-  ENDIF
+        CALL add_f01_source
+!
+        DEALLOCATE(ttmpfact)
+     ENDIF
+     source_vector_all(:,:,ispecp)=source_vector(:,1:4)
+  ENDDO
 !
   expforw=EXP(imun*m_phi*(phi_mfl(iend)-phi_mfl(ibeg)))
   expbackw=(1.d0,0.d0)/expforw
@@ -3593,13 +3714,30 @@ CALL plotsource(11010,dimag(source_vector))
   icol(nz_per_neg+1:nz_asymm)=icol_asymm(nz_per_neg+1:nz_asymm)
   amat_sp(nz_per_neg+1:nz_asymm)=amat_asymm(nz_per_neg+1:nz_asymm)*rotfactor
 !
-  DO i=nz_symm+1,nz_asymm
-    source_vector(irow(i),4)=source_vector(irow(i),4)           &
-                            +amat_sp(i)*bvec_parflow(icol(i))
+  DO ispecp=0,num_spec-1
+     DO i=nz_symm+1,nz_asymm
+        source_vector_all(irow(i),4,ispecp)=source_vector_all(irow(i),4,ispecp) &
+             +amat_sp(i)*bvec_parflow(icol(i))
+     ENDDO
   ENDDO
 !
   problem_type=.FALSE.
   CALL solve_eqs(.TRUE.)
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+  ! (at the moment these arrays cannot be handled correctly using the
+  ! propagator structure -> global variables used):
+  IF(ALLOCATED(qflux_ntv_allspec)) DEALLOCATE(qflux_ntv_allspec)
+  ALLOCATE(qflux_ntv_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
+  IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Non-Axisymm. solution does not exist!"
+  qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
+  qflux_ntv_allspec=qflux_allspec
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  !  multi-species part (if clean is true, deallocate memory)
+  IF(ALLOCATED(source_vector_all)) DEALLOCATE(source_vector_all)
+  IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+  !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
 !istep=(ibeg+iend)/2
 !call plotsource(10000,real(source_vector))
@@ -3973,77 +4111,17 @@ PRINT *,' '
 !
 !------------------------------------------------------------------------
 !
-    SUBROUTINE matlabplot(sourcevec_tmp,m)
-!
-    INTEGER :: iunit_base,nmax,m,i,k
-    DOUBLE PRECISION, DIMENSION(n_2d_size) :: sourcevec_tmp
-    DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: phi_mat,alam_mat,fun_mat
-!
-    nmax=MAXVAL(npl)+1
-    ALLOCATE(phi_mat(ibeg:iend,-nmax:nmax))
-    ALLOCATE(alam_mat(ibeg:iend,-nmax:nmax))
-    ALLOCATE(fun_mat(ibeg:iend,-nmax:nmax))
-!
-    alam_mat=10.d0
-    fun_mat=0.d0
-!
-    DO istep=ibeg,iend
-!
-      phi_mat(istep,:)=phi_mfl(istep)
-!
-      npassing=npl(istep)
-      delta_eta=eta(1:npassing)-eta(0:npassing-1)
-      eta0=1.d0/bhat_mfl(istep)
-      k=ind_start(istep)+2*(npassing+1)*m
-      DO i=1,npassing+1
-        IF(i.LE.npassing) THEN
-          alam_mat(istep,i-npassing-1)=-0.5d0*(alambd(i,istep)+alambd(i-1,istep))
-          fun_mat(istep,i-npassing-1)=sourcevec_tmp(k+2*(npassing+1)-i+1)/delta_eta(i)
-        ELSE
-          alam_mat(istep,i-npassing-1)=-0.5d0*alambd(i-1,istep)
-          fun_mat(istep,i-npassing-1)=sourcevec_tmp(k+2*(npassing+1)-i+1)/(eta0-eta(i-1))
-        ENDIF
-      ENDDO
-      DO i=npassing+1,1,-1
-        IF(i.LE.npassing) THEN
-          alam_mat(istep,npassing+2-i)=0.5d0*(alambd(i,istep)+alambd(i-1,istep))
-          fun_mat(istep,npassing+2-i)=sourcevec_tmp(k+i)/delta_eta(i)
-        ELSE
-          alam_mat(istep,npassing+2-i)=0.5d0*alambd(i-1,istep)
-          fun_mat(istep,npassing+2-i)=sourcevec_tmp(k+i)/(eta0-eta(i-1))
-        ENDIF
-      ENDDO
-    ENDDO
-!
-    iunit_base=12345
-    OPEN(iunit_base,file='phi_matlab.dat')
-    DO istep=ibeg,iend
-      WRITE(iunit_base,*) phi_mat(istep,:)
-    ENDDO
-    CLOSE(iunit_base)
-!
-    OPEN(iunit_base,file='lambda_matlab.dat')
-    DO istep=ibeg,iend
-      WRITE(iunit_base,*) alam_mat(istep,:)
-    ENDDO
-    CLOSE(iunit_base)
-!
-    OPEN(iunit_base,file='fun_matlab.dat')
-    DO istep=ibeg,iend
-      WRITE(iunit_base,*) fun_mat(istep,:)
-    ENDDO
-    CLOSE(iunit_base)
-!
-    END SUBROUTINE matlabplot
-!
-!------------------------------------------------------------------------
-!
     SUBROUTINE solve_eqs(clean)
 !
 ! Solve the linear equation set:
 ! 
     LOGICAL :: clean
     DOUBLE PRECISION,   DIMENSION(:),   ALLOCATABLE :: bvec_sp_real
+    !! Modification by Andreas F. Martitsch (23.08.2015)
+    !  multi-species part
+    INTEGER :: ispecpp ! species indices (loop over sources)
+    DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec_tmp
+    !! End Modification by Andreas F. Martitsch (23.08.2015)
 !
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 !
@@ -4101,30 +4179,54 @@ PRINT *,' '
 ! Solution of inhomogeneus equation (account of sources):
 !
     IF(problem_type) THEN
-       ALLOCATE(source_vector_real(n_2d_size,4))
-       source_vector_real=DBLE(source_vector)
-       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
-                         source_vector_real(:,1:4),iopt)
-       source_vector=source_vector_real
+       ALLOCATE(source_vector_all_real(n_2d_size,1:4,0:num_spec-1))
+       source_vector_all_real=DBLE(source_vector_all)
+       DO ispecp=0,num_spec-1
+         IF(problem_type .AND. ispecp .NE. ispec) CYCLE
+         CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
+                           source_vector_all_real(:,1:4,ispecp),iopt)
+       ENDDO
+       source_vector_all=source_vector_all_real
     ELSE
-       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                         source_vector(:,1:4),iopt)
+       DO ispecp=0,num_spec-1
+         IF(problem_type .AND. ispecp .NE. ispec) CYCLE
+         CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
+                           source_vector_all(:,1:4,ispecp),iopt)
+       ENDDO
     ENDIF
 !
 ! integral part:
 !
     IF(isw_intp.EQ.1) THEN
 !
-      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector(:,4))
+      ! old behavior (for a single species):
+      !fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector(:,4))
+      !  multi-species part :
+      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector_all(:,4,ispec))
 !
       DO k=1,3
 !
-        PRINT *,'source',k,':'
-        mode_iter=2
+        PRINT *,'source ',k,':'
+        ! preconditioned iterations ("next_iteration" provides
+        ! Af and q (provided as an input):
+        !mode_iter=2
+        ! direct iterations:
+        mode_iter=0
 !
-        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,source_vector(:,k))
-!
-        source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow
+        !! Modification by Andreas F. Martitsch (23.08.2015)
+        ! old behavior (for a single species):
+        !CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,source_vector(:,k))
+        !source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow     
+        !  multi-species part:
+        DO ispecp=0,num_spec-1
+          PRINT *,'species',ispecp,':'
+          drive_spec=ispecp
+          CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
+                        source_vector_all(:,k,ispecp))
+             source_vector_all(:,k,ispecp)=&
+                  source_vector_all(:,k,ispecp)+coefincompr*bvec_parflow
+        ENDDO
+        !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
       ENDDO
 !
@@ -4245,7 +4347,32 @@ PRINT *,' '
 !
     ENDIF
 !
-    qflux=0.5d0*REAL(MATMUL(CONJG(flux_vector),source_vector(:,1:3)))
+    !! Modification by Andreas F. Martitsch (23.08.2015)
+    ! old behavior (for a single species)
+    !qflux=0.5d0*REAL(MATMUL(CONJG(flux_vector),source_vector(:,1:3)))
+    !  multi-species part
+    IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+    ALLOCATE(qflux_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
+    qflux_allspec=0.0d0
+    DO ispecp=0,num_spec-1
+      qflux=0.5d0*REAL(MATMUL(CONJG(flux_vector),source_vector_all(:,1:3,ispecp)),dp)
+      qflux_allspec(:,:,ispecp,ispec)=qflux 
+    ENDDO
+    ! order of species inidices (ispecp,ispec) interchanged
+    ! (-> easier to handle within mpro%allgather)
+    CALL mpro%allgather(qflux_allspec(:,:,:,ispec),qflux_allspec)
+    ! go back to the "natural" order of species indices (ispec,ispecp)
+    IF(ALLOCATED(qflux_allspec_tmp)) DEALLOCATE(qflux_allspec_tmp)
+    ALLOCATE(qflux_allspec_tmp(1:3,1:3,0:num_spec-1,0:num_spec-1))
+    qflux_allspec_tmp=0.0d0
+    DO ispecp=0,num_spec-1
+      DO ispecpp=0,num_spec-1
+        qflux_allspec_tmp(:,:,ispecp,ispecpp)=qflux_allspec(:,:,ispecpp,ispecp)
+      ENDDO
+    ENDDO
+    qflux_allspec=qflux_allspec_tmp
+    IF(ALLOCATED(qflux_allspec_tmp)) DEALLOCATE(qflux_allspec_tmp)
+    !! End Modification by Andreas F. Martitsch (23.08.2015)
 !
     IF(clean) THEN
 !
@@ -4336,8 +4463,6 @@ PRINT *,' '
         IF(istep.GT.ibeg) THEN
           npassing_prev=npl(istep-1)
           k_prev=ind_start(istep-1)+2*(npassing_prev+1)*m
-!
-!
           IF(ioddeven.EQ.1) THEN
             npassing_next=npl(istep+1)
             source_vector(k+1:k+npassing+1,1)                                &
@@ -4876,14 +5001,148 @@ PRINT *,' '
 !
     IMPLICIT NONE
 !
-    INTEGER :: l,m,i,k,istep,npassing,k_prev
+    INTEGER :: l,m,i,k,istep,npassing
 !
     DOUBLE COMPLEX, DIMENSION(n_2d_size)                 :: vec_in,vec_out
-    DOUBLE COMPLEX, DIMENSION(0:lag,0:leg)               :: scalprod_pleg
+    !! Modification by Andreas F. Martitsch (20.08.2015)
+    ! Array extended by 3rd (phi-steps) and 4th dimension (species) 
+    DOUBLE COMPLEX, DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg
+    DOUBLE COMPLEX, DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg_tmp
+    ! Species index
+    INTEGER :: ispecp
+    !! End Modification by Andreas F. Martitsch (20.08.2015)    
     DOUBLE COMPLEX, DIMENSION(:,:,:), ALLOCATABLE        :: vec_tmp
 !
     ALLOCATE(vec_tmp(0:lag,2*(npart+1),ibeg:iend))
     vec_tmp=0.d0
+!
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! Array scalprod_pleg extended by 3rd (phi-steps) and
+! 4th dimension (species)
+    DO istep=ibeg,iend
+!
+      npassing=npl(istep)
+!
+IF(.FALSE.) THEN
+!if(istep.eq.ibeg) then
+DO m=0,lag
+DO i=1,npassing
+k=ind_start(istep)+i+2*(npassing+1)*m
+WRITE(2001,*) vec_in(k)/(eta(i)-eta(i-1))
+ENDDO
+i=npassing+1
+k=ind_start(istep)+i+2*(npassing+1)*m
+WRITE(2001,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
+k=ind_start(istep)+i+1+2*(npassing+1)*m
+WRITE(2001,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
+DO i=npassing,1,-1
+k=ind_start(istep)+2*npassing+3-i+2*(npassing+1)*m
+WRITE(2001,*) vec_in(k)/(eta(i)-eta(i-1))
+ENDDO
+ENDDO
+CLOSE(2001)
+ENDIF
+IF(.FALSE.) THEN
+!if(istep.eq.(ibeg+iend)/2) then
+DO m=0,lag
+DO i=1,npassing
+k=ind_start(istep)+i+2*(npassing+1)*m
+WRITE(2002,*) vec_in(k)/(eta(i)-eta(i-1))
+ENDDO
+i=npassing+1
+k=ind_start(istep)+i+2*(npassing+1)*m
+WRITE(2002,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
+k=ind_start(istep)+i+1+2*(npassing+1)*m
+WRITE(2002,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
+DO i=npassing,1,-1
+k=ind_start(istep)+2*npassing+3-i+2*(npassing+1)*m
+WRITE(2002,*) vec_in(k)/(eta(i)-eta(i-1))
+ENDDO
+ENDDO
+CLOSE(2002)
+!pause
+ENDIF
+!
+      DO m=0,lag
+        k=ind_start(istep)+2*(npassing+1)*m
+        DO l=0,leg
+          scalprod_pleg(m,l,istep,ispec)=                                 &
+              SUM(pleg_bra(l,1:npassing+1,istep)*vec_in(k+1:k+npassing+1))
+        ENDDO
+        k=k+2*(npassing+1)
+        DO l=0,leg,2
+          scalprod_pleg(m,l,istep,ispec)=scalprod_pleg(m,l,istep,ispec)   &
+             +SUM(pleg_bra(l,1:npassing+1,istep)*vec_in(k:k-npassing:-1))
+        ENDDO
+        DO l=1,leg,2
+          scalprod_pleg(m,l,istep,ispec)=scalprod_pleg(m,l,istep,ispec)   &
+             -SUM(pleg_bra(l,1:npassing+1,istep)*vec_in(k:k-npassing:-1))
+        ENDDO
+      ENDDO
+    ENDDO
+!
+! Finish filling-up array scalprod_pleg
+!! End Modification by Andreas F. Martitsch (20.08.2015)  
+!
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
+! (mpro%allgather supports 3D and 4D matrices)
+!PRINT *,'mpro%getrank() before:', mpro%getrank()
+CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
+!PRINT *,'mpro%getrank() after:', mpro%getrank()
+!PRINT *,'scalprod_pleg, species = ',ispec
+!IF(mpro%getrank() .EQ. 0) THEN
+!PRINT *,scalprod_pleg(:,:,ibeg,0)
+!PRINT *,scalprod_pleg(:,:,ibeg,1)
+!STOP
+!END IF
+!
+    DO istep=ibeg,iend
+!
+      npassing=npl(istep)
+!
+! ailmm is now 5D object of species (alpha,alphap)
+!
+      DO l=0,leg
+        scalprod_pleg_tmp(0:lag,l,istep,ispec)=0.0d0
+        DO ispecp=0,num_spec-1
+          scalprod_pleg_tmp(0:lag,l,istep,ispec)=scalprod_pleg_tmp(0:lag,l,istep,ispec)+&
+             MATMUL(ailmm_aa(0:lag,0:lag,l,ispec,ispecp),&
+                    scalprod_pleg(0:lag,l,istep,ispecp))
+        ENDDO
+        scalprod_pleg(0:lag,l,istep,ispec)=scalprod_pleg_tmp(0:lag,l,istep,ispec)
+        ! old behavior (for a single species)
+        !scalprod_pleg(0:lag,l)=MATMUL(ailmm(0:lag,0:lag,l),  &
+        !                              scalprod_pleg(0:lag,l))
+      ENDDO
+!
+! end of interaction with rest processors
+!
+      DO m=0,lag
+!
+        DO l=0,leg
+          vec_tmp(m,1:npassing+1,istep)=vec_tmp(m,1:npassing+1,istep)   &
+                      +scalprod_pleg(m,l,istep,ispec)*pleg_ket(l,1:npassing+1,istep)
+        ENDDO
+!
+        k=2*(npassing+1)
+!
+        DO l=0,leg,2
+          vec_tmp(m,k:k-npassing:-1,istep)=vec_tmp(m,k:k-npassing:-1,istep) &
+                      +scalprod_pleg(m,l,istep,ispec)*pleg_ket(l,1:npassing+1,istep)
+        ENDDO
+        DO l=1,leg,2
+          vec_tmp(m,k:k-npassing:-1,istep)=vec_tmp(m,k:k-npassing:-1,istep) &
+                      -scalprod_pleg(m,l,istep,ispec)*pleg_ket(l,1:npassing+1,istep)
+        ENDDO
+!
+      ENDDO
+!
+    ENDDO
+!
+! Finish computations with scalprod_pleg
+!! End Modification by Andreas F. Martitsch (20.08.2015)    
+    vec_out=0.d0
 !
     DO istep=ibeg,iend
 !
@@ -4891,88 +5150,19 @@ PRINT *,' '
 !
       DO m=0,lag
         k=ind_start(istep)+2*(npassing+1)*m
-        DO l=0,leg
-          scalprod_pleg(m,l)=                                             &
-              SUM(pleg_bra(l,1:npassing+1,istep)*vec_in(k+1:k+npassing+1))
-        ENDDO
-        k=k+2*(npassing+1)
-        DO l=0,leg,2
-          scalprod_pleg(m,l)=scalprod_pleg(m,l)                           &
-             +SUM(pleg_bra(l,1:npassing+1,istep)*vec_in(k:k-npassing:-1))
-        ENDDO
-        DO l=1,leg,2
-          scalprod_pleg(m,l)=scalprod_pleg(m,l)                           &
-             -SUM(pleg_bra(l,1:npassing+1,istep)*vec_in(k:k-npassing:-1))
-        ENDDO
-      ENDDO
 !
-      DO l=0,leg
-        scalprod_pleg(0:lag,l)=MATMUL(ailmm(0:lag,0:lag,l),               &
-                                      scalprod_pleg(0:lag,l))
-      ENDDO
+        IF(istep.GT.ibeg) THEN
+          vec_out(k+1:k+npassing+1)=vec_out(k+1:k+npassing+1)               &
+                                   +vec_tmp(m,1:npassing+1,istep)           &
+                                   *fact_pos_e(istep)
+        ENDIF
 !
-      DO m=0,lag
-!
-        DO l=0,leg
-          vec_tmp(m,1:npassing+1,istep)=vec_tmp(m,1:npassing+1,istep)     &
-                      +scalprod_pleg(m,l)*pleg_ket(l,1:npassing+1,istep)
-        ENDDO
-!
-        k=2*(npassing+1)
-!
-        DO l=0,leg,2
-          vec_tmp(m,k:k-npassing:-1,istep)=vec_tmp(m,k:k-npassing:-1,istep) &
-                      +scalprod_pleg(m,l)*pleg_ket(l,1:npassing+1,istep)
-        ENDDO
-        DO l=1,leg,2
-          vec_tmp(m,k:k-npassing:-1,istep)=vec_tmp(m,k:k-npassing:-1,istep) &
-                      -scalprod_pleg(m,l)*pleg_ket(l,1:npassing+1,istep)
-        ENDDO
-!
-      ENDDO
-!
-    ENDDO
-!
-    vec_tmp=0.5d0*vec_tmp
-!
-    vec_out=0.d0
-!
-! forwards:
-    DO istep=ibeg+1,iend
-!
-      DO m=0,lag
-        npassing=npl(istep)
-        k=ind_start(istep)+2*(npassing+1)*m
-!
-        vec_out(k+1:k+npassing+1)=vec_out(k+1:k+npassing+1)             &
-                                 +vec_tmp(m,1:npassing+1,istep)         &
-                                 *fact_pos_e(istep)
-!
-        npassing=MIN(npassing,npl(istep-1))
-        vec_out(k+1:k+npassing+1)=vec_out(k+1:k+npassing+1)             &
-                                 +vec_tmp(m,1:npassing+1,istep-1)       &
-                                 *fact_pos_e(istep)
-      ENDDO
-!
-    ENDDO
-!
-! backwards:
-    DO istep=ibeg,iend-1
-!
-      DO m=0,lag
-        npassing=npl(istep)
-        k_prev=2*(npassing+1)
-        k=ind_start(istep)+2*(npassing+1)*(m+1)
-!
-        vec_out(k-npassing:k)=vec_out(k-npassing:k)                     &
-                             +vec_tmp(m,k_prev-npassing:k_prev,istep)   &
-                             *fact_neg_e(istep)
-!
-        npassing=MIN(npassing,npl(istep+1))
-        k_prev=2*(npl(istep+1)+1)
-        vec_out(k-npassing:k)=vec_out(k-npassing:k)                     &
-                             +vec_tmp(m,k_prev-npassing:k_prev,istep+1) &
-                             *fact_neg_e(istep)
+        IF(istep.LT.iend) THEN
+          vec_out(k+npassing+2:k+2*npassing+2)                              &
+               =vec_out(k+npassing+2:k+2*npassing+2)                        &
+               +vec_tmp(m,npassing+2:2*npassing+2,istep)                    &
+               *fact_neg_e(istep)
+        ENDIF
       ENDDO
 !
     ENDDO
@@ -5003,8 +5193,13 @@ PRINT *,' '
                        fnew,iopt)
   ENDIF
 !
+  ! old behavior (for a single species):
+  !coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
+  !fnew=fnew-coefincompr*source_vector(:,4)
+  !  multi-species part (4th column is the same for all drives):
+  !coefincompr=0.0d0
   coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
-  fnew=fnew-coefincompr*source_vector(:,4)
+  fnew=fnew-coefincompr*source_vector_all(:,4,ispec)
 !
   END SUBROUTINE next_iteration
 !
@@ -5055,7 +5250,7 @@ PRINT *,' '
   IMPLICIT NONE
 !
 ! tol0 - largest eigenvalue tolerated in combined iterations:
-  INTEGER,          PARAMETER :: ntol0=5
+  INTEGER,          PARAMETER :: ntol0=4
   DOUBLE PRECISION, PARAMETER :: tol0=0.5d0
 !
 !  external :: next_iteration
@@ -5066,6 +5261,17 @@ PRINT *,' '
   DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: fold,fnew
   DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: coefren
   DOUBLE COMPLEX, DIMENSION(:,:), ALLOCATABLE :: amat,bvec
+!
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> Exchange exit conditions between
+! different processes
+  DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond1
+  DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
+! MPI Barrier -> Exchange coefren and amat
+! between different processes
+  DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: coefren_spec
+  DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: amat_spec
+!! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   IF(mode_in.EQ.3) THEN
     mode=mode_in
@@ -5106,6 +5312,8 @@ PRINT *,' '
 !    call arnoldi(n,narn,next_iteration)
     CALL arnoldi(n,narn)
 IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
+    !PRINT *,ngrow
+    !STOP
 !
     IF(ierr.NE.0) THEN
       PRINT *,'iterator: error in arnoldi'
@@ -5116,6 +5324,8 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
   ENDIF
 !
   ALLOCATE(fold(n),fnew(n))
+  !PRINT *,fzero
+  !STOP
 !
   IF(ngrow.EQ.0) THEN
 !
@@ -5126,7 +5336,17 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
     DO iter=1,itermax
       CALL next_iteration(n,fold,fnew)
       IF(mode.EQ.2 .OR. mode.EQ.0) fnew=fnew+fzero
-      IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
+      !! Modification by Andreas F. Martitsch (20.08.2015)
+      ! MPI Barrier -> Exchange exit conditions between
+      ! different processes
+      !IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
+      break_cond1(ispec)=SUM(ABS(fnew-fold))
+      break_cond2(ispec)=relerr*SUM(ABS(fnew))
+      PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
+      CALL mpro%allgather(break_cond1(ispec), break_cond1)
+      CALL mpro%allgather(break_cond2(ispec), break_cond2)
+      IF(ALL(break_cond1 .LE. break_cond2)) EXIT
+      !! End Modification by Andreas F. Martitsch (20.08.2015)
       fold=fnew
       IF(iter.EQ.itermax) PRINT *, &
               'iterator: maximum number of iterations reached'
@@ -5147,11 +5367,25 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !
   ALLOCATE(amat(nsize,nsize),bvec(nsize,nsize),ipiv(nsize),coefren(nsize))
   bvec=(0.d0,0.d0)
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> Exchange coefren and amat
+! between different processes
+  IF(ALLOCATED(coefren_spec)) DEALLOCATE(coefren_spec)
+  ALLOCATE(coefren_spec(0:num_spec-1))
+  IF(ALLOCATED(amat_spec)) DEALLOCATE(amat_spec)
+  ALLOCATE(amat_spec(0:num_spec-1))
+!! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   DO i=1,nsize
     bvec(i,i)=(1.d0,0.d0)
     DO j=1,nsize
-      amat(i,j)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))*(ritznum(j)-(1.d0,0.d0))
+      !! Modification by Andreas F. Martitsch (20.08.2015)
+      ! MPI Barrier -> Exchange amat between different processes
+      !amat(i,j)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))*(ritznum(j)-(1.d0,0.d0))
+      amat_spec(ispec)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))
+      CALL mpro%allgather(amat_spec(ispec),amat_spec)
+      amat(i,j)=SUM(amat_spec)*(ritznum(j)-(1.d0,0.d0))
+      !! End Modification by Andreas F. Martitsch (20.08.2015)
     ENDDO
   ENDDO
 !
@@ -5176,11 +5410,30 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
     CALL next_iteration(n,fold,fnew)
     IF(mode.EQ.2) fnew=fnew+fzero
     DO j=1,nsize
+      !! Modification by Andreas F. Martitsch (20.08.2015)
+      ! MPI Barrier -> Exchange amat between different processes
+      !coefren(j)=ritznum(j)*SUM(bvec(j,:)                           &
+      !          *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
+      coefren_spec(ispec)=SUM(bvec(j,:)                           &
+                *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
+      CALL mpro%allgather(coefren_spec(ispec),coefren_spec)
+      coefren(j)=ritznum(j)*SUM(coefren_spec)
+      !! End Modification by Andreas F. Martitsch (20.08.2015)
       coefren(j)=ritznum(j)*SUM(bvec(j,:)                           &
                 *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
     ENDDO
     fnew=fnew-MATMUL(eigvecs(:,1:nsize),coefren)
-    IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
+    !! Modification by Andreas F. Martitsch (20.08.2015)
+    ! MPI Barrier -> Exchange exit conditions between
+    ! different processes
+    !IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
+    break_cond1(ispec)=SUM(ABS(fnew-fold))
+    break_cond2(ispec)=relerr*SUM(ABS(fnew))
+    PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
+    CALL mpro%allgather_double_1(break_cond1(ispec), break_cond1)
+    CALL mpro%allgather(break_cond2(ispec), break_cond2)
+    IF(ALL(break_cond1 .LE. break_cond2)) EXIT
+    !! End Modification by Andreas F. Martitsch (20.08.2015)
     fold=fnew
     IF(iter.EQ.itermax) PRINT *,'iterator: maximum number of iterations reached'
   ENDDO
@@ -5224,8 +5477,15 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !
 !  external :: next_iteration
   INTEGER                                       :: n,m,k,j,mmax,mbeg,ncount
+  INTEGER :: driv_spec
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
   DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
+!
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> Exchange qvecs_prevs and hmat
+! between different processes
+  DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
+!! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   ALLOCATE(fold(n),fnew(n))
   ALLOCATE(qvecs_prev(n,1),ritznum_prev(mmax))
@@ -5242,7 +5502,20 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
     fnew=fzero
   ENDIF
 !
-  qvecs_prev(:,1)=fnew/SQRT(SUM(CONJG(fnew)*fnew))
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> Exchange qvecs_prevs and hmat
+! between different processes
+  !qvecs_prev(:,1)=fnew/SQRT(SUM(CONJG(fnew)*fnew))
+  IF(ALLOCATED(q_spec)) DEALLOCATE(q_spec)
+  ALLOCATE(q_spec(0:num_spec-1))
+  q_spec=0.0d0
+  IF(ALLOCATED(h_spec)) DEALLOCATE(h_spec)
+  ALLOCATE(h_spec(0:num_spec-1))
+  h_spec=0.0d0
+  q_spec(ispec)=SUM(CONJG(fnew)*fnew)
+  CALL mpro%allgather(q_spec(ispec), q_spec)
+  qvecs_prev(:,1)=fnew/SQRT(SUM(q_spec))
+!! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   ierr=0
   mbeg=2
@@ -5264,10 +5537,26 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
         qvecs(:,k)=fnew
       ENDIF
       DO j=1,k-1
-        hmat(j,k-1)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
+        !! Modification by Andreas F. Martitsch (20.08.2015)
+        ! MPI Barrier -> Exchange qvecs_prevs and hmat
+        ! between different processes
+        !hmat(j,k-1)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))         
+        h_spec=0.0d0
+        h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
+        CALL mpro%allgather(h_spec(ispec), h_spec)
+        hmat(j,k-1)=SUM(h_spec)
+        !! End Modification by Andreas F. Martitsch (20.08.2015) 
         qvecs(:,k)=qvecs(:,k)-hmat(j,k-1)*qvecs(:,j)
       ENDDO
-      hmat(k,k-1)=SQRT(SUM(CONJG(qvecs(:,k))*qvecs(:,k)))
+      !! Modification by Andreas F. Martitsch (20.08.2015)
+      ! MPI Barrier -> Exchange qvecs_prevs and hmat
+      ! between different processes
+      !hmat(k,k-1)=SQRT(SUM(CONJG(qvecs(:,k))*qvecs(:,k)))
+      h_spec=0.0d0
+      h_spec(ispec)=SUM(CONJG(qvecs(:,k))*qvecs(:,k))
+      CALL mpro%allgather(h_spec(ispec), h_spec)
+      hmat(k,k-1)=SQRT(SUM(h_spec))
+      !! End Modification by Andreas F. Martitsch (20.08.2015)
       qvecs(:,k)=qvecs(:,k)/hmat(k,k-1)
     ENDDO
 !
@@ -5303,6 +5592,11 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
   ENDDO
 !
   DEALLOCATE(fold,fnew,qvecs,qvecs_prev,hmat)
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> Exchange qvecs_prevs and hmat
+! between different processes
+  DEALLOCATE(q_spec,h_spec)
+!! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   END SUBROUTINE arnoldi
 !
@@ -5432,511 +5726,511 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !
   END SUBROUTINE try_eigvecvals
 !
-END SUBROUTINE ripple_solver_ArnoldiO2
+END SUBROUTINE ripple_solver_ArnoldiO1
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
 !! Modifications by Andreas F. Martitsch (27.07.2015)
 ! Multiple definitions avoided
-!!$SUBROUTINE rearrange_phideps(ibeg,iend,npart,ncomp,nreal,subsqmin,phi_divide, &
-!!$                             phi_mfl,bhat_mfl,arr_real,arr_comp,eta,          &
-!!$                             delt_pos,delt_neg,                               &
-!!$                             fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
-!!$!
-!!$! Mnemonics: 
-!!$! fact_pos_b(i) - integration step in positive direction starts at point i
-!!$! fact_pos_e(i) - integration step in positive direction ends at point i
-!!$! fact_neg_b(i) - integration step in negative direction starts at point i
-!!$! fact_neg_e(i) - integration step in negative direction ends at point i
-!!$!
-!!$  USE plagrange_mod
-!!$!
-!!$  IMPLICIT NONE
-!!$!
-!!$!  logical, parameter :: stepmode=.true.
-!!$  LOGICAL, PARAMETER :: stepmode=.FALSE.
-!!$  INTEGER, PARAMETER :: npoi=6, nder=0, npoihalf=npoi/2, nstepmin=8
-!!$  DOUBLE PRECISION, PARAMETER :: bparabmax=0.2d0
-!!$!
-!!$  INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
-!!$  INTEGER :: ncomp,nreal
-!!$  INTEGER :: ncross_l,ncross_r,ib,ie,intb,inte,k,imid,isplit
-!!$!
-!!$  DOUBLE PRECISION :: subsqmin,ht,ht2,bparab,x1,x2,f1,f2
-!!$!
-!!$  INTEGER, DIMENSION(1)              :: idummy
-!!$  INTEGER, DIMENSION(1:iend)         :: phi_divide
-!!$  INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
-!!$!
-!!$  DOUBLE PRECISION, DIMENSION(0:nder,npoi)      :: coeff
-!!$  DOUBLE PRECISION, DIMENSION(0:npart)          :: eta
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: phi_mfl,bhat_mfl
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend,nreal)  :: arr_real
-!!$  DOUBLE COMPLEX,   DIMENSION(ibeg:iend,ncomp)  :: arr_comp
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: delt_pos,delt_neg
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: fact_pos_b,fact_neg_b
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: fact_pos_e,fact_neg_e
-!!$  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE   :: phi_new,bhat_new
-!!$  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: arr_real_new
-!!$  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: arr_comp_new
-!!$!
-!!$  CALL fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
-!!$                                phi_mfl,bhat_mfl,eta)
-!!$!
-!!$  phi_divide=1
-!!$!
-!!$  delt_pos(ibeg+1:iend)=phi_mfl(ibeg+1:iend)-phi_mfl(ibeg:iend-1)
-!!$  fact_pos_b=1.d0
-!!$  fact_pos_e=1.d0
-!!$!
-!!$! determine level crossings:
-!!$!
-!!$  idummy=MINLOC(bhat_mfl(ibeg:iend))
-!!$  ibmin=idummy(1)+ibeg-1
-!!$!
-!!$  ncross_l=0
-!!$  IF(ibmin.GT.ibeg) THEN
-!!$    istep=ibmin
-!!$    DO i=0,npart
-!!$      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$        npassing=i
-!!$      ELSE
-!!$        EXIT
-!!$      ENDIF
-!!$    ENDDO
-!!$    npassing_prev=npassing
-!!$    DO istep=ibmin-1,ibeg,-1
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      IF(npassing.LT.npassing_prev) THEN
-!!$        ncross_l=ncross_l+1
-!!$        npassing_prev=npassing
-!!$      ENDIF
-!!$    ENDDO
-!!$    IF(ncross_l.GT.0) THEN
-!!$      ALLOCATE(icross_l(ncross_l))
-!!$      ncross_l=0
-!!$      istep=ibmin
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      npassing_prev=npassing
-!!$      DO istep=ibmin-1,ibeg,-1
-!!$        DO i=0,npart
-!!$          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$            npassing=i
-!!$          ELSE
-!!$            EXIT
-!!$          ENDIF
-!!$        ENDDO
-!!$        IF(npassing.LT.npassing_prev) THEN
-!!$          ncross_l=ncross_l+1
-!!$          icross_l(ncross_l)=istep
-!!$          npassing_prev=npassing
-!!$        ENDIF
-!!$      ENDDO
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$  ncross_r=0
-!!$  IF(ibmin.LT.iend) THEN
-!!$    istep=ibmin
-!!$    DO i=0,npart
-!!$      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$        npassing=i
-!!$      ELSE
-!!$        EXIT
-!!$      ENDIF
-!!$    ENDDO
-!!$    npassing_prev=npassing
-!!$    DO istep=ibmin+1,iend
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      IF(npassing.LT.npassing_prev) THEN
-!!$        ncross_r=ncross_r+1
-!!$        npassing_prev=npassing
-!!$      ENDIF
-!!$    ENDDO
-!!$    IF(ncross_r.GT.0) THEN
-!!$      ALLOCATE(icross_r(ncross_r))
-!!$      ncross_r=0
-!!$      istep=ibmin
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      npassing_prev=npassing
-!!$      DO istep=ibmin+1,iend
-!!$        DO i=0,npart
-!!$          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$            npassing=i
-!!$          ELSE
-!!$            EXIT
-!!$          ENDIF
-!!$        ENDDO
-!!$        IF(npassing.LT.npassing_prev) THEN
-!!$          ncross_r=ncross_r+1
-!!$          icross_r(ncross_r)=istep
-!!$          npassing_prev=npassing
-!!$        ENDIF
-!!$      ENDDO
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$! place ibmin to an odd point:
-!!$!
-!!$  IF(MOD(ibmin-ibeg,2).EQ.1) THEN
-!!$    IF(ncross_l.GT.0.AND.ncross_r.GT.0) THEN
-!!$      IF(icross_r(1)-ibmin.GT.ibmin-icross_l(1)) THEN
-!!$        ibmin=ibmin+1
-!!$      ELSE
-!!$        ibmin=ibmin-1
-!!$      ENDIF
-!!$    ELSEIF(ncross_l.GT.0) THEN
-!!$      ibmin=ibmin+1
-!!$    ELSEIF(ncross_r.GT.0) THEN
-!!$      ibmin=ibmin-1
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$! check the number of steps in sub-intervals for parabolic bhat term:
-!!$!
-!!$  IF(ncross_l.GT.0) THEN
-!!$    ie=icross_l(1)
-!!$    DO i=2,ncross_l
-!!$      ib=icross_l(i)
-!!$      IF(ie-ib.LT.nstepmin) THEN
-!!$        imid=(ib+ie)/2
-!!$        x1=phi_mfl(imid)-phi_mfl(ib)
-!!$        x2=phi_mfl(ie)-phi_mfl(ib)
-!!$        f1=bhat_mfl(imid)-bhat_mfl(ib)
-!!$        f2=bhat_mfl(ie)-bhat_mfl(ib)
-!!$        bparab=ABS((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
-!!$        IF(bparab.GT.bparabmax) THEN
-!!$          isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
-!!$          phi_divide(ib+1:ie)=isplit
-!!$        ENDIF
-!!$      ENDIF
-!!$      ie=ib
-!!$    ENDDO
-!!$    ib=ibeg
-!!$    IF(ie-ib.LT.nstepmin) THEN
-!!$      isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
-!!$      phi_divide(ib+1:ie)=isplit
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$  IF(ncross_r.GT.0) THEN
-!!$    ib=icross_r(1)
-!!$    DO i=2,ncross_r
-!!$      ie=icross_r(i)
-!!$      IF(ie-ib.LT.nstepmin) THEN
-!!$        imid=(ib+ie)/2
-!!$        x1=phi_mfl(imid)-phi_mfl(ib)
-!!$        x2=phi_mfl(ie)-phi_mfl(ib)
-!!$        f1=bhat_mfl(imid)-bhat_mfl(ib)
-!!$        f2=bhat_mfl(ie)-bhat_mfl(ib)
-!!$        bparab=ABS((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
-!!$        IF(bparab.GT.bparabmax) THEN
-!!$          isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
-!!$          phi_divide(ib+1:ie)=isplit
-!!$        ENDIF
-!!$      ENDIF
-!!$      ib=ie
-!!$    ENDDO
-!!$    ie=iend
-!!$    IF(ie-ib.LT.nstepmin) THEN
-!!$      isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
-!!$      phi_divide(ib+1:ie)=isplit
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$  IF(MAXVAL(phi_divide).GT.1) RETURN
-!!$!
-!!$! change the integration variable phi -> sqrt(phi-phi0):
-!!$!
-!!$  IF(stepmode) THEN
-!!$!
-!!$    ALLOCATE(phi_new(ibeg:iend),bhat_new(ibeg:iend))
-!!$    ALLOCATE(arr_real_new(ibeg:iend,nreal))
-!!$    ALLOCATE(arr_comp_new(ibeg:iend,ncomp))
-!!$    phi_new=phi_mfl
-!!$    bhat_new=bhat_mfl
-!!$    arr_real_new=arr_real
-!!$    arr_comp_new=arr_comp
-!!$!
-!!$    ie=ibmin
-!!$    DO i=1,ncross_l
-!!$      ib=icross_l(i)
-!!$      ht=SQRT(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
-!!$      ht2=ht**2
-!!$      k=ib
-!!$      DO istep=ib+1,ie-1
-!!$        phi_new(istep)=phi_mfl(ib)+ht2*float(istep-ib)**2
-!!$        fact_pos_e(istep)=2.d0*ht*float(istep-ib)
-!!$        delt_pos(istep)=ht
-!!$        DO WHILE(phi_mfl(k).LT.phi_new(istep))
-!!$          k=k+1
-!!$        ENDDO
-!!$        intb=MAX(ibeg,MIN(iend-npoi+1,k-npoihalf))
-!!$        inte=intb+npoi-1
-!!$!
-!!$        CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
-!!$!
-!!$        bhat_new(istep)=SUM(coeff(0,:)*bhat_mfl(intb:inte))
-!!$        arr_real_new(istep,:)=MATMUL(coeff(0,:),arr_real(intb:inte,:))
-!!$        arr_comp_new(istep,:)=MATMUL(coeff(0,:),arr_comp(intb:inte,:))
-!!$      ENDDO
-!!$      delt_pos(ie)=ht
-!!$      fact_pos_e(ie)=2.d0*ht*float(ie-ib)
-!!$      fact_pos_b(ib)=0.d0
-!!$      fact_pos_b(ib+1:ie-1)=fact_pos_e(ib+1:ie-1)
-!!$      ie=ib
-!!$    ENDDO
-!!$!
-!!$    ib=ibmin
-!!$    DO i=1,ncross_r
-!!$      ie=icross_r(i)
-!!$      ht=SQRT(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
-!!$      ht2=ht**2
-!!$      k=ib
-!!$      DO istep=ib+1,ie-1
-!!$        phi_new(istep)=phi_mfl(ie)-ht2*float(ie-istep)**2
-!!$        delt_pos(istep)=ht
-!!$        fact_pos_b(istep)=2.d0*ht*float(ie-istep)
-!!$        DO WHILE(phi_mfl(k).LT.phi_new(istep))
-!!$          k=k+1
-!!$        ENDDO
-!!$        intb=MAX(ibeg,MIN(iend-npoi+1,k-npoihalf))
-!!$        inte=intb+npoi-1
-!!$!
-!!$        CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
-!!$!
-!!$        bhat_new(istep)=SUM(coeff(0,:)*bhat_mfl(intb:inte))
-!!$        arr_real_new(istep,:)=MATMUL(coeff(0,:),arr_real(intb:inte,:))
-!!$        arr_comp_new(istep,:)=MATMUL(coeff(0,:),arr_comp(intb:inte,:))
-!!$      ENDDO
-!!$      delt_pos(ie)=ht
-!!$      fact_pos_b(ib)=2.d0*ht*float(ie-ib)
-!!$      fact_pos_e(ie)=0.d0
-!!$      fact_pos_e(ib+1:ie-1)=fact_pos_b(ib+1:ie-1)
-!!$      ib=ie
-!!$    ENDDO
-!!$!
-!!$    phi_mfl=phi_new
-!!$    bhat_mfl=bhat_new
-!!$    arr_real=arr_real_new
-!!$    arr_comp=arr_comp_new
-!!$!
-!!$    DEALLOCATE(phi_new,bhat_new,arr_real_new,arr_comp_new)
-!!$!
-!!$  ENDIF
-!!$!
-!!$  delt_neg(ibeg:iend-1)=delt_pos(ibeg+1:iend)
-!!$  fact_neg_b=fact_pos_e
-!!$  fact_neg_e=fact_pos_b
-!!$!
-!!$  IF(ALLOCATED(icross_l)) DEALLOCATE(icross_l)
-!!$  IF(ALLOCATED(icross_r)) DEALLOCATE(icross_r)
-!!$!
-!!$END SUBROUTINE rearrange_phideps
-!!$!
-!!$!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!!$!
-!!$SUBROUTINE fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
-!!$                                    phi_mfl,bhat_mfl,eta)
-!!$!
-!!$  USE device_mod
-!!$!
-!!$  IMPLICIT NONE
-!!$!
-!!$  INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
-!!$  INTEGER :: ncross_l,ncross_r
-!!$!
-!!$  DOUBLE PRECISION :: subsqmin
-!!$!
-!!$  INTEGER, DIMENSION(1)              :: idummy
-!!$  INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
-!!$!
-!!$  DOUBLE PRECISION, DIMENSION(0:npart)        :: eta
-!!$  DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: phi_mfl,bhat_mfl
-!!$  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: eta_cross_l,eta_cross_r
-!!$!
-!!$! determine level crossings:
-!!$!
-!!$  idummy=MINLOC(bhat_mfl(ibeg:iend))
-!!$  ibmin=idummy(1)+ibeg-1
-!!$!
-!!$  ncross_l=0
-!!$  IF(ibmin.GT.ibeg) THEN
-!!$    istep=ibmin
-!!$    DO i=0,npart
-!!$      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$        npassing=i
-!!$      ELSE
-!!$        EXIT
-!!$      ENDIF
-!!$    ENDDO
-!!$    npassing_prev=npassing
-!!$    DO istep=ibmin-1,ibeg,-1
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      IF(npassing.LT.npassing_prev) THEN
-!!$        ncross_l=ncross_l+1
-!!$        npassing_prev=npassing
-!!$      ENDIF
-!!$    ENDDO
-!!$    IF(ncross_l.GT.0) THEN
-!!$      ALLOCATE(icross_l(ncross_l),eta_cross_l(ncross_l))
-!!$      ncross_l=0
-!!$      istep=ibmin
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      npassing_prev=npassing
-!!$      DO istep=ibmin-1,ibeg,-1
-!!$        DO i=0,npart
-!!$          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$            npassing=i
-!!$          ELSE
-!!$            EXIT
-!!$          ENDIF
-!!$        ENDDO
-!!$        IF(npassing.LT.npassing_prev) THEN
-!!$          ncross_l=ncross_l+1
-!!$          icross_l(ncross_l)=istep
-!!$          eta_cross_l(ncross_l)=eta(npassing_prev)
-!!$          npassing_prev=npassing
-!!$        ENDIF
-!!$      ENDDO
-!!$      DO i=1,ncross_l
-!!$        istep=icross_l(i)
-!!$        IF(ABS(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).LT. &
-!!$           ABS(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) THEN
-!!$          OPEN(111,file='phi_placement_problem.dat',position='append')
-!!$          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
-!!$                       ' step number = ',istep-1,                &
-!!$                       ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
-!!$                       ' eta = ',eta_cross_l(i)
-!!$          CLOSE(111)
-!!$          bhat_mfl(istep-1)=1/eta_cross_l(i)
-!!$        ELSEIF(ABS(bhat_mfl(istep+1)*eta_cross_l(i)-1.d0).LT. &
-!!$               ABS(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) THEN
-!!$          OPEN(111,file='phi_placement_problem.dat',position='append')
-!!$          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
-!!$                       ' step number = ',istep+1,                &
-!!$                       ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
-!!$                       ' eta = ',eta_cross_l(i)
-!!$          bhat_mfl(istep+1)=1/eta_cross_l(i)
-!!$          CLOSE(111)
-!!$        ENDIF
-!!$      ENDDO
-!!$      DEALLOCATE(icross_l,eta_cross_l)
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$  ncross_r=0
-!!$  IF(ibmin.LT.iend) THEN
-!!$    istep=ibmin
-!!$    DO i=0,npart
-!!$      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$        npassing=i
-!!$      ELSE
-!!$        EXIT
-!!$      ENDIF
-!!$    ENDDO
-!!$    npassing_prev=npassing
-!!$    DO istep=ibmin+1,iend
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      IF(npassing.LT.npassing_prev) THEN
-!!$        ncross_r=ncross_r+1
-!!$        npassing_prev=npassing
-!!$      ENDIF
-!!$    ENDDO
-!!$    IF(ncross_r.GT.0) THEN
-!!$      ALLOCATE(icross_r(ncross_r),eta_cross_r(ncross_r))
-!!$      ncross_r=0
-!!$      istep=ibmin
-!!$      DO i=0,npart
-!!$        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$          npassing=i
-!!$        ELSE
-!!$          EXIT
-!!$        ENDIF
-!!$      ENDDO
-!!$      npassing_prev=npassing
-!!$      DO istep=ibmin+1,iend
-!!$        DO i=0,npart
-!!$          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
-!!$            npassing=i
-!!$          ELSE
-!!$            EXIT
-!!$          ENDIF
-!!$        ENDDO
-!!$        IF(npassing.LT.npassing_prev) THEN
-!!$          ncross_r=ncross_r+1
-!!$          icross_r(ncross_r)=istep
-!!$          eta_cross_r(ncross_r)=eta(npassing_prev)
-!!$          npassing_prev=npassing
-!!$        ENDIF
-!!$      ENDDO
-!!$      DO i=1,ncross_r
-!!$        istep=icross_r(i)
-!!$        IF(ABS(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).LT. &
-!!$           ABS(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) THEN
-!!$          OPEN(111,file='phi_placement_problem.dat',position='append')
-!!$          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
-!!$                       ' step number = ',istep-1,                &
-!!$                       ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
-!!$                       ' eta = ',eta_cross_r(i)
-!!$          CLOSE(111)
-!!$          bhat_mfl(istep-1)=1/eta_cross_r(i)
-!!$        ELSEIF(ABS(bhat_mfl(istep+1)*eta_cross_r(i)-1.d0).LT. &
-!!$               ABS(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) THEN
-!!$          OPEN(111,file='phi_placement_problem.dat',position='append')
-!!$          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
-!!$                       ' step number = ',istep+1,                &
-!!$                       ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
-!!$                       ' eta = ',eta_cross_r(i)
-!!$          CLOSE(111)
-!!$          bhat_mfl(istep+1)=1/eta_cross_r(i)
-!!$        ENDIF
-!!$      ENDDO
-!!$      DEALLOCATE(icross_r,eta_cross_r)
-!!$    ENDIF
-!!$  ENDIF
-!!$!
-!!$END SUBROUTINE fix_phiplacement_problem
+SUBROUTINE rearrange_phideps(ibeg,iend,npart,ncomp,nreal,subsqmin,phi_divide, &
+                             phi_mfl,bhat_mfl,arr_real,arr_comp,eta,          &
+                             delt_pos,delt_neg,                               &
+                             fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
+!
+! Mnemonics: 
+! fact_pos_b(i) - integration step in positive direction starts at point i
+! fact_pos_e(i) - integration step in positive direction ends at point i
+! fact_neg_b(i) - integration step in negative direction starts at point i
+! fact_neg_e(i) - integration step in negative direction ends at point i
+!
+  USE plagrange_mod
+!
+  IMPLICIT NONE
+!
+!  logical, parameter :: stepmode=.true.
+  LOGICAL, PARAMETER :: stepmode=.FALSE.
+  INTEGER, PARAMETER :: npoi=6, nder=0, npoihalf=npoi/2, nstepmin=8
+  DOUBLE PRECISION, PARAMETER :: bparabmax=0.2d0
+!
+  INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
+  INTEGER :: ncomp,nreal
+  INTEGER :: ncross_l,ncross_r,ib,ie,intb,inte,k,imid,isplit
+!
+  DOUBLE PRECISION :: subsqmin,ht,ht2,bparab,x1,x2,f1,f2
+!
+  INTEGER, DIMENSION(1)              :: idummy
+  INTEGER, DIMENSION(1:iend)         :: phi_divide
+  INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
+!
+  DOUBLE PRECISION, DIMENSION(0:nder,npoi)      :: coeff
+  DOUBLE PRECISION, DIMENSION(0:npart)          :: eta
+  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: phi_mfl,bhat_mfl
+  DOUBLE PRECISION, DIMENSION(ibeg:iend,nreal)  :: arr_real
+  DOUBLE COMPLEX,   DIMENSION(ibeg:iend,ncomp)  :: arr_comp
+  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: delt_pos,delt_neg
+  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: fact_pos_b,fact_neg_b
+  DOUBLE PRECISION, DIMENSION(ibeg:iend)        :: fact_pos_e,fact_neg_e
+  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE   :: phi_new,bhat_new
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: arr_real_new
+  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: arr_comp_new
+!
+  CALL fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
+                                phi_mfl,bhat_mfl,eta)
+!
+  phi_divide=1
+!
+  delt_pos(ibeg+1:iend)=phi_mfl(ibeg+1:iend)-phi_mfl(ibeg:iend-1)
+  fact_pos_b=1.d0
+  fact_pos_e=1.d0
+!
+! determine level crossings:
+!
+  idummy=MINLOC(bhat_mfl(ibeg:iend))
+  ibmin=idummy(1)+ibeg-1
+!
+  ncross_l=0
+  IF(ibmin.GT.ibeg) THEN
+    istep=ibmin
+    DO i=0,npart
+      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+        npassing=i
+      ELSE
+        EXIT
+      ENDIF
+    ENDDO
+    npassing_prev=npassing
+    DO istep=ibmin-1,ibeg,-1
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      IF(npassing.LT.npassing_prev) THEN
+        ncross_l=ncross_l+1
+        npassing_prev=npassing
+      ENDIF
+    ENDDO
+    IF(ncross_l.GT.0) THEN
+      ALLOCATE(icross_l(ncross_l))
+      ncross_l=0
+      istep=ibmin
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      npassing_prev=npassing
+      DO istep=ibmin-1,ibeg,-1
+        DO i=0,npart
+          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+            npassing=i
+          ELSE
+            EXIT
+          ENDIF
+        ENDDO
+        IF(npassing.LT.npassing_prev) THEN
+          ncross_l=ncross_l+1
+          icross_l(ncross_l)=istep
+          npassing_prev=npassing
+        ENDIF
+      ENDDO
+    ENDIF
+  ENDIF
+!
+  ncross_r=0
+  IF(ibmin.LT.iend) THEN
+    istep=ibmin
+    DO i=0,npart
+      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+        npassing=i
+      ELSE
+        EXIT
+      ENDIF
+    ENDDO
+    npassing_prev=npassing
+    DO istep=ibmin+1,iend
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      IF(npassing.LT.npassing_prev) THEN
+        ncross_r=ncross_r+1
+        npassing_prev=npassing
+      ENDIF
+    ENDDO
+    IF(ncross_r.GT.0) THEN
+      ALLOCATE(icross_r(ncross_r))
+      ncross_r=0
+      istep=ibmin
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      npassing_prev=npassing
+      DO istep=ibmin+1,iend
+        DO i=0,npart
+          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+            npassing=i
+          ELSE
+            EXIT
+          ENDIF
+        ENDDO
+        IF(npassing.LT.npassing_prev) THEN
+          ncross_r=ncross_r+1
+          icross_r(ncross_r)=istep
+          npassing_prev=npassing
+        ENDIF
+      ENDDO
+    ENDIF
+  ENDIF
+!
+! place ibmin to an odd point:
+!
+  IF(MOD(ibmin-ibeg,2).EQ.1) THEN
+    IF(ncross_l.GT.0.AND.ncross_r.GT.0) THEN
+      IF(icross_r(1)-ibmin.GT.ibmin-icross_l(1)) THEN
+        ibmin=ibmin+1
+      ELSE
+        ibmin=ibmin-1
+      ENDIF
+    ELSEIF(ncross_l.GT.0) THEN
+      ibmin=ibmin+1
+    ELSEIF(ncross_r.GT.0) THEN
+      ibmin=ibmin-1
+    ENDIF
+  ENDIF
+!
+! check the number of steps in sub-intervals for parabolic bhat term:
+!
+  IF(ncross_l.GT.0) THEN
+    ie=icross_l(1)
+    DO i=2,ncross_l
+      ib=icross_l(i)
+      IF(ie-ib.LT.nstepmin) THEN
+        imid=(ib+ie)/2
+        x1=phi_mfl(imid)-phi_mfl(ib)
+        x2=phi_mfl(ie)-phi_mfl(ib)
+        f1=bhat_mfl(imid)-bhat_mfl(ib)
+        f2=bhat_mfl(ie)-bhat_mfl(ib)
+        bparab=ABS((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
+        IF(bparab.GT.bparabmax) THEN
+          isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+          phi_divide(ib+1:ie)=isplit
+        ENDIF
+      ENDIF
+      ie=ib
+    ENDDO
+    ib=ibeg
+    IF(ie-ib.LT.nstepmin) THEN
+      isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+      phi_divide(ib+1:ie)=isplit
+    ENDIF
+  ENDIF
+!
+  IF(ncross_r.GT.0) THEN
+    ib=icross_r(1)
+    DO i=2,ncross_r
+      ie=icross_r(i)
+      IF(ie-ib.LT.nstepmin) THEN
+        imid=(ib+ie)/2
+        x1=phi_mfl(imid)-phi_mfl(ib)
+        x2=phi_mfl(ie)-phi_mfl(ib)
+        f1=bhat_mfl(imid)-bhat_mfl(ib)
+        f2=bhat_mfl(ie)-bhat_mfl(ib)
+        bparab=ABS((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
+        IF(bparab.GT.bparabmax) THEN
+          isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+          phi_divide(ib+1:ie)=isplit
+        ENDIF
+      ENDIF
+      ib=ie
+    ENDDO
+    ie=iend
+    IF(ie-ib.LT.nstepmin) THEN
+      isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+      phi_divide(ib+1:ie)=isplit
+    ENDIF
+  ENDIF
+!
+  IF(MAXVAL(phi_divide).GT.1) RETURN
+!
+! change the integration variable phi -> sqrt(phi-phi0):
+!
+  IF(stepmode) THEN
+!
+    ALLOCATE(phi_new(ibeg:iend),bhat_new(ibeg:iend))
+    ALLOCATE(arr_real_new(ibeg:iend,nreal))
+    ALLOCATE(arr_comp_new(ibeg:iend,ncomp))
+    phi_new=phi_mfl
+    bhat_new=bhat_mfl
+    arr_real_new=arr_real
+    arr_comp_new=arr_comp
+!
+    ie=ibmin
+    DO i=1,ncross_l
+      ib=icross_l(i)
+      ht=SQRT(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
+      ht2=ht**2
+      k=ib
+      DO istep=ib+1,ie-1
+        phi_new(istep)=phi_mfl(ib)+ht2*float(istep-ib)**2
+        fact_pos_e(istep)=2.d0*ht*float(istep-ib)
+        delt_pos(istep)=ht
+        DO WHILE(phi_mfl(k).LT.phi_new(istep))
+          k=k+1
+        ENDDO
+        intb=MAX(ibeg,MIN(iend-npoi+1,k-npoihalf))
+        inte=intb+npoi-1
+!
+        CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
+!
+        bhat_new(istep)=SUM(coeff(0,:)*bhat_mfl(intb:inte))
+        arr_real_new(istep,:)=MATMUL(coeff(0,:),arr_real(intb:inte,:))
+        arr_comp_new(istep,:)=MATMUL(coeff(0,:),arr_comp(intb:inte,:))
+      ENDDO
+      delt_pos(ie)=ht
+      fact_pos_e(ie)=2.d0*ht*float(ie-ib)
+      fact_pos_b(ib)=0.d0
+      fact_pos_b(ib+1:ie-1)=fact_pos_e(ib+1:ie-1)
+      ie=ib
+    ENDDO
+!
+    ib=ibmin
+    DO i=1,ncross_r
+      ie=icross_r(i)
+      ht=SQRT(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
+      ht2=ht**2
+      k=ib
+      DO istep=ib+1,ie-1
+        phi_new(istep)=phi_mfl(ie)-ht2*float(ie-istep)**2
+        delt_pos(istep)=ht
+        fact_pos_b(istep)=2.d0*ht*float(ie-istep)
+        DO WHILE(phi_mfl(k).LT.phi_new(istep))
+          k=k+1
+        ENDDO
+        intb=MAX(ibeg,MIN(iend-npoi+1,k-npoihalf))
+        inte=intb+npoi-1
+!
+        CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
+!
+        bhat_new(istep)=SUM(coeff(0,:)*bhat_mfl(intb:inte))
+        arr_real_new(istep,:)=MATMUL(coeff(0,:),arr_real(intb:inte,:))
+        arr_comp_new(istep,:)=MATMUL(coeff(0,:),arr_comp(intb:inte,:))
+      ENDDO
+      delt_pos(ie)=ht
+      fact_pos_b(ib)=2.d0*ht*float(ie-ib)
+      fact_pos_e(ie)=0.d0
+      fact_pos_e(ib+1:ie-1)=fact_pos_b(ib+1:ie-1)
+      ib=ie
+    ENDDO
+!
+    phi_mfl=phi_new
+    bhat_mfl=bhat_new
+    arr_real=arr_real_new
+    arr_comp=arr_comp_new
+!
+    DEALLOCATE(phi_new,bhat_new,arr_real_new,arr_comp_new)
+!
+  ENDIF
+!
+  delt_neg(ibeg:iend-1)=delt_pos(ibeg+1:iend)
+  fact_neg_b=fact_pos_e
+  fact_neg_e=fact_pos_b
+!
+  IF(ALLOCATED(icross_l)) DEALLOCATE(icross_l)
+  IF(ALLOCATED(icross_r)) DEALLOCATE(icross_r)
+!
+END SUBROUTINE rearrange_phideps
+!
+!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!
+SUBROUTINE fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
+                                    phi_mfl,bhat_mfl,eta)
+!
+  USE device_mod
+!
+  IMPLICIT NONE
+!
+  INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
+  INTEGER :: ncross_l,ncross_r
+!
+  DOUBLE PRECISION :: subsqmin
+!
+  INTEGER, DIMENSION(1)              :: idummy
+  INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
+!
+  DOUBLE PRECISION, DIMENSION(0:npart)        :: eta
+  DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: phi_mfl,bhat_mfl
+  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: eta_cross_l,eta_cross_r
+!
+! determine level crossings:
+!
+  idummy=MINLOC(bhat_mfl(ibeg:iend))
+  ibmin=idummy(1)+ibeg-1
+!
+  ncross_l=0
+  IF(ibmin.GT.ibeg) THEN
+    istep=ibmin
+    DO i=0,npart
+      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+        npassing=i
+      ELSE
+        EXIT
+      ENDIF
+    ENDDO
+    npassing_prev=npassing
+    DO istep=ibmin-1,ibeg,-1
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      IF(npassing.LT.npassing_prev) THEN
+        ncross_l=ncross_l+1
+        npassing_prev=npassing
+      ENDIF
+    ENDDO
+    IF(ncross_l.GT.0) THEN
+      ALLOCATE(icross_l(ncross_l),eta_cross_l(ncross_l))
+      ncross_l=0
+      istep=ibmin
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      npassing_prev=npassing
+      DO istep=ibmin-1,ibeg,-1
+        DO i=0,npart
+          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+            npassing=i
+          ELSE
+            EXIT
+          ENDIF
+        ENDDO
+        IF(npassing.LT.npassing_prev) THEN
+          ncross_l=ncross_l+1
+          icross_l(ncross_l)=istep
+          eta_cross_l(ncross_l)=eta(npassing_prev)
+          npassing_prev=npassing
+        ENDIF
+      ENDDO
+      DO i=1,ncross_l
+        istep=icross_l(i)
+        IF(ABS(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).LT. &
+           ABS(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) THEN
+          OPEN(111,file='phi_placement_problem.dat',position='append')
+          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                       ' step number = ',istep-1,                &
+                       ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
+                       ' eta = ',eta_cross_l(i)
+          CLOSE(111)
+          bhat_mfl(istep-1)=1/eta_cross_l(i)
+        ELSEIF(ABS(bhat_mfl(istep+1)*eta_cross_l(i)-1.d0).LT. &
+               ABS(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) THEN
+          OPEN(111,file='phi_placement_problem.dat',position='append')
+          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                       ' step number = ',istep+1,                &
+                       ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
+                       ' eta = ',eta_cross_l(i)
+          bhat_mfl(istep+1)=1/eta_cross_l(i)
+          CLOSE(111)
+        ENDIF
+      ENDDO
+      DEALLOCATE(icross_l,eta_cross_l)
+    ENDIF
+  ENDIF
+!
+  ncross_r=0
+  IF(ibmin.LT.iend) THEN
+    istep=ibmin
+    DO i=0,npart
+      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+        npassing=i
+      ELSE
+        EXIT
+      ENDIF
+    ENDDO
+    npassing_prev=npassing
+    DO istep=ibmin+1,iend
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      IF(npassing.LT.npassing_prev) THEN
+        ncross_r=ncross_r+1
+        npassing_prev=npassing
+      ENDIF
+    ENDDO
+    IF(ncross_r.GT.0) THEN
+      ALLOCATE(icross_r(ncross_r),eta_cross_r(ncross_r))
+      ncross_r=0
+      istep=ibmin
+      DO i=0,npart
+        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+          npassing=i
+        ELSE
+          EXIT
+        ENDIF
+      ENDDO
+      npassing_prev=npassing
+      DO istep=ibmin+1,iend
+        DO i=0,npart
+          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+            npassing=i
+          ELSE
+            EXIT
+          ENDIF
+        ENDDO
+        IF(npassing.LT.npassing_prev) THEN
+          ncross_r=ncross_r+1
+          icross_r(ncross_r)=istep
+          eta_cross_r(ncross_r)=eta(npassing_prev)
+          npassing_prev=npassing
+        ENDIF
+      ENDDO
+      DO i=1,ncross_r
+        istep=icross_r(i)
+        IF(ABS(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).LT. &
+           ABS(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) THEN
+          OPEN(111,file='phi_placement_problem.dat',position='append')
+          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                       ' step number = ',istep-1,                &
+                       ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
+                       ' eta = ',eta_cross_r(i)
+          CLOSE(111)
+          bhat_mfl(istep-1)=1/eta_cross_r(i)
+        ELSEIF(ABS(bhat_mfl(istep+1)*eta_cross_r(i)-1.d0).LT. &
+               ABS(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) THEN
+          OPEN(111,file='phi_placement_problem.dat',position='append')
+          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                       ' step number = ',istep+1,                &
+                       ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
+                       ' eta = ',eta_cross_r(i)
+          CLOSE(111)
+          bhat_mfl(istep+1)=1/eta_cross_r(i)
+        ENDIF
+      ENDDO
+      DEALLOCATE(icross_r,eta_cross_r)
+    ENDIF
+  ENDIF
+!
+END SUBROUTINE fix_phiplacement_problem
 !! End Modifications by Andreas F. Martitsch (27.07.2015)
