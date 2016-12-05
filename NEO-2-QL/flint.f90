@@ -139,7 +139,7 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
 
 END SUBROUTINE flint_prepare
 
-subroutine flint_prepare_2(bin_split_mode,eta_s_lim)
+SUBROUTINE flint_prepare_2(bin_split_mode,eta_s_lim)
   USE collisionality_mod, ONLY : collpar_min
   !USE mag_interface_mod, ONLY : ripple_eta_magnetics
   USE mag_interface_mod
@@ -581,6 +581,11 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
   INTEGER :: eta_version
 
+  !! Modifications by Andreas F. Martitsch (01.12.2016)
+  ! Debugging
+  INTEGER :: i_ctr
+  !! End Modifications by Andreas F. Martitsch (01.12.2016)
+  
   !print *, 'flint: begin of program'
   ! this is not very sophisticated at the moment
   !  mainly puts the fieldpropagator pointer to the first one
@@ -689,6 +694,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      IF (eta_part_global .EQ. 0) THEN
         d_p = 0.0_dp
         d_t = 0.0_dp
+        WRITE(*,fmt='(A,E16.8,A1,E16.8,A1)') 'flint.f90 697> (d_p,d_t)=(',d_p,',',d_t,')'
+        !STOP
      END IF
 
      xe2 = eta_min_global - d_p
@@ -714,6 +721,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      ELSE
         eta_part_1 = MAX(3,eta_part-eta_part_trapped)
         eta_part_2 = MAX(3,eta_part_trapped)
+        WRITE(*,fmt='(A,I3,A1,I3,A1)') &
+             'flint.f90 725> (eta_part_1,eta_part_2)=(',eta_part_1,',',eta_part_2,')'
+        !STOP
      END IF
      
      ! old passing
@@ -728,6 +738,12 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
         CALL linspace(1.0_dp,t_start,eta_part_1,xhlp_1)
         xhlp_1(0) = 0.0_dp
         xhlp_1(1:UBOUND(xhlp_1,1)) = eta_min_global * (1.0_dp - xhlp_1(1:UBOUND(xhlp_1,1))**eta_alpha_p)
+        PRINT *,'flint.f90 741>  before print xhlp_1 for eta_alpha_p .GE. 0.0_dp:'
+        DO i_ctr=0,UBOUND(xhlp_1,1)
+           PRINT *,xhlp_1(i_ctr),eta_min_global,xhlp_1(i_ctr)-eta_min_global
+        END DO
+        PRINT *,'flint.f90 745>  after print xhlp_1 for eta_alpha_p .GE. 0.0_dp:'
+        !STOP
      ELSE ! new custom function for passing particles
         ! eta_part_global has to be zero to use this feature
         IF (eta_part_global .NE. 0) THEN
@@ -844,19 +860,19 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      !IF (.NOT. ALLOCATED(anumm)) ALLOCATE(anumm(0:0,0:0))
      !anumm(0,0) = 1.0_dp
      
-     IF (ALLOCATED(collision_sigma_multiplier)) deallocate(collision_sigma_multiplier)
+     IF (ALLOCATED(collision_sigma_multiplier)) DEALLOCATE(collision_sigma_multiplier)
      ALLOCATE(collision_sigma_multiplier(0:0))
      collision_sigma_multiplier(0) = 1.0_dp 
   ELSE
      mult_sigma = 1.618033988749895d0
-     lag_sigma = ceiling( log10( sqrt(collpar_max/collpar_min) ) / log10(mult_sigma) )
-     IF (ALLOCATED(collision_sigma_multiplier)) deallocate(collision_sigma_multiplier)
+     lag_sigma = CEILING( LOG10( SQRT(collpar_max/collpar_min) ) / LOG10(mult_sigma) )
+     IF (ALLOCATED(collision_sigma_multiplier)) DEALLOCATE(collision_sigma_multiplier)
      ALLOCATE(collision_sigma_multiplier(0:lag_sigma))
-     mult_sigma_mod = 10**( log10( sqrt(collpar_max/collpar_min) ) / dble(lag_sigma) )
+     mult_sigma_mod = 10**( LOG10( SQRT(collpar_max/collpar_min) ) / DBLE(lag_sigma) )
      collision_sigma_multiplier(0) = 1.0_dp
-     do ilag = 1, lag_sigma
+     DO ilag = 1, lag_sigma
         collision_sigma_multiplier(ilag) = collision_sigma_multiplier(ilag-1) * mult_sigma_mod
-     end do
+     END DO
      !print *, collpar_min,collpar_max,sqrt(collpar_max/collpar_min)
      !print *, collision_sigma_multiplier
      !print *, ' '
@@ -1105,7 +1121,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                        eta_s_val(1) = eta_s_val(1) / 1.618033988749895d0
                        !IF (eta_s_val(1) .LT. eta_s_loc_min) EXIT loc_divide
                     END DO loc_divide
-                    if ( eta_s_val(1) .gt. 2.0d0 * eta_x0_val(1) ) exit loc_laguerre
+                    IF ( eta_s_val(1) .GT. 2.0d0 * eta_x0_val(1) ) EXIT loc_laguerre
                  END DO loc_laguerre
               END DO loc_construct
               CALL get_binarysplit(eta_bs_loc,eta_split_loc,'x')
@@ -1144,7 +1160,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                           eta_s_val(1)  =  eta_s_val(1) / bsfunc_sigma_mult
                        END IF
                     END DO
-                    if ( eta_s_val(1) .gt. 2.0d0 * eta_x0_val(1) ) exit max_laguerre
+                    IF ( eta_s_val(1) .GT. 2.0d0 * eta_x0_val(1) ) EXIT max_laguerre
                  END DO max_laguerre
               END DO
 
@@ -1178,7 +1194,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                              eta_s_val(1)  =  eta_s_val(1) / bsfunc_sigma_mult
                           END IF
                        END DO
-                       if ( eta_s_val(1) .gt. 2.0d0 * eta_x0_val(1) ) exit rest_laguerre
+                       IF ( eta_s_val(1) .GT. 2.0d0 * eta_x0_val(1) ) EXIT rest_laguerre
                     END DO rest_laguerre
                  END IF
               END DO
