@@ -4120,7 +4120,7 @@ PRINT *,' '
       DO k=1,3
 !
         PRINT *,'source',k,':'
-        mode_iter=0
+        mode_iter=2
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,source_vector(:,k))
 !
@@ -5353,6 +5353,11 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
   ALLOCATE(hmat_work(m,m))
 !
   hmat_work=hmat
+  WRITE(*,*)
+  DO k=1,m
+     WRITE(*,*) (hmat_work(k,j),j=1,m)
+  ENDDO
+  WRITE(*,*)
 !
   ALLOCATE(work(1))
   lwork=-1
