@@ -71,6 +71,7 @@ set(NEO2_SRC_FILES
         ./ripple_solver_ArnoldiOrder1_test.f90
 ###        ./ripple_solver_ArnoldiOrder2.f90 # Currently not supported by MPI version
         ./ripple_solver_ArnoldiOrder2_test.f90 # (Testing of mirroring part discretization)
+###        ./ripple_solver_ArnoldiOrder2_test_changed.f90 # (Testing of mirroring part discretization)
 	./join_ripples_int.f90
         ./join_ripples.f90
         ./join_ends.f90
