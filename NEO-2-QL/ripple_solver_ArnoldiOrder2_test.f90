@@ -307,9 +307,9 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
  
   niter=100       !maximum number of integral part iterations
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
-  n_arnoldi=100     !maximum number of Arnoldi iterations
+  n_arnoldi=500     !maximum number of Arnoldi iterations
   isw_regper=1       !regulariization by periodic boundary condition
-  epserr_sink=0.d0 !1.d-12 !sink for regularization, it is equal to
+  epserr_sink=0.d0  !1.d-12 !sink for regularization, it is equal to
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
 !                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
 !                    $\kappa$ is inverse m.f.p. times 4 ("collpar")
@@ -920,7 +920,7 @@ PRINT *,ub_mag,ibeg,iend
   ALLOCATE(qflux(3,3))
 
      PRINT *, 'propagator tag         ', fieldpropagator%tag
-solver_talk=1
+!solver_talk=1
   IF (solver_talk .EQ. 1) THEN
      PRINT *, ' '
      PRINT *, 'I am in ripple_solver'
@@ -4989,15 +4989,20 @@ PRINT *,' '
 !
   INTEGER :: n
   DOUBLE COMPLEX, DIMENSION(n) :: fold,fnew
-  DOUBLE PRECISION, DIMENSION(n) :: fnew_real
+  DOUBLE PRECISION, DIMENSION(:), allocatable :: fnew_real,fnew_imag
 !
   CALL integral_part(fold,fnew)
 !
   IF(problem_type) THEN
+     allocate(fnew_real(n),fnew_imag(n))
      fnew_real=DBLE(fnew)
+     fnew_imag=DIMAG(fnew)
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
                        fnew_real,iopt)
-     fnew=fnew_real
+     CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
+                       fnew_imag,iopt)
+     fnew=fnew_real+(0.d0,1.d0)*fnew_imag
+     deallocate(fnew_real,fnew_imag)
   ELSE
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
                        fnew,iopt)
@@ -5115,6 +5120,17 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !
   ENDIF
 !
+  PRINT *,'iterator: number of bad modes = ', ngrow
+  nsize=ngrow
+! Exclude first eigenvalue/eigenvector:
+IF(problem_type .AND. ngrow .GT. 0) THEN
+nsize=ngrow-1
+eigvecs(:,1)=eigvecs(:,ngrow)
+ritznum(1)=ritznum(ngrow)
+ngrow=ngrow-1
+ENDIF
+! End exclude
+!  
   ALLOCATE(fold(n),fnew(n))
 !
   IF(ngrow.EQ.0) THEN
@@ -5126,6 +5142,7 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
     DO iter=1,itermax
       CALL next_iteration(n,fold,fnew)
       IF(mode.EQ.2 .OR. mode.EQ.0) fnew=fnew+fzero
+      !PRINT *,'dimag(fnew) [sum, abs. sum]: ',SUM(dimag(fnew)),SUM(ABS(dimag(fnew)))
       PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
       IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
       fold=fnew
@@ -5141,9 +5158,6 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !
   ENDIF
 !
-  PRINT *,'iterator: number of bad modes = ', ngrow
-  nsize=ngrow
-!
 ! compute subtraction matrix:
 !
   ALLOCATE(amat(nsize,nsize),bvec(nsize,nsize),ipiv(nsize),coefren(nsize))
@@ -5155,6 +5169,13 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
       amat(i,j)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))*(ritznum(j)-(1.d0,0.d0))
     ENDDO
   ENDDO
+!
+!!$  WRITE(*,*) ''
+!!$  DO i=1,nsize
+!!$     WRITE(*,*) (amat(i,j),j=1,nsize) 
+!!$  ENDDO
+!!$  WRITE(*,*) ''
+!!$  STOP
 !
   CALL zgesv(nsize,nsize,amat,nsize,ipiv,bvec,nsize,info)
 !
@@ -5181,6 +5202,8 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
                 *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
     ENDDO
     fnew=fnew-MATMUL(eigvecs(:,1:nsize),coefren)
+    !PRINT *,'dimag(fnew) [sum, abs. sum]: ',SUM(dimag(fnew)),SUM(ABS(dimag(fnew)))
+    PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
     IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
     fold=fnew
     IF(iter.EQ.itermax) PRINT *,'iterator: maximum number of iterations reached'
@@ -5353,11 +5376,14 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
   ALLOCATE(hmat_work(m,m))
 !
   hmat_work=hmat
-  WRITE(*,*)
-  DO k=1,m
-     WRITE(*,*) (hmat_work(k,j),j=1,m)
-  ENDDO
-  WRITE(*,*)
+!
+!!$  WRITE(*,*)
+!!$  DO k=1,m
+!!$     WRITE(*,*) (hmat_work(k,j),j=1,m)
+!!$  ENDDO
+!!$  WRITE(*,*)
+!!$print *,'matrix hmat'
+!!$pause
 !
   ALLOCATE(work(1))
   lwork=-1
