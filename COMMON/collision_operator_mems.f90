@@ -5,11 +5,13 @@ module collop
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
        m_ele, m_d, m_C, m_alp, compute_collop_inf, C_m, compute_xmmp, &
-       compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp
+       compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
+       compute_collop_rel
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
-       v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz, conl_over_mfp
+       v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz, conl_over_mfp, &
+       isw_relativistic, T_e, lsw_multispecies
   use device_mod, only : device
 
   implicit none
@@ -62,7 +64,7 @@ module collop
       !**********************************************************
       anumm(0:lag, 0:lag) => anumm_a(:,:,ispec)      
       denmm(0:lag, 0:lag) => denmm_a(:,:,ispec)
-      if (z_eff .ne. 0) then
+      if (.not. lsw_multispecies) then 
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,ispec,ispec)
       else
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,mpro%getRank(),ispec)
@@ -90,11 +92,11 @@ module collop
       real(kind=dp) :: coll_a_temp, coll_b_temp
       real(kind=dp) :: za_temp, zb_temp
       
-      if (z_eff .ne. 0 ) then
-         write (*,*) "Standard mode."
+      if (.not. lsw_multispecies) then
+         write (*,*) "Single species mode."
          num_spec = 1
       else
-         write (*,*) "Test mode for two species."
+         write (*,*) "Multispecies mode."
          num_spec = 1
       end if
       
@@ -143,7 +145,7 @@ module collop
       if (allocated(anumm_inf)) deallocate(anumm_inf)
       allocate(anumm_inf(0:lag, 0:lag))
 
-      if (z_eff .ne. 0) then
+      if (.not. lsw_multispecies) then
          !**********************************************************
          ! Now compute collision operator with desired base
          !**********************************************************
@@ -165,23 +167,35 @@ module collop
             collpar_max = collpar * nu_D_hat(v_min_resolution)
             collpar_min = collpar * nu_D_hat(v_max_resolution)
          end if
-         
-         !**********************************************************
-         ! Compute sources
-         !**********************************************************
-         call compute_source(asource, weightlag, weightden, weightparflow, Amm)
-         write (*,*) "Weightden: ", weightden
-         
-         !**********************************************************
-         ! Compute x1mm and x2mm
-         !**********************************************************
-         call compute_xmmp(x1mm, x2mm)
-         
-         !**********************************************************
-         ! Compute collision operator
-         !**********************************************************
-         call compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
-              denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
+
+         ! Non-relativistic Limit according to Trubnikov
+         if (isw_relativistic .eq. 0) then
+
+            !**********************************************************
+            ! Compute sources
+            !**********************************************************
+            call compute_source(asource, weightlag, weightden, weightparflow, Amm)
+            write (*,*) "Weightden: ", weightden
+
+            !**********************************************************
+            ! Compute x1mm and x2mm
+            !**********************************************************
+            call compute_xmmp(x1mm, x2mm)
+
+            !**********************************************************
+            ! Compute collision operator
+            !**********************************************************
+            call compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
+                 denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
+
+         ! Relativistic collision operator accordning to Braams and Karney
+         elseif (isw_relativistic .ge. 1) then
+            call compute_collop_rel(isw_relativistic, T_e, asource, weightlag, weightden, weightparflow, Amm, &
+                 anumm_aa(:,:,0,0), anumm_inf, denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
+            !stop
+         else
+            write (*,*) "Relativistic switch ", isw_relativistic, " not defined."
+         end if
 
          !**********************************************************
          ! Sum up matrices
@@ -407,7 +421,7 @@ module collop
          do mp=0,lag
             write (f,'(1(es23.15E02))', advance='NO') anumm_aa(m, mp, 0, 0)
          end do
-         write (f,*) NEW_line('A')
+         write (f, '(A)', advance='NO') NEW_line('A')
       end do
       close(f)    
       
