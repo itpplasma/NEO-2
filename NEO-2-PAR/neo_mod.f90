@@ -38,7 +38,10 @@
     INTEGER          :: isw_integral
     INTEGER          :: isw_energy
     INTEGER          :: isw_axisymm
-
+    INTEGER          :: isw_relativistic
+    DOUBLE PRECISION :: T_e
+    LOGICAL          :: lsw_multispecies
+    
     INTEGER          :: isw_momentum
     INTEGER          :: vel_num
     INTEGER          :: vel_distri_swi

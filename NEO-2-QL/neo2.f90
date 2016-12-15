@@ -19,7 +19,8 @@ PROGRAM neo2
        isw_integral,isw_energy,isw_axisymm,                         &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
-       phi_x_max, collop_bspline_order, collop_bspline_dist
+       phi_x_max, collop_bspline_order, collop_bspline_dist,        &
+       isw_relativistic, T_e, lsw_multispecies
   USE propagator_mod, ONLY : reconstruct_prop_dist,   &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -135,8 +136,8 @@ PROGRAM neo2
        !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta,       &
        phi_x_max, collop_bspline_order, collop_bspline_dist,                  &
-       num_spec, conl_over_mfp_vec, z_vec, v_min_resolution, v_max_resolution
- 
+       num_spec, conl_over_mfp_vec, z_vec, v_min_resolution, v_max_resolution,&
+       isw_relativistic, T_e, lsw_multispecies
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -225,6 +226,8 @@ PROGRAM neo2
   isw_energy = 0
   isw_axisymm = 0
   isw_momentum = 0
+  isw_relativistic = 0  ! 0 is non-relativistic, 1 is Braams and Karney, 2 is high order Legendre
+  T_e = 1 ! Default 1eV
   vel_distri_swi = 0
   vel_num = 10
   vel_max = 5.0d0
@@ -241,6 +244,7 @@ PROGRAM neo2
   num_spec = 1
   conl_over_mfp_vec = 0.0d0
   z_vec = 1.0d0
+  lsw_multispecies = .false.
   !! End Modification by Andreas F. Martitsch (25.08.2015)
   v_min_resolution = 0.1d0
   v_max_resolution = 5.0d0

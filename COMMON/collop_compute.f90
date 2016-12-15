@@ -20,6 +20,8 @@ module collop_compute
   real(kind=dp) :: m_alp = 6.644656200d-24
   real(kind=dp) :: m_d   = 3.343583719d-24
   real(kind=dp) :: m_C   = 19.94406876d-24
+  real(kind=dp) :: c     = 2.9979d10
+  real(kind=dp) :: ev    = 1.6022d-12
 
   !**********************************************************
   ! Thermal velocity ratio
@@ -63,6 +65,12 @@ module collop_compute
   real(kind=dp), dimension(:,:),   allocatable :: coefleg
 
   !**********************************************************
+  ! Relativistic parameters
+  !**********************************************************
+  real(kind=dp) :: rmu, norm_maxwell
+  integer       :: isw_relativistic
+  
+  !**********************************************************
   ! Matrix size
   !**********************************************************
   integer :: lagmax
@@ -74,7 +82,7 @@ module collop_compute
   real(kind=dp) :: epsabs = 1d-10
   real(kind=dp) :: epsrel = 1d-10
   integer       :: sw_qag_rule = 2
-  logical       :: integral_cutoff = .true.  
+  logical       :: integral_cutoff = .false.
   real(kind=dp) :: x_cutoff = 20d0
 
   !**********************************************************
@@ -165,6 +173,70 @@ module collop_compute
   
 contains
 
+!     ..................................................................
+!
+      SUBROUTINE DBESK(X,N,BK,IER)
+!
+      DOUBLE PRECISION X, BK
+      DOUBLE PRECISION T, B
+      DOUBLE PRECISION G0, G1, GJ
+      INTEGER N,IER,L,J
+!
+      DIMENSION T(12)
+      BK=.0
+      IF(N)10,11,11
+   10 IER=1
+      RETURN
+   11 IF(X)12,12,20
+   12 IER=2
+      RETURN
+   20 CONTINUE
+   22 IER=0
+      IF(X-1.)36,36,25
+   25 B=1./X
+      T(1)=B
+      DO 26 L=2,12
+   26 T(L)=T(L-1)*B
+      IF(N-1)27,29,27
+!
+!     COMPUTE KO USING POLYNOMIAL APPROXIMATION
+!
+   27 G0=(1.2533141-.1566642*T(1)+.08811128*T(2)-.09139095*T(3)   &
+      +.1344596*T(4)-.2299850*T(5)+.3792410*T(6)-.5247277*T(7)    &
+      +.5575368*T(8)-.4262633*T(9)+.2184518*T(10)-.06680977*T(11) &
+      +.009189383*T(12))
+      IF(N)20,28,29
+   28 BK=G0
+      RETURN
+!
+!     COMPUTE K1 USING POLYNOMIAL APPROXIMATION
+!
+   29 G1=(1.2533141+.4699927*T(1)-.1468583*T(2)+.1280427*T(3)     &
+      -.1736432*T(4)+.2847618*T(5)-.4594342*T(6)+.6283381*T(7)    &
+      -.6632295*T(8)+.5050239*T(9)-.2581304*T(10)+.07880001*T(11) &
+      -.01082418*T(12))
+      IF(N-1)20,30,31
+   30 BK=G1
+      RETURN
+!
+!     FROM KO,K1 COMPUTE KN USING RECURRENCE RELATION
+!
+   31 DO 35 J=2,N
+      GJ=2.*(FLOAT(J)-1.)*G1/X+G0
+      IF(GJ-1.0D300)33,33,32
+   32 IER=4
+      GO TO 34
+   33 G0=G1
+   35 G1=GJ
+   34 BK=GJ
+      RETURN
+!   
+   36 IER=3
+      BK=0.
+      RETURN
+      END
+!
+  
   subroutine init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
     use rkstep_mod, only : lag, leg
     use collop_bspline, only : xknots, nder
@@ -385,7 +457,423 @@ contains
     end do
 
   end subroutine chop_5
+  
+  subroutine karney(z,gamma,j0_1,j0_11,j0_2,j0_02,j0_022,               &
+       j1_0,j1_1,j1_2,j1_02,j1_11,j1_022)
+    !
+    implicit none
+    !
+    double precision :: gamma,j0_1, j0_11, j0_2,j0_02,j0_022,               &
+         j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
+    double precision :: z,sigma,z2
+    !
+    z2=z**2
+    !
+    if(z.lt.1d-2) then
+       gamma=1.d0+z2*(0.5d0+z2*(-0.125d0+z2/16.d0))
+       j0_1=1d0
+       j0_11=z2/6d0 - z2**2/15d0 + 4*z**6/105d0 + 8*z**8/315d0 + 64*z**10/3465d0
+       j0_2=gamma
+       j0_02=z2*(1.d0/6.d0+z2*(-0.05d0+z2*(3.d0/112.d0-5.d0*z2/288.d0)))
+       j0_022=z2**2*(1.d0/120.d0+z2*(-3.d0/560.d0+z2*(5.d0/1344.d0 &
+            -35.d0*z2/12672.d0)))
+       j1_0=z*(1.d0/3.d0+z2*(-2.d0/15.d0+z2*(8.d0/105.d0-16.d0*z2/315.d0)))
+       j1_1=z*(1.d0/3.d0+z2*(-0.1d0+z2*(3.d0/56.d0-5.d0*z2/144.d0)))
+       j1_2=z/3.d0
+       j1_02=z*z2*(1.d0/30.d0+z2*(-2.d0/105.d0+z2*(4.d0/315.d0 &
+            -32.d0*z2/3465.d0)))
+       j1_11=z*z2*(1.d0/30.d0+z2*(-3.d0/140.d0+z2*(5.d0/336.d0 &
+            -35.d0*z2/3168.d0)))
+       j1_022=z*z2**2*(1.d0/840.d0+z2*(-1.d0/945.d0+z2*(1.d0/1155.d0 &
+            -32.d0*z2/45045.d0)))
+       return
+    endif
+    !
+    gamma=dsqrt(z2+1.d0)
+    sigma=dlog(z+gamma)
+    !
+    j0_1=1d0
+    j0_11=(sigma*gamma - z)/(2d0*z)
+    !
+    j0_2=gamma
+    j0_02=(z*gamma-sigma)/(4.d0*z)
+    j0_022=((3.d0+2.d0*z2)*sigma-3.d0*z*gamma)/(32.d0*z)
+    !
+    j1_0=(gamma*sigma-z)/z2
+    j1_1=(z*gamma-sigma)/(2.d0*z2)
+    j1_2=z/3.d0
+    j1_02=(3.d0*z+z**3-3.d0*gamma*sigma)/(12.d0*z2)
+    j1_11=((3.d0+2.d0*z2)*sigma-3.d0*z*gamma)/(8.d0*z2)
+    j1_022=((15.d0+6.d0*z2)*gamma*sigma-15.d0*z-11.d0*z**3)/288.d0/z2
+    !
+    !
+    return
+  end subroutine karney
 
+  function D_thth(rmu, x)
+    real(kind=dp) :: rmu, x, D_thth
+    real(kind=dp) :: z, gam
+    real(kind=dp) :: j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
+    real(kind=dp) :: I1, I2
+    
+    z   = sqrt(2/rmu) * x
+    gam = sqrt(1+z**2)
+    call karney(z, gam,j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022)
+
+    I1 = integrate(D_thth1, 0d0, x)
+    I2 = integrate(D_thth2, x)
+
+    D_thth = 4/sqrt(pi) * norm_maxwell * (I1 + I2)
+  contains
+
+    function D_thth1(xp)
+      real(kind=dp) :: xp, D_thth1
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+      real(kind=dp) :: j0_1p,j0_11p,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p
+      
+      zp  = sqrt(2/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+      
+      call karney(zp, gamp, j0_1,j0_11,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p)
+      D_thth1 = ((0.5*j0_2p - (z**(-2) + 1d0/gam**2d0)*j0_02p)  &
+           + 4d0/(gam**2)*z**(-2)*j0_022p)*gam/gamp*xp**2/x &
+           * exp(-exp_maxwellp * xp**2)
+
+    end function D_thth1
+
+    function D_thth2(xp)
+      real(kind=dp) :: xp, D_thth2
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+      
+      zp  = sqrt(2/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+      
+      D_thth2 = (0.5*gamp**2/gam**2*j0_2 - xp**2/x**2*(zp**(-2) + 1d0/gam**2d0)*j0_02 &
+           + 4d0/(gam**2)*z**(-2)*j0_022)*gam/gamp*xp &
+           * exp(-exp_maxwellp * xp**2)
+
+    end function D_thth2
+    
+  end function D_thth
+
+  function D_uu(rmu, x)
+    real(kind=dp) :: rmu, x, D_uu
+    real(kind=dp) :: z, gam
+    real(kind=dp) :: gamma,j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
+    real(kind=dp) :: I1, I2
+    
+    z   = sqrt(2/rmu) * x
+    gam = sqrt(1+z**2)
+    call karney(z, gam, j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022)
+
+    I1 = integrate(D_uu1, 0d0, x)
+    I2 = integrate(D_uu2, x)
+    
+    D_uu = 4d0/sqrt(pi) * norm_maxwell * (I1 + I2)
+    !write (400,*) I, I1, I2, norm_maxwell, 4d0/sqrt(pi)* norm_maxwell * (I1 + I2), D_uu
+  contains
+
+    function D_uu1(xp)
+      real(kind=dp) :: xp, D_uu1
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+      real(kind=dp) :: j0_1p,j0_11p,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p
+      
+      zp  = sqrt(2/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+      
+      call karney(zp, gamp,j0_1p,j0_11p,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p)
+      D_uu1 = ((2*gam**2*j0_02p - 8*j0_022p)*gam*z**(-2) * (xp**2/(x*gamp))) * exp(-exp_maxwellp * xp**2)
+    end function D_uu1
+
+    function D_uu2(xp)
+      real(kind=dp) :: xp, D_uu2
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+      
+      zp  = sqrt(2/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+      
+      D_uu2 = (2*gamp**2*j0_02 - 8*j0_022) * z**(-2) * gam/gamp * xp * exp(-exp_maxwellp * xp**2)
+    end function D_uu2
+    
+  end function D_uu
+
+  function D_uu_b(rmu, x, mp)
+    real(kind=dp) :: rmu, x, D_uu_b
+    integer       :: mp
+    real(kind=dp) :: z, gam
+    real(kind=dp) :: gamma,j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
+    real(kind=dp) :: I1, I2
+    
+    z   = sqrt(2/rmu) * x
+    gam = sqrt(1+z**2)
+    call karney(z, gam,j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022)
+
+    I1 = integrate(D_uu_b1, 0d0, x)
+    I2 = integrate(D_uu_b2, x)
+    
+    D_uu_b = 4d0/sqrt(pi) * norm_maxwell * (I1 + I2)
+    !write (400,*) I, I1, I2, norm_maxwell, 4d0/sqrt(pi)* norm_maxwell * (I1 + I2), D_uu
+  contains
+
+    function D_uu_b1(xp)
+      real(kind=dp) :: xp, D_uu_b1
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+      real(kind=dp) :: j0_1p,j0_11p,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p
+      
+      zp  = sqrt(2/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+      
+      call karney(zp, gamp,j0_1p,j0_11p,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p)
+      D_uu_b1 = ((2*gam**2*j0_02p - 8*j0_022p)*gam*z**(-2) * (xp**2/(x*gamp))) * exp(-exp_maxwellp * xp**2) * phi_exp(mp,xp)
+    end function D_uu_b1
+
+    function D_uu_b2(xp)
+      real(kind=dp) :: xp, D_uu_b2
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+      
+      zp  = sqrt(2/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+      
+      D_uu_b2 = (2*gamp**2*j0_02 - 8*j0_022) * z**(-2) * gam/gamp * xp * exp(-exp_maxwellp * xp**2) * phi_exp(mp,xp)
+    end function D_uu_b2
+    
+  end function D_uu_b  
+
+  function F_u_b(rmu, x, mp)
+    real(kind=dp) :: rmu, x, F_u_b
+    integer       :: mp
+    real(kind=dp) :: z, gam
+    real(kind=dp) :: gamma,j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
+    real(kind=dp) :: I1, I2
+    z   = sqrt(2/rmu) * x
+    gam = sqrt(1+z**2)
+    call karney(z, gam,j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022)
+    
+    I1 = integrate(F_u_b1, 0d0, x)
+    I2 = integrate(F_u_b2, x)
+    
+    F_u_b = -4d0/sqrt(pi) * norm_maxwell * (I1 + I2)
+    !write (400,*) I, I1, I2, norm_maxwell, 4d0/sqrt(pi)* norm_maxwell * (I1 + I2), D_uu
+  contains
+
+    function F_u_b1(xp)
+      real(kind=dp) :: xp, F_u_b1
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+      real(kind=dp) :: j0_1p,j0_11p,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p
+      
+      zp  = sqrt(2/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+  
+      call karney(zp, gamp,j0_1p,j0_11p,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p)
+      
+      F_u_b1 = ((gam**2 * j0_1p - 2*j0_11p) * xp**2/(x**2*gamp)) * exp(-exp_maxwellp * xp**2) * phi_exp(mp,xp)
+    end function F_u_b1
+
+    function F_u_b2(xp)
+      real(kind=dp) :: xp, F_u_b2
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+      
+      zp  = sqrt(2/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+      
+      F_u_b2 = (4d0*xp/x * j0_02) * exp(-exp_maxwellp * xp**2) * phi_exp(mp,xp)
+    end function F_u_b2
+    
+  end function F_u_b
+
+  function C_I_rel1_mmp(rmu, l, m, mp)
+    real(kind=dp) :: rmu, C_I_rel1_mmp
+    integer       :: l, m, mp
+
+    if (l .eq. 0) then
+       C_I_rel1_mmp = C_I_l0_rel1(rmu, m, mp)
+    elseif (l .eq. 1) then 
+       C_I_rel1_mmp = 1.5d0 * 3.d0/(pi**1.5d0) * integrate(k, 0d0)
+    end if
+  contains
+
+    function k(x)
+      real(kind=dp) :: x, k
+
+      k = C_I_l1_rel1(rmu, x, m, mp)
+      
+    end function k
+
+  end function C_I_rel1_mmp
+
+  function C_I_l0_rel1(rmu, m, mp)
+    real(kind=dp) :: rmu, C_I_l0_rel1
+    integer       :: m, mp
+
+    !write (*,*) F_u_b(rmu, 10d0, 0), D_uu_b(rmu, 10d0, 0)
+    !stop
+    C_I_l0_rel1 = 3.d0/(8d0*pi) * norm_maxwell * integrate(k, 0d0)
+
+  contains
+
+    function k(x)
+      real(kind=dp) :: k, x
+      real(kind=dp) :: z, gam, exp_maxwell
+      
+      z   = sqrt(2/rmu) * x
+      gam = sqrt(1+z**2)
+      exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+      k = exp(-exp_maxwell * x**2) * x**2 * (phi_prj(m,x) + x*d_phi_prj(m,x)) &
+          * ((2d0*x/gam) * D_uu_b(rmu, x, mp) + F_u_b(rmu,x, mp))
+           
+    end function k
+    
+  end function C_I_l0_rel1
+  
+  function C_I_l1_rel1(rmu, x, m, mp)
+    real(kind=dp) :: rmu, C_I_l1_rel1
+    integer       :: m, mp
+    real(kind=dp) :: gam, k_l1, x
+    real(kind=dp) :: I1, I2, exp_maxwell
+    real(kind=dp) :: j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
+    real(kind=dp) :: z
+
+    z   = sqrt(2d0/rmu) * x
+    gam = sqrt(1+z**2)
+    call karney(z,gam,j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022)
+    
+    exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+    I1 = integrate(k1, 0d0, x)
+    I2 = integrate(k2, x)
+    k_l1 = norm_maxwell * (1d0/gam * exp(-exp_maxwell * x**2) * phi_exp(mp,x) + I1 + I2)
+
+    C_I_l1_rel1 = norm_maxwell * x**3 * exp(-exp_maxwell * x**2) * phi_prj(m,x) * k_l1
+    
+  contains
+
+    function k1(xp)
+      real(kind=dp) :: xp, k1
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+      real(kind=dp) :: j0_1p,j0_11p,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p
+      
+      zp  = sqrt(2d0/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+      
+      call karney(zp,gamp,j0_1p,j0_11p,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p)
+
+      k1 = sqrt(2d0) * xp**2/(gam*gamp) * (&
+           1.0d0/x**2 * (2.0d0/sqrt(rmu)*j1_1p &
+           + j1_2p*sqrt(rmu) &
+           - 10d0*j1_02p*sqrt(rmu)) &
+           + gam/x**2*(-2*j1_1p*sqrt(rmu) &
+           + 4d0*j1_11p*sqrt(rmu) &
+           + 6d0*sqrt(rmu)**3*j1_02p &
+           - 24d0*sqrt(rmu)**3*j1_022p)  &
+           + (2d0*j1_0p/sqrt(rmu)) &
+           + gam*(4d0*j1_02p*sqrt(rmu)) &
+           ) &
+           * exp(-exp_maxwellp*xp**2) * phi_exp(mp,xp)
+      
+    end function k1
+
+    function k2(xp)
+      real(kind=dp) :: xp,k2
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+
+      zp  = sqrt(2d0/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+
+      k2 = sqrt(2d0) * xp**2/(gam*gamp) * (&
+           1.0d0/xp**2*(2.0d0/sqrt(rmu)*j1_1 &
+           + j1_2*sqrt(rmu) &
+           - 10d0*j1_02*sqrt(rmu)) &
+           + gamp/xp**2*(-2*j1_1*sqrt(rmu) &
+           + 4d0*j1_11*sqrt(rmu) &
+           + 6d0*sqrt(rmu)**3 * j1_02 & 
+           - 24d0*sqrt(rmu)**3 * j1_022)  &
+           + (2d0*j1_0/sqrt(rmu)) &
+           + gamp*(4d0*j1_02*sqrt(rmu)) &
+           ) &
+           * exp(-exp_maxwellp*xp**2) * phi_exp(mp,xp)
+      
+    end function k2
+    
+  end function C_I_l1_rel1
+
+  function C_I_rel2_mmp(rmu, l, m, mp)
+    real(kind=dp) :: rmu, C_I_rel2_mmp
+    integer       :: l, m, mp
+
+    C_I_rel2_mmp = (2d0*l+1)/2d0 * 3.d0/(pi**1.5d0) * integrate(kernel_rel2, 0d0)
+    
+  contains
+
+    function kernel_rel2(x)
+      real(kind=dp) :: x, kernel_rel2
+
+      kernel_rel2 = C_I_rel2_mmp_kernel(x, rmu, l, m, mp)
+      
+    end function kernel_rel2
+    
+  end function C_I_rel2_mmp
+  
+  function C_I_rel2_mmp_kernel(x, rmu, l, m, mp)
+    use rel_kernels_mod
+    real(kind=dp) :: x, rmu, C_I_rel2_mmp_kernel
+    integer       :: l, m, mp
+    real(kind=dp) :: z, I10, I11, I20, I21
+    real(kind=dp) :: I1, I2, exp_maxwell
+
+    z   = sqrt(2d0/rmu) * x
+    gam = sqrt(1+z**2)
+    exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+    
+    I10 = integrate(k1, 0d0, x)
+    I11 = integrate(k1, x)
+    I1  = (phi_prj(m,x) + x*d_phi_prj(m,x)) * x**2 * norm_maxwell**2 * exp(-exp_maxwell * x**2) * (I10 + I11)
+    I20 = integrate(k2, 0d0, x)
+    I21 = integrate(k2, x)
+    I2  = x**3 * phi_prj(m,x) * norm_maxwell**2 * exp(-exp_maxwell * x**2) * (I20 + I21)    
+
+    C_I_rel2_mmp_kernel = I1 + I2
+    
+    contains
+    
+    function k1(xp)
+      real(kind=dp) :: xp, k1
+      real(kind=dp) :: R_11, R_10, R_01, R_00, exp
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+
+      zp  = sqrt(2d0/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+
+      call rel_kernels(l,z,zp,R_11,R_10,R_01,R_00)
+
+      k1 = xp**2 * exp(-exp_maxwellp * xp**2) * (sqrt(2d0/rmu) * R_11 * d_phi_exp(mp, xp) + 2d0/rmu * R_10 * phi_exp(mp, xp))
+    end function k1
+
+    function k2(xp)
+      real(kind=dp) :: xp, k2
+      real(kind=dp) :: R_11, R_10, R_01, R_00
+      real(kind=dp) :: zp, gamp, exp_maxwellp
+
+      zp  = sqrt(2d0/rmu) * xp
+      gamp = sqrt(1+zp**2)
+      exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
+
+      call rel_kernels(l,z,zp,R_11,R_10,R_01,R_00)
+
+      k2 = xp**2 * exp(-exp_maxwellp * xp**2) * (2d0/rmu * R_01 * d_phi_exp(mp, xp) + (2d0/rmu)**1.5d0 * R_00 * phi_exp(mp, xp))
+    end function k2
+    
+  end function C_I_rel2_mmp_kernel
+    
   recursive function integrate_ab(func1d, a, b) result(y)
     real(kind=dp) :: a, b
     real(kind=dp) :: y
@@ -653,12 +1141,20 @@ contains
        !END DO
        !STOP
     else
-       write(*,*) "Matrix:"
-       do mm = 0, lagmax
-          do mp = 0, lagmax
-             M(mm+1,mp+1) = integrate(phim_phimp, 0d0)
+       if (isw_relativistic .eq. 0) then
+          do mm = 0, lagmax
+             do mp = 0, lagmax
+                M(mm+1,mp+1) = integrate(phim_phimp, 0d0)
+             end do
           end do
-       end do
+       elseif (isw_relativistic .ge. 1) then
+          do mm = 0, lagmax
+             do mp = 0, lagmax
+                M(mm+1,mp+1) = norm_maxwell * integrate(phim_phimp_rel1, 0d0)
+                !M(mm+1,mp+1) = integrate(phim_phimp, 0d0)
+             end do
+          end do          
+       end if
     end if
 
     if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
@@ -675,6 +1171,20 @@ contains
        M_transform = M
     end if
 
+    
+    ! DEBUG - MAKE MATRIX ALWAYS UNIT MATRIX
+!!$    write (*,*) "WARNING, INVERSE MATRIX NOT COMPUTED!!!!!!"
+!!$    do mm = 0, lagmax
+!!$       do mp = 0, lagmax
+!!$          if (mm .eq. mp) then
+!!$             M(mm+1,mp+1) = 1d0
+!!$          else
+!!$             M(mm+1,mp+1) = 0d0
+!!$          end if
+!!$       end do
+!!$    end do
+
+    
     !**********************************************************
     ! M -> inv(M)
     !**********************************************************
@@ -689,6 +1199,18 @@ contains
       phim_phimp =  pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(mm,x) * phi_exp(mp,x)
 
     end function phim_phimp
+
+    function phim_phimp_rel1(x)
+      real(kind=dp) :: x, phim_phimp_rel1
+      real(kind=dp) :: exp_maxwell, gam
+      
+      exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+      gam = sqrt(1 + 2*x**2/rmu)
+
+      !phim_phimp_rel1 =  pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(mm,x) * phi_exp(mp,x)
+      phim_phimp_rel1 = 1d0/gam * pi**(-3d0/2d0) * x**(4+alpha) * exp(-(exp_maxwell+beta)*x**2) * phi_prj(mm,x) * phi_exp(mp,x)
+
+    end function phim_phimp_rel1
   end subroutine compute_Minv
 
   subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s)
@@ -713,11 +1235,19 @@ contains
        !end do
        !stop
     else
-       do k = 1, 3
-          do m = 0, lagmax
-             asource_s(m+1, k) = integrate(am, 0d0)
+       if (isw_relativistic .eq. 0) then 
+          do k = 1, 3
+             do m = 0, lagmax
+                asource_s(m+1, k) = integrate(am, 0d0)
+             end do
           end do
-       end do
+       elseif (isw_relativistic .ge.1) then
+          do k = 1, 3
+             do m = 0, lagmax
+                asource_s(m+1, k) = norm_maxwell * integrate(am_rel1, 0d0)
+             end do
+          end do          
+       end if
     end if
 
     if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
@@ -743,13 +1273,23 @@ contains
        !end do
        !stop
     else
-       do j = 1, 3
-          do m = 0, lagmax
-             res_int = integrate(bm, 0d0)
-             weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int
-             if (j .eq. 3) C_m(m) = res_int
+       if (isw_relativistic .eq. 0 ) then
+          do j = 1, 3
+             do m = 0, lagmax
+                res_int = integrate(bm, 0d0)
+                weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int
+                if (j .eq. 3) C_m(m) = res_int
+             end do
           end do
-       end do
+       elseif (isw_relativistic .ge. 1) then
+          do j = 1, 3
+             do m = 0, lagmax
+                res_int = norm_maxwell * integrate(bm_rel1, 0d0)
+                weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int
+                if (j .eq. 3) C_m(m) = res_int
+             end do
+          end do
+       end if
     end if
 
     ! weightparflow for computation of bvec_parflow
@@ -761,10 +1301,16 @@ contains
 
     call chop(weightlag_s)
 
-    do m = 0, lagmax
-       weightden_s(m+1) = 1d0/sqrt(pi) * integrate(weightden_kernel, 0d0)
-    end do
-
+    if (isw_relativistic .eq. 0) then
+       do m = 0, lagmax
+          weightden_s(m+1) = 1d0/sqrt(pi) * integrate(weightden_kernel, 0d0)
+       end do
+    elseif (isw_relativistic .ge. 1) then
+       do m = 0, lagmax
+          weightden_s(m+1) = norm_maxwell * 1d0/sqrt(pi) * integrate(weightden_kernel_rel1, 0d0)
+       end do       
+    end if
+    
   contains
 
     function am(x)
@@ -773,17 +1319,54 @@ contains
       am = pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * x**(2*k - 1 - 5*kdelta(3,k))
     end function am
 
+    function am_rel1(x)
+      real(kind=dp) :: x, am_rel1
+      real(kind=dp) :: exp_maxwell, gam, gam_fac
+
+      exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+      gam = sqrt(1+2*x**2/rmu)
+     
+      if ((2*k - 1 - 5*kdelta(3,k)) .le. 1) then
+         gam_fac = 1.0d0/gam
+      else
+         gam_fac = 2.0d0/(gam+1)
+      end if
+      !gam_fac = 1d0
+      
+      am_rel1 = gam_fac * pi**(-3d0/2d0) * x**(4+alpha) * exp(-(exp_maxwell+beta)*x**2) &
+           * phi_prj(m, x) * x**(2*k - 1 - 5*kdelta(3,k))
+    end function am_rel1
+
     function bm(x)
       real(kind=dp) :: x, bm
 
       bm = exp(-x**2) * x**(2*(j+1)-5*kdelta(3,j)) * phi_exp(m,x)
     end function bm
 
+    function bm_rel1(x)
+      real(kind=dp) :: x, bm_rel1
+      real(kind=dp) :: exp_maxwell, gam
+
+      exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+      gam = 2*x**2/rmu
+
+      bm_rel1 = exp(-exp_maxwell*x**2) * x**(2*(j+1)-5*kdelta(3,j)) * phi_exp(m,x)
+    end function bm_rel1
+
     function weightden_kernel(x)
       real(kind=dp) :: x, weightden_kernel
       weightden_kernel = exp(-x**2) * x**2 * phi_exp(m,x)
     end function weightden_kernel
 
+    function weightden_kernel_rel1(x)
+      real(kind=dp) :: x, weightden_kernel_rel1
+      real(kind=dp) :: exp_maxwell, gam
+
+      exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+      gam = 2*x**2/rmu
+      weightden_kernel_rel1 = exp(-exp_maxwell*x**2) * x**2 * phi_exp(m,x)
+    end function weightden_kernel_rel1
+    
     function kdelta(a,b)
       integer :: a, b
       integer :: kdelta
@@ -853,7 +1436,7 @@ contains
     end function integrand_x2mmp
 
   end subroutine compute_xmmp
-
+  
   subroutine compute_lorentz(anumm_s)
     real(kind=dp), dimension(:,:) :: anumm_s
     integer :: m, mp
@@ -872,20 +1455,28 @@ contains
        !end do
        !stop
     else
-       do m = 0, lagmax
-          do mp = 0, lagmax
-             anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand, 0d0)
+       if (isw_relativistic .eq. 0) then
+          do m = 0, lagmax
+             do mp = 0, lagmax
+                anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand, 0d0)
+             end do
           end do
-       end do
+       elseif (isw_relativistic .ge. 1) then
+          do m = 0, lagmax
+             do mp = 0, lagmax
+                anumm_s(m+1, mp+1) = norm_maxwell * 6d0/(4d0 * pi) * integrate(integrand_rel1, 0d0)
+             end do
+          end do          
+       end if
     end if
-
+  
     if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
        anumm_s = matmul(M_transform_inv, anumm_s)
     end if
 
     call chop(anumm_s)
     !write (*,*) "Done."
-
+    
   contains
 
     function integrand(x)
@@ -897,6 +1488,18 @@ contains
 
     end function integrand
 
+    function integrand_rel1(x)
+      real(kind=dp) :: x
+      real(kind=dp) :: integrand_rel1  
+      real(kind=dp) :: exp_maxwell, z, gam
+
+      z   = sqrt(2/rmu) * x
+      gam = sqrt(1+z**2)      
+      exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+      integrand_rel1 = exp(-exp_maxwell * x**2) * x * D_thth(rmu, x) * phi_prj(m,x) * phi_exp(mp, x)
+
+    end function integrand_rel1
+    
   end subroutine compute_lorentz
 
   subroutine compute_lorentz_inf(anumm_s)
@@ -908,12 +1511,20 @@ contains
 
     write (*,*) "Computing Lorentz part (gamma -> inf)..."
 
-    do m = 0, lagmax
-       do mp = 0, lagmax
-          anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand_inf, 0d0)
+    if (isw_relativistic .eq. 0) then
+       do m = 0, lagmax
+          do mp = 0, lagmax
+             anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand_inf, 0d0)
+          end do
        end do
-    end do
-
+    elseif (isw_relativistic .ge. 1) then
+       do m = 0, lagmax
+          do mp = 0, lagmax
+             anumm_s(m+1, mp+1) = 3d0/(4d0 * pi) * norm_maxwell * integrate(integrand_inf_rel1, 0d0)
+          end do
+       end do
+    end if
+    
     if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
        anumm_s = matmul(M_transform_inv, anumm_s)
     end if
@@ -929,10 +1540,22 @@ contains
       real(kind=dp) :: integrand_inf
 
       y = x * gamma_ab
-      integrand_inf = x**(alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * (1 - 0) * phi_exp(mp, x)
+      integrand_inf = x**(alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * phi_exp(mp, x)
 
     end function integrand_inf
+    
+    function integrand_inf_rel1(x)
+      real(kind=dp) :: x, y
+      real(kind=dp) :: integrand_inf_rel1
+      real(kind=dp) :: exp_maxwell, z, gam
 
+      z   = sqrt(2/rmu) * x
+      gam = sqrt(1+z**2)
+      exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+      integrand_inf_rel1 = gam * exp(-exp_maxwell*x**2) * phi_prj(m, x) * phi_exp(mp, x)
+      
+    end function integrand_inf_rel1
+    
   end subroutine compute_lorentz_inf
 
   subroutine compute_energyscattering(denmm_s)
@@ -954,17 +1577,29 @@ contains
        !end do
        !stop
     else
-       do m = 0, lagmax
-          do mp = 0, lagmax
-             denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand, 0d0)
-             !write (*,*) denmm_s(m+1, mp+1)
-             !stop
-             !write (*,*) "denmm_s", m, mp, integrand(2d0), denmm_s(m, mp)
-             !write (*,*) G(2d0), d_G(2d0), gamma_ab, phi(m, 2d0), d_phi(m, 2d0), dd_phi(m,2d0)
+       if (isw_relativistic .eq. 0) then
+          do m = 0, lagmax
+             do mp = 0, lagmax
+                denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand, 0d0)
+                !write (*,*) denmm_s(m+1, mp+1)
+                !stop
+                !write (*,*) "denmm_s", m, mp, integrand(2d0), denmm_s(m, mp)
+                !write (*,*) G(2d0), d_G(2d0), gamma_ab, phi(m, 2d0), d_phi(m, 2d0), dd_phi(m,2d0)
+             end do
           end do
-       end do
+       elseif (isw_relativistic .ge. 1) then
+          do m = 0, lagmax
+             do mp = 0, lagmax
+                denmm_s(m+1, mp+1) = -3d0/(4d0 * pi) * norm_maxwell * integrate(integrand_rel1, 0d0)
+                !write (*,*) denmm_s(m+1, mp+1)
+                !stop
+                !write (*,*) "denmm_s", m, mp, integrand(2d0), denmm_s(m, mp)
+                !write (*,*) G(2d0), d_G(2d0), gamma_ab, phi(m, 2d0), d_phi(m, 2d0), dd_phi(m,2d0)
+             end do
+          end do          
+       end if
     end if
-
+    
     if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
        denmm_s = matmul(M_transform_inv, denmm_s)
     end if
@@ -997,6 +1632,20 @@ contains
            * (x * G(y) * exp(-x**2) * d_phi_exp(mp, x))
       integrand = 2*D_1 - D_2
     end function integrand
+
+    function integrand_rel1(x)
+      real(kind=dp) :: x
+      real(kind=dp) :: integrand_rel1
+      real(kind=dp) :: exp_maxwell, z, gam
+      z   = sqrt(2/rmu) * x
+      gam = sqrt(1+z**2)
+      
+      exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+      integrand_rel1 = exp(-exp_maxwell*x**2) * x**2 * D_uu(rmu, x) &
+           * d_phi_prj(mp,x) * (phi_prj(m,x) + x*d_phi_prj(m,x))
+
+      !write (*,*) D_uu(rmu,2d0), integrand_rel1
+    end function integrand_rel1
   end subroutine compute_energyscattering
 
   subroutine compute_integralpart(ailmm_s)
@@ -1037,27 +1686,64 @@ contains
        !end do
        !stop
     else
-       call compute_I1_mmp_s()
-       call compute_I2_mmp_s()
-       call compute_I3_mmp_s()
-       call compute_I4_mmp_s()
+       if (isw_relativistic .eq. 0) then
+          call compute_I1_mmp_s()
+          call compute_I2_mmp_s()
+          call compute_I3_mmp_s()
+          call compute_I4_mmp_s()
+
+          !if (allocated(ailmm_s)) deallocate(ailmm_s)
+          !allocate(ailmm_s(0:lagmax, 0:lagmax, 0:legmax))
+          if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+             do l = 0, legmax
+                !ailmm_s(:,:,l+1) = I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l)
+                ailmm_s(:,:,l+1) = matmul(M_transform_inv, I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l))
+             end do
+          else
+             do l = 0, legmax
+                ailmm_s(:,:,l+1) = I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l)
+             end do
+          end if
+
+       elseif (isw_relativistic .eq. 1) then
+          ailmm_s = 0d0
+          call compute_I1_mmp_s()
+          call compute_I2_mmp_s()
+          call compute_I3_mmp_s()
+          call compute_I4_mmp_s()
+          do l = 0, legmax
+             do m = 0, lagmax
+                do mp = 0, lagmax
+                   if (l .le. 1) then
+                      ailmm_s(m+1,mp+1,l+1) = C_I_rel1_mmp(rmu, l, m, mp)
+                   else
+                      ailmm_s(:,:,l+1) = I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l)
+                   end if
+                end do
+             end do
+             if (make_ortho) then
+                ailmm_s(:,:,l+1) = matmul(M_transform_inv, ailmm_s(:,:,l+1))
+             end if
+          end do
+       elseif (isw_relativistic .eq. 2) then
+
+          do l = 0, legmax
+             do m = 0, lagmax
+                do mp = 0, lagmax
+                   write (*,*) "Computing", l, m, mp
+                   ailmm_s(m+1,mp+1,l+1) = C_I_rel2_mmp(rmu, l, m, mp)
+                end do
+             end do
+             if (make_ortho) then
+                ailmm_s(:,:,l+1) = matmul(M_transform_inv, ailmm_s(:,:,l+1))
+             end if
+
+          end do
+       end if
     end if
 
-    !if (allocated(ailmm_s)) deallocate(ailmm_s)
-    !allocate(ailmm_s(0:lagmax, 0:lagmax, 0:legmax))
-    if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
-       do l = 0, legmax
-          !ailmm_s(:,:,l+1) = I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l)
-          ailmm_s(:,:,l+1) = matmul(M_transform_inv, I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l))
-       end do
-    else
-       do l = 0, legmax
-          ailmm_s(:,:,l+1) = I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l)
-       end do
-    end if
 
-
-    call chop(ailmm_s)
+    !call chop(ailmm_s)
 
   end subroutine compute_integralpart
 
@@ -1235,7 +1921,6 @@ contains
       I4_part = ((x**(4 + alpha)*((5 + alpha - 2*(1 + beta)*x**2) * phi_prj(m,x) &
            + x*d_phi_prj(m, x))) *  exp(-((1 + beta)*x**2))) * K(x)
 
-      ! (x**(4 + alpha)*((5 + alpha - 2*(1 + beta)*x**2)*Pattern(phi,Blank(m))(x) + x*Derivative(1)(Pattern(phi,Blank(m)))(x)))/E**((1 + beta)*x**2)
     end function I4_part
     
     function K(x)
@@ -1277,7 +1962,6 @@ contains
       real(kind=dp) :: I4_1, I4_2
       real(kind=dp) :: c
 
-     
       ! First approach - use second derivates
       !  c = 1 + beta
 !!$      I_psi = exp(-c*x**2)*x**(3+alpha) * ((20+9*alpha + &
@@ -1346,6 +2030,57 @@ contains
 
   end subroutine compute_source
 
+  subroutine compute_collop_rel(isw_rel, T_e, asource_s, weightlag_s, bzero_s, weightparflow_s, Amm_s, &
+       anumm_s, anumm_inf_s, denmm_s, ailmm_s)
+    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
+    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s
+    real(kind=dp), dimension(:,:)   :: anumm_s, anumm_inf_s, denmm_s
+    real(kind=dp), dimension(:,:,:) :: ailmm_s
+    real(kind=dp) :: T_e
+    integer :: ierr, n, isw_rel
+
+    isw_relativistic = isw_rel
+
+    
+    rmu = (c**2 * m_ele)/(eV*T_e)
+    
+    n=2
+    call DBESK(rmu,n,norm_maxwell,ierr)
+    !norm_maxwell = sqrt(pi/(2*rmu)) * norm_maxwell**(-1)
+    !norm_maxwell = 1d0/norm_maxwell
+    !write (*,*) rmu, n, norm_maxwell * sqrt(2/pi), ierr
+    norm_maxwell = sqrt(pi/2d0) * 1/norm_maxwell
+    
+    write (*,*) "mu = ", rmu
+    write (*,*) "norm_maxwell = ", norm_maxwell
+    !stop
+    
+    if (allocated(M_transform)) deallocate(M_transform)
+    allocate(M_transform(0:lagmax, 0:lagmax))
+    
+    if (allocated(M_transform_inv)) deallocate(M_transform_inv)
+    allocate(M_transform_inv(0:lagmax, 0:lagmax))
+
+    call compute_Minv(M_transform_inv)
+    call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s)
+    Amm_s=M_transform
+    
+    gamma_ab = 1.0d0
+    m_a = 1d0
+    m_b = 1d0
+    T_a = 1d0
+    T_b = 1d0
+    write (*,'(A,A,A,A,A,ES13.6)') " Computing relativistic collision operator"
+    
+    call compute_lorentz(anumm_s)
+    call compute_lorentz_inf(anumm_inf_s)
+    call compute_energyscattering(denmm_s)
+    call compute_integralpart(ailmm_s)
+
+    write (*,*) 2d0/3d0 * ailmm_s(:,2,2) / (anumm_s(:,2) - denmm_s(:,2))
+ 
+  end subroutine compute_collop_rel
+  
   subroutine compute_collop(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, anumm_s, denmm_s, ailmm_s)
     character(len=*) :: tag_a, tag_b
     real(kind=dp)    :: m_a0, m_b0
@@ -1368,7 +2103,7 @@ contains
     call compute_integralpart(ailmm_s)
 
   end subroutine compute_collop
-
+  
   subroutine compute_collop_inf(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, anumm_s, anumm_inf_s, denmm_s, ailmm_s)
     character(len=*) :: tag_a, tag_b
     real(kind=dp)    :: m_a0, m_b0
