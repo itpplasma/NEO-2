@@ -84,6 +84,7 @@
     DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
     DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightden
     DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightparflow
+    DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightenerg
     !**********************************************************
     
     DOUBLE PRECISION, DIMENSION(3) :: fluxes
