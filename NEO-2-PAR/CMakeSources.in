@@ -68,6 +68,7 @@ set(NEO2_COMMON_FILES
 	../COMMON/collop_spline.f90
 	../COMMON/collision_operator_mems.f90
 	../COMMON/collop_compute.f90
+	../COMMON/rel_kernels.f90
 )
 
 set(NEO2_SRC_FILES

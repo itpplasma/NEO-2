@@ -92,5 +92,6 @@ set(NEO2_SRC_FILES
 ###     ../COMMON/collop_bspline2.f90
 ###     ../COMMON/collop_spline4.f90
 	../COMMON/collop_spline.f90
+	../COMMON/rel_kernels.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS}")
