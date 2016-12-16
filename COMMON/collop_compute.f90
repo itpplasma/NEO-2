@@ -71,8 +71,8 @@ module collop_compute
   !**********************************************************
   ! Integration settings
   !**********************************************************
-  real(kind=dp) :: epsabs = 1d-10
-  real(kind=dp) :: epsrel = 1d-10
+  real(kind=dp) :: epsabs = 1d-14
+  real(kind=dp) :: epsrel = 1d-14
   integer       :: sw_qag_rule = 2
   logical       :: integral_cutoff = .true.  
   real(kind=dp) :: x_cutoff = 20d0
@@ -303,6 +303,7 @@ contains
        write (*,*) nder
        allocate(t_vec(lbound(xknots,1):ubound(xknots,1)))
        t_vec = xknots
+       !write (*,*) t_vec
 
        !**********************************************************
        ! Detect if hat functions
@@ -402,10 +403,10 @@ contains
        end function func1d
     end interface
 
-    ! For debug
-    res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
-    y = res_int(1)
-    return
+!!$    ! For debug
+!!$    res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
+!!$    y = res_int(1)
+!!$    return
     
     if (allocated(t_vec)) then
        y = 0d0
@@ -470,14 +471,14 @@ contains
        end function func1d
     end interface
 
-    ! For debug
-    if (integral_cutoff) then
-       res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-    else
-       res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
-    end if
-    y = res_int(1)
-    return
+!!$    ! For debug
+!!$    if (integral_cutoff) then
+!!$       res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+!!$    else
+!!$       res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
+!!$    end if
+!!$    y = res_int(1)
+!!$    return
     
     if (allocated(t_vec)) then
        
@@ -493,7 +494,7 @@ contains
                 else
                    res_int = fint1d_qag(func1d, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
                    y = y + res_int(1)
-                  ! write (*,*) "1. Int", a, t_vec(k), res_int
+                   !write (*,*) "1. Int", a, t_vec(k), res_int
                    in_interval = .true.
                 end if
              end if
@@ -691,9 +692,9 @@ contains
     end function phim_phimp
   end subroutine compute_Minv
 
-  subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s)
+  subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s, weightenerg_s)
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
-    real(kind=dp), dimension(:)   :: weightden_s, weightparflow_s
+    real(kind=dp), dimension(:)   :: weightden_s, weightparflow_s, weightenerg_s
     real(kind=dp) :: res_int
     integer :: m, k, j
 
@@ -752,13 +753,18 @@ contains
        end do
     end if
 
-    ! weightparflow for computation of bvec_parflow
-    if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+    weightenerg_s = weightlag_s(2,:)
+    if (make_ortho) then
+       weightenerg_s = matmul(M_transform_inv, weightenerg_s)
+    end if
+    
+    ! weightparflow for computation of bvec_parflow (must be orthogonal?)
+    if (make_ortho) then
        weightparflow_s = asource_s(:,1)
     else
        weightparflow_s = matmul(M_transform_inv, asource_s(:,1))
     end if
-
+    
     call chop(weightlag_s)
 
     do m = 0, lagmax
@@ -1330,9 +1336,9 @@ contains
 
   end subroutine compute_I4_mmp_s
 
-  subroutine compute_source(asource_s, weightlag_s, bzero_s, weightparflow_s, Amm_s)
+  subroutine compute_source(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s, Amm_s)
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
-    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s
+    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
 
     if (allocated(M_transform)) deallocate(M_transform)
     allocate(M_transform(0:lagmax, 0:lagmax))
@@ -1341,7 +1347,7 @@ contains
     allocate(M_transform_inv(0:lagmax, 0:lagmax))
 
     call compute_Minv(M_transform_inv)
-    call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s)
+    call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s)
     Amm_s=M_transform
 
   end subroutine compute_source
