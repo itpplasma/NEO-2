@@ -31,6 +31,14 @@ set(PSPLINE_USERINTER_SRC_FILES
 set(PSPLINE_USERINTER_FLAGS "-I${PSPLINE_INC}")
 set_source_files_properties(${PSPLINE_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${PSPLINE_USERINTER_FLAGS})
 
+set(COLLOPLIB_FILES
+	../COMMON/collop_compute.f90
+	../COMMON/collop_laguerre.f90
+	../COMMON/collop_polynomial.f90
+	../COMMON/collop_bspline.f90
+	../COMMON/collop_spline.f90
+)
+
 set(NEO2_SRC_FILES
         ./field_divB0.f90
         ../COMMON/bdivfree.f90
@@ -84,14 +92,14 @@ set(NEO2_SRC_FILES
 	./neo_magfie_perturbation.f90
 	./collop_definitions.f90
 	./hdf5_tools.f90     # Is now a library
-	../COMMON/collop_compute.f90
+###	../COMMON/collop_compute.f90
         ./neo2.f90
-	../COMMON/collop_laguerre.f90
-	../COMMON/collop_polynomial.f90
-	../COMMON/collop_bspline.f90
+###	../COMMON/collop_laguerre.f90
+###	../COMMON/collop_polynomial.f90
+###	../COMMON/collop_bspline.f90
 ###     ../COMMON/collop_bspline2.f90
 ###     ../COMMON/collop_spline4.f90
-	../COMMON/collop_spline.f90
+###	../COMMON/collop_spline.f90
 	../COMMON/rel_kernels.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS}")
