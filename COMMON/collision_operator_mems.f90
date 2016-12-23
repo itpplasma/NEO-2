@@ -142,6 +142,9 @@ module collop
       if(allocated(weightparflow)) deallocate(weightparflow)
       allocate(weightparflow(0:lag))
 
+      if(allocated(weightenerg)) deallocate(weightenerg)
+      allocate(weightenerg(0:lag))
+
       if (allocated(anumm_inf)) deallocate(anumm_inf)
       allocate(anumm_inf(0:lag, 0:lag))
 
@@ -174,7 +177,8 @@ module collop
             !**********************************************************
             ! Compute sources
             !**********************************************************
-            call compute_source(asource, weightlag, weightden, weightparflow, Amm)
+            call compute_source(asource, weightlag, weightden, weightparflow, &
+              weightenerg, Amm)
             write (*,*) "Weightden: ", weightden
 
             !**********************************************************
@@ -190,8 +194,8 @@ module collop
 
          ! Relativistic collision operator accordning to Braams and Karney
          elseif (isw_relativistic .ge. 1) then
-            call compute_collop_rel(isw_relativistic, T_e, asource, weightlag, weightden, weightparflow, Amm, &
-                 anumm_aa(:,:,0,0), anumm_inf, denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
+            CALL compute_collop_rel(isw_relativistic, T_e, asource, weightlag, weightden, weightparflow, &
+                 weightenerg, Amm, anumm_aa(:,:,0,0), anumm_inf, denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
             !stop
          else
             write (*,*) "Relativistic switch ", isw_relativistic, " not defined."
@@ -225,7 +229,8 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         call compute_source(asource, weightlag, weightden, weightparflow, Amm)
+         call compute_source(asource, weightlag, weightden, weightparflow, &
+              weightenerg, Amm)
 
          !**********************************************************
          ! Compute x1mm and x2mm
