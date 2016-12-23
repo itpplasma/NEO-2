@@ -87,6 +87,7 @@
     DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
     DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightden
     DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightparflow
+    DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightenerg
     !**********************************************************
     ! WINNY - for flint
     ! DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: collision_sigma_multiplier
