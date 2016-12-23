@@ -42,6 +42,7 @@ module gsl_bspline_routines_mod
 
   integer(fgsl_int), private :: status
   logical :: taylorExpansion = .true.
+  !logical :: taylorExpansion = .false.
 
 contains
 
@@ -138,8 +139,9 @@ contains
           end do
        end do
     else
-       write (*,*) "Stop, BSpline not defined outside interval."
-       stop
+       by_loc = 0.0_fgsl_double
+       !write (*,*) "Stop, BSpline not defined outside interval."
+       !stop
     end if
     
   end subroutine bspline_eval
@@ -167,8 +169,9 @@ contains
           end do
        end do
     else
-       write (*,*) "Stop, BSpline not defined outside interval."
-       stop            
+       dby_loc = 0.0_fgsl_double
+       !write (*,*) "Stop, BSpline not defined outside interval."
+       !stop            
     end if
     
   end subroutine bspline_deriv_eval

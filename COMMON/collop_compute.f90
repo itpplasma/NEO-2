@@ -79,8 +79,8 @@ module collop_compute
   !**********************************************************
   ! Integration settings
   !**********************************************************
-  real(kind=dp) :: epsabs = 1d-10
-  real(kind=dp) :: epsrel = 1d-10
+  real(kind=dp) :: epsabs = 1d-14
+  real(kind=dp) :: epsrel = 1d-14
   integer       :: sw_qag_rule = 2
   logical       :: integral_cutoff = .false.
   real(kind=dp) :: x_cutoff = 20d0
@@ -175,29 +175,29 @@ contains
 
 !     ..................................................................
 !
-      SUBROUTINE DBESK(X,N,BK,IER)
+      subroutine DBESK(X,N,BK,IER)
 !
-      DOUBLE PRECISION X, BK
-      DOUBLE PRECISION T, B
-      DOUBLE PRECISION G0, G1, GJ
-      INTEGER N,IER,L,J
+      double precision X, BK
+      double precision T, B
+      double precision G0, G1, GJ
+      integer N,IER,L,J
 !
-      DIMENSION T(12)
+      dimension T(12)
       BK=.0
-      IF(N)10,11,11
+      if(N)10,11,11
    10 IER=1
-      RETURN
-   11 IF(X)12,12,20
+      return
+   11 if(X)12,12,20
    12 IER=2
-      RETURN
-   20 CONTINUE
+      return
+   20 continue
    22 IER=0
-      IF(X-1.)36,36,25
+      if(X-1.)36,36,25
    25 B=1./X
       T(1)=B
-      DO 26 L=2,12
+      do 26 L=2,12
    26 T(L)=T(L-1)*B
-      IF(N-1)27,29,27
+      if(N-1)27,29,27
 !
 !     COMPUTE KO USING POLYNOMIAL APPROXIMATION
 !
@@ -205,9 +205,9 @@ contains
       +.1344596*T(4)-.2299850*T(5)+.3792410*T(6)-.5247277*T(7)    &
       +.5575368*T(8)-.4262633*T(9)+.2184518*T(10)-.06680977*T(11) &
       +.009189383*T(12))
-      IF(N)20,28,29
+      if(N)20,28,29
    28 BK=G0
-      RETURN
+      return
 !
 !     COMPUTE K1 USING POLYNOMIAL APPROXIMATION
 !
@@ -215,26 +215,26 @@ contains
       -.1736432*T(4)+.2847618*T(5)-.4594342*T(6)+.6283381*T(7)    &
       -.6632295*T(8)+.5050239*T(9)-.2581304*T(10)+.07880001*T(11) &
       -.01082418*T(12))
-      IF(N-1)20,30,31
+      if(N-1)20,30,31
    30 BK=G1
-      RETURN
+      return
 !
 !     FROM KO,K1 COMPUTE KN USING RECURRENCE RELATION
 !
-   31 DO 35 J=2,N
+   31 do 35 J=2,N
       GJ=2.*(FLOAT(J)-1.)*G1/X+G0
-      IF(GJ-1.0D300)33,33,32
+      if(GJ-1.0D300)33,33,32
    32 IER=4
       GO TO 34
    33 G0=G1
    35 G1=GJ
    34 BK=GJ
-      RETURN
+      return
 !   
    36 IER=3
       BK=0.
-      RETURN
-      END
+      return
+      end
 !
   
   subroutine init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
@@ -375,6 +375,7 @@ contains
        write (*,*) nder
        allocate(t_vec(lbound(xknots,1):ubound(xknots,1)))
        t_vec = xknots
+       !write (*,*) t_vec
 
        !**********************************************************
        ! Detect if hat functions
@@ -890,10 +891,10 @@ contains
        end function func1d
     end interface
 
-    ! For debug
-    res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
-    y = res_int(1)
-    return
+!!$    ! For debug
+!!$    res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
+!!$    y = res_int(1)
+!!$    return
     
     if (allocated(t_vec)) then
        y = 0d0
@@ -958,14 +959,14 @@ contains
        end function func1d
     end interface
 
-    ! For debug
-    if (integral_cutoff) then
-       res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-    else
-       res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
-    end if
-    y = res_int(1)
-    return
+!!$    ! For debug
+!!$    if (integral_cutoff) then
+!!$       res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+!!$    else
+!!$       res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
+!!$    end if
+!!$    y = res_int(1)
+!!$    return
     
     if (allocated(t_vec)) then
        
@@ -981,7 +982,7 @@ contains
                 else
                    res_int = fint1d_qag(func1d, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
                    y = y + res_int(1)
-                  ! write (*,*) "1. Int", a, t_vec(k), res_int
+                   !write (*,*) "1. Int", a, t_vec(k), res_int
                    in_interval = .true.
                 end if
              end if
@@ -1213,9 +1214,9 @@ contains
     end function phim_phimp_rel1
   end subroutine compute_Minv
 
-  subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s)
+  subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s, weightenerg_s)
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
-    real(kind=dp), dimension(:)   :: weightden_s, weightparflow_s
+    real(kind=dp), dimension(:)   :: weightden_s, weightparflow_s, weightenerg_s
     real(kind=dp) :: res_int
     integer :: m, k, j
 
@@ -1292,13 +1293,18 @@ contains
        end if
     end if
 
-    ! weightparflow for computation of bvec_parflow
-    if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
+    weightenerg_s = weightlag_s(2,:)
+    if (make_ortho) then
+       weightenerg_s = matmul(M_transform_inv, weightenerg_s)
+    end if
+    
+    ! weightparflow for computation of bvec_parflow (must be orthogonal?)
+    if (make_ortho) then
        weightparflow_s = asource_s(:,1)
     else
        weightparflow_s = matmul(M_transform_inv, asource_s(:,1))
     end if
-
+    
     call chop(weightlag_s)
 
     if (isw_relativistic .eq. 0) then
@@ -2014,9 +2020,9 @@ contains
 
   end subroutine compute_I4_mmp_s
 
-  subroutine compute_source(asource_s, weightlag_s, bzero_s, weightparflow_s, Amm_s)
+  subroutine compute_source(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s, Amm_s)
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
-    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s
+    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
 
     if (allocated(M_transform)) deallocate(M_transform)
     allocate(M_transform(0:lagmax, 0:lagmax))
@@ -2025,15 +2031,15 @@ contains
     allocate(M_transform_inv(0:lagmax, 0:lagmax))
 
     call compute_Minv(M_transform_inv)
-    call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s)
+    call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s)
     Amm_s=M_transform
 
   end subroutine compute_source
 
-  subroutine compute_collop_rel(isw_rel, T_e, asource_s, weightlag_s, bzero_s, weightparflow_s, Amm_s, &
-       anumm_s, anumm_inf_s, denmm_s, ailmm_s)
+  subroutine compute_collop_rel(isw_rel, T_e, asource_s, weightlag_s, bzero_s, weightparflow_s, &
+       weightenerg_s, Amm_s, anumm_s, anumm_inf_s, denmm_s, ailmm_s)
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
-    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s
+    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
     real(kind=dp), dimension(:,:)   :: anumm_s, anumm_inf_s, denmm_s
     real(kind=dp), dimension(:,:,:) :: ailmm_s
     real(kind=dp) :: T_e
@@ -2062,7 +2068,7 @@ contains
     allocate(M_transform_inv(0:lagmax, 0:lagmax))
 
     call compute_Minv(M_transform_inv)
-    call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s)
+    call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s)
     Amm_s=M_transform
     
     gamma_ab = 1.0d0
