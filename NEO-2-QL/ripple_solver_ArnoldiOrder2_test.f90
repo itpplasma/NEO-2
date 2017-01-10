@@ -5081,7 +5081,7 @@ PRINT *,' '
 !
   INTEGER :: n
   DOUBLE COMPLEX, DIMENSION(n) :: fold,fnew
-  DOUBLE PRECISION, DIMENSION(:), allocatable :: fnew_real,fnew_imag
+  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fnew_real,fnew_imag
 !
   CALL integral_part(fold,fnew)
 !
@@ -5372,6 +5372,7 @@ PRINT *,' '
     fnew=fzero
   ENDIF
 !
+  !PRINT *,SQRT(SUM(CONJG(fnew)*fnew))
   qvecs_prev(:,1)=fnew/SQRT(SUM(CONJG(fnew)*fnew))
 !
   ierr=0
@@ -5498,7 +5499,8 @@ PRINT *,' '
 !
   IF(info.NE.0) THEN
     IF(info.GT.0) THEN
-      PRINT *,'arnoldi: zhseqr failed to compute all eigenvalues'
+       PRINT *,'arnoldi: zhseqr failed to compute all eigenvalues'
+       PRINT *,'info: ',info
     ELSE
       PRINT *,'arnoldi: argument ',-info,' has illigal value in zhseqr' 
     ENDIF
