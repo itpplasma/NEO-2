@@ -116,12 +116,17 @@ add_executable(${EXE_NAME}
 	${NEO2_SRC_FILES} 
   	${SUITESPARSE_SRC_FILES}
 	${SUPERLU_SRC_FILES}
-	${FGSL_USERINTER_SRC_FILES}
+#	${FGSL_USERINTER_SRC_FILES}
 #	${PSPLINE_USERINTER_SRC_FILES}
 )
 
+add_library(collop_lib ${COLLOPLIB_FILES})
+add_library(fgsluserinter_lib ${FGSL_USERINTER_SRC_FILES})
+
 ### Add libraries linked with executable
 target_link_libraries(${EXE_NAME} 
+	collop_lib
+	fgsluserinter_lib
         ${fgsl_lib} ${gsl_lib}
 	${pspline_lib}
         ${SuperLU_lib}
