@@ -219,12 +219,14 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
 !
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nz_sq,nz_beg,npassing_prev,k_prev,mm
-  INTEGER :: iter,niter,nphiequi,npassing_next,n_arnoldi,mode_iter
+  INTEGER :: iter,nphiequi,npassing_next,n_arnoldi,mode_iter
+  !INTEGER :: niter ! now defined via rkstep_mod (neo_mod.f90)
   INTEGER :: isw_regper,nz_coll,nz_ttmp,nz_coll_beg
   INTEGER :: nrow,ncol,nz,iopt
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
-  DOUBLE PRECISION :: epserr_iter,deleta_factor
-  DOUBLE COMPLEX   :: epserr_sink
+  DOUBLE PRECISION :: deleta_factor
+  !DOUBLE PRECISION :: epserr_iter ! now defined via rkstep_mod (neo_mod.f90)
+  !DOUBLE COMPLEX   :: epserr_sink_cmplx ! now defined via rkstep_mod (neo_mod.f90)
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow,icol,ipcol
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow_coll,icol_coll
@@ -329,7 +331,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
   n_arnoldi=100     !maximum number of Arnoldi iterations
   isw_regper=1       !regulariization by periodic boundary condition
-  epserr_sink=0.d0 !1.d-12 !sink for regularization, it is equal to
+  epserr_sink_cmplx=0.d0 !1.d-12 !sink for regularization, it is equal to
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
 !                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
 !                    $\kappa$ is inverse m.f.p. times 4 ("collpar")
@@ -992,7 +994,7 @@ PRINT *,ub_mag,ibeg,iend
   !------------------------------------------------------------------------
   ! SERGEI
   !------------------------------------------------------------------------
-  epserr_sink=(0.d0,0.d0)
+  epserr_sink_cmplx=(0.d0,0.d0)
 !
 ! Check for axisymmetry:
 !
@@ -1880,7 +1882,7 @@ rotfactor=imun*m_phi
           ENDDO
         ENDDO
 !
-!        amat_sp(nz_beg:nz)=-epserr_sink*fact_pos_e(istep)*amat_sp(nz_beg:nz)
+!        amat_sp(nz_beg:nz)=-epserr_sink_cmplx*fact_pos_e(istep)*amat_sp(nz_beg:nz)
 !
       ENDIF
 !
@@ -2171,7 +2173,7 @@ rotfactor=imun*m_phi
           ENDDO
         ENDDO
 !
-!        amat_sp(nz_beg:nz)=-epserr_sink*fact_neg_e(istep)*amat_sp(nz_beg:nz)
+!        amat_sp(nz_beg:nz)=-epserr_sink_cmplx*fact_neg_e(istep)*amat_sp(nz_beg:nz)
 !
       ENDIF
 !
@@ -2529,7 +2531,7 @@ rotfactor=imun*m_phi
           ENDDO
         ENDDO
 !
-        amat_sp(nz_beg:nz)=-epserr_sink*fact_pos_e(istep)*amat_sp(nz_beg:nz)
+        amat_sp(nz_beg:nz)=-epserr_sink_cmplx*fact_pos_e(istep)*amat_sp(nz_beg:nz)
 !
       ENDIF
 !
@@ -2874,7 +2876,7 @@ rotfactor=imun*m_phi
           ENDDO
         ENDDO
 !
-        amat_sp(nz_beg:nz)=-epserr_sink*fact_neg_e(istep)*amat_sp(nz_beg:nz)
+        amat_sp(nz_beg:nz)=-epserr_sink_cmplx*fact_neg_e(istep)*amat_sp(nz_beg:nz)
 !
       ENDIF
 !

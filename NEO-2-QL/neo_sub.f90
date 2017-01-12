@@ -1,4 +1,5 @@
 MODULE neo_sub_mod
+  USE mpiprovider_module
 
 CONTAINS
 
@@ -85,15 +86,18 @@ SUBROUTINE neo_init(npsi)
     STOP
   ENDIF
 !
-  ! do consistency check
-  !CALL neo_init_fluxsurface()
-  !CALL neo_fourier()
-  !STOP
-!
   nper = nfp
 ! **********************************************************************
   w_u6_open = 0
 ! **********************************************************************
+
+  !**********************************************************
+  ! Consistency check
+  !**********************************************************
+  ! CALL neo_init_fluxsurface()
+  ! CALL neo_fourier()
+  ! STOP
+
   RETURN
 END SUBROUTINE neo_init
 ! **********************************************************************
@@ -233,16 +237,12 @@ SUBROUTINE neo_init_spline()
   sp_index = (/ (i, i=1,ns) /) 
 
   ! 1-d splines of 2-d arrays
-  !PRINT *,"step 1"
   CALL splinecof3_hi_driv(es, rmnc, r_mhalf,                         &
        a_rmnc, b_rmnc, c_rmnc, d_rmnc, sp_index, tf)
-  !PRINT *,"step 2"
   CALL splinecof3_hi_driv(es, zmnc, r_mhalf,                         &
        a_zmnc, b_zmnc, c_zmnc, d_zmnc, sp_index, tf)
-  !PRINT *,"step 3"  
   CALL splinecof3_hi_driv(es, lmnc, r_mhalf,                         &
        a_lmnc, b_lmnc, c_lmnc, d_lmnc, sp_index, tf)
-  !PRINT *,"step 4"  
   CALL splinecof3_hi_driv(es, bmnc, r_mhalf,                         &
        a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
   !! Modifications by Andreas F. Martitsch (06.08.2014)
@@ -1239,9 +1239,11 @@ SUBROUTINE neo_read
         extra_zero = .FALSE.
         extra_count = 0
         DO j=1,mnmax
-           IF (j .GT. 1 .AND. ixm(j-1) .EQ. 0 .AND. ixn(j-1) .EQ. 0) THEN
-               extra_zero = .TRUE.
-           ENDIF
+           IF (j .GT. 1) THEN
+              IF (ixm(j-1) .EQ. 0 .AND. ixn(j-1) .EQ. 0) THEN
+                 extra_zero = .TRUE.
+              ENDIF
+           END IF
            IF (extra_zero) THEN
                extra_count =  extra_count + 1
                IF (extra_count .EQ. n0b) extra_zero = .FALSE.
@@ -1307,14 +1309,14 @@ SUBROUTINE neo_read
              pprime(i)
         sqrtg00(i) = 0.0d0
         READ(r_u1,*) dummy
-        do j=1,n0b
+        DO j=1,n0b
            ixm(j) = 0
            ixn(j) = -nfp*(n0b-j+1)
            rmnc(i,j) = 0.0d0
            zmnc(i,j) = 0.0d0
            lmnc(i,j) = 0.0d0
            bmnc(i,j) = 0.0d0
-        end do
+        END DO
         DO j=n0b+1,mnmax
            READ(r_u1,*) ixm(j),ixn(j),                                    &
                 rmnc(i,j),zmnc(i,j),lmnc(i,j),                            &
@@ -1517,9 +1519,15 @@ SUBROUTINE neo_read
      ixm =  - ixm ! change m to -m (rhs coord. syst)
      i_m =  - i_m
   ELSE IF  (lab_swi .EQ. 4) THEN         ! W7X file
-     ! signs / conversion checked by Winny (24.10.2014)
      curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -
+     !**********************************************************
+     ! Patch from Gernot Kapper - 20.11.2014
+     ! See mail from Winfried Kernbichler archived at
+     ! /proj/plasma/DOCUMENTS/Neo2/Archive/
+     !**********************************************************
+     ! curr_tor = curr_tor * 2.d-7      ! Before patch
      curr_tor = - curr_tor * 2.d-7 
+
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
      i_n =  i_n * nfp
@@ -1536,9 +1544,22 @@ SUBROUTINE neo_read
      curr_pol = curr_pol
      iota     = iota
   ELSE IF  (lab_swi .EQ. 6) THEN         ! NEW IPP, HSX
-     ! signs / conversion checked by Winny (24.10.2014)
-     curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -
-     curr_tor = - curr_tor * 2.d-7 ! Henning  
+     !**********************************************************
+     ! Change from Gernot Kapper - 02.12.2015
+     ! This corrects the direction of the poloidal current to
+     ! match the Boozer file w7x-m24li.bc
+     !**********************************************************
+     ! curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -   ! Before patch
+     curr_pol = curr_pol * 2.d-7 * nfp               ! After patch
+     
+     !**********************************************************
+     ! Patch from Gernot Kapper - 20.11.2014
+     ! See mail from Winfried Kernbichler archived at
+     ! /proj/plasma/DOCUMENTS/Neo2/Archive/
+     !**********************************************************
+     ! curr_tor = curr_tor * 2.d-7 * nfp   ! Henning   ! Before patch
+     curr_tor = - curr_tor * 2.d-7         ! Henning   ! After patch
+
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
      i_n =  i_n * nfp
@@ -1553,9 +1574,15 @@ SUBROUTINE neo_read
      END DO
      psi_pr = ABS(flux) / twopi * nfp
   ELSE IF  (lab_swi .EQ. 8) THEN         ! NEW IPP TOKAMAKK
-     ! signs / conversion checked by Winny (24.10.2014)   
      curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -
-     curr_tor = - curr_tor * 2.d-7 ! Henning  
+     !**********************************************************
+     ! Patch from Gernot Kapper - 20.11.2014
+     ! See mail from Winfried Kernbichler archived at
+     ! /proj/plasma/DOCUMENTS/Neo2/Archive/
+     !**********************************************************
+     ! curr_tor = curr_tor * 2.d-7 * nfp ! Henning   ! Before patch
+     curr_tor = - curr_tor * 2.d-7         ! Henning
+     
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
      i_n =  i_n * nfp
@@ -2071,8 +2098,8 @@ SUBROUTINE neo_fourier
                  r_pb(it,ip) = r_pb(it,ip) + n*ri*sinv
                  z_tb(it,ip) = z_tb(it,ip) + m*zi*cosv
                  z_pb(it,ip) = z_pb(it,ip) - n*zi*cosv
-                 p_tb(it,ip) = p_tb(it,ip) - m*li*cosv ! -l_tb
-                 p_pb(it,ip) = p_pb(it,ip) + n*li*cosv ! -l_pb
+                 p_tb(it,ip) = p_tb(it,ip) - m*li*cosv !-l_tb
+                 p_pb(it,ip) = p_pb(it,ip) + n*li*cosv !-l_pb
                  b_tb(it,ip) = b_tb(it,ip) - m*bi*sinv
                  b_pb(it,ip) = b_pb(it,ip) + n*bi*sinv
               END IF
@@ -2916,8 +2943,10 @@ SUBROUTINE neo_filenames
 
   CALL add_extension(o_file2,'chk.dat',chk_file)
   IF (chk_swi .EQ. 1) THEN
-     OPEN(unit=w_u3, file=chk_file, status='replace', action='write')
-     CLOSE(unit=w_u3)
+     IF (mpro%isMaster()) THEN
+        OPEN(unit=w_u3, file=chk_file, status='replace', action='write')
+        CLOSE(unit=w_u3)
+     END IF
   END IF
   CALL add_extension(o_file2,'dat',out_file)
   CALL add_extension(o_file2,'log.dat',epslog_file)
@@ -2928,32 +2957,42 @@ SUBROUTINE neo_filenames
   CALL add_extension(o_file2,'cur.int.dat',curint_file)
   CALL add_extension(o_file2,'cur.dis.dat',curdis_file)
   IF (calc_eps .EQ. 1) THEN
-     OPEN(unit=w_u3, file=out_file, status='replace', action='write')
-     CLOSE(unit=w_u3)
-     OPEN(unit=w_u3, file=epslog_file, status='replace', action='write')
-     CLOSE(unit=w_u3)
+     IF (mpro%isMaster()) THEN
+        OPEN(unit=w_u3, file=out_file, status='replace', action='write')
+        CLOSE(unit=w_u3)
+        OPEN(unit=w_u3, file=epslog_file, status='replace', action='write')
+        CLOSE(unit=w_u3)
+     END IF
   END IF
 
   CALL add_extension(o_file2,'cur.dat',cur_file)
   IF (calc_cur .EQ. 1) THEN
-     OPEN(unit=w_u9, file=cur_file, status='replace', action='write')
-     CLOSE(unit=w_u9)
-     IF (write_cur_inte .EQ. 1) THEN
-        OPEN(unit=w_u9, file=curcon_file, status='replace', action='write')
-        CLOSE(unit=w_u9)
-        OPEN(unit=w_u9, file=curint_file, status='replace', action='write')
+     IF (mpro%isMaster()) THEN
+        OPEN(unit=w_u9, file=cur_file, status='replace', action='write')
         CLOSE(unit=w_u9)
      END IF
+     IF (write_cur_inte .EQ. 1) THEN
+        IF (mpro%isMaster()) THEN
+           OPEN(unit=w_u9, file=curcon_file, status='replace', action='write')
+           CLOSE(unit=w_u9)
+           OPEN(unit=w_u9, file=curint_file, status='replace', action='write')
+           CLOSE(unit=w_u9)
+        END IF
+     END IF
      IF (write_cur_disp .EQ. 1) THEN
-        OPEN(unit=w_u9, file=curdis_file, status='replace', action='write')
-        CLOSE(unit=w_u9)
+        IF (mpro%isMaster()) THEN
+           OPEN(unit=w_u9, file=curdis_file, status='replace', action='write')
+           CLOSE(unit=w_u9)
+        END IF
      END IF
   END IF
 
   CALL add_extension(o_file2,'pla.dat',pla_file)
   IF (calc_pla .EQ. 1) THEN
-     OPEN(unit=w_u9, file=pla_file, status='replace', action='write')
-     CLOSE(unit=w_u9)
+     IF (mpro%isMaster()) THEN
+        OPEN(unit=w_u9, file=pla_file, status='replace', action='write')
+        CLOSE(unit=w_u9)
+     END IF
   END IF
 
   CALL add_extension(o_file1,'s.bc',sbc_file)

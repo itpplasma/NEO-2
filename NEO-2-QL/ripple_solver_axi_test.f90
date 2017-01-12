@@ -193,9 +193,10 @@ SUBROUTINE ripple_solver(                                 &
 !
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
-  INTEGER :: iter,niter,nphiequi,npassing_next
+  INTEGER :: iter,nphiequi,npassing_next
+  !INTEGER :: niter ! now defined via rkstep_mod (neo_mod.f90)
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
-  DOUBLE PRECISION :: epserr_iter
+  !DOUBLE PRECISION :: epserr_iter
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
@@ -216,19 +217,6 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_b,fact_neg_b
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_e,fact_neg_e
 
-  !***************************
-  ! HDF5
-  !***************************
-  INTEGER(HID_T) :: h5id_final_spitzer, h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
-  INTEGER(HID_T) :: h5id_bhat_mfl
-
-  !**********************************************************
-  ! For faster read/write of whole HDF5 dataset
-  !**********************************************************
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE       :: phi_mfl_h5, bhat_mfl_h5, npassing_h5
-  DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE :: dentf_p_h5, enetf_p_h5, spitf_p_h5
-  DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE :: dentf_m_h5, enetf_m_h5, spitf_m_h5
-
   !! End Modifications by Andreas F. Martitsch (13.06.2014)
   !! Modification by Andreas F. Martitsch (28.07.2015)
   !  multi-species part
@@ -244,6 +232,19 @@ SUBROUTINE ripple_solver(                                 &
   INTEGER :: prop_fileformat=0
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
+  !***************************
+  ! HDF5
+  !***************************
+  integer(HID_T) :: h5id_final_spitzer, h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
+  integer(HID_T) :: h5id_bhat_mfl
+
+  !**********************************************************
+  ! For faster read/write of whole HDF5 dataset
+  !**********************************************************
+  double precision, dimension(:), allocatable       :: phi_mfl_h5, bhat_mfl_h5, npassing_h5
+  double precision, dimension(:,:,:,:), allocatable :: dentf_p_h5, enetf_p_h5, spitf_p_h5
+  double precision, dimension(:,:,:,:), allocatable :: dentf_m_h5, enetf_m_h5, spitf_m_h5
+  
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
   niter=1000
   epserr_iter=1.d-3
@@ -259,7 +260,6 @@ SUBROUTINE ripple_solver(                                 &
   !PRINT *,'denmm:',denmm(1,:)
   !STOP
   !! End Modification by Andreas F. Martitsch (28.07.2015)
-  
 !
   !------------------------------------------------------------------------
   ! END SERGEI
@@ -328,11 +328,11 @@ SUBROUTINE ripple_solver(                                 &
   ! end reconstruction work by Winny
   !------------------------------------------------------------------------
 
-  IF (isw_momentum .EQ. 1) THEN ! Grid
-     PRINT *, 'isw_momentum = ',isw_momentum,' not implemented in ripple solver!'
-     PRINT *, 'I stop here'
-     STOP
-  END IF
+  if (isw_momentum .eq. 1) then ! Grid
+     print *, 'isw_momentum = ',isw_momentum,' not implemented in ripple solver!'
+     print *, 'I stop here'
+     stop
+  end if
 
 
 
@@ -571,7 +571,7 @@ bhat_changed_r=0.d0
 ignore_rb_out=0
 bhat_changed_r_out=0.d0
 modify_br=0
-GOTO 10
+goto 10
 !
 ! Left boundary:
 !
@@ -682,7 +682,7 @@ PRINT *,'right boundary layer ignored'
       ignore_rb=0
     ENDIF
   ENDIF
-10 CONTINUE
+10 continue
 !
   ! place for boundary
   npass_l = npass_l + 1 - ignore_lb
@@ -714,7 +714,7 @@ PRINT *,'right boundary layer ignored'
   IF (ALLOCATED(h_phi_mfl)) DEALLOCATE(h_phi_mfl)
   ALLOCATE(h_phi_mfl(ibeg:iend))
   h_phi_mfl(0:ub_mag) = fieldpropagator%mdata%h_phi
-  sign_of_bphi= SIGN(1.d0,h_phi_mfl(0))                                !08.12.08
+  sign_of_bphi= sign(1.d0,h_phi_mfl(0))                                !08.12.08
   h_phi_mfl(0:ub_mag)=h_phi_mfl(0:ub_mag)*sign_of_bphi                 !08.12.08
   geodcu_mfl(0:ub_mag)=geodcu_mfl(0:ub_mag)*sign_of_bphi               !08.12.08
 
@@ -794,28 +794,28 @@ PRINT *,'right boundary layer ignored'
      PRINT *, 'rt0                    ', rt0
      PRINT *, 'collpar,conl_over_mfp  ', collpar,conl_over_mfp
      
-     IF (prop_fileformat .EQ. 0) THEN
+     if (prop_fileformat .eq. 0) then
         OPEN(123,file='bhat_mfl.dat')
         DO i=ibeg,iend
            WRITE(123,*) phi_mfl(i),bhat_mfl(i),geodcu_mfl(i),h_phi_mfl(i),dlogbdphi_mfl(i)
         ENDDO
         CLOSE(123)
 
-     ELSEIF (prop_fileformat .EQ. 1) THEN
+     elseif (prop_fileformat .eq. 1) then
         !**********************************************************
         ! HDF5 of bhat_mfl
         !**********************************************************
-        WRITE(propname,*) fieldpropagator%tag
-        CALL h5_create('bhat_mfl_' // TRIM(ADJUSTL(propname)) // '.h5', h5id_bhat_mfl)
+        write(propname,*) fieldpropagator%tag
+        call h5_create('bhat_mfl_' // trim(adjustl(propname)) // '.h5', h5id_bhat_mfl)
 
-        CALL h5_add(h5id_bhat_mfl, 'phi_mfl', phi_mfl(ibeg:iend), LBOUND(phi_mfl), UBOUND(phi_mfl))
-        CALL h5_add(h5id_bhat_mfl, 'bhat_mfl', bhat_mfl(ibeg:iend), LBOUND(bhat_mfl), UBOUND(bhat_mfl))
-        CALL h5_add(h5id_bhat_mfl, 'geodcu_mfl', geodcu_mfl(ibeg:iend), LBOUND(geodcu_mfl), UBOUND(geodcu_mfl))
-        CALL h5_add(h5id_bhat_mfl, 'h_phi_mfl', h_phi_mfl(ibeg:iend), LBOUND(h_phi_mfl), UBOUND(h_phi_mfl))
-        CALL h5_add(h5id_bhat_mfl, 'dlogbdphi_mfl', dlogbdphi_mfl(ibeg:iend), LBOUND(dlogbdphi_mfl), UBOUND(dlogbdphi_mfl))
+        call h5_add(h5id_bhat_mfl, 'phi_mfl', phi_mfl(ibeg:iend), lbound(phi_mfl), ubound(phi_mfl))
+        call h5_add(h5id_bhat_mfl, 'bhat_mfl', bhat_mfl(ibeg:iend), lbound(bhat_mfl), ubound(bhat_mfl))
+        call h5_add(h5id_bhat_mfl, 'geodcu_mfl', geodcu_mfl(ibeg:iend), lbound(geodcu_mfl), ubound(geodcu_mfl))
+        call h5_add(h5id_bhat_mfl, 'h_phi_mfl', h_phi_mfl(ibeg:iend), lbound(h_phi_mfl), ubound(h_phi_mfl))
+        call h5_add(h5id_bhat_mfl, 'dlogbdphi_mfl', dlogbdphi_mfl(ibeg:iend), lbound(dlogbdphi_mfl), ubound(dlogbdphi_mfl))
 
-        CALL h5_close(h5id_bhat_mfl)
-  END IF
+        call h5_close(h5id_bhat_mfl)
+  end if
      
      OPEN(123,file='eta.dat')
      DO i=0,ub_eta
@@ -834,12 +834,12 @@ PRINT *,'right boundary layer ignored'
 !
 ! Check for axisymmetry:
 !
-  IF(isw_axisymm.EQ.1.AND.npass_l.NE.npass_r) THEN
-     PRINT *, 'npass_l,npass_r ',npass_l,npass_r
-    PRINT *,'ripple_solver: cannot run axisymmetric mode, sizes do not fit'
+  if(isw_axisymm.eq.1.and.npass_l.ne.npass_r) then
+     print *, 'npass_l,npass_r ',npass_l,npass_r
+    print *,'ripple_solver: cannot run axisymmetric mode, sizes do not fit'
     ierr=1
-    RETURN
-  ENDIF
+    return
+  endif
 !
   iplot=prop_ripple_plot
 !
@@ -879,24 +879,24 @@ PRINT *,'right boundary layer ignored'
   npart_loc=0
   subsqmin=1.d5*EPSILON(1.d0)
 !
-  ALLOCATE(delt_pos(ibeg:iend),delt_neg(ibeg:iend))
-  ALLOCATE(fact_pos_b(ibeg:iend),fact_neg_b(ibeg:iend))
-  ALLOCATE(fact_pos_e(ibeg:iend),fact_neg_e(ibeg:iend))
+  allocate(delt_pos(ibeg:iend),delt_neg(ibeg:iend))
+  allocate(fact_pos_b(ibeg:iend),fact_neg_b(ibeg:iend))
+  allocate(fact_pos_e(ibeg:iend),fact_neg_e(ibeg:iend))
 !
-  CALL rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,    &
+  call rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,    &
                          phi_mfl,bhat_mfl,geodcu_mfl,h_phi_mfl,eta,  &
                          delt_pos,delt_neg,                          &
                          fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
 !
-  IF(MAXVAL(phi_divide).GT.1) THEN
+  if(maxval(phi_divide).gt.1) then
     ierr=3
     DEALLOCATE(deriv_coef,npl)
     DEALLOCATE(rhs_mat_lorentz,rhs_mat_energ)
     DEALLOCATE(q_rip)
     DEALLOCATE(convol_flux,convol_curr)
     DEALLOCATE(pleg_bra,pleg_ket,scalprod_pleg)
-    RETURN
-  ENDIF
+    return
+  endif
 !
   DO istep=ibeg,iend
 !
@@ -938,9 +938,9 @@ PRINT *,'right boundary layer ignored'
 !
   ind_start(ibeg)=0
 !
-  DO istep=ibeg,iend-1
+  do istep=ibeg,iend-1
     ind_start(istep+1)=ind_start(istep)+2*(lag+1)*(npl(istep)+1)
-  ENDDO
+  enddo
 !
   n_2d_size=ind_start(iend)+2*(lag+1)*(npl(iend)+1)
 !
@@ -1254,35 +1254,35 @@ PRINT *,'right boundary layer ignored'
 !
 ! Compute vectors for convolution of fluxes and source vectors:
 !
-  ALLOCATE(flux_vector(3,n_2d_size),source_vector(n_2d_size,3))
+  allocate(flux_vector(3,n_2d_size),source_vector(n_2d_size,3))
   flux_vector=0.d0
   source_vector=0.d0
 !
-  DO istep=ibeg,iend
+  do istep=ibeg,iend
 !
-    ioddeven=MOD(istep-ibeg,2) !0 for full RK step, 1 for half RK step
+    ioddeven=mod(istep-ibeg,2) !0 for full RK step, 1 for half RK step
 !
-    IF(istep.EQ.ibeg) THEN
+    if(istep.eq.ibeg) then
       step_factor_p=delt_pos(ibeg+1)*fact_pos_b(ibeg)/3.d0
       step_factor_m=delt_neg(ibeg)*fact_neg_e(ibeg)/3.d0
-    ELSEIF(istep.EQ.iend) THEN
+    elseif(istep.eq.iend) then
       step_factor_p=delt_pos(iend)*fact_pos_e(iend)/3.d0
       step_factor_m=delt_neg(iend-1)*fact_neg_b(iend)/3.d0
-    ELSEIF(ioddeven.EQ.1) THEN
+    elseif(ioddeven.eq.1) then
       step_factor_p=(delt_pos(istep+1)*fact_pos_b(istep)        &
                    + delt_pos(istep)*fact_pos_e(istep))/1.5d0
       step_factor_m=(delt_neg(istep-1)*fact_neg_b(istep)       &
                    + delt_neg(istep)*fact_neg_e(istep))/1.5d0
-    ELSE
+    else
       step_factor_p=(delt_pos(istep+1)*fact_pos_b(istep)        &
                    + delt_pos(istep)*fact_pos_e(istep))/3.d0
       step_factor_m=(delt_neg(istep-1)*fact_neg_b(istep)       &
                    + delt_neg(istep)*fact_neg_e(istep))/3.d0
-    ENDIF
+    endif
 !
     npassing=npl(istep)
 !
-    DO m=0,lag
+    do m=0,lag
       k=ind_start(istep)+2*(npassing+1)*m
 !
       flux_vector(1,k+1:k+npassing+1) =                                     &
@@ -1300,10 +1300,10 @@ PRINT *,'right boundary layer ignored'
       flux_vector(3,k+npassing+2:k+2*npassing+2) =                          &
             step_factor_m*weightlag(3,m)*convol_flux(npassing+1:1:-1,istep)
 !
-      IF(istep.GT.ibeg) THEN
+      if(istep.gt.ibeg) then
         npassing_prev=npl(istep-1)
         k_prev=ind_start(istep-1)+2*(npassing_prev+1)*m
-        IF(ioddeven.EQ.1) THEN
+        if(ioddeven.eq.1) then
           npassing_next=npl(istep+1)
           source_vector(k+1:k+npassing+1,1)                                &
                =source_vector(k+1:k+npassing+1,1)                          &
@@ -1341,7 +1341,7 @@ PRINT *,'right boundary layer ignored'
                =source_vector(k+1:k+npassing_next+1,3)                     &
                -asource(m,3)/12d0*q_rip(1:npassing_next+1,istep+1,1)       &
                *fact_pos_e(istep+1)
-        ELSE
+        else
           npassing_next=npl(istep-2)
           source_vector(k+1:k+npassing+1,1)                                &
                =source_vector(k+1:k+npassing+1,1)                          &
@@ -1355,7 +1355,7 @@ PRINT *,'right boundary layer ignored'
                =source_vector(k+1:k+npassing+1,3)                          &
                +asource(m,3)/2.4d0*q_rip(1:npassing+1,istep,1)             &
                *fact_pos_e(istep)
-          IF(npassing_prev.LE.npassing) THEN
+          if(npassing_prev.le.npassing) then
             source_vector(k+1:k+npassing_prev+1,1)                         &
                  =source_vector(k+1:k+npassing_prev+1,1)                   &
                  +asource(m,1)/1.5d0*q_rip(1:npassing_prev+1,istep-1,1)    &
@@ -1368,7 +1368,7 @@ PRINT *,'right boundary layer ignored'
                  =source_vector(k+1:k+npassing_prev+1,3)                   &
                  +asource(m,3)/1.5d0*q_rip(1:npassing_prev+1,istep-1,1)    &
                  *fact_pos_b(istep-1)
-          ELSE
+          else
             source_vector(k+1:k+npassing+1,1)                              &
                  =source_vector(k+1:k+npassing+1,1)                        &
                  +asource(m,1)/1.5d0*q_rip(1:npassing+1,istep-1,1)         &
@@ -1393,8 +1393,8 @@ PRINT *,'right boundary layer ignored'
                    =source_vector(k_prev+npassing_prev+2,3)                &
                    +asource(m,3)/1.5d0*q_rip(npassing_prev+1,istep-1,1)    &
                    *fact_pos_b(istep-1)
-          ENDIF
-          IF(npassing_next.LE.npassing) THEN
+          endif
+          if(npassing_next.le.npassing) then
             source_vector(k+1:k+npassing_next+1,1)                         &
                  =source_vector(k+1:k+npassing_next+1,1)                   &
                  -asource(m,1)/12d0*q_rip(1:npassing_next+1,istep-2,1)     &
@@ -1407,7 +1407,7 @@ PRINT *,'right boundary layer ignored'
                  =source_vector(k+1:k+npassing_next+1,3)                   &
                  -asource(m,3)/12d0*q_rip(1:npassing_next+1,istep-2,1)     &
                  *fact_pos_b(istep-2)
-          ELSE
+          else
             source_vector(k+1:k+npassing+1,1)                              &
                  =source_vector(k+1:k+npassing+1,1)                        &
                  -asource(m,1)/12d0*q_rip(1:npassing+1,istep-2,1)          &
@@ -1432,17 +1432,17 @@ PRINT *,'right boundary layer ignored'
                    =source_vector(k_prev+npassing_prev+2,3)                &
                    -asource(m,3)/12d0*q_rip(npassing_next+1,istep-2,1)     &
                    *fact_pos_b(istep-2)
-          ENDIF
-        ENDIF
-      ELSEIF(iplot.EQ.1.AND.isw_axisymm.NE.1) THEN
+          endif
+        endif
+      elseif(iplot.eq.1.and.isw_axisymm.ne.1) then
         source_vector(k+1:k+npassing+1,:)                                &
                        =flux_pl(npass_l*m+1:npass_l*(m+1),:)
-      ENDIF
+      endif
 !
-      IF(istep.LT.iend) THEN
+      if(istep.lt.iend) then
         npassing_prev=npl(istep+1)
         k_prev=ind_start(istep+1)+2*(npassing_prev+1)*m
-        IF(ioddeven.EQ.1) THEN
+        if(ioddeven.eq.1) then
           npassing_next=npl(istep-1)
           source_vector(k+npassing+2:k+2*npassing+2,1)                     &
             =source_vector(k+npassing+2:k+2*npassing+2,1)                  &
@@ -1480,7 +1480,7 @@ PRINT *,'right boundary layer ignored'
             =source_vector(k+2*npassing+2-npassing_next:k+2*npassing+2,3)  &
             -asource(m,3)/12d0*q_rip(npassing_next+1:1:-1,istep-1,1)       &
             *fact_neg_e(istep-1)
-        ELSE
+        else
           npassing_next=npl(istep+2)
           source_vector(k+npassing+2:k+2*npassing+2,1)                     &
             =source_vector(k+npassing+2:k+2*npassing+2,1)                  &
@@ -1494,7 +1494,7 @@ PRINT *,'right boundary layer ignored'
             =source_vector(k+npassing+2:k+2*npassing+2,3)                  &
             +asource(m,3)/2.4d0*q_rip(npassing+1:1:-1,istep,1)             &
             *fact_neg_e(istep)
-          IF(npassing_prev.LE.npassing) THEN
+          if(npassing_prev.le.npassing) then
             source_vector(k+2*npassing+2-npassing_prev:k+2*npassing+2,1)   &
               =source_vector(k+2*npassing+2-npassing_prev:k+2*npassing+2,1)&
               +asource(m,1)/1.5d0*q_rip(npassing_prev+1:1:-1,istep+1,1)    &
@@ -1507,7 +1507,7 @@ PRINT *,'right boundary layer ignored'
               =source_vector(k+2*npassing+2-npassing_prev:k+2*npassing+2,3)&
               +asource(m,3)/1.5d0*q_rip(npassing_prev+1:1:-1,istep+1,1)    &
               *fact_neg_b(istep+1)
-          ELSE
+          else
             source_vector(k+npassing+2:k+2*npassing+2,1)                   &
               =source_vector(k+npassing+2:k+2*npassing+2,1)                &
               +asource(m,1)/1.5d0*q_rip(npassing+1:1:-1,istep+1,1)         &
@@ -1532,8 +1532,8 @@ PRINT *,'right boundary layer ignored'
                 =source_vector(k_prev+npassing_prev+1,3)                   &
                 +asource(m,3)/1.5d0*q_rip(npassing_prev+1,istep+1,1)       &
                 *fact_neg_b(istep+1)
-          ENDIF
-          IF(npassing_next.LE.npassing) THEN
+          endif
+          if(npassing_next.le.npassing) then
             source_vector(k+2*npassing+2-npassing_next:k+2*npassing+2,1)   &
               =source_vector(k+2*npassing+2-npassing_next:k+2*npassing+2,1)&
               -asource(m,1)/12d0*q_rip(npassing_next+1:1:-1,istep+2,1)     &
@@ -1546,7 +1546,7 @@ PRINT *,'right boundary layer ignored'
               =source_vector(k+2*npassing+2-npassing_next:k+2*npassing+2,3)&
               -asource(m,3)/12d0*q_rip(npassing_next+1:1:-1,istep+2,1)     &
               *fact_neg_b(istep+2)
-          ELSE
+          else
             source_vector(k+npassing+2:k+2*npassing+2,1)                   &
               =source_vector(k+npassing+2:k+2*npassing+2,1)                &
               -asource(m,1)/12d0*q_rip(npassing+1:1:-1,istep+2,1)          &
@@ -1571,15 +1571,15 @@ PRINT *,'right boundary layer ignored'
                 =source_vector(k_prev+npassing_prev+1,3)                   &
                 -asource(m,3)/12d0*q_rip(npassing_next+1,istep+2,1)        &
                 *fact_neg_b(istep+2)
-          ENDIF
-        ENDIF
-      ELSEIF(iplot.EQ.1.AND.isw_axisymm.NE.1) THEN
+          endif
+        endif
+      elseif(iplot.eq.1.and.isw_axisymm.ne.1) then
         source_vector(k+npassing+2:k+2*npassing+2,:)                     &
                        =flux_mr(npass_r*(m+1):npass_r*m+1:-1,:)
-      ENDIF
+      endif
 !
-    ENDDO
-  ENDDO
+    enddo
+  enddo
 !
 !
 ! Determine the size of arrays (number of non-zero elements):
@@ -1594,35 +1594,35 @@ PRINT *,'right boundary layer ignored'
 !
 ! entry:
 !
-  DO m=0,lag
+  do m=0,lag
     k=ind_start(istep)+2*(npassing+1)*m
 !
-    DO ipart=1,npassing+1
+    do ipart=1,npassing+1
       nz=nz+1
 !      irow(nz)=k+ipart
 !      icol(nz)=k+ipart
 !      amat_sp(nz)=1.d0
-    ENDDO
+    enddo
 !
-    IF(isw_axisymm.EQ.1) THEN
+    if(isw_axisymm.eq.1) then
       k_prev=ind_start(iend)+2*(npassing+1)*m
 !
-      DO ipart=1,npassing+1
+      do ipart=1,npassing+1
         nz=nz+1
 !        irow(nz)=k+ipart
 !        icol(nz)=k_prev+ipart
 !        amat_sp(nz)=-1.d0
-      ENDDO
+      enddo
 !
-      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
-        DO ipart=1,npassing+1
+      if(isw_regper.eq.1.and.m.lt.1) then
+        do ipart=1,npassing+1
 !          if(ipart.le.npassing) then
 !            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
 !          else
 !            deleta_factor=1.d0-eta(ipart-1)*bhat_mfl(istep)
 !          endif
 !
-          DO ipart1=1,npassing+1
+          do ipart1=1,npassing+1
             nz_regper=nz_regper+1
 !            irow_regper(nz_regper)=k+ipart
 !            icol_regper(nz_regper)=k_prev+ipart1
@@ -1631,162 +1631,162 @@ PRINT *,'right boundary layer ignored'
 !            irow_regper(nz_regper)=k+ipart
 !            icol_regper(nz_regper)=k+npassing+1+ipart1
 !            amat_regper(nz_regper)=deleta_factor
-          ENDDO
+          enddo
 !
-        ENDDO
-      ENDIF
+        enddo
+      endif
 !
-    ENDIF
+    endif
 !
-  ENDDO
+  enddo
 !
-  DO istep=ibeg+1,iend
+  do istep=ibeg+1,iend
     npassing_prev=npl(istep-1)
     npassing=npl(istep)
 !    delphim1=1.d0/delt_pos(istep)
 !    deloneovb=0.5d0*delphim1*(1.d0/bhat_mfl(istep-1)-1.d0/bhat_mfl(istep))
 !
-    DO m=0,lag
+    do m=0,lag
       k_prev=ind_start(istep-1)+2*(npassing_prev+1)*m
       k=ind_start(istep)+2*(npassing+1)*m
 !
 ! free flight:
 !
-      DO ipart=1,npassing+1
+      do ipart=1,npassing+1
         nz=nz+1
 !        irow(nz)=k+ipart
 !        icol(nz)=k+ipart
 !        amat_sp(nz)=delphim1
-      ENDDO
+      enddo
 !
-      DO ipart=1,npassing
+      do ipart=1,npassing
         nz=nz+1
 !        irow(nz)=k+ipart
 !        icol(nz)=k_prev+ipart
 !        amat_sp(nz)=-delphim1
-      ENDDO
+      enddo
 !
-      IF(npassing_prev.GE.npassing) THEN
+      if(npassing_prev.ge.npassing) then
         nz=nz+1
 !        irow(nz)=k+npassing+1
 !        icol(nz)=k_prev+npassing+1
 !        amat_sp(nz)=-delphim1
-      ENDIF
+      endif
 !
 ! mirroring:
 !
-      IF(npassing_prev.EQ.npassing) THEN
+      if(npassing_prev.eq.npassing) then
 !
-        DO kk=1,4
+        do kk=1,4
           nz=nz+1
 !          irow(nz)=k+npassing+1
 !          icol(nz)=k+npassing+kk-1
 !          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-        ENDDO
+        enddo
 !
-        DO kk=1,4
+        do kk=1,4
           nz=nz+1
 !          irow(nz)=k+npassing+1
 !          icol(nz)=k_prev+npassing_prev+kk-1
 !          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
-        ENDDO
+        enddo
 !
-      ELSEIF(npassing_prev.GT.npassing) THEN
+      elseif(npassing_prev.gt.npassing) then
         nz=nz+1
 !        irow(nz)=k_prev+npassing_prev+2
 !        icol(nz)=k_prev+npassing_prev+1
 !        amat_sp(nz)=-delphim1
-      ENDIF
+      endif
 !
 ! collisions:
 !
-      IF(fact_pos_e(istep).NE.0.d0) THEN
+      if(fact_pos_e(istep).ne.0.d0) then
 !
 ! Lorentz operator:
 !
-        IF(isw_lor.EQ.1) THEN
+        if(isw_lor.eq.1) then
 !
-          DO ipart=1,npassing+1
-            DO kk=1,5
-              DO mm=0,lag
+          do ipart=1,npassing+1
+            do kk=1,5
+              do mm=0,lag
                 nz=nz+1
 !                irow(nz)=k+ipart
 !                icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
 !                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                           *fact_pos_e(istep)
-              ENDDO
-            ENDDO
-          ENDDO
+              enddo
+            enddo
+          enddo
 !
 ! matching collisional flux through the boundary in backward Euler scheme:
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
 !              irow(nz)=k+npassing+1
 !              icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
 !              amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
 !                         *fact_pos_e(istep)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
 !              irow(nz)=k+npassing+1
 !              icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
 !              amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1)
 !                         *fact_pos_b(istep-1)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-        ENDIF
+        endif
 !
 !        nz_beg=nz+1
 !
 ! energy diffusion operator:
 !
-        IF(isw_ene.EQ.1) THEN
+        if(isw_ene.eq.1) then
 !
-          DO ipart=1,npassing
-            DO kk=1,4
-              DO mm=0,lag
+          do ipart=1,npassing
+            do kk=1,4
+              do mm=0,lag
                 nz=nz+1
 !                irow(nz)=k+ipart
 !                icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
 !                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
-              ENDDO
-            ENDDO
-          ENDDO
+              enddo
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
 !              irow(nz)=k+npassing+1
 !              icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
 !              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing+1,istep)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
 !              irow(nz)=k+npassing+1
 !              icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
 !              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing_prev+1,istep-1)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-        ENDIF
+        endif
 !
 !        amat_sp(nz_beg:nz)=fact_pos_e(istep)*amat_sp(nz_beg:nz)
-      ENDIF
+      endif
 !
-    ENDDO
+    enddo
 !
-  ENDDO
+  enddo
 !
 ! Counter-passing: sigma=-1
 !
@@ -1795,35 +1795,35 @@ PRINT *,'right boundary layer ignored'
 !
 ! entry:
 !
-  DO m=0,lag
+  do m=0,lag
     k=ind_start(istep)+2*(npassing+1)*m+2*npassing+3
 !
-    DO ipart=1,npassing+1
+    do ipart=1,npassing+1
       nz=nz+1
 !      irow(nz)=k-ipart
 !      icol(nz)=k-ipart
 !      amat_sp(nz)=1.d0
-    ENDDO
+    enddo
 !
-    IF(isw_axisymm.EQ.1) THEN
+    if(isw_axisymm.eq.1) then
       k_prev=ind_start(ibeg)+2*(npassing+1)*m+2*npassing+3
 !
-      DO ipart=1,npassing+1
+      do ipart=1,npassing+1
         nz=nz+1
 !        irow(nz)=k-ipart
 !        icol(nz)=k_prev-ipart
 !        amat_sp(nz)=-1.d0
-      ENDDO
+      enddo
 !
-      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
-        DO ipart=1,npassing+1
+      if(isw_regper.eq.1.and.m.lt.1) then
+        do ipart=1,npassing+1
 !          if(ipart.le.npassing) then
 !            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
 !          else
 !            deleta_factor=1.d0-eta(ipart-1)*bhat_mfl(istep)
 !          endif
 !
-          DO ipart1=1,npassing+1
+          do ipart1=1,npassing+1
             nz_regper=nz_regper+1
 !            irow_regper(nz_regper)=k-ipart
 !            icol_regper(nz_regper)=k_prev-ipart1
@@ -1832,167 +1832,167 @@ PRINT *,'right boundary layer ignored'
 !            irow_regper(nz_regper)=k-ipart
 !            icol_regper(nz_regper)=k-npassing-1-ipart1
 !            amat_regper(nz_regper)=deleta_factor
-          ENDDO
+          enddo
 !
-        ENDDO
-      ENDIF
+        enddo
+      endif
 !      
-    ENDIF
+    endif
 !
-  ENDDO
+  enddo
 !
-  DO istep=ibeg,iend-1
+  do istep=ibeg,iend-1
     npassing_prev=npl(istep+1)
     npassing=npl(istep)
 !    delphim1=1.d0/delt_neg(istep)
 !    deloneovb=0.5d0*delphim1*(1.d0/bhat_mfl(istep+1)-1.d0/bhat_mfl(istep))
 !
-    DO m=0,lag
+    do m=0,lag
       k_prev=ind_start(istep+1)+2*(npassing_prev+1)*m+2*npassing_prev+3
       k=ind_start(istep)+2*(npassing+1)*m+2*npassing+3
 !
 ! free flight:
 !
-      DO ipart=1,npassing+1
+      do ipart=1,npassing+1
         nz=nz+1
 !        irow(nz)=k-ipart
 !        icol(nz)=k-ipart
 !        amat_sp(nz)=delphim1
-      ENDDO
+      enddo
 !
-      DO ipart=1,npassing
+      do ipart=1,npassing
         nz=nz+1
 !        irow(nz)=k-ipart
 !        icol(nz)=k_prev-ipart
 !        amat_sp(nz)=-delphim1
-      ENDDO
+      enddo
 !
-      IF(npassing_prev.GE.npassing) THEN
+      if(npassing_prev.ge.npassing) then
         nz=nz+1
 !        irow(nz)=k-npassing-1
 !        icol(nz)=k_prev-npassing-1
 !        amat_sp(nz)=-delphim1
-      ENDIF
+      endif
 !
 ! mirroring:
 !
-      IF(npassing_prev.EQ.npassing) THEN
+      if(npassing_prev.eq.npassing) then
 !
-        DO kk=1,4
+        do kk=1,4
           nz=nz+1
 !          irow(nz)=k-npassing-1
 !          icol(nz)=k-npassing-kk+1
 !          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-        ENDDO
+        enddo
 !
-        DO kk=1,4
+        do kk=1,4
           nz=nz+1
 !          irow(nz)=k-npassing-1
 !          icol(nz)=k_prev-npassing_prev-kk+1
 !          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
-        ENDDO
+        enddo
 !
-      ELSEIF(npassing_prev.GT.npassing) THEN
+      elseif(npassing_prev.gt.npassing) then
         nz=nz+1
 !        irow(nz)=k_prev-npassing_prev-2
 !        icol(nz)=k_prev-npassing_prev-1
 !        amat_sp(nz)=-delphim1
-      ENDIF
+      endif
 !
 ! collisions:
 !
-      IF(fact_neg_e(istep).NE.0.d0) THEN
+      if(fact_neg_e(istep).ne.0.d0) then
 !
 ! Lorentz operator:
 !
-        IF(isw_lor.EQ.1) THEN
+        if(isw_lor.eq.1) then
 !
-          DO ipart=1,npassing+1
-            DO kk=1,5
-              DO mm=0,lag
+          do ipart=1,npassing+1
+            do kk=1,5
+              do mm=0,lag
                 nz=nz+1
 !                irow(nz)=k-ipart
 !                icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
 !                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                           *fact_neg_e(istep)
-              ENDDO
-            ENDDO
-          ENDDO
+              enddo
+            enddo
+          enddo
 !
 ! matching collisional flux through the boundary in backward Euler scheme:
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
 !              irow(nz)=k-npassing-1
 !              icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
 !              amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1) &
 !                         *fact_neg_e(istep)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
 !              irow(nz)=k-npassing-1
 !              icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
 !              amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1) &
 !                         *fact_neg_b(istep+1)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-        ENDIF
+        endif
 !
 !        nz_beg=nz+1
 !
 ! energy diffusion operator:
 !
-        IF(isw_ene.EQ.1) THEN
+        if(isw_ene.eq.1) then
 !
-          DO ipart=1,npassing
-            DO kk=1,4
-              DO mm=0,lag
+          do ipart=1,npassing
+            do kk=1,4
+              do mm=0,lag
                 nz=nz+1
 !                irow(nz)=k-ipart
 !                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
 !                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
-              ENDDO
-            ENDDO
-          ENDDO
+              enddo
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
 !              irow(nz)=k-npassing-1
 !              icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
 !              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing+1,istep)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
 !              irow(nz)=k-npassing-1
 !              icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
 !              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing_prev+1,istep+1)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-        ENDIF
+        endif
 !
 !        amat_sp(nz_beg:nz)=fact_neg_e(istep)*amat_sp(nz_beg:nz)
-      ENDIF
+      endif
 !
-    ENDDO
+    enddo
 !
-  ENDDO
+  enddo
 !
 !
-  ALLOCATE(irow(nz),icol(nz),amat_sp(nz),ipcol(ncol),bvec_sp(ncol))
-  ALLOCATE(irow_regper(nz_regper),icol_regper(nz_regper),amat_regper(nz_regper))
-  IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_lor(ncol),bvec_prev(ncol))
+  allocate(irow(nz),icol(nz),amat_sp(nz),ipcol(ncol),bvec_sp(ncol))
+  allocate(irow_regper(nz_regper),icol_regper(nz_regper),amat_regper(nz_regper))
+  if(isw_intp.eq.1) allocate(bvec_iter(ncol),bvec_lor(ncol),bvec_prev(ncol))
 !
 ! Fill the arrays:
 !
@@ -2006,35 +2006,35 @@ PRINT *,'right boundary layer ignored'
 !
 ! entry:
 !
-  DO m=0,lag
+  do m=0,lag
     k=ind_start(istep)+2*(npassing+1)*m
 !
-    DO ipart=1,npassing+1
+    do ipart=1,npassing+1
       nz=nz+1
       irow(nz)=k+ipart
       icol(nz)=k+ipart
       amat_sp(nz)=1.d0
-    ENDDO
+    enddo
 !
-    IF(isw_axisymm.EQ.1) THEN
+    if(isw_axisymm.eq.1) then
       k_prev=ind_start(iend)+2*(npassing+1)*m
 !
-      DO ipart=1,npassing+1
+      do ipart=1,npassing+1
         nz=nz+1
         irow(nz)=k+ipart
         icol(nz)=k_prev+ipart
         amat_sp(nz)=-1.d0
-      ENDDO
+      enddo
 !
-      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
-        DO ipart=1,npassing+1
-          IF(ipart.LE.npassing) THEN
+      if(isw_regper.eq.1.and.m.lt.1) then
+        do ipart=1,npassing+1
+          if(ipart.le.npassing) then
             deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
-          ELSE
+          else
             deleta_factor=1.d0-eta(ipart-1)*bhat_mfl(istep)
-          ENDIF
+          endif
 !
-          DO ipart1=1,npassing+1
+          do ipart1=1,npassing+1
             nz_regper=nz_regper+1
             irow_regper(nz_regper)=k+ipart
             icol_regper(nz_regper)=k_prev+ipart1
@@ -2043,162 +2043,162 @@ PRINT *,'right boundary layer ignored'
             irow_regper(nz_regper)=k+ipart
             icol_regper(nz_regper)=k+npassing+1+ipart1
             amat_regper(nz_regper)=deleta_factor
-          ENDDO
+          enddo
 !
-        ENDDO
-      ENDIF
+        enddo
+      endif
 !      
-    ENDIF
+    endif
 !
-  ENDDO
+  enddo
 !
-  DO istep=ibeg+1,iend
+  do istep=ibeg+1,iend
     npassing_prev=npl(istep-1)
     npassing=npl(istep)
     delphim1=1.d0/delt_pos(istep)
     deloneovb=0.5d0*delphim1*(1.d0/bhat_mfl(istep-1)-1.d0/bhat_mfl(istep))
 !
-    DO m=0,lag
+    do m=0,lag
       k_prev=ind_start(istep-1)+2*(npassing_prev+1)*m
       k=ind_start(istep)+2*(npassing+1)*m
 !
 ! free flight:
 !
-      DO ipart=1,npassing+1
+      do ipart=1,npassing+1
         nz=nz+1
         irow(nz)=k+ipart
         icol(nz)=k+ipart
         amat_sp(nz)=delphim1
-      ENDDO
+      enddo
 !
-      DO ipart=1,npassing
+      do ipart=1,npassing
         nz=nz+1
         irow(nz)=k+ipart
         icol(nz)=k_prev+ipart
         amat_sp(nz)=-delphim1
-      ENDDO
+      enddo
 !
-      IF(npassing_prev.GE.npassing) THEN
+      if(npassing_prev.ge.npassing) then
         nz=nz+1
         irow(nz)=k+npassing+1
         icol(nz)=k_prev+npassing+1
         amat_sp(nz)=-delphim1
-      ENDIF
+      endif
 !
 ! mirroring:
 !
-      IF(npassing_prev.EQ.npassing) THEN
+      if(npassing_prev.eq.npassing) then
 !
-        DO kk=1,4
+        do kk=1,4
           nz=nz+1
           irow(nz)=k+npassing+1
           icol(nz)=k+npassing+kk-1
           amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-        ENDDO
+        enddo
 !
-        DO kk=1,4
+        do kk=1,4
           nz=nz+1
           irow(nz)=k+npassing+1
           icol(nz)=k_prev+npassing_prev+kk-1
           amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
-        ENDDO
+        enddo
 !
-      ELSEIF(npassing_prev.GT.npassing) THEN
+      elseif(npassing_prev.gt.npassing) then
         nz=nz+1
         irow(nz)=k_prev+npassing_prev+2
         icol(nz)=k_prev+npassing_prev+1
         amat_sp(nz)=-delphim1
-      ENDIF
+      endif
 !
 ! collisions:
 !
-      IF(fact_pos_e(istep).NE.0.d0) THEN
+      if(fact_pos_e(istep).ne.0.d0) then
 !
 ! Lorentz operator:
 !
-        IF(isw_lor.EQ.1) THEN
+        if(isw_lor.eq.1) then
 !
-          DO ipart=1,npassing+1
-            DO kk=1,5
-              DO mm=0,lag
+          do ipart=1,npassing+1
+            do kk=1,5
+              do mm=0,lag
                 nz=nz+1
                 irow(nz)=k+ipart
-                icol(nz)=k+MAX(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
+                icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
                 amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
                            *fact_pos_e(istep)
-              ENDDO
-            ENDDO
-          ENDDO
+              enddo
+            enddo
+          enddo
 !
 ! matching collisional flux through the boundary in backward Euler scheme:
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
               irow(nz)=k+npassing+1
               icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
               amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
                          *fact_pos_e(istep)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
               irow(nz)=k+npassing+1
               icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
               amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1) &
                          *fact_pos_b(istep-1)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-        ENDIF
+        endif
 !
         nz_beg=nz+1
 !
 ! energy diffusion operator:
 !
-        IF(isw_ene.EQ.1) THEN
+        if(isw_ene.eq.1) then
 !
-          DO ipart=1,npassing
-            DO kk=1,4
-              DO mm=0,lag
+          do ipart=1,npassing
+            do kk=1,4
+              do mm=0,lag
                 nz=nz+1
                 irow(nz)=k+ipart
-                icol(nz)=k+MAX(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
+                icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
                 amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
-              ENDDO
-            ENDDO
-          ENDDO
+              enddo
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
               irow(nz)=k+npassing+1
               icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
               amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
                          *rhs_mat_energ(kk,npassing+1,istep)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
               irow(nz)=k+npassing+1
               icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
               amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
                          *rhs_mat_energ(kk,npassing_prev+1,istep-1)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-        ENDIF
+        endif
 !
         amat_sp(nz_beg:nz)=fact_pos_e(istep)*amat_sp(nz_beg:nz)
-      ENDIF
+      endif
 !
-    ENDDO
+    enddo
 !
-  ENDDO
+  enddo
 !
 ! Counter-passing: sigma=-1
 !
@@ -2207,35 +2207,35 @@ PRINT *,'right boundary layer ignored'
 !
 ! entry:
 !
-  DO m=0,lag
+  do m=0,lag
     k=ind_start(istep)+2*(npassing+1)*m+2*npassing+3
 !
-    DO ipart=1,npassing+1
+    do ipart=1,npassing+1
       nz=nz+1
       irow(nz)=k-ipart
       icol(nz)=k-ipart
       amat_sp(nz)=1.d0
-    ENDDO
+    enddo
 !
-    IF(isw_axisymm.EQ.1) THEN
+    if(isw_axisymm.eq.1) then
       k_prev=ind_start(ibeg)+2*(npassing+1)*m+2*npassing+3
 !
-      DO ipart=1,npassing+1
+      do ipart=1,npassing+1
         nz=nz+1
         irow(nz)=k-ipart
         icol(nz)=k_prev-ipart
         amat_sp(nz)=-1.d0
-      ENDDO
+      enddo
 !
-      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
-        DO ipart=1,npassing+1
-          IF(ipart.LE.npassing) THEN
+      if(isw_regper.eq.1.and.m.lt.1) then
+        do ipart=1,npassing+1
+          if(ipart.le.npassing) then
             deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
-          ELSE
+          else
             deleta_factor=1.d0-eta(ipart-1)*bhat_mfl(istep)
-          ENDIF
+          endif
 !
-          DO ipart1=1,npassing+1
+          do ipart1=1,npassing+1
             nz_regper=nz_regper+1
             irow_regper(nz_regper)=k-ipart
             icol_regper(nz_regper)=k_prev-ipart1
@@ -2244,162 +2244,162 @@ PRINT *,'right boundary layer ignored'
             irow_regper(nz_regper)=k-ipart
             icol_regper(nz_regper)=k-npassing-1-ipart1
             amat_regper(nz_regper)=deleta_factor
-          ENDDO
+          enddo
 !
-        ENDDO
-      ENDIF
+        enddo
+      endif
 !
-    ENDIF
+    endif
 !
-  ENDDO
+  enddo
 !
-  DO istep=ibeg,iend-1
+  do istep=ibeg,iend-1
     npassing_prev=npl(istep+1)
     npassing=npl(istep)
     delphim1=1.d0/delt_neg(istep)
     deloneovb=0.5d0*delphim1*(1.d0/bhat_mfl(istep+1)-1.d0/bhat_mfl(istep))
 !
-    DO m=0,lag
+    do m=0,lag
       k_prev=ind_start(istep+1)+2*(npassing_prev+1)*m+2*npassing_prev+3
       k=ind_start(istep)+2*(npassing+1)*m+2*npassing+3
 !
 ! free flight:
 !
-      DO ipart=1,npassing+1
+      do ipart=1,npassing+1
         nz=nz+1
         irow(nz)=k-ipart
         icol(nz)=k-ipart
         amat_sp(nz)=delphim1
-      ENDDO
+      enddo
 !
-      DO ipart=1,npassing
+      do ipart=1,npassing
         nz=nz+1
         irow(nz)=k-ipart
         icol(nz)=k_prev-ipart
         amat_sp(nz)=-delphim1
-      ENDDO
+      enddo
 !
-      IF(npassing_prev.GE.npassing) THEN
+      if(npassing_prev.ge.npassing) then
         nz=nz+1
         irow(nz)=k-npassing-1
         icol(nz)=k_prev-npassing-1
         amat_sp(nz)=-delphim1
-      ENDIF
+      endif
 !
 ! mirroring:
 !
-      IF(npassing_prev.EQ.npassing) THEN
+      if(npassing_prev.eq.npassing) then
 !
-        DO kk=1,4
+        do kk=1,4
           nz=nz+1
           irow(nz)=k-npassing-1
           icol(nz)=k-npassing-kk+1
           amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-        ENDDO
+        enddo
 !
-        DO kk=1,4
+        do kk=1,4
           nz=nz+1
           irow(nz)=k-npassing-1
           icol(nz)=k_prev-npassing_prev-kk+1
           amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
-        ENDDO
+        enddo
 !
-      ELSEIF(npassing_prev.GT.npassing) THEN
+      elseif(npassing_prev.gt.npassing) then
         nz=nz+1
         irow(nz)=k_prev-npassing_prev-2
         icol(nz)=k_prev-npassing_prev-1
         amat_sp(nz)=-delphim1
-      ENDIF
+      endif
 !
 ! collisions:
 !
-      IF(fact_neg_e(istep).NE.0.d0) THEN
+      if(fact_neg_e(istep).ne.0.d0) then
 !
 ! Lorentz operator:
 !
-        IF(isw_lor.EQ.1) THEN
+        if(isw_lor.eq.1) then
 !
-          DO ipart=1,npassing+1
-            DO kk=1,5
-              DO mm=0,lag
+          do ipart=1,npassing+1
+            do kk=1,5
+              do mm=0,lag
                 nz=nz+1
                 irow(nz)=k-ipart
-                icol(nz)=k-MAX(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
+                icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
                 amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
                            *fact_neg_e(istep)
-              ENDDO
-            ENDDO
-          ENDDO
+              enddo
+            enddo
+          enddo
 !
 ! matching collisional flux through the boundary in backward Euler scheme:
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
               irow(nz)=k-npassing-1
               icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
               amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
                          *fact_neg_e(istep)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
               irow(nz)=k-npassing-1
               icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
               amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1) &
                          *fact_neg_b(istep+1)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-        ENDIF
+        endif
 !
         nz_beg=nz+1
 !
 ! energy diffusion operator:
 !
-        IF(isw_ene.EQ.1) THEN
+        if(isw_ene.eq.1) then
 !
-          DO ipart=1,npassing
-            DO kk=1,4
-              DO mm=0,lag
+          do ipart=1,npassing
+            do kk=1,4
+              do mm=0,lag
                 nz=nz+1
                 irow(nz)=k-ipart
-                icol(nz)=k-MAX(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
+                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
                 amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
-              ENDDO
-            ENDDO
-          ENDDO
+              enddo
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
               irow(nz)=k-npassing-1
               icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
               amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
                          *rhs_mat_energ(kk,npassing+1,istep)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-          DO kk=1,4
-            DO mm=0,lag
+          do kk=1,4
+            do mm=0,lag
               nz=nz+1
               irow(nz)=k-npassing-1
               icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
               amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
                          *rhs_mat_energ(kk,npassing_prev+1,istep+1)
-            ENDDO
-          ENDDO
+            enddo
+          enddo
 !
-        ENDIF
+        endif
 !
         amat_sp(nz_beg:nz)=fact_neg_e(istep)*amat_sp(nz_beg:nz)
-      ENDIF
+      endif
 !
-    ENDDO
+    enddo
 !
-  ENDDO
+  enddo
 !
 ! Save the symmetric matrix:
 !
@@ -2427,10 +2427,10 @@ PRINT *,'right boundary layer ignored'
 !
 ! Solve the linear equation set:
 !
-  CALL  remap_rc(nz,nz_sq,irow,icol,amat_sp)
+  call  remap_rc(nz,nz_sq,irow,icol,amat_sp)
 !
-  PRINT *,'system size = ',n_2d_size
-  PRINT *,'non-zeros before and after truncation = ',nz,nz_sq
+  print *,'system size = ',n_2d_size
+  print *,'non-zeros before and after truncation = ',nz,nz_sq
   nz=nz_sq
 !
   CALL column_full2pointer(icol(1:nz),ipcol)
@@ -2446,18 +2446,18 @@ PRINT *,'right boundary layer ignored'
   bvec_sp=0.d0
   iopt=1
 !
-  CALL cpu_TIME(time_start)
+  call cpu_time(time_start)
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
                     bvec_sp,iopt)
 !
-  CALL cpu_TIME(time_factorization)
-  PRINT *,'factorization completed ',time_factorization - time_start,' sec'
+  call cpu_time(time_factorization)
+  print *,'factorization completed ',time_factorization - time_start,' sec'
 !
   iopt=2
 !
 ! Solution of inhomogeneus equation (account of sources):
 !
-CALL cpu_TIME(time1)
+call cpu_time(time1)
 
 !! Modification by Andreas F. Martitsch (23.08.2015)
 !  multi-species part (allocate storage for source_vector)
@@ -2482,19 +2482,19 @@ CALL cpu_TIME(time2)
 !
 ! integral part:
 !
-CALL cpu_TIME(time1)
-  IF(isw_intp.EQ.1) THEN
+call cpu_time(time1)
+  if(isw_intp.eq.1) then
 !
-    DO k=1,3
+    do k=1,3
 !
-      DO ispecp=0,num_spec-1
-        PRINT *,'species',ispecp,':'
+      do ispecp=0,num_spec-1
+        print *,'species',ispecp,':'
         bvec_lor=source_vector_all(:,k,ispecp) 
 !
-        DO iter=1,niter
+        do iter=1,niter
           bvec_prev=source_vector_all(:,k,ispecp)
 !
-          CALL integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start,   &
+          call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start,   &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),   &
                              ailmm,source_vector_all(:,k,ispecp),bvec_iter)
 !
@@ -2517,226 +2517,227 @@ CALL cpu_TIME(time1)
           CALL mpro%allgather(break_cond2(ispec), break_cond2)
           IF(ALL(break_cond1 .LT. break_cond2)) EXIT
           !! End Modification by Andreas F. Martitsch (20.08.2015)
-        ENDDO
+        enddo
+        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver."
 !       
-      ENDDO
+      enddo
 !
-    ENDDO
+    enddo
 !
-  ENDIF
-  CALL cpu_TIME(time2)
+  endif
+  call cpu_time(time2)
   !write (*,*) "Time in integral part:", time2 - time1
 
 !
 ! Plotting:
 !
-  IF(iplot.EQ.1) THEN
+  if(iplot.eq.1) then
     nphiplot=200    !serves as an upper limit for data output
-    delphiplot=MAXVAL(phi_mfl(ibeg+1:iend)-phi_mfl(ibeg:iend-1))
-    IF(delphiplot.GT.EPSILON(1.d0)) THEN
+    delphiplot=maxval(phi_mfl(ibeg+1:iend)-phi_mfl(ibeg:iend-1))
+    if(delphiplot.gt.epsilon(1.d0)) then
       nphiequi=(phi_mfl(iend)-phi_mfl(ibeg))/delphiplot
-      nphiequi=MAX(1,nphiequi)
-    ELSE
+      nphiequi=max(1,nphiequi)
+    else
       nphiequi=1
-    ENDIF
-    delphiplot=(phi_mfl(iend)-phi_mfl(ibeg))/MIN(nphiplot,nphiequi)
+    endif
+    delphiplot=(phi_mfl(iend)-phi_mfl(ibeg))/min(nphiplot,nphiequi)
     nplp1=npart_loc+1
     ALLOCATE(fun_write(0:lag,0:3,0:nplp1,3))
     icounter=0
     phiplot=phi_mfl(ibeg)-1.d0
 !
-    WRITE(propname,*) fieldpropagator%tag
+    write(propname,*) fieldpropagator%tag
 
-    IF (prop_fileformat .EQ. 1) THEN
+    if (prop_fileformat .eq. 1) then
 
        !call h5_create('spitzer_' // trim(adjustl(propname)) // '.h5', h5id_final_spitzer)
        
        ! Create unlimited arrays in HDF5 file
-       CALL h5_create('phi_mesh_' // TRIM(ADJUSTL(propname)) // '.h5', h5id_phi_mesh)
+       call h5_create('phi_mesh_' // trim(adjustl(propname)) // '.h5', h5id_phi_mesh)
        !call h5_define_group(h5id_final_spitzer, 'phi_mesh', h5id_phi_mesh)
 
-       CALL h5_create('dentf_' // TRIM(ADJUSTL(propname)) // '.h5', h5id_dentf)
+       call h5_create('dentf_' // trim(adjustl(propname)) // '.h5', h5id_dentf)
        !call h5_define_group(h5id_final, 'dentf', h5id_dentf)
 
-       CALL h5_create('enetf_' // TRIM(ADJUSTL(propname)) // '.h5', h5id_enetf)
+       call h5_create('enetf_' // trim(adjustl(propname)) // '.h5', h5id_enetf)
        !call h5_define_group(h5id_final, 'enetf', h5id_enetf)
 
-       CALL h5_create('spitf_' // TRIM(ADJUSTL(propname)) // '.h5', h5id_spitf)
+       call h5_create('spitf_' // trim(adjustl(propname)) // '.h5', h5id_spitf)
        !call h5_define_group(h5id_final_spitzer, 'spitf', h5id_spitf)
        
-    ELSE
+    else
 
        ! Create ASCII files
-       OPEN(iunit_phi,file='phi_mesh.'                        &
-            //TRIM(ADJUSTL(propname))//'.dat')
-       OPEN(iunit_dt_p,form='unformatted',file='dentf_p.'     &
-            //TRIM(ADJUSTL(propname))//'.dat')
-       OPEN(iunit_dt_m,form='unformatted',file='dentf_m.'     &
-            //TRIM(ADJUSTL(propname))//'.dat')       
-       OPEN(iunit_sp_p,form='unformatted',file='spitf_p.'     &
-            //TRIM(ADJUSTL(propname))//'.dat')
-       OPEN(iunit_sp_m,form='unformatted',file='spitf_m.'     &
-            //TRIM(ADJUSTL(propname))//'.dat')
-       OPEN(iunit_et_p,form='unformatted',file='enetf_p.'     &
-            //TRIM(ADJUSTL(propname))//'.dat')
-       OPEN(iunit_et_m,form='unformatted',file='enetf_m.'     &
-            //TRIM(ADJUSTL(propname))//'.dat')
-    END IF
+       open(iunit_phi,file='phi_mesh.'                        &
+            //trim(adjustl(propname))//'.dat')
+       open(iunit_dt_p,form='unformatted',file='dentf_p.'     &
+            //trim(adjustl(propname))//'.dat')
+       open(iunit_dt_m,form='unformatted',file='dentf_m.'     &
+            //trim(adjustl(propname))//'.dat')       
+       open(iunit_sp_p,form='unformatted',file='spitf_p.'     &
+            //trim(adjustl(propname))//'.dat')
+       open(iunit_sp_m,form='unformatted',file='spitf_m.'     &
+            //trim(adjustl(propname))//'.dat')
+       open(iunit_et_p,form='unformatted',file='enetf_p.'     &
+            //trim(adjustl(propname))//'.dat')
+       open(iunit_et_m,form='unformatted',file='enetf_m.'     &
+            //trim(adjustl(propname))//'.dat')
+    end if
     !
 
     !**********************************************************
     ! Allocate space for datasets written to HDF5 at once
     !**********************************************************
-    IF (ALLOCATED(phi_mfl_h5))  DEALLOCATE(phi_mfl_h5)
-    IF (ALLOCATED(bhat_mfl_h5)) DEALLOCATE(bhat_mfl_h5)
-    IF (ALLOCATED(npassing_h5)) DEALLOCATE(npassing_h5)
-    IF (ALLOCATED(dentf_p_h5)) DEALLOCATE(dentf_p_h5)
-    IF (ALLOCATED(spitf_p_h5)) DEALLOCATE(spitf_p_h5)
-    IF (ALLOCATED(enetf_p_h5)) DEALLOCATE(enetf_p_h5)
-    IF (ALLOCATED(dentf_m_h5)) DEALLOCATE(dentf_m_h5)
-    IF (ALLOCATED(spitf_m_h5)) DEALLOCATE(spitf_m_h5)
-    IF (ALLOCATED(enetf_m_h5)) DEALLOCATE(enetf_m_h5)
-    ALLOCATE(phi_mfl_h5(iend-ibeg+1))
-    ALLOCATE(bhat_mfl_h5(iend-ibeg+1))
-    ALLOCATE(npassing_h5(iend-ibeg+1))
-    ALLOCATE(dentf_p_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
-    ALLOCATE(spitf_p_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
-    ALLOCATE(enetf_p_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
-    ALLOCATE(dentf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
-    ALLOCATE(spitf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
-    ALLOCATE(enetf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+    if (allocated(phi_mfl_h5))  deallocate(phi_mfl_h5)
+    if (allocated(bhat_mfl_h5)) deallocate(bhat_mfl_h5)
+    if (allocated(npassing_h5)) deallocate(npassing_h5)
+    if (allocated(dentf_p_h5)) deallocate(dentf_p_h5)
+    if (allocated(spitf_p_h5)) deallocate(spitf_p_h5)
+    if (allocated(enetf_p_h5)) deallocate(enetf_p_h5)
+    if (allocated(dentf_m_h5)) deallocate(dentf_m_h5)
+    if (allocated(spitf_m_h5)) deallocate(spitf_m_h5)
+    if (allocated(enetf_m_h5)) deallocate(enetf_m_h5)
+    allocate(phi_mfl_h5(iend-ibeg+1))
+    allocate(bhat_mfl_h5(iend-ibeg+1))
+    allocate(npassing_h5(iend-ibeg+1))
+    allocate(dentf_p_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+    allocate(spitf_p_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+    allocate(enetf_p_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+    allocate(dentf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+    allocate(spitf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
+    allocate(enetf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
 
       
-    DO istep=ibeg,iend
-      IF(phi_mfl(istep).LT.phiplot.AND.istep.NE.iend) CYCLE
+    do istep=ibeg,iend
+      if(phi_mfl(istep).lt.phiplot.and.istep.ne.iend) cycle
       icounter=icounter+1
       phiplot=phi_mfl(istep)+delphiplot
       npassing=npl(istep)
       eta0=1.d0/bhat_mfl(istep)
       !
-      IF (prop_fileformat .EQ. 1) THEN
+      if (prop_fileformat .eq. 1) then
          phi_mfl_h5(icounter)  = phi_mfl(istep)
          bhat_mfl_h5(icounter) = bhat_mfl(istep)
          npassing_h5(icounter) = npassing
-      ELSE
-         WRITE (iunit_phi,*) phi_mfl(istep),npassing,bhat_mfl(istep)
-      END IF
+      else
+         write (iunit_phi,*) phi_mfl(istep),npassing,bhat_mfl(istep)
+      end if
       !
       fun_write=0.d0
-      DO m=0,lag
+      do m=0,lag
         k=ind_start(istep)+2*(npassing+1)*m
         fun_write(m,:,1,:)=MATMUL(derivs_plot(:,:,1,istep),             &
                                   source_vector(k+1:k+4,:))
-        DO i=2,npassing+1
+        do i=2,npassing+1
           fun_write(m,:,i,:)=MATMUL(derivs_plot(:,:,i,istep),           &
                                     source_vector(k+i-1:k+i+2,:))
-        ENDDO
-      ENDDO
+        enddo
+      enddo
       !
-      IF (prop_fileformat .EQ. 1) THEN
+      if (prop_fileformat .eq. 1) then
          dentf_p_h5(:,:,:,icounter) = fun_write(:,:,:,1)
          spitf_p_h5(:,:,:,icounter) = fun_write(:,:,:,2)/surface_boozer_B00
          enetf_p_h5(:,:,:,icounter) = fun_write(:,:,:,3)
-      ELSE
-         WRITE(iunit_dt_p) fun_write(:,:,:,1)
-         WRITE(iunit_sp_p) fun_write(:,:,:,2)/surface_boozer_B00
-         WRITE(iunit_et_p) fun_write(:,:,:,3)
-      END IF
+      else
+         write(iunit_dt_p) fun_write(:,:,:,1)
+         write(iunit_sp_p) fun_write(:,:,:,2)/surface_boozer_B00
+         write(iunit_et_p) fun_write(:,:,:,3)
+      end if
       !
       fun_write=0.d0
-      DO m=0,lag
+      do m=0,lag
         k=ind_start(istep)+2*(npassing+1)*(m+1)
         fun_write(m,:,1,:)=MATMUL(derivs_plot(:,:,1,istep),             &
                                   source_vector(k:k-3:-1,:))
-        DO i=2,npassing+1
+        do i=2,npassing+1
           fun_write(m,:,i,:)=MATMUL(derivs_plot(:,:,i,istep),           &
                                     source_vector(k-i+2:k-i-1:-1,:))
-        ENDDO
-      ENDDO
+        enddo
+      enddo
       !
-      IF (prop_fileformat .EQ. 1) THEN
+      if (prop_fileformat .eq. 1) then
          dentf_m_h5(:,:,:,icounter) = fun_write(:,:,:,1)
          spitf_m_h5(:,:,:,icounter) = fun_write(:,:,:,2)/surface_boozer_B00
          enetf_m_h5(:,:,:,icounter) = fun_write(:,:,:,3)
-     ELSE
-         WRITE(iunit_dt_m) fun_write(:,:,:,1)
-         WRITE(iunit_sp_m) fun_write(:,:,:,2)/surface_boozer_B00
-         WRITE(iunit_et_m) fun_write(:,:,:,3)
-      END IF
+     else
+         write(iunit_dt_m) fun_write(:,:,:,1)
+         write(iunit_sp_m) fun_write(:,:,:,2)/surface_boozer_B00
+         write(iunit_et_m) fun_write(:,:,:,3)
+      end if
       !
-    ENDDO
+    enddo
 
-    IF (prop_fileformat .EQ. 1) THEN
-       CALL h5_add(h5id_phi_mesh, 'phi_mfl',  phi_mfl_h5(1:icounter),  &
-            LBOUND(phi_mfl_h5(1:icounter)),  UBOUND(phi_mfl_h5(1:icounter)))
-       CALL h5_add(h5id_phi_mesh, 'bhat_mfl', bhat_mfl_h5(1:icounter), &
-            LBOUND(bhat_mfl_h5(1:icounter)), UBOUND(bhat_mfl_h5(1:icounter)))
-       CALL h5_add(h5id_phi_mesh, 'npassing', npassing_h5(1:icounter), &
-            LBOUND(npassing_h5(1:icounter)), UBOUND(npassing_h5(1:icounter)))
+    if (prop_fileformat .eq. 1) then
+       call h5_add(h5id_phi_mesh, 'phi_mfl',  phi_mfl_h5(1:icounter),  &
+            lbound(phi_mfl_h5(1:icounter)),  ubound(phi_mfl_h5(1:icounter)))
+       call h5_add(h5id_phi_mesh, 'bhat_mfl', bhat_mfl_h5(1:icounter), &
+            lbound(bhat_mfl_h5(1:icounter)), ubound(bhat_mfl_h5(1:icounter)))
+       call h5_add(h5id_phi_mesh, 'npassing', npassing_h5(1:icounter), &
+            lbound(npassing_h5(1:icounter)), ubound(npassing_h5(1:icounter)))
 
-       CALL h5_add(h5id_dentf, 'dentf_p', dentf_p_h5(:,:,:,1:icounter), &
-            LBOUND(dentf_p_h5(:,:,:,1:icounter)), UBOUND(dentf_p_h5(:,:,:,1:icounter)))
-       CALL h5_add(h5id_spitf, 'spitf_p', spitf_p_h5(:,:,:,1:icounter), &
-            LBOUND(spitf_p_h5(:,:,:,1:icounter)), UBOUND(spitf_p_h5(:,:,:,1:icounter)))
-       CALL h5_add(h5id_enetf, 'enetf_p', enetf_p_h5(:,:,:,1:icounter), &
-            LBOUND(enetf_p_h5(:,:,:,1:icounter)), UBOUND(enetf_p_h5(:,:,:,1:icounter)))
+       call h5_add(h5id_dentf, 'dentf_p', dentf_p_h5(:,:,:,1:icounter), &
+            lbound(dentf_p_h5(:,:,:,1:icounter)), ubound(dentf_p_h5(:,:,:,1:icounter)))
+       call h5_add(h5id_spitf, 'spitf_p', spitf_p_h5(:,:,:,1:icounter), &
+            lbound(spitf_p_h5(:,:,:,1:icounter)), ubound(spitf_p_h5(:,:,:,1:icounter)))
+       call h5_add(h5id_enetf, 'enetf_p', enetf_p_h5(:,:,:,1:icounter), &
+            lbound(enetf_p_h5(:,:,:,1:icounter)), ubound(enetf_p_h5(:,:,:,1:icounter)))
 
-       CALL h5_add(h5id_dentf, 'dentf_m', dentf_m_h5(:,:,:,1:icounter), &
-            LBOUND(dentf_m_h5(:,:,:,1:icounter)), UBOUND(dentf_m_h5(:,:,:,1:icounter)))
-       CALL h5_add(h5id_spitf, 'spitf_m', spitf_m_h5(:,:,:,1:icounter), &
-            LBOUND(spitf_m_h5(:,:,:,1:icounter)), UBOUND(spitf_m_h5(:,:,:,1:icounter)))
-       CALL h5_add(h5id_enetf, 'enetf_m', enetf_m_h5(:,:,:,1:icounter), &
-            LBOUND(enetf_m_h5(:,:,:,1:icounter)), UBOUND(enetf_m_h5(:,:,:,1:icounter)))
+       call h5_add(h5id_dentf, 'dentf_m', dentf_m_h5(:,:,:,1:icounter), &
+            lbound(dentf_m_h5(:,:,:,1:icounter)), ubound(dentf_m_h5(:,:,:,1:icounter)))
+       call h5_add(h5id_spitf, 'spitf_m', spitf_m_h5(:,:,:,1:icounter), &
+            lbound(spitf_m_h5(:,:,:,1:icounter)), ubound(spitf_m_h5(:,:,:,1:icounter)))
+       call h5_add(h5id_enetf, 'enetf_m', enetf_m_h5(:,:,:,1:icounter), &
+            lbound(enetf_m_h5(:,:,:,1:icounter)), ubound(enetf_m_h5(:,:,:,1:icounter)))
 
-       CALL h5_close(h5id_enetf)
+       call h5_close(h5id_enetf)
        !call h5_close_group(h5id_spitf)
-       CALL h5_close(h5id_phi_mesh)
-       CALL h5_close(h5id_dentf)
-       CALL h5_close(h5id_spitf)
+       call h5_close(h5id_phi_mesh)
+       call h5_close(h5id_dentf)
+       call h5_close(h5id_spitf)
 
-       DEALLOCATE(phi_mfl_h5, bhat_mfl_h5, npassing_h5)
-       DEALLOCATE(dentf_p_h5, spitf_p_h5, enetf_p_h5)
-       DEALLOCATE(dentf_m_h5, spitf_m_h5, enetf_m_h5)
-    ELSE
-       CLOSE(iunit_phi)
-       CLOSE(iunit_dt_p)
-       CLOSE(iunit_dt_m)
-       CLOSE(iunit_sp_p)
-       CLOSE(iunit_sp_m)
-       CLOSE(iunit_et_p)
-       CLOSE(iunit_et_m)
-    END IF
+       deallocate(phi_mfl_h5, bhat_mfl_h5, npassing_h5)
+       deallocate(dentf_p_h5, spitf_p_h5, enetf_p_h5)
+       deallocate(dentf_m_h5, spitf_m_h5, enetf_m_h5)
+    else
+       close(iunit_phi)
+       close(iunit_dt_p)
+       close(iunit_dt_m)
+       close(iunit_sp_p)
+       close(iunit_sp_m)
+       close(iunit_et_p)
+       close(iunit_et_m)
+    end if
     !
-    IF (prop_fileformat .EQ. 1) THEN
-       CALL h5_create('sizeplot_etalev_' // TRIM(ADJUSTL(propname)) // '.h5', h5id_sizeplot)
+    if (prop_fileformat .eq. 1) then
+       call h5_create('sizeplot_etalev_' // trim(adjustl(propname)) // '.h5', h5id_sizeplot)
        !call h5_define_group(h5id_final_spitzer, 'sizeplot_etalev', h5id_sizeplot)
-       CALL h5_add(h5id_sizeplot, 'lag', lag)
-       CALL h5_add(h5id_sizeplot, 'nplp1', nplp1)
-       CALL h5_add(h5id_sizeplot, 'icounter', icounter)
-       CALL h5_add(h5id_sizeplot, 'collpar', collpar)
-       CALL h5_add(h5id_sizeplot, 'travis_convfac', travis_convfac )
-       CALL h5_add(h5id_sizeplot, 'eta', eta(0:nplp1), LBOUND(eta(0:nplp1)), UBOUND(eta(0:nplp1)))
+       call h5_add(h5id_sizeplot, 'lag', lag)
+       call h5_add(h5id_sizeplot, 'nplp1', nplp1)
+       call h5_add(h5id_sizeplot, 'icounter', icounter)
+       call h5_add(h5id_sizeplot, 'collpar', collpar)
+       call h5_add(h5id_sizeplot, 'travis_convfac', travis_convfac )
+       call h5_add(h5id_sizeplot, 'eta', eta(0:nplp1), lbound(eta(0:nplp1)), ubound(eta(0:nplp1)))
        !call h5_add(h5id_sizeplot, 'eta_all', eta, lbound(eta), ubound(eta))
        !call h5_add(h5id_sizeplot, 'eta_glob', eta_glob, lbound(eta_glob), ubound(eta_glob))
        !call h5_add(h5id_sizeplot, 'eta_loc', eta_loc, lbound(eta_loc), ubound(eta_loc))
        !call h5_close_group(h5id_sizeplot)
-       CALL h5_add(h5id_sizeplot, 'ripple_tag',fieldpropagator%ch_act%tag)
-       CALL h5_add(h5id_sizeplot, 'ripple_b_max_l',fieldpropagator%ch_act%b_max_l)
-       CALL h5_add(h5id_sizeplot, 'ripple_b_max_r',fieldpropagator%ch_act%b_max_r)
-       CALL h5_close(h5id_sizeplot)
-    ELSE
-       OPEN(iunit_sizes,file='sizeplot_etalev.'               &
-            //TRIM(ADJUSTL(propname))//'.dat')
-       WRITE(iunit_sizes,*) lag,nplp1,icounter,collpar,travis_convfac
-       WRITE(iunit_sizes,*) eta(0:nplp1)
-       CLOSE(iunit_sizes)       
-    END IF
+       call h5_add(h5id_sizeplot, 'ripple_tag',fieldpropagator%ch_act%tag)
+       call h5_add(h5id_sizeplot, 'ripple_b_max_l',fieldpropagator%ch_act%b_max_l)
+       call h5_add(h5id_sizeplot, 'ripple_b_max_r',fieldpropagator%ch_act%b_max_r)
+       call h5_close(h5id_sizeplot)
+    else
+       open(iunit_sizes,file='sizeplot_etalev.'               &
+            //trim(adjustl(propname))//'.dat')
+       write(iunit_sizes,*) lag,nplp1,icounter,collpar,travis_convfac
+       write(iunit_sizes,*) eta(0:nplp1)
+       close(iunit_sizes)       
+    end if
 !
     DEALLOCATE(fun_write)
 !
-  ENDIF
+  endif
 !
-CALL cpu_TIME(time1)
+call cpu_time(time1)
 !! Modification by Andreas F. Martitsch (23.08.2015)
 ! old behavior (for a single species)
 !qflux=MATMUL(flux_vector,source_vector)
@@ -2796,25 +2797,25 @@ IF(mpro%getrank() .EQ. 0) THEN
   !STOP
 END IF
 !! End Modification by Andreas F. Martitsch (23.08.2015)
-CALL cpu_TIME(time2)
+call cpu_time(time2)
 RETURN
 !write (*,*) "Time in matmul(): ", time2-time1, iplot
 !call gemm(qflux, flux_vector, source_vector)
 !write (*,*) flux_vector
 !write (*,*) source_vector
 !
-  DO m=0,lag
-    DO kk=1,3
+  do m=0,lag
+    do kk=1,3
       k=ind_start(ibeg)+2*npass_l*m
       source_m(npass_l*m+1:npass_l*m+npass_l,kk) &
           =source_vector(k+2*npass_l:k+npass_l+1:-1,kk)
       k=ind_start(iend)+2*npass_r*m
       source_p(npass_r*m+1:npass_r*m+npass_r,kk) &
           =source_vector(k+1:k+npass_r,kk)
-    ENDDO
-  ENDDO
+    enddo
+  enddo
 !
-  IF(iplot.EQ.1.OR.isw_axisymm.EQ.1) THEN
+  if(iplot.eq.1.or.isw_axisymm.eq.1) then
 !
     flux_p=0.d0
     flux_m=0.d0
@@ -2823,8 +2824,8 @@ RETURN
     amat_minus_minus=0.d0
     amat_minus_plus=0.d0
 !
-    DEALLOCATE(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
-    IF(isw_intp.EQ.1) DEALLOCATE(bvec_iter,bvec_lor,bvec_prev)
+    deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
+    if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
     DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
     DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
     DEALLOCATE(npl,rhs_mat_fzero,rhs_mat_lorentz,rhs_mat_energ,q_rip)
@@ -2834,144 +2835,152 @@ RETURN
     IF (ALLOCATED(eta_prev)) DEALLOCATE(eta_prev)
     IF (ALLOCATED(eta_next)) DEALLOCATE(eta_next)
 !
-    CALL cpu_TIME(time_solver)
-    PRINT *,'solving (1) completed       ',time_solver - time_factorization,' sec'
+    call cpu_time(time_solver)
+    print *,'solving (1) completed       ',time_solver - time_factorization,' sec'
 !
-    RETURN
+    return
 !
-  ENDIF
+  endif
 !
 ! Calculation of propagators:
 !
 time3 = 0
-CALL cpu_TIME(time1)
-  DO m=0,lag
+call cpu_time(time1)
+  do m=0,lag
     k=ind_start(ibeg)+2*npass_l*m
-    DO i=1,npass_l
+    do i=1,npass_l
       bvec_sp=0.d0
       bvec_sp(k+i)=1.d0
 !
-CALL cpu_TIME(time4)
+call cpu_time(time4)
       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),   &
                         bvec_sp,iopt)
-CALL cpu_TIME(time5)
+call cpu_time(time5)
 time3 = time3 + (time5-time4)
 !
 ! integral part:
 !
-      IF(isw_intp.EQ.1) THEN
+      if(isw_intp.eq.1) then
         bvec_lor=bvec_sp
 !
-        DO iter=1,niter
+        do iter=1,niter
           bvec_prev=bvec_sp
 !
-          CALL integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+          call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
                              ailmm,bvec_sp,bvec_iter)
 !
-          CALL cpu_TIME(time4)
+          call cpu_time(time4)
           CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),      &
                             bvec_iter,iopt)
-          CALL cpu_TIME(time5)
+          call cpu_time(time5)
           time3 = time3 + (time5-time4)
 !
           bvec_sp=bvec_lor+bvec_iter
-          IF(SUM(ABS(bvec_sp-bvec_prev)) .LT.                                 &
-             SUM(ABS(bvec_prev))*epserr_iter) THEN
-            EXIT
-          ENDIF
+          !write (*,*) "2 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+
+          if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
+             sum(abs(bvec_prev))*epserr_iter) then
+   	     !write (*,*) "Number of iterations: ", iter
+            exit
+          endif
 !
-        ENDDO
+        enddo
+        !
+        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver." 
+      endif
 !
-      ENDIF
-!
-      DO mm=0,lag
+      do mm=0,lag
         kk=ind_start(iend)+2*npass_r*mm
         amat_plus_plus(npass_r*mm+1:npass_r*mm+npass_r,npass_l*m+i)    &
                      =bvec_sp(kk+1:kk+npass_r)
-      ENDDO
-      DO mm=0,lag
+      enddo
+      do mm=0,lag
         kk=ind_start(ibeg)+2*npass_l*mm
         amat_plus_minus(npass_l*mm+1:npass_l*mm+npass_l,npass_l*m+i)   &
                      =bvec_sp(kk+2*npass_l:kk+npass_l+1:-1)
-      ENDDO
-      flux_p(:,npass_l*m+i)=MATMUL(flux_vector,bvec_sp(:))
-    ENDDO
-  ENDDO
+      enddo
+      flux_p(:,npass_l*m+i)=matmul(flux_vector,bvec_sp(:))
+    enddo
+  enddo
 !
-  DO m=0,lag
+  do m=0,lag
     k=ind_start(iend)+2*npass_r*m
-    DO i=1,npass_r
+    do i=1,npass_r
       bvec_sp=0.d0
       bvec_sp(k+2*npass_r+1-i)=1.d0
 !
-      CALL cpu_TIME(time4)
+      call cpu_time(time4)
       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),   &
                         bvec_sp,iopt)
-      CALL cpu_TIME(time5)
+      call cpu_time(time5)
       time3 = time3 + (time5-time4)
 !
 ! integral part:
 !
-      IF(isw_intp.EQ.1) THEN
+      if(isw_intp.eq.1) then
         bvec_lor=bvec_sp
 !
-        DO iter=1,niter
+        do iter=1,niter
           bvec_prev=bvec_sp
 !
-          CALL integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+          call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
                              ailmm,bvec_sp,bvec_iter)
 !
-          CALL cpu_TIME(time4)
+          call cpu_time(time4)
           CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),      &
                             bvec_iter,iopt)
-          CALL cpu_TIME(time5)
+          call cpu_time(time5)
           time3 = time3 + (time5-time4)
 !
           bvec_sp=bvec_lor+bvec_iter
-          IF(SUM(ABS(bvec_sp-bvec_prev)) .LT.                                 &
-             SUM(ABS(bvec_prev))*epserr_iter) THEN
-            EXIT
-          ENDIF
+          !write (*,*) "3 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
+
+          if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
+             sum(abs(bvec_prev))*epserr_iter) then
+             !write (*,*) "Number of iterations: ", iter
+             exit
+          endif
 !
-        ENDDO
+        enddo
+        !
+        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver." 
+      endif
 !
-      ENDIF
-!
-      DO mm=0,lag
+      do mm=0,lag
         kk=ind_start(iend)+2*npass_r*mm
         amat_minus_plus(npass_r*mm+1:npass_r*mm+npass_r,npass_r*m+i)   &
                      =bvec_sp(kk+1:kk+npass_r)
-      ENDDO
-      DO mm=0,lag
+      enddo
+      do mm=0,lag
         kk=ind_start(ibeg)+2*npass_l*mm
         amat_minus_minus(npass_l*mm+1:npass_l*mm+npass_l,npass_r*m+i)  &
                      =bvec_sp(kk+2*npass_l:kk+npass_l+1:-1)
-      ENDDO
-      flux_m(:,npass_r*m+i)=MATMUL(flux_vector,bvec_sp(:))
-    ENDDO
-  ENDDO
+      enddo
+      flux_m(:,npass_r*m+i)=matmul(flux_vector,bvec_sp(:))
+    enddo
+  enddo
 !
   iopt=3
 !
-CALL cpu_TIME(time2)
-WRITE (*,*) "Time in solver in calculating propagator: ", time3
-WRITE (*,*) "Time in calculating propagator: ", time2 - time1
+call cpu_time(time2)
+write (*,*) "Time in solver in calculating propagator: ", time3
+write (*,*) "Time in calculating propagator: ", time2 - time1
 
 
-CALL cpu_TIME(time1)
+call cpu_time(time1)
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
-CALL cpu_TIME(time2)
+call cpu_time(time2)
 !write (*,*) "Time in solver:", time2 - time1
 !
-  DEALLOCATE(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
-  IF(isw_intp.EQ.1) DEALLOCATE(bvec_iter,bvec_lor,bvec_prev)
+  deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
+  if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
 !
 !
 !
-  CALL cpu_TIME(time_solver)
-  PRINT *,'solving completed (2)       ',time_solver - time_factorization,' sec'
+  call cpu_time(time_solver)
+  print *,'solving completed (2)       ',time_solver - time_factorization,' sec'
 !
 !
 !
@@ -3006,7 +3015,7 @@ WRITE(112,*) fieldpropagator%tag,qflux(1:2,1),qflux(1:2,2),npart_loc &
              ,b_max_l,b_max_r,facnorm_p,facnorm_m,ignore_lb &
              ,ignore_rb,modify_bl,modify_br
 !             ,ignore_rb,ifilter_l,ifilter_r
-WRITE(111,*) fieldpropagator%tag,qflux
+write(111,*) fieldpropagator%tag,qflux
 DO i=0,npart_loc
 WRITE(113,*) fieldpropagator%tag,eta(i)
 ENDDO
@@ -3262,7 +3271,7 @@ END SUBROUTINE integral_part
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-SUBROUTINE rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,        &
+subroutine rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,        &
                              phi_mfl,bhat_mfl,geodcu_mfl,h_phi_mfl,eta,  &
                              delt_pos,delt_neg,                          &
                              fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
@@ -3275,34 +3284,34 @@ SUBROUTINE rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,        &
 !
   USE plagrange_mod
 !
-  IMPLICIT NONE
+  implicit none
 !
 !  logical, parameter :: stepmode=.true.
-  LOGICAL, PARAMETER :: stepmode=.FALSE.
+  logical, parameter :: stepmode=.false.
   INTEGER, PARAMETER :: npoi=6, nder=0, npoihalf=npoi/2, nstepmin=8
-  DOUBLE PRECISION, PARAMETER :: bparabmax=0.2d0
+  double precision, parameter :: bparabmax=0.2d0
 !
-  INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
-  INTEGER :: ncross_l,ncross_r,ib,ie,intb,inte,k,imid,isplit
+  integer :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
+  integer :: ncross_l,ncross_r,ib,ie,intb,inte,k,imid,isplit
 !
-  DOUBLE PRECISION :: subsqmin,ht,ht2,bparab,x1,x2,f1,f2
+  double precision :: subsqmin,ht,ht2,bparab,x1,x2,f1,f2
 !
-  INTEGER, DIMENSION(1)              :: idummy
-  INTEGER, DIMENSION(1:iend)         :: phi_divide
-  INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
+  integer, dimension(1)              :: idummy
+  integer, dimension(1:iend)         :: phi_divide
+  integer, dimension(:), allocatable :: icross_l,icross_r
 !
   DOUBLE PRECISION, DIMENSION(npoi)           :: tp,weight
   DOUBLE PRECISION, DIMENSION(0:nder,npoi)    :: coeff
-  DOUBLE PRECISION, DIMENSION(0:npart)        :: eta
-  DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: phi_mfl,bhat_mfl
-  DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: geodcu_mfl,h_phi_mfl
-  DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: delt_pos,delt_neg
-  DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: fact_pos_b,fact_neg_b
-  DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: fact_pos_e,fact_neg_e
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: phi_new,bhat_new
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: geodcu_new,h_phi_new
+  double precision, dimension(0:npart)        :: eta
+  double precision, dimension(ibeg:iend)      :: phi_mfl,bhat_mfl
+  double precision, dimension(ibeg:iend)      :: geodcu_mfl,h_phi_mfl
+  double precision, dimension(ibeg:iend)      :: delt_pos,delt_neg
+  double precision, dimension(ibeg:iend)      :: fact_pos_b,fact_neg_b
+  double precision, dimension(ibeg:iend)      :: fact_pos_e,fact_neg_e
+  double precision, dimension(:), allocatable :: phi_new,bhat_new
+  double precision, dimension(:), allocatable :: geodcu_new,h_phi_new
 !
-  CALL fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
+  call fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
                                 phi_mfl,bhat_mfl,eta)
 !
   phi_divide=1
@@ -3313,450 +3322,450 @@ SUBROUTINE rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,        &
 !
 ! determine level crossings:
 !
-  idummy=MINLOC(bhat_mfl(ibeg:iend))
+  idummy=minloc(bhat_mfl(ibeg:iend))
   ibmin=idummy(1)+ibeg-1
 !
   ncross_l=0
-  IF(ibmin.GT.ibeg) THEN
+  if(ibmin.gt.ibeg) then
     istep=ibmin
-    DO i=0,npart
-      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+    do i=0,npart
+      if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
         npassing=i
-      ELSE
-        EXIT
-      ENDIF
-    ENDDO
+      else
+        exit
+      endif
+    enddo
     npassing_prev=npassing
-    DO istep=ibmin-1,ibeg,-1
-      DO i=0,npart
-        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+    do istep=ibmin-1,ibeg,-1
+      do i=0,npart
+        if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
           npassing=i
-        ELSE
-          EXIT
-        ENDIF
-      ENDDO
-      IF(npassing.LT.npassing_prev) THEN
+        else
+          exit
+        endif
+      enddo
+      if(npassing.lt.npassing_prev) then
         ncross_l=ncross_l+1
         npassing_prev=npassing
-      ENDIF
-    ENDDO
-    IF(ncross_l.GT.0) THEN
-      ALLOCATE(icross_l(ncross_l))
+      endif
+    enddo
+    if(ncross_l.gt.0) then
+      allocate(icross_l(ncross_l))
       ncross_l=0
       istep=ibmin
-      DO i=0,npart
-        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+      do i=0,npart
+        if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
           npassing=i
-        ELSE
-          EXIT
-        ENDIF
-      ENDDO
+        else
+          exit
+        endif
+      enddo
       npassing_prev=npassing
-      DO istep=ibmin-1,ibeg,-1
-        DO i=0,npart
-          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+      do istep=ibmin-1,ibeg,-1
+        do i=0,npart
+          if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
             npassing=i
-          ELSE
-            EXIT
-          ENDIF
-        ENDDO
-        IF(npassing.LT.npassing_prev) THEN
+          else
+            exit
+          endif
+        enddo
+        if(npassing.lt.npassing_prev) then
           ncross_l=ncross_l+1
           icross_l(ncross_l)=istep
           npassing_prev=npassing
-        ENDIF
-      ENDDO
-    ENDIF
-  ENDIF
+        endif
+      enddo
+    endif
+  endif
 !
   ncross_r=0
-  IF(ibmin.LT.iend) THEN
+  if(ibmin.lt.iend) then
     istep=ibmin
-    DO i=0,npart
-      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+    do i=0,npart
+      if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
         npassing=i
-      ELSE
-        EXIT
-      ENDIF
-    ENDDO
+      else
+        exit
+      endif
+    enddo
     npassing_prev=npassing
-    DO istep=ibmin+1,iend
-      DO i=0,npart
-        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+    do istep=ibmin+1,iend
+      do i=0,npart
+        if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
           npassing=i
-        ELSE
-          EXIT
-        ENDIF
-      ENDDO
-      IF(npassing.LT.npassing_prev) THEN
+        else
+          exit
+        endif
+      enddo
+      if(npassing.lt.npassing_prev) then
         ncross_r=ncross_r+1
         npassing_prev=npassing
-      ENDIF
-    ENDDO
-    IF(ncross_r.GT.0) THEN
-      ALLOCATE(icross_r(ncross_r))
+      endif
+    enddo
+    if(ncross_r.gt.0) then
+      allocate(icross_r(ncross_r))
       ncross_r=0
       istep=ibmin
-      DO i=0,npart
-        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+      do i=0,npart
+        if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
           npassing=i
-        ELSE
-          EXIT
-        ENDIF
-      ENDDO
+        else
+          exit
+        endif
+      enddo
       npassing_prev=npassing
-      DO istep=ibmin+1,iend
-        DO i=0,npart
-          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+      do istep=ibmin+1,iend
+        do i=0,npart
+          if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
             npassing=i
-          ELSE
-            EXIT
-          ENDIF
-        ENDDO
-        IF(npassing.LT.npassing_prev) THEN
+          else
+            exit
+          endif
+        enddo
+        if(npassing.lt.npassing_prev) then
           ncross_r=ncross_r+1
           icross_r(ncross_r)=istep
           npassing_prev=npassing
-        ENDIF
-      ENDDO
-    ENDIF
-  ENDIF
+        endif
+      enddo
+    endif
+  endif
 !
 ! place ibmin to an odd point:
 !
-  IF(MOD(ibmin-ibeg,2).EQ.1) THEN
-    IF(ncross_l.GT.0.AND.ncross_r.GT.0) THEN
-      IF(icross_r(1)-ibmin.GT.ibmin-icross_l(1)) THEN
+  if(mod(ibmin-ibeg,2).eq.1) then
+    if(ncross_l.gt.0.and.ncross_r.gt.0) then
+      if(icross_r(1)-ibmin.gt.ibmin-icross_l(1)) then
         ibmin=ibmin+1
-      ELSE
+      else
         ibmin=ibmin-1
-      ENDIF
-    ELSEIF(ncross_l.GT.0) THEN
+      endif
+    elseif(ncross_l.gt.0) then
       ibmin=ibmin+1
-    ELSEIF(ncross_r.GT.0) THEN
+    elseif(ncross_r.gt.0) then
       ibmin=ibmin-1
-    ENDIF
-  ENDIF
+    endif
+  endif
 !
 ! check the number of steps in sub-intervals for parabolic bhat term:
 !
-  IF(ncross_l.GT.0) THEN
+  if(ncross_l.gt.0) then
     ie=icross_l(1)
-    DO i=2,ncross_l
+    do i=2,ncross_l
       ib=icross_l(i)
-      IF(ie-ib.LT.nstepmin) THEN
+      if(ie-ib.lt.nstepmin) then
         imid=(ib+ie)/2
         x1=phi_mfl(imid)-phi_mfl(ib)
         x2=phi_mfl(ie)-phi_mfl(ib)
         f1=bhat_mfl(imid)-bhat_mfl(ib)
         f2=bhat_mfl(ie)-bhat_mfl(ib)
-        bparab=ABS((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
-        IF(bparab.GT.bparabmax) THEN
-          isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+        bparab=abs((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
+        if(bparab.gt.bparabmax) then
+          isplit=2*max(nint(0.5*float(nstepmin)/float(ie-ib)),1)
           phi_divide(ib+1:ie)=isplit
-        ENDIF
-      ENDIF
+        endif
+      endif
       ie=ib
-    ENDDO
+    enddo
     ib=ibeg
-    IF(ie-ib.LT.nstepmin) THEN
-      isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+    if(ie-ib.lt.nstepmin) then
+      isplit=2*max(nint(0.5*float(nstepmin)/float(ie-ib)),1)
       phi_divide(ib+1:ie)=isplit
-    ENDIF
-  ENDIF
+    endif
+  endif
 !
-  IF(ncross_r.GT.0) THEN
+  if(ncross_r.gt.0) then
     ib=icross_r(1)
-    DO i=2,ncross_r
+    do i=2,ncross_r
       ie=icross_r(i)
-      IF(ie-ib.LT.nstepmin) THEN
+      if(ie-ib.lt.nstepmin) then
         imid=(ib+ie)/2
         x1=phi_mfl(imid)-phi_mfl(ib)
         x2=phi_mfl(ie)-phi_mfl(ib)
         f1=bhat_mfl(imid)-bhat_mfl(ib)
         f2=bhat_mfl(ie)-bhat_mfl(ib)
-        bparab=ABS((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
-        IF(bparab.GT.bparabmax) THEN
-          isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+        bparab=abs((f1*x2-f2*x1)*x2/((x1-x2)*x1*f2))
+        if(bparab.gt.bparabmax) then
+          isplit=2*max(nint(0.5*float(nstepmin)/float(ie-ib)),1)
           phi_divide(ib+1:ie)=isplit
-        ENDIF
-      ENDIF
+        endif
+      endif
       ib=ie
-    ENDDO
+    enddo
     ie=iend
-    IF(ie-ib.LT.nstepmin) THEN
-      isplit=2*MAX(NINT(0.5*float(nstepmin)/float(ie-ib)),1)
+    if(ie-ib.lt.nstepmin) then
+      isplit=2*max(nint(0.5*float(nstepmin)/float(ie-ib)),1)
       phi_divide(ib+1:ie)=isplit
-    ENDIF
-  ENDIF
+    endif
+  endif
 !
-  IF(MAXVAL(phi_divide).GT.1) RETURN
+  if(maxval(phi_divide).gt.1) return
 !
 ! change the integration variable phi -> sqrt(phi-phi0):
 !
-  IF(stepmode) THEN
+  if(stepmode) then
 !
-    ALLOCATE(phi_new(ibeg:iend),bhat_new(ibeg:iend))
-    ALLOCATE(geodcu_new(ibeg:iend),h_phi_new(ibeg:iend))
+    allocate(phi_new(ibeg:iend),bhat_new(ibeg:iend))
+    allocate(geodcu_new(ibeg:iend),h_phi_new(ibeg:iend))
     phi_new=phi_mfl
     bhat_new=bhat_mfl
     geodcu_new=geodcu_mfl
     h_phi_new=h_phi_mfl
 !
     ie=ibmin
-    DO i=1,ncross_l
+    do i=1,ncross_l
       ib=icross_l(i)
-      ht=SQRT(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
+      ht=sqrt(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
       ht2=ht**2
       k=ib
-      DO istep=ib+1,ie-1
+      do istep=ib+1,ie-1
         phi_new(istep)=phi_mfl(ib)+ht2*float(istep-ib)**2
         fact_pos_e(istep)=2.d0*ht*float(istep-ib)
         delt_pos(istep)=ht
-        DO WHILE(phi_mfl(k).LT.phi_new(istep))
+        do while(phi_mfl(k).lt.phi_new(istep))
           k=k+1
-        ENDDO
-        intb=MAX(ibeg,MIN(iend-npoi+1,k-npoihalf))
+        enddo
+        intb=max(ibeg,min(iend-npoi+1,k-npoihalf))
         inte=intb+npoi-1
 !
         CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
 !
-        bhat_new(istep)=SUM(coeff(0,:)*bhat_mfl(intb:inte))
-        geodcu_new(istep)=SUM(coeff(0,:)*geodcu_mfl(intb:inte))
-        h_phi_new(istep)=SUM(coeff(0,:)*h_phi_mfl(intb:inte))
-      ENDDO
+        bhat_new(istep)=sum(coeff(0,:)*bhat_mfl(intb:inte))
+        geodcu_new(istep)=sum(coeff(0,:)*geodcu_mfl(intb:inte))
+        h_phi_new(istep)=sum(coeff(0,:)*h_phi_mfl(intb:inte))
+      enddo
       delt_pos(ie)=ht
       fact_pos_e(ie)=2.d0*ht*float(ie-ib)
       fact_pos_b(ib)=0.d0
       fact_pos_b(ib+1:ie-1)=fact_pos_e(ib+1:ie-1)
       ie=ib
-    ENDDO
+    enddo
 !
     ib=ibmin
-    DO i=1,ncross_r
+    do i=1,ncross_r
       ie=icross_r(i)
-      ht=SQRT(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
+      ht=sqrt(phi_mfl(ie)-phi_mfl(ib))/float(ie-ib)
       ht2=ht**2
       k=ib
-      DO istep=ib+1,ie-1
+      do istep=ib+1,ie-1
         phi_new(istep)=phi_mfl(ie)-ht2*float(ie-istep)**2
         delt_pos(istep)=ht
         fact_pos_b(istep)=2.d0*ht*float(ie-istep)
-        DO WHILE(phi_mfl(k).LT.phi_new(istep))
+        do while(phi_mfl(k).lt.phi_new(istep))
           k=k+1
-        ENDDO
-        intb=MAX(ibeg,MIN(iend-npoi+1,k-npoihalf))
+        enddo
+        intb=max(ibeg,min(iend-npoi+1,k-npoihalf))
         inte=intb+npoi-1
 !
         CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
 !
-        bhat_new(istep)=SUM(coeff(0,:)*bhat_mfl(intb:inte))
-        geodcu_new(istep)=SUM(coeff(0,:)*geodcu_mfl(intb:inte))
-        h_phi_new(istep)=SUM(coeff(0,:)*h_phi_mfl(intb:inte))
-      ENDDO
+        bhat_new(istep)=sum(coeff(0,:)*bhat_mfl(intb:inte))
+        geodcu_new(istep)=sum(coeff(0,:)*geodcu_mfl(intb:inte))
+        h_phi_new(istep)=sum(coeff(0,:)*h_phi_mfl(intb:inte))
+      enddo
       delt_pos(ie)=ht
       fact_pos_b(ib)=2.d0*ht*float(ie-ib)
       fact_pos_e(ie)=0.d0
       fact_pos_e(ib+1:ie-1)=fact_pos_b(ib+1:ie-1)
       ib=ie
-    ENDDO
+    enddo
 !
     phi_mfl=phi_new
     bhat_mfl=bhat_new
     geodcu_mfl=geodcu_new
     h_phi_mfl=h_phi_new
 !
-    DEALLOCATE(phi_new,bhat_new,geodcu_new,h_phi_new)
+    deallocate(phi_new,bhat_new,geodcu_new,h_phi_new)
 !
-  ENDIF
+  endif
 !
   delt_neg(ibeg:iend-1)=delt_pos(ibeg+1:iend)
   fact_neg_b=fact_pos_e
   fact_neg_e=fact_pos_b
 !
-  IF(ALLOCATED(icross_l)) DEALLOCATE(icross_l)
-  IF(ALLOCATED(icross_r)) DEALLOCATE(icross_r)
+  if(allocated(icross_l)) deallocate(icross_l)
+  if(allocated(icross_r)) deallocate(icross_r)
 !
-END SUBROUTINE rearrange_phideps_old
+end subroutine rearrange_phideps_old
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-SUBROUTINE fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
+subroutine fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
                                     phi_mfl,bhat_mfl,eta)
 !
-  USE device_mod
+  use device_mod
 !
-  IMPLICIT NONE
+  implicit none
 !
-  INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
-  INTEGER :: ncross_l,ncross_r,ib,ie
+  integer :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
+  integer :: ncross_l,ncross_r,ib,ie
 !
-  DOUBLE PRECISION :: subsqmin
+  double precision :: subsqmin
 !
-  INTEGER, DIMENSION(1)              :: idummy
-  INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
+  integer, dimension(1)              :: idummy
+  integer, dimension(:), allocatable :: icross_l,icross_r
 !
-  DOUBLE PRECISION, DIMENSION(0:npart)        :: eta
-  DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: phi_mfl,bhat_mfl
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: eta_cross_l,eta_cross_r
+  double precision, dimension(0:npart)        :: eta
+  double precision, dimension(ibeg:iend)      :: phi_mfl,bhat_mfl
+  double precision, dimension(:), allocatable :: eta_cross_l,eta_cross_r
 !
 ! determine level crossings:
 !
-  idummy=MINLOC(bhat_mfl(ibeg:iend))
+  idummy=minloc(bhat_mfl(ibeg:iend))
   ibmin=idummy(1)+ibeg-1
 !
   ncross_l=0
-  IF(ibmin.GT.ibeg) THEN
+  if(ibmin.gt.ibeg) then
     istep=ibmin
-    DO i=0,npart
-      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+    do i=0,npart
+      if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
         npassing=i
-      ELSE
-        EXIT
-      ENDIF
-    ENDDO
+      else
+        exit
+      endif
+    enddo
     npassing_prev=npassing
-    DO istep=ibmin-1,ibeg,-1
-      DO i=0,npart
-        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+    do istep=ibmin-1,ibeg,-1
+      do i=0,npart
+        if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
           npassing=i
-        ELSE
-          EXIT
-        ENDIF
-      ENDDO
-      IF(npassing.LT.npassing_prev) THEN
+        else
+          exit
+        endif
+      enddo
+      if(npassing.lt.npassing_prev) then
         ncross_l=ncross_l+1
         npassing_prev=npassing
-      ENDIF
-    ENDDO
-    IF(ncross_l.GT.0) THEN
-      ALLOCATE(icross_l(ncross_l),eta_cross_l(ncross_l))
+      endif
+    enddo
+    if(ncross_l.gt.0) then
+      allocate(icross_l(ncross_l),eta_cross_l(ncross_l))
       ncross_l=0
       istep=ibmin
-      DO i=0,npart
-        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+      do i=0,npart
+        if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
           npassing=i
-        ELSE
-          EXIT
-        ENDIF
-      ENDDO
+        else
+          exit
+        endif
+      enddo
       npassing_prev=npassing
-      DO istep=ibmin-1,ibeg,-1
-        DO i=0,npart
-          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+      do istep=ibmin-1,ibeg,-1
+        do i=0,npart
+          if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
             npassing=i
-          ELSE
-            EXIT
-          ENDIF
-        ENDDO
-        IF(npassing.LT.npassing_prev) THEN
+          else
+            exit
+          endif
+        enddo
+        if(npassing.lt.npassing_prev) then
           ncross_l=ncross_l+1
           icross_l(ncross_l)=istep
           eta_cross_l(ncross_l)=eta(npassing_prev)
           npassing_prev=npassing
-        ENDIF
-      ENDDO
-      DO i=1,ncross_l
+        endif
+      enddo
+      do i=1,ncross_l
         istep=icross_l(i)
-        IF(ABS(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).LT. &
-           ABS(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) THEN
-          OPEN(111,file='phi_placement_problem.dat',position='append')
-          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+        if(abs(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).lt. &
+           abs(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) then
+          open(111,file='phi_placement_problem.dat',position='append')
+          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
                        ' step number = ',istep-1,                &
                        ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
                        ' eta = ',eta_cross_l(i)
-          CLOSE(111)
+          close(111)
           bhat_mfl(istep-1)=1/eta_cross_l(i)
-        ELSEIF(ABS(bhat_mfl(istep+1)*eta_cross_l(i)-1.d0).LT. &
-               ABS(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) THEN
-          OPEN(111,file='phi_placement_problem.dat',position='append')
-          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+        elseif(abs(bhat_mfl(istep+1)*eta_cross_l(i)-1.d0).lt. &
+               abs(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) then
+          open(111,file='phi_placement_problem.dat',position='append')
+          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
                        ' step number = ',istep+1,                &
                        ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
                        ' eta = ',eta_cross_l(i)
           bhat_mfl(istep+1)=1/eta_cross_l(i)
-          CLOSE(111)
-        ENDIF
-      ENDDO
-      DEALLOCATE(icross_l,eta_cross_l)
-    ENDIF
-  ENDIF
+          close(111)
+        endif
+      enddo
+      deallocate(icross_l,eta_cross_l)
+    endif
+  endif
 !
   ncross_r=0
-  IF(ibmin.LT.iend) THEN
+  if(ibmin.lt.iend) then
     istep=ibmin
-    DO i=0,npart
-      IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+    do i=0,npart
+      if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
         npassing=i
-      ELSE
-        EXIT
-      ENDIF
-    ENDDO
+      else
+        exit
+      endif
+    enddo
     npassing_prev=npassing
-    DO istep=ibmin+1,iend
-      DO i=0,npart
-        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+    do istep=ibmin+1,iend
+      do i=0,npart
+        if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
           npassing=i
-        ELSE
-          EXIT
-        ENDIF
-      ENDDO
-      IF(npassing.LT.npassing_prev) THEN
+        else
+          exit
+        endif
+      enddo
+      if(npassing.lt.npassing_prev) then
         ncross_r=ncross_r+1
         npassing_prev=npassing
-      ENDIF
-    ENDDO
-    IF(ncross_r.GT.0) THEN
-      ALLOCATE(icross_r(ncross_r),eta_cross_r(ncross_r))
+      endif
+    enddo
+    if(ncross_r.gt.0) then
+      allocate(icross_r(ncross_r),eta_cross_r(ncross_r))
       ncross_r=0
       istep=ibmin
-      DO i=0,npart
-        IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+      do i=0,npart
+        if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
           npassing=i
-        ELSE
-          EXIT
-        ENDIF
-      ENDDO
+        else
+          exit
+        endif
+      enddo
       npassing_prev=npassing
-      DO istep=ibmin+1,iend
-        DO i=0,npart
-          IF(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
+      do istep=ibmin+1,iend
+        do i=0,npart
+          if(1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) THEN
             npassing=i
-          ELSE
-            EXIT
-          ENDIF
-        ENDDO
-        IF(npassing.LT.npassing_prev) THEN
+          else
+            exit
+          endif
+        enddo
+        if(npassing.lt.npassing_prev) then
           ncross_r=ncross_r+1
           icross_r(ncross_r)=istep
           eta_cross_r(ncross_r)=eta(npassing_prev)
           npassing_prev=npassing
-        ENDIF
-      ENDDO
-      DO i=1,ncross_r
+        endif
+      enddo
+      do i=1,ncross_r
         istep=icross_r(i)
-        IF(ABS(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).LT. &
-           ABS(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) THEN
-          OPEN(111,file='phi_placement_problem.dat',position='append')
-          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+        if(abs(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).lt. &
+           abs(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) then
+          open(111,file='phi_placement_problem.dat',position='append')
+          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
                        ' step number = ',istep-1,                &
                        ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
                        ' eta = ',eta_cross_r(i)
-          CLOSE(111)
+          close(111)
           bhat_mfl(istep-1)=1/eta_cross_r(i)
-        ELSEIF(ABS(bhat_mfl(istep+1)*eta_cross_r(i)-1.d0).LT. &
-               ABS(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) THEN
-          OPEN(111,file='phi_placement_problem.dat',position='append')
-          WRITE(111,*) ' propagator tag = ',fieldpropagator%tag, &
+        elseif(abs(bhat_mfl(istep+1)*eta_cross_r(i)-1.d0).lt. &
+               abs(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) then
+          open(111,file='phi_placement_problem.dat',position='append')
+          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
                        ' step number = ',istep+1,                &
                        ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
                        ' eta = ',eta_cross_r(i)
-          CLOSE(111)
+          close(111)
           bhat_mfl(istep+1)=1/eta_cross_r(i)
-        ENDIF
-      ENDDO
-      DEALLOCATE(icross_r,eta_cross_r)
-    ENDIF
-  ENDIF
+        endif
+      enddo
+      deallocate(icross_r,eta_cross_r)
+    endif
+  endif
 !
-END SUBROUTINE fix_phiplacement_problem_old
+end subroutine fix_phiplacement_problem_old
