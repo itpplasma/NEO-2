@@ -40,6 +40,8 @@ set(NEO2_COMMON_FILES
 	#../COMMON/A2drive_neo2.f90
 	../COMMON/bdivfree.f90
 	../COMMON/device_mod.f90
+	../COMMON/neo_modules.f90
+        ../COMMON/neo_mod.f90
 	../COMMON/fluxsplitter.f90
 	#../COMMON/gfunc_neo2.f90
 	#../COMMON/gfunc_neo2_jul_2010.f90
@@ -74,13 +76,11 @@ set(NEO2_COMMON_FILES
 set(NEO2_SRC_FILES
         ./field_divB0.f90
         ./compute_aiota.f90
-        ./neo_modules.f90
         ./nrutil.f90
         ./spline_int.f90
         ./neo_sub.f90
         ./neo_magfie.f90
         ./magfie.f90
-        ./neo_mod.f90
         ./sparse_mod.f90
         ./binarysplit_mod.f90
         ./magnetics.f90
