@@ -49,6 +49,8 @@ set(NEO2_COMMON_FILES
         ../COMMON/compute_aiota.f90
         ../COMMON/nrutil.f90
         ../COMMON/neo_mod.f90
+        ../COMMON/binarysplit_mod.f90
+        ../COMMON/sparse_mod.f90
 	../COMMON/fluxsplitter.f90
 	../COMMON/inter_interfaces.f90
 	../COMMON/kin_allocate.f90
@@ -72,8 +74,6 @@ set(NEO2_SRC_FILES
         ./neo_sub.f90
         ./neo_magfie.f90
         ./magfie.f90
-        ./sparse_mod.f90
-        ./binarysplit_mod.f90
         ./magnetics.f90
         ./mag_interface.f90
         ./propagator.f90
