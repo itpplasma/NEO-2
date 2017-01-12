@@ -1,11 +1,11 @@
 !
-  MODULE compute_aiota_mod
+  module compute_aiota_mod
 !
-    INTEGER :: nmax=0
-    DOUBLE PRECISION :: dz_dphi
-    DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: DYDX,YT,DYT,DYM
+    integer :: nmax=0
+    double precision :: dz_dphi
+    double precision, dimension(:), allocatable :: DYDX,YT,DYT,DYM
 !
-  CONTAINS
+  contains
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
@@ -16,14 +16,14 @@
       EXTERNAL DERIVS
       DIMENSION Y(N)
 !
-      IF(n.NE.nmax) THEN
-        IF(ALLOCATED(dydx)) DEALLOCATE(dydx)
-        IF(ALLOCATED(yt)) DEALLOCATE(yt)
-        IF(ALLOCATED(dyt)) DEALLOCATE(dyt)
-        IF(ALLOCATED(dym)) DEALLOCATE(dym)
+      if(n.ne.nmax) then
+        if(allocated(dydx)) deallocate(dydx)
+        if(allocated(yt)) deallocate(yt)
+        if(allocated(dyt)) deallocate(dyt)
+        if(allocated(dym)) deallocate(dym)
         nmax=n
-        ALLOCATE(DYDX(NMAX),YT(NMAX),DYT(NMAX),DYM(NMAX))
-      ENDIF
+        allocate(DYDX(NMAX),YT(NMAX),DYT(NMAX),DYM(NMAX))
+      endif
 !
       HH=H*0.5D0
       H6=H/6.D0
@@ -50,40 +50,40 @@
       END SUBROUTINE RK4D  
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  SUBROUTINE rhs1(ndim,phi,y,dery)
+  subroutine rhs1(ndim,phi,y,dery)
 !
-  IMPLICIT NONE
+  implicit none
 !
-  INTEGER :: ndim ! = 5
+  integer :: ndim ! = 5
 !
-  DOUBLE PRECISION :: phi,y,dery
-  DOUBLE PRECISION x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
-  DIMENSION y(ndim),dery(ndim)
-  DIMENSION x(3),bder(3),hcovar(3),hctrvr(3),hcoder(3,3),hctder(3,3)
+  double precision :: phi,y,dery
+  double precision x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
+  dimension y(ndim),dery(ndim)
+  dimension x(3),bder(3),hcovar(3),hctrvr(3),hcoder(3,3),hctder(3,3)
 !
   x(1)=y(1)
   x(2)=phi
   x(3)=y(2)
 !
-  CALL mag_efit(x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder)
+  call mag_efit(x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder)
 !
   dery(1)=hctrvr(1)/hctrvr(2)
   dery(2)=hctrvr(3)/hctrvr(2)
   dery(3)=y(1)*hctrvr(3)/hctrvr(2)
-  IF(ndim.EQ.5) THEN
+  if(ndim.eq.5) then
     dery(4)=y(1)
     dery(5)=y(2)
-  ELSEIF(ndim.EQ.4) THEN
+  elseif(ndim.eq.4) then
     dery(4)=bmod*y(1)*y(2)*hctrvr(1)
-  ENDIF
+  endif
 !
   dz_dphi=dery(2)
 !
-  RETURN
-  END SUBROUTINE rhs1
+  return
+  end subroutine rhs1
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-      SUBROUTINE mag_efit(x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder)
+      subroutine mag_efit(x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder)
 !
 ! Computes magnetic field module normalized to axial value  - bmod,
 ! square root of determinant of the metric tensor           - sqrtg,
@@ -110,22 +110,22 @@
 !
 !  Called routines:  field_eq
 !
-      DOUBLE PRECISION x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
-      DOUBLE PRECISION hr,hf,hz
+      double precision x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
+      double precision hr,hf,hz
 !
-      DOUBLE PRECISION ri,fii,zi,br,bf,bz, &
+      double precision ri,fii,zi,br,bf,bz, &
       BRR,BRF,BRZ,BFR,BFF,BFZ,BZR,BZF,BZZ, &
       BRK,BZK,BRRK,BRZK,BZRK,BZZK
 !
       !! Modification by Andreas F. Martitsch (16.07.2015)
       ! fixed Warning: Possible change of value in conversion from
       ! REAL(8) to REAL(4) at (1)
-      DOUBLE PRECISION rbig
+      double precision rbig
       !! End Modification by Andreas F. Martitsch (16.07.2015)
 !
-      DIMENSION x(3),bder(3),hcovar(3),hctrvr(3),hcoder(3,3),hctder(3,3)
+      dimension x(3),bder(3),hcovar(3),hctrvr(3),hcoder(3,3),hctder(3,3)
 !
-      rbig=MAX(x(1),1d-12)
+      rbig=max(x(1),1d-12)
 !
 !cccccc computation of gb in cylindrical co-ordinates cccccccc
       ri=rbig
@@ -174,29 +174,29 @@
       hctder(2,3)=bzf/bmod-hctrvr(3)*bder(2)
       hctder(3,3)=bzz/bmod-hctrvr(3)*bder(3)
 !
-      RETURN
-      END SUBROUTINE mag_efit
+      return
+      end subroutine mag_efit
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  SUBROUTINE compute_aiota(R,raxis,zaxis,aiota,ierr)
+  subroutine compute_aiota(R,raxis,zaxis,aiota,ierr)
 !
-  USE field_eq_mod, ONLY : icall_eq,rtf,btf,nrad,nzet,rad,zet             &
+  use field_eq_mod, only : icall_eq,rtf,btf,nrad,nzet,rad,zet             &
                          , psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
-  USE field_c_mod,  ONLY : icall_c
+  use field_c_mod,  only : icall_c
 !
-  IMPLICIT NONE
+  implicit none
 !
-  DOUBLE PRECISION, PARAMETER :: pi=3.14159265358979d0
+  double precision, parameter :: pi=3.14159265358979d0
 !
-  INTEGER :: ndim,ndimc,nstep,nmap,ntotstep,niter,iter,i,j,ind,m,n,i1
-  INTEGER :: nsurf,isurf,nsurfmax,ndim_fc,ntheta,nsqpsi,nsubstep
-  INTEGER :: k1,k2,k3,k4,numbig,npoisep,nlabel,k,ierr
-  DOUBLE PRECISION :: R,aiota
-  DOUBLE PRECISION :: h,phi,phibeg,rbeg,zbeg,raxis,zaxis,hr,sig,eps_four
-  DOUBLE PRECISION :: hh,hh0,sig0,rmn,rmx,zmn,zmx,psi_axis,dphidpsi
-  DOUBLE PRECISION :: rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ    &
+  integer :: ndim,ndimc,nstep,nmap,ntotstep,niter,iter,i,j,ind,m,n,i1
+  integer :: nsurf,isurf,nsurfmax,ndim_fc,ntheta,nsqpsi,nsubstep
+  integer :: k1,k2,k3,k4,numbig,npoisep,nlabel,k,ierr
+  double precision :: R,aiota
+  double precision :: h,phi,phibeg,rbeg,zbeg,raxis,zaxis,hr,sig,eps_four
+  double precision :: hh,hh0,sig0,rmn,rmx,zmn,zmx,psi_axis,dphidpsi
+  double precision :: rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ    &
                       ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: y
+  double precision, dimension(:), allocatable :: y
 !
 ! Initialization of the field:
 !
@@ -204,7 +204,7 @@
   ppp=0.d0
   zzz=0.d0
 !
-  CALL field(rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &
+  call field(rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &
             ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
 !
 ! End of initialization
@@ -231,19 +231,19 @@
 ! Search for the magnetic axis
 !
   ndim=5
-  ALLOCATE(y(ndim))
+  allocate(y(ndim))
   phi=0.d0
   y=0.d0
   y(1)=rbeg
   y(2)=zbeg
-  DO iter=1,niter
+  do iter=1,niter
     phibeg=phi
     y(4:5)=0.d0
-    DO i=1,ntotstep
-      CALL RK4D(y,ndim,phi,h,rhs1)
-    ENDDO
+    do i=1,ntotstep
+      call RK4D(y,ndim,phi,h,rhs1)
+    enddo
     y(1:2)=y(4:5)/(phi-phibeg)
-  ENDDO
+  enddo
   raxis=y(1)
   zaxis=y(2)
 !
@@ -255,36 +255,36 @@
   y(2)=zaxis
   y(3)=0.d0
   y(4)=0.d0
-  CALL RK4D(y,ndim,phi,h,rhs1)
+  call RK4D(y,ndim,phi,h,rhs1)
   sig=y(2)-zaxis
-  DO WHILE(sig*(y(2)-zaxis).GT.0.d0)
-    CALL RK4D(y,ndim,phi,h,rhs1)
-    IF( y(1).LT.rmn .OR. y(1).GT.rmx .OR.            &
-        y(2).LT.zmn .OR. y(2).GT.zmx ) THEN
+  do while(sig*(y(2)-zaxis).gt.0.d0)
+    call RK4D(y,ndim,phi,h,rhs1)
+    if( y(1).lt.rmn .or. y(1).gt.rmx .or.            &
+        y(2).lt.zmn .or. y(2).gt.zmx ) then
       ierr=1
-      RETURN
-    ENDIF
-  ENDDO
+      return
+    endif
+  enddo
   sig=y(2)-zaxis
-  DO WHILE(sig*(y(2)-zaxis).GT.0.d0)
-    CALL RK4D(y,ndim,phi,h,rhs1)
-  ENDDO
+  do while(sig*(y(2)-zaxis).gt.0.d0)
+    call RK4D(y,ndim,phi,h,rhs1)
+  enddo
 ! Newton method
-  DO iter=1,niter
+  do iter=1,niter
     hh=(zaxis-y(2))/dz_dphi
     sig0=sig
-    CALL RK4D(y,ndim,phi,hh,rhs1)
-    IF( y(1).LT.rmn .OR. y(1).GT.rmx .OR.            &
-        y(2).LT.zmn .OR. y(2).GT.zmx ) THEN
+    call RK4D(y,ndim,phi,hh,rhs1)
+    if( y(1).lt.rmn .or. y(1).gt.rmx .or.            &
+        y(2).lt.zmn .or. y(2).gt.zmx ) then
       ierr=1
-      RETURN
-    ENDIF
-  ENDDO
+      return
+    endif
+  enddo
 !
   aiota=2.d0*pi/phi
 !
-  END SUBROUTINE compute_aiota
+  end subroutine compute_aiota
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  END MODULE compute_aiota_mod
+  end module compute_aiota_mod

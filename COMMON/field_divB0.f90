@@ -608,7 +608,12 @@ subroutine read_field0(rad,phi,zet,rmin,pmin,zmin,hrm1,hpm1,hzm1,Br,Bp,Bz)
 !
   use input_files
   parameter(nr=64,np=37,nz=64)
-  real, parameter :: pi=3.14159265358979d0
+  !! Modification by Andreas F. Martitsch (16.07.2015)
+  ! previous (Warning: Change of value in conversion from REAL(8) to REAL(4))
+  !REAL, PARAMETER :: pi=3.14159265358979d0
+  ! corrected:
+  real, parameter :: pi=3.14159265358979e0
+  !! End Modification by Andreas F. Martitsch (16.07.2015)
   parameter (mp=4) ! power of Lagrange's polynomial =3
   dimension Bz(nr,np,nz)
   dimension Br(nr,np,nz),Bp(nr,np,nz)
@@ -631,10 +636,17 @@ subroutine read_field0(rad,phi,zet,rmin,pmin,zmin,hrm1,hpm1,hzm1,Br,Bp,Bz)
         do k=nz,1,-1  !reverse order of probe data
            do i=1,nr
               read(1,*) Br(i,j,k), Bp(i,j,k), Bz(i,j,k)
-
-              Br(i,j,k) = Br(i,j,k)*1.d4
-              Bp(i,j,k) = Bp(i,j,k)*1.d4
-              Bz(i,j,k) = Bz(i,j,k)*1.d4
+              
+              !! Modification by Andreas F. Martitsch (16.07.2015)
+              ! previous (Warning: Change of value in conversion from REAL(8) to REAL(4))
+              !Br(i,j,k) = Br(i,j,k)*1.d4
+              !Bp(i,j,k) = Bp(i,j,k)*1.d4
+              !Bz(i,j,k) = Bz(i,j,k)*1.d4
+              ! corrected:
+              Br(i,j,k) = Br(i,j,k)*1.e4
+              Bp(i,j,k) = Bp(i,j,k)*1.e4
+              Bz(i,j,k) = Bz(i,j,k)*1.e4
+              !! End Modification by Andreas F. Martitsch (16.07.2015)
 
            enddo
            read(1,*)

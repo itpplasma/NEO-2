@@ -399,7 +399,7 @@ CONTAINS
 !!$       END IF
     ELSEIF (bsfunc_modelfunc .EQ. 2) THEN
        DO k = 1, SIZE(x0,1)
-          g = g + SQRT( s(k)**2/(2.0_dp*(x-x0(k))**2+s(k)**2) )
+          g = g + sqrt( s(k)**2/(2.0_dp*(x-x0(k))**2+s(k)**2) )
        END DO
        !g = g/size(x0,1)
 !       IF (bsfunc_evaldegree .NE. 2) THEN
@@ -554,7 +554,7 @@ CONTAINS
           ALLOCATE( coeff(0:nder,npoi) )
           DO k = 1, ub
 
-             CALL plag_stencil(ub,npoi,k,k1,k2,i1,i2)
+             call plag_stencil(ub,npoi,k,k1,k2,i1,i2)
              !print *, ub,npoi,k,k1,k2,i1,i2
              ALLOCATE(xlag(i1:i2))
              ALLOCATE(ylag(i1:i2))
@@ -564,8 +564,8 @@ CONTAINS
              xloc = (xlag(0) + xlag(1)) / 2.0_dp
              CALL plagrange_coeff(npoi,nder,xloc,xlag,coeff)
         
-             dloc = ABS(xloc-xlag(0))
-             d1   = ABS(xlag(1)-xlag(0))
+             dloc = abs(xloc-xlag(0))
+             d1   = abs(xlag(1)-xlag(0))
              
              dlag = SUM(coeff(3,:)*ylag) / 6.0_dp
              ! ori
@@ -580,9 +580,9 @@ CONTAINS
              ! err(k) = max( ABS(clag) * d1**2 , ABS(dlag) * d1**3 )
 
              ! relative error for second model_func
-             IF (bsfunc_modelfunc .EQ. 2) THEN
-                err(k) = err(k) /  ( ABS( SUM(coeff(0,:)*ylag) ) )
-             END IF
+             if (bsfunc_modelfunc .eq. 2) then
+                err(k) = err(k) /  ( abs( SUM(coeff(0,:)*ylag) ) )
+             end if
              !print *, 'k,cla,dlag,err ',k,ABS(clag),ABS(dlag),d1,err(k)
              !print *, 'xlag ',xlag
              !print *, 'ylag ',ylag
@@ -921,10 +921,10 @@ CONTAINS
     RETURN
   END SUBROUTINE plag_coeff
 
-  SUBROUTINE plag_stencil(ub,npoi,k,k1,k2,i1,i2)
-    INTEGER, INTENT(in)  :: ub,npoi,k
-    INTEGER, INTENT(out) :: k1,k2,i1,i2
-    INTEGER :: kd
+  subroutine plag_stencil(ub,npoi,k,k1,k2,i1,i2)
+    integer, intent(in)  :: ub,npoi,k
+    integer, intent(out) :: k1,k2,i1,i2
+    integer :: kd
     
     k1 = k - npoi/2
     i1 = 1 - npoi/2
@@ -940,64 +940,64 @@ CONTAINS
     k2 = k1 + npoi - 1
     i2 = i1 + npoi - 1
     
-    RETURN
-  END SUBROUTINE plag_stencil
+    return
+  end subroutine plag_stencil
 
-  SUBROUTINE plag_test
-    INTEGER, PARAMETER :: unitno = 9999
-    INTEGER :: i
-    REAL(kind=dp), PARAMETER :: pi = 3.141592653589793d0
+  subroutine plag_test
+    integer, parameter :: unitno = 9999
+    integer :: i
+    REAL(kind=dp), parameter :: pi = 3.141592653589793d0
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x_ori,y0_ori,y1_ori,y2_ori,y3_ori
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x,y0,y1,y2,y3
     REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: coeff
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE  :: xlag, ylag 
     REAL(kind=dp) :: xloc
-    INTEGER :: lb,ub
-    INTEGER :: k,k1,k2,i1,i2
+    integer :: lb,ub
+    integer :: k,k1,k2,i1,i2
     INTEGER, PARAMETER :: npoi = 6 
     INTEGER, PARAMETER :: nder = 3
-    INTEGER, PARAMETER :: ndata = 25
+    integer, parameter :: ndata = 25
  
     ! basic data
     !CALL linspace(-pi,pi,ndata,x_ori)
     
-    ALLOCATE(x_ori(0:ndata))
+    allocate(x_ori(0:ndata))
     x_ori(0) = -pi
-    DO k = 1,ndata
-       x_ori(k) = x_ori(0) + 2*pi*(DBLE(k)/DBLE(ndata))**1 
-    END DO
+    do k = 1,ndata
+       x_ori(k) = x_ori(0) + 2*pi*(dble(k)/dble(ndata))**1 
+    end do
 
-    lb = LBOUND(x_ori,1)
-    ub = UBOUND(x_ori,1)
-    ALLOCATE(y0_ori(lb:ub))
-    ALLOCATE(y1_ori(lb:ub))
-    ALLOCATE(y2_ori(lb:ub))
-    ALLOCATE(y3_ori(lb:ub))
-    y0_ori =  SIN(x_ori)
-    y1_ori =  COS(x_ori)
-    y2_ori = -SIN(x_ori)
-    y3_ori = -COS(x_ori)
+    lb = lbound(x_ori,1)
+    ub = ubound(x_ori,1)
+    allocate(y0_ori(lb:ub))
+    allocate(y1_ori(lb:ub))
+    allocate(y2_ori(lb:ub))
+    allocate(y3_ori(lb:ub))
+    y0_ori =  sin(x_ori)
+    y1_ori =  cos(x_ori)
+    y2_ori = -sin(x_ori)
+    y3_ori = -cos(x_ori)
     ! plot basic data
     OPEN(file='plag_ori.dat',unit=unitno)
-    DO i = lb,ub
-       WRITE(unitno,*) x_ori(i),y0_ori(i),y1_ori(i),y2_ori(i),y3_ori(i)
-    END DO
-    CLOSE(unitno)
+    do i = lb,ub
+       write(unitno,*) x_ori(i),y0_ori(i),y1_ori(i),y2_ori(i),y3_ori(i)
+    end do
+    close(unitno)
 
     ! lagrange coefficent
     ALLOCATE( coeff(0:nder,npoi) )
         
 
     ! interpolation data
-    ALLOCATE(x(1:ub))
-    ALLOCATE(y0(1:ub))
-    ALLOCATE(y1(1:ub))
-    ALLOCATE(y2(1:ub))
-    ALLOCATE(y3(1:ub))
+    allocate(x(1:ub))
+    allocate(y0(1:ub))
+    allocate(y1(1:ub))
+    allocate(y2(1:ub))
+    allocate(y3(1:ub))
 
-    DO k = 1,ub
+    do k = 1,ub
 
-       CALL plag_stencil(ub,npoi,k,k1,k2,i1,i2)       
+       call plag_stencil(ub,npoi,k,k1,k2,i1,i2)       
        ALLOCATE(xlag(i1:i2))
        ALLOCATE(ylag(i1:i2))
        xlag = x_ori(k1:k2)
@@ -1011,23 +1011,23 @@ CONTAINS
        y1(k) = SUM(coeff(1,:)*ylag)
        y2(k) = SUM(coeff(2,:)*ylag)
        y3(k) = SUM(coeff(3,:)*ylag)
-       DEALLOCATE(xlag,ylag)
-    END DO
+       deallocate(xlag,ylag)
+    end do
 
     ! plot basic data
     OPEN(file='plag_int.dat',unit=unitno)
-    DO i = 1,ub
-       WRITE(unitno,*) x(i),y0(i),y1(i),y2(i),y3(i)
-    END DO
-    CLOSE(unitno)
+    do i = 1,ub
+       write(unitno,*) x(i),y0(i),y1(i),y2(i),y3(i)
+    end do
+    close(unitno)
 
-    DEALLOCATE(x_ori)
-    DEALLOCATE(y0_ori,y1_ori,y2_ori,y3_ori)
-    DEALLOCATE(x)
-    DEALLOCATE(y0,y1,y2,y3)
-    DEALLOCATE(coeff)
-    RETURN
-  END SUBROUTINE plag_test
+    deallocate(x_ori)
+    deallocate(y0_ori,y1_ori,y2_ori,y3_ori)
+    deallocate(x)
+    deallocate(y0,y1,y2,y3)
+    deallocate(coeff)
+    return
+  end subroutine plag_test
 
 
 
@@ -1236,7 +1236,7 @@ CONTAINS
     xbs%y = 0.0_dp
   
     IF (ALLOCATED(xbs%int)) DEALLOCATE(xbs%int)
-    ALLOCATE (xbs%INT(0:n_ori+n_split_max))
+    ALLOCATE (xbs%int(0:n_ori+n_split_max))
     xbs%int = 0.0_dp
     
     IF (ALLOCATED(xbs%err)) DEALLOCATE(xbs%err)
@@ -1291,7 +1291,7 @@ CONTAINS
        xbs1%y =  xbs2%y
 
        IF (ALLOCATED(xbs1%int)) DEALLOCATE(xbs1%int)
-       ALLOCATE (xbs1%INT(0:n_tot))
+       ALLOCATE (xbs1%int(0:n_tot))
        xbs1%int =  xbs2%int
 
        IF (ALLOCATED(xbs1%err)) DEALLOCATE(xbs1%err)
@@ -1366,10 +1366,10 @@ CONTAINS
     ALLOCATE (xbs%y(0:n_ori+n_split_max))
     xbs%y(0:n_ori+n_split) = dvec(0:n_ori+n_split)
      
-    dvec(0:n_ori+n_split) = xbs%INT(0:n_ori+n_split)
+    dvec(0:n_ori+n_split) = xbs%int(0:n_ori+n_split)
     DEALLOCATE(xbs%int)
-    ALLOCATE (xbs%INT(0:n_ori+n_split_max))
-    xbs%INT(0:n_ori+n_split) = dvec(0:n_ori+n_split)
+    ALLOCATE (xbs%int(0:n_ori+n_split_max))
+    xbs%int(0:n_ori+n_split) = dvec(0:n_ori+n_split)
      
     dvec(0:n_ori+n_split) = xbs%err(0:n_ori+n_split)
     DEALLOCATE(xbs%err)
@@ -1463,7 +1463,7 @@ CONTAINS
     ELSEIF (c .EQ. 'y') THEN
        v(0:xbs%n_ori+xbs%n_split) = xbs%y(0:xbs%n_ori+xbs%n_split)
     ELSEIF (c .EQ. 'int') THEN
-       v(0:xbs%n_ori+xbs%n_split) = xbs%INT(0:xbs%n_ori+xbs%n_split)
+       v(0:xbs%n_ori+xbs%n_split) = xbs%int(0:xbs%n_ori+xbs%n_split)
     ELSEIF (c .EQ. 'err') THEN
        v(0:xbs%n_ori+xbs%n_split) = xbs%err(0:xbs%n_ori+xbs%n_split)
     ELSE
@@ -1594,8 +1594,8 @@ CONTAINS
     xbs%y(splitloc+1:maxind+1) = xbs%y(splitloc:maxind)
     xbs%y(splitloc) = 0.0_dp
     ! int and err (value has to be computed externally)
-    xbs%INT(splitloc+1:maxind+1) = xbs%INT(splitloc:maxind)
-    xbs%INT(splitloc) = 0.0_dp
+    xbs%int(splitloc+1:maxind+1) = xbs%int(splitloc:maxind)
+    xbs%int(splitloc) = 0.0_dp
     xbs%err(splitloc+1:maxind+1) = xbs%err(splitloc:maxind)
     xbs%err(splitloc) = 0.0_dp
     
@@ -1631,7 +1631,7 @@ CONTAINS
     maxind = xbs%n_ori + xbs%n_split
     CALL eval_bsfunc(xbs%x(0:maxind),xbs%y(0:maxind))
     CALL eval_bsinterr(xbs%x(0:maxind),xbs%y(0:maxind),   &
-         xbs%INT(0:maxind),xbs%err(0:maxind),splitloc)
+         xbs%int(0:maxind),xbs%err(0:maxind),splitloc)
     binarysplit_checklimit = 1
     binarysplit_limit = 0
     DO WHILE (eval_bslimit(xbs%err(0:maxind)))
@@ -1643,7 +1643,7 @@ CONTAINS
        maxind = xbs%n_ori + xbs%n_split
        CALL eval_bsfunc(xbs%x(splitloc),xbs%y(splitloc))
        CALL eval_bsinterr(xbs%x(0:maxind),xbs%y(0:maxind),   &
-            xbs%INT(0:maxind),xbs%err(0:maxind),splitloc)        
+            xbs%int(0:maxind),xbs%err(0:maxind),splitloc)        
     END DO
     CALL reallocate_binarysplit(xbs,1)
     
@@ -1674,7 +1674,7 @@ CONTAINS
        int_act = NINT(SUM(xbs%int,1))
        IF (int_act .EQ. int_ref) THEN
           ready = 1
-       ELSE IF (counter .GT. binarysplit_fsplitdepth) THEN
+       ELSE IF (counter .gt. binarysplit_fsplitdepth) THEN
           ready = 1
        ELSE ! improve
           IF (binarysplit_message .GT. 0) &
@@ -1735,15 +1735,15 @@ CONTAINS
     TYPE(binarysplit),                        INTENT(inout)  :: xbs
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(in)     :: x0
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(in)     :: s
-    INTEGER, OPTIONAL, INTENT(in) :: n_opt
+    integer, optional, intent(in) :: n_opt
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: s1
 
     !REAL(kind=dp) :: e1, e2, lambda
     !REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: d_hlp
     !REAL(kind=dp) :: d
 
-    INTEGER :: i,n
-    INTEGER :: save_binarysplit_fsplitdepth
+    integer :: i,n
+    integer :: save_binarysplit_fsplitdepth
     REAL(kind=dp) :: save_bsfunc_local_err,save_bsfunc_base_distance
     !integer :: maxind
 
@@ -1754,12 +1754,12 @@ CONTAINS
     !maxind = xbs%n_ori + xbs%n_split
     !print *, xbs%x(0:maxind)
     
-    IF (PRESENT(n_opt)) THEN
+    if (present(n_opt)) then
        n = n_opt
-    ELSE
-       n = MAX(2,INT( LOG( 1.0d0 * bsfunc_base_distance/(s(1)*SQRT(-2*LOG(bsfunc_mult_constant))) ) / &
-            LOG(bsfunc_sigma_multiplier) ) + 2) 
-    END IF
+    else
+       n = max(2,int( log( 1.0d0 * bsfunc_base_distance/(s(1)*sqrt(-2*log(bsfunc_mult_constant))) ) / &
+            log(bsfunc_sigma_multiplier) ) + 2) 
+    end if
     !print *, 'n = ',n
     !print *, 'bsfunc_base_distance ',bsfunc_base_distance
     !print *, 's ',s(1)
@@ -1767,7 +1767,7 @@ CONTAINS
     !print *, 'bsfunc_sigma_multiplier ',bsfunc_sigma_multiplier
 
     bsfunc_modelfunc = 1
-    binarysplit_fsplitdepth = INT( AINT( LOG( bsfunc_base_distance/(s(1) ) / LOG(2.0d0) ) ) ) + 1
+    binarysplit_fsplitdepth = aint( log( bsfunc_base_distance/(s(1) ) / log(2.0d0) ) ) + 1
     !print *, 'binarysplit_fsplitdepth ',binarysplit_fsplitdepth
     CALL construct_bsfunc(x0,s)
     CALL find_binarysplit(xbs,x0)
@@ -1783,23 +1783,23 @@ CONTAINS
     !CALL find_binarysplit(xbs,x0)
     !CALL printsummary_binarysplit(xbs)
 
-    ALLOCATE(s1(LBOUND(s,1):UBOUND(s,1)))
+    allocate(s1(lbound(s,1):ubound(s,1)))
     s1 = s * bsfunc_sigma_multiplier**n
-    DO i = 1,n
+    do i = 1,n
        s1 = s1 / bsfunc_sigma_multiplier
        !bsfunc_local_err = e1 + (e2-e1)*(1.0d0 - exp(-lambda*dble(i-1)) + exp(-lambda*dble(n-1)))
        !print *, 'n,i,s1 = ',n,i,s1,bsfunc_local_err
        CALL construct_bsfunc(x0,s1)
        CALL find_binarysplit(xbs,x0)
-    END DO
+    end do
     !CALL printsummary_binarysplit(xbs)
 
     bsfunc_base_distance = save_bsfunc_base_distance
     binarysplit_fsplitdepth = save_binarysplit_fsplitdepth
     bsfunc_local_err = save_bsfunc_local_err
-    DEALLOCATE(s1)
-    RETURN
-  END SUBROUTINE multiple_binsplit
+    deallocate(s1)
+    return
+  end SUBROUTINE multiple_binsplit
 
 
 
@@ -1858,7 +1858,7 @@ CONTAINS
                    maxind = xbs1%n_ori + xbs1%n_split
                    CALL eval_bsfitsplit(                              &
                         xbs1%x(0:maxind),xbs1%y(0:maxind),            &
-                        xbs1%INT(0:maxind),xbs1%err(0:maxind),        &
+                        xbs1%int(0:maxind),xbs1%err(0:maxind),        &
                         splitloc)
                    IF (UBOUND(xbs1%x_ori_bin,1) .GT. s1) THEN 
                       IF (binarysplit_message .GT. 0) &
@@ -1963,19 +1963,19 @@ CONTAINS
                 END DO
                 joinloc = x_ori_poi - count - 1 
                 xbs1%x_poi(joinloc:maxind) = xbs1%x_poi(joinloc+1:maxind+1)
-                xbs1%x_poi(maxind+1) = 0
+                xbs1%x_poi(maxind+1) = 0.0_dp
                 xbs1%x_split(joinloc:maxind) = xbs1%x_split(joinloc+1:maxind+1)
-                xbs1%x_split(maxind+1) = 0
+                xbs1%x_split(maxind+1) = 0.0_dp
                 xbs1%x_split(joinloc) = xbs1%x_split(joinloc) - 1
                 xbs1%x_pos(joinloc:maxind) = xbs1%x_pos(joinloc+1:maxind+1)
-                xbs1%x_pos(maxind+1) = 0
+                xbs1%x_pos(maxind+1) = 0.0_dp
                 xbs1%x(joinloc:maxind) = xbs1%x(joinloc+1:maxind+1)
                 xbs1%x(maxind+1) = 0.0_dp
                 xbs1%y(joinloc:maxind) = xbs1%y(joinloc+1:maxind+1)
                 xbs1%y(maxind+1) = 0.0_dp
               
-                xbs1%INT(joinloc) = xbs1%INT(joinloc) + xbs1%INT(joinloc+1)
-                xbs1%INT(joinloc+1:maxind) = xbs1%INT(joinloc+2:maxind+1) 
+                xbs1%int(joinloc) = xbs1%int(joinloc) + xbs1%int(joinloc+1)
+                xbs1%int(joinloc+1:maxind) = xbs1%int(joinloc+2:maxind+1) 
                 xbs1%err(joinloc) = xbs1%err(joinloc) + xbs1%err(joinloc+1)
                 xbs1%err(joinloc+1:maxind) = xbs1%err(joinloc+2:maxind+1) 
                 
@@ -2078,7 +2078,7 @@ CONTAINS
     INTEGER                                                 :: k
     OPEN(file=filename,unit=unitno)
     DO k = 0, xbs%n_ori+xbs%n_split
-       WRITE(unitno,*) xbs%x(k),xbs%y(k),xbs%INT(k),xbs%err(k)
+       WRITE(unitno,*) xbs%x(k),xbs%y(k),xbs%int(k),xbs%err(k)
     END DO
     CLOSE(unit=unitno)
   END SUBROUTINE plotfile_binsplit
@@ -2142,7 +2142,7 @@ CONTAINS
 
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x_ori
     INTEGER(kind=longint),DIMENSION(:,:), ALLOCATABLE :: bin_1,bin_2,bin_3
-    INTEGER :: n,i
+    integer :: n,i
     REAL(kind=dp) :: d,c,g
     TYPE(binarysplit)                        :: cbs_1,cbs_2,cbs_3
     TYPE(binarysplit)                        :: cbs_1a,cbs_2a
@@ -2166,14 +2166,14 @@ CONTAINS
 
     !x0_2=(/0.96196138353943894d0/)-2.0d-1
     x0_2=(/0.01/)
-    x0_2 = x_ori(LBOUND(x_ori,1)+1)+0.02
-    x0_2 = x_ori(UBOUND(x_ori,1)-7)+0.1
+    x0_2 = x_ori(lbound(x_ori,1)+1)+0.02
+    x0_2 = x_ori(ubound(x_ori,1)-7)+0.1
     !x0_2 = ( x_ori(lbound(x_ori,1)) + x_ori(lbound(x_ori,1)+1) ) / 2.0d0
     !x0_2 = ( x_ori(ubound(x_ori,1)) + x_ori(ubound(x_ori,1)-1) ) / 2.0d0
     !x0_2 = x_ori(ubound(x_ori,1)) - 0.01
     s_2 =(/7.88038877731418762d-6/)
     s_2 = (/1.0d-2/)
-    PRINT *, 'x0,s ',x0_2,s_2
+    print *, 'x0,s ',x0_2,s_2
 
 
     ! settings
@@ -2198,11 +2198,11 @@ CONTAINS
     
     ! do it for cbs_2
     !binarysplit_fsplitdepth = 0
-    bsfunc_base_distance = MAXVAL(x_ori(1:UBOUND(x_ori,1))-x_ori(0:UBOUND(x_ori,1)-1))
-    PRINT *, 'bsfunc_base_distance ',bsfunc_base_distance
+    bsfunc_base_distance = maxval(x_ori(1:ubound(x_ori,1))-x_ori(0:ubound(x_ori,1)-1))
+    print *, 'bsfunc_base_distance ',bsfunc_base_distance
     CALL construct_binarysplit(x_ori,cbs_2)
     bsfunc_modelfunc = 1
-    CALL multiple_binarysplit(cbs_2,x0_2,s_2)
+    call multiple_binarysplit(cbs_2,x0_2,s_2)
     CALL printsummary_binarysplit(cbs_2)
     CALL plotfile_binarysplit(cbs_2,'gauss_1.dat',9)
 

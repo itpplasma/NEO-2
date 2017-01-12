@@ -113,7 +113,8 @@ include (CMakeSources.txt)
 
 ### Define executable
 add_executable(${EXE_NAME}
-	${NEO2_SRC_FILES} 
+        ${NEO2_SRC_FILES}
+	${NEO2_COMMON_FILES}
   	${SUITESPARSE_SRC_FILES}
 	${SUPERLU_SRC_FILES}
 	${FGSL_USERINTER_SRC_FILES}
