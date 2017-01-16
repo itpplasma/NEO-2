@@ -19,7 +19,16 @@
   USE partpa_mod
   USE rk4_kin_mod, ONLY : y
   USE mag_interface_mod, ONLY: mag_coordinates,boozer_s
-
+  !! Modifications by Andreas F. Martitsch (09.03.2014)
+  ! Collection of subroutines (mag.f90) converted to a module.
+  ! This allows one to make use of generic interfaces 
+  ! for module procedures (e.g., for a different number of
+  ! arguments).
+  ! Note: This requires changes in "flint_prepare" and 
+  ! "write_volume_data" (both flint.f90), and "rhs_kin"
+  ! and "magdata_for_particles". 
+  USE mag_sub, ONLY: mag
+  !! End Modifications by Andreas F. Martitsch (09.03.2014)
 !
   IMPLICIT NONE
 !
