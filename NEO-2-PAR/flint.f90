@@ -20,6 +20,16 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   USE mag_interface_mod
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,collpar_min,collpar_max
   USE compute_aiota_mod, ONLY : compute_aiota
+  !! Modifications by Andreas F. Martitsch (09.03.2014)
+  ! Collection of subroutines (mag.f90) converted to a module.
+  ! This allows one to make use of generic interfaces 
+  ! for module procedures (e.g., for a different number of
+  ! arguments).
+  ! Note: This requires changes in "flint_prepare" and 
+  ! "write_volume_data" (both flint.f90), and "rhs_kin"
+  ! and "magdata_for_particles". 
+  USE mag_sub, ONLY: mag
+  !! End Modifications by Andreas F. Martitsch (09.03.2014)  
 
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -3716,6 +3726,16 @@ SUBROUTINE write_volume_data(n_r,n_z,n_phi,fname)
 
   USE device_mod
   USE binarysplit_mod, ONLY : linspace
+  !! Modifications by Andreas F. Martitsch (09.03.2014)
+  ! Collection of subroutines (mag.f90) converted to a module.
+  ! This allows one to make use of generic interfaces 
+  ! for module procedures (e.g., for a different number of
+  ! arguments).
+  ! Note: This requires changes in "flint_prepare" and 
+  ! "write_volume_data" (both flint.f90), and "rhs_kin"
+  ! and "magdata_for_particles". 
+  USE mag_sub, ONLY: mag
+  !! End Modifications by Andreas F. Martitsch (09.03.2014)
   
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
