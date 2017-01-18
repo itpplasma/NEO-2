@@ -53,6 +53,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/magfie.f90
         ../COMMON/mag.f90
         ../COMMON/rhs_kin.f90
+	../COMMON/rk4_kin.f90
         ../COMMON/binarysplit_mod.f90
         ../COMMON/sparse_mod.f90
 	../COMMON/fluxsplitter.f90
@@ -81,7 +82,6 @@ set(NEO2_SRC_FILES
         ./propagator.f90
         ./flint.f90
         ./magdata_for_particles.f90
-        ./rk4_kin.f90
         ./ripple_solver_axi_test.f90
 ###        ./ripple_solver_ArnoldiOrder1.f90
         ./ripple_solver_ArnoldiOrder1_test.f90
@@ -96,7 +96,6 @@ set(NEO2_SRC_FILES
 	#./compute_resonance_conditions.f90 # Not used at the moment
 	./neo_magfie_perturbation.f90
 	./collop_definitions.f90
-        ./hdf5_tools.f90     # Is now a library
         ./neo2.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS}")

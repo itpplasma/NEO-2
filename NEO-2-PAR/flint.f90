@@ -2860,6 +2860,22 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
+  !! Modifications by Andreas F. Martitsch (11.06.2014)
+  ! Optional output (necessary for modeling the magnetic rotation)
+  ! Note: This requires changes in "modify_propagator"
+  ! (flint.f90; block using the routine commented out) and
+  ! "mag_interface_mod" (mag_interface.f90).
+  INTERFACE
+     SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
+          bcovar_s_hat,dlogbds,dbcovar_s_hat_dphi)
+       DOUBLE PRECISION, INTENT(in)            :: phi
+       DOUBLE PRECISION, INTENT(out)           :: geodcu,bhat,h_phi,dlogbdphi
+       DOUBLE PRECISION, OPTIONAL, INTENT(out) :: bcovar_s_hat, &
+            dlogbds, dbcovar_s_hat_dphi
+     END SUBROUTINE magdata_for_particles
+  END INTERFACE
+  !! End Modifications by Andreas F. Martitsch (11.06.2014)
+
   ! parameter list
   INTEGER, INTENT(in) :: phi_split_mode
   INTEGER, INTENT(in) :: phi_place_mode,phi_split_min

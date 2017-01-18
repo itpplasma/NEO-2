@@ -14,7 +14,7 @@ option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
 include_directories("${MYMPILIB_PATH}/OBJS")
 
 ### HDF5
-#include_directories(${NEO2_Libs}/hdf5_tools/include)
+include_directories(${NEO2_Libs}/hdf5_tools/include)
 
 if (MPI_SUPPORT)
         message(STATUS "MPI-Support activated")
@@ -106,7 +106,7 @@ find_library(HDF5_lib hdf5 ${HDF5_DIR} NO_DEFAULT_PATH)
 find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
 find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR} NO_DEFAULT_PATH)
 find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
-#find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/hdf5_tools/lib NO_DEFAULT_PATH)
+find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/hdf5_tools/lib NO_DEFAULT_PATH)
 
 ### Source files (load external file)
 include (CMakeSources.txt)
@@ -136,7 +136,7 @@ target_link_libraries(${EXE_NAME}
         ${MyMPILib_lib}
         ${MPE_lib}
         ${MPI_lib}
-	#${HDF5_tools_lib}
+	${HDF5_tools_lib}
         ${HDF5HL_fortran_lib}
         ${HDF5HL_lib}
         ${HDF5_fortran_lib}

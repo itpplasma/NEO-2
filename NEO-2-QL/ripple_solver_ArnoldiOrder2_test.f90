@@ -827,19 +827,6 @@ PRINT *,ub_mag,ibeg,iend
   ALLOCATE(dbcovar_s_hat_dphi_mfl(ibeg:iend))
   dbcovar_s_hat_dphi_mfl(0:ub_mag) = fieldpropagator%mdata%dbcovar_s_hat_dphi 
   !! End Modifications by Andreas F. Martitsch (14.03.2014)
-
-  !! Modifications by Andreas F. Martitsch (13.06.2014)
-  ! Perturbation field extracted from Boozer file
-  !IF (ALLOCATED(bnoverb0)) DEALLOCATE(bnoverb0)
-  !ALLOCATE(bnoverb0(ibeg:iend))
-  !bnoverb0(0:ub_mag) = fieldpropagator%mdata%bnoverb0
-  ! Derivative pf the perturbation field extracted from Boozer file
-  ! (direct computation without Lagrange interpolation preferred in
-  ! order to avoid artefacts nearby the boundary)
-  !IF (ALLOCATED(dbnoverb0_dphi_mfl)) DEALLOCATE(dbnoverb0_dphi_mfl)
-  !ALLOCATE(dbnoverb0_dphi_mfl(ibeg:iend))
-  !dbnoverb0_dphi_mfl(0:ub_mag) = fieldpropagator%mdata%dbnoverb0_dphi
-  !! End Modifications by Andreas F. Martitsch (13.06.2014)
   
   IF(modify_bl.EQ.1) THEN
     phi_mfl(-2:-1)=phi_mfl(0)
@@ -853,14 +840,6 @@ PRINT *,ub_mag,ibeg,iend
     bcovar_s_hat_mfl(-2:-1)=bcovar_s_hat_mfl(0)
     dbcovar_s_hat_dphi_mfl(-2:-1)=dbcovar_s_hat_dphi_mfl(0)
     !! End Modifications by Andreas F. Martitsch (14.03.2014)
-    !! Modifications by Andreas F. Martitsch (13.06.2014)
-    ! Perturbation field extracted from Boozer file
-    !bnoverb0(-2:-1)=bnoverb0(0)
-    ! Derivative pf the perturbation field extracted from Boozer file
-    ! (direct computation without Lagrange interpolation preferred in
-    ! order to avoid artefacts nearby the boundary)
-    !dbnoverb0_dphi_mfl(-2:-1)=dbnoverb0_dphi_mfl(0)
-    !! End Modifications by Andreas F. Martitsch (13.06.2014)
   ENDIF
   IF(modify_br.EQ.1) THEN
     phi_mfl(iend-1:iend)=phi_mfl(ub_mag)
@@ -874,14 +853,6 @@ PRINT *,ub_mag,ibeg,iend
     bcovar_s_hat_mfl(iend-1:iend)=bcovar_s_hat_mfl(ub_mag)
     dbcovar_s_hat_dphi_mfl(iend-1:iend)=dbcovar_s_hat_dphi_mfl(ub_mag)
     !! End Modifications by Andreas F. Martitsch (14.03.2014)
-    !! Modifications by Andreas F. Martitsch (13.06.2014)
-    ! Perturbation field extracted from Boozer file
-    !bnoverb0(iend-1:iend)=bnoverb0(ub_mag)
-    ! Derivative pf the perturbation field extracted from Boozer file
-    ! (direct computation without Lagrange interpolation preferred in
-    ! order to avoid artefacts nearby the boundary)
-    !dbnoverb0_dphi_mfl(iend-1:iend)=dbnoverb0_dphi_mfl(ub_mag)
-    !! End Modifications by Andreas F. Martitsch (13.06.2014)
   ENDIF
   !! Modifications by Andreas F. Martitsch (25.08.2014)
   ! Computation of the perturbed quantities without 
