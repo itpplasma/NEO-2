@@ -48,6 +48,9 @@ set(NEO2_COMMON_FILES
         ../COMMON/neo_magfie.f90
         ../COMMON/magfie.f90
         ../COMMON/mag.f90
+	../COMMON/magnetics.f90
+        ../COMMON/mag_interface.f90
+        ../COMMON/magdata_for_particles.f90
         ../COMMON/rhs_kin.f90
 	../COMMON/rk4_kin.f90
         ../COMMON/binarysplit_mod.f90
@@ -86,11 +89,8 @@ set(NEO2_COMMON_FILES
 
 set(NEO2_SRC_FILES
         ./neo_sub.f90
-        ./magnetics.f90
-        ./mag_interface.f90
         ./propagator.f90
         ./flint.f90
-        ./magdata_for_particles.f90
         ./ripple_solver.f90
         ./join_ripples_int.f90
         ./join_ripples.f90
