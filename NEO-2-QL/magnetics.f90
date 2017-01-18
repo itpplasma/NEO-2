@@ -1,18 +1,21 @@
 MODULE magnetics_mod
 
   USE binarysplit_mod
+  !************************************
+  ! HDF5
+  !************************************
+  USE hdf5_tools
+  USE hdf5_tools_f2003
   
   IMPLICIT NONE
   
   ! double precision
   INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0d0)
-
-  ! double complex
-  INTEGER, PARAMETER, PRIVATE :: dcp=KIND(COMPLEX(1.0_dp,1.0_dp))
   
   ! talk or be silent
   LOGICAL, PUBLIC :: mag_talk =  .TRUE. 
   LOGICAL, PUBLIC :: mag_infotalk =  .TRUE. 
+  LOGICAL, PUBLIC :: mag_write_hdf5 =  .FALSE. 
 
   ! handling of binarysplit
   LOGICAL, PUBLIC :: mag_split_ripple = .TRUE.
@@ -29,6 +32,15 @@ MODULE magnetics_mod
   CHARACTER(len=100), PRIVATE :: fieldperiod_name = 'period.dat'
   CHARACTER(len=100), PRIVATE :: fieldpropagator_name = 'propagator.dat'
   CHARACTER(len=100), PRIVATE :: fieldripple_name = 'ripple.dat'
+
+  
+  CHARACTER(len=100), PRIVATE :: h5_device_name          = 'device'
+  CHARACTER(len=100), PRIVATE :: h5_surface_name         = 'surface'
+  CHARACTER(len=100), PRIVATE :: h5_fieldline_name       = 'fieldline'
+  CHARACTER(len=100), PRIVATE :: h5_fieldperiod_name     = 'fieldperiod'
+  CHARACTER(len=100), PRIVATE :: h5_fieldpropagator_name = 'fieldpropagator'
+  CHARACTER(len=100), PRIVATE :: h5_fieldripple_name     = 'fieldripple'
+  CHARACTER(len=100), PUBLIC  :: h5_magnetics_file_name  = 'magnetics.h5'
 
   ! internal constants
   REAL(kind=dp), PARAMETER, PRIVATE :: pi=3.14159265358979_dp
@@ -251,11 +263,6 @@ MODULE magnetics_mod
      REAL(kind=dp), ALLOCATABLE                     :: bcovar_s_hat(:)
      REAL(kind=dp), ALLOCATABLE                     :: dlogbds(:)
      !! End Modifications by Andreas F. Martitsch (13.03.2014)
-     !! Modifications by Andreas F. Martitsch (11.06.2014)
-     ! Addtional output needed for modeling the plasma rotation
-     COMPLEX(kind=dcp), ALLOCATABLE                     :: bnoverb0(:)
-     COMPLEX(kind=dcp), ALLOCATABLE                     :: dbnoverb0_dphi(:)     
-     !! End Modifications by Andreas F. Martitsch (11.06.2014)
      REAL(kind=dp), ALLOCATABLE                     :: ybeg(:)
      REAL(kind=dp), ALLOCATABLE                     :: yend(:)
   END TYPE magneticdata_struct
@@ -270,11 +277,11 @@ MODULE magnetics_mod
   ! Optional output (necessary for modeling the magnetic rotation)
   ! allocation
   PUBLIC  set_magnetics_data
-  PRIVATE  set_mag_data, set_mag_data_complex, set_mag_data_prop,&
-       set_mag_data_prop_de, set_mag_data_prop2, set_mag_data_prop3
+  PRIVATE  set_mag_data, set_mag_data_prop, set_mag_data_prop_de, &
+       set_mag_data_prop2
   INTERFACE set_magnetics_data
-     MODULE PROCEDURE set_mag_data, set_mag_data_prop,&
-          set_mag_data_prop_de, set_mag_data_prop2, set_mag_data_prop3
+     MODULE PROCEDURE set_mag_data, set_mag_data_prop, set_mag_data_prop_de, &
+          set_mag_data_prop2
   END INTERFACE
   !! End Modifications by Andreas F. Martitsch (11.06.2014)
   ! ---------------------------------------------------------------------------
@@ -320,6 +327,31 @@ MODULE magnetics_mod
           destruct_mag_fieldripple
   END INTERFACE
   ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
+  ! info
+  PUBLIC h5_magnetics
+  PRIVATE                             &
+       h5_mag_general_d1a,            &
+       h5_mag_device,                 &
+       h5_mag_surface,                &
+       h5_mag_fieldline,              &
+       h5_mag_fieldperiod,            &
+       h5_mag_fieldpropagator,        &
+       h5_mag_fieldripple
+  INTERFACE h5_magnetics
+     MODULE PROCEDURE                      &
+          h5_mag_general_d1a,              &
+          h5_mag_device,                   &
+          h5_mag_surface,                  &
+          h5_mag_fieldline,                &
+          h5_mag_fieldperiod,              &
+          h5_mag_fieldpropagator,          &
+          h5_mag_fieldripple
+  END INTERFACE 
+  ! ---------------------------------------------------------------------------
+
+
 
   ! ---------------------------------------------------------------------------
   ! info
@@ -437,30 +469,16 @@ CONTAINS
 
   ! ---------------------------------------------------------------------------
   ! deallocation, allocation, data
-  SUBROUTINE set_mag_data(store,VALUE)
+  SUBROUTINE set_mag_data(store,value)
     REAL(kind=dp), ALLOCATABLE, INTENT(inout) :: store(:)
-    REAL(kind=dp), OPTIONAL,    INTENT(in)    :: VALUE(0:)
+    REAL(kind=dp), OPTIONAL,    INTENT(in)    :: value(0:)
     
     IF (ALLOCATED(store)) DEALLOCATE(store)
-    IF (PRESENT(VALUE)) THEN
-       ALLOCATE(store(0:UBOUND(VALUE,1)))
-       store = VALUE
+    IF (PRESENT(value)) THEN
+       ALLOCATE(store(0:UBOUND(value,1)))
+       store = value
     END IF
   END SUBROUTINE set_mag_data
-  ! ---------------------------------------------------------------------------
-  !! Modifications by Andreas F. Martitsch (11.06.2014)  
-  ! deallocation, allocation, complex data
-  SUBROUTINE set_mag_data_complex(store,VALUE)
-    DOUBLE COMPLEX, ALLOCATABLE, INTENT(inout) :: store(:)
-    DOUBLE COMPLEX, OPTIONAL, INTENT(in)    :: VALUE(0:)
-    
-    IF (ALLOCATED(store)) DEALLOCATE(store)
-    IF (PRESENT(VALUE)) THEN
-       ALLOCATE(store(0:UBOUND(VALUE,1)))
-       store = VALUE
-    END IF
-  END SUBROUTINE set_mag_data_complex
-  !! End Modifications by Andreas F. Martitsch (11.06.2014)  
   ! ---------------------------------------------------------------------------
   SUBROUTINE set_mag_data_prop(fieldpropagator, &
        x1,x2,x3,                                &
@@ -520,40 +538,6 @@ CONTAINS
   END SUBROUTINE set_mag_data_prop2
   !! End Modifications by Andreas F. Martitsch (13.03.2014)
   ! ---------------------------------------------------------------------------
-  !! Modifications by Andreas F. Martitsch (11.06.2014)
-  ! Addtional output needed for modeling the plasma rotation  
-  SUBROUTINE set_mag_data_prop3(fieldpropagator, &
-       x1,x2,x3,                                 &
-       bhat,geodcu,h_phi,dlogbdphi,              &
-       ybeg,yend,                                &
-       dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds,  &
-       bnoverb0,dbnoverb0_dphi                   &
-       )
-    TYPE(fieldpropagator_struct), POINTER :: fieldpropagator
-    REAL(kind=dp), INTENT(in) :: x1(0:)
-    REAL(kind=dp), INTENT(in) :: x2(0:)
-    REAL(kind=dp), INTENT(in) :: x3(0:)
-    REAL(kind=dp), INTENT(in) :: bhat(0:)
-    REAL(kind=dp), INTENT(in) :: geodcu(0:)
-    REAL(kind=dp), INTENT(in) :: h_phi(0:)
-    REAL(kind=dp), INTENT(in) :: dlogbdphi(0:)
-    REAL(kind=dp), INTENT(in) :: ybeg(0:)
-    REAL(kind=dp), INTENT(in) :: yend(0:)
-    REAL(kind=dp), INTENT(in) :: dbcovar_s_hat_dphi(0:)
-    REAL(kind=dp), INTENT(in) :: bcovar_s_hat(0:)
-    REAL(kind=dp), INTENT(in) :: dlogbds(0:)
-    COMPLEX(kind=dcp), INTENT(in) :: bnoverb0(0:)
-    COMPLEX(kind=dcp), INTENT(in) :: dbnoverb0_dphi(0:)    
-    CALL set_magnetics_data(fieldpropagator,x1,x2,x3,bhat,geodcu,h_phi,&
-         dlogbdphi,ybeg,yend,dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds)
-    !
-    ! This is the additional entry:
-    CALL set_mag_data_complex(fieldpropagator%mdata%bnoverb0,bnoverb0)
-    CALL set_mag_data_complex(fieldpropagator%mdata%dbnoverb0_dphi,dbnoverb0_dphi)
-    !
-  END SUBROUTINE set_mag_data_prop3
-  !! End Modifications by Andreas F. Martitsch (11.06.2014)
-  ! ---------------------------------------------------------------------------
   SUBROUTINE set_mag_data_prop_de(fieldpropagator,opt_in)
     TYPE(fieldpropagator_struct), POINTER :: fieldpropagator
     CHARACTER(len=3), INTENT(in), OPTIONAL :: opt_in
@@ -577,8 +561,6 @@ CONTAINS
        CALL set_magnetics_data(fieldpropagator%mdata%dbcovar_s_hat_dphi)
        CALL set_magnetics_data(fieldpropagator%mdata%bcovar_s_hat)
        CALL set_magnetics_data(fieldpropagator%mdata%dlogbds)
-       CALL set_mag_data_complex(fieldpropagator%mdata%bnoverb0)
-       CALL set_mag_data_complex(fieldpropagator%mdata%dbnoverb0_dphi)
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
        CALL set_magnetics_data(fieldpropagator%mdata%ybeg)
        CALL set_magnetics_data(fieldpropagator%mdata%yend)
@@ -594,9 +576,7 @@ CONTAINS
        ! Deallocate the additional entries (done, only if arrays allocated)
        CALL set_magnetics_data(fieldpropagator%mdata%dbcovar_s_hat_dphi)
        CALL set_magnetics_data(fieldpropagator%mdata%bcovar_s_hat)
-       CALL set_magnetics_data(fieldpropagator%mdata%dlogbds)
-       CALL set_mag_data_complex(fieldpropagator%mdata%bnoverb0)
-       CALL set_mag_data_complex(fieldpropagator%mdata%dbnoverb0_dphi)       
+       CALL set_magnetics_data(fieldpropagator%mdata%dlogbds)       
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
     ELSE
        PRINT *, 'ERROR: deallocate option in set_mag_data not known: ',opt
@@ -954,10 +934,6 @@ CONTAINS
          DEALLOCATE(fieldperiod%mdata%bcovar_s_hat)
     IF (ALLOCATED(fieldperiod%mdata%dlogbds)) &
          DEALLOCATE(fieldperiod%mdata%dlogbds)
-    IF (ALLOCATED(fieldperiod%mdata%bnoverb0)) &
-         DEALLOCATE(fieldperiod%mdata%bnoverb0)
-    IF (ALLOCATED(fieldperiod%mdata%dbnoverb0_dphi)) &
-         DEALLOCATE(fieldperiod%mdata%dbnoverb0_dphi)
     !! End Modifications by Andreas F. Martitsch (11.06.2014)
     IF (ALLOCATED(fieldperiod%mdata%ybeg)) DEALLOCATE(fieldperiod%mdata%ybeg)
     IF (ALLOCATED(fieldperiod%mdata%yend)) DEALLOCATE(fieldperiod%mdata%yend)
@@ -1553,6 +1529,801 @@ CONTAINS
   END SUBROUTINE info_mag_fieldripple
   ! ---------------------------------------------------------------------------
 
+  ! ---------------------------------------------------------------------------
+  SUBROUTINE h5_mag_general_d1a(name,var,groupname_1_opt,groupname_2_opt)
+    character(len=*) :: name
+    real(kind=dp), dimension(:), allocatable :: var
+    !class(*) :: var
+    character(len=*), optional :: groupname_1_opt,groupname_2_opt
+    character(len=100) :: groupname_1,groupname_2
+    integer(HID_T) :: h5_file_id,h5_group_id,h5_group_1_id,h5_group_2_id
+
+    IF ( mag_write_hdf5 ) THEN
+
+       if ( present(groupname_1_opt) ) then
+          groupname_1 = groupname_1_opt
+       else
+          groupname_1 = 'general'
+       end if
+
+       call h5_open_rw(h5_magnetics_file_name, h5_file_id)
+
+       ! open group name for device
+       if ( h5_exists(h5_file_id, groupname_1) ) then
+          CALL h5_open_group(h5_file_id, groupname_1, h5_group_1_id)
+       else
+          CALL h5_define_group(h5_file_id, groupname_1, h5_group_1_id)
+       end if
+       h5_group_id = h5_group_1_id
+
+       if ( present(groupname_2_opt) ) then
+          groupname_2 = groupname_2_opt
+          if ( h5_exists(h5_group_1_id, groupname_2) ) then
+             CALL h5_open_group(h5_group_1_id, groupname_2, h5_group_2_id)
+          else
+             CALL h5_define_group(h5_group_1_id, groupname_2, h5_group_2_id)
+          end if
+          h5_group_id = h5_group_2_id
+       end if
+
+       CALL h5_add(h5_group_id, name,  var)
+
+       if ( present(groupname_2_opt) ) then
+          call h5_close_group(h5_group_2_id)
+       end if
+
+       call h5_close_group(h5_group_1_id)
+
+       call h5_close(h5_file_id)
+    end IF
+  end SUBROUTINE h5_mag_general_d1a
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
+  SUBROUTINE h5_mag_device(device,h5_file_id_opt,one_opt)
+    TYPE(device_struct), POINTER :: device
+    integer(HID_T), INTENT(inout), optional :: h5_file_id_opt
+    logical, intent(in), optional :: one_opt
+
+    integer(HID_T) :: h5_file_id
+    integer(HID_T) :: h5_category_id
+    TYPE(device_struct), POINTER :: h5_device
+
+    integer(HID_T) :: h5_group_id
+    CHARACTER(len=100) :: group_name
+    logical :: one
+    logical :: close_file
+    INTEGER :: ios
+
+    IF (mag_write_hdf5 .AND. ASSOCIATED(device)) THEN
+
+       if ( present(h5_file_id_opt) ) then
+          h5_file_id =h5_file_id_opt
+       else
+          h5_file_id = 0
+       end if
+       if ( present(one_opt) ) then
+          one = one_opt
+       else
+          one = .false.
+       end if
+
+       h5_device => device
+
+       ! deletes file at first call, then opens it with rw access
+       if (.not. h5_isvalid(h5_file_id)) then
+          ! inquire (file=h5_magnetics_file_name, exist=f_exists)
+          ! how does delete of file now work in modern fortran
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          close_file = .true.
+          call h5_open_rw(h5_magnetics_file_name, h5_file_id)
+       else
+          close_file = .false.
+       end if
+
+       ! open group name for device
+       if ( h5_exists(h5_file_id, h5_device_name) ) then
+          CALL h5_open_group(h5_file_id, h5_device_name, h5_category_id)
+       else
+          CALL h5_define_group(h5_file_id, h5_device_name, h5_category_id)
+       end if
+       ! group name is constructed from tag
+       WRITE(group_name,'(I6)') h5_device%tag
+       WRITE(group_name,'(100A)') TRIM(ADJUSTL(group_name))
+       if ( h5_exists(h5_category_id, group_name) ) then
+          CALL h5_open_group(h5_category_id, group_name, h5_group_id)
+       else
+          CALL h5_define_group(h5_category_id, group_name, h5_group_id)
+       end if
+
+       CALL h5_add(h5_group_id, 'tag',  h5_device%tag)
+       CALL h5_add(h5_group_id, 'name', h5_device%name)
+       CALL h5_add(h5_group_id, 'r0',   h5_device%r0)
+       CALL h5_add(h5_group_id, 'z0',   h5_device%z0)
+       CALL h5_add(h5_group_id, 'nfp',  h5_device%nfp)
+       call h5_close_group(h5_group_id)
+
+       ! close group for devices
+       call h5_close_group(h5_category_id)
+
+       if ( .not.one ) then
+          ! surface
+          call h5_magnetics(h5_device%ch_act,h5_file_id)
+          ! fieldline
+          call h5_magnetics(h5_device%ch_act%ch_act,h5_file_id)
+          ! fieldperiod
+          call h5_magnetics(h5_device%ch_act%ch_act%ch_act,h5_file_id)
+          ! fieldpropagator
+          call h5_magnetics(h5_device%ch_act%ch_act%ch_fir%ch_fir,h5_file_id)
+          ! fieldripple
+          call h5_magnetics(h5_device%ch_act%ch_act%ch_fir%ch_fir%ch_act,h5_file_id)
+       end if
+
+       ! close hdf-fie
+       if (close_file) call h5_close(h5_file_id)
+
+    end IF
+  end SUBROUTINE h5_mag_device
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
+  SUBROUTINE h5_mag_surface(surface,h5_file_id_opt,one_opt)
+    TYPE(surface_struct), POINTER :: surface
+    integer(HID_T), INTENT(inout), optional :: h5_file_id_opt
+    logical, intent(in), optional :: one_opt
+
+    integer(HID_T) :: h5_file_id
+    integer(HID_T) :: h5_category_id
+    TYPE(surface_struct), POINTER :: h5_surface
+
+    integer(HID_T) :: h5_group_id
+    CHARACTER(len=100) :: group_name
+    logical :: one
+    logical :: close_file
+    INTEGER :: ios
+
+    IF (mag_write_hdf5 .AND. ASSOCIATED(surface)) THEN
+
+       if ( present(h5_file_id_opt) ) then
+          h5_file_id =h5_file_id_opt
+       else
+          h5_file_id = 0
+       end if
+       if ( present(one_opt) ) then
+          one = one_opt
+       else
+          one = .false.
+       end if
+
+       if (one) then
+          h5_surface => surface
+       else
+          h5_surface => surface%parent%ch_fir
+       end if
+
+       ! deletes file at first call, then opens it with rw access
+       if (.not. h5_isvalid(h5_file_id)) then
+          ! inquire (file=h5_magnetics_file_name, exist=f_exists)
+          ! how does delete of file now work in modern fortran
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          close_file = .true.
+          call h5_open_rw(h5_magnetics_file_name, h5_file_id)
+       else
+          close_file = .false.
+       end if
+
+       ! open group name for surface
+       if ( h5_exists(h5_file_id, h5_surface_name) ) then
+          CALL h5_open_group(h5_file_id, h5_surface_name, h5_category_id)
+       else
+          CALL h5_define_group(h5_file_id, h5_surface_name, h5_category_id)
+       end if
+
+       allsurfaces: do
+          ! group name is constructed from tag
+          WRITE(group_name,'(I6)') h5_surface%tag
+          WRITE(group_name,'(100A)') TRIM(ADJUSTL(group_name))
+          if ( h5_exists(h5_category_id, group_name) ) then
+             CALL h5_open_group(h5_category_id, group_name, h5_group_id)
+          else
+             CALL h5_define_group(h5_category_id, group_name, h5_group_id)
+          end if
+
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'tag',    h5_surface%tag)
+          CALL h5_add(h5_group_id, 'parent', h5_surface%parent%tag)
+          CALL h5_add(h5_group_id, 'ch_act', h5_surface%ch_act%tag)
+          CALL h5_add(h5_group_id, 'ch_fir', h5_surface%ch_fir%tag)
+          CALL h5_add(h5_group_id, 'ch_las', h5_surface%ch_las%tag)
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'bmod0',     h5_surface%bmod0)
+          CALL h5_add(h5_group_id, 'aiota',     h5_surface%aiota)
+          CALL h5_add(h5_group_id, 'r_min',     h5_surface%r_min)
+          CALL h5_add(h5_group_id, 'r_max',     h5_surface%r_max)
+          CALL h5_add(h5_group_id, 'z_min',     h5_surface%z_min)
+          CALL h5_add(h5_group_id, 'z_max',     h5_surface%z_max)
+          CALL h5_add(h5_group_id, 'b_abs_min', h5_surface%b_abs_min)
+          CALL h5_add(h5_group_id, 'b_abs_max', h5_surface%b_abs_max)
+          CALL h5_add(h5_group_id, 'nperiod',   h5_surface%nperiod)
+          CALL h5_add(h5_group_id, 'nstep',     h5_surface%nstep)
+          CALL h5_add(h5_group_id, 'ndim',      h5_surface%ndim)
+          ! ------------------------------------------------------------------------
+          ! close group
+          CALL h5_close_group(h5_group_id)
+
+          ! got to next ripple or exit
+          if ( .not.one .and. associated(h5_surface%next) ) then
+             h5_surface => h5_surface%next
+          else
+             exit allsurfaces
+          end if
+       end do allsurfaces
+
+
+       ! close group for surface
+       call h5_close_group(h5_category_id)
+
+       ! close hdf-fie
+       if (close_file) call h5_close(h5_file_id)
+
+    end IF
+  end SUBROUTINE h5_mag_surface
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
+  SUBROUTINE h5_mag_fieldline(fieldline,h5_file_id_opt,one_opt)
+    TYPE(fieldline_struct), POINTER :: fieldline
+    integer(HID_T), INTENT(inout), optional :: h5_file_id_opt
+    logical, intent(in), optional :: one_opt
+
+    integer(HID_T) :: h5_file_id
+    integer(HID_T) :: h5_category_id
+    TYPE(fieldline_struct), POINTER :: h5_fieldline
+
+    integer(HID_T) :: h5_group_id
+    CHARACTER(len=100) :: group_name
+    logical :: one
+    logical :: close_file
+    INTEGER :: ios
+
+    IF (mag_write_hdf5 .AND. ASSOCIATED(fieldline)) THEN
+
+       if ( present(h5_file_id_opt) ) then
+          h5_file_id =h5_file_id_opt
+       else
+          h5_file_id = 0
+       end if
+       if ( present(one_opt) ) then
+          one = one_opt
+       else
+          one = .false.
+       end if
+
+       if (one) then
+          h5_fieldline => fieldline
+       else
+          h5_fieldline => fieldline%parent%ch_fir
+       end if
+
+       ! deletes file at first call, then opens it with rw access
+       if (.not. h5_isvalid(h5_file_id)) then
+          ! inquire (file=h5_magnetics_file_name, exist=f_exists)
+          ! how does delete of file now work in modern fortran
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          close_file = .true.
+          call h5_open_rw(h5_magnetics_file_name, h5_file_id)
+       else
+          close_file = .false.
+       end if
+
+       ! open group name for fieldline
+       if ( h5_exists(h5_file_id, h5_fieldline_name) ) then
+          CALL h5_open_group(h5_file_id, h5_fieldline_name, h5_category_id)
+       else
+          CALL h5_define_group(h5_file_id, h5_fieldline_name, h5_category_id)
+       end if
+
+       allfieldlines: do
+          ! group name is constructed from tag
+          WRITE(group_name,'(I6)') h5_fieldline%tag
+          WRITE(group_name,'(100A)') TRIM(ADJUSTL(group_name))
+          if ( h5_exists(h5_category_id, group_name) ) then
+             CALL h5_open_group(h5_category_id, group_name, h5_group_id)
+          else
+             CALL h5_define_group(h5_category_id, group_name, h5_group_id)
+          end if
+
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'tag',    h5_fieldline%tag)
+          CALL h5_add(h5_group_id, 'parent', h5_fieldline%parent%tag)
+          CALL h5_add(h5_group_id, 'ch_act', h5_fieldline%ch_act%tag)
+          CALL h5_add(h5_group_id, 'ch_fir', h5_fieldline%ch_fir%tag)
+          CALL h5_add(h5_group_id, 'ch_las', h5_fieldline%ch_las%tag)
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'abs_max_ptag', h5_fieldline%abs_max_ptag)
+          CALL h5_add(h5_group_id, 'abs_min_ptag', h5_fieldline%abs_min_ptag)
+          CALL h5_add(h5_group_id, 'b_abs_min',    h5_fieldline%b_abs_min)
+          CALL h5_add(h5_group_id, 'b_abs_max',    h5_fieldline%b_abs_max)
+          CALL h5_add(h5_group_id, 'xstart',       h5_fieldline%xstart, &
+               lbound(h5_fieldline%xstart),ubound(h5_fieldline%xstart))
+         ! ------------------------------------------------------------------------
+          ! close group
+          CALL h5_close_group(h5_group_id)
+
+          ! got to next fieldline or exit
+          if ( .not.one .and. associated(h5_fieldline%next) ) then
+             h5_fieldline => h5_fieldline%next
+          else
+             exit allfieldlines
+          end if
+       end do allfieldlines
+
+
+       ! close group for fieldline
+       call h5_close_group(h5_category_id)
+
+       ! close hdf-fie
+       if (close_file) call h5_close(h5_file_id)
+
+    end IF
+  end SUBROUTINE h5_mag_fieldline
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
+  SUBROUTINE h5_mag_fieldperiod(fieldperiod,h5_file_id_opt,one_opt)
+    TYPE(fieldperiod_struct), POINTER :: fieldperiod
+    integer(HID_T), INTENT(inout), optional :: h5_file_id_opt
+    logical, intent(in), optional :: one_opt
+
+    integer(HID_T) :: h5_file_id
+    integer(HID_T) :: h5_category_id
+    TYPE(fieldperiod_struct), POINTER :: h5_fieldperiod
+
+    integer(HID_T) :: h5_group_id
+    CHARACTER(len=100) :: group_name
+    logical :: one
+    logical :: close_file
+    INTEGER :: ios
+
+    IF (mag_write_hdf5 .AND. ASSOCIATED(fieldperiod)) THEN
+
+       if ( present(h5_file_id_opt) ) then
+          h5_file_id =h5_file_id_opt
+       else
+          h5_file_id = 0
+       end if
+       if ( present(one_opt) ) then
+          one = one_opt
+       else
+          one = .false.
+       end if
+
+       if (one) then
+          h5_fieldperiod => fieldperiod
+       else
+          h5_fieldperiod => fieldperiod%parent%ch_fir
+       end if
+
+       ! deletes file at first call, then opens it with rw access
+       if (.not. h5_isvalid(h5_file_id)) then
+          ! inquire (file=h5_magnetics_file_name, exist=f_exists)
+          ! how does delete of file now work in modern fortran
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          close_file = .true.
+          call h5_open_rw(h5_magnetics_file_name, h5_file_id)
+       else
+          close_file = .false.
+       end if
+
+       ! open group name for fieldperiod
+       if ( h5_exists(h5_file_id, h5_fieldperiod_name) ) then
+          CALL h5_open_group(h5_file_id, h5_fieldperiod_name, h5_category_id)
+       else
+          CALL h5_define_group(h5_file_id, h5_fieldperiod_name, h5_category_id)
+       end if
+
+       allfieldperiods: do
+          ! group name is constructed from tag
+          WRITE(group_name,'(I6)') h5_fieldperiod%tag
+          WRITE(group_name,'(100A)') TRIM(ADJUSTL(group_name))
+          if ( h5_exists(h5_category_id, group_name) ) then
+             CALL h5_open_group(h5_category_id, group_name, h5_group_id)
+          else
+             CALL h5_define_group(h5_category_id, group_name, h5_group_id)
+          end if
+          
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'tag',        h5_fieldperiod%tag)
+          CALL h5_add(h5_group_id, 'parent',     h5_fieldperiod%parent%tag)
+
+          if ( associated(h5_fieldperiod%prev_theta) ) then
+             CALL h5_add(h5_group_id, 'prev_theta', h5_fieldperiod%prev_theta%tag)
+          else
+             CALL h5_add(h5_group_id, 'prev_theta', 0)
+          end if
+          if ( associated(h5_fieldperiod%next_theta) ) then
+             CALL h5_add(h5_group_id, 'next_theta', h5_fieldperiod%next_theta%tag)
+          else
+             CALL h5_add(h5_group_id, 'next_theta', 0)
+          end if
+          CALL h5_add(h5_group_id, 'ch_act',     h5_fieldperiod%ch_act%tag)
+          CALL h5_add(h5_group_id, 'ch_fir',     h5_fieldperiod%ch_fir%tag)
+          CALL h5_add(h5_group_id, 'ch_las',     h5_fieldperiod%ch_las%tag)
+          if ( associated(h5_fieldperiod%ch_ext) ) then
+             CALL h5_add(h5_group_id, 'ch_ext', h5_fieldperiod%ch_ext%tag)
+          else
+             CALL h5_add(h5_group_id, 'ch_ext', 0)
+          end if
+          CALL h5_add(h5_group_id, 'extra',      h5_fieldperiod%extra)
+          ! inumber_struct :: tag_child
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'phi_l',   h5_fieldperiod%phi_l)
+          CALL h5_add(h5_group_id, 'phi_r',   h5_fieldperiod%phi_r)
+          CALL h5_add(h5_group_id, 'theta_b', h5_fieldperiod%theta_b)
+         ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'phi_ext',     h5_fieldperiod%phi_ext)
+          CALL h5_add(h5_group_id, 'bhat_ext',    h5_fieldperiod%bhat_ext)
+          CALL h5_add(h5_group_id, 'dbp_ext',     h5_fieldperiod%dbp_ext)
+          CALL h5_add(h5_group_id, 'd2bp_ext',    h5_fieldperiod%d2bp_ext)
+          CALL h5_add(h5_group_id, 'minmax',      h5_fieldperiod%minmax)
+          CALL h5_add(h5_group_id, 'width_left',  h5_fieldperiod%width_left)
+          CALL h5_add(h5_group_id, 'width_right', h5_fieldperiod%width_right)
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'x1',        h5_fieldperiod%coords%x1)
+          CALL h5_add(h5_group_id, 'x2',        h5_fieldperiod%coords%x2)
+          CALL h5_add(h5_group_id, 'x3',        h5_fieldperiod%coords%x3)
+          CALL h5_add(h5_group_id, 'bhat',      h5_fieldperiod%mdata%bhat)
+          CALL h5_add(h5_group_id, 'geodcu',    h5_fieldperiod%mdata%geodcu)
+          CALL h5_add(h5_group_id, 'h_phi',     h5_fieldperiod%mdata%h_phi)
+          CALL h5_add(h5_group_id, 'dlogbdphi', h5_fieldperiod%mdata%dlogbdphi)
+          CALL h5_add(h5_group_id, 'ybeg',      h5_fieldperiod%mdata%ybeg)
+          CALL h5_add(h5_group_id, 'yend',      h5_fieldperiod%mdata%yend)
+          ! ------------------------------------------------------------------------
+          ! close group
+          CALL h5_close_group(h5_group_id)
+          ! got to next fieldperiod or exit
+          if ( .not.one .and. associated(h5_fieldperiod%next) ) then
+             if ( h5_fieldperiod%next%tag .eq. fieldperiod%parent%ch_fir%tag) exit allfieldperiods
+             h5_fieldperiod => h5_fieldperiod%next
+          else
+             exit allfieldperiods
+          end if
+       end do allfieldperiods
+
+       ! close group for fieldperiod
+       call h5_close_group(h5_category_id)
+
+       ! close hdf-fie
+       if (close_file) call h5_close(h5_file_id)
+
+    end IF
+  end SUBROUTINE h5_mag_fieldperiod
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
+  SUBROUTINE h5_mag_fieldpropagator(fieldpropagator,h5_file_id_opt,one_opt)
+    TYPE(fieldpropagator_struct), POINTER :: fieldpropagator
+    integer(HID_T), INTENT(inout), optional :: h5_file_id_opt
+    logical, intent(in), optional :: one_opt
+
+    integer(HID_T) :: h5_file_id
+    integer(HID_T) :: h5_category_id
+    TYPE(fieldpropagator_struct), POINTER :: h5_fieldpropagator
+
+    integer(HID_T) :: h5_group_id
+    CHARACTER(len=100) :: group_name
+    logical :: one
+    logical :: close_file
+    INTEGER :: ios
+
+    IF (mag_write_hdf5 .AND. ASSOCIATED(fieldpropagator)) THEN
+
+       if ( present(h5_file_id_opt) ) then
+          h5_file_id =h5_file_id_opt
+       else
+          h5_file_id = 0
+       end if
+       if ( present(one_opt) ) then
+          one = one_opt
+       else
+          one = .false.
+       end if
+
+       if (one) then
+          h5_fieldpropagator => fieldpropagator
+       else
+          h5_fieldpropagator => fieldpropagator%parent%parent%ch_fir%ch_fir
+       end if
+
+       ! deletes file at first call, then opens it with rw access
+       if (.not. h5_isvalid(h5_file_id)) then
+          ! inquire (file=h5_magnetics_file_name, exist=f_exists)
+          ! how does delete of file now work in modern fortran
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          close_file = .true.
+          call h5_open_rw(h5_magnetics_file_name, h5_file_id)
+       else
+          close_file = .false.
+       end if
+
+       ! open group name for fieldpropagator
+       if ( h5_exists(h5_file_id, h5_fieldpropagator_name) ) then
+          CALL h5_open_group(h5_file_id, h5_fieldpropagator_name, h5_category_id)
+       else
+          CALL h5_define_group(h5_file_id, h5_fieldpropagator_name, h5_category_id)
+       end if
+
+       allfieldpropagators: do
+          ! group name is constructed from tag
+          WRITE(group_name,'(I6)') h5_fieldpropagator%tag
+          WRITE(group_name,'(100A)') TRIM(ADJUSTL(group_name))
+          if ( h5_exists(h5_category_id, group_name) ) then
+             CALL h5_open_group(h5_category_id, group_name, h5_group_id)
+          else
+             CALL h5_define_group(h5_category_id, group_name, h5_group_id)
+          end if
+          
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'tag',        h5_fieldpropagator%tag)
+          CALL h5_add(h5_group_id, 'parent',     h5_fieldpropagator%parent%tag)
+          CALL h5_add(h5_group_id, 'ch_tag',     h5_fieldpropagator%ch_tag)
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'phi_l',   h5_fieldpropagator%phi_l)
+          CALL h5_add(h5_group_id, 'phi_r',   h5_fieldpropagator%phi_r)
+          CALL h5_add(h5_group_id, 'b_l',     h5_fieldpropagator%b_l)
+          CALL h5_add(h5_group_id, 'b_r',     h5_fieldpropagator%b_r)
+          CALL h5_add(h5_group_id, 'phi_min', h5_fieldpropagator%phi_min)
+          CALL h5_add(h5_group_id, 'b_min',   h5_fieldpropagator%b_min)
+          CALL h5_add(h5_group_id, 'i_min',   h5_fieldpropagator%i_min)
+          CALL h5_add(h5_group_id, 'has_min', h5_fieldpropagator%has_min)
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'phi_eta_ind', h5_fieldpropagator%phi_eta_ind)
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'x1',        h5_fieldpropagator%coords%x1)
+          CALL h5_add(h5_group_id, 'x2',        h5_fieldpropagator%coords%x2)
+          CALL h5_add(h5_group_id, 'x3',        h5_fieldpropagator%coords%x3)
+          CALL h5_add(h5_group_id, 'bhat',      h5_fieldpropagator%mdata%bhat)
+          CALL h5_add(h5_group_id, 'geodcu',    h5_fieldpropagator%mdata%geodcu)
+          CALL h5_add(h5_group_id, 'h_phi',     h5_fieldpropagator%mdata%h_phi)
+          CALL h5_add(h5_group_id, 'dlogbdphi', h5_fieldpropagator%mdata%dlogbdphi)
+          CALL h5_add(h5_group_id, 'ybeg',      h5_fieldpropagator%mdata%ybeg)
+          CALL h5_add(h5_group_id, 'yend',      h5_fieldpropagator%mdata%yend)
+          ! ------------------------------------------------------------------------
+          ! close group
+          CALL h5_close_group(h5_group_id)
+          ! got to next fieldperiod or exit
+          if ( .not.one .and. associated(h5_fieldpropagator%next) ) then
+             if ( h5_fieldpropagator%next%tag .eq. fieldpropagator%parent%parent%ch_fir%ch_fir%tag) exit allfieldpropagators
+             h5_fieldpropagator => h5_fieldpropagator%next
+          else
+             exit allfieldpropagators
+          end if
+       end do allfieldpropagators
+
+       ! close group for fieldpropagator
+       call h5_close_group(h5_category_id)
+
+       ! close hdf-fie
+       if (close_file) call h5_close(h5_file_id)
+
+    end IF
+  end SUBROUTINE h5_mag_fieldpropagator
+  ! ---------------------------------------------------------------------------
+
+
+  ! ---------------------------------------------------------------------------
+  SUBROUTINE h5_mag_fieldripple(fieldripple,h5_file_id_opt,one_opt)
+    TYPE(fieldripple_struct), POINTER :: fieldripple
+    integer(HID_T), INTENT(inout), optional :: h5_file_id_opt
+    logical, intent(in), optional :: one_opt
+
+    integer(HID_T) :: h5_file_id
+    integer(HID_T) :: h5_category_id
+    TYPE(fieldripple_struct), POINTER :: h5_fieldripple
+    TYPE(fieldpropagator_struct), POINTER :: fieldpropagator
+
+    integer(HID_T) :: h5_group_id
+    CHARACTER(len=100) :: group_name
+    logical :: one
+    logical :: close_file
+    INTEGER :: ios
+
+    REAL(kind=dp), allocatable, dimension(:) :: dummy_arr
+
+    IF (mag_write_hdf5 .AND. ASSOCIATED(fieldripple)) THEN
+
+       if ( present(h5_file_id_opt) ) then
+          h5_file_id =h5_file_id_opt
+       else
+          h5_file_id = 0
+       end if
+
+       if ( present(one_opt) ) then
+          one = one_opt
+       else
+          one = .false.
+       end if
+
+       if (one) then
+          h5_fieldripple => fieldripple
+       else
+          h5_fieldripple => fieldripple%parent%parent%parent%ch_fir%ch_fir%ch_act
+       end if
+
+       ! deletes file at first call, then opens it with rw access
+       if (.not. h5_isvalid(h5_file_id)) then
+          ! inquire (file=h5_magnetics_file_name, exist=f_exists)
+          ! how does delete of file now work in modern fortran
+          !OPEN(unit=1234, iostat=ios, file=h5_magnetics_file_name, status='old')
+          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          call h5_open_rw(h5_magnetics_file_name, h5_file_id)
+          close_file = .true.
+       else
+          close_file = .false.
+       end if
+       
+
+       ! open group name for all fieldripples
+       if ( h5_exists(h5_file_id, h5_fieldripple_name) ) then
+          CALL h5_open_group(h5_file_id, h5_fieldripple_name, h5_category_id)
+       else
+          CALL h5_define_group(h5_file_id, h5_fieldripple_name, h5_category_id)
+       end if
+
+
+       allripples: do
+          ! group name is constructed from tag
+          WRITE(group_name,'(I6)') h5_fieldripple%tag
+          WRITE(group_name,'(100A)') TRIM(ADJUSTL(group_name))
+          if ( h5_exists(h5_category_id, group_name) ) then
+             CALL h5_open_group(h5_category_id, group_name, h5_group_id)
+          else
+             CALL h5_define_group(h5_category_id, group_name, h5_group_id)
+          end if
+
+          ! add to group
+          CALL h5_add(h5_group_id, 'parent', h5_fieldripple%parent%tag)
+          CALL h5_add(h5_group_id, 'pa_fir', h5_fieldripple%pa_fir%tag)
+          CALL h5_add(h5_group_id, 'pa_las', h5_fieldripple%pa_las%tag)
+          CALL h5_add(h5_group_id, 'tag',    h5_fieldripple%tag)
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'b_max_l',    h5_fieldripple%b_max_l)
+          CALL h5_add(h5_group_id, 'b_max_r',    h5_fieldripple%b_max_r)
+          CALL h5_add(h5_group_id, 'b_min',      h5_fieldripple%b_min)
+          CALL h5_add(h5_group_id, 'd2bp_max_l', h5_fieldripple%d2bp_max_l)
+          CALL h5_add(h5_group_id, 'd2bp_max_r', h5_fieldripple%d2bp_max_r)
+          CALL h5_add(h5_group_id, 'd2bp_min',   h5_fieldripple%d2bp_min)
+          CALL h5_add(h5_group_id, 'width',      h5_fieldripple%width)
+          CALL h5_add(h5_group_id, 'width_l',    h5_fieldripple%width_l)
+          CALL h5_add(h5_group_id, 'width_r',    h5_fieldripple%width_r)
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'phi_inflection',  h5_fieldripple%phi_inflection)
+          CALL h5_add(h5_group_id, 'b_inflection',    h5_fieldripple%b_inflection)
+          CALL h5_add(h5_group_id, 'dbdp_inflection', h5_fieldripple%dbdp_inflection)         
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'eta',            h5_fieldripple%eta)
+          CALL h5_add(h5_group_id, 'eta_loc',        h5_fieldripple%eta_loc)
+          CALL h5_add(h5_group_id, 'shielding_ll',   h5_fieldripple%shielding_ll)
+          CALL h5_add(h5_group_id, 'shielding_lr',   h5_fieldripple%shielding_lr)
+          CALL h5_add(h5_group_id, 'shielding_rr',   h5_fieldripple%shielding_rr)
+          CALL h5_add(h5_group_id, 'shielding_rl',   h5_fieldripple%shielding_rl)
+          CALL h5_add(h5_group_id, 'bin_split_mode', h5_fieldripple%bin_split_mode)
+          ! ------------------------------------------------------------------------
+          CALL extract_array( h5_fieldripple%eta_x0, dummy_arr, 1 )
+          CALL h5_add(h5_group_id, 'eta_x0',     dummy_arr)
+          CALL extract_array( h5_fieldripple%eta_s, dummy_arr, 1 )
+          CALL h5_add(h5_group_id, 'eta_s',      dummy_arr)
+          CALL extract_array( h5_fieldripple%eta_cl, dummy_arr, 1 )
+          CALL h5_add(h5_group_id, 'eta_cl',     dummy_arr)
+          CALL extract_array( h5_fieldripple%eta_shield, dummy_arr, 1 )
+          CALL h5_add(h5_group_id, 'eta_shield', dummy_arr)
+          CALL extract_array( h5_fieldripple%eta_type, dummy_arr, 1 )
+          CALL h5_add(h5_group_id, 'eta_type',   dummy_arr)
+          if ( allocated(dummy_arr) ) deallocate( dummy_arr )
+          ! ------------------------------------------------------------------------
+          CALL h5_add(h5_group_id, 'eta_boundary_left',               h5_fieldripple%eta_boundary_left)
+          CALL h5_add(h5_group_id, 'eta_boundary_modification_left',  h5_fieldripple%eta_boundary_modification_left)
+          CALL h5_add(h5_group_id, 'eta_boundary_index_left',         h5_fieldripple%eta_boundary_index_left)
+          CALL h5_add(h5_group_id, 'eta_boundary_right',              h5_fieldripple%eta_boundary_right)
+          CALL h5_add(h5_group_id, 'eta_boundary_modification_right', h5_fieldripple%eta_boundary_modification_right)
+          CALL h5_add(h5_group_id, 'eta_boundary_index_right',        h5_fieldripple%eta_boundary_index_right)
+          ! ------------------------------------------------------------------------
+          ! additional stuff
+          CALL h5_add(h5_group_id, 'phi_l', h5_fieldripple%pa_fir%phi_l)
+          CALL h5_add(h5_group_id, 'phi_r', h5_fieldripple%pa_las%phi_r)
+          fieldpropagator => h5_fieldripple%pa_fir
+          b_min_search: do
+             if ( fieldpropagator%has_min .ne. 0 ) then
+                CALL h5_add(h5_group_id, 'phi_min', fieldpropagator%phi_min)
+                exit b_min_search
+             end if
+             if ( associated(fieldpropagator%next) ) then
+                fieldpropagator => fieldpropagator%next
+             else
+                exit b_min_search
+             end if
+          end do b_min_search
+          ! ------------------------------------------------------------------------
+          ! close group
+          CALL h5_close_group(h5_group_id)
+
+          ! got to next ripple or exit
+          if ( .not.one .and. associated(h5_fieldripple%next) ) then
+             h5_fieldripple => h5_fieldripple%next
+          else
+             exit allripples
+          end if
+       end do allripples
+
+       ! close group for fieldripples
+       call h5_close_group(h5_category_id)
+       ! close hdf-file
+       if (close_file) call h5_close(h5_file_id)
+
+    end IF
+
+!!$    ! problem one could add here number of props belonging to this ripple
+!!$    IF (mag_infotalk .AND. ASSOCIATED(fieldripple)) THEN
+!!$       PRINT *, ' fieldripple with tag ',fieldripple%tag, &
+!!$            ' and parent ', fieldripple%parent%tag
+!!$       IF ( ASSOCIATED(fieldripple%pa_fir) ) THEN
+!!$          PRINT *, '  phi_l          : ', fieldripple%pa_fir%phi_l, &
+!!$               '(Tag: ',fieldripple%pa_fir%tag,')'
+!!$       END IF
+!!$       IF ( ASSOCIATED(fieldripple%pa_las) ) THEN
+!!$          PRINT *, '  phi_r          : ', fieldripple%pa_las%phi_r, &
+!!$               '(Tag: ',fieldripple%pa_las%tag,')'
+!!$       END IF
+!!$       PRINT *, '  d2bp_max_l     : ', fieldripple%d2bp_max_l
+!!$       PRINT *, '  d2bp_max_r     : ', fieldripple%d2bp_max_r
+!!$       PRINT *, '  d2bp_min       : ', fieldripple%d2bp_min  
+!!$       PRINT *, '  width          : ', fieldripple%width
+!!$       PRINT *, '  width_l        : ', fieldripple%width_l
+!!$       PRINT *, '  width_r        : ', fieldripple%width_r
+!!$       IF (mag_split_ripple) THEN
+!!$          PRINT *, '  bin_split_mode : ', fieldripple%bin_split_mode
+!!$          IF (ALLOCATED(fieldripple%eta)) THEN
+!!$             PRINT *, '  eta allocated  : ', & 
+!!$                  LBOUND(fieldripple%eta),UBOUND(fieldripple%eta)
+!!$          ELSE
+!!$             PRINT *, '  eta allocated  : ', 'none'
+!!$          END IF
+!!$          IF (ASSOCIATED(fieldripple%eta_x0)) THEN
+!!$             CALL goto_first(fieldripple%eta_x0)
+!!$             CALL goto_last(fieldripple%eta_x0,ic)       
+!!$             PRINT *, '  eta_x0 assoc.  : ', ic
+!!$          ELSE
+!!$             PRINT *, '  eta_x0 assoc.  : ', 'none'
+!!$          END IF
+!!$       END IF
+!!$       IF (ALLOCATED(fieldripple%phi_inflection)) THEN
+!!$          PRINT *, '  phi_inflection  : ',fieldripple%phi_inflection
+!!$       ELSE
+!!$          PRINT *, '  not allocated phi_inflection'
+!!$       END IF
+!!$       IF (ALLOCATED(fieldripple%b_inflection)) THEN
+!!$          PRINT *, '  b_inflection    : ',fieldripple%b_inflection
+!!$       ELSE
+!!$          PRINT *, '  not allocated b_inflection'
+!!$       END IF
+!!$       IF (ALLOCATED(fieldripple%dbdp_inflection)) THEN
+!!$          PRINT *, '  dbdp_inflection : ',fieldripple%dbdp_inflection
+!!$       ELSE
+!!$          PRINT *, '  not allocated dbdp_inflection'
+!!$       END IF
+!!$       PRINT *, '-----------------------------------------------------------'       
+!!$    END IF
+!!$    IF (mag_talk .AND. .NOT. ASSOCIATED(fieldripple)) &
+!!$         PRINT *, 'magnetics info: fieldripple not associated'
+
+    RETURN
+  END SUBROUTINE h5_mag_fieldripple
+  ! ---------------------------------------------------------------------------
 
   ! ---------------------------------------------------------------------------
   ! plotting
@@ -1717,9 +2488,7 @@ CONTAINS
              !
              IF ( ALLOCATED(fieldpropagator%mdata%dbcovar_s_hat_dphi) .AND. &
                   ALLOCATED(fieldpropagator%mdata%bcovar_s_hat)       .AND. &
-                  ALLOCATED(fieldpropagator%mdata%dlogbds)            .AND. &
-                  ALLOCATED(fieldpropagator%mdata%bnoverb0)           .AND. &
-                  ALLOCATED(fieldpropagator%mdata%dbnoverb0_dphi) ) THEN
+                  ALLOCATED(fieldpropagator%mdata%dlogbds) ) THEN
                 !WRITE(unit,'(1000(1x,e15.8))')               &
                 WRITE(unit,*)                                 &
                      fieldpropagator%coords%x1(i),            &
@@ -1731,9 +2500,7 @@ CONTAINS
                      fieldpropagator%mdata%dlogbdphi(i),      &
                      fieldpropagator%mdata%dbcovar_s_hat_dphi,&
                      fieldpropagator%mdata%bcovar_s_hat,      &
-                     fieldpropagator%mdata%dlogbds,           &
-                     fieldpropagator%mdata%bnoverb0,          &
-                     fieldpropagator%mdata%dbnoverb0_dphi
+                     fieldpropagator%mdata%dlogbds
              ELSE ! This is the old version
                 !WRITE(unit,'(1000(1x,e15.8))')               &
                 WRITE(unit,*)                                 &

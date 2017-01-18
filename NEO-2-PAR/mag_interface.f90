@@ -80,15 +80,17 @@ MODULE plagrange_mod
   END INTERFACE
 
   PUBLIC plagrange_value
-  PRIVATE plag_value_1,plag_value_2,plag_value_all
+  PRIVATE plag_value_1,plag_value_2,plag_value_all,plag_value_all2
   INTERFACE plagrange_value
-     MODULE PROCEDURE plag_value_1,plag_value_2,plag_value_all
+     MODULE PROCEDURE plag_value_1,plag_value_2,plag_value_all,&
+          plag_value_all2
   END INTERFACE
 
   PUBLIC plagrange_interp
-  PRIVATE plag_interp_2,plag_interp_3,plag_interp_all
+  PRIVATE plag_interp_2,plag_interp_3,plag_interp_all,plag_interp_all2
   INTERFACE plagrange_interp
-     MODULE PROCEDURE plag_interp_2,plag_interp_3,plag_interp_all
+     MODULE PROCEDURE plag_interp_2,plag_interp_3,plag_interp_all,&
+          plag_interp_all2
   END INTERFACE
 
 CONTAINS
@@ -225,6 +227,8 @@ CONTAINS
     REAL(kind=dp) :: phi_start,phi_end,phi_span,phi
     REAL(kind=dp) :: bhat,bhatder
     REAL(kind=dp) :: x1,x3,geodcu,h_phi,dlogbdphi
+    REAL(kind=dp) :: dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds
+    
     nstep = fieldperiod%parent%parent%nstep
     phi_start = fieldperiod%coords%x2(0)
     phi_end   = fieldperiod%coords%x2(nstep)
@@ -232,10 +236,26 @@ CONTAINS
 
     OPEN(unit=u1,file='testperiod.dat')
     DO i = 0, nstep
-       WRITE(u1,*) &
-            fieldperiod%coords%x1(i),fieldperiod%coords%x2(i),fieldperiod%coords%x3(i), &
-            fieldperiod%mdata%bhat(i),fieldperiod%mdata%geodcu(i), &
-            fieldperiod%mdata%h_phi(i),fieldperiod%mdata%dlogbdphi(i)
+       !! Modifications by Andreas F. Martitsch (11.06.2014)
+       ! Optional output (necessary for modeling the magnetic rotation)
+       IF ( ALLOCATED(fieldperiod%mdata%dbcovar_s_hat_dphi) .AND. &
+            ALLOCATED(fieldperiod%mdata%bcovar_s_hat)       .AND. &
+            ALLOCATED(fieldperiod%mdata%dlogbds) ) THEN
+          WRITE(u1,*) &
+               fieldperiod%coords%x1(i),fieldperiod%coords%x2(i), &
+               fieldperiod%coords%x3(i), &
+               fieldperiod%mdata%bhat(i),fieldperiod%mdata%geodcu(i), &
+               fieldperiod%mdata%h_phi(i),fieldperiod%mdata%dlogbdphi(i), &
+               fieldperiod%mdata%dbcovar_s_hat_dphi(i), &
+               fieldperiod%mdata%bcovar_s_hat(i),fieldperiod%mdata%dlogbds(i)
+       ELSE ! This is the old version:
+          WRITE(u1,*) &
+               fieldperiod%coords%x1(i),fieldperiod%coords%x2(i),&
+               fieldperiod%coords%x3(i), &
+               fieldperiod%mdata%bhat(i),fieldperiod%mdata%geodcu(i), &
+               fieldperiod%mdata%h_phi(i),fieldperiod%mdata%dlogbdphi(i)
+       END IF
+       !! End Modifications by Andreas F. Martitsch (11.06.2014)
     END DO
     CLOSE(unit=u1)
 
@@ -252,8 +272,20 @@ CONTAINS
     OPEN(unit=u1,file='testlagall.dat')
     DO i = 0, ndata
        phi = phi_start + phi_span * DBLE(i) / DBLE(ndata)
-       CALL plagrange_interp(fieldperiod,phi,nlagrange,x1,x3,bhat,geodcu,h_phi,dlogbdphi)
-       WRITE(u1,*) x1,phi,x3,bhat,geodcu,h_phi,dlogbdphi
+       !! Modifications by Andreas F. Martitsch (11.06.2014)
+       ! Optional output (necessary for modeling the magnetic rotation)
+       IF ( ALLOCATED(fieldperiod%mdata%dbcovar_s_hat_dphi) .AND. &
+            ALLOCATED(fieldperiod%mdata%bcovar_s_hat)       .AND. &
+            ALLOCATED(fieldperiod%mdata%dlogbds) ) THEN
+          CALL plagrange_interp(fieldperiod,phi,nlagrange,x1,x3,bhat,geodcu,h_phi,&
+               dlogbdphi,dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds)
+          WRITE(u1,*) x1,phi,x3,bhat,geodcu,h_phi,dlogbdphi,&
+               dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds
+       ELSE ! This is the old version:
+          CALL plagrange_interp(fieldperiod,phi,nlagrange,x1,x3,bhat,geodcu,h_phi,dlogbdphi)
+          WRITE(u1,*) x1,phi,x3,bhat,geodcu,h_phi,dlogbdphi
+       END IF
+       !! End Modifications by Andreas F. Martitsch (11.06.2014)
     END DO
     CLOSE(unit=u1)
 
@@ -778,6 +810,122 @@ CONTAINS
 
   END SUBROUTINE plag_value_all
   !---------------------------------------------------------------------
+  !! Modifications by Andreas F. Martitsch (13.03.2014)
+  ! Optional output (necessary for modeling the magnetic rotation)
+  SUBROUTINE plag_value_all2(fieldperiod,stencel,phi_arr, &
+       x1_arr,x3_arr,bhat_arr,geodcu_arr,h_phi_arr,dlogbdphi_arr,&
+       dbcovar_s_hat_dphi_arr,bcovar_s_hat_arr,dlogbds_arr)
+    TYPE(fieldperiod_struct), POINTER                       :: fieldperiod
+    INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(inout)       :: stencel
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: phi_arr
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: x1_arr,x3_arr,bhat_arr
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: geodcu_arr,h_phi_arr
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: dlogbdphi_arr
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: dbcovar_s_hat_dphi_arr
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: bcovar_s_hat_arr
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: dlogbds_arr
+    
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: hlp
+
+    INTEGER :: nstep
+
+    nstep = fieldperiod%parent%parent%nstep
+
+    ! Compute phi_arr, x1_arr, x3_arr, bhat_arr, geodcu_arr, h_phi_arr, dlogbdphi_arr,
+    ! dbcovar_s_hat_dphi_arr, bcovar_s_hat_arr, dlogbds_arr
+    CALL plag_value_all(fieldperiod,stencel,phi_arr, &
+         x1_arr,x3_arr,bhat_arr,geodcu_arr,h_phi_arr,dlogbdphi_arr)
+
+    ! dbcovar_s_hat_dphi_arr
+    IF (ALLOCATED(dbcovar_s_hat_dphi_arr)) DEALLOCATE(dbcovar_s_hat_dphi_arr)
+    ALLOCATE(dbcovar_s_hat_dphi_arr(LBOUND(stencel,1):UBOUND(stencel,1)))
+    IF (MINVAL(stencel) .LT. 0) THEN
+       ALLOCATE(hlp(-nstep:nstep))
+       IF (ASSOCIATED(fieldperiod%prev)) THEN
+          hlp(-nstep:0) = fieldperiod%prev%mdata%dbcovar_s_hat_dphi(0:nstep)
+          hlp(0:nstep)  = fieldperiod%mdata%dbcovar_s_hat_dphi(0:nstep)
+       ELSE
+          hlp(-nstep:0) = fieldperiod%parent%ch_las%mdata%dbcovar_s_hat_dphi(0:nstep)
+          hlp(0:nstep)  = fieldperiod%mdata%dbcovar_s_hat_dphi(0:nstep)          
+       END IF
+    ELSEIF (MAXVAL(stencel) .GT. nstep) THEN
+       ALLOCATE(hlp(0:2*nstep))
+       IF (ASSOCIATED(fieldperiod%next)) THEN
+          hlp(0:nstep)  = fieldperiod%mdata%dbcovar_s_hat_dphi(0:nstep)
+          hlp(nstep:2*nstep) = fieldperiod%next%mdata%dbcovar_s_hat_dphi(0:nstep)
+       ELSE
+          hlp(0:nstep)  = fieldperiod%mdata%dbcovar_s_hat_dphi(0:nstep)          
+          hlp(nstep:2*nstep) = fieldperiod%parent%ch_fir%mdata%dbcovar_s_hat_dphi(0:nstep) 
+       END IF
+    ELSE
+       ALLOCATE(hlp(0:nstep))
+       hlp(0:nstep) = fieldperiod%mdata%dbcovar_s_hat_dphi(0:nstep)
+    END IF
+    dbcovar_s_hat_dphi_arr = hlp(stencel)
+    DEALLOCATE(hlp)
+    ! dbcovar_s_hat_dphi_arr
+
+    ! bcovar_s_hat_arr
+    IF (ALLOCATED(bcovar_s_hat_arr)) DEALLOCATE(bcovar_s_hat_arr)
+    ALLOCATE(bcovar_s_hat_arr(LBOUND(stencel,1):UBOUND(stencel,1)))
+    IF (MINVAL(stencel) .LT. 0) THEN
+       ALLOCATE(hlp(-nstep:nstep))
+       IF (ASSOCIATED(fieldperiod%prev)) THEN
+          hlp(-nstep:0) = fieldperiod%prev%mdata%bcovar_s_hat(0:nstep)
+          hlp(0:nstep)  = fieldperiod%mdata%bcovar_s_hat(0:nstep)
+       ELSE
+          hlp(-nstep:0) = fieldperiod%parent%ch_las%mdata%bcovar_s_hat(0:nstep)
+          hlp(0:nstep)  = fieldperiod%mdata%bcovar_s_hat(0:nstep)          
+       END IF
+    ELSEIF (MAXVAL(stencel) .GT. nstep) THEN
+       ALLOCATE(hlp(0:2*nstep))
+       IF (ASSOCIATED(fieldperiod%next)) THEN
+          hlp(0:nstep)  = fieldperiod%mdata%bcovar_s_hat(0:nstep)
+          hlp(nstep:2*nstep) = fieldperiod%next%mdata%bcovar_s_hat(0:nstep)
+       ELSE
+          hlp(0:nstep)  = fieldperiod%mdata%bcovar_s_hat(0:nstep)          
+          hlp(nstep:2*nstep) = fieldperiod%parent%ch_fir%mdata%bcovar_s_hat(0:nstep) 
+       END IF
+    ELSE
+       ALLOCATE(hlp(0:nstep))
+       hlp(0:nstep) = fieldperiod%mdata%bcovar_s_hat(0:nstep)
+    END IF
+    bcovar_s_hat_arr = hlp(stencel)
+    DEALLOCATE(hlp)
+    ! bcovar_s_hat_arr
+
+    ! dlogbds_arr
+    IF (ALLOCATED(dlogbds_arr)) DEALLOCATE(dlogbds_arr)
+    ALLOCATE(dlogbds_arr(LBOUND(stencel,1):UBOUND(stencel,1)))
+    IF (MINVAL(stencel) .LT. 0) THEN
+       ALLOCATE(hlp(-nstep:nstep))
+       IF (ASSOCIATED(fieldperiod%prev)) THEN
+          hlp(-nstep:0) = fieldperiod%prev%mdata%dlogbds(0:nstep)
+          hlp(0:nstep)  = fieldperiod%mdata%dlogbds(0:nstep)
+       ELSE
+          hlp(-nstep:0) = fieldperiod%parent%ch_las%mdata%dlogbds(0:nstep)
+          hlp(0:nstep)  = fieldperiod%mdata%dlogbds(0:nstep)          
+       END IF
+    ELSEIF (MAXVAL(stencel) .GT. nstep) THEN
+       ALLOCATE(hlp(0:2*nstep))
+       IF (ASSOCIATED(fieldperiod%next)) THEN
+          hlp(0:nstep)  = fieldperiod%mdata%dlogbds(0:nstep)
+          hlp(nstep:2*nstep) = fieldperiod%next%mdata%dlogbds(0:nstep)
+       ELSE
+          hlp(0:nstep)  = fieldperiod%mdata%dlogbds(0:nstep)          
+          hlp(nstep:2*nstep) = fieldperiod%parent%ch_fir%mdata%dlogbds(0:nstep) 
+       END IF
+    ELSE
+       ALLOCATE(hlp(0:nstep))
+       hlp(0:nstep) = fieldperiod%mdata%dlogbds(0:nstep)
+    END IF
+    dlogbds_arr = hlp(stencel)
+    DEALLOCATE(hlp)
+    ! dlogbds_arr
+
+  END SUBROUTINE plag_value_all2
+  !! End Modifications by Andreas F. Martitsch (13.03.2014)
+  !---------------------------------------------------------------------
   SUBROUTINE plag_interp_2(fieldperiod,phi,nlagrange,bhat,bhatder) 
     TYPE(fieldperiod_struct), POINTER                 :: fieldperiod, fp
     REAL(kind=dp), INTENT(in)                         :: phi
@@ -971,6 +1119,86 @@ CONTAINS
     IF (ALLOCATED(dlogbdphi_arr)) DEALLOCATE(dlogbdphi_arr)
     IF (ALLOCATED(coeff)) DEALLOCATE(coeff)
   END SUBROUTINE plag_interp_all
+  !---------------------------------------------------------------------
+  !! Modifications by Andreas F. Martitsch (13.03.2014)
+  ! Optional output (necessary for modeling the magnetic rotation)
+  SUBROUTINE plag_interp_all2(fieldperiod,phi,nlagrange,x1,x3,bhat,geodcu,&
+       h_phi,dlogbdphi,dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds)
+    TYPE(fieldperiod_struct), POINTER                 :: fieldperiod, fp
+    REAL(kind=dp), INTENT(in)                         :: phi
+    INTEGER, INTENT(in)                               :: nlagrange
+    REAL(kind=dp), INTENT(out)                        :: x1,x3,bhat,geodcu,h_phi,dlogbdphi
+    REAL(kind=dp), INTENT(out)                        :: dbcovar_s_hat_dphi,bcovar_s_hat
+    REAL(kind=dp), INTENT(out)                        :: dlogbds
+
+    INTEGER, PARAMETER :: nder = 0
+    INTEGER, DIMENSION(:), ALLOCATABLE :: stencel
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: phi_arr
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x1_arr,x3_arr,bhat_arr
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: geodcu_arr,h_phi_arr,dlogbdphi_arr
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dbcovar_s_hat_dphi_arr,bcovar_s_hat_arr
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dlogbds_arr
+    REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: coeff
+
+    INTEGER :: nstep
+    REAL(kind=dp) ::  phi_l
+    REAL(kind=dp) ::  phi_span,phi_last,phi_first
+    fp => fieldperiod
+    nstep = UBOUND(fp%coords%x2,1)
+    phi_l = phi
+    ! fix phi_l locally to be within range
+    phi_first = fp%parent%ch_fir%coords%x2(0)
+    phi_last  = fp%parent%ch_las%coords%x2(nstep)
+    phi_span  = phi_last - phi_first
+    DO WHILE (phi_l .GT. phi_last)
+       phi_l = phi_l - phi_span
+    END DO
+    DO WHILE (phi_l .LT. phi_first)
+       phi_l = phi_l + phi_span
+    END DO
+    ! fix period if necessary
+    phi_last  = fp%coords%x2(nstep)
+    DO WHILE (phi_l .GT. phi_last)
+       fp => fp%next
+       phi_last  = fp%coords%x2(nstep)
+    END DO
+    phi_first = fp%coords%x2(0)
+    DO WHILE (phi_l .LT. phi_first)
+       fp => fp%prev
+       phi_first  = fp%coords%x2(0)
+    END DO
+
+
+    CALL plagrange_stencel(fp,phi_l,nlagrange,stencel)
+    CALL plagrange_value(fp,stencel,phi_arr, &
+         x1_arr,x3_arr,bhat_arr,geodcu_arr,h_phi_arr,dlogbdphi_arr,&
+         dbcovar_s_hat_dphi_arr,bcovar_s_hat_arr,dlogbds_arr)
+    ALLOCATE( coeff(0:nder,nlagrange+1) )
+    CALL plagrange_coeff(nlagrange+1,nder,phi_l,phi_arr(:),coeff(:,:))
+    x1                 = SUM(coeff(0,:)*x1_arr)
+    x3                 = SUM(coeff(0,:)*x3_arr)
+    bhat               = SUM(coeff(0,:)*bhat_arr)
+    geodcu             = SUM(coeff(0,:)*geodcu_arr)
+    h_phi              = SUM(coeff(0,:)*h_phi_arr)
+    dlogbdphi          = SUM(coeff(0,:)*dlogbdphi_arr)
+    dbcovar_s_hat_dphi = SUM(coeff(0,:)*dbcovar_s_hat_dphi_arr)
+    bcovar_s_hat       = SUM(coeff(0,:)*bcovar_s_hat_arr)
+    dlogbds            = SUM(coeff(0,:)*dlogbds_arr)
+    
+    IF (ALLOCATED(stencel)) DEALLOCATE(stencel)
+    IF (ALLOCATED(phi_arr)) DEALLOCATE(phi_arr)
+    IF (ALLOCATED(x1_arr)) DEALLOCATE(x1_arr)
+    IF (ALLOCATED(x3_arr)) DEALLOCATE(x3_arr)
+    IF (ALLOCATED(bhat_arr)) DEALLOCATE(bhat_arr)
+    IF (ALLOCATED(geodcu_arr)) DEALLOCATE(geodcu_arr)
+    IF (ALLOCATED(h_phi_arr)) DEALLOCATE(h_phi_arr)
+    IF (ALLOCATED(dlogbdphi_arr)) DEALLOCATE(dlogbdphi_arr)
+    IF (ALLOCATED(dbcovar_s_hat_dphi_arr)) DEALLOCATE(dbcovar_s_hat_dphi_arr)
+    IF (ALLOCATED(bcovar_s_hat_arr)) DEALLOCATE(bcovar_s_hat_arr)
+    IF (ALLOCATED(dlogbds_arr)) DEALLOCATE(dlogbds_arr)
+    IF (ALLOCATED(coeff)) DEALLOCATE(coeff)
+  END SUBROUTINE plag_interp_all2
+  !! End Modifications by Andreas F. Martitsch (13.03.2014)
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
 END MODULE plagrange_mod
@@ -1180,6 +1408,12 @@ MODULE mag_interface_mod
   REAL(kind=dp), ALLOCATABLE, PRIVATE :: geodcu(:)
   REAL(kind=dp), ALLOCATABLE, PRIVATE :: h_phi(:)
   REAL(kind=dp), ALLOCATABLE, PRIVATE :: dlogbdphi(:)
+  !! Modifications by Andreas F. Martitsch (13.03.2014)
+  ! Optional output (necessary for modeling the magnetic rotation)
+  REAL(kind=dp), ALLOCATABLE, PRIVATE :: dbcovar_s_hat_dphi(:)
+  REAL(kind=dp), ALLOCATABLE, PRIVATE :: bcovar_s_hat(:)
+  REAL(kind=dp), ALLOCATABLE, PRIVATE :: dlogbds(:)
+  !! End Modifications by Andreas F. Martitsch (13.03.2014)
   REAL(kind=dp), ALLOCATABLE, PRIVATE :: hlp_arr(:)
 
   ! internal constants
@@ -1293,8 +1527,12 @@ CONTAINS
   SUBROUTINE make_mag_device(name)
     USE neo_magfie_mod, ONLY: magfie_result,magfie_spline,magfie_sarray
     USE magfie_mod, ONLY : stevvo
-    use field_eq_mod, only : rtf
-    use neo_actual_fluxs, only : s_es
+    USE field_eq_mod, ONLY : rtf
+    !! Modifications by Andreas F. Martitsch (18.09.2015)
+    ! Used within neo_get_b00 (neo_sub.f90/Boozer coordinates)
+    ! to obtain the normalization of the magnetic field (Bref=B_00(s))
+    USE neo_actual_fluxs, ONLY: s_es
+    !! End Modifications by Andreas F. Martitsch (18.09.2015)
     CHARACTER(len=*),    INTENT(in), OPTIONAL :: name
     ! stevvo related stuff
     REAL(kind=dp) :: r0i,cbfi,bz0i,bf0
@@ -1303,7 +1541,7 @@ CONTAINS
     IF (      PRESENT(name)) device%name = name
     IF (.NOT. PRESENT(name)) device%name = name_def
     ! this is still in a form I do not like at all
-    if (mag_coordinates .eq. 0) then
+    IF (mag_coordinates .EQ. 0) THEN
        ! cylindrical coordinates
        IF (mag_magfield .EQ. 0) THEN ! homogeneous case
           device%r0  = 200.0_dp
@@ -1351,7 +1589,7 @@ CONTAINS
        CALL stevvo(device%r0,r0i,device%nfp,cbfi,bz0i,bf0)
        device%z0  = 0.0_dp
        boozer_bmod0 = bf0
-    end if
+    END IF
   END SUBROUTINE make_mag_device
   ! ---------------------------------------------------------------------------
   
@@ -1388,6 +1626,21 @@ CONTAINS
     USE plagrange_mod
     USE neo_magfie_mod, ONLY : boozer_iota
     USE collisionality_mod, ONLY : isw_axisymm
+    !! Modifications by Andreas F. Martitsch (11.06.2014)
+    ! Optional output (necessary for modeling the magnetic rotation)
+    ! Note: This requires changes in "modify_propagator"
+    ! (flint.f90; block using the routine commented out) and
+    ! "mag_interface_mod" (mag_interface.f90).
+    INTERFACE
+       SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
+            bcovar_s_hat,dlogbds,dbcovar_s_hat_dphi)
+         DOUBLE PRECISION, INTENT(in)            :: phi
+         DOUBLE PRECISION, INTENT(out)           :: geodcu,bhat,h_phi,dlogbdphi
+         DOUBLE PRECISION, OPTIONAL, INTENT(out) :: bcovar_s_hat, &
+              dlogbds, dbcovar_s_hat_dphi
+       END SUBROUTINE magdata_for_particles
+    END INTERFACE
+    !! End Modifications by Andreas F. Martitsch (11.06.2014)
 
     REAL(kind=dp),                INTENT(in) :: xstart(3)
     
@@ -1406,6 +1659,12 @@ CONTAINS
     REAL(kind=dp) :: x1_start,x2_start,x3_start,bhat_start,geodcu_start,h_phi_start,dlogbdphi_start
     REAL(kind=dp) :: x1_end,x2_end,x3_end,bhat_end,geodcu_end,h_phi_end,dlogbdphi_end
     REAL(kind=dp) :: x1_mid,x3_mid,bhat_mid,geodcu_mid,h_phi_mid,dlogbdphi_mid
+    !! Modifications by Andreas F. Martitsch (11.06.2014)
+    ! Optional output (necessary for modeling the magnetic rotation)
+    REAL(kind=dp) :: dbcovar_s_hat_dphi_start, dbcovar_s_hat_dphi_end, dbcovar_s_hat_dphi_mid
+    REAL(kind=dp) :: bcovar_s_hat_start, bcovar_s_hat_end, bcovar_s_hat_mid
+    REAL(kind=dp) :: dlogbds_start, dlogbds_end, dlogbds_mid
+    !! End Modifications by Andreas F. Martitsch (11.06.2014)
     REAL(kind=dp) :: phi_start,phi_end,phi_span,phi_mult
     REAL(kind=dp) :: one_over_h_phi_int,b_over_h_phi_int,b2_over_h_phi_int
 
@@ -1481,7 +1740,7 @@ CONTAINS
              ! otherwise there is a problem with logics regarding extra 
              ! children of a period (there is only one possible)
              period_length   = 5.0_dp*pi/aiota_tokamak
-             split_inflection_points = .false. 
+             split_inflection_points = .FALSE. 
           ELSE
              PRINT *, 'isw_axisymm = ',isw_axisymm,' not implemented!'
              STOP
@@ -1499,7 +1758,7 @@ CONTAINS
              ! otherwise there is a problem with logics regarding extra 
              ! children of a period (there is only one possible)
              period_length   = 5.0_dp*pi/boozer_iota
-             split_inflection_points = .false.
+             split_inflection_points = .FALSE.
           ELSE
              PRINT *, 'isw_axisymm = ',isw_axisymm,' not implemented!'
              STOP
@@ -1551,6 +1810,13 @@ CONTAINS
        ALLOCATE(fieldperiod%mdata%geodcu(0:nstep))
        ALLOCATE(fieldperiod%mdata%h_phi(0:nstep))
        ALLOCATE(fieldperiod%mdata%dlogbdphi(0:nstep))
+       !! Modifications by Andreas F. Martitsch (11.06.2014)
+       ! Optional output (necessary for modeling the magnetic rotation) ->
+       ! Allocate the additional entries
+       ALLOCATE(fieldperiod%mdata%dbcovar_s_hat_dphi(0:nstep))
+       ALLOCATE(fieldperiod%mdata%bcovar_s_hat(0:nstep))
+       ALLOCATE(fieldperiod%mdata%dlogbds(0:nstep))
+       !! End Modifications by Andreas F. Martitsch (11.06.2014)
        ALLOCATE(fieldperiod%mdata%ybeg(1:ndim))
        ALLOCATE(fieldperiod%mdata%yend(1:ndim))
        ! first storage
@@ -1564,13 +1830,21 @@ CONTAINS
           theta_b = y(1)
        END IF
        fieldperiod%theta_b = theta_b
-       CALL magdata_for_particles(         &
-            phi,                           & 
-            fieldperiod%mdata%bhat(0),     &
-            fieldperiod%mdata%geodcu(0),   &
-            fieldperiod%mdata%h_phi(0),    &
-            fieldperiod%mdata%dlogbdphi(0) &
+       !! Modifications by Andreas F. Martitsch (11.06.2014)
+       ! Optional output (necessary for modeling the magnetic rotation) ->
+       ! Compute the additional entries
+       CALL magdata_for_particles(                  &
+            phi,                                    & 
+            fieldperiod%mdata%bhat(0),              &
+            fieldperiod%mdata%geodcu(0),            &
+            fieldperiod%mdata%h_phi(0),             &
+            fieldperiod%mdata%dlogbdphi(0),         &
+            fieldperiod%mdata%bcovar_s_hat(0),      &
+            fieldperiod%mdata%dlogbds(0),           &
+            fieldperiod%mdata%dbcovar_s_hat_dphi(0) &
             )
+       !stop "Exit make_mag_fieldline_newperiod "
+       !! End Modifications by Andreas F. Martitsch (11.06.2014)
        IF (mag_coordinates .EQ. 0) THEN
           ! cylindrical
           fieldperiod%coords%x1(0) = y(1)
@@ -1584,13 +1858,19 @@ CONTAINS
        END IF
 
        IF (i_period .EQ. 1) THEN
-          x1_start        = fieldperiod%coords%x1(0)
-          x2_start        = fieldperiod%coords%x2(0)
-          x3_start        = fieldperiod%coords%x3(0)
-          bhat_start      = fieldperiod%mdata%bhat(0)
-          geodcu_start    = fieldperiod%mdata%geodcu(0)
-          h_phi_start     = fieldperiod%mdata%h_phi(0)
-          dlogbdphi_start = fieldperiod%mdata%dlogbdphi(0)
+          x1_start                 = fieldperiod%coords%x1(0)
+          x2_start                 = fieldperiod%coords%x2(0)
+          x3_start                 = fieldperiod%coords%x3(0)
+          bhat_start               = fieldperiod%mdata%bhat(0)
+          geodcu_start             = fieldperiod%mdata%geodcu(0)
+          h_phi_start              = fieldperiod%mdata%h_phi(0)
+          dlogbdphi_start          = fieldperiod%mdata%dlogbdphi(0)
+          !! Modifications by Andreas F. Martitsch (11.06.2014)
+          ! Optional output (necessary for modeling the magnetic rotation)
+          bcovar_s_hat_start       = fieldperiod%mdata%bcovar_s_hat(0)
+          dlogbds_start            = fieldperiod%mdata%dlogbds(0)
+          dbcovar_s_hat_dphi_start = fieldperiod%mdata%dbcovar_s_hat_dphi(0)
+          !! End Modifications by Andreas F. Martitsch (11.06.2014)
        END IF
 
        IF (mag_coordinates .EQ. 0) THEN
@@ -1604,14 +1884,21 @@ CONTAINS
        ! all steps within period
        all_steps: DO i = 1, nstep
           CALL rk4_kin(phi,h)
-          CALL magdata_for_particles(         &
-               phi,                           & 
-               fieldperiod%mdata%bhat(i),     &
-               fieldperiod%mdata%geodcu(i),   &
-               fieldperiod%mdata%h_phi(i),    &
-               fieldperiod%mdata%dlogbdphi(i) &
+          !! Modifications by Andreas F. Martitsch (11.06.2014)
+          ! Optional output (necessary for modeling the magnetic rotation) ->
+          ! Compute the additional entries
+          CALL magdata_for_particles(                  &
+               phi,                                    & 
+               fieldperiod%mdata%bhat(i),              &
+               fieldperiod%mdata%geodcu(i),            &
+               fieldperiod%mdata%h_phi(i),             &
+               fieldperiod%mdata%dlogbdphi(i),         &
+               fieldperiod%mdata%bcovar_s_hat(i),      &
+               fieldperiod%mdata%dlogbds(i),           &
+               fieldperiod%mdata%dbcovar_s_hat_dphi(i) &
                )
-          
+          !stop "Exit make_mag_fieldline_newperiod "
+          !! End Modifications by Andreas F. Martitsch (11.06.2014)
           IF (mag_coordinates .EQ. 0) THEN
              ! cylindrical
              fieldperiod%coords%x1(i) = y(1)
@@ -1658,9 +1945,9 @@ CONTAINS
        IF (mag_coordinates .EQ. 0) THEN
           ! cylindrical
           IF (mag_magfield .EQ. 0) THEN ! homogeneous
-             if (i_period .eq. 3) then ! we need at least three periods
+             IF (i_period .EQ. 3) THEN ! we need at least three periods
                 EXIT construct_periods
-             end if
+             END IF
           ELSEIF (mag_magfield .NE. 0 .AND. magnetic_device .EQ. 0) THEN ! Tokamak
              !PRINT *, i_period, theta_start, theta_e
              !PAUSE
@@ -1702,13 +1989,19 @@ CONTAINS
     !PRINT *, 'mag_interface:  after construct_periods DO'
 !    CLOSE(unit=9999)
     ! end points for fixing periodicity
-    x1_end        = fieldperiod%coords%x1(nstep)
-    x2_end        = fieldperiod%coords%x2(nstep)
-    x3_end        = fieldperiod%coords%x3(nstep)
-    bhat_end      = fieldperiod%mdata%bhat(nstep)
-    geodcu_end    = fieldperiod%mdata%geodcu(nstep)
-    h_phi_end     = fieldperiod%mdata%h_phi(nstep)
-    dlogbdphi_end = fieldperiod%mdata%dlogbdphi(nstep)
+    x1_end                 = fieldperiod%coords%x1(nstep)
+    x2_end                 = fieldperiod%coords%x2(nstep)
+    x3_end                 = fieldperiod%coords%x3(nstep)
+    bhat_end               = fieldperiod%mdata%bhat(nstep)
+    geodcu_end             = fieldperiod%mdata%geodcu(nstep)
+    h_phi_end              = fieldperiod%mdata%h_phi(nstep)
+    dlogbdphi_end          = fieldperiod%mdata%dlogbdphi(nstep)
+    !! Modifications by Andreas F. Martitsch (11.06.2014)
+    ! Optional output (necessary for modeling the magnetic rotation)
+    bcovar_s_hat_end       = fieldperiod%mdata%bcovar_s_hat(nstep)
+    dlogbds_end            = fieldperiod%mdata%dlogbds(nstep)
+    dbcovar_s_hat_dphi_end = fieldperiod%mdata%dbcovar_s_hat_dphi(nstep)
+    !! End Modifications by Andreas F. Martitsch (11.06.2014)
     ! output
     IF (mag_coordinates .EQ. 0) THEN
        ! cylindrical
@@ -1750,6 +2043,13 @@ CONTAINS
           ALLOCATE(fieldperiod%mdata%geodcu(0:nstep))
           ALLOCATE(fieldperiod%mdata%h_phi(0:nstep))
           ALLOCATE(fieldperiod%mdata%dlogbdphi(0:nstep))
+          !! Modifications by Andreas F. Martitsch (11.06.2014)
+          ! Optional output (necessary for modeling the magnetic rotation) ->
+          ! Allocate the additional entries
+          ALLOCATE(fieldperiod%mdata%dbcovar_s_hat_dphi(0:nstep))
+          ALLOCATE(fieldperiod%mdata%bcovar_s_hat(0:nstep))
+          ALLOCATE(fieldperiod%mdata%dlogbds(0:nstep))
+          !! End Modifications by Andreas F. Martitsch (11.06.2014)
           ALLOCATE(fieldperiod%mdata%ybeg(1:ndim))
           ALLOCATE(fieldperiod%mdata%yend(1:ndim))
           ! first storage
@@ -1764,13 +2064,21 @@ CONTAINS
           END IF
           fieldperiod%theta_b = theta_b ! theta_b is now on the right side
 
-          CALL magdata_for_particles(         &
-               phi,                           & 
-               fieldperiod%mdata%bhat(nstep),     &
-               fieldperiod%mdata%geodcu(nstep),   &
-               fieldperiod%mdata%h_phi(nstep),    &
-               fieldperiod%mdata%dlogbdphi(nstep) &
+          !! Modifications by Andreas F. Martitsch (11.06.2014)
+          ! Optional output (necessary for modeling the magnetic rotation) ->
+          ! Compute the additional entries
+          CALL magdata_for_particles(                  &
+               phi,                                    & 
+               fieldperiod%mdata%bhat(nstep),              &
+               fieldperiod%mdata%geodcu(nstep),            &
+               fieldperiod%mdata%h_phi(nstep),             &
+               fieldperiod%mdata%dlogbdphi(nstep),         &
+               fieldperiod%mdata%bcovar_s_hat(nstep),      &
+               fieldperiod%mdata%dlogbds(nstep),           &
+               fieldperiod%mdata%dbcovar_s_hat_dphi(nstep) &
                )
+          !stop "Exit make_mag_fieldline_newperiod "
+          !! End Modifications by Andreas F. Martitsch (11.06.2014)
           IF (mag_coordinates .EQ. 0) THEN
              ! cylindrical
              fieldperiod%coords%x1(nstep) = y(1)
@@ -1784,13 +2092,19 @@ CONTAINS
           END IF
 
           IF (back_period .EQ. i_period) THEN
-             x1_start        = fieldperiod%coords%x1(0)
-             x2_start        = fieldperiod%coords%x2(0)
-             x3_start        = fieldperiod%coords%x3(0)
-             bhat_start      = fieldperiod%mdata%bhat(0)
-             geodcu_start    = fieldperiod%mdata%geodcu(0)
-             h_phi_start     = fieldperiod%mdata%h_phi(0)
-             dlogbdphi_start = fieldperiod%mdata%dlogbdphi(0)
+             x1_start                 = fieldperiod%coords%x1(0)
+             x2_start                 = fieldperiod%coords%x2(0)
+             x3_start                 = fieldperiod%coords%x3(0)
+             bhat_start               = fieldperiod%mdata%bhat(0)
+             geodcu_start             = fieldperiod%mdata%geodcu(0)
+             h_phi_start              = fieldperiod%mdata%h_phi(0)
+             dlogbdphi_start          = fieldperiod%mdata%dlogbdphi(0)
+             !! Modifications by Andreas F. Martitsch (11.06.2014)
+             ! Optional output (necessary for modeling the magnetic rotation)
+             bcovar_s_hat_start       = fieldperiod%mdata%bcovar_s_hat(0)
+             dlogbds_start            = fieldperiod%mdata%dlogbds(0)
+             dbcovar_s_hat_dphi_start = fieldperiod%mdata%dbcovar_s_hat_dphi(0)
+             !! End Modifications by Andreas F. Martitsch (11.06.2014)
           END IF
 
           IF (mag_coordinates .EQ. 0) THEN
@@ -1804,13 +2118,21 @@ CONTAINS
           ! all steps within period - back
           all_steps_back: DO i = nstep-1,0,-1
              CALL rk4_kin(phi,-h)
-             CALL magdata_for_particles(         &
-                  phi,                           & 
-                  fieldperiod%mdata%bhat(i),     &
-                  fieldperiod%mdata%geodcu(i),   &
-                  fieldperiod%mdata%h_phi(i),    &
-                  fieldperiod%mdata%dlogbdphi(i) &
-                  )             
+             !! Modifications by Andreas F. Martitsch (11.06.2014)
+             ! Optional output (necessary for modeling the magnetic rotation) ->
+             ! Compute the additional entries
+             CALL magdata_for_particles(                  &
+                  phi,                                    & 
+                  fieldperiod%mdata%bhat(i),              &
+                  fieldperiod%mdata%geodcu(i),            &
+                  fieldperiod%mdata%h_phi(i),             &
+                  fieldperiod%mdata%dlogbdphi(i),         &
+                  fieldperiod%mdata%bcovar_s_hat(i),      &
+                  fieldperiod%mdata%dlogbds(i),           &
+                  fieldperiod%mdata%dbcovar_s_hat_dphi(i) &
+                  )
+             !stop "Exit make_mag_fieldline_newperiod "
+             !! End Modifications by Andreas F. Martitsch (11.06.2014)
              IF (mag_coordinates .EQ. 0) THEN
                 ! cylindrical
                 fieldperiod%coords%x1(i) = y(1)
@@ -1907,6 +2229,12 @@ CONTAINS
        geodcu_start    = fieldperiod%mdata%geodcu(0)
        h_phi_start     = fieldperiod%mdata%h_phi(0)
        dlogbdphi_start = fieldperiod%mdata%dlogbdphi(0)
+       !! Modifications by Andreas F. Martitsch (11.06.2014)
+       ! Optional output (necessary for modeling the magnetic rotation)
+       bcovar_s_hat_start       = fieldperiod%mdata%bcovar_s_hat(0)
+       dlogbds_start            = fieldperiod%mdata%dlogbds(0)
+       dbcovar_s_hat_dphi_start = fieldperiod%mdata%dbcovar_s_hat_dphi(0)
+       !! End Modifications by Andreas F. Martitsch (11.06.2014)
        fieldperiod => fieldline%ch_las ! last period
        x1_end        = fieldperiod%coords%x1(nstep)
        x2_end        = fieldperiod%coords%x2(nstep)
@@ -1915,6 +2243,12 @@ CONTAINS
        geodcu_end    = fieldperiod%mdata%geodcu(nstep)
        h_phi_end     = fieldperiod%mdata%h_phi(nstep)
        dlogbdphi_end = fieldperiod%mdata%dlogbdphi(nstep)
+       !! Modifications by Andreas F. Martitsch (11.06.2014)
+       ! Optional output (necessary for modeling the magnetic rotation)
+       bcovar_s_hat_end       = fieldperiod%mdata%bcovar_s_hat(nstep)
+       dlogbds_end            = fieldperiod%mdata%dlogbds(nstep)
+       dbcovar_s_hat_dphi_end = fieldperiod%mdata%dbcovar_s_hat_dphi(nstep)
+       !! End Modifications by Andreas F. Martitsch (11.06.2014)
        
        ! new end points for both sides
        x1_mid = (x1_start + x1_end) / 2.0d0
@@ -1923,6 +2257,15 @@ CONTAINS
        geodcu_mid = (geodcu_start + geodcu_end) / 2.0d0
        h_phi_mid = (h_phi_start + h_phi_end) / 2.0d0
        dlogbdphi_mid = (dlogbdphi_start + dlogbdphi_end) / 2.0d0
+       !! Modifications by Andreas F. Martitsch (11.06.2014)
+       ! Optional output (necessary for modeling the magnetic rotation)
+       bcovar_s_hat_mid       = &
+            ( bcovar_s_hat_start + bcovar_s_hat_end ) / 2.0d0
+       dlogbds_mid            = &
+            ( dlogbds_start + dlogbds_end ) / 2.0d0
+       dbcovar_s_hat_dphi_mid = &
+            ( dbcovar_s_hat_dphi_start  + dbcovar_s_hat_dphi_end ) / 2.0d0
+       !! End Modifications by Andreas F. Martitsch (11.06.2014)
 
        ! fix last period
        fieldperiod => fieldline%ch_las ! last period
@@ -1943,6 +2286,18 @@ CONTAINS
                (h_phi_mid - h_phi_end) * phi_mult
           fieldperiod%mdata%dlogbdphi(i) = fieldperiod%mdata%dlogbdphi(i) + &
                (dlogbdphi_mid - dlogbdphi_end) * phi_mult
+          !! Modifications by Andreas F. Martitsch (11.06.2014)
+          ! Optional output (necessary for modeling the magnetic rotation)
+          fieldperiod%mdata%bcovar_s_hat(i) = &
+               fieldperiod%mdata%bcovar_s_hat(i) + &
+               (bcovar_s_hat_mid - bcovar_s_hat_end) * phi_mult
+          fieldperiod%mdata%dlogbds(i) = &
+               fieldperiod%mdata%dlogbds(i) + &
+               (dlogbds_mid - dlogbds_end) * phi_mult
+          fieldperiod%mdata%dbcovar_s_hat_dphi(i) = &
+               fieldperiod%mdata%dbcovar_s_hat_dphi(i) + &
+               (dbcovar_s_hat_dphi_mid - dbcovar_s_hat_dphi_end) * phi_mult
+          !! End Modifications by Andreas F. Martitsch (11.06.2014)
        END DO
        ! fix first period
        fieldperiod => fieldline%ch_fir ! first period
@@ -1963,6 +2318,18 @@ CONTAINS
                (h_phi_mid - h_phi_start) * phi_mult
           fieldperiod%mdata%dlogbdphi(i) = fieldperiod%mdata%dlogbdphi(i) + &
                (dlogbdphi_mid - dlogbdphi_start) * phi_mult
+          !! Modifications by Andreas F. Martitsch (11.06.2014)
+          ! Optional output (necessary for modeling the magnetic rotation)
+          fieldperiod%mdata%bcovar_s_hat(i) = &
+               fieldperiod%mdata%bcovar_s_hat(i) + &
+               (bcovar_s_hat_mid - bcovar_s_hat_start) * phi_mult
+          fieldperiod%mdata%dlogbds(i) = &
+               fieldperiod%mdata%dlogbds(i) + &
+               (dlogbds_mid - dlogbds_start) * phi_mult
+          fieldperiod%mdata%dbcovar_s_hat_dphi(i) = &
+               fieldperiod%mdata%dbcovar_s_hat_dphi(i) + &
+               (dbcovar_s_hat_dphi_mid - dbcovar_s_hat_dphi_start) * phi_mult
+          !! End Modifications by Andreas F. Martitsch (11.06.2014)
        END DO
    
 !!$       ! output for checking
@@ -2011,6 +2378,18 @@ CONTAINS
                      (h_phi_start - h_phi_end) * phi_mult
                 fieldperiod%mdata%dlogbdphi(i) = fieldperiod%mdata%dlogbdphi(i) + &
                      (dlogbdphi_start - dlogbdphi_end) * phi_mult
+                !! Modifications by Andreas F. Martitsch (11.06.2014)
+                ! Optional output (necessary for modeling the magnetic rotation)
+                fieldperiod%mdata%bcovar_s_hat(i) = &
+                     fieldperiod%mdata%bcovar_s_hat(i) + &
+                     (bcovar_s_hat_start - bcovar_s_hat_end) * phi_mult
+                fieldperiod%mdata%dlogbds(i) = &
+                     fieldperiod%mdata%dlogbds(i) + &
+                     (dlogbds_start - dlogbds_end) * phi_mult
+                fieldperiod%mdata%dbcovar_s_hat_dphi(i) = &
+                     fieldperiod%mdata%dbcovar_s_hat_dphi(i) + &
+                     (dbcovar_s_hat_dphi_start - dbcovar_s_hat_dphi_end) * phi_mult               
+                !! End Modifications by Andreas F. Martitsch (11.06.2014)
              END DO
              IF (.NOT.(ASSOCIATED(fieldperiod%next))) EXIT
              fieldperiod => fieldperiod%next
@@ -2036,6 +2415,18 @@ CONTAINS
                   (h_phi_start - h_phi_end) * phi_mult
              fieldperiod%mdata%dlogbdphi(i) = fieldperiod%mdata%dlogbdphi(i) + &
                   (dlogbdphi_start - dlogbdphi_end) * phi_mult
+             !! Modifications by Andreas F. Martitsch (11.06.2014)
+             ! Optional output (necessary for modeling the magnetic rotation)
+             fieldperiod%mdata%bcovar_s_hat(i) = &
+                  fieldperiod%mdata%bcovar_s_hat(i) + &
+                  (bcovar_s_hat_start - bcovar_s_hat_end) * phi_mult
+             fieldperiod%mdata%dlogbds(i) = &
+                  fieldperiod%mdata%dlogbds(i) + &
+                  (dlogbds_start - dlogbds_end) * phi_mult
+             fieldperiod%mdata%dbcovar_s_hat_dphi(i) = &
+                  fieldperiod%mdata%dbcovar_s_hat_dphi(i) + &
+                  (dbcovar_s_hat_dphi_start - dbcovar_s_hat_dphi_end) * phi_mult
+             !! End Modifications by Andreas F. Martitsch (11.06.2014)
           END DO
        END IF
     END IF
@@ -2126,9 +2517,9 @@ CONTAINS
 
     ! search for extrema
     !PRINT *, 'mag_interface: before find_extrema'
-    if (mag_magfield .ne. 0) then
+    IF (mag_magfield .NE. 0) THEN
        CALL find_extrema
-    end if
+    END IF
     !PRINT *, 'mag_interface:  after find_extrema'
 
 !!$    ! Testing of Extrema
@@ -2184,9 +2575,9 @@ CONTAINS
     !print *, '    last : phi_l,phi_r     ',fieldline%ch_las%phi_l,fieldline%ch_las%phi_r
     PRINT *, '  Propagators:             ',fieldline%ch_fir%ch_fir%tag,fieldline%ch_las%ch_las%tag
     ! in the homogeneous case this is not associated
-    if ( associated(fieldline%ch_fir%ch_ext) .and. associated(fieldline%ch_las%ch_ext) ) then
+    IF ( ASSOCIATED(fieldline%ch_fir%ch_ext) .AND. ASSOCIATED(fieldline%ch_las%ch_ext) ) THEN
        PRINT *, '  Propagators-Extra:       ',fieldline%ch_fir%ch_ext%tag,fieldline%ch_las%ch_ext%tag
-    end if
+    END IF
     PRINT *, '  Ripples:                 ',fieldline%ch_fir%ch_fir%ch_act%tag,fieldline%ch_las%ch_las%ch_act%tag
     PRINT *, '-------------------------------------------------'
 
@@ -2361,6 +2752,79 @@ CONTAINS
                 CALL plagrange_interp(fieldperiod,phi,nlagrange,bhat,der1i,d2er1i)
                 !if (abs(phi) .lt. 0.1) print *, phi,bhat,fieldperiod%phi_r-phi
              END DO iteration_ext
+             !phi_2 = fieldperiod%coords%x2(i)
+             !phi_1 = fieldperiod%coords%x2(i-1)
+             !call find_extremum(fieldperiod,phi_1,phi_2,dphi,phi_extrem,bhat_extrem)
+             !phi = phi_extrem
+             !CALL plagrange_interp(fieldperiod,phi,nlagrange,bhat,der1i,d2er1i)
+!!$             print *, 'phi,bhat    ',phi,bhat
+!!$             print *, 'phi,bhat e  ',phi_extrem,bhat_extrem
+!!$             print *, 'phi_1,phi_2 ',phi_1,phi_2
+!!$             print *, ''
+             
+!!$             if (abs(phi_1) .lt. 0.1) then
+!!$                print *, ''
+!!$                print *, fieldperiod%coords%x2(nstep),fieldperiod%mdata%bhat(nstep)
+!!$                
+!!$                phi_1 = -1.d-10;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = -1.d-11;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = -1.d-12;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = -1.d-13;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = -1.d-14;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = -1.d-15;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = 0;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = +1.d-15;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = +1.d-14;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = +1.d-13;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = +1.d-12;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = +1.d-11;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$                phi_1 = +1.d-10;
+!!$                CALL plagrange_interp(fieldperiod,phi_1,nlagrange,bhat_extrem,dummy)
+!!$                print *, phi_1,bhat_extrem
+!!$               
+!!$                print *, ''
+!!$                pause
+!!$             end if
+
+!!$             ! Winny very experimental
+!!$             if ( abs(fieldperiod%phi_l - phi) .lt. 1.d-12) then
+!!$                print *, 'problem left'
+!!$                phi = fieldperiod%phi_l
+!!$                CALL plagrange_interp(fieldperiod,phi,nlagrange,bhat,der1i,d2er1i)
+!!$                !print *, phi,bhat
+!!$             end if
+!!$             if ( abs(fieldperiod%phi_r - phi) .lt. 1.d-12) then
+!!$                print *, 'problem right'
+!!$                phi = fieldperiod%phi_r
+!!$                CALL plagrange_interp(fieldperiod,phi,nlagrange,bhat,der1i,d2er1i)
+!!$                !print *, phi,bhat
+!!$             end if
+!!$             ! End - Winny very experimental
+
 
              IF (count .EQ. 0) THEN
                 count = count + 1
@@ -2448,7 +2912,33 @@ CONTAINS
           fieldperiod%width_left = 0.0_dp
           ALLOCATE(fieldperiod%width_right(count))
           fieldperiod%width_right = 0.0_dp
+!!$          DO j = 1, count
+!!$             b_arr(0) = bhat_ext(j)
+!!$             phi = phi_ext(j)
+!!$             CALL plagrange_interp(fieldperiod,phi-h_mul*h,nlagrange,b_arr(-1),der1i)
+!!$             CALL plagrange_interp(fieldperiod,phi+h_mul*h,nlagrange,b_arr(+1),der1i)
+!!$             d2bdp2 = (b_arr(1)-2.0_dp*b_arr(0)+b_arr(-1))/(h_mul*h)**2
+!!$             fieldperiod%d2bp_ext(j) = d2bdp2
+!!$             IF (d2bdp2 .LT. 0.0_dp) fieldperiod%minmax(j) = 1
+!!$             !IF (b_arr(-1) .LT. b_arr(0) .AND. b_arr(1) .LT. b_arr(0)) fieldperiod%minmax(j) = 1
+!!$          END DO
        END IF
+
+!!$       OPEN(unit=777,file='period.dat')
+!!$       DO i = 0, UBOUND(fieldperiod%coords%x2,1)
+!!$          WRITE(777,*) fieldperiod%coords%x2(i),fieldperiod%mdata%bhat(i)
+!!$       END DO
+!!$       CLOSE(unit=777)
+!!$       OPEN(unit=777,file='period_extra.dat')
+!!$       IF (ALLOCATED(fieldperiod%phi_ext)) THEN
+!!$          PRINT *, 'extra exists'
+!!$          DO i = 1,count
+!!$             WRITE(777,*) fieldperiod%phi_ext(i),fieldperiod%bhat_ext(i), &
+!!$                  fieldperiod%dbp_ext(i),fieldperiod%d2bp_ext(i),fieldperiod%minmax(i)
+!!$          END DO
+!!$       END IF
+!!$       CLOSE(unit=777)
+!!$       PAUSE
 
        IF (ASSOCIATED(fieldperiod%next)) THEN
           fieldperiod => fieldperiod%next
@@ -2471,6 +2961,12 @@ CONTAINS
        cycle_through_minmax: DO i = 1,count
           IF (fieldperiod%minmax(i) .NE. 0) THEN
              ! maximum or inflection point found
+!!$             OPEN(unit=987,file='period.dat')
+!!$             DO ii = LBOUND(fieldperiod%coords%x2,1),UBOUND(fieldperiod%coords%x2,1)
+!!$                WRITE(987,*) fieldperiod%coords%x2(ii) - fieldperiod%phi_ext(i), &
+!!$                     fieldperiod%mdata%bhat(ii)
+!!$             END DO
+!!$             CLOSE(unit=987)
              CALL find_width(i,count)
           END IF
        END DO cycle_through_minmax
@@ -2706,11 +3202,11 @@ CONTAINS
     INTEGER :: icount
     
 
-    if (mag_magfield .eq. 0) then ! homogeneous case
+    IF (mag_magfield .EQ. 0) THEN ! homogeneous case
        !print *, 'mag_interface: setup_fieldparameters - homogeneous'
        fieldline => fieldperiod%parent
        fieldperiod => fieldline%ch_fir
-       periods_hom: do ! all fieldperiods
+       periods_hom: DO ! all fieldperiods
           !print *, fieldperiod%tag
           !propagator
           CALL construct_magnetics(fieldperiod,fieldpropagator)
@@ -2719,28 +3215,50 @@ CONTAINS
           fieldpropagator%phi_r = fieldperiod%phi_r
           ! coordinates
           ALLOCATE(fieldpropagator%coords)
-          allocate(fieldpropagator%coords%x1(lbound(fieldperiod%coords%x1,1):ubound(fieldperiod%coords%x1,1)))
+          ALLOCATE(fieldpropagator%coords%x1(LBOUND(fieldperiod%coords%x1,1):UBOUND(fieldperiod%coords%x1,1)))
           fieldpropagator%coords%x1 = fieldperiod%coords%x1
-          allocate(fieldpropagator%coords%x2(lbound(fieldperiod%coords%x2,1):ubound(fieldperiod%coords%x2,1)))
+          ALLOCATE(fieldpropagator%coords%x2(LBOUND(fieldperiod%coords%x2,1):UBOUND(fieldperiod%coords%x2,1)))
           fieldpropagator%coords%x2 = fieldperiod%coords%x2
-          allocate(fieldpropagator%coords%x3(lbound(fieldperiod%coords%x3,1):ubound(fieldperiod%coords%x3,1)))
+          ALLOCATE(fieldpropagator%coords%x3(LBOUND(fieldperiod%coords%x3,1):UBOUND(fieldperiod%coords%x3,1)))
           fieldpropagator%coords%x3 = fieldperiod%coords%x3
           ! mdata
           ALLOCATE(fieldpropagator%mdata)
-          allocate(fieldpropagator%mdata%bhat(lbound(fieldperiod%mdata%bhat,1):ubound(fieldperiod%mdata%bhat,1)))
+          ALLOCATE(fieldpropagator%mdata%bhat(LBOUND(fieldperiod%mdata%bhat,1):UBOUND(fieldperiod%mdata%bhat,1)))
           fieldpropagator%mdata%bhat = fieldperiod%mdata%bhat
-          allocate(fieldpropagator%mdata%geodcu(lbound(fieldperiod%mdata%geodcu,1):ubound(fieldperiod%mdata%geodcu,1)))
+          ALLOCATE(fieldpropagator%mdata%geodcu(LBOUND(fieldperiod%mdata%geodcu,1):UBOUND(fieldperiod%mdata%geodcu,1)))
           fieldpropagator%mdata%geodcu = fieldperiod%mdata%geodcu
-          allocate(fieldpropagator%mdata%h_phi(lbound(fieldperiod%mdata%h_phi,1):ubound(fieldperiod%mdata%h_phi,1)))
+          ALLOCATE(fieldpropagator%mdata%h_phi(LBOUND(fieldperiod%mdata%h_phi,1):UBOUND(fieldperiod%mdata%h_phi,1)))
           fieldpropagator%mdata%h_phi = fieldperiod%mdata%h_phi
-          allocate(fieldpropagator%mdata%dlogbdphi(lbound(fieldperiod%mdata%dlogbdphi,1):ubound(fieldperiod%mdata%dlogbdphi,1)))
+          ALLOCATE(fieldpropagator%mdata%dlogbdphi(LBOUND(fieldperiod%mdata%dlogbdphi,1):UBOUND(fieldperiod%mdata%dlogbdphi,1)))
           fieldpropagator%mdata%dlogbdphi = fieldperiod%mdata%dlogbdphi
-          allocate(fieldpropagator%mdata%ybeg(lbound(fieldperiod%mdata%ybeg,1):ubound(fieldperiod%mdata%ybeg,1)))
+          !! Modifications by Andreas F. Martitsch (11.06.2014)
+          ! Optional output (necessary for modeling the magnetic rotation) ->
+          ! Allocate the additional entries
+          ALLOCATE( fieldpropagator%mdata%dbcovar_s_hat_dphi( &
+                     LBOUND(fieldperiod%mdata%dbcovar_s_hat_dphi,1):&
+                     UBOUND(fieldperiod%mdata%dbcovar_s_hat_dphi,1) &
+                    ) &
+                  )
+          fieldpropagator%mdata%dbcovar_s_hat_dphi=fieldperiod%mdata%dbcovar_s_hat_dphi
+          ALLOCATE( fieldpropagator%mdata%bcovar_s_hat( &
+                     LBOUND(fieldperiod%mdata%bcovar_s_hat,1):&
+                     UBOUND(fieldperiod%mdata%bcovar_s_hat,1) &
+                    ) &
+                  )
+          fieldpropagator%mdata%bcovar_s_hat=fieldperiod%mdata%bcovar_s_hat
+          ALLOCATE( fieldpropagator%mdata%dlogbds( &
+                     LBOUND(fieldperiod%mdata%dlogbds,1):&
+                     UBOUND(fieldperiod%mdata%dlogbds,1) &
+                    ) &
+                  )
+          fieldpropagator%mdata%dlogbds=fieldperiod%mdata%dlogbds       
+          !! End Modifications by Andreas F. Martitsch (11.06.2014)
+          ALLOCATE(fieldpropagator%mdata%ybeg(LBOUND(fieldperiod%mdata%ybeg,1):UBOUND(fieldperiod%mdata%ybeg,1)))
           fieldpropagator%mdata%ybeg = fieldperiod%mdata%ybeg
-          allocate(fieldpropagator%mdata%yend(lbound(fieldperiod%mdata%yend,1):ubound(fieldperiod%mdata%yend,1)))
+          ALLOCATE(fieldpropagator%mdata%yend(LBOUND(fieldperiod%mdata%yend,1):UBOUND(fieldperiod%mdata%yend,1)))
           fieldpropagator%mdata%yend = fieldperiod%mdata%yend
-          fieldpropagator%b_l = fieldpropagator%mdata%bhat(lbound(fieldpropagator%mdata%bhat,1))
-          fieldpropagator%b_r = fieldpropagator%mdata%bhat(ubound(fieldpropagator%mdata%bhat,1))
+          fieldpropagator%b_l = fieldpropagator%mdata%bhat(LBOUND(fieldpropagator%mdata%bhat,1))
+          fieldpropagator%b_r = fieldpropagator%mdata%bhat(UBOUND(fieldpropagator%mdata%bhat,1))
           ! ripple
           CALL construct_magnetics(fieldpropagator,fieldripple)
           fieldripple%b_max_l = fieldpropagator%b_l
@@ -2753,19 +3271,19 @@ CONTAINS
           fieldpropagator%ch_act => fieldripple
           fieldpropagator%ch_tag =  fieldripple%tag
           
-          if (associated(fieldperiod%next)) then
+          IF (ASSOCIATED(fieldperiod%next)) THEN
              fieldperiod => fieldperiod%next
-          else
-             exit periods_hom
-          end if
-       end do periods_hom
+          ELSE
+             EXIT periods_hom
+          END IF
+       END DO periods_hom
        fieldline%abs_max_ptag = fieldpropagator%tag
        fieldline%abs_min_ptag = fieldpropagator%tag
        fieldline%b_abs_min = fieldripple%b_min
        fieldline%b_abs_max = fieldripple%b_max_l
        
-       return
-    end if
+       RETURN
+    END IF
 
     icount=0
     
@@ -2808,6 +3326,12 @@ CONTAINS
        END IF
     END DO last_periods
     ! test
+!!$    IF (last_min) THEN
+!!$       PRINT *, 'last_phi_min  ',last_phi_min
+!!$       PRINT *, 'last_bhat_min ',last_bhat_min
+!!$    END IF
+!!$    PRINT *, 'last_phi_max  ',last_phi_max
+!!$    PRINT *, 'last_bhat_max ',last_bhat_max
 
     ! find first maximum at the beginning
     !PRINT *, 'find first maximum at the beginning'
@@ -2845,6 +3369,12 @@ CONTAINS
        END IF
     END DO first_periods
     ! test
+!!$    IF (first_min) THEN
+!!$       PRINT *, 'first_phi_min  ',first_phi_min
+!!$       PRINT *, 'first_bhat_min ',first_bhat_min
+!!$    END IF
+!!$    PRINT *, 'first_phi_max  ',first_phi_max
+!!$    PRINT *, 'first_bhat_max ',first_bhat_max
 
     ! setup the fieldpropagators and fieldripples
     fieldperiod => fieldline%ch_fir
@@ -3251,8 +3781,17 @@ CONTAINS
        ALLOCATE(fieldpropagator%mdata%geodcu(0:phi_ub))
        ALLOCATE(fieldpropagator%mdata%h_phi(0:phi_ub))
        ALLOCATE(fieldpropagator%mdata%dlogbdphi(0:phi_ub))
+       !! Modifications by Andreas F. Martitsch (11.06.2014)
+       ! Optional output (necessary for modeling the magnetic rotation) ->
+       ! Allocate the additional entries
+       ALLOCATE(fieldpropagator%mdata%dbcovar_s_hat_dphi(0:phi_ub))
+       ALLOCATE(fieldpropagator%mdata%bcovar_s_hat(0:phi_ub))
+       ALLOCATE(fieldpropagator%mdata%dlogbds(0:phi_ub))      
+       !! End Modifications by Andreas F. Martitsch (11.06.2014)
 
        DO i = 0,phi_ub
+          !! Modifications by Andreas F. Martitsch (11.06.2014)
+          ! Optional output (necessary for modeling the magnetic rotation)
           CALL plagrange_interp(fieldperiod,        &
                fieldpropagator%coords%x2(i),        &
                nlagrange,                           &
@@ -3261,8 +3800,12 @@ CONTAINS
                fieldpropagator%mdata%bhat(i),       &
                fieldpropagator%mdata%geodcu(i),     &
                fieldpropagator%mdata%h_phi(i),      &
-               fieldpropagator%mdata%dlogbdphi(i)   &
+               fieldpropagator%mdata%dlogbdphi(i),  &
+               fieldpropagator%mdata%dbcovar_s_hat_dphi(i), &
+               fieldpropagator%mdata%bcovar_s_hat(i),       &
+               fieldpropagator%mdata%dlogbds(i)             &
                )
+          !! End Modifications by Andreas F. Martitsch (11.06.2014)
        END DO
 
 
@@ -3769,6 +4312,179 @@ CONTAINS
     IF (mag_ripple_contribution .EQ. 1) THEN
        PRINT *, 'This is a dead branch'
        STOP
+       ! now go through all fieldripples
+       allripples : DO 
+          ripple_tag = fieldripple%tag
+          ! make proper allocation
+          IF (ASSOCIATED(fieldripple%eta_x0)) THEN
+             CALL delete_all(fieldripple%eta_x0)
+             NULLIFY(fieldripple%eta_x0)
+          END IF
+          !ALLOCATE(fieldripple%eta_x0)
+          IF (ASSOCIATED(fieldripple%eta_s)) THEN
+             CALL delete_all(fieldripple%eta_s)
+             NULLIFY(fieldripple%eta_s)
+          END IF
+          !ALLOCATE(fieldripple%eta_s)
+          count = 0
+          leftright: DO ilr = 1,2 ! first left then right
+             iwfirst = 1
+             ripplewalker => fieldripple
+             IF (ilr .EQ. 1) THEN ! left
+                b_shade = ripplewalker%b_max_l
+             ELSE ! right
+                b_shade = ripplewalker%b_max_r
+             END IF
+             ! now walk away
+             walk: DO
+                walker_tag = ripplewalker%tag
+                IF (ilr .EQ. 1) THEN ! left
+                   b_max_loc = ripplewalker%b_max_l
+                ELSE ! right
+                   b_max_loc = ripplewalker%b_max_r
+                END IF
+                eta_loc = 1.0_dp /  b_max_loc
+                IF (iwfirst .EQ. 1 .OR. b_max_loc .GT. b_shade) THEN ! contributes
+                   IF (iwfirst .EQ. 1) THEN
+                      add_extra_contr = 1
+                   ELSE
+                      add_extra_contr = 0
+                   END IF
+                   !iwfirst = 0
+                   b_shade = b_max_loc
+                   rippleback => ripplewalker
+                   etas2 = 0.0_dp
+                   walkback: DO
+                      back_tag = rippleback%tag
+                      ! here the contributions are computed
+                      IF (ilr .EQ. 1) THEN ! left
+                         b_max_locb = rippleback%b_max_l
+                         phi_b = SQRT(2.0_dp * b_max_locb / ABS(rippleback%d2bp_max_l))
+                      ELSE ! right
+                         b_max_locb = rippleback%b_max_r
+                         phi_b = SQRT(2.0_dp * b_max_locb / ABS(rippleback%d2bp_max_r))
+                      END IF
+                      b_min_loc = rippleback%b_min
+                      eta_loc = 1.0d0 / b_max_locb ! local values
+                      ! lam_loc = SQRT(1.0d0 - b_min_loc/b_max_locb)
+                      ! Correction by Winny because of tiny but negativ value
+                      lam_loc = 1.0d0 - b_min_loc/b_max_locb
+                      IF (lam_loc .GT. 0.0d0) THEN
+                         lam_loc = SQRT(lam_loc)
+                      ELSE
+                         lam_loc = 0.0d0
+                      END IF
+                      col_loc = rippleback%width * collpar
+                      etas2 = etas2 + eta_loc * lam_loc * col_loc
+                      !PRINT *, 'sigma con: ',etas2,eta_loc,lam_loc,col_loc
+                      !PRINT *, ' b_min_loc,b_max_locb: ',b_min_loc,b_max_locb
+                      !PRINT *, ' tag: ',rippleback%tag
+                      ! end of contributions
+                      ! make the next step backwards or exit 
+                      IF (back_tag .EQ. ripple_tag) THEN
+                         EXIT walkback
+                      ELSE
+                         IF (ilr .EQ. 1) THEN ! left now back to the right
+                            IF (ASSOCIATED(rippleback%next)) THEN
+                               rippleback => rippleback%next
+                            ELSE
+                               rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act
+                            END IF
+                         ELSE ! right now back to the left
+                            IF (ASSOCIATED(rippleback%prev)) THEN
+                               rippleback => rippleback%prev
+                            ELSE
+                               rippleback => rippleback%parent%parent%parent%ch_las%ch_las%ch_act
+                            END IF
+                         END IF
+                      END IF
+                   END DO walkback
+                   ! set the values
+                   etas = SQRT(etas2)
+                   !IF (etas .LT. eta_s_lim) THEN
+                      count = count + 1
+                      !PRINT *, 'SET_NEW tags',fieldripple%tag,ripplewalker%tag
+                      !PRINT *, 'SET_NEW vals',1.0_dp/b_max_loc,etas
+                      CALL set_new(fieldripple%eta_x0,1.0_dp/b_max_loc)
+                      !PRINT *, 'SET_NEW'
+                      CALL set_new(fieldripple%eta_s,etas)
+                      !PRINT *, 'SET_NEW'
+                      IF (add_extra_contr .EQ. 1) CALL set_new(fieldripple%eta_cl,DBLE(count))
+                      !PRINT *,'sigma: ',fieldripple%tag,etas
+                      !PAUSE
+                      IF (add_extra_contr .EQ. 1 .AND. mag_local_sigma .EQ. 1) THEN
+                         etas = collpar * r0 * phi_b
+                         !etas = etas / 3.0d0  
+                      ELSEIF (add_extra_contr .EQ. 1 .AND. mag_local_sigma .EQ. 2) THEN
+                         etas = SQRT(collpar * r0 * phi_b)
+                         etas = etas * (etas + rippleback%width/r0/ABS(phi_b))
+                      END IF
+                      IF (add_extra_contr .EQ. 1 .AND. &
+                           (mag_local_sigma .EQ. 1 .OR. mag_local_sigma .EQ. 2) ) THEN
+                         count = count + 1
+                         !PRINT *, 'SET_NEW'
+                         CALL set_new(fieldripple%eta_x0,1.0_dp/b_max_loc)
+                         !PRINT *, 'SET_NEW'
+                         CALL set_new(fieldripple%eta_s,etas)
+                         !PRINT *, 'SET_NEW'
+                         CALL set_new(fieldripple%eta_cl,DBLE(count))
+                      END IF
+                      
+                      ! local contribution at absolut maximum
+                      
+                      ! IF (iwfirst .EQ. 1 .AND. mag_local_sigma .EQ. 3) 
+                      
+                      
+                   !END IF
+                END IF
+                ! next ripple when walking away or exit
+                IF (mag_cycle_ripples .EQ. 0) THEN
+                   IF (ilr .EQ. 1) THEN ! left
+                      IF (ASSOCIATED(ripplewalker%prev)) THEN
+                         ripplewalker => ripplewalker%prev
+                      ELSE
+                         EXIT walk
+                      END IF
+                   ELSE ! right
+                      IF (ASSOCIATED(ripplewalker%next)) THEN
+                         ripplewalker => ripplewalker%next
+                      ELSE
+                         EXIT walk
+                      END IF
+                   END IF
+                ELSE
+                   IF (ripplewalker%tag .EQ. ripple_tag .AND. iwfirst .NE. 1) THEN
+                      EXIT walk
+                   ELSE
+                      IF (ilr .EQ. 1) THEN ! left
+                         IF (ASSOCIATED(ripplewalker%prev)) THEN
+                            ripplewalker => ripplewalker%prev
+                         ELSE
+                            ripplewalker => ripplewalker%parent%parent%parent%ch_las%ch_las%ch_act
+                         END IF
+                      ELSE ! right
+                         IF (ASSOCIATED(ripplewalker%next)) THEN
+                            ripplewalker => ripplewalker%next
+                         ELSE
+                            ripplewalker => ripplewalker%parent%parent%parent%ch_fir%ch_fir%ch_act
+                         END IF
+                      END IF
+                   END IF
+                END IF
+                !PRINT *, ripplewalker%tag,ripple_tag
+                iwfirst = 0
+             END DO walk
+             !PAUSE
+          END DO leftright
+          ! sort the eta_x0 from small to large (together with eta_s)
+          ! CALL sort(fieldripple%eta_x0,fieldripple%eta_s)
+          ! go to the next fieldripple or exit
+          IF (ASSOCIATED(fieldripple%next)) THEN
+             fieldripple => fieldripple%next
+          ELSE
+             EXIT allripples
+          END IF
+       END DO allripples
 
     ELSEIF (mag_ripple_contribution .EQ. 2) THEN
        ! new stuff to look for shielding with respect to global maximum (bootstrap)
@@ -4643,6 +5359,685 @@ CONTAINS
   END SUBROUTINE ripple_eta_mag
   ! end ripple place eta
   ! ---------------------------------------------------------------------------
+
+
+  ! ---------------------------------------------------------------------------
+!!$  SUBROUTINE find_next_extremum(ilr,supress,phi,ybeg,hphi,&
+!!$       phiend,b,d2bdp2,yend,ipmax,count,mfac)
+!!$    USE rk4_kin_mod, ONLY : y
+!!$    USE partpa_mod,  ONLY : pardeb0
+!!$    
+!!$    ! input/output
+!!$    INTEGER,                    INTENT(in)    :: ilr,supress
+!!$    REAL(kind=dp),              INTENT(in)    :: phi
+!!$    REAL(kind=dp), ALLOCATABLE, INTENT(in)    :: ybeg(:)
+!!$    REAL(kind=dp),              INTENT(in)    :: hphi
+!!$    REAL(kind=dp),              INTENT(out)   :: phiend,b,d2bdp2
+!!$    REAL(kind=dp), ALLOCATABLE, INTENT(inout) :: yend(:)
+!!$    INTEGER,                    INTENT(out)   :: ipmax,count
+!!$    INTEGER,                    INTENT(inout) :: mfac
+!!$
+!!$    ! local
+!!$    INTEGER                                   :: i
+!!$    REAL(kind=dp)                             :: b_arr(-1:1)
+!!$    REAL(kind=dp)                             :: dummy
+!!$    REAL(kind=dp)                             :: philoc,h,p0,hmul
+!!$    
+!!$    REAL(kind=dp)                             :: hh,b_old
+!!$    REAL(kind=dp)                             :: b_err = 1.d-12
+!!$    INTEGER                                   :: j
+!!$    INTEGER                                   :: niter = 32
+!!$    
+!!$
+!!$
+!!$    ! new declarations
+!!$    REAL(kind=dp), ALLOCATABLE                :: ya(:),yb(:),yu(:),yv(:),ylast(:)
+!!$    REAL(kind=dp)                             :: aa,bb,u,v,hlp,d,r
+!!$    REAL(kind=dp)                             :: Fa,Fb,Fu,Fv
+!!$    REAL(kind=dp)                             :: lastphi
+!!$    
+!!$    INTEGER                                   :: right
+!!$    ! end new declarations
+!!$
+!!$    count = 0
+!!$
+!!$    ipmax = 0
+!!$    y = ybeg
+!!$    h = hphi * DBLE(ilr)
+!!$    philoc = phi
+!!$
+!!$    !PRINT *, 'This is find extremum'
+!!$    !PRINT *, 'philoc ',philoc,ilr
+!!$
+!!$    ! new stuff by Winny
+!!$    ALLOCATE(ya(1:surface%ndim))
+!!$    ALLOCATE(yb(1:surface%ndim))
+!!$    ALLOCATE(yu(1:surface%ndim))
+!!$    ALLOCATE(yv(1:surface%ndim))
+!!$    ALLOCATE(ylast(1:surface%ndim))
+!!$
+!!$    IF (supress .EQ. 1) CALL rk4_kin(philoc,h)
+!!$    aa = philoc
+!!$    CALL magdata_for_particles(philoc,y,Fa,dummy,dummy,dummy)
+!!$    p0 = pardeb0
+!!$    ya = y
+!!$    IF (mfac .EQ. 0) THEN
+!!$       CALL rk4_kin(philoc,h)
+!!$       bb = philoc
+!!$       CALL magdata_for_particles(philoc,y,Fb,dummy,dummy,dummy)
+!!$       yb = y
+!!$
+!!$       PRINT *, 'Before mfac'
+!!$       PRINT *, 'aa, bb ',aa,bb
+!!$       PRINT *, 'Fa, Fb ',Fa,Fb
+!!$       ! check whether to search for minimum or maximum
+!!$       IF (Fb .LT. Fa) THEN
+!!$          mfac = 1  ! Minimum
+!!$       ELSE
+!!$          mfac = -1 ! Maximum
+!!$       END IF
+!!$    ELSE
+!!$       bb = aa
+!!$       Fb = Fa
+!!$       yb = ya
+!!$    END IF
+!!$    ! find intervall
+!!$    ! DO WHILE (DBLE(mfac) * (Fa - Fb) .GE. 0.0_dp)
+!!$    DO WHILE (p0*pardeb0 .GT. 0.0_dp)
+!!$       p0 = pardeb0
+!!$       aa = bb
+!!$       Fa = Fb
+!!$       ya = yb
+!!$       CALL rk4_kin(philoc,h)
+!!$       bb = philoc
+!!$       CALL magdata_for_particles(philoc,y,Fb,dummy,dummy,dummy)
+!!$       yb = y   
+!!$    END DO
+!!$
+!!$    
+!!$    PRINT *, 'pardeb0,p0,p0*pardeb0 ',pardeb0,p0,p0*pardeb0 
+!!$    PRINT *, 'mfac   ',mfac
+!!$    PRINT *, 'aa, bb ',aa,bb
+!!$    PRINT *, 'Fa, Fb ',Fa,Fb
+!!$
+!!$
+!!$
+!!$    ! addapt to left right
+!!$    IF (ilr .EQ. 1) THEN
+!!$       right = 1
+!!$       lastphi = b
+!!$       ylast = yb
+!!$    ELSE
+!!$       hlp = aa
+!!$       aa = bb
+!!$       bb = hlp
+!!$       hlp = Fa
+!!$       Fa = Fb
+!!$       Fb = hlp
+!!$       ylast = ya
+!!$       ya = yb
+!!$       yb = ylast
+!!$       right = 0
+!!$       lastphi = aa
+!!$    END IF
+!!$
+!!$    d = bb - aa
+!!$    Fa = DBLE(mfac)*Fa
+!!$    Fb = DBLE(mfac)*Fb
+!!$
+!!$    r = 0.5_dp * (SQRT(5.0_dp) - 1.0_dp)
+!!$
+!!$    DO WHILE (d .GT. hphi_lim)
+!!$       philoc = lastphi
+!!$       y = ylast
+!!$       IF (right .EQ. 1) THEN
+!!$          h = -(1.0_dp-r)*d
+!!$          CALL rk4_kin(philoc,h)
+!!$          u = philoc
+!!$          CALL magdata_for_particles(philoc,y,Fu,dummy,dummy,dummy)
+!!$          yu = y   
+!!$          Fu = DBLE(mfac)*Fu
+!!$          h = -(2.0_dp*r-1.0_dp)*d
+!!$          CALL rk4_kin(philoc,h)
+!!$          v = philoc
+!!$          CALL magdata_for_particles(philoc,y,Fv,dummy,dummy,dummy)
+!!$          yv = y   
+!!$          Fv = DBLE(mfac)*Fv
+!!$       ELSE
+!!$          h = (1.0_dp-r)*d
+!!$          CALL rk4_kin(philoc,h)
+!!$          v = philoc
+!!$          CALL magdata_for_particles(philoc,y,Fv,dummy,dummy,dummy)
+!!$          yv = y   
+!!$          Fv = DBLE(mfac)*Fv
+!!$          h = (2.0_dp*r-1.0_dp)*d
+!!$          CALL rk4_kin(philoc,h)
+!!$          u = philoc
+!!$          CALL magdata_for_particles(philoc,y,Fu,dummy,dummy,dummy)
+!!$          yu = y   
+!!$          Fu = DBLE(mfac)*Fu
+!!$       END IF
+!!$
+!!$       IF (Fu .GT. Fv) THEN
+!!$          bb = u
+!!$          lastphi = u
+!!$          ylast = yu
+!!$          right = 1
+!!$          Fb = Fu
+!!$          yb = yu
+!!$       ELSE
+!!$          aa = v
+!!$          lastphi = v
+!!$          ylast = yv
+!!$          right = 0
+!!$          Fa = Fv
+!!$          yb = yv
+!!$       END IF
+!!$       d = bb - aa
+!!$    END DO
+!!$    Fa = DBLE(mfac)*Fa
+!!$    Fb = DBLE(mfac)*Fb
+!!$    b_arr(0) = Fa
+!!$    b = Fa
+!!$    ! final point
+!!$    yend = ya
+!!$    y = ya
+!!$    philoc = aa
+!!$    phiend = aa
+!!$    DEALLOCATE(ya,yb,yu,yv,ylast)
+!!$
+!!$    ! end new stuff by Winny
+!!$
+!!$    count = 0
+!!$    hmul = 1.0_dp
+!!$    IF (supress .EQ. 1) CALL rk4_kin(philoc,h)
+!!$    !CALL magdata_for_particles(philoc,y,b_arr(0),dummy,dummy,dummy)
+!!$    CALL magdata_for_particles(philoc,b_arr(0),dummy,dummy,dummy)
+!!$    p0 = pardeb0
+!!$    search: DO WHILE (p0*pardeb0 .GT. 0.0_dp)
+!!$       p0 = pardeb0
+!!$       count = count + 1
+!!$       CALL rk4_kin(philoc,h)
+!!$       !CALL magdata_for_particles(philoc,y,b_arr(0),dummy,dummy,dummy)
+!!$       CALL magdata_for_particles(philoc,b_arr(0),dummy,dummy,dummy)
+!!$    END DO search
+!!$    !PRINT *, 'philoc ',philoc
+!!$    hh = h
+!!$    b_old = 0.0_dp
+!!$    iteration: DO j = 1,niter
+!!$       hh = hh*dsign(0.5_dp,p0*pardeb0)
+!!$       p0 = pardeb0
+!!$       CALL rk4_kin(philoc,hh)
+!!$       !CALL magdata_for_particles(philoc,y,b_arr(0),dummy,dummy,dummy)
+!!$       CALL magdata_for_particles(philoc,b_arr(0),dummy,dummy,dummy)
+!!$       !IF (ABS(b_arr(0) - b_old) .LT. b_err) THEN
+!!$       !   EXIT
+!!$       !ELSE
+!!$       !   b_old = b_arr(0)
+!!$       !END IF
+!!$    END DO iteration
+!!$    !PRINT *, 'philoc iter',philoc
+!!$       
+!!$    IF (pardeb0 .EQ. 0.0_dp .OR. ABS(h) .LT. hphi_lim) THEN
+!!$          CALL magdata_for_particles(philoc,y,b_arr(0),dummy,dummy,dummy)
+!!$          EXIT search
+!!$       END IF
+!!$       IF (count .EQ. 1) THEN
+!!$          p0 = pardeb0
+!!$       ELSE
+!!$          IF (p0 * pardeb0 .LT. 0.0_dp) THEN
+!!$             hmul = 0.5_dp
+!!$             h = -h * hmul
+!!$          ELSE
+!!$             h =  h * hmul
+!!$          END IF
+!!$       END IF
+!!$       CALL rk4_kin(philoc,h)
+!!$    END DO search
+!!$    
+!!$
+!!$    b = b_arr(0)
+!!$    ! final point
+!!$    yend = y   ! PROBLEM
+!!$    phiend = philoc 
+!!$
+!!$    ! module of b and second derivative 
+!!$    h = hphi * DBLE(ilr)
+!!$    !h = 2.0_dp * abs(hh) * DBLE(ilr)
+!!$    final: DO i = -1,1,2
+!!$       CALL rk4_kin(philoc,h)
+!!$       !CALL magdata_for_particles(philoc,y,b_arr(i),dummy,dummy,dummy)
+!!$       CALL magdata_for_particles(philoc,b_arr(i),dummy,dummy,dummy)
+!!$       h = -2.0_dp*h
+!!$    END DO final
+!!$    d2bdp2 = (b_arr(1)-2.0_dp*b_arr(0)+b_arr(-1))/hphi**2
+!!$    IF (d2bdp2 .LT. 0.0_dp) ipmax = 1
+!!$    !PRINT *, 'niter ',niter
+!!$    !PRINT *, 'd2bdp2,ipmax ',d2bdp2,ipmax
+!!$    !PRINT *, 'hphi  ',hphi
+!!$    !PRINT *, 'b_arr ',b_arr
+!!$    !PRINT *, 'phiend,b ',phiend,b
+!!$    !PRINT *, 'b_arr    ',b_arr
+!!$    !PRINT *, 'ipmax    ',ipmax
+!!$    !PAUSE
+!!$
+!!$
+!!$    RETURN
+!!$  END SUBROUTINE find_next_extremum
+
+!!$  SUBROUTINE find_ripple_boundary(ybeg,phi,hphi,y_l,y_r,phi_l,phi_r,phi_min, &
+!!$    b_max_l,b_max_r,b_min,d2bp_max_l,d2bp_max_r,d2bp_min)
+!!$    
+!!$    REAL(kind=dp), ALLOCATABLE, INTENT(in)    :: ybeg(:)
+!!$    REAL(kind=dp),              INTENT(in)    :: phi,hphi
+!!$    REAL(kind=dp), ALLOCATABLE, INTENT(inout) :: y_l(:),y_r(:)
+!!$    REAL(kind=dp),              INTENT(inout) :: phi_l,phi_r
+!!$    REAL(kind=dp),              INTENT(out)   :: phi_min
+!!$    REAL(kind=dp),              INTENT(out)   :: b_max_l
+!!$    REAL(kind=dp),              INTENT(inout) :: b_max_r
+!!$    REAL(kind=dp),              INTENT(out)   :: b_min
+!!$    REAL(kind=dp),              INTENT(out)   :: d2bp_max_l
+!!$    REAL(kind=dp),              INTENT(inout) :: d2bp_max_r
+!!$    REAL(kind=dp),              INTENT(out)   :: d2bp_min
+!!$
+!!$    REAL(kind=dp)                             :: phi_loc
+!!$    
+!!$
+!!$    INTEGER                                   :: ilr,supress,ipmax,count
+!!$    INTEGER                                   :: mfac
+!!$    phi_loc = phi
+!!$
+!!$    IF (first_ripple) THEN
+!!$       supress    = 1
+!!$       ilr        = -1
+!!$       ! make a frist try
+!!$       mfac = 0
+!!$       IF (mag_infotalk) THEN
+!!$          PRINT *,  'make a frist try'
+!!$       END IF
+!!$       CALL find_next_extremum(ilr,supress,phi_loc,ybeg,hphi,&
+!!$            phi_l,b_max_l,d2bp_max_l,y_l,ipmax,count,mfac)
+!!$       phi_loc = phi_l
+!!$       IF (mag_infotalk) THEN
+!!$          PRINT *,  'ipmax,phi_loc,b_max_l ',ipmax,phi_loc,b_max_l
+!!$       END IF
+!!$       IF (ipmax .EQ. 0) THEN
+!!$          supress = 1
+!!$          ! search for the maximum on the left side
+!!$          IF (mag_infotalk) THEN
+!!$             PRINT *,  'search for the maximum on the left side'
+!!$          END IF
+!!$          mfac = -1
+!!$          CALL find_next_extremum(ilr,supress,phi_loc,y_l,hphi,&
+!!$               phi_l,b_max_l,d2bp_max_l,y_l,ipmax,count,mfac)
+!!$          IF (mag_infotalk) THEN
+!!$             PRINT *,  'ipmax,phi_l,b_max_l ',ipmax,phi_l,b_max_l
+!!$          END IF
+!!$       END IF
+!!$       ilr = 1
+!!$    ELSE
+!!$       supress    = 1
+!!$       ilr        = 1
+!!$       ! left side comes from right side of previous ripple
+!!$       y_l        = y_r
+!!$       phi_l      = phi_r
+!!$       b_max_l    = b_max_r
+!!$       d2bp_max_l = d2bp_max_r
+!!$    END IF
+!!$    ! search for the minimum
+!!$    phi_loc = phi_l
+!!$    mfac = 1
+!!$    IF (mag_infotalk) THEN
+!!$       PRINT *,  'search for the minimum - start ',phi_loc
+!!$    END IF
+!!$    CALL find_next_extremum(ilr,supress,phi_loc,y_l,hphi,&
+!!$         phi_min,b_min,d2bp_min,y_r,ipmax,count,mfac)
+!!$    IF (mag_infotalk) THEN
+!!$       PRINT *,  'ipmax,phi_min,b_min ',ipmax,phi_min,b_min
+!!$    END IF
+!!$
+!!$    IF (ipmax .NE. 0) THEN
+!!$       PRINT *, 'ERROR in mag_interface_mod: No minimum!'
+!!$       STOP
+!!$    END IF
+!!$    ! search for the maximum
+!!$    phi_loc = phi_min
+!!$    mfac = -1
+!!$    IF (mag_infotalk) THEN
+!!$       PRINT *,  'search for the maximum - start ',phi_loc
+!!$    END IF
+!!$    CALL find_next_extremum(ilr,supress,phi_loc,y_r,hphi,&
+!!$         phi_r,b_max_r,d2bp_max_r,y_r,ipmax,count,mfac)
+!!$    IF (mag_infotalk) THEN
+!!$       PRINT *,  'ipmax,phi_r,b_max_r ',ipmax,phi_r,b_max_r
+!!$    END IF
+!!$    IF (ipmax .NE. 1) THEN
+!!$       PRINT *, 'ERROR in mag_interface_mod: No maximum!'
+!!$       STOP
+!!$    END IF
+!!$
+!!$    RETURN
+!!$  END SUBROUTINE find_ripple_boundary
+
+  ! ---------------------------------------------------------------------------
+  ! computes the phi-values within one ripple and returnes them in the array
+  !  phi_arr (private variable of the module).
+  ! array with fieldpropagator boundaries within the ripple
+  !  ripple_prop_boundary - indices of propagotor boundaries
+  !  n_prop - number of propagators
+  !  imin_ripple - index of minimum within ripple
+  !  n_per - number of period boundaries within ripple
+  !  ripple_period_boundary - indices of period boundaries
+!!$  SUBROUTINE dist_ripple_phi(phi_l,phi_r,phi_min,hphi,delta_phi_l,delta_phi_r)
+!!$    REAL(kind=dp),              INTENT(in)    :: phi_l,phi_r,phi_min,hphi
+!!$    REAL(kind=dp),              INTENT(in)    :: delta_phi_l,delta_phi_r
+!!$
+!!$    INTEGER                                   :: n_boundnum ! number of boundaries within ripple
+!!$    INTEGER                                   :: i,j,n,nphi
+!!$    INTEGER                                   :: k,ic_l,ic_r,ic
+!!$    INTEGER                                   :: j_start
+!!$    INTEGER,       PARAMETER                  :: n_addlim = 6
+!!$    INTEGER,       ALLOCATABLE                :: n_boundary(:),n_period(:),n_minimum(:)
+!!$    INTEGER,       ALLOCATABLE                :: n_addbound_l(:),n_addbound_r(:),n_addbound(:)
+!!$    REAL(kind=dp)                             :: phi_s,phi_e,dphi,h,phi_n
+!!$    REAL(kind=dp), ALLOCATABLE                :: phi_boundary(:)
+!!$
+!!$    ALLOCATE(n_boundary(0:mag_max_prop+1))
+!!$    ALLOCATE(n_period(0:mag_max_prop+1))
+!!$    ALLOCATE(n_minimum(0:mag_max_prop+1))
+!!$    ALLOCATE(phi_boundary(0:mag_max_prop+1))
+!!$    ALLOCATE(n_addbound_l(1:mag_max_prop+1))
+!!$    ALLOCATE(n_addbound_r(1:mag_max_prop+1))
+!!$    ALLOCATE(n_addbound(1:mag_max_prop+1))
+!!$    ! store left boundary
+!!$    n_boundnum = 0
+!!$    phi_boundary(n_boundnum) = phi_l
+!!$    n_boundary(n_boundnum)   = 1 ! marker for left ripple boundary 
+!!$    n_period(n_boundnum)     = 0 ! not a period boundary
+!!$    n_minimum(n_boundnum)    = 0 ! not a minimum
+!!$
+!!$    ! place period boundary within ripple or at first possibilty after
+!!$    placeper: DO
+!!$       IF (period_boundary .GE. phi_l) EXIT placeper 
+!!$       period_boundary = period_boundary + period_length
+!!$    END DO placeper
+!!$    ! check how many peridodic boundaries are within ripple
+!!$    IF (period_boundary .EQ. phi_l) THEN
+!!$       n_period(n_boundnum)   = 1 ! marker for period boundary
+!!$       period_boundary = period_boundary + period_length ! move to next period boundary
+!!$    END IF
+!!$    intper: DO
+!!$       IF (period_boundary .GE. phi_r) EXIT intper
+!!$       n_boundnum = n_boundnum + 1
+!!$       phi_boundary(n_boundnum) = period_boundary
+!!$       n_boundary(n_boundnum)   = 2 ! marker for period boundary
+!!$       n_period(n_boundnum)     = 1 ! period boundary
+!!$       n_minimum(n_boundnum)    = 0 ! no minimum
+!!$       period_boundary = period_boundary + period_length ! move to next period boundary
+!!$    END DO intper
+!!$
+!!$    ! last point
+!!$    n_boundnum = n_boundnum + 1
+!!$    phi_boundary(n_boundnum) = phi_r
+!!$    n_boundary(n_boundnum)   = 1 ! marker for right ripple boundary
+!!$    n_period(n_boundnum)     = 0 ! last point is never a period boundary (handled in next ripple)
+!!$    n_minimum(n_boundnum)    = 0 ! not a minimum
+!!$           
+!!$    ! check position of minimum
+!!$    placemin: DO i = 1, n_boundnum ! all boundaries
+!!$       IF (phi_min .EQ. phi_boundary(i)) THEN ! minimum exactly at boundary
+!!$          n_minimum(i) = 1 ! minimum at existing boundary
+!!$          EXIT placemin
+!!$       ELSE IF (phi_min .LT. phi_boundary(i)) THEN ! before this period boundary
+!!$          phi_boundary(i+1:n_boundnum+1) = phi_boundary(i:n_boundnum) ! move
+!!$          n_boundary(i+1:n_boundnum+1)   = n_boundary(i:n_boundnum) 
+!!$          n_period(i+1:n_boundnum+1)     = n_period(i:n_boundnum) 
+!!$          n_minimum(i+1:n_boundnum+1)    = n_minimum(i:n_boundnum) 
+!!$          n_boundnum = n_boundnum + 1
+!!$          phi_boundary(i) = phi_min ! insert
+!!$          n_boundary(i)   = 0 ! not a propagator boundary
+!!$          n_period(i)     = 0 ! not a perid boundary
+!!$          n_minimum(i)    = 1 ! new minimum 
+!!$          EXIT placemin
+!!$       END IF
+!!$    END DO placemin
+!!$
+!!$    ! now fill the phi_arr
+!!$    phi_arr = 0.0_dp ! initialize
+!!$    imin_ripple = 0
+!!$    ripple_period_bound = -1
+!!$    ripple_prop_bound = 0
+!!$    n = 0
+!!$    n_prop = 0
+!!$    n_per  = 0
+!!$    IF (n_period(n) .EQ. 1) THEN
+!!$       n_per = n_per + 1
+!!$       ripple_period_bound(n_per) = n ! period boundary exactly at ripple begin
+!!$    END IF
+!!$
+!!$    !PRINT *, 'phi_boundary',phi_boundary(0:n_boundnum)
+!!$    !PRINT *, 'n_boundary',n_boundary(0:n_boundnum)
+!!$    !PRINT *, 'n_minimum',n_minimum(0:n_boundnum)
+!!$
+!!$    phi_arr(n) = phi_l ! starting point
+!!$    fillphi: DO i = 1,n_boundnum ! go through all necessary boundaries
+!!$       phi_s = phi_boundary(i-1)
+!!$       phi_e = phi_boundary(i)
+!!$       dphi  = phi_e - phi_s ! distance
+!!$
+!!$       IF (n_boundary(i) .EQ. 0 .AND. n_period(i) .EQ. 0 .AND. n_minimum(i) .EQ. 1) THEN 
+!!$          nphi  = MAX(1,CEILING(dphi/hphi)) ! minimum 1 point (is only a minimum)
+!!$       ELSEIF (i .GT. 0 .AND. & 
+!!$            n_boundary(i-1) .EQ. 0 .AND. n_period(i-1) .EQ. 0 .AND. n_minimum(i-1) .EQ. 1) THEN 
+!!$          nphi  = MAX(1,CEILING(dphi/hphi)) ! minimum 1 point (is only a minimum)
+!!$       ELSE
+!!$          nphi  = MAX(n_addlim,CEILING(dphi/hphi)) ! minimum n_addlim points
+!!$       END IF
+!!$       h     = dphi / DBLE(nphi) ! step width
+!!$       !PRINT *, 'i,phi_s,phi_e,nphi,h',i,phi_s,phi_e,nphi,h
+!!$       onepart: DO j = 1, nphi-1
+!!$          n = n + 1
+!!$          phi_arr(n) = phi_s + j * h
+!!$       END DO onepart
+!!$       n = n + 1 
+!!$       phi_arr(n) = phi_e ! last point should be exact
+!!$       IF (n_minimum(i) .EQ. 1) imin_ripple = n ! remember minimum
+!!$       IF (n_boundary(i) .NE. 0) THEN ! remember propagator boundaries
+!!$          n_prop = n_prop + 1
+!!$          ripple_prop_bound(n_prop) = n
+!!$       END IF
+!!$       IF (n_period(i) .EQ. 1) THEN ! remember period boundaries
+!!$          n_per = n_per + 1
+!!$          ripple_period_bound(n_per) = n
+!!$       END IF       
+!!$    END DO fillphi
+!!$    n_ripple_tot = n ! export to the module
+!!$
+!!$    ! handle additional splits because of length of propagators
+!!$    splitripple: IF (.NOT. mag_split_ripple) THEN
+!!$       ! do it upto imin_ripple
+!!$       ic_l = 0
+!!$       IF (delta_phi_l .GT. 0.0_dp) THEN
+!!$          k = 1
+!!$          phi_n = phi_l + delta_phi_l
+!!$          i = 0
+!!$          addleft: DO
+!!$             i = i + 1
+!!$             IF (i .EQ. imin_ripple) EXIT addleft ! half of the work is done 
+!!$             IF (phi_arr(i) .GE. phi_n) THEN ! phi_n boundary passed
+!!$                ic_l = ic_l + 1
+!!$                IF (ic_l .GT. mag_max_prop) THEN
+!!$                   PRINT *, 'Error in mag_interface: Too much addons'
+!!$                   STOP
+!!$                END IF   
+!!$                n_addbound_l(ic_l) = i
+!!$                k = k + 1
+!!$                phi_n = phi_l + delta_phi_l * DBLE(2**k-1)
+!!$             END IF
+!!$          END DO addleft
+!!$       END IF
+!!$       ! do it from the end back to imin_ripple
+!!$       ic_r = 0
+!!$       IF (delta_phi_r .GT. 0.0_dp) THEN
+!!$          k = 1
+!!$          phi_n = phi_r - delta_phi_r
+!!$          i = n
+!!$          addright: DO 
+!!$             i = i - 1
+!!$             IF (i .EQ. imin_ripple) EXIT addright ! half of the work is done 
+!!$             IF (phi_arr(i) .LE. phi_n) THEN ! phi_n boundary passed
+!!$                ic_r = ic_r + 1
+!!$                IF (ic_r .GT. mag_max_prop) THEN
+!!$                   PRINT *, 'Error in mag_interface: Too much addons'
+!!$                   STOP
+!!$                END IF   
+!!$                n_addbound_r(ic_r) = i
+!!$                k = k + 1
+!!$                phi_n = phi_r - delta_phi_r * DBLE(2**k-1)
+!!$             END IF
+!!$          END DO addright
+!!$       END IF
+!!$       ! add up
+!!$       ic = ic_l + ic_r
+!!$       IF (ic .GT. mag_max_prop) THEN
+!!$          PRINT *, 'Error in mag_interface: Too much addons'
+!!$          STOP
+!!$       END IF
+!!$       n_addbound(1:ic_l)    = n_addbound_l(1:ic_l)
+!!$       n_addbound(ic_l+1:ic) = n_addbound_r(ic_r:1:-1)
+!!$       !PRINT *, '-----'
+!!$       !PRINT *, 'add  ',n_addbound(1:ic)
+!!$       !PRINT *, 'adp  ',phi_arr(n_addbound(1:ic))
+!!$       !PRINT *, '-----'
+!!$
+!!$       ! place additional fieldripple boundaries
+!!$       j_start = 0
+!!$       alladdon: DO i = 1, ic
+!!$          j = j_start
+!!$          allbounds: DO
+!!$             j = j + 1
+!!$             IF (j .GT. n_prop) EXIT alladdon
+!!$             IF ( n_addbound(i) .GE. ripple_prop_bound(j-1) .AND. &
+!!$                  n_addbound(i) .LE. ripple_prop_bound(j) ) THEN ! something between
+!!$                IF ( n_addbound(i) - ripple_prop_bound(j-1) .GT. n_addlim .AND. &
+!!$                     ripple_prop_bound(j) - n_addbound(i)   .GT. n_addlim) THEN
+!!$                   ! insert a new one
+!!$                   IF (n_prop + 1 .GT. mag_max_prop) THEN
+!!$                      PRINT *, 'Error in mag_interface: Too much propagators'
+!!$                      STOP
+!!$                   END IF
+!!$                   ! move things
+!!$                   ripple_prop_bound(j+1:n_prop+1) = ripple_prop_bound(j:n_prop)
+!!$                   n_prop = n_prop + 1
+!!$                   ! if add boundary is close to min then place it at min
+!!$                   IF ( ABS(n_addbound(i) - imin_ripple) .LE. n_addlim ) THEN
+!!$                      ripple_prop_bound(j) = imin_ripple
+!!$                   ELSE
+!!$                      ripple_prop_bound(j) = n_addbound(i)
+!!$                   END IF
+!!$                END IF
+!!$                j_start = j - 1
+!!$                EXIT allbounds
+!!$             END IF
+!!$          END DO allbounds
+!!$       END DO alladdon
+!!$    END IF splitripple
+!!$
+!!$    ! final deallocation
+!!$    DEALLOCATE(phi_boundary)
+!!$    DEALLOCATE(n_boundary)
+!!$    DEALLOCATE(n_period)
+!!$    DEALLOCATE(n_minimum)
+!!$    DEALLOCATE(n_addbound_l)
+!!$    DEALLOCATE(n_addbound_r)
+!!$    DEALLOCATE(n_addbound)
+!!$    RETURN
+!!$  END SUBROUTINE dist_ripple_phi
+
+
+!!$  SUBROUTINE comp_propagator_mag(i_prop)
+!!$    ! input/output
+!!$    USE rk4_kin_mod, ONLY : y
+!!$
+!!$    INTEGER, INTENT(in)        :: i_prop
+!!$
+!!$    INTEGER                    :: n_s,n_e,n
+!!$    INTEGER                    :: k,lb,ub
+!!$
+!!$    REAL(kind=dp), ALLOCATABLE :: ybeg(:),yend(:)
+!!$    REAL(kind=dp)              :: phi,hphi,r0
+!!$
+!!$    ALLOCATE(ybeg(1:surface%ndim))
+!!$    ALLOCATE(yend(1:surface%ndim))
+!!$
+!!$    n_s = ripple_prop_bound(i_prop-1)
+!!$    n_e = ripple_prop_bound(i_prop)
+!!$    ybeg = y
+!!$    PRINT *, '-----------'
+!!$    PRINT *, 'ybeg    ',y
+!!$    PRINT *, 'n_s,n_e ',n_s,n_e
+!!$
+!!$    n = n_s
+!!$    throughprop: DO
+!!$       !CALL magdata_for_particles(phi_arr(n),y,bhat(n),geodcu(n),h_phi(n),dlogbdphi(n))
+!!$       CALL magdata_for_particles(phi_arr(n),bhat(n),geodcu(n),h_phi(n),dlogbdphi(n))
+!!$       surface%r_max = MAX(surface%r_max,y(1))
+!!$       surface%r_min = MIN(surface%r_min,y(1))
+!!$       surface%z_max = MAX(surface%z_max,y(2))
+!!$       surface%z_min = MIN(surface%z_min,y(2))
+!!$
+!!$       x1(n) = y(1)
+!!$       x2(n) = phi_arr(n)
+!!$       x3(n) = y(2)
+!!$
+!!$       IF (n .EQ. n_e) EXIT throughprop
+!!$       n = n + 1
+!!$       phi  = phi_arr(n-1)
+!!$       hphi = phi_arr(n) - phi_arr(n-1)
+!!$       !PRINT *, 'hphi: ',hphi
+!!$       CALL rk4_kin(phi,hphi)
+!!$    END DO throughprop
+!!$    yend = y   ! PROBLEM
+!!$
+!!$    CALL construct_magnetics(fieldperiod,fieldpropagator)
+!!$    ALLOCATE(fieldpropagator%coords)
+!!$    ALLOCATE(fieldpropagator%mdata)
+!!$    CALL set_magnetics_data(fieldpropagator,     &
+!!$         x1(n_s:n_e),x2(n_s:n_e),x3(n_s:n_e), &
+!!$         bhat(n_s:n_e),geodcu(n_s:n_e),        &
+!!$         h_phi(n_s:n_e),dlogbdphi(n_s:n_e),    &
+!!$         ybeg,yend)
+!!$    fieldpropagator%b_l   = bhat(n_s)
+!!$    fieldpropagator%b_r   = bhat(n_e)
+!!$    fieldpropagator%phi_l = phi_arr(n_s)
+!!$    fieldpropagator%phi_r = phi_arr(n_e)
+!!$    IF (imin_ripple .GT. n_s .AND. imin_ripple .LT. n_e) THEN
+!!$       fieldpropagator%b_min = bhat(imin_ripple)
+!!$       fieldpropagator%i_min = imin_ripple - n_s
+!!$    ELSE
+!!$       fieldpropagator%b_min = MIN(bhat(n_s),bhat(n_e))
+!!$       IF (bhat(n_s) .LT. bhat(n_e)) THEN
+!!$          fieldpropagator%i_min = 0
+!!$       ELSE
+!!$          fieldpropagator%i_min = n_e - n_s
+!!$       END IF
+!!$    END IF
+!!$    r0 = fieldpropagator%parent%parent%parent%parent%r0
+!!$    !!fieldpropagator%width   = (phi_arr(n_e)-phi_arr(n_s)) * r0
+!!$    !!fieldpropagator%dist_l = (phi_arr(n_s)-phi_arr(0)) * r0
+!!$    !!fieldpropagator%dist_r = (phi_arr(n_ripple_tot)-phi_arr(n_e)) * r0
+!!$
+!!$    ! save memory
+!!$    IF (mag_save_memory .EQ. 1) THEN
+!!$       CALL set_magnetics_data(fieldpropagator,'sav')
+!!$    END IF
+!!$
+!!$    DEALLOCATE(ybeg)
+!!$    DEALLOCATE(yend)
+!!$    
+!!$    RETURN
+!!$  END SUBROUTINE comp_propagator_mag
+
 
 END MODULE mag_interface_mod
 

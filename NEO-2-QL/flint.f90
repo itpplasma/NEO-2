@@ -2902,6 +2902,7 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
   USE binarysplit_mod
   USE plagrange_mod
 
+
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
@@ -2912,12 +2913,11 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
   ! "mag_interface_mod" (mag_interface.f90).
   INTERFACE
      SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
-          bcovar_s_hat,dlogbds,dbcovar_s_hat_dphi,bnoverb0)
+          bcovar_s_hat,dlogbds,dbcovar_s_hat_dphi)
        DOUBLE PRECISION, INTENT(in)            :: phi
        DOUBLE PRECISION, INTENT(out)           :: geodcu,bhat,h_phi,dlogbdphi
        DOUBLE PRECISION, OPTIONAL, INTENT(out) :: bcovar_s_hat, &
             dlogbds, dbcovar_s_hat_dphi
-       DOUBLE COMPLEX, OPTIONAL, INTENT(out)   :: bnoverb0
      END SUBROUTINE magdata_for_particles
   END INTERFACE
   !! End Modifications by Andreas F. Martitsch (11.06.2014)
@@ -3053,15 +3053,9 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
   IF (ALLOCATED(fieldpropagator%mdata%dlogbds)) &
        DEALLOCATE(fieldpropagator%mdata%dlogbds)
   ALLOCATE(fieldpropagator%mdata%dlogbds(0:ubn))
-    IF (ALLOCATED(fieldpropagator%mdata%bnoverb0)) &
-       DEALLOCATE(fieldpropagator%mdata%bnoverb0)
-  ALLOCATE(fieldpropagator%mdata%bnoverb0(0:ubn))
-    IF (ALLOCATED(fieldpropagator%mdata%dbnoverb0_dphi)) &
-       DEALLOCATE(fieldpropagator%mdata%dbnoverb0_dphi)
-  ALLOCATE(fieldpropagator%mdata%dbnoverb0_dphi(0:ubn))
   !! End Modifications by Andreas F. Martitsch (11.06.2014)
 
-  
+
   allphi: DO i = 0,ubn
 !!$     !CALL magdata_for_particles(phi,y,bhat1,geodcu1,h_phi1,dlogbdphi1)
 !!$     phi = phiarr(i)
@@ -3157,9 +3151,7 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
           fieldpropagator%mdata%dlogbdphi(i),  &
           fieldpropagator%mdata%dbcovar_s_hat_dphi(i), &
           fieldpropagator%mdata%bcovar_s_hat(i),       &
-          fieldpropagator%mdata%dlogbds(i),            &
-          fieldpropagator%mdata%bnoverb0(i),           &
-          fieldpropagator%mdata%dbnoverb0_dphi(i)      &          
+          fieldpropagator%mdata%dlogbds(i)             &
           )
      !! End Modifications by Andreas F. Martitsch (11.06.2014)
 

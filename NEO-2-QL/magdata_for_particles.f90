@@ -1,7 +1,7 @@
 !
 !SUBROUTINE magdata_for_particles(phi,y,bhat,geodcu,h_phi,dlogbdphi)
 SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
-     bcovar_s_hat,dlogbds,dbcovar_s_hat_dphi,bnoverb0)
+     bcovar_s_hat,dlogbds,dbcovar_s_hat_dphi)
   !
   !   y(1)                     - $R$
   !   y(2)                     - $Z$
@@ -30,12 +30,6 @@ SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
   ! and "magdata_for_particles". 
   USE mag_sub, ONLY: mag
   !! End Modifications by Andreas F. Martitsch (09.03.2014)
-  !! Modifications by Andreas F. Martitsch (11.06.2014)
-  ! Addtional output needed for modeling the plasma rotation - 
-  ! Routine for the direct computation of the perturbation
-  ! field from the Boozer file
-  USE neo_magfie_perturbation, ONLY : neo_magfie_pert
-  !! End Modifications by Andreas F. Martitsch (11.06.2014)
   !
   IMPLICIT NONE
   !
@@ -51,10 +45,6 @@ SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
   ! (also not specified through any used module)
   !DOUBLE PRECISION, DIMENSION(ndim0)         :: dery
   !! End Modifications by Andreas F. Martitsch (11.03.2014)
-  !! Modifications by Andreas F. Martitsch (11.06.2014)
-  ! Addtional output needed for modeling the plasma rotation -
-  DOUBLE COMPLEX, OPTIONAL, INTENT(out) :: bnoverb0
-  !! End Modifications by Andreas F. Martitsch (11.06.2014)
   !
   ! Local definitions:
   ! Winny: ipmin moved to module
@@ -62,7 +52,6 @@ SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
   DOUBLE PRECISION                 :: bmod,sqrtg
   DOUBLE PRECISION, DIMENSION(3)   :: x,bder,hcovar,hctrvr,bcovar_s_hat_der
   DOUBLE PRECISION, DIMENSION(3,3) :: hcoder,hctder
-  DOUBLE COMPLEX                   :: bn_hat_pert
   !
   IF (mag_coordinates .EQ. 0) THEN
      ! cylindrical
@@ -135,25 +124,6 @@ SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
   pardeb0=(hctrvr(1)*bder(1)+hctrvr(2)*bder(2)+hctrvr(3)*bder(3))/hctrvr(2)
   !
   bhat=bmod/bmod0
-  !
-  !! Modifications by Andreas F. Martitsch (11.06.2014)
-  ! Addtional output needed for modeling the plasma rotation -
-  IF (PRESENT(bnoverb0) .AND. (mag_coordinates .NE. 0)) THEN
-     CALL neo_magfie_pert(x,bn_hat_pert)
-     bnoverb0=bn_hat_pert/bhat
-     !PRINT *,'bnoverb0: ',bnoverb0
-     !PRINT *,x(2),x(3)
-  ELSE ! for testing artificial perturbation field can be created within ripple_solver
-     IF (mag_coordinates .EQ. 0) THEN
-        ! At the moment the quasilinear approach for modeling the plasma rotation
-        ! is only implemented for B-field spectra in Boozer coordinates.
-        ! Make sure that your Boozer file matches one of the specified
-        ! formats (see neo_read_pert() within neo_magfie_perturbation.f90).
-        STOP "Exit magdata_for_particles: Extraction of the perturbation&
-             & field only implemented for Boozer files (at the moment)"
-     END IF
-  END IF
-  !! End Modifications by Andreas F. Martitsch (11.06.2014)  
   !
   ! geodcu = $k_G |\nabla\psi|$
   geodcu=(hcovar(1)*bder(2)*y(5)        &

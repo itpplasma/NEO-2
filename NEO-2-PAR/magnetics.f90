@@ -257,6 +257,12 @@ MODULE magnetics_mod
      REAL(kind=dp), ALLOCATABLE                     :: geodcu(:)
      REAL(kind=dp), ALLOCATABLE                     :: h_phi(:)
      REAL(kind=dp), ALLOCATABLE                     :: dlogbdphi(:)
+     !! Modifications by Andreas F. Martitsch (13.03.2014)
+     ! Optional output (necessary for modeling the magnetic rotation)
+     REAL(kind=dp), ALLOCATABLE                     :: dbcovar_s_hat_dphi(:)
+     REAL(kind=dp), ALLOCATABLE                     :: bcovar_s_hat(:)
+     REAL(kind=dp), ALLOCATABLE                     :: dlogbds(:)
+     !! End Modifications by Andreas F. Martitsch (13.03.2014)
      REAL(kind=dp), ALLOCATABLE                     :: ybeg(:)
      REAL(kind=dp), ALLOCATABLE                     :: yend(:)
   END TYPE magneticdata_struct
@@ -267,12 +273,17 @@ MODULE magnetics_mod
   ! ---------------------------------------------------------------------------
   
   ! ---------------------------------------------------------------------------
+  !! Modifications by Andreas F. Martitsch (11.06.2014)
+  ! Optional output (necessary for modeling the magnetic rotation)
   ! allocation
   PUBLIC  set_magnetics_data
-  PRIVATE  set_mag_data, set_mag_data_prop, set_mag_data_prop_de
+  PRIVATE  set_mag_data, set_mag_data_prop, set_mag_data_prop_de, &
+       set_mag_data_prop2
   INTERFACE set_magnetics_data
-     MODULE PROCEDURE set_mag_data, set_mag_data_prop, set_mag_data_prop_de
+     MODULE PROCEDURE set_mag_data, set_mag_data_prop, set_mag_data_prop_de, &
+          set_mag_data_prop2
   END INTERFACE
+  !! End Modifications by Andreas F. Martitsch (11.06.2014)
   ! ---------------------------------------------------------------------------
   
   ! ---------------------------------------------------------------------------
@@ -494,6 +505,39 @@ CONTAINS
     CALL set_magnetics_data(fieldpropagator%mdata%yend,yend)
   END SUBROUTINE set_mag_data_prop
   ! ---------------------------------------------------------------------------
+  !! Modifications by Andreas F. Martitsch (13.03.2014)
+  ! Optional output (necessary for modeling the magnetic rotation)
+  SUBROUTINE set_mag_data_prop2(fieldpropagator, &
+       x1,x2,x3,                                 &
+       bhat,geodcu,h_phi,dlogbdphi,              &
+       ybeg,yend,                                &
+       dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds   &
+       )
+    TYPE(fieldpropagator_struct), POINTER :: fieldpropagator
+    REAL(kind=dp), INTENT(in) :: x1(0:)
+    REAL(kind=dp), INTENT(in) :: x2(0:)
+    REAL(kind=dp), INTENT(in) :: x3(0:)
+    REAL(kind=dp), INTENT(in) :: bhat(0:)
+    REAL(kind=dp), INTENT(in) :: geodcu(0:)
+    REAL(kind=dp), INTENT(in) :: h_phi(0:)
+    REAL(kind=dp), INTENT(in) :: dlogbdphi(0:)
+    REAL(kind=dp), INTENT(in) :: ybeg(0:)
+    REAL(kind=dp), INTENT(in) :: yend(0:)
+    REAL(kind=dp), INTENT(in) :: dbcovar_s_hat_dphi(0:)
+    REAL(kind=dp), INTENT(in) :: bcovar_s_hat(0:)
+    REAL(kind=dp), INTENT(in) :: dlogbds(0:)
+    CALL set_magnetics_data(fieldpropagator,x1,x2,x3,bhat,&
+         geodcu,h_phi,dlogbdphi,ybeg,yend)
+    !
+    ! These are the additional entries:
+    CALL set_magnetics_data(fieldpropagator%mdata%dbcovar_s_hat_dphi,&
+         dbcovar_s_hat_dphi)
+    CALL set_magnetics_data(fieldpropagator%mdata%bcovar_s_hat,bcovar_s_hat)
+    CALL set_magnetics_data(fieldpropagator%mdata%dlogbds,dlogbds)
+    !
+  END SUBROUTINE set_mag_data_prop2
+  !! End Modifications by Andreas F. Martitsch (13.03.2014)
+  ! ---------------------------------------------------------------------------
   SUBROUTINE set_mag_data_prop_de(fieldpropagator,opt_in)
     TYPE(fieldpropagator_struct), POINTER :: fieldpropagator
     CHARACTER(len=3), INTENT(in), OPTIONAL :: opt_in
@@ -511,6 +555,13 @@ CONTAINS
        CALL set_magnetics_data(fieldpropagator%mdata%geodcu)
        CALL set_magnetics_data(fieldpropagator%mdata%h_phi)
        CALL set_magnetics_data(fieldpropagator%mdata%dlogbdphi)
+       !! Modifications by Andreas F. Martitsch (11.06.2014)
+       ! Optional output (necessary for modeling the magnetic rotation) ->
+       ! Deallocate the additional entries (done, only if arrays allocated)
+       CALL set_magnetics_data(fieldpropagator%mdata%dbcovar_s_hat_dphi)
+       CALL set_magnetics_data(fieldpropagator%mdata%bcovar_s_hat)
+       CALL set_magnetics_data(fieldpropagator%mdata%dlogbds)
+       !! End Modifications by Andreas F. Martitsch (11.06.2014)
        CALL set_magnetics_data(fieldpropagator%mdata%ybeg)
        CALL set_magnetics_data(fieldpropagator%mdata%yend)
     ELSE IF (opt .EQ. 'sav') THEN
@@ -520,6 +571,13 @@ CONTAINS
        CALL set_magnetics_data(fieldpropagator%mdata%geodcu)
        CALL set_magnetics_data(fieldpropagator%mdata%h_phi)
        CALL set_magnetics_data(fieldpropagator%mdata%dlogbdphi)
+       !! Modifications by Andreas F. Martitsch (11.06.2014)
+       ! Optional output (necessary for modeling the magnetic rotation) ->
+       ! Deallocate the additional entries (done, only if arrays allocated)
+       CALL set_magnetics_data(fieldpropagator%mdata%dbcovar_s_hat_dphi)
+       CALL set_magnetics_data(fieldpropagator%mdata%bcovar_s_hat)
+       CALL set_magnetics_data(fieldpropagator%mdata%dlogbds)       
+       !! End Modifications by Andreas F. Martitsch (11.06.2014)
     ELSE
        PRINT *, 'ERROR: deallocate option in set_mag_data not known: ',opt
     END IF
@@ -731,14 +789,14 @@ CONTAINS
     TYPE(fieldline_struct),     POINTER               :: fieldline
     TYPE(fieldperiod_struct),   POINTER               :: fieldperiod
     INTEGER                                           :: my_tag = 0
-    integer,                    OPTIONAL              :: opt_direction
-    integer                                           :: direction
+    INTEGER,                    OPTIONAL              :: opt_direction
+    INTEGER                                           :: direction
     ! optional variables
-    if ( present(opt_direction) ) then
+    IF ( PRESENT(opt_direction) ) THEN
        direction = opt_direction
-    else
+    ELSE
        direction = 1
-    end if
+    END IF
     ! memory for fieldperiod
     ALLOCATE(fieldperiod)
     ! tag
@@ -746,7 +804,7 @@ CONTAINS
     fieldperiod%tag = fieldperiod_tag
     my_tag          = fieldperiod_tag
     ! connect
-    if (direction .eq. 1) then  ! normal behaviour forward
+    IF (direction .EQ. 1) THEN  ! normal behaviour forward
        IF (ASSOCIATED(fieldline%ch_act)) THEN
           fieldline%ch_act%next => fieldperiod
           fieldperiod%prev      => fieldline%ch_act
@@ -756,7 +814,7 @@ CONTAINS
        fieldline%ch_act   => fieldperiod
        fieldline%ch_las   => fieldperiod
        fieldperiod%parent => fieldline
-    elseif (direction .eq. -1) then  ! backward
+    ELSEIF (direction .EQ. -1) THEN  ! backward
        IF (ASSOCIATED(fieldline%ch_act)) THEN
           fieldline%ch_act%prev => fieldperiod
           fieldperiod%next      => fieldline%ch_act
@@ -764,11 +822,11 @@ CONTAINS
           fieldline%ch_act      => fieldperiod
           fieldperiod%parent    => fieldline
        ELSE
-          print *, 'Error: when going backward in construction of fieldperiods'
-          print *, '       the first fieldperiod must exist'
-          stop
+          PRINT *, 'Error: when going backward in construction of fieldperiods'
+          PRINT *, '       the first fieldperiod must exist'
+          STOP
        END IF
-    end if
+    END IF
     ! additional quantities
     !
     ! end additional quantities
@@ -867,6 +925,16 @@ CONTAINS
     IF (ALLOCATED(fieldperiod%mdata%geodcu)) DEALLOCATE(fieldperiod%mdata%geodcu)
     IF (ALLOCATED(fieldperiod%mdata%h_phi)) DEALLOCATE(fieldperiod%mdata%h_phi)
     IF (ALLOCATED(fieldperiod%mdata%dlogbdphi)) DEALLOCATE(fieldperiod%mdata%dlogbdphi)
+    !! Modifications by Andreas F. Martitsch (11.06.2014)
+    ! Optional output (necessary for modeling the magnetic rotation) ->
+    ! Deallocate the additional entries (done, only if arrays allocated)
+    IF (ALLOCATED(fieldperiod%mdata%dbcovar_s_hat_dphi)) &
+         DEALLOCATE(fieldperiod%mdata%dbcovar_s_hat_dphi)
+    IF (ALLOCATED(fieldperiod%mdata%bcovar_s_hat)) &
+         DEALLOCATE(fieldperiod%mdata%bcovar_s_hat)
+    IF (ALLOCATED(fieldperiod%mdata%dlogbds)) &
+         DEALLOCATE(fieldperiod%mdata%dlogbds)
+    !! End Modifications by Andreas F. Martitsch (11.06.2014)
     IF (ALLOCATED(fieldperiod%mdata%ybeg)) DEALLOCATE(fieldperiod%mdata%ybeg)
     IF (ALLOCATED(fieldperiod%mdata%yend)) DEALLOCATE(fieldperiod%mdata%yend)
     DEALLOCATE(fieldperiod%coords)
@@ -2415,15 +2483,37 @@ CONTAINS
           END IF
           ie = UBOUND(fieldpropagator%coords%x1,1)
           DO i = is,ie
-             !WRITE(unit,'(1000(1x,e15.8))')        &
-             WRITE(unit,*)                         &
-                  fieldpropagator%coords%x1(i),    &
-                  fieldpropagator%coords%x2(i),    &
-                  fieldpropagator%coords%x3(i),    &
-                  fieldpropagator%mdata%bhat(i),   &
-                  fieldpropagator%mdata%geodcu(i), &
-                  fieldpropagator%mdata%h_phi(i),  &
-                  fieldpropagator%mdata%dlogbdphi(i)
+             !! Modifications by Andreas F. Martitsch (11.06.2014)
+             ! Optional output (necessary for modeling the magnetic rotation)
+             !
+             IF ( ALLOCATED(fieldpropagator%mdata%dbcovar_s_hat_dphi) .AND. &
+                  ALLOCATED(fieldpropagator%mdata%bcovar_s_hat)       .AND. &
+                  ALLOCATED(fieldpropagator%mdata%dlogbds) ) THEN
+                !WRITE(unit,'(1000(1x,e15.8))')               &
+                WRITE(unit,*)                                 &
+                     fieldpropagator%coords%x1(i),            &
+                     fieldpropagator%coords%x2(i),            &
+                     fieldpropagator%coords%x3(i),            &
+                     fieldpropagator%mdata%bhat(i),           &
+                     fieldpropagator%mdata%geodcu(i),         &
+                     fieldpropagator%mdata%h_phi(i),          &
+                     fieldpropagator%mdata%dlogbdphi(i),      &
+                     fieldpropagator%mdata%dbcovar_s_hat_dphi,&
+                     fieldpropagator%mdata%bcovar_s_hat,      &
+                     fieldpropagator%mdata%dlogbds
+             ELSE ! This is the old version
+                !WRITE(unit,'(1000(1x,e15.8))')               &
+                WRITE(unit,*)                                 &
+                     fieldpropagator%coords%x1(i),            &
+                     fieldpropagator%coords%x2(i),            &
+                     fieldpropagator%coords%x3(i),            &
+                     fieldpropagator%mdata%bhat(i),           &
+                     fieldpropagator%mdata%geodcu(i),         &
+                     fieldpropagator%mdata%h_phi(i),          &
+                     fieldpropagator%mdata%dlogbdphi(i)
+             END IF
+             !
+             !! End Modifications by Andreas F. Martitsch (11.06.2014)
           END DO
        ELSE
           IF (mag_talk) PRINT *, &

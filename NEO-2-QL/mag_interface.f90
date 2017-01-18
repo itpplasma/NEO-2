@@ -60,7 +60,6 @@ MODULE plagrange_mod
     
   IMPLICIT NONE
   INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0d0)
-  INTEGER, PARAMETER, PRIVATE :: dcp=KIND(COMPLEX(1.0_dp,1.0_dp))
 
   PUBLIC plagrange_coeff
   PRIVATE plag_coeff
@@ -81,19 +80,17 @@ MODULE plagrange_mod
   END INTERFACE
 
   PUBLIC plagrange_value
-  PRIVATE plag_value_1,plag_value_2,plag_value_all,plag_value_all2,&
-       plag_value_all3
+  PRIVATE plag_value_1,plag_value_2,plag_value_all,plag_value_all2
   INTERFACE plagrange_value
      MODULE PROCEDURE plag_value_1,plag_value_2,plag_value_all,&
-          plag_value_all2,plag_value_all3
+          plag_value_all2
   END INTERFACE
 
   PUBLIC plagrange_interp
-  PRIVATE plag_interp_2,plag_interp_3,plag_interp_all,plag_interp_all2,&
-       plag_interp_all3
+  PRIVATE plag_interp_2,plag_interp_3,plag_interp_all,plag_interp_all2
   INTERFACE plagrange_interp
      MODULE PROCEDURE plag_interp_2,plag_interp_3,plag_interp_all,&
-          plag_interp_all2,plag_interp_all3
+          plag_interp_all2
   END INTERFACE
 
 CONTAINS
@@ -231,7 +228,6 @@ CONTAINS
     REAL(kind=dp) :: bhat,bhatder
     REAL(kind=dp) :: x1,x3,geodcu,h_phi,dlogbdphi
     REAL(kind=dp) :: dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds
-    COMPLEX(kind=dcp) :: bnoverb0,dbnoverb0_dphi
     
     nstep = fieldperiod%parent%parent%nstep
     phi_start = fieldperiod%coords%x2(0)
@@ -244,16 +240,14 @@ CONTAINS
        ! Optional output (necessary for modeling the magnetic rotation)
        IF ( ALLOCATED(fieldperiod%mdata%dbcovar_s_hat_dphi) .AND. &
             ALLOCATED(fieldperiod%mdata%bcovar_s_hat)       .AND. &
-            ALLOCATED(fieldperiod%mdata%dlogbds)            .AND. &
-            ALLOCATED(fieldperiod%mdata%bnoverb0) ) THEN
+            ALLOCATED(fieldperiod%mdata%dlogbds) ) THEN
           WRITE(u1,*) &
                fieldperiod%coords%x1(i),fieldperiod%coords%x2(i), &
                fieldperiod%coords%x3(i), &
                fieldperiod%mdata%bhat(i),fieldperiod%mdata%geodcu(i), &
                fieldperiod%mdata%h_phi(i),fieldperiod%mdata%dlogbdphi(i), &
                fieldperiod%mdata%dbcovar_s_hat_dphi(i), &
-               fieldperiod%mdata%bcovar_s_hat(i),fieldperiod%mdata%dlogbds(i), &
-               fieldperiod%mdata%bnoverb0
+               fieldperiod%mdata%bcovar_s_hat(i),fieldperiod%mdata%dlogbds(i)
        ELSE ! This is the old version:
           WRITE(u1,*) &
                fieldperiod%coords%x1(i),fieldperiod%coords%x2(i),&
@@ -282,12 +276,11 @@ CONTAINS
        ! Optional output (necessary for modeling the magnetic rotation)
        IF ( ALLOCATED(fieldperiod%mdata%dbcovar_s_hat_dphi) .AND. &
             ALLOCATED(fieldperiod%mdata%bcovar_s_hat)       .AND. &
-            ALLOCATED(fieldperiod%mdata%dlogbds)            .AND. &
-            ALLOCATED(fieldperiod%mdata%bnoverb0) ) THEN
+            ALLOCATED(fieldperiod%mdata%dlogbds) ) THEN
           CALL plagrange_interp(fieldperiod,phi,nlagrange,x1,x3,bhat,geodcu,h_phi,&
-               dlogbdphi,dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds,bnoverb0,dbnoverb0_dphi)
+               dlogbdphi,dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds)
           WRITE(u1,*) x1,phi,x3,bhat,geodcu,h_phi,dlogbdphi,&
-               dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds,bnoverb0
+               dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds
        ELSE ! This is the old version:
           CALL plagrange_interp(fieldperiod,phi,nlagrange,x1,x3,bhat,geodcu,h_phi,dlogbdphi)
           WRITE(u1,*) x1,phi,x3,bhat,geodcu,h_phi,dlogbdphi
@@ -933,66 +926,6 @@ CONTAINS
   END SUBROUTINE plag_value_all2
   !! End Modifications by Andreas F. Martitsch (13.03.2014)
   !---------------------------------------------------------------------
-  !! Modifications by Andreas F. Martitsch (11.06.2014)
-  ! Optional output (necessary for modeling the magnetic rotation)
-  SUBROUTINE plag_value_all3(fieldperiod,stencel,phi_arr, &
-       x1_arr,x3_arr,bhat_arr,geodcu_arr,h_phi_arr,dlogbdphi_arr,&
-       dbcovar_s_hat_dphi_arr,bcovar_s_hat_arr,dlogbds_arr,bnoverb0_arr)
-    TYPE(fieldperiod_struct), POINTER                       :: fieldperiod
-    INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(inout)       :: stencel
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: phi_arr
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: x1_arr,x3_arr,bhat_arr
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: geodcu_arr,h_phi_arr
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: dlogbdphi_arr
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: dbcovar_s_hat_dphi_arr
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: bcovar_s_hat_arr
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: dlogbds_arr
-    COMPLEX(kind=dcp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: bnoverb0_arr
-    
-    COMPLEX(kind=dcp), DIMENSION(:), ALLOCATABLE :: hlp
-
-    INTEGER :: nstep
-
-    nstep = fieldperiod%parent%parent%nstep
-
-    ! Compute phi_arr, x1_arr, x3_arr, bhat_arr, geodcu_arr, h_phi_arr, dlogbdphi_arr,
-    ! dbcovar_s_hat_dphi_arr, bcovar_s_hat_arr, dlogbds_arr
-    CALL plag_value_all2(fieldperiod,stencel,phi_arr, &
-         x1_arr,x3_arr,bhat_arr,geodcu_arr,h_phi_arr,dlogbdphi_arr, &
-         dbcovar_s_hat_dphi_arr,bcovar_s_hat_arr,dlogbds_arr)
-
-    ! bnoverb0_arr
-    IF (ALLOCATED(bnoverb0_arr)) DEALLOCATE(bnoverb0_arr)
-    ALLOCATE(bnoverb0_arr(LBOUND(stencel,1):UBOUND(stencel,1)))
-    IF (MINVAL(stencel) .LT. 0) THEN
-       ALLOCATE(hlp(-nstep:nstep))
-       IF (ASSOCIATED(fieldperiod%prev)) THEN
-          hlp(-nstep:0) = fieldperiod%prev%mdata%bnoverb0(0:nstep)
-          hlp(0:nstep)  = fieldperiod%mdata%bnoverb0(0:nstep)
-       ELSE
-          hlp(-nstep:0) = fieldperiod%parent%ch_las%mdata%bnoverb0(0:nstep)
-          hlp(0:nstep)  = fieldperiod%mdata%bnoverb0(0:nstep)          
-       END IF
-    ELSEIF (MAXVAL(stencel) .GT. nstep) THEN
-       ALLOCATE(hlp(0:2*nstep))
-       IF (ASSOCIATED(fieldperiod%next)) THEN
-          hlp(0:nstep)  = fieldperiod%mdata%bnoverb0(0:nstep)
-          hlp(nstep:2*nstep) = fieldperiod%next%mdata%bnoverb0(0:nstep)
-       ELSE
-          hlp(0:nstep)  = fieldperiod%mdata%bnoverb0(0:nstep)          
-          hlp(nstep:2*nstep) = fieldperiod%parent%ch_fir%mdata%bnoverb0(0:nstep) 
-       END IF
-    ELSE
-       ALLOCATE(hlp(0:nstep))
-       hlp(0:nstep) = fieldperiod%mdata%bnoverb0(0:nstep)
-    END IF
-    bnoverb0_arr = hlp(stencel)
-    DEALLOCATE(hlp)
-    ! bnoverb0_arr
-
-  END SUBROUTINE plag_value_all3
-  !! End Modifications by Andreas F. Martitsch (11.06.2014)
-  !---------------------------------------------------------------------
   SUBROUTINE plag_interp_2(fieldperiod,phi,nlagrange,bhat,bhatder) 
     TYPE(fieldperiod_struct), POINTER                 :: fieldperiod, fp
     REAL(kind=dp), INTENT(in)                         :: phi
@@ -1267,94 +1200,6 @@ CONTAINS
   END SUBROUTINE plag_interp_all2
   !! End Modifications by Andreas F. Martitsch (13.03.2014)
   !---------------------------------------------------------------------
-  !! Modifications by Andreas F. Martitsch (11.06.2014)
-  ! Optional output (necessary for modeling the magnetic rotation)
-  SUBROUTINE plag_interp_all3(fieldperiod,phi,nlagrange,x1,x3,bhat,geodcu,&
-       h_phi,dlogbdphi,dbcovar_s_hat_dphi,bcovar_s_hat,dlogbds,bnoverb0,&
-       dbnoverb0_dphi)
-    TYPE(fieldperiod_struct), POINTER                 :: fieldperiod, fp
-    REAL(kind=dp), INTENT(in)                         :: phi
-    INTEGER, INTENT(in)                               :: nlagrange
-    REAL(kind=dp), INTENT(out)                        :: x1,x3,bhat,geodcu,h_phi,dlogbdphi
-    REAL(kind=dp), INTENT(out)                        :: dbcovar_s_hat_dphi,bcovar_s_hat
-    REAL(kind=dp), INTENT(out)                        :: dlogbds
-    COMPLEX(kind=dcp), INTENT(out)                    :: bnoverb0,dbnoverb0_dphi
-
-    INTEGER, PARAMETER :: nder = 1
-    INTEGER, DIMENSION(:), ALLOCATABLE :: stencel
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: phi_arr
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x1_arr,x3_arr,bhat_arr
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: geodcu_arr,h_phi_arr,dlogbdphi_arr
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dbcovar_s_hat_dphi_arr,bcovar_s_hat_arr
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dlogbds_arr
-    COMPLEX(kind=dcp), DIMENSION(:), ALLOCATABLE :: bnoverb0_arr
-    REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: coeff
-
-    INTEGER :: nstep
-    REAL(kind=dp) ::  phi_l
-    REAL(kind=dp) ::  phi_span,phi_last,phi_first
-    fp => fieldperiod
-    nstep = UBOUND(fp%coords%x2,1)
-    phi_l = phi
-    ! fix phi_l locally to be within range
-    phi_first = fp%parent%ch_fir%coords%x2(0)
-    phi_last  = fp%parent%ch_las%coords%x2(nstep)
-    phi_span  = phi_last - phi_first
-    DO WHILE (phi_l .GT. phi_last)
-       phi_l = phi_l - phi_span
-    END DO
-    DO WHILE (phi_l .LT. phi_first)
-       phi_l = phi_l + phi_span
-    END DO
-    ! fix period if necessary
-    phi_last  = fp%coords%x2(nstep)
-    DO WHILE (phi_l .GT. phi_last)
-       fp => fp%next
-       phi_last  = fp%coords%x2(nstep)
-    END DO
-    phi_first = fp%coords%x2(0)
-    DO WHILE (phi_l .LT. phi_first)
-       fp => fp%prev
-       phi_first  = fp%coords%x2(0)
-    END DO
-
-
-    CALL plagrange_stencel(fp,phi_l,nlagrange,stencel)
-    CALL plagrange_value(fp,stencel,phi_arr, &
-         x1_arr,x3_arr,bhat_arr,geodcu_arr,h_phi_arr,dlogbdphi_arr,&
-         dbcovar_s_hat_dphi_arr,bcovar_s_hat_arr,dlogbds_arr,bnoverb0_arr)
-    ALLOCATE( coeff(0:nder,nlagrange+1) )
-    CALL plagrange_coeff(nlagrange+1,nder,phi_l,phi_arr(:),coeff(:,:))
-    x1                 = SUM(coeff(0,:)*x1_arr)
-    x3                 = SUM(coeff(0,:)*x3_arr)
-    bhat               = SUM(coeff(0,:)*bhat_arr)
-    geodcu             = SUM(coeff(0,:)*geodcu_arr)
-    h_phi              = SUM(coeff(0,:)*h_phi_arr)
-    dlogbdphi          = SUM(coeff(0,:)*dlogbdphi_arr)
-    dbcovar_s_hat_dphi = SUM(coeff(0,:)*dbcovar_s_hat_dphi_arr)
-    bcovar_s_hat       = SUM(coeff(0,:)*bcovar_s_hat_arr)
-    dlogbds            = SUM(coeff(0,:)*dlogbds_arr)
-    bnoverb0           = SUM(coeff(0,:)*bnoverb0_arr)
-    !PRINT *,'bnoverb0: ',ABS(bnoverb0), bnoverb0
-    dbnoverb0_dphi     = SUM(coeff(1,:)*bnoverb0_arr)
-    !PRINT *,'dbnoverb0_dphi: ',dbnoverb0_dphi
-    
-    IF (ALLOCATED(stencel)) DEALLOCATE(stencel)
-    IF (ALLOCATED(phi_arr)) DEALLOCATE(phi_arr)
-    IF (ALLOCATED(x1_arr)) DEALLOCATE(x1_arr)
-    IF (ALLOCATED(x3_arr)) DEALLOCATE(x3_arr)
-    IF (ALLOCATED(bhat_arr)) DEALLOCATE(bhat_arr)
-    IF (ALLOCATED(geodcu_arr)) DEALLOCATE(geodcu_arr)
-    IF (ALLOCATED(h_phi_arr)) DEALLOCATE(h_phi_arr)
-    IF (ALLOCATED(dlogbdphi_arr)) DEALLOCATE(dlogbdphi_arr)
-    IF (ALLOCATED(dbcovar_s_hat_dphi_arr)) DEALLOCATE(dbcovar_s_hat_dphi_arr)
-    IF (ALLOCATED(bcovar_s_hat_arr)) DEALLOCATE(bcovar_s_hat_arr)
-    IF (ALLOCATED(dlogbds_arr)) DEALLOCATE(dlogbds_arr)
-    IF (ALLOCATED(bnoverb0_arr)) DEALLOCATE(bnoverb0_arr)
-    IF (ALLOCATED(coeff)) DEALLOCATE(coeff)
-  END SUBROUTINE plag_interp_all3
-  !! End Modifications by Andreas F. Martitsch (11.06.2014)
-  !---------------------------------------------------------------------
   !---------------------------------------------------------------------
 END MODULE plagrange_mod
 
@@ -1501,14 +1346,12 @@ MODULE mag_interface_mod
   ! double precision
   INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0d0)
 
-  ! double complex
-  INTEGER, PARAMETER, PRIVATE :: dcp=KIND(COMPLEX(1.0_dp,1.0_dp))
-
   ! public 
   INTEGER, PUBLIC       :: mag_local_sigma = 0
   LOGICAL, PUBLIC       :: mag_symmetric = .FALSE.
   LOGICAL, PUBLIC       :: mag_symmetric_shorten = .FALSE.
   LOGICAL, PUBLIC       :: split_inflection_points = .TRUE.
+  LOGICAL, PUBLIC       :: split_at_period_boundary = .FALSE.
   REAL(kind=dp), PUBLIC :: hphi_lim = 1.0d-10
   REAL(kind=dp), PUBLIC :: sigma_shield_factor = 5.0d0  
   INTEGER, PUBLIC       :: mag_magfield = 1
@@ -1570,8 +1413,6 @@ MODULE mag_interface_mod
   REAL(kind=dp), ALLOCATABLE, PRIVATE :: dbcovar_s_hat_dphi(:)
   REAL(kind=dp), ALLOCATABLE, PRIVATE :: bcovar_s_hat(:)
   REAL(kind=dp), ALLOCATABLE, PRIVATE :: dlogbds(:)
-  COMPLEX(kind=dcp), ALLOCATABLE, PRIVATE :: bnoverb0(:)
-  COMPLEX(kind=dcp), ALLOCATABLE, PRIVATE :: dbnoverb0_dphi(:)
   !! End Modifications by Andreas F. Martitsch (13.03.2014)
   REAL(kind=dp), ALLOCATABLE, PRIVATE :: hlp_arr(:)
 
@@ -1739,11 +1580,12 @@ CONTAINS
        magfie_spline = 1
        ALLOCATE(magfie_sarray(1))
        magfie_sarray = boozer_s
-       !! Modifications by Andreas F. Martitsch (18.09.2015)
-       ! Used within neo_get_b00 (neo_sub.f90/Boozer coordinates)
-       ! to obtain the normalization of the magnetic field (Bref=B_00(s))
+       !**********************************************************
+       ! For neo_fourier() consitency check
+       !**********************************************************
        s_es = boozer_s
-       !! End Modifications by Andreas F. Martitsch (18.09.2015)
+       write (*,*) "Flux surface: ", s_es
+       !**********************************************************
        CALL stevvo(device%r0,r0i,device%nfp,cbfi,bz0i,bf0)
        device%z0  = 0.0_dp
        boozer_bmod0 = bf0
@@ -1791,12 +1633,11 @@ CONTAINS
     ! "mag_interface_mod" (mag_interface.f90).
     INTERFACE
        SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
-            bcovar_s_hat,dlogbds,dbcovar_s_hat_dphi,bnoverb0)
+            bcovar_s_hat,dlogbds,dbcovar_s_hat_dphi)
          DOUBLE PRECISION, INTENT(in)            :: phi
          DOUBLE PRECISION, INTENT(out)           :: geodcu,bhat,h_phi,dlogbdphi
          DOUBLE PRECISION, OPTIONAL, INTENT(out) :: bcovar_s_hat, &
               dlogbds, dbcovar_s_hat_dphi
-         DOUBLE COMPLEX, OPTIONAL, INTENT(out) :: bnoverb0 
        END SUBROUTINE magdata_for_particles
     END INTERFACE
     !! End Modifications by Andreas F. Martitsch (11.06.2014)
@@ -1823,7 +1664,6 @@ CONTAINS
     REAL(kind=dp) :: dbcovar_s_hat_dphi_start, dbcovar_s_hat_dphi_end, dbcovar_s_hat_dphi_mid
     REAL(kind=dp) :: bcovar_s_hat_start, bcovar_s_hat_end, bcovar_s_hat_mid
     REAL(kind=dp) :: dlogbds_start, dlogbds_end, dlogbds_mid
-    COMPLEX(kind=dcp) :: bnoverb0_start, bnoverb0_end, bnoverb0_mid
     !! End Modifications by Andreas F. Martitsch (11.06.2014)
     REAL(kind=dp) :: phi_start,phi_end,phi_span,phi_mult
     REAL(kind=dp) :: one_over_h_phi_int,b_over_h_phi_int,b2_over_h_phi_int
@@ -1976,7 +1816,6 @@ CONTAINS
        ALLOCATE(fieldperiod%mdata%dbcovar_s_hat_dphi(0:nstep))
        ALLOCATE(fieldperiod%mdata%bcovar_s_hat(0:nstep))
        ALLOCATE(fieldperiod%mdata%dlogbds(0:nstep))
-       ALLOCATE(fieldperiod%mdata%bnoverb0(0:nstep))
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
        ALLOCATE(fieldperiod%mdata%ybeg(1:ndim))
        ALLOCATE(fieldperiod%mdata%yend(1:ndim))
@@ -2002,8 +1841,7 @@ CONTAINS
             fieldperiod%mdata%dlogbdphi(0),         &
             fieldperiod%mdata%bcovar_s_hat(0),      &
             fieldperiod%mdata%dlogbds(0),           &
-            fieldperiod%mdata%dbcovar_s_hat_dphi(0),&
-            fieldperiod%mdata%bnoverb0(0)           &
+            fieldperiod%mdata%dbcovar_s_hat_dphi(0) &
             )
        !stop "Exit make_mag_fieldline_newperiod "
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
@@ -2032,7 +1870,6 @@ CONTAINS
           bcovar_s_hat_start       = fieldperiod%mdata%bcovar_s_hat(0)
           dlogbds_start            = fieldperiod%mdata%dlogbds(0)
           dbcovar_s_hat_dphi_start = fieldperiod%mdata%dbcovar_s_hat_dphi(0)
-          bnoverb0_start           = fieldperiod%mdata%bnoverb0(0)
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
        END IF
 
@@ -2058,8 +1895,7 @@ CONTAINS
                fieldperiod%mdata%dlogbdphi(i),         &
                fieldperiod%mdata%bcovar_s_hat(i),      &
                fieldperiod%mdata%dlogbds(i),           &
-               fieldperiod%mdata%dbcovar_s_hat_dphi(i),& 
-               fieldperiod%mdata%bnoverb0(i)           &
+               fieldperiod%mdata%dbcovar_s_hat_dphi(i) &
                )
           !stop "Exit make_mag_fieldline_newperiod "
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
@@ -2165,7 +2001,6 @@ CONTAINS
     bcovar_s_hat_end       = fieldperiod%mdata%bcovar_s_hat(nstep)
     dlogbds_end            = fieldperiod%mdata%dlogbds(nstep)
     dbcovar_s_hat_dphi_end = fieldperiod%mdata%dbcovar_s_hat_dphi(nstep)
-    bnoverb0_end           = fieldperiod%mdata%bnoverb0(nstep)
     !! End Modifications by Andreas F. Martitsch (11.06.2014)
     ! output
     IF (mag_coordinates .EQ. 0) THEN
@@ -2214,7 +2049,6 @@ CONTAINS
           ALLOCATE(fieldperiod%mdata%dbcovar_s_hat_dphi(0:nstep))
           ALLOCATE(fieldperiod%mdata%bcovar_s_hat(0:nstep))
           ALLOCATE(fieldperiod%mdata%dlogbds(0:nstep))
-          ALLOCATE(fieldperiod%mdata%bnoverb0(0:nstep))
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
           ALLOCATE(fieldperiod%mdata%ybeg(1:ndim))
           ALLOCATE(fieldperiod%mdata%yend(1:ndim))
@@ -2241,8 +2075,7 @@ CONTAINS
                fieldperiod%mdata%dlogbdphi(nstep),         &
                fieldperiod%mdata%bcovar_s_hat(nstep),      &
                fieldperiod%mdata%dlogbds(nstep),           &
-               fieldperiod%mdata%dbcovar_s_hat_dphi(nstep),&
-               fieldperiod%mdata%bnoverb0(nstep)           &              
+               fieldperiod%mdata%dbcovar_s_hat_dphi(nstep) &
                )
           !stop "Exit make_mag_fieldline_newperiod "
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
@@ -2271,7 +2104,6 @@ CONTAINS
              bcovar_s_hat_start       = fieldperiod%mdata%bcovar_s_hat(0)
              dlogbds_start            = fieldperiod%mdata%dlogbds(0)
              dbcovar_s_hat_dphi_start = fieldperiod%mdata%dbcovar_s_hat_dphi(0)
-             bnoverb0_start           = fieldperiod%mdata%bnoverb0(0)
              !! End Modifications by Andreas F. Martitsch (11.06.2014)
           END IF
 
@@ -2297,8 +2129,7 @@ CONTAINS
                   fieldperiod%mdata%dlogbdphi(i),         &
                   fieldperiod%mdata%bcovar_s_hat(i),      &
                   fieldperiod%mdata%dlogbds(i),           &
-                  fieldperiod%mdata%dbcovar_s_hat_dphi(i),& 
-                  fieldperiod%mdata%bnoverb0(i)           &
+                  fieldperiod%mdata%dbcovar_s_hat_dphi(i) &
                   )
              !stop "Exit make_mag_fieldline_newperiod "
              !! End Modifications by Andreas F. Martitsch (11.06.2014)
@@ -2403,7 +2234,6 @@ CONTAINS
        bcovar_s_hat_start       = fieldperiod%mdata%bcovar_s_hat(0)
        dlogbds_start            = fieldperiod%mdata%dlogbds(0)
        dbcovar_s_hat_dphi_start = fieldperiod%mdata%dbcovar_s_hat_dphi(0)
-       bnoverb0_start            = fieldperiod%mdata%bnoverb0(0)
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
        fieldperiod => fieldline%ch_las ! last period
        x1_end        = fieldperiod%coords%x1(nstep)
@@ -2418,7 +2248,6 @@ CONTAINS
        bcovar_s_hat_end       = fieldperiod%mdata%bcovar_s_hat(nstep)
        dlogbds_end            = fieldperiod%mdata%dlogbds(nstep)
        dbcovar_s_hat_dphi_end = fieldperiod%mdata%dbcovar_s_hat_dphi(nstep)
-       bnoverb0_end            = fieldperiod%mdata%bnoverb0(nstep)
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
        
        ! new end points for both sides
@@ -2436,8 +2265,6 @@ CONTAINS
             ( dlogbds_start + dlogbds_end ) / 2.0d0
        dbcovar_s_hat_dphi_mid = &
             ( dbcovar_s_hat_dphi_start  + dbcovar_s_hat_dphi_end ) / 2.0d0
-       bnoverb0_mid            = &
-            ( bnoverb0_start + bnoverb0_end ) / 2.0d0
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
 
        ! fix last period
@@ -2470,9 +2297,6 @@ CONTAINS
           fieldperiod%mdata%dbcovar_s_hat_dphi(i) = &
                fieldperiod%mdata%dbcovar_s_hat_dphi(i) + &
                (dbcovar_s_hat_dphi_mid - dbcovar_s_hat_dphi_end) * phi_mult
-          fieldperiod%mdata%bnoverb0(i) = &
-               fieldperiod%mdata%bnoverb0(i) + &
-               (bnoverb0_mid - bnoverb0_end) * phi_mult
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
        END DO
        ! fix first period
@@ -2505,9 +2329,6 @@ CONTAINS
           fieldperiod%mdata%dbcovar_s_hat_dphi(i) = &
                fieldperiod%mdata%dbcovar_s_hat_dphi(i) + &
                (dbcovar_s_hat_dphi_mid - dbcovar_s_hat_dphi_start) * phi_mult
-          fieldperiod%mdata%bnoverb0(i) = &
-               fieldperiod%mdata%bnoverb0(i) + &
-               (bnoverb0_mid - bnoverb0_start) * phi_mult
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
        END DO
    
@@ -2567,10 +2388,7 @@ CONTAINS
                      (dlogbds_start - dlogbds_end) * phi_mult
                 fieldperiod%mdata%dbcovar_s_hat_dphi(i) = &
                      fieldperiod%mdata%dbcovar_s_hat_dphi(i) + &
-                     (dbcovar_s_hat_dphi_start - dbcovar_s_hat_dphi_end) * phi_mult
-                fieldperiod%mdata%bnoverb0(i) = &
-                     fieldperiod%mdata%bnoverb0(i) + &
-                     (bnoverb0_start - bnoverb0_end) * phi_mult                
+                     (dbcovar_s_hat_dphi_start - dbcovar_s_hat_dphi_end) * phi_mult               
                 !! End Modifications by Andreas F. Martitsch (11.06.2014)
              END DO
              IF (.NOT.(ASSOCIATED(fieldperiod%next))) EXIT
@@ -2608,9 +2426,6 @@ CONTAINS
              fieldperiod%mdata%dbcovar_s_hat_dphi(i) = &
                   fieldperiod%mdata%dbcovar_s_hat_dphi(i) + &
                   (dbcovar_s_hat_dphi_start - dbcovar_s_hat_dphi_end) * phi_mult
-             fieldperiod%mdata%bnoverb0(i) = &
-                  fieldperiod%mdata%bnoverb0(i) + &
-                  (bnoverb0_start - bnoverb0_end) * phi_mult
              !! End Modifications by Andreas F. Martitsch (11.06.2014)
           END DO
        END IF
@@ -2769,6 +2584,7 @@ CONTAINS
 
     !fieldperiod => fieldperiod%parent%ch_fir
     !call plagrange_test(fieldperiod)
+    !STOP
 
     RETURN
 
@@ -2882,6 +2698,8 @@ CONTAINS
     REAL(kind=dp) :: nstep_phi
     REAL(kind=dp) :: phi_1,phi_2,phi_extrem,bhat_extrem
     REAL(kind=dp) :: dphi = 1.0d-16
+    !REAL(kind=dp) :: bhatm,bhatp,der1im,d2er1im,der1ip,d2er1ip
+    !print *, 'I am in find_extrema'
 
     fieldperiod => fieldline%ch_fir
     nstep = fieldperiod%parent%parent%nstep
@@ -2918,6 +2736,7 @@ CONTAINS
           !print *, (bhat_p-bhat_m) / (2.0d0 * delta_phi),(bhat_p+bhat_m-2.0d0*bhat) / delta_phi**2
           !pause
           ! find extrema
+          ! print *, 'split_inflection_points ',split_inflection_points
           IF (der0*der1 .LE. 0.0_dp .AND. der1 .NE. 0.0_dp) THEN
              !PRINT *, 'fieldperiod%tag ',fieldperiod%tag
              !PRINT *, 'der0,der1 ',der0,der1
@@ -3028,7 +2847,10 @@ CONTAINS
              ELSE
                 minmax_ext(count) = 0 ! Minimum
              END IF
+             
           ELSEIF (d2er0*d2er1 .LE. 0.0_dp .AND. d2er1 .NE. 0.0_dp .AND. split_inflection_points) THEN
+          ! ELSEIF (d2er0*d2er1 .LE. 0.0_dp .AND. d2er1 .NE. 0.0_dp) THEN
+             ! print *, 'inflection points'
              ! find inflection points
              d2er1i = d2er1
              hh = h
@@ -3038,7 +2860,8 @@ CONTAINS
                 phi = phi + hh
                 CALL plagrange_interp(fieldperiod,phi,nlagrange,bhat,der1i,d2er1i)
              END DO iteration_inf
-             !PRINT *, 'inflection found ',bhat,der1i,d2er1i
+
+             ! PRINT *, 'inflection found ',bhat,der1i,d2er1i,mag_dbhat_min
              IF (ABS(der1i) .LT.  mag_dbhat_min) THEN
                 reg_ext = .FALSE.
                 IF (count .EQ. 0) THEN
@@ -3428,13 +3251,7 @@ CONTAINS
                      UBOUND(fieldperiod%mdata%dlogbds,1) &
                     ) &
                   )
-          fieldpropagator%mdata%dlogbds=fieldperiod%mdata%dlogbds
-          ALLOCATE( fieldpropagator%mdata%bnoverb0( &
-                     LBOUND(fieldperiod%mdata%bnoverb0,1):&
-                     UBOUND(fieldperiod%mdata%bnoverb0,1) &
-                    ) &
-                  )
-          fieldpropagator%mdata%bnoverb0=fieldperiod%mdata%bnoverb0        
+          fieldpropagator%mdata%dlogbds=fieldperiod%mdata%dlogbds       
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
           ALLOCATE(fieldpropagator%mdata%ybeg(LBOUND(fieldperiod%mdata%ybeg,1):UBOUND(fieldperiod%mdata%ybeg,1)))
           fieldpropagator%mdata%ybeg = fieldperiod%mdata%ybeg
@@ -3969,9 +3786,7 @@ CONTAINS
        ! Allocate the additional entries
        ALLOCATE(fieldpropagator%mdata%dbcovar_s_hat_dphi(0:phi_ub))
        ALLOCATE(fieldpropagator%mdata%bcovar_s_hat(0:phi_ub))
-       ALLOCATE(fieldpropagator%mdata%dlogbds(0:phi_ub))
-       ALLOCATE(fieldpropagator%mdata%bnoverb0(0:phi_ub))
-       ALLOCATE(fieldpropagator%mdata%dbnoverb0_dphi(0:phi_ub))       
+       ALLOCATE(fieldpropagator%mdata%dlogbds(0:phi_ub))      
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
 
        DO i = 0,phi_ub
@@ -3988,9 +3803,7 @@ CONTAINS
                fieldpropagator%mdata%dlogbdphi(i),  &
                fieldpropagator%mdata%dbcovar_s_hat_dphi(i), &
                fieldpropagator%mdata%bcovar_s_hat(i),       &
-               fieldpropagator%mdata%dlogbds(i),            &
-               fieldpropagator%mdata%bnoverb0(i),           &
-               fieldpropagator%mdata%dbnoverb0_dphi(i)      &               
+               fieldpropagator%mdata%dlogbds(i)             &
                )
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
        END DO
@@ -4441,9 +4254,9 @@ CONTAINS
   ! place eta in ripples 
   ! SUBROUTINE ripple_eta_mag(fieldline,collpar,eta_s_lim)
   SUBROUTINE ripple_eta_mag(collpar,eta_s_lim)
-    
+
     USE gfactor_mod, ONLY : ienter,garr,gfactor
-    
+
     !TYPE(fieldline_struct),   POINTER :: fieldline
     REAL(kind=dp), INTENT(in) :: collpar
     REAL(kind=dp), INTENT(in) :: eta_s_lim
@@ -4467,7 +4280,7 @@ CONTAINS
     REAL(kind=dp), ALLOCATABLE :: eta_cl_left(:),eta_cl_right(:)
     REAL(kind=dp), ALLOCATABLE :: eta_shield_left(:)
     REAL(kind=dp), ALLOCATABLE :: eta_type_left(:)
-    
+
     REAL(kind=dp) :: ripple_phi_left,ripple_phi_right
     REAL(kind=dp) :: period_phi_right
 
@@ -4490,7 +4303,7 @@ CONTAINS
     fieldperiod     => fieldline%ch_fir
     fieldpropagator => fieldperiod%ch_fir
     fieldripple     => fieldpropagator%ch_act
-    
+
     r0 = fieldline%parent%parent%r0
     eta_b_abs_max = 1.0d0 / fieldline%b_abs_max
 
@@ -4750,7 +4563,7 @@ CONTAINS
                    !print *, 'exit eta_b_abs_max'
                    EXIT walk2pre
                 END IF
-                
+
                 IF (ilr .EQ. 1) THEN ! left
                    IF (ASSOCIATED(ripplewalker%prev)) THEN
                       ripplewalker => ripplewalker%prev
@@ -4899,7 +4712,7 @@ CONTAINS
                          b_max_locb = rippleback%b_max_r
                          phi_b = SQRT(2.0_dp * b_max_locb / ABS(rippleback%d2bp_max_r))
                       END IF
- 
+
                       ! local b_min
                       b_min_locb = rippleback%b_min
                       ! local lambda
@@ -5016,7 +4829,7 @@ CONTAINS
                       END IF
                    END IF
                    !PAUSE
-                   
+
                    IF (add_extra_contr .EQ. 1 .AND. mag_local_sigma .EQ. 1) THEN
                       etas = collpar * r0 * phi_b
                       etas = etas / 3.0d0 ! Sergei ?
@@ -5033,7 +4846,7 @@ CONTAINS
                       CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
                       CALL set_new(fieldripple%eta_type,3.0d0)                       
                    END IF
-                      
+
                 END IF
                 ! next ripple when walking away or exit
                 IF (mag_cycle_ripples .EQ. 0) THEN
@@ -5084,265 +4897,269 @@ CONTAINS
           END DO leftright2
 
           ! Here now inflection points are handled
-          leftright2inf: DO ilr = 1,2 ! first left then right
-             iwfirst = 1
-             ripplewalker => fieldripple
-             IF (ilr .EQ. 1) THEN ! go left
-                b_shade = ripplewalker%b_max_l
-             ELSE ! go right
-                b_shade = ripplewalker%b_max_r
-             END IF
-             ! now walk away
-             walk2inf: DO
-                walker_tag = ripplewalker%tag
-
-                IF ( ALLOCATED(ripplewalker%b_inflection) ) THEN
-                   inf_start = LBOUND(ripplewalker%b_inflection,1)
-                   inf_end   = UBOUND(ripplewalker%b_inflection,1)
-                ELSE ! nothing to do
-                   inf_start = 0
-                   inf_end   = -1
+          if (split_inflection_points) then
+             leftright2inf: DO ilr = 1,2 ! first left then right
+                iwfirst = 1
+                ripplewalker => fieldripple
+                IF (ilr .EQ. 1) THEN ! go left
+                   b_shade = ripplewalker%b_max_l
+                ELSE ! go right
+                   b_shade = ripplewalker%b_max_r
                 END IF
+                ! now walk away
+                walk2inf: DO
+                   walker_tag = ripplewalker%tag
 
-                infloop: DO inf_ind = inf_start,inf_end
-                   phi_inf_loc = ripplewalker%phi_inflection(inf_ind)
-                   ! find out if inflection point is left or right of minimum
-                   IF (phi_inf_loc .LT. ripplewalker%pa_fir%phi_l + ripplewalker%width_l) THEN
-                      ! I am left of min
-                      IF (ilr .EQ. 2) CYCLE infloop 
-                   ELSE
-                      ! I am right of min
-                      IF (ilr .EQ. 1) CYCLE infloop
+                   IF ( ALLOCATED(ripplewalker%b_inflection) ) THEN
+                      inf_start = LBOUND(ripplewalker%b_inflection,1)
+                      inf_end   = UBOUND(ripplewalker%b_inflection,1)
+                   ELSE ! nothing to do
+                      inf_start = 0
+                      inf_end   = -1
                    END IF
-                   b_inf_loc = ripplewalker%b_inflection(inf_ind)
-                   eta_loc = 1.0d0 / b_inf_loc
-                   dbdp_inf_loc = ripplewalker%dbdp_inflection(inf_ind)
-
-                   IF (ilr .EQ. 1) THEN ! left
-                      b_max_loc = ripplewalker%b_max_l
-                   ELSE ! right
-                      b_max_loc = ripplewalker%b_max_r
-                   END IF
-                   !eta_loc = 1.0_dp /  b_max_loc
-                   ! 
-                   IF (iwfirst .EQ. 1 .OR. b_inf_loc .GT. b_shade) THEN ! contributes
-                      !print *, 'inf tags ',fieldripple%tag,ripplewalker%tag,dbdp_inf_loc
-                      IF (iwfirst .EQ. 1) THEN
-                         add_extra_contr = 1
+                   ! print *, 'inf_start,inf_end ',inf_start,inf_end
+                   infloop: DO inf_ind = inf_start,inf_end
+                      ! print *, 'In inf loop'
+                      phi_inf_loc = ripplewalker%phi_inflection(inf_ind)
+                      ! find out if inflection point is left or right of minimum
+                      IF (phi_inf_loc .LT. ripplewalker%pa_fir%phi_l + ripplewalker%width_l) THEN
+                         ! I am left of min
+                         IF (ilr .EQ. 2) CYCLE infloop 
                       ELSE
-                         add_extra_contr = 0
+                         ! I am right of min
+                         IF (ilr .EQ. 1) CYCLE infloop
                       END IF
-                      b_shade = b_max_loc
-                      rippleback => ripplewalker
-                      etas2 = 0.0_dp
-                      walkback2inf: DO
-                         back_tag = rippleback%tag
-                         !print *, ripple_tag,walker_tag,back_tag
- 
-                         ! local b_min
-                         b_min_locb = rippleback%b_min
-                         ! local lambda
-                         lam_loc = 1.0d0 - b_min_locb * eta_loc
-                         IF (lam_loc .GT. 0.0d0) THEN
-                            lam_loc = SQRT(lam_loc)
+                      b_inf_loc = ripplewalker%b_inflection(inf_ind)
+                      eta_loc = 1.0d0 / b_inf_loc
+                      dbdp_inf_loc = ripplewalker%dbdp_inflection(inf_ind)
+
+                      IF (ilr .EQ. 1) THEN ! left
+                         b_max_loc = ripplewalker%b_max_l
+                      ELSE ! right
+                         b_max_loc = ripplewalker%b_max_r
+                      END IF
+                      !eta_loc = 1.0_dp /  b_max_loc
+                      ! 
+                      IF (iwfirst .EQ. 1 .OR. b_inf_loc .GT. b_shade) THEN ! contributes
+                         !print *, 'inf tags ',fieldripple%tag,ripplewalker%tag,dbdp_inf_loc
+                         IF (iwfirst .EQ. 1) THEN
+                            add_extra_contr = 1
                          ELSE
-                            lam_loc = 0.0d0
+                            add_extra_contr = 0
                          END IF
-                         ! always two contributions
-                         IF (rippleback%tag .EQ. ripplewalker%tag) THEN
-                            IF (ilr .EQ. 1) THEN
-                               b_max_locb_left  = b_inf_loc
-                               b_max_locb_right = rippleback%b_max_r
-                               width_left  = rippleback%width_l - (phi_inf_loc - rippleback%pa_fir%phi_l)
-                               width_right = rippleback%width_r
+                         b_shade = b_max_loc
+                         rippleback => ripplewalker
+                         etas2 = 0.0_dp
+                         walkback2inf: DO
+                            back_tag = rippleback%tag
+                            !print *, ripple_tag,walker_tag,back_tag
+
+                            ! local b_min
+                            b_min_locb = rippleback%b_min
+                            ! local lambda
+                            lam_loc = 1.0d0 - b_min_locb * eta_loc
+                            IF (lam_loc .GT. 0.0d0) THEN
+                               lam_loc = SQRT(lam_loc)
+                            ELSE
+                               lam_loc = 0.0d0
+                            END IF
+                            ! always two contributions
+                            IF (rippleback%tag .EQ. ripplewalker%tag) THEN
+                               IF (ilr .EQ. 1) THEN
+                                  b_max_locb_left  = b_inf_loc
+                                  b_max_locb_right = rippleback%b_max_r
+                                  width_left  = rippleback%width_l - (phi_inf_loc - rippleback%pa_fir%phi_l)
+                                  width_right = rippleback%width_r
+                               ELSE
+                                  b_max_locb_left  = rippleback%b_max_l
+                                  b_max_locb_right = b_inf_loc
+                                  width_left  = rippleback%width_l
+                                  width_right = rippleback%width_r - (rippleback%pa_las%phi_r-phi_inf_loc)
+                               END IF
                             ELSE
                                b_max_locb_left  = rippleback%b_max_l
-                               b_max_locb_right = b_inf_loc
+                               b_max_locb_right = rippleback%b_max_r
                                width_left  = rippleback%width_l
-                               width_right = rippleback%width_r - (rippleback%pa_las%phi_r-phi_inf_loc)
+                               width_right = rippleback%width_r
                             END IF
-                         ELSE
-                            b_max_locb_left  = rippleback%b_max_l
-                            b_max_locb_right = rippleback%b_max_r
-                            width_left  = rippleback%width_l
-                            width_right = rippleback%width_r
-                         END IF
-                         ! the left side of the ripple
-                         col_loc = 2.0_dp * width_left * collpar
-                         gamma1 = eta_loc * (b_max_locb_left - b_min_locb) / (1.0_dp - eta_loc * b_min_locb)
-                         gamma1 = MIN(1.0d0,gamma1)
-                         gamma2 = (b_max_locb_left - b_min_locb) / b_max_locb_left
-                         etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb_left * gfactor(gamma1,gamma2)
-                         etas2 = etas2 + etas2_contrib                      
-                         IF (etas2_contrib .LT. 0.0_dp) THEN
-                            PRINT *, 'negative etas2 contribution left',ripple_tag,walker_tag
-                            PRINT *, 'width ',width_left
-                            PRINT *, 'col_loc ',col_loc,eta_loc,lam_loc
-                            PRINT *, 'gamma ',gamma1,gamma2,gfactor(gamma1,gamma2)
-                            STOP
-                         END IF
-                         ! the right half of the ripple
-                         col_loc = 2.0_dp * width_right * collpar
-                         gamma1 = eta_loc * (b_max_locb_right - b_min_locb) / (1.0_dp - eta_loc * b_min_locb)
-                         gamma1 = MIN(1.0d0,gamma1)
-                         gamma2 = (b_max_locb_right - b_min_locb) / b_max_locb_right
-                         etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb_right * gfactor(gamma1,gamma2)
-                         etas2 = etas2 + etas2_contrib                      
-                         IF (etas2_contrib .LT. 0.0_dp) THEN
-                            PRINT *, 'negative etas2 contribution right',ripple_tag,walker_tag
-                            STOP
-                         END IF
+                            ! the left side of the ripple
+                            col_loc = 2.0_dp * width_left * collpar
+                            gamma1 = eta_loc * (b_max_locb_left - b_min_locb) / (1.0_dp - eta_loc * b_min_locb)
+                            gamma1 = MIN(1.0d0,gamma1)
+                            gamma2 = (b_max_locb_left - b_min_locb) / b_max_locb_left
+                            etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb_left * gfactor(gamma1,gamma2)
+                            etas2 = etas2 + etas2_contrib                      
+                            IF (etas2_contrib .LT. 0.0_dp) THEN
+                               PRINT *, 'negative etas2 contribution left',ripple_tag,walker_tag
+                               PRINT *, 'width ',width_left
+                               PRINT *, 'col_loc ',col_loc,eta_loc,lam_loc
+                               PRINT *, 'gamma ',gamma1,gamma2,gfactor(gamma1,gamma2)
+                               STOP
+                            END IF
+                            ! the right half of the ripple
+                            col_loc = 2.0_dp * width_right * collpar
+                            gamma1 = eta_loc * (b_max_locb_right - b_min_locb) / (1.0_dp - eta_loc * b_min_locb)
+                            gamma1 = MIN(1.0d0,gamma1)
+                            gamma2 = (b_max_locb_right - b_min_locb) / b_max_locb_right
+                            etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb_right * gfactor(gamma1,gamma2)
+                            etas2 = etas2 + etas2_contrib                      
+                            IF (etas2_contrib .LT. 0.0_dp) THEN
+                               PRINT *, 'negative etas2 contribution right',ripple_tag,walker_tag
+                               STOP
+                            END IF
 
-                         IF (back_tag .EQ. ripple_tag) THEN
-                            EXIT walkback2inf
-                         ELSE
-                            IF (ilr .EQ. 1) THEN ! left now back to the right
-                               IF (ASSOCIATED(rippleback%next)) THEN
-                                  rippleback => rippleback%next
-                                  ! Winny avoid double counting of last and first ripple which are identical
-                                  IF (.NOT. ASSOCIATED(rippleback%next) .AND. &
-                                       rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act%tag .EQ. ripple_tag) &
-                                       rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act
-                               ELSE
-                                  rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act 
-                                  ! if the first is not connected to a propagator (max at the beginning)
-                                  IF (ASSOCIATED(rippleback%prev)) rippleback => rippleback%prev
-                                  ! Winny avoid double counting of last and first ripple which are identical
-                                  IF ( rippleback%tag .NE. ripple_tag) rippleback => rippleback%next
-                               END IF
-                            ELSE ! right now back to the left
-                               IF (ASSOCIATED(rippleback%prev)) THEN
-                                  rippleback => rippleback%prev
-                                  ! Winny avoid double counting of last and first ripple which are identical
-                                  IF (.NOT. ASSOCIATED(rippleback%prev) .AND. &
-                                       rippleback%parent%parent%parent%ch_las%ch_las%ch_act%tag .EQ. ripple_tag) &
-                                       rippleback => rippleback%parent%parent%parent%ch_las%ch_las%ch_act
-                               ELSE
-                                  rippleback => rippleback%parent%parent%parent%ch_las%ch_las%ch_act
-                                  ! if the last is not connected to a propagator (max at the end)
-                                  IF (ASSOCIATED(rippleback%next)) rippleback => rippleback%next
-                                  ! Winny avoid double counting of last and first ripple which are identical
-                                  IF ( rippleback%tag .NE. ripple_tag) rippleback => rippleback%prev
+                            IF (back_tag .EQ. ripple_tag) THEN
+                               EXIT walkback2inf
+                            ELSE
+                               IF (ilr .EQ. 1) THEN ! left now back to the right
+                                  IF (ASSOCIATED(rippleback%next)) THEN
+                                     rippleback => rippleback%next
+                                     ! Winny avoid double counting of last and first ripple which are identical
+                                     IF (.NOT. ASSOCIATED(rippleback%next) .AND. &
+                                          rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act%tag .EQ. ripple_tag) &
+                                          rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act
+                                  ELSE
+                                     rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act 
+                                     ! if the first is not connected to a propagator (max at the beginning)
+                                     IF (ASSOCIATED(rippleback%prev)) rippleback => rippleback%prev
+                                     ! Winny avoid double counting of last and first ripple which are identical
+                                     IF ( rippleback%tag .NE. ripple_tag) rippleback => rippleback%next
+                                  END IF
+                               ELSE ! right now back to the left
+                                  IF (ASSOCIATED(rippleback%prev)) THEN
+                                     rippleback => rippleback%prev
+                                     ! Winny avoid double counting of last and first ripple which are identical
+                                     IF (.NOT. ASSOCIATED(rippleback%prev) .AND. &
+                                          rippleback%parent%parent%parent%ch_las%ch_las%ch_act%tag .EQ. ripple_tag) &
+                                          rippleback => rippleback%parent%parent%parent%ch_las%ch_las%ch_act
+                                  ELSE
+                                     rippleback => rippleback%parent%parent%parent%ch_las%ch_las%ch_act
+                                     ! if the last is not connected to a propagator (max at the end)
+                                     IF (ASSOCIATED(rippleback%next)) rippleback => rippleback%next
+                                     ! Winny avoid double counting of last and first ripple which are identical
+                                     IF ( rippleback%tag .NE. ripple_tag) rippleback => rippleback%prev
+                                  END IF
                                END IF
                             END IF
-                         END IF
-                      END DO walkback2inf
+                         END DO walkback2inf
 
-                      ! set the values
-                      etas = SQRT(etas2)
-                      !if (ripple_tag .eq. 1 .or. ripple_tag .eq. 128) then
-                      !   print *, ripple_tag,walker_tag,ilr,1.0_dp/b_max_loc,etas
-                      !end if
-                      count = count + 1
-                      !PRINT *, 'SET_NEW'
-                      CALL set_new(fieldripple%eta_x0,eta_loc)
-                      !PRINT *, 'SET_NEW'
-                      CALL set_new(fieldripple%eta_s,etas)
-                      !PRINT *, 'SET_NEW'
-                      IF (add_extra_contr .EQ. 1) THEN
-                         CALL set_new(fieldripple%eta_type,5.0d0) ! local level
-                         !CALL set_new(fieldripple%eta_cl,DBLE(count))
-                         IF (ilr .EQ. 1) THEN ! go left
-                            IF (ripplewalker%shielding_lr .AND. ripplewalker%shielding_ll) THEN
-                               CALL set_new(fieldripple%eta_shield,2.0d0) ! shielded
-                            ELSE
-                               CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                         ! set the values
+                         etas = SQRT(etas2)
+                         !if (ripple_tag .eq. 1 .or. ripple_tag .eq. 128) then
+                         !   print *, ripple_tag,walker_tag,ilr,1.0_dp/b_max_loc,etas
+                         !end if
+                         count = count + 1
+                         !PRINT *, 'SET_NEW'
+                         CALL set_new(fieldripple%eta_x0,eta_loc)
+                         !PRINT *, 'SET_NEW'
+                         CALL set_new(fieldripple%eta_s,etas)
+                         !PRINT *, 'SET_NEW'
+                         IF (add_extra_contr .EQ. 1) THEN
+                            CALL set_new(fieldripple%eta_type,5.0d0) ! local level
+                            !CALL set_new(fieldripple%eta_cl,DBLE(count))
+                            IF (ilr .EQ. 1) THEN ! go left
+                               IF (ripplewalker%shielding_lr .AND. ripplewalker%shielding_ll) THEN
+                                  CALL set_new(fieldripple%eta_shield,2.0d0) ! shielded
+                               ELSE
+                                  CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                               END IF
+                            ELSE ! go right
+                               IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
+                                  CALL set_new(fieldripple%eta_shield,2.0d0) ! shielded
+                               ELSE  
+                                  CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                               END IF
                             END IF
-                         ELSE ! go right
-                            IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
-                               CALL set_new(fieldripple%eta_shield,2.0d0) ! shielded
-                            ELSE  
-                               CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                         ELSE
+                            CALL set_new(fieldripple%eta_type,4.0d0) ! normal level
+                            IF (ilr .EQ. 1) THEN ! go left
+                               IF (ripplewalker%shielding_lr .AND. ripplewalker%shielding_ll) THEN
+                                  CALL set_new(fieldripple%eta_shield,1.0d0) ! shielded
+                               ELSE
+                                  CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                               END IF
+                            ELSE ! go right
+                               IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
+                                  CALL set_new(fieldripple%eta_shield,1.0d0) ! shielded
+                               ELSE  
+                                  CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                               END IF
                             END IF
                          END IF
-                      ELSE
-                         CALL set_new(fieldripple%eta_type,4.0d0) ! normal level
-                         IF (ilr .EQ. 1) THEN ! go left
-                            IF (ripplewalker%shielding_lr .AND. ripplewalker%shielding_ll) THEN
-                               CALL set_new(fieldripple%eta_shield,1.0d0) ! shielded
-                            ELSE
-                               CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
-                            END IF
-                         ELSE ! go right
-                            IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
-                               CALL set_new(fieldripple%eta_shield,1.0d0) ! shielded
-                            ELSE  
-                               CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
-                            END IF
-                         END IF
+                         !PAUSE
                       END IF
-                   !PAUSE
-                   END IF
-                END DO infloop
-                ! next ripple when walking away or exit
-                IF (mag_cycle_ripples .EQ. 0) THEN
-                   IF (ilr .EQ. 1) THEN ! left
-                      IF (ASSOCIATED(ripplewalker%prev)) THEN
-                         ripplewalker => ripplewalker%prev
-                      ELSE
-                         EXIT walk2inf
-                      END IF
-                   ELSE ! right
-                      IF (ASSOCIATED(ripplewalker%next)) THEN
-                         ripplewalker => ripplewalker%next
-                      ELSE
-                         EXIT walk2inf
-                      END IF
-                   END IF
-                ELSE
-                   !print *, 'before if ',ripplewalker%tag,ripple_tag,iwfirst
-                   IF (ripplewalker%tag .EQ. ripple_tag .AND. iwfirst .NE. 1) THEN
-                      EXIT walk2inf
-                   ELSE
+                   END DO infloop
+                   ! next ripple when walking away or exit
+                   IF (mag_cycle_ripples .EQ. 0) THEN
                       IF (ilr .EQ. 1) THEN ! left
                          IF (ASSOCIATED(ripplewalker%prev)) THEN
                             ripplewalker => ripplewalker%prev
                          ELSE
-                            ripplewalker => ripplewalker%parent%parent%parent%ch_las%ch_las%ch_act
-                            ! if the last is not connected to a propagator (max at the end)
-                            IF (ASSOCIATED(ripplewalker%next)) ripplewalker => ripplewalker%next
-                            IF (ripplewalker%tag .NE. ripple_tag) THEN
-                               ripplewalker => ripplewalker%prev ! there is one extra
-                            END IF
+                            EXIT walk2inf
                          END IF
                       ELSE ! right
                          IF (ASSOCIATED(ripplewalker%next)) THEN
                             ripplewalker => ripplewalker%next
                          ELSE
-                            ripplewalker => ripplewalker%parent%parent%parent%ch_fir%ch_fir%ch_act
-                            ! if the first is not connected to a propagator (max at the beginning)
-                            IF (ASSOCIATED(ripplewalker%prev)) ripplewalker => ripplewalker%prev
+                            EXIT walk2inf
+                         END IF
+                      END IF
+                   ELSE
+                      !print *, 'before if ',ripplewalker%tag,ripple_tag,iwfirst
+                      IF (ripplewalker%tag .EQ. ripple_tag .AND. iwfirst .NE. 1) THEN
+                         EXIT walk2inf
+                      ELSE
+                         IF (ilr .EQ. 1) THEN ! left
+                            IF (ASSOCIATED(ripplewalker%prev)) THEN
+                               ripplewalker => ripplewalker%prev
+                            ELSE
+                               ripplewalker => ripplewalker%parent%parent%parent%ch_las%ch_las%ch_act
+                               ! if the last is not connected to a propagator (max at the end)
+                               IF (ASSOCIATED(ripplewalker%next)) ripplewalker => ripplewalker%next
+                               IF (ripplewalker%tag .NE. ripple_tag) THEN
+                                  ripplewalker => ripplewalker%prev ! there is one extra
+                               END IF
+                            END IF
+                         ELSE ! right
+                            IF (ASSOCIATED(ripplewalker%next)) THEN
+                               ripplewalker => ripplewalker%next
+                            ELSE
+                               ripplewalker => ripplewalker%parent%parent%parent%ch_fir%ch_fir%ch_act
+                               ! if the first is not connected to a propagator (max at the beginning)
+                               IF (ASSOCIATED(ripplewalker%prev)) ripplewalker => ripplewalker%prev
+                            END IF
                          END IF
                       END IF
                    END IF
-                END IF
-                !PRINT *, ripplewalker%tag,ripple_tag
-                iwfirst = 0
-             END DO walk2inf
-             !PAUSE
-          END DO leftright2inf
+                   !PRINT *, ripplewalker%tag,ripple_tag
+                   iwfirst = 0
+                END DO walk2inf
+                !PAUSE
+             END DO leftright2inf
+          end if
           ! End of inflection handling
 
-          ! Handling of intersections with period boundaries
-          ripple_phi_left  = fieldripple%pa_fir%phi_l
-          ripple_phi_right = fieldripple%pa_las%phi_r
-          fieldperiod => fieldripple%pa_fir%parent
-          DO
-             period_phi_right = fieldperiod%phi_r
-             IF (period_phi_right .LT. ripple_phi_right) THEN
-                etas = 1.0d-4
-                CALL set_new(fieldripple%eta_x0,1.0_dp/fieldperiod%ch_las%b_r)
-                CALL set_new(fieldripple%eta_s,etas)
-                CALL set_new(fieldripple%eta_type,6.0d0)   ! intersection level
-                CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
-             END IF
-             IF (fieldperiod%ch_las%tag .GE. fieldripple%pa_las%tag) EXIT
-             IF (.NOT. ASSOCIATED(fieldperiod%next)) EXIT
-             fieldperiod => fieldperiod%next
-          END DO
-          !print *, 'end of intersection handling'
-          ! End of handling of intersections with period boundaries
-
+          if (split_at_period_boundary) then
+             ! Handling of intersections with period boundaries
+             ripple_phi_left  = fieldripple%pa_fir%phi_l
+             ripple_phi_right = fieldripple%pa_las%phi_r
+             fieldperiod => fieldripple%pa_fir%parent
+             DO
+                period_phi_right = fieldperiod%phi_r
+                IF (period_phi_right .LT. ripple_phi_right) THEN
+                   etas = 1.0d-4
+                   CALL set_new(fieldripple%eta_x0,1.0_dp/fieldperiod%ch_las%b_r)
+                   CALL set_new(fieldripple%eta_s,etas)
+                   CALL set_new(fieldripple%eta_type,6.0d0)   ! intersection level
+                   CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
+                END IF
+                IF (fieldperiod%ch_las%tag .GE. fieldripple%pa_las%tag) EXIT
+                IF (.NOT. ASSOCIATED(fieldperiod%next)) EXIT
+                fieldperiod => fieldperiod%next
+             END DO
+             !print *, 'end of intersection handling'
+             ! End of handling of intersections with period boundaries
+          end if
 
           ! sort the eta_x0 from small to large (together with eta_s)
           ! CALL sort(fieldripple%eta_s)
@@ -5359,7 +5176,7 @@ CONTAINS
        ! There is a Tokamak-problem with this matching of left and right - Winny
        ! print *, 'magnetic_device ',magnetic_device
        IF (magnetic_device .NE. 0) THEN
-       
+
           ! modification of local sigmas to have a match at the common boundary
           ! last ripple
           fieldperiod     => fieldline%ch_las
@@ -5530,7 +5347,7 @@ CONTAINS
           IF (ALLOCATED(eta_shield_left)) DEALLOCATE(eta_shield_left)
           IF (ALLOCATED(eta_type_left)) DEALLOCATE(eta_type_left)
        END IF ! This is this Tokamak if
-              
+
     END IF
     !
     NULLIFY(fieldripple)
