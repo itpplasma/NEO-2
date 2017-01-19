@@ -235,6 +235,11 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: amat_sp,bvec_sp
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: bvec_iter,bvec_prev
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: bvec_parflow
+  ! Use pre-conditioned iterations:
+  ! -> remove null-space of axisymmetric solution (energy conservation)
+  DOUBLE COMPLEX :: denom_energ, coef_energ
+  DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: energvec_bra, energvec_ket
+  ! End Use pre-conditioned iterations
   DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
   DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: basevec_p
   INTEGER :: isw_lor,isw_ene,isw_intp
@@ -304,8 +309,11 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   DOUBLE PRECISION,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: ttmpfact
-  DOUBLE COMPLEX :: fluxincompr,coefincompr
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: fluxincompr_spec, coefincompr_spec
+  ! Use pre-conditioned iterations (not necessary/depricated):
+  ! -> remove parallel flow from solution
+!!$  DOUBLE COMPLEX :: fluxincompr,coefincompr
+!!$  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: fluxincompr_spec, coefincompr_spec
+  ! End Use pre-conditioned iterations (not necessary/depricated)
   LOGICAL :: colltest=.FALSE.
   LOGICAL :: ttmptest=.FALSE.
 !  logical :: ttmptest=.true.
@@ -329,9 +337,9 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
 !
   niter=100       !maximum number of integral part iterations
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
-  n_arnoldi=100     !maximum number of Arnoldi iterations
+  n_arnoldi=500     !maximum number of Arnoldi iterations
   isw_regper=1       !regulariization by periodic boundary condition
-  epserr_sink_cmplx=0.d0 !1.d-12 !sink for regularization, it is equal to
+  epserr_sink_cmplx=0.d0  !1.d-12 !sink for regularization, it is equal to
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
 !                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
 !                    $\kappa$ is inverse m.f.p. times 4 ("collpar")
@@ -1553,6 +1561,15 @@ rotfactor=imun*m_phi
 ! Compute vectors for convolution of fluxes and source vectors:
 !
   ALLOCATE(flux_vector(3,n_2d_size),source_vector(n_2d_size,4),bvec_parflow(n_2d_size))
+!
+  ! Use pre-conditioned iterations:
+  ! -> remove null-space of axisymmetric solution (energy conservation)
+  ALLOCATE(energvec_ket(n_2d_size),energvec_bra(n_2d_size))
+  energvec_ket=0.d0
+  energvec_bra=0.d0
+  denom_energ=0.d0
+  ! End Use pre-conditioned iterations
+!
 !!$  ALLOCATE(x1mm(0:lag,0:lag))
 !!$  ALLOCATE(x2mm(0:lag,0:lag))
 !
@@ -1598,7 +1615,14 @@ rotfactor=imun*m_phi
 !        amat_sp(nz)=(-1.d0,0.d0)
       ENDDO
 !
-      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
+!! Modifications by Andreas F. Martitsch (12.12.2016)
+! -> Removal of null-space of axisymmetric equation with
+! full linearized collision operator (wrong)     
+!      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
+! -> Removal of null-space of axisymmetric equation without
+! integral part of the collision operator
+! (solution to the problem without iterations --> correct)  
+      IF(isw_regper.EQ.1.AND.m.LT.1) THEN
         DO ipart=1,npassing+1
 !          if(ipart.le.npassing) then
 !            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
@@ -1619,6 +1643,8 @@ rotfactor=imun*m_phi
 !
         ENDDO
       ENDIF
+!
+!! End Modifications by Andreas F. Martitsch (12.12.2016)
 !
     ENDIF
 !
@@ -1889,7 +1915,14 @@ rotfactor=imun*m_phi
 !        amat_sp(nz)=(-1.d0,0.d0)
       ENDDO
 !
-      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
+!! Modifications by Andreas F. Martitsch (12.12.2016)
+! -> Removal of null-space of axisymmetric equation with
+! full linearized collision operator (wrong)     
+!      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
+! -> Removal of null-space of axisymmetric equation without
+! integral part of the collision operator
+! (solution to the problem without iterations --> correct) 
+      IF(isw_regper.EQ.1.AND.m.LT.1) THEN
         DO ipart=1,npassing+1
 !          if(ipart.le.npassing) then
 !            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
@@ -1910,6 +1943,7 @@ rotfactor=imun*m_phi
 !
         ENDDO
       ENDIF
+!! End Modifications by Andreas F. Martitsch (12.12.2016)
 !
     ENDIF
 !
@@ -2193,7 +2227,14 @@ rotfactor=imun*m_phi
         amat_sp(nz)=(-1.d0,0.d0)
       ENDDO
 !
-      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
+!! Modifications by Andreas F. Martitsch (12.12.2016)
+! -> Removal of null-space of axisymmetric equation with
+! full linearized collision operator (wrong)     
+!      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
+! -> Removal of null-space of axisymmetric equation without
+! integral part of the collision operator
+! (solution to the problem without iterations --> correct)
+      IF(isw_regper.EQ.1.AND.m.LT.1) THEN
         DO ipart=1,npassing+1
           IF(ipart.LE.npassing) THEN
             deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
@@ -2214,6 +2255,7 @@ rotfactor=imun*m_phi
 !
         ENDDO
       ENDIF
+!! End Modifications by Andreas F. Martitsch (12.12.2016)
 !
     ENDIF
 !
@@ -2538,7 +2580,14 @@ rotfactor=imun*m_phi
         amat_sp(nz)=(-1.d0,0.d0)
       ENDDO
 !
-      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
+!! Modifications by Andreas F. Martitsch (12.12.2016)
+! -> Removal of null-space of axisymmetric equation with
+! full linearized collision operator (wrong)     
+!      IF(isw_regper.EQ.1.AND.m.LE.1) THEN
+! -> Removal of null-space of axisymmetric equation without
+! integral part of the collision operator
+! (solution to the problem without iterations --> correct)
+      IF(isw_regper.EQ.1.AND.m.LT.1) THEN
         DO ipart=1,npassing+1
           IF(ipart.LE.npassing) THEN
             deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
@@ -2559,6 +2608,7 @@ rotfactor=imun*m_phi
 !
         ENDDO
       ENDIF
+!! End Modifications by Andreas F. Martitsch (12.12.2016)
 !
     ENDIF
 !
@@ -3687,12 +3737,12 @@ CALL plotsource(11030,dimag(source_vector))
   icol(nz_per_neg+1:nz_asymm)=icol_asymm(nz_per_neg+1:nz_asymm)
   amat_sp(nz_per_neg+1:nz_asymm)=amat_asymm(nz_per_neg+1:nz_asymm)*rotfactor
 !
-  DO ispecp=0,num_spec-1
-     DO i=nz_symm+1,nz_asymm
-        source_vector_all(irow(i),4,ispecp)=source_vector_all(irow(i),4,ispecp) &
-             +amat_sp(i)*bvec_parflow(icol(i))
-     ENDDO
-  ENDDO
+!  DO ispecp=0,num_spec-1
+!     DO i=nz_symm+1,nz_asymm
+!        source_vector_all(irow(i),4,ispecp)=source_vector_all(irow(i),4,ispecp) &
+!             +amat_sp(i)*bvec_parflow(icol(i))
+!     ENDDO
+!  ENDDO
 !
   problem_type=.FALSE.
   CALL solve_eqs(.TRUE.)
@@ -3767,6 +3817,12 @@ RETURN
     amat_minus_plus=0.d0
 !
     DEALLOCATE(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp,bvec_parflow)
+!
+    ! Use pre-conditioned iterations:
+    ! -> remove null-space of axisymmetric solution (energy conservation)
+    DEALLOCATE(energvec_ket,energvec_bra)
+    ! Use pre-conditioned iterations
+!
     IF(isw_intp.EQ.1) DEALLOCATE(bvec_iter,bvec_prev)
     DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
     DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
@@ -3891,6 +3947,12 @@ RETURN
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
 !
   DEALLOCATE(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp,bvec_parflow)
+!
+  ! Use pre-conditioned iterations:
+  ! -> remove null-space of axisymmetric solution (energy conservation)
+  DEALLOCATE(energvec_ket,energvec_bra)
+  ! Use pre-conditioned iterations
+!
   IF(isw_intp.EQ.1) THEN 
     DEALLOCATE(bvec_iter,bvec_prev)
   ENDIF
@@ -4155,14 +4217,15 @@ PRINT *,' '
        ALLOCATE(source_vector_all_real(n_2d_size,1:4,0:num_spec-1))
        source_vector_all_real=DBLE(source_vector_all)
        DO ispecp=0,num_spec-1
-         IF(problem_type .AND. ispecp .NE. ispec) CYCLE
+         !IF(problem_type .AND. ispecp .NE. ispec) CYCLE
+         IF(ispecp .NE. ispec) CYCLE
          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
                            source_vector_all_real(:,1:4,ispecp),iopt)
        ENDDO
        source_vector_all=source_vector_all_real
     ELSE
        DO ispecp=0,num_spec-1
-         IF(problem_type .AND. ispecp .NE. ispec) CYCLE
+         !IF(problem_type .AND. ispecp .NE. ispec) CYCLE
          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
                            source_vector_all(:,1:4,ispecp),iopt)
        ENDDO
@@ -4172,19 +4235,23 @@ PRINT *,' '
 !
     IF(isw_intp.EQ.1) THEN
 !
-      ! old behavior (for a single species):
-      !fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector(:,4))
-      !  multi-species part :
-      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector_all(:,4,ispec))
+!!$      ! Use pre-conditioned iterations (not necessary/depricated):
+!!$      ! -> remove parallel flow from solution
+!!$      ! old behavior (for a single species):
+!!$      !fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector(:,4))
+!!$      !  multi-species part :
+!!$      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector_all(:,4,ispec))
+! 
+      denom_energ=SUM(energvec_bra*energvec_ket)
 !
       DO k=1,3
 !
         PRINT *,'source ',k,':'
         ! preconditioned iterations ("next_iteration" provides
         ! Af and q (provided as an input):
-        !mode_iter=2
+        mode_iter=2
         ! direct iterations:
-        mode_iter=0
+        !mode_iter=0
 !
         !! Modification by Andreas F. Martitsch (23.08.2015)
         ! old behavior (for a single species):
@@ -4196,8 +4263,9 @@ PRINT *,' '
           drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
                         source_vector_all(:,k,ispecp))
-             source_vector_all(:,k,ispecp)=&
-                  source_vector_all(:,k,ispecp)+coefincompr*bvec_parflow
+!!$       ! Use pre-conditioned iterations (not necessary/depricated):
+!!$       source_vector_all(:,k,ispecp)=&
+!!$            source_vector_all(:,k,ispecp)+coefincompr*bvec_parflow
         ENDDO
         !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
@@ -4425,6 +4493,8 @@ PRINT *,' '
         flux_vector(3,k+npassing+2:k+2*npassing+2) =                          &
               step_factor_m*weightlag(3,m)*convol_flux(npassing+1:1:-1,istep)
 !
+        ! Use pre-conditioned iterations (not necessary/depricated):
+        ! -> remove parallel flow from solution
         ! Computation of bvec_parflow generalized to non-orthogonal polynomials
         !-> old version (orthogonal test functions):
         !bvec_parflow(k+1:k+npassing+1)           = asource(m,1)*q_rip_parflow(1:npassing+1,istep)
@@ -4432,10 +4502,34 @@ PRINT *,' '
         !-> new version (general test functions):
         bvec_parflow(k+1:k+npassing+1)           = weightparflow(m)*q_rip_parflow(1:npassing+1,istep)
         bvec_parflow(k+npassing+2:k+2*npassing+2)=-weightparflow(m)*q_rip_parflow(npassing+1:1:-1,istep)
+        ! End Use pre-conditioned iterations (not necessary/depricated)
+!
+        ! Use pre-conditioned iterations:
+        ! -> remove null-space of axisymmetric solution (energy conservation)
+        energvec_ket(k+1:k+npassing) =                                      &
+             step_factor_p*weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
+        energvec_ket(k+2*npassing+2:k+npassing+3:-1) =                      &
+             step_factor_m*weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
+!
+        energvec_ket(k+npassing+1) =                                      &
+             step_factor_p*weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
+        energvec_ket(k+npassing+2) =                                      &
+             step_factor_m*weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
+!        
+        energvec_bra(k+1:k+npassing+1) =                                     &
+             step_factor_p*weightlag(1,m)*pleg_bra(0,1:npassing+1,istep)
+        energvec_bra(k+npassing+2:k+2*npassing+2) =                          &
+             step_factor_m*weightlag(1,m)*pleg_bra(0,npassing+1:1:-1,istep)
+!
+        energvec_bra(k+1:k+2*npassing+2) =                                   &
+             energvec_bra(k+1:k+2*npassing+2)/(collpar*bhat_mfl(istep))
+        ! End Use pre-conditioned iterations
 !
         IF(istep.GT.ibeg) THEN
           npassing_prev=npl(istep-1)
           k_prev=ind_start(istep-1)+2*(npassing_prev+1)*m
+!
+!
           IF(ioddeven.EQ.1) THEN
             npassing_next=npl(istep+1)
             source_vector(k+1:k+npassing+1,1)                                &
@@ -5152,27 +5246,40 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
   INTEGER :: n
   DOUBLE COMPLEX, DIMENSION(n) :: fold,fnew
-  DOUBLE PRECISION, DIMENSION(n) :: fnew_real
+  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fnew_real,fnew_imag
 !
   CALL integral_part(fold,fnew)
 !
   IF(problem_type) THEN
+     ALLOCATE(fnew_real(n),fnew_imag(n))
      fnew_real=DBLE(fnew)
+     fnew_imag=DIMAG(fnew)
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
                        fnew_real,iopt)
-     fnew=fnew_real
+     CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
+                       fnew_imag,iopt)
+     fnew=fnew_real+(0.d0,1.d0)*fnew_imag
+     DEALLOCATE(fnew_real,fnew_imag)
+     !
+     ! Use pre-conditioned iterations:
+     ! -> remove null-space of axisymmetric
+     ! solution (energy conservation)
+     coef_energ=SUM(energvec_bra*fnew)/denom_energ
+     fnew=fnew-coef_energ*energvec_ket
   ELSE
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
                        fnew,iopt)
   ENDIF
 !
-  ! old behavior (for a single species):
-  !coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
-  !fnew=fnew-coefincompr*source_vector(:,4)
-  !  multi-species part (4th column is the same for all drives):
-  !coefincompr=0.0d0
-  coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
-  fnew=fnew-coefincompr*source_vector_all(:,4,ispec)
+!!$  ! Use pre-conditioned iterations (not necessary/depricated):
+!!$  ! -> remove parallel flow from solution
+!!$  ! old behavior (for a single species):
+!!$  !coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
+!!$  !fnew=fnew-coefincompr*source_vector(:,4)
+!!$  !  multi-species part (4th column is the same for all drives):
+!!$  !coefincompr=0.0d0
+!!$  coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
+!!$  fnew=fnew-coefincompr*source_vector_all(:,4,ispec)
 !
   END SUBROUTINE next_iteration
 !
@@ -5284,9 +5391,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
 !    call arnoldi(n,narn,next_iteration)
     CALL arnoldi(n,narn)
-IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
-    !PRINT *,ngrow
-    !STOP
+    IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !
     IF(ierr.NE.0) THEN
       PRINT *,'iterator: error in arnoldi'
@@ -5296,9 +5401,24 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !
   ENDIF
 !
+  PRINT *,'iterator: number of bad modes = ', ngrow
+  nsize=ngrow
+!
+!!$  ! Exclude first eigenvalue/eigenvector:
+!!$  ! -> was used for detection of eigenvalue 1
+!!$  ! corresponding to the null-space of the solution
+!!$  ! (energy conservations)  
+!!$  IF(problem_type .AND. ngrow .GT. 0) THEN
+!!$     IF(ABS(ritznum(1)) .GT. 0.9999d0) THEN      
+!!$        nsize=ngrow-1
+!!$        eigvecs(:,1)=eigvecs(:,ngrow)
+!!$        ritznum(1)=ritznum(ngrow)
+!!$        ngrow=ngrow-1
+!!$     ENDIF
+!!$  ENDIF
+!!$  ! End exclude
+!  
   ALLOCATE(fold(n),fnew(n))
-  !PRINT *,fzero
-  !STOP
 !
   IF(ngrow.EQ.0) THEN
 !
@@ -5332,9 +5452,6 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
     RETURN
 !
   ENDIF
-!
-  PRINT *,'iterator: number of bad modes = ', ngrow
-  nsize=ngrow
 !
 ! compute subtraction matrix:
 !
@@ -5392,8 +5509,8 @@ IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
       CALL mpro%allgather(coefren_spec(ispec),coefren_spec)
       coefren(j)=ritznum(j)*SUM(coefren_spec)
       !! End Modification by Andreas F. Martitsch (20.08.2015)
-      coefren(j)=ritznum(j)*SUM(bvec(j,:)                           &
-                *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
+      !coefren(j)=ritznum(j)*SUM(bvec(j,:)                           &
+      !          *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
     ENDDO
     fnew=fnew-MATMUL(eigvecs(:,1:nsize),coefren)
     !! Modification by Andreas F. Martitsch (20.08.2015)

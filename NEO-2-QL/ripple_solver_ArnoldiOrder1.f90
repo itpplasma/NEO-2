@@ -1778,7 +1778,7 @@ rotfactor=imun*m_phi
                   nz_coll=nz_coll+1
 !                  irow(nz)=k+ipart
 !                  icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!                  amat_sp(nz)=denmm(m,mm)*6hs_mat_energ(kk,ipart,istep)
+!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
                 ENDIF
               ENDDO
             ENDDO
@@ -3226,7 +3226,7 @@ rotfactor=imun*m_phi
      a2b=a1b+2.d0*(dbcovar_theta_hat_ds+dbcovar_phi_hat_ds/aiota                  &
           -          bcovar_phi_hat*boozer_iota_s/(aiota**2)                      &
           -          dbcovar_s_hat_dphi_mfl(istep)/aiota)/denomjac
-    !! End Modifications by Andreas F. Martitsch (17.03.2016)
+     !! End Modifications by Andreas F. Martitsch (17.03.2016)
      !! End Modifications by Andreas F. Martitsch (14.03.2014)
 !
     npassing_prev=npl(istep+1)
@@ -3362,7 +3362,7 @@ rotfactor=imun*m_phi
     !--> Computation of D31/D32 not affected ( flux_vector(2,:) determined by convol_curr )
     geodcu_back=geodcu_forw
     !! End Modifications by Andreas F. Martitsch (28.08.2014)
-!    
+!
     CALL source_flux
     !! Modification by Andreas F. Martitsch (23.08.2015)
     ! save solution of the differential part for species=ispec
@@ -3612,7 +3612,7 @@ CALL plotsource(11030,dimag(source_vector))
      q_rip(:,istep,2)=-2.d0*q_rip(:,istep,2)*bnoverb0(istep)
   END DO
   !! End Modifications by Andreas F. Martitsch (10.12.2014)
-!  
+!
   IF(nobounceaver) THEN
     !! Modifications by Andreas F. Martitsch (18.08.2014)
     ! derivative along the periodic Boozer angle theta has
@@ -3739,7 +3739,7 @@ RETURN
       ! from COMPLEX(8) to REAL(8)
       source_m(npass_l*m+1:npass_l*m+npass_l,kk) &
           =REAL(source_vector(k+2*npass_l:k+npass_l+1:-1,kk),dp)
-      !! End Modification by Andreas F. Martitsch (17.07.2015) 
+      !! End Modification by Andreas F. Martitsch (17.07.2015)
       k=ind_start(iend)+2*npass_r*m
       !! Modification by Andreas F. Martitsch (17.07.2015)
       ! fixed warning: Possible change of value in conversion
@@ -3815,7 +3815,7 @@ RETURN
         ! from COMPLEX(8) to REAL(8)
         amat_plus_plus(npass_r*mm+1:npass_r*mm+npass_r,npass_l*m+i)    &
                      =REAL(bvec_sp(kk+1:kk+npass_r),dp)
-        !! End Modification by Andreas F. Martitsch (17.07.2015) 
+        !! End Modification by Andreas F. Martitsch (17.07.2015)
       ENDDO
       DO mm=0,lag
         kk=ind_start(ibeg)+2*npass_l*mm
@@ -3824,7 +3824,7 @@ RETURN
         ! from COMPLEX(8) to REAL(8)
         amat_plus_minus(npass_l*mm+1:npass_l*mm+npass_l,npass_l*m+i)   &
                      =REAL(bvec_sp(kk+2*npass_l:kk+npass_l+1:-1),dp)
-        !! End Modification by Andreas F. Martitsch (17.07.2015) 
+        !! End Modification by Andreas F. Martitsch (17.07.2015)
       ENDDO
       !! Modification by Andreas F. Martitsch (17.07.2015)
       ! fixed warning: Possible change of value in conversion
@@ -3860,7 +3860,7 @@ RETURN
         ! from COMPLEX(8) to REAL(8)
         amat_minus_plus(npass_r*mm+1:npass_r*mm+npass_r,npass_r*m+i)   &
                      =REAL(bvec_sp(kk+1:kk+npass_r),dp)
-        !! End Modification by Andreas F. Martitsch (17.07.2015))  
+        !! End Modification by Andreas F. Martitsch (17.07.2015))
       ENDDO
       DO mm=0,lag
         kk=ind_start(ibeg)+2*npass_l*mm
@@ -3869,7 +3869,7 @@ RETURN
         ! from COMPLEX(8) to REAL(8)
         amat_minus_minus(npass_l*mm+1:npass_l*mm+npass_l,npass_r*m+i)  &
                      =REAL(bvec_sp(kk+2*npass_l:kk+npass_l+1:-1),dp)
-        !! End Modification by Andreas F. Martitsch (17.07.2015))  
+        !! End Modification by Andreas F. Martitsch (17.07.2015))
       ENDDO
       !! Modification by Andreas F. Martitsch (17.07.2015)
       ! fixed warning: Possible change of value in conversion
@@ -4182,7 +4182,7 @@ PRINT *,' '
         ! fixed warning: Possible change of value in conversion
         ! from REAL(8) to INTEGER(4)
         nphiequi=INT((phi_mfl(iend)-phi_mfl(ibeg))/delphiplot)
-        !! End Modification by Andreas F. Martitsch (17.07.2015) 
+        !! End Modification by Andreas F. Martitsch (17.07.2015)
         nphiequi=MAX(1,nphiequi)
       ELSE
         nphiequi=1
@@ -4225,7 +4225,7 @@ PRINT *,' '
           ! from COMPLEX(8) to REAL(8)
           fun_write(m,:,1,:)=REAL(MATMUL(derivs_plot(:,:,1,istep),             &
                                   source_vector(k+1:k+4,1:3)),dp)
-          !! End Modification by Andreas F. Martitsch (17.07.2015)  
+          !! End Modification by Andreas F. Martitsch (17.07.2015)
           DO i=2,npassing+1
             !! Modification by Andreas F. Martitsch (17.07.2015)
             ! fixed warning: Possible change of value in conversion
@@ -4247,7 +4247,7 @@ PRINT *,' '
           ! from COMPLEX(8) to REAL(8) 
           fun_write(m,:,1,:)=REAL(MATMUL(derivs_plot(:,:,1,istep),             &
                                   source_vector(k:k-3:-1,1:3)),dp)
-          !! End Modification by Andreas F. Martitsch (17.07.2015)  
+          !! End Modification by Andreas F. Martitsch (17.07.2015)
           DO i=2,npassing+1
             !! Modification by Andreas F. Martitsch (17.07.2015)
             ! fixed warning: Possible change of value in conversion

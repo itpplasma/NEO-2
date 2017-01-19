@@ -3616,10 +3616,10 @@ CALL plotsource(11010,dimag(source_vector))
   icol(nz_per_neg+1:nz_asymm)=icol_asymm(nz_per_neg+1:nz_asymm)
   amat_sp(nz_per_neg+1:nz_asymm)=amat_asymm(nz_per_neg+1:nz_asymm)*rotfactor
 !
-  DO i=nz_symm+1,nz_asymm
-    source_vector(irow(i),4)=source_vector(irow(i),4)           &
-                            +amat_sp(i)*bvec_parflow(icol(i))
-  ENDDO
+!  DO i=nz_symm+1,nz_asymm
+!    source_vector(irow(i),4)=source_vector(irow(i),4)           &
+!                            +amat_sp(i)*bvec_parflow(icol(i))
+!  ENDDO
 !
   problem_type=.FALSE.
   CALL solve_eqs(.TRUE.)
