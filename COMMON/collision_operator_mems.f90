@@ -97,7 +97,7 @@ module collop
          num_spec = 1
       else
          write (*,*) "Multispecies mode."
-         num_spec = 1
+         num_spec = 2
       end if
       
       !**********************************************************
@@ -242,12 +242,12 @@ module collop
          !**********************************************************
          call compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
               denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
-         !call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
-         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         !call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
-         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         !call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+         call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
+              denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+         call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
+              denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+         call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+              denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
          !call compute_collop('d', 'alp', m_d, m_alp, 1d0, 1d0, anumm_aa(:,:,0,1), &
          !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
          !call compute_collop('alp', 'alp', m_alp, m_alp, 1d0, 1d0, anumm_aa(:,:,1,1), &

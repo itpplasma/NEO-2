@@ -3498,14 +3498,14 @@ CALL plotsource(11030,dimag(source_vector))
 !!$          PRINT *,qflux_symm_allspec(1,3,0,1)
 !!$          PRINT *,'qflux(1,3,1,1):'
 !!$          PRINT *,qflux_symm_allspec(1,3,1,1)
-!!$          OPEN(070915,file='qflux_symm_allspec.dat')
-!!$          WRITE(070915,*) boozer_s, collpar, &
-!!$               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
-!!$               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
-!!$               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
-!!$               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
-!!$          CLOSE(070915)
-!!$          !STOP
+          OPEN(070915,file='qflux_symm_allspec.dat')
+          WRITE(070915,*) boozer_s, collpar, &
+               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
+               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
+               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
+               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
+          CLOSE(070915)
+          !STOP
        END IF
        RETURN
        !! End Modification by Andreas F. Martitsch (23.08.2015)
@@ -3547,14 +3547,14 @@ CALL plotsource(11030,dimag(source_vector))
 !!$          PRINT *,qflux_symm_allspec(1,3,0,1)
 !!$          PRINT *,'qflux(1,3,1,1):'
 !!$          PRINT *,qflux_symm_allspec(1,3,1,1)
-!!$          OPEN(070915,file='qflux_symm_allspec.dat')
-!!$          WRITE(070915,*) boozer_s, collpar, &
-!!$               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
-!!$               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
-!!$               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
-!!$               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
-!!$          CLOSE(070915)
-!!$          !STOP
+          OPEN(070915,file='qflux_symm_allspec.dat')
+          WRITE(070915,*) boozer_s, collpar, &
+               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
+               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
+               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
+               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
+          CLOSE(070915)
+          STOP
        END IF
        !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE
@@ -4243,6 +4243,7 @@ PRINT *,' '
 !!$      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector_all(:,4,ispec))
 ! 
       denom_energ=SUM(energvec_bra*energvec_ket)
+      !PRINT *,'denom_energ = ',denom_energ 
 !
       DO k=1,3
 !
@@ -5265,6 +5266,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
      ! -> remove null-space of axisymmetric
      ! solution (energy conservation)
      coef_energ=SUM(energvec_bra*fnew)/denom_energ
+     !PRINT *,'coef_energ = ',coef_energ
      fnew=fnew-coef_energ*energvec_ket
   ELSE
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
