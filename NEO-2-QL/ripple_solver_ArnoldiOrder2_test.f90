@@ -323,6 +323,8 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
 !                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
 !                    $\kappa$ is inverse m.f.p. times 4 ("collpar")
+  epserr_sink=0.0d0
+!  
   sparse_solve_method = 3 !2 !2,3 - with and without iterative refinement, resp.
 !
   !! Modifications by Andreas F. Martitsch (14.07.2015)
@@ -2457,7 +2459,8 @@ rotfactor=imun*m_phi
                 nz=nz+1
                 irow(nz)=k+ipart
                 icol(nz)=k+MAX(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0                          !<=REGULARIZATION
+                amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep)*0.5d0 !<=REGULARIZATION
                 nz_coll=nz_coll+1
                 irow_coll(nz_coll)=irow(nz)
                 icol_coll(nz_coll)=icol(nz)
@@ -2475,7 +2478,8 @@ rotfactor=imun*m_phi
                   nz=nz+1
                   irow(nz)=k+ipart
                   icol(nz)=k_prev+MAX(0,ipart-2)+kk+2*(npassing_prev+1)*(mm-m)
-                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
+!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0                          !<=REGULARIZATION
+                  amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep-1)*0.5d0 !<=REGULARIZATION
                 ENDDO
               ENDDO
             ENDIF
@@ -2824,7 +2828,8 @@ rotfactor=imun*m_phi
                 nz=nz+1
                 irow(nz)=k-ipart
                 icol(nz)=k-MAX(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0                          !<=REGULARIZATION
+                amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep)*0.5d0 !<=REGULARIZATION
                 nz_coll=nz_coll+1
                 irow_coll(nz_coll)=irow(nz)
                 icol_coll(nz_coll)=icol(nz)
@@ -2842,7 +2847,8 @@ rotfactor=imun*m_phi
                   nz=nz+1
                   irow(nz)=k-ipart
                   icol(nz)=k_prev-MAX(0,ipart-2)-kk+2*(npassing_prev+1)*(mm-m)
-                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
+!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0                          !<=REGULARIZATION
+                  amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep+1)*0.5d0 !<=REGULARIZATION
                 ENDDO
               ENDDO
             ENDIF
@@ -4155,11 +4161,16 @@ PRINT *,' '
 !!$      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector(:,4))
 ! 
       denom_energ=SUM(energvec_bra*energvec_ket)
+      !PRINT *,'denom_energ = ',denom_energ
 !
       DO k=1,3
 !
         PRINT *,'source',k,':'
+        ! preconditioned iterations ("next_iteration" provides
+        ! Af and q (provided as an input):
         mode_iter=2
+        ! direct iterations:
+        !mode_iter=0 
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,source_vector(:,k))
 !
@@ -5073,6 +5084,7 @@ PRINT *,' '
      ! -> remove null-space of axisymmetric
      ! solution (energy conservation)
      coef_energ=SUM(energvec_bra*fnew)/denom_energ
+     !PRINT *,'coef_energ = ',coef_energ
      fnew=fnew-coef_energ*energvec_ket
   ELSE
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
@@ -5201,13 +5213,14 @@ PRINT *,' '
 !!$  ! corresponding to the null-space of the solution
 !!$  ! (energy conservations)  
 !!$  IF(problem_type .AND. ngrow .GT. 0) THEN
-!!$     IF(ABS(ritznum(1)) .GT. 0.9999d0) THEN      
+!!$     IF(ABS(ABS(ritznum(1))-1.0d0) .LT. 1.0d-2) THEN      
 !!$        nsize=ngrow-1
 !!$        eigvecs(:,1)=eigvecs(:,ngrow)
 !!$        ritznum(1)=ritznum(ngrow)
 !!$        ngrow=ngrow-1
 !!$     ENDIF
 !!$  ENDIF
+!!$  IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !!$  ! End exclude
 !  
   ALLOCATE(fold(n),fnew(n))

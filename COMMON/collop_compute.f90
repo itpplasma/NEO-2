@@ -1293,11 +1293,17 @@ contains
        end if
     end if
 
-    weightenerg_s = weightlag_s(2,:)
+    ! remove null-space of axisymmetric solution (tokamak mode, energy conservation)
+    do m = 0, lagmax
+       res_int = integrate(weightenerg_kernel, 0d0)
+       weightenerg_s(m+1) = res_int
+    end do
+
     if (make_ortho) then
        weightenerg_s = matmul(M_transform_inv, weightenerg_s)
     end if
     
+    ! Was used for pre-conditioned iterations (not necessary/depricated)
     ! weightparflow for computation of bvec_parflow (must be orthogonal?)
     if (make_ortho) then
        weightparflow_s = asource_s(:,1)
@@ -1359,6 +1365,13 @@ contains
       bm_rel1 = exp(-exp_maxwell*x**2) * x**(2*(j+1)-5*kdelta(3,j)) * phi_exp(m,x)
     end function bm_rel1
 
+    function weightenerg_kernel(x)
+      real(kind=dp) :: x, weightenerg_kernel
+
+      weightenerg_kernel = &
+           pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * x**2
+    end function weightenerg_kernel
+    
     function weightden_kernel(x)
       real(kind=dp) :: x, weightden_kernel
       weightden_kernel = exp(-x**2) * x**2 * phi_exp(m,x)
