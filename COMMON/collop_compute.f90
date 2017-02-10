@@ -1369,7 +1369,7 @@ contains
       real(kind=dp) :: x, weightenerg_kernel
 
       weightenerg_kernel = &
-           pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * x**2
+           pi**(-3d0/2d0) * x**(4+alpha) * EXP(-(1+beta)*x**2) * phi_prj(m, x) * (x**2 - 1.5d0)
     end function weightenerg_kernel
     
     function weightden_kernel(x)

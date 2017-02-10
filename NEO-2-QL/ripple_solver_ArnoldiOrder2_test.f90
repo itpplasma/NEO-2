@@ -83,7 +83,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
                             irow_per_pos,icol_per_pos,                         &
                             irow_per_neg,icol_per_neg,                         &
                             irow_asymm,icol_asymm,amat_asymm,                  &
-                            f0_coll,f0_ttmp,                                   &
+                            f0_coll,f0_ttmp,f0_coll_all,f0_ttmp_all,           &
                             nz_regper,irow_regper,icol_regper,amat_regper
   USE partpa_mod, ONLY : bmod0
   USE development
@@ -105,18 +105,22 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   !! Modification by Andreas F. Martitsch (14.07.2015)
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_qflux_NA, MtOvR, B_rho_L_loc, &
-       m_phi,  qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val
+       m_phi,  qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val, &
+       qflux_symm_allspec, qflux_ntv_allspec
   !USE neo_precision, ONLY : PI
   !! End Modification by Andreas F. Martitsch (14.07.2015)
-  !! Modification by Andreas F. Martitsch (14.11.2016)
+  !! Modification by Andreas F. Martitsch (28.07.2015)
+  ! MPI SUPPORT for multi-species part
+  ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
+  USE mpiprovider_module
   ! Load x1mm and x2mm (=energy dependence of drift frequencies)
   ! from collision operator module. This step allows for
   ! support of different basis functions and replaces routine "lagxmm".
-  USE collop, ONLY : x1mm, x2mm
-  !! End Modification by Andreas F. Martitsch (14.11.2016)
+  USE collop
+  !! End Modification by Andreas F. Martitsch (28.07.2015)
   
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
+  !INTEGER, PARAMETER :: dp = KIND(1.0d0)
   DOUBLE COMPLEX, PARAMETER :: imun=(0.d0,1.d0)
   REAL(DP), PARAMETER :: PI=3.141592653589793238462643383279502884197_dp
 
@@ -297,8 +301,16 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   ! poloidal mode number
   INTEGER :: m_theta = 0 
   !! End Modifications by Andreas F. Martitsch (13.06.2014)
+  !! Modification by Andreas F. Martitsch (28.07.2015)
+  !  multi-species part
+  INTEGER :: ispec, ispecp ! species indices
+  INTEGER :: drive_spec
+  DOUBLE COMPLEX,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all
+  REAL(kind=dp), DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec
   LOGICAL :: problem_type
   DOUBLE PRECISION,   DIMENSION(:,:), ALLOCATABLE :: source_vector_real
+  DOUBLE PRECISION,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all_real
+  !! End Modification by Andreas F. Martitsch (28.07.2015)
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: ttmpfact
   ! Use pre-conditioned iterations (not necessary/depricated):
   ! -> remove parallel flow from solution
@@ -314,7 +326,17 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
 ! DEBUGGING
   INTEGER :: i_ctr=0
 !
- 
+  !! Modification by Andreas F. Martitsch (28.07.2015)
+  ! multi-species part - MPI rank determines species
+  ispec = mpro%getRank()
+  PRINT *,"Species: ", ispec
+  CALL collop_set_species(ispec)
+  !PRINT *,'asource: ',asource(:,1)
+  !PRINT *,'anumm:',anumm(1,:)
+  !PRINT *,'denmm:',denmm(1,:)
+  !STOP
+  !! End Modification by Andreas F. Martitsch (28.07.2015)
+!
   niter=100       !maximum number of integral part iterations
   epserr_iter=1.d-5 !5  !relative error of integral part iterations
   n_arnoldi=500     !maximum number of Arnoldi iterations
@@ -1504,6 +1526,13 @@ rotfactor=imun*m_phi
 !
   DEALLOCATE(amat,bvec_lapack,ipivot)
 !
+!! Modification by Andreas F. Martitsch (16.09.2015)
+! NEO-2 can treat now multiple species
+! (move collpar from pleg_bra to pleg_ket to avoid mixing up
+! of species-dependent parameters)
+  pleg_bra=pleg_bra/collpar
+  pleg_ket=pleg_ket*collpar
+!! End Modification by Andreas F. Martitsch (16.09.2015)  
 !
 ! Preparation of data for sparce solver
 !
@@ -3360,6 +3389,19 @@ rotfactor=imun*m_phi
 ! Solve the axisymmetric equation set:
 !
   IF(ALLOCATED(qflux_symm)) DEALLOCATE(qflux_symm)
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  !  multi-species part (allocate storage for source_vector)
+  IF(ALLOCATED(source_vector_all)) DEALLOCATE(source_vector_all)
+  ALLOCATE(source_vector_all(n_2d_size,1:4,0:num_spec-1))
+  source_vector_all=(0.0d0,0.0d0)
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+  ! (at the moment these arrays cannot be handled correctly using the
+  ! propagator structure -> global variables used):
+  IF(ALLOCATED(qflux_symm_allspec)) DEALLOCATE(qflux_symm_allspec)
+  ALLOCATE(qflux_symm_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
   IF(nobounceaver) THEN
 !
     nz=nz_symm+nz_regper
@@ -3397,6 +3439,12 @@ rotfactor=imun*m_phi
     !! End Modifications by Andreas F. Martitsch (28.08.2014)
 !
     CALL source_flux
+    !! Modification by Andreas F. Martitsch (23.08.2015)
+    ! save solution of the differential part for species=ispec
+    ! (diffusion coeff. driven by thermodyn. forces of other 
+    ! species are zero -> interaction through integral part)
+    source_vector_all(:,1:4,ispec)=source_vector(:,1:4)
+    !! End Modification by Andreas F. Martitsch (23.08.2015)
 !
     problem_type=.TRUE.
     CALL solve_eqs(.TRUE.)
@@ -3423,12 +3471,12 @@ rotfactor=imun*m_phi
 !write(10000,*) ' '
 !enddo
 !stop
-istep=(ibeg+iend)/2
-CALL plotsource(10000,REAL(source_vector))
-CALL plotsource(11000,dimag(source_vector))
-istep=ibeg
-CALL plotsource(10010,REAL(source_vector))
-CALL plotsource(11010,dimag(source_vector))
+!istep=(ibeg+iend)/2
+!CALL plotsource(10000,REAL(source_vector))
+!CALL plotsource(11000,dimag(source_vector))
+!istep=ibeg
+!CALL plotsource(10010,REAL(source_vector))
+!CALL plotsource(11010,dimag(source_vector))
 !
 
     DEALLOCATE(irow,icol,amat_sp)
@@ -3449,62 +3497,155 @@ CALL plotsource(11010,dimag(source_vector))
     ! return to calling routine propagator_solver.
     IF(isw_qflux_NA .EQ. 0) THEN
        ! compute qflux only for the axisymmetric equation set
+       !! Modification by Andreas F. Martitsch (23.08.2015)
+       ! old behavior:
        ! --> qflux already available from prop_a%p%qflux
+       !RETURN
+       ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+       ! (at the moment these arrays cannot be handled correctly using the
+       ! propagator structure -> global variables used):
+       IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
+       qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
+       qflux_symm_allspec=qflux_allspec
+       IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+       IF(mpro%getrank() .EQ. 0) THEN
+          ! D33
+!!$          PRINT *,qflux_symm_allspec(2,2,0,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,0,1)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,1)
+!!$          ! D11
+!!$          PRINT *,'qflux(1,1,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,0)
+!!$          PRINT *,'qflux(1,1,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,0)
+!!$          PRINT *,'qflux(1,1,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,1)
+!!$          PRINT *,'qflux(1,1,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,1)
+!!$          ! D12
+!!$          PRINT *,'qflux(1,3,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,0)
+!!$          PRINT *,'qflux(1,3,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,0)
+!!$          PRINT *,'qflux(1,3,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,1)
+!!$          PRINT *,'qflux(1,3,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,1)
+          OPEN(070915,file='qflux_symm_allspec.dat')
+          WRITE(070915,*) boozer_s, collpar, &
+               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
+               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
+               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
+               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
+          CLOSE(070915)
+          !STOP
+       END IF
        RETURN
+       !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE IF(isw_qflux_NA .EQ. 1) THEN
        ! save qflux for the axisymmetric equation set
        ! and proceed with the solution of the non-axisymmetric
        ! equation set (stored within prop_a%p%qflux)
        ALLOCATE(qflux_symm(3,3))
        qflux_symm=qflux
+       !! Modification by Andreas F. Martitsch (23.08.2015)
+       ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+       ! (at the moment these arrays cannot be handled correctly using the
+       ! propagator structure -> global variables used):
+       IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
+       qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
+       qflux_symm_allspec=qflux_allspec
+       IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+       IF(mpro%getrank() .EQ. 0) THEN
+!!$          ! D33
+!!$          PRINT *,qflux_symm_allspec(2,2,0,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,0)
+!!$          PRINT *,qflux_symm_allspec(2,2,0,1)
+!!$          PRINT *,qflux_symm_allspec(2,2,1,1)
+!!$          ! D11
+!!$          PRINT *,'qflux(1,1,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,0)
+!!$          PRINT *,'qflux(1,1,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,0)
+!!$          PRINT *,'qflux(1,1,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,0,1)
+!!$          PRINT *,'qflux(1,1,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,1,1,1)
+!!$          ! D12
+!!$          PRINT *,'qflux(1,3,0,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,0)
+!!$          PRINT *,'qflux(1,3,1,0):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,0)
+!!$          PRINT *,'qflux(1,3,0,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,0,1)
+!!$          PRINT *,'qflux(1,3,1,1):'
+!!$          PRINT *,qflux_symm_allspec(1,3,1,1)
+          OPEN(070915,file='qflux_symm_allspec.dat')
+          WRITE(070915,*) boozer_s, collpar, &
+               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
+               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
+               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
+               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
+          CLOSE(070915)
+          !STOP
+       END IF
+       !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE
        STOP "Invalid input for isw_qflux_symm (0/1)!"
     END IF
     !! End Modifications by Andreas F. Martitsch (28.07.2014)
 !
     ALLOCATE(f0_coll(n_2d_size,3),f0_ttmp(n_2d_size,3))
+    ALLOCATE(f0_coll_all(n_2d_size,3,0:num_spec-1),f0_ttmp_all(n_2d_size,3,0:num_spec-1))    
     f0_coll=0.d0
     f0_ttmp=0.d0
+    DO ispecp=0,num_spec-1
 !
 ! Here f0_coll=$-\frac{1}{h^\varphi}\sum_{m^\prime}\hat L_{mm^\prime}^c
 !                bar f_{m^\prime}^{\sigma (k)}$ :
 !
-    DO nz=1,nz_coll
-      !! Modification by Andreas F. Martitsch (17.07.2015)
-      ! fixed warning: Possible change of value in conversion
-      ! from COMPLEX(8) to REAL(8)
-      f0_coll(irow_coll(nz),:)=f0_coll(irow_coll(nz),:)+amat_coll(nz)  &
-                              *REAL(source_vector(icol_coll(nz),1:3),dp)
-      !! End Modification by Andreas F. Martitsch (17.07.2015)
-    ENDDO
+       DO nz=1,nz_coll
+          !! Modification by Andreas F. Martitsch (17.07.2015)
+          ! fixed warning: Possible change of value in conversion
+          ! from COMPLEX(8) to REAL(8)
+          f0_coll(irow_coll(nz),:)=f0_coll(irow_coll(nz),:)+amat_coll(nz)  &
+               *REAL(source_vector_all(icol_coll(nz),1:3,ispecp),dp)
+          !! End Modification by Andreas F. Martitsch (17.07.2015)
+       ENDDO
 !
-    IF(isw_intp.EQ.1) THEN
-      ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
+       IF(isw_intp.EQ.1) THEN
+          ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 !
-      DO i=1,3
-        bvec_prev=source_vector(:,i)
+          DO i=1,3
+             bvec_prev=source_vector_all(:,i,ispecp)
 !
-        CALL integral_part(bvec_prev,bvec_iter)
+             CALL integral_part(bvec_prev,bvec_iter)
 !
-        !! Modification by Andreas F. Martitsch (17.07.2015)
-        ! fixed warning: Possible change of value in conversion
-        ! from COMPLEX(8) to REAL(8)
-        f0_coll(:,i)=f0_coll(:,i)-REAL(bvec_iter,dp)
-        !! End Modification by Andreas F. Martitsch (17.07.2015)
-      ENDDO
+             !! Modification by Andreas F. Martitsch (17.07.2015)
+             ! fixed warning: Possible change of value in conversion
+             ! from COMPLEX(8) to REAL(8)
+             f0_coll(:,i)=f0_coll(:,i)-REAL(bvec_iter,dp)
+             !! End Modification by Andreas F. Martitsch (17.07.2015)
+          ENDDO
 !
-      DEALLOCATE(bvec_iter,bvec_prev)
-    ENDIF
+          DEALLOCATE(bvec_iter,bvec_prev)
+       ENDIF
 !
 ! Here f0_ttmp=$-\sigma \eta \difp{}{\eta} f_{m^\prime}^{\sigma (k)}$ :
 !
-    DO nz=1,nz_ttmp
-      !! Modification by Andreas F. Martitsch (17.07.2015)
-      ! fixed warning: Possible change of value in conversion
-      ! from COMPLEX(8) to REAL(8)
-      f0_ttmp(irow_ttmp(nz),:)=f0_ttmp(irow_ttmp(nz),:)+amat_ttmp(nz)  &
-                              *REAL(source_vector(icol_ttmp(nz),1:3),dp)
-      !! End Modification by Andreas F. Martitsch (17.07.2015)
+       DO nz=1,nz_ttmp
+          !! Modification by Andreas F. Martitsch (17.07.2015)
+          ! fixed warning: Possible change of value in conversion
+          ! from COMPLEX(8) to REAL(8)
+          f0_ttmp(irow_ttmp(nz),:)=f0_ttmp(irow_ttmp(nz),:)+amat_ttmp(nz)  &
+               *REAL(source_vector_all(icol_ttmp(nz),1:3,ispecp),dp)
+          !! End Modification by Andreas F. Martitsch (17.07.2015)
+       ENDDO
+
+       f0_ttmp_all(:,:,ispecp)=f0_ttmp(:,:)
+       f0_coll_all(:,:,ispecp)=f0_coll(:,:)
+!
     ENDDO
 !
     IF(colltest) THEN
@@ -3580,22 +3721,30 @@ CALL plotsource(11010,dimag(source_vector))
     !PRINT *,'geodcu_forw: ',geodcu_forw
   ENDIF
 !
-  CALL source_flux
+  DO ispecp=0,num_spec-1
+     IF(nobounceaver) THEN
+        f0_ttmp(:,:)=f0_ttmp_all(:,:,ispecp)
+        f0_coll(:,:)=f0_coll_all(:,:,ispecp)
+     ENDIF
 !
-  IF(nobounceaver) THEN
-    ALLOCATE(ttmpfact(ibeg:iend))
-    !! Modifications by Andreas F. Martitsch (13.06.2014)
-    ! derivative along the periodic Boozer angle theta has
-    ! been redefined to a derivative along the field line (phi_mfl)
-    ! (changes concerning dbnoverb0_dtheta are required!)
-    !ttmpfact=aiota*dbnoverb0_dtheta+imun*m_phi*bnoverb0
-    ttmpfact=dbnoverb0_dphi_mfl
-    !! End Modifications by Andreas F. Martitsch (13.06.2014)
+     CALL source_flux
 !
-    CALL add_f01_source
+     IF(nobounceaver) THEN
+        ALLOCATE(ttmpfact(ibeg:iend))
+        !! Modifications by Andreas F. Martitsch (13.06.2014)
+        ! derivative along the periodic Boozer angle theta has
+        ! been redefined to a derivative along the field line (phi_mfl)
+        ! (changes concerning dbnoverb0_dtheta are required!)
+        !ttmpfact=aiota*dbnoverb0_dtheta+imun*m_phi*bnoverb0
+        ttmpfact=dbnoverb0_dphi_mfl
+        !! End Modifications by Andreas F. Martitsch (13.06.2014)
 !
-    DEALLOCATE(ttmpfact)
-  ENDIF
+        CALL add_f01_source
+!
+        DEALLOCATE(ttmpfact)
+     ENDIF
+     source_vector_all(:,:,ispecp)=source_vector(:,1:4)
+  ENDDO
 !
   expforw=EXP(imun*m_phi*(phi_mfl(iend)-phi_mfl(ibeg)))
   expbackw=(1.d0,0.d0)/expforw
@@ -3622,13 +3771,30 @@ CALL plotsource(11010,dimag(source_vector))
   icol(nz_per_neg+1:nz_asymm)=icol_asymm(nz_per_neg+1:nz_asymm)
   amat_sp(nz_per_neg+1:nz_asymm)=amat_asymm(nz_per_neg+1:nz_asymm)*rotfactor
 !
-!  DO i=nz_symm+1,nz_asymm
-!    source_vector(irow(i),4)=source_vector(irow(i),4)           &
-!                            +amat_sp(i)*bvec_parflow(icol(i))
+!  DO ispecp=0,num_spec-1
+!     DO i=nz_symm+1,nz_asymm
+!        source_vector_all(irow(i),4,ispecp)=source_vector_all(irow(i),4,ispecp) &
+!             +amat_sp(i)*bvec_parflow(icol(i))
+!     ENDDO
 !  ENDDO
 !
   problem_type=.FALSE.
   CALL solve_eqs(.TRUE.)
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+  ! (at the moment these arrays cannot be handled correctly using the
+  ! propagator structure -> global variables used):
+  IF(ALLOCATED(qflux_ntv_allspec)) DEALLOCATE(qflux_ntv_allspec)
+  ALLOCATE(qflux_ntv_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
+  IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Non-Axisymm. solution does not exist!"
+  qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
+  qflux_ntv_allspec=qflux_allspec
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  !  multi-species part (if clean is true, deallocate memory)
+  IF(ALLOCATED(source_vector_all)) DEALLOCATE(source_vector_all)
+  IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+  !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
 !istep=(ibeg+iend)/2
 !call plotsource(10000,real(source_vector))
@@ -4085,6 +4251,11 @@ PRINT *,' '
 ! 
     LOGICAL :: clean
     DOUBLE PRECISION,   DIMENSION(:),   ALLOCATABLE :: bvec_sp_real
+    !! Modification by Andreas F. Martitsch (23.08.2015)
+    !  multi-species part
+    INTEGER :: ispecpp ! species indices (loop over sources)
+    DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec_tmp
+    !! End Modification by Andreas F. Martitsch (23.08.2015)
 !
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 !
@@ -4142,14 +4313,21 @@ PRINT *,' '
 ! Solution of inhomogeneus equation (account of sources):
 !
     IF(problem_type) THEN
-       ALLOCATE(source_vector_real(n_2d_size,4))
-       source_vector_real=DBLE(source_vector)
-       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
-                         source_vector_real(:,1:4),iopt)
-       source_vector=source_vector_real
+       ALLOCATE(source_vector_all_real(n_2d_size,1:4,0:num_spec-1))
+       source_vector_all_real=DBLE(source_vector_all)
+       DO ispecp=0,num_spec-1
+         !IF(problem_type .AND. ispecp .NE. ispec) CYCLE
+         IF(ispecp .NE. ispec) CYCLE
+         CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
+                           source_vector_all_real(:,1:4,ispecp),iopt)
+       ENDDO
+       source_vector_all=source_vector_all_real
     ELSE
-       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                         source_vector(:,1:4),iopt)
+       DO ispecp=0,num_spec-1
+         !IF(problem_type .AND. ispecp .NE. ispec) CYCLE
+         CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
+                           source_vector_all(:,1:4,ispecp),iopt)
+       ENDDO
     ENDIF
 !
 ! integral part:
@@ -4161,22 +4339,32 @@ PRINT *,' '
 !!$      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector(:,4))
 ! 
       denom_energ=SUM(energvec_bra*energvec_ket)
-      !PRINT *,'denom_energ = ',denom_energ
+      !PRINT *,'denom_energ = ',denom_energ 
 !
       DO k=1,3
 !
-        PRINT *,'source',k,':'
+        PRINT *,'source ',k,':'
         ! preconditioned iterations ("next_iteration" provides
         ! Af and q (provided as an input):
         mode_iter=2
         ! direct iterations:
-        !mode_iter=0 
+        !mode_iter=0
 !
-        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,source_vector(:,k))
-!
-!!$        ! Use pre-conditioned iterations (not necessary/depricated):
-!!$        ! -> remove parallel flow from solution
+        !! Modification by Andreas F. Martitsch (23.08.2015)
+        ! old behavior (for a single species):
+        !CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,source_vector(:,k))
+        !source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow     
+        !  multi-species part:
+        DO ispecp=0,num_spec-1
+          PRINT *,'species',ispecp,':'
+          drive_spec=ispecp
+          CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
+                        source_vector_all(:,k,ispecp))
+!!$       ! Use pre-conditioned iterations (not necessary/depricated):
+!!$       ! -> remove parallel flow from solution
 !!$        source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow
+        ENDDO
+        !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
       ENDDO
 !
@@ -4297,7 +4485,32 @@ PRINT *,' '
 !
     ENDIF
 !
-    qflux=0.5d0*REAL(MATMUL(CONJG(flux_vector),source_vector(:,1:3)))
+    !! Modification by Andreas F. Martitsch (23.08.2015)
+    ! old behavior (for a single species)
+    !qflux=0.5d0*REAL(MATMUL(CONJG(flux_vector),source_vector(:,1:3)))
+    !  multi-species part
+    IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+    ALLOCATE(qflux_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
+    qflux_allspec=0.0d0
+    DO ispecp=0,num_spec-1
+      qflux=0.5d0*REAL(MATMUL(CONJG(flux_vector),source_vector_all(:,1:3,ispecp)),dp)
+      qflux_allspec(:,:,ispecp,ispec)=qflux 
+    ENDDO
+    ! order of species inidices (ispecp,ispec) interchanged
+    ! (-> easier to handle within mpro%allgather)
+    CALL mpro%allgather(qflux_allspec(:,:,:,ispec),qflux_allspec)
+    ! go back to the "natural" order of species indices (ispec,ispecp)
+    IF(ALLOCATED(qflux_allspec_tmp)) DEALLOCATE(qflux_allspec_tmp)
+    ALLOCATE(qflux_allspec_tmp(1:3,1:3,0:num_spec-1,0:num_spec-1))
+    qflux_allspec_tmp=0.0d0
+    DO ispecp=0,num_spec-1
+      DO ispecpp=0,num_spec-1
+        qflux_allspec_tmp(:,:,ispecp,ispecpp)=qflux_allspec(:,:,ispecpp,ispecp)
+      ENDDO
+    ENDDO
+    qflux_allspec=qflux_allspec_tmp
+    IF(ALLOCATED(qflux_allspec_tmp)) DEALLOCATE(qflux_allspec_tmp)
+    !! End Modification by Andreas F. Martitsch (23.08.2015)
 !
     IF(clean) THEN
 !
@@ -4306,7 +4519,7 @@ PRINT *,' '
       IF(problem_type) THEN
          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
                            bvec_sp_real,iopt)
-         DEALLOCATE(bvec_sp_real,source_vector_real)
+         DEALLOCATE(bvec_sp_real,source_vector_all_real)
       ELSE
          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
       ENDIF
@@ -4391,22 +4604,22 @@ PRINT *,' '
         ! Use pre-conditioned iterations:
         ! -> remove null-space of axisymmetric solution (energy conservation)
         energvec_ket(k+1:k+npassing) =                                      &
-             step_factor_p*weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
+             weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
         energvec_ket(k+2*npassing+2:k+npassing+3:-1) =                      &
-             step_factor_m*weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
+             weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
 !
         energvec_ket(k+npassing+1) =                                      &
-             step_factor_p*weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
+             weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
         energvec_ket(k+npassing+2) =                                      &
-             step_factor_m*weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
+             weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
 !        
         energvec_bra(k+1:k+npassing+1) =                                     &
-             step_factor_p*weightlag(1,m)*pleg_bra(0,1:npassing+1,istep)
+             step_factor_p*(weightlag(1,m)-1.5d0*weightden(m))*pleg_bra(0,1:npassing+1,istep)
         energvec_bra(k+npassing+2:k+2*npassing+2) =                          &
-             step_factor_m*weightlag(1,m)*pleg_bra(0,npassing+1:1:-1,istep)
+             step_factor_m*(weightlag(1,m)-1.5d0*weightden(m))*pleg_bra(0,npassing+1:1:-1,istep)
 !
         energvec_bra(k+1:k+2*npassing+2) =                                   &
-             energvec_bra(k+1:k+2*npassing+2)/(collpar*bhat_mfl(istep))
+             energvec_bra(k+1:k+2*npassing+2)/(bhat_mfl(istep))
         ! End Use pre-conditioned iterations
 !
         IF(istep.GT.ibeg) THEN
@@ -4955,12 +5168,21 @@ PRINT *,' '
     INTEGER :: l,m,i,k,istep,npassing,k_prev
 !
     DOUBLE COMPLEX, DIMENSION(n_2d_size)                 :: vec_in,vec_out
-    DOUBLE COMPLEX, DIMENSION(0:lag,0:leg)               :: scalprod_pleg
+    !! Modification by Andreas F. Martitsch (20.08.2015)
+    ! Array extended by 3rd (phi-steps) and 4th dimension (species) 
+    DOUBLE COMPLEX, DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg
+    DOUBLE COMPLEX, DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg_tmp
+    ! Species index
+    INTEGER :: ispecp
+    !! End Modification by Andreas F. Martitsch (20.08.2015)    
     DOUBLE COMPLEX, DIMENSION(:,:,:), ALLOCATABLE        :: vec_tmp
 !
     ALLOCATE(vec_tmp(0:lag,2*(npart+1),ibeg:iend))
     vec_tmp=0.d0
 !
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! Array scalprod_pleg extended by 3rd (phi-steps) and
+! 4th dimension (species)
     DO istep=ibeg,iend
 !
       npassing=npl(istep)
@@ -4968,46 +5190,82 @@ PRINT *,' '
       DO m=0,lag
         k=ind_start(istep)+2*(npassing+1)*m
         DO l=0,leg
-          scalprod_pleg(m,l)=                                             &
+          scalprod_pleg(m,l,istep,ispec)=                                 &
               SUM(pleg_bra(l,1:npassing+1,istep)*vec_in(k+1:k+npassing+1))
         ENDDO
         k=k+2*(npassing+1)
         DO l=0,leg,2
-          scalprod_pleg(m,l)=scalprod_pleg(m,l)                           &
+          scalprod_pleg(m,l,istep,ispec)=scalprod_pleg(m,l,istep,ispec)   &
              +SUM(pleg_bra(l,1:npassing+1,istep)*vec_in(k:k-npassing:-1))
         ENDDO
         DO l=1,leg,2
-          scalprod_pleg(m,l)=scalprod_pleg(m,l)                           &
+          scalprod_pleg(m,l,istep,ispec)=scalprod_pleg(m,l,istep,ispec)   &
              -SUM(pleg_bra(l,1:npassing+1,istep)*vec_in(k:k-npassing:-1))
         ENDDO
       ENDDO
+    ENDDO
+!
+! Finish filling-up array scalprod_pleg
+!! End Modification by Andreas F. Martitsch (20.08.2015)  
+!
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
+! (mpro%allgather supports 3D and 4D matrices)
+!PRINT *,'mpro%getrank() before:', mpro%getrank()
+CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
+!PRINT *,'mpro%getrank() after:', mpro%getrank()
+!PRINT *,'scalprod_pleg, species = ',ispec
+!IF(mpro%getrank() .EQ. 0) THEN
+!PRINT *,scalprod_pleg(:,:,ibeg,0)
+!PRINT *,scalprod_pleg(:,:,ibeg,1)
+!STOP
+!END IF
+!
+    DO istep=ibeg,iend
+!
+      npassing=npl(istep)
+!
+! ailmm is now 5D object of species (alpha,alphap)
 !
       DO l=0,leg
-        scalprod_pleg(0:lag,l)=MATMUL(ailmm(0:lag,0:lag,l),               &
-                                      scalprod_pleg(0:lag,l))
+        scalprod_pleg_tmp(0:lag,l,istep,ispec)=0.0d0
+        DO ispecp=0,num_spec-1
+          scalprod_pleg_tmp(0:lag,l,istep,ispec)=scalprod_pleg_tmp(0:lag,l,istep,ispec)+&
+             MATMUL(ailmm_aa(0:lag,0:lag,l,ispec,ispecp),&
+                    scalprod_pleg(0:lag,l,istep,ispecp))
+        ENDDO
+        scalprod_pleg(0:lag,l,istep,ispec)=scalprod_pleg_tmp(0:lag,l,istep,ispec)
+        ! old behavior (for a single species)
+        !scalprod_pleg(0:lag,l)=MATMUL(ailmm(0:lag,0:lag,l),  &
+        !                              scalprod_pleg(0:lag,l))
       ENDDO
+!
+! end of interaction with rest processors
 !
       DO m=0,lag
 !
         DO l=0,leg
-          vec_tmp(m,1:npassing+1,istep)=vec_tmp(m,1:npassing+1,istep)     &
-                      +scalprod_pleg(m,l)*pleg_ket(l,1:npassing+1,istep)
+          vec_tmp(m,1:npassing+1,istep)=vec_tmp(m,1:npassing+1,istep)   &
+                      +scalprod_pleg(m,l,istep,ispec)*pleg_ket(l,1:npassing+1,istep)
         ENDDO
 !
         k=2*(npassing+1)
 !
         DO l=0,leg,2
           vec_tmp(m,k:k-npassing:-1,istep)=vec_tmp(m,k:k-npassing:-1,istep) &
-                      +scalprod_pleg(m,l)*pleg_ket(l,1:npassing+1,istep)
+                      +scalprod_pleg(m,l,istep,ispec)*pleg_ket(l,1:npassing+1,istep)
         ENDDO
         DO l=1,leg,2
           vec_tmp(m,k:k-npassing:-1,istep)=vec_tmp(m,k:k-npassing:-1,istep) &
-                      -scalprod_pleg(m,l)*pleg_ket(l,1:npassing+1,istep)
+                      -scalprod_pleg(m,l,istep,ispec)*pleg_ket(l,1:npassing+1,istep)
         ENDDO
 !
       ENDDO
 !
     ENDDO
+!
+! Finish computations with scalprod_pleg
+!! End Modification by Andreas F. Martitsch (20.08.2015) 
 !
     vec_tmp=0.5d0*vec_tmp
 !
@@ -5157,6 +5415,17 @@ PRINT *,' '
   DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: coefren
   DOUBLE COMPLEX, DIMENSION(:,:), ALLOCATABLE :: amat,bvec
 !
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> Exchange exit conditions between
+! different processes
+  DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond1
+  DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
+! MPI Barrier -> Exchange coefren and amat
+! between different processes
+  DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: coefren_spec
+  DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: amat_spec
+!! End Modification by Andreas F. Martitsch (20.08.2015)
+!
   IF(mode_in.EQ.3) THEN
     mode=mode_in
     IF(ALLOCATED(ritznum)) DEALLOCATE(eigvecs,ritznum)
@@ -5234,9 +5503,19 @@ PRINT *,' '
     DO iter=1,itermax
       CALL next_iteration(n,fold,fnew)
       IF(mode.EQ.2 .OR. mode.EQ.0) fnew=fnew+fzero
+      !! Modification by Andreas F. Martitsch (20.08.2015)
+      ! MPI Barrier -> Exchange exit conditions between
+      ! different processes
+      !IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
       !PRINT *,'dimag(fnew) [sum, abs. sum]: ',SUM(dimag(fnew)),SUM(ABS(dimag(fnew)))
-      PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
-      IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
+      !PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
+      break_cond1(ispec)=SUM(ABS(fnew-fold))
+      break_cond2(ispec)=relerr*SUM(ABS(fnew))
+      PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
+      CALL mpro%allgather(break_cond1(ispec), break_cond1)
+      CALL mpro%allgather(break_cond2(ispec), break_cond2)
+      IF(ALL(break_cond1 .LE. break_cond2)) EXIT
+      !! End Modification by Andreas F. Martitsch (20.08.2015)
       fold=fnew
       IF(iter.EQ.itermax) PRINT *, &
               'iterator: maximum number of iterations reached'
@@ -5254,11 +5533,25 @@ PRINT *,' '
 !
   ALLOCATE(amat(nsize,nsize),bvec(nsize,nsize),ipiv(nsize),coefren(nsize))
   bvec=(0.d0,0.d0)
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> Exchange coefren and amat
+! between different processes
+  IF(ALLOCATED(coefren_spec)) DEALLOCATE(coefren_spec)
+  ALLOCATE(coefren_spec(0:num_spec-1))
+  IF(ALLOCATED(amat_spec)) DEALLOCATE(amat_spec)
+  ALLOCATE(amat_spec(0:num_spec-1))
+!! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   DO i=1,nsize
     bvec(i,i)=(1.d0,0.d0)
     DO j=1,nsize
-      amat(i,j)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))*(ritznum(j)-(1.d0,0.d0))
+      !! Modification by Andreas F. Martitsch (20.08.2015)
+      ! MPI Barrier -> Exchange amat between different processes
+      !amat(i,j)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))*(ritznum(j)-(1.d0,0.d0))
+      amat_spec(ispec)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))
+      CALL mpro%allgather(amat_spec(ispec),amat_spec)
+      amat(i,j)=SUM(amat_spec)*(ritznum(j)-(1.d0,0.d0))
+      !! End Modification by Andreas F. Martitsch (20.08.2015)
     ENDDO
   ENDDO
 !
@@ -5290,13 +5583,32 @@ PRINT *,' '
     CALL next_iteration(n,fold,fnew)
     IF(mode.EQ.2) fnew=fnew+fzero
     DO j=1,nsize
-      coefren(j)=ritznum(j)*SUM(bvec(j,:)                           &
+      !! Modification by Andreas F. Martitsch (20.08.2015)
+      ! MPI Barrier -> Exchange amat between different processes
+      !coefren(j)=ritznum(j)*SUM(bvec(j,:)                           &
+      !          *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
+      coefren_spec(ispec)=SUM(bvec(j,:)                           &
                 *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
+      CALL mpro%allgather(coefren_spec(ispec),coefren_spec)
+      coefren(j)=ritznum(j)*SUM(coefren_spec)
+      !! End Modification by Andreas F. Martitsch (20.08.2015)
+      !coefren(j)=ritznum(j)*SUM(bvec(j,:)                           &
+      !          *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
     ENDDO
     fnew=fnew-MATMUL(eigvecs(:,1:nsize),coefren)
+    !! Modification by Andreas F. Martitsch (20.08.2015)
+    ! MPI Barrier -> Exchange exit conditions between
+    ! different processes
     !PRINT *,'dimag(fnew) [sum, abs. sum]: ',SUM(dimag(fnew)),SUM(ABS(dimag(fnew)))
-    PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
-    IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
+    !PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
+    !IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
+    break_cond1(ispec)=SUM(ABS(fnew-fold))
+    break_cond2(ispec)=relerr*SUM(ABS(fnew))
+    PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
+    CALL mpro%allgather_double_1(break_cond1(ispec), break_cond1)
+    CALL mpro%allgather(break_cond2(ispec), break_cond2)
+    IF(ALL(break_cond1 .LE. break_cond2)) EXIT
+    !! End Modification by Andreas F. Martitsch (20.08.2015)
     fold=fnew
     IF(iter.EQ.itermax) PRINT *,'iterator: maximum number of iterations reached'
   ENDDO
@@ -5340,8 +5652,15 @@ PRINT *,' '
 !
 !  external :: next_iteration
   INTEGER                                       :: n,m,k,j,mmax,mbeg,ncount
+  INTEGER :: driv_spec
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
   DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
+!
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> Exchange qvecs_prevs and hmat
+! between different processes
+  DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
+!! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   ALLOCATE(fold(n),fnew(n))
   ALLOCATE(qvecs_prev(n,1),ritznum_prev(mmax))
@@ -5358,8 +5677,20 @@ PRINT *,' '
     fnew=fzero
   ENDIF
 !
-  !PRINT *,SQRT(SUM(CONJG(fnew)*fnew))
-  qvecs_prev(:,1)=fnew/SQRT(SUM(CONJG(fnew)*fnew))
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> Exchange qvecs_prevs and hmat
+! between different processes
+  !qvecs_prev(:,1)=fnew/SQRT(SUM(CONJG(fnew)*fnew))
+  IF(ALLOCATED(q_spec)) DEALLOCATE(q_spec)
+  ALLOCATE(q_spec(0:num_spec-1))
+  q_spec=0.0d0
+  IF(ALLOCATED(h_spec)) DEALLOCATE(h_spec)
+  ALLOCATE(h_spec(0:num_spec-1))
+  h_spec=0.0d0
+  q_spec(ispec)=SUM(CONJG(fnew)*fnew)
+  CALL mpro%allgather(q_spec(ispec), q_spec)
+  qvecs_prev(:,1)=fnew/SQRT(SUM(q_spec))
+!! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   ierr=0
   mbeg=2
@@ -5381,10 +5712,26 @@ PRINT *,' '
         qvecs(:,k)=fnew
       ENDIF
       DO j=1,k-1
-        hmat(j,k-1)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
+        !! Modification by Andreas F. Martitsch (20.08.2015)
+        ! MPI Barrier -> Exchange qvecs_prevs and hmat
+        ! between different processes
+        !hmat(j,k-1)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))         
+        h_spec=0.0d0
+        h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
+        CALL mpro%allgather(h_spec(ispec), h_spec)
+        hmat(j,k-1)=SUM(h_spec)
+        !! End Modification by Andreas F. Martitsch (20.08.2015) 
         qvecs(:,k)=qvecs(:,k)-hmat(j,k-1)*qvecs(:,j)
       ENDDO
-      hmat(k,k-1)=SQRT(SUM(CONJG(qvecs(:,k))*qvecs(:,k)))
+      !! Modification by Andreas F. Martitsch (20.08.2015)
+      ! MPI Barrier -> Exchange qvecs_prevs and hmat
+      ! between different processes
+      !hmat(k,k-1)=SQRT(SUM(CONJG(qvecs(:,k))*qvecs(:,k)))
+      h_spec=0.0d0
+      h_spec(ispec)=SUM(CONJG(qvecs(:,k))*qvecs(:,k))
+      CALL mpro%allgather(h_spec(ispec), h_spec)
+      hmat(k,k-1)=SQRT(SUM(h_spec))
+      !! End Modification by Andreas F. Martitsch (20.08.2015)
       qvecs(:,k)=qvecs(:,k)/hmat(k,k-1)
     ENDDO
 !
@@ -5420,6 +5767,11 @@ PRINT *,' '
   ENDDO
 !
   DEALLOCATE(fold,fnew,qvecs,qvecs_prev,hmat)
+!! Modification by Andreas F. Martitsch (20.08.2015)
+! MPI Barrier -> Exchange qvecs_prevs and hmat
+! between different processes
+  DEALLOCATE(q_spec,h_spec)
+!! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   END SUBROUTINE arnoldi
 !

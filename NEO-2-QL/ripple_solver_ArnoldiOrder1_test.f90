@@ -323,6 +323,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
 ! DEBUGGING
   INTEGER :: i_ctr=0
+  LOGICAL :: eigvec_data=.TRUE.
 !
   !! Modification by Andreas F. Martitsch (28.07.2015)
   ! multi-species part - MPI rank determines species
@@ -3431,18 +3432,18 @@ rotfactor=imun*m_phi
     problem_type=.TRUE.
     CALL solve_eqs(.TRUE.)
 !
-istep=(ibeg+iend)/2
-CALL plotsource(10000,REAL(source_vector))
-CALL plotsource(11000,dimag(source_vector))
-istep=ibeg
-CALL plotsource(10010,REAL(source_vector))
-CALL plotsource(11010,dimag(source_vector))
-istep=iend
-CALL plotsource(10020,REAL(source_vector))
-CALL plotsource(11020,dimag(source_vector))
-istep=ibeg+1
-CALL plotsource(10030,REAL(source_vector))
-CALL plotsource(11030,dimag(source_vector))
+!istep=(ibeg+iend)/2
+!CALL plotsource(10000,REAL(source_vector))
+!CALL plotsource(11000,dimag(source_vector))
+!istep=ibeg
+!CALL plotsource(10010,REAL(source_vector))
+!CALL plotsource(11010,dimag(source_vector))
+!istep=iend
+!CALL plotsource(10020,REAL(source_vector))
+!CALL plotsource(11020,dimag(source_vector))
+!istep=ibeg+1
+!CALL plotsource(10030,REAL(source_vector))
+!CALL plotsource(11030,dimag(source_vector))
 !
 
     DEALLOCATE(irow,icol,amat_sp)
@@ -3554,7 +3555,7 @@ CALL plotsource(11030,dimag(source_vector))
                qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
                qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
           CLOSE(070915)
-          STOP
+          !STOP
        END IF
        !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE
@@ -4146,7 +4147,53 @@ PRINT *,' '
 !
 !------------------------------------------------------------------------
 !
+    SUBROUTINE ploteigvec(iunit_base,eigvec_tmp)
+!
+    INTEGER, INTENT(in) :: iunit_base
+    DOUBLE PRECISION, DIMENSION(n_2d_size), INTENT(in) :: eigvec_tmp
+!
+    npassing=npl(istep)
+    delta_eta=eta(1:npassing)-eta(0:npassing-1)
+    eta0=1.d0/bhat_mfl(istep)
+    DO m=0,lag
+      k=ind_start(istep)+2*(npassing+1)*m
+      DO i=1,npassing+1
+         !PRINT *,i,npassing
+        IF(i.LE.npassing) THEN
+          alambd_save1=0.5d0*(alambd(i,istep)+alambd(i-1,istep))
+          WRITE(iunit_base+m,*) -alambd_save1,alambd_save1 &
+                *sngl(eigvec_tmp(k+2*(npassing+1)-i+1))/delta_eta(i)
+        ELSE
+          alambd_save1=0.5d0*alambd(i-1,istep)
+          WRITE(iunit_base+m,*) -alambd_save1,alambd_save1 &
+                *sngl(eigvec_tmp(k+2*(npassing+1)-i+1))/(eta0-eta(i-1))
+        ENDIF
+      ENDDO
+      DO i=npassing+1,1,-1
+         !PRINT *,i,npassing
+        IF(i.LE.npassing) THEN
+          alambd_save1=0.5d0*(alambd(i,istep)+alambd(i-1,istep))
+          WRITE(iunit_base+m,*) alambd_save1,alambd_save1  &
+                *sngl(eigvec_tmp(k+i))/delta_eta(i)
+        ELSE
+          alambd_save1=0.5d0*alambd(i-1,istep)
+          WRITE(iunit_base+m,*) alambd_save1,alambd_save1  &
+               *sngl(eigvec_tmp(k+i))/(eta0-eta(i-1))
+        ENDIF
+      ENDDO
+    ENDDO
+!
+    CALL FLUSH()
+!
+    END SUBROUTINE ploteigvec
+!
+!------------------------------------------------------------------------
+!    
     SUBROUTINE solve_eqs(clean)
+!
+      ! DEBUGGING
+      USE arnoldi_mod, ONLY : eigvecs
+!
 !
 ! Solve the linear equation set:
 ! 
@@ -4157,6 +4204,8 @@ PRINT *,' '
     INTEGER :: ispecpp ! species indices (loop over sources)
     DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec_tmp
     !! End Modification by Andreas F. Martitsch (23.08.2015)
+    ! DEBUGGING
+    DOUBLE COMPLEX, DIMENSION(n_2d_size) :: eigvec_tmp
 !
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 !
@@ -4243,7 +4292,21 @@ PRINT *,' '
 !!$      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector_all(:,4,ispec))
 ! 
       denom_energ=SUM(energvec_bra*energvec_ket)
-      !PRINT *,'denom_energ = ',denom_energ 
+      !PRINT *,'denom_energ = ',denom_energ
+!
+!!$      ! Plot energvec_ket
+!!$      IF(mpro%getrank().EQ.0) THEN
+!!$         istep=(ibeg+iend)/2
+!!$         CALL ploteigvec(10700,REAL(energvec_ket))
+!!$         CALL ploteigvec(10800,dimag(energvec_ket))
+!!$         istep=ibeg
+!!$         CALL ploteigvec(20700,REAL(energvec_ket))
+!!$         CALL ploteigvec(20800,dimag(energvec_ket))
+!!$         istep=iend
+!!$         CALL ploteigvec(30700,REAL(energvec_ket))
+!!$         CALL ploteigvec(40800,dimag(energvec_ket))
+!!$         !STOP
+!!$      END IF
 !
       DO k=1,3
 !
@@ -4264,6 +4327,22 @@ PRINT *,' '
           drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
                         source_vector_all(:,k,ispecp))
+!
+!!$          ! Plot first eigenvector
+!!$          IF(eigvec_data .AND. mpro%getrank().EQ.0) THEN
+!!$             eigvec_tmp=eigvecs(:,1)
+!!$             istep=(ibeg+iend)/2
+!!$             CALL ploteigvec(1700,REAL(eigvec_tmp))
+!!$             CALL ploteigvec(1800,dimag(eigvec_tmp))
+!!$             istep=ibeg
+!!$             CALL ploteigvec(2700,REAL(eigvec_tmp))
+!!$             CALL ploteigvec(2800,dimag(eigvec_tmp))
+!!$             istep=iend
+!!$             CALL ploteigvec(3700,REAL(eigvec_tmp))
+!!$             CALL ploteigvec(4800,dimag(eigvec_tmp))
+!!$             eigvec_data=.FALSE.
+!!$          END IF
+!
 !!$       ! Use pre-conditioned iterations (not necessary/depricated):
 !!$       source_vector_all(:,k,ispecp)=&
 !!$            source_vector_all(:,k,ispecp)+coefincompr*bvec_parflow
@@ -4508,22 +4587,22 @@ PRINT *,' '
         ! Use pre-conditioned iterations:
         ! -> remove null-space of axisymmetric solution (energy conservation)
         energvec_ket(k+1:k+npassing) =                                      &
-             step_factor_p*weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
+             weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
         energvec_ket(k+2*npassing+2:k+npassing+3:-1) =                      &
-             step_factor_m*weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
+             weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
 !
         energvec_ket(k+npassing+1) =                                      &
-             step_factor_p*weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
+             weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
         energvec_ket(k+npassing+2) =                                      &
-             step_factor_m*weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
+             weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
 !        
         energvec_bra(k+1:k+npassing+1) =                                     &
-             step_factor_p*weightlag(1,m)*pleg_bra(0,1:npassing+1,istep)
+             step_factor_p*(weightlag(1,m)-1.5d0*weightden(m))*pleg_bra(0,1:npassing+1,istep)
         energvec_bra(k+npassing+2:k+2*npassing+2) =                          &
-             step_factor_m*weightlag(1,m)*pleg_bra(0,npassing+1:1:-1,istep)
+             step_factor_m*(weightlag(1,m)-1.5d0*weightden(m))*pleg_bra(0,npassing+1:1:-1,istep)
 !
         energvec_bra(k+1:k+2*npassing+2) =                                   &
-             energvec_bra(k+1:k+2*npassing+2)/(collpar*bhat_mfl(istep))
+             energvec_bra(k+1:k+2*npassing+2)/(bhat_mfl(istep))
         ! End Use pre-conditioned iterations
 !
         IF(istep.GT.ibeg) THEN
@@ -5268,6 +5347,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
      coef_energ=SUM(energvec_bra*fnew)/denom_energ
      !PRINT *,'coef_energ = ',coef_energ
      fnew=fnew-coef_energ*energvec_ket
+     !PRINT *,coef_energ,SUM(energvec_bra*fnew)/denom_energ
   ELSE
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
                        fnew,iopt)
@@ -5411,13 +5491,14 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !!$  ! corresponding to the null-space of the solution
 !!$  ! (energy conservations)  
 !!$  IF(problem_type .AND. ngrow .GT. 0) THEN
-!!$     IF(ABS(ritznum(1)) .GT. 0.9999d0) THEN      
+!!$     IF(ABS(ABS(ritznum(1))-1.0d0) .LT. 1.0d-2) THEN      
 !!$        nsize=ngrow-1
 !!$        eigvecs(:,1)=eigvecs(:,ngrow)
 !!$        ritznum(1)=ritznum(ngrow)
 !!$        ngrow=ngrow-1
 !!$     ENDIF
 !!$  ENDIF
+!!$  IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !!$  ! End exclude
 !  
   ALLOCATE(fold(n),fnew(n))
