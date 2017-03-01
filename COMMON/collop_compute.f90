@@ -20,6 +20,7 @@ module collop_compute
   real(kind=dp) :: m_alp = 6.644656200d-24
   real(kind=dp) :: m_d   = 3.343583719d-24
   real(kind=dp) :: m_C   = 19.94406876d-24
+  real(kind=dp) :: m_W   = 305.2734971d-24
   real(kind=dp) :: c     = 2.9979d10
   real(kind=dp) :: ev    = 1.6022d-12
 
@@ -83,7 +84,8 @@ module collop_compute
   real(kind=dp) :: epsrel = 1d-14
   integer       :: sw_qag_rule = 2
   logical       :: integral_cutoff = .false.
-  real(kind=dp) :: x_cutoff = 20d0
+  real(kind=dp) :: x_cutoff = 1000.0d0
+  logical       :: lsw_interval_sep=.true.
 
   !**********************************************************
   ! Pre-computed matrix elements
@@ -371,31 +373,33 @@ contains
     ! Inform integration routines about knots and continuity of
     ! bases functions
     !**********************************************************
-    if ((collop_base_prj .eq. 11) .or. (collop_base_exp .eq. 11)) then
-       write (*,*) nder
-       allocate(t_vec(lbound(xknots,1):ubound(xknots,1)))
-       t_vec = xknots
-       !write (*,*) t_vec
-
-       !**********************************************************
-       ! Detect if hat functions
-       !**********************************************************
-       if (nder .eq. 2) then  
+    if(lsw_interval_sep) then
+       if ((collop_base_prj .eq. 11) .or. (collop_base_exp .eq. 11)) then
+          write (*,*) nder
+          allocate(t_vec(lbound(xknots,1):ubound(xknots,1)))
+          t_vec = xknots
+          !write (*,*) t_vec
 
           !**********************************************************
-          ! Cutoff integration after last hat
+          ! Detect if hat functions
           !**********************************************************
-          integral_cutoff = .true.
-          x_cutoff = phi_x_max
+          if (nder .eq. 2) then  
 
-          !**********************************************************
-          ! Avoid second derivative in integral part (I4)
-          !**********************************************************
-          d_phi_discont = .true.
+             !**********************************************************
+             ! Cutoff integration after last hat
+             !**********************************************************
+             integral_cutoff = .true.
+             x_cutoff = phi_x_max
+
+             !**********************************************************
+             ! Avoid second derivative in integral part (I4)
+             !**********************************************************
+             d_phi_discont = .true.
+          end if
+
        end if
-       
     end if
-    
+ 
   end subroutine init_collop
 
   subroutine chop_0(x)
@@ -907,11 +911,14 @@ contains
        end if
        
        do k = lbound(t_vec, 1), ubound(t_vec, 1)
-          if (a .gt. t_vec(k)) then
+          if (a .ge. t_vec(k)) then
              cycle
+          elseif (kmax .eq. 0) then
+             kmax = kmax + 1
+             x_inter(kmax) = a
           end if
           
-          if (t_vec(k) .gt. b) then
+          if (t_vec(k) .ge. b) then
              kmax = kmax + 1
              x_inter(kmax) = b
              binknots = .true.
@@ -935,10 +942,12 @@ contains
        
        do k = 1, kmax-1
           res_int = fint1d_qag(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel, sw_qag_rule)
+          !res_int = fint1d_qags(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel)
           y = y + res_int(1)
        end do
     else
        res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
+       !res_int = fint1d_qags(func1d, a, b, epsabs, epsrel)
        y = res_int(1)
     end if
        
@@ -981,6 +990,7 @@ contains
                    cycle
                 else
                    res_int = fint1d_qag(func1d, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
+                   !res_int = fint1d_qags(func1d, a, t_vec(k), epsabs, epsrel)
                    y = y + res_int(1)
                    !write (*,*) "1. Int", a, t_vec(k), res_int
                    in_interval = .true.
@@ -989,21 +999,30 @@ contains
              if (in_interval) then
                 if (k .lt. ubound(t_vec,1)) then
                    res_int = fint1d_qag(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel, sw_qag_rule)
+                   !res_int = fint1d_qags(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel)
                    y = y + res_int(1)
                    !write (*,*) "Rest int", t_vec(k), t_vec(k+1), y
                 end if
              end if
 
           end do
-          res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
+          if (integral_cutoff) then
+             res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
+             !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+          else
+             res_int = fint1d_qagiu(func1d, t_vec(ubound(t_vec,1)), epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+          end if
           y = y + res_int(1)
           !write (*,*) "Final int", t_vec(ubound(t_vec,1)), y
        else
-          !write (*,*) "a outside domain", a, integral_cutoff, x_cutoff
+          !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff
           if (integral_cutoff) then
              res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+             !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
           else
              res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
           end if
           y = res_int(1)
        end if
@@ -1012,8 +1031,10 @@ contains
        
        if (integral_cutoff) then
           res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+          !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
        else
           res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
+          !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
        end if
        y = res_int(1)
        
@@ -1369,7 +1390,7 @@ contains
       real(kind=dp) :: x, weightenerg_kernel
 
       weightenerg_kernel = &
-           pi**(-3d0/2d0) * x**(4+alpha) * EXP(-(1+beta)*x**2) * phi_prj(m, x) * (x**2 - 1.5d0)
+           pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * (x**2 - 1.5d0)
     end function weightenerg_kernel
     
     function weightden_kernel(x)
@@ -2044,7 +2065,9 @@ contains
     allocate(M_transform_inv(0:lagmax, 0:lagmax))
 
     call compute_Minv(M_transform_inv)
+    call disp_gsl_integration_error()
     call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s)
+    call disp_gsl_integration_error()
     Amm_s=M_transform
 
   end subroutine compute_source
@@ -2081,7 +2104,9 @@ contains
     allocate(M_transform_inv(0:lagmax, 0:lagmax))
 
     call compute_Minv(M_transform_inv)
+    call disp_gsl_integration_error()
     call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s)
+    call disp_gsl_integration_error()
     Amm_s=M_transform
     
     gamma_ab = 1.0d0
@@ -2092,9 +2117,13 @@ contains
     write (*,'(A,A,A,A,A,ES13.6)') " Computing relativistic collision operator"
     
     call compute_lorentz(anumm_s)
+    call disp_gsl_integration_error()
     call compute_lorentz_inf(anumm_inf_s)
+    call disp_gsl_integration_error()
     call compute_energyscattering(denmm_s)
+    call disp_gsl_integration_error()
     call compute_integralpart(ailmm_s)
+    call disp_gsl_integration_error()
 
     write (*,*) 2d0/3d0 * ailmm_s(:,2,2) / (anumm_s(:,2) - denmm_s(:,2))
  
@@ -2118,8 +2147,11 @@ contains
     write (*,'(A,A,A,A,A,1E13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
 
     call compute_lorentz(anumm_s)
+    call disp_gsl_integration_error()
     call compute_energyscattering(denmm_s)
+    call disp_gsl_integration_error()    
     call compute_integralpart(ailmm_s)
+    call disp_gsl_integration_error()
 
   end subroutine compute_collop
   
@@ -2141,9 +2173,13 @@ contains
     write (*,'(A,A,A,A,A,ES13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
 
     call compute_lorentz(anumm_s)
+    call disp_gsl_integration_error()
     call compute_lorentz_inf(anumm_inf_s)
+    call disp_gsl_integration_error()
     call compute_energyscattering(denmm_s)
+    call disp_gsl_integration_error()
     call compute_integralpart(ailmm_s)
+    call disp_gsl_integration_error()
 
   end subroutine compute_collop_inf
 
@@ -2164,6 +2200,7 @@ contains
     write (*,'(A,A,A,A,A,ES13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
 
     call compute_lorentz(anumm_s)
+    call disp_gsl_integration_error()
 
   end subroutine compute_collop_lorentz
 
