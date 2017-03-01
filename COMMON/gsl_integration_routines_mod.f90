@@ -69,6 +69,11 @@ MODULE gsl_integration_routines_mod
   PUBLIC integration_solver_talk
   LOGICAL :: integration_solver_talk = .FALSE.
   !
+  ! GSL error codes
+  PRIVATE gsl_err_detected, check_error
+  PUBLIC disp_gsl_integration_error
+  LOGICAL, DIMENSION(-2:32) :: gsl_err_detected = .FALSE.
+  !
   ! This part is replaced by internal subroutines (01.04.2015)
 !!$  ! Internal Fortran-to-C wrapper functions (public, because of c-binding)
 !!$  PUBLIC f2c_wrapper_func1d_param0, f2c_wrapper_func1d_param1
@@ -207,6 +212,7 @@ CONTAINS
     ! the user-specified parameters
     status = fgsl_integration_qag(stdfunc, x_low, x_up, &
        epsabs, epsrel, limit, sw_qag_rule, integ_wk, ra, rda)
+    CALL check_error(status)
     !
     ! Return the results (ra,rda)
     fint1d_param0_qag(1) = ra
@@ -287,6 +293,7 @@ CONTAINS
     ! the user-specified parameters
     status = fgsl_integration_qag(stdfunc, x_low, x_up, &
        epsabs, epsrel, limit, sw_qag_rule, integ_wk, ra, rda)
+    CALL check_error(status)
     !
     ! Return the results (ra,rda)
     fint1d_param1_qag(1) = ra
@@ -367,6 +374,7 @@ CONTAINS
     ! the user-specified parameters
     status = fgsl_integration_qags(stdfunc, x_low, x_up, &
        epsabs, epsrel, limit, integ_wk, ra, rda)
+    CALL check_error(status)
     !
     ! Return the results (ra,rda)
     fint1d_param0_qags(1) = ra
@@ -444,6 +452,7 @@ CONTAINS
     ! the user-specified parameters
     status = fgsl_integration_qags(stdfunc, x_low, x_up, &
        epsabs, epsrel, limit, integ_wk, ra, rda)
+    CALL check_error(status)
     !
     ! Return the results (ra,rda)
     fint1d_param1_qags(1) = ra
@@ -525,6 +534,7 @@ CONTAINS
     ! the user-specified parameters
     status = fgsl_integration_qagp(stdfunc, pts, siz_pts, &
          epsabs, epsrel, limit, integ_wk, ra, rda)
+    CALL check_error(status)
     !
     ! Return the results (ra,rda)
     fint1d_param0_qagp(1) = ra
@@ -603,6 +613,7 @@ CONTAINS
     ! the user-specified parameters
     status = fgsl_integration_qagp(stdfunc, pts, siz_pts, &
          epsabs, epsrel, limit, integ_wk, ra, rda)
+    CALL check_error(status)
     !
     ! Return the results (ra,rda)
     fint1d_param1_qagp(1) = ra
@@ -649,9 +660,9 @@ CONTAINS
     REAL(fgsl_double) :: x_low, x_up
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(3) :: fint1d_param0_cquad
+    REAL(fgsl_double), DIMENSION(2) :: fint1d_param0_cquad
     !
-    INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 100_fgsl_size_t
+    INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 1000_fgsl_size_t
     INTEGER(fgsl_size_t) :: neval ! nmber of function evaluations
     REAL(fgsl_double) :: ra, rda ! result and absolute error
     TYPE(fgsl_error_handler_t) :: std
@@ -683,11 +694,12 @@ CONTAINS
     ! the user-specified parameters
     status = fgsl_integration_cquad(stdfunc, x_low, x_up, &
        epsabs, epsrel, integ_cq, ra, rda, neval)
+    CALL check_error(status)
     !
     ! Return the results (ra,rda,neval)
     fint1d_param0_cquad(1) = ra
     fint1d_param0_cquad(2) = rda
-    fint1d_param0_cquad(3) = REAL(neval,fgsl_double)
+    !fint1d_param0_cquad(3) = REAL(neval,fgsl_double)
     !
     ! Free memory
     CALL fgsl_function_free(stdfunc)
@@ -727,9 +739,9 @@ CONTAINS
     REAL(fgsl_double) :: x_low, x_up
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(3) :: fint1d_param1_cquad
+    REAL(fgsl_double), DIMENSION(2) :: fint1d_param1_cquad
     !
-    INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 100_fgsl_size_t
+    INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 1000_fgsl_size_t
     INTEGER(fgsl_size_t) :: neval ! nmber of function evaluations
     REAL(fgsl_double) :: ra, rda ! result and absolute error
     TYPE(fgsl_error_handler_t) :: std
@@ -761,11 +773,12 @@ CONTAINS
     ! the user-specified parameters
     status = fgsl_integration_cquad(stdfunc, x_low, x_up, &
        epsabs, epsrel, integ_cq, ra, rda, neval)
+    CALL check_error(status)
     !
     ! Return the results (ra,rda,neval)
     fint1d_param1_cquad(1) = ra
     fint1d_param1_cquad(2) = rda
-    fint1d_param1_cquad(3) = REAL(neval,fgsl_double)
+    !fint1d_param1_cquad(3) = REAL(neval,fgsl_double)
     !
     ! Free memory
     CALL fgsl_function_free(stdfunc)
@@ -841,6 +854,7 @@ CONTAINS
     ! the user-specified parameters
     status = fgsl_integration_qagiu(stdfunc, x_low, &
        epsabs, epsrel, limit, integ_wk, ra, rda)
+    CALL check_error(status)
     !
     ! Return the results (ra,rda)
     fint1d_param0_qagiu(1) = ra
@@ -919,6 +933,7 @@ CONTAINS
     ! the user-specified parameters
     status = fgsl_integration_qagiu(stdfunc, x_low, &
        epsabs, epsrel, limit, integ_wk, ra, rda)
+    CALL check_error(status)
     !
     ! Return the results (ra,rda)
     fint1d_param1_qagiu(1) = ra
@@ -949,6 +964,79 @@ CONTAINS
       !
     END FUNCTION f2c_wrapper_func1d_param1
   END FUNCTION fint1d_param1_qagiu
+  !--------------------------------------------------------------------------------------!
+  !--------------------------------------------------------------------------------------!
+  ! Check error-codes from GSL:
+!!$  GSL_SUCCESS  = 0, 
+!!$  GSL_FAILURE  = -1,
+!!$  GSL_CONTINUE = -2,  /* iteration has not converged */
+!!$  GSL_EDOM     = 1,   /* input domain error, e.g sqrt(-1) */
+!!$  GSL_ERANGE   = 2,   /* output range error, e.g. exp(1e100) */
+!!$  GSL_EFAULT   = 3,   /* invalid pointer */
+!!$  GSL_EINVAL   = 4,   /* invalid argument supplied by user */
+!!$  GSL_EFAILED  = 5,   /* generic failure */
+!!$  GSL_EFACTOR  = 6,   /* factorization failed */
+!!$  GSL_ESANITY  = 7,   /* sanity check failed - shouldn't happen */
+!!$  GSL_ENOMEM   = 8,   /* malloc failed */
+!!$  GSL_EBADFUNC = 9,   /* problem with user-supplied function */
+!!$  GSL_ERUNAWAY = 10,  /* iterative process is out of control */
+!!$  GSL_EMAXITER = 11,  /* exceeded max number of iterations */
+!!$  GSL_EZERODIV = 12,  /* tried to divide by zero */
+!!$  GSL_EBADTOL  = 13,  /* user specified an invalid tolerance */
+!!$  GSL_ETOL     = 14,  /* failed to reach the specified tolerance */
+!!$  GSL_EUNDRFLW = 15,  /* underflow */
+!!$  GSL_EOVRFLW  = 16,  /* overflow  */
+!!$  GSL_ELOSS    = 17,  /* loss of accuracy */
+!!$  GSL_EROUND   = 18,  /* failed because of roundoff error */
+!!$  GSL_EBADLEN  = 19,  /* matrix, vector lengths are not conformant */
+!!$  GSL_ENOTSQR  = 20,  /* matrix not square */
+!!$  GSL_ESING    = 21,  /* apparent singularity detected */
+!!$  GSL_EDIVERGE = 22,  /* integral or series is divergent */
+!!$  GSL_EUNSUP   = 23,  /* requested feature is not supported by the hardware */
+!!$  GSL_EUNIMPL  = 24,  /* requested feature not (yet) implemented */
+!!$  GSL_ECACHE   = 25,  /* cache limit exceeded */
+!!$  GSL_ETABLE   = 26,  /* table limit exceeded */
+!!$  GSL_ENOPROG  = 27,  /* iteration is not making progress towards solution */
+!!$  GSL_ENOPROGJ = 28,  /* jacobian evaluations are not improving the solution */
+!!$  GSL_ETOLF    = 29,  /* cannot reach the specified tolerance in F */
+!!$  GSL_ETOLX    = 30,  /* cannot reach the specified tolerance in X */
+!!$  GSL_ETOLG    = 31,  /* cannot reach the specified tolerance in gradient */
+!!$  GSL_EOF      = 32   /* end of file */
+  !--------------------------------------------------------------------------------------!
+  SUBROUTINE check_error(err_gsl)
+    ! input
+    INTEGER , INTENT(in) :: err_gsl
+    !
+    IF (err_gsl .EQ. 0) RETURN ! GSL_SUCCESS
+    !
+    IF ( (err_gsl .LT. -2) .OR.  (err_gsl .GT. 32)) THEN
+       PRINT *, 'gsl_integration_routines_mod.f90: Unknown error code from GSL!'
+       STOP
+    END IF
+    !
+    IF (.NOT. gsl_err_detected(err_gsl)) gsl_err_detected(err_gsl) = .TRUE.
+    !
+  END SUBROUTINE check_error
+  !--------------------------------------------------------------------------------------!
+  SUBROUTINE disp_gsl_integration_error()
+    ! internal variables
+    INTEGER :: k
+    !
+    IF ( ANY(gsl_err_detected) ) THEN ! else normal termination
+       PRINT *,'-------------------------------------------------'
+       DO k = LBOUND(gsl_err_detected,1),UBOUND(gsl_err_detected,1)
+          IF (gsl_err_detected(k)) THEN
+             PRINT *,"gsl_integration_routines_mod.f90: &
+                  &Possible Warning from GSL Integration Routines - Code = ",k
+          END IF
+       END DO
+       PRINT *,'-------------------------------------------------'
+    END IF
+    !
+    ! reset gsl_err_detected
+    gsl_err_detected = .false.
+    !
+  END SUBROUTINE disp_gsl_integration_error
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Test function without a parameter for 1d integrators
