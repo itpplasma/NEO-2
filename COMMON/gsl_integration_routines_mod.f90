@@ -1014,7 +1014,7 @@ CONTAINS
        STOP
     END IF
     !
-    IF (.NOT. gsl_err_detected(err_gsl)) gsl_err_detected(err_gsl) = .TRUE.
+    gsl_err_detected(err_gsl) = .TRUE.
     !
   END SUBROUTINE check_error
   !--------------------------------------------------------------------------------------!
@@ -1034,7 +1034,7 @@ CONTAINS
     END IF
     !
     ! reset gsl_err_detected
-    gsl_err_detected = .false.
+    gsl_err_detected = .FALSE.
     !
   END SUBROUTINE disp_gsl_integration_error
   !--------------------------------------------------------------------------------------!
