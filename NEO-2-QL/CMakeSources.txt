@@ -20,6 +20,7 @@ set(FGSL_USERINTER_SRC_FILES
         ../COMMON/gsl_roots_routines_mod.f90
 	../COMMON/gsl_integration_routines_mod.f90
 	../COMMON/gsl_bspline_routines_mod.f90
+	../COMMON/gsl_specialfunctions_mod.f90
 )
 set(FGSL_USERINTER_FLAGS "-I${FGSL_INC}")
 set_source_files_properties(${FGSL_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTER_FLAGS})
