@@ -207,7 +207,7 @@ SUBROUTINE ripple_solver(                                 &
   !***************************
   ! HDF5
   !***************************
-  integer(HID_T) :: h5id_final_spitzer, h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
+  integer(HID_T) :: h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
   integer(HID_T) :: h5id_bhat_mfl
 
   !**********************************************************
@@ -2409,8 +2409,8 @@ call cpu_time(time1)
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
-  	   write (*,*) "Source: ", k, "Number of iterations: ", iter
-          exit
+           write (*,*) "Source: ", k, "Number of iterations: ", iter
+           exit
         endif
      enddo
      if (niter .eq. iter) then

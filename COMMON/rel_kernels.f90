@@ -59,7 +59,7 @@
   IMPLICIT NONE
 !
   INTEGER, parameter :: nodemin=5
-  INTEGER            :: leg,n,i,j,nodemax,ndim,info,ndh
+  INTEGER            :: leg,i,j,nodemax,ndim,info,ndh
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ipivot
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: xnode
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat,bvec,wint
