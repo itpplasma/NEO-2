@@ -1077,6 +1077,9 @@ CONTAINS
        CALL h5_add(h5_config_group, 'phi_x_max', phi_x_max, 'Maximum velocity for base function')
        CALL h5_add(h5_config_group, 'collop_bspline_order', collop_bspline_order, 'BSpline order')
        CALL h5_add(h5_config_group, 'collop_bspline_dist', collop_bspline_dist, 'BSpline knots distribution factor')
+       CALL h5_add(h5_config_group, 'isw_relativistic', isw_relativistic)
+       CALL h5_add(h5_config_group, 'T_e', T_e)
+
        CALL h5_close_group(h5_config_group)
 
        CALL h5_define_group(h5_config_id, 'binsplit', h5_config_group)
