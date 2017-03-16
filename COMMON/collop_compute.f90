@@ -3,6 +3,7 @@ module collop_compute
   use hdf5_tools
   !use nrtype, only : dp, pi
   use gsl_integration_routines_mod
+  use gsl_specialfunctions_mod
   use collop_laguerre
   use collop_polynomial
   use collop_spline
@@ -37,6 +38,8 @@ module collop_compute
   real(kind=dp), dimension(:,:,:), allocatable :: I1_mmp_s, I2_mmp_s, I3_mmp_s, I4_mmp_s, ailmm_s
   real(kind=dp), dimension(:,:),   allocatable :: M_transform, M_transform_inv
   real(kind=dp), dimension(:),     allocatable :: C_m
+  real(kind=dp), dimension(:),     allocatable :: weightenerg_offset
+
 
   !**********************************************************
   ! Profile
@@ -70,6 +73,9 @@ module collop_compute
   !**********************************************************
   real(kind=dp) :: rmu, norm_maxwell
   integer       :: isw_relativistic
+  real(kind=dp) :: a_00_offset = 1.00d0
+  real(kind=dp) :: a_02_offset = 1.50d0
+  real(kind=dp) :: a_22_offset = 3.75d0
   
   !**********************************************************
   ! Matrix size
@@ -82,10 +88,10 @@ module collop_compute
   !**********************************************************
   real(kind=dp) :: epsabs = 1d-14
   real(kind=dp) :: epsrel = 1d-14
-  integer       :: sw_qag_rule = 2
+  integer       :: sw_qag_rule = 5
   logical       :: integral_cutoff = .false.
   real(kind=dp) :: x_cutoff = 1000.0d0
-  logical       :: lsw_interval_sep=.true.
+  logical       :: lsw_interval_sep = .true.
 
   !**********************************************************
   ! Pre-computed matrix elements
@@ -405,12 +411,13 @@ contains
   subroutine chop_0(x)
     real(kind=dp) :: x, chop
 
-    if (abs(x) .lt. 1d-10) then
-       x = 0d0
+    !if (abs(x) .lt. 1d-10) then
+    !   x = 0d0
        !elseif (abs(x - 1d0) .lt. 1d-10) then
        !   x = 1d0
-    end if
-
+    !end if
+    x = x
+    
   end subroutine chop_0
 
   subroutine chop_1(x)
@@ -462,13 +469,39 @@ contains
     end do
 
   end subroutine chop_5
+
+  function dmuk2ovk2(mu)
+    real(kind=dp) :: mu, dmuk2ovk2
+    
+    if (mu .ge. 5d2) then
+       dmuk2ovk2 = -1.5d0 - 15d0/(8d0*mu) + 15d0/(8d0*mu**2)                    &
+            - 135d0/(128d0 * mu**3) - 45d0/(32d0*mu**4) + 7425d0/(1024d0*mu**5) &
+            - 675d0/(32d0*mu**6) + 1905525d0/(32768*mu**7)
+    else
+       dmuk2ovk2 = -3d0 + mu - (mu*besselk(1,mu))/besselk(2,mu)
+    end if
+  end function dmuk2ovk2
   
+  function ddmuk2ovk2(mu)
+    real(kind=dp) :: mu, ddmuk2ovk2
+
+    if (mu .ge. 5d2) then
+       ddmuk2ovk2 = 15d0/4d0 + 75d0/(8d0 * mu) - 495d0/(64d0 * mu**2) &
+            + 45d0/(128d0 * mu**3) + 9585d0 / (512d0 * mu**4)         &
+            - 65475d0/(1024d0 * mu**5) + 2942325d0/(16384d0 * mu**6)  &
+            - 17380575d0/(32768d0*mu**7)
+    else
+       ddmuk2ovk2 = (2*mu*(6 + (-3 + mu)*mu)*besselk(0,mu) &
+            + (24 + mu*(-12 + (7 - 2*mu)*mu))*besselk(1,mu))/(mu*besselk(2,mu))
+    end if
+  end function ddmuk2ovk2
+ 
   subroutine karney(z,gamma,j0_1,j0_11,j0_2,j0_02,j0_022,               &
        j1_0,j1_1,j1_2,j1_02,j1_11,j1_022)
     !
     implicit none
     !
-    double precision :: gamma,j0_1, j0_11, j0_2,j0_02,j0_022,               &
+    double precision :: gamma,j0_1, j0_11, j0_2,j0_02,j0_022,           &
          j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
     double precision :: z,sigma,z2
     !
@@ -1337,13 +1370,16 @@ contains
     if (isw_relativistic .eq. 0) then
        do m = 0, lagmax
           weightden_s(m+1) = 1d0/sqrt(pi) * integrate(weightden_kernel, 0d0)
+          weightenerg_offset(m) = 1d0/sqrt(pi) * integrate(weightenerg_offset_kernel, 0d0)
        end do
     elseif (isw_relativistic .ge. 1) then
        do m = 0, lagmax
           weightden_s(m+1) = norm_maxwell * 1d0/sqrt(pi) * integrate(weightden_kernel_rel1, 0d0)
+          weightenerg_offset(m) = norm_maxwell * 1d0/sqrt(pi) * &
+               integrate(weightenerg_offset_kernel_rel1, 0d0)       
        end do       
     end if
-    
+
   contains
 
     function am(x)
@@ -1359,12 +1395,11 @@ contains
       exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
       gam = sqrt(1+2*x**2/rmu)
      
-      if ((2*k - 1 - 5*kdelta(3,k)) .le. 1) then
+      if (k .ne. 2) then
          gam_fac = 1.0d0/gam
       else
-         gam_fac = 2.0d0/(gam+1)
+         gam_fac = 1.d0/gam * 2.0d0/(gam+1d0)
       end if
-      !gam_fac = 1d0
       
       am_rel1 = gam_fac * pi**(-3d0/2d0) * x**(4+alpha) * exp(-(exp_maxwell+beta)*x**2) &
            * phi_prj(m, x) * x**(2*k - 1 - 5*kdelta(3,k))
@@ -1379,11 +1414,18 @@ contains
     function bm_rel1(x)
       real(kind=dp) :: x, bm_rel1
       real(kind=dp) :: exp_maxwell, gam
-
+      real(kind=dp) :: gam_fac
+      
       exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
-      gam = 2*x**2/rmu
-
-      bm_rel1 = exp(-exp_maxwell*x**2) * x**(2*(j+1)-5*kdelta(3,j)) * phi_exp(m,x)
+      gam = sqrt(1+2*x**2/rmu)
+      
+      if (k .ne. 2) then
+         gam_fac = 1.0d0/gam
+      else
+         gam_fac = 1.0d0/gam * 2.0d0/(gam+1d0)
+      end if
+      
+      bm_rel1 = gam_fac * exp(-exp_maxwell*x**2) * x**(2*(j+1)-5*kdelta(3,j)) * phi_exp(m,x)
     end function bm_rel1
 
     function weightenerg_kernel(x)
@@ -1403,9 +1445,25 @@ contains
       real(kind=dp) :: exp_maxwell, gam
 
       exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
-      gam = 2*x**2/rmu
-      weightden_kernel_rel1 = exp(-exp_maxwell*x**2) * x**2 * phi_exp(m,x)
+      gam = sqrt(1+2*x**2/rmu)
+      weightden_kernel_rel1 =   exp(-exp_maxwell*x**2) * x**2 * phi_exp(m,x)
     end function weightden_kernel_rel1
+
+    function weightenerg_offset_kernel(x)
+      real(kind=dp) :: x, weightenerg_offset_kernel
+      real(kind=dp) :: exp_maxwell, gam
+
+      weightenerg_offset_kernel = exp(-x**2) * x**4 * phi_exp(m,x)  
+    end function weightenerg_offset_kernel
+    
+    function weightenerg_offset_kernel_rel1(x)
+      real(kind=dp) :: x, weightenerg_offset_kernel_rel1
+      real(kind=dp) :: exp_maxwell, gam
+
+      exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+      gam = sqrt(1+2*x**2/rmu)
+      weightenerg_offset_kernel_rel1 =   2.0d0/(gam+1d0) * exp(-exp_maxwell*x**2) * x**4 * phi_exp(m,x)  
+    end function weightenerg_offset_kernel_rel1
     
     function kdelta(a,b)
       integer :: a, b
@@ -2064,6 +2122,9 @@ contains
     if (allocated(M_transform_inv)) deallocate(M_transform_inv)
     allocate(M_transform_inv(0:lagmax, 0:lagmax))
 
+    if (allocated(weightenerg_offset)) deallocate(weightenerg_offset)
+    allocate(weightenerg_offset(0:lagmax))
+    
     call compute_Minv(M_transform_inv)
     call disp_gsl_integration_error()
     call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s)
@@ -2078,30 +2139,49 @@ contains
     real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
     real(kind=dp), dimension(:,:)   :: anumm_s, anumm_inf_s, denmm_s
     real(kind=dp), dimension(:,:,:) :: ailmm_s
-    real(kind=dp) :: T_e
-    integer :: ierr, n, isw_rel
+    real(kind=dp) :: T_e, rmu_beg, rmu_end
+    integer :: ierr, n, isw_rel, i, rmu_steps
 
+    !**********************************************************
+    ! Preparations for relativistic formulas
+    !**********************************************************
     isw_relativistic = isw_rel
-
-    
     rmu = (c**2 * m_ele)/(eV*T_e)
     
     n=2
     call DBESK(rmu,n,norm_maxwell,ierr)
-    !norm_maxwell = sqrt(pi/(2*rmu)) * norm_maxwell**(-1)
-    !norm_maxwell = 1d0/norm_maxwell
-    !write (*,*) rmu, n, norm_maxwell * sqrt(2/pi), ierr
     norm_maxwell = sqrt(pi/2d0) * 1/norm_maxwell
     
-    write (*,*) "mu = ", rmu
-    write (*,*) "norm_maxwell = ", norm_maxwell
-    !stop
+    write (*,*) "Inverse relativistic velocity mu = ", rmu
+    write (*,*) "Relativistic Maxwell normalization norm_maxwell = ", norm_maxwell
+
+    !**********************************************************
+    ! Define constants for offset correction
+    !**********************************************************
+    a_00_offset = 1.00d0
+    a_02_offset = (-1d0) * dmuk2ovk2(rmu)
+    a_22_offset = ddmuk2ovk2(rmu)
+    
+!!$    rmu_beg = 0d0
+!!$    rmu_end = 1d4
+!!$    rmu_steps = 100000
+!!$    do i = 1, rmu_steps
+!!$
+!!$       rmu = (rmu_end - rmu_beg)/rmu_steps * i
+!!$       write (110,*) rmu, dk2ovk2(rmu), ddk2ovk2(rmu)
+!!$       
+!!$    end do
+!!$       
+!!$    stop
     
     if (allocated(M_transform)) deallocate(M_transform)
     allocate(M_transform(0:lagmax, 0:lagmax))
     
     if (allocated(M_transform_inv)) deallocate(M_transform_inv)
     allocate(M_transform_inv(0:lagmax, 0:lagmax))
+
+    if (allocated(weightenerg_offset)) deallocate(weightenerg_offset)
+    allocate(weightenerg_offset(0:lagmax))
 
     call compute_Minv(M_transform_inv)
     call disp_gsl_integration_error()
@@ -2125,7 +2205,7 @@ contains
     call compute_integralpart(ailmm_s)
     call disp_gsl_integration_error()
 
-    write (*,*) 2d0/3d0 * ailmm_s(:,2,2) / (anumm_s(:,2) - denmm_s(:,2))
+    !write (*,*) 2d0/3d0 * ailmm_s(:,2,2) / (anumm_s(:,2) - denmm_s(:,2))
  
   end subroutine compute_collop_rel
   
@@ -2146,6 +2226,13 @@ contains
     gamma_ab = v_ta/v_tb
     write (*,'(A,A,A,A,A,1E13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
 
+    !**********************************************************
+    ! Define constants for offset correction
+    !**********************************************************
+    a_00_offset = 1.00d0
+    a_02_offset = 1.50d0
+    a_22_offset = 3.75d0
+    
     call compute_lorentz(anumm_s)
     call disp_gsl_integration_error()
     call compute_energyscattering(denmm_s)
@@ -2172,6 +2259,13 @@ contains
     gamma_ab = v_ta/v_tb
     write (*,'(A,A,A,A,A,ES13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
 
+    !**********************************************************
+    ! Define constants for offset correction
+    !**********************************************************
+    a_00_offset = 1.00d0
+    a_02_offset = 1.50d0
+    a_22_offset = 3.75d0
+    
     call compute_lorentz(anumm_s)
     call disp_gsl_integration_error()
     call compute_lorentz_inf(anumm_inf_s)
@@ -2199,6 +2293,13 @@ contains
     gamma_ab = v_ta/v_tb
     write (*,'(A,A,A,A,A,ES13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
 
+    !**********************************************************
+    ! Define constants for offset correction
+    !**********************************************************
+    a_00_offset = 1.00d0
+    a_02_offset = 1.50d0
+    a_22_offset = 3.75d0
+    
     call compute_lorentz(anumm_s)
     call disp_gsl_integration_error()
 
