@@ -75,7 +75,6 @@ SUBROUTINE join_ends(ierr)
   DOUBLE PRECISION :: facnorm
 
   real(kind=dp) :: x, r
-  integer       :: mp
 
   if (prop_finaljoin_mode .eq. 2) then
      call collop_construct

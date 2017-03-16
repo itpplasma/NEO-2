@@ -4,7 +4,6 @@ PROGRAM neo2
   ! MPI SUPPORT
   !**********************************************************
   USE mpiprovider_module
-  USE parallelstorage_module, ONLY : globalstorage
 
   USE size_mod
   !USE partpa_mod, ONLY : hxeta
@@ -1011,7 +1010,7 @@ CONTAINS
        CALL h5_define_group(h5_config_id, 'neo', h5_config_group)
        CALL h5_add(h5_config_group, 'in_file', in_file, 'Boozer file')
        CALL h5_add(h5_config_group, 'lab_swi', lab_swi)
-       CALL h5_add(h5_config_group, 'inp_swi', lab_swi)
+       CALL h5_add(h5_config_group, 'inp_swi', inp_swi)
        CALL h5_close_group(h5_config_group)
 
        CALL h5_define_group(h5_config_id, 'settings', h5_config_group)

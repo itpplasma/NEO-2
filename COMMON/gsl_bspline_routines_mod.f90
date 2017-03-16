@@ -2,12 +2,12 @@
 ! module: gsl_bspline_routines_mod                                                        !
 ! authors: Gernot Kapper, Andreas F. Martitsch                                            !
 ! date: 06.10.2016                                                                        !
-! version: 0.2                                                                            !
+! version: 0.2.1                                                                          !
 !-----------------------------------------------------------------------------------------!
 !-----------------------------------------------------------------------------------------!
 ! History                                                                                 !
 ! 0.1 - Initial version
-! 0.2 -Redesign
+! 0.2 - Redesign
 !-----------------------------------------------------------------------------------------!
 
 module gsl_bspline_routines_mod
@@ -40,7 +40,6 @@ module gsl_bspline_routines_mod
   real(kind=kind(1d0)), dimension(:), allocatable       :: by_end
   real(kind=kind(1d0)), dimension(:,:), allocatable     :: dby_end
 
-  integer(fgsl_int), private :: status
   logical :: taylorExpansion = .true.
   !logical :: taylorExpansion = .false.
 
@@ -122,8 +121,8 @@ contains
   recursive subroutine bspline_eval(x, by_loc) 
     real(fgsl_double) :: x
     real(fgsl_double), dimension(:) :: by_loc
-    integer :: k, m
-    real(fgsl_double) :: gam
+    integer(fgsl_size_t) :: k, m
+    real(fgsl_double)    :: gam
     
     if (x .le. xd_end) then
        call fgsl_check(fgsl_bspline_eval(x, fgsl_by, sw))
@@ -151,7 +150,7 @@ contains
     integer(fgsl_int) :: nder
     integer(fgsl_size_t) :: fgsl_nder
     real(fgsl_double), dimension(:) :: dby_loc
-    integer :: n, m, k
+    integer(fgsl_size_t) :: m, k
     real(fgsl_double) :: gam
 
     if (x .le. xd_end) then

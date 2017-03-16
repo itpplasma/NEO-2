@@ -251,8 +251,6 @@ contains
     integer :: collop_base_prj, collop_base_exp
     real(kind=dp) :: scalprod_alpha
     real(kind=dp) :: scalprod_beta
-    integer       :: k
-    real(kind=dp) :: x, y
 
     alpha = scalprod_alpha
     beta  = scalprod_beta
@@ -573,7 +571,7 @@ contains
       gamp = sqrt(1+zp**2)
       exp_maxwellp = 2d0/(sqrt(1+2*xp**2/rmu) + 1)
       
-      call karney(zp, gamp, j0_1,j0_11,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p)
+      call karney(zp, gamp, j0_1p,j0_11p,j0_2p,j0_02p,j0_022p,j1_0p,j1_1p,j1_2p,j1_02p,j1_11p,j1_022p)
       D_thth1 = ((0.5*j0_2p - (z**(-2) + 1d0/gam**2d0)*j0_02p)  &
            + 4d0/(gam**2)*z**(-2)*j0_022p)*gam/gamp*xp**2/x &
            * exp(-exp_maxwellp * xp**2)
@@ -599,7 +597,7 @@ contains
   function D_uu(rmu, x)
     real(kind=dp) :: rmu, x, D_uu
     real(kind=dp) :: z, gam
-    real(kind=dp) :: gamma,j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
+    real(kind=dp) :: j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
     real(kind=dp) :: I1, I2
     
     z   = sqrt(2/rmu) * x
@@ -643,7 +641,7 @@ contains
     real(kind=dp) :: rmu, x, D_uu_b
     integer       :: mp
     real(kind=dp) :: z, gam
-    real(kind=dp) :: gamma,j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
+    real(kind=dp) :: j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
     real(kind=dp) :: I1, I2
     
     z   = sqrt(2/rmu) * x
@@ -687,7 +685,7 @@ contains
     real(kind=dp) :: rmu, x, F_u_b
     integer       :: mp
     real(kind=dp) :: z, gam
-    real(kind=dp) :: gamma,j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
+    real(kind=dp) :: j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
     real(kind=dp) :: I1, I2
     z   = sqrt(2/rmu) * x
     gam = sqrt(1+z**2)
@@ -1451,7 +1449,6 @@ contains
 
     function weightenerg_offset_kernel(x)
       real(kind=dp) :: x, weightenerg_offset_kernel
-      real(kind=dp) :: exp_maxwell, gam
 
       weightenerg_offset_kernel = exp(-x**2) * x**4 * phi_exp(m,x)  
     end function weightenerg_offset_kernel
@@ -1643,7 +1640,7 @@ contains
     end function integrand_inf
     
     function integrand_inf_rel1(x)
-      real(kind=dp) :: x, y
+      real(kind=dp) :: x
       real(kind=dp) :: integrand_inf_rel1
       real(kind=dp) :: exp_maxwell, z, gam
 
@@ -1659,10 +1656,6 @@ contains
   subroutine compute_energyscattering(denmm_s)
     real(kind=dp), dimension(:,:) :: denmm_s
     integer :: m, mp
-    real(kind=dp), dimension(2) :: res_int
-
-    !if (allocated(denmm_s)) deallocate(denmm_s)
-    !allocate(denmm_s(0:lagmax, 0:lagmax))
 
     write (*,*) "Computing energy scattering part..."
 
@@ -2056,9 +2049,7 @@ contains
     end function K
     
     function I_psi(x)
-      real(kind=dp) :: x, I1, I2, I3, I4, I_psi
-      real(kind=dp) :: I4_1, I4_2
-      real(kind=dp) :: c
+      real(kind=dp) :: x, I_psi
 
       ! First approach - use second derivates
       !  c = 1 + beta
@@ -2072,10 +2063,9 @@ contains
       !I4_1 = ((x**(4 + alpha)*((5 + alpha - 2*(1 + beta)*x**2) * phi_prj(m,x) &
       !       + x*d_phi_prj(m, x))) *  exp(-((1 + beta)*x**2))) * K_temp
 
-      I4_2 = ((x**(3 + alpha) * ((20 + 9*alpha + alpha**2 - 2*(11 + 2*alpha)*(1 + beta)*x**2 + 4*(1 + beta)**2*x**4)*phi_prj(m,x) &
+      I_psi = ((x**(3 + alpha) * ((20 + 9*alpha + alpha**2 - 2*(11 + 2*alpha)*(1 + beta)*x**2 + 4*(1 + beta)**2*x**4)*phi_prj(m,x) &
            + x*(2*(5 + alpha - 2*(1 + beta)*x**2)*d_phi_prj(m,x) + x*dd_phi_prj(m,x)))) * exp(-(1 + beta)*x**2)) * K(x)
       
-      I_psi = I4_2
     end function I_psi
 
     function I_psi_1(xp)
@@ -2139,8 +2129,8 @@ contains
     real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
     real(kind=dp), dimension(:,:)   :: anumm_s, anumm_inf_s, denmm_s
     real(kind=dp), dimension(:,:,:) :: ailmm_s
-    real(kind=dp) :: T_e, rmu_beg, rmu_end
-    integer :: ierr, n, isw_rel, i, rmu_steps
+    real(kind=dp) :: T_e!, rmu_beg, rmu_end
+    integer :: ierr, n, isw_rel!, rmu_steps
 
     !**********************************************************
     ! Preparations for relativistic formulas
