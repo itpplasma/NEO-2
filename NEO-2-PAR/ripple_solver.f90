@@ -39,6 +39,8 @@ SUBROUTINE ripple_solver(                                 &
        
   USE development
 
+  use collop_compute, only: a_00_offset, a_02_offset, a_22_offset, weightenerg_offset
+  
   !*****************************
   ! HDF5
   !*****************************
@@ -180,8 +182,9 @@ SUBROUTINE ripple_solver(                                 &
 !  Off-set:
 !
   double precision :: cg0_1_num,cg2_1_num, cg0_2_num, cg2_2_num, cg0_3_num, cg2_3_num
+  double precision :: cg0_1_num_orig, cg0_2_num_orig, cg0_3_num_orig
   double precision :: denom_mflint
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: avden_vector,avpres_vector
+  double precision, dimension(:),   allocatable :: avden_vector,avpres_vector
 !
 !  End off-set
 !
@@ -204,7 +207,7 @@ SUBROUTINE ripple_solver(                                 &
   !***************************
   ! HDF5
   !***************************
-  integer(HID_T) :: h5id_final_spitzer, h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
+  integer(HID_T) :: h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
   integer(HID_T) :: h5id_bhat_mfl
 
   !**********************************************************
@@ -1285,9 +1288,11 @@ PRINT *,'right boundary layer ignored'
             step_factor_m*weightden(m)*pleg_bra(0,npassing+1:1:-1,istep)
 !
       avpres_vector(k+1:k+npassing+1) =                                     &
-            step_factor_p*weightlag(1,m)*pleg_bra(0,1:npassing+1,istep)
+           step_factor_p*weightenerg_offset(m)*pleg_bra(0,1:npassing+1,istep)
+!          step_factor_p*weightlag(1,m)*pleg_bra(0,1:npassing+1,istep)
       avpres_vector(k+npassing+2:k+2*npassing+2) =                          &
-            step_factor_m*weightlag(1,m)*pleg_bra(0,npassing+1:1:-1,istep)
+           step_factor_m*weightenerg_offset(m)*pleg_bra(0,npassing+1:1:-1,istep)
+!          step_factor_m*weightlag(1,m)*pleg_bra(0,npassing+1:1:-1,istep)
 !
       avden_vector(k+1:k+2*npassing+2) =                                    &
             avden_vector(k+1:k+2*npassing+2)/(collpar*bhat_mfl(istep))
@@ -2404,45 +2409,94 @@ call cpu_time(time1)
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
-  	   !write (*,*) "Number of iterations: ", iter
-          exit
+           write (*,*) "Source: ", k, "Number of iterations: ", iter
+           exit
         endif
      enddo
-     if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver."
+     if (niter .eq. iter) then
+        write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
+        stop
+     end if
     enddo
 !
   endif
   call cpu_time(time2)
   !write (*,*) "Time in integral part:", time2 - time1
 
-!  Off-set:
-  ! 11 continue
-! Drive 1
+  !  Off-set:
+  !*****************************************************************************
+  ! Method for non-relativsitic Maxwellian has been replaced
+  ! by more general computation of a_00, a_02, and a_22 (see collop_compute.f90)
+  !*****************************************************************************
+!!$     ! 11 continue
+!!$     ! Drive 1
+!!$     cg0_1_num=sum(avden_vector*source_vector(:,1))
+!!$     cg2_1_num=sum(avpres_vector*source_vector(:,1))
+!!$     cg0_1_num=2.5d0*cg0_1_num-cg2_1_num
+!!$     cg2_1_num=(4.d0/15.d0)*cg2_1_num-0.4d0*cg0_1_num
+!!$     !
+!!$     cg0_1_num=cg0_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
+!!$     cg2_1_num=cg2_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
+!!$     print *,'Local off-set drive 1: ',cg0_1_num/denom_mflint,cg2_1_num/denom_mflint, denom_mflint
+!!$
+!!$     ! Drive 2 (Spitzer)
+!!$     cg0_2_num=sum(avden_vector*source_vector(:,2))
+!!$     cg2_2_num=sum(avpres_vector*source_vector(:,2))
+!!$     cg0_2_num=2.5d0*cg0_2_num-cg2_2_num
+!!$     cg2_2_num=(4.d0/15.d0)*cg2_2_num-0.4d0*cg0_2_num
+!!$     !
+!!$     cg0_2_num=cg0_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
+!!$     cg2_2_num=cg2_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
+!!$     print *,'Local off-set drive 2: ',cg0_2_num/denom_mflint,cg2_2_num/denom_mflint, denom_mflint
+!!$
+!!$     ! Drive 3
+!!$     cg0_3_num=sum(avden_vector*source_vector(:,3))
+!!$     cg2_3_num=sum(avpres_vector*source_vector(:,3))
+!!$     cg0_3_num=2.5d0*cg0_3_num-cg2_3_num
+!!$     cg2_3_num=(4.d0/15.d0)*cg2_3_num-0.4d0*cg0_3_num
+!!$     !
+!!$     cg0_3_num=cg0_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
+!!$     cg2_3_num=cg2_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
+!!$     print *,'Local off-set drive 3: ',cg0_3_num/denom_mflint,cg2_3_num/denom_mflint, denom_mflint
+  
+  write (*,*) "Parameters for offset correction: ", a_00_offset, a_02_offset, a_22_offset
+  write (*,*) "Weightenerg for offset correction: ", weightenerg_offset
+  
+  ! Drive 1 (Gradient driven)
   cg0_1_num=sum(avden_vector*source_vector(:,1))
+  cg0_1_num_orig = cg0_1_num
   cg2_1_num=sum(avpres_vector*source_vector(:,1))
-  cg0_1_num=2.5d0*cg0_1_num-cg2_1_num
-  cg2_1_num=(4.d0/15.d0)*cg2_1_num-0.4d0*cg0_1_num
-!
+  cg0_1_num=(1d0/a_00_offset * (1 + a_02_offset**2/(a_22_offset - a_02_offset**2/a_00_offset)))*cg0_1_num &
+       - (a_02_offset/a_00_offset / (a_22_offset - a_02_offset**2/a_00_offset))*cg2_1_num
+  cg2_1_num=-a_02_offset/a_00_offset * cg0_1_num_orig / (a_22_offset - a_02_offset**2/a_00_offset) &
+       + cg2_1_num / (a_22_offset - a_02_offset**2/a_00_offset)
+  !
   cg0_1_num=cg0_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
   cg2_1_num=cg2_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
   print *,'Local off-set drive 1: ',cg0_1_num/denom_mflint,cg2_1_num/denom_mflint, denom_mflint
 
-! Drive 2 (Spitzer)
+  ! Drive 2 (Spitzer)
   cg0_2_num=sum(avden_vector*source_vector(:,2))
+  cg0_2_num_orig = cg0_2_num
   cg2_2_num=sum(avpres_vector*source_vector(:,2))
-  cg0_2_num=2.5d0*cg0_2_num-cg2_2_num
-  cg2_2_num=(4.d0/15.d0)*cg2_2_num-0.4d0*cg0_2_num
-!
+  cg0_2_num=(1d0/a_00_offset * (1 + a_02_offset**2/(a_22_offset - a_02_offset**2/a_00_offset)))*cg0_2_num &
+       - (a_02_offset/a_00_offset / (a_22_offset - a_02_offset**2/a_00_offset))*cg2_2_num
+  cg2_2_num=-a_02_offset/a_00_offset * cg0_2_num_orig / (a_22_offset - a_02_offset**2/a_00_offset) &
+       + cg2_2_num / (a_22_offset - a_02_offset**2/a_00_offset)
+  !
   cg0_2_num=cg0_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
   cg2_2_num=cg2_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
   print *,'Local off-set drive 2: ',cg0_2_num/denom_mflint,cg2_2_num/denom_mflint, denom_mflint
-  
-! Drive 3
+
+  ! Drive 3
   cg0_3_num=sum(avden_vector*source_vector(:,3))
+  cg0_3_num_orig = cg0_3_num
   cg2_3_num=sum(avpres_vector*source_vector(:,3))
-  cg0_3_num=2.5d0*cg0_3_num-cg2_3_num
-  cg2_3_num=(4.d0/15.d0)*cg2_3_num-0.4d0*cg0_3_num
-!
+  cg0_3_num=(1d0/a_00_offset * (1 + a_02_offset**2/(a_22_offset - a_02_offset**2/a_00_offset)))*cg0_3_num &
+       - (a_02_offset/a_00_offset / (a_22_offset - a_02_offset**2/a_00_offset))*cg2_3_num
+  cg2_3_num=-a_02_offset/a_00_offset * cg0_3_num_orig / (a_22_offset - a_02_offset**2/a_00_offset) &
+       + cg2_3_num / (a_22_offset - a_02_offset**2/a_00_offset)
+  !
   cg0_3_num=cg0_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
   cg2_3_num=cg2_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
   print *,'Local off-set drive 3: ',cg0_3_num/denom_mflint,cg2_3_num/denom_mflint, denom_mflint
@@ -2756,13 +2810,16 @@ time3 = time3 + (time5-time4)
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
-   	     !write (*,*) "Number of iterations: ", iter
+   	     !write (*,*) "Left - Number of iterations: ", iter
             exit
           endif
 !
         enddo
         !
-        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver." 
+        if (niter .eq. iter) then
+           write (*,*) "Left - Maximum number of iterations reached in ripple solver."
+           stop
+        end if
       endif
 !
       do mm=0,lag
@@ -2814,13 +2871,16 @@ time3 = time3 + (time5-time4)
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
-             !write (*,*) "Number of iterations: ", iter
+             !write (*,*) "Right - Number of iterations: ", iter
              exit
           endif
 !
         enddo
         !
-        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver." 
+        if (niter .eq. iter) then
+           write (*,*) "Right - Maximum number of iterations reached in ripple solver."
+           stop
+        end if
       endif
 !
       do mm=0,lag
