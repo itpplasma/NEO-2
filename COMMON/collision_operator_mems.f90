@@ -87,8 +87,10 @@ module collop
     
     subroutine collop_load()
       real(kind=dp), dimension(:), allocatable :: asource_temp
+
       real(kind=dp) :: alpha_temp, beta_temp
       integer       :: a,b,ispec
+
       real(kind=dp) :: taa_ov_tab_temp
       real(kind=dp) :: coll_a_temp, coll_b_temp
       real(kind=dp) :: za_temp, zb_temp
@@ -482,7 +484,7 @@ module collop
     end subroutine collop_deconstruct
 
     subroutine write_collop()
-      integer(HID_T)   :: h5id_collop, h5id_meta, h5id_species
+      integer(HID_T)   :: h5id_collop, h5id_meta
       integer          :: m, mp, l, xi, n_x
       integer          :: f = 4234
       real(kind=dp), dimension(:), allocatable :: x
