@@ -18,7 +18,8 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   USE magnetics_mod
   USE device_mod
   USE mag_interface_mod
-  USE collisionality_mod, ONLY : collpar,conl_over_mfp,collpar_min,collpar_max
+  USE collisionality_mod, ONLY : collpar,conl_over_mfp,collpar_min,collpar_max,&
+       lsw_multispecies, num_spec, conl_over_mfp_spec, collpar_spec
   USE compute_aiota_mod, ONLY : compute_aiota
   !! Modifications by Andreas F. Martitsch (09.03.2014)
   ! Collection of subroutines (mag.f90) converted to a module.
@@ -29,7 +30,8 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   ! "write_volume_data" (both flint.f90), and "rhs_kin"
   ! and "magdata_for_particles". 
   USE mag_sub, ONLY: mag
-  !! End Modifications by Andreas F. Martitsch (09.03.2014)  
+  !! End Modifications by Andreas F. Martitsch (09.03.2014)
+  USE mpiprovider_module
 
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -66,6 +68,9 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   INTEGER :: ierr
   !
 
+  ! species index
+  INTEGER :: ispec, ispecp
+  
   IF (mag_coordinates .EQ. 0) THEN
      IF (mag_magfield .EQ. 3) THEN ! EFIT
         ! only to provide efit_raxis,efit_zaxis,aiota_tokamak
@@ -128,14 +133,46 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
      CALL make_magnetics(xstart)
   END IF
 
-  ! negative input for conl_over_mfp should provide collpar directly
-  IF (conl_over_mfp .GT. 0.0d0) THEN
-     collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
+  IF (.NOT. lsw_multispecies) THEN
+     ! negative input for conl_over_mfp should provide collpar directly
+     IF (conl_over_mfp .GT. 0.0d0) THEN
+        collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
+     ELSE
+        collpar=-conl_over_mfp
+     END IF
+     collpar_max = collpar
+     collpar_min = collpar
   ELSE
-     collpar=-conl_over_mfp
+     IF(ALLOCATED(collpar_spec)) DEALLOCATE(collpar_spec)
+     ALLOCATE(collpar_spec(0:num_spec-1))
+     ! negative input for conl_over_mfp_spec should provide collpar_spec directly
+     IF (ALL(conl_over_mfp_spec .GT. 0.0d0)) THEN
+        collpar_spec=4.d0/(2.d0*pi*device%r0)*conl_over_mfp_spec
+        !PRINT *,'1'
+        !STOP
+     ELSE IF (ALL(conl_over_mfp_spec .LE. 0.0d0)) THEN
+        collpar_spec=-conl_over_mfp_spec
+        !PRINT *,'2'
+        !STOP
+     ELSE
+        PRINT *,"flint.f90: Values of collisionality &
+             &parameter conl_over_spec not consistent!"
+        PRINT *,"flint.f90: All entries of conl_over_spec &
+             &must be >0 or <=0"
+        STOP
+     END IF
+     ! species index
+     ispec = mpro%getRank()
+     ! set collisionality parameter for species 'ispec'
+     collpar = collpar_spec(ispec)
+     conl_over_mfp = conl_over_mfp_spec(ispec)
+     ! set default parameters for eta-grid refinement
+     ! analogue to single-species version:
+     ! collpar_max and collpar_min are the sane for all species
+     ! (ToDo: species-dependent refinement - re-discretization)
+     collpar_max = collpar_spec(0) 
+     collpar_min = collpar_spec(0)
   END IF
-  collpar_max = collpar
-  collpar_min = collpar
 
 END SUBROUTINE flint_prepare
 
@@ -467,6 +504,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   !
   ! types and routines for splitting
   USE binarysplit_mod
+  !
+  USE mpiprovider_module
   !
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -814,11 +853,13 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   END IF
 
   !PRINT *, 'eta_ori',eta_ori
-  OPEN(9999,file='eta_ori.dat')
-  DO i = LBOUND(eta_ori,1),UBOUND(eta_ori,1)
-     WRITE(9999,*) i, eta_ori(i)
-  END DO
-  CLOSE(9999)
+  IF ( mpro%isMaster() ) THEN
+     OPEN(9999,file='eta_ori.dat')
+     DO i = LBOUND(eta_ori,1),UBOUND(eta_ori,1)
+        WRITE(9999,*) i, eta_ori(i)
+     END DO
+     CLOSE(9999)
+  END IF
   !PAUSE
 
 
@@ -1094,6 +1135,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                          )
                  END IF
                  eta_s_loc_min = eta_x0_val(1) * SQRT(eta_s_loc_min) * collpar
+                 !PRINT *, '*************************'
+                 !PRINT *, collpar, eta_s_loc_min
+                 !PRINT *, '*************************'
                  ! minimum local eta_s - end
                  loc_laguerre: DO ilag = 0,lag_sigma
                     eta_s_val(1)  = eta_s_loc(i_construct) * collision_sigma_multiplier(ilag)

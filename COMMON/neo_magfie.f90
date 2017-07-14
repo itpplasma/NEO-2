@@ -99,7 +99,23 @@ MODULE neo_magfie_mod
   ! needed quantities for NTV output
   REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: R_spl
   REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Z_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Phi_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Rtb_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Ztb_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Ptb_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Rpb_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Zpb_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Ppb_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Rs_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Zs_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: Ps_spl
   !! End Modifications by Andreas F. Martitsch (13.11.2014)
+  !! Modifications by Andreas F. Martitsch (28.03.2017)
+  ! transformation function Boozer coord. -> Symm. flux coord.
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: G_symm_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: G_symm_tb_spl
+  REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: G_symm_pb_spl
+  !! End Modifications by Andreas F. Martitsch (28.03.2017)
   
   REAL(dp) :: boozer_iota
   !! Modifications by Andreas F. Martitsch (17.03.2016)
@@ -140,12 +156,46 @@ MODULE neo_magfie_mod
 
   !! Modifications by Andreas F. Martitsch (13.11.2014)
   ! Local variables for the additionally needed quantities for NTV output
-  REAL(dp), PRIVATE :: r_val, z_val    
+  REAL(dp), PRIVATE :: r_val, z_val, p_val
+  REAL(dp), PRIVATE :: rtb_val, ztb_val, ptb_val
+  REAL(dp), PRIVATE :: rpb_val, zpb_val, ppb_val
+  REAL(dp), PRIVATE :: rs_val, zs_val, ps_val
   !! End Modifications by Andreas F. Martitsch (13.11.2014)
+
+  !! Modifications by Andreas F. Martitsch (28.03.2017)
+  ! Local variables needed for transformation function
+  ! Boozer coord. -> Symm. flux coord.
+  REAL(dp), PRIVATE :: G_symm_val, G_symm_tb_val, G_symm_pb_val
+  !! End Modifications by Andreas F. Martitsch (28.03.2017)
   
   INTERFACE neo_magfie
      MODULE PROCEDURE neo_magfie_a, neo_magfie_b, neo_magfie_c
-  END INTERFACE
+  END INTERFACE neo_magfie
+
+  !! Modifications by Andreas F. Martitsch (28.03.2017)
+  ! transformation function Boozer coord. -> Symm. flux coord.
+  PRIVATE compute_Gsymm_a
+  PUBLIC compute_Gsymm
+  INTERFACE compute_Gsymm
+     MODULE PROCEDURE compute_Gsymm_a
+  END INTERFACE compute_Gsymm
+  !! End Modifications by Andreas F. Martitsch (28.03.2017)
+
+  !! Modifications by Andreas F. Martitsch (30.03.2017)
+  ! compute (R,Z)-coordinates and their poloidal (Boozer) derivatives
+  ! for a given point on a fluxsurface
+  PRIVATE compute_RZ_a
+  PUBLIC compute_RZ
+  INTERFACE compute_RZ
+     MODULE PROCEDURE compute_RZ_a
+  END INTERFACE compute_RZ
+  
+  PRIVATE calc_thetaB_RZloc_a
+  PUBLIC calc_thetaB_RZloc
+  INTERFACE calc_thetaB_RZloc
+     MODULE PROCEDURE calc_thetaB_RZloc_a
+  END INTERFACE calc_thetaB_RZloc
+  !! End Modifications by Andreas F. Martitsch (30.03.2017)
 
 CONTAINS
 
@@ -218,7 +268,7 @@ CONTAINS
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: bb_s_a
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: bb_tb_a
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: bb_pb_a
-    REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: r,z,l
+    REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: r,z,l,p
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: r_tb,z_tb,p_tb
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: r_pb,z_pb,p_pb
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: gtbtb,gpbpb,gtbpb
@@ -235,7 +285,18 @@ CONTAINS
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: gstb_a,gspb_a
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: gstb_tb_a,gspb_tb_a
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: gstb_pb_a,gspb_pb_a
+    !! Modifications by Andreas F. Martitsch (28.03.2017)
+    ! transformation function Boozer coord. -> Symm. flux coord.
+    REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: G_symm_a
+    REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: G_symm_tb_a, G_symm_pb_a
+    !! End Modifications by Andreas F. Martitsch (28.03.2017)
     !! End Modifications by Andreas F. Martitsch (11.03.2014)
+    !! Modifications by Andreas F. Martitsch (26.06.2017)
+    ! compute unit vectors for consistency checks
+    REAL(dp), DIMENSION(3)                           :: e_s, e_tb, e_pb
+    REAL(dp), DIMENSION(3)                           :: hcovar_direct
+    REAL(dp)                                         :: sqrtg_direct
+    !! End Modifications by Andreas F. Martitsch (26.06.2017)
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: sqrg11_met
 
     REAL(dp), DIMENSION(:,:,:,:), POINTER            :: p_spl
@@ -283,7 +344,23 @@ CONTAINS
        ! of the additionally needed quantities for NTV output
        ALLOCATE( R_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
        ALLOCATE( Z_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( Phi_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( Rtb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( Ztb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( Ptb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( Rpb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( Zpb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( Ppb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( Rs_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( Zs_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( Ps_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
        !! End Modifications by Andreas F. Martitsch (13.11.2014)
+       !! Modifications by Andreas F. Martitsch (28.03.2017)
+       ! transformation function Boozer coord. -> Symm. flux coord.
+       ALLOCATE( G_symm_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( G_symm_tb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ALLOCATE( G_symm_pb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       !! End Modifications by Andreas F. Martitsch (28.03.2017)
        
        ALLOCATE( curr_tor_array(magfie_sarray_len) )
        ALLOCATE( curr_tor_s_array(magfie_sarray_len) )
@@ -421,7 +498,11 @@ CONTAINS
 
           ALLOCATE( r(theta_n,phi_n) )  ! NEW
           ALLOCATE( z(theta_n,phi_n) ) 
-          ALLOCATE( l(theta_n,phi_n) ) 
+          ALLOCATE( l(theta_n,phi_n) )
+          !! Modifications by Andreas F. Martitsch (26.06.2017)
+          ! compute toroidal angle phi for consistency checks
+          ALLOCATE( p(theta_n,phi_n) )
+          !! End Modifications by Andreas F. Martitsch (26.06.2017)
           ALLOCATE( r_tb(theta_n,phi_n) ) 
           ALLOCATE( z_tb(theta_n,phi_n) ) 
           ALLOCATE( p_tb(theta_n,phi_n) ) 
@@ -431,6 +512,10 @@ CONTAINS
           r = 0.0d0
           z = 0.0d0
           l = 0.0d0
+          !! Modifications by Andreas F. Martitsch (26.06.2017)
+          ! compute toroidal angle phi for consistency checks
+          p = 0.0d0
+          !! End Modifications by Andreas F. Martitsch (26.06.2017)
           r_tb = 0.0d0
           z_tb = 0.0d0
           p_tb = 0.0d0
@@ -708,6 +793,10 @@ CONTAINS
           !! End Modifications by Andreas F. Martitsch (06.08.2014)
           !
           IF (lab_swi .EQ. 5 .OR. lab_swi .EQ. 3) THEN ! CHS, LHD
+             !! Modifications by Andreas F. Martitsch (26.06.2017)
+             ! compute toroidal angle phi for consistency checks
+             p = x(2) - l
+             !! End Modifications by Andreas F. Martitsch (26.06.2017)
              p_tb = - p_tb
              p_pb = 1 - p_pb
              !! Modifications by Andreas F. Martitsch (07.03.2014)
@@ -715,6 +804,14 @@ CONTAINS
              PRINT *,'WARNING FROM NEO_MAGFIE: CONVERSION FOR RADIAL DERIVATIVE OF BOOZER-PHI NOT IMPLEMENTED!'
              !! End Modifications by Andreas F. Martitsch (07.03.2014)
           ELSE
+             !! Modifications by Andreas F. Martitsch (26.06.2017)
+             ! compute toroidal angle phi for consistency checks
+             IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+                p = x(2) + l * twopi / nfp
+             ELSE
+                p = x(2) - l * twopi / nfp
+             END IF
+             !! End Modifications by Andreas F. Martitsch (26.06.2017)
              p_tb = p_tb * twopi / nfp
              p_pb = 1.0_dp + p_pb * twopi / nfp
              !! Modifications by Andreas F. Martitsch (11.03.2014)
@@ -737,6 +834,11 @@ CONTAINS
           z(:,phi_n)   = z(:,1)
           l(theta_n,:) = l(1,:)
           l(:,phi_n)   = l(:,1)
+          !! Modifications by Andreas F. Martitsch (26.06.2017)
+          ! compute toroidal angle phi for consistency checks
+          p(theta_n,:) = p(1,:)
+          p(:,phi_n)   = p(:,1)
+          !! End Modifications by Andreas F. Martitsch (26.06.2017)
           bmod_a(theta_n,:) = bmod_a(1,:)
           bmod_a(:,phi_n)   = bmod_a(:,1)
           r_tb(theta_n,:) = r_tb(1,:)
@@ -840,6 +942,19 @@ CONTAINS
                2.0d0*r*r_pb*p_s*p_pb + r*r*(p_spb*p_pb + p_s*p_pbpb)
           !! End Modifications by Andreas F. Martitsch (11.03.2014)
 
+          !! Modifications by Andreas F. Martitsch (28.03.2017)
+          ! transformation function Boozer coord. -> Symm. flux coord.
+          ALLOCATE( G_symm_a(theta_n,phi_n) )
+          G_symm_a = -l / (nfp * (psi_pr*1.0e8_dp)) ! cgs-units
+          IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+             G_symm_a = -G_symm_a
+          END IF
+          ALLOCATE( G_symm_tb_a(theta_n,phi_n) )
+          G_symm_tb_a = p_tb / (twopi * (psi_pr*1.0e8_dp))
+          ALLOCATE( G_symm_pb_a(theta_n,phi_n) )
+          G_symm_pb_a = (p_pb-1.0_dp) / (twopi * (psi_pr*1.0e8_dp))
+          !! End Modifications by Andreas F. Martitsch (28.03.2017)
+
           ! Winny for Klaus
           av_b2_m = theta_n * phi_n / SUM(1 / (bmod_a*bmod_a))
           !PRINT *, 'theta_n,phi_n ',theta_n,phi_n 
@@ -929,7 +1044,49 @@ CONTAINS
           p_spl => Z_spl(:,:,:,:,k_es)
           CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
                z,p_spl)
+          p_spl => Phi_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               p,p_spl)
+          p_spl => Rtb_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               r_tb,p_spl)
+          p_spl => Ztb_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               z_tb,p_spl)
+          p_spl => Ptb_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               p_tb,p_spl)
+          p_spl => Rpb_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               r_pb,p_spl)
+          p_spl => Zpb_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               z_pb,p_spl)
+          p_spl => Ppb_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               p_pb,p_spl)
+          p_spl => Rs_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               r_s,p_spl)
+          p_spl => Zs_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               z_s,p_spl)
+          p_spl => Ps_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               p_s,p_spl)
           !! End Modifications by Andreas F. Martitsch (13.11.2014)
+          !! Modifications by Andreas F. Martitsch (28.03.2017)
+          ! transformation function Boozer coord. -> Symm. flux coord.
+          p_spl => G_symm_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               G_symm_a,p_spl)
+          p_spl => G_symm_tb_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               G_symm_tb_a,p_spl)
+          p_spl => G_symm_pb_spl(:,:,:,:,k_es)
+          CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
+               G_symm_pb_a,p_spl)
+          !! End Modifications by Andreas F. Martitsch (28.03.2017)
           
           !PRINT *, 'max_g11 = ', maxval(sqrg11_met)
           !PRINT *, 'min_g11 = ', minval(sqrg11_met)
@@ -943,7 +1100,11 @@ CONTAINS
 
           DEALLOCATE( r )  ! NEW
           DEALLOCATE( z ) 
-          DEALLOCATE( l ) 
+          DEALLOCATE( l )
+          !! Modifications by Andreas F. Martitsch (26.06.2017)
+          ! compute toroidal angle phi for consistency checks
+          DEALLOCATE( p )
+          !! End Modifications by Andreas F. Martitsch (26.06.2017)
           DEALLOCATE( r_tb ) 
           DEALLOCATE( z_tb ) 
           DEALLOCATE( p_tb ) 
@@ -984,7 +1145,14 @@ CONTAINS
           DEALLOCATE( p_pbpb )
           DEALLOCATE( gstb_pb_a ) 
           DEALLOCATE( gspb_pb_a )
+          !! Modifications by Andreas F. Martitsch (28.03.2017)
+          ! transformation function Boozer coord. -> Symm. flux coord.
+          DEALLOCATE( G_symm_a )
+          DEALLOCATE( G_symm_tb_a )
+          DEALLOCATE( G_symm_pb_a )
+          !! End Modifications by Andreas F. Martitsch (28.03.2017)
           !! End Modifications by Andreas F. Martitsch (11.03.2014)
+
 
           !*************************************************************
           ! Provide curr_tor, curr_tor_s, curr_pol, curr_pol_s, iota
@@ -1112,11 +1280,109 @@ CONTAINS
           p_spl => Z_spl(:,:,:,:,k_es)
           CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
                p_spl,z_val)
+          p_spl => Phi_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,p_val)
+          p_spl => Rtb_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,rtb_val)
+          p_spl => Ztb_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,ztb_val)
+          p_spl => Ptb_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,ptb_val)
+          p_spl => Rpb_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,rpb_val)
+          p_spl => Zpb_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,zpb_val)
+          p_spl => Ppb_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,ppb_val)
+          p_spl => Rs_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,rs_val)
+          p_spl => Zs_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,zs_val)
+          p_spl => Ps_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,ps_val)
           !! End Modifications by Andreas F. Martitsch (13.11.2014)
+          !! Modifications by Andreas F. Martitsch (28.03.2017)
+          ! transformation function Boozer coord. -> Symm. flux coord.
+          p_spl => G_symm_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,G_symm_val)
+          p_spl => G_symm_tb_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,G_symm_tb_val)
+          p_spl => G_symm_pb_spl(:,:,:,:,k_es)
+          CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
+               p_spl,G_symm_pb_val)
+          !! End Modifications by Andreas F. Martitsch (28.03.2017)
+          
+          !! Modifications by Andreas F. Martitsch (26.06.2017)
+          ! compute unit vectors for consistency checks
+          !-> co-variant radial unit vector
+          e_s(1) = rs_val*COS(p_val)-ps_val*r_val*SIN(p_val)
+          e_s(2) = rs_val*SIN(p_val)+ps_val*r_val*COS(p_val)
+          e_s(3) = zs_val
+          e_s = 1.0d2*e_s
+          !-> co-variant poloidal unit vector
+          e_tb(1) = rtb_val*COS(p_val)-ptb_val*r_val*SIN(p_val)
+          e_tb(2) = rtb_val*SIN(p_val)+ptb_val*r_val*COS(p_val)
+          e_tb(3) = ztb_val
+          e_tb = 1.0d2*e_tb
+          !-> co-variant toroidal unit vector
+          e_pb(1) = rpb_val*COS(p_val)-ppb_val*r_val*SIN(p_val)
+          e_pb(2) = rpb_val*SIN(p_val)+ppb_val*r_val*COS(p_val)
+          e_pb(3) = zpb_val
+          e_pb = 1.0d2*e_pb
+          !-> print unit vectors:
+          !PRINT *, 's, tb, pb: ',x(1),x(3),x(2)
+          !PRINT *,'e_s: ',e_s
+          !PRINT *,'e_tb: ',e_tb
+          !PRINT *,'e_pb: ',e_pb
+          !-> compute jacobian from unit vectors
+          sqrtg_direct = &
+               e_pb(1)*(e_s(2)*e_tb(3)-e_s(3)*e_tb(2)) + &
+               e_pb(2)*(e_s(3)*e_tb(1)-e_s(1)*e_tb(3)) + &
+               e_pb(3)*(e_s(1)*e_tb(2)-e_s(2)*e_tb(1))
+          !PRINT *,'sqrtg (direct):  ',sqrtg_direct
+          !PRINT *,'sqrtg (current): ',&
+          !     ((ABS(curr_pol) + iota * ABS(curr_tor))/(bmod*bmod)) * psi_pr * 1d6
+          !-> check sign of currents for AUG equilibrium (should be in the same direction)
+          !IF ( (ABS(curr_pol) + ABS(curr_tor)) .NE. ABS(curr_pol+curr_tor) ) THEN
+          !   PRINT *,'Warning: Currents are not in the same direction!'
+          !   STOP
+          !END IF
+          !
+          !-> compute co-variant B-field component
+          hcovar_direct = 0.0d0
+          hcovar_direct(3) = (SUM(e_pb*e_tb)+iota*SUM(e_tb*e_tb))/ABS(sqrtg_direct)
+          hcovar_direct(2) = (SUM(e_pb*e_pb)+iota*SUM(e_tb*e_pb))/ABS(sqrtg_direct)
+          hcovar_direct = (hcovar_direct * (psi_pr*1.0d8) / (bmod*1.0d4))
+          !PRINT *,'hcovar(3) (direct):  ',hcovar_direct(3)
+          !PRINT *,'hcovar(3) (current): ',(curr_tor/bmod)*1.0d2
+          !PRINT *,'hcovar(2) (direct):  ',hcovar_direct(2)
+          !PRINT *,'hcovar(2) (current): ',(curr_pol/bmod)*1.0d2
+          !PAUSE
+          !! End Modifications by Andreas F. Martitsch (26.06.2017)
           
           ! $1/sqrt(g)$
           fac = curr_pol + iota * curr_tor  ! (J + iota I)
           isqrg  = bmod*bmod / fac
+          !! Modifications by Andreas F. Martitsch (28.06.2017)
+          !-> changes of signs to account for left-handed coordinate system
+          !-> affects sign of transport coefficients related to Ware pinch 
+          !-> and Bootstrap current
+          IF (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
+             isqrg  = ABS(isqrg) * SIGN(1.0d0,sqrtg_direct)
+          END IF    
+          !! End Modifications by Andreas F. Martitsch (28.06.2017)
 
           ! Winny for Klaus
           !s_sqrtg00_m = fac / av_b2_m
@@ -1142,12 +1408,13 @@ CONTAINS
           !! Modifications by Andreas F. Martitsch (11.03.2014)
           ! Compute the values of the additionally needed 
           ! B-field components
-          bcovar_s = isqrg*(gstb*iota+gspb)
+          ! 28.06.2017: account of left-handed coord. system
+          bcovar_s = (bmod*bmod / fac)*(gstb*iota+gspb)
           dbcovar_s_dtheta = (2.0d0*bmod*bb_tb/fac)*(gstb*iota+gspb) + &
-               isqrg*(gstb_tb*iota+gspb_tb)
+               (bmod*bmod / fac)*(gstb_tb*iota+gspb_tb)
           !PRINT *,'dbcovar_s_dtheta: ', dbcovar_s_dtheta
           dbcovar_s_dphi = (2.0d0*bmod*bb_pb/fac)*(gstb*iota+gspb) + &
-               isqrg*(gstb_pb*iota+gspb_pb)
+               (bmod*bmod / fac)*(gstb_pb*iota+gspb_pb)
           !PRINT *, 'dbcovar_s_dphi: ', dbcovar_s_dphi
           !STOP 
           !! End Modifications by Andreas F. Martitsch (11.03.2014)
@@ -1251,6 +1518,14 @@ CONTAINS
        fac = fac * psi_pr                                        !!!
        !    sqrtg = fac1 / bmod 
        sqrtg = - fac1 / bmod * psi_pr * 1d6                      !!!
+       !! Modifications by Andreas F. Martitsch (28.06.2017)
+       !-> changes of signs to account for left-handed coordinate system
+       !-> affects sign of transport coefficients related to Ware pinch 
+       !-> and Bootstrap current
+       IF (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
+          sqrtg = ABS(sqrtg) * SIGN(1.0d0,sqrtg_direct)
+       END IF    
+       !! End Modifications by Andreas F. Martitsch (28.06.2017)
        !---------------------------------------------------------------------------
        !  iota_m = iota
        ! fac_m  =  (curr_pol + iota * curr_tor) * 1d6 * psi_pr
@@ -1311,8 +1586,16 @@ CONTAINS
           !! End Modifications by Andreas F. Martitsch (24.04.2015)
           boozer_psi_pr_hat = (psi_pr/bmod0)*1.0d4
        END IF
-       boozer_sqrtg11 = (1.0d0/psi_pr)*sqrg11*1.0d-2
+       boozer_sqrtg11 = ABS((1.0d0/psi_pr)*sqrg11*1.0d-2) ! 22.06.2017 - ensure that this quantity is positive (>=0)
        boozer_isqrg = (1.0d0/psi_pr)*isqrg*1.0d-6
+       !! Modifications by Andreas F. Martitsch (28.06.2017)
+       !-> changes of signs to account for left-handed coordinate system
+       !-> affects sign of transport coefficients related to Ware pinch 
+       !-> and Bootstrap current
+       IF (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
+          boozer_isqrg = ABS(boozer_isqrg) * SIGN(1.0d0,sqrtg_direct)
+       END IF    
+       !! End Modifications by Andreas F. Martitsch (28.06.2017)
        !! End Modifications by Andreas F. Martitsch (12.03.2014)
 
     END IF
@@ -1406,5 +1689,138 @@ CONTAINS
   END SUBROUTINE neo_magfie_c
   !! End Modifications by Andreas F. Martitsch (13.11.2014)
 
-END MODULE neo_magfie_mod
+  !! Modifications by Andreas F. Martitsch (28.03.2017)
+  ! transformation function Boozer coord. -> Symm. flux coord.
+  SUBROUTINE compute_Gsymm_a( x, G_symm, G_symm_tb, G_symm_pb )
+    ! input / output
+    REAL(dp), DIMENSION(:),       INTENT(in)  :: x
+    REAL(dp),                     INTENT(out) :: G_symm
+    REAL(dp),                     INTENT(out) :: G_symm_tb
+    REAL(dp),                     INTENT(out) :: G_symm_pb
+    ! local variables (only dummy arguments here)
+    REAL(dp)                     :: bmod
+    REAL(dp)                     :: sqrtg
+    REAL(dp), DIMENSION(SIZE(x)) :: bder
+    REAL(dp), DIMENSION(SIZE(x)) :: hcovar
+    REAL(dp), DIMENSION(SIZE(x)) :: hctrvr
+    REAL(dp), DIMENSION(SIZE(x)) :: hcurl
+    !
+    ! Compute G_symm_val, G_symm_tb_val and G_symm_pb_val using neo_magfie
+    CALL neo_magfie_a( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
+    !
+    G_symm = G_symm_val
+    G_symm_tb = G_symm_tb_val
+    G_symm_pb = G_symm_pb_val
+    !
+  END SUBROUTINE compute_Gsymm_a
+  !! End Modifications by Andreas F. Martitsch (28.03.2017)
 
+  !! Modifications by Andreas F. Martitsch (30.03.2017)
+  ! compute (R,Z)-coordinates and their poloidal (Boozer) derivatives
+  ! for a given point on a fluxsurface
+  SUBROUTINE compute_RZ_a( x, R, R_tb, Z, Z_tb )
+    ! input / output
+    REAL(dp), DIMENSION(:),       INTENT(in)  :: x
+    REAL(dp),                     INTENT(out) :: R, R_tb
+    REAL(dp),                     INTENT(out) :: Z, Z_tb
+    ! local variables (only dummy arguments here)
+    REAL(dp)                     :: bmod
+    REAL(dp)                     :: sqrtg
+    REAL(dp), DIMENSION(SIZE(x)) :: bder
+    REAL(dp), DIMENSION(SIZE(x)) :: hcovar
+    REAL(dp), DIMENSION(SIZE(x)) :: hctrvr
+    REAL(dp), DIMENSION(SIZE(x)) :: hcurl
+    !
+    ! Compute r_val, z_val, rtb_val and ztb_val using neo_magfie
+    CALL neo_magfie_a( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
+    !
+    R=r_val * 1.d2 ! conversion to cgs-units
+    Z=z_val * 1.d2 ! conversion to cgs-units
+    R_tb=rtb_val * 1.d2 ! conversion to cgs-units
+    Z_tb=ztb_val * 1.d2 ! conversion to cgs-units
+    !
+  END SUBROUTINE compute_RZ_a
+  !
+  ! Evaluation of the poloidal variation of the toroidal rotation velocity:
+  ! -> compute Boozer angle $\vartheta_B$ for a given flux surface "s" and
+  ! -> cylindrical "R"- or "Z"-coordinate.
+  ! -> magnetic routines in NEO-2 are initialized on a specific flux surface (local)
+  SUBROUTINE calc_thetaB_RZloc_a(R_loc,Z_loc,x_start,thetaB)
+    ! input / output
+    REAL(kind=dp), INTENT(in)               :: R_loc, Z_loc
+    REAL(kind=dp), DIMENSION(3), INTENT(in) :: x_start
+    REAL(kind=dp), INTENT(out)              :: thetaB
+    ! local variables
+    INTEGER, PARAMETER :: kmax=100
+    REAL(kind=dp), PARAMETER :: accur=1.0e-5_dp
+    INTEGER :: k
+    REAL(kind=dp) :: fR, fRp, abserr_R, fZ, fZp, abserr_Z, abserr_tht
+    REAL(kind=dp) :: thtB_R_n, thtB_Z_n, thtB_R_np1, thtB_Z_np1
+    LOGICAL :: break_cond
+    REAL(kind=dp) :: R, R_tb, Z, Z_tb
+    REAL(kind=dp), DIMENSION(3) :: x
+    !
+    ! intialize start vector
+    x = x_start
+    thetaB = x_start(3)
+    !
+!!$    ! Debugging
+!!$    OPEN(unit=1234,file='RZ_coord.dat')
+!!$    DO k = 1,kmax
+!!$       thtB_Z_n=DBLE(k-1)*TWOPI/DBLE(kmax-1)
+!!$       x(3) = thtB_Z_n
+!!$       CALL compute_RZ( x, R, R_tb, Z, Z_tb )
+!!$       WRITE(1234,*) x(3), R, Z, R_tb, Z_tb
+!!$    END DO
+!!$    CLOSE(unit=1234)
+    !
+    ! Newton iterations    
+    break_cond = .FALSE.
+    k = 0
+    thtB_R_n = thetaB
+    thtB_Z_n = thetaB
+    DO WHILE(.NOT. break_cond)
+       k = k + 1
+       IF (k .GT. kmax) THEN
+          PRINT *,"calc_thetaB_RZloc: Maximum number of Newton iterations reached!"
+          STOP
+       END IF
+       !
+       x(3) = thtB_R_n
+       CALL compute_RZ( x, R, R_tb, Z, Z_tb )
+       fR = R - R_loc
+       fRp = R_tb 
+       thtB_R_np1 = thtB_R_n - fR / fRp
+       thtB_R_np1 = MODULO(thtB_R_np1,TWOPI)
+       abserr_R = ABS(thtB_R_n-thtB_R_np1)
+       thtB_R_n = thtB_R_np1
+       PRINT *,thtB_R_n,abserr_R,ABS(R-R_loc)
+       !
+       x(3) = thtB_Z_n
+       CALL compute_RZ( x, R, R_tb, Z, Z_tb )
+       fZ = Z - Z_loc
+       fZp = Z_tb 
+       thtB_Z_np1 = thtB_Z_n - fZ / fZp
+       thtB_Z_np1 = MODULO(thtB_Z_np1,TWOPI)
+       abserr_Z = ABS(thtB_Z_n-thtB_Z_np1)
+       thtB_Z_n = thtB_Z_np1
+       !
+       PRINT *,thtB_Z_n,abserr_Z,ABS(Z-Z_loc)
+       !
+       IF( (abserr_R .LT. accur) .AND. (abserr_Z .LT. accur)) THEN
+          abserr_tht = ABS(thtB_R_n-thtB_Z_n)
+          IF( (abserr_tht .LT. accur) ) THEN
+             thetaB = thtB_R_n
+             break_cond=.TRUE.
+          END IF
+       END IF
+       !
+    END DO
+    !
+    PRINT *,"calc_thetaB_RZloc: thetaB = ",thetaB
+    !STOP
+    !
+  END SUBROUTINE calc_thetaB_RZloc_a
+  !! End Modifications by Andreas F. Martitsch (30.03.2017)
+
+END MODULE neo_magfie_mod

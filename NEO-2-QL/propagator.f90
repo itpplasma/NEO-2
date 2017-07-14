@@ -1,494 +1,3 @@
-!! Modification by Andreas F. Martitsch (14.07.2015)
-MODULE ntv_mod
-  !
-  ! Module containing additional data from/for the NTV version
-  ! of ripple_solver
-  !
-  ! Input (switches, mach number, normalized magnetic drift frequency,
-  ! boozer_s, collisionality,...) provided by neo2.in
-  !
-  ! Used within programs:
-  !   neo2 (main)
-  !   ripple_solver
-  !   diag_propagator_res
-  !   neo_magfie_perturbation
-  !
-  ! module containing numerical constants
-  USE neo_precision
-  !
-  IMPLICIT NONE
-  !
-  ! INPUT
-  ! switch: turn on(=1)/off(=0) ntv mode (not used at the moment)
-  INTEGER, PUBLIC :: isw_ntv_mode
-  ! switch: 0=compute qflux only for the symmetric case; 1=do all computations
-  INTEGER, PUBLIC :: isw_qflux_NA
-  ! switch for rippler_solver versions
-  ! (1=preconditioned; 2=Arnoldi Order 1; 3=Arnoldi Order 2)
-  INTEGER, PUBLIC :: isw_ripple_solver
-  ! name of perturbation file
-  CHARACTER(len=100), PUBLIC :: in_file_pert
-  ! toroidal mach number over R_major (Mt/R), Larmor radius associated with
-  ! $B_{00}^{Booz}$ (rho_L_loc) times B
-  REAL(kind=dp), PUBLIC :: MtOvR, B_rho_L_loc
-  !
-  ! OUTPUT
-  ! value of the average ripple of the perturbation field
-  REAL(kind=dp), PUBLIC :: eps_M_2_val
-  ! value of the flux surface average of $g_{\varphi\varphi}$
-  ! for symmetry flux coordinates
-  REAL(kind=dp), PUBLIC :: av_gphph_val
-  ! value of the flux surface average of $\frac{1}{B}$
-  REAL(kind=dp), PUBLIC :: av_inv_bhat_val
-  !
-  ! LOCAL DEFINITIONS
-  !! Modification by Andreas F. Martitsch (23.08.2015)
-  ! NEO-2 can treat now multiple species -> qflux is now a 4D array
-  ! (at the moment these arrays cannot be handled correctly using the
-  ! propagator structure -> global variables used):
-  ! storage array for qflux_symm
-  REAL(kind=dp), DIMENSION(:,:,:,:),  ALLOCATABLE, PUBLIC :: qflux_symm_allspec
-  ! storage array for qflux_ntv
-  REAL(kind=dp), DIMENSION(:,:,:,:),  ALLOCATABLE, PUBLIC :: qflux_ntv_allspec
-  !! End Modification by Andreas F. Martitsch (23.08.2015)
-  ! storage array for qflux_symm (If isw_qflux_symm=0, this quantity stores the
-  ! qflux-matrix for the symmetric field. If isw_qflux_symm=1, ripple_solver
-  ! returns to the calling routine after the computation of the qflux-matrix
-  ! for the symmetric field and array for qflux_symm is not allocated!)
-  REAL(kind=dp), DIMENSION(:,:),  ALLOCATABLE, PUBLIC :: qflux_symm
-  ! starting point of field line for cylindrical coordinates
-  ! (used for normalizations)
-  REAL(kind=dp), PUBLIC :: xstart_cyl(3)
-  ! toroidal mode number of the perturbation field
-  INTEGER, PUBLIC :: m_phi
-  !
-  PUBLIC write_ntv_output
-  PRIVATE write_ntv_output_a!, write_ntv_output_b
-  INTERFACE write_ntv_output
-     MODULE PROCEDURE write_ntv_output_a!, write_ntv_output_b
-  END INTERFACE write_ntv_output
-  !
-CONTAINS
-  !
-  SUBROUTINE write_ntv_output_a(isw_qflux_NA_in,qflux_NA_in,ind_map_in,&
-       beta_out_in,y_in,aiota_loc_in,rt0_in,avnabpsi_in)
-    !
-    USE mag_interface_mod, ONLY : mag_coordinates, &
-         boozer_s, boozer_theta_beg, boozer_phi_beg
-    USE partpa_mod,  ONLY : bmod0
-    USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
-    USE collisionality_mod, ONLY : collpar
-    !! Modification by Andreas F. Martitsch (28.07.2015)
-    ! MPI SUPPORT for multi-species part
-    ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
-    USE mpiprovider_module  
-    !! End Modification by Andreas F. Martitsch (28.07.2015)
-    !
-    ! input:
-    INTEGER, INTENT(in) :: isw_qflux_NA_in
-    REAL(kind=dp), DIMENSION(:,:), INTENT(in) :: qflux_NA_in
-    INTEGER, DIMENSION(3), INTENT(in) :: ind_map_in
-    REAL(kind=dp), DIMENSION(3), INTENT(in) :: beta_out_in
-    REAL(kind=dp), DIMENSION(:), INTENT(in) :: y_in
-    REAL(kind=dp), INTENT(in) :: aiota_loc_in, rt0_in, avnabpsi_in
-    ! local definitions:
-    ! D11 and D12 for the non-axisymmetric problem
-    ! normalized with the plateau coefficient
-    REAL(kind=dp) :: D11_NA_Dpl, D12_NA_Dpl
-    ! D31 and D32 for the axisymmetric problem
-    ! normalized with analytical value of D31
-    REAL(kind=dp) :: D31_AX_D31ref, D32_AX_D31ref, k_cof
-    ! D13 for the non-axisymmetric problem
-    ! normalized with analytical value of D31
-    REAL(kind=dp) :: D13_NA_D31ref
-    ! indices, file id
-    LOGICAL :: opened
-    INTEGER :: i_p, j_p, uw
-    ! conversion factors for normalization
-    REAL(kind=dp) :: fac1, fac2, fac3
-    ! normalized co-variant phi-component of B,  $\sqrt{g}B^\vartheta$
-    REAL(kind=dp) :: bcovar_phi_hat, sqrtg_bctrvr_tht
-    ! Only used to call mag for normalizations
-    ! related to D31 and D32
-    REAL(kind=dp)                 :: bmod_tmp,sqrtg_tmp
-    REAL(kind=dp), DIMENSION(3)   :: x_tmp,bder_tmp,hcovar_tmp,hctrvr_tmp
-    REAL(kind=dp), DIMENSION(3,3) :: hcoder_tmp,hctder_tmp
-    ! Physical output (Mach number, collisionality, $\sqrt{g}B^\varphi$)
-    REAL(kind=dp) :: Mt_val, nu_star, sqrtg_bctrvr_phi
-    ! Physical output ($B_\varphi$,$B_\vartheta$,\langle{B^2}\rangle)
-    REAL(kind=dp) :: bcovar_phi, bcovar_tht, avbhat2, avb2, avbhat
-    !! Modification by Andreas F. Martitsch (28.07.2015)
-    !  multi-species part
-    INTEGER :: ispec ! species index
-    CHARACTER(len=3) :: ispec_str
-    CHARACTER(len=30) :: file_name
-    !! End Modification by Andreas F. Martitsch (28.07.2015)
-    !
-    !! Modification by Andreas F. Martitsch (28.07.2015)
-    ! multi-species part - MPI rank determines species
-    ispec = mpro%getRank()
-    !! End Modification by Andreas F. Martitsch (28.07.2015)    
-    !
-    ! computation of the normalization for D31 and D32 (-> D31_ref)
-    IF (mag_coordinates .EQ. 0) THEN
-       ! cylindrical coordinates
-       x_tmp = xstart_cyl
-       CALL mag(x_tmp,bmod_tmp,sqrtg_tmp,bder_tmp,hcovar_tmp,&
-            hctrvr_tmp,hcoder_tmp,hctder_tmp)
-       ! normalized co-variant phi-component of B
-       ! (Note! co-variant phi-component of B is the
-       ! same for cylindrical coordinates and symmetry flux
-       ! coodrinates --> no conversion needed)
-       bcovar_phi_hat = hcovar_tmp(2)*(bmod_tmp/bmod0)
-       ! restore value of $\sqrt{g}B^\vartheta$ for
-       ! symmetry flux coordinates from quantities
-       ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi_in*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
-    ELSE
-       ! boozer coordinates
-       x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
-       CALL mag(x_tmp,bmod_tmp,sqrtg_tmp,bder_tmp,hcovar_tmp,&
-            hctrvr_tmp,hcoder_tmp,hctder_tmp)
-       !
-       ! normalized co-variant phi-component of B
-       ! (Note! There is no difference between the co-variant
-       ! phi-component of B for Boozer coordinates and those for
-       ! symmetry flux coordinates, which were used for the
-       ! computation of the normalization of D31.)
-       bcovar_phi_hat = hcovar_tmp(2)*(bmod_tmp/bmod0)
-       ! actually this is the same as:
-       ! bcovar_phi_hat = boozer_curr_pol_hat
-       !
-       ! restore value of $\sqrt{g}B^\vartheta$ for
-       ! symmetry flux coordinates from the quantities
-       ! given in Boozer coordinates
-       sqrtg_bctrvr_tht = avnabpsi_in*aiota_loc_in*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
-       ! this is the same up to a minus sign resulting from the
-       ! definition of sqrtg_tmp (right-handed system)
-       !sqrtg_bctrvr_tht = avnabpsi_in*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4)                
-    END IF
-    fac3 = - (2.0_dp/(bmod0*1.0e4_dp)) * beta_out_in(3) * beta_out_in(1) / y_in(6)
-    !
-    ! extra output for NTV computations
-    IF(isw_qflux_NA_in .EQ. 1) THEN
-       ! 1) axisymmetric and non-axisymmetric solution
-       ! have been computed
-       ! a) normalized diffusion coefficients for the
-       ! non-axisymmetric case
-       !
-       ! normalization factor from plateau coefficient
-       fac1=16.0_dp*rt0_in*aiota_loc_in/PI
-       ! normalization factor from gamma matrices
-       fac2= - beta_out_in(1) * beta_out_in(1) / y_in(6)
-       !PRINT *,fac1,fac2
-       ! convert indices for the gamma matrices according 
-       ! to the paper Kernbichler(2008)
-       i_p = ind_map_in(1)
-       j_p = ind_map_in(1)
-       D11_NA_Dpl=fac1*fac2*qflux_NA_in(i_p,j_p)
-       i_p = ind_map_in(1)
-       j_p = ind_map_in(2)
-       D12_NA_Dpl=fac1*fac2*qflux_NA_in(i_p,j_p)
-       !
-       ! $D_{13}^{\rm NA}$ normalized with D31_ref
-       i_p = ind_map_in(1)
-       j_p = ind_map_in(3)
-       D13_NA_D31ref = (fac3*sqrtg_bctrvr_tht/bcovar_phi_hat)*qflux_NA_in(i_p,j_p)
-       !
-       ! normalized diffusion coefficients for the
-       ! axisymmetric case
-       IF (ALLOCATED(qflux_symm)) THEN
-          i_p = ind_map_in(3)
-          j_p = ind_map_in(1)
-          D31_AX_D31ref = (fac3*sqrtg_bctrvr_tht/bcovar_phi_hat)*qflux_symm(i_p,j_p)
-          i_p = ind_map_in(3)
-          j_p = ind_map_in(2)
-          D32_AX_D31ref = (fac3*sqrtg_bctrvr_tht/bcovar_phi_hat)*qflux_symm(i_p,j_p)
-          k_cof = (2.5_dp-D32_AX_D31ref/D31_AX_D31ref)
-       ELSE
-          ! in case of bounce-averaged model the solution
-          ! for the axisymmetric problem is not computed 
-          D31_AX_D31ref = 0.0_dp
-          D32_AX_D31ref = 0.0_dp
-          k_cof = 0.0_dp
-       END IF
-       !
-    ELSE
-       ! only axisymmteric solution has been computed
-       ! (non-axisymmteric coefficients set to zero)
-       D11_NA_Dpl=0.0d0
-       D12_NA_Dpl=0.0d0
-       D13_NA_D31ref=0.0d0
-       ! in this case "qflux" is stored within the actual propagator "prop_a"
-       i_p = ind_map_in(3)
-       j_p = ind_map_in(1)
-       D31_AX_D31ref = (fac3*sqrtg_bctrvr_tht/bcovar_phi_hat)*qflux_NA_in(i_p,j_p)
-       i_p = ind_map_in(3)
-       j_p = ind_map_in(2)
-       D32_AX_D31ref = (fac3*sqrtg_bctrvr_tht/bcovar_phi_hat)*qflux_NA_in(i_p,j_p)
-       k_cof = (2.5_dp-D32_AX_D31ref/D31_AX_D31ref)
-    END IF
-    !
-    !PRINT *,D11_NA_Dpl, D12_NA_Dpl, D13_NA_D31ref
-    !PRINT *,D31_AX_D31ref, D32_AX_D31ref
-    !
-    ! write output:
-    !
-    ! find free unit
-    uw = 100
-    DO
-       INQUIRE(unit=uw,opened=opened)
-       IF(.NOT. opened) EXIT
-       uw = uw + 100
-    END DO
-    !
-    !PRINT *,'1'
-    ! physical output
-    Mt_val=MtOvR*rt0_in
-    nu_star=collpar*rt0_in/aiota_loc_in
-    sqrtg_bctrvr_phi=sqrtg_bctrvr_tht/aiota_loc_in
-    bcovar_phi=hcovar_tmp(2)*(bmod_tmp*1.0e4_dp)
-    bcovar_tht=hcovar_tmp(3)*(bmod_tmp*1.0e4_dp)
-    avbhat2=y_in(9)/y_in(6)
-    avb2=avbhat2*((bmod0*1.0e4_dp)**2)
-    avbhat=y_in(14)/y_in(13)
-    !
-    IF(ispec .EQ. 0) THEN
-       PRINT *,'avbhat: ',avbhat
-       PRINT *,'avnabpsi: ',avnabpsi_in
-       PRINT *,'$\int \rd s / B$: ',y_in(6)
-       PRINT *,'R: ',rt0_in
-       PRINT *,'q: ',1/aiota_loc_in
-    ENDIF
-    !
-    !PRINT *,'2'
-    WRITE(ispec_str,'(I3.3)') ispec
-    file_name='ntv_out_'//ispec_str //'.dat'
-    OPEN(uw,file=TRIM(ADJUSTL(file_name)),status='replace')
-    WRITE (uw,'(1000(1x,e18.5))') &
-         boozer_s, Mt_val, nu_star, B_rho_L_loc, &
-         D31_AX_D31ref, D32_AX_D31ref, k_cof, &
-         D11_NA_Dpl, D12_NA_Dpl, D13_NA_D31ref, &
-         aiota_loc_in, rt0_in, (bmod0*1.0e4_dp), &
-         boozer_psi_pr_hat, avnabpsi_in, &
-         sqrtg_bctrvr_tht, sqrtg_bctrvr_phi, bcovar_tht, bcovar_phi, &
-         DBLE(m_phi), avbhat2, av_inv_bhat_val, eps_M_2_val, &
-         av_gphph_val, avbhat
-    CLOSE(uw)
-    !PRINT *,'3'
-    !
-  END SUBROUTINE write_ntv_output_a
-  !
-!!$  SUBROUTINE write_ntv_output_b(isw_qflux_NA_in,qflux_NA_in,qflux_symm_in,&
-!!$       ind_map_in, beta_out_in,y_in,aiota_loc_in,rt0_in,avnabpsi_in)
-!!$    !
-!!$    USE mag_interface_mod, ONLY : mag_coordinates, &
-!!$         boozer_s, boozer_theta_beg, boozer_phi_beg
-!!$    USE partpa_mod,  ONLY : bmod0
-!!$    USE mag_sub, ONLY: mag
-!!$    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
-!!$    USE collisionality_mod, ONLY : collpar
-!!$    !! Modification by Andreas F. Martitsch (28.07.2015)
-!!$    ! MPI SUPPORT for multi-species part
-!!$    ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
-!!$    USE mpiprovider_module
-!!$    USE collop, ONLY : num_spec
-!!$    !! End Modification by Andreas F. Martitsch (28.07.2015)
-!!$    !
-!!$    ! input:
-!!$    INTEGER, INTENT(in) :: isw_qflux_NA_in
-!!$    REAL(kind=dp), DIMENSION(:,:,:,:), INTENT(in) :: qflux_NA_in
-!!$    REAL(kind=dp), DIMENSION(:,:,:,:), INTENT(in) :: qflux_symm_in
-!!$    INTEGER, DIMENSION(3), INTENT(in) :: ind_map_in
-!!$    REAL(kind=dp), DIMENSION(3), INTENT(in) :: beta_out_in
-!!$    REAL(kind=dp), DIMENSION(:), INTENT(in) :: y_in
-!!$    REAL(kind=dp), INTENT(in) :: aiota_loc_in, rt0_in, avnabpsi_in
-!!$    ! local definitions:
-!!$    ! D11 and D12 for the non-axisymmetric problem
-!!$    ! normalized with the plateau coefficient
-!!$    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: D11_NA_Dpl, D12_NA_Dpl
-!!$    ! D11 and D12 for the axisymmetric problem
-!!$    ! normalized with the plateau coefficient
-!!$    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: D11_NA_Dpl, D12_NA_Dpl
-!!$    ! D31 and D32 for the axisymmetric problem
-!!$    ! normalized with analytical value of D31
-!!$    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: D31_AX_D31ref, D32_AX_D31ref, k_cof
-!!$    ! D13 for the non-axisymmetric problem
-!!$    ! normalized with analytical value of D31
-!!$    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: D13_NA_D31ref
-!!$    ! indices, file id
-!!$    LOGICAL :: opened
-!!$    INTEGER :: i_p, j_p, uw
-!!$    ! conversion factors for normalization
-!!$    REAL(kind=dp) :: fac1, fac2, fac3
-!!$    ! normalized co-variant phi-component of B,  $\sqrt{g}B^\vartheta$
-!!$    REAL(kind=dp) :: bcovar_phi_hat, sqrtg_bctrvr_tht
-!!$    ! Only used to call mag for normalizations
-!!$    ! related to D31 and D32
-!!$    REAL(kind=dp)                 :: bmod_tmp,sqrtg_tmp
-!!$    REAL(kind=dp), DIMENSION(3)   :: x_tmp,bder_tmp,hcovar_tmp,hctrvr_tmp
-!!$    REAL(kind=dp), DIMENSION(3,3) :: hcoder_tmp,hctder_tmp
-!!$    ! Physical output (Mach number, collisionality, $\sqrt{g}B^\varphi$)
-!!$    REAL(kind=dp) :: Mt_val, nu_star, sqrtg_bctrvr_phi
-!!$    ! Physical output ($B_\varphi$,$B_\vartheta$,\langle{B^2}\rangle)
-!!$    REAL(kind=dp) :: bcovar_phi, bcovar_tht, avbhat2, avb2, avbhat
-!!$    !! Modification by Andreas F. Martitsch (28.07.2015)
-!!$    !  multi-species part
-!!$    INTEGER :: ispec, ispecp ! species index
-!!$    CHARACTER(len=3) :: ispec_str
-!!$    CHARACTER(len=30) :: file_name
-!!$    !! End Modification by Andreas F. Martitsch (28.07.2015)
-!!$    !
-!!$    !! Modification by Andreas F. Martitsch (28.07.2015)
-!!$    ! multi-species part - MPI rank determines species
-!!$    ispec = mpro%getRank()
-!!$    !! End Modification by Andreas F. Martitsch (28.07.2015)    
-!!$    !
-!!$    ! computation of the normalization for D31 and D32 (-> D31_ref)
-!!$    IF (mag_coordinates .EQ. 0) THEN
-!!$       ! cylindrical coordinates
-!!$       x_tmp = xstart_cyl
-!!$       CALL mag(x_tmp,bmod_tmp,sqrtg_tmp,bder_tmp,hcovar_tmp,&
-!!$            hctrvr_tmp,hcoder_tmp,hctder_tmp)
-!!$       ! normalized co-variant phi-component of B
-!!$       ! (Note! co-variant phi-component of B is the
-!!$       ! same for cylindrical coordinates and symmetry flux
-!!$       ! coodrinates --> no conversion needed)
-!!$       bcovar_phi_hat = hcovar_tmp(2)*(bmod_tmp/bmod0)
-!!$       ! restore value of $\sqrt{g}B^\vartheta$ for
-!!$       ! symmetry flux coordinates from quantities
-!!$       ! given in cylindircal coordinates
-!!$       sqrtg_bctrvr_tht = avnabpsi_in*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
-!!$    ELSE
-!!$       ! boozer coordinates
-!!$       x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
-!!$       CALL mag(x_tmp,bmod_tmp,sqrtg_tmp,bder_tmp,hcovar_tmp,&
-!!$            hctrvr_tmp,hcoder_tmp,hctder_tmp)
-!!$       !
-!!$       ! normalized co-variant phi-component of B
-!!$       ! (Note! There is no difference between the co-variant
-!!$       ! phi-component of B for Boozer coordinates and those for
-!!$       ! symmetry flux coordinates, which were used for the
-!!$       ! computation of the normalization of D31.)
-!!$       bcovar_phi_hat = hcovar_tmp(2)*(bmod_tmp/bmod0)
-!!$       ! actually this is the same as:
-!!$       ! bcovar_phi_hat = boozer_curr_pol_hat
-!!$       !
-!!$       ! restore value of $\sqrt{g}B^\vartheta$ for
-!!$       ! symmetry flux coordinates from the quantities
-!!$       ! given in Boozer coordinates
-!!$       sqrtg_bctrvr_tht = avnabpsi_in*aiota_loc_in*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
-!!$       ! this is the same up to a minus sign resulting from the
-!!$       ! definition of sqrtg_tmp (right-handed system)
-!!$       !sqrtg_bctrvr_tht = avnabpsi_in*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4)                
-!!$    END IF
-!!$    fac3 = - (2.0_dp/(bmod0*1.0e4_dp)) * beta_out_in(3) * beta_out_in(1) / y_in(6)
-!!$    !
-!!$    ! extra output for NTV computations
-!!$    IF(isw_qflux_NA_in .EQ. 1) THEN
-!!$       ! 1) axisymmetric and non-axisymmetric solution
-!!$       ! have been computed
-!!$       ! a) normalized diffusion coefficients for the
-!!$       ! non-axisymmetric case
-!!$       !
-!!$       ! normalization factor from plateau coefficient
-!!$       fac1=16.0_dp*rt0_in*aiota_loc_in/PI
-!!$       ! normalization factor from gamma matrices
-!!$       fac2= - beta_out_in(1) * beta_out_in(1) / y_in(6)
-!!$       ! convert indices for the gamma matrices according 
-!!$       ! to the paper Kernbichler(2008)
-!!$       i_p = ind_map_in(1)
-!!$       j_p = ind_map_in(1)
-!!$       D11_NA_Dpl=fac1*fac2*qflux_NA_in(i_p,j_p)
-!!$       i_p = ind_map_in(1)
-!!$       j_p = ind_map_in(2)
-!!$       D12_NA_Dpl=fac1*fac2*qflux_NA_in(i_p,j_p)
-!!$       !
-!!$       ! $D_{13}^{\rm NA}$ normalized with D31_ref
-!!$       i_p = ind_map_in(1)
-!!$       j_p = ind_map_in(3)
-!!$       D13_NA_D31ref = (fac3*sqrtg_bctrvr_tht/bcovar_phi_hat)*qflux_NA_in(i_p,j_p)
-!!$       !
-!!$       ! normalized diffusion coefficients for the
-!!$       ! axisymmetric case
-!!$       IF (ALLOCATED(qflux_symm)) THEN
-!!$          i_p = ind_map_in(3)
-!!$          j_p = ind_map_in(1)
-!!$          D31_AX_D31ref = (fac3*sqrtg_bctrvr_tht/bcovar_phi_hat)*qflux_symm(i_p,j_p)
-!!$          i_p = ind_map_in(3)
-!!$          j_p = ind_map_in(2)
-!!$          D32_AX_D31ref = (fac3*sqrtg_bctrvr_tht/bcovar_phi_hat)*qflux_symm(i_p,j_p)
-!!$          k_cof = (2.5_dp-D32_AX_D31ref/D31_AX_D31ref)
-!!$       ELSE
-!!$          ! in case of bounce-averaged model the solution
-!!$          ! for the axisymmetric problem is not computed 
-!!$          D31_AX_D31ref = 0.0_dp
-!!$          D32_AX_D31ref = 0.0_dp
-!!$          k_cof = 0.0_dp
-!!$       END IF
-!!$       !
-!!$    ELSE
-!!$       ! only axisymmteric solution has been computed
-!!$       ! (non-axisymmteric coefficients set to zero)
-!!$       D11_NA_Dpl=0.0d0
-!!$       D12_NA_Dpl=0.0d0
-!!$       D13_NA_D31ref=0.0d0
-!!$       ! in this case "qflux" is stored within the actual propagator "prop_a"
-!!$       i_p = ind_map_in(3)
-!!$       j_p = ind_map_in(1)
-!!$       D31_AX_D31ref = (fac3*sqrtg_bctrvr_tht/bcovar_phi_hat)*qflux_NA_in(i_p,j_p)
-!!$       i_p = ind_map_in(3)
-!!$       j_p = ind_map_in(2)
-!!$       D32_AX_D31ref = (fac3*sqrtg_bctrvr_tht/bcovar_phi_hat)*qflux_NA_in(i_p,j_p)
-!!$       k_cof = (2.5_dp-D32_AX_D31ref/D31_AX_D31ref)
-!!$    END IF
-!!$    !
-!!$    !PRINT *,D11_NA_Dpl, D12_NA_Dpl, D13_NA_D31ref
-!!$    !PRINT *,D31_AX_D31ref, D32_AX_D31ref
-!!$    !
-!!$    ! write output:
-!!$    !
-!!$    ! find free unit
-!!$    uw = 100
-!!$    DO
-!!$       INQUIRE(unit=uw,opened=opened)
-!!$       IF(.NOT. opened) EXIT
-!!$       uw = uw + 100
-!!$    END DO
-!!$    !
-!!$    !PRINT *,'1'
-!!$    ! physical output
-!!$    Mt_val=MtOvR*rt0_in
-!!$    nu_star=collpar*rt0_in/aiota_loc_in
-!!$    sqrtg_bctrvr_phi=sqrtg_bctrvr_tht/aiota_loc_in
-!!$    bcovar_phi=hcovar_tmp(2)*(bmod_tmp*1.0e4_dp)
-!!$    bcovar_tht=hcovar_tmp(3)*(bmod_tmp*1.0e4_dp)
-!!$    avbhat2=y_in(9)/y_in(6)
-!!$    avb2=avbhat2*((bmod0*1.0e4_dp)**2)
-!!$    avbhat=y_in(14)/y_in(13)
-!!$    !
-!!$    !PRINT *,'2'
-!!$    WRITE(ispec_str,'(I3.3)') ispec
-!!$    file_name='ntv_out_'//ispec_str //'.dat'
-!!$    OPEN(uw,file=TRIM(ADJUSTL(file_name)),status='replace')
-!!$    WRITE (uw,'(1000(1x,e18.5))') &
-!!$         boozer_s, Mt_val, nu_star, B_rho_L_loc, &
-!!$         D31_AX_D31ref, D32_AX_D31ref, k_cof, &
-!!$         D11_NA_Dpl, D12_NA_Dpl, D13_NA_D31ref, &
-!!$         aiota_loc_in, rt0_in, (bmod0*1.0e4_dp), &
-!!$         boozer_psi_pr_hat, avnabpsi_in, &
-!!$         sqrtg_bctrvr_tht, sqrtg_bctrvr_phi, bcovar_tht, bcovar_phi, &
-!!$         DBLE(m_phi), avbhat2, av_inv_bhat_val, eps_M_2_val, &
-!!$         av_gphph_val, avbhat
-!!$    CLOSE(uw)
-!!$    !PRINT *,'3'
-!!$    !
-!!$  END SUBROUTINE write_ntv_output_b
-  !
-END MODULE ntv_mod
-!! End Modification by Andreas F. Martitsch (14.07.2015)
-
 MODULE propagator_mod
   ! Module to handle Propagators for Neo2
   !
@@ -1328,15 +837,19 @@ CONTAINS
 
     USE device_mod
     USE collisionality_mod, ONLY : collpar, conl_over_mfp, &
-         isw_lorentz, isw_integral, isw_energy, isw_axisymm, y_axi_averages
+         isw_lorentz, isw_integral, isw_energy, isw_axisymm, y_axi_averages, &
+         lsw_multispecies
     USE rkstep_mod, ONLY : asource,anumm,ailmm,lag,leg
     USE collop, ONLY : z_eff
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield,&
          mag_coordinates,boozer_s,boozer_theta_beg,boozer_phi_beg
     !! Modification by Andreas F. Martitsch (14.07.2015)
     ! Extra output/input for NTV computations
-    USE ntv_mod, ONLY : isw_qflux_NA, write_ntv_output
+    USE ntv_mod, ONLY : write_ntv_output, write_multispec_output
     !! End Modification by Andreas F. Martitsch (14.07.2015)
+    ! MPI SUPPORT for multi-species part
+    ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
+    USE mpiprovider_module
 
     INTEGER, INTENT(in) :: iend
 
@@ -1484,8 +997,15 @@ CONTAINS
        !
        !! Modification by Andreas F. Martitsch (14.07.2015)
        !! Extra output for NTV computations
-       CALL write_ntv_output(isw_qflux_NA,prop_a%p%qflux,ind_map,&
-            beta_out,y,aiota_loc,rt0,avnabpsi)
+       IF(lsw_multispecies) THEN ! multi-species output
+          IF (mpro%isMaster()) THEN
+             CALL write_multispec_output()
+          END IF
+       ELSE ! single-species output
+          IF (mpro%isMaster()) THEN
+             CALL write_ntv_output(prop_a%p%qflux)
+          END IF
+       END IF
        !! End Modification by Andreas F. Martitsch (14.07.2015)
 !
     END IF
@@ -1509,9 +1029,15 @@ CONTAINS
     USE device_mod
     USE flint_mod , ONLY : phi_split_mode,phi_place_mode,  &
          phi_split_min,hphi_mult,max_solver_try
-    USE collisionality_mod, ONLY : isw_axisymm
+    !! Modifications by Andreas F. Martitsch (15.03.2017)
+    ! old:
+    !USE collisionality_mod, ONLY : isw_axisymm
+    ! new: add exchange y-vector between ntv_mod and propagator_mod
+    USE collisionality_mod, ONLY : isw_axisymm, y_axi_averages
+    USE ntv_mod, ONLY : y_ntv_mod
+    !! End Modifications by Andreas F. Martitsch (15.03.2017)
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield
-             
+    USE mpiprovider_module             
 
     ! parameter list
     INTEGER,                      INTENT(in)  :: iend
@@ -1616,6 +1142,20 @@ CONTAINS
        END IF
        IF (prop_timing .EQ. 1) CALL CPU_TIME(time_o)
 
+       !! Modifications by Andreas F. Martitsch (15.03.2017)
+       ! Add exchange y-vector between ntv_mod and propagator_mod
+       ! -> get y-vector (see definition in rhs_kin.f90)
+       IF(ALLOCATED(y_ntv_mod)) DEALLOCATE(y_ntv_mod)
+       IF ( (magnetic_device .EQ. 0 .AND. isw_axisymm .EQ. 1) &
+            .OR. mag_magfield .EQ. 0 ) THEN
+          ALLOCATE(y_ntv_mod(SIZE(y_axi_averages,1)))
+          y_ntv_mod = y_axi_averages
+       ELSE
+          ALLOCATE(y_ntv_mod(SIZE(prop_c%y,1)))
+          y_ntv_mod = prop_c%y
+       END IF
+       !! End Modifications by Andreas F. Martitsch (15.03.2017)
+
        ! try the ripple_solver
        count_solv = 0
        mult_solv  = hphi_mult
@@ -1671,7 +1211,7 @@ CONTAINS
        !   prop_last_tag = fieldpropagator%tag
        !END IF
        ! ---------------------------------------------------------------------------
-       CALL diag_propagator_result(iend)
+       IF ( mpro%isMaster() ) CALL diag_propagator_result(iend)
        !! Modification by Andreas F. Martitsch (16.07.2015)
        ! not needed for NTV computations
        ! (furthermore, several uninitialised value(s) are used - valgrind)
