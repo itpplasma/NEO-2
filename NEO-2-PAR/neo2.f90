@@ -21,7 +21,8 @@ PROGRAM neo2
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
        phi_x_max, collop_bspline_order, collop_bspline_dist,        &
-       isw_relativistic, T_e, lsw_multispecies
+       isw_relativistic, T_e, lsw_multispecies, num_spec,           &
+       conl_over_mfp_spec, z_spec
   USE propagator_mod, ONLY : reconstruct_prop_dist,   &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -48,7 +49,7 @@ PROGRAM neo2
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
        collop_load, collop_unload, z_eff, collop_path,              &
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta, &
-       num_spec, conl_over_mfp_spec, z_spec, collop_only_precompute
+       collop_only_precompute
   USE rkstep_mod, ONLY : lag,leg,legmax, epserr_sink, epserr_iter, &
        niter
   USE development, ONLY : solver_talk,switch_off_asymp, &
@@ -395,7 +396,6 @@ PROGRAM neo2
   IF(ALLOCATED(conl_over_mfp_spec)) DEALLOCATE(conl_over_mfp_spec)
   ALLOCATE(conl_over_mfp_spec(0:num_spec-1))
   conl_over_mfp_spec(0:num_spec-1)=conl_over_mfp_vec(1:num_spec)
-  IF(num_spec .EQ. 1) conl_over_mfp_spec(0)=conl_over_mfp
   !
   IF(ALLOCATED(z_spec)) DEALLOCATE(z_spec)
   ALLOCATE(z_spec(0:num_spec-1))

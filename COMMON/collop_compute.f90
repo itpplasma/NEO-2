@@ -80,13 +80,23 @@ module collop_compute
   !**********************************************************
   ! Integration settings
   !**********************************************************
-  real(kind=dp) :: epsabs = 1d-14
-  real(kind=dp) :: epsrel = 1d-14
-  integer       :: sw_qag_rule = 2
-  logical       :: integral_cutoff = .false.
-  real(kind=dp) :: x_cutoff = 1000.0d0
-  logical       :: lsw_interval_sep=.true.
-
+  real(kind=dp) :: epsabs = 1d-13
+  real(kind=dp) :: epsrel = 1d-13
+  integer       :: sw_qag_rule = 5
+  logical       :: integral_cutoff = .true.
+  real(kind=dp) :: x_cutoff = 3.0d3
+  logical       :: lsw_interval_sep = .true.
+  logical       :: lsw_split_interval = .true. ! split intervals manually into further sub-intervals
+  integer       :: num_sub_intervals = 5 ! number of sub-intervals between nodes (active if lsw_split_interval)
+  integer       :: num_sub_intervals_cutoff = 30 ! number of sub-intervals between last node and cutoff (active if lsw_split_interval)
+  ! Taylor expansion of (non-relativistic) matrix elements around x=0 (numerical stability):
+  logical       :: lsw_expand_kernel =.false. ! Taylor expansion of integral-part subintegrands
+  logical       :: lsw_expand_G =.true. ! Taylor expansion of Chandrasekhar function
+  ! corresponding domain of Taylor expansion (0 <= x <= xmax_expand_kernel)
+  real(kind=dp) :: xmax_expand_kernel = 1.0d-5
+  ! numerical stabilization of integral-part computation (I2 + I3 + I4)
+  logical       :: lsw_stabilize_Immp=.true.
+  
   !**********************************************************
   ! Pre-computed matrix elements
   !**********************************************************
@@ -172,7 +182,11 @@ module collop_compute
   interface integrate
      module procedure integrate_ainf, integrate_ab
   end interface integrate
-  
+
+  interface integrate_param
+     module procedure integrate_ainf_param, integrate_ab_param
+  end interface integrate_param
+
 contains
 
 !     ..................................................................
@@ -886,6 +900,8 @@ contains
     integer :: k, kmax
     real(kind=dp), dimension(128) :: x_inter ! For performance issues is this preallocated with a sufficient number of knots
     logical :: binknots
+    real(kind=dp) :: x_sub_low, x_sub_up, x_sub_del ! Split integration domain into sub-intervals
+    integer :: k_sub, n_sub ! Split integration domain into sub-intervals
     
     interface  
        function func1d(x)
@@ -939,12 +955,28 @@ contains
        !write (*,*) t_vec
        !write (*,*) a, b
        !write (*,*) x_inter(1:kmax)
-       
-       do k = 1, kmax-1
-          res_int = fint1d_qag(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel, sw_qag_rule)
-          !res_int = fint1d_qags(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel)
-          y = y + res_int(1)
-       end do
+
+       if (lsw_split_interval) then
+          do k = 1, kmax-1
+             n_sub = num_sub_intervals
+             if ((.not. binknots) .and. (k .eq. kmax-1)) n_sub = num_sub_intervals_cutoff
+             x_sub_del = (x_inter(k+1) - x_inter(k))/dble(n_sub)
+             do k_sub = 1,n_sub
+                x_sub_low = x_inter(k) + (k_sub-1) * x_sub_del
+                x_sub_up = x_inter(k) + k_sub * x_sub_del
+                !
+                res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+                y = y + res_int(1)
+             end do
+          end do
+       else
+          do k = 1, kmax-1
+             res_int = fint1d_qag(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel, sw_qag_rule)
+             !res_int = fint1d_qags(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel)
+             y = y + res_int(1)
+          end do
+       end if
     else
        res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
        !res_int = fint1d_qags(func1d, a, b, epsabs, epsrel)
@@ -953,13 +985,107 @@ contains
        
   end function integrate_ab
 
+  recursive function integrate_ab_param(func1d, param, a, b) result(y)
+    real(kind=dp) :: a, b, param
+    real(kind=dp) :: y
+    real(kind=dp), dimension(2) :: res_int
+    integer :: k, kmax
+    real(kind=dp), dimension(128) :: x_inter ! For performance issues is this preallocated with a sufficient number of knots
+    logical :: binknots
+    real(kind=dp) :: x_sub_low, x_sub_up, x_sub_del ! Split integration domain into sub-intervals
+    integer :: k_sub, n_sub ! Split integration domain into sub-intervals
+    
+    interface  
+       function func1d(x, param1)
+         use nrtype, only : dp
+         real(kind=dp) :: func1d
+         real(kind=dp) :: x, param1
+       end function func1d
+    end interface
+
+!!$    ! For debug
+!!$    res_int = fint1d_qag(func1d, param, a, b, epsabs, epsrel, sw_qag_rule)
+!!$    y = res_int(1)
+!!$    return
+    
+    if (allocated(t_vec)) then
+       y = 0d0
+       kmax = 0
+       binknots = .false.
+       
+       if (a .lt. t_vec(1)) then
+          kmax = kmax + 1
+          x_inter(kmax) = a
+       end if
+       
+       do k = lbound(t_vec, 1), ubound(t_vec, 1)
+          if (a .ge. t_vec(k)) then
+             cycle
+          elseif (kmax .eq. 0) then
+             kmax = kmax + 1
+             x_inter(kmax) = a
+          end if
+          
+          if (t_vec(k) .ge. b) then
+             kmax = kmax + 1
+             x_inter(kmax) = b
+             binknots = .true.
+             exit
+          end if
+
+          kmax = kmax + 1
+          x_inter(kmax) = t_vec(k)
+
+       end do
+
+       if (.not. binknots) then
+          kmax = kmax + 1
+          x_inter(kmax) = b
+       end if
+
+       !write (*,*) "***"
+       !write (*,*) t_vec
+       !write (*,*) a, b
+       !write (*,*) x_inter(1:kmax)
+
+       if (lsw_split_interval) then
+          do k = 1, kmax-1
+             n_sub = num_sub_intervals
+             if ((.not. binknots) .and. (k .eq. kmax-1)) n_sub = num_sub_intervals_cutoff
+             x_sub_del = (x_inter(k+1) - x_inter(k))/dble(n_sub)
+             do k_sub = 1,n_sub
+                x_sub_low = x_inter(k) + (k_sub-1) * x_sub_del
+                x_sub_up = x_inter(k) + k_sub * x_sub_del
+                !
+                res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+                y = y + res_int(1)
+             end do
+          end do
+       else
+          do k = 1, kmax-1
+             res_int = fint1d_qag(func1d, param, x_inter(k), x_inter(k+1), epsabs, epsrel, sw_qag_rule)
+             !res_int = fint1d_qags(func1d, param, x_inter(k), x_inter(k+1), epsabs, epsrel)
+             y = y + res_int(1)
+          end do
+       end if
+    else
+       res_int = fint1d_qag(func1d, param, a, b, epsabs, epsrel, sw_qag_rule)
+       !res_int = fint1d_qags(func1d, param, a, b, epsabs, epsrel)
+       y = res_int(1)
+    end if
+       
+  end function integrate_ab_param
+
   recursive function integrate_ainf(func1d, a) result(y)
     real(kind=dp) :: a
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
     integer :: k
     logical :: in_interval
-
+    real(kind=dp) :: x_sub_low, x_sub_up, x_sub_del ! Split integration domain into sub-intervals
+    integer :: k_sub ! Split integration domain into sub-intervals
+    
     interface  
        function func1d(x)
          use nrtype, only : dp
@@ -989,42 +1115,93 @@ contains
                    !write (*,*) "Cycle"
                    cycle
                 else
-                   res_int = fint1d_qag(func1d, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
-                   !res_int = fint1d_qags(func1d, a, t_vec(k), epsabs, epsrel)
-                   y = y + res_int(1)
+                   if (lsw_split_interval) then
+                      x_sub_del = (t_vec(k)-a)/dble(num_sub_intervals)
+                      do k_sub = 1,num_sub_intervals
+                         x_sub_low = a + (k_sub-1) * x_sub_del
+                         x_sub_up = a + k_sub * x_sub_del
+                         !
+                         res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                         !res_int = fint1d_qags(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+                         y = y + res_int(1)
+                      end do
+                   else
+                      res_int = fint1d_qag(func1d, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
+                      !res_int = fint1d_qags(func1d, a, t_vec(k), epsabs, epsrel)
+                      y = y + res_int(1)
+                   end if
                    !write (*,*) "1. Int", a, t_vec(k), res_int
                    in_interval = .true.
                 end if
              end if
              if (in_interval) then
                 if (k .lt. ubound(t_vec,1)) then
-                   res_int = fint1d_qag(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel, sw_qag_rule)
-                   !res_int = fint1d_qags(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel)
-                   y = y + res_int(1)
+                   if (lsw_split_interval) then
+                      x_sub_del = (t_vec(k+1) - t_vec(k))/dble(num_sub_intervals)
+                      do k_sub = 1,num_sub_intervals
+                         x_sub_low = t_vec(k) + (k_sub-1) * x_sub_del
+                         x_sub_up = t_vec(k) + k_sub * x_sub_del
+                         !
+                         res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                         !res_int = fint1d_qags(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+                         y = y + res_int(1)
+                      end do
+                   else
+                      res_int = fint1d_qag(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel, sw_qag_rule)
+                      !res_int = fint1d_qags(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel)
+                      y = y + res_int(1)
+                   end if
                    !write (*,*) "Rest int", t_vec(k), t_vec(k+1), y
                 end if
              end if
 
           end do
           if (integral_cutoff) then
-             res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
-             !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+             if (lsw_split_interval) then
+                x_sub_del = (x_cutoff - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
+                do k_sub = 1,num_sub_intervals_cutoff
+                   x_sub_low = t_vec(ubound(t_vec,1)) + (k_sub-1) * x_sub_del
+                   x_sub_up = t_vec(ubound(t_vec,1)) + k_sub * x_sub_del
+                   !
+                   res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                   !res_int = fint1d_qags(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+                   y = y + res_int(1)
+                end do
+             else
+                res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+                y = y + res_int(1)
+             end if
           else
              res_int = fint1d_qagiu(func1d, t_vec(ubound(t_vec,1)), epsabs, epsrel)
              !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+             y = y + res_int(1)
           end if
-          y = y + res_int(1)
           !write (*,*) "Final int", t_vec(ubound(t_vec,1)), y
        else
           !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff
           if (integral_cutoff) then
-             res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-             !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
+             if (lsw_split_interval) then
+                y = 0d0
+                x_sub_del = (x_cutoff - a)/dble(num_sub_intervals_cutoff)
+                do k_sub = 1,num_sub_intervals_cutoff
+                   x_sub_low = a + (k_sub-1) * x_sub_del
+                   x_sub_up = a + k_sub * x_sub_del
+                   !
+                   res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                   !res_int = fint1d_qags(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+                   y = y + res_int(1)
+                end do
+             else
+                res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
+                y = res_int(1)
+             end if
           else
              res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
              !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
+             y = res_int(1)
           end if
-          y = res_int(1)
        end if
        
     else
@@ -1041,7 +1218,149 @@ contains
     end if
     
   end function integrate_ainf
-  
+
+  recursive function integrate_ainf_param(func1d, param, a) result(y)
+    real(kind=dp) :: a, param
+    real(kind=dp) :: y
+    real(kind=dp), dimension(2) :: res_int
+    integer :: k
+    logical :: in_interval
+    real(kind=dp) :: x_sub_low, x_sub_up, x_sub_del ! Split integration domain into sub-intervals
+    integer :: k_sub ! Split integration domain into sub-intervals
+    
+    interface  
+       function func1d(x, param1)
+         use nrtype, only : dp
+         real(kind=dp) :: func1d
+         real(kind=dp) :: x, param1
+       end function func1d
+    end interface
+
+!!$    ! For debug
+!!$    if (integral_cutoff) then
+!!$       res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+!!$    else
+!!$       res_int = fint1d_qagiu(func1d, param, a, epsabs, epsrel)
+!!$    end if
+!!$    y = res_int(1)
+!!$    return
+    
+    if (allocated(t_vec)) then
+       
+       if (a .le. t_vec(ubound(t_vec,1))) then
+          y = 0d0
+          in_interval = .false.
+          !write (*,*) "Integration", a, t_vec
+          do k = lbound(t_vec, 1), ubound(t_vec, 1)
+             if (.not. in_interval) then
+                if (a .ge. t_vec(k)) then
+                   !write (*,*) "Cycle"
+                   cycle
+                else
+                   if (lsw_split_interval) then
+                      x_sub_del = (t_vec(k)-a)/dble(num_sub_intervals)
+                      do k_sub = 1,num_sub_intervals
+                         x_sub_low = a + (k_sub-1) * x_sub_del
+                         x_sub_up = a + k_sub * x_sub_del
+                         !
+                         res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                         !res_int = fint1d_qags(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+                         y = y + res_int(1)
+                      end do
+                   else
+                      res_int = fint1d_qag(func1d, param, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
+                      !res_int = fint1d_qags(func1d, param, a, t_vec(k), epsabs, epsrel)
+                      y = y + res_int(1)
+                   end if
+                   !write (*,*) "1. Int", a, t_vec(k), res_int
+                   in_interval = .true.
+                end if
+             end if
+             if (in_interval) then
+                if (k .lt. ubound(t_vec,1)) then
+                   if (lsw_split_interval) then
+                      x_sub_del = (t_vec(k+1) - t_vec(k))/dble(num_sub_intervals)
+                      do k_sub = 1,num_sub_intervals
+                         x_sub_low = t_vec(k) + (k_sub-1) * x_sub_del
+                         x_sub_up = t_vec(k) + k_sub * x_sub_del
+                         !
+                         res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                         !res_int = fint1d_qags(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+                         y = y + res_int(1)
+                      end do
+                   else
+                      res_int = fint1d_qag(func1d, param, t_vec(k), t_vec(k+1), epsabs, epsrel, sw_qag_rule)
+                      !res_int = fint1d_qags(func1d, param, t_vec(k), t_vec(k+1), epsabs, epsrel)
+                      y = y + res_int(1)
+                   end if
+                   !write (*,*) "Rest int", t_vec(k), t_vec(k+1), y
+                end if
+             end if
+
+          end do
+          if (integral_cutoff) then
+             if (lsw_split_interval) then
+                x_sub_del = (x_cutoff - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
+                do k_sub = 1,num_sub_intervals_cutoff
+                   x_sub_low = t_vec(ubound(t_vec,1)) + (k_sub-1) * x_sub_del
+                   x_sub_up = t_vec(ubound(t_vec,1)) + k_sub * x_sub_del
+                   !
+                   res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                   !res_int = fint1d_qags(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+                   y = y + res_int(1)
+                end do
+             else
+                res_int = fint1d_qag(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+                y = y + res_int(1)
+             end if
+          else
+             res_int = fint1d_qagiu(func1d, param, t_vec(ubound(t_vec,1)), epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+             y = y + res_int(1)
+          end if
+          !write (*,*) "Final int", t_vec(ubound(t_vec,1)), y
+       else
+          !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff
+          if (integral_cutoff) then
+             if (lsw_split_interval) then
+                y = 0d0
+                x_sub_del = (x_cutoff - a)/dble(num_sub_intervals_cutoff)
+                do k_sub = 1,num_sub_intervals_cutoff
+                   x_sub_low = a + (k_sub-1) * x_sub_del
+                   x_sub_up = a + k_sub * x_sub_del
+                   !
+                   res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                   !res_int = fint1d_qags(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+                   y = y + res_int(1)
+                end do
+             else
+                res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
+                y = res_int(1)
+             end if
+          else
+             res_int = fint1d_qagiu(func1d, param, a, epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
+             y = res_int(1)
+          end if
+       end if
+       
+    else
+       
+       if (integral_cutoff) then
+          res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+          !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
+       else
+          res_int = fint1d_qagiu(func1d, param, a, epsabs, epsrel)
+          !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
+       end if
+       y = res_int(1)
+       
+    end if
+    
+  end function integrate_ainf_param
+
   subroutine init_legendre(n)
     !
     ! Computes coefficients of Legendre polynomials of orders from 0 to n
@@ -1081,7 +1400,13 @@ contains
     real(kind=dp) :: x
     real(kind=dp) :: y
 
-    y = (erf(x) - x*d_erf(x)) / (2*x**2)
+    if (lsw_expand_G .and. (x .le. xmax_expand_kernel)) then
+       ! use 5th order Taylor expansion around x=0 (numerical stability)
+       y = 2d0*x/(3d0*sqrt(pi))-2d0*(x**3)/(5d0*sqrt(pi))+(x**5)/(7d0*sqrt(pi))
+    else
+       ! use default expression
+       y = (erf(x) - x*d_erf(x)) / (2*x**2)       
+    end if
 
   end function G
 
@@ -1667,7 +1992,9 @@ contains
       ! Second approach - Use only first derivative
       D_1 = x**(1+alpha) * exp(-beta*x**2) * phi_prj(m, x) * (T_a/T_b - 1) * (exp(-x**2) * x &
            * (phi_exp(mp, x) * (-2*(-1+x**2)*G(y) + y*d_G(y)) + x*G(y)*d_phi_exp(mp, x)))
-
+      ! is the same as ( alpha = beta = 0)
+      !D_1 = (1-T_a/T_b)*G(y)*(x**2)*exp(-x**2)*phi_exp(mp, x)*(phi_prj(m, x) + x*d_phi_prj(m, x))
+      
       D_2 = (exp(-beta*x**2) * x**alpha * ((1 + alpha - 2*beta*x**2) * phi_prj(m, x) + x*d_phi_prj(m, x))) &
            * (x * G(y) * exp(-x**2) * d_phi_exp(mp, x))
       integrand = 2*D_1 - D_2
@@ -1727,11 +2054,21 @@ contains
        !stop
     else
        if (isw_relativistic .eq. 0) then
+          !print *,'*********'
+          !print *,'I1_mmp:'
           call compute_I1_mmp_s()
+          !call disp_gsl_integration_error()
+          !print *,'I2_mmp:'
           call compute_I2_mmp_s()
+          !call disp_gsl_integration_error()
+          !print *,'I3_mmp:'
           call compute_I3_mmp_s()
+          !call disp_gsl_integration_error()
+          !print *,'I4_mmp:'
           call compute_I4_mmp_s()
-
+          !call disp_gsl_integration_error()
+          !print *,'*********'
+          
           !if (allocated(ailmm_s)) deallocate(ailmm_s)
           !allocate(ailmm_s(0:lagmax, 0:lagmax, 0:legmax))
           if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
@@ -1823,6 +2160,8 @@ contains
        do m = 0, lagmax
           do mp = 0, lagmax
              I2_mmp_s(m, mp, l) = -3d0/pi**(1.5d0) * gamma_ab**3 * integrate(I_phi, 0d0)
+             !print *,'l,m,mp: ',l,m,mp
+             !call disp_gsl_integration_error()
           end do
        end do
     end do
@@ -1832,10 +2171,26 @@ contains
     function I_phi(x)
       real(kind=dp) :: x, I1, I2, I_phi
 
-      I1 = integrate(I_phi_1, 0d0, x)
-      I2 = integrate(I_phi_2, x)
+      if (lsw_expand_kernel .and. (x .le. xmax_expand_kernel)) then
+         ! use 2nd order Taylor expansion around x=0 (numerical stability)
+         I1 = ((l+1d0)*(l+2d0)/(l+3d0)-l)*(x**2/2d0)*phi_exp(mp, 0d0)
+         I2 = integrate(I_phi_2, x)
 
-      I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi_prj(m,x) * (x**(-l-1) * I1 + x**l * I2)
+         I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi_prj(m,x) * (I1 + x**l * I2)
+      else
+         if (lsw_stabilize_Immp) then
+            I1 = integrate_param(I_phi_1_param, x, 0d0, x)
+            I2 = integrate_param(I_phi_2_param, x, x)
+
+            I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi_prj(m,x) * (I1 + I2)
+         else
+            ! use default expression
+            I1 = integrate(I_phi_1, 0d0, x)
+            I2 = integrate(I_phi_2, x)
+
+            I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi_prj(m,x) * (x**(-l-1) * I1 + x**l * I2)
+         end if
+      end if
 
     end function I_phi
 
@@ -1855,6 +2210,20 @@ contains
       I_phi_2 = exp(-yp**2) * phi_exp(mp, yp) * xp**(-l+1)
     end function I_phi_2
 
+    function I_phi_1_param(xp,xval)
+      real(kind=dp) :: xp, yp, I_phi_1_param, xval
+
+      yp = gamma_ab * xp
+      I_phi_1_param = exp(-yp**2) * phi_exp(mp, yp) * xp * ((xp/xval)**(l+1))
+    end function I_phi_1_param
+
+    function I_phi_2_param(xp,xval)
+      real(kind=dp) :: xp, yp, I_phi_2_param, xval
+
+      yp = gamma_ab * xp
+      I_phi_2_param = exp(-yp**2) * phi_exp(mp, yp) * xp * ((xval/xp)**l)
+    end function I_phi_2_param
+    
   end subroutine compute_I2_mmp_s
 
   subroutine compute_I3_mmp_s
@@ -1876,13 +2245,37 @@ contains
     function I_phi(x)
       real(kind=dp) :: x, I1, I2, I_phi
 
-      I1 = integrate(I_phi_1, 0d0, x)
-      I2 = integrate(I_phi_2, x)
 
-      I_phi = ((x**(3+alpha)) * exp(-(beta+1)*(x**2)) * &
-           (alpha-2*(beta+1)*(x**2)+4) * phi_prj(m,x) + &
-           (x**(4+alpha))  * exp(-(beta+1)*(x**2)) * d_phi_prj(m,x)) * &
-           ((x**(-l-1)) * I1 + (x**l) * I2)
+      if (lsw_expand_kernel .and. (x .le. xmax_expand_kernel)) then
+         ! use 2nd order Taylor expansion around x=0 (numerical stability)
+         I1 = ((l+1d0)*(l+2d0)/(l+3d0)-l)*(x**2/2d0)*phi_exp(mp, 0d0)
+         I2 = integrate(I_phi_2, x)
+
+         I_phi = ((x**(3+alpha)) * exp(-(beta+1)*(x**2)) * &
+              (alpha-2*(beta+1)*(x**2)+4) * phi_prj(m,x) + &
+              (x**(4+alpha))  * exp(-(beta+1)*(x**2)) * d_phi_prj(m,x)) * &
+              (I1 + (x**l) * I2)
+      else
+         if (lsw_stabilize_Immp) then
+            I1 = integrate_param(I_phi_1_param, x, 0d0, x)
+            I2 = integrate_param(I_phi_2_param, x, x)
+
+            I_phi = ((x**(3+alpha)) * exp(-(beta+1)*(x**2)) * &
+                 (alpha-2*(beta+1)*(x**2)+4) * phi_prj(m,x) + &
+                 (x**(4+alpha))  * exp(-(beta+1)*(x**2)) * d_phi_prj(m,x)) * &
+                 (I1 + I2)
+         else
+            ! use default expression
+            I1 = integrate(I_phi_1, 0d0, x)
+            I2 = integrate(I_phi_2, x)
+
+            I_phi = ((x**(3+alpha)) * exp(-(beta+1)*(x**2)) * &
+                 (alpha-2*(beta+1)*(x**2)+4) * phi_prj(m,x) + &
+                 (x**(4+alpha))  * exp(-(beta+1)*(x**2)) * d_phi_prj(m,x)) * &
+                 ((x**(-l-1)) * I1 + (x**l) * I2)
+         end if
+      end if
+
     end function I_phi
 
     function I_phi_1(xp)
@@ -1901,6 +2294,20 @@ contains
       I_phi_2 = exp(-yp**2) * phi_exp(mp, yp) * xp**(-l+1)
     end function I_phi_2
 
+    function I_phi_1_param(xp,xval)
+      real(kind=dp) :: xp, yp, I_phi_1_param, xval
+
+      yp = gamma_ab * xp
+      I_phi_1_param = exp(-yp**2) * phi_exp(mp, yp) * xp * ((xp/xval)**(l+1))
+    end function I_phi_1_param
+
+    function I_phi_2_param(xp,xval)
+      real(kind=dp) :: xp, yp, I_phi_2_param, xval
+
+      yp = gamma_ab * xp
+      I_phi_2_param = exp(-yp**2) * phi_exp(mp, yp) * xp * ((xval/xp)**l)
+    end function I_phi_2_param
+    
   end subroutine compute_I3_mmp_s
 
   subroutine compute_I4_mmp_s()
@@ -1967,13 +2374,16 @@ contains
       real(kind=dp) :: K, x
       real(kind=dp) :: I1, I2, I3, I4
 
-      if (x .ne. 0d0) then
-
+      if (lsw_expand_kernel .and. (x .le. xmax_expand_kernel)) then
+         ! use 2nd order Taylor expansion around x=0 (numerical stability)
+         
          !res_int = fint1d_qag(I_psi_1, 0d0, x, epsabs, epsrel, sw_qag_rule)
-         I1 = integrate(I_psi_1, 0d0, x)
+         I1 = ( 4d0 - 2d0*l + (l+1d0)*(l+2d0)*(-2d0-l+(l+3d0)*(l+4d0)/(l+4d0)) ) * &
+              (x**4/24d0) * phi_exp(mp, 0d0) / (2d0*l+3d0)
 
          !res_int = fint1d_qag(I_psi_2, 0d0, x, epsabs, epsrel, sw_qag_rule)
-         I2 = integrate(I_psi_2, 0d0, x)
+         I2 = ( 8d0 - 2d0*l + (l-1d0)*l*(-l+(l+1d0)*(l+2d0)/(l+3d0)) ) * &
+              (x**4/24d0) * phi_exp(mp, 0d0) / (2d0*l-1d0)
 
          !if (integral_cutoff) then
          !   res_int = fint1d_qag(I_psi_3, x, x_cutoff, epsabs, epsrel, sw_qag_rule)
@@ -1991,8 +2401,38 @@ contains
 
          K = x**(-l-1)/(2*l+3)*I1 -  x**(-l+1)/(2*l-1)*I2 +  x**(l+2)/(2*l+3)*I3 - x**l/(2*l-1)*I4
       else
-         ! Limit
-         K = 0d0
+         if (lsw_stabilize_Immp) then
+            I1 = integrate_param(I_psi_1_param, x, 0d0, x)
+            I2 = integrate_param(I_psi_2_param, x, 0d0, x)
+            I3 = integrate_param(I_psi_3_param, x, x)
+            I4 = integrate_param(I_psi_4_param, x, x)
+
+            K = I1/(2*l+3) -  I2/(2*l-1) +  I3/(2*l+3) - I4/(2*l-1)
+         else
+            ! use default expression
+
+            !res_int = fint1d_qag(I_psi_1, 0d0, x, epsabs, epsrel, sw_qag_rule)
+            I1 = integrate(I_psi_1, 0d0, x)
+
+            !res_int = fint1d_qag(I_psi_2, 0d0, x, epsabs, epsrel, sw_qag_rule)
+            I2 = integrate(I_psi_2, 0d0, x)
+
+            !if (integral_cutoff) then
+            !   res_int = fint1d_qag(I_psi_3, x, x_cutoff, epsabs, epsrel, sw_qag_rule)
+            !else
+            !   res_int = fint1d_qagiu(I_psi_3, x, epsabs, epsrel)
+            !end if
+            I3 = integrate(I_psi_3, x)
+
+            !if (integral_cutoff) then
+            !   res_int = fint1d_qag(I_psi_4, x, x_cutoff, epsabs, epsrel, sw_qag_rule)
+            !else
+            !   res_int = fint1d_qagiu(I_psi_4, x, epsabs, epsrel)
+            !end if
+            I4 = integrate(I_psi_4, x)
+
+            K = x**(-l-1)/(2*l+3)*I1 -  x**(-l+1)/(2*l-1)*I2 +  x**(l+2)/(2*l+3)*I3 - x**l/(2*l-1)*I4
+         end if
       end if
 
     end function K
@@ -2052,6 +2492,34 @@ contains
       I_psi_4 = xp**(-l+3)*exp(-yp**2)*phi_exp(mp,yp)
     end function I_psi_4
 
+    function I_psi_1_param(xp,xval)
+      real(kind=dp) :: xp, yp, I_psi_1_param, xval
+
+      yp = gamma_ab * xp
+      I_psi_1_param = (xp**3) * (xp/xval)**(l+1) * exp(-yp**2) * phi_exp(mp,yp)
+    end function I_psi_1_param
+
+    function I_psi_2_param(xp,xval)
+      real(kind=dp) :: xp, yp, I_psi_2_param, xval
+
+      yp = gamma_ab * xp
+      I_psi_2_param = (xp**3) * ((xp/xval)**(l-1)) * exp(-yp**2) * phi_exp(mp,yp)
+    end function I_psi_2_param
+
+    function I_psi_3_param(xp,xval)
+      real(kind=dp) :: xp, yp, I_psi_3_param, xval
+
+      yp = gamma_ab * xp
+      I_psi_3_param = (xp**3) * ((xval/xp)**(l+2)) * exp(-yp**2) * phi_exp(mp,yp)
+    end function I_psi_3_param
+
+    function I_psi_4_param(xp,xval)
+      real(kind=dp) :: xp, yp, I_psi_4_param, xval
+
+      yp = gamma_ab * xp
+      I_psi_4_param = (xp**3) * ((xval/xp)**l) * exp(-yp**2) * phi_exp(mp,yp)
+    end function I_psi_4_param
+    
   end subroutine compute_I4_mmp_s
 
   subroutine compute_source(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s, Amm_s)

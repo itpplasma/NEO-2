@@ -16,11 +16,25 @@ set(SUITESPARSE_F90 ${SUITESPARSE_DIR}F90/)
 
 set(METIS_PATH ${PROJLIBS}/metis-4.0)
 
+# GSL version 1.16
 set(GSL_PATH ${PROJLIBS}GSL_gcc-4.9.2/gsl-1.16/LIB)
 set(GSL_LIB ${GSL_PATH}/lib/)
-set(FGSL_PATH ${PROJLIBS}FGSL_gcc-4.9.2/fgsl-0.9.4/LIB)
+# GSL version 2.3 (erroneous)
+#set(GSL_PATH ${PROJLIBS}GSL_gcc-4.9.2/gsl-2.3/LIB)
+#set(GSL_LIB ${GSL_PATH}/lib/)
+
+# FGSL version 0.9.4
+#set(FGSL_PATH ${PROJLIBS}FGSL_gcc-4.9.2/fgsl-0.9.4/LIB)
+#set(FGSL_LIB ${FGSL_PATH}/lib/)
+#set(FGSL_INC ${FGSL_PATH}/include/gfortran/)
+# FGSL version 1.0.0
+set(FGSL_PATH ${PROJLIBS}FGSL_gcc-4.9.2/fgsl-1.0.0/LIB)
 set(FGSL_LIB ${FGSL_PATH}/lib/)
-set(FGSL_INC ${FGSL_PATH}/include/gfortran/)
+set(FGSL_INC ${FGSL_PATH}/include/fgsl/)
+# FGSL version 1.2.0 (erroneous)
+#set(FGSL_PATH ${PROJLIBS}FGSL_gcc-4.9.2/fgsl-1.2.0/LIB)
+#set(FGSL_LIB ${FGSL_PATH}/lib/)
+#set(FGSL_INC ${FGSL_PATH}/include/fgsl/)
 
 set(PSPLINE_PATH ${PROJLIBS}PSPLINE/LINUX)
 set(PSPLINE_LIB ${PSPLINE_PATH}/lib/) 

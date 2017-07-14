@@ -20,8 +20,10 @@ PROGRAM neo2
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
        phi_x_max, collop_bspline_order, collop_bspline_dist,        &
-       isw_relativistic, T_e, lsw_multispecies
-  USE propagator_mod, ONLY : reconstruct_prop_dist,   &
+       isw_relativistic, T_e, lsw_multispecies, isw_coul_log,       &
+       num_spec, species_tag, conl_over_mfp_spec, z_spec, m_spec,   &
+       T_spec, n_spec 
+  USE propagator_mod, ONLY : reconstruct_prop_dist,                 &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
@@ -48,7 +50,7 @@ PROGRAM neo2
        collop_load, collop_unload, z_eff, collop_path,              &
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
-       scalprod_beta, num_spec, conl_over_mfp_spec, z_spec
+       scalprod_beta
   USE rkstep_mod, ONLY : lag,leg,legmax                            
       
   USE development, ONLY : solver_talk,switch_off_asymp, &
@@ -57,19 +59,25 @@ PROGRAM neo2
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
   !! Modification by Andreas F. Martitsch (14.07.2015)
   ! Extra input for NTV computations
-  USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,&
-       MtOvR, B_rho_L_loc, xstart_cyl, isw_ripple_solver
+  USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
+       MtOvR, B_rho_L_loc, xstart_cyl, isw_ripple_solver,           &
+       isw_calc_Er, isw_calc_MagDrift, species_tag_Vphi,            &
+       isw_Vphi_loc, Vphi, R_Vphi, Z_Vphi, boozer_theta_Vphi,       &
+       dn_spec_ov_ds, dT_spec_ov_ds
   !! End Modification by Andreas F. Martitsch (14.07.2015)
   !! Modifications by Andreas F. Martitsch (17.03.2016)
   ! derivative of iota for non-local NTV computations
   ! (with magnetic shear)
   USE neo_magfie_mod, ONLY : isw_mag_shear
   !! End Modifications by Andreas F. Martitsch (17.03.2016)
+  USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
+  USE neo_control, ONLY : in_file ! only used for preparation of multi-spec input
   
   !
   IMPLICIT NONE
 
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
+  INTEGER, PARAMETER :: MAXDIM = 1000
 
   LOGICAL :: opened
 
@@ -107,11 +115,41 @@ PROGRAM neo2
   CHARACTER(len=20), DIMENSION(2) :: fnames
   !! Modification by Andreas F. Martitsch (23.08.2015)
   ! multi-species part:
-  ! -> read species-relevant info into a large array (allocatable not supported)
-  REAL(kind=dp), DIMENSION(1000) :: conl_over_mfp_vec
-  REAL(kind=dp), DIMENSION(1000) :: z_vec
-  !! End Modification by Andreas F. Martitsch (23.08.2015)  
+  ! -> prepare multi-species computation
+  INTEGER :: ind_spec, ind_boozer_s, ind_char, ctr_spec
+  INTEGER :: isw_multispecies_init, OMP_NUM_THREADS
+  INTEGER(HID_T) :: h5id_multispec_in
+  CHARACTER(len=40) :: fname_multispec, fname_multispec_in, fname_exec
+  CHARACTER(len=200) :: dir_name, cmd_line
+  INTEGER :: num_radial_pts, num_species_all
+  INTEGER, DIMENSION(:), ALLOCATABLE :: rel_stages_prof, species_tag_prof
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: boozer_s_prof, Vphi_prof
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: R_Vphi_prof, Z_Vphi_prof
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: boozer_theta_Vphi_prof
+  REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: T_prof, n_prof
+  REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: dT_ov_ds_prof, dn_ov_ds_prof
+  REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: kappa_prof
+  REAL(kind=dp), DIMENSION(:,:,:), ALLOCATABLE :: species_def_prof
+  ! -> read species-relevant info into a large array (dynamic allocation not supported)
+  INTEGER, DIMENSION(:), ALLOCATABLE :: species_tag_vec   ! vector with species tags
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: conl_over_mfp_vec ! collisionality parameter
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: z_vec ! species charge number 
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: m_vec ! species mass
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: T_vec ! species temperature
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: n_vec ! species density (used only for isw_coul_log > 0)
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dT_vec_ov_ds
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dn_vec_ov_ds
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
   ! groups for namelist
+  !! Modification by Andreas F. Martitsch (21.02.2017)
+  ! multi-species part:
+  NAMELIST /multi_spec/                                                       &
+       lsw_multispecies, isw_multispecies_init, fname_multispec_in,           &
+       isw_coul_log, num_spec, species_tag_vec, conl_over_mfp_vec, z_vec,     &
+       m_vec, T_vec, n_vec, isw_calc_Er, isw_calc_MagDrift,                   &
+       species_tag_Vphi, isw_Vphi_loc, Vphi, R_Vphi, Z_Vphi,                  &
+       boozer_theta_Vphi, dn_vec_ov_ds, dT_vec_ov_ds
+  !! End Modification by Andreas F. Martitsch (21.02.2017)
   NAMELIST /settings/                                                         &
        phimi,nstep,nperiod,xetami,xetama,ndim0,zbeg,rbeg,                     &
        proptag_begin,proptag_final,mag_start_special,                         &
@@ -125,19 +163,15 @@ PROGRAM neo2
        solver_talk,switch_off_asymp,                                          &
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
-       sparse_talk,sparse_solve_method,mag_symmetric,mag_symmetric_shorten
-  !! Modifications by Andreas F. Martitsch (15.07.2014)
-  ! Path for the collision operator matrices is now specified via neo2.in
-  ! (necessary for computations with Condor)
+       sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
+       mag_symmetric,mag_symmetric_shorten
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
        isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &      
-       !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta,       &
        phi_x_max, collop_bspline_order, collop_bspline_dist,                  &
-       num_spec, conl_over_mfp_vec, z_vec, v_min_resolution, v_max_resolution,&
-       isw_relativistic, T_e, lsw_multispecies
+       v_min_resolution, v_max_resolution, isw_relativistic, T_e
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -170,10 +204,56 @@ PROGRAM neo2
   ! ---------------------------------------------------------------------------
   ! filenames (default file and specific input file) for namelist
   fnames = (/'neo2.def','neo2.in '/)
+  ! file-names of multi-species input and startup-script for NEO-2
+  fname_multispec = 'neo2.in'
+  fname_exec = 'run_neo2.sh'
   ! ---------------------------------------------------------------------------
   ! defaults
   !
   ! settings
+    !! Modification by Andreas F. Martitsch (21.02.2017)
+  ! multi-species part:
+  lsw_multispecies = .false.
+  isw_multispecies_init = 0
+  fname_multispec_in = ''
+  ! isw_coul_log = 0: Coulomb logarithm set as species independent (overrides values for n_spec)
+  ! isw_coul_log = 1: Coulomb logarithm computed for each species using n_spec, T_spec
+  !                   (overrides values for collisionality parameters)
+  isw_coul_log = 0
+  num_spec = 1
+  IF(ALLOCATED(species_tag_vec)) DEALLOCATE(species_tag_vec)
+  ALLOCATE(species_tag_vec(MAXDIM))
+  species_tag_vec = (/ (ind_spec,ind_spec=0,MAXDIM-1) /)
+  IF(ALLOCATED(conl_over_mfp_vec)) DEALLOCATE(conl_over_mfp_vec)
+  ALLOCATE(conl_over_mfp_vec(MAXDIM))
+  conl_over_mfp_vec = 1.0d-3
+  IF(ALLOCATED(z_vec)) DEALLOCATE(z_vec)
+  ALLOCATE(z_vec(MAXDIM))
+  z_vec = 1.0d0
+  IF(ALLOCATED(m_vec)) DEALLOCATE(m_vec)
+  ALLOCATE(m_vec(MAXDIM))
+  m_vec = 1.672621637d-24 ! proton mass [g]
+  IF(ALLOCATED(T_vec)) DEALLOCATE(T_vec)
+  ALLOCATE(T_vec(MAXDIM))
+  T_vec = 1.6d-9 ! temperature [erg] (=1keV)
+  IF(ALLOCATED(n_vec)) DEALLOCATE(n_vec)
+  ALLOCATE(n_vec(MAXDIM))
+  n_vec = 1.0d13 ! density  [cm^-3]
+  isw_calc_Er = 0
+  isw_calc_MagDrift = 0
+  species_tag_Vphi = 0 ! species index should be the same for all flux surfaces
+  isw_Vphi_loc = 0 ! 0: <V_\varphi>, 1: V_{\varphi}(R,Z)
+  Vphi = 0.0d0
+  R_Vphi = 0.0d0 ! only used for isw_Vphi_loc=1
+  Z_Vphi = 0.0d0 ! only used for isw_Vphi_loc=1
+  boozer_theta_Vphi = 0.0d0 ! only used for isw_Vphi_loc=2
+  IF(ALLOCATED(dT_vec_ov_ds)) DEALLOCATE(dT_vec_ov_ds)
+  ALLOCATE(dT_vec_ov_ds(MAXDIM))
+  dT_vec_ov_ds = 0.0d0 ! temperature [erg] (=1keV)
+  IF(ALLOCATED(dn_vec_ov_ds)) DEALLOCATE(dn_vec_ov_ds)
+  ALLOCATE(dn_vec_ov_ds(MAXDIM))
+  dn_vec_ov_ds = 0.0d0 ! density  [cm^-3]
+  !! End Modification by Andreas F. Martitsch (21.02.2017)
   mag_magfield = 1
   magnetic_device = 1
   mag_nperiod_min = 300
@@ -215,6 +295,7 @@ PROGRAM neo2
   boozer_phi_beg = 0.0_dp
   sparse_talk = .FALSE.
   !  sparse_solve_method = 0
+  OMP_NUM_THREADS = 1
   ! collision 
   conl_over_mfp = 1.0d-3
   lag=10
@@ -239,13 +320,6 @@ PROGRAM neo2
   collop_base_exp = 0
   scalprod_alpha = 0d0
   scalprod_beta  = 0d0
-  !! Modification by Andreas F. Martitsch (25.08.2015)
-  !  multi-species part
-  num_spec = 1
-  conl_over_mfp_vec = 0.0d0
-  z_vec = 1.0d0
-  lsw_multispecies = .false.
-  !! End Modification by Andreas F. Martitsch (25.08.2015)
   v_min_resolution = 0.1d0
   v_max_resolution = 5.0d0
   phi_x_max        = 5.0d0
@@ -324,30 +398,44 @@ PROGRAM neo2
         STOP
      ELSE
         ! Read variables from group settings
+        !! Modification by Andreas F. Martitsch (21.02.2017)
+        ! multi-species part:
+        READ(u1,nml=multi_spec,iostat=ios)
+        IF (ios .NE. 0) THEN
+           PRINT *, 'WARNING: group multi_spec in ',fnames(jf),' cannot be READ!'
+           PRINT *, ''
+           !STOP
+        END IF
+        !! End Modification by Andreas F. Martitsch (21.02.2017)
+        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
         READ(u1,nml=settings,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group settings in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
            STOP
         END IF
+        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
         READ(u1,nml=collision,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group collision in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
            STOP
         END IF
+        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
         READ(u1,nml=binsplit,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group binsplit in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
            STOP
         END IF
+        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
         READ(u1,nml=propagator,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group propagator in ',fnames(jf),' cannot be READ!'
            PRINT *, ''
            STOP
         END IF
+        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
         READ(u1,nml=plotting,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group plotting in ',fnames(jf),' cannot be READ!'
@@ -356,6 +444,7 @@ PROGRAM neo2
         END IF
         !! Modification by Andreas F. Martitsch (17.07.2014)
         ! ntv_input
+        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
         READ(u1,nml=ntv_input,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group ntv_input in ',fnames(jf),' cannot be READ!'
@@ -367,21 +456,346 @@ PROGRAM neo2
      CLOSE(unit=u1)
   END DO
   ! PAUSE
+
+  !! Modification by Andreas F. Martitsch (20.02.2017)
+  ! Prepare  multi-species computations for a given profile
+  ! -> prepare input files, directories
+  IF(lsw_multispecies .AND. (isw_multispecies_init .GT. 0)) THEN
+     PRINT *,'Prepare  multi-species computations for a given profile'
+     isw_multispecies_init = 0
+     !
+     ! get file-name of axisymmetric equilibrium (neo.in)
+     ! -> in_file
+     CALL neo_read_control()
+     !
+     ! read multi-species input (HDF5 file)
+     !
+     ! open file
+     CALL h5_open(TRIM(ADJUSTL(fname_multispec_in)), h5id_multispec_in)
+     ! get size of arrays
+     CALL h5_get(h5id_multispec_in,'num_radial_pts',num_radial_pts)
+     CALL h5_get(h5id_multispec_in,'num_species',num_species_all)
+     ! get boozer_s-profile
+     IF(ALLOCATED(boozer_s_prof)) DEALLOCATE(boozer_s_prof)
+     ALLOCATE(boozer_s_prof(num_radial_pts))
+     CALL h5_get(h5id_multispec_in,'boozer_s',boozer_s_prof)
+     !PRINT *,boozer_s_prof
+     ! get species definition (species charge number and mass)
+     IF(ALLOCATED(species_def_prof)) DEALLOCATE(species_def_prof)
+     ALLOCATE(species_def_prof(num_radial_pts,num_species_all,2))
+     CALL h5_get(h5id_multispec_in,'species_def',species_def_prof)
+     !PRINT *,species_def_prof(:,1)
+     !PRINT *,species_def_prof(:,2)
+     ! get species tag and number of relevant ionization stages
+     IF(ALLOCATED(species_tag_prof)) DEALLOCATE(species_tag_prof)
+     ALLOCATE(species_tag_prof(num_species_all))
+     CALL h5_get(h5id_multispec_in,'species_tag',species_tag_prof)
+     !PRINT *,species_tag_prof
+     IF(ALLOCATED(rel_stages_prof)) DEALLOCATE(rel_stages_prof)
+     ALLOCATE(rel_stages_prof(num_radial_pts))
+     CALL h5_get(h5id_multispec_in,'rel_stages',rel_stages_prof)
+     !PRINT *,rel_stages_prof
+     ! get density and temperature profiles
+     IF(ALLOCATED(n_prof)) DEALLOCATE(n_prof)
+     ALLOCATE(n_prof(num_radial_pts,num_species_all))
+     CALL h5_get(h5id_multispec_in,'n_prof',n_prof)
+     !DO ind_boozer_s=1,num_radial_pts
+     !   WRITE(*,*) (n_prof(ind_boozer_s,ind_spec),ind_spec=1,num_species_all)
+     !END DO
+     IF(ALLOCATED(T_prof)) DEALLOCATE(T_prof)
+     ALLOCATE(T_prof(num_radial_pts,num_species_all))
+     CALL h5_get(h5id_multispec_in,'T_prof',T_prof)
+     !DO ind_boozer_s=1,num_radial_pts
+     !   WRITE(*,*) (T_prof(ind_boozer_s,ind_spec),ind_spec=1,num_species_all)
+     !END DO
+     ! get gradients of density and temperature profiles
+     IF(ALLOCATED(dn_ov_ds_prof)) DEALLOCATE(dn_ov_ds_prof)
+     ALLOCATE(dn_ov_ds_prof(num_radial_pts,num_species_all))
+     CALL h5_get(h5id_multispec_in,'dn_ov_ds_prof',dn_ov_ds_prof)
+     !DO ind_boozer_s=1,num_radial_pts
+     !   WRITE(*,*) (dn_ov_ds_prof(ind_boozer_s,ind_spec),ind_spec=1,num_species_all)
+     !END DO
+     IF(ALLOCATED(dT_ov_ds_prof)) DEALLOCATE(dT_ov_ds_prof)
+     ALLOCATE(dT_ov_ds_prof(num_radial_pts,num_species_all))
+     CALL h5_get(h5id_multispec_in,'dT_ov_ds_prof',dT_ov_ds_prof)
+     !DO ind_boozer_s=1,num_radial_pts
+     !   WRITE(*,*) (dT_ov_ds_prof(ind_boozer_s,ind_spec),ind_spec=1,num_species_all)
+     !END DO
+     ! get collisionality profile
+     IF(ALLOCATED(kappa_prof)) DEALLOCATE(kappa_prof)
+     ALLOCATE(kappa_prof(num_radial_pts,num_species_all))
+     CALL h5_get(h5id_multispec_in,'kappa_prof',kappa_prof)
+     !DO ind_boozer_s=1,num_radial_pts
+     !   WRITE(*,*) (kappa_prof(ind_boozer_s,ind_spec),ind_spec=1,num_species_all)
+     !END DO
+     ! get measured toroidal rotation profile and its species-tag
+     IF(ALLOCATED(Vphi_prof)) DEALLOCATE(Vphi_prof)
+     ALLOCATE(Vphi_prof(num_radial_pts))
+     CALL h5_get(h5id_multispec_in,'Vphi',Vphi_prof)
+     CALL h5_get(h5id_multispec_in,'species_tag_Vphi',species_tag_Vphi)
+     CALL h5_get(h5id_multispec_in,'isw_Vphi_loc',isw_Vphi_loc)
+     IF (isw_Vphi_loc .EQ. 1) THEN
+        PRINT *,"neo2.f90: Warning switch isw_Vphi_loc=1 is not tested!"
+        STOP
+        !
+        IF(ALLOCATED(R_Vphi_prof)) DEALLOCATE(R_Vphi_prof)
+        ALLOCATE(R_Vphi_prof(num_radial_pts))
+        CALL h5_get(h5id_multispec_in,'R_Vphi',R_Vphi_prof)
+        IF(ALLOCATED(Z_Vphi_prof)) DEALLOCATE(Z_Vphi_prof)
+        ALLOCATE(Z_Vphi_prof(num_radial_pts))
+        CALL h5_get(h5id_multispec_in,'Z_Vphi',Z_Vphi_prof)
+     ELSE IF(isw_Vphi_loc .EQ. 2) THEN
+        IF(ALLOCATED(boozer_theta_Vphi_prof)) DEALLOCATE(boozer_theta_Vphi_prof)
+        ALLOCATE(boozer_theta_Vphi_prof(num_radial_pts))
+        CALL h5_get(h5id_multispec_in,'boozer_theta_Vphi',boozer_theta_Vphi_prof)
+     ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
+        PRINT *,"neo2.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+        STOP
+     END IF
+     ! close file
+     CALL h5_close(h5id_multispec_in)
+     !
+     ! prepare directories for NEO-2 runs
+     !
+     DO ind_boozer_s = 1,num_radial_pts
+        !
+        ! get number of relevant species for each radial point
+        num_spec = rel_stages_prof(ind_boozer_s)
+        IF (num_spec .EQ. 0) CYCLE ! try next radial point
+        !
+        ! directory name
+        WRITE(dir_name,fmt='(F10.5)') boozer_s_prof(ind_boozer_s)
+        ind_char=INDEX(dir_name,'.')
+        dir_name=dir_name(:ind_char-1) // 'p' // dir_name(ind_char+1:)
+        dir_name = 'es_' // TRIM(ADJUSTL(dir_name))
+        !PRINT *,dir_name
+        !
+        ! shell command: create directories
+        cmd_line = &
+             'if [ ! -d TEST ]; then mkdir ' // TRIM(ADJUSTL(dir_name)) // '; fi'
+        CALL execute_command_line(cmd_line)
+        !
+        ! go to directory
+        CALL chdir(TRIM(ADJUSTL(dir_name)))
+        !
+        ! shell command: link input-files to current directory
+        cmd_line = 'ln -s ../' // TRIM(ADJUSTL(in_file)) // ' .'
+        CALL execute_command_line(cmd_line)
+        cmd_line = 'ln -s ../' // TRIM(ADJUSTL(in_file_pert)) // ' .'
+        CALL execute_command_line(cmd_line)
+        cmd_line = 'ln -s ../neo.in .'
+        CALL execute_command_line(cmd_line)
+        cmd_line = 'ln -s ../neo_2.x .'
+        CALL execute_command_line(cmd_line)
+        !
+        ! write start-up script for NEO-2 run
+        OPEN(unit=u1,file=fname_exec,action='write',iostat=ios)
+        IF (ios .NE. 0) THEN
+           PRINT *, 'WARNING: File ',fname_exec,' cannot be OPENED!'
+           PRINT *, ''
+           STOP
+        ELSE
+           WRITE(u1,fmt='(A)',iostat=ios) '#! /bin/bash'
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+           WRITE(cmd_line,fmt='(I2)') OMP_NUM_THREADS
+           cmd_line = 'OMP_NUM_THREADS=' // TRIM(ADJUSTL(cmd_line)) // &
+                ' mpiexec -x OMP_NUM_THREADS -hostfile hosts -np '
+           WRITE(cmd_line,fmt='(A,I3,A10)') TRIM(ADJUSTL(cmd_line)),num_spec,' ./neo_2.x'
+           WRITE(u1,fmt='(A)',iostat=ios) TRIM(ADJUSTL(cmd_line))
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+        END IF
+        CLOSE(unit=u1)
+        cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec))
+        CALL execute_command_line(cmd_line)
+        !
+        ! prepare multi-species input
+        !
+        ! specify radial point
+        boozer_s = boozer_s_prof(ind_boozer_s)
+        Vphi = Vphi_prof(ind_boozer_s)
+        IF (isw_Vphi_loc .EQ. 1) THEN
+           PRINT *,"neo2.f90: Warning switch isw_Vphi_loc=1 is not tested!"
+           STOP
+           !
+           R_Vphi = R_Vphi_prof(ind_boozer_s)
+           Z_Vphi = Z_Vphi_prof(ind_boozer_s)
+        ELSE IF(isw_Vphi_loc .EQ. 2) THEN
+           boozer_theta_Vphi = boozer_theta_Vphi_prof(ind_boozer_s)
+        ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
+           PRINT *,"neo2.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+           STOP
+        END IF
+        !
+        ! allocate species-tags
+        IF(ALLOCATED(species_tag_vec)) DEALLOCATE(species_tag_vec)
+        ALLOCATE(species_tag_vec(num_spec))
+        ! allocate conl_over_mfp_vec
+        IF(ALLOCATED(conl_over_mfp_vec)) DEALLOCATE(conl_over_mfp_vec)
+        ALLOCATE(conl_over_mfp_vec(num_spec))
+        ! allocate z_vec
+        IF(ALLOCATED(z_vec)) DEALLOCATE(z_vec)
+        ALLOCATE(z_vec(num_spec))
+        ! allocate m_vec
+        IF(ALLOCATED(m_vec)) DEALLOCATE(m_vec)
+        ALLOCATE(m_vec(num_spec))
+        ! allocate T_vec
+        IF(ALLOCATED(T_vec)) DEALLOCATE(T_vec)
+        ALLOCATE(T_vec(num_spec))
+        ! allocate n_vec
+        IF(ALLOCATED(n_vec)) DEALLOCATE(n_vec)
+        ALLOCATE(n_vec(num_spec))
+        ! allocate dT_vec_ov_ds
+        IF(ALLOCATED(dT_vec_ov_ds)) DEALLOCATE(dT_vec_ov_ds)
+        ALLOCATE(dT_vec_ov_ds(num_spec))
+        ! allocate dn_vec_ov_ds
+        IF(ALLOCATED(dn_vec_ov_ds)) DEALLOCATE(dn_vec_ov_ds)
+        ALLOCATE(dn_vec_ov_ds(num_spec))
+        !
+        ! fill the arrays
+        ctr_spec = 0
+        DO ind_spec = 1,num_species_all
+           IF (n_prof(ind_boozer_s,ind_spec) .LE. 0.0_dp) CYCLE
+           ctr_spec = ctr_spec + 1
+           IF (ctr_spec .GT. num_spec) THEN
+              PRINT *,"neo2.f90: Error during preparation of &
+                   &multi-species computations!"
+              PRINT *,"Number of density-values inconsistent &
+                   &with number of relevant species!"
+              STOP
+           END IF
+           species_tag_vec(ctr_spec) = species_tag_prof(ind_spec)
+           conl_over_mfp_vec(ctr_spec) = -kappa_prof(ind_boozer_s,ind_spec)
+           z_vec(ctr_spec) = species_def_prof(ind_boozer_s,ind_spec,1)
+           m_vec(ctr_spec) = species_def_prof(ind_boozer_s,ind_spec,2)
+           T_vec(ctr_spec) = T_prof(ind_boozer_s,ind_spec)
+           n_vec(ctr_spec) = n_prof(ind_boozer_s,ind_spec)
+           dT_vec_ov_ds(ctr_spec) = dT_ov_ds_prof(ind_boozer_s,ind_spec)
+           dn_vec_ov_ds(ctr_spec) = dn_ov_ds_prof(ind_boozer_s,ind_spec)
+        END DO
+        !
+        ! write multi-species input file (namelist)
+        !
+        OPEN(unit=u1,file=fname_multispec,action='write',iostat=ios)
+        IF (ios .NE. 0) THEN
+           PRINT *, 'WARNING: File ',fname_multispec,' cannot be OPENED!'
+           PRINT *, ''
+           STOP
+        ELSE
+           ! write variables into groups
+           ! multi-species part:
+           WRITE(u1,nml=multi_spec,iostat=ios)
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: group multi_spec in ',fname_multispec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+           WRITE(u1,nml=settings,iostat=ios)
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: group settings in ',fname_multispec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+           WRITE(u1,nml=collision,iostat=ios)
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: group collision in ',fname_multispec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+           WRITE(u1,nml=binsplit,iostat=ios)
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: group binsplit in ',fname_multispec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+           WRITE(u1,nml=propagator,iostat=ios)
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: group propagator in ',fname_multispec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+           WRITE(u1,nml=plotting,iostat=ios)
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: group plotting in ',fname_multispec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+           !! Modification by Andreas F. Martitsch (17.07.2014)
+           ! ntv_input
+           WRITE(u1,nml=ntv_input,iostat=ios)
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: group ntv_input in ',fname_multispec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+           !! End Modification by Andreas F. Martitsch (17.07.2014)
+        END IF
+        CLOSE(unit=u1)
+        !
+        ! go back to initial directory
+        CALL chdir('..')
+        !
+     END DO
+     !   
+     STOP
+  END IF
+  !! End Modification by Andreas F. Martitsch (20.02.2017)
+
   !! Modification by Andreas F. Martitsch (23.08.2015)
   ! multi-species part:
   ! -> read species-relevant info into a large array (allocatable not supported)
+  !
+  IF(ALLOCATED(species_tag)) DEALLOCATE(species_tag)
+  ALLOCATE(species_tag(0:num_spec-1))
+  species_tag(0:num_spec-1)=species_tag_vec(1:num_spec)
+  !
   IF(ALLOCATED(conl_over_mfp_spec)) DEALLOCATE(conl_over_mfp_spec)
   ALLOCATE(conl_over_mfp_spec(0:num_spec-1))
   conl_over_mfp_spec(0:num_spec-1)=conl_over_mfp_vec(1:num_spec)
-  IF(num_spec .EQ. 1) conl_over_mfp_spec(0)=conl_over_mfp
   !
   IF(ALLOCATED(z_spec)) DEALLOCATE(z_spec)
   ALLOCATE(z_spec(0:num_spec-1))
   z_spec(0:num_spec-1)=z_vec(1:num_spec)
   !
-  !PRINT *,conl_over_mfp_spec
-  !PRINT *,z_spec
-  !STOP
+  IF(ALLOCATED(m_spec)) DEALLOCATE(m_spec)
+  ALLOCATE(m_spec(0:num_spec-1))
+  m_spec(0:num_spec-1)=m_vec(1:num_spec)
+  !
+  IF(ALLOCATED(T_spec)) DEALLOCATE(T_spec)
+  ALLOCATE(T_spec(0:num_spec-1))
+  T_spec(0:num_spec-1)=T_vec(1:num_spec)
+  !
+  IF(ALLOCATED(n_spec)) DEALLOCATE(n_spec)
+  ALLOCATE(n_spec(0:num_spec-1))
+  n_spec(0:num_spec-1)=n_vec(1:num_spec)
+  !
+  IF(ALLOCATED(dT_spec_ov_ds)) DEALLOCATE(dT_spec_ov_ds)
+  ALLOCATE(dT_spec_ov_ds(0:num_spec-1))
+  dT_spec_ov_ds(0:num_spec-1)=dT_vec_ov_ds(1:num_spec)
+  !
+  IF(ALLOCATED(dn_spec_ov_ds)) DEALLOCATE(dn_spec_ov_ds)
+  ALLOCATE(dn_spec_ov_ds(0:num_spec-1))
+  dn_spec_ov_ds(0:num_spec-1)=dn_vec_ov_ds(1:num_spec) 
+  !
+  ! print multi-species input
+  IF(lsw_multispecies) THEN
+     PRINT *,'isw_coul_log       : ',isw_coul_log
+     PRINT *,'num_spec           : ',num_spec
+     PRINT *,'species_tag        : ',species_tag
+     PRINT *,'conl_over_mfp_spec : ',conl_over_mfp_spec
+     PRINT *,'z_spec             : ',z_spec
+     PRINT *,'m_spec             : ',m_spec
+     PRINT *,'T_spec             : ',T_spec
+     PRINT *,'n_spec             : ',n_spec
+     !STOP
+  END IF
   !! End Modification by Andreas F. Martitsch (23.08.2015) 
 
   IF (mag_magfield .EQ. 0) THEN ! homogeneous case
@@ -464,7 +878,7 @@ PROGRAM neo2
   ! ---------------------------------------------------------------------------
   ! erase arrays
   ! ---------------------------------------------------------------------------
-  IF (prop_reconstruct .EQ. 0) THEN
+  IF (mpro%isMaster() .AND. prop_reconstruct .EQ. 0) THEN
      ! find free unit
      uw = 100
      DO
