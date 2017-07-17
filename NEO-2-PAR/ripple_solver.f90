@@ -30,7 +30,8 @@ SUBROUTINE ripple_solver(                                 &
                             eta_modboundary_l,eta_modboundary_r,               &
                             sw_first_prop,sw_last_prop,                        &
                             prop_reconstruct_levels,                           &
-                            prop_fileformat
+                            prop_fileformat, lsw_save_dentf, lsw_save_enetf,   &
+                            lsw_save_spitf
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
        column_full2pointer,remap_rc,sparse_solver_test
   USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
@@ -231,7 +232,7 @@ SUBROUTINE ripple_solver(                                 &
   ! Winny: sparse
   !------------------------------------------------------------------------
   ! if sparse_solve should talk
-  !  sparse_talk = .TRUE. ! default .FALSE. - neo2.in - settings
+  !  sparse_talk= .TRUE. ! default .FALSE. - neo2.in - settings
   !
   ! sparse method - only 1 (SuperLU) implemented
   !  sparse_solve_method = 1 ! default 0 - neo2.in - settings
@@ -2528,20 +2529,26 @@ call cpu_time(time1)
     if (prop_fileformat .eq. 1) then
 
        !call h5_create('spitzer_' // trim(adjustl(propname)) // '.h5', h5id_final_spitzer)
-       
+
        ! Create unlimited arrays in HDF5 file
+
        call h5_create('phi_mesh_' // trim(adjustl(propname)) // '.h5', h5id_phi_mesh)
        !call h5_define_group(h5id_final_spitzer, 'phi_mesh', h5id_phi_mesh)
 
-       call h5_create('dentf_' // trim(adjustl(propname)) // '.h5', h5id_dentf)
-       !call h5_define_group(h5id_final, 'dentf', h5id_dentf)
+       if (lsw_save_dentf) then
+          call h5_create('dentf_' // trim(adjustl(propname)) // '.h5', h5id_dentf)
+          !call h5_define_group(h5id_final, 'dentf', h5id_dentf)
+       end if
 
-       call h5_create('enetf_' // trim(adjustl(propname)) // '.h5', h5id_enetf)
-       !call h5_define_group(h5id_final, 'enetf', h5id_enetf)
+       if (lsw_save_enetf) then
+          call h5_create('enetf_' // trim(adjustl(propname)) // '.h5', h5id_enetf)
+          !call h5_define_group(h5id_final, 'enetf', h5id_enetf)
+       end if
 
-       call h5_create('spitf_' // trim(adjustl(propname)) // '.h5', h5id_spitf)
-       !call h5_define_group(h5id_final_spitzer, 'spitf', h5id_spitf)
-       
+       if (lsw_save_spitf) then
+          call h5_create('spitf_' // trim(adjustl(propname)) // '.h5', h5id_spitf)
+          !call h5_define_group(h5id_final_spitzer, 'spitf', h5id_spitf)
+       end if
     else
 
        ! Create ASCII files
@@ -2662,26 +2669,32 @@ call cpu_time(time1)
        call h5_add(h5id_phi_mesh, 'cg2_3_num', cg2_3_num)
      
        call h5_add(h5id_phi_mesh, 'denom_mflint', denom_mflint)
+
+       if (lsw_save_dentf) then
+          call h5_add(h5id_dentf, 'dentf_p', dentf_p_h5(:,:,:,1:icounter), &
+               lbound(dentf_p_h5(:,:,:,1:icounter)), ubound(dentf_p_h5(:,:,:,1:icounter)))
+          call h5_add(h5id_dentf, 'dentf_m', dentf_m_h5(:,:,:,1:icounter), &
+               lbound(dentf_m_h5(:,:,:,1:icounter)), ubound(dentf_m_h5(:,:,:,1:icounter)))
+          call h5_close(h5id_dentf)
+       end if
+
+       if (lsw_save_spitf) then
+          call h5_add(h5id_spitf, 'spitf_p', spitf_p_h5(:,:,:,1:icounter), &
+               lbound(spitf_p_h5(:,:,:,1:icounter)), ubound(spitf_p_h5(:,:,:,1:icounter)))
+          call h5_add(h5id_spitf, 'spitf_m', spitf_m_h5(:,:,:,1:icounter), &
+               lbound(spitf_m_h5(:,:,:,1:icounter)), ubound(spitf_m_h5(:,:,:,1:icounter)))
+          call h5_close(h5id_spitf)
+       end if
+
+       if (lsw_save_enetf) then
+          call h5_add(h5id_enetf, 'enetf_p', enetf_p_h5(:,:,:,1:icounter), &
+               lbound(enetf_p_h5(:,:,:,1:icounter)), ubound(enetf_p_h5(:,:,:,1:icounter)))
+          call h5_add(h5id_enetf, 'enetf_m', enetf_m_h5(:,:,:,1:icounter), &
+               lbound(enetf_m_h5(:,:,:,1:icounter)), ubound(enetf_m_h5(:,:,:,1:icounter)))
+          call h5_close(h5id_enetf)
+       end if
        
-       call h5_add(h5id_dentf, 'dentf_p', dentf_p_h5(:,:,:,1:icounter), &
-            lbound(dentf_p_h5(:,:,:,1:icounter)), ubound(dentf_p_h5(:,:,:,1:icounter)))
-       call h5_add(h5id_spitf, 'spitf_p', spitf_p_h5(:,:,:,1:icounter), &
-            lbound(spitf_p_h5(:,:,:,1:icounter)), ubound(spitf_p_h5(:,:,:,1:icounter)))
-       call h5_add(h5id_enetf, 'enetf_p', enetf_p_h5(:,:,:,1:icounter), &
-            lbound(enetf_p_h5(:,:,:,1:icounter)), ubound(enetf_p_h5(:,:,:,1:icounter)))
-
-       call h5_add(h5id_dentf, 'dentf_m', dentf_m_h5(:,:,:,1:icounter), &
-            lbound(dentf_m_h5(:,:,:,1:icounter)), ubound(dentf_m_h5(:,:,:,1:icounter)))
-       call h5_add(h5id_spitf, 'spitf_m', spitf_m_h5(:,:,:,1:icounter), &
-            lbound(spitf_m_h5(:,:,:,1:icounter)), ubound(spitf_m_h5(:,:,:,1:icounter)))
-       call h5_add(h5id_enetf, 'enetf_m', enetf_m_h5(:,:,:,1:icounter), &
-            lbound(enetf_m_h5(:,:,:,1:icounter)), ubound(enetf_m_h5(:,:,:,1:icounter)))
-
-       call h5_close(h5id_enetf)
-       !call h5_close_group(h5id_spitf)
        call h5_close(h5id_phi_mesh)
-       call h5_close(h5id_dentf)
-       call h5_close(h5id_spitf)
 
        deallocate(phi_mfl_h5, bhat_mfl_h5, npassing_h5)
        deallocate(dentf_p_h5, spitf_p_h5, enetf_p_h5)
