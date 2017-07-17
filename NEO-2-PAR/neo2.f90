@@ -20,8 +20,9 @@ PROGRAM neo2
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
        phi_x_max, collop_bspline_order, collop_bspline_dist,        &
-       isw_relativistic, T_e, lsw_multispecies
-  USE propagator_mod, ONLY : reconstruct_prop_dist,                 &
+       isw_relativistic, T_e, lsw_multispecies, num_spec,           &
+       conl_over_mfp_spec, z_spec
+  USE propagator_mod, ONLY : reconstruct_prop_dist,   &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
