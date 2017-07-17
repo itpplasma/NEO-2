@@ -43,7 +43,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   USE flint_mod, ONLY : phi_divide                      !<-in Winny
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
        isw_energy,isw_integral,isw_axisymm, & !<-in Winny
-       isw_momentum,nvel
+       isw_momentum,nvel,num_spec
 ! collpar - the same as $\kappa$ - inverse mean-free path times 4
   !! Modifications by Andreas F. Martitsch (01.04.2015)
   !

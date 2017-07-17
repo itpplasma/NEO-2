@@ -34,7 +34,7 @@ SUBROUTINE ripple_solver(                                 &
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
        isw_energy,isw_integral,isw_axisymm, & !<-in Winny
        isw_momentum,vel_distri_swi,vel_num,vel_max, &
-       nvel,vel_array
+       nvel,vel_array,num_spec
 ! collpar - the same as $\kappa$ - inverse mean-free path times 4
   !! Modifications by Andreas F. Martitsch (01.04.2015)
   !

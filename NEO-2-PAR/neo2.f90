@@ -48,7 +48,7 @@ PROGRAM neo2
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
        collop_load, collop_unload, z_eff, collop_path,              &
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta, &
-       num_spec, conl_over_mfp_spec, z_spec, collop_only_precompute
+       collop_only_precompute
   USE rkstep_mod, ONLY : lag,leg,legmax, epserr_sink, epserr_iter, &
        niter
   USE development, ONLY : solver_talk,switch_off_asymp, &
@@ -401,7 +401,6 @@ PROGRAM neo2
   IF(ALLOCATED(conl_over_mfp_spec)) DEALLOCATE(conl_over_mfp_spec)
   ALLOCATE(conl_over_mfp_spec(0:num_spec-1))
   conl_over_mfp_spec(0:num_spec-1)=conl_over_mfp_vec(1:num_spec)
-  IF(num_spec .EQ. 1) conl_over_mfp_spec(0)=conl_over_mfp
   !
   IF(ALLOCATED(z_spec)) DEALLOCATE(z_spec)
   ALLOCATE(z_spec(0:num_spec-1))
