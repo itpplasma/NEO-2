@@ -197,6 +197,8 @@ PROGRAM neo2
   ! ---------------------------------------------------------------------------
   ! defaults
   !
+  ! call omp_set_num_threads(4)
+  !
   ! settings
   mag_magfield = 1
   magnetic_device = 1

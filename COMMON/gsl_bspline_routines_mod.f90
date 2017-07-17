@@ -92,8 +92,8 @@ contains
     allocate(by(fgsl_ncbf))
     call fgsl_check(fgsl_vector_align(by, fgsl_ncbf, fgsl_by, fgsl_ncbf, 0_fgsl_size_t, 1_fgsl_size_t))
 
-    write (*,*) "ncoefs:"
-    write (*,*) fgsl_bspline_ncoeffs(sw)
+    !write (*,*) "ncoefs:"
+    !write (*,*) fgsl_bspline_ncoeffs(sw)
 
     !**********************************************************
     ! Initialize Taylor expansion coefficients

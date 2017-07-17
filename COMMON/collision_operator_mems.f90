@@ -170,6 +170,13 @@ module collop
             collpar_min = collpar * nu_D_hat(v_max_resolution)
          end if
 
+         open(400,file='collpar.dat')
+         write (400,*) "Collpar", collpar
+         write (400,*) "Collpar_max", collpar_max
+         write (400,*) "Collpar_min", collpar_min
+         write (400,*) "nu_D_hat at v_min_res", nu_D_hat(v_min_resolution)
+         write (400,*) "nu_D_hat at v_max_res", nu_D_hat(v_max_resolution) 
+         
          ! Non-relativistic Limit according to Trubnikov
          if (isw_relativistic .eq. 0) then
 
