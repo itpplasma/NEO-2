@@ -4,14 +4,16 @@ module collop
   use hdf5_tools
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
-       m_ele, m_d, m_C, m_alp, compute_collop_inf, C_m, compute_xmmp, &
+       m_ele, m_d, m_C, m_alp, m_W, compute_collop_inf, C_m, compute_xmmp, &
        compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
        compute_collop_rel
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
        v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz, conl_over_mfp, &
-       isw_relativistic, T_e, lsw_multispecies
+       isw_relativistic, T_e, &
+       lsw_multispecies, isw_coul_log, num_spec, conl_over_mfp_spec, collpar_spec, &
+       z_spec, m_spec, T_spec, n_spec
   use device_mod, only : device
 
   implicit none
@@ -31,16 +33,11 @@ module collop
   real(kind=dp)               :: scalprod_beta  = 0d0
   logical                     :: collop_only_precompute = .false.
 
-  !**********************************************************
-  ! Number of species
-  !**********************************************************
-  integer :: num_spec
-
   real(kind=dp), dimension(:,:), allocatable :: anumm_inf
   real(kind=dp), dimension(:,:), allocatable :: x1mm, x2mm
-  real(kind=dp), dimension(:),   allocatable :: conl_over_mfp_spec
-  real(kind=dp), dimension(:),   allocatable :: z_spec
-  
+
+  integer, dimension(2) :: spec_ind_det, spec_ind_in
+
   contains
     
     subroutine collop_construct()     
@@ -69,35 +66,43 @@ module collop
       else
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,mpro%getRank(),ispec)
       end if
-      !**********************************************************
-      ! Switch collisionality parameter
-      !**********************************************************
-      ! negative input for conl_over_mfp should provide collpar directly
-      if (.not. collop_only_precompute) then
-         conl_over_mfp=conl_over_mfp_spec(ispec)
-         if (conl_over_mfp .gt. 0.0d0) then
-            collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
-         else
-            collpar=-conl_over_mfp
-         end if
-      end if
+
+      !! Modification by Andreas F. Martitsch (21.02.2017)
+      ! ToDo: Delete this block - switch moved to flint_prepare for consistency!
+!!$      !**********************************************************
+!!$      ! Switch collisionality parameter
+!!$      !**********************************************************
+!!$      ! negative input for conl_over_mfp should provide collpar directly
+!!$      if (.not. collop_only_precompute) then
+!!$         conl_over_mfp=conl_over_mfp_spec(ispec)
+!!$         if (conl_over_mfp .gt. 0.0d0) then
+!!$            collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
+!!$         else
+!!$            collpar=-conl_over_mfp
+!!$         end if
+!!$      end if
+      !! End Modification by Andreas F. Martitsch (21.02.2017)
       
     end subroutine collop_set_species
     
     subroutine collop_load()
       real(kind=dp), dimension(:), allocatable :: asource_temp
-      integer       :: a,b
+
+      real(kind=dp) :: alpha_temp, beta_temp
+      integer       :: a,b,ispec
+
       real(kind=dp) :: taa_ov_tab_temp
       real(kind=dp) :: coll_a_temp, coll_b_temp
       real(kind=dp) :: za_temp, zb_temp
       
       if (.not. lsw_multispecies) then
          write (*,*) "Single species mode."
-         num_spec = 1
       else
          write (*,*) "Multispecies mode."
-         num_spec = 2
       end if
+
+      ! species index
+      ispec = mpro%getRank()
       
       !**********************************************************
       ! Allocation of matrices
@@ -200,7 +205,7 @@ module collop
 
          ! Relativistic collision operator accordning to Braams and Karney
          elseif (isw_relativistic .ge. 1) then
-            CALL compute_collop_rel(isw_relativistic, T_e, asource, weightlag, weightden, weightparflow, &
+            call compute_collop_rel(isw_relativistic, T_e, asource, weightlag, weightden, weightparflow, &
                  weightenerg, Amm, anumm_aa(:,:,0,0), anumm_inf, denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
             !stop
          else
@@ -213,6 +218,11 @@ module collop
          anumm_a(:,:,0) = anumm_aa(:,:,0,0) + z_eff * anumm_inf(:,:)
          denmm_a(:,:,0) = denmm_aa(:,:,0,0)
 
+         !**********************************************************
+         ! Set pointers to main species
+         !**********************************************************
+         call collop_set_species(0)
+         
       else
 
          write (*,*) "Multispecies test mode."
@@ -225,11 +235,19 @@ module collop
          ! New version with deflection frequency 
          ! At the momement only for self-collisions !!!!!!!
          if (isw_lorentz .eq. 1) then
-            collpar_min = collpar
-            collpar_max = collpar
+            print *,"collision_operator_mems.f90:&
+                 &Lorentz collision model for multi-species mode not available!"
+            stop
          else
-            collpar_max = collpar * nu_D_hat(v_min_resolution)
-            collpar_min = collpar * nu_D_hat(v_max_resolution)
+            ! (ToDo: species-dependent eta-grid refinement - re-discretization)
+            !collpar_max = collpar * nu_D_hat(v_min_resolution)
+            !collpar_min = collpar * nu_D_hat(v_max_resolution)
+
+            ! For testing make eta-grid species independent
+            ! (collpar_max and collpar_min set for main species)
+            write (*,*) "For testing make eta-grid species independent."
+            collpar_max = collpar_spec(0) * nu_D_hat(v_min_resolution)
+            collpar_min = collpar_spec(0) * nu_D_hat(v_max_resolution)
          end if
          
          !**********************************************************
@@ -246,14 +264,61 @@ module collop
          !**********************************************************
          ! Compute collision operator
          !**********************************************************
-         call compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
-              denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
-         call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
-              denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
-              denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-              denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+         ! old: without MPI parallelization
+!!$         do a = 0, num_spec-1
+!!$            do b = 0, num_spec-1
+!!$               
+!!$               spec_ind_in = (/ a, b /)
+!!$               call collop_exists(m_spec(a), m_spec(b), T_spec(a), T_spec(b), &
+!!$                    spec_ind_in, spec_ind_det)
+!!$
+!!$               if ( all(spec_ind_det .eq. -1) ) then
+!!$                  !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
+!!$                  !print *,'Do the computation.'
+!!$                  call compute_collop('a', 'b', m_spec(a), m_spec(b), T_spec(a), T_spec(b), &
+!!$                       anumm_aa(:,:,a,b), denmm_aa(:,:,a,b), ailmm_aa(:,:,:,a,b))
+!!$               else
+!!$                  !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
+!!$                  !print *,'Load matrices.'
+!!$                  anumm_aa(:,:,a,b) = anumm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
+!!$                  denmm_aa(:,:,a,b) = denmm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
+!!$                  ailmm_aa(:,:,:,a,b) = ailmm_aa(:,:,:,spec_ind_det(1),spec_ind_det(2))
+!!$               end if
+!!$               
+!!$            end do
+!!$         end do
+         ! new: with MPI parallelization
+         b = mpro%getRank()
+         do a = 0, num_spec-1
+            spec_ind_in = (/ a, b /)
+            call collop_exists_mpi(m_spec(a), T_spec(a), spec_ind_in, spec_ind_det)
+            if ( all(spec_ind_det .eq. -1) ) then
+               !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
+               !print *,'Do the computation.'
+               call compute_collop('a', 'b', m_spec(a), m_spec(b), T_spec(a), T_spec(b), &
+                    anumm_aa(:,:,a,b), denmm_aa(:,:,a,b), ailmm_aa(:,:,:,a,b))
+            else
+               !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
+               !print *,'Load matrices.'
+               anumm_aa(:,:,a,b) = anumm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
+               denmm_aa(:,:,a,b) = denmm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
+               ailmm_aa(:,:,:,a,b) = ailmm_aa(:,:,:,spec_ind_det(1),spec_ind_det(2))
+            end if
+         end do
+         call mpro%allgather(anumm_aa(:,:,:,b),anumm_aa)
+         call mpro%allgather(denmm_aa(:,:,:,b),denmm_aa)
+         call mpro%allgather(ailmm_aa(:,:,:,:,b),ailmm_aa)
+
+         !call compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
+         !     denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
+         
+         !call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
+         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+         !call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
+         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+         !call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+         
          !call compute_collop('d', 'alp', m_d, m_alp, 1d0, 1d0, anumm_aa(:,:,0,1), &
          !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
          !call compute_collop('alp', 'alp', m_alp, m_alp, 1d0, 1d0, anumm_aa(:,:,1,1), &
@@ -261,36 +326,73 @@ module collop
          !call compute_collop('alp', 'd', m_alp, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
          !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
          
+         !call compute_collop('d', 'W', m_d, m_W, 1d0, 1d0, anumm_aa(:,:,0,1), &
+         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+         !call compute_collop('W', 'W', m_W, m_W, 1d0, 1d0, anumm_aa(:,:,1,1), &
+         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+         !call compute_collop('W', 'd', m_W, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+
+         !!m_ele = m_ele*0.5d0
+         !call compute_collop('d', 'e', m_d, m_ele, 1d0, 1d0, anumm_aa(:,:,0,1), &
+         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+         !call compute_collop('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,1,1), &
+         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+         !call compute_collop('e', 'd', m_ele, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+
+         !call compute_collop('W', 'e', m_W, m_ele, 1d0, 1d0, anumm_aa(:,:,0,1), &
+         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+         !call compute_collop('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,1,1), &
+         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+         !call compute_collop('e', 'W', m_ele, m_W, 1d0, 1d0, anumm_aa(:,:,1,0), &
+         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+         !stop
+         
          !**********************************************************
          ! Sum up matrices
          !**********************************************************
          anumm_a = 0d0
          denmm_a = 0d0
-         !PRINT *,num_spec
-         !STOP
+         !print *,num_spec
+         !stop
          do a = 0, num_spec-1
-            coll_a_temp = conl_over_mfp_spec(a)
+            coll_a_temp = collpar_spec(a)
             za_temp = z_spec(a)
             do b = 0, num_spec-1
-               !if (a .ne. b) then
-               coll_b_temp = conl_over_mfp_spec(b)
+               coll_b_temp = collpar_spec(b)
                zb_temp = z_spec(b)
-               ! this definition is not exact (only valid for equal temperatures)
-               ! --> should be replaced by the definition via densities!!! 
-               taa_ov_tab_temp = &
-                    (coll_b_temp/coll_a_temp) * ((za_temp/zb_temp)**2)
-               !PRINT *,'taa_ov_tab: ',a,b,taa_ov_tab_temp
-               !PRINT *,coll_a_temp,coll_b_temp
-               !PRINT *,za_temp,zb_temp
+               ! isw_coul_log = 0: Coulomb logarithm set as species independent
+               !                   (overrides values for n_spec)
+               ! isw_coul_log = 1: Coulomb logarithm computed for each species
+               !                   using n_spec, T_spec
+               !                   (overrides values for collisionality parameters)
+               if (isw_coul_log .eq. 0) then
+                  taa_ov_tab_temp = (coll_b_temp/coll_a_temp) * &
+                       (((T_spec(b)*za_temp)/(T_spec(a)*zb_temp))**2)
+               else
+                  print *,"collision_operator_mems.f90: &
+                       &species-dependent Coulomb logarithm not yet implemented!"
+                  print *,"Please use switch isw_coul_log = 0."
+                  stop
+               end if
+               !print *,'taa_ov_tab: ',a,b,taa_ov_tab_temp
+               !print *,coll_a_temp,coll_b_temp
+               !print *,za_temp,zb_temp
                anumm_a(:,:,a) = &
                     anumm_a(:,:,a) + anumm_aa(:,:,a,b) * taa_ov_tab_temp
                denmm_a(:,:,a) = &
                     denmm_a(:,:,a) + denmm_aa(:,:,a,b) * taa_ov_tab_temp
                ailmm_aa(:,:,:,a,b) = &
                     ailmm_aa(:,:,:,a,b) * taa_ov_tab_temp
-               !end if
             end do
          end do
+
+         !**********************************************************
+         ! Set pointers to main species
+         !**********************************************************
+         call collop_set_species(ispec)
+         
       end if
 
       !**********************************************************
@@ -305,11 +407,6 @@ module collop
       weightlag(2,:) = weightlag(3,:)
       weightlag(3,:) = asource_temp
       deallocate(asource_temp)
-      
-      !**********************************************************
-      ! Set pointers to main species
-      !**********************************************************
-      call collop_set_species(0)
 
       !**********************************************************
       ! Write to screen
@@ -321,6 +418,60 @@ module collop
       !write (*,*) weightlag
 
       if (mpro%isMaster()) call write_collop()
+
+    contains
+      !
+      subroutine collop_exists(ma,mb,Ta,Tb,ind_in,ind_out)
+        ! input / output
+        real(kind=dp), intent(in) :: ma, mb, Ta, Tb
+        integer, dimension(2), intent(in)  :: ind_in
+        integer, dimension(2), intent(out) :: ind_out
+        ! internal
+        integer :: a, b
+        !
+        ! ind_out = -1: matrix elements not available for
+        !               species (ma,Ta;mb,Tb) - do the computation 
+        ind_out = -1
+        do a=0,ind_in(1)
+           if ( (ma.ne.m_spec(a)) .or. (Ta.ne.T_spec(a)) ) cycle
+           do b=0,ind_in(2)
+              if ( (mb.ne.m_spec(b)) .or. (Tb.ne.T_spec(b)) ) cycle
+              ind_out=(/a,b/)
+              !print *,'ind_in: ',ind_in
+              !print *,'ind_out: ',ind_out
+              if ( all(ind_out.eq.ind_in) ) then
+                 ind_out = -1
+              end if
+              return
+           end do
+        end do
+        !
+      end subroutine collop_exists
+      !
+      subroutine collop_exists_mpi(ma,Ta,ind_in,ind_out)
+        ! input / output
+        real(kind=dp), intent(in) :: ma, Ta
+        integer, dimension(2), intent(in)  :: ind_in
+        integer, dimension(2), intent(out) :: ind_out
+        ! internal
+        integer :: a, b
+        !
+        ! ind_out = -1: matrix elements not available for
+        !               species (ma,Ta;mb,Tb) - do the computation 
+        ind_out = -1
+        do a=0,ind_in(1)
+           if ( (ma.ne.m_spec(a)) .or. (Ta.ne.T_spec(a)) ) cycle
+           ind_out=(/a,ind_in(2)/)
+           !print *,'ind_in: ',ind_in
+           !print *,'ind_out: ',ind_out
+           if ( all(ind_out.eq.ind_in) ) then
+              ind_out = -1
+           end if
+           return
+        end do
+        !
+      end subroutine collop_exists_mpi
+      !
     end subroutine collop_load
 
     subroutine collop_unload()

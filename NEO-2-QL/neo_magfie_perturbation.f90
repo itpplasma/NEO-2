@@ -8,7 +8,7 @@ MODULE neo_magfie_perturbation
   USE inter_interfaces, ONLY: splinecof3_hi_driv,&
        tf, tfp, tfpp, tfppp, splint_horner3
   ! get boozer_iota (from the axiymmetric file - is the same)
-  USE neo_magfie_mod, ONLY: boozer_iota
+  USE neo_magfie_mod, ONLY: boozer_iota, compute_RZ
   ! magfie
   USE magfie_mod, ONLY : magfie
   ! used for normalization (hat-quantities)
@@ -22,6 +22,7 @@ MODULE neo_magfie_perturbation
        boozer_phi_beg
   ! routine mag for the computation of bmod
   USE mag_sub, ONLY: mag
+  USE mpiprovider_module
   !
   IMPLICIT NONE
   !
@@ -219,7 +220,7 @@ CONTAINS
        ixn_pert =  ixn_pert * nfp_pert
        m_phi = ixn_pert(1)
        ixm_pert =  ixm_pert
-    ELSEIF (lab_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
+    ELSEIF ((lab_swi .EQ. 9) .OR. (lab_swi .EQ. 10)) THEN ! ASDEX-U (E. Strumberger)
           ixn_pert =  ixn_pert * nfp_pert
           m_phi = ixn_pert(1)
           ixm_pert =  ixm_pert
@@ -635,7 +636,8 @@ CONTAINS
     !
     ! compute R, bmod as a function of phi
     w_un=14112014
-    OPEN(unit=w_un,file='fluxsurface.dat',status='replace',form='formatted')
+    IF ( mpro%isMaster() ) &
+      OPEN(unit=w_un,file='fluxsurface.dat',status='replace',form='formatted')
     DO k = ibeg,iend
        x(1)=x_start(1)
        x(2)=phi_arr(k)
@@ -644,9 +646,9 @@ CONTAINS
             hcurl, bcovar_s_hat_der, R_val, Z_val )
        R_arr(k) = R_val
        bmod_arr(k) = bmoda
-       WRITE(w_un,*) x(2), R_val, Z_val, bmoda
+       IF ( mpro%isMaster() ) WRITE(w_un,*) x(2), R_val, Z_val, bmoda
     END DO
-    CLOSE(unit=w_un)
+    IF ( mpro%isMaster() ) CLOSE(unit=w_un)
     !
     ! evaluate flux surface average
     fac1 = 0.0_dp 

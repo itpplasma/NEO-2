@@ -43,7 +43,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   USE flint_mod, ONLY : phi_divide                      !<-in Winny
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
        isw_energy,isw_integral,isw_axisymm, & !<-in Winny
-       isw_momentum,nvel
+       isw_momentum,nvel,num_spec,lsw_multispecies
 ! collpar - the same as $\kappa$ - inverse mean-free path times 4
   !! Modifications by Andreas F. Martitsch (01.04.2015)
   !
@@ -106,7 +106,9 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_qflux_NA, MtOvR, B_rho_L_loc, &
        m_phi,  qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val, &
-       qflux_symm_allspec, qflux_ntv_allspec
+       qflux_symm_allspec, qflux_ntv_allspec, &
+       get_Er, MtOvR_spec, isw_calc_Er, &
+       get_B_rho_L_loc, B_rho_L_loc_spec, isw_calc_MagDrift
   !USE neo_precision, ONLY : PI
   !! End Modification by Andreas F. Martitsch (14.07.2015)
   !! Modification by Andreas F. Martitsch (28.07.2015)
@@ -269,6 +271,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_e,fact_neg_e
   INTEGER          :: nreal,ncomp
   DOUBLE COMPLEX   :: expforw,expbackw,perbou_pos,perbou_neg,rotfactor
+  DOUBLE PRECISION :: Er, avEparB_ov_avb2 ! radial and inductive electric field
   DOUBLE PRECISION :: a1b,a2b,hatOmegaE,hatOmegaB,denomjac
   !! Modifications by Andreas F. Martitsch (14.03.2014)
   ! Subsequent quantities are given now in cgs-units and they are 
@@ -300,7 +303,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   !! End Modifications by Andreas F. Martitsch (13.06.2014)
   !! Modification by Andreas F. Martitsch (28.07.2015)
   !  multi-species part
-  INTEGER :: ispec, ispecp ! species indices
+  INTEGER :: ispec, ispecp, ispecpp ! species indices
   INTEGER :: drive_spec
   DOUBLE COMPLEX,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all
   REAL(kind=dp), DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec
@@ -322,8 +325,9 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
 !
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
 ! DEBUGGING
-  INTEGER :: i_ctr=0
-  LOGICAL :: eigvec_data=.TRUE.
+  INTEGER :: i_ctr=0, uw, uw_new
+  LOGICAL :: lsw_debug_eigvec=.FALSE.
+  LOGICAL :: lsw_debug_distfun=.FALSE.
 !
   !! Modification by Andreas F. Martitsch (28.07.2015)
   ! multi-species part - MPI rank determines species
@@ -345,30 +349,6 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
 !                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
 !                    $\kappa$ is inverse m.f.p. times 4 ("collpar")
   sparse_solve_method = 3 !2 !2,3 - with and without iterative refinement, resp.
-!
-  !! Modifications by Andreas F. Martitsch (14.07.2015)
-  ! normalized electric rotation frequency ($\hat{\Omega}_{tE}$)
-  ! specified via toroidal Mach number over R_major (Mt/R)
-  !conversion conl_over_mfp to collpar by a factor 2 wrong for
-  !the full collision operator (therefore numbers for Mt in the paper were rescaled)
-  !hatOmegaE=Mt*PI/(conl_over_mfp)
-  !this shows the factor 2
-  !(results are identical to the ones above; collpar=$\frac{2}{v_{Ta}\tau_{aa}}$)
-  !hatOmegaE=2.0d0*Mt/(collpar*(device%r0))
-  !this is the correct definition with collpar=4/$l_c$ ($l_c=2 v_{Ta} \tau_{aa}$)
-  hatOmegaE=MtOvR/collpar
-  ! normalized magnetic rotation frequency ($\hat{\Omega}_{tB}^{\rm ref}$)
-  ! specified via Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc)
-  !definition with conl_over_mfp suffers again from wrong conversion to
-  !collpar
-  !hatOmegaB=((device%r0*PI)/(2.0d0*boozer_psi_pr_hat))*&
-  !     (B_rho_L_loc/(avbhat*conl_over_mfp))
-  !correct definition with collpar=4/$l_c$ ($l_c=2 v_{Ta} \tau_{aa}$)
-  hatOmegaB=B_rho_L_loc/(2.0d0*boozer_psi_pr_hat*(bmod0*1.0d4)*collpar)
-  ! print normalized rotation frequencies
-  PRINT *,'hatOmegaB,hatOmegaE: ',hatOmegaB,hatOmegaE
-  !STOP
-  !! End Modifications by Andreas F. Martitsch (14.07.2015)
 !    
   !------------------------------------------------------------------------
   ! END SERGEI
@@ -2921,6 +2901,241 @@ rotfactor=imun*m_phi
 ! End save symmetric matrix
 !
   DEALLOCATE(irow,icol,amat_sp)
+
+  !------------------------------------------------------------------------
+  ! Solve axi-symmetric equation set
+  !------------------------------------------------------------------------
+! For the computation of hatOmegaE from the profile
+! one must know the solution of the axisymmetric
+! equation set.
+  ALLOCATE(ipcol(ncol),bvec_sp(ncol))
+!
+! Solve the axisymmetric equation set:
+!
+  IF(ALLOCATED(qflux_symm)) DEALLOCATE(qflux_symm)
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  !  multi-species part (allocate storage for source_vector)
+  IF(ALLOCATED(source_vector_all)) DEALLOCATE(source_vector_all)
+  ALLOCATE(source_vector_all(n_2d_size,1:4,0:num_spec-1))
+  source_vector_all=(0.0d0,0.0d0)
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
+  !! Modification by Andreas F. Martitsch (23.08.2015)
+  ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+  ! (at the moment these arrays cannot be handled correctly using the
+  ! propagator structure -> global variables used):
+  IF(ALLOCATED(qflux_symm_allspec)) DEALLOCATE(qflux_symm_allspec)
+  ALLOCATE(qflux_symm_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
+  qflux_symm_allspec=0.0d0
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
+  IF(nobounceaver) THEN
+!
+    nz=nz_symm+nz_regper
+!
+    ALLOCATE(irow(nz),icol(nz),amat_sp(nz))
+!
+    irow(1:nz_symm)=irow_symm
+    icol(1:nz_symm)=icol_symm
+    amat_sp(1:nz_symm)=amat_symm
+    !PRINT *, nz_regper
+    IF(nz_regper.GT.0) THEN
+      !PRINT *,nz_regper
+      !STOP 
+      irow(nz_symm+1:nz)=irow_regper
+      icol(nz_symm+1:nz)=icol_regper
+      amat_sp(nz_symm+1:nz)=amat_regper
+    ENDIF
+!
+    !! Modifications by Andreas F. Martitsch (28.08.2014)
+    ! geodesic curvature for the axisymmetric field computed by
+    ! external routines
+    !geodcu_forw=geodcu_mfl
+    !geodcu_back=geodcu_mfl
+    ! computation of geodesic curvature according to
+    ! $\|{\nabla}s\| k_{G0} = - \frac{B_\ph}{\iota B_{\tht}+B_{\ph}}
+    ! \frac{B_{\rm ref}}{\psi_{\rm tor}^{a}} \difp{B_0}{\tht}$
+    denomjac=-scalefac_kG*bcovar_phi_hat/(aiota*bcovar_theta_hat+bcovar_phi_hat)
+    ! geodcu_forw used for computation of q_rip(1:npassing+1,istep,1),
+    ! which in turn enters the source_vector
+    geodcu_forw=denomjac*dlogbdphi_mfl*bhat_mfl
+    ! geodcu_back used for the computation of convol_flux, which enters q_flux
+    ! via flux_vector(1,:) and flux_vector(3,:)
+    !--> Computation of D31/D32 not affected ( flux_vector(2,:) determined by convol_curr )
+    geodcu_back=geodcu_forw
+    !! End Modifications by Andreas F. Martitsch (28.08.2014)
+!
+    CALL source_flux
+    !! Modification by Andreas F. Martitsch (23.08.2015)
+    ! save solution of the differential part for species=ispec
+    ! (diffusion coeff. driven by thermodyn. forces of other 
+    ! species are zero -> interaction through integral part)
+    source_vector_all(:,1:4,ispec)=source_vector(:,1:4)
+    !! End Modification by Andreas F. Martitsch (23.08.2015)
+!
+    problem_type=.TRUE.
+    CALL solve_eqs(.TRUE.)
+!
+! Debugging - plot distribution function (axisymmetric problem)
+IF(lsw_debug_distfun) THEN
+DO ispecp=0,num_spec-1
+uw=10000*(num_spec*ispec+ispecp+1)
+istep=(ibeg+iend)/2
+uw_new=uw
+CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+uw_new=uw+1000
+CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+istep=ibeg
+uw_new=uw+10
+CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+uw_new=uw+1010
+CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+istep=iend
+uw_new=uw+20
+CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+uw_new=uw+1020
+CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+istep=ibeg+1
+uw_new=uw+30
+CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+uw_new=uw+1030
+CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+END DO
+END IF
+!
+
+    DEALLOCATE(irow,icol,amat_sp)
+!
+! Caution!!! factor 2 is not needed!!!
+    qflux=2.d0*qflux
+    IF (.NOT. lsw_multispecies) THEN ! single-species output
+       OPEN(1234,file='qflux_symm.dat')
+       WRITE(1234,*) conl_over_mfp/boozer_iota
+       WRITE(1234,*) -qflux(1,1:3)
+       WRITE(1234,*) -qflux(2,1:3)
+       WRITE(1234,*) -qflux(3,1:3)
+       CLOSE(1234)
+       !RETURN
+    END IF
+
+    !! Modifications by Andreas F. Martitsch (28.07.2014)
+    ! Save here the solution of the axisymmetric case (if non-axisymmetric
+    ! solution is also computed). Otherwise exit here ripple_solver and
+    ! return to calling routine propagator_solver.
+    IF(isw_qflux_NA .EQ. 0) THEN
+       ! compute qflux only for the axisymmetric equation set
+       !! Modification by Andreas F. Martitsch (23.08.2015)
+       ! old behavior:
+       ! --> qflux already available from prop_a%p%qflux
+       !RETURN
+       ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+       ! (at the moment these arrays cannot be handled correctly using the
+       ! propagator structure -> global variables used):
+       IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
+       qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
+       qflux_symm_allspec=qflux_allspec
+       IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+       IF(lsw_multispecies .AND. mpro%getrank() .EQ. 0) THEN
+          OPEN(070915,file='qflux_symm_allspec.dat')
+          WRITE(070915,*) '% boozer_s, collpar'
+          WRITE(070915,*) boozer_s, collpar
+          WRITE(070915,*) '% qflux(1,1,a,b}'
+          DO ispecp=0,num_spec-1
+             WRITE(070915,*) (qflux_symm_allspec(1,1,ispecp,ispecpp),&
+                  ispecpp=0,num_spec-1)
+          END DO
+          WRITE(070915,*) '% qflux(1,3,a,b}'
+          DO ispecp=0,num_spec-1
+             WRITE(070915,*) (qflux_symm_allspec(1,3,ispecp,ispecpp),&
+                  ispecpp=0,num_spec-1)
+          END DO
+          CLOSE(070915)
+          !STOP
+       END IF
+       RETURN
+       !! End Modification by Andreas F. Martitsch (23.08.2015)
+    ELSE IF(isw_qflux_NA .EQ. 1) THEN
+       ! save qflux for the axisymmetric equation set
+       ! and proceed with the solution of the non-axisymmetric
+       ! equation set (stored within prop_a%p%qflux)
+       ALLOCATE(qflux_symm(3,3))
+       qflux_symm=qflux
+       !! Modification by Andreas F. Martitsch (23.08.2015)
+       ! NEO-2 can treat now multiple species -> qflux is now a 4D array
+       ! (at the moment these arrays cannot be handled correctly using the
+       ! propagator structure -> global variables used):
+       IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
+       qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
+       qflux_symm_allspec=qflux_allspec
+       IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
+       IF(lsw_multispecies .AND. mpro%getrank() .EQ. 0) THEN
+          OPEN(070915,file='qflux_symm_allspec.dat')
+          WRITE(070915,*) '% boozer_s, collpar'
+          WRITE(070915,*) boozer_s, collpar
+          WRITE(070915,*) '% qflux(1,1,a,b}'
+          DO ispecp=0,num_spec-1
+             WRITE(070915,*) (qflux_symm_allspec(1,1,ispecp,ispecpp),&
+                  ispecpp=0,num_spec-1)
+          END DO
+          WRITE(070915,*) '% qflux(1,3,a,b}'
+          DO ispecp=0,num_spec-1
+             WRITE(070915,*) (qflux_symm_allspec(1,3,ispecp,ispecpp),&
+                  ispecpp=0,num_spec-1)
+          END DO
+          CLOSE(070915)
+          !STOP
+       END IF
+       !! End Modification by Andreas F. Martitsch (23.08.2015)
+    ELSE
+       STOP "Invalid input for isw_qflux_symm (0/1)!"
+    END IF
+    !! End Modifications by Andreas F. Martitsch (28.07.2014)
+!
+  ENDIF
+!
+  IF (lsw_multispecies .AND. isw_calc_Er .EQ. 1) THEN
+     PRINT *,'Compute radial electric field ...'
+     IF (num_spec .EQ. 1) THEN
+        CALL get_Er(qflux_symm_allspec,Er)
+        PRINT *,'Er: ', Er
+     ELSE
+        CALL get_Er(qflux_symm_allspec,Er,avEparB_ov_avb2)
+        PRINT *,'Er, avEparB_ov_avb2: ', Er, avEparB_ov_avb2
+     END IF
+     MtOvR = MtOvR_spec(ispec)
+  END IF
+  IF (lsw_multispecies .AND. isw_calc_MagDrift .EQ. 1) THEN
+     PRINT *,'Compute hatOmegaB ...'
+     CALL get_B_rho_L_loc()
+     B_rho_L_loc = B_rho_L_loc_spec(ispec)
+  END IF
+!
+  !! Modifications by Andreas F. Martitsch (14.07.2015)
+  ! normalized electric rotation frequency ($\hat{\Omega}_{tE}$)
+  ! specified via toroidal Mach number over R_major (Mt/R)
+  !conversion conl_over_mfp to collpar by a factor 2 wrong for
+  !the full collision operator (therefore numbers for Mt in the paper were rescaled)
+  !hatOmegaE=Mt*PI/(conl_over_mfp)
+  !this shows the factor 2
+  !(results are identical to the ones above; collpar=$\frac{2}{v_{Ta}\tau_{aa}}$)
+  !hatOmegaE=2.0d0*Mt/(collpar*(device%r0))
+  !this is the correct definition with collpar=4/$l_c$ ($l_c=2 v_{Ta} \tau_{aa}$)
+  hatOmegaE=MtOvR/collpar
+  ! normalized magnetic rotation frequency ($\hat{\Omega}_{tB}^{\rm ref}$)
+  ! specified via Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc)
+  !definition with conl_over_mfp suffers again from wrong conversion to
+  !collpar
+  !hatOmegaB=((device%r0*PI)/(2.0d0*boozer_psi_pr_hat))*&
+  !     (B_rho_L_loc/(avbhat*conl_over_mfp))
+  !correct definition with collpar=4/$l_c$ ($l_c=2 v_{Ta} \tau_{aa}$)
+  hatOmegaB=B_rho_L_loc/(2.0d0*boozer_psi_pr_hat*(bmod0*1.0d4)*collpar)
+  ! print normalized rotation frequencies
+  PRINT *,'hatOmegaB,hatOmegaE: ',hatOmegaB,hatOmegaE
+  !STOP
+  !! End Modifications by Andreas F. Martitsch (14.07.2015)
+!
+  !------------------------------------------------------------------------
+  ! End Solve axi-symmetric equation set
+  !------------------------------------------------------------------------
+
 !
 ! Nox-axisymmetric matrices:
 !
@@ -3363,211 +3578,16 @@ rotfactor=imun*m_phi
 !
 !!$  DEALLOCATE(x1mm,x2mm)
 !
-!! Modifications by Andreas F. Martitsch (02.09.2014)
-! For the computation of hatOmegaE from the profile
-! one must know the solution of the axisymmetric
-! equation set.
-  ALLOCATE(ipcol(ncol),bvec_sp(ncol))
+! Use solution of axisymmetric equation set:
 !
-! Solve the axisymmetric equation set:
-!
-  IF(ALLOCATED(qflux_symm)) DEALLOCATE(qflux_symm)
-  !! Modification by Andreas F. Martitsch (23.08.2015)
-  !  multi-species part (allocate storage for source_vector)
-  IF(ALLOCATED(source_vector_all)) DEALLOCATE(source_vector_all)
-  ALLOCATE(source_vector_all(n_2d_size,1:4,0:num_spec-1))
-  source_vector_all=(0.0d0,0.0d0)
-  !! End Modification by Andreas F. Martitsch (23.08.2015)
-  !! Modification by Andreas F. Martitsch (23.08.2015)
-  ! NEO-2 can treat now multiple species -> qflux is now a 4D array
-  ! (at the moment these arrays cannot be handled correctly using the
-  ! propagator structure -> global variables used):
-  IF(ALLOCATED(qflux_symm_allspec)) DEALLOCATE(qflux_symm_allspec)
-  ALLOCATE(qflux_symm_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
-  !! End Modification by Andreas F. Martitsch (23.08.2015)
   IF(nobounceaver) THEN
-!
-    nz=nz_symm+nz_regper
-!
-    ALLOCATE(irow(nz),icol(nz),amat_sp(nz))
-!
-    irow(1:nz_symm)=irow_symm
-    icol(1:nz_symm)=icol_symm
-    amat_sp(1:nz_symm)=amat_symm
-    !PRINT *, nz_regper
-    IF(nz_regper.GT.0) THEN
-      !PRINT *,nz_regper
-      !STOP 
-      irow(nz_symm+1:nz)=irow_regper
-      icol(nz_symm+1:nz)=icol_regper
-      amat_sp(nz_symm+1:nz)=amat_regper
-    ENDIF
-!
-    !! Modifications by Andreas F. Martitsch (28.08.2014)
-    ! geodesic curvature for the axisymmetric field computed by
-    ! external routines
-    !geodcu_forw=geodcu_mfl
-    !geodcu_back=geodcu_mfl
-    ! computation of geodesic curvature according to
-    ! $\|{\nabla}s\| k_{G0} = - \frac{B_\ph}{\iota B_{\tht}+B_{\ph}}
-    ! \frac{B_{\rm ref}}{\psi_{\rm tor}^{a}} \difp{B_0}{\tht}$
-    denomjac=-scalefac_kG*bcovar_phi_hat/(aiota*bcovar_theta_hat+bcovar_phi_hat)
-    ! geodcu_forw used for computation of q_rip(1:npassing+1,istep,1),
-    ! which in turn enters the source_vector
-    geodcu_forw=denomjac*dlogbdphi_mfl*bhat_mfl
-    ! geodcu_back used for the computation of convol_flux, which enters q_flux
-    ! via flux_vector(1,:) and flux_vector(3,:)
-    !--> Computation of D31/D32 not affected ( flux_vector(2,:) determined by convol_curr )
-    geodcu_back=geodcu_forw
-    !! End Modifications by Andreas F. Martitsch (28.08.2014)
-!
-    CALL source_flux
-    !! Modification by Andreas F. Martitsch (23.08.2015)
-    ! save solution of the differential part for species=ispec
-    ! (diffusion coeff. driven by thermodyn. forces of other 
-    ! species are zero -> interaction through integral part)
-    source_vector_all(:,1:4,ispec)=source_vector(:,1:4)
-    !! End Modification by Andreas F. Martitsch (23.08.2015)
-!
-    problem_type=.TRUE.
-    CALL solve_eqs(.TRUE.)
-!
-!istep=(ibeg+iend)/2
-!CALL plotsource(10000,REAL(source_vector))
-!CALL plotsource(11000,dimag(source_vector))
-!istep=ibeg
-!CALL plotsource(10010,REAL(source_vector))
-!CALL plotsource(11010,dimag(source_vector))
-!istep=iend
-!CALL plotsource(10020,REAL(source_vector))
-!CALL plotsource(11020,dimag(source_vector))
-!istep=ibeg+1
-!CALL plotsource(10030,REAL(source_vector))
-!CALL plotsource(11030,dimag(source_vector))
-!
-
-    DEALLOCATE(irow,icol,amat_sp)
-!
-! Caution!!! factor 2 is not needed!!!
-    qflux=2.d0*qflux
-    OPEN(1234,file='qflux_symm.dat')
-    WRITE(1234,*) conl_over_mfp/boozer_iota
-    WRITE(1234,*) -qflux(1,1:3)
-    WRITE(1234,*) -qflux(2,1:3)
-    WRITE(1234,*) -qflux(3,1:3)
-    CLOSE(1234)
-!RETURN
-
-    !! Modifications by Andreas F. Martitsch (28.07.2014)
-    ! Save here the solution of the axisymmetric case (if non-axisymmetric
-    ! solution is also computed). Otherwise exit here ripple_solver and
-    ! return to calling routine propagator_solver.
-    IF(isw_qflux_NA .EQ. 0) THEN
-       ! compute qflux only for the axisymmetric equation set
-       !! Modification by Andreas F. Martitsch (23.08.2015)
-       ! old behavior:
-       ! --> qflux already available from prop_a%p%qflux
-       !RETURN
-       ! NEO-2 can treat now multiple species -> qflux is now a 4D array
-       ! (at the moment these arrays cannot be handled correctly using the
-       ! propagator structure -> global variables used):
-       IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
-       qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
-       qflux_symm_allspec=qflux_allspec
-       IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
-       IF(mpro%getrank() .EQ. 0) THEN
-          ! D33
-!!$          PRINT *,qflux_symm_allspec(2,2,0,0)
-!!$          PRINT *,qflux_symm_allspec(2,2,1,0)
-!!$          PRINT *,qflux_symm_allspec(2,2,0,1)
-!!$          PRINT *,qflux_symm_allspec(2,2,1,1)
-!!$          ! D11
-!!$          PRINT *,'qflux(1,1,0,0):'
-!!$          PRINT *,qflux_symm_allspec(1,1,0,0)
-!!$          PRINT *,'qflux(1,1,1,0):'
-!!$          PRINT *,qflux_symm_allspec(1,1,1,0)
-!!$          PRINT *,'qflux(1,1,0,1):'
-!!$          PRINT *,qflux_symm_allspec(1,1,0,1)
-!!$          PRINT *,'qflux(1,1,1,1):'
-!!$          PRINT *,qflux_symm_allspec(1,1,1,1)
-!!$          ! D12
-!!$          PRINT *,'qflux(1,3,0,0):'
-!!$          PRINT *,qflux_symm_allspec(1,3,0,0)
-!!$          PRINT *,'qflux(1,3,1,0):'
-!!$          PRINT *,qflux_symm_allspec(1,3,1,0)
-!!$          PRINT *,'qflux(1,3,0,1):'
-!!$          PRINT *,qflux_symm_allspec(1,3,0,1)
-!!$          PRINT *,'qflux(1,3,1,1):'
-!!$          PRINT *,qflux_symm_allspec(1,3,1,1)
-          OPEN(070915,file='qflux_symm_allspec.dat')
-          WRITE(070915,*) boozer_s, collpar, &
-               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
-               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
-               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
-               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
-          CLOSE(070915)
-          !STOP
-       END IF
-       RETURN
-       !! End Modification by Andreas F. Martitsch (23.08.2015)
-    ELSE IF(isw_qflux_NA .EQ. 1) THEN
-       ! save qflux for the axisymmetric equation set
-       ! and proceed with the solution of the non-axisymmetric
-       ! equation set (stored within prop_a%p%qflux)
-       ALLOCATE(qflux_symm(3,3))
-       qflux_symm=qflux
-       !! Modification by Andreas F. Martitsch (23.08.2015)
-       ! NEO-2 can treat now multiple species -> qflux is now a 4D array
-       ! (at the moment these arrays cannot be handled correctly using the
-       ! propagator structure -> global variables used):
-       IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
-       qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
-       qflux_symm_allspec=qflux_allspec
-       IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
-       IF(mpro%getrank() .EQ. 0) THEN
-!!$          ! D33
-!!$          PRINT *,qflux_symm_allspec(2,2,0,0)
-!!$          PRINT *,qflux_symm_allspec(2,2,1,0)
-!!$          PRINT *,qflux_symm_allspec(2,2,0,1)
-!!$          PRINT *,qflux_symm_allspec(2,2,1,1)
-!!$          ! D11
-!!$          PRINT *,'qflux(1,1,0,0):'
-!!$          PRINT *,qflux_symm_allspec(1,1,0,0)
-!!$          PRINT *,'qflux(1,1,1,0):'
-!!$          PRINT *,qflux_symm_allspec(1,1,1,0)
-!!$          PRINT *,'qflux(1,1,0,1):'
-!!$          PRINT *,qflux_symm_allspec(1,1,0,1)
-!!$          PRINT *,'qflux(1,1,1,1):'
-!!$          PRINT *,qflux_symm_allspec(1,1,1,1)
-!!$          ! D12
-!!$          PRINT *,'qflux(1,3,0,0):'
-!!$          PRINT *,qflux_symm_allspec(1,3,0,0)
-!!$          PRINT *,'qflux(1,3,1,0):'
-!!$          PRINT *,qflux_symm_allspec(1,3,1,0)
-!!$          PRINT *,'qflux(1,3,0,1):'
-!!$          PRINT *,qflux_symm_allspec(1,3,0,1)
-!!$          PRINT *,'qflux(1,3,1,1):'
-!!$          PRINT *,qflux_symm_allspec(1,3,1,1)
-          OPEN(070915,file='qflux_symm_allspec.dat')
-          WRITE(070915,*) boozer_s, collpar, &
-               qflux_symm_allspec(1,1,0,0), qflux_symm_allspec(1,1,1,0), &
-               qflux_symm_allspec(1,1,0,1), qflux_symm_allspec(1,1,1,1), &
-               qflux_symm_allspec(1,3,0,0), qflux_symm_allspec(1,3,1,0), &
-               qflux_symm_allspec(1,3,0,1), qflux_symm_allspec(1,3,1,1)
-          CLOSE(070915)
-          !STOP
-       END IF
-       !! End Modification by Andreas F. Martitsch (23.08.2015)
-    ELSE
-       STOP "Invalid input for isw_qflux_symm (0/1)!"
-    END IF
-    !! End Modifications by Andreas F. Martitsch (28.07.2014)
 !
     ALLOCATE(f0_coll(n_2d_size,3),f0_ttmp(n_2d_size,3))
     ALLOCATE(f0_coll_all(n_2d_size,3,0:num_spec-1),f0_ttmp_all(n_2d_size,3,0:num_spec-1))    
-    f0_coll=0.d0
-    f0_ttmp=0.d0
+!
     DO ispecp=0,num_spec-1
+      f0_coll=0.d0
+      f0_ttmp=0.d0
 !
 ! Here f0_coll=$-\frac{1}{h^\varphi}\sum_{m^\prime}\hat L_{mm^\prime}^c
 !                bar f_{m^\prime}^{\sigma (k)}$ :
@@ -3644,9 +3664,7 @@ rotfactor=imun*m_phi
 !
   ENDIF
 !
-! End solve the axisymmetric equation set
-!
-!! End Modifications by Andreas F. Martitsch (02.09.2014)
+! End Use solution axisymmetric equation set
 !
 ! Solve the non-axisymmetric equation set:
 !
@@ -3694,7 +3712,11 @@ rotfactor=imun*m_phi
         f0_coll(:,:)=f0_coll_all(:,:,ispecp)
      ENDIF
 !
-     CALL source_flux
+     IF(ispecp .EQ. ispec) THEN
+       CALL source_flux
+     ELSE
+       source_vector=0.0d0
+     END IF
 !
      IF(nobounceaver) THEN
         ALLOCATE(ttmpfact(ibeg:iend))
@@ -3747,6 +3769,34 @@ rotfactor=imun*m_phi
 !
   problem_type=.FALSE.
   CALL solve_eqs(.TRUE.)
+!
+! Debugging - plot distribution function (NA problem)
+IF(lsw_debug_distfun) THEN
+DO ispecp=0,num_spec-1
+uw=100000*(num_spec*ispec+ispecp+1)
+istep=(ibeg+iend)/2
+uw_new=uw
+CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+uw_new=uw+1000
+CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+istep=ibeg
+uw_new=uw+10
+CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+uw_new=uw+1010
+CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+istep=iend
+uw_new=uw+20
+CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+uw_new=uw+1020
+CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+istep=ibeg+1
+uw_new=uw+30
+CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+uw_new=uw+1030
+CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+END DO
+END IF  
+!
   !! Modification by Andreas F. Martitsch (23.08.2015)
   ! NEO-2 can treat now multiple species -> qflux is now a 4D array
   ! (at the moment these arrays cannot be handled correctly using the
@@ -3754,7 +3804,6 @@ rotfactor=imun*m_phi
   IF(ALLOCATED(qflux_ntv_allspec)) DEALLOCATE(qflux_ntv_allspec)
   ALLOCATE(qflux_ntv_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
   IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Non-Axisymm. solution does not exist!"
-  qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
   qflux_ntv_allspec=qflux_allspec
   !! End Modification by Andreas F. Martitsch (23.08.2015)
   !! Modification by Andreas F. Martitsch (23.08.2015)
@@ -3763,25 +3812,33 @@ rotfactor=imun*m_phi
   IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
   !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
-!istep=(ibeg+iend)/2
-!call plotsource(10000,real(source_vector))
-!call plotsource(11000,dimag(source_vector))
-!istep=ibeg
-!call plotsource(10001,real(source_vector))
-!call plotsource(11001,dimag(source_vector))
-!istep=iend
-!call plotsource(10002,real(source_vector))
-!call plotsource(11002,dimag(source_vector))
-!istep=ibeg+1
-!call plotsource(10003,real(source_vector))
-!call plotsource(11003,dimag(source_vector))
+  IF (.NOT. lsw_multispecies) THEN ! single-species output
+     OPEN(1234,file='qflux_ntv.dat')
+     WRITE(1234,*) conl_over_mfp/boozer_iota
+     WRITE(1234,*) -qflux(1,1:3)
+     WRITE(1234,*) -qflux(2,1:3)
+     WRITE(1234,*) -qflux(3,1:3)
+     CLOSE(1234)
+  END IF
 !
-  OPEN(1234,file='qflux_ntv.dat')
-  WRITE(1234,*) conl_over_mfp/boozer_iota
-  WRITE(1234,*) -qflux(1,1:3)
-  WRITE(1234,*) -qflux(2,1:3)
-  WRITE(1234,*) -qflux(3,1:3)
-  CLOSE(1234)  
+  IF(lsw_multispecies .AND. mpro%getrank() .EQ. 0) THEN ! multi-species output
+     OPEN(070915,file='qflux_ntv_allspec.dat')
+     WRITE(070915,*) '% boozer_s, collpar'
+     WRITE(070915,*) boozer_s, collpar
+     WRITE(070915,*) '% qflux(1,1,a,b}'
+     DO ispecp=0,num_spec-1
+        WRITE(070915,*) (qflux_ntv_allspec(1,1,ispecp,ispecpp),&
+             ispecpp=0,num_spec-1)
+     END DO
+     WRITE(070915,*) '% qflux(1,3,a,b}'
+     DO ispecp=0,num_spec-1
+        WRITE(070915,*) (qflux_ntv_allspec(1,3,ispecp,ispecpp),&
+             ispecpp=0,num_spec-1)
+     END DO
+     CLOSE(070915)
+     !STOP
+  END IF
+!
 !! Modifications by Andreas F. Martitsch (17.12.2013)
 !! Create standard output (efinal.dat,fulltransp.dat)
 RETURN
@@ -4294,19 +4351,19 @@ PRINT *,' '
       denom_energ=SUM(energvec_bra*energvec_ket)
       !PRINT *,'denom_energ = ',denom_energ
 !
-!!$      ! Plot energvec_ket
-!!$      IF(mpro%getrank().EQ.0) THEN
-!!$         istep=(ibeg+iend)/2
-!!$         CALL ploteigvec(10700,REAL(energvec_ket))
-!!$         CALL ploteigvec(10800,dimag(energvec_ket))
-!!$         istep=ibeg
-!!$         CALL ploteigvec(20700,REAL(energvec_ket))
-!!$         CALL ploteigvec(20800,dimag(energvec_ket))
-!!$         istep=iend
-!!$         CALL ploteigvec(30700,REAL(energvec_ket))
-!!$         CALL ploteigvec(40800,dimag(energvec_ket))
-!!$         !STOP
-!!$      END IF
+! Debugging - plot energvec_ket
+!IF(lsw_debug_eigvec .AND. mpro%getrank().EQ.0) THEN
+!  istep=(ibeg+iend)/2
+!  CALL ploteigvec(10700,REAL(energvec_ket))
+!  CALL ploteigvec(10800,dimag(energvec_ket))
+!  istep=ibeg
+!  CALL ploteigvec(20700,REAL(energvec_ket))
+!  CALL ploteigvec(20800,dimag(energvec_ket))
+!  istep=iend
+!  CALL ploteigvec(30700,REAL(energvec_ket))
+!  CALL ploteigvec(40800,dimag(energvec_ket))
+!  !STOP
+!END IF
 !
       DO k=1,3
 !
@@ -4328,20 +4385,21 @@ PRINT *,' '
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
                         source_vector_all(:,k,ispecp))
 !
-!!$          ! Plot first eigenvector
-!!$          IF(eigvec_data .AND. mpro%getrank().EQ.0) THEN
-!!$             eigvec_tmp=eigvecs(:,1)
-!!$             istep=(ibeg+iend)/2
-!!$             CALL ploteigvec(1700,REAL(eigvec_tmp))
-!!$             CALL ploteigvec(1800,dimag(eigvec_tmp))
-!!$             istep=ibeg
-!!$             CALL ploteigvec(2700,REAL(eigvec_tmp))
-!!$             CALL ploteigvec(2800,dimag(eigvec_tmp))
-!!$             istep=iend
-!!$             CALL ploteigvec(3700,REAL(eigvec_tmp))
-!!$             CALL ploteigvec(4800,dimag(eigvec_tmp))
-!!$             eigvec_data=.FALSE.
-!!$          END IF
+! Debugging - plot first eigenvector
+!IF(lsw_debug_eigvec .AND. mpro%getrank().EQ.0) THEN
+!  eigvec_tmp=eigvecs(:,1)
+!  istep=(ibeg+iend)/2
+!  CALL ploteigvec(1700,REAL(eigvec_tmp))
+!  CALL ploteigvec(1800,dimag(eigvec_tmp))
+!  istep=ibeg
+!  CALL ploteigvec(2700,REAL(eigvec_tmp))
+!  CALL ploteigvec(2800,dimag(eigvec_tmp))
+!  istep=iend
+!  CALL ploteigvec(3700,REAL(eigvec_tmp))
+!  CALL ploteigvec(4800,dimag(eigvec_tmp))
+!  lsw_debug_eigvec=.FALSE.
+!  STOP
+!END IF
 !
 !!$       ! Use pre-conditioned iterations (not necessary/depricated):
 !!$       source_vector_all(:,k,ispecp)=&
@@ -4530,6 +4588,8 @@ PRINT *,' '
     flux_vector=0.d0
     source_vector=0.d0
     bvec_parflow=0.d0
+    energvec_ket=0.d0
+    energvec_bra=0.d0
 !
     DO istep=ibeg,iend
 !
@@ -5412,7 +5472,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   IMPLICIT NONE
 !
 ! tol0 - largest eigenvalue tolerated in combined iterations:
-  INTEGER,          PARAMETER :: ntol0=4
+  INTEGER,          PARAMETER :: ntol0=10
   DOUBLE PRECISION, PARAMETER :: tol0=0.5d0
 !
 !  external :: next_iteration
@@ -5472,7 +5532,9 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
     ntol=ntol0
 !
 !    call arnoldi(n,narn,next_iteration)
+    !IF( mpro%isMaster() .AND. (.NOT. problem_type) ) OPEN(unit=250517,file='ritznum.dat')
     CALL arnoldi(n,narn)
+    !IF( mpro%isMaster() .AND. (.NOT. problem_type) ) CLOSE(unit=250517)
     IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 !
     IF(ierr.NE.0) THEN
@@ -5516,6 +5578,8 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
       ! MPI Barrier -> Exchange exit conditions between
       ! different processes
       !IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
+      !PRINT *,'dimag(fnew) [sum, abs. sum]: ',SUM(dimag(fnew)),SUM(ABS(dimag(fnew)))
+      !PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
       break_cond1(ispec)=SUM(ABS(fnew-fold))
       break_cond2(ispec)=relerr*SUM(ABS(fnew))
       PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
@@ -5562,6 +5626,13 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
     ENDDO
   ENDDO
 !
+!!$  WRITE(*,*) ''
+!!$  DO i=1,nsize
+!!$     WRITE(*,*) (amat(i,j),j=1,nsize) 
+!!$  ENDDO
+!!$  WRITE(*,*) ''
+!!$  STOP
+!
   CALL zgesv(nsize,nsize,amat,nsize,ipiv,bvec,nsize,info)
 !
   IF(info.NE.0) THEN
@@ -5599,6 +5670,8 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
     !! Modification by Andreas F. Martitsch (20.08.2015)
     ! MPI Barrier -> Exchange exit conditions between
     ! different processes
+    !PRINT *,'dimag(fnew) [sum, abs. sum]: ',SUM(dimag(fnew)),SUM(ABS(dimag(fnew)))
+    !PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
     !IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
     break_cond1(ispec)=SUM(ABS(fnew-fold))
     break_cond2(ispec)=relerr*SUM(ABS(fnew))
@@ -5648,6 +5721,11 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
   IMPLICIT NONE
 !
+!! Modification by Andreas F. Martitsch (02.03.2017)
+  ! set independent accuracy-level for eigenvalue computation
+  DOUBLE PRECISION, PARAMETER :: epserr_ritznum=1.0d-3
+!! End Modification by Andreas F. Martitsch (02.03.2017)
+!
 !  external :: next_iteration
   INTEGER                                       :: n,m,k,j,mmax,mbeg,ncount
   INTEGER :: driv_spec
@@ -5659,6 +5737,8 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 ! between different processes
   DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
 !! End Modification by Andreas F. Martitsch (20.08.2015)
+  INTEGER :: m_tol, m_ind
+  DOUBLE COMPLEX, DIMENSION(500) :: ritzum_write
 !
   ALLOCATE(fold(n),fnew(n))
   ALLOCATE(qvecs_prev(n,1),ritznum_prev(mmax))
@@ -5736,7 +5816,28 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
     CALL try_eigvecvals(m,tol,hmat(1:m,1:m),ngrow,ritznum(1:m),eigh,ierr)
 !
     IF(m.GT.2) THEN
-      IF(SUM(ABS(ritznum(1:m-1)-ritznum_prev(1:m-1))).LT.tol) THEN
+      !! Modification by Andreas F. Martitsch (26.05.2017)
+      ! set independent accuracy-level for eigenvalue computation
+      !-> old: 
+      !IF(SUM(ABS(ritznum(1:m-1)-ritznum_prev(1:m-1))).LT.tol) THEN
+      !-> new:
+      !IF(SUM(ABS(ritznum(1:m-1)-ritznum_prev(1:m-1))).LT.epserr_ritznum) THEN 
+      !
+      ! debugging - write temporal evolution of eigenvalues
+      !ritzum_write = (0.0d0,0.0d0)
+      !ritzum_write(1:m-1)=ritznum(1:m-1)
+      !IF( mpro%isMaster() .AND. (.NOT. problem_type) ) WRITE(250517,*) ritzum_write
+      !
+      ! check for convergence of ritznum exceeding tol
+      m_tol=m-1
+      DO m_ind = 1,m-1
+        IF(ABS(ritznum(m_ind)) .LT. tol) THEN
+          m_tol = m_ind
+          EXIT 
+        ENDIF
+      ENDDO
+      IF(SUM(ABS(ritznum(1:m_tol)-ritznum_prev(1:m_tol))).LT.(epserr_ritznum*m_tol)) THEN
+      !! End Modification by Andreas F. Martitsch (26.05.2017)
         ncount=ncount+1
       ELSE
         ncount=0
@@ -5820,6 +5921,14 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
   hmat_work=hmat
 !
+!!$  WRITE(*,*)
+!!$  DO k=1,m
+!!$     WRITE(*,*) (hmat_work(k,j),j=1,m)
+!!$  ENDDO
+!!$  WRITE(*,*)
+!!$print *,'matrix hmat'
+!!$pause
+!
   ALLOCATE(work(1))
   lwork=-1
 !
@@ -5827,7 +5936,8 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
   IF(info.NE.0) THEN
     IF(info.GT.0) THEN
-      PRINT *,'arnoldi: zhseqr failed to compute all eigenvalues'
+       PRINT *,'arnoldi: zhseqr failed to compute all eigenvalues'
+       PRINT *,'info: ',info
     ELSE
       PRINT *,'arnoldi: argument ',-info,' has illigal value in zhseqr' 
     ENDIF

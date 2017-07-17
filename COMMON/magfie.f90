@@ -122,7 +122,9 @@ CONTAINS
          curr_pol_array, curr_pol_s_array, iota_array,          &
          bmod_spl, bb_s_spl, bb_tb_spl, bb_pb_spl,              &
          gstb_spl, gspb_spl, gstb_tb_spl, gspb_tb_spl,          &
-         gstb_pb_spl, gspb_pb_spl, R_spl,                       &
+         gstb_pb_spl, gspb_pb_spl, R_spl, Z_spl,                &
+         Rtb_spl, Ztb_spl,                                      &
+         G_symm_spl, G_symm_tb_spl, G_symm_pb_spl,              &
          magfie_newspline
     
     IF ( ALLOCATED( curr_tor_array ) )   DEALLOCATE( curr_tor_array )
@@ -142,7 +144,16 @@ CONTAINS
     IF ( ALLOCATED( gstb_pb_spl ) )      DEALLOCATE( gstb_pb_spl )
     IF ( ALLOCATED( gspb_pb_spl ) )      DEALLOCATE( gspb_pb_spl )
     IF ( ALLOCATED( R_spl ) )            DEALLOCATE( R_spl )
+    IF ( ALLOCATED( Z_spl ) )            DEALLOCATE( Z_spl )
+    IF ( ALLOCATED( Rtb_spl ) )          DEALLOCATE( Rtb_spl )
+    IF ( ALLOCATED( Ztb_spl ) )          DEALLOCATE( Ztb_spl )
     !! End Modifications by Andreas F. Martitsch (11.03.2014)
+    !! Modifications by Andreas F. Martitsch (28.03.2017)
+    ! transformation function Boozer coord. -> Symm. flux coord.
+    IF ( ALLOCATED( G_symm_spl ) )       DEALLOCATE( G_symm_spl )
+    IF ( ALLOCATED( G_symm_tb_spl ) )    DEALLOCATE( G_symm_tb_spl )
+    IF ( ALLOCATED( G_symm_pb_spl ) )    DEALLOCATE( G_symm_pb_spl )
+    !! End Modifications by Andreas F. Martitsch (28.03.2017)
     magfie_newspline = 1
     
   END SUBROUTINE magfie_deallocate_x

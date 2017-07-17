@@ -70,6 +70,7 @@ set(MY_DEBUG_FLAG_LIST
 # " -Wnonstd-intrinsics  -Wsurprising -Wno-tabs -Wunderflow " 
  " -Wall "
  " -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label "
+ " -Wshadow "
 # " -Wno-underflow "
 # " -Wunused-parameter -Wconversion -Wimplicit-interface -Wcharacter-truncation " 
   )
@@ -82,7 +83,9 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
 
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+# SuperLU
 find_library(SuperLU_lib superlu_4.1 ${SUPERLU_DIR}lib NO_DEFAULT_PATH)
+# SuiteSparse
 find_library(Umfpack_lib umfpack ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(Amd_lib amd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(Cholmod_lib cholmod ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
@@ -90,9 +93,14 @@ find_library(Colamd_lib colamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(Camd_lib camd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
 find_library(Metis_lib metis ${SUITESPARSE_DIR}lib ${METIS_PATH} NO_DEFAULT_PATH)
 find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
+# PSPLINE library
 find_library(pspline_lib pspline ${PSPLINE_LIB} NO_DEFAULT_PATH)
+# GSL
 find_library(gsl_lib gsl ${GSL_LIB} NO_DEFAULT_PATH)
-find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
+# FGSL
+#find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
+find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
+# LAPACK and BLAS
 find_library(lapack_lib lapack ${LAPACK_LIB} NO_DEFAULT_PATH)
 find_library(f77blas_lib f77blas ${F77BLAS_LIB} NO_DEFAULT_PATH)
 find_library(atlas_lib atlas ${ATLASBLAS_LIB} NO_DEFAULT_PATH)
@@ -142,11 +150,11 @@ target_link_libraries(${EXE_NAME}
         ${HDF5_fortran_lib}
         ${HDF5_lib} -lpthread -lz -lrt -lm 
 	#lapack
-	#${lapack_lib}
-	${open_blas_lapack_lib}
+	${lapack_lib}
+	#${open_blas_lapack_lib}
 	#blas
-	#${f77blas_lib} ${atlas_lib}
-	${open_blas_lib}
+	${f77blas_lib} ${atlas_lib}
+	#${open_blas_lib}
 	#debug efence
         )
 
