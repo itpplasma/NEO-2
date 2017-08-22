@@ -138,6 +138,9 @@ MODULE propagator_mod
   INTEGER,            PUBLIC  :: prop_count_call = 0
   INTEGER,            PUBLIC  :: prop_ibegperiod = 1
   INTEGER,            PUBLIC  :: prop_modifyold = 1
+  logical                     :: lsw_save_dentf = .true.
+  logical                     :: lsw_save_enetf = .true. 
+  logical                     :: lsw_save_spitf = .true.
   !
   ! fluxes after reconstruction
   REAL(kind=dp), ALLOCATABLE, PUBLIC  :: flux_mr(:,:),flux_pl(:,:)
@@ -148,6 +151,8 @@ MODULE propagator_mod
   INTEGER,            PUBLIC  :: prop_reconstruct_levels = 0
 
   INTEGER                     :: prop_finaljoin_mode = 0
+
+  
   
   ! ***************************
   ! HDF5

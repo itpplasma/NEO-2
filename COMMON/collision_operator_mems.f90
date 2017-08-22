@@ -175,6 +175,13 @@ module collop
             collpar_min = collpar * nu_D_hat(v_max_resolution)
          end if
 
+         open(400,file='collpar.dat')
+         write (400,*) "Collpar", collpar
+         write (400,*) "Collpar_max", collpar_max
+         write (400,*) "Collpar_min", collpar_min
+         write (400,*) "nu_D_hat at v_min_res", nu_D_hat(v_min_resolution)
+         write (400,*) "nu_D_hat at v_max_res", nu_D_hat(v_max_resolution) 
+         
          ! Non-relativistic Limit according to Trubnikov
          if (isw_relativistic .eq. 0) then
 
@@ -483,6 +490,78 @@ module collop
       
     end subroutine collop_deconstruct
 
+    subroutine write_precom_collop()
+      integer(HID_T)   :: h5id_collop, h5id_meta
+      integer          :: m, mp, l, xi, n_x
+      integer          :: f = 4238
+      real(kind=dp), dimension(:), allocatable :: x
+      real(kind=dp), dimension(:,:), allocatable :: phi_x, dphi_x, ddphi_x
+
+      call h5_create('precom_collop.h5', h5id_collop)
+      !call h5_define_group(h5id_collop, trim(tag_a) //'-'// trim(tag_b), h5id_species)
+      call h5_define_group(h5id_collop, 'meta', h5id_meta)
+
+      call h5_add(h5id_meta, 'lag', lag)
+      call h5_add(h5id_meta, 'leg', leg)
+      call h5_add(h5id_meta, 'scalprod_alpha', scalprod_alpha)
+      call h5_add(h5id_meta, 'scalprod_beta',  scalprod_beta)
+      !call h5_add(h5id_meta, 'm_a', m_a)
+      !call h5_add(h5id_meta, 'm_b', m_b)
+      !call h5_add(h5id_meta, 'T_a', T_a)
+      !call h5_add(h5id_meta, 'T_b', T_b)
+      call h5_add(h5id_meta, 'gamma_ab', gamma_ab)
+      !call h5_add(h5id_meta, 'tag_a', tag_a)
+      !call h5_add(h5id_meta, 'tag_b', tag_b)
+      call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj)
+      call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp)
+      call h5_close_group(h5id_meta)
+      
+      call h5_add(h5id_collop, 'asource', asource, lbound(asource), ubound(asource))
+      call h5_add(h5id_collop, 'anumm_a', anumm_a, lbound(anumm_a), ubound(anumm_a))
+      call h5_add(h5id_collop, 'denmm_a', denmm_a, lbound(denmm_a), ubound(denmm_a))
+      call h5_add(h5id_collop, 'anumm_aa', anumm_aa, lbound(anumm_aa), ubound(anumm_aa))
+      call h5_add(h5id_collop, 'denmm_aa', denmm_aa, lbound(denmm_aa), ubound(denmm_aa))
+      call h5_add(h5id_collop, 'ailmm_aa', ailmm_aa, lbound(ailmm_aa), ubound(ailmm_aa))
+      call h5_add(h5id_collop, 'anumm', anumm, lbound(anumm), ubound(anumm))
+      !call h5_add(h5id_collop, 'anumm_lag', anumm_lag, lbound(anumm_lag), ubound(anumm_lag))
+      call h5_add(h5id_collop, 'anumm_aa0', anumm_aa(:,:,0,0), lbound(anumm_aa(:,:,0,0)), ubound(anumm_aa(:,:,0,0)))
+      if (z_eff .ne. 0) call h5_add(h5id_collop, 'anumm_inf', anumm_inf, lbound(anumm_inf), ubound(anumm_inf))
+      call h5_add(h5id_collop, 'denmm', denmm, lbound(denmm), ubound(denmm))
+      call h5_add(h5id_collop, 'ailmm', ailmm, lbound(ailmm), ubound(ailmm))
+      call h5_add(h5id_collop, 'weightlag', weightlag, lbound(weightlag), ubound(weightlag))
+      call h5_add(h5id_collop, 'M_transform_', M_transform, lbound(M_transform), ubound(M_transform))
+      call h5_add(h5id_collop, 'M_transform_inv', M_transform_inv, lbound(M_transform_inv), ubound(M_transform_inv))
+      call h5_add(h5id_collop, 'C_m', C_m, lbound(C_m), ubound(C_m))
+
+      !**********************************************************
+      ! Write test functions
+      !**********************************************************
+      n_x = 999
+      allocate(x(n_x))
+      allocate(phi_x(0:lag, 1:n_x))
+      allocate(dphi_x(0:lag, 1:n_x))
+      allocate(ddphi_x(0:lag, 1:n_x))
+      
+      do m = 0, lag
+         do xi = 1, n_x
+            x(xi) = 10d0/(n_x-1) * (xi-1) 
+            phi_x(m,xi)   = phi_exp(m,x(xi))
+            dphi_x(m,xi)  = d_phi_exp(m,x(xi))
+            ddphi_x(m,xi) = dd_phi_exp(m,x(xi))
+            !write (*,*) x(xi), m, phi_exp(m,x(xi)), d_phi_exp(m,x(xi)), dd_phi_exp(m,x(xi))
+         end do
+      end do
+
+      call h5_add(h5id_collop, 'x', x, lbound(x), ubound(x))
+      call h5_add(h5id_collop, 'phi_x', phi_x, lbound(phi_x), ubound(phi_x))
+      call h5_add(h5id_collop, 'dphi_x', dphi_x, lbound(dphi_x), ubound(dphi_x))
+      call h5_add(h5id_collop, 'ddphi_x', ddphi_x, lbound(ddphi_x), ubound(ddphi_x))
+      
+      call h5_close(h5id_collop)
+      
+    end subroutine write_precomp_collop    
+    
+    
     subroutine write_collop()
       integer(HID_T)   :: h5id_collop, h5id_meta
       integer          :: m, mp, l, xi, n_x
@@ -551,6 +630,7 @@ module collop
       call h5_add(h5id_collop, 'ddphi_x', ddphi_x, lbound(ddphi_x), ubound(ddphi_x))
       
       call h5_close(h5id_collop)
+      
 
       !**********************************************************
       ! ASCII

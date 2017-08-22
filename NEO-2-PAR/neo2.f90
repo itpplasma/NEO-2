@@ -28,7 +28,8 @@ PROGRAM neo2
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
        prop_reconstruct_levels, prop_fileformat,                    &
-       prop_finaljoin_mode
+       prop_finaljoin_mode, lsw_save_dentf, lsw_save_enetf,         &
+       lsw_save_spitf
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk,mag_write_hdf5,   &
        h5_magnetics_file_name
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
@@ -187,7 +188,8 @@ PROGRAM neo2
        hphi_lim,                                                              &
        prop_write,prop_reconstruct,prop_ripple_plot,                          &
        prop_reconstruct_levels,                                               &
-       prop_fileformat, prop_finaljoin_mode
+       prop_fileformat, prop_finaljoin_mode,                                  &
+       lsw_save_dentf, lsw_save_enetf, lsw_save_spitf
   NAMELIST /plotting/                                                         &
        plot_gauss,plot_prop
   ! ---------------------------------------------------------------------------
@@ -197,6 +199,8 @@ PROGRAM neo2
 
   ! ---------------------------------------------------------------------------
   ! defaults
+  !
+  ! call omp_set_num_threads(4)
   !
   ! settings
   mag_magfield = 1
@@ -261,7 +265,7 @@ PROGRAM neo2
   conl_over_mfp_vec = 0.0d0
   z_vec = 1.0d0
   !! End Modification by Andreas F. Martitsch (25.08.2015)
-  lsw_multispecies = .false.
+  lsw_multispecies = .FALSE.
   lag=10
   leg=20
   legmax=20
@@ -332,7 +336,10 @@ PROGRAM neo2
   ! plotting
   plot_gauss = 0
   plot_prop  = 0
-
+  lsw_save_dentf = .TRUE.
+  lsw_save_enetf = .TRUE.
+  lsw_save_spitf = .TRUE.
+  
   !**********************************
   ! Init HDF5 Fortran interface
   !**********************************
@@ -819,19 +826,25 @@ CONTAINS
        DO k = tag_first, tag_last
           WRITE (h5_filename, '(I0)') k
           CALL h5_define_group(h5id_propagators, h5_filename, h5id_prop)
+          
+          IF (lsw_save_spitf) THEN
+             CALL h5_open("spitf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+             CALL h5_copy(h5id_propfile, '/', h5id_prop, "spitf")
+             CALL h5_close(h5id_propfile)
+          END IF
 
-          CALL h5_open("spitf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
-          CALL h5_copy(h5id_propfile, '/', h5id_prop, "spitf")
-          CALL h5_close(h5id_propfile)
+          IF (lsw_save_dentf) THEN
+             CALL h5_open("dentf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+             CALL h5_copy(h5id_propfile, '/', h5id_prop, "dentf")
+             CALL h5_close(h5id_propfile)
+          END IF
 
-          CALL h5_open("dentf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
-          CALL h5_copy(h5id_propfile, '/', h5id_prop, "dentf")
-          CALL h5_close(h5id_propfile)
-
-          CALL h5_open("enetf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
-          CALL h5_copy(h5id_propfile, '/', h5id_prop, "enetf")
-          CALL h5_close(h5id_propfile)
-
+          IF (lsw_save_enetf) THEN
+             CALL h5_open("enetf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
+             CALL h5_copy(h5id_propfile, '/', h5id_prop, "enetf")
+             CALL h5_close(h5id_propfile)
+          END IF
+          
           CALL h5_open("phi_mesh_" // TRIM(h5_filename) // ".h5", h5id_propfile)
           CALL h5_get(h5id_propfile, 'cg0_1_num', cg0_1_num_prop(k))
           CALL h5_get(h5id_propfile, 'cg2_1_num', cg2_1_num_prop(k))
@@ -946,18 +959,21 @@ CONTAINS
        DO k = tag_first, tag_last
           WRITE (h5_filename, '(I0)') k
 
-          OPEN(unit=1234, iostat=ios, file="spitf_" // TRIM(h5_filename) // ".h5", status='old')
-          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          IF (lsw_save_spitf) THEN
+             OPEN(unit=1234, iostat=ios, file="spitf_" // TRIM(h5_filename) // ".h5", status='old')
+             IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          END IF
 
-          OPEN(unit=1234, iostat=ios, file="spitf_" // TRIM(h5_filename) // ".h5", status='old')
-          IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          IF (lsw_save_enetf) THEN
+             OPEN(unit=1234, iostat=ios, file="enetf_" // TRIM(h5_filename) // ".h5", status='old')
+             IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          END IF
 
-          !OPEN(unit=1234, iostat=ios, file="enetf_" // TRIM(h5_filename) // ".h5", status='old')
-          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-          !OPEN(unit=1234, iostat=ios, file="dentf_" // TRIM(h5_filename) // ".h5", status='old')
-          !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
+          IF (lsw_save_dentf) THEN
+             OPEN(unit=1234, iostat=ios, file="dentf_" // TRIM(h5_filename) // ".h5", status='old')
+             IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
+          END IF
+          
           OPEN(unit=1234, iostat=ios, file="phi_mesh_" // TRIM(h5_filename) // ".h5", status='old')
           IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
 
