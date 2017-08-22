@@ -1,21 +1,38 @@
 ### SUPERLU ###
-set(SUPERLU_SRC_FILES
+set(SUPERLU_SRC_FILES_VER_4_1
         ../COMMON/c_fortran_dgssv.c
         ../COMMON/c_fortran_zgssv.c
 )
-set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFAGS} -I${SUPERLU_HDR}")
-set_source_files_properties(${SUPERLU_SRC_FILES} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
+set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFLAGS} -I${SUPERLU_INCLUDES}")
+set_source_files_properties(${SUPERLU_SRC_FILES_VER_4_1} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
 
-### SUITESPARSE###
-set(SUITESPARSE_SRC_FILES
+### SUPERLU Version 5.0 ###
+set(SUPERLU_SRC_FILES_VER_5_0
+        ../COMMON/c_fortran_dgssv_ver_5_0.c
+        ../COMMON/c_fortran_zgssv_ver_5_0.c
+)
+set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFLAGS} -I${SUPERLU_INCLUDES}")
+set_source_files_properties(${SUPERLU_SRC_FILES_VER_5_0} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
+
+### SUITESPARSE ###
+set(SUITESPARSE_SRC_FILES_VER_3_6
         ../COMMON/umf4_f77wrapper.c
         ../COMMON/umf4_f77zwrapper.c
 )
-set(SUITESPARSE_FLAGS "-I${SUITESPARSE_HDR}")
+set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
 set_source_files_properties(../COMMON/umf4_f77wrapper.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(../COMMON/umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
-### FGSL user-defined interface###
+### SUITESPARSE Version 4.5 ###
+set(SUITESPARSE_SRC_FILES_VER_4_5
+        ../COMMON/umf4_f77wrapper_ver_4_5.c
+        ../COMMON/umf4_f77zwrapper_ver_4_5.c
+)
+set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
+set_source_files_properties(../COMMON/umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
+set_source_files_properties(../COMMON/umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
+
+### FGSL user-defined interface ###
 set(FGSL_USERINTER_SRC_FILES
         ../COMMON/gsl_roots_routines_mod.f90
 	../COMMON/gsl_integration_routines_mod.f90
@@ -24,13 +41,6 @@ set(FGSL_USERINTER_SRC_FILES
 )
 set(FGSL_USERINTER_FLAGS "-I${FGSL_INC}")
 set_source_files_properties(${FGSL_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTER_FLAGS})
-
-### PSPLINE user-defined interface###
-set(PSPLINE_USERINTER_SRC_FILES
-        ./pspline_routines_mod.f90
-)
-set(PSPLINE_USERINTER_FLAGS "-I${PSPLINE_INC}")
-set_source_files_properties(${PSPLINE_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${PSPLINE_USERINTER_FLAGS})
 
 set(COLLOPLIB_FILES
 	../COMMON/collop_compute.f90
