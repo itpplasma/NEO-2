@@ -1,5 +1,8 @@
 ### Installation directory
-set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
+set (CMAKE_INSTALL_PREFIX /temp/gernot_k/)
+
+# set (COPY_TO_ARCHIVE 1)
+# set (EXE_ARCHIVE_PATH /temp/gernot_k/Executables/Archive/)
 
 ### Path to the external libraries
 set(PROJLIBS /proj/plasma/Libs/)
@@ -28,13 +31,6 @@ set(FGSL_INC ${FGSL_PATH}/include/fgsl/)
 set(NEO2_Libs /proj/plasma/Neo2/Libs/hdf5_tools/lib/)
 set(NEO2_Inc /proj/plasma/Neo2/Libs/hdf5_tools/include/)
 
-### Path to the ATLAS libraries
-set(ATLASLIBS /usr/lib/atlas-base/)
-set(LAPACK_LIB ${ATLASLIBS}/atlas/)
-set(F77BLAS_LIB ${ATLASLIBS})
-set(ATLASBLAS_LIB ${ATLASLIBS})
 
-### Path to OpenBLAS
-set(OPEN_BLAS_PATH /usr/lib/openblas-base/)
-set(OPEN_BLAS_LAPACK_LIB ${OPEN_BLAS_PATH})
-set(OPEN_BLAS_LIB ${OPEN_BLAS_PATH})
+### BLAS and LAPACK
+set(BLAS_lib "-llapack -lblas")

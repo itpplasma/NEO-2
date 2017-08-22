@@ -3,8 +3,26 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../COMMON/CMAKE_TOOLS")
 
+# Enable project
 project(NEO-2-NTV)
 enable_language(Fortran)
+
+### Check Build-Type and set Build-Name extension
+if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+  # Release mode as default
+  message("Building in release mode (default)...")
+  set(CMAKE_BUILD_TYPE "RELEASE")
+  set(EXE_NAME "neo_2.x")
+else(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+  if(CMAKE_BUILD_TYPE MATCHES DEBUG)
+    message("debug mode")
+    set(EXE_NAME "neo_2.x.DEBUG")  
+  else(CMAKE_BUILD_TYPE MATCHES RELEASE)
+    message("release mode")
+    set(CMAKE_BUILD_TYPE "RELEASE")
+    set(EXE_NAME "neo_2.x")
+  endif(CMAKE_BUILD_TYPE MATCHES DEBUG)
+endif(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
 
 ### Macro for comparison of version strings
 include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
@@ -13,14 +31,48 @@ include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
 include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
 #include(${CMAKE_SOURCE_DIR}/ProjectConfig.Debian8.cmake.in)
 
-### MPI
-option(MPI_SUPPORT "Should NEO-2 be built with MPI-Support?" ON)
-option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
+### MPI is required by this NEO-2 version
 find_package(MPI REQUIRED)
-# MyMPIlib
-find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
-include_directories("${MYMPILIB_PATH}/OBJS")
-# MPI is required by this NEO-2 version
+
+# MPE allows graphical work load evaluation of parallel processes 
+option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" OFF)
+
+# Print the current compiler
+message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
+
+# Include directories for NEO-2
+include_directories(${NEO2_Inc})
+include_directories(${MYMPILIB_PATH}/OBJS)
+
+### Define flags for Fortran/C compiler
+set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
+set(MY_DEBUG_FLAG_LIST
+  " -O0 -cpp -g"   
+# " -O0 -g -ggdb -C -p -pg -fbacktrace " 
+# " -ffpe-trap=invalid,zero,overflow,underflow "
+ " -ffpe-trap=invalid,zero,overflow "
+ " -ffpe-summary=invalid,zero,overflow "
+ " -fcheck=all "
+# " -fcheck=bounds,mem,array-temps,pointer "
+ " -fbacktrace "
+# " -Werror " 
+# " -fmem-report " 
+# " -Waliasing -Wampersand  -Wline-truncation " 
+# " -Wnonstd-intrinsics  -Wsurprising -Wno-tabs -Wunderflow " 
+ " -Wall "
+ " -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label "
+ " -Wshadow "
+# " -Wno-underflow "
+# " -Wunused-parameter -Wconversion -Wimplicit-interface -Wcharacter-truncation " 
+  )
+string(REPLACE ";" "" MY_DEBUG_FLAG  ${MY_DEBUG_FLAG_LIST})
+set(CMAKE_Fortran_FLAGS_DEBUG "${MY_DEBUG_FLAG}") 
+set(CFLAGS "-O2 -DDOUBLE_APPEND_FORTRAN")
+
+### Define container for *.o and *.mod files
+set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
+
+
 set (MPI_SUPPORT 1)
 if (MPI_SUPPORT)
         message(STATUS "MPI-Support activated")
@@ -28,9 +80,7 @@ if (MPI_SUPPORT)
                 include_directories(${MPI_PATH}/include)
         endif ()
         add_definitions(-DMPI_SUPPORT)
-
 endif ()
-# MPE Support
 if (MPE_SUPPORT)
         message(STATUS "MPE-Support activated, MPE-Path: ${MPE_PATH}")
         if (DEFINED MPE_PATH)
@@ -62,51 +112,6 @@ find_package(SuperLU REQUIRED)
 # message(STATUS "${SUPERLU_LIBRARIES}")
 # message(STATUS "${SUPERLU_VERSION_VAR}")
 
-### Check Build-Type and set Build-Name extension
-if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-  # Release mode as default
-  message("Building in release mode (default)...")
-  set(CMAKE_BUILD_TYPE "RELEASE")
-  set(EXE_NAME "neo_2.x")
-else(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-  if(CMAKE_BUILD_TYPE MATCHES DEBUG)
-    message("debug mode")
-    set(EXE_NAME "neo_2.x.DEBUG")  
-  else(CMAKE_BUILD_TYPE MATCHES RELEASE)
-    message("release mode")
-    set(CMAKE_BUILD_TYPE "RELEASE")
-    set(EXE_NAME "neo_2.x")
-  endif(CMAKE_BUILD_TYPE MATCHES DEBUG)
-endif(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-
-### Define flags for Fortran/C compiler
-set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
-set(MY_DEBUG_FLAG_LIST
-  " -O0 -cpp -g"   
-# " -O0 -g -ggdb -C -p -pg -fbacktrace " 
-# " -ffpe-trap=invalid,zero,overflow,underflow "
- " -ffpe-trap=invalid,zero,overflow "
- " -ffpe-summary=invalid,zero,overflow "
- " -fcheck=all "
-# " -fcheck=bounds,mem,array-temps,pointer "
- " -fbacktrace "
-# " -Werror " 
-# " -fmem-report " 
-# " -Waliasing -Wampersand  -Wline-truncation " 
-# " -Wnonstd-intrinsics  -Wsurprising -Wno-tabs -Wunderflow " 
- " -Wall "
- " -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label "
- " -Wshadow "
-# " -Wno-underflow "
-# " -Wunused-parameter -Wconversion -Wimplicit-interface -Wcharacter-truncation " 
-  )
-string(REPLACE ";" "" MY_DEBUG_FLAG  ${MY_DEBUG_FLAG_LIST})
-set(CMAKE_Fortran_FLAGS_DEBUG "${MY_DEBUG_FLAG}") 
-set(CFLAGS "-O2 -DDOUBLE_APPEND_FORTRAN")
-
-### Define container for *.o and *.mod files
-set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
-
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
@@ -120,11 +125,12 @@ find_library(f77blas_lib f77blas ${F77BLAS_LIB} NO_DEFAULT_PATH)
 find_library(atlas_lib atlas ${ATLASBLAS_LIB} NO_DEFAULT_PATH)
 find_library(open_blas_lapack_lib lapack ${OPEN_BLAS_LAPACK_LIB} NO_DEFAULT_PATH)
 find_library(open_blas_lib blas ${OPEN_BLAS_LIB} NO_DEFAULT_PATH)
-### HDF5 interface
-include_directories(${NEO2_Inc})
+# MyMPIlib
+find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
+# HDF5 interface
 find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs} NO_DEFAULT_PATH)
 
-### Source files (load external file)
+### Source files
 include(CMakeSources.txt)
 
 ### Select C/Fortran-Interface for SuiteSparse
