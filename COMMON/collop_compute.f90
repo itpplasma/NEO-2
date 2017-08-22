@@ -94,7 +94,7 @@ module collop_compute
   logical       :: lsw_interval_sep = .true.
   logical       :: lsw_split_interval = .true. ! split intervals manually into further sub-intervals
   integer       :: num_sub_intervals = 5 ! number of sub-intervals between nodes (active if lsw_split_interval)
-  integer       :: num_sub_intervals_cutoff = 30 ! number of sub-intervals between last node and cutoff (active if lsw_split_interval)
+  integer       :: num_sub_intervals_cutoff = 40 ! number of sub-intervals between last node and cutoff (active if lsw_split_interval)
   ! Taylor expansion of (non-relativistic) matrix elements around x=0 (numerical stability):
   logical       :: lsw_expand_kernel =.false. ! Taylor expansion of integral-part subintegrands
   logical       :: lsw_expand_G =.true. ! Taylor expansion of Chandrasekhar function
