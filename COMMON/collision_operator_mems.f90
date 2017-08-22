@@ -490,7 +490,7 @@ module collop
       
     end subroutine collop_deconstruct
 
-    subroutine write_precom_collop()
+    subroutine write_precomp_collop()
       integer(HID_T)   :: h5id_collop, h5id_meta
       integer          :: m, mp, l, xi, n_x
       integer          :: f = 4238
