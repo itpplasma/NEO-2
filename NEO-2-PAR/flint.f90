@@ -618,9 +618,12 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      IF (ALLOCATED(collision_sigma_multiplier)) deallocate(collision_sigma_multiplier)
      ALLOCATE(collision_sigma_multiplier(0:lag_sigma))
      mult_sigma_mod = 10**( log10( sqrt(collpar_max/collpar_min) ) / dble(lag_sigma) )
+     !write (400,*) "mult_sigma_mod", mult_sigma_mod
+     !write (400,*) "lag_sigma", lag_sigma
      collision_sigma_multiplier(0) = 1.0_dp
      do ilag = 1, lag_sigma
         collision_sigma_multiplier(ilag) = collision_sigma_multiplier(ilag-1) * mult_sigma_mod
+        !write (400,*) "ilag", ilag, "collision_sigma_multiplier", collision_sigma_multiplier(ilag)
      end do
      !print *, collpar_min,collpar_max,sqrt(collpar_max/collpar_min)
      !print *, collision_sigma_multiplier

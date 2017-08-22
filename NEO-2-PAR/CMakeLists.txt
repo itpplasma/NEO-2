@@ -46,7 +46,7 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 	else()
 		set (CMAKE_Fortran_FLAGS "-cpp")
 	endif()
-	set (CMAKE_Fortran_FLAGS_DEBUG "-g -fcheck=all")     
+	set (CMAKE_Fortran_FLAGS_DEBUG "-openmp -g -fcheck=all -Wall -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label -Wshadow")
 
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
         set (CMAKE_Fortran_FLAGS "-cpp -heap-arrays")

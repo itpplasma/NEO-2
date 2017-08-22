@@ -393,7 +393,6 @@ contains
     !**********************************************************
     if(lsw_interval_sep) then
        if ((collop_base_prj .eq. 11) .or. (collop_base_exp .eq. 11)) then
-          write (*,*) nder
           allocate(t_vec(lbound(xknots,1):ubound(xknots,1)))
           t_vec = xknots
           !write (*,*) t_vec
