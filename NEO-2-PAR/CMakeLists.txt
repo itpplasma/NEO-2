@@ -17,8 +17,8 @@ include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
 if (EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
   include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 endif()
-#include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
-include(${CMAKE_SOURCE_DIR}/ProjectConfig.Debian8.cmake.in)
+include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
+#include(${CMAKE_SOURCE_DIR}/ProjectConfig.Debian8.cmake.in)
 
 # MPI is required by this NEO-2 version
 find_package(MPI REQUIRED)
