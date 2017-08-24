@@ -10,3 +10,5 @@ install_manifest.txt
 .cproject
 .project
 *.*~
+NEO-2-QL/.directory
+NEO-2-QL/Build/
