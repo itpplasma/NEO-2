@@ -1,40 +1,11 @@
 ### Initialize CMake (some internal stuff)
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.0)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../COMMON/CMAKE_TOOLS")
 
+# Enable project
 project(NEO-2-NTV)
 enable_language(Fortran)
-
-### Define paths to external libraries (load external file)
-include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
-
-### MPI
-option(MPI_SUPPORT "Should NEO-2 be built with MPI-Support?" ON)
-option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
-include_directories("${MYMPILIB_PATH}/OBJS")
-
-### HDF5
-include_directories(${NEO2_Libs}/hdf5_tools/include)
-
-if (MPI_SUPPORT)
-        message(STATUS "MPI-Support activated")
-        if (DEFINED MPI_PATH)
-                include_directories(${MPI_PATH}/include)
-        endif ()
-        add_definitions(-DMPI_SUPPORT)
-	find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
-        set(MPI_lib -lmpi_f90 -lmpi_f77 -lmpi -lopen-rte -lopen-pal -ldl -Wl,--export-dynamic -lnsl -lutil -lm -ldl -pthread)
-
-endif ()
-
-if (MPE_SUPPORT)
-        message(STATUS "MPE-Support activated, MPE-Path: ${MPE_PATH}")
-        if (DEFINED MPE_PATH)
-                include_directories(${MPE_PATH}/include)
-        endif ()
-        add_definitions(-DMPE_SUPPORT)
-	find_library(MPE_lib mpe ${MPE_PATH}/lib)
-endif ()
 
 ### Check Build-Type and set Build-Name extension
 if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
@@ -52,6 +23,26 @@ else(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
     set(EXE_NAME "neo_2.x")
   endif(CMAKE_BUILD_TYPE MATCHES DEBUG)
 endif(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+
+### Macro for comparison of version strings
+include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
+
+### Define paths to external libraries (load external file)
+include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
+#include(${CMAKE_SOURCE_DIR}/ProjectConfig.Debian8.cmake.in)
+
+### MPI is required by this NEO-2 version
+find_package(MPI REQUIRED)
+
+# MPE allows graphical work load evaluation of parallel processes 
+option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" OFF)
+
+# Print the current compiler
+message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
+
+# Include directories for NEO-2
+include_directories(${NEO2_Inc})
+include_directories(${MYMPILIB_PATH}/OBJS)
 
 ### Define flags for Fortran/C compiler
 set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
@@ -81,20 +72,48 @@ set(CFLAGS "-O2 -DDOUBLE_APPEND_FORTRAN")
 ### Define container for *.o and *.mod files
 set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
 
+
+set (MPI_SUPPORT 1)
+if (MPI_SUPPORT)
+        message(STATUS "MPI-Support activated")
+        if (DEFINED MPI_PATH)
+                include_directories(${MPI_PATH}/include)
+        endif ()
+        add_definitions(-DMPI_SUPPORT)
+endif ()
+if (MPE_SUPPORT)
+        message(STATUS "MPE-Support activated, MPE-Path: ${MPE_PATH}")
+        if (DEFINED MPE_PATH)
+                include_directories(${MPE_PATH}/include)
+        endif ()
+        add_definitions(-DMPE_SUPPORT)
+	find_library(MPE_lib mpe ${MPE_PATH}/lib)
+endif ()
+
+### HDF5
+find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
+# message(STATUS "${HDF5_INCLUDE_DIRS}")
+# message(STATUS "${HDF5_LIBRARIES}")
+# message(STATUS "${HDF5_Fortran_LIBRARIES}")
+# message(STATUS "${HDF5_HL_LIBRARIES}")
+# message(STATUS "${HDF5_Fortran_HL_LIBRARIES}")
+# message(STATUS "${HDF5_VERSION}")
+
+### SuiteSparse and METIS
+find_package(SuiteSparse REQUIRED)
+# message(STATUS "${SUITESPARSE_INCLUDE_DIRS}")
+# message(STATUS "${SUITESPARSE_LIBRARIES}")
+# message(STATUS "${SUITESPARSE_VERSION}")
+# message(STATUS "${METIS_LIBRARY}")
+
+### SuperLU
+find_package(SuperLU REQUIRED)
+# message(STATUS "${SUPERLU_INCLUDES}")
+# message(STATUS "${SUPERLU_LIBRARIES}")
+# message(STATUS "${SUPERLU_VERSION_VAR}")
+
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-# SuperLU
-find_library(SuperLU_lib superlu_4.1 ${SUPERLU_DIR}lib NO_DEFAULT_PATH)
-# SuiteSparse
-find_library(Umfpack_lib umfpack ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Amd_lib amd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Cholmod_lib cholmod ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Colamd_lib colamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Camd_lib camd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-find_library(Metis_lib metis ${SUITESPARSE_DIR}lib ${METIS_PATH} NO_DEFAULT_PATH)
-find_library(Ccolamd_lib ccolamd ${SUITESPARSE_DIR}lib NO_DEFAULT_PATH)
-# PSPLINE library
-find_library(pspline_lib pspline ${PSPLINE_LIB} NO_DEFAULT_PATH)
 # GSL
 find_library(gsl_lib gsl ${GSL_LIB} NO_DEFAULT_PATH)
 # FGSL
@@ -106,49 +125,57 @@ find_library(f77blas_lib f77blas ${F77BLAS_LIB} NO_DEFAULT_PATH)
 find_library(atlas_lib atlas ${ATLASBLAS_LIB} NO_DEFAULT_PATH)
 find_library(open_blas_lapack_lib lapack ${OPEN_BLAS_LAPACK_LIB} NO_DEFAULT_PATH)
 find_library(open_blas_lib blas ${OPEN_BLAS_LIB} NO_DEFAULT_PATH)
+# MyMPIlib
+find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
+# HDF5 interface
+find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs} NO_DEFAULT_PATH)
 
-### HDF5
-set(HDF5_DIR /usr/lib/x86_64-linux-gnu/hdf5/serial/)
-include_directories(/usr/include/hdf5/serial/)
-find_library(HDF5_lib hdf5 ${HDF5_DIR} NO_DEFAULT_PATH)
-find_library(HDF5_fortran_lib hdf5_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
-find_library(HDF5HL_lib hdf5_hl ${HDF5_DIR} NO_DEFAULT_PATH)
-find_library(HDF5HL_fortran_lib hdf5hl_fortran ${HDF5_DIR} NO_DEFAULT_PATH)
-find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/hdf5_tools/lib NO_DEFAULT_PATH)
+### Source files
+include(CMakeSources.txt)
 
-### Source files (load external file)
-include (CMakeSources.txt)
+### Select C/Fortran-Interface for SuiteSparse
+COMPARE_VERSION_STRINGS(${SUITESPARSE_VERSION} "4.4" ISW_SUITESPARSE_VERSION)
+if(${ISW_SUITESPARSE_VERSION} LESS 0)
+  message(STATUS "Select C/Fortran-Interface for SuiteSparse version <  4.4 ...")
+  set(SUITESPARSE_SRC_FILES "${SUITESPARSE_SRC_FILES_VER_3_6}")
+else(${ISW_SUITESPARSE_VERSION} LESS 0)
+  message(STATUS "Select C/Fortran-Interface for SuiteSparse version >= 4.4 ...")
+  set(SUITESPARSE_SRC_FILES "${SUITESPARSE_SRC_FILES_VER_4_5}")
+endif(${ISW_SUITESPARSE_VERSION} LESS 0)
+
+### Select C/Fortran-Interface for SuperLU
+COMPARE_VERSION_STRINGS(${SUPERLU_VERSION_VAR} "5.0" ISW_SUPERLU_VERSION)
+if(${ISW_SUPERLU_VERSION} LESS 0)
+  message(STATUS "Select C/Fortran-Interface for SuperLU version <  5.0 ...")
+  set(SUPERLU_SRC_FILES "${SUPERLU_SRC_FILES_VER_4_1}")
+else(${ISW_SUPERLU_VERSION} LESS 0)
+  message(STATUS "Select C/Fortran-Interface for SuperLU version >= 5.0 ...")
+  set(SUPERLU_SRC_FILES "${SUPERLU_SRC_FILES_VER_5_0}")
+endif(${ISW_SUPERLU_VERSION} LESS 0)
 
 ### Define executable
 add_executable(${EXE_NAME}
         ${NEO2_SRC_FILES}
 	${NEO2_COMMON_FILES}
-  	${SUITESPARSE_SRC_FILES}
+	${SUITESPARSE_SRC_FILES}
 	${SUPERLU_SRC_FILES}
 	${FGSL_USERINTER_SRC_FILES}
 	${COLLOPLIB_FILES}
-#	${PSPLINE_USERINTER_SRC_FILES}
 )
 
-#add_library(fgsluserinter_lib ${FGSL_USERINTER_SRC_FILES})
-#add_library(collop_lib ${FGSL_USERINTER_SRC_FILES} ${COLLOPLIB_FILES})
-
 ### Add libraries linked with executable
-target_link_libraries(${EXE_NAME} 
-	#collop_lib
-	#fgsluserinter_lib
+target_link_libraries(${EXE_NAME}
         ${fgsl_lib} ${gsl_lib}
-	${pspline_lib}
-        ${SuperLU_lib}
-        ${Umfpack_lib} ${Amd_lib} ${Cholmod_lib} ${Colamd_lib} ${Camd_lib} ${Metis_lib} ${Ccolamd_lib}
+        ${SUPERLU_LIBRARIES}
+	${SUITESPARSE_LIBRARIES}
         ${MyMPILib_lib}
         ${MPE_lib}
-        ${MPI_lib}
+        ${MPI_Fortran_LIBRARIES}
 	${HDF5_tools_lib}
-        ${HDF5HL_fortran_lib}
-        ${HDF5HL_lib}
-        ${HDF5_fortran_lib}
-        ${HDF5_lib} -lpthread -lz -lrt -lm 
+	${HDF5_Fortran_HL_LIBRARIES}
+	${HDF5_HL_LIBRARIES}
+	${HDF5_Fortran_LIBRARIES}
+	${HDF5_LIBRARIES}
 	#lapack
 	${lapack_lib}
 	#${open_blas_lapack_lib}
