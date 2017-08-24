@@ -2,7 +2,6 @@
 *.mod
 CMakeFiles/
 CMakeCache.txt
-*.cmake
 Makefile
 BuildConfig.txt
 neo_2.x.*

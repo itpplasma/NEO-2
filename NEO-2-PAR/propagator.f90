@@ -2849,11 +2849,11 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   subroutine write_binarysplit_side_h5(h5id_binsplit, grpname, binsplit)
-    integer :: h5id_binsplit
+    integer(HID_T) :: h5id_binsplit
     character(len=*) :: grpname
     type(binarysplit) :: binsplit
 
-    integer :: h5id_grp
+    integer(HID_T) :: h5id_grp
 
     call h5_define_group(h5id_binsplit, grpname, h5id_grp)
 

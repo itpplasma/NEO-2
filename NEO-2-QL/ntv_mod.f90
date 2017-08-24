@@ -181,6 +181,12 @@ MODULE ntv_mod
      MODULE PROCEDURE compute_Qflux_a, compute_Qflux_b
   END INTERFACE compute_Qflux
   !
+  PUBLIC compute_ParFlow
+  PRIVATE compute_ParFlow_a, compute_ParFlow_b
+  INTERFACE compute_ParFlow
+     MODULE PROCEDURE compute_ParFlow_a, compute_ParFlow_b
+  END INTERFACE compute_ParFlow
+  !
   PUBLIC compute_TphiNA
   PRIVATE compute_TphiNA_a
   INTERFACE compute_TphiNA
@@ -1049,8 +1055,12 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Gamma_NA_spec, Gamma_NA_Ware_spec
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: TphiNA_spec, TphiNA_Ware_spec
     REAL(kind=dp) :: TphiNA_tot, TphiNA_Ware_tot
-    ! species heat flux densities (AX)
+    ! species heat flux densities (AX + NA)
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Qflux_AX_spec, Qflux_AX_Ware_spec
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Qflux_NA_spec, Qflux_NA_Ware_spec
+    ! species parallel flow (AX + NA)
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: ParFlow_AX_spec, ParFlow_AX_Ware_spec
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: ParFlow_NA_spec, ParFlow_NA_Ware_spec
     ! ---------------------------------------------------------------!
     ! radial electric field Er, <E_par*B>/<B^2>
     REAL(kind=dp) :: Er, avEparB_ov_avb2
@@ -1489,9 +1499,15 @@ CONTAINS
                D11_AX, D12_AX, Er, Gamma_AX_spec)
           CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
                D21_AX, D22_AX, Er, Qflux_AX_spec)
+          CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
+               D31_AX, D32_AX, Er, ParFlow_AX_spec)
           CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
                D11_NA, D12_NA, Er, Gamma_NA_spec)
           CALL compute_TphiNA(Gamma_NA_spec, TphiNA_spec, TphiNA_tot)
+          CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
+               D21_NA, D22_NA, Er, Qflux_NA_spec)
+          CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
+               D31_NA, D32_NA, Er, ParFlow_NA_spec)
           !
        ELSE
           !
@@ -1524,11 +1540,20 @@ CONTAINS
           CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
                D21_AX, D22_AX, D23_AX, Er, avEparB_ov_avb2, &
                Qflux_AX_spec, Qflux_AX_Ware_spec)
+          CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
+               D31_AX, D32_AX, D33_AX, Er, avEparB_ov_avb2, &
+               ParFlow_AX_spec, ParFlow_AX_Ware_spec)
           CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
                D11_NA, D12_NA, D13_NA, Er, avEparB_ov_avb2, &
                Gamma_NA_spec, Gamma_NA_Ware_spec)
           CALL compute_TphiNA(Gamma_NA_spec, TphiNA_spec, TphiNA_tot)
           CALL compute_TphiNA(Gamma_NA_Ware_spec, TphiNA_Ware_spec, TphiNA_Ware_tot)
+          CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
+               D21_NA, D22_NA, D23_NA, Er, avEparB_ov_avb2, &
+               Qflux_NA_spec, Qflux_NA_Ware_spec)
+          CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
+               D31_NA, D32_NA, D33_NA, Er, avEparB_ov_avb2, &
+               ParFlow_NA_spec, ParFlow_NA_Ware_spec)
           !
        END IF
     END IF
@@ -1677,8 +1702,15 @@ CONTAINS
             LBOUND(Gamma_AX_spec), UBOUND(Gamma_AX_spec))
        CALL h5_add(h5id_multispec, 'Qflux_AX_spec', Qflux_AX_spec, &
             LBOUND(Qflux_AX_spec), UBOUND(Qflux_AX_spec))
+       CALL h5_add(h5id_multispec, 'ParFlow_AX_spec', ParFlow_AX_spec, &
+            LBOUND(ParFlow_AX_spec), UBOUND(ParFlow_AX_spec))
+       !
        CALL h5_add(h5id_multispec, 'Gamma_NA_spec', Gamma_NA_spec, &
             LBOUND(Gamma_NA_spec), UBOUND(Gamma_NA_spec))
+       CALL h5_add(h5id_multispec, 'Qflux_NA_spec', Qflux_NA_spec, &
+            LBOUND(Qflux_NA_spec), UBOUND(Qflux_NA_spec))
+       CALL h5_add(h5id_multispec, 'ParFlow_NA_spec', ParFlow_NA_spec, &
+            LBOUND(ParFlow_NA_spec), UBOUND(ParFlow_NA_spec))
        !
        CALL h5_add(h5id_multispec, 'TphiNA_spec', TphiNA_spec, &
             LBOUND(TphiNA_spec), UBOUND(TphiNA_spec))
@@ -1701,8 +1733,15 @@ CONTAINS
                LBOUND(Gamma_AX_Ware_spec), UBOUND(Gamma_AX_Ware_spec))
           CALL h5_add(h5id_multispec, 'Qflux_AX_Ware_spec', Qflux_AX_Ware_spec, &
                LBOUND(Qflux_AX_Ware_spec), UBOUND(Qflux_AX_Ware_spec))
+          CALL h5_add(h5id_multispec, 'ParFlow_AX_Ware_spec', ParFlow_AX_Ware_spec, &
+               LBOUND(ParFlow_AX_Ware_spec), UBOUND(ParFlow_AX_Ware_spec))
+          !
           CALL h5_add(h5id_multispec, 'Gamma_NA_Ware_spec', Gamma_NA_Ware_spec, &
                LBOUND(Gamma_NA_Ware_spec), UBOUND(Gamma_NA_Ware_spec))
+          CALL h5_add(h5id_multispec, 'Qflux_NA_Ware_spec', Qflux_NA_Ware_spec, &
+               LBOUND(Qflux_NA_Ware_spec), UBOUND(Qflux_NA_Ware_spec))
+          CALL h5_add(h5id_multispec, 'ParFlow_NA_Ware_spec', ParFlow_NA_Ware_spec, &
+               LBOUND(ParFlow_NA_Ware_spec), UBOUND(ParFlow_NA_Ware_spec))
           !
           CALL h5_add(h5id_multispec, 'TphiNA_Ware_spec', TphiNA_Ware_spec, &
                LBOUND(TphiNA_Ware_spec), UBOUND(TphiNA_Ware_spec))
@@ -3803,7 +3842,7 @@ CONTAINS
     ! ---------------------------------------------------------------!
     ! row- and column indices (=species) of diffusion coefficients
     INTEGER, DIMENSION(:), INTENT(in) :: row_ind_ptr, col_ind_ptr
-    ! species parallel flow
+    ! species diffusion coefficients
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: D11_spec, D12_spec
     ! radial electric field (w.r.t. effective radius)
     REAL(kind=dp), INTENT(in) :: Er
@@ -3867,7 +3906,7 @@ CONTAINS
     ! ---------------------------------------------------------------!
     ! row- and column indices (=species) of diffusion coefficients
     INTEGER, DIMENSION(:), INTENT(in) :: row_ind_ptr, col_ind_ptr
-    ! species parallel flow
+    ! species diffusion coefficients
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: D11_spec, D12_spec
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: D13_spec
     ! radial electric field (w.r.t. effective radius)
@@ -3926,14 +3965,14 @@ CONTAINS
     ! ---------------------------------------------------------------!
     ! row- and column indices (=species) of diffusion coefficients
     INTEGER, DIMENSION(:), INTENT(in) :: row_ind_ptr, col_ind_ptr
-    ! species parallel flow
+    ! species diffusion coefficients
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: D21_spec, D22_spec
     ! radial electric field (w.r.t. effective radius)
     REAL(kind=dp), INTENT(in) :: Er
     ! ---------------------------------------------------------------!
     ! output:
     ! ---------------------------------------------------------------!
-    ! species particle flux density:
+    ! species heat flux density:
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: Qflux_spec
     ! ---------------------------------------------------------------!
     ! local:
@@ -3953,12 +3992,12 @@ CONTAINS
     ! avnabpsi :
     avnabpsi = y(7) / y(6)
     !
-    ! allocate species particle flux density
+    ! allocate species heat flux density
     IF(ALLOCATED(Qflux_spec)) DEALLOCATE(Qflux_spec)
     ALLOCATE(Qflux_spec(0:num_spec-1))
     Qflux_spec = 0.0_dp
     !
-    ! compute species particle flux density
+    ! compute species heat flux density
     DO ispec_ctr = LBOUND(row_ind_ptr,1),UBOUND(row_ind_ptr,1)
        !
        irow_spec = row_ind_ptr(ispec_ctr)
@@ -3992,7 +4031,7 @@ CONTAINS
     ! ---------------------------------------------------------------!
     ! row- and column indices (=species) of diffusion coefficients
     INTEGER, DIMENSION(:), INTENT(in) :: row_ind_ptr, col_ind_ptr
-    ! species parallel flow
+    ! species diffusion coefficients
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: D21_spec, D22_spec
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: D23_spec
     ! radial electric field (w.r.t. effective radius)
@@ -4001,7 +4040,7 @@ CONTAINS
     ! ---------------------------------------------------------------!
     ! output:
     ! ---------------------------------------------------------------!
-    ! species particle flux density:
+    ! species heat flux density:
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: Qflux_spec
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: Qflux_Ware_spec
     ! ---------------------------------------------------------------!
@@ -4012,12 +4051,12 @@ CONTAINS
     REAL(kind=dp) :: A3_b, flux_a
     ! ---------------------------------------------------------------!
     !
-    ! allocate species particle flux density (Ware pinch contribution)
+    ! allocate species heat flux density (Ware pinch contribution)
     IF(ALLOCATED(Qflux_Ware_spec)) DEALLOCATE(Qflux_Ware_spec)
     ALLOCATE(Qflux_Ware_spec(0:num_spec-1))
     Qflux_Ware_spec = 0.0_dp
     !
-    ! compute species particle flux density
+    ! compute species heat flux density
     ! without account of inductive electric field
     CALL compute_Qflux_a(row_ind_ptr, col_ind_ptr, &
          D21_spec, D22_spec, Er, Qflux_spec)
@@ -4040,6 +4079,133 @@ CONTAINS
     Qflux_spec = Qflux_spec + Qflux_Ware_spec
     !
   END SUBROUTINE compute_Qflux_b
+  !
+  SUBROUTINE compute_ParFlow_a(row_ind_ptr, col_ind_ptr, &
+       D31_spec, D32_spec, Er, ParFlow_spec)
+    !
+    USE neo_precision
+    USE collisionality_mod, ONLY : num_spec, species_tag, &
+         z_spec, m_spec, n_spec, T_spec
+    !
+    ! ---------------------------------------------------------------!
+    ! input:
+    ! ---------------------------------------------------------------!
+    ! row- and column indices (=species) of diffusion coefficients
+    INTEGER, DIMENSION(:), INTENT(in) :: row_ind_ptr, col_ind_ptr
+    ! species diffusion coefficients
+    REAL(kind=dp), DIMENSION(:), INTENT(in) :: D31_spec, D32_spec
+    ! radial electric field (w.r.t. effective radius)
+    REAL(kind=dp), INTENT(in) :: Er
+    ! ---------------------------------------------------------------!
+    ! output:
+    ! ---------------------------------------------------------------!
+    ! species parallel flow:
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: ParFlow_spec
+    ! ---------------------------------------------------------------!
+    ! local:
+    ! ---------------------------------------------------------------!
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
+    REAL(kind=dp) :: avnabpsi
+    ! ---------------------------------------------------------------!
+    ! loop indices, temporary variables
+    INTEGER :: ispec_ctr, irow_spec, icol_spec
+    REAL(kind=dp) :: A1_b, A2_b, flux_a
+    ! ---------------------------------------------------------------!
+    !
+    ! copy y-vector (see definition in rhs_kin.f90)
+    ALLOCATE(y(SIZE(y_ntv_mod,1)))
+    y = y_ntv_mod
+    !
+    ! avnabpsi :
+    avnabpsi = y(7) / y(6)
+    !
+    ! allocate species parallel flow
+    IF(ALLOCATED(ParFlow_spec)) DEALLOCATE(ParFlow_spec)
+    ALLOCATE(ParFlow_spec(0:num_spec-1))
+    ParFlow_spec = 0.0_dp
+    !
+    ! compute species parallel flow
+    DO ispec_ctr = LBOUND(row_ind_ptr,1),UBOUND(row_ind_ptr,1)
+       !
+       irow_spec = row_ind_ptr(ispec_ctr)
+       icol_spec = col_ind_ptr(ispec_ctr)
+       !
+       A2_b = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
+       A1_b = avnabpsi * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
+            1.5_dp * A2_b - Er * (z_spec(icol_spec)*e) / T_spec(icol_spec)
+       !
+       flux_a = -n_spec(irow_spec) * &
+            (D31_spec(ispec_ctr) * A1_b + D32_spec(ispec_ctr) * A2_b)
+       !
+       ParFlow_spec(irow_spec) = ParFlow_spec(irow_spec) + flux_a
+       !
+    END DO
+    !
+    ParFlow_spec = ParFlow_spec / n_spec
+    !
+  END SUBROUTINE compute_ParFlow_a
+  !
+  SUBROUTINE compute_ParFlow_b(row_ind_ptr, col_ind_ptr, &
+       D31_spec, D32_spec, D33_spec, Er, avEparB_ov_avb2, &
+       ParFlow_spec, ParFlow_Ware_spec)
+    !
+    USE neo_precision
+    USE collisionality_mod, ONLY : num_spec, species_tag, &
+         z_spec, m_spec, n_spec, T_spec
+    !
+    ! ---------------------------------------------------------------!
+    ! input:
+    ! ---------------------------------------------------------------!
+    ! row- and column indices (=species) of diffusion coefficients
+    INTEGER, DIMENSION(:), INTENT(in) :: row_ind_ptr, col_ind_ptr
+    ! species diffusion coefficients
+    REAL(kind=dp), DIMENSION(:), INTENT(in) :: D31_spec, D32_spec
+    REAL(kind=dp), DIMENSION(:), INTENT(in) :: D33_spec
+    ! radial electric field (w.r.t. effective radius)
+    ! + drive A3 normalized (=inductive electric field)
+    REAL(kind=dp), INTENT(in) :: Er, avEparB_ov_avb2
+    ! ---------------------------------------------------------------!
+    ! output:
+    ! ---------------------------------------------------------------!
+    ! species parallel flow:
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: ParFlow_spec
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: ParFlow_Ware_spec
+    ! ---------------------------------------------------------------!
+    ! local:
+    ! ---------------------------------------------------------------!
+    ! loop indices, temporary variables
+    INTEGER :: ispec_ctr, irow_spec, icol_spec
+    REAL(kind=dp) :: A3_b, flux_a
+    ! ---------------------------------------------------------------!
+    !
+    ! allocate species parallel flow (Ware pinch contribution)
+    IF(ALLOCATED(ParFlow_Ware_spec)) DEALLOCATE(ParFlow_Ware_spec)
+    ALLOCATE(ParFlow_Ware_spec(0:num_spec-1))
+    ParFlow_Ware_spec = 0.0_dp
+    !
+    ! compute species parallel flow
+    ! without account of inductive electric field
+    CALL compute_ParFlow_a(row_ind_ptr, col_ind_ptr, &
+         D31_spec, D32_spec, Er, ParFlow_spec)
+    !
+    ! add contribution from inductive electric field to ParFlow_spec
+    DO ispec_ctr = LBOUND(row_ind_ptr,1),UBOUND(row_ind_ptr,1)
+       !
+       irow_spec = row_ind_ptr(ispec_ctr)
+       icol_spec = col_ind_ptr(ispec_ctr)
+       !
+       A3_b = avEparB_ov_avb2 * (z_spec(icol_spec)*e) / T_spec(icol_spec)
+       !
+       flux_a = -n_spec(irow_spec) * D33_spec(ispec_ctr) * A3_b
+       !
+       ParFlow_Ware_spec(irow_spec) = ParFlow_Ware_spec(irow_spec) + flux_a
+       !
+    END DO
+    !
+    ParFlow_Ware_spec = ParFlow_Ware_spec / n_spec
+    ParFlow_spec = ParFlow_spec + ParFlow_Ware_spec
+    !
+  END SUBROUTINE compute_ParFlow_b
   !
   SUBROUTINE compute_TphiNA_a(Gamma_NA_spec, TphiNA_spec, TphiNA_tot)
     !
