@@ -50,7 +50,8 @@ PROGRAM neo2
        collop_load, collop_unload, z_eff, collop_path,              &
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
-       scalprod_beta
+       scalprod_beta, lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
+       !! and lsw_write_precom by Michael Draxler (25.08.2017)
   USE rkstep_mod, ONLY : lag,leg,legmax                            
       
   USE development, ONLY : solver_talk,switch_off_asymp, &
@@ -171,7 +172,9 @@ PROGRAM neo2
        isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &      
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta,       &
        phi_x_max, collop_bspline_order, collop_bspline_dist,                  &
-       v_min_resolution, v_max_resolution, isw_relativistic, T_e
+       v_min_resolution, v_max_resolution, isw_relativistic, T_e,             &
+       lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
+       !! and lsw_write_precom by Michael Draxler (25.08.2017)
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -325,6 +328,8 @@ PROGRAM neo2
   phi_x_max        = 5.0d0
   collop_bspline_order = 4
   collop_bspline_dist  = 1d0
+  lsw_read_precom = .FALSE. !! Added lsw_read_precom and lsw_write_precom 
+  lsw_write_precom = .FALSE.   !! by Michael Draxler (25.08.2017)
   ! binsplit
   eta_s_lim = 1.2d0
   eta_part = 100
