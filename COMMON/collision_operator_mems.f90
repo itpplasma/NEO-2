@@ -6,7 +6,7 @@ module collop
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
        m_ele, m_d, m_C, m_alp, m_W, compute_collop_inf, C_m, compute_xmmp, &
        compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
-       compute_collop_rel
+       compute_collop_rel, lagmax
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
@@ -37,6 +37,9 @@ module collop
   real(kind=dp), dimension(:,:), allocatable :: x1mm, x2mm
 
   integer, dimension(2) :: spec_ind_det, spec_ind_in
+  
+  logical   :: lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
+                  !! and lsw_write_precom by Michael Draxler (25.08.2017)
 
   contains
     
@@ -183,34 +186,46 @@ module collop
          write (400,*) "nu_D_hat at v_max_res", nu_D_hat(v_max_resolution) 
          
          ! Non-relativistic Limit according to Trubnikov
-         if (isw_relativistic .eq. 0) then
+         if (.not. lsw_read_precom) then !!Added by Michael Draxler (25.08.2017)
+           if (isw_relativistic .eq. 0) then
 
-            !**********************************************************
-            ! Compute sources
-            !**********************************************************
-            call compute_source(asource, weightlag, weightden, weightparflow, &
-              weightenerg, Amm)
-            write (*,*) "Weightden: ", weightden
+              !**********************************************************
+              ! Compute sources
+              !**********************************************************
+              call compute_source(asource, weightlag, weightden, weightparflow, &
+                weightenerg, Amm)
+              write (*,*) "Weightden: ", weightden
 
-            !**********************************************************
-            ! Compute x1mm and x2mm
-            !**********************************************************
-            call compute_xmmp(x1mm, x2mm)
+              !**********************************************************
+              ! Compute x1mm and x2mm
+              !**********************************************************
+              call compute_xmmp(x1mm, x2mm)
 
-            !**********************************************************
-            ! Compute collision operator
-            !**********************************************************
-            call compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
-                 denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
+              !**********************************************************
+              ! Compute collision operator
+              !**********************************************************
+              call compute_collop_inf('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,0,0), anumm_inf, &
+                   denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
 
-         ! Relativistic collision operator accordning to Braams and Karney
-         elseif (isw_relativistic .ge. 1) then
-            call compute_collop_rel(isw_relativistic, T_e, asource, weightlag, weightden, weightparflow, &
-                 weightenerg, Amm, anumm_aa(:,:,0,0), anumm_inf, denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
-            !stop
+           ! Relativistic collision operator accordning to Braams and Karney
+           elseif (isw_relativistic .ge. 1) then
+              call compute_collop_rel(isw_relativistic, T_e, asource, weightlag, weightden, weightparflow, &
+                   weightenerg, Amm, anumm_aa(:,:,0,0), anumm_inf, denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
+              !stop
+           else
+              write (*,*) "Relativistic switch ", isw_relativistic, " not defined."
+           end if
+           
+           if (lsw_write_precom) then        !! Added by Michael Draxler (25.08.2017)
+             write(*,*) "Write Precom_collop"!!
+             call write_precom_collop()      !!
+           end if!!
+
          else
-            write (*,*) "Relativistic switch ", isw_relativistic, " not defined."
-         end if
+         
+           write(*,*) "Read Precom_collop"
+           call read_precom_collop() 
+         end if                              !!Added by Michael Draxler (25.08.2017)!! 
 
          !**********************************************************
          ! Sum up matrices
@@ -253,18 +268,19 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         call compute_source(asource, weightlag, weightden, weightparflow, &
-              weightenerg, Amm)
+         if (.not. lsw_read_precom) then !!Added by Michael Draxler (25.08.2017)
+           call compute_source(asource, weightlag, weightden, weightparflow, &
+                weightenerg, Amm)
 
-         !**********************************************************
-         ! Compute x1mm and x2mm
-         !**********************************************************
-         call compute_xmmp(x1mm, x2mm)
-         
-         !**********************************************************
-         ! Compute collision operator
-         !**********************************************************
-         ! old: without MPI parallelization
+           !**********************************************************
+           ! Compute x1mm and x2mm
+           !**********************************************************
+           call compute_xmmp(x1mm, x2mm)
+           
+           !**********************************************************
+           ! Compute collision operator
+           !**********************************************************
+           ! old: without MPI parallelization
 !!$         do a = 0, num_spec-1
 !!$            do b = 0, num_spec-1
 !!$               
@@ -288,67 +304,86 @@ module collop
 !!$            end do
 !!$         end do
          ! new: with MPI parallelization
-         b = mpro%getRank()
-         do a = 0, num_spec-1
-            spec_ind_in = (/ a, b /)
-            call collop_exists_mpi(m_spec(a), T_spec(a), spec_ind_in, spec_ind_det)
-            if ( all(spec_ind_det .eq. -1) ) then
-               !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
-               !print *,'Do the computation.'
-               call compute_collop('a', 'b', m_spec(a), m_spec(b), T_spec(a), T_spec(b), &
-                    anumm_aa(:,:,a,b), denmm_aa(:,:,a,b), ailmm_aa(:,:,:,a,b))
-            else
-               !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
-               !print *,'Load matrices.'
-               anumm_aa(:,:,a,b) = anumm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
-               denmm_aa(:,:,a,b) = denmm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
-               ailmm_aa(:,:,:,a,b) = ailmm_aa(:,:,:,spec_ind_det(1),spec_ind_det(2))
-            end if
-         end do
-         call mpro%allgather(anumm_aa(:,:,:,b),anumm_aa)
-         call mpro%allgather(denmm_aa(:,:,:,b),denmm_aa)
-         call mpro%allgather(ailmm_aa(:,:,:,:,b),ailmm_aa)
 
-         !call compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
-         !     denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
          
-         !call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
-         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         !call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
-         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         !call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
-         
-         !call compute_collop('d', 'alp', m_d, m_alp, 1d0, 1d0, anumm_aa(:,:,0,1), &
-         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         !call compute_collop('alp', 'alp', m_alp, m_alp, 1d0, 1d0, anumm_aa(:,:,1,1), &
-         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         !call compute_collop('alp', 'd', m_alp, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
-         
-         !call compute_collop('d', 'W', m_d, m_W, 1d0, 1d0, anumm_aa(:,:,0,1), &
-         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         !call compute_collop('W', 'W', m_W, m_W, 1d0, 1d0, anumm_aa(:,:,1,1), &
-         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         !call compute_collop('W', 'd', m_W, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+           b = mpro%getRank()
+           do a = 0, num_spec-1
+              spec_ind_in = (/ a, b /)
+              call collop_exists_mpi(m_spec(a), T_spec(a), spec_ind_in, spec_ind_det)
+              if ( all(spec_ind_det .eq. -1) ) then
+                 !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
+                 !print *,'Do the computation.'
+                 call compute_collop('a', 'b', m_spec(a), m_spec(b), T_spec(a), T_spec(b), &
+                      anumm_aa(:,:,a,b), denmm_aa(:,:,a,b), ailmm_aa(:,:,:,a,b))
+              else
+                 !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
+                 !print *,'Load matrices.'
+                 anumm_aa(:,:,a,b) = anumm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
+                 denmm_aa(:,:,a,b) = denmm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
+                 ailmm_aa(:,:,:,a,b) = ailmm_aa(:,:,:,spec_ind_det(1),spec_ind_det(2))
+              end if
+           end do
+           call mpro%allgather(anumm_aa(:,:,:,b),anumm_aa)
+           call mpro%allgather(denmm_aa(:,:,:,b),denmm_aa)
+           call mpro%allgather(ailmm_aa(:,:,:,:,b),ailmm_aa)
+  
+           !call compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
+           !     denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
+           
+           !call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
+           !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+           !call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
+           !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+           !call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+           !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+           
+           !call compute_collop('d', 'alp', m_d, m_alp, 1d0, 1d0, anumm_aa(:,:,0,1), &
+           !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+           !call compute_collop('alp', 'alp', m_alp, m_alp, 1d0, 1d0, anumm_aa(:,:,1,1), &
+           !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+           !call compute_collop('alp', 'd', m_alp, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+           !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+           
+           !call compute_collop('d', 'W', m_d, m_W, 1d0, 1d0, anumm_aa(:,:,0,1), &
+           !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+           !call compute_collop('W', 'W', m_W, m_W, 1d0, 1d0, anumm_aa(:,:,1,1), &
+           !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+           !call compute_collop('W', 'd', m_W, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+           !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
 
-         !!m_ele = m_ele*0.5d0
-         !call compute_collop('d', 'e', m_d, m_ele, 1d0, 1d0, anumm_aa(:,:,0,1), &
-         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         !call compute_collop('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,1,1), &
-         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         !call compute_collop('e', 'd', m_ele, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+           !!m_ele = m_ele*0.5d0
+           !call compute_collop('d', 'e', m_d, m_ele, 1d0, 1d0, anumm_aa(:,:,0,1), &
+           !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+           !call compute_collop('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,1,1), &
+           !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+           !call compute_collop('e', 'd', m_ele, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
+           !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+  
+           !call compute_collop('W', 'e', m_W, m_ele, 1d0, 1d0, anumm_aa(:,:,0,1), &
+           !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
+           !call compute_collop('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,1,1), &
+           !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
+           !call compute_collop('e', 'W', m_ele, m_W, 1d0, 1d0, anumm_aa(:,:,1,0), &
+           !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
+           !stop
+           
 
-         !call compute_collop('W', 'e', m_W, m_ele, 1d0, 1d0, anumm_aa(:,:,0,1), &
-         !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-         !call compute_collop('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,1,1), &
-         !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-         !call compute_collop('e', 'W', m_ele, m_W, 1d0, 1d0, anumm_aa(:,:,1,0), &
-         !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
-         !stop
+
+           if (lsw_write_precom) then        !! Added by Michael Draxler (25.08.2017)
+             if (mpro%isMaster()) then
+               write(*,*) "Write Precom_collop"!!
+               call write_precom_collop()      !!
+             end if
+             call mpro%barrier()
+             call mpro%deinit()
+             stop
+           end if!!
+
+         else
          
+           write(*,*) "Read Precom_collop"
+           call read_precom_collop() 
+         end if                              !!Added by Michael Draxler (25.08.2017)!! 
          !**********************************************************
          ! Sum up matrices
          !**********************************************************
@@ -484,13 +519,60 @@ module collop
       deallocate(x1mm)
       deallocate(x2mm)
       deallocate(conl_over_mfp_spec)
+      if (allocated(C_m)) deallocate(C_m)
+      if (allocated(M_transform)) deallocate(M_transform)
+      if (allocated(M_transform_inv)) deallocate(M_transform_inv)
     end subroutine collop_unload
   
     subroutine collop_deconstruct()
       
     end subroutine collop_deconstruct
+    
+    subroutine read_precom_collop()
+      integer(HID_T)   :: h5id_read_collop, h5id_meta
+      integer          :: m, mp, l, xi, n_x
+      integer          :: f = 4238
+      real(kind=dp), dimension(:), allocatable :: x
+      real(kind=dp), dimension(:,:), allocatable :: phi_x, dphi_x, ddphi_x
+      if (allocated(C_m)) deallocate(C_m)
+      allocate(C_m(0:lagmax))
+      if (allocated(M_transform)) deallocate(M_transform)
+      allocate(M_transform(0:lagmax, 0:lagmax))
+      if (allocated(M_transform_inv)) deallocate(M_transform_inv)
+      allocate(M_transform_inv(0:lagmax, 0:lagmax))
+      
 
-    subroutine write_precomp_collop()
+      
+      
+      
+      call h5_open('precom_collop.h5', h5id_read_collop)
+         
+      call h5_get(h5id_read_collop, 'x1mm', x1mm)
+      call h5_get(h5id_read_collop, 'x2mm', x2mm)  
+      
+      call h5_get(h5id_read_collop, 'asource', asource)
+      call h5_get(h5id_read_collop, 'weightlag', weightlag)
+      call h5_get(h5id_read_collop, 'weightden', weightden)
+      call h5_get(h5id_read_collop, 'weightparflow', weightparflow)
+      call h5_get(h5id_read_collop, 'weightenerg', weightenerg)
+      call h5_get(h5id_read_collop, 'Amm',Amm)
+      
+
+      call h5_get(h5id_read_collop, 'anumm_aa', anumm_aa)
+      call h5_get(h5id_read_collop, 'anumm_inf', anumm_inf)
+      call h5_get(h5id_read_collop, 'denmm_aa', denmm_aa)
+      call h5_get(h5id_read_collop, 'ailmm_aa', ailmm_aa)
+      
+      call h5_get(h5id_read_collop, 'M_transform_', M_transform)
+      call h5_get(h5id_read_collop, 'M_transform_inv', M_transform_inv)
+      call h5_get(h5id_read_collop, 'C_m', C_m)
+      call h5_get(h5id_read_collop, 'meta/gamma_ab', gamma_ab)
+
+      call h5_close(h5id_read_collop)
+      
+    end subroutine read_precom_collop        
+
+    subroutine write_precom_collop()
       integer(HID_T)   :: h5id_collop, h5id_meta
       integer          :: m, mp, l, xi, n_x
       integer          :: f = 4238
@@ -514,21 +596,40 @@ module collop
       !call h5_add(h5id_meta, 'tag_b', tag_b)
       call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj)
       call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp)
+
       call h5_close_group(h5id_meta)
       
+      
+      if (.not. lsw_multispecies) then
+          print *,"Write single species precom"
+      else
+        print *,"Write multi species precom"
+      end if
+      
+      call h5_add(h5id_collop, 'x1mm', x1mm, lbound(x1mm), ubound(x1mm))
+      call h5_add(h5id_collop, 'x2mm', x2mm, lbound(x2mm), ubound(x2mm))  
+      
       call h5_add(h5id_collop, 'asource', asource, lbound(asource), ubound(asource))
-      call h5_add(h5id_collop, 'anumm_a', anumm_a, lbound(anumm_a), ubound(anumm_a))
-      call h5_add(h5id_collop, 'denmm_a', denmm_a, lbound(denmm_a), ubound(denmm_a))
+      call h5_add(h5id_collop, 'weightlag', weightlag, lbound(weightlag), ubound(weightlag))
+      call h5_add(h5id_collop, 'weightden', weightden, lbound(weightden), ubound(weightden))
+      call h5_add(h5id_collop, 'weightparflow', weightparflow, lbound(weightparflow), ubound(weightparflow))
+      call h5_add(h5id_collop, 'weightenerg', weightenerg, lbound(weightenerg), ubound(weightenerg))
+      call h5_add(h5id_collop, 'Amm',Amm,lbound(Amm), ubound(Amm))
+      
+      !call h5_add(h5id_collop, 'anumm_a', anumm_a, lbound(anumm_a), ubound(anumm_a))
+      !call h5_add(h5id_collop, 'denmm_a', denmm_a, lbound(denmm_a), ubound(denmm_a))
       call h5_add(h5id_collop, 'anumm_aa', anumm_aa, lbound(anumm_aa), ubound(anumm_aa))
+      if (z_eff .ne. 0) call h5_add(h5id_collop, 'anumm_inf', anumm_inf, lbound(anumm_inf), ubound(anumm_inf))
       call h5_add(h5id_collop, 'denmm_aa', denmm_aa, lbound(denmm_aa), ubound(denmm_aa))
       call h5_add(h5id_collop, 'ailmm_aa', ailmm_aa, lbound(ailmm_aa), ubound(ailmm_aa))
-      call h5_add(h5id_collop, 'anumm', anumm, lbound(anumm), ubound(anumm))
+      
+      !call h5_add(h5id_collop, 'anumm', anumm, lbound(anumm), ubound(anumm))
       !call h5_add(h5id_collop, 'anumm_lag', anumm_lag, lbound(anumm_lag), ubound(anumm_lag))
-      call h5_add(h5id_collop, 'anumm_aa0', anumm_aa(:,:,0,0), lbound(anumm_aa(:,:,0,0)), ubound(anumm_aa(:,:,0,0)))
-      if (z_eff .ne. 0) call h5_add(h5id_collop, 'anumm_inf', anumm_inf, lbound(anumm_inf), ubound(anumm_inf))
-      call h5_add(h5id_collop, 'denmm', denmm, lbound(denmm), ubound(denmm))
-      call h5_add(h5id_collop, 'ailmm', ailmm, lbound(ailmm), ubound(ailmm))
-      call h5_add(h5id_collop, 'weightlag', weightlag, lbound(weightlag), ubound(weightlag))
+      !call h5_add(h5id_collop, 'anumm_aa0', anumm_aa(:,:,0,0), lbound(anumm_aa(:,:,0,0)), ubound(anumm_aa(:,:,0,0)))
+      
+      !call h5_add(h5id_collop, 'denmm', denmm, lbound(denmm), ubound(denmm))
+      !call h5_add(h5id_collop, 'ailmm', ailmm, lbound(ailmm), ubound(ailmm))
+      
       call h5_add(h5id_collop, 'M_transform_', M_transform, lbound(M_transform), ubound(M_transform))
       call h5_add(h5id_collop, 'M_transform_inv', M_transform_inv, lbound(M_transform_inv), ubound(M_transform_inv))
       call h5_add(h5id_collop, 'C_m', C_m, lbound(C_m), ubound(C_m))
@@ -536,30 +637,30 @@ module collop
       !**********************************************************
       ! Write test functions
       !**********************************************************
-      n_x = 999
-      allocate(x(n_x))
-      allocate(phi_x(0:lag, 1:n_x))
-      allocate(dphi_x(0:lag, 1:n_x))
-      allocate(ddphi_x(0:lag, 1:n_x))
+      !n_x = 999
+      !allocate(x(n_x))
+      !allocate(phi_x(0:lag, 1:n_x))
+      !allocate(dphi_x(0:lag, 1:n_x))
+      !allocate(ddphi_x(0:lag, 1:n_x))
       
-      do m = 0, lag
-         do xi = 1, n_x
-            x(xi) = 10d0/(n_x-1) * (xi-1) 
-            phi_x(m,xi)   = phi_exp(m,x(xi))
-            dphi_x(m,xi)  = d_phi_exp(m,x(xi))
-            ddphi_x(m,xi) = dd_phi_exp(m,x(xi))
+      !do m = 0, lag
+       !  do xi = 1, n_x
+        !    x(xi) = 10d0/(n_x-1) * (xi-1) 
+         !   phi_x(m,xi)   = phi_exp(m,x(xi))
+          !  dphi_x(m,xi)  = d_phi_exp(m,x(xi))
+          !  ddphi_x(m,xi) = dd_phi_exp(m,x(xi))
             !write (*,*) x(xi), m, phi_exp(m,x(xi)), d_phi_exp(m,x(xi)), dd_phi_exp(m,x(xi))
-         end do
-      end do
+         !end do
+      !end do
 
-      call h5_add(h5id_collop, 'x', x, lbound(x), ubound(x))
-      call h5_add(h5id_collop, 'phi_x', phi_x, lbound(phi_x), ubound(phi_x))
-      call h5_add(h5id_collop, 'dphi_x', dphi_x, lbound(dphi_x), ubound(dphi_x))
-      call h5_add(h5id_collop, 'ddphi_x', ddphi_x, lbound(ddphi_x), ubound(ddphi_x))
+      !call h5_add(h5id_collop, 'x', x, lbound(x), ubound(x))
+      !call h5_add(h5id_collop, 'phi_x', phi_x, lbound(phi_x), ubound(phi_x))
+      !call h5_add(h5id_collop, 'dphi_x', dphi_x, lbound(dphi_x), ubound(dphi_x))
+      !call h5_add(h5id_collop, 'ddphi_x', ddphi_x, lbound(ddphi_x), ubound(ddphi_x))
       
       call h5_close(h5id_collop)
-      
-    end subroutine write_precomp_collop    
+      !stop
+    end subroutine write_precom_collop    
     
     
     subroutine write_collop()
