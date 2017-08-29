@@ -120,7 +120,8 @@ PROGRAM neo2
   INTEGER :: ind_spec, ind_boozer_s, ind_char, ctr_spec
   INTEGER :: isw_multispecies_init, OMP_NUM_THREADS
   INTEGER(HID_T) :: h5id_multispec_in
-  CHARACTER(len=40) :: fname_multispec, fname_multispec_in, fname_exec
+  CHARACTER(len=40) :: fname_multispec, fname_multispec_in
+  CHARACTER(len=40) :: fname_exec, fname_exec_precom
   CHARACTER(len=200) :: dir_name, cmd_line
   INTEGER :: num_radial_pts, num_species_all
   INTEGER, DIMENSION(:), ALLOCATABLE :: rel_stages_prof, species_tag_prof
@@ -210,6 +211,7 @@ PROGRAM neo2
   ! file-names of multi-species input and startup-script for NEO-2
   fname_multispec = 'neo2.in'
   fname_exec = 'run_neo2.sh'
+  fname_exec_precom = 'run_neo2_precom.sh'
   ! ---------------------------------------------------------------------------
   ! defaults
   !
@@ -577,20 +579,27 @@ PROGRAM neo2
         !
         ! shell command: create directories
         cmd_line = &
-             'if [ ! -d TEST ]; then mkdir ' // TRIM(ADJUSTL(dir_name)) // '; fi'
+             'if [ ! -d ' // TRIM(ADJUSTL(dir_name)) // ' ]; then mkdir ' // &
+             TRIM(ADJUSTL(dir_name)) // '; fi'
         CALL execute_command_line(cmd_line)
         !
         ! go to directory
         CALL chdir(TRIM(ADJUSTL(dir_name)))
         !
         ! shell command: link input-files to current directory
-        cmd_line = 'ln -s ../' // TRIM(ADJUSTL(in_file)) // ' .'
+        cmd_line = &
+             'if [ ! -e ' // TRIM(ADJUSTL(in_file)) // ' ]; then ln -s ../' // &
+             TRIM(ADJUSTL(in_file)) // ' . ; fi'
         CALL execute_command_line(cmd_line)
-        cmd_line = 'ln -s ../' // TRIM(ADJUSTL(in_file_pert)) // ' .'
+        cmd_line = &
+             'if [ ! -e ' // TRIM(ADJUSTL(in_file_pert)) // ' ]; then ln -s ../' // &
+             TRIM(ADJUSTL(in_file_pert)) // ' . ; fi'
         CALL execute_command_line(cmd_line)
-        cmd_line = 'ln -s ../neo.in .'
+        cmd_line = &
+             'if [ ! -e neo.in ]; then ln -s ../neo.in . ; fi'
         CALL execute_command_line(cmd_line)
-        cmd_line = 'ln -s ../neo_2.x .'
+        cmd_line = &
+             'if [ ! -e neo_2.x ]; then ln -s ../neo_2.x . ; fi'
         CALL execute_command_line(cmd_line)
         !
         ! write start-up script for NEO-2 run
@@ -608,7 +617,7 @@ PROGRAM neo2
            END IF
            WRITE(cmd_line,fmt='(I2)') OMP_NUM_THREADS
            cmd_line = 'OMP_NUM_THREADS=' // TRIM(ADJUSTL(cmd_line)) // &
-                ' mpiexec -x OMP_NUM_THREADS -hostfile hosts -np '
+                ' mpiexec -mca orte_tmpdir_base "/tmp/" -x OMP_NUM_THREADS -hostfile hosts -np '
            WRITE(cmd_line,fmt='(A,I3,A10)') TRIM(ADJUSTL(cmd_line)),num_spec,' ./neo_2.x'
            WRITE(u1,fmt='(A)',iostat=ios) TRIM(ADJUSTL(cmd_line))
            IF (ios .NE. 0) THEN
@@ -619,6 +628,34 @@ PROGRAM neo2
         END IF
         CLOSE(unit=u1)
         cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec))
+        CALL execute_command_line(cmd_line)
+        !
+        ! write start-up script for NEO-2 pre-run (pre-computation of matrix elements)
+        OPEN(unit=u1,file=fname_exec_precom,action='write',iostat=ios)
+        IF (ios .NE. 0) THEN
+           PRINT *, 'WARNING: File ',fname_exec,' cannot be OPENED!'
+           PRINT *, ''
+           STOP
+        ELSE
+           WRITE(u1,fmt='(A)',iostat=ios) '#! /bin/bash'
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+           WRITE(cmd_line,fmt='(I2)') OMP_NUM_THREADS
+           cmd_line = 'OMP_NUM_THREADS=' // TRIM(ADJUSTL(cmd_line)) // &
+                ' mpiexec -mca orte_tmpdir_base "/tmp/" -x OMP_NUM_THREADS -np '
+           WRITE(cmd_line,fmt='(A,I3,A10)') TRIM(ADJUSTL(cmd_line)),num_spec,' ./neo_2.x'
+           WRITE(u1,fmt='(A)',iostat=ios) TRIM(ADJUSTL(cmd_line))
+           IF (ios .NE. 0) THEN
+              PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
+              PRINT *, ''
+              STOP
+           END IF
+        END IF
+        CLOSE(unit=u1)
+        cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec_precom))
         CALL execute_command_line(cmd_line)
         !
         ! prepare multi-species input
