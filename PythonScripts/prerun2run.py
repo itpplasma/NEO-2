@@ -18,14 +18,14 @@ for dirpath, dirnames, files in os.walk('./'):
         print(dirpath + " is finished")
         continue
     if "neo2.in" in files:
-        neo2=f90nml.read("neo2.in")
+        neo2=f90nml.read(dirpath + "neo2.in")
         
  
         
         if "precom_collop.h5" in files:
             neo2['collision']['lsw_write_precom']=False
             neo2['collision']['lsw_read_precom']=True
-            neo2.write("neo2.in",force=True)
+            neo2.write(dirpath+ "neo2.in",force=True)
             print("neo2.in changed from Write to Read in " + dirpath)
             precom=True
         else:
