@@ -5,7 +5,7 @@ set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 set(PROJLIBS /proj/plasma/Libs/)
 
 ### Directories of MyMPILib and MPE
-set(MYMPILIB_PATH ${PROJLIBS}/MyMPILib/Build-Release-Debian9/)
+set(MYMPILIB_PATH ${PROJLIBS}/MyMPILib/Build-Release/)
 set(MPE_PATH /afs/itp.tugraz.at/opt/mpe/1.3.0/)
 
 # GSL version 1.16
