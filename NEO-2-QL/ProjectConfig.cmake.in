@@ -25,7 +25,7 @@ set(FGSL_INC ${FGSL_PATH}/include/fgsl/)
 #set(FGSL_INC ${FGSL_PATH}/include/fgsl/)
 
 ### HDF5
-set(NEO2_Libs /proj/plasma/Neo2/Libs/hdf5_tools/Build-Debian9/)
+set(NEO2_Libs /proj/plasma/Neo2/Libs/hdf5_tools/Build/)
 set(NEO2_Inc ${NEO2_Libs}/OBJ/)
 
 ### Path to the ATLAS libraries
