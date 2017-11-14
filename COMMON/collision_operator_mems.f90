@@ -38,9 +38,8 @@ module collop
 
   integer, dimension(2) :: spec_ind_det, spec_ind_in
   
-  logical   :: lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
-                  !! and lsw_write_precom by Michael Draxler (25.08.2017)
-
+  logical   :: lsw_read_precom, lsw_write_precom !! Added lsw_read_precom  and lsw_write_precom 
+  integer   :: succeded_precom_check = -1        !! and succeded_precom_check by Michael Draxler (13.09.2017)
   contains
     
     subroutine collop_construct()     
@@ -186,7 +185,25 @@ module collop
          write (400,*) "nu_D_hat at v_max_res", nu_D_hat(v_max_resolution) 
          
          ! Non-relativistic Limit according to Trubnikov
-         if (.not. lsw_read_precom) then !!Added by Michael Draxler (25.08.2017)
+         
+         if (lsw_read_precom) then                                            !! Added by Michael Draxler (13.09.2017)
+         
+           !write(*,*) "Read Precom_collop"
+           call read_precom_meta_collop(succeded_precom_check)  !! succeded_precom_check succed with 1 fails with 0 and error with -1
+           if (succeded_precom_check .EQ. 1) then
+             call read_precom_collop()
+             write(*,*) "Use precom_collop.h5"
+           elseif (succeded_precom_check .EQ. -1) then
+             write(*,*) "Precom_check did not happen correctly"
+             STOP
+           else 
+             write(*,*) "Precom File did not match"
+             STOP
+           end if
+         end if
+         
+         if ((.not. lsw_read_precom) .or.(succeded_precom_check .EQ. 0)) THEN  !! Added by Michael Draxler (13.09.2017)
+
            if (isw_relativistic .eq. 0) then
 
               !**********************************************************
@@ -221,11 +238,8 @@ module collop
              call write_precom_collop()      !!
            end if!!
 
-         else
+         end if
          
-           write(*,*) "Read Precom_collop"
-           call read_precom_collop() 
-         end if                              !!Added by Michael Draxler (25.08.2017)!! 
 
          !**********************************************************
          ! Sum up matrices
@@ -268,7 +282,23 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         if (.not. lsw_read_precom) then !!Added by Michael Draxler (25.08.2017)
+         if (lsw_read_precom) then                                          !! Added by Michael Draxler (13.09.2017)
+         
+           !write(*,*) "Read Precom_collop"
+           call read_precom_meta_collop(succeded_precom_check)  !! succeded_precom_check succed with 1 fails with 0 and error with -1
+           if (succeded_precom_check .EQ. 1) then
+             call read_precom_collop()
+             write(*,*) "Use precom_collop.h5"
+           elseif (succeded_precom_check .EQ. -1) then
+             write(*,*) "Precom_check did not happen correctly"
+             STOP
+           else 
+             write(*,*) "Precom File did not match"
+             STOP
+           end if
+         end if                                              
+         
+         if ((.not. lsw_read_precom) .or.(succeded_precom_check .EQ. 0)) THEN !! Added by Michael Draxler (13.09.2017)
            call compute_source(asource, weightlag, weightden, weightparflow, &
                 weightenerg, Amm)
 
@@ -369,7 +399,7 @@ module collop
            
 
 
-           if (lsw_write_precom) then        !! Added by Michael Draxler (25.08.2017)
+           if (lsw_write_precom) then            !! Added by Michael Draxler (13.09.2017) 
              if (mpro%isMaster()) then
                write(*,*) "Write Precom_collop"!!
                call write_precom_collop()      !!
@@ -378,12 +408,8 @@ module collop
              call mpro%deinit()
              stop
            end if!!
+         end if                                 !! Added by Michael Draxler (13.09.2017)
 
-         else
-         
-           write(*,*) "Read Precom_collop"
-           call read_precom_collop() 
-         end if                              !!Added by Michael Draxler (25.08.2017)!! 
          !**********************************************************
          ! Sum up matrices
          !**********************************************************
@@ -528,7 +554,7 @@ module collop
       
     end subroutine collop_deconstruct
     
-    subroutine read_precom_collop()
+    subroutine read_precom_collop()   !! Added by Michael Draxler (25.08.2017)
       integer(HID_T)   :: h5id_read_collop, h5id_meta
       integer          :: m, mp, l, xi, n_x
       integer          :: f = 4238
@@ -566,13 +592,101 @@ module collop
       call h5_get(h5id_read_collop, 'M_transform_', M_transform)
       call h5_get(h5id_read_collop, 'M_transform_inv', M_transform_inv)
       call h5_get(h5id_read_collop, 'C_m', C_m)
-      call h5_get(h5id_read_collop, 'meta/gamma_ab', gamma_ab)
+      !call h5_get(h5id_read_collop, 'meta/gamma_ab', gamma_ab)
 
       call h5_close(h5id_read_collop)
       
     end subroutine read_precom_collop        
 
-    subroutine write_precom_collop()
+    subroutine read_precom_meta_collop(succeded_precom_check_tmp) !! Added by Michael Draxler (13.09.2017)
+      !Routine should check if existing precom_collop.h5 matches required Parameters
+      !check Version of precom_collop.h5 file
+      !USE rkstep_mod only lag,leg
+      integer, Intent(OUT) :: succeded_precom_check_tmp
+      integer(HID_T)   ::  h5id_meta
+      integer                     :: collop_base_prj_precom  ! 0...Laguerre (Default), 1...Polynomial
+      integer                     :: collop_base_exp_precom
+      integer                     :: lag_precom, leg_precom
+      real(kind=dp)               :: scalprod_alpha_precom
+      real(kind=dp)               :: scalprod_beta_precom
+      DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: m_spec_precom ! species mass [g]
+      DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: T_spec_precom ! species temperature [erg]
+      INTEGER          :: num_spec_precom
+      LOGICAL          :: lsw_multispecies_precom
+
+
+      print *,"Check Precom_collop"
+      call h5_open('precom_collop.h5', h5id_meta)
+
+      call h5_get(h5id_meta, 'meta/lag', lag_precom)
+      call h5_get(h5id_meta, 'meta/leg', leg_precom)
+      call h5_get(h5id_meta, 'meta/scalprod_alpha', scalprod_alpha_precom)
+      call h5_get(h5id_meta, 'meta/scalprod_beta',  scalprod_beta_precom)
+      call h5_get(h5id_meta, 'meta/num_spec', num_spec_precom)
+      call h5_get(h5id_meta, 'meta/lsw_multispecies',lsw_multispecies_precom)
+      if (lsw_multispecies .neqv. lsw_multispecies_precom) then
+        write (*,*) "Precomputed lsw_multispecies is different to used lsw_multispecies"
+        succeded_precom_check_tmp= 0
+        RETURN
+
+      end if       
+      if (num_spec .ne. num_spec_precom) then
+        write (*,*) "Precomputed num_spec(",num_spec_precom, ") is different from used num_spec(",num_spec,")"
+        succeded_precom_check_tmp= 0
+        RETURN
+      end if
+      IF(ALLOCATED(T_spec_precom)) DEALLOCATE(T_spec_precom)
+      ALLOCATE(T_spec_precom(0:num_spec-1))
+      IF(ALLOCATED(m_spec_precom)) DEALLOCATE(m_spec_precom)
+      ALLOCATE(m_spec_precom(0:num_spec-1))
+      call h5_get(h5id_meta, 'meta/m_spec', m_spec_precom)
+      call h5_get(h5id_meta, 'meta/T_spec', T_spec_precom)
+      call h5_get(h5id_meta, 'meta/collop_base_prj', collop_base_prj_precom)
+      call h5_get(h5id_meta, 'meta/collop_base_exp', collop_base_exp_precom)
+
+      call h5_close(h5id_meta)
+
+      if (lag .ne. lag_precom) then
+        write (*,*) "Precomputed lag(",lag_precom, ") is different from used lag(",lag,")"
+        succeded_precom_check_tmp= 0
+        RETURN
+      end if
+      
+      if (leg .ne. leg_precom) then
+        write (*,*) "Precomputed leg(",leg_precom, ") is different from used leg(",leg,")"
+        succeded_precom_check_tmp= 0
+        RETURN
+      end if
+      
+      if (collop_base_prj .ne. collop_base_prj_precom) then
+        !write (*,*) "Precomputed collop_base_prj(", collop_base_prj_precom, ") is different from used collop_base_prj(" ,collop_base_prj, ")"
+        write (*,*) "Precomputed collop_base_prj"
+        succeded_precom_check_tmp= 0
+        RETURN
+      end if
+      
+      if (collop_base_exp .ne. collop_base_exp_precom) then
+        !write (*,*) "Precomputed collop_base_exp(",collop_base_exp_precom, ") is different from used collop_base_exp(",collop_base_exp,")"
+        write (*,*) "Precomputed collop_base_exp"
+        succeded_precom_check_tmp= 0
+        RETURN
+      end if
+      
+
+      write (*,*) "Precom lag = ", lag_precom
+      write (*,*) "Precom leg = ", leg_precom
+      write (*,*) 'Precom scalprod_alpha_precom = ', scalprod_alpha_precom
+      write (*,*) 'Precom scalprod_beta = ',  scalprod_beta_precom
+      write (*,*) 'Precom m_spec = ', m_spec_precom
+      write (*,*) 'Precom T_spec = ', T_spec_precom
+      write (*,*) 'Precom collop_base_prj = ', collop_base_prj_precom
+      write (*,*) 'Precom collop_base_exp = ', collop_base_exp_precom
+      succeded_precom_check_tmp = 1
+
+    end subroutine read_precom_meta_collop
+    
+    
+    subroutine write_precom_collop() !! Added by Michael Draxler (25.08.2017)
       integer(HID_T)   :: h5id_collop, h5id_meta
       integer          :: m, mp, l, xi, n_x
       integer          :: f = 4238
@@ -585,15 +699,13 @@ module collop
 
       call h5_add(h5id_meta, 'lag', lag)
       call h5_add(h5id_meta, 'leg', leg)
+      call h5_add(h5id_meta, 'num_spec',num_spec)
       call h5_add(h5id_meta, 'scalprod_alpha', scalprod_alpha)
       call h5_add(h5id_meta, 'scalprod_beta',  scalprod_beta)
-      !call h5_add(h5id_meta, 'm_a', m_a)
-      !call h5_add(h5id_meta, 'm_b', m_b)
-      !call h5_add(h5id_meta, 'T_a', T_a)
-      !call h5_add(h5id_meta, 'T_b', T_b)
+      call h5_add(h5id_meta, 'm_spec', m_spec)
+      call h5_add(h5id_meta, 'T_spec', T_spec)
+      call h5_add(h5id_meta, 'lsw_multispecies', lsw_multispecies)
       call h5_add(h5id_meta, 'gamma_ab', gamma_ab)
-      !call h5_add(h5id_meta, 'tag_a', tag_a)
-      !call h5_add(h5id_meta, 'tag_b', tag_b)
       call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj)
       call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp)
 
