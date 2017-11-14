@@ -1069,7 +1069,7 @@ CONTAINS
        CALL h5_add(h5_config_group, 'mag_dphi_inf_min', mag_dphi_inf_min)
        CALL h5_add(h5_config_group, 'mag_inflection_mult', mag_inflection_mult)
        CALL h5_add(h5_config_group, 'solver_talk', solver_talk)
-       CALL h5_add(h5_config_group, ',switch_off_asymp', switch_off_asymp) 
+       CALL h5_add(h5_config_group, 'switch_off_asymp', switch_off_asymp) 
        CALL h5_add(h5_config_group, 'asymp_margin_zero', asymp_margin_zero)
        CALL h5_add(h5_config_group, 'asymp_margin_npass', asymp_margin_npass)
        CALL h5_add(h5_config_group, 'asymp_pardeleta', asymp_pardeleta)
