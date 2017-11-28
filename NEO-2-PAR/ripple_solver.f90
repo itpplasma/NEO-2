@@ -849,8 +849,14 @@ PRINT *,'right boundary layer ignored'
   ALLOCATE(amat(ndim,ndim),bvec_lapack(ndim,ndim),ipivot(ndim))
 !
   npart_loc=0
-  subsqmin=1.d5*EPSILON(1.d0)
-!
+
+  !**********************************************************
+  ! Change to EPSILON - 10/2017
+  !********************************************************** 
+  ! subsqmin=1.d5*EPSILON(1.d0)
+  subsqmin=1.d0*EPSILON(1.d0)
+  !**********************************************************
+  !
   allocate(delt_pos(ibeg:iend),delt_neg(ibeg:iend))
   allocate(fact_pos_b(ibeg:iend),fact_neg_b(ibeg:iend))
   allocate(fact_pos_e(ibeg:iend),fact_neg_e(ibeg:iend))
