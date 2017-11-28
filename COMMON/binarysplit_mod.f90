@@ -1,7 +1,9 @@
 MODULE binarysplit_int
 
+  USE hdf5_tools
+  USE hdf5_tools_f2003
   IMPLICIT NONE
-
+  
   PRIVATE dp
   INTEGER, PARAMETER    :: dp = KIND(1.0d0)
 
@@ -327,7 +329,8 @@ CONTAINS
        IF (bsfunc_message .GT. 0) PRINT *, 'Message: Maximum split level reached!'
     END IF
     IF (.NOT. l3) THEN
-       IF (bsfunc_message .GT. 0) PRINT *, 'Message: Maximum index reached!'
+       PRINT *, 'Message: Maximum index reached!'
+       STOP
     END IF
   END FUNCTION eval_bslimit_3
 
@@ -399,7 +402,7 @@ CONTAINS
 !!$       END IF
     ELSEIF (bsfunc_modelfunc .EQ. 2) THEN
        DO k = 1, SIZE(x0,1)
-          g = g + sqrt( s(k)**2/(2.0_dp*(x-x0(k))**2+s(k)**2) )
+          g = g + SQRT( s(k)**2/(2.0_dp*(x-x0(k))**2+s(k)**2) )
        END DO
        !g = g/size(x0,1)
 !       IF (bsfunc_evaldegree .NE. 2) THEN
@@ -436,9 +439,9 @@ CONTAINS
        g = 1.0_dp
        DO k = 1, SIZE(x0,1)
           !g = g * (1.0_dp + EXP(- ((x-x0(k)) / s(k))**2 / 2) / s(k))
-          g = g * sign(x-x0(k),1.0d0) * (s(k) * abs(x-x0(k)))**(8.0d0/8.0d0)
+          g = g * SIGN(x-x0(k),1.0d0) * (s(k) * ABS(x-x0(k)))**(8.0d0/8.0d0)
        END DO
-       g = (s(k) * abs(x0(k)))**(8.0d0/8.0d0) - g
+       g = (s(k) * ABS(x0(k)))**(8.0d0/8.0d0) - g
     ELSE
        PRINT *,'Error from binarysplit: bsfunc_modelfunc wrong: ', &
             bsfunc_modelfunc
@@ -561,7 +564,7 @@ CONTAINS
           ALLOCATE( coeff(0:nder,npoi) )
           DO k = 1, ub
 
-             call plag_stencil(ub,npoi,k,k1,k2,i1,i2)
+             CALL plag_stencil(ub,npoi,k,k1,k2,i1,i2)
              !print *, ub,npoi,k,k1,k2,i1,i2
              ALLOCATE(xlag(i1:i2))
              ALLOCATE(ylag(i1:i2))
@@ -571,8 +574,8 @@ CONTAINS
              xloc = (xlag(0) + xlag(1)) / 2.0_dp
              CALL plagrange_coeff(npoi,nder,xloc,xlag,coeff)
         
-             dloc = abs(xloc-xlag(0))
-             d1   = abs(xlag(1)-xlag(0))
+             dloc = ABS(xloc-xlag(0))
+             d1   = ABS(xlag(1)-xlag(0))
              
              dlag = SUM(coeff(3,:)*ylag) / 6.0_dp
              ! ori
@@ -587,9 +590,9 @@ CONTAINS
              ! err(k) = max( ABS(clag) * d1**2 , ABS(dlag) * d1**3 )
 
              ! relative error for second model_func
-             if (bsfunc_modelfunc .eq. 2) then
-                err(k) = err(k) /  ( abs( SUM(coeff(0,:)*ylag) ) )
-             end if
+             IF (bsfunc_modelfunc .EQ. 2) THEN
+                err(k) = err(k) /  ( ABS( SUM(coeff(0,:)*ylag) ) )
+             END IF
              !print *, 'k,cla,dlag,err ',k,ABS(clag),ABS(dlag),d1,err(k)
              !print *, 'xlag ',xlag
              !print *, 'ylag ',ylag
@@ -782,6 +785,7 @@ CONTAINS
     CHARACTER(len=BIT_SIZE(i))   :: c
     CHARACTER(len=20)            :: form
     is = BIT_SIZE(i)
+
     WRITE(form,'(a,i2,a)') '(',is,'i1)'
     WRITE(c,TRIM(form)) (IBITS(i,k,1), k=is-1,0,-1)
     CALL disp(c)
@@ -795,6 +799,7 @@ CONTAINS
     CHARACTER(len=SIZE(i,1)*BIT_SIZE(i(1)))    :: c
     CHARACTER(len=20)                          :: form
     is = BIT_SIZE(i(1))
+    
     s1 = SIZE(i,1)
     WRITE(form,'(a,i2,a)') '(',s1*is,'i1)'
     WRITE(c,TRIM(form)) ( (IBITS(i(ks),k,1),k=is-1,0,-1),ks=s1,1,-1 )
@@ -928,10 +933,10 @@ CONTAINS
     RETURN
   END SUBROUTINE plag_coeff
 
-  subroutine plag_stencil(ub,npoi,k,k1,k2,i1,i2)
-    integer, intent(in)  :: ub,npoi,k
-    integer, intent(out) :: k1,k2,i1,i2
-    integer :: kd
+  SUBROUTINE plag_stencil(ub,npoi,k,k1,k2,i1,i2)
+    INTEGER, INTENT(in)  :: ub,npoi,k
+    INTEGER, INTENT(out) :: k1,k2,i1,i2
+    INTEGER :: kd
     
     k1 = k - npoi/2
     i1 = 1 - npoi/2
@@ -947,64 +952,64 @@ CONTAINS
     k2 = k1 + npoi - 1
     i2 = i1 + npoi - 1
     
-    return
-  end subroutine plag_stencil
+    RETURN
+  END SUBROUTINE plag_stencil
 
-  subroutine plag_test
-    integer, parameter :: unitno = 9999
-    integer :: i
-    REAL(kind=dp), parameter :: pi = 3.141592653589793d0
+  SUBROUTINE plag_test
+    INTEGER, PARAMETER :: unitno = 9999
+    INTEGER :: i
+    REAL(kind=dp), PARAMETER :: pi = 3.141592653589793d0
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x_ori,y0_ori,y1_ori,y2_ori,y3_ori
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x,y0,y1,y2,y3
     REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: coeff
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE  :: xlag, ylag 
     REAL(kind=dp) :: xloc
-    integer :: lb,ub
-    integer :: k,k1,k2,i1,i2
+    INTEGER :: lb,ub
+    INTEGER :: k,k1,k2,i1,i2
     INTEGER, PARAMETER :: npoi = 6 
     INTEGER, PARAMETER :: nder = 3
-    integer, parameter :: ndata = 25
+    INTEGER, PARAMETER :: ndata = 25
  
     ! basic data
     !CALL linspace(-pi,pi,ndata,x_ori)
     
-    allocate(x_ori(0:ndata))
+    ALLOCATE(x_ori(0:ndata))
     x_ori(0) = -pi
-    do k = 1,ndata
-       x_ori(k) = x_ori(0) + 2*pi*(dble(k)/dble(ndata))**1 
-    end do
+    DO k = 1,ndata
+       x_ori(k) = x_ori(0) + 2*pi*(DBLE(k)/DBLE(ndata))**1 
+    END DO
 
-    lb = lbound(x_ori,1)
-    ub = ubound(x_ori,1)
-    allocate(y0_ori(lb:ub))
-    allocate(y1_ori(lb:ub))
-    allocate(y2_ori(lb:ub))
-    allocate(y3_ori(lb:ub))
-    y0_ori =  sin(x_ori)
-    y1_ori =  cos(x_ori)
-    y2_ori = -sin(x_ori)
-    y3_ori = -cos(x_ori)
+    lb = LBOUND(x_ori,1)
+    ub = UBOUND(x_ori,1)
+    ALLOCATE(y0_ori(lb:ub))
+    ALLOCATE(y1_ori(lb:ub))
+    ALLOCATE(y2_ori(lb:ub))
+    ALLOCATE(y3_ori(lb:ub))
+    y0_ori =  SIN(x_ori)
+    y1_ori =  COS(x_ori)
+    y2_ori = -SIN(x_ori)
+    y3_ori = -COS(x_ori)
     ! plot basic data
     OPEN(file='plag_ori.dat',unit=unitno)
-    do i = lb,ub
-       write(unitno,*) x_ori(i),y0_ori(i),y1_ori(i),y2_ori(i),y3_ori(i)
-    end do
-    close(unitno)
+    DO i = lb,ub
+       WRITE(unitno,*) x_ori(i),y0_ori(i),y1_ori(i),y2_ori(i),y3_ori(i)
+    END DO
+    CLOSE(unitno)
 
     ! lagrange coefficent
     ALLOCATE( coeff(0:nder,npoi) )
         
 
     ! interpolation data
-    allocate(x(1:ub))
-    allocate(y0(1:ub))
-    allocate(y1(1:ub))
-    allocate(y2(1:ub))
-    allocate(y3(1:ub))
+    ALLOCATE(x(1:ub))
+    ALLOCATE(y0(1:ub))
+    ALLOCATE(y1(1:ub))
+    ALLOCATE(y2(1:ub))
+    ALLOCATE(y3(1:ub))
 
-    do k = 1,ub
+    DO k = 1,ub
 
-       call plag_stencil(ub,npoi,k,k1,k2,i1,i2)       
+       CALL plag_stencil(ub,npoi,k,k1,k2,i1,i2)       
        ALLOCATE(xlag(i1:i2))
        ALLOCATE(ylag(i1:i2))
        xlag = x_ori(k1:k2)
@@ -1018,23 +1023,23 @@ CONTAINS
        y1(k) = SUM(coeff(1,:)*ylag)
        y2(k) = SUM(coeff(2,:)*ylag)
        y3(k) = SUM(coeff(3,:)*ylag)
-       deallocate(xlag,ylag)
-    end do
+       DEALLOCATE(xlag,ylag)
+    END DO
 
     ! plot basic data
     OPEN(file='plag_int.dat',unit=unitno)
-    do i = 1,ub
-       write(unitno,*) x(i),y0(i),y1(i),y2(i),y3(i)
-    end do
-    close(unitno)
+    DO i = 1,ub
+       WRITE(unitno,*) x(i),y0(i),y1(i),y2(i),y3(i)
+    END DO
+    CLOSE(unitno)
 
-    deallocate(x_ori)
-    deallocate(y0_ori,y1_ori,y2_ori,y3_ori)
-    deallocate(x)
-    deallocate(y0,y1,y2,y3)
-    deallocate(coeff)
-    return
-  end subroutine plag_test
+    DEALLOCATE(x_ori)
+    DEALLOCATE(y0_ori,y1_ori,y2_ori,y3_ori)
+    DEALLOCATE(x)
+    DEALLOCATE(y0,y1,y2,y3)
+    DEALLOCATE(coeff)
+    RETURN
+  END SUBROUTINE plag_test
 
 
 
@@ -1045,6 +1050,8 @@ MODULE binarysplit_mod
   ! No changes should be necessary here
   USE binarysplit_int
 
+  USE sparsevec_mod
+  
   IMPLICIT NONE
 
   PRIVATE dp
@@ -1068,7 +1075,8 @@ MODULE binarysplit_mod
   TYPE binarysplit
      INTEGER                                        :: n_ori
      INTEGER                                        :: n_split
-     INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE   :: x_ori_bin
+     !INTEGER(kind=longint), dimension(:,:), allocatable   :: x_ori_bin
+     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE     :: x_ori_bin_sparse
      INTEGER,         DIMENSION(:),   ALLOCATABLE   :: x_ori_poi
      INTEGER,         DIMENSION(:),   ALLOCATABLE   :: x_poi
      INTEGER,         DIMENSION(:),   ALLOCATABLE   :: x_split
@@ -1209,13 +1217,23 @@ CONTAINS
     xbs%n_ori   = n_ori
     xbs%n_split = 0
     
-    IF (ALLOCATED(xbs%x_ori_bin)) DEALLOCATE(xbs%x_ori_bin)
-    ALLOCATE(xbs%x_ori_bin(0:0,0:n_ori))
-    xbs%x_ori_bin = 0
+    !IF (ALLOCATED(xbs%x_ori_bin)) DEALLOCATE(xbs%x_ori_bin)
+    !ALLOCATE(xbs%x_ori_bin(0:0,0:n_ori))
+    !xbs%x_ori_bin = 0
+    !DO k = 0, n_ori
+    !   xbs%x_ori_bin(0,k) = ibset(xbs%x_ori_bin(0,k),0)
+    !END DO
+
+    !**********************************************************
+    ! Sparse x_ori_bin
+    !**********************************************************
+    IF (ALLOCATED(xbs%x_ori_bin_sparse)) DEALLOCATE(xbs%x_ori_bin_sparse)
+    ALLOCATE(xbs%x_ori_bin_sparse(0:n_ori))
     DO k = 0, n_ori
-       xbs%x_ori_bin(0,k) = IBSET(xbs%x_ori_bin(0,k),0)
+       CALL xbs%x_ori_bin_sparse(k)%modify(0, IBSET(xbs%x_ori_bin_sparse(k)%get(0),0))
+       xbs%x_ori_bin_sparse(k)%len = 0
     END DO
-    
+        
     IF (ALLOCATED(xbs%x_ori_poi)) DEALLOCATE(xbs%x_ori_poi)
     ALLOCATE(xbs%x_ori_poi(0:n_ori))
     xbs%x_ori_poi(0:n_ori) = (/ (k, k=0,n_ori) /)
@@ -1243,7 +1261,7 @@ CONTAINS
     xbs%y = 0.0_dp
   
     IF (ALLOCATED(xbs%int)) DEALLOCATE(xbs%int)
-    ALLOCATE (xbs%int(0:n_ori+n_split_max))
+    ALLOCATE (xbs%INT(0:n_ori+n_split_max))
     xbs%int = 0.0_dp
     
     IF (ALLOCATED(xbs%err)) DEALLOCATE(xbs%err)
@@ -1257,26 +1275,33 @@ CONTAINS
     TYPE(binarysplit), INTENT(inout)  :: xbs1
     TYPE(binarysplit), INTENT(in)     :: xbs2
 
-    INTEGER                           :: n_ori,n_split,n_tot,s1
-
+    INTEGER                           :: n_ori,n_split,n_tot,s1, k
 
     ! This is not the full check but it works
-    IF (ALLOCATED(xbs2%x) .AND. ALLOCATED(xbs2%x_ori_bin)) THEN
+    IF (ALLOCATED(xbs2%x) .AND. ALLOCATED(xbs2%x_ori_bin_sparse)) THEN
        n_ori = xbs2%n_ori
        n_split = xbs2%n_split
        n_tot = UBOUND(xbs2%x,1)
-       s1 = UBOUND(xbs2%x_ori_bin,1)
+       !s1 = UBOUND(xbs2%x_ori_bin,1)
+       s1 = xbs2%x_ori_bin_sparse(0)%len
        xbs1%n_ori = n_ori
        xbs1%n_split = n_split
        
-       IF (ALLOCATED(xbs1%x_ori_bin)) DEALLOCATE(xbs1%x_ori_bin)
-       ALLOCATE(xbs1%x_ori_bin(0:s1,0:n_ori))
-       xbs1%x_ori_bin = xbs2%x_ori_bin 
+       !IF (ALLOCATED(xbs1%x_ori_bin)) DEALLOCATE(xbs1%x_ori_bin)
+       !ALLOCATE(xbs1%x_ori_bin(0:s1,0:n_ori))
+       !xbs1%x_ori_bin = xbs2%x_ori_bin 
+
+       IF (ALLOCATED(xbs1%x_ori_bin_sparse)) DEALLOCATE(xbs1%x_ori_bin_sparse)
+       ALLOCATE(xbs1%x_ori_bin_sparse(0:n_ori))
+       DO k = 0, n_ori
+          CALL xbs1%x_ori_bin_sparse(k)%ASSIGN(xbs2%x_ori_bin_sparse(k))
+       END DO
+       !xbs1%x_ori_bin_sparse = xbs2%x_ori_bin_sparse
        
        IF (ALLOCATED(xbs1%x_ori_poi)) DEALLOCATE(xbs1%x_ori_poi)
        ALLOCATE(xbs1%x_ori_poi(0:n_ori))
        xbs1%x_ori_poi = xbs2%x_ori_poi 
-       
+
        IF (ALLOCATED(xbs1%x_poi)) DEALLOCATE(xbs1%x_poi)
        ALLOCATE (xbs1%x_poi(0:n_tot))
        xbs1%x_poi = xbs2%x_poi
@@ -1298,14 +1323,14 @@ CONTAINS
        xbs1%y =  xbs2%y
 
        IF (ALLOCATED(xbs1%int)) DEALLOCATE(xbs1%int)
-       ALLOCATE (xbs1%int(0:n_tot))
+       ALLOCATE (xbs1%INT(0:n_tot))
        xbs1%int =  xbs2%int
 
        IF (ALLOCATED(xbs1%err)) DEALLOCATE(xbs1%err)
        ALLOCATE (xbs1%err(0:n_tot))
        xbs1%err =  xbs2%err    
     END IF
-
+    
   END SUBROUTINE assign_binsplit
 
 
@@ -1317,7 +1342,7 @@ CONTAINS
     xbs%n_ori   = 0
     xbs%n_split = 0
     
-    IF (ALLOCATED(xbs%x_ori_bin)) DEALLOCATE(xbs%x_ori_bin)
+    !IF (ALLOCATED(xbs%x_ori_bin)) DEALLOCATE(xbs%x_ori_bin)
     IF (ALLOCATED(xbs%x_ori_poi)) DEALLOCATE(xbs%x_ori_poi)
     IF (ALLOCATED(xbs%x_poi)) DEALLOCATE(xbs%x_poi)
     IF (ALLOCATED(xbs%x_split)) DEALLOCATE(xbs%x_split)
@@ -1325,7 +1350,12 @@ CONTAINS
     IF (ALLOCATED(xbs%x)) DEALLOCATE(xbs%x)
     IF (ALLOCATED(xbs%y)) DEALLOCATE(xbs%y)    
     IF (ALLOCATED(xbs%int)) DEALLOCATE(xbs%int)    
-    IF (ALLOCATED(xbs%err)) DEALLOCATE(xbs%err)    
+    IF (ALLOCATED(xbs%err)) DEALLOCATE(xbs%err)
+
+    !**********************************************************
+    ! Sparse
+    !**********************************************************
+    IF (ALLOCATED(xbs%x_ori_bin_sparse)) DEALLOCATE(xbs%x_ori_bin_sparse)
   END SUBROUTINE deconstruct_binsplit
 
   ! reallocate
@@ -1373,10 +1403,10 @@ CONTAINS
     ALLOCATE (xbs%y(0:n_ori+n_split_max))
     xbs%y(0:n_ori+n_split) = dvec(0:n_ori+n_split)
      
-    dvec(0:n_ori+n_split) = xbs%int(0:n_ori+n_split)
+    dvec(0:n_ori+n_split) = xbs%INT(0:n_ori+n_split)
     DEALLOCATE(xbs%int)
-    ALLOCATE (xbs%int(0:n_ori+n_split_max))
-    xbs%int(0:n_ori+n_split) = dvec(0:n_ori+n_split)
+    ALLOCATE (xbs%INT(0:n_ori+n_split_max))
+    xbs%INT(0:n_ori+n_split) = dvec(0:n_ori+n_split)
      
     dvec(0:n_ori+n_split) = xbs%err(0:n_ori+n_split)
     DEALLOCATE(xbs%err)
@@ -1387,7 +1417,7 @@ CONTAINS
   END SUBROUTINE reallocate_binsplit
     
   ! reposition
-  SUBROUTINE reposition_binsplit(xbs)
+  SUBROUTINE reposition_binsplit(xbs)   
     TYPE(binarysplit),               INTENT(inout) :: xbs
     
     INTEGER                                        :: n_ori,maxdim,s1,is
@@ -1395,65 +1425,172 @@ CONTAINS
     INTEGER                                        :: pos_n,k_n,s1_n
     INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE   :: v
 
+    INTEGER(HID_T) :: h5id
+    CHARACTER(len=1024) :: h5_ds_name
+
+    INTEGER(kind=longint) :: zero
+    INTEGER :: sparselen
+    TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: v_sparse
+
+!!$    type(sparsevec) :: testvec
+!!$    zero = 0
+!!$    call testvec%modify(0,zero)
+!!$    
+!!$    zero = 10
+!!$    call testvec%modify(1,zero)
+!!$    
+!!$    zero = 50
+!!$    call testvec%modify(5,zero)
+!!$    
+!!$    zero = 20
+!!$    call testvec%modify(2,zero)
+!!$    
+!!$    zero = 11
+!!$    call testvec%modify(1,zero)
+!!$    
+!!$    zero = 55
+!!$    call testvec%modify(5,zero)
+!!$    
+!!$    zero = -1
+!!$    call testvec%modify(0,zero)
+!!$    
+!!$    write (*,*) "*** Testvec ***"
+!!$    write (*,*) testvec%idxvec
+!!$    write (*,*) testvec%values
+!!$    write (*,*) "*** *** ***"
+!!$    !stop
+
+    
     n_ori  = xbs%n_ori
     maxdim = n_ori + xbs%n_split
     xbs%x_pos(0:maxdim) = 2*xbs%x_pos(0:maxdim)
     
-    s1 = UBOUND(xbs%x_ori_bin,1)
+    !s1 = UBOUND(xbs%x_ori_bin,1)
+    s1 = xbs%x_ori_bin_sparse(0)%len
     s1_n = 2**(NINT(LOG(DBLE(s1+1))/LOG(2.0_dp))+1)-1
-    
-    ALLOCATE(v(0:s1,0:n_ori))
-    v(0:s1,0:n_ori) = xbs%x_ori_bin(0:s1,0:n_ori)
-    DEALLOCATE(xbs%x_ori_bin)
-    ALLOCATE(xbs%x_ori_bin(0:s1_n,0:n_ori))
-    xbs%x_ori_bin = 0
-    is = BIT_SIZE(v(0,0))
+
+    !ALLOCATE(v(0:s1,0:n_ori))
+    !v(0:s1,0:n_ori) = xbs%x_ori_bin(0:s1,0:n_ori)
+    !DEALLOCATE(xbs%x_ori_bin)
+    !ALLOCATE(xbs%x_ori_bin(0:s1_n,0:n_ori))
+    !xbs%x_ori_bin = 0
+    !is = BIT_size(v(0,0))
+    is = bit_SIZE(xbs%x_ori_bin_sparse(0)%get(0))
+
+    !**********************************************************
+    ! Original version
+    !**********************************************************
+    !do n = 0, n_ori
+    !   do k = s1,0,-1
+    !      do i = is-1,0,-1
+    !         if (btest(v(k,n),i)) then
+    !            pos_n = 2*(k*is+i)
+    !            k_n   = floor(dble(pos_n)/dble(is))
+    !            pos_n = mod(pos_n,is)
+    !            xbs%x_ori_bin(k_n,n) = ibset(xbs%x_ori_bin(k_n,n),pos_n)
+    !         end if
+    !      end do
+    !   end do
+    !end do
+    !deallocate(v)
+
+    !**********************************************************
+    ! Sparse version
+    !**********************************************************
+    ALLOCATE(v_sparse(0:n_ori))
+    v_sparse%len = s1
+    xbs%x_ori_bin_sparse%len = s1_n
     DO n = 0, n_ori
-       DO k = s1,0,-1
+       CALL v_sparse(n)%ASSIGN(xbs%x_ori_bin_sparse(n))
+       CALL xbs%x_ori_bin_sparse(n)%clear()
+       
+       !do k = s1,0,-1
+       DO k = 1, v_sparse(n)%len_sparse
           DO i = is-1,0,-1
-             IF (BTEST(v(k,n),i)) THEN
-                pos_n = 2*(k*is+i)
+             !if (btest(v_sparse(n)%get(k),i)) then
+             IF (BTEST(v_sparse(n)%get(v_sparse(n)%idxvec(k)),i)) THEN
+                !pos_n = 2*(k*is+i)
+                pos_n = 2*(v_sparse(n)%idxvec(k)*is+i)
                 k_n   = FLOOR(DBLE(pos_n)/DBLE(is))
                 pos_n = MOD(pos_n,is)
-                xbs%x_ori_bin(k_n,n) = IBSET(xbs%x_ori_bin(k_n,n),pos_n)
+                
+                !call xbs%x_ori_bin_sparse(n)%modify(k_n, ibset(xbs%x_ori_bin_sparse(n)%get(k_n), pos_n))
+                CALL xbs%x_ori_bin_sparse(n)%IBSET(k_n, pos_n)
              END IF
           END DO
        END DO
     END DO
-    DEALLOCATE(v)
+    DEALLOCATE(v_sparse)
+    
+!!$    if (.false.) then
+!!$       call h5_open_rw('binarysplit_reposition.h5', h5id)
+!!$       write (h5_ds_name, '(A,I0)') "x_ori_bin_", INT(log(s1_n+1d0)/log(2d0))
+!!$       call h5_add(h5id, h5_ds_name, xbs%x_ori_bin, lbound(xbs%x_ori_bin), ubound(xbs%x_ori_bin))
+!!$       do k=0,n_ori
+!!$          write (h5_ds_name, '(A,I0,A,I0)') "x_ori_bin_sparse_idxvec", int(log(s1_n+1d0)/log(2d0)),"_",k
+!!$          call h5_add(h5id, h5_ds_name, xbs%x_ori_bin_sparse(k)%idxvec, lbound(xbs%x_ori_bin_sparse(k)%idxvec),&
+!!$               ubound(xbs%x_ori_bin_sparse(k)%idxvec))
+!!$          write (h5_ds_name, '(A,I0,A,I0)') "x_ori_bin_sparse_values", int(log(s1_n+1d0)/log(2d0)),"_",k
+!!$          call h5_add(h5id, h5_ds_name, xbs%x_ori_bin_sparse(k)%values, lbound(xbs%x_ori_bin_sparse(k)%values),&
+!!$               ubound(xbs%x_ori_bin_sparse(k)%values))
+!!$
+!!$       end do
+!!$       call h5_close(h5id)
+!!$    end if
+    
   END SUBROUTINE reposition_binsplit
 
-  SUBROUTINE reposition_binsplit_bin(bin)
-    INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: bin !0:
+  SUBROUTINE reposition_binsplit_bin(bin_sparse)
+    !INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: bin !0:
+    TYPE(sparsevec), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: bin_sparse
     
     INTEGER                                        :: n_ori,s1,is
     INTEGER                                        :: k,n,i
     INTEGER                                        :: pos_n,k_n,s1_n
-    INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE   :: v
-
-    n_ori  = UBOUND(bin,2)
-    s1 = UBOUND(bin,1)
+    !INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE   :: v
+    TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: v_sparse
+    
+    !n_ori  = UBOUND(bin,2)
+    !s1 = UBOUND(bin,1)
+    n_ori = UBOUND(bin_sparse, 1)
+    s1 = bin_sparse(0)%len
     s1_n = 2**(NINT(LOG(DBLE(s1+1))/LOG(2.0_dp))+1)-1
     
-    ALLOCATE(v(0:s1,0:n_ori))
-    v(0:s1,0:n_ori) = bin(0:s1,0:n_ori)
-    DEALLOCATE(bin)
-    ALLOCATE(bin(0:s1_n,0:n_ori))
-    bin = 0
-    is = BIT_SIZE(v(0,0))
+    !ALLOCATE(v(0:s1,0:n_ori))
+    !v(0:s1,0:n_ori) = bin(0:s1,0:n_ori)
+    !DEALLOCATE(bin)
+    !ALLOCATE(bin(0:s1_n,0:n_ori))
+    !bin = 0
+    !is = BIT_SIZE(v(0,0))
+
+    ALLOCATE(v_sparse(0:n_ori))
+    v_sparse%len = s1
+    is = bit_SIZE(v_sparse(0)%get(0))
+
+    bin_sparse%len = s1_n
     DO n = 0, n_ori
-       DO k = s1,0,-1
+       CALL v_sparse(n)%ASSIGN(bin_sparse(n))
+       CALL bin_sparse(n)%clear()
+       !do k = s1,0,-1
+       DO k = 1, bin_sparse(n)%len_sparse
           DO i = is-1,0,-1
-             IF (BTEST(v(k,n),i)) THEN
-                pos_n = 2*(k*is+i)
+             !IF (BTEST(v(k,n),i)) THEN
+             !if (btest(v_sparse(n)%get(k),i)) then
+             IF (BTEST(v_sparse(n)%get(v_sparse(n)%idxvec(k)),i)) THEN
+                !pos_n = 2*(k*is+i)
+                pos_n = 2*(v_sparse(n)%idxvec(k)*is+i)
                 k_n   = FLOOR(DBLE(pos_n)/DBLE(is))
                 pos_n = MOD(pos_n,is)
-                bin(k_n,n) = IBSET(bin(k_n,n),pos_n)
+                !bin(k_n,n) = ibset(bin(k_n,n),pos_n)
+                !call bin_sparse(n)%modify(k_n, ibset(bin_sparse(n)%get(k_n), pos_n))
+                CALL bin_sparse(n)%IBSET(k_n, pos_n)
              END IF
           END DO
        END DO
     END DO
-    DEALLOCATE(v)
+    !deallocate(v)
+    DEALLOCATE(v_sparse)
+
   END SUBROUTINE reposition_binsplit_bin
 
   ! extract
@@ -1470,7 +1607,7 @@ CONTAINS
     ELSEIF (c .EQ. 'y') THEN
        v(0:xbs%n_ori+xbs%n_split) = xbs%y(0:xbs%n_ori+xbs%n_split)
     ELSEIF (c .EQ. 'int') THEN
-       v(0:xbs%n_ori+xbs%n_split) = xbs%int(0:xbs%n_ori+xbs%n_split)
+       v(0:xbs%n_ori+xbs%n_split) = xbs%INT(0:xbs%n_ori+xbs%n_split)
     ELSEIF (c .EQ. 'err') THEN
        v(0:xbs%n_ori+xbs%n_split) = xbs%err(0:xbs%n_ori+xbs%n_split)
     ELSE
@@ -1502,18 +1639,28 @@ CONTAINS
     END IF
   END SUBROUTINE get_binsplit_i1
   
-  SUBROUTINE get_binsplit_i18(xbs,v,c)
+  SUBROUTINE get_binsplit_i18(xbs,v_sparse,c)
     TYPE(binarysplit),                            INTENT(in)    :: xbs
-    INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: v
+    !INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: v
+    TYPE(sparsevec), DIMENSION(:), ALLOCATABLE, INTENT(inout)   :: v_sparse
     CHARACTER(len=*),                             INTENT(in)    :: c
 
     INTEGER                                                     :: s1
-
-    s1 = UBOUND(xbs%x_ori_bin,1)
-    IF (ALLOCATED(v)) DEALLOCATE(v)
+    INTEGER :: k
+    
+    !s1 = UBOUND(xbs%x_ori_bin,1)
+    s1 = xbs%x_ori_bin_sparse(0)%len
+    !IF (ALLOCATED(v)) DEALLOCATE(v)
+    IF (ALLOCATED(v_sparse)) DEALLOCATE(v_sparse)
     IF (c .EQ. 'x_ori_bin') THEN
-       ALLOCATE(v(0:s1,0:xbs%n_ori))
-       v(:,0:xbs%n_ori) = xbs%x_ori_bin(:,0:xbs%n_ori)
+       !ALLOCATE(v(0:s1,0:xbs%n_ori))
+       !v(:,0:xbs%n_ori) = xbs%x_ori_bin(:,0:xbs%n_ori)
+
+       ALLOCATE(v_sparse(0:xbs%n_ori))
+       DO k = 0, xbs%n_ori
+          CALL v_sparse(k)%ASSIGN(xbs%x_ori_bin_sparse(k))
+       END DO
+       
     ELSE
        IF (binarysplit_message .GT. 0) PRINT *, c,' can not be extracted'
     END IF
@@ -1528,15 +1675,19 @@ CONTAINS
     INTEGER                                       :: n_ori,n_split,s1
     INTEGER                                       :: nb2,nb,is
     INTEGER                                       :: ival,split,pos,pos_n
-    INTEGER(kind=longint),   DIMENSION(:), ALLOCATABLE  :: bin
+    !INTEGER(kind=longint),   DIMENSION(:), ALLOCATABLE  :: bin
+    TYPE(sparsevec), DIMENSION(:), ALLOCATABLE    :: bin_sparse
     INTEGER                                       :: nb1 
     REAL(kind=dp)                                 :: dval,dist
-    
+
     n_ori       = xbs%n_ori
     n_split     = xbs%n_split
     maxind      = n_ori + n_split
-    s1  = UBOUND(xbs%x_ori_bin,1)
-    is  = BIT_SIZE(xbs%x_ori_bin(0,0))
+    !s1  = UBOUND(xbs%x_ori_bin,1)
+    !is  = BIT_SIZE(xbs%x_ori_bin(0,0))
+    s1   = xbs%x_ori_bin_sparse(0)%len
+    is   = bit_SIZE(xbs%x_ori_bin_sparse(0)%get(0))
+    
     nb1 = NINT(LOG(DBLE(is))/LOG(2.0_dp))
     nb2 = NINT(LOG(DBLE(s1+1))/LOG(2.0_dp)) 
     nb  = nb1 + nb2
@@ -1558,16 +1709,17 @@ CONTAINS
        IF (binarysplit_message .GT. 0) PRINT *, 'Message: reallocate binarysplit'
     END IF
     xbs%n_split = n_split + 1
-
+    
     IF (split .GT. nb) THEN
        CALL reposition_binarysplit(xbs)
-       s1  = UBOUND(xbs%x_ori_bin,1)
+       !s1  = UBOUND(xbs%x_ori_bin,1)
+       s1   = xbs%x_ori_bin_sparse(0)%len
        nb2 = NINT(LOG(DBLE(s1+1))/LOG(2.0_dp)) 
        nb  = nb1 + nb2
        IF (binarysplit_message .GT. 0) &
             PRINT *, 'Message: double x_ori_bin, nb: ', nb
     END IF
-
+    
     ! x_ori_poi
     DO k = xbs%x_poi(splitloc), n_ori
        xbs%x_ori_poi(k) = xbs%x_ori_poi(k) + 1
@@ -1578,22 +1730,34 @@ CONTAINS
     xbs%x_split(splitloc+1:maxind+1) = xbs%x_split(splitloc:maxind)
     xbs%x_split(splitloc:splitloc+1) = split
     ! x_ori_bin, x_pos
-    ALLOCATE(bin(0:s1))
+    !ALLOCATE(bin(0:s1))
     xbs%x_pos(splitloc+1:maxind+1) = xbs%x_pos(splitloc:maxind)
     pos = xbs%x_pos(splitloc)
-    bin(:) = xbs%x_ori_bin(:,xbs%x_poi(splitloc))
+    !bin(:) = xbs%x_ori_bin(:,xbs%x_poi(splitloc))
 
     pos_n = pos+2**(nb-split)
     xbs%x_pos(splitloc) = pos_n
     k_n   = FLOOR(DBLE(pos_n)/DBLE(is))
     pos_n = MOD(pos_n,is)
+       
+    !IF (BTEST(bin(k_n),pos_n)) THEN
+    !   IF (binarysplit_message .GT. 0) PRINT *, 'Warning x_ori_bin already set'
+    !END IF
+    !bin(k_n) = IBSET(bin(k_n),pos_n)
+    !xbs%x_ori_bin(:,xbs%x_poi(splitloc)) = bin(:)
+    !DEALLOCATE(bin)
+    !write (*,*) "split_binsplit: E"
 
-    IF (BTEST(bin(k_n),pos_n)) THEN
+    !**********************************************************
+    ! Sparse version
+    !**********************************************************
+    !call xbs%x_ori_bin_sparse(xbs%x_poi(splitloc))%modify(k_n, &
+    !     ibset(xbs%x_ori_bin_sparse(xbs%x_poi(splitloc))%get(k_n), pos_n))
+    IF (BTEST(xbs%x_ori_bin_sparse(xbs%x_poi(splitloc))%get(k_n),pos_n)) THEN
        IF (binarysplit_message .GT. 0) PRINT *, 'Warning x_ori_bin already set'
     END IF
-    bin(k_n) = IBSET(bin(k_n),pos_n)
-    xbs%x_ori_bin(:,xbs%x_poi(splitloc)) = bin(:)
-    DEALLOCATE(bin)
+    CALL xbs%x_ori_bin_sparse(xbs%x_poi(splitloc))%IBSET(k_n, pos_n)
+    
     ! values
     xbs%x(splitloc+1:maxind+1) = xbs%x(splitloc:maxind)
     xbs%x(splitloc) = dval
@@ -1601,11 +1765,11 @@ CONTAINS
     xbs%y(splitloc+1:maxind+1) = xbs%y(splitloc:maxind)
     xbs%y(splitloc) = 0.0_dp
     ! int and err (value has to be computed externally)
-    xbs%int(splitloc+1:maxind+1) = xbs%int(splitloc:maxind)
-    xbs%int(splitloc) = 0.0_dp
+    xbs%INT(splitloc+1:maxind+1) = xbs%INT(splitloc:maxind)
+    xbs%INT(splitloc) = 0.0_dp
     xbs%err(splitloc+1:maxind+1) = xbs%err(splitloc:maxind)
     xbs%err(splitloc) = 0.0_dp
-    
+
   END SUBROUTINE split_binsplit
 
 !!$  SUBROUTINE split_binsplit_v(v,splitloc,maxind)
@@ -1638,19 +1802,22 @@ CONTAINS
     maxind = xbs%n_ori + xbs%n_split
     CALL eval_bsfunc(xbs%x(0:maxind),xbs%y(0:maxind))
     CALL eval_bsinterr(xbs%x(0:maxind),xbs%y(0:maxind),   &
-         xbs%int(0:maxind),xbs%err(0:maxind),splitloc)
+         xbs%INT(0:maxind),xbs%err(0:maxind),splitloc)
     binarysplit_checklimit = 1
     binarysplit_limit = 0
     DO WHILE (eval_bslimit(xbs%err(0:maxind)))
        CALL split_binarysplit(xbs,splitloc)
+       !write (*,*) "Iteration in find_binsplit() after split_binarysplit()"
        IF (binarysplit_limit .EQ. 1) THEN
           binarysplit_limit = 0
           EXIT
        END IF
        maxind = xbs%n_ori + xbs%n_split
        CALL eval_bsfunc(xbs%x(splitloc),xbs%y(splitloc))
+       !write (*,*) "Iteration in find_binsplit() after eval_bsfunc()"
+
        CALL eval_bsinterr(xbs%x(0:maxind),xbs%y(0:maxind),   &
-            xbs%int(0:maxind),xbs%err(0:maxind),splitloc)        
+            xbs%INT(0:maxind),xbs%err(0:maxind),splitloc)
     END DO
     CALL reallocate_binarysplit(xbs,1)
     
@@ -1681,7 +1848,7 @@ CONTAINS
        int_act = NINT(SUM(xbs%int,1))
        IF (int_act .EQ. int_ref) THEN
           ready = 1
-       ELSE IF (counter .gt. binarysplit_fsplitdepth) THEN
+       ELSE IF (counter .GT. binarysplit_fsplitdepth) THEN
           ready = 1
        ELSE ! improve
           IF (binarysplit_message .GT. 0) &
@@ -1742,15 +1909,15 @@ CONTAINS
     TYPE(binarysplit),                        INTENT(inout)  :: xbs
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(in)     :: x0
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(in)     :: s
-    integer, optional, intent(in) :: n_opt
+    INTEGER, OPTIONAL, INTENT(in) :: n_opt
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: s1
 
     !REAL(kind=dp) :: e1, e2, lambda
     !REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: d_hlp
     !REAL(kind=dp) :: d
 
-    integer :: i,n
-    integer :: save_binarysplit_fsplitdepth
+    INTEGER :: i,n
+    INTEGER :: save_binarysplit_fsplitdepth
     REAL(kind=dp) :: save_bsfunc_local_err,save_bsfunc_base_distance
     !integer :: maxind
 
@@ -1761,12 +1928,12 @@ CONTAINS
     !maxind = xbs%n_ori + xbs%n_split
     !print *, xbs%x(0:maxind)
     
-    if (present(n_opt)) then
+    IF (PRESENT(n_opt)) THEN
        n = n_opt
-    else
-       n = max(2,int( log( 1.0d0 * bsfunc_base_distance/(s(1)*sqrt(-2*log(bsfunc_mult_constant))) ) / &
-            log(bsfunc_sigma_multiplier) ) + 2) 
-    end if
+    ELSE
+       n = MAX(2,INT( LOG( 1.0d0 * bsfunc_base_distance/(s(1)*SQRT(-2*LOG(bsfunc_mult_constant))) ) / &
+            LOG(bsfunc_sigma_multiplier) ) + 2) 
+    END IF
     !print *, 'n = ',n
     !print *, 'bsfunc_base_distance ',bsfunc_base_distance
     !print *, 's ',s(1)
@@ -1774,7 +1941,7 @@ CONTAINS
     !print *, 'bsfunc_sigma_multiplier ',bsfunc_sigma_multiplier
 
     bsfunc_modelfunc = 1
-    binarysplit_fsplitdepth = aint( log( bsfunc_base_distance/(s(1) ) / log(2.0d0) ) ) + 1
+    binarysplit_fsplitdepth = AINT( LOG( bsfunc_base_distance/(s(1) ) / LOG(2.0d0) ) ) + 1
     !print *, 'binarysplit_fsplitdepth ',binarysplit_fsplitdepth
     CALL construct_bsfunc(x0,s)
     CALL find_binarysplit(xbs,x0)
@@ -1790,84 +1957,122 @@ CONTAINS
     !CALL find_binarysplit(xbs,x0)
     !CALL printsummary_binarysplit(xbs)
 
-    allocate(s1(lbound(s,1):ubound(s,1)))
+    ALLOCATE(s1(LBOUND(s,1):UBOUND(s,1)))
     s1 = s * bsfunc_sigma_multiplier**n
-    do i = 1,n
+    DO i = 1,n
        s1 = s1 / bsfunc_sigma_multiplier
        !bsfunc_local_err = e1 + (e2-e1)*(1.0d0 - exp(-lambda*dble(i-1)) + exp(-lambda*dble(n-1)))
        !print *, 'n,i,s1 = ',n,i,s1,bsfunc_local_err
        CALL construct_bsfunc(x0,s1)
        CALL find_binarysplit(xbs,x0)
-    end do
+    END DO
     !CALL printsummary_binarysplit(xbs)
 
     bsfunc_base_distance = save_bsfunc_base_distance
     binarysplit_fsplitdepth = save_binarysplit_fsplitdepth
     bsfunc_local_err = save_bsfunc_local_err
-    deallocate(s1)
-    return
-  end SUBROUTINE multiple_binsplit
+    DEALLOCATE(s1)
+    RETURN
+  END SUBROUTINE multiple_binsplit
 
 
 
  ! split at forced positions
-  SUBROUTINE dosplit_binsplit(xbs1,xbs2,bin)
+  SUBROUTINE dosplit_binsplit(xbs1,xbs2,bin_sparse)
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(in)    :: xbs2
-    INTEGER(kind=longint),DIMENSION(:,:),ALLOCATABLE,INTENT(inout)   :: bin !0:
-
+    !INTEGER(kind=longint),DIMENSION(:,:),ALLOCATABLE,INTENT(inout)   :: bin !0:
+    TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: bin_sparse
+    
     INTEGER :: n_ori,s1,is,nb1,nb2,nb,n_split
     INTEGER :: splitloc,x_ori_poi
-    INTEGER :: n,sk,ik
+    INTEGER :: n,sk,ik,k
     INTEGER :: pos_s,pos_d,pos,pos_n,k_n
     INTEGER :: count,p_c,p_nc,k_nc
     INTEGER :: ori_sw
     INTEGER :: counter,maxind
 
+    REAL    :: start, finish
+    INTEGER :: n_last, k_n_last, k_nc_last
+    INTEGER(kind=longint) :: bin_sparse_last, xbs1_x_ori_bin_sparse
 
     binarysplit_checklimit = 0
     xbs1 = xbs2
-
+    DO k = 0, xbs1%n_ori
+       CALL xbs1%x_ori_bin_sparse(k)%ASSIGN(xbs2%x_ori_bin_sparse(k))
+    END DO
     n_ori = xbs1%n_ori
     counter = 0
-    
+
+    CALL cpu_TIME(start)
     forever: DO
-       s1  = UBOUND(bin,1)
-       is  = BIT_SIZE(bin(0,0))
+       !s1  = UBOUND(bin,1)
+       !is  = BIT_SIZE(bin(0,0))
+
+       s1 = bin_sparse(0)%len
+       is = bit_SIZE(bin_sparse(0)%get(0))
        nb1 = NINT(LOG(DBLE(is))/LOG(2.0_dp))
        nb2 = NINT(LOG(DBLE(s1+1))/LOG(2.0_dp)) 
        nb  = nb1 + nb2
-    
+
+       n_last = -1
+       k_n    = -1
        ori: DO n = 0, n_ori
           ori_sw = 0
           DO sk = nb-1, 0, -1
              pos_s = 2**sk
              pos_d = pos_s * 2
              ik = -1
-             DO 
+             DO
                 ik = ik + 1
                 pos = pos_s + ik * pos_d
                 IF (pos .GT. is*(s1+1)-1) EXIT
                 pos_n = MOD(pos,is)
                 k_n   = FLOOR(DBLE(pos)/DBLE(is))
-                IF (BTEST(bin(k_n,n),pos_n)) THEN
+
+                IF ((n .NE. n_last) .OR. (k_n .NE. k_n_last)) THEN
+                   n_last = n
+                   k_n_last = k_n
+                   bin_sparse_last = bin_sparse(n)%get(k_n)
+                ELSE
+                   !write (*,*) "Reading binsplit from cache."
+                END IF
+                  
+                IF (BTEST(bin_sparse_last,pos_n)) THEN
+                !IF (BTEST(bin_sparse(n)%get(k_n),pos_n)) THEN
                    counter = counter + 1
-                   bin(k_n,n) = IBCLR(bin(k_n,n),pos_n)
+                   !bin(k_n,n) = IBCLR(bin(k_n,n),pos_n)
+                   !call bin_sparse(n)%modify(k_n, ibclr(bin_sparse(n)%get(k_n),pos_n))
+                   CALL bin_sparse(n)%IBCLR(k_n, pos_n)
+
                    x_ori_poi = xbs1%x_ori_poi(n)
                    count = 0
+                   k_nc_last = -1
                    DO p_c = pos-1,1,-1
                       p_nc = MOD(p_c,is)
                       k_nc   = FLOOR(DBLE(p_c)/DBLE(is))
-                      IF (BTEST(xbs1%x_ori_bin(k_nc,n),p_nc)) count = count + 1
+                      !if (btest(xbs1%x_ori_bin(k_nc,n),p_nc)) count = count + 1
+
+                      !**********************************************************
+                      ! Sparse version
+                      !**********************************************************
+                      IF (k_nc .NE. k_nc_last) THEN
+                         xbs1_x_ori_bin_sparse = xbs1%x_ori_bin_sparse(n)%get(k_nc)
+                         k_nc_last = k_nc
+                      END IF
+                      
+                      IF (BTEST(xbs1_x_ori_bin_sparse,p_nc)) count = count + 1 
+                      !write (*,*) "Loop 2 in do split", k_nc
                    END DO
                    splitloc = x_ori_poi - count 
                    CALL split_binarysplit(xbs1,splitloc)
                    maxind = xbs1%n_ori + xbs1%n_split
                    CALL eval_bsfitsplit(                              &
                         xbs1%x(0:maxind),xbs1%y(0:maxind),            &
-                        xbs1%int(0:maxind),xbs1%err(0:maxind),        &
+                        xbs1%INT(0:maxind),xbs1%err(0:maxind),        &
                         splitloc)
-                   IF (UBOUND(xbs1%x_ori_bin,1) .GT. s1) THEN 
+                   !IF (UBOUND(xbs1%x_ori_bin,1) .GT. s1) THEN 
+                   IF (xbs1%x_ori_bin_sparse(0)%len .GT. s1) THEN 
                       IF (binarysplit_message .GT. 0) &
                            PRINT *, 'Message: I leave loop'
                       ori_sw = 1
@@ -1878,12 +2083,15 @@ CONTAINS
           END DO
        END DO ori
        IF (ori_sw .EQ. 1) THEN
-          CALL reposition_binarysplit(bin)
+          CALL reposition_binarysplit(bin_sparse)
        ELSE
           EXIT forever
-       END IF       
+       END IF
     END DO forever
+
     CALL reallocate_binarysplit(xbs1,1)
+    CALL cpu_TIME(finish)
+    PRINT '("Time in dosplit_binsplit = ",f12.3," seconds.")',finish-start
     
   END SUBROUTINE dosplit_binsplit
 
@@ -1892,21 +2100,28 @@ CONTAINS
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(in)    :: xbs2
      
-    INTEGER(kind=longint),DIMENSION(:,:), ALLOCATABLE                :: bin
+    !INTEGER(kind=longint),DIMENSION(:,:), ALLOCATABLE          :: bin
+    TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: bin_sparse
     INTEGER                                                    :: n
 
-    CALL get_binarysplit(xbs2,bin,'x_ori_bin')
+    !CALL get_binarysplit(xbs2,bin,'x_ori_bin')
+    CALL get_binarysplit(xbs2,bin_sparse,'x_ori_bin')
+    
     DO n = 0, xbs2%n_ori
-       bin(0,n) = IBCLR(bin(0,n),0)
+       !bin(0,n) = IBCLR(bin(0,n),0)
+       !call bin_sparse(n)%modify(0, ibclr(bin_sparse(n)%get(0),0))
+       CALL bin_sparse(n)%IBCLR(0,0)
     END DO
-    CALL join_binarysplit(xbs1,xbs2,bin)
+    !CALL join_binarysplit(xbs1,xbs2,bin)
+    CALL join_binarysplit(xbs1,xbs2,bin_sparse)
   END SUBROUTINE join_binsplit_va
 
-  SUBROUTINE join_binsplit_v(xbs1,xbs2,bin)
+  SUBROUTINE join_binsplit_v(xbs1,xbs2,bin_sparse)
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(in)    :: xbs2
-    INTEGER(kind=longint),DIMENSION(:,:), ALLOCATABLE,INTENT(in)    :: bin !0:
-
+    !INTEGER(kind=longint),DIMENSION(:,:), ALLOCATABLE,INTENT(in)    :: bin !0:
+    TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: bin_sparse
+    
     INTEGER                                                    :: n_ori,n_split
     INTEGER                                                    :: maxind
     INTEGER                                                    :: s1,is
@@ -1920,28 +2135,41 @@ CONTAINS
     INTEGER                                                    :: x_ori_poi
     INTEGER                                                    :: joinloc
     INTEGER                                                    :: s1bs
-
+    INTEGER(kind=longint)                                      :: bin_sparse_last, xbs1_x_ori_bin_sparse
+    INTEGER :: k_n_last, n_last, k_nc_last
+    REAL    :: start, finish
+    
+    CALL cpu_TIME(start)
+    
     xbs1 = xbs2
     n_ori = xbs2%n_ori
     n_split = xbs2%n_split
     maxind  = n_ori + n_split
-    s1  = UBOUND(bin,1)
-    is  = BIT_SIZE(bin(LBOUND(bin,1),LBOUND(bin,1)))
+    !s1  = UBOUND(bin,1)
+    s1 = bin_sparse(0)%len
+    !is  = BIT_size(bin(lbound(bin,1),lbound(bin,1)))
+    is = bit_SIZE(bin_sparse(0)%get(0))
+
     nb1 = NINT(LOG(DBLE(is))/LOG(2.0_dp))
     nb2 = NINT(LOG(DBLE(s1+1))/LOG(2.0_dp)) 
     nb  = nb1 + nb2
     
-    s1bs = UBOUND(xbs1%x_ori_bin,1)
+    !s1bs = ubound(xbs1%x_ori_bin,1)
+    s1bs = xbs1%x_ori_bin_sparse(0)%len
     IF (s1bs .GT. s1) THEN
        IF (binarysplit_message .GT. 0) &
             PRINT *, 'Message join_binarysplit: size not ok'
     ELSEIF (s1bs .LT. s1) THEN
        DO
           CALL reposition_binsplit(xbs1)
-          s1bs = UBOUND(xbs1%x_ori_bin,1)
+          !s1bs = UBOUND(xbs1%x_ori_bin,1)
+          s1bs = xbs1%x_ori_bin_sparse(0)%len
           IF (s1bs .GE. s1) EXIT
        END DO
     END IF
+    
+    n_last = -1
+    k_n    = -1
     DO n = 0,n_ori
        DO sk = 0,nb-1
           pos_s = 2**sk
@@ -1953,22 +2181,52 @@ CONTAINS
              IF (pos .GT. is*(s1+1)-1) EXIT
              pos_n = MOD(pos,is)
              k_n   = FLOOR(DBLE(pos)/DBLE(is))
-             IF (BTEST(bin(k_n,n),pos_n)) THEN
+
+             IF ((n .NE. n_last) .OR. (k_n .NE. k_n_last)) THEN
+                n_last = n
+                k_n_last = k_n
+                bin_sparse_last = bin_sparse(n)%get(k_n)
+             ELSE
+                !write (*,*) "Reading binsplit from cache."
+             END IF
+             
+             IF (BTEST(bin_sparse_last, pos_n)) THEN             
+             !if (btest(bin_sparse(n)%get(k_n),pos_n)) then             
+!             IF (BTEST(bin(k_n,n),pos_n)) THEN
                 x_ori_poi = xbs1%x_ori_poi(n)
                 n_split = n_split - 1
                 maxind  = maxind - 1
                 xbs1%n_split = n_split
-                xbs1%x_ori_bin(k_n,n) = IBCLR(xbs1%x_ori_bin(k_n,n),pos_n)
+                
+                !xbs1%x_ori_bin(k_n,n) = ibclr(xbs1%x_ori_bin(k_n,n),pos_n)
+                !**********************************************************
+                ! Sparse
+                !**********************************************************
+                !call xbs1%x_ori_bin_sparse(n)%modify(k_n, &
+                !     ibclr(xbs1%x_ori_bin_sparse(n)%get(k_n),pos_n))
+                CALL xbs1%x_ori_bin_sparse(n)%IBCLR(k_n,pos_n)
+                
                 DO k = n, n_ori
                    xbs1%x_ori_poi(k) = xbs1%x_ori_poi(k) - 1
                 END DO
                 count = 0
+                k_nc_last = -1
                 DO p_c = pos-1,1,-1
                    p_nc = MOD(p_c,is)
                    k_nc   = FLOOR(DBLE(p_c)/DBLE(is))
-                   IF (BTEST(xbs1%x_ori_bin(k_nc,n),p_nc)) count = count + 1
+                   !if (btest(xbs1%x_ori_bin(k_nc,n),p_nc)) count = count + 1
+                   !**********************************************************
+                   ! Sparse
+                   !**********************************************************
+                   IF (k_nc .NE. k_nc_last) THEN
+                      xbs1_x_ori_bin_sparse = xbs1%x_ori_bin_sparse(n)%get(k_nc)
+                      k_nc_last = k_nc
+                   END IF
+                   
+                   IF (BTEST(xbs1_x_ori_bin_sparse, p_nc)) count = count + 1
+                   !write (*,*) "Loop 2 in join_binsplit_v", k_nc
                 END DO
-                joinloc = x_ori_poi - count - 1 
+                joinloc = x_ori_poi - count - 1
                 xbs1%x_poi(joinloc:maxind) = xbs1%x_poi(joinloc+1:maxind+1)
                 xbs1%x_poi(maxind+1) = 0.0_dp
                 xbs1%x_split(joinloc:maxind) = xbs1%x_split(joinloc+1:maxind+1)
@@ -1981,8 +2239,8 @@ CONTAINS
                 xbs1%y(joinloc:maxind) = xbs1%y(joinloc+1:maxind+1)
                 xbs1%y(maxind+1) = 0.0_dp
               
-                xbs1%int(joinloc) = xbs1%int(joinloc) + xbs1%int(joinloc+1)
-                xbs1%int(joinloc+1:maxind) = xbs1%int(joinloc+2:maxind+1) 
+                xbs1%INT(joinloc) = xbs1%INT(joinloc) + xbs1%INT(joinloc+1)
+                xbs1%INT(joinloc+1:maxind) = xbs1%INT(joinloc+2:maxind+1) 
                 xbs1%err(joinloc) = xbs1%err(joinloc) + xbs1%err(joinloc+1)
                 xbs1%err(joinloc+1:maxind) = xbs1%err(joinloc+2:maxind+1) 
                 
@@ -1992,56 +2250,90 @@ CONTAINS
        END DO
     END DO
     CALL reallocate_binarysplit(xbs1,1)
+
+    CALL cpu_TIME(finish)
+    PRINT '("Time in join_binsplit_v = ",f12.3," seconds.")',finish-start
   END SUBROUTINE join_binsplit_v
 
   ! difference (what splits are in 1 and not in 2)
-  SUBROUTINE compare_binsplit(xbs1,xbs2,bin,c)
+  SUBROUTINE compare_binsplit(xbs1,xbs2,bin_sparse,c)
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(inout) :: xbs2
-    INTEGER(kind=longint),DIMENSION(:,:),ALLOCATABLE,  INTENT(inout) :: bin !0:
+    !integer(kind=longint),dimension(:,:),allocatable,  intent(inout) :: bin !0:
+    TYPE(sparsevec), DIMENSION(:), ALLOCATABLE, INTENT(inout)  :: bin_sparse
     CHARACTER(len=*),                            INTENT(in)    :: c
 
     INTEGER                                                    :: s1_1,s1_2,s1
     INTEGER                                                    :: n,n_ori
     INTEGER                                                    :: is,k,i
-    s1_1 = UBOUND(xbs1%x_ori_bin,1)
-    s1_2 = UBOUND(xbs2%x_ori_bin,1)
+    INTEGER(kind=longint)                                      :: xbs1_temp, xbs2_temp
+
+    REAL :: start, finish
+    
+    !s1_1 = UBOUND(xbs1%x_ori_bin,1)
+    !s1_2 = ubound(xbs2%x_ori_bin,1)
+    s1_1 = xbs1%x_ori_bin_sparse(0)%len
+    s1_2 = xbs2%x_ori_bin_sparse(0)%len
+
+    CALL cpu_TIME(start)
+    
     DO
        IF (s1_1 .GE. s1_2) EXIT
        CALL reposition_binsplit(xbs1)
-       s1_1 = UBOUND(xbs1%x_ori_bin,1)
+       !s1_1 = ubound(xbs1%x_ori_bin,1)
+       s1_1 = xbs1%x_ori_bin_sparse(0)%len
     END DO
     DO
        IF (s1_2 .GE. s1_1) EXIT
        CALL reposition_binsplit(xbs2)
-       s1_2 = UBOUND(xbs2%x_ori_bin,1)
+       !s1_2 = UBOUND(xbs2%x_ori_bin,1)
+       s1_2 = xbs2%x_ori_bin_sparse(0)%len
     END DO
     s1 = s1_1
     n_ori = xbs1%n_ori
 
-    IF (ALLOCATED(bin)) DEALLOCATE(bin)
-    ALLOCATE(bin(0:s1,0:n_ori))
-    bin = 0
-    is  = BIT_SIZE(bin(0,0))
+    !IF (ALLOCATED(bin)) DEALLOCATE(bin)
+    !ALLOCATE(bin(0:s1,0:n_ori))
+    !bin = 0
+    !is  = BIT_SIZE(bin(0,0))
+    IF (ALLOCATED(bin_sparse)) DEALLOCATE(bin_sparse)
+    ALLOCATE(bin_sparse(0:n_ori))
+    bin_sparse%len = s1
+    is   = bit_SIZE(bin_sparse(0)%get(0))    
 
     DO n = 0,n_ori
        IF (c .EQ. 'diffdir') THEN
           DO k = s1, 0, -1
+             !do k = lbound(xbs1%x_ori_bin_sparse(n)%idxvec,1), ubound(xbs1%x_ori_bin_sparse(n)%idxvec,1)
              DO i = 0, is-1, 1
-                IF ( BTEST(xbs1%x_ori_bin(k,n),i) .AND. &
-                     .NOT. BTEST(xbs2%x_ori_bin(k,n),i) ) THEN
-                   bin(k,n) = IBSET(bin(k,n),i)
+                !IF ( BTEST(xbs1%x_ori_bin(k,n),i) .AND. &
+                !     .NOT. BTEST(xbs2%x_ori_bin(k,n),i) ) THEN
+                !   bin(k,n) = IBSET(bin(k,n),i)
+                !END IF
+                IF ( BTEST(xbs1%x_ori_bin_sparse(n)%get(k),i) .AND. &
+                     .NOT. BTEST(xbs2%x_ori_bin_sparse(n)%get(k),i) ) THEN
+                   !call bin_sparse(n)%modify(xbs1%x_ori_bin_sparse(n)%idxvec(k), &
+                   !     ibset(bin_sparse(n)%get(xbs1%x_ori_bin_sparse(n)%idxvec(k)),i))
+                   CALL bin_sparse(n)%IBSET(k, i)
                 END IF
              END DO
           END DO
        ELSEIF (c .EQ. 'diff') THEN
-          DO k = s1, 0, -1
-             bin(k,n) = IEOR(xbs1%x_ori_bin(k,n), &
-                  IAND(xbs1%x_ori_bin(k,n),xbs2%x_ori_bin(k,n)))
+          !do k = s1, 0, -1
+          DO k = 1, xbs1%x_ori_bin_sparse(n)%len_sparse
+             !bin(k,n) = IEOR(xbs1%x_ori_bin(k,n), &
+             !     IAND(xbs1%x_ori_bin(k,n),xbs2%x_ori_bin(k,n)))
+             xbs1_temp = xbs1%x_ori_bin_sparse(n)%get(xbs1%x_ori_bin_sparse(n)%idxvec(k))
+             xbs2_temp = xbs2%x_ori_bin_sparse(n)%get(xbs1%x_ori_bin_sparse(n)%idxvec(k))
+             CALL bin_sparse(n)%modify(xbs1%x_ori_bin_sparse(n)%idxvec(k), &
+                  IEOR(xbs1_temp, IAND(xbs1_temp, xbs2_temp)))
           END DO
        END IF
     END DO
 
+    CALL cpu_TIME(finish)
+    PRINT '("Time in compare_binsplit_v = ",f12.3," seconds.")',finish-start
+    
   END SUBROUTINE compare_binsplit
 
   ! print summary
@@ -2062,18 +2354,34 @@ CONTAINS
   SUBROUTINE printbin_binsplit(xbs)
     TYPE(binarysplit),                           INTENT(in) :: xbs
     INTEGER                                                 :: k
-    DO k = LBOUND(xbs%x_ori_bin,2), UBOUND(xbs%x_ori_bin,2)
-       CALL disp(xbs%x_ori_bin(:,k))
+    !DO k = LBOUND(xbs%x_ori_bin,2), UBOUND(xbs%x_ori_bin,2)
+    !   CALL disp(xbs%x_ori_bin(:,k))
+    !END DO
+
+    !**********************************************************
+    ! Sparse
+    !**********************************************************
+    DO k = LBOUND(xbs%x_ori_bin_sparse,1), UBOUND(xbs%x_ori_bin_sparse,1)
+       !call disp(xbs%x_ori_bin(:,k))
     END DO
+
+    WRITE (*,*) "Print sparse binsplit not yet implemented"
+    STOP
+    
     PRINT *, ' '
   END SUBROUTINE printbin_binsplit
 
-  SUBROUTINE printbin_binsplit_bin(bin)
-    INTEGER(kind=longint), DIMENSION(:,:),             INTENT(in) :: bin 
+  SUBROUTINE printbin_binsplit_bin(bin_sparse)
+    !integer(kind=longint), dimension(:,:),             intent(in) :: bin
+    TYPE(sparsevec), DIMENSION(:),             INTENT(in) :: bin_sparse 
+
     INTEGER                                                 :: k
-    DO k = LBOUND(bin,2), UBOUND(bin,2)
-       CALL disp(bin(:,k))
-    END DO
+    !DO k = LBOUND(bin,2), UBOUND(bin,2)
+    !   CALL disp(bin(:,k))
+    !END DO
+
+    WRITE (*,*) "Print sparse binsplit not yet implemented"
+    STOP
     PRINT *, ' '
   END SUBROUTINE printbin_binsplit_bin
 
@@ -2085,7 +2393,7 @@ CONTAINS
     INTEGER                                                 :: k
     OPEN(file=filename,unit=unitno)
     DO k = 0, xbs%n_ori+xbs%n_split
-       WRITE(unitno,*) xbs%x(k),xbs%y(k),xbs%int(k),xbs%err(k)
+       WRITE(unitno,*) xbs%x(k),xbs%y(k),xbs%INT(k),xbs%err(k)
     END DO
     CLOSE(unit=unitno)
   END SUBROUTINE plotfile_binsplit
@@ -2149,7 +2457,7 @@ CONTAINS
 
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x_ori
     INTEGER(kind=longint),DIMENSION(:,:), ALLOCATABLE :: bin_1,bin_2,bin_3
-    integer :: n,i
+    INTEGER :: n,i
     REAL(kind=dp) :: d,c,g
     TYPE(binarysplit)                        :: cbs_1,cbs_2,cbs_3
     TYPE(binarysplit)                        :: cbs_1a,cbs_2a
@@ -2173,14 +2481,14 @@ CONTAINS
 
     !x0_2=(/0.96196138353943894d0/)-2.0d-1
     x0_2=(/0.01/)
-    x0_2 = x_ori(lbound(x_ori,1)+1)+0.02
-    x0_2 = x_ori(ubound(x_ori,1)-7)+0.1
+    x0_2 = x_ori(LBOUND(x_ori,1)+1)+0.02
+    x0_2 = x_ori(UBOUND(x_ori,1)-7)+0.1
     !x0_2 = ( x_ori(lbound(x_ori,1)) + x_ori(lbound(x_ori,1)+1) ) / 2.0d0
     !x0_2 = ( x_ori(ubound(x_ori,1)) + x_ori(ubound(x_ori,1)-1) ) / 2.0d0
     !x0_2 = x_ori(ubound(x_ori,1)) - 0.01
     s_2 =(/7.88038877731418762d-6/)
     s_2 = (/1.0d-2/)
-    print *, 'x0,s ',x0_2,s_2
+    PRINT *, 'x0,s ',x0_2,s_2
 
 
     ! settings
@@ -2205,11 +2513,11 @@ CONTAINS
     
     ! do it for cbs_2
     !binarysplit_fsplitdepth = 0
-    bsfunc_base_distance = maxval(x_ori(1:ubound(x_ori,1))-x_ori(0:ubound(x_ori,1)-1))
-    print *, 'bsfunc_base_distance ',bsfunc_base_distance
+    bsfunc_base_distance = MAXVAL(x_ori(1:UBOUND(x_ori,1))-x_ori(0:UBOUND(x_ori,1)-1))
+    PRINT *, 'bsfunc_base_distance ',bsfunc_base_distance
     CALL construct_binarysplit(x_ori,cbs_2)
     bsfunc_modelfunc = 1
-    call multiple_binarysplit(cbs_2,x0_2,s_2)
+    CALL multiple_binarysplit(cbs_2,x0_2,s_2)
     CALL printsummary_binarysplit(cbs_2)
     CALL plotfile_binarysplit(cbs_2,'gauss_1.dat',9)
 

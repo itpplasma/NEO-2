@@ -1839,7 +1839,8 @@ CONTAINS
     
     INTEGER :: i
     INCLUDE 'longint.f90'
-    INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE :: bin1,bin2
+    !INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE :: bin1,bin2
+    type(sparsevec), dimension(:), allocatable :: bin1_sparse, bin2_sparse
     INTEGER :: deall
 
     REAL(kind=dp),   DIMENSION(:,:), ALLOCATABLE :: cmat_help
@@ -1908,10 +1909,12 @@ CONTAINS
           PRINT *, 'JOIN binarysplit action - forward'
        END IF
        ! look for splits which are in o%eta_bs_r and not in n%eta_bs_l
-       CALL compare_binarysplit(o%eta_bs_r,n%eta_bs_l,bin1,'diff')
+       !CALL compare_binarysplit(o%eta_bs_r,n%eta_bs_l,bin1,'diff')
+       CALL compare_binarysplit(o%eta_bs_r,n%eta_bs_l,bin1_sparse,'diff')
        ! do the joining of levels
        ! use bin1 to remove them from o%eta_bs_r
-       CALL join_binarysplit(loc_bs_1a,o%eta_bs_r,bin1)
+       !CALL join_binarysplit(loc_bs_1a,o%eta_bs_r,bin1)
+       CALL join_binarysplit(loc_bs_1a,o%eta_bs_r,bin1_sparse)
        ! now loc_bs_1a is the modified o%eta_bs_r
 
        ! second: create those splits in old which are not in new
@@ -1919,14 +1922,18 @@ CONTAINS
           PRINT *, 'SPLIT binarysplit action - forward'
        END IF
        ! 
-       CALL compare_binarysplit(n%eta_bs_l,loc_bs_1a,bin2,'diff')
+       !CALL compare_binarysplit(n%eta_bs_l,loc_bs_1a,bin2,'diff')
+       CALL compare_binarysplit(n%eta_bs_l,loc_bs_1a,bin2_sparse,'diff')
        ! do the splitting of levels
-       CALL dosplit_binarysplit(loc_bs_2a,loc_bs_1a,bin2)
+       !CALL dosplit_binarysplit(loc_bs_2a,loc_bs_1a,bin2)
+       CALL dosplit_binarysplit(loc_bs_2a,loc_bs_1a,bin2_sparse)
        ! now loc_bs_2a is the final modified o%eta_bs_r
 
        ! remove unnecessary things
-       IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
-       IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
+       !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
+       !IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
+       IF (ALLOCATED(bin1_sparse)) DEALLOCATE(bin1_sparse)
+       IF (ALLOCATED(bin2_sparse)) DEALLOCATE(bin2_sparse)
 
        ! now we fix it backward
        prop_modifyold = 0       
@@ -1934,18 +1941,22 @@ CONTAINS
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'JOIN binarysplit action - backward'
        END IF
-       CALL compare_binarysplit(n%eta_bs_l,o%eta_bs_r,bin1,'diff')
+       !CALL compare_binarysplit(n%eta_bs_l,o%eta_bs_r,bin1,'diff')
+       CALL compare_binarysplit(n%eta_bs_l,o%eta_bs_r,bin1_sparse,'diff')
        ! do the joining of levels
-       CALL join_binarysplit(loc_bs_1b,n%eta_bs_l,bin1)
+       !CALL join_binarysplit(loc_bs_1b,n%eta_bs_l,bin1)
+       CALL join_binarysplit(loc_bs_1b,n%eta_bs_l,bin1_sparse)
        ! now loc_bs_1b is the modified n%eta_bs_l
 
        ! second: create those splits in new which are not in old
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'SPLIT binarysplit action - backward'
        END IF
-       CALL compare_binarysplit(o%eta_bs_r,loc_bs_1b,bin2,'diff')
+       !CALL compare_binarysplit(o%eta_bs_r,loc_bs_1b,bin2,'diff')
+       CALL compare_binarysplit(o%eta_bs_r,loc_bs_1b,bin2_sparse,'diff')
        ! do the splitting of levels
-       CALL dosplit_binarysplit(loc_bs_2b,loc_bs_1b,bin2)
+       !CALL dosplit_binarysplit(loc_bs_2b,loc_bs_1b,bin2)
+       CALL dosplit_binarysplit(loc_bs_2b,loc_bs_1b,bin2_sparse)
        ! now loc_bs_2b is the final modified n%eta_bs_l - not needed
 
        ! put the eta_information on right side of propagator
@@ -1956,8 +1967,10 @@ CONTAINS
        ! CALL get_binarysplit(loc_bs_2b,n%p%eta_l,'x')
 
        ! remove unnecessary things
-       IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
-       IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
+       !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
+       !IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
+       if (allocated(bin1_sparse)) deallocate(bin1_sparse)
+       if (allocated(bin2_sparse)) deallocate(bin2_sparse)
        
        IF (cstat .EQ. 'final') THEN
        IF (prop_diagnostic .GE. 2) THEN     
@@ -2020,14 +2033,16 @@ CONTAINS
              END IF
           END DO
 
-          CALL compare_binarysplit(loc_bs_2a,n%eta_bs_l,bin1,'diff')
+          !CALL compare_binarysplit(loc_bs_2a,n%eta_bs_l,bin1,'diff')
+          CALL compare_binarysplit(loc_bs_2a,n%eta_bs_l,bin1_sparse,'diff')
           !CALL printbin_binarysplit(bin1)
-          PRINT *, 'Count difference forward:  ', COUNT(bin1 .NE. 0)
-          IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
-          CALL compare_binarysplit(loc_bs_2b,o%eta_bs_r,bin1,'diff')
+          PRINT *, 'Count difference forward:  ', COUNT(bin1_sparse%len .NE. 0)
+          if (allocated(bin1_sparse)) deallocate(bin1_sparse)
+          !call compare_binarysplit(loc_bs_2b,o%eta_bs_r,bin1,'diff')
+          call compare_binarysplit(loc_bs_2b,o%eta_bs_r,bin1_sparse,'diff')
           !CALL printbin_binarysplit(bin1)
-          PRINT *, 'Count difference backward:   ', COUNT(bin1 .NE. 0)
-          IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
+          PRINT *, 'Count difference backward:   ', COUNT(bin1_sparse%len .NE. 0)
+          IF (ALLOCATED(bin1_sparse)) DEALLOCATE(bin1_sparse)
 
           PRINT *, 'c_forward.dat and c_backward.dat written'
           !PAUSE

@@ -451,12 +451,23 @@ module wuGenericNeo2Workunit_module
   subroutine packBinarySplit_wuGenericNeo2Workunit(this, bs)
     class(wuGenericNeo2Workunit) :: this
     type(binarysplit) :: bs
+    integer :: k
 
     associate (b => mpro%packBuffer)
 
         call b%add(bs%n_ori)
         call b%add(bs%n_split)
-        call b%add(bs%x_ori_bin)
+        !call b%add(bs%x_ori_bin)
+
+        do k = 0, bs%n_ori
+           call b%add(bs%x_ori_bin_sparse(k)%idxvec)
+           call b%add(bs%x_ori_bin_sparse(k)%values)
+           call b%add(bs%x_ori_bin_sparse(k)%len)
+           call b%add(bs%x_ori_bin_sparse(k)%len_sparse)
+           !write (*,*) "Adding to packbuffer:", lbound(bs%x_ori_bin_sparse(k)%idxvec), &
+           !     ubound(bs%x_ori_bin_sparse(k)%idxvec)
+        end do
+        
         call b%add(bs%x_ori_poi)
         call b%add(bs%x_poi)
         call b%add(bs%x_split)
@@ -479,7 +490,17 @@ module wuGenericNeo2Workunit_module
     associate (b => mpro%packBuffer)
       call b%get(bs%n_ori)
       call b%get(bs%n_split)
-      call b%get(bs%x_ori_bin)
+      !call b%get(bs%x_ori_bin)
+
+      if (allocated(bs%x_ori_bin_sparse)) deallocate(bs%x_ori_bin_sparse)
+      allocate(bs%x_ori_bin_sparse(0:bs%n_ori))
+      do k = 0, bs%n_ori
+         call b%get(bs%x_ori_bin_sparse(k)%idxvec)
+         call b%get(bs%x_ori_bin_sparse(k)%values)
+         call b%get(bs%x_ori_bin_sparse(k)%len)
+         call b%get(bs%x_ori_bin_sparse(k)%len_sparse)
+      end do
+
       call b%get(bs%x_ori_poi)
       call b%get(bs%x_poi)
       call b%get(bs%x_split)

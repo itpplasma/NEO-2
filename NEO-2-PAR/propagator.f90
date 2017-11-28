@@ -2221,7 +2221,9 @@ CONTAINS
     
     INTEGER :: i
     INCLUDE 'longint.f90'
-    INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE :: bin1,bin2
+    !INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE :: bin1,bin2
+    type(sparsevec), dimension(:), allocatable :: bin1_sparse, bin2_sparse
+    
     INTEGER :: deall
 
     REAL(kind=dp),   DIMENSION(:,:), ALLOCATABLE :: cmat_help
@@ -2301,10 +2303,12 @@ CONTAINS
           PRINT *, 'JOIN binarysplit action - forward'
        END IF
        ! look for splits which are in o%eta_bs_r and not in n%eta_bs_l
-       CALL compare_binarysplit(o%eta_bs_r,n%eta_bs_l,bin1,'diff')
+       !CALL compare_binarysplit(o%eta_bs_r,n%eta_bs_l,bin1,'diff')
+       CALL compare_binarysplit(o%eta_bs_r,n%eta_bs_l,bin1_sparse,'diff')
        ! do the joining of levels
        ! use bin1 to remove them from o%eta_bs_r
-       CALL join_binarysplit(loc_bs_1a,o%eta_bs_r,bin1)
+       !CALL join_binarysplit(loc_bs_1a,o%eta_bs_r,bin1)
+       CALL join_binarysplit(loc_bs_1a,o%eta_bs_r,bin1_sparse)
        ! now loc_bs_1a is the modified o%eta_bs_r
 
        ! second: create those splits in old which are not in new
@@ -2312,33 +2316,40 @@ CONTAINS
           PRINT *, 'SPLIT binarysplit action - forward'
        END IF
        ! 
-       CALL compare_binarysplit(n%eta_bs_l,loc_bs_1a,bin2,'diff')
+       !CALL compare_binarysplit(n%eta_bs_l,loc_bs_1a,bin2,'diff')
+       CALL compare_binarysplit(n%eta_bs_l,loc_bs_1a,bin2_sparse,'diff')
        ! do the splitting of levels
-       CALL dosplit_binarysplit(loc_bs_2a,loc_bs_1a,bin2)
+       !CALL dosplit_binarysplit(loc_bs_2a,loc_bs_1a,bin2)
+       CALL dosplit_binarysplit(loc_bs_2a,loc_bs_1a,bin2_sparse)
        ! now loc_bs_2a is the final modified o%eta_bs_r
 
        ! remove unnecessary things
-       IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
-       IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
-
+       !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
+       !IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
+       IF (ALLOCATED(bin1_sparse)) DEALLOCATE(bin1_sparse)
+       IF (ALLOCATED(bin2_sparse)) DEALLOCATE(bin2_sparse)
        ! now we fix it backward
        prop_modifyold = 0       
        ! first: remove those splits in new which are not in old
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'JOIN binarysplit action - backward'
        END IF
-       CALL compare_binarysplit(n%eta_bs_l,o%eta_bs_r,bin1,'diff')
+       !CALL compare_binarysplit(n%eta_bs_l,o%eta_bs_r,bin1,'diff')
+       CALL compare_binarysplit(n%eta_bs_l,o%eta_bs_r,bin1_sparse,'diff')
        ! do the joining of levels
-       CALL join_binarysplit(loc_bs_1b,n%eta_bs_l,bin1)
+       !CALL join_binarysplit(loc_bs_1b,n%eta_bs_l,bin1)
+       CALL join_binarysplit(loc_bs_1b,n%eta_bs_l,bin1_sparse)
        ! now loc_bs_1b is the modified n%eta_bs_l
 
        ! second: create those splits in new which are not in old
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'SPLIT binarysplit action - backward'
        END IF
-       CALL compare_binarysplit(o%eta_bs_r,loc_bs_1b,bin2,'diff')
+       !CALL compare_binarysplit(o%eta_bs_r,loc_bs_1b,bin2,'diff')
+       CALL compare_binarysplit(o%eta_bs_r,loc_bs_1b,bin2_sparse,'diff')
        ! do the splitting of levels
-       CALL dosplit_binarysplit(loc_bs_2b,loc_bs_1b,bin2)
+       !CALL dosplit_binarysplit(loc_bs_2b,loc_bs_1b,bin2)
+       CALL dosplit_binarysplit(loc_bs_2b,loc_bs_1b,bin2_sparse)
        ! now loc_bs_2b is the final modified n%eta_bs_l - not needed
 
        ! put the eta_information on right side of propagator
@@ -2349,8 +2360,10 @@ CONTAINS
        ! CALL get_binarysplit(loc_bs_2b,n%p%eta_l,'x')
 
        ! remove unnecessary things
-       IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
-       IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
+       !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
+       !IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
+       if (allocated(bin1_sparse)) deallocate(bin1_sparse)
+       if (allocated(bin2_sparse)) deallocate(bin2_sparse)
        
        IF (cstat .EQ. 'final') THEN
        IF (prop_diagnostic .GE. 2) THEN     
@@ -2413,14 +2426,21 @@ CONTAINS
              END IF
           END DO
 
-          CALL compare_binarysplit(loc_bs_2a,n%eta_bs_l,bin1,'diff')
+          !CALL compare_binarysplit(loc_bs_2a,n%eta_bs_l,bin1,'diff')
+          CALL compare_binarysplit(loc_bs_2a,n%eta_bs_l,bin1_sparse,'diff')
           !CALL printbin_binarysplit(bin1)
-          PRINT *, 'Count difference forward:  ', COUNT(bin1 .NE. 0)
-          IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
-          CALL compare_binarysplit(loc_bs_2b,o%eta_bs_r,bin1,'diff')
+          !PRINT *, 'Count difference forward:  ', COUNT(bin1 .NE. 0)
+          !PRINT *, 'Count difference forward:  ', COUNT(bin1_sparse .NE. 0)   !NOT SOLVED YET
+          !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
+          if (allocated(bin1_sparse)) deallocate(bin1_sparse)
+          
+          !call compare_binarysplit(loc_bs_2b,o%eta_bs_r,bin1,'diff')
+          call compare_binarysplit(loc_bs_2b,o%eta_bs_r,bin1_sparse,'diff')
           !CALL printbin_binarysplit(bin1)
-          PRINT *, 'Count difference backward:   ', COUNT(bin1 .NE. 0)
-          IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
+          !PRINT *, 'Count difference backward:   ', COUNT(bin1 .NE. 0)
+          !PRINT *, 'Count difference backward:   ', COUNT(bin1_sparse .NE. 0)  !NOT SOLVED YET
+          !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
+          IF (ALLOCATED(bin1_sparse)) DEALLOCATE(bin1_sparse)
 
           PRINT *, 'c_forward.dat and c_backward.dat written'
           !PAUSE
@@ -2852,9 +2872,10 @@ CONTAINS
     integer(HID_T) :: h5id_binsplit
     character(len=*) :: grpname
     type(binarysplit) :: binsplit
-
     integer(HID_T) :: h5id_grp
-
+    integer        :: k
+    character(len=1024) :: h5_ds_name
+    
     call h5_define_group(h5id_binsplit, grpname, h5id_grp)
 
     call h5_add(h5id_grp, 'n_ori', binsplit%n_ori)
@@ -2863,7 +2884,17 @@ CONTAINS
     !write (*,*) "In write_binarysplit_side_h5", allocated(binsplit%x_ori_poi), binsplit%x_ori_poi
     !stop
     
-    call h5_add(h5id_grp, 'x_ori_bin', binsplit%x_ori_bin, lbound(binsplit%x_ori_bin), ubound(binsplit%x_ori_bin))
+    !call h5_add(h5id_grp, 'x_ori_bin', binsplit%x_ori_bin, lbound(binsplit%x_ori_bin), ubound(binsplit%x_ori_bin))
+    
+    do k = 0, binsplit%n_ori
+       write (h5_ds_name, '(A,I0)') "x_ori_bin_sparse_", k
+       call h5_add(h5id_grp, trim(h5_ds_name) // '_idxvec', binsplit%x_ori_bin_sparse(k)%idxvec, &
+            lbound(binsplit%x_ori_bin_sparse(k)%idxvec), ubound(binsplit%x_ori_bin_sparse(k)%idxvec))
+       call h5_add(h5id_grp, trim(h5_ds_name) // '_values', binsplit%x_ori_bin_sparse(k)%values, &
+            lbound(binsplit%x_ori_bin_sparse(k)%values), ubound(binsplit%x_ori_bin_sparse(k)%values))
+       call h5_add(h5id_grp, trim(h5_ds_name) // '_len', binsplit%x_ori_bin_sparse(k)%len)
+       call h5_add(h5id_grp, trim(h5_ds_name) // '_len_sparse', binsplit%x_ori_bin_sparse(k)%len_sparse)
+    end do
     call h5_add(h5id_grp, 'x_ori_poi', binsplit%x_ori_poi, lbound(binsplit%x_ori_poi), ubound(binsplit%x_ori_poi))
     call h5_add(h5id_grp, 'x_poi', binsplit%x_poi, lbound(binsplit%x_poi), ubound(binsplit%x_poi))
     call h5_add(h5id_grp, 'x_split', binsplit%x_split, lbound( binsplit%x_split), ubound(binsplit%x_split))
@@ -2910,152 +2941,155 @@ CONTAINS
        call h5_close(h5id)
 
     else
-
-       CALL unit_propagator
-       OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
-            form=prop_format,action='write')
-
-       WRITE(prop_unit,*) o%bin_split_mode
-
-       ! binarysplit left
-       WRITE(prop_unit,*) o%eta_bs_l%n_ori
-       WRITE(prop_unit,*) o%eta_bs_l%n_split
-       ! x_ori_bin
-       IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,1),UBOUND(o%eta_bs_l%x_ori_bin,1)
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,2),UBOUND(o%eta_bs_l%x_ori_bin,2)
-          WRITE(prop_unit,*) o%eta_bs_l%x_ori_bin
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! x_ori_poi
-       IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_poi,1),UBOUND(o%eta_bs_l%x_ori_poi,1)
-          WRITE(prop_unit,*) o%eta_bs_l%x_ori_poi
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! x_poi
-       IF (ALLOCATED(o%eta_bs_l%x_poi)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_poi,1),UBOUND(o%eta_bs_l%x_poi,1)
-          WRITE(prop_unit,*) o%eta_bs_l%x_poi
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! x_split
-       IF (ALLOCATED(o%eta_bs_l%x_split)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_split,1),UBOUND(o%eta_bs_l%x_split,1)
-          WRITE(prop_unit,*) o%eta_bs_l%x_split
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! x_pos
-       IF (ALLOCATED(o%eta_bs_l%x_pos)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_pos,1),UBOUND(o%eta_bs_l%x_pos,1)
-          WRITE(prop_unit,*) o%eta_bs_l%x_pos
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! x
-       IF (ALLOCATED(o%eta_bs_l%x)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x,1),UBOUND(o%eta_bs_l%x,1)
-          WRITE(prop_unit,*) o%eta_bs_l%x
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! y
-       IF (ALLOCATED(o%eta_bs_l%y)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%y,1),UBOUND(o%eta_bs_l%y,1)
-          WRITE(prop_unit,*) o%eta_bs_l%y
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! int
-       IF (ALLOCATED(o%eta_bs_l%int)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%int,1),UBOUND(o%eta_bs_l%int,1)
-          WRITE(prop_unit,*) o%eta_bs_l%int
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! err
-       IF (ALLOCATED(o%eta_bs_l%err)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%err,1),UBOUND(o%eta_bs_l%err,1)
-          WRITE(prop_unit,*) o%eta_bs_l%err
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-
-       ! binarysplit right
-       WRITE(prop_unit,*) o%eta_bs_r%n_ori
-       WRITE(prop_unit,*) o%eta_bs_r%n_split
-       ! x_ori_bin
-       IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,1),UBOUND(o%eta_bs_r%x_ori_bin,1)
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,2),UBOUND(o%eta_bs_r%x_ori_bin,2)
-          WRITE(prop_unit,*) o%eta_bs_r%x_ori_bin
-       ELSE
-          WRITE(prop_unit,*) 0,0
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! x_ori_poi
-       IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_poi,1),UBOUND(o%eta_bs_r%x_ori_poi,1)
-          WRITE(prop_unit,*) o%eta_bs_r%x_ori_poi
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! x_poi
-       IF (ALLOCATED(o%eta_bs_r%x_poi)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_poi,1),UBOUND(o%eta_bs_r%x_poi,1)
-          WRITE(prop_unit,*) o%eta_bs_r%x_poi
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! x_split
-       IF (ALLOCATED(o%eta_bs_r%x_split)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_split,1),UBOUND(o%eta_bs_r%x_split,1)
-          WRITE(prop_unit,*) o%eta_bs_r%x_split
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! x_pos
-       IF (ALLOCATED(o%eta_bs_r%x_pos)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_pos,1),UBOUND(o%eta_bs_r%x_pos,1)
-          WRITE(prop_unit,*) o%eta_bs_r%x_pos
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! x
-       IF (ALLOCATED(o%eta_bs_r%x)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x,1),UBOUND(o%eta_bs_r%x,1)
-          WRITE(prop_unit,*) o%eta_bs_r%x
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! y
-       IF (ALLOCATED(o%eta_bs_r%y)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%y,1),UBOUND(o%eta_bs_r%y,1)
-          WRITE(prop_unit,*) o%eta_bs_r%y
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! int
-       IF (ALLOCATED(o%eta_bs_r%int)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%int,1),UBOUND(o%eta_bs_r%int,1)
-          WRITE(prop_unit,*) o%eta_bs_r%int
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-       ! err
-       IF (ALLOCATED(o%eta_bs_r%err)) THEN
-          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%err,1),UBOUND(o%eta_bs_r%err,1)
-          WRITE(prop_unit,*) o%eta_bs_r%err
-       ELSE
-          WRITE(prop_unit,*) 0,0
-       END IF
-
-       close(unit=prop_unit)
+       write (*,*) "Error in write_binarysplit_cont. This is not longer supported for ASCII files."
+       stop
+       
+!!$
+!!$       CALL unit_propagator
+!!$       OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
+!!$            form=prop_format,action='write')
+!!$
+!!$       WRITE(prop_unit,*) o%bin_split_mode
+!!$
+!!$       ! binarysplit left
+!!$       WRITE(prop_unit,*) o%eta_bs_l%n_ori
+!!$       WRITE(prop_unit,*) o%eta_bs_l%n_split
+!!$       ! x_ori_bin
+!!$       IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,1),UBOUND(o%eta_bs_l%x_ori_bin,1)
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,2),UBOUND(o%eta_bs_l%x_ori_bin,2)
+!!$          WRITE(prop_unit,*) o%eta_bs_l%x_ori_bin
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! x_ori_poi
+!!$       IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_poi,1),UBOUND(o%eta_bs_l%x_ori_poi,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_l%x_ori_poi
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! x_poi
+!!$       IF (ALLOCATED(o%eta_bs_l%x_poi)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_poi,1),UBOUND(o%eta_bs_l%x_poi,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_l%x_poi
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! x_split
+!!$       IF (ALLOCATED(o%eta_bs_l%x_split)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_split,1),UBOUND(o%eta_bs_l%x_split,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_l%x_split
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! x_pos
+!!$       IF (ALLOCATED(o%eta_bs_l%x_pos)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_pos,1),UBOUND(o%eta_bs_l%x_pos,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_l%x_pos
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! x
+!!$       IF (ALLOCATED(o%eta_bs_l%x)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x,1),UBOUND(o%eta_bs_l%x,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_l%x
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! y
+!!$       IF (ALLOCATED(o%eta_bs_l%y)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%y,1),UBOUND(o%eta_bs_l%y,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_l%y
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! int
+!!$       IF (ALLOCATED(o%eta_bs_l%int)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%int,1),UBOUND(o%eta_bs_l%int,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_l%int
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! err
+!!$       IF (ALLOCATED(o%eta_bs_l%err)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%err,1),UBOUND(o%eta_bs_l%err,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_l%err
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$
+!!$       ! binarysplit right
+!!$       WRITE(prop_unit,*) o%eta_bs_r%n_ori
+!!$       WRITE(prop_unit,*) o%eta_bs_r%n_split
+!!$       ! x_ori_bin
+!!$       IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,1),UBOUND(o%eta_bs_r%x_ori_bin,1)
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,2),UBOUND(o%eta_bs_r%x_ori_bin,2)
+!!$          WRITE(prop_unit,*) o%eta_bs_r%x_ori_bin
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! x_ori_poi
+!!$       IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_poi,1),UBOUND(o%eta_bs_r%x_ori_poi,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_r%x_ori_poi
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! x_poi
+!!$       IF (ALLOCATED(o%eta_bs_r%x_poi)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_poi,1),UBOUND(o%eta_bs_r%x_poi,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_r%x_poi
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! x_split
+!!$       IF (ALLOCATED(o%eta_bs_r%x_split)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_split,1),UBOUND(o%eta_bs_r%x_split,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_r%x_split
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! x_pos
+!!$       IF (ALLOCATED(o%eta_bs_r%x_pos)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_pos,1),UBOUND(o%eta_bs_r%x_pos,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_r%x_pos
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! x
+!!$       IF (ALLOCATED(o%eta_bs_r%x)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x,1),UBOUND(o%eta_bs_r%x,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_r%x
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! y
+!!$       IF (ALLOCATED(o%eta_bs_r%y)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%y,1),UBOUND(o%eta_bs_r%y,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_r%y
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! int
+!!$       IF (ALLOCATED(o%eta_bs_r%int)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%int,1),UBOUND(o%eta_bs_r%int,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_r%int
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$       ! err
+!!$       IF (ALLOCATED(o%eta_bs_r%err)) THEN
+!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%err,1),UBOUND(o%eta_bs_r%err,1)
+!!$          WRITE(prop_unit,*) o%eta_bs_r%err
+!!$       ELSE
+!!$          WRITE(prop_unit,*) 0,0
+!!$       END IF
+!!$
+!!$       close(unit=prop_unit)
 
     end if
     
@@ -3214,157 +3248,161 @@ CONTAINS
        
     else
 
-       CALL unit_propagator
+       write (*,*) "Error in read_propagator_cont. This is not longer supported for ASCII files."
+       stop
 
-       !PRINT *, prop_cfilename
-
-       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
-            form=prop_format,action='read')
-
-       ! tags
-       READ(prop_unit,*) dummy
-       READ(prop_unit,*) dummy
-
-       ! info
-       IF (prop_showall .EQ. 1) THEN
-          READ(prop_unit,*) o%nr_joined
-          READ(prop_unit,*) o%fieldpropagator_tag_s
-          READ(prop_unit,*) o%fieldpropagator_tag_e
-          READ(prop_unit,*) o%fieldperiod_tag_s
-          READ(prop_unit,*) o%fieldperiod_tag_e
-
-          READ(prop_unit,*) lb1,ub1
-          IF (ub1 .GT. 0) THEN
-             IF (ALLOCATED(o%y)) DEALLOCATE(o%y)
-             ALLOCATE(o%y(lb1:ub1))
-             READ(prop_unit,*) o%y
-          END IF
-          READ(prop_unit,*) o%phi_l
-          READ(prop_unit,*) o%phi_r
-       END IF
-
-       ! Binarysplit stuff is not dumped
-       IF (prop_showall .EQ. 0) THEN
-          READ(prop_unit,*) o%bin_split_mode
-       END IF
-
-       ! sizes
-       IF (prop_showall .GE. 1) THEN
-          READ(prop_unit,*) o%p%npart
-          READ(prop_unit,*) o%p%npass_l
-          READ(prop_unit,*) o%p%npass_r
-          READ(prop_unit,*) o%p%nvelocity
-       END IF
-
-       ! amat_p_p
-       IF (prop_showall .GE. 1) THEN
-          READ(prop_unit,*) lb1,ub1
-          READ(prop_unit,*) lb2,ub2
-          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-             IF (ALLOCATED(o%p%amat_p_p)) DEALLOCATE(o%p%amat_p_p)
-             ALLOCATE(o%p%amat_p_p(lb1:ub1,lb2:ub2))
-             READ(prop_unit,*) o%p%amat_p_p
-          END IF
-       END IF
-       ! amat_m_m
-       IF (prop_showall .EQ. 1) THEN
-          READ(prop_unit,*) lb1,ub1
-          READ(prop_unit,*) lb2,ub2
-          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-             IF (ALLOCATED(o%p%amat_m_m)) DEALLOCATE(o%p%amat_m_m)
-             ALLOCATE(o%p%amat_m_m(lb1:ub1,lb2:ub2))
-             READ(prop_unit,*) o%p%amat_m_m
-          END IF
-       END IF
-       ! amat_p_m
-       IF (prop_showall .EQ. 1) THEN
-          READ(prop_unit,*) lb1,ub1
-          READ(prop_unit,*) lb2,ub2
-          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-             IF (ALLOCATED(o%p%amat_p_m)) DEALLOCATE(o%p%amat_p_m)
-             ALLOCATE(o%p%amat_p_m(lb1:ub1,lb2:ub2))
-             READ(prop_unit,*) o%p%amat_p_m
-          END IF
-       END IF
-       ! amat_m_p
-       IF (prop_showall .GE. 1) THEN
-          READ(prop_unit,*) lb1,ub1
-          READ(prop_unit,*) lb2,ub2
-          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-             IF (ALLOCATED(o%p%amat_m_p)) DEALLOCATE(o%p%amat_m_p)
-             ALLOCATE(o%p%amat_m_p(lb1:ub1,lb2:ub2))
-             READ(prop_unit,*) o%p%amat_m_p
-          END IF
-       END IF
-
-       ! source_p
-       IF (prop_showall .GE. 1) THEN
-          READ(prop_unit,*) lb1,ub1
-          READ(prop_unit,*) lb2,ub2
-          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-             IF (ALLOCATED(o%p%source_p)) DEALLOCATE(o%p%source_p)
-             ALLOCATE(o%p%source_p(lb1:ub1,lb2:ub2))
-             READ(prop_unit,*) o%p%source_p
-          END IF
-       END IF
-       ! source_m
-       IF (prop_showall .EQ. 1) THEN
-          READ(prop_unit,*) lb1,ub1
-          READ(prop_unit,*) lb2,ub2
-          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-             IF (ALLOCATED(o%p%source_m)) DEALLOCATE(o%p%source_m)
-             ALLOCATE(o%p%source_m(lb1:ub1,lb2:ub2))
-             READ(prop_unit,*) o%p%source_m
-          END IF
-       END IF
-
-       ! flux_p
-       IF (prop_showall .EQ. 1) THEN
-          READ(prop_unit,*) lb1,ub1
-          READ(prop_unit,*) lb2,ub2
-          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-             IF (ALLOCATED(o%p%flux_p)) DEALLOCATE(o%p%flux_p)
-             ALLOCATE(o%p%flux_p(lb1:ub1,lb2:ub2))
-             READ(prop_unit,*) o%p%flux_p
-          END IF
-       END IF
-       ! flux_m
-       IF (prop_showall .EQ. 1) THEN
-          READ(prop_unit,*) lb1,ub1
-          READ(prop_unit,*) lb2,ub2
-          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-             IF (ALLOCATED(o%p%flux_m)) DEALLOCATE(o%p%flux_m)
-             ALLOCATE(o%p%flux_m(lb1:ub1,lb2:ub2))
-             READ(prop_unit,*) o%p%flux_m
-          END IF
-       END IF
-
-       ! qflux - Winny not fully ok
-       IF (prop_showall .EQ. 1) THEN
-          IF (ALLOCATED(o%p%qflux)) DEALLOCATE(o%p%qflux)
-          ALLOCATE(o%p%qflux(3,3))
-          READ(prop_unit,*) o%p%qflux
-       END IF
-
-       ! eta
-       IF (prop_showall .EQ. 1) THEN
-          READ(prop_unit,*) lb1,ub1
-          IF (ub1 .GT. 0) THEN
-             IF (ALLOCATED(o%p%eta_l)) DEALLOCATE(o%p%eta_l)
-             ALLOCATE(o%p%eta_l(lb1:ub1))
-             READ(prop_unit,*) o%p%eta_l
-          END IF
-          READ(prop_unit,*) lb1,ub1
-          IF (ub1 .GT. 0) THEN
-             IF (ALLOCATED(o%p%eta_r)) DEALLOCATE(o%p%eta_r)
-             ALLOCATE(o%p%eta_r(lb1:ub1))
-             READ(prop_unit,*) o%p%eta_r
-          END IF
-          READ(prop_unit,*) o%p%eta_boundary_l
-          READ(prop_unit,*) o%p%eta_boundary_r
-       END IF
-
-       close(unit=prop_unit)
+       
+!!$       CALL unit_propagator
+!!$
+!!$       !PRINT *, prop_cfilename
+!!$
+!!$       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
+!!$            form=prop_format,action='read')
+!!$
+!!$       ! tags
+!!$       READ(prop_unit,*) dummy
+!!$       READ(prop_unit,*) dummy
+!!$
+!!$       ! info
+!!$       IF (prop_showall .EQ. 1) THEN
+!!$          READ(prop_unit,*) o%nr_joined
+!!$          READ(prop_unit,*) o%fieldpropagator_tag_s
+!!$          READ(prop_unit,*) o%fieldpropagator_tag_e
+!!$          READ(prop_unit,*) o%fieldperiod_tag_s
+!!$          READ(prop_unit,*) o%fieldperiod_tag_e
+!!$
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          IF (ub1 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%y)) DEALLOCATE(o%y)
+!!$             ALLOCATE(o%y(lb1:ub1))
+!!$             READ(prop_unit,*) o%y
+!!$          END IF
+!!$          READ(prop_unit,*) o%phi_l
+!!$          READ(prop_unit,*) o%phi_r
+!!$       END IF
+!!$
+!!$       ! Binarysplit stuff is not dumped
+!!$       IF (prop_showall .EQ. 0) THEN
+!!$          READ(prop_unit,*) o%bin_split_mode
+!!$       END IF
+!!$
+!!$       ! sizes
+!!$       IF (prop_showall .GE. 1) THEN
+!!$          READ(prop_unit,*) o%p%npart
+!!$          READ(prop_unit,*) o%p%npass_l
+!!$          READ(prop_unit,*) o%p%npass_r
+!!$          READ(prop_unit,*) o%p%nvelocity
+!!$       END IF
+!!$
+!!$       ! amat_p_p
+!!$       IF (prop_showall .GE. 1) THEN
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          READ(prop_unit,*) lb2,ub2
+!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%p%amat_p_p)) DEALLOCATE(o%p%amat_p_p)
+!!$             ALLOCATE(o%p%amat_p_p(lb1:ub1,lb2:ub2))
+!!$             READ(prop_unit,*) o%p%amat_p_p
+!!$          END IF
+!!$       END IF
+!!$       ! amat_m_m
+!!$       IF (prop_showall .EQ. 1) THEN
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          READ(prop_unit,*) lb2,ub2
+!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%p%amat_m_m)) DEALLOCATE(o%p%amat_m_m)
+!!$             ALLOCATE(o%p%amat_m_m(lb1:ub1,lb2:ub2))
+!!$             READ(prop_unit,*) o%p%amat_m_m
+!!$          END IF
+!!$       END IF
+!!$       ! amat_p_m
+!!$       IF (prop_showall .EQ. 1) THEN
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          READ(prop_unit,*) lb2,ub2
+!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%p%amat_p_m)) DEALLOCATE(o%p%amat_p_m)
+!!$             ALLOCATE(o%p%amat_p_m(lb1:ub1,lb2:ub2))
+!!$             READ(prop_unit,*) o%p%amat_p_m
+!!$          END IF
+!!$       END IF
+!!$       ! amat_m_p
+!!$       IF (prop_showall .GE. 1) THEN
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          READ(prop_unit,*) lb2,ub2
+!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%p%amat_m_p)) DEALLOCATE(o%p%amat_m_p)
+!!$             ALLOCATE(o%p%amat_m_p(lb1:ub1,lb2:ub2))
+!!$             READ(prop_unit,*) o%p%amat_m_p
+!!$          END IF
+!!$       END IF
+!!$
+!!$       ! source_p
+!!$       IF (prop_showall .GE. 1) THEN
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          READ(prop_unit,*) lb2,ub2
+!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%p%source_p)) DEALLOCATE(o%p%source_p)
+!!$             ALLOCATE(o%p%source_p(lb1:ub1,lb2:ub2))
+!!$             READ(prop_unit,*) o%p%source_p
+!!$          END IF
+!!$       END IF
+!!$       ! source_m
+!!$       IF (prop_showall .EQ. 1) THEN
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          READ(prop_unit,*) lb2,ub2
+!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%p%source_m)) DEALLOCATE(o%p%source_m)
+!!$             ALLOCATE(o%p%source_m(lb1:ub1,lb2:ub2))
+!!$             READ(prop_unit,*) o%p%source_m
+!!$          END IF
+!!$       END IF
+!!$
+!!$       ! flux_p
+!!$       IF (prop_showall .EQ. 1) THEN
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          READ(prop_unit,*) lb2,ub2
+!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%p%flux_p)) DEALLOCATE(o%p%flux_p)
+!!$             ALLOCATE(o%p%flux_p(lb1:ub1,lb2:ub2))
+!!$             READ(prop_unit,*) o%p%flux_p
+!!$          END IF
+!!$       END IF
+!!$       ! flux_m
+!!$       IF (prop_showall .EQ. 1) THEN
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          READ(prop_unit,*) lb2,ub2
+!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%p%flux_m)) DEALLOCATE(o%p%flux_m)
+!!$             ALLOCATE(o%p%flux_m(lb1:ub1,lb2:ub2))
+!!$             READ(prop_unit,*) o%p%flux_m
+!!$          END IF
+!!$       END IF
+!!$
+!!$       ! qflux - Winny not fully ok
+!!$       IF (prop_showall .EQ. 1) THEN
+!!$          IF (ALLOCATED(o%p%qflux)) DEALLOCATE(o%p%qflux)
+!!$          ALLOCATE(o%p%qflux(3,3))
+!!$          READ(prop_unit,*) o%p%qflux
+!!$       END IF
+!!$
+!!$       ! eta
+!!$       IF (prop_showall .EQ. 1) THEN
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          IF (ub1 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%p%eta_l)) DEALLOCATE(o%p%eta_l)
+!!$             ALLOCATE(o%p%eta_l(lb1:ub1))
+!!$             READ(prop_unit,*) o%p%eta_l
+!!$          END IF
+!!$          READ(prop_unit,*) lb1,ub1
+!!$          IF (ub1 .GT. 0) THEN
+!!$             IF (ALLOCATED(o%p%eta_r)) DEALLOCATE(o%p%eta_r)
+!!$             ALLOCATE(o%p%eta_r(lb1:ub1))
+!!$             READ(prop_unit,*) o%p%eta_r
+!!$          END IF
+!!$          READ(prop_unit,*) o%p%eta_boundary_l
+!!$          READ(prop_unit,*) o%p%eta_boundary_r
+!!$       END IF
+!!$
+!!$       close(unit=prop_unit)
     end if
   END SUBROUTINE read_propagator_cont
   ! ---------------------------------------------------------------------------
@@ -3453,18 +3491,39 @@ CONTAINS
 
     integer(HID_T) :: h5id_grp
     integer :: lb1, ub1, lb2, ub2
-
+    integer :: k
+    character(len=1024) :: h5_ds_name
+    
     call h5_open_group(h5id, grpname, h5id_grp)
 
     call h5_get(h5id_grp, 'n_ori', binsplit%n_ori)
     call h5_get(h5id_grp, 'n_split', binsplit%n_split)
     
-    call h5_get_bounds(h5id_grp, 'x_ori_bin', lb1, lb2, ub1, ub2)
-    if (ub1 .gt. lb1 .or. ub2 .gt. lb2) then
-       if (allocated(binsplit%x_ori_bin)) deallocate(binsplit%x_ori_bin)
-       allocate(binsplit%x_ori_bin(lb1:ub1,lb2:ub2))
-       call h5_get(h5id_grp, 'x_ori_bin', binsplit%x_ori_bin)
-    end if
+    !call h5_get_bounds(h5id_grp, 'x_ori_bin', lb1, lb2, ub1, ub2)
+    !if (ub1 .gt. lb1 .or. ub2 .gt. lb2) then
+    !   if (allocated(binsplit%x_ori_bin)) deallocate(binsplit%x_ori_bin)
+    !   allocate(binsplit%x_ori_bin(lb1:ub1,lb2:ub2))
+    !   call h5_get(h5id_grp, 'x_ori_bin', binsplit%x_ori_bin)
+    !end if
+
+    if (allocated(binsplit%x_ori_bin_sparse)) deallocate(binsplit%x_ori_bin_sparse)
+    allocate(binsplit%x_ori_bin_sparse(0:binsplit%n_ori))
+    
+    
+    do k = 0, binsplit%n_ori
+       write (h5_ds_name, '(A,I0)') "x_ori_bin_sparse_", k
+
+       call h5_get_bounds(h5id_grp, trim(h5_ds_name) // '_idxvec', lb1, ub1)
+       allocate(binsplit%x_ori_bin_sparse(k)%idxvec(lb1:ub1))
+       call h5_get(h5id_grp, trim(h5_ds_name) // '_idxvec', binsplit%x_ori_bin_sparse(k)%idxvec)
+
+       call h5_get_bounds(h5id_grp, trim(h5_ds_name) // '_values', lb1, ub1)
+       allocate(binsplit%x_ori_bin_sparse(k)%values(lb1:ub1))
+       call h5_get(h5id_grp, trim(h5_ds_name) // '_values', binsplit%x_ori_bin_sparse(k)%values)
+       
+       call h5_get(h5id_grp, trim(h5_ds_name) // '_len', binsplit%x_ori_bin_sparse(k)%len)
+       call h5_get(h5id_grp, trim(h5_ds_name) // '_len_sparse', binsplit%x_ori_bin_sparse(k)%len_sparse)
+    end do
     
     call h5_get_bounds(h5id_grp, 'x_ori_poi', lb1, ub1)
     if (ub1 .gt. 0) then
@@ -3560,150 +3619,153 @@ CONTAINS
        call h5_close(h5id)
     
     else
-
-       CALL unit_propagator
-       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
-            form=prop_format,action='read')
+       write (*,*) "Error in read_binarysplit_cont. This is not longer supported for ASCII files."
+       stop
        
-       READ(prop_unit,*) o%bin_split_mode
-
-       ! binarysplit left
-       READ(prop_unit,*) o%eta_bs_l%n_ori
-       READ(prop_unit,*) o%eta_bs_l%n_split
-       ! x_ori_bin
-       READ(prop_unit,*) lb1,ub1
-       READ(prop_unit,*) lb2,ub2
-       IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
-          IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) DEALLOCATE(o%eta_bs_l%x_ori_bin)
-          ALLOCATE(o%eta_bs_l%x_ori_bin(lb1:ub1,lb2:ub2))
-          READ(prop_unit,*) o%eta_bs_l%x_ori_bin
-       END IF
-       ! x_ori_poi
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) DEALLOCATE(o%eta_bs_l%x_ori_poi)
-          ALLOCATE(o%eta_bs_l%x_ori_poi(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_l%x_ori_poi
-       END IF
-       ! x_poi
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_l%x_poi)) DEALLOCATE(o%eta_bs_l%x_poi)
-          ALLOCATE(o%eta_bs_l%x_poi(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_l%x_poi
-       END IF
-       ! x_split
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_l%x_split)) DEALLOCATE(o%eta_bs_l%x_split)
-          ALLOCATE(o%eta_bs_l%x_split(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_l%x_split
-       END IF
-       ! x_pos
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_l%x_pos)) DEALLOCATE(o%eta_bs_l%x_pos)
-          ALLOCATE(o%eta_bs_l%x_pos(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_l%x_pos
-       END IF
-       ! x
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_l%x)) DEALLOCATE(o%eta_bs_l%x)
-          ALLOCATE(o%eta_bs_l%x(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_l%x
-       END IF
-       ! y
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_l%y)) DEALLOCATE(o%eta_bs_l%y)
-          ALLOCATE(o%eta_bs_l%y(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_l%y
-       END IF
-       ! int
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_l%int)) DEALLOCATE(o%eta_bs_l%int)
-          ALLOCATE(o%eta_bs_l%int(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_l%int
-       END IF
-       ! err
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_l%err)) DEALLOCATE(o%eta_bs_l%err)
-          ALLOCATE(o%eta_bs_l%err(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_l%err
-       END IF
-
-       ! binarysplit right
-       READ(prop_unit,*) o%eta_bs_r%n_ori
-       READ(prop_unit,*) o%eta_bs_r%n_split
-       ! x_ori_bin
-       READ(prop_unit,*) lb1,ub1
-       READ(prop_unit,*) lb2,ub2
-       IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
-          IF (ALLOCATED(o%eta_bs_r%x_ori_bin)) DEALLOCATE(o%eta_bs_r%x_ori_bin)
-          ALLOCATE(o%eta_bs_r%x_ori_bin(lb1:ub1,lb2:ub2))
-          READ(prop_unit,*) o%eta_bs_r%x_ori_bin
-       END IF
-       ! x_ori_poi
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) DEALLOCATE(o%eta_bs_r%x_ori_poi)
-          ALLOCATE(o%eta_bs_r%x_ori_poi(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_r%x_ori_poi
-       END IF
-       ! x_poi
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_r%x_poi)) DEALLOCATE(o%eta_bs_r%x_poi)
-          ALLOCATE(o%eta_bs_r%x_poi(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_r%x_poi
-       END IF
-       ! x_split
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_r%x_split)) DEALLOCATE(o%eta_bs_r%x_split)
-          ALLOCATE(o%eta_bs_r%x_split(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_r%x_split
-       END IF
-       ! x_pos
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_r%x_pos)) DEALLOCATE(o%eta_bs_r%x_pos)
-          ALLOCATE(o%eta_bs_r%x_pos(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_r%x_pos
-       END IF
-       ! x
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_r%x)) DEALLOCATE(o%eta_bs_r%x)
-          ALLOCATE(o%eta_bs_r%x(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_r%x
-       END IF
-       ! y
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_r%y)) DEALLOCATE(o%eta_bs_r%y)
-          ALLOCATE(o%eta_bs_r%y(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_r%y
-       END IF
-       ! int
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_r%int)) DEALLOCATE(o%eta_bs_r%int)
-          ALLOCATE(o%eta_bs_r%int(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_r%int
-       END IF
-       ! err
-       READ(prop_unit,*) lb1,ub1
-       IF (ub1 .GT. 0) THEN
-          IF (ALLOCATED(o%eta_bs_r%err)) DEALLOCATE(o%eta_bs_r%err)
-          ALLOCATE(o%eta_bs_r%err(lb1:ub1))
-          READ(prop_unit,*) o%eta_bs_r%err
-       END IF
-
-       close(unit=prop_unit)
+!!$
+!!$       CALL unit_propagator
+!!$       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
+!!$            form=prop_format,action='read')
+!!$       
+!!$       READ(prop_unit,*) o%bin_split_mode
+!!$
+!!$       ! binarysplit left
+!!$       READ(prop_unit,*) o%eta_bs_l%n_ori
+!!$       READ(prop_unit,*) o%eta_bs_l%n_split
+!!$       ! x_ori_bin
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       READ(prop_unit,*) lb2,ub2
+!!$       IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
+!!$          IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) DEALLOCATE(o%eta_bs_l%x_ori_bin)
+!!$          ALLOCATE(o%eta_bs_l%x_ori_bin(lb1:ub1,lb2:ub2))
+!!$          READ(prop_unit,*) o%eta_bs_l%x_ori_bin
+!!$       END IF
+!!$       ! x_ori_poi
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) DEALLOCATE(o%eta_bs_l%x_ori_poi)
+!!$          ALLOCATE(o%eta_bs_l%x_ori_poi(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_l%x_ori_poi
+!!$       END IF
+!!$       ! x_poi
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_l%x_poi)) DEALLOCATE(o%eta_bs_l%x_poi)
+!!$          ALLOCATE(o%eta_bs_l%x_poi(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_l%x_poi
+!!$       END IF
+!!$       ! x_split
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_l%x_split)) DEALLOCATE(o%eta_bs_l%x_split)
+!!$          ALLOCATE(o%eta_bs_l%x_split(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_l%x_split
+!!$       END IF
+!!$       ! x_pos
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_l%x_pos)) DEALLOCATE(o%eta_bs_l%x_pos)
+!!$          ALLOCATE(o%eta_bs_l%x_pos(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_l%x_pos
+!!$       END IF
+!!$       ! x
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_l%x)) DEALLOCATE(o%eta_bs_l%x)
+!!$          ALLOCATE(o%eta_bs_l%x(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_l%x
+!!$       END IF
+!!$       ! y
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_l%y)) DEALLOCATE(o%eta_bs_l%y)
+!!$          ALLOCATE(o%eta_bs_l%y(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_l%y
+!!$       END IF
+!!$       ! int
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_l%int)) DEALLOCATE(o%eta_bs_l%int)
+!!$          ALLOCATE(o%eta_bs_l%int(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_l%int
+!!$       END IF
+!!$       ! err
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_l%err)) DEALLOCATE(o%eta_bs_l%err)
+!!$          ALLOCATE(o%eta_bs_l%err(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_l%err
+!!$       END IF
+!!$
+!!$       ! binarysplit right
+!!$       READ(prop_unit,*) o%eta_bs_r%n_ori
+!!$       READ(prop_unit,*) o%eta_bs_r%n_split
+!!$       ! x_ori_bin
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       READ(prop_unit,*) lb2,ub2
+!!$       IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
+!!$          IF (ALLOCATED(o%eta_bs_r%x_ori_bin)) DEALLOCATE(o%eta_bs_r%x_ori_bin)
+!!$          ALLOCATE(o%eta_bs_r%x_ori_bin(lb1:ub1,lb2:ub2))
+!!$          READ(prop_unit,*) o%eta_bs_r%x_ori_bin
+!!$       END IF
+!!$       ! x_ori_poi
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) DEALLOCATE(o%eta_bs_r%x_ori_poi)
+!!$          ALLOCATE(o%eta_bs_r%x_ori_poi(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_r%x_ori_poi
+!!$       END IF
+!!$       ! x_poi
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_r%x_poi)) DEALLOCATE(o%eta_bs_r%x_poi)
+!!$          ALLOCATE(o%eta_bs_r%x_poi(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_r%x_poi
+!!$       END IF
+!!$       ! x_split
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_r%x_split)) DEALLOCATE(o%eta_bs_r%x_split)
+!!$          ALLOCATE(o%eta_bs_r%x_split(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_r%x_split
+!!$       END IF
+!!$       ! x_pos
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_r%x_pos)) DEALLOCATE(o%eta_bs_r%x_pos)
+!!$          ALLOCATE(o%eta_bs_r%x_pos(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_r%x_pos
+!!$       END IF
+!!$       ! x
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_r%x)) DEALLOCATE(o%eta_bs_r%x)
+!!$          ALLOCATE(o%eta_bs_r%x(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_r%x
+!!$       END IF
+!!$       ! y
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_r%y)) DEALLOCATE(o%eta_bs_r%y)
+!!$          ALLOCATE(o%eta_bs_r%y(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_r%y
+!!$       END IF
+!!$       ! int
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_r%int)) DEALLOCATE(o%eta_bs_r%int)
+!!$          ALLOCATE(o%eta_bs_r%int(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_r%int
+!!$       END IF
+!!$       ! err
+!!$       READ(prop_unit,*) lb1,ub1
+!!$       IF (ub1 .GT. 0) THEN
+!!$          IF (ALLOCATED(o%eta_bs_r%err)) DEALLOCATE(o%eta_bs_r%err)
+!!$          ALLOCATE(o%eta_bs_r%err(lb1:ub1))
+!!$          READ(prop_unit,*) o%eta_bs_r%err
+!!$       END IF
+!!$
+!!$       close(unit=prop_unit)
 
     end if
 
