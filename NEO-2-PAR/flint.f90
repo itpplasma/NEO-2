@@ -284,6 +284,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   REAL(kind=dp) :: eta_min_relevant, save_bsfunc_err                       !<-in
   REAL(kind=dp) :: eta_min_global
   REAL(kind=dp) :: eta_b_abs_max
+  REAL(kind=dp) :: eta_b_abs_min
   REAL(kind=dp) :: eta_s_loc_min
   REAL(kind=dp) :: t_start,d_p,d_t
 
@@ -375,7 +376,11 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   INTEGER(HID_T) :: h5_config_id
   INTEGER(HID_T) :: h5_config_group
 
-
+  !**********************************************************
+  ! Level decay in trapped domain
+  !**********************************************************
+  real(kind=dp)  :: sigma_decay_mult, sigma_decay_sigma
+  real(kind=dp)  :: bsfunc_local_err_orig, bsfunc_local_err_decay_sigma, bsfunc_local_err_decay_min_mult
 
   !print *, 'flint: begin of program'
   ! this is not very sophisticated at the moment
@@ -601,7 +606,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   plotpropagator => fieldpropagator
   fieldripple => fieldpropagator%ch_act
   eta_b_abs_max = 1.0_dp / fieldline%b_abs_max
-
+  eta_b_abs_min = 1.0_dp / fieldline%b_abs_min
+  
   ! for modification of sigma values for binarysplit
   IF (isw_lorentz .EQ. 1 .OR. isw_momentum .EQ. 1) THEN
      lag_sigma = 0
@@ -636,7 +642,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   iendperiod = 0
   prop_ibegperiod = 1
   prop_count_call = 0
-  PRINT *, 'Setting up propagators'
+  print *, 'Setting up propagators'
+  bsfunc_local_err_orig = bsfunc_local_err
   allprops: DO      ! WHILE (fieldpropagator%tag .LE. proptag_end)
      ! information about propagator
      CALL info_magnetics(fieldpropagator)
@@ -650,6 +657,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      WRITE(c_ripple_tag,*) rippletag
      WRITE(c_period_tag,*) fieldperiod%tag
 
+     write (*,*) "Level placement for propagator", proptag
+    ! if (proptag .eq. 5) stop
+     
      !PRINT *, 'eta_ori ',LBOUND(eta_ori)
 
      clear_old_ripple = 0
@@ -805,7 +815,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            ELSEIF (bsfunc_local_solver .EQ. 3) THEN
               prop_reconstruct_levels = 0
 
-              !print *, 'bsfunc_local_solver = ',bsfunc_local_solver
+              ! print *, '(A) bsfunc_local_solver = ',bsfunc_local_solver
               !print *, 'ripple loc', fieldripple%tag
               !PRINT *, 'eta_ori ', eta_ori
               !PRINT *, 'eta_x0_loc ', eta_x0_loc
@@ -821,7 +831,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
               !PRINT *, 'eta_ori ', eta_ori
               ! PRINT *, 'collision_sigma_multiplier ', collision_sigma_multiplier
-              save_bsfunc_err=bsfunc_local_err 
+              save_bsfunc_err=bsfunc_local_err
+              
               ! Local 
               loc_construct: DO i_construct = 1,UBOUND(eta_x0_loc,1)
                  eta_x0_val(1) = eta_x0_loc(i_construct)
@@ -841,16 +852,51 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  ! minimum local eta_s - end
                  loc_laguerre: DO ilag = 0,lag_sigma
                     eta_s_val(1)  = eta_s_loc(i_construct) * collision_sigma_multiplier(ilag)
+                    !**********************************************************
+                    ! Additional lines for increasing eta_s_val in trapped domain
+                    !**********************************************************
+                    save_bsfunc_err  = bsfunc_local_err_orig
+                    bsfunc_local_err = bsfunc_local_err_orig
+                    !if ((eta_x0_val(1) - eta_b_abs_max) > 0) then
+                       !bsfunc_local_err_decay_min_mult = 1d0
+                       !bsfunc_local_err_decay_sigma = sqrt((eta_b_abs_min - eta_b_abs_max)**2 &
+                       !     / log(bsfunc_local_err_decay_min_mult))
+
+                       !bsfunc_local_err_decay_sigma = sqrt((0.1d0)**2 &
+                       !     / log(bsfunc_local_err_decay_min_mult))
+                       
+                       !save_bsfunc_err = bsfunc_local_err_orig * &
+                       !     exp(((eta_x0_val(1) - eta_b_abs_max)/bsfunc_local_err_decay_sigma)**2)
+                       !bsfunc_local_err = save_bsfunc_err
+                       !write (*,*) "Modify local error to ", bsfunc_local_err, eta_b_abs_min, &
+                       !     (eta_x0_val(1) - eta_b_abs_max), &
+                       !     bsfunc_local_err_decay_sigma, eta_x0_val(1), eta_s_val(1)
+                    
+                    sigma_decay_mult = 1d6
+
+                    sigma_decay_sigma = sqrt((0.1d0)**2 &
+                         / log(sigma_decay_mult))
+
+                    eta_s_val(1) = eta_s_val(1) * &
+                         exp(((eta_x0_val(1) - eta_b_abs_max)/sigma_decay_sigma)**2)
+
+                    write (*,*) "Modify sigma to ", eta_s_val(1), &
+                         "by factor", exp(((eta_x0_val(1) - eta_b_abs_max)/sigma_decay_sigma)**2)
+
+                    !end if
+                    !**********************************************************
+                    ! if ((eta_x0_val(1) - eta_b_abs_max) > 0) cycle
+
                     ! print *, ilag,eta_s_val(1), eta_x0_val(1)
                     loc_divide: DO idiv = 0,bsfunc_divide
-                       loc_modelfunc: DO ibmf = 1,bsfunc_modelfunc_num
+                       loc_modelfunc: do ibmf = 1,bsfunc_modelfunc_num
                           bsfunc_modelfunc = ibmf
                           IF ( (eta_x0_val(1) .GE. eta_b_abs_max - bsfunc_max_mult_reach * eta_s_val(1)) .AND. &
                                (eta_x0_val(1) .LE. eta_b_abs_max + bsfunc_max_mult_reach * eta_s_val(1)) ) &
                                bsfunc_local_err = save_bsfunc_err * bsfunc_local_err_max_mult
                           ! print *, 'I am in local: ',fieldripple%tag,eta_x0_val,eta_s_val
-                          CALL construct_bsfunc(eta_x0_val,eta_s_val)               
-                          CALL find_binarysplit(eta_bs_loc,eta_x0_val)
+                          call construct_bsfunc(eta_x0_val,eta_s_val)
+                          call find_binarysplit(eta_bs_loc,eta_x0_val)
                           bsfunc_local_err = save_bsfunc_err
                           IF (bsfunc_sigma_mult .NE. 1.0_dp) THEN
                              eta_s_val(1)  =  eta_s_val(1) * bsfunc_sigma_mult
@@ -862,7 +908,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                              !   bsfunc_local_err = save_bsfunc_err
                              eta_s_val(1)  =  eta_s_val(1) / bsfunc_sigma_mult
                           END IF
-                       END DO loc_modelfunc
+                       end do loc_modelfunc
                        eta_s_val(1) = eta_s_val(1) / 1.618033988749895d0
                        !IF (eta_s_val(1) .LT. eta_s_loc_min) EXIT loc_divide
                     END DO loc_divide
@@ -871,6 +917,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  !print *, ' '
               END DO loc_construct
 
+              save_bsfunc_err  = bsfunc_local_err_orig
+              bsfunc_local_err = bsfunc_local_err_orig
+              
               CALL get_binarysplit(eta_bs_loc,eta_split_loc,'x')
               !PRINT *, 'eta_split_loc ', eta_split_loc
               !!! PRINT *, 'eta_split_loc before sqrt: ', ubound(eta_split_loc),' at ',fieldripple%tag
@@ -914,7 +963,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               !PRINT *, ' ' 
               !PRINT *, 'eta_split_loc after:  ', ubound(eta_split_loc)
               !!! PRINT *, 'eta_split_loc before max:  ', ubound(eta_split_loc),' at ',fieldripple%tag
-
+              
               ! Then absolute Maximum
               eta_bs = eta_bs_loc              
               eta_min_relevant = eta_min_global + eta_part_globalfac * eta_s_relevant
@@ -930,7 +979,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                             (eta_x0_val(1) .LE. eta_b_abs_max + bsfunc_max_mult_reach * eta_s_val(1)) ) &
                             bsfunc_local_err = save_bsfunc_err * bsfunc_local_err_max_mult
                        ! PRINT *, 'I am in absolute: ',fieldripple%tag,eta_x0_val,eta_s_val
-                       CALL construct_bsfunc(eta_x0_val,eta_s_val) 
+                       call construct_bsfunc(eta_x0_val,eta_s_val)
                        CALL find_binarysplit(eta_bs,eta_x0_val)
                        bsfunc_local_err = save_bsfunc_err
                        IF (bsfunc_sigma_mult .NE. 1.0_dp) THEN
@@ -952,36 +1001,72 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               !!! PRINT *, 'eta_split    before  rest: ', ubound(eta_split),' at ',fieldripple%tag
 
               ! then the rest
-              DO i_construct = LBOUND(eta_x0,1),UBOUND(eta_x0,1)
-                 IF (eta_x0_hlp(i_construct) .LT. 1000._dp) THEN
-                    eta_x0_val(1) = eta_x0(i_construct)
-                    rest_laguerre : DO ilag = 0,lag_sigma
-                       eta_s_val(1)  = eta_s(i_construct) * collision_sigma_multiplier(ilag)
-                       IF(bsfunc_ignore_trap_levels .EQ. 1 .AND. eta_x0_val(1) .GT. eta_min_relevant) CYCLE
-                       DO ibmf = 1,bsfunc_modelfunc_num
-                          bsfunc_modelfunc = ibmf
-                          IF ( (eta_x0_val(1) .GE. eta_b_abs_max - bsfunc_max_mult_reach * eta_s_val(1)) .AND. &
-                               (eta_x0_val(1) .LE. eta_b_abs_max + bsfunc_max_mult_reach * eta_s_val(1)) ) &
-                               bsfunc_local_err = save_bsfunc_err * bsfunc_local_err_max_mult
-                          ! PRINT *, 'I am in rest: ',fieldripple%tag,eta_x0_val,eta_s_val
-                          CALL construct_bsfunc(eta_x0_val,eta_s_val) 
-                          CALL find_binarysplit(eta_bs,eta_x0_val)
-                          bsfunc_local_err = save_bsfunc_err
-                          IF (bsfunc_sigma_mult .NE. 1.0_dp) THEN
-                             eta_s_val(1)  =  eta_s_val(1) * bsfunc_sigma_mult
-                             !   IF ( (eta_x0_val(1) .GE. eta_b_abs_max - bsfunc_max_mult_reach * eta_s_val(1)) .AND. &
-                             !        (eta_x0_val(1) .LE. eta_b_abs_max + bsfunc_max_mult_reach * eta_s_val(1)) ) &
-                             !        bsfunc_local_err = save_bsfunc_err * bsfunc_local_err_max_mult
-                             CALL construct_bsfunc(eta_x0_val,eta_s_val)               
+              if (.true.) then
+                 DO i_construct = LBOUND(eta_x0,1),UBOUND(eta_x0,1)
+                    IF (eta_x0_hlp(i_construct) .LT. 1000._dp) THEN
+                       eta_x0_val(1) = eta_x0(i_construct)
+                       rest_laguerre : DO ilag = 0,lag_sigma
+                          eta_s_val(1)  = eta_s(i_construct) * collision_sigma_multiplier(ilag)
+                          !**********************************************************
+                          ! Additional lines for increasing eta_s_val in trapped domain
+                          !**********************************************************
+                          save_bsfunc_err  = bsfunc_local_err_orig
+                          bsfunc_local_err = bsfunc_local_err_orig
+                          !bsfunc_local_err_decay_min_mult = 1d0
+                          !bsfunc_local_err_decay_sigma = sqrt((eta_b_abs_min - eta_b_abs_max)**2 &
+                          !     / log(bsfunc_local_err_decay_min_mult))
+
+                          !bsfunc_local_err_decay_sigma = sqrt((0.1d0)**2 &
+                          !     / log(bsfunc_local_err_decay_min_mult))
+
+                          !save_bsfunc_err = bsfunc_local_err_orig * &
+                          !     exp(((eta_x0_val(1) - eta_b_abs_max)/bsfunc_local_err_decay_sigma)**2)
+
+                          sigma_decay_mult = 1d6
+                          
+                          sigma_decay_sigma = sqrt((0.1d0)**2 &
+                               / log(sigma_decay_mult))
+                          
+                          eta_s_val(1) = eta_s_val(1) * &
+                               exp(((eta_x0_val(1) - eta_b_abs_max)/sigma_decay_sigma)**2)
+
+                          write (*,*) "Modify sigma to ", eta_s_val(1), &
+                               "by factor", exp(((eta_x0_val(1) - eta_b_abs_max)/sigma_decay_sigma)**2)
+                          
+                          !bsfunc_local_err = save_bsfunc_err
+                          !write (*,*) "Modify local error to ", bsfunc_local_err
+                          !write (*,*) "Diff to max and min is", (eta_x0_val(1) - eta_b_abs_max), &
+                          !     (eta_x0_val(1) - eta_b_abs_min)
+                          !write (*,*) "Factor is ", exp(((eta_x0_val(1) - eta_b_abs_max) / &
+                          !     bsfunc_local_err_decay_sigma)**2)
+                          !**********************************************************
+                          
+                          IF(bsfunc_ignore_trap_levels .EQ. 1 .AND. eta_x0_val(1) .GT. eta_min_relevant) CYCLE
+                          DO ibmf = 1,bsfunc_modelfunc_num
+                             bsfunc_modelfunc = ibmf
+                             IF ( (eta_x0_val(1) .GE. eta_b_abs_max - bsfunc_max_mult_reach * eta_s_val(1)) .AND. &
+                                  (eta_x0_val(1) .LE. eta_b_abs_max + bsfunc_max_mult_reach * eta_s_val(1)) ) &
+                                  bsfunc_local_err = save_bsfunc_err * bsfunc_local_err_max_mult
+                             ! PRINT *, 'I am in rest: ',fieldripple%tag,eta_x0_val,eta_s_val
+                             CALL construct_bsfunc(eta_x0_val,eta_s_val) 
                              CALL find_binarysplit(eta_bs,eta_x0_val)
-                             !   bsfunc_local_err = save_bsfunc_err
-                             eta_s_val(1)  =  eta_s_val(1) / bsfunc_sigma_mult
-                          END IF
-                       END DO
-                       if ( eta_s_val(1) .gt. 2.0d0 * eta_x0_val(1) ) exit rest_laguerre
-                    END DO rest_laguerre
-                 END IF
-              END DO
+                             bsfunc_local_err = save_bsfunc_err
+                             IF (bsfunc_sigma_mult .NE. 1.0_dp) THEN
+                                eta_s_val(1)  =  eta_s_val(1) * bsfunc_sigma_mult
+                                !   IF ( (eta_x0_val(1) .GE. eta_b_abs_max - bsfunc_max_mult_reach * eta_s_val(1)) .AND. &
+                                !        (eta_x0_val(1) .LE. eta_b_abs_max + bsfunc_max_mult_reach * eta_s_val(1)) ) &
+                                !        bsfunc_local_err = save_bsfunc_err * bsfunc_local_err_max_mult
+                                CALL construct_bsfunc(eta_x0_val,eta_s_val)               
+                                CALL find_binarysplit(eta_bs,eta_x0_val)
+                                !   bsfunc_local_err = save_bsfunc_err
+                                eta_s_val(1)  =  eta_s_val(1) / bsfunc_sigma_mult
+                             END IF
+                          END DO
+                          if ( eta_s_val(1) .gt. 2.0d0 * eta_x0_val(1) ) exit rest_laguerre
+                       END DO rest_laguerre
+                    END IF
+                 END DO
+              end if
 
               bsfunc_local_err=save_bsfunc_err
               ! store the stuff

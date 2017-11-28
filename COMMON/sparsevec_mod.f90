@@ -11,13 +11,14 @@ module sparsevec_mod
   type :: sparsevec
      integer, dimension(:), allocatable       :: idxvec
      integer(kind=longint), dimension(:), allocatable :: values
-     integer                                  :: len = 0
+     integer                                  :: len = -1
      integer                                  :: len_sparse = 0
 
    contains
 
      procedure :: assign     => assign_sparsevec
      procedure :: modify     => modify_sparsevec
+     procedure :: insert     => insert_sparsevec
      procedure :: get        => get_sparsevec
      procedure :: find       => find_sparsevec
      procedure :: reallocate => reallocate_sparsevec
@@ -29,6 +30,36 @@ module sparsevec_mod
 
 contains
 
+  subroutine insert_sparsevec(this, idx, val, idxnear)
+    class(sparsevec) :: this
+    integer          :: idx, idxnear
+    integer(kind=longint) :: val
+    logical          :: found
+    integer(kind=longint) :: zero
+
+    zero = 0
+    if (val .ne. zero) then
+
+    if (this%len_sparse .gt. 0) then
+
+       call this%reallocate(this%len_sparse+1)
+
+       if (idxnear .ne. this%len_sparse) then
+          this%idxvec(idxnear+1:this%len_sparse) = this%idxvec(idxnear:this%len_sparse-1) 
+          this%values(idxnear+1:this%len_sparse) = this%values(idxnear:this%len_sparse-1) 
+       end if
+       
+       this%idxvec(idxnear) = idx
+       this%values(idxnear) = val
+    else
+       call this%reallocate(this%len_sparse+1)
+       this%idxvec(this%len_sparse) = idx
+       this%values(this%len_sparse) = val
+    end if
+
+ end if
+  end subroutine insert_sparsevec
+  
   subroutine assign_sparsevec(this, obj)
     class(sparsevec) :: this
     class(sparsevec)  :: obj
@@ -50,31 +81,35 @@ contains
     if (this%len_sparse .ne. len_sparse) then
        
        if (this%len_sparse .ne. 0) then
-          allocate(idxvec_copy(this%len_sparse))
-          allocate(values_copy(this%len_sparse))
-   
-          idxvec_copy = this%idxvec
-          values_copy = this%values
+          if ((.not. allocated(this%idxvec)) .or. (this%len_sparse .ge. ubound(this%idxvec,1))) then
+             allocate(idxvec_copy(this%len_sparse))
+             allocate(values_copy(this%len_sparse))
 
-         ! write (*,*) "Reallocate", this%len_sparse, len_sparse, ubound(this%idxvec), ubound(idxvec_copy)
-          
-          deallocate(this%idxvec)
-          deallocate(this%values)
-          allocate(this%idxvec(len_sparse))
-          allocate(this%values(len_sparse))
-          this%idxvec = 0
-          this%values = 0
-         
-          this%idxvec(1:this%len_sparse) = idxvec_copy
-          this%values(1:this%len_sparse) = values_copy
+             idxvec_copy = this%idxvec(1:this%len_sparse)
+             values_copy = this%values(1:this%len_sparse)
 
-          deallocate(idxvec_copy)
-          deallocate(values_copy)
+             !**********************************************************
+             ! Reallocate more space than needed for performance reasons
+             !**********************************************************
+             deallocate(this%idxvec)
+             deallocate(this%values)
+             allocate(this%idxvec(4*len_sparse))
+             allocate(this%values(4*len_sparse))
+             this%idxvec = 0
+             this%values = 0
+
+             this%idxvec(1:this%len_sparse) = idxvec_copy
+             this%values(1:this%len_sparse) = values_copy
+
+             deallocate(idxvec_copy)
+             deallocate(values_copy)
+
+          end if
        else
           allocate(this%idxvec(len_sparse))
           allocate(this%values(len_sparse))
-          this%idxvec = -1
-          this%values = -1         
+          !this%idxvec = 0
+          !this%values = 0         
        end if
        this%len_sparse = len_sparse
 
@@ -91,17 +126,23 @@ contains
   
   function get_sparsevec(this, idx) result(val)
     class(sparsevec)      :: this
-    integer               :: idx
+    integer               :: idx, idxnear
     integer(kind=longint) :: val
-    integer :: k
+    integer :: k, idx_sparse
 
     val = 0
-    do k = 1,this%len_sparse
-       if (this%idxvec(k) .eq. idx) then
-          val = this%values(k)
-          return
+    if (allocated(this%idxvec)) then
+       !if (.not. any(this%idxvec .eq. idx)) then
+       !   val = 0
+       !   return
+       !end if
+
+       idx_sparse = this%find(idx, idxnear)
+       if (idx_sparse .gt. 0) then
+          val = this%values(idx_sparse)
        end if
-    end do
+
+    end if
        
   end function get_sparsevec
   
@@ -109,67 +150,65 @@ contains
     class(sparsevec) :: this
     integer :: idx
     integer(kind=longint) :: val
-    integer :: k
+    integer :: k, idx_sparse, idxnear
     logical :: found
-    
-    found = .false.
-    do k = 1,this%len_sparse
-       if (this%idxvec(k) .eq. idx) then
-          this%values(k) = val
-          found = .true.
-          !write (*,*) "Found", k, idx, val
-          !return
-       end if
-    end do
 
-    if (.not. found) then
-       !write (*,*) "Autoreallocate to", this%len_sparse+1, "because ", idx, "was not found in ", &
-       !     this%idxvec, "and values are", this%values
-       call this%reallocate(this%len_sparse+1)
-       this%idxvec(this%len_sparse) = idx
-       this%values(this%len_sparse) = val
-       !read (*,*) 
+    idx_sparse = this%find(idx, idxnear)
+    if (idx_sparse .gt. 0) then
+       this%values(idx_sparse) = val
+    else
+       call this%insert(idx, val, idxnear)
     end if
-
-    
-    !if (this%len_sparse .ge. (ubound(this%values,1) - lbound(this%values,1))) then
-    !   write (*,*) "Sparsevec: Not well initialized. Stopping."
-    !   call abort()
-    !end if
     
   end subroutine modify_sparsevec
 
 
-  function find_sparsevec(this, idx) result(idx_sparse)
+  function find_sparsevec(this, idx, idxnear) result(idx_sparse)
     class(sparsevec) :: this
     integer          :: idx
     integer          :: idx_sparse
+    integer, intent(out)         :: idxnear
     integer          :: k
-    
+    logical          :: found
+
+    !**********************************************************
+    ! Linear find
+    !**********************************************************
+    !idx_sparse = -1
+    !do k = 1,this%len_sparse
+    !   if (this%idxvec(k) .eq. idx) then
+    !      idx_sparse = k
+    !      return
+    !   end if
+    !end do
+
+    !**********************************************************
+    ! Binary find
+    !**********************************************************
     idx_sparse = -1
-    do k = 1,this%len_sparse
-       if (this%idxvec(k) .eq. idx) then
-          idx_sparse = k
-          return
-       end if
-    end do
+    if (this%len_sparse .gt. 0 ) then
+       call binsrc(this%idxvec(1:this%len_sparse), 1, this%len_sparse, idx, idxnear, found)
+       idx_sparse = idxnear - 1
+    end if
+    if (.not. found) idx_sparse = -1
+        
   end function find_sparsevec
   
   subroutine ibset_sparsevec(this, idx, pos)
     class(sparsevec) :: this
     integer          :: idx
     integer          :: pos
-    integer          :: idx_sparse
+    integer          :: idx_sparse, idxnear
+    integer(kind=longint) :: zero
+
+    ! This is very important, so that 0 has the correct bitsize
+    zero = 0
     
-    idx_sparse = this%find(idx)
-    if (idx_sparse .ge. 0) then
+    idx_sparse = this%find(idx, idxnear)
+    if (idx_sparse .gt. 0) then
        this%values(idx_sparse) =  ibset(this%values(idx_sparse), pos)
     else
-       call this%reallocate(this%len_sparse+1)
-       this%idxvec(this%len_sparse) = idx
-       this%values(this%len_sparse) = ibset(0, pos)
-       !write (*,*) "Error in Sparsevec:", idx, "does not exist!"
-       !call abort()
+       call this%insert(idx, ibset(zero, pos), idxnear)
     end if
     
   end subroutine ibset_sparsevec
@@ -178,19 +217,71 @@ contains
     class(sparsevec) :: this
     integer          :: idx
     integer          :: pos
-    integer          :: idx_sparse
+    integer          :: idx_sparse, idxnear
     
-    idx_sparse = this%find(idx)
-    if (idx_sparse .ge. 0) then
+    idx_sparse = this%find(idx, idxnear)
+    if (idx_sparse .gt. 0) then
        this%values(idx_sparse) =  ibclr(this%values(idx_sparse), pos)
     else
-       !call this%reallocate(this%len_sparse+1)
-       !this%idxvec(this%len_sparse) = idx
-       !this%values(this%len_sparse) = ibset(0, pos)
        write (*,*) "Warning in ibclr_sparsevec:", idx, "does not exist!"
-       !call abort()
+       call abort()
     end if
     
   end subroutine ibclr_sparsevec
-  
+
+  subroutine binsrc(p,nmin,nmax,xi,i,found)
+    integer                       :: n,nmin,nmax,i,imin,imax,k
+    integer                       :: xi
+    logical                       :: found
+    integer, dimension(nmin:nmax) :: p
+
+    !******************************************************************************
+    ! Finds the index  i  of the array of increasing numbers   p  with dimension  n 
+    ! which satisfies   p(i-1) <  xi  <  p(i) . Uses binary search algorithm.  
+    !******************************************************************************
+    imin=nmin
+    imax=nmax
+    n=nmax-nmin
+
+    !**********************************************************
+    ! Some special cases to increase performance
+    !**********************************************************
+    found = .false.
+    if (xi .lt. p(nmin)) then
+       i = nmin
+       return
+    elseif (xi .gt. p(nmax)) then
+       i = nmax+1
+       return
+    elseif (xi .eq. p(nmax)) then
+       i = nmax+1
+       found = .true.
+       return
+    end if
+    
+    do k=1,n
+       i=(imax-imin)/2+imin
+       if(p(i).gt.xi) then
+          imax=i
+       else
+          imin=i
+       endif
+       if(imax.eq.imin+1) exit
+    enddo
+
+    i=imax
+
+    !**********************************************************
+    ! Some special cases for the sparsevec to make insertion easier
+    !**********************************************************
+    if (nmax - nmin .ge. 1) then
+       if ((p(i-1) .eq. xi) .or. (p(i) .eq. xi)) then
+          found = .true.
+       elseif (p(i) .eq. xi) then
+          found = .true.
+       end if
+    end if
+    return
+  end subroutine binsrc
+
 end module sparsevec_mod
