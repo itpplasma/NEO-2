@@ -82,6 +82,14 @@ PROGRAM neo2
 
   LOGICAL :: opened
 
+  !**********************************************************
+  ! Include version information
+  !**********************************************************
+  INCLUDE "version.f90"
+  !**********************************************************
+
+  
+  
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
   REAL(kind=dp) :: rbeg,zbeg
