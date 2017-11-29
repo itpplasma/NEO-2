@@ -184,7 +184,16 @@ target_link_libraries(${EXE_NAME}
 	#${open_blas_lib}
 	#debug efence
         )
-
+add_custom_target(
+    NEO-2-Versioning
+    COMMAND ./Scripts/tag_version.sh
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+add_dependencies(${EXE_NAME} NEO-2-Versioning)
+        
+        
+        
+        
 ### Get location of the executable (depricated)
 #get_target_property(EXE_LOC ${EXE_NAME} LOCATION)
 #message(${EXE_LOC})
