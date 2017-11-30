@@ -864,6 +864,16 @@ PROGRAM neo2
   ! Initialize MPI module
   !**********************************************************
   CALL mpro%init()
+  
+  
+  !****************************************************
+  !  Git version check
+  !*****************************************************
+  IF (mpro%isMaster()) THEN
+    CALL write_version_info()
+  END IF
+
+ 
  
   !! Modification by Andreas F. Martitsch (31.07.2014)
   ! Save here starting point of the field line for cylindircal
@@ -1042,7 +1052,8 @@ PROGRAM neo2
   !*******************************************
   CALL mpro%deinit(.FALSE.)
   CALL h5_deinit()
-  
+
+
   !! Modification by Andreas F. Martitsch (17.07.2014)
   ! Uncomment "STOP" to see IEEE floating-point exceptions (underflow is present).
   ! This FORTRAN 2008 feature is implemented in gfortran-4.9.2.
@@ -1053,5 +1064,25 @@ PROGRAM neo2
   ! fine-tune for which exceptions the warning should be shown.
   STOP
   !! End Modification by Andreas F. Martitsch (17.07.2014)
+  
+CONTAINS
+
+  SUBROUTINE write_version_info()
+
+    WRITE (*,*) ''
+    WRITE (*,*) "---------- NEO-2 Git Revision ----------"
+    WRITE (*,*) Neo2_Version
+    WRITE (*,*) Neo2_Version_Date
+    WRITE (*,*) "----------------------------------------"
+    WRITE (*,*) ''
+    IF (len_TRIM(Neo2_Version_Additional) /= 0) THEN
+       WRITE (*,*) "#################################### NEO-2 Git Additional Information ####################################"
+       WRITE (*,*) Neo2_Version_Additional
+       WRITE (*,*) "##########################################################################################################"
+       WRITE (*,*) ''
+    END IF
+    
+  END SUBROUTINE write_version_info  
+
   
 END PROGRAM neo2
