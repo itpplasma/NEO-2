@@ -12,14 +12,15 @@ echo ""
 echo "Git Hash is ${GITHASH}"
 echo "was produced on ${GITHASHDATE}"
 
-
 if [ -n "$GITCHANGEDFILES" ]; then
     echo 'character(len=*), parameter :: Neo2_Version_Additional = "WARNING, &' >> ./version.f90
-    echo "&THERE ARE UNCOMMITTED CHANGES. Run may not be reproduceable: &" >> ./version.f90
+    echo "&THERE ARE UNCOMMITTED CHANGES. Run may not be reproduceable. &" >> ./version.f90
+    echo "&Changed Files to Git Revision:&" >> ./version.f90
     echo "THERE ARE UNCOMMITTED CHANGES!"
     echo ""
     while read -r line; do
-        echo "&${line} &" >> ./version.f90
+        echo '&"//char(13)//char(10)//"&' >> ./version.f90
+        echo "& ${line} &" >> ./version.f90
     done <<< "$GITCHANGEDFILES"
     echo '&"' >> ./version.f90
 
