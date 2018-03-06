@@ -9,10 +9,10 @@ module sparsevec_mod
   integer, parameter    :: dp = kind(1.0d0)
 
   type :: sparsevec
-     integer, dimension(:), allocatable       :: idxvec
+     integer, dimension(:), allocatable :: idxvec
      integer(kind=longint), dimension(:), allocatable :: values
-     integer                                  :: len = -1
-     integer                                  :: len_sparse = 0
+     integer                                          :: len = -1
+     integer                                          :: len_sparse = 0
 
    contains
 
@@ -65,8 +65,18 @@ contains
     class(sparsevec)  :: obj
 
     call this%clear()
-    if (allocated(obj%idxvec)) this%idxvec = obj%idxvec
-    if (allocated(obj%values)) this%values = obj%values
+    if (allocated(obj%idxvec)) then
+       if (allocated(this%idxvec)) deallocate(this%idxvec)
+       allocate(this%idxvec, source=obj%idxvec)
+       !this%idxvec = obj%idxvec
+
+    end if
+    if (allocated(obj%values)) then
+       if (allocated(this%values)) deallocate(this%values)
+       allocate(this%values, source=obj%values)
+       !this%values = obj%values
+
+    end if
     this%len        = obj%len
     this%len_sparse = obj%len_sparse
 
