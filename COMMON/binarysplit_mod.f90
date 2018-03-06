@@ -19,7 +19,6 @@ MODULE binarysplit_int
   PRIVATE longint
   INCLUDE 'longint.f90'
 
-
   ! parameters for evaluation functions
   ! have to be set with (.e.g. for gauss)
   !   CALL construct_bsfunc(x0,s)
@@ -1429,38 +1428,10 @@ CONTAINS
     CHARACTER(len=1024) :: h5_ds_name
 
     INTEGER(kind=longint) :: zero
-    INTEGER :: sparselen
+    integer :: sparselen
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: v_sparse
-
-!!$    type(sparsevec) :: testvec
-!!$    zero = 0
-!!$    call testvec%modify(0,zero)
-!!$    
-!!$    zero = 10
-!!$    call testvec%modify(1,zero)
-!!$    
-!!$    zero = 50
-!!$    call testvec%modify(5,zero)
-!!$    
-!!$    zero = 20
-!!$    call testvec%modify(2,zero)
-!!$    
-!!$    zero = 11
-!!$    call testvec%modify(1,zero)
-!!$    
-!!$    zero = 55
-!!$    call testvec%modify(5,zero)
-!!$    
-!!$    zero = -1
-!!$    call testvec%modify(0,zero)
-!!$    
-!!$    write (*,*) "*** Testvec ***"
-!!$    write (*,*) testvec%idxvec
-!!$    write (*,*) testvec%values
-!!$    write (*,*) "*** *** ***"
-!!$    !stop
-
-    
+    !integer(kind=longint) :: vec
+        
     n_ori  = xbs%n_ori
     maxdim = n_ori + xbs%n_split
     xbs%x_pos(0:maxdim) = 2*xbs%x_pos(0:maxdim)
@@ -1505,7 +1476,7 @@ CONTAINS
        CALL xbs%x_ori_bin_sparse(n)%clear()
        
        !do k = s1,0,-1
-       DO k = 1, v_sparse(n)%len_sparse
+       do k = v_sparse(n)%len_sparse, 1, -1
           DO i = is-1,0,-1
              !if (btest(v_sparse(n)%get(k),i)) then
              IF (BTEST(v_sparse(n)%get(v_sparse(n)%idxvec(k)),i)) THEN
@@ -1515,28 +1486,38 @@ CONTAINS
                 pos_n = MOD(pos_n,is)
                 
                 !call xbs%x_ori_bin_sparse(n)%modify(k_n, ibset(xbs%x_ori_bin_sparse(n)%get(k_n), pos_n))
-                CALL xbs%x_ori_bin_sparse(n)%IBSET(k_n, pos_n)
+                call xbs%x_ori_bin_sparse(n)%ibset(k_n, pos_n)
+                !vec = xbs%x_ori_bin_sparse(n)%get(k_n)
+                !write (555,'(A, I6, I20, I20, A)',advance='NO') "Repos ", n, k_n, pos_n, "   "
+                !do j = is-1,0,-1
+                !   if (btest(vec, j)) then
+                !      write (555, '(I1)',advance='NO') 1
+                !   else
+                !      write (555, '(I1)',advance='NO') 0
+                !   end if
+                !end do
+                !write (555,*)
+                
              END IF
           END DO
-       END DO
+       end do
     END DO
-    DEALLOCATE(v_sparse)
+    DEALLOCATE(v_sparse)   
     
-!!$    if (.false.) then
-!!$       call h5_open_rw('binarysplit_reposition.h5', h5id)
-!!$       write (h5_ds_name, '(A,I0)') "x_ori_bin_", INT(log(s1_n+1d0)/log(2d0))
-!!$       call h5_add(h5id, h5_ds_name, xbs%x_ori_bin, lbound(xbs%x_ori_bin), ubound(xbs%x_ori_bin))
-!!$       do k=0,n_ori
-!!$          write (h5_ds_name, '(A,I0,A,I0)') "x_ori_bin_sparse_idxvec", int(log(s1_n+1d0)/log(2d0)),"_",k
-!!$          call h5_add(h5id, h5_ds_name, xbs%x_ori_bin_sparse(k)%idxvec, lbound(xbs%x_ori_bin_sparse(k)%idxvec),&
-!!$               ubound(xbs%x_ori_bin_sparse(k)%idxvec))
-!!$          write (h5_ds_name, '(A,I0,A,I0)') "x_ori_bin_sparse_values", int(log(s1_n+1d0)/log(2d0)),"_",k
-!!$          call h5_add(h5id, h5_ds_name, xbs%x_ori_bin_sparse(k)%values, lbound(xbs%x_ori_bin_sparse(k)%values),&
-!!$               ubound(xbs%x_ori_bin_sparse(k)%values))
-!!$
-!!$       end do
-!!$       call h5_close(h5id)
-!!$    end if
+    if (.false.) then
+       call h5_open_rw('binarysplit_reposition.h5', h5id)
+
+       do k=0,n_ori
+          write (h5_ds_name, '(A,I0,A,I0)') "x_ori_bin_sparse_idxvec", int(log(s1_n+1d0)/log(2d0)),"_",k
+          call h5_add(h5id, h5_ds_name, xbs%x_ori_bin_sparse(k)%idxvec, lbound(xbs%x_ori_bin_sparse(k)%idxvec),&
+               ubound(xbs%x_ori_bin_sparse(k)%idxvec))
+          write (h5_ds_name, '(A,I0,A,I0)') "x_ori_bin_sparse_values", int(log(s1_n+1d0)/log(2d0)),"_",k
+          call h5_add(h5id, h5_ds_name, xbs%x_ori_bin_sparse(k)%values, lbound(xbs%x_ori_bin_sparse(k)%values),&
+               ubound(xbs%x_ori_bin_sparse(k)%values))
+
+       end do
+       call h5_close(h5id)
+    end if
     
   END SUBROUTINE reposition_binsplit
 
@@ -1678,8 +1659,8 @@ CONTAINS
     !INTEGER(kind=longint),   DIMENSION(:), ALLOCATABLE  :: bin
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE    :: bin_sparse
     INTEGER                                       :: nb1 
-    REAL(kind=dp)                                 :: dval,dist
-
+    real(kind=dp)                                 :: dval,dist
+    
     n_ori       = xbs%n_ori
     n_split     = xbs%n_split
     maxind      = n_ori + n_split
@@ -1734,6 +1715,8 @@ CONTAINS
     xbs%x_pos(splitloc+1:maxind+1) = xbs%x_pos(splitloc:maxind)
     pos = xbs%x_pos(splitloc)
     !bin(:) = xbs%x_ori_bin(:,xbs%x_poi(splitloc))
+
+    !write (*,*) "pos_n before mod",  pos_n, (nb-split), pos+2**(nb-split)
 
     pos_n = pos+2**(nb-split)
     xbs%x_pos(splitloc) = pos_n
