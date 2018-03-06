@@ -1625,7 +1625,8 @@ CONTAINS
     USE rk4_kin_mod, ONLY : y
     USE plagrange_mod
     USE neo_magfie_mod, ONLY : boozer_iota
-    USE collisionality_mod, ONLY : isw_axisymm
+    use collisionality_mod, only : isw_axisymm
+    use field_eq_mod, only : dpsidr, dpsidz
     !! Modifications by Andreas F. Martitsch (11.06.2014)
     ! Optional output (necessary for modeling the magnetic rotation)
     ! Note: This requires changes in "modify_propagator"
@@ -1686,6 +1687,11 @@ CONTAINS
        y(2) = xstart(3)
        y(3) = 1.0_dp
        y(4:ndim) = 0.0_dp
+       if (mag_magfield .eq. 3) then  ! ASDEX EFIT
+          call rk4_kin(phibeg, 0.d0)
+          y(3) = dpsidr
+          y(5) = dpsidz
+       end if
     ELSE
        ! Boozer
        y(1) = xstart(3) ! boozer_theta_beg
@@ -1899,7 +1905,7 @@ CONTAINS
                )
           !stop "Exit make_mag_fieldline_newperiod "
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
-          IF (mag_coordinates .EQ. 0) THEN
+          if (mag_coordinates .eq. 0) then
              ! cylindrical
              fieldperiod%coords%x1(i) = y(1)
              fieldperiod%coords%x2(i) = phi
@@ -1914,7 +1920,8 @@ CONTAINS
              fieldperiod%coords%x1(i) = boozer_s
              fieldperiod%coords%x2(i) = phi
              fieldperiod%coords%x3(i) = y(1)
-          END IF
+          end if
+
        END DO all_steps
        ! final storage 
        fieldperiod%mdata%yend = y
