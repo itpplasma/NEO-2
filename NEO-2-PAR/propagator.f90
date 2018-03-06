@@ -932,7 +932,8 @@ CONTAINS
     real(kind=dp), allocatable :: gamma_out(:,:)
     REAL(kind=dp) :: beta_out(3)
     REAL(kind=dp) :: avnabpsi,avbhat2,dl1obhat
-
+    real(kind=dp) :: k_cof
+    
     INTEGER, PARAMETER, DIMENSION(3) :: ind_map = (/1,3,2/)
     INTEGER :: i, i_p, j, j_p
     integer :: full_version
@@ -1088,7 +1089,7 @@ CONTAINS
           call h5_add(h5id, 'full_version', full_version)
           call h5_add(h5id, 'isw_lorentz', isw_lorentz)
           call h5_add(h5id, 'isw_integral', isw_integral)
-          call h5_add(h5id,  'isw_energy', isw_energy)         
+          call h5_add(h5id, 'isw_energy', isw_energy)         
           call h5_add(h5id, 'lag', lag, 'Degree of the Laguerre Polynomials')
           call h5_add(h5id, 'leg', leg, 'Degree of the Legendre Polynomials')
           call h5_add(h5id, 'collpar', collpar)
@@ -1098,9 +1099,15 @@ CONTAINS
           call h5_add(h5id, 'avbhat2', avbhat2)
           call h5_add(h5id, 'dl1obhat', dl1obhat)
           call h5_add(h5id, 'gamma_out', gamma_out, lbound(gamma_out), ubound(gamma_out))
+          call h5_add(h5id, 'qflux', prop_a%p%qflux, lbound(prop_a%p%qflux), ubound(prop_a%p%qflux))
 
-          call h5_close(h5id)
+          !k_cof = (2.5_dp-D32_AX_D31ref/D31_AX_D31ref)
+          k_cof = 2.5_dp - prop_a%p%qflux(2,3) / prop_a%p%qflux(2,1)
+          write (*,*) "k", k_cof
+          call h5_add(h5id, 'k_cof', k_cof)
           
+          call h5_close(h5id)
+         
        else
 
           ! Write to ASCII file
