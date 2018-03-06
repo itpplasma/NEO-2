@@ -71,9 +71,14 @@ PROGRAM neo2
   ! (with magnetic shear)
   USE neo_magfie_mod, ONLY : isw_mag_shear
   !! End Modifications by Andreas F. Martitsch (17.03.2016)
-  USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
-  USE neo_control, ONLY : in_file ! only used for preparation of multi-spec input
-  
+  use neo_sub_mod, only : neo_read_control ! only used for preparation of multi-spec input
+  use neo_control, only: in_file, inp_swi, lab_swi
+
+  !************************************
+  ! HDF5
+  !************************************
+  USE hdf5_tools
+  USE hdf5_tools_f2003
   !
   IMPLICIT NONE
 
@@ -84,6 +89,39 @@ PROGRAM neo2
 
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
+  !**********************************************************
+  ! Include version information
+  !**********************************************************
+  !INCLUDE "cmake_version.f90"
+  !INCLUDE "version.f90"
+
+  !************************************************
+  ! HDF5
+  !************************************************
+  INTEGER(HID_T) :: h5_config_id
+  INTEGER(HID_T) :: h5_config_group
+  CHARACTER(8)  :: date
+  CHARACTER(10) :: time
+  CHARACTER(50) :: datetimestring
+  REAL(kind=dp) :: rand_num
+  CHARACTER(6)  :: rand_hash
+  CHARACTER(32) :: fieldname
+
+  INTEGER(HID_T)  :: h5id_taginfo, h5id_propfile, h5id_final, h5id_surf, h5id_neo2
+  INTEGER(HID_T)  :: h5id_propagators, h5id_prop
+  CHARACTER(512)  :: surfname
+  CHARACTER(512)  :: h5_filename
+  CHARACTER(1024) :: cwd
+  INTEGER         :: k,l
+  INTEGER         :: tag_first, tag_last
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: cg0_1_num_prop, cg2_1_num_prop
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: cg0_2_num_prop, cg2_2_num_prop
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: cg0_3_num_prop, cg2_3_num_prop, denom_mflint_prop
+  REAL(kind=dp)   :: cg0_1_avg, cg2_1_avg
+  REAL(kind=dp)   :: cg0_2_avg, cg2_2_avg
+  REAL(kind=dp)   :: cg0_3_avg, cg2_3_avg
+  !**********************************************************
+  
   REAL(kind=dp) :: rbeg,zbeg
   REAL(kind=dp) :: phimi
   REAL(kind=dp) :: xetama,xetami
@@ -952,6 +990,13 @@ PROGRAM neo2
 !!$  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
      CALL flint_prepare_2(bin_split_mode,eta_s_lim)
 
+     !*********************************************************
+     ! Write information about the run to a HDF5 file
+     !*********************************************************
+     IF (mpro%isMaster()) THEN
+        CALL write_run_info()
+     END IF
+
 
 
   ! ---------------------------------------------------------------------------
@@ -1046,4 +1091,176 @@ PROGRAM neo2
   STOP
   !! End Modification by Andreas F. Martitsch (17.07.2014)
   
+contains
+
+  SUBROUTINE write_run_info()
+    IF (prop_reconstruct .EQ. 0 ) THEN
+       CALL h5_create('neo2_config.h5', h5_config_id, 1)
+
+       CALL h5_define_group(h5_config_id, 'metadata', h5_config_group)
+       !CALL h5_add(h5_config_group, 'NEO-2 Version', Neo2_Version)
+       !CALL h5_add(h5_config_group, 'MPILib Version', MyMPILib_Version)
+       !CALL h5_add(h5_config_group, 'CMake_Compiler', CMake_Compiler)
+       !CALL h5_add(h5_config_group, 'CMake_Compiler_Version', CMake_Compiler_Version)
+       !CALL h5_add(h5_config_group, 'CMake_Build_Type', CMake_Build_Type)
+       !CALL h5_add(h5_config_group, 'CMake_Flags', CMake_Flags)
+       !CALL h5_add(h5_config_group, 'CMake_Flags_Release', CMake_Flags_Release)
+       !CALL h5_add(h5_config_group, 'CMake_Flags_Debug', CMake_Flags_Debug)
+       !CALL h5_add(h5_config_group, 'CMake_System', CMake_System)
+       !CALL h5_add(h5_config_group, 'CMake_SuiteSparse_Dir', CMake_SuiteSparse_Dir)
+       !CALL h5_add(h5_config_group, 'CMake_Blas_Lib', CMake_Blas_Lib)
+       CALL h5_close_group(h5_config_group)
+
+       CALL h5_define_group(h5_config_id, 'neo', h5_config_group)
+       CALL h5_add(h5_config_group, 'in_file', in_file, 'Boozer file')
+       CALL h5_add(h5_config_group, 'lab_swi', lab_swi)
+       CALL h5_add(h5_config_group, 'inp_swi', inp_swi)
+       CALL h5_close_group(h5_config_group)
+
+       CALL h5_define_group(h5_config_id, 'settings', h5_config_group)
+       CALL h5_add(h5_config_group, 'phimi', phimi, 'Beginning of period', 'Rad')
+       CALL h5_add(h5_config_group, 'nstep', nstep, 'Number of integration steps per period', 'Rad')
+       CALL h5_add(h5_config_group, 'nperiod', nperiod, 'Number of periods')
+       CALL h5_add(h5_config_group, 'mag_nperiod_min', mag_nperiod_min)
+       CALL h5_add(h5_config_group, 'mag_magfield', mag_magfield)
+       CALL h5_add(h5_config_group, 'boozer_theta_beg', boozer_theta_beg)
+       CALL h5_add(h5_config_group, 'boozer_phi_beg', boozer_phi_beg)
+       CALL h5_add(h5_config_group, 'mag_start_special', mag_start_special)
+       CALL h5_add(h5_config_group, 'mag_cycle_ripples', mag_cycle_ripples)
+       CALL h5_add(h5_config_group, 'mag_close_fieldline', mag_close_fieldline)
+       CALL h5_add(h5_config_group, 'aiota_tokamak', aiota_tokamak)
+       CALL h5_add(h5_config_group, 'eta_part_global', eta_part_global)
+       CALL h5_add(h5_config_group, 'eta_part_globalfac', eta_part_globalfac)
+       CALL h5_add(h5_config_group, 'eta_part_globalfac_p',eta_part_globalfac_p )
+       CALL h5_add(h5_config_group, 'eta_part_globalfac_t', eta_part_globalfac_t)
+       CALL h5_add(h5_config_group, 'eta_part_trapped',eta_part_trapped )
+       CALL h5_add(h5_config_group, 'eta_alpha_p', eta_alpha_p)
+       CALL h5_add(h5_config_group, 'eta_alpha_t', eta_alpha_t)
+       CALL h5_add(h5_config_group, 'sparse_solve_method', sparse_solve_method)
+       CALL h5_add(h5_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
+       CALL h5_add(h5_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
+       CALL h5_add(h5_config_group, 'boozer_s', boozer_s, 'Flux surface')
+       CALL h5_add(h5_config_group, 'xetami', xetami)
+       CALL h5_add(h5_config_group, 'xetama', xetama)
+       CALL h5_add(h5_config_group, 'ndim0', ndim0)
+       CALL h5_add(h5_config_group, 'zbeg', zbeg)
+       CALL h5_add(h5_config_group, 'rbeg', rbeg)
+       CALL h5_add(h5_config_group, 'proptag_begin', proptag_begin)
+       CALL h5_add(h5_config_group, 'proptag_final', proptag_final)
+       CALL h5_add(h5_config_group, 'mag_save_memory', mag_save_memory)
+       CALL h5_add(h5_config_group, 'mag_dbhat_min', mag_dbhat_min)
+       CALL h5_add(h5_config_group, 'mag_dphi_inf_min', mag_dphi_inf_min)
+       CALL h5_add(h5_config_group, 'mag_inflection_mult', mag_inflection_mult)
+       CALL h5_add(h5_config_group, 'solver_talk', solver_talk)
+       CALL h5_add(h5_config_group, 'switch_off_asymp', switch_off_asymp) 
+       CALL h5_add(h5_config_group, 'asymp_margin_zero', asymp_margin_zero)
+       CALL h5_add(h5_config_group, 'asymp_margin_npass', asymp_margin_npass)
+       CALL h5_add(h5_config_group, 'asymp_pardeleta', asymp_pardeleta)
+       CALL h5_add(h5_config_group, 'ripple_solver_accurfac', ripple_solver_accurfac)
+       CALL h5_add(h5_config_group, 'sparse_talk', sparse_talk)
+       CALL h5_add(h5_config_group, 'mag_symmetric', mag_symmetric)
+       CALL h5_add(h5_config_group, 'mag_symmetric_shorten', mag_symmetric_shorten)
+       CALL h5_close_group(h5_config_group)
+
+       CALL h5_define_group(h5_config_id, 'collision', h5_config_group)
+       CALL h5_add(h5_config_group, 'conl_over_mfp', conl_over_mfp, 'Collisionality parameter')
+       CALL h5_add(h5_config_group, 'lag', lag, 'Number of Laguerre polynomials')
+       CALL h5_add(h5_config_group, 'leg', leg, 'Number of Legendre polynomials')
+       CALL h5_add(h5_config_group, 'legmax', legmax, 'Maximum number of Legendre polynomials')
+       CALL h5_add(h5_config_group, 'z_eff', z_eff, 'Effective charge')
+       CALL h5_add(h5_config_group, 'isw_lorentz', isw_lorentz, '')
+       CALL h5_add(h5_config_group, 'isw_integral', isw_integral, '')
+       CALL h5_add(h5_config_group, 'isw_energy', isw_energy, '')
+       CALL h5_add(h5_config_group, 'isw_axisymm', isw_axisymm, '')
+       CALL h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
+       CALL h5_add(h5_config_group, 'collop_base_prj', collop_base_prj, 'Projection base of collision operator')
+       CALL h5_add(h5_config_group, 'collop_base_exp', collop_base_exp, 'Expansion base of collision operator')
+       CALL h5_add(h5_config_group, 'v_min_resolution', v_min_resolution, 'Minimum velocity for level placement')
+       CALL h5_add(h5_config_group, 'v_max_resolution', v_max_resolution, 'Maximum velocity for level placement')
+       CALL h5_add(h5_config_group, 'phi_x_max', phi_x_max, 'Maximum velocity for base function')
+       CALL h5_add(h5_config_group, 'collop_bspline_order', collop_bspline_order, 'BSpline order')
+       CALL h5_add(h5_config_group, 'collop_bspline_dist', collop_bspline_dist, 'BSpline knots distribution factor')
+       CALL h5_add(h5_config_group, 'isw_relativistic', isw_relativistic)
+       CALL h5_add(h5_config_group, 'T_e', T_e)
+
+       CALL h5_close_group(h5_config_group)
+
+       CALL h5_define_group(h5_config_id, 'binsplit', h5_config_group)
+       CALL h5_add(h5_config_group, 'eta_s_lim', eta_s_lim)
+       CALL h5_add(h5_config_group, 'eta_part',eta_part )
+       CALL h5_add(h5_config_group, 'lambda_equi', lambda_equi)
+       CALL h5_add(h5_config_group, 'phi_split_mode', phi_split_mode)
+       CALL h5_add(h5_config_group, 'phi_place_mode', phi_place_mode)
+       CALL h5_add(h5_config_group, 'phi_split_min', phi_split_min)
+       CALL h5_add(h5_config_group, 'max_solver_try', max_solver_try)
+       CALL h5_add(h5_config_group, 'hphi_mult', hphi_mult)
+       CALL h5_add(h5_config_group, 'bin_split_mode', bin_split_mode)
+       CALL h5_add(h5_config_group, 'bsfunc_message', bsfunc_message)
+       CALL h5_add(h5_config_group, 'bsfunc_modelfunc', bsfunc_modelfunc)
+       CALL h5_add(h5_config_group, 'bsfunc_local_err', bsfunc_local_err)
+       CALL h5_add(h5_config_group, 'bsfunc_min_distance',bsfunc_min_distance )
+       CALL h5_add(h5_config_group, 'bsfunc_max_index',bsfunc_max_index )
+       CALL h5_add(h5_config_group, 'bsfunc_max_splitlevel', bsfunc_max_splitlevel)
+       CALL h5_add(h5_config_group, 'bsfunc_sigma_mult',bsfunc_sigma_mult)
+       CALL h5_add(h5_config_group, 'bsfunc_sigma_min', bsfunc_sigma_min)
+       CALL h5_add(h5_config_group, 'bsfunc_local_solver', bsfunc_local_solver)
+       CALL h5_add(h5_config_group, 'mag_local_sigma',mag_local_sigma )
+       CALL h5_add(h5_config_group, 'bsfunc_divide', bsfunc_divide)
+       CALL h5_add(h5_config_group, 'mag_ripple_contribution', mag_ripple_contribution)
+       CALL h5_close_group(h5_config_group)
+
+       CALL h5_define_group(h5_config_id, 'propagator', h5_config_group)
+       CALL h5_add(h5_config_group, 'prop_diagphys', prop_diagphys)
+       CALL h5_add(h5_config_group, 'prop_overwrite', prop_overwrite)
+       CALL h5_add(h5_config_group, 'prop_diagnostic', prop_diagnostic)
+       CALL h5_add(h5_config_group, 'prop_binary', prop_binary)
+       CALL h5_add(h5_config_group, 'prop_timing', prop_timing)
+       CALL h5_add(h5_config_group, 'prop_join_ends',prop_join_ends )
+       CALL h5_add(h5_config_group, 'prop_fluxsplitmode', prop_fluxsplitmode)
+       CALL h5_add(h5_config_group, 'mag_talk', mag_talk)
+       CALL h5_add(h5_config_group, 'mag_infotalk',mag_infotalk )
+       CALL h5_add(h5_config_group, 'hphi_lim', hphi_lim)
+       CALL h5_add(h5_config_group, 'prop_write', prop_write)
+       CALL h5_add(h5_config_group, 'prop_reconstruct',prop_reconstruct )
+       !CALL h5_add(h5_config_group, 'prop_fileformat',prop_fileformat )
+       CALL h5_add(h5_config_group, 'prop_ripple_plot',prop_ripple_plot )
+       CALL h5_close_group(h5_config_group)
+
+       CALL h5_define_group(h5_config_id, 'plotting', h5_config_group)
+       CALL h5_add(h5_config_group, 'plot_gauss', plot_gauss)
+       CALL h5_add(h5_config_group, 'plot_prop', plot_prop)
+       CALL h5_close_group(h5_config_group)        
+
+       CALL h5_close(h5_config_id)
+
+    END IF
+
+    !**********************************************************
+    ! Save timestamps
+    !**********************************************************
+    CALL h5_open_rw('neo2_config.h5', h5_config_id)
+    CALL h5_open_group(h5_config_id, 'metadata', h5_config_group)
+
+    CALL random_NUMBER(rand_num)
+    WRITE (rand_hash,'(Z6.6)') CEILING(16**6 * rand_num)
+
+    WRITE (fieldname, '(A,I1)') "Run_", prop_reconstruct
+    CALL h5_delete(h5_config_group, fieldname)
+    CALL h5_add(h5_config_group, fieldname, rand_hash)
+
+    CALL date_and_TIME(date,time)
+    WRITE (datetimestring, '(A, A)') date, time
+
+    WRITE (fieldname, '(A,I1)') "Timestamp_start_", prop_reconstruct
+    CALL h5_delete(h5_config_group, fieldname)
+    CALL h5_add(h5_config_group, fieldname, datetimestring)
+    WRITE (fieldname, '(A,I1)') "Nodes_", prop_reconstruct
+    CALL h5_delete(h5_config_group, fieldname)
+    CALL h5_add(h5_config_group, fieldname, mpro%getNumProcs())
+
+    CALL h5_close_group(h5_config_group)
+    CALL h5_close(h5_config_id)
+
+  END SUBROUTINE write_run_info
+
 END PROGRAM neo2

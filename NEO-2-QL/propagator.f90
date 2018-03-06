@@ -126,7 +126,10 @@ MODULE propagator_mod
   !
   ! new switch for reconstruction of levels
   INTEGER,            PUBLIC  :: prop_reconstruct_levels = 0
-  
+  ! ***************************
+  ! HDF5
+  ! ***************************
+  integer(HID_T) :: h5id
 
 
   ! ---------------------------------------------------------------------------
@@ -969,6 +972,25 @@ CONTAINS
           END DO
        END DO
        !
+          ! Write to HDF5 file
+          call h5_create('fulltransp.h5', h5id, 1)
+
+          call h5_add(h5id, 'full_version', full_version)
+          call h5_add(h5id, 'isw_lorentz', isw_lorentz)
+          call h5_add(h5id, 'isw_integral', isw_integral)
+          call h5_add(h5id,  'isw_energy', isw_energy)         
+          call h5_add(h5id, 'lag', lag, 'Degree of the Laguerre Polynomials')
+          call h5_add(h5id, 'leg', leg, 'Degree of the Legendre Polynomials')
+          call h5_add(h5id, 'collpar', collpar)
+          call h5_add(h5id, 'conl_over_mfp', conl_over_mfp)
+          call h5_add(h5id, 'z_eff', z_eff)
+          call h5_add(h5id, 'avnabpsi', avnabpsi)
+          call h5_add(h5id, 'avbhat2', avbhat2)
+          call h5_add(h5id, 'dl1obhat', dl1obhat)
+          call h5_add(h5id, 'gamma_out', gamma_out, lbound(gamma_out), ubound(gamma_out))
+
+          call h5_close(h5id)
+!
        OPEN(uw,file='fulltransp.dat',status='replace')
        WRITE (uw,'(6(1x,i4),1000(1x,e18.5))')  &
             full_version, &
@@ -978,6 +1000,32 @@ CONTAINS
             gamma_out
        CLOSE(uw)
        !
+          ! Write to HDF5 file
+          call h5_create('efinal.h5', h5id, 1)
+
+          call h5_add(h5id, 'phi', phi)
+          call h5_add(h5id, 'aiota_loc', aiota_loc)
+          call h5_add(h5id, 'dmono_over_dplateau', dmono_over_dplateau)
+          call h5_add(h5id, 'epseff3_2', epseff3_2)
+          call h5_add(h5id, 'alambda_b', alambda_b)
+          call h5_add(h5id, 'qflux_g', qflux_g)
+          call h5_add(h5id, 'qflux_e', qflux_e)
+          call h5_add(h5id, 'qcurr_g', qcurr_g)
+          call h5_add(h5id, 'qcurr_e', qcurr_e)
+          call h5_add(h5id, 'alambda_bb', alambda_bb)
+          call h5_add(h5id, 'gamma_E',gamma_E )
+          call h5_add(h5id, 'g_bs', g_bs)
+          call h5_add(h5id, 'r0', device%r0)
+          call h5_add(h5id, 'bmod0', surface%bmod0)
+          call h5_add(h5id, 'y', y, lbound(y), ubound(y))
+
+          !**********************************************************
+          ! D11_ov_Dpl
+          !**********************************************************
+          !call h5_add(h5id, 'D11_ov_Dpl', D11_NA_Dpl)
+          
+          call h5_close(h5id)      
+
        OPEN(uw,file='efinal.dat',status='replace')
        WRITE (uw,'(1000(1x,e18.5))')                                   &
             (phi),(y(1:2)),(aiota_loc),                    &
@@ -1002,7 +1050,7 @@ CONTAINS
              CALL write_multispec_output()
           END IF
        ELSE ! single-species output
-          IF (mpro%isMaster()) THEN
+          if (mpro%isMaster()) then
              CALL write_ntv_output(prop_a%p%qflux)
           END IF
        END IF
