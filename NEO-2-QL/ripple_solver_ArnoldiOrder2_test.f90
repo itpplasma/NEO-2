@@ -77,7 +77,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
        column_full2pointer,remap_rc,sparse_solver_test
 !  USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
 !                               surface_boozer_B00,travis_convfac
-  USE mag_interface_mod, ONLY: surface_boozer_B00,travis_convfac,boozer_s
+  use mag_interface_mod, only: surface_boozer_B00,travis_convfac,boozer_s, mag_magfield
   USE ntv_eqmat_mod, ONLY : nz_symm,nz_asymm,nz_per_pos,nz_per_neg,            &
                             irow_symm,icol_symm,amat_symm,                     &
                             irow_per_pos,icol_per_pos,                         &
@@ -861,15 +861,19 @@ PRINT *,ub_mag,ibeg,iend
   !! Modifications by Andreas F. Martitsch (25.08.2014)
   ! Computation of the perturbed quantities without 
   ! usage of interfaces (fieldpropagator-structure,...)
-  IF (ALLOCATED(bnoverb0)) DEALLOCATE(bnoverb0)
-  ALLOCATE(bnoverb0(ibeg:iend))
-  !
-  IF (ALLOCATED(dbnoverb0_dphi_mfl)) DEALLOCATE(dbnoverb0_dphi_mfl)
-  ALLOCATE(dbnoverb0_dphi_mfl(ibeg:iend))
-  !
-  CALL calc_bnoverb0_arr(phi_mfl,ibeg,iend,bnoverb0,dbnoverb0_dphi_mfl)
-  CALL calc_ntv_output(phi_mfl,bhat_mfl,bnoverb0,ibeg,iend,&
-       eps_M_2_val,av_inv_bhat_val,av_gphph_val)
+  if (isw_qflux_na .ne. 0) then
+
+     IF (ALLOCATED(bnoverb0)) DEALLOCATE(bnoverb0)
+     ALLOCATE(bnoverb0(ibeg:iend))
+     !
+     IF (ALLOCATED(dbnoverb0_dphi_mfl)) DEALLOCATE(dbnoverb0_dphi_mfl)
+     ALLOCATE(dbnoverb0_dphi_mfl(ibeg:iend))
+     !
+     CALL calc_bnoverb0_arr(phi_mfl,ibeg,iend,bnoverb0,dbnoverb0_dphi_mfl)
+     CALL calc_ntv_output(phi_mfl,bhat_mfl,bnoverb0,ibeg,iend,&
+          eps_M_2_val,av_inv_bhat_val,av_gphph_val)
+
+  end if
   !PRINT *,'eps_M_2: ',eps_M_2_val
   !STOP
   !! End Modifications by Andreas F. Martitsch (25.08.2014)
@@ -1075,6 +1079,7 @@ DEALLOCATE(dbnoverb0_dphi_mfl_test)
 !scalefac_kG=1d-4*bmod0/(aiota*boozer_psi_pr)
 !Now the quantities are already converted within neo_magfie:
 scalefac_kG=1.0d0/(aiota*boozer_psi_pr_hat)
+
 !PRINT *,'scalefac_kG: ',scalefac_kG
 !! Modifications by Andreas F. Martitsch (12.03.2014)
 !
@@ -2973,7 +2978,14 @@ rotfactor=imun*m_phi
     denomjac=-scalefac_kG*bcovar_phi_hat/(aiota*bcovar_theta_hat+bcovar_phi_hat)
     ! geodcu_forw used for computation of q_rip(1:npassing+1,istep,1),
     ! which in turn enters the source_vector
-    geodcu_forw=denomjac*dlogbdphi_mfl*bhat_mfl
+
+    if (mag_magfield .ne. 3) then
+       geodcu_forw=denomjac*dlogbdphi_mfl*bhat_mfl
+    else
+       ! Overwrite geodcu_forw in the case of EFIT input
+       geodcu_forw=geodcu_mfl
+    end if
+
     ! geodcu_back used for the computation of convol_flux, which enters q_flux
     ! via flux_vector(1,:) and flux_vector(3,:)
     !--> Computation of D31/D32 not affected ( flux_vector(2,:) determined by convol_curr )
