@@ -208,7 +208,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
        bsfunc_modelfunc_num,bsfunc_divide,                          &
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,        &
        bsfunc_local_shield_factor,bsfunc_shield,                    &
-       bsfunc_lambda_loc_res
+       bsfunc_lambda_loc_res, eta_savemem_dist1, eta_savemem_dist2, &
+       eta_savemem_sigma_mult
   USE magnetics_mod
   USE device_mod
   USE mag_interface_mod, ONLY : mag_save_memory,mag_start_special,magnetic_device, &
@@ -379,7 +380,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   !**********************************************************
   ! Level decay in trapped domain
   !**********************************************************
-  real(kind=dp)  :: sigma_decay_mult, sigma_decay_sigma
+  real(kind=dp)  :: eta_savemem_sigma, eta_savemem_sigma_fact
   real(kind=dp)  :: bsfunc_local_err_orig, bsfunc_local_err_decay_sigma, bsfunc_local_err_decay_min_mult
 
   !print *, 'flint: begin of program'
@@ -657,8 +658,9 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      WRITE(c_ripple_tag,*) rippletag
      WRITE(c_period_tag,*) fieldperiod%tag
 
-     write (*,*) "Level placement for propagator", proptag
-    ! if (proptag .eq. 5) stop
+     write (*,*)   "Level placement for propagator", proptag
+
+     !if (proptag .eq. 5) stop
      
      !PRINT *, 'eta_ori ',LBOUND(eta_ori)
 
@@ -852,40 +854,33 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                  ! minimum local eta_s - end
                  loc_laguerre: DO ilag = 0,lag_sigma
                     eta_s_val(1)  = eta_s_loc(i_construct) * collision_sigma_multiplier(ilag)
+
                     !**********************************************************
                     ! Additional lines for increasing eta_s_val in trapped domain
                     !**********************************************************
                     save_bsfunc_err  = bsfunc_local_err_orig
                     bsfunc_local_err = bsfunc_local_err_orig
-                    !if ((eta_x0_val(1) - eta_b_abs_max) > 0) then
-                       !bsfunc_local_err_decay_min_mult = 1d0
-                       !bsfunc_local_err_decay_sigma = sqrt((eta_b_abs_min - eta_b_abs_max)**2 &
-                       !     / log(bsfunc_local_err_decay_min_mult))
-
-                       !bsfunc_local_err_decay_sigma = sqrt((0.1d0)**2 &
-                       !     / log(bsfunc_local_err_decay_min_mult))
-                       
-                       !save_bsfunc_err = bsfunc_local_err_orig * &
-                       !     exp(((eta_x0_val(1) - eta_b_abs_max)/bsfunc_local_err_decay_sigma)**2)
-                       !bsfunc_local_err = save_bsfunc_err
-                       !write (*,*) "Modify local error to ", bsfunc_local_err, eta_b_abs_min, &
-                       !     (eta_x0_val(1) - eta_b_abs_max), &
-                       !     bsfunc_local_err_decay_sigma, eta_x0_val(1), eta_s_val(1)
+                    eta_savemem_sigma_fact = 1d0
                     
-                    sigma_decay_mult = 1d6
+                    if (eta_x0_val(1) .gt. (eta_b_abs_max + eta_savemem_dist1)) then
+                       if (eta_x0_val(1) .lt. (eta_b_abs_max + eta_savemem_dist1 + eta_savemem_dist2)) then
+                          !eta_savemem_sigma = sqrt((eta_savemem_dist2)**2 &
+                          !     / log(eta_savemem_sigma_mult))
+                          !eta_s_val(1) = eta_s_val(1) * &
+                          !     exp(((eta_x0_val(1) - eta_b_abs_max + eta_savemem_dist1)/eta_savemem_sigma)**2)
 
-                    sigma_decay_sigma = sqrt((0.1d0)**2 &
-                         / log(sigma_decay_mult))
+                          !write (*,*) "Modifying sigma to ", eta_s_val(1), &
+                          !     "by factor", exp(((eta_x0_val(1) - eta_b_abs_max + eta_savemem_dist1) / &
+                          !     eta_savemem_sigma)**2), eta_x0_val(1) - eta_b_abs_max, eta_savemem_sigma
 
-                    eta_s_val(1) = eta_s_val(1) * &
-                         exp(((eta_x0_val(1) - eta_b_abs_max)/sigma_decay_sigma)**2)
-
-                    write (*,*) "Modify sigma to ", eta_s_val(1), &
-                         "by factor", exp(((eta_x0_val(1) - eta_b_abs_max)/sigma_decay_sigma)**2)
-
-                    !end if
-                    !**********************************************************
-                    ! if ((eta_x0_val(1) - eta_b_abs_max) > 0) cycle
+                          eta_savemem_sigma_fact = (eta_savemem_sigma_mult-1d0) / eta_savemem_dist2 * &
+                               (eta_x0_val(1) - eta_b_abs_max - eta_savemem_dist1) + 1
+                       else
+                          eta_savemem_sigma_fact = eta_savemem_sigma_mult
+                       end if
+                    end if
+                    !write (*,*) "Modifying eta_s_val by factor", eta_savemem_sigma_fact
+                    !eta_s_val(1) = eta_s_val(1) * eta_savemem_sigma_fact
 
                     ! print *, ilag,eta_s_val(1), eta_x0_val(1)
                     loc_divide: DO idiv = 0,bsfunc_divide
@@ -1007,40 +1002,39 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                        eta_x0_val(1) = eta_x0(i_construct)
                        rest_laguerre : DO ilag = 0,lag_sigma
                           eta_s_val(1)  = eta_s(i_construct) * collision_sigma_multiplier(ilag)
+                          
                           !**********************************************************
                           ! Additional lines for increasing eta_s_val in trapped domain
                           !**********************************************************
                           save_bsfunc_err  = bsfunc_local_err_orig
                           bsfunc_local_err = bsfunc_local_err_orig
-                          !bsfunc_local_err_decay_min_mult = 1d0
-                          !bsfunc_local_err_decay_sigma = sqrt((eta_b_abs_min - eta_b_abs_max)**2 &
-                          !     / log(bsfunc_local_err_decay_min_mult))
-
-                          !bsfunc_local_err_decay_sigma = sqrt((0.1d0)**2 &
-                          !     / log(bsfunc_local_err_decay_min_mult))
-
-                          !save_bsfunc_err = bsfunc_local_err_orig * &
-                          !     exp(((eta_x0_val(1) - eta_b_abs_max)/bsfunc_local_err_decay_sigma)**2)
-
-                          sigma_decay_mult = 1d6
-                          
-                          sigma_decay_sigma = sqrt((0.1d0)**2 &
-                               / log(sigma_decay_mult))
-                          
-                          eta_s_val(1) = eta_s_val(1) * &
-                               exp(((eta_x0_val(1) - eta_b_abs_max)/sigma_decay_sigma)**2)
-
-                          write (*,*) "Modify sigma to ", eta_s_val(1), &
-                               "by factor", exp(((eta_x0_val(1) - eta_b_abs_max)/sigma_decay_sigma)**2)
-                          
-                          !bsfunc_local_err = save_bsfunc_err
-                          !write (*,*) "Modify local error to ", bsfunc_local_err
-                          !write (*,*) "Diff to max and min is", (eta_x0_val(1) - eta_b_abs_max), &
-                          !     (eta_x0_val(1) - eta_b_abs_min)
-                          !write (*,*) "Factor is ", exp(((eta_x0_val(1) - eta_b_abs_max) / &
-                          !     bsfunc_local_err_decay_sigma)**2)
                           !**********************************************************
-                          
+                          ! Additional lines for increasing eta_s_val in trapped domain
+                          !**********************************************************
+                          save_bsfunc_err  = bsfunc_local_err_orig
+                          bsfunc_local_err = bsfunc_local_err_orig
+                          eta_savemem_sigma_fact = 1d2
+
+                          if (eta_x0_val(1) .gt. (eta_b_abs_max + eta_savemem_dist1)) then
+                             if (eta_x0_val(1) .lt. (eta_b_abs_max + eta_savemem_dist1 + eta_savemem_dist2)) then
+                                !eta_savemem_sigma = sqrt((eta_savemem_dist2)**2 &
+                                !     / log(eta_savemem_sigma_mult))
+                                !eta_s_val(1) = eta_s_val(1) * &
+                                !     exp(((eta_x0_val(1) - eta_b_abs_max + eta_savemem_dist1)/eta_savemem_sigma)**2)
+
+                                !write (*,*) "Modifying sigma to ", eta_s_val(1), &
+                                !     "by factor", exp(((eta_x0_val(1) - eta_b_abs_max + eta_savemem_dist1) / &
+                                !     eta_savemem_sigma)**2), eta_x0_val(1) - eta_b_abs_max, eta_savemem_sigma
+
+                                eta_savemem_sigma_fact = (eta_savemem_sigma_mult-1d0) / eta_savemem_dist2 * &
+                                     (eta_x0_val(1) - eta_b_abs_max - eta_savemem_dist1) + 1
+                             else
+                                eta_savemem_sigma_fact = eta_savemem_sigma_mult
+                             end if
+                          end if
+                          !write (*,*) "Modifying eta_s_val by factor", eta_savemem_sigma_fact
+                          !eta_s_val(1) = eta_s_val(1) * eta_savemem_sigma_fact/1d2
+
                           IF(bsfunc_ignore_trap_levels .EQ. 1 .AND. eta_x0_val(1) .GT. eta_min_relevant) CYCLE
                           DO ibmf = 1,bsfunc_modelfunc_num
                              bsfunc_modelfunc = ibmf

@@ -13,7 +13,8 @@ PROGRAM neo2
        bsfunc_modelfunc_num,bsfunc_divide,                          &
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,        &
        bsfunc_local_shield_factor,bsfunc_shield,                    &
-       bsfunc_lambda_loc_res
+       bsfunc_lambda_loc_res, eta_savemem_dist1, eta_savemem_dist2, &
+       eta_savemem_sigma_mult
   USE device_mod
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
@@ -182,7 +183,8 @@ PROGRAM neo2
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,                  &
        bsfunc_local_shield_factor,bsfunc_shield,sigma_shield_factor,          &
        split_inflection_points,split_at_period_boundary,                      &
-       bsfunc_lambda_loc_res,mag_dbhat_min
+       bsfunc_lambda_loc_res,mag_dbhat_min, eta_savemem_dist1,                &
+       eta_savemem_dist2, eta_savemem_sigma_mult
   NAMELIST /propagator/                                                       &
        prop_diagphys,prop_overwrite,                                          &
        prop_diagnostic,prop_binary,prop_timing,prop_join_ends,                &
@@ -315,8 +317,11 @@ PROGRAM neo2
   bsfunc_sigma_min = 0.0_dp
   bsfunc_local_solver = 0
   sigma_shield_factor = 3.0d0
-  split_inflection_points = .TRUE.
-  split_at_period_boundary = .FALSE.
+  split_inflection_points = .true.
+  split_at_period_boundary = .false.
+  eta_savemem_dist1 = 0.1d0
+  eta_savemem_dist2 = 0.1d0
+  eta_savemem_sigma_mult  = 1d0
   mag_local_sigma = 0
   mag_symmetric = .FALSE.
   mag_symmetric_shorten = .FALSE.
