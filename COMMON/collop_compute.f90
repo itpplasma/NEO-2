@@ -10,7 +10,8 @@ module collop_compute
   use collop_bspline
   !use collop_bspline2
   !use collop_spline4
-
+  use ieee_arithmetic
+  
   implicit none
 
   !**********************************************************
@@ -90,7 +91,7 @@ module collop_compute
   real(kind=dp) :: epsrel = 1d-13
   integer       :: sw_qag_rule = 5
   logical       :: integral_cutoff = .true.
-  real(kind=dp) :: x_cutoff = 3.0d3
+  real(kind=dp) :: x_cutoff = 5.0d3
   logical       :: lsw_interval_sep = .true.
   logical       :: lsw_split_interval = .true. ! split intervals manually into further sub-intervals
   integer       :: num_sub_intervals = 5 ! number of sub-intervals between nodes (active if lsw_split_interval)
@@ -2157,8 +2158,13 @@ contains
           do l = 0, legmax
              do m = 0, lagmax
                 do mp = 0, lagmax
-                   write (*,*) "Computing", l, m, mp
+                   write (*,'(A, I2, A, I2, A, I2,A)') " Computing matrix element (leg = ", l, ", m = ", m, ", mp = ", mp, ")"
                    ailmm_s(m+1,mp+1,l+1) = C_I_rel2_mmp(rmu, l, m, mp)
+
+                   if (ieee_is_nan(ailmm_s(m+1, mp+1, l+1))) then
+                      write (*,*) "Matrix element is NaN. Check integration settings."
+                      stop
+                   end if
                 end do
              end do
              if (make_ortho) then
