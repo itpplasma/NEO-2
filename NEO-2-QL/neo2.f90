@@ -71,8 +71,8 @@ PROGRAM neo2
   ! (with magnetic shear)
   USE neo_magfie_mod, ONLY : isw_mag_shear
   !! End Modifications by Andreas F. Martitsch (17.03.2016)
-  use neo_sub_mod, only : neo_read_control ! only used for preparation of multi-spec input
-  use neo_control, only: in_file, inp_swi, lab_swi
+  USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
+  USE neo_control, ONLY: in_file, inp_swi, lab_swi
 
   !************************************
   ! HDF5
@@ -87,6 +87,14 @@ PROGRAM neo2
 
   LOGICAL :: opened
 
+  !**********************************************************
+  ! Include version information
+  !**********************************************************
+  INCLUDE "version.f90"
+  !**********************************************************
+
+  
+  
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
   !**********************************************************
@@ -256,7 +264,7 @@ PROGRAM neo2
   ! settings
     !! Modification by Andreas F. Martitsch (21.02.2017)
   ! multi-species part:
-  lsw_multispecies = .false.
+  lsw_multispecies = .FALSE.
   isw_multispecies_init = 0
   fname_multispec_in = ''
   ! isw_coul_log = 0: Coulomb logarithm set as species independent (overrides values for n_spec)
@@ -619,7 +627,7 @@ PROGRAM neo2
         cmd_line = &
              'if [ ! -d ' // TRIM(ADJUSTL(dir_name)) // ' ]; then mkdir ' // &
              TRIM(ADJUSTL(dir_name)) // '; fi'
-        CALL execute_command_line(cmd_line)
+        CALL execute_command_LINE(cmd_line)
         !
         ! go to directory
         CALL chdir(TRIM(ADJUSTL(dir_name)))
@@ -628,17 +636,17 @@ PROGRAM neo2
         cmd_line = &
              'if [ ! -e ' // TRIM(ADJUSTL(in_file)) // ' ]; then ln -s ../' // &
              TRIM(ADJUSTL(in_file)) // ' . ; fi'
-        CALL execute_command_line(cmd_line)
+        CALL execute_command_LINE(cmd_line)
         cmd_line = &
              'if [ ! -e ' // TRIM(ADJUSTL(in_file_pert)) // ' ]; then ln -s ../' // &
              TRIM(ADJUSTL(in_file_pert)) // ' . ; fi'
-        CALL execute_command_line(cmd_line)
+        CALL execute_command_LINE(cmd_line)
         cmd_line = &
              'if [ ! -e neo.in ]; then ln -s ../neo.in . ; fi'
-        CALL execute_command_line(cmd_line)
+        CALL execute_command_LINE(cmd_line)
         cmd_line = &
              'if [ ! -e neo_2.x ]; then ln -s ../neo_2.x . ; fi'
-        CALL execute_command_line(cmd_line)
+        CALL execute_command_LINE(cmd_line)
         !
         ! write start-up script for NEO-2 run
         OPEN(unit=u1,file=fname_exec,action='write',iostat=ios)
@@ -666,7 +674,7 @@ PROGRAM neo2
         END IF
         CLOSE(unit=u1)
         cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec))
-        CALL execute_command_line(cmd_line)
+        CALL execute_command_LINE(cmd_line)
         !
         ! write start-up script for NEO-2 pre-run (pre-computation of matrix elements)
         OPEN(unit=u1,file=fname_exec_precom,action='write',iostat=ios)
@@ -694,7 +702,7 @@ PROGRAM neo2
         END IF
         CLOSE(unit=u1)
         cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec_precom))
-        CALL execute_command_line(cmd_line)
+        CALL execute_command_LINE(cmd_line)
         !
         ! prepare multi-species input
         !
@@ -894,6 +902,16 @@ PROGRAM neo2
   ! Initialize MPI module
   !**********************************************************
   CALL mpro%init()
+  
+  
+  !****************************************************
+  !  Git version check
+  !*****************************************************
+  IF (mpro%isMaster()) THEN
+    CALL write_version_info()
+  END IF
+
+ 
  
   !! Modification by Andreas F. Martitsch (31.07.2014)
   ! Save here starting point of the field line for cylindircal
@@ -1079,7 +1097,8 @@ PROGRAM neo2
   !*******************************************
   CALL mpro%deinit(.FALSE.)
   CALL h5_deinit()
-  
+
+
   !! Modification by Andreas F. Martitsch (17.07.2014)
   ! Uncomment "STOP" to see IEEE floating-point exceptions (underflow is present).
   ! This FORTRAN 2008 feature is implemented in gfortran-4.9.2.
@@ -1091,7 +1110,8 @@ PROGRAM neo2
   STOP
   !! End Modification by Andreas F. Martitsch (17.07.2014)
   
-contains
+
+CONTAINS
 
   SUBROUTINE write_run_info()
     IF (prop_reconstruct .EQ. 0 ) THEN
@@ -1262,5 +1282,22 @@ contains
     CALL h5_close(h5_config_id)
 
   END SUBROUTINE write_run_info
+
+  SUBROUTINE write_version_info()
+
+    WRITE (*,*) ''
+    WRITE (*,*) "---------- NEO-2 Git Revision ----------"
+    WRITE (*,*) Neo2_Version
+    WRITE (*,*) Neo2_Version_Date
+    WRITE (*,*) "----------------------------------------"
+    WRITE (*,*) ''
+    IF (len_TRIM(Neo2_Version_Additional) /= 0) THEN
+       WRITE (*,*) "#################################### NEO-2 Git Additional Information ####################################"
+       WRITE (*,*) Neo2_Version_Additional
+       WRITE (*,*) "##########################################################################################################"
+       WRITE (*,*) ''
+    END IF
+    
+  END SUBROUTINE write_version_info  
 
 END PROGRAM neo2

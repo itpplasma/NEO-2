@@ -18,8 +18,8 @@ module gsl_bspline_routines_mod
   !**********************************************************
   ! FGSL Workspace
   !**********************************************************
-  type(fgsl_bspline_workspace), private :: sw
-  type(fgsl_bspline_deriv_workspace), private :: dw
+  type(fgsl_bspline_workspace), private :: sw  
+  !type(fgsl_bspline_workspace), private :: dw !! derived workspace was depricated with gsl version 2.0
 
   !**********************************************************
   ! FGSL variables
@@ -64,7 +64,6 @@ contains
     fgsl_max_nder = order
     
     sw = fgsl_bspline_alloc(fgsl_order, fgsl_nbreak)
-    dw = fgsl_bspline_deriv_alloc(fgsl_order)
 
     if (allocated(dby)) deallocate(dby)
     allocate(dby(1:fgsl_max_nder+1, 1:nbreak+order-2))
@@ -108,7 +107,7 @@ contains
     allocate(dby_end(0:fgsl_max_nder, 1:fgsl_ncbf))
     fgsl_dby_end = fgsl_matrix_init(1.0_fgsl_double)
     call fgsl_check(fgsl_matrix_align(dby_end, fgsl_max_nder+1, fgsl_max_nder+1, fgsl_ncbf, fgsl_dby_end))
-    call fgsl_check(fgsl_bspline_deriv_eval(xd_end, fgsl_max_nder, fgsl_dby_end, sw, dw))
+    call fgsl_check(fgsl_bspline_deriv_eval(xd_end, fgsl_max_nder, fgsl_dby_end, sw))
         
   end subroutine set_bspline_knots
 
@@ -155,7 +154,7 @@ contains
 
     if (x .le. xd_end) then
        fgsl_nder = nder
-       call fgsl_check(fgsl_bspline_deriv_eval(x, fgsl_nder, fgsl_dby, sw, dw))
+       call fgsl_check(fgsl_bspline_deriv_eval(x, fgsl_nder, fgsl_dby, sw))
        dby_loc = dby(nder+1, :)
     elseif (taylorExpansion) then
        !write (*,*) "Taylor Expansion of BSplines (deriv)", nder, x

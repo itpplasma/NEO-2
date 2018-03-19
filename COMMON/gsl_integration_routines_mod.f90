@@ -532,7 +532,7 @@ CONTAINS
     !
     ! Initialize solver 'fgsl_integration_qagp' to use the function 'stdfunc' and
     ! the user-specified parameters
-    status = fgsl_integration_qagp(stdfunc, pts, siz_pts, &
+    status = fgsl_integration_qagp(stdfunc, pts, & !siz_pts, &
          epsabs, epsrel, limit, integ_wk, ra, rda)
     CALL check_error(status)
     !
@@ -611,7 +611,7 @@ CONTAINS
     !
     ! Initialize solver 'fgsl_integration_qagp' to use the function 'stdfunc' and
     ! the user-specified parameters
-    status = fgsl_integration_qagp(stdfunc, pts, siz_pts, &
+    status = fgsl_integration_qagp(stdfunc, pts, & !siz_pts, &
          epsabs, epsrel, limit, integ_wk, ra, rda)
     CALL check_error(status)
     !

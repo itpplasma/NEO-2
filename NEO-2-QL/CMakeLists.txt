@@ -115,7 +115,7 @@ find_package(SuperLU REQUIRED)
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
-find_library(gsl_lib gsl ${GSL_LIB} NO_DEFAULT_PATH)
+find_library(gsl_lib gsl ${GSL_LIB})
 # FGSL
 #find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
 find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
@@ -184,7 +184,16 @@ target_link_libraries(${EXE_NAME}
 	#${open_blas_lib}
 	#debug efence
         )
-
+add_custom_target(
+    NEO-2-Versioning
+    COMMAND ./Scripts/tag_version.sh
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+add_dependencies(${EXE_NAME} NEO-2-Versioning)
+        
+        
+        
+        
 ### Get location of the executable (depricated)
 #get_target_property(EXE_LOC ${EXE_NAME} LOCATION)
 #message(${EXE_LOC})
