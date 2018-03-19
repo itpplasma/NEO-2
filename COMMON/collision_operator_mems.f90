@@ -46,9 +46,9 @@ module collop
   integer   :: succeded_precom_check = -1        !! and succeded_precom_check by Michael Draxler (13.09.2017)
   
 
-  interface compare_floatss
-      module procedure compare_float, compare_floats
-  end interface compare_floatss
+  interface compare_floats
+      module procedure compare_float, compare_floats_vec
+  end interface compare_floats
 
   
   contains
@@ -658,14 +658,14 @@ module collop
       end if     
       
       
-      if (compare_floatss(scalprod_alpha, scalprod_alpha_precom) > 0) then
+      if (compare_floats(scalprod_alpha, scalprod_alpha_precom) > 0) then
         write (*,*) "Precomputed scalprod_alpha(",scalprod_alpha_precom, &
         ") is different from used scalprod_alpha(",scalprod_alpha,")"
         succeded_precom_check_tmp= 0
         RETURN
       end if
       
-      if (compare_floatss(scalprod_beta, scalprod_beta_precom) > 0) then
+      if (compare_floats(scalprod_beta, scalprod_beta_precom) > 0) then
         write (*,*) "Precomputed scalprod_beta(",scalprod_beta_precom, &
         ") is different from used scalprod_beta(",scalprod_beta,")"
         succeded_precom_check_tmp= 0
@@ -719,13 +719,13 @@ module collop
       
       
       
-      if (compare_floatss(T_spec, T_spec_precom, 1) > 0) then
+      if (compare_floats(T_spec, T_spec_precom, 1) > 0) then
         write (*,*) "Precomputed T_spec(",T_spec_precom, ") is different from used T_spec(",T_spec,")"
         succeded_precom_check_tmp= 0
         RETURN
       end if
       
-      if (compare_floatss(m_spec, m_spec_precom, 1) > 0) then
+      if (compare_floats(m_spec, m_spec_precom, 1) > 0) then
         write (*,*) "Precomputed m_spec(",m_spec_precom, ") is different from used m_spec(",m_spec,")"
         succeded_precom_check_tmp= 0
         RETURN
@@ -834,71 +834,42 @@ module collop
       call h5_close(h5id_collop)
       !stop
     end subroutine write_precom_collop    
-    
-    subroutine compare_floats2()
-        !Originally for checking and comparing floats of precom_stored values 
-        real(kind=dp) :: flt1a, flt2a
-        !integer, intent(out)  :: resa ! result
-        ! internal
-        real(kind=dp), DIMENSION(:),ALLOCATABLE :: eps
-        integer :: res_flt2, numspec
-        write(*,*) 'numspec = '
-        read(*,*) numspec
-        !IF(ALLOCATED(flt1a)) DEALLOCATE(flt1a)
-        !ALLOCATE(flt1a(0:numspec-1))
-        !IF(ALLOCATED(flt2a)) DEALLOCATE(flt2a)
-        !ALLOCATE(flt2a(0:numspec-1))
-        read (*,*) flt1a
-        write(*,*) 'flt1a is done',flt1a
-        read (*,*) flt2a
-        write(*,*) 'flt2a is done',flt2a
-        
-        res_flt2 = compare_float(flt1a, flt2a)!,lbound(flt1a),ubound(flt1a))
-        if (compare_float(flt1a, flt2a) > 1) write(*,*) 'TOO UNEQAL'
-        write(*,*) res_flt2
-        !contains
-    end subroutine compare_floats2
- 
+     
 
    
     function compare_float(flt1,flt2)
          ! Originally for checking and comparing floats of precom_stored values 
-         ! Index starts add 0 to num-1
-         integer :: compare_float, num
-         real(kind=dp):: flt1, flt2, res_flt1, res_flt
+         integer :: compare_float
+         real(kind=dp):: flt1, flt2, res_flt
          ! internal
          real(kind=dp) :: eps
          eps = 1.0e-6
          
         
-
-
          res_flt = abs(flt1 -flt2)
-         !res_flt = resflt1
-         write (*,*) "flt1: ", flt1
-         write (*,*) "flt2: ", flt2
-         write (*,*) "res_flt: ", res_flt
+         !write (*,*) "flt1: ", flt1
+         !write (*,*) "flt2: ", flt2
+         !write (*,*) "res_flt: ", res_flt
          if (( res_flt .eq. 0)) then
             compare_float = 0
 
-            write (*,*) "Compare is equal "
+            !write (*,*) "Compare is equal "
             
          else if  ( res_flt .le.(eps* max(abs(flt1),abs(flt2), eps))) then
             compare_float = 1
-            write (*,*) "Compare is nearly equal 1 "   
+            write (*,*) "Compare is nearly equal  "   
             
          else   
             compare_float = 2
             write (*,*) "Compare is inequal "
          end if
  
-        !
     end function compare_float
     
-    function compare_floats(flt1,flt2,num)
+    function compare_floats_vec(flt1,flt2,num)
          ! Originally for checking and comparing floats of precom_stored values 
-         ! Index starts add 0 to num-1
-         integer :: compare_floats, num
+         ! Index starts at 0 to num-1
+         integer :: compare_floats_vec, num
          real(kind=dp), DIMENSION(:),ALLOCATABLE :: flt1, flt2, res_flt
          ! internal
          real(kind=dp) :: eps
@@ -912,29 +883,24 @@ module collop
          res_flt = abs(flt1 -flt2)
          
          if (all( res_flt .eq. 0)) then
-            compare_floats = 0
+            compare_floats_vec = 0
 
             !write (*,*) "Compare is equal "
             
             
-        else if  (all( res_flt .le.(eps* max(abs(flt1),abs(flt2), eps)))) then
-            compare_floats = 1
-            write (*,*) "Compare is nearly equal 1 "   
+         else if  (all( res_flt .le.(eps* max(abs(flt1),abs(flt2), eps)))) then
+            compare_floats_vec = 1
+            write (*,*) "Compare is nearly equal!! "   
             
-         else if  (all( res_flt .le. eps)) then
-            compare_floats = 1
-            !write (*,*) "Compare is nearly equal "
-
          else
-            compare_floats = 2
-            !write (*,*) "Compare is inequal "
+            compare_floats_vec = 2
+            write (*,*) "Compare is inequal "
          end if
  
         !
-    end function compare_floats
+    end function compare_floats_vec
 
     
-    !end subroutine compare_floats2
     subroutine write_collop()
       integer(HID_T)   :: h5id_collop, h5id_meta
       integer          :: m, mp, l, xi, n_x
