@@ -119,7 +119,7 @@ find_package(SuperLU REQUIRED)
 ### Find libraries
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
-find_library(gsl_lib gsl ${GSL_LIB} NO_DEFAULT_PATH)
+find_library(gsl_lib gsl ${GSL_LIB})
 # FGSL
 #find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
 find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
