@@ -91,7 +91,7 @@ module collop_compute
   real(kind=dp) :: epsrel = 1d-13
   integer       :: sw_qag_rule = 5
   logical       :: integral_cutoff = .true.
-  real(kind=dp) :: x_cutoff = 5.0d3
+  real(kind=dp) :: x_cutoff = 3.0d3
   logical       :: lsw_interval_sep = .true.
   logical       :: lsw_split_interval = .true. ! split intervals manually into further sub-intervals
   integer       :: num_sub_intervals = 5 ! number of sub-intervals between nodes (active if lsw_split_interval)
@@ -860,13 +860,21 @@ contains
     integer       :: l, m, mp
 
     C_I_rel2_mmp = (2d0*l+1)/2d0 * 3.d0/(pi**1.5d0) * integrate(kernel_rel2, 0d0)
-    
+
+    !x = 0d0
+    !do k = 0, 20000
+    !   x = k * 10d0/20000
+    !   write (600,*) x, kernel_rel2(x)
+    !end do
+    !write (*,*) C_I_rel2_mmp
+    !stop
   contains
 
     function kernel_rel2(x)
       real(kind=dp) :: x, kernel_rel2
 
       kernel_rel2 = C_I_rel2_mmp_kernel(x, rmu, l, m, mp)
+      !write (600, *) x, kernel_rel2
       
     end function kernel_rel2
     
@@ -889,7 +897,7 @@ contains
     I20 = integrate(k2, 0d0, x)
     I21 = integrate(k2, x)
     I2  = x**3 * phi_prj(m,x) * norm_maxwell**2 * exp(-exp_maxwell * x**2) * (I20 + I21)    
-
+    
     C_I_rel2_mmp_kernel = I1 + I2
     
     contains
@@ -996,21 +1004,24 @@ contains
                 x_sub_low = x_inter(k) + (k_sub-1) * x_sub_del
                 x_sub_up = x_inter(k) + k_sub * x_sub_del
                 !
-                res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
                 !res_int = fint1d_qags(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
                 y = y + res_int(1)
              end do
           end do
        else
           do k = 1, kmax-1
-             res_int = fint1d_qag(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel, sw_qag_rule)
+             !res_int = fint1d_qag(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel, sw_qag_rule)
              !res_int = fint1d_qags(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel)
+             res_int = fint1d_cquad(func1d, x_inter(k), x_inter(k+1), epsabs, epsrel)
              y = y + res_int(1)
           end do
        end if
     else
-       res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
+       !res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
        !res_int = fint1d_qags(func1d, a, b, epsabs, epsrel)
+       res_int = fint1d_cquad(func1d, a, b, epsabs, epsrel)
        y = res_int(1)
     end if
        
@@ -1088,21 +1099,25 @@ contains
                 x_sub_low = x_inter(k) + (k_sub-1) * x_sub_del
                 x_sub_up = x_inter(k) + k_sub * x_sub_del
                 !
-                res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
                 !res_int = fint1d_qags(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+
                 y = y + res_int(1)
              end do
           end do
        else
           do k = 1, kmax-1
-             res_int = fint1d_qag(func1d, param, x_inter(k), x_inter(k+1), epsabs, epsrel, sw_qag_rule)
+             !res_int = fint1d_qag(func1d, param, x_inter(k), x_inter(k+1), epsabs, epsrel, sw_qag_rule)
              !res_int = fint1d_qags(func1d, param, x_inter(k), x_inter(k+1), epsabs, epsrel)
+             res_int = fint1d_cquad(func1d, param, x_inter(k), x_inter(k+1), epsabs, epsrel)
              y = y + res_int(1)
           end do
        end if
     else
-       res_int = fint1d_qag(func1d, param, a, b, epsabs, epsrel, sw_qag_rule)
+       !res_int = fint1d_qag(func1d, param, a, b, epsabs, epsrel, sw_qag_rule)
        !res_int = fint1d_qags(func1d, param, a, b, epsabs, epsrel)
+       res_int = fint1d_cquad(func1d, param, a, b, epsabs, epsrel)
        y = res_int(1)
     end if
        
@@ -1152,13 +1167,17 @@ contains
                          x_sub_low = a + (k_sub-1) * x_sub_del
                          x_sub_up = a + k_sub * x_sub_del
                          !
-                         res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                         !res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
                          !res_int = fint1d_qags(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+                         res_int = fint1d_cquad(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+
                          y = y + res_int(1)
                       end do
                    else
-                      res_int = fint1d_qag(func1d, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
+                      !res_int = fint1d_qag(func1d, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
                       !res_int = fint1d_qags(func1d, a, t_vec(k), epsabs, epsrel)
+                      res_int = fint1d_cquad(func1d, a, t_vec(k), epsabs, epsrel)
+
                       y = y + res_int(1)
                    end if
                    !write (*,*) "1. Int", a, t_vec(k), res_int
@@ -1173,13 +1192,17 @@ contains
                          x_sub_low = t_vec(k) + (k_sub-1) * x_sub_del
                          x_sub_up = t_vec(k) + k_sub * x_sub_del
                          !
-                         res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                         !res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
                          !res_int = fint1d_qags(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+                         res_int = fint1d_cquad(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+
                          y = y + res_int(1)
                       end do
                    else
-                      res_int = fint1d_qag(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel, sw_qag_rule)
+                      !res_int = fint1d_qag(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel, sw_qag_rule)
                       !res_int = fint1d_qags(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel)
+                      res_int = fint1d_cquad(func1d, t_vec(k), t_vec(k+1), epsabs, epsrel)
+
                       y = y + res_int(1)
                    end if
                    !write (*,*) "Rest int", t_vec(k), t_vec(k+1), y
@@ -1194,18 +1217,24 @@ contains
                    x_sub_low = t_vec(ubound(t_vec,1)) + (k_sub-1) * x_sub_del
                    x_sub_up = t_vec(ubound(t_vec,1)) + k_sub * x_sub_del
                    !
-                   res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                   !res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
                    !res_int = fint1d_qags(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+                   res_int = fint1d_cquad(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+
                    y = y + res_int(1)
                 end do
              else
-                res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
                 !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+
                 y = y + res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, t_vec(ubound(t_vec,1)), epsabs, epsrel)
              !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+
              y = y + res_int(1)
           end if
           !write (*,*) "Final int", t_vec(ubound(t_vec,1)), y
@@ -1219,18 +1248,24 @@ contains
                    x_sub_low = a + (k_sub-1) * x_sub_del
                    x_sub_up = a + k_sub * x_sub_del
                    !
-                   res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                   !res_int = fint1d_qag(func1d, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
                    !res_int = fint1d_qags(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+                   res_int = fint1d_cquad(func1d, x_sub_low , x_sub_up, epsabs, epsrel)
+
                    y = y + res_int(1)
                 end do
              else
-                res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
                 !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+
                 y = res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
              !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+
              y = res_int(1)
           end if
        end if
@@ -1238,11 +1273,14 @@ contains
     else
        
        if (integral_cutoff) then
-          res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+          !res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
           !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
+          res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+
        else
           res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
           !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
+          !res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
        end if
        y = res_int(1)
        
@@ -1294,13 +1332,17 @@ contains
                          x_sub_low = a + (k_sub-1) * x_sub_del
                          x_sub_up = a + k_sub * x_sub_del
                          !
-                         res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                         !res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
                          !res_int = fint1d_qags(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+                         res_int = fint1d_cquad(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+
                          y = y + res_int(1)
                       end do
                    else
-                      res_int = fint1d_qag(func1d, param, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
+                      !res_int = fint1d_qag(func1d, param, a, t_vec(k), epsabs, epsrel, sw_qag_rule)
                       !res_int = fint1d_qags(func1d, param, a, t_vec(k), epsabs, epsrel)
+                      res_int = fint1d_cquad(func1d, param, a, t_vec(k), epsabs, epsrel)
+
                       y = y + res_int(1)
                    end if
                    !write (*,*) "1. Int", a, t_vec(k), res_int
@@ -1315,13 +1357,17 @@ contains
                          x_sub_low = t_vec(k) + (k_sub-1) * x_sub_del
                          x_sub_up = t_vec(k) + k_sub * x_sub_del
                          !
-                         res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                         !res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
                          !res_int = fint1d_qags(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+                         res_int = fint1d_cquad(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+
                          y = y + res_int(1)
                       end do
                    else
-                      res_int = fint1d_qag(func1d, param, t_vec(k), t_vec(k+1), epsabs, epsrel, sw_qag_rule)
+                      !res_int = fint1d_qag(func1d, param, t_vec(k), t_vec(k+1), epsabs, epsrel, sw_qag_rule)
                       !res_int = fint1d_qags(func1d, param, t_vec(k), t_vec(k+1), epsabs, epsrel)
+                      res_int = fint1d_cquad(func1d, param, t_vec(k), t_vec(k+1), epsabs, epsrel)
+
                       y = y + res_int(1)
                    end if
                    !write (*,*) "Rest int", t_vec(k), t_vec(k+1), y
@@ -1336,18 +1382,24 @@ contains
                    x_sub_low = t_vec(ubound(t_vec,1)) + (k_sub-1) * x_sub_del
                    x_sub_up = t_vec(ubound(t_vec,1)) + k_sub * x_sub_del
                    !
-                   res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                   !res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
                    !res_int = fint1d_qags(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+                   res_int = fint1d_cquad(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+
                    y = y + res_int(1)
                 end do
              else
-                res_int = fint1d_qag(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qag(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
                 !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+
                 y = y + res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, param, t_vec(ubound(t_vec,1)), epsabs, epsrel)
              !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+
              y = y + res_int(1)
           end if
           !write (*,*) "Final int", t_vec(ubound(t_vec,1)), y
@@ -1361,18 +1413,24 @@ contains
                    x_sub_low = a + (k_sub-1) * x_sub_del
                    x_sub_up = a + k_sub * x_sub_del
                    !
-                   res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
+                   !res_int = fint1d_qag(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel, sw_qag_rule)
                    !res_int = fint1d_qags(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+                   res_int = fint1d_cquad(func1d, param, x_sub_low , x_sub_up, epsabs, epsrel)
+
                    y = y + res_int(1)
                 end do
              else
-                res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
                 !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+
                 y = res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, param, a, epsabs, epsrel)
              !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+
              y = res_int(1)
           end if
        end if
@@ -1380,11 +1438,15 @@ contains
     else
        
        if (integral_cutoff) then
-          res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
+          !res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
           !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
+          res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+
        else
           res_int = fint1d_qagiu(func1d, param, a, epsabs, epsrel)
           !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
+          !res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+
        end if
        y = res_int(1)
        
@@ -2162,7 +2224,8 @@ contains
                    ailmm_s(m+1,mp+1,l+1) = C_I_rel2_mmp(rmu, l, m, mp)
 
                    if (ieee_is_nan(ailmm_s(m+1, mp+1, l+1))) then
-                      write (*,*) "Matrix element is NaN. Check integration settings."
+                      write (*,*) "*** Matrix element is NaN. Check integration settings. ***"
+                      call disp_gsl_integration_error()
                       stop
                    end if
                 end do
