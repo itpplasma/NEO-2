@@ -7,7 +7,7 @@ module collop
        m_ele, m_d, m_C, m_alp, m_W, compute_collop_inf, C_m, compute_xmmp, &
        compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
        compute_collop_rel, lagmax, integral_cutoff, num_sub_intervals, num_sub_intervals_cutoff, &
-       epsabs, epsrel
+       epsabs, epsrel, x_cutoff
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
@@ -110,13 +110,14 @@ module collop
       
       if (.not. lsw_multispecies) then
          write (*,*) "Single species mode."
-
+         
          ! Usual integration settings for "single species" mode
-         integral_cutoff = .false.
-         num_sub_intervals = 3 
+         integral_cutoff = .true.
+         num_sub_intervals = 3
          num_sub_intervals_cutoff = 3
-         epsabs = 1d-10                                                                                                                                                    
-         epsrel = 1d-10     
+         x_cutoff = 100d0
+         epsabs = 1d-10
+         epsrel = 1d-10
       else
          write (*,*) "Multispecies mode."
 
@@ -125,6 +126,7 @@ module collop
          integral_cutoff = .true.
          num_sub_intervals = 5 
          num_sub_intervals_cutoff = 40
+         x_cutoff = 3.0d3
          epsabs = 1d-13
          epsrel = 1d-13
       end if
