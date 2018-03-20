@@ -14,7 +14,8 @@ module collop
        v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz, conl_over_mfp, &
        isw_relativistic, T_e, &
        lsw_multispecies, isw_coul_log, num_spec, conl_over_mfp_spec, collpar_spec, &
-       z_spec, m_spec, T_spec, n_spec
+       z_spec, m_spec, T_spec, n_spec, &
+       collop_bspline_dist, collop_bspline_order
   use device_mod, only : device
 
   
@@ -217,8 +218,8 @@ module collop
          if (lsw_read_precom) then                                            !! Added by Michael Draxler (13.09.2017)
          
            !write(*,*) "Read Precom_collop"
-           call read_precom_meta_collop(succeded_precom_check)  !! succeded_precom_check succed with 1 fails with 0 and error with -1
-           if (succeded_precom_check .EQ. 1) then
+           call read_precom_meta_collop(succeded_precom_check)  !! succeded_precom_check succeed with 0 fails with 1 or higher and error with -1
+           if (succeded_precom_check .EQ. 0) then
              call read_precom_collop()
              write(*,*) "Use precom_collop.h5"
            elseif (succeded_precom_check .EQ. -1) then
@@ -230,7 +231,7 @@ module collop
            end if
          end if
          
-         if ((.not. lsw_read_precom) .or.(succeded_precom_check .EQ. 0)) THEN  !! Added by Michael Draxler (13.09.2017)
+         if ((.not. lsw_read_precom) .or.(succeded_precom_check .GT. 0)) THEN  !! Added by Michael Draxler (13.09.2017)
 
            if (isw_relativistic .eq. 0) then
 
@@ -313,8 +314,8 @@ module collop
          if (lsw_read_precom) then                                          !! Added by Michael Draxler (13.09.2017)
          
            !write(*,*) "Read Precom_collop"
-           call read_precom_meta_collop(succeded_precom_check)  !! succeded_precom_check succed with 1 fails with 0 and error with -1
-           if (succeded_precom_check .EQ. 1) then
+           call read_precom_meta_collop(succeded_precom_check)  !! succeded_precom_check succeed with 0 fails with 1 or higher and error with -1
+           if (succeded_precom_check .EQ. 0) then
              call read_precom_collop()
              write(*,*) "Use precom_collop.h5"
            elseif (succeded_precom_check .EQ. -1) then
@@ -326,7 +327,7 @@ module collop
            end if
          end if                                              
          
-         if ((.not. lsw_read_precom) .or.(succeded_precom_check .EQ. 0)) THEN !! Added by Michael Draxler (13.09.2017)
+         if ((.not. lsw_read_precom) .or.(succeded_precom_check .GT. 0)) THEN !! Added by Michael Draxler (13.09.2017)
            call compute_source(asource, weightlag, weightden, weightparflow, &
                 weightenerg, Amm)
 
@@ -641,6 +642,13 @@ module collop
       DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: T_spec_precom ! species temperature [erg]
       INTEGER          :: num_spec_precom
       LOGICAL          :: lsw_multispecies_precom
+      DOUBLE PRECISION            :: phi_x_max_precom
+      INTEGER                     :: isw_relativistic_precom
+      DOUBLE PRECISION            :: collop_bspline_dist_precom
+      INTEGER                     :: collop_bspline_order_precom
+
+      LOGICAL                     :: phi_x_max_exists, isw_relativistic_exists
+      LOGICAL                     :: collop_bspline_dist_exists, collop_bspline_order_exists
 
 
       print *,"Check Precom_collop"
@@ -654,7 +662,7 @@ module collop
       call h5_get(h5id_meta, 'meta/lsw_multispecies',lsw_multispecies_precom)
       if (lsw_multispecies .neqv. lsw_multispecies_precom) then
         write (*,*) "Precomputed lsw_multispecies is different to used lsw_multispecies"
-        succeded_precom_check_tmp= 0
+        succeded_precom_check_tmp= 1
         RETURN
 
       end if     
@@ -663,21 +671,21 @@ module collop
       if (compare_floats(scalprod_alpha, scalprod_alpha_precom) > 0) then
         write (*,*) "Precomputed scalprod_alpha(",scalprod_alpha_precom, &
         ") is different from used scalprod_alpha(",scalprod_alpha,")"
-        succeded_precom_check_tmp= 0
+        succeded_precom_check_tmp= 1
         RETURN
       end if
       
       if (compare_floats(scalprod_beta, scalprod_beta_precom) > 0) then
         write (*,*) "Precomputed scalprod_beta(",scalprod_beta_precom, &
         ") is different from used scalprod_beta(",scalprod_beta,")"
-        succeded_precom_check_tmp= 0
+        succeded_precom_check_tmp= 1
         RETURN
       end if
       
       
       if (num_spec .ne. num_spec_precom) then
         write (*,*) "Precomputed num_spec(",num_spec_precom, ") is different from used num_spec(",num_spec,")"
-        succeded_precom_check_tmp= 0
+        succeded_precom_check_tmp= 1
         RETURN
       end if
       IF(ALLOCATED(T_spec_precom)) DEALLOCATE(T_spec_precom)
@@ -688,53 +696,90 @@ module collop
       call h5_get(h5id_meta, 'meta/T_spec', T_spec_precom)
       call h5_get(h5id_meta, 'meta/collop_base_prj', collop_base_prj_precom)
       call h5_get(h5id_meta, 'meta/collop_base_exp', collop_base_exp_precom)
+
+      call h5_obj_exists(h5id_meta, 'meta/phi_x_max', phi_x_max_exists)
+      call h5_obj_exists(h5id_meta, 'meta/isw_relativistic', isw_relativistic_exists)
+      call h5_obj_exists(h5id_meta, 'meta/collop_bspline_dist', collop_bspline_dist_exists)
+      call h5_obj_exists(h5id_meta, 'meta/collop_bspline_order', collop_bspline_order_exists)
+
+      if (phi_x_max_exists) call h5_get(h5id_meta, 'meta/phi_x_max', phi_x_max_precom)
+      if (isw_relativistic_exists) call h5_get(h5id_meta, 'meta/isw_relativistic', isw_relativistic_precom)
+      if (collop_bspline_dist_exists) call h5_get(h5id_meta, 'meta/collop_bspline_dist', collop_bspline_dist_precom)
+      if (collop_bspline_order_exists) call h5_get(h5id_meta, 'meta/collop_bspline_order', collop_bspline_order_precom)
       
-      !call h5_exists(h5id_meta, 'meta/phi_x_max', exists)
-        
+
       call h5_close(h5id_meta)
 
       if (lag .ne. lag_precom) then
         write (*,*) "Precomputed lag(",lag_precom, ") is different from used lag(",lag,")"
-        succeded_precom_check_tmp= 0
+        succeded_precom_check_tmp= 1
         RETURN
       end if
       
       if (leg .ne. leg_precom) then
         write (*,*) "Precomputed leg(",leg_precom, ") is different from used leg(",leg,")"
-        succeded_precom_check_tmp= 0
+        succeded_precom_check_tmp= 1
         RETURN
       end if
       
       if (collop_base_prj .ne. collop_base_prj_precom) then
-        !write (*,*) "Precomputed collop_base_prj(", collop_base_prj_precom, ") is different from used collop_base_prj(" ,collop_base_prj, ")"
-        write (*,*) "Precomputed collop_base_prj"
-        succeded_precom_check_tmp= 0
+        write (*,*) "Precomputed collop_base_prj(", collop_base_prj_precom, ") is different from used "
+        write (*,*) "collop_base_prj(" ,collop_base_prj, ")"
+        !write (*,*) "Precomputed collop_base_prj"
+        succeded_precom_check_tmp= 1
         RETURN
       end if
       
       if (collop_base_exp .ne. collop_base_exp_precom) then
-        !write (*,*) "Precomputed collop_base_exp(",collop_base_exp_precom, ") is different from used collop_base_exp(",collop_base_exp,")"
-        write (*,*) "Precomputed collop_base_exp"
-        succeded_precom_check_tmp= 0
+        write (*,*) "Precomputed collop_base_exp(",collop_base_exp_precom, ") is different from used ", &
+        "collop_base_exp(",collop_base_exp,")"
+        !write (*,*) "Precomputed collop_base_exp"
+        succeded_precom_check_tmp= 1
         RETURN
       end if
       
       
       
-      if (compare_floats(T_spec, T_spec_precom, 1) > 0) then
+      if (compare_floats(T_spec, T_spec_precom, num_spec) > 0) then
         write (*,*) "Precomputed T_spec(",T_spec_precom, ") is different from used T_spec(",T_spec,")"
-        succeded_precom_check_tmp= 0
+        succeded_precom_check_tmp= 1
         RETURN
       end if
       
-      if (compare_floats(m_spec, m_spec_precom, 1) > 0) then
+      if (compare_floats(m_spec, m_spec_precom, num_spec) > 0) then
         write (*,*) "Precomputed m_spec(",m_spec_precom, ") is different from used m_spec(",m_spec,")"
-        succeded_precom_check_tmp= 0
+        succeded_precom_check_tmp= 1
         RETURN
       end if
       
       
+      if (phi_x_max_exists .and. compare_floats(phi_x_max, phi_x_max_precom) > 0) then
+        write (*,*) "Precomputed phi_x_max(",phi_x_max_precom, &
+        ") is different from used phi_x_max(",phi_x_max,")"
+        succeded_precom_check_tmp= 1
+        RETURN
+      end if
+
+      if (isw_relativistic_exists .and. isw_relativistic .ne. isw_relativistic_precom) then
+        write (*,*) "Precomputed isw_relativistic(",isw_relativistic_precom, ") is different from used", &
+        "isw_relativistic(",isw_relativistic,")"
+        succeded_precom_check_tmp= 1
+        RETURN
+      end if
+
+      if (collop_bspline_dist_exists .and. compare_floats(collop_bspline_dist, collop_bspline_dist_precom) > 0) then
+        write (*,*) "Precomputed collop_bspline_dist(",collop_bspline_dist_precom, &
+        ") is different from used collop_bspline_dist(",collop_bspline_dist,")"
+        succeded_precom_check_tmp= 1
+        RETURN
+      end if
       
+      if (collop_bspline_order_exists .and. collop_bspline_order .ne. collop_bspline_order_precom) then
+        write (*,*) "Precomputed collop_bspline_order(",collop_bspline_order_precom, ")", &
+        "is different from used collop_bspline_order(",collop_bspline_order,")"
+        succeded_precom_check_tmp= 1
+        RETURN
+      end if
 
       write (*,*) "Precom lag = ", lag_precom
       write (*,*) "Precom leg = ", leg_precom
@@ -744,7 +789,12 @@ module collop
       write (*,*) 'Precom T_spec = ', T_spec_precom
       write (*,*) 'Precom collop_base_prj = ', collop_base_prj_precom
       write (*,*) 'Precom collop_base_exp = ', collop_base_exp_precom
-      succeded_precom_check_tmp = 1
+      if (phi_x_max_exists) write (*,*) 'Precom phi_x_max = ',   phi_x_max_precom
+      if (isw_relativistic_exists) write(*,*) 'Precom isw_relativistic = ', isw_relativistic_precom
+      if (collop_bspline_dist_exists) write(*,*) 'Precom collop_bspline_dist = ', collop_bspline_dist_precom
+      if (collop_bspline_order_exists) write (*,*) 'Precom collop_bspline_order = ', collop_bspline_order_precom
+
+      succeded_precom_check_tmp = 0
 
     end subroutine read_precom_meta_collop
     
@@ -771,7 +821,10 @@ module collop
       call h5_add(h5id_meta, 'gamma_ab', gamma_ab)
       call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj)
       call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp)
-
+      call h5_add(h5id_meta, 'phi_x_max', phi_x_max)
+      call h5_add(h5id_meta, 'isw_relativistic', isw_relativistic)
+      call h5_add(h5id_meta, 'collop_bspline_dist', collop_bspline_dist)
+      call h5_add(h5id_meta, 'collop_bspline_order', collop_bspline_order)
       call h5_close_group(h5id_meta)
       
       
