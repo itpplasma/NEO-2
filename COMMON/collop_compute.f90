@@ -1727,6 +1727,7 @@ contains
                 res_int = norm_maxwell * integrate(bm_rel1, 0d0)
                 weightlag_s(j,m+1) = 1d0/sqrt(pi) * res_int
                 if (j .eq. 3) C_m(m) = res_int
+                !write (*,*) "weightlag: ", weightlag_s(j,m+1)
              end do
           end do
        end if
@@ -1804,7 +1805,7 @@ contains
       exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
       gam = sqrt(1+2*x**2/rmu)
       
-      if (k .ne. 2) then
+      if (j .ne. 2) then
          gam_fac = 1.0d0/gam
       else
          gam_fac = 1.0d0/gam * 2.0d0/(gam+1d0)
