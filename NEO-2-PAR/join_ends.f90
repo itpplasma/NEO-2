@@ -407,6 +407,15 @@ elseif (prop_finaljoin_mode .eq. 2) then
       bvec_lapack(nts_l+2*nr,:)=0.d0
    endif
    !*****************************************************************
+elseif (prop_finaljoin_mode .eq. 3) then                                           !<=new 05.04.18
+   do m=0,nvel                                                                     !<=new 05.04.18
+     amat(nl*(m+1),:)=amat(nl*(m+1),:)-amat(nts_l+nr*(m+1),:)                      !<=new 05.04.18
+     bvec_lapack(nl*(m+1),:)=bvec_lapack(nl*(m+1),:)-bvec_lapack(nts_l+nr*(m+1),:) !<=new 05.04.18
+     amat(nts_l+nr*(m+1),:)=0.d0                                                   !<=new 05.04.18
+     amat(nts_l+nr*(m+1),nl*m+1:nl*(m+1))=1.d0                                     !<=new 05.04.18
+     amat(nts_l+nr*(m+1),nts_l+nr*m+1:nts_l+nr*(m+1))=1.d0                         !<=new 05.04.18
+     bvec_lapack(nts_l+nr*(m+1),:)=0.d0                                            !<=new 05.04.18
+   enddo                                                                           !<=new 05.04.18
 end if
 ! #if !defined(MPI_SUPPORT)
 OPEN(751,file='amat_after.dat')
