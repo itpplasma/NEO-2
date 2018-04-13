@@ -27,7 +27,7 @@ SUBROUTINE join_ends(ierr)
 
   USE propagator_mod
   USE lapack_band
-  use collisionality_mod, only : isw_lorentz, v_max_resolution
+  use collisionality_mod, only : isw_lorentz, v_max_resolution, isw_energy, isw_integral
   !**********************************************************
   ! Definition of base functions
   !**********************************************************
@@ -75,7 +75,22 @@ SUBROUTINE join_ends(ierr)
   DOUBLE PRECISION :: facnorm
 
   real(kind=dp) :: x, r
-
+  
+  !**********************************************************
+  ! Automatically choose prop_finaljoin_mode
+  !**********************************************************
+  if (isw_energy .eq. 0 .and. isw_integral .eq. 0) then
+     if (prop_finaljoin_mode .ne. 3) then
+        write (*,*) "WARNING: Overwriting prop_finaljoin_mode to 3"
+        prop_finaljoin_mode = 3
+     end if
+  else
+     if (prop_finaljoin_mode .ne. 1) then
+        write (*,*) "WARNING: Overwriting prop_finaljoin_mode to 1"
+        prop_finaljoin_mode = 1
+     end if
+  end if
+  
   if (prop_finaljoin_mode .eq. 2) then
      call collop_construct
      call collop_load
@@ -352,7 +367,7 @@ if (prop_finaljoin_mode .eq. 0) then
    amat(nts_l+nr,1:nl)=1.d0
    amat(nts_l+nr,nts_l+1:nts_l+nr)=1.d0
    bvec_lapack(nts_l+nr,:)=0.d0
-   if(nvel.gt.0) then
+   if(nvel.gt.0 .and. isw_integral .eq. 1) then
       amat(2*nl,:)=amat(2*nl,:)-amat(nts_l+2*nr,:)
       bvec_lapack(2*nl,:)=bvec_lapack(2*nl,:)-bvec_lapack(nts_l+2*nr,:)
       !  amat(nts_l+2*nr,1:nl)=0.d0
@@ -367,7 +382,7 @@ elseif (prop_finaljoin_mode .eq. 1) then
    amat(nts_l+nr,1:nl)=1.d0
    amat(nts_l+nr,nts_l+1:nts_l+nr)=1.d0
    bvec_lapack(nts_l+nr,:)=0.d0
-   if(nvel.gt.0) then
+   if(nvel.gt.0 .and. isw_integral .eq. 1) then
       amat(2*nl,:)=amat(2*nl,:)-amat(nts_l+2*nr,:)
       bvec_lapack(2*nl,:)=bvec_lapack(2*nl,:)-bvec_lapack(nts_l+2*nr,:)
       amat(nts_l+2*nr,:)=0.d0
@@ -392,7 +407,7 @@ elseif (prop_finaljoin_mode .eq. 2) then
    enddo                                          !<=new
    !
    bvec_lapack(nts_l+nr,:)=0.d0
-   if(nvel.gt.0) then
+   if(nvel.gt.0 .and. isw_integral .eq. 1) then
       amat(2*nl,:)=amat(2*nl,:)-amat(nts_l+2*nr,:)
       bvec_lapack(2*nl,:)=bvec_lapack(2*nl,:)-bvec_lapack(nts_l+2*nr,:)
       amat(nts_l+2*nr,:)=0.d0
