@@ -123,7 +123,7 @@ module collop
          !**********************************************************
          if (isw_relativistic .ge. 1) then
             rmu = (c**2 * m_ele)/(eV*T_e)
-            phi_x_max_nr = 4.5d0
+            phi_x_max_nr = 4.0d0
             phi_x_max = phi_x_max_nr * sqrt(1 + phi_x_max_nr**2 / (2d0 * rmu))
             x_cutoff =  phi_x_max * 100d0
             
