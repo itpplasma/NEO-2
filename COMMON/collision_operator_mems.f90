@@ -7,7 +7,7 @@ module collop
        m_ele, m_d, m_C, m_alp, m_W, compute_collop_inf, C_m, compute_xmmp, &
        compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
        compute_collop_rel, lagmax, integral_cutoff, num_sub_intervals, num_sub_intervals_cutoff, &
-       epsabs, epsrel, x_cutoff
+       epsabs, epsrel, x_cutoff, c, m_ele, eV
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
@@ -17,9 +17,6 @@ module collop
        z_spec, m_spec, T_spec, n_spec, &
        collop_bspline_dist, collop_bspline_order
   use device_mod, only : device
-
-  
-
   
   implicit none
   
@@ -45,13 +42,11 @@ module collop
   
   logical   :: lsw_read_precom, lsw_write_precom !! Added lsw_read_precom  and lsw_write_precom 
   integer   :: succeded_precom_check = -1        !! and succeded_precom_check by Michael Draxler (13.09.2017)
-  
 
   interface compare_floats
       module procedure compare_float, compare_floats_vec
   end interface compare_floats
 
-  
   contains
     
     subroutine collop_construct()     
@@ -108,6 +103,8 @@ module collop
       real(kind=dp) :: taa_ov_tab_temp
       real(kind=dp) :: coll_a_temp, coll_b_temp
       real(kind=dp) :: za_temp, zb_temp
+
+      real(kind=dp) :: phi_x_max_nr, rmu
       
       if (.not. lsw_multispecies) then
          write (*,*) "Single species mode."
@@ -119,6 +116,21 @@ module collop
          x_cutoff = 100d0
          epsabs = 1d-10
          epsrel = 1d-10
+
+         !**********************************************************
+         ! Automatically use meaningful upper boundary for
+         ! splines in the relativistic case
+         !**********************************************************
+         if (isw_relativistic .ge. 1) then
+            rmu = (c**2 * m_ele)/(eV*T_e)
+            phi_x_max_nr = 4.5d0
+            phi_x_max = phi_x_max_nr * sqrt(1 + phi_x_max_nr**2 / (2d0 * rmu))
+            x_cutoff =  phi_x_max * 100d0
+            
+            write (*,*) "Setting phi_x_max to ", phi_x_max
+            write (*,*) "Setting x_cutoff to  ", x_cutoff
+         end if
+         
       else
          write (*,*) "Multispecies mode."
 
