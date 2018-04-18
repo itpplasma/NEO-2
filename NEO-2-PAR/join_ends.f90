@@ -86,8 +86,8 @@ SUBROUTINE join_ends(ierr)
      end if
   else
      if (prop_finaljoin_mode .ne. 1) then
-        write (*,*) "WARNING: Overwriting prop_finaljoin_mode to 1"
-        prop_finaljoin_mode = 1
+        !write (*,*) "WARNING: Overwriting prop_finaljoin_mode to 1"
+        !prop_finaljoin_mode = 1
      end if
   end if
   
