@@ -121,14 +121,14 @@ module collop
          ! Automatically use meaningful upper boundary for
          ! splines in the relativistic case
          !**********************************************************
-         if (isw_relativistic .ge. 1) then
+         if ((isw_relativistic .ge. 1) .and. (phi_x_max .le. 0)) then
             rmu = (c**2 * m_ele)/(eV*T_e)
-            phi_x_max_nr = 4.0d0
+            phi_x_max_nr = 5.0d0
             phi_x_max = phi_x_max_nr * sqrt(1 + phi_x_max_nr**2 / (2d0 * rmu))
             x_cutoff =  phi_x_max * 100d0
             
-            write (*,*) "Setting phi_x_max to ", phi_x_max
-            write (*,*) "Setting x_cutoff to  ", x_cutoff
+            write (*,*) "WARNING: Setting phi_x_max to ", phi_x_max
+            write (*,*) "WARNING: Setting x_cutoff to  ", x_cutoff
          end if
          
       else
