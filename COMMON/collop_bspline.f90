@@ -1,6 +1,7 @@
 module collop_bspline
   use nrtype, only : dp, pi
-  use collisionality_mod, only : phi_x_max, collop_bspline_dist, collop_bspline_order
+  use collisionality_mod, only : phi_x_max, collop_bspline_dist, collop_bspline_order, &
+       collop_bspline_taylor
   !use fgsl
   use gsl_bspline_routines_mod
 
@@ -23,6 +24,8 @@ contains
     integer :: k
     real(kind=dp) :: xp, gam_all, x_del
 
+    taylorExpansion = collop_bspline_taylor
+    
     if (.not. bspline_initialized) then
        bspline_initialized = .true.
        
