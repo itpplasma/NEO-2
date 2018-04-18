@@ -74,7 +74,8 @@
     DOUBLE PRECISION :: phi_x_max
     DOUBLE PRECISION :: collop_bspline_dist
     INTEGER          :: collop_bspline_order
-
+    LOGICAL          :: collop_bspline_taylor
+    
   END MODULE
 !
   MODULE rkstep_mod

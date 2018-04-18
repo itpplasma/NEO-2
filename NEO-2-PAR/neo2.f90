@@ -22,7 +22,7 @@ PROGRAM neo2
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
        phi_x_max, collop_bspline_order, collop_bspline_dist,        &
        isw_relativistic, T_e, lsw_multispecies, num_spec,           &
-       conl_over_mfp_spec, z_spec
+       conl_over_mfp_spec, z_spec, collop_bspline_taylor
   USE propagator_mod, ONLY : reconstruct_prop_dist,   &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -167,7 +167,7 @@ PROGRAM neo2
        scalprod_alpha, scalprod_beta, v_min_resolution, v_max_resolution,     &
        phi_x_max, collop_bspline_order, collop_bspline_dist,                  &
        num_spec, conl_over_mfp_vec, z_vec, collop_only_precompute,            &
-       isw_relativistic, T_e, lsw_multispecies,                               &
+       isw_relativistic, T_e, lsw_multispecies, collop_bspline_taylor,        &
        lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
        !! and lsw_write_precom by Michael Draxler (25.08.2017)
   NAMELIST /binsplit/                                                         &
@@ -264,6 +264,7 @@ PROGRAM neo2
   phi_x_max        = 5.0d0
   collop_bspline_order = 4
   collop_bspline_dist  = 1d0
+  collop_bspline_taylor = .true.
   !! Modification by Andreas F. Martitsch (25.08.2015)
   !  multi-species part
   num_spec = 1
@@ -1102,6 +1103,7 @@ CONTAINS
        CALL h5_add(h5_config_group, 'phi_x_max', phi_x_max, 'Maximum velocity for base function')
        CALL h5_add(h5_config_group, 'collop_bspline_order', collop_bspline_order, 'BSpline order')
        CALL h5_add(h5_config_group, 'collop_bspline_dist', collop_bspline_dist, 'BSpline knots distribution factor')
+       CALL h5_add(h5_config_group, 'collop_bspline_taylor', collop_bspline_taylor, 'BSpline taylor expansion')
        CALL h5_add(h5_config_group, 'isw_relativistic', isw_relativistic)
        CALL h5_add(h5_config_group, 'T_e', T_e)
 
