@@ -22,7 +22,7 @@ PROGRAM neo2
        phi_x_max, collop_bspline_order, collop_bspline_dist,        &
        isw_relativistic, T_e, lsw_multispecies, isw_coul_log,       &
        num_spec, species_tag, conl_over_mfp_spec, z_spec, m_spec,   &
-       T_spec, n_spec 
+       T_spec, n_spec, collop_bspline_taylor
   USE propagator_mod, ONLY : reconstruct_prop_dist,                 &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -220,7 +220,7 @@ PROGRAM neo2
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta,       &
        phi_x_max, collop_bspline_order, collop_bspline_dist,                  &
        v_min_resolution, v_max_resolution, isw_relativistic, T_e,             &
-       lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
+       lsw_read_precom, lsw_write_precom, collop_bspline_taylor !! Added lsw_read_precom
        !! and lsw_write_precom by Michael Draxler (25.08.2017)
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
@@ -376,6 +376,7 @@ PROGRAM neo2
   phi_x_max        = 5.0d0
   collop_bspline_order = 4
   collop_bspline_dist  = 1d0
+  collop_bspline_taylor = .true.
   lsw_read_precom = .FALSE. !! Added lsw_read_precom and lsw_write_precom 
   lsw_write_precom = .FALSE.   !! by Michael Draxler (25.08.2017)
   ! binsplit
