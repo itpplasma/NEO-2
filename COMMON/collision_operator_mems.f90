@@ -111,7 +111,7 @@ module collop
          
          ! Usual integration settings for "single species" mode
          integral_cutoff = .true.
-         num_sub_intervals = 3
+         num_sub_intervals = 5
          num_sub_intervals_cutoff = 3
          x_cutoff = 100d0
          epsabs = 1d-12
@@ -125,7 +125,7 @@ module collop
             rmu = (c**2 * m_ele)/(eV*T_e)
             phi_x_max_nr = 5.0d0
             phi_x_max = phi_x_max_nr * sqrt(1 + phi_x_max_nr**2 / (2d0 * rmu))
-            x_cutoff =  phi_x_max * 10d0
+            x_cutoff =  phi_x_max * 100d0
             
             write (*,*) "WARNING: Setting phi_x_max to ", phi_x_max
             write (*,*) "WARNING: Setting x_cutoff to  ", x_cutoff
