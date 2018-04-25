@@ -111,7 +111,7 @@ module collop
          
          ! Usual integration settings for "single species" mode
          integral_cutoff = .true.
-         num_sub_intervals = 5
+         num_sub_intervals = 3
          num_sub_intervals_cutoff = 3
          x_cutoff = 100d0
          epsabs = 1d-12
@@ -121,7 +121,8 @@ module collop
          ! Automatically use meaningful upper boundary for
          ! splines in the relativistic case
          !**********************************************************
-         if ((isw_relativistic .ge. 1) .and. (phi_x_max .le. 0)) then
+         if ((isw_relativistic .ge. 1) .and. (phi_x_max .le. 0) &
+              .and. ((collop_base_prj .eq. 11) .or. (collop_base_exp .eq. 11))) then
             rmu = (c**2 * m_ele)/(eV*T_e)
             phi_x_max_nr = 5.0d0
             phi_x_max = phi_x_max_nr * sqrt(1 + phi_x_max_nr**2 / (2d0 * rmu))
