@@ -1145,9 +1145,11 @@ CONTAINS
        CALL h5_add(h5_config_group, 'mag_infotalk',mag_infotalk )
        CALL h5_add(h5_config_group, 'hphi_lim', hphi_lim)
        CALL h5_add(h5_config_group, 'prop_write', prop_write)
-       CALL h5_add(h5_config_group, 'prop_reconstruct',prop_reconstruct )
-       CALL h5_add(h5_config_group, 'prop_fileformat',prop_fileformat )
-       CALL h5_add(h5_config_group, 'prop_ripple_plot',prop_ripple_plot )
+       CALL h5_add(h5_config_group, 'prop_reconstruct',prop_reconstruct)
+       CALL h5_add(h5_config_group, 'prop_fileformat',prop_fileformat)
+       CALL h5_add(h5_config_group, 'prop_ripple_plot',prop_ripple_plot)
+       CALL h5_add(h5_config_group, 'prop_finaljoin_mode',prop_finaljoin_mode)
+
        CALL h5_close_group(h5_config_group)
 
        CALL h5_define_group(h5_config_id, 'plotting', h5_config_group)
