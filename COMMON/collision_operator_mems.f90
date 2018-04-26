@@ -7,7 +7,7 @@ module collop
        m_ele, m_d, m_C, m_alp, m_W, compute_collop_inf, C_m, compute_xmmp, &
        compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
        compute_collop_rel, lagmax, integral_cutoff, num_sub_intervals, num_sub_intervals_cutoff, &
-       epsabs, epsrel, x_cutoff, c, m_ele, eV
+       epsabs, epsrel, x_cutoff, c, m_ele, eV, lsw_split_interval
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
@@ -104,40 +104,46 @@ module collop
       real(kind=dp) :: coll_a_temp, coll_b_temp
       real(kind=dp) :: za_temp, zb_temp
 
-      real(kind=dp) :: phi_x_max_nr, rmu
+      real(kind=dp) :: phi_x_max_nr, x_cutoff_nr, rmu
       
       if (.not. lsw_multispecies) then
          write (*,*) "Single species mode."
          
          ! Usual integration settings for "single species" mode
          integral_cutoff = .true.
-         num_sub_intervals = 3
-         num_sub_intervals_cutoff = 3
-         x_cutoff = 100d0
-         epsabs = 1d-12
-         epsrel = 1d-12
+         lsw_split_interval = .false.
+         !num_sub_intervals = 1
+         !num_sub_intervals_cutoff = 1
+         x_cutoff = 20d0
+         epsabs = 1d-13
+         epsrel = 1d-13
 
-         !**********************************************************
-         ! Automatically use meaningful upper boundary for
-         ! splines in the relativistic case
-         !**********************************************************
-         if ((isw_relativistic .ge. 1) .and. (phi_x_max .le. 0) &
-              .and. ((collop_base_prj .eq. 11) .or. (collop_base_exp .eq. 11))) then
+         phi_x_max_nr =  5.0d0
+         x_cutoff_nr  = 20.0d0
+
+         if (isw_relativistic .ge. 1) then
             rmu = (c**2 * m_ele)/(eV*T_e)
-            phi_x_max_nr = 5.0d0
-            phi_x_max = phi_x_max_nr * sqrt(1 + phi_x_max_nr**2 / (2d0 * rmu))
-            x_cutoff =  phi_x_max * 100d0
-            
-            write (*,*) "WARNING: Setting phi_x_max to ", phi_x_max
+            if (phi_x_max .le. 0d0) then
+               phi_x_max = phi_x_max_nr * sqrt(1 + phi_x_max_nr**2 / (2d0 * rmu))
+               write (*,*) "WARNING: Setting phi_x_max to ", phi_x_max
+            end if
+
+            x_cutoff = x_cutoff_nr * sqrt(1 + phi_x_max_nr**2 / (2d0 * rmu))
             write (*,*) "WARNING: Setting x_cutoff to  ", x_cutoff
+         else
+            if (phi_x_max .le. 0d0) then
+               phi_x_max = phi_x_max_nr
+               write (*,*) "WARNING: Setting phi_x_max to ", phi_x_max
+            end if
          end if
-         
+
       else
          write (*,*) "Multispecies mode."
 
          ! For some multispecies setups it turned out that the number of subintervals
          ! has to be significantly higher than for the standard mode. 
          integral_cutoff = .true.
+         lsw_split_interval = .true.
          num_sub_intervals = 5 
          num_sub_intervals_cutoff = 40
          x_cutoff = 3.0d3
