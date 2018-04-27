@@ -115,8 +115,8 @@ module collop
          !num_sub_intervals = 1
          !num_sub_intervals_cutoff = 1
          x_cutoff = 20d0
-         epsabs = 1d-13
-         epsrel = 1d-13
+         epsabs = 1d-11
+         epsrel = 1d-11
 
          phi_x_max_nr =  5.0d0
          x_cutoff_nr  = 20.0d0
