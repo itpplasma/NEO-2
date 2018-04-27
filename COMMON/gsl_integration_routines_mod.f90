@@ -662,7 +662,7 @@ CONTAINS
     REAL(fgsl_double) :: epsabs, epsrel
     REAL(fgsl_double), DIMENSION(2) :: fint1d_param0_cquad
     !
-    INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 1000_fgsl_size_t
+    INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 100_fgsl_size_t
     INTEGER(fgsl_size_t) :: neval ! nmber of function evaluations
     REAL(fgsl_double) :: ra, rda ! result and absolute error
     TYPE(fgsl_error_handler_t) :: std
