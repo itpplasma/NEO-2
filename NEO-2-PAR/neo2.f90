@@ -1083,6 +1083,10 @@ CONTAINS
        CALL h5_add(h5_config_group, 'sparse_talk', sparse_talk)
        CALL h5_add(h5_config_group, 'mag_symmetric', mag_symmetric)
        CALL h5_add(h5_config_group, 'mag_symmetric_shorten', mag_symmetric_shorten)
+       CALL h5_add(h5_config_group, 'epserr_iter', epserr_iter)
+       CALL h5_add(h5_config_group, 'epserr_sink', epserr_sink)
+       CALL h5_add(h5_config_group, 'niter', niter)
+
        CALL h5_close_group(h5_config_group)
 
        CALL h5_define_group(h5_config_id, 'collision', h5_config_group)
