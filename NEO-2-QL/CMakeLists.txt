@@ -131,7 +131,7 @@ find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
 find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs} NO_DEFAULT_PATH)
 
 ### Source files
-include(CMakeSources.txt)
+include(CMakeSources.in)
 
 ### Select C/Fortran-Interface for SuiteSparse
 COMPARE_VERSION_STRINGS(${SUITESPARSE_VERSION} "4.4" ISW_SUITESPARSE_VERSION)

@@ -83,6 +83,7 @@ set(NEO2_COMMON_FILES
 	../COMMON/lapack_band.f90
 	#../COMMON/localizer.f90
 	#../COMMON/longint.f90
+	../COMMON/odeint_allroutines.f
 	../COMMON/polleg.f90
 	../COMMON/prodband.f90
 	../COMMON/pspline.f90

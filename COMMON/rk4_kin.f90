@@ -5,33 +5,19 @@
 !
   IMPLICIT NONE
 !
-  INTEGER          :: n,i
-  DOUBLE PRECISION :: x,h,hh,h6,xh
+  double precision, parameter :: eps = 1.d-10
+!
+  INTEGER          :: n
+  DOUBLE PRECISION :: x,h,xh
+!
+  external :: rhs_kin
 !
   n=SIZE(y)
+  xh=x+h
 !
-  hh=h*0.5d0
-  h6=h/6.d0
-  xh=x+hh
+  call odeint_allroutines(y,n,x,xh,eps,rhs_kin)
 !
-  CALL rhs_kin(x,y,dydx)
-!
-  yt=y+hh*dydx
-!
-  CALL rhs_kin(xh,yt,dyt)
-!
-  yt=y+hh*dyt
-!
-  CALL rhs_kin(xh,yt,dym)
-!
-  yt=y+h*dym
-  dym=dyt+dym
-!
-  CALL rhs_kin(x+h,yt,dyt)
-!
-  y=y+h6*(dydx+dyt+2.d0*dym)
-!
-  x=x+h
+  x=xh
 !
   RETURN
 END SUBROUTINE rk4_kin
