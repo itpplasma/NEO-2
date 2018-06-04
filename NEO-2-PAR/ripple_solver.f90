@@ -298,7 +298,6 @@ SUBROUTINE ripple_solver(                                 &
   end if
 
 
-
   ierr=0
   !accurfac=3.d0 !10.d0
   accurfac=ripple_solver_accurfac ! in develpment
