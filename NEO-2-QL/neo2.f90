@@ -22,7 +22,7 @@ PROGRAM neo2
        phi_x_max, collop_bspline_order, collop_bspline_dist,        &
        isw_relativistic, T_e, lsw_multispecies, isw_coul_log,       &
        num_spec, species_tag, conl_over_mfp_spec, z_spec, m_spec,   &
-       T_spec, n_spec, collop_bspline_taylor
+       T_spec, n_spec, collop_bspline_taylor, lsw_nbi, m_nbi, T_nbi
   USE propagator_mod, ONLY : reconstruct_prop_dist,                 &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -220,8 +220,8 @@ PROGRAM neo2
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta,       &
        phi_x_max, collop_bspline_order, collop_bspline_dist,                  &
        v_min_resolution, v_max_resolution, isw_relativistic, T_e,             &
-       lsw_read_precom, lsw_write_precom, collop_bspline_taylor !! Added lsw_read_precom
-       !! and lsw_write_precom by Michael Draxler (25.08.2017)
+       lsw_read_precom, lsw_write_precom, collop_bspline_taylor, lsw_nbi,     &
+       m_nbi, T_nbi
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -250,7 +250,8 @@ PROGRAM neo2
   NAMELIST /ntv_input/                                                        &
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, B_rho_L_loc,          &
        isw_ripple_solver, isw_mag_shear
-  !! End Modification by Andreas F. Martitsch (14.07.2015)  
+  !! End Modification by Andreas F. Martitsch (14.07.2015)
+  
   ! ---------------------------------------------------------------------------
   ! filenames (default file and specific input file) for namelist
   fnames = (/'neo2.def','neo2.in '/)
@@ -440,13 +441,17 @@ PROGRAM neo2
   isw_mag_shear = 0
   !! End Modification by Andreas F. Martitsch (14.07.2015)
 
+  lsw_nbi = .false.
+  T_nbi  = 70d3
+  m_nbi  = 3.343583719d-24
+  
   CALL h5_init()
   
   ! reading
   DO jf = 1,SIZE(fnames)
      IF(jf .EQ. 1) CYCLE ! skip neo2.def (Andreas F. Martitsch - 21.10.2015)
      OPEN(unit=u1,file=fnames(jf),status='old',iostat=ios)
-     IF (ios .NE. 0) THEN
+     if (ios .ne. 0) then
         PRINT *, 'WARNING: File ',fnames(jf),' cannot be OPENED!'
         PRINT *, ''
         STOP
@@ -510,7 +515,7 @@ PROGRAM neo2
      CLOSE(unit=u1)
   END DO
   ! PAUSE
-
+  
   !! Modification by Andreas F. Martitsch (20.02.2017)
   ! Prepare  multi-species computations for a given profile
   ! -> prepare input files, directories

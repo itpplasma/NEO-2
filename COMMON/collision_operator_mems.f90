@@ -7,7 +7,7 @@ module collop
        m_ele, m_d, m_C, m_alp, m_W, compute_collop_inf, C_m, compute_xmmp, &
        compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
        compute_collop_rel, lagmax, integral_cutoff, num_sub_intervals, num_sub_intervals_cutoff, &
-       epsabs, epsrel, x_cutoff, c, m_ele, eV, lsw_split_interval
+       epsabs, epsrel, x_cutoff, c, m_ele, eV, lsw_split_interval, compute_nbisource
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
@@ -15,7 +15,7 @@ module collop
        isw_relativistic, T_e, &
        lsw_multispecies, isw_coul_log, num_spec, conl_over_mfp_spec, collpar_spec, &
        z_spec, m_spec, T_spec, n_spec, &
-       collop_bspline_dist, collop_bspline_order
+       collop_bspline_dist, collop_bspline_order, lsw_nbi, T_nbi, m_nbi
   use device_mod, only : device
   
   implicit none
@@ -186,6 +186,12 @@ module collop
       
       if(allocated(ailmm_aa)) deallocate(ailmm_aa)
       allocate(ailmm_aa(0:lag,0:lag,0:leg,0:num_spec-1,0:num_spec-1))
+
+      if (lsw_nbi) then
+         if (allocated(Inbi_lmmp_a)) deallocate(Inbi_lmmp_a)
+         ! In future leg should be changed to leg_nbi here
+         allocate(Inbi_lmmp_a(0:lag,0:leg,0:num_spec-1))
+      end if
       
       if(allocated(weightlag)) deallocate(weightlag)
       allocate(weightlag(3,0:lag))
@@ -401,52 +407,19 @@ module collop
                  ailmm_aa(:,:,:,a,b) = ailmm_aa(:,:,:,spec_ind_det(1),spec_ind_det(2))
               end if
            end do
+
+           ! Using parallelization for NBI source computation.
+           ! Parallel index b is used here as a. 
+           if (lsw_nbi) then
+              call compute_nbisource('a', 'B', m_spec(b), m_nbi, T_spec(b), T_nbi, &
+                   Inbi_lmmp_a(:,:,b))
+           end if
+           
            call mpro%allgather(anumm_aa(:,:,:,b),anumm_aa)
            call mpro%allgather(denmm_aa(:,:,:,b),denmm_aa)
            call mpro%allgather(ailmm_aa(:,:,:,:,b),ailmm_aa)
-  
-           !call compute_collop('d', 'd', m_d, m_d, 1d0, 1d0, anumm_aa(:,:,0,0), &
-           !     denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
+           call mpro%allgather(Inbi_lmmp_a(:,:,b), Inbi_lmmp_a)
            
-           !call compute_collop('d', 'C', m_d, m_C, 1d0, 1d0, anumm_aa(:,:,0,1), &
-           !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-           !call compute_collop('C', 'C', m_C, m_C, 1d0, 1d0, anumm_aa(:,:,1,1), &
-           !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-           !call compute_collop('C', 'd', m_C, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-           !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
-           
-           !call compute_collop('d', 'alp', m_d, m_alp, 1d0, 1d0, anumm_aa(:,:,0,1), &
-           !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-           !call compute_collop('alp', 'alp', m_alp, m_alp, 1d0, 1d0, anumm_aa(:,:,1,1), &
-           !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-           !call compute_collop('alp', 'd', m_alp, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-           !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
-           
-           !call compute_collop('d', 'W', m_d, m_W, 1d0, 1d0, anumm_aa(:,:,0,1), &
-           !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-           !call compute_collop('W', 'W', m_W, m_W, 1d0, 1d0, anumm_aa(:,:,1,1), &
-           !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-           !call compute_collop('W', 'd', m_W, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-           !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
-
-           !!m_ele = m_ele*0.5d0
-           !call compute_collop('d', 'e', m_d, m_ele, 1d0, 1d0, anumm_aa(:,:,0,1), &
-           !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-           !call compute_collop('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,1,1), &
-           !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-           !call compute_collop('e', 'd', m_ele, m_d, 1d0, 1d0, anumm_aa(:,:,1,0), &
-           !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
-  
-           !call compute_collop('W', 'e', m_W, m_ele, 1d0, 1d0, anumm_aa(:,:,0,1), &
-           !     denmm_aa(:,:,0,1), ailmm_aa(:,:,:,0,1))
-           !call compute_collop('e', 'e', m_ele, m_ele, 1d0, 1d0, anumm_aa(:,:,1,1), &
-           !     denmm_aa(:,:,1,1), ailmm_aa(:,:,:,1,1))
-           !call compute_collop('e', 'W', m_ele, m_W, 1d0, 1d0, anumm_aa(:,:,1,0), &
-           !     denmm_aa(:,:,1,0), ailmm_aa(:,:,:,1,0))
-           !stop
-           
-
-
            if (lsw_write_precom) then            !! Added by Michael Draxler (13.09.2017) 
              if (mpro%isMaster()) then
                write(*,*) "Write Precom_collop"!!

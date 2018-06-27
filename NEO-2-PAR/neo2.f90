@@ -22,7 +22,8 @@ PROGRAM neo2
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
        phi_x_max, collop_bspline_order, collop_bspline_dist,        &
        isw_relativistic, T_e, lsw_multispecies, num_spec,           &
-       conl_over_mfp_spec, z_spec, collop_bspline_taylor
+       conl_over_mfp_spec, z_spec, collop_bspline_taylor, lsw_nbi,  &
+       T_nbi, m_nbi
   USE propagator_mod, ONLY : reconstruct_prop_dist,   &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -168,8 +169,7 @@ PROGRAM neo2
        phi_x_max, collop_bspline_order, collop_bspline_dist,                  &
        num_spec, conl_over_mfp_vec, z_vec, collop_only_precompute,            &
        isw_relativistic, T_e, lsw_multispecies, collop_bspline_taylor,        &
-       lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
-       !! and lsw_write_precom by Michael Draxler (25.08.2017)
+       lsw_read_precom, lsw_write_precom, lsw_nbi, T_nbi, m_nbi
   NAMELIST /binsplit/                                                         &
        eta_s_lim,eta_part,lambda_equi,phi_split_mode,phi_place_mode,          &
        phi_split_min,max_solver_try,                                          &
@@ -350,6 +350,10 @@ PROGRAM neo2
   lsw_save_dentf = .TRUE.
   lsw_save_enetf = .TRUE.
   lsw_save_spitf = .TRUE.
+
+  lsw_nbi = .false.
+  T_nbi   = 70d3
+  m_nbi   = 3.343583719d-24
   
   !**********************************
   ! Init HDF5 Fortran interface

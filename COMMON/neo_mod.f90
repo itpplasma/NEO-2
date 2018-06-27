@@ -75,6 +75,9 @@
     DOUBLE PRECISION :: collop_bspline_dist
     INTEGER          :: collop_bspline_order
     LOGICAL          :: collop_bspline_taylor
+
+    double precision :: m_nbi, T_nbi
+    LOGICAL          :: lsw_nbi
     
   END MODULE
 !
@@ -105,6 +108,7 @@
     DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightden
     DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightparflow
     DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightenerg
+    double precision, dimension(:,:,:),   allocatable :: Inbi_lmmp_a
     !**********************************************************
     ! WINNY - for flint
     ! DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: collision_sigma_multiplier

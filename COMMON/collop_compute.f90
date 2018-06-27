@@ -41,7 +41,6 @@ module collop_compute
   real(kind=dp), dimension(:),     allocatable :: C_m
   real(kind=dp), dimension(:),     allocatable :: weightenerg_offset
 
-
   !**********************************************************
   ! Profile
   !**********************************************************
@@ -2244,7 +2243,37 @@ contains
     !call chop(ailmm_s)
 
   end subroutine compute_integralpart
+   
+  subroutine compute_nbisource(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, Inbi_lmmp_s)
+    use  collisionality_mod, only : lsw_nbi
 
+    character(len=*) :: tag_a, tag_b
+    real(kind=dp)    :: m_a0, m_b0
+    real(kind=dp)    :: T_a0, T_b0
+    real(kind=dp), dimension(:,:) :: Inbi_lmmp_s
+
+    m_a = m_a0
+    m_b = m_b0
+    T_a = T_a0
+    T_b = T_b0
+
+    v_ta = sqrt(2*T_a / m_a)
+    v_tb = sqrt(2*T_b / m_b)
+    gamma_ab = v_ta/v_tb
+    write (*,'(A,A,A,A,A,1E13.6)') " Computing NBI source for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
+
+    ! TODO for NBI (most likely not completed!!)
+    ! 1. Read data file
+    ! 2. Write linear spline routine for read data including first and second derivative
+    ! 3. Change the function pointers of phi_exp, d_phi_exp, and dd_phi_exp to the splined data
+    ! 4. Look into compute_integralpart() how the four terms of the integral part are computed and summed up
+    ! 5. Do the same in this function, but with modified legmax
+    ! 6. Sum up the matrix elements into Inbi_lmmp_s
+    ! 7. Set back to the original pointers of phi_exp, d_phi_exp, and dd_phi_exp
+    
+    
+  end subroutine compute_nbisource
+  
   subroutine compute_I1_mmp_s()
     integer :: l, m, mp
 
@@ -2767,7 +2796,7 @@ contains
     call disp_gsl_integration_error()    
     call compute_integralpart(ailmm_s)
     call disp_gsl_integration_error()
-
+    
   end subroutine compute_collop
   
   subroutine compute_collop_inf(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, anumm_s, anumm_inf_s, denmm_s, ailmm_s)
