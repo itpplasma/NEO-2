@@ -8,6 +8,7 @@ module collop_compute
   use collop_polynomial
   use collop_spline
   use collop_bspline
+  use collop_nbi
   !use collop_bspline2
   !use collop_spline4
   use ieee_arithmetic
