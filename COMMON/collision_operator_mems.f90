@@ -467,6 +467,7 @@ module collop
                     denmm_a(:,:,a) + denmm_aa(:,:,a,b) * taa_ov_tab_temp
                ailmm_aa(:,:,:,a,b) = &
                     ailmm_aa(:,:,:,a,b) * taa_ov_tab_temp
+               Inbi_lmmp_a(:,:,a) = Inbi_lmmp_a(:,:,b) * taa_ov_tab_temp
             end do
          end do
 
@@ -561,6 +562,7 @@ module collop
       deallocate(denmm_aa)
       deallocate(anumm_a)
       deallocate(denmm_a)
+      deallocate(Inbi_lmmp_a)
       deallocate(asource)
       deallocate(weightlag)
       deallocate(x1mm)
@@ -588,10 +590,6 @@ module collop
       if (allocated(M_transform_inv)) deallocate(M_transform_inv)
       allocate(M_transform_inv(0:lagmax, 0:lagmax))
       
-
-      
-      
-      
       call h5_open('precom_collop.h5', h5id_read_collop)
          
       call h5_get(h5id_read_collop, 'x1mm', x1mm)
@@ -604,7 +602,6 @@ module collop
       call h5_get(h5id_read_collop, 'weightenerg', weightenerg)
       call h5_get(h5id_read_collop, 'Amm',Amm)
       
-
       call h5_get(h5id_read_collop, 'anumm_aa', anumm_aa)
       call h5_get(h5id_read_collop, 'anumm_inf', anumm_inf)
       call h5_get(h5id_read_collop, 'denmm_aa', denmm_aa)
@@ -963,13 +960,7 @@ module collop
       call h5_add(h5id_meta, 'leg', leg)
       call h5_add(h5id_meta, 'scalprod_alpha', scalprod_alpha)
       call h5_add(h5id_meta, 'scalprod_beta',  scalprod_beta)
-      !call h5_add(h5id_meta, 'm_a', m_a)
-      !call h5_add(h5id_meta, 'm_b', m_b)
-      !call h5_add(h5id_meta, 'T_a', T_a)
-      !call h5_add(h5id_meta, 'T_b', T_b)
       call h5_add(h5id_meta, 'gamma_ab', gamma_ab)
-      !call h5_add(h5id_meta, 'tag_a', tag_a)
-      !call h5_add(h5id_meta, 'tag_b', tag_b)
       call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj)
       call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp)
       call h5_close_group(h5id_meta)
@@ -991,6 +982,10 @@ module collop
       call h5_add(h5id_collop, 'M_transform_inv', M_transform_inv, lbound(M_transform_inv), ubound(M_transform_inv))
       call h5_add(h5id_collop, 'C_m', C_m, lbound(C_m), ubound(C_m))
 
+      if (lsw_nbi) then
+         call h5_add(h5id_collop, 'Inbi_lmmp_a', Inbi_lmmp_a, lbound(Inbi_lmmp_a), ubound(Inbi_lmmp_a))
+      end if
+      
       !**********************************************************
       ! Write test functions
       !**********************************************************

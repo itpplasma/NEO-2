@@ -48,6 +48,7 @@ set(COLLOPLIB_FILES
 	../COMMON/collop_polynomial.f90
 	../COMMON/collop_bspline.f90
 	../COMMON/collop_spline.f90
+	../COMMON/collop_nbi.f90
 	../COMMON/rel_kernels.f90
 )
 

@@ -98,6 +98,7 @@ set(NEO2_COMMON_FILES
 	../COMMON/collop_laguerre.f90
 	../COMMON/collop_polynomial.f90
 	../COMMON/collop_bspline.f90
+	../COMMON/collop_nbi.f90
 	#../COMMON/collop_bspline2.f90
 	#../COMMON/collop_spline4.f90
 	../COMMON/collop_spline.f90
