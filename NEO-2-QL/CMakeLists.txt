@@ -8,21 +8,14 @@ project(NEO-2-NTV)
 enable_language(Fortran)
 
 ### Check Build-Type and set Build-Name extension
+
 if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
   # Release mode as default
   message("Building in release mode (default)...")
   set(CMAKE_BUILD_TYPE "RELEASE")
-  set(EXE_NAME "neo_2.x")
-else(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-  if(CMAKE_BUILD_TYPE MATCHES DEBUG)
-    message("debug mode")
-    set(EXE_NAME "neo_2.x.DEBUG")  
-  else(CMAKE_BUILD_TYPE MATCHES RELEASE)
-    message("release mode")
-    set(CMAKE_BUILD_TYPE "RELEASE")
-    set(EXE_NAME "neo_2.x")
-  endif(CMAKE_BUILD_TYPE MATCHES DEBUG)
-endif(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+endif ()
+
+set(EXE_NAME "neo_2.x")
 
 ### Macro for comparison of version strings
 include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
