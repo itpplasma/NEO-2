@@ -28,9 +28,9 @@ MODULE neo_magfie_perturbation
   !
   ! define kind of double complex, quad, quad complex
   PRIVATE dcp, qp, qcp
-  INTEGER, PARAMETER :: dcp=KIND(COMPLEX(1.0_dp,1.0_dp))
+  INTEGER, PARAMETER :: dcp=KIND((1.0_dp,1.0_dp))
   INTEGER, PARAMETER :: qp=SELECTED_REAL_KIND(33, 4931)
-  INTEGER, PARAMETER :: qcp=KIND(COMPLEX(1.0_qp,1.0_qp))
+  INTEGER, PARAMETER :: qcp=KIND((1.0_qp,1.0_qp))
   !
   ! internal (private) storage arrays for the
   ! Fourier spectra from the input file
