@@ -164,7 +164,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
-  RECURSIVE FUNCTION fint1d_param0_qag(func1d_param0_user,x_low,x_up,epsabs,epsrel,sw_qag_rule)
+  RECURSIVE FUNCTION fint1d_param0_qag(func1d_param0_user,x_low,x_up,epsabs,epsrel,sw_qag_rule) result(res)
     !
     INTERFACE  
        FUNCTION func1d_param0_user(x)
@@ -179,7 +179,7 @@ CONTAINS
     REAL(fgsl_double) :: epsabs, epsrel
     ! sw_qag_rule: 1=15, 2=21, 3=31, 4=41, 5=51 and 6=61 point Gauss-Kronrod rules
     INTEGER(fgsl_int) :: sw_qag_rule 
-    REAL(fgsl_double), DIMENSION(2) :: fint1d_param0_qag
+    REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
     REAL(fgsl_double) :: ra, rda ! result and absolute error
@@ -215,8 +215,8 @@ CONTAINS
     CALL check_error(status)
     !
     ! Return the results (ra,rda)
-    fint1d_param0_qag(1) = ra
-    fint1d_param0_qag(2) = rda
+    res(1) = ra
+    res(2) = rda
     !
     ! Free memory
     CALL fgsl_function_free(stdfunc)
@@ -244,7 +244,7 @@ CONTAINS
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! (parameter-valued input function)
   RECURSIVE FUNCTION fint1d_param1_qag(func1d_param1_user,param1,x_low,x_up,&
-       epsabs,epsrel,sw_qag_rule)
+       epsabs,epsrel,sw_qag_rule) result(res)
     !
     INTERFACE  
        FUNCTION func1d_param1_user(x,param1)
@@ -260,7 +260,7 @@ CONTAINS
     REAL(fgsl_double) :: epsabs, epsrel
     ! sw_qag_rule: 1=15, 2=21, 3=31, 4=41, 5=51 and 6=61 point Gauss-Kronrod rules
     INTEGER(fgsl_int) :: sw_qag_rule 
-    REAL(fgsl_double), DIMENSION(2) :: fint1d_param1_qag
+    REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
     REAL(fgsl_double) :: ra, rda ! result and absolute error
@@ -296,8 +296,8 @@ CONTAINS
     CALL check_error(status)
     !
     ! Return the results (ra,rda)
-    fint1d_param1_qag(1) = ra
-    fint1d_param1_qag(2) = rda
+    res(1) = ra
+    res(2) = rda
     !
     ! Free memory
     CALL fgsl_function_free(stdfunc)
@@ -328,7 +328,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with singularities
-  RECURSIVE FUNCTION fint1d_param0_qags(func1d_param0_user,x_low,x_up,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param0_qags(func1d_param0_user,x_low,x_up,epsabs,epsrel) result(res)
     !
     INTERFACE  
        FUNCTION func1d_param0_user(x)
@@ -341,7 +341,7 @@ CONTAINS
     REAL(fgsl_double) :: x_low, x_up
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: fint1d_param0_qags
+    REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
     REAL(fgsl_double) :: ra, rda ! result and absolute error
@@ -377,8 +377,8 @@ CONTAINS
     CALL check_error(status)
     !
     ! Return the results (ra,rda)
-    fint1d_param0_qags(1) = ra
-    fint1d_param0_qags(2) = rda
+    res(1) = ra
+    res(2) = rda
     !
     ! Free memory
     CALL fgsl_function_free(stdfunc)
@@ -405,7 +405,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with singularities (parameter-valued input function)
-  RECURSIVE FUNCTION fint1d_param1_qags(func1d_param1_user,param1,x_low,x_up,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param1_qags(func1d_param1_user,param1,x_low,x_up,epsabs,epsrel) result(res)
     !
     INTERFACE  
        FUNCTION func1d_param1_user(x,param1)
@@ -419,7 +419,7 @@ CONTAINS
     REAL(fgsl_double) :: x_low, x_up
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: fint1d_param1_qags
+    REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
     REAL(fgsl_double) :: ra, rda ! result and absolute error
@@ -455,8 +455,8 @@ CONTAINS
     CALL check_error(status)
     !
     ! Return the results (ra,rda)
-    fint1d_param1_qags(1) = ra
-    fint1d_param1_qags(2) = rda
+    res(1) = ra
+    res(2) = rda
     !
     ! Free memory
     CALL fgsl_function_free(stdfunc)
@@ -487,7 +487,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with known singular points
-  RECURSIVE FUNCTION fint1d_param0_qagp(func1d_param0_user,pts,siz_pts,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param0_qagp(func1d_param0_user,pts,siz_pts,epsabs,epsrel) result(res)
     !
     INTERFACE  
        FUNCTION func1d_param0_user(x)
@@ -501,7 +501,7 @@ CONTAINS
     ! specify singular points
     REAL(fgsl_double), DIMENSION(:) :: pts
     INTEGER(fgsl_size_t) :: siz_pts
-    REAL(fgsl_double), DIMENSION(2) :: fint1d_param0_qagp
+    REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
     REAL(fgsl_double) :: ra, rda ! result and absolute error
@@ -537,8 +537,8 @@ CONTAINS
     CALL check_error(status)
     !
     ! Return the results (ra,rda)
-    fint1d_param0_qagp(1) = ra
-    fint1d_param0_qagp(2) = rda
+    res(1) = ra
+    res(2) = rda
     !
     ! Free memory
     CALL fgsl_function_free(stdfunc)
@@ -565,7 +565,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with known singular points (parameter-valued input function)
-  RECURSIVE FUNCTION fint1d_param1_qagp(func1d_param1_user,param1,pts,siz_pts,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param1_qagp(func1d_param1_user,param1,pts,siz_pts,epsabs,epsrel) result(res)
     !
     INTERFACE  
        FUNCTION func1d_param1_user(x,param1)
@@ -580,7 +580,7 @@ CONTAINS
     ! specify singular points
     REAL(fgsl_double), DIMENSION(:) :: pts
     INTEGER(fgsl_size_t) :: siz_pts
-    REAL(fgsl_double), DIMENSION(2) :: fint1d_param1_qagp
+    REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
     REAL(fgsl_double) :: ra, rda ! result and absolute error
@@ -616,8 +616,8 @@ CONTAINS
     CALL check_error(status)
     !
     ! Return the results (ra,rda)
-    fint1d_param1_qagp(1) = ra
-    fint1d_param1_qagp(2) = rda
+    res(1) = ra
+    res(2) = rda
     !
     ! Free memory
     CALL fgsl_function_free(stdfunc)
@@ -647,7 +647,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! CQUAD doubly-adaptive integration
-  RECURSIVE FUNCTION fint1d_param0_cquad(func1d_param0_user,x_low,x_up,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param0_cquad(func1d_param0_user,x_low,x_up,epsabs,epsrel) result(res)
     !
     INTERFACE  
        FUNCTION func1d_param0_user(x)
@@ -660,7 +660,7 @@ CONTAINS
     REAL(fgsl_double) :: x_low, x_up
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: fint1d_param0_cquad
+    REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 100_fgsl_size_t
     INTEGER(fgsl_size_t) :: neval ! nmber of function evaluations
@@ -697,8 +697,8 @@ CONTAINS
     CALL check_error(status)
     !
     ! Return the results (ra,rda,neval)
-    fint1d_param0_cquad(1) = ra
-    fint1d_param0_cquad(2) = rda
+    res(1) = ra
+    res(2) = rda
     !fint1d_param0_cquad(3) = REAL(neval,fgsl_double)
     !
     ! Free memory
@@ -725,7 +725,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! CQUAD doubly-adaptive integration (parameter-valued input function)
-  RECURSIVE FUNCTION fint1d_param1_cquad(func1d_param1_user,param1,x_low,x_up,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param1_cquad(func1d_param1_user,param1,x_low,x_up,epsabs,epsrel) result(res)
     !
     INTERFACE  
        FUNCTION func1d_param1_user(x,param1)
@@ -739,7 +739,7 @@ CONTAINS
     REAL(fgsl_double) :: x_low, x_up
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: fint1d_param1_cquad
+    REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 1000_fgsl_size_t
     INTEGER(fgsl_size_t) :: neval ! nmber of function evaluations
@@ -776,8 +776,8 @@ CONTAINS
     CALL check_error(status)
     !
     ! Return the results (ra,rda,neval)
-    fint1d_param1_cquad(1) = ra
-    fint1d_param1_cquad(2) = rda
+    res(1) = ra
+    res(2) = rda
     !fint1d_param1_cquad(3) = REAL(neval,fgsl_double)
     !
     ! Free memory
@@ -808,7 +808,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure for interval from x_low to infinity
-  RECURSIVE FUNCTION fint1d_param0_qagiu(func1d_param0_user,x_low,epsabs,epsrel)
+  RECURSIVE FUNCTION fint1d_param0_qagiu(func1d_param0_user,x_low,epsabs,epsrel) result(res)
     !
     INTERFACE  
        FUNCTION func1d_param0_user(x)
@@ -821,7 +821,7 @@ CONTAINS
     REAL(fgsl_double) :: x_low
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: fint1d_param0_qagiu
+    REAL(fgsl_double), DIMENSION(2) :: res 
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
     REAL(fgsl_double) :: ra, rda ! result and absolute error
@@ -857,8 +857,8 @@ CONTAINS
     CALL check_error(status)
     !
     ! Return the results (ra,rda)
-    fint1d_param0_qagiu(1) = ra
-    fint1d_param0_qagiu(2) = rda
+    res(1) = ra
+    res(2) = rda
     !
     ! Free memory
     CALL fgsl_function_free(stdfunc)
@@ -886,7 +886,7 @@ CONTAINS
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure for interval from x_low to infinity
   ! (parameter-valued input function)
   RECURSIVE FUNCTION fint1d_param1_qagiu(func1d_param1_user,param1,x_low,&
-       epsabs,epsrel)
+       epsabs,epsrel) result(res)
     !
     INTERFACE  
        FUNCTION func1d_param1_user(x,param1)
@@ -900,7 +900,7 @@ CONTAINS
     REAL(fgsl_double) :: x_low
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: fint1d_param1_qagiu
+    REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
     REAL(fgsl_double) :: ra, rda ! result and absolute error
@@ -936,8 +936,8 @@ CONTAINS
     CALL check_error(status)
     !
     ! Return the results (ra,rda)
-    fint1d_param1_qagiu(1) = ra
-    fint1d_param1_qagiu(2) = rda
+    res(1) = ra
+    res(2) = rda
     !
     ! Free memory
     CALL fgsl_function_free(stdfunc)
