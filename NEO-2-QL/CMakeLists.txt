@@ -35,10 +35,16 @@ message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
 # Include directories for NEO-2
 include_directories(${NEO2_Inc})
+include_directories(${MPI_Fortran_INCLUDE_PATH})
 include_directories(${MYMPILIB_PATH}/OBJS)
 
 ### Define flags for Fortran/C compiler
-set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
+if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
+elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -mkl")
+endif ()
+
 set(MY_DEBUG_FLAG_LIST
   " -O0 -cpp -g"   
 # " -O0 -g -ggdb -C -p -pg -fbacktrace " 
@@ -63,7 +69,7 @@ set(CMAKE_Fortran_FLAGS_DEBUG "${MY_DEBUG_FLAG}")
 set(CFLAGS "-O2 -DDOUBLE_APPEND_FORTRAN")
 
 ### Define container for *.o and *.mod files
-set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
+set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/OBJS)
 
 
 set (MPI_SUPPORT 1)
@@ -85,6 +91,8 @@ endif ()
 
 ### HDF5
 find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
+include_directories(${HDF5_INCLUDE_DIRS})
+
 # message(STATUS "${HDF5_INCLUDE_DIRS}")
 # message(STATUS "${HDF5_LIBRARIES}")
 # message(STATUS "${HDF5_Fortran_LIBRARIES}")
@@ -111,15 +119,22 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 find_library(gsl_lib gsl ${GSL_LIB})
 # FGSL
 #find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
+message("${FGSL_LIB}")
 find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
+include_directories(${FGSL_INC})
+
 # LAPACK and BLAS
-find_library(lapack_lib lapack ${LAPACK_LIB} NO_DEFAULT_PATH)
-find_library(f77blas_lib f77blas ${F77BLAS_LIB} NO_DEFAULT_PATH)
-find_library(atlas_lib atlas ${ATLASBLAS_LIB} NO_DEFAULT_PATH)
-find_library(open_blas_lapack_lib lapack ${OPEN_BLAS_LAPACK_LIB} NO_DEFAULT_PATH)
-find_library(open_blas_lib blas ${OPEN_BLAS_LIB} NO_DEFAULT_PATH)
+if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  find_library(lapack_lib lapack ${LAPACK_LIB} NO_DEFAULT_PATH)
+  find_library(f77blas_lib f77blas ${F77BLAS_LIB} NO_DEFAULT_PATH)
+  find_library(atlas_lib atlas ${ATLASBLAS_LIB} NO_DEFAULT_PATH)
+  find_library(open_blas_lapack_lib lapack ${OPEN_BLAS_LAPACK_LIB} NO_DEFAULT_PATH)
+  find_library(open_blas_lib blas ${OPEN_BLAS_LIB} NO_DEFAULT_PATH)
+endif ()
+
 # MyMPIlib
 find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
+
 # HDF5 interface
 find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs} NO_DEFAULT_PATH)
 
@@ -156,6 +171,13 @@ add_executable(${EXE_NAME}
 	${COLLOPLIB_FILES}
 )
 
+if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  set(LINALG_LIBRARIES "${gsl_lib}
+  	${lapack_lib}
+	${f77blas_lib} ${atlas_lib}"
+	)
+endif ()
+
 ### Add libraries linked with executable
 target_link_libraries(${EXE_NAME}
         ${fgsl_lib} ${gsl_lib}
@@ -169,14 +191,9 @@ target_link_libraries(${EXE_NAME}
 	${HDF5_HL_LIBRARIES}
 	${HDF5_Fortran_LIBRARIES}
 	${HDF5_LIBRARIES}
-	#lapack
-	${lapack_lib}
-	#${open_blas_lapack_lib}
-	#blas
-	${f77blas_lib} ${atlas_lib}
-	#${open_blas_lib}
-	#debug efence
+	${LINALG_LIBRARIES}
         )
+
 add_custom_target(
     NEO-2-Versioning
     COMMAND ./Scripts/tag_version.sh
