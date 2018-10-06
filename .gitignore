@@ -10,4 +10,6 @@ install_manifest.txt
 .project
 *.*~
 NEO-2-QL/.directory
-NEO-2-QL/Build/
+*/[Bb]uild-[Dd]ebug/*
+*/[Bb]uild-[Rr]elease/*
+*/[Bb]uild/*
