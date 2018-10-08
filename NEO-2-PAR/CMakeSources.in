@@ -35,9 +35,9 @@ set_source_files_properties(../COMMON/umf4_f77zwrapper_ver_4_5.c PROPERTIES COMP
 ### FGSL user-defined interface ###
 set(FGSL_USERINTER_SRC_FILES
         ../COMMON/gsl_roots_routines_mod.f90
-	../COMMON/gsl_integration_routines_mod.f90
-	../COMMON/gsl_bspline_routines_mod.f90
-	../COMMON/gsl_specialfunctions_mod.f90
+        ../COMMON/gsl_integration_routines_mod.f90
+        ../COMMON/gsl_bspline_routines_mod.f90
+        ../COMMON/gsl_specialfunctions_mod.f90
 )
 set(FGSL_USERINTER_FLAGS "-I${FGSL_INC}")
 set_source_files_properties(${FGSL_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTER_FLAGS})
@@ -54,58 +54,58 @@ endif ()
 
 ### NEO2 ###
 set(NEO2_COMMON_FILES
-	#../COMMON/A1drive_neo2.f90
-	#../COMMON/A2drive_neo2.f90
-	../COMMON/bdivfree.f90
-	../COMMON/device_mod.f90
-	../COMMON/neo_modules.f90
-	../COMMON/field_divB0.f90
+        #../COMMON/A1drive_neo2.f90
+        #../COMMON/A2drive_neo2.f90
+        ../COMMON/bdivfree.f90
+        ../COMMON/device_mod.f90
+        ../COMMON/neo_modules.f90
+        ../COMMON/field_divB0.f90
         ../COMMON/compute_aiota.f90
         ../COMMON/nrutil.f90
         ../COMMON/neo_mod.f90
         ../COMMON/neo_magfie.f90
         ../COMMON/magfie.f90
         ../COMMON/mag.f90
-	../COMMON/magnetics.f90
+        ../COMMON/magnetics.f90
         ../COMMON/mag_interface.f90
         ../COMMON/magdata_for_particles.f90
         ../COMMON/rhs_kin.f90
-	../COMMON/rk4_kin.f90
+        ../COMMON/rk4_kin.f90
         ../COMMON/binarysplit_mod.f90
         ../COMMON/sparse_mod.f90
-	../COMMON/fluxsplitter.f90
-	#../COMMON/gfunc_neo2.f90
-	#../COMMON/gfunc_neo2_jul_2010.f90
-	#../COMMON/gfunc_neo2_may_2011.f90
-	#../COMMON/gfunc_neo2_oct_2010.f90
-	../COMMON/inter_interfaces.f90
-	../COMMON/kin_allocate.f90
-	../COMMON/lapack_band.f90
-	#../COMMON/localizer.f90
-	#../COMMON/longint.f90
-	../COMMON/odeint_allroutines.f
-	../COMMON/polleg.f90
-	../COMMON/prodband.f90
-	../COMMON/pspline.f90
-	../COMMON/spline5_RZ.f90
+        ../COMMON/fluxsplitter.f90
+        #../COMMON/gfunc_neo2.f90
+        #../COMMON/gfunc_neo2_jul_2010.f90
+        #../COMMON/gfunc_neo2_may_2011.f90
+        #../COMMON/gfunc_neo2_oct_2010.f90
+        ../COMMON/inter_interfaces.f90
+        ../COMMON/kin_allocate.f90
+        ../COMMON/lapack_band.f90
+        #../COMMON/localizer.f90
+        #../COMMON/longint.f90
+        ../COMMON/odeint_allroutines.f
+        ../COMMON/polleg.f90
+        ../COMMON/prodband.f90
+        ../COMMON/pspline.f90
+        ../COMMON/spline5_RZ.f90
         ../COMMON/spline_int.f90
-	../COMMON/spline_cof.f90
-	../COMMON/test_function.f90
-	../COMMON/vvn_legendre.f
-	../COMMON/vvn_tok.f90
-	../COMMON/vvn_w7as.f
-	../COMMON/solve_system.f90
-	../COMMON/collop_laguerre.f90
-	../COMMON/collop_polynomial.f90
-	../COMMON/collop_bspline.f90
-	../COMMON/collop_nbi.f90
-	#../COMMON/collop_bspline2.f90
-	#../COMMON/collop_spline4.f90
-	../COMMON/collop_spline.f90
-	../COMMON/collision_operator_mems.f90
-	../COMMON/collop_compute.f90
-	../COMMON/rel_kernels.f90
-	../COMMON/sparsevec_mod.f90
+        ../COMMON/spline_cof.f90
+        ../COMMON/test_function.f90
+        ../COMMON/vvn_legendre.f
+        ../COMMON/vvn_tok.f90
+        ../COMMON/vvn_w7as.f
+        ../COMMON/solve_system.f90
+        ../COMMON/collop_laguerre.f90
+        ../COMMON/collop_polynomial.f90
+        ../COMMON/collop_bspline.f90
+        ../COMMON/collop_nbi.f90
+        #../COMMON/collop_bspline2.f90
+        #../COMMON/collop_spline4.f90
+        ../COMMON/collop_spline.f90
+        ../COMMON/collision_operator_mems.f90
+        ../COMMON/collop_compute.f90
+        ../COMMON/rel_kernels.f90
+        ../COMMON/sparsevec_mod.f90
 )
 
 set(NEO2_SRC_FILES
@@ -118,6 +118,6 @@ set(NEO2_SRC_FILES
         ./join_ends.f90
         ./plot_distrf.f90
         ./neo2.f90
-	./timingInfo.f90
+        ./timingInfo.f90
 )
 set_source_files_properties(${NEO2_SRC_FILES} ${NEO2_COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
