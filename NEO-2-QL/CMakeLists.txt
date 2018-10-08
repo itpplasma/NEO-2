@@ -49,7 +49,7 @@ set(MY_DEBUG_FLAG_LIST
   " -O0 -cpp -g"   
 # " -O0 -g -ggdb -C -p -pg -fbacktrace " 
 # " -ffpe-trap=invalid,zero,overflow,underflow "
- " -ffpe-trap=invalid,zero,overflow "
+# " -ffpe-trap=invalid,zero,overflow "
  " -ffpe-summary=invalid,zero,overflow "
  " -fcheck=all "
 # " -fcheck=bounds,mem,array-temps,pointer "
