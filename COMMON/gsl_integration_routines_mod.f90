@@ -670,8 +670,12 @@ CONTAINS
     TYPE(fgsl_function) :: stdfunc
     TYPE(fgsl_integration_cquad_workspace) :: integ_cq
     TYPE(c_ptr) :: param0_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter (here is no parameter specified -> c_null_ptr)
-    !
+                              ! parameter (here is no parameter specified -> c_null_ptr)
+
+    ! Input/output parameter of the fgsl_integration_cquad function,
+    ! thus better initialize.
+    neval = 0
+
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
