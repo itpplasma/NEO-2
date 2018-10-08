@@ -22,8 +22,8 @@ MODULE gsl_roots_routines_mod
   ! (Note: fgsl_double (etc.) originate from c-binding.
   ! This is only to make sure that C and Fortran routines
   ! work with the same definition of float numbers (etc.).
-  ! For practical applications, one can simply replace 
-  ! "fgsl_double" by "double precision" (etc.). 
+  ! For practical applications, one can simply replace
+  ! "fgsl_double" by "double precision" (etc.).
   PRIVATE eps5, eps7, eps10, eps12
   REAL(fgsl_double), PARAMETER :: eps5 = 1.0E-5_fgsl_double
   REAL(fgsl_double), PARAMETER :: eps7 = 1.0E-7_fgsl_double
@@ -35,7 +35,7 @@ MODULE gsl_roots_routines_mod
   ! rename all the routines)
   ! 'abstract' interface is able to handle miscellaneous
   ! functions with the same type of interface
-  ABSTRACT INTERFACE  
+  ABSTRACT INTERFACE
      FUNCTION func1d_param1(x,param1) ! used for bisection method
        USE fgsl
        REAL(fgsl_double) :: func1d_param1
@@ -174,7 +174,7 @@ CONTAINS
   ! Find root of a 1d function by a bisection algorithm
   FUNCTION fzero1d_param1_bisec(func1d_param1_user,param1,x_low,x_up)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION func1d_param1_user(x,param1)
          USE fgsl
          REAL(fgsl_double) :: func1d_param1_user
@@ -190,7 +190,7 @@ CONTAINS
     REAL(fgsl_double) :: xlo, xup
     TYPE(fgsl_function) :: stdfunc
     TYPE(fgsl_root_fsolver) :: root_fslv
-    TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of 'param1' 
+    TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of 'param1'
     !
     ! Associate global procedure pointer with user-specified function
     func1d_param1_ptr => func1d_param1_user
@@ -218,7 +218,7 @@ CONTAINS
           PRINT *, 'An error occurred during iteration or'
           PRINT *, 'maximum number of iterations exceeded'
           EXIT ! exit, if an error happened or
-               ! if max. number of iterations exceeded 
+               ! if max. number of iterations exceeded
        END IF
        ! Return current root
        fzero1d_param1_bisec = fgsl_root_fsolver_root(root_fslv)
@@ -244,7 +244,7 @@ CONTAINS
   ! Find root of a 1d function by a Newton algorithm
   FUNCTION fzero1d_param1_newton(fdfunc1d_param1_user,param1,x0)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION fdfunc1d_param1_user(x,param1)
          USE fgsl
          REAL(fgsl_double), DIMENSION(2) :: fdfunc1d_param1_user
@@ -260,7 +260,7 @@ CONTAINS
     REAL(fgsl_double) :: ra, ri
     TYPE(fgsl_function_fdf) :: stdfunc_fdf
     TYPE(fgsl_root_fdfsolver) :: root_fdfslv
-    TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of 'param1' 
+    TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of 'param1'
     !
     ! Associate global procedure pointer with user-specified function
     fdfunc1d_param1_ptr => fdfunc1d_param1_user
@@ -291,7 +291,7 @@ CONTAINS
           PRINT *, 'An error occurred during iteration or'
           PRINT *, 'maximum number of iterations exceeded'
           EXIT ! exit, if an error happened or
-               ! if max. number of iterations exceeded 
+               ! if max. number of iterations exceeded
        END IF
        ! Return current root
        ri = ra

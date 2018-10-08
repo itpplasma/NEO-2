@@ -23,7 +23,7 @@ SUBROUTINE join_ends(ierr)
 !  there is now o%p%npart and n%p%npart
 !  but matrix sizes are anyway as they should be
 !
-! 
+!
 
   USE propagator_mod
   USE lapack_band
@@ -75,7 +75,7 @@ SUBROUTINE join_ends(ierr)
   DOUBLE PRECISION :: facnorm
 
   real(kind=dp) :: x, r
-  
+
   !**********************************************************
   ! Automatically choose prop_finaljoin_mode
   !**********************************************************
@@ -90,7 +90,7 @@ SUBROUTINE join_ends(ierr)
         !prop_finaljoin_mode = 1
      end if
   end if
-  
+
   if (prop_finaljoin_mode .eq. 2) then
      call collop_construct
      call collop_load
@@ -199,7 +199,7 @@ PRINT *,'nl,nr = ',nl,nr
       PRINT *,'before : ',qflux(1:2,1:2)
       PRINT *,'after  : ',dqflux(1:2,1:2)
 !
-! GOTO 1 
+! GOTO 1
 ! #if !defined(MPI_SUPPORT)
 OPEN(111,file='delta_eta_l.dat')
 DO i=1,nl
@@ -291,7 +291,7 @@ CLOSE(111)
   ALLOCATE(amat(ndim,ndim),bvec_lapack(ndim,ntranseq),ipivot(ndim),totlev(ndim))
   ALLOCATE(transmat(ntranseq,ntranseq),totfun(ntranseq))
   !
-  ! coefficient matrix A 
+  ! coefficient matrix A
 !
   amat=0.d0
 !
@@ -311,12 +311,12 @@ CLOSE(111)
   !
   ! source terms
   ! integrals of particle flux and current over fieldline
-  ! 
+  !
   ! drive
   ! rhs of algebraic equation
 !   bvec_lapack(1:nl,1:3)     =MATMUL(c_forward,o%p%source_p)
 !   bvec_lapack(nl+1:ndim,1:3)=MATMUL(c_backward,o%p%source_m)
-  ! 
+  !
   DO m=0,nvel
     kl=m*nl
     kr=m*nr
@@ -345,7 +345,7 @@ ENDDO
 CLOSE(751)
 CLOSE(752)
 ! #endif
-! System is overdefined, one equation is redundant. Replace the redundant 
+! System is overdefined, one equation is redundant. Replace the redundant
 ! equation with zero perturbed density condition at the joining point.
 !  amat(nl,:)=0.d0
 !  amat(nl,nl)=1.d0
@@ -392,7 +392,7 @@ elseif (prop_finaljoin_mode .eq. 1) then
    endif
 elseif (prop_finaljoin_mode .eq. 2) then
    !**********************************************************
-   ! Additional conditions: 
+   ! Additional conditions:
    ! Should be deactivated if particle sink in ripple_solver is active
    !**********************************************************
    amat(nl,:)=amat(nl,:)-amat(nts_l+nr,:)
@@ -442,7 +442,7 @@ ENDDO
 CLOSE(751)
 CLOSE(752)
 !#endif
-  ! 
+  !
   CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
   IF(info.NE.0) THEN
     ierr=2
@@ -458,12 +458,12 @@ CLOSE(752)
 !  delta_eta_r(nr) = o%p%eta_boundary_r - o%p%eta_r(nr-1)
 !  alam_r(nr)=sqrt(1.d0-0.5d0*(o%p%eta_boundary_r                              &
 !            +o%p%eta_r(nr-1))/o%p%eta_boundary_r)
-!  
+!
 !  ALLOCATE(delta_eta_l(nl),alam_l(nl))
 !  DO i = 1, nl - 1
 !     delta_eta_l(i) = o%p%eta_l(i) - o%p%eta_l(i-1)
 !     alam_l(i)=sqrt(1.d0-0.5d0*(o%p%eta_l(i)+o%p%eta_l(i-1))/o%p%eta_boundary_l)
-!  END DO 
+!  END DO
 !  delta_eta_l(nl) = o%p%eta_boundary_l - o%p%eta_l(nl-1)
 !  alam_l(nl)=sqrt(1.d0-0.5d0*(o%p%eta_boundary_l                              &
 !            +o%p%eta_l(nl-1))/o%p%eta_boundary_l)
@@ -492,7 +492,7 @@ CLOSE(752)
   o%p%source_p=bvec_lapack(1:nts_l,1:3)
   o%p%source_m=bvec_lapack(nts_l+1:ndim,1:3)
   !
-  ! integrals of particle flux and current over fieldline 
+  ! integrals of particle flux and current over fieldline
   transmat=o%p%qflux+MATMUL(o%p%flux_p,o%p%source_p)           &
                     +MATMUL(o%p%flux_m,o%p%source_m)
 
