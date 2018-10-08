@@ -5,7 +5,7 @@
 ! version: 0.1                                                                            !
 ! description: pspline_routines_mod provides a user-friendly interface to spline routines !
 ! of PSPLINE (cf., http://w3.pppl.gov/ntcc/PSPLINE/). At the moment only routines for 1d  !
-! are supported by this module, which can be readily extended to 2d and 3d.               !  
+! are supported by this module, which can be readily extended to 2d and 3d.               !
 !-----------------------------------------------------------------------------------------!
 
 MODULE pspline_routines_mod
