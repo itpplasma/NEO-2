@@ -15,7 +15,45 @@ from os.path import *
 import yaml
 from IPython import display
 
-class Multitest():
+class SingleRun():
+    """Class for inputs with only one neo2.in configuration
+    
+    Sofar Multispecies only, 
+    in Future there should be an MetaClass above these.
+    Also some methods should then upmoved.
+   
+
+    Attributes
+    ----------
+    listofruns : list
+        A list of runs for precomputation
+    runpath : str
+        Path of the working directory
+    reqfiles : dict
+        dict of required files to to run neo2
+    neo_nml : Neo2File
+        is an instance of the Neo2File class with all variables of neo2.in
+
+    Methods
+    -------
+    RunInitRuns()
+        starting the internal neo2 init run for multispecies
+        See flag lsw_multispecies = .true. in neo2.in
+    
+    says(sound=None)
+        Prints the animals name and what sound it makes
+    """
+    
+  
+    
+    """
+        :param listofruns: A list of runs for precomputation
+    
+    """
+    
+    
+    
+   
     ### Methods should be used but not class in total.
     
     def __init__(self,runpath):
@@ -23,7 +61,7 @@ class Multitest():
         #self.codesource=None
         #self.runsource=None # Executable
     
-        self._reqfiles={
+        self.reqfiles={
         'neo2in': 'neo2.in',
         'neoin': 'neo.in'
         }
@@ -31,7 +69,10 @@ class Multitest():
         self._sourcepaths=dict()
         #self._SetSources()
         self._SetSourcePaths() # including Fill required Files from neo Files, which reads neo2.in
-        
+        #self._neo2inSet=False
+       # self._neo2parSaved=False
+        self._Runiscreated=False # required Files exists
+        self._Runsettingsaved=False # required Files and Settings saved
         
         ##########Info :self._sources=dict()
        
@@ -44,6 +85,11 @@ class Multitest():
     
     
     def _Load_default(self):
+        """default Values stored in input_default.yaml
+        
+        is in the same directory as the input_class
+        """
+        
         try:
             self.__sourcedir=__file__
         except NameError:
@@ -56,7 +102,7 @@ class Multitest():
             path=self.__realpath
     
         yamlpath = os.path.join(path, 'input_default.yaml')
-        print(path)
+        #print(path)
         try:
           with open(yamlpath) as f:
               data=yaml.load(f)
@@ -65,16 +111,19 @@ class Multitest():
             return
         
         self._runsource=data.get('runsource')
-        self._reqfiles=data.get('reqfiles')
+        self.reqfiles=data.get('reqfiles')
         self._sources=data.get('sources')
+
+        
     
     
     
     def Run_Precomp(self,overwrite=False):
-        
+        """NOT READY YET!!!!"""
+    
         #load_parameter from an old run! 
         self._CheckReqFiles()
-        self.CreateFiles(overwrite)
+        self._CreateFiles(overwrite)
         self.RunInitRuns()
         #self.gen_condorinput()
         #self.run_condor()
@@ -82,9 +131,11 @@ class Multitest():
         
         
     def RunInitRuns(self):
-        ###Use Routine from andfmar
+        """Use Bash Routine from andfmar"""
         
-        if self._neo_nml['multi_spec']['isw_multispecies_init'] != 1:
+        
+        self._CreateFiles()
+        if self.neo_nml['isw_multispecies_init'] != 1:
             raise InputError('isw_multispecies_init is not 1')
         else:
             curdir=os.getcwd()
@@ -93,10 +144,17 @@ class Multitest():
             os.chdir(self.runpath)
             print('Starting initrun')
             print(os.popen("./neo_2.x").read())
+            for a,b,c in os.walk('./'):
+                self.listofruns=b
+                break
             os.chdir(curdir)
         
+        
 
-    def CreateFiles(self,overwrite=False,link=True):
+    def _CreateFiles(self,overwrite=False,link=True):
+        """Create and/or link required files into destination"""
+        
+        
         if self.runpath==None:
             raise IOError('runpath is missing')
         os.makedirs(self.runpath,exist_ok=True)
@@ -129,14 +187,15 @@ class Multitest():
                 print(destfile, ' is not updated') ### Maybe check if it is the same file!!
                 return
             
-        os.symlink(i,destfile)             
+        os.symlink(i,destfile)  
+        self._Runiscreated=True           
 
         
         
         
     def _CheckReqFiles(self):
         
-        if set(self._reqfiles) != set(self._sourcepaths):
+        if set(self.reqfiles) != set(self._sourcepaths):
             raise ValueError('Not all paths of required Files defined')
         
         for i,j in self._sourcepaths.items():
@@ -151,11 +210,13 @@ class Multitest():
     
         
     def SetNeo2file(self,neo2file): ## Method to set the path of the neo2 file and make all check(Setter of neo2.in)
+        """Path to (new) neo2.in File"""
+    ###Method to choose different neo2 Files###
         if os.path.isfile(neo2file):
             self._sourcepaths['neo2in']=os.path.abspath(neo2file)
             
         if isdir(neo2file):
-            self.sourcepath['neoin']=join(abspath(neo2file),'neo.in')
+            self._sourcepaths['neoin']=join(abspath(neo2file),'neo.in')
             self._sourcepaths['neo2in']=join(abspath(neo2file),'neo2.in')   
             
             
@@ -169,16 +230,18 @@ class Multitest():
         
         
     def _FillReqFiles(self): # Get required File paths from neo(2).in Files
+        """Get additional required File paths from neo.in and neo2.in Files"""
+        
         
         self._read_neo2in()
         try:
-            self._reqfiles['multispec']=self._neo_nml['multi_spec']['fname_multispec_in']
+            self.reqfiles['multispec']=self.neo_nml['fname_multispec_in']
         except KeyError:
             print('The neo2.in File has no multispec parameter')
             return 
         
         
-        self._reqfiles['in_file_pert']=self._neo_nml['ntv_input']['in_file_pert']
+        self.reqfiles['in_file_pert']=self.neo_nml['in_file_pert']
         
        
         
@@ -193,7 +256,7 @@ class Multitest():
             for line in f:
                 arg = line.split()
                 if 'in_file' in arg:
-                    self._reqfiles['in_file_axi']=arg[0]
+                    self.reqfiles['in_file_axi']=arg[0]
                     #print(arg[0])
                     break 
     # Ensure that it is running in the correct mode
@@ -207,14 +270,15 @@ class Multitest():
         
         
     def _SetSourcePaths(self,overwrite=False): # name has to be better choosen
-        
+        """Method for getting full paths from required Files"""
+
         try:
             files=os.listdir(self._sources['singlerunsource'])
         except:
             print('sources not correct set')
             return
         
-        for fdisc,fnames in self._reqfiles.items():
+        for fdisc,fnames in self.reqfiles.items():
             
             if fnames in files:
                 if fnames in self._sourcepaths and overwrite==False:
@@ -227,7 +291,7 @@ class Multitest():
         
         
         ### DOTO Implement method to iterate over all sources, otherwise problems are occuring
-        if set(self._reqfiles) == set(self._sourcepaths):
+        if set(self.reqfiles) == set(self._sourcepaths):
             return
         
         try:
@@ -236,18 +300,20 @@ class Multitest():
             print('sources2 not correct set')
             return
         
-        for fdisc,fnames in self._reqfiles.items():
+        for fdisc,fnames in self.reqfiles.items():
             
             if fnames in files:
                 if fnames in self._sourcepaths:
                     #print(fnames, ' is already set to path: ' self._sourcepaths[fnames])
                     continue
                 self._sourcepaths[fdisc]=join(self._sources['pert_path'],fnames)        
+        
+        self._SetSourcePaths() # recursive Execution!!! maybe a problem!!!
 
     
     def _read_neo2in(self):
         try:
-            self._neo_nml=f90nml.read(self._sourcepaths['neo2in'])
+            self.neo_nml=Neo2File(self._sourcepaths['neo2in'])
         except:
             print('Couldn\'t read neo2.in')
             return
@@ -258,11 +324,12 @@ class Multitest():
 
 
 class Neo2File(object):
-    
+    """Class for reading and eding Neo2.in File"""
     def __init__(self,neo2path):
         self._neo2nml=f90nml.read(neo2path)
         self._neo2dict=dict()
         self._nmltodict()
+        self._check_duplicate_parameter()
     
     
     def _nmltodict(self):
@@ -278,7 +345,7 @@ class Neo2File(object):
             for i in self._neo2nml: # Iterating through namelists
                 if par in self._neo2nml[i]:  # if parameter in one namelist 
                     if self._neo2nml[i][par]==kwargs[par]:
-                        print(k, ' in namelist', i, ' was already : ', kwargs[par])
+                        print(par, ' in namelist', i, ' was already : ', kwargs[par])
                     else:
                         print('before change: ',par,'=',self._neo2nml[i][par])
                         self._neo2nml[i][par]=kwargs[par]
@@ -295,6 +362,21 @@ class Neo2File(object):
     def write(self):
         return self._neo2nml.write()
     
+    def _check_duplicate_parameter(self):
+        te=dict(self._neo2nml)
+        te2=dict(self._neo2nml)
+        
+        for nml in te:
+            del te2[nml]
+            for nml2 in te2:
+                 for par in te[nml]:
+                     if par in te2[nml2]:
+                         raise ImportError('This version accepts only one keyword for the whole neo2.in File')
+      #print(nml2,'2nd')
+        
+        
+                            
+                            
     
     
     def __repr__(self):
