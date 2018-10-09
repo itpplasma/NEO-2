@@ -198,7 +198,7 @@ contains
 
 !     ..................................................................
 !
-      subroutine DBESK(X,N,BK,IER)
+  subroutine DBESK(X,N,BK,IER)
 !
       double precision X, BK
       double precision T, B
@@ -257,7 +257,7 @@ contains
    36 IER=3
       BK=0.
       return
-      end
+  end
 !
   
   subroutine init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
