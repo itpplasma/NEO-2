@@ -1,0 +1,8 @@
+runsource: /afs/itp.tugraz.at/user/wakatobi/NEO_2_V0.10/NEO-2-QL/Build5/neo_2.x
+reqfiles: 
+           neo2in: neo2.in
+           neoin: neo.in
+          
+sources: 
+           pert_path:  /temp/andfmar/Boozer_files_perturbation_field/ASDEX_U/32169/
+           singlerunsource: /temp/wakatobi/Startordner_Neo2/
