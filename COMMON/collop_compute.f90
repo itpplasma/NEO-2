@@ -272,116 +272,118 @@ contains
     lagmax = lag
     legmax = leg
 
-    if (collop_base_prj .eq. 0) then
+    select case (collop_base_prj)
+    case (0)
        write (*,*) "Using Laguerre polynomials as collision operator projection base."
        init_phi_prj => init_phi_laguerre
        phi_prj      => phi_laguerre
        d_phi_prj    => d_phi_laguerre
        dd_phi_prj   => dd_phi_laguerre
-    elseif (collop_base_prj .eq. 1) then
+    case (1)
        write (*,*) "Using standard polynomials as collision operator projection base."
        init_phi_prj => init_phi_polynomial
        phi_prj      => phi_polynomial
        d_phi_prj    => d_phi_polynomial
        dd_phi_prj   => dd_phi_polynomial     
-    elseif (collop_base_prj .eq. 2) then
+    case (2)
        write (*,*) "Using squared polynomials as collision operator projection base."
        init_phi_prj => init_phi_polynomial_2
        phi_prj      => phi_polynomial_2
        d_phi_prj    => d_phi_polynomial_2
        dd_phi_prj   => dd_phi_polynomial_2
-    elseif (collop_base_prj .eq. 3) then
+    case (3)
        write (*,*) "Using squared polynomials without zeroth order as collision operator projection base."
        init_phi_prj => init_phi_polynomial_3
        phi_prj      => phi_polynomial_3
        d_phi_prj    => d_phi_polynomial_3
        dd_phi_prj   => dd_phi_polynomial_3
-    elseif (collop_base_prj .eq. 10) then
+    case (10)
        write (*,*) "Using splines as collision operator projection base."
        init_phi_prj => init_phi_spline
        phi_prj      => phi_spline
        d_phi_prj    => d_phi_spline
        dd_phi_prj   => dd_phi_spline
-    elseif (collop_base_prj .eq. 11) then
+    case (11)
        write (*,*) "Using B-Splines as collision operator projection base."
        init_phi_prj => init_phi_bspline
        phi_prj      => phi_bspline
        d_phi_prj    => d_phi_bspline
        dd_phi_prj   => dd_phi_bspline
-    !elseif (collop_base_prj .eq. 12) then
+    !case (12)
     !   write (*,*) "Using 4th-order Splines as collision operator projection base."
     !   init_phi_prj => init_phi_spline4
     !   phi_prj      => phi_spline4
     !   d_phi_prj    => d_phi_spline4
     !   dd_phi_prj   => dd_phi_spline4
-    !elseif (collop_base_prj .eq. 13) then
+    !case (13)
     !   write (*,*) "Using B-Splines with x**2 as collision operator projection base."
     !   init_phi_prj => init_phi_bspline2
     !   phi_prj      => phi_bspline2
     !   d_phi_prj    => d_phi_bspline2
     !   dd_phi_prj   => dd_phi_bspline2
-    elseif (collop_base_prj .eq. 100) then
+    case (100)
        write (*,*) "Using hat functions as collision operator projection base."
        precomp=.true.
-    else
+    case default
        write (*,*) "Undefined collision operator projection base ", collop_base_prj
        stop
-    end if
+    end select
 
-    if (collop_base_exp .eq. 0) then
+    select case (collop_base_exp)
+    case (0)
        write (*,*) "Using Laguerre polynomials as collision operator expansion base."
        init_phi_exp => init_phi_laguerre
        phi_exp      => phi_laguerre
        d_phi_exp    => d_phi_laguerre
        dd_phi_exp   => dd_phi_laguerre
-    elseif (collop_base_exp .eq. 1) then
+    case (1)
        write (*,*) "Using standard polynomials as collision operator expansion base."
        init_phi_exp => init_phi_polynomial
        phi_exp      => phi_polynomial
        d_phi_exp    => d_phi_polynomial
        dd_phi_exp   => dd_phi_polynomial     
-    elseif (collop_base_exp .eq. 2) then
+    case (2)
        write (*,*) "Using squared polynomials as collision operator expansion base."
        init_phi_exp => init_phi_polynomial_2
        phi_exp      => phi_polynomial_2
        d_phi_exp    => d_phi_polynomial_2
        dd_phi_exp   => dd_phi_polynomial_2
-    elseif (collop_base_exp .eq. 3) then
+    case (3)
        write (*,*) "Using squared polynomials without zeroth order as collision operator expansion base."
        init_phi_exp => init_phi_polynomial_3
        phi_exp      => phi_polynomial_3
        d_phi_exp    => d_phi_polynomial_3
        dd_phi_exp   => dd_phi_polynomial_3
-    elseif (collop_base_exp .eq. 10) then
+    case (10)
        write (*,*) "Using splines as collision operator expansion base."
        init_phi_exp => init_phi_spline
        phi_exp      => phi_spline
        d_phi_exp    => d_phi_spline
        dd_phi_exp   => dd_phi_spline
-    elseif (collop_base_exp .eq. 11) then
+    case (11)
        write (*,*) "Using B-Splines as collision operator expansion base."
        init_phi_exp => init_phi_bspline
        phi_exp      => phi_bspline
        d_phi_exp    => d_phi_bspline
        dd_phi_exp   => dd_phi_bspline
-    !elseif (collop_base_exp .eq. 12) then
+    !case (12)
     !   write (*,*) "Using 4th-order Splines as collision operator expansion base."
     !   init_phi_exp => init_phi_spline4
     !   phi_exp      => phi_spline4
     !   d_phi_exp    => d_phi_spline4
     !   dd_phi_exp   => dd_phi_spline4
-    !elseif (collop_base_exp .eq. 13) then
+    !case (13)
     !   write (*,*) "Using B-Splines with x**2 as collision operator expansion base."
     !   init_phi_exp => init_phi_bspline2
     !   phi_exp      => phi_bspline2
     !   d_phi_exp    => d_phi_bspline2
     !   dd_phi_exp   => dd_phi_bspline2
-    elseif (collop_base_exp .eq. 100) then
+    case (100)
        write (*,*) "Using hat functions as collision operator expansion base."
-    else
+    case default
        write (*,*) "Undefined collision operator expansion base ", collop_base_exp
        stop
-    end if
+    end select
   
     call init_legendre(legmax)
     call init_phi_prj(lagmax, legmax)
