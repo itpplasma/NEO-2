@@ -2,6 +2,9 @@
 *.[oa]
 *.mod
 
+# Ignore Python Bytecode Files
+*.pyc
+
 # Directory and content created by cmake system.
 CMakeFiles/
 
