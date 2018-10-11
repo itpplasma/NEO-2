@@ -1,0 +1,191 @@
+!
+! This documents _all_ the input parameters for the quasi-linear version
+! of NEO-2. Not all of the settings may be of relevance for a specific
+! mode of NEO-2.
+! Values given here should be such, that it is possible to run use this
+! as an actually (maybe crude) input.
+! Namelists are ordered alphabetically, and so are the parameters.
+! Underscores are treated as non-existant, i.e. for the sake of order
+! 'a_b' is treated as 'ab'.
+! Documentation for each parameter is either at the end of the line (and
+! subsequent lines) or in the line(s) before the parameter.
+! Default values set in the code are given at the end of the
+! documentation in square brackets, e.g. '[5]'.
+!
+&binsplit
+ eta_s_lim = 1.5800000000000001e-007
+ eta_part = 45
+ lambda_equi = 0
+ phi_split_mode = 2 ! 1: halfstep, 2: automatic
+ phi_place_mode = 2 ! 1: only one point between automatic phi's
+                    ! 2: odd number of points between  automatic phi's
+                    !    according to hphi * hphi_mult
+ phi_split_min = 3
+ max_solver_try = 10 ! How often the solver trys on error.
+ hphi_mult = 1.0
+ bin_split_mode = 1 ! 0: no binary split for eta
+                    !    original eta used (higher eta_part necessary)
+                    ! 1: binary split is done
+ bsfunc_message = 0
+ bsfunc_modelfunc = 3 ! 1: Gauss
+                      ! 2: prop to exp(-|x-x0|/sqrt(2)/sigma)
+                      ! 3: prop to 1/(|x-x0|^2+\sigma^2)
+ bsfunc_total_err = 0.10000000000000001
+ bsfunc_local_err =  2.9999999999999999e-002
+ bsfunc_min_distance = 1.0000000000000000e-004 ! [0.0d0]
+ bsfunc_max_index = 300
+ bsfunc_max_splitlevel = 30
+ bsfunc_sigma_mult =  1.0
+ bsfunc_sigma_min = 9.9999999999999995e-021
+ bsfunc_local_solver = 3
+ mag_local_sigma = 1 ! 0: compute sigma for eta-placement (old)
+                     ! 1: add 2 local sigma-values within ripple
+ mag_ripple_contribution = 2 ! 2: new sigma formula.
+ bsfunc_local_err_max_mult =  1.0000000000000000
+ bsfunc_max_mult_reach =  3.0
+ bsfunc_modelfunc_num = 3
+ bsfunc_divide = 0
+ bsfunc_ignore_trap_levels =          0
+ boundary_dist_limit_factor =  9.9999997764825821e-003
+ bsfunc_local_shield_factor =  1.0
+ bsfunc_shield = .false.
+ sigma_shield_factor =  3.0
+ split_inflection_points = .true.
+/
+&collision
+ conl_over_mfp = 1.0e-003
+ lag = 3 ! number of Laguerre polynomials
+ leg = 3 ! number of Legendre polynomials
+ legmax = 5 ! maximum number of Legendre polynomials
+ z_eff = 1.0
+ isw_lorentz = 0
+ isw_integral = 1
+ isw_energy = 1
+ isw_axisymm = 1
+ isw_momentum = 0
+ vel_distri_swi = 0
+ vel_num = 10
+ vel_max = 5.0
+ collop_path = "/afs/itp.tugraz.at/proj/plasma/documents/neo2/data-matrixelements/",
+ ! The possible choices for collop_base_* are:
+ !   0 = Laguerre
+ !  10 = hat functions
+ !  11 = bspline
+ collop_base_prj = 11
+ collop_base_exp = 11
+ scalprod_alpha = 0.0
+ scalprod_beta = 0.0
+ phi_x_max = 4.0
+ collop_bspline_order = 3
+ collop_bspline_dist = 1.0
+ v_min_resolution = 0.10000000000000001
+ v_max_resolution = 3.0
+ isw_relativistic = 0
+ t_e = 1.0
+ lsw_read_precom = f
+ lsw_write_precom = t
+ collop_bspline_taylor
+ lsw_nbi = .false. ! Switch to activate the code for neutral beam injection (not implemented so far).
+ m_nbi
+ T_nbi
+/
+&multi_spec
+ lsw_multispecies = .true.
+ isw_multispecies_init = 0
+ fname_multispec_in = "multi_spec_aug32169_t4.0210.in"
+ isw_coul_log = 0   ! 0: Coulomb logarithm is species independent.
+ num_spec = 2
+ species_tag_vec = 1, 2
+ conl_over_mfp_vec = -2.8980601244164802e-006, -4.7125144425366139e-006
+ z_vec = -1.0,  1.0 ! List with the specific charges of the species.
+ m_vec =  9.1093999999999992e-028, 3.3435999999999997e-024 ! List with the masses (in g) of the species.
+ t_vec =  9.1495920740775243e-009,  7.1751185399075415e-009 ! List with the temperatures of the species.
+ n_vec = 2*53112642031866.633
+ isw_calc_er = 1
+ isw_calc_magdrift = 1
+ species_tag_vphi = 2
+ isw_vphi_loc = 0
+ vphi = 77048.433690608756
+ r_vphi = 0.0
+ z_vphi = 0.0
+ boozer_theta_vphi = 0.0
+ dn_vec_ov_ds = 2*-205346467242207.16 ! Radial derivatives of the densities of the species.
+ dt_vec_ov_ds = -1.2342081697267263e-007, -5.6876762615227536e-008 ! Radial derivatives of the temperatures of the species.
+/
+&ntv_input
+ isw_ntv_mode
+ isw_qflux_NA = 1 ! Turn on(=1)/off(=0) computation of non-axisymmetrix
+                  ! part.
+ in_file_pert = 'filename' ! File that contains perturbation of the
+                           ! magnetic field.
+ MtOvR = 0.0 ! The toroidal Mach number.
+ B_rho_L_loc = 0.0 ! Larmor radius times magnetic field.
+ isw_ripple_solver = 3 ! Which ripple solver version should be used.
+ isw_mag_shear = 1 ! Turn on(=1)/off(=0) non-local computations (mag.
+                   ! shear).
+/
+&plotting
+ plot_gauss = 0 ! Plotting of gauss function in flint.
+ plot_prop = 0  ! Plotting of propagator info in flint.
+/
+&propagator
+ prop_diagphys = 0
+ prop_overwrite = 1
+ prop_diagnostic = 0
+ prop_binary = 0
+ prop_timing = 0
+ prop_join_ends = 1
+ prop_fluxsplitmode = 2
+ mag_talk = .false.
+ mag_infotalk = .false.
+ hphi_lim=  9.9999999999999995e-007
+ prop_write = 2
+ prop_reconstruct = 0
+ prop_ripple_plot = 0
+ prop_reconstruct_levels = 0
+/
+&settings
+ phimi = 0.0   ! Beginning of period.
+ nstep = 200   ! Number of integration steps per period.
+ nperiod = 1000 ! Number of periods.
+ xetami = 0.0
+ xetama = 1.300001
+ ndim0 = 14
+ zbeg = 0.0
+ rbeg = 210.0  ! starting R.
+ proptag_begin = 0 ! 0 take first from fieldline, otherwise begin
+ proptag_final = 0 ! 0 take last from fieldline, otherwise end
+ mag_start_special = 0 ! 0 original, 1 abs max, 2 abs min, 3 proptag_begin
+ mag_magfield = 1 ! 0 homogeneous, 1 normal
+ mag_nperiod_min = 1
+ mag_save_memory = 0 ! saving memory
+ magnetic_device = 0 ! 0 Tokamak, 1 W7-AS
+ mag_cycle_ripples = 1 ! 0: old behaviour, 1: cycle through
+ aiota_tokamak = 0.35144999999999998
+ mag_close_fieldline = 2 ! 1: close fieldline artificially 0: do not
+ eta_part_global =  0 !-1: equal distribution !0: use eta_alpha_p/t for an adjusted distribution of initial levels
+ eta_part_globalfac = 3.0
+ eta_part_globalfac_p = 3.0
+ eta_part_globalfac_t = 3.0
+ eta_alpha_p =  2.0 ! Specify refinement differently
+ eta_alpha_t = -1.0
+ eta_part_trapped = 35 !Number of eta-levels in trapped region
+ mag_coordinates = 1 ! 0 cylindrical, 1 Boozer
+ boozer_s = 2.5139170872696102e-002
+ boozer_theta_beg =  3.1415926000000001
+ boozer_phi_beg = -3.1415926000000001
+ mag_dbhat_min = 0.10000000000000001
+ mag_dphi_inf_min = 5.0000000000000003e-002
+ mag_inflection_mult = 3.0
+ solver_talk = 0
+ switch_off_asymp = 0
+ asymp_margin_zero = 10
+ asymp_margin_npass = 4
+ asymp_pardeleta = 10.0
+ ripple_solver_accurfac = 3.0
+ sparse_talk = .false.
+ sparse_solve_method = 3
+ omp_num_threads = 4
+ mag_symmetric = .false.
+ mag_symmetric_shorten = .false.
+/
