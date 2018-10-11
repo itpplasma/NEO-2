@@ -49,7 +49,12 @@ module collop
 
   contains
     
-    subroutine collop_construct()     
+    subroutine collop_construct()
+      if ((mpro%getNumProcs() .ne. num_spec) .and. lsw_multispecies) then
+        write(*,*)
+        write(*,*) 'WARNING: CODE might not be correct if number of processors is not equal to the number of species!'
+        write(*,*)
+      end if
 
     end subroutine collop_construct
 
