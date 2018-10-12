@@ -41,19 +41,19 @@ PROGRAM neo2_ql
   USE binarysplit_mod, ONLY : bsfunc_message,bsfunc_modelfunc,      &
        bsfunc_total_err, bsfunc_local_err, bsfunc_min_distance,     &
        bsfunc_max_index, bsfunc_max_splitlevel,                     &
-       bsfunc_sigma_mult, bsfunc_sigma_min, bsfunc_local_solver   
+       bsfunc_sigma_mult, bsfunc_sigma_min, bsfunc_local_solver
   USE binarysplit_int, ONLY : linspace
   !! Modifications by Andreas F. Martitsch (15.07.2014)
   ! Path for the collision operator matrices is now specified via neo2.in
-  ! (necessary for computations with Condor)  
+  ! (necessary for computations with Condor)
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
        collop_load, collop_unload, z_eff, collop_path,              &
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
        scalprod_beta, lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
        !! and lsw_write_precom by Michael Draxler (25.08.2017)
-  USE rkstep_mod, ONLY : lag,leg,legmax                            
-      
+  USE rkstep_mod, ONLY : lag,leg,legmax
+
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
@@ -93,8 +93,8 @@ PROGRAM neo2_ql
   INCLUDE "version.f90"
   !**********************************************************
 
-  
-  
+
+
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
   !**********************************************************
@@ -129,7 +129,7 @@ PROGRAM neo2_ql
   REAL(kind=dp)   :: cg0_2_avg, cg2_2_avg
   REAL(kind=dp)   :: cg0_3_avg, cg2_3_avg
   !**********************************************************
-  
+
   REAL(kind=dp) :: rbeg,zbeg
   REAL(kind=dp) :: phimi
   REAL(kind=dp) :: xetama,xetami
@@ -181,7 +181,7 @@ PROGRAM neo2_ql
   ! -> read species-relevant info into a large array (dynamic allocation not supported)
   INTEGER, DIMENSION(:), ALLOCATABLE :: species_tag_vec   ! vector with species tags
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: conl_over_mfp_vec ! collisionality parameter
-  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: z_vec ! species charge number 
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: z_vec ! species charge number
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: m_vec ! species mass
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: T_vec ! species temperature
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: n_vec ! species density (used only for isw_coul_log > 0)
@@ -207,7 +207,7 @@ PROGRAM neo2_ql
        eta_part_globalfac_p,eta_part_globalfac_t,                             &
        eta_alpha_p,eta_alpha_t,eta_part_trapped,                              &
        mag_coordinates,boozer_s,boozer_theta_beg,boozer_phi_beg,              &
-       mag_dbhat_min,mag_dphi_inf_min,mag_inflection_mult,                    & 
+       mag_dbhat_min,mag_dphi_inf_min,mag_inflection_mult,                    &
        solver_talk,switch_off_asymp,                                          &
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
@@ -216,7 +216,7 @@ PROGRAM neo2_ql
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
-       isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &      
+       isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta,       &
        phi_x_max, collop_bspline_order, collop_bspline_dist,                  &
        v_min_resolution, v_max_resolution, isw_relativistic, T_e,             &
@@ -251,7 +251,7 @@ PROGRAM neo2_ql
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, B_rho_L_loc,          &
        isw_ripple_solver, isw_mag_shear
   !! End Modification by Andreas F. Martitsch (14.07.2015)
-  
+
   ! ---------------------------------------------------------------------------
   ! filenames (default file and specific input file) for namelist
   fnames = (/'neo2.def','neo2.in '/)
@@ -322,7 +322,7 @@ PROGRAM neo2_ql
   asymp_margin_npass = 4
   asymp_pardeleta = 10.0d0
   ripple_solver_accurfac = 3.0d0
-  phimi=0.d0 
+  phimi=0.d0
   nstep=480
   nperiod=500
   xetami=0.0d0
@@ -348,7 +348,7 @@ PROGRAM neo2_ql
   sparse_talk = .FALSE.
   !  sparse_solve_method = 0
   OMP_NUM_THREADS = 1
-  ! collision 
+  ! collision
   conl_over_mfp = 1.0d-3
   lag=10
   leg=20
@@ -378,7 +378,7 @@ PROGRAM neo2_ql
   collop_bspline_order = 4
   collop_bspline_dist  = 1d0
   collop_bspline_taylor = .true.
-  lsw_read_precom = .FALSE. !! Added lsw_read_precom and lsw_write_precom 
+  lsw_read_precom = .FALSE. !! Added lsw_read_precom and lsw_write_precom
   lsw_write_precom = .FALSE.   !! by Michael Draxler (25.08.2017)
   ! binsplit
   eta_s_lim = 1.2d0
@@ -388,7 +388,7 @@ PROGRAM neo2_ql
   phi_place_mode = 2
   phi_split_min = 1
   max_solver_try = 1
-  hphi_mult = 1.0d0 
+  hphi_mult = 1.0d0
   bin_split_mode = 1
   bsfunc_message = 0
   bsfunc_modelfunc = 1
@@ -397,14 +397,14 @@ PROGRAM neo2_ql
   boundary_dist_limit_factor = 1.e-2
   bsfunc_local_shield_factor = 1.0d0
   bsfunc_shield = .FALSE.
-  bsfunc_divide = 0  
+  bsfunc_divide = 0
   bsfunc_total_err = 1.0d-1
   bsfunc_local_err = 1.0d-2
   bsfunc_local_err_max_mult = 1.0d0
   bsfunc_max_mult_reach = 3.0d0
-  bsfunc_min_distance = 0.0d0 
+  bsfunc_min_distance = 0.0d0
   bsfunc_max_index = 20*eta_part
-  bsfunc_max_splitlevel = 32    
+  bsfunc_max_splitlevel = 32
   bsfunc_sigma_mult = 1.0_dp
   bsfunc_sigma_min = 0.0_dp
   bsfunc_local_solver = 0
@@ -418,18 +418,18 @@ PROGRAM neo2_ql
   prop_overwrite   = 1
   prop_diagnostic = 1
   prop_binary = 0
-  prop_timing = 1 
+  prop_timing = 1
   prop_join_ends = 0
   prop_fluxsplitmode = 1
   prop_write = 0
   prop_reconstruct = 0
   prop_ripple_plot = 0
   prop_reconstruct_levels = 0
-  mag_talk = .TRUE. 
+  mag_talk = .TRUE.
   mag_infotalk = .TRUE.
   hphi_lim = 1.0d-6
   ! plotting
-  plot_gauss = 0 
+  plot_gauss = 0
   plot_prop  = 0
   !! Modification by Andreas F. Martitsch (14.07.2015)
   ! ntv_input
@@ -444,9 +444,9 @@ PROGRAM neo2_ql
   lsw_nbi = .false.
   T_nbi  = 70d3
   m_nbi  = 3.343583719d-24
-  
+
   CALL h5_init()
-  
+
   ! reading
   DO jf = 1,SIZE(fnames)
      IF(jf .EQ. 1) CYCLE ! skip neo2.def (Andreas F. Martitsch - 21.10.2015)
@@ -515,7 +515,7 @@ PROGRAM neo2_ql
      CLOSE(unit=u1)
   END DO
   ! PAUSE
-  
+
   !! Modification by Andreas F. Martitsch (20.02.2017)
   ! Prepare  multi-species computations for a given profile
   ! -> prepare input files, directories
@@ -837,7 +837,7 @@ PROGRAM neo2_ql
         CALL chdir('..')
         !
      END DO
-     !   
+     !
      STOP
   END IF
   !! End Modification by Andreas F. Martitsch (20.02.2017)
@@ -876,7 +876,7 @@ PROGRAM neo2_ql
   !
   IF(ALLOCATED(dn_spec_ov_ds)) DEALLOCATE(dn_spec_ov_ds)
   ALLOCATE(dn_spec_ov_ds(0:num_spec-1))
-  dn_spec_ov_ds(0:num_spec-1)=dn_vec_ov_ds(1:num_spec) 
+  dn_spec_ov_ds(0:num_spec-1)=dn_vec_ov_ds(1:num_spec)
   !
   ! print multi-species input
   IF(lsw_multispecies) THEN
@@ -890,7 +890,7 @@ PROGRAM neo2_ql
      PRINT *,'n_spec             : ',n_spec
      !STOP
   END IF
-  !! End Modification by Andreas F. Martitsch (23.08.2015) 
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
 
   IF (mag_magfield .EQ. 0) THEN ! homogeneous case
      PRINT *, 'WARNING: some input quantities modified - homogeneous case!'
@@ -908,8 +908,8 @@ PROGRAM neo2_ql
   ! Initialize MPI module
   !**********************************************************
   CALL mpro%init()
-  
-  
+
+
   !****************************************************
   !  Git version check
   !*****************************************************
@@ -917,8 +917,8 @@ PROGRAM neo2_ql
     CALL write_version_info()
   END IF
 
- 
- 
+
+
   !! Modification by Andreas F. Martitsch (31.07.2014)
   ! Save here starting point of the field line for cylindircal
   ! coordinates (used for normalizations for final NTV output)
@@ -1040,13 +1040,13 @@ PROGRAM neo2_ql
   !  for each structure there is a tag which numbers it in
   !   ascending order
   fieldperiod => fieldline%ch_fir
-  DO WHILE (fieldperiod%extra .EQ. 1) 
+  DO WHILE (fieldperiod%extra .EQ. 1)
      fieldperiod => fieldperiod%next
   END DO
   proptag_first = fieldperiod%ch_fir%tag
 
   fieldperiod => fieldline%ch_las
-  DO WHILE (fieldperiod%extra .EQ. 1) 
+  DO WHILE (fieldperiod%extra .EQ. 1)
      fieldperiod => fieldperiod%prev
   END DO
   proptag_last = fieldperiod%ch_las%tag
@@ -1115,7 +1115,7 @@ PROGRAM neo2_ql
   ! fine-tune for which exceptions the warning should be shown.
   STOP
   !! End Modification by Andreas F. Martitsch (17.07.2014)
-  
+
 
 CONTAINS
 
@@ -1178,7 +1178,7 @@ CONTAINS
        CALL h5_add(h5_config_group, 'mag_dphi_inf_min', mag_dphi_inf_min)
        CALL h5_add(h5_config_group, 'mag_inflection_mult', mag_inflection_mult)
        CALL h5_add(h5_config_group, 'solver_talk', solver_talk)
-       CALL h5_add(h5_config_group, 'switch_off_asymp', switch_off_asymp) 
+       CALL h5_add(h5_config_group, 'switch_off_asymp', switch_off_asymp)
        CALL h5_add(h5_config_group, 'asymp_margin_zero', asymp_margin_zero)
        CALL h5_add(h5_config_group, 'asymp_margin_npass', asymp_margin_npass)
        CALL h5_add(h5_config_group, 'asymp_pardeleta', asymp_pardeleta)
@@ -1255,7 +1255,7 @@ CONTAINS
        CALL h5_define_group(h5_config_id, 'plotting', h5_config_group)
        CALL h5_add(h5_config_group, 'plot_gauss', plot_gauss)
        CALL h5_add(h5_config_group, 'plot_prop', plot_prop)
-       CALL h5_close_group(h5_config_group)        
+       CALL h5_close_group(h5_config_group)
 
        CALL h5_close(h5_config_id)
 
@@ -1303,7 +1303,7 @@ CONTAINS
        WRITE (*,*) "##########################################################################################################"
        WRITE (*,*) ''
     END IF
-    
-  END SUBROUTINE write_version_info  
+
+  END SUBROUTINE write_version_info
 
 END PROGRAM neo2_ql

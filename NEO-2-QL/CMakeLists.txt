@@ -162,7 +162,7 @@ endif(${ISW_SUPERLU_VERSION} LESS 0)
 
 ### Define executable
 add_executable(${EXE_NAME}
-        ${NEO2_SRC_FILES}
+        ${NEO2_QL_SRC_FILES}
 	${NEO2_COMMON_FILES}
 	${SUITESPARSE_SRC_FILES}
 	${SUPERLU_SRC_FILES}

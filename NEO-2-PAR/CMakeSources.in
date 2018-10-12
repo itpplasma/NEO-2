@@ -98,7 +98,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/sparsevec_mod.f90
 )
 
-set(NEO2_SRC_FILES
+set(NEO2_PAR_SRC_FILES
         ./neo_sub.f90
         ./propagator.f90
         ./flint.f90
@@ -107,7 +107,7 @@ set(NEO2_SRC_FILES
         ./join_ripples.f90
         ./join_ends.f90
         ./plot_distrf.f90
-        ./neo2.f90
+        ./neo2_par.f90
         ./timingInfo.f90
 )
-set_source_files_properties(${NEO2_SRC_FILES} ${NEO2_COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
+set_source_files_properties(${NEO2_PAR_SRC_FILES} ${NEO2_COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
