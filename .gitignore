@@ -39,3 +39,14 @@ NEO-2-QL/.directory
 */[Bb]uild-[Dd]ebug/*
 */[Bb]uild-[Rr]elease/*
 */[Bb]uild/*
+
+# Ignore files created by latex.
+*.pdf
+*.aux
+*.bbl
+*.dvi
+*.ps
+*.log
+*.fls
+*.bcf
+*.blg
