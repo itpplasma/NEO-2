@@ -1,4 +1,4 @@
-PROGRAM neo2
+PROGRAM neo2_ql
 
   !**********************************************************
   ! MPI Support
@@ -1306,4 +1306,4 @@ CONTAINS
     
   END SUBROUTINE write_version_info  
 
-END PROGRAM neo2
+END PROGRAM neo2_ql

@@ -1,4 +1,4 @@
-PROGRAM neo2
+PROGRAM neo2_par
 
   !**********************************************************
   ! MPI SUPPORT
@@ -1197,4 +1197,4 @@ CONTAINS
 
   END SUBROUTINE write_run_info
 
-END PROGRAM neo2
+END PROGRAM neo2_par
