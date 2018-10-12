@@ -54,8 +54,6 @@ endif ()
 
 ### NEO2 ###
 set(NEO2_COMMON_FILES
-        #../COMMON/A1drive_neo2.f90
-        #../COMMON/A2drive_neo2.f90
         ../COMMON/bdivfree.f90
         ../COMMON/device_mod.f90
         ../COMMON/neo_modules.f90
@@ -74,15 +72,9 @@ set(NEO2_COMMON_FILES
         ../COMMON/binarysplit_mod.f90
         ../COMMON/sparse_mod.f90
         ../COMMON/fluxsplitter.f90
-        #../COMMON/gfunc_neo2.f90
-        #../COMMON/gfunc_neo2_jul_2010.f90
-        #../COMMON/gfunc_neo2_may_2011.f90
-        #../COMMON/gfunc_neo2_oct_2010.f90
         ../COMMON/inter_interfaces.f90
         ../COMMON/kin_allocate.f90
         ../COMMON/lapack_band.f90
-        #../COMMON/localizer.f90
-        #../COMMON/longint.f90
         ../COMMON/odeint_allroutines.f
         ../COMMON/polleg.f90
         ../COMMON/prodband.f90
@@ -99,8 +91,6 @@ set(NEO2_COMMON_FILES
         ../COMMON/collop_polynomial.f90
         ../COMMON/collop_bspline.f90
         ../COMMON/collop_nbi.f90
-        #../COMMON/collop_bspline2.f90
-        #../COMMON/collop_spline4.f90
         ../COMMON/collop_spline.f90
         ../COMMON/collision_operator_mems.f90
         ../COMMON/collop_compute.f90
