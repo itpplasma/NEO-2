@@ -74,16 +74,15 @@
                            ! B-Splines. Default value is $1$ which
                            ! defines a uniform knot distribution (best
                            ! choice). [1.0]
- collop_bspline_taylor
- collop_path = "/afs/itp.tugraz.at/proj/plasma/documents/neo2/data-matrixelements/",
- conl_over_mfp = 1.0e-003 ! This is the collisionality parameter. When
-                          ! provided positive it is $L_c/l_c$
-                          ! (connection length over mean free path) and
-                          ! when provided as negative value it is
-                          ! $\kappa = 2/l_c$. Please be aware that in
-                          ! our papers we define $\kappa = 1/l_c$, while
-                          ! internally in NEO-2 it has a slightly
-                          ! different normalization.
+ collop_bspline_taylor = .true.
+ collop_path = "/afs/itp.tugraz.at/proj/plasma/documents/neo2/data-matrixelements/"
+ conl_over_mfp = 1.0e-3 ! This is the collisionality parameter. When
+                        ! provided positive it is $L_c/l_c$ (connection
+                        ! length over mean free path) and when provided
+                        ! as negative value it is $\kappa = 2/l_c$.
+                        ! Please be aware that in our papers we define
+                        ! $\kappa = 1/l_c$, while internally in NEO-2 it
+                        ! has a slightly different normalization.
  isw_axisymm = 1
  isw_energy = 1
  isw_integral = 1
@@ -193,7 +192,7 @@
  asymp_margin_zero = 10
  asymp_pardeleta = 10.0
  boozer_phi_beg = -3.1415926
- boozer_s = 2.5139170872696102e-002 ! Defines the flux surface as normalized toroidal flux.
+ boozer_s = 4.9e-3 ! Defines the flux surface as normalized toroidal flux.
  boozer_theta_beg =  3.1415926
  eta_alpha_p =  2.0 ! Specify refinement differently
  eta_alpha_t = -1.0
@@ -218,8 +217,8 @@
  mag_symmetric = .false.
  mag_symmetric_shorten = .false.
  ndim0 = 14
- nperiod = 1000 ! Number of periods.
- nstep = 200   ! Number of integration steps per period.
+ nperiod = 100 ! Number of periods.
+ nstep = 20   ! Number of integration steps per period.
  omp_num_threads = 4
  phimi = 0.0   ! Beginning of period.
  proptag_begin = 0 ! 0 take first from fieldline, otherwise begin
