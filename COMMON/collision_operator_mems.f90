@@ -423,7 +423,9 @@ module collop
            call mpro%allgather(anumm_aa(:,:,:,b),anumm_aa)
            call mpro%allgather(denmm_aa(:,:,:,b),denmm_aa)
            call mpro%allgather(ailmm_aa(:,:,:,:,b),ailmm_aa)
-           call mpro%allgather(Inbi_lmmp_a(:,:,b), Inbi_lmmp_a)
+           if (lsw_nbi) then
+             call mpro%allgather(Inbi_lmmp_a(:,:,b), Inbi_lmmp_a)
+           end if
            
            if (lsw_write_precom) then            !! Added by Michael Draxler (13.09.2017) 
              if (mpro%isMaster()) then
