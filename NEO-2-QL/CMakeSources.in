@@ -90,6 +90,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/collision_operator_mems.f90 # Replaces collision_operator.f90
         ../COMMON/sparsevec_mod.f90
         ../COMMON/global_parameters.f90
+        ../COMMON/math_constants.f90
         ../COMMON/neo_sub.f90
         ../COMMON/nrtype.f90
 )
