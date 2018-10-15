@@ -61,6 +61,8 @@ PROGRAM neo2_par
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
 
+  use global_parameters, only : init, string_to_id
+
   !************************************
   ! HDF5
   !************************************
@@ -197,6 +199,9 @@ PROGRAM neo2_par
        lsw_save_dentf, lsw_save_enetf, lsw_save_spitf
   NAMELIST /plotting/                                                         &
        plot_gauss,plot_prop
+
+  call init(string_to_id('PARALLEL'))
+
   ! ---------------------------------------------------------------------------
   ! filenames (default file and specific input file) for namelist
   fnames = (/'neo2.def','neo2.in '/) ! removed because it is not used

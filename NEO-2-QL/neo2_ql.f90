@@ -74,6 +74,8 @@ PROGRAM neo2_ql
   USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
 
+  use global_parameters, only : init, string_to_id
+
   !************************************
   ! HDF5
   !************************************
@@ -251,6 +253,8 @@ PROGRAM neo2_ql
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, B_rho_L_loc,          &
        isw_ripple_solver, isw_mag_shear
   !! End Modification by Andreas F. Martitsch (14.07.2015)
+
+  call init(string_to_id('QUASILNEAR'))
 
   ! ---------------------------------------------------------------------------
   ! filenames (default file and specific input file) for namelist

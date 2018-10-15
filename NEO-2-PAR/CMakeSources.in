@@ -96,6 +96,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/collop_compute.f90
         ../COMMON/rel_kernels.f90
         ../COMMON/sparsevec_mod.f90
+        ../COMMON/global_parameters.f90
 )
 
 set(NEO2_PAR_SRC_FILES
