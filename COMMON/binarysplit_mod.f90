@@ -16,9 +16,6 @@ MODULE binarysplit_int
   PRIVATE bsfunc_evaldegree
   INTEGER               :: bsfunc_evaldegree = 2 ! 1   ! 3 or 4
 
-  PRIVATE longint
-  INCLUDE 'longint.f90'
-
   ! parameters for evaluation functions
   ! have to be set with (.e.g. for gauss)
   !   CALL construct_bsfunc(x0,s)
@@ -778,6 +775,8 @@ CONTAINS
 
   ! display (helper routine)
   SUBROUTINE disp_i8(i)
+    use nrtype, only : longint
+
     INTEGER(kind=longint), INTENT(in)  :: i
     INTEGER                      :: k
     INTEGER                      :: is
@@ -791,6 +790,8 @@ CONTAINS
   END SUBROUTINE disp_i8
     
   SUBROUTINE disp_i81(i)
+    use nrtype, only : longint
+
     INTEGER(kind=longint), DIMENSION(:), INTENT(in)  :: i
 
     INTEGER                                    :: k,ks
@@ -1064,9 +1065,6 @@ MODULE binarysplit_mod
   INTEGER :: binarysplit_fsplitdepth = 9
   PRIVATE binarysplit_y0limfac
   REAL(kind=dp) :: binarysplit_y0limfac = 1.d-1
-
-  PRIVATE longint
-  INCLUDE 'longint.f90'
 
   PRIVATE binarysplit_limit,binarysplit_checklimit
   INTEGER               :: binarysplit_limit,binarysplit_checklimit
@@ -1417,6 +1415,8 @@ CONTAINS
     
   ! reposition
   SUBROUTINE reposition_binsplit(xbs)   
+    use nrtype, only : longint
+
     TYPE(binarysplit),               INTENT(inout) :: xbs
     
     INTEGER                                        :: n_ori,maxdim,s1,is
@@ -1962,6 +1962,8 @@ CONTAINS
 
  ! split at forced positions
   SUBROUTINE dosplit_binsplit(xbs1,xbs2,bin_sparse)
+    use nrtype, only : longint
+
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(in)    :: xbs2
     !INTEGER(kind=longint),DIMENSION(:,:),ALLOCATABLE,INTENT(inout)   :: bin !0:
@@ -2100,6 +2102,8 @@ CONTAINS
   END SUBROUTINE join_binsplit_va
 
   SUBROUTINE join_binsplit_v(xbs1,xbs2,bin_sparse)
+    use nrtype, only : longint
+
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(in)    :: xbs2
     !INTEGER(kind=longint),DIMENSION(:,:), ALLOCATABLE,INTENT(in)    :: bin !0:
@@ -2240,6 +2244,8 @@ CONTAINS
 
   ! difference (what splits are in 1 and not in 2)
   SUBROUTINE compare_binsplit(xbs1,xbs2,bin_sparse,c)
+    use nrtype, only : longint
+
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(inout) :: xbs2
     !integer(kind=longint),dimension(:,:),allocatable,  intent(inout) :: bin !0:
@@ -2430,6 +2436,8 @@ CONTAINS
 
   ! testing
   SUBROUTINE test_binsplit(test_join,test_printbin)
+    use nrtype, only : longint
+
     INTEGER, INTENT(in) :: test_join 
     INTEGER, INTENT(in) :: test_printbin
 
