@@ -97,10 +97,10 @@ set(NEO2_COMMON_FILES
         ../COMMON/rel_kernels.f90
         ../COMMON/sparsevec_mod.f90
         ../COMMON/global_parameters.f90
+        ../COMMON/neo_sub.f90
 )
 
 set(NEO2_PAR_SRC_FILES
-        ./neo_sub.f90
         ./propagator.f90
         ./flint.f90
         ./ripple_solver.f90
