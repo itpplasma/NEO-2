@@ -19,4 +19,19 @@ module math_constants
 
   complex(DPC), parameter :: IMUN = (0.d0,1.d0)
 
+
+  ! Define physical constants (cgs-units)
+  REAL(kind=dp), PARAMETER, PUBLIC :: c=2.9979e10_dp       ! speed of light
+  REAL(kind=dp), PARAMETER, PUBLIC :: e=4.8032e-10_dp      ! elementary charge
+  REAL(kind=dp), PARAMETER, PUBLIC :: u=1.660539040e-24_dp ! atomic mass unit
+
+  REAL(kind=dp), PARAMETER                 :: mc_o_e        = 5.6856793d-8 ! cgs
+  REAL(kind=dp), PARAMETER                 :: mc_o_2e       = 2.8428397d-8 ! cgs
+  REAL(kind=dp), PARAMETER                 :: e_o_mc        = 1.7588048d7  ! cgs
+  REAL(kind=dp), PARAMETER                 :: b_convfac     = 1.0d4  ! SI to cgs
+  REAL(kind=dp), PARAMETER                 :: i_convfac     = 1.0d6  ! SI to cgs
+  REAL(kind=dp), PARAMETER                 :: sqg11_convfac = 1.0d6  ! SI to cgs
+  REAL(kind=dp), PARAMETER                 :: len_convfac   = 1.0d2  ! SI to cgs
+  REAL(kind=dp), PARAMETER                 :: te_to_vte     = 4.19d7 ! ev to cm/s
+
 end module math_constants
