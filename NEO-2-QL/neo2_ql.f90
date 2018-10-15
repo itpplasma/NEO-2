@@ -71,7 +71,7 @@ PROGRAM neo2_ql
   ! (with magnetic shear)
   USE neo_magfie_mod, ONLY : isw_mag_shear
   !! End Modifications by Andreas F. Martitsch (17.03.2016)
-  USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
+  USE neo_sub, ONLY : neo_read_control ! only used for preparation of multi-spec input
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
 
   use global_parameters, only : init, string_to_id

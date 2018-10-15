@@ -6,7 +6,7 @@ MODULE neo_magfie_mod
   USE neo_control,                                                     &
        ONLY: fluxs_interp, write_progress, phi_n, theta_n, lab_swi,    &
        inp_swi
-  USE neo_sub_mod,                                                     &
+  USE neo_sub,                                                         &
        ONLY: neo_read_control, neo_init, neo_init_spline
   USE neo_spline_data,                                                 &
        ONLY: r_mhalf,                                                  &

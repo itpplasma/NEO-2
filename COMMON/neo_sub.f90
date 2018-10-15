@@ -1,4 +1,4 @@
-MODULE neo_sub_mod
+MODULE neo_sub
   USE mpiprovider_module
 
 CONTAINS
@@ -3073,4 +3073,4 @@ SUBROUTINE neo_write_bc
 
 END SUBROUTINE neo_write_bc
 
-END MODULE neo_sub_mod
+END MODULE neo_sub
