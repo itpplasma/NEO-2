@@ -75,6 +75,8 @@ MODULE propagator_mod
 
   USE binarysplit_mod
 
+  use nrtype, only : dp
+
   !*********************************************
   ! MPI Support
   ! Sources have to be compiled with -cpp flag
@@ -91,16 +93,16 @@ MODULE propagator_mod
   use hdf5_tools
   use hdf5_tools_f2003
 
+
   IMPLICIT NONE
   
   ! ---------------------------------------------------------------------------
   ! private variables
-  INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0D0)
   REAL(kind=dp),      PRIVATE :: time_o
   REAL(kind=dp),      PRIVATE :: time_co,time_jp,time_ja,time_jf,time_so
   REAL(kind=dp),      PRIVATE :: stime_co,stime_jp,stime_ja,stime_jf,stime_so
   REAL(kind=dp),      PRIVATE :: stime_tot = 0.0_dp, time_tot,time_tot_o
-  REAL(kind=dp), PARAMETER, PRIVATE :: pi=3.14159265358979d0
+
   INTEGER,            PRIVATE :: propagator_tag_counter = 0
 
   CHARACTER(len=9),   PARAMETER, PUBLIC          :: prop_format = 'formatted'
@@ -908,6 +910,7 @@ CONTAINS
     USE rkstep_mod, ONLY : asource,anumm,ailmm,lag,leg
     USE collop, ONLY : z_eff
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield
+    use math_constants, only : pi
     
     INTEGER, INTENT(in) :: iend
 
@@ -2151,7 +2154,7 @@ CONTAINS
             qflux,                                               &         !<-in
             ierr                                                 &
             )
-         INTEGER, PARAMETER                                        :: dp = KIND(1.0d0)
+         use nrtype, only : dp
 
          INTEGER,                                    INTENT(out)   :: npass_l
          INTEGER,                                    INTENT(out)   :: npass_r
@@ -2186,8 +2189,8 @@ CONTAINS
   
     INTERFACE ripple_solver
        SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,eta_boundary_l,eta_boundary_r)
-         INTEGER, PARAMETER :: dp = KIND(1.0d0)
-         
+         use nrtype, only : dp
+
          REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE, INTENT(inout) :: source_p
          REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE, INTENT(inout) :: source_m
          REAL(kind=dp), DIMENSION(:),     ALLOCATABLE, INTENT(inout) :: eta_l
@@ -2213,7 +2216,8 @@ CONTAINS
     !
     ! Call to external program join_ripples
     USE binarysplit_mod
-    
+    use nrtype, only : dp
+
     INTEGER, INTENT(out) :: ierr
     CHARACTER(len=5), OPTIONAL, INTENT(in) :: cstat_in
     INTEGER, OPTIONAL, INTENT(in) :: deall_in

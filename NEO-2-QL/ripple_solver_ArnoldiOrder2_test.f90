@@ -120,11 +120,9 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   ! support of different basis functions and replaces routine "lagxmm".
   USE collop
   !! End Modification by Andreas F. Martitsch (28.07.2015)
+  use math_constants, only : imun, pi
   
   IMPLICIT NONE
-  !INTEGER, PARAMETER :: dp = KIND(1.0d0)
-  DOUBLE COMPLEX, PARAMETER :: imun=(0.d0,1.d0)
-  REAL(DP), PARAMETER :: PI=3.141592653589793238462643383279502884197_dp
 
   ! parameter list
   INTEGER,                                    INTENT(out)   :: npass_l

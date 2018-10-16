@@ -56,12 +56,13 @@
   subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
              rmin_in,rmax_in,pmin_in,pmax_in,zmin_in,zmax_in,  &
              br,bp,bz)
+
+    use bdivfree_mod
+    use math_constants, only : pi
+
+    implicit none
 !
-  use bdivfree_mod
-!
-  implicit none
-!
-  double precision, parameter :: pi=3.14159265358979d0
+
 !
   integer :: nr_in,np_in,nz_in,ntor_in,ip,np,n,ir,iz  
   integer, dimension(:), allocatable :: imi,ima,jmi,jma
@@ -861,11 +862,10 @@
 !
   use theta_rz_mod
   use input_files, only : iunit,fluxdatapath
+    use math_constants, only : pi
 !
   implicit none
-!
-  double precision, parameter :: pi=3.14159265358979d0
-!
+
   integer :: nsqpsi,nlabel,ntheta,i
   real(kind=8) :: sqpsimin,sqpsimax
   real(kind=8) :: flabel_min,flabel_max
@@ -928,11 +928,10 @@
   use field_eq_mod, only : nrad,nzet,rad,zet,hrad,hzet,icp,splpsi,ipoint  &
                          , psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
   use extract_fluxcoord_mod, only : psif_extract,theta_extract
+    use math_constants, only : pi
 ! 
   implicit none
-! 
-  real(kind=8), parameter :: pi=3.14159265358979d0
-! 
+
   integer :: npoint,i,j,ierr,k
   real(kind=8) :: rrr,zzz,theta,theta_r,theta_z,theta_rr,theta_rz,theta_zz
   real(kind=8) :: theta_s,theta_t,theta_ss,theta_st,theta_tt

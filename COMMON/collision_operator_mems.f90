@@ -17,13 +17,14 @@ module collop
        z_spec, m_spec, T_spec, n_spec, &
        collop_bspline_dist, collop_bspline_order, lsw_nbi, T_nbi, m_nbi
   use device_mod, only : device
+  use nrtype, only : dp
   
   implicit none
   
   !**********************************************************
   ! From old module, mainly for compatibility
   !**********************************************************
-  integer, parameter :: dp = kind(1.0d0)
+
   integer, parameter, private :: dummy_read = 20
   real(kind=dp), public       :: z_eff = 1.0_dp
   logical, public             :: collop_talk      =  .true. 
@@ -59,10 +60,12 @@ module collop
     end subroutine collop_construct
 
     subroutine collop_set_species(ispec, opt_talk)
+      use math_constants, only : pi
+
       integer :: ispec
       logical, optional :: opt_talk
       ! parameter
-      real(kind=dp), parameter :: pi=3.14159265358979d0
+
       logical :: talk
 
       talk = .true.

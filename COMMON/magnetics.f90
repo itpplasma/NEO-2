@@ -6,11 +6,9 @@ MODULE magnetics_mod
   !************************************
   USE hdf5_tools
   USE hdf5_tools_f2003
+  use nrtype, only : dp
   
   IMPLICIT NONE
-  
-  ! double precision
-  INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0d0)
   
   ! talk or be silent
   LOGICAL, PUBLIC :: mag_talk =  .TRUE. 
@@ -41,9 +39,6 @@ MODULE magnetics_mod
   CHARACTER(len=100), PRIVATE :: h5_fieldpropagator_name = 'fieldpropagator'
   CHARACTER(len=100), PRIVATE :: h5_fieldripple_name     = 'fieldripple'
   CHARACTER(len=100), PUBLIC  :: h5_magnetics_file_name  = 'magnetics.h5'
-
-  ! internal constants
-  REAL(kind=dp), PARAMETER, PRIVATE :: pi=3.14159265358979_dp
 
   ! ---------------------------------------------------------------------------
   ! device_struct

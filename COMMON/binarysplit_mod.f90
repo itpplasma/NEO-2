@@ -2,10 +2,9 @@ MODULE binarysplit_int
 
   USE hdf5_tools
   USE hdf5_tools_f2003
+  use nrtype, only : dp
+
   IMPLICIT NONE
-  
-  PRIVATE dp
-  INTEGER, PARAMETER    :: dp = KIND(1.0d0)
 
   PUBLIC bsfunc_message
   INTEGER               :: bsfunc_message = 0
@@ -228,7 +227,7 @@ CONTAINS
     INTEGER,                     INTENT(in)    :: loc
     INTERFACE join_ripples_bsfitsplit
        SUBROUTINE join_ripples_bsfitsplit(x,loc)
-         INTEGER, PARAMETER :: dp = KIND(1.0d0)
+         use nrtype, only : dp
          REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: x !0:
          INTEGER,                     INTENT(in)    :: loc
        END SUBROUTINE join_ripples_bsfitsplit
@@ -244,7 +243,7 @@ CONTAINS
     INTEGER,                      INTENT(in)   :: loc
     INTERFACE join_ripples_bsfitjoin
        SUBROUTINE join_ripples_bsfitjoin(x,loc)
-         INTEGER, PARAMETER :: dp = KIND(1.0d0)
+         use nrtype, only : dp
          REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: x !0:
          INTEGER,                      INTENT(in)    :: loc
        END SUBROUTINE join_ripples_bsfitjoin
@@ -366,15 +365,17 @@ CONTAINS
 
   ! gauss (helper routine)
   SUBROUTINE gauss_d0(x,x0,s,g)
+    use math_constants, only : pi, sqrt2
+
     REAL(kind=dp),               INTENT(in)   :: x
     REAL(kind=dp), DIMENSION(:), INTENT(in)   :: x0
     REAL(kind=dp), DIMENSION(:), INTENT(in)   :: s
     REAL(kind=dp),               INTENT(out)  :: g
     
-    REAL(kind=dp),               PARAMETER    :: pi=3.14159265358979_dp
+
     REAL(kind=dp),               PARAMETER    :: os2pi=0.39894228040143_dp
     REAL(kind=dp),               PARAMETER    :: os8=0.35355339059327_dp
-    REAL(kind=dp),               PARAMETER    :: sq2=1.41421356237310_dp
+
     INTEGER                                   :: k
     
     g = 0.0_dp
@@ -956,9 +957,10 @@ CONTAINS
   END SUBROUTINE plag_stencil
 
   SUBROUTINE plag_test
+    use math_constants, only : pi
+
     INTEGER, PARAMETER :: unitno = 9999
     INTEGER :: i
-    REAL(kind=dp), PARAMETER :: pi = 3.141592653589793d0
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x_ori,y0_ori,y1_ori,y2_ori,y3_ori
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x,y0,y1,y2,y3
     REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: coeff
@@ -1049,13 +1051,11 @@ MODULE binarysplit_mod
   ! This module handles all the splitting and joining stuff
   ! No changes should be necessary here
   USE binarysplit_int
-
+  use nrtype, only : dp
   USE sparsevec_mod
-  
+
   IMPLICIT NONE
 
-  PRIVATE dp
-  INTEGER, PARAMETER    :: dp = KIND(1.0d0)
 
   PRIVATE binarysplit_message
   INTEGER :: binarysplit_message = 0

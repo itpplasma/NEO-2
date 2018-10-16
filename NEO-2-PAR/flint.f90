@@ -32,11 +32,12 @@ SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
   USE mag_sub, ONLY: mag
   !! End Modifications by Andreas F. Martitsch (09.03.2014)
   USE mpiprovider_module
+  use math_constants, only : pi
+  use nrtype, only : dp
 
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
-  ! parameter
-  REAL(kind=dp), PARAMETER :: pi=3.14159265358979d0
+
+
   ! parameter list
   REAL(kind=dp),    INTENT(in) :: phimi
   REAL(kind=dp),    INTENT(in) :: rbeg
@@ -179,9 +180,10 @@ END SUBROUTINE flint_prepare
 subroutine flint_prepare_2(bin_split_mode,eta_s_lim)
   USE collisionality_mod, ONLY : collpar_min
   USE  mag_interface_mod, ONLY : ripple_eta_magnetics
+  use nrtype, only : dp
 
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
+
   ! parameter
   INTEGER,          INTENT(in) :: bin_split_mode
   REAL(kind=dp),    INTENT(in) :: eta_s_lim
@@ -222,6 +224,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
   USE rkstep_mod, ONLY : lag ! anumm => anumm_lag
   USE collisionality_mod, ONLY : collpar,collpar_min,collpar_max
+  use math_constants, only : twopi
+  use nrtype, only : dp
   !
   ! types and routines for splitting
   USE binarysplit_mod
@@ -243,7 +247,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   ! ---
 
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
   !
   ! parameter list
   REAL(kind=dp), INTENT(in)       :: eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t
@@ -254,8 +257,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   INTEGER, INTENT(in) :: bin_split_mode
   INTEGER, INTENT(inout) :: proptag_start,proptag_end
   INTEGER, INTENT(in)       :: eta_part_global,eta_part_trapped
-
-  REAL(kind=dp), PARAMETER :: twopi = 6.28318530717959_dp
 
   ! locals
   INTEGER :: rippletag_old,rippletag,proptag
@@ -2974,10 +2975,10 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
   USE device_mod
   USE binarysplit_mod
   USE plagrange_mod
+  use nrtype, only : dp
 
 
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
   !! Modifications by Andreas F. Martitsch (11.06.2014)
   ! Optional output (necessary for modeling the magnetic rotation)
@@ -3323,10 +3324,10 @@ SUBROUTINE phi_placer(phi_place_mode,phi_split_min,u_eta,eta_m1, &
   USE magnetics_mod, ONLY : extract_array,set_new,delete_all,dnumber_struct
   USE flint_mod, ONLY : phiarr
   USE plagrange_mod
+  use math_constants, only : twopi
+  use nrtype, only : dp
  
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
-  REAL(kind=dp), PARAMETER :: twopi = 6.28318530717959_dp
 
   ! parameter list
   INTEGER, INTENT(in) :: phi_place_mode,phi_split_min
@@ -3678,9 +3679,9 @@ SUBROUTINE phi_divider(u_eta,phi_eta_ind)                  !<-in Winny
   USE device_mod
   USE magnetics_mod, ONLY : extract_array,set_new,delete_all,dnumber_struct
   USE flint_mod, ONLY : phiarr,phi_divide
+  use nrtype, only : dp
   
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
   INTEGER,       INTENT(in) :: u_eta
   INTEGER,       INTENT(inout) :: phi_eta_ind(0:u_eta,2)
@@ -3785,12 +3786,13 @@ END SUBROUTINE lagrange_coefs5
 SUBROUTINE sort_theta()
   
   USE device_mod
-  USE magnetics_mod 
+  USE magnetics_mod
+  use nrtype, only : dp
 
   IMPLICIT NONE
 
   TYPE(fieldperiod_struct), POINTER :: p_t,p_min,p_max
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
+
   REAL(kind=dp) :: t,t_min,t_max,t_min_last
   INTEGER :: found
   t_min = 1.0d100
@@ -3871,10 +3873,10 @@ SUBROUTINE write_volume_data(n_r,n_z,n_phi,fname)
   ! and "magdata_for_particles". 
   USE mag_sub, ONLY: mag
   !! End Modifications by Andreas F. Martitsch (09.03.2014)
+  use math_constants, only : pi
+  use nrtype, only : dp
   
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
-  REAL(kind=dp), PARAMETER :: pi=3.14159265358979d0
   
   ! parameter list
   INTEGER, INTENT(in) :: n_r,n_z,n_phi
@@ -3998,8 +4000,8 @@ SUBROUTINE write_surface_data(fname)
   ! this is for christian
   ! the file produced here should be readable for you
   USE device_mod
+  use nrtype, only : dp
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
   ! parameter list
   CHARACTER(len=*), INTENT(in) :: fname

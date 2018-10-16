@@ -3,9 +3,6 @@ MODULE lapack_band
   IMPLICIT NONE
 
   PUBLIC mat2band,band2mat,gbsv,gbtrs,gesv
-  PRIVATE dp
-
-  INTEGER, PARAMETER :: DP = KIND(1.0D0)
 
   INTERFACE mat2band
      MODULE PROCEDURE mat2band_d, mat2band_i
@@ -32,7 +29,8 @@ CONTAINS
   ! converts (n x n)-Matrix into band storage
   ! band must be allocatable and is allocated inside the routine
   SUBROUTINE mat2band_d(mat,kl,ku,band)
-    
+    use nrtype, only : dp
+
     REAL(kind=dp), DIMENSION(:,:), INTENT(in)                  :: mat
     INTEGER                                                    :: kl,ku
     REAL(kind=dp), DIMENSION(:,:), INTENT(out), ALLOCATABLE    :: band
@@ -90,7 +88,8 @@ CONTAINS
   ! converts band storage into (n x n)-matrix
   ! mat must be allocatable and is allocated inside the routine
   SUBROUTINE band2mat_d(band,kl,ku,mat)
-    
+    use nrtype, only : dp
+
     REAL(kind=dp), DIMENSION(:,:), INTENT(in)                  :: band
     INTEGER                                                    :: kl,ku
     REAL(kind=dp), DIMENSION(:,:), INTENT(out), ALLOCATABLE    :: mat
@@ -233,6 +232,7 @@ CONTAINS
   ! Fortran 90 interface with b being a vector (1D)
   ! b is changed on output
   SUBROUTINE gbsv_b1(kl,ku,a,ipivot,b,info)
+    use nrtype, only : dp
 
     INTEGER, INTENT(in)                          :: kl
     INTEGER, INTENT(in)                          :: ku
@@ -265,6 +265,7 @@ CONTAINS
   ! Fortran 90 interface with b being a matrix (2D)
   ! b is changed on output
   SUBROUTINE gbsv_b2(kl,ku,a,ipivot,b,info)
+    use nrtype, only : dp
 
     INTEGER, INTENT(in)                          :: kl
     INTEGER, INTENT(in)                          :: ku
@@ -346,6 +347,7 @@ CONTAINS
 
 
   SUBROUTINE gbsv_b2_ind(kl,ku,a,ipivot,b,info,ind_s,ind_e)
+    use nrtype, only : dp
 
     INTEGER, INTENT(in)                          :: kl
     INTEGER, INTENT(in)                          :: ku
@@ -363,6 +365,7 @@ CONTAINS
   END SUBROUTINE gbsv_b2_ind
 
   SUBROUTINE gbsv_b2_ind_b(kl,ku,a,ipivot,b,info,ind_s,ind_e,meth)
+    use nrtype, only : dp
 
     INTEGER, INTENT(in)                          :: kl
     INTEGER, INTENT(in)                          :: ku
@@ -560,7 +563,8 @@ CONTAINS
   ! lu-factorization is called within the routine
   ! a and b are changed on output
   SUBROUTINE gbtrs_b1(kl,ku,a,ipivot,b,info)
-    
+    use nrtype, only : dp
+
     INTEGER, INTENT(in)                          :: kl
     INTEGER, INTENT(in)                          :: ku
     REAL(kind=dp), DIMENSION(:,:), INTENT(in)    :: a
@@ -596,6 +600,7 @@ CONTAINS
   ! lu-factorization is called within the routine
   ! a and b are changed on output
   SUBROUTINE gbtrs_b2(kl,ku,a,ipivot,b,info)
+    use nrtype, only : dp
 
     INTEGER, INTENT(in)                          :: kl
     INTEGER, INTENT(in)                          :: ku
@@ -624,6 +629,7 @@ CONTAINS
   END SUBROUTINE gbtrs_b2
 
   SUBROUTINE gbtrs_b2_ind(kl,ku,a,ipivot,b,info,ind_s,ind_e)
+    use nrtype, only : dp
 
     INTEGER, INTENT(in)                          :: kl
     INTEGER, INTENT(in)                          :: ku
@@ -640,6 +646,7 @@ CONTAINS
   END SUBROUTINE gbtrs_b2_ind
 
   SUBROUTINE gbtrs_b2_ind_b(kl,ku,a,ipivot,b,info,ind_s,ind_e,meth)
+    use nrtype, only : dp
 
     INTEGER, INTENT(in)                          :: kl
     INTEGER, INTENT(in)                          :: ku
@@ -706,6 +713,7 @@ CONTAINS
 
   ! conventional method (no band)
   SUBROUTINE gesv_b2(kl,ku,a,ipivot,b,info)
+    use nrtype, only : dp
 
     INTEGER, INTENT(in)                          :: kl
     INTEGER, INTENT(in)                          :: ku
@@ -725,6 +733,7 @@ CONTAINS
   END SUBROUTINE gesv_b2
 
   SUBROUTINE gesv_b2_ind(kl,ku,a,ipivot,b,info,ind_s,ind_e)
+    use nrtype, only : dp
 
     INTEGER, INTENT(in)                          :: kl
     INTEGER, INTENT(in)                          :: ku

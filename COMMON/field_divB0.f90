@@ -21,9 +21,11 @@ module field_c_mod
 end module field_c_mod
 !
 module field_eq_mod
+  use math_constants, only : pi
+
   integer :: icall_eq=0
   integer :: nrad,nzet,icp,nwindow_r,nwindow_z
-  real(kind=8), parameter                      :: pi=3.14159265358979d0
+
   real(kind=8) :: psib,btf,rtf,hrad,hzet
   real(kind=8), dimension(:,:), allocatable    :: psi, psi0
   real(kind=8), dimension(:,:,:), allocatable  :: splpsi
@@ -43,7 +45,7 @@ module inthecore_mod
   logical :: prop=.true.
   integer :: npoi,ijumpb,ibeg,iend
   double precision, parameter :: epssep=1.d-6
-  double precision :: rc,zc,twopi,sig,psi_sep,psi_cut,sigpsi,cutoff
+  double precision :: rc,zc,sig,psi_sep,psi_cut,sigpsi,cutoff
   double precision, dimension(:), allocatable :: rho2i,theti
   integer          :: incore
   double precision :: vacf,dvacdr,dvacdz,d2vacdr2,d2vacdrdz,d2vacdz2
@@ -521,11 +523,10 @@ subroutine field_c(rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &
 !
   use input_files
   use field_c_mod
+  use math_constants, only : pi
 !
   implicit none
-!
-  double precision, parameter :: pi=3.14159265358979d0
-!
+
   double precision :: rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &
                      ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ
   double precision :: rmin,pmin,zmin,rmax,pmax,zmax,hrm1,hpm1,hzm1
@@ -607,13 +608,9 @@ end subroutine field_c
 subroutine read_field0(rad,phi,zet,rmin,pmin,zmin,hrm1,hpm1,hzm1,Br,Bp,Bz)
 !
   use input_files
+  use math_constants, only : pi
+
   parameter(nr=64,np=37,nz=64)
-  !! Modification by Andreas F. Martitsch (16.07.2015)
-  ! previous (Warning: Change of value in conversion from REAL(8) to REAL(4))
-  !REAL, PARAMETER :: pi=3.14159265358979d0
-  ! corrected:
-  real, parameter :: pi=3.14159265358979e0
-  !! End Modification by Andreas F. Martitsch (16.07.2015)
   parameter (mp=4) ! power of Lagrange's polynomial =3
   dimension Bz(nr,np,nz)
   dimension Br(nr,np,nz),Bp(nr,np,nz)
@@ -689,11 +686,10 @@ end subroutine read_field0
 subroutine read_field1(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
 !
   use input_files
+  use math_constants, only : pi
 !
   implicit none
-!
-  double precision, parameter :: pi=3.14159265358979d0
-!
+
   integer :: nr,np,nz,i,j,k,icftype
   double precision :: rmin,pmin,zmin,rmax,pmax,zmax,xdim,zdim,zmid,dum
   double precision, dimension(nr,np,nz) :: Br,Bp,Bz
@@ -758,12 +754,13 @@ end subroutine read_field1
 !
 subroutine stretch_coords(r,z,rm,zm)
   use input_files, only : iunit,convexfile
+  use math_constants, only : pi
   implicit none
   integer icall, i, j, nrz ! number of points "convex wall" in input file
   integer, parameter :: nrzmx=100 ! possible max. of nrz
   integer, parameter :: nrhotht=360 
   integer :: iflag
-  real(kind=8), parameter :: pi = 3.14159265358979d0
+
   real(kind=8) R0,Rw, Zw, htht, Rl, Zl, a, b, r, z, rm, zm, rho, tht, rho_c, delta, dummy
   real(kind=8), dimension(0:1000):: rad_w, zet_w ! points "convex wall" 
   real(kind=8), dimension(:), allocatable :: rho_w, tht_w 
@@ -878,6 +875,7 @@ end subroutine stretch_coords
   use inthecore_mod
   use input_files,  only : iunit,fluxdatapath
   use field_eq_mod, only : psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
+  use math_constants, only : twopi
 !
   implicit none
 !
@@ -920,7 +918,7 @@ end subroutine stretch_coords
         exit
       endif
     enddo
-    twopi=8.d0*atan2(1.d0,1.d0)
+
     ri(1:npoi-1-ijumpb)=rho2i(ijumpb+1:npoi-1)
     ri(npoi-ijumpb:npoi-1)=rho2i(1:ijumpb)
     rho2i=ri
@@ -1043,11 +1041,10 @@ end subroutine stretch_coords
 subroutine read_field2(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
 !
   use input_files
+  use math_constants, only : pi
 !
   implicit none
-!
-  double precision, parameter :: pi=3.14159265358979d0
-!
+
   integer :: nr,np,nz,i,j,k,icftype
   double precision :: rmin,pmin,zmin,rmax,pmax,zmax,xdim,zdim,zmid,dum
   double precision, dimension(nr,np,nz) :: Br,Bp,Bz

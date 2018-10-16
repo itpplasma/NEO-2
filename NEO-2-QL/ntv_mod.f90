@@ -16,11 +16,7 @@ MODULE ntv_mod
   USE neo_precision
   !
   IMPLICIT NONE
-  !
-  ! Define physical constants (cgs-units)
-  REAL(kind=dp), PARAMETER, PUBLIC :: c=2.9979e10_dp       ! speed of light
-  REAL(kind=dp), PARAMETER, PUBLIC :: e=4.8032e-10_dp      ! elementary charge
-  REAL(kind=dp), PARAMETER, PUBLIC :: u=1.660539040e-24_dp ! atomic mass unit
+
   !
   ! INPUT
   ! switch: turn on(=1)/off(=0) ntv mode (not used at the moment)
@@ -457,6 +453,7 @@ CONTAINS
     USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec, collpar_spec
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -939,6 +936,7 @@ CONTAINS
          z_spec, m_spec, n_spec, T_spec, collpar_spec, isw_coul_log
     ! Output stored as HDF5-file
     USE hdf5_tools
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! local definitions:
@@ -1766,6 +1764,7 @@ CONTAINS
          compute_Gsymm, calc_thetaB_RZloc
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -2037,6 +2036,7 @@ CONTAINS
          compute_Gsymm, calc_thetaB_RZloc
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -2313,6 +2313,7 @@ CONTAINS
          boozer_curr_pol_hat_s, boozer_curr_tor_hat_s, boozer_isqrg
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -2496,6 +2497,7 @@ CONTAINS
          compute_Gsymm, calc_thetaB_RZloc, boozer_isqrg
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -2884,6 +2886,7 @@ CONTAINS
     !
     USE neo_precision
     USE collisionality_mod, ONLY : num_spec
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -2973,6 +2976,7 @@ CONTAINS
     !
     USE neo_precision, ONLY : dp
     USE collisionality_mod, ONLY : num_spec, z_spec, m_spec, T_spec
+    use math_constants, only : c, e
     !
     ! local indices
     INTEGER :: ind_spec
@@ -3003,6 +3007,7 @@ CONTAINS
          compute_Gsymm, compute_RZ
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -3258,6 +3263,7 @@ CONTAINS
          compute_Gsymm, compute_RZ
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -3519,6 +3525,7 @@ CONTAINS
     USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -3688,6 +3695,7 @@ CONTAINS
     USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -3836,6 +3844,7 @@ CONTAINS
     USE neo_precision
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -3900,6 +3909,7 @@ CONTAINS
     USE neo_precision
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -3959,6 +3969,7 @@ CONTAINS
     USE neo_precision
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -4025,6 +4036,7 @@ CONTAINS
     USE neo_precision
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -4086,6 +4098,7 @@ CONTAINS
     USE neo_precision
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -4152,6 +4165,7 @@ CONTAINS
     USE neo_precision
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
+    use math_constants, only : e
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -4218,6 +4232,7 @@ CONTAINS
     USE mag_sub, ONLY: mag
     USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : num_spec, z_spec
+    use math_constants, only : c, e
     !
     ! ---------------------------------------------------------------!
     ! input:

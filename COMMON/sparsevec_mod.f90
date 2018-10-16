@@ -4,9 +4,6 @@ module sparsevec_mod
 
   implicit none
 
-  private dp
-  integer, parameter    :: dp = kind(1.0d0)
-
   type :: sparsevec
 
      integer, dimension(:), allocatable :: idxvec

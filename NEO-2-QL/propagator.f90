@@ -74,12 +74,13 @@ MODULE propagator_mod
 
 
   USE binarysplit_mod
+  use nrtype, only : dp
 
   IMPLICIT NONE
   
   ! ---------------------------------------------------------------------------
   ! private variables
-  INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0D0)
+
   REAL(kind=dp),      PRIVATE :: time_o
   REAL(kind=dp),      PRIVATE :: time_co,time_jp,time_ja,time_jf,time_so
   REAL(kind=dp),      PRIVATE :: stime_co,stime_jp,stime_ja,stime_jf,stime_so
@@ -1642,7 +1643,7 @@ CONTAINS
             qflux,                                               &         !<-in
             ierr                                                 &
             )
-         INTEGER, PARAMETER                                        :: dp = KIND(1.0d0)
+         use nrtype, only : dp
 
          INTEGER,                                    INTENT(out)   :: npass_l
          INTEGER,                                    INTENT(out)   :: npass_r
@@ -1687,7 +1688,7 @@ CONTAINS
             qflux,                                               &         !<-in
             ierr                                                 &
             )
-         INTEGER, PARAMETER                                        :: dp = KIND(1.0d0)
+         use nrtype, only : dp
 
          INTEGER,                                    INTENT(out)   :: npass_l
          INTEGER,                                    INTENT(out)   :: npass_r
@@ -1731,7 +1732,7 @@ CONTAINS
             qflux,                                               &         !<-in
             ierr                                                 &
             )
-         INTEGER, PARAMETER                                        :: dp = KIND(1.0d0)
+         use nrtype, only : dp
 
          INTEGER,                                    INTENT(out)   :: npass_l
          INTEGER,                                    INTENT(out)   :: npass_r
@@ -1838,15 +1839,14 @@ CONTAINS
   END SUBROUTINE ripple_solver_int
 
   SUBROUTINE plot_distrf_int
-
     !! Modification by Andreas F. Martitsch (17.07.2015)
     ! interface name ambiguous
     !INTERFACE ripple_solver
     INTERFACE plot_distrf
     !! End Modification by Andreas F. Martitsch (17.07.2015)
        SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,eta_boundary_l,eta_boundary_r)
-         INTEGER, PARAMETER :: dp = KIND(1.0d0)
-         
+         use nrtype, only : dp
+
          REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE, INTENT(inout) :: source_p
          REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE, INTENT(inout) :: source_m
          REAL(kind=dp), DIMENSION(:),     ALLOCATABLE, INTENT(inout) :: eta_l
@@ -1872,7 +1872,8 @@ CONTAINS
     !
     ! Call to external program join_ripples
     USE binarysplit_mod
-    
+    use nrtype, only : dp
+
     INTEGER, INTENT(out) :: ierr
     CHARACTER(len=5), OPTIONAL, INTENT(in) :: cstat_in
     INTEGER, OPTIONAL, INTENT(in) :: deall_in

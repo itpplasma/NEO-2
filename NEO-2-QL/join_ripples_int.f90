@@ -45,9 +45,9 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
   !
   USE propagator_mod
   USE fluxsplit_mod
+  use nrtype, only : dp
 
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
   REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: eta
   INTEGER,                      INTENT(in)    :: loc
@@ -211,9 +211,9 @@ SUBROUTINE join_ripples_bsfitjoin(eta,loc)
   ! in reality two levels have to be merged (sum?)
   !
   USE propagator_mod
+  use nrtype, only : dp
 
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
   REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: eta
   INTEGER,                      INTENT(in)    :: loc
@@ -289,7 +289,6 @@ SUBROUTINE join_ripples_nn(ierr,cstat)
   USE binarysplit_mod
 
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
   INTEGER, INTENT(out) :: ierr
   CHARACTER(len=5), INTENT(in) :: cstat

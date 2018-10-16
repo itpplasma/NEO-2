@@ -41,6 +41,7 @@ SUBROUTINE ripple_solver(                                 &
   USE development
 
   use collop_compute, only: a_00_offset, a_02_offset, a_22_offset, weightenerg_offset
+  use nrtype, only : dp
   
   !*****************************
   ! HDF5
@@ -48,7 +49,6 @@ SUBROUTINE ripple_solver(                                 &
   USE hdf5_tools
   
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
   ! parameter list
   INTEGER,                                    INTENT(out)   :: npass_l

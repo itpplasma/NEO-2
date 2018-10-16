@@ -391,6 +391,7 @@ CONTAINS
   END SUBROUTINE mag_homogeneous_a
   ! ------------------------------------------------------------------------
   SUBROUTINE mag_legendre_a(x,bmod,sqrtg,bder,hcovar,hctrvr,hcurl)
+    use math_constants, only : pi
     !
     ! Computes magnetic field module in units of the magnetic code  - bmod,
     !square root of determinant of the metric tensor               - sqrtg,
@@ -415,7 +416,7 @@ CONTAINS
     !
     !  Called routines:  GBhs_l,GBRZd_l 
     !
-    DOUBLE PRECISION, PARAMETER :: phi_shift=3.14159265358979d0/6.d0
+    DOUBLE PRECISION, PARAMETER :: phi_shift=pi/6.d0
     DOUBLE PRECISION x,bmod,sqrtg,bder,hcovar,hctrvr,hcurl
     DOUBLE PRECISION hr,hf,hz
     !

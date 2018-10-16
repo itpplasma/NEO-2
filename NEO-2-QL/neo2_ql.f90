@@ -75,16 +75,18 @@ PROGRAM neo2_ql
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
 
   use global_parameters, only : init, string_to_id
+  use math_constants, only : pi
+  use nrtype, only : dp
 
   !************************************
   ! HDF5
   !************************************
   USE hdf5_tools
   USE hdf5_tools_f2003
+
   !
   IMPLICIT NONE
 
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
   INTEGER, PARAMETER :: MAXDIM = 1000
 
   LOGICAL :: opened
@@ -95,9 +97,6 @@ PROGRAM neo2_ql
   INCLUDE "version.f90"
   !**********************************************************
 
-
-
-  REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
   !**********************************************************
   ! Include version information

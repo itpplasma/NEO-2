@@ -1,5 +1,7 @@
 MODULE sparse_mod
 
+  use nrtype, only : dp, longint
+
   IMPLICIT NONE
 
   PUBLIC sparse_solve_method
@@ -9,24 +11,18 @@ MODULE sparse_mod
   !LOGICAL :: sparse_talk = .TRUE.
   LOGICAL :: sparse_talk = .FALSE.
 
-  PRIVATE dp
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
-
-  PRIVATE long
-  INTEGER, PARAMETER :: long = 8
-
   PRIVATE factorization_exists
   LOGICAL :: factorization_exists = .FALSE.
 
   !-------------------------------------------------------------------------------
   !Initialization of the parameters of Super_LU c-Routines
   PRIVATE factors 
-  INTEGER(kind=long) :: factors
+  INTEGER(kind=longint) :: factors
   !-------------------------------------------------------------------------------
 !!$  !ToDo: Please uncomment, when PARDISO is desired 
 !!$  !Initialization of the PARDISO-Solver-Routine!
 !!$  !Solver's internal data adress pointer
-!!$  INTEGER(kind=long), PRIVATE :: pt(64)
+!!$  INTEGER(kind=longint), PRIVATE :: pt(64)
 !!$  !max. number of factors with identical nonzero sparsity structure to keep in menmory
 !!$  INTEGER, PUBLIC :: maxfct=1
 !!$  !Actual matrix for the solution phase (according to maxfct), error indicator,
@@ -57,9 +53,9 @@ MODULE sparse_mod
   !-------------------------------------------------------------------------------
   !Initialization of the SuiteSparse-Solver-Routine!
   !Solver's internal data adress pointer
-  INTEGER(kind=long), PRIVATE :: symbolic, numeric
+  INTEGER(kind=longint), PRIVATE :: symbolic, numeric
   !Solves A*x=b (e.g. sys=2 -> solves (A^T)*x=b; further options manual pg. 26)
-  INTEGER(kind=long), PRIVATE :: sys=0
+  INTEGER(kind=longint), PRIVATE :: sys=0
   !default values for control pg. 22
   REAL(kind=dp), PRIVATE :: control(20), info_suitesparse(90) 
   !-------------------------------------------------------------------------------
@@ -795,7 +791,7 @@ CONTAINS
 !!$    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(in) :: val
 !!$    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: b
 !!$
-!!$    INTEGER(kind=long) :: factors
+!!$    INTEGER(kind=longint) :: factors
 !!$    INTEGER :: nrhs,ldb,n,i,info,iopt
 !!$
 !!$    n = nrow
@@ -2013,8 +2009,8 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
 
-    INTEGER(kind=long) :: n
-    INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
+    INTEGER(kind=longint) :: n
+    INTEGER(kind=longint), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: x !vector to store the solution
 
     ALLOCATE( x(SIZE(b)) )
@@ -2127,8 +2123,8 @@ CONTAINS
     INTEGER, INTENT(in) :: iopt_in
 
     INTEGER :: k
-    INTEGER(kind=long) :: n
-    INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
+    INTEGER(kind=longint) :: n
+    INTEGER(kind=longint), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: xx,xz !vector to store the solution (real and imag. part)
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: valx, valz !val of matrix (real and imag. part)
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: bx, bz !rhs (real and imag part)
@@ -2898,8 +2894,8 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
 
-    INTEGER(kind=long) :: n, i
-    INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
+    INTEGER(kind=longint) :: n, i
+    INTEGER(kind=longint), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: x !vector to store the solution
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: bloc
 
@@ -3029,8 +3025,8 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
 
-    INTEGER(kind=long) :: n, i
-    INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
+    INTEGER(kind=longint) :: n, i
+    INTEGER(kind=longint), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: xx,xz !vector to store the solution (real and imag. part)
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: valx, valz !val of matrix (real and imag. part)
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:,:) :: bx, bz !rhs (real and imag part)

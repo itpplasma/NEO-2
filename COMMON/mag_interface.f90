@@ -59,7 +59,6 @@ MODULE plagrange_mod
   USE magnetics_mod
     
   IMPLICIT NONE
-  INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0d0)
 
   PUBLIC plagrange_coeff
   PRIVATE plag_coeff
@@ -108,7 +107,8 @@ CONTAINS
     ! f=sum(fun(1:npoi)*coef(0,1:npoi) gives the function value
     ! df=sum(fun(1:npoi)*coef(1,1:npoi) gives the derivative value value
     !
-    !
+    use nrtype, only : dp
+
     INTEGER, INTENT(in)                                :: npoi,nder
     REAL(kind=dp), INTENT(in)                          :: x
     REAL(kind=dp), DIMENSION(npoi), INTENT(in)         :: xp
@@ -1209,7 +1209,7 @@ MODULE extremum_mod
   USE plagrange_mod
 
   IMPLICIT NONE
-  INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0d0)
+
   INTEGER, PARAMETER :: nlagrange = 5
 
   PUBLIC find_extremum
@@ -1223,6 +1223,8 @@ CONTAINS
   !---------------------------------------------------------------------
 
   SUBROUTINE find_ext(fieldperiod,x1i,x2i,dxi,x,y)
+    use nrtype, only : dp
+
     TYPE(fieldperiod_struct), POINTER :: fieldperiod
     REAL(kind=dp), INTENT(in)   :: x1i,x2i,dxi 
     REAL(kind=dp), INTENT(out)  :: x,y 
@@ -1340,11 +1342,10 @@ MODULE mag_interface_mod
   !  ripple_eta_magnetics
   USE magnetics_mod
   USE device_mod
+  use math_constants, only : pi
+  use nrtype, only : dp
 
   IMPLICIT NONE
-
-  ! double precision
-  INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0d0)
 
   ! public 
   INTEGER, PUBLIC       :: mag_local_sigma = 0
@@ -1415,9 +1416,6 @@ MODULE mag_interface_mod
   REAL(kind=dp), ALLOCATABLE, PRIVATE :: dlogbds(:)
   !! End Modifications by Andreas F. Martitsch (13.03.2014)
   REAL(kind=dp), ALLOCATABLE, PRIVATE :: hlp_arr(:)
-
-  ! internal constants
-  REAL(kind=dp), PARAMETER, PRIVATE :: pi=3.14159265358979_dp
 
   ! ---------------------------------------------------------------------------
   ! make the real stuff

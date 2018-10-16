@@ -4,9 +4,8 @@ SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,                         &
   USE lapack_band
   !USE rkstep_mod, ONLY : lag
   USe collisionality_mod, ONLY : nvel
-!
-  IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
+  use nrtype, only : dp
+
 
   REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE, INTENT(inout) :: source_p
   REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE, INTENT(inout) :: source_m

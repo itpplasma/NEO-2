@@ -30,7 +30,6 @@ SUBROUTINE join_ends(ierr)
   USE collisionality_mod, ONLY : isw_lorentz
 !
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 !
   INTEGER, INTENT(out) :: ierr
 !

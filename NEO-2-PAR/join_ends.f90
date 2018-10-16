@@ -36,7 +36,6 @@ SUBROUTINE join_ends(ierr)
   use collop_compute, only : phi_exp, phi_prj
 !
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 !
   INTEGER, INTENT(out) :: ierr
 !

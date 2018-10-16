@@ -23,14 +23,10 @@ MODULE neo_magfie_perturbation
   ! routine mag for the computation of bmod
   USE mag_sub, ONLY: mag
   USE mpiprovider_module
+  use nrtype, only : dpc
   !
   IMPLICIT NONE
-  !
-  ! define kind of double complex, quad, quad complex
-  PRIVATE dcp, qp, qcp
-  INTEGER, PARAMETER :: dcp=KIND((1.0_dp,1.0_dp))
-  INTEGER, PARAMETER :: qp=SELECTED_REAL_KIND(33, 4931)
-  INTEGER, PARAMETER :: qcp=KIND((1.0_qp,1.0_qp))
+
   !
   ! internal (private) storage arrays for the
   ! Fourier spectra from the input file
@@ -343,20 +339,20 @@ CONTAINS
   !
   ! Compute the perturbation field for a certain x-value
   SUBROUTINE neo_magfie_pert_a( x, bn_hat_pert )
+    use math_constants, only : imun
     !
     ! input / output
     !
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: x
-    COMPLEX(kind=dcp), INTENT(out) :: bn_hat_pert
+    COMPLEX(kind=dpc), INTENT(out) :: bn_hat_pert
     !
     ! local definitions
     !
-    COMPLEX(kind=dcp), PARAMETER :: imun=(0.0_dp,1.0_dp)
     INTEGER(i4b) :: swd
     INTEGER :: i, m, n
     REAL(kind=dp) :: yp, ypp, yppp
     REAL(kind=dp) :: bmnc_pert_val, bmns_pert_val
-    COMPLEX(kind=dcp) :: expv
+    COMPLEX(kind=dpc) :: expv
     !
     ! read Boozer file and prepare spline routines (1st call)
     !
@@ -440,21 +436,21 @@ CONTAINS
   ! Compute the perturbation field for a certain x-value and its 
   ! derivative over theta
   SUBROUTINE neo_magfie_pert_b( x, bn_hat_pert, dbn_hat_pert_dtheta )
+    use math_constants, only : imun
     !
     ! input / output
     !
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: x
-    COMPLEX(kind=dcp), INTENT(out) :: bn_hat_pert
-    COMPLEX(kind=dcp), INTENT(out) :: dbn_hat_pert_dtheta
+    COMPLEX(kind=dpc), INTENT(out) :: bn_hat_pert
+    COMPLEX(kind=dpc), INTENT(out) :: dbn_hat_pert_dtheta
     !
     ! local definitions
     !
-    COMPLEX(kind=dcp), PARAMETER :: imun=(0.0_dp,1.0_dp)
     INTEGER(i4b) :: swd
     INTEGER :: i, m, n
     REAL(kind=dp) :: yp, ypp, yppp
     REAL(kind=dp) :: bmnc_pert_val, bmns_pert_val
-    COMPLEX(kind=dcp) :: expv
+    COMPLEX(kind=dpc) :: expv
     !
     ! read Boozer file and prepare spline routines (1st call)
     !
@@ -532,18 +528,18 @@ CONTAINS
   END SUBROUTINE neo_magfie_pert_b
   !
   SUBROUTINE calc_bnoverb0_arr(phi_arr,ibeg,iend,bnoverb0_arr,dbnoverb0_dphi_arr)
+    use math_constants, only : imun
     !
     ! input / output
     !
     REAL(kind=dp), DIMENSION(ibeg:iend), INTENT(in) :: phi_arr
     INTEGER, INTENT(in) :: ibeg, iend
-    COMPLEX(kind=dcp), DIMENSION(ibeg:iend), INTENT(inout) :: bnoverb0_arr
-    COMPLEX(kind=dcp), DIMENSION(ibeg:iend), INTENT(inout) :: dbnoverb0_dphi_arr
+    COMPLEX(kind=dpc), DIMENSION(ibeg:iend), INTENT(inout) :: bnoverb0_arr
+    COMPLEX(kind=dpc), DIMENSION(ibeg:iend), INTENT(inout) :: dbnoverb0_dphi_arr
     !
     ! local definitions
     !
-    COMPLEX(kind=dcp), PARAMETER :: imun=(0.0_dp,1.0_dp)
-    COMPLEX(kind=dcp) :: bn_hat_pert, dbn_hat_pert_dtheta
+    COMPLEX(kind=dpc) :: bn_hat_pert, dbn_hat_pert_dtheta
     REAL(kind=dp) :: phi_val, theta_val, bmod, sqrtg
     REAL(kind=dp), DIMENSION(3) :: x, bder, hcovar, hctrvr
     REAL(kind=dp), DIMENSION(3,3) :: hcoder,hctder
@@ -569,20 +565,21 @@ CONTAINS
   END SUBROUTINE calc_bnoverb0_arr
   !
   SUBROUTINE calc_ntv_output(phi_arr,bhat_arr,bnoverb0_arr,ibeg,iend,eps_M_2,av_inv_bhat,av_gphph)
+    use math_constants, only : imun
     !
     ! input / output
     !
     REAL(kind=dp), DIMENSION(ibeg:iend), INTENT(in) :: phi_arr, bhat_arr
-    COMPLEX(kind=dcp), DIMENSION(ibeg:iend), INTENT(in) :: bnoverb0_arr
+    COMPLEX(kind=dpc), DIMENSION(ibeg:iend), INTENT(in) :: bnoverb0_arr
     INTEGER, INTENT(in) :: ibeg, iend
     REAL(kind=dp), INTENT(out) :: eps_M_2, av_gphph, av_inv_bhat
-    !
+    !imun
     ! local definitions
     !
     INTEGER :: k
     REAL(kind=dp) :: bnoverb0_k, bnoverb0_kp1
     REAL(kind=dp), DIMENSION(3) :: x
-    COMPLEX(kind=dcp), PARAMETER :: imun=(0.0_dp,1.0_dp)
+
     !
     ! compute $\bar{1/\hat{B}}$
     av_inv_bhat=0.0_dp

@@ -346,19 +346,6 @@ MODULE neo_van_exchange
   REAL(kind=dp)                            :: theta_fac, phi_fac
 END MODULE neo_van_exchange
 
-MODULE neo_conversion
-  USE neo_precision
-  REAL(kind=dp), PARAMETER                 :: mc_o_e        = 5.6856793d-8 ! cgs
-  REAL(kind=dp), PARAMETER                 :: mc_o_2e       = 2.8428397d-8 ! cgs
-  REAL(kind=dp), PARAMETER                 :: e_o_mc        = 1.7588048d7  ! cgs
-  REAL(kind=dp), PARAMETER                 :: b_convfac     = 1.0d4  ! SI to cgs
-  REAL(kind=dp), PARAMETER                 :: i_convfac     = 1.0d6  ! SI to cgs
-  REAL(kind=dp), PARAMETER                 :: sqg11_convfac = 1.0d6  ! SI to cgs
-  REAL(kind=dp), PARAMETER                 :: len_convfac   = 1.0d2  ! SI to cgs
-  REAL(kind=dp), PARAMETER                 :: te_to_vte     = 4.19d7 ! ev to cm/s
-  
-END MODULE neo_conversion
-
 MODULE neo_support
   USE neo_precision
 

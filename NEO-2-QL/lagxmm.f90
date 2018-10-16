@@ -3,6 +3,7 @@
   SUBROUTINE pollag(n,coeflag)
 !
 ! Computes coefficients of Laguerre polynomials of orders from 0 to n
+    use math_constants, only : pi
 
 !
 ! Input parameters:
@@ -15,7 +16,6 @@
 !
   INTEGER :: n,i,j,k
 !
-  DOUBLE PRECISION, PARAMETER  :: pi=3.14159265358979d0
   DOUBLE PRECISION :: bincoef,hm
   DOUBLE PRECISION, DIMENSION(0:n,0:n) :: coeflag
 !
@@ -45,10 +45,11 @@
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
   subroutine lagxmm(lag,x1mm,x2mm)
+    use math_constants, only : pi
 !
   implicit none
 !
-  double precision, parameter :: pi=3.14159265358979d0
+
 !
   integer :: lag,m,mm,k,kk
   double precision :: cnorm

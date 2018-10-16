@@ -12,13 +12,10 @@ MODULE pspline_routines_mod
   !
   USE EZspline_obj
   USE EZspline
+  use nrtype, only : dp
   !
   IMPLICIT NONE
-  !
-  ! This is the definition of double precision numbers in PSPLINE
-  ! (Note: This has the same kind as dp [dp=kind(1.0d0)])
-  INTEGER, PARAMETER :: r8 = SELECTED_REAL_KIND(12,100)
-  !
+
   public cub1d_pspline_0
   private cub1d_pspline_0_sca, cub1d_pspline_0_vec
   interface cub1d_pspline_0
@@ -57,12 +54,12 @@ CONTAINS
     ! Function cub1d_pspline_0_sca interpolates a given set of data (xd,yd) by
     ! a cubic spline at position x (scalar)
     !
-    REAL(r8), DIMENSION(:) :: xd,yd
-    REAL(r8) :: x
-    REAL(r8) :: cub1d_pspline_0_sca
+    REAL(dp), DIMENSION(:) :: xd,yd
+    REAL(dp) :: x
+    REAL(dp) :: cub1d_pspline_0_sca
     INTEGER :: isw
     !
-    TYPE(EZspline1_r8) :: spl
+    TYPE(EZspline1_dp) :: spl
     INTEGER :: nmax, ier, bcs1(2)
     !
     nmax=SIZE(xd,1)
@@ -90,8 +87,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_0_sca'
-          spl%bcval1min = 1.0_r8 ! value of the 1st derivative
-          spl%bcval1max = 1.0_r8 ! at the boundary
+          spl%bcval1min = 1.0_dp ! value of the 1st derivative
+          spl%bcval1max = 1.0_dp ! at the boundary
        CASE(4)
           bcs1 = (/ 2, 2/) ! fix 2nd derivative
           ! Initialize the spline routine
@@ -99,8 +96,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_0_sca'
-          spl%bcval1min = 0.0_r8 ! value of the 2nd derivative at the boundary
-          spl%bcval1max = 0.0_r8 ! (if zero, natural boundary condition)
+          spl%bcval1min = 0.0_dp ! value of the 2nd derivative at the boundary
+          spl%bcval1max = 0.0_dp ! (if zero, natural boundary condition)
        CASE default
           STOP '**ERROR** in cub1d_pspline_0_sca'
     END SELECT
@@ -137,12 +134,12 @@ CONTAINS
     ! Function cub1d_pspline_0_vec interpolates a given set of data (xd,yd) by
     ! a cubic spline at position x (vector)
     !
-    REAL(r8), DIMENSION(:) :: xd,yd
-    REAL(r8), DIMENSION(:) :: x
-    REAL(r8), DIMENSION(SIZE(x,1)) :: cub1d_pspline_0_vec
+    REAL(dp), DIMENSION(:) :: xd,yd
+    REAL(dp), DIMENSION(:) :: x
+    REAL(dp), DIMENSION(SIZE(x,1)) :: cub1d_pspline_0_vec
     INTEGER :: isw
     !
-    TYPE(EZspline1_r8) :: spl
+    TYPE(EZspline1_dp) :: spl
     INTEGER :: nmax, num_x, ier, bcs1(2)
     !
     nmax=SIZE(xd,1)
@@ -171,8 +168,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline__vec'
-          spl%bcval1min = 1.0_r8 ! value of the 1st derivative
-          spl%bcval1max = 1.0_r8 ! at the boundary
+          spl%bcval1min = 1.0_dp ! value of the 1st derivative
+          spl%bcval1max = 1.0_dp ! at the boundary
        CASE(4)
           bcs1 = (/ 2, 2/) ! fix 2nd derivative
           ! Initialize the spline routine
@@ -180,8 +177,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_0_vec'
-          spl%bcval1min = 0.0_r8 ! value of the 2nd derivative at the boundary
-          spl%bcval1max = 0.0_r8 ! (if zero, natural boundary condition)
+          spl%bcval1min = 0.0_dp ! value of the 2nd derivative at the boundary
+          spl%bcval1max = 0.0_dp ! (if zero, natural boundary condition)
        CASE default
           STOP '**ERROR** in cub1d_pspline_0_vec'
     END SELECT
@@ -218,12 +215,12 @@ CONTAINS
     ! Function cub1d_pspline_1_sca interpolates a given set of data (xd,yd) by
     ! a cubic spline and evaluates the derivative at position x (scalar)
     !
-    REAL(r8), DIMENSION(:) :: xd,yd
-    REAL(r8) :: x
-    REAL(r8) :: cub1d_pspline_1_sca
+    REAL(dp), DIMENSION(:) :: xd,yd
+    REAL(dp) :: x
+    REAL(dp) :: cub1d_pspline_1_sca
     INTEGER :: isw
     !
-    TYPE(EZspline1_r8) :: spl
+    TYPE(EZspline1_dp) :: spl
     INTEGER :: nmax, ier, bcs1(2)
     !
     nmax=SIZE(xd,1)
@@ -251,8 +248,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_1_sca'
-          spl%bcval1min = 1.0_r8 ! value of the 1st derivative
-          spl%bcval1max = 1.0_r8 ! at the boundary
+          spl%bcval1min = 1.0_dp ! value of the 1st derivative
+          spl%bcval1max = 1.0_dp ! at the boundary
        CASE(4)
           bcs1 = (/ 2, 2/) ! fix 2nd derivative
           ! Initialize the spline routine
@@ -260,8 +257,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_1_sca'
-          spl%bcval1min = 0.0_r8 ! value of the 2nd derivative at the boundary
-          spl%bcval1max = 0.0_r8 ! (if zero, natural boundary condition)
+          spl%bcval1min = 0.0_dp ! value of the 2nd derivative at the boundary
+          spl%bcval1max = 0.0_dp ! (if zero, natural boundary condition)
        CASE default
           STOP '**ERROR** in cub1d_pspline_1_sca'
     END SELECT
@@ -298,12 +295,12 @@ CONTAINS
     ! Function cub1d_pspline_1_vec interpolates a given set of data (xd,yd) by
     ! a cubic spline and evaluates the derivative at position x (vector)
     !
-    REAL(r8), DIMENSION(:) :: xd,yd
-    REAL(r8), DIMENSION(:) :: x
-    REAL(r8), DIMENSION(SIZE(x,1)) :: cub1d_pspline_1_vec
+    REAL(dp), DIMENSION(:) :: xd,yd
+    REAL(dp), DIMENSION(:) :: x
+    REAL(dp), DIMENSION(SIZE(x,1)) :: cub1d_pspline_1_vec
     INTEGER :: isw
     !
-    TYPE(EZspline1_r8) :: spl
+    TYPE(EZspline1_dp) :: spl
     INTEGER :: nmax, num_x, ier, bcs1(2)
     !
     nmax=SIZE(xd,1)
@@ -332,8 +329,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_1_vec'
-          spl%bcval1min = 1.0_r8 ! value of the 1st derivative
-          spl%bcval1max = 1.0_r8 ! at the boundary
+          spl%bcval1min = 1.0_dp ! value of the 1st derivative
+          spl%bcval1max = 1.0_dp ! at the boundary
        CASE(4)
           bcs1 = (/ 2, 2/) ! fix 2nd derivative
           ! Initialize the spline routine
@@ -341,8 +338,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_1_vec'
-          spl%bcval1min = 0.0_r8 ! value of the 2nd derivative at the boundary
-          spl%bcval1max = 0.0_r8 ! (if zero, natural boundary condition)
+          spl%bcval1min = 0.0_dp ! value of the 2nd derivative at the boundary
+          spl%bcval1max = 0.0_dp ! (if zero, natural boundary condition)
        CASE default
           STOP '**ERROR** in cub1d_pspline_1_vec'
     END SELECT
@@ -379,12 +376,12 @@ CONTAINS
     ! Function cub1d_pspline_2_sca interpolates a given set of data (xd,yd) by
     ! a cubic spline and evaluates the 2nd derivative at position x (scalar)
     !
-    REAL(r8), DIMENSION(:) :: xd,yd
-    REAL(r8) :: x
-    REAL(r8) :: cub1d_pspline_2_sca
+    REAL(dp), DIMENSION(:) :: xd,yd
+    REAL(dp) :: x
+    REAL(dp) :: cub1d_pspline_2_sca
     INTEGER :: isw
     !
-    TYPE(EZspline1_r8) :: spl
+    TYPE(EZspline1_dp) :: spl
     INTEGER :: nmax, ier, bcs1(2)
     !
     nmax=SIZE(xd,1)
@@ -412,8 +409,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_2_sca'
-          spl%bcval1min = 1.0_r8 ! value of the 1st derivative
-          spl%bcval1max = 1.0_r8 ! at the boundary
+          spl%bcval1min = 1.0_dp ! value of the 1st derivative
+          spl%bcval1max = 1.0_dp ! at the boundary
        CASE(4)
           bcs1 = (/ 2, 2/) ! fix 2nd derivative
           ! Initialize the spline routine
@@ -421,8 +418,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_2_sca'
-          spl%bcval1min = 0.0_r8 ! value of the 2nd derivative at the boundary
-          spl%bcval1max = 0.0_r8 ! (if zero, natural boundary condition)
+          spl%bcval1min = 0.0_dp ! value of the 2nd derivative at the boundary
+          spl%bcval1max = 0.0_dp ! (if zero, natural boundary condition)
        CASE default
           STOP '**ERROR** in cub1d_pspline_2_sca'
     END SELECT
@@ -459,12 +456,12 @@ CONTAINS
     ! Function cub1d_pspline_2_vec interpolates a given set of data (xd,yd) by
     ! a cubic spline and evaluates the 2nd derivative at position x (vector)
     !
-    REAL(r8), DIMENSION(:) :: xd,yd
-    REAL(r8), DIMENSION(:) :: x
-    REAL(r8), DIMENSION(SIZE(x,1)) :: cub1d_pspline_2_vec
+    REAL(dp), DIMENSION(:) :: xd,yd
+    REAL(dp), DIMENSION(:) :: x
+    REAL(dp), DIMENSION(SIZE(x,1)) :: cub1d_pspline_2_vec
     INTEGER :: isw
     !
-    TYPE(EZspline1_r8) :: spl
+    TYPE(EZspline1_dp) :: spl
     INTEGER :: nmax, num_x, ier, bcs1(2)
     !
     nmax=SIZE(xd,1)
@@ -493,8 +490,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_2_vec'
-          spl%bcval1min = 1.0_r8 ! value of the 1st derivative
-          spl%bcval1max = 1.0_r8 ! at the boundary
+          spl%bcval1min = 1.0_dp ! value of the 1st derivative
+          spl%bcval1max = 1.0_dp ! at the boundary
        CASE(4)
           bcs1 = (/ 2, 2/) ! fix 2nd derivative
           ! Initialize the spline routine
@@ -502,8 +499,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_2_vec'
-          spl%bcval1min = 0.0_r8 ! value of the 2nd derivative at the boundary
-          spl%bcval1max = 0.0_r8 ! (if zero, natural boundary condition)
+          spl%bcval1min = 0.0_dp ! value of the 2nd derivative at the boundary
+          spl%bcval1max = 0.0_dp ! (if zero, natural boundary condition)
        CASE default
           STOP '**ERROR** in cub1d_pspline_2_vec'
     END SELECT
@@ -540,12 +537,12 @@ CONTAINS
     ! Function cub1d_pspline_allder1_sca interpolates a given set of data (xd,yd) by
     ! a cubic spline, and computes the value and its derivative at position x (scalar)
     !
-    REAL(r8), DIMENSION(:) :: xd,yd
-    REAL(r8) :: x
-    REAL(r8), DIMENSION(2) :: cub1d_pspline_allder1_sca
+    REAL(dp), DIMENSION(:) :: xd,yd
+    REAL(dp) :: x
+    REAL(dp), DIMENSION(2) :: cub1d_pspline_allder1_sca
     INTEGER :: isw
     !
-    TYPE(EZspline1_r8) :: spl
+    TYPE(EZspline1_dp) :: spl
     INTEGER :: nmax, ier, bcs1(2)
     !
     nmax=SIZE(xd,1)
@@ -573,8 +570,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder1_sca'
-          spl%bcval1min = 1.0_r8 ! value of the 1st derivative
-          spl%bcval1max = 1.0_r8 ! at the boundary
+          spl%bcval1min = 1.0_dp ! value of the 1st derivative
+          spl%bcval1max = 1.0_dp ! at the boundary
        CASE(4)
           bcs1 = (/ 2, 2/) ! fix 2nd derivative
           ! Initialize the spline routine
@@ -582,8 +579,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder1_sca'
-          spl%bcval1min = 0.0_r8 ! value of the 2nd derivative at the boundary
-          spl%bcval1max = 0.0_r8 ! (if zero, natural boundary condition)
+          spl%bcval1min = 0.0_dp ! value of the 2nd derivative at the boundary
+          spl%bcval1max = 0.0_dp ! (if zero, natural boundary condition)
        CASE default
           STOP '**ERROR** in cub1d_pspline_allder1_sca'
     END SELECT
@@ -624,12 +621,12 @@ CONTAINS
     ! Function cub1d_pspline_allder1_vec interpolates a given set of data (xd,yd) by
     ! a cubic spline, and computes the value and its derivative at position x (vector)
     !
-    REAL(r8), DIMENSION(:) :: xd,yd
-    REAL(r8), DIMENSION(:) :: x
-    REAL(r8), DIMENSION(2,SIZE(x,1)) :: cub1d_pspline_allder1_vec
+    REAL(dp), DIMENSION(:) :: xd,yd
+    REAL(dp), DIMENSION(:) :: x
+    REAL(dp), DIMENSION(2,SIZE(x,1)) :: cub1d_pspline_allder1_vec
     INTEGER :: isw
     !
-    TYPE(EZspline1_r8) :: spl
+    TYPE(EZspline1_dp) :: spl
     INTEGER :: nmax, num_x, ier, bcs1(2)
     !
     nmax=SIZE(xd,1)
@@ -658,8 +655,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder1_vec'
-          spl%bcval1min = 1.0_r8 ! value of the 1st derivative
-          spl%bcval1max = 1.0_r8 ! at the boundary
+          spl%bcval1min = 1.0_dp ! value of the 1st derivative
+          spl%bcval1max = 1.0_dp ! at the boundary
        CASE(4)
           bcs1 = (/ 2, 2/) ! fix 2nd derivative
           ! Initialize the spline routine
@@ -667,8 +664,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder1_vec'
-          spl%bcval1min = 0.0_r8 ! value of the 2nd derivative at the boundary
-          spl%bcval1max = 0.0_r8 ! (if zero, natural boundary condition)
+          spl%bcval1min = 0.0_dp ! value of the 2nd derivative at the boundary
+          spl%bcval1max = 0.0_dp ! (if zero, natural boundary condition)
        CASE default
           STOP '**ERROR** in cub1d_pspline_allder1_vec'
     END SELECT
@@ -710,12 +707,12 @@ CONTAINS
     ! a cubic spline, and computes the value, the derivative and the
     ! second derivative at position x (scalar)
     !
-    REAL(r8), DIMENSION(:) :: xd,yd
-    REAL(r8) :: x
-    REAL(r8), DIMENSION(3) :: cub1d_pspline_allder2_sca
+    REAL(dp), DIMENSION(:) :: xd,yd
+    REAL(dp) :: x
+    REAL(dp), DIMENSION(3) :: cub1d_pspline_allder2_sca
     INTEGER :: isw
     !
-    TYPE(EZspline1_r8) :: spl
+    TYPE(EZspline1_dp) :: spl
     INTEGER :: nmax, ier, bcs1(2)
     !
     nmax=SIZE(xd,1)
@@ -743,8 +740,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder2_sca'
-          spl%bcval1min = 1.0_r8 ! value of the 1st derivative
-          spl%bcval1max = 1.0_r8 ! at the boundary
+          spl%bcval1min = 1.0_dp ! value of the 1st derivative
+          spl%bcval1max = 1.0_dp ! at the boundary
        CASE(4)
           bcs1 = (/ 2, 2/) ! fix 2nd derivative
           ! Initialize the spline routine
@@ -752,8 +749,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder2_sca'
-          spl%bcval1min = 0.0_r8 ! value of the 2nd derivative at the boundary
-          spl%bcval1max = 0.0_r8 ! (if zero, natural boundary condition)
+          spl%bcval1min = 0.0_dp ! value of the 2nd derivative at the boundary
+          spl%bcval1max = 0.0_dp ! (if zero, natural boundary condition)
        CASE default
           STOP '**ERROR** in cub1d_pspline_allder2_sca'
     END SELECT
@@ -799,12 +796,12 @@ CONTAINS
     ! a cubic spline, and computes the value, the derivative and the
     ! second derivative at position x (vector)
     !
-    REAL(r8), DIMENSION(:) :: xd,yd
-    REAL(r8), DIMENSION(:) :: x
-    REAL(r8), DIMENSION(3,SIZE(x,1)) :: cub1d_pspline_allder2_vec
+    REAL(dp), DIMENSION(:) :: xd,yd
+    REAL(dp), DIMENSION(:) :: x
+    REAL(dp), DIMENSION(3,SIZE(x,1)) :: cub1d_pspline_allder2_vec
     INTEGER :: isw
     !
-    TYPE(EZspline1_r8) :: spl
+    TYPE(EZspline1_dp) :: spl
     INTEGER :: nmax, num_x, ier, bcs1(2)
     !
     nmax=SIZE(xd,1)
@@ -833,8 +830,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder2_vec'
-          spl%bcval1min = 1.0_r8 ! value of the 1st derivative
-          spl%bcval1max = 1.0_r8 ! at the boundary
+          spl%bcval1min = 1.0_dp ! value of the 1st derivative
+          spl%bcval1max = 1.0_dp ! at the boundary
        CASE(4)
           bcs1 = (/ 2, 2/) ! fix 2nd derivative
           ! Initialize the spline routine
@@ -842,8 +839,8 @@ CONTAINS
           CALL EZspline_init(spl, nmax, bcs1, ier)
           CALL EZspline_error(ier)
           IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder2_vec'
-          spl%bcval1min = 0.0_r8 ! value of the 2nd derivative at the boundary
-          spl%bcval1max = 0.0_r8 ! (if zero, natural boundary condition)
+          spl%bcval1min = 0.0_dp ! value of the 2nd derivative at the boundary
+          spl%bcval1max = 0.0_dp ! (if zero, natural boundary condition)
        CASE default
           STOP '**ERROR** in cub1d_pspline_allder2_vec'
     END SELECT

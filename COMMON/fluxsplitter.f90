@@ -4,9 +4,6 @@ MODULE fluxsplit_mod
 !
   IMPLICIT NONE
 
-  ! private variables
-  INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0D0)
-
   PUBLIC fluxsplitter
   INTERFACE fluxsplitter
      MODULE PROCEDURE fluxsplitter
@@ -51,7 +48,9 @@ CONTAINS
     !          Formal: splitmatrix - splitting matrix
     !                  ierr        - error code (0 - normal work)
     !
-    !
+
+    use nrtype, only : dp
+
     INTEGER, INTENT(in)                     :: mode,ishift
     INTEGER, INTENT(out)                    :: ierr
     REAL(kind=dp), INTENT(in)               :: wsplit

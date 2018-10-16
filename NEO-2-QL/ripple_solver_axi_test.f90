@@ -69,7 +69,6 @@ SUBROUTINE ripple_solver(                                 &
   !! End Modification by Andreas F. Martitsch (28.07.2015)
   
   IMPLICIT NONE
-  !INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
   ! parameter list
   INTEGER,                                    INTENT(out)   :: npass_l

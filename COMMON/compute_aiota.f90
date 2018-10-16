@@ -183,11 +183,10 @@
   use field_eq_mod, only : icall_eq,rtf,btf,nrad,nzet,rad,zet             &
                          , psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
   use field_c_mod,  only : icall_c
+    use math_constants, only : pi
 !
   implicit none
-!
-  double precision, parameter :: pi=3.14159265358979d0
-!
+
   integer :: ndim,ndimc,nstep,nmap,ntotstep,niter,iter,i,j,ind,m,n,i1
   integer :: nsurf,isurf,nsurfmax,ndim_fc,ntheta,nsqpsi,nsubstep
   integer :: k1,k2,k3,k4,numbig,npoisep,nlabel,k,ierr

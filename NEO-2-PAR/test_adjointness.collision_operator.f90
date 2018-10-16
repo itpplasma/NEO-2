@@ -41,12 +41,12 @@ MODULE collop
   !  collop_file_nu_ginf
   !  collop_file_D
   !  collop_file_I
+  use nrtype, only : dp
 
   IMPLICIT NONE
   
   ! ---------------------------------------------------------------------------
   ! private parameters
-  INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0d0)
   INTEGER, PARAMETER, PRIVATE :: dummy_read = 20
   
   ! ---------------------------------------------------------------------------
@@ -487,11 +487,11 @@ CONTAINS
   END SUBROUTINE check_unit_1
 !
   SUBROUTINE collop_load_all
-    !
+    use math_constants, only : pi
     USE rkstep_mod, ONLY : lag,leg,asource,anumm,denmm,ailmm,weightlag
     !
     integer, parameter       :: isw_adjoint=1
-    REAL(kind=dp), PARAMETER :: pi=3.14159265358979d0
+
     integer                  :: l 
 !
     IF(collop_A_m_min.NE.0    .OR.                                          &

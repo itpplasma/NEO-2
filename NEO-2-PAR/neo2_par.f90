@@ -62,6 +62,7 @@ PROGRAM neo2_par
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
 
   use global_parameters, only : init, string_to_id
+  use nrtype, only : dp
 
   !************************************
   ! HDF5
@@ -70,8 +71,6 @@ PROGRAM neo2_par
   USE hdf5_tools_f2003
 
   IMPLICIT NONE
-
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
   LOGICAL :: opened
 
@@ -107,8 +106,6 @@ PROGRAM neo2_par
   REAL(kind=dp)   :: cg0_2_avg, cg2_2_avg
   REAL(kind=dp)   :: cg0_3_avg, cg2_3_avg
   !**********************************************************
-
-  REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
   REAL(kind=dp) :: rbeg,zbeg
   REAL(kind=dp) :: phimi

@@ -27,7 +27,6 @@ SUBROUTINE join_ripples(ierr)
 USE development
 !
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 !
   INTEGER, INTENT(out) :: ierr
 !
@@ -449,9 +448,9 @@ SUBROUTINE duplicate_ripple(nvel,ndim,ndim1,npass_l,npass_r,                   &
 !
   USE lapack_band
   USE collisionality_mod, ONLY : isw_lorentz
+  use nrtype, only : dp
 !
   IMPLICIT NONE
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 !
   INTEGER, INTENT(out) :: ierr
 !
@@ -704,7 +703,6 @@ END SUBROUTINE duplicate_ripple
 !!$  USE collisionality_mod, ONLY : isw_lorentz
 !!$!
 !!$  IMPLICIT NONE
-!!$  INTEGER, PARAMETER :: dp = KIND(1.0d0)
 !!$!
 !!$  INTEGER, INTENT(out) :: ierr
 !!$!

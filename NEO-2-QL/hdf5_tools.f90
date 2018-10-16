@@ -9,16 +9,16 @@ module hdf5_tools
   !**********************************************************
   use hdf5
   use h5lt
+  use nrtype, only : dp
+
   implicit none
 
   !**********************************************************
   ! Definition of complex type
   !**********************************************************
-  integer, parameter :: dpp = kind(1.0d0)
-  integer, parameter :: dcp=kind(complex(1.0_dpp,1.0_dpp))
   type complex_t
-     real(kind=dpp) re  
-     real(kind=dpp) im
+     real(kind=dp) re
+     real(kind=dp) im
   end type complex_t
   
   !**********************************************************
@@ -1033,9 +1033,11 @@ contains
   ! Add 2-dim complex double matrix
   !**********************************************************
   subroutine h5_add_complex_2(h5id, dataset, value, lbounds, ubounds, comment, unit)
+    use nrtype, only : dpc
+
     integer(HID_T)                              :: h5id
     character(len=*)                            :: dataset
-    complex(kind=dcp), dimension(:,:)           :: value
+    complex(kind=dpc), dimension(:,:)           :: value
     integer, dimension(:)                       :: lbounds, ubounds
     character(len=*), optional                  :: comment
     character(len=*), optional                  :: unit
