@@ -33,7 +33,7 @@ contains
   end subroutine init
 
   function string_to_id(str) result(res)
-    character(len=DEFAULT_STRING_LENGTH), intent(in) :: str
+    character(len=*), intent(in) :: str
 
     integer :: res
 
