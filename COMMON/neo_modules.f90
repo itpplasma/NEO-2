@@ -195,7 +195,7 @@ END MODULE neo_spline
 
 MODULE neo_control
 ! Control parameters from input file
-  use nrtype, only : dp
+  use nrtype, only : dp, input_array_size
   CHARACTER(20)                      :: in_file
   INTEGER                            :: theta_n
   INTEGER                            :: phi_n
@@ -213,7 +213,7 @@ MODULE neo_control
   INTEGER                            :: g11_swi
   INTEGER                            :: eval_mode
   INTEGER                            :: no_fluxs, no_fluxs_s
-  INTEGER, DIMENSION(:), ALLOCATABLE :: fluxs_arr
+  INTEGER, DIMENSION(input_array_size) :: fluxs_arr
 END MODULE neo_control
 
 MODULE neo_units
@@ -324,13 +324,13 @@ MODULE partpa_pla
 END MODULE partpa_pla
 
 MODULE neo_van
-  use nrtype, only : dp
+  use nrtype, only : dp, input_array_size
   REAL(kind=dp)                            :: v_phi0, v_theta0
   REAL(kind=dp)                            :: bmin_tol
   INTEGER                                  :: v_nper, v_steps
   INTEGER                                  :: v_num_mm
   INTEGER                                  :: no_minima
-  INTEGER,  DIMENSION(:), ALLOCATABLE      :: li_minima
+  INTEGER,  DIMENSION(input_array_size)    :: li_minima
   INTEGER                                  :: no_gamma
   INTEGER                                  :: tau_num
   INTEGER                                  :: tau_max_iter

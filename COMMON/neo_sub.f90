@@ -765,146 +765,70 @@ SUBROUTINE neo_read_control
 ! Local definitions
 !***********************************************************************
   IMPLICIT NONE
-  CHARACTER(1)          :: dummy
-  INTEGER               :: i,n,stat
-  INTEGER, DIMENSION(3) :: iarr
+
+  integer :: i,n ! loop/count variables
+  integer :: ios ! input/output status
+  integer, dimension(3) :: iarr ! Help array, used in some cases to temporaly store some information.
+
+  namelist /neoin/                                                     &
+       acc_req, alpha_cur, bmin_tol, calc_cur, calc_eps, calc_fourier, &
+       calc_nstep_max, calc_pla, calc_van, chk_swi, cutoff_cur_int,    &
+       delta_cur_fac, eout_swi, eval_mode, fluxs_arr, fluxs_interp,    &
+       g11_swi, gamma_eps, in_file, inp_swi, lab_swi, lambda_alpha,    &
+       lambda_fac, lamup_pla, li_minima, max_m_mode, max_n_mode,       &
+       multra, no_bins, no_fluxs, no_gamma, no_minima, npart,          &
+       npart_cur, npart_pla, nstep_max, nstep_min, nstep_per,          &
+       nufac_pla, phi_eps, phi_n, ref_swi, s_end, s_num, spline_test,  &
+       s_start, tau_max_iter, tau_num, temp_e, theta_n, v_num_mm,      &
+       v_nper, v_phi0, v_steps, v_theta0, write_cur_disp,              &
+       write_cur_inte, write_diagnostic, write_integrate,              &
+       write_output_files, write_pla_inte, write_progress
+
 !***********************************************************************
 ! Open input-unit and read data
 !***********************************************************************
-  OPEN(unit=r_u1,file='neo.in',status='old',form='formatted')
-  READ (r_u1,*) dummy
-  READ (r_u1,*) dummy
-  READ (r_u1,*) dummy
-  READ (r_u1,*) in_file
+  OPEN(unit=r_u1,file='neo2.in',status='old',form='formatted')
 
-  READ (r_u1,*) fluxs_interp
-  READ (r_u1,*) no_fluxs
-  IF (fluxs_interp .EQ. 0) THEN
-     IF (no_fluxs .EQ. 0) THEN
-        READ (r_u1,*) dummy
-     ELSE IF (no_fluxs .LT. 0) THEN
-        READ (r_u1,*) iarr
-        no_fluxs = (iarr(2)-iarr(1))/iarr(3) + 1
-        ALLOCATE ( fluxs_arr(no_fluxs) )
-        n = 0
-        DO i = iarr(1),iarr(2),iarr(3)
-           n = n + 1
-           fluxs_arr(n) = i
-        END DO
-     ELSE
-        ALLOCATE ( fluxs_arr(no_fluxs) )
-        READ (r_u1,*,iostat=stat) fluxs_arr
-        IF (stat .NE. 0) THEN
-           WRITE(w_us,*) 'FATAL: Not enough flux surfaces in the input file!'
-           STOP
-        END IF
-     END IF
-     no_fluxs_s = no_fluxs
-     READ (r_u1,*) dummy
-     READ (r_u1,*) dummy
-     READ (r_u1,*) dummy
-  ELSE
-     READ (r_u1,*) dummy
-     READ (r_u1,*) s_start
-     READ (r_u1,*) s_end
-     READ (r_u1,*) s_num
-     ALLOCATE ( fluxs_arr(s_num) )
+  read(r_u1, nml=neoin, iostat=ios)
+  if (ios .NE. 0) then
+    write(*,*)
+    write(*,*) 'WARNING: group neoin in neo2.in cannot be READ!'
+    write(*,*)
+  end if
+
+  if (fluxs_interp .EQ. 0) then
+    if (no_fluxs .LT. 0) then
+      iarr = fluxs_arr(1:3)
+      no_fluxs = (iarr(2)-iarr(1))/iarr(3) + 1
+      n = 0
+      do i = iarr(1),iarr(2),iarr(3)
+        n = n + 1
+        fluxs_arr(n) = i
+      end do
+    end if
+  else
      n = 1000
-     DO i = 1,s_num
+     do i = 1,s_num
         n = n + 1
         fluxs_arr(i) = n
-     END DO
+     end do
      no_fluxs = s_num
-  END IF
+  end if
   no_fluxs_s = no_fluxs
 
-  READ (r_u1,*) theta_n
-  READ (r_u1,*) phi_n
-  READ (r_u1,*) max_m_mode
-  READ (r_u1,*) max_n_mode
-  READ (r_u1,*) calc_eps
-  READ (r_u1,*) npart
-  READ (r_u1,*) multra
-  READ (r_u1,*) acc_req
-  READ (r_u1,*) no_bins
-  READ (r_u1,*) nstep_per
-  READ (r_u1,*) nstep_min
-  READ (r_u1,*) nstep_max
-  READ (r_u1,*) calc_nstep_max
-  READ (r_u1,*) eout_swi
-  READ (r_u1,*) lab_swi
-  READ (r_u1,*) inp_swi
-  READ (r_u1,*) g11_swi
-  READ (r_u1,*) ref_swi
-  READ (r_u1,*) eval_mode
-  READ (r_u1,*) write_progress
-  READ (r_u1,*) write_output_files
-  READ (r_u1,*) spline_test
-  READ (r_u1,*) write_integrate
-  READ (r_u1,*) write_diagnostic
-  READ (r_u1,*) calc_fourier
-  READ (r_u1,*) chk_swi
-  READ (r_u1,*) dummy
-  READ (r_u1,*) dummy
-  READ (r_u1,*) dummy
-  READ (r_u1,*) calc_cur
-  READ (r_u1,*) npart_cur
-  READ (r_u1,*) delta_cur_fac
-  READ (r_u1,*) cutoff_cur_int
-  READ (r_u1,*) alpha_cur
-  READ (r_u1,*) write_cur_inte
-  READ (r_u1,*) write_cur_disp
-  READ (r_u1,*) dummy
-  READ (r_u1,*) dummy
-  READ (r_u1,*) dummy
-  READ (r_u1,*) calc_pla
-  READ (r_u1,*) npart_pla
-  READ (r_u1,*) lamup_pla
-  READ (r_u1,*) lambda_alpha
-  READ (r_u1,*) nufac_pla
-  READ (r_u1,*) write_pla_inte
-  READ (r_u1,*) dummy
-  READ (r_u1,*) dummy
-  READ (r_u1,*) dummy
-  READ (r_u1,*) calc_van
+  if (no_minima .LT. 0) then
+    iarr = li_minima(1:3)
+    no_minima = (iarr(2)-iarr(1))/iarr(3) + 1
 
-  READ (r_u1,*) no_minima
-  IF (no_minima .EQ. 0) THEN
-     READ (r_u1,*) dummy
-  ELSE IF (no_minima .LT. 0) THEN
-     READ (r_u1,*) iarr
-     no_minima = (iarr(2)-iarr(1))/iarr(3) + 1
-     ALLOCATE ( li_minima(no_minima) )
-     n = 0
-     DO i = iarr(1),iarr(2),iarr(3)
-        n = n + 1
-        li_minima(n) = i
-     END DO
-  ELSE
-     ALLOCATE ( li_minima(no_minima) )
-     READ (r_u1,*,iostat=stat) li_minima
-     IF (stat .NE. 0) THEN
-        WRITE(w_us,*) 'FATAL: You did not specify enough minima!'
-        STOP
-     END IF
-  END IF
+    n = 0
+    do i = iarr(1),iarr(2),iarr(3)
+      n = n + 1
+      li_minima(n) = i
+    end do
+  end if
 
-  READ (r_u1,*) v_phi0
-  READ (r_u1,*) v_theta0
-  READ (r_u1,*) v_nper
-  READ (r_u1,*) v_steps
-  READ (r_u1,*) bmin_tol
-  READ (r_u1,*) v_num_mm
-  READ (r_u1,*) no_gamma
-  READ (r_u1,*) lambda_fac
-  READ (r_u1,*) temp_e
-  READ (r_u1,*) tau_num
-  READ (r_u1,*) gamma_eps
-  READ (r_u1,*) phi_eps
-  READ (r_u1,*) tau_max_iter
+  close (unit=r_u1)
 
-!
-  CLOSE (unit=r_u1)
 ! **********************************************************************
   RETURN
 
@@ -2723,8 +2647,6 @@ SUBROUTINE neo_dealloc
   IF (calc_cur .EQ. 1) THEN
      DEALLOCATE (q_spl)
   END IF
-  DEALLOCATE (fluxs_arr)
-  DEALLOCATE (li_minima)
   DEALLOCATE (s_rmnc, s_zmnc, s_lmnc, s_bmnc)
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   ! Additional data from Boozer files without Stellarator symmetry

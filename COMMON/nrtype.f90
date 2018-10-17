@@ -20,6 +20,9 @@ module nrtype
   integer, parameter :: DPC = kind((1.0D0,1.0D0))
   integer, parameter :: LGT = kind(.TRUE.)
 
+  ! Size for arrays in input file (i.e. neo2.in).
+  integer, parameter :: input_array_size = 100
+
   type sprs2_sp
      integer(I4B) :: n,len
      real(SP), dimension(:), pointer :: val
