@@ -686,7 +686,7 @@ end subroutine read_field0
 subroutine read_field1(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
 !
   use input_files
-  use math_constants, only : pi
+  use math_constants, only : b_convfac, pi
 !
   implicit none
 
@@ -719,9 +719,9 @@ subroutine read_field1(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
            endif
 
            ! Convert to CGS
-           Br(i,j,k) = Br(i,j,k)*1.d4
-           Bp(i,j,k) = Bp(i,j,k)*1.d4
-           Bz(i,j,k) = Bz(i,j,k)*1.d4
+           Br(i,j,k) = Br(i,j,k)*b_convfac
+           Bp(i,j,k) = Bp(i,j,k)*b_convfac
+           Bz(i,j,k) = Bz(i,j,k)*b_convfac
         enddo
         read(iunit,*)
      enddo
