@@ -769,12 +769,13 @@ SUBROUTINE neo_read_control
   integer :: i,n ! loop/count variables
   integer :: ios ! input/output status
   integer, dimension(3) :: iarr ! Help array, used in some cases to temporaly store some information.
+  real(kind=dp) :: jperp_eps ! Name in input file for variable gamma_eps.
 
   namelist /neoin/                                                     &
        acc_req, alpha_cur, bmin_tol, calc_cur, calc_eps, calc_fourier, &
        calc_nstep_max, calc_pla, calc_van, chk_swi, cutoff_cur_int,    &
        delta_cur_fac, eout_swi, eval_mode, fluxs_arr, fluxs_interp,    &
-       g11_swi, gamma_eps, in_file, inp_swi, lab_swi, lambda_alpha,    &
+       g11_swi, jperp_eps, in_file, inp_swi, lab_swi, lambda_alpha,    &
        lambda_fac, lamup_pla, li_minima, max_m_mode, max_n_mode,       &
        multra, no_bins, no_fluxs, no_gamma, no_minima, npart,          &
        npart_cur, npart_pla, nstep_max, nstep_min, nstep_per,          &
@@ -826,6 +827,8 @@ SUBROUTINE neo_read_control
       li_minima(n) = i
     end do
   end if
+
+  gamma_eps = jperp_eps
 
   close (unit=r_u1)
 
