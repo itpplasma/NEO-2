@@ -500,8 +500,8 @@ subroutine set_eqcoords(nwEQD,nhEQD,xdim,zdim,r1,zmid,rad,zet)
     rad(j) = r1 + (j-1)*(xdim/(nwEQD-1))
   end do
 
-  z1 = zmid - zdim/2.0		! check this definition wrt zmid
-  do k=1,nhEQD			! runov chooses lower, probe chooses upper
+  z1 = zmid - zdim/2.0  ! check this definition wrt zmid
+  do k=1,nhEQD  ! runov chooses lower, probe chooses upper
     zet(k) = z1 + (k-1)*(zdim/(nhEQD-1))
   end do
 
@@ -629,7 +629,7 @@ subroutine read_field0(rad,phi,zet,rmin,pmin,zmin,hrm1,hpm1,hzm1,Br,Bp,Bz)
      read(1,*)
 
 !---Input B      -->T = V*s/m/m
-     do j=1,np-1	 !only npmax-1 points are given
+     do j=1,np-1  !only npmax-1 points are given
         do k=nz,1,-1  !reverse order of probe data
            do i=1,nr
               read(1,*) Br(i,j,k), Bp(i,j,k), Bz(i,j,k)
@@ -711,14 +711,14 @@ subroutine read_field1(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
      do k=nz,1,-1  !reverse order of probe data
         do i=1,nr
            if(icftype.eq.1) then
-!					Old Format
+             ! Old Format
              read(iunit,*) Br(i,j,k),Bp(i,j,k),Bz(i,j,k)
            elseif(icftype.eq.2) then
-!					New Format
+             ! New Format
              read(iunit,*) dum,dum,dum,Br(i,j,k),Bp(i,j,k),Bz(i,j,k),dum,dum
            endif
-!
-				  !Convert to CGS
+
+           ! Convert to CGS
            Br(i,j,k) = Br(i,j,k)*1.d4
            Bp(i,j,k) = Bp(i,j,k)*1.d4
            Bz(i,j,k) = Bz(i,j,k)*1.d4
