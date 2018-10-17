@@ -46,7 +46,7 @@ SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
 ! Modules
 !-----------------------------------------------------------------------
 
-  USE inter_precision, ONLY: I4B, DP
+  use nrtype, only : dp, i4b
 
 !-----------------------------------------------------------------------
 
@@ -59,7 +59,7 @@ SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
   REAL(DP),                   INTENT(OUT) :: y, yp, ypp, yppp
   INTERFACE
      FUNCTION f(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -68,7 +68,7 @@ SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
   END INTERFACE
   INTERFACE
      FUNCTION fp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -77,7 +77,7 @@ SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
   END INTERFACE
   INTERFACE
      FUNCTION fpp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -86,7 +86,7 @@ SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
   END INTERFACE
   INTERFACE
      FUNCTION fppp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -204,7 +204,7 @@ SUBROUTINE splint_horner3_driv_s_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
 ! Modules
 !-----------------------------------------------------------------------
 
-  USE inter_precision,  ONLY: I4B, DP
+  use nrtype, only : dp, i4b
   USE inter_interfaces, ONLY: splint_horner3
 
 !-----------------------------------------------------------------------
@@ -220,7 +220,7 @@ SUBROUTINE splint_horner3_driv_s_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
   REAL(DP),                     INTENT(OUT) :: y, ys, yt, yp
   INTERFACE
      FUNCTION f(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -229,7 +229,7 @@ SUBROUTINE splint_horner3_driv_s_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
   END INTERFACE
   INTERFACE
      FUNCTION fp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -238,7 +238,7 @@ SUBROUTINE splint_horner3_driv_s_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
   END INTERFACE
   INTERFACE
      FUNCTION fpp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -247,7 +247,7 @@ SUBROUTINE splint_horner3_driv_s_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
   END INTERFACE
   INTERFACE
      FUNCTION fppp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -317,7 +317,7 @@ SUBROUTINE splint_horner3_driv_c_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
 ! Modules
 !-----------------------------------------------------------------------
 
-  USE inter_precision,  ONLY: I4B, DP
+  use nrtype, only : dp, i4b
   USE inter_interfaces, ONLY: splint_horner3
 
 !-----------------------------------------------------------------------
@@ -333,7 +333,7 @@ SUBROUTINE splint_horner3_driv_c_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
   REAL(DP),                     INTENT(OUT) :: y, ys, yt, yp
   INTERFACE
      FUNCTION f(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -342,7 +342,7 @@ SUBROUTINE splint_horner3_driv_c_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
   END INTERFACE
   INTERFACE
      FUNCTION fp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -351,7 +351,7 @@ SUBROUTINE splint_horner3_driv_c_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
   END INTERFACE
   INTERFACE
      FUNCTION fpp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -360,7 +360,7 @@ SUBROUTINE splint_horner3_driv_c_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
   END INTERFACE
   INTERFACE
      FUNCTION fppp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : dp
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m

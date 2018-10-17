@@ -1,6 +1,6 @@
 MODULE neo_input
 ! Input from data files (Boozer)
-  USE neo_precision
+  use nrtype, only : dp
   INTEGER, DIMENSION(:),     ALLOCATABLE :: ixm, ixn
   INTEGER, DIMENSION(:),     ALLOCATABLE :: pixm, pixn
   INTEGER, DIMENSION(:),     ALLOCATABLE :: i_m, i_n
@@ -27,7 +27,7 @@ END MODULE neo_input
 
 MODULE neo_actual_fluxs
 ! Actual data on flux surface
-  USE neo_precision
+  use nrtype, only : dp
   REAL(kind=dp)                                   :: s_es
   REAL(kind=dp)                                   :: s_iota
   REAL(kind=dp)                                   :: s_pprime
@@ -39,7 +39,7 @@ END MODULE neo_actual_fluxs
 
 MODULE neo_actual_spectra
 ! Actual spectra on flux surface
-  USE neo_precision
+  USE nrtype, only : dp
   REAL(kind=dp),    DIMENSION(:),     ALLOCATABLE :: s_rmnc, s_zmnc, s_lmnc
   REAL(kind=dp),    DIMENSION(:),     ALLOCATABLE :: s_bmnc
   !! Modifications by Andreas F. Martitsch (06.08.2014)
@@ -51,7 +51,7 @@ END MODULE neo_actual_spectra
 
 MODULE neo_spline_data
   ! Splines along s
-  USE neo_precision
+  use nrtype, only : dp, i4b
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_rmnc,b_rmnc,c_rmnc,d_rmnc 
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_zmnc,b_zmnc,c_zmnc,d_zmnc 
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_lmnc,b_lmnc,c_lmnc,d_lmnc 
@@ -82,14 +82,14 @@ END MODULE neo_spline_data
 
 MODULE neo_spline_b00
   ! spline for b00
-  USE neo_precision
+  use nrtype, only : dp
   REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: a_b00, b_b00, c_b00, d_b00
   
 END MODULE neo_spline_b00
 
 MODULE neo_work
 ! Working parameters
-  USE neo_precision
+  use nrtype, only : dp
 
   REAL(kind=dp) ::   theta_start
   REAL(kind=dp) ::   theta_end
@@ -115,7 +115,7 @@ END MODULE neo_work
 
 MODULE neo_exchange
 ! Working parameters
-  USE neo_precision
+  use nrtype, only : dp
 
   REAL(kind=dp)              :: b_min, b_max
   INTEGER                    :: nper
@@ -145,7 +145,7 @@ MODULE neo_exchange
 END MODULE neo_exchange
 
 MODULE neo_output
-  USE neo_precision
+  use nrtype, only : dp
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE ::  epspar
   REAL(kind=dp)                            ::  epstot,ctrone,ctrtot
   REAL(kind=dp)                            ::  epstothat
@@ -165,13 +165,13 @@ END MODULE neo_output
 
 MODULE neo_eval_switch
   ! Evaluation
-  USE neo_precision
+
   INTEGER, DIMENSION(6)    ::   eval_switch
 END MODULE neo_eval_switch
 
 MODULE neo_spline
 ! Spline arrays
-  USE neo_precision
+  use nrtype, only : dp
   INTEGER, PARAMETER       ::   mt = 1
   INTEGER, PARAMETER       ::   mp = 1
   INTEGER                  ::   theta_ind, phi_ind
@@ -195,7 +195,7 @@ END MODULE neo_spline
 
 MODULE neo_control
 ! Control parameters from input file
-  USE neo_precision
+  use nrtype, only : dp
   CHARACTER(20)                      :: in_file
   INTEGER                            :: theta_n
   INTEGER                            :: phi_n
@@ -218,7 +218,7 @@ END MODULE neo_control
 
 MODULE neo_units
 ! Units and Formats
-  USE neo_precision
+
   INTEGER, PARAMETER ::   r_u1   = 3
   INTEGER, PARAMETER ::   r_u2   = 4
   INTEGER, PARAMETER ::   r_us   = 5
@@ -263,7 +263,7 @@ MODULE neo_units
 END MODULE neo_units
 
 MODULE sizey_bo
-  USE neo_precision
+
 ! Definition for rk4d_bo also used in main routine neo
   INTEGER            ::  npart
   INTEGER            ::  multra
@@ -272,7 +272,7 @@ MODULE sizey_bo
 END MODULE sizey_bo
 
 MODULE partpa_bo
-  USE neo_precision
+  use nrtype, only : dp
 ! Exchange between flint_bo and rhs_bo
   USE sizey_bo
   INTEGER                                  :: ipmax
@@ -282,7 +282,7 @@ MODULE partpa_bo
 END MODULE partpa_bo
 
 MODULE sizey_cur
-  USE neo_precision
+
 ! Definition for rk4d_bo also used in main routine neo
   INTEGER            ::  npart_cur
   INTEGER            ::  ndim_cur
@@ -291,7 +291,7 @@ MODULE sizey_cur
 END MODULE sizey_cur
 
 MODULE partpa_cur
-  USE neo_precision
+  use nrtype, only : dp
 ! Exchange between flint_cur and rhs_cur
   USE sizey_cur
   REAL(kind=dp)                            :: bmod0
@@ -306,7 +306,7 @@ MODULE partpa_cur
 END MODULE partpa_cur
 
 MODULE sizey_pla
-  USE neo_precision
+  use nrtype, only : dp
   ! Definition for rk4d_pla 
   INTEGER            ::  npart_pla
   INTEGER            ::  ndim_pla
@@ -317,14 +317,14 @@ MODULE sizey_pla
 END MODULE sizey_pla
 
 MODULE partpa_pla
-  USE neo_precision
+  use nrtype, only : dp
   ! Exchange between flint_pla and rhs_pla
   USE sizey_pla
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: p_fac
 END MODULE partpa_pla
 
 MODULE neo_van
-  USE neo_precision
+  use nrtype, only : dp
   REAL(kind=dp)                            :: v_phi0, v_theta0
   REAL(kind=dp)                            :: bmin_tol
   INTEGER                                  :: v_nper, v_steps
@@ -341,13 +341,13 @@ MODULE neo_van
 END MODULE neo_van
 
 MODULE neo_van_exchange
-  USE neo_precision
+  use nrtype, only : dp
   REAL(kind=dp)                            :: rho_fac, jperp_fac
   REAL(kind=dp)                            :: theta_fac, phi_fac
 END MODULE neo_van_exchange
 
 MODULE neo_support
-  USE neo_precision
+  use nrtype, only : dp
 
   INTERFACE unit_check
      MODULE PROCEDURE unit_check_1
@@ -375,7 +375,7 @@ CONTAINS
   END SUBROUTINE unit_check_1
 
   SUBROUTINE strip_extension_1(str_in,ext,str_out)
-    USE neo_precision
+
     IMPLICIT NONE
     CHARACTER(len=*), INTENT(in)    :: str_in
     CHARACTER(len=*), INTENT(in)    :: ext
@@ -393,7 +393,7 @@ CONTAINS
   END SUBROUTINE strip_extension_1
 
   SUBROUTINE add_extension_1(str_in,ext,str_out)
-    USE neo_precision
+
     IMPLICIT NONE
     CHARACTER(len=*), INTENT(in)    :: str_in
     CHARACTER(len=*), INTENT(in)    :: ext
@@ -404,7 +404,7 @@ CONTAINS
   END SUBROUTINE add_extension_1
 
   SUBROUTINE add_extension_2(str_in,int,str_out)
-    USE neo_precision
+
     IMPLICIT NONE
     CHARACTER(len=*), INTENT(in)    :: str_in
     INTEGER,          INTENT(in)    :: int

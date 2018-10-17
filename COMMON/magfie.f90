@@ -47,7 +47,6 @@
 
 MODULE magfie_mod
 
-  USE neo_precision,  ONLY: dp 
   IMPLICIT NONE
 
   !! Modifications by Andreas F. Martitsch (09.03.2014)
@@ -69,6 +68,8 @@ CONTAINS
 
   SUBROUTINE magfie_x( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl)
     USE neo_magfie_mod, ONLY: neo_magfie
+    use nrtype, only : dp
+
     REAL(dp), DIMENSION(:),       INTENT(in)         :: x
     REAL(dp),                     INTENT(out)        :: bmod
     REAL(dp),                     INTENT(out)        :: sqrtg
@@ -83,6 +84,8 @@ CONTAINS
   ! Optional output (necessary for modeling the magnetic rotation)
   SUBROUTINE magfie_x1( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl, bcovar_s_hat_der)
     USE neo_magfie_mod, ONLY: neo_magfie
+    use nrtype, only : dp
+
     REAL(dp), DIMENSION(:),       INTENT(in)         :: x
     REAL(dp),                     INTENT(out)        :: bmod
     REAL(dp),                     INTENT(out)        :: sqrtg
@@ -99,6 +102,8 @@ CONTAINS
   ! Optional output for NTV output
   SUBROUTINE magfie_x2( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl, bcovar_s_hat_der, R, Z)
     USE neo_magfie_mod, ONLY: neo_magfie
+    use nrtype, only : dp
+
     REAL(dp), DIMENSION(:),       INTENT(in)         :: x
     REAL(dp),                     INTENT(out)        :: bmod
     REAL(dp),                     INTENT(out)        :: sqrtg
@@ -163,6 +168,8 @@ CONTAINS
     USE neo_input,  ONLY: nfp 
     USE neo_exchange,  ONLY: rt0, bmref_g
     USE neo_magfie_mod, ONLY: magfie_spline, magfie_sarray
+    use nrtype, only : dp
+
     REAL(dp),                     INTENT(out)        :: bigR
     REAL(dp),                     INTENT(out)        :: R0i
     INTEGER,                      INTENT(out)        :: L1i

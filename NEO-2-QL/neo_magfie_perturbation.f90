@@ -1,7 +1,7 @@
 MODULE neo_magfie_perturbation
   !
   ! module containing numerical constants
-  USE neo_precision
+  use nrtype, only : dp, i4b
   ! module containing switches from the input file (neo.in)
   USE neo_control, ONLY: lab_swi, inp_swi
   ! interface to spline routines
@@ -528,7 +528,7 @@ CONTAINS
   END SUBROUTINE neo_magfie_pert_b
   !
   SUBROUTINE calc_bnoverb0_arr(phi_arr,ibeg,iend,bnoverb0_arr,dbnoverb0_dphi_arr)
-    use math_constants, only : imun
+    use math_constants, only : imun, pi
     !
     ! input / output
     !

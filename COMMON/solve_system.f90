@@ -12,8 +12,6 @@
 
 MODULE solve_systems
 
-  USE inter_precision, ONLY: I4B, DP
-
   IMPLICIT NONE
 
   PUBLIC :: solve_eqsys
@@ -25,7 +23,7 @@ CONTAINS
 
   SUBROUTINE solve_eqsys(a, b, info)
 
-!    USE inter_interfaces, ONLY: ludcmp, lubksb 
+    use nrtype, only : dp, i4b
 
     IMPLICIT NONE
 

@@ -1,6 +1,6 @@
 MODULE neo_magfie_mod
 
-  USE neo_precision
+  use nrtype, only : dp
   USE neo_input,                                                       &
        ONLY: es, ixm, ixn, mnmax, psi_pr, pixm, pixn, nfp
   USE neo_control,                                                     &
@@ -200,6 +200,8 @@ MODULE neo_magfie_mod
 CONTAINS
 
   SUBROUTINE neo_magfie_a( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
+    use math_constants, only : twopi
+    use nrtype, only : dp, i4b
     ! input / output
     REAL(dp), DIMENSION(:),       INTENT(in)            :: x
     REAL(dp),                     INTENT(out)           :: bmod
@@ -1746,6 +1748,8 @@ CONTAINS
   ! -> cylindrical "R"- or "Z"-coordinate.
   ! -> magnetic routines in NEO-2 are initialized on a specific flux surface (local)
   SUBROUTINE calc_thetaB_RZloc_a(R_loc,Z_loc,x_start,thetaB)
+    use math_constants, only : twopi
+    use nrtype, only : dp
     ! input / output
     REAL(kind=dp), INTENT(in)               :: R_loc, Z_loc
     REAL(kind=dp), DIMENSION(3), INTENT(in) :: x_start

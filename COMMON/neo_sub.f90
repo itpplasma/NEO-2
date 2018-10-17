@@ -8,12 +8,11 @@ SUBROUTINE neo_init(npsi)
 ! **********************************************************************
 ! Modules
 ! **********************************************************************
-  USE neo_precision
+
   USE neo_input
   USE neo_work
   USE neo_exchange
   USE neo_units
-  USE neo_parameters
   USE neo_control
   USE neo_spline
   use global_parameters, only : isw_code, ID_PARALLEL, ID_QUASILINEAR, &
@@ -109,7 +108,7 @@ END SUBROUTINE neo_init
 !! Modifications by Andreas F. Martitsch (18.09.2015)
 ! compute normalization Bref
 SUBROUTINE calc_Bref(bref,rmajor)
-  USE neo_precision
+  use nrtype, only : dp
   USE neo_control, ONLY: fluxs_interp, ref_swi, no_fluxs, fluxs_arr
   USE neo_input, ONLY: b00, bmnc, rmnc, ixm, ixn, mnmax
   USE neo_actual_fluxs, ONLY: s_es, s_b00
@@ -161,7 +160,7 @@ SUBROUTINE neo_init_spline()
 ! **********************************************************************
 ! Modules
 ! **********************************************************************
-  USE neo_precision
+  use nrtype, only : dp, i4b
   USE neo_spline_data
   USE neo_input
   USE neo_exchange
@@ -317,17 +316,16 @@ SUBROUTINE neo_init_s(psi,dpsi)
 ! **********************************************************************
 ! Modules
 ! **********************************************************************
-  USE neo_precision
   USE neo_input
   USE neo_work
   USE neo_exchange
   USE neo_units
-  USE neo_parameters
   USE neo_control
   USE neo_spline
   USE neo_eval_switch
   USE neo_actual_fluxs
   USE neo_actual_spectra
+  use nrtype, only : dp
 ! **********************************************************************
 ! Local Definitions
 ! **********************************************************************
@@ -510,7 +508,7 @@ SUBROUTINE neo_plot_files
   ! **********************************************************************
   ! Modules
   ! **********************************************************************
-  USE neo_precision
+
   USE neo_support
   USE neo_units
   USE neo_input
@@ -646,7 +644,7 @@ SUBROUTINE neo_init_fluxsurface
   ! **********************************************************************
   ! Modules
   ! **********************************************************************
-  USE neo_precision
+  use nrtype, only : dp, i4b
   USE neo_input
   USE neo_control
   USE neo_exchange
@@ -918,12 +916,13 @@ SUBROUTINE neo_read
 !***********************************************************************
 ! Modules
 !***********************************************************************
-  USE neo_precision
+  use math_constants, only : twopi
   USE neo_input
   USE neo_units
   USE neo_control
   USE neo_work
   USE neo_exchange
+  use nrtype, only : dp
 !***********************************************************************
 ! Local definitions
 !***********************************************************************
@@ -1735,7 +1734,7 @@ SUBROUTINE neo_prep_b00
   ! Preparation of b00 with splines
   !***********************************************************************
   ! Modules
-  USE neo_precision
+  use nrtype, only : dp, i4b
   USE neo_input
   USE neo_spline_b00
   USE inter_interfaces, ONLY: splinecof3, tf
@@ -1782,7 +1781,7 @@ END SUBROUTINE neo_prep_b00
 
 SUBROUTINE neo_get_b00
 
-  USE neo_precision
+  use nrtype, only : dp, i4b
   USE neo_input
   USE neo_actual_fluxs
   USE neo_spline_b00
@@ -1807,11 +1806,11 @@ SUBROUTINE neo_prep
   USE neo_input
   USE neo_work
   USE neo_exchange
-  USE neo_parameters
   USE neo_control
   USE neo_units
   USE neo_spline
   USE neo_actual_spectra
+  use math_constants, only : twopi
 !***********************************************************************
 ! Local definitions
 !***********************************************************************
@@ -1966,16 +1965,16 @@ SUBROUTINE neo_fourier
 !***********************************************************************
 ! Modules
 !***********************************************************************
-  USE neo_precision
+  use nrtype, only : dp
   USE neo_input
   USE neo_work
   USE neo_exchange
-  USE neo_parameters
   USE neo_control
   USE neo_units
   USE neo_support
   USE neo_actual_fluxs
   USE neo_actual_spectra
+  use math_constants, only : twopi
 !***********************************************************************
 ! Local definitions
 !***********************************************************************
@@ -2351,12 +2350,11 @@ SUBROUTINE neo_spline2d
 ! **********************************************************************
 ! Modules
 ! **********************************************************************
-  USE neo_precision
+
   USE neo_input
   USE neo_work
   USE neo_exchange
   USE neo_units
-  USE neo_parameters
   USE neo_control
   USE neo_spline
   USE spline_mod, ONLY: spl2d
@@ -2414,18 +2412,18 @@ SUBROUTINE neo_eval(theta,phi,bval,gval,kval,pval,qval,rval)
 ! **********************************************************************
 ! Modules
 ! **********************************************************************
-  USE neo_precision
+  use math_constants, only : twopi
   USE neo_input
   USE neo_work
   USE neo_exchange
   USE neo_units
-  USE neo_parameters
   USE neo_control
   USE neo_spline
   USE spline_mod, ONLY: eva2d, poi2d
   USE neo_eval_switch
   USE neo_actual_fluxs
   USE neo_actual_spectra
+  use nrtype, only : dp
 ! **********************************************************************
 ! Local Definitions
 ! **********************************************************************
@@ -2646,11 +2644,10 @@ SUBROUTINE neo_bderiv(theta, phi, f, g, dfdx, dfdy, dgdx, dgdy)
 ! **********************************************************************
 ! Modules
 ! **********************************************************************
-  USE neo_precision
+  use nrtype, only : dp
   USE neo_input
   USE neo_work
   USE neo_units
-  USE neo_parameters
   USE neo_control
   USE neo_spline
   USE spline_mod, ONLY: poi2d, eva2d_sd, eva2d_fd
@@ -2695,12 +2692,10 @@ SUBROUTINE neo_dealloc
 ! **********************************************************************
 ! Modules
 ! **********************************************************************
-  USE neo_precision
   USE neo_input
   USE neo_work
   USE neo_exchange
   USE neo_units
-  USE neo_parameters
   USE neo_control
   USE neo_spline
   USE neo_van
@@ -2777,11 +2772,10 @@ SUBROUTINE neo_spline_test
 ! **********************************************************************
 ! Modules
 ! **********************************************************************
-  USE neo_precision
+
   USE neo_input
   USE neo_work
   USE neo_units
-  USE neo_parameters
   USE neo_control
   USE neo_eval_switch
 ! **********************************************************************
@@ -2867,7 +2861,7 @@ END SUBROUTINE neo_spline_test
 ! **********************************************************************
 SUBROUTINE neo_zeros2d(x, y, eps, iter_ma, iter, error)
 !
-  USE neo_precision
+  use nrtype, only : dp
 
   IMPLICIT NONE
 
@@ -2941,7 +2935,7 @@ END SUBROUTINE neo_zeros2d
 
 SUBROUTINE neo_filenames
 
-  USE neo_precision
+
   USE neo_units
   USE neo_support
   USE neo_control
@@ -3025,7 +3019,7 @@ SUBROUTINE neo_write_bc
 !***********************************************************************
 ! Modules
 !***********************************************************************
-  USE neo_precision
+  use nrtype, only : dp
   USE neo_input
   USE neo_units
   USE neo_exchange
