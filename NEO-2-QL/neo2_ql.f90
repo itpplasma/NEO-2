@@ -253,7 +253,7 @@ PROGRAM neo2_ql
        isw_ripple_solver, isw_mag_shear
   !! End Modification by Andreas F. Martitsch (14.07.2015)
 
-  call init(string_to_id('QUASILNEAR'))
+  call init(string_to_id('QUASILINEAR'))
 
   ! ---------------------------------------------------------------------------
   ! filenames (default file and specific input file) for namelist
