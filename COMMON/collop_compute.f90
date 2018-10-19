@@ -1601,15 +1601,10 @@ contains
     end if
 
     if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
-       do mm = 0, lagmax
-          do mp = 0, lagmax
-             if (mm .eq. mp) then
-                M_transform(mm,mp)=1.0d0
-             else
-                M_transform(mm,mp)=0.0d0
-             end if
-          end do
-       end do
+      M_transform = 0.0d0
+      do mm = 0, lagmax
+        M_transform(mm, mm) = 1.0d0
+      end do
     else
        M_transform = M
     end if
