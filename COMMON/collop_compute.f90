@@ -1153,7 +1153,7 @@ contains
 !!$    return
     
     if (allocated(t_vec)) then
-       
+       ! Assuming that t_vec is ordered, this should be the same as a .le. maxval(t_vec)
        if (a .le. t_vec(ubound(t_vec,1))) then
           y = 0d0
           in_interval = .false.
