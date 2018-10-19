@@ -129,7 +129,9 @@
  fname_multispec_in = "multi_spec_aug32169_t4.0210.in"
  isw_calc_er = 1
  isw_calc_magdrift = 1
- isw_coul_log = 0   ! 0: Coulomb logarithm is species independent.
+ isw_coul_log = 0   ! 0: Coulomb logarithm set as species independent (overrides values for n_spec)
+                    ! 1: Coulomb logarithm computed for each species using n_spec, T_spec
+                    !    (overrides values for collisionality parameters)
  isw_multispecies_init = 0
  isw_vphi_loc = 0
  lsw_multispecies = .true.
