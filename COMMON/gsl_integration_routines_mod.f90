@@ -648,7 +648,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! CQUAD doubly-adaptive integration
   RECURSIVE FUNCTION fint1d_param0_cquad(func1d_param0_user,x_low,x_up,epsabs,epsrel) result(res)
-    !
+    ! Function to integrate
     INTERFACE
        FUNCTION func1d_param0_user(x)
          USE fgsl
@@ -656,17 +656,25 @@ CONTAINS
          REAL(fgsl_double) :: x
        END FUNCTION func1d_param0_user
     END INTERFACE
-    ! x_low: lower boundary, x_up: upper boundary
-    REAL(fgsl_double) :: x_low, x_up
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
+    ! lower boundary
+    REAL(fgsl_double) :: x_low
+    ! upper boundary
+    real(fgsl_double) :: x_up
+    ! absolute error
+    REAL(fgsl_double) :: epsabs
+    ! relative error
+    real(fgsl_double) :: epsrel
+
+    ! return value
     REAL(fgsl_double), DIMENSION(2) :: res
-    !
+
+    ! Local parameters: corresponds to 'n' of gsl_integration_cquad_workspace * gsl_integration_cquad_workspace_alloc (size_t n)
     INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 100_fgsl_size_t
+
     INTEGER(fgsl_size_t) :: neval ! nmber of function evaluations
     REAL(fgsl_double) :: ra, rda ! result and absolute error
     TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
+    INTEGER(fgsl_int) :: statusval
     TYPE(fgsl_function) :: stdfunc
     TYPE(fgsl_integration_cquad_workspace) :: integ_cq
     TYPE(c_ptr) :: param0_ptr ! This pointer holds the C-location of user-specified
@@ -696,9 +704,9 @@ CONTAINS
     !
     ! Initialize solver 'fgsl_integration_cquad' to use the function 'stdfunc' and
     ! the user-specified parameters
-    status = fgsl_integration_cquad(stdfunc, x_low, x_up, &
+    statusval = fgsl_integration_cquad(stdfunc, x_low, x_up, &
        epsabs, epsrel, integ_cq, ra, rda, neval)
-    CALL check_error(status)
+    CALL check_error(statusval)
     !
     ! Return the results (ra,rda,neval)
     res(1) = ra
