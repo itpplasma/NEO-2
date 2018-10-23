@@ -1577,7 +1577,7 @@ contains
   end subroutine inv
 
   subroutine compute_Minv(M)
-    real(kind=dp), dimension(:,:) :: M
+    real(kind=dp), dimension(:,:), intent(out) :: M
     integer :: mm, mp
 
     write (*,*) "Computing phi transformation matrix..."
