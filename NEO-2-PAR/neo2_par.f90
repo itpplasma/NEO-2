@@ -117,7 +117,7 @@ PROGRAM neo2_par
   INTEGER :: proptag_first,proptag_last,proptag_start,proptag_end
   INTEGER :: proptag_begin,proptag_final
   INTEGER :: uw
-  INTEGER :: ialloc
+  logical :: lalloc
   INTEGER :: nstep,nperiod
   INTEGER :: eta_part,lambda_equi
   INTEGER :: bin_split_mode
@@ -492,8 +492,8 @@ PROGRAM neo2_par
      ndim=ndim0
      ! allocation of some arrays (should be moved)
      ! this part was not touched
-     ialloc=1
-     CALL kin_allocate(ialloc)
+     lalloc=.true.
+     CALL kin_allocate(lalloc)
      ! ---------------------------------------------------------------------------
 
      ! ---------------------------------------------------------------------------
@@ -547,8 +547,8 @@ PROGRAM neo2_par
 !!$  ndim=ndim0
 !!$  ! allocation of some arrays (should be moved)
 !!$  ! this part was not touched
-!!$  ialloc=1
-!!$  CALL kin_allocate(ialloc)
+!!$  lalloc=.true.
+!!$  CALL kin_allocate(lalloc)
 !!$  ! ---------------------------------------------------------------------------
 !!$
 !!$  ! ---------------------------------------------------------------------------

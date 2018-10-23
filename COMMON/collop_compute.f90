@@ -187,11 +187,11 @@ module collop_compute
   real(kind=dp), dimension(:), allocatable :: t_vec
 
   interface integrate
-     module procedure integrate_ainf, integrate_ab
+     module procedure integrate_a_to_infinity, integrate_a_to_b
   end interface integrate
 
   interface integrate_param
-     module procedure integrate_ainf_param, integrate_ab_param
+     module procedure integrate_a_to_infinity_param, integrate_a_to_b_param
   end interface integrate_param
 
 contains
@@ -935,7 +935,7 @@ contains
     
   end function C_I_rel2_mmp_kernel
     
-  recursive function integrate_ab(func1d, a, b) result(y)
+  recursive function integrate_a_to_b(func1d, a, b) result(y)
     real(kind=dp) :: a, b
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1028,9 +1028,9 @@ contains
        y = res_int(1)
     end if
        
-  end function integrate_ab
+  end function integrate_a_to_b
 
-  recursive function integrate_ab_param(func1d, param, a, b) result(y)
+  recursive function integrate_a_to_b_param(func1d, param, a, b) result(y)
     real(kind=dp) :: a, b, param
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1124,9 +1124,9 @@ contains
        y = res_int(1)
     end if
        
-  end function integrate_ab_param
+  end function integrate_a_to_b_param
 
-  recursive function integrate_ainf(func1d, a) result(y)
+  recursive function integrate_a_to_infinity(func1d, a) result(y)
     real(kind=dp) :: a
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1153,7 +1153,7 @@ contains
 !!$    return
     
     if (allocated(t_vec)) then
-       
+       ! Assuming that t_vec is ordered, this should be the same as a .le. maxval(t_vec)
        if (a .le. t_vec(ubound(t_vec,1))) then
           y = 0d0
           in_interval = .false.
@@ -1289,9 +1289,9 @@ contains
        
     end if
     
-  end function integrate_ainf
+  end function integrate_a_to_infinity
 
-  recursive function integrate_ainf_param(func1d, param, a) result(y)
+  recursive function integrate_a_to_infinity_param(func1d, param, a) result(y)
     real(kind=dp) :: a, param
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1455,7 +1455,7 @@ contains
        
     end if
     
-  end function integrate_ainf_param
+  end function integrate_a_to_infinity_param
 
   subroutine init_legendre(n)
     !
@@ -1601,15 +1601,10 @@ contains
     end if
 
     if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
-       do mm = 0, lagmax
-          do mp = 0, lagmax
-             if (mm .eq. mp) then
-                M_transform(mm,mp)=1.0d0
-             else
-                M_transform(mm,mp)=0.0d0
-             end if
-          end do
-       end do
+      M_transform = 0.0d0
+      do mm = 0, lagmax
+        M_transform(mm, mm) = 1.0d0
+      end do
     else
        M_transform = M
     end if

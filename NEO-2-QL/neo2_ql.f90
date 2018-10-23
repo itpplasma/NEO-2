@@ -141,7 +141,7 @@ PROGRAM neo2_ql
   INTEGER :: proptag_first,proptag_last,proptag_start,proptag_end
   INTEGER :: proptag_begin,proptag_final
   INTEGER :: uw
-  INTEGER :: ialloc
+  logical :: lalloc
   INTEGER :: nstep,nperiod
   INTEGER :: eta_part,lambda_equi
   INTEGER :: bin_split_mode
@@ -262,191 +262,25 @@ PROGRAM neo2_ql
   fname_multispec = 'neo2.in'
   fname_exec = 'run_neo2.sh'
   fname_exec_precom = 'run_neo2_precom.sh'
-  ! ---------------------------------------------------------------------------
-  ! defaults
-  !
-  ! settings
-    !! Modification by Andreas F. Martitsch (21.02.2017)
-  ! multi-species part:
-  lsw_multispecies = .FALSE.
-  isw_multispecies_init = 0
-  fname_multispec_in = ''
-  ! isw_coul_log = 0: Coulomb logarithm set as species independent (overrides values for n_spec)
-  ! isw_coul_log = 1: Coulomb logarithm computed for each species using n_spec, T_spec
-  !                   (overrides values for collisionality parameters)
-  isw_coul_log = 0
-  num_spec = 1
+
   IF(ALLOCATED(species_tag_vec)) DEALLOCATE(species_tag_vec)
   ALLOCATE(species_tag_vec(MAXDIM))
-  species_tag_vec = (/ (ind_spec,ind_spec=0,MAXDIM-1) /)
   IF(ALLOCATED(conl_over_mfp_vec)) DEALLOCATE(conl_over_mfp_vec)
   ALLOCATE(conl_over_mfp_vec(MAXDIM))
-  conl_over_mfp_vec = 1.0d-3
   IF(ALLOCATED(z_vec)) DEALLOCATE(z_vec)
   ALLOCATE(z_vec(MAXDIM))
-  z_vec = 1.0d0
   IF(ALLOCATED(m_vec)) DEALLOCATE(m_vec)
   ALLOCATE(m_vec(MAXDIM))
-  m_vec = 1.672621637d-24 ! proton mass [g]
   IF(ALLOCATED(T_vec)) DEALLOCATE(T_vec)
   ALLOCATE(T_vec(MAXDIM))
-  T_vec = 1.6d-9 ! temperature [erg] (=1keV)
   IF(ALLOCATED(n_vec)) DEALLOCATE(n_vec)
   ALLOCATE(n_vec(MAXDIM))
-  n_vec = 1.0d13 ! density  [cm^-3]
-  isw_calc_Er = 0
-  isw_calc_MagDrift = 0
-  species_tag_Vphi = 0 ! species index should be the same for all flux surfaces
-  isw_Vphi_loc = 0 ! 0: <V_\varphi>, 1: V_{\varphi}(R,Z)
-  Vphi = 0.0d0
-  R_Vphi = 0.0d0 ! only used for isw_Vphi_loc=1
-  Z_Vphi = 0.0d0 ! only used for isw_Vphi_loc=1
-  boozer_theta_Vphi = 0.0d0 ! only used for isw_Vphi_loc=2
   IF(ALLOCATED(dT_vec_ov_ds)) DEALLOCATE(dT_vec_ov_ds)
   ALLOCATE(dT_vec_ov_ds(MAXDIM))
-  dT_vec_ov_ds = 0.0d0 ! temperature [erg] (=1keV)
   IF(ALLOCATED(dn_vec_ov_ds)) DEALLOCATE(dn_vec_ov_ds)
   ALLOCATE(dn_vec_ov_ds(MAXDIM))
-  dn_vec_ov_ds = 0.0d0 ! density  [cm^-3]
-  !! End Modification by Andreas F. Martitsch (21.02.2017)
-  mag_magfield = 1
-  magnetic_device = 1
-  mag_nperiod_min = 300
-  mag_save_memory = 1
-  mag_cycle_ripples = 0
-  mag_close_fieldline = 1
-  mag_ripple_contribution = 1
-  mag_dbhat_min = 0.1d0
-  mag_dphi_inf_min = 0.05d0
-  mag_inflection_mult = 3.0d0
-  solver_talk = 0
-  switch_off_asymp = 0
-  asymp_margin_zero = 10
-  asymp_margin_npass = 4
-  asymp_pardeleta = 10.0d0
-  ripple_solver_accurfac = 3.0d0
-  phimi=0.d0
-  nstep=480
-  nperiod=500
-  xetami=0.0d0
-  xetama=1.300001d0
-  eta_part_global = 0
-  eta_part_trapped = 10
-  eta_part_globalfac = 3.0_dp
-  eta_part_globalfac_p = 3.0_dp
-  eta_part_globalfac_t = 3.0_dp
-  eta_alpha_p = 4.0_dp
-  eta_alpha_t = 1.0_dp
-  ndim0=14
-  zbeg=0.d0
-  rbeg=181.d0
-  proptag_begin=0
-  proptag_final=0
-  mag_start_special=0
-  aiota_tokamak = 1.0d0/3.0d0
-  mag_coordinates = 0
-  boozer_s = 0.5_dp
-  boozer_theta_beg = 0.0_dp
-  boozer_phi_beg = 0.0_dp
-  sparse_talk = .FALSE.
-  !  sparse_solve_method = 0
-  OMP_NUM_THREADS = 1
-  ! collision
-  conl_over_mfp = 1.0d-3
-  lag=10
-  leg=20
-  legmax=20
-  z_eff=1.d0
-  isw_lorentz = 1
-  isw_integral = 0
-  isw_energy = 0
-  isw_axisymm = 0
-  isw_momentum = 0
-  isw_relativistic = 0  ! 0 is non-relativistic, 1 is Braams and Karney, 2 is high order Legendre
-  T_e = 1 ! Default 1eV
-  vel_distri_swi = 0
-  vel_num = 10
-  vel_max = 5.0d0
-  !! Modifications by Andreas F. Martitsch (15.07.2014)
-  ! Default path for the collision operator matrices
-  collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
-  !! End Modifications by Andreas F. Martitsch (15.07.2014)
-  collop_base_prj = 0
-  collop_base_exp = 0
-  scalprod_alpha = 0d0
-  scalprod_beta  = 0d0
-  v_min_resolution = 0.1d0
-  v_max_resolution = 5.0d0
-  phi_x_max        = 5.0d0
-  collop_bspline_order = 4
-  collop_bspline_dist  = 1d0
-  collop_bspline_taylor = .true.
-  lsw_read_precom = .FALSE. !! Added lsw_read_precom and lsw_write_precom
-  lsw_write_precom = .FALSE.   !! by Michael Draxler (25.08.2017)
-  ! binsplit
-  eta_s_lim = 1.2d0
-  eta_part = 100
-  lambda_equi = 0
-  phi_split_mode = 2
-  phi_place_mode = 2
-  phi_split_min = 1
-  max_solver_try = 1
-  hphi_mult = 1.0d0
-  bin_split_mode = 1
-  bsfunc_message = 0
-  bsfunc_modelfunc = 1
-  bsfunc_modelfunc_num = 1
-  bsfunc_ignore_trap_levels = 0
-  boundary_dist_limit_factor = 1.e-2
-  bsfunc_local_shield_factor = 1.0d0
-  bsfunc_shield = .FALSE.
-  bsfunc_divide = 0
-  bsfunc_total_err = 1.0d-1
-  bsfunc_local_err = 1.0d-2
-  bsfunc_local_err_max_mult = 1.0d0
-  bsfunc_max_mult_reach = 3.0d0
-  bsfunc_min_distance = 0.0d0
-  bsfunc_max_index = 20*eta_part
-  bsfunc_max_splitlevel = 32
-  bsfunc_sigma_mult = 1.0_dp
-  bsfunc_sigma_min = 0.0_dp
-  bsfunc_local_solver = 0
-  sigma_shield_factor = 3.0d0
-  split_inflection_points = .TRUE.
-  mag_local_sigma = 0
-  mag_symmetric = .FALSE.
-  mag_symmetric_shorten = .FALSE.
-  ! propagator
-  prop_diagphys = 1
-  prop_overwrite   = 1
-  prop_diagnostic = 1
-  prop_binary = 0
-  prop_timing = 1
-  prop_join_ends = 0
-  prop_fluxsplitmode = 1
-  prop_write = 0
-  prop_reconstruct = 0
-  prop_ripple_plot = 0
-  prop_reconstruct_levels = 0
-  mag_talk = .TRUE.
-  mag_infotalk = .TRUE.
-  hphi_lim = 1.0d-6
-  ! plotting
-  plot_gauss = 0
-  plot_prop  = 0
-  !! Modification by Andreas F. Martitsch (14.07.2015)
-  ! ntv_input
-  isw_ntv_mode = 0
-  isw_qflux_NA = 0
-  MtOvR = 0.0d0
-  B_rho_L_loc = 0.0d0
-  isw_ripple_solver = 1
-  isw_mag_shear = 0
-  !! End Modification by Andreas F. Martitsch (14.07.2015)
 
-  lsw_nbi = .false.
-  T_nbi  = 70d3
-  m_nbi  = 3.343583719d-24
+  call set_default_values()
 
   CALL h5_init()
 
@@ -950,8 +784,8 @@ PROGRAM neo2_ql
   ndim=ndim0
   ! allocation of some arrays (should be moved)
   ! this part was not touched
-  ialloc=1
-  CALL kin_allocate(ialloc)
+  lalloc=.true.
+  CALL kin_allocate(lalloc)
   ! ---------------------------------------------------------------------------
 
   ! ---------------------------------------------------------------------------
@@ -1008,8 +842,8 @@ PROGRAM neo2_ql
 !!$  ndim=ndim0
 !!$  ! allocation of some arrays (should be moved)
 !!$  ! this part was not touched
-!!$  ialloc=1
-!!$  CALL kin_allocate(ialloc)
+!!$  lalloc=.true.
+!!$  CALL kin_allocate(lalloc)
 !!$  ! ---------------------------------------------------------------------------
 !!$
 !!$  ! ---------------------------------------------------------------------------
@@ -1308,5 +1142,188 @@ CONTAINS
     END IF
 
   END SUBROUTINE write_version_info
+
+  subroutine set_default_values()
+    implicit none
+
+    species_tag_vec = (/ (ind_spec,ind_spec=0,MAXDIM-1) /)
+    conl_over_mfp_vec = 1.0d-3
+    z_vec = 1.0d0
+    m_vec = 1.672621637d-24 ! proton mass [g]
+    T_vec = 1.6d-9 ! temperature [erg] (=1keV)
+    n_vec = 1.0d13 ! density  [cm^-3]
+    isw_calc_Er = 0
+    isw_calc_MagDrift = 0
+    species_tag_Vphi = 0 ! species index should be the same for all flux surfaces
+    isw_Vphi_loc = 0 ! 0: <V_\varphi>, 1: V_{\varphi}(R,Z)
+    Vphi = 0.0d0
+    R_Vphi = 0.0d0 ! only used for isw_Vphi_loc=1
+    Z_Vphi = 0.0d0 ! only used for isw_Vphi_loc=1
+    boozer_theta_Vphi = 0.0d0 ! only used for isw_Vphi_loc=2
+
+    ! ---------------------------------------------------------------------------
+    ! filenames (default file and specific input file) for namelist
+    fnames = (/'neo2.def','neo2.in '/)
+    ! file-names of multi-species input and startup-script for NEO-2
+    fname_multispec = 'neo2.in'
+    fname_exec = 'run_neo2.sh'
+    fname_exec_precom = 'run_neo2_precom.sh'
+    ! ---------------------------------------------------------------------------
+    ! defaults
+    !
+    ! settings
+      !! Modification by Andreas F. Martitsch (21.02.2017)
+    ! multi-species part:
+    lsw_multispecies = .FALSE.
+    isw_multispecies_init = 0
+    fname_multispec_in = ''
+    ! isw_coul_log = 0: Coulomb logarithm set as species independent (overrides values for n_spec)
+    ! isw_coul_log = 1: Coulomb logarithm computed for each species using n_spec, T_spec
+    !                   (overrides values for collisionality parameters)
+    isw_coul_log = 0
+    num_spec = 1
+
+    dT_vec_ov_ds = 0.0d0 ! temperature [erg] (=1keV)
+    dn_vec_ov_ds = 0.0d0 ! density  [cm^-3]
+    !! End Modification by Andreas F. Martitsch (21.02.2017)
+    mag_magfield = 1
+    magnetic_device = 1
+    mag_nperiod_min = 300
+    mag_save_memory = 1
+    mag_cycle_ripples = 0
+    mag_close_fieldline = 1
+    mag_ripple_contribution = 1
+    mag_dbhat_min = 0.1d0
+    mag_dphi_inf_min = 0.05d0
+    mag_inflection_mult = 3.0d0
+    solver_talk = 0
+    switch_off_asymp = 0
+    asymp_margin_zero = 10
+    asymp_margin_npass = 4
+    asymp_pardeleta = 10.0d0
+    ripple_solver_accurfac = 3.0d0
+    phimi=0.d0
+    nstep=480
+    nperiod=500
+    xetami=0.0d0
+    xetama=1.300001d0
+    eta_part_global = 0
+    eta_part_trapped = 10
+    eta_part_globalfac = 3.0_dp
+    eta_part_globalfac_p = 3.0_dp
+    eta_part_globalfac_t = 3.0_dp
+    eta_alpha_p = 4.0_dp
+    eta_alpha_t = 1.0_dp
+    ndim0=14
+    zbeg=0.d0
+    rbeg=181.d0
+    proptag_begin=0
+    proptag_final=0
+    mag_start_special=0
+    aiota_tokamak = 1.0d0/3.0d0
+    mag_coordinates = 0
+    boozer_s = 0.5_dp
+    boozer_theta_beg = 0.0_dp
+    boozer_phi_beg = 0.0_dp
+    sparse_talk = .FALSE.
+    !  sparse_solve_method = 0
+    OMP_NUM_THREADS = 1
+    ! collision
+    conl_over_mfp = 1.0d-3
+    lag=10
+    leg=20
+    legmax=20
+    z_eff=1.d0
+    isw_lorentz = 1
+    isw_integral = 0
+    isw_energy = 0
+    isw_axisymm = 0
+    isw_momentum = 0
+    isw_relativistic = 0  ! 0 is non-relativistic, 1 is Braams and Karney, 2 is high order Legendre
+    T_e = 1 ! Default 1eV
+    vel_distri_swi = 0
+    vel_num = 10
+    vel_max = 5.0d0
+    !! Modifications by Andreas F. Martitsch (15.07.2014)
+    ! Default path for the collision operator matrices
+    collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
+    !! End Modifications by Andreas F. Martitsch (15.07.2014)
+    collop_base_prj = 0
+    collop_base_exp = 0
+    scalprod_alpha = 0d0
+    scalprod_beta  = 0d0
+    v_min_resolution = 0.1d0
+    v_max_resolution = 5.0d0
+    phi_x_max        = 5.0d0
+    collop_bspline_order = 4
+    collop_bspline_dist  = 1d0
+    collop_bspline_taylor = .true.
+    lsw_read_precom = .FALSE. !! Added lsw_read_precom and lsw_write_precom
+    lsw_write_precom = .FALSE.   !! by Michael Draxler (25.08.2017)
+    ! binsplit
+    eta_s_lim = 1.2d0
+    eta_part = 100
+    lambda_equi = 0
+    phi_split_mode = 2
+    phi_place_mode = 2
+    phi_split_min = 1
+    max_solver_try = 1
+    hphi_mult = 1.0d0
+    bin_split_mode = 1
+    bsfunc_message = 0
+    bsfunc_modelfunc = 1
+    bsfunc_modelfunc_num = 1
+    bsfunc_ignore_trap_levels = 0
+    boundary_dist_limit_factor = 1.e-2
+    bsfunc_local_shield_factor = 1.0d0
+    bsfunc_shield = .FALSE.
+    bsfunc_divide = 0
+    bsfunc_total_err = 1.0d-1
+    bsfunc_local_err = 1.0d-2
+    bsfunc_local_err_max_mult = 1.0d0
+    bsfunc_max_mult_reach = 3.0d0
+    bsfunc_min_distance = 0.0d0
+    bsfunc_max_index = 20*eta_part
+    bsfunc_max_splitlevel = 32
+    bsfunc_sigma_mult = 1.0_dp
+    bsfunc_sigma_min = 0.0_dp
+    bsfunc_local_solver = 0
+    sigma_shield_factor = 3.0d0
+    split_inflection_points = .TRUE.
+    mag_local_sigma = 0
+    mag_symmetric = .FALSE.
+    mag_symmetric_shorten = .FALSE.
+    ! propagator
+    prop_diagphys = 1
+    prop_overwrite   = 1
+    prop_diagnostic = 1
+    prop_binary = 0
+    prop_timing = 1
+    prop_join_ends = 0
+    prop_fluxsplitmode = 1
+    prop_write = 0
+    prop_reconstruct = 0
+    prop_ripple_plot = 0
+    prop_reconstruct_levels = 0
+    mag_talk = .TRUE.
+    mag_infotalk = .TRUE.
+    hphi_lim = 1.0d-6
+    ! plotting
+    plot_gauss = 0
+    plot_prop  = 0
+    !! Modification by Andreas F. Martitsch (14.07.2015)
+    ! ntv_input
+    isw_ntv_mode = 0
+    isw_qflux_NA = 0
+    MtOvR = 0.0d0
+    B_rho_L_loc = 0.0d0
+    isw_ripple_solver = 1
+    isw_mag_shear = 0
+    !! End Modification by Andreas F. Martitsch (14.07.2015)
+
+    lsw_nbi = .false.
+    T_nbi  = 70d3
+    m_nbi  = 3.343583719d-24
+  end subroutine set_default_values
 
 END PROGRAM neo2_ql

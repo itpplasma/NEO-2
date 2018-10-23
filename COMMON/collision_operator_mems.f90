@@ -213,6 +213,9 @@ module collop
       if(allocated(weightenerg)) deallocate(weightenerg)
       allocate(weightenerg(0:lag))
 
+      !> \todo This array may be written uninitialized to a hdf5 file.
+      !> Might also at other locations be used uninitialized.
+      !> This should be checked.
       if (allocated(anumm_inf)) deallocate(anumm_inf)
       allocate(anumm_inf(0:lag, 0:lag))
 
