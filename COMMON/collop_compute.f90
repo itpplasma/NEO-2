@@ -1541,7 +1541,7 @@ contains
     real(dp), dimension(:,:) :: A
     integer,  dimension(size(A,1)) :: ipiv
     real(dp), dimension(size(A,1)) :: work  
-    integer :: n, info
+    integer :: n, info, lc
 
     n = size(A,1)
 
@@ -1554,7 +1554,10 @@ contains
     ! Check state
     !**********************************************************
     if (info /= 0) then
-       stop 'Error: Matrix is numerically singular!'
+      do lc = 1, n
+        write(*,*) A(lc,:)
+      end do
+      stop 'Error: Matrix is numerically singular!'
     end if
 
     !**********************************************************
@@ -1566,7 +1569,10 @@ contains
     ! Check state
     !**********************************************************
     if (info /= 0) then
-       stop 'Error: Matrix inversion failed!'
+      do lc = 1, n
+        write(*,*) A(lc,:)
+      end do
+      stop 'Error: Matrix inversion failed!'
     end if
   end subroutine inv
 
