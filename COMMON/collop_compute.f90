@@ -187,11 +187,11 @@ module collop_compute
   real(kind=dp), dimension(:), allocatable :: t_vec
 
   interface integrate
-     module procedure integrate_ainf, integrate_ab
+     module procedure integrate_a_to_infinity, integrate_a_to_b
   end interface integrate
 
   interface integrate_param
-     module procedure integrate_ainf_param, integrate_ab_param
+     module procedure integrate_a_to_infinity_param, integrate_a_to_b_param
   end interface integrate_param
 
 contains
@@ -935,7 +935,7 @@ contains
     
   end function C_I_rel2_mmp_kernel
     
-  recursive function integrate_ab(func1d, a, b) result(y)
+  recursive function integrate_a_to_b(func1d, a, b) result(y)
     real(kind=dp) :: a, b
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1028,9 +1028,9 @@ contains
        y = res_int(1)
     end if
        
-  end function integrate_ab
+  end function integrate_a_to_b
 
-  recursive function integrate_ab_param(func1d, param, a, b) result(y)
+  recursive function integrate_a_to_b_param(func1d, param, a, b) result(y)
     real(kind=dp) :: a, b, param
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1124,9 +1124,9 @@ contains
        y = res_int(1)
     end if
        
-  end function integrate_ab_param
+  end function integrate_a_to_b_param
 
-  recursive function integrate_ainf(func1d, a) result(y)
+  recursive function integrate_a_to_infinity(func1d, a) result(y)
     real(kind=dp) :: a
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1289,9 +1289,9 @@ contains
        
     end if
     
-  end function integrate_ainf
+  end function integrate_a_to_infinity
 
-  recursive function integrate_ainf_param(func1d, param, a) result(y)
+  recursive function integrate_a_to_infinity_param(func1d, param, a) result(y)
     real(kind=dp) :: a, param
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1455,7 +1455,7 @@ contains
        
     end if
     
-  end function integrate_ainf_param
+  end function integrate_a_to_infinity_param
 
   subroutine init_legendre(n)
     !
