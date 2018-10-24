@@ -1538,7 +1538,7 @@ contains
   end function nu_D_hat
 
   subroutine inv(A)
-    real(dp), dimension(:,:) :: A
+    real(dp), dimension(:,:), intent(inout) :: A
     integer,  dimension(size(A,1)) :: ipiv
     real(dp), dimension(size(A,1)) :: work  
     integer :: n, info
@@ -1571,7 +1571,7 @@ contains
   end subroutine inv
 
   subroutine compute_Minv(M)
-    real(kind=dp), dimension(:,:) :: M
+    real(kind=dp), dimension(:,:), intent(out) :: M
     integer :: mm, mp
 
     write (*,*) "Computing phi transformation matrix..."
@@ -1652,8 +1652,8 @@ contains
   end subroutine compute_Minv
 
   subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s, weightenerg_s)
-    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
-    real(kind=dp), dimension(:)   :: weightden_s, weightparflow_s, weightenerg_s
+    real(kind=dp), dimension(:,:), intent(out) :: asource_s, weightlag_s
+    real(kind=dp), dimension(:), intent(out)   :: weightden_s, weightparflow_s, weightenerg_s
     real(kind=dp) :: res_int
     integer :: m, k, j
 
@@ -2374,7 +2374,7 @@ contains
     
   end subroutine compute_I2_mmp_s
 
-  subroutine compute_I3_mmp_s
+  subroutine compute_I3_mmp_s()
     integer :: l, m, mp
 
     if (allocated(I3_mmp_s)) deallocate(I3_mmp_s)
@@ -2668,8 +2668,8 @@ contains
   end subroutine compute_I4_mmp_s
 
   subroutine compute_source(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s, Amm_s)
-    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
-    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
+    real(kind=dp), dimension(:,:), intent(out) :: Amm_s, asource_s, weightlag_s
+    real(kind=dp), dimension(:), intent(out)   :: bzero_s, weightparflow_s, weightenerg_s
 
     if (allocated(M_transform)) deallocate(M_transform)
     allocate(M_transform(0:lagmax, 0:lagmax))
