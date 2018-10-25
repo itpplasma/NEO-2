@@ -741,7 +741,10 @@ CONTAINS
     ! Free memory
     CALL fgsl_function_free(stdfunc)
     CALL fgsl_integration_cquad_workspace_free(integ_cq)
-    !
+
+    ! Restore error handler
+    std = fgsl_set_error_handler(std)
+
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
