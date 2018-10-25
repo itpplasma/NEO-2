@@ -78,7 +78,6 @@ set(NEO2_COMMON_FILES
         ../COMMON/odeint_allroutines.f
         ../COMMON/polleg.f90
         ../COMMON/prodband.f90
-        ../COMMON/pspline.f90
         ../COMMON/spline5_RZ.f90
         ../COMMON/spline_int.f90
         ../COMMON/spline_cof.f90
@@ -103,6 +102,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/math_constants.f90
         ../COMMON/neo_sub.f90
         ../COMMON/nrtype.f90
+        ../COMMON/spline_mod.f90
         ../COMMON/vvn_period.f90
 )
 
