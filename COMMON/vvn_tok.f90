@@ -1,53 +1,29 @@
-!
-MODULE vvn_period_mod
-  DOUBLE PRECISION :: per_phi, ampl
-END MODULE vvn_period_mod
-!
-  MODULE circtokfield_mod
-! rbig - big radius, btor - toroidal field on the magnetic axis
-    DOUBLE PRECISION :: rbig=200.d0,rsmall=5.d1,btor=1.d0
-  END MODULE circtokfield_mod
-!
-  MODULE field_param_mod
-!    logical :: prop=.true.
-! No input file for a simple field without perturbation:
-    LOGICAL :: prop=.FALSE.
-    INTEGER          :: mmx, nmx, m_isl,n_isl
-    DOUBLE PRECISION :: br0,delta_m,delta_n,r0,aiota0,aiota_pr
-    DOUBLE PRECISION :: eps_isl
-    DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: sinmt,cosmt,sinnp,cosnp
-    DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: expmn,sipsmn,copsmn
-  END MODULE field_param_mod
-!
-  MODULE coordinates_of_old_model
-    DOUBLE PRECISION :: rad_old,theta_old
-  END MODULE coordinates_of_old_model
-!
+
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  SUBROUTINE stevvo_0(RT0,R0i,L1i,cbfi,BY0i,bf0)
-!
-  USE circtokfield_mod
-!
+SUBROUTINE stevvo_0(RT0,R0i,L1i,cbfi,BY0i,bf0)
+
+  use circtokfield, only : rbig, btor
+
   IMPLICIT NONE
-!
+
   INTEGER :: L1i
   DOUBLE PRECISION :: RT0,R0i,cbfi,BY0i,bf0
-!
+
   RT0=rbig
   L1i=1
   bf0=btor
-!
+
 END SUBROUTINE stevvo_0
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  SUBROUTINE GBas_0(r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ,                      &
+SUBROUTINE GBas_0(r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ,                      &
                    dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
 !  subroutine field(r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ,                      &
 !                   dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
 !
-  USE circtokfield_mod
+  USE circtokfield
   USE coordinates_of_old_model
 !
   IMPLICIT NONE
@@ -194,17 +170,17 @@ END SUBROUTINE stevvo_0
 !pause
 !write (123,*) R,Z
   RETURN
-  END SUBROUTINE GBas_0
+END SUBROUTINE GBas_0
 !  end subroutine field
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  SUBROUTINE hamilt_field(tfl_e,tfl,theta,p,dpsi_dtfl,dpsi_dtheta,        &
+SUBROUTINE hamilt_field(tfl_e,tfl,theta,p,dpsi_dtfl,dpsi_dtheta,        &
                           ddpsi_dtfl2,ddpsi_dtfl_dtheta,ddpsi_dtheta2,    &
                           ddpsi_dtfl_dp,ddpsi_dtheta_dp)
 !
-  USE vvn_period_mod
-  USE field_param_mod
+  USE vvn_period
+  USE field_param
 ! Winny
   USE mag_interface_mod, only : aiota_tokamak
 ! Winny end
@@ -284,10 +260,10 @@ END SUBROUTINE stevvo_0
 ! Winny - aiota 
   !aiota=1.d0/3.d0
   !aiota=0.35145
-aiota = aiota_tokamak
+  aiota = aiota_tokamak
 ! Winny - end
   daiota=0.d0
-!
+
 !  dpsi_dtfl=-aiota
   dpsi_dtfl=aiota
   dpsi_dtheta=0.d0
@@ -297,7 +273,7 @@ aiota = aiota_tokamak
   ddpsi_dtfl_dtheta=0.d0
   ddpsi_dtfl_dp=0.d0
   ddpsi_dtheta_dp=0.d0
-!
+
 !  dpsi_dtfl=-aiota
   dpsi_dtfl=aiota
   dpsi_dtheta=0.d0
@@ -307,11 +283,11 @@ aiota = aiota_tokamak
   ddpsi_dtfl_dtheta=0.d0
   ddpsi_dtfl_dp=0.d0
   ddpsi_dtheta_dp=0.d0
-!
+
 !We don't need any perturbation here:
   RETURN
-!
-!
+
+
 ! $\psi=2\Phi_e(s^{3/2}/3-b_{r0} s^{1/2}\sum_{m,n} \sin(m\theta - n \varphi))$
 !    Perturbation field:
   DO m=-mmx,mmx
@@ -346,10 +322,10 @@ aiota = aiota_tokamak
 !      dbr_dp = dbr_dp + m*n*sin_mt_np*expmn(m,n)
 !      dbt_dt = dbt_dt + m*cos_mt_np*expmn(m,n)
 !      dbt_dp = dbt_dp - n*cos_mt_np*expmn(m,n)
-!
+
       dpsi_dtfl=dpsi_dtfl+expmn(m,n)/sqs*sin_mt_np
       dpsi_dtheta=dpsi_dtheta+2.d0*tfl_e*expmn(m,n)*sqs*m*cos_mt_np
-!
+
       ddpsi_dtfl2=ddpsi_dtfl2-0.5d0*expmn(m,n)/sqs/s/tfl_e*sin_mt_np
       ddpsi_dtheta2=ddpsi_dtheta2-2.d0*tfl_e*expmn(m,n)*sqs*m**2*sin_mt_np
       ddpsi_dtfl_dtheta=ddpsi_dtfl_dtheta+expmn(m,n)/sqs*m*cos_mt_np
@@ -357,21 +333,20 @@ aiota = aiota_tokamak
       ddpsi_dtheta_dp=ddpsi_dtheta_dp+2.d0*tfl_e*expmn(m,n)*sqs*m*n*sin_mt_np
     ENDDO
   ENDDO
-!
-! big island:
+
+  ! big island:
   cos_mt_np=COS(m_isl*theta-n_isl*p)
   sin_mt_np=SIN(m_isl*theta-n_isl*p)
-!
+
   m=m_isl
   n=n_isl
-!
+
   dpsi_dtfl=dpsi_dtfl+eps_isl/sqs*sin_mt_np
   dpsi_dtheta=dpsi_dtheta+2.d0*tfl_e*eps_isl*sqs*m*cos_mt_np
-!
+
   ddpsi_dtfl2=ddpsi_dtfl2-0.5d0*eps_isl/sqs/s/tfl_e*sin_mt_np
   ddpsi_dtheta2=ddpsi_dtheta2-2.d0*tfl_e*eps_isl*sqs*m**2*sin_mt_np
   ddpsi_dtfl_dtheta=ddpsi_dtfl_dtheta+eps_isl/sqs*m*cos_mt_np
   ddpsi_dtfl_dp=ddpsi_dtfl_dp-eps_isl/sqs*n*cos_mt_np
-!
-  RETURN
-  END SUBROUTINE hamilt_field
+
+END SUBROUTINE hamilt_field

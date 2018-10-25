@@ -96,10 +96,14 @@ set(NEO2_COMMON_FILES
         ../COMMON/collop_compute.f90
         ../COMMON/rel_kernels.f90
         ../COMMON/sparsevec_mod.f90
+        ../COMMON/circtokfield.f90
+        ../COMMON/coordinates_of_old_model.f90
+        ../COMMON/field_param.f90
         ../COMMON/global_parameters.f90
         ../COMMON/math_constants.f90
         ../COMMON/neo_sub.f90
         ../COMMON/nrtype.f90
+        ../COMMON/vvn_period.f90
 )
 
 set(NEO2_PAR_SRC_FILES
