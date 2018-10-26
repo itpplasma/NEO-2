@@ -1,59 +1,7 @@
 !
-  module bdivfree_mod
-    integer :: nr,nz,ntor,icp
-    integer, dimension(:,:), allocatable :: ipoint
-    double precision :: rmin,zmin,hr,hz,pmin,pfac
-    double precision, dimension(:),       allocatable :: rpoi,zpoi
-    double precision, dimension(:,:,:),   allocatable :: apav,rbpav_coef
-    double precision, dimension(:,:,:,:), allocatable :: aznre,aznim,arnre,arnim
-  end module bdivfree_mod
-!
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  module theta_rz_mod
-    integer :: icall=0
-    integer :: nsqp,nlab,nthe,icp_pt
-    integer, dimension(:,:), allocatable :: ipoint_pt
-    real(kind=8) :: hsqpsi,hlabel,htheqt,psiaxis,sigma_qt,raxis,zaxis
-    real(kind=8), dimension(:,:),   allocatable :: spllabel
-    real(kind=8), dimension(:,:,:), allocatable :: splthet
-    real(kind=8), dimension(:),     allocatable :: sqpsi,flab,theqt
-  end module theta_rz_mod
-!
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!
-  module amn_mod
-! Fourier ampitudes of the original field:
-    integer :: ntor_amn=1,mpol,ntor_ff,mpol_ff,nsqpsi,icall=0
-    double precision :: sqpsimin,sqpsimax,hsqpsi
-    double complex, dimension(:,:,:,:), allocatable :: splapsi,splatet
-    double complex, dimension(:,:), allocatable :: amnpsi,   amntet,     &
-                                                   amnpsi_s, amntet_s,   &
-                                                   amnpsi_ss,amntet_ss
-    double complex, dimension(:),   allocatable :: expthe,expphi
-! Formfactors:
-    integer :: nsqpsi_ff,nmodes_ff
-    double precision :: sqpsimin_ff,sqpsimax_ff,hsqpsi_ff
-    integer,        dimension(:,:), allocatable :: ipoi_ff
-    double complex, dimension(:,:,:), allocatable :: splffp,splfft
-    double complex, dimension(:),   allocatable :: fmnpsi,   fmntet,     &
-                                                   fmnpsi_s, fmntet_s,   &
-                                                   fmnpsi_ss,fmntet_ss
-  end module amn_mod
-!
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!
-  module extract_fluxcoord_mod
-    integer :: load_extract_fluxcoord=1
-    integer :: nphinorm
-    double precision :: psif_extract,theta_extract,psifmin,hpsif
-    double precision :: psifmax,phifmax,sigcos
-    double precision, dimension(:), allocatable :: phinorm_arr
-  end module extract_fluxcoord_mod
-!
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!
-  subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
+subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
              rmin_in,rmax_in,pmin_in,pmax_in,zmin_in,zmax_in,  &
              br,bp,bz)
 

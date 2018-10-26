@@ -93,11 +93,14 @@ set(NEO2_COMMON_FILES
         ../COMMON/collop_compute.f90
         ../COMMON/rel_kernels.f90
         ../COMMON/sparsevec_mod.f90
+        ../COMMON/amn_mod.f90
+        ../COMMON/bdivfree_mod.f90
         ../COMMON/binarysplit_int.f90
         ../COMMON/circtokfield.f90
         ../COMMON/coordinates_of_old_model.f90
         ../COMMON/collisionality_mod.f90
         ../COMMON/development.f90
+        ../COMMON/extract_fluxcoord_mod.f90
         ../COMMON/extremum_mod.f90
         ../COMMON/field_c_mod.f90
         ../COMMON/field_eq_mod.f90
@@ -140,6 +143,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/sizey_cur.f90
         ../COMMON/sizey_pla.f90
         ../COMMON/spline_mod.f90
+        ../COMMON/theta_rz_mod.f90
         ../COMMON/vvn_period.f90
 )
 
