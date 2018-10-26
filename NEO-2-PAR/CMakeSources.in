@@ -93,6 +93,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/collop_compute.f90
         ../COMMON/rel_kernels.f90
         ../COMMON/sparsevec_mod.f90
+        ../COMMON/binarysplit_int.f90
         ../COMMON/circtokfield.f90
         ../COMMON/coordinates_of_old_model.f90
         ../COMMON/collisionality_mod.f90
