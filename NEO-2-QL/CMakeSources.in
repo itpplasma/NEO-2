@@ -56,7 +56,6 @@ set(COLLOPLIB_FILES
 set(NEO2_COMMON_FILES
         ../COMMON/bdivfree.f90
         ../COMMON/device_mod.f90
-        ../COMMON/neo_modules.f90
         ../COMMON/field_divB0.f90
         ../COMMON/compute_aiota.f90
         ../COMMON/nrutil.f90
@@ -93,8 +92,29 @@ set(NEO2_COMMON_FILES
         ../COMMON/field_param.f90
         ../COMMON/global_parameters.f90
         ../COMMON/math_constants.f90
+        ../COMMON/neo_actual_fluxs.f90
+        ../COMMON/neo_actual_spectra.f90
+        ../COMMON/neo_control.f90
+        ../COMMON/neo_eval_switch.f90
+        ../COMMON/neo_exchange.f90
+        ../COMMON/neo_input.f90
+        ../COMMON/neo_output.f90
+        ../COMMON/neo_spline.f90
+        ../COMMON/neo_spline_b00.f90
+        ../COMMON/neo_spline_data.f90
         ../COMMON/neo_sub.f90
+        ../COMMON/neo_support.f90
+        ../COMMON/neo_units.f90
+        ../COMMON/neo_van.f90
+        ../COMMON/neo_van_exchange.f90
+        ../COMMON/neo_work.f90
         ../COMMON/nrtype.f90
+        ../COMMON/partpa_bo.f90
+        ../COMMON/partpa_cur.f90
+        ../COMMON/partpa_pla.f90
+        ../COMMON/sizey_bo.f90
+        ../COMMON/sizey_cur.f90
+        ../COMMON/sizey_pla.f90
         ../COMMON/spline_mod.f90
         ../COMMON/vvn_period.f90
 )
