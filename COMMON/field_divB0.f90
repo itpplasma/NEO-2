@@ -413,17 +413,19 @@ end subroutine read_eqfile0
 ! ----------- Read gfile directly --------------------------------
 subroutine read_dimeq1(nwEQD,nhEQD)
   use input_files
+
   implicit none
+
   integer :: nwEQD, nhEQD,i
   integer :: idum
-  character*10 case(6)
-!
-     open(unit=iunit,file=trim(gfile),status='old',action='read')
-     read(iunit,2000)(case(i),i=1,6),idum,nwEQD,nhEQD
-     close(iunit)
-     open(unit=iunit,file='out.06')
-     write(iunit,*) 'READ_DIMEQ1: ',nwEQD,nhEQD
-     close(iunit)
+  character*10 discarded_data(6)
+
+  open(unit=iunit,file=trim(gfile),status='old',action='read')
+  read(iunit,2000)(discarded_data(i),i=1,6),idum,nwEQD,nhEQD
+  close(iunit)
+  open(unit=iunit,file='out.06')
+  write(iunit,*) 'READ_DIMEQ1: ',nwEQD,nhEQD
+  close(iunit)
   return
 
 2000  format(6a8,3i4)
@@ -437,7 +439,7 @@ subroutine read_eqfile1(nwEQD,nhEQD,psiSep, bt0, rzero, rad, zet, psiRZ)
   implicit none
   integer :: nwEQD, nhEQD
   integer :: gunit, idum
-  character*10 case(6)
+  character*10 discarded_data(6)
   integer :: i,j
   real (kind=8) :: xdim,zdim,r1,zmid,rmaxis,zmaxis,xdum
   real (kind=8) :: bt0, rzero, plas_cur, psiAxis, psiSep
@@ -453,7 +455,7 @@ subroutine read_eqfile1(nwEQD,nhEQD,psiSep, bt0, rzero, rad, zet, psiRZ)
       open(unit=gunit,file=trim(gfile),status='old',action='read')
 
 ! Equilibrium Parameters
-      read(gunit,2000)(case(i),i=1,6),idum,nwEQD,nhEQD
+      read(gunit,2000)(discarded_data(i),i=1,6),idum,nwEQD,nhEQD
       write(*,*) 'READ_EQFILE1: ',trim(gfile),nwEQD,nhEQD
       read(gunit,2010,end=55,err=250)xdim,zdim,rzero,r1,zmid
       write(*,*) xdim, zdim, rzero, r1, zmid
@@ -870,7 +872,7 @@ end subroutine stretch_coords
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine inthecore(R,Z)
+subroutine inthecore(R,Z)
 !
   use inthecore_mod
   use input_files,  only : iunit,fluxdatapath
@@ -986,7 +988,7 @@ end subroutine stretch_coords
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine localizer(x1,x2,x,weight,dweight,ddweight)
+subroutine localizer(x1,x2,x,weight,dweight,ddweight)
 !
   implicit none
 !
@@ -1021,7 +1023,7 @@ end subroutine stretch_coords
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine window_filter(n,nw,arr_in,arr_out)
+subroutine window_filter(n,nw,arr_in,arr_out)
 !
   implicit none
 !
