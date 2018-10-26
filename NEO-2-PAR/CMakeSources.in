@@ -97,8 +97,10 @@ set(NEO2_COMMON_FILES
         ../COMMON/coordinates_of_old_model.f90
         ../COMMON/collisionality_mod.f90
         ../COMMON/development.f90
+        ../COMMON/extremum_mod.f90
         ../COMMON/field_param.f90
         ../COMMON/flint_mod.f90
+        ../COMMON/gfactor_mod.f90
         ../COMMON/global_parameters.f90
         ../COMMON/math_constants.f90
         ../COMMON/neo_actual_fluxs.f90
@@ -122,6 +124,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/partpa_cur.f90
         ../COMMON/partpa_mod.f90
         ../COMMON/partpa_pla.f90
+        ../COMMON/plagrange_mod.f90
         ../COMMON/ripple_mod.f90
         ../COMMON/rk4_kin_mod.f90
         ../COMMON/rkstep_mod.f90
