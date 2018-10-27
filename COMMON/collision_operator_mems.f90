@@ -1,6 +1,5 @@
 module collop
   use rkstep_mod
-  !use nrtype, only, private : pi, dp
   use hdf5_tools
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &

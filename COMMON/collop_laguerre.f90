@@ -1,5 +1,5 @@
 module collop_laguerre
-  use nrtype, only : dp, pi
+  use nrtype, only : dp
 
   implicit none
   
@@ -54,6 +54,8 @@ contains
   end subroutine init_phi_laguerre
 
   function phi_laguerre(m, x)
+    use math_constants, only : pi
+
     integer       :: m, k
     real(kind=dp) :: phi_laguerre
     real(kind=dp) :: x, plag, xpow, add
@@ -73,6 +75,8 @@ contains
   end function phi_laguerre
 
   function d_phi_laguerre(m, x)
+    use math_constants, only : pi
+
     integer       :: m, k
     real(kind=dp) :: d_phi_laguerre
     real(kind=dp) :: x, dplag, xpow, add
@@ -94,6 +98,8 @@ contains
   end function d_phi_laguerre
 
   function dd_phi_laguerre(m, x)
+    use math_constants, only : pi
+
     integer :: m,k
     real(kind=dp) :: dd_phi_laguerre
     real(kind=dp) :: x, dplag, ddplag, xpow,add

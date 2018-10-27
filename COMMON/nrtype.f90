@@ -3,7 +3,6 @@ module nrtype
   public longint
   public SP, DP, SPC, DPC
   public LGT
-  public PI, PIO2, TWOPI, SQRT2, EULER, PI_D, PIO2_D, TWOPI_D
   public sprs2_sp, sprs2_dp
 
   ! Definition of types taken from Numerical Recipes

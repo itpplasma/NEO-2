@@ -1,7 +1,7 @@
 module collop_compute
 
   use hdf5_tools
-  !use nrtype, only : dp, pi
+  use nrtype, only : dp
   use gsl_integration_routines_mod
   use gsl_specialfunctions_mod
   use collop_laguerre
@@ -564,6 +564,8 @@ contains
   end subroutine karney
 
   function D_thth(rmu, x)
+    use math_constants, only : pi
+
     real(kind=dp) :: rmu, x, D_thth
     real(kind=dp) :: z, gam
     real(kind=dp) :: j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
@@ -612,6 +614,8 @@ contains
   end function D_thth
 
   function D_uu(rmu, x)
+    use math_constants, only : pi
+
     real(kind=dp) :: rmu, x, D_uu
     real(kind=dp) :: z, gam
     real(kind=dp) :: j0_1,j0_11,j0_2,j0_02,j0_022,j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
@@ -655,6 +659,8 @@ contains
   end function D_uu
 
   function D_uu_b(rmu, x, mp)
+    use math_constants, only : pi
+
     real(kind=dp) :: rmu, x, D_uu_b
     integer       :: mp
     real(kind=dp) :: z, gam
@@ -699,6 +705,8 @@ contains
   end function D_uu_b  
 
   function F_u_b(rmu, x, mp)
+    use math_constants, only : pi
+
     real(kind=dp) :: rmu, x, F_u_b
     integer       :: mp
     real(kind=dp) :: z, gam
@@ -743,6 +751,8 @@ contains
   end function F_u_b
 
   function C_I_rel1_mmp(rmu, l, m, mp)
+    use math_constants, only : pi
+
     real(kind=dp) :: rmu, C_I_rel1_mmp
     integer       :: l, m, mp
 
@@ -763,6 +773,8 @@ contains
   end function C_I_rel1_mmp
 
   function C_I_l0_rel1(rmu, m, mp)
+    use math_constants, only : pi
+
     real(kind=dp) :: rmu, C_I_l0_rel1
     integer       :: m, mp
 
@@ -859,6 +871,8 @@ contains
   end function C_I_l1_rel1
 
   function C_I_rel2_mmp(rmu, l, m, mp)
+    use math_constants, only : pi
+
     real(kind=dp) :: rmu, C_I_rel2_mmp
     integer       :: l, m, mp
 
@@ -1493,6 +1507,8 @@ contains
   end subroutine init_legendre
 
   function G(x) result(y)
+    use math_constants, only : pi
+
     real(kind=dp) :: x
     real(kind=dp) :: y
 
@@ -1507,6 +1523,8 @@ contains
   end function G
 
   function d_erf(x) result(y)
+    use math_constants, only : pi
+
     real(kind=dp) :: x
     real(kind=dp) :: y
 
@@ -1514,6 +1532,8 @@ contains
   end function d_erf
 
   function dd_erf(x) result(y)
+    use math_constants, only : pi
+
     real(kind=dp) :: x
     real(kind=dp) :: y
 
@@ -1529,6 +1549,8 @@ contains
   end function d_G
 
   function nu_D_hat(x) result(nu)
+    use math_constants, only : pi
+
     real(kind=dp) :: x, y, nu
 
     ! At the momement only for self-collisions !!!!!!!
@@ -1638,6 +1660,8 @@ contains
   contains
 
     function phim_phimp(x)
+      use math_constants, only : pi
+
       real(kind=dp) :: x, phim_phimp
 
       phim_phimp =  pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(mm,x) * phi_exp(mp,x)
@@ -1645,6 +1669,8 @@ contains
     end function phim_phimp
 
     function phim_phimp_rel1(x)
+      use math_constants, only : pi
+
       real(kind=dp) :: x, phim_phimp_rel1
       real(kind=dp) :: exp_maxwell, gam
       
@@ -1658,6 +1684,8 @@ contains
   end subroutine compute_Minv
 
   subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s, weightenerg_s)
+    use math_constants, only : pi
+
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
     real(kind=dp), dimension(:)   :: weightden_s, weightparflow_s, weightenerg_s
     real(kind=dp) :: res_int
@@ -1779,6 +1807,8 @@ contains
     end function am
 
     function am_rel1(x)
+      use math_constants, only : pi
+
       real(kind=dp) :: x, am_rel1
       real(kind=dp) :: exp_maxwell, gam, gam_fac
 
@@ -1819,6 +1849,8 @@ contains
     end function bm_rel1
 
     function weightenerg_kernel(x)
+      use math_constants, only : pi
+
       real(kind=dp) :: x, weightenerg_kernel
 
       weightenerg_kernel = &
@@ -1865,6 +1897,8 @@ contains
   end subroutine compute_sources
 
   subroutine compute_xmmp(x1mm_s,x2mm_s)
+    use math_constants, only : pi
+
     real(kind=dp), dimension(:,:) :: x1mm_s, x2mm_s
     real(kind=dp) :: cnorm
     integer :: m, mp
@@ -1925,6 +1959,8 @@ contains
   end subroutine compute_xmmp
   
   subroutine compute_lorentz(anumm_s)
+    use math_constants, only : pi
+
     real(kind=dp), dimension(:,:) :: anumm_s
     integer :: m, mp
 
@@ -1990,6 +2026,8 @@ contains
   end subroutine compute_lorentz
 
   subroutine compute_lorentz_inf(anumm_s)
+    use math_constants, only : pi
+
     real(kind=dp), dimension(:,:) :: anumm_s
     integer :: m, mp
 
@@ -2046,6 +2084,8 @@ contains
   end subroutine compute_lorentz_inf
 
   subroutine compute_energyscattering(denmm_s)
+    use math_constants, only : pi
+
     real(kind=dp), dimension(:,:) :: denmm_s
     integer :: m, mp
 
@@ -2279,6 +2319,8 @@ contains
   end subroutine compute_nbisource
   
   subroutine compute_I1_mmp_s()
+    use math_constants, only : pi
+
     integer :: l, m, mp
 
     if (allocated(I1_mmp_s)) deallocate(I1_mmp_s)
@@ -2305,6 +2347,8 @@ contains
   end subroutine compute_I1_mmp_s
 
   subroutine compute_I2_mmp_s()
+    use math_constants, only : pi
+
     integer :: l, m, mp
 
     if (allocated(I2_mmp_s)) deallocate(I2_mmp_s)
@@ -2381,6 +2425,8 @@ contains
   end subroutine compute_I2_mmp_s
 
   subroutine compute_I3_mmp_s
+    use math_constants, only : pi
+
     integer :: l, m, mp
 
     if (allocated(I3_mmp_s)) deallocate(I3_mmp_s)
@@ -2465,6 +2511,8 @@ contains
   end subroutine compute_I3_mmp_s
 
   subroutine compute_I4_mmp_s()
+    use math_constants, only : pi
+
     integer :: l, m, mp
     real(kind=dp) :: ti, tip1, I4_1
 
@@ -2696,6 +2744,8 @@ contains
 
   subroutine compute_collop_rel(isw_rel, T_e, asource_s, weightlag_s, bzero_s, weightparflow_s, &
        weightenerg_s, Amm_s, anumm_s, anumm_inf_s, denmm_s, ailmm_s)
+    use math_constants, only : pi
+
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
     real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
     real(kind=dp), dimension(:,:)   :: anumm_s, anumm_inf_s, denmm_s

@@ -1,5 +1,5 @@
 module collop_polynomial
-  use nrtype, only : dp, pi
+  use nrtype, only : dp
 
   implicit none
   

@@ -1,5 +1,5 @@
 module collop_bspline
-  use nrtype, only : dp, pi
+  use nrtype, only : dp
   use collisionality_mod, only : phi_x_max, collop_bspline_dist, collop_bspline_order, &
        collop_bspline_taylor
   !use fgsl

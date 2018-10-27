@@ -1,5 +1,5 @@
 module collop_definitions
-  use nrtype, only : dp, pi
+  use nrtype, only : dp
   use gsl_integration_routines_mod
   implicit none
 
@@ -118,6 +118,8 @@ contains
   end subroutine init_phi
 
   function phi(m, x)
+    use math_constants, only : pi
+
     integer       :: m, k
     real(kind=dp) :: phi
     real(kind=dp) :: x, plag, xpow, add
@@ -137,6 +139,8 @@ contains
   end function phi
 
   function d_phi(m, x)
+    use math_constants, only : pi
+
     integer       :: m, k
     real(kind=dp) :: d_phi
     real(kind=dp) :: x, dplag, xpow, add
@@ -156,6 +160,8 @@ contains
   end function d_phi
   
   function dd_phi(m, x)
+    use math_constants, only : pi
+
     integer :: m,k
     real(kind=dp) :: dd_phi
     real(kind=dp) :: x, dplag, ddplag, xpow,add
@@ -177,6 +183,8 @@ contains
   end function dd_phi
 
   function G(x) result(y)
+    use nrtype, only : dp
+
     real(kind=dp) :: x
     real(kind=dp) :: y
 
@@ -185,6 +193,8 @@ contains
   end function G
 
   function d_erf(x) result(y)
+    use math_constants, only : pi
+
     real(kind=dp) :: x
     real(kind=dp) :: y
 
@@ -192,6 +202,8 @@ contains
   end function d_erf
 
   function dd_erf(x) result(y)
+    use math_constants, only : pi
+
     real(kind=dp) :: x
     real(kind=dp) :: y
 

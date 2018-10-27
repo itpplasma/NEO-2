@@ -1,5 +1,5 @@
 module collop_spline
-  use nrtype, only : dp, pi
+  use nrtype, only : dp
   use collisionality_mod, only : v_max_resolution
   use inter_interfaces, only : splinecof3, splint_horner3, tf, tfzero, tfone
   implicit none

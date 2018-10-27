@@ -1,5 +1,5 @@
 module collop_nbi
-  use nrtype, only : dp, pi
+  use nrtype, only : dp
 
   implicit none
   
