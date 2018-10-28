@@ -23,7 +23,9 @@ SUBROUTINE rhs_kin(phi,y,dery)
   ! and "magdata_for_particles". 
   USE mag_sub, ONLY: mag
   !! End Modifications by Andreas F. Martitsch (09.03.2014)
-  !
+  use nrtype, only : dp
+
+
   !   y(1)                     - $R$
   !   y(2)                     - $Z$
   !   y(3)-y(5)                - $\nabla \psi$ 
@@ -36,7 +38,7 @@ SUBROUTINE rhs_kin(phi,y,dery)
   !   y(12)                    - $\int \rd s$ y(8)
   !   y(13)                    - $\int \rd s$ y(9)
   !   y(14)                    - $\int \rd s$ y(10)
-  !
+
 
   ! New Boozer
   !   y(1) = boozer_theta
@@ -44,22 +46,22 @@ SUBROUTINE rhs_kin(phi,y,dery)
   !   y(3) - y(14) unchanged at the moment has to be adapted
 
 
-  !
+
 
   IMPLICIT NONE
-  !
-  DOUBLE PRECISION                           :: phi
-  DOUBLE PRECISION, DIMENSION(ndim0)         :: y,dery
-  !
+
+  real(kind=dp)                           :: phi
+  real(kind=dp), DIMENSION(ndim0)         :: y,dery
+
   INTEGER :: i,j,npassing
-  DOUBLE PRECISION                 :: bmod,sqrtg
-  DOUBLE PRECISION, DIMENSION(3)   :: x,bder,hcovar,hctrvr
-  DOUBLE PRECISION, DIMENSION(3,3) :: hcoder,hctder
-  DOUBLE PRECISION :: pardeb,bhat,subsq,drive,derg
-  DOUBLE PRECISION :: tdery,g11,sqrg11_tok
-  DOUBLE PRECISION :: dery7_sergei
-  DOUBLE PRECISION :: dery6_sergei
-  !
+  real(kind=dp)                 :: bmod,sqrtg
+  real(kind=dp), DIMENSION(3)   :: x,bder,hcovar,hctrvr
+  real(kind=dp), DIMENSION(3,3) :: hcoder,hctder
+  real(kind=dp) :: pardeb,bhat,subsq,drive,derg
+  real(kind=dp) :: tdery,g11,sqrg11_tok
+  real(kind=dp) :: dery7_sergei
+  real(kind=dp) :: dery6_sergei
+
   IF (mag_coordinates .EQ. 0) THEN
      ! cylindrical
      x(1)=y(1)

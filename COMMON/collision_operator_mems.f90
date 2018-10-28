@@ -629,6 +629,8 @@ module collop
     end subroutine read_precom_collop        
 
     subroutine read_precom_meta_collop(succeded_precom_check_tmp) !! Added by Michael Draxler (13.09.2017)
+      use nrtype, only : dp
+
       !Routine should check if existing precom_collop.h5 matches required Parameters
       !check Version of precom_collop.h5 file
       !USE rkstep_mod only lag,leg
@@ -639,13 +641,13 @@ module collop
       integer                     :: lag_precom, leg_precom
       real(kind=dp)               :: scalprod_alpha_precom
       real(kind=dp)               :: scalprod_beta_precom
-      DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: m_spec_precom ! species mass [g]
-      DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: T_spec_precom ! species temperature [erg]
+      real(kind=dp), DIMENSION(:), ALLOCATABLE :: m_spec_precom ! species mass [g]
+      real(kind=dp), DIMENSION(:), ALLOCATABLE :: T_spec_precom ! species temperature [erg]
       INTEGER          :: num_spec_precom
       LOGICAL          :: lsw_multispecies_precom
-      DOUBLE PRECISION            :: phi_x_max_precom
+      real(kind=dp)            :: phi_x_max_precom
       INTEGER                     :: isw_relativistic_precom
-      DOUBLE PRECISION            :: collop_bspline_dist_precom
+      real(kind=dp)            :: collop_bspline_dist_precom
       INTEGER                     :: collop_bspline_order_precom
 
       LOGICAL                     :: phi_x_max_exists, isw_relativistic_exists

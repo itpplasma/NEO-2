@@ -19,42 +19,43 @@ SUBROUTINE join_ripples(ierr)
 !  c_forward  will have dim (n%p%npass_l , o%p%npass_r)
 !  c_backward will have dim (o%p%npass_r , n%p%npass_l)
 !
-! 
+
 
   USE propagator_mod
   USE lapack_band
   USE collisionality_mod, ONLY : isw_lorentz
-USE development
-!
+  USE development
+  use nrtype, only : dp
+
   IMPLICIT NONE
-!
+
   INTEGER, INTENT(out) :: ierr
-!
+
   TYPE(propagator), POINTER            :: o
   TYPE(propagator), POINTER            :: n
 
-!
+
   INTEGER :: ndim,ndim1,k,k1,i,i1
   INTEGER :: nvel,m
   INTEGER :: info
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ipivot
-!
+
   integer, parameter :: joinripples_write=0
-!
+
   ! WINNY
   ! made it compatible with propagator_mod
   !
   ! One can finally remove this c_forward and c_backward if we just
   ! use o%p%cmat (for forward) and n%p%cmat (for backward)
   !
-  ! DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: c_forward,c_backward
-  DOUBLE PRECISION, DIMENSION(:,:), POINTER :: c_forward,c_backward
+  ! real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_forward,c_backward
+  real(kind=dp), DIMENSION(:,:), POINTER :: c_forward,c_backward
 
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec,bvec_min
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,prod
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: bvec_min_lapack
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: dummat1,dummat2
-  DOUBLE PRECISION :: facnorm
+  real(kind=dp), DIMENSION(:),   ALLOCATABLE :: bvec,bvec_min
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,prod
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: bvec_min_lapack
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: dummat1,dummat2
+  real(kind=dp) :: facnorm
 
   integer :: icount = 0
   !
@@ -445,42 +446,43 @@ SUBROUTINE duplicate_ripple(nvel,ndim,ndim1,npass_l,npass_r,                   &
 !
   USE lapack_band
   USE collisionality_mod, ONLY : isw_lorentz
-!
+  use nrtype, only : dp
+
   IMPLICIT NONE
-!
+
   INTEGER, INTENT(out) :: ierr
-!
+
   INTEGER :: ndim,ndim1,k,k1,i,i1,npass_l,npass_r
   INTEGER :: nvel,m
   INTEGER :: info
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ipivot
-!
-  DOUBLE PRECISION, DIMENSION(npass_l,npass_r) :: c_forward
-  DOUBLE PRECISION, DIMENSION(npass_r,npass_l) :: c_backward
+
+  real(kind=dp), DIMENSION(npass_l,npass_r) :: c_forward
+  real(kind=dp), DIMENSION(npass_r,npass_l) :: c_backward
 !
 !  ndim=npass_l*(nvel+1)
 !  ndim1=npass_r*(nvel+1)
 !
-  DOUBLE PRECISION, DIMENSION(3,3)         :: qflux,dqflux
-  DOUBLE PRECISION, DIMENSION(ndim,3)      :: source_m,dsource_m
-  DOUBLE PRECISION, DIMENSION(ndim1,3)     :: source_p,dsource_p
-  DOUBLE PRECISION, DIMENSION(3,ndim)      :: flux_p,dflux_p
-  DOUBLE PRECISION, DIMENSION(3,ndim1)     :: flux_m,dflux_m
-  DOUBLE PRECISION, DIMENSION(ndim1,ndim)  :: amat_p_p,damat_p_p
-  DOUBLE PRECISION, DIMENSION(ndim,ndim)   :: amat_p_m,damat_p_m
-  DOUBLE PRECISION, DIMENSION(ndim,ndim1)  :: amat_m_m,damat_m_m
-  DOUBLE PRECISION, DIMENSION(ndim1,ndim1) :: amat_m_p,damat_m_p
-!
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec,bvec_min
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,prod
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: bvec_min_lapack
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: dummat1,dummat2
-  DOUBLE PRECISION :: facnorm
-!
+  real(kind=dp), DIMENSION(3,3)         :: qflux,dqflux
+  real(kind=dp), DIMENSION(ndim,3)      :: source_m,dsource_m
+  real(kind=dp), DIMENSION(ndim1,3)     :: source_p,dsource_p
+  real(kind=dp), DIMENSION(3,ndim)      :: flux_p,dflux_p
+  real(kind=dp), DIMENSION(3,ndim1)     :: flux_m,dflux_m
+  real(kind=dp), DIMENSION(ndim1,ndim)  :: amat_p_p,damat_p_p
+  real(kind=dp), DIMENSION(ndim,ndim)   :: amat_p_m,damat_p_m
+  real(kind=dp), DIMENSION(ndim,ndim1)  :: amat_m_m,damat_m_m
+  real(kind=dp), DIMENSION(ndim1,ndim1) :: amat_m_p,damat_m_p
+
+  real(kind=dp), DIMENSION(:),   ALLOCATABLE :: bvec,bvec_min
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,prod
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: bvec_min_lapack
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: dummat1,dummat2
+  real(kind=dp) :: facnorm
+
 ! initialize
   ierr = 0
-!
-!
+
+
   ALLOCATE(amat(ndim,ndim),bvec_lapack(ndim,3),bvec_min_lapack(ndim,3))
   ALLOCATE(ipivot(ndim))
 !
@@ -715,13 +717,13 @@ END SUBROUTINE duplicate_ripple
 !!$  ! One can finally remove this c_forward and c_backward if we just
 !!$  ! use o%p%cmat (for forward) and n%p%cmat (for backward)
 !!$  !
-!!$  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: c_forward,c_backward
+!!$  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_forward,c_backward
 !!$
-!!$  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec,bvec_min
-!!$  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,prod
-!!$  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: bvec_min_lapack
-!!$  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: dummat1,dummat2
-!!$  DOUBLE PRECISION :: facnorm
+!!$  real(kind=dp), DIMENSION(:),   ALLOCATABLE :: bvec,bvec_min
+!!$  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,prod
+!!$  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: bvec_min_lapack
+!!$  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: dummat1,dummat2
+!!$  real(kind=dp) :: facnorm
 !!$  !
 !!$if(joinripplessimple_write.eq.1) then
 !!$OPEN(111,file='o_flux_p.dat')

@@ -1,19 +1,21 @@
 !
   subroutine spl_five_reg(n,h,a,b,c,d,e,f)
-!
+
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: n,i,ip1,ip2
-  double precision :: h,rhop,rhom,fac,fpl31,fpl40,fmn31,fmn40          ,x
-  double precision :: a11,a12,a13,a21,a22,a23,a31,a32,a33,b1,b2,b3,det
-  double precision :: abeg,bbeg,cbeg,dbeg,ebeg,fbeg
-  double precision :: aend,bend,cend,dend,eend,fend
-  double precision, dimension(n) :: a,b,c,d,e,f
-  double precision, dimension(:), allocatable :: alp,bet,gam
-!
+  real(kind=dp) :: h,rhop,rhom,fac,fpl31,fpl40,fmn31,fmn40          ,x
+  real(kind=dp) :: a11,a12,a13,a21,a22,a23,a31,a32,a33,b1,b2,b3,det
+  real(kind=dp) :: abeg,bbeg,cbeg,dbeg,ebeg,fbeg
+  real(kind=dp) :: aend,bend,cend,dend,eend,fend
+  real(kind=dp), dimension(n) :: a,b,c,d,e,f
+  real(kind=dp), dimension(:), allocatable :: alp,bet,gam
+
   rhop=13.d0+sqrt(105.d0)
   rhom=13.d0-sqrt(105.d0)
-!
+
   a11=1.d0
   a12=1.d0/4.d0
   a13=1.d0/16.d0
@@ -178,12 +180,14 @@
 !                                   and y (~ dx**(l-1)*dy**(m-1) ))
 !                                   ipoint(i,j) contains the pointer to k
 !
-  implicit double precision (a-h,o-z)
+  use nrtype, only : dp
+
+  implicit real(kind=dp) (a-h,o-z)
 !
   dimension f(nx,ny),spl(6,6,icount),ipoint(nx,ny)
   dimension imi(ny),ima(ny),jmi(nx),jma(nx)
 !
-  double precision, dimension(:), allocatable :: ai,bi,ci,di,ei,fi
+  real(kind=dp), dimension(:), allocatable :: ai,bi,ci,di,ei,fi
 !
   nmax=max(nx,ny)
 !
@@ -256,12 +260,13 @@
 ! using arrays calculated by  s2dcut
 ! see also comments in subroutine s2dcut
 !  ierr = 1 - point out of the domain
+  use nrtype, only : dp
 
-  implicit double precision (a-h,o-z)
-!
+  implicit real(kind=dp) (a-h,o-z)
+
   dimension spl(6,6,icount),x(nx),y(ny),ipoint(nx,ny)
   dimension a(6),ax(6),axx(6)
-!
+
   xk=(xb-x(1))/hx
   kx=int(xk)+1
   kx = min(nx,max(1,kx))

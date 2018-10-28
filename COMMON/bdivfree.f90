@@ -5,41 +5,42 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
              rmin_in,rmax_in,pmin_in,pmax_in,zmin_in,zmax_in,  &
              br,bp,bz)
 
-    use bdivfree_mod
-    use math_constants, only : pi
+  use bdivfree_mod
+  use math_constants, only : pi
+  use nrtype, only : dp, dpc
 
-    implicit none
-!
+  implicit none
 
-!
+
+
   integer :: nr_in,np_in,nz_in,ntor_in,ip,np,n,ir,iz  
   integer, dimension(:), allocatable :: imi,ima,jmi,jma
-!
+
   integer :: nashli_rukami
   integer :: irmin, irmax, i,j
-  double precision, dimension(4), parameter :: weight=(/-1., 13., 13., -1./)/24.
-!
-  double precision :: rmin_in,rmax_in,pmin_in,pmax_in,zmin_in,zmax_in
-  double precision :: hp,r,rm,zm,sumbz,hrm1,hzm1
-  double precision, dimension(nr_in,np_in,nz_in)  :: br,bp,bz
-  double precision, dimension(:),     allocatable :: dummy
-  double precision, dimension(:,:),   allocatable :: a_re, a_im, rbpav_dummy
-  double precision, dimension(:,:),   allocatable :: brm,bpm,bzm
-!
-  double complex :: four_ampl
-  double complex, dimension(:,:), allocatable :: expon
-!
+  real(kind=dp), dimension(4), parameter :: weight=(/-1., 13., 13., -1./)/24.
+
+  real(kind=dp) :: rmin_in,rmax_in,pmin_in,pmax_in,zmin_in,zmax_in
+  real(kind=dp) :: hp,r,rm,zm,sumbz,hrm1,hzm1
+  real(kind=dp), dimension(nr_in,np_in,nz_in)  :: br,bp,bz
+  real(kind=dp), dimension(:),     allocatable :: dummy
+  real(kind=dp), dimension(:,:),   allocatable :: a_re, a_im, rbpav_dummy
+  real(kind=dp), dimension(:,:),   allocatable :: brm,bpm,bzm
+
+  complex(kind=dpc) :: four_ampl
+  complex(kind=dpc), dimension(:,:), allocatable :: expon
+
   integer, parameter :: mp=4 ! power of Lagrange's polynomial =3
   integer,          dimension(mp)    :: indx,indy
-  double precision, dimension(mp)    :: xp,yp
-  double precision, dimension(mp,mp) :: fp
-!
+  real(kind=dp), dimension(mp)    :: xp,yp
+  real(kind=dp), dimension(mp,mp) :: fp
+
   nr=nr_in
   nz=nz_in
   np=np_in-1
   ntor=ntor_in
   nashli_rukami=(nr_in+1)/2
-!
+
   rmin=rmin_in
   zmin=zmin_in
   hr=(rmax_in-rmin_in)/(nr-1)
@@ -47,7 +48,7 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
   hp=2.d0*pi/np
   pmin=pmin_in
   pfac = dble(nint(2.d0*pi/(pmax_in-pmin_in)))
-!
+
   allocate(expon(np,ntor),a_re(nr,nz),a_im(nr,nz),rbpav_dummy(nr,nz))
   allocate(imi(nz),ima(nz),jmi(nr),jma(nr), dummy(nr))
   allocate(rpoi(nr),zpoi(nz))
@@ -182,44 +183,45 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
 102 format(1000e15.7)
 !
   return
-  end subroutine vector_potentials
+end subroutine vector_potentials
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine field_divfree(r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ    &
+subroutine field_divfree(r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ    &
                           ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
-!
+
   use bdivfree_mod
   use inthecore_mod, only : incore                                            &
                           , vacf,dvacdr,dvacdz,d2vacdr2,d2vacdrdz,d2vacdz2
   use amn_mod, only : ntor_amn
-!
+  use nrtype, only : dp, dpc
+
   implicit none
-!
+
   integer :: n,ierr
-  double precision :: r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ    &
+  real(kind=dp) :: r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ    &
                      ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ
-  double precision :: f,fr,fz,frr,frz,fzz
-  double precision :: g,gr,gz,grr,grz,gzz
-  double precision :: delbr,delbz,delbp
-  double precision :: deldBrdR,deldBrdp,deldBrdZ
-  double precision :: deldBpdR,deldBpdp,deldBpdZ
-  double precision :: deldBzdR,deldBzdp,deldBzdZ
-  double precision :: ar,az,dar_dr,dar_dz,dar_dp,daz_dr,daz_dz,daz_dp
-  double complex :: expon,anr,anz,anr_r,anr_z,anz_r,anz_z
-  double complex :: anr_rr,anr_rz,anr_zz,anz_rr,anz_rz,anz_zz
-!
-!
+  real(kind=dp) :: f,fr,fz,frr,frz,fzz
+  real(kind=dp) :: g,gr,gz,grr,grz,gzz
+  real(kind=dp) :: delbr,delbz,delbp
+  real(kind=dp) :: deldBrdR,deldBrdp,deldBrdZ
+  real(kind=dp) :: deldBpdR,deldBpdp,deldBpdZ
+  real(kind=dp) :: deldBzdR,deldBzdp,deldBzdZ
+  real(kind=dp) :: ar,az,dar_dr,dar_dz,dar_dp,daz_dr,daz_dz,daz_dp
+  complex(kind=dpc) :: expon,anr,anz,anr_r,anr_z,anz_r,anz_z
+  complex(kind=dpc) :: anr_rr,anr_rz,anr_zz,anz_rr,anz_rz,anz_zz
+
+
   call spline(nr,nz,rpoi,zpoi,hr,hz,icp,rbpav_coef,ipoint,r,z,         &
               f,fr,fz,frr,frz,fzz,ierr)
   Bp = f/r
   dBpdR = fr/r - Bp/r
   dBpdZ = fz/r
   dBpdp = 0.d0
-!
+
   call spline(nr,nz,rpoi,zpoi,hr,hz,icp,apav,ipoint,r,z,         &
               f,fr,fz,frr,frz,fzz,ierr)
-!
+
   Br=-fz/r
   Bz=fr/r
   dBrdR=fz/r**2-frz/r
@@ -309,11 +311,11 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
   enddo
 !
   return
-  end subroutine field_divfree
+end subroutine field_divfree
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-      subroutine indef_bdf(u,umin,dum1,nup,indu)
+subroutine indef_bdf(u,umin,dum1,nup,indu)
 ! defines interval for 1D interpolation on uniform mesh, normally 
 ! looks for the central interval of stencil, but
 ! stops moving of stencil at the boundary (works for mp=4 only!)
@@ -327,26 +329,28 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
 !
 ! the power 3 of polinomial is fixed strictly:
 !
-      implicit double precision (a-h,o-z)
-!
-      parameter(mp=4)
-      integer indu(mp)  
-                             
-      indu(1) = int((u-umin)*dum1)
-      if( indu(1) .le. 0 ) indu(1) = 1
-      indu(mp) = indu(1) + mp - 1
-      if( indu(mp) .gt. nup ) then
-         indu(mp) = nup
-         indu(1) = indu(mp) - mp + 1
-      endif
-      do i=2,mp-1
-         indu(i) = indu(i-1) + 1
-      enddo
+  use nrtype, only : dp
 
-      return 
-      end
+  implicit real(kind=dp) (a-h,o-z)
+
+  parameter(mp=4)
+  integer indu(mp)
+
+  indu(1) = int((u-umin)*dum1)
+  if( indu(1) .le. 0 ) indu(1) = 1
+  indu(mp) = indu(1) + mp - 1
+  if( indu(mp) .gt. nup ) then
+    indu(mp) = nup
+    indu(1) = indu(mp) - mp + 1
+  end if
+  do i=2,mp-1
+    indu(i) = indu(i-1) + 1
+  end do
+
+  return
+end subroutine indef_bdf
 !---------------------------------------------------------------------
-      subroutine indsmp_bdf(index,nup,indu)
+subroutine indsmp_bdf(index,nup,indu)
 ! defines interval for 1D interpolation on uniform mesh
 ! by known index.
 ! Normally looks for the central interval of stencil, but
@@ -360,7 +364,7 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
 ! the power 3 of polinomial is fixed strictly:
       parameter(mp=4)
       integer indu(mp)  
-                             
+
       indu(1) = index - 1
       if( indu(1) .le. 0 ) indu(1) = 1
       indu(mp) = indu(1) + mp - 1
@@ -373,11 +377,12 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
       enddo
 
       return 
-      end
+end subroutine indsmp_bdf
 !---------------------------------------------------------------------
-      subroutine plag2d_bdf(x,y,fp,dxm1,dym1,xp,yp,polyl2d)
-!
-      implicit double precision (a-h,o-z)
+subroutine plag2d_bdf(x,y,fp,dxm1,dym1,xp,yp,polyl2d)
+  use nrtype, only : dp
+
+      implicit real(kind=dp) (a-h,o-z)
 !
 ! 2D interpolation by means of Lagrange polynomial
 ! the power 3 is fixed strictly:
@@ -392,60 +397,63 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
 ! Output parameters:
 ! polyl2d - polynomial itself
       dimension cx(mp),cy(mp),fp(mp,mp),xp(mp),yp(mp)
-!
+
       call coefs_bdf(x,xp,dxm1,cx)
       call coefs_bdf(y,yp,dym1,cy)
-!
+
       polyl2d = 0.d0
       do j=1,mp
         do i=1,mp
           polyl2d = polyl2d + fp(i,j)*cx(i)*cy(j)
         enddo
       enddo
-!
+
       return
-      end
+end subroutine plag2d_bdf
 !---------------------------------------------------------------------
-      subroutine coefs_bdf(u,up,dum1,cu)
-!
-      implicit double precision (a-h,o-z)
-!
-      parameter(mp=4)
-      dimension up(mp),cu(mp)
-      data one6/0.16666666666667d0/
-      du3 = dum1**3
-      cu(1) = (u - up(2)) * (u - up(3)) * (u - up(4)) * (-one6*du3)
-      cu(2) = (u - up(1)) * (u - up(3)) * (u - up(4)) * (0.5d0*du3)
-      cu(3) = (u - up(1)) * (u - up(2)) * (u - up(4)) * (-0.5d0*du3)
-      cu(4) = (u - up(1)) * (u - up(2)) * (u - up(3)) * (one6*du3)
-      return
-      end
+subroutine coefs_bdf(u,up,dum1,cu)
+  use nrtype, only : dp
+
+  implicit real(kind=dp) (a-h,o-z)
+
+  parameter(mp=4)
+  dimension up(mp),cu(mp)
+  data one6/0.16666666666667d0/
+  du3 = dum1**3
+  cu(1) = (u - up(2)) * (u - up(3)) * (u - up(4)) * (-one6*du3)
+  cu(2) = (u - up(1)) * (u - up(3)) * (u - up(4)) * (0.5d0*du3)
+  cu(3) = (u - up(1)) * (u - up(2)) * (u - up(4)) * (-0.5d0*du3)
+  cu(4) = (u - up(1)) * (u - up(2)) * (u - up(3)) * (one6*du3)
+  return
+end subroutine coefs_bdf
 !---------------------------------------------------------------------
 !
-  subroutine invert_mono_reg(nx,arry,xmin,xmax,ny,arrx,ymin,ymax)
+subroutine invert_mono_reg(nx,arry,xmin,xmax,ny,arrx,ymin,ymax)
 !
 ! Inverts the monotonous function y(x) given on the equidistant grid 
 ! of x values on the interval [xmin,xmax] by the array y_i=arry(i). 
 ! The result, function x(y), is given on the equidistant grid of y values 
 ! at the interval [ymin,ymax] by the array x_i=arrx(i).
 !
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: ny,nx,iy,ix,ixfix,ix1,ix2,ix3,ix4
-!
-  double precision :: xmin,xmax,ymin,ymax,hy,y,hx,x1,x2,x3,x4,y1,y2,y3,y4
-  double precision, dimension(0:nx) :: arry
-  double precision, dimension(0:ny) :: arrx
-!
+
+  real(kind=dp) :: xmin,xmax,ymin,ymax,hy,y,hx,x1,x2,x3,x4,y1,y2,y3,y4
+  real(kind=dp), dimension(0:nx) :: arry
+  real(kind=dp), dimension(0:ny) :: arrx
+
   ymin=arry(0)
   ymax=arry(nx)
-!
+
   hy=(ymax-ymin)/ny
   hx=(xmax-xmin)/nx
-!
+
   arrx(0)=xmin
   arrx(ny)=xmax
-!
+
   do iy=1,ny-1
     y=ymin+iy*hy
     do ix=0,nx
@@ -473,13 +481,13 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
              + x3*(y-y4)/(y3-y4)*(y-y1)/(y3-y1)*(y-y2)/(y3-y2)    &
              + x4*(y-y1)/(y4-y1)*(y-y2)/(y4-y2)*(y-y3)/(y4-y3)
   enddo
-!
+
   return
-  end
+end subroutine invert_mono_reg
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine invert_mono_per(nx,arry_in,xmin,xmax,ny,arrx,ymin,ymax)
+subroutine invert_mono_per(nx,arry_in,xmin,xmax,ny,arrx,ymin,ymax)
 !
 ! Inverts the monotonous function y(x) given on the equidistant grid
 ! of x values on the interval [xmin,xmax] by the array y_i=arry(i).
@@ -487,29 +495,30 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
 ! The result, function x(y), is given on the equdistant grid of y values
 ! at the interval [ymin,ymax] by the array x_i=arrx(i).
 !
+  use nrtype, only : dp
   implicit none
-!
+
   integer :: ny,nx,iy,ix,ixfix,ix1,ix2,ix3,ix4
-!
-  double precision :: xmin,xmax,ymin,ymax,hy,y,hx,x1,x2,x3,x4,y1,y2,y3,y4
-  double precision, dimension(0:nx) :: arry_in
-  double precision, dimension(0:ny) :: arrx
-  double precision, dimension(:), allocatable :: arry
-!
+
+  real(kind=dp) :: xmin,xmax,ymin,ymax,hy,y,hx,x1,x2,x3,x4,y1,y2,y3,y4
+  real(kind=dp), dimension(0:nx) :: arry_in
+  real(kind=dp), dimension(0:ny) :: arrx
+  real(kind=dp), dimension(:), allocatable :: arry
+
   allocate(arry(-1:nx+1))
   arry(0:nx)=arry_in
-!
+
   ymin=arry(0)
   ymax=arry(nx)
   arry(-1)=arry(nx-1)-ymax+ymin
   arry(nx+1)=arry(1)+ymax-ymin
-!
+
   hy=(ymax-ymin)/ny
   hx=(xmax-xmin)/nx
-!
+
   arrx(0)=xmin
   arrx(ny)=xmax
-!
+
   do iy=1,ny-1
     y=ymin+iy*hy
     do ix=0,nx
@@ -539,31 +548,33 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
   enddo
 !
   return
-  end
+end subroutine invert_mono_per
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine spl_five_per(n,h,a,b,c,d,e,f)
+subroutine spl_five_per(n,h,a,b,c,d,e,f)
 !
 ! Periodic spline of the 5-th order. First and last values of function must
 ! be the same.
 !
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: n,i,ip1,ip2
-  double precision :: h,rhop,rhom,fac,xplu,xmin,gammao_m,gammao_p
-  double precision :: c_gammao_m,c_gammao_p
-  double precision, dimension(n) :: a,b,c,d,e,f
-  double precision, dimension(:), allocatable :: alp,bet,gam
-!
+  real(kind=dp) :: h,rhop,rhom,fac,xplu,xmin,gammao_m,gammao_p
+  real(kind=dp) :: c_gammao_m,c_gammao_p
+  real(kind=dp), dimension(n) :: a,b,c,d,e,f
+  real(kind=dp), dimension(:), allocatable :: alp,bet,gam
+
   rhop=13.d0+sqrt(105.d0)
   rhom=13.d0-sqrt(105.d0)
-!
+
   allocate(alp(n),bet(n),gam(n))
-!
+
   alp(1)=0.0d0
   bet(1)=0.0d0
-!
+
   do i=1,n-4
     ip1=i+1
     alp(ip1)=-1.d0/(rhop+alp(i))
@@ -579,7 +590,7 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
   alp(n)=-1.d0/(rhop+alp(n-1))
   bet(n)=alp(n)*(bet(n-1)- &
            5.d0*(a(4)-4.d0*a(3)+6.d0*a(2)-4.d0*a(1)+a(n-1)))
-!
+
   gam(n)=bet(n)
   do i=n-1,1,-1
     gam(i)=gam(i+1)*alp(i)+bet(i)
@@ -697,11 +708,11 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
   deallocate(alp,bet,gam)
 !
   return
-  end
+end subroutine spl_five_per
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine s2dring(nx,ny,hx,hy,f,icount,spl,ipoint)
+subroutine s2dring(nx,ny,hx,hy,f,icount,spl,ipoint)
 !
 ! Calculates coefficients of a 2D spline for a ring domain
 ! (periodic over y variable)
@@ -728,13 +739,14 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
 !                                   the numbers of expansion power over x
 !                                   and y (~ dx**(l-1)*dy**(m-1) ))
 !                                   ipoint(i,j) contains the pointer to k
-!
-  implicit double precision (a-h,o-z)
+  use nrtype, only : dp
+
+  implicit real(kind=dp) (a-h,o-z)
 ! 
   dimension f(nx,ny),spl(6,6,icount),ipoint(nx,ny)
 ! 
   integer,          dimension(:), allocatable :: imi,ima,jmi,jma
-  double precision, dimension(:), allocatable :: ai,bi,ci,di,ei,fi
+  real(kind=dp), dimension(:), allocatable :: ai,bi,ci,di,ei,fi
 ! 
   nmax=max(nx,ny)
 ! 
@@ -802,25 +814,26 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
   deallocate( ai,bi,ci,di,ei,fi )
 !
   return
-  end
+end subroutine s2dring
 !
 ! ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine load_theta
-!
+subroutine load_theta
+
   use theta_rz_mod
   use input_files, only : iunit,fluxdatapath
-    use math_constants, only : pi
-!
+  use math_constants, only : pi
+  use nrtype, only : dp
+
   implicit none
 
   integer :: nsqpsi,nlabel,ntheta,i
-  real(kind=8) :: sqpsimin,sqpsimax
-  real(kind=8) :: flabel_min,flabel_max
-!
-  real(kind=8), dimension(:),   allocatable :: flabel
-  real(kind=8), dimension(:,:), allocatable :: theta_of_theta_qt
-!
+  real(kind=dp) :: sqpsimin,sqpsimax
+  real(kind=dp) :: flabel_min,flabel_max
+
+  real(kind=dp), dimension(:),   allocatable :: flabel
+  real(kind=dp), dimension(:,:), allocatable :: theta_of_theta_qt
+
   open(iunit,form='unformatted',                                 &
        file=trim(fluxdatapath)//'/theta_of_theta_qt_flabel.dat')
   read (iunit) nsqpsi,nlabel,ntheta,sqpsimin,sqpsimax,flabel_min,flabel_max &
@@ -864,31 +877,32 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
                    ,              spllabel(4,:),spllabel(5,:),spllabel(6,:))
 !
   return
-  end
+end subroutine load_theta
 !
 ! ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine psithet_rz(rrr,zzz,                                          &
+subroutine psithet_rz(rrr,zzz,                                          &
                         theta,theta_r,theta_z,theta_rr,theta_rz,theta_zz, &
                         flabel,s_r,s_z,s_rr,s_rz,s_zz,s0,ds0ds,dds0ds)
-!
+
   use theta_rz_mod
   use field_eq_mod, only : nrad,nzet,rad,zet,hrad,hzet,icp,splpsi,ipoint  &
                          , psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
   use extract_fluxcoord_mod, only : psif_extract,theta_extract
-    use math_constants, only : pi
-! 
+  use math_constants, only : pi
+  use nrtype, only : dp
+
   implicit none
 
   integer :: npoint,i,j,ierr,k
-  real(kind=8) :: rrr,zzz,theta,theta_r,theta_z,theta_rr,theta_rz,theta_zz
-  real(kind=8) :: theta_s,theta_t,theta_ss,theta_st,theta_tt
-  real(kind=8) :: sqpsi_qt,s_r,s_z,s_rr,s_rz,s_zz
-  real(kind=8) :: theta_qt,t_r,t_z,t_rr,t_rz,t_zz
-  real(kind=8) :: rho2,rho4,dr,dz,flabel,dflabel,ddflabel,dx,dfl_dpsi,ddfl_dpsi
-  real(kind=8) :: s0,ds0ds,dds0ds
-! 
-  if(icall.eq.0) then
+  real(kind=dp) :: rrr,zzz,theta,theta_r,theta_z,theta_rr,theta_rz,theta_zz
+  real(kind=dp) :: theta_s,theta_t,theta_ss,theta_st,theta_tt
+  real(kind=dp) :: sqpsi_qt,s_r,s_z,s_rr,s_rz,s_zz
+  real(kind=dp) :: theta_qt,t_r,t_z,t_rr,t_rz,t_zz
+  real(kind=dp) :: rho2,rho4,dr,dz,flabel,dflabel,ddflabel,dx,dfl_dpsi,ddfl_dpsi
+  real(kind=dp) :: s0,ds0ds,dds0ds
+
+  if (icall.eq.0) then
     icall=1
     call load_theta
   endif
@@ -950,22 +964,23 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
   theta_extract=theta
 !
   return
-  end subroutine psithet_rz
+end subroutine psithet_rz
 !
 ! ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine cspl_five_reg(n,h,a,b,c,d,e,f)
-!
+subroutine cspl_five_reg(n,h,a,b,c,d,e,f)
+  use nrtype, only : dp, dpc
+
   implicit none
 !
   integer :: n,i,ip1,ip2
-  double precision :: h,rhop,rhom,fac,fpl31,fpl40,fmn31,fmn40          ,x
-  double precision :: a11,a12,a13,a21,a22,a23,a31,a32,a33,det
-  double complex :: abeg,bbeg,cbeg,dbeg,ebeg,fbeg
-  double complex :: aend,bend,cend,dend,eend,fend
-  double complex :: b1,b2,b3
-  double complex, dimension(n) :: a,b,c,d,e,f
-  double complex, dimension(:), allocatable :: alp,bet,gam
+  real(kind=dp) :: h,rhop,rhom,fac,fpl31,fpl40,fmn31,fmn40          ,x
+  real(kind=dp) :: a11,a12,a13,a21,a22,a23,a31,a32,a33,det
+  complex(kind=dpc) :: abeg,bbeg,cbeg,dbeg,ebeg,fbeg
+  complex(kind=dpc) :: aend,bend,cend,dend,eend,fend
+  complex(kind=dpc) :: b1,b2,b3
+  complex(kind=dpc), dimension(n) :: a,b,c,d,e,f
+  complex(kind=dpc), dimension(:), allocatable :: alp,bet,gam
 !
   rhop=13.d0+sqrt(105.d0)
   rhom=13.d0-sqrt(105.d0)
@@ -1092,11 +1107,11 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
   deallocate(alp,bet,gam)
 !
   return
-  end
+end subroutine cspl_five_reg
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine field_fourier(r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ              &
+subroutine field_fourier(r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ              &
                           ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
 !
 ! Caution: derivatives are not computed, for derivatives call 
@@ -1109,30 +1124,31 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
   use field_eq_mod,  only : psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
   use theta_rz_mod,  only : psiaxis
   use bdivfree_mod,  only : pfac
-!
+  use nrtype, only : dp, dpc
+
   implicit none
-!
+
   integer :: m,n,i,k,ierr,ntor
-  double precision :: r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ                &
+  real(kind=dp) :: r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ                &
                      ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ
-  double precision :: sqpsi,dx,g11,g12,g11_r,g11_z,g12_r,g12_z
-  double precision :: theta,theta_r,theta_z,theta_rr,theta_rz,theta_zz, &
+  real(kind=dp) :: sqpsi,dx,g11,g12,g11_r,g11_z,g12_r,g12_z
+  real(kind=dp) :: theta,theta_r,theta_z,theta_rr,theta_rz,theta_zz, &
                       s_r,s_z,s_rr,s_rz,s_zz
-  double precision :: fun,fr,fz,frr,frz,fzz
-  double precision :: apsi,apsi_s,apsi_t,apsi_p
-  double precision :: athe,athe_s,athe_t,athe_p
-  double precision :: delbr,delbz,delbp,delar,delaz
-  double precision :: deldBrdR,deldBrdp,deldBrdZ
-  double precision :: deldBpdR,deldBpdp,deldBpdZ
-  double precision :: deldBzdR,deldBzdp,deldBzdZ
-  double precision :: delardR,delazdR,delardZ,delazdZ
-  double precision :: fcjac,g11_t,g12_t,s0,ds0ds,dds0ds,sqpsi_sep
-!
+  real(kind=dp) :: fun,fr,fz,frr,frz,fzz
+  real(kind=dp) :: apsi,apsi_s,apsi_t,apsi_p
+  real(kind=dp) :: athe,athe_s,athe_t,athe_p
+  real(kind=dp) :: delbr,delbz,delbp,delar,delaz
+  real(kind=dp) :: deldBrdR,deldBrdp,deldBrdZ
+  real(kind=dp) :: deldBpdR,deldBpdp,deldBpdZ
+  real(kind=dp) :: deldBzdR,deldBzdp,deldBzdZ
+  real(kind=dp) :: delardR,delazdR,delardZ,delazdZ
+  real(kind=dp) :: fcjac,g11_t,g12_t,s0,ds0ds,dds0ds,sqpsi_sep
+
   integer, dimension(:,:), allocatable :: idummy2
-!
-  double complex :: expon
-  double complex, dimension(:), allocatable :: a,b,c,d,e,f
-  double complex, dimension(:,:,:), allocatable :: apsimn,athetmn
+
+  complex(kind=dpc) :: expon
+  complex(kind=dpc), dimension(:), allocatable :: a,b,c,d,e,f
+  complex(kind=dpc), dimension(:,:,:), allocatable :: apsimn,athetmn
 !
   integer, save :: nper
 !
@@ -1457,22 +1473,23 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
     Bz=Bz+delbz*plaf
     Bp=Bp+delbp*plaf+delar*dpladz-delaz*dpladr
   endif
-!
-  end subroutine field_fourier
-!
+
+end subroutine field_fourier
+
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine field_fourier_derivs(r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ    &
+subroutine field_fourier_derivs(r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ    &
                                  ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
+  use nrtype, only : dp
 !
 ! Computes the field and its derivatives using central differences 
 ! for the field components computed by "field_fourier".
 !
   implicit none
 !
-  double precision, parameter :: eps=1.d-7
-  double precision :: rrr,ppp,zzz,r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ       &
+  real(kind=dp), parameter :: eps=1.d-7
+  real(kind=dp) :: rrr,ppp,zzz,r,phi,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ       &
                      ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ,del              &
                      ,rm,zm,Br0,Bp0,Bz0,dBrdR0,dBrdp0,dBrdZ0               &
                      ,dBpdR0,dBpdp0,dBpdZ0,dBzdR0,dBzdp0,dBzdZ0 
@@ -1564,21 +1581,22 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
     call inthecore(r,z)
     call field_fourier(r,phi,z,Br,Bp,Bz,dBrdR0,dBrdp0,dBrdZ0          &
                       ,dBpdR0,dBpdp0,dBpdZ0,dBzdR0,dBzdp0,dBzdZ0)
-!
-  end subroutine field_fourier_derivs
+
+end subroutine field_fourier_derivs
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine extract_fluxcoord(phinorm,theta)
-!
+subroutine extract_fluxcoord(phinorm,theta)
+
   use extract_fluxcoord_mod
   use input_files, only : iunit,fluxdatapath
-!
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: k
-  double precision :: phinorm,theta,xpsif
-!
+  real(kind=dp) :: phinorm,theta,xpsif
+
   if(load_extract_fluxcoord.eq.1) then
     load_extract_fluxcoord=0
     open(iunit,file=trim(fluxdatapath)//'/phinorm_arr.dat')
@@ -1589,13 +1607,13 @@ subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
     enddo
     close(iunit)
   endif
-!
+
   xpsif=(psif_extract-psifmin)/hpsif
   k=min(nphinorm-2,max(0,int(xpsif)))
   phinorm=phinorm_arr(k+1)*(k+1-xpsif)+phinorm_arr(k+2)*(xpsif-k)
-!
+
   theta=theta_extract
-!
-  end subroutine extract_fluxcoord
-!
+
+end subroutine extract_fluxcoord
+
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc

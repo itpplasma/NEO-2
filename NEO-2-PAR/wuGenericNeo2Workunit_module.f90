@@ -64,8 +64,10 @@ module wuGenericNeo2Workunit_module
 
   !> Solve propagators on the client
   subroutine process_wuSolvePropagator(this)
+    use nrtype, only : dp
+
     class(wuSolvePropagator) :: this
-    double precision :: stime
+    real(kind=dp) :: stime
 
     write (*,*) "Client", mpro%getRank(), " calls propagator_solver() with", this%proptag_start_client, this%proptag_end_client
 
@@ -157,11 +159,13 @@ module wuGenericNeo2Workunit_module
 
   !> Call the external join routines
   subroutine process_wuExternalJoin(this)
+    use nrtype, only : dp
+
     class(wuExternalJoin) :: this
     type(propagator), pointer :: prop1 => null()
     type(propagator), pointer :: prop2 => null()
 
-    double precision :: stime
+    real(kind=dp) :: stime
     class(workunit), pointer :: wu => null()
 
 

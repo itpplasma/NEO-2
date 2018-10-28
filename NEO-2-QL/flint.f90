@@ -536,8 +536,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   INTEGER :: eta_min_loc(1)
 
   INTEGER :: lag_sigma,ilag
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: collision_sigma_multiplier
-  DOUBLE PRECISION :: mult_sigma, mult_sigma_mod
+  real(kind=dp), DIMENSION(:), ALLOCATABLE :: collision_sigma_multiplier
+  real(kind=dp) :: mult_sigma, mult_sigma_mod
   TYPE(binarysplit) :: eta_bs,eta_bs_loc,   eta_bs_store
   REAL(kind=dp), ALLOCATABLE :: eta_x0(:),eta_s(:)
   REAL(kind=dp), ALLOCATABLE :: eta_x0_loc(:),eta_s_loc(:),eta_x0_hlp(:)
@@ -2958,13 +2958,15 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
   ! (flint.f90; block using the routine commented out) and
   ! "mag_interface_mod" (mag_interface.f90).
   INTERFACE
-     SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
+    SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
           bcovar_s_hat,dlogbds,dbcovar_s_hat_dphi)
-       DOUBLE PRECISION, INTENT(in)            :: phi
-       DOUBLE PRECISION, INTENT(out)           :: geodcu,bhat,h_phi,dlogbdphi
-       DOUBLE PRECISION, OPTIONAL, INTENT(out) :: bcovar_s_hat, &
-            dlogbds, dbcovar_s_hat_dphi
-     END SUBROUTINE magdata_for_particles
+      use nrtype, only : dp
+
+      real(kind=dp), INTENT(in)            :: phi
+      real(kind=dp), INTENT(out)           :: geodcu,bhat,h_phi,dlogbdphi
+      real(kind=dp), OPTIONAL, INTENT(out) :: bcovar_s_hat, &
+           & dlogbds, dbcovar_s_hat_dphi
+    END SUBROUTINE magdata_for_particles
   END INTERFACE
   !! End Modifications by Andreas F. Martitsch (11.06.2014)
 
@@ -3733,13 +3735,14 @@ SUBROUTINE phi_divider(u_eta,phi_eta_ind)                  !<-in Winny
 END SUBROUTINE phi_divider
 
 SUBROUTINE lagrange_coefs5(u,up,cu)
-!
+  use nrtype, only : dp
+
   IMPLICIT NONE
-  !
+
   INTEGER,          PARAMETER     :: mp=6
-  DOUBLE PRECISION                :: u
-  DOUBLE PRECISION, DIMENSION(mp) :: up,cu
-  !
+  real(kind=dp)                :: u
+  real(kind=dp), DIMENSION(mp) :: up,cu
+
   cu(1) = (u - up(2))/(up(1) - up(2))        &
        * (u - up(3))/(up(1) - up(3))         &
        * (u - up(4))/(up(1) - up(4))         &
@@ -4213,5 +4216,3 @@ SUBROUTINE customize_eta_levels(eta_part,eta,version,alpha)
   END IF
 
 END SUBROUTINE customize_eta_levels
-
-

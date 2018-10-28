@@ -199,12 +199,13 @@ contains
 !     ..................................................................
 !
   subroutine DBESK(X,N,BK,IER)
-!
-      double precision X, BK
-      double precision T, B
-      double precision G0, G1, GJ
+    use nrtype, only : dp
+
+      real(kind=dp) X, BK
+      real(kind=dp) T, B
+      real(kind=dp) G0, G1, GJ
       integer N,IER,L,J
-!
+
       dimension T(12)
       BK=.0
       if(N)10,11,11
@@ -513,15 +514,16 @@ contains
  
   subroutine karney(z,gamma,j0_1,j0_11,j0_2,j0_02,j0_022,               &
        j1_0,j1_1,j1_2,j1_02,j1_11,j1_022)
-    !
+    use nrtype, only : dp
+
     implicit none
-    !
-    double precision :: gamma,j0_1, j0_11, j0_2,j0_02,j0_022,           &
+
+    real(kind=dp) :: gamma,j0_1, j0_11, j0_2,j0_02,j0_022,           &
          j1_0,j1_1,j1_2,j1_02,j1_11,j1_022
-    double precision :: z,sigma,z2
-    !
+    real(kind=dp) :: z,sigma,z2
+
     z2=z**2
-    !
+
     if(z.lt.1d-2) then
        gamma=1.d0+z2*(0.5d0+z2*(-0.125d0+z2/16.d0))
        j0_1=1d0
@@ -1472,7 +1474,8 @@ contains
   end function integrate_a_to_infinity_param
 
   subroutine init_legendre(n)
-    !
+    use nrtype, only : dp
+
     ! Computes coefficients of Legendre polynomials of orders from 0 to n
 
     !
@@ -1484,7 +1487,7 @@ contains
     !
     integer :: n,i,j
     !
-    double precision :: frontfac,rearfac
+    real(kind=dp) :: frontfac,rearfac
     !
     if(allocated(coefleg)) return
     write (*,*) "Initializing Legendre coefficients..."

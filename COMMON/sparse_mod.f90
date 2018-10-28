@@ -4040,12 +4040,12 @@ CONTAINS
     ! irow        - (inout)  row indices
     ! icol        - (inout)  column indices
     ! amat        - (inout)  matrix values
-    !
-    !
+    use nrtype, only : dpc
+
     INTEGER, INTENT(in)                          :: nz
     INTEGER, INTENT(out)                         :: nz_sqeezed
     INTEGER, DIMENSION(nz), INTENT(inout)        :: irow,icol
-    DOUBLE COMPLEX, DIMENSION(nz), INTENT(inout) :: amat
+    complex(kind=dpc), DIMENSION(nz), INTENT(inout) :: amat
 
     INTEGER                            :: ncol,i,j,k,kbeg,kend,ips,iflag,ksq
     INTEGER, DIMENSION(:), ALLOCATABLE :: nrows,icount,ipoi

@@ -1,5 +1,5 @@
 module rkstep_mod
-  use nrtype, only : dp
+  use nrtype, only : dp, dpc
 
   integer :: legmax,leg,lag
   !**********************************************************
@@ -34,8 +34,8 @@ module rkstep_mod
   ! WINNY - for flint
   !**********************************************************
   real(kind=dp)               :: epserr_sink       ! Regularization
-  DOUBLE COMPLEX                 :: epserr_sink_cmplx ! Regularization
+  complex(kind=dpc)           :: epserr_sink_cmplx ! Regularization
   real(kind=dp)               :: epserr_iter
-  integer                        :: niter
+  integer                     :: niter
   real(kind=dp), dimension(3) :: fluxes
 end module

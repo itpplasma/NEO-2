@@ -82,20 +82,22 @@ contains
     ! Output parameters:
     !           Formal: coefleg(i,j) - j-th coefficient of Legendre polynomial
     !                                  of the order i
-    !
+
+    use nrtype, only : dp
+
     integer :: n,i,j
-    !
-    double precision :: frontfac,rearfac
-    !
+
+    real(kind=dp) :: frontfac,rearfac
+
     if(allocated(coefleg)) return
     write (*,*) "Initializing Legendre coefficients..."
     allocate(coefleg(0:n,0:n))
-    !
+
     coefleg=0.d0
     coefleg(0,0)=1.d0
     coefleg(1,1)=1.d0
     frontfac=1.d0
-    !
+
     do i=2,n
        frontfac=frontfac*(2.d0-1.d0/dble(i))
        rearfac=frontfac

@@ -174,7 +174,7 @@ CONTAINS
 !          The number of right hand sides, i.e., the number of columns
 !          of the matrix B.  NRHS >= 0.
 !
-!  AB      (input/output) DOUBLE PRECISION array, dimension (LDAB,N)
+!  AB      (input/output) real(kind=dp) array, dimension (LDAB,N)
 !          On entry, the matrix A in band storage, in rows KL+1 to
 !          2*KL+KU+1; rows 1 to KL of the array need not be set.
 !          The j-th column of A is stored in the j-th column of the
@@ -193,7 +193,7 @@ CONTAINS
 !          The pivot indices that define the permutation matrix P;
 !          row i of the matrix was interchanged with row IPIV(i).
 !
-!  B       (input/output) DOUBLE PRECISION array, dimension (LDB,NRHS)
+!  B       (input/output) real(kind=dp) array, dimension (LDB,NRHS)
 !          On entry, the N-by-NRHS right hand side matrix B.
 !          On exit, if INFO = 0, the N-by-NRHS solution matrix X.
 !
@@ -458,7 +458,7 @@ CONTAINS
 !          The number of right hand sides, i.e., the number of columns
 !          of the matrix B.  NRHS >= 0.
 !
-!  AB      (input) DOUBLE PRECISION array, dimension (LDAB,N)
+!  AB      (input) real(kind=dp) array, dimension (LDAB,N)
 !          Details of the LU factorization of the band matrix A, as
 !          computed by DGBTRF.  U is stored as an upper triangular band
 !          matrix with KL+KU superdiagonals in rows 1 to KL+KU+1, and
@@ -472,7 +472,7 @@ CONTAINS
 !          The pivot indices; for 1 <= i <= N, row i of the matrix was
 !          interchanged with row IPIV(i).
 !
-!  B       (input/output) DOUBLE PRECISION array, dimension (LDB,NRHS)
+!  B       (input/output) real(kind=dp) array, dimension (LDB,NRHS)
 !          On entry, the right hand side matrix B.
 !          On exit, the solution matrix X.
 !
@@ -508,7 +508,7 @@ CONTAINS
 !  KU      (input) INTEGER
 !          The number of superdiagonals within the band of A.  KU >= 0.
 !
-!  AB      (input/output) DOUBLE PRECISION array, dimension (LDAB,N)
+!  AB      (input/output) real(kind=dp) array, dimension (LDAB,N)
 !          On entry, the matrix A in band storage, in rows KL+1 to
 !          2*KL+KU+1; rows 1 to KL of the array need not be set.
 !          The j-th column of A is stored in the j-th column of the

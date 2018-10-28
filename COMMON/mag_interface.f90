@@ -300,13 +300,15 @@ CONTAINS
     ! (flint.f90; block using the routine commented out) and
     ! "mag_interface_mod" (mag_interface.f90).
     INTERFACE
-       SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
+      SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
             bcovar_s_hat,dlogbds,dbcovar_s_hat_dphi)
-         DOUBLE PRECISION, INTENT(in)            :: phi
-         DOUBLE PRECISION, INTENT(out)           :: geodcu,bhat,h_phi,dlogbdphi
-         DOUBLE PRECISION, OPTIONAL, INTENT(out) :: bcovar_s_hat, &
-              dlogbds, dbcovar_s_hat_dphi
-       END SUBROUTINE magdata_for_particles
+        use nrtype, only : dp
+
+        real(kind=dp), INTENT(in)            :: phi
+        real(kind=dp), INTENT(out)           :: geodcu,bhat,h_phi,dlogbdphi
+        real(kind=dp), OPTIONAL, INTENT(out) :: bcovar_s_hat, &
+              & dlogbds, dbcovar_s_hat_dphi
+      END SUBROUTINE magdata_for_particles
     END INTERFACE
     !! End Modifications by Andreas F. Martitsch (11.06.2014)
 

@@ -4,11 +4,12 @@
 SUBROUTINE stevvo_0(RT0,R0i,L1i,cbfi,BY0i,bf0)
 
   use circtokfield, only : rbig, btor
+  use nrtype, only : dp
 
   IMPLICIT NONE
 
   INTEGER :: L1i
-  DOUBLE PRECISION :: RT0,R0i,cbfi,BY0i,bf0
+  real(kind=dp) :: RT0,R0i,cbfi,BY0i,bf0
 
   RT0=rbig
   L1i=1
@@ -22,40 +23,41 @@ SUBROUTINE GBas_0(r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ,                      &
                    dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
 !  subroutine field(r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ,                      &
 !                   dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
-!
+
   USE circtokfield
   USE coordinates_of_old_model
-!
+  use nrtype, only : dp
+
   IMPLICIT NONE
-!
-  DOUBLE PRECISION :: r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ,                   &
+
+  real(kind=dp) :: r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ,                   &
                       dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ  
-!
+
 ! rqt,thqt - small radius and theta of quasitoroidal coordinates
-  DOUBLE PRECISION :: rqt,thqt
-  DOUBLE PRECISION :: x,x2,z2,rho,rqt2,rqt3,rqt4,rho2,btor_rbig
+  real(kind=dp) :: rqt,thqt
+  real(kind=dp) :: x,x2,z2,rho,rqt2,rqt3,rqt4,rho2,btor_rbig
 ! tfl,theta - toroidal flux and theta of flux coordinates
-  DOUBLE PRECISION :: tfl,theta
-  DOUBLE PRECISION :: drqt_dr,drqt_dz
-  DOUBLE PRECISION :: ddrqt_dr2,ddrqt_dr_dz,ddrqt_dz2
-  DOUBLE PRECISION :: dthqt_dr,dthqt_dz
-  DOUBLE PRECISION :: ddthqt_dr2,ddthqt_dr_dz,ddthqt_dz2
-!
-  DOUBLE PRECISION :: dtfl,ddtfl
-  DOUBLE PRECISION :: dtheta_drqt,dtheta_dthqt
-  DOUBLE PRECISION :: ddtheta_drqt2,ddtheta_drqt_dthqt,ddtheta_dthqt2
-!
-  DOUBLE PRECISION :: dtfl_dr,dtfl_dz
-  DOUBLE PRECISION :: ddtfl_dr2,ddtfl_dr_dz,ddtfl_dz2
-  DOUBLE PRECISION :: dtheta_dr,dtheta_dz
-  DOUBLE PRECISION :: ddtheta_dr2,ddtheta_dr_dz,ddtheta_dz2
-!
-  DOUBLE PRECISION :: psi,dpsi_dtfl,dpsi_dtheta
-  DOUBLE PRECISION :: ddpsi_dtfl2,ddpsi_dtfl_dtheta,ddpsi_dtheta2
-  DOUBLE PRECISION :: ddpsi_dtfl_dp,ddpsi_dtheta_dp
-!
-  DOUBLE PRECISION :: tfl_e
-!
+  real(kind=dp) :: tfl,theta
+  real(kind=dp) :: drqt_dr,drqt_dz
+  real(kind=dp) :: ddrqt_dr2,ddrqt_dr_dz,ddrqt_dz2
+  real(kind=dp) :: dthqt_dr,dthqt_dz
+  real(kind=dp) :: ddthqt_dr2,ddthqt_dr_dz,ddthqt_dz2
+
+  real(kind=dp) :: dtfl,ddtfl
+  real(kind=dp) :: dtheta_drqt,dtheta_dthqt
+  real(kind=dp) :: ddtheta_drqt2,ddtheta_drqt_dthqt,ddtheta_dthqt2
+
+  real(kind=dp) :: dtfl_dr,dtfl_dz
+  real(kind=dp) :: ddtfl_dr2,ddtfl_dr_dz,ddtfl_dz2
+  real(kind=dp) :: dtheta_dr,dtheta_dz
+  real(kind=dp) :: ddtheta_dr2,ddtheta_dr_dz,ddtheta_dz2
+
+  real(kind=dp) :: psi,dpsi_dtfl,dpsi_dtheta
+  real(kind=dp) :: ddpsi_dtfl2,ddpsi_dtfl_dtheta,ddpsi_dtheta2
+  real(kind=dp) :: ddpsi_dtfl_dp,ddpsi_dtheta_dp
+
+  real(kind=dp) :: tfl_e
+
 !
 ! Relations between the cylindrical and flux coordinates in
 ! the tokamak with circular concentric magnetic surfaces (zero beta)
@@ -178,25 +180,26 @@ END SUBROUTINE GBas_0
 SUBROUTINE hamilt_field(tfl_e,tfl,theta,p,dpsi_dtfl,dpsi_dtheta,        &
                           ddpsi_dtfl2,ddpsi_dtfl_dtheta,ddpsi_dtheta2,    &
                           ddpsi_dtfl_dp,ddpsi_dtheta_dp)
-!
+
   USE vvn_period
   USE field_param
 ! Winny
   USE mag_interface_mod, only : aiota_tokamak
 ! Winny end
-!
+  use nrtype, only : dp
+
   IMPLICIT NONE
-!
-  DOUBLE PRECISION :: tfl_e,tfl,theta,p,dpsi_dtfl,dpsi_dtheta,        &
+
+  real(kind=dp) :: tfl_e,tfl,theta,p,dpsi_dtfl,dpsi_dtheta,        &
                       ddpsi_dtfl2,ddpsi_dtfl_dtheta,ddpsi_dtheta2,    &
                       ddpsi_dtfl_dp,ddpsi_dtheta_dp
-!
+
   INTEGER :: m,n,iseed,nmin,nmax
-  DOUBLE PRECISION :: s,aiota,daiota,sqs
-  DOUBLE PRECISION :: alpha,sinalp,cosalp
-  DOUBLE PRECISION :: xi,psimn,aiota_min,aiota_max
-  DOUBLE PRECISION :: sin_mt_np,cos_mt_np,sin_mt_np_0,cos_mt_np_0
-!
+  real(kind=dp) :: s,aiota,daiota,sqs
+  real(kind=dp) :: alpha,sinalp,cosalp
+  real(kind=dp) :: xi,psimn,aiota_min,aiota_max
+  real(kind=dp) :: sin_mt_np,cos_mt_np,sin_mt_np_0,cos_mt_np_0
+
   IF(prop) THEN
     prop=.FALSE.
     OPEN(71,file='param.inp')
@@ -246,7 +249,7 @@ SUBROUTINE hamilt_field(tfl_e,tfl,theta,p,dpsi_dtfl,dpsi_dtheta,        &
     ENDDO
     CLOSE(71)
   ENDIF
-!
+
 ! s - dimensionless flux label (toroidal flux normalizad to 1 at the edge)
   s=tfl/tfl_e
   sqs=SQRT(s)

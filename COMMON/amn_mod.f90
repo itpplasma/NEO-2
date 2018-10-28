@@ -8,7 +8,7 @@ module amn_mod
   complex(kind=dpc), dimension(:,:), allocatable :: amnpsi,   amntet,     &
                                                  amnpsi_s, amntet_s,   &
                                                  amnpsi_ss,amntet_ss
-  double complex, dimension(:),   allocatable :: expthe,expphi
+  complex(kind=dpc), dimension(:),   allocatable :: expthe,expphi
   ! Formfactors:
   integer :: nsqpsi_ff,nmodes_ff
   real(kind=dp) :: sqpsimin_ff,sqpsimax_ff,hsqpsi_ff

@@ -21,24 +21,26 @@ contains
 !                 ierr      - error code: 0 - OK, 1 - actual matrix sizes 
 !                             disagree
 !
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: nl1,nr1,nhb1,nl2,nr2,nhb2,nhb,i1,i2,imin2,imax2,imin,imax,ierr
-  double precision, dimension(:,:), intent(in)               :: a1,a2
-  double precision, dimension(:,:), intent(out), allocatable :: a
-!
+  real(kind=dp), dimension(:,:), intent(in)               :: a1,a2
+  real(kind=dp), dimension(:,:), intent(out), allocatable :: a
+
   if(nr1.eq.nl2) then
     ierr=0
   else
     ierr=1
     return
   endif
-!
+
   nhb=nhb1+nhb2
-!
+
   if(allocated(a)) deallocate(a)
   allocate(a(nl1,nr2))
-!
+
   do i1=1,nl1
     imin2=max(1,i1-nhb)
     imax2=min(nr2,i1+nhb)
@@ -48,7 +50,7 @@ contains
       a(i1,i2)=sum(a1(i1,imin:imax)*a2(imin:imax,i2))
     enddo
   enddo
-!
+
   return
   end subroutine
 !
@@ -70,23 +72,25 @@ contains
 !                 ierr      - error code: 0 - OK, 1 - actual matrix sizes 
 !                             disagree
 !
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: nl1,nr1,nhb1,nl2,nr2,i1,i2,imin1,imax1,imin,imax,ierr
   integer,          dimension(:),   intent(in)               :: imi,ima
-  double precision, dimension(:,:), intent(in)               :: a1,a2
-  double precision, dimension(:,:), intent(out), allocatable :: a
-!
+  real(kind=dp), dimension(:,:), intent(in)               :: a1,a2
+  real(kind=dp), dimension(:,:), intent(out), allocatable :: a
+
   if(nr1.eq.nl2) then
     ierr=0
   else
     ierr=1
     return
   endif
-!
+
   if(allocated(a)) deallocate(a)
   allocate(a(nl1,nr2))
-!
+
   do i2=1,nr2
     imin1=max(1,imi(i2)-nhb1)
     imax1=min(nl1,ima(i2)+nhb1)
@@ -96,7 +100,7 @@ contains
       a(i1,i2)=sum(a1(i1,imin:imax)*a2(imin:imax,i2))
     enddo
   enddo
-!
+
   return
   end subroutine
 end module

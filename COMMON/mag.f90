@@ -8,6 +8,7 @@ MODULE mag_sub
   ! "write_volume_data" (both flint.f90), and "rhs_kin"
   ! and "magdata_for_particles". 
   !! End Modifications by Andreas F. Martitsch (09.03.2014)
+  use nrtype, only : dp
 
   IMPLICIT NONE
 
@@ -41,7 +42,7 @@ MODULE mag_sub
   ! (Furthermore asprat and qsaf0 were never defined 
   ! explicitly -> No IMPLICIT NONE in the code)
   private rbig0, asprat, qsaf0
-  double precision rbig0, asprat, qsaf0
+  real(kind=dp) rbig0, asprat, qsaf0
 
 CONTAINS
   ! ------------------------------------------------------------------------
@@ -49,8 +50,10 @@ CONTAINS
     USE mag_interface_mod, ONLY : mag_magfield,mag_coordinates
     USE magfie_mod, ONLY : magfie
     USE compute_aiota_mod, ONLY: mag_efit
-    DOUBLE PRECISION x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
-    DOUBLE PRECISION hcurl
+    use nrtype, only : dp
+
+    real(kind=dp) x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
+    real(kind=dp) hcurl
     DIMENSION x(3),bder(3),hcovar(3),hctrvr(3),hcoder(3,3),hctder(3,3)
     DIMENSION hcurl(3)
 
@@ -88,8 +91,10 @@ CONTAINS
     USE mag_interface_mod, ONLY : mag_magfield,mag_coordinates
     USE magfie_mod, ONLY : magfie
     USE compute_aiota_mod, ONLY: mag_efit
-    DOUBLE PRECISION x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
-    DOUBLE PRECISION hcurl,bcovar_s_hat_der
+    use nrtype, only : dp
+
+    real(kind=dp) x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
+    real(kind=dp) hcurl,bcovar_s_hat_der
     DIMENSION x(3),bder(3),hcovar(3),hctrvr(3),hcoder(3,3),hctder(3,3)
     DIMENSION hcurl(3),bcovar_s_hat_der(3)
 
@@ -150,27 +155,28 @@ CONTAINS
     !                     hcoder
     !
     !  Called routines:  GBhs,GBRZd 
-    !
+
     USE mag_interface_mod, ONLY : magnetic_device
-    !
-    DOUBLE PRECISION x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
-    DOUBLE PRECISION rbig0,hr,hf,hz
-    !
-    DOUBLE PRECISION ri,fii,zi,br,bf,bz
-    DOUBLE PRECISION BRR,BRF,BRZ,BFR,BFF,BFZ,BZR,BZF,BZZ
-    DOUBLE PRECISION BRK,BZK,BRRK,BRZK,BZRK,BZZK
-    !
-    double precision rbig
-    !
+    use nrtype, only : dp
+
+    real(kind=dp) x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
+    real(kind=dp) rbig0,hr,hf,hz
+
+    real(kind=dp) ri,fii,zi,br,bf,bz
+    real(kind=dp) BRR,BRF,BRZ,BFR,BFF,BFZ,BZR,BZF,BZZ
+    real(kind=dp) BRK,BZK,BRRK,BRZK,BZRK,BZZK
+
+    real(kind=dp) rbig
+
     DIMENSION x(3),bder(3),hcovar(3),hctrvr(3),hcoder(3,3),hctder(3,3)
-    !
+
     !! Modifications by Andreas F. Martitsch (09.03.2014)
     ! COMMON-block is depricated (not necessary within a module)
     ! COMMON/magpar/rbig0,asprat,qsaf0
     !! End Modifications by Andreas F. Martitsch (09.03.2014)
-    !
+
     rbig=MAX(x(1),1d-12)
-    !
+
     ! computation of gb in cylindrical co-ordinates cccccccc
     ri=rbig
     fii=x(2)
@@ -273,13 +279,13 @@ CONTAINS
 !!$  !
 !!$  !implicit none
 !!$
-!!$  DOUBLE PRECISION x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
-!!$  DOUBLE PRECISION rbig0
-!!$  DOUBLE PRECISION hr,hf,hz
+!!$  real(kind=dp) x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
+!!$  real(kind=dp) rbig0
+!!$  real(kind=dp) hr,hf,hz
 !!$  !
-!!$  DOUBLE PRECISION ri,fii,zi,br,bf,bz
-!!$  DOUBLE PRECISION BRR,BRF,BRZ,BFR,BFF,BFZ,BZR,BZF,BZZ
-!!$  DOUBLE PRECISION BRK,BZK,BRRK,BRZK,BZRK,BZZK
+!!$  real(kind=dp) ri,fii,zi,br,bf,bz
+!!$  real(kind=dp) BRR,BRF,BRZ,BFR,BFF,BFZ,BZR,BZF,BZZ
+!!$  real(kind=dp) BRK,BZK,BRRK,BRZK,BZRK,BZZK
 !!$  !
 !!$  DIMENSION x(3),bder(3),hcovar(3),hctrvr(3),hcoder(3,3),hctder(3,3)
 !!$  !
@@ -343,12 +349,14 @@ CONTAINS
   !
   SUBROUTINE mag_homogeneous_a(x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder)
     ! same as above for the homogeneous case
-    DOUBLE PRECISION x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
-    DOUBLE PRECISION rbig0,hr,hf,hz
+    use nrtype, only : dp
+
+    real(kind=dp) x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
+    real(kind=dp) rbig0,hr,hf,hz
     !
-    DOUBLE PRECISION ri,fii,zi,br,bf,bz
-    DOUBLE PRECISION BRR,BRF,BRZ,BFR,BFF,BFZ,BZR,BZF,BZZ
-    DOUBLE PRECISION BRK,BZK,BRRK,BRZK,BZRK,BZZK
+    real(kind=dp) ri,fii,zi,br,bf,bz
+    real(kind=dp) BRR,BRF,BRZ,BFR,BFF,BFZ,BZR,BZF,BZZ
+    real(kind=dp) BRK,BZK,BRRK,BRZK,BZRK,BZZK
     !
     DIMENSION x(3),bder(3),hcovar(3),hctrvr(3),hcoder(3,3),hctder(3,3)
     !
@@ -392,6 +400,7 @@ CONTAINS
   ! ------------------------------------------------------------------------
   SUBROUTINE mag_legendre_a(x,bmod,sqrtg,bder,hcovar,hctrvr,hcurl)
     use math_constants, only : pi
+    use nrtype, only : dp
     !
     ! Computes magnetic field module in units of the magnetic code  - bmod,
     !square root of determinant of the metric tensor               - sqrtg,
@@ -415,16 +424,16 @@ CONTAINS
     !                     hcurl
     !
     !  Called routines:  GBhs_l,GBRZd_l 
-    !
-    DOUBLE PRECISION, PARAMETER :: phi_shift=pi/6.d0
-    DOUBLE PRECISION x,bmod,sqrtg,bder,hcovar,hctrvr,hcurl
-    DOUBLE PRECISION hr,hf,hz
-    !
-    DOUBLE PRECISION ri,fii,zi,br,bf,bz
-    DOUBLE PRECISION BRR,BRF,BRZ,BFR,BFF,BFZ,BZR,BZF,BZZ
-    DOUBLE PRECISION BRK,BZK,BRRK,BRZK,BZRK,BZZK
-    !
-    double precision rbig
+
+    real(kind=dp), PARAMETER :: phi_shift=pi/6.d0
+    real(kind=dp) x,bmod,sqrtg,bder,hcovar,hctrvr,hcurl
+    real(kind=dp) hr,hf,hz
+
+    real(kind=dp) ri,fii,zi,br,bf,bz
+    real(kind=dp) BRR,BRF,BRZ,BFR,BFF,BFZ,BZR,BZF,BZZ
+    real(kind=dp) BRK,BZK,BRRK,BRZK,BZRK,BZZK
+
+    real(kind=dp) rbig
     !
     DIMENSION x(3),bder(3),hcovar(3),hctrvr(3),hcurl(3)
     !

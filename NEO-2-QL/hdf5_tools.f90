@@ -248,13 +248,13 @@ contains
   ! Get information about an object. Is it a group,
   ! a variable, an attribute, ...
   !**********************************************************
-  subroutine h5_get_objinfo(h5id, grpname, idx, objname, type)
+  subroutine h5_get_objinfo(h5id, grpname, idx, objname, type_)
     integer(HID_T)       :: h5id
     character(len=*)     :: grpname, objname
     integer              :: idx
-    integer              :: type
+    integer              :: type_
     
-    call h5gget_obj_info_idx_f(h5id, grpname , idx, objname, type, &
+    call h5gget_obj_info_idx_f(h5id, grpname , idx, objname, type_, &
          h5error)
   end subroutine h5_get_objinfo
 
@@ -437,9 +437,11 @@ contains
   !**********************************************************
   ! Append double scalar to unlimited dimension
   !**********************************************************
- subroutine h5_append_double_0(dsetid, value, offset)
+  subroutine h5_append_double_0(dsetid, value, offset)
+    use nrtype, only : dp
+
     integer(HID_T)       :: dsetid
-    double precision     :: value
+    real(kind=dp)     :: value
     integer              :: offset
     
     integer(SIZE_T), dimension(1) :: dims = (/1/)
@@ -475,8 +477,10 @@ contains
   ! Append double matrix to unlimited dimension
   !**********************************************************
   subroutine h5_append_double_4(dsetid, value, offset)
+    use nrtype, only : dp
+
     integer(HID_T)                     :: dsetid
-    double precision, dimension(:,:,:) :: value
+    real(kind=dp), dimension(:,:,:) :: value
     integer                            :: offset
 
     integer(SIZE_T), dimension(4)  :: dims
@@ -717,9 +721,11 @@ contains
   ! Add double scalar
   !**********************************************************
   subroutine h5_add_double_0(h5id, dataset, value, comment, unit)
+    use nrtype, only : dp
+
     integer(HID_T)                 :: h5id
     character(len=*)               :: dataset
-    double precision               :: value
+    real(kind=dp)               :: value
     character(len=*), optional     :: comment
     character(len=*), optional     :: unit
     integer(HSIZE_T)               :: dims(1) = (/0/)
@@ -740,9 +746,11 @@ contains
   ! Add double array
   !**********************************************************
   subroutine h5_add_double_1(h5id, dataset, value, lbounds, ubounds, comment, unit)
+    use nrtype, only : dp
+
     integer(HID_T)                    :: h5id
     character(len=*)                  :: dataset
-    double precision, dimension(:)    :: value
+    real(kind=dp), dimension(:)    :: value
     integer, dimension(:)             :: lbounds, ubounds
     character(len=*), optional        :: comment
     character(len=*), optional        :: unit
@@ -773,10 +781,12 @@ contains
   ! Get double scalar
   !**********************************************************
   subroutine h5_get_double_0(h5id, dataset, value)
+    use nrtype, only : dp
+
     integer(HID_T)                    :: h5id
     character(len=*)                  :: dataset
-    double precision, intent(out)     :: value
-    double precision, dimension(1)    :: buf
+    real(kind=dp), intent(out)     :: value
+    real(kind=dp), dimension(1)    :: buf
     integer(HSIZE_T), dimension(1)    :: dims = (/0/)
     
     call h5ltread_dataset_double_f(h5id, dataset, buf, dims, h5error)
@@ -790,9 +800,11 @@ contains
   ! Get double array
   !**********************************************************
   subroutine h5_get_double_1(h5id, dataset, value)
+    use nrtype, only : dp
+
     integer(HID_T)                    :: h5id
     character(len=*)                  :: dataset
-    double precision, dimension(:)    :: value
+    real(kind=dp), dimension(:)    :: value
     integer                           :: lb1, ub1
     integer(HSIZE_T), dimension(1)    :: dims
  
@@ -811,9 +823,11 @@ contains
   ! Get double matrix
   !**********************************************************
   subroutine h5_get_double_2(h5id, dataset, value)
+    use nrtype, only : dp
+
     integer(HID_T)                    :: h5id
     character(len=*)                  :: dataset
-    double precision, dimension(:,:)  :: value
+    real(kind=dp), dimension(:,:)  :: value
     integer                           :: lb1, lb2, ub1, ub2
     integer(HSIZE_T), dimension(2)    :: dims
 
@@ -829,9 +843,11 @@ contains
   ! Get double 3-dim-matrix
   !**********************************************************
   subroutine h5_get_double_3(h5id, dataset, value)
+    use nrtype, only : dp
+
     integer(HID_T)                        :: h5id
     character(len=*)                      :: dataset
-    double precision, dimension(:,:,:)    :: value
+    real(kind=dp), dimension(:,:,:)    :: value
     integer(HSIZE_T), dimension(3)        :: dims
 
     dims = shape(value)
@@ -846,9 +862,11 @@ contains
   ! Get double 4-dim-matrix
   !**********************************************************
   subroutine h5_get_double_4(h5id, dataset, value)
+    use nrtype, only : dp
+
     integer(HID_T)                        :: h5id
     character(len=*)                      :: dataset
-    double precision, dimension(:,:,:,:)  :: value
+    real(kind=dp), dimension(:,:,:,:)  :: value
     integer(HSIZE_T), dimension(4)        :: dims
 
     dims = shape(value)
@@ -861,9 +879,11 @@ contains
   ! Get double 4-dim-matrix
   !**********************************************************
   subroutine h5_get_double_4_hyperslab(h5id, dataset, value, offset_par, count_par)
+    use nrtype, only : dp
+
     integer(HID_T)                        :: h5id
     character(len=*)                      :: dataset
-    double precision, dimension(:,:,:,:)  :: value
+    real(kind=dp), dimension(:,:,:,:)  :: value
     integer,dimension(4)                  :: offset_par, count_par
     integer(HSIZE_T), dimension(4)        :: offset, count, startout
     integer(HSIZE_T), dimension(4)        :: dims
@@ -905,9 +925,11 @@ contains
   ! Add double matrix
   !**********************************************************
   subroutine h5_add_double_2(h5id, dataset, value, lbounds, ubounds, comment, unit)
+    use nrtype, only : dp
+
     integer(HID_T)                              :: h5id
     character(len=*)                            :: dataset
-    double precision, dimension(:,:)            :: value
+    real(kind=dp), dimension(:,:)            :: value
     integer, dimension(:)                       :: lbounds, ubounds
     character(len=*), optional                  :: comment
     character(len=*), optional                  :: unit
@@ -937,9 +959,11 @@ contains
   ! Add 3-dim double matrix
   !**********************************************************
   subroutine h5_add_double_3(h5id, dataset, value, lbounds, ubounds, comment, unit)
+    use nrtype, only : dp
+
     integer(HID_T)                              :: h5id
     character(len=*)                            :: dataset
-    double precision, dimension(:,:,:)          :: value
+    real(kind=dp), dimension(:,:,:)          :: value
     integer, dimension(:)                       :: lbounds, ubounds
     character(len=*), optional                  :: comment
     character(len=*), optional                  :: unit
@@ -969,9 +993,11 @@ contains
   ! Add 4-dim double matrix
   !**********************************************************
   subroutine h5_add_double_4(h5id, dataset, value, lbounds, ubounds, comment, unit)
+    use nrtype, only : dp
+
     integer(HID_T)                              :: h5id
     character(len=*)                            :: dataset
-    double precision, dimension(:,:,:,:)        :: value
+    real(kind=dp), dimension(:,:,:,:)        :: value
     integer, dimension(:)                       :: lbounds, ubounds
     character(len=*), optional                  :: comment
     character(len=*), optional                  :: unit
@@ -1001,9 +1027,11 @@ contains
   ! Add 5-dim double matrix
   !**********************************************************
   subroutine h5_add_double_5(h5id, dataset, value, lbounds, ubounds, comment, unit)
+    use nrtype, only : dp
+
     integer(HID_T)                              :: h5id
     character(len=*)                            :: dataset
-    double precision, dimension(:,:,:,:,:)      :: value
+    real(kind=dp), dimension(:,:,:,:,:)      :: value
     integer, dimension(:)                       :: lbounds, ubounds
     character(len=*), optional                  :: comment
     character(len=*), optional                  :: unit

@@ -39,6 +39,7 @@ SUBROUTINE ripple_solver(                                 &
                                mag_magfield,boozer_s
        
   USE development
+  use nrtype, only : dp
 
   !*****************************
   ! HDF5
@@ -67,7 +68,7 @@ SUBROUTINE ripple_solver(                                 &
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: source_m
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: flux_p
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: flux_m
-  REAL(kind=dp), DIMENSION(:,:),  ALLOCATABLE, INTENT(out)   :: qflux
+  REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(out)   :: qflux
   INTEGER,                                    INTENT(out)   :: ierr
   
   ! local stuff
@@ -99,7 +100,7 @@ SUBROUTINE ripple_solver(                                 &
   ! SERGEI
   !------------------------------------------------------------------------
   ! additional definitions from Sergei
-  ! you can also use "double precision" isntead of  "REAL(kind=dp)"
+  ! you can also use "real(kind=dp)" isntead of  "REAL(kind=dp)"
   INTEGER :: itotstep,ntotstep,npart_loc,info
   INTEGER :: ndim,nhalf,istep,nstep,nback,npoints,npassing,ioddeven
   INTEGER :: ipart,nhalfstep,idir,inhom
@@ -111,66 +112,66 @@ SUBROUTINE ripple_solver(                                 &
   INTEGER, DIMENSION(:), ALLOCATABLE :: ipivot,iminvec,imaxvec
   INTEGER, DIMENSION(:), ALLOCATABLE :: iend_renorm
 !
-  DOUBLE PRECISION                         :: hf,theta_beg,theta_end,aiota
-  DOUBLE PRECISION                         :: phi,hneg,eta0
-  DOUBLE PRECISION                         :: dlu,subsq,subsqmin
-  DOUBLE PRECISION                         :: diflam,diflampow,coefdir
-  DOUBLE PRECISION                         :: coefenu,coefenu_averb   !!!term[1]
-  DOUBLE PRECISION :: alambd_save1,alambd_save2,alambd_save3
-  DOUBLE PRECISION :: diflam_flux,coef_cf
-  DOUBLE PRECISION :: hxeta,fun_bound_new,amin2ovb
-  DOUBLE PRECISION :: a11,a12,a21,a22,determ,deleta_b,dum_phi,dum_a3
-  DOUBLE PRECISION :: exl,exprenorm,accurfac,renormfac
+  real(kind=dp)                         :: hf,theta_beg,theta_end,aiota
+  real(kind=dp)                         :: phi,hneg,eta0
+  real(kind=dp)                         :: dlu,subsq,subsqmin
+  real(kind=dp)                         :: diflam,diflampow,coefdir
+  real(kind=dp)                         :: coefenu,coefenu_averb   !!!term[1]
+  real(kind=dp) :: alambd_save1,alambd_save2,alambd_save3
+  real(kind=dp) :: diflam_flux,coef_cf
+  real(kind=dp) :: hxeta,fun_bound_new,amin2ovb
+  real(kind=dp) :: a11,a12,a21,a22,determ,deleta_b,dum_phi,dum_a3
+  real(kind=dp) :: exl,exprenorm,accurfac,renormfac
 !
-  DOUBLE PRECISION, DIMENSION(6)           :: alp,bet,gam,del
-  DOUBLE PRECISION, DIMENSION(4)           :: old_fun
-  DOUBLE PRECISION, DIMENSION(ndim0)       :: ybeg
-  DOUBLE PRECISION, DIMENSION(4,4)         :: a_beg,b_beg,a_end,b_end
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,deriv_coef
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: prod_p,prod_m,prod
-  DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: g_plus_beg
-  DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: f_plus_beg
-  DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: g_minus_end
-  DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: f_minus_end
-  DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: f_plus,f_minus
-  DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: beta
-  DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: g_plus_end
-  DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: f_plus_end
-  DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: renorm_c
-  DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: alpha
-  DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: alambd,Vg_vp_over_B
-  DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: redmat_forw_l,redmat_back_l
-  DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: redmat_forw_r,redmat_back_r
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: delta_eta
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: enu_coef        !!!term[1]
+  real(kind=dp), DIMENSION(6)           :: alp,bet,gam,del
+  real(kind=dp), DIMENSION(4)           :: old_fun
+  real(kind=dp), DIMENSION(ndim0)       :: ybeg
+  real(kind=dp), DIMENSION(4,4)         :: a_beg,b_beg,a_end,b_end
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,deriv_coef
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: prod_p,prod_m,prod
+  real(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: g_plus_beg
+  real(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: f_plus_beg
+  real(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: g_minus_end
+  real(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: f_minus_end
+  real(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: f_plus,f_minus
+  real(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: beta
+  real(kind=dp), DIMENSION(:,:,:), ALLOCATABLE :: g_plus_end
+  real(kind=dp), DIMENSION(:,:,:), ALLOCATABLE :: f_plus_end
+  real(kind=dp), DIMENSION(:,:,:), ALLOCATABLE :: renorm_c
+  real(kind=dp), DIMENSION(:,:,:), ALLOCATABLE :: alpha
+  real(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: alambd,Vg_vp_over_B
+  real(kind=dp), DIMENSION(:,:,:), ALLOCATABLE :: redmat_forw_l,redmat_back_l
+  real(kind=dp), DIMENSION(:,:,:), ALLOCATABLE :: redmat_forw_r,redmat_back_r
+  real(kind=dp), DIMENSION(:),   ALLOCATABLE :: delta_eta
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: enu_coef        !!!term[1]
   INTEGER :: km1,kp1,m,m1,kb,kb1,ke,ke1,mfactorial,nplp1,k_bound,k1
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE ::  source_pow !!!term[2]
-  DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE ::  conv_pow !!!term[3]
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE ::  alampow !!!term[3]
-  DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE ::  vrecurr !!!term[3]
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE ::  dellampow !!!term[3]
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE ::  convol_polpow !!!term[3]
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE ::  coefleg      !!!terms[2,3]
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE ::  source_pow !!!term[2]
+  real(kind=dp), DIMENSION(:,:,:), ALLOCATABLE ::  conv_pow !!!term[3]
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE ::  alampow !!!term[3]
+  real(kind=dp), DIMENSION(:,:,:), ALLOCATABLE ::  vrecurr !!!term[3]
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE ::  dellampow !!!term[3]
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE ::  convol_polpow !!!term[3]
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE ::  coefleg      !!!terms[2,3]
 !
   INTEGER :: ntotsize,ntotsize_m,nts_r,nts_l,kk,kk1,isplit
 !
-  DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE :: derivs_plot,fun_write
-  DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: alpha_plot,beta_plot
-  DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: f_plus_plot,g_plus_plot
-  DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: fun_lambda
-  DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: fun_pl,fun_mr
+  real(kind=dp), DIMENSION(:,:,:,:), ALLOCATABLE :: derivs_plot,fun_write
+  real(kind=dp), DIMENSION(:,:,:),   ALLOCATABLE :: alpha_plot,beta_plot
+  real(kind=dp), DIMENSION(:,:,:),   ALLOCATABLE :: f_plus_plot,g_plus_plot
+  real(kind=dp), DIMENSION(:,:,:),   ALLOCATABLE :: fun_lambda
+  real(kind=dp), DIMENSION(:,:),     ALLOCATABLE :: fun_pl,fun_mr
   INTEGER :: iplot,nphiplot,iunit_phi,iunit_sizes,isig,nlam
   INTEGER :: iunit_dt_p,iunit_dt_m
   INTEGER :: iunit_sp_p,iunit_sp_m
   INTEGER :: iunit_et_p,iunit_et_m
   INTEGER, DIMENSION(0:3) :: iunitp,iunitm,iunit_lam
-  DOUBLE PRECISION :: phiplot,delphiplot,deleta_b_min,facnorm_p,facnorm_m
-  DOUBLE PRECISION :: boundlayer_ignore
+  real(kind=dp) :: phiplot,delphiplot,deleta_b_min,facnorm_p,facnorm_m
+  real(kind=dp) :: boundlayer_ignore
   INTEGER :: ignore_lb,ignore_rb,ignore_lb_out,ignore_rb_out,modify_bl,modify_br
-  DOUBLE PRECISION :: bhat_changed_l,bhat_changed_r
-  DOUBLE PRECISION :: bhat_changed_l_out,bhat_changed_r_out
-  DOUBLE PRECISION :: stiffpar,delphi_stfp,phi_stfp_prev,phinext
-  DOUBLE PRECISION :: sign_of_bphi                                     !08.12.08
+  real(kind=dp) :: bhat_changed_l,bhat_changed_r
+  real(kind=dp) :: bhat_changed_l_out,bhat_changed_r_out
+  real(kind=dp) :: stiffpar,delphi_stfp,phi_stfp_prev,phinext
+  real(kind=dp) :: sign_of_bphi                                     !08.12.08
   INTEGER :: nsplit_stfp,npass_prev
   INTEGER, DIMENSION(:),   ALLOCATABLE :: irkstep_stfp
   INTEGER :: icounter
@@ -179,27 +180,27 @@ SUBROUTINE ripple_solver(                                 &
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
   INTEGER :: iter,nphiequi,npassing_next
   !INTEGER :: niter ! now defined via rkstep_mod (neo_mod.f90)
-  DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
-  !DOUBLE PRECISION :: epserr_iter
+  real(kind=dp) :: delphim1,deloneovb,step_factor_p,step_factor_m
+  !real(kind=dp) :: epserr_iter
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
+  real(kind=dp), DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
+  real(kind=dp), DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
+  real(kind=dp), DIMENSION(:),   ALLOCATABLE :: bvec_prev
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
   INTEGER :: isw_lor,isw_ene,isw_intp
   INTEGER,          DIMENSION(:),       ALLOCATABLE :: npl
-  DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_fzero
-  DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_lorentz,q_rip
-  DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_energ
-  DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: pleg_bra,pleg_ket
-  DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: convol_flux,convol_curr
-  DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: scalprod_pleg
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: phi_mfl
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: bhat_mfl,geodcu_mfl,h_phi_mfl
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: dlogbdphi_mfl
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: delt_pos,delt_neg
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_b,fact_neg_b
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_e,fact_neg_e
+  real(kind=dp), DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_fzero
+  real(kind=dp), DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_lorentz,q_rip
+  real(kind=dp), DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_energ
+  real(kind=dp), DIMENSION(:,:,:),   ALLOCATABLE :: pleg_bra,pleg_ket
+  real(kind=dp), DIMENSION(:,:),     ALLOCATABLE :: convol_flux,convol_curr
+  real(kind=dp), DIMENSION(:,:),     ALLOCATABLE :: scalprod_pleg
+  real(kind=dp), DIMENSION(:), ALLOCATABLE :: phi_mfl
+  real(kind=dp), DIMENSION(:), ALLOCATABLE :: bhat_mfl,geodcu_mfl,h_phi_mfl
+  real(kind=dp), DIMENSION(:), ALLOCATABLE :: dlogbdphi_mfl
+  real(kind=dp), DIMENSION(:), ALLOCATABLE :: delt_pos,delt_neg
+  real(kind=dp), DIMENSION(:), ALLOCATABLE :: fact_pos_b,fact_neg_b
+  real(kind=dp), DIMENSION(:), ALLOCATABLE :: fact_pos_e,fact_neg_e
 
   !! End Modifications by Andreas F. Martitsch (13.06.2014)
   !! Modification by Andreas F. Martitsch (28.07.2015)
@@ -207,12 +208,12 @@ SUBROUTINE ripple_solver(                                 &
   INTEGER :: ispec, ispecp, ispecpp ! species indices
   INTEGER :: drive_spec
   INTEGER :: isw_regper, ipart1
-  DOUBLE PRECISION :: deleta_factor
-  DOUBLE PRECISION,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all
+  real(kind=dp) :: deleta_factor
+  real(kind=dp),   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all
   REAL(kind=dp), DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec, qflux_allspec_tmp
   LOGICAL :: problem_type
-  DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond1
-  DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
+  real(kind=dp), DIMENSION(0:num_spec-1) :: break_cond1
+  real(kind=dp), DIMENSION(0:num_spec-1) :: break_cond2
   INTEGER :: prop_fileformat=0
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
@@ -225,9 +226,9 @@ SUBROUTINE ripple_solver(                                 &
   !**********************************************************
   ! For faster read/write of whole HDF5 dataset
   !**********************************************************
-  double precision, dimension(:), allocatable       :: phi_mfl_h5, bhat_mfl_h5, npassing_h5
-  double precision, dimension(:,:,:,:), allocatable :: dentf_p_h5, enetf_p_h5, spitf_p_h5
-  double precision, dimension(:,:,:,:), allocatable :: dentf_m_h5, enetf_m_h5, spitf_m_h5
+  real(kind=dp), dimension(:), allocatable       :: phi_mfl_h5, bhat_mfl_h5, npassing_h5
+  real(kind=dp), dimension(:,:,:,:), allocatable :: dentf_p_h5, enetf_p_h5, spitf_p_h5
+  real(kind=dp), dimension(:,:,:,:), allocatable :: dentf_m_h5, enetf_m_h5, spitf_m_h5
   
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
   niter=1000
@@ -3114,28 +3115,29 @@ SUBROUTINE integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
   USE mpiprovider_module
   USE collop, ONLY : ailmm_aa, num_spec
   USE hdf5_tools
+  use nrtype, only : dp
   !! End Modification by Andreas F. Martitsch (28.07.2015)
-!
+
   IMPLICIT NONE
-!
+
   INTEGER :: npart,leg,lag,ibeg,iend,n_2d_size
   INTEGER :: l,m,i,k,istep,npassing
-!
-  INTEGER,          DIMENSION(ibeg:iend)                 :: npl,ind_start
-  DOUBLE PRECISION, DIMENSION(ibeg:iend)                 :: phi_mfl
-  DOUBLE PRECISION, DIMENSION(n_2d_size)                 :: vec_in,vec_out
-  DOUBLE PRECISION, DIMENSION(0:leg,1:npart+1,ibeg:iend) :: pleg_bra,pleg_ket
-  DOUBLE PRECISION, DIMENSION(0:lag,0:lag,0:leg)         :: ailmm
+
+  INTEGER,       DIMENSION(ibeg:iend)                 :: npl,ind_start
+  real(kind=dp), DIMENSION(ibeg:iend)                 :: phi_mfl
+  real(kind=dp), DIMENSION(n_2d_size)                 :: vec_in,vec_out
+  real(kind=dp), DIMENSION(0:leg,1:npart+1,ibeg:iend) :: pleg_bra,pleg_ket
+  real(kind=dp), DIMENSION(0:lag,0:lag,0:leg)         :: ailmm
   !! Modification by Andreas F. Martitsch (20.08.2015)
   ! Array extended by 3rd (phi-steps) and 4th dimension (species)
-  !DOUBLE PRECISION, DIMENSION(0:lag,0:leg)               :: scalprod_pleg
-  DOUBLE PRECISION, DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg
-  DOUBLE PRECISION, DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg_tmp
+  !real(kind=dp), DIMENSION(0:lag,0:leg)               :: scalprod_pleg
+  real(kind=dp), DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg
+  real(kind=dp), DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg_tmp
   ! Species index
   INTEGER :: ispec, ispecp
   INTEGER :: h5id_scalprod_pleg
   !! End Modification by Andreas F. Martitsch (20.08.2015)
-!
+
   !! Modification by Andreas F. Martitsch (28.07.2015)
   ! multi-species part - MPI rank determines species
   ispec = mpro%getRank()
@@ -3146,11 +3148,11 @@ SUBROUTINE integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
   !PRINT *,'denmm:',denmm(1,:)
   !STOP
   !! End Modification by Andreas F. Martitsch (28.07.2015) 
-!
+
   vec_out=0.d0
-!
+
   DO istep=ibeg,iend
-!
+
     npassing=npl(istep)
 !
     DO m=0,lag
@@ -3266,40 +3268,41 @@ subroutine rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,        &
 ! fact_neg_b(i) - integration step in negative direction starts at point i
 ! fact_neg_e(i) - integration step in negative direction ends at point i
 !
+  use nrtype, only : dp
   USE plagrange_mod
-!
+
   implicit none
-!
+
 !  logical, parameter :: stepmode=.true.
   logical, parameter :: stepmode=.false.
   INTEGER, PARAMETER :: npoi=6, nder=0, npoihalf=npoi/2, nstepmin=8
-  double precision, parameter :: bparabmax=0.2d0
-!
+  real(kind=dp), parameter :: bparabmax=0.2d0
+
   integer :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
   integer :: ncross_l,ncross_r,ib,ie,intb,inte,k,imid,isplit
-!
-  double precision :: subsqmin,ht,ht2,bparab,x1,x2,f1,f2
-!
+
+  real(kind=dp) :: subsqmin,ht,ht2,bparab,x1,x2,f1,f2
+
   integer, dimension(1)              :: idummy
   integer, dimension(1:iend)         :: phi_divide
   integer, dimension(:), allocatable :: icross_l,icross_r
-!
-  DOUBLE PRECISION, DIMENSION(npoi)           :: tp,weight
-  DOUBLE PRECISION, DIMENSION(0:nder,npoi)    :: coeff
-  double precision, dimension(0:npart)        :: eta
-  double precision, dimension(ibeg:iend)      :: phi_mfl,bhat_mfl
-  double precision, dimension(ibeg:iend)      :: geodcu_mfl,h_phi_mfl
-  double precision, dimension(ibeg:iend)      :: delt_pos,delt_neg
-  double precision, dimension(ibeg:iend)      :: fact_pos_b,fact_neg_b
-  double precision, dimension(ibeg:iend)      :: fact_pos_e,fact_neg_e
-  double precision, dimension(:), allocatable :: phi_new,bhat_new
-  double precision, dimension(:), allocatable :: geodcu_new,h_phi_new
-!
+
+  real(kind=dp), DIMENSION(npoi)           :: tp,weight
+  real(kind=dp), DIMENSION(0:nder,npoi)    :: coeff
+  real(kind=dp), dimension(0:npart)        :: eta
+  real(kind=dp), dimension(ibeg:iend)      :: phi_mfl,bhat_mfl
+  real(kind=dp), dimension(ibeg:iend)      :: geodcu_mfl,h_phi_mfl
+  real(kind=dp), dimension(ibeg:iend)      :: delt_pos,delt_neg
+  real(kind=dp), dimension(ibeg:iend)      :: fact_pos_b,fact_neg_b
+  real(kind=dp), dimension(ibeg:iend)      :: fact_pos_e,fact_neg_e
+  real(kind=dp), dimension(:), allocatable :: phi_new,bhat_new
+  real(kind=dp), dimension(:), allocatable :: geodcu_new,h_phi_new
+
   call fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
                                 phi_mfl,bhat_mfl,eta)
-!
+
   phi_divide=1
-!
+
   delt_pos(ibeg+1:iend)=phi_mfl(ibeg+1:iend)-phi_mfl(ibeg:iend-1)
   fact_pos_b=1.d0
   fact_pos_e=1.d0
@@ -3308,7 +3311,7 @@ subroutine rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,        &
 !
   idummy=minloc(bhat_mfl(ibeg:iend))
   ibmin=idummy(1)+ibeg-1
-!
+
   ncross_l=0
   if(ibmin.gt.ibeg) then
     istep=ibmin
@@ -3576,28 +3579,29 @@ end subroutine rearrange_phideps_old
 !
 subroutine fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
                                     phi_mfl,bhat_mfl,eta)
-!
+
   use device_mod
-!
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
   integer :: ncross_l,ncross_r,ib,ie
-!
-  double precision :: subsqmin
-!
+
+  real(kind=dp) :: subsqmin
+
   integer, dimension(1)              :: idummy
   integer, dimension(:), allocatable :: icross_l,icross_r
-!
-  double precision, dimension(0:npart)        :: eta
-  double precision, dimension(ibeg:iend)      :: phi_mfl,bhat_mfl
-  double precision, dimension(:), allocatable :: eta_cross_l,eta_cross_r
+
+  real(kind=dp), dimension(0:npart)        :: eta
+  real(kind=dp), dimension(ibeg:iend)      :: phi_mfl,bhat_mfl
+  real(kind=dp), dimension(:), allocatable :: eta_cross_l,eta_cross_r
 !
 ! determine level crossings:
 !
   idummy=minloc(bhat_mfl(ibeg:iend))
   ibmin=idummy(1)+ibeg-1
-!
+
   ncross_l=0
   if(ibmin.gt.ibeg) then
     istep=ibmin

@@ -2,21 +2,22 @@
 ! -----------------------------------------------------------------
 subroutine field(r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ   &
                 ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
-!
+
   use period_mod
   use input_files
   use field_c_mod,   only : ntor,icftype
   use field_mod
   use inthecore_mod, only : incore,cutoff
   use field_eq_mod, only : nwindow_r,nwindow_z
-!
+  use nrtype, only : dp
+
   implicit none
-!
-  double precision :: r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ         &
+
+  real(kind=dp) :: r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ         &
                      ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ
-  double precision :: rm,zm,Brc,Bpc,Bzc,dBrdRc,dBrdpc,dBrdZc   &
+  real(kind=dp) :: rm,zm,Brc,Bpc,Bzc,dBrdRc,dBrdpc,dBrdZc   &
                      ,dBpdRc,dBpdpc,dBpdZc,dBzdRc,dBzdpc,dBzdZc
-!
+
   if(icall .eq. 0) then
      icall = 1
      open(iunit, file='field_divB0.inp')
@@ -42,7 +43,7 @@ subroutine field(r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ   &
 
   call field_eq(rm,p,zm,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ   &
                ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ) 
-!
+
   if(iequil.eq.0) then
     Br=0.d0
     Bp=0.d0
@@ -113,38 +114,39 @@ subroutine field(r,p,z,Br,Bp,Bz,dBrdR,dBrdp,dBrdZ   &
         dBzdR = dBzdR + dBzdRc*ampl
         dBzdp = dBzdp + dBzdpc*ampl
         dBzdZ = dBzdZ + dBzdZc*ampl
-!
+
       endif
-!
+
     endif 
-!
+
    end if
-!
+
    return
- end subroutine field
+end subroutine field
 ! ========================================================================
 subroutine field_eq(rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &             
                    ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
-!
+
   use input_files
   use field_eq_mod
-!
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: ierr,i,j
-!
-  double precision :: rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &
+
+  real(kind=dp) :: rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &
                      ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ
-!
+
 !-------first call: read data from disk-------------------------------
   if(icall_eq .lt. 1) then
-!
+
   if(ieqfile.eq.0) then
     call read_dimeq0(nrad,nzet)
   else
     call read_dimeq1(nrad,nzet)
   endif
-!
+
     allocate(rad(nrad),zet(nzet))
     allocate(psi0(nrad,nzet),psi(nrad,nzet))
 
@@ -297,10 +299,12 @@ end subroutine read_dimeq0
 
 subroutine read_eqfile0(nrad, nzet, psib, btf, rtf, rad, zet, psi)
   use input_files
+  use nrtype, only :dp
+
   integer :: nrad, nzet, dum
-  real(kind=8) :: psib, btf, rtf
-  real(kind=8) :: rad(nrad), zet(nzet)
-  real(kind=8) :: psi(nrad,nzet)
+  real(kind=dp) :: psib, btf, rtf
+  real(kind=dp) :: rad(nrad), zet(nzet)
+  real(kind=dp) :: psi(nrad,nzet)
 
      open(11,file=eqfile)
      read(11,*)   
@@ -382,19 +386,22 @@ end subroutine read_dimeq1
 
 subroutine read_eqfile1(nwEQD,nhEQD,psiSep, bt0, rzero, rad, zet, psiRZ)
   use input_files
+  use nrtype, only : dp
+
   implicit none
+
   integer :: nwEQD, nhEQD
   integer :: gunit, idum
   character*10 discarded_data(6)
   integer :: i,j
-  real (kind=8) :: xdim,zdim,r1,zmid,rmaxis,zmaxis,xdum
-  real (kind=8) :: bt0, rzero, plas_cur, psiAxis, psiSep
-  real (kind=8), dimension(nwEQD) :: fpol,pres,ffprim,pprime,qpsi
-  real (kind=8), dimension(nwEQD,nhEQD) :: psiRZ
-  real (kind=8) :: rad(nwEQD), zet(nhEQD)
+  real (kind=dp) :: xdim,zdim,r1,zmid,rmaxis,zmaxis,xdum
+  real (kind=dp) :: bt0, rzero, plas_cur, psiAxis, psiSep
+  real (kind=dp), dimension(nwEQD) :: fpol,pres,ffprim,pprime,qpsi
+  real (kind=dp), dimension(nwEQD,nhEQD) :: psiRZ
+  real (kind=dp) :: rad(nwEQD), zet(nhEQD)
 
   integer :: n_bndyxy,nlimEQD
-  real (kind=8), dimension(:), allocatable :: LCFS, limEQD
+  real (kind=dp), dimension(:), allocatable :: LCFS, limEQD
 
       gunit=iunit
 
@@ -439,10 +446,13 @@ end subroutine read_eqfile1
 
 
 subroutine set_eqcoords(nwEQD,nhEQD,xdim,zdim,r1,zmid,rad,zet)
+  use nrtype, only : dp
+
   implicit none
+
   integer :: j,k,nwEQD,nhEQD
-  real (kind=8) :: xdim,zdim,r1,zmid,z1
-  real (kind=8) :: rad(nwEQD), zet(nhEQD)
+  real (kind=dp) :: xdim,zdim,r1,zmid,z1
+  real (kind=dp) :: rad(nwEQD), zet(nhEQD)
 
   do j=1,nwEQD
     rad(j) = r1 + (j-1)*(xdim/(nwEQD-1))
@@ -468,18 +478,19 @@ end subroutine set_eqcoords
 !
 subroutine field_c(rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &             
                   ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
-!
+
   use input_files
   use field_c_mod
   use math_constants, only : pi
-!
+  use nrtype, only : dp
+
   implicit none
 
-  double precision :: rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &
+  real(kind=dp) :: rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &
                      ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ
-  double precision :: rmin,pmin,zmin,rmax,pmax,zmax,hrm1,hpm1,hzm1
-  double precision, dimension(:,:,:), allocatable :: Br,Bp,Bz
-!
+  real(kind=dp) :: rmin,pmin,zmin,rmax,pmax,zmax,hrm1,hpm1,hzm1
+  real(kind=dp), dimension(:,:,:), allocatable :: Br,Bp,Bz
+
 !-------first call: read data from disk-------------------------------
   if(icall_c .lt. 1) then
     print *,'coils: file type = ',icftype
@@ -518,11 +529,11 @@ subroutine field_c(rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &
     print *,'coils: rmin,rmax = ',rmin,rmax
     print *,'coils: zmin,zmax = ',zmin,zmax
     print *,'coils: pmin,pmax = ',pmin,pmax
-!
+
     call vector_potentials(nr,np,nz,ntor,rmin,rmax,pmin,pmax,zmin,zmax,br,bp,bz)
-!
+
     deallocate(Br,Bp,Bz)
-!
+
     if(icall_c.eq.-1) then
 ! Quit after initialization with zero field
       Brad=0.d0
@@ -543,10 +554,10 @@ subroutine field_c(rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ  &
     icall_c = 1
   endif
   !------- end first call ----------------------------------------------
-!
+
   call  field_divfree(rrr,ppp,zzz,Brad,Bphi,Bzet,dBrdR,dBrdp,dBrdZ    &
                      ,dBpdR,dBpdp,dBpdZ,dBzdR,dBzdp,dBzdZ)
-!
+
   return
 end subroutine field_c
 
@@ -554,7 +565,7 @@ end subroutine field_c
 
 ! ===========================================================================
 subroutine read_field0(rad,phi,zet,rmin,pmin,zmin,hrm1,hpm1,hzm1,Br,Bp,Bz)
-!
+
   use input_files
   use math_constants, only : pi
 
@@ -567,7 +578,7 @@ subroutine read_field0(rad,phi,zet,rmin,pmin,zmin,hrm1,hpm1,hzm1,Br,Bp,Bz)
   integer indx(mp), indy(mp), indz(mp)
   data icall/0/
   save
-!
+
 !-------first call: read data from disk-------------------------------
      open(1,file=cfile,status='old',action='read')  
      read(1,*)   
@@ -630,18 +641,19 @@ subroutine read_field0(rad,phi,zet,rmin,pmin,zmin,hrm1,hpm1,hzm1,Br,Bp,Bz)
         enddo
      enddo
 end subroutine read_field0
-!
+
 subroutine read_field1(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
-!
+
   use input_files
   use math_constants, only : b_convfac, pi
-!
+  use nrtype, only : dp
+
   implicit none
 
   integer :: nr,np,nz,i,j,k,icftype
-  double precision :: rmin,pmin,zmin,rmax,pmax,zmax,xdim,zdim,zmid,dum
-  double precision, dimension(nr,np,nz) :: Br,Bp,Bz
-!
+  real(kind=dp) :: rmin,pmin,zmin,rmax,pmax,zmax,xdim,zdim,zmid,dum
+  real(kind=dp), dimension(nr,np,nz) :: Br,Bp,Bz
+
   open(iunit,file=trim(pfile),status='old',action='read')
   read(iunit,*)   
   read(iunit,*)   
@@ -703,16 +715,19 @@ end subroutine read_field1
 subroutine stretch_coords(r,z,rm,zm)
   use input_files, only : iunit,convexfile
   use math_constants, only : pi
+  use nrtype, only : dp
+
   implicit none
+
   integer icall, i, j, nrz ! number of points "convex wall" in input file
   integer, parameter :: nrzmx=100 ! possible max. of nrz
   integer, parameter :: nrhotht=360 
   integer :: iflag
 
-  real(kind=8) R0,Rw, Zw, htht, Rl, Zl, a, b, r, z, rm, zm, rho, tht, rho_c, delta, dummy
-  real(kind=8), dimension(0:1000):: rad_w, zet_w ! points "convex wall" 
-  real(kind=8), dimension(:), allocatable :: rho_w, tht_w 
-  real(kind=8), dimension(nrhotht) :: rho_wall, tht_wall ! polar coords of CW 
+  real(kind=dp) R0,Rw, Zw, htht, Rl, Zl, a, b, r, z, rm, zm, rho, tht, rho_c, delta, dummy
+  real(kind=dp), dimension(0:1000):: rad_w, zet_w ! points "convex wall"
+  real(kind=dp), dimension(:), allocatable :: rho_w, tht_w
+  real(kind=dp), dimension(nrhotht) :: rho_wall, tht_wall ! polar coords of CW
   data icall /0/, delta/1./
   save
 !----------- 1st call --------------------------------------------------------
@@ -819,20 +834,21 @@ end subroutine stretch_coords
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
 subroutine inthecore(R,Z)
-!
+
   use inthecore_mod
   use input_files,  only : iunit,fluxdatapath
   use field_eq_mod, only : psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
   use math_constants, only : twopi
-!
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: i
-  double precision :: R,Z,rho2,thet,scalp,xx,yy
-  double precision :: weight,dweight,ddweight
-  double precision, dimension(4) :: x,y
-  double precision, dimension(:), allocatable :: ri,zi
-!
+  real(kind=dp) :: R,Z,rho2,thet,scalp,xx,yy
+  real(kind=dp) :: weight,dweight,ddweight
+  real(kind=dp), dimension(4) :: x,y
+  real(kind=dp), dimension(:), allocatable :: ri,zi
+
   if(prop) then
     prop=.false.
     open(iunit,file=trim(fluxdatapath)//'/separ.dat')
@@ -880,10 +896,10 @@ subroutine inthecore(R,Z)
     rho2i(0)=rho2i(npoi-1)
     theti(0)=theti(npoi-1)-sign(twopi,sig)
   endif
-!
+
   rho2=(r-rc)**2+(z-zc)**2
   thet=atan2(z-zc,r-rc)
-!
+
   ibeg=0
   iend=npoi
   do while(ibeg+1.lt.iend)
@@ -896,13 +912,13 @@ subroutine inthecore(R,Z)
   enddo
   x=theti(ibeg-1:iend+1)
   y=rho2i(ibeg-1:iend+1)
-!
+
   xx=thet
   yy=y(1)*(xx-x(2))/(x(1)-x(2))*(xx-x(3))/(x(1)-x(3))*(xx-x(4))/(x(1)-x(4)) &
     +y(2)*(xx-x(3))/(x(2)-x(3))*(xx-x(4))/(x(2)-x(4))*(xx-x(1))/(x(2)-x(1)) &
     +y(3)*(xx-x(4))/(x(3)-x(4))*(xx-x(1))/(x(3)-x(1))*(xx-x(2))/(x(3)-x(2)) &
     +y(4)*(xx-x(1))/(x(4)-x(1))*(xx-x(2))/(x(4)-x(2))*(xx-x(3))/(x(4)-x(3))
-!
+
   if(rho2.gt.yy) then
     incore=-1
     return
@@ -910,40 +926,41 @@ subroutine inthecore(R,Z)
     incore=1
     return
   endif
-!
+
   incore=0
-!
+
   call localizer(psi_cut,psi_sep,psif,weight,dweight,ddweight)
-!
+
   plaf=weight
   dpladr=dweight*dpsidr
   dpladz=dweight*dpsidz
   d2pladr2=ddweight*dpsidr**2+dweight*d2psidr2
   d2pladrdz=ddweight*dpsidr*dpsidz+dweight*d2psidrdz
   d2pladz2=ddweight*dpsidz**2+dweight*d2psidz2
-!
+
   vacf=1.d0-plaf
   dvacdr=-dpladr
   dvacdz=-dpladz
   d2vacdr2=-d2pladr2
   d2vacdrdz=-d2pladrdz
   d2vacdz2=-d2pladz2
-!
+
   return
-  end subroutine inthecore
+end subroutine inthecore
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
 subroutine localizer(x1,x2,x,weight,dweight,ddweight)
-!
+  use nrtype, only : dp
+
   implicit none
-!
-  double precision, parameter :: c1=-6.283185307179586d0,c2=-1.414213562373095d0
-!
-  double precision :: x1,x2,x,t,weight,dweight,ddweight,exin
-!
+
+  real(kind=dp), parameter :: c1=-6.283185307179586d0,c2=-1.414213562373095d0
+
+  real(kind=dp) :: x1,x2,x,t,weight,dweight,ddweight,exin
+
   t=(x-x1)/(x2-x1)
-!
+
   if(t.le.0.d0) then
     weight=1.d0
     dweight=0.d0
@@ -960,43 +977,45 @@ subroutine localizer(x1,x2,x,weight,dweight,ddweight)
             +weight*c1*(1.d0/(1.d0-t)**2+2.d0*c2/t**3)*exin/(1.d0-t) &
             +weight*c1*(1.d0/(1.d0-t)-c2/t**2)**2*exin/(1.d0-t)
   endif
-!
+
   dweight=dweight/(x2-x1)
   ddweight=ddweight/(x2-x1)**2
-!
+
   return
-  end subroutine localizer
+end subroutine localizer
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
 subroutine window_filter(n,nw,arr_in,arr_out)
-!
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: n,nw,nwa,i
-  double precision, dimension(n) :: arr_in,arr_out
-!
+  real(kind=dp), dimension(n) :: arr_in,arr_out
+
   do i=1,n
     nwa=min(nw,i-1,n-i)
     arr_out(i)=sum(arr_in(i-nwa:i+nwa))/(2*nwa+1)
   enddo
-!
+
   return
-  end subroutine window_filter
+end subroutine window_filter
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
 subroutine read_field2(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
-!
+
   use input_files
   use math_constants, only : pi
-!
+  use nrtype, only : dp
+
   implicit none
 
   integer :: nr,np,nz,i,j,k,icftype
-  double precision :: rmin,pmin,zmin,rmax,pmax,zmax,xdim,zdim,zmid,dum
-  double precision, dimension(nr,np,nz) :: Br,Bp,Bz
-!
+  real(kind=dp) :: rmin,pmin,zmin,rmax,pmax,zmax,xdim,zdim,zmid,dum
+  real(kind=dp), dimension(nr,np,nz) :: Br,Bp,Bz
+
   open(iunit,file=trim(pfile),status='old',action='read')
 
 !---Input B      -->T = V*s/m/m
@@ -1010,7 +1029,7 @@ subroutine read_field2(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
 !                                       New Format
              read(iunit,*) dum,dum,dum,Br(i,j,k),Bp(i,j,k),Bz(i,j,k),dum,dum
            endif
-!
+
                                   !Convert to CGS
            Br(i,j,k) = Br(i,j,k)*1.d4
            Bp(i,j,k) = Bp(i,j,k)*1.d4
@@ -1019,19 +1038,19 @@ subroutine read_field2(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
      enddo
   enddo
   close(iunit)
-!
+
   xdim=300.d0
   rmin=100.d0
   rmax=rmin+xdim
-!
+
   pmin = 0.
   pmax = 2.*pi
-!
+
   zdim=400.d0
   zmid=0.d0
   zmin=zmid - zdim/2.d0
   zmax=zmid + zdim/2.d0
-!
+
   do i=1,nr
      do k=1,nz
         Br(i,np,k) = Br(i,1,k)
@@ -1040,29 +1059,30 @@ subroutine read_field2(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
      enddo
   enddo
 end subroutine read_field2
-!
+
 subroutine read_sizes(nr,np,nz)
-!
+
   use input_files, only : iunit,pfile
-!
+
   implicit none
   integer :: nr,np,nz
-!
+
   open(iunit,file=pfile)
   read(iunit,*) nr,np,nz
   close(iunit)
-!
+
 end subroutine read_sizes
-!
+
 subroutine read_field4(nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
-!
+
   use input_files, only : iunit,pfile
-!
+  use nrtype, only : dp
+
   implicit none
-!
+
   integer :: nr,np,nz,i,j,k
-  double precision :: rmin,rmax,pmin,pmax,zmin,zmax
-  double precision, dimension(nr,np,nz)       :: Br,Bp,Bz
+  real(kind=dp) :: rmin,rmax,pmin,pmax,zmin,zmax
+  real(kind=dp), dimension(nr,np,nz)       :: Br,Bp,Bz
 !
   open(iunit,file=pfile) 
   read(iunit,*) nr,np,nz

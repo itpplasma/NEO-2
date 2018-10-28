@@ -23,20 +23,21 @@ SUBROUTINE join_ends(ierr)
 !  there is now o%p%npart and n%p%npart
 !  but matrix sizes are anyway as they should be
 !
-! 
+
 
   USE propagator_mod
   USE lapack_band
   USE collisionality_mod, ONLY : isw_lorentz
-!
+  use nrtype, only : dp
+
   IMPLICIT NONE
-!
+
   INTEGER, INTENT(out) :: ierr
-!
+
   TYPE(propagator), POINTER            :: o
   TYPE(propagator), POINTER            :: n
 
-!
+
   INTEGER :: ndim,i,i1,ntranseq,info,nl,nr,nts_r,nts_l,kl,kr,m,kr1,nvel
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ipivot,iminvec,imaxvec
 
@@ -45,30 +46,30 @@ SUBROUTINE join_ends(ierr)
   !
   ! One can finally remove this c_forward and c_backward if we just
   ! use o%p%cmat (for forward) and n%p%cmat (for backward)
-  !
-  DOUBLE PRECISION, DIMENSION(:,:), POINTER :: c_forward,c_backward
-  !
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: totfun,totlev
-  !
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: delta_eta_r,delta_eta_l
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: alam_l,alam_r
-  !
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,transmat
-!
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: qflux,dqflux
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: source_m,dsource_m
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: source_p,dsource_p
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: flux_p,dflux_p
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: flux_m,dflux_m
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat_p_p,damat_p_p
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat_p_m,damat_p_m
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat_m_m,damat_m_m
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat_m_p,damat_m_p
-  INTEGER :: ndupl,idupl
-  DOUBLE PRECISION :: facnorm
 
-!
-  !
+  real(kind=dp), DIMENSION(:,:), POINTER :: c_forward,c_backward
+
+  real(kind=dp), DIMENSION(:),   ALLOCATABLE :: totfun,totlev
+
+  real(kind=dp), DIMENSION(:),   ALLOCATABLE :: delta_eta_r,delta_eta_l
+  real(kind=dp), DIMENSION(:),   ALLOCATABLE :: alam_l,alam_r
+
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,transmat
+
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: qflux,dqflux
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: source_m,dsource_m
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: source_p,dsource_p
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: flux_p,dflux_p
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: flux_m,dflux_m
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_p_p,damat_p_p
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_p_m,damat_p_m
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_m_m,damat_m_m
+  real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_m_p,damat_m_p
+  INTEGER :: ndupl,idupl
+  real(kind=dp) :: facnorm
+
+
+
   ! initialize
   ierr = 0
   o => prop_c%prev

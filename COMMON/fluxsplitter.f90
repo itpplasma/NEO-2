@@ -57,7 +57,7 @@ CONTAINS
     REAL(kind=dp), DIMENSION(*), INTENT(in) :: eta_in
     ! WINNY
     ! make it allocatable
-    ! DOUBLE PRECISION, DIMENSION(2,-2:2) :: splitmatrix
+    ! real(kind=dp), DIMENSION(2,-2:2) :: splitmatrix
     REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: splitmatrix
     !
     INTEGER                                       :: i,info,ndim,k

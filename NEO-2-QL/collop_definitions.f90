@@ -40,10 +40,10 @@ module collop_definitions
   integer       :: sw_qag_rule = 2
   !real(kind=dp) :: x_max    = 20
 contains
-  
+
+  !> Computes coefficients of Legendre polynomials of orders from 0 to n
   subroutine init_legendre(n)
-    !
-    ! Computes coefficients of Legendre polynomials of orders from 0 to n
+    use nrtype, only : dp
 
     !
     ! Input parameters:
@@ -53,18 +53,18 @@ contains
     !                                  of the order i
     !
     integer :: n,i,j
-    !
-    double precision :: frontfac,rearfac
-    !
+
+    real(kind=dp) :: frontfac,rearfac
+
     if(allocated(coefleg)) return
     write (*,*) "Initializing Legendre coefficients..."
     allocate(coefleg(0:n,0:n))
-    !
+
     coefleg=0.d0
     coefleg(0,0)=1.d0
     coefleg(1,1)=1.d0
     frontfac=1.d0
-    !
+
     do i=2,n
        frontfac=frontfac*(2.d0-1.d0/dble(i))
        rearfac=frontfac
@@ -78,6 +78,8 @@ contains
   end subroutine init_legendre
   
   subroutine init_laguerre(lagmax, legmax)
+    use nrtype, only : dp
+
     integer :: lagmax, legmax
     integer :: i, j, k, l
     real(kind=dp) :: bincoef
@@ -119,6 +121,7 @@ contains
 
   function phi(m, x)
     use math_constants, only : pi
+    use nrtype, only : dp
 
     integer       :: m, k
     real(kind=dp) :: phi
@@ -140,6 +143,7 @@ contains
 
   function d_phi(m, x)
     use math_constants, only : pi
+    use nrtype, only : dp
 
     integer       :: m, k
     real(kind=dp) :: d_phi
@@ -161,6 +165,7 @@ contains
   
   function dd_phi(m, x)
     use math_constants, only : pi
+    use nrtype, only : dp
 
     integer :: m,k
     real(kind=dp) :: dd_phi
@@ -194,6 +199,7 @@ contains
 
   function d_erf(x) result(y)
     use math_constants, only : pi
+    use nrtype, only : dp
 
     real(kind=dp) :: x
     real(kind=dp) :: y
@@ -203,6 +209,7 @@ contains
 
   function dd_erf(x) result(y)
     use math_constants, only : pi
+    use nrtype, only : dp
 
     real(kind=dp) :: x
     real(kind=dp) :: y
@@ -211,6 +218,8 @@ contains
   end function dd_erf
 
   function d_G(x) result(y)
+    use nrtype, only : dp
+
     real(kind=dp) :: x
     real(kind=dp) :: y
 

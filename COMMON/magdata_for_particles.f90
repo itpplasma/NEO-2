@@ -30,28 +30,29 @@ SUBROUTINE magdata_for_particles(phi,bhat,geodcu,h_phi,dlogbdphi,&
   ! and "magdata_for_particles". 
   USE mag_sub, ONLY: mag
   !! End Modifications by Andreas F. Martitsch (09.03.2014)
-  !
+  use nrtype, only : dp
+
   IMPLICIT NONE
-  !
+
   !! Modifications by Andreas F. Martitsch (11.03.2014)
   ! Optional output (necessary for modeling the magnetic rotation)
-  DOUBLE PRECISION, INTENT(in)            :: phi
-  DOUBLE PRECISION, INTENT(out)           :: geodcu,bhat,h_phi,dlogbdphi
-  DOUBLE PRECISION, OPTIONAL, INTENT(out) :: bcovar_s_hat, &
+  real(kind=dp), INTENT(in)            :: phi
+  real(kind=dp), INTENT(out)           :: geodcu,bhat,h_phi,dlogbdphi
+  real(kind=dp), OPTIONAL, INTENT(out) :: bcovar_s_hat, &
        dlogbds, dbcovar_s_hat_dphi
   ! Variable "y" already specified by rk4_kin_mod
-  !DOUBLE PRECISION, DIMENSION(ndim0)         :: y,dery
+  !real(kind=dp), DIMENSION(ndim0)         :: y,dery
   ! Variable "dery" seems to be unused at the moment
   ! (also not specified through any used module)
-  !DOUBLE PRECISION, DIMENSION(ndim0)         :: dery
+  !real(kind=dp), DIMENSION(ndim0)         :: dery
   !! End Modifications by Andreas F. Martitsch (11.03.2014)
-  !
+
   ! Local definitions:
   ! Winny: ipmin moved to module
   INTEGER :: i,j,npassing ! ,ipmin
-  DOUBLE PRECISION                 :: bmod,sqrtg
-  DOUBLE PRECISION, DIMENSION(3)   :: x,bder,hcovar,hctrvr,bcovar_s_hat_der
-  DOUBLE PRECISION, DIMENSION(3,3) :: hcoder,hctder
+  real(kind=dp)                 :: bmod,sqrtg
+  real(kind=dp), DIMENSION(3)   :: x,bder,hcovar,hctrvr,bcovar_s_hat_der
+  real(kind=dp), DIMENSION(3,3) :: hcoder,hctder
   !
   IF (mag_coordinates .EQ. 0) THEN
      ! cylindrical
