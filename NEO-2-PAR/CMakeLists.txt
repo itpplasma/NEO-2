@@ -8,7 +8,7 @@ enable_language (Fortran)
 enable_testing()
 
 ### Build name
-set(EXE_NAME "neo_2.x")
+set(EXE_NAME "neo_2_par.x")
 
 ### Macro for comparison of version strings
 include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)

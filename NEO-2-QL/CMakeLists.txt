@@ -15,7 +15,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
   set(CMAKE_BUILD_TYPE "RELEASE")
 endif ()
 
-set(EXE_NAME "neo_2.x")
+set(EXE_NAME "neo_2_ql.x")
 
 ### Macro for comparison of version strings
 include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
