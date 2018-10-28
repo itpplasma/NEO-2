@@ -153,6 +153,7 @@ set(NEO2_QL_SRC_FILES
         ./plot_distrf.f90
         ./lagxmm.f90
         ./neo_magfie_perturbation.f90
+        ./arnoldi_mod.f90
         ./collop_definitions.f90
         ./neo2_ql.f90
         ./ntv_eqmat_mod.f90

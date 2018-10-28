@@ -1,30 +1,4 @@
 !
-!! Modifications by Andreas F. Martitsch (27.07.2015)
-! Multiple definitions avoided
-!!$  MODULE ntv_eqmat_mod
-!!$    INTEGER                                         :: nz_symm,nz_asymm,nz_regper
-!!$    INTEGER                                         :: nz_per_pos,nz_per_neg
-!!$    INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_symm,icol_symm
-!!$    INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_regper,icol_regper
-!!$    INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_asymm,icol_asymm
-!!$    INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_per_pos,icol_per_pos
-!!$    INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_per_neg,icol_per_neg
-!!$    DOUBLE PRECISION, DIMENSION(:),     ALLOCATABLE :: amat_symm
-!!$    DOUBLE PRECISION, DIMENSION(:),     ALLOCATABLE :: amat_regper
-!!$    DOUBLE COMPLEX,   DIMENSION(:),     ALLOCATABLE :: amat_asymm
-!!$    DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: f0_coll,f0_ttmp
-!!$    DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: f0_coll_all,f0_ttmp_all
-!!$  END MODULE ntv_eqmat_mod
-!! End Modifications by Andreas F. Martitsch (27.07.2015)
-!
-  MODULE arnoldi_mod
-    INTEGER :: ngrow,ierr
-    INTEGER :: ntol,mode=0
-    DOUBLE PRECISION :: tol
-    DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
-    DOUBLE COMPLEX, DIMENSION(:,:), ALLOCATABLE :: eigvecs
-  END MODULE arnoldi_mod
-!
 !Sergei 20.07.2006 : modification of boundary layer is done now locally,
 !                    filtering of the magnetic field maxima has been removed,
 !                    old unused lines which were commented have been removed
