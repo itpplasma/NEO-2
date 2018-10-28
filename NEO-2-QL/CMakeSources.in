@@ -155,5 +155,6 @@ set(NEO2_QL_SRC_FILES
         ./neo_magfie_perturbation.f90
         ./collop_definitions.f90
         ./neo2_ql.f90
+        ./ntv_eqmat_mod.f90
 )
 set_source_files_properties(${NEO2_QL_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS}")
