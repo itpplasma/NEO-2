@@ -16,18 +16,6 @@ module collop_compute
   implicit none
 
   !**********************************************************
-  ! Species definitions (cgs)
-  !**********************************************************
-  real(kind=dp) :: m_ele = 9.109382150d-28
-  real(kind=dp) :: m_pro = 1.672621637d-24
-  real(kind=dp) :: m_alp = 6.644656200d-24
-  real(kind=dp) :: m_d   = 3.343583719d-24
-  real(kind=dp) :: m_C   = 19.94406876d-24
-  real(kind=dp) :: m_W   = 305.2734971d-24
-  real(kind=dp) :: c     = 2.9979d10
-  real(kind=dp) :: ev    = 1.6022d-12
-
-  !**********************************************************
   ! Thermal velocity ratio
   !**********************************************************
   real(kind=dp) :: gamma_ab
@@ -2747,7 +2735,7 @@ contains
 
   subroutine compute_collop_rel(isw_rel, T_e, asource_s, weightlag_s, bzero_s, weightparflow_s, &
        weightenerg_s, Amm_s, anumm_s, anumm_inf_s, denmm_s, ailmm_s)
-    use math_constants, only : pi
+    use math_constants, only : c, ev_to_cgs, m_ele, pi
 
     real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
     real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
@@ -2760,7 +2748,7 @@ contains
     ! Preparations for relativistic formulas
     !**********************************************************
     isw_relativistic = isw_rel
-    rmu = (c**2 * m_ele)/(eV*T_e)
+    rmu = (c**2 * m_ele)/(ev_to_cgs*T_e)
     
     n=2
     call DBESK(rmu,n,norm_maxwell,ierr)

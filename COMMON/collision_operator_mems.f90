@@ -3,10 +3,10 @@ module collop
   use hdf5_tools
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
-       m_ele, m_d, m_C, m_alp, m_W, compute_collop_inf, C_m, compute_xmmp, &
+       compute_collop_inf, C_m, compute_xmmp, &
        compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
        compute_collop_rel, lagmax, integral_cutoff, num_sub_intervals, num_sub_intervals_cutoff, &
-       epsabs, epsrel, x_cutoff, c, m_ele, eV, lsw_split_interval, compute_nbisource
+       epsabs, epsrel, x_cutoff, lsw_split_interval, compute_nbisource
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
@@ -102,6 +102,8 @@ module collop
     end subroutine collop_set_species
     
     subroutine collop_load()
+      use math_constants, only : c, ev_to_cgs, m_ele
+
       real(kind=dp), dimension(:), allocatable :: asource_temp
 
       real(kind=dp) :: alpha_temp, beta_temp
@@ -129,7 +131,7 @@ module collop
          x_cutoff_nr  = 20.0d0
 
          if (isw_relativistic .ge. 1) then
-            rmu = (c**2 * m_ele)/(eV*T_e)
+            rmu = (c**2 * m_ele)/(ev_to_cgs*T_e)
             if (phi_x_max .le. 0d0) then
                phi_x_max = phi_x_max_nr * sqrt(1 + phi_x_max_nr**2 / (2d0 * rmu))
                write (*,*) "WARNING: Setting phi_x_max to ", phi_x_max
