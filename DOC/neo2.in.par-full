@@ -69,7 +69,10 @@
   collop_base_prj = 11  ! [0]
   collop_base_exp = 11  ! [0]
   collop_bspline_dist = 1.0d0 ! [1.0d0]
-  collop_bspline_order = 1    ! [4]
+  collop_bspline_order = 2 ! According to the B-Spline definition this is
+                           ! the order parameter $k$. As an example $k=3$
+                           ! creates quadratic B-Splines and $k=4$ cubic
+                           ! B-Splines (best choice). [4]
   collop_bspline_taylor = .true. ! [.true.]
   collop_only_precompute
   ! ['/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/']
@@ -77,8 +80,10 @@
   conl_over_mfp = 1.0e-3    ! collisionality parameter [1.0d-3]
   conl_over_mfp_vec = 0.0d0 ! [0.0d0]
   isw_axisymm  = 0          ! [0]
-  isw_energy = 0            ! [0]
-  isw_integral = 0          ! [0]
+  isw_energy = 0            ! 0: no energy conservation [default]
+                            ! 1: with energy conservation
+  isw_integral = 0          ! 0: no momentum convervation [default]
+                            ! 1: (mainly) have momentum conservation
   isw_lorentz = 1           ! [1]
   isw_momentum = 0          ! [0]
   isw_relativistic = 0      ! 0 is non-relativistic [default]
