@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+"""Extract and store information from an efit file.
+
+This class is designed to extract and store information from an efit
+file (textformat, but not really human readable).
+
+The constructor/init-method expects a file name, from these the
+information are read.
+"""
 class efit_type:
   characters_per_number=16
   numbers_per_line=5
@@ -87,7 +95,11 @@ class efit_type:
     alist = [aflat[self.characters_per_number*k:self.characters_per_number*(k+1)] for k in range(int(len(aflat)/self.characters_per_number))]
     return np.array(alist, dtype=float)
 
-"""http://paulbourke.net/papers/conrec/"""
+"""Function to compute isolines for drawing.
+
+Algorythm taken from http://paulbourke.net/papers/conrec/ (c-version to
+be specific).
+"""
 def conrec(data, nr_horizontal_points, nr_vertical_points, contourlevels, xcoordinates, ycoordinates):
   im = [0,1,1,0]
   jm = [0,0,1,1]
@@ -106,7 +118,7 @@ def conrec(data, nr_horizontal_points, nr_vertical_points, contourlevels, xcoord
   y1 = 0.0
   y2 = 0.0
 
-  # Local functions
+  # Local functions.
   def Line_between_vertices_1_and_2():
     x1 = xh[m1]
     y1 = yh[m1]
@@ -278,6 +290,12 @@ def compute_contourlevels(efitvar, number_of_fluxsurfaces):
     contourgrid.append(efitvar.simag + (efitvar.sibry - efitvar.simag)/(number_of_fluxsurfaces-1)*i)
   return contourgrid
 
+"""Check if a given path is closed.
+
+It is assumed to be closed, if the distance between the last and the
+first point is not much greater than the distance between the first and
+the second point. 'Not much greater' is defined by an internal consant.
+"""
 def closed(p):
   acceptance_factor = 1.5
   #~ v = p.vertices
@@ -309,15 +327,35 @@ def make_fouriertrafo(x):
 
   return fft.rfft(x) #[1:]
 
-def efit_to_boozer(filename):
+"""Takes function with discretization and recomputes the values for another discretization.
+
+This function takes the values of a function at given positions, and will
+calculate the values at different, given positions.
+It is assumed that the new grid is inside the old one, i.e. only
+interpolation of the data is required, not extrapolation.
+"""
+def recompute_from_to(var_on_ingrid, ingrid, outgrid):
+  import numpy as np
+  from scipy.interpolate import interp1d
+
+  f = interp1d(ingrid, var_on_ingrid)
+  var_on_outgrid = f(outgrid)
+
+  return var_on_outgrid
+
+"""Expects filename of a efit file, and will print a boozer file with given name.
+
+This function has two names as input arguments. The first one is the
+name of an efit file to be read and converted to a boozer file. The
+result is writen in a file with the second name.
+"""
+def efit_to_boozer(filename, outputfile):
   import matplotlib.pyplot as plt
   import numpy as np
   #~ import matplotlib.colors as colors
 
   import boozer
 
-  filename = '/proj/plasma/Neo2/ASDEX-U/31114/g031114.05000'
-  outputfile = 'boozer.bc'
   number_of_fluxsurfaces=30
   efitvar = efit_type(filename)
 
@@ -352,7 +390,9 @@ def efit_to_boozer(filename):
   bmnb = np.zeros(m0b+1) #
   radial_restriction_parameter = 1.01
   s = (cn.levels - radial_restriction_parameter*min(cn.levels))/(radial_restriction_parameter*(max(cn.levels) - min(cn.levels))) #
-  iota = 0.0 #
+  iota_ = 1.0/efitvar.q
+  # Scale efitvar.psi to be in the range [0,1] as s is scaled that way.
+  iotavec = recompute_from_to(iota_, efitvar.psi/max(efitvar.psi), s)
   bsubvB = 0.0 #
   bsubuB = 0.0 #
   pprime = 0.0 #
@@ -363,7 +403,7 @@ def efit_to_boozer(filename):
 
   boozer.write_boozer_head(outputfile, '01', shot, m0b, n0b, nsurf, nfp, psi_tor_a, aminor, Rmajor)
 
-  for (k, psi) in zip(range(len(cn.collections)-1,0-1, -1), s):
+  for (k, psi, iota) in zip(range(len(cn.collections)-1,0-1, -1), s, iotavec):
     for p in cn.collections[k].get_paths():
 
       if (closed(p)):
@@ -393,14 +433,20 @@ def efit_to_boozer(filename):
 ########################################################################
 if __name__ == "__main__":
   import matplotlib.pyplot as plt
+  import sys
 
-  # If this is run as main, just create a class-object with default
-  # name(s) for the file(s).
+  # Check input arguments for input and output filename.
+  if (len(sys.argv) >= 2):
+    filename = sys.argv[1]
+  else:
+    filename = '/proj/plasma/Neo2/ASDEX-U/31114/g031114.05000'
 
-  filename = '/proj/plasma/Neo2/ASDEX-U/31114/g031114.05000'
-  #~ filename = '/proj/plasma/Neo2/ASDEX-U/32566/g032566.05000'
+  if (len(sys.argv) >= 3):
+    outputfile = sys.argv[2]
+  else:
+    outputfile = 'boozer.bc'
 
-  efit_to_boozer(filename)
+  efit_to_boozer(filename, outputfile)
 
   #~ efitvar = efit_type(filename)
 
