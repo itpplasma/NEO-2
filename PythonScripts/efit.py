@@ -312,21 +312,6 @@ def closed(p):
   else:
     return False
 
-def make_length(x, y, length):
-  if (len(x) != len(y)):
-    raise Exception
-  if (len(x) >= length):
-    return [x[0:length], y[0:length]]
-  else:
-    zeroes = [0]*(length-len(x))
-    return [x+ zeroes, y+zeroes]
-    #~ raise Exception
-
-def make_fouriertrafo(x):
-  import numpy.fft as fft
-
-  return fft.rfft(x) #[1:]
-
 """Takes function with discretization and recomputes the values for another discretization.
 
 This function takes the values of a function at given positions, and will
@@ -343,6 +328,32 @@ def recompute_from_to(var_on_ingrid, ingrid, outgrid):
 
   return var_on_outgrid
 
+"""Make sure outputs x and y have given length.
+
+This function takes two lists x,y with the same number of elements, and
+output two arrays with 'length' number of elements, assuming they are
+periodic.
+This is done by using function 'recompute_from_to' with appropriate
+input and output grids.
+"""
+def make_length(x, y, length):
+  import numpy as np
+
+  if (len(x) != len(y)):
+    raise Exception
+  else:
+    ingrid = np.array(range(len(x)+1), dtype=float)/float(len(x))
+    outgrid = np.array(range(length), dtype=float)/float(length)
+    var_on_outgrid_x = recompute_from_to(x + [x[0]], ingrid, outgrid)
+    var_on_outgrid_y = recompute_from_to(y + [y[0]], ingrid, outgrid)
+
+    return [var_on_outgrid_x, var_on_outgrid_y]
+
+def make_fouriertrafo(x):
+  import numpy.fft as fft
+
+  return fft.rfft(x) #[1:]
+
 """Expects filename of a efit file, and will print a boozer file with given name.
 
 This function has two names as input arguments. The first one is the
@@ -352,7 +363,6 @@ result is writen in a file with the second name.
 def efit_to_boozer(filename, outputfile):
   import matplotlib.pyplot as plt
   import numpy as np
-  #~ import matplotlib.colors as colors
 
   import boozer
 
@@ -364,8 +374,6 @@ def efit_to_boozer(filename, outputfile):
 
   #~ contourlevels = compute_contourlevels(efitvar, number_of_fluxsurfaces)
   #~ contourlines = conrec(efitvar.psi2d, efitvar.nw, efitvar.nh, contourlevels, rgrid, zgrid)
-  #~ print(efitvar.psi2d)
-  #~ print(max(efitvar.psi2d))
   contourlines = []
   cn = plt.contour(efitvar.psi2d,number_of_fluxsurfaces)
   contourlevels = cn.levels
