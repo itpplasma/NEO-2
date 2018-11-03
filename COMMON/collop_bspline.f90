@@ -15,6 +15,18 @@ module collop_bspline
   logical, private :: bspline_initialized = .false.
   
 contains
+  subroutine check()
+    use collisionality_mod, only : collop_bspline_order
+    !use collop, only : collop_base_exp, collop_base_prj
+
+    ! This check leads to circular dependencies and is thus not used until
+    ! it was found out how to solve the problem.
+    !if ((collop_base_prj .eq. 11) .or. (collop_base_exp .eq. 11)) then
+      if (collop_bspline_order < 2) then
+        stop 'ERROR: collop_bspline_order should be >= 2'
+      end if
+    !end if
+  end subroutine check
 
   !**********************************************************
   ! Splines
@@ -25,10 +37,10 @@ contains
     real(kind=dp) :: xp, gam_all, x_del
 
     taylorExpansion = collop_bspline_taylor
-    
+
     if (.not. bspline_initialized) then
        bspline_initialized = .true.
-       
+
        knots = lagmax - collop_bspline_order + 3
        nder  = collop_bspline_order  ! Maximum derivative
 
@@ -61,7 +73,7 @@ contains
        !write (*,*) dd_phi_bspline(2, 4d0)
 
        !stop
-       
+      call check()
     end if
   end subroutine init_phi_bspline
 

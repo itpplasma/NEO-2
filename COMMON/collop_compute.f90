@@ -1138,6 +1138,7 @@ contains
     logical :: in_interval
     real(kind=dp) :: x_sub_low, x_sub_up, x_sub_del ! Split integration domain into sub-intervals
     integer :: k_sub ! Split integration domain into sub-intervals
+    real(kind=dp) :: x_cutoff_local
     
     interface  
        function func1d(x)
@@ -1155,7 +1156,14 @@ contains
 !!$    end if
 !!$    y = res_int(1)
 !!$    return
-    
+    if (integral_cutoff) then
+      x_cutoff_local = x_cutoff
+      do while (abs(func1d(x_cutoff_local*0.9)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
+        x_cutoff_local = x_cutoff_local*0.9
+      end do
+!~       write(*,*) 'Using x_cutoff_local=', x_cutoff_local, 'with |f(x)|=', abs(func1d(x_cutoff_local))
+    end if
+
     if (allocated(t_vec)) then
        ! Assuming that t_vec is ordered, this should be the same as a .le. maxval(t_vec)
        if (a .le. t_vec(ubound(t_vec,1))) then
@@ -1219,7 +1227,7 @@ contains
           end do
           if (integral_cutoff) then
              if (lsw_split_interval) then
-                x_sub_del = (x_cutoff - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
+                x_sub_del = (x_cutoff_local - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
                 do k_sub = 1,num_sub_intervals_cutoff
                    x_sub_low = t_vec(ubound(t_vec,1)) + (k_sub-1) * x_sub_del
                    x_sub_up = t_vec(ubound(t_vec,1)) + k_sub * x_sub_del
@@ -1231,26 +1239,26 @@ contains
                    y = y + res_int(1)
                 end do
              else
-                !res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
-                !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
-                res_int = fint1d_cquad(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+                !res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
 
                 y = y + res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, t_vec(ubound(t_vec,1)), epsabs, epsrel)
-             !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
-             !res_int = fint1d_cquad(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
 
              y = y + res_int(1)
           end if
           !write (*,*) "Final int", t_vec(ubound(t_vec,1)), y
        else
-          !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff
+          !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff_local
           if (integral_cutoff) then
              if (lsw_split_interval) then
                 y = 0d0
-                x_sub_del = (x_cutoff - a)/dble(num_sub_intervals_cutoff)
+                x_sub_del = (x_cutoff_local - a)/dble(num_sub_intervals_cutoff)
                 do k_sub = 1,num_sub_intervals_cutoff
                    x_sub_low = a + (k_sub-1) * x_sub_del
                    x_sub_up = a + k_sub * x_sub_del
@@ -1262,16 +1270,16 @@ contains
                    y = y + res_int(1)
                 end do
              else
-                !res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-                !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
-                res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+                !res_int = fint1d_qag(func1d, a, x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, a, x_cutoff_local, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, a, x_cutoff_local, epsabs, epsrel)
 
                 y = res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
-             !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
-             !res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, a, x_cutoff_local, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, a, x_cutoff_local, epsabs, epsrel)
 
              y = res_int(1)
           end if
@@ -1280,14 +1288,14 @@ contains
     else
        
        if (integral_cutoff) then
-          !res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-          !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
-          res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+          !res_int = fint1d_qag(func1d, a, x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+          !res_int = fint1d_qags(func1d, a, x_cutoff_local, epsabs, epsrel)
+          res_int = fint1d_cquad(func1d, a, x_cutoff_local, epsabs, epsrel)
 
        else
           res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
-          !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
-          !res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+          !res_int = fint1d_qags(func1d, a, x_cutoff_local, epsabs, epsrel)
+          !res_int = fint1d_cquad(func1d, a, x_cutoff_local, epsabs, epsrel)
        end if
        y = res_int(1)
        
@@ -1303,6 +1311,7 @@ contains
     logical :: in_interval
     real(kind=dp) :: x_sub_low, x_sub_up, x_sub_del ! Split integration domain into sub-intervals
     integer :: k_sub ! Split integration domain into sub-intervals
+    real(kind=dp) :: x_cutoff_local
     
     interface  
        function func1d(x, param1)
@@ -1320,7 +1329,14 @@ contains
 !!$    end if
 !!$    y = res_int(1)
 !!$    return
-    
+    if (integral_cutoff) then
+      x_cutoff_local = x_cutoff
+      do while (abs(func1d(x_cutoff_local*0.9, param)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
+        x_cutoff_local = x_cutoff_local*0.9
+      end do
+!~       write(*,*) 'Using x_cutoff_local=', x_cutoff_local, 'with |f(x)|=', abs(func1d(x_cutoff_local))
+    end if
+
     if (allocated(t_vec)) then
        
        if (a .le. t_vec(ubound(t_vec,1))) then
@@ -1384,7 +1400,7 @@ contains
           end do
           if (integral_cutoff) then
              if (lsw_split_interval) then
-                x_sub_del = (x_cutoff - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
+                x_sub_del = (x_cutoff_local - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
                 do k_sub = 1,num_sub_intervals_cutoff
                    x_sub_low = t_vec(ubound(t_vec,1)) + (k_sub-1) * x_sub_del
                    x_sub_up = t_vec(ubound(t_vec,1)) + k_sub * x_sub_del
@@ -1396,26 +1412,26 @@ contains
                    y = y + res_int(1)
                 end do
              else
-                !res_int = fint1d_qag(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
-                !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
-                res_int = fint1d_cquad(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+                !res_int = fint1d_qag(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
 
                 y = y + res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, param, t_vec(ubound(t_vec,1)), epsabs, epsrel)
-             !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
-             !res_int = fint1d_cquad(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
 
              y = y + res_int(1)
           end if
           !write (*,*) "Final int", t_vec(ubound(t_vec,1)), y
        else
-          !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff
+          !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff_local
           if (integral_cutoff) then
              if (lsw_split_interval) then
                 y = 0d0
-                x_sub_del = (x_cutoff - a)/dble(num_sub_intervals_cutoff)
+                x_sub_del = (x_cutoff_local - a)/dble(num_sub_intervals_cutoff)
                 do k_sub = 1,num_sub_intervals_cutoff
                    x_sub_low = a + (k_sub-1) * x_sub_del
                    x_sub_up = a + k_sub * x_sub_del
@@ -1427,16 +1443,16 @@ contains
                    y = y + res_int(1)
                 end do
              else
-                !res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-                !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
-                res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+                !res_int = fint1d_qag(func1d, param, a, x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, param, a, x_cutoff_local, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, param, a, x_cutoff_local, epsabs, epsrel)
 
                 y = res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, param, a, epsabs, epsrel)
-             !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
-             !res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, param, a, x_cutoff_local, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, param, a, x_cutoff_local, epsabs, epsrel)
 
              y = res_int(1)
           end if
@@ -1445,14 +1461,14 @@ contains
     else
        
        if (integral_cutoff) then
-          !res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-          !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
-          res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+          !res_int = fint1d_qag(func1d, param, a, x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+          !res_int = fint1d_qags(func1d, param, a, x_cutoff_local, epsabs, epsrel)
+          res_int = fint1d_cquad(func1d, param, a, x_cutoff_local, epsabs, epsrel)
 
        else
           res_int = fint1d_qagiu(func1d, param, a, epsabs, epsrel)
-          !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
-          !res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+          !res_int = fint1d_qags(func1d, param, a, x_cutoff_local, epsabs, epsrel)
+          !res_int = fint1d_cquad(func1d, param, a, x_cutoff_local, epsabs, epsrel)
 
        end if
        y = res_int(1)
@@ -1551,7 +1567,7 @@ contains
   end function nu_D_hat
 
   subroutine inv(A)
-    real(dp), dimension(:,:) :: A
+    real(dp), dimension(:,:), intent(inout) :: A
     integer,  dimension(size(A,1)) :: ipiv
     real(dp), dimension(size(A,1)) :: work  
     integer :: n, info, lc
@@ -1677,8 +1693,8 @@ contains
   subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s, weightenerg_s)
     use math_constants, only : pi
 
-    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
-    real(kind=dp), dimension(:)   :: weightden_s, weightparflow_s, weightenerg_s
+    real(kind=dp), dimension(:,:), intent(out) :: asource_s, weightlag_s
+    real(kind=dp), dimension(:), intent(out) :: weightden_s, weightparflow_s, weightenerg_s
     real(kind=dp) :: res_int
     integer :: m, k, j
 
@@ -2415,7 +2431,8 @@ contains
     
   end subroutine compute_I2_mmp_s
 
-  subroutine compute_I3_mmp_s
+
+  subroutine compute_I3_mmp_s()
     use math_constants, only : pi
 
     integer :: l, m, mp
@@ -2713,8 +2730,8 @@ contains
   end subroutine compute_I4_mmp_s
 
   subroutine compute_source(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s, Amm_s)
-    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
-    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
+    real(kind=dp), dimension(:,:), intent(out) :: Amm_s, asource_s, weightlag_s
+    real(kind=dp), dimension(:), intent(out)   :: bzero_s, weightparflow_s, weightenerg_s
 
     if (allocated(M_transform)) deallocate(M_transform)
     allocate(M_transform(0:lagmax, 0:lagmax))
