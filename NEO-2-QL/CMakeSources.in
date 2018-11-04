@@ -84,13 +84,13 @@ set(NEO2_COMMON_FILES
         ../COMMON/vvn_tok.f90
         ../COMMON/vvn_w7as.f
         ../COMMON/solve_system.f90
-        ../COMMON/collision_operator_mems.f90 # Replaces collision_operator.f90
         ../COMMON/sparsevec_mod.f90
         ../COMMON/amn_mod.f90
         ../COMMON/bdivfree_mod.f90
         ../COMMON/binarysplit_int.f90
         ../COMMON/circtokfield.f90
         ../COMMON/collisionality_mod.f90
+        ../COMMON/collop.f90
         ../COMMON/coordinates_of_old_model.f90
         ../COMMON/development.f90
         ../COMMON/extract_fluxcoord_mod.f90
