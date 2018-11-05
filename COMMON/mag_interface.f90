@@ -54,10 +54,10 @@ MODULE mag_interface_mod
   
 
   ! default values
-  CHARACTER(len=100), PRIVATE :: name_def    = 'unnamed'
-  INTEGER,            PRIVATE :: nperiod_def = 50
-  INTEGER,            PRIVATE :: nstep_def   = 480
-  INTEGER,            PRIVATE :: ndim_def    = 14
+  CHARACTER(len=*), parameter, PRIVATE :: name_def = 'unnamed'
+  INTEGER, parameter, PRIVATE :: nperiod_def = 50
+  INTEGER, parameter, PRIVATE :: nstep_def   = 480
+  INTEGER, parameter, PRIVATE :: ndim_def    = 14
 
   ! private
   LOGICAL,                    PRIVATE :: first_ripple
