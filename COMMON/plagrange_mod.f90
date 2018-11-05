@@ -38,19 +38,21 @@ module plagrange_mod
 
 contains
 
-  !---------------------------------------------------------------------
+  !> \brief Determine lagrange coefficients?
+  !>
+  !> \param npoi [in] - number of points (determines the order of Lagrange polynomial
+  !>   which is equal npoi-1)
+  !> \param nder [in] - number of derivatives computed 0 - function only, 1 - first
+  !>   derivative
+  !> \param  x [in] - actual point where function and derivatives are evaluated
+  !> \param  xp(npoi) [in] - array of points where function is known
+  !> \param  coef(0:nder,npoi) [out] - weights for computation of
+  !>   function and derivatives,
+  !>   f=sum(fun(1:npoi)*coef(0,1:npoi) gives the function value
+  !>   df=sum(fun(1:npoi)*coef(1,1:npoi) gives the value of the derivative
   subroutine plag_coeff(npoi,nder,x,xp,coef)
     use nrtype, only : dp
 
-    ! npoi - number of points (determines the order of Lagrange polynomial
-    ! which is equal npoi-1)
-    ! nder - number of derivatives computed 0 - function only, 1 - first
-    ! derivative
-    ! x - actual point where function and derivatives are evaluated
-    ! xp(npoi) - array of points where function is known
-    ! coef(0:nder,npoi) - weights for computation of function and derivatives,
-    ! f=sum(fun(1:npoi)*coef(0,1:npoi) gives the function value
-    ! df=sum(fun(1:npoi)*coef(1,1:npoi) gives the derivative value value
     integer, intent(in)                                :: npoi,nder
     real(kind=dp), intent(in)                          :: x
     real(kind=dp), dimension(npoi), intent(in)         :: xp
