@@ -481,7 +481,9 @@ module collop
                     denmm_a(:,:,a) + denmm_aa(:,:,a,b) * taa_ov_tab_temp
                ailmm_aa(:,:,:,a,b) = &
                     ailmm_aa(:,:,:,a,b) * taa_ov_tab_temp
-               Inbi_lmmp_a(:,:,a) = Inbi_lmmp_a(:,:,b) * taa_ov_tab_temp
+               if (lsw_nbi) then
+                 Inbi_lmmp_a(:,:,a) = Inbi_lmmp_a(:,:,b) * taa_ov_tab_temp
+               end if
             end do
          end do
 
