@@ -3483,6 +3483,7 @@ subroutine fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
 
   integer, dimension(1)              :: idummy
   integer, dimension(:), allocatable :: icross_l,icross_r
+  integer, parameter :: file_unit = 111
 
   real(kind=dp), dimension(0:npart)        :: eta
   real(kind=dp), dimension(ibeg:iend)      :: phi_mfl,bhat_mfl
@@ -3544,28 +3545,27 @@ subroutine fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
           npassing_prev=npassing
         endif
       enddo
+
+      open(file_unit,file='phi_placement_problem.dat')
       do i=1,ncross_l
         istep=icross_l(i)
         if(abs(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).lt. &
            abs(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) then
-          open(111,file='phi_placement_problem.dat',position='append')
-          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+          write(file_unit,*) ' propagator tag = ',fieldpropagator%tag, &
                        ' step number = ',istep-1,                &
                        ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
                        ' eta = ',eta_cross_l(i)
-          close(111)
           bhat_mfl(istep-1)=1/eta_cross_l(i)
         elseif(abs(bhat_mfl(istep+1)*eta_cross_l(i)-1.d0).lt. &
                abs(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) then
-          open(111,file='phi_placement_problem.dat',position='append')
-          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+          write(file_unit,*) ' propagator tag = ',fieldpropagator%tag, &
                        ' step number = ',istep+1,                &
                        ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
                        ' eta = ',eta_cross_l(i)
           bhat_mfl(istep+1)=1/eta_cross_l(i)
-          close(111)
         endif
       enddo
+      close(file_unit)
       deallocate(icross_l,eta_cross_l)
     endif
   endif
@@ -3621,30 +3621,28 @@ subroutine fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
           npassing_prev=npassing
         endif
       enddo
+      open(file_unit,file='phi_placement_problem.dat')
       do i=1,ncross_r
         istep=icross_r(i)
         if(abs(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).lt. &
            abs(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) then
-          open(111,file='phi_placement_problem.dat',position='append')
-          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+          write(file_unit,*) ' propagator tag = ',fieldpropagator%tag, &
                        ' step number = ',istep-1,                &
                        ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
                        ' eta = ',eta_cross_r(i)
-          close(111)
           bhat_mfl(istep-1)=1/eta_cross_r(i)
         elseif(abs(bhat_mfl(istep+1)*eta_cross_r(i)-1.d0).lt. &
                abs(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) then
-          open(111,file='phi_placement_problem.dat',position='append')
-          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+          write(file_unit,*) ' propagator tag = ',fieldpropagator%tag, &
                        ' step number = ',istep+1,                &
                        ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
                        ' eta = ',eta_cross_r(i)
-          close(111)
           bhat_mfl(istep+1)=1/eta_cross_r(i)
-        endif
-      enddo
+        end if
+      end do
+      close(file_unit)
       deallocate(icross_r,eta_cross_r)
     endif
   endif
-!
+
 end subroutine fix_phiplacement_problem
