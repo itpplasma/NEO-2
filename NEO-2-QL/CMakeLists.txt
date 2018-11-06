@@ -42,7 +42,7 @@ include_directories(${MYMPILIB_PATH}/OBJS)
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
 elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -mkl")
+  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -mkl -heap-arrays -g")
 endif ()
 
 set(MY_DEBUG_FLAG_LIST
