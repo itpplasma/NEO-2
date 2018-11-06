@@ -195,6 +195,7 @@ contains
     !**********************************************************
     ! Binary find
     !**********************************************************
+    found = .false.
     idx_sparse = -1
     if (this%len_sparse .gt. 0 ) then
        call binsrc(this%idxvec(1:this%len_sparse), 1, this%len_sparse, idx, idxnear, found)

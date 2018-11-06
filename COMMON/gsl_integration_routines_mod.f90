@@ -33,8 +33,8 @@ MODULE gsl_integration_routines_mod
   ! (Note: fgsl_double (etc.) originate from c-binding.
   ! This is only to make sure that C and Fortran routines
   ! work with the same definition of float numbers (etc.).
-  ! For practical applications, one can simply replace 
-  ! "fgsl_double" by "double precision" (etc.). 
+  ! For practical applications, one can simply replace
+  ! "fgsl_double" by "double precision" (etc.).
   PRIVATE eps5, eps7, eps10, eps12
   REAL(fgsl_double), PARAMETER :: eps5 = 1.0E-5_fgsl_double
   REAL(fgsl_double), PARAMETER :: eps7 = 1.0E-7_fgsl_double
@@ -46,7 +46,7 @@ MODULE gsl_integration_routines_mod
   ! rename all the routines)
   ! 'abstract' interface is able to handle miscellaneous
   ! functions with the same type of interface
-  ABSTRACT INTERFACE  
+  ABSTRACT INTERFACE
      FUNCTION func1d_param0(x)
        USE fgsl
        REAL(fgsl_double) :: func1d_param0
@@ -120,7 +120,7 @@ MODULE gsl_integration_routines_mod
      MODULE PROCEDURE fint1d_param0_qagiu, fint1d_param1_qagiu
   END INTERFACE fint1d_qagiu
   !
-  
+
 CONTAINS
   !--------------------------------------------------------------------------------------!
   ! This part is replaced by internal subroutines (01.04.2015)
@@ -166,7 +166,7 @@ CONTAINS
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   RECURSIVE FUNCTION fint1d_param0_qag(func1d_param0_user,x_low,x_up,epsabs,epsrel,sw_qag_rule) result(res)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION func1d_param0_user(x)
          USE fgsl
          REAL(fgsl_double) :: func1d_param0_user
@@ -178,7 +178,7 @@ CONTAINS
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
     ! sw_qag_rule: 1=15, 2=21, 3=31, 4=41, 5=51 and 6=61 point Gauss-Kronrod rules
-    INTEGER(fgsl_int) :: sw_qag_rule 
+    INTEGER(fgsl_int) :: sw_qag_rule
     REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
@@ -246,7 +246,7 @@ CONTAINS
   RECURSIVE FUNCTION fint1d_param1_qag(func1d_param1_user,param1,x_low,x_up,&
        epsabs,epsrel,sw_qag_rule) result(res)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION func1d_param1_user(x,param1)
          USE fgsl
          REAL(fgsl_double) :: func1d_param1_user
@@ -259,7 +259,7 @@ CONTAINS
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
     ! sw_qag_rule: 1=15, 2=21, 3=31, 4=41, 5=51 and 6=61 point Gauss-Kronrod rules
-    INTEGER(fgsl_int) :: sw_qag_rule 
+    INTEGER(fgsl_int) :: sw_qag_rule
     REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
@@ -330,7 +330,7 @@ CONTAINS
   ! with singularities
   RECURSIVE FUNCTION fint1d_param0_qags(func1d_param0_user,x_low,x_up,epsabs,epsrel) result(res)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION func1d_param0_user(x)
          USE fgsl
          REAL(fgsl_double) :: func1d_param0_user
@@ -407,7 +407,7 @@ CONTAINS
   ! with singularities (parameter-valued input function)
   RECURSIVE FUNCTION fint1d_param1_qags(func1d_param1_user,param1,x_low,x_up,epsabs,epsrel) result(res)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION func1d_param1_user(x,param1)
          USE fgsl
          REAL(fgsl_double) :: func1d_param1_user
@@ -489,7 +489,7 @@ CONTAINS
   ! with known singular points
   RECURSIVE FUNCTION fint1d_param0_qagp(func1d_param0_user,pts,siz_pts,epsabs,epsrel) result(res)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION func1d_param0_user(x)
          USE fgsl
          REAL(fgsl_double) :: func1d_param0_user
@@ -567,7 +567,7 @@ CONTAINS
   ! with known singular points (parameter-valued input function)
   RECURSIVE FUNCTION fint1d_param1_qagp(func1d_param1_user,param1,pts,siz_pts,epsabs,epsrel) result(res)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION func1d_param1_user(x,param1)
          USE fgsl
          REAL(fgsl_double) :: func1d_param1_user
@@ -648,30 +648,42 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! CQUAD doubly-adaptive integration
   RECURSIVE FUNCTION fint1d_param0_cquad(func1d_param0_user,x_low,x_up,epsabs,epsrel) result(res)
-    !
-    INTERFACE  
+    ! Function to integrate
+    INTERFACE
        FUNCTION func1d_param0_user(x)
          USE fgsl
          REAL(fgsl_double) :: func1d_param0_user
          REAL(fgsl_double) :: x
        END FUNCTION func1d_param0_user
     END INTERFACE
-    ! x_low: lower boundary, x_up: upper boundary
-    REAL(fgsl_double) :: x_low, x_up
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
+    ! lower boundary
+    REAL(fgsl_double) :: x_low
+    ! upper boundary
+    real(fgsl_double) :: x_up
+    ! absolute error
+    REAL(fgsl_double) :: epsabs
+    ! relative error
+    real(fgsl_double) :: epsrel
+
+    ! return value
     REAL(fgsl_double), DIMENSION(2) :: res
-    !
+
+    ! Local parameters: corresponds to 'n' of gsl_integration_cquad_workspace * gsl_integration_cquad_workspace_alloc (size_t n)
     INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 100_fgsl_size_t
+
     INTEGER(fgsl_size_t) :: neval ! nmber of function evaluations
     REAL(fgsl_double) :: ra, rda ! result and absolute error
     TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
+    INTEGER(fgsl_int) :: statusval
     TYPE(fgsl_function) :: stdfunc
     TYPE(fgsl_integration_cquad_workspace) :: integ_cq
     TYPE(c_ptr) :: param0_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter (here is no parameter specified -> c_null_ptr)
-    !
+                              ! parameter (here is no parameter specified -> c_null_ptr)
+
+    ! Input/output parameter of the fgsl_integration_cquad function,
+    ! thus better initialize.
+    neval = 0
+
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
@@ -692,9 +704,9 @@ CONTAINS
     !
     ! Initialize solver 'fgsl_integration_cquad' to use the function 'stdfunc' and
     ! the user-specified parameters
-    status = fgsl_integration_cquad(stdfunc, x_low, x_up, &
+    statusval = fgsl_integration_cquad(stdfunc, x_low, x_up, &
        epsabs, epsrel, integ_cq, ra, rda, neval)
-    CALL check_error(status)
+    CALL check_error(statusval)
     !
     ! Return the results (ra,rda,neval)
     res(1) = ra
@@ -727,7 +739,7 @@ CONTAINS
   ! CQUAD doubly-adaptive integration (parameter-valued input function)
   RECURSIVE FUNCTION fint1d_param1_cquad(func1d_param1_user,param1,x_low,x_up,epsabs,epsrel) result(res)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION func1d_param1_user(x,param1)
          USE fgsl
          REAL(fgsl_double) :: func1d_param1_user
@@ -749,7 +761,7 @@ CONTAINS
     TYPE(fgsl_function) :: stdfunc
     TYPE(fgsl_integration_cquad_workspace) :: integ_cq
     TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter 
+    !                         ! parameter
     !
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
@@ -810,7 +822,7 @@ CONTAINS
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure for interval from x_low to infinity
   RECURSIVE FUNCTION fint1d_param0_qagiu(func1d_param0_user,x_low,epsabs,epsrel) result(res)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION func1d_param0_user(x)
          USE fgsl
          REAL(fgsl_double) :: func1d_param0_user
@@ -821,7 +833,7 @@ CONTAINS
     REAL(fgsl_double) :: x_low
     ! epsabs: absolute error, epsrel: relative error
     REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: res 
+    REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
     REAL(fgsl_double) :: ra, rda ! result and absolute error
@@ -888,7 +900,7 @@ CONTAINS
   RECURSIVE FUNCTION fint1d_param1_qagiu(func1d_param1_user,param1,x_low,&
        epsabs,epsrel) result(res)
     !
-    INTERFACE  
+    INTERFACE
        FUNCTION func1d_param1_user(x,param1)
          USE fgsl
          REAL(fgsl_double) :: func1d_param1_user
@@ -967,7 +979,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Check error-codes from GSL:
-!!$  GSL_SUCCESS  = 0, 
+!!$  GSL_SUCCESS  = 0,
 !!$  GSL_FAILURE  = -1,
 !!$  GSL_CONTINUE = -2,  /* iteration has not converged */
 !!$  GSL_EDOM     = 1,   /* input domain error, e.g sqrt(-1) */

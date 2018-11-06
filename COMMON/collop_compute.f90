@@ -187,18 +187,18 @@ module collop_compute
   real(kind=dp), dimension(:), allocatable :: t_vec
 
   interface integrate
-     module procedure integrate_ainf, integrate_ab
+     module procedure integrate_a_to_infinity, integrate_a_to_b
   end interface integrate
 
   interface integrate_param
-     module procedure integrate_ainf_param, integrate_ab_param
+     module procedure integrate_a_to_infinity_param, integrate_a_to_b_param
   end interface integrate_param
 
 contains
 
 !     ..................................................................
 !
-      subroutine DBESK(X,N,BK,IER)
+  subroutine DBESK(X,N,BK,IER)
 !
       double precision X, BK
       double precision T, B
@@ -257,7 +257,7 @@ contains
    36 IER=3
       BK=0.
       return
-      end
+  end
 !
   
   subroutine init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
@@ -272,116 +272,118 @@ contains
     lagmax = lag
     legmax = leg
 
-    if (collop_base_prj .eq. 0) then
+    select case (collop_base_prj)
+    case (0)
        write (*,*) "Using Laguerre polynomials as collision operator projection base."
        init_phi_prj => init_phi_laguerre
        phi_prj      => phi_laguerre
        d_phi_prj    => d_phi_laguerre
        dd_phi_prj   => dd_phi_laguerre
-    elseif (collop_base_prj .eq. 1) then
+    case (1)
        write (*,*) "Using standard polynomials as collision operator projection base."
        init_phi_prj => init_phi_polynomial
        phi_prj      => phi_polynomial
        d_phi_prj    => d_phi_polynomial
        dd_phi_prj   => dd_phi_polynomial     
-    elseif (collop_base_prj .eq. 2) then
+    case (2)
        write (*,*) "Using squared polynomials as collision operator projection base."
        init_phi_prj => init_phi_polynomial_2
        phi_prj      => phi_polynomial_2
        d_phi_prj    => d_phi_polynomial_2
        dd_phi_prj   => dd_phi_polynomial_2
-    elseif (collop_base_prj .eq. 3) then
+    case (3)
        write (*,*) "Using squared polynomials without zeroth order as collision operator projection base."
        init_phi_prj => init_phi_polynomial_3
        phi_prj      => phi_polynomial_3
        d_phi_prj    => d_phi_polynomial_3
        dd_phi_prj   => dd_phi_polynomial_3
-    elseif (collop_base_prj .eq. 10) then
+    case (10)
        write (*,*) "Using splines as collision operator projection base."
        init_phi_prj => init_phi_spline
        phi_prj      => phi_spline
        d_phi_prj    => d_phi_spline
        dd_phi_prj   => dd_phi_spline
-    elseif (collop_base_prj .eq. 11) then
+    case (11)
        write (*,*) "Using B-Splines as collision operator projection base."
        init_phi_prj => init_phi_bspline
        phi_prj      => phi_bspline
        d_phi_prj    => d_phi_bspline
        dd_phi_prj   => dd_phi_bspline
-    !elseif (collop_base_prj .eq. 12) then
+    !case (12)
     !   write (*,*) "Using 4th-order Splines as collision operator projection base."
     !   init_phi_prj => init_phi_spline4
     !   phi_prj      => phi_spline4
     !   d_phi_prj    => d_phi_spline4
     !   dd_phi_prj   => dd_phi_spline4
-    !elseif (collop_base_prj .eq. 13) then
+    !case (13)
     !   write (*,*) "Using B-Splines with x**2 as collision operator projection base."
     !   init_phi_prj => init_phi_bspline2
     !   phi_prj      => phi_bspline2
     !   d_phi_prj    => d_phi_bspline2
     !   dd_phi_prj   => dd_phi_bspline2
-    elseif (collop_base_prj .eq. 100) then
+    case (100)
        write (*,*) "Using hat functions as collision operator projection base."
        precomp=.true.
-    else
+    case default
        write (*,*) "Undefined collision operator projection base ", collop_base_prj
        stop
-    end if
+    end select
 
-    if (collop_base_exp .eq. 0) then
+    select case (collop_base_exp)
+    case (0)
        write (*,*) "Using Laguerre polynomials as collision operator expansion base."
        init_phi_exp => init_phi_laguerre
        phi_exp      => phi_laguerre
        d_phi_exp    => d_phi_laguerre
        dd_phi_exp   => dd_phi_laguerre
-    elseif (collop_base_exp .eq. 1) then
+    case (1)
        write (*,*) "Using standard polynomials as collision operator expansion base."
        init_phi_exp => init_phi_polynomial
        phi_exp      => phi_polynomial
        d_phi_exp    => d_phi_polynomial
        dd_phi_exp   => dd_phi_polynomial     
-    elseif (collop_base_exp .eq. 2) then
+    case (2)
        write (*,*) "Using squared polynomials as collision operator expansion base."
        init_phi_exp => init_phi_polynomial_2
        phi_exp      => phi_polynomial_2
        d_phi_exp    => d_phi_polynomial_2
        dd_phi_exp   => dd_phi_polynomial_2
-    elseif (collop_base_exp .eq. 3) then
+    case (3)
        write (*,*) "Using squared polynomials without zeroth order as collision operator expansion base."
        init_phi_exp => init_phi_polynomial_3
        phi_exp      => phi_polynomial_3
        d_phi_exp    => d_phi_polynomial_3
        dd_phi_exp   => dd_phi_polynomial_3
-    elseif (collop_base_exp .eq. 10) then
+    case (10)
        write (*,*) "Using splines as collision operator expansion base."
        init_phi_exp => init_phi_spline
        phi_exp      => phi_spline
        d_phi_exp    => d_phi_spline
        dd_phi_exp   => dd_phi_spline
-    elseif (collop_base_exp .eq. 11) then
+    case (11)
        write (*,*) "Using B-Splines as collision operator expansion base."
        init_phi_exp => init_phi_bspline
        phi_exp      => phi_bspline
        d_phi_exp    => d_phi_bspline
        dd_phi_exp   => dd_phi_bspline
-    !elseif (collop_base_exp .eq. 12) then
+    !case (12)
     !   write (*,*) "Using 4th-order Splines as collision operator expansion base."
     !   init_phi_exp => init_phi_spline4
     !   phi_exp      => phi_spline4
     !   d_phi_exp    => d_phi_spline4
     !   dd_phi_exp   => dd_phi_spline4
-    !elseif (collop_base_exp .eq. 13) then
+    !case (13)
     !   write (*,*) "Using B-Splines with x**2 as collision operator expansion base."
     !   init_phi_exp => init_phi_bspline2
     !   phi_exp      => phi_bspline2
     !   d_phi_exp    => d_phi_bspline2
     !   dd_phi_exp   => dd_phi_bspline2
-    elseif (collop_base_exp .eq. 100) then
+    case (100)
        write (*,*) "Using hat functions as collision operator expansion base."
-    else
+    case default
        write (*,*) "Undefined collision operator expansion base ", collop_base_exp
        stop
-    end if
+    end select
   
     call init_legendre(legmax)
     call init_phi_prj(lagmax, legmax)
@@ -933,7 +935,7 @@ contains
     
   end function C_I_rel2_mmp_kernel
     
-  recursive function integrate_ab(func1d, a, b) result(y)
+  recursive function integrate_a_to_b(func1d, a, b) result(y)
     real(kind=dp) :: a, b
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1026,9 +1028,9 @@ contains
        y = res_int(1)
     end if
        
-  end function integrate_ab
+  end function integrate_a_to_b
 
-  recursive function integrate_ab_param(func1d, param, a, b) result(y)
+  recursive function integrate_a_to_b_param(func1d, param, a, b) result(y)
     real(kind=dp) :: a, b, param
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1122,9 +1124,9 @@ contains
        y = res_int(1)
     end if
        
-  end function integrate_ab_param
+  end function integrate_a_to_b_param
 
-  recursive function integrate_ainf(func1d, a) result(y)
+  recursive function integrate_a_to_infinity(func1d, a) result(y)
     real(kind=dp) :: a
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1132,6 +1134,7 @@ contains
     logical :: in_interval
     real(kind=dp) :: x_sub_low, x_sub_up, x_sub_del ! Split integration domain into sub-intervals
     integer :: k_sub ! Split integration domain into sub-intervals
+    real(kind=dp) :: x_cutoff_local
     
     interface  
        function func1d(x)
@@ -1149,9 +1152,16 @@ contains
 !!$    end if
 !!$    y = res_int(1)
 !!$    return
-    
+    if (integral_cutoff) then
+      x_cutoff_local = x_cutoff
+      do while (abs(func1d(x_cutoff_local*0.9)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
+        x_cutoff_local = x_cutoff_local*0.9
+      end do
+!~       write(*,*) 'Using x_cutoff_local=', x_cutoff_local, 'with |f(x)|=', abs(func1d(x_cutoff_local))
+    end if
+
     if (allocated(t_vec)) then
-       
+       ! Assuming that t_vec is ordered, this should be the same as a .le. maxval(t_vec)
        if (a .le. t_vec(ubound(t_vec,1))) then
           y = 0d0
           in_interval = .false.
@@ -1213,7 +1223,7 @@ contains
           end do
           if (integral_cutoff) then
              if (lsw_split_interval) then
-                x_sub_del = (x_cutoff - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
+                x_sub_del = (x_cutoff_local - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
                 do k_sub = 1,num_sub_intervals_cutoff
                    x_sub_low = t_vec(ubound(t_vec,1)) + (k_sub-1) * x_sub_del
                    x_sub_up = t_vec(ubound(t_vec,1)) + k_sub * x_sub_del
@@ -1225,26 +1235,26 @@ contains
                    y = y + res_int(1)
                 end do
              else
-                !res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
-                !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
-                res_int = fint1d_cquad(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+                !res_int = fint1d_qag(func1d, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
 
                 y = y + res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, t_vec(ubound(t_vec,1)), epsabs, epsrel)
-             !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
-             !res_int = fint1d_cquad(func1d, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
 
              y = y + res_int(1)
           end if
           !write (*,*) "Final int", t_vec(ubound(t_vec,1)), y
        else
-          !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff
+          !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff_local
           if (integral_cutoff) then
              if (lsw_split_interval) then
                 y = 0d0
-                x_sub_del = (x_cutoff - a)/dble(num_sub_intervals_cutoff)
+                x_sub_del = (x_cutoff_local - a)/dble(num_sub_intervals_cutoff)
                 do k_sub = 1,num_sub_intervals_cutoff
                    x_sub_low = a + (k_sub-1) * x_sub_del
                    x_sub_up = a + k_sub * x_sub_del
@@ -1256,16 +1266,16 @@ contains
                    y = y + res_int(1)
                 end do
              else
-                !res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-                !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
-                res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+                !res_int = fint1d_qag(func1d, a, x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, a, x_cutoff_local, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, a, x_cutoff_local, epsabs, epsrel)
 
                 y = res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
-             !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
-             !res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, a, x_cutoff_local, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, a, x_cutoff_local, epsabs, epsrel)
 
              y = res_int(1)
           end if
@@ -1274,22 +1284,22 @@ contains
     else
        
        if (integral_cutoff) then
-          !res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-          !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
-          res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+          !res_int = fint1d_qag(func1d, a, x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+          !res_int = fint1d_qags(func1d, a, x_cutoff_local, epsabs, epsrel)
+          res_int = fint1d_cquad(func1d, a, x_cutoff_local, epsabs, epsrel)
 
        else
           res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
-          !res_int = fint1d_qags(func1d, a, x_cutoff, epsabs, epsrel)
-          !res_int = fint1d_cquad(func1d, a, x_cutoff, epsabs, epsrel)
+          !res_int = fint1d_qags(func1d, a, x_cutoff_local, epsabs, epsrel)
+          !res_int = fint1d_cquad(func1d, a, x_cutoff_local, epsabs, epsrel)
        end if
        y = res_int(1)
        
     end if
     
-  end function integrate_ainf
+  end function integrate_a_to_infinity
 
-  recursive function integrate_ainf_param(func1d, param, a) result(y)
+  recursive function integrate_a_to_infinity_param(func1d, param, a) result(y)
     real(kind=dp) :: a, param
     real(kind=dp) :: y
     real(kind=dp), dimension(2) :: res_int
@@ -1297,6 +1307,7 @@ contains
     logical :: in_interval
     real(kind=dp) :: x_sub_low, x_sub_up, x_sub_del ! Split integration domain into sub-intervals
     integer :: k_sub ! Split integration domain into sub-intervals
+    real(kind=dp) :: x_cutoff_local
     
     interface  
        function func1d(x, param1)
@@ -1314,7 +1325,14 @@ contains
 !!$    end if
 !!$    y = res_int(1)
 !!$    return
-    
+    if (integral_cutoff) then
+      x_cutoff_local = x_cutoff
+      do while (abs(func1d(x_cutoff_local*0.9, param)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
+        x_cutoff_local = x_cutoff_local*0.9
+      end do
+!~       write(*,*) 'Using x_cutoff_local=', x_cutoff_local, 'with |f(x)|=', abs(func1d(x_cutoff_local))
+    end if
+
     if (allocated(t_vec)) then
        
        if (a .le. t_vec(ubound(t_vec,1))) then
@@ -1378,7 +1396,7 @@ contains
           end do
           if (integral_cutoff) then
              if (lsw_split_interval) then
-                x_sub_del = (x_cutoff - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
+                x_sub_del = (x_cutoff_local - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
                 do k_sub = 1,num_sub_intervals_cutoff
                    x_sub_low = t_vec(ubound(t_vec,1)) + (k_sub-1) * x_sub_del
                    x_sub_up = t_vec(ubound(t_vec,1)) + k_sub * x_sub_del
@@ -1390,26 +1408,26 @@ contains
                    y = y + res_int(1)
                 end do
              else
-                !res_int = fint1d_qag(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel, sw_qag_rule)
-                !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
-                res_int = fint1d_cquad(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+                !res_int = fint1d_qag(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
 
                 y = y + res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, param, t_vec(ubound(t_vec,1)), epsabs, epsrel)
-             !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
-             !res_int = fint1d_cquad(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, param, t_vec(ubound(t_vec,1)), x_cutoff_local, epsabs, epsrel)
 
              y = y + res_int(1)
           end if
           !write (*,*) "Final int", t_vec(ubound(t_vec,1)), y
        else
-          !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff
+          !write (*,*) "int a outside domain", a, integral_cutoff, x_cutoff_local
           if (integral_cutoff) then
              if (lsw_split_interval) then
                 y = 0d0
-                x_sub_del = (x_cutoff - a)/dble(num_sub_intervals_cutoff)
+                x_sub_del = (x_cutoff_local - a)/dble(num_sub_intervals_cutoff)
                 do k_sub = 1,num_sub_intervals_cutoff
                    x_sub_low = a + (k_sub-1) * x_sub_del
                    x_sub_up = a + k_sub * x_sub_del
@@ -1421,16 +1439,16 @@ contains
                    y = y + res_int(1)
                 end do
              else
-                !res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-                !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
-                res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+                !res_int = fint1d_qag(func1d, param, a, x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+                !res_int = fint1d_qags(func1d, param, a, x_cutoff_local, epsabs, epsrel)
+                res_int = fint1d_cquad(func1d, param, a, x_cutoff_local, epsabs, epsrel)
 
                 y = res_int(1)
              end if
           else
              res_int = fint1d_qagiu(func1d, param, a, epsabs, epsrel)
-             !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
-             !res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+             !res_int = fint1d_qags(func1d, param, a, x_cutoff_local, epsabs, epsrel)
+             !res_int = fint1d_cquad(func1d, param, a, x_cutoff_local, epsabs, epsrel)
 
              y = res_int(1)
           end if
@@ -1439,21 +1457,21 @@ contains
     else
        
        if (integral_cutoff) then
-          !res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-          !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
-          res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+          !res_int = fint1d_qag(func1d, param, a, x_cutoff_local, epsabs, epsrel, sw_qag_rule)
+          !res_int = fint1d_qags(func1d, param, a, x_cutoff_local, epsabs, epsrel)
+          res_int = fint1d_cquad(func1d, param, a, x_cutoff_local, epsabs, epsrel)
 
        else
           res_int = fint1d_qagiu(func1d, param, a, epsabs, epsrel)
-          !res_int = fint1d_qags(func1d, param, a, x_cutoff, epsabs, epsrel)
-          !res_int = fint1d_cquad(func1d, param, a, x_cutoff, epsabs, epsrel)
+          !res_int = fint1d_qags(func1d, param, a, x_cutoff_local, epsabs, epsrel)
+          !res_int = fint1d_cquad(func1d, param, a, x_cutoff_local, epsabs, epsrel)
 
        end if
        y = res_int(1)
        
     end if
     
-  end function integrate_ainf_param
+  end function integrate_a_to_infinity_param
 
   subroutine init_legendre(n)
     !
@@ -1536,7 +1554,7 @@ contains
   end function nu_D_hat
 
   subroutine inv(A)
-    real(dp), dimension(:,:) :: A
+    real(dp), dimension(:,:), intent(inout) :: A
     integer,  dimension(size(A,1)) :: ipiv
     real(dp), dimension(size(A,1)) :: work  
     integer :: n, info
@@ -1569,7 +1587,7 @@ contains
   end subroutine inv
 
   subroutine compute_Minv(M)
-    real(kind=dp), dimension(:,:) :: M
+    real(kind=dp), dimension(:,:), intent(out) :: M
     integer :: mm, mp
 
     write (*,*) "Computing phi transformation matrix..."
@@ -1599,15 +1617,10 @@ contains
     end if
 
     if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
-       do mm = 0, lagmax
-          do mp = 0, lagmax
-             if (mm .eq. mp) then
-                M_transform(mm,mp)=1.0d0
-             else
-                M_transform(mm,mp)=0.0d0
-             end if
-          end do
-       end do
+      M_transform = 0.0d0
+      do mm = 0, lagmax
+        M_transform(mm, mm) = 1.0d0
+      end do
     else
        M_transform = M
     end if
@@ -1655,8 +1668,8 @@ contains
   end subroutine compute_Minv
 
   subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s, weightenerg_s)
-    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s
-    real(kind=dp), dimension(:)   :: weightden_s, weightparflow_s, weightenerg_s
+    real(kind=dp), dimension(:,:), intent(out) :: asource_s, weightlag_s
+    real(kind=dp), dimension(:), intent(out)   :: weightden_s, weightparflow_s, weightenerg_s
     real(kind=dp) :: res_int
     integer :: m, k, j
 
@@ -2377,7 +2390,7 @@ contains
     
   end subroutine compute_I2_mmp_s
 
-  subroutine compute_I3_mmp_s
+  subroutine compute_I3_mmp_s()
     integer :: l, m, mp
 
     if (allocated(I3_mmp_s)) deallocate(I3_mmp_s)
@@ -2671,8 +2684,8 @@ contains
   end subroutine compute_I4_mmp_s
 
   subroutine compute_source(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s, Amm_s)
-    real(kind=dp), dimension(:,:) :: asource_s, weightlag_s, Amm_s
-    real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
+    real(kind=dp), dimension(:,:), intent(out) :: Amm_s, asource_s, weightlag_s
+    real(kind=dp), dimension(:), intent(out)   :: bzero_s, weightparflow_s, weightenerg_s
 
     if (allocated(M_transform)) deallocate(M_transform)
     allocate(M_transform(0:lagmax, 0:lagmax))

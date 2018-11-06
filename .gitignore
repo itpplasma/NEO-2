@@ -1,13 +1,52 @@
+# Ignore object files, libraries and fortran module files.
 *.[oa]
 *.mod
+
+# Ignore Python Bytecode Files
+*.pyc
+
+# Directory and content created by cmake system.
 CMakeFiles/
+
+# File created by cmake build system.
 CMakeCache.txt
+
+# File is created automatically from cmake_version.f90.in.
+cmake_version.f90
+
+# File is created automatically from ?.
+version.f90
+
+# The make file is created by the cmake system, and thus not under
+# version controll.
 Makefile
+
 BuildConfig.txt
+
+# Ignore created executable.
 neo_2.x.*
+
 install_manifest.txt
 .cproject
 .project
+
+# Ignore backups of files.
 *.*~
+
 NEO-2-QL/.directory
-NEO-2-QL/Build/
+
+# Ignore directories for building the code.
+*/[Bb]uild-[Dd]ebug/*
+*/[Bb]uild-[Rr]elease/*
+*/[Bb]uild/*
+
+# Ignore files created by latex.
+*.pdf
+*.aux
+*.bbl
+*.dvi
+*.ps
+*.log
+*.fls
+*.bcf
+*.blg

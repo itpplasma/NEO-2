@@ -1,0 +1,13 @@
+#!/bin/bash
+
+declare -a arr=("chap1" "chap2" "chap3")
+
+for i in "${arr[@]}"
+do
+   echo "$i"
+
+   #pdflatex -jobname="tmp_$i" "\includeonly{"$i"}\input{main}" 
+   latexmk -jobname="tmp_$i" -pdf -pdflatex="pdflatex %O -interaction=nonstopmode -synctex=1 '\includeonly{$i}\input{%S}'" main
+   #pdftk "tmp_$i.pdf" cat 2-end output "$i.pdf"
+   # TODO: tmp_$i müsste man noch mit rm löschen
+done
