@@ -1,0 +1,87 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{amsmath}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\usepackage[a4paper]{geometry}
+\usepackage{authblk}
+\usepackage{setspace}
+\usepackage{csquotes}
+\usepackage{booktabs}
+%%%%%%%%%%%%%%%%%% My preamble %%%%%%%%%%%%%%%%%%%%%%%%%%
+%\usepackage[numbers, sort&compress]{natbib}
+%\setcitestyle{numbers,square,comma,aysep={,},yysep={,},notesep={,}}
+%\bibliographystyle{unsrtnat}
+%\bibliographystyle{IEEEtranSN}
+
+%References
+\usepackage[
+    bibstyle=phys,
+    biblabel=brackets, 
+    citestyle=numeric-comp,
+    isbn=false,
+    doi=false,
+    sorting=none,
+    url=false,
+    defernumbers=true,
+    bibencoding=utf8,
+    backend=biber, 
+    %maxbibnames=3,maxcitenames=3,
+    %minnames=3,
+    maxnames=30,
+    ]{biblatex}
+\setcounter{biburllcpenalty}{7000}
+\setcounter{biburlucpenalty}{8000}
+\addbibresource[]{eccd_ref.bib}
+\DeclareBibliographyCategory{fullcited}
+\newcommand{\mybibexclude}[1]{\addtocategory{fullcited}{#1}}
+\DeclareFieldFormat{titlecase}{\MakeCapital{#1}} 
+\DeclareFieldFormat{sentencecase}{\MakeSentenceCase{#1}}
+
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{amssymb}
+\usepackage{bm}
+\newcommand{\be}[1]{\begin{equation} \label{#1}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}[1]{\begin{eqnarray} \label{#1}}
+\newcommand{\eea}{\end{eqnarray}}
+\setlength\parindent{0pt}
+
+\newcommand{\br}{{\bf r}}
+\newcommand{\bh}{{\bf h}}
+\newcommand{\bb}{{\bf b}}
+\newcommand{\bv}{{\bf v}}
+\newcommand{\bB}{{\bf B}}
+\newcommand{\rd}{{\rm d}}
+\newcommand{\eq}[1]{(\ref{#1})}
+\newcommand{\bp}{{\bf p}}
+\newcommand{\difp}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\iotabar}{\mbox{$\iota$\hspace{-0.365em}-}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{\textbf{Technical NEO-2 documentation\\February 2018}}
+
+
+\author[1]{Gernot~Kapper}
+\affil[1]{Fusion@\"OAW, Institute of Theoretical and Computational Physics, Graz University of Technology, Petersgasse 16, 8010 Graz, Austria}
+\renewcommand\Affilfont{\itshape\small}
+
+\date{}
+
+\begin{document}
+\onehalfspacing
+
+\maketitle
+
+\section{Introduction}
+This is document is a collection of some notes to continue the work on the ECCD and bootstrap tasks. It is not a document describing physical details but more technical features which are required to know to continue the work. 
+
+\include{chap1}
+\include{chap2}
+\include{chap3}
+
+\end{document}

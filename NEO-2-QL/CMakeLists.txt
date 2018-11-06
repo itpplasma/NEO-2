@@ -49,7 +49,7 @@ set(MY_DEBUG_FLAG_LIST
   " -O0 -cpp -g"   
 # " -O0 -g -ggdb -C -p -pg -fbacktrace " 
 # " -ffpe-trap=invalid,zero,overflow,underflow "
- " -ffpe-trap=invalid,zero,overflow "
+# " -ffpe-trap=invalid,zero,overflow "
  " -ffpe-summary=invalid,zero,overflow "
  " -fcheck=all "
 # " -fcheck=bounds,mem,array-temps,pointer "
@@ -119,7 +119,6 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 find_library(gsl_lib gsl ${GSL_LIB})
 # FGSL
 #find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
-message("${FGSL_LIB}")
 find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
 include_directories(${FGSL_INC})
 
@@ -172,10 +171,7 @@ add_executable(${EXE_NAME}
 )
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-  set(LINALG_LIBRARIES "${gsl_lib}
-  	${lapack_lib}
-	${f77blas_lib} ${atlas_lib}"
-	)
+  set(LINALG_LIBRARIES ${lapack_lib} ${f77blas_lib} ${atlas_lib})
 endif ()
 
 ### Add libraries linked with executable

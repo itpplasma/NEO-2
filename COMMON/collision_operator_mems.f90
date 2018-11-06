@@ -49,7 +49,12 @@ module collop
 
   contains
     
-    subroutine collop_construct()     
+    subroutine collop_construct()
+      if ((mpro%getNumProcs() .ne. num_spec) .and. lsw_multispecies) then
+        write(*,*)
+        write(*,*) 'WARNING: CODE might not be correct if number of processors is not equal to the number of species!'
+        write(*,*)
+      end if
 
     end subroutine collop_construct
 
@@ -205,6 +210,9 @@ module collop
       if(allocated(weightenerg)) deallocate(weightenerg)
       allocate(weightenerg(0:lag))
 
+      !> \todo This array may be written uninitialized to a hdf5 file.
+      !> Might also at other locations be used uninitialized.
+      !> This should be checked.
       if (allocated(anumm_inf)) deallocate(anumm_inf)
       allocate(anumm_inf(0:lag, 0:lag))
 
@@ -418,7 +426,9 @@ module collop
            call mpro%allgather(anumm_aa(:,:,:,b),anumm_aa)
            call mpro%allgather(denmm_aa(:,:,:,b),denmm_aa)
            call mpro%allgather(ailmm_aa(:,:,:,:,b),ailmm_aa)
-           call mpro%allgather(Inbi_lmmp_a(:,:,b), Inbi_lmmp_a)
+           if (lsw_nbi) then
+             call mpro%allgather(Inbi_lmmp_a(:,:,b), Inbi_lmmp_a)
+           end if
            
            if (lsw_write_precom) then            !! Added by Michael Draxler (13.09.2017) 
              if (mpro%isMaster()) then
@@ -558,16 +568,16 @@ module collop
     end subroutine collop_load
 
     subroutine collop_unload()
-      deallocate(anumm_aa)
-      deallocate(denmm_aa)
-      deallocate(anumm_a)
-      deallocate(denmm_a)
-      deallocate(Inbi_lmmp_a)
-      deallocate(asource)
-      deallocate(weightlag)
-      deallocate(x1mm)
-      deallocate(x2mm)
-      deallocate(conl_over_mfp_spec)
+      if (allocated(anumm_aa)) deallocate(anumm_aa)
+      if (allocated(denmm_aa)) deallocate(denmm_aa)
+      if (allocated(anumm_a)) deallocate(anumm_a)
+      if (allocated(denmm_a)) deallocate(denmm_a)
+      if (allocated(Inbi_lmmp_a)) deallocate(Inbi_lmmp_a)
+      if (allocated(asource)) deallocate(asource)
+      if (allocated(weightlag)) deallocate(weightlag)
+      if (allocated(x1mm)) deallocate(x1mm)
+      if (allocated(x2mm)) deallocate(x2mm)
+      if (allocated(conl_over_mfp_spec)) deallocate(conl_over_mfp_spec)
       if (allocated(C_m)) deallocate(C_m)
       if (allocated(M_transform)) deallocate(M_transform)
       if (allocated(M_transform_inv)) deallocate(M_transform_inv)
