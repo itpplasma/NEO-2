@@ -3546,6 +3546,12 @@ subroutine fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
         endif
       enddo
 
+      ! [1] The code in the if-elseif part might look like it could be
+      ! simplified using a variable, but as nothing is done, if the
+      ! values are the same, this is not necessarily the case.
+      ! As the code is used multiple times, it also seems a good
+      ! candidate for introducing a subroutine, but unfortunately due to
+      ! the side/main effect, this is also not a good solution.
       open(file_unit,file='phi_placement_problem.dat')
       do i=1,ncross_l
         istep=icross_l(i)
@@ -3621,6 +3627,7 @@ subroutine fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
           npassing_prev=npassing
         endif
       enddo
+      ! For this loop also the comment [1] from above applies.
       open(file_unit,file='phi_placement_problem.dat')
       do i=1,ncross_r
         istep=icross_r(i)
