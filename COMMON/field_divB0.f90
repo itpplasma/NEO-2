@@ -566,80 +566,86 @@ end subroutine field_c
 ! ===========================================================================
 subroutine read_field0(rad,phi,zet,rmin,pmin,zmin,hrm1,hpm1,hzm1,Br,Bp,Bz)
 
-  use input_files
+  use input_files, only : cfile
   use math_constants, only : pi
+  use nrtype, only : dp
 
-  parameter(nr=64,np=37,nz=64)
-  parameter (mp=4) ! power of Lagrange's polynomial =3
-  dimension Bz(nr,np,nz)
-  dimension Br(nr,np,nz),Bp(nr,np,nz)
-  dimension rad(nr), phi(np), zet(nz)
-  dimension xp(mp),yp(mp),zp(mp),fp(mp,mp,mp)
-  integer indx(mp), indy(mp), indz(mp)
-  data icall/0/
-  save
+  implicit none
 
-!-------first call: read data from disk-------------------------------
-     open(1,file=cfile,status='old',action='read')  
-     read(1,*)   
-     read(1,*)
-     read(1,*)   
-     read(1,*)
-     read(1,*)
+  integer, parameter :: nr=64, np=37, nz=64
+  integer, parameter :: mp=4 ! power of Lagrange's polynomial =3
 
-!---Input B      -->T = V*s/m/m
-     do j=1,np-1  !only npmax-1 points are given
-        do k=nz,1,-1  !reverse order of probe data
-           do i=1,nr
-              read(1,*) Br(i,j,k), Bp(i,j,k), Bz(i,j,k)
-              
-              !! Modification by Andreas F. Martitsch (16.07.2015)
-              ! previous (Warning: Change of value in conversion from REAL(8) to REAL(4))
-              !Br(i,j,k) = Br(i,j,k)*1.d4
-              !Bp(i,j,k) = Bp(i,j,k)*1.d4
-              !Bz(i,j,k) = Bz(i,j,k)*1.d4
-              ! corrected:
-              Br(i,j,k) = Br(i,j,k)*1.e4
-              Bp(i,j,k) = Bp(i,j,k)*1.e4
-              Bz(i,j,k) = Bz(i,j,k)*1.e4
-              !! End Modification by Andreas F. Martitsch (16.07.2015)
+  real(kind=dp), intent(out) :: rad(nr), phi(np), zet(nz)
+  real(kind=dp), intent(out) :: rmin, pmin, zmin
+  real(kind=dp) :: hrm1,hpm1,hzm1
+  real(kind=dp), intent(out) :: Br(nr,np,nz), Bp(nr,np,nz), Bz(nr,np,nz)
 
-           enddo
-           read(1,*)
-        enddo
-        read(1,*)
-     enddo
-     close(1)
-     !
-     rmin = 84.
-     rmax = 254.
-     zmin = -160.
-     zmax = 160.
-     pmin = 0.
-     pmax = 2.*pi
+  real(kind=dp) :: rmax, pmax, zmax
+  real(kind=dp) :: hrad, hphi, hzet
+  integer :: i,j,k
 
- 
-     hrad = (rmax - rmin)/(nr-1)  
-     hphi = (pmax - pmin)/(np-1)
-     hzet = (zmax - zmin)/(nz-1)
+  !------- read data from disk -------------------------------
+  open(1,file=cfile,status='old',action='read')
+  read(1,*)
+  read(1,*)
+  read(1,*)
+  read(1,*)
+  read(1,*)
 
-     do i=1,nr
-        rad(i) = rmin + hrad*(i-1)
-     enddo
-     do i=1,np
-        phi(i) = pmin + hphi*(i-1)
-     enddo
-     do i=1,nz
-        zet(i) = zmin + hzet*(i-1)
-     enddo
+  !---Input B      -->T = V*s/m/m
+  do j=1,np-1  !only npmax-1 points are given
+    do k=nz,1,-1  !reverse order of probe data
+      do i=1,nr
+        read(1,*) Br(i,j,k), Bp(i,j,k), Bz(i,j,k)
 
-     do i=1,nr
-        do k=1,nz
-           Br(i,np,k) = Br(i,1,k)
-           Bp(i,np,k) = Bp(i,1,k)
-           Bz(i,np,k) = Bz(i,1,k)
-        enddo
-     enddo
+        !! Modification by Andreas F. Martitsch (16.07.2015)
+        ! previous (Warning: Change of value in conversion from REAL(8) to REAL(4))
+        !Br(i,j,k) = Br(i,j,k)*1.d4
+        !Bp(i,j,k) = Bp(i,j,k)*1.d4
+        !Bz(i,j,k) = Bz(i,j,k)*1.d4
+        ! corrected:
+        Br(i,j,k) = Br(i,j,k)*1.e4
+        Bp(i,j,k) = Bp(i,j,k)*1.e4
+        Bz(i,j,k) = Bz(i,j,k)*1.e4
+        !! End Modification by Andreas F. Martitsch (16.07.2015)
+
+      end do
+      read(1,*)
+    end do
+    read(1,*)
+  end do
+  close(1)
+
+  rmin = 84.
+  rmax = 254.
+  zmin = -160.
+  zmax = 160.
+  pmin = 0.
+  pmax = 2.*pi
+
+
+  hrad = (rmax - rmin)/(nr-1)
+  hphi = (pmax - pmin)/(np-1)
+  hzet = (zmax - zmin)/(nz-1)
+
+  do i=1,nr
+    rad(i) = rmin + hrad*(i-1)
+  end do
+  do i=1,np
+    phi(i) = pmin + hphi*(i-1)
+  end do
+  do i=1,nz
+    zet(i) = zmin + hzet*(i-1)
+  end do
+
+  do i=1,nr
+    do k=1,nz
+      Br(i,np,k) = Br(i,1,k)
+      Bp(i,np,k) = Bp(i,1,k)
+      Bz(i,np,k) = Bz(i,1,k)
+    end do
+  end do
+
 end subroutine read_field0
 
 subroutine read_field1(icftype,nr,np,nz,rmin,rmax,pmin,pmax,zmin,zmax,Br,Bp,Bz)
