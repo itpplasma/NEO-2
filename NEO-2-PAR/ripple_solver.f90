@@ -3552,7 +3552,7 @@ subroutine fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
       ! As the code is used multiple times, it also seems a good
       ! candidate for introducing a subroutine, but unfortunately due to
       ! the side/main effect, this is also not a good solution.
-      open(file_unit,file='phi_placement_problem.dat')
+      open(file_unit,file='phi_placement_problem.dat',position='append')
       do i=1,ncross_l
         istep=icross_l(i)
         if(abs(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).lt. &
@@ -3628,7 +3628,7 @@ subroutine fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
         endif
       enddo
       ! For this loop also the comment [1] from above applies.
-      open(file_unit,file='phi_placement_problem.dat')
+      open(file_unit,file='phi_placement_problem.dat',position='append')
       do i=1,ncross_r
         istep=icross_r(i)
         if(abs(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).lt. &
