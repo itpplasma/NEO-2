@@ -6,7 +6,7 @@ number_processors=${2}
 testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-XXXXXX`
 echo "Testpath created: ${testpath}!"
 
-cp ./neo_2.x $testpath
+cp ./neo_2_par.x $testpath
 cd $testpath
 
 echo "Copying template..."
