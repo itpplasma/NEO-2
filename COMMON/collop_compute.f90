@@ -1154,8 +1154,8 @@ contains
 !!$    return
     if (integral_cutoff) then
       x_cutoff_local = x_cutoff
-      do while (abs(func1d(x_cutoff_local*0.9)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
-        x_cutoff_local = x_cutoff_local*0.9
+      do while (abs(func1d(x_cutoff_local-1.0)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
+        x_cutoff_local = x_cutoff_local-1.0
       end do
 !~       write(*,*) 'Using x_cutoff_local=', x_cutoff_local, 'with |f(x)|=', abs(func1d(x_cutoff_local))
     end if
@@ -1327,8 +1327,8 @@ contains
 !!$    return
     if (integral_cutoff) then
       x_cutoff_local = x_cutoff
-      do while (abs(func1d(x_cutoff_local*0.9, param)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
-        x_cutoff_local = x_cutoff_local*0.9
+      do while (abs(func1d(x_cutoff_local-1.0, param)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
+        x_cutoff_local = x_cutoff_local-1.0
       end do
 !~       write(*,*) 'Using x_cutoff_local=', x_cutoff_local, 'with |f(x)|=', abs(func1d(x_cutoff_local))
     end if
