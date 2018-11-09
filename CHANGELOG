@@ -1,0 +1,77 @@
+Contains changelog of neo-2 code. Tags are also included.
+
+  Added [for new features]
+  Changed [changes in existing functionality]
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+
+  Added [for new features]
+  - Basis for NBI.
+  - Relativistic effects for PAR version
+  Changed [changes in existing functionality]
+  - Internal cutoff for integration to infinity may be lowered.
+  - Executables have now name with part based on which version of the
+    code (par or ql) they are from.
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+
+Multi-species, Spitzerfunction, arbitrary base functions, HDF5 Support, NTV
+
+a73c83c0d7e89ac2ddaba24daabdf3ac861f274f
+Merging of codes by gernot and andreas
+
+2e44f415f4a88822544c721a8fb34016bf8845e1
+first modular version
+
+425b1fd81b40364ff5893245527fccdfe8658d9b v0
+initial release
+
+2013-07-30.1
+  Added [new features]
+  Changed [changes in existing functionality]
+  - Improvements in makesystem
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  - remove some not needed files
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+2013-07-19.1
+  Added [for new features]
+  Changed [changes in existing functionality]
+  - Only master process writes files.
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+2013-07-18.1
+  Added [for new features]
+  Changed [changes in existing functionality]
+  - New versioning convention.
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+v0.1.2b ?
+  Added [for new features]
+  Changed [changes in existing functionality]
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+v2.1.0 ?
+  Added [for new features]
+  Changed [changes in existing functionality]
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
