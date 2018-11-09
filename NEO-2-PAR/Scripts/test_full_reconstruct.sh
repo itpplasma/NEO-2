@@ -6,6 +6,9 @@ number_processors=${2}
 testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-XXXXXX`
 echo "Testpath created: ${testpath}!"
 
+referencepath='/temp/gernot_k/Neo2/Testing/Reference/Testcase2/'
+#~ referencepath='../../../Reference/'
+
 cp ./neo_2.x $testpath
 cd $testpath
 
@@ -26,7 +29,7 @@ fi
 switch_reconstruction.sh 0
 $runcommand >> job.log 2>&1
 
-if md5sum -c ../../../Reference/${testcase}/MD5sums-reconstruct_0 ; then
+if md5sum -c $referencepath/${testcase}/MD5sums-reconstruct_0 ; then
   echo "Test (1/3) passed. Checksums correct."
 else
   echo "Test (1/3) failed. Not all files are equal."
@@ -36,7 +39,7 @@ fi
 switch_reconstruction.sh 1
 $runcommand >> job.log 2>&1
 
-if md5sum -c ../../../Reference/${testcase}/MD5sums-reconstruct_1 ; then
+if md5sum -c $referencepath/${testcase}/MD5sums-reconstruct_1 ; then
   echo "Test (2/3) passed. Checksums correct."
 else
   echo "Test (2/3) failed. Not all files are equal."
@@ -46,7 +49,7 @@ fi
 switch_reconstruction.sh 2
 $runcommand >> job.log 2>&1
 
-if md5sum -c ../../../Reference/${testcase}/MD5sums-reconstruct_2 ; then
+if md5sum -c $referencepath/${testcase}/MD5sums-reconstruct_2 ; then
   echo "Test (3/3) passed. Checksums correct."
 else
   echo "Test (3/3) failed. Not all files are equal."
@@ -57,4 +60,4 @@ echo "Tests passed. No exit code 1 received."
 exit 0
 
 #Maybe dangerous...
-#~ rm -r $testpath
+rm -r $testpath
