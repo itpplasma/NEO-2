@@ -6,7 +6,7 @@ number_processors=${2}
 testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-XXXXXX`
 echo "Testpath created: ${testpath}!"
 
-referencepath='/temp/gernot_k/Neo2/Testing/Reference/Testcase2/'
+referencepath='/temp/gernot_k/Neo2/Testing/Reference/'
 #~ referencepath='../../../Reference/'
 
 cp ./neo_2.x $testpath
