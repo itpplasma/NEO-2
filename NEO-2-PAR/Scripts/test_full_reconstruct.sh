@@ -9,7 +9,7 @@ echo "Testpath created: ${testpath}!"
 referencepath='/temp/buchholz/Neo2/Testing/Reference/'
 #~ referencepath='../../../Reference/'
 
-totalnumberofstages=3
+totalnumberofstages=4
 numberofstage=0
 
 cp ./neo_2.x $testpath
@@ -29,7 +29,7 @@ else
   runcommand="mpirun -np ${number_processors} $testpath/neo_2.x"
 fi
 
-for numberofstage in 0 1 2 ; do
+for numberofstage in 0 1 2 3 ; do
   switch_reconstruction.sh $numberofstage
   $runcommand >> job.log 2>&1
   if md5sum -c $referencepath/${testcase}/MD5sums-reconstruct_$numberofstage ; then
