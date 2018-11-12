@@ -9,6 +9,9 @@ echo "Testpath created: ${testpath}!"
 referencepath='/temp/buchholz/Neo2/Testing/Reference/'
 #~ referencepath='../../../Reference/'
 
+totalnumberofstages=3
+numberofstage=0
+
 cp ./neo_2.x $testpath
 cd $testpath
 
@@ -26,35 +29,16 @@ else
   runcommand="mpirun -np ${number_processors} $testpath/neo_2.x"
 fi
 
-switch_reconstruction.sh 0
-$runcommand >> job.log 2>&1
-
-if md5sum -c $referencepath/${testcase}/MD5sums-reconstruct_0 ; then
-  echo "Test (1/3) passed. Checksums correct."
-else
-  echo "Test (1/3) failed. Not all files are equal."
-  exit 1
-fi
-
-switch_reconstruction.sh 1
-$runcommand >> job.log 2>&1
-
-if md5sum -c $referencepath/${testcase}/MD5sums-reconstruct_1 ; then
-  echo "Test (2/3) passed. Checksums correct."
-else
-  echo "Test (2/3) failed. Not all files are equal."
-  exit 1
-fi
-
-switch_reconstruction.sh 2
-$runcommand >> job.log 2>&1
-
-if md5sum -c $referencepath/${testcase}/MD5sums-reconstruct_2 ; then
-  echo "Test (3/3) passed. Checksums correct."
-else
-  echo "Test (3/3) failed. Not all files are equal."
-  exit 1
-fi
+for numberofstage in 0 1 2 ; do
+  switch_reconstruction.sh $numberofstage
+  $runcommand >> job.log 2>&1
+  if md5sum -c $referencepath/${testcase}/MD5sums-reconstruct_$numberofstage ; then
+    echo "Test ($numberofstage/$totalnumberofstages) passed. Checksums correct."
+  else
+    echo "Test ($numberofstage/$totalnumberofstages) failed. Not all files are equal."
+    exit 1
+  fi
+done
 
 echo "Tests passed. No exit code 1 received."
 exit 0
