@@ -1516,8 +1516,15 @@ contains
        ! use 5th order Taylor expansion around x=0 (numerical stability)
        y = 2d0*x/(3d0*sqrt(pi))-2d0*(x**3)/(5d0*sqrt(pi))+(x**5)/(7d0*sqrt(pi))
     else
-       ! use default expression
-       y = (erf(x) - x*d_erf(x)) / (2*x**2)       
+      ! use default expression
+
+      !> According to the taylor expansion, the function behaves smoothly
+      !> near zero, thus return the limit for x = 0.
+      if (x .eq. 0.0d0) then
+        y = 0.0d0
+      else
+        y = (erf(x) - x*d_erf(x)) / (2*x**2)
+      end if
     end if
 
   end function G
@@ -1540,8 +1547,15 @@ contains
     real(kind=dp) :: x
     real(kind=dp) :: y
 
-    y = (4*x**2*d_erf(x) - 4*x*erf(x) - 2*x**3*dd_erf(x))
-    y = y / (2*x**2)**2
+    !> According to the taylor expansion from G(x), the derivative
+    !> goes smoothly to the value \[ 2/(3\sqrt(\pi) \], despite being
+    !> not defined. Thus if x is zero, simply return this limit.
+    if (x .eq. 0.0d0) then
+      y = 2d0/(3d0*sqrt(pi))
+    else
+      y = (4*x**2*d_erf(x) - 4*x*erf(x) - 2*x**3*dd_erf(x))
+      y = y / (2*x**2)**2
+    end if
   end function d_G
 
   function nu_D_hat(x) result(nu)
@@ -2343,8 +2357,21 @@ contains
          I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi_prj(m,x) * (I1 + x**l * I2)
       else
          if (lsw_stabilize_Immp) then
+          !> Integrating kernel 1 from zero to zero will lead to problems,
+          !> as this will result in a 0/0, as then also the parameter is zero.
+          !> Thus handle this case explicitly.
+          !> Also kernel 2 makes problems for x=0, (and param=0), thus
+          !> this is also handled explicitly, and for param=0 the
+          !> kernel is zero, except at x=0, which is only a single point
+          !> and thus should make no difference. Also this fits the not
+          !> stabilized case below, where I2 would be multiplied with 0.
+          if (x .eq. 0.0d0) then
+            I1 = 0.0d0
+            I2 = 0.0d0
+          else
             I1 = integrate_param(I_phi_1_param, x, 0d0, x)
             I2 = integrate_param(I_phi_2_param, x, x)
+          end if
 
             I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi_prj(m,x) * (I1 + I2)
          else
