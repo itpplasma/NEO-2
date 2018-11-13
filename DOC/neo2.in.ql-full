@@ -164,7 +164,7 @@
  isw_qflux_NA = 1 ! Turn on(=1)/off(=0) computation of non-axisymmetrix
                   ! part. [0]
  isw_ripple_solver = 3 ! Which ripple solver version should be used. [1]
- MtOvR = 0.0 ! The toroidal Mach number. [0.0d0]
+ MtOvR = 0.0 ! The toroidal Mach number divided by major radius R0. [0.0d0]
 
 /
 &plotting
