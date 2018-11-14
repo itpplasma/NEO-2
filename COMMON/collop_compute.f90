@@ -1166,6 +1166,8 @@ contains
           y = 0d0
           in_interval = .false.
           !write (*,*) "Integration", a, t_vec
+
+          ! Integrate the part up to maximum of the parallel velocity grid.
           do k = lbound(t_vec, 1), ubound(t_vec, 1)
              if (.not. in_interval) then
                 if (a .ge. t_vec(k)) then
@@ -1221,6 +1223,9 @@ contains
              end if
 
           end do
+
+          ! Integrate from the maximum of the parallel velocity grid to
+          ! infinity (or at least some high enough x value).
           if (integral_cutoff) then
              if (lsw_split_interval) then
                 x_sub_del = (x_cutoff_local - t_vec(ubound(t_vec,1)))/dble(num_sub_intervals_cutoff)
