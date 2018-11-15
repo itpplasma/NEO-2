@@ -30,6 +30,19 @@ function check_equality_dat {
   return $return_value_loc
 }
 
+function check_equality_hdf5 {
+  referencepath_local=${1}
+  testcase_local=${2}
+
+  for h5file in `ls $referencepath_local/${testcase_local}/*.h5` ; do
+    if h5diff -q $h5file ./`basename $h5file` ; then
+      a=''
+    else
+      return_value=1
+    fi
+  done
+}
+
 ########################################################################
 
 cp ./neo_2.x $testpath
@@ -61,6 +74,13 @@ for numberofstage in 0 1 2 3 ; do
     return_value=1
   fi
 done
+
+if check_equality_hdf5 $referencepath ${testcase} ; then
+  echo "Test of hdf5 files passed."
+else
+  echo "Test of hdf5 files failed, there are differences."
+  return_value=1
+fi
 
 if [[ "x0" == "x$return_value" ]] ; then
   echo "Tests passed. No exit code 1 received."
