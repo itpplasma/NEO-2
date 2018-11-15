@@ -11,6 +11,7 @@ referencepath='/temp/buchholz/Neo2/Testing/Reference/'
 
 totalnumberofstages=4
 numberofstage=0
+return_value=0
 
 ########################################################################
 function check_equality_dat {
@@ -57,12 +58,14 @@ for numberofstage in 0 1 2 3 ; do
     echo "Test ($numberofstage/$totalnumberofstages) passed. Checksums correct."
   else
     echo "Test ($numberofstage/$totalnumberofstages) failed. Not all files are equal."
-    exit 1
+    return_value=1
   fi
 done
 
-echo "Tests passed. No exit code 1 received."
-exit 0
+if [[ "x0" == "x$return_value" ]] ; then
+  echo "Tests passed. No exit code 1 received."
+  #Maybe dangerous...
+  rm -r $testpath
+fi
 
-#Maybe dangerous...
-rm -r $testpath
+exit $return_value
