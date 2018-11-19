@@ -671,7 +671,7 @@ CONTAINS
     ! Local parameters: corresponds to 'n' of gsl_integration_cquad_workspace * gsl_integration_cquad_workspace_alloc (size_t n)
     INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 100_fgsl_size_t
 
-    INTEGER(fgsl_size_t) :: neval ! nmber of function evaluations
+    INTEGER(fgsl_size_t) :: neval ! number of function evaluations
     REAL(fgsl_double) :: ra, rda ! result and absolute error
     TYPE(fgsl_error_handler_t) :: std
     INTEGER(fgsl_int) :: statusval
@@ -754,7 +754,7 @@ CONTAINS
     REAL(fgsl_double), DIMENSION(2) :: res
     !
     INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 1000_fgsl_size_t
-    INTEGER(fgsl_size_t) :: neval ! nmber of function evaluations
+    INTEGER(fgsl_size_t) :: neval ! number of function evaluations
     REAL(fgsl_double) :: ra, rda ! result and absolute error
     TYPE(fgsl_error_handler_t) :: std
     INTEGER(fgsl_int) :: status
