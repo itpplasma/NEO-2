@@ -86,6 +86,9 @@ if [[ "x0" == "x$return_value" ]] ; then
   echo "Tests passed. No exit code 1 received."
   #Maybe dangerous...
   rm -r $testpath
+else
+  echo "At least one test failed."
+  # Do not remove the folder, as one might want to check the log.
 fi
 
 exit $return_value
