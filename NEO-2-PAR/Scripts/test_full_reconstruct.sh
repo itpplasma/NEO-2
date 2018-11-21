@@ -1,5 +1,8 @@
 #!/bin/bash
 
+########################################################################
+### Variables and constants.
+
 testcase=${1}
 number_processors=${2}
 
@@ -14,6 +17,7 @@ numberofstage=0
 return_value=0
 
 ########################################################################
+### Function definitions
 function check_equality_dat {
   referencepath_local=${1}
   testcase_local=${2}
@@ -44,6 +48,7 @@ function check_equality_hdf5 {
 }
 
 ########################################################################
+### Actual script
 
 cp ./neo_2.x $testpath
 cd $testpath
@@ -65,7 +70,6 @@ fi
 for numberofstage in 0 1 2 3 ; do
   switch_reconstruction.sh $numberofstage
   $runcommand >> job.log 2>&1
-  #~ if md5sum -c $referencepath/${testcase}/MD5sums-reconstruct_$numberofstage ; then
   # check_equality_dat is a function.
   if check_equality_dat $referencepath ${testcase} $numberofstage ; then
     echo "Test ($numberofstage/$totalnumberofstages) passed. Checksums correct."
