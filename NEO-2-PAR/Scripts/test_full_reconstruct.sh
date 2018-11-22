@@ -37,14 +37,17 @@ function check_equality_dat {
 function check_equality_hdf5 {
   referencepath_local=${1}
   testcase_local=${2}
+  return_value_loc=0
 
   for h5file in `ls $referencepath_local/${testcase_local}/*.h5` ; do
     if h5diff -q $h5file ./`basename $h5file` ; then
       a=''
     else
-      return_value=1
+      return_value_loc=1
     fi
   done
+
+  return $return_value_loc
 }
 
 ########################################################################
