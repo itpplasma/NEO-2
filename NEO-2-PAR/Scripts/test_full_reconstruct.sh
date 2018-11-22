@@ -7,7 +7,7 @@ testcase=${1}
 number_processors=${2}
 
 testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-XXXXXX`
-echo "Testpath created: ${testpath}!"
+echo "Testpath created: ${testpath}"
 
 referencepath='/temp/buchholz/Neo2/Testing/Reference/'
 #~ referencepath='../../../Reference/'
@@ -39,10 +39,16 @@ function check_equality_hdf5 {
   testcase_local=${2}
   return_value_loc=0
 
+  # Specify path that should not be compared, because they are expected
+  # to differ.
+  # /
+  exclude_paths="--exclude-path=/metadata --exclude-path=/Testcase1/NEO-2/neo2_config/metadata"
+
   for h5file in `ls $referencepath_local/${testcase_local}/*.h5` ; do
-    if h5diff -q $h5file ./`basename $h5file` ; then
+    if h5diff ${exclude_paths} -q $h5file ./`basename $h5file` ; then
       a=''
     else
+      h5diff ${exclude_paths} $h5file ./`basename $h5file`
       return_value_loc=1
     fi
   done
