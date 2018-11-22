@@ -16,6 +16,8 @@ totalnumberofstages=4
 numberofstage=0
 return_value=0
 
+check_absolute_if_relative_fails=yes
+
 ########################################################################
 ### Function definitions
 
@@ -45,32 +47,37 @@ function check_equality_hdf5 {
   # The /metadata object contains for example start and end times of the
   # run, which are expected to differ.
   exclude_paths="--exclude-path=/metadata --exclude-path=/Testcase1/NEO-2/neo2_config/metadata"
-  # Specify the accuracy for the comparison. Our default is the default
-  # of h5diff.
-  accuracy=""
+  # Specify the accuracy for the comparison.
+  accuracy="1.0e-12"
 
   # If the run is in parallel, some modifications to the settings have
   # to be made.
   if [ ${number_processors} -gt 1 ] ; then
     echo "##### parallel mode #####"
-    # the object parallel_storage is indicator if the run was parallel
+    # The object parallel_storage is indicator if the run was parallel
     # or not, as the reference should be made with a single processor,
     # this is expected to differ.
     exclude_paths="$exclude_paths --exclude-path=/Testcase1/NEO-2/taginfo/parallel_storage"
-    # With finite precision order of summation plays a role, thus small
-    # differences are to be expected. To account for this, we assume
-    # values are equal, if the relative difference is small enough.
-    accuracy="--relative=1.0e-13"
   fi
 
   for h5file in `ls $referencepath_local/${testcase_local}/*.h5` ; do
-    if h5diff ${accuracy} ${exclude_paths} -q $h5file ./`basename $h5file` ; then
+    if h5diff --relative=${accuracy} ${exclude_paths} -q $h5file ./`basename $h5file` ; then
       a=''
     else
       echo "comparing $h5file and ./`basename $h5file`"
-      echo "comparison command is 'h5diff ${accuracy} ${exclude_paths}'"
+      echo "comparison command is 'h5diff --relative=${accuracy} ${exclude_paths}'"
       h5diff ${exclude_paths} $h5file ./`basename $h5file`
-      return_value_loc=1
+      if [[ "x$check_absolute_if_relative_fails" == "xyes" ]] ; then
+        # Make another check, this time with absolute differences.
+        if h5diff --delta=${accuracy} ${exclude_paths} -q $h5file ./`basename $h5file` ; then
+          echo "Second try succesfull."
+        else
+          echo "Pass with absolute difference also failed."
+          return_value_loc=1
+        fi
+      else
+        return_value_loc=1
+      fi
     fi
   done
 
