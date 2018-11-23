@@ -1,0 +1,133 @@
+Contains changelog of neo-2 code. Tags are also included.
+
+  Added [for new features]
+  Changed [changes in existing functionality]
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+
+  Added [for new features]
+  - Basis for NBI.
+  - Relativistic effects for PAR version
+  Changed [changes in existing functionality]
+  - Internal cutoff for integration to infinity may be lowered.
+  - Executables have now name with part based on which version of the
+    code (par or ql) they are from.
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+Spitzerfunction
+NTV
+
+9558c15a468a509bd11cde9fb05eef31bf21e904
+Introduced adaption of x_cutoff.
+0.5.5
+
+0b97c4ec67f89449879933327fb36c6bd5765828
+first draft for nbi part
+0.5.4
+
+4249957b68cfcfc3c3b20e3bb2cf4a46aa2ac345
+Stable version used for a publication?
+
+This version of the code is tagged because it was used for a publication
+and should be easily acessible.
+0.5.3
+
+
+152545e684792fdaa901b9f4cfdab3abc0d8ce3d
+Old stable version?
+
+Version used for example by Matyas.
+0.5.2
+
+31ddff0af2fa8701fbf37cd15d358466c992583f
+Computation of k coefficient in NEO-2-PAR version
+0.5.1
+
+47f03ca51b7c6ff4f84fbbc90730c54be1cda943
+Support for multi-species computations
+0.5
+
+5e3cbc630999f535b974c9b0562ccf353996c606
+Final merge of magnetics routines.
+0.4.1
+
+42ff711b72681e3f2b80e74d293b51c451931dd1
+Support for relativistic collision operator (for Braams/Karney and high
+    order Legendre expansion). Results benchmarked to SYNCH.
+0.4
+
+a73c83c0d7e89ac2ddaba24daabdf3ac861f274f
+Merging of codes by gernot and andreas
+0.3
+
+2e44f415f4a88822544c721a8fb34016bf8845e1
+first modular version
+0.2.1
+
+0d367fabd851ccedfb3988743cf9a857e780a54d
+HDF5 Support
+0.2
+
+33ca47c8f67c24da67e59c571b856f17fe5ca680
+arbitrary base functions
+0.1
+
+1b2e1ac1ce869a7cbbb294c0a32138166ed8b8f8
+initial release of Andreas branch.
+0.0martitsch
+
+425b1fd81b40364ff5893245527fccdfe8658d9b
+initial release of Gernot branch.
+0.0kapper
+
+
+
+2013-07-30.1
+  Added [new features]
+  Changed [changes in existing functionality]
+  - Improvements in makesystem
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  - remove some not needed files
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+2013-07-19.1
+  Added [for new features]
+  Changed [changes in existing functionality]
+  - Only master process writes files.
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+2013-07-18.1
+  Added [for new features]
+  Changed [changes in existing functionality]
+  - New versioning convention.
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+v0.1.2b ?
+  Added [for new features]
+  Changed [changes in existing functionality]
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]
+
+v2.1.0 ?
+  Added [for new features]
+  Changed [changes in existing functionality]
+  Deprecated [soon-to-be removed features]
+  Removed [now removed features]
+  Fixed [any bug fixes]
+  Security [in case of vulnerabilities]

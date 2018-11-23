@@ -32,7 +32,8 @@
   bsfunc_max_index = 300         ! [20*eta_part]
   bsfunc_max_mult_reach = 3.0d0  ! [3.0d0]
   bsfunc_max_splitlevel = 30     ! [32]
-  bsfunc_message = 0             ! 0/1 [0]
+  bsfunc_message = 0             ! 0: no message from binarysplit [default]
+                                 ! 1: messages from binarysplit
   bsfunc_min_distance = 1.0d-4   ! [0.0d0]
   bsfunc_modelfunc = 3           ! 1: Gauss [default]
                                  ! 2: prop to exp(-|x-x0|/sqrt(2)/sigma)
@@ -42,7 +43,10 @@
   bsfunc_sigma_min = 1.0d-20     ! [0.0d0]
   bsfunc_sigma_mult = 1.0d0      ! [1.0d0]
   bsfunc_total_err = 1.0d-1      ! [1.0d-1]
-  eta_part = 20                  ! [100]
+  eta_part = 20                  ! number of eta-levels, when
+                                 ! binarysplit is done, more levels are
+                                 ! introduced, npart is computed from
+                                 ! this [100]
   eta_savemem_dist1 = 0.1d0      ! [0.1d0]
   eta_savemem_dist2 = 0.1d0      ! [0.1d0]
   eta_savemem_sigma_mult = 1d0   ! [1d0]
@@ -126,18 +130,30 @@
   mag_infotalk = .FALSE.  ! [.true.]
   mag_talk = .FALSE.      ! [.true.]
   mag_write_hdf5 = .true. ! [.false.]
-  prop_binary = 0         ! 0/1 [0]
-  prop_diagnostic = 0     ! 0/1/2/3 [1]
-  prop_diagphys = 0       ! 0/1 [1]
+  prop_binary = 0         ! 0: no binary joining (propagators in each
+                          !   period are joined, as soon as periods are
+                          !   ready they are joined) [default]
+                          ! 1:  binary joining (combined in groups of 2^k periods)
+  prop_diagnostic = 0     ! 0:  no diagnostic
+                          ! 1:  diagnostic [default]
+                          ! 2:  even more diagnostic
+                          ! 3: ?
+  prop_diagphys = 0       ! 0:  no physics diagnostic
+                          ! 1: writes out amat, ..... [default]
   prop_fileformat  = 1    ! 0: ASCII File, 1: HDF5. [0]
   prop_finaljoin_mode = -1 ! [0]
   prop_fluxsplitmode = 2  ! 0/1/2 [1]
-  prop_join_ends = 1      ! 0/1 [0]
-  prop_overwrite = 1      ! 0/1 [1]
-  prop_reconstruct = 0    ! [0]
+  prop_join_ends = 1      ! 0: no  1: yes [0]
+  prop_overwrite = 1      ! 0:  new file names for each propagator
+                          ! 1:  file names are overwritten [default]
+  prop_reconstruct = 0    ! 0: [default]
+                          ! 1:
+                          ! 2:
+                          ! 3: cleanup?
   prop_reconstruct_levels = 0 ! [0]
   prop_ripple_plot = 0    ! [0]
-  prop_timing = 0         ! 0/1 [1]
+  prop_timing = 0         ! 0: no timeing
+                          ! 1: timing is switched on [default]
   prop_write = 0          ! [0]
 /
 
