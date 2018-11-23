@@ -12,6 +12,8 @@ echo "Testpath created: ${testpath}"
 referencepath='/temp/buchholz/Neo2/Testing/Reference/'
 #~ referencepath='../../../Reference/'
 
+executablename="neo_2.x"
+
 totalnumberofstages=4
 numberofstage=0
 return_value=0
@@ -87,7 +89,7 @@ function check_equality_hdf5 {
 ########################################################################
 ### Actual script
 
-cp ./neo_2.x $testpath
+cp ./$executablename $testpath
 cd $testpath
 
 echo "Copying template..."
@@ -98,10 +100,10 @@ echo "Running Test ${testcase}..."
 
 if [ ${number_processors} -eq 0 ]; then
   echo "Sequential mode"
-  runcommand="$testpath/neo_2.x"
+  runcommand="$testpath/$executablename"
 else
   echo "Parallel mode np=${number_processors}"
-  runcommand="mpirun -np ${number_processors} $testpath/neo_2.x"
+  runcommand="mpirun -np ${number_processors} $testpath/$executablename"
 fi
 
 for numberofstage in 0 1 2 3 ; do
