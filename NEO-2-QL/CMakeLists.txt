@@ -192,7 +192,7 @@ target_link_libraries(${EXE_NAME}
 
 add_custom_target(
     NEO-2-Versioning
-    COMMAND ./Scripts/tag_version.sh
+    COMMAND ../ShellScripts/tag_version.sh
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 add_dependencies(${EXE_NAME} NEO-2-Versioning)

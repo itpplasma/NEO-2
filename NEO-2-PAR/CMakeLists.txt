@@ -185,7 +185,7 @@ set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_custom_target(
     NEO-2-Versioning
-    COMMAND ./Scripts/tag_version.sh
+    COMMAND ../ShellScripts/tag_version.sh
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
