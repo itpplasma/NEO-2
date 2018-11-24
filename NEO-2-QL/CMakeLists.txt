@@ -6,6 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../COMMON/CMAKE_
 # Enable project
 project(NEO-2-NTV)
 enable_language(Fortran)
+enable_testing()
 
 ### Check Build-Type and set Build-Name extension
 
@@ -215,3 +216,6 @@ add_custom_target(copy
 ### Define target directory for "make install" 
 #install (TARGETS ${EXE_NAME} DESTINATION /temp/andfmar/)
 #set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+### Testing section
+ADD_TEST(Test_Build_Code      "make")
