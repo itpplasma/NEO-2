@@ -19,6 +19,8 @@ if [ -n "$GITCHANGEDFILES" ]; then
   echo "THERE ARE UNCOMMITTED CHANGES!"
   echo ""
   while read -r line; do
+    # Not sure what this line does exactly, but without it, the changes
+    # of the different files will be put into one line.
     echo '&"//char(13)//char(10)//"&' >> ./version.f90
     echo "& ${line} &" >> ./version.f90
   done <<< "$GITCHANGEDFILES"
