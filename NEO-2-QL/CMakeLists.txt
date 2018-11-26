@@ -218,4 +218,5 @@ add_custom_target(copy
 #set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 ### Testing section
-ADD_TEST(Test_Build_Code      "make")
+ADD_TEST(Test_Build_Code "make")
+ADD_TEST(Extended_QL_Multispecies  ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies" "2" "QL")
