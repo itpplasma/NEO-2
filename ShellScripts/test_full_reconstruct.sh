@@ -97,7 +97,7 @@ cp ./$executablename $testpath
 cd $testpath
 
 echo "Copying template..."
-cp -r ../../Template/${testcase}/ .
+cp -r -L ../../Template/${testcase}/ .
 
 cd ${testcase}
 echo "Running Test ${testcase}..."
