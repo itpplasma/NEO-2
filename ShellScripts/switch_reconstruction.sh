@@ -29,12 +29,12 @@ for i in $(cat jobs_list.txt | grep -v '^#' | grep -v "^$"); do
   value="prop_reconstruct = $1"
   if [ $DRY -eq 0 ] ; then
     cd $i
-    sed -i "s#prop_reconstruct.*=.*#${value}#" neo2.in
+    sed -i "s#prop_reconstruct *=.*#${value}#" neo2.in
     cd ..
   fi
 done;
 else
   echo "Modifying neo2.in..."
   value="prop_reconstruct = $1"
-  sed -i "s#prop_reconstruct.*=.*#${value}#" neo2.in
+  sed -i "s#prop_reconstruct *=.*#${value}#" neo2.in
 fi

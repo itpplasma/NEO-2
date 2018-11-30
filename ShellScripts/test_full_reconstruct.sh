@@ -5,6 +5,7 @@
 
 testcase=${1}
 number_processors=${2}
+which_code=${3}
 
 testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-XXXXXX`
 echo "Testpath created: ${testpath}"
@@ -12,9 +13,14 @@ echo "Testpath created: ${testpath}"
 referencepath='/temp/buchholz/Neo2/Testing/Reference/'
 #~ referencepath='../../../Reference/'
 
+executablename="neo_2_par.x"
+
 totalnumberofstages=4
 numberofstage=0
 return_value=0
+
+START=0
+END=3
 
 check_absolute_if_relative_fails=yes
 
@@ -87,24 +93,30 @@ function check_equality_hdf5 {
 ########################################################################
 ### Actual script
 
-cp ./neo_2_par.x $testpath
+if [ "x${which_code}" = "xQL" ] ; then
+  END=0
+  executablename="neo_2_ql.x"
+fi
+
+cp ./$executablename $testpath
 cd $testpath
 
 echo "Copying template..."
-cp -r ../../Template/${testcase}/ .
+cp -r -L ../../Template/${testcase}/ .
 
 cd ${testcase}
 echo "Running Test ${testcase}..."
 
-if [ ${number_processors} -eq 0 ]; then
+if [ ${number_processors} -eq 0 ] ; then
   echo "Sequential mode"
-  runcommand="$testpath/neo_2.x"
+  runcommand="$testpath/$executablename"
 else
   echo "Parallel mode np=${number_processors}"
-  runcommand="mpirun -np ${number_processors} $testpath/neo_2.x"
+  runcommand="mpirun -np ${number_processors} $testpath/$executablename"
 fi
 
-for numberofstage in 0 1 2 3 ; do
+numberofstage=$START
+while [ $numberofstage -le $END ] ; do
   switch_reconstruction.sh $numberofstage
   $runcommand >> job.log 2>&1
   # check_equality_dat is a function.
@@ -114,6 +126,7 @@ for numberofstage in 0 1 2 3 ; do
     echo "Test ($numberofstage/$totalnumberofstages) failed. Not all files are equal."
     return_value=1
   fi
+  numberofstage=$(($numberofstage+1))
 done
 
 if check_equality_hdf5 $referencepath ${testcase} ; then

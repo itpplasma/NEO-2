@@ -6,6 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../COMMON/CMAKE_
 # Enable project
 project(NEO-2-NTV)
 enable_language(Fortran)
+enable_testing()
 
 ### Check Build-Type and set Build-Name extension
 
@@ -192,7 +193,7 @@ target_link_libraries(${EXE_NAME}
 
 add_custom_target(
     NEO-2-Versioning
-    COMMAND ./Scripts/tag_version.sh
+    COMMAND ../ShellScripts/tag_version.sh
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
@@ -215,3 +216,7 @@ add_custom_target(copy
 ### Define target directory for "make install" 
 #install (TARGETS ${EXE_NAME} DESTINATION /temp/andfmar/)
 #set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+### Testing section
+ADD_TEST(Test_Build_Code "make")
+ADD_TEST(Extended_QL_Multispecies  ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies" "2" "QL")

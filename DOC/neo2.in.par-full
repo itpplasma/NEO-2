@@ -191,7 +191,7 @@
   mag_magfield=1           ! 0: homogeneous
                            ! 1: normal [default]
   magnetic_device = 1      ! 0: Tokamak
-                           ! 1: W7-AS [default]
+                           ! 1: Stellerator [default]
   mag_nperiod_min = 1      ! minimum number of periods [300]
   mag_save_memory = 0      ! saving memory [1]
   mag_start_special=0      ! 0: original [default]

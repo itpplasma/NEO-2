@@ -185,7 +185,7 @@ set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_custom_target(
     NEO-2-Versioning
-    COMMAND ./Scripts/tag_version.sh
+    COMMAND ../ShellScripts/tag_version.sh
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
@@ -202,11 +202,11 @@ endif()
 
 ### Testing section
 ADD_TEST(Test_Build_Code      "make")
-ADD_TEST(Test_Testcase1-Seq       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase1" "0")
-ADD_TEST(Test_Testcase1-Par       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase1" "6")
-#ADD_TEST(Test_Testcase2-Seq       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase2" "0")
-#ADD_TEST(Test_Testcase2-Par       ${CMAKE_SOURCE_DIR}/Scripts/test_full_reconstruct.sh "Testcase2" "6")
+ADD_TEST(Test_Testcase1-Seq       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "0")
+ADD_TEST(Test_Testcase1-Par       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "6")
+#ADD_TEST(Test_Testcase2-Seq       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase2" "0")
+#ADD_TEST(Test_Testcase2-Par       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase2" "6")
 
-#ADD_TEST(Test_Testcase2       ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "0")
-#ADD_TEST(Test_Testcase2-par4  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase2" "4")
-#ADD_TEST(Test_Testcase3-par6  ${CMAKE_SOURCE_DIR}/Scripts/test1.sh "Testcase3" "6")
+#ADD_TEST(Test_Testcase2       ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase2" "0")
+#ADD_TEST(Test_Testcase2-par4  ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase2" "4")
+#ADD_TEST(Test_Testcase3-par6  ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase3" "6")
