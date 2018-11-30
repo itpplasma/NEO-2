@@ -411,6 +411,8 @@ PROGRAM neo2
      CLOSE(unit=u1)
   END DO
 
+  call sanity_check_input_parameters()
+
   !! Modification by Andreas F. Martitsch (23.08.2015)
   ! multi-species part:
   ! -> read species-relevant info into a large array (allocatable not supported)
@@ -1196,5 +1198,14 @@ CONTAINS
     CALL h5_close(h5_config_id)
 
   END SUBROUTINE write_run_info
+
+  subroutine sanity_check_input_parameters()
+    if ((magnetic_device .eq. 1) .and. (isw_axisymm == 1)) then
+      write(*,*) 'ERROR: stellerators are not axisymmetric.'
+      write(*,*) '  Setting magnetic_device=1 and isw_axisymm=1 makes no sense.'
+      write(*,*) 'Aborting...'
+      stop
+    end if
+  end subroutine sanity_check_input_parameters
 
 END PROGRAM neo2
