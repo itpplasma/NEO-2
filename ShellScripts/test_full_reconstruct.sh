@@ -112,6 +112,7 @@ fi
 
 if [ "x${which_code}" = "xQL" ] ; then
   END=0
+  totalnumberofstages=1
 fi
 
 numberofstage=$START
