@@ -33,7 +33,9 @@ add_custom_target(documentation ALL DEPENDS ${CMAKE_SOURCE_DIR}/Doxygen_Referenz
 # Not from us, but added to the repository for easy acess.
 include(UseLATEX)
 
-add_latex_document(coding_style.tex
+# Command for the coding style document. This is not done by default.
+add_latex_document(ExtraDocumentsTex/coding_style.tex
+  EXCLUDE_FROM_ALL
 )
     #BIBFILES mybib.bib
     #IMAGE_DIRS images
