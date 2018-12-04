@@ -1,0 +1,161 @@
+\chapter{Output}
+This chapter describes the output of the code.
+The first section those that is common to both versions of the code, the
+second those of the parallel version, and the last section will describe
+the output of the quasilinear version.
+For each file there is a subsection. The main groups of hdf5 files are
+described in paragraphs.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Both}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parallel version}
+
+\subsection{amat\_after.dat}
+\subsection{amat\_before.dat}
+
+\subsection{bvec\_after.dat}
+\subsection{bvec\_before.dat}
+\subsection{bvec\_solution.dat}
+\subsection{collop.h5}
+\subsection{collpar.dat}
+
+\subsection{efinal.h5}
+
+\subsection{eta\_m.dat}
+\subsection{eta\_ori.dat}
+\subsection{eta\_p.dat}
+
+\subsection{evolve.h5}
+
+\subsection{fin\_dims.dat}
+\subsection{fin\_flux\_m.dat}
+\subsection{fin\_flux\_p.dat}
+
+\subsection{fin\_source\_m.dat}
+\subsection{fin\_source\_p.dat}
+
+\subsection{fulltransp.h5}
+This contains the input parameters ``lag'' and ``leg'', which is a point
+to remember when comparing files of different runs (especially
+convergence tests/scans).
+
+\paragraph{k_cof}
+Related to a integration constant in the expression for the parallel
+flow. For definition see below Eq. (2.26) in \cite{Martitsch:Thesis:16}.
+
+\subsection{magnetics.h5}
+\paragraph{device}
+\paragraph{fieldline}
+\paragraph{fieldperiod}
+\paragraph{fieldpropagator}
+\paragraph{fieldripple}
+\paragraph{general}
+\paragraph{surface}
+
+\subsection{MatrixD\_mmp-gee.dat}
+\subsection{MatrixI\_mmp-gee.dat}
+\subsection{MatrixNu\_mmp-gee.dat}
+\subsection{MatrixNu\_mmp-ginf.dat}
+
+\subsection{neo2\_config.h5}
+Contains the settings (from neo2.in) of the run, as well as the hash of
+the git version from which the code was build. To support this, also
+some of the cmake build variables are included.
+This means some of the fields (the /metadata group) should be
+excluded when comparing different runs.
+
+The namelists are recreated as groups.
+
+\subsection{phi\_placement\_problem.dat}
+
+\subsection{qfmin1.dat}
+\subsection{qfmin2.dat}
+\subsection{qfmin3.dat}
+\subsection{qfplu1.dat}
+\subsection{qfplu2.dat}
+\subsection{qfplu3.dat}
+
+\subsection{SourceAa123m\_Cm.dat}
+
+\subsection{taginfo.h5}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Quasilinear version}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{collop.h5}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{eta\_ori.dat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{evolve.dat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{*.sp.chk.dat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{*.sp.cur.dat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{*.sp.dat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{*.sp.log.dat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{MatrixD\_mmp-gee.dat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{MatrixI\_mmp-gee.dat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{MatrixNu\_mmp-gee.dat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{MatrixNu\_mmp-ginf.dat}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{neo2\_config.h5}
+Note that this file is not written in the multispecies case.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{precom\_collop.h5}
+
+\paragraph{Amm}
+
+\paragraph{C\_m}
+
+\paragraph{M\_transform\_}
+
+\paragraph{M\_transform\_inv}
+
+\paragraph{ailmm\_aa}
+
+\paragraph{anumm\_aa}
+
+\paragraph{asource}
+
+\paragraph{denmm\_aa}
+
+\paragraph{meta}
+Here the values of some of the input variables are documented.
+
+\paragraph{version}
+
+\paragraph{weightden}
+
+\paragraph{weightdenerg}
+
+\paragraph{weightlag}
+
+\paragraph{weightparflow}
+
+\paragraph{x1mm}
+
+\paragraph{x2mm}
