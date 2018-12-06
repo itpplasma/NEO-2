@@ -748,94 +748,122 @@ SUBROUTINE neo_init_fluxsurface
 
 END SUBROUTINE neo_init_fluxsurface
 
-SUBROUTINE neo_read_control
-! Read Control File
-!***********************************************************************
-! Modules
-!***********************************************************************
-  USE neo_units
-  USE neo_control
-  USE neo_input
-  USE neo_exchange
-  USE sizey_bo
-  USE sizey_cur
-  USE sizey_pla
-  USE neo_van
-!***********************************************************************
-! Local definitions
-!***********************************************************************
-  IMPLICIT NONE
+  !> Read/write namelist neoin from/to file neo2.in.
+  subroutine neo_read_control(lsw_write)
 
-  integer :: i,n ! loop/count variables
-  integer :: ios ! input/output status
-  integer, dimension(3) :: iarr ! Help array, used in some cases to temporaly store some information.
-  real(kind=dp) :: jperp_eps ! Name in input file for variable gamma_eps.
+    !*******************************************************************
+    ! Modules
+    !*******************************************************************
+    use neo_units
+    use neo_control
+    use neo_input
+    use neo_exchange
+    use sizey_bo
+    use sizey_cur
+    use sizey_pla
+    use neo_van
+    !*******************************************************************
+    ! Local definitions
+    !*******************************************************************
+    implicit none
 
-  namelist /neoin/                                                     &
-       acc_req, alpha_cur, bmin_tol, calc_cur, calc_eps, calc_fourier, &
-       calc_nstep_max, calc_pla, calc_van, chk_swi, cutoff_cur_int,    &
-       delta_cur_fac, eout_swi, eval_mode, fluxs_arr, fluxs_interp,    &
-       g11_swi, jperp_eps, in_file, inp_swi, lab_swi, lambda_alpha,    &
-       lambda_fac, lamup_pla, li_minima, max_m_mode, max_n_mode,       &
-       multra, no_bins, no_fluxs, no_gamma, no_minima, npart,          &
-       npart_cur, npart_pla, nstep_max, nstep_min, nstep_per,          &
-       nufac_pla, phi_eps, phi_n, ref_swi, s_end, s_num, spline_test,  &
-       s_start, tau_max_iter, tau_num, temp_e, theta_n, v_num_mm,      &
-       v_nper, v_phi0, v_steps, v_theta0, write_cur_disp,              &
-       write_cur_inte, write_diagnostic, write_integrate,              &
-       write_output_files, write_pla_inte, write_progress
+    logical, optional, intent(in) :: lsw_write
 
-!***********************************************************************
-! Open input-unit and read data
-!***********************************************************************
-  OPEN(unit=r_u1,file='neo2.in',status='old',form='formatted')
+    integer :: i,n ! loop/count variables
+    integer :: ios ! input/output status
+    integer, dimension(3) :: iarr ! Help array, used in some cases to temporaly store some information.
+    real(kind=dp) :: jperp_eps ! Name in input file for variable gamma_eps.
+    logical :: lsw_write_local, lsw_opened
+    integer :: output_unit
 
-  read(r_u1, nml=neoin, iostat=ios)
-  if (ios .NE. 0) then
-    write(*,*)
-    write(*,*) 'WARNING: group neoin in neo2.in cannot be READ!'
-    write(*,*)
-  end if
+    namelist /neoin/                                                  &
+      acc_req, alpha_cur, bmin_tol, calc_cur, calc_eps, calc_fourier, &
+      calc_nstep_max, calc_pla, calc_van, chk_swi, cutoff_cur_int,    &
+      delta_cur_fac, eout_swi, eval_mode, fluxs_arr, fluxs_interp,    &
+      g11_swi, jperp_eps, in_file, inp_swi, lab_swi, lambda_alpha,    &
+      lambda_fac, lamup_pla, li_minima, max_m_mode, max_n_mode,       &
+      multra, no_bins, no_fluxs, no_gamma, no_minima, npart,          &
+      npart_cur, npart_pla, nstep_max, nstep_min, nstep_per,          &
+      nufac_pla, phi_eps, phi_n, ref_swi, s_end, s_num, spline_test,  &
+      s_start, tau_max_iter, tau_num, temp_e, theta_n, v_num_mm,      &
+      v_nper, v_phi0, v_steps, v_theta0, write_cur_disp,              &
+      write_cur_inte, write_diagnostic, write_integrate,              &
+      write_output_files, write_pla_inte, write_progress
 
-  if (fluxs_interp .EQ. 0) then
-    if (no_fluxs .LT. 0) then
-      iarr = fluxs_arr(1:3)
-      no_fluxs = (iarr(2)-iarr(1))/iarr(3) + 1
-      n = 0
-      do i = iarr(1),iarr(2),iarr(3)
-        n = n + 1
-        fluxs_arr(n) = i
-      end do
+    lsw_write_local = .false.
+    if (present(lsw_write)) then
+      lsw_write_local = lsw_write
     end if
-  else
-     n = 1000
-     do i = 1,s_num
-        n = n + 1
-        fluxs_arr(i) = n
-     end do
-     no_fluxs = s_num
-  end if
-  no_fluxs_s = no_fluxs
 
-  if (no_minima .LT. 0) then
-    iarr = li_minima(1:3)
-    no_minima = (iarr(2)-iarr(1))/iarr(3) + 1
+    if (.not. lsw_write_local) then
 
-    n = 0
-    do i = iarr(1),iarr(2),iarr(3)
-      n = n + 1
-      li_minima(n) = i
-    end do
-  end if
+      !***********************************************************************
+      ! Open input-unit and read data
+      !***********************************************************************
+      open(unit=r_u1, file='neo2.in', status='old', form='formatted')
 
-  gamma_eps = jperp_eps
+      read(r_u1, nml=neoin, iostat=ios)
+      if (ios .NE. 0) then
+        write(*,*)
+        write(*,*) 'WARNING: group neoin in neo2.in cannot be READ!'
+        write(*,*)
+      end if
 
-  close (unit=r_u1)
+      if (fluxs_interp .EQ. 0) then
+        if (no_fluxs .LT. 0) then
+          iarr = fluxs_arr(1:3)
+          no_fluxs = (iarr(2)-iarr(1))/iarr(3) + 1
+          n = 0
+          do i = iarr(1),iarr(2),iarr(3)
+            n = n + 1
+            fluxs_arr(n) = i
+          end do
+        end if
+      else
+         n = 1000
+         do i = 1,s_num
+            n = n + 1
+            fluxs_arr(i) = n
+         end do
+         no_fluxs = s_num
+      end if
+      no_fluxs_s = no_fluxs
 
-! **********************************************************************
-  RETURN
+      if (no_minima .LT. 0) then
+        iarr = li_minima(1:3)
+        no_minima = (iarr(2)-iarr(1))/iarr(3) + 1
 
-END SUBROUTINE neo_read_control
+        n = 0
+        do i = iarr(1),iarr(2),iarr(3)
+          n = n + 1
+          li_minima(n) = i
+        end do
+      end if
+
+      gamma_eps = jperp_eps
+
+      close (unit=r_u1)
+    else
+      ! Check if the file is already open, and if so get the unit. If it
+      ! not already opened, open it.
+      inquire(file='neo2.in', opened=lsw_opened, number=output_unit)
+      if (.not. lsw_opened) then
+        open(unit=output_unit, file='neo2.in', status='old', form='formatted')
+      end if
+      write(output_unit, nml=neoin, iostat=ios)
+      if (ios .ne. 0) then
+        write(*,*) 'WARNING: group neoin in neo2.in cannot be WRITTEN!'
+        write(*,*) ''
+        stop
+      end if
+      ! If we opened the file, we have to close it.
+      if (.not. lsw_opened) then
+        close(unit=output_unit)
+      end if
+    end if
+
+
+  end subroutine neo_read_control
 ! **********************************************************************
 
 SUBROUTINE neo_read

@@ -667,9 +667,10 @@ PROGRAM neo2_ql
               STOP
            END IF
            !! End Modification by Andreas F. Martitsch (17.07.2014)
+           call neo_read_control(.true.)
         END IF
         CLOSE(unit=u1)
-        !
+
         ! go back to initial directory
         CALL chdir('..')
         !
