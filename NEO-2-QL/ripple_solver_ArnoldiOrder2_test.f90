@@ -5437,49 +5437,46 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !!$  fnew=fnew-coefincompr*source_vector(:,4)
 !
   END SUBROUTINE next_iteration
-!
+
 !---------------------------------------------------------------------------------
-!
-!  subroutine iterator(mode_in,n,narn,relerr,itermax,result,next_iteration)
+!> \brief Solves the equation f=Af+q where A is a matrix and q is a given vector.
+!>
+!> Iterates the system which may be unstable at direct iterations
+!> using subtraction of unstable eigenvectors. Iterations are terminated
+!> when relative error, defined as $\sum(|f_n-f_{n-1}|)/\sum(|f_n|)$
+!> is below the input value or maximum number of combined iterations
+!> is reached.
+!>
+!> Input  parameters:
+!>            Formal: mode_in        - iteration mode (0 - direct iterations,
+!>                                                         "next_iteration" provides Af
+!>                                                         and q is provided as an input via
+!>                                                         "result"
+!>                                                     1 - "next_iteration" provides Af+q,
+!>                                                     2 - "next_iteration" provides Af
+!>                                                         and q is provided as an input via
+!>                                                         "result", preconditioner stays
+!>                                                         allocated. If the routine is
+!>                                                         re-entered with this mode, old
+!>                                                         preconditioner is used
+!>                                                     3 - just dealocates preconditioner
+!>                    n              - system size
+!>                    narn           - maximum number of Arnoldi iterations
+!>                    relerr         - relative error
+!>                    itermax        - maximum number of combined iterations
+!>                    result         - used as an input in mode_in=2
+!>          External: next_iteration - routine computing next iteration, "fnew",
+!>                                     of the solution from the previous, "fold",
+!>                                          fnew = A fold + q
+!>                                     in case of mode_in=2
+!>                                          fnew = A fold
+!>                                     call next_iteration(n,fold,fnew)
+!>                                     where "n" is a vector size
+!>
+!> Output parameters:
+!>            Formal: result         - solution vector
   SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT)
-!
-! Solves the equation f=Af+q where A is a matrix and q is a given vector
-!
-! Iterates the system which may be unstable at direct iterations
-! using subtraction of unstable eigenvectors. Iterations are terminated
-! when relative error, defined as $\sum(|f_n-f_{n-1}|)/\sum(|f_n|)$ 
-! is below the input value or maximum number of combined iterations 
-! is reached.
-!
-! Input  parameters:
-!            Formal: mode_in        - iteration mode (0 - direct iterations,
-!                                                         "next_iteration" provides Af
-!                                                         and q is provided as an input via
-!                                                         "result"
-!                                                     1 - "next_iteration" provides Af+q,
-!                                                     2 - "next_iteration" provides Af
-!                                                         and q is provided as an input via
-!                                                         "result", preconditioner stays
-!                                                         allocated. If the routine is 
-!                                                         re-entered with this mode, old
-!                                                         preconditioner is used
-!                                                     3 - just dealocates preconditioner
-!                    n              - system size
-!                    narn           - maximum number of Arnoldi iterations
-!                    relerr         - relative error
-!                    itermax        - maximum number of combined iterations
-!                    result         - used as an input in mode_in=2
-!          External: next_iteration - routine computing next iteration, "fnew",
-!                                     of the solution from the previous, "fold",
-!                                          fnew = A fold + q
-!                                     in case of mode_in=2
-!                                          fnew = A fold
-!                                     call next_iteration(n,fold,fnew)
-!                                     where "n" is a vector size
-!
-! Output parameters:
-!            Formal: result         - solution vector
-!
+
   USE arnoldi_mod, ONLY : tol,ngrow,eigvecs,ierr,ntol,fzero,mode,ritznum
 !
   IMPLICIT NONE
@@ -5705,31 +5702,28 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   IF(mode.EQ.1) DEALLOCATE(eigvecs,ritznum)
 !
   END SUBROUTINE iterator
-!
+
 !-----------------------------------------------------------------------------
-!
-!  subroutine arnoldi(n,mmax,next_iteration)
+!> Computes m Ritz eigenvalues (approximations to extreme eigenvalues)
+!> of the iteration procedure of the vector with dimension n.
+!> Eigenvalues are computed by means of Arnoldi iterations.
+!> Optionally computes Ritz vectors (approximation to eigenvectors).
+!>
+!> Input  parameters:
+!> Formal:             n              - system dimension
+!>                     mmax           - maximum number of Ritz eigenvalues
+!> Module arnoldi_mod: tol            - eigenvectors are not computed for
+!>                                      eigenvalues smaller than this number
+!> External:           next_iteration - routine computing next iteration
+!>                                      of the solution from the previous
+!> Output parameters:
+!> Module arnoldi_mod: ngrow          - number of eigenvalues larger or equal
+!>                                      to TOL
+!>                     ritznum        - Ritz eigenvalues
+!>                     eigvecs        - array of eigenvectors, size - (m,ngrow)
+!>                     ierr           - error code (0 - normal work, 1 - error)
   SUBROUTINE arnoldi(n,mmax)
-!
-! Computes m Ritz eigenvalues (approximations to extreme eigenvalues)
-! of the iteration procedure of the vector with dimension n.
-! Eigenvalues are computed by means of Arnoldi iterations.
-! Optionally computes Ritz vectors (approximation to eigenvectors).
-!
-! Input  parameters:
-! Formal:             n              - system dimension
-!                     mmax           - maximum number of Ritz eigenvalues
-! Module arnoldi_mod: tol            - eigenvectors are not computed for 
-!                                      eigenvalues smaller than this number 
-! External:           next_iteration - routine computing next iteration
-!                                      of the solution from the previous
-! Output parameters:
-! Module arnoldi_mod: ngrow          - number of eigenvalues larger or equal
-!                                      to TOL
-!                     ritznum        - Ritz eigenvalues
-!                     eigvecs        - array of eigenvectors, size - (m,ngrow) 
-!                     ierr           - error code (0 - normal work, 1 - error)
-!
+
   USE arnoldi_mod, ONLY : ngrow,tol,fzero,eigvecs,ierr,ntol,ritznum,mode
 !
   IMPLICIT NONE
@@ -5889,23 +5883,22 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
 !---------------------------------------------------------------------------------
 !
+!> Computes eigenvalues, ritznum, of the upper Hessenberg matrix hmat
+!> of the dimension (m,m), orders eigenvelues into the decreasing by module
+!> sequence and computes the eigenvectors, eigh, for eigenvalues exceeding
+!> the tolerance tol (number of these eigenvalues is ngrow)
+!>
+!> Input arguments:
+!>          Formal: m        - matrix size
+!>                  tol      - tolerance
+!>                  hmat     - upper Hessenberg matrix
+!> Output arguments:
+!>          Formal: ngrow    - number of exceeding the tolerance
+!>                  ritznum  - eigenvalues
+!>                  eigh     - eigenvectors
+!>                  ierr     - error code (0 - normal work)
   SUBROUTINE try_eigvecvals(m,tol,hmat,ngrow,ritznum,eigh,ierr)
-!
-! Computes eigenvalues, ritznum, of the upper Hessenberg matrix hmat 
-! of the dimension (m,m), orders eigenvelues into the decreasing by module 
-! sequence and computes the eigenvectors, eigh, for eigenvalues exceeding 
-! the tolerance tol (number of these eigenvalues is ngrow)
-!
-! Input arguments:
-!          Formal: m        - matrix size
-!                  tol      - tolerance
-!                  hmat     - upper Hessenberg matrix
-! Output arguments:
-!          Formal: ngrow    - number of exceeding the tolerance
-!                  ritznum  - eigenvalues
-!                  eigh     - eigenvectors
-!                  ierr     - error code (0 - normal work)
-!
+
   IMPLICIT NONE
 !
   INTEGER :: m,ngrow,ierr,k,j,lwork,info
