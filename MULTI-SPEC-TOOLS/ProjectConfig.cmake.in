@@ -5,5 +5,5 @@ set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 set(PROJLIBS /proj/plasma/Libs/)
 
 ### HDF5
-set(NEO2_Libs /proj/plasma/Neo2/Libs/hdf5_tools/Build-Debian9/)
+set(NEO2_Libs /proj/plasma/Neo2/Libs/hdf5_tools/Build/ CACHE STRING "NEO2 HDF5 path")
 set(NEO2_Inc ${NEO2_Libs}/OBJ/)
