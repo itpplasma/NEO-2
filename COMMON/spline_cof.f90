@@ -107,7 +107,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   END INTERFACE
 
   INTEGER(I4B), PARAMETER :: VAR = 7
-  INTEGER(I4B)            :: dim
+  INTEGER(I4B)            :: size_dimension
   INTEGER(I4B)            :: i_alloc, info
   INTEGER(I4B)            :: len_x, len_indx
   INTEGER(I4B)            :: i, j, l, ii, ie
@@ -121,13 +121,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
   len_x    = SIZE(x)
   len_indx = SIZE(indx)
-  dim = VAR * len_indx - 2
+  size_dimension = VAR * len_indx - 2
 
-  ALLOCATE(MA(dim, dim),  stat = i_alloc)
+  ALLOCATE(MA(size_dimension, size_dimension),  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Allocation for arrays 1 failed!'
-  ALLOCATE(inh(dim), indx_lu(dim),  stat = i_alloc)
+  ALLOCATE(inh(size_dimension), indx_lu(size_dimension),  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Allocation for arrays 2 failed!'
-  ALLOCATE(simqa(dim*dim),  stat = i_alloc)
+  ALLOCATE(simqa(size_dimension*size_dimension),  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Allocation for arrays 3 failed!'
   ALLOCATE(lambda(SIZE(lambda1)),  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Allocation for lambda failed!'
