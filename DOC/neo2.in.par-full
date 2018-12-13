@@ -70,9 +70,22 @@
 /
 
 &collision
-  collop_base_prj = 11  ! [0]
-  collop_base_exp = 11  ! [0]
-  collop_bspline_dist = 1.0d0 ! [1.0d0]
+  ! Projection base for basis function expansion.
+  ! 0: Generalized Laguerre polynomials of order $3/2$ [default].
+  ! 1: Standard polynomials $\phi_m(x) = x^m$.
+  ! 2: Quadratic polynomials $\phi_m(x) = x^{2m}$.
+  ! 10: Cubic Splines generated from a $y_m = (0, 0, ..., 1, ..., 0)$ grid.
+  ! 11: General B-Splines (best choice).
+  collop_base_prj = 11 ! [0]
+  collop_base_exp = 11 ! Expansion base for basis function expansion. See
+                       ! \verb|collop_base_prj| for parameters. At the
+                       ! moment it was only tested for
+                       ! \verb|collop_base_prj = collop_base_exp|. [0]
+  collop_bspline_dist = 1.0 ! This parameter was introduces for testing a
+                            ! non-uniform knot distribution for
+                            ! B-Splines. Default value is $1$ which
+                            ! defines a uniform knot distribution (best
+                            ! choice). [1.0d0]
   collop_bspline_order = 2 ! According to the B-Spline definition this is
                            ! the order parameter $k$. As an example $k=3$
                            ! creates quadratic B-Splines and $k=4$ cubic
