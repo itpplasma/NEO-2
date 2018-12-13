@@ -351,7 +351,8 @@ PROGRAM neo2_ql
      END IF
      CLOSE(unit=u1)
   END DO
-  ! PAUSE
+
+  call check()
 
   !! Modification by Andreas F. Martitsch (20.02.2017)
   ! Prepare  multi-species computations for a given profile
@@ -1326,5 +1327,21 @@ CONTAINS
     T_nbi  = 70d3
     m_nbi  = 3.343583719d-24
   end subroutine set_default_values
+
+  subroutine check()
+    if (any(t_vec < 0.0)) then
+      write(*,*) 'ERROR: negative temperature.'
+      write(*,*) '  Temperature should be >= 0'
+      write(*,*) 'Aborting...'
+      stop
+    end if
+
+    if (any(n_vec < 0.0)) then
+      write(*,*) 'ERROR: negative density.'
+      write(*,*) '  Density should be >= 0'
+      write(*,*) 'Aborting...'
+      stop
+    end if
+  end subroutine check
 
 END PROGRAM neo2_ql

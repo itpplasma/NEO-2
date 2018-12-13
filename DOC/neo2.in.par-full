@@ -70,9 +70,22 @@
 /
 
 &collision
-  collop_base_prj = 11  ! [0]
-  collop_base_exp = 11  ! [0]
-  collop_bspline_dist = 1.0d0 ! [1.0d0]
+  ! Projection base for basis function expansion.
+  ! 0: Generalized Laguerre polynomials of order $3/2$ [default].
+  ! 1: Standard polynomials $\phi_m(x) = x^m$.
+  ! 2: Quadratic polynomials $\phi_m(x) = x^{2m}$.
+  ! 10: Cubic Splines generated from a $y_m = (0, 0, ..., 1, ..., 0)$ grid.
+  ! 11: General B-Splines (best choice).
+  collop_base_prj = 11 ! [0]
+  collop_base_exp = 11 ! Expansion base for basis function expansion. See
+                       ! \verb|collop_base_prj| for parameters. At the
+                       ! moment it was only tested for
+                       ! \verb|collop_base_prj = collop_base_exp|. [0]
+  collop_bspline_dist = 1.0 ! This parameter was introduces for testing a
+                            ! non-uniform knot distribution for
+                            ! B-Splines. Default value is $1$ which
+                            ! defines a uniform knot distribution (best
+                            ! choice). [1.0d0]
   collop_bspline_order = 2 ! According to the B-Spline definition this is
                            ! the order parameter $k$. As an example $k=3$
                            ! creates quadratic B-Splines and $k=4$ cubic
@@ -129,7 +142,7 @@
   lsw_save_spitf = .true. ! [.true.]
   mag_infotalk = .FALSE.  ! [.true.]
   mag_talk = .FALSE.      ! [.true.]
-  mag_write_hdf5 = .true. ! [.false.]
+  mag_write_hdf5 = .true. ! If true, write output magnetics.h5 [.false.]
   prop_binary = 0         ! 0: no binary joining (propagators in each
                           !   period are joined, as soon as periods are
                           !   ready they are joined) [default]
@@ -193,7 +206,7 @@
   magnetic_device = 1      ! 0: Tokamak
                            ! 1: Stellerator [default]
   mag_nperiod_min = 1      ! minimum number of periods [300]
-  mag_save_memory = 0      ! saving memory [1]
+  mag_save_memory = 0      ! Not used at the moment [1]
   mag_start_special=0      ! 0: original [default]
                            ! 1: abs max
                            ! 2: abs min

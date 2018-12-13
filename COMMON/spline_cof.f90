@@ -25,52 +25,45 @@
 !
 ! DATE:   05.07.2001
 
-
+!> compute coefs for smoothing spline with leading function f(x)
+!> positions of intervals are given by indx
+!>
+!> if dabs(c1) > 1e30 -> c1 = 0.0D0
+!> if dabs(cn) > 1e30 -> cn = 0.0D0
+!>
+!> INPUT:
+!>     INTEGER(I4B) ,       DIMENSION(len_indx) :: indx ... index vector
+!>                                             contains index of grid points
+!>                                             ATTENTION:
+!>                                             x(1),y(1) and x(len_x),y(len_x)
+!>                                             must be gridpoints!!!
+!>     REAL (kind=dp), DIMENSION(len_x) :: x ...... x values
+!>     REAL (kind=dp), DIMENSION(len_x) :: y ...... y values
+!>     REAL (kind=dp)                :: c1, cn .... 1. and last 2. derivative
+!>     REAL (kind=dp), DIMENSION(len_indx) :: lambda . weight for 3. derivative
+!>     INTEGER(I4B)                        :: sw1 ....
+!>                                               = 1 -> c1 = 1. deriv 1. point
+!>                                               = 2 -> c1 = 2. deriv 1. point
+!>                                               = 3 -> c1 = 1. deriv N. point
+!>                                               = 4 -> c1 = 2. deriv N. point
+!>     INTEGER(I4B)                         :: sw2 ....
+!>                                               = 1 -> cn = 1. deriv 1. point
+!>                                               = 2 -> cn = 2. deriv 1. point
+!>                                               = 3 -> cn = 1. deriv N. point
+!>                                               = 4 -> cn = 2. deriv N. point
+!>     REAL (kind=dp)                :: m ...... powers of leading term
+!>     REAL (kind=dp)                :: f ...... test function
+!>
+!> OUTPUT:
+!>     REAL (kind=dp), DIMENSION(len_indx) :: a, b, c, d ... spline coefs
+!>
+!> INTERNAL:
+!>     INTEGER(I4B), PARAMETER :: VAR = 7 ... no of variables
+!>
+!> NEEDS:
+!>     solve_systems, calc_opt_lambda3
 SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
      a, b, c, d, m, f)
-
-!-----------------------------------------------------------------------
-! 
-! compute coefs for smoothing spline with leading function f(x)
-! positions of intervals are given by indx 
-!
-! if dabs(c1) > 1e30 -> c1 = 0.0D0
-! if dabs(cn) > 1e30 -> cn = 0.0D0
-!
-! INPUT:
-!     INTEGER(I4B) ,       DIMENSION(len_indx) :: indx ... index vector
-!                                             contains index of grid points
-!                                             ATTENTION: 
-!                                             x(1),y(1) and x(len_x),y(len_x)
-!                                             must be gridpoints!!!
-!     REAL (kind=dp), DIMENSION(len_x) :: x ...... x values
-!     REAL (kind=dp), DIMENSION(len_x) :: y ...... y values
-!     REAL (kind=dp)                :: c1, cn .... 1. and last 2. derivative
-!     REAL (kind=dp), DIMENSION(len_indx) :: lambda . weight for 3. derivative
-!     INTEGER(I4B)                        :: sw1 .... 
-!                                               = 1 -> c1 = 1. deriv 1. point
-!                                               = 2 -> c1 = 2. deriv 1. point
-!                                               = 3 -> c1 = 1. deriv N. point
-!                                               = 4 -> c1 = 2. deriv N. point
-!     INTEGER(I4B)                         :: sw2 .... 
-!                                               = 1 -> cn = 1. deriv 1. point
-!                                               = 2 -> cn = 2. deriv 1. point
-!                                               = 3 -> cn = 1. deriv N. point
-!                                               = 4 -> cn = 2. deriv N. point
-!     REAL (kind=dp)                :: m ...... powers of leading term
-!     REAL (kind=dp)                :: f ...... test function
-!
-! OUTPUT:
-!     REAL (kind=dp), DIMENSION(len_indx) :: a, b, c, d ... spline coefs
-!
-! INTERNAL:
-!     INTEGER(I4B), PARAMETER :: VAR = 7 ... no of variables
-!
-! NEEDS:
-!     solve_systems, calc_opt_lambda3
-!
-!-----------------------------------------------------------------------
-!
 !-----------------------------------------------------------------------
 ! Modules
 !-----------------------------------------------------------------------
@@ -107,7 +100,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   END INTERFACE
 
   INTEGER(I4B), PARAMETER :: VAR = 7
-  INTEGER(I4B)            :: dim
+  INTEGER(I4B)            :: size_dimension
   INTEGER(I4B)            :: i_alloc, info
   INTEGER(I4B)            :: len_x, len_indx
   INTEGER(I4B)            :: i, j, l, ii, ie
@@ -118,21 +111,47 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   REAL(DP)                :: help_a, help_b, help_c, help_d
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: MA
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: inh, simqa, lambda, omega
+  character(200) :: error_message
 
   len_x    = SIZE(x)
   len_indx = SIZE(indx)
-  dim = VAR * len_indx - 2
+  size_dimension = VAR * len_indx - 2
 
-  ALLOCATE(MA(dim, dim),  stat = i_alloc)
-  IF(i_alloc /= 0) STOP 'splinecof3: Allocation for arrays 1 failed!'
-  ALLOCATE(inh(dim), indx_lu(dim),  stat = i_alloc)
-  IF(i_alloc /= 0) STOP 'splinecof3: Allocation for arrays 2 failed!'
-  ALLOCATE(simqa(dim*dim),  stat = i_alloc)
-  IF(i_alloc /= 0) STOP 'splinecof3: Allocation for arrays 3 failed!'
-  ALLOCATE(lambda(SIZE(lambda1)),  stat = i_alloc)
-  IF(i_alloc /= 0) STOP 'splinecof3: Allocation for lambda failed!'
-  ALLOCATE(omega(SIZE(lambda1)),  stat = i_alloc)
-  IF(i_alloc /= 0) STOP 'splinecof3: Allocation for omega failed!'
+  ALLOCATE(MA(size_dimension, size_dimension),  stat = i_alloc, errmsg=error_message)
+  if(i_alloc /= 0) then
+    write(*,*) 'splinecof3: Allocation for array ma failed with error message:'
+    write(*,*) error_message
+    write(*,*) 'size should be ', size_dimension, ' x ', size_dimension
+    stop
+  end if
+  ALLOCATE(inh(size_dimension), indx_lu(size_dimension),  stat = i_alloc, errmsg=error_message)
+  if(i_alloc /= 0) then
+    write(*,*) 'splinecof3: Allocation for arrays inh and indx_lu failed with error message:'
+    write(*,*) error_message
+    write(*,*) 'size should be ', size_dimension
+    stop
+  end if
+  ALLOCATE(simqa(size_dimension*size_dimension),  stat = i_alloc, errmsg=error_message)
+  if(i_alloc /= 0) then
+    write(*,*) 'splinecof3: Allocation for array simqa failed with error message:'
+    write(*,*) error_message
+    write(*,*) 'size should be ', size_dimension*size_dimension
+    stop
+  end if
+  ALLOCATE(lambda(SIZE(lambda1)),  stat = i_alloc, errmsg=error_message)
+  if(i_alloc /= 0) then
+    write(*,*) 'splinecof3: Allocation for array lambda failed with error message:'
+    write(*,*) error_message
+    write(*,*) 'size should be ', size(lambda1)
+    stop
+  end if
+  ALLOCATE(omega(SIZE(lambda1)),  stat = i_alloc, errmsg=error_message)
+  if(i_alloc /= 0) then
+    write(*,*) 'splinecof3: Allocation for array omega failed with message:'
+    write(*,*) error_message
+    write(*,*) 'size should be ', size(lambda1)
+    stop
+  end if
 !-----------------------------------------------------------------------
 
   IF ( .NOT. ( SIZE(x) == SIZE(y) ) ) THEN
@@ -610,26 +629,17 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
 END SUBROUTINE splinecof3_a
 
-
-
-
+!> reconstruct spline coefficients (a, b, c, d) on x(i)
+!>
+!> h := (x - x_i)
+!>
+!> INPUT:
+!>  REAL(DP)                :: ai, bi, ci, di ... old coefs
+!>  REAL(DP)                :: h ................ h := x(i) - x(i-1)
+!>
+!> OUTPUT:
+!>  REAL(DP)                :: a, b, c, d ....... new coefs
 SUBROUTINE reconstruction3_a(ai, bi, ci, di, h, a, b, c, d)
-
-!-----------------------------------------------------------------------
-! 
-! reconstruct spline coefficients (a, b, c, d) on x(i)
-! h := (x - x_i)
-!
-! INPUT:
-!  REAL(DP)                :: ai, bi, ci, di ... old coefs
-!  REAL(DP)                :: h ................ h := x(i) - x(i-1)
-!
-! OUTPUT:
-!  REAL(DP)                :: a, b, c, d ....... new coefs
-!
-!
-!-----------------------------------------------------------------------
-!
 !-----------------------------------------------------------------------
 ! Modules
 !-----------------------------------------------------------------------
@@ -653,46 +663,37 @@ SUBROUTINE reconstruction3_a(ai, bi, ci, di, h, a, b, c, d)
 
 END SUBROUTINE reconstruction3_a
 
-
-
-
+!> driver routine for splinecof3 ; used for Rmn, Zmn
+!>
+!> INPUT:
+!>     INTEGER(I4B), DIMENSION(len_indx) :: indx ... index vector
+!>                                             contains index of grid points
+!>     REAL(DP),     DIMENSION(no) :: x ...... x values
+!>     REAL(DP),     DIMENSION(no) :: y ...... y values
+!>     REAL(DP)                    :: c1, cn . 1. and last 2. derivative
+!>     REAL(DP),     DIMENSION(ns) :: lambda . weight for 3. derivative
+!>     INTEGER(I4B), DIMENSION(ns) :: w ...... weight for point (0,1)
+!>     INTEGER(I4B)                :: sw1 .... = 1 -> c1 = 1. deriv 1. point
+!>                                             = 2 -> c1 = 2. deriv 1. point
+!>                                             = 3 -> c1 = 1. deriv N. point
+!>                                             = 4 -> c1 = 2. deriv N. point
+!>     INTEGER(I4B)                :: sw2 .... = 1 -> cn = 1. deriv 1. point
+!>                                             = 2 -> cn = 2. deriv 1. point
+!>                                             = 3 -> cn = 1. deriv N. point
+!>                                             = 4 -> cn = 2. deriv N. point
+!>     REAL(DP)                :: m ...... powers of leading term
+!>     REAL(DP)                :: f ...... test function
+!>
+!> OUTPUT:
+!>     REAL(DP), DIMENSION(ns) :: a ...... spline coefs
+!>     REAL(DP), DIMENSION(ns) :: b ...... spline coefs
+!>     REAL(DP), DIMENSION(ns) :: c ...... spline coefs
+!>     REAL(DP), DIMENSION(ns) :: d ...... spline coefs
+!>
+!> INTERNAL:
+!>     INTEGER(I4B), PARAMETER :: VAR = 7 ... no of variables
 SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
      sw1, sw2, a, b, c, d, m, f)
-
-!-----------------------------------------------------------------------
-! 
-! driver routine for splinecof3 ; used for Rmn, Zmn
-!
-! INPUT:
-!     INTEGER(I4B) ,       DIMENSION(len_indx)  :: indx ... index vector
-!                                             contains index of grid points
-!     REAL(DP),     DIMENSION(no) :: x ...... x values
-!     REAL(DP),     DIMENSION(no) :: y ...... y values
-!     REAL(DP)                    :: c1, cn . 1. and last 2. derivative
-!     REAL(DP),     DIMENSION(ns) :: lambda . weight for 3. derivative
-!     INTEGER(I4B), DIMENSION(ns) :: w ...... weight for point (0,1)
-!     INTEGER(I4B)                :: sw1 .... = 1 -> c1 = 1. deriv 1. point
-!                                             = 2 -> c1 = 2. deriv 1. point
-!                                             = 3 -> c1 = 1. deriv N. point
-!                                             = 4 -> c1 = 2. deriv N. point
-!     INTEGER(I4B)                :: sw2 .... = 1 -> cn = 1. deriv 1. point
-!                                             = 2 -> cn = 2. deriv 1. point
-!                                             = 3 -> cn = 1. deriv N. point
-!                                             = 4 -> cn = 2. deriv N. point
-!     REAL(DP)                :: m ...... powers of leading term
-!     REAL(DP)                :: f ...... test function
-!
-! OUTPUT:
-!     REAL(DP), DIMENSION(ns) :: a ...... spline coefs
-!     REAL(DP), DIMENSION(ns) :: b ...... spline coefs
-!     REAL(DP), DIMENSION(ns) :: c ...... spline coefs
-!     REAL(DP), DIMENSION(ns) :: d ...... spline coefs
-!
-! INTERNAL:
-!     INTEGER(I4B), PARAMETER :: VAR = 7 ... no of variables
-!
-!-----------------------------------------------------------------------
-!
 !-----------------------------------------------------------------------
 ! Modules
 !-----------------------------------------------------------------------
@@ -846,35 +847,26 @@ SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
 
 END SUBROUTINE splinecof3_lo_driv_a
 
-
-
-
+!> driver routine for splinecof3_lo_driv
+!>
+!> INPUT:
+!>     INTEGER(I4B) , DIMENSION(len_indx)  :: indx ... index vector
+!>                                            contains index of grid points
+!>     INTEGER(I4B),                       :: choose_rz  1: calc Rmn; 2: Zmn
+!>     REAL(DP), DIMENSION(no)        :: x ...... x values
+!>     REAL(DP), DIMENSION(no,no_cur) :: y ...... y values
+!>     REAL(DP), DIMENSION(no_cur)    :: m ...... powers of leading term
+!>     REAL(DP)                       :: f ...... test function
+!>
+!> OUTPUT:
+!>     REAL(DP), DIMENSION(ns,no_cur) :: a ...... spline coefs
+!>     REAL(DP), DIMENSION(ns,no_cur) :: b ...... spline coefs
+!>     REAL(DP), DIMENSION(ns,no_cur) :: c ...... spline coefs
+!>     REAL(DP), DIMENSION(ns,no_cur) :: d ...... spline coefs
+!> INTERNAL:
+!>     REAL(DP),     DIMENSION(ns,no_cur) :: lambda3 . weight for 3. derivative
+!>     INTEGER(I4B), DIMENSION(ns,no_cur) :: w ....... weight for point (0,1)
 SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
-
-!-----------------------------------------------------------------------
-! 
-! driver routine for splinecof3_lo_driv
-!
-! INPUT:
-!     INTEGER(I4B) , DIMENSION(len_indx)  :: indx ... index vector
-!                                            contains index of grid points
-!     INTEGER(I4B),                       :: choose_rz  1: calc Rmn; 2: Zmn
-!     REAL(DP), DIMENSION(no)        :: x ...... x values
-!     REAL(DP), DIMENSION(no,no_cur) :: y ...... y values
-!     REAL(DP), DIMENSION(no_cur)    :: m ...... powers of leading term
-!     REAL(DP)                       :: f ...... test function
-!
-! OUTPUT:
-!     REAL(DP), DIMENSION(ns,no_cur) :: a ...... spline coefs
-!     REAL(DP), DIMENSION(ns,no_cur) :: b ...... spline coefs
-!     REAL(DP), DIMENSION(ns,no_cur) :: c ...... spline coefs
-!     REAL(DP), DIMENSION(ns,no_cur) :: d ...... spline coefs
-! INTERNAL:
-!     REAL(DP),     DIMENSION(ns,no_cur) :: lambda3 . weight for 3. derivative
-!     INTEGER(I4B), DIMENSION(ns,no_cur) :: w ....... weight for point (0,1)
-!
-!-----------------------------------------------------------------------
-!
 !-----------------------------------------------------------------------
 ! Modules
 !-----------------------------------------------------------------------
@@ -942,12 +934,10 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
 
 END SUBROUTINE splinecof3_hi_driv_a
 
-
-
+!> calculate optimal weights for smooting (lambda)
+!>
+!> \attention  NO FINAL VERSION NOW!!!!!
 SUBROUTINE calc_opt_lambda3_a(x, y, lambda)
-!   NO FINAL VERSION NOW!!!!!
-! calculate optimal weights for smooting (lambda)
-!
 !-----------------------------------------------------------------------
 ! Modules
 !-----------------------------------------------------------------------

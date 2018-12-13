@@ -22,7 +22,7 @@ return_value=0
 START=0
 END=3
 
-check_absolute_if_relative_fails=yes
+check_absolute_if_relative_fails=no #yes
 
 ########################################################################
 ### Function definitions
@@ -72,7 +72,23 @@ function check_equality_hdf5 {
     else
       echo "comparing $h5file and ./`basename $h5file`"
       echo "comparison command is 'h5diff --relative=${accuracy} ${exclude_paths}'"
-      h5diff ${exclude_paths} $h5file ./`basename $h5file`
+      h5diff --relative=${accuracy} ${exclude_paths} $h5file ./`basename $h5file`
+
+      exponent=-12
+      another_round=yes
+      while [ "x$another_round" == "xyes" -a $exponent -le 1 ]  ; do
+        h5diff --relative=1.0e$exponent ${exclude_paths} -q $h5file ./`basename $h5file`
+        if [ "x$?" = "x0" ] ; then
+          another_round=no
+        else
+          #~ exponent=`let $exponent + 1`
+          exponent=$[$exponent+1]
+        fi
+      done
+      echo
+      echo "Differences are up to order of ~$exponent."
+      echo
+
       if [[ "x$check_absolute_if_relative_fails" == "xyes" ]] ; then
         # Make another check, this time with absolute differences.
         if h5diff --delta=${accuracy} ${exclude_paths} -q $h5file ./`basename $h5file` ; then
@@ -113,6 +129,11 @@ if [ ${number_processors} -eq 0 ] ; then
 else
   echo "Parallel mode np=${number_processors}"
   runcommand="mpirun -np ${number_processors} $testpath/$executablename"
+fi
+
+if [ "x${which_code}" = "xQL" ] ; then
+  END=0
+  totalnumberofstages=1
 fi
 
 numberofstage=$START

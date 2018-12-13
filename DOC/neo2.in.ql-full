@@ -228,7 +228,7 @@
  mag_nperiod_min = 1 ! Only used for stellarators. Defines the minimum
                      ! number of field periods until the field line is
                      ! closed artificially. [300]
- mag_save_memory = 0 ! saving memory [1]
+ mag_save_memory = 0 ! Not used at the moment [1]
  mag_start_special = 0 ! 0: original [default]
                        ! 1: abs max
                        ! 2: abs min

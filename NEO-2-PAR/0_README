@@ -23,3 +23,16 @@ The compiler can be change in step 3 by running
 cmake -DCMAKE_Fortran_COMPILER=ifort ..
 instead of
 cmake ..
+
+Note that if you do not use a compiler that is shipped with the
+distribution, but was compiled by the administrator, it might be
+necesserary to also change the library search path.
+E.g.
+
+cmake -D CMAKE_Fortran_COMPILER=gfortran-7.3.0 -DCMAKE_BUILD_TYPE=DEBUG ..
+
+might require to set
+
+LD_LIBRARY_PATH=/afs/itp.tugraz.at/opt/gcc/7.3.0/arch-amd64/lib64/
+
+in your ~/.bashrc

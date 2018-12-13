@@ -1562,10 +1562,10 @@ CONTAINS
     CALL h5_create(TRIM(ADJUSTL(file_name)), h5id_multispec)
     !
     ! add B-field used for normalizations and further computations
-    CALL h5_add(h5id_multispec, 'boozer_s', boozer_s)
-    CALL h5_add(h5id_multispec, 'aiota', aiota_loc)
-    CALL h5_add(h5id_multispec, 'R0', rt0)
-    CALL h5_add(h5id_multispec, 'Bref', (bmod0*1.0e4_dp))
+    CALL h5_add(h5id_multispec, 'boozer_s', boozer_s, comment='', unit='1')
+    CALL h5_add(h5id_multispec, 'aiota', aiota_loc, comment='toroidal transform, 1/q', unit='1')
+    CALL h5_add(h5id_multispec, 'R0', rt0, comment='major radius', unit='cm')
+    CALL h5_add(h5id_multispec, 'Bref', (bmod0*1.0e4_dp), comment='reference magnetic field') !< \todo Unit of Bref!
     CALL h5_add(h5id_multispec, 'psi_pr_hat', boozer_psi_pr_hat)
     CALL h5_add(h5id_multispec, 'avnabpsi', avnabpsi)
     CALL h5_add(h5id_multispec, 'sqrtg_bctrvr_tht', sqrtg_bctrvr_tht)
@@ -1583,14 +1583,14 @@ CONTAINS
     !
     ! add species tags, charge numbers, mass, temperatures,
     ! collpar, ...
-    CALL h5_add(h5id_multispec, 'num_spec', num_spec)
+    CALL h5_add(h5id_multispec, 'num_spec', num_spec, comment='number of species', unit='1')
     CALL h5_add(h5id_multispec, 'isw_coul_log', isw_coul_log)
     CALL h5_add(h5id_multispec, 'species_tag', species_tag, &
          LBOUND(species_tag), UBOUND(species_tag))
-    CALL h5_add(h5id_multispec, 'z_spec', z_spec, LBOUND(z_spec), UBOUND(z_spec))
-    CALL h5_add(h5id_multispec, 'm_spec', m_spec, LBOUND(m_spec), UBOUND(m_spec))
-    CALL h5_add(h5id_multispec, 'n_spec', n_spec, LBOUND(n_spec), UBOUND(n_spec))
-    CALL h5_add(h5id_multispec, 'T_spec', T_spec, LBOUND(T_spec), UBOUND(T_spec))
+    CALL h5_add(h5id_multispec, 'z_spec', z_spec, LBOUND(z_spec), UBOUND(z_spec), comment='charges of the species', unit='1')
+    CALL h5_add(h5id_multispec, 'm_spec', m_spec, LBOUND(m_spec), UBOUND(m_spec), comment='mass of the species', unit='g')
+    CALL h5_add(h5id_multispec, 'n_spec', n_spec, LBOUND(n_spec), UBOUND(n_spec), comment='density of the species', unit='1/cm^3')
+    CALL h5_add(h5id_multispec, 'T_spec', T_spec, LBOUND(T_spec), UBOUND(T_spec), comment='temperature of the species', unit='eV')
     CALL h5_add(h5id_multispec, 'collpar_spec', collpar_spec, &
          LBOUND(collpar_spec), UBOUND(collpar_spec))
     CALL h5_add(h5id_multispec, 'nu_star_spec', nu_star_spec, &
@@ -1649,33 +1649,51 @@ CONTAINS
          LBOUND(D32_NA_D31ref), UBOUND(D32_NA_D31ref))
     CALL h5_add(h5id_multispec, 'D33_NA_norm', D33_NA_norm, &
          LBOUND(D33_NA_norm), UBOUND(D33_NA_norm))
-    !
+
     ! add dimensional diffusion coefficients (cgs-units)
     !-> axisymmetric solution
-    CALL h5_add(h5id_multispec, 'D11_AX', D11_AX, LBOUND(D11_AX), UBOUND(D11_AX))
-    CALL h5_add(h5id_multispec, 'D12_AX', D12_AX, LBOUND(D12_AX), UBOUND(D12_AX))
-    CALL h5_add(h5id_multispec, 'D13_AX', D13_AX, LBOUND(D13_AX), UBOUND(D13_AX))
-    !
-    CALL h5_add(h5id_multispec, 'D21_AX', D21_AX, LBOUND(D21_AX), UBOUND(D21_AX))
-    CALL h5_add(h5id_multispec, 'D22_AX', D22_AX, LBOUND(D22_AX), UBOUND(D22_AX))
-    CALL h5_add(h5id_multispec, 'D23_AX', D23_AX, LBOUND(D23_AX), UBOUND(D23_AX))
-    !
-    CALL h5_add(h5id_multispec, 'D31_AX', D31_AX, LBOUND(D31_AX), UBOUND(D31_AX))
-    CALL h5_add(h5id_multispec, 'D32_AX', D32_AX, LBOUND(D32_AX), UBOUND(D32_AX))
-    CALL h5_add(h5id_multispec, 'D33_AX', D33_AX, LBOUND(D33_AX), UBOUND(D33_AX))
+    CALL h5_add(h5id_multispec, 'D11_AX', D11_AX, LBOUND(D11_AX), UBOUND(D11_AX), &
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D12_AX', D12_AX, LBOUND(D12_AX), UBOUND(D12_AX), &
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D13_AX', D13_AX, LBOUND(D13_AX), UBOUND(D13_AX), &
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+
+    CALL h5_add(h5id_multispec, 'D21_AX', D21_AX, LBOUND(D21_AX), UBOUND(D21_AX), &
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D22_AX', D22_AX, LBOUND(D22_AX), UBOUND(D22_AX), &
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D23_AX', D23_AX, LBOUND(D23_AX), UBOUND(D23_AX), &
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+
+    CALL h5_add(h5id_multispec, 'D31_AX', D31_AX, LBOUND(D31_AX), UBOUND(D31_AX), &
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D32_AX', D32_AX, LBOUND(D32_AX), UBOUND(D32_AX), &
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D33_AX', D33_AX, LBOUND(D33_AX), UBOUND(D33_AX), &
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
     !-> non-axisymmetric solution
-    CALL h5_add(h5id_multispec, 'D11_NA', D11_NA, LBOUND(D11_NA), UBOUND(D11_NA))
-    CALL h5_add(h5id_multispec, 'D12_NA', D12_NA, LBOUND(D12_NA), UBOUND(D12_NA))
-    CALL h5_add(h5id_multispec, 'D13_NA', D13_NA, LBOUND(D13_NA), UBOUND(D13_NA))
-    !
-    CALL h5_add(h5id_multispec, 'D21_NA', D21_NA, LBOUND(D21_NA), UBOUND(D21_NA))
-    CALL h5_add(h5id_multispec, 'D22_NA', D22_NA, LBOUND(D22_NA), UBOUND(D22_NA))
-    CALL h5_add(h5id_multispec, 'D23_NA', D23_NA, LBOUND(D23_NA), UBOUND(D23_NA))
-    !
-    CALL h5_add(h5id_multispec, 'D31_NA', D31_NA, LBOUND(D31_NA), UBOUND(D31_NA))
-    CALL h5_add(h5id_multispec, 'D32_NA', D32_NA, LBOUND(D32_NA), UBOUND(D32_NA))
-    CALL h5_add(h5id_multispec, 'D33_NA', D33_NA, LBOUND(D33_NA), UBOUND(D33_NA))
-    !
+    CALL h5_add(h5id_multispec, 'D11_NA', D11_NA, LBOUND(D11_NA), UBOUND(D11_NA), &
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D12_NA', D12_NA, LBOUND(D12_NA), UBOUND(D12_NA), &
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D13_NA', D13_NA, LBOUND(D13_NA), UBOUND(D13_NA), &
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+
+    CALL h5_add(h5id_multispec, 'D21_NA', D21_NA, LBOUND(D21_NA), UBOUND(D21_NA), &
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D22_NA', D22_NA, LBOUND(D22_NA), UBOUND(D22_NA), &
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D23_NA', D23_NA, LBOUND(D23_NA), UBOUND(D23_NA), &
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+
+    CALL h5_add(h5id_multispec, 'D31_NA', D31_NA, LBOUND(D31_NA), UBOUND(D31_NA), &
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D32_NA', D32_NA, LBOUND(D32_NA), UBOUND(D32_NA), &
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+    CALL h5_add(h5id_multispec, 'D33_NA', D33_NA, LBOUND(D33_NA), UBOUND(D33_NA), &
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+
     ! add radial electric field and species Mach numbers
     IF (isw_calc_Er .EQ. 1) THEN
        !
