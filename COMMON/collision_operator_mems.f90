@@ -811,21 +811,27 @@ module collop
       !call h5_define_group(h5id_collop, trim(tag_a) //'-'// trim(tag_b), h5id_species)
       call h5_define_group(h5id_collop, 'meta', h5id_meta)
 
-      call h5_add(h5id_meta, 'lag', lag)
-      call h5_add(h5id_meta, 'leg', leg)
+      call h5_add(h5id_meta, 'lag', lag, comment='number of basis functions')
+      call h5_add(h5id_meta, 'leg', leg, comment='number of legendre polynomial')
       call h5_add(h5id_meta, 'num_spec',num_spec)
       call h5_add(h5id_meta, 'scalprod_alpha', scalprod_alpha)
       call h5_add(h5id_meta, 'scalprod_beta',  scalprod_beta)
-      call h5_add(h5id_meta, 'm_spec', m_spec)
-      call h5_add(h5id_meta, 'T_spec', T_spec)
-      call h5_add(h5id_meta, 'lsw_multispecies', lsw_multispecies)
+      call h5_add(h5id_meta, 'm_spec', m_spec, comment='masses of the species', unit='g')
+      call h5_add(h5id_meta, 'T_spec', T_spec, comment='temperature of the species', unit='eV')
+      call h5_add(h5id_meta, 'lsw_multispecies', lsw_multispecies, &
+        & comment='switch for multispecies calculations')
       call h5_add(h5id_meta, 'gamma_ab', gamma_ab)
-      call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj)
-      call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp)
+      call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj, &
+        & comment='switch that determines which base is used for projection')
+      call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp, &
+        & comment='switch that determines which base is used for expansion')
       call h5_add(h5id_meta, 'phi_x_max', phi_x_max)
-      call h5_add(h5id_meta, 'isw_relativistic', isw_relativistic)
-      call h5_add(h5id_meta, 'collop_bspline_dist', collop_bspline_dist)
-      call h5_add(h5id_meta, 'collop_bspline_order', collop_bspline_order)
+      call h5_add(h5id_meta, 'isw_relativistic', isw_relativistic, &
+        & comment='determines what relativistic model is used')
+      call h5_add(h5id_meta, 'collop_bspline_dist', collop_bspline_dist, &
+        & comment='allows non-uniform grid distributions if !=1.0')
+      call h5_add(h5id_meta, 'collop_bspline_order', collop_bspline_order, &
+        & comment='order parameter k of bsplines, e.g. 3->quadratic bsplines')
       call h5_close_group(h5id_meta)
       
       
