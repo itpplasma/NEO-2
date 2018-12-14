@@ -1,0 +1,17 @@
+Executable = /usr/bin/mpiexec
+arguments = -mca orte_tmpdir_base \"/tmp/\" -np  2 ./neo_2.x
+Universe   = vanilla
+Error      = ../err.$(Process)
+Log        = ../scan.log
+run_as_owner = true
+notify_user  = buchholz@tugraz.at
+notification = Error
+nice_user    = true
+requirements = ( TARGET.UtsnameNodename != "faepop69" && TARGET.UtsnameNodename != "faepop72" )
+request_cpus = 2
+request_memory = 21*1024
+Getenv = true
+
+Output     = out
+initialdir = $(dirname)
+Queue dirname matching dirs es_*
