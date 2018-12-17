@@ -8,17 +8,19 @@ general.)
 
 Invokation as a script:
 
-hdf5tools.py fileforyaxis dataelementy fileforxaxis dataelementx
+hdf5tools.py in_filename out_filename
 
 e.g.
 
-hdf5tools.py fulltransp.h5 gamma_out neo2_config.h5 collision/conl_over_mfp
+hdf5tools.py final_neo2_multispecies_out.h5 final_neo2_multispecies_out_over_boozer_s.h5
 
-It will read from subfolders the element 'dataelementy' of the hdf5 file
-'fileforyaxis' and analog for 'dataelementx' and 'fileforxaxis'.
-It is assumed that 'dataelementy' is a matrix with at least three
-dimensions in each direction as plots for these three times three
-elements are done.
+It will read in the file 'final_neo2_multispecies_out.h5', which is
+expected to have at root only groups, which all have the same
+dataelements. Each of the groups represents the result of a simulation
+at a different value for a parameter.
+The output file will have the same dataelements at root, as the
+groups of the original file have, with the difference that they have now
+an additional dimension, for the parameter.
 """
 
 # From h5py documentation:
@@ -191,121 +193,20 @@ def reshape_hdf5_file(in_filename: str, out_filename: str):
 
     i = i + 1
 
-# Example, for how to call this as a script:
-#   hdf5tools.py fulltransp.h5 gamma_out neo2_config.h5 collision/conl_over_mfp
-#
-# This would be the same, as calling this as a script without arguments.
-# The first parameter is the file from which to take the second
-# parameter (i.e. this is the name of the variable which to plot).
-# The third and fourth parameter fulfill similar roles, just for the
-# values of the x-axes.
-# This means as default the field gamma_out is taken from the file
-# fulltransp.h5 and ploted versus conl_over_mfp from the group collision
-# in the file neo2_config.h5.
-# What can not be seen from the example, is that the field gamma_out
-# is a 3x3 array, and each component will be plotted and saved to a
-# different file.
 if __name__ == "__main__":
 
   import h5py
-  import matplotlib.pyplot as plt
-  import numpy as np
   import sys
 
   # Check input arguments for input filename.
   if (len(sys.argv) >= 2):
-    filename = sys.argv[1]
+    in_filename = sys.argv[1]
   else:
-    filename = 'fulltransp.h5'
+    in_filename = 'final_neo2_multispecies_out.h5'
 
   if (len(sys.argv) >= 3):
-    fieldname = sys.argv[2]
+    out_filename = sys.argv[2]
   else:
-    fieldname = 'gamma_out'
+    out_filename = 'final_neo2_multispecies_out_over_boozer_s.h5'
 
-  if (len(sys.argv) >= 4):
-    filename_x = sys.argv[3]
-  else:
-    filename_x = 'neo2_config.h5'
-
-  if (len(sys.argv) >= 5):
-    fieldname_x = sys.argv[4]
-  else:
-    fieldname_x = 'collision/conl_over_mfp'
-
-  d = get_hdf5data_from_subfolders('./', filename, fieldname)
-  x = get_hdf5data_from_subfolders('./', filename_x, fieldname_x)
-
-  [x, d] = sort_x_y_pairs_according_to_x(x,d)
-
-  plt.figure()
-  plt.plot(x, d[:,1-1,1-1])
-  plt.xscale('log')
-  plt.yscale('log')
-  plt.xlabel(fieldname_x)
-  plt.ylabel(fieldname + ' 11')
-  plt.savefig('gamma_11')
-
-  plt.figure()
-  plt.plot(x, d[:,1-1,2-1])
-  plt.xscale('log')
-  plt.yscale('log')
-  plt.xlabel(fieldname_x)
-  plt.ylabel(fieldname + ' 12')
-  plt.savefig('gamma_12')
-
-  plt.figure()
-  plt.plot(x, d[:,1-1,3-1])
-  plt.xscale('log')
-  plt.yscale('symlog', linthreshx=1e-9)
-  plt.xlabel(fieldname_x)
-  plt.ylabel(fieldname + ' 13')
-  plt.savefig('gamma_13')
-
-  plt.figure()
-  plt.plot(x, d[:,2-1,1-1])
-  plt.xscale('log')
-  plt.yscale('log')
-  plt.xlabel(fieldname_x)
-  plt.ylabel(fieldname + ' 21')
-  plt.savefig('gamma_21')
-
-  plt.figure()
-  plt.plot(x, d[:,2-1,2-1])
-  plt.xscale('log')
-  plt.yscale('log')
-  plt.xlabel(fieldname_x)
-  plt.ylabel(fieldname + ' 22')
-  plt.savefig('gamma_22')
-
-  plt.figure()
-  plt.plot(x, d[:,2-1,3-1])
-  plt.xscale('log')
-  plt.yscale('symlog', linthreshx=1e-9)
-  plt.xlabel(fieldname_x)
-  plt.ylabel(fieldname + ' 23')
-  plt.savefig('gamma_23')
-
-  plt.figure()
-  plt.plot(x, d[:,3-1,1-1])
-  plt.xscale('log')
-  plt.yscale('symlog', linthreshx=1e-9)
-  plt.xlabel(fieldname_x)
-  plt.ylabel(fieldname + ' 31')
-  plt.savefig('gamma_31')
-
-  plt.figure()
-  plt.plot(x, d[:,3-1,2-1])
-  plt.xscale('log')
-  plt.yscale('symlog', linthreshx=1e-9)
-  plt.xlabel(fieldname_x)
-  plt.ylabel(fieldname + ' 32')
-  plt.savefig('gamma_32')
-
-  plt.figure()
-  plt.plot(x, d[:,3-1,3-1])
-  plt.xscale('log')
-  plt.yscale('symlog', linthreshx=1e-9)
-  plt.xlabel(fieldname_x)
-  plt.ylabel(fieldname + ' 33')
-  plt.savefig('gamma_33')
+  reshape_hdf5_file(in_filename, out_filename)
