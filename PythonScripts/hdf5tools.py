@@ -182,6 +182,8 @@ def reshape_hdf5_file(in_filename: str, out_filename: str):
   for ksecond_level in list(g.keys()):
     size = (len(keys), ) + g[ksecond_level].shape
     o.create_dataset('/' + ksecond_level, shape=size, dtype=g[ksecond_level].dtype)
+    for attribute_name in list(g[ksecond_level].attrs.keys()):
+      o['/' + ksecond_level].attrs[attribute_name] = g[ksecond_level].attrs[attribute_name]
 
   # Fill in the data.
   i = 0
