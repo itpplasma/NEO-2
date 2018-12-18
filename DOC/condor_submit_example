@@ -6,7 +6,7 @@ Log        = ../scan.log
 run_as_owner = true
 notify_user  = buchholz@tugraz.at
 notification = Error
-nice_user    = true
+nice_user    = false
 requirements = ( TARGET.UtsnameNodename != "faepop69" && TARGET.UtsnameNodename != "faepop72" )
 request_cpus = 2
 request_memory = 21*1024
