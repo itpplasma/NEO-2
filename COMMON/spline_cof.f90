@@ -117,6 +117,57 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   len_indx = SIZE(indx)
   size_dimension = VAR * len_indx - 2
 
+  if ( .NOT. ( size(x) == size(y) ) ) then
+    write (*,*) 'splinecof3: assertion 1 failed'
+    stop 'program terminated'
+  end if
+  if ( .NOT. ( size(a) == size(b) .AND. size(a) == size(c) &
+       .AND.   size(a) == size(d) .AND. size(a) == size(indx) &
+       .AND.   size(a) == size(lambda1) ) ) then
+    write (*,*) 'splinecof3: assertion 2 failed'
+    stop 'program terminated'
+  end if
+
+  ! check whether points are monotonously increasing or not
+  do i = 1, len_x-1
+    if (x(i) >= x(i+1)) then
+      print *, 'SPLINECOF3: error i, x(i), x(i+1)', &
+           i, x(i), x(i+1)
+      stop 'SPLINECOF3: error  wrong order of x(i)'
+    end if
+  end do
+  ! check indx
+  do i = 1, len_indx-1
+    if (indx(i) < 1) then
+      print *, 'SPLINECOF3: error i, indx(i)', i, indx(i)
+      stop 'SPLINECOF3: error  indx(i) < 1'
+    end if
+    if (indx(i) >= indx(i+1)) then
+      print *, 'SPLINECOF3: error i, indx(i), indx(i+1)', &
+            i, indx(i), indx(i+1)
+      stop 'SPLINECOF3: error  wrong order of indx(i)'
+    end if
+    if (indx(i) > len_x) then
+      print *, 'SPLINECOF3: error i, indx(i), indx(i+1)', &
+            i, indx(i), indx(i+1)
+      stop 'SPLINECOF3: error  indx(i) > len_x'
+    end if
+  end do
+  if (indx(len_indx) < 1) then
+    print *, 'SPLINECOF3: error len_indx, indx(len_indx)', &
+          len_indx, indx(len_indx)
+    stop 'SPLINECOF3: error  indx(max) < 1'
+  end if
+  if (indx(len_indx) > len_x) then
+    print *, 'SPLINECOF3: error len_indx, indx(len_indx)', &
+          len_indx, indx(len_indx)
+    stop 'SPLINECOF3: error  indx(max) > len_x'
+  end if
+
+  if (sw1 == sw2) then
+    stop 'SPLINECOF3: error  two identical boundary conditions'
+  end if
+
   ALLOCATE(MA(size_dimension, size_dimension),  stat = i_alloc, errmsg=error_message)
   if(i_alloc /= 0) then
     write(*,*) 'splinecof3: Allocation for array ma failed with error message:'
@@ -154,17 +205,6 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   end if
 !-----------------------------------------------------------------------
 
-  IF ( .NOT. ( SIZE(x) == SIZE(y) ) ) THEN
-     WRITE (*,*) 'splinecof3: assertion 1 failed'
-     STOP 'program terminated'
-  END IF
-  IF ( .NOT. ( SIZE(a) == SIZE(b) .AND. SIZE(a) == SIZE(c) &
-       .AND.   SIZE(a) == SIZE(d) .AND. SIZE(a) == SIZE(indx) &
-       .AND.   SIZE(a) == SIZE(lambda1) ) ) THEN
-     WRITE (*,*) 'splinecof3: assertion 2 failed'
-     STOP 'program terminated'
-  END IF
-
 
   IF (DABS(c1) > 1.0E30) THEN
      c1 = 0.0D0;
@@ -177,42 +217,6 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   MA(:,:) = 0.0D0
   inh(:)  = 0.0D0
 
-! check whether points are monotonously increasing or not
-  DO i = 1, len_x-1
-     IF (x(i) >= x(i+1)) THEN
-        PRINT *, 'SPLINECOF3: error i, x(i), x(i+1)', &
-             i, x(i), x(i+1)
-        STOP 'SPLINECOF3: error  wrong order of x(i)'
-     END IF
-  END DO
-! check indx
-  DO i = 1, len_indx-1
-     IF (indx(i) < 1) THEN
-        PRINT *, 'SPLINECOF3: error i, indx(i)', i, indx(i)
-        STOP 'SPLINECOF3: error  indx(i) < 1'
-     END IF
-     IF (indx(i) >= indx(i+1)) THEN
-        PRINT *, 'SPLINECOF3: error i, indx(i), indx(i+1)', &
-             i, indx(i), indx(i+1)
-        STOP 'SPLINECOF3: error  wrong order of indx(i)'
-     END IF
-     IF (indx(i) > len_x) THEN
-        PRINT *, 'SPLINECOF3: error i, indx(i), indx(i+1)', &
-             i, indx(i), indx(i+1)
-        STOP 'SPLINECOF3: error  indx(i) > len_x'
-     END IF
-  END DO
-  IF (indx(len_indx) < 1) THEN
-     PRINT *, 'SPLINECOF3: error len_indx, indx(len_indx)', &
-          len_indx, indx(len_indx)
-     STOP 'SPLINECOF3: error  indx(max) < 1'
-  END IF
-  IF (indx(len_indx) > len_x) THEN
-     PRINT *, 'SPLINECOF3: error len_indx, indx(len_indx)', &
-          len_indx, indx(len_indx)
-     STOP 'SPLINECOF3: error  indx(max) > len_x'
-  END IF
-
 ! calculate optimal weights for smooting (lambda)
   IF ( MAXVAL(lambda1) < 0.0D0 ) THEN
      CALL calc_opt_lambda3(x, y, omega)
@@ -220,10 +224,6 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
      omega  = lambda1
   END IF
   lambda = 1.0D0 - omega
-
-  IF (sw1 == sw2) THEN
-     STOP 'SPLINECOF3: error  two identical boundary conditions'
-  END IF
 
   IF (sw1 == 1) THEN
      mu1  = 1
