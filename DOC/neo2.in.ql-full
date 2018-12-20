@@ -22,10 +22,10 @@
                     ! 1: binary split is done [default]
  boundary_dist_limit_factor =  9.9999997764825821e-003 ! [1.e-2]
  bsfunc_divide = 0 ! [0]
- bsfunc_ignore_trap_levels = 0 [0]
+ bsfunc_ignore_trap_levels = 0 ! [0]
  bsfunc_local_err =  3.0e-002 ! [1.0d-2]
  bsfunc_local_err_max_mult =  1.0 ! [1.0d0]
- bsfunc_local_shield_factor =  1.0 [1.0d0]
+ bsfunc_local_shield_factor =  1.0 ! [1.0d0]
  bsfunc_local_solver = 3 ! [0]
  bsfunc_message = 0 ! [0]
  bsfunc_max_index = 300 ! [20*eta_part]
@@ -194,7 +194,7 @@
  prop_reconstruct_levels = 0 ! [0]
  prop_ripple_plot = 0 ! [0]
  prop_timing = 0 ! [1]
- prop_write = 2 [0]
+ prop_write = 2 ! [0]
 /
 &settings
  aiota_tokamak = 0.35144999999999998 ! [1.0d0/3.0d0]
