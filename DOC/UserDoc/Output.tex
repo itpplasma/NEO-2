@@ -159,3 +159,85 @@ Here the values of some of the input variables are documented.
 \paragraph{x1mm}
 
 \paragraph{x2mm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{How to read/edit the in/output}
+This section will briefly describe the possibilities to read and edit
+the input and output of \neo2.
+
+In table~\ref{tablereadinginoutput} is an overview of the formats used
+for input and output, along with usual ending and the possibilities to
+edit these with other programs.
+
+\begin{table}
+  \begin{center}
+    \begin{tabular}{cccccc}
+kind of in-/output & in/out & matlab & octave & python3 & texteditor \\
+data (text, dat)   & out    & yes    & yes    & yes     & yes \\
+boozer (bc)        & in     &        &        &         & yes$^2$ \\
+netcdf (nc)$^4$    &        &        &        &         & no \\
+hdf5 (h5)          & in/out & yes    & yes$^3$&         & no$^1$ \\
+fortran namelist$^5$&in/out &        &        &         & yes$^2$ \\
+efit               & in     &        &        &         & yes$^2$
+    \end{tabular}
+    \caption{Possibilities to read/write/edit the different in-/output
+file formats of \neo2.
+$^1$ the program \program{hdf5view} can be used to read/edit hdf5 files.
+$^2$ This requires some care, e.g. about what changes are possible, what
+side effects might occour.
+$^3$ At the moment of writing this, octave is not capable of reading
+just parts of hdf5 files, thus it can not be recommended for files
+larger than the main memory.
+$^4$ The netcdf format is currently not in use in \neo2, but as it has
+been used at some point, it is listed here.
+$^5$ Meant is here specifically the \neo2 configuration file.}
+    \label{tablereadinginoutput}
+  \end{center}
+\end{table}
+
+Data files are asssumed to be text files with only numbers arranged in
+rows and columns. Each row and column has the same number of entries,
+there are no special lines.
+They are easy to read and edit in almost any program.
+
+Boozer files are text files, which contain magnetic fiels data in a
+specific format. There are header information and multiple blocks, where
+each block also has a header.
+They can be read with a texteditor. The data can in principle be edited,
+but changes in size are non-trivial.
+
+Hdf5 is binary format, which allows to store data in a directory like
+structure. Additionally the entries can have comments, e.g. indicating
+type, unit of measurement or details of computation.
+Hdf5 files can be read and written by matlab and octave. Python probably
+has a module for this. There exists also the tool \program{hdfview},
+delivered with the hdf5 library, which allows to read and edit this
+filetype.
+Note that some output files may contain size information in some of the
+fields, which makes resizing a bit more complicated.
+
+Netcdf is a binary container format and as such similar to hdf5. At the
+moment it is not used by \neo2, neither as input nor as output, but as
+it has been used as an output format in the past, it is listed here.
+
+Fortran namelists are mainly used as inputs, but in some cases there are
+also output. As textfiles they can in principle, be edited with a
+texteditior, but care must be taken with dependencies among the input
+parameters.
+
+Efit files contain magnetic field information (like boozer files) in
+real space (unlike boozer files) in a specific format (which differs
+from the format used by boozer files). These files can be viewed with
+a texteditor, but as the file makes not clear which number is which
+parameter, it is not recommended to edit efit files with a texteditor.
+
+%~ \begin{figure}[thb]
+%~ \begin{center}
+%~ \includegraphics[width=12 truecm,clip]{heatflux.eps}
+%~ \caption{GKW results of the electron heat flux expressed as a heat conduction coefficient (normalised
+%~ to $\rho_e^2  c_e / L_T$ with $c_e = \sqrt{T_e/m_e}$) as a function of normalised time ($t_{NN} = tc_e/L_T$)
+%~ for the Nevins ETG benchmark}
+%~ \label{cyclone-nl}
+%~ \end{center}
+%~ \end{figure}
