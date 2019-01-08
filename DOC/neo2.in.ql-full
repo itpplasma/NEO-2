@@ -223,6 +223,8 @@
  mag_inflection_mult = 3.0 ! [3.0d0]
  mag_magfield = 1 ! 0: homogeneous
                   ! 1: normal [default]
+                  ! 2: Legendre
+                  ! 3: efit
  magnetic_device = 0 ! 0: Tokamak
                      ! 1: W7-AS [default]
  mag_nperiod_min = 1 ! Only used for stellarators. Defines the minimum
