@@ -528,6 +528,139 @@ def convert_to_boozer(infile, ks, outfile):
   #  plt.plot(s, bsupvmn)
   #  plt.show()
 
+class BoozerFile:
+  """Storing the information in a boozer file.
+
+  This class is designed to store the information of a boozer file.
+
+  TODO:
+  So far, this can only handle boozer files with a single toroidal mode
+  number.
+  """
+  comments = []
+  m0b = 0.0
+  n0b = 0.0
+  nsurf = 0
+  nper = 0
+  flux = 0.0 #[Tm^2]
+  a = 0.0
+  R = 0.0 # [m]
+
+  s = []
+  iota = []
+  Jpol_divided_by_nper = []
+  Itor = []
+  pprime = []
+  sqrt_g_00 = []
+
+  rmnc = [] # [m]
+  rmns = [] # [m]
+  zmnc = [] # [m]
+  zmns = [] # [m]
+  vmnc = []
+  vmns = []
+  bmnc = [] # [T]
+  bmns = [] # [T]
+
+  def read_boozer(self, filename: str):
+    """Reads information from a file, whose name is given as a string.
+
+    This routine will read the content of file 'filename', assuming it
+    is a boozer file (thus expecting a specific format).
+    The comments are available in a list, each line an entry.
+    Global fields are available as simple elements.
+    Fields that depend on radius are lists, those that depend on radius
+    and mode number lists of lists.
+
+    TODO:
+    Be able to read in data with more than one 'n' mode number.
+    """
+    with open(filename) as f:
+      lines = f.readlines()
+
+    # Get header information, e.g. comments and sizes.
+    for lineindex in range(len(lines)):
+      line = lines[lineindex]
+      if (len(line) > 2):
+        # Comments start with 'CC' followed by a whitespace.
+        if (line.split()[0] == 'CC'):
+          self.comments.append(line[2+1:]) # 2+1 to ignore 'CC' and the following whitespace.
+
+        if (lineindex > 1):
+          if ((lines[lineindex-1].split())[0] == 'm0b'):
+            self.m0b = int((lines[lineindex].split())[0])
+            self.n0b = int((lines[lineindex].split())[1])
+            self.nsurf = int((lines[lineindex].split())[2])
+            self.nper = int((lines[lineindex].split())[3])
+            self.flux = float((lines[lineindex].split())[4])
+            self.a = float((lines[lineindex].split())[5])
+            self.R = float((lines[lineindex].split())[6])
+            break
+
+    blocklines = []
+
+    blockindex = -1
+    for lineindex in range(len(lines)):
+      line = lines[lineindex]
+      if (line.split()[0] == 's'):
+        blockindex += 1
+        blocklines.append([])
+
+      if (blockindex >= 0 and len(line) > 0):
+        blocklines[blockindex].append(line)
+
+    if (len(blocklines) != self.nsurf):
+      print('m0b = ' + str(self.m0b))
+      print('n0b = ' + str(self.n0b))
+      print('nsurf = ' + str(self.nsurf))
+      print('nper = ' + str(self.nper))
+      print('flux = ' + str(self.flux))
+      print('a = ' + str(self.a))
+      print('R = ' + str(self.R))
+      print(str(len(blocklines)) + ' != ' + str(self.nsurf))
+      raise Exception
+
+    head_number_of_lines = 4
+
+    for i in range(self.nsurf):
+      if (len(blocklines[i]) != self.m0b + 1 + head_number_of_lines): # +1 for zero mode
+        raise Exception
+
+      self.rmnc.append([])
+      self.rmns.append([])
+      self.zmnc.append([])
+      self.zmns.append([])
+      self.vmnc.append([])
+      self.vmns.append([])
+      self.bmnc.append([])
+      self.bmns.append([])
+
+      for j in range(head_number_of_lines, self.m0b + 1 + head_number_of_lines):
+        if (j == 2):
+          line_split = blocklines[i][j].split();
+          self.s.append(float(line_split[0]))
+          self.iota.append(float(line_split[1]))
+          self.Jpol_divided_by_nper.append(float(line_split[2]))
+          self.Itor.append(float(line_split[3]))
+          self.pprime.append(float(line_split[4]))
+          self.sqrt_g_00.append(float(line_split[5]))
+
+        if (j > 3):
+          line_split = blocklines[i][j].split();
+          self.rmnc[i].append(float(line_split[2]))
+          self.rmns[i].append(float(line_split[3]))
+          self.zmnc[i].append(float(line_split[4]))
+          self.zmns[i].append(float(line_split[5]))
+          self.vmnc[i].append(float(line_split[6]))
+          self.vmns[i].append(float(line_split[7]))
+          self.bmnc[i].append(float(line_split[8]))
+          self.bmns[i].append(float(line_split[9]))
+
+  def __init__(self, filename: str):
+    """Init routine which takes a string, representing the file to read.
+    """
+    self.read_boozer(filename)
+
 if __name__ == "__main__":
   import sys
 
