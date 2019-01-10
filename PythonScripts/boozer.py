@@ -656,6 +656,20 @@ class BoozerFile:
           self.bmnc[i].append(float(line_split[8]))
           self.bmns[i].append(float(line_split[9]))
 
+  def get_rbeg():
+    rbeg = []
+    for radial_position in self.rmnc:
+      rbeg.append(sum(radial_position))
+
+    return rbeg
+
+  def get_zbeg():
+    zbeg = []
+    for radial_position in self.zmnc:
+      zbeg.append(sum(radial_position))
+
+    return zbeg
+
   def __init__(self, filename: str):
     """Init routine which takes a string, representing the file to read.
     """
