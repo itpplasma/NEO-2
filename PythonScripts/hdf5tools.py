@@ -180,16 +180,17 @@ def reshape_hdf5_file(in_filename: str, out_filename: str):
   keys = list(f.keys())
   g = f[keys[1]]
   for ksecond_level in list(g.keys()):
-    size = (len(keys), ) + g[ksecond_level].shape
-    o.create_dataset('/' + ksecond_level, shape=size, dtype=g[ksecond_level].dtype)
-    for attribute_name in list(g[ksecond_level].attrs.keys()):
-      o['/' + ksecond_level].attrs[attribute_name] = g[ksecond_level].attrs[attribute_name]
+    if (type(g[ksecond_level]) != type(g)):
+      size = (len(keys), ) + g[ksecond_level].shape
+      o.create_dataset('/' + ksecond_level, shape=size, dtype=g[ksecond_level].dtype)
+      for attribute_name in list(g[ksecond_level].attrs.keys()):
+        o['/' + ksecond_level].attrs[attribute_name] = g[ksecond_level].attrs[attribute_name]
 
   # Fill in the data.
   i = 0
   for ktosquash in list(f.keys()):
     g = f[ktosquash]
-    for ksecond_level in list(g.keys()):
+    for ksecond_level in list(o.keys()):
       dataset = o[ksecond_level]
       dataset[i] = g[ksecond_level]
 
