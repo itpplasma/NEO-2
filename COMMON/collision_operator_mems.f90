@@ -817,7 +817,7 @@ module collop
       call h5_add(h5id_meta, 'scalprod_alpha', scalprod_alpha)
       call h5_add(h5id_meta, 'scalprod_beta',  scalprod_beta)
       call h5_add(h5id_meta, 'm_spec', m_spec, comment='masses of the species', unit='g')
-      call h5_add(h5id_meta, 'T_spec', T_spec, comment='temperature of the species', unit='eV')
+      call h5_add(h5id_meta, 'T_spec', T_spec, comment='temperature of the species', unit='erg')
       call h5_add(h5id_meta, 'lsw_multispecies', lsw_multispecies, &
         & comment='switch for multispecies calculations')
       call h5_add(h5id_meta, 'gamma_ab', gamma_ab)
