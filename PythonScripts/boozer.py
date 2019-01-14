@@ -6,7 +6,7 @@ Created on Wed Mar 23 10:17:41 2016
 @author: Christopher Albert
 """
 
-def write_boozer_head(filename, version, shot, m0b, n0b, nsurf_fmt, nfp, psi_tor_a, aminor, Rmajor):
+def write_boozer_head(filename, version, shot: int, m0b, n0b, nsurf_fmt, nfp, psi_tor_a, aminor, Rmajor):
   import getpass
 
   global_variables_head_line=" m0b   n0b  nsurf  nper    flux [Tm^2]        a [m]          R [m]"
@@ -27,6 +27,11 @@ def append_boozer_block_head(filename, s, iota, bsubvB, bsubuB, pprime, vp, enfp
 
   mu0 = scipy.constants.mu_0
 
+  append_boozer_block_head(filename, s, iota,
+    -2.0*np.pi/mu0*bsubvB/enfp, -2.0*np.pi/mu0*bsubuB, pprime,
+    -4.0*np.pi**2*vp/enfp)
+
+def append_boozer_block_head(filename, s, iota, Jpol_divided_by_nper, Itor, pprime, sqrt_g_00):
   with open(filename, 'a') as outfile:
     outfile.write('        s               iota           Jpol/nper          '+
     'Itor            pprime         sqrt g(0,0)\n')
@@ -34,27 +39,30 @@ def append_boozer_block_head(filename, s, iota, bsubvB, bsubuB, pprime, vp, enfp
     '[A]             [Pa]         (dV/ds)/nper\n')
     outfile.write(' {:16.8e}'.format(s))
     outfile.write(' {:16.8e}'.format(iota))
-    outfile.write(' {:16.8e}'.format(-2.0*np.pi/mu0*bsubvB/enfp))
-    outfile.write(' {:16.8e}'.format(-2.0*np.pi/mu0*bsubuB))
+    outfile.write(' {:16.8e}'.format(Jpol_divided_by_nper))
+    outfile.write(' {:16.8e}'.format(Itor))
     outfile.write(' {:16.8e}'.format(pprime))
-    outfile.write(' {:16.8e}'.format(-4.0*np.pi**2*vp/enfp))
+    outfile.write(' {:16.8e}'.format(sqrt_g_00))
     outfile.write('\n')
 
 def append_boozer_block(filename, mb, nb, rmnb, zmnb, vmnb, bmnb, enfp):
+  append_boozer_block(filename, mb, int(nb[k]/enfp),
+    float((rmnb[k].real)),-float(rmnb[k].imag),
+    float((zmnb[k].real)),-float(zmnb[k].imag),
+    float((vmnb[k].real)),-float(vmnb[k].imag),
+    float((bmnb[k].real)),-float(bmnb[k].imag))
+
+def append_boozer_block(filename, mb, nb, rmnc, rmns, zmnc, zmns, vmnc, vmns, bmnc, bmns):
   with open(filename, 'a') as f:
     f.write('    m    n      rmnc [m]         rmns [m]         zmnc [m]  '+
-            '       zmns [m]         vmnc [m]         vmns [m]         '+
+            '       zmns [m]         vmnc [ ]         vmns [ ]         '+
             'bmnc [T]         bmns [T]\n')
     for k in range(len(mb)):
-      f.write(' {:4d} {:4d}'.format(mb[k],int(nb[k]/enfp)))
-      f.write(' {:16.8e} {:16.8e}'.format(
-          float((rmnb[k].real)),-float(rmnb[k].imag)))
-      f.write(' {:16.8e} {:16.8e}'.format(
-          float((zmnb[k].real)),-float(zmnb[k].imag)))
-      f.write(' {:16.8e} {:16.8e}'.format(
-          float((vmnb[k].real)),-float(vmnb[k].imag)))
-      f.write(' {:16.8e} {:16.8e}'.format(
-          float((bmnb[k].real)),-float(bmnb[k].imag)))
+      f.write(' {:4d} {:4d}'.format(mb[k], nb[k]))
+      f.write(' {:16.8e} {:16.8e}'.format(rmnc[k], rmns[k]))
+      f.write(' {:16.8e} {:16.8e}'.format(zmnc[k], zmns[k]))
+      f.write(' {:16.8e} {:16.8e}'.format(vmnc[k], vmns[k]))
+      f.write(' {:16.8e} {:16.8e}'.format(bmnc[k], bmns[k]))
       f.write('\n')
 
 def convert_to_boozer(infile, ks, outfile):
