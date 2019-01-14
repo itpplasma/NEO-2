@@ -149,7 +149,7 @@
  r_vphi = 0.0 ! only used for isw_Vphi_loc=1 [0.0d0]
  species_tag_vec = 1, 2 ! [1,..,number of species]
  species_tag_vphi = 2 ! 0: species index should be the same for all flux surfaces [default]
- t_vec =  9.1495920740775243e-009,  7.1751185399075415e-009 ! List with the temperatures of the species. [1.6d-9]
+ t_vec =  9.1495920740775243e-009,  7.1751185399075415e-009 ! List with the temperatures of the species in erg (1 erg ~ 6.241*10^11 eV). [1.6d-9]
  vphi = 77048.433690608756 ! [0.0d0]
  z_vec = -1.0,  1.0 ! List with the specific charges of the species. [1.0d0]
  z_vphi = 0.0 ! only used for isw_Vphi_loc=1 [0.0d0]
