@@ -635,7 +635,7 @@ class BoozerFile:
       self.bmnc.append([])
       self.bmns.append([])
 
-      for j in range(head_number_of_lines, self.m0b + 1 + head_number_of_lines):
+      for j in range(0, self.m0b + 1 + head_number_of_lines):
         if (j == 2):
           line_split = blocklines[i][j].split();
           self.s.append(float(line_split[0]))
@@ -656,14 +656,14 @@ class BoozerFile:
           self.bmnc[i].append(float(line_split[8]))
           self.bmns[i].append(float(line_split[9]))
 
-  def get_rbeg():
+  def get_rbeg(self):
     rbeg = []
     for radial_position in self.rmnc:
       rbeg.append(sum(radial_position))
 
     return rbeg
 
-  def get_zbeg():
+  def get_zbeg(self):
     zbeg = []
     for radial_position in self.zmnc:
       zbeg.append(sum(radial_position))
