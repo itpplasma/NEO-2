@@ -689,6 +689,21 @@ class BoozerFile:
     """
     self.read_boozer(filename)
 
+  def write(self, filename: str):
+    write_boozer_head(filename, '', 0, self.m0b, self.n0b, self.nsurf,
+      self.nper, self.flux, self.a, self.R)
+
+    for i in range(self.nsurf):
+      append_boozer_block_head(filename, self.s[i], self.iota[i],
+        self.Jpol_divided_by_nper[i], self.Itor[i], self.pprime[i],
+        self.sqrt_g_00[i])
+      append_boozer_block(filename, self.m[i], self.n[i],
+        self.rmnc[i], self.rmns[i],
+        self.zmnc[i], self.zmns[i],
+        self.vmnc[i], self.vmns[i],
+        self.bmnc[i], self.bmns[i])
+
+
 if __name__ == "__main__":
   import sys
 
