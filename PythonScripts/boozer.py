@@ -553,6 +553,8 @@ class BoozerFile:
   pprime = []
   sqrt_g_00 = []
 
+  m = []
+  n = []
   rmnc = [] # [m]
   rmns = [] # [m]
   zmnc = [] # [m]
@@ -626,6 +628,8 @@ class BoozerFile:
       if (len(blocklines[i]) != self.m0b + 1 + head_number_of_lines): # +1 for zero mode
         raise Exception
 
+      self.m.append([])
+      self.n.append([])
       self.rmnc.append([])
       self.rmns.append([])
       self.zmnc.append([])
@@ -647,6 +651,8 @@ class BoozerFile:
 
         if (j > 3):
           line_split = blocklines[i][j].split();
+          self.m[i].append(int(line_split[0]))
+          self.n[i].append(int(line_split[1]))
           self.rmnc[i].append(float(line_split[2]))
           self.rmns[i].append(float(line_split[3]))
           self.zmnc[i].append(float(line_split[4]))
