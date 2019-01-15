@@ -974,16 +974,16 @@ module collop
       !call h5_define_group(h5id_collop, trim(tag_a) //'-'// trim(tag_b), h5id_species)
       call h5_define_group(h5id_collop, 'meta', h5id_meta)
 
-      call h5_add(h5id_meta, 'lag', lag,
-        comment='number of basis polynoms')
+      call h5_add(h5id_meta, 'lag', lag, &
+        & comment='number of basis polynoms')
       call h5_add(h5id_meta, 'leg', leg)
       call h5_add(h5id_meta, 'scalprod_alpha', scalprod_alpha)
       call h5_add(h5id_meta, 'scalprod_beta',  scalprod_beta)
       call h5_add(h5id_meta, 'gamma_ab', gamma_ab)
-      call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj,
-        comment='type of basis functions for projection')
-      call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp,
-        comment='type of basis functions for expansion')
+      call h5_add(h5id_meta, 'collop_base_prj', collop_base_prj, &
+        & comment='type of basis functions for projection')
+      call h5_add(h5id_meta, 'collop_base_exp', collop_base_exp, &
+        & comment='type of basis functions for expansion')
       call h5_close_group(h5id_meta)
       
       call h5_add(h5id_collop, 'asource', asource, lbound(asource), ubound(asource))
