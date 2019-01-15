@@ -670,6 +670,8 @@ class BoozerFile:
           self.bmnc[i].append(float(line_split[8]))
           self.bmns[i].append(float(line_split[9]))
 
+    self._read_from = filename
+
   def get_rbeg(self):
     rbeg = []
     for radial_position in self.rmnc:
