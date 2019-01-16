@@ -1,5 +1,5 @@
 runsource: /afs/itp.tugraz.at/user/wakatobi/NEO_2_V0.10/NEO-2-QL/Build5/neo_2.x
-reqfiles: 
+req_files_names:
            neo2in: neo2.in
            neoin: neo.in
           
