@@ -15,18 +15,61 @@ from os.path import *
 import yaml
 from IPython import display
 
+
+class Neo2Scan():
+    """ Class for scans over one parameter
+
+
+    Attributes
+    ----------
+    neo2in: Neo2File
+        sample inputfile for the neo2.in file
+    neoin: str
+        path to neo.in file. In future maybe own instance of a new class.
+    unpert: str
+        path to unpertubation file in Boozer coordinates. In future maybe own
+        instance of a new class.
+    pert: str
+        path to pertubation file in Boozer cooridnates. In future maybe own
+        instance of a new class.
+    listofruns: list
+        A list of the directories of each Singlerun
+    reqfiles : dict
+        dict of required filenames to to run neo2
+    rundir: str
+        Path of the working directory
+    scan_param: str
+        name of the parameter which will be scanned
+    scan_values: list
+        list of values which will be iterated
+    path2code: str
+        path to the repository
+
+
+    Methods
+    -------
+    generate_SingleRuns()
+        generate list of SingleRunInstances
+    compile_code()
+        compile code an link the executable
+    generate_structure():
+        generate structure for the singleruns
+    set_neo2file(path):
+        set a neo2.in file as sample
+
+    """
+
 class SingleRun():
     """Class for inputs with only one neo2.in configuration
     
     Sofar Multispecies only, 
     in Future there should be an MetaClass above these.
     Also some methods should then upmoved.
-   
+
 
     Attributes
     ----------
-    listofruns : list
-        A list of runs for precomputation
+
     runpath : str
         Path of the working directory
     reqfiles : dict
@@ -39,24 +82,24 @@ class SingleRun():
     RunInitRuns()
         starting the internal neo2 init run for multispecies
         See flag lsw_multispecies = .true. in neo2.in
-    
-    says(sound=None)
-        Prints the animals name and what sound it makes
+
+
+
+    Old Attributes
+    --------------
+    listofruns : list
+        A list of runs for precomputation
     """
-    
-  
-    
-    """
-        :param listofruns: A list of runs for precomputation
-    
-    """
-    
-    
-    
-   
+
+
+
+
+
     ### Methods should be used but not class in total.
     
     def __init__(self,runpath):
+
+        self.neo2path=os.environ.get('NEO2PATH')
         self.runpath=runpath
         #self.codesource=None
         #self.runsource=None # Executable
@@ -65,10 +108,10 @@ class SingleRun():
         'neo2in': 'neo2.in',
         'neoin': 'neo.in'
         }
-        self._Load_default()
+        #self._Load_default()
         self._sourcepaths=dict()
         #self._SetSources()
-        self._SetSourcePaths() # including Fill required Files from neo Files, which reads neo2.in
+        #self._SetSourcePaths() # including Fill required Files from neo Files, which reads neo2.in
         #self._neo2inSet=False
        # self._neo2parSaved=False
         self._Runiscreated=False # required Files exists
@@ -89,13 +132,15 @@ class SingleRun():
         
         is in the same directory as the input_class
         """
-        
+
+
         try:
             self.__sourcedir=__file__
         except NameError:
             self.__sourcedir=''
-        
+        print(self.__sourcedir)
         self.__realpath=os.path.realpath(self.__sourcedir)
+        print(self.__realpath)
         if os.path.isfile(self.__realpath):
             path = os.path.dirname(os.path.realpath(self.__sourcedir))
         elif os.path.isdir(self.__realpath):
@@ -324,7 +369,23 @@ class SingleRun():
 
 
 class Neo2File(object):
-    """Class for reading and eding Neo2.in File"""
+    """Class for reading and eding Neo2.in File
+
+
+    Attributes
+    ----------
+
+
+    Methods
+    -------
+    chval()
+        Change more values at once with keyvalue pairs
+    write()
+          write changes to file
+
+    """
+
+
     def __init__(self,neo2path):
         self._neo2nml=f90nml.read(neo2path)
         self._neo2dict=dict()
