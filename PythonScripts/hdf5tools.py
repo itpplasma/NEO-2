@@ -196,160 +196,182 @@ def reshape_hdf5_file(in_filename: str, out_filename: str):
 
     i = i + 1
 
-def dim_zero(data, lower_bounds, upper_bounds):
+def dim_zero(data, elements_to_keep: list, operate_on_last_dimension: bool):
   return data
 
-def dim_one(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0]]
+def dim_one(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  return np.arry([data[elements_to_keep[x]] for x in range(len(elements_to_keep))])
 
-def dim_two(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1]]
+def dim_two(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.transpose(np.array([data[:, elements_to_keep[x]] for x in range(len(elements_to_keep))]))
+  else:
+    return np.array([data[elements_to_keep[x], :] for x in range(len(elements_to_keep))])
 
-def dim_three(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2]]
+def dim_three(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :, :] for x in range(len(elements_to_keep))])
 
-def dim_four(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3]]
+def dim_four(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_five(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4]]
+def dim_five(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :, :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_six(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4],
-              lower_bounds[5]:upper_bounds[5]]
+def dim_six(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, :,
+      elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x],
+      :, :, :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_seven(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4],
-              lower_bounds[5]:upper_bounds[5],
-              lower_bounds[6]:upper_bounds[6]]
+def dim_seven(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, :,
+      :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :,
+      :, :, :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_eigth(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4],
-              lower_bounds[5]:upper_bounds[5],
-              lower_bounds[6]:upper_bounds[6],
-              lower_bounds[7]:upper_bounds[7]]
+def dim_eigth(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, :,
+      :, :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :, :, :,
+      :, :, :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_nine(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4],
-              lower_bounds[5]:upper_bounds[5],
-              lower_bounds[6]:upper_bounds[6],
-              lower_bounds[7]:upper_bounds[7],
-              lower_bounds[8]:upper_bounds[8]]
+def dim_nine(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, :,
+      :, :, :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :, :, :,
+      :, :, :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_ten(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4],
-              lower_bounds[5]:upper_bounds[5],
-              lower_bounds[6]:upper_bounds[6],
-              lower_bounds[7]:upper_bounds[7],
-              lower_bounds[8]:upper_bounds[8],
-              lower_bounds[9]:upper_bounds[9]]
+def dim_ten(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, :,
+      :, :, :, :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :, :, :, :,
+      :, :, :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_eleven(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4],
-              lower_bounds[5]:upper_bounds[5],
-              lower_bounds[6]:upper_bounds[6],
-              lower_bounds[7]:upper_bounds[7],
-              lower_bounds[8]:upper_bounds[8],
-              lower_bounds[9]:upper_bounds[9],
-              lower_bounds[10]:upper_bounds[10]]
+def dim_eleven(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, :,
+      :, :, :, :, :,
+      elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x],
+      :, :, :, :, :,
+      :, :, :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_twelve(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4],
-              lower_bounds[5]:upper_bounds[5],
-              lower_bounds[6]:upper_bounds[6],
-              lower_bounds[7]:upper_bounds[7],
-              lower_bounds[8]:upper_bounds[8],
-              lower_bounds[9]:upper_bounds[9],
-              lower_bounds[10]:upper_bounds[10],
-              lower_bounds[11]:upper_bounds[11]]
+def dim_twelve(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, :,
+      :, :, :, :, :,
+      :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :,
+      :, :, :, :, :,
+      :, :, :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_thirteen(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4],
-              lower_bounds[5]:upper_bounds[5],
-              lower_bounds[6]:upper_bounds[6],
-              lower_bounds[7]:upper_bounds[7],
-              lower_bounds[8]:upper_bounds[8],
-              lower_bounds[9]:upper_bounds[9],
-              lower_bounds[10]:upper_bounds[10],
-              lower_bounds[11]:upper_bounds[11],
-              lower_bounds[12]:upper_bounds[12]]
+def dim_thirteen(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, :,
+      :, :, :, :, :,
+      :, :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :, :,
+      :, :, :, :, :,
+      :, :, :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_fourteen(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4],
-              lower_bounds[5]:upper_bounds[5],
-              lower_bounds[6]:upper_bounds[6],
-              lower_bounds[7]:upper_bounds[7],
-              lower_bounds[8]:upper_bounds[8],
-              lower_bounds[9]:upper_bounds[9],
-              lower_bounds[10]:upper_bounds[10],
-              lower_bounds[11]:upper_bounds[11],
-              lower_bounds[12]:upper_bounds[12],
-              lower_bounds[13]:upper_bounds[13]]
+def dim_fourteen(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, :,
+      :, :, :, :, :,
+      :, :, :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :, :, :,
+      :, :, :, :, :,
+      :, :, :, :, :] for x in range(len(elements_to_keep))])
 
-def dim_fiveteen(data, lower_bounds, upper_bounds):
-  return data[lower_bounds[0]:upper_bounds[0],
-              lower_bounds[1]:upper_bounds[1],
-              lower_bounds[2]:upper_bounds[2],
-              lower_bounds[3]:upper_bounds[3],
-              lower_bounds[4]:upper_bounds[4],
-              lower_bounds[5]:upper_bounds[5],
-              lower_bounds[6]:upper_bounds[6],
-              lower_bounds[7]:upper_bounds[7],
-              lower_bounds[8]:upper_bounds[8],
-              lower_bounds[9]:upper_bounds[9],
-              lower_bounds[10]:upper_bounds[10],
-              lower_bounds[11]:upper_bounds[11],
-              lower_bounds[12]:upper_bounds[12],
-              lower_bounds[13]:upper_bounds[13],
-              lower_bounds[14]:upper_bounds[14]]
+def dim_fiveteen(data, elements_to_keep: list, operate_on_last_dimension: bool):
+  import numpy as np
+  if operate_on_last_dimension:
+    return np.moveaxis(np.array([data[:, :, :, :, :,
+      :, :, :, :, :,
+      :, :, :, :, elements_to_keep[x]] for x in range(len(elements_to_keep))]), 0, -1)
+  else:
+    return np.array([data[elements_to_keep[x], :, :, :, :,
+      :, :, :, :, :,
+      :, :, :, :, :] for x in range(len(elements_to_keep))])
 
-def resize_hdf5_file(in_filename: str, out_filename: str, original_size: int, first: int, last: int, operate_on_last_dimension: bool):
+def remove_ends_from_hdf5_file(in_filename: str, out_filename: str,
+      original_size: int, first_element_to_take: int,
+      first_element_not_to_take: int, operate_on_last_dimension: bool):
+  """Resize the arrays of an hdf5 file.
+
+  This works like the version that takes a list instead of the index of
+  the first element to take and the last element (not included).
+
+  input
+  ----------
+  in_filename: File to read in and which content should be resized.
+  out_filename: Name under which to store the resized file.
+  original_size: The size of the (dimension of the) arrays which to
+    resize. This is also used to determine if an array should be
+    changed. For example if original_size=100 then 2x2 arrays (e.g.
+    containing species data) will be left untouched.
+  first_element_to_take: the zero based index of the first array item to
+    keep.
+  first_element_not_to_take: the zero based index of the array item up
+    to which to keep. This index is not included, i.e. if given =10
+    then only array items up to index 9 will be kept.
+  operate_on_last_dimension: If this is true, then for multidimensional
+    arrays, the last dimension will be resized. If false, then this
+    function operates on the first dimension.
+
+  return value
+  ----------
+  None, output is realized via side effect.
+
+  side effects
+  ----------
+  Creates hdf5-file with given name 'out_filename', if first < last.
+  """
+  if first_element_to_take >= first_element_not_to_take:
+    return
+
+  resize_hdf5_file(in_filename, out_filename, original_size,
+    range(first_element_to_take, first_element_not_to_take),
+    operate_on_last_dimension)
+
+def resize_hdf5_file(in_filename: str, out_filename: str, original_size: int, elements_to_keep: list, operate_on_last_dimension: bool):
   """Resize the arrays of an hdf5 file.
 
   input
@@ -360,10 +382,8 @@ def resize_hdf5_file(in_filename: str, out_filename: str, original_size: int, fi
     resize. This is also used to determine if an array should be
     changed. For example if original_size=100 then 2x2 arrays (e.g.
     containing species data) will be left untouched.
-  first: the zero based index of the first array item to keep.
-  last: the zero based index of the array item up to which to keep. This
-    index is not included, i.e. if given last=10 then only array items
-    up to index 9 will be kept.
+  elements_to_keep: list with the (zero based) indices of the elements,
+    that should be keept.
   operate_on_last_dimension: If this is true, then for multidimensional
     arrays, the last dimension will be resized. If false, then this
     function operates on the first dimension.
@@ -385,30 +405,16 @@ def resize_hdf5_file(in_filename: str, out_filename: str, original_size: int, fi
   import h5py
   import numpy as np
 
-  # If the 'list' of indices is empty, do nothing.
-  if first >= last:
-    return
-
   f = get_hdf5file(in_filename)
   o = get_hdf5file_new(out_filename)
 
   for key in list(f.keys()):
     size = list(f[key].shape)
 
-    lower_bounds = [0 for x in range(len(size))]
-    upper_bounds = [x for x in size]
-
     if operate_on_last_dimension:
       index_to_change = len(size)-1
     else:
       index_to_change = 0
-
-    if (original_size == size[index_to_change]):
-      size[index_to_change] = last - first
-      lower_bounds[index_to_change] = first
-      upper_bounds[index_to_change] = last
-
-    #~ dat = o.create_dataset(key, shape=tuple(size), dtype=f[key].dtype)
 
     # Fill the dataset with values. This codes uses a suggestion from
     #https://stackoverflow.com/questions/11479816/what-is-the-python-equivalent-for-a-case-switch-statement/11479840#11479840
@@ -435,12 +441,14 @@ def resize_hdf5_file(in_filename: str, out_filename: str, original_size: int, fi
 
     # Call the corresponding function, which corresponds to the body of
     # the 'case'.
-    #~ dat = options[len(size)](f[key], lower_bounds, upper_bounds)
-    dat = options[len(size)](f[key], lower_bounds, upper_bounds)
+    if (size[index_to_change] == original_size):
+      dat = options[len(size)](f[key], elements_to_keep, operate_on_last_dimension)
+    else:
+      dat = f[key]
 
     o.create_dataset(key, data=dat)
 
-  o['/num_radial_pts'][()] = np.array([last - first])
+  o['/num_radial_pts'][()] = np.array(len(elements_to_keep))
 
 if __name__ == "__main__":
 
