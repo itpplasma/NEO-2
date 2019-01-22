@@ -11,7 +11,6 @@ import sys
 sys.path.append('/afs/itp.tugraz.at/user/wakatobi/Modul_neo/f90nml-0.21/')
 import f90nml
 import os
-from os.path import *
 import yaml
 from IPython import display
 
@@ -327,7 +326,7 @@ class SingleRun():
         
         self._CreateFiles()
         if self.neo_nml['isw_multispecies_init'] != 1:
-            raise InputError('isw_multispecies_init is not 1')
+            raise AttributeError('isw_multispecies_init is not 1')
         else:
             curdir=os.getcwd()
             print('curdir = ',curdir)
@@ -352,9 +351,9 @@ class SingleRun():
         
         for i in self.req_files_paths.values():
             print(i)
-            destfile=join(self.runpath,basename(i))
+            destfile=os.path.join(self.runpath,os.path.basename(i))
                 
-            if isfile(destfile):
+            if os.path.isfile(destfile):
                 if overwrite:
                     print(destfile, ' is a file and is replaced')
                     os.remove(destfile)
@@ -368,9 +367,9 @@ class SingleRun():
         
         i=self._runsource
         print('runsource = ', i)
-        destfile=join(self.runpath,basename(i))
+        destfile=os.path.join(self.runpath,os.path.basename(i))
         print('destfile = ', destfile)
-        if isfile(destfile):
+        if os.path.isfile(destfile):
             if overwrite:
                 print(destfile, ' is a file and is replaced')
                 os.remove(destfile)
@@ -390,7 +389,7 @@ class SingleRun():
             raise ValueError('Not all paths of required Files defined')
         
         for i,j in self.req_files_paths.items():
-            if not exists(j):
+            if not os.path.exists(j):
                 raise RuntimeError(j,' is not a File')
                 
             
@@ -406,9 +405,9 @@ class SingleRun():
         if os.path.isfile(neo2file):
             self.req_files_paths['neo2in']=os.path.abspath(neo2file)
             
-        if isdir(neo2file):
-            self.req_files_paths['neoin']=join(abspath(neo2file),'neo.in')
-            self.req_files_paths['neo2in']=join(abspath(neo2file),'neo2.in')
+        if os.path.isdir(neo2file):
+            self.req_files_paths['neoin']=os.path.join(os.path.abspath(neo2file),'neo.in')
+            self.req_files_paths['neo2in']=os.path.join(os.path.abspath(neo2file),'neo2.in')
             
             
 
@@ -496,7 +495,7 @@ class SingleRun():
                 if fnames in self.req_files_paths and overwrite==False:
                     #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
                     continue
-                self.req_files_paths[fdisc]=join(self._sources['singlerunsource'],fnames)
+                self.req_files_paths[fdisc]=os.path.join(self._sources['singlerunsource'],fnames)
                 
         self._fill_req_files_names()
         #read_Neo2File
@@ -518,7 +517,7 @@ class SingleRun():
                 if fnames in self.req_files_paths:
                     #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
                     continue
-                self.req_files_paths[fdisc]=join(self._sources['pert_path'],fnames)
+                self.req_files_paths[fdisc]=os.path.join(self._sources['pert_path'],fnames)
         
         self._fill_req_files_paths() # recursive Execution!!! maybe a problem!!!
 
