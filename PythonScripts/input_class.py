@@ -16,6 +16,10 @@ import yaml
 from IPython import display
 
 
+if __name__ == '__main__':
+    print('I am main')
+
+
 class Neo2_common_objects():
     """ objects appearing in both subclasses
 
@@ -69,7 +73,25 @@ class Neo2_common_objects():
         #self._Load_default()
         self.req_files_paths=dict()
 
-
+    def compile(self,overwrite=False):
+        curdir=os.getcwd()
+        os.chdir(self._path2code)
+        exe=self._path2code+'NEO-2-QL/Build_auto/'
+        if os.path.exists(exe):
+            if overwrite==False:
+                raise FileExistsError('Please remove folder Build_auto')
+            else:
+                os.chdir(exe)
+                print(os.popen("cmake -DCMAKE_BUILD_TYPE=RELEASE ..").read())
+                print(os.popen("make clean").read())
+                print(os.popen("make -j4").read())
+        else:
+            os.mkdir(exe)
+            os.chdir(exe)
+            print(os.popen("cmake -DCMAKE_BUILD_TYPE=RELEASE ..").read())
+            print(os.popen("make -j4").read())
+        os.chdir(curdir)
+        self.path2exe=exe+'neo_2.x'
 
 class Neo2Scan():
     """ Class for scans over one parameter
