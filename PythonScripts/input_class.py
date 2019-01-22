@@ -16,13 +16,68 @@ import yaml
 from IPython import display
 
 
+class Neo2_common_objects():
+    """ objects appearing in both subclasses
+
+    Attributes
+    ----------
+    path2code: str
+        path to the repository
+    path2exe:
+        path to the executable
+    rundir: str
+        Path of the working directory
+    req_files_names : dict
+        dict of required filenames to to run neo2
+        Only basic Set, extension of each subclass will be made
+    req_files_paths : dict
+        dict of paths of the required files to run neo2
+        Only basic Set, extension of each subclass will be made
+    _template_path: str
+        Path for sample files
+
+    Methods
+    -------
+    set_neo2file(path):
+        set a neo2.in file as sample
+    set_template_path():
+        Use all required Files from this directory.
+    run_local():
+        Run all Jobs local
+    run_condor():
+        Submit all Jobs to Condor
+    """
+
+    def __init__(self,wdir):
+
+
+        self._neo2path=os.environ.get('NEO2PATH')
+        # If NEO2PATH is not available the Attribute is NONE
+
+        self.wdir=wdir
+        if os.path.isdir(self._neo2path):
+            self._path2code=self._neo2path
+        else:
+            self._path2code=''
+
+        self._path2exe=''
+
+        self.req_files_names={
+        'neo2in': 'neo2.in',
+        'neoin': 'neo.in'
+        }
+        #self._Load_default()
+        self.req_files_paths=dict()
+
+
+
 class Neo2Scan():
     """ Class for scans over one parameter
 
 
     Attributes
     ----------
-    neo2in: Neo2File
+    neo2in: Neo2File???
         sample inputfile for the neo2.in file
     neoin: str
         path to neo.in file. In future maybe own instance of a new class.
@@ -32,10 +87,12 @@ class Neo2Scan():
     pert: str
         path to pertubation file in Boozer cooridnates. In future maybe own
         instance of a new class.
-    listofruns: list
+    listofsingleruns: list
         A list of the directories of each Singlerun
     req_files_names : dict
         dict of required filenames to to run neo2
+    req_files_paths : dict
+        dict of paths of the required files to run neo2
     rundir: str
         Path of the working directory
     scan_param: str
@@ -44,6 +101,10 @@ class Neo2Scan():
         list of values which will be iterated
     path2code: str
         path to the repository
+    path2exe:
+        path to the executable
+    structure: str
+        string representation of folder structure
 
 
     Methods
@@ -56,13 +117,74 @@ class Neo2Scan():
         generate structure for the singleruns
     set_neo2file(path):
         set a neo2.in file as sample
+    run_local():
+        Run all Jobs local
+    run_condor():
+        Submit all Jobs to Condor
+    set_template_path():
+        Use all required Files from this directory.
 
     """
+###### Methods to be implementend: #########
+    def __init__(self,runpath):
+
+        self._neo2path=os.environ.get('NEO2PATH')
+        self.runpath=runpath
+        self.structure=self.runpath+'/lag/'
+        self._path2code=''
+        self._path2exe=''
+        self.scan_para=''
+        self.scan_values=list()
+        self.listofsingleruns=list()
+
+        self.req_files_names={
+        'neo2in': 'neo2.in',
+        'neoin': 'neo.in'
+        }
+        #self._Load_default()
+        self.req_files_paths=dict()
+
+
+    def _read_neo2in(self):
+        try:
+            self.neo2nml=Neo2File(self.req_files_paths['neo2in'])
+        except:
+            print('Couldn\'t read neo2.in')
+            return
+
+    def _Load_default(self):
+        pass
+
+    def set_pert_file(self):
+        """Method to set Pertubation File"""
+        pass
+
+    def set_axi_sym_file(self):
+        """Method to set axisymetric File"""
+        pass
+
+
+    def set_multispecies_file(self):
+        """Method to set Multispecies File"""
+        pass
+
+
+    def run_local(self):
+        """Start Job on local machine"""
+        pass
+
+    def run_condor(self):
+        """Start Jobs with Condor"""
+        pass
+
+
+
+
 
 class SingleRun():
     """Class for inputs with only one neo2.in configuration
     
-    Sofar Multispecies only, 
+    So far Multispecies only,
     in Future there should be an MetaClass above these.
     Also some methods should then upmoved.
 
@@ -99,7 +221,7 @@ class SingleRun():
     
     def __init__(self,runpath):
 
-        self.neo2path=os.environ.get('NEO2PATH')
+        self._neo2path=os.environ.get('NEO2PATH')
         self.runpath=runpath
         #self.codesource=None
         #self.runsource=None # Executable
@@ -163,17 +285,17 @@ class SingleRun():
 
         
     
-    
-    
-    def Run_Precomp(self,overwrite=False):
-        """NOT READY YET!!!!"""
-    
-        #load_parameter from an old run! 
-        self._CheckReqFiles()
-        self._CreateFiles(overwrite)
-        self.RunInitRuns()
-        #self.gen_condorinput()
-        #self.run_condor()
+
+
+#    def Run_Precomp(self,overwrite=False):
+#        """NOT READY YET!!!!"""
+#
+#        #load_parameter from an old run!
+#        self._CheckReqFiles()
+#        self._CreateFiles(overwrite)
+#        self.RunInitRuns()
+#        #self.gen_condorinput()
+#        #self.run_condor()
         
         
         
@@ -192,7 +314,7 @@ class SingleRun():
             print('Starting initrun')
             print(os.popen("./neo_2.x").read())
             for a,b,c in os.walk('./'):
-                self.listofruns=b
+                #self.listofruns=b
                 break
             os.chdir(curdir)
         
@@ -267,6 +389,26 @@ class SingleRun():
             self.req_files_paths['neo2in']=join(abspath(neo2file),'neo2.in')
             
             
+
+###### Methods to be implementend: #########
+
+    def set_pert_file(self):
+        """Method to set Pertubation File"""
+        pass
+
+    def set_axi_sym_file(self):
+        """Method to set axisymetric File"""
+        pass
+
+
+    def set_multispecies_file(self):
+        """Method to set Multispecies File"""
+        pass
+
+
+    def run_local(self):
+        """Start Job on local machine"""
+        pass
             
             
             
