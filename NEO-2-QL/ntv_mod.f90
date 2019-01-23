@@ -1566,7 +1566,7 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'boozer_s', boozer_s, comment='', unit='1')
     CALL h5_add(h5id_multispec, 'aiota', aiota_loc, comment='toroidal transform, 1/q', unit='1')
     CALL h5_add(h5id_multispec, 'R0', rt0, comment='major radius', unit='cm')
-    CALL h5_add(h5id_multispec, 'Bref', (bmod0*1.0e4_dp), comment='reference magnetic field') !< \todo Unit of Bref!
+    CALL h5_add(h5id_multispec, 'Bref', (bmod0*1.0e4_dp), comment='reference magnetic field in gauss', unit='G')
     CALL h5_add(h5id_multispec, 'psi_pr_hat', boozer_psi_pr_hat)
     CALL h5_add(h5id_multispec, 'avnabpsi', avnabpsi)
     CALL h5_add(h5id_multispec, 'sqrtg_bctrvr_tht', sqrtg_bctrvr_tht)
