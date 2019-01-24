@@ -36,7 +36,7 @@ class Neo2_common_objects():
     req_files_paths : dict
         dict of paths of the required files to run neo2
         Only basic Set, extension of each subclass will be made
-    _template_path: str
+    template_path: str
         Path for sample files
 
     Methods
@@ -92,7 +92,86 @@ class Neo2_common_objects():
         os.chdir(curdir)
         self.path2exe=exe+'neo_2.x'
 
-class Neo2Scan():
+    def _read_neo2in(self):
+        try:
+            self.neo2nml=Neo2File(self.req_files_paths['neo2in'])
+        except:
+            print('Couldn\'t read neo2.in')
+            return
+
+
+
+
+    def _createfiles(self,overwrite=False,link=True):
+        """Create and/or link required files and folder into destination"""
+
+
+        self._checkreqfiles()
+        if not os.path.exists(self.path2exe):
+            raise IOError('Path to Executable is missing')
+
+        if self.runpath==None:
+            raise IOError('runpath is missing')
+        os.makedirs(self.runpath,exist_ok=True)
+
+        for i,j in self.req_files_paths.items():
+            print(j)
+            destfile=os.path.join(self.runpath,os.path.basename(j))
+
+            if os.path.isfile(destfile):
+                if overwrite:
+                    print(destfile, ' is a file and is replaced')
+                    os.remove(destfile)
+                else:
+                    print(destfile, ' is not updated') ### Maybe check if it is the same file!!
+                    continue
+            if i == 'neo2in':
+                if self.neo2nml.ischanged:
+                    self.neo2nml.write(destfile)
+                    continue
+            os.symlink(j,destfile)
+
+
+
+        i2=self.path2exe
+        print('path2exe = ', i2)
+        destfile=os.path.join(self.runpath,os.path.basename(i2))
+        print('destfile = ', destfile)
+        if os.path.isfile(destfile):
+            if overwrite:
+                print(destfile, ' is a file and is replaced')
+                os.remove(destfile)
+            else:
+                print(destfile, ' is not updated') ### Maybe check if it is the same file!!
+                return
+
+        os.symlink(i2,destfile)
+        self._Runiscreated=True
+
+
+
+
+
+    def _checkreqfiles(self):
+
+
+        if set(self.req_files_names) != set(self.req_files_paths):
+            raise ValueError('Not all paths of required Files defined')
+
+        for i,j in self.req_files_paths.items():
+            if not os.path.exists(j):
+                raise RuntimeError(j,' is not a File')
+
+
+        else:
+            print('All required Files are existing')
+            return
+
+
+
+
+
+class Neo2Scan(Neo2_common_objects):
     """ Class for scans over one parameter
 
 
@@ -147,47 +226,47 @@ class Neo2Scan():
 
     """
 ###### Methods to be implementend: #########
-    def __init__(self,runpath):
-
-        self._neo2path=os.environ.get('NEO2PATH')
-        self.runpath=runpath
-        self.structure=self.runpath+'/lag/'
-        self._path2code=''
-        self._path2exe=''
-        self.scan_para=''
-        self.scan_values=list()
-        self.listofsingleruns=list()
-
-        self.req_files_names={
-        'neo2in': 'neo2.in',
-        'neoin': 'neo.in'
-        }
-        #self._Load_default()
-        self.req_files_paths=dict()
-
-
-    def _read_neo2in(self):
-        try:
-            self.neo2nml=Neo2File(self.req_files_paths['neo2in'])
-        except:
-            print('Couldn\'t read neo2.in')
-            return
-
-    def _Load_default(self):
-        pass
-
-    def set_pert_file(self):
-        """Method to set Pertubation File"""
-        pass
-
-    def set_axi_sym_file(self):
-        """Method to set axisymetric File"""
-        pass
+#    def __init__(self,runpath):
+#
+#        self._neo2path=os.environ.get('NEO2PATH')
+#        self.runpath=runpath
+#        self.structure=self.runpath+'/lag/'
+#        self._path2code=''
+#        self._path2exe=''
+#        self.scan_para=''
+#        self.scan_values=list()
+#        self.listofsingleruns=list()
+#
+#        self.req_files_names={
+#        'neo2in': 'neo2.in',
+#        'neoin': 'neo.in'
+#        }
+#        #self._Load_default()
+#        self.req_files_paths=dict()
 
 
-    def set_multispecies_file(self):
-        """Method to set Multispecies File"""
-        pass
+#    def _read_neo2in(self):
+#        try:
+#            self.neo2nml=Neo2File(self.req_files_paths['neo2in'])
+#        except:
+#            print('Couldn\'t read neo2.in')
+#            return
+
+#    def _Load_default(self):
+#        pass
+#
+#    def set_pert_file(self):
+#        """Method to set Pertubation File"""
+#        pass
+#
+#    def set_axi_sym_file(self):
+#        """Method to set axisymetric File"""
+#        pass
+#
+#
+#    def set_multispecies_file(self):
+#        """Method to set Multispecies File"""
+#        pass
 
 
     def run_local(self):
@@ -202,7 +281,7 @@ class Neo2Scan():
 
 
 
-class SingleRun():
+class SingleRun(Neo2_common_objects):
     """Class for inputs with only one neo2.in configuration
     
     So far Multispecies only,
@@ -242,23 +321,24 @@ class SingleRun():
     
     def __init__(self,runpath):
 
-        self._neo2path=os.environ.get('NEO2PATH')
+
+        super().__init__(runpath)
         self.runpath=runpath
         #self.codesource=None
         #self.runsource=None # Executable
     
-        self.req_files_names={
-        'neo2in': 'neo2.in',
-        'neoin': 'neo.in'
-        }
+        #self.req_files_names={
+        #'neo2in': 'neo2.in',
+        #'neoin': 'neo.in'
+       # }
         #self._Load_default()
-        self.req_files_paths=dict()
+        #self.req_files_paths=dict()
         #self._SetSources()
         #self._fill_req_files_paths() # including Fill required Files from neo Files, which reads neo2.in
         #self._neo2inSet=False
        # self._neo2parSaved=False
-        self._Runiscreated=False # required Files exists
-        self._Runsettingsaved=False # required Files and Settings saved
+        #self._Runiscreated=False # required Files exists
+        #self._Runsettingsaved=False # required Files and Settings saved
         
         ##########Info :self._sources=dict()
        
@@ -312,8 +392,8 @@ class SingleRun():
 #        """NOT READY YET!!!!"""
 #
 #        #load_parameter from an old run!
-#        self._CheckReqFiles()
-#        self._CreateFiles(overwrite)
+#        self._checkreqfiles()
+#        self._createfiles(overwrite)
 #        self.RunInitRuns()
 #        #self.gen_condorinput()
 #        #self.run_condor()
@@ -324,7 +404,7 @@ class SingleRun():
         """Use Bash Routine from andfmar"""
         
         
-        self._CreateFiles()
+        self._createfiles()
         if self.neo_nml['isw_multispecies_init'] != 1:
             raise AttributeError('isw_multispecies_init is not 1')
         else:
@@ -341,63 +421,8 @@ class SingleRun():
         
         
 
-    def _CreateFiles(self,overwrite=False,link=True):
-        """Create and/or link required files into destination"""
-        
-        
-        if self.runpath==None:
-            raise IOError('runpath is missing')
-        os.makedirs(self.runpath,exist_ok=True)
-        
-        for i in self.req_files_paths.values():
-            print(i)
-            destfile=os.path.join(self.runpath,os.path.basename(i))
-                
-            if os.path.isfile(destfile):
-                if overwrite:
-                    print(destfile, ' is a file and is replaced')
-                    os.remove(destfile)
-                else:
-                    print(destfile, ' is not updated') ### Maybe check if it is the same file!!
-                    continue
-            
-            os.symlink(i,destfile)
-        
-        
-        
-        i=self._runsource
-        print('runsource = ', i)
-        destfile=os.path.join(self.runpath,os.path.basename(i))
-        print('destfile = ', destfile)
-        if os.path.isfile(destfile):
-            if overwrite:
-                print(destfile, ' is a file and is replaced')
-                os.remove(destfile)
-            else:
-                print(destfile, ' is not updated') ### Maybe check if it is the same file!!
-                return
-            
-        os.symlink(i,destfile)  
-        self._Runiscreated=True           
 
-        
-        
-        
-    def _CheckReqFiles(self):
-        
-        if set(self.req_files_names) != set(self.req_files_paths):
-            raise ValueError('Not all paths of required Files defined')
-        
-        for i,j in self.req_files_paths.items():
-            if not os.path.exists(j):
-                raise RuntimeError(j,' is not a File')
-                
-            
-        else:
-            print('All required Files are existing')
-                
 
-    
         
     def SetNeo2file(self,neo2file): ## Method to set the path of the neo2 file and make all check(Setter of neo2.in)
         """Path to (new) neo2.in File"""
@@ -413,28 +438,24 @@ class SingleRun():
 
 ###### Methods to be implementend: #########
 
-    def set_pert_file(self):
-        """Method to set Pertubation File"""
-        pass
-
-    def set_axi_sym_file(self):
-        """Method to set axisymetric File"""
-        pass
-
-
-    def set_multispecies_file(self):
-        """Method to set Multispecies File"""
-        pass
-
-
-    def run_local(self):
-        """Start Job on local machine"""
-        pass
-            
-            
-            
-        
-        
+#    def set_pert_file(self):
+#        """Method to set Pertubation File"""
+#        pass
+#
+#    def set_axi_sym_file(self):
+#        """Method to set axisymetric File"""
+#        pass
+#
+#
+#    def set_multispecies_file(self):
+#        """Method to set Multispecies File"""
+#        pass
+#
+#
+#    def run_local(self):
+#        """Start Job on local machine"""
+#        pass
+#
         
 ####### Implementend Functions: #########       
         
@@ -522,12 +543,12 @@ class SingleRun():
         self._fill_req_files_paths() # recursive Execution!!! maybe a problem!!!
 
     
-    def _read_neo2in(self):
-        try:
-            self.neo_nml=Neo2File(self.req_files_paths['neo2in'])
-        except:
-            print('Couldn\'t read neo2.in')
-            return
+#    def _read_neo2in(self):
+#        try:
+#            self.neo_nml=Neo2File(self.req_files_paths['neo2in'])
+#        except:
+#            print('Couldn\'t read neo2.in')
+#            return
 
 
 
@@ -553,6 +574,7 @@ class Neo2File(object):
 
 
     def __init__(self,neo2path):
+        self.ischanged=False
         self._neo2nml=f90nml.read(neo2path)
         self._neo2dict=dict()
         self._nmltodict()
@@ -676,7 +698,9 @@ class Neo2File(object):
                         print('before change: ',par,'=',self._neo2nml[i][par])
                         self._neo2nml[i][par]=val
                         print(par, ' in namelist', i, ' changed to : ', val)
+                        self.ischanged=True
                         return
+
         # Auch unbedingt Kotrollen einführen
         #print('setter:',key,'is set to :', val)
         #self._neo2nml.__setitem__(key, val)
