@@ -110,13 +110,13 @@ class Neo2_common_objects():
         if not os.path.exists(self.path2exe):
             raise IOError('Path to Executable is missing')
 
-        if self.runpath==None:
-            raise IOError('runpath is missing')
-        os.makedirs(self.runpath,exist_ok=True)
+        if self.singlerunpath==None:
+            raise IOError('singlerunpath is missing')
+        os.makedirs(self.singlerunpath,exist_ok=True)
 
         for i,j in self.req_files_paths.items():
             print(j)
-            destfile=os.path.join(self.runpath,os.path.basename(j))
+            destfile=os.path.join(self.singlerunpath,os.path.basename(j))
 
             if os.path.isfile(destfile):
                 if overwrite:
@@ -135,7 +135,7 @@ class Neo2_common_objects():
 
         i2=self.path2exe
         print('path2exe = ', i2)
-        destfile=os.path.join(self.runpath,os.path.basename(i2))
+        destfile=os.path.join(self.singlerunpath,os.path.basename(i2))
         print('destfile = ', destfile)
         if os.path.isfile(destfile):
             if overwrite:
@@ -268,6 +268,13 @@ class Neo2Scan(Neo2_common_objects):
 #        """Method to set Multispecies File"""
 #        pass
 
+    def __init__(self,wdir):
+        super().__init__(wdir)
+        self.structure=''
+        self.scanparameter=''
+        self.float_format='1.2e'
+
+
 
     def run_local(self):
         """Start Job on local machine"""
@@ -276,6 +283,46 @@ class Neo2Scan(Neo2_common_objects):
     def run_condor(self):
         """Start Jobs with Condor"""
         pass
+
+
+    def _checktype(self,parameter):
+        """Check data type of parameter in neo2in file"""
+
+        if parameter in self.neo2nml:
+            if isinstance(self.neo2nml[parameter],str):
+                return str
+            elif isinstance(self.neo2nml[parameter],list):
+                return list
+            elif isinstance(self.neo2nml[parameter],int):
+                return int
+            elif isinstance(self.neo2nml[parameter],float):
+                return float
+            else:
+                raise AttributeError('Did not detect datatype of scanparameter')
+
+    def _set_folder_names(self,overwrite=False):
+
+        if self.scanparameter not in self.structure.split('/'):
+            raise AttributeError('Scanparameter is not in Structure')
+
+        for i in self.scanvalues:
+            self.neo2nml[self.scanparameter]=i
+            self.singlerunpath=os.path.join(self.wdir,self._set_folder_names_4_singlerun())
+            self._createfiles(overwrite=overwrite)
+
+
+    def _set_folder_names_4_singlerun(self):
+        structure_list=self.structure.split('/')
+        for i, j in enumerate(structure_list):
+            if j in self.neo2nml:
+                if self._checktype(j)==type(float):
+                    structure_list[i]='{0}={1:{2}}'.format(j,self.neo2nml[j],self.float_format)
+                elif self._checktype(j)==type(int):
+                    structure_list[i]='{0}={1}'.format(j,self.neo2nml[j])
+                else:
+                    print(j, ' is not a int or float')
+
+        return '/'.join(structure_list)
 
 
 
@@ -292,7 +339,7 @@ class SingleRun(Neo2_common_objects):
     Attributes
     ----------
 
-    runpath : str
+    singlerunpath : str
         Path of the working directory
     req_files_names : dict
         dict of required files to to run neo2
@@ -319,11 +366,11 @@ class SingleRun(Neo2_common_objects):
 
     ### Methods should be used but not class in total.
     
-    def __init__(self,runpath):
+    def __init__(self,singlerunpath):
 
 
-        super().__init__(runpath)
-        self.runpath=runpath
+        super().__init__(singlerunpath)
+        self.singlerunpath=singlerunpath
         #self.codesource=None
         #self.runsource=None # Executable
     
@@ -410,8 +457,8 @@ class SingleRun(Neo2_common_objects):
         else:
             curdir=os.getcwd()
             print('curdir = ',curdir)
-            print('runpath = ',self.runpath)
-            os.chdir(self.runpath)
+            print('singlerunpath = ',self.singlerunpath)
+            os.chdir(self.singlerunpath)
             print('Starting initrun')
             print(os.popen("./neo_2.x").read())
             for a,b,c in os.walk('./'):
