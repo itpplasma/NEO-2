@@ -43,7 +43,7 @@ This contains the input parameters ``lag'' and ``leg'', which is a point
 to remember when comparing files of different runs (especially
 convergence tests/scans).
 
-\paragraph{k_cof}
+\paragraph{k\_cof}
 Related to a integration constant in the expression for the parallel
 flow. For definition see below Eq. (2.26) in \cite{Martitsch:Thesis:16}.
 
@@ -164,7 +164,7 @@ Here the values of some of the input variables are documented.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{How to read/edit the in/output}
 This section will briefly describe the possibilities to read and edit
-the input and output of \neo2.
+the input and output of \neotwo.
 
 In table~\ref{tablereadinginoutput} is an overview of the formats used
 for input and output, along with usual ending and the possibilities to
@@ -182,16 +182,16 @@ fortran namelist$^5$&in/out &        &        &         & yes$^2$ \\
 efit               & in     &        &        &         & yes$^2$
     \end{tabular}
     \caption{Possibilities to read/write/edit the different in-/output
-file formats of \neo2.
+file formats of \neotwo.
 $^1$ the program \program{hdf5view} can be used to read/edit hdf5 files.
 $^2$ This requires some care, e.g. about what changes are possible, what
 side effects might occour.
 $^3$ At the moment of writing this, octave is not capable of reading
 just parts of hdf5 files, thus it can not be recommended for files
 larger than the main memory.
-$^4$ The netcdf format is currently not in use in \neo2, but as it has
+$^4$ The netcdf format is currently not in use in \neotwo, but as it has
 been used at some point, it is listed here.
-$^5$ Meant is here specifically the \neo2 configuration file.}
+$^5$ Meant is here specifically the \neotwo configuration file.}
     \label{tablereadinginoutput}
   \end{center}
 \end{table}
@@ -218,7 +218,7 @@ Note that some output files may contain size information in some of the
 fields, which makes resizing a bit more complicated.
 
 Netcdf is a binary container format and as such similar to hdf5. At the
-moment it is not used by \neo2, neither as input nor as output, but as
+moment it is not used by \neotwo, neither as input nor as output, but as
 it has been used as an output format in the past, it is listed here.
 
 Fortran namelists are mainly used as inputs, but in some cases there are
