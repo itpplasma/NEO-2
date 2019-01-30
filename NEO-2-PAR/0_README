@@ -20,7 +20,7 @@
 
 The out-of-source build method gives to ability to create new build directories for different compilers and configurations, without affecting other build configurations.
 The compiler can be change in step 3 by running
-cmake -DCMAKE_Fortran_COMPILER=ifort ..
+cmake -DCMAKE_Fortran_COMPILER=ifort -DCMAKE_C_COMPILER=icc -DCMAKE_CXX_COMPILER=icpc ..
 instead of
 cmake ..
 
