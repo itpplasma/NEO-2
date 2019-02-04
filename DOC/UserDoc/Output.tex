@@ -275,6 +275,47 @@ from the format used by boozer files). These files can be viewed with
 a texteditor, but as the file makes not clear which number is which
 parameter, it is not recommended to edit efit files with a texteditor.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{How to compute dimensionless quantities from the output}
+This section will describe, how to get dimensionless quantities from the
+\neotwo output. As the relevant quantities and how they are normalized
+differs between the both device types, they are treated seperately.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Tokamak}
+
+\paragraph{Transport coefficients}
+The transport coefficients $D_{ij}$ link the thermodynamic forces with
+the thermodynamik fluxes. Two different normalization constants are
+used.
+The plateau diffusion coefficient
+\begin{equation}
+  D_p = \frac{\pi q v_T \rho_L^2}{16 R}
+\end{equation}
+is used if neither index is equal to three. In case of the indices is
+equal to three (e.g. $D_{13}$), then the Ware pinch coefficient  for the
+axisymmetric field
+\begin{equation}
+  D_{13}^{AX} = \frac{cT_i B_{\phi}}{e_i \sqrt{g} B^{\theta}}
+\end{equation}
+is used for normalization.
+If calculated, these two quantities are written to the file
+\file{neo2\_multispecies\_out.h5}.
+
+%~ For multispecies runs, the most interesting file is
+%~ \file{neo2\_multispecies\_out.h5}. It contains the elements $D_{ij}$ of
+%~ the transport matrix. Each element is seperated into an axisymmetric
+%~ part (AX) and an non-axisymmetric part (NA). Each of these is given in
+%~ normalized and not normalized form.
+%~ To compute from these the fluxes, the thermodynamic forces are required.
+%~ For the computation of these, some more quantities are necessary. These
+%~ are either obtainable from the same file, or from the input
+%~ (\file{neo2\_config.h5}).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Stellerator}
+
 %~ \begin{figure}[thb]
 %~ \begin{center}
 %~ \includegraphics[width=12 truecm,clip]{heatflux.eps}
