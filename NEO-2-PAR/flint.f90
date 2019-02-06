@@ -383,6 +383,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   real(kind=dp)  :: eta_savemem_sigma, eta_savemem_sigma_fact
   real(kind=dp)  :: bsfunc_local_err_orig, bsfunc_local_err_decay_sigma, bsfunc_local_err_decay_min_mult
 
+  eta_highest_local_max = -1.234e5
+
   !print *, 'flint: begin of program'
   ! this is not very sophisticated at the moment
   !  mainly puts the fieldpropagator pointer to the first one
@@ -3795,6 +3797,9 @@ SUBROUTINE sort_theta()
   INTEGER :: found
   t_min = 1.0d100
   t_max = -1.9d100
+
+  p_min = fieldline%ch_fir ! initialization, should not be necessary?
+  p_max = fieldline%ch_fir ! initialization, should not be necessary?
 
   fieldperiod => fieldline%ch_fir
   ! find t_min and t_max

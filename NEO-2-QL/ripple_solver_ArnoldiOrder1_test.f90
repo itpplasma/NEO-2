@@ -6056,7 +6056,9 @@ SUBROUTINE rearrange_phideps(ibeg,iend,npart,ncomp,nreal,subsqmin,phi_divide, &
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE   :: phi_new,bhat_new
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: arr_real_new
   DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: arr_comp_new
-!
+
+  npassing = -1
+
   CALL fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
                                 phi_mfl,bhat_mfl,eta)
 !
@@ -6355,6 +6357,8 @@ SUBROUTINE fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
   DOUBLE PRECISION, DIMENSION(0:npart)        :: eta
   DOUBLE PRECISION, DIMENSION(ibeg:iend)      :: phi_mfl,bhat_mfl
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: eta_cross_l,eta_cross_r
+
+  npassing = -1
 !
 ! determine level crossings:
 !

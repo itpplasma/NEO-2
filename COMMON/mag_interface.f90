@@ -1673,6 +1673,19 @@ CONTAINS
     INTEGER       :: back_period,back_period_end,i_start
     TYPE(fieldperiod_struct),     POINTER :: fieldperiod_delete
 
+    r_start = 1.234e+5
+    z_start = 1.234e+5
+    x1_start = 1.234e+5
+    x2_start = 1.234e+5
+    x3_start = 1.234e+5
+    bhat_start = 1.234e+5
+    geodcu_start = 1.234e+5
+    h_phi_start = 1.234e+5
+    dbcovar_s_hat_dphi_start = 1.234e+5
+    bcovar_s_hat_start = 1.234e+5
+    dlogbdphi_start = 1.234e+5
+    dlogbds_start = 1.234e+5
+
     ! local copies
     nperiod = surface%nperiod
     nstep   = surface%nstep  
@@ -3207,7 +3220,23 @@ CONTAINS
     REAL(kind=dp), DIMENSION(100) :: b_inflection
     REAL(kind=dp), DIMENSION(100) :: dbdp_inflection
     INTEGER :: icount
-    
+
+    ripple_start = .false.
+    ripple_end = .false.
+
+    first_phi_min = 1.234e+5
+    first_bhat_min = 1.234e+5
+    first_d2bp_min = 1.234e+5
+
+    last_phi_min = 1.234e+5
+    last_bhat_min = 1.234e+5
+
+    ripple_phi_min = 1.234e+5
+    ripple_b_min = 1.234e+5
+    ripple_phi_l = 1.234e+5
+
+    ripple_d2bp_min = 0.0
+    ripple_d2bp_max_l = 0.0
 
     IF (mag_magfield .EQ. 0) THEN ! homogeneous case
        !print *, 'mag_interface: setup_fieldparameters - homogeneous'

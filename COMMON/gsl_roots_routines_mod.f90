@@ -191,7 +191,9 @@ CONTAINS
     TYPE(fgsl_function) :: stdfunc
     TYPE(fgsl_root_fsolver) :: root_fslv
     TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of 'param1'
-    !
+
+    fzero1d_param1_bisec = 1.234e5
+
     ! Associate global procedure pointer with user-specified function
     func1d_param1_ptr => func1d_param1_user
     IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
