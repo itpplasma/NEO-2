@@ -1839,7 +1839,12 @@ CONTAINS
     aiota_loc = surface%aiota
     avnabpsi = y(7) / y(6)
     avbhat2 = y(9) / y(6)
-    !
+
+    spec_i = -1
+
+    denom_Er = 0.0
+    nom_Er = 0.0
+
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
        ! cylindrical coordinates
@@ -2113,7 +2118,12 @@ CONTAINS
     aiota_loc = surface%aiota
     avnabpsi = y(7) / y(6)
     avbhat2 = y(9) / y(6)
-    !
+
+    spec_i = -1
+
+    denom_Er = 0.0
+    nom_Er = 0.0
+
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
        ! cylindrical coordinates
@@ -2579,7 +2589,16 @@ CONTAINS
     aiota_loc = surface%aiota
     avnabpsi = y(7) / y(6)
     avbhat2 = y(9) / y(6)
-    !
+
+    spec_i = -1
+
+    denom_Er_a = 0.0
+    denom_Er_c = 0.0
+    nom_Er = 0.0
+    denom_Epar_b = 0.0
+    denom_Epar_d = 0.0
+    nom_Epar = 0.0
+
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     ! + total parallel current (at the moment only available for Boozer coordinates)
     IF (mag_coordinates .EQ. 0) THEN

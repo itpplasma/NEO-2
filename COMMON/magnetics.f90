@@ -2918,6 +2918,9 @@ CONTAINS
     INTEGER       :: i
     REAL(kind=dp) :: min_val,min_val2
 
+    min_val = 1.234e5
+    min_val2 = 1.234e5
+
     IF (ASSOCIATED(dnumber) .AND. ASSOCIATED(dnumber2)) THEN
        CALL goto_first(dnumber )
        CALL goto_first(dnumber2)

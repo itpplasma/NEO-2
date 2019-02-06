@@ -746,6 +746,8 @@ contains
     real(kind=dp) :: rmu, C_I_rel1_mmp
     integer       :: l, m, mp
 
+    C_I_rel1_mmp = 1.234e+5
+
     if (l .eq. 0) then
        C_I_rel1_mmp = C_I_l0_rel1(rmu, m, mp)
     elseif (l .eq. 1) then 

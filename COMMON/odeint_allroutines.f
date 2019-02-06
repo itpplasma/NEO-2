@@ -60,6 +60,8 @@
       PARAMETER (MAXSTP=1000000,TINY=1.e-30)
       INTEGER i,nstp
       double precision h,hdid,hnext,x,xsav
+
+      xsav = 1.234e5
 !
       ialloc=1
       call alloc_odeint(nvar)
