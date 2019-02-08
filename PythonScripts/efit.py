@@ -12,7 +12,7 @@ class efit_type:
   characters_per_number=16
   numbers_per_line=5
 
-  def __init__(self, filename):
+  def __init__(self, filename: str):
     import numpy as np
 
     # Read in the file.
