@@ -1,5 +1,24 @@
 #!/usr/bin/env python3
 
+def append_array_to_string_in_five_columns(lines: str, array):
+  nr_elements = len(array)
+
+  formatstring_five_elements = ' {0[0]: 1.8e} {0[1]: 1.8e} {0[2]: 1.8e} {0[3]: 1.8e} {0[4]: 1.8e}\n'
+
+  for i in range(int(nr_elements/5)):
+    lines += formatstring_five_elements.format(array[i*5:i*5+5])
+
+  if (nr_elements % 5 == 1):
+    lines += ' {0[0]: 1.8e}'.format(array[-1:])
+  elif (nr_elements % 5 == 2):
+    lines += ' {0[0]: 1.8e} {0[1]: 1.8e}'.format(array[-2:])
+  elif (nr_elements % 5 == 3):
+    lines += ' {0[0]: 1.8e} {0[1]: 1.8e} {0[2]: 1.8e}'.format(array[-3:])
+  elif (nr_elements % 5 == 4):
+    lines += ' {0[0]: 1.8e} {0[1]: 1.8e} {0[2]: 1.8e} {0[3]: 1.8e}'.format(array[-4:])
+
+  return lines
+
 """Extract and store information from an efit file.
 
 This class is designed to extract and store information from an efit
@@ -87,6 +106,40 @@ class efit_type:
     # a last value?
     # If it is known what this is, it is read, until then we just ignore
     # it.
+
+  def write(self, filename: str):
+    import numpy as np
+
+    lines = ''
+    formatstring_five_elements = ' {: 1.8e} {: 1.8e} {: 1.8e} {: 1.8e} {: 1.8e}'
+
+    # Split the first line, which contains some usefull (e.g. nw, nh) and
+    # some not so usefull information (e.g. unknownvaluestr and signtodiscard).
+    lines += '   ' + self.unknownvaluestr + '   ' + self.datestr + '      ' + self.signtodiscard + ' {}  '.format(self.shootnr) + self.timestr + '           {: >3d}'.format(self.idum) + ' {: >3d}'.format(self.nw) + ' {: >3d}'.format(self.nh) + '\n'
+
+    # First few (four) lines contain specific values.
+    lines += formatstring_five_elements.format(self.rdim, self.zdim, self.rcentr, self.rleft, self.zmid) + '\n'
+    lines += formatstring_five_elements.format(self.rmaxis, self.zmaxis, self.simag, self.sibry, self.bcentr) + '\n'
+    lines += formatstring_five_elements.format(self.current, self.simag2, self.dummy1, self.rmaxis, self.dummy2) + '\n'
+    lines += formatstring_five_elements.format(self.zmaxis, self.dummy3, self.sibry2, self.dummy4, self.dummy5) + '\n'
+
+    lines = append_array_to_string_in_five_columns(lines, self.fpol)
+    lines = append_array_to_string_in_five_columns(lines, self.pres)
+    lines = append_array_to_string_in_five_columns(lines, self.ffprim)
+    lines = append_array_to_string_in_five_columns(lines, self.pprime)
+
+    lines = append_array_to_string_in_five_columns(lines, np.ravel(self.psi2d))
+
+    lines = append_array_to_string_in_five_columns(lines, self.q)
+
+    lines += ' {: >4d} {: >4d}\n'.format(self.number_boundary_points, self.number_limiter_points)
+
+    lines = append_array_to_string_in_five_columns(lines, np.ravel(self.unknown_array1))
+
+    lines += '\n'
+
+    with open(filename, 'w') as f:
+      f.writelines(lines)
 
   def local_split(self, a):
     import numpy as np
