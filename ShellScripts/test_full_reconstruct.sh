@@ -68,9 +68,11 @@ function check_equality_hdf5 {
   fi
 
   for h5file in `ls $referencepath_local/${testcase_local}/*.h5` ; do
-    if h5diff --relative=${accuracy} ${exclude_paths} -q $h5file ./`basename $h5file` ; then
-      a=''
-    else
+    # Note: return value of h5diff can not be used, as it can be 1, even
+    # if no difference is reported.
+    # Thus the use of grep -c, this will return 1 if the count is zero,
+    # and return 0 if there is at least one occurence.
+    if h5diff --relative=${accuracy} ${exclude_paths} $h5file ./`basename $h5file` | grep -c "difference" ; then
       echo "comparing $h5file and ./`basename $h5file`"
       echo "comparison command is 'h5diff --relative=${accuracy} ${exclude_paths}'"
       h5diff --relative=${accuracy} ${exclude_paths} $h5file ./`basename $h5file`

@@ -69,7 +69,7 @@ function compare_data {
   accuracy="1.0e$exponent_def"
 
   for h5file in $comparefilename ; do
-    if ! h5diff --relative=${accuracy} -q $referencepath_local/$testcase_local/$h5file $h5file $objects_to_compare ; then
+    if h5diff --relative=${accuracy} -q $referencepath_local/$testcase_local/$h5file $h5file $objects_to_compare | grep -c "difference" ; then
       echo "Inital comparison failed."
       return_value_loc=1
       exponent=$exponent_def
