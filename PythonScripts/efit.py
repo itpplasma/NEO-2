@@ -84,7 +84,7 @@ class efit_type:
     offset = offset+int(self.nw*self.nh/self.numbers_per_line)
     self.q = self.local_split(''.join(lines[offset:offset+int(self.nw/self.numbers_per_line)]))
 
-    # Next are two sizes(?) in the file.
+    # Next are two sizes in the file.
     offset = offset+int(self.nw/self.numbers_per_line)
     self.number_boundary_points, self.number_limiter_points = lines[offset].split()
     self.number_boundary_points = int(self.number_boundary_points)
@@ -98,8 +98,9 @@ class efit_type:
     # as expected.
     # For the default file and another one there are 4*5 additional
     # values (0) at the end of the array.
-    #~ offset = offset+int(2*self.number_boundary_points/self.numbers_per_line)
-    #~ self.unknown_array1 = self.local_split(''.join(lines[offset:offset+int(np.ceil(2*self.number_limiter_points/self.numbers_per_line))])).reshape([self.number_limiter_points,2])
+    offset = offset+int(2*self.number_boundary_points/self.numbers_per_line)
+    # \attention The '+10' is due to the actual layout of (some?) files. It is not sure wether this is correct or not.
+    self.unknown_array2 = self.local_split(''.join(lines[offset:offset+int(np.ceil(2*(self.number_limiter_points+10)/self.numbers_per_line))])).reshape([self.number_limiter_points,2])
 
     # Rest of the the file has so far unknown content. There seems to
     # follow a line with three values, another array and
@@ -135,6 +136,8 @@ class efit_type:
     lines += ' {: >4d} {: >4d}\n'.format(self.number_boundary_points, self.number_limiter_points)
 
     lines = append_array_to_string_in_five_columns(lines, np.ravel(self.unknown_array1))
+
+    lines = append_array_to_string_in_five_columns(lines, np.ravel(self.unknown_array2))
 
     lines += '\n'
 
