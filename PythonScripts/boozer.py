@@ -686,6 +686,13 @@ class BoozerFile:
 
     return zbeg
 
+  def get_bbeg(self):
+    bbeg = []
+    for radial_position in self.bmnc:
+      bbeg.append(sum(radial_position))
+
+    return bbeg
+
   def __init__(self, filename: str):
     """Init routine which takes a string, representing the file to read.
     """
