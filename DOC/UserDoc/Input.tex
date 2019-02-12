@@ -1,0 +1,31 @@
+\chapter{Input}
+
+
+\section{PAR}
+
+
+\section{QL}
+
+\paragraph{boozer}
+Read in subroutine \codevariable{neo\_read} in \file{neo\_sub.f90} (only
+the axisymetric part?).
+
+\paragraph{efit}
+Efit files are read in \file{field\_divB0} in the routines
+\codevariable{read\_dimeq1} (basic size information) and
+\codevariable{read\_eqfile1} (all the data, and again the basic size
+information).
+
+For efit case, input is assumed to be in SI units. The subroutine
+\codevariable{field\_eq} (which calls the reading routines above), will
+then convert the values to CGS units.
+
+\paragraph{neo.in}
+A fixed format file.
+
+Read in subroutine \codevariable{neo\_read\_control} in
+\file{neo\_sub.f90}.
+
+\paragraph{neo2.in}
+A namelist file.
+Read in main file.

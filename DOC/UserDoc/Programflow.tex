@@ -1,0 +1,86 @@
+\chapter{Programflow}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{PAR}
+
+\paragraph{}
+Set default namelist values.
+
+\paragraph{}
+Initialize hdf5.
+
+\paragraph{}
+Initialize MPI.
+
+\paragraph{}
+Read parameters from namelist files (\file{neo2.in}).
+
+\paragraph{}
+Check parameters.
+
+\paragraph{}
+If \codevariable{collop\_only\_precompute}, then construct/load the
+collisionoperarot, otherwise continue.
+
+\paragraph{}
+Switch \codevariable{prop\_reconstruct}.
+
+\paragraph{}
+Deinitialize hdf5.
+
+\paragraph{}
+Deinitialize MPI.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{QL}
+
+\paragraph{}
+Set default namelist values.
+
+\paragraph{}
+Initialize hdf5.
+
+\paragraph{}
+Read parameters from namelist files (\file{neo2.in}).
+
+\paragraph{}
+Check parameters.
+
+\paragraph{}
+If the parameter say so, initialize a multispecies run and stop the
+code.
+Otherwise continue.
+
+\paragraph{}
+Initialize MPI.
+
+\paragraph{}
+If it is a reconstruction run call \codevariable{reconstruct\_prop\_dist}
+and stop.
+
+\paragraph{}
+Call \codevariable{kin\_allocate}.
+
+\paragraph{}
+Call \codevariable{flint\_prepare}.
+
+\paragraph{}
+Compute/load collision operator.
+
+\paragraph{}
+Second preparation of flint.
+
+\paragraph{}
+Proptag related stuff?
+
+\paragraph{}
+Call \codevariable{flint}.
+
+\paragraph{}
+Unload collision operator.
+
+\paragraph{}
+Deinitialize MPI.
+
+\paragraph{}
+Deinitialize hdf5.
