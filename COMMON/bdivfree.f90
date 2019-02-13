@@ -445,6 +445,8 @@ subroutine invert_mono_reg(nx,arry,xmin,xmax,ny,arrx,ymin,ymax)
   real(kind=dp), dimension(0:nx) :: arry
   real(kind=dp), dimension(0:ny) :: arrx
 
+  ixfix = -10
+
   ymin=arry(0)
   ymax=arry(nx)
 
@@ -504,6 +506,8 @@ subroutine invert_mono_per(nx,arry_in,xmin,xmax,ny,arrx,ymin,ymax)
   real(kind=dp), dimension(0:nx) :: arry_in
   real(kind=dp), dimension(0:ny) :: arrx
   real(kind=dp), dimension(:), allocatable :: arry
+
+  ixfix = -10
 
   allocate(arry(-1:nx+1))
   arry(0:nx)=arry_in

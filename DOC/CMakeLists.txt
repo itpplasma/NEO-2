@@ -35,7 +35,15 @@ include(UseLATEX)
 
 # Command for the main documentation.
 add_latex_document(UserDoc/main.tex
-  INPUTS UserDoc/Commands.sty UserDoc/Introduction.tex UserDoc/Output.tex
+  INPUTS
+  UserDoc/Commands.sty
+  UserDoc/Bugs.tex
+  UserDoc/Input.tex
+  UserDoc/Introduction.tex
+  UserDoc/Output.tex
+  UserDoc/Programflow.tex
+  UserDoc/Running.tex
+  UserDoc/Todo.tex
 )
 
 # Command for the coding style document. This is not done by default.

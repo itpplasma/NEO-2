@@ -54,7 +54,8 @@ function check_equality_hdf5 {
   # run, which are expected to differ.
   exclude_paths="--exclude-path=/metadata --exclude-path=/Testcase1/NEO-2/neo2_config/metadata"
   # Specify the accuracy for the comparison.
-  accuracy="1.0e-12"
+  exponent_def=-12
+  accuracy="1.0e$exponent_def"
 
   # If the run is in parallel, some modifications to the settings have
   # to be made.
@@ -67,14 +68,16 @@ function check_equality_hdf5 {
   fi
 
   for h5file in `ls $referencepath_local/${testcase_local}/*.h5` ; do
-    if h5diff --relative=${accuracy} ${exclude_paths} -q $h5file ./`basename $h5file` ; then
-      a=''
-    else
+    # Note: return value of h5diff can not be used, as it can be 1, even
+    # if no difference is reported.
+    # Thus the use of grep -c, this will return 1 if the count is zero,
+    # and return 0 if there is at least one occurence.
+    if h5diff --relative=${accuracy} ${exclude_paths} $h5file ./`basename $h5file` | grep -c "difference" ; then
       echo "comparing $h5file and ./`basename $h5file`"
       echo "comparison command is 'h5diff --relative=${accuracy} ${exclude_paths}'"
       h5diff --relative=${accuracy} ${exclude_paths} $h5file ./`basename $h5file`
 
-      exponent=-12
+      exponent=$exponent_def
       another_round=yes
       while [ "x$another_round" == "xyes" -a $exponent -le 1 ]  ; do
         h5diff --relative=1.0e$exponent ${exclude_paths} -q $h5file ./`basename $h5file`

@@ -1,5 +1,24 @@
 #!/usr/bin/env python3
 
+def append_array_to_string_in_five_columns(lines: str, array):
+  nr_elements = len(array)
+
+  formatstring_five_elements = ' {0[0]: 1.8e} {0[1]: 1.8e} {0[2]: 1.8e} {0[3]: 1.8e} {0[4]: 1.8e}\n'
+
+  for i in range(int(nr_elements/5)):
+    lines += formatstring_five_elements.format(array[i*5:i*5+5])
+
+  if (nr_elements % 5 == 1):
+    lines += ' {0[0]: 1.8e}'.format(array[-1:])
+  elif (nr_elements % 5 == 2):
+    lines += ' {0[0]: 1.8e} {0[1]: 1.8e}'.format(array[-2:])
+  elif (nr_elements % 5 == 3):
+    lines += ' {0[0]: 1.8e} {0[1]: 1.8e} {0[2]: 1.8e}'.format(array[-3:])
+  elif (nr_elements % 5 == 4):
+    lines += ' {0[0]: 1.8e} {0[1]: 1.8e} {0[2]: 1.8e} {0[3]: 1.8e}'.format(array[-4:])
+
+  return lines
+
 """Extract and store information from an efit file.
 
 This class is designed to extract and store information from an efit
@@ -12,7 +31,7 @@ class efit_type:
   characters_per_number=16
   numbers_per_line=5
 
-  def __init__(self, filename):
+  def __init__(self, filename: str):
     import numpy as np
 
     # Read in the file.
@@ -65,7 +84,7 @@ class efit_type:
     offset = offset+int(self.nw*self.nh/self.numbers_per_line)
     self.q = self.local_split(''.join(lines[offset:offset+int(self.nw/self.numbers_per_line)]))
 
-    # Next are two sizes(?) in the file.
+    # Next are two sizes in the file.
     offset = offset+int(self.nw/self.numbers_per_line)
     self.number_boundary_points, self.number_limiter_points = lines[offset].split()
     self.number_boundary_points = int(self.number_boundary_points)
@@ -79,14 +98,51 @@ class efit_type:
     # as expected.
     # For the default file and another one there are 4*5 additional
     # values (0) at the end of the array.
-    #~ offset = offset+int(2*self.number_boundary_points/self.numbers_per_line)
-    #~ self.unknown_array1 = self.local_split(''.join(lines[offset:offset+int(np.ceil(2*self.number_limiter_points/self.numbers_per_line))])).reshape([self.number_limiter_points,2])
+    offset = offset+int(2*self.number_boundary_points/self.numbers_per_line)
+    # \attention The '+10' is due to the actual layout of (some?) files. It is not sure wether this is correct or not.
+    self.unknown_array2 = self.local_split(''.join(lines[offset:offset+int(np.ceil(2*(self.number_limiter_points+10)/self.numbers_per_line))])).reshape([self.number_limiter_points,2])
 
     # Rest of the the file has so far unknown content. There seems to
     # follow a line with three values, another array and
     # a last value?
     # If it is known what this is, it is read, until then we just ignore
     # it.
+
+  def write(self, filename: str):
+    import numpy as np
+
+    lines = ''
+    formatstring_five_elements = ' {: 1.8e} {: 1.8e} {: 1.8e} {: 1.8e} {: 1.8e}'
+
+    # Split the first line, which contains some usefull (e.g. nw, nh) and
+    # some not so usefull information (e.g. unknownvaluestr and signtodiscard).
+    lines += '   ' + self.unknownvaluestr + '   ' + self.datestr + '      ' + self.signtodiscard + ' {}  '.format(self.shootnr) + self.timestr + '           {: >3d}'.format(self.idum) + ' {: >3d}'.format(self.nw) + ' {: >3d}'.format(self.nh) + '\n'
+
+    # First few (four) lines contain specific values.
+    lines += formatstring_five_elements.format(self.rdim, self.zdim, self.rcentr, self.rleft, self.zmid) + '\n'
+    lines += formatstring_five_elements.format(self.rmaxis, self.zmaxis, self.simag, self.sibry, self.bcentr) + '\n'
+    lines += formatstring_five_elements.format(self.current, self.simag2, self.dummy1, self.rmaxis, self.dummy2) + '\n'
+    lines += formatstring_five_elements.format(self.zmaxis, self.dummy3, self.sibry2, self.dummy4, self.dummy5) + '\n'
+
+    lines = append_array_to_string_in_five_columns(lines, self.fpol)
+    lines = append_array_to_string_in_five_columns(lines, self.pres)
+    lines = append_array_to_string_in_five_columns(lines, self.ffprim)
+    lines = append_array_to_string_in_five_columns(lines, self.pprime)
+
+    lines = append_array_to_string_in_five_columns(lines, np.ravel(self.psi2d))
+
+    lines = append_array_to_string_in_five_columns(lines, self.q)
+
+    lines += ' {: >4d} {: >4d}\n'.format(self.number_boundary_points, self.number_limiter_points)
+
+    lines = append_array_to_string_in_five_columns(lines, np.ravel(self.unknown_array1))
+
+    lines = append_array_to_string_in_five_columns(lines, np.ravel(self.unknown_array2))
+
+    lines += '\n'
+
+    with open(filename, 'w') as f:
+      f.writelines(lines)
 
   def local_split(self, a):
     import numpy as np

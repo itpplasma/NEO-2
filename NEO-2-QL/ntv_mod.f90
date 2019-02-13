@@ -1565,7 +1565,7 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'boozer_s', boozer_s, comment='', unit='1')
     CALL h5_add(h5id_multispec, 'aiota', aiota_loc, comment='toroidal transform, 1/q', unit='1')
     CALL h5_add(h5id_multispec, 'R0', rt0, comment='major radius', unit='cm')
-    CALL h5_add(h5id_multispec, 'Bref', (bmod0*1.0e4_dp), comment='reference magnetic field') !< \todo Unit of Bref!
+    CALL h5_add(h5id_multispec, 'Bref', (bmod0*1.0e4_dp), comment='reference magnetic field in gauss', unit='G')
     CALL h5_add(h5id_multispec, 'psi_pr_hat', boozer_psi_pr_hat)
     CALL h5_add(h5id_multispec, 'avnabpsi', avnabpsi)
     CALL h5_add(h5id_multispec, 'sqrtg_bctrvr_tht', sqrtg_bctrvr_tht)
@@ -1590,7 +1590,7 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'z_spec', z_spec, LBOUND(z_spec), UBOUND(z_spec), comment='charges of the species', unit='1')
     CALL h5_add(h5id_multispec, 'm_spec', m_spec, LBOUND(m_spec), UBOUND(m_spec), comment='mass of the species', unit='g')
     CALL h5_add(h5id_multispec, 'n_spec', n_spec, LBOUND(n_spec), UBOUND(n_spec), comment='density of the species', unit='1/cm^3')
-    CALL h5_add(h5id_multispec, 'T_spec', T_spec, LBOUND(T_spec), UBOUND(T_spec), comment='temperature of the species', unit='eV')
+    CALL h5_add(h5id_multispec, 'T_spec', T_spec, LBOUND(T_spec), UBOUND(T_spec), comment='temperature of the species', unit='erg')
     CALL h5_add(h5id_multispec, 'collpar_spec', collpar_spec, &
          LBOUND(collpar_spec), UBOUND(collpar_spec))
     CALL h5_add(h5id_multispec, 'nu_star_spec', nu_star_spec, &
@@ -1839,7 +1839,12 @@ CONTAINS
     aiota_loc = surface%aiota
     avnabpsi = y(7) / y(6)
     avbhat2 = y(9) / y(6)
-    !
+
+    spec_i = -1
+
+    denom_Er = 0.0
+    nom_Er = 0.0
+
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
        ! cylindrical coordinates
@@ -2114,7 +2119,12 @@ CONTAINS
     aiota_loc = surface%aiota
     avnabpsi = y(7) / y(6)
     avbhat2 = y(9) / y(6)
-    !
+
+    spec_i = -1
+
+    denom_Er = 0.0
+    nom_Er = 0.0
+
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
        ! cylindrical coordinates
@@ -2582,7 +2592,16 @@ CONTAINS
     aiota_loc = surface%aiota
     avnabpsi = y(7) / y(6)
     avbhat2 = y(9) / y(6)
-    !
+
+    spec_i = -1
+
+    denom_Er_a = 0.0
+    denom_Er_c = 0.0
+    nom_Er = 0.0
+    denom_Epar_b = 0.0
+    denom_Epar_d = 0.0
+    nom_Epar = 0.0
+
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     ! + total parallel current (at the moment only available for Boozer coordinates)
     IF (mag_coordinates .EQ. 0) THEN

@@ -953,6 +953,8 @@ CONTAINS
 
        n_last = -1
        k_n    = -1
+       k_n_last = -2 ! Note: set to minus two, to make clear that on the first round (k_n .ne. k_n_last) should be false.
+       bin_sparse_last = -1
        ori: DO n = 0, n_ori
           ori_sw = 0
           DO sk = nb-1, 0, -1
@@ -984,6 +986,7 @@ CONTAINS
                    x_ori_poi = xbs1%x_ori_poi(n)
                    count = 0
                    k_nc_last = -1
+                   xbs1_x_ori_bin_sparse = xbs1%x_ori_bin_sparse(n)%get(k_nc) ! to avoid warnings 'maybe used uninitialized'
                    DO p_c = pos-1,1,-1
                       p_nc = MOD(p_c,is)
                       k_nc   = FLOOR(DBLE(p_c)/DBLE(is))
@@ -1108,6 +1111,8 @@ CONTAINS
     
     n_last = -1
     k_n    = -1
+    k_n_last = -2 ! Note: set to minus two, to make clear that on the first round (k_n .ne. k_n_last) should be false.
+    bin_sparse_last = -1
     DO n = 0,n_ori
        DO sk = 0,nb-1
           pos_s = 2**sk
@@ -1149,6 +1154,7 @@ CONTAINS
                 END DO
                 count = 0
                 k_nc_last = -1
+                xbs1_x_ori_bin_sparse = xbs1%x_ori_bin_sparse(n)%get(k_nc) ! to avoid warnings 'maybe used uninitialized'
                 DO p_c = pos-1,1,-1
                    p_nc = MOD(p_c,is)
                    k_nc   = FLOOR(DBLE(p_c)/DBLE(is))

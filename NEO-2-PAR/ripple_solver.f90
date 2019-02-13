@@ -3189,6 +3189,8 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
   real(kind=dp), dimension(:), allocatable :: phi_new,bhat_new
   real(kind=dp), dimension(:), allocatable :: geodcu_new,h_phi_new
 
+  npassing = -1
+
   call fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
                                 phi_mfl,bhat_mfl,eta)
 
@@ -3488,6 +3490,9 @@ subroutine fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
   real(kind=dp), dimension(0:npart)        :: eta
   real(kind=dp), dimension(ibeg:iend)      :: phi_mfl,bhat_mfl
   real(kind=dp), dimension(:), allocatable :: eta_cross_l,eta_cross_r
+
+  npassing = -1
+
 !
 ! determine level crossings:
 !

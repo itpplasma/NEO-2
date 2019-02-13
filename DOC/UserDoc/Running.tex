@@ -1,0 +1,33 @@
+\chapter{Running}
+
+\section{Simple}
+Both variants of the code have hard coded names for parameter-input
+files. These must be named ``neo.in'' and ``neo2.in''. The former may
+not be needed for all configurations. It is a fixed format file, i.e.
+the form and order of parameters is fixed. ``neo2.in'' on the other hand
+is a standard fortran namelist file.
+The paramete-input files define the file names for the input of the
+magnetic equilibrium (background and perturbed).
+
+\subsection{Multispecies}
+A speciality of this multispecies run, is that the number of processors
+must be equal to the number of species. Other settings might produce
+results, but these need not to be correct.
+There will be a warning if one attemps to run a multispecies simulation
+with the number of processors not equal the number of species, but the
+code will continue, as this case might be of interest for testing
+things.
+
+\section{Condor}
+
+Create a submit description file.
+
+For more information consult the online manual http://research.cs.wisc.edu/htcondor/manual/.
+
+Commit the jobs using ``condor\_submit''.
+You can get the status of your jobs with ``condor\_q''. The option
+``--nobatch'' will show you a list single jobs, not summaries for
+complete batches.
+you can remove jobs from the queue with ``condor\_rm ID'', where ID can
+be those of a single run (e.g. 15.12), or those of a whole batch (e.g.
+15).

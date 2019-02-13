@@ -847,7 +847,10 @@ PRINT *,'right boundary layer ignored'
   ALLOCATE(q_rip(npart+2,ibeg:iend,0:2))
   ALLOCATE(convol_flux(npart+1,ibeg:iend),convol_curr(npart+1,ibeg:iend))
   ALLOCATE(ind_start(ibeg:iend))
-  IF(iplot.EQ.1) ALLOCATE(derivs_plot(0:3,4,npart+1,ibeg:iend))
+  if (iplot.EQ.1) then
+    allocate(derivs_plot(0:3,4,npart+1,ibeg:iend))
+    derivs_plot = 1.234e5
+  end if
 !
 ! Compute coefficients of Legendre polynomials of the order 0,...,legmax:
   CALL polleg(legmax,coefleg)
@@ -3298,6 +3301,8 @@ subroutine rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,        &
   real(kind=dp), dimension(:), allocatable :: phi_new,bhat_new
   real(kind=dp), dimension(:), allocatable :: geodcu_new,h_phi_new
 
+  npassing = -1
+
   call fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
                                 phi_mfl,bhat_mfl,eta)
 
@@ -3601,6 +3606,8 @@ subroutine fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
 !
   idummy=minloc(bhat_mfl(ibeg:iend))
   ibmin=idummy(1)+ibeg-1
+
+  npassing = -1
 
   ncross_l=0
   if(ibmin.gt.ibeg) then

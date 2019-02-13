@@ -36,9 +36,8 @@ install_manifest.txt
 NEO-2-QL/.directory
 
 # Ignore directories for building the code.
-*/[Bb]uild-[Dd]ebug/*
-*/[Bb]uild-[Rr]elease/*
 */[Bb]uild/*
+*/[Bb]uild-*/*
 
 # Ignore files created by latex.
 *.pdf

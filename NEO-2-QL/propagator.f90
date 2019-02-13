@@ -893,11 +893,11 @@ CONTAINS
     qflux_e = prop_a%p%qflux(1,2)                                          !<-in
     qcurr_e = prop_a%p%qflux(2,2)                                          !<-in
     IF ( (magnetic_device .EQ. 0 .AND. isw_axisymm .EQ. 1) .OR. mag_magfield .EQ. 0 ) THEN
-       ALLOCATE(y(SIZE(y_axi_averages,1)))
-       y = y_axi_averages
+      ALLOCATE(y(SIZE(y_axi_averages,1)))
+      y = y_axi_averages
     ELSE
-       ALLOCATE(y(SIZE(prop_a%y,1)))
-       y = prop_a%y
+      ALLOCATE(y(SIZE(prop_a%y,1)))
+      y = prop_a%y
     END IF
     aiota_loc = surface%aiota
     rt0 = device%r0
@@ -930,9 +930,9 @@ CONTAINS
     ! find free unit
     uw = 100
     DO
-       INQUIRE(unit=uw,opened=opened)
-       IF(.NOT. opened) EXIT
-       uw = uw + 100
+      INQUIRE(unit=uw,opened=opened)
+      IF(.NOT. opened) EXIT
+      uw = uw + 100
     END DO
     OPEN(uw,file='evolve.dat',position='append')
 !!$    WRITE (uw,'(1000(1x,e12.5))')                                   &
@@ -956,79 +956,79 @@ CONTAINS
 
     ! Final output
     IF ( iend .EQ. 1) THEN
-       full_version = 2
-       avnabpsi = y(7) / y(6)
-       avbhat2 = y(9) / y(6)
-       dl1obhat = y(6)
-!       beta_out = (/ 1.0_dp/avnabpsi, 1.0_dp/avnabpsi, 1.0_dp /) ***change: 19.09.07
-       beta_out = (/ y(14)/y(13)/avnabpsi, y(14)/y(13)/avnabpsi, y(13)/y(14) /)
-    
-       DO i = 1,3
-          i_p = ind_map(i)
-          DO j = 1,3
-             j_p = ind_map(j)
-!             gamma_fco(i,j) = prop_a%p%qflux(i_p,j_p) / y(9)!***change: 19.09.07
-             gamma_fco(i,j) = - prop_a%p%qflux(i_p,j_p) / y(6)
-             gamma_out(i,j) = gamma_fco(i,j) * beta_out(i) * beta_out(j)
-          END DO
-       END DO
-       !
-          ! Write to HDF5 file
-          call h5_create('fulltransp.h5', h5id, 1)
+      full_version = 2
+      avnabpsi = y(7) / y(6)
+      avbhat2 = y(9) / y(6)
+      dl1obhat = y(6)
+!      beta_out = (/ 1.0_dp/avnabpsi, 1.0_dp/avnabpsi, 1.0_dp /) ***change: 19.09.07
+      beta_out = (/ y(14)/y(13)/avnabpsi, y(14)/y(13)/avnabpsi, y(13)/y(14) /)
 
-          call h5_add(h5id, 'full_version', full_version)
-          call h5_add(h5id, 'isw_lorentz', isw_lorentz)
-          call h5_add(h5id, 'isw_integral', isw_integral)
-          call h5_add(h5id,  'isw_energy', isw_energy)         
-          call h5_add(h5id, 'lag', lag, 'Degree of the Laguerre Polynomials')
-          call h5_add(h5id, 'leg', leg, 'Degree of the Legendre Polynomials')
-          call h5_add(h5id, 'collpar', collpar)
-          call h5_add(h5id, 'conl_over_mfp', conl_over_mfp)
-          call h5_add(h5id, 'z_eff', z_eff)
-          call h5_add(h5id, 'avnabpsi', avnabpsi)
-          call h5_add(h5id, 'avbhat2', avbhat2)
-          call h5_add(h5id, 'dl1obhat', dl1obhat)
-          call h5_add(h5id, 'gamma_out', gamma_out, lbound(gamma_out), ubound(gamma_out))
+      DO i = 1,3
+        i_p = ind_map(i)
+        DO j = 1,3
+          j_p = ind_map(j)
+!          gamma_fco(i,j) = prop_a%p%qflux(i_p,j_p) / y(9)!***change: 19.09.07
+          gamma_fco(i,j) = - prop_a%p%qflux(i_p,j_p) / y(6)
+          gamma_out(i,j) = gamma_fco(i,j) * beta_out(i) * beta_out(j)
+        END DO
+      END DO
 
-          call h5_close(h5id)
-!
-       OPEN(uw,file='fulltransp.dat',status='replace')
-       WRITE (uw,'(6(1x,i4),1000(1x,e18.5))')  &
+      ! Write to HDF5 file
+      call h5_create('fulltransp.h5', h5id, 1)
+
+      call h5_add(h5id, 'full_version', full_version)
+      call h5_add(h5id, 'isw_lorentz', isw_lorentz)
+      call h5_add(h5id, 'isw_integral', isw_integral)
+      call h5_add(h5id,  'isw_energy', isw_energy)
+      call h5_add(h5id, 'lag', lag, 'Degree of the Laguerre Polynomials')
+      call h5_add(h5id, 'leg', leg, 'Degree of the Legendre Polynomials')
+      call h5_add(h5id, 'collpar', collpar)
+      call h5_add(h5id, 'conl_over_mfp', conl_over_mfp, 'collisionality parameter')
+      call h5_add(h5id, 'z_eff', z_eff, 'effective charge')
+      call h5_add(h5id, 'avnabpsi', avnabpsi)
+      call h5_add(h5id, 'avbhat2', avbhat2)
+      call h5_add(h5id, 'dl1obhat', dl1obhat)
+      call h5_add(h5id, 'gamma_out', gamma_out, lbound(gamma_out), ubound(gamma_out))
+
+      call h5_close(h5id)
+
+      OPEN(uw,file='fulltransp.dat',status='replace')
+      WRITE (uw,'(6(1x,i4),1000(1x,e18.5))')  &
             full_version, &
             isw_lorentz, isw_integral, isw_energy, lag, leg, &
             conl_over_mfp, collpar, z_eff, &
             avnabpsi, avbhat2, dl1obhat, &
             gamma_out
-       CLOSE(uw)
-       !
-          ! Write to HDF5 file
-          call h5_create('efinal.h5', h5id, 1)
+      CLOSE(uw)
 
-          call h5_add(h5id, 'phi', phi)
-          call h5_add(h5id, 'aiota_loc', aiota_loc)
-          call h5_add(h5id, 'dmono_over_dplateau', dmono_over_dplateau)
-          call h5_add(h5id, 'epseff3_2', epseff3_2)
-          call h5_add(h5id, 'alambda_b', alambda_b)
-          call h5_add(h5id, 'qflux_g', qflux_g)
-          call h5_add(h5id, 'qflux_e', qflux_e)
-          call h5_add(h5id, 'qcurr_g', qcurr_g)
-          call h5_add(h5id, 'qcurr_e', qcurr_e)
-          call h5_add(h5id, 'alambda_bb', alambda_bb)
-          call h5_add(h5id, 'gamma_E',gamma_E )
-          call h5_add(h5id, 'g_bs', g_bs)
-          call h5_add(h5id, 'r0', device%r0)
-          call h5_add(h5id, 'bmod0', surface%bmod0)
-          call h5_add(h5id, 'y', y, lbound(y), ubound(y))
+      ! Write to HDF5 file
+      call h5_create('efinal.h5', h5id, 1)
 
-          !**********************************************************
-          ! D11_ov_Dpl
-          !**********************************************************
-          !call h5_add(h5id, 'D11_ov_Dpl', D11_NA_Dpl)
-          
-          call h5_close(h5id)      
+      call h5_add(h5id, 'phi', phi)
+      call h5_add(h5id, 'aiota_loc', aiota_loc)
+      call h5_add(h5id, 'dmono_over_dplateau', dmono_over_dplateau)
+      call h5_add(h5id, 'epseff3_2', epseff3_2)
+      call h5_add(h5id, 'alambda_b', alambda_b)
+      call h5_add(h5id, 'qflux_g', qflux_g)
+      call h5_add(h5id, 'qflux_e', qflux_e)
+      call h5_add(h5id, 'qcurr_g', qcurr_g)
+      call h5_add(h5id, 'qcurr_e', qcurr_e)
+      call h5_add(h5id, 'alambda_bb', alambda_bb)
+      call h5_add(h5id, 'gamma_E',gamma_E )
+      call h5_add(h5id, 'g_bs', g_bs)
+      call h5_add(h5id, 'r0', device%r0)
+      call h5_add(h5id, 'bmod0', surface%bmod0)
+      call h5_add(h5id, 'y', y, lbound(y), ubound(y))
 
-       OPEN(uw,file='efinal.dat',status='replace')
-       WRITE (uw,'(1000(1x,e18.5))')                                   &
+      !**********************************************************
+      ! D11_ov_Dpl
+      !**********************************************************
+      !call h5_add(h5id, 'D11_ov_Dpl', D11_NA_Dpl)
+
+      call h5_close(h5id)
+
+      OPEN(uw,file='efinal.dat',status='replace')
+      WRITE (uw,'(1000(1x,e18.5))')                                   &
             (phi),(y(1:2)),(aiota_loc),                    &
             (dmono_over_dplateau),(epseff3_2),(alambda_b), &
             (qflux_g),(qflux_e),(qcurr_g),(qcurr_e),    &
@@ -1036,31 +1036,30 @@ CONTAINS
             (g_bs),    &
             (device%r0),(surface%bmod0), &
             y(6),y(7),y(9),y(13),y(14)
-       CLOSE(uw)
-       !
-       OPEN(uw,file='sigma_alex.dat')
-!       write(uw,*) 1.5d0*sqrt(pi)**3*collpar*(device%r0), &
-       WRITE(uw,*) 0.75d0*SQRT(pi)**3*collpar*(device%r0)/aiota_loc, &
+      CLOSE(uw)
+
+      OPEN(uw,file='sigma_alex.dat')
+!      write(uw,*) 1.5d0*sqrt(pi)**3*collpar*(device%r0), &
+      WRITE(uw,*) 0.75d0*SQRT(pi)**3*collpar*(device%r0)/aiota_loc, &
                    -3.d0*pi/32.d0*collpar*gamma_out(3,3)
-       CLOSE(uw)
-       !
-       !! Modification by Andreas F. Martitsch (14.07.2015)
-       !! Extra output for NTV computations
-       IF(lsw_multispecies) THEN ! multi-species output
-          IF (mpro%isMaster()) THEN
-             CALL write_multispec_output()
-          END IF
-       ELSE ! single-species output
-          if (mpro%isMaster()) then
-             CALL write_ntv_output(prop_a%p%qflux)
-          END IF
-       END IF
-       !! End Modification by Andreas F. Martitsch (14.07.2015)
-!
+      CLOSE(uw)
+
+      !! Modification by Andreas F. Martitsch (14.07.2015)
+      !! Extra output for NTV computations
+      if (mpro%isMaster()) then
+        IF(lsw_multispecies) THEN ! multi-species output
+          CALL write_multispec_output()
+        ELSE ! single-species output
+          CALL write_ntv_output(prop_a%p%qflux)
+        END IF
+      END IF
+      !! End Modification by Andreas F. Martitsch (14.07.2015)
+
     END IF
-!    
+
     DEALLOCATE(y)
   END SUBROUTINE diag_propagator_res
+
   ! ---------------------------------------------------------------------------
   SUBROUTINE diag_propagator_dis
 

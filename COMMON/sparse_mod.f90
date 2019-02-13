@@ -189,6 +189,8 @@ CONTAINS
 
     INTEGER :: ir,ic,icmax,subex_example6,i,unit
 
+    nrhs = 10
+
     subex_example6=1
     IF(PRESENT(subexample)) subex_example6=subexample
 

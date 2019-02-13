@@ -6,7 +6,7 @@ Created on Wed Mar 23 10:17:41 2016
 @author: Christopher Albert
 """
 
-def write_boozer_head(filename, version, shot, m0b, n0b, nsurf_fmt, nfp, psi_tor_a, aminor, Rmajor):
+def write_boozer_head(filename, version, shot: int, m0b, n0b, nsurf_fmt, nfp, psi_tor_a, aminor, Rmajor):
   import getpass
 
   global_variables_head_line=" m0b   n0b  nsurf  nper    flux [Tm^2]        a [m]          R [m]"
@@ -27,6 +27,11 @@ def append_boozer_block_head(filename, s, iota, bsubvB, bsubuB, pprime, vp, enfp
 
   mu0 = scipy.constants.mu_0
 
+  append_boozer_block_head(filename, s, iota,
+    -2.0*np.pi/mu0*bsubvB/enfp, -2.0*np.pi/mu0*bsubuB, pprime,
+    -4.0*np.pi**2*vp/enfp)
+
+def append_boozer_block_head(filename, s, iota, Jpol_divided_by_nper, Itor, pprime, sqrt_g_00):
   with open(filename, 'a') as outfile:
     outfile.write('        s               iota           Jpol/nper          '+
     'Itor            pprime         sqrt g(0,0)\n')
@@ -34,27 +39,30 @@ def append_boozer_block_head(filename, s, iota, bsubvB, bsubuB, pprime, vp, enfp
     '[A]             [Pa]         (dV/ds)/nper\n')
     outfile.write(' {:16.8e}'.format(s))
     outfile.write(' {:16.8e}'.format(iota))
-    outfile.write(' {:16.8e}'.format(-2.0*np.pi/mu0*bsubvB/enfp))
-    outfile.write(' {:16.8e}'.format(-2.0*np.pi/mu0*bsubuB))
+    outfile.write(' {:16.8e}'.format(Jpol_divided_by_nper))
+    outfile.write(' {:16.8e}'.format(Itor))
     outfile.write(' {:16.8e}'.format(pprime))
-    outfile.write(' {:16.8e}'.format(-4.0*np.pi**2*vp/enfp))
+    outfile.write(' {:16.8e}'.format(sqrt_g_00))
     outfile.write('\n')
 
 def append_boozer_block(filename, mb, nb, rmnb, zmnb, vmnb, bmnb, enfp):
+  append_boozer_block(filename, mb, int(nb[k]/enfp),
+    float((rmnb[k].real)),-float(rmnb[k].imag),
+    float((zmnb[k].real)),-float(zmnb[k].imag),
+    float((vmnb[k].real)),-float(vmnb[k].imag),
+    float((bmnb[k].real)),-float(bmnb[k].imag))
+
+def append_boozer_block(filename, mb, nb, rmnc, rmns, zmnc, zmns, vmnc, vmns, bmnc, bmns):
   with open(filename, 'a') as f:
     f.write('    m    n      rmnc [m]         rmns [m]         zmnc [m]  '+
-            '       zmns [m]         vmnc [m]         vmns [m]         '+
+            '       zmns [m]         vmnc [ ]         vmns [ ]         '+
             'bmnc [T]         bmns [T]\n')
     for k in range(len(mb)):
-      f.write(' {:4d} {:4d}'.format(mb[k],int(nb[k]/enfp)))
-      f.write(' {:16.8e} {:16.8e}'.format(
-          float((rmnb[k].real)),-float(rmnb[k].imag)))
-      f.write(' {:16.8e} {:16.8e}'.format(
-          float((zmnb[k].real)),-float(zmnb[k].imag)))
-      f.write(' {:16.8e} {:16.8e}'.format(
-          float((vmnb[k].real)),-float(vmnb[k].imag)))
-      f.write(' {:16.8e} {:16.8e}'.format(
-          float((bmnb[k].real)),-float(bmnb[k].imag)))
+      f.write(' {:4d} {:4d}'.format(mb[k], nb[k]))
+      f.write(' {:16.8e} {:16.8e}'.format(rmnc[k], rmns[k]))
+      f.write(' {:16.8e} {:16.8e}'.format(zmnc[k], zmns[k]))
+      f.write(' {:16.8e} {:16.8e}'.format(vmnc[k], vmns[k]))
+      f.write(' {:16.8e} {:16.8e}'.format(bmnc[k], bmns[k]))
       f.write('\n')
 
 def convert_to_boozer(infile, ks, outfile):
@@ -527,6 +535,183 @@ def convert_to_boozer(infile, ks, outfile):
   #  plt.title('bsupv')
   #  plt.plot(s, bsupvmn)
   #  plt.show()
+
+class BoozerFile:
+  """Storing the information in a boozer file.
+
+  This class is designed to store the information of a boozer file.
+
+  TODO:
+  So far, this can only handle boozer files with a single toroidal mode
+  number.
+  """
+  comments = []
+  m0b = 0.0
+  n0b = 0.0
+  nsurf = 0
+  nper = 0
+  flux = 0.0 #[Tm^2]
+  a = 0.0
+  R = 0.0 # [m]
+
+  s = []
+  iota = []
+  Jpol_divided_by_nper = []
+  Itor = []
+  pprime = []
+  sqrt_g_00 = []
+
+  m = []
+  n = []
+  rmnc = [] # [m]
+  rmns = [] # [m]
+  zmnc = [] # [m]
+  zmns = [] # [m]
+  vmnc = []
+  vmns = []
+  bmnc = [] # [T]
+  bmns = [] # [T]
+
+  def read_boozer(self, filename: str):
+    """Reads information from a file, whose name is given as a string.
+
+    This routine will read the content of file 'filename', assuming it
+    is a boozer file (thus expecting a specific format).
+    The comments are available in a list, each line an entry.
+    Global fields are available as simple elements.
+    Fields that depend on radius are lists, those that depend on radius
+    and mode number lists of lists.
+
+    TODO:
+    Be able to read in data with more than one 'n' mode number.
+    """
+    with open(filename) as f:
+      lines = f.readlines()
+
+    # Get header information, e.g. comments and sizes.
+    for lineindex in range(len(lines)):
+      line = lines[lineindex]
+      if (len(line) > 2):
+        # Comments start with 'CC' followed by a whitespace.
+        if (line.split()[0] == 'CC'):
+          self.comments.append(line[2+1:]) # 2+1 to ignore 'CC' and the following whitespace.
+
+        if (lineindex > 1):
+          if ((lines[lineindex-1].split())[0] == 'm0b'):
+            self.m0b = int((lines[lineindex].split())[0])
+            self.n0b = int((lines[lineindex].split())[1])
+            self.nsurf = int((lines[lineindex].split())[2])
+            self.nper = int((lines[lineindex].split())[3])
+            self.flux = float((lines[lineindex].split())[4])
+            self.a = float((lines[lineindex].split())[5])
+            self.R = float((lines[lineindex].split())[6])
+            break
+
+    blocklines = []
+
+    blockindex = -1
+    for lineindex in range(len(lines)):
+      line = lines[lineindex]
+      if (line.split()[0] == 's'):
+        blockindex += 1
+        blocklines.append([])
+
+      if (blockindex >= 0 and len(line) > 0):
+        blocklines[blockindex].append(line)
+
+    if (len(blocklines) != self.nsurf):
+      print('m0b = ' + str(self.m0b))
+      print('n0b = ' + str(self.n0b))
+      print('nsurf = ' + str(self.nsurf))
+      print('nper = ' + str(self.nper))
+      print('flux = ' + str(self.flux))
+      print('a = ' + str(self.a))
+      print('R = ' + str(self.R))
+      print(str(len(blocklines)) + ' != ' + str(self.nsurf))
+      raise Exception
+
+    head_number_of_lines = 4
+
+    for i in range(self.nsurf):
+      if (len(blocklines[i]) != self.m0b + 1 + head_number_of_lines): # +1 for zero mode
+        raise Exception
+
+      self.m.append([])
+      self.n.append([])
+      self.rmnc.append([])
+      self.rmns.append([])
+      self.zmnc.append([])
+      self.zmns.append([])
+      self.vmnc.append([])
+      self.vmns.append([])
+      self.bmnc.append([])
+      self.bmns.append([])
+
+      for j in range(0, self.m0b + 1 + head_number_of_lines):
+        if (j == 2):
+          line_split = blocklines[i][j].split();
+          self.s.append(float(line_split[0]))
+          self.iota.append(float(line_split[1]))
+          self.Jpol_divided_by_nper.append(float(line_split[2]))
+          self.Itor.append(float(line_split[3]))
+          self.pprime.append(float(line_split[4]))
+          self.sqrt_g_00.append(float(line_split[5]))
+
+        if (j > 3):
+          line_split = blocklines[i][j].split();
+          self.m[i].append(int(line_split[0]))
+          self.n[i].append(int(line_split[1]))
+          self.rmnc[i].append(float(line_split[2]))
+          self.rmns[i].append(float(line_split[3]))
+          self.zmnc[i].append(float(line_split[4]))
+          self.zmns[i].append(float(line_split[5]))
+          self.vmnc[i].append(float(line_split[6]))
+          self.vmns[i].append(float(line_split[7]))
+          self.bmnc[i].append(float(line_split[8]))
+          self.bmns[i].append(float(line_split[9]))
+
+    self._read_from = filename
+
+  def get_rbeg(self):
+    rbeg = []
+    for radial_position in self.rmnc:
+      rbeg.append(sum(radial_position))
+
+    return rbeg
+
+  def get_zbeg(self):
+    zbeg = []
+    for radial_position in self.zmnc:
+      zbeg.append(sum(radial_position))
+
+    return zbeg
+
+  def get_bbeg(self):
+    bbeg = []
+    for radial_position in self.bmnc:
+      bbeg.append(sum(radial_position))
+
+    return bbeg
+
+  def __init__(self, filename: str):
+    """Init routine which takes a string, representing the file to read.
+    """
+    self.read_boozer(filename)
+
+  def write(self, filename: str):
+    write_boozer_head(filename, '', 0, self.m0b, self.n0b, self.nsurf,
+      self.nper, self.flux, self.a, self.R)
+
+    for i in range(self.nsurf):
+      append_boozer_block_head(filename, self.s[i], self.iota[i],
+        self.Jpol_divided_by_nper[i], self.Itor[i], self.pprime[i],
+        self.sqrt_g_00[i])
+      append_boozer_block(filename, self.m[i], self.n[i],
+        self.rmnc[i], self.rmns[i],
+        self.zmnc[i], self.zmns[i],
+        self.vmnc[i], self.vmns[i],
+        self.bmnc[i], self.bmns[i])
+
 
 if __name__ == "__main__":
   import sys

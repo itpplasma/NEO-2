@@ -6014,22 +6014,22 @@ SUBROUTINE rearrange_phideps(ibeg,iend,npart,ncomp,nreal,subsqmin,phi_divide, &
   USE plagrange_mod
 !
   IMPLICIT NONE
-!
+
 !  logical, parameter :: stepmode=.true.
   LOGICAL, PARAMETER :: stepmode=.FALSE.
   INTEGER, PARAMETER :: npoi=6, nder=0, npoihalf=npoi/2, nstepmin=8
   real(kind=dp), PARAMETER :: bparabmax=0.2d0
-!
+
   INTEGER :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
   INTEGER :: ncomp,nreal
   INTEGER :: ncross_l,ncross_r,ib,ie,intb,inte,k,imid,isplit
-!
+
   real(kind=dp) :: subsqmin,ht,ht2,bparab,x1,x2,f1,f2
-!
+
   INTEGER, DIMENSION(1)              :: idummy
   INTEGER, DIMENSION(1:iend)         :: phi_divide
   INTEGER, DIMENSION(:), ALLOCATABLE :: icross_l,icross_r
-!
+
   real(kind=dp), DIMENSION(0:nder,npoi)      :: coeff
   real(kind=dp), DIMENSION(0:npart)          :: eta
   real(kind=dp), DIMENSION(ibeg:iend)        :: phi_mfl,bhat_mfl
@@ -6041,12 +6041,14 @@ SUBROUTINE rearrange_phideps(ibeg,iend,npart,ncomp,nreal,subsqmin,phi_divide, &
   real(kind=dp), DIMENSION(:), ALLOCATABLE   :: phi_new,bhat_new
   real(kind=dp), DIMENSION(:,:), ALLOCATABLE :: arr_real_new
   complex(kind=dpc),   DIMENSION(:,:), ALLOCATABLE :: arr_comp_new
-!
+
+  npassing = -1
+
   CALL fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
                                 phi_mfl,bhat_mfl,eta)
-!
+
   phi_divide=1
-!
+
   delt_pos(ibeg+1:iend)=phi_mfl(ibeg+1:iend)-phi_mfl(ibeg:iend-1)
   fact_pos_b=1.d0
   fact_pos_e=1.d0
@@ -6341,6 +6343,8 @@ SUBROUTINE fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
   real(kind=dp), DIMENSION(0:npart)        :: eta
   real(kind=dp), DIMENSION(ibeg:iend)      :: phi_mfl,bhat_mfl
   real(kind=dp), DIMENSION(:), ALLOCATABLE :: eta_cross_l,eta_cross_r
+
+  npassing = -1
 
 ! determine level crossings:
 !

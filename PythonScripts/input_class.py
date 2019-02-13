@@ -11,25 +11,337 @@ import sys
 sys.path.append('/afs/itp.tugraz.at/user/wakatobi/Modul_neo/f90nml-0.21/')
 import f90nml
 import os
-from os.path import *
 import yaml
 from IPython import display
 
-class SingleRun():
-    """Class for inputs with only one neo2.in configuration
-    
-    Sofar Multispecies only, 
-    in Future there should be an MetaClass above these.
-    Also some methods should then upmoved.
-   
+
+if __name__ == '__main__':
+    print('I am main')
+
+
+class Neo2_common_objects():
+    """ objects appearing in both subclasses
 
     Attributes
     ----------
-    listofruns : list
-        A list of runs for precomputation
-    runpath : str
+    path2code: str
+        path to the repository
+    path2exe:
+        path to the executable
+    rundir: str
         Path of the working directory
-    reqfiles : dict
+    req_files_names : dict
+        dict of required filenames to to run neo2
+        Only basic Set, extension of each subclass will be made
+    req_files_paths : dict
+        dict of paths of the required files to run neo2
+        Only basic Set, extension of each subclass will be made
+    template_path: str
+        Path for sample files
+
+    Methods
+    -------
+    set_neo2file(path):
+        set a neo2.in file as sample
+    set_template_path():
+        Use all required Files from this directory.
+    run_local():
+        Run all Jobs local
+    run_condor():
+        Submit all Jobs to Condor
+    """
+
+    def __init__(self,wdir):
+
+
+        self._neo2path=os.environ.get('NEO2PATH')
+        # If NEO2PATH is not available the Attribute is NONE
+
+        self.wdir=wdir
+        if os.path.isdir(self._neo2path):
+            self._path2code=self._neo2path
+        else:
+            self._path2code=''
+
+        self._path2exe=''
+
+        self.req_files_names={
+        'neo2in': 'neo2.in',
+        'neoin': 'neo.in'
+        }
+        #self._Load_default()
+        self.req_files_paths=dict()
+
+    def compile(self,overwrite=False):
+        curdir=os.getcwd()
+        os.chdir(self._path2code)
+        exe=self._path2code+'NEO-2-QL/Build_auto/'
+        if os.path.exists(exe):
+            if overwrite==False:
+                raise FileExistsError('Please remove folder Build_auto')
+            else:
+                os.chdir(exe)
+                print(os.popen("cmake -DCMAKE_BUILD_TYPE=RELEASE ..").read())
+                print(os.popen("make clean").read())
+                print(os.popen("make -j4").read())
+        else:
+            os.mkdir(exe)
+            os.chdir(exe)
+            print(os.popen("cmake -DCMAKE_BUILD_TYPE=RELEASE ..").read())
+            print(os.popen("make -j4").read())
+        os.chdir(curdir)
+        self.path2exe=exe+'neo_2.x'
+
+    def _read_neo2in(self):
+        try:
+            self.neo2nml=Neo2File(self.req_files_paths['neo2in'])
+        except:
+            print('Couldn\'t read neo2.in')
+            return
+
+
+
+
+    def _createfiles(self,overwrite=False,link=True):
+        """Create and/or link required files and folder into destination"""
+
+
+        self._checkreqfiles()
+        if not os.path.exists(self.path2exe):
+            raise IOError('Path to Executable is missing')
+
+        if self.singlerunpath==None:
+            raise IOError('singlerunpath is missing')
+        os.makedirs(self.singlerunpath,exist_ok=True)
+
+        for i,j in self.req_files_paths.items():
+            print(j)
+            destfile=os.path.join(self.singlerunpath,os.path.basename(j))
+
+            if os.path.isfile(destfile):
+                if overwrite:
+                    print(destfile, ' is a file and is replaced')
+                    os.remove(destfile)
+                else:
+                    print(destfile, ' is not updated') ### Maybe check if it is the same file!!
+                    continue
+            if i == 'neo2in':
+                if self.neo2nml.ischanged:
+                    self.neo2nml.write(destfile)
+                    continue
+            os.symlink(j,destfile)
+
+
+
+        i2=self.path2exe
+        print('path2exe = ', i2)
+        destfile=os.path.join(self.singlerunpath,os.path.basename(i2))
+        print('destfile = ', destfile)
+        if os.path.isfile(destfile):
+            if overwrite:
+                print(destfile, ' is a file and is replaced')
+                os.remove(destfile)
+            else:
+                print(destfile, ' is not updated') ### Maybe check if it is the same file!!
+                return
+
+        os.symlink(i2,destfile)
+        self._Runiscreated=True
+
+
+
+
+
+    def _checkreqfiles(self):
+
+
+        if set(self.req_files_names) != set(self.req_files_paths):
+            raise ValueError('Not all paths of required Files defined')
+
+        for i,j in self.req_files_paths.items():
+            if not os.path.exists(j):
+                raise RuntimeError(j,' is not a File')
+
+
+        else:
+            print('All required Files are existing')
+            return
+
+
+
+
+
+class Neo2Scan(Neo2_common_objects):
+    """ Class for scans over one parameter
+
+
+    Attributes
+    ----------
+    neo2in: Neo2File???
+        sample inputfile for the neo2.in file
+    neoin: str
+        path to neo.in file. In future maybe own instance of a new class.
+    unpert: str
+        path to unpertubation file in Boozer coordinates. In future maybe own
+        instance of a new class.
+    pert: str
+        path to pertubation file in Boozer cooridnates. In future maybe own
+        instance of a new class.
+    listofsingleruns: list
+        A list of the directories of each Singlerun
+    req_files_names : dict
+        dict of required filenames to to run neo2
+    req_files_paths : dict
+        dict of paths of the required files to run neo2
+    rundir: str
+        Path of the working directory
+    scan_param: str
+        name of the parameter which will be scanned
+    scan_values: list
+        list of values which will be iterated
+    path2code: str
+        path to the repository
+    path2exe:
+        path to the executable
+    structure: str
+        string representation of folder structure
+
+
+    Methods
+    -------
+    generate_SingleRuns()
+        generate list of SingleRunInstances
+    compile_code()
+        compile code an link the executable
+    generate_structure():
+        generate structure for the singleruns
+    set_neo2file(path):
+        set a neo2.in file as sample
+    run_local():
+        Run all Jobs local
+    run_condor():
+        Submit all Jobs to Condor
+    set_template_path():
+        Use all required Files from this directory.
+
+    """
+###### Methods to be implementend: #########
+#    def __init__(self,runpath):
+#
+#        self._neo2path=os.environ.get('NEO2PATH')
+#        self.runpath=runpath
+#        self.structure=self.runpath+'/lag/'
+#        self._path2code=''
+#        self._path2exe=''
+#        self.scan_para=''
+#        self.scan_values=list()
+#        self.listofsingleruns=list()
+#
+#        self.req_files_names={
+#        'neo2in': 'neo2.in',
+#        'neoin': 'neo.in'
+#        }
+#        #self._Load_default()
+#        self.req_files_paths=dict()
+
+
+#    def _read_neo2in(self):
+#        try:
+#            self.neo2nml=Neo2File(self.req_files_paths['neo2in'])
+#        except:
+#            print('Couldn\'t read neo2.in')
+#            return
+
+#    def _Load_default(self):
+#        pass
+#
+#    def set_pert_file(self):
+#        """Method to set Pertubation File"""
+#        pass
+#
+#    def set_axi_sym_file(self):
+#        """Method to set axisymetric File"""
+#        pass
+#
+#
+#    def set_multispecies_file(self):
+#        """Method to set Multispecies File"""
+#        pass
+
+    def __init__(self,wdir):
+        super().__init__(wdir)
+        self.structure=''
+        self.scanparameter=''
+        self.float_format='1.2e'
+
+
+
+    def run_local(self):
+        """Start Job on local machine"""
+        pass
+
+    def run_condor(self):
+        """Start Jobs with Condor"""
+        pass
+
+
+    def _checktype(self,parameter):
+        """Check data type of parameter in neo2in file"""
+
+        if parameter in self.neo2nml:
+            if isinstance(self.neo2nml[parameter],str):
+                return str
+            elif isinstance(self.neo2nml[parameter],list):
+                return list
+            elif isinstance(self.neo2nml[parameter],int):
+                return int
+            elif isinstance(self.neo2nml[parameter],float):
+                return float
+            else:
+                raise AttributeError('Did not detect datatype of scanparameter')
+
+    def _set_folder_names(self,overwrite=False):
+
+        if self.scanparameter not in self.structure.split('/'):
+            raise AttributeError('Scanparameter is not in Structure')
+
+        for i in self.scanvalues:
+            self.neo2nml[self.scanparameter]=i
+            self.singlerunpath=os.path.join(self.wdir,self._set_folder_names_4_singlerun())
+            self._createfiles(overwrite=overwrite)
+
+
+    def _set_folder_names_4_singlerun(self):
+        structure_list=self.structure.split('/')
+        for i, j in enumerate(structure_list):
+            if j in self.neo2nml:
+                if self._checktype(j)==type(float):
+                    structure_list[i]='{0}={1:{2}}'.format(j,self.neo2nml[j],self.float_format)
+                elif self._checktype(j)==type(int):
+                    structure_list[i]='{0}={1}'.format(j,self.neo2nml[j])
+                else:
+                    print(j, ' is not a int or float')
+
+        return '/'.join(structure_list)
+
+
+
+
+
+class SingleRun(Neo2_common_objects):
+    """Class for inputs with only one neo2.in configuration
+    
+    So far Multispecies only,
+    in Future there should be an MetaClass above these.
+    Also some methods should then upmoved.
+
+
+    Attributes
+    ----------
+
+    singlerunpath : str
+        Path of the working directory
+    req_files_names : dict
         dict of required files to to run neo2
     neo_nml : Neo2File
         is an instance of the Neo2File class with all variables of neo2.in
@@ -39,40 +351,41 @@ class SingleRun():
     RunInitRuns()
         starting the internal neo2 init run for multispecies
         See flag lsw_multispecies = .true. in neo2.in
-    
-    says(sound=None)
-        Prints the animals name and what sound it makes
+
+
+
+    Old Attributes
+    --------------
+    listofruns : list
+        A list of runs for precomputation
     """
-    
-  
-    
-    """
-        :param listofruns: A list of runs for precomputation
-    
-    """
-    
-    
-    
-   
+
+
+
+
+
     ### Methods should be used but not class in total.
     
-    def __init__(self,runpath):
-        self.runpath=runpath
+    def __init__(self,singlerunpath):
+
+
+        super().__init__(singlerunpath)
+        self.singlerunpath=singlerunpath
         #self.codesource=None
         #self.runsource=None # Executable
     
-        self.reqfiles={
-        'neo2in': 'neo2.in',
-        'neoin': 'neo.in'
-        }
-        self._Load_default()
-        self._sourcepaths=dict()
+        #self.req_files_names={
+        #'neo2in': 'neo2.in',
+        #'neoin': 'neo.in'
+       # }
+        #self._Load_default()
+        #self.req_files_paths=dict()
         #self._SetSources()
-        self._SetSourcePaths() # including Fill required Files from neo Files, which reads neo2.in
+        #self._fill_req_files_paths() # including Fill required Files from neo Files, which reads neo2.in
         #self._neo2inSet=False
        # self._neo2parSaved=False
-        self._Runiscreated=False # required Files exists
-        self._Runsettingsaved=False # required Files and Settings saved
+        #self._Runiscreated=False # required Files exists
+        #self._Runsettingsaved=False # required Files and Settings saved
         
         ##########Info :self._sources=dict()
        
@@ -85,17 +398,19 @@ class SingleRun():
     
     
     def _Load_default(self):
-        """default Values stored in input_default.yaml
+        """Load default Values stored in input_default.yaml
         
         is in the same directory as the input_class
         """
-        
+
+
         try:
             self.__sourcedir=__file__
         except NameError:
             self.__sourcedir=''
-        
+        print(self.__sourcedir)
         self.__realpath=os.path.realpath(self.__sourcedir)
+        print(self.__realpath)
         if os.path.isfile(self.__realpath):
             path = os.path.dirname(os.path.realpath(self.__sourcedir))
         elif os.path.isdir(self.__realpath):
@@ -109,24 +424,26 @@ class SingleRun():
         except:
             print('Couldn\'t read default values')
             return
-        
+        print(data)
         self._runsource=data.get('runsource')
-        self.reqfiles=data.get('reqfiles')
+        #self.req_files_names=data.get('reqfilesnames')
+        ###DOTO##
+        #Cannot load self.req_files_names from YAML file
         self._sources=data.get('sources')
 
         
     
-    
-    
-    def Run_Precomp(self,overwrite=False):
-        """NOT READY YET!!!!"""
-    
-        #load_parameter from an old run! 
-        self._CheckReqFiles()
-        self._CreateFiles(overwrite)
-        self.RunInitRuns()
-        #self.gen_condorinput()
-        #self.run_condor()
+
+
+#    def Run_Precomp(self,overwrite=False):
+#        """NOT READY YET!!!!"""
+#
+#        #load_parameter from an old run!
+#        self._checkreqfiles()
+#        self._createfiles(overwrite)
+#        self.RunInitRuns()
+#        #self.gen_condorinput()
+#        #self.run_condor()
         
         
         
@@ -134,119 +451,80 @@ class SingleRun():
         """Use Bash Routine from andfmar"""
         
         
-        self._CreateFiles()
+        self._createfiles()
         if self.neo_nml['isw_multispecies_init'] != 1:
-            raise InputError('isw_multispecies_init is not 1')
+            raise AttributeError('isw_multispecies_init is not 1')
         else:
             curdir=os.getcwd()
             print('curdir = ',curdir)
-            print('runpath = ',self.runpath)
-            os.chdir(self.runpath)
+            print('singlerunpath = ',self.singlerunpath)
+            os.chdir(self.singlerunpath)
             print('Starting initrun')
             print(os.popen("./neo_2.x").read())
             for a,b,c in os.walk('./'):
-                self.listofruns=b
+                #self.listofruns=b
                 break
             os.chdir(curdir)
         
         
 
-    def _CreateFiles(self,overwrite=False,link=True):
-        """Create and/or link required files into destination"""
-        
-        
-        if self.runpath==None:
-            raise IOError('runpath is missing')
-        os.makedirs(self.runpath,exist_ok=True)
-        
-        for i in self._sourcepaths.values():
-            print(i)
-            destfile=join(self.runpath,basename(i))
-                
-            if isfile(destfile):
-                if overwrite:
-                    print(destfile, ' is a file and is replaced')
-                    os.remove(destfile)
-                else:
-                    print(destfile, ' is not updated') ### Maybe check if it is the same file!!
-                    continue
-            
-            os.symlink(i,destfile)
-        
-        
-        
-        i=self._runsource
-        print('runsource = ', i)
-        destfile=join(self.runpath,basename(i))
-        print('destfile = ', destfile)
-        if isfile(destfile):
-            if overwrite:
-                print(destfile, ' is a file and is replaced')
-                os.remove(destfile)
-            else:
-                print(destfile, ' is not updated') ### Maybe check if it is the same file!!
-                return
-            
-        os.symlink(i,destfile)  
-        self._Runiscreated=True           
 
-        
-        
-        
-    def _CheckReqFiles(self):
-        
-        if set(self.reqfiles) != set(self._sourcepaths):
-            raise ValueError('Not all paths of required Files defined')
-        
-        for i,j in self._sourcepaths.items():
-            if not exists(j):
-                raise RuntimeError(j,' is not a File')
-                
-            
-        else:
-            print('All required Files are existing')
-                
 
-    
         
     def SetNeo2file(self,neo2file): ## Method to set the path of the neo2 file and make all check(Setter of neo2.in)
         """Path to (new) neo2.in File"""
     ###Method to choose different neo2 Files###
         if os.path.isfile(neo2file):
-            self._sourcepaths['neo2in']=os.path.abspath(neo2file)
+            self.req_files_paths['neo2in']=os.path.abspath(neo2file)
             
-        if isdir(neo2file):
-            self._sourcepaths['neoin']=join(abspath(neo2file),'neo.in')
-            self._sourcepaths['neo2in']=join(abspath(neo2file),'neo2.in')   
-            
-            
+        if os.path.isdir(neo2file):
+            self.req_files_paths['neoin']=os.path.join(os.path.abspath(neo2file),'neo.in')
+            self.req_files_paths['neo2in']=os.path.join(os.path.abspath(neo2file),'neo2.in')
             
             
-            
-        
-        
+
+###### Methods to be implementend: #########
+
+#    def set_pert_file(self):
+#        """Method to set Pertubation File"""
+#        pass
+#
+#    def set_axi_sym_file(self):
+#        """Method to set axisymetric File"""
+#        pass
+#
+#
+#    def set_multispecies_file(self):
+#        """Method to set Multispecies File"""
+#        pass
+#
+#
+#    def run_local(self):
+#        """Start Job on local machine"""
+#        pass
+#
         
 ####### Implementend Functions: #########       
         
         
-    def _FillReqFiles(self): # Get required File paths from neo(2).in Files
-        """Get additional required File paths from neo.in and neo2.in Files"""
+    def _fill_req_files_names(self): # Get required File paths from neo(2).in Files
+        """Get additional required File names from neo.in and neo2.in Files"""
         
         
         self._read_neo2in()
         try:
-            self.reqfiles['multispec']=self.neo_nml['fname_multispec_in']
+            self.req_files_names['multispec']=self.neo_nml['fname_multispec_in']
         except KeyError:
             print('The neo2.in File has no multispec parameter')
             return 
         
         
-        self.reqfiles['in_file_pert']=self.neo_nml['in_file_pert']
+        self.req_files_names['in_file_pert']=self.neo_nml['in_file_pert']
         
        
         
         try:
-            neo=self._sourcepaths['neoin']
+            neo=self.req_files_paths['neoin']
             ## There must be a better catch if neoin is not a File
         except:
             print('neo.in File is missing')
@@ -256,7 +534,7 @@ class SingleRun():
             for line in f:
                 arg = line.split()
                 if 'in_file' in arg:
-                    self.reqfiles['in_file_axi']=arg[0]
+                    self.req_files_names['in_file_axi']=arg[0]
                     #print(arg[0])
                     break 
     # Ensure that it is running in the correct mode
@@ -269,8 +547,9 @@ class SingleRun():
                 #                ('singlerunsource','/temp/wakatobi/Startordner_Neo2/')])
         
         
-    def _SetSourcePaths(self,overwrite=False): # name has to be better choosen
+    def _fill_req_files_paths(self,overwrite=False): # name has to be better choosen
         """Method for getting full paths from required Files"""
+
 
         try:
             files=os.listdir(self._sources['singlerunsource'])
@@ -278,20 +557,20 @@ class SingleRun():
             print('sources not correct set')
             return
         
-        for fdisc,fnames in self.reqfiles.items():
+        for fdisc,fnames in self.req_files_names.items():
             
             if fnames in files:
-                if fnames in self._sourcepaths and overwrite==False:
-                    #print(fnames, ' is already set to path: ' self._sourcepaths[fnames])
+                if fnames in self.req_files_paths and overwrite==False:
+                    #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
                     continue
-                self._sourcepaths[fdisc]=join(self._sources['singlerunsource'],fnames)
+                self.req_files_paths[fdisc]=os.path.join(self._sources['singlerunsource'],fnames)
                 
-        self._FillReqFiles()
+        self._fill_req_files_names()
         #read_Neo2File
         
         
         ### DOTO Implement method to iterate over all sources, otherwise problems are occuring
-        if set(self.reqfiles) == set(self._sourcepaths):
+        if set(self.req_files_names) == set(self.req_files_paths):
             return
         
         try:
@@ -300,23 +579,23 @@ class SingleRun():
             print('sources2 not correct set')
             return
         
-        for fdisc,fnames in self.reqfiles.items():
+        for fdisc,fnames in self.req_files_names.items():
             
             if fnames in files:
-                if fnames in self._sourcepaths:
-                    #print(fnames, ' is already set to path: ' self._sourcepaths[fnames])
+                if fnames in self.req_files_paths:
+                    #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
                     continue
-                self._sourcepaths[fdisc]=join(self._sources['pert_path'],fnames)        
+                self.req_files_paths[fdisc]=os.path.join(self._sources['pert_path'],fnames)
         
-        self._SetSourcePaths() # recursive Execution!!! maybe a problem!!!
+        self._fill_req_files_paths() # recursive Execution!!! maybe a problem!!!
 
     
-    def _read_neo2in(self):
-        try:
-            self.neo_nml=Neo2File(self._sourcepaths['neo2in'])
-        except:
-            print('Couldn\'t read neo2.in')
-            return
+#    def _read_neo2in(self):
+#        try:
+#            self.neo_nml=Neo2File(self.req_files_paths['neo2in'])
+#        except:
+#            print('Couldn\'t read neo2.in')
+#            return
 
 
 
@@ -324,8 +603,25 @@ class SingleRun():
 
 
 class Neo2File(object):
-    """Class for reading and eding Neo2.in File"""
+    """Class for reading and eding Neo2.in File
+
+
+    Attributes
+    ----------
+
+
+    Methods
+    -------
+    chval()
+        Change more values at once with keyvalue pairs
+    write()
+          write changes to file
+
+    """
+
+
     def __init__(self,neo2path):
+        self.ischanged=False
         self._neo2nml=f90nml.read(neo2path)
         self._neo2dict=dict()
         self._nmltodict()
@@ -449,7 +745,9 @@ class Neo2File(object):
                         print('before change: ',par,'=',self._neo2nml[i][par])
                         self._neo2nml[i][par]=val
                         print(par, ' in namelist', i, ' changed to : ', val)
+                        self.ischanged=True
                         return
+
         # Auch unbedingt Kotrollen einführen
         #print('setter:',key,'is set to :', val)
         #self._neo2nml.__setitem__(key, val)

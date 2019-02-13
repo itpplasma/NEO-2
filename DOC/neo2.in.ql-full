@@ -22,10 +22,10 @@
                     ! 1: binary split is done [default]
  boundary_dist_limit_factor =  9.9999997764825821e-003 ! [1.e-2]
  bsfunc_divide = 0 ! [0]
- bsfunc_ignore_trap_levels = 0 [0]
+ bsfunc_ignore_trap_levels = 0 ! [0]
  bsfunc_local_err =  3.0e-002 ! [1.0d-2]
  bsfunc_local_err_max_mult =  1.0 ! [1.0d0]
- bsfunc_local_shield_factor =  1.0 [1.0d0]
+ bsfunc_local_shield_factor =  1.0 ! [1.0d0]
  bsfunc_local_solver = 3 ! [0]
  bsfunc_message = 0 ! [0]
  bsfunc_max_index = 300 ! [20*eta_part]
@@ -149,7 +149,7 @@
  r_vphi = 0.0 ! only used for isw_Vphi_loc=1 [0.0d0]
  species_tag_vec = 1, 2 ! [1,..,number of species]
  species_tag_vphi = 2 ! 0: species index should be the same for all flux surfaces [default]
- t_vec =  9.1495920740775243e-009,  7.1751185399075415e-009 ! List with the temperatures of the species. [1.6d-9]
+ t_vec =  9.1495920740775243e-009,  7.1751185399075415e-009 ! List with the temperatures of the species in erg (1 erg ~ 6.241*10^11 eV). [1.6d-9]
  vphi = 77048.433690608756 ! [0.0d0]
  z_vec = -1.0,  1.0 ! List with the specific charges of the species. [1.0d0]
  z_vphi = 0.0 ! only used for isw_Vphi_loc=1 [0.0d0]
@@ -194,7 +194,7 @@
  prop_reconstruct_levels = 0 ! [0]
  prop_ripple_plot = 0 ! [0]
  prop_timing = 0 ! [1]
- prop_write = 2 [0]
+ prop_write = 2 ! [0]
 /
 &settings
  aiota_tokamak = 0.35144999999999998 ! [1.0d0/3.0d0]
@@ -223,6 +223,8 @@
  mag_inflection_mult = 3.0 ! [3.0d0]
  mag_magfield = 1 ! 0: homogeneous
                   ! 1: normal [default]
+                  ! 2: Legendre
+                  ! 3: efit
  magnetic_device = 0 ! 0: Tokamak
                      ! 1: W7-AS [default]
  mag_nperiod_min = 1 ! Only used for stellarators. Defines the minimum

@@ -580,7 +580,7 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   ! ---------------------------------------------------------------------------
-  ! constructor and destructor for device_struct
+  !> \brief Constructor for device_struct.
   ! 
   SUBROUTINE construct_mag_device(device)
     TYPE(device_struct),     POINTER          :: device
@@ -596,6 +596,7 @@ CONTAINS
     RETURN
   END SUBROUTINE construct_mag_device
   ! ---------------------------------------------------------------------------
+  !> \brief  Destructor for device_struct.
   SUBROUTINE destruct_mag_device(device)
     TYPE(device_struct),  POINTER :: device
     TYPE(surface_struct), POINTER :: surface
@@ -621,8 +622,8 @@ CONTAINS
 
 
   ! ---------------------------------------------------------------------------
-  ! constructor and destructor for surface_struct
-  ! 
+  !> \brief constructor for surface_struct
+  !
   SUBROUTINE construct_mag_surface(device,surface)
     TYPE(device_struct),     POINTER                 :: device
     TYPE(surface_struct),    POINTER                 :: surface
@@ -650,6 +651,7 @@ CONTAINS
     RETURN
   END SUBROUTINE construct_mag_surface
   ! ---------------------------------------------------------------------------
+  !> \brief Destructor for surface_struct
   SUBROUTINE destruct_mag_surface(surface)
     TYPE(surface_struct),   POINTER :: surface
     TYPE(fieldline_struct), POINTER :: fieldline
@@ -699,7 +701,7 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   ! ---------------------------------------------------------------------------
-  ! constructor and destructor for fieldline_struct
+  !> \brief Constructor for fieldline_struct.
   ! 
   SUBROUTINE construct_mag_fieldline(surface,fieldline)
     TYPE(surface_struct),     POINTER                 :: surface
@@ -729,7 +731,7 @@ CONTAINS
          ' parent: ',fieldline%parent%tag
     RETURN
   END SUBROUTINE construct_mag_fieldline
-
+  !> \brief Destructor for fieldline_struct.
   SUBROUTINE destruct_mag_fieldline(fieldline)
     TYPE(fieldline_struct),   POINTER :: fieldline
     TYPE(fieldperiod_struct), POINTER :: fieldperiod
@@ -778,7 +780,7 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   ! ---------------------------------------------------------------------------
-  ! constructor and destructor for fieldperiod_struct
+  !> \brief Constructor for fieldperiod_struct.
   ! 
   SUBROUTINE construct_mag_fieldperiod(fieldline,fieldperiod,opt_direction)
     TYPE(fieldline_struct),     POINTER               :: fieldline
@@ -829,7 +831,7 @@ CONTAINS
          ' parent: ',fieldperiod%parent%tag
     RETURN
   END SUBROUTINE construct_mag_fieldperiod
-  
+  !> \brief Destructor for fieldperiod_struct.
   SUBROUTINE destruct_mag_fieldperiod(fieldperiod)
     TYPE(fieldperiod_struct),     POINTER :: fieldperiod
     TYPE(fieldpropagator_struct), POINTER :: fieldpropagator
@@ -954,7 +956,7 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   ! ---------------------------------------------------------------------------
-  ! constructor and destructor for fieldpropagator_struct
+  !> \brief Constructor for fieldpropagator_struct.
   ! 
   SUBROUTINE construct_mag_fieldpropagator(fieldperiod,fieldpropagator,action)
     TYPE(fieldperiod_struct),     POINTER               :: fieldperiod
@@ -1015,7 +1017,7 @@ CONTAINS
          ' parent: ',fieldpropagator%parent%tag
     RETURN
   END SUBROUTINE construct_mag_fieldpropagator
-  
+  !> \brief Destructor for fieldpropagator_struct.
   SUBROUTINE destruct_mag_fieldpropagator(fieldpropagator,action)
     TYPE(fieldpropagator_struct),   POINTER  :: fieldpropagator
     TYPE(fieldripple_struct),       POINTER  :: fieldripple
@@ -1121,7 +1123,7 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   ! ---------------------------------------------------------------------------
-  ! constructor and destructor for fieldripple_struct
+  !> \brief Constructor for fieldripple_struct.
   ! 
   SUBROUTINE construct_mag_fieldripple(fieldpropagator,fieldripple,action)
     TYPE(fieldpropagator_struct), POINTER               :: fieldpropagator
@@ -1178,7 +1180,7 @@ CONTAINS
          ' parent: ',fieldripple%parent%tag
     RETURN
   END SUBROUTINE construct_mag_fieldripple
-  
+  !> \brief Destructor for fieldripple_struct.
   SUBROUTINE destruct_mag_fieldripple(fieldripple)
     TYPE(fieldripple_struct), POINTER :: fieldripple
     INTEGER                           :: my_tag = 0
@@ -1244,7 +1246,7 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   ! ---------------------------------------------------------------------------
-  ! info
+  !> \brief Screen output of basic information for device_struct.
   SUBROUTINE info_mag_device(device)
     TYPE(device_struct), POINTER :: device
     IF (mag_infotalk .AND. ASSOCIATED(device)) THEN
@@ -1267,6 +1269,7 @@ CONTAINS
     RETURN
   END SUBROUTINE info_mag_device
   ! ---------------------------------------------------------------------------
+  !> \brief Screen output of basic information for surface_struct.
   SUBROUTINE info_mag_surface(surface)
     TYPE(surface_struct), POINTER :: surface
     IF (mag_infotalk .AND. ASSOCIATED(surface)) THEN
@@ -1296,6 +1299,7 @@ CONTAINS
     RETURN
   END SUBROUTINE info_mag_surface
   ! ---------------------------------------------------------------------------
+  !> \brief Screen output of basic information for fieldline_struct.
   SUBROUTINE info_mag_fieldline(fieldline)
     TYPE(fieldline_struct), POINTER :: fieldline
     IF (mag_infotalk .AND. ASSOCIATED(fieldline)) THEN
@@ -1323,6 +1327,7 @@ CONTAINS
     RETURN
   END SUBROUTINE info_mag_fieldline
   ! ---------------------------------------------------------------------------
+  !> \brief Screen output of basic information for fieldperiod_struct.
   SUBROUTINE info_mag_fieldperiod(fieldperiod)
     TYPE(fieldperiod_struct), POINTER :: fieldperiod
     IF (mag_infotalk .AND. ASSOCIATED(fieldperiod)) THEN
@@ -1378,6 +1383,7 @@ CONTAINS
     RETURN
   END SUBROUTINE info_mag_fieldperiod
   ! ---------------------------------------------------------------------------
+  !> \brief Screen output of basic information for fieldpropagator_struct.
   SUBROUTINE info_mag_fieldpropagator(fieldpropagator)
     TYPE(fieldpropagator_struct), POINTER :: fieldpropagator
     INTEGER :: ic
@@ -1460,6 +1466,7 @@ CONTAINS
     RETURN
   END SUBROUTINE info_mag_fieldpropagator
   ! ---------------------------------------------------------------------------
+  !> \brief Screen output of basic information for fieldripple_struct.
   SUBROUTINE info_mag_fieldripple(fieldripple)
     TYPE(fieldripple_struct), POINTER :: fieldripple
     INTEGER :: ic
@@ -2912,6 +2919,9 @@ CONTAINS
 
     INTEGER       :: i
     REAL(kind=dp) :: min_val,min_val2
+
+    min_val = 1.234e5
+    min_val2 = 1.234e5
 
     IF (ASSOCIATED(dnumber) .AND. ASSOCIATED(dnumber2)) THEN
        CALL goto_first(dnumber )

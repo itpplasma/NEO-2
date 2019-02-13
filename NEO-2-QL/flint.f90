@@ -626,6 +626,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   ! Debugging
   INTEGER :: i_ctr
   !! End Modifications by Andreas F. Martitsch (01.12.2016)
+
+  eta_highest_local_max = 1.234e5
   
   !print *, 'flint: begin of program'
   ! this is not very sophisticated at the moment
@@ -3789,8 +3791,12 @@ SUBROUTINE sort_theta()
   TYPE(fieldperiod_struct), POINTER :: p_t,p_min,p_max
   REAL(kind=dp) :: t,t_min,t_max,t_min_last
   INTEGER :: found
+
   t_min = 1.0d100
   t_max = -1.9d100
+
+  p_min => fieldline%ch_fir ! initialization, should not be necessary?
+  p_max => fieldline%ch_fir ! initialization, should not be necessary?
 
   fieldperiod => fieldline%ch_fir
   ! find t_min and t_max
