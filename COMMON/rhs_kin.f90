@@ -80,17 +80,6 @@ SUBROUTINE rhs_kin(phi,y,dery)
   !
   pardeb=(hctrvr(1)*bder(1)+hctrvr(2)*bder(2)+hctrvr(3)*bder(3))/hctrvr(2)
   !
-!!$  ! Winny 
-!!$  IF(ipmin.EQ.0.AND.pardeb*pardeb0.LE.0.d0.AND.pardeb.GT.0.d0) THEN
-!!$     ipmin = 1
-!!$  ELSE
-!!$     !ipmin = 0
-!!$  END IF
-!!$  IF(ipmax.EQ.0.AND.pardeb*pardeb0.LE.0.d0.AND.pardeb.LT.0.d0) THEN 
-!!$     ipmax = 1
-!!$  ELSE
-!!$     !ipmax = 0
-!!$  END IF
   pardeb0=pardeb
   !
   IF (mag_coordinates .EQ. 0) THEN

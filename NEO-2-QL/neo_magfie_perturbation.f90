@@ -243,11 +243,7 @@ CONTAINS
     !
     ! testing
     !
-!!$    ! define switch and select a flux surface
-!!$    INTEGER(I4B) :: swd
-!!$    INTEGER      :: k
-!!$    REAL(dp)     :: m0, f_es_pert, f_bmnc_pert, dummy
-    !
+
     ! allocate 2d arrays for the splines of the Fourier coefficients
     !at the moment unused stuff
     !ALLOCATE ( a_rmnc_pert(ns_pert,mnmax_pert), b_rmnc_pert(ns_pert,mnmax_pert) )
@@ -322,17 +318,6 @@ CONTAINS
     END IF
     !
     ! Testing
-    !
-!!$    swd = 0 ! no derivatives
-!!$    k = 1
-!!$    f_es_pert = es_pert(k)
-!!$    DO i=1,mnmax_pert
-!!$       m0 = r_mhalf_pert(i)
-!!$       CALL splint_horner3(es_pert,a_bmnc_pert(:,i), b_bmnc_pert(:,i), c_bmnc_pert(:,i),&
-!!$            d_bmnc_pert(:,i), swd, m0, f_es_pert, tf, tfp, tfpp, tfppp, f_bmnc_pert,&
-!!$            dummy,dummy,dummy)
-!!$       PRINT *, ixm_pert(i),ixn_pert(i),bmnc_pert(k,i),f_bmnc_pert  
-!!$    END DO
     !
     RETURN
   END SUBROUTINE neo_init_spline_pert

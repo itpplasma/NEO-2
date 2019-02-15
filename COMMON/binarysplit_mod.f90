@@ -706,27 +706,6 @@ CONTAINS
 
   END SUBROUTINE split_binsplit
 
-!!$  SUBROUTINE split_binsplit_v(v,splitloc,maxind)
-!!$    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: v
-!!$    INTEGER,                                   INTENT(in)    :: splitloc
-!!$    INTEGER,                                   INTENT(in)    :: maxind
-!!$
-!!$    INTEGER                                                  :: ub
-!!$    REAL(kind=dp), DIMENSION(:),  ALLOCATABLE                :: vh
-!!$    
-!!$    IF (maxind+1 .GT. UBOUND(v,1)) THEN
-!!$       ub = UBOUND(v,1)
-!!$       ALLOCATE(vh(0:ub+100))
-!!$       vh(0:ub) = v
-!!$       DEALLOCATE(v)
-!!$       ALLOCATE(v(0:ub+100))
-!!$       v = vh
-!!$       DEALLOCATE(vh)
-!!$    END IF
-!!$    v(splitloc+1:maxind+1) = v(splitloc:maxind)
-!!$    v(splitloc) = 0.0_dp
-!!$  END SUBROUTINE split_binsplit_v
-
   ! do the splits
   SUBROUTINE find_binsplit(xbs)
     TYPE(binarysplit),                         INTENT(inout)  :: xbs
@@ -1419,9 +1398,6 @@ CONTAINS
     ALLOCATE( x0_1(5), s_1(5) )
     x0_1=(/0.2_dp,0.35_dp,0.8_dp,0.6_dp,0.5_dp/)
     s_1 =(/0.001_dp,0.07_dp,0.01_dp,0.02_dp,0.015_dp/)
-!!$    ALLOCATE( x0_2(4), s_2(4) )
-!!$    x0_2=(/0.2_dp,0.35_dp,0.8_dp,0.6_dp/)
-!!$    s_2 =(/0.001_dp,0.07_dp,0.01_dp,0.02_dp/)
     ALLOCATE( x0_2(1), s_2(1) )
     !x0_2=(/0.468_dp/)
     !x0_2=(/0.473684210526316/)!-5.0d-2
@@ -1451,14 +1427,7 @@ CONTAINS
          max_splitlevel = 32                  &
          )
     !binarysplit_fsplitdepth = 0
-    
 
-!!$    ! do it for a first type
-!!$    CALL construct_bsfunc(x0_1,s_1)
-!!$    CALL construct_binarysplit(x_ori,cbs_1)
-!!$    CALL find_binarysplit(cbs_1,x0_1)
-
-    
     ! do it for cbs_2
     !binarysplit_fsplitdepth = 0
     bsfunc_base_distance = MAXVAL(x_ori(1:UBOUND(x_ori,1))-x_ori(0:UBOUND(x_ori,1)-1))
@@ -1469,51 +1438,10 @@ CONTAINS
     CALL printsummary_binarysplit(cbs_2)
     CALL plotfile_binarysplit(cbs_2,'gauss_1.dat',9)
 
-!!$    bsfunc_modelfunc = 2
-!!$    CALL construct_bsfunc(x0_2,s_2)
-!!$    CALL find_binarysplit(cbs_2,x0_2)
-!!$    bsfunc_modelfunc = 3
-!!$    CALL construct_bsfunc(x0_2,s_2)
-!!$    CALL find_binarysplit(cbs_2,x0_2)
-!!$    bsfunc_modelfunc = 1
-
-!!$    ! compare
-!!$    IF (test_printbin .EQ. 1) THEN
-!!$       CALL compare_binarysplit(cbs_1,cbs_2,bin_3,'diff')
-!!$       CALL printbin_binarysplit(cbs_1)
-!!$       CALL printbin_binarysplit(cbs_2)
-!!$       CALL printbin_binarysplit(bin_1)
-!!$    END IF
-!!$
-!!$    
-!!$    ! Joining or splitting
-!!$    CALL compare_binarysplit(cbs_1,cbs_2,bin_1,'diff')
-!!$    CALL compare_binarysplit(cbs_2,cbs_1,bin_2,'diff')
-!!$    IF (test_join .EQ. 1) THEN
-!!$       CALL join_binarysplit(cbs_1a,cbs_1,bin_1)
-!!$       CALL join_binarysplit(cbs_2a,cbs_2,bin_2)
-!!$    ELSE
-!!$       !cbs_1a = cbs_1
-!!$       CALL dosplit_binarysplit(cbs_1a,cbs_1,bin_2)
-!!$       CALL dosplit_binarysplit(cbs_2a,cbs_2,bin_1)
-!!$    END IF
-!!$    
-!!$    CALL printsummary_binarysplit(cbs_1)
-!!$    CALL printsummary_binarysplit(cbs_1a)
-!!$    CALL printsummary_binarysplit(cbs_2)
-!!$    CALL printsummary_binarysplit(cbs_2a)
-!!$    
-!!$    CALL plotfile_binarysplit(cbs_1,'gaussb_1.dat',9)
-!!$    CALL plotfile_binarysplit(cbs_2,'gaussb_2.dat',9)
-    
     CALL destruct_bsfunc
 
-!!$    CALL deconstruct_binarysplit(cbs_1)
     CALL deconstruct_binarysplit(cbs_2)
-!!$    CALL deconstruct_binarysplit(cbs_1a)
-!!$    CALL deconstruct_binarysplit(cbs_2a)
-!!$    CALL deconstruct_binarysplit(cbs_3)
-    
+
   END SUBROUTINE test_binsplit
 
 

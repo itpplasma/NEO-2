@@ -1588,34 +1588,6 @@ PRINT *,'right boundary layer ignored'
 !
     enddo
   enddo
-!
-
-! Artificial Off-set:
-!!$do istep=ibeg,iend
-!!$npassing=npl(istep)
-!!$do m=0,lag
-!!$k=ind_start(istep)+2*(npassing+1)*m
-!!$if(m.eq.0) then
-!!$source_vector(k+1:k+npassing,1)=eta(1:npassing)-eta(0:npassing-1)
-!!$source_vector(k+npassing+1,1)=1.d0/bhat_mfl(istep)-eta(npassing)
-!!$!source_vector(k+1:k+npassing+1,1)=source_vector(k+1:k+npassing+1,1)/sqrt(8.d0*3.14159265358979d0/3.d0)
-!!$source_vector(k+1:k+npassing+1,2)=0d0
-!!$elseif(m.eq.2) then
-!!$source_vector(k+1:k+npassing+1,1)=0.d0
-!!$source_vector(k+1:k+npassing,2)=eta(1:npassing)-eta(0:npassing-1)
-!!$source_vector(k+npassing+1,2)=1.d0/bhat_mfl(istep)-eta(npassing)
-!!$!source_vector(k+1:k+npassing+1,2)=-source_vector(k+1:k+npassing+1,2)*0.25d0/sqrt(3.14159265358979d0/15.d0)
-!!$else
-!!$source_vector(k+1:k+npassing+1,1)=0.d0
-!!$endif
-!!$source_vector(k+2*npassing+2:k+npassing+2:-1,1)=source_vector(k+1:k+npassing+1,1)
-!!$source_vector(k+2*npassing+2:k+npassing+2:-1,2)=source_vector(k+1:k+npassing+1,2)
-!!$enddo
-!!$enddo
-!!$!print *,sum(avden_vector*source_vector(:,1))/denom_mflint,sum(avpres_vector*source_vector(:,1))/denom_mflint
-!!$!print *,sum(avden_vector*source_vector(:,2))/denom_mflint,sum(avpres_vector*source_vector(:,2))/denom_mflint
-!!$!stop
-!!$goto 11  
 
 !
 ! Determine the size of arrays (number of non-zero elements):
@@ -2434,36 +2406,6 @@ call cpu_time(time1)
   ! Method for non-relativsitic Maxwellian has been replaced
   ! by more general computation of a_00, a_02, and a_22 (see collop_compute.f90)
   !*****************************************************************************
-!!$     ! 11 continue
-!!$     ! Drive 1
-!!$     cg0_1_num=sum(avden_vector*source_vector(:,1))
-!!$     cg2_1_num=sum(avpres_vector*source_vector(:,1))
-!!$     cg0_1_num=2.5d0*cg0_1_num-cg2_1_num
-!!$     cg2_1_num=(4.d0/15.d0)*cg2_1_num-0.4d0*cg0_1_num
-!!$     !
-!!$     cg0_1_num=cg0_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
-!!$     cg2_1_num=cg2_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
-!!$     print *,'Local off-set drive 1: ',cg0_1_num/denom_mflint,cg2_1_num/denom_mflint, denom_mflint
-!!$
-!!$     ! Drive 2 (Spitzer)
-!!$     cg0_2_num=sum(avden_vector*source_vector(:,2))
-!!$     cg2_2_num=sum(avpres_vector*source_vector(:,2))
-!!$     cg0_2_num=2.5d0*cg0_2_num-cg2_2_num
-!!$     cg2_2_num=(4.d0/15.d0)*cg2_2_num-0.4d0*cg0_2_num
-!!$     !
-!!$     cg0_2_num=cg0_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
-!!$     cg2_2_num=cg2_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
-!!$     print *,'Local off-set drive 2: ',cg0_2_num/denom_mflint,cg2_2_num/denom_mflint, denom_mflint
-!!$
-!!$     ! Drive 3
-!!$     cg0_3_num=sum(avden_vector*source_vector(:,3))
-!!$     cg2_3_num=sum(avpres_vector*source_vector(:,3))
-!!$     cg0_3_num=2.5d0*cg0_3_num-cg2_3_num
-!!$     cg2_3_num=(4.d0/15.d0)*cg2_3_num-0.4d0*cg0_3_num
-!!$     !
-!!$     cg0_3_num=cg0_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
-!!$     cg2_3_num=cg2_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
-!!$     print *,'Local off-set drive 3: ',cg0_3_num/denom_mflint,cg2_3_num/denom_mflint, denom_mflint
   
   write (*,*) "Parameters for offset correction: ", a_00_offset, a_02_offset, a_22_offset
   write (*,*) "Weightenerg for offset correction: ", weightenerg_offset

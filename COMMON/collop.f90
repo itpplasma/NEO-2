@@ -83,22 +83,6 @@ module collop
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,mpro%getRank(),ispec)
       end if
 
-      !! Modification by Andreas F. Martitsch (21.02.2017)
-      ! ToDo: Delete this block - switch moved to flint_prepare for consistency!
-!!$      !**********************************************************
-!!$      ! Switch collisionality parameter
-!!$      !**********************************************************
-!!$      ! negative input for conl_over_mfp should provide collpar directly
-!!$      if (.not. collop_only_precompute) then
-!!$         conl_over_mfp=conl_over_mfp_spec(ispec)
-!!$         if (conl_over_mfp .gt. 0.0d0) then
-!!$            collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
-!!$         else
-!!$            collpar=-conl_over_mfp
-!!$         end if
-!!$      end if
-      !! End Modification by Andreas F. Martitsch (21.02.2017)
-
     end subroutine collop_set_species
 
     subroutine collop_load()
@@ -376,31 +360,6 @@ module collop
            !**********************************************************
            ! Compute collision operator
            !**********************************************************
-           ! old: without MPI parallelization
-!!$         do a = 0, num_spec-1
-!!$            do b = 0, num_spec-1
-!!$
-!!$               spec_ind_in = (/ a, b /)
-!!$               call collop_exists(m_spec(a), m_spec(b), T_spec(a), T_spec(b), &
-!!$                    spec_ind_in, spec_ind_det)
-!!$
-!!$               if ( all(spec_ind_det .eq. -1) ) then
-!!$                  !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
-!!$                  !print *,'Do the computation.'
-!!$                  call compute_collop('a', 'b', m_spec(a), m_spec(b), T_spec(a), T_spec(b), &
-!!$                       anumm_aa(:,:,a,b), denmm_aa(:,:,a,b), ailmm_aa(:,:,:,a,b))
-!!$               else
-!!$                  !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
-!!$                  !print *,'Load matrices.'
-!!$                  anumm_aa(:,:,a,b) = anumm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
-!!$                  denmm_aa(:,:,a,b) = denmm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
-!!$                  ailmm_aa(:,:,:,a,b) = ailmm_aa(:,:,:,spec_ind_det(1),spec_ind_det(2))
-!!$               end if
-!!$
-!!$            end do
-!!$         end do
-         ! new: with MPI parallelization
-
 
            b = mpro%getRank()
            do a = 0, num_spec-1

@@ -58,12 +58,6 @@ MODULE gsl_integration_routines_mod
        REAL(fgsl_double) :: x, param1
      END FUNCTION func1d_param1
   END INTERFACE
-  ! This part is replaced by internal subroutines (01.04.2015)
-!!$  ! declare global procedure pointers (maybe there is a better solution)
-!!$  PRIVATE func1d_param0_ptr
-!!$  PROCEDURE(func1d_param0), POINTER :: func1d_param0_ptr => NULL()
-!!$  PRIVATE func1d_param1_ptr
-!!$  PROCEDURE(func1d_param1), POINTER :: func1d_param1_ptr => NULL()
   !
   ! Activate messages from root solver
   PUBLIC integration_solver_talk
@@ -73,10 +67,6 @@ MODULE gsl_integration_routines_mod
   PRIVATE gsl_err_detected, check_error
   PUBLIC disp_gsl_integration_error
   LOGICAL, DIMENSION(-2:32) :: gsl_err_detected = .FALSE.
-  !
-  ! This part is replaced by internal subroutines (01.04.2015)
-!!$  ! Internal Fortran-to-C wrapper functions (public, because of c-binding)
-!!$  PUBLIC f2c_wrapper_func1d_param0, f2c_wrapper_func1d_param1
   !
   ! Selection of test cases
   PUBLIC test_func1d_param0, test2_func1d_param0, test3_func1d_param0, &
@@ -123,46 +113,6 @@ MODULE gsl_integration_routines_mod
 
 CONTAINS
   !--------------------------------------------------------------------------------------!
-  ! This part is replaced by internal subroutines (01.04.2015)
-!!$  ! Fortran-to-C wrapper function in order to guarantee interoperability between
-!!$  ! Fortran and C
-!!$  FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-!!$    !
-!!$    REAL(c_double), VALUE :: x
-!!$    TYPE(c_ptr), VALUE :: params
-!!$    REAL(c_double) :: f2c_wrapper_func1d_param0
-!!$    !
-!!$    ! Check, whether C-pointer 'params' is not associated (no parameter passed)
-!!$    IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
-!!$    !
-!!$    ! Wrap user-specified function to a C-interoperable function
-!!$    f2c_wrapper_func1d_param0 = func1d_param0_ptr(x)
-!!$    !
-!!$  END FUNCTION f2c_wrapper_func1d_param0
-  !--------------------------------------------------------------------------------------!
-  !--------------------------------------------------------------------------------------!
-  ! This part is replaced by internal subroutines (01.04.2015)
-!!$  ! Fortran-to-C wrapper function in order to guarantee interoperability between
-!!$  ! Fortran and C
-!!$  FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-!!$    !
-!!$    REAL(c_double), VALUE :: x
-!!$    TYPE(c_ptr), VALUE :: params
-!!$    REAL(c_double) :: f2c_wrapper_func1d_param1
-!!$    !
-!!$    REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
-!!$    !
-!!$    ! Check, whether C-pointer 'params' is associated
-!!$    IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
-!!$    !
-!!$    ! Cast C-pointer to the above-defined Fortran pointer
-!!$    CALL C_F_POINTER(params, p)
-!!$    ! Wrap user-specified function to a C-interoperable function
-!!$    f2c_wrapper_func1d_param1 = func1d_param1_ptr(x,p)
-!!$    !
-!!$  END FUNCTION f2c_wrapper_func1d_param1
-  !--------------------------------------------------------------------------------------!
-  !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   RECURSIVE FUNCTION fint1d_param0_qag(func1d_param0_user,x_low,x_up,epsabs,epsrel,sw_qag_rule) result(res)
 
@@ -187,12 +137,6 @@ CONTAINS
     !
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
-    !
-    ! This part is replaced by internal subroutines (01.04.2015)
-!!$    ! Associate global procedure pointer with user-specified function
-!!$    func1d_param0_ptr => func1d_param0_user
-!!$    IF(.NOT. ASSOCIATED(func1d_param0_ptr)) &
-!!$         STOP '***Error*** in fint1d_param0_qag'
     !
     ! Nullify param0_ptr
     param0_ptr = c_null_ptr
@@ -263,12 +207,6 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! This part is replaced by internal subroutines (01.04.2015)
-!!$    ! Associate global procedure pointer with user-specified function
-!!$    func1d_param1_ptr => func1d_param1_user
-!!$    IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
-!!$         STOP '***Error*** in fint1d_param1_qag'
-    !
     ! Get C-location of 'param1'
     param1_ptr = c_LOC(param1)
     IF(.NOT. C_ASSOCIATED(param1_ptr)) &
@@ -338,12 +276,6 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! This part is replaced by internal subroutines (01.04.2015)
-!!$    ! Associate global procedure pointer with user-specified function
-!!$    func1d_param0_ptr => func1d_param0_user
-!!$    IF(.NOT. ASSOCIATED(func1d_param0_ptr)) &
-!!$         STOP '***Error*** in fint1d_param0_qags'
-    !
     ! Nullify param0_ptr
     param0_ptr = c_null_ptr
     IF(C_ASSOCIATED(param0_ptr)) &
@@ -409,12 +341,6 @@ CONTAINS
     !
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
-    !
-    ! This part is replaced by internal subroutines (01.04.2015)
-!!$    ! Associate global procedure pointer with user-specified function
-!!$    func1d_param1_ptr => func1d_param1_user
-!!$    IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
-!!$         STOP '***Error*** in fint1d_param1_qags'
     !
     ! Get C-location of 'param1'
     param1_ptr = c_LOC(param1)
@@ -486,12 +412,6 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! This part is replaced by internal subroutines (01.04.2015)
-!!$    ! Associate global procedure pointer with user-specified function
-!!$    func1d_param0_ptr => func1d_param0_user
-!!$    IF(.NOT. ASSOCIATED(func1d_param0_ptr)) &
-!!$         STOP '***Error*** in fint1d_param0_qagp'
-    !
     ! Nullify param0_ptr
     param0_ptr = c_null_ptr
     IF(C_ASSOCIATED(param0_ptr)) &
@@ -559,12 +479,6 @@ CONTAINS
     !
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
-    !
-    ! This part is replaced by internal subroutines (01.04.2015)
-!!$    ! Associate global procedure pointer with user-specified function
-!!$    func1d_param1_ptr => func1d_param1_user
-!!$    IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
-!!$         STOP '***Error*** in fint1d_param1_qagp'
     !
     ! Get C-location of 'param1'
     param1_ptr = c_LOC(param1)
@@ -639,12 +553,6 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! This part is replaced by internal subroutines (01.04.2015)
-!!$    ! Associate global procedure pointer with user-specified function
-!!$    func1d_param0_ptr => func1d_param0_user
-!!$    IF(.NOT. ASSOCIATED(func1d_param0_ptr)) &
-!!$         STOP '***Error*** in fint1d_param0_cquad'
-    !
     ! Nullify param0_ptr
     param0_ptr = c_null_ptr
     IF(C_ASSOCIATED(param0_ptr)) &
@@ -711,12 +619,6 @@ CONTAINS
     !
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
-    !
-    ! This part is replaced by internal subroutines (01.04.2015)
-!!$    ! Associate global procedure pointer with user-specified function
-!!$    func1d_param1_ptr => func1d_param1_user
-!!$    IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
-!!$         STOP '***Error*** in fint1d_param1_cquad'
     !
     ! Get C-location of 'param1'
     param1_ptr = c_LOC(param1)
@@ -790,12 +692,6 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! This part is replaced by internal subroutines (01.04.2015)
-!!$    ! Associate global procedure pointer with user-specified function
-!!$    func1d_param0_ptr => func1d_param0_user
-!!$    IF(.NOT. ASSOCIATED(func1d_param0_ptr)) &
-!!$         STOP '***Error*** in fint1d_param0_qag'
-    !
     ! Nullify param0_ptr
     param0_ptr = c_null_ptr
     IF(C_ASSOCIATED(param0_ptr)) &
@@ -863,12 +759,6 @@ CONTAINS
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
     !
-    ! This part is replaced by internal subroutines (01.04.2015)
-!!$    ! Associate global procedure pointer with user-specified function
-!!$    func1d_param1_ptr => func1d_param1_user
-!!$    IF(.NOT. ASSOCIATED(func1d_param1_ptr)) &
-!!$         STOP '***Error*** in fint1d_param1_qag'
-    !
     ! Get C-location of 'param1'
     param1_ptr = c_LOC(param1)
     IF(.NOT. C_ASSOCIATED(param1_ptr)) &
@@ -915,42 +805,42 @@ CONTAINS
   END FUNCTION fint1d_param1_qagiu
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
-  ! Check error-codes from GSL:
-!!$  GSL_SUCCESS  = 0,
-!!$  GSL_FAILURE  = -1,
-!!$  GSL_CONTINUE = -2,  /* iteration has not converged */
-!!$  GSL_EDOM     = 1,   /* input domain error, e.g sqrt(-1) */
-!!$  GSL_ERANGE   = 2,   /* output range error, e.g. exp(1e100) */
-!!$  GSL_EFAULT   = 3,   /* invalid pointer */
-!!$  GSL_EINVAL   = 4,   /* invalid argument supplied by user */
-!!$  GSL_EFAILED  = 5,   /* generic failure */
-!!$  GSL_EFACTOR  = 6,   /* factorization failed */
-!!$  GSL_ESANITY  = 7,   /* sanity check failed - shouldn't happen */
-!!$  GSL_ENOMEM   = 8,   /* malloc failed */
-!!$  GSL_EBADFUNC = 9,   /* problem with user-supplied function */
-!!$  GSL_ERUNAWAY = 10,  /* iterative process is out of control */
-!!$  GSL_EMAXITER = 11,  /* exceeded max number of iterations */
-!!$  GSL_EZERODIV = 12,  /* tried to divide by zero */
-!!$  GSL_EBADTOL  = 13,  /* user specified an invalid tolerance */
-!!$  GSL_ETOL     = 14,  /* failed to reach the specified tolerance */
-!!$  GSL_EUNDRFLW = 15,  /* underflow */
-!!$  GSL_EOVRFLW  = 16,  /* overflow  */
-!!$  GSL_ELOSS    = 17,  /* loss of accuracy */
-!!$  GSL_EROUND   = 18,  /* failed because of roundoff error */
-!!$  GSL_EBADLEN  = 19,  /* matrix, vector lengths are not conformant */
-!!$  GSL_ENOTSQR  = 20,  /* matrix not square */
-!!$  GSL_ESING    = 21,  /* apparent singularity detected */
-!!$  GSL_EDIVERGE = 22,  /* integral or series is divergent */
-!!$  GSL_EUNSUP   = 23,  /* requested feature is not supported by the hardware */
-!!$  GSL_EUNIMPL  = 24,  /* requested feature not (yet) implemented */
-!!$  GSL_ECACHE   = 25,  /* cache limit exceeded */
-!!$  GSL_ETABLE   = 26,  /* table limit exceeded */
-!!$  GSL_ENOPROG  = 27,  /* iteration is not making progress towards solution */
-!!$  GSL_ENOPROGJ = 28,  /* jacobian evaluations are not improving the solution */
-!!$  GSL_ETOLF    = 29,  /* cannot reach the specified tolerance in F */
-!!$  GSL_ETOLX    = 30,  /* cannot reach the specified tolerance in X */
-!!$  GSL_ETOLG    = 31,  /* cannot reach the specified tolerance in gradient */
-!!$  GSL_EOF      = 32   /* end of file */
+  ! Check error-codes from GSL (keep in mind that these might not be up-to-date):
+  !  GSL_SUCCESS  = 0,
+  !  GSL_FAILURE  = -1,
+  !  GSL_CONTINUE = -2,  /* iteration has not converged */
+  !  GSL_EDOM     = 1,   /* input domain error, e.g sqrt(-1) */
+  !  GSL_ERANGE   = 2,   /* output range error, e.g. exp(1e100) */
+  !  GSL_EFAULT   = 3,   /* invalid pointer */
+  !  GSL_EINVAL   = 4,   /* invalid argument supplied by user */
+  !  GSL_EFAILED  = 5,   /* generic failure */
+  !  GSL_EFACTOR  = 6,   /* factorization failed */
+  !  GSL_ESANITY  = 7,   /* sanity check failed - shouldn't happen */
+  !  GSL_ENOMEM   = 8,   /* malloc failed */
+  !  GSL_EBADFUNC = 9,   /* problem with user-supplied function */
+  !  GSL_ERUNAWAY = 10,  /* iterative process is out of control */
+  !  GSL_EMAXITER = 11,  /* exceeded max number of iterations */
+  !  GSL_EZERODIV = 12,  /* tried to divide by zero */
+  !  GSL_EBADTOL  = 13,  /* user specified an invalid tolerance */
+  !  GSL_ETOL     = 14,  /* failed to reach the specified tolerance */
+  !  GSL_EUNDRFLW = 15,  /* underflow */
+  !  GSL_EOVRFLW  = 16,  /* overflow  */
+  !  GSL_ELOSS    = 17,  /* loss of accuracy */
+  !  GSL_EROUND   = 18,  /* failed because of roundoff error */
+  !  GSL_EBADLEN  = 19,  /* matrix, vector lengths are not conformant */
+  !  GSL_ENOTSQR  = 20,  /* matrix not square */
+  !  GSL_ESING    = 21,  /* apparent singularity detected */
+  !  GSL_EDIVERGE = 22,  /* integral or series is divergent */
+  !  GSL_EUNSUP   = 23,  /* requested feature is not supported by the hardware */
+  !  GSL_EUNIMPL  = 24,  /* requested feature not (yet) implemented */
+  !  GSL_ECACHE   = 25,  /* cache limit exceeded */
+  !  GSL_ETABLE   = 26,  /* table limit exceeded */
+  !  GSL_ENOPROG  = 27,  /* iteration is not making progress towards solution */
+  !  GSL_ENOPROGJ = 28,  /* jacobian evaluations are not improving the solution */
+  !  GSL_ETOLF    = 29,  /* cannot reach the specified tolerance in F */
+  !  GSL_ETOLX    = 30,  /* cannot reach the specified tolerance in X */
+  !  GSL_ETOLG    = 31,  /* cannot reach the specified tolerance in gradient */
+  !  GSL_EOF      = 32   /* end of file */
   !--------------------------------------------------------------------------------------!
   SUBROUTINE check_error(err_gsl)
     ! input

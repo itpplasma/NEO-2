@@ -296,11 +296,6 @@ contains
     !print *, 'Local Error ',MAXVAL(err,1),bsfunc_local_err
     !l  = l1 .OR. l2
     l = l2
-!!$    if (.NOT. l1) then
-!!$       if (bsfunc_message .GT. 0) then
-!!$          print *, 'Message: Total Error Limits reached!'
-!!$       end if
-!!$    end if
     if (.NOT. l2) then
       if (bsfunc_message .GT. 0) then
         print *, 'Message: Local Error Limits reached!'
@@ -387,16 +382,6 @@ contains
       end do
        ! g = g * os2pi
 
-!!$       if (bsfunc_evaldegree .NE. 2) then
-!!$          do k = 1, size(x0,1)
-!!$             g = g + EXP(- ((x-x0(k)) / s(k))**2 / 2) / s(k)
-!!$          end do
-!!$          g = g * os2pi
-!!$       else
-!!$          do k = 1, size(x0,1)
-!!$             g = g + EXP(- ((x-x0(k)) / s(k))**2 / 2)
-!!$          end do
-!!$       end if
     elseif (bsfunc_modelfunc .EQ. 2) then
       do k = 1, size(x0,1)
         g = g + SQRT( s(k)**2/(2.0_dp*(x-x0(k))**2+s(k)**2) )

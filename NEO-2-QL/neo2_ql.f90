@@ -765,14 +765,6 @@ PROGRAM neo2_ql
   !! End Modification by Andreas F. Martitsch (31.07.2014)
 
 
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! test sparse solver
-!!$  sparse_talk = .TRUE.
-!!$  sparse_solve_method = 1
-!!$  CALL sparse_example(2)
-!!$  STOP
-!!$  ! ---------------------------------------------------------------------------
-
   IF (prop_reconstruct .EQ. 1) THEN
      PRINT *, 'Reconstruction run!'
      CALL reconstruct_prop_dist
@@ -836,21 +828,6 @@ PROGRAM neo2_ql
 
 
 
-     ! ---------------------------------------------------------------------------
-!!$  ! THIS PART WAS MOVED BEFORE COLLOP
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! some settings
-!!$  ! nmat=npart*npart
-!!$  ndim=ndim0
-!!$  ! allocation of some arrays (should be moved)
-!!$  ! this part was not touched
-!!$  lalloc=.true.
-!!$  CALL kin_allocate(lalloc)
-!!$  ! ---------------------------------------------------------------------------
-!!$
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! prepare the whole configuration
-!!$  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
      CALL flint_prepare_2(bin_split_mode,eta_s_lim)
 
      !*********************************************************

@@ -958,11 +958,6 @@ contains
          real(kind=dp) :: x
        end function func1d
     end interface
-
-!!$    ! For debug
-!!$    res_int = fint1d_qag(func1d, a, b, epsabs, epsrel, sw_qag_rule)
-!!$    y = res_int(1)
-!!$    return
     
     if (allocated(t_vec)) then
        y = 0d0
@@ -1053,11 +1048,6 @@ contains
          real(kind=dp) :: x, param1
        end function func1d
     end interface
-
-!!$    ! For debug
-!!$    res_int = fint1d_qag(func1d, param, a, b, epsabs, epsrel, sw_qag_rule)
-!!$    y = res_int(1)
-!!$    return
     
     if (allocated(t_vec)) then
        y = 0d0
@@ -1150,14 +1140,6 @@ contains
        end function func1d
     end interface
 
-!!$    ! For debug
-!!$    if (integral_cutoff) then
-!!$       res_int = fint1d_qag(func1d, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-!!$    else
-!!$       res_int = fint1d_qagiu(func1d, a, epsabs, epsrel)
-!!$    end if
-!!$    y = res_int(1)
-!!$    return
     if (integral_cutoff) then
       x_cutoff_local = x_cutoff
       do while (abs(func1d(x_cutoff_local-1.0)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
@@ -1328,14 +1310,6 @@ contains
        end function func1d
     end interface
 
-!!$    ! For debug
-!!$    if (integral_cutoff) then
-!!$       res_int = fint1d_qag(func1d, param, a, x_cutoff, epsabs, epsrel, sw_qag_rule)
-!!$    else
-!!$       res_int = fint1d_qagiu(func1d, param, a, epsabs, epsrel)
-!!$    end if
-!!$    y = res_int(1)
-!!$    return
     if (integral_cutoff) then
       x_cutoff_local = x_cutoff
       do while (abs(func1d(x_cutoff_local-1.0, param)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
@@ -1667,20 +1641,6 @@ contains
        M_transform = M
     end if
 
-    
-    ! DEBUG - MAKE MATRIX ALWAYS UNIT MATRIX
-!!$    write (*,*) "WARNING, INVERSE MATRIX NOT COMPUTED!!!!!!"
-!!$    do mm = 0, lagmax
-!!$       do mp = 0, lagmax
-!!$          if (mm .eq. mp) then
-!!$             M(mm+1,mp+1) = 1d0
-!!$          else
-!!$             M(mm+1,mp+1) = 0d0
-!!$          end if
-!!$       end do
-!!$    end do
-
-    
     !**********************************************************
     ! M -> inv(M)
     !**********************************************************
@@ -2370,7 +2330,6 @@ contains
       real(kind=dp) :: x
       real(kind=dp) :: integrand
 
-!!$      integrand = x**(3+alpha) * exp(-(beta + 1)*x**2) * exp(-(gamma_ab*x)**2) * phi_prj(m, x) * phi_exp(mp, x)
       integrand = x**(3+alpha) * exp(-(beta + 1)*x**2) * exp(-(gamma_ab*x)**2) * phi_prj(m, x) * phi_exp(mp, gamma_ab*x)
     end function int_I1_mmp_s
 
@@ -2439,7 +2398,6 @@ contains
       real(kind=dp) :: xp, yp, I_phi_1
 
       yp = gamma_ab * xp
-!!$      I_phi_1 = exp(-yp**2) * phi_exp(mp, xp) * xp**(l+2)
       I_phi_1 = exp(-yp**2) * phi_exp(mp, yp) * xp**(l+2)
     end function I_phi_1
 
@@ -2447,7 +2405,6 @@ contains
       real(kind=dp) :: xp, yp, I_phi_2
 
       yp = gamma_ab * xp
-!!$      I_phi_2 = exp(-yp**2) * phi_exp(mp, xp) * xp**(-l+1)
       I_phi_2 = exp(-yp**2) * phi_exp(mp, yp) * xp**(-l+1)
     end function I_phi_2
 
@@ -2526,7 +2483,6 @@ contains
       real(kind=dp) :: xp, yp, I_phi_1
 
       yp = gamma_ab * xp
-!!$      I_phi_1 = exp(-yp**2) * phi_exp(mp, xp) * xp**(l+2)
       I_phi_1 = exp(-yp**2) * phi_exp(mp, yp) * xp**(l+2)
     end function I_phi_1
 
@@ -2534,7 +2490,6 @@ contains
       real(kind=dp) :: xp, yp, I_phi_2
 
       yp = gamma_ab * xp
-!!$      I_phi_2 = exp(-yp**2) * phi_exp(mp, xp) * xp**(-l+1)
       I_phi_2 = exp(-yp**2) * phi_exp(mp, yp) * xp**(-l+1)
     end function I_phi_2
 
@@ -2576,12 +2531,6 @@ contains
         do l = 0, legmax
           do m = 0, lagmax
              do mp = 0, lagmax
-!!$                if (integral_cutoff) then
-!!$                   res_int = fint1d_qag(I_psi, 0d0, x_cutoff, epsabs, epsrel, sw_qag_rule)
-!!$                else
-!!$                   res_int = fint1d_qagiu(I_psi, 0d0, epsabs, epsrel)
-!!$                end if
-!!$                I4_mmp_s(m, mp, l) = 3d0/pi**(1.5d0) * gamma_ab**3 * res_int(1)
 
                 I4_mmp_s(m, mp, l) = 0d0
                 do i = lbound(t_vec, 1), ubound(t_vec, 1)-1
@@ -2686,13 +2635,6 @@ contains
     function I_psi(x)
       real(kind=dp) :: x, I_psi
 
-      ! First approach - use second derivates
-      !  c = 1 + beta
-!!$      I_psi = exp(-c*x**2)*x**(3+alpha) * ((20+9*alpha + &
-!!$           alpha**2 - 2*(11+2*alpha) * c*x**2 + 4*c**2*x**4) * phi_prj(m,x) + &
-!!$           x*(2*(5+alpha-2*c*x**2) * d_phi_prj(m, x) + x*dd_phi_prj(m,x))) * &
-!!$           (x**(-l-1)/(2*l+3)*I1 - x**(-l+1)/(2*l-1)*I2 + x**(l+2)/(2*l+3)*I3 - x**l/(2*l-1)*I4)
-
       ! Second approach - avoid second derivates
       !K_temp = K(x)
       !I4_1 = ((x**(4 + alpha)*((5 + alpha - 2*(1 + beta)*x**2) * phi_prj(m,x) &
@@ -2707,7 +2649,6 @@ contains
       real(kind=dp) :: xp, yp, I_psi_1
 
       yp = gamma_ab * xp
-!!$      I_psi_1 = xp**(l+4)*exp(-yp**2)*phi_exp(mp,xp)
       I_psi_1 = xp**(l+4)*exp(-yp**2)*phi_exp(mp,yp)
     end function I_psi_1
 
@@ -2715,7 +2656,6 @@ contains
       real(kind=dp) :: xp, yp, I_psi_2
 
       yp = gamma_ab * xp
-!!$      I_psi_2 = xp**(l+2)*exp(-yp**2)*phi_exp(mp,xp)
       I_psi_2 = xp**(l+2)*exp(-yp**2)*phi_exp(mp,yp)
     end function I_psi_2
 
@@ -2723,7 +2663,6 @@ contains
       real(kind=dp) :: xp, yp, I_psi_3
 
       yp = gamma_ab * xp
-!!$      I_psi_3 = xp**(-l+1)*exp(-yp**2)*phi_exp(mp,xp)
       I_psi_3 = xp**(-l+1)*exp(-yp**2)*phi_exp(mp,yp)
     end function I_psi_3
 
@@ -2731,7 +2670,6 @@ contains
       real(kind=dp) :: xp, yp, I_psi_4
 
       yp = gamma_ab * xp
-!!$      I_psi_4 = xp**(-l+3)*exp(-yp**2)*phi_exp(mp,xp)
       I_psi_4 = xp**(-l+3)*exp(-yp**2)*phi_exp(mp,yp)
     end function I_psi_4
 
@@ -2816,19 +2754,7 @@ contains
     a_00_offset = 1.00d0
     a_02_offset = (-1d0) * dmuk2ovk2(rmu)
     a_22_offset = ddmuk2ovk2(rmu)
-    
-!!$    rmu_beg = 0d0
-!!$    rmu_end = 1d4
-!!$    rmu_steps = 100000
-!!$    do i = 1, rmu_steps
-!!$
-!!$       rmu = (rmu_end - rmu_beg)/rmu_steps * i
-!!$       write (110,*) rmu, dk2ovk2(rmu), ddk2ovk2(rmu)
-!!$       
-!!$    end do
-!!$       
-!!$    stop
-    
+
     if (allocated(M_transform)) deallocate(M_transform)
     allocate(M_transform(0:lagmax, 0:lagmax))
     

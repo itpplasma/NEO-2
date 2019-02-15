@@ -464,14 +464,6 @@ PROGRAM neo2_par
      CALL write_version_info()
   END IF
 
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! test sparse solver
-!!$  sparse_talk = .TRUE.
-!!$  sparse_solve_method = 1
-!!$  CALL sparse_example(2)
-!!$  STOP
-!!$  ! ---------------------------------------------------------------------------
-
   !**********************************************************
   ! Check reconstruction switch
   !**********************************************************
@@ -541,21 +533,6 @@ PROGRAM neo2_par
 
      END IF
 
-     ! ---------------------------------------------------------------------------
-!!$  ! THIS PART WAS MOVED BEFORE COLLOP
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! some settings
-!!$  ! nmat=npart*npart
-!!$  ndim=ndim0
-!!$  ! allocation of some arrays (should be moved)
-!!$  ! this part was not touched
-!!$  lalloc=.true.
-!!$  CALL kin_allocate(lalloc)
-!!$  ! ---------------------------------------------------------------------------
-!!$
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! prepare the whole configuration
-!!$  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
      CALL flint_prepare_2(bin_split_mode,eta_s_lim)
 
      !*********************************************************
@@ -648,29 +625,6 @@ PROGRAM neo2_par
               tag_first = 3
               tag_last  = 3
            END IF
-
-!!$           DO k = tag_first, tag_last
-!!$              DO l = tag_first, tag_last
-!!$                 WRITE (h5_filename, '(I0,A,I0)') k, "_", l
-!!$
-!!$                 OPEN(unit=1234, iostat=ios, file="evolve_" // TRIM(h5_filename) // ".h5", status='old')
-!!$                 CLOSE(unit=1234)
-!!$
-!!$                 !**********************************************************
-!!$                 ! Check if file exists
-!!$                 !**********************************************************
-!!$                 IF (ios .EQ. 0) THEN
-!!$
-!!$                    CALL h5_open("evolve_" // TRIM(h5_filename) // ".h5", h5id_propfile)
-!!$                    CALL h5_copy(h5id_propfile, '/', h5id_prop, "/" // TRIM(h5_filename))
-!!$                    CALL h5_close(h5id_propfile)
-!!$
-!!$                    ! Delete file
-!!$                    OPEN(unit=1234, iostat=ios, file="evolve_" // TRIM(h5_filename) // ".h5", status='old')
-!!$                    CLOSE(unit=1234, status='delete')
-!!$                 END IF
-!!$              END DO
-!!$           END DO
 
            CALL h5_close(h5id_prop)
 

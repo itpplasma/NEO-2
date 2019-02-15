@@ -903,14 +903,7 @@ CONTAINS
     rt0 = device%r0
     phi = prop_a%phi_r
 
-!!$    PRINT *, 'y ',y
-!!$    PRINT *, 'aiota_loc ',aiota_loc 
-!!$    PRINT *, 'rt0 ',rt0
-!!$    PRINT *, 'phi ',phi
-!!$    PRINT *, 'qflux_g ',qflux_g
     transport_factor = qflux_g*y(6)*(y(14)/(y(7)*y(13)))**2
-!!$    PRINT *, 'transport_factor ',transport_factor
-!!$    PAUSE
     dmono_over_dplateau=-2.d0*SQRT(2.d0)/pi*rt0*aiota_loc*transport_factor
 
     epseff3_2=-(9.d0*pi/(16.d0*SQRT(2.d0)))*collpar*rt0**2     &
@@ -935,13 +928,6 @@ CONTAINS
       uw = uw + 100
     END DO
     OPEN(uw,file='evolve.dat',position='append')
-!!$    WRITE (uw,'(1000(1x,e12.5))')                                   &
-!!$         REAL(phi),REAL(y(1:2)),REAL(aiota_loc),                    &
-!!$         REAL(dmono_over_dplateau),REAL(epseff3_2),REAL(alambda_b), &
-!!$         REAL(qflux_g),REAL(qflux_e),REAL(qcurr_g),REAL(qcurr_e)    &
-!!$         ,REAL(alambda_bb),REAL(3.d0*SQRT(pi)*qcurr_e*collpar/(32.d0*y(9)))*1.d0 &
-!!$         ,REAL(g_bs)    &                                              !<-GBS
-!!$         ,REAL(device%r0),REAL(surface%bmod0)
     WRITE (uw,'(1000(1x,e18.5))')                                   &
          (phi),(y(1:2)),(aiota_loc),                    &
          (dmono_over_dplateau),(epseff3_2),(alambda_b), &
@@ -1227,10 +1213,6 @@ CONTAINS
              phi_split_mode = phi_split_mode_ori                  !<-in Winny
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I try it again ',count_solv+1
-!!$          IF (count_solv .GT. 1) THEN
-!!$             PRINT *, 'PAUSE - MODE'
-!!$             PAUSE
-!!$          END IF
           ELSE IF (ierr_solv .EQ. 3 .AND. count_solv .GE. max_solver_try) THEN
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I give up'
@@ -1346,10 +1328,7 @@ CONTAINS
              phi_split_mode = phi_split_mode_ori                  !<-in Winny
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I try it again ',count_solv+1
-!!$          IF (count_solv .GT. 1) THEN
-!!$             PRINT *, 'PAUSE - MODE'
-!!$             PAUSE
-!!$          END IF
+
           ELSE IF (ierr_solv .EQ. 3 .AND. count_solv .GE. max_solver_try) THEN
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I give up'
@@ -1818,23 +1797,13 @@ CONTAINS
     ENDIF
     !! End Modification by Andreas F. Martitsch (27.07.2015)
 
-!!$    PRINT *, '----------------------------------------------------------'
-!!$    PRINT *, 'SOLVER INTER : npass_l,npass_r:   ',  prop_c%p%npass_l,prop_c%p%npass_r
 !->out    prop_c%p%npass_l = SIZE(prop_c%p%amat_p_m,1)
 !->out    prop_c%p%npass_r = SIZE(prop_c%p%amat_m_p,1)
     prop_c%p%npass_l = SIZE(prop_c%p%amat_p_m,1)/(prop_c%p%nvelocity+1)     !<-in
     prop_c%p%npass_r = SIZE(prop_c%p%amat_m_p,1)/(prop_c%p%nvelocity+1)     !<-in
-!!$    PRINT *, 'SOLVER INTER : npass_l,npass_r:   ',  prop_c%p%npass_l,prop_c%p%npass_r
-!!$    PRINT *, 'SOLVER INTER : prop_c%p%amat_p_m: ',  &
-!!$         SIZE(prop_c%p%amat_p_m,1),SIZE(prop_c%p%amat_p_m,2)
-!!$    PRINT *, 'SOLVER INTER : prop_c%p%amat_m_p: ',  &
-!!$         SIZE(prop_c%p%amat_m_p,1),SIZE(prop_c%p%amat_m_p,2)
-!!$    PRINT *, '----------------------------------------------------------'
-!!$    PAUSE
     
 
 
-    !
   END SUBROUTINE ripple_solver_int
 
   SUBROUTINE plot_distrf_int
@@ -2784,32 +2753,6 @@ CONTAINS
     WRITE(prop_unit,*) LBOUND(source_p_0,2),UBOUND(source_p_0,2)
     WRITE(prop_unit,*) source_p_0
     CLOSE(unit=prop_unit)
-
-
-
-!!$    ! for joining the cmat must go into the propagator
-!!$    ! forward goes to the left - l(eft)
-!!$    lb1 = LBOUND(b%c_forward,1)
-!!$    ub1 = UBOUND(b%c_forward,1)
-!!$    lb2 = LBOUND(b%c_forward,2)
-!!$    ub2 = UBOUND(b%c_forward,2)
-!!$    IF (ALLOCATED(l%p%cmat)) DEALLOCATE(l%p%cmat)
-!!$    ALLOCATE(l%p%cmat(lb1:ub1,lb2:ub2))
-!!$    l%p%cmat = b%c_forward
-!!$    ! backward goes to the right - r(ight)
-!!$    lb1 = LBOUND(b%c_backward,1)
-!!$    ub1 = UBOUND(b%c_backward,1)
-!!$    lb2 = LBOUND(b%c_backward,2)
-!!$    ub2 = UBOUND(b%c_backward,2)
-!!$    IF (ALLOCATED(r%p%cmat)) DEALLOCATE(r%p%cmat)
-!!$    ALLOCATE(r%p%cmat(lb1:ub1,lb2:ub2))
-!!$    r%p%cmat = b%c_backward
-!!$
-!!$    ! when you do joining the result is in prop_c
-!!$    prop_c => prop_c%next
-!!$    CALL join_ripples(ierr_join)
-
-
 
 
   END SUBROUTINE reconstruct_propagator_dist

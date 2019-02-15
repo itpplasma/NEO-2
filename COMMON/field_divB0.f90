@@ -331,15 +331,6 @@ subroutine read_eqfile0(nrad, nzet, psib, btf, rtf, rad, zet, psi)
 !     nrad = nrad - 3
 !     nzet = nzet - 4
 
-!!$     read(11,113)dummy,dummy,(rad(i),i=1,nrad)
-!!$     read(11,*) 
-!!$     read(11,*) 
-!!$     read(11,113)dummy,dummy,(zet(i),i=1,nzet)
-!!$     read(11,*) 
-!!$     read(11,*) 
-!!$     read(11,113)(dummy,dummy,(psi(j,k),j=1,nrad),dummy,k=1,2)
-!!$     read(11,113)(dummy,dummy,(psi(j,k),j=1,nrad),dummy,k=1,nzet)
-
      read(11,113)(rad(i),i=1,nrad)
      read(11,*) 
      read(11,*) 
@@ -348,9 +339,6 @@ subroutine read_eqfile0(nrad, nzet, psib, btf, rtf, rad, zet, psi)
      read(11,*) 
      read(11,113)((psi(j,k),j=1,nrad),k=1,nzet)
 
-!!$     do k=1,nzet
-!!$        write(41,*)(psi(j,k),j=1,nrad)
-!!$     enddo
     close(11)
     return
 

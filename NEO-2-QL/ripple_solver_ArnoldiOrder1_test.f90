@@ -232,7 +232,6 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   complex(kind=dpc),   DIMENSION(:,:),     ALLOCATABLE :: convol_flux,convol_curr
   complex(kind=dpc),   DIMENSION(:,:),     ALLOCATABLE :: convol_flux_0
   real(kind=dp), DIMENSION(:,:),     ALLOCATABLE :: scalprod_pleg
-!!$  real(kind=dp), DIMENSION(:,:),     ALLOCATABLE :: x1mm,x2mm
   complex(kind=dpc),   DIMENSION(:), ALLOCATABLE :: scalprod
   real(kind=dp), DIMENSION(:), ALLOCATABLE :: phi_mfl
   real(kind=dp), DIMENSION(:), ALLOCATABLE :: bhat_mfl,h_phi_mfl
@@ -285,11 +284,6 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   real(kind=dp),   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
   complex(kind=dpc),   DIMENSION(:),   ALLOCATABLE :: ttmpfact
-  ! Use pre-conditioned iterations (not necessary/depricated):
-  ! -> remove parallel flow from solution
-!!$  complex(kind=dpc) :: fluxincompr,coefincompr
-!!$  complex(kind=dpc),   DIMENSION(:),   ALLOCATABLE :: fluxincompr_spec, coefincompr_spec
-  ! End Use pre-conditioned iterations (not necessary/depricated)
   LOGICAL :: colltest=.FALSE.
   LOGICAL :: ttmptest=.FALSE.
 !  logical :: ttmptest=.true.
@@ -1523,12 +1517,7 @@ rotfactor=imun*m_phi
   energvec_bra=0.d0
   denom_energ=0.d0
   ! End Use pre-conditioned iterations
-!
-!!$  ALLOCATE(x1mm(0:lag,0:lag))
-!!$  ALLOCATE(x2mm(0:lag,0:lag))
-!
-!!$  CALL lagxmm(lag,x1mm,x2mm)
-!
+
   IF(isw_lorentz.EQ.1) THEN
     x1mm(0,0)=1.d0
     x2mm(0,0)=1.d0
@@ -3549,8 +3538,6 @@ END IF
 !
   ENDDO
 !
-!!$  DEALLOCATE(x1mm,x2mm)
-!
 ! Use solution of axisymmetric equation set:
 !
   IF(nobounceaver) THEN
@@ -4242,24 +4229,8 @@ PRINT *,' '
 
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 
-!!$    PRINT *,'Check equation set (before remap_rc):'
-!!$    DO k=1,nz
-!!$       IF(dimag(amat_sp(k)) .GT. 1.0d-10) THEN
-!!$          PRINT *,'3951',amat_sp(k)
-!!$          STOP
-!!$       ENDIF
-!!$    ENDDO
-!
     CALL  remap_rc(nz,nz_sq,irow,icol,amat_sp)
-!
-!!$    PRINT *,'Check equation set (after remap_rc):'
-!!$    DO k=1,nz_sq
-!!$       IF(dimag(amat_sp(k)) .GT. 1.0d-10) THEN
-!!$          PRINT *,'3961',amat_sp(k)
-!!$          STOP
-!!$       ENDIF
-!!$    ENDDO
-!
+
     PRINT *,'system size = ',n_2d_size
     PRINT *,'non-zeros before and after truncation = ',nz,nz_sq
     nz=nz_sq
@@ -4316,14 +4287,7 @@ PRINT *,' '
 ! integral part:
 !
     IF(isw_intp.EQ.1) THEN
-!
-!!$      ! Use pre-conditioned iterations (not necessary/depricated):
-!!$      ! -> remove parallel flow from solution
-!!$      ! old behavior (for a single species):
-!!$      !fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector(:,4))
-!!$      !  multi-species part :
-!!$      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector_all(:,4,ispec))
-! 
+
       denom_energ=SUM(energvec_bra*energvec_ket)
       !PRINT *,'denom_energ = ',denom_energ
 !
@@ -4376,10 +4340,6 @@ PRINT *,' '
 !  lsw_debug_eigvec=.FALSE.
 !  STOP
 !END IF
-!
-!!$       ! Use pre-conditioned iterations (not necessary/depricated):
-!!$       source_vector_all(:,k,ispecp)=&
-!!$            source_vector_all(:,k,ispecp)+coefincompr*bvec_parflow
         ENDDO
         !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
@@ -5392,17 +5352,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
                        fnew,iopt)
   ENDIF
-!
-!!$  ! Use pre-conditioned iterations (not necessary/depricated):
-!!$  ! -> remove parallel flow from solution
-!!$  ! old behavior (for a single species):
-!!$  !coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
-!!$  !fnew=fnew-coefincompr*source_vector(:,4)
-!!$  !  multi-species part (4th column is the same for all drives):
-!!$  !coefincompr=0.0d0
-!!$  coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
-!!$  fnew=fnew-coefincompr*source_vector_all(:,4,ispec)
-!
+
   END SUBROUTINE next_iteration
 !
 !---------------------------------------------------------------------------------
@@ -5528,22 +5478,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
   PRINT *,'iterator: number of bad modes = ', ngrow
   nsize=ngrow
-!
-!!$  ! Exclude first eigenvalue/eigenvector:
-!!$  ! -> was used for detection of eigenvalue 1
-!!$  ! corresponding to the null-space of the solution
-!!$  ! (energy conservations)  
-!!$  IF(problem_type .AND. ngrow .GT. 0) THEN
-!!$     IF(ABS(ABS(ritznum(1))-1.0d0) .LT. 1.0d-2) THEN      
-!!$        nsize=ngrow-1
-!!$        eigvecs(:,1)=eigvecs(:,ngrow)
-!!$        ritznum(1)=ritznum(ngrow)
-!!$        ngrow=ngrow-1
-!!$     ENDIF
-!!$  ENDIF
-!!$  IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
-!!$  ! End exclude
-!  
+
   ALLOCATE(fold(n),fnew(n))
 !
   IF(ngrow.EQ.0) THEN
@@ -5606,14 +5541,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
       !! End Modification by Andreas F. Martitsch (20.08.2015)
     ENDDO
   ENDDO
-!
-!!$  WRITE(*,*) ''
-!!$  DO i=1,nsize
-!!$     WRITE(*,*) (amat(i,j),j=1,nsize) 
-!!$  ENDDO
-!!$  WRITE(*,*) ''
-!!$  STOP
-!
+
   CALL zgesv(nsize,nsize,amat,nsize,ipiv,bvec,nsize,info)
 !
   IF(info.NE.0) THEN
@@ -5905,14 +5833,6 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 
   hmat_work=hmat
 
-!!$  WRITE(*,*)
-!!$  DO k=1,m
-!!$     WRITE(*,*) (hmat_work(k,j),j=1,m)
-!!$  ENDDO
-!!$  WRITE(*,*)
-!!$print *,'matrix hmat'
-!!$pause
-!
   ALLOCATE(work(1))
   lwork=-1
 !

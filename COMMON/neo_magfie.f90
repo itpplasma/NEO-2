@@ -1618,29 +1618,6 @@ CONTAINS
     ! Conversion from SI- to cgs-units has not yet been
     ! checked for this quantity
     boozer_sqrtg00 = s_sqrtg00
-!!$    !! Modifications by Andreas F. Martitsch (12.03.2014)
-!!$    ! Note! Every quantity given below is written in
-!!$    ! terms of SI-units. This part has been moved to the
-!!$    ! block with "magfie_result eq. 0), where the quantities are
-!!$    ! converted to cgs-units. In the previous version
-!!$    ! conversions were done partly within rhs_kin.f90 and
-!!$    ! partly within ripple_solver.f90.
-!!$    ! For this reason, please note also the changes in
-!!$    ! "rhs_kin" and "ripple_solver"!
-!!$    boozer_curr_tor = curr_tor
-!!$    boozer_curr_pol = curr_pol
-!!$    ! Compute the radial derivatives of toroidal / poloidal currents
-!!$    ! (In fact these currents are already the respective
-!!$    ! covariant B-field components; conversion done within
-!!$    ! neo_read)
-!!$    ! Caution! boozer_curr_tor/ boozer_curr_pol are given in SI-units [Tm].
-!!$    ! They are not converted to cgs-units - as done within (magfie_result .EQ. 0).
-!!$    boozer_curr_pol_s = curr_tor_s
-!!$    boozer_curr_tor_s = curr_pol_s
-!!$    boozer_psi_pr = psi_pr 
-!!$    boozer_sqrtg11 = sqrg11
-!!$    boozer_isqrg = isqrg
-!!$    !! End Modifications by Andreas F. Martitsch (12.03.2014)
   END SUBROUTINE neo_magfie_a
   
   !! Modifications by Andreas F. Martitsch (11.03.2014)
@@ -1767,16 +1744,6 @@ CONTAINS
     ! intialize start vector
     x = x_start
     thetaB = x_start(3)
-    !
-!!$    ! Debugging
-!!$    OPEN(unit=1234,file='RZ_coord.dat')
-!!$    DO k = 1,kmax
-!!$       thtB_Z_n=DBLE(k-1)*TWOPI/DBLE(kmax-1)
-!!$       x(3) = thtB_Z_n
-!!$       CALL compute_RZ( x, R, R_tb, Z, Z_tb )
-!!$       WRITE(1234,*) x(3), R, Z, R_tb, Z_tb
-!!$    END DO
-!!$    CLOSE(unit=1234)
     !
     ! Newton iterations    
     break_cond = .FALSE.

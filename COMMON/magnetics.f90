@@ -150,19 +150,9 @@ MODULE magnetics_mod
      REAL(kind=dp)                                  :: b_min   = 0.0_dp
      INTEGER                                        :: i_min   = 0
      INTEGER                                        :: has_min = 0
-!!$     REAL(kind=dp)                                  :: width   = 0.0_dp
-!!$     REAL(kind=dp)                                  :: dist_l  = 0.0_dp
-!!$     REAL(kind=dp)                                  :: dist_r  = 0.0_dp
      INTEGER,                           ALLOCATABLE :: phi_eta_ind(:,:)
      TYPE(coordinates_struct),          POINTER     :: coords     => NULL()
      TYPE(magneticdata_struct),         POINTER     :: mdata      => NULL()
-     ! ------------------------------------------------------------------------
-!!$     REAL(kind=dp),        ALLOCATABLE              :: eta(:)
-!!$     INTEGER                                        :: bin_split_mode = 0
-!!$     TYPE(dnumber_struct), POINTER                  :: eta_x0     => NULL()
-!!$     TYPE(dnumber_struct), POINTER                  :: eta_s      => NULL()
-!!$     TYPE(binarysplit)                              :: eta_bs
-  ! ---------------------------------------------------------------------------
   END TYPE fieldpropagator_struct
 
   ! ---------------------------------------------------------------------------
@@ -1098,18 +1088,6 @@ CONTAINS
     NULLIFY(fieldpropagator%mdata)
     IF (ALLOCATED(fieldpropagator%phi_eta_ind)) &
          DEALLOCATE(fieldpropagator%phi_eta_ind)
-!!$    ! additional deallocation (eta)
-!!$    IF (ALLOCATED(fieldpropagator%eta)) DEALLOCATE(fieldpropagator%eta)
-!!$    IF (ASSOCIATED(fieldpropagator%eta_x0)) THEN
-!!$       CALL delete_all(fieldpropagator%eta_x0)
-!!$       NULLIFY(fieldpropagator%eta_x0)
-!!$    END IF
-!!$    IF (ASSOCIATED(fieldpropagator%eta_s)) THEN
-!!$       CALL delete_all(fieldpropagator%eta_s)
-!!$       NULLIFY(fieldpropagator%eta_s)
-!!$    END IF
-!!$    ! binarysplit
-!!$    CALL deconstruct_binarysplit(fieldpropagator%eta_bs)
     ! final deallocation
     NULLIFY(fieldpropagator%prev)
     NULLIFY(fieldpropagator%next)
@@ -1411,23 +1389,6 @@ CONTAINS
             fieldpropagator%parent%ch_fir%tag, &
             fieldpropagator%parent%ch_act%tag, &
             fieldpropagator%parent%ch_las%tag
-       PRINT *, '-----------------------------------------------------------'    
-!!$       IF (.NOT. mag_split_ripple) THEN
-!!$          PRINT *, '  bin_split_mode : ', fieldpropagator%bin_split_mode
-!!$          IF (ALLOCATED(fieldpropagator%eta)) THEN
-!!$             PRINT *, '  eta allocated  : ', & 
-!!$                  LBOUND(fieldpropagator%eta),UBOUND(fieldpropagator%eta)
-!!$          ELSE
-!!$             PRINT *, '  eta allocated  : ', 'none'
-!!$          END IF
-!!$          IF (ASSOCIATED(fieldpropagator%eta_x0)) THEN
-!!$             CALL goto_first(fieldpropagator%eta_x0)
-!!$             CALL goto_last(fieldpropagator%eta_x0,ic)       
-!!$             PRINT *, '  eta_x0 assoc.  : ', ic
-!!$          ELSE
-!!$             PRINT *, '  eta_x0 assoc.  : ', 'none'
-!!$          END IF
-!!$       END IF
        PRINT *, '-----------------------------------------------------------'    
        IF (ALLOCATED(fieldpropagator%phi_eta_ind)) THEN
           PRINT *, '  phi_eta_ind    : ', &
@@ -2268,60 +2229,6 @@ CONTAINS
        if (close_file) call h5_close(h5_file_id)
 
     end IF
-
-!!$    ! problem one could add here number of props belonging to this ripple
-!!$    IF (mag_infotalk .AND. ASSOCIATED(fieldripple)) THEN
-!!$       PRINT *, ' fieldripple with tag ',fieldripple%tag, &
-!!$            ' and parent ', fieldripple%parent%tag
-!!$       IF ( ASSOCIATED(fieldripple%pa_fir) ) THEN
-!!$          PRINT *, '  phi_l          : ', fieldripple%pa_fir%phi_l, &
-!!$               '(Tag: ',fieldripple%pa_fir%tag,')'
-!!$       END IF
-!!$       IF ( ASSOCIATED(fieldripple%pa_las) ) THEN
-!!$          PRINT *, '  phi_r          : ', fieldripple%pa_las%phi_r, &
-!!$               '(Tag: ',fieldripple%pa_las%tag,')'
-!!$       END IF
-!!$       PRINT *, '  d2bp_max_l     : ', fieldripple%d2bp_max_l
-!!$       PRINT *, '  d2bp_max_r     : ', fieldripple%d2bp_max_r
-!!$       PRINT *, '  d2bp_min       : ', fieldripple%d2bp_min  
-!!$       PRINT *, '  width          : ', fieldripple%width
-!!$       PRINT *, '  width_l        : ', fieldripple%width_l
-!!$       PRINT *, '  width_r        : ', fieldripple%width_r
-!!$       IF (mag_split_ripple) THEN
-!!$          PRINT *, '  bin_split_mode : ', fieldripple%bin_split_mode
-!!$          IF (ALLOCATED(fieldripple%eta)) THEN
-!!$             PRINT *, '  eta allocated  : ', & 
-!!$                  LBOUND(fieldripple%eta),UBOUND(fieldripple%eta)
-!!$          ELSE
-!!$             PRINT *, '  eta allocated  : ', 'none'
-!!$          END IF
-!!$          IF (ASSOCIATED(fieldripple%eta_x0)) THEN
-!!$             CALL goto_first(fieldripple%eta_x0)
-!!$             CALL goto_last(fieldripple%eta_x0,ic)       
-!!$             PRINT *, '  eta_x0 assoc.  : ', ic
-!!$          ELSE
-!!$             PRINT *, '  eta_x0 assoc.  : ', 'none'
-!!$          END IF
-!!$       END IF
-!!$       IF (ALLOCATED(fieldripple%phi_inflection)) THEN
-!!$          PRINT *, '  phi_inflection  : ',fieldripple%phi_inflection
-!!$       ELSE
-!!$          PRINT *, '  not allocated phi_inflection'
-!!$       END IF
-!!$       IF (ALLOCATED(fieldripple%b_inflection)) THEN
-!!$          PRINT *, '  b_inflection    : ',fieldripple%b_inflection
-!!$       ELSE
-!!$          PRINT *, '  not allocated b_inflection'
-!!$       END IF
-!!$       IF (ALLOCATED(fieldripple%dbdp_inflection)) THEN
-!!$          PRINT *, '  dbdp_inflection : ',fieldripple%dbdp_inflection
-!!$       ELSE
-!!$          PRINT *, '  not allocated dbdp_inflection'
-!!$       END IF
-!!$       PRINT *, '-----------------------------------------------------------'       
-!!$    END IF
-!!$    IF (mag_talk .AND. .NOT. ASSOCIATED(fieldripple)) &
-!!$         PRINT *, 'magnetics info: fieldripple not associated'
 
     RETURN
   END SUBROUTINE h5_mag_fieldripple

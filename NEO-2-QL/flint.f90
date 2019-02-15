@@ -208,115 +208,6 @@ SUBROUTINE flint_prepare_2(bin_split_mode,eta_s_lim)
   END IF
   ! print *, 'After ripple_eta_magnetics'
 
-!!$    ! Testing of Ripple
-!!$    print *, 'Writing in flint'
-!!$    OPEN(unit=5003,file='ripple_eta_s.dat')
-!!$    OPEN(unit=5004,file='ripple_eta_x0.dat')
-!!$    OPEN(unit=5005,file='ripple_eta_cl.dat')
-!!$    OPEN(unit=5006,file='ripple_lr.dat')
-!!$    OPEN(unit=5007,file='ripple_bhat.dat')
-!!$    OPEN(unit=5008,file='ripple_deriv.dat')
-!!$    OPEN(unit=5009,file='ripple_width.dat')
-!!$    OPEN(unit=5010,file='ripple_eta_shield.dat')
-!!$    fieldperiod => fieldline%ch_fir
-!!$    fieldpropagator => fieldperiod%ch_fir
-!!$    fieldripple => fieldpropagator%ch_act
-!!$    DO
-!!$       !print *, 'tag ',fieldripple%tag
-!!$       write(5003,*) fieldripple%tag
-!!$       write(5004,*) fieldripple%tag
-!!$       write(5005,*) fieldripple%tag       
-!!$       write(5006,*) fieldripple%pa_fir%phi_l,fieldripple%pa_las%phi_r
-!!$       write(5007,*) fieldripple%b_max_l,fieldripple%b_max_r,fieldripple%b_min
-!!$       write(5008,*) fieldripple%d2bp_max_l,fieldripple%d2bp_max_r,fieldripple%d2bp_min
-!!$       write(5009,*) fieldripple%width_l,fieldripple%width_r,fieldripple%width
-!!$       write(5010,*) fieldripple%tag       
-!!$       ! eta_s
-!!$       do
-!!$          if (associated(fieldripple%eta_s%prev)) then
-!!$             fieldripple%eta_s => fieldripple%eta_s%prev
-!!$          else
-!!$             exit
-!!$          end if
-!!$       end do
-!!$       do 
-!!$          WRITE(5003,*) fieldripple%eta_s%d
-!!$          if (associated(fieldripple%eta_s%next)) then
-!!$             fieldripple%eta_s => fieldripple%eta_s%next
-!!$          else
-!!$             exit
-!!$          end if          
-!!$       end do
-!!$       ! eta_x0
-!!$       do
-!!$          if (associated(fieldripple%eta_x0%prev)) then
-!!$             fieldripple%eta_x0 => fieldripple%eta_x0%prev
-!!$          else
-!!$             exit
-!!$          end if
-!!$       end do
-!!$       do 
-!!$          WRITE(5004,*) fieldripple%eta_x0%d
-!!$          if (associated(fieldripple%eta_x0%next)) then
-!!$             fieldripple%eta_x0 => fieldripple%eta_x0%next
-!!$          else
-!!$             exit
-!!$          end if          
-!!$       end do
-!!$       ! eta_cl
-!!$       do
-!!$          if (associated(fieldripple%eta_cl%prev)) then
-!!$             fieldripple%eta_cl => fieldripple%eta_cl%prev
-!!$          else
-!!$             exit
-!!$          end if
-!!$       end do
-!!$       do 
-!!$          WRITE(5005,*) fieldripple%eta_cl%d
-!!$          if (associated(fieldripple%eta_cl%next)) then
-!!$             fieldripple%eta_cl => fieldripple%eta_cl%next
-!!$          else
-!!$             exit
-!!$          end if          
-!!$       end do
-!!$       ! eta_x0
-!!$       do
-!!$          if (associated(fieldripple%eta_shield%prev)) then
-!!$             fieldripple%eta_shield => fieldripple%eta_shield%prev
-!!$          else
-!!$             exit
-!!$          end if
-!!$       end do
-!!$       do 
-!!$          WRITE(5010,*) fieldripple%eta_shield%d
-!!$          if (associated(fieldripple%eta_shield%next)) then
-!!$             fieldripple%eta_shield => fieldripple%eta_shield%next
-!!$          else
-!!$             exit
-!!$          end if          
-!!$       end do
-!!$
-!!$
-!!$       IF(ASSOCIATED(fieldripple%next)) THEN
-!!$          fieldripple => fieldripple%next
-!!$       ELSE
-!!$          EXIT
-!!$       END IF
-!!$    END DO
-!!$    CLOSE(unit=5003)
-!!$    CLOSE(unit=5004)
-!!$    CLOSE(unit=5005)
-!!$    CLOSE(unit=5006)
-!!$    CLOSE(unit=5007)
-!!$    CLOSE(unit=5008)
-!!$    CLOSE(unit=5009)
-!!$    CLOSE(unit=5010)
-!!$    print *, 'Writing in flint - end'
-!!$    !pause
-
-
-
-
   ! nothing of importance beyond this point up to the end of the
   ! subroutine - can be deleted without consequences 
   ! 
@@ -658,15 +549,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   !print *, 'flint:  after fieldpropagator do'
   fieldperiod => fieldpropagator%parent
   fieldripple => fieldpropagator%ch_act
-!!$  PRINT *, 'abs_max ',fieldline%abs_max_ptag,fieldline%b_abs_max
-!!$  PRINT *, 'abs_min ',fieldline%abs_min_ptag,fieldline%b_abs_min
-!!$  PRINT *, 'ripple  ',fieldripple%b_max_l,fieldripple%b_max_r
-!!$  PRINT *, 'ripple  ',fieldripple%prev%b_max_l,fieldripple%prev%b_max_r
-!!$  PRINT *, 'prop-coords    ',fieldripple%pa_fir%coords%x1(0), & 
-!!$       fieldripple%pa_fir%coords%x2(0), &
-!!$       fieldripple%pa_fir%coords%x3(0)
-!!$  PRINT *, 'prop-mdata    ',fieldripple%pa_fir%mdata%bhat(0) 
-!!$  PAUSE
 
   eta_s_relevant=0.d0
   eta_min_global = 1.0d0/fieldline%b_abs_max
@@ -1316,33 +1198,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               !PRINT *, 'eta_split_loc'
               !PRINT *, eta_split_loc
 
-!!$              ! Then absolute Maximum
-!!$              eta_min_relevant = eta_min_global + eta_part_globalfac * eta_s_relevant
-!!$              DO i_construct = 1,UBOUND(eta_x0,1)
-!!$                 eta_min_loc = MINLOC(eta_x0_hlp)
-!!$                 eta_x0_val(1) = eta_x0(eta_min_loc(1))
-!!$                 if (i_construct .eq. 1) eta_trapped_passing=eta_x0_val(1) !<=NEW
-!!$                 if (eta_x0_val(1) .gt. eta_trapped_passing + 1.d-11) exit
-!!$                 eta_x0_hlp(eta_min_loc(1)) = 1000.0_dp
-!!$                 !sigma_trapped_passing=eta_s(eta_min_loc(1)) !<=NEW
-!!$                 DO ilag = 0,lag_sigma
-!!$                    eta_s_val(1)  = eta_s(eta_min_loc(1)) * collision_sigma_multiplier(ilag)
-!!$                    !print *, 'amax   ',eta_x0_val,eta_s_val,bsfunc_local_err
-!!$                    DO ibmf = bsfunc_modelfunc_num,1,-1
-!!$                       bsfunc_modelfunc = ibmf
-!!$                       CALL construct_bsfunc(eta_x0_val,eta_s_val) 
-!!$                       CALL find_binarysplit(eta_bs,eta_x0_val)
-!!$                       !bsfunc_local_err = save_bsfunc_err
-!!$                       !IF (bsfunc_sigma_mult .NE. 1.0_dp) THEN
-!!$                       !   eta_s_val(1)  =  eta_s_val(1) * bsfunc_sigma_mult
-!!$                       !   CALL construct_bsfunc(eta_x0_val,eta_s_val)               
-!!$                       !   CALL find_binarysplit(eta_bs,eta_x0_val)
-!!$                       !   bsfunc_local_err = save_bsfunc_err
-!!$                       !   eta_s_val(1)  =  eta_s_val(1) / bsfunc_sigma_mult
-!!$                       END IF
-!!$                    END DO
-!!$                 END DO
-!!$              END DO
 
               ! then the rest
               DO i_construct = LBOUND(eta_x0,1),UBOUND(eta_x0,1)
@@ -1357,19 +1212,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     !print *, 'rest   ',eta_x0_val,eta_s_val,bsfunc_local_err
                     ! IF(bsfunc_ignore_trap_levels .EQ. 1 .AND. eta_x0_val(1) .GT. eta_min_relevant) CYCLE
                     CALL multiple_binarysplit(eta_bs,eta_x0_val,eta_s_val)
-!!$                    DO ibmf = bsfunc_modelfunc_num,1,-1
-!!$                       bsfunc_modelfunc = ibmf
-!!$                       CALL construct_bsfunc(eta_x0_val,eta_s_val) 
-!!$                       CALL find_binarysplit(eta_bs,eta_x0_val)
-!!$                       !bsfunc_local_err = save_bsfunc_err
-!!$                       !IF (bsfunc_sigma_mult .NE. 1.0_dp) THEN
-!!$                       !   eta_s_val(1)  =  eta_s_val(1) * bsfunc_sigma_mult
-!!$                       !   CALL construct_bsfunc(eta_x0_val,eta_s_val)               
-!!$                       !   CALL find_binarysplit(eta_bs,eta_x0_val)
-!!$                       !   !   bsfunc_local_err = save_bsfunc_err
-!!$                       !   eta_s_val(1)  =  eta_s_val(1) / bsfunc_sigma_mult
-!!$                       !END IF
-!!$                    END DO
                  END DO
               END DO
               bsfunc_local_err = save_bsfunc_local_err
@@ -1693,14 +1535,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     eta_s_val(1)  =  eta_s_val(1) * 2.0_dp
                     CALL construct_bsfunc(eta_x0_val,eta_s_val)               
                     CALL find_binarysplit(eta_bs_loc,eta_x0_val)
-!!$                    ! WINNY - I switch this off for a test
-!!$                    bsfunc_modelfunc = 2                                     !<-in
-!!$                    CALL construct_bsfunc(eta_x0_val,eta_s_val)              !<-in 
-!!$                    CALL find_binarysplit(eta_bs_loc,eta_x0_val)             !<-in
-!!$                    bsfunc_modelfunc = 3                                     !<-in
-!!$                    CALL construct_bsfunc(eta_x0_val,eta_s_val)              !<-in 
-!!$                    CALL find_binarysplit(eta_bs_loc,eta_x0_val)             !<-in
-!!$                    ! WINNY - end
 
                  END DO
               END DO
@@ -1728,14 +1562,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     bsfunc_modelfunc = 1                                     !<-in
                     !CALL construct_bsfunc(eta_x0_val,eta_s_val) 
                     !CALL find_binarysplit(eta_bs,eta_x0_val)
-!!$                    ! WINNY - I switch this off for a test                    
-!!$                    bsfunc_modelfunc = 2                                     !<-in
-!!$                    CALL construct_bsfunc(eta_x0_val,eta_s_val)              !<-in 
-!!$                    CALL find_binarysplit(eta_bs,eta_x0_val)             !<-in ERROR
-!!$                    bsfunc_modelfunc = 3                                     !<-in
-!!$                    CALL construct_bsfunc(eta_x0_val,eta_s_val)              !<-in 
-!!$                    CALL find_binarysplit(eta_bs,eta_x0_val)             !<-in ERROR
-!!$                    ! WINNY - end
                  END DO
               END DO
 
@@ -1751,14 +1577,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                        bsfunc_modelfunc = 1                                  !<-in
                        !CALL construct_bsfunc(eta_x0_val,eta_s_val) 
                        !CALL find_binarysplit(eta_bs,eta_x0_val)
-!!$                       ! WINNY - I switch this off for a test
-!!$                       bsfunc_modelfunc = 2                                  !<-in
-!!$                       CALL construct_bsfunc(eta_x0_val,eta_s_val)           !<-in 
-!!$                       CALL find_binarysplit(eta_bs,eta_x0_val)          !<-in ERROR
-!!$                       bsfunc_modelfunc = 3                                  !<-in
-!!$                       CALL construct_bsfunc(eta_x0_val,eta_s_val)           !<-in 
-!!$                       CALL find_binarysplit(eta_bs,eta_x0_val)          !<-in ERROR
-!!$                       ! WINNY - end
                     END DO
                  END IF
               END DO
@@ -1772,20 +1590,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               STOP
            END IF
            DEALLOCATE(eta_x0_val,eta_s_val)
-
-!!$           ! EXPERIMENT
-!!$           IF (proptag .EQ. proptag_start) THEN
-!!$              eta_bs_store = eta_bs
-
-!!$           END IF
-!!$           IF (proptag .EQ. proptag_end) THEN
-!!$              eta_bs = eta_bs_store
-!!$              CALL get_binarysplit(eta_bs,eta_split,'x')
-!!$              CALL get_binarysplit(eta_bs,fieldripple%eta,'x')
-!!$              fieldripple%eta_bs = eta_bs
-!!$           END IF
-!!$           ! EXPERIMENT
-
 
 
            ! if one is interested in plots of eta distributions
@@ -1864,19 +1668,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
         CALL deconstruct_binarysplit(eta_bs_loc)
 
 
-!!$        PRINT *, 'eta_ori', eta_ori
-!!$        OPEN(1000,file='eta_ori.dat')
-!!$        WRITE(1000,*) eta_ori
-!!$        CLOSE(1000)
-!!$        OPEN(1000,file='eta_split.dat')
-!!$        WRITE(1000,*) eta_split
-!!$        CLOSE(1000)
-!!$        OPEN(1000,file='eta_x0.dat')
-!!$        WRITE(1000,*) eta_x0
-!!$        CLOSE(1000)
-       
-
-
      END IF newripple
 
 
@@ -1913,11 +1704,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   END DO allprops
   PRINT *, 'Setting up propagators - End'
   ! PAUSE
-
-!!$  IF (mag_save_memory .EQ. 1) THEN
-!!$     CALL deconstruct_binarysplit(fieldripple%eta_bs)
-!!$     CALL deconstruct_binarysplit(fieldripple%eta_bs_loc)
-!!$  END IFg
 
   IF (bin_split_mode .NE. 0) THEN
      ! check for the boundary problem
@@ -2039,24 +1825,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
               PRINT *, ' all conflicts are fixed'
               EXIT boundaryfixcounter
            END IF
-!!$        print *, 'array_all_bmax'
-!!$        print *, array_all_bmax
-!!$        print *, 'array_ripple_all_bmax'
-!!$        print *, int(array_ripple_all_bmax)
-!!$        print *, 'array_eta_close_to_boundary'
-!!$        if (boundary_has_to_be_fixed) then
-!!$           print *, array_eta_close_to_boundary
-!!$           print *, 'array_ripple_close_to_boundary'
-!!$           print *, int(array_ripple_close_to_boundary)
-!!$           print *, 'array_index_eta_close_to_boundary'
-!!$           print *, int(array_index_eta_close_to_boundary)
-!!$           print *, 'array_boundary_dist'
-!!$           print *, array_boundary_dist
-!!$           print *, 'array_boundary_dist_limit'
-!!$           print *, array_boundary_dist_limit
-!!$           print *, 'array_eta_move'
-!!$           print *, array_eta_move
-!!$        end if
 
            ! fix the boundary problem
            ! go to the first ripple
@@ -2372,19 +2140,12 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     PRINT *, 'left:   ','rippletag: ',rippletag, &
                          ' proptag ',fieldripple%pa_fir%tag,' - ',fieldripple%pa_las%tag,' level' ,i
                     PRINT *, '        ',fieldripple%eta(i),1.0d0/fieldripple%b_max_l,boundary_dist
-!!$              open(9890,file='eta_left.dat')
-!!$              write(9890,*)  fieldripple%eta
-!!$              close(9890)
-!!$              open(9891,file='eta_prev.dat')
-!!$              write(9891,*)  fieldripple%prev%eta
-!!$              close(9891)
                     fieldripple%eta_boundary_left = fieldripple%eta(i)
                     fieldripple%eta_boundary_modification_left = 2.0d0 * boundary_dist_limit
                     fieldripple%eta_boundary_index_left = i
                     !fieldripple%eta(i) = fieldripple%eta(i) + 2.0d0 * boundary_dist_limit
                     !boundary_dist = 1.0d0 / fieldripple%b_max_l - fieldripple%eta(i)
                     !print *, 'leftc:  ',rippletag,proptag,i,fieldripple%eta(i),1.0d0/fieldripple%b_max_l,boundary_dist
-!!$              pause
                  END IF
               END DO
            END IF
@@ -2401,19 +2162,12 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
                     PRINT *, 'right:  ','rippletag: ',rippletag, &
                          ' proptag ',fieldripple%pa_fir%tag,' - ',fieldripple%pa_las%tag,' level' ,i
                     PRINT *, '        ',fieldripple%eta(i),1.0d0/fieldripple%b_max_l,boundary_dist
-!!$              open(9990,file='eta_right.dat')
-!!$              write(9990,*)  fieldripple%eta
-!!$              close(9990)
-!!$              open(9991,file='eta_next.dat')
-!!$              write(9991,*)  fieldripple%next%eta
-!!$              close(9991)
                     fieldripple%eta_boundary_right = fieldripple%eta(i)
                     fieldripple%eta_boundary_modification_right = 2.0d0 * boundary_dist_limit
                     fieldripple%eta_boundary_index_right = i
                     !fieldripple%eta(i) = fieldripple%eta(i) + 2.0d0 * boundary_dist_limit
                     !boundary_dist = 1.0d0 / fieldripple%b_max_r - fieldripple%eta(i)
                     !print *, 'rightc: ',rippletag,proptag,i,fieldripple%eta(i),1.0d0/fieldripple%b_max_r,boundary_dist
-!!$              pause
                  END IF
               END DO
            END IF
@@ -2450,7 +2204,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
         PRINT *, '--------------------------------------------'
         PRINT *, 'Setting up propagators for boundary check - End'
-!!$  pause
         ! check for the boundary problem - end
 
         ! fix the boundary problem
@@ -2552,43 +2305,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   END IF ! bin_split_mode .ne. 0
   ! Now the magentic field in the propagators is fixed
 
-!!$    ! Testing of Ripple and print
-!!$    print *, 'write all eta levels'
-!!$    OPEN(unit=5001,file='ripple_level.dat')
-!!$    OPEN(unit=5002,file='ripple_level_num.dat')
-!!$    fieldperiod => fieldline%ch_fir
-!!$    fieldpropagator => fieldperiod%ch_fir
-!!$    fieldripple => fieldpropagator%ch_act
-!!$    DO
-!!$       !print *, 'ripple ',fieldripple%tag
-!!$       write(5001,*) fieldripple%tag
-!!$       do i = lbound(fieldripple%eta,1),ubound(fieldripple%eta,1)
-!!$          write(5001,*) fieldripple%eta(i)
-!!$       end do
-!!$       write(5002,*) fieldripple%tag,ubound(fieldripple%eta,1)
-!!$       IF(ASSOCIATED(fieldripple%next)) THEN
-!!$          fieldripple => fieldripple%next
-!!$       ELSE
-!!$          EXIT
-!!$       END IF
-!!$    end DO
-!!$    close(unit=5001)
-!!$    close(unit=5002)
-!!$    print *, 'all eta levels written'
-!!$
-!!$    ! go to the first propagator which is wanted
-!!$    fieldperiod => fieldline%ch_fir 
-!!$    fieldpropagator => fieldperiod%ch_fir
-!!$    OPEN(unit=5001,file='propagator_tags.dat')
-!!$    do
-!!$       write (5001,*) fieldpropagator%parent%tag,fieldpropagator%tag,fieldpropagator%ch_act%tag, &
-!!$            fieldpropagator%phi_l,fieldpropagator%phi_r
-!!$       IF (.NOT. ASSOCIATED(fieldpropagator%next)) EXIT
-!!$       fieldpropagator => fieldpropagator%next
-!!$    end do
-!!$    close(unit=5001)
-!!$    !pause
-
   ! go to the first propagator which is wanted
   fieldperiod => fieldline%ch_fir 
   fieldpropagator => fieldperiod%ch_fir
@@ -2640,15 +2356,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
         PRINT *, 'plot_magnetics finished!'
      END IF
 
-!!$     IF (mag_save_memory .EQ. 1) THEN
-!!$        i_min_sav = fieldpropagator%i_min
-!!$        x2_ub = UBOUND(fieldpropagator%coords%x2,1)
-!!$        ALLOCATE(x2_sav(0:x2_ub))
-!!$        x2_sav   = fieldpropagator%coords%x2
-!!$        ALLOCATE(bhat_sav(0:x2_ub))
-!!$        bhat_sav = fieldpropagator%mdata%bhat
-!!$     END IF
-
      IF (plot_prop .EQ. 1) PRINT *, 'Before modify_propagator'
 
      count_solv = 0 
@@ -2698,16 +2405,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
         CALL plot_magnetics(plotpropagator,proptag,proptag,c_filename)
      END IF
 
-!!$     if (fieldpropagator%tag .ge. 2 .and. fieldpropagator%tag .le. 4) then
-!!$        do i = lbound(fieldpropagator%coords%x1,1),ubound(fieldpropagator%coords%x1,1)
-!!$           write(7000,*) &
-!!$                fieldpropagator%coords%x1(i),fieldpropagator%coords%x2(i),fieldpropagator%coords%x3(i)
-!!$           write(7001,*) &
-!!$                fieldpropagator%mdata%bhat(i),fieldpropagator%mdata%geodcu(i),fieldpropagator%mdata%h_phi(i), &
-!!$                fieldpropagator%mdata%dlogbdphi(i)
-!!$        end do
-!!$     end if
-
      IF (fieldpropagator%tag .EQ. proptag_last) THEN 
         iend = 1
         iendperiod = 1
@@ -2723,26 +2420,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
         END IF
      END IF
 
-!!$     CALL propagator_solver(                                  &
-!!$          iend,iendperiod,bin_split_mode,eta_ori,             &
-!!$          ierr_solv,ierr_join                                 &
-!!$          )
-
      !IF (plot_prop .EQ. 1) pause
-
-!!$     ! do some memory saving and put old information back
-!!$     IF (mag_save_memory .EQ. 1) THEN
-!!$        CALL set_magnetics_data(fieldpropagator,'sav')
-!!$        CALL set_magnetics_data(fieldpropagator%coords%x2,x2_sav)
-!!$        DEALLOCATE(x2_sav)
-!!$        DEALLOCATE(bhat_sav)
-!!$        CALL set_magnetics_data(fieldpropagator%mdata%bhat,bhat_sav)
-!!$        fieldpropagator%i_min = i_min_sav
-!!$
-!!$        IF (clear_old_ripple .EQ. 1 .AND. ASSOCIATED(fieldripple%prev)) THEN
-!!$           CALL deconstruct_binarysplit(fieldripple%prev%eta_bs)
-!!$        END IF
-!!$     END IF
  
      ! PRINT *, 'End of Tag'
      ! go to the next propagator or exit
@@ -2783,11 +2461,6 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   iendperiod = 0
   prop_ibegperiod = 1
   prop_count_call = 0
-!!$  IF (magnetic_device .EQ. 0) THEN
-!!$     PRINT *, 'Make one propagator for tokamak'
-!!$     CALL ripple_prop_joiner(fieldpropagator%parent%parent)
-!!$     stop
-!!$  end IF
   PRINT *, 'Do the real computation - ripple_solver'
   IF ( (magnetic_device .EQ. 0 .AND. isw_axisymm .EQ. 1) .OR. mag_magfield .EQ. 0 ) THEN
      IF (mag_magfield .EQ. 0) THEN
@@ -2982,58 +2655,25 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
 
   ! internal
   INTEGER :: ub,i,imin
-!!$  INTEGER :: s_ybeg
   INTEGER :: proptag
   INTEGER,       ALLOCATABLE :: phi_eta_ind(:,:)
-!!$  REAL(kind=dp), ALLOCATABLE :: ybeg(:)
   REAL(kind=dp), ALLOCATABLE :: o_eta_split(:)
   REAL(kind=dp) :: phibeg,phiend,hphi,phi
   REAL(kind=dp) :: bhat1,b1
-!!$  REAL(kind=dp) :: geodcu1,h_phi1,dlogbdphi1
-!!$  REAL(kind=dp) :: b2
-!!$  ! using these dnumber_struct's for things whose final size is not
-!!$  !  known, see (magnetics_mod)
-!!$  !   set_new
-!!$  !   extract_array
-!!$  !   delete_all
   TYPE(fieldpropagator_struct), POINTER :: plotpropagator
-!!$  TYPE(dnumber_struct), POINTER :: x1,x2,x3
-!!$  TYPE(dnumber_struct), POINTER :: bhat,geodcu,h_phi,dlogbdphi
 
   INTEGER :: phi_placer_status
-
-!!$  INTEGER :: k,k_min,k_max,ubprev,nprev
-!!$  INTEGER :: loc_size
-!!$  REAL(kind=dp), ALLOCATABLE :: lag_fac(:)
-!!$  REAL(kind=dp), ALLOCATABLE :: phi_loc(:),dphi_loc(:)
-!!$  REAL(kind=dp), ALLOCATABLE :: bhat_loc(:)
-!!$  REAL(kind=dp), ALLOCATABLE :: x1_loc(:)
-!!$  REAL(kind=dp), ALLOCATABLE :: x3_loc(:)
-!!$  REAL(kind=dp), ALLOCATABLE :: geodcu_loc(:)
-!!$  REAL(kind=dp), ALLOCATABLE :: h_phi_loc(:)
-!!$  REAL(kind=dp), ALLOCATABLE :: dlogbdphi_loc(:)
 
   INTEGER :: ubn
   INTEGER :: nlagrange = 5
   REAL(kind=dp) dummy
-  
-!!$  NULLIFY( x1 )
-!!$  NULLIFY( x2 )
-!!$  NULLIFY( x3 )
-!!$  NULLIFY( bhat )
-!!$  NULLIFY( geodcu )
-!!$  NULLIFY( h_phi )
-!!$  NULLIFY( dlogbdphi )
-  
+
   fieldperiod => fieldpropagator%parent
 
 
   ! get starting information from propagator
-!!$  s_ybeg = SIZE(fieldpropagator%mdata%ybeg,1)
   ub = UBOUND(fieldpropagator%coords%x2,1)
 
-!!$  ALLOCATE(ybeg(s_ybeg))
-!!$  ybeg = fieldpropagator%mdata%ybeg
   phibeg = fieldpropagator%coords%x2(0)
   phiend = fieldpropagator%coords%x2(ub)
 
@@ -3107,84 +2747,6 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
 
 
   allphi: DO i = 0,ubn
-!!$     !CALL magdata_for_particles(phi,y,bhat1,geodcu1,h_phi1,dlogbdphi1)
-!!$     phi = phiarr(i)
-!!$     allorigphi: DO k = 0,ub
-!!$        IF ( phi .LE. fieldpropagator%coords%x2(k) ) EXIT
-!!$     END DO allorigphi
-!!$  
-!!$     loc_size = 6
-!!$     ALLOCATE(phi_loc(loc_size))
-!!$     IF (ub .GE. 5) THEN
-!!$        k_min = MAX(k-3,0)
-!!$        k_max = MIN(k+2,ub)
-!!$        IF (k_min .EQ. 0)  k_max = k_min + 5
-!!$        IF (k_max .EQ. ub) k_min = k_max - 5
-!!$        phi_loc       = fieldpropagator%coords%x2(k_min:k_max)
-!!$     ELSE
-!!$        ubprev = UBOUND(fieldpropagator%prev%coords%x2,1)
-!!$        nprev  = 6-ub-1
-!!$        phi_loc(1:nprev)       = fieldpropagator%prev%coords%x2(ubprev-nprev:ubprev-1)
-!!$        phi_loc(6-ub:6)        = fieldpropagator%coords%x2(0:ub)        
-!!$     END IF
-!!$     ALLOCATE(dphi_loc(loc_size-1))
-!!$     dphi_loc = phi_loc(2:loc_size) - phi_loc(1:loc_size-1)
-!!$
-!!$     IF (MINVAL(dphi_loc) .LT. 1.d-7) THEN
-!!$        loc_size = 2
-!!$        DEALLOCATE(phi_loc)
-!!$        ALLOCATE(phi_loc(loc_size))
-!!$        IF (k .LT. ub) THEN
-!!$           k_min = k
-!!$           k_max = k + 1
-!!$        ELSE
-!!$           k_min = k - 1
-!!$           k_max = k
-!!$        END IF
-!!$        phi_loc       = fieldpropagator%coords%x2(k_min:k_max)
-!!$     END IF
-!!$     DEALLOCATE(dphi_loc)
-!!$
-!!$     ALLOCATE( bhat_loc(loc_size))
-!!$     ALLOCATE( x1_loc(loc_size))
-!!$     ALLOCATE( x3_loc(loc_size))
-!!$     ALLOCATE( geodcu_loc(loc_size))
-!!$     ALLOCATE( h_phi_loc(loc_size))
-!!$     ALLOCATE( dlogbdphi_loc(loc_size))
-!!$     ALLOCATE( lag_fac(loc_size))
-!!$     
-!!$     IF (loc_size .EQ. 2 .OR. (loc_size .EQ. 6 .AND. ub .GE. 5)) THEN
-!!$        bhat_loc      = fieldpropagator%mdata%bhat(k_min:k_max)
-!!$        x1_loc        = fieldpropagator%coords%x1(k_min:k_max)
-!!$        x3_loc        = fieldpropagator%coords%x3(k_min:k_max)
-!!$        geodcu_loc    = fieldpropagator%mdata%geodcu(k_min:k_max)
-!!$        h_phi_loc     = fieldpropagator%mdata%h_phi(k_min:k_max)
-!!$        dlogbdphi_loc = fieldpropagator%mdata%dlogbdphi(k_min:k_max)
-!!$     ELSE
-!!$        bhat_loc(1:nprev)      = fieldpropagator%prev%mdata%bhat(ubprev-nprev:ubprev-1)
-!!$        bhat_loc(6-ub:6)       = fieldpropagator%mdata%bhat(0:ub)
-!!$        x1_loc(1:nprev)        = fieldpropagator%prev%coords%x1(ubprev-nprev:ubprev-1)
-!!$        x1_loc(6-ub:6)         = fieldpropagator%coords%x1(0:ub)
-!!$        x3_loc(1:nprev)        = fieldpropagator%prev%coords%x3(ubprev-nprev:ubprev-1)
-!!$        x3_loc(6-ub:6)         = fieldpropagator%coords%x3(0:ub)
-!!$        geodcu_loc(1:nprev)    = fieldpropagator%prev%mdata%geodcu(ubprev-nprev:ubprev-1)
-!!$        geodcu_loc(6-ub:6)     = fieldpropagator%mdata%geodcu(0:ub)
-!!$        h_phi_loc(1:nprev)     = fieldpropagator%prev%mdata%h_phi(ubprev-nprev:ubprev-1)
-!!$        h_phi_loc(6-ub:6)      = fieldpropagator%mdata%h_phi(0:ub)
-!!$        dlogbdphi_loc(1:nprev) = fieldpropagator%prev%mdata%dlogbdphi(ubprev-nprev:ubprev-1)
-!!$        dlogbdphi_loc(6-ub:6)  = fieldpropagator%mdata%dlogbdphi(0:ub)
-!!$     END IF
-!!$
-!!$     !PRINT *, 'phi_loc ',phi_loc
-!!$     !PRINT *, 'bhat_loc ',bhat_loc
-!!$     !PRINT *, 'phi ',phi
-!!$     IF (loc_size .EQ. 6) THEN
-!!$        CALL lagrange_coefs5(phi,phi_loc,lag_fac)
-!!$     ELSE ! linear
-!!$        lag_fac(2) = (phi - phi_loc(1)) / (phi_loc(2) - phi_loc(1))
-!!$        lag_fac(1) = 1.0_dp - lag_fac(2)
-!!$     END IF
-!!$     bhat1 = SUM(lag_fac*bhat_loc)
 
      fieldpropagator%coords%x2(i) = phiarr(i)
      !! Modifications by Andreas F. Martitsch (11.06.2014)
@@ -3211,79 +2773,15 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
         b1 = bhat1
      END IF
 
-!!$     CALL set_new(x1,SUM(lag_fac*x1_loc))
-!!$     CALL set_new(x2,phi)
-!!$     CALL set_new(x3,SUM(lag_fac*x3_loc))
-!!$     CALL set_new(bhat,bhat1)
-!!$     CALL set_new(geodcu,SUM(lag_fac*geodcu_loc))
-!!$     CALL set_new(h_phi,SUM(lag_fac*h_phi_loc))
-!!$     CALL set_new(dlogbdphi,SUM(lag_fac*dlogbdphi_loc))
-!!$     DEALLOCATE(lag_fac,phi_loc,bhat_loc,x1_loc,x3_loc,geodcu_loc,h_phi_loc,dlogbdphi_loc)
-
   END DO allphi
-  
-!!$  ! put it into the fieldpropagator
-!!$  CALL extract_array(x1,fieldpropagator%coords%x1,0)
-!!$  CALL extract_array(x2,fieldpropagator%coords%x2,0)
-!!$  CALL extract_array(x3,fieldpropagator%coords%x3,0)
-!!$  CALL extract_array(bhat,fieldpropagator%mdata%bhat,0)
-!!$  CALL extract_array(geodcu,fieldpropagator%mdata%geodcu,0)
-!!$  CALL extract_array(h_phi,fieldpropagator%mdata%h_phi,0)
-!!$  CALL extract_array(dlogbdphi,fieldpropagator%mdata%dlogbdphi,0)
 
   fieldpropagator%i_min = imin
-!!$  fieldpropagator%b_min = fieldpropagator%mdata%bhat(imin)
-!!$  fieldpropagator%b_l   = fieldpropagator%mdata%bhat(0)
-!!$  fieldpropagator%b_r   = fieldpropagator%mdata%bhat(ubn)
 
   ! put the phi-values which belong to eta into fieldpropagator
   IF (ALLOCATED(fieldpropagator%phi_eta_ind)) &
        DEALLOCATE(fieldpropagator%phi_eta_ind)
   ALLOCATE(fieldpropagator%phi_eta_ind(0:u_eta,2))
   fieldpropagator%phi_eta_ind = phi_eta_ind
-
-!!$  !check placement of phi
-!!$  IF (fieldpropagator%tag .EQ. 82) THEN
-!!$     PRINT *, ' '
-!!$     PRINT *, 'tag: ',fieldpropagator%tag
-!!$     PRINT *, 'CHECK - START: ',0,ub
-!!$     DO i = 0, u_eta
-!!$        IF (phi_eta_ind(i,1) .NE. 0) THEN
-!!$           PRINT *, 'CHECK 1        ',i,phi_eta_ind(i,1), &
-!!$                1.0_dp - eta_split(i)*fieldpropagator%mdata%bhat(phi_eta_ind(i,1))
-!!$        END IF
-!!$        IF (phi_eta_ind(i,2) .NE. 0 .AND. phi_eta_ind(i,2) .NE. ub) THEN
-!!$           PRINT *, 'CHECK 2        ',i,phi_eta_ind(i,2), &
-!!$                1.0_dp - eta_split(i)*fieldpropagator%mdata%bhat(phi_eta_ind(i,2))
-!!$        END IF
-!!$     END DO
-!!$
-!!$     OPEN(123,file='bhat_mfl_mod.dat')
-!!$     DO i=0,ubn
-!!$        WRITE(123,*) fieldpropagator%coords%x2(i),fieldpropagator%mdata%bhat(i)
-!!$     ENDDO
-!!$     CLOSE(123)
-!!$
-!!$     OPEN(123,file='eta_mod.dat')
-!!$     DO i=0,u_eta
-!!$        WRITE(123,*) fieldpropagator%coords%x2(0),eta_split(i)
-!!$        WRITE(123,*) fieldpropagator%coords%x2(ubn),eta_split(i)
-!!$        WRITE(123,*) ' '
-!!$     ENDDO
-!!$     CLOSE(123)
-!!$
-!!$     PAUSE
-!!$  END IF
-  
-!!$  IF (phi_split_mode .EQ. 3) THEN
-!!$     
-!!$     OPEN(unit=9999,file='propdiv.dat')
-!!$     DO i = 0,ubn
-!!$        WRITE (9999,*) fieldpropagator%coords%x2(i),fieldpropagator%mdata%bhat(i)
-!!$     END DO
-!!$     CLOSE(unit=9999)
-!!$     
-!!$  END IF
 
   IF (plot_prop .EQ. 1 .AND. count_solv .GE. 0) THEN
      !CALL info_magnetics(fieldpropagator)
@@ -3293,18 +2791,8 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
      CALL plot_magnetics(plotpropagator,proptag,proptag,'propmm.dat')
      !PAUSE
   END IF
-
-!!$  ! cleaning of dnumber_struct (only used locally)
-!!$  CALL delete_all(x1)
-!!$  CALL delete_all(x2)
-!!$  CALL delete_all(x3)
-!!$  CALL delete_all(bhat)
-!!$  CALL delete_all(geodcu)
-!!$  CALL delete_all(h_phi)
-!!$  CALL delete_all(dlogbdphi)
   
   ! final cleaning of locally used arrays
-!!$  IF (ALLOCATED(ybeg))        DEALLOCATE(ybeg)
   IF (ALLOCATED(phiarr))      DEALLOCATE(phiarr)
   IF (ALLOCATED(phi_eta_ind)) DEALLOCATE(phi_eta_ind)
 
@@ -3450,23 +2938,6 @@ SUBROUTINE phi_placer(phi_place_mode,phi_split_min,u_eta,eta_m1, &
            IF ( (ip.EQ.1 .AND. barr(k).GT.e_k .AND. barr(k+1).LE.e_k) .OR. &
                 (ip.EQ.2 .AND. barr(k).LT.e_k .AND. barr(k+1).GE.e_k) ) THEN
 
-!!$              ! prepare for 5-th order Lagrange polynomial
-!!$              ! d_p    = phi(k+1) - phi(k)
-!!$              IF (ub .GE. 5) THEN
-!!$                 k_min = MAX(k-2,0)
-!!$                 k_max = MIN(k+3,ub)
-!!$                 IF (k_min .EQ. 0)  k_max = k_min + 5
-!!$                 IF (k_max .EQ. ub) k_min = k_max - 5
-!!$                 phi_loc  = phi(k_min:k_max)
-!!$                 barr_loc = barr(k_min:k_max)
-!!$              ELSE
-!!$                 ubprev = UBOUND(fieldpropagator%prev%coords%x2,1)
-!!$                 nprev  = 6-ub-1
-!!$                 phi_loc(1:nprev)  = fieldpropagator%prev%coords%x2(ubprev-nprev:ubprev-1)
-!!$                 barr_loc(1:nprev) = fieldpropagator%prev%mdata%bhat(ubprev-nprev:ubprev-1)
-!!$                 phi_loc(6-ub:6)   = phi(0:ub)
-!!$                 barr_loc(6-ub:6)  = barr(0:ub)
-!!$              END IF
               ! do a binary search
               p_l = phi(k)
               p_u = phi(k+1)
@@ -3579,22 +3050,6 @@ SUBROUTINE phi_placer(phi_place_mode,phi_split_min,u_eta,eta_m1, &
      ! PRINT *, 'i_eta: ',i_eta
      ! PRINT *, 'ip:    ',ip
 
-!!$     ! not necessary
-!!$     ! handle the shift in phi
-!!$     delta_phi = 0.0_dp
-!!$     IF (k .LT. arr_phi_count) THEN
-!!$        IF (b_d .NE. 0.0_dp) THEN
-!!$           delta_phi = ABS(delta_b / b_d)
-!!$        ELSE
-!!$           delta_phi = 1.0_dp
-!!$        END IF
-!!$        delta_phi = MIN( (phi_el-phi_sl)/10.0_dp , delta_phi)
-!!$        delta_phi = - SIGN(1.0_dp,b_d)*delta_phi
-!!$        phi_el = phi_el + delta_phi
-!!$        arr_phi_el(k) = phi_el
-!!$        arr_phi_sl(k+1) = phi_el
-!!$     END IF
-
      !PRINT *, ip,phi_sl,phi_el,phi_el-phi_sl,delta_phi
 
      ! make the phi between phi_sl and phi_el
@@ -3634,26 +3089,6 @@ SUBROUTINE phi_placer(phi_place_mode,phi_split_min,u_eta,eta_m1, &
      IF (phi_eta_ind(n,2) .LT. 0) phi_eta_ind(n,2) = ub
   END DO
 
-!!$  IF (fieldpropagator%tag .EQ. 82) THEN
-!!$     OPEN(123,file='phiarr.dat')
-!!$     DO i=LBOUND(phiarr,1),UBOUND(phiarr,1)
-!!$        WRITE(123,*) i,phiarr(i)
-!!$     ENDDO
-!!$     CLOSE(123)
-!!$
-!!$     OPEN(123,file='phiind.dat')
-!!$     DO i=0,u_eta
-!!$        IF (phi_eta_ind(i,1) .GT. 0 .AND. phi_eta_ind(i,1) .LT. u_eta) THEN
-!!$           WRITE(123,*) eta_m1(i),phiarr(phi_eta_ind(i,1))
-!!$        END IF
-!!$        IF (phi_eta_ind(i,2) .NE. 0.AND. phi_eta_ind(i,2) .LT. u_eta ) THEN
-!!$           WRITE(123,*) eta_m1(i),phiarr(phi_eta_ind(i,2))
-!!$        END IF
-!!$     ENDDO
-!!$     CLOSE(123)
-!!$  END IF
-
-  
   ! get rid of pointers
   CALL delete_all(phi_p)
   
@@ -3719,13 +3154,6 @@ SUBROUTINE phi_divider(u_eta,phi_eta_ind)                  !<-in Winny
   END DO philoop
   ! extract information to phiarr which is used in the caller
   CALL extract_array(phi_p,phiarr)
-
-!!$  OPEN(unit=9999,file='divide.dat')
-!!$  DO iphi = 1,ub
-!!$     WRITE (9999,*) phi_divide(iphi)
-!!$  END DO
-!!$  CLOSE(unit=9999)
-!!$  !stop
 
   ! get rid of pointers
   CALL delete_all(phi_p)

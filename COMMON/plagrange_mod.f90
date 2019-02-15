@@ -942,14 +942,6 @@ contains
     bhat = SUM(coeff(0,:)*bhat_arr)
     bhatder = SUM(coeff(1,:)*bhat_arr)
 
-!!$    !if (abs(phi_l) .lt. 0.2) then
-!!$       print *, 'lagrange  ',stencel
-!!$       print *, 'lagrange  ',phi_arr
-!!$       print *, 'lagrange  ',bhat_arr
-!!$       print *, 'lagrange  ',phi_l,bhat
-!!$       print *, ' '
-!!$    !end if
-
     if (allocated(stencel)) deallocate(stencel)
     if (allocated(phi_arr)) deallocate(phi_arr)
     if (allocated(bhat_arr)) deallocate(bhat_arr)
@@ -1009,14 +1001,6 @@ contains
     bhat = SUM(coeff(0,:)*bhat_arr)
     bhatder = SUM(coeff(1,:)*bhat_arr)
     bhatdder = SUM(coeff(2,:)*bhat_arr)
-
-!!$    !if (abs(phi_l) .lt. 0.2) then
-!!$       print *, 'lagrange  ',stencel
-!!$       print *, 'lagrange  ',phi_arr
-!!$       print *, 'lagrange  ',bhat_arr
-!!$       print *, 'lagrange  ',phi_l,bhat
-!!$       print *, ' '
-!!$    !end if
 
     if (allocated(stencel)) deallocate(stencel)
     if (allocated(phi_arr)) deallocate(phi_arr)
