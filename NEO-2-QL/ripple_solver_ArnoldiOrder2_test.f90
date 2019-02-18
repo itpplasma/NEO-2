@@ -2970,16 +2970,16 @@ rotfactor=imun*m_phi
     ENDIF
 !
     !! Modifications by Andreas F. Martitsch (28.08.2014)
-    ! geodesic curvature for the axisymmetric field computed by
-    ! external routines
-    !geodcu_forw=geodcu_mfl
-    !geodcu_back=geodcu_mfl
-    ! computation of geodesic curvature according to
-    ! $\|{\nabla}s\| k_{G0} = - \frac{B_\ph}{\iota B_{\tht}+B_{\ph}}
-    ! \frac{B_{\rm ref}}{\psi_{\rm tor}^{a}} \difp{B_0}{\tht}$
+    !> geodesic curvature for the axisymmetric field computed by
+    !> external routines
+    !> geodcu_forw=geodcu_mfl
+    !> geodcu_back=geodcu_mfl
+    !> computation of geodesic curvature according to
+    !> \f[ \|{\nabla}s\| k_{G0} = - \frac{B_\ph}{\iota B_{\tht}+B_{\ph}}
+    !> \frac{B_{\rm ref}}{\psi_{\rm tor}^{a}} \difp{B_0}{\tht} \f]
     denomjac=-scalefac_kG*bcovar_phi_hat/(aiota*bcovar_theta_hat+bcovar_phi_hat)
-    ! geodcu_forw used for computation of q_rip(1:npassing+1,istep,1),
-    ! which in turn enters the source_vector
+    !> geodcu_forw used for computation of q_rip(1:npassing+1,istep,1),
+    !> which in turn enters the source_vector
 
     if (mag_magfield .ne. 3) then
        geodcu_forw=denomjac*dlogbdphi_mfl*bhat_mfl
