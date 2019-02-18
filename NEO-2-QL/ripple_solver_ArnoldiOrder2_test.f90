@@ -3081,28 +3081,7 @@ END IF
        qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
        qflux_symm_allspec=qflux_allspec
        IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
-       IF(lsw_multispecies .AND. mpro%getrank() .EQ. 0) THEN
-          OPEN(070915,file='qflux_symm_allspec.dat')
-          WRITE(070915,*) '% boozer_s, collpar'
-          WRITE(070915,*) boozer_s, collpar
-          WRITE(070915,*) '% qflux(1,1,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,1,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          WRITE(070915,*) '% qflux(1,3,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,3,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          WRITE(070915,*) '% qflux(1,2,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,2,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          CLOSE(070915)
-          !STOP
-       END IF
+       call save_qflux_symm_allspec()
        RETURN
        !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE IF(isw_qflux_NA .EQ. 1) THEN
@@ -3119,28 +3098,7 @@ END IF
        qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
        qflux_symm_allspec=qflux_allspec
        IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
-       IF(lsw_multispecies .AND. mpro%getrank() .EQ. 0) THEN
-          OPEN(070915,file='qflux_symm_allspec.dat')
-          WRITE(070915,*) '% boozer_s, collpar'
-          WRITE(070915,*) boozer_s, collpar
-          WRITE(070915,*) '% qflux(1,1,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,1,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          WRITE(070915,*) '% qflux(1,3,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,3,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          WRITE(070915,*) '% qflux(1,2,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,2,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          CLOSE(070915)
-          !STOP
-       END IF
+       call save_qflux_symm_allspec()
        !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE
        STOP "Invalid input for isw_qflux_symm (0/1)!"
@@ -6015,7 +5973,35 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   DEALLOCATE(hmat_work,work,rwork,selec,rnum,ifailr)
 !
   END SUBROUTINE try_eigvecvals
-!
+
+  subroutine save_qflux_symm_allspec()
+    implicit none
+
+    if(lsw_multispecies .AND. mpro%getrank() .EQ. 0) then
+      open(070915,file='qflux_symm_allspec.dat')
+      write(070915,*) '% boozer_s, collpar'
+      write(070915,*) boozer_s, collpar
+      write(070915,*) '% qflux(1,1,a,b}'
+      do ispecp=0,num_spec-1
+        write(070915,*) (qflux_symm_allspec(1,1,ispecp,ispecpp),&
+          & ispecpp=0,num_spec-1)
+      end do
+      write(070915,*) '% qflux(1,3,a,b}'
+      do ispecp=0,num_spec-1
+        write(070915,*) (qflux_symm_allspec(1,3,ispecp,ispecpp),&
+          & ispecpp=0,num_spec-1)
+      end do
+      write(070915,*) '% qflux(1,2,a,b}'
+      do ispecp=0,num_spec-1
+        write(070915,*) (qflux_symm_allspec(1,2,ispecp,ispecpp),&
+          & ispecpp=0,num_spec-1)
+      end do
+      close(070915)
+
+    end if
+
+  end subroutine save_qflux_symm_allspec
+
 END SUBROUTINE ripple_solver_ArnoldiO2
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
