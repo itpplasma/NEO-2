@@ -3022,32 +3022,32 @@ rotfactor=imun*m_phi
 !enddo
 !stop
 !
-! Debugging - plot distribution function (axisymmetric problem)
-IF(lsw_debug_distfun) THEN
-DO ispecp=0,num_spec-1
-uw=10000*(num_spec*ispec+ispecp+1)
-istep=(ibeg+iend)/2
-uw_new=uw
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1000
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-istep=ibeg
-uw_new=uw+10
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1010
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-istep=iend
-uw_new=uw+20
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1020
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-istep=ibeg+1
-uw_new=uw+30
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1030
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-END DO
-END IF
+    ! Debugging - plot distribution function (axisymmetric problem)
+    IF(lsw_debug_distfun) THEN
+      DO ispecp=0,num_spec-1
+        uw=10000*(num_spec*ispec+ispecp+1)
+        istep=(ibeg+iend)/2
+        uw_new=uw
+        CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+        uw_new=uw+1000
+        CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+        istep=ibeg
+        uw_new=uw+10
+        CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+        uw_new=uw+1010
+        CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+        istep=iend
+        uw_new=uw+20
+        CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+        uw_new=uw+1020
+        CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+        istep=ibeg+1
+        uw_new=uw+30
+        CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+        uw_new=uw+1030
+        CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+      END DO
+    END IF
 !
 
     DEALLOCATE(irow,icol,amat_sp)
