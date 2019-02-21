@@ -22,7 +22,11 @@ set(EXE_NAME "neo_2_ql.x")
 include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
 
 ### Define paths to external libraries (load external file)
-include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
+if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
+elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+  include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in.intel)
+endif ()
 #include(${CMAKE_SOURCE_DIR}/ProjectConfig.Debian8.cmake.in)
 
 ### MPI is required by this NEO-2 version
@@ -43,11 +47,13 @@ include_directories(${MYMPILIB_PATH}/OBJS)
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
 elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -mkl -heap-arrays -g")
+  message(STATUS "Setting Intel flags.")
+  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -mkl -heap-arrays -stand f08")
 endif ()
 
-set(MY_DEBUG_FLAG_LIST
-  " -O0 -cpp -g"   
+if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  set(MY_DEBUG_FLAG_LIST
+  " -O0 -cpp -g"
 # " -O0 -g -ggdb -C -p -pg -fbacktrace " 
 # " -ffpe-trap=invalid,zero,overflow,underflow "
 # " -ffpe-trap=invalid,zero,overflow "
@@ -65,8 +71,11 @@ set(MY_DEBUG_FLAG_LIST
 # " -Wno-underflow "
 # " -Wunused-parameter -Wconversion -Wimplicit-interface -Wcharacter-truncation " 
   )
-string(REPLACE ";" "" MY_DEBUG_FLAG  ${MY_DEBUG_FLAG_LIST})
-set(CMAKE_Fortran_FLAGS_DEBUG "${MY_DEBUG_FLAG}") 
+  string(REPLACE ";" "" MY_DEBUG_FLAG  ${MY_DEBUG_FLAG_LIST})
+  set(CMAKE_Fortran_FLAGS_DEBUG "${MY_DEBUG_FLAG}")
+elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+  set(CMAKE_Fortran_FLAGS_DEBUG " -g -warn all -stand f08 ")
+endif ()
 set(CFLAGS "-O2 -DDOUBLE_APPEND_FORTRAN")
 
 ### Define container for *.o and *.mod files
@@ -220,3 +229,4 @@ add_custom_target(copy
 ### Testing section
 ADD_TEST(Test_Build_Code "make")
 ADD_TEST(Extended_QL_Multispecies  ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies" "2" "QL")
+#ADD_TEST(Extended_QL_Multispecies  ${CMAKE_SOURCE_DIR}/../ShellScripts/test_scan.sh "Extended_QL_Scan_Kink" "QL")

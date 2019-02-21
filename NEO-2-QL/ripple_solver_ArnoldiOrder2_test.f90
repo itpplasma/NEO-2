@@ -617,131 +617,133 @@ iprintflag=1
   DO i=1,ub_eta_next
     IF(1.d0-b_r*eta_next(i)+10.d0*EPSILON(1.d0).GT.0.d0) npass_r_out = i
   ENDDO
-!  
-! Ignore the boundary layer if it is too narrow
-ignore_lb=0
-bhat_changed_l=0.d0
-ignore_lb_out=0
-bhat_changed_l_out=0.d0
-modify_bl=0
-ignore_rb=0
-bhat_changed_r=0.d0
-ignore_rb_out=0
-bhat_changed_r_out=0.d0
-modify_br=0
-GOTO 10
-!
-! Left boundary:
-!
-! check own eta-levels
-  IF(eta_l-eta(npass_l) .LT.                                         &
-    (eta(npass_l)-eta(npass_l-1))*boundlayer_ignore) THEN
-    ignore_lb=1
-    bhat_changed_l=1.d0/eta(npass_l)+100.d0*EPSILON(1.d0)
-  ELSE
-    ignore_lb=0
-    bhat_changed_l=0.d0
-  ENDIF
-!
-! check outer eta-levels
-  IF(eta_l-eta_prev(npass_l_out) .LT.                                &
-    (eta_prev(npass_l_out)-eta_prev(npass_l_out-1))*boundlayer_ignore) THEN
-    ignore_lb_out=1
-    bhat_changed_l_out=1.d0/eta_prev(npass_l_out)+100.d0*EPSILON(1.d0)
-  ELSE
-    ignore_lb_out=0
-    bhat_changed_l_out=0.d0
-  ENDIF
-!
-! forbid bhat modification if a regular band is eliminated in addition to b.l.
-  IF(1.d0-bhat_changed_l*eta_prev(npass_l_out-1)+10.d0*EPSILON(1.d0) &
-     .LE.0.d0) THEN
-    ignore_lb=0
-    bhat_changed_l=0.d0
-    PRINT *,'cannot ignore left boundary layer: jump over normal band'
-  ENDIF
-  IF(1.d0-bhat_changed_l_out*eta(npass_l-1)+10.d0*EPSILON(1.d0)      &
-     .LE.0.d0) THEN
-    ignore_lb_out=0
-    bhat_changed_l_out=0.d0
-    PRINT *,'cannot ignore right boundary layer: jump over normal band'
-  ENDIF
-!
-! final value of modified bhat
-  IF(ignore_lb.EQ.1 .OR. ignore_lb_out.EQ.1) THEN
-    bhat_changed_l=MAX(bhat_changed_l,bhat_changed_l_out)
-    modify_bl=1
-PRINT *,'field at the left boundary modified'
-  ELSE
-    modify_bl=0
-  ENDIF
-!
-! final decision on the boundary layer
-  IF(modify_bl.EQ.1) THEN
-    IF(1.d0-bhat_changed_l*eta(npass_l)+10.d0*EPSILON(1.d0).LE.0.d0) THEN
+
+  ! Ignore the boundary layer if it is too narrow
+  ignore_lb=0
+  bhat_changed_l=0.d0
+  ignore_lb_out=0
+  bhat_changed_l_out=0.d0
+  modify_bl=0
+  ignore_rb=0
+  bhat_changed_r=0.d0
+  ignore_rb_out=0
+  bhat_changed_r_out=0.d0
+  modify_br=0
+
+  if (.false.) then
+
+    ! Left boundary:
+
+    ! check own eta-levels
+    IF(eta_l-eta(npass_l) .LT.                                         &
+      (eta(npass_l)-eta(npass_l-1))*boundlayer_ignore) THEN
       ignore_lb=1
-PRINT *,'left boundary layer ignored'
+      bhat_changed_l=1.d0/eta(npass_l)+100.d0*EPSILON(1.d0)
     ELSE
       ignore_lb=0
+      bhat_changed_l=0.d0
     ENDIF
-  ENDIF
-!
-! Right boundary:
-!
-! check own eta-levels
-  IF(eta_r-eta(npass_r) .LT.                                         &
-    (eta(npass_r)-eta(npass_r-1))*boundlayer_ignore) THEN
-    ignore_rb=1
-    bhat_changed_r=1.d0/eta(npass_r)+100.d0*EPSILON(1.d0)
-  ELSE
-    ignore_rb=0
-    bhat_changed_r=0.d0
-  ENDIF
-!
-! check outer eta-levels
-  IF(eta_r-eta_next(npass_r_out) .LT.                                &
-    (eta_next(npass_r_out)-eta_next(npass_r_out-1))*boundlayer_ignore) THEN
-    ignore_rb_out=1
-    bhat_changed_r_out=1.d0/eta_next(npass_r_out)+100.d0*EPSILON(1.d0)
-  ELSE
-    ignore_rb_out=0
-    bhat_changed_r_out=0.d0
-  ENDIF
-!
-! forbid bhat modification if a regular band is eliminated in addition to b.l.
-  IF(1.d0-bhat_changed_r*eta_next(npass_r_out-1)+10.d0*EPSILON(1.d0) &
-     .LE.0.d0) THEN
-    ignore_rb=0
-    bhat_changed_r=0.d0
-    PRINT *,'cannot ignore right boundary layer: jump over normal band'
-  ENDIF
-  IF(1.d0-bhat_changed_r_out*eta(npass_r-1)+10.d0*EPSILON(1.d0)      &
-     .LE.0.d0) THEN
-    ignore_rb_out=0
-    bhat_changed_r_out=0.d0
-    PRINT *,'cannot ignore left boundary layer: jump over normal band'
-  ENDIF
-!
-! final value of modified bhat
-  IF(ignore_rb.EQ.1 .OR. ignore_rb_out.EQ.1) THEN
-    bhat_changed_r=MAX(bhat_changed_r,bhat_changed_r_out)
-    modify_br=1
-PRINT *,'field at the right boundary modified'
-  ELSE
-    modify_br=0
-  ENDIF
-!
-! final decision on the boundary layer
-  IF(modify_br.EQ.1) THEN
-    IF(1.d0-bhat_changed_r*eta(npass_r)+10.d0*EPSILON(1.d0).LE.0.d0) THEN
+
+    ! check outer eta-levels
+    IF(eta_l-eta_prev(npass_l_out) .LT.                                &
+      (eta_prev(npass_l_out)-eta_prev(npass_l_out-1))*boundlayer_ignore) THEN
+      ignore_lb_out=1
+      bhat_changed_l_out=1.d0/eta_prev(npass_l_out)+100.d0*EPSILON(1.d0)
+    ELSE
+      ignore_lb_out=0
+      bhat_changed_l_out=0.d0
+    ENDIF
+
+    ! forbid bhat modification if a regular band is eliminated in addition to b.l.
+    IF(1.d0-bhat_changed_l*eta_prev(npass_l_out-1)+10.d0*EPSILON(1.d0) &
+       .LE.0.d0) THEN
+      ignore_lb=0
+      bhat_changed_l=0.d0
+      PRINT *,'cannot ignore left boundary layer: jump over normal band'
+    ENDIF
+    IF(1.d0-bhat_changed_l_out*eta(npass_l-1)+10.d0*EPSILON(1.d0)      &
+       .LE.0.d0) THEN
+      ignore_lb_out=0
+      bhat_changed_l_out=0.d0
+      PRINT *,'cannot ignore right boundary layer: jump over normal band'
+    ENDIF
+
+    ! final value of modified bhat
+    IF(ignore_lb.EQ.1 .OR. ignore_lb_out.EQ.1) THEN
+      bhat_changed_l=MAX(bhat_changed_l,bhat_changed_l_out)
+      modify_bl=1
+      PRINT *,'field at the left boundary modified'
+    ELSE
+      modify_bl=0
+    ENDIF
+
+    ! final decision on the boundary layer
+    IF(modify_bl.EQ.1) THEN
+      IF(1.d0-bhat_changed_l*eta(npass_l)+10.d0*EPSILON(1.d0).LE.0.d0) THEN
+        ignore_lb=1
+        PRINT *,'left boundary layer ignored'
+      ELSE
+        ignore_lb=0
+      ENDIF
+    ENDIF
+
+    ! Right boundary:
+
+    ! check own eta-levels
+    IF(eta_r-eta(npass_r) .LT.                                         &
+      (eta(npass_r)-eta(npass_r-1))*boundlayer_ignore) THEN
       ignore_rb=1
-PRINT *,'right boundary layer ignored'
+      bhat_changed_r=1.d0/eta(npass_r)+100.d0*EPSILON(1.d0)
     ELSE
       ignore_rb=0
+      bhat_changed_r=0.d0
     ENDIF
-  ENDIF
-10 CONTINUE
-!
+
+    ! check outer eta-levels
+    IF(eta_r-eta_next(npass_r_out) .LT.                                &
+      (eta_next(npass_r_out)-eta_next(npass_r_out-1))*boundlayer_ignore) THEN
+      ignore_rb_out=1
+      bhat_changed_r_out=1.d0/eta_next(npass_r_out)+100.d0*EPSILON(1.d0)
+    ELSE
+      ignore_rb_out=0
+      bhat_changed_r_out=0.d0
+    ENDIF
+
+    ! forbid bhat modification if a regular band is eliminated in addition to b.l.
+    IF(1.d0-bhat_changed_r*eta_next(npass_r_out-1)+10.d0*EPSILON(1.d0) &
+       .LE.0.d0) THEN
+      ignore_rb=0
+      bhat_changed_r=0.d0
+      PRINT *,'cannot ignore right boundary layer: jump over normal band'
+    ENDIF
+    IF(1.d0-bhat_changed_r_out*eta(npass_r-1)+10.d0*EPSILON(1.d0)      &
+       .LE.0.d0) THEN
+      ignore_rb_out=0
+      bhat_changed_r_out=0.d0
+      PRINT *,'cannot ignore left boundary layer: jump over normal band'
+    ENDIF
+
+    ! final value of modified bhat
+    IF(ignore_rb.EQ.1 .OR. ignore_rb_out.EQ.1) THEN
+      bhat_changed_r=MAX(bhat_changed_r,bhat_changed_r_out)
+      modify_br=1
+      PRINT *,'field at the right boundary modified'
+    ELSE
+      modify_br=0
+    ENDIF
+
+    ! final decision on the boundary layer
+    IF(modify_br.EQ.1) THEN
+      IF(1.d0-bhat_changed_r*eta(npass_r)+10.d0*EPSILON(1.d0).LE.0.d0) THEN
+        ignore_rb=1
+        PRINT *,'right boundary layer ignored'
+      ELSE
+        ignore_rb=0
+      ENDIF
+    ENDIF
+
+  end if
+
   ! place for boundary
   npass_l = npass_l + 1 - ignore_lb
   npass_r = npass_r + 1 - ignore_rb
@@ -2655,16 +2657,16 @@ rotfactor=imun*m_phi
     ENDIF
 !
     !! Modifications by Andreas F. Martitsch (28.08.2014)
-    ! geodesic curvature for the axisymmetric field computed by
-    ! external routines
-    !geodcu_forw=geodcu_mfl
-    !geodcu_back=geodcu_mfl
-    ! computation of geodesic curvature according to
-    ! $\|{\nabla}s\| k_{G0} = - \frac{B_\ph}{\iota B_{\tht}+B_{\ph}}
-    ! \frac{B_{\rm ref}}{\psi_{\rm tor}^{a}} \difp{B_0}{\tht}$
+    !> geodesic curvature for the axisymmetric field computed by
+    !> external routines
+    !> geodcu_forw=geodcu_mfl
+    !> geodcu_back=geodcu_mfl
+    !> computation of geodesic curvature according to
+    !> \f[ \|{\nabla}s\| k_{G0} = - \frac{B_\ph}{\iota B_{\tht}+B_{\ph}}
+    !> \frac{B_{\rm ref}}{\psi_{\rm tor}^{a}} \difp{B_0}{\tht} \f]
     denomjac=-scalefac_kG*bcovar_phi_hat/(aiota*bcovar_theta_hat+bcovar_phi_hat)
-    ! geodcu_forw used for computation of q_rip(1:npassing+1,istep,1),
-    ! which in turn enters the source_vector
+    !> geodcu_forw used for computation of q_rip(1:npassing+1,istep,1),
+    !> which in turn enters the source_vector
 
     if (mag_magfield .ne. 3) then
        geodcu_forw=denomjac*dlogbdphi_mfl*bhat_mfl
@@ -2707,32 +2709,32 @@ rotfactor=imun*m_phi
 !enddo
 !stop
 !
-! Debugging - plot distribution function (axisymmetric problem)
-IF(lsw_debug_distfun) THEN
-DO ispecp=0,num_spec-1
-uw=10000*(num_spec*ispec+ispecp+1)
-istep=(ibeg+iend)/2
-uw_new=uw
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1000
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-istep=ibeg
-uw_new=uw+10
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1010
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-istep=iend
-uw_new=uw+20
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1020
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-istep=ibeg+1
-uw_new=uw+30
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1030
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-END DO
-END IF
+    ! Debugging - plot distribution function (axisymmetric problem)
+    IF(lsw_debug_distfun) THEN
+      DO ispecp=0,num_spec-1
+        uw=10000*(num_spec*ispec+ispecp+1)
+        istep=(ibeg+iend)/2
+        uw_new=uw
+        CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+        uw_new=uw+1000
+        CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+        istep=ibeg
+        uw_new=uw+10
+        CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+        uw_new=uw+1010
+        CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+        istep=iend
+        uw_new=uw+20
+        CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+        uw_new=uw+1020
+        CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+        istep=ibeg+1
+        uw_new=uw+30
+        CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+        uw_new=uw+1030
+        CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+      END DO
+    END IF
 !
 
     DEALLOCATE(irow,icol,amat_sp)
@@ -2766,28 +2768,7 @@ END IF
        qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
        qflux_symm_allspec=qflux_allspec
        IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
-       IF(lsw_multispecies .AND. mpro%getrank() .EQ. 0) THEN
-          OPEN(070915,file='qflux_symm_allspec.dat')
-          WRITE(070915,*) '% boozer_s, collpar'
-          WRITE(070915,*) boozer_s, collpar
-          WRITE(070915,*) '% qflux(1,1,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,1,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          WRITE(070915,*) '% qflux(1,3,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,3,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          WRITE(070915,*) '% qflux(1,2,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,2,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          CLOSE(070915)
-          !STOP
-       END IF
+       call save_qflux_symm_allspec()
        RETURN
        !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE IF(isw_qflux_NA .EQ. 1) THEN
@@ -2804,28 +2785,7 @@ END IF
        qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
        qflux_symm_allspec=qflux_allspec
        IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
-       IF(lsw_multispecies .AND. mpro%getrank() .EQ. 0) THEN
-          OPEN(070915,file='qflux_symm_allspec.dat')
-          WRITE(070915,*) '% boozer_s, collpar'
-          WRITE(070915,*) boozer_s, collpar
-          WRITE(070915,*) '% qflux(1,1,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,1,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          WRITE(070915,*) '% qflux(1,3,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,3,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          WRITE(070915,*) '% qflux(1,2,a,b}'
-          DO ispecp=0,num_spec-1
-             WRITE(070915,*) (qflux_symm_allspec(1,2,ispecp,ispecpp),&
-                  ispecpp=0,num_spec-1)
-          END DO
-          CLOSE(070915)
-          !STOP
-       END IF
+       call save_qflux_symm_allspec()
        !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE
        STOP "Invalid input for isw_qflux_symm (0/1)!"
@@ -3767,104 +3727,103 @@ RETURN
 !
   nplp1=npart_loc+1
   ntotsize=(lag+1)*nplp1
-!
-PRINT *,'npart_loc = ',npart_loc,' npass_l = ',npass_l,' npass_r = ',npass_r
-!
+
+  PRINT *,'npart_loc = ',npart_loc,' npass_l = ',npass_l,' npass_r = ',npass_r
+
   ndim=ntotsize
-!
-IF(fieldpropagator%tag.EQ.2) THEN
-OPEN(112,file='onsager.dat')
-OPEN(113,file='levhist.dat')
-OPEN(111,file='qfluxhist.dat')
-ELSE
-OPEN(112,file='onsager.dat',position='append')
-OPEN(113,file='levhist.dat',position='append')
-OPEN(111,file='qfluxhist.dat',position='append')
-ENDIF
-facnorm_m=1.d0
-facnorm_p=1.d0
-!WRITE(112,*) fieldpropagator%tag,qflux(1:2,1),qflux(1:2,2),npart_loc &
-!             ,b_max_l,b_max_r,facnorm_p,facnorm_m,ignore_boundary_layer_new &
-!             ,ignore_boundary_layer,ifilter_l,ifilter_r
-WRITE(112,*) fieldpropagator%tag,qflux(1:2,1),qflux(1:2,2),npart_loc &
-             ,b_max_l,b_max_r,facnorm_p,facnorm_m,ignore_lb &
-             ,ignore_rb,modify_bl,modify_br
-!             ,ignore_rb,ifilter_l,ifilter_r
-WRITE(111,*) fieldpropagator%tag,qflux
-DO i=0,npart_loc
-WRITE(113,*) fieldpropagator%tag,eta(i)
-ENDDO
-CLOSE(112)
-CLOSE(113)
-CLOSE(111)
-PRINT *,qflux(1:2,1),qflux(1:2,2)
-!!PAUSE
-!
-GOTO 1
-!
-OPEN(111,file='flux_p.dat')
-WRITE(111,'(4(1x,e12.5))') (alam_l(i),flux_p(:,i) ,i=1,npass_l)
-CLOSE(111)
-OPEN(111,file='flux_m.dat')
-WRITE(111,'(4(1x,e12.5))') (alam_r(i),flux_m(:,i) ,i=1,npass_r)
-CLOSE(111)
-OPEN(111,file='source_p.dat')
-WRITE(111,'(4(1x,e12.5))') (alam_r(i),source_p(i,:)/delta_eta_r(i) ,i=1,npass_r)
-CLOSE(111)
-OPEN(111,file='source_m.dat')
-WRITE(111,'(4(1x,e12.5))') (alam_l(i),source_m(i,:)/delta_eta_l(i) ,i=1,npass_l)
-CLOSE(111)
-!amat_plus_plus=0.d0
-!amat_plus_minus=0.d0
-!amat_minus_plus=0.d0
-!amat_minus_minus=0.d0
-!do i=1,min(npass_l,npass_r)
-!amat_plus_plus(i,i)=1.d0
-!amat_minus_minus(i,i)=1.d0
-!enddo
-!do i=npass_r+1,npass_l
-!amat_plus_minus(i,i)=0.d0 !1.d0
-!enddo
-!do i=npass_l+1,npass_r
-!amat_minus_plus(i,i)=0.d0 !1.d0
-!enddo
-!
-OPEN(111,file='amat_p_p.dat')
-DO i=1,npass_r
-WRITE(111,*) amat_plus_plus(i,1:npass_l)
-!WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_plus_plus(i,1:npass_l)
-ENDDO
-CLOSE(111)
-OPEN(111,file='amat_p_m.dat')
-DO i=1,npass_l
-WRITE(111,*) amat_plus_minus(i,1:npass_l)
-!WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_plus_minus(i,1:npass_l)
-ENDDO
-CLOSE(111)
-OPEN(111,file='amat_m_p.dat')
-DO i=1,npass_r
-WRITE(111,*) amat_minus_plus(i,1:npass_r)
-!WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_minus_plus(i,1:npass_r)
-ENDDO
-CLOSE(111)
-OPEN(111,file='amat_m_m.dat')
-DO i=1,npass_l
-WRITE(111,*) amat_minus_minus(i,1:npass_r)
-!WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_minus_minus(i,1:npass_r)
-ENDDO
-CLOSE(111)
-!open(111,file='lambda_l.dat')
-!do i=1,npass_l
-!write (111,*) -alam_l(i),delta_eta_l(i)
-!enddo
-!do i=npass_l,1,-1
-!write (111,*) alam_l(i),delta_eta_l(i)
-!enddo
-!close(111)
-!PAUSE 'written'
-1 CONTINUE
-!
-PRINT *,' '
+
+  IF(fieldpropagator%tag.EQ.2) THEN
+    OPEN(112,file='onsager.dat')
+    OPEN(113,file='levhist.dat')
+    OPEN(111,file='qfluxhist.dat')
+  ELSE
+    OPEN(112,file='onsager.dat',position='append')
+    OPEN(113,file='levhist.dat',position='append')
+    OPEN(111,file='qfluxhist.dat',position='append')
+  ENDIF
+  facnorm_m=1.d0
+  facnorm_p=1.d0
+  !WRITE(112,*) fieldpropagator%tag,qflux(1:2,1),qflux(1:2,2),npart_loc &
+  !             ,b_max_l,b_max_r,facnorm_p,facnorm_m,ignore_boundary_layer_new &
+  !             ,ignore_boundary_layer,ifilter_l,ifilter_r
+  WRITE(112,*) fieldpropagator%tag,qflux(1:2,1),qflux(1:2,2),npart_loc &
+               ,b_max_l,b_max_r,facnorm_p,facnorm_m,ignore_lb &
+               ,ignore_rb,modify_bl,modify_br
+  !             ,ignore_rb,ifilter_l,ifilter_r
+  WRITE(111,*) fieldpropagator%tag,qflux
+  DO i=0,npart_loc
+    WRITE(113,*) fieldpropagator%tag,eta(i)
+  ENDDO
+  CLOSE(112)
+  CLOSE(113)
+  CLOSE(111)
+  PRINT *,qflux(1:2,1),qflux(1:2,2)
+
+  if (.false.) then
+
+    OPEN(111,file='flux_p.dat')
+    WRITE(111,'(4(1x,e12.5))') (alam_l(i),flux_p(:,i) ,i=1,npass_l)
+    CLOSE(111)
+    OPEN(111,file='flux_m.dat')
+    WRITE(111,'(4(1x,e12.5))') (alam_r(i),flux_m(:,i) ,i=1,npass_r)
+    CLOSE(111)
+    OPEN(111,file='source_p.dat')
+    WRITE(111,'(4(1x,e12.5))') (alam_r(i),source_p(i,:)/delta_eta_r(i) ,i=1,npass_r)
+    CLOSE(111)
+    OPEN(111,file='source_m.dat')
+    WRITE(111,'(4(1x,e12.5))') (alam_l(i),source_m(i,:)/delta_eta_l(i) ,i=1,npass_l)
+    CLOSE(111)
+    !amat_plus_plus=0.d0
+    !amat_plus_minus=0.d0
+    !amat_minus_plus=0.d0
+    !amat_minus_minus=0.d0
+    !do i=1,min(npass_l,npass_r)
+    !  amat_plus_plus(i,i)=1.d0
+    !  amat_minus_minus(i,i)=1.d0
+    !enddo
+    !do i=npass_r+1,npass_l
+    !  amat_plus_minus(i,i)=0.d0 !1.d0
+    !enddo
+    !do i=npass_l+1,npass_r
+    !  amat_minus_plus(i,i)=0.d0 !1.d0
+    !enddo
+
+    OPEN(111,file='amat_p_p.dat')
+    DO i=1,npass_r
+    WRITE(111,*) amat_plus_plus(i,1:npass_l)
+    !WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_plus_plus(i,1:npass_l)
+    ENDDO
+    CLOSE(111)
+    OPEN(111,file='amat_p_m.dat')
+    DO i=1,npass_l
+    WRITE(111,*) amat_plus_minus(i,1:npass_l)
+    !WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_plus_minus(i,1:npass_l)
+    ENDDO
+    CLOSE(111)
+    OPEN(111,file='amat_m_p.dat')
+    DO i=1,npass_r
+    WRITE(111,*) amat_minus_plus(i,1:npass_r)
+    !WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_minus_plus(i,1:npass_r)
+    ENDDO
+    CLOSE(111)
+    OPEN(111,file='amat_m_m.dat')
+    DO i=1,npass_l
+    WRITE(111,*) amat_minus_minus(i,1:npass_r)
+    !WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_minus_minus(i,1:npass_r)
+    ENDDO
+    CLOSE(111)
+    !open(111,file='lambda_l.dat')
+    !do i=1,npass_l
+    !write (111,*) -alam_l(i),delta_eta_l(i)
+    !enddo
+    !do i=npass_l,1,-1
+    !write (111,*) alam_l(i),delta_eta_l(i)
+    !enddo
+    !close(111)
+    !PAUSE 'written'
+  end if
+
+  PRINT *,' '
   DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
   DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
   DEALLOCATE(enu_coef2,dellampow2,rhs_mat_energ2)
@@ -5641,5 +5600,33 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   DEALLOCATE(hmat_work,work,rwork,selec,rnum,ifailr)
 !
   END SUBROUTINE try_eigvecvals
-!
+
+  subroutine save_qflux_symm_allspec()
+    implicit none
+
+    if(lsw_multispecies .AND. mpro%getrank() .EQ. 0) then
+      open(070915,file='qflux_symm_allspec.dat')
+      write(070915,*) '% boozer_s, collpar'
+      write(070915,*) boozer_s, collpar
+      write(070915,*) '% qflux(1,1,a,b}'
+      do ispecp=0,num_spec-1
+        write(070915,*) (qflux_symm_allspec(1,1,ispecp,ispecpp),&
+          & ispecpp=0,num_spec-1)
+      end do
+      write(070915,*) '% qflux(1,3,a,b}'
+      do ispecp=0,num_spec-1
+        write(070915,*) (qflux_symm_allspec(1,3,ispecp,ispecpp),&
+          & ispecpp=0,num_spec-1)
+      end do
+      write(070915,*) '% qflux(1,2,a,b}'
+      do ispecp=0,num_spec-1
+        write(070915,*) (qflux_symm_allspec(1,2,ispecp,ispecpp),&
+          & ispecpp=0,num_spec-1)
+      end do
+      close(070915)
+
+    end if
+
+  end subroutine save_qflux_symm_allspec
+
 END SUBROUTINE ripple_solver_ArnoldiO2
