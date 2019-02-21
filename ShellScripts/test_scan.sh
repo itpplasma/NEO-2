@@ -75,11 +75,12 @@ function compare_data {
       exponent=$exponent_def
       another_round=yes
       while [ "x$another_round" == "xyes" -a $exponent -le 1 ]  ; do
-        h5diff --relative=1.0e$exponent -q $h5file ./`basename $h5file` $objects_to_compare
+        # \bug For some reason the line below does not work.
+        h5diff --relative=1.0e$exponent -q $h5file ./`basename $h5file` $objects_to_compare | grep -c "difference"
         if [ "x$?" = "x0" ] ; then
-          another_round=no
-        else
           exponent=$[$exponent+1]
+        else
+          another_round=no
         fi
       done
       echo
