@@ -225,7 +225,11 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
+#ifdef __GFORTRAN__
     RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
+#endif
       !
       REAL(c_double), VALUE :: x
       TYPE(c_ptr), VALUE :: params
@@ -306,7 +310,11 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
+#ifdef __GFORTRAN__
     RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
+#endif
       !
       REAL(c_double), VALUE :: x
       TYPE(c_ptr), VALUE :: params
@@ -387,7 +395,11 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
+#ifdef __GFORTRAN__
     RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
+#endif
       !
       REAL(c_double), VALUE :: x
       TYPE(c_ptr), VALUE :: params
@@ -465,7 +477,11 @@ CONTAINS
     CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
+#ifdef __GFORTRAN__
     RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
+#endif
       !
       REAL(c_double), VALUE :: x
       TYPE(c_ptr), VALUE :: params
@@ -547,7 +563,11 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
+#ifdef __GFORTRAN__
     RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
+#endif
       !
       REAL(c_double), VALUE :: x
       TYPE(c_ptr), VALUE :: params
@@ -626,7 +646,11 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
+#ifdef __GFORTRAN__
     RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
+#endif
       !
       REAL(c_double), VALUE :: x
       TYPE(c_ptr), VALUE :: params
@@ -720,7 +744,11 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
+#ifdef __GFORTRAN__
     RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
+#endif
       !
       REAL(c_double), VALUE :: x
       TYPE(c_ptr), VALUE :: params
@@ -799,7 +827,11 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
+#ifdef __GFORTRAN__
     RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
+#endif
       !
       REAL(c_double), VALUE :: x
       TYPE(c_ptr), VALUE :: params
@@ -879,7 +911,11 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
+#ifdef __GFORTRAN__
     RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
+#endif
       !
       REAL(c_double), VALUE :: x
       TYPE(c_ptr), VALUE :: params
@@ -958,7 +994,11 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
+#ifdef __GFORTRAN__
     RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
+#endif
       !
       REAL(c_double), VALUE :: x
       TYPE(c_ptr), VALUE :: params

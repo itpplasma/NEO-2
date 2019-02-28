@@ -257,7 +257,7 @@ contains
    36 IER=3
       BK=0.
       return
-  end
+  end subroutine
 !
   
   subroutine init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)

@@ -74,7 +74,7 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   string(REPLACE ";" "" MY_DEBUG_FLAG  ${MY_DEBUG_FLAG_LIST})
   set(CMAKE_Fortran_FLAGS_DEBUG "${MY_DEBUG_FLAG}")
 elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-  set(CMAKE_Fortran_FLAGS_DEBUG " -g -warn all -stand f08 ")
+  set(CMAKE_Fortran_FLAGS_DEBUG "-cpp -mkl -g -warn all -stand f08 ")
 endif ()
 set(CFLAGS "-O2 -DDOUBLE_APPEND_FORTRAN")
 
