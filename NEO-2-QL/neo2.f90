@@ -460,7 +460,11 @@ PROGRAM neo2
         cmd_line = &
              'if [ ! -d ' // TRIM(ADJUSTL(dir_name)) // ' ]; then mkdir ' // &
              TRIM(ADJUSTL(dir_name)) // '; fi'
+#ifdef __GFORTRAN__
         CALL execute_command_LINE(cmd_line)
+#else
+        CALL system(cmd_line)
+#endif
         !
         ! go to directory
         CALL chdir(TRIM(ADJUSTL(dir_name)))
@@ -469,17 +473,33 @@ PROGRAM neo2
         cmd_line = &
              'if [ ! -e ' // TRIM(ADJUSTL(in_file)) // ' ]; then ln -s ../' // &
              TRIM(ADJUSTL(in_file)) // ' . ; fi'
+#ifdef __GFORTRAN__
         CALL execute_command_LINE(cmd_line)
+#else
+        CALL system(cmd_line)
+#endif
         cmd_line = &
              'if [ ! -e ' // TRIM(ADJUSTL(in_file_pert)) // ' ]; then ln -s ../' // &
              TRIM(ADJUSTL(in_file_pert)) // ' . ; fi'
+#ifdef __GFORTRAN__
         CALL execute_command_LINE(cmd_line)
+#else
+        CALL system(cmd_line)
+#endif
         cmd_line = &
              'if [ ! -e neo.in ]; then ln -s ../neo.in . ; fi'
+#ifdef __GFORTRAN__
         CALL execute_command_LINE(cmd_line)
+#else
+        CALL system(cmd_line)
+#endif
         cmd_line = &
              'if [ ! -e neo_2.x ]; then ln -s ../neo_2.x . ; fi'
+#ifdef __GFORTRAN__
         CALL execute_command_LINE(cmd_line)
+#else
+        CALL system(cmd_line)
+#endif
         !
         ! write start-up script for NEO-2 run
         OPEN(unit=u1,file=fname_exec,action='write',iostat=ios)
@@ -507,7 +527,11 @@ PROGRAM neo2
         END IF
         CLOSE(unit=u1)
         cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec))
+#ifdef __GFORTRAN__
         CALL execute_command_LINE(cmd_line)
+#else
+        CALL system(cmd_line)
+#endif
         !
         ! write start-up script for NEO-2 pre-run (pre-computation of matrix elements)
         OPEN(unit=u1,file=fname_exec_precom,action='write',iostat=ios)
@@ -535,7 +559,11 @@ PROGRAM neo2
         END IF
         CLOSE(unit=u1)
         cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec_precom))
+#ifdef __GFORTRAN__
         CALL execute_command_LINE(cmd_line)
+#else
+        CALL system(cmd_line)
+#endif
         !
         ! prepare multi-species input
         !
