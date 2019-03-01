@@ -181,7 +181,8 @@ add_executable(${EXE_NAME}
 )
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-  set(LINALG_LIBRARIES ${lapack_lib} ${f77blas_lib} ${atlas_lib})
+	set(LINALG_LIBRARIES ${open_blas_lib} ${open_blas_lapack_lib} pthread)
+	#  set(LINALG_LIBRARIES ${lapack_lib} ${f77blas_lib} ${atlas_lib})
 endif ()
 
 ### Add libraries linked with executable
