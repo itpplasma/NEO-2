@@ -1011,6 +1011,7 @@ CONTAINS
     WRITE (*,*) ''
     WRITE (*,*) "---------- NEO-2 Git Revision ----------"
     WRITE (*,*) Neo2_Version
+    WRITE (*,*) Neo2_Version_Date
     WRITE (*,*) "----------------------------------------"
     WRITE (*,*) ''
     IF (len_TRIM(Neo2_Version_Additional) /= 0) THEN
