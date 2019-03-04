@@ -294,353 +294,9 @@ PROGRAM neo2
   ! Prepare  multi-species computations for a given profile
   ! -> prepare input files, directories
   IF(lsw_multispecies .AND. (isw_multispecies_init .GT. 0)) THEN
-     PRINT *,'Prepare  multi-species computations for a given profile'
-     isw_multispecies_init = 0
-     !
-     ! get file-name of axisymmetric equilibrium (neo.in)
-     ! -> in_file
-     CALL neo_read_control()
-     !
-     ! read multi-species input (HDF5 file)
-     !
-     ! open file
-     CALL h5_open(TRIM(ADJUSTL(fname_multispec_in)), h5id_multispec_in)
-     ! get size of arrays
-     CALL h5_get(h5id_multispec_in,'num_radial_pts',num_radial_pts)
-     CALL h5_get(h5id_multispec_in,'num_species',num_species_all)
-     ! get boozer_s-profile
-     IF(ALLOCATED(boozer_s_prof)) DEALLOCATE(boozer_s_prof)
-     ALLOCATE(boozer_s_prof(num_radial_pts))
-     CALL h5_get(h5id_multispec_in,'boozer_s',boozer_s_prof)
-     !PRINT *,boozer_s_prof
-     ! get species definition (species charge number and mass)
-     IF(ALLOCATED(species_def_prof)) DEALLOCATE(species_def_prof)
-     ALLOCATE(species_def_prof(num_radial_pts,num_species_all,2))
-     CALL h5_get(h5id_multispec_in,'species_def',species_def_prof)
-     !PRINT *,species_def_prof(:,1)
-     !PRINT *,species_def_prof(:,2)
-     ! get species tag and number of relevant ionization stages
-     IF(ALLOCATED(species_tag_prof)) DEALLOCATE(species_tag_prof)
-     ALLOCATE(species_tag_prof(num_species_all))
-     CALL h5_get(h5id_multispec_in,'species_tag',species_tag_prof)
-     !PRINT *,species_tag_prof
-     IF(ALLOCATED(rel_stages_prof)) DEALLOCATE(rel_stages_prof)
-     ALLOCATE(rel_stages_prof(num_radial_pts))
-     CALL h5_get(h5id_multispec_in,'rel_stages',rel_stages_prof)
-     !PRINT *,rel_stages_prof
-     ! get density and temperature profiles
-     IF(ALLOCATED(n_prof)) DEALLOCATE(n_prof)
-     ALLOCATE(n_prof(num_radial_pts,num_species_all))
-     CALL h5_get(h5id_multispec_in,'n_prof',n_prof)
-     !DO ind_boozer_s=1,num_radial_pts
-     !   WRITE(*,*) (n_prof(ind_boozer_s,ind_spec),ind_spec=1,num_species_all)
-     !END DO
-     IF(ALLOCATED(T_prof)) DEALLOCATE(T_prof)
-     ALLOCATE(T_prof(num_radial_pts,num_species_all))
-     CALL h5_get(h5id_multispec_in,'T_prof',T_prof)
-     !DO ind_boozer_s=1,num_radial_pts
-     !   WRITE(*,*) (T_prof(ind_boozer_s,ind_spec),ind_spec=1,num_species_all)
-     !END DO
-     ! get gradients of density and temperature profiles
-     IF(ALLOCATED(dn_ov_ds_prof)) DEALLOCATE(dn_ov_ds_prof)
-     ALLOCATE(dn_ov_ds_prof(num_radial_pts,num_species_all))
-     CALL h5_get(h5id_multispec_in,'dn_ov_ds_prof',dn_ov_ds_prof)
-     !DO ind_boozer_s=1,num_radial_pts
-     !   WRITE(*,*) (dn_ov_ds_prof(ind_boozer_s,ind_spec),ind_spec=1,num_species_all)
-     !END DO
-     IF(ALLOCATED(dT_ov_ds_prof)) DEALLOCATE(dT_ov_ds_prof)
-     ALLOCATE(dT_ov_ds_prof(num_radial_pts,num_species_all))
-     CALL h5_get(h5id_multispec_in,'dT_ov_ds_prof',dT_ov_ds_prof)
-     !DO ind_boozer_s=1,num_radial_pts
-     !   WRITE(*,*) (dT_ov_ds_prof(ind_boozer_s,ind_spec),ind_spec=1,num_species_all)
-     !END DO
-     ! get collisionality profile
-     IF(ALLOCATED(kappa_prof)) DEALLOCATE(kappa_prof)
-     ALLOCATE(kappa_prof(num_radial_pts,num_species_all))
-     CALL h5_get(h5id_multispec_in,'kappa_prof',kappa_prof)
-     !DO ind_boozer_s=1,num_radial_pts
-     !   WRITE(*,*) (kappa_prof(ind_boozer_s,ind_spec),ind_spec=1,num_species_all)
-     !END DO
-     ! get measured toroidal rotation profile and its species-tag
-     IF(ALLOCATED(Vphi_prof)) DEALLOCATE(Vphi_prof)
-     ALLOCATE(Vphi_prof(num_radial_pts))
-     CALL h5_get(h5id_multispec_in,'Vphi',Vphi_prof)
-     CALL h5_get(h5id_multispec_in,'species_tag_Vphi',species_tag_Vphi)
-     CALL h5_get(h5id_multispec_in,'isw_Vphi_loc',isw_Vphi_loc)
-     IF (isw_Vphi_loc .EQ. 1) THEN
-        PRINT *,"neo2.f90: Warning switch isw_Vphi_loc=1 is not tested!"
-        STOP
-        !
-        IF(ALLOCATED(R_Vphi_prof)) DEALLOCATE(R_Vphi_prof)
-        ALLOCATE(R_Vphi_prof(num_radial_pts))
-        CALL h5_get(h5id_multispec_in,'R_Vphi',R_Vphi_prof)
-        IF(ALLOCATED(Z_Vphi_prof)) DEALLOCATE(Z_Vphi_prof)
-        ALLOCATE(Z_Vphi_prof(num_radial_pts))
-        CALL h5_get(h5id_multispec_in,'Z_Vphi',Z_Vphi_prof)
-     ELSE IF(isw_Vphi_loc .EQ. 2) THEN
-        IF(ALLOCATED(boozer_theta_Vphi_prof)) DEALLOCATE(boozer_theta_Vphi_prof)
-        ALLOCATE(boozer_theta_Vphi_prof(num_radial_pts))
-        CALL h5_get(h5id_multispec_in,'boozer_theta_Vphi',boozer_theta_Vphi_prof)
-     ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
-        PRINT *,"neo2.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
-        STOP
-     END IF
-     ! close file
-     CALL h5_close(h5id_multispec_in)
-     !
-     ! prepare directories for NEO-2 runs
-     !
-     DO ind_boozer_s = 1,num_radial_pts
-        !
-        ! get number of relevant species for each radial point
-        num_spec = rel_stages_prof(ind_boozer_s)
-        IF (num_spec .EQ. 0) CYCLE ! try next radial point
-        !
-        ! directory name
-        WRITE(dir_name,fmt='(F10.5)') boozer_s_prof(ind_boozer_s)
-        ind_char=INDEX(dir_name,'.')
-        dir_name=dir_name(:ind_char-1) // 'p' // dir_name(ind_char+1:)
-        dir_name = 'es_' // TRIM(ADJUSTL(dir_name))
-        !PRINT *,dir_name
-        !
-        ! shell command: create directories
-        cmd_line = &
-             'if [ ! -d ' // TRIM(ADJUSTL(dir_name)) // ' ]; then mkdir ' // &
-             TRIM(ADJUSTL(dir_name)) // '; fi'
-#ifdef __GFORTRAN__
-        CALL execute_command_LINE(cmd_line)
-#else
-        CALL system(cmd_line)
-#endif
-        !
-        ! go to directory
-        CALL chdir(TRIM(ADJUSTL(dir_name)))
-        !
-        ! shell command: link input-files to current directory
-        cmd_line = &
-             'if [ ! -e ' // TRIM(ADJUSTL(in_file)) // ' ]; then ln -s ../' // &
-             TRIM(ADJUSTL(in_file)) // ' . ; fi'
-#ifdef __GFORTRAN__
-        CALL execute_command_LINE(cmd_line)
-#else
-        CALL system(cmd_line)
-#endif
-        cmd_line = &
-             'if [ ! -e ' // TRIM(ADJUSTL(in_file_pert)) // ' ]; then ln -s ../' // &
-             TRIM(ADJUSTL(in_file_pert)) // ' . ; fi'
-#ifdef __GFORTRAN__
-        CALL execute_command_LINE(cmd_line)
-#else
-        CALL system(cmd_line)
-#endif
-        cmd_line = &
-             'if [ ! -e neo.in ]; then ln -s ../neo.in . ; fi'
-#ifdef __GFORTRAN__
-        CALL execute_command_LINE(cmd_line)
-#else
-        CALL system(cmd_line)
-#endif
-        cmd_line = &
-             'if [ ! -e neo_2.x ]; then ln -s ../neo_2.x . ; fi'
-#ifdef __GFORTRAN__
-        CALL execute_command_LINE(cmd_line)
-#else
-        CALL system(cmd_line)
-#endif
-        !
-        ! write start-up script for NEO-2 run
-        OPEN(unit=u1,file=fname_exec,action='write',iostat=ios)
-        IF (ios .NE. 0) THEN
-           PRINT *, 'WARNING: File ',fname_exec,' cannot be OPENED!'
-           PRINT *, ''
-           STOP
-        ELSE
-           WRITE(u1,fmt='(A)',iostat=ios) '#! /bin/bash'
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-           WRITE(cmd_line,fmt='(I2)') OMP_NUM_THREADS
-           cmd_line = 'OMP_NUM_THREADS=' // TRIM(ADJUSTL(cmd_line)) // &
-                ' mpiexec -mca orte_tmpdir_base "/tmp/" -x OMP_NUM_THREADS -hostfile hosts -np '
-           WRITE(cmd_line,fmt='(A,I3,A10)') TRIM(ADJUSTL(cmd_line)),num_spec,' ./neo_2.x'
-           WRITE(u1,fmt='(A)',iostat=ios) TRIM(ADJUSTL(cmd_line))
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-        END IF
-        CLOSE(unit=u1)
-        cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec))
-#ifdef __GFORTRAN__
-        CALL execute_command_LINE(cmd_line)
-#else
-        CALL system(cmd_line)
-#endif
-        !
-        ! write start-up script for NEO-2 pre-run (pre-computation of matrix elements)
-        OPEN(unit=u1,file=fname_exec_precom,action='write',iostat=ios)
-        IF (ios .NE. 0) THEN
-           PRINT *, 'WARNING: File ',fname_exec,' cannot be OPENED!'
-           PRINT *, ''
-           STOP
-        ELSE
-           WRITE(u1,fmt='(A)',iostat=ios) '#! /bin/bash'
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-           WRITE(cmd_line,fmt='(I2)') OMP_NUM_THREADS
-           cmd_line = 'OMP_NUM_THREADS=' // TRIM(ADJUSTL(cmd_line)) // &
-                ' mpiexec -mca orte_tmpdir_base "/tmp/" -x OMP_NUM_THREADS -np '
-           WRITE(cmd_line,fmt='(A,I3,A10)') TRIM(ADJUSTL(cmd_line)),num_spec,' ./neo_2.x'
-           WRITE(u1,fmt='(A)',iostat=ios) TRIM(ADJUSTL(cmd_line))
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-        END IF
-        CLOSE(unit=u1)
-        cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec_precom))
-#ifdef __GFORTRAN__
-        CALL execute_command_LINE(cmd_line)
-#else
-        CALL system(cmd_line)
-#endif
-        !
-        ! prepare multi-species input
-        !
-        ! specify radial point
-        boozer_s = boozer_s_prof(ind_boozer_s)
-        Vphi = Vphi_prof(ind_boozer_s)
-        IF (isw_Vphi_loc .EQ. 1) THEN
-           PRINT *,"neo2.f90: Warning switch isw_Vphi_loc=1 is not tested!"
-           STOP
-           !
-           R_Vphi = R_Vphi_prof(ind_boozer_s)
-           Z_Vphi = Z_Vphi_prof(ind_boozer_s)
-        ELSE IF(isw_Vphi_loc .EQ. 2) THEN
-           boozer_theta_Vphi = boozer_theta_Vphi_prof(ind_boozer_s)
-        ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
-           PRINT *,"neo2.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
-           STOP
-        END IF
-        !
-        ! allocate species-tags
-        IF(ALLOCATED(species_tag_vec)) DEALLOCATE(species_tag_vec)
-        ALLOCATE(species_tag_vec(num_spec))
-        ! allocate conl_over_mfp_vec
-        IF(ALLOCATED(conl_over_mfp_vec)) DEALLOCATE(conl_over_mfp_vec)
-        ALLOCATE(conl_over_mfp_vec(num_spec))
-        ! allocate z_vec
-        IF(ALLOCATED(z_vec)) DEALLOCATE(z_vec)
-        ALLOCATE(z_vec(num_spec))
-        ! allocate m_vec
-        IF(ALLOCATED(m_vec)) DEALLOCATE(m_vec)
-        ALLOCATE(m_vec(num_spec))
-        ! allocate T_vec
-        IF(ALLOCATED(T_vec)) DEALLOCATE(T_vec)
-        ALLOCATE(T_vec(num_spec))
-        ! allocate n_vec
-        IF(ALLOCATED(n_vec)) DEALLOCATE(n_vec)
-        ALLOCATE(n_vec(num_spec))
-        ! allocate dT_vec_ov_ds
-        IF(ALLOCATED(dT_vec_ov_ds)) DEALLOCATE(dT_vec_ov_ds)
-        ALLOCATE(dT_vec_ov_ds(num_spec))
-        ! allocate dn_vec_ov_ds
-        IF(ALLOCATED(dn_vec_ov_ds)) DEALLOCATE(dn_vec_ov_ds)
-        ALLOCATE(dn_vec_ov_ds(num_spec))
-        !
-        ! fill the arrays
-        ctr_spec = 0
-        DO ind_spec = 1,num_species_all
-           IF (n_prof(ind_boozer_s,ind_spec) .LE. 0.0_dp) CYCLE
-           ctr_spec = ctr_spec + 1
-           IF (ctr_spec .GT. num_spec) THEN
-              PRINT *,"neo2.f90: Error during preparation of &
-                   &multi-species computations!"
-              PRINT *,"Number of density-values inconsistent &
-                   &with number of relevant species!"
-              STOP
-           END IF
-           species_tag_vec(ctr_spec) = species_tag_prof(ind_spec)
-           conl_over_mfp_vec(ctr_spec) = -kappa_prof(ind_boozer_s,ind_spec)
-           z_vec(ctr_spec) = species_def_prof(ind_boozer_s,ind_spec,1)
-           m_vec(ctr_spec) = species_def_prof(ind_boozer_s,ind_spec,2)
-           T_vec(ctr_spec) = T_prof(ind_boozer_s,ind_spec)
-           n_vec(ctr_spec) = n_prof(ind_boozer_s,ind_spec)
-           dT_vec_ov_ds(ctr_spec) = dT_ov_ds_prof(ind_boozer_s,ind_spec)
-           dn_vec_ov_ds(ctr_spec) = dn_ov_ds_prof(ind_boozer_s,ind_spec)
-        END DO
-        !
-        ! write multi-species input file (namelist)
-        !
-        OPEN(unit=u1,file=fname_multispec,action='write',iostat=ios)
-        IF (ios .NE. 0) THEN
-           PRINT *, 'WARNING: File ',fname_multispec,' cannot be OPENED!'
-           PRINT *, ''
-           STOP
-        ELSE
-           ! write variables into groups
-           ! multi-species part:
-           WRITE(u1,nml=multi_spec,iostat=ios)
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: group multi_spec in ',fname_multispec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-           WRITE(u1,nml=settings,iostat=ios)
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: group settings in ',fname_multispec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-           WRITE(u1,nml=collision,iostat=ios)
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: group collision in ',fname_multispec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-           WRITE(u1,nml=binsplit,iostat=ios)
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: group binsplit in ',fname_multispec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-           WRITE(u1,nml=propagator,iostat=ios)
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: group propagator in ',fname_multispec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-           WRITE(u1,nml=plotting,iostat=ios)
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: group plotting in ',fname_multispec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-           !! Modification by Andreas F. Martitsch (17.07.2014)
-           ! ntv_input
-           WRITE(u1,nml=ntv_input,iostat=ios)
-           IF (ios .NE. 0) THEN
-              PRINT *, 'WARNING: group ntv_input in ',fname_multispec,' cannot be WRITTEN!'
-              PRINT *, ''
-              STOP
-           END IF
-           !! End Modification by Andreas F. Martitsch (17.07.2014)
-        END IF
-        CLOSE(unit=u1)
-        !
-        ! go back to initial directory
-        CALL chdir('..')
-        !
-     END DO
-     !   
-     STOP
+    call prepare_mulitspecies_scan()
+
+    STOP
   END IF
   !! End Modification by Andreas F. Martitsch (20.02.2017)
 
@@ -1382,5 +1038,341 @@ CONTAINS
 
     write(*,*) "ERROR: group ", groupname, " in file '", filename, "' cannot be read."
   end subroutine write_cant_read_message
+
+  !> \brief Create directory structure and input files for multi-species scan.
+  !>
+  !> \note This subroutine will acesss variables from the main program.
+  subroutine prepare_mulitspecies_scan()
+    print *,'Prepare  multi-species computations for a given profile'
+    isw_multispecies_init = 0
+
+    ! get file-name of axisymmetric equilibrium (neo.in)
+    ! -> in_file
+    CALL neo_read_control()
+
+    ! read multi-species input (HDF5 file)
+    !
+    ! open file
+    CALL h5_open(TRIM(ADJUSTL(fname_multispec_in)), h5id_multispec_in)
+    ! get size of arrays
+    CALL h5_get(h5id_multispec_in,'num_radial_pts',num_radial_pts)
+    CALL h5_get(h5id_multispec_in,'num_species',num_species_all)
+    ! get boozer_s-profile
+    IF(ALLOCATED(boozer_s_prof)) DEALLOCATE(boozer_s_prof)
+    ALLOCATE(boozer_s_prof(num_radial_pts))
+    CALL h5_get(h5id_multispec_in,'boozer_s',boozer_s_prof)
+
+    ! get species definition (species charge number and mass)
+    IF(ALLOCATED(species_def_prof)) DEALLOCATE(species_def_prof)
+    ALLOCATE(species_def_prof(num_radial_pts,num_species_all,2))
+    CALL h5_get(h5id_multispec_in,'species_def',species_def_prof)
+
+    ! get species tag and number of relevant ionization stages
+    IF(ALLOCATED(species_tag_prof)) DEALLOCATE(species_tag_prof)
+    ALLOCATE(species_tag_prof(num_species_all))
+    CALL h5_get(h5id_multispec_in,'species_tag',species_tag_prof)
+
+    IF(ALLOCATED(rel_stages_prof)) DEALLOCATE(rel_stages_prof)
+    ALLOCATE(rel_stages_prof(num_radial_pts))
+    CALL h5_get(h5id_multispec_in,'rel_stages',rel_stages_prof)
+
+    ! get density and temperature profiles
+    IF(ALLOCATED(n_prof)) DEALLOCATE(n_prof)
+    ALLOCATE(n_prof(num_radial_pts,num_species_all))
+    CALL h5_get(h5id_multispec_in,'n_prof',n_prof)
+
+    IF(ALLOCATED(T_prof)) DEALLOCATE(T_prof)
+    ALLOCATE(T_prof(num_radial_pts,num_species_all))
+    CALL h5_get(h5id_multispec_in,'T_prof',T_prof)
+
+    ! get gradients of density and temperature profiles
+    IF(ALLOCATED(dn_ov_ds_prof)) DEALLOCATE(dn_ov_ds_prof)
+    ALLOCATE(dn_ov_ds_prof(num_radial_pts,num_species_all))
+    CALL h5_get(h5id_multispec_in,'dn_ov_ds_prof',dn_ov_ds_prof)
+
+    IF(ALLOCATED(dT_ov_ds_prof)) DEALLOCATE(dT_ov_ds_prof)
+    ALLOCATE(dT_ov_ds_prof(num_radial_pts,num_species_all))
+    CALL h5_get(h5id_multispec_in,'dT_ov_ds_prof',dT_ov_ds_prof)
+
+    ! get collisionality profile
+    IF(ALLOCATED(kappa_prof)) DEALLOCATE(kappa_prof)
+    ALLOCATE(kappa_prof(num_radial_pts,num_species_all))
+    CALL h5_get(h5id_multispec_in,'kappa_prof',kappa_prof)
+
+    ! get measured toroidal rotation profile and its species-tag
+    IF(ALLOCATED(Vphi_prof)) DEALLOCATE(Vphi_prof)
+    ALLOCATE(Vphi_prof(num_radial_pts))
+    CALL h5_get(h5id_multispec_in,'Vphi',Vphi_prof)
+    CALL h5_get(h5id_multispec_in,'species_tag_Vphi',species_tag_Vphi)
+    CALL h5_get(h5id_multispec_in,'isw_Vphi_loc',isw_Vphi_loc)
+    IF (isw_Vphi_loc .EQ. 1) THEN
+      PRINT *,"neo2.f90: Warning switch isw_Vphi_loc=1 is not tested!"
+      STOP
+
+      IF(ALLOCATED(R_Vphi_prof)) DEALLOCATE(R_Vphi_prof)
+      ALLOCATE(R_Vphi_prof(num_radial_pts))
+      CALL h5_get(h5id_multispec_in,'R_Vphi',R_Vphi_prof)
+      IF(ALLOCATED(Z_Vphi_prof)) DEALLOCATE(Z_Vphi_prof)
+      ALLOCATE(Z_Vphi_prof(num_radial_pts))
+      CALL h5_get(h5id_multispec_in,'Z_Vphi',Z_Vphi_prof)
+    ELSE IF(isw_Vphi_loc .EQ. 2) THEN
+      IF(ALLOCATED(boozer_theta_Vphi_prof)) DEALLOCATE(boozer_theta_Vphi_prof)
+      ALLOCATE(boozer_theta_Vphi_prof(num_radial_pts))
+      CALL h5_get(h5id_multispec_in,'boozer_theta_Vphi',boozer_theta_Vphi_prof)
+    ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
+      PRINT *,"neo2.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+      STOP
+    END IF
+
+    CALL h5_close(h5id_multispec_in)
+
+    ! prepare directories for NEO-2 runs
+    DO ind_boozer_s = 1,num_radial_pts
+      ! get number of relevant species for each radial point
+      num_spec = rel_stages_prof(ind_boozer_s)
+      IF (num_spec .EQ. 0) CYCLE ! try next radial point
+      !
+      ! directory name
+      WRITE(dir_name,fmt='(F10.5)') boozer_s_prof(ind_boozer_s)
+      ind_char=INDEX(dir_name,'.')
+      dir_name=dir_name(:ind_char-1) // 'p' // dir_name(ind_char+1:)
+      dir_name = 'es_' // TRIM(ADJUSTL(dir_name))
+      !PRINT *,dir_name
+      !
+      ! shell command: create directories
+      cmd_line = &
+           'if [ ! -d ' // TRIM(ADJUSTL(dir_name)) // ' ]; then mkdir ' // &
+           TRIM(ADJUSTL(dir_name)) // '; fi'
+#ifdef __GFORTRAN__
+      CALL execute_command_LINE(cmd_line)
+#else
+      CALL system(cmd_line)
+#endif
+
+      ! go to directory
+      CALL chdir(TRIM(ADJUSTL(dir_name)))
+
+      ! shell command: link input-files to current directory
+      cmd_line = &
+           'if [ ! -e ' // TRIM(ADJUSTL(in_file)) // ' ]; then ln -s ../' // &
+           TRIM(ADJUSTL(in_file)) // ' . ; fi'
+#ifdef __GFORTRAN__
+      CALL execute_command_LINE(cmd_line)
+#else
+      CALL system(cmd_line)
+#endif
+      cmd_line = &
+           'if [ ! -e ' // TRIM(ADJUSTL(in_file_pert)) // ' ]; then ln -s ../' // &
+           TRIM(ADJUSTL(in_file_pert)) // ' . ; fi'
+#ifdef __GFORTRAN__
+      CALL execute_command_LINE(cmd_line)
+#else
+      CALL system(cmd_line)
+#endif
+      cmd_line = &
+           'if [ ! -e neo.in ]; then ln -s ../neo.in . ; fi'
+#ifdef __GFORTRAN__
+      CALL execute_command_LINE(cmd_line)
+#else
+      CALL system(cmd_line)
+#endif
+      cmd_line = &
+           'if [ ! -e neo_2.x ]; then ln -s ../neo_2.x . ; fi'
+#ifdef __GFORTRAN__
+      CALL execute_command_LINE(cmd_line)
+#else
+      CALL system(cmd_line)
+#endif
+
+      OPEN(unit=u1,file=fname_exec,action='write',iostat=ios)
+      IF (ios .NE. 0) THEN
+        PRINT *, 'WARNING: File ',fname_exec,' cannot be OPENED!'
+        PRINT *, ''
+        STOP
+      ELSE
+        WRITE(u1,fmt='(A)',iostat=ios) '#! /bin/bash'
+        IF (ios .NE. 0) THEN
+          PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
+          PRINT *, ''
+          STOP
+        END IF
+        WRITE(cmd_line,fmt='(I2)') OMP_NUM_THREADS
+        cmd_line = 'OMP_NUM_THREADS=' // TRIM(ADJUSTL(cmd_line)) // &
+             ' mpiexec -mca orte_tmpdir_base "/tmp/" -x OMP_NUM_THREADS -hostfile hosts -np '
+        WRITE(cmd_line,fmt='(A,I3,A10)') TRIM(ADJUSTL(cmd_line)),num_spec,' ./neo_2.x'
+        WRITE(u1,fmt='(A)',iostat=ios) TRIM(ADJUSTL(cmd_line))
+        IF (ios .NE. 0) THEN
+          PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
+          PRINT *, ''
+          STOP
+        END IF
+      END IF
+      CLOSE(unit=u1)
+      cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec))
+#ifdef __GFORTRAN__
+      CALL execute_command_LINE(cmd_line)
+#else
+      CALL system(cmd_line)
+#endif
+
+      ! write start-up script for NEO-2 pre-run (pre-computation of matrix elements)
+      OPEN(unit=u1,file=fname_exec_precom,action='write',iostat=ios)
+      IF (ios .NE. 0) THEN
+        PRINT *, 'WARNING: File ',fname_exec,' cannot be OPENED!'
+        PRINT *, ''
+        STOP
+      ELSE
+         WRITE(u1,fmt='(A)',iostat=ios) '#! /bin/bash'
+         IF (ios .NE. 0) THEN
+           PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
+           PRINT *, ''
+           STOP
+         END IF
+         WRITE(cmd_line,fmt='(I2)') OMP_NUM_THREADS
+         cmd_line = 'OMP_NUM_THREADS=' // TRIM(ADJUSTL(cmd_line)) // &
+              ' mpiexec -mca orte_tmpdir_base "/tmp/" -x OMP_NUM_THREADS -np '
+         WRITE(cmd_line,fmt='(A,I3,A10)') TRIM(ADJUSTL(cmd_line)),num_spec,' ./neo_2.x'
+         WRITE(u1,fmt='(A)',iostat=ios) TRIM(ADJUSTL(cmd_line))
+         IF (ios .NE. 0) THEN
+           PRINT *, 'WARNING: ',fname_exec,' cannot be WRITTEN!'
+           PRINT *, ''
+           STOP
+         END IF
+      END IF
+      CLOSE(unit=u1)
+      cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec_precom))
+#ifdef __GFORTRAN__
+      CALL execute_command_LINE(cmd_line)
+#else
+      CALL system(cmd_line)
+#endif
+
+      ! prepare multi-species input
+
+      ! specify radial point
+      boozer_s = boozer_s_prof(ind_boozer_s)
+      Vphi = Vphi_prof(ind_boozer_s)
+      IF (isw_Vphi_loc .EQ. 1) THEN
+        PRINT *,"neo2.f90: Warning switch isw_Vphi_loc=1 is not tested!"
+        STOP
+
+        R_Vphi = R_Vphi_prof(ind_boozer_s)
+        Z_Vphi = Z_Vphi_prof(ind_boozer_s)
+      ELSE IF(isw_Vphi_loc .EQ. 2) THEN
+        boozer_theta_Vphi = boozer_theta_Vphi_prof(ind_boozer_s)
+      ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
+        PRINT *,"neo2.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+        STOP
+      END IF
+
+      ! allocate species-tags
+      IF(ALLOCATED(species_tag_vec)) DEALLOCATE(species_tag_vec)
+      ALLOCATE(species_tag_vec(num_spec))
+      ! allocate conl_over_mfp_vec
+      IF(ALLOCATED(conl_over_mfp_vec)) DEALLOCATE(conl_over_mfp_vec)
+      ALLOCATE(conl_over_mfp_vec(num_spec))
+      ! allocate z_vec
+      IF(ALLOCATED(z_vec)) DEALLOCATE(z_vec)
+      ALLOCATE(z_vec(num_spec))
+      ! allocate m_vec
+      IF(ALLOCATED(m_vec)) DEALLOCATE(m_vec)
+      ALLOCATE(m_vec(num_spec))
+      ! allocate T_vec
+      IF(ALLOCATED(T_vec)) DEALLOCATE(T_vec)
+      ALLOCATE(T_vec(num_spec))
+      ! allocate n_vec
+      IF(ALLOCATED(n_vec)) DEALLOCATE(n_vec)
+      ALLOCATE(n_vec(num_spec))
+      ! allocate dT_vec_ov_ds
+      IF(ALLOCATED(dT_vec_ov_ds)) DEALLOCATE(dT_vec_ov_ds)
+      ALLOCATE(dT_vec_ov_ds(num_spec))
+      ! allocate dn_vec_ov_ds
+      IF(ALLOCATED(dn_vec_ov_ds)) DEALLOCATE(dn_vec_ov_ds)
+      ALLOCATE(dn_vec_ov_ds(num_spec))
+
+      ! fill the arrays
+      ctr_spec = 0
+      DO ind_spec = 1,num_species_all
+        IF (n_prof(ind_boozer_s,ind_spec) .LE. 0.0_dp) CYCLE
+        ctr_spec = ctr_spec + 1
+        IF (ctr_spec .GT. num_spec) THEN
+           PRINT *,"neo2.f90: Error during preparation of &
+                &multi-species computations!"
+           PRINT *,"Number of density-values inconsistent &
+                &with number of relevant species!"
+           STOP
+        END IF
+        species_tag_vec(ctr_spec) = species_tag_prof(ind_spec)
+        conl_over_mfp_vec(ctr_spec) = -kappa_prof(ind_boozer_s,ind_spec)
+        z_vec(ctr_spec) = species_def_prof(ind_boozer_s,ind_spec,1)
+        m_vec(ctr_spec) = species_def_prof(ind_boozer_s,ind_spec,2)
+        T_vec(ctr_spec) = T_prof(ind_boozer_s,ind_spec)
+        n_vec(ctr_spec) = n_prof(ind_boozer_s,ind_spec)
+        dT_vec_ov_ds(ctr_spec) = dT_ov_ds_prof(ind_boozer_s,ind_spec)
+        dn_vec_ov_ds(ctr_spec) = dn_ov_ds_prof(ind_boozer_s,ind_spec)
+      END DO
+
+      ! write multi-species input file (namelist)
+      OPEN(unit=u1,file=fname_multispec,action='write',iostat=ios)
+      IF (ios .NE. 0) THEN
+        PRINT *, 'WARNING: File ',fname_multispec,' cannot be OPENED!'
+        PRINT *, ''
+        STOP
+      ELSE
+        ! write variables into groups
+        ! multi-species part:
+        WRITE(u1,nml=multi_spec,iostat=ios)
+        IF (ios .NE. 0) THEN
+          PRINT *, 'WARNING: group multi_spec in ',fname_multispec,' cannot be WRITTEN!'
+          PRINT *, ''
+          STOP
+        END IF
+        WRITE(u1,nml=settings,iostat=ios)
+        IF (ios .NE. 0) THEN
+          PRINT *, 'WARNING: group settings in ',fname_multispec,' cannot be WRITTEN!'
+          PRINT *, ''
+          STOP
+        END IF
+        WRITE(u1,nml=collision,iostat=ios)
+        IF (ios .NE. 0) THEN
+          PRINT *, 'WARNING: group collision in ',fname_multispec,' cannot be WRITTEN!'
+          PRINT *, ''
+          STOP
+        END IF
+        WRITE(u1,nml=binsplit,iostat=ios)
+        IF (ios .NE. 0) THEN
+          PRINT *, 'WARNING: group binsplit in ',fname_multispec,' cannot be WRITTEN!'
+          PRINT *, ''
+          STOP
+        END IF
+        WRITE(u1,nml=propagator,iostat=ios)
+        IF (ios .NE. 0) THEN
+          PRINT *, 'WARNING: group propagator in ',fname_multispec,' cannot be WRITTEN!'
+          PRINT *, ''
+          STOP
+        END IF
+        WRITE(u1,nml=plotting,iostat=ios)
+        IF (ios .NE. 0) THEN
+          PRINT *, 'WARNING: group plotting in ',fname_multispec,' cannot be WRITTEN!'
+          PRINT *, ''
+          STOP
+        END IF
+        !! Modification by Andreas F. Martitsch (17.07.2014)
+        ! ntv_input
+        WRITE(u1,nml=ntv_input,iostat=ios)
+        IF (ios .NE. 0) THEN
+          PRINT *, 'WARNING: group ntv_input in ',fname_multispec,' cannot be WRITTEN!'
+          PRINT *, ''
+          STOP
+        END IF
+        !! End Modification by Andreas F. Martitsch (17.07.2014)
+      END IF
+      CLOSE(unit=u1)
+
+      ! go back to initial directory
+      CALL chdir('..')
+
+    END DO
+  end subroutine prepare_mulitspecies_scan
 
 END PROGRAM neo2
