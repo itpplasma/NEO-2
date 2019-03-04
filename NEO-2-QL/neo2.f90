@@ -272,8 +272,8 @@ PROGRAM neo2
   call set_default_values()
 
   CALL h5_init()
-  
-  ! reading
+
+  ! Reading of namelist files.
   DO jf = 1,SIZE(fnames)
      IF(jf .EQ. 1) CYCLE ! skip neo2.def (Andreas F. Martitsch - 21.10.2015)
      OPEN(unit=u1,file=fnames(jf),status='old',iostat=ios)
@@ -282,61 +282,8 @@ PROGRAM neo2
         PRINT *, ''
         STOP
      ELSE
-        ! Read variables from group settings
-        !! Modification by Andreas F. Martitsch (21.02.2017)
-        ! multi-species part:
-        READ(u1,nml=multi_spec,iostat=ios)
-        IF (ios .NE. 0) THEN
-           PRINT *, 'WARNING: group multi_spec in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
-           !STOP
-        END IF
-        !! End Modification by Andreas F. Martitsch (21.02.2017)
-        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
-        READ(u1,nml=settings,iostat=ios)
-        IF (ios .NE. 0) THEN
-           PRINT *, 'WARNING: group settings in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
-           STOP
-        END IF
-        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
-        READ(u1,nml=collision,iostat=ios)
-        IF (ios .NE. 0) THEN
-           PRINT *, 'WARNING: group collision in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
-           STOP
-        END IF
-        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
-        READ(u1,nml=binsplit,iostat=ios)
-        IF (ios .NE. 0) THEN
-           PRINT *, 'WARNING: group binsplit in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
-           STOP
-        END IF
-        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
-        READ(u1,nml=propagator,iostat=ios)
-        IF (ios .NE. 0) THEN
-           PRINT *, 'WARNING: group propagator in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
-           STOP
-        END IF
-        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
-        READ(u1,nml=plotting,iostat=ios)
-        IF (ios .NE. 0) THEN
-           PRINT *, 'WARNING: group plotting in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
-           STOP
-        END IF
-        !! Modification by Andreas F. Martitsch (17.07.2014)
-        ! ntv_input
-        REWIND(u1) ! start reading file from beginning (Andreas F. Martitsch - 23.02.2017)
-        READ(u1,nml=ntv_input,iostat=ios)
-        IF (ios .NE. 0) THEN
-           PRINT *, 'WARNING: group ntv_input in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
-           STOP
-        END IF
-        !! End Modification by Andreas F. Martitsch (17.07.2014)
+       ! Read variables from group settings
+       call read_in_namelists(u1)
      END IF
      CLOSE(unit=u1)
   END DO
@@ -1359,5 +1306,81 @@ CONTAINS
       stop
     end if
   end subroutine check
+
+  subroutine read_in_namelists(namelist_file_unit)
+    integer, intent(in) :: namelist_file_unit
+
+    integer :: ios
+    logical :: stop_program
+
+    stop_program = .false.
+
+    rewind(namelist_file_unit)
+    read(namelist_file_unit,nml=multi_spec,iostat=ios)
+    stop_program = stop_program .or. check_iostat(ios, 'multi_spec', namelist_file_unit)
+
+    rewind(namelist_file_unit)
+    read(namelist_file_unit,nml=settings,iostat=ios)
+    stop_program = stop_program .or. check_iostat(ios, 'settings', namelist_file_unit)
+
+    rewind(namelist_file_unit)
+    read(namelist_file_unit,nml=collision,iostat=ios)
+    stop_program = stop_program .or. check_iostat(ios, 'collision', namelist_file_unit)
+
+    rewind(namelist_file_unit)
+    read(namelist_file_unit,nml=binsplit,iostat=ios)
+    stop_program = stop_program .or. check_iostat(ios, 'binsplit', namelist_file_unit)
+
+    rewind(namelist_file_unit)
+    read(namelist_file_unit,nml=propagator,iostat=ios)
+    stop_program = stop_program .or. check_iostat(ios, 'propagator', namelist_file_unit)
+
+    rewind(namelist_file_unit)
+    read(namelist_file_unit,nml=plotting,iostat=ios)
+    stop_program = stop_program .or. check_iostat(ios, 'plotting', namelist_file_unit)
+
+    rewind(namelist_file_unit)
+    read(namelist_file_unit,nml=ntv_input,iostat=ios)
+    stop_program = stop_program .or. check_iostat(ios, 'ntv_input', namelist_file_unit)
+
+    if (stop_program) then
+      stop "error when trying to read one or more namelist -- stop the program."
+    end if
+
+  end subroutine read_in_namelists
+
+  !> \brief Check if error occoured during read of namelist.
+  !>
+  !> Side effect: will change stop_program to true, if an error occoured.
+  function check_iostat(ios, groupname, namelist_file_unit) result(stop_program)
+    character(len=*), intent(in) :: groupname
+    integer, intent(in) :: ios, namelist_file_unit
+
+    logical :: stop_program
+
+    stop_program = .false.
+
+    if (ios .NE. 0) then
+      call write_cant_read_message(groupname, namelist_file_unit)
+      stop_program = .true.
+    end if
+  end function check_iostat
+
+  !> \brief Write error message when a namelist could not be read.
+  !>
+  !> Will acess namelist_file_unit to find the filename.
+  subroutine write_cant_read_message(groupname, namelist_file_unit)
+    character(len=*), intent(in) :: groupname
+    integer, intent(in) :: namelist_file_unit
+
+    character(len=80) :: filename
+    logical :: is_named
+
+    inquire(namelist_file_unit, name=filename, named=is_named)
+
+    if (.not. is_named) filename = ''
+
+    write(*,*) "ERROR: group ", groupname, " in file '", filename, "' cannot be read."
+  end subroutine write_cant_read_message
 
 END PROGRAM neo2
