@@ -1,12 +1,12 @@
+!> this routine is called before flint and does the setup for magnetics
+!> it creates the
+!>  device (stevvo, ....)
+!>  surface
+!>  fieldline and its children, grandchildren, grandgrandchildren
+!>    fieldperiod
+!>    fieldpropagator
+!>    fieldripple
 SUBROUTINE flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
-  ! this routine is called before flint and does the setup for magnetics
-  ! it creates the 
-  !  device (stevvo, ....)
-  !  surface
-  !  fieldline and its children, grandchildren, grandgrandchildren
-  !    fieldperiod
-  !    fieldpropagator
-  !    fieldripple
   
   ! input
   USE size_mod, ONLY : ndim0
@@ -474,14 +474,14 @@ SUBROUTINE flint_prepare_2(bin_split_mode,eta_s_lim)
 
 END SUBROUTINE flint_prepare_2
 
-
+!> this routine now walks through the specified fieldpropagators
+!>  (see main routine about how to set proptag_start and proptag_end)
 SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      eta_alpha_p,eta_alpha_t,                                                  &
      xetami,xetama,eta_part,lambda_equi,                                       &
      eta_part_global,eta_part_trapped,                                         &
      bin_split_mode,proptag_start,proptag_end)
-  ! this routine now walks through the specified fieldpropagators
-  !  (see main routine about how to set proptag_start and proptag_end)
+
   USE size_mod, ONLY : npart
   USE flint_mod, ONLY : plot_gauss,plot_prop,phi_split_mode,        &
        phi_place_mode,phi_split_min,hphi_mult,max_solver_try,       &
