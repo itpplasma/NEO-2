@@ -1307,6 +1307,10 @@ CONTAINS
     end if
   end subroutine check
 
+  !> brief Routine to read in all the namelist with errorhandling.
+  !>
+  !> \note This subroutine makes use of variables/namelists defined in
+  !>   the main program.
   subroutine read_in_namelists(namelist_file_unit)
     integer, intent(in) :: namelist_file_unit
 
@@ -1350,8 +1354,6 @@ CONTAINS
   end subroutine read_in_namelists
 
   !> \brief Check if error occoured during read of namelist.
-  !>
-  !> Side effect: will change stop_program to true, if an error occoured.
   function check_iostat(ios, groupname, namelist_file_unit) result(stop_program)
     character(len=*), intent(in) :: groupname
     integer, intent(in) :: ios, namelist_file_unit
@@ -1367,8 +1369,6 @@ CONTAINS
   end function check_iostat
 
   !> \brief Write error message when a namelist could not be read.
-  !>
-  !> Will acess namelist_file_unit to find the filename.
   subroutine write_cant_read_message(groupname, namelist_file_unit)
     character(len=*), intent(in) :: groupname
     integer, intent(in) :: namelist_file_unit
