@@ -2975,8 +2975,8 @@ rotfactor=imun*m_phi
     !> geodcu_forw=geodcu_mfl
     !> geodcu_back=geodcu_mfl
     !> computation of geodesic curvature according to
-    !> \f[ \|{\nabla}s\| k_{G0} = - \frac{B_\ph}{\iota B_{\tht}+B_{\ph}}
-    !> \frac{B_{\rm ref}}{\psi_{\rm tor}^{a}} \difp{B_0}{\tht} \f]
+    !> \f[ \|{\nabla}s\| k_{G0} = - \frac{B_\phi}{\iota B_{\theta}+B_{\phi}}
+    !> \frac{B_{\rm ref}}{\psi_{\rm tor}^{a}} \frac{\partial B_0}{\partial \theta} \f]
     denomjac=-scalefac_kG*bcovar_phi_hat/(aiota*bcovar_theta_hat+bcovar_phi_hat)
     !> geodcu_forw used for computation of q_rip(1:npassing+1,istep,1),
     !> which in turn enters the source_vector
