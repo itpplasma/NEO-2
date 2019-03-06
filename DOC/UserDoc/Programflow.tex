@@ -55,6 +55,9 @@ Otherwise continue.
 Initialize MPI.
 
 \paragraph{}
+Master writes version info.
+
+\paragraph{}
 If it is a reconstruction run call \codevariable{reconstruct\_prop\_dist}
 and stop.
 
@@ -62,7 +65,17 @@ and stop.
 Call \codevariable{kin\_allocate}.
 
 \paragraph{}
-Call \codevariable{flint\_prepare}.
+Call \codevariable{flint\_prepare} (setup magnetics).
+
+Some things differ whether zylindrical or boozer coordinates are chosen.
+The former has some additional lines for efit.
+Differences in multispecies or not are due to different variables
+(arrays vs. scalar).
+
+This will read in the magnetic input file.
+Efit files via compute\_aiota.
+Boozer files via make\_mag\_device and stevvo\_x. Especially the boozer
+case is hidden behind some interfaces.
 
 \paragraph{}
 Compute/load collision operator.
