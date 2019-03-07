@@ -137,7 +137,7 @@ PROGRAM neo2
   REAL(kind=dp) :: eta_s_lim
   ! REAL(kind=dp) :: z_eff
 
-  INTEGER :: proptag_first,proptag_last,proptag_start,proptag_end
+  INTEGER :: proptag_start,proptag_end
   INTEGER :: proptag_begin,proptag_final
   INTEGER :: uw
   logical :: lalloc
@@ -488,45 +488,8 @@ PROGRAM neo2
   !CALL write_volume_data(40,40,100,'w7as_vol.dat')
   !CALL write_surface_data('w7as_sur_181.dat')
 
+  call set_proptag_start_end()
 
-
-  ! ---------------------------------------------------------------------------
-  ! these are the tags of the first and last fieldpropagator
-  ! of the actual fieldline (we have only one at the moment)
-  !  fieldline has a first and a last child : fieldperiod
-  !  each fieldperiod has a first and a last child : fieldpropagator
-  !  for each structure there is a tag which numbers it in
-  !   ascending order
-  fieldperiod => fieldline%ch_fir
-  DO WHILE (fieldperiod%extra .EQ. 1) 
-     fieldperiod => fieldperiod%next
-  END DO
-  proptag_first = fieldperiod%ch_fir%tag
-
-  fieldperiod => fieldline%ch_las
-  DO WHILE (fieldperiod%extra .EQ. 1) 
-     fieldperiod => fieldperiod%prev
-  END DO
-  proptag_last = fieldperiod%ch_las%tag
-  ! here one can pick whatever one likes between proptag_first and
-  !  proptag_last (now from input file)
-  IF (proptag_begin .GT. proptag_last) proptag_begin = proptag_last
-  IF (proptag_begin .LT. proptag_first) THEN
-     proptag_start = proptag_first
-     IF (proptag_final .LE. 0 .OR. proptag_final .GT. proptag_last) THEN
-        proptag_end = proptag_last
-     ELSE
-        proptag_end = proptag_final
-     END IF
-  ELSE
-     proptag_start = proptag_begin
-     IF (proptag_final .LE. 0 .OR. proptag_final .GT. proptag_last) THEN
-        proptag_end = proptag_start - 1
-        IF (proptag_end .LT. proptag_first) proptag_end = proptag_last
-     ELSE
-        proptag_end = proptag_final
-     END IF
-  END IF
   !
   !IF (proptag_start .LE. proptag_end) THEN
   ! ------------------------------------------------------------------------
@@ -1376,5 +1339,52 @@ CONTAINS
 
     END DO
   end subroutine prepare_mulitspecies_scan
+
+  !> \brief Set variables proptag_start and proptag_end from main program.
+  !>
+  !> \note This subroutine does acess use-variables (fieldperiod?) and
+  !>   variables from the main program (e.g. proptag_begin).
+  subroutine set_proptag_start_end()
+    integer :: proptag_first, proptag_last
+
+    ! ----------------------------------------------------------------
+    ! these are the tags of the first and last fieldpropagator
+    ! of the actual fieldline (we have only one at the moment)
+    !  fieldline has a first and a last child : fieldperiod
+    !  each fieldperiod has a first and a last child : fieldpropagator
+    !  for each structure there is a tag which numbers it in
+    !   ascending order
+    fieldperiod => fieldline%ch_fir
+    do while (fieldperiod%extra .EQ. 1)
+      fieldperiod => fieldperiod%next
+    end do
+    proptag_first = fieldperiod%ch_fir%tag
+
+    fieldperiod => fieldline%ch_las
+    do while (fieldperiod%extra .EQ. 1)
+       fieldperiod => fieldperiod%prev
+    end do
+    proptag_last = fieldperiod%ch_las%tag
+    ! here one can pick whatever one likes between proptag_first and
+    !  proptag_last (now from input file)
+    if (proptag_begin .GT. proptag_last) proptag_begin = proptag_last
+
+    if (proptag_begin .LT. proptag_first) then
+       proptag_start = proptag_first
+       if (proptag_final .LE. 0 .OR. proptag_final .GT. proptag_last) then
+          proptag_end = proptag_last
+       else
+          proptag_end = proptag_final
+       end if
+    else
+       proptag_start = proptag_begin
+       if (proptag_final .LE. 0 .OR. proptag_final .GT. proptag_last) then
+          proptag_end = proptag_start - 1
+          if (proptag_end .LT. proptag_first) proptag_end = proptag_last
+       else
+          proptag_end = proptag_final
+       end if
+    end if
+  end subroutine set_proptag_start_end
 
 END PROGRAM neo2
