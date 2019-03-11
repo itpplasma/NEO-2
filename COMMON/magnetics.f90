@@ -47,6 +47,10 @@ MODULE magnetics_mod
 
   ! ---------------------------------------------------------------------------
   ! device_struct
+  !> \brief Defines a magnetic fusion device (maybe even a certain configuration).
+  !>
+  !> Contains pointers to the first, last and actual surface.
+  !> Has also a name.
   TYPE, PUBLIC :: device_struct
      TYPE(surface_struct),              POINTER     :: ch_act     => NULL()
      TYPE(surface_struct),              POINTER     :: ch_fir     => NULL()
@@ -62,6 +66,13 @@ MODULE magnetics_mod
 
   ! ---------------------------------------------------------------------------
   ! surface_struct
+  !> \brief Type to describe a magnetic surface.
+  !>
+  !> Contains a pointer to the device it belongs to.
+  !> Contains pointers to the previous and next (in radial direction?)
+  !> surfaces.
+  !> Contains pointers to the actual, first and last fieldline.
+  !> Contains some information about the fieldline.
   TYPE, PUBLIC :: surface_struct     
      TYPE(device_struct),               POINTER     :: parent     => NULL()
      TYPE(surface_struct),              POINTER     :: prev       => NULL()
@@ -220,6 +231,7 @@ MODULE magnetics_mod
 
   ! ---------------------------------------------------------------------------
   ! inumber_struct
+  !> \brief Linked list element for storing integer values.
   ! ---------------------------------------------------------------------------
   TYPE, PUBLIC :: inumber_struct
      TYPE(inumber_struct), POINTER                  :: prev       => NULL()
@@ -231,6 +243,7 @@ MODULE magnetics_mod
 
   ! ---------------------------------------------------------------------------
   ! dnumber_struct
+  !> \brief Linked list element for storing real values.
   ! ---------------------------------------------------------------------------
   TYPE, PUBLIC :: dnumber_struct
      TYPE(dnumber_struct), POINTER                  :: prev       => NULL()
@@ -242,6 +255,10 @@ MODULE magnetics_mod
 
   ! ---------------------------------------------------------------------------
   ! coordinates_struct
+  !> \brief 3D coordinates of multiple points in one structure.
+  !>
+  !> Stores the three dimensional coordinates of points in three arrays,
+  !> i.e. one for each dimension. The arrays are allocatable.
   TYPE, PUBLIC :: coordinates_struct
      REAL(kind=dp), ALLOCATABLE                     :: x1(:)
      REAL(kind=dp), ALLOCATABLE                     :: x2(:)

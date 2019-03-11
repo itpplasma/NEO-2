@@ -215,7 +215,9 @@ CONTAINS
     CLOSE(1)
     !
   END SUBROUTINE plag_test
+
   !---------------------------------------------------------------------
+  !> \brief Output (to file) some (interpolated?) quantities for test purposes.
   SUBROUTINE plag_testperiod(fieldperiod,nlagrange,ndata)
     TYPE(fieldperiod_struct), POINTER :: fieldperiod
     INTEGER, INTENT(in)      :: nlagrange,ndata
