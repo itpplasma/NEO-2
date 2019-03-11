@@ -589,15 +589,13 @@ CONTAINS
   ! 
   SUBROUTINE construct_mag_device(device)
     TYPE(device_struct),     POINTER          :: device
-    INTEGER            :: my_tag = 0
     ! memory for device_struct
     ALLOCATE(device)
     ! tag
     device_tag = device_tag + 1
     device%tag = device_tag
-    my_tag     = device_tag
-    !
-    IF (mag_talk) PRINT *, 'magnetics: device created: ',my_tag
+
+    IF (mag_talk) PRINT *, 'magnetics: device created: ', device%tag
     RETURN
   END SUBROUTINE construct_mag_device
   ! ---------------------------------------------------------------------------
