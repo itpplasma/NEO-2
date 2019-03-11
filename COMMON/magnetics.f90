@@ -139,7 +139,7 @@ MODULE magnetics_mod
 
   ! ---------------------------------------------------------------------------
   ! fieldpropagator_struct
-     TYPE, PUBLIC :: fieldpropagator_struct
+  TYPE, PUBLIC :: fieldpropagator_struct
      TYPE(fieldperiod_struct),          POINTER     :: parent     => NULL()
      TYPE(fieldpropagator_struct),      POINTER     :: prev       => NULL()
      TYPE(fieldpropagator_struct),      POINTER     :: next       => NULL()
