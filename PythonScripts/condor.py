@@ -22,25 +22,6 @@ class CondorSubmitFile:
   list of files. This is not implemented yet.
   """
 
-  _Executable = '/usr/bin/mpiexec'
-  _arguments = '-mca orte_tmpdir_base \"/tmp/\" -np  2 ./neo_2.x'
-  _Universe = 'vanilla'
-  _Error      = '../err.$(Process)'
-  _Log        = '../scan.log'
-  _run_as_owner = True
-  _notify_user  = 'buchholz@tugraz.at'
-  _notification = 'Error'
-  _nice_user    = False
-  _requirements = ''
-  _request_cpus = 1
-  _request_memory = 21
-  _Getenv = True
-
-  _Output     = 'out'
-  _initialdir = '$(dirname)'
-  _queue_command = 'Queue dirname matching dirs'
-  _folders = 'es_*'
-
   def read(self, filename: str):
     """Reads in the file.
 
@@ -58,6 +39,25 @@ class CondorSubmitFile:
     """
     with open(filename) as f:
       lines = f.readlines()
+
+    _Executable = '/usr/bin/mpiexec'
+    _arguments = '-mca orte_tmpdir_base \"/tmp/\" -np  2 ./neo_2.x'
+    _Universe = 'vanilla'
+    _Error      = '../err.$(Process)'
+    _Log        = '../scan.log'
+    _run_as_owner = True
+    _notify_user  = 'buchholz@tugraz.at'
+    _notification = 'Error'
+    _nice_user    = False
+    _requirements = ''
+    _request_cpus = 1
+    _request_memory = 21
+    _Getenv = True
+
+    _Output     = 'out'
+    _initialdir = '$(dirname)'
+    _queue_command = 'Queue dirname matching dirs'
+    _folders = 'es_*'
 
     for line in lines:
       if (len(line.strip()) > 0):

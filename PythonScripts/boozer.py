@@ -545,32 +545,6 @@ class BoozerFile:
   So far, this can only handle boozer files with a single toroidal mode
   number.
   """
-  comments = []
-  m0b = 0.0
-  n0b = 0.0
-  nsurf = 0
-  nper = 0
-  flux = 0.0 #[Tm^2]
-  a = 0.0
-  R = 0.0 # [m]
-
-  s = []
-  iota = []
-  Jpol_divided_by_nper = []
-  Itor = []
-  pprime = []
-  sqrt_g_00 = []
-
-  m = []
-  n = []
-  rmnc = [] # [m]
-  rmns = [] # [m]
-  zmnc = [] # [m]
-  zmns = [] # [m]
-  vmnc = []
-  vmns = []
-  bmnc = [] # [T]
-  bmns = [] # [T]
 
   def read_boozer(self, filename: str):
     """Reads information from a file, whose name is given as a string.
@@ -587,6 +561,33 @@ class BoozerFile:
     """
     with open(filename) as f:
       lines = f.readlines()
+
+    self.comments = []
+    self.m0b = 0.0
+    self.n0b = 0.0
+    self.nsurf = 0
+    self.nper = 0
+    self.flux = 0.0 #[Tm^2]
+    self.a = 0.0
+    self.R = 0.0 # [m]
+
+    self.s = []
+    self.iota = []
+    self.Jpol_divided_by_nper = []
+    self.Itor = []
+    self.pprime = []
+    self.sqrt_g_00 = []
+
+    self.m = []
+    self.n = []
+    self.rmnc = [] # [m]
+    self.rmns = [] # [m]
+    self.zmnc = [] # [m]
+    self.zmns = [] # [m]
+    self.vmnc = []
+    self.vmns = []
+    self.bmnc = [] # [T]
+    self.bmns = [] # [T]
 
     # Get header information, e.g. comments and sizes.
     for lineindex in range(len(lines)):
