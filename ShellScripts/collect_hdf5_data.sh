@@ -19,7 +19,7 @@ function print_help {
   echo "'foldercommonpart*'."
   echo "The output will be named 'final_filename'."
   echo "The optional argument blacklistfile is a file which contains"
-  echo "that should be ignored foldernames."
+  echo "foldernames that should be ignored."
   echo ""
 }
 
