@@ -69,7 +69,10 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
 
   % extract m0b and n0b
   tline = data_c{k_def};
-  dline = str2num(tline);
+  % strtrim is required, because otherwise strsplit would create an
+  % empty first entry, due to the whitespace(s) at the beginning of the
+  % line.
+  dline = str2double(strsplit(strtrim(tline), {' '}));
   m0b = dline(1);
   n0b = dline(2);
   nsurf = dline(3);
@@ -299,6 +302,7 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
       end
     end
   end
+  fclose(fid);
 end
 
 function [data] = read_file_into_cell_array(filename)
