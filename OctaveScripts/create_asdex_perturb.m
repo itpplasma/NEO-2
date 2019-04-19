@@ -190,9 +190,12 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
     [delta_rho32_A_mx, local_cos_var_tear] = meshgrid(delta_rho32_A,cos_var_tear(:,i_theta));
     boozer_s_pert = (sqrt_so_mx + delta_rho22_A_mx .* local_cos_var_kink + delta_rho32_A_mx .* local_cos_var_tear).^2;
 
-    local_b0_pert = interp1(s0, all_b0_unpert(:,1,i_theta), boozer_s_pert,'spline');
-    local_R_pert  = interp1(s0, all_R_unpert(:,1,i_theta),  boozer_s_pert,'spline');
-    local_Z_pert  = interp1(s0, all_Z_unpert(:,1,i_theta),  boozer_s_pert,'spline');
+    % Explicitly set the behaviour, when extrapolation is necessary
+    % (i.e. at the borders in radial direction), otherwise matlab and
+    % octave might do different things (experienced in 2018b vs. 4.0.3).
+    local_b0_pert = interp1(s0, all_b0_unpert(:,1,i_theta), boozer_s_pert, 'spline', 'extrap');
+    local_R_pert  = interp1(s0, all_R_unpert(:,1,i_theta),  boozer_s_pert, 'spline', 'extrap');
+    local_Z_pert  = interp1(s0, all_Z_unpert(:,1,i_theta),  boozer_s_pert, 'spline', 'extrap');
     all_b0_pert(:,:,i_theta) = local_b0_pert' ;
     all_R_pert(:,:,i_theta)  = local_R_pert' ;
     all_Z_pert(:,:,i_theta)  = local_Z_pert' ;
