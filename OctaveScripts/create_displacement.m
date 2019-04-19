@@ -72,6 +72,9 @@ function [output_data] = create_displacement(filename, nr_points_rho, rho_q1, r_
   end
 end
 
+% Creates a displacement according to the function
+% min(-a*rho^2 + b*rho, 0), i.e. for the smaller than zero part of the
+% function, the displacement is set to zero.
 function [displacement_kink] = create_displacement_kink(rho, ksi22_max, rho_q1)
   a = -4*ksi22_max/(rho_q1^2);
   b = 4*ksi22_max/rho_q1;
@@ -80,9 +83,15 @@ function [displacement_kink] = create_displacement_kink(rho, ksi22_max, rho_q1)
   displacement_kink(displacement_kink<0) = 0;
 end
 
+% Creates a displacement according to the function
+% max(-(rho - rho_0)^b * exp(-(|rho - rho_0|/a)^c), 0) + min(-(rho - rho_0)^b * exp(-(|rho - rho_0|/a)^c) * d, 0)
+% Note that for rho < rho_0, the first part will be positive on the
+% inside, thus this sets the values for the outer part, while the second
+% terms sets the values on the inside.
 function [displacement_tearing] = create_displacement_tearing(rho, rho_res, amplitude, tearing_parameter)
   delta_rho = rho-rho_res;
 
+  % Naming is wrong, it is the other way round.
   ksi32inner = -(delta_rho.^tearing_parameter(2)).*exp(-(abs(delta_rho)./tearing_parameter(1)).^tearing_parameter(3));
   ksi32outer = -(delta_rho.^tearing_parameter(2)).*exp(-(abs(delta_rho)./tearing_parameter(1)).^tearing_parameter(3))*tearing_parameter(4);
 

@@ -33,7 +33,7 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
 
   %% Code
 
-  % coloumns: rho_tor, ...,
+  % coloumns: rho_tor, rho_tor^2, \Delta r_kink, \Delta r_tear
   data_displacement = load(file_displacement);
   rho_tor_dis = data_displacement(:,1);
   delta_rho22 = data_displacement(:,3)*amplitudes(1);
@@ -58,7 +58,7 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
   % Read Boozer file
   data_c = read_file_into_cell_array(file_in);
 
-  % find m0b and n0b
+  % find m0b and n0b, the value is in the line after the one that contains 'm0b'.
   for k = 1:numel(data_c)
     tline = data_c{k};
     if strfind(tline,'m0b')
@@ -221,7 +221,7 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
     % extract data from spec
     data = zeros(numel(spec),10);
     for kl = 1:numel(spec)
-        data(kl,:) = sscanf(spec{kl},'%f').';
+      data(kl,:) = sscanf(spec{kl},'%f').';
     end
     b = data(:,6);
     b00 = b(1);
