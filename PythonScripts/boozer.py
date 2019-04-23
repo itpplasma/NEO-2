@@ -632,9 +632,12 @@ class BoozerFile:
       raise Exception
 
     head_number_of_lines = 4
+    # +1 for zero mode, and n modes go from -n to n, so also +1 for the zero mode.
+    expected_block_length = (self.m0b + 1)*(2*self.n0b + 1)
 
     for i in range(self.nsurf):
-      if (len(blocklines[i]) != self.m0b + 1 + head_number_of_lines): # +1 for zero mode
+      if (len(blocklines[i]) != expected_block_length + head_number_of_lines):
+        print(str(len(blocklines[i])) + ' != ' + str(expected_block_length) + ' + ' + str(head_number_of_lines))
         raise Exception
 
       self.m.append([])
@@ -648,7 +651,7 @@ class BoozerFile:
       self.bmnc.append([])
       self.bmns.append([])
 
-      for j in range(0, self.m0b + 1 + head_number_of_lines):
+      for j in range(0, expected_block_length + head_number_of_lines):
         if (j == 2):
           line_split = blocklines[i][j].split();
           self.s.append(float(line_split[0]))
