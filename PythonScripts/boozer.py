@@ -716,6 +716,58 @@ class BoozerFile:
         self.vmnc[i], self.vmns[i],
         self.bmnc[i], self.bmns[i])
 
+  def contours_in_r_z_plane(self, phi: float, nplotsurf: int, outfile: str):
+    """Write outfile with contours based on data, at specified toroidal angle.
+
+    Input:
+    ------
+    phi: toroidal angle (in units of pi) at which to compute the contours.
+    nplotsurf: number of flux surfaces to calculate (maybe with offset of 1).
+    outfile: string, name of the file in which to store the data.
+    """
+
+    import math
+
+    hrho = 1.0/float(nplotsurf)
+    phi = phi*math.pi
+
+    nmodes = (self.m0b+1)*(2*self.n0b+1)
+    modfactor = 30
+    nt = self.m0b*modfactor
+    htheta = math.pi*2.0/float(nt)
+
+    theta = [htheta*x for x in range(0,nt+1)]
+
+    Rnew = [0.0 for i in range(nt+1)]
+    Znew = [0.0 for i in range(nt+1)]
+    rho_tor = hrho
+    s_plot = rho_tor**2
+    s = 0.0
+    with open(outfile, 'w') as outfile:
+
+      for k in range(self.nsurf):
+        s_old = s
+        s = self.s[k]
+
+        Rold=Rnew
+        Zold=Znew
+        # The if condition requires R/Znew and R/Zold to be set, which
+        # is, why this loop can not be moved inside the if-clause.
+        for i in range(nt+1):
+          Rnew[i] = sum(rr * math.cos(m*theta[i] - n*phi) + rc * math.sin(m*theta[i] - n*phi) for rr, rc, m, n in zip(self.rmnc[k], self.rmns[k], self.m[k], self.n[k]))
+          Znew[i] = sum(zr * math.cos(m*theta[i] - n*phi) + zc * math.sin(m*theta[i] - n*phi) for zr, zc, m, n in zip(self.zmnc[k], self.zmns[k], self.m[k], self.n[k]))
+
+        if (s > s_plot):
+          w=(s_plot-s_old)/(s-s_old)
+          for i in range(nt+1):
+            outfile.write(' {:16.8e}'.format(Rnew[i]*w + Rold[i]*(1.0-w)))
+            outfile.write(' {:16.8e}'.format(Znew[i]*w + Zold[i]*(1.0-w)))
+            outfile.write('\n')
+
+          outfile.write('\n')
+
+          rho_tor = rho_tor + hrho
+          s_plot = rho_tor**2
 
 if __name__ == "__main__":
   import sys
