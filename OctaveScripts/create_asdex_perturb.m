@@ -1,5 +1,3 @@
-% \note This function does not work under octave, for reasons not known
-%   yet.
 function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, plot_data)
   %% Parameters
   % Input files
