@@ -540,10 +540,6 @@ class BoozerFile:
   """Storing the information in a boozer file.
 
   This class is designed to store the information of a boozer file.
-
-  TODO:
-  So far, this can only handle boozer files with a single toroidal mode
-  number.
   """
 
   def read_boozer(self, filename: str):
@@ -555,9 +551,6 @@ class BoozerFile:
     Global fields are available as simple elements.
     Fields that depend on radius are lists, those that depend on radius
     and mode number lists of lists.
-
-    TODO:
-    Be able to read in data with more than one 'n' mode number.
     """
     with open(filename) as f:
       lines = f.readlines()
