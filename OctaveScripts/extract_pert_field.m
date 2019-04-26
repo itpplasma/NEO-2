@@ -97,8 +97,6 @@ function extract_pert_field(file_base, file_ext)
     data_c{k_def} = sprintf(' %d    %d    %d   %d   %.6e   %.5f   %.5f', dline);
   end
 
-  dline
-
   % open the output files for the different
   % (toroidal) perturbation mode numbers
   file_names=cell(1,n_pert_max+1);
