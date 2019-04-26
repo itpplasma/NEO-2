@@ -762,6 +762,88 @@ class BoozerFile:
           rho_tor = rho_tor + hrho
           s_plot = rho_tor**2
 
+  def get_radial_cut_of_minor_radius(self, poloidal_angle: float):
+    """Get radial cut of the minor radius at a specified angle.
+    """
+
+    import math
+
+    # \todo correct values for the axis.
+    #raxis = self.R
+    raxis = sum(self.rmnc[0]) - self.a*math.sqrt(self.s[0])
+    zaxis = sum(self.zmnc[0])
+
+    phi = 0
+
+    radii = []
+
+    for k in range(self.nsurf):
+
+      R = sum(rr * math.cos(m*poloidal_angle - n*phi) + rc * math.sin(m*poloidal_angle - n*phi) for rr, rc, m, n in zip(self.rmnc[k], self.rmns[k], self.m[k], self.n[k]))
+      Z = sum(zr * math.cos(m*poloidal_angle - n*phi) + zc * math.sin(m*poloidal_angle - n*phi) for zr, zc, m, n in zip(self.zmnc[k], self.zmns[k], self.m[k], self.n[k]))
+
+      radii.append( math.sqrt((R - raxis)**2 + (Z - zaxis)**2) )
+
+    return radii
+
+  def get_x_point_range(self, inner_limitf: float, outer_limitf: float):
+    """
+    Determines the range of flux surfaces 'involved' in forming the
+    'x-point'.
+    At the moment this is defined as the flux surfaces where the
+    derivative of the radius (regarding to index) is negative.
+    Own function, so it might be replaced by somethin more elaborate.
+    """
+    import math
+    from numpy import diff
+
+    radiip = self.get_radial_cut_of_minor_radius(math.pi)
+    radiip_diff = diff(radiip)
+
+    inner_limit = max(int(inner_limitf*len(radiip)), 1)
+    outer_limit = min(int(outer_limitf*len(radiip)), len(radiip)-1)
+
+    x_point_range = [-1, -1];
+
+    for k in range(inner_limit, outer_limit):
+      if radiip_diff[k] < 0 and radiip_diff[k-1] > 0:
+        x_point_range[0] = k
+      if radiip_diff[k] > 0 and radiip_diff[k-1] < 0:
+        x_point_range[1] = k
+
+    return x_point_range
+
+  def calculate_island_width(self, x_point_range: list):
+    """
+    Own function, so it might be replaced by somethin more elaborate.
+
+    input:
+    ------
+    x_point_range: list with two elementes, giving the index of the
+      inner and out flux surface that bound the island.
+      If the list should have more elementes, they are ignored.
+
+    output:
+    -------
+    float, calculated width of the island.
+    """
+    radii0 = self.get_radial_cut_of_minor_radius(0.0)
+    return radii0[x_point_range[1]] - radii0[x_point_range[0]]
+
+  def get_island_width(self):
+    """Calculate and return the island width for the magnetic field.
+    """
+
+    # Limits in which to search for island/x-point.
+    inner_limit = 0.1
+    outer_limit = 0.7
+
+    x_point_range = self.get_x_point_range(inner_limit, outer_limit)
+
+    island_width = self.calculate_island_width(x_point_range)
+
+    return island_width
+
 if __name__ == "__main__":
   import sys
 
