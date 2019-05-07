@@ -797,6 +797,14 @@ class BoozerFile:
     import math
     from numpy import diff
 
+    # Two step apporoach:
+    # - first determine the extrema of the radius over index courve, the
+    #   index of the o-point is then assumed to be the mean of the two
+    #   indices.
+    # - Determine the two radii that have (approximately) the same
+    #   radius, these are thought to be the field lines that form the
+    #   x-point, and thus form the outer part of the magnetic island.
+
     radiip = self.get_radial_cut_of_minor_radius(math.pi)
     radiip_diff = diff(radiip)
 
@@ -810,6 +818,26 @@ class BoozerFile:
         x_point_range[0] = k
       if radiip_diff[k] > 0 and radiip_diff[k-1] < 0:
         x_point_range[1] = k
+
+    k_0 = int(abs(x_point_range[1] + x_point_range[0])/2)
+
+    delta_inner = +1.0e9
+    delta_outer = +1.0e9
+    k_inner = -5
+    k_out = +5
+    for k in range(inner_limit, outer_limit):
+      # Restrict the test to regions outside the extrema, to avoid that
+      # a point around k_0 is actually the closest one in radial
+      # distance.
+      if k < x_point_range[0] and abs(radiip[k] - radiip[k_0]) < delta_inner:
+        delta_inner = abs(radiip[k] - radiip[k_0])
+        k_inner = k
+      if k > x_point_range[1] and abs(radiip[k] - radiip[k_0]) < delta_outer:
+        delta_outer = abs(radiip[k] - radiip[k_0])
+        k_outer = k
+
+    x_point_range[0] = k_inner
+    x_point_range[1] = k_outer
 
     return x_point_range
 
