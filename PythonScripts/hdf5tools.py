@@ -53,6 +53,15 @@ def get_hdf5file_new(filename: str):
 
   return f
 
+def get_hdf5file_replace(filename: str):
+  """Simple wrapper creating a new hdf5 file. Replaces existing file."""
+
+  import h5py
+
+  f = h5py.File(filename, 'w')
+
+  return f
+
 def get_hdf5data(hdf5file, dataname: str):
   """Wrapper for getting data from hdf5 file object returned by get_hdf5file."""
 
