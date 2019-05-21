@@ -114,7 +114,7 @@ def copy_hdf5_from_subfolders_to_single_file(path: str, infilename: str, outfile
   folders = [join(path, f) for f in listdir(path) if not isfile(join(path, f))]
 
   try:
-    o = get_hdf5file_new(outfilename)
+    o = get_hdf5file_replace(join(path, outfilename))
   except OSError as error:
     print('OSError: {0}'.format(error))
     raise error
