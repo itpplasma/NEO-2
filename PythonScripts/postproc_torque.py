@@ -92,7 +92,7 @@ def export_2spec_Matyas(folder, h5filename, vphifilename):
   [boozer_s, TphiNA_tot, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io, Mte, Mtd] = data_process(folder, h5filename)
   return plot_2spec_export(folder, vphifilename, boozer_s, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io)
 
-def get_NTV_torque_int(folder: str, outfilename: str, torque_data):
+def write_torque_data(folder: str, outfilename: str, torque_data):
   from os.path import join
   from pathlib import Path
 
@@ -125,4 +125,4 @@ def postproc_torque(folder: str, subfolder_pattern: str):
     torque_data.append(export_2spec_Matyas(current_path_name, 'final_neo2_multispecies_out.h5', 'vphiref.in'))
     #print('- calculating NTV torque done.')
 
-  get_NTV_torque_int(folder, 'NTV_tot_test.dat', torque_data)
+  write_torque_data(folder, 'NTV_tot_test.dat', torque_data)
