@@ -72,7 +72,7 @@ def data_process(folder: str, filename: str):
 
     return [boozer_s, TphiNA_tot, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io, Mte, Mtd]
 
-def plot_2spec_export(folder, vphifilename, outfilename, boozer_s, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io):
+def plot_2spec_export(folder, vphifilename, boozer_s, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io):
   from os.path import join
 
   print('integral NTV torque = {:e} Nm'.format(1e-7*TphiNA_int_tot))
@@ -86,33 +86,20 @@ def plot_2spec_export(folder, vphifilename, outfilename, boozer_s, TphiNA_int_to
     if (len(parts) > 1):
       vphiref = float(parts[1].split('!')[0])
 
-  with open(join(folder, outfilename), 'w') as f:
-    f.write('{:e} {:e} {:e} {:e}'.format(vphiref, 1e-7*TphiNA_int_tot, 1e-7*TphiNA_int_ele, 1e-7*TphiNA_int_io))
+  return [vphiref, 1e-7*TphiNA_int_tot, 1e-7*TphiNA_int_ele, 1e-7*TphiNA_int_io]
 
-def export_2spec_Matyas(folder, h5filename, vphifilename, outfilename):
+def export_2spec_Matyas(folder, h5filename, vphifilename):
   [boozer_s, TphiNA_tot, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io, Mte, Mtd] = data_process(folder, h5filename)
-  plot_2spec_export(folder, vphifilename, outfilename, boozer_s, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io)
+  return plot_2spec_export(folder, vphifilename, boozer_s, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io)
 
-def get_NTV_torque_int(folder: str, subfolder_pattern: str, filename: str):
+def get_NTV_torque_int(folder: str, outfilename: str, torque_data):
   from os.path import join
   from pathlib import Path
 
-  p = Path(folder)
-  folders = list(p.glob(subfolder_pattern))
+  torque_data.sort()
 
-  content = []
-
-  for d in folders:
-    with open(join(folder, d.name, filename)) as f:
-      content.append([])
-
-      for numberstring in f.readline().split():
-        content[-1].append(float(numberstring))
-
-  content.sort()
-
-  with open(join(folder, filename), 'w') as f:
-    for numbers in content:
+  with open(join(folder, outfilename), 'w') as f:
+    for numbers in torque_data:
       f.write('{:+e} {:+e} {:+e} {:+e}\n'.format(numbers[0], numbers[1], numbers[2], numbers[3]))
 
 def postproc_torque(folder: str, subfolder_pattern: str):
@@ -124,6 +111,7 @@ def postproc_torque(folder: str, subfolder_pattern: str):
 
   p = Path(folder)
   folders = list(p.glob(subfolder_pattern))
+  torque_data = []
 
   # for each folder wih a velocity shift ...
   for d in folders:
@@ -134,7 +122,7 @@ def postproc_torque(folder: str, subfolder_pattern: str):
     copy_hdf5_from_subfolders_to_single_file(current_path_name, infilename, 'final_' + infilename)
     #print('- merging of hdf5 files done.')
 
-    export_2spec_Matyas(current_path_name, 'final_neo2_multispecies_out.h5', 'vphiref.in', 'NTV_tot_test.dat')
+    torque_data.append(export_2spec_Matyas(current_path_name, 'final_neo2_multispecies_out.h5', 'vphiref.in'))
     #print('- calculating NTV torque done.')
 
-  get_NTV_torque_int(folder, subfolder_pattern, 'NTV_tot_test.dat')
+  get_NTV_torque_int(folder, 'NTV_tot_test.dat', torque_data)
