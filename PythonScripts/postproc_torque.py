@@ -102,12 +102,10 @@ def write_torque_data(folder: str, outfilename: str, torque_data):
     for numbers in torque_data:
       f.write('{:+e} {:+e} {:+e} {:+e}\n'.format(numbers[0], numbers[1], numbers[2], numbers[3]))
 
-def postproc_torque(folder: str, subfolder_pattern: str):
+def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vphiinfilename: str, torqueoutfilename: str):
   from os.path import join
   from pathlib import Path
   from hdf5tools import copy_hdf5_from_subfolders_to_single_file
-
-  infilename = 'neo2_multispecies_out.h5'
 
   p = Path(folder)
   folders = list(p.glob(subfolder_pattern))
@@ -119,10 +117,10 @@ def postproc_torque(folder: str, subfolder_pattern: str):
     current_path_name = join(folder, d.name)
 
     # ... merge the neo2_multispecies output files ...
-    copy_hdf5_from_subfolders_to_single_file(current_path_name, infilename, 'final_' + infilename)
+    copy_hdf5_from_subfolders_to_single_file(current_path_name, hdf5infilename, 'final_' + hdf5infilename)
     #print('- merging of hdf5 files done.')
 
-    torque_data.append(export_2spec_Matyas(current_path_name, 'final_' + infilename, 'vphiref.in'))
+    torque_data.append(export_2spec_Matyas(current_path_name, 'final_' + hdf5infilename, vphiinfilename))
     #print('- calculating NTV torque done.')
 
-  write_torque_data(folder, 'NTV_tot_test.dat', torque_data)
+  write_torque_data(folder, torqueoutfilename, torque_data)
