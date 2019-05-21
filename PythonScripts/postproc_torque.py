@@ -122,7 +122,7 @@ def postproc_torque(folder: str, subfolder_pattern: str):
     copy_hdf5_from_subfolders_to_single_file(current_path_name, infilename, 'final_' + infilename)
     #print('- merging of hdf5 files done.')
 
-    torque_data.append(export_2spec_Matyas(current_path_name, 'final_neo2_multispecies_out.h5', 'vphiref.in'))
+    torque_data.append(export_2spec_Matyas(current_path_name, 'final_' + infilename, 'vphiref.in'))
     #print('- calculating NTV torque done.')
 
   write_torque_data(folder, 'NTV_tot_test.dat', torque_data)
