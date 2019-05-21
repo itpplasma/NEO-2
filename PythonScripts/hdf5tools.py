@@ -111,12 +111,12 @@ def copy_hdf5_from_subfolders_to_single_file(path: str, infilename: str, outfile
 
   values = []
 
-  folders = [join(path, f) for f in listdir(path) if not isfile(join(path, f))]
+  folders = [f for f in listdir(path) if not isfile(join(path, f))]
 
   with get_hdf5file_replace(join(path, outfilename)) as o:
     for foldername in folders:
       try:
-        f = get_hdf5file(join(foldername, infilename))
+        f = get_hdf5file(join(path, foldername, infilename))
       except OSError:
         print('No file ', infilename,' found in ', foldername)
       else:
