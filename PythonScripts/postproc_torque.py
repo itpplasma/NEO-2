@@ -9,6 +9,21 @@ Based on shell/matlab script by Matyas Aradi.
 """
 
 def data_process(folder: str, filename: str):
+  """Process output of a scan over radius to get the torque.
+
+  This function will process the output data (specifically, some fields
+  from 'final_neo2_multispecies_out.h5', i.e. the combined data from the
+  single runs, to compute the integral torque in cgs units.
+
+  Note: there are some additional output quantities. Not sure what to do
+  with these.
+
+  input:
+  ------
+  folder: string, location of the radial scan.
+  filename: string, name of the hdf5 file (not path), that contains the
+    merged data of the radial scan.
+  """
   from os.path import join
   from hdf5tools import get_hdf5file
   from numpy import array
@@ -73,6 +88,25 @@ def data_process(folder: str, filename: str):
     return [boozer_s, TphiNA_tot, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io, Mte, Mtd]
 
 def plot_2spec_export(folder, vphifilename, boozer_s, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io):
+  """Combine the torque data with vphiref and convert to SI units.
+
+  This function will read the vphiref value from file. The calculated
+  torques are printed in SI units. Torques (in SI units) and vphiref are
+  returned.
+
+  input:
+  ------
+  folder: string, path where the vphifile is.
+  vphifilename: string, name of the file, that contains the value of
+    vphiref.
+  boozer_s: list with s values of radial scan.
+  TphiNA_int_tot: floating point number, with the value of the
+    integrated total torque.
+  TphiNA_int_ele: floating point number, with the value of the
+    integrated electron torque.
+  TphiNA_int_io: floating point number, with the value of the
+    integrated ion torque.
+  """
   from os.path import join
 
   print('integral NTV torque = {:e} Nm'.format(1e-7*TphiNA_int_tot))
@@ -89,13 +123,42 @@ def plot_2spec_export(folder, vphifilename, boozer_s, TphiNA_int_tot, TphiNA_int
   return [vphiref, 1e-7*TphiNA_int_tot, 1e-7*TphiNA_int_ele, 1e-7*TphiNA_int_io]
 
 def export_2spec_Matyas(folder, h5filename, vphifilename):
+  """Process data of radial scan and return vphiref and torque (in SI units).
+
+  Process data of radial scan to calculate torque in SI units and return
+  them together with vphiref.
+
+  input:
+  ------
+  folder: string, path where the data of the radial scan is.
+  h5filename: string, name of the h5file (not path), that contains the
+    (merged) data of the radial scan.
+  vphifilename: string, name of the file (not path), that contains the
+    vphiref value of the radial scan.
+  """
   [boozer_s, TphiNA_tot, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io, Mte, Mtd] = data_process(folder, h5filename)
   return plot_2spec_export(folder, vphifilename, boozer_s, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io)
 
 def write_torque_data(folder: str, outfilename: str, torque_data):
+  """Write data ordered to a file.
+
+  This function assumes that torque_data is a list of lists with four
+  floating point entries.
+  The data will be sorted according to the first entries of the inner
+  list and then written to a file 'outfilename' located in 'folder'.
+  Each inner list will be put into one line.
+
+  input:
+  ------
+  folder: string, path where to put the output file.
+  outfilename: string, name of the output file.
+  torque_data: list of vphi and torque values, realized as list of
+    lists.
+  """
   from os.path import join
   from pathlib import Path
 
+  # This should sort the list according to the first entries of the inner list.
   torque_data.sort()
 
   with open(join(folder, outfilename), 'w') as f:
@@ -103,12 +166,37 @@ def write_torque_data(folder: str, outfilename: str, torque_data):
       f.write('{:+e} {:+e} {:+e} {:+e}\n'.format(numbers[0], numbers[1], numbers[2], numbers[3]))
 
 def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vphiinfilename: str, torqueoutfilename: str):
+  """Process data of scans over vphiref, calculate the torque and write it to file.
+
+  This function will process data from a scan over vphiref. First the
+  hdf5 output from the radial scan is merged into a single file per
+  vphiref value. From these the torque is calculated in SI units. The
+  torque and vphiref is written to file.
+
+  input:
+  ------
+  folder: string, working directory where the scan over vphiref is
+    located. Use './' if the current directory is the working directory.
+  subfolder_pattern: string, pattern to use for the subfolders, which
+    contain the individual runs of the vphiref scan. Example:
+    'n2_vshift+*'.
+  hdf5infilename: string, name of the hdf5 file, which contains the data
+    of a single vphiref and s run.
+    Attention: this is only the name not the path.
+  vphiinfilename: string, name of the file, that contains the value of
+    vphiref in rad/s.
+    Attention: this is only the name not the path.
+  torqueoutfilename: string, name of the file, where to store the
+    torque.
+    Attention: this is only the name not the path.
+  """
   from os.path import join
   from pathlib import Path
   from hdf5tools import copy_hdf5_from_subfolders_to_single_file
 
   p = Path(folder)
   folders = list(p.glob(subfolder_pattern))
+  # Note: torque_data might not be ordered according to vphi.
   torque_data = []
 
   # for each folder wih a velocity shift ...
