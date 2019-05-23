@@ -1,4 +1,4 @@
-function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, plot_data)
+function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, plot_data, file_out_name)
   %% Parameters
   % Input files
   if nargin < 1 || isempty(file_base)
@@ -16,6 +16,8 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
   if nargin < 5 || isempty(plot_data)
     plot_data = false;
   end
+  % nargin < 6 checked below, default value can not be calculated at
+  % this point.
 
   file_ext = 'bc';
 
@@ -50,8 +52,13 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
   file_in = [file_base,'.',file_ext];
 
   delta_phase=(phases(2)-phases(1))/pi;
-  file_out = [file_base,'-pert_kink_tear-n',num2str(n_pert),'-','phase_kt-',num2str(delta_phase),'pi'];
-  file_out = [file_out, '.', file_ext];
+
+  if nargin < 6 || isempty(file_out_name)
+    file_out = [file_base,'-pert_kink_tear-n',num2str(n_pert),'-','phase_kt-',num2str(delta_phase),'pi'];
+    file_out = [file_out, '.', file_ext];
+  else
+    file_out = file_out_name;
+  end
 
   % Read Boozer file
   data_c = read_file_into_cell_array(file_in);
