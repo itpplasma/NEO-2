@@ -1,5 +1,12 @@
 \chapter{Running}
+This chapter will describe the basic means and tools necessary to run a
+\neotwo simulation.
+One section will also describe some examples of complete workflows, i.e.
+if necessary how to create/process the input, how to do scans and how to
+process the data.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Simple}
 Both variants of the code have hard coded names for parameter-input
 files. These must be named ``neo.in'' and ``neo2.in''. The former may
@@ -9,6 +16,7 @@ is a standard fortran namelist file.
 The paramete-input files define the file names for the input of the
 magnetic equilibrium (background and perturbed).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Multispecies}
 A speciality of this multispecies run, is that the number of processors
 must be equal to the number of species. Other settings might produce
@@ -18,6 +26,8 @@ with the number of processors not equal the number of species, but the
 code will continue, as this case might be of interest for testing
 things.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Condor}
 
 Create a submit description file.
