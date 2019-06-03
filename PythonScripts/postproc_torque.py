@@ -173,6 +173,9 @@ def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vp
   vphiref value. From these the torque is calculated in SI units. The
   torque and vphiref is written to file.
 
+  Example, if the subfolders are in the current folder:
+  postproc_torque('./', 'n2_vshift*', 'neo2_multispecies_out.h5', 'vphiref.in', 'NTV_torque_int_all.dat')
+
   input:
   ------
   folder: string, working directory where the scan over vphiref is
