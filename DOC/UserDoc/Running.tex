@@ -41,3 +41,136 @@ complete batches.
 you can remove jobs from the queue with ``condor\_rm ID'', where ID can
 be those of a single run (e.g. 15.12), or those of a whole batch (e.g.
 15).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Preparation of Runs and Postprocession}
+This section aims to describe the basic steps that are necessary to be
+able to run neo-2, in the sense of preparing input files. Which includes
+the configuration/parameter files as well as files for magnetic
+equilibria and perturbation and the profiles.\\
+Note, that this section only aims at describing the most common steps
+and most common workflows, not all the steps/workflows, that might
+occour.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{QL run for the computation of torque/plasma rotation}
+
+\paragraph{Directory setup}
+It is recommended to create a folder in your directory on \path{/temp/},
+which will contain all the runs that can share the same precomputation
+run. Subfolder contain then the scans over the radial domain, i.e. there
+will be three levels - the base for the scans, the folders for the scans
+over rotation velocity and the folders for the radial position. Of
+course the last level does not need to be set up manually, \neotwo can
+do this.\\
+Preparation of magnetic and profile files might also be done in the top
+folder.
+
+\paragraph{Magnetic equilibrium}
+Get as efit or boozer. If you need to create perturbed files, then the
+boozer format is required.
+There is a fortran program to convert efit into boozer. It is located at
+\path{/proj/plasma/Neo2/NTV/ASDEX_MODES_IGOSHINE/EFIT_TO_BOOZER/}.
+
+\paragraph{Magnetic perurbation}
+Creating the magnetic perurbation files is done in three steps. First
+the displacements need to be calculated. There is the matlab/octave
+function \program{create\_displacement} to do this. It will produce a
+file with four columns, rho, rho squared, displacement for kink mode and
+displacement for tearing mode. Example usage of the function
+\begin{verbatim}
+plot_data = false;
+file_displacement_268 = 'displacement_morepoints_35568_t2p68.txt';
+create_displacement(file_displacement_268,...
+  1000, 0.25, 0.44945, 5, [0.06, 1, 1, 1], plot_data);
+\end{verbatim}
+With the displacement and the background field (in a boozer file), the
+perurbed field is calculated. The matlab/octave function
+\program{create_asdex_perturb} can do this. Example usage of the
+function
+\begin{verbatim}
+file_base = 'eqdsk_35568_2.68800';
+file_displacement_268 = 'displacement_morepoints_35568_t2p68.txt';
+amplitudes = [1/100, 1/150];
+phases = [0, pi];
+plot_data = false;
+create_asdex_perturb(file_base, file_displacement_268, amplitudes, phases, plot_data)
+\end{verbatim}
+The perturbed magnetic fields can be checked with the help of the
+method \program{contours\_in\_r\_z\_plane} of the python class
+\program{BoozerFile}. It will write contour lines to a file, that can be
+plotted, e.g. with gnuplot.\\
+The class also has method \program{calculate\_island\_width} to
+calculate the island width, which aid in
+deciding if the settings, e.g. for the amplitudes of the modes, are
+suitable.
+Third step is then the extraction of the n-modes from the produced
+boozer file. Usually only one of the modes is used for simulations.
+For the extraction there is the matlab/octave function
+\program{extract\_pert\_field}.
+
+\paragraph{Profiles input file}
+\neotwo requires the profile input to be in the form of a hdf5 file. The
+matlab script \program{generate_neo2_profile.m} is available to create
+these from text-data files (of density, temperature,...).
+TODO: change to function
+
+\paragraph{Precomputation Run}
+For further information regarding the input files, see Ch. \ref{ch:input}.\\
+Create in the main directory a subdirectory for the precomputation run.
+Create links to the background and perturbation file, as well as the
+file with the profiles (of density, temperature, etc), these are required
+as inputs for \neotwo.
+Copy neo.in and neo2.in into the folder, these files contain the input
+parameters and also define the names of the input files, so make sure
+the entries match the file names. Create or copy a submit file
+for condor, if you want to use condor. There is an example file in the
+DOC folder. Create a file vphiref.in, containing the line
+``vphiref = 0''. This file contains the rotation velocity and is read by
+some scripts. Copy the \neotwo executable into the folder (usually you
+do not want a debug version as it is slower). Executing \neotwo, will to
+produce the folders for the radial scan and copy the input files into
+these. Next step is to start the runs for the radial positions, either
+manually or via condor with
+\begin{verbatim}
+condor_submit submitfilename
+\end{verbatim}
+
+\paragraph{Computation Run}
+For a computation run, make a copy of the whole precomputation
+direcetory, i.e. including files, subfolders and files in the
+subfolders. Change the value in the file vphiref.in to the one selected
+for this run. Now some values in the input files need to be adjusted.
+Instead of doing this manually, you can use the shell script
+\program{set\_neo2in.sh} or the python function \program{set\_neo2in} of
+\program{scan_nonhdf5_tools.py}.
+Start the simulations as you would start a precomputation run.
+
+\paragraph{Postprocessing Data}
+The torque data is in \file{neo2\_multispecies\_out.h5}, but so far the
+data is scattered over the folders for the radial scan. The python
+function \program{copy\_hdf5\_from\_subfolders\_to\_single\_file} can
+combine the files from the subfolders into a single file. The python
+function \program{reshape\_hdf5\_file}, can reshape sucha file, so that
+it no longer contains an entry for each subfolder, but instead arrays
+over radius. The python function \program{collect\_and\_reshape} does
+both at once.
+
+%~ ########################################################################
+
+%~ 13) If you are not sure that precomputation is finished, run
+%~ ./check_after_precomp.sh RUN_AUG_template in the root directory and then
+%~ condor_submit submit_fixed in the template directory.
+
+%~ Final check
+%~ 16) If you are not sure that all computations are finished, run ./check_after.sh in the root directory and then condor_submit submit_fixed in the shifted directory.
+%~ You can check maximal memory request by running ./max_condor_memory_all.sh in the root directory.
+%~ Postprocession
+
+%~ 18) Data in “NTV_torque_int_all.dat” can be ploted by running plot_NTV_torque_int_all.m Matlab script. This produces 3 plots in EPS and PDF format each, named integral_torque_all_zoom.*, integral_torque_all.*, torque_vs_vphi_shift.*. First two have 3 curves – total, electron and ion torque, the last one has only the total torque in.
+
+%~ 19) If you need further plots and data for different shift (torque density, diffusion coefficients etc.) run in Matlab  ./plot_all_shift.m
+%~ All plots and data will be stored in subdirectory plots/ and export_dat/ resepectively
+%~ 20) If you need further plots or data export (e.g. for Clemente) make a copy of /temp/aradi_m/neo2_plotter/
+%~ Run neo2_plotter.m. All data will be exported to data folder. You can modify datasets and plot export path in the file.
