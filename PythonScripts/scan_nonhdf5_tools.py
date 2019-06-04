@@ -85,7 +85,7 @@ def set_neo2in(folder: str, subfolder_pattern: str, vphifilename: str, backup: b
   This function is intended to set the switches lsw_read_precom and
   lsw_write_precom for a computation run, i.e. the former is set to true
   and the latter to false.
-  Also, vphi will be set, the value will be read from the file
+  Also, vphi will be adjusted, the shift will be read from the file
   vphifilename, and if this is not found, a default is used. The file
   must contain the value in the form 'vphiref = 0' in the first line.
 
@@ -103,8 +103,8 @@ def set_neo2in(folder: str, subfolder_pattern: str, vphifilename: str, backup: b
     present in the directory, as there is no check, to operate on
     folders only.
   vphifilename: string, with the name of the file, that contains the
-    value for vphi. If the file can not be found, this is not considered
-    an error, instead a default value is used.
+    value for the shift in vphi. If the file can not be found, this is
+    not considered an error, instead a default value is used.
   backup: boolean, if true, a backup of the original input file is
     stored with added '~' at the end.
   """
@@ -158,7 +158,9 @@ def set_neo2in(folder: str, subfolder_pattern: str, vphifilename: str, backup: b
     nml['collision']['lsw_read_precom'] = True
     nml['collision']['lsw_write_precom'] = False
 
-    nml['multi_spec']['vphi'] = vphi
+    # Adjust the rotation, new value is background + shift, assuming
+    # The file contains already the background value.
+    nml['multi_spec']['vphi'] = nml['multi_spec']['vphi'] + vphi
     nml.write(current_filename, True)
 
 if __name__ == "__main__":
