@@ -8,7 +8,7 @@ Created on Thu, 2019-05-16
 Based on shell/matlab script by Matyas Aradi.
 """
 
-def data_process(folder: str, filename: str):
+def data_process(folder: str, filename: str, save_integrated_torque = False):
   """Process output of a scan over radius to get the torque.
 
   This function will process the output data (specifically, some fields
@@ -84,6 +84,11 @@ def data_process(folder: str, filename: str):
     TphiNA_int_tot = (4*pi*pi)*boozer_psi_pr[-1]*integrate.cumtrapz(array(TphiNA_tot)*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s, 0)
     TphiNA_int_ele = (4*pi*pi)*boozer_psi_pr[-1]*integrate.cumtrapz(TphiNA_ele*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s, 0)
     TphiNA_int_io = (4*pi*pi)*boozer_psi_pr[-1]*integrate.cumtrapz(array(TphiNA_io)*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s, 0)
+
+    if save_integrated_torque:
+      with open(join(folder, 'Tphi_integral_torque.dat'), 'w') as f:
+        for k in range(len(TphiNA_int_tot)):
+          f.write('{:+e} {:+e} {:+e} {:+e}\n'.format(boozer_s[k], TphiNA_int_tot[k], TphiNA_int_ele[k], TphiNA_int_io[k]))
 
     return [boozer_s, TphiNA_tot, TphiNA_int_tot[-1], TphiNA_int_ele[-1], TphiNA_int_io[-1], Mte, Mtd]
 
