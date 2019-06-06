@@ -81,11 +81,11 @@ def data_process(folder: str, filename: str):
     TphiNA_io = array(TphiNA_spec)[:,1]
 
     # compute integral torque
-    TphiNA_int_tot = (4*pi*pi)*boozer_psi_pr[-1]*integrate.trapz(array(TphiNA_tot)*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s)
-    TphiNA_int_ele = (4*pi*pi)*boozer_psi_pr[-1]*integrate.trapz(TphiNA_ele*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s)
-    TphiNA_int_io = (4*pi*pi)*boozer_psi_pr[-1]*integrate.trapz(array(TphiNA_io)*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s)
+    TphiNA_int_tot = (4*pi*pi)*boozer_psi_pr[-1]*integrate.cumtrapz(array(TphiNA_tot)*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s, 0)
+    TphiNA_int_ele = (4*pi*pi)*boozer_psi_pr[-1]*integrate.cumtrapz(TphiNA_ele*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s, 0)
+    TphiNA_int_io = (4*pi*pi)*boozer_psi_pr[-1]*integrate.cumtrapz(array(TphiNA_io)*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s, 0)
 
-    return [boozer_s, TphiNA_tot, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io, Mte, Mtd]
+    return [boozer_s, TphiNA_tot, TphiNA_int_tot[-1], TphiNA_int_ele[-1], TphiNA_int_io[-1], Mte, Mtd]
 
 def plot_2spec_export(folder, vphifilename, boozer_s, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io):
   """Combine the torque data with vphiref and convert to SI units.
