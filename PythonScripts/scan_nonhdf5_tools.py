@@ -1,5 +1,251 @@
 #!/usr/bin/env python3
 
+class condor_run:
+  """Class for storing information about one condor job.
+
+  This class is intended for storing information about one condor job.
+  This includes scan and job id, submit date and submit host, the host
+  on which the job did run, the start date and end date, and the maximum
+  memory consumption.
+
+  Dates are stored ans datetime object. Note that the condor log does
+  not include a year, thus old jobs or jobs run around new year might
+  cause problems.
+  """
+
+  def parse_id_string(self, id_string: str):
+    """Parse an id string from a condor log and return the information.
+
+    Example of id_string: '(1807.000.000)'
+    The first part is called here the scan id, the second the run id.
+    The third part is ignored so far.
+    """
+    scan_id = int(id_string[1:-2].split('.')[0])
+    run_id = int(id_string[1:-2].split('.')[1])
+    return [scan_id, run_id]
+
+  def parse_datetime_string(self, datetime_string: str):
+    """Parse a datetime string from a condor log and return the information.
+
+    Example of datetime_string: '04/25 13:28:02'
+    Order is month, day, hour, minutes second. Note that the year is not
+    provided.
+    """
+    from datetime import datetime
+
+    return datetime.strptime(datetime_string, '%m/%d %H:%M:%S')
+
+  def __init__(self, text_submit_messgage):
+    """Initalize the object.
+
+    Example of message: '000 (1807.000.000) 04/25 13:28:02 Job submitted from host: <129.27.161.38:9618?addrs=129.27.161.38-9618&noUDP&sock=942_b64d_3>'
+    The submit message is parsed to get a bunch of information (id's,
+    submit date and submit host).
+    For the rest, other methods need to be called, they are here only
+    set to an empty string.
+    """
+    parts = text_submit_messgage[0].split()
+
+    [self.scan_id, self.run_id] = self.parse_id_string(parts[1])
+    self.submit_date = self.parse_datetime_string(parts[2] + ' ' + parts[3])
+    self.submit_host = parts[8]
+
+    self.host = ''
+    self.start_date = ''
+    self.end_date = ''
+    self.memory = ''
+
+  def set_start_date(self, text_start_date: str):
+    """Parse passed text and set the start date.
+    """
+    self.start_date = self.parse_datetime_string(text_start_date)
+
+  def set_end_date(self, text_end_date: str):
+    """Parse passed text and set the end date.
+    """
+    self.end_date = self.parse_datetime_string(text_end_date)
+
+  def set_memory(self, text_memory: str):
+    """Parse passed text and set the memory.
+
+    Parsing might be a bit exagerated, the string is just converted to
+    an integer.
+    """
+    self.memory = int(text_memory)
+
+  def parse_start_message(self, text_start_message):
+    """Parse the start message to extract information and set members.
+
+    Example of message: 001 (1873.075.000) 06/04 14:15:58 Job executing on host: <129.27.161.108:9618?addrs=129.27.161.108-9618&noUDP&sock=962_6e32_4>
+    """
+    parts = text_start_message[0].split()
+    self.set_start_date(parts[2] + ' ' + parts[3])
+    self.host = parts[8]
+
+  def parse_end_message(self, text_end_message):
+    """Parse the start message to extract information and set members.
+
+    Example of message:
+    005 (1873.074.000) 06/04 14:30:28 Job terminated.
+    (1) Normal termination (return value 0)
+      Usr 0 00:53:52, Sys 0 00:16:23  -  Run Remote Usage
+      Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+      Usr 0 00:53:52, Sys 0 00:16:23  -  Total Remote Usage
+      Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+    0  -  Run Bytes Sent By Job
+    0  -  Run Bytes Received By Job
+    0  -  Total Bytes Sent By Job
+    0  -  Total Bytes Received By Job
+    Partitionable Resources :    Usage  Request Allocated
+      Cpus                 :                 2         2
+      Disk (KB)            :       75       75    367589
+      Memory (MB)          :    25659    31744     31744
+    """
+    parts = text_end_message[0].split()
+    self.set_end_date(parts[2] + ' ' + parts[3])
+    self.set_memory(text_end_message[-1].split()[3])
+
+  def get_scan_id(self):
+    return self.scan_id
+
+  def get_run_id(self):
+    return self.run_id
+
+class condor_log:
+  """Class for scanning of the log file of a condor run and storing basic information.
+
+  This is done by creating a list of condor_run objects.
+  """
+
+  def split_into_text_messages(self, lines):
+    """Takes the lines of a file, and splits it into individual messages.
+
+    This takes a list with the lines of a file, and sorts them into
+    lists of lists, where each entry of the outer represents a single
+    message, and the inner one are the lines of the message.
+    Messages are assumed to be separated by lines containing only three
+    dots '...'.
+    """
+    text_messages = []
+    text_messages.append([])
+    for l in lines:
+      if l.strip() != '...':
+        text_messages[-1].append(l.strip())
+      else:
+        text_messages.append([])
+
+    # Messages end with '...' so we added one element to much.
+    text_messages.pop()
+
+    return text_messages
+
+  def get_run(self, string_id: str):
+    """Get a specific run from the list, with an id given as string.
+    """
+    [scan_id, run_id] = self.runs[0].parse_id_string(string_id)
+    for r in self.runs:
+      if (r.get_scan_id() == scan_id) and (r.get_run_id() == run_id):
+        return r
+
+  def parse_text_message(self, text_message):
+    """Parse a single message.
+
+    This is done by determining the type of the message and call the
+    corresponding methods of the condor_run object.
+    If a job is submitted, a condor_run is appended.
+    If a job is started, the start message is parsed.
+    If a job is finished, the end message is parsed.
+
+    The type of the message is determined by the first number in the
+    first line:
+    0 submit
+    1 start
+    5 end
+    6 update image size (not used at the moment)
+    """
+    message_identifier = int(text_message[0].split()[0])
+
+    # submitted
+    if message_identifier == 0:
+      self.runs.append(condor_run(text_message))
+    # job started
+    elif  message_identifier == 1:
+      r = self.get_run(text_message[0].split()[1])
+      r.parse_start_message(text_message)
+    # job terminated
+    elif  message_identifier == 5:
+      r = self.get_run(text_message[0].split()[1])
+      r.parse_end_message(text_message)
+    # update of image size.
+    elif  message_identifier == 6:
+      # Do nothing, memory is parsed from end message.
+      # Might be interesting in the future to get memory over time.
+      None
+
+  def parse_text_messages(self, text_messages):
+    """Parse the message: go through the list and parse each message.
+    """
+    for message in text_messages:
+      self.parse_text_message(message)
+
+  def __init__(self, filename: str):
+    """Opens the file, reads the content, splits and parses it.
+    """
+    with open(filename) as f:
+      self.lines = f.readlines()
+
+    self.runs = []
+
+    self.text_messages = self.split_into_text_messages(self.lines)
+
+    self.parse_text_messages(self.text_messages)
+
+  def get_memory_per_job(self):
+    """Return lists with ids and memory consumption (MBy) of the jobs.
+
+    This will return two lists. The first contains the scan and run id
+    of the jobs, the second the respective memory consumption of the
+    job.
+    """
+    ids = []
+    memory_per_job = []
+
+    for r in self.runs:
+      ids.append([r.get_scan_id(), r.get_run_id()])
+      memory_per_job.append(r.memory)
+
+    return [ids, memory_per_job]
+
+  def get_max_memory(self):
+    """Return maximum memory consumption (MBy).
+    """
+    [ids, memory_per_job] = self.get_memory_per_job()
+
+    return max(memory_per_job)
+
+  def get_time_per_job(self):
+    """Return lists with ids and time (datetime.timedelta) of the jobs.
+
+    This will return two lists. The first contains the scan and run id
+    of the jobs, the second the respective time needed of the job, as a
+    datetime.timedelta object.
+    """
+    ids = []
+    time_per_job = []
+
+    for r in self.runs:
+      ids.append([r.get_scan_id(), r.get_run_id()])
+      time_per_job.append(r.end_date - r.start_date)
+
+    return [ids, time_per_job]
+
+  def get_max_time(self):
+    """Return maximum time as datetime.timedelta.
+    """
+    [ids, time_per_job] = self.get_time_per_job()
+
+    return max(time_per_job)
+
 def get_memory_consumption_of_run(lines, id_of_run: str):
   """Get memory consumption for 'id_of_run' from 'lines'.
 
