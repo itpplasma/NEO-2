@@ -30,8 +30,14 @@ then convert the values to CGS units.
 \paragraph{neo.in}
 A fixed format file.
 
+Most important parameter is probably the name of the file which contains
+the magnetic background.
+
 Read in subroutine \codevariable{neo\_read\_control} in
 \file{neo\_sub.f90}.
+
+There is an example file with all the parameters in the doc folder,
+which should also document the parameters.
 
 \paragraph{neo2.in}
 A namelist file.
@@ -40,6 +46,9 @@ Read in main file.
 Memory scales at least with cube of lag parameter, as the number of
 non-zero elements of the sparse matrix scales with the cube of number of
 basis polynoms.
+
+There is an example file with all the parameters in the doc folder,
+which should also document the parameters.
 
 \paragraph{profile input}
 An hdf5 file, which contains the profile (e.g. density, temperature)
