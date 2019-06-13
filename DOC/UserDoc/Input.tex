@@ -40,3 +40,11 @@ Read in main file.
 Memory scales at least with cube of lag parameter, as the number of
 non-zero elements of the sparse matrix scales with the cube of number of
 basis polynoms.
+
+\paragraph{profile input}
+An hdf5 file, which contains the profile (e.g. density, temperature)
+data, required for the creation of a radial scan.
+This is only used by \neotwo when run to create the folders with the
+inputs for a radial scan.
+The values from the file will be read, and writen to the \file{neo2.in}
+file at the correct location. Interpolation?
