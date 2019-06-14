@@ -225,10 +225,10 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
-#ifdef __GFORTRAN__
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-#else
+#if __INTEL_COMPILER < 1500
     RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
 #endif
       !
       REAL(c_double), VALUE :: x
@@ -310,10 +310,10 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
-#ifdef __GFORTRAN__
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-#else
+#if __INTEL_COMPILER < 1500
     RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
 #endif
       !
       REAL(c_double), VALUE :: x
@@ -395,10 +395,10 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
-#ifdef __GFORTRAN__
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-#else
+#if __INTEL_COMPILER < 1500
     RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
 #endif
       !
       REAL(c_double), VALUE :: x
@@ -477,10 +477,10 @@ CONTAINS
     CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
-#ifdef __GFORTRAN__
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-#else
+#if __INTEL_COMPILER < 1500
     RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
 #endif
       !
       REAL(c_double), VALUE :: x
@@ -563,10 +563,10 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
-#ifdef __GFORTRAN__
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-#else
+#if __INTEL_COMPILER < 1500
     RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
 #endif
       !
       REAL(c_double), VALUE :: x
@@ -646,10 +646,10 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
-#ifdef __GFORTRAN__
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-#else
+#if __INTEL_COMPILER < 1500
     RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
 #endif
       !
       REAL(c_double), VALUE :: x
@@ -744,10 +744,10 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
-#ifdef __GFORTRAN__
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-#else
+#if __INTEL_COMPILER < 1500
     RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
 #endif
       !
       REAL(c_double), VALUE :: x
@@ -827,10 +827,10 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
-#ifdef __GFORTRAN__
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-#else
+#if __INTEL_COMPILER < 1500
     RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
 #endif
       !
       REAL(c_double), VALUE :: x
@@ -911,10 +911,10 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
-#ifdef __GFORTRAN__
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-#else
+#if __INTEL_COMPILER < 1500
     RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
 #endif
       !
       REAL(c_double), VALUE :: x
@@ -994,10 +994,10 @@ CONTAINS
   CONTAINS
     ! Fortran-to-C wrapper function in order to guarantee interoperability between
     ! Fortran and C
-#ifdef __GFORTRAN__
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-#else
+#if __INTEL_COMPILER < 1500
     RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
+#else
+    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
 #endif
       !
       REAL(c_double), VALUE :: x
