@@ -828,10 +828,8 @@ CONTAINS
     vel_distri_swi = 0
     vel_num = 10
     vel_max = 5.0d0
-    !! Modifications by Andreas F. Martitsch (15.07.2014)
-    ! Default path for the collision operator matrices
-    collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
-    !! End Modifications by Andreas F. Martitsch (15.07.2014)
+    ! Default path for the collision operator matrices - not used
+    collop_path = ''
     collop_base_prj = 0
     collop_base_exp = 0
     scalprod_alpha = 0d0

@@ -94,6 +94,7 @@
   collop_only_precompute
   ! ['/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/']
   collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
+                            ! variable not used ['']
   conl_over_mfp = 1.0e-3    ! collisionality parameter [1.0d-3]
   conl_over_mfp_vec = 0.0d0 ! [0.0d0]
   isw_axisymm  = 0          ! [0]
