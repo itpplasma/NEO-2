@@ -253,7 +253,7 @@ PROGRAM neo2
   niter = 10
   !  sparse_solve_method = 0
   ! collision
-  collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
+  collop_path = '' ! variable not used.
   collop_base_prj = 0
   collop_base_exp = 0
   scalprod_alpha = 0d0

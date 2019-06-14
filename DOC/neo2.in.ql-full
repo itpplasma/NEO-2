@@ -80,7 +80,8 @@
                            ! defines a uniform knot distribution (best
                            ! choice). [1.0]
  collop_bspline_taylor = .true. ! [.true.]
- collop_path = "/afs/itp.tugraz.at/proj/plasma/documents/neo2/data-matrixelements/" ! ['/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/']
+ collop_path = "/afs/itp.tugraz.at/proj/plasma/documents/neo2/data-matrixelements/" !
+                        ! variable not used. ['']
  conl_over_mfp = 1.0e-3 ! This is the collisionality parameter. When
                         ! provided positive it is $L_c/l_c$ (connection
                         ! length over mean free path) and when provided
