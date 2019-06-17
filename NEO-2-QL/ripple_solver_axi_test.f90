@@ -52,7 +52,7 @@ SUBROUTINE ripple_solver(                                 &
   USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
                                surface_boozer_B00,travis_convfac,              &
                                mag_magfield,boozer_s
-       
+
   USE development
 
   !*****************************
@@ -67,7 +67,7 @@ SUBROUTINE ripple_solver(                                 &
   USE mpiprovider_module
   USE collop
   !! End Modification by Andreas F. Martitsch (28.07.2015)
-  
+
   IMPLICIT NONE
   !INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
@@ -85,7 +85,7 @@ SUBROUTINE ripple_solver(                                 &
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: flux_m
   REAL(kind=dp), DIMENSION(:,:),  ALLOCATABLE, INTENT(out)   :: qflux
   INTEGER,                                    INTENT(out)   :: ierr
-  
+
   ! local stuff
   ! Winny's output
   ! INTEGER, PARAMETER :: solver_talk = 0 ! (0: silent, 1: output)
@@ -244,7 +244,7 @@ SUBROUTINE ripple_solver(                                 &
   double precision, dimension(:), allocatable       :: phi_mfl_h5, bhat_mfl_h5, npassing_h5
   double precision, dimension(:,:,:,:), allocatable :: dentf_p_h5, enetf_p_h5, spitf_p_h5
   double precision, dimension(:,:,:,:), allocatable :: dentf_m_h5, enetf_m_h5, spitf_m_h5
-  
+
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
   niter=1000
   epserr_iter=1.d-3
@@ -385,7 +385,7 @@ iprintflag=1
   IF (prop_reconstruct_levels .EQ. 0) THEN
      ! This is the old stuff
      ! here eta = eta_glob = eta_loc
-     ub_eta_loc = ub_eta   
+     ub_eta_loc = ub_eta
 
      ! eta
      IF (ALLOCATED(eta)) DEALLOCATE(eta)
@@ -418,11 +418,11 @@ iprintflag=1
      ! local: important for the local propagator
      ! additional: additional stuff which should be reconstructed after solving the local stuff
      ! global = local+additional: all together, used also for allocation of output quantities
-     ! 
+     !
      ! eta is the global eta
      ! In addition eta_loc (local) and eta_glob (global) exist
      !
-     ! All procedures after the solver (e.g. joining do not know about this local 
+     ! All procedures after the solver (e.g. joining do not know about this local
      ! treatment of eta. So before one returns to the calling routine, all relevant
      ! external quantities have to be interpolated to match the global eta!
      !
@@ -431,7 +431,7 @@ iprintflag=1
      !
      ! Now there exist the following new quantities
      !
-     ! add_global_eta - integer: 
+     ! add_global_eta - integer:
      !    1 - if additional levels exist; 0 - otherwise
      !
      ! eta_loc_ind(0:ub_eta_loc) - integer:
@@ -441,9 +441,9 @@ iprintflag=1
      !    index where the value of eta_glob can be found in eta_loc
      !    or -1 if it does not exist in eta_loc
      !
-     ! reconstruction has to be done, 
-     !    if (add_global_eta .gt. 0) 
-     ! 
+     ! reconstruction has to be done,
+     !    if (add_global_eta .gt. 0)
+     !
      ! So the usage is now (input file):
      !
      !  prop_reconstruct_levels = 0 : no reconstruction
@@ -453,10 +453,10 @@ iprintflag=1
      !                        1 : only local (no reconstruction possible)
      !                        2 : local + "absolute maximum" (reconstruction possible)
      !                        3 : local + "absolute maximum" + rest (reconstruction possible)
-     !                        4 : not recommended (no reconstruction possible) 
+     !                        4 : not recommended (no reconstruction possible)
      !     if reconstruction is not possible, prop_reconstruct_levels is automatically set to 0
      !
-     !  bsfunc_sigma_mult .ne. 1.0d0 : then splitting is done with the original value of sigma and 
+     !  bsfunc_sigma_mult .ne. 1.0d0 : then splitting is done with the original value of sigma and
      !                                 then also with the multiplied value
      !                                 sigma * bsfunc_sigma_mult
      !
@@ -482,7 +482,7 @@ iprintflag=1
      IF (ALLOCATED(eta_loc)) DEALLOCATE(eta_loc)
      ALLOCATE(eta_loc(0:ub_eta_loc))
      eta_loc = fieldpropagator%ch_act%eta_loc
-     
+
      ! index
      IF (ALLOCATED(eta_glob_ind)) DEALLOCATE(eta_glob_ind)
      ALLOCATE(eta_glob_ind(0:ub_eta))
@@ -559,7 +559,7 @@ iprintflag=1
   DO i=1,ub_eta_next
     IF(1.d0-b_r*eta_next(i)+10.d0*EPSILON(1.d0).GT.0.d0) npass_r_out = i
   ENDDO
-!  
+!
 ! Ignore the boundary layer if it is too narrow
 ignore_lb=0
 bhat_changed_l=0.d0
@@ -793,7 +793,7 @@ PRINT *,'right boundary layer ignored'
      PRINT *, 'xetami,xetama          ', xetami,xetama
      PRINT *, 'rt0                    ', rt0
      PRINT *, 'collpar,conl_over_mfp  ', collpar,conl_over_mfp
-     
+
      if (prop_fileformat .eq. 0) then
         OPEN(123,file='bhat_mfl.dat')
         DO i=ibeg,iend
@@ -816,7 +816,7 @@ PRINT *,'right boundary layer ignored'
 
         call h5_close(h5id_bhat_mfl)
   end if
-     
+
      OPEN(123,file='eta.dat')
      DO i=0,ub_eta
         WRITE(123,*) phi_mfl(ibeg),eta(i)
@@ -929,9 +929,9 @@ PRINT *,'right boundary layer ignored'
 !
     npart_loc=MAX(npart_loc,npassing)
 !
-    IF(istep.EQ.ibeg) THEN 
+    IF(istep.EQ.ibeg) THEN
       npass_l=npassing+1
-    ELSEIF(istep.EQ.iend) THEN 
+    ELSEIF(istep.EQ.iend) THEN
       npass_r=npassing+1
     ENDIF
 !
@@ -1003,7 +1003,7 @@ PRINT *,'right boundary layer ignored'
     ENDDO
 !
     DO k=1,legmax+1
-! Caution: 
+! Caution:
 ! here power index is shifted (instead of term (k) -> term (k-1) is computed)
       km1=k-1
       vrecurr(km1,0,1:npassing+1)                                            &
@@ -1100,11 +1100,11 @@ PRINT *,'right boundary layer ignored'
         bvec_lapack(k,k)=1.d0
       ENDDO
 !
-      CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)         
+      CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
 !
-! bvec_lapack(j,k) - contribution to the derivative of the distribution 
-! function $\hat f^\sigma$ of the order j-1=0,1,2,3 at the boundary 
-! $\lambda=\lambda_i$ (at the level $\eta=\eta_i$) from the band i+k-2, 
+! bvec_lapack(j,k) - contribution to the derivative of the distribution
+! function $\hat f^\sigma$ of the order j-1=0,1,2,3 at the boundary
+! $\lambda=\lambda_i$ (at the level $\eta=\eta_i$) from the band i+k-2,
 ! where k=1,2,3,4. If i=1 contributing bands are i+k-1=1,2,3,4 (shift up by 1).
 ! If i=npassing, sigma=-1 fluxes start contribute:
 ! contributions for k=1,2,3,4 come from fun(N-1),fun(N),fun(N+1),fun_b(N*1)
@@ -1239,7 +1239,7 @@ PRINT *,'right boundary layer ignored'
 !    given spatial point; this block is split in two parts:
 ! a) co-passing particles:
 !    These occupy first npassing+1 elements of the Laguerre block, sequence
-!    of these elements is direct, 1:npassing+1 - 1st element corresponds 
+!    of these elements is direct, 1:npassing+1 - 1st element corresponds
 !    to f_1, i.e. the flux through the 1st band and last element - to
 !    the flux through incoplete band - boundary layer
 ! b) counter-passing particles:
@@ -1839,7 +1839,7 @@ PRINT *,'right boundary layer ignored'
 !
         enddo
       endif
-!      
+!
     endif
 !
   enddo
@@ -2050,7 +2050,7 @@ PRINT *,'right boundary layer ignored'
 !
         enddo
       endif
-!      
+!
     endif
 !
   enddo
@@ -2468,7 +2468,7 @@ IF(ALLOCATED(source_vector_all)) DEALLOCATE(source_vector_all)
 ALLOCATE(source_vector_all(n_2d_size,1:3,0:num_spec-1))
 source_vector_all=0.0d0
 ! save solution of the differential part for species=ispec
-! (diffusion coeff. driven by thermodyn. forces of other 
+! (diffusion coeff. driven by thermodyn. forces of other
 ! species are zero -> interaction through integral part)
 source_vector_all(:,1:3,ispec)=source_vector(:,1:3)
 ! solve system
@@ -2492,7 +2492,7 @@ call cpu_time(time1)
 !
       do ispecp=0,num_spec-1
         print *,'species',ispecp,':'
-        bvec_lor=source_vector_all(:,k,ispecp) 
+        bvec_lor=source_vector_all(:,k,ispecp)
 !
         do iter=1,niter
           bvec_prev=source_vector_all(:,k,ispecp)
@@ -2516,13 +2516,13 @@ call cpu_time(time1)
           break_cond1(ispec)=SUM(ABS(source_vector_all(:,k,ispecp)-bvec_prev))
           break_cond2(ispec)=SUM(ABS(bvec_prev))*epserr_iter
           PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
-          CALL mpro%allgather(break_cond1(ispec), break_cond1)
-          CALL mpro%allgather(break_cond2(ispec), break_cond2)
+          CALL mpro%allgather_inplace(break_cond1)
+          CALL mpro%allgather_inplace(break_cond2)
           IF(ALL(break_cond1 .LT. break_cond2)) EXIT
           !! End Modification by Andreas F. Martitsch (20.08.2015)
         enddo
         if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver."
-!       
+!
       enddo
 !
     enddo
@@ -2554,7 +2554,7 @@ call cpu_time(time1)
     if (prop_fileformat .eq. 1) then
 
        !call h5_create('spitzer_' // trim(adjustl(propname)) // '.h5', h5id_final_spitzer)
-       
+
        ! Create unlimited arrays in HDF5 file
        call h5_create('phi_mesh_' // trim(adjustl(propname)) // '.h5', h5id_phi_mesh)
        !call h5_define_group(h5id_final_spitzer, 'phi_mesh', h5id_phi_mesh)
@@ -2567,7 +2567,7 @@ call cpu_time(time1)
 
        call h5_create('spitf_' // trim(adjustl(propname)) // '.h5', h5id_spitf)
        !call h5_define_group(h5id_final_spitzer, 'spitf', h5id_spitf)
-       
+
     else
 
        ! Create ASCII files
@@ -2576,7 +2576,7 @@ call cpu_time(time1)
        open(iunit_dt_p,form='unformatted',file='dentf_p.'     &
             //trim(adjustl(propname))//'.dat')
        open(iunit_dt_m,form='unformatted',file='dentf_m.'     &
-            //trim(adjustl(propname))//'.dat')       
+            //trim(adjustl(propname))//'.dat')
        open(iunit_sp_p,form='unformatted',file='spitf_p.'     &
             //trim(adjustl(propname))//'.dat')
        open(iunit_sp_m,form='unformatted',file='spitf_m.'     &
@@ -2610,7 +2610,7 @@ call cpu_time(time1)
     allocate(spitf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
     allocate(enetf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
 
-      
+
     do istep=ibeg,iend
       if(phi_mfl(istep).lt.phiplot.and.istep.ne.iend) cycle
       icounter=icounter+1
@@ -2733,7 +2733,7 @@ call cpu_time(time1)
             //trim(adjustl(propname))//'.dat')
        write(iunit_sizes,*) lag,nplp1,icounter,collpar,travis_convfac
        write(iunit_sizes,*) eta(0:nplp1)
-       close(iunit_sizes)       
+       close(iunit_sizes)
     end if
 !
     DEALLOCATE(fun_write)
@@ -2750,11 +2750,11 @@ ALLOCATE(qflux_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
 qflux_allspec=0.0d0
 DO ispecp=0,num_spec-1
    qflux=MATMUL(flux_vector,source_vector_all(:,:,ispecp))
-   qflux_allspec(:,:,ispecp,ispec)=qflux 
+   qflux_allspec(:,:,ispecp,ispec)=qflux
 ENDDO
 ! order of species inidices (ispecp,ispec) interchanged
 ! (-> easier to handle within mpro%allgather)
-CALL mpro%allgather(qflux_allspec(:,:,:,ispec),qflux_allspec)
+CALL mpro%allgather_inplace(qflux_allspec)
 ! go back to the "natural" order of species indices (ispec,ispecp)
 IF(ALLOCATED(qflux_allspec_tmp)) DEALLOCATE(qflux_allspec_tmp)
 ALLOCATE(qflux_allspec_tmp(1:3,1:3,0:num_spec-1,0:num_spec-1))
@@ -2890,7 +2890,7 @@ time3 = time3 + (time5-time4)
 !
         enddo
         !
-        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver." 
+        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver."
       endif
 !
       do mm=0,lag
@@ -2948,7 +2948,7 @@ time3 = time3 + (time5-time4)
 !
         enddo
         !
-        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver." 
+        if (niter .eq. iter) write (*,*) "Maximum number of iterations reached in ripple solver."
       endif
 !
       do mm=0,lag
@@ -3164,7 +3164,7 @@ SUBROUTINE integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
   !PRINT *,'anumm:',anumm(1,:)
   !PRINT *,'denmm:',denmm(1,:)
   !STOP
-  !! End Modification by Andreas F. Martitsch (28.07.2015) 
+  !! End Modification by Andreas F. Martitsch (28.07.2015)
 !
   vec_out=0.d0
 !
@@ -3195,7 +3195,7 @@ SUBROUTINE integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
   ! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
   ! (mpro%allgather supports 3D and 4D matrices)
   !PRINT *,'mpro%getrank() before:', mpro%getrank()
-  CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
+  CALL mpro%allgather_inplace(scalprod_pleg)
   !PRINT *,'mpro%getrank() after:', mpro%getrank()
   !PRINT *,'scalprod_pleg, species = ',ispec
 !!$  IF(mpro%getrank() .EQ. 0) THEN
@@ -3241,7 +3241,7 @@ SUBROUTINE integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
     !
     ! end of interaction with rest processors
     !
-    
+
 !
     DO m=0,lag
       k=ind_start(istep)+2*(npassing+1)*m
@@ -3279,7 +3279,7 @@ subroutine rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,        &
                              delt_pos,delt_neg,                          &
                              fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
 !
-! Mnemonics: 
+! Mnemonics:
 ! fact_pos_b(i) - integration step in positive direction starts at point i
 ! fact_pos_e(i) - integration step in positive direction ends at point i
 ! fact_neg_b(i) - integration step in negative direction starts at point i
