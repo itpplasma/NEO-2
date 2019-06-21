@@ -1,3 +1,25 @@
+% \brief Create a perturbed boozer file for given equlibrium input and displacements.
+%
+%
+% Input:
+% ------
+% file_base: base filename (i.e. without extension) for the input file
+%   with the background/unperturbed field.
+%   default value: 'eqdsk_35568_2.68800'
+% file_displacement: filename (i.e. with extension) for the input file
+%   with the displacements caused by the modes.
+%   default value: 'displacement_morepoints.txt'
+% amplitudes: array with the amplitudes of the single modes. At the
+%   moment two values are expected.
+%   default value: [1/100, 1/150]
+% phases: array with the phases of the single modes. At the moment two
+%   values are expected.
+%   default value: [0, pi]
+% plot_data: logical, if true, plots of the results are made.
+%   default value: false;
+% file_out_name: name for the output file, without extension.
+%   default value: [file_base,'-pert_kink_tear-n',num2str(n_pert),...
+%   '-','phase_kt-',num2str(delta_phase),'pi', '.bc']
 function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, plot_data, file_out_name)
   %% Parameters
   % Input files
