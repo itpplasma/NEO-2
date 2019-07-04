@@ -52,7 +52,7 @@ function check_equality_hdf5 {
   # to differ.
   # The /metadata object contains for example start and end times of the
   # run, which are expected to differ.
-  exclude_paths="--exclude-path=/metadata --exclude-path=/Testcase1/NEO-2/neo2_config/metadata"
+  exclude_paths="--exclude-path=/metadata --exclude-path=/${testcase}/NEO-2/neo2_config/metadata"
   # Specify the accuracy for the comparison.
   exponent_def=-12
   accuracy="1.0e$exponent_def"
@@ -64,7 +64,7 @@ function check_equality_hdf5 {
     # The object parallel_storage is indicator if the run was parallel
     # or not, as the reference should be made with a single processor,
     # this is expected to differ.
-    exclude_paths="$exclude_paths --exclude-path=/Testcase1/NEO-2/taginfo/parallel_storage"
+    exclude_paths="$exclude_paths --exclude-path=/${testcase}/NEO-2/taginfo/parallel_storage"
   fi
 
   for h5file in `ls $referencepath_local/${testcase_local}/*.h5` ; do
