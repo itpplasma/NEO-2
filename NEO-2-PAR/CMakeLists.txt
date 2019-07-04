@@ -206,6 +206,10 @@ ADD_TEST(Test_Testcase1-Seq       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_
 ADD_TEST(Test_Testcase1-Par       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "6")
 #ADD_TEST(Test_Testcase2-Seq       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase2" "0")
 #ADD_TEST(Test_Testcase2-Par       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase2" "6")
+ADD_TEST(Test_Relativistic_BeliaevBudker-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BeliaevBudker" "0")
+ADD_TEST(Test_Relativistic_BeliaevBudker-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BeliaevBudker" "6")
+ADD_TEST(Test_Relativistic_BraamsKarney-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BraamsKarney" "0")
+ADD_TEST(Test_Relativistic_BraamsKarney-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BraamsKarney" "6")
 
 #ADD_TEST(Test_Testcase2       ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase2" "0")
 #ADD_TEST(Test_Testcase2-par4  ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase2" "4")
