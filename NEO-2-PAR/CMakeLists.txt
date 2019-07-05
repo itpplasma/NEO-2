@@ -39,19 +39,19 @@ set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
 
 # Compiler dependent settings
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
-	# Determine compiler version
-	execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
+  # Determine compiler version
+  execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
                     OUTPUT_VARIABLE GCC_VERSION)
-	string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
+  string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
         list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
         list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
 
-	if (GCC_MINOR GREATER 8)
-		set (CMAKE_Fortran_FLAGS "-cpp -ffpe-summary=invalid,zero,overflow")
-	else()
-		set (CMAKE_Fortran_FLAGS "-cpp")
-	endif()
-	set (CMAKE_Fortran_FLAGS_DEBUG "-openmp -g -fcheck=all -Wall -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label -Wshadow")
+  if (GCC_MINOR GREATER 8)
+    set (CMAKE_Fortran_FLAGS "-cpp -ffpe-summary=invalid,zero,overflow")
+  else()
+    set (CMAKE_Fortran_FLAGS "-cpp")
+  endif()
+  set (CMAKE_Fortran_FLAGS_DEBUG "-openmp -g -fcheck=all -Wall -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label -Wshadow")
 
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
         set (CMAKE_Fortran_FLAGS "-cpp -heap-arrays")
@@ -82,16 +82,16 @@ if (MPE_SUPPORT)
                 include_directories(${MPE_PATH}/include)
         endif ()
         add_definitions(-DMPE_SUPPORT)
-	find_library(MPE_lib mpe ${MPE_PATH}/lib)
+  find_library(MPE_lib mpe ${MPE_PATH}/lib)
 endif ()
 
 ### Debug settings
 #if(DEBUG)
-#	set(DEBUGFLAG "-g -ggdb -C -p -pg -fbacktrace -ffpe-trap=invalid,zero,overflow,underflow")
-#	set(FFLAG_DEBUG "-Waliasing -Wampersand  -Wline-truncation  -Wsurprising -Wno-tabs  -Wunderflow -cpp")  #-Wnonstd-intrinsics removed in 4.7, had to add -cpp, had to remove -MJOBS
-#	set(CDEBUG_DEBUG "-g -ggdb -C -p -fbacktrace")
-#	set(CFLAGS_DEBUG "-O0") 
-#	set(DBGLIBS "efence")
+# set(DEBUGFLAG "-g -ggdb -C -p -pg -fbacktrace -ffpe-trap=invalid,zero,overflow,underflow")
+# set(FFLAG_DEBUG "-Waliasing -Wampersand  -Wline-truncation  -Wsurprising -Wno-tabs  -Wunderflow -cpp")  #-Wnonstd-intrinsics removed in 4.7, had to add -cpp, had to remove -MJOBS
+# set(CDEBUG_DEBUG "-g -ggdb -C -p -fbacktrace")
+# set(CFLAGS_DEBUG "-O0")
+# set(DBGLIBS "efence")
 #endif(DEBUG)
 
 ### HDF5
@@ -153,31 +153,31 @@ endif(${ISW_SUPERLU_VERSION} LESS 0)
 
 ### Define executable
 add_executable(${EXE_NAME}
-        ${NEO2_SRC_FILES}
-	${NEO2_COMMON_FILES}
-	${SUITESPARSE_SRC_FILES}
-	${SUPERLU_SRC_FILES}
-	${FGSL_USERINTER_SRC_FILES}
-	${MPI_SRC_FILES}
+  ${NEO2_SRC_FILES}
+  ${NEO2_COMMON_FILES}
+  ${SUITESPARSE_SRC_FILES}
+  ${SUPERLU_SRC_FILES}
+  ${FGSL_USERINTER_SRC_FILES}
+  ${MPI_SRC_FILES}
 )
 set_target_properties(${EXE_NAME} PROPERTIES COMPILE_FLAGS "${MPI_Fortran_COMPILE_FLAGS}")
 set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAGS}")
 
 ### Add libraries linked with executable
 target_link_libraries(${EXE_NAME}
-        ${fgsl_lib} ${gsl_lib}
-        ${SUPERLU_LIBRARIES}
-	${SUITESPARSE_LIBRARIES}
-        ${MyMPILib_lib}
-        ${MPE_lib}
-        ${MPI_Fortran_LIBRARIES}
-	${HDF5_tools_lib}
-	${HDF5_Fortran_HL_LIBRARIES}
-	${HDF5_HL_LIBRARIES}
-	${HDF5_Fortran_LIBRARIES}
-	${HDF5_LIBRARIES}
-	${BLAS_lib} -lz -lpthread
-	#debug efence
+  ${fgsl_lib} ${gsl_lib}
+  ${SUPERLU_LIBRARIES}
+  ${SUITESPARSE_LIBRARIES}
+  ${MyMPILib_lib}
+  ${MPE_lib}
+  ${MPI_Fortran_LIBRARIES}
+  ${HDF5_tools_lib}
+  ${HDF5_Fortran_HL_LIBRARIES}
+  ${HDF5_HL_LIBRARIES}
+  ${HDF5_Fortran_LIBRARIES}
+  ${HDF5_LIBRARIES}
+  ${BLAS_lib} -lz -lpthread
+  #debug efence
 )
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
@@ -191,13 +191,13 @@ add_custom_target(
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
 
 if (COPY_TO_ARCHIVE)
-	add_custom_command(
-		TARGET ${EXE_NAME}
-		POST_BUILD
-		COMMAND ../Scripts/cp_to_archive.sh
-		ARGS ${EXE_NAME} ${EXE_ARCHIVE_PATH} ${CMAKE_Fortran_COMPILER_ID} ${CMAKE_BUILD_TYPE}
-        	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-		)
+  add_custom_command(
+    TARGET ${EXE_NAME}
+    POST_BUILD
+    COMMAND ../Scripts/cp_to_archive.sh
+    ARGS ${EXE_NAME} ${EXE_ARCHIVE_PATH} ${CMAKE_Fortran_COMPILER_ID} ${CMAKE_BUILD_TYPE}
+          WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
 endif()
 
 ### Testing section
