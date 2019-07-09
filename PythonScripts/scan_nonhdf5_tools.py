@@ -85,6 +85,9 @@ class condor_run:
   def parse_end_message(self, text_end_message):
     """Parse the start message to extract information and set members.
 
+    This includes messages with the identifiers 4 (evicted, e.g. abort
+    by user) and 5 (terminated, e.g. finished)
+
     Example of message:
     005 (1873.074.000) 06/04 14:30:28 Job terminated.
     (1) Normal termination (return value 0)
@@ -172,8 +175,8 @@ class condor_log:
     elif  message_identifier == 1:
       r = self.get_run(text_message[0].split()[1])
       r.parse_start_message(text_message)
-    # job terminated
-    elif  message_identifier == 5:
+    # job terminated or got evicted
+    elif message_identifier == 5 or message_identifier == 4:
       r = self.get_run(text_message[0].split()[1])
       r.parse_end_message(text_message)
     # update of image size.
