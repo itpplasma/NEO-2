@@ -55,6 +55,8 @@ class condor_run:
     self.end_date = ''
     self.memory = ''
 
+    self.aborted_by_user = False
+
   def set_start_date(self, text_start_date: str):
     """Parse passed text and set the start date.
     """
@@ -107,6 +109,16 @@ class condor_run:
     parts = text_end_message[0].split()
     self.set_end_date(parts[2] + ' ' + parts[3])
     self.set_memory(text_end_message[-1].split()[3])
+
+  def parse_abort_message(self, text_abort_message):
+    """Parse abort message.
+
+    This function parses the abort message (identifier 9). So far the
+    only action is to set status aborted by user to true.
+    \Attention It is not known if this message is also send for other
+      reasons, like abort by the system.
+    """
+    self.aborted_by_user = True
 
   def get_scan_id(self):
     return self.scan_id
@@ -172,7 +184,7 @@ class condor_log:
     if message_identifier == 0:
       self.runs.append(condor_run(text_message))
     # job started
-    elif  message_identifier == 1:
+    elif message_identifier == 1:
       r = self.get_run(text_message[0].split()[1])
       r.parse_start_message(text_message)
     # job terminated or got evicted
@@ -180,10 +192,13 @@ class condor_log:
       r = self.get_run(text_message[0].split()[1])
       r.parse_end_message(text_message)
     # update of image size.
-    elif  message_identifier == 6:
+    elif message_identifier == 6:
       # Do nothing, memory is parsed from end message.
       # Might be interesting in the future to get memory over time.
       None
+    elif message_identifier == 9:
+      r = self.get_run(text_message[0].split()[1])
+      r.parse_abort_message(text_message)
 
   def parse_text_messages(self, text_messages):
     """Parse the message: go through the list and parse each message.
