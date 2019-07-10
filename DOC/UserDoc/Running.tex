@@ -71,7 +71,7 @@ folder.
 Get as efit or boozer. If you need to create perturbed files, then the
 boozer format is required.
 There is a fortran program to convert efit into boozer. It is located at
-\tpath{/proj/plasma/Neo2/NTV/ASDEX_MODES_IGOSHINE/EFIT_TO_BOOZER/}.
+\tpath{/proj/plasma/Neo2/NTV/ASDEX\_MODES\_IGOSHINE/EFIT\_TO\_BOOZER/}.
 
 \paragraph{Magnetic perurbation}
 Creating the magnetic perurbation files is done in three steps. First
@@ -87,7 +87,7 @@ create_displacement(file_displacement_268,...
 \end{verbatim}
 With the displacement and the background field (in a boozer file), the
 perurbed field is calculated. The matlab/octave function
-\program{create_asdex_perturb} can do this. Example usage of the
+\program{create\_asdex\_perturb} can do this. Example usage of the
 function
 \begin{verbatim}
 file_base = 'eqdsk_35568_2.68800';
@@ -112,7 +112,7 @@ For the extraction there is the matlab/octave function
 
 \paragraph{Profiles input file}
 \neotwo requires the profile input to be in the form of a hdf5 file. The
-matlab script \program{generate_neo2_profile.m} is available to create
+matlab script \program{generate\_neo2\_profile.m} is available to create
 these from text-data files (of density, temperature,...).
 TODO: change to function
 
@@ -144,7 +144,7 @@ subfolders. Change the value in the file vphiref.in to the one selected
 for this run. Now some values in the input files need to be adjusted.
 Instead of doing this manually, you can use the shell script
 \program{set\_neo2in.sh} or the python function \program{set\_neo2in} of
-\program{scan_nonhdf5_tools.py}.
+\program{scan\_nonhdf5\_tools.py}.
 Start the simulations as you would start a precomputation run.
 
 \paragraph{Postprocessing Data}
