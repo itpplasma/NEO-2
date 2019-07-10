@@ -6,12 +6,17 @@ clear all %#ok<CLALL>
 
 hdf5FileName = 'multi_spec_Valentin.in';
 
+path_to_shot = 'SHOT35568/';
+shot_designation = '35568_t2.6881';
+
 gridpoints = 100;
 num_species = 2;
 isw_Vphi_loc = 0;
 species_tag_Vphi = 2;
 
-[rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data('SHOT35568/', '35568_t2.6881', gridpoints, 0);
+%%
+
+[rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, shot_designation, gridpoints, 0);
 
 %% UNIT CONV DEF
 ELEMENTARY_CHARGE = 1.60217662e-19;
