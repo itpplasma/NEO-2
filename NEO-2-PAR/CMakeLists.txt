@@ -211,6 +211,15 @@ ADD_TEST(Test_Relativistic_BeliaevBudker-Par ${CMAKE_SOURCE_DIR}/../ShellScripts
 ADD_TEST(Test_Relativistic_BraamsKarney-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BraamsKarney" "0")
 ADD_TEST(Test_Relativistic_BraamsKarney-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BraamsKarney" "6")
 
+ADD_TEST(Test_par_standard_polynomials-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_standard_polynomials" "0")
+ADD_TEST(Test_par_standard_polynomials-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_standard_polynomials" "6")
+ADD_TEST(Test_par_quadratic_polynomials-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_quadratic_polynomials" "0")
+ADD_TEST(Test_par_quadratic_polynomials-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_quadratic_polynomials" "6")
+ADD_TEST(Test_par_cubic_splines-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_cubic_splines" "0")
+ADD_TEST(Test_par_cubic_splines-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_cubic_splines" "6")
+ADD_TEST(Test_par_general_bsplines-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_general_bsplines" "0")
+ADD_TEST(Test_par_general_bsplines-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_general_bsplines" "6")
+
 #ADD_TEST(Test_Testcase2       ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase2" "0")
 #ADD_TEST(Test_Testcase2-par4  ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase2" "4")
 #ADD_TEST(Test_Testcase3-par6  ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase3" "6")
