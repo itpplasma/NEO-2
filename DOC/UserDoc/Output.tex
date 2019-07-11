@@ -215,7 +215,7 @@ This section will briefly describe the possibilities to read and edit
 the input and output of \neotwo.
 
 In table~\ref{tablereadinginoutput} is an overview of the formats used
-for input and output, along with usual ending and the possibilities to
+for input and output, along with usual file ending and the possibilities to
 edit these with other programs.
 
 \begin{table}
@@ -223,11 +223,11 @@ edit these with other programs.
     \begin{tabular}{cccccc}
 kind of in-/output & in/out & matlab & octave & python3 & texteditor \\
 data (text, dat)   & out    & yes    & yes    & yes     & yes \\
-boozer (bc)        & in     &        &        &         & yes$^2$ \\
+boozer (bc)        & in     &        &        & only reading & yes$^2$ \\
 netcdf (nc)$^4$    &        &        &        &         & no \\
 hdf5 (h5)          & in/out & yes    & yes$^3$&         & no$^1$ \\
-fortran namelist$^5$&in/out &        &        &         & yes$^2$ \\
-efit               & in     &        &        &         & yes$^2$
+fortran namelist$^5$&in/out &        &        & yes     & yes$^2$ \\
+efit               & in     &        &        & only reading & yes$^2$
     \end{tabular}
     \caption{Possibilities to read/write/edit the different in-/output
 file formats of \neotwo.
