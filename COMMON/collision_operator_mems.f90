@@ -254,10 +254,10 @@ module collop
              call read_precom_collop()
              write(*,*) "Use precom_collop.h5"
            elseif (succeded_precom_check .EQ. -1) then
-             write(*,*) "Precom_check did not happen correctly"
+             write(*,*) "ERROR: Precom_check did not happen correctly"
              STOP
            else 
-             write(*,*) "Precom File did not match"
+             write(*,*) "ERROR: Precom File did not match"
              STOP
            end if
          end if
@@ -324,7 +324,7 @@ module collop
          ! New version with deflection frequency 
          ! At the momement only for self-collisions !!!!!!!
          if (isw_lorentz .eq. 1) then
-            print *,"collision_operator_mems.f90:&
+            write(*,*) "ERROR: collision_operator_mems.f90:&
                  &Lorentz collision model for multi-species mode not available!"
             stop
          else
@@ -350,10 +350,10 @@ module collop
              call read_precom_collop()
              write(*,*) "Use precom_collop.h5"
            elseif (succeded_precom_check .EQ. -1) then
-             write(*,*) "Precom_check did not happen correctly"
+             write(*,*) "ERROR: Precom_check did not happen correctly"
              STOP
            else 
-             write(*,*) "Precom File did not match"
+             write(*,*) "ERROR: Precom File did not match"
              STOP
            end if
          end if                                              
@@ -461,9 +461,9 @@ module collop
                   taa_ov_tab_temp = (coll_b_temp/coll_a_temp) * &
                        (((T_spec(b)*za_temp)/(T_spec(a)*zb_temp))**2)
                else
-                  print *,"collision_operator_mems.f90: &
+                  write(*,*) "ERROR: collision_operator_mems.f90: &
                        &species-dependent Coulomb logarithm not yet implemented!"
-                  print *,"Please use switch isw_coul_log = 0."
+                  write(*,*) "Please use switch isw_coul_log = 0."
                   stop
                end if
                !print *,'taa_ov_tab: ',a,b,taa_ov_tab_temp
