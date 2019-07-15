@@ -460,6 +460,51 @@ def resize_hdf5_file(in_filename: str, out_filename: str, original_size: int, el
 
   o['/num_radial_pts'][()] = np.array(len(elements_to_keep))
 
+def compare_hdf5_group_keys(reference_group, other_group):
+  """Check if two h5py groups contain the same subgroups/datasets.
+
+  This function checks if two given h5py groups contain the same
+  subgroups and datasets.
+  The groups are considered to differ, if they length do not match, or
+  if the reference does contain keys which are not in the other group.
+
+  input
+  ----------
+  reference_group:
+  other_group:
+
+  return value
+  ----------
+  True, if the groups are the same, in the sense given above, false if not.
+
+  side effects
+  ----------
+  There should be no side effects.
+
+  limitations
+  ----------
+  - no indications how the files differ, i.e. which keys are additionaly
+    in which file
+  """
+  import h5py
+
+  lr = list(reference_group.keys())
+  lo = list(other_group.keys())
+
+  return_value = True
+
+  if len(lr) != len(lo):
+    return_value = False
+
+  for key in lr:
+    if key in lo:
+      if isinstance(reference_group[key], h5py.Group):
+        return_value = compare_hdf5_group_keys(reference_group[key], other_group[key])
+    else:
+      return_value = False
+
+  return return_value
+
 def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relative: float, verbose: bool):
   """Compare the content of two hdf5 files and return if they are equal or not.
 
