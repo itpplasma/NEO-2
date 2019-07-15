@@ -563,8 +563,7 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
   within a certain accuracy.
   Two datasets are considered equal if |reference - other|/max(|reference|)
   is smaller than the given delta.
-  The files are considered equal if this holds for all the datasets (at
-  the root).
+  The files are considered equal if this holds for all the datasets.
 
   input
   ----------
@@ -576,7 +575,11 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
 
   return value
   ----------
-  True, if the files are the same, in the sense given above, false if not.
+  List with to boolean values.
+  The first one is true, if the files are the same, in the sense given
+  above, false if not.
+  The second one will be true of the keys of the two files match, i.e.
+  the number and the names datasets are the same.
 
   side effects
   ----------
@@ -584,7 +587,6 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
 
   limitations
   ----------
-  - can only handle datasets at root
   - checks all the datasets, even those that are allowed to differ
   - keys in reference need also to be in other (but not vice versa)
   """
@@ -597,18 +599,13 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
   lr = list(h5r.keys())
   lo = list(h5o.keys())
 
+  keys_equal = compare_hdf5_group_keys(h5r, h5o)
+
   files_are_equal_to_delta = True
 
-  for key in lr:
-    if isinstance(h5r[key], h5py.Dataset):
-      relative = abs(numpy.subtract(numpy.array(h5r[key]), numpy.array(h5o[key]))) / max(numpy.nditer(abs(numpy.array(h5r[key]))))
+  files_are_equal_to_delta = compare_hdf5_group_data(h5r, h5o, delta_relative, verbose)
 
-      if (relative > delta_relative).any():
-        files_are_equal_to_delta = False
-        if (verbose):
-          print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
-
-  return files_are_equal_to_delta
+  return [files_are_equal_to_delta, keys_equal]
 
 if __name__ == "__main__":
 
