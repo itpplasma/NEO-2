@@ -460,6 +460,60 @@ def resize_hdf5_file(in_filename: str, out_filename: str, original_size: int, el
 
   o['/num_radial_pts'][()] = np.array(len(elements_to_keep))
 
+def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relative: float, verbose: bool):
+  """Compare the content of two hdf5 files and return if they are equal or not.
+
+  Compare the datasets of two hdf5 files to determine if they are equal
+  within a certain accuracy.
+  Two datasets are considered equal if |reference - other|/max(|reference|)
+  is smaller than the given delta.
+  The files are considered equal if this holds for all the datasets (at
+  the root).
+
+  input
+  ----------
+  reference_filename:
+  other_filename:
+  delta_relative:
+  verbose: logical, if true, then the keys for which there are
+    references are printed, together with the relative error.
+
+  return value
+  ----------
+  True, if the files are the same, in the sense given above, false if not.
+
+  side effects
+  ----------
+  There should be no side effects.
+
+  limitations
+  ----------
+  - can only handle datasets at root
+  - checks all the datasets, even those that are allowed to differ
+  - keys in reference need also to be in other (but not vice versa)
+  """
+  import numpy
+  import h5py
+
+  h5r = get_hdf5file(reference_filename)
+  h5o = get_hdf5file(other_filename)
+
+  lr = list(h5r.keys())
+  lo = list(h5o.keys())
+
+  files_are_equal_to_delta = True
+
+  for key in lr:
+    if isinstance(h5r[key], h5py.Dataset):
+      relative = abs(numpy.subtract(numpy.array(h5r[key]), numpy.array(h5o[key]))) / max(numpy.nditer(abs(numpy.array(h5r[key]))))
+
+      if (relative > delta_relative).any():
+        files_are_equal_to_delta = False
+        if (verbose):
+          print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
+
+  return files_are_equal_to_delta
+
 if __name__ == "__main__":
 
   import h5py
