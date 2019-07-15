@@ -505,6 +505,57 @@ def compare_hdf5_group_keys(reference_group, other_group):
 
   return return_value
 
+def compare_hdf5_group_data(reference_group, other_group, delta_relative: float, verbose: bool):
+  """Check if datsets of two h5py groups are equal.
+
+  This function checks if two given h5py groups contain the same data,
+  i.e. if the respective datasets are equal.
+  Equality for a dataset thereby means that absolute differences divided
+  by the absolute maximum of the reference is less than a given delta.
+
+  input
+  ----------
+  reference_group:
+  other_group:
+  delta_relative:
+  verbose: logical, if true, then the keys for which there are
+    references are printed, together with the relative error.
+
+  return value
+  ----------
+  True, if the groups contain the same data, in the sense given above,
+  false if not.
+
+  side effects
+  ----------
+  There should be no side effects.
+
+  limitations
+  ----------
+  - no white/blacklisting of entries
+  """
+  import numpy
+  import h5py
+
+  lr = list(reference_group.keys())
+  lo = list(other_group.keys())
+
+  return_value = True
+
+  for key in lr:
+    if key in lo:
+      if isinstance(reference_group[key], h5py.Dataset):
+        relative = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key]))) / max(numpy.nditer(abs(numpy.array(reference_group[key]))))
+
+        if (relative > delta_relative).any():
+          return_value = False
+          if (verbose):
+            print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
+      else:
+        return_value = return_value and compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, verbose)
+
+  return return_value
+
 def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relative: float, verbose: bool):
   """Compare the content of two hdf5 files and return if they are equal or not.
 
