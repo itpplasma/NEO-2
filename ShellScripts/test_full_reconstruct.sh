@@ -7,7 +7,7 @@ testcase=${1}
 number_processors=${2}
 which_code=${3}
 
-testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-XXXXXX`
+testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-${testcase}-XXXXXX`
 echo "Testpath created: ${testpath}"
 
 referencepath='/temp/buchholz/Neo2/Testing/Reference/'
