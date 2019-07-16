@@ -592,11 +592,11 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
           elif reference_group[key].dtype.kind == 'i':
             if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
               return_value = False
-              print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
+              print('Difference in ' + key)
           elif reference_group[key].dtype.kind == 'S':
             if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
               return_value = False
-              print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
+              print('Difference in ' + key)
 
         else:
           return_value = return_value and compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)
