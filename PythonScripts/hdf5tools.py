@@ -557,7 +557,6 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
 
   limitations
   ----------
-  - no white/blacklisting of entries
   """
   import numpy
   import h5py
@@ -588,7 +587,7 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
 
   return return_value
 
-def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relative: float, verbose: bool):
+def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relative: float, whitelist, blacklist, verbose: bool):
   """Compare the content of two hdf5 files and return if they are equal or not.
 
   Compare the datasets of two hdf5 files to determine if they are equal
@@ -619,7 +618,6 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
 
   limitations
   ----------
-  - checks all the datasets, even those that are allowed to differ
   - keys in reference need also to be in other (but not vice versa)
   """
   import numpy
@@ -635,7 +633,7 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
 
   files_are_equal_to_delta = True
 
-  files_are_equal_to_delta = compare_hdf5_group_data(h5r, h5o, delta_relative, [], [], verbose)
+  files_are_equal_to_delta = compare_hdf5_group_data(h5r, h5o, delta_relative, whitelist, blacklist, verbose)
 
   return [files_are_equal_to_delta, keys_equal]
 
