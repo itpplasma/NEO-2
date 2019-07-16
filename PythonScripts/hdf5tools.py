@@ -526,8 +526,10 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
 
   This function checks if two given h5py groups contain the same data,
   i.e. if the respective datasets are equal.
-  Equality for a dataset thereby means that absolute differences divided
-  by the absolute maximum of the reference is less than a given delta.
+  Equality for a dataset of floats thereby means that absolute
+  differences divided by the absolute maximum of the reference is less
+  than a given delta. For integers and strings it refers to direct
+  equality.
   Either a whitelist of keys to compare or a blacklist of keys to not
   compare, can be given.
 
@@ -576,12 +578,22 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
     if (not whitelist or key in whitelist) and (not blacklist or key not in blacklist):
       if key in lo:
         if isinstance(reference_group[key], h5py.Dataset):
-          relative = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key]))) / max(numpy.nditer(abs(numpy.array(reference_group[key]))))
+          if reference_group[key].dtype.kind == 'f':
+            relative = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key]))) / max(numpy.nditer(abs(numpy.array(reference_group[key]))))
 
-          if (relative > delta_relative).any():
-            return_value = False
-            if (verbose):
+            if (relative > delta_relative).any():
+              return_value = False
+              if (verbose):
+                print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
+          elif reference_group[key].dtype.kind == 'i':
+            if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
+              return_value = False
               print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
+          elif reference_group[key].dtype.kind == 'S':
+            if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
+              return_value = False
+              print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
+
         else:
           return_value = return_value and compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)
 
