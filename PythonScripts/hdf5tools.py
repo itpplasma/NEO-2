@@ -521,7 +521,8 @@ def fill_list(list_):
   """
   if isinstance(list_, str):
     with open(list_) as f:
-      return f.readlines()
+      l = f.readlines()
+      return [x.strip() for x in l]
   elif isinstance(list_, list) and len(list_) > 0:
     return list_
 
