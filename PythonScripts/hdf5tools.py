@@ -505,19 +505,44 @@ def compare_hdf5_group_keys(reference_group, other_group):
 
   return return_value
 
-def compare_hdf5_group_data(reference_group, other_group, delta_relative: float, verbose: bool):
+def fill_list(list_):
+  """Helper function: list or filename input to list output.
+
+  Input of this helper function has the same requirements as for
+  whitelist/blacklist parameter of compare_hdf5_group_data.
+  The function then makes sure a list is returned, i.e. if the parameter
+  contains an filename, it will read the content and return it as a
+  list.
+  If the parameter contains already a list, it is simply returned.
+  """
+  if isinstance(list_, str):
+    with open(list_) as f:
+      return f.readlines()
+  elif isinstance(list_, list) and len(list_) > 0:
+    return list_
+
+def compare_hdf5_group_data(reference_group, other_group, delta_relative: float, whitelist, blacklist, verbose: bool):
   """Check if datsets of two h5py groups are equal.
 
   This function checks if two given h5py groups contain the same data,
   i.e. if the respective datasets are equal.
   Equality for a dataset thereby means that absolute differences divided
   by the absolute maximum of the reference is less than a given delta.
+  Either a whitelist of keys to compare or a blacklist of keys to not
+  compare, can be given.
 
   input
   ----------
   reference_group:
   other_group:
   delta_relative:
+  whitelist, blacklist: Both of these can be empty ([]), or one of them,
+    can either contain a string, or a list of strings.
+    If it contains a string, this is assumed to be a filename which
+    contains the entries for the whitelist/blacklist, one per line.
+    If it contains a list, this is to be assumed to be the whitelist/
+    blacklist.
+    If both of them are not empty, this is considered an error.
   verbose: logical, if true, then the keys for which there are
     references are printed, together with the relative error.
 
@@ -542,17 +567,24 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
 
   return_value = True
 
-  for key in lr:
-    if key in lo:
-      if isinstance(reference_group[key], h5py.Dataset):
-        relative = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key]))) / max(numpy.nditer(abs(numpy.array(reference_group[key]))))
+  if whitelist and blacklist:
+    raise Exception()
 
-        if (relative > delta_relative).any():
-          return_value = False
-          if (verbose):
-            print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
-      else:
-        return_value = return_value and compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, verbose)
+  whitelist = fill_list(whitelist)
+  blacklist = fill_list(blacklist)
+
+  for key in lr:
+    if (not whitelist or key in whitelist) and (not blacklist or key not in blacklist):
+      if key in lo:
+        if isinstance(reference_group[key], h5py.Dataset):
+          relative = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key]))) / max(numpy.nditer(abs(numpy.array(reference_group[key]))))
+
+          if (relative > delta_relative).any():
+            return_value = False
+            if (verbose):
+              print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
+        else:
+          return_value = return_value and compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)
 
   return return_value
 
@@ -603,7 +635,7 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
 
   files_are_equal_to_delta = True
 
-  files_are_equal_to_delta = compare_hdf5_group_data(h5r, h5o, delta_relative, verbose)
+  files_are_equal_to_delta = compare_hdf5_group_data(h5r, h5o, delta_relative, [], [], verbose)
 
   return [files_are_equal_to_delta, keys_equal]
 
