@@ -460,7 +460,7 @@ def resize_hdf5_file(in_filename: str, out_filename: str, original_size: int, el
 
   o['/num_radial_pts'][()] = np.array(len(elements_to_keep))
 
-def compare_hdf5_group_keys(reference_group, other_group):
+def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
   """Check if two h5py groups contain the same subgroups/datasets.
 
   This function checks if two given h5py groups contain the same
@@ -485,6 +485,8 @@ def compare_hdf5_group_keys(reference_group, other_group):
   ----------
   - no indications how the files differ, i.e. which keys are additionaly
     in which file
+  - No white/blacklisting. Required e.g. for final.h5 which adds group
+    named after the folder in which the code runs.
   """
   import h5py
 
@@ -495,13 +497,15 @@ def compare_hdf5_group_keys(reference_group, other_group):
 
   if len(lr) != len(lo):
     return_value = False
+    print('Lengths differ')
 
   for key in lr:
     if key in lo:
       if isinstance(reference_group[key], h5py.Group):
-        return_value = compare_hdf5_group_keys(reference_group[key], other_group[key])
+        return_value = compare_hdf5_group_keys(reference_group[key], other_group[key], verbose)
     else:
       return_value = False
+      print("Key '" + key + "' only found in reference.")
 
   return return_value
 
@@ -641,7 +645,7 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
   lr = list(h5r.keys())
   lo = list(h5o.keys())
 
-  keys_equal = compare_hdf5_group_keys(h5r, h5o)
+  keys_equal = compare_hdf5_group_keys(h5r, h5o, verbose)
 
   files_are_equal_to_delta = True
 
