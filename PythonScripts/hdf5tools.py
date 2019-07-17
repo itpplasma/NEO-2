@@ -584,7 +584,10 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
       if key in lo:
         if isinstance(reference_group[key], h5py.Dataset):
           if reference_group[key].dtype.kind == 'f':
-            relative = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key]))) / max(numpy.nditer(abs(numpy.array(reference_group[key]))))
+            max_value_dataset = max(numpy.nditer(abs(numpy.array(reference_group[key]))))
+            if max_value_dataset == 0:
+              max_value_dataset = 1.0
+            relative = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key]))) / max_value_dataset
 
             if (relative > delta_relative).any():
               return_value = False
