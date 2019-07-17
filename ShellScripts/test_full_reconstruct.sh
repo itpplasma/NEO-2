@@ -81,7 +81,6 @@ cd $testpath
 echo "Copying template..."
 cp -r -L ../../Template/${testcase}/* ./
 
-cd ${testcase}
 echo "Running Test ${testcase}..."
 
 if [ ${number_processors} -eq 0 ] ; then
