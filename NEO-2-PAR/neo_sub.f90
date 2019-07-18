@@ -84,9 +84,9 @@ SUBROUTINE neo_init(npsi)
   !**********************************************************
   ! Consistency check
   !**********************************************************
-  ! CALL neo_init_fluxsurface()
-  ! CALL neo_fourier()
-  ! STOP
+  !CALL neo_init_fluxsurface()
+  !CALL neo_fourier()
+  !STOP
 
   RETURN
 END SUBROUTINE neo_init
@@ -1580,6 +1580,8 @@ SUBROUTINE neo_read
      i_m =  i_m
      psi_pr = ABS(flux) / twopi
   !! Modifications by Andreas F. Martitsch (27.08.2014)
+  !-> definition of signs used in
+  !-> A F Martitsch et al 2016 Plasma Phys. Control. Fusion 58 074007
   ELSE IF  (lab_swi .EQ. 9) THEN         ! ASDEX-U (E. Strumberger)
      ! signs / conversion checked by Winny (24.10.2014)
      curr_pol = curr_pol * 2.d-7 * nfp   
@@ -1591,6 +1593,20 @@ SUBROUTINE neo_read
      i_m =  i_m
      psi_pr = ABS(flux) / twopi
   !! End Modifications by Andreas F. Martitsch (27.08.2014) 
+  !! Modifications by Andreas F. Martitsch (28.06.2017)
+  !-> changes of signs to account for left-handed coordinate system
+  !-> affects sign of transport coefficients related to Ware pinch
+  !-> and Bootstrap current
+  ELSE IF  (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
+     curr_pol = - curr_pol * 2.d-7 * nfp   ! = bcovar_phi [Tm]
+     curr_tor = - curr_tor * 2.d-7         ! = bcovar_tht [Tm]
+     max_n_mode = max_n_mode * nfp
+     ixn =  ixn * nfp
+     i_n =  i_n * nfp
+     ixm =  ixm
+     i_m =  i_m
+     psi_pr = flux / twopi
+  !! End Modifications by Andreas F. Martitsch (28.06.2017)
   ELSE
      WRITE(w_us,*) 'FATAL: There is yet no other Laboratory defined!'
      STOP
