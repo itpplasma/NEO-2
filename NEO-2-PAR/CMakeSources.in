@@ -76,6 +76,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/kin_allocate.f90
         ../COMMON/lapack_band.f90
         ../COMMON/odeint_allroutines.f
+        ../COMMON/plot_distrf.f90
         ../COMMON/polleg.f90
         ../COMMON/prodband.f90
         ../COMMON/pspline.f90
@@ -106,7 +107,6 @@ set(NEO2_SRC_FILES
         ./join_ripples_int.f90
         ./join_ripples.f90
         ./join_ends.f90
-        ./plot_distrf.f90
         ./neo2.f90
         ./timingInfo.f90
 )

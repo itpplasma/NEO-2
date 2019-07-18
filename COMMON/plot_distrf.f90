@@ -39,6 +39,7 @@ SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,                         &
   iunit_eta_p=200
   iunit_eta_m=201
 !
+  ! #if !defined(MPI_SUPPORT)
   OPEN(iunitp(1),file='qfplu1.dat')
   OPEN(iunitm(1),file='qfmin1.dat')
   OPEN(iunit_lam(1),file='qflam1.dat')
@@ -50,16 +51,19 @@ SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,                         &
   OPEN(iunit_lam(3),file='qflam3.dat')
   OPEN(iunit_eta_p,file='eta_p.dat')
   OPEN(iunit_eta_m,file='eta_m.dat')
+  ! #endif
 !
   nts_l=SIZE(source_p,1)
   nts_r=SIZE(source_m,1)
   nl=nts_l/(nvel+1)
   nr=nts_r/(nvel+1)
 !
+  ! #if !defined(MPI_SUPPORT)
   WRITE(iunit_eta_p,*) eta_l(0:nl-1),eta_boundary_l
   WRITE(iunit_eta_m,*) eta_r(0:nr-1),eta_boundary_r
   CLOSE(iunit_eta_p)
   CLOSE(iunit_eta_m)
+  ! #endif
 !
   ALLOCATE(fun_lambda(0:nvel,0:3,-nlam:nlam,3))
 !
@@ -83,7 +87,7 @@ SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,                         &
 !
     i1min=MAX(0,i-2)
     kmax=5
-! 
+!
     DO k=1,kmax
       i1=k-1+i1min
       diflam=alambd(i1)-alambd(i)
@@ -133,7 +137,9 @@ SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,                         &
 !
     ENDDO
 !
+! #if !defined(MPI_SUPPORT)
     WRITE(iunitp(inhom),*) fun_write(0,0,:)
+! #endif
 !
     isig=1
 !
@@ -165,7 +171,7 @@ SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,                         &
 !
     i1min=MAX(0,i-2)
     kmax=5
-! 
+!
     DO k=1,kmax
       i1=k-1+i1min
       diflam=alambd(i1)-alambd(i)
@@ -215,7 +221,9 @@ SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,                         &
 !
     ENDDO
 !
+! #if !defined(MPI_SUPPORT)
     WRITE(iunitm(inhom),*) fun_write(0,0,:)
+! #endif
 !
     isig=-1
 !
@@ -233,10 +241,12 @@ SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,                         &
 !
   DEALLOCATE(fun_lambda)
 !
+! #if !defined(MPI_SUPPORT)
   DO k=1,3
     CLOSE(iunitp(k))
     CLOSE(iunitm(k))
     CLOSE(iunit_lam(k))
   ENDDO
+! #endif
 !
 END SUBROUTINE plot_distrf
