@@ -22,8 +22,6 @@ return_value=0
 START=0
 END=3
 
-check_absolute_if_relative_fails=no #yes
-
 ########################################################################
 ### Function definitions
 
