@@ -95,6 +95,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/field_c_mod.f90
         ../COMMON/field_eq_mod.f90
         ../COMMON/input_files.f90
+        ../COMMON/inter_precision.f90
         ../COMMON/inthecore_mod.f90
         ../COMMON/neo_precision.f90
         ../COMMON/neo_support.f90
