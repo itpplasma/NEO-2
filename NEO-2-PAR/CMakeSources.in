@@ -97,6 +97,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/collop_spline.f90
         ../COMMON/collision_operator_mems.f90
         ../COMMON/collop_compute.f90
+        ../COMMON/extract_fluxcoord_mod.f90
         ../COMMON/rel_kernels.f90
         ../COMMON/sparsevec_mod.f90
         ../COMMON/theta_rz_mod.f90
