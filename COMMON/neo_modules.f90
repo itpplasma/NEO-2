@@ -1,8 +1,3 @@
-MODULE neo_parameters
-  USE neo_precision
-  USE nrtype
-END MODULE neo_parameters
-
 MODULE neo_input
 ! Input from data files (Boozer)
   USE neo_precision
