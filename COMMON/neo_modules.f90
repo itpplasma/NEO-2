@@ -17,12 +17,6 @@ MODULE neo_output
   REAL(kind=dp)                            ::  delta_cur_max, typ_cur_len
 END MODULE neo_output
 
-MODULE neo_eval_switch
-  ! Evaluation
-  USE neo_precision
-  INTEGER, DIMENSION(6)    ::   eval_switch
-END MODULE neo_eval_switch
-
 MODULE neo_spline
 ! Spline arrays
   USE neo_precision
