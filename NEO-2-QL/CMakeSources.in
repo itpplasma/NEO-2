@@ -116,6 +116,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/plagrange_mod.f90
         ../COMMON/sizey_bo.f90
         ../COMMON/sizey_cur.f90
+        ../COMMON/sizey_pla.f90
         ../COMMON/sparsevec_mod.f90
         ../COMMON/theta_rz_mod.f90
 )
