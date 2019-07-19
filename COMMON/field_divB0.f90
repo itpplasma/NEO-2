@@ -2,13 +2,6 @@ module period_mod
   double precision :: per_phi, per_tht
 end module period_mod
 
-module field_c_mod
-  integer :: icall_c=0
-  integer :: ntor=16
-  integer :: nr,np,nz
-  integer :: icftype
-end module field_c_mod
-!
 module field_eq_mod
   integer :: icall_eq=0
   integer :: nrad,nzet,icp,nwindow_r,nwindow_z
