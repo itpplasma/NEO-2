@@ -114,6 +114,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/neo_work.f90
         ../COMMON/nrtype.f90
         ../COMMON/plagrange_mod.f90
+        ../COMMON/sizey_bo.f90
         ../COMMON/sparsevec_mod.f90
         ../COMMON/theta_rz_mod.f90
 )
