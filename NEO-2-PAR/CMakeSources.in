@@ -69,6 +69,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/magdata_for_particles.f90
         ../COMMON/rhs_kin.f90
         ../COMMON/rk4_kin.f90
+        ../COMMON/binarysplit_int.f90
         ../COMMON/binarysplit_mod.f90
         ../COMMON/sparse_mod.f90
         ../COMMON/fluxsplitter.f90
