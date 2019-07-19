@@ -1,7 +1,3 @@
-MODULE neo_precision
-  USE nrtype
-END MODULE neo_precision
-
 MODULE inter_precision
   USE nrtype
 END MODULE inter_precision
