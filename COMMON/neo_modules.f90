@@ -17,15 +17,6 @@ MODULE neo_output
   REAL(kind=dp)                            ::  delta_cur_max, typ_cur_len
 END MODULE neo_output
 
-MODULE sizey_bo
-  USE neo_precision
-! Definition for rk4d_bo also used in main routine neo
-  INTEGER            ::  npart
-  INTEGER            ::  multra
-  INTEGER            ::  ndim
-  INTEGER, PARAMETER ::  npq = 7
-END MODULE sizey_bo
-
 MODULE partpa_bo
   USE neo_precision
 ! Exchange between flint_bo and rhs_bo
