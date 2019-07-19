@@ -2,17 +2,6 @@ module period_mod
   double precision :: per_phi, per_tht
 end module period_mod
 
-module input_files
-  character*1024 :: eqfile, cfile, gfile,pfile,convexfile,fluxdatapath
-  integer :: iunit=1738
-  integer :: ieqfile=1
-!
-  data eqfile  /'ASDEX/d3d-087506.03687.equ'/
-  data cfile   /'DATA/ccoil.dat'/
-!  data gfile   /'gfiles/shot115452/g115452.03525'/
-!  data pfile   /'Conly/probe_g129_bfield.out'/  
-end module input_files
-!
 module field_c_mod
   integer :: icall_c=0
   integer :: ntor=16
