@@ -70,6 +70,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/rhs_kin.f90
         ../COMMON/odeint_allroutines.f
         ../COMMON/rk4_kin.f90
+        ../COMMON/binarysplit_int.f90
         ../COMMON/binarysplit_mod.f90
         ../COMMON/sparse_mod.f90
         ../COMMON/fluxsplitter.f90
