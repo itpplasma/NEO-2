@@ -54,6 +54,7 @@ set(COLLOPLIB_FILES
 
 ### NEO2 ###
 set(NEO2_COMMON_FILES
+        ../COMMON/amn_mod.f90
         ../COMMON/bdivfree.f90
         ../COMMON/device_mod.f90
         ../COMMON/neo_modules.f90
