@@ -102,6 +102,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/neo_input.f90
         ../COMMON/neo_parameters.f90
         ../COMMON/neo_precision.f90
+        ../COMMON/neo_spline_data.f90
         ../COMMON/neo_support.f90
         ../COMMON/neo_van.f90
         ../COMMON/nrtype.f90
