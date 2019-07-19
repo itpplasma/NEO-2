@@ -97,6 +97,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/input_files.f90
         ../COMMON/inter_precision.f90
         ../COMMON/inthecore_mod.f90
+        ../COMMON/neo_actual_fluxs.f90
         ../COMMON/neo_input.f90
         ../COMMON/neo_parameters.f90
         ../COMMON/neo_precision.f90
