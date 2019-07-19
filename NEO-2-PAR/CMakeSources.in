@@ -57,7 +57,6 @@ set(NEO2_COMMON_FILES
         ../COMMON/amn_mod.f90
         ../COMMON/bdivfree.f90
         ../COMMON/device_mod.f90
-        ../COMMON/neo_modules.f90
         ../COMMON/field_divB0.f90
         ../COMMON/compute_aiota.f90
         ../COMMON/nrutil.f90
