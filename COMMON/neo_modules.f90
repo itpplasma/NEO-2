@@ -27,15 +27,6 @@ MODULE partpa_bo
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: eta
 END MODULE partpa_bo
 
-MODULE sizey_cur
-  USE neo_precision
-! Definition for rk4d_bo also used in main routine neo
-  INTEGER            ::  npart_cur
-  INTEGER            ::  ndim_cur
-  INTEGER, PARAMETER ::  npq_cur = 11
-  INTEGER            ::  alpha_cur
-END MODULE sizey_cur
-
 MODULE partpa_cur
   USE neo_precision
 ! Exchange between flint_cur and rhs_cur
