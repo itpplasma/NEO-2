@@ -1,8 +1,4 @@
 !
-  MODULE size_mod
-    INTEGER :: ndim0,npart,ndim,nmat
-  END MODULE
-!
   MODULE partpa_mod
     ! Winny ipmin,iminr added
     INTEGER                                     :: ipmax,ipmin,istart,iminr
