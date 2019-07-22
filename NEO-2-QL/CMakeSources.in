@@ -113,6 +113,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/neo_work.f90
         ../COMMON/nrtype.f90
         ../COMMON/plagrange_mod.f90
+        ../COMMON/size_mod.f90
         ../COMMON/sizey_bo.f90
         ../COMMON/sizey_cur.f90
         ../COMMON/sizey_pla.f90
