@@ -95,6 +95,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/collop_nbi.f90
         ../COMMON/collop_spline.f90
         ../COMMON/collision_operator_mems.f90
+        ../COMMON/collisionality_mod.f90
         ../COMMON/collop_compute.f90
         ../COMMON/extract_fluxcoord_mod.f90
         ../COMMON/field_c_mod.f90
