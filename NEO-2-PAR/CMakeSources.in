@@ -123,6 +123,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/plagrange_mod.f90
         ../COMMON/rel_kernels.f90
         ../COMMON/rk4_kin_mod.f90
+        ../COMMON/rkstep_mod.f90
         ../COMMON/size_mod.f90
         ../COMMON/sizey_bo.f90
         ../COMMON/sizey_cur.f90
