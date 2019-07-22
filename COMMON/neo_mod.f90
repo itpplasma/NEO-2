@@ -1,9 +1,3 @@
-!
-  MODULE rk4_kin_mod
-    DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: y,dydx,yt,dyt,dym
-  END MODULE
-!
-
 !!$  MODULE ripple_solver_mod
 !!$    INTEGER :: npart_loc
 !!$    INTEGER :: npass_l,npass_r,mhill
