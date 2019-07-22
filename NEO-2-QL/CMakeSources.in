@@ -60,7 +60,6 @@ set(NEO2_COMMON_FILES
         ../COMMON/field_divB0.f90
         ../COMMON/compute_aiota.f90
         ../COMMON/nrutil.f90
-        ../COMMON/neo_mod.f90
         ../COMMON/neo_magfie.f90
         ../COMMON/magfie.f90
         ../COMMON/mag.f90
