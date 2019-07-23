@@ -2616,7 +2616,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
            phi_per = twopi / device%nfp
 
            call h5_add(h5id, 'aiota',      surface%aiota )
-           call h5_add(h5id, 'bmod0',      surface%bmod0)
+           call h5_add(h5id, 'bmod0',      surface%bmod0, comment='reference magnetic field in Tesla', unit='T')
            call h5_add(h5id, 'b_abs_min',  surface%b_abs_min)
            call h5_add(h5id, 'b_abs_max',  surface%b_abs_max )
            call h5_add(h5id, 'phi_per',    phi_per)

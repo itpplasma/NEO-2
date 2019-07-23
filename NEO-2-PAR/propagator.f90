@@ -1034,7 +1034,7 @@ CONTAINS
           call h5_add(h5id, 'alambda_bb', alambda_bb)
           call h5_add(h5id, 'g_bs', g_bs)
           call h5_add(h5id, 'r0', device%r0)
-          call h5_add(h5id, 'bmod0', surface%bmod0)
+          call h5_add(h5id, 'bmod0', surface%bmod0, comment='reference magnetic field in Tesla', unit='T')
 
           call h5_close(h5id)
        end if
@@ -1152,7 +1152,7 @@ CONTAINS
           call h5_add(h5id, 'gamma_E',gamma_E )
           call h5_add(h5id, 'g_bs', g_bs)
           call h5_add(h5id, 'r0', device%r0)
-          call h5_add(h5id, 'bmod0', surface%bmod0)
+          call h5_add(h5id, 'bmod0', surface%bmod0, comment='reference magnetic field in Tesla', unit='T')
           call h5_add(h5id, 'y', y, lbound(y), ubound(y))
 
           !**********************************************************
