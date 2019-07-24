@@ -657,6 +657,128 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
 
   return [files_are_equal_to_delta, keys_equal]
 
+def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, Ztrace: float, mtrace: float):
+  """Add to profile input file a species by scaling existing ion species.
+  T_prof             needs to be changed ... done
+  Vphi               ok
+  boozer_s           ok
+  dT_ov_ds_prof      needs to be changed ... done
+  dn_ov_ds_prof      needs to be changed ... done
+  isw_Vphi_loc       ok?
+  kappa_prof         needs to be changed
+  n_prof             needs to be changed ... done
+  num_radial_pts     ok
+  num_species        needs to be changed ... done
+  rel_stages         ok?
+  rho_pol            ok
+  species_def        needs to be changed ... done
+  species_tag        needs to be changed ... done
+  species_tag_Vphi   ok?
+
+  input
+  ----------
+  infilename:
+  outfilename:
+  Zeff: effective charge the plasma should have with the trace species.
+  Ztrace: charge of the trace species in elementary charges.
+  mtrace: mass of the trace species in [g]
+
+  return value
+  ----------
+  No return value.
+
+  side effects
+  ----------
+  New file is created.
+
+  limitations
+  ----------
+  Assumes second species is ions.
+  Assumes only a third species is added.
+  """
+  import math
+  import numpy as np
+
+  import hdf5tools
+
+  Zeff = 1.3
+  Ztrace = 30
+  mtrace = 3.0527e-22 #[g]
+  ELEMENTARY_CHARGE_SI = 1.60217662e-19
+  DENSITY_SI_TO_CGS = 1e-6
+  ENERGY_SI_TO_CGS = 1e7
+  EV_TO_SI = ELEMENTARY_CHARGE_SI
+  EV_TO_CGS = EV_TO_SI * ENERGY_SI_TO_CGS
+
+  factor_hydrogen = (Ztrace - Zeff)/(Ztrace -1)
+  factor_trace = (Zeff - 1)/(Ztrace*(Ztrace -1))
+
+  no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rel_stages', 'rho_pol', 'species_tag_Vphi']
+
+  with get_hdf5file(infilename) as hin:
+    with get_hdf5file_new(outfilename) as hout:
+      for dname in no_change_needed:
+        hout.create_dataset(dname, data=hin[dname])
+
+      nsp = np.array(hin['num_species'])
+      nsp[0] += 1
+      hout.create_dataset('num_species', data=nsp)
+
+      t = np.array(hin['T_prof'])
+      t.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
+      t[2, ...] = t[1, ...]
+      hout.create_dataset('T_prof', data=t)
+
+      dt = np.array(hin['dT_ov_ds_prof'])
+      dt.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
+      dt[2, ...] = dt[1, ...]
+      hout.create_dataset('dT_ov_ds_prof', data=dt)
+
+      n = np.array(hin['n_prof'])
+      n.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
+      n[1, ...] = factor_hydrogen * n[0, ...]
+      n[2, ...] = factor_trace * n[0, ...]
+      hout.create_dataset('n_prof', data=n)
+
+      dn = np.array(hin['dn_ov_ds_prof'])
+      dn.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
+      dn[1, ...] = factor_hydrogen * dn[0, ...]
+      dn[2, ...] = factor_trace * dn[0, ...]
+      hout.create_dataset('dn_ov_ds_prof', data=dn)
+
+      st = np.array(hin['species_tag'])
+      st.resize( (hout['num_species'][0], ) )
+      st[2, ...] = hout['num_species'][0]
+      hout.create_dataset('species_tag', data=st)
+
+      sd = np.array(hin['species_def'])
+      sd.resize((2, hout['num_species'][0], hout['num_radial_pts'][0]))
+      # This reordering is necessary as not the added column is filled
+      # with zeros.
+      sd[1, 1, ...] = sd[1, 0, ...]
+      sd[1, 0, ...] = sd[0, -1, ...]
+      sd[0, -1, ...] = Ztrace
+      sd[1, -1, ...] = mtrace
+      hout.create_dataset('species_def', data=sd)
+
+      Lambda = np.array([39.1 - 1.15*math.log10(x/DENSITY_SI_TO_CGS) + 2.3*math.log10(y/EV_TO_CGS) for x, y in zip(n[0,...], t[0,...])])
+
+      k = np.array(hin['kappa_prof'])
+      k.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
+      # Value based on density and temperature, as the former changes,
+      # needs to be recomputed for hydrogen, and computed for the trace.
+      # As kappa seems to depent linearly on density and is independent
+      # of charge, a simple rescaling might be enough?
+      #~ le = 3/(4*math.sqrt(math.pi)) * t[0,...] * t[0,...] / (n[0, ...] * Lambda)
+      #~ li = 3/(4*math.sqrt(math.pi)) * t[1,...] * t[1,...] / (n[1, ...] * Lambda)
+      #~ lt = 3/(4*math.sqrt(math.pi)) * t[2,...] * t[2,...] / (n[2, ...] * Lambda)
+      #~ k[0, ...] = 2 / le * ELEMENTARY_CHARGE_SI * ELEMENTARY_CHARGE_SI
+      #~ k[1, ...] = 2 / li * ELEMENTARY_CHARGE_SI * ELEMENTARY_CHARGE_SI
+      #~ k[2, ...] = 2 / lt * ELEMENTARY_CHARGE_SI * ELEMENTARY_CHARGE_SI
+      k[1, ...] = factor_hydrogen * k[1, ...]
+      k[2, ...] = factor_trace * k[1, ...]
+      hout.create_dataset('kappa_prof', data=k)
+
 if __name__ == "__main__":
 
   import h5py
