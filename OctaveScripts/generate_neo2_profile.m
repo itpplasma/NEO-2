@@ -19,15 +19,13 @@ species_tag_Vphi = 2;
 [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, shot_designation, gridpoints, 0);
 
 %% UNIT CONV DEF
-ELEMENTARY_CHARGE = 1.60217662e-19;
-SPEED_OF_LIGHT = 2.99792458e8;
-EV_TO_SI = ELEMENTARY_CHARGE;
-DENSITY_TO_CGS = 1e-6;
-SPEED_TO_CGS = 100;
+ELEMENTARY_CHARGE_SI = 1.60217662e-19;
+SPEED_OF_LIGHT_SI = 2.99792458e8;
+EV_TO_SI = ELEMENTARY_CHARGE_SI;
+DENSITY_SI_TO_CGS = 1e-6;
 ENERGY_TO_CGS = 1e7;
-VOLT_TO_CGS = ENERGY_TO_CGS/SPEED_OF_LIGHT;
 EV_TO_CGS = EV_TO_SI * ENERGY_TO_CGS;
-CHARGE_TO_CGS = SPEED_OF_LIGHT;
+CHARGE_SI_TO_CGS = 10*SPEED_OF_LIGHT_SI;% Conversion factor is not speed of light, but 10c.
 
 %% SPEC DEF
 Zi=1; % ion charge number (deuterium)
@@ -39,7 +37,7 @@ me=9.1094e-28; % electron mass
 boozer_s = (rho_tor).^2;
 
 %% PROFILES
-ne = ne_si * DENSITY_TO_CGS;
+ne = ne_si * DENSITY_SI_TO_CGS;
 ni = ne;
 Te = Te_eV * EV_TO_CGS;
 Ti = Ti_eV * EV_TO_CGS;
@@ -70,8 +68,8 @@ rel_stages(:) = species_tag_Vphi;
 log_Lambda = 39.1 - 1.15*log10(ne_si) + 2.3*log10(Te_eV*1e-3);
 
 % Conversion cgs-units
-e_e = -ELEMENTARY_CHARGE * CHARGE_TO_CGS;%[statC]
-e_i = +ELEMENTARY_CHARGE * CHARGE_TO_CGS;%[statC]
+e_e = -ELEMENTARY_CHARGE_SI * CHARGE_SI_TO_CGS;%[statC]
+e_i = +ELEMENTARY_CHARGE_SI * CHARGE_SI_TO_CGS;%[statC]
 Te_ov_ee = -Te/e_e;%[erg/statC]
 Ti_ov_ei = Ti/e_i;%[erg/statC]
 
