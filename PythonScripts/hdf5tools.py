@@ -706,10 +706,12 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
   #~ mtrace = 3.0527e-22 #[g]
 
   ELEMENTARY_CHARGE_SI = 1.60217662e-19
+  SPEED_OF_LIGHT_SI = 2.99792458e8
   DENSITY_SI_TO_CGS = 1e-6
   ENERGY_SI_TO_CGS = 1e7
   EV_TO_SI = ELEMENTARY_CHARGE_SI
   EV_TO_CGS = EV_TO_SI * ENERGY_SI_TO_CGS
+  CHARGE_SI_TO_CGS = 10*SPEED_OF_LIGHT_SI # Conversion factor is not speed of light, but 10c.
 
   factor_hydrogen = (Ztrace - Zeff)/(Ztrace -1)
   factor_trace = (Zeff - 1)/(Ztrace*(Ztrace -1))
@@ -766,7 +768,7 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
       sd[1, -1, ...] = mtrace
       hout.create_dataset('species_def', data=sd)
 
-      Lambda = np.array([39.1 - 1.15*math.log10(x/DENSITY_SI_TO_CGS) + 2.3*math.log10(y/EV_TO_CGS) for x, y in zip(n[0,...], t[0,...])])
+      Lambda = np.array([39.1 - 1.15*math.log10(x/DENSITY_SI_TO_CGS) + 2.3*math.log10(y/EV_TO_CGS*1e-3) for x, y in zip(n[0,...], t[0,...])])
 
       k = np.array(hin['kappa_prof'])
       k.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
@@ -774,14 +776,12 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
       # needs to be recomputed for hydrogen, and computed for the trace.
       # As kappa seems to depent linearly on density and is independent
       # of charge, a simple rescaling might be enough?
-      #~ le = 3/(4*math.sqrt(math.pi)) * t[0,...] * t[0,...] / (n[0, ...] * Lambda)
-      #~ li = 3/(4*math.sqrt(math.pi)) * t[1,...] * t[1,...] / (n[1, ...] * Lambda)
-      #~ lt = 3/(4*math.sqrt(math.pi)) * t[2,...] * t[2,...] / (n[2, ...] * Lambda)
-      #~ k[0, ...] = 2 / le * ELEMENTARY_CHARGE_SI * ELEMENTARY_CHARGE_SI
-      #~ k[1, ...] = 2 / li * ELEMENTARY_CHARGE_SI * ELEMENTARY_CHARGE_SI
-      #~ k[2, ...] = 2 / lt * ELEMENTARY_CHARGE_SI * ELEMENTARY_CHARGE_SI
-      k[1, ...] = factor_hydrogen * k[1, ...]
-      k[2, ...] = factor_trace * k[1, ...]
+      le = 3/(4*math.sqrt(math.pi)) * t[0,...]**2 / (n[0, ...] * (sd[0, 0, ...]*ELEMENTARY_CHARGE_SI*CHARGE_SI_TO_CGS)**4 * Lambda)
+      li = 3/(4*math.sqrt(math.pi)) * t[1,...]**2 / (n[1, ...] * (sd[0, 1, ...]*ELEMENTARY_CHARGE_SI*CHARGE_SI_TO_CGS)**4 * Lambda)
+      lt = 3/(4*math.sqrt(math.pi)) * t[2,...]**2 / (n[2, ...] * (sd[0, 2, ...]*ELEMENTARY_CHARGE_SI*CHARGE_SI_TO_CGS)**4 * Lambda)
+      k[0, ...] = 2 / le
+      k[1, ...] = 2 / li
+      k[2, ...] = 2 / lt
       hout.create_dataset('kappa_prof', data=k)
 
 if __name__ == "__main__":
