@@ -202,9 +202,10 @@ def reshape_hdf5_file(in_filename: str, out_filename: str):
     i = i + 1
 
 def collect_and_reshape(path: str, infilename: str, outfilename: str):
-  temp_filename = 'temp_'//outfilename
+  from os.path import join
+  temp_filename = 'temp_' + outfilename
   copy_hdf5_from_subfolders_to_single_file(path, infilename, temp_filename)
-  reshape_hdf5_file(temp_filename, out_filename)
+  reshape_hdf5_file(join(path, temp_filename), join(path, outfilename))
 
 def dim_zero(data, elements_to_keep: list, operate_on_last_dimension: bool):
   return data
