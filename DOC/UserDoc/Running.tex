@@ -26,6 +26,14 @@ with the number of processors not equal the number of species, but the
 code will continue, as this case might be of interest for testing
 things.
 
+Note that it is not enough to change the parameter num\_species in the
+profile file, as there is also a variable rel\_stages, which stores the
+number of species for each flux surface.
+
+The variable num\_species in namelist multi\_spec will be set
+automatically, if you use \neotwo to set up the runs for the flux
+surfaces.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Condor}
