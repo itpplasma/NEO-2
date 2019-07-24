@@ -1259,10 +1259,10 @@ CONTAINS
         IF (n_prof(ind_boozer_s,ind_spec) .LE. 0.0_dp) CYCLE
         ctr_spec = ctr_spec + 1
         IF (ctr_spec .GT. num_spec) THEN
-           PRINT *,"neo2.f90: Error during preparation of &
+           write(*,*) "neo2.f90: Error during preparation of &
                 &multi-species computations!"
-           PRINT *,"Number of density-values inconsistent &
-                &with number of relevant species!"
+           write(*,*) "Number of density-values (",num_species_all, ") inconsistent &
+                &with number of relevant species (",num_spec,")!"
            STOP
         END IF
         species_tag_vec(ctr_spec) = species_tag_prof(ind_spec)
