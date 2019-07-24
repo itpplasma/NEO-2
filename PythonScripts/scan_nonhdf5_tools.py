@@ -8,7 +8,7 @@ class condor_run:
   on which the job did run, the start date and end date, and the maximum
   memory consumption.
 
-  Dates are stored ans datetime object. Note that the condor log does
+  Dates are stored as datetime object. Note that the condor log does
   not include a year, thus old jobs or jobs run around new year might
   cause problems.
   """
