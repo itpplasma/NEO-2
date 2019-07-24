@@ -669,7 +669,7 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
   n_prof             needs to be changed ... done
   num_radial_pts     ok
   num_species        needs to be changed ... done
-  rel_stages         ok?
+  rel_stages         needs to be changed ... done
   rho_pol            ok
   species_def        needs to be changed ... done
   species_tag        needs to be changed ... done
@@ -701,9 +701,10 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
 
   import hdf5tools
 
-  Zeff = 1.3
-  Ztrace = 30
-  mtrace = 3.0527e-22 #[g]
+  #~ Zeff = 1.3
+  #~ Ztrace = 30
+  #~ mtrace = 3.0527e-22 #[g]
+
   ELEMENTARY_CHARGE_SI = 1.60217662e-19
   DENSITY_SI_TO_CGS = 1e-6
   ENERGY_SI_TO_CGS = 1e7
@@ -713,7 +714,7 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
   factor_hydrogen = (Ztrace - Zeff)/(Ztrace -1)
   factor_trace = (Zeff - 1)/(Ztrace*(Ztrace -1))
 
-  no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rel_stages', 'rho_pol', 'species_tag_Vphi']
+  no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol', 'species_tag_Vphi']
 
   with get_hdf5file(infilename) as hin:
     with get_hdf5file_new(outfilename) as hout:
@@ -723,6 +724,10 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
       nsp = np.array(hin['num_species'])
       nsp[0] += 1
       hout.create_dataset('num_species', data=nsp)
+
+      rs = np.array(hin['rel_stages'])
+      rs[...] += 1
+      hout.create_dataset('rel_stages', data=rs)
 
       t = np.array(hin['T_prof'])
       t.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
