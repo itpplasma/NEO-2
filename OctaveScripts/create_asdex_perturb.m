@@ -176,9 +176,9 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
     Zmc_orig = data(:,5);
     Zms_orig = data(:,6);
 
-    all_b0_theta(ns, :) = b_fourier(m_orig, bmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, bms_orig, theta_vec(1:end-1));
-    all_R_theta(ns, :) = b_fourier(m_orig, Rmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, Rms_orig, theta_vec(1:end-1));
-    all_Z_theta(ns, :) = b_fourier(m_orig, Zmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, Zms_orig, theta_vec(1:end-1));
+    all_b0_theta(ns, :) = b_fourier_cos(m_orig, bmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, bms_orig, theta_vec(1:end-1));
+    all_R_theta(ns, :) = b_fourier_cos(m_orig, Rmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, Rms_orig, theta_vec(1:end-1));
+    all_Z_theta(ns, :) = b_fourier_cos(m_orig, Zmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, Zms_orig, theta_vec(1:end-1));
     all_T(ns,:) = theta_vec(1:end-1); %!!!
 
   end
