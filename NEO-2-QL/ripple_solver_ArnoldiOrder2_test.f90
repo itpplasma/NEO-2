@@ -5834,7 +5834,9 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   IMPLICIT NONE
 !
   INTEGER :: m,ngrow,ierr,k,j,lwork,info
-!
+
+    double precision, parameter :: tiny_diff = 1.d-12
+
   DOUBLE PRECISION :: tol
   DOUBLE COMPLEX   :: tmp
 !
@@ -5900,7 +5902,8 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
     ierr=1
     RETURN
   ENDIF
-!
+
+    ! Sort eigenvalues acording to magnitude.
   DO k=1,m
     info=0
     DO j=2,m
@@ -5913,7 +5916,21 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
     ENDDO
     IF(info.EQ.0) EXIT
   ENDDO
-!
+
+    ! Sort eigenvalues so that for conjugate pairs, the one with imaginary
+    ! part > 0 comes first.
+    ! If this is not done, they can be in arbitrary order in subsequent
+    ! iterations, which will cause problems with checking of convergence.
+    do j=2,m
+      if(abs(ritznum(j)-conjg(ritznum(j-1))) .lt. tiny_diff) then
+        if(dimag(ritznum(j)).gt.0.d0) then
+          tmp = ritznum(j-1)
+          ritznum(j-1) = ritznum(j)
+          ritznum(j) = tmp
+        end if
+      end if
+    end do
+
   DEALLOCATE(work)
 !
 ! compute how many eigenvalues exceed the tolerance (TOL):
