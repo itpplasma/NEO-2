@@ -5407,7 +5407,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !>
 !> Output parameters:
 !>            Formal: result         - solution vector
-  SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT)
+  SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_)
 
   USE arnoldi_mod, ONLY : tol,ngrow,eigvecs,ierr,ntol,fzero,mode,ritznum
 !
@@ -5420,7 +5420,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !  external :: next_iteration
   INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
   DOUBLE PRECISION :: relerr
-  DOUBLE COMPLEX, DIMENSION(n)                :: RESULT
+  DOUBLE COMPLEX, DIMENSION(n), intent(inout) :: RESULT_
   INTEGER,        DIMENSION(:),   ALLOCATABLE :: ipiv
   DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: fold,fnew
   DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: coefren
@@ -5462,7 +5462,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   ENDIF
 !
   ALLOCATE(fzero(n))
-  IF(mode_in.NE.1) fzero=RESULT
+  IF(mode_in.NE.1) fzero=RESULT_
 !
   mode=mode_in
 !
@@ -5536,7 +5536,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
     PRINT *,'iterator: number of direct iterations = ',iter-1
 !
-    RESULT=fnew
+    RESULT_=fnew
     DEALLOCATE(fold,fnew,fzero)
     RETURN
 !
@@ -5628,7 +5628,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
   PRINT *,'iterator: number of stabilized iterations = ',iter-1
 !
-  RESULT=fnew
+  RESULT_=fnew
 !
   DEALLOCATE(coefren,amat,bvec,ipiv,fold,fnew,fzero)
   IF(mode.EQ.1) DEALLOCATE(eigvecs,ritznum)
