@@ -676,6 +676,11 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
   species_tag        needs to be changed ... done
   species_tag_Vphi   ok?
 
+  If Zeff = 1, then it is assumed that the density should be split
+  evenly among the two ion species, as the term for Zeff /= 1 would
+  fail. This might be usefull for having two hydrogen species, e.g. for
+  testing.
+
   input
   ----------
   infilename:
@@ -714,8 +719,12 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
   EV_TO_CGS = EV_TO_SI * ENERGY_SI_TO_CGS
   CHARGE_SI_TO_CGS = 10*SPEED_OF_LIGHT_SI # Conversion factor is not speed of light, but 10c.
 
-  factor_hydrogen = (Ztrace - Zeff)/(Ztrace -1)
-  factor_trace = (Zeff - 1)/(Ztrace*(Ztrace -1))
+  if (Zeff == 1):
+    factor_hydrogen = 0.5
+    factor_trace = 0.5
+  else:
+    factor_hydrogen = (Ztrace - Zeff)/(Ztrace -1)
+    factor_trace = (Zeff - 1)/(Ztrace*(Ztrace -1))
 
   no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol', 'species_tag_Vphi']
 
