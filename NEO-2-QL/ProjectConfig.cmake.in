@@ -36,6 +36,6 @@ set(F77BLAS_LIB ${ATLASLIBS})
 set(ATLASBLAS_LIB ${ATLASLIBS})
 
 ### Path to OpenBLAS
-set(OPEN_BLAS_PATH /usr/lib/openblas-base/)
+set(OPEN_BLAS_PATH /usr/lib/openblas-base/ /usr/lib/x86_64-linux-gnu/)
 set(OPEN_BLAS_LAPACK_LIB ${OPEN_BLAS_PATH})
 set(OPEN_BLAS_LIB ${OPEN_BLAS_PATH})
