@@ -43,14 +43,8 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
   execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
                     OUTPUT_VARIABLE GCC_VERSION)
   string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
-        list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
-        list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
 
-  if (GCC_MINOR GREATER 8)
-    set (CMAKE_Fortran_FLAGS "-cpp -ffpe-summary=invalid,zero,overflow")
-  else()
-    set (CMAKE_Fortran_FLAGS "-cpp")
-  endif()
+  set (CMAKE_Fortran_FLAGS "-cpp -ffpe-summary=invalid,zero,overflow")
   set (CMAKE_Fortran_FLAGS_DEBUG "-openmp -g -fcheck=all -Wall -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label -Wshadow")
 
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
