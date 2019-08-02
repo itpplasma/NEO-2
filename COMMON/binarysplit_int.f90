@@ -333,7 +333,10 @@ CONTAINS
     END IF
   END FUNCTION eval_bslimit_3
 
-  ! linspace (helper routine)
+  !> Equivalent to matlab/octave linspace, with output as last parameter.
+  !>
+  !> This subroutine is an equivalent to the matlab/octave function
+  !> linspace, just the return value is here the last parameter.
   SUBROUTINE linspace_d(x_beg,x_end,x_num,x)
     REAL(kind=dp),                            INTENT(in)     :: x_beg
     REAL(kind=dp),                            INTENT(in)     :: x_end
