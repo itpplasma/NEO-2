@@ -341,7 +341,6 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 !
   niter=100       !maximum number of integral part iterations
-  epserr_iter=1.d-5 !5  !relative error of integral part iterations
   n_arnoldi=500     !maximum number of Arnoldi iterations
   isw_regper=1       !regulariization by periodic boundary condition
   epserr_sink_cmplx=0.d0  !1.d-12 !sink for regularization, it is equal to

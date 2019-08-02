@@ -52,7 +52,7 @@ PROGRAM neo2
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
        scalprod_beta, lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
        !! and lsw_write_precom by Michael Draxler (25.08.2017)
-  USE rkstep_mod, ONLY : lag,leg,legmax                            
+  USE rkstep_mod, ONLY : lag, leg, legmax, epserr_iter
       
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
@@ -212,7 +212,7 @@ PROGRAM neo2
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
-       mag_symmetric,mag_symmetric_shorten
+       mag_symmetric,mag_symmetric_shorten, epserr_iter
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
@@ -791,6 +791,7 @@ CONTAINS
     nperiod=500
     xetami=0.0d0
     xetama=1.300001d0
+    epserr_iter = 1e-5
     eta_part_global = 0
     eta_part_trapped = 10
     eta_part_globalfac = 3.0_dp

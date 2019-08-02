@@ -208,6 +208,7 @@
  boozer_phi_beg = -3.1415926 ! [0.0d0]
  boozer_s = 4.9e-3 ! Defines the flux surface as normalized toroidal flux. [0.5d0]
  boozer_theta_beg =  3.1415926 ! [0.0d0]
+ epserr_iter = 1d-5 ! relative error of integral part iterations [1.0d-5]
  eta_alpha_p =  2.0 ! Specify refinement differently [4.0d0]
  eta_alpha_t = -1.0 ! [1.0d0]
  eta_part_global =  0 !-1: equal distribution

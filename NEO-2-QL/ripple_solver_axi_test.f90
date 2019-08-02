@@ -247,7 +247,6 @@ SUBROUTINE ripple_solver(                                 &
   
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
   niter=1000
-  epserr_iter=1.d-3
   isw_regper=1       !regulariization by periodic boundary condition
 
   !! Modification by Andreas F. Martitsch (28.07.2015)
