@@ -1137,6 +1137,8 @@ contains
     real(kind=dp) :: x_sub_low, x_sub_up, x_sub_del ! Split integration domain into sub-intervals
     integer :: k_sub ! Split integration domain into sub-intervals
     real(kind=dp) :: x_cutoff_local
+
+    real(kind=dp), parameter :: stepsize_cutoff = 1.0
     
     interface  
        function func1d(x)
@@ -1156,8 +1158,8 @@ contains
 !!$    return
     if (integral_cutoff) then
       x_cutoff_local = x_cutoff
-      do while (abs(func1d(x_cutoff_local-1.0)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
-        x_cutoff_local = x_cutoff_local-1.0
+      do while (abs(func1d(x_cutoff_local-stepsize_cutoff)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
+        x_cutoff_local = x_cutoff_local-stepsize_cutoff
       end do
 !~       write(*,*) 'Using x_cutoff_local=', x_cutoff_local, 'with |f(x)|=', abs(func1d(x_cutoff_local))
     end if
