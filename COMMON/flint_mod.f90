@@ -201,4 +201,21 @@ contains
 
   END SUBROUTINE flint_prepare
 
+  SUBROUTINE flint_prepare_2(bin_split_mode,eta_s_lim)
+    USE collisionality_mod, ONLY : collpar_min
+    USE  mag_interface_mod, ONLY : ripple_eta_magnetics
+
+    IMPLICIT NONE
+    INTEGER, PARAMETER :: dp = KIND(1.0d0)
+    ! parameter
+    INTEGER,          INTENT(in) :: bin_split_mode
+    REAL(kind=dp),    INTENT(in) :: eta_s_lim
+    ! find the eta values for splitting
+    !  for this the collision parameter is needed
+    IF (bin_split_mode .EQ. 1) THEN
+       CALL ripple_eta_magnetics(collpar_min,eta_s_lim)
+    END IF
+    ! print *, 'After ripple_eta_magnetics'
+  END SUBROUTINE flint_prepare_2
+
 END MODULE flint_mod
