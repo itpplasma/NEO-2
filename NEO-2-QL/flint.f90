@@ -3886,12 +3886,23 @@ SUBROUTINE write_surface_data(fname)
   RETURN
 END SUBROUTINE write_surface_data
 
+!> custom routine for placement of eta levels
+!>
+!> on input eta values are monotoniously increasing and this
+!> should also be the case on exit
+!>
+!> input:
+!> ------
+!> eta_part
+!> eta: array with eta_part entries, determines the eta levels to adapt.
+!> version: integer 1-3, determines how the eta levels are
+!>   redistributed:
+!>   1 - no change to eta.
+!>   2 - use a tanh
+!>   3 - use a cos
+!> alpha: parameter of the function used to modify eta.
 SUBROUTINE customize_eta_levels(eta_part,eta,version,alpha)
-  ! custom routine for placement of eta levels
-  !
-  ! on input eta values are monotoniously increasing and this
-  ! should also be the case on exit
-  
+
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
   REAL(kind=dp), PARAMETER :: pi =    3.141592653589793_dp
