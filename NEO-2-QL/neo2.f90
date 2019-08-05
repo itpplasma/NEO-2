@@ -13,7 +13,7 @@ PROGRAM neo2
        bsfunc_local_err_max_mult,bsfunc_max_mult_reach,             &
        bsfunc_modelfunc_num,bsfunc_divide,                          &
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,        &
-       bsfunc_local_shield_factor,bsfunc_shield
+       bsfunc_local_shield_factor,bsfunc_shield, flint_prepare
   USE device_mod
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
