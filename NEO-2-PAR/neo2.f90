@@ -565,6 +565,8 @@ PROGRAM neo2
 
      ! ---------------------------------------------------------------------------
      ! this is just for christian, sergie please switch it off
+     ! Note: these subroutines have been moved to flint_mod and need to
+     !   be added to the use statement.
      ! CALL sort_theta
      ! nr,nz,nphi
      !CALL write_volume_data(40,40,100,'w7as_vol.dat')
