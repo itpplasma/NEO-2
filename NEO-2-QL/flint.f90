@@ -254,6 +254,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   INTEGER, INTENT(in)       :: eta_part_global,eta_part_trapped
 
   REAL(kind=dp), PARAMETER :: twopi = 6.28318530717959_dp
+  integer, parameter :: number_of_points_to_check = 2
 
   ! locals
   INTEGER :: rippletag_old,rippletag,proptag
@@ -414,7 +415,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   
      ALLOCATE(eta_x0_val(1))
      ALLOCATE(eta_s_val(1))
-     DO i_construct = 1,2
+     DO i_construct = 1,number_of_points_to_check
         eta_min_loc = MINLOC(eta_x0_hlp)
         eta_x0_hlp(eta_min_loc(1)) = 1000.0_dp
         eta_x0_val(1) = eta_x0(eta_min_loc(1))
@@ -428,7 +429,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      CALL extract_array(fieldripple%eta_x0,eta_x0_hlp,1)
      CALL extract_array(fieldripple%eta_s, eta_s, 1)
      !PRINT *, 'END EXTRACT 2'
-     DO i_construct = 1,2
+     DO i_construct = 1,number_of_points_to_check
         eta_min_loc = MINLOC(eta_x0_hlp)
         eta_x0_hlp(eta_min_loc(1)) = 1000.0_dp
         eta_x0_val(1) = eta_x0(eta_min_loc(1))
