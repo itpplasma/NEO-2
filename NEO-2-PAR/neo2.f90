@@ -14,7 +14,7 @@ PROGRAM neo2
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,        &
        bsfunc_local_shield_factor,bsfunc_shield,                    &
        bsfunc_lambda_loc_res, eta_savemem_dist1, eta_savemem_dist2, &
-       eta_savemem_sigma_mult, flint_prepare
+       eta_savemem_sigma_mult, flint_prepare, flint_prepare_2
   USE device_mod
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
