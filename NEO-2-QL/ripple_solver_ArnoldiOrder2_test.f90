@@ -1345,16 +1345,16 @@ rotfactor=imun*m_phi
 !
       CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
 !
-! bvec_lapack(j,k) - contribution to the derivative of the distribution 
-! function $\hat f^\sigma$ of the order j-1=0,1,2,3 at the boundary 
-! $\lambda=\lambda_i$ (at the level $\eta=\eta_i$) from the band i+k-2, 
-! where k=1,2,3,4. If i=1 contributing bands are i+k-1=1,2,3,4 (shift up by 1).
-! If i=npassing, sigma=-1 fluxes start contribute:
-! contributions for k=1,2,3,4 come from fun(N-1),fun(N),fun(N+1),fun_b(N*1)
-! If i=npassing+1
-! contributions for k=1,2,3,4 come from fun(N),fun(N+1),fun_b(N+1),fun_b(N)
-! Actual derivative can be obtained by summation of corresponding
-! band-integrated fluxes, $f_{i+k-2}$, multiplied with these contributions
+!> bvec_lapack(j,k) - contribution to the derivative of the distribution
+!> function $\hat f^\sigma$ of the order j-1=0,1,2,3 at the boundary
+!> $\lambda=\lambda_i$ (at the level $\eta=\eta_i$) from the band i+k-2,
+!> where k=1,2,3,4. If i=1 contributing bands are i+k-1=1,2,3,4 (shift up by 1).
+!> If i=npassing, sigma=-1 fluxes start contribute:
+!> contributions for k=1,2,3,4 come from fun(N-1),fun(N),fun(N+1),fun_b(N*1)
+!> If i=npassing+1
+!> contributions for k=1,2,3,4 come from fun(N),fun(N+1),fun_b(N+1),fun_b(N)
+!> Actual derivative can be obtained by summation of corresponding
+!> band-integrated fluxes, $f_{i+k-2}$, multiplied with these contributions
 !
 !
       IF(iplot.EQ.1) derivs_plot(0:3,1:4,i,istep)=bvec_lapack(1:4,1:4)
