@@ -2447,21 +2447,22 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   RETURN
 END SUBROUTINE flint
 
+!> this is a helper routine which computes the new phi values
+!>  according to phi_split_mode
+!>   phi_split_mode = 1 : halfstep (as Sergei did before)
+!>   phi_split_mode = 2 : places phi's according to eta-values
+!>              so that renormalization in ripplesolver can
+!>              work better
+!>   phi_split_mode = 3 : divide phi-intervalls according to phi_divide
+!>
+!>   phi_place_mode = 1 : puts only one point between automatically placed phi's
+!>   phi_place_mode = 2 : puts points according to hphi * hphi_mult
+!>                        always an odd numer of points for Sergei
+!>
+!> returns new "magnetics" to the fieldpropagator structure
 SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
      u_eta,eta_split,hphi_mult,count_solv)
-  ! this is a helper routine which computes the new phi values
-  !  according to phi_split_mode
-  !   phi_split_mode = 1 : halfstep (as Sergei did before)
-  !   phi_split_mode = 2 : places phi's according to eta-values
-  !              so that renormalization in ripplesolver can
-  !              work better
-  !   phi_split_mode = 3 : divide phi-intervalls according to phi_divide
-  ! 
-  !   phi_place_mode = 1 : puts only one point between automatically placed phi's
-  !   phi_place_mode = 2 : puts points according to hphi * hphi_mult
-  !                        always an odd numer of points for Sergei
-  !
-  ! returns new "magnetics" to the fieldpropagator structure
+
   ! input/output
   USE rk4_kin_mod, ONLY : y
   ! input/output
