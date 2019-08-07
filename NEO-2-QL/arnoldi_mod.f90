@@ -26,38 +26,35 @@ contains
 
     implicit none
 
-    integer :: m,ngrowing,ierr,k,j,lwork,info
+    integer, intent(in) :: m
+    integer, intent(out) :: ngrowing,ierr
+    double precision, intent(in) :: tol
+    double complex, dimension(:,:), intent(in) :: hmat
+    double complex, dimension(m,m), intent(out) :: eigh
+    double complex, dimension(m) :: ritznum
+
+    integer :: k,j,lwork,info
 
     double precision, parameter :: tiny_diff = 1.d-12
 
-    double precision :: tol
     double complex   :: tmp
 
-    double complex, dimension(m)   :: ritznum
-    !! Modification by Andreas F. Martitsch (19.10.2016)
-    ! old:
-    !DOUBLE COMPLEX, DIMENSION(m,m) :: hmat,eigh
-    ! new:
-    DOUBLE COMPLEX, DIMENSION(:,:) :: hmat
-    DOUBLE COMPLEX, DIMENSION(m,m) :: eigh
-    !! End Modification by Andreas F. Martitsch (19.10.2016)
-
-    LOGICAL,          DIMENSION(:),   ALLOCATABLE :: selec
-    INTEGER,          DIMENSION(:),   ALLOCATABLE :: ifailr
-    DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: rwork
-    DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: work,rnum
-    DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: hmat_work
+    logical,          dimension(:),   allocatable :: selec
+    integer,          dimension(:),   allocatable :: ifailr
+    double precision, dimension(:),   allocatable :: rwork
+    double complex,   dimension(:),   allocatable :: work,rnum
+    double complex,   dimension(:,:), allocatable :: hmat_work
 
     ierr=0
 
-    ALLOCATE(hmat_work(m,m))
+    allocate(hmat_work(m,m))
 
     hmat_work=hmat
 
-    ALLOCATE(work(1))
+    allocate(work(1))
     lwork=-1
 
-    CALL zhseqr('E','N',m,1,m,hmat_work,m,ritznum,hmat_work,m,work,lwork,info)
+    call zhseqr('E','N',m,1,m,hmat_work,m,ritznum,hmat_work,m,work,lwork,info)
 
     IF(info.NE.0) THEN
       IF(info.GT.0) THEN
