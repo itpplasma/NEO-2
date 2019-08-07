@@ -5621,6 +5621,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !                     ierr           - error code (0 - normal work, 1 - error)
 !
   USE arnoldi_mod, ONLY : ngrow,tol,fzero,eigvecs,ierr,ntol,ritznum,mode
+  use arnoldi_mod, only : try_eigvecvals
 !
   IMPLICIT NONE
 !
@@ -5776,134 +5777,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   END SUBROUTINE arnoldi
-!
-!---------------------------------------------------------------------------------
-!
-  SUBROUTINE try_eigvecvals(m,tol,hmat,ngrow,ritznum,eigh,ierr)
-!
-! Computes eigenvalues, ritznum, of the upper Hessenberg matrix hmat 
-! of the dimension (m,m), orders eigenvelues into the decreasing by module 
-! sequence and computes the eigenvectors, eigh, for eigenvalues exceeding 
-! the tolerance tol (number of these eigenvalues is ngrow)
-!
-! Input arguments:
-!          Formal: m        - matrix size
-!                  tol      - tolerance
-!                  hmat     - upper Hessenberg matrix
-! Output arguments:
-!          Formal: ngrow    - number of exceeding the tolerance
-!                  ritznum  - eigenvalues
-!                  eigh     - eigenvectors
-!                  ierr     - error code (0 - normal work)
-!
-  IMPLICIT NONE
-!
-  INTEGER :: m,ngrow,ierr,k,j,lwork,info
-!
-  DOUBLE PRECISION :: tol
-  DOUBLE COMPLEX   :: tmp
-!
-  DOUBLE COMPLEX, DIMENSION(m)   :: ritznum
-  !! Modification by Andreas F. Martitsch (19.10.2016)
-  ! old:
-  !DOUBLE COMPLEX, DIMENSION(m,m) :: hmat,eigh
-  ! new:
-  DOUBLE COMPLEX, DIMENSION(:,:) :: hmat
-  DOUBLE COMPLEX, DIMENSION(m,m) :: eigh
-  !! End Modification by Andreas F. Martitsch (19.10.2016)
-!
-  LOGICAL,          DIMENSION(:),   ALLOCATABLE :: selec
-  INTEGER,          DIMENSION(:),   ALLOCATABLE :: ifailr
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: rwork
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: work,rnum
-  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: hmat_work
-!
-  ierr=0
-!
-  ALLOCATE(hmat_work(m,m))
-!
-  hmat_work=hmat
 
-  ALLOCATE(work(1))
-  lwork=-1
-!
-  CALL zhseqr('E','N',m,1,m,hmat_work,m,ritznum,hmat_work,m,work,lwork,info)
-!
-  IF(info.NE.0) THEN
-    IF(info.GT.0) THEN
-       PRINT *,'arnoldi: zhseqr failed to compute all eigenvalues'
-       PRINT *,'info: ',info
-    ELSE
-      PRINT *,'arnoldi: argument ',-info,' has illigal value in zhseqr' 
-    ENDIF
-    DEALLOCATE(hmat_work,work)
-    ierr=1
-    RETURN
-  ENDIF
-!
-  lwork=work(1)
-  DEALLOCATE(work)
-  ALLOCATE(work(lwork))
-!
-  CALL zhseqr('E','N',m,1,m,hmat_work,m,ritznum,hmat_work,m,work,lwork,info)
-!
-  IF(info.NE.0) THEN
-    IF(info.GT.0) THEN
-      PRINT *,'arnoldi: zhseqr failed to compute all eigenvalues'
-    ELSE
-      PRINT *,'arnoldi: argument ',-info,' has illigal value in zhseqr' 
-    ENDIF
-    DEALLOCATE(hmat_work,work)
-    ierr=1
-    RETURN
-  ENDIF
-!
-  DO k=1,m
-    info=0
-    DO j=2,m
-      IF(ABS(ritznum(j)).GT.ABS(ritznum(j-1))) THEN
-        info=1
-        tmp=ritznum(j-1)
-        ritznum(j-1)=ritznum(j)
-        ritznum(j)=tmp
-      ENDIF
-    ENDDO
-    IF(info.EQ.0) EXIT
-  ENDDO
-!
-  DEALLOCATE(work)
-!
-! compute how many eigenvalues exceed the tolerance (TOL):
-!
-  ALLOCATE(selec(m),rnum(m))
-  selec=.FALSE.
-  ngrow=0
-  DO j=1,m
-    IF(ABS(ritznum(j)).LT.tol) EXIT
-    ngrow=ngrow+1
-    selec(j)=.TRUE.
-  ENDDO
-  rnum=ritznum
-  hmat_work=hmat
-  ALLOCATE(work(m*m),rwork(m),ifailr(m))
-  eigh=(0.d0,0.d0)
-!
-  CALL zhsein('R','Q','N',selec,m,hmat_work,m,rnum,rnum,1,eigh(:,1:ngrow),m,  &
-              ngrow,ngrow,work,rwork,ifailr,ifailr,info)
-!
-  IF(info.NE.0) THEN
-    IF(info.GT.0) THEN
-      PRINT *,'arnoldi: ',info,' eigenvectors not converged in zhsein'
-    ELSE
-      PRINT *,'arnoldi: argument ',-info,' has illigal value in zhsein' 
-    ENDIF
-    ierr=1
-  ENDIF
-!
-  DEALLOCATE(hmat_work,work,rwork,selec,rnum,ifailr)
-!
-  END SUBROUTINE try_eigvecvals
-!
 END SUBROUTINE ripple_solver_ArnoldiO1
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
