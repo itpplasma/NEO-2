@@ -235,7 +235,6 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: convol_flux,convol_curr
   DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: convol_flux_0
   DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: scalprod_pleg
-!!$  DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: x1mm,x2mm
   DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: scalprod
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: phi_mfl
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: bhat_mfl,h_phi_mfl
@@ -288,10 +287,6 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   DOUBLE PRECISION,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: ttmpfact
-  ! Use pre-conditioned iterations (not necessary/depricated):
-  ! -> remove parallel flow from solution
-!!$  DOUBLE COMPLEX :: fluxincompr,coefincompr
-  ! End Use pre-conditioned iterations (not necessary/depricated)
   LOGICAL :: colltest=.FALSE.
   LOGICAL :: ttmptest=.FALSE.
 !  logical :: ttmptest=.true.
@@ -1532,12 +1527,7 @@ rotfactor=imun*m_phi
   energvec_bra=0.d0
   denom_energ=0.d0
   ! End Use pre-conditioned iterations
-!
-!!$  ALLOCATE(x1mm(0:lag,0:lag))
-!!$  ALLOCATE(x2mm(0:lag,0:lag))
-!
-!!$  CALL lagxmm(lag,x1mm,x2mm)
-!
+
   IF(isw_lorentz.EQ.1) THEN
     x1mm(0,0)=1.d0
     x2mm(0,0)=1.d0
@@ -1648,29 +1638,7 @@ rotfactor=imun*m_phi
 !        amat_sp(nz)=-delphim1
         IF(colltest) nz_ttmp=nz_ttmp+1
       ENDIF
-!!$!
-!!$! mirroring:
-!!$!
-!!$      IF(npassing_prev.LE.npassing) THEN
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$!          irow(nz)=k+npassing+1
-!!$!          icol(nz)=k+npassing+kk-1
-!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-!!$          IF(colltest) nz_ttmp=nz_ttmp+1
-!!$        ENDDO
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$!          irow(nz)=k+npassing+1
-!!$!          icol(nz)=k_prev+npassing_prev+kk-1
-!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
-!!$          IF(colltest) nz_ttmp=nz_ttmp+1
-!!$        ENDDO
-!!$!
-!!$      ENDIF
-!
+
 ! mirroring:
 !
       IF(npassing_prev.EQ.npassing) THEN
@@ -1702,41 +1670,7 @@ rotfactor=imun*m_phi
 ! collisions:
 !
       IF(fact_pos_e(istep).NE.0.d0) THEN
-!!$!
-!!$! Lorentz operator:
-!!$!
-!!$        IF(isw_lor.EQ.1) THEN
-!!$!
-!!$          DO ipart=1,npassing+1
-!!$            DO kk=1,5
-!!$              DO mm=0,lag
-!!$                nz=nz+1
-!!$                nz_coll=nz_coll+1
-!!$!                irow(nz)=k+ipart
-!!$!                icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-!!$!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)   &
-!!$!                           *fact_pos_e(istep)*0.5d0
-!!$!
-!!$                IF(ipart.LE.npassing_prev+1) THEN
-!!$                  nz=nz+1
-!!$!                  irow(nz)=k+ipart
-!!$!                  icol(nz)=k_prev+max(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
-!!$!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep-1) &
-!!$!                             *fact_pos_e(istep)*0.5d0
-!!$                ENDIF
-!!$!
-!!$                IF(.NOT.colltest.AND.mm.EQ.m) THEN
-!!$                  nz_ttmp=nz_ttmp+1
-!!$                ENDIF
-!!$              ENDDO
-!!$            ENDDO
-!!$          ENDDO
-!!$!
-!!$        ENDIF
-!!$!
-!!$!        nz_beg=nz+1
-!!$!         
-!
+
 ! Lorentz operator:
 !
         IF(isw_lor.EQ.1) THEN
@@ -1938,29 +1872,7 @@ rotfactor=imun*m_phi
 !        amat_sp(nz)=-delphim1
         IF(colltest) nz_ttmp=nz_ttmp+1
       ENDIF
-!!$!
-!!$! mirroring:
-!!$!
-!!$      IF(npassing_prev.LE.npassing) THEN
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$!          irow(nz)=k-npassing-1
-!!$!          icol(nz)=k-npassing-kk+1
-!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-!!$          IF(colltest) nz_ttmp=nz_ttmp+1
-!!$        ENDDO
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$!          irow(nz)=k-npassing-1
-!!$!          icol(nz)=k_prev-npassing_prev-kk+1
-!!$!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
-!!$          IF(colltest) nz_ttmp=nz_ttmp+1
-!!$        ENDDO
-!!$!
-!!$      ENDIF
-!
+
 ! mirroring:
 !
       IF(npassing_prev.EQ.npassing) THEN
@@ -1992,40 +1904,7 @@ rotfactor=imun*m_phi
 ! collisions:
 !
       IF(fact_neg_e(istep).NE.0.d0) THEN
-!!$!
-!!$! Lorentz operator:
-!!$!
-!!$        IF(isw_lor.EQ.1) THEN
-!!$!
-!!$          DO ipart=1,npassing+1
-!!$            DO kk=1,5
-!!$              DO mm=0,lag
-!!$                nz=nz+1
-!!$                nz_coll=nz_coll+1
-!!$!                irow(nz)=k-ipart
-!!$!                icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-!!$!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
-!!$!                           *fact_neg_e(istep)*0.5d0
-!!$!
-!!$                IF(ipart.LE.npassing_prev+1) THEN
-!!$                  nz=nz+1
-!!$!                  irow(nz)=k-ipart
-!!$!                  icol(nz)=k_prev-max(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
-!!$!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep+1) &
-!!$!                             *fact_neg_e(istep)*0.5d0
-!!$                ENDIF
-!!$!
-!!$                IF(.NOT.colltest.AND.mm.EQ.m) THEN
-!!$                  nz_ttmp=nz_ttmp+1
-!!$                ENDIF
-!!$              ENDDO
-!!$            ENDDO
-!!$          ENDDO
-!!$!
-!!$        ENDIF
-!!$!
-!!$!        nz_beg=nz+1     
-!
+
 ! Lorentz operator:
 !
         IF(isw_lor.EQ.1) THEN
@@ -2255,47 +2134,7 @@ rotfactor=imun*m_phi
           amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
         ENDIF
       ENDIF
-!!$!
-!!$! mirroring:
-!!$!
-!!$      IF(npassing_prev.LE.npassing) THEN
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$          irow(nz)=k+npassing+1
-!!$          icol(nz)=k+npassing+kk-1
-!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-!!$          IF(colltest) THEN
-!!$            nz_ttmp=nz_ttmp+1
-!!$            irow_ttmp(nz_ttmp)=irow(nz)
-!!$            icol_ttmp(nz_ttmp)=icol(nz)
-!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
-!!$            ! fixed warning: Possible change of value in conversion
-!!$            ! from COMPLEX(8) to REAL(8)
-!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
-!!$          ENDIF
-!!$        ENDDO
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$          irow(nz)=k+npassing+1
-!!$          icol(nz)=k_prev+npassing_prev+kk-1
-!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
-!!$          IF(colltest) THEN
-!!$            nz_ttmp=nz_ttmp+1
-!!$            irow_ttmp(nz_ttmp)=irow(nz)
-!!$            icol_ttmp(nz_ttmp)=icol(nz)
-!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
-!!$            ! fixed warning: Possible change of value in conversion
-!!$            ! from COMPLEX(8) to REAL(8)
-!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
-!!$          ENDIF
-!!$        ENDDO
-!!$!
-!!$      ENDIF
-!
+
 ! mirroring:
 !
       IF(npassing_prev.EQ.npassing) THEN
@@ -2342,50 +2181,7 @@ rotfactor=imun*m_phi
 ! collisions:
 !
       IF(fact_pos_e(istep).NE.0.d0) THEN
-!!$!
-!!$! Lorentz operator:
-!!$!
-!!$        IF(isw_lor.EQ.1) THEN
-!!$!
-!!$          DO ipart=1,npassing+1
-!!$            DO kk=1,5
-!!$              DO mm=0,lag
-!!$                nz=nz+1
-!!$                irow(nz)=k+ipart
-!!$                icol(nz)=k+MAX(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-!!$                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
-!!$                           *fact_pos_e(istep)*0.5d0
-!!$                nz_coll=nz_coll+1
-!!$                irow_coll(nz_coll)=irow(nz)
-!!$                icol_coll(nz_coll)=icol(nz)
-!!$                amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
-!!$!
-!!$                IF(ipart.LE.npassing_prev+1) THEN
-!!$                  nz=nz+1
-!!$                  irow(nz)=k+ipart
-!!$                  icol(nz)=k_prev+MAX(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
-!!$                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep-1) &
-!!$                             *fact_pos_e(istep)*0.5d0
-!!$                ENDIF
-!!$!
-!!$                IF(.NOT.colltest.AND.mm.EQ.m) THEN
-!!$                  nz_ttmp=nz_ttmp+1
-!!$                  irow_ttmp(nz_ttmp)=irow(nz)
-!!$                  icol_ttmp(nz_ttmp)=icol(nz)
-!!$                  amat_ttmp(nz_ttmp)=-ttmp_mat(kk,ipart,istep)
-!!$                  IF(irow(nz).EQ.icol(nz)) THEN
-!!$                    amat_ttmp(nz_ttmp)=amat_ttmp(nz_ttmp)+1.d0
-!!$                  ENDIF
-!!$                ENDIF
-!!$              ENDDO
-!!$            ENDDO
-!!$          ENDDO
-!!$!
-!!$        ENDIF
-!!$!
-!!$        nz_beg=nz+1
-!!$        nz_coll_beg=nz_coll+1
-!
+
 ! Lorentz operator:
 !
         IF(isw_lor.EQ.1) THEN
@@ -2625,47 +2421,7 @@ rotfactor=imun*m_phi
           amat_ttmp(nz_ttmp)=REAL(amat_sp(nz),dp)
         ENDIF
       ENDIF
-!!$!
-!!$! mirroring:
-!!$!
-!!$      IF(npassing_prev.LE.npassing) THEN
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$          irow(nz)=k-npassing-1
-!!$          icol(nz)=k-npassing-kk+1
-!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
-!!$          IF(colltest) THEN
-!!$            nz_ttmp=nz_ttmp+1
-!!$            irow_ttmp(nz_ttmp)=irow(nz)
-!!$            icol_ttmp(nz_ttmp)=icol(nz)
-!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
-!!$            ! fixed warning: Possible change of value in conversion
-!!$            ! from COMPLEX(8) to REAL(8)
-!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
-!!$          ENDIF
-!!$        ENDDO
-!!$!
-!!$        DO kk=1,4
-!!$          nz=nz+1
-!!$          irow(nz)=k-npassing-1
-!!$          icol(nz)=k_prev-npassing_prev-kk+1
-!!$          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
-!!$          IF(colltest) THEN
-!!$            nz_ttmp=nz_ttmp+1
-!!$            irow_ttmp(nz_ttmp)=irow(nz)
-!!$            icol_ttmp(nz_ttmp)=icol(nz)
-!!$            !! Modification by Andreas F. Martitsch (17.07.2015)
-!!$            ! fixed warning: Possible change of value in conversion
-!!$            ! from COMPLEX(8) to REAL(8)
-!!$            amat_ttmp(nz_ttmp)=REAL(amat_sp(nz))
-!!$            !! End Modification by Andreas F. Martitsch (17.07.2015)
-!!$          ENDIF
-!!$        ENDDO
-!!$!
-!!$      ENDIF
-!
+
 ! mirroring:
 !
       IF(npassing_prev.EQ.npassing) THEN
@@ -2712,50 +2468,6 @@ rotfactor=imun*m_phi
 ! collisions:
 !
       IF(fact_neg_e(istep).NE.0.d0) THEN
-!!$!
-!!$! Lorentz operator:
-!!$!
-!!$        IF(isw_lor.EQ.1) THEN
-!!$!
-!!$          DO ipart=1,npassing+1
-!!$            DO kk=1,5
-!!$              DO mm=0,lag
-!!$                nz=nz+1
-!!$                irow(nz)=k-ipart
-!!$                icol(nz)=k-MAX(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-!!$                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
-!!$                           *fact_neg_e(istep)*0.5d0
-!!$                nz_coll=nz_coll+1
-!!$                irow_coll(nz_coll)=irow(nz)
-!!$                icol_coll(nz_coll)=icol(nz)
-!!$                amat_coll(nz_coll)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)
-!!$!
-!!$                IF(ipart.LE.npassing_prev+1) THEN
-!!$                  nz=nz+1
-!!$                  irow(nz)=k-ipart
-!!$                  icol(nz)=k_prev-MAX(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
-!!$                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep+1) &
-!!$                             *fact_neg_e(istep)*0.5d0
-!!$                ENDIF
-!!$!
-!!$                IF(.NOT.colltest.AND.mm.EQ.m) THEN
-!!$                  nz_ttmp=nz_ttmp+1
-!!$                  irow_ttmp(nz_ttmp)=irow(nz)
-!!$                  icol_ttmp(nz_ttmp)=icol(nz)
-!!$                  amat_ttmp(nz_ttmp)=ttmp_mat(kk,ipart,istep)
-!!$                  IF(irow(nz).EQ.icol(nz)) THEN
-!!$                    amat_ttmp(nz_ttmp)=amat_ttmp(nz_ttmp)-1.d0
-!!$                  ENDIF
-!!$                ENDIF
-!!$              ENDDO
-!!$            ENDDO
-!!$          ENDDO
-!!$!
-!!$        ENDIF
-!!$!
-!!$        nz_beg=nz+1
-!!$        nz_coll_beg=nz_coll+1
-!
 ! Lorentz operator:
 !
         IF(isw_lor.EQ.1) THEN
@@ -3563,9 +3275,7 @@ rotfactor=imun*m_phi
     ENDDO
 !
   ENDDO
-!
-!!$  DEALLOCATE(x1mm,x2mm)
-!
+
 ! Use solution of axisymmetric equation set:
 !
   IF(nobounceaver) THEN
@@ -4269,25 +3979,9 @@ RETURN
     !! End Modification by Andreas F. Martitsch (23.08.2015)
 !
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
-!
-!!$    PRINT *,'Check equation set (before remap_rc):'
-!!$    DO k=1,nz
-!!$       IF(dimag(amat_sp(k)) .GT. 1.0d-10) THEN
-!!$          PRINT *,'3951',amat_sp(k)
-!!$          STOP
-!!$       ENDIF
-!!$    ENDDO
-!
+
     CALL  remap_rc(nz,nz_sq,irow,icol,amat_sp)
-!
-!!$    PRINT *,'Check equation set (after remap_rc):'
-!!$    DO k=1,nz_sq
-!!$       IF(dimag(amat_sp(k)) .GT. 1.0d-10) THEN
-!!$          PRINT *,'3961',amat_sp(k)
-!!$          STOP
-!!$       ENDIF
-!!$    ENDDO
-!
+
     PRINT *,'system size = ',n_2d_size
     PRINT *,'non-zeros before and after truncation = ',nz,nz_sq
     nz=nz_sq
@@ -4344,11 +4038,7 @@ RETURN
 ! integral part:
 !
     IF(isw_intp.EQ.1) THEN
-!
-!!$      ! Use pre-conditioned iterations (not necessary/depricated):
-!!$      ! -> remove parallel flow from solution
-!!$      fluxincompr=SUM(CONJG(flux_vector(2,:))*source_vector(:,4))
-! 
+
       denom_energ=SUM(energvec_bra*energvec_ket)
       !PRINT *,'denom_energ = ',denom_energ 
 !
@@ -4371,9 +4061,6 @@ RETURN
           drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
                         source_vector_all(:,k,ispecp))
-!!$       ! Use pre-conditioned iterations (not necessary/depricated):
-!!$       ! -> remove parallel flow from solution
-!!$        source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow
         ENDDO
         !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
@@ -5361,12 +5048,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
                        fnew,iopt)
   ENDIF
-!
-!!$  ! Use pre-conditioned iterations (not necessary/depricated):
-!!$  ! -> remove parallel flow from solution
-!!$  coefincompr=SUM(CONJG(flux_vector(2,:))*fnew)/fluxincompr
-!!$  fnew=fnew-coefincompr*source_vector(:,4)
-!
+
   END SUBROUTINE next_iteration
 
 !---------------------------------------------------------------------------------
@@ -5488,22 +5170,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
   PRINT *,'iterator: number of bad modes = ', ngrow
   nsize=ngrow
-!
-!!$  ! Exclude first eigenvalue/eigenvector:
-!!$  ! -> was used for detection of eigenvalue 1
-!!$  ! corresponding to the null-space of the solution
-!!$  ! (energy conservations)  
-!!$  IF(problem_type .AND. ngrow .GT. 0) THEN
-!!$     IF(ABS(ABS(ritznum(1))-1.0d0) .LT. 1.0d-2) THEN      
-!!$        nsize=ngrow-1
-!!$        eigvecs(:,1)=eigvecs(:,ngrow)
-!!$        ritznum(1)=ritznum(ngrow)
-!!$        ngrow=ngrow-1
-!!$     ENDIF
-!!$  ENDIF
-!!$  IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
-!!$  ! End exclude
-!  
+
   ALLOCATE(fold(n),fnew(n))
 !
   IF(ngrow.EQ.0) THEN
@@ -5566,14 +5233,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
       !! End Modification by Andreas F. Martitsch (20.08.2015)
     ENDDO
   ENDDO
-!
-!!$  WRITE(*,*) ''
-!!$  DO i=1,nsize
-!!$     WRITE(*,*) (amat(i,j),j=1,nsize) 
-!!$  ENDDO
-!!$  WRITE(*,*) ''
-!!$  STOP
-!
+
   CALL zgesv(nsize,nsize,amat,nsize,ipiv,bvec,nsize,info)
 !
   IF(info.NE.0) THEN
@@ -5860,14 +5520,6 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 
     hmat_work=hmat
 
-!!$  WRITE(*,*)
-!!$  DO k=1,m
-!!$     WRITE(*,*) (hmat_work(k,j),j=1,m)
-!!$  ENDDO
-!!$  WRITE(*,*)
-!!$print *,'matrix hmat'
-!!$pause
-!
     ALLOCATE(work(1))
     lwork=-1
 
