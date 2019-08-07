@@ -127,6 +127,7 @@ set(NEO2_COMMON_FILES
 )
 
 set(NEO2_SRC_FILES
+        ./arnoldi_mod.f90
         ./neo_sub.f90
         ./ntv_mod.f90
         ./propagator.f90
