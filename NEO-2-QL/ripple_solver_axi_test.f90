@@ -2477,8 +2477,6 @@ DO ispecp=0,num_spec-1
                     source_vector_all(:,1:3,ispecp),iopt)
 ENDDO
 !! End Modification by Andreas F. Martitsch (23.08.2015)
-!!$  CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-!!$                    source_vector(:,1:3),iopt)
 CALL cpu_TIME(time2)
 !write (*,*) "Time in first solver:", time2-time1
 !
@@ -2508,10 +2506,6 @@ call cpu_time(time1)
           !! Modification by Andreas F. Martitsch (20.08.2015)
           ! MPI Barrier -> Exchange exit conditions between
           ! different processes
-!!$          IF(SUM(ABS(source_vector(:,k)-bvec_prev)) .LT.                        &
-!!$             SUM(ABS(bvec_prev))*epserr_iter) THEN
-!!$            EXIT
-!!$          ENDIF
           break_cond1(ispec)=SUM(ABS(source_vector_all(:,k,ispecp)-bvec_prev))
           break_cond2(ispec)=SUM(ABS(bvec_prev))*epserr_iter
           PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
@@ -2766,11 +2760,6 @@ ENDDO
 qflux_allspec=qflux_allspec_tmp
 IF(ALLOCATED(qflux_allspec_tmp)) DEALLOCATE(qflux_allspec_tmp)
 IF(mpro%getrank() .EQ. 0) THEN
-  ! D33
-!!$  PRINT *,qflux_allspec(2,2,0,0)
-!!$  PRINT *,qflux_allspec(2,2,1,0)
-!!$  PRINT *,qflux_allspec(2,2,0,1)
-!!$  PRINT *,qflux_allspec(2,2,1,1)
   ! D11
   PRINT *,'qflux(1,1,0,0):'
   PRINT *,qflux_allspec(1,1,0,0)
@@ -3197,24 +3186,6 @@ SUBROUTINE integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
   CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   !PRINT *,'mpro%getrank() after:', mpro%getrank()
   !PRINT *,'scalprod_pleg, species = ',ispec
-!!$  IF(mpro%getrank() .EQ. 0) THEN
-!!$  CALL h5_create('scalprod_pleg_ispec0.h5', h5id_scalprod_pleg)
-!!$  CALL h5_add(h5id_scalprod_pleg, 'scalprod_pleg', scalprod_pleg, &
-!!$       LBOUND(scalprod_pleg), UBOUND(scalprod_pleg))
-!!$  CALL h5_close(h5id_scalprod_pleg)
-!!$  !PRINT *,scalprod_pleg(:,:,ibeg,0)
-!!$  !PRINT *,scalprod_pleg(:,:,ibeg,1)
-!!$  END IF
-!!$  IF(mpro%getrank() .EQ. 1) THEN
-!!$  CALL h5_create('scalprod_pleg_ispec1.h5', h5id_scalprod_pleg)
-!!$  CALL h5_add(h5id_scalprod_pleg, 'scalprod_pleg', scalprod_pleg, &
-!!$       LBOUND(scalprod_pleg), UBOUND(scalprod_pleg))
-!!$  CALL h5_close(h5id_scalprod_pleg)
-!!$  !PRINT *,scalprod_pleg(:,:,ibeg,0)
-!!$  !PRINT *,scalprod_pleg(:,:,ibeg,1)
-!!$  END IF
-!!$  CALL mpro%barrier()
-!!$  STOP
   !! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   DO istep=ibeg,iend
