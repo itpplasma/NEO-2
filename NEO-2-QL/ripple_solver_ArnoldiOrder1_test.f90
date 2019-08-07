@@ -1,10 +1,3 @@
-  MODULE arnoldi_mod
-    INTEGER :: ngrow,ierr
-    INTEGER :: ntol,mode=0
-    DOUBLE PRECISION :: tol
-    DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
-    DOUBLE COMPLEX, DIMENSION(:,:), ALLOCATABLE :: eigvecs
-  END MODULE arnoldi_mod
 !
 !Sergei 20.07.2006 : modification of boundary layer is done now locally,
 !                    filtering of the magnetic field maxima has been removed,
