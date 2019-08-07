@@ -255,7 +255,8 @@
  sparse_solve_method = 3
  sparse_talk = .false. ! [.false.]
  switch_off_asymp = 0 ! [0]
- xetama = 1.300001 ! [1.300001d0]
+ xetama = 1.300001 ! Seems to be not used, value is overwriten in ripple
+                   ! solver. [1.300001d0]
  xetami = 0.0 ! [0.0d0]
  zbeg = 0.0 ! [0.d0]
 /
