@@ -2884,32 +2884,4 @@ contains
 
   end subroutine compute_collop_inf
 
-  subroutine compute_collop_lorentz(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, anumm_s)
-    character(len=*) :: tag_a, tag_b
-    real(kind=dp)    :: m_a0, m_b0
-    real(kind=dp)    :: T_a0, T_b0
-    real(kind=dp), dimension(:,:)   :: anumm_s
-
-    m_a = m_a0
-    m_b = m_b0
-    T_a = T_a0
-    T_b = T_b0
-
-    v_ta = sqrt(2*T_a / m_a)
-    v_tb = sqrt(2*T_b / m_b)
-    gamma_ab = v_ta/v_tb
-    write (*,'(A,A,A,A,A,ES13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
-
-    !**********************************************************
-    ! Define constants for offset correction
-    !**********************************************************
-    a_00_offset = 1.00d0
-    a_02_offset = 1.50d0
-    a_22_offset = 3.75d0
-    
-    call compute_lorentz(anumm_s)
-    call disp_gsl_integration_error()
-
-  end subroutine compute_collop_lorentz
-
 end module collop_compute

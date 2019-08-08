@@ -5,7 +5,7 @@ module collop
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
        m_ele, m_d, m_C, m_alp, m_W, compute_collop_inf, C_m, compute_xmmp, &
-       compute_collop_lorentz, nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
+       nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
        compute_collop_rel, lagmax, integral_cutoff, num_sub_intervals, num_sub_intervals_cutoff, &
        epsabs, epsrel, x_cutoff, c, m_ele, eV, lsw_split_interval, compute_nbisource
   use mpiprovider_module
