@@ -93,6 +93,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   ! support of different basis functions and replaces routine "lagxmm".
   USE collop
   !! End Modification by Andreas F. Martitsch (28.07.2015)
+  use arnoldi_mod, only : iterator
   
   IMPLICIT NONE
   !INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -3623,7 +3624,8 @@ RETURN
 !
         mode_iter=2
 !
-        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,bvec_sp)
+        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
+          & bvec_sp, ispec, next_iteration)
 !
       ENDIF
 !
@@ -3668,7 +3670,8 @@ RETURN
 !
         mode_iter=2
 !
-        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,bvec_sp)
+        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
+          & bvec_sp, ispec, next_iteration)
 !
       ENDIF
 !
@@ -3969,7 +3972,9 @@ RETURN
     SUBROUTINE solve_eqs(clean)
 !
 ! Solve the linear equation set:
-! 
+!
+    use arnoldi_mod, only : iterator
+
     LOGICAL :: clean
     DOUBLE PRECISION,   DIMENSION(:),   ALLOCATABLE :: bvec_sp_real
     !! Modification by Andreas F. Martitsch (23.08.2015)
@@ -4053,14 +4058,15 @@ RETURN
 !
         !! Modification by Andreas F. Martitsch (23.08.2015)
         ! old behavior (for a single species):
-        !CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,source_vector(:,k))
+        !CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
+        !  & source_vector(:,k), ispec, next_iteration)
         !source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow     
         !  multi-species part:
         DO ispecp=0,num_spec-1
           PRINT *,'species',ispecp,':'
           drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
-                        source_vector_all(:,k,ispecp))
+                      & source_vector_all(:,k,ispecp), ispec, next_iteration)
         ENDDO
         !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
@@ -4069,7 +4075,8 @@ RETURN
       IF(clean) THEN
         mode_iter=3
 !
-        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,source_vector(:,k))
+        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
+          & source_vector(:,k), ispec, next_iteration)
 !
       ENDIF
 !
@@ -5050,428 +5057,6 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   ENDIF
 
   END SUBROUTINE next_iteration
-
-!---------------------------------------------------------------------------------
-!> \brief Solves the equation f=Af+q where A is a matrix and q is a given vector.
-!>
-!> Iterates the system which may be unstable at direct iterations
-!> using subtraction of unstable eigenvectors. Iterations are terminated
-!> when relative error, defined as $\sum(|f_n-f_{n-1}|)/\sum(|f_n|)$
-!> is below the input value or maximum number of combined iterations
-!> is reached.
-!>
-!> Input  parameters:
-!>            Formal: mode_in        - iteration mode (0 - direct iterations,
-!>                                                         "next_iteration" provides Af
-!>                                                         and q is provided as an input via
-!>                                                         "result"
-!>                                                     1 - "next_iteration" provides Af+q,
-!>                                                     2 - "next_iteration" provides Af
-!>                                                         and q is provided as an input via
-!>                                                         "result", preconditioner stays
-!>                                                         allocated. If the routine is
-!>                                                         re-entered with this mode, old
-!>                                                         preconditioner is used
-!>                                                     3 - just dealocates preconditioner
-!>                    n              - system size
-!>                    narn           - maximum number of Arnoldi iterations
-!>                    relerr         - relative error
-!>                    itermax        - maximum number of combined iterations
-!>                    result         - used as an input in mode_in=2
-!>          External: next_iteration - routine computing next iteration, "fnew",
-!>                                     of the solution from the previous, "fold",
-!>                                          fnew = A fold + q
-!>                                     in case of mode_in=2
-!>                                          fnew = A fold
-!>                                     call next_iteration(n,fold,fnew)
-!>                                     where "n" is a vector size
-!>
-!> Output parameters:
-!>            Formal: result         - solution vector
-  SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_)
-
-  USE arnoldi_mod, ONLY : tol,ngrow,eigvecs,ierr,ntol,fzero,mode,ritznum
-!
-  IMPLICIT NONE
-!
-! tol0 - largest eigenvalue tolerated in combined iterations:
-  INTEGER,          PARAMETER :: ntol0=10
-  DOUBLE PRECISION, PARAMETER :: tol0=0.5d0
-!
-!  external :: next_iteration
-  INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
-  DOUBLE PRECISION :: relerr
-  DOUBLE COMPLEX, DIMENSION(n), intent(inout) :: RESULT_
-  INTEGER,        DIMENSION(:),   ALLOCATABLE :: ipiv
-  DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: fold,fnew
-  DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: coefren
-  DOUBLE COMPLEX, DIMENSION(:,:), ALLOCATABLE :: amat,bvec
-!
-!! Modification by Andreas F. Martitsch (20.08.2015)
-! MPI Barrier -> Exchange exit conditions between
-! different processes
-  DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond1
-  DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
-! MPI Barrier -> Exchange coefren and amat
-! between different processes
-  DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: coefren_spec
-  DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: amat_spec
-!! End Modification by Andreas F. Martitsch (20.08.2015)
-!
-  IF(mode_in.EQ.3) THEN
-    mode=mode_in
-    IF(ALLOCATED(ritznum)) DEALLOCATE(eigvecs,ritznum)
-    RETURN
-  ELSEIF(mode_in.EQ.2) THEN
-    IF(mode.EQ.2) THEN
-      iarnflag=0
-    ELSE
-      iarnflag=1
-      IF(ALLOCATED(ritznum)) DEALLOCATE(eigvecs,ritznum)
-      ALLOCATE(ritznum(narn))
-    ENDIF
-  ELSEIF(mode_in.EQ.1) THEN
-    iarnflag=1
-    IF(ALLOCATED(ritznum)) DEALLOCATE(eigvecs,ritznum)
-    ALLOCATE(ritznum(narn))
-  ELSEIF(mode_in.EQ.0) THEN
-    iarnflag=0
-    ngrow=0
-  ELSE
-    PRINT *,'unknown mode'
-    RETURN
-  ENDIF
-!
-  ALLOCATE(fzero(n))
-  IF(mode_in.NE.1) fzero=RESULT_
-!
-  mode=mode_in
-!
-  IF(iarnflag.EQ.1) THEN
-!
-! estimate NARN largest eigenvalues:
-!
-    tol=tol0
-    ntol=ntol0
-!
-!    call arnoldi(n,narn,next_iteration)
-    !IF( mpro%isMaster() .AND. (.NOT. problem_type) ) OPEN(unit=250517,file='ritznum.dat')
-    CALL arnoldi(n,narn)
-    !IF( mpro%isMaster() .AND. (.NOT. problem_type) ) CLOSE(unit=250517)
-    IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
-!
-    IF(ierr.NE.0) THEN
-      PRINT *,'iterator: error in arnoldi'
-      DEALLOCATE(fzero,eigvecs,ritznum)
-      RETURN
-    ENDIF
-!
-  ENDIF
-!
-  PRINT *,'iterator: number of bad modes = ', ngrow
-  nsize=ngrow
-
-  ALLOCATE(fold(n),fnew(n))
-!
-  IF(ngrow.EQ.0) THEN
-!
-! there are no bad eigenvalues, use direct iterations:
-!
-    fold=fzero
-!
-    DO iter=1,itermax
-      CALL next_iteration(n,fold,fnew)
-      IF(mode.EQ.2 .OR. mode.EQ.0) fnew=fnew+fzero
-      !! Modification by Andreas F. Martitsch (20.08.2015)
-      ! MPI Barrier -> Exchange exit conditions between
-      ! different processes
-      !IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
-      !PRINT *,'dimag(fnew) [sum, abs. sum]: ',SUM(dimag(fnew)),SUM(ABS(dimag(fnew)))
-      !PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
-      break_cond1(ispec)=SUM(ABS(fnew-fold))
-      break_cond2(ispec)=relerr*SUM(ABS(fnew))
-      PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
-      CALL mpro%allgather(break_cond1(ispec), break_cond1)
-      CALL mpro%allgather(break_cond2(ispec), break_cond2)
-      IF(ALL(break_cond1 .LE. break_cond2)) EXIT
-      !! End Modification by Andreas F. Martitsch (20.08.2015)
-      fold=fnew
-      IF(iter.EQ.itermax) PRINT *, &
-              'iterator: maximum number of iterations reached'
-    ENDDO
-!
-    PRINT *,'iterator: number of direct iterations = ',iter-1
-!
-    RESULT_=fnew
-    DEALLOCATE(fold,fnew,fzero)
-    RETURN
-!
-  ENDIF
-!
-! compute subtraction matrix:
-!
-  ALLOCATE(amat(nsize,nsize),bvec(nsize,nsize),ipiv(nsize),coefren(nsize))
-  bvec=(0.d0,0.d0)
-!! Modification by Andreas F. Martitsch (20.08.2015)
-! MPI Barrier -> Exchange coefren and amat
-! between different processes
-  IF(ALLOCATED(coefren_spec)) DEALLOCATE(coefren_spec)
-  ALLOCATE(coefren_spec(0:num_spec-1))
-  IF(ALLOCATED(amat_spec)) DEALLOCATE(amat_spec)
-  ALLOCATE(amat_spec(0:num_spec-1))
-!! End Modification by Andreas F. Martitsch (20.08.2015)
-!
-  DO i=1,nsize
-    bvec(i,i)=(1.d0,0.d0)
-    DO j=1,nsize
-      !! Modification by Andreas F. Martitsch (20.08.2015)
-      ! MPI Barrier -> Exchange amat between different processes
-      !amat(i,j)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))*(ritznum(j)-(1.d0,0.d0))
-      amat_spec(ispec)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))
-      CALL mpro%allgather(amat_spec(ispec),amat_spec)
-      amat(i,j)=SUM(amat_spec)*(ritznum(j)-(1.d0,0.d0))
-      !! End Modification by Andreas F. Martitsch (20.08.2015)
-    ENDDO
-  ENDDO
-
-  CALL zgesv(nsize,nsize,amat,nsize,ipiv,bvec,nsize,info)
-!
-  IF(info.NE.0) THEN
-    IF(info.GT.0) THEN
-      PRINT *,'iterator: singular matrix in zgesv'
-    ELSE
-      PRINT *,'iterator: argument ',-info,' has illigal value in zgesv'
-    ENDIF
-    DEALLOCATE(ritznum,coefren,amat,bvec,ipiv)
-    DEALLOCATE(fzero,fold,fnew,eigvecs)
-    RETURN
-  ENDIF
-!
-! iterate the solution:
-!
-  fold=fzero
-!
-  DO iter=1,itermax
-    CALL next_iteration(n,fold,fnew)
-    IF(mode.EQ.2) fnew=fnew+fzero
-    DO j=1,nsize
-      !! Modification by Andreas F. Martitsch (20.08.2015)
-      ! MPI Barrier -> Exchange amat between different processes
-      !coefren(j)=ritznum(j)*SUM(bvec(j,:)                           &
-      !          *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
-      coefren_spec(ispec)=SUM(bvec(j,:)                           &
-                *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
-      CALL mpro%allgather(coefren_spec(ispec),coefren_spec)
-      coefren(j)=ritznum(j)*SUM(coefren_spec)
-      !! End Modification by Andreas F. Martitsch (20.08.2015)
-      !coefren(j)=ritznum(j)*SUM(bvec(j,:)                           &
-      !          *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
-    ENDDO
-    fnew=fnew-MATMUL(eigvecs(:,1:nsize),coefren)
-    !! Modification by Andreas F. Martitsch (20.08.2015)
-    ! MPI Barrier -> Exchange exit conditions between
-    ! different processes
-    !PRINT *,'dimag(fnew) [sum, abs. sum]: ',SUM(dimag(fnew)),SUM(ABS(dimag(fnew)))
-    !PRINT *,iter,SUM(ABS(fnew-fold)),relerr*SUM(ABS(fnew))
-    !IF(SUM(ABS(fnew-fold)).LE.relerr*SUM(ABS(fnew))) EXIT
-    break_cond1(ispec)=SUM(ABS(fnew-fold))
-    break_cond2(ispec)=relerr*SUM(ABS(fnew))
-    PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
-    CALL mpro%allgather_double_1(break_cond1(ispec), break_cond1)
-    CALL mpro%allgather(break_cond2(ispec), break_cond2)
-    IF(ALL(break_cond1 .LE. break_cond2)) EXIT
-    !! End Modification by Andreas F. Martitsch (20.08.2015)
-    fold=fnew
-    IF(iter.EQ.itermax) PRINT *,'iterator: maximum number of iterations reached'
-  ENDDO
-!
-  PRINT *,'iterator: number of stabilized iterations = ',iter-1
-!
-  RESULT_=fnew
-!
-  DEALLOCATE(coefren,amat,bvec,ipiv,fold,fnew,fzero)
-  IF(mode.EQ.1) DEALLOCATE(eigvecs,ritznum)
-!
-  END SUBROUTINE iterator
-
-!-----------------------------------------------------------------------------
-!> Computes m Ritz eigenvalues (approximations to extreme eigenvalues)
-!> of the iteration procedure of the vector with dimension n.
-!> Eigenvalues are computed by means of Arnoldi iterations.
-!> Optionally computes Ritz vectors (approximation to eigenvectors).
-!>
-!> Input  parameters:
-!> Formal:             n              - system dimension
-!>                     mmax           - maximum number of Ritz eigenvalues
-!> Module arnoldi_mod: tol            - eigenvectors are not computed for
-!>                                      eigenvalues smaller than this number
-!> External:           next_iteration - routine computing next iteration
-!>                                      of the solution from the previous
-!> Output parameters:
-!> Module arnoldi_mod: ngrow          - number of eigenvalues larger or equal
-!>                                      to TOL
-!>                     ritznum        - Ritz eigenvalues
-!>                     eigvecs        - array of eigenvectors, size - (m,ngrow)
-!>                     ierr           - error code (0 - normal work, 1 - error)
-  SUBROUTINE arnoldi(n,mmax)
-
-  USE arnoldi_mod, ONLY : ngrow,tol,fzero,eigvecs,ierr,ntol,ritznum,mode
-  use arnoldi_mod, only : try_eigvecvals
-
-  IMPLICIT NONE
-!
-!! Modification by Andreas F. Martitsch (02.03.2017)
-  ! set independent accuracy-level for eigenvalue computation
-  DOUBLE PRECISION, PARAMETER :: epserr_ritznum=1.0d-3
-!! End Modification by Andreas F. Martitsch (02.03.2017)
-!
-!  external :: next_iteration
-  INTEGER                                       :: n,m,k,j,mmax,mbeg,ncount
-  INTEGER :: driv_spec
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
-  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
-!
-!! Modification by Andreas F. Martitsch (20.08.2015)
-! MPI Barrier -> Exchange qvecs_prevs and hmat
-! between different processes
-  DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
-!! End Modification by Andreas F. Martitsch (20.08.2015)
-  INTEGER :: m_tol, m_ind
-  DOUBLE COMPLEX, DIMENSION(500) :: ritzum_write
-!
-  ALLOCATE(fold(n),fnew(n))
-  ALLOCATE(qvecs_prev(n,1),ritznum_prev(mmax))
-  ALLOCATE(hmat(mmax,mmax))
-!
-  fold=(0.d0,0.d0)
-!
-  hmat=(0.d0,0.d0)
-!
-  IF(mode.EQ.1) THEN
-    CALL next_iteration(n,fold,fnew)
-    fzero=fnew
-  ELSEIF(mode.EQ.2) THEN
-    fnew=fzero
-  ENDIF
-!
-!! Modification by Andreas F. Martitsch (20.08.2015)
-! MPI Barrier -> Exchange qvecs_prevs and hmat
-! between different processes
-  !qvecs_prev(:,1)=fnew/SQRT(SUM(CONJG(fnew)*fnew))
-  IF(ALLOCATED(q_spec)) DEALLOCATE(q_spec)
-  ALLOCATE(q_spec(0:num_spec-1))
-  q_spec=0.0d0
-  IF(ALLOCATED(h_spec)) DEALLOCATE(h_spec)
-  ALLOCATE(h_spec(0:num_spec-1))
-  h_spec=0.0d0
-  q_spec(ispec)=SUM(CONJG(fnew)*fnew)
-  CALL mpro%allgather(q_spec(ispec), q_spec)
-  qvecs_prev(:,1)=fnew/SQRT(SUM(q_spec))
-!! End Modification by Andreas F. Martitsch (20.08.2015)
-!
-  ierr=0
-  mbeg=2
-  ncount=0
-!
-  DO m=2,mmax
-!
-    ALLOCATE(qvecs(n,m))
-    qvecs(:,1:m-1)=qvecs_prev(:,1:m-1)
-!
-    ALLOCATE(eigh(m,m))
-!
-    DO k=mbeg,m
-      fold=qvecs(:,k-1)
-      CALL next_iteration(n,fold,fnew)
-      IF(mode.EQ.1) THEN
-        qvecs(:,k)=fnew-fzero
-      ELSEIF(mode.EQ.2) THEN
-        qvecs(:,k)=fnew
-      ENDIF
-      DO j=1,k-1
-        !! Modification by Andreas F. Martitsch (20.08.2015)
-        ! MPI Barrier -> Exchange qvecs_prevs and hmat
-        ! between different processes
-        !hmat(j,k-1)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))         
-        h_spec=0.0d0
-        h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
-        CALL mpro%allgather(h_spec(ispec), h_spec)
-        hmat(j,k-1)=SUM(h_spec)
-        !! End Modification by Andreas F. Martitsch (20.08.2015) 
-        qvecs(:,k)=qvecs(:,k)-hmat(j,k-1)*qvecs(:,j)
-      ENDDO
-      !! Modification by Andreas F. Martitsch (20.08.2015)
-      ! MPI Barrier -> Exchange qvecs_prevs and hmat
-      ! between different processes
-      !hmat(k,k-1)=SQRT(SUM(CONJG(qvecs(:,k))*qvecs(:,k)))
-      h_spec=0.0d0
-      h_spec(ispec)=SUM(CONJG(qvecs(:,k))*qvecs(:,k))
-      CALL mpro%allgather(h_spec(ispec), h_spec)
-      hmat(k,k-1)=SQRT(SUM(h_spec))
-      !! End Modification by Andreas F. Martitsch (20.08.2015)
-      qvecs(:,k)=qvecs(:,k)/hmat(k,k-1)
-    ENDDO
-!
-    CALL try_eigvecvals(m,tol,hmat(1:m,1:m),ngrow,ritznum(1:m),eigh,ierr)
-!
-    IF(m.GT.2) THEN
-      !! Modification by Andreas F. Martitsch (26.05.2017)
-      ! set independent accuracy-level for eigenvalue computation
-      !-> old: 
-      !IF(SUM(ABS(ritznum(1:m-1)-ritznum_prev(1:m-1))).LT.tol) THEN
-      !-> new:
-      !IF(SUM(ABS(ritznum(1:m-1)-ritznum_prev(1:m-1))).LT.epserr_ritznum) THEN 
-      !
-      ! debugging - write temporal evolution of eigenvalues
-      !ritzum_write = (0.0d0,0.0d0)
-      !ritzum_write(1:m-1)=ritznum(1:m-1)
-      !IF( mpro%isMaster() .AND. (.NOT. problem_type) ) WRITE(250517,*) ritzum_write
-      !
-      ! check for convergence of ritznum exceeding tol
-      m_tol=m-1
-      DO m_ind = 1,m-1
-        IF(ABS(ritznum(m_ind)) .LT. tol) THEN
-          m_tol = m_ind
-          EXIT 
-        ENDIF
-      ENDDO
-      IF(SUM(ABS(ritznum(1:m_tol)-ritznum_prev(1:m_tol))).LT.(epserr_ritznum*m_tol)) THEN
-      !! End Modification by Andreas F. Martitsch (26.05.2017)
-        ncount=ncount+1
-      ELSE
-        ncount=0
-      ENDIF
-    ENDIF
-    ritznum_prev(1:m)=ritznum(1:m)
-!
-    IF(ncount.GE.ntol.OR.m.EQ.mmax) THEN
-      IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
-      ALLOCATE(eigvecs(n,ngrow))
-!
-      eigvecs=MATMUL(qvecs(:,1:m),eigh(1:m,1:ngrow))
-!
-      PRINT *,'arnoldi: number of iterations = ',m
-      EXIT
-    ENDIF
-!
-    DEALLOCATE(qvecs_prev)
-    ALLOCATE(qvecs_prev(n,m))
-    qvecs_prev=qvecs
-    DEALLOCATE(qvecs)
-!
-    DEALLOCATE(eigh)
-    mbeg=m+1
-!
-  ENDDO
-!
-  DEALLOCATE(fold,fnew,qvecs,qvecs_prev,hmat)
-!! Modification by Andreas F. Martitsch (20.08.2015)
-! MPI Barrier -> Exchange qvecs_prevs and hmat
-! between different processes
-  DEALLOCATE(q_spec,h_spec)
-!! End Modification by Andreas F. Martitsch (20.08.2015)
-!
-  END SUBROUTINE arnoldi
 
   subroutine save_qflux_symm_allspec()
     implicit none
