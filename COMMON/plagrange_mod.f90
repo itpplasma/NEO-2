@@ -1147,4 +1147,188 @@ CONTAINS
   !! End Modifications by Andreas F. Martitsch (13.03.2014)
   !---------------------------------------------------------------------
   !---------------------------------------------------------------------
+
+  subroutine fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
+                                      phi_mfl,bhat_mfl,eta)
+
+    use device_mod, only : fieldpropagator
+
+    implicit none
+
+    integer :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
+    integer :: ncross_l,ncross_r
+
+    double precision :: subsqmin
+
+    integer, dimension(1)              :: idummy
+    integer, dimension(:), allocatable :: icross_l,icross_r
+
+    double precision, dimension(0:npart)        :: eta
+    double precision, dimension(ibeg:iend)      :: phi_mfl,bhat_mfl
+    double precision, dimension(:), allocatable :: eta_cross_l,eta_cross_r
+
+    npassing = -1
+
+
+    ! determine level crossings:
+
+    idummy=minloc(bhat_mfl(ibeg:iend))
+    ibmin=idummy(1)+ibeg-1
+
+    ncross_l=0
+    if (ibmin .gt. ibeg) then
+      istep=ibmin
+      do i=0,npart
+        if(1.d0-bhat_mfl(istep)*eta(i) .gt. subsqmin) then
+          npassing=i
+        else
+          exit
+        end if
+      end do
+      npassing_prev=npassing
+      do istep=ibmin-1,ibeg,-1
+        do i=0,npart
+          if (1.d0-bhat_mfl(istep)*eta(i) .gt. subsqmin) then
+            npassing=i
+          else
+            exit
+          end if
+        end do
+        if (npassing.lt.npassing_prev) then
+          ncross_l=ncross_l+1
+          npassing_prev=npassing
+        end if
+      end do
+      if (ncross_l.gt.0) then
+        allocate(icross_l(ncross_l),eta_cross_l(ncross_l))
+        ncross_l=0
+        istep=ibmin
+        do i=0,npart
+          if(1.d0-bhat_mfl(istep)*eta(i) .gt. subsqmin) then
+            npassing=i
+          else
+            exit
+          end if
+        end do
+        npassing_prev=npassing
+        do istep=ibmin-1,ibeg,-1
+          do i=0,npart
+            if(1.d0-bhat_mfl(istep)*eta(i) .gt. subsqmin) then
+              npassing=i
+            else
+              exit
+            end if
+          end do
+          if (npassing.lt.npassing_prev) then
+            ncross_l=ncross_l+1
+            icross_l(ncross_l)=istep
+            eta_cross_l(ncross_l)=eta(npassing_prev)
+            npassing_prev=npassing
+          end if
+        end do
+        do i=1,ncross_l
+          istep=icross_l(i)
+          if (abs(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).lt. &
+              abs(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) then
+            open(111,file='phi_placement_problem.dat',position='append')
+            write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                         ' step number = ',istep-1,                &
+                         ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
+                         ' eta = ',eta_cross_l(i)
+            close(111)
+            bhat_mfl(istep-1)=1/eta_cross_l(i)
+          elseif (abs(bhat_mfl(istep+1)*eta_cross_l(i)-1.d0).lt. &
+                  abs(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) then
+            open(111,file='phi_placement_problem.dat',position='append')
+            write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                         ' step number = ',istep+1,                &
+                         ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
+                         ' eta = ',eta_cross_l(i)
+            bhat_mfl(istep+1)=1/eta_cross_l(i)
+            close(111)
+          end if
+        end do
+        deallocate(icross_l,eta_cross_l)
+      end if
+    end if
+
+    ncross_r=0
+    if (ibmin.lt.iend) then
+      istep=ibmin
+      do i=0,npart
+        if (1.d0-bhat_mfl(istep)*eta(i).GT.subsqmin) then
+          npassing=i
+        else
+          exit
+        end if
+      end do
+      npassing_prev=npassing
+      do istep=ibmin+1,iend
+        do i=0,npart
+          if (1.d0-bhat_mfl(istep)*eta(i).gt.subsqmin) then
+            npassing=i
+          else
+            exit
+          end if
+        end do
+        if (npassing.lt.npassing_prev) then
+          ncross_r=ncross_r+1
+          npassing_prev=npassing
+        end if
+      end do
+      if (ncross_r.gt.0) then
+        allocate(icross_r(ncross_r),eta_cross_r(ncross_r))
+        ncross_r=0
+        istep=ibmin
+        do i=0,npart
+          if (1.d0-bhat_mfl(istep)*eta(i).gt.subsqmin) then
+            npassing=i
+          else
+            exit
+          end if
+        end do
+        npassing_prev=npassing
+        do istep=ibmin+1,iend
+          do i=0,npart
+            if (1.d0-bhat_mfl(istep)*eta(i).gt.subsqmin) then
+              npassing=i
+            else
+              exit
+            end if
+          end do
+          if (npassing.lt.npassing_prev) then
+            ncross_r=ncross_r+1
+            icross_r(ncross_r)=istep
+            eta_cross_r(ncross_r)=eta(npassing_prev)
+            npassing_prev=npassing
+          end if
+        end do
+        do i=1,ncross_r
+          istep=icross_r(i)
+          if (abs(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).lt. &
+              abs(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) then
+            open(111,file='phi_placement_problem.dat',position='append')
+            write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                         ' step number = ',istep-1,                &
+                         ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
+                         ' eta = ',eta_cross_r(i)
+            close(111)
+            bhat_mfl(istep-1)=1/eta_cross_r(i)
+          elseif (abs(bhat_mfl(istep+1)*eta_cross_r(i)-1.d0).lt. &
+                  abs(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) then
+            open(111,file='phi_placement_problem.dat',position='append')
+            write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                         ' step number = ',istep+1,                &
+                         ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
+                         ' eta = ',eta_cross_r(i)
+            close(111)
+            bhat_mfl(istep+1)=1/eta_cross_r(i)
+          end if
+        end do
+        deallocate(icross_r,eta_cross_r)
+      end if
+    end if
+
+  end subroutine fix_phiplacement_problem
+
 END MODULE plagrange_mod
