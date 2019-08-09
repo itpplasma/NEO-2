@@ -3468,34 +3468,34 @@ rotfactor=imun*m_phi
 !
   problem_type=.FALSE.
   CALL solve_eqs(.TRUE.)
-!
-! Debugging - plot distribution function (NA problem)
-IF(lsw_debug_distfun) THEN
-DO ispecp=0,num_spec-1
-uw=100000*(num_spec*ispec+ispecp+1)
-istep=(ibeg+iend)/2
-uw_new=uw
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1000
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-istep=ibeg
-uw_new=uw+10
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1010
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-istep=iend
-uw_new=uw+20
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1020
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-istep=ibeg+1
-uw_new=uw+30
-CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-uw_new=uw+1030
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
-END DO
-END IF  
-!
+
+  ! Debugging - plot distribution function (NA problem)
+  IF(lsw_debug_distfun) THEN
+    DO ispecp=0,num_spec-1
+      uw=100000*(num_spec*ispec+ispecp+1)
+      istep=(ibeg+iend)/2
+      uw_new=uw
+      CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+      uw_new=uw+1000
+      CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+      istep=ibeg
+      uw_new=uw+10
+      CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+      uw_new=uw+1010
+      CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+      istep=iend
+      uw_new=uw+20
+      CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+      uw_new=uw+1020
+      CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+      istep=ibeg+1
+      uw_new=uw+30
+      CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
+      uw_new=uw+1030
+      CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+    END DO
+  END IF
+
   !! Modification by Andreas F. Martitsch (23.08.2015)
   ! NEO-2 can treat now multiple species -> qflux is now a 4D array
   ! (at the moment these arrays cannot be handled correctly using the
@@ -3858,11 +3858,11 @@ RETURN
   !------------------------------------------------------------------------
   RETURN
 !
-  CONTAINS
+CONTAINS
 !
 !------------------------------------------------------------------------
 !
-    SUBROUTINE plotsource(iunit_base,sourcevec_tmp)
+  SUBROUTINE plotsource(iunit_base,sourcevec_tmp)
 !
     INTEGER :: iunit_base
     DOUBLE PRECISION, DIMENSION(n_2d_size,3) :: sourcevec_tmp
@@ -3900,11 +3900,11 @@ RETURN
 !
     CALL FLUSH()
 !
-    END SUBROUTINE plotsource
+  END SUBROUTINE plotsource
 !
 !------------------------------------------------------------------------
 !
-    SUBROUTINE matlabplot(sourcevec_tmp,m)
+  SUBROUTINE matlabplot(sourcevec_tmp,m)
 !
     INTEGER :: iunit_base,nmax,m,i,k
     DOUBLE PRECISION, DIMENSION(n_2d_size) :: sourcevec_tmp
@@ -3965,11 +3965,11 @@ RETURN
     ENDDO
     CLOSE(iunit_base)
 !
-    END SUBROUTINE matlabplot
+  END SUBROUTINE matlabplot
 !
 !------------------------------------------------------------------------
 !
-    SUBROUTINE solve_eqs(clean)
+  SUBROUTINE solve_eqs(clean)
 !
 ! Solve the linear equation set:
 !
@@ -4235,11 +4235,11 @@ RETURN
 !
     ENDIF
 !
-    END SUBROUTINE solve_eqs
+  END SUBROUTINE solve_eqs
 !
 !------------------------------------------------------------------------
 !
-    SUBROUTINE source_flux
+  SUBROUTINE source_flux
 !
     DO istep=ibeg,iend
       npassing=npl(istep)
@@ -4696,11 +4696,11 @@ RETURN
       ENDDO
     ENDDO
 !
-    END SUBROUTINE source_flux
+  END SUBROUTINE source_flux
 !
 !------------------------------------------------------------------------
 !
-    SUBROUTINE add_f01_source
+  SUBROUTINE add_f01_source
 !
     INTEGER :: k_next
 !
@@ -4864,11 +4864,11 @@ RETURN
       ENDDO
     ENDDO
 !
-    END SUBROUTINE add_f01_source
+  END SUBROUTINE add_f01_source
 !
 !------------------------------------------------------------------------
 !
-    SUBROUTINE integral_part(vec_in,vec_out)
+  SUBROUTINE integral_part(vec_in,vec_out)
 !
     IMPLICIT NONE
 !
@@ -4919,7 +4919,7 @@ RETURN
 ! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
 ! (mpro%allgather supports 3D and 4D matrices)
 !PRINT *,'mpro%getrank() before:', mpro%getrank()
-CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
+    CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !PRINT *,'mpro%getrank() after:', mpro%getrank()
 !PRINT *,'scalprod_pleg, species = ',ispec
 !IF(mpro%getrank() .EQ. 0) THEN
@@ -5020,41 +5020,41 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
     DEALLOCATE(vec_tmp)
 !
-    END SUBROUTINE integral_part
+  END SUBROUTINE integral_part
 !
 !---------------------------------------------------------------------------------
 !
   SUBROUTINE next_iteration(n,fold,fnew)
-!
-  IMPLICIT NONE
-!
-  INTEGER :: n
-  DOUBLE COMPLEX, DIMENSION(n) :: fold,fnew
-  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fnew_real,fnew_imag
-!
-  CALL integral_part(fold,fnew)
-!
-  IF(problem_type) THEN
-     ALLOCATE(fnew_real(n),fnew_imag(n))
-     fnew_real=DBLE(fnew)
-     fnew_imag=DIMAG(fnew)
-     CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
-                       fnew_real,iopt)
-     CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
-                       fnew_imag,iopt)
-     fnew=fnew_real+(0.d0,1.d0)*fnew_imag
-     DEALLOCATE(fnew_real,fnew_imag)
-     !
-     ! Use pre-conditioned iterations:
-     ! -> remove null-space of axisymmetric
-     ! solution (energy conservation)
-     coef_energ=SUM(energvec_bra*fnew)/denom_energ
-     !PRINT *,'coef_energ = ',coef_energ
-     fnew=fnew-coef_energ*energvec_ket
-  ELSE
-     CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
-                       fnew,iopt)
-  ENDIF
+
+    IMPLICIT NONE
+
+    INTEGER :: n
+    DOUBLE COMPLEX, DIMENSION(n) :: fold,fnew
+    DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fnew_real,fnew_imag
+
+    CALL integral_part(fold,fnew)
+
+    IF(problem_type) THEN
+       ALLOCATE(fnew_real(n),fnew_imag(n))
+       fnew_real=DBLE(fnew)
+       fnew_imag=DIMAG(fnew)
+       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
+                         fnew_real,iopt)
+       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
+                         fnew_imag,iopt)
+       fnew=fnew_real+(0.d0,1.d0)*fnew_imag
+       DEALLOCATE(fnew_real,fnew_imag)
+       !
+       ! Use pre-conditioned iterations:
+       ! -> remove null-space of axisymmetric
+       ! solution (energy conservation)
+       coef_energ=SUM(energvec_bra*fnew)/denom_energ
+       !PRINT *,'coef_energ = ',coef_energ
+       fnew=fnew-coef_energ*energvec_ket
+    ELSE
+       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
+                         fnew,iopt)
+    ENDIF
 
   END SUBROUTINE next_iteration
 
