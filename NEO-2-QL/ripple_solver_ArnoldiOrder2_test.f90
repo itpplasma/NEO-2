@@ -216,8 +216,9 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: bvec_parflow
   ! Use pre-conditioned iterations:
   ! -> remove null-space of axisymmetric solution (energy conservation)
-  DOUBLE COMPLEX :: denom_energ, coef_energ
+  DOUBLE COMPLEX :: denom_energ, coef_energ, denom_dens, coef_dens
   DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: energvec_bra, energvec_ket
+  double complex, dimension(:),   allocatable :: densvec_bra, densvec_ket
   ! End Use pre-conditioned iterations
   DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
   DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: basevec_p
@@ -314,7 +315,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
 !
   niter=100       !maximum number of integral part iterations
   n_arnoldi=500     !maximum number of Arnoldi iterations
-  isw_regper=1       !regulariization by periodic boundary condition
+  isw_regper=0       !regulariization by periodic boundary condition
   epserr_sink_cmplx=0.d0  !1.d-12 !sink for regularization, it is equal to
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
 !                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
@@ -1526,6 +1527,7 @@ rotfactor=imun*m_phi
   ! Use pre-conditioned iterations:
   ! -> remove null-space of axisymmetric solution (energy conservation)
   ALLOCATE(energvec_ket(n_2d_size),energvec_bra(n_2d_size))
+  allocate(densvec_ket(n_2d_size),densvec_bra(n_2d_size))
   energvec_ket=0.d0
   energvec_bra=0.d0
   denom_energ=0.d0
@@ -3640,6 +3642,7 @@ RETURN
     ! Use pre-conditioned iterations:
     ! -> remove null-space of axisymmetric solution (energy conservation)
     DEALLOCATE(energvec_ket,energvec_bra)
+    deallocate(densvec_ket,densvec_bra)
     ! Use pre-conditioned iterations
 !
     IF(isw_intp.EQ.1) DEALLOCATE(bvec_iter,bvec_prev)
@@ -3687,7 +3690,9 @@ RETURN
         mode_iter=2
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & bvec_sp, ispec, next_iteration)
+          & bvec_sp, ispec, problem_type, coef_dens, coef_energ, &
+          & denom_energ, denom_dens, densvec_bra, densvec_ket, &
+          & energvec_bra, energvec_ket,next_iteration)
 !
       ENDIF
 !
@@ -3733,7 +3738,9 @@ RETURN
         mode_iter=2
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & bvec_sp, ispec, next_iteration)
+          & bvec_sp, ispec, problem_type, coef_dens, coef_energ, &
+          & denom_energ, denom_dens, densvec_bra, densvec_ket, &
+          & energvec_bra, energvec_ket,next_iteration)
 !
       ENDIF
 !
@@ -3772,6 +3779,7 @@ RETURN
   ! Use pre-conditioned iterations:
   ! -> remove null-space of axisymmetric solution (energy conservation)
   DEALLOCATE(energvec_ket,energvec_bra)
+  deallocate(densvec_ket,densvec_bra)
   ! Use pre-conditioned iterations
 !
   IF(isw_intp.EQ.1) THEN 
@@ -4107,6 +4115,7 @@ CONTAINS
     IF(isw_intp.EQ.1) THEN
 
       denom_energ=SUM(energvec_bra*energvec_ket)
+      denom_dens=SUM(densvec_bra*densvec_ket)
       !PRINT *,'denom_energ = ',denom_energ 
 !
       DO k=1,3
@@ -4121,14 +4130,18 @@ CONTAINS
         !! Modification by Andreas F. Martitsch (23.08.2015)
         ! old behavior (for a single species):
         !CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-        !  & source_vector(:,k), ispec, next_iteration)
+        !  & source_vector(:,k), ispec, problem_type, &
+        !  & coef_dens, coef_energ, denom_energ, denom_dens, densvec_bra, densvec_ket, &
+        !  & energvec_bra, energvec_ket, next_iteration)
         !source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow     
         !  multi-species part:
         DO ispecp=0,num_spec-1
           PRINT *,'species',ispecp,':'
           drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
-                      & source_vector_all(:,k,ispecp), ispec, next_iteration)
+                      & source_vector_all(:,k,ispecp), ispec, problem_type, &
+                      & coef_dens, coef_energ, denom_energ, denom_dens, densvec_bra, densvec_ket, &
+                      & energvec_bra, energvec_ket, next_iteration)
         ENDDO
         !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
@@ -4138,7 +4151,9 @@ CONTAINS
         mode_iter=3
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & source_vector(:,k), ispec, next_iteration)
+          & source_vector(:,k), ispec, problem_type, coef_dens, coef_energ, &
+          & denom_energ, denom_dens, densvec_bra, densvec_ket, &
+          & energvec_bra, energvec_ket, next_iteration)
 !
       ENDIF
 !
@@ -4316,6 +4331,8 @@ CONTAINS
     bvec_parflow=0.d0
     energvec_ket=0.d0
     energvec_bra=0.d0
+    densvec_ket = 0.d0
+    densvec_bra = 0.d0
 !
     DO istep=ibeg,iend
 !
@@ -4372,23 +4389,44 @@ CONTAINS
 !
         ! Use pre-conditioned iterations:
         ! -> remove null-space of axisymmetric solution (energy conservation)
+        !> Sergei 08.08.19: added null-space removal due to particle conservation.
+        !> Drive by inductive electric field gives also expansion coefficients $f_m$ for the unperturbed
+        !> Maxwellian, $ const(x) = \sum_m f_m \phi_m(x)$ where $f_m$=asource(m,2).
+        !> In case of Laguerre polynomials asource(0,2)=const>0 and the rest of asource(:,2) are zeros.
+        !> In case of B-splines all asource(:,2)=1.
+        !> Coefficients weightenerg(m) are expansion coefficients of unperturbed Maxwellian times $(x^2 - 3/2)$.
+        !> Such a weighted Maxwellian gives zero density but finite energy.
         energvec_ket(k+1:k+npassing) =                                      &
              weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
+        densvec_ket(k+1:k+npassing) =                                  &
+          & asource(m,2)*(eta(1:npassing)-eta(0:npassing-1))
         energvec_ket(k+2*npassing+2:k+npassing+3:-1) =                      &
              weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
+        densvec_ket(k+2*npassing+2:k+npassing+3:-1) =                  &
+          & asource(m,2)*(eta(1:npassing)-eta(0:npassing-1))
 !
         energvec_ket(k+npassing+1) =                                      &
              weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
+        densvec_ket(k+npassing+1) =                                    &
+          & asource(m,2)*((1.d0/bhat_mfl(istep))-eta(npassing))
         energvec_ket(k+npassing+2) =                                      &
              weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
+        densvec_ket(k+npassing+2) =                                    &
+          & asource(m,2)*((1.d0/bhat_mfl(istep))-eta(npassing))
 !        
         energvec_bra(k+1:k+npassing+1) =                                     &
              step_factor_p*(weightlag(1,m)-1.5d0*weightden(m))*pleg_bra(0,1:npassing+1,istep)
+        densvec_bra(k+1:k+npassing+1) =                                &
+          & step_factor_p*weightden(m)*pleg_bra(0,1:npassing+1,istep)
         energvec_bra(k+npassing+2:k+2*npassing+2) =                          &
              step_factor_m*(weightlag(1,m)-1.5d0*weightden(m))*pleg_bra(0,npassing+1:1:-1,istep)
+        densvec_bra(k+npassing+2:k+2*npassing+2) =                     &
+          & step_factor_m*weightden(m)*pleg_bra(0,npassing+1:1:-1,istep)
 !
         energvec_bra(k+1:k+2*npassing+2) =                                   &
              energvec_bra(k+1:k+2*npassing+2)/(bhat_mfl(istep))
+        densvec_bra(k+1:k+2*npassing+2) =                              &
+          & densvec_bra(k+1:k+2*npassing+2)/(bhat_mfl(istep))
         ! End Use pre-conditioned iterations
 !
         IF(istep.GT.ibeg) THEN
@@ -5110,6 +5148,9 @@ CONTAINS
        ! Use pre-conditioned iterations:
        ! -> remove null-space of axisymmetric
        ! solution (energy conservation)
+       !remove maxwellian particles
+       coef_dens=SUM(densvec_bra*fnew)/denom_dens
+       fnew=fnew-coef_dens*densvec_ket
        coef_energ=SUM(energvec_bra*fnew)/denom_energ
        !PRINT *,'coef_energ = ',coef_energ
        fnew=fnew-coef_energ*energvec_ket
