@@ -298,6 +298,8 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
 ! DEBUGGING
   INTEGER :: i_ctr=0, uw, uw_new
   LOGICAL :: lsw_debug_distfun=.FALSE.
+  logical :: addboucol=.true.
+  double precision :: eta_tp
 !
   !! Modification by Andreas F. Martitsch (28.07.2015)
   ! multi-species part - MPI rank determines species
@@ -1700,6 +1702,12 @@ rotfactor=imun*m_phi
                   IF(.NOT.colltest.AND.mm.EQ.m) THEN
                     nz_ttmp=nz_ttmp+1
                   ENDIF
+                elseif (ipart.gt.npassing_prev+1.and.addboucol) then
+                  nz = nz + 1
+!                  irow(nz) = k + ipart
+!                  icol(nz) = k + ipart + 4 - kk + 2*(npassing+1)*(mm-m)
+!                  amat_sp(nz) = anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+!                             *fact_pos_e(istep)*0.5d0
                 ENDIF
               ENDDO
             ENDDO
@@ -1733,6 +1741,15 @@ rotfactor=imun*m_phi
 !                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
                 ENDDO
               ENDDO
+            elseif (ipart.gt.npassing_prev+1.and.addboucol) then
+              do kk = 1, 4
+                do mm = 0, lag
+                  nz = nz + 1
+!                  irow(nz) = k + ipart
+!                  icol(nz) = k + ipart + 3 - kk + 2*(npassing+1)*(mm-m)
+!                  amat_sp(nz) = denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+                end do
+              end do
             ENDIF
 !
           ENDDO
@@ -1934,6 +1951,12 @@ rotfactor=imun*m_phi
                   IF(.NOT.colltest.AND.mm.EQ.m) THEN
                     nz_ttmp=nz_ttmp+1
                   ENDIF
+                elseif (ipart.gt.npassing_prev+1.and.addboucol) then
+                  nz = nz + 1
+!                  irow(nz) = k - ipart
+!                  icol(nz) = k - ipart - 4 + kk + 2*(npassing+1)*(mm-m)
+!                  amat_sp(nz) = anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+!                             *fact_neg_e(istep)*0.5d0
                 ENDIF 
               ENDDO
             ENDDO
@@ -1953,7 +1976,7 @@ rotfactor=imun*m_phi
                 nz=nz+1
                 nz_coll=nz_coll+1
 !                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
+!                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)*0.5d0
 !                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
               ENDDO
             ENDDO
@@ -1967,6 +1990,15 @@ rotfactor=imun*m_phi
 !                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
                 ENDDO
               ENDDO
+            elseif (ipart.gt.npassing_prev+1.and.addboucol) then
+              do kk = 1, 4
+                do mm = 0, lag
+                  nz = nz + 1
+!                  irow(nz) = k - ipart
+!                  icol(nz) = k - ipart - 3 + kk + 2*(npassing+1)*(mm-m)
+!                  amat_sp(nz) = denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+                end do
+              end do
             ENDIF
 !
           ENDDO
@@ -2224,6 +2256,12 @@ rotfactor=imun*m_phi
                     icol_ttmp(nz_ttmp)=icol(nz)
                     amat_ttmp(nz_ttmp)=-ttmp_mat(kk,ipart,istep-1)*0.5d0
                   ENDIF
+                elseif (ipart.gt.npassing_prev+1.and.addboucol) then
+                  nz = nz+1
+                  irow(nz) = k + ipart
+                  icol(nz) = k + ipart + 4 - kk + 2*(npassing+1)*(mm-m)
+                  amat_sp(nz) = anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+                             *fact_pos_e(istep)*0.5d0
                 ENDIF
               ENDDO
             ENDDO
@@ -2267,6 +2305,15 @@ rotfactor=imun*m_phi
                   amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep-1)*0.5d0 !<=REGULARIZATION
                 ENDDO
               ENDDO
+            elseif (ipart.gt.npassing_prev+1.and.addboucol) then
+              do kk = 1,4
+                do mm = 0,lag
+                  nz = nz + 1
+                  irow(nz) = k + ipart
+                  icol(nz) = k + ipart + 3 - kk + 2*(npassing+1)*(mm-m)
+                  amat_sp(nz) = denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+                end do
+              end do
             ENDIF
 !
           ENDDO
@@ -2507,6 +2554,12 @@ rotfactor=imun*m_phi
                     irow_ttmp(nz_ttmp)=irow(nz)
                     icol_ttmp(nz_ttmp)=icol(nz)
                     amat_ttmp(nz_ttmp)=ttmp_mat(kk,ipart,istep+1)*0.5d0
+                  elseif(ipart.gt.npassing_prev+1.and.addboucol) then
+                    nz=nz+1
+                    irow(nz)=k-ipart
+                    icol(nz)=k-ipart-4+kk+2*(npassing+1)*(mm-m)
+                    amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+                               *fact_neg_e(istep)*0.5d0
                   ENDIF
                 ENDIF
 !
@@ -2552,7 +2605,16 @@ rotfactor=imun*m_phi
                   amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep+1)*0.5d0 !<=REGULARIZATION
                 ENDDO
               ENDDO
-            ENDIF
+            elseif(ipart.gt.npassing_prev+1.and.addboucol) then
+              do kk=1,4
+                do mm=0,lag
+                  nz=nz+1
+                  irow(nz)=k-ipart
+                  icol(nz)=k-ipart-3+kk+2*(npassing+1)*(mm-m)
+                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
+                end do
+              end do
+            end if
 !
           ENDDO
 !
