@@ -43,7 +43,9 @@ contains
   !>
   !> Output parameters:
   !>            Formal: result         - solution vector
-  SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, next_iteration)
+  SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, problem_type, &
+    & coef_dens, coef_energ, denom_energ, denom_dens, densvec_bra, densvec_ket, &
+    & energvec_bra, energvec_ket, next_iteration)
 
     use mpiprovider_module, only : mpro
     use collisionality_mod, only : num_spec
@@ -53,6 +55,7 @@ contains
     ! tol0 - largest eigenvalue tolerated in combined iterations:
     INTEGER,          PARAMETER :: ntol0=10
     DOUBLE PRECISION, PARAMETER :: tol0=0.5d0
+    double precision, parameter :: urfac = 0.5d0
 
     interface
       subroutine next_iteration(n,fold,fnew)
@@ -62,6 +65,11 @@ contains
     end interface
 
     integer :: ispec
+    logical, intent(in) :: problem_type
+    double complex, intent(out) :: coef_dens, coef_energ
+    double complex, intent(in) :: denom_energ, denom_dens
+    double complex, dimension(:), intent(in) :: densvec_bra, densvec_ket
+    double complex, dimension(:), intent(in) :: energvec_bra, energvec_ket
     INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
     DOUBLE PRECISION :: relerr
     DOUBLE COMPLEX, DIMENSION(n), intent(inout) :: RESULT_
@@ -99,6 +107,18 @@ contains
     ENDIF
 
     ALLOCATE(fzero(n))
+
+    if (mode_in .NE. 1) fzero = RESULT_
+    ! Regularization:
+    if (problem_type) then
+      ! remove maxwellian particles
+      coef_dens = SUM(densvec_bra*fzero)/denom_dens
+      fzero = fzero-coef_dens*densvec_ket
+      ! remove energy
+      coef_energ = SUM(energvec_bra*fzero)/denom_energ
+      fzero = fzero-coef_energ*energvec_ket
+    end if
+
     IF(mode_in.NE.1) fzero=RESULT_
 
     mode=mode_in
@@ -203,7 +223,7 @@ contains
       CALL mpro%allgather_double_1(break_cond1(ispec), break_cond1)
       CALL mpro%allgather(break_cond2(ispec), break_cond2)
       IF(ALL(break_cond1 .LE. break_cond2)) EXIT
-      fold=fnew
+      fold = urfac*fold + (1.d0-urfac)*fnew
       IF(iter.EQ.itermax) PRINT *,'iterator: maximum number of iterations reached'
     ENDDO
 
