@@ -55,6 +55,11 @@ documentation which can be found in the 'html' and 'latex' subfolders.
 For the latter it is 'refman.pdf', while the starting point for the
 html version is 'index.html'.
 
+== Coding Style ==
+The coding style is an extra document in the DOC folder, which is not
+made by default. If a cmake build directory has been set up, you can
+create it by 'make coding_style_safepdf'.
+
 == Neo-2 ==
 To build either of the code variants, you first have to configure the
 code (see previous section).
