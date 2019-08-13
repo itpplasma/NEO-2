@@ -78,7 +78,8 @@
                            ! non-uniform knot distribution for
                            ! B-Splines. Default value is $1$ which
                            ! defines a uniform knot distribution (best
-                           ! choice). [1.0]
+                           ! choice). Values > 1 mean more of the points
+                           ! will be at low velocities. [1.0]
  collop_bspline_taylor = .true. ! [.true.]
  collop_path = "/afs/itp.tugraz.at/proj/plasma/documents/neo2/data-matrixelements/" !
                         ! variable not used. ['']
