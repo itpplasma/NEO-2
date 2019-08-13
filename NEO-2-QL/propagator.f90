@@ -1628,16 +1628,11 @@ CONTAINS
     
     INTERFACE ripple_solver
        SUBROUTINE ripple_solver(                                 &
-!->out            npass_l,npass_r,npart_halfband,                      &
             npass_l,npass_r,nvelocity,                            &         !<-in
             amat_plus_plus,amat_minus_minus,                     &
             amat_plus_minus,amat_minus_plus,                     &
-!->out            source_p_g,source_m_g,source_p_e,source_m_e,         &
             source_p,source_m,                                   &         !<-in
             flux_p,flux_m,                                       &
-!->out            curr_p,curr_m,                                       &
-!->out            qflux_g,qflux_e,                                     &
-!->out            qcurr_g,qcurr_e,                                     &
             qflux,                                               &         !<-in
             ierr                                                 &
             )
@@ -1645,26 +1640,13 @@ CONTAINS
 
          INTEGER,                                    INTENT(out)   :: npass_l
          INTEGER,                                    INTENT(out)   :: npass_r
-!->out         INTEGER,                                    INTENT(out)   :: npart_halfband
          INTEGER,   INTENT(out)   :: nvelocity                              !<-in
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_plus_plus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_minus_minus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_plus_minus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_minus_plus
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_p_g
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_m_g
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_p_e
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_m_e
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: flux_p
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: flux_m
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: curr_p
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: curr_m
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) ::         &
                                        source_p,source_m,flux_p,flux_m     !<-in
-!->out         REAL(kind=dp),                              INTENT(out)   :: qflux_g
-!->out         REAL(kind=dp),                              INTENT(out)   :: qflux_e
-!->out         REAL(kind=dp),                              INTENT(out)   :: qcurr_g
-!->out         REAL(kind=dp),                              INTENT(out)   :: qcurr_e
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(out) :: qflux  !<-in
          INTEGER,                                    INTENT(out)   :: ierr
        END SUBROUTINE ripple_solver
@@ -1673,16 +1655,11 @@ CONTAINS
     ! Interface Arnoldi Solver Order 1
     INTERFACE ripple_solver_ArnoldiO1
        SUBROUTINE ripple_solver_ArnoldiO1(                       &
-!->out            npass_l,npass_r,npart_halfband,                      &
             npass_l,npass_r,nvelocity,                            &         !<-in
             amat_plus_plus,amat_minus_minus,                     &
             amat_plus_minus,amat_minus_plus,                     &
-!->out            source_p_g,source_m_g,source_p_e,source_m_e,         &
             source_p,source_m,                                   &         !<-in
             flux_p,flux_m,                                       &
-!->out            curr_p,curr_m,                                       &
-!->out            qflux_g,qflux_e,                                     &
-!->out            qcurr_g,qcurr_e,                                     &
             qflux,                                               &         !<-in
             ierr                                                 &
             )
@@ -1690,26 +1667,13 @@ CONTAINS
 
          INTEGER,                                    INTENT(out)   :: npass_l
          INTEGER,                                    INTENT(out)   :: npass_r
-!->out         INTEGER,                                    INTENT(out)   :: npart_halfband
          INTEGER,   INTENT(out)   :: nvelocity                              !<-in
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_plus_plus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_minus_minus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_plus_minus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_minus_plus
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_p_g
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_m_g
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_p_e
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_m_e
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: flux_p
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: flux_m
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: curr_p
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: curr_m
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) ::         &
                                        source_p,source_m,flux_p,flux_m     !<-in
-!->out         REAL(kind=dp),                              INTENT(out)   :: qflux_g
-!->out         REAL(kind=dp),                              INTENT(out)   :: qflux_e
-!->out         REAL(kind=dp),                              INTENT(out)   :: qcurr_g
-!->out         REAL(kind=dp),                              INTENT(out)   :: qcurr_e
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(out) :: qflux  !<-in
          INTEGER,                                    INTENT(out)   :: ierr
        END SUBROUTINE ripple_solver_ArnoldiO1
@@ -1717,16 +1681,11 @@ CONTAINS
     ! Interface Arnoldi Solver Order 2
     INTERFACE ripple_solver_ArnoldiO2
        SUBROUTINE ripple_solver_ArnoldiO2(                       &
-!->out            npass_l,npass_r,npart_halfband,                      &
             npass_l,npass_r,nvelocity,                            &         !<-in
             amat_plus_plus,amat_minus_minus,                     &
             amat_plus_minus,amat_minus_plus,                     &
-!->out            source_p_g,source_m_g,source_p_e,source_m_e,         &
             source_p,source_m,                                   &         !<-in
             flux_p,flux_m,                                       &
-!->out            curr_p,curr_m,                                       &
-!->out            qflux_g,qflux_e,                                     &
-!->out            qcurr_g,qcurr_e,                                     &
             qflux,                                               &         !<-in
             ierr                                                 &
             )
@@ -1734,26 +1693,13 @@ CONTAINS
 
          INTEGER,                                    INTENT(out)   :: npass_l
          INTEGER,                                    INTENT(out)   :: npass_r
-!->out         INTEGER,                                    INTENT(out)   :: npart_halfband
          INTEGER,   INTENT(out)   :: nvelocity                              !<-in
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_plus_plus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_minus_minus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_plus_minus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_minus_plus
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_p_g
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_m_g
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_p_e
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: source_m_e
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: flux_p
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: flux_m
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: curr_p
-!->out         REAL(kind=dp), DIMENSION(:),   ALLOCATABLE, INTENT(inout) :: curr_m
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) ::         &
                                        source_p,source_m,flux_p,flux_m     !<-in
-!->out         REAL(kind=dp),                              INTENT(out)   :: qflux_g
-!->out         REAL(kind=dp),                              INTENT(out)   :: qflux_e
-!->out         REAL(kind=dp),                              INTENT(out)   :: qcurr_g
-!->out         REAL(kind=dp),                              INTENT(out)   :: qcurr_e
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(out) :: qflux  !<-in
          INTEGER,                                    INTENT(out)   :: ierr
        END SUBROUTINE ripple_solver_ArnoldiO2
@@ -1763,52 +1709,32 @@ CONTAINS
     !! Modification by Andreas F. Martitsch (27.07.2015)
     ! Select ripple_solver version
     IF (isw_ripple_solver .EQ. 1) THEN
-       !STOP "Currently not supported by MPI version of NEO2-NTV! Set isw_ripple_solver=2"
        CALL ripple_solver(                                                  &
-!->out         prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%npart_halfband,      &
             prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,            & !<-in
             prop_c%p%amat_p_p, prop_c%p%amat_m_m,                           &
             prop_c%p%amat_p_m, prop_c%p%amat_m_p,                           &
-!->out         prop_c%p%source_p_g, prop_c%p%source_m_g,                       &
-!->out         prop_c%p%source_p_e, prop_c%p%source_m_e,                       &
             prop_c%p%source_p, prop_c%p%source_m,                           & !<-in
             prop_c%p%flux_p, prop_c%p%flux_m,                               & 
-!->out         prop_c%p%curr_p, prop_c%p%curr_m,                               &
-!->out         prop_c%p%qflux_g, prop_c%p%qflux_e,                             &
-!->out         prop_c%p%qcurr_g, prop_c%p%qcurr_e,                             &
             prop_c%p%qflux,                                                 & !<-in
             ierr                                                            &
             )
     ELSEIF (isw_ripple_solver .EQ. 2) THEN
        CALL ripple_solver_ArnoldiO1(                                        &
-!->out         prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%npart_halfband,      &
             prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,            & !<-in
             prop_c%p%amat_p_p, prop_c%p%amat_m_m,                           &
             prop_c%p%amat_p_m, prop_c%p%amat_m_p,                           &
-!->out         prop_c%p%source_p_g, prop_c%p%source_m_g,                       &
-!->out         prop_c%p%source_p_e, prop_c%p%source_m_e,                       &
             prop_c%p%source_p, prop_c%p%source_m,                           & !<-in
             prop_c%p%flux_p, prop_c%p%flux_m,                               & 
-!->out         prop_c%p%curr_p, prop_c%p%curr_m,                               &
-!->out         prop_c%p%qflux_g, prop_c%p%qflux_e,                             &
-!->out         prop_c%p%qcurr_g, prop_c%p%qcurr_e,                             &
             prop_c%p%qflux,                                                 & !<-in
             ierr                                                            &
             )
     ELSEIF (isw_ripple_solver .EQ. 3) THEN
-       !STOP "Currently not supported by MPI version of NEO2-NTV! Set isw_ripple_solver=1,2"
        CALL ripple_solver_ArnoldiO2(                                        &
-!->out         prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%npart_halfband,      &
             prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,            & !<-in
             prop_c%p%amat_p_p, prop_c%p%amat_m_m,                           &
             prop_c%p%amat_p_m, prop_c%p%amat_m_p,                           &
-!->out         prop_c%p%source_p_g, prop_c%p%source_m_g,                       &
-!->out         prop_c%p%source_p_e, prop_c%p%source_m_e,                       &
             prop_c%p%source_p, prop_c%p%source_m,                           & !<-in
             prop_c%p%flux_p, prop_c%p%flux_m,                               & 
-!->out         prop_c%p%curr_p, prop_c%p%curr_m,                               &
-!->out         prop_c%p%qflux_g, prop_c%p%qflux_e,                             &
-!->out         prop_c%p%qcurr_g, prop_c%p%qcurr_e,                             &
             prop_c%p%qflux,                                                 & !<-in
             ierr                                                            &
             )
@@ -1817,23 +1743,9 @@ CONTAINS
     ENDIF
     !! End Modification by Andreas F. Martitsch (27.07.2015)
 
-!!$    PRINT *, '----------------------------------------------------------'
-!!$    PRINT *, 'SOLVER INTER : npass_l,npass_r:   ',  prop_c%p%npass_l,prop_c%p%npass_r
-!->out    prop_c%p%npass_l = SIZE(prop_c%p%amat_p_m,1)
-!->out    prop_c%p%npass_r = SIZE(prop_c%p%amat_m_p,1)
     prop_c%p%npass_l = SIZE(prop_c%p%amat_p_m,1)/(prop_c%p%nvelocity+1)     !<-in
     prop_c%p%npass_r = SIZE(prop_c%p%amat_m_p,1)/(prop_c%p%nvelocity+1)     !<-in
-!!$    PRINT *, 'SOLVER INTER : npass_l,npass_r:   ',  prop_c%p%npass_l,prop_c%p%npass_r
-!!$    PRINT *, 'SOLVER INTER : prop_c%p%amat_p_m: ',  &
-!!$         SIZE(prop_c%p%amat_p_m,1),SIZE(prop_c%p%amat_p_m,2)
-!!$    PRINT *, 'SOLVER INTER : prop_c%p%amat_m_p: ',  &
-!!$         SIZE(prop_c%p%amat_m_p,1),SIZE(prop_c%p%amat_m_p,2)
-!!$    PRINT *, '----------------------------------------------------------'
-!!$    PAUSE
-    
 
-
-    !
   END SUBROUTINE ripple_solver_int
 
   SUBROUTINE plot_distrf_int
