@@ -23,38 +23,39 @@ MODULE ntv_mod
   REAL(kind=dp), PARAMETER, PUBLIC :: u=1.660539040e-24_dp ! atomic mass unit
   !
   ! INPUT
-  ! switch: turn on(=1)/off(=0) ntv mode (not used at the moment)
+  !> switch: turn on(=1)/off(=0) ntv mode (not used at the moment)
   INTEGER, PUBLIC :: isw_ntv_mode
-  ! switch: 0=compute qflux only for the symmetric case; 1=do all computations
+  !> switch: 0=compute qflux only for the symmetric case; 1=do all computations
   INTEGER, PUBLIC :: isw_qflux_NA
-  ! switch for rippler_solver versions
-  ! (1=preconditioned; 2=Arnoldi Order 1; 3=Arnoldi Order 2)
+  !> switch for rippler_solver versions
+  !> (1=preconditioned; 2=Arnoldi Order 1; 3=Arnoldi Order 2)
   INTEGER, PUBLIC :: isw_ripple_solver
-  ! name of perturbation file
+  !> name of perturbation file
   CHARACTER(len=100), PUBLIC :: in_file_pert
-  ! toroidal mach number over R_major (Mt/R), Larmor radius associated with
-  ! $B_{00}^{Booz}$ (rho_L_loc) times B
-  REAL(kind=dp), PUBLIC :: MtOvR, B_rho_L_loc
-  !
+  !> toroidal mach number over R_major (Mt/R)
+  REAL(kind=dp), PUBLIC :: MtOvR
+  !> Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc) times B
+  REAL(kind=dp), PUBLIC :: B_rho_L_loc
+
   ! ADDITIONAL INPUT FOR MULTI-SPECIES COMPUTATIONS (neo2.in)
   !
-  ! switch: turn on(=1)/off(=0) computation of E_r
+  !> switch: turn on(=1)/off(=0) computation of E_r
   INTEGER, PUBLIC :: isw_calc_Er
-  ! switch: turn on(=1)/off(=0) computation of magnetic drift
+  !> switch: turn on(=1)/off(=0) computation of magnetic drift
   INTEGER, PUBLIC :: isw_calc_MagDrift
-  ! species tag of measured toroidal rotation frequency
-  ! (e.g., toroidal rotation frequency measured for main ion species)
-  !-> species velocity, density and temperature must be known at each
-  !   flux surface
+  !> species tag of measured toroidal rotation frequency
+  !> (e.g., toroidal rotation frequency measured for main ion species)
+  !> -> species velocity, density and temperature must be known at each
+  !>   flux surface
   INTEGER, PUBLIC :: species_tag_Vphi
-  ! isw_Vphi_loc=0: value of "Vphi" corresponds to flux surface average (<V_\varphi>)
-  ! isw_Vphi_loc=1: value of "Vphi" is specified locally for given (R,Z)-position
+  !> isw_Vphi_loc=0: value of "Vphi" corresponds to flux surface average (<V_\varphi>)
+  !> isw_Vphi_loc=1: value of "Vphi" is specified locally for given (R,Z)-position
   INTEGER, PUBLIC :: isw_Vphi_loc
-  ! toroidal (= geometric angle) rotation frequency of species i (e.g., main ion species)
+  !> toroidal (= geometric angle) rotation frequency of species i (e.g., main ion species)
   REAL(kind=dp), PUBLIC :: Vphi
-  ! only used for isw_Vphi_loc=1: (R,Z)-position of V_\varphi
+  !> only used for isw_Vphi_loc=1: (R,Z)-position of V_\varphi
   REAL(kind=dp), PUBLIC :: R_Vphi, Z_Vphi
-  ! only used for isw_Vphi_loc=2: \vartheta_B postion of V_\varphi
+  !> only used for isw_Vphi_loc=2: \vartheta_B postion of V_\varphi
   REAL(kind=dp), PUBLIC :: boozer_theta_Vphi
   ! Radial derivatives (w.r.t. boozer_s) of plasma parameter profiles (for all species)
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dn_spec_ov_ds ! species density [cm^-3]
@@ -62,20 +63,20 @@ MODULE ntv_mod
   !
   ! ADDITIONAL OUTPUT FOR MULTI-SPECIES COMPUTATIONS
   !
-  ! species toroidal Mach numbers over R_major (= Mt/R)
+  !> species toroidal Mach numbers over R_major (= Mt/R)
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: MtOvR_spec
-  ! species hatOmegaB_ref (= rho_L_loc*B)
+  !> species hatOmegaB_ref (= rho_L_loc*B)
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: B_rho_L_loc_spec 
-  ! species poloidal variation of Vtor: poloidal resolution
+  !> species poloidal variation of Vtor: poloidal resolution
   INTEGER, PARAMETER :: num_thtB_VphiProf=101
   !
   ! OUTPUT
-  ! value of the average ripple of the perturbation field
+  !> value of the average ripple of the perturbation field
   REAL(kind=dp), PUBLIC :: eps_M_2_val
-  ! value of the flux surface average of $g_{\varphi\varphi}$
-  ! for symmetry flux coordinates
+  !> value of the flux surface average of $g_{\varphi\varphi}$
+  !> for symmetry flux coordinates
   REAL(kind=dp), PUBLIC :: av_gphph_val
-  ! value of the flux surface average of $\frac{1}{B}$
+  !> value of the flux surface average of $\frac{1}{B}$
   REAL(kind=dp), PUBLIC :: av_inv_bhat_val
   !
   ! LOCAL DEFINITIONS
