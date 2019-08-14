@@ -93,13 +93,13 @@ module collop_compute
   logical       :: integral_cutoff = .true.
   real(kind=dp) :: x_cutoff = 3.0d3
   logical       :: lsw_interval_sep = .true.
-  logical       :: lsw_split_interval = .true. ! split intervals manually into further sub-intervals
-  integer       :: num_sub_intervals = 5 ! number of sub-intervals between nodes (active if lsw_split_interval)
-  integer       :: num_sub_intervals_cutoff = 40 ! number of sub-intervals between last node and cutoff (active if lsw_split_interval)
+  logical       :: lsw_split_interval = .true. !> split intervals manually into further sub-intervals
+  integer       :: num_sub_intervals = 5 !> number of sub-intervals between nodes (active if lsw_split_interval)
+  integer       :: num_sub_intervals_cutoff = 40 !> number of sub-intervals between last node and cutoff (active if lsw_split_interval)
   ! Taylor expansion of (non-relativistic) matrix elements around x=0 (numerical stability):
-  logical       :: lsw_expand_kernel =.false. ! Taylor expansion of integral-part subintegrands
-  logical       :: lsw_expand_G =.true. ! Taylor expansion of Chandrasekhar function
-  ! corresponding domain of Taylor expansion (0 <= x <= xmax_expand_kernel)
+  logical       :: lsw_expand_kernel =.false. !> Taylor expansion of integral-part subintegrands
+  logical       :: lsw_expand_G =.true. !> Taylor expansion of Chandrasekhar function
+  !> corresponding domain of Taylor expansion (0 <= x <= xmax_expand_kernel)
   real(kind=dp) :: xmax_expand_kernel = 1.0d-5
   ! numerical stabilization of integral-part computation (I2 + I3 + I4)
   logical       :: lsw_stabilize_Immp=.true.
