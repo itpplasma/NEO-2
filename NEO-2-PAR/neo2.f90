@@ -1031,6 +1031,7 @@ CONTAINS
 
        CALL h5_define_group(h5_config_id, 'metadata', h5_config_group)
        CALL h5_add(h5_config_group, 'NEO-2 Version', Neo2_Version)
+       CALL h5_add(h5_config_group, 'NEO-2 Version Additional', Neo2_Version_Additional)
        CALL h5_add(h5_config_group, 'MPILib Version', MyMPILib_Version)
        CALL h5_add(h5_config_group, 'CMake_Compiler', CMake_Compiler)
        CALL h5_add(h5_config_group, 'CMake_Compiler_Version', CMake_Compiler_Version)
