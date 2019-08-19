@@ -2556,13 +2556,13 @@ rotfactor=imun*m_phi
                     irow_ttmp(nz_ttmp)=irow(nz)
                     icol_ttmp(nz_ttmp)=icol(nz)
                     amat_ttmp(nz_ttmp)=ttmp_mat(kk,ipart,istep+1)*0.5d0
-                  elseif(ipart.gt.npassing_prev+1.and.addboucol) then
-                    nz=nz+1
-                    irow(nz)=k-ipart
-                    icol(nz)=k-ipart-4+kk+2*(npassing+1)*(mm-m)
-                    amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
-                               *fact_neg_e(istep)*0.5d0
                   ENDIF
+                elseif(ipart.gt.npassing_prev+1.and.addboucol) then
+                  nz=nz+1
+                  irow(nz)=k-ipart
+                  icol(nz)=k-ipart-4+kk+2*(npassing+1)*(mm-m)
+                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
+                             *fact_neg_e(istep)*0.5d0
                 ENDIF
 !
               ENDDO
