@@ -170,6 +170,11 @@ else(${ISW_SUPERLU_VERSION} LESS 0)
   set(SUPERLU_SRC_FILES "${SUPERLU_SRC_FILES_VER_5_0}")
 endif(${ISW_SUPERLU_VERSION} LESS 0)
 
+configure_file (
+  "${PROJECT_SOURCE_DIR}/cmake_version.f90.in"
+  "${PROJECT_SOURCE_DIR}/cmake_version.f90"
+  )
+
 ### Define executable
 add_executable(${EXE_NAME}
         ${NEO2_SRC_FILES}
