@@ -2072,6 +2072,9 @@ CONTAINS
     REAL(kind=dp), DIMENSION(100) :: dbdp_inflection
     INTEGER :: icount
 
+    ! To avoid warning maby used uninitialized (should be false positive).
+    min_count = -1
+
     ripple_start = .false.
     ripple_end = .false.
 
