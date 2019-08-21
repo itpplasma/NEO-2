@@ -1436,7 +1436,10 @@ SUBROUTINE neo_read
      WRITE (w_us,*) 'FATAL: There is yet no other input type defined'
      STOP
   END IF
-!
+
+  ! To silence a warning maybe used uninitialized (should be false positive).
+  num_n = 0
+
 ! Filling of i_m and i_n 
 ! and pointers pixm from ixm to i_m, and pixn from ixn to i_n
   DO j = 1,mnmax
@@ -2045,7 +2048,13 @@ SUBROUTINE neo_fourier
   z_pb = 0.0d0
   p_pb = 0.0d0
   b_pb = 0.0d0
-  
+
+  ! To silence a warning maybe used uninitialized (should be false positive).
+  ri_s = 0.0d0
+  zi_s = 0.0d0
+  li_s = 0.0d0
+  bi_s = 0.0d0
+
   DO imn=1,mnmax
      ri = s_rmnc(imn)
      zi = s_zmnc(imn)
@@ -2519,6 +2528,12 @@ SUBROUTINE neo_eval(theta,phi,bval,gval,kval,pval,qval,rval)
      zz_pb = 0.0d0
      pp_pb = 0.0d0
      bb_pb = 0.0d0
+
+     ! To silence a warning maybe used uninitialized (should be false positive).
+     ri_s = 0.0d0
+     zi_s = 0.0d0
+     li_s = 0.0d0
+     bi_s = 0.0d0
   
      DO imn = 1,mnmax
         ri = s_rmnc(imn)
