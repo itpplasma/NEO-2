@@ -91,6 +91,7 @@ PROGRAM neo2
   !**********************************************************
   ! Include version information
   !**********************************************************
+  include "cmake_version.f90"
   INCLUDE "version.f90"
   !**********************************************************
 
@@ -550,16 +551,16 @@ CONTAINS
        CALL h5_define_group(h5_config_id, 'metadata', h5_config_group)
        CALL h5_add(h5_config_group, 'NEO-2 Version', Neo2_Version)
        CALL h5_add(h5_config_group, 'NEO-2 Version Additional', Neo2_Version_Additional)
-       !CALL h5_add(h5_config_group, 'MPILib Version', MyMPILib_Version)
-       !CALL h5_add(h5_config_group, 'CMake_Compiler', CMake_Compiler)
-       !CALL h5_add(h5_config_group, 'CMake_Compiler_Version', CMake_Compiler_Version)
-       !CALL h5_add(h5_config_group, 'CMake_Build_Type', CMake_Build_Type)
-       !CALL h5_add(h5_config_group, 'CMake_Flags', CMake_Flags)
-       !CALL h5_add(h5_config_group, 'CMake_Flags_Release', CMake_Flags_Release)
-       !CALL h5_add(h5_config_group, 'CMake_Flags_Debug', CMake_Flags_Debug)
-       !CALL h5_add(h5_config_group, 'CMake_System', CMake_System)
-       !CALL h5_add(h5_config_group, 'CMake_SuiteSparse_Dir', CMake_SuiteSparse_Dir)
-       !CALL h5_add(h5_config_group, 'CMake_Blas_Lib', CMake_Blas_Lib)
+       CALL h5_add(h5_config_group, 'MPILib Version', MyMPILib_Version)
+       CALL h5_add(h5_config_group, 'CMake_Compiler', CMake_Compiler)
+       CALL h5_add(h5_config_group, 'CMake_Compiler_Version', CMake_Compiler_Version)
+       CALL h5_add(h5_config_group, 'CMake_Build_Type', CMake_Build_Type)
+       CALL h5_add(h5_config_group, 'CMake_Flags', CMake_Flags)
+       CALL h5_add(h5_config_group, 'CMake_Flags_Release', CMake_Flags_Release)
+       CALL h5_add(h5_config_group, 'CMake_Flags_Debug', CMake_Flags_Debug)
+       CALL h5_add(h5_config_group, 'CMake_System', CMake_System)
+       CALL h5_add(h5_config_group, 'CMake_SuiteSparse_Dir', CMake_SuiteSparse_Dir)
+       CALL h5_add(h5_config_group, 'CMake_Blas_Lib', CMake_Blas_Lib)
        CALL h5_close_group(h5_config_group)
 
        CALL h5_define_group(h5_config_id, 'neo', h5_config_group)
