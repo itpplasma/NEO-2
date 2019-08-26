@@ -705,8 +705,6 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
   import math
   import numpy as np
 
-  import hdf5tools
-
   #~ Zeff = 1.3
   #~ Ztrace = 30
   #~ mtrace = 3.0527e-22 #[g]
@@ -793,6 +791,58 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
       k[1, ...] = 2 / li
       k[2, ...] = 2 / lt
       hout.create_dataset('kappa_prof', data=k)
+
+def remove_species_from_profile_file(infilename: str, outfilename: str, index: int):
+  """
+  Function to remove a species from a profile input hdf5 file.
+
+  This function is for removing a species from an input profile file.
+  This might be usefull for testing, e.g. running just deuterium, or
+  reducing the number of species to reduce memory requirements.
+
+  input:
+  ------
+  infilename: file to read
+  outfilename: name of the file to create
+  index: zero based index of the species to remove
+
+  output:
+  -------
+  No formal output. The result is written to a new hdf5 file with given
+  name.
+  """
+  import numpy as np
+
+  no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol', 'species_tag_Vphi']
+  zero_dimension_species = ['T_prof', 'n_prof', 'kappa_prof', 'dn_ov_ds_prof', 'dT_ov_ds_prof']
+  first_dimension_species = ['species_def']
+
+  with get_hdf5file(infilename) as hin:
+    with get_hdf5file_new(outfilename) as hout:
+      for dname in no_change_needed:
+        hout.create_dataset(dname, data=hin[dname])
+
+      nsp = np.array(hin['num_species'])
+      nsp[0] -= 1
+      hout.create_dataset('num_species', data=nsp)
+
+      rs = np.array(hin['rel_stages'])
+      rs[...] -= 1
+      hout.create_dataset('rel_stages', data=rs)
+
+      st = np.array(hin['species_tag'])
+      st.resize( (hout['num_species'][0], ) )
+      hout.create_dataset('species_tag', data=st)
+
+      for dname in zero_dimension_species:
+        t = np.array(hin[dname])[0:index, ...]
+        t = np.append(t, np.array(hin[dname])[index+1:, ...], 0)
+        hout.create_dataset(dname, data=t)
+
+      for dname in first_dimension_species:
+        t = np.array(hin[dname])[:, 0:index, ...]
+        t = np.append(t, np.array(hin[dname])[:, index+1:, ...], 1)
+        hout.create_dataset(dname, data=t)
 
 if __name__ == "__main__":
 
