@@ -7,8 +7,8 @@ module collop_bspline
 
   implicit none
   
-  REAL(fgsl_double), DIMENSION(:), ALLOCATABLE :: xknots, b
-  real(fgsl_double), dimension(:), allocatable :: db
+  REAL(fgsl_double), DIMENSION(:), ALLOCATABLE, target :: xknots
+  real(fgsl_double), dimension(:), allocatable :: b, db
   real(fgsl_double) :: xd
   integer :: i, j, knots
   integer :: nder
