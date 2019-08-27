@@ -169,6 +169,7 @@
                        ! 1 first order direct [default]
                        ! 2 Arnoldi, 1st order
                        ! 3 Arnoldi, 2nd order
+                       ! 4 Arnoldi, 3rd order
  MtOvR = 0.0 ! The toroidal Mach number divided by major radius R0. [0.0d0]
 
 /

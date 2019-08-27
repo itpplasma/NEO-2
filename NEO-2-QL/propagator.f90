@@ -1706,6 +1706,32 @@ CONTAINS
     END INTERFACE ripple_solver_ArnoldiO2
     !! End Modification by Andreas F. Martitsch (27.07.2015)
 
+    interface ripple_solver_ArnoldiO3
+      subroutine ripple_solver_ArnoldiO3(                    &
+        npass_l,npass_r,nvelocity,                           &
+        amat_plus_plus,amat_minus_minus,                     &
+        amat_plus_minus,amat_minus_plus,                     &
+        source_p,source_m,                                   &
+        flux_p,flux_m,                                       &
+        qflux,                                               &
+        ierr                                                 &
+        )
+        integer, parameter :: dp = kind(1.0d0)
+
+        integer, intent(out)   :: npass_l
+        integer, intent(out)   :: npass_r
+        integer, intent(out)   :: nvelocity
+        real(kind=dp), dimension(:,:), allocatable, intent(inout) :: amat_plus_plus
+        real(kind=dp), dimension(:,:), allocatable, intent(inout) :: amat_minus_minus
+        real(kind=dp), dimension(:,:), allocatable, intent(inout) :: amat_plus_minus
+        real(kind=dp), dimension(:,:), allocatable, intent(inout) :: amat_minus_plus
+        real(kind=dp), dimension(:,:), allocatable, intent(inout) ::         &
+                                       source_p,source_m,flux_p,flux_m
+        real(kind=dp), dimension(:,:), allocatable, intent(out) :: qflux
+        integer, intent(out)   :: ierr
+      end subroutine ripple_solver_ArnoldiO3
+    end interface ripple_solver_ArnoldiO3
+
     !! Modification by Andreas F. Martitsch (27.07.2015)
     ! Select ripple_solver version
     IF (isw_ripple_solver .EQ. 1) THEN
@@ -1737,6 +1763,16 @@ CONTAINS
             prop_c%p%flux_p, prop_c%p%flux_m,                               & 
             prop_c%p%qflux,                                                 & !<-in
             ierr                                                            &
+            )
+    elseif (isw_ripple_solver .eq. 4) then
+      call ripple_solver_ArnoldiO3(                               &
+            prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity, &
+            prop_c%p%amat_p_p, prop_c%p%amat_m_m,                 &
+            prop_c%p%amat_p_m, prop_c%p%amat_m_p,                 &
+            prop_c%p%source_p, prop_c%p%source_m,                 &
+            prop_c%p%flux_p, prop_c%p%flux_m,                     &
+            prop_c%p%qflux,                                       &
+            ierr                                                  &
             )
     ELSE
        STOP "Undefined version of ripple_solver selected (isw_ripple_solver)!"
