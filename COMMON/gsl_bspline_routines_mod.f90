@@ -34,11 +34,11 @@ module gsl_bspline_routines_mod
   !**********************************************************
   ! Fortran variables
   !**********************************************************
-  real(kind=kind(1d0))                                  :: xd_beg, xd_end
-  real(fgsl_double), dimension(:,:), allocatable        :: dby
-  real(fgsl_double), dimension(:), allocatable, private :: by
-  real(kind=kind(1d0)), dimension(:), allocatable       :: by_end
-  real(kind=kind(1d0)), dimension(:,:), allocatable     :: dby_end
+  real(fgsl_double)                                  :: xd_beg, xd_end
+  real(fgsl_double), dimension(:,:), allocatable, target :: dby
+  real(fgsl_double), dimension(:), allocatable, target, private :: by
+  real(fgsl_double), dimension(:), allocatable, target :: by_end
+  real(fgsl_double), dimension(:,:), allocatable , target :: dby_end
 
   logical :: taylorExpansion = .true.
   !logical :: taylorExpansion = .false.
@@ -48,7 +48,7 @@ contains
   subroutine fgsl_check(status)
     integer(fgsl_int) :: status
 
-    if (status .ne. 0) then
+    if (status .ne. fgsl_success) then
        write (*,*) "FGSL Error: ", status, fgsl_strerror(status)
        stop
     end if
@@ -73,13 +73,14 @@ contains
   end subroutine init_bspline
 
   subroutine set_bspline_knots(xd)
-    real(fgsl_double), dimension(:) :: xd
+    real(fgsl_double), dimension(:), target :: xd
 
     !**********************************************************
     ! Initialize knots
     !**********************************************************
     xd_beg = xd(1)
     xd_end = xd(fgsl_nbreak)
+
     
     fgsl_xd = fgsl_vector_init(1.0_fgsl_double)
     call fgsl_check(fgsl_vector_align(xd, fgsl_nbreak, fgsl_xd, fgsl_nbreak, 0_fgsl_size_t, 1_fgsl_size_t))
@@ -108,7 +109,7 @@ contains
     fgsl_dby_end = fgsl_matrix_init(1.0_fgsl_double)
     call fgsl_check(fgsl_matrix_align(dby_end, fgsl_max_nder+1, fgsl_max_nder+1, fgsl_ncbf, fgsl_dby_end))
     call fgsl_check(fgsl_bspline_deriv_eval(xd_end, fgsl_max_nder, fgsl_dby_end, sw))
-        
+
   end subroutine set_bspline_knots
 
   subroutine set_bspline_knots_uniform(a, b)
