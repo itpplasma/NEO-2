@@ -397,7 +397,12 @@ contains
     if(lsw_interval_sep) then
        if ((collop_base_prj .eq. 11) .or. (collop_base_exp .eq. 11)) then
           if (allocated(t_vec)) deallocate(t_vec)
-          allocate(t_vec(lbound(xknots,1):ubound(xknots,1)))
+          if (allocated(xknots)) then
+            allocate(t_vec(lbound(xknots,1):ubound(xknots,1)))
+          else
+            write(*,*) 'ERROR: in init_collop, xknots is expected to be allocated but is not.'
+            stop
+          end if
           t_vec = xknots
           !write (*,*) t_vec
 
