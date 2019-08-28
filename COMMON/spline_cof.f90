@@ -171,35 +171,35 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   ALLOCATE(MA(size_dimension, size_dimension),  stat = i_alloc, errmsg=error_message)
   if(i_alloc /= 0) then
     write(*,*) 'splinecof3: Allocation for array ma failed with error message:'
-    write(*,*) error_message
+    write(*,*) trim(error_message)
     write(*,*) 'size should be ', size_dimension, ' x ', size_dimension
     stop
   end if
   ALLOCATE(inh(size_dimension), indx_lu(size_dimension),  stat = i_alloc, errmsg=error_message)
   if(i_alloc /= 0) then
     write(*,*) 'splinecof3: Allocation for arrays inh and indx_lu failed with error message:'
-    write(*,*) error_message
+    write(*,*) trim(error_message)
     write(*,*) 'size should be ', size_dimension
     stop
   end if
   ALLOCATE(simqa(size_dimension*size_dimension),  stat = i_alloc, errmsg=error_message)
   if(i_alloc /= 0) then
     write(*,*) 'splinecof3: Allocation for array simqa failed with error message:'
-    write(*,*) error_message
+    write(*,*) trim(error_message)
     write(*,*) 'size should be ', size_dimension*size_dimension
     stop
   end if
   ALLOCATE(lambda(SIZE(lambda1)),  stat = i_alloc, errmsg=error_message)
   if(i_alloc /= 0) then
     write(*,*) 'splinecof3: Allocation for array lambda failed with error message:'
-    write(*,*) error_message
+    write(*,*) trim(error_message)
     write(*,*) 'size should be ', size(lambda1)
     stop
   end if
   ALLOCATE(omega(SIZE(lambda1)),  stat = i_alloc, errmsg=error_message)
   if(i_alloc /= 0) then
     write(*,*) 'splinecof3: Allocation for array omega failed with message:'
-    write(*,*) error_message
+    write(*,*) trim(error_message)
     write(*,*) 'size should be ', size(lambda1)
     stop
   end if
