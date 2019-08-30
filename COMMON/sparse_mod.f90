@@ -3314,11 +3314,11 @@ CONTAINS
 
   !-------------------------------------------------------------------------------
   ! full to sparse conversion
-  SUBROUTINE full2sp(A,irow,pcol,val,nrow,ncol,nz_out)
+  SUBROUTINE full2sp(A,irow,pcol,values,nrow,ncol,nz_out)
 
     REAL(kind=dp), DIMENSION(:,:), INTENT(in) :: A
     INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(inout) :: irow,pcol
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: val
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: values
     INTEGER, INTENT(out) :: nrow,ncol
     INTEGER, OPTIONAL, INTENT(out) :: nz_out
 
@@ -3339,8 +3339,8 @@ CONTAINS
     ALLOCATE(irow(nz))
     IF (ALLOCATED(icol)) DEALLOCATE(icol)
     ALLOCATE(icol(nz))
-    IF (ALLOCATED(val)) DEALLOCATE(val)
-    ALLOCATE(val(nz))
+    IF (ALLOCATED(values)) DEALLOCATE(values)
+    ALLOCATE(values(nz))
 
     n = 0
     DO nc = 1,ncol
@@ -3349,7 +3349,7 @@ CONTAINS
              n = n + 1
              irow(n) = nr
              icol(n) = nc
-             val(n)  = A(nr,nc)
+             values(n) = A(nr,nc)
           END IF
        END DO
     END DO
