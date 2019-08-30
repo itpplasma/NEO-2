@@ -2506,7 +2506,27 @@ CONTAINS
   !-------------------------------------------------------------------------------
 
   !-------------------------------------------------------------------------------
-  ! full to sparse conversion
+  !> \brief Full to sparse conversion for real matrix.
+  !>
+  !> input:
+  !> A: matrix (intent in) to convert to a sparse format. Note that this
+  !>   is formally the only input of this subroutine.
+  !> irow: allocatable vector (intent inout), where the row indices will
+  !>   be stored.
+  !>   Note that the original content is not read, the intent
+  !>   is because the array is deallocated if it is already allocated.
+  !> pcol: allocatable vector (intent inout), stores ?
+  !>   Note that the original content is not read, the intent
+  !>   is because the array is deallocated if it is already allocated.
+  !> values: allocatable vector (intent inout), stores the nonzero
+  !>   values of the matrix.
+  !>   Note that the original content is not read, the intent
+  !>   is because the array is deallocated if it is already allocated.
+  !> nrow, ncol: integers (intent out), giving the size of the original
+  !>   matrix.
+  !> nz_out: integer (intent out, optional), giving the number of
+  !>   nonzero elements of matrix A, i.e. the size of the vectors irow,
+  !>   pcol(?) and values on output.
   SUBROUTINE full2sp(A,irow,pcol,values,nrow,ncol,nz_out)
 
     REAL(kind=dp), DIMENSION(:,:), INTENT(in) :: A
