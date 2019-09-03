@@ -55,6 +55,43 @@ basis polynoms.
 There is an example file with all the parameters in the doc folder,
 which should also document the parameters.
 
+See Fig.~\ref{fig:collop_bspline_dist} for example of the effect of the
+parameter \inputparameter{collop\_bspline\_dist}.
+
+\begin{figure}
+  \centering{}
+  %~ \includegraphics[width=0.48\textwidth]{../../Images/documentation_bspline_distance}
+  \caption{Visualize the effect of the paramter collop\_bspline\_dist on
+  the velocity grid. The different cases are drawn at different vertical
+  positions. For the values ``= 1.5'' and ``=2'', there are two cases with
+  a different number of points.}
+  \label{fig:collop_bspline_dist}
+\end{figure}
+The figure shows at different vertical levels different cases for the
+parameter.
+For values $< 1$ the distance between the points will decrease with
+increasing velocity. The case $= 1$ corresponds to an equidistant grid.
+For values $> 1$ the distance between the points will increase with
+increasing velocity.
+Note that the image of the case $a < 1$ correlates to the case $1/a > $:
+the points are mirrored at the center.
+For the cases with collop\_bspline\_dist $=1.5$ and $=2$ there are two
+different cases. One with five points and one with nine points. For the
+case with collop\_bspline\_dist $=1$ this grid is easy to imagine, as
+the distance between points will just be halved.
+In the case $> 1$ the additional points lead mainly to an increase of
+resolution at low velocities.
+What can not be seen directly from the figure, is that for
+collop\_bspline\_dist $> 1$, there is a region at high velocities, in
+which you can not get any points, regardless on how large the number of
+knots would be choosen. For the shown case $=2$, no point can be in the
+region larger than $2$ and smaller than $4$, i.e. in the upper half of
+the distribution.
+
+From the figure it is probably clear that the value of
+\inputparameter{collop\_bspline\_dist} should not differ much from one,
+as the distributions for $1.5$ and $0.5$ seem already quite extreme.
+
 \paragraph{profile input}
 An hdf5 file, which contains the profile (e.g. density, temperature)
 data, required for the creation of a radial scan.
