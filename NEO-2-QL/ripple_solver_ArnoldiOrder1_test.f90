@@ -79,10 +79,10 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   !! Modification by Andreas F. Martitsch (14.07.2015)
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_qflux_NA, MtOvR, B_rho_L_loc, &
-       m_phi,  qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val, &
+       m_phi, qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val, &
        qflux_symm_allspec, qflux_ntv_allspec, &
-       get_Er, MtOvR_spec, isw_calc_Er, &
-       get_B_rho_L_loc, B_rho_L_loc_spec, isw_calc_MagDrift
+       MtOvR_spec, isw_calc_Er, B_rho_L_loc_spec, isw_calc_MagDrift
+  use ntv_mod, only : get_Er, get_B_rho_L_loc
   !USE neo_precision, ONLY : PI
   !! End Modification by Andreas F. Martitsch (14.07.2015)
   !! Modification by Andreas F. Martitsch (28.07.2015)
