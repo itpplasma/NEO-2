@@ -1073,7 +1073,7 @@ CONTAINS
     CALL h5_get(h5id_multispec_in,'species_tag_Vphi',species_tag_Vphi)
     CALL h5_get(h5id_multispec_in,'isw_Vphi_loc',isw_Vphi_loc)
     IF (isw_Vphi_loc .EQ. 1) THEN
-      PRINT *,"neo2.f90: Warning switch isw_Vphi_loc=1 is not tested!"
+      write(*,*) "ERROR: switch isw_Vphi_loc=1 is not tested!"
       STOP
 
       IF(ALLOCATED(R_Vphi_prof)) DEALLOCATE(R_Vphi_prof)
@@ -1087,7 +1087,7 @@ CONTAINS
       ALLOCATE(boozer_theta_Vphi_prof(num_radial_pts))
       CALL h5_get(h5id_multispec_in,'boozer_theta_Vphi',boozer_theta_Vphi_prof)
     ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
-      PRINT *,"neo2.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+      write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
       STOP
     END IF
 
@@ -1222,7 +1222,7 @@ CONTAINS
       boozer_s = boozer_s_prof(ind_boozer_s)
       Vphi = Vphi_prof(ind_boozer_s)
       IF (isw_Vphi_loc .EQ. 1) THEN
-        PRINT *,"neo2.f90: Warning switch isw_Vphi_loc=1 is not tested!"
+        write(*,*) "ERROR: Warning switch isw_Vphi_loc=1 is not tested!"
         STOP
 
         R_Vphi = R_Vphi_prof(ind_boozer_s)
@@ -1230,7 +1230,7 @@ CONTAINS
       ELSE IF(isw_Vphi_loc .EQ. 2) THEN
         boozer_theta_Vphi = boozer_theta_Vphi_prof(ind_boozer_s)
       ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
-        PRINT *,"neo2.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+        write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
         STOP
       END IF
 
