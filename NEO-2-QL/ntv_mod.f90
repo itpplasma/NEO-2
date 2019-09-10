@@ -1,17 +1,15 @@
+!> Module containing additional data from/for the NTV version
+!> of ripple_solver
+!>
+!> Input (switches, mach number, normalized magnetic drift frequency,
+!> boozer_s, collisionality,...) provided by neo2.in
+!>
+!> Used within programs:
+!>   neo2 (main)
+!>   ripple_solver
+!>   diag_propagator_res
+!>   neo_magfie_perturbation
 MODULE ntv_mod
-  !
-  ! Module containing additional data from/for the NTV version
-  ! of ripple_solver
-  !
-  ! Input (switches, mach number, normalized magnetic drift frequency,
-  ! boozer_s, collisionality,...) provided by neo2.in
-  !
-  ! Used within programs:
-  !   neo2 (main)
-  !   ripple_solver
-  !   diag_propagator_res
-  !   neo_magfie_perturbation
-  !
   ! module containing numerical constants
   USE neo_precision
   !
