@@ -18,6 +18,8 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     set(FGSL_PATH ${PROJLIBS}FGSL_gcc-8.3.0/fgsl-1.2.0/LIB)
 
     set(NEO2_Libs /proj/plasma/Neo2/Libs/hdf5_tools/Build-gnu-8.3.0/ CACHE STRING "NEO2 HDF5 path")
+
+    set(OPEN_BLAS_PATH /usr/lib/openblas/ /usr/lib/x86_64-linux-gnu/)
   else()
     set(MYMPILIB_PATH ${PROJLIBS}/MyMPILib/Build-Release/)
 
@@ -28,6 +30,7 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
 
     set(NEO2_Libs /proj/plasma/Neo2/Libs/hdf5_tools/Build/ CACHE STRING "NEO2 HDF5 path")
 
+    set(OPEN_BLAS_PATH /usr/lib/openblas-base/ /usr/lib/x86_64-linux-gnu/)
   endif()
 else()
   set(MYMPILIB_PATH ${PROJLIBS}/MyMPILib/Build-Release/)
@@ -38,6 +41,8 @@ else()
   set(FGSL_PATH ${PROJLIBS}FGSL_gcc-6.3/fgsl-1.2.0/LIB)
 
   set(NEO2_Libs /proj/plasma/Neo2/Libs/hdf5_tools/Build/ CACHE STRING "NEO2 HDF5 path")
+
+  set(OPEN_BLAS_PATH /usr/lib/openblas-base/ /usr/lib/x86_64-linux-gnu/)
 endif()
 set(FGSL_LIB ${FGSL_PATH}/lib/ CACHE STRING "FGSL lib")
 set(FGSL_INC ${FGSL_PATH}/include/fgsl/ CACHE STRING "FGSL include")
@@ -51,6 +56,6 @@ set(F77BLAS_LIB ${ATLASLIBS})
 set(ATLASBLAS_LIB ${ATLASLIBS})
 
 ### Path to OpenBLAS
-set(OPEN_BLAS_PATH /usr/lib/openblas-base/ /usr/lib/x86_64-linux-gnu/)
+
 set(OPEN_BLAS_LAPACK_LIB ${OPEN_BLAS_PATH})
 set(OPEN_BLAS_LIB ${OPEN_BLAS_PATH})
