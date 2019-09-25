@@ -4165,10 +4165,11 @@ PRINT *,' '
                *sngl(sourcevec_tmp(k+i,:))/(eta0-eta(i-1))
         ENDIF
       ENDDO
+
+      flush(iunit_base+m)
+
     ENDDO
-!
-    CALL FLUSH()
-!
+
     END SUBROUTINE plotsource
 !
 !------------------------------------------------------------------------
