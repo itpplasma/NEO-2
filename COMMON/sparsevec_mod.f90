@@ -235,7 +235,7 @@ contains
        this%values(idx_sparse) =  ibclr(this%values(idx_sparse), pos)
     else
        write (*,*) "Warning in ibclr_sparsevec:", idx, "does not exist!"
-       call abort()
+       stop
     end if
     
   end subroutine ibclr_sparsevec
