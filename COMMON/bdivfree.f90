@@ -125,7 +125,7 @@
 !
   do n=1,ntor
     do ip=1,np
-      expon(ip,n)=exp(dcmplx(0.d0,-n*(ip-1)*hp))/np
+      expon(ip,n)=exp(cmplx(0.d0,-n*(ip-1)*hp, kind=kind(0d0)))/np
     enddo
   enddo
 !
@@ -133,7 +133,7 @@
     do ir=1,nr
       r=rmin+hr*(ir-1)
       do iz=1,nz
-        four_ampl=sum(br(ir,1:np,iz)*expon(:,n))*dcmplx(0.d0,-r/(n*pfac))
+        four_ampl=sum(br(ir,1:np,iz)*expon(:,n))*cmplx(0.d0,-r/(n*pfac), kind=kind(0d0))
         a_re(ir,iz)=dble(four_ampl)
         a_im(ir,iz)=aimag(four_ampl)
       enddo
@@ -143,7 +143,7 @@
     do ir=1,nr
       r=rmin+hr*(ir-1)
       do iz=1,nz
-        four_ampl=sum(bz(ir,1:np,iz)*expon(:,n))*dcmplx(0.d0,r/(n*pfac))
+        four_ampl=sum(bz(ir,1:np,iz)*expon(:,n))*cmplx(0.d0,r/(n*pfac), kind=kind(0d0))
         a_re(ir,iz)=dble(four_ampl)
         a_im(ir,iz)=aimag(four_ampl)
       enddo
@@ -242,36 +242,36 @@
                 f,fr,fz,frr,frz,fzz,ierr)
     call spline(nr,nz,rpoi,zpoi,hr,hz,icp,arnim(:,:,:,n),ipoint,r,z,   &
                 g,gr,gz,grr,grz,gzz,ierr)
-    anr=dcmplx(f,g)
-    anr_r=dcmplx(fr,gr)
-    anr_z=dcmplx(fz,gz)
-    anr_rr=dcmplx(frr,grr)
-    anr_rz=dcmplx(frz,grz)
-    anr_zz=dcmplx(fzz,gzz)
+    anr=cmplx(f,g, kind=kind(0d0))
+    anr_r=cmplx(fr,gr, kind=kind(0d0))
+    anr_z=cmplx(fz,gz, kind=kind(0d0))
+    anr_rr=cmplx(frr,grr, kind=kind(0d0))
+    anr_rz=cmplx(frz,grz, kind=kind(0d0))
+    anr_zz=cmplx(fzz,gzz, kind=kind(0d0))
     call spline(nr,nz,rpoi,zpoi,hr,hz,icp,aznre(:,:,:,n),ipoint,r,z,   &
                 f,fr,fz,frr,frz,fzz,ierr)
     call spline(nr,nz,rpoi,zpoi,hr,hz,icp,aznim(:,:,:,n),ipoint,r,z,   &
                 g,gr,gz,grr,grz,gzz,ierr)
-    anz=dcmplx(f,g)
-    anz_r=dcmplx(fr,gr)
-    anz_z=dcmplx(fz,gz)
-    anz_rr=dcmplx(frr,grr)
-    anz_rz=dcmplx(frz,grz)
-    anz_zz=dcmplx(fzz,gzz)
+    anz=cmplx(f,g, kind=kind(0d0))
+    anz_r=cmplx(fr,gr, kind=kind(0d0))
+    anz_z=cmplx(fz,gz, kind=kind(0d0))
+    anz_rr=cmplx(frr,grr, kind=kind(0d0))
+    anz_rz=cmplx(frz,grz, kind=kind(0d0))
+    anz_zz=cmplx(fzz,gzz, kind=kind(0d0))
 !
-    expon=exp(dcmplx(0.d0,n*pfac*phi))
-    delbr=2.d0*dble(dcmplx(0.d0,pfac)*n*anz*expon/r)
-    delbz=-2.d0*dble(dcmplx(0.d0,pfac)*n*anr*expon/r)
+    expon=exp(cmplx(0.d0,n*pfac*phi, kind=kind(0d0)))
+    delbr=2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anz*expon/r)
+    delbz=-2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anr*expon/r)
     delbp=2.d0*dble((anr_z-anz_r)*expon)
-    deldBrdR=-delbr/r+2.d0*dble(dcmplx(0.d0,pfac)*n*anz_r*expon/r)
-    deldBrdZ=2.d0*dble(dcmplx(0.d0,pfac)*n*anz_z*expon/r)
+    deldBrdR=-delbr/r+2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anz_r*expon/r)
+    deldBrdZ=2.d0*dble(cmplx(0.d0,pfac)*n*anz_z*expon/r)
     deldBrdp=-2.d0*dble((pfac*n)**2*anz*expon/r)
-    deldBzdR=-delbz/r-2.d0*dble(dcmplx(0.d0,pfac)*n*anr_r*expon/r)
-    deldBzdZ=-2.d0*dble(dcmplx(0.d0,pfac)*n*anr_z*expon/r)
+    deldBzdR=-delbz/r-2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anr_r*expon/r)
+    deldBzdZ=-2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anr_z*expon/r)
     deldBzdp=2.d0*dble((pfac*n)**2*anr*expon/r)
     deldBpdR=2.d0*dble((anr_rz-anz_rr)*expon)
     deldBpdZ=2.d0*dble((anr_zz-anz_rz)*expon)
-    deldBpdp=2.d0*dble(dcmplx(0.d0,pfac)*n*(anr_z-anz_r)*expon)
+    deldBpdp=2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*(anr_z-anz_r)*expon)
 !
 !    if(incore.eq.-1.or.n.gt.ntor_amn) then
       br=br+delbr
@@ -1417,14 +1417,14 @@
   enddo
 !
   expthe(0)=(1.d0,0.d0)
-  expthe(1)=exp(dcmplx(0.d0,theta))
+  expthe(1)=exp(cmplx(0.d0,theta, kind=kind(0d0)))
   expthe(-1)=conjg(expthe(1))
   do m=2,mpol
     expthe(m)=expthe(m-1)*expthe(1)
     expthe(-m)=conjg(expthe(m))
   enddo
-!  expphi(1)=exp(dcmplx(0.d0,phi))
-  expphi(1)=exp(dcmplx(0.d0,pfac*phi))
+!  expphi(1)=exp(cmplx(0.d0,phi, kind=kind(0d0)))
+  expphi(1)=exp(cmplx(0.d0,pfac*phi, kind=kind(0d0)))
   do n=2,ntor_amn
     expphi(n)=expphi(n-1)*expphi(1)
   enddo

@@ -1758,7 +1758,7 @@ CONTAINS
                info_suitesparse) !without iterative refinement
        END IF
 
-       b=DCMPLX(xx,xz) !store solution under b
+       b=CMPLX(xx,xz, kind=kind(0d0)) !store solution under b
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -2336,7 +2336,7 @@ CONTAINS
                 PRINT *, 'INFO from solve = ', info_suitesparse(1)
              ENDIF
           END IF
-          b(:,i)=DCMPLX(xx,xz)
+          b(:,i)=CMPLX(xx,xz, kind=kind(0d0))
        END DO
     END IF
 
