@@ -487,7 +487,7 @@ contains
     ! iterations, which will cause problems with checking of convergence.
     do j=2,m
       if(abs(ritznum(j)-conjg(ritznum(j-1))) .lt. tiny_diff) then
-        if(dimag(ritznum(j)).gt.0.d0) then
+        if(aimag(ritznum(j)).gt.0.d0) then
           tmp = ritznum(j-1)
           ritznum(j-1) = ritznum(j)
           ritznum(j) = tmp

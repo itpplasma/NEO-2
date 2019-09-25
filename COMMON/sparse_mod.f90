@@ -1677,10 +1677,10 @@ CONTAINS
 
 
     bx=DBLE(b)
-    bz=DIMAG(b)
+    bz=AIMAG(b)
 
     valx=DBLE(val)
-    valz=DIMAG(val)
+    valz=AIMAG(val)
 
     ALLOCATE( Ai(SIZE(irow)) )
     ALLOCATE( Ap(SIZE(pcol)) )
@@ -2239,9 +2239,9 @@ CONTAINS
     ALLOCATE( valz(nz) )
 
     bx=DBLE(b)
-    bz=DIMAG(b)
+    bz=AIMAG(b)
     valx=DBLE(val)
-    valz=DIMAG(val)
+    valz=AIMAG(val)
 
     ALLOCATE( Ai(SIZE(irow)) )
     ALLOCATE( Ap(SIZE(pcol)) )
