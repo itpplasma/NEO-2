@@ -535,8 +535,8 @@ CONTAINS
     !
     ! input / output
     !
-    REAL(kind=dp), DIMENSION(ibeg:iend), INTENT(in) :: phi_arr
     INTEGER, INTENT(in) :: ibeg, iend
+    REAL(kind=dp), DIMENSION(ibeg:iend), INTENT(in) :: phi_arr
     COMPLEX(kind=dcp), DIMENSION(ibeg:iend), INTENT(inout) :: bnoverb0_arr
     COMPLEX(kind=dcp), DIMENSION(ibeg:iend), INTENT(inout) :: dbnoverb0_dphi_arr
     !
@@ -572,9 +572,9 @@ CONTAINS
     !
     ! input / output
     !
+    INTEGER, INTENT(in) :: ibeg, iend
     REAL(kind=dp), DIMENSION(ibeg:iend), INTENT(in) :: phi_arr, bhat_arr
     COMPLEX(kind=dcp), DIMENSION(ibeg:iend), INTENT(in) :: bnoverb0_arr
-    INTEGER, INTENT(in) :: ibeg, iend
     REAL(kind=dp), INTENT(out) :: eps_M_2, av_gphph, av_inv_bhat
     !
     ! local definitions
@@ -621,9 +621,9 @@ CONTAINS
     !
     ! input / output
     !
+    INTEGER, INTENT(in) :: ibeg, iend
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: x_start
     REAL(kind=dp), DIMENSION(ibeg:iend), INTENT(in) :: phi_arr
-    INTEGER, INTENT(in) :: ibeg, iend
     REAL(kind=dp), INTENT(out) :: av_gphph
     !
     ! local definitions:
