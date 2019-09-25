@@ -32,7 +32,7 @@ MODULE rkstep_mod
   ! WINNY - for flint
   !**********************************************************
   DOUBLE PRECISION               :: epserr_sink       ! Regularization
-  DOUBLE COMPLEX                 :: epserr_sink_cmplx ! Regularization
+  COMPLEX(kind=kind(1d0))        :: epserr_sink_cmplx ! Regularization
   DOUBLE PRECISION               :: epserr_iter
   INTEGER                        :: niter
   DOUBLE PRECISION, DIMENSION(3) :: fluxes

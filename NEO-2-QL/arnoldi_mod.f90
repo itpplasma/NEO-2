@@ -2,8 +2,8 @@ MODULE arnoldi_mod
   INTEGER :: ngrow,ierr
   INTEGER :: ntol,mode=0
   DOUBLE PRECISION :: tol
-  DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
-  DOUBLE COMPLEX, DIMENSION(:,:), ALLOCATABLE :: eigvecs
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
+  complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: eigvecs
 
 contains
   !---------------------------------------------------------------------------------
@@ -60,27 +60,27 @@ contains
     interface
       subroutine next_iteration(n,fold,fnew)
         integer :: n
-        double complex, dimension(n) :: fold,fnew
+        complex(kind=kind(1d0)), dimension(n) :: fold,fnew
       end subroutine next_iteration
     end interface
 
     integer :: ispec
     logical, intent(in) :: problem_type
-    double complex, intent(out) :: coef_dens, coef_energ
-    double complex, intent(in) :: denom_energ, denom_dens
-    double complex, dimension(:), intent(in) :: densvec_bra, densvec_ket
-    double complex, dimension(:), intent(in) :: energvec_bra, energvec_ket
+    complex(kind=kind(1d0)), intent(out) :: coef_dens, coef_energ
+    complex(kind=kind(1d0)), intent(in) :: denom_energ, denom_dens
+    complex(kind=kind(1d0)), dimension(:), intent(in) :: densvec_bra, densvec_ket
+    complex(kind=kind(1d0)), dimension(:), intent(in) :: energvec_bra, energvec_ket
     INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
     DOUBLE PRECISION :: relerr
-    DOUBLE COMPLEX, DIMENSION(n), intent(inout) :: RESULT_
+    COMPLEX(kind=kind(1d0)), DIMENSION(n), intent(inout) :: RESULT_
     INTEGER,        DIMENSION(:),   ALLOCATABLE :: ipiv
-    DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: fold,fnew
-    DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: coefren
-    DOUBLE COMPLEX, DIMENSION(:,:), ALLOCATABLE :: amat,bvec
+    complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: fold,fnew
+    complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: coefren
+    complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: amat,bvec
     DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond1
     DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
-    DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: coefren_spec
-    DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: amat_spec
+    complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: coefren_spec
+    complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: amat_spec
 
     IF(mode_in.EQ.3) THEN
       mode=mode_in
@@ -270,19 +270,19 @@ contains
     interface
       subroutine next_iteration(n,fold,fnew)
         integer :: n
-        double complex, dimension(n) :: fold,fnew
+        complex(kind=kind(1d0)), dimension(n) :: fold,fnew
       end subroutine next_iteration
     end interface
 
     integer :: ispec
     INTEGER                                       :: n,m,k,j,mmax,mbeg,ncount
     INTEGER :: driv_spec
-    DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
-    DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
-    DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
+    complex(kind=kind(1d0)),   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
+    complex(kind=kind(1d0)),   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
+    complex(kind=kind(1d0)),   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
 
     INTEGER :: m_tol, m_ind
-    DOUBLE COMPLEX, DIMENSION(500) :: ritzum_write
+    complex(kind=kind(1d0)), DIMENSION(500) :: ritzum_write
 
     ALLOCATE(fold(n),fnew(n))
     ALLOCATE(qvecs_prev(n,1),ritznum_prev(mmax))
@@ -411,21 +411,21 @@ contains
     integer, intent(in) :: m
     integer, intent(out) :: ngrowing,ierr
     double precision, intent(in) :: tol
-    double complex, dimension(:,:), intent(in) :: hmat
-    double complex, dimension(m,m), intent(out) :: eigh
-    double complex, dimension(m) :: ritznum
+    complex(kind=kind(1d0)), dimension(:,:), intent(in) :: hmat
+    complex(kind=kind(1d0)), dimension(m,m), intent(out) :: eigh
+    complex(kind=kind(1d0)), dimension(m) :: ritznum
 
     integer :: k,j,lwork,info
 
     double precision, parameter :: tiny_diff = 1.d-12
 
-    double complex   :: tmp
+    complex(kind=kind(1d0)) :: tmp
 
     logical,          dimension(:),   allocatable :: selec
     integer,          dimension(:),   allocatable :: ifailr
     double precision, dimension(:),   allocatable :: rwork
-    double complex,   dimension(:),   allocatable :: work,rnum
-    double complex,   dimension(:,:), allocatable :: hmat_work
+    complex(kind=kind(1d0)), dimension(:),   allocatable :: work,rnum
+    complex(kind=kind(1d0)), dimension(:,:), allocatable :: hmat_work
 
     ierr=0
 

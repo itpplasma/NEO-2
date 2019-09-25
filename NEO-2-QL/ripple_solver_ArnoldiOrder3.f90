@@ -96,7 +96,7 @@ SUBROUTINE ripple_solver_ArnoldiO3(                       &
 
   IMPLICIT NONE
   !INTEGER, PARAMETER :: dp = KIND(1.0d0)
-  DOUBLE COMPLEX, PARAMETER :: imun=(0.d0,1.d0)
+  complex(kind=kind(1d0)), PARAMETER :: imun=(0.d0,1.d0)
   REAL(DP), PARAMETER :: PI=3.141592653589793238462643383279502884197_dp
 
   ! parameter list
@@ -160,14 +160,14 @@ SUBROUTINE ripple_solver_ArnoldiO3(                       &
   DOUBLE PRECISION                         :: coefenu,coefenu_averb   !!!term[1]
   DOUBLE PRECISION :: alambd_save1
   DOUBLE PRECISION :: amin2ovb
-  DOUBLE COMPLEX :: coef_cf
+  complex(kind=kind(1d0)) :: coef_cf
 !
   DOUBLE PRECISION, DIMENSION(6)           :: alp,bet,gam,del
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,deriv_coef
-  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: amat_z,bvec_lapack_z
+  complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: amat_z,bvec_lapack_z
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: fun_coef
   DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: alambd
-  DOUBLE COMPLEX,   DIMENSION(:,:),   ALLOCATABLE :: Vg_vp_over_B
+  complex(kind=kind(1d0)), DIMENSION(:,:),   ALLOCATABLE :: Vg_vp_over_B
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: delta_eta
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: enu_coef        !!!term[1]
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: enu_coef2       !!!NTV
@@ -213,45 +213,45 @@ SUBROUTINE ripple_solver_ArnoldiO3(                       &
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow_coll,icol_coll
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow_ttmp,icol_ttmp
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_coll,amat_ttmp
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: amat_sp,bvec_sp
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: bvec_iter,bvec_prev
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: bvec_parflow
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: amat_sp,bvec_sp
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: bvec_iter,bvec_prev
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: bvec_parflow
   ! Use pre-conditioned iterations:
   ! -> remove null-space of axisymmetric solution (energy conservation)
-  DOUBLE COMPLEX :: denom_energ, coef_energ, denom_dens, coef_dens             !<=sergei 08.08.19
-  DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: energvec_bra, energvec_ket
-  DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: densvec_bra, densvec_ket      !<=sergei 08.08.19
+  complex(kind=kind(1d0)) :: denom_energ, coef_energ, denom_dens, coef_dens             !<=sergei 08.08.19
+  complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: energvec_bra, energvec_ket
+  complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: densvec_bra, densvec_ket      !<=sergei 08.08.19
   ! End Use pre-conditioned iterations
-  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
-  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: basevec_p
+  complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
+  complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: basevec_p
   INTEGER :: isw_lor,isw_ene,isw_intp
   INTEGER,          DIMENSION(:),       ALLOCATABLE :: npl
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_fzero
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_lorentz
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: ttmp_mat
-  DOUBLE COMPLEX,   DIMENSION(:,:,:),   ALLOCATABLE :: q_rip
-  DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: q_rip_1
-  DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: q_rip_incompress
-  DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: q_rip_parflow
+  complex(kind=kind(1d0)), DIMENSION(:,:,:),   ALLOCATABLE :: q_rip
+  complex(kind=kind(1d0)), DIMENSION(:,:),     ALLOCATABLE :: q_rip_1
+  complex(kind=kind(1d0)), DIMENSION(:,:),     ALLOCATABLE :: q_rip_incompress
+  complex(kind=kind(1d0)), DIMENSION(:,:),     ALLOCATABLE :: q_rip_parflow
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_energ
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_energ_sym
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_energ2     !NTV
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: pleg_bra,pleg_ket
-  DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: convol_flux,convol_curr
-  DOUBLE COMPLEX,   DIMENSION(:,:),     ALLOCATABLE :: convol_flux_0
+  complex(kind=kind(1d0)), DIMENSION(:,:),     ALLOCATABLE :: convol_flux,convol_curr
+  complex(kind=kind(1d0)), DIMENSION(:,:),     ALLOCATABLE :: convol_flux_0
   DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: scalprod_pleg
 !!$  DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: x1mm,x2mm
-  DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: scalprod
+  complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: scalprod
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: phi_mfl
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: bhat_mfl,h_phi_mfl
-  DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: geodcu_mfl
-  DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: geodcu_forw,geodcu_back
+  complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: geodcu_mfl
+  complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: geodcu_forw,geodcu_back
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: dlogbdphi_mfl
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: delt_pos,delt_neg
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_b,fact_neg_b
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_e,fact_neg_e
   INTEGER          :: nreal,ncomp
-  DOUBLE COMPLEX   :: expforw,expbackw,perbou_pos,perbou_neg,rotfactor
+  complex(kind=kind(1d0)) :: expforw,expbackw,perbou_pos,perbou_neg,rotfactor
   DOUBLE PRECISION :: Er, avEparB_ov_avb2 ! radial and inductive electric field
   DOUBLE PRECISION :: a1b,a2b,hatOmegaE,hatOmegaB,denomjac
   !! Modifications by Andreas F. Martitsch (14.03.2014)
@@ -264,7 +264,7 @@ SUBROUTINE ripple_solver_ArnoldiO3(                       &
   !! End Modifications by Andreas F. Martitsch (14.03.2014)
   DOUBLE PRECISION :: scalefac_kG
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: arr_real
-  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: arr_comp
+  complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: arr_comp
   !! Modifications by Andreas F. Martitsch (13.06.2014)
   ! Subsequent quantities (given now in cgs-units) are computed by
   ! magdata_for_particles and stored within the fieldpropagator-structure.
@@ -274,11 +274,11 @@ SUBROUTINE ripple_solver_ArnoldiO3(                       &
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: dlogbds_mfl
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bcovar_s_hat_mfl
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: dbcovar_s_hat_dphi_mfl
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: bnoverb0,dbnoverb0_dphi_mfl
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: bnoverb0,dbnoverb0_dphi_mfl
   ! For testing you can specify here an artificial perturbation field
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: bnoverb0_test,dbnoverb0_dphi_mfl_test
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: bnoverb0_test,dbnoverb0_dphi_mfl_test
   ! amplitude
-  DOUBLE COMPLEX :: bnoverb0_test_val=(1.0d-3,0.0d-0)
+  complex(kind=kind(1d0)) :: bnoverb0_test_val=(1.0d-3,0.0d-0)
   ! poloidal mode number
   INTEGER :: m_theta = 0
   !! End Modifications by Andreas F. Martitsch (13.06.2014)
@@ -286,16 +286,16 @@ SUBROUTINE ripple_solver_ArnoldiO3(                       &
   !  multi-species part
   INTEGER :: ispec, ispecp, ispecpp ! species indices
   INTEGER :: drive_spec
-  DOUBLE COMPLEX,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all
+  complex(kind=kind(1d0)), DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all
   REAL(kind=dp), DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec
   LOGICAL :: problem_type
   DOUBLE PRECISION,   DIMENSION(:,:), ALLOCATABLE :: source_vector_real
   DOUBLE PRECISION,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: ttmpfact
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: ttmpfact
   ! Use pre-conditioned iterations (not necessary/depricated):
   ! -> remove parallel flow from solution
-!!$  DOUBLE COMPLEX :: fluxincompr,coefincompr
+!!$  complex(kind=kind(1d0)) :: fluxincompr,coefincompr
   ! End Use pre-conditioned iterations (not necessary/depricated)
 !
 ! Variable "maxwtest" initializes the test of zero space which is constant in space and with respect to eta
@@ -5238,7 +5238,7 @@ RETURN
 !
 ! Generates Maxwellian distribution in discretized form. Needed for filtering out null-space and for testing.
 !
-    DOUBLE COMPLEX, DIMENSION(n_2d_size) :: fmaxw
+    complex(kind=kind(1d0)), DIMENSION(n_2d_size) :: fmaxw
 !
     DO istep=ibeg,iend
 !
@@ -5268,8 +5268,8 @@ RETURN
     implicit none
 !
     integer :: k,m
-    DOUBLE COMPLEX, DIMENSION(n_2d_size)      :: source
-    DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: cdummy
+    complex(kind=kind(1d0)), DIMENSION(n_2d_size)      :: source
+    complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: cdummy
 !
     allocate(cdummy(n_2d_size))
     cdummy=(0.d0,0.d0)
@@ -5385,15 +5385,15 @@ RETURN
 !
     INTEGER :: l,m,i,k,istep,npassing,k_prev
 !
-    DOUBLE COMPLEX, DIMENSION(n_2d_size)                 :: vec_in,vec_out
+    complex(kind=kind(1d0)), DIMENSION(n_2d_size)                 :: vec_in,vec_out
     !! Modification by Andreas F. Martitsch (20.08.2015)
     ! Array extended by 3rd (phi-steps) and 4th dimension (species)
-    DOUBLE COMPLEX, DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg
-    DOUBLE COMPLEX, DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg_tmp
+    complex(kind=kind(1d0)), DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg
+    complex(kind=kind(1d0)), DIMENSION(0:lag,0:leg,ibeg:iend,0:num_spec-1) :: scalprod_pleg_tmp
     ! Species index
     INTEGER :: ispecp
     !! End Modification by Andreas F. Martitsch (20.08.2015)
-    DOUBLE COMPLEX, DIMENSION(:,:,:), ALLOCATABLE        :: vec_tmp
+    complex(kind=kind(1d0)), DIMENSION(:,:,:), ALLOCATABLE        :: vec_tmp
 !
     ALLOCATE(vec_tmp(0:lag,2*(npart+1),ibeg:iend))
     vec_tmp=0.d0
@@ -5521,7 +5521,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   IMPLICIT NONE
 !
   INTEGER :: n
-  DOUBLE COMPLEX, DIMENSION(n) :: fold,fnew
+  complex(kind=kind(1d0)), DIMENSION(n) :: fold,fnew
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fnew_real,fnew_imag
 !
   CALL integral_part(fold,fnew)
@@ -5611,11 +5611,11 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !  external :: next_iteration
   INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
   DOUBLE PRECISION :: relerr
-  DOUBLE COMPLEX, DIMENSION(n)                :: RESULT
+  complex(kind=kind(1d0)), DIMENSION(n)                :: RESULT
   INTEGER,        DIMENSION(:),   ALLOCATABLE :: ipiv
-  DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: fold,fnew
-  DOUBLE COMPLEX, DIMENSION(:),   ALLOCATABLE :: coefren
-  DOUBLE COMPLEX, DIMENSION(:,:), ALLOCATABLE :: amat,bvec
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: fold,fnew
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: coefren
+  complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: amat,bvec
 !
 !! Modification by Andreas F. Martitsch (20.08.2015)
 ! MPI Barrier -> Exchange exit conditions between
@@ -5624,8 +5624,8 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
 ! MPI Barrier -> Exchange coefren and amat
 ! between different processes
-  DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: coefren_spec
-  DOUBLE COMPLEX, DIMENSION(:), ALLOCATABLE :: amat_spec
+  complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: coefren_spec
+  complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: amat_spec
 !! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   IF(mode_in.EQ.3) THEN
@@ -5869,16 +5869,16 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !  external :: next_iteration
   INTEGER                                       :: n,m,k,j,mmax,mbeg,ncount
   INTEGER :: driv_spec
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
-  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
+  complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
 !
 !! Modification by Andreas F. Martitsch (20.08.2015)
 ! MPI Barrier -> Exchange qvecs_prevs and hmat
 ! between different processes
-  DOUBLE COMPLEX,   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
+  complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
 !! End Modification by Andreas F. Martitsch (20.08.2015)
   INTEGER :: m_tol, m_ind
-  DOUBLE COMPLEX, DIMENSION(500) :: ritzum_write
+  complex(kind=kind(1d0)), DIMENSION(500) :: ritzum_write
 !
   ALLOCATE(fold(n),fnew(n))
   ALLOCATE(qvecs_prev(n,1),ritznum_prev(mmax))
@@ -6039,22 +6039,22 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   INTEGER :: m,ngrow,ierr,k,j,lwork,info
 !
   DOUBLE PRECISION :: tol
-  DOUBLE COMPLEX   :: tmp
+  complex(kind=kind(1d0)) :: tmp
 !
-  DOUBLE COMPLEX, DIMENSION(m)   :: ritznum
+  complex(kind=kind(1d0)), DIMENSION(m)   :: ritznum
   !! Modification by Andreas F. Martitsch (19.10.2016)
   ! old:
-  !DOUBLE COMPLEX, DIMENSION(m,m) :: hmat,eigh
+  !complex(kind=kind(1d0)), DIMENSION(m,m) :: hmat,eigh
   ! new:
-  DOUBLE COMPLEX, DIMENSION(:,:) :: hmat
-  DOUBLE COMPLEX, DIMENSION(m,m) :: eigh
+  complex(kind=kind(1d0)), DIMENSION(:,:) :: hmat
+  complex(kind=kind(1d0)), DIMENSION(m,m) :: eigh
   !! End Modification by Andreas F. Martitsch (19.10.2016)
 !
   LOGICAL,          DIMENSION(:),   ALLOCATABLE :: selec
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ifailr
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: rwork
-  DOUBLE COMPLEX,   DIMENSION(:),   ALLOCATABLE :: work,rnum
-  DOUBLE COMPLEX,   DIMENSION(:,:), ALLOCATABLE :: hmat_work
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: work,rnum
+  complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: hmat_work
 !
   ierr=0
 !
