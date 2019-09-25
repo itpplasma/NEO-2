@@ -105,7 +105,7 @@ CONTAINS
 !
       wint(j,:)=bvec(1,:)
       do i=2,ndim
-        wint(j,:)=wint(j,:)+bvec(i,:)/dfloat(i)
+        wint(j,:)=wint(j,:)+bvec(i,:)/real(i, kind(0d0))
       enddo
     enddo
 !
@@ -157,7 +157,7 @@ subroutine rel_kernels(leg,z_in,zp_in,R_11,R_10,R_01,R_00)
   ggpm1=(z2+zp2+z2*zp2)/(gam*gamp+1.d0)
   ymin=sqrt(ggpm1-z*zp)
   ymax=sqrt(ggpm1+z*zp)
-  hy=(ymax-ymin)/dfloat(n)
+  hy=(ymax-ymin)/real(n, kind(0d0))
   cxi1=1.d0/(z*zp)
   cxi0=ggpm1*cxi1
 
@@ -168,7 +168,7 @@ subroutine rel_kernels(leg,z_in,zp_in,R_11,R_10,R_01,R_00)
   R_00=0.d0
 !
   do i=0,n
-    y=ymin+hy*dfloat(i)
+    y=ymin+hy*real(i, kind(0d0))
     y2=y*y
     r=1.d0+y2
     dyovsq=weights(leg,i)/sqrt(r+1.d0)
@@ -183,7 +183,7 @@ subroutine rel_kernels(leg,z_in,zp_in,R_11,R_10,R_01,R_00)
       dpleg=dpleg*xi+coefdleg(leg,j)
     enddo
 !
-    dfllp1=dfloat(leg*(leg+1))
+    dfllp1=real(leg*(leg+1), kind(0d0))
     plegllp1=pleg*dfllp1
     gz_10=gam*zp/(gamp*z)
     gz_01=1.d0/gz_10
