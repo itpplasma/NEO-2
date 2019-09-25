@@ -1291,8 +1291,8 @@ rotfactor=imun*m_phi
       dellampow2(m,1:npassing+1)=dellampow(m,1:npassing+1)              &
         *(alambd(1:npassing+1,istep)**2                                 &
         + 2.d0*alambd(1:npassing+1,istep)*dellampow(1,1:npassing+1)     &
-              *dfloat(m)/dfloat(m+1)                                    &
-        + dellampow(1,1:npassing+1)**2*dfloat(m)/dfloat(m+2))
+              *real(m, kind=kind(0d0))/real(m+1, kind=kind(0d0))        &
+        + dellampow(1,1:npassing+1)**2*real(m, kind=kind(0d0))/real(m+2, kind=kind(0d0)))
     ENDDO
 !
 ! end new stuff: NTV

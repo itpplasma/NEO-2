@@ -61,7 +61,7 @@
 !
   factorial(1)=1.d0
   do k=2,2*lag+2
-    factorial(k)=factorial(k-1)*dfloat(k)
+    factorial(k)=factorial(k-1)*real(k, kind=kind(0d0))
   enddo
 !
   call pollag(lag,coeflag)
