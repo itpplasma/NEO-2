@@ -9,7 +9,7 @@
     INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_per_neg,icol_per_neg
     DOUBLE PRECISION, DIMENSION(:),     ALLOCATABLE :: amat_symm
     DOUBLE PRECISION, DIMENSION(:),     ALLOCATABLE :: amat_regper
-    DOUBLE COMPLEX,   DIMENSION(:),     ALLOCATABLE :: amat_asymm
+    complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: amat_asymm
     DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: f0_coll,f0_ttmp
     DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: f0_coll_all,f0_ttmp_all
   END MODULE ntv_eqmat_mod

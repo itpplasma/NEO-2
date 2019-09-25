@@ -34,8 +34,8 @@
   double precision, dimension(:,:),   allocatable :: a_re, a_im, rbpav_dummy
   double precision, dimension(:,:),   allocatable :: brm,bpm,bzm
 !
-  double complex :: four_ampl
-  double complex, dimension(:,:), allocatable :: expon
+  complex(kind=kind(1d0)) :: four_ampl
+  complex(kind=kind(1d0)), dimension(:,:), allocatable :: expon
 !
   integer, parameter :: mp=4 ! power of Lagrange's polynomial =3
   integer,          dimension(mp)    :: indx,indy
@@ -214,8 +214,8 @@
   double precision :: deldBpdR,deldBpdp,deldBpdZ
   double precision :: deldBzdR,deldBzdp,deldBzdZ
   double precision :: ar,az,dar_dr,dar_dz,dar_dp,daz_dr,daz_dz,daz_dp
-  double complex :: expon,anr,anz,anr_r,anr_z,anz_r,anz_z
-  double complex :: anr_rr,anr_rz,anr_zz,anz_rr,anz_rz,anz_zz
+  complex(kind=kind(1d0)) :: expon,anr,anz,anr_r,anr_z,anz_r,anz_z
+  complex(kind=kind(1d0)) :: anr_rr,anr_rz,anr_zz,anz_rr,anz_rz,anz_zz
 !
 !
   call spline(nr,nz,rpoi,zpoi,hr,hz,icp,rbpav_coef,ipoint,r,z,         &
@@ -975,11 +975,11 @@
   integer :: n,i,ip1,ip2
   double precision :: h,rhop,rhom,fac,fpl31,fpl40,fmn31,fmn40          ,x
   double precision :: a11,a12,a13,a21,a22,a23,a31,a32,a33,det
-  double complex :: abeg,bbeg,cbeg,dbeg,ebeg,fbeg
-  double complex :: aend,bend,cend,dend,eend,fend
-  double complex :: b1,b2,b3
-  double complex, dimension(n) :: a,b,c,d,e,f
-  double complex, dimension(:), allocatable :: alp,bet,gam
+  complex(kind=kind(1d0)) :: abeg,bbeg,cbeg,dbeg,ebeg,fbeg
+  complex(kind=kind(1d0)) :: aend,bend,cend,dend,eend,fend
+  complex(kind=kind(1d0)) :: b1,b2,b3
+  complex(kind=kind(1d0)), dimension(n) :: a,b,c,d,e,f
+  complex(kind=kind(1d0)), dimension(:), allocatable :: alp,bet,gam
 !
   rhop=13.d0+sqrt(105.d0)
   rhom=13.d0-sqrt(105.d0)
@@ -1144,9 +1144,9 @@
 !
   integer, dimension(:,:), allocatable :: idummy2
 !
-  double complex :: expon
-  double complex, dimension(:), allocatable :: a,b,c,d,e,f
-  double complex, dimension(:,:,:), allocatable :: apsimn,athetmn
+  complex(kind=kind(1d0)) :: expon
+  complex(kind=kind(1d0)), dimension(:), allocatable :: a,b,c,d,e,f
+  complex(kind=kind(1d0)), dimension(:,:,:), allocatable :: apsimn,athetmn
 !
   integer, save :: nper
 !
