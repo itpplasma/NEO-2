@@ -1112,8 +1112,12 @@ CONTAINS
            TRIM(ADJUSTL(dir_name)) // '; fi'
 ! __INTEL_COMPILER is constant in the form VVSS, with VV major version and SS minor version
 ! taken from https://software.intel.com/en-us/fortran-compiler-developer-guide-and-reference-using-predefined-preprocessor-symbols
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
@@ -1125,30 +1129,46 @@ CONTAINS
       cmd_line = &
            'if [ ! -e ' // TRIM(ADJUSTL(in_file)) // ' ]; then ln -s ../' // &
            TRIM(ADJUSTL(in_file)) // ' . ; fi'
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
       cmd_line = &
            'if [ ! -e ' // TRIM(ADJUSTL(in_file_pert)) // ' ]; then ln -s ../' // &
            TRIM(ADJUSTL(in_file_pert)) // ' . ; fi'
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
       cmd_line = &
            'if [ ! -e neo.in ]; then ln -s ../neo.in . ; fi'
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
       cmd_line = &
            'if [ ! -e neo_2.x ]; then ln -s ../neo_2.x . ; fi'
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
@@ -1178,8 +1198,12 @@ CONTAINS
       END IF
       CLOSE(unit=u1)
       cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec))
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
@@ -1210,8 +1234,12 @@ CONTAINS
       END IF
       CLOSE(unit=u1)
       cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec_precom))
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
