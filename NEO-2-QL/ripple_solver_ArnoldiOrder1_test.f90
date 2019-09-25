@@ -2947,22 +2947,22 @@ istep=(ibeg+iend)/2
 uw_new=uw
 CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
 uw_new=uw+1000
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
 istep=ibeg
 uw_new=uw+10
 CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
 uw_new=uw+1010
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
 istep=iend
 uw_new=uw+20
 CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
 uw_new=uw+1020
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
 istep=ibeg+1
 uw_new=uw+30
 CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
 uw_new=uw+1030
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
 END DO
 END IF
 !
@@ -3741,22 +3741,22 @@ istep=(ibeg+iend)/2
 uw_new=uw
 CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
 uw_new=uw+1000
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
 istep=ibeg
 uw_new=uw+10
 CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
 uw_new=uw+1010
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
 istep=iend
 uw_new=uw+20
 CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
 uw_new=uw+1020
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
 istep=ibeg+1
 uw_new=uw+30
 CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
 uw_new=uw+1030
-CALL plotsource(uw_new,dimag(source_vector_all(:,:,ispec)))
+CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
 END DO
 END IF  
 !
@@ -5345,7 +5345,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   IF(problem_type) THEN
      ALLOCATE(fnew_real(n),fnew_imag(n))
      fnew_real=DBLE(fnew)
-     fnew_imag=DIMAG(fnew)
+     fnew_imag=AIMAG(fnew)
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
                        fnew_real,iopt)
      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
