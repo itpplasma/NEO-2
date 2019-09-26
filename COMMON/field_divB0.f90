@@ -372,7 +372,7 @@ subroutine read_dimeq1(nwEQD,nhEQD)
   implicit none
   integer :: nwEQD, nhEQD,i
   integer :: idum
-  character*10 :: dummy(6)
+  character(len=10) :: dummy(6)
 
   open(unit=iunit,file=trim(gfile),status='old',action='read')
   read(iunit,2000)(dummy(i),i=1,6),idum,nwEQD,nhEQD
@@ -394,7 +394,7 @@ subroutine read_eqfile1(nwEQD,nhEQD,psiSep, bt0, rzero, rad, zet, psiRZ)
 
   integer :: nwEQD, nhEQD
   integer :: gunit, idum
-  character*10 :: dummy(6)
+  character(len=10) :: dummy(6)
   integer :: i,j
   real (kind=8) :: xdim,zdim,r1,zmid,rmaxis,zmaxis,xdum
   real (kind=8) :: bt0, rzero, plas_cur, psiAxis, psiSep
