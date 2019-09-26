@@ -67,7 +67,7 @@ c 170 CONTINUE
 !      PRINT 180,BMMA,MMA,NC,NC,NMAX,(NAI(K),K=1,NMA)
   180 format(/' coinhs: vvedeno',i4,'+5 k; cohs:',
      *i4,'*',i1,' co.hnmq, sloev ',i1,
-     *',chlenov gip.ryad.',i3,'garm ANQ ',15(i2,1h,))
+     *',chlenov gip.ryad.',i3,'garm ANQ ',15(i2,','))
       GO TO 188
   185 continue
 !  185 PRINT 187,BMMA,MMA,NC,NC,NMAX
@@ -78,14 +78,14 @@ c 170 CONTINUE
   188 IF(NOPRI1) GO TO 250
 !      PRINT 190,MC1,MC2,MC3,MC4,MC5,MC6
   190 format(' coinhs: pech.vved.koeff.',/
-     *5h HNMQ,6(5x,3hmc=,i1,7x),2x,2hnm,3x,1hk/)
+     *' HNMQ',6(5x,'mc=',i1,7x),2x,'nm',3x,'k'/)
 
       DO 210 ML=1,BMMA
 !      PRINT 200,H(1,ML),NM(ML),KM(ML)
   200 FORMAT(4X,1(E13.6,3X),I4,I4)
   210 CONTINUE
 !      PRINT 220,MC1,MC2,MC3,MC4,MC5,MC6
-  220 FORMAT(/4H ANQ,6(5X,3HMC=,I1,7X),2X,2HNA/)
+  220 FORMAT(/' ANQ',6(5X,'MC=',I1,7X),2X,'NA'/)
       DO 240 ML=1,nap
 !      PRINT 230,AI(1,ML),NAI(ML)
   230 FORMAT(4X,1(E13.6,3X),I4)
@@ -117,9 +117,8 @@ c 267 CONTINUE
   275 IF(NOPRI2) RETURN
 !      PRINT 280,MC1,MC2,MC3,MC4,MC5,MC6
   280 format(' coinhs: pech. peresch. koeff.',/
+     *' HNM',6(5X,'MC=',I1,7X),2X,'NM',3X,'K'/)
 
-
-     *4H HNM,6(5X,3HMC=,I1,7X),2X,2HNM,3X,1HK/)
       IF(MMA.LT.1) GO TO 305
       DO 300 ML=1,MMA
 !      PRINT 290,H(1,ML),NM(ML),KM(ML)
@@ -128,7 +127,7 @@ c 267 CONTINUE
   305 continue
 !  305 PRINT 310,MC1,MC2,MC3,MC4,MC5,MC6
 
-  310 FORMAT(/4H  AN,6(5X,3HMC=,I1,7X),2X,2HNA/)
+  310 FORMAT(/'  AN',6(5X,'MC=',I1,7X),2X,'NA'/)
       IF(NMA.LT.1) GO TO 335
       DO 330 ML=1,NMA
 !      PRINT 320,AI(1,ML),NAI(ML)
@@ -537,7 +536,7 @@ c      REAL ARZi(16),ARKi(16),ARCi(16)
       IF(SMA.LE.16) GO TO 21
 
 !      PRINT 10,NK
-   10 FORMAT(2X,5HNK>16,3X,3HNK=,I3/)
+   10 FORMAT(2X,'NK>16',3X,'NK=',I3/)
       STOP
 
    21 CONTINUE
@@ -627,7 +626,7 @@ c      REAL Q2,Q3,Z,A,B,F,F1,BQ,BQ1
       IF(Z.LT.1d0) GO TO 20
 !      PRINT 10
 
-   10 FORMAT(/19H APÉYMEHT LEGQF < 1//)
+   10 FORMAT(/' APYMEHT LEGQF < 1'//)
 !      Q=dSQRT(-1d0)
       RETURN
    20 F=1d0
@@ -704,7 +703,7 @@ c .xbrz
       NK=NKC
       IF(NPK2.LE.16) GO TO 5
 !      PRINT 3,NKC
-    3 FORMAT(/5X,5HNK>16,3X,3HNK=,I3/)
+    3 FORMAT(/5X,'NK>16',3X,'NK=',I3/)
       STOP
     5 CONTINUE
 
@@ -716,7 +715,7 @@ c .xbrz
 !      PRINT 60,NK
 
    60 format(/5x,'  XBRZd  prorabotala   ',
-     *2x,4hsma=,i3/)
+     *2x,'sma=',i3/)
       RETURN
       END
 C .xbrz
@@ -738,17 +737,17 @@ C .xbrz
   120 FORMAT(5X,I2,2X,4X,I3,2X,5X,I2,2X,2(3X,E10.4,2X),2(3X,I3,2X))
       IF(NC.GT.BNC) NC=BNC
 !      PRINT 130,NMAX,BMMA,MMA,NMA,L1,RT,R0,NC
-  130 FORMAT(//5HNMAX=,I3,4X,4X,5HBMMA=,I3,4X//
-     *4HMMA=,I3,4X,4HNMA=,I3,4X,3HL1=,I3,4X,
-     *3HRT=,E14.7,4X,3HR0=,E14.7,4X,3HNC=,I3/)
+  130 FORMAT(//'NMAX=',I3,4X,4X,'BMMA=',I3,4X//
+     *'MMA=',I3,4X,'NMA=',I3,4X,3HL1=,I3,4X,
+     *'RT=',E14.7,4X,'R0=',E14.7,4X,'NC=',I3/)
       READ(17,140)cbf,RC
   140 FORMAT(5X,E13.7/3(3X,E13.7)/3(3X,E13.7))
       READ(17,180)BY0
   180 FORMAT(4X,E14.7)
 !      PRINT 250,BY0,cbf
-  250 FORMAT(/4HBY0=,E14.7,3X,4Hcbf=,E14.7/)
+  250 FORMAT(/'BY0=',E14.7,3X,'cbf=',E14.7/)
 !      PRINT 480,RC
-  480 FORMAT(/3HRC=,6(E14.7,2X))
+  480 FORMAT(/'RC=',6(E14.7,2X))
       CALL COINhs_l(RT,R0,RC,NC,BMMA,MMA,NMA,NMAX,
      *cbf,L1,NOPRI1,NOPRI2)
       READ(17,420)SMA
@@ -758,14 +757,14 @@ C .xbrz
       READ(17,400)ZK
       READ(17,400)RK
 !      PRINT 450
-  450 FORMAT(4H  IK)
+  450 FORMAT('  IK')
 !      PRINT 460,IK
   460 FORMAT(8(2X,E14.7))
 !      PRINT 470
-  470 FORMAT(4H  ZK)
+  470 FORMAT('  ZK')
 !      PRINT 460,ZK
 !      PRINT 475
-  475 FORMAT(4H  RK)
+  475 FORMAT('  RK')
 !      PRINT 460,RK
       CALL RKIN1d_l(40,L1,0d0,.false.,RT,RK(16),BY0,IK,ZK,RK,SMA)
       close(17)
