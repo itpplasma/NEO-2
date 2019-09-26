@@ -264,7 +264,7 @@
     delbz=-2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anr*expon/r)
     delbp=2.d0*dble((anr_z-anz_r)*expon)
     deldBrdR=-delbr/r+2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anz_r*expon/r)
-    deldBrdZ=2.d0*dble(cmplx(0.d0,pfac)*n*anz_z*expon/r)
+    deldBrdZ=2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anz_z*expon/r)
     deldBrdp=-2.d0*dble((pfac*n)**2*anz*expon/r)
     deldBzdR=-delbz/r-2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anr_r*expon/r)
     deldBzdZ=-2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anr_z*expon/r)
