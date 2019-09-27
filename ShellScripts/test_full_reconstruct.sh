@@ -86,7 +86,7 @@ if [ ${number_processors} -eq 0 ] ; then
   runcommand="$testpath/$executablename"
 else
   echo "Parallel mode np=${number_processors}"
-  runcommand="mpirun -np ${number_processors} $testpath/$executablename"
+  runcommand="mpirun --oversubscribe -np ${number_processors} $testpath/$executablename"
 fi
 
 if [ "x${which_code}" = "xQL" ] ; then
