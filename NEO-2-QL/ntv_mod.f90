@@ -126,12 +126,6 @@ MODULE ntv_mod
      MODULE PROCEDURE compute_Dijab_a
   END INTERFACE compute_Dijab
   !
-  PUBLIC compute_Er
-  PRIVATE compute_Er_a, compute_Er_b
-  INTERFACE compute_Er
-     MODULE PROCEDURE compute_Er_a, compute_Er_b
-  END INTERFACE compute_Er
-  !
   PUBLIC compute_A3norm
   PRIVATE compute_A3norm_a
   INTERFACE compute_A3norm
@@ -1770,7 +1764,8 @@ CONTAINS
     !
   END SUBROUTINE write_multispec_output_a
   !
-  SUBROUTINE compute_Er_a(row_ind_ptr, col_ind_ptr, D31AX_spec, D32AX_spec, Er)
+  SUBROUTINE compute_Er(row_ind_ptr, col_ind_ptr, D31AX_spec, D32AX_spec, &
+       & Er, D33AX_spec_in, avEparB_ov_avb2_in)
     !
     USE neo_precision
     USE neo_control, ONLY: lab_swi
@@ -1791,285 +1786,9 @@ CONTAINS
     INTEGER, DIMENSION(:), INTENT(in) :: row_ind_ptr, col_ind_ptr
     ! species parallel flow
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: D31AX_spec, D32AX_spec
-    ! ---------------------------------------------------------------!
-    ! output:
-    ! ---------------------------------------------------------------!
-    ! radial electric field (w.r.t. effective radius)
-    REAL(kind=dp), INTENT(out) :: Er
-    ! ---------------------------------------------------------------!
-    ! local:
-    ! ---------------------------------------------------------------!
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, avnabpsi
-    ! ---------------------------------------------------------------!
-    ! co- and contra-variant B-field components using
-    ! r_eff as a flux-surface label
-    REAL(kind=dp) :: bcovar_tht, bcovar_phi
-    REAL(kind=dp) :: sqrtg_bctrvr_phi, boozer_psi_pr
-    REAL(kind=dp) :: avbhat2, avb2
-    ! normalized co-variant phi-component of B,  $\sqrt{g}B^\vartheta$
-    REAL(kind=dp) :: bcovar_phi_hat, sqrtg_bctrvr_tht
-    ! Only used to call mag for normalizations
-    ! related to D31 and D32
-    REAL(kind=dp)                 :: bmod_tmp,sqrtg_tmp
-    REAL(kind=dp), DIMENSION(3)   :: x_tmp,bder_tmp,hcovar_tmp,hctrvr_tmp
-    REAL(kind=dp), DIMENSION(3,3) :: hcoder_tmp,hctder_tmp
-    ! Boozer coordinates of local Vphi value (only used for isw_Vphi_loc=1)
-    REAL(kind=dp)                 :: thetaB
-    REAL(kind=dp), DIMENSION(3)   :: x_start
-    ! transformation function Boozer coord. -> Symm. flux coord.
-    REAL(kind=dp)                 :: G_symm, G_symm_tb, G_symm_pb
-    ! ---------------------------------------------------------------!
-    ! temperature, pressure and density of species i 
-    ! (i = species of measured toroidal rotation frequency)
-    REAL(kind=dp) :: T_ions, n_ions, p_ions, z_ions
-    REAL(kind=dp) :: dT_ions_ov_dr, dn_ions_ov_dr, dp_ions_ov_dr
-    ! loop indices, temporary variables
-    INTEGER :: ispec_ctr, spec_i, irow_spec, icol_spec, num_ctr
-    REAL(kind=dp) :: denom_Er, nom_Er, fac1
-    REAL(kind=dp) :: denom_Er_1, nom_Er_1, nom_Er_2, nom_Er_3, nom_Er_4
-    ! ---------------------------------------------------------------!
-    !
-    ! copy y-vector (see definition in rhs_kin.f90)
-    ALLOCATE(y(SIZE(y_ntv_mod,1)))
-    y = y_ntv_mod
-    !
-    ! aiota, avnabpsi :
-    aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
-    avbhat2 = y(9) / y(6)
-
-    spec_i = -1
-
-    denom_Er = 0.0
-    nom_Er = 0.0
-
-    ! computation of the normalization for D31 and D32 (-> D31_ref)
-    IF (mag_coordinates .EQ. 0) THEN
-       ! cylindrical coordinates
-       PRINT *,"ntv_mod.f90: Computation of radial electric field &
-            &only implemented for Boozer coordinates at the moment!"
-       STOP
-       !
-       x_tmp = xstart_cyl
-       CALL mag(x_tmp,bmod_tmp,sqrtg_tmp,bder_tmp,hcovar_tmp,&
-            hctrvr_tmp,hcoder_tmp,hctder_tmp)
-       !
-       ! normalized co-variant phi-component of B
-       ! (Note! co-variant phi-component of B is the
-       ! same for cylindrical coordinates and symmetry flux
-       ! coodrinates --> no conversion needed)
-       bcovar_phi_hat = hcovar_tmp(2)*(bmod_tmp/bmod0)
-       !
-       ! restore value of $\sqrt{g}B^\vartheta$ for
-       ! symmetry flux coordinates from quantities
-       ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
-    ELSE
-       ! boozer coordinates
-       !
-       IF (isw_Vphi_loc .EQ. 0) THEN
-          ! isw_Vphi_loc=0: value of "Vphi" corresponds to
-          ! flux surface average (<V_\varphi>)
-          x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
-          CALL mag(x_tmp,bmod_tmp,sqrtg_tmp,bder_tmp,hcovar_tmp,&
-               hctrvr_tmp,hcoder_tmp,hctder_tmp)
-       ELSE IF (isw_Vphi_loc .EQ. 1) THEN
-          ! Caution: This branch is not tested!
-          ! isw_Vphi_loc=1: value of "Vphi" is specified
-          ! locally for given (R,Z)-position
-          x_start = (/boozer_s,boozer_phi_beg,0.0_dp/)
-          CALL calc_thetaB_RZloc(R_Vphi, Z_Vphi, x_start, thetaB)
-          x_tmp = (/boozer_s,boozer_phi_beg,thetaB/)
-          CALL mag(x_tmp,bmod_tmp,sqrtg_tmp,bder_tmp,hcovar_tmp,&
-               hctrvr_tmp,hcoder_tmp,hctder_tmp)
-          CALL compute_Gsymm( x_tmp, G_symm, G_symm_tb, G_symm_pb )
-       ELSE IF (isw_Vphi_loc .EQ. 2) THEN
-          ! isw_Vphi_loc=2: value of "Vphi" is specified
-          ! locally for given \vartheta_B position
-          x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_Vphi/)
-          CALL mag(x_tmp,bmod_tmp,sqrtg_tmp,bder_tmp,hcovar_tmp,&
-               hctrvr_tmp,hcoder_tmp,hctder_tmp)
-          CALL compute_Gsymm( x_tmp, G_symm, G_symm_tb, G_symm_pb )
-       ELSE
-          PRINT *,"ntv_mod.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
-          STOP
-       END IF
-       !
-       ! normalized co-variant phi-component of B
-       ! (Note! There is no difference between the co-variant
-       ! phi-component of B for Boozer coordinates and those for
-       ! symmetry flux coordinates, which were used for the
-       ! computation of the normalization of D31.)
-       bcovar_phi_hat = hcovar_tmp(2)*(bmod_tmp/bmod0)
-       ! actually this is the same as:
-       ! bcovar_phi_hat = boozer_curr_pol_hat
-       !
-       IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
-          ! this is the same up to a minus sign resulting from the
-          ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
-       ELSE
-          ! restore value of $\sqrt{g}B^\vartheta$ for
-          ! symmetry flux coordinates from the quantities
-          ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
-       END IF
-    END IF
-    !
-    ! compute additional B-field quantities
-    sqrtg_bctrvr_phi=sqrtg_bctrvr_tht/aiota_loc
-    bcovar_phi=hcovar_tmp(2)*(bmod_tmp*1.0e4_dp)
-    bcovar_tht=hcovar_tmp(3)*(bmod_tmp*1.0e4_dp)
-    boozer_psi_pr = boozer_psi_pr_hat*(bmod0*1.0e4_dp)
-    avb2 = avbhat2*((bmod0*1.0e4_dp)**2)
-    !
-    ! detect species of measured V_phi
-    num_ctr = 0
-    DO ispec_ctr = 0,num_spec-1
-       IF (species_tag(ispec_ctr) .EQ. species_tag_Vphi) THEN
-          spec_i = ispec_ctr
-          num_ctr = num_ctr + 1
-       END IF
-    END DO
-    IF (num_ctr .EQ. 0) THEN
-       PRINT *,"ntv_mod.f90: Subroutine compute_Er - &
-            &Species of measured V_phi not found!"
-       STOP
-    ELSEIF (num_ctr .GT. 1) THEN
-       PRINT *,"ntv_mod.f90: Subroutine compute_Er - &
-            &Multiple definition of species V_phi!"
-       STOP
-    END IF
-    !
-    z_ions = z_spec(spec_i)
-    T_ions = T_spec(spec_i)
-    dT_ions_ov_dr = dT_spec_ov_ds(spec_i) * avnabpsi
-    n_ions = n_spec(spec_i)
-    dn_ions_ov_dr = dn_spec_ov_ds(spec_i) * avnabpsi
-    p_ions = n_ions*T_ions
-    dp_ions_ov_dr = T_ions * dn_ions_ov_dr + n_ions * dT_ions_ov_dr
-    !
-    IF (isw_Vphi_loc .EQ. 0) THEN
-       denom_Er = c *  bcovar_tht / sqrtg_bctrvr_phi
-       !PRINT *,'denom_Er - 1st term: ',denom_Er
-       DO ispec_ctr = LBOUND(row_ind_ptr,1),UBOUND(row_ind_ptr,1)
-          irow_spec = row_ind_ptr(ispec_ctr)
-          IF (irow_spec .NE. spec_i) CYCLE
-          !
-          icol_spec = col_ind_ptr(ispec_ctr)
-          denom_Er_1 = &
-               D31AX_spec(ispec_ctr) * (z_spec(icol_spec)*e) / T_spec(icol_spec)
-          denom_Er = denom_Er + denom_Er_1
-          !PRINT *, 'denom_Er - 2nd term: ', denom_Er_1
-          !
-       END DO
-    ELSE IF (isw_Vphi_loc .GE. 1) THEN
-       fac1 = (hctrvr_tmp(2)*bmod_tmp*1.0e4_dp) * &
-            (1.0_dp+TWOPI*aiota_loc*boozer_psi_pr*G_symm_tb) / avb2
-       denom_Er = (c / (avnabpsi*aiota_loc*boozer_psi_pr)) + &
-            fac1 * (-c*bcovar_phi/sqrtg_bctrvr_tht)
-       !PRINT *,'denom_Er - 1st term: ',denom_Er
-       DO ispec_ctr = LBOUND(row_ind_ptr,1),UBOUND(row_ind_ptr,1)
-          irow_spec = row_ind_ptr(ispec_ctr)
-          IF (irow_spec .NE. spec_i) CYCLE
-          !
-          icol_spec = col_ind_ptr(ispec_ctr)
-          denom_Er_1 = &
-               D31AX_spec(ispec_ctr) * (z_spec(icol_spec)*e) / T_spec(icol_spec)
-          denom_Er = denom_Er + fac1 * denom_Er_1
-          !PRINT *, 'denom_Er - 2nd term: ', denom_Er_1
-          !
-       END DO
-    END IF
-    !
-    IF (isw_Vphi_loc .EQ. 0) THEN
-       ! Vphi = <V^\varphi> = <V^{\varphi_B}>:
-       ! flux surface average of "Vphi" is the same for
-       ! cylindrical and Boozer coordinates
-       nom_Er_1 = Vphi * (aiota_loc * bcovar_tht + bcovar_phi)
-       nom_Er_2 = (c * T_ions * bcovar_tht / (z_ions * e * sqrtg_bctrvr_phi)) * &
-            (dp_ions_ov_dr / p_ions)
-       nom_Er = nom_Er_1 + nom_Er_2
-       !PRINT *,'Er - 1st term: ', nom_Er_1 / denom_Er
-       !PRINT *,'Er - 2nd term: ', nom_Er_2 / denom_Er
-       !PRINT *,Vphi, aiota_loc, bcovar_tht, bcovar_phi, denom_Er
-       DO ispec_ctr = LBOUND(row_ind_ptr,1),UBOUND(row_ind_ptr,1)
-          irow_spec = row_ind_ptr(ispec_ctr)
-          IF (irow_spec .NE. spec_i) CYCLE
-          !
-          icol_spec = col_ind_ptr(ispec_ctr)
-          nom_Er_3 = avnabpsi * D31AX_spec(ispec_ctr) * &
-               (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec) + &
-               dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-          nom_Er_4 = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
-               (D32AX_spec(ispec_ctr) - 2.5_dp * D31AX_spec(ispec_ctr))
-          nom_Er = nom_Er + nom_Er_3 + nom_Er_4
-          !PRINT *,'Er - 3rd term: ', nom_Er_3 / denom_Er
-          !PRINT *,'Er - 4th term: ', nom_Er_4 / denom_Er
-          !
-       END DO
-    ELSE IF (isw_Vphi_loc .GE. 1) THEN
-       nom_Er_1 = ((c*T_ions/(z_ions*e)) / (avnabpsi*aiota_loc*boozer_psi_pr)) * &
-            (dp_ions_ov_dr / p_ions)
-       nom_Er_2 = (c*T_ions/(z_ions*e)) * (-fac1*bcovar_phi/sqrtg_bctrvr_tht) * &
-            (dp_ions_ov_dr / p_ions)
-       nom_Er = Vphi + nom_Er_1 + nom_Er_2
-       !PRINT *,'Er - 1st term: ', nom_Er_1 / denom_Er
-       !PRINT *,Vphi, aiota_loc, bcovar_tht, bcovar_phi, denom_Er
-       DO ispec_ctr = LBOUND(row_ind_ptr,1),UBOUND(row_ind_ptr,1)
-          irow_spec = row_ind_ptr(ispec_ctr)
-          IF (irow_spec .NE. spec_i) CYCLE
-          !
-          icol_spec = col_ind_ptr(ispec_ctr)
-          nom_Er_3 = avnabpsi * D31AX_spec(ispec_ctr) * &
-               (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec) + &
-               dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-          nom_Er_4 = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
-               (D32AX_spec(ispec_ctr) - 2.5_dp * D31AX_spec(ispec_ctr))
-          nom_Er = nom_Er + fac1 * (nom_Er_3 + nom_Er_4)
-          !PRINT *,'Er - 2nd term: ', nom_Er_3 / denom_Er
-          !PRINT *,'Er - 3rd term: ', nom_Er_4 / denom_Er
-          !
-       END DO
-    END IF
-    !
-    ! compute radial electric field
-    Er = nom_Er / denom_Er
-    !
-    ! compute species Mach numbers
-    IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
-    ALLOCATE(MtOvR_spec(0:num_spec-1))
-    MtOvR_spec = (c * Er / (aiota_loc * sqrtg_bctrvr_phi)) / &
-         SQRT(2.0_dp * T_spec / m_spec)
-    !
-  END SUBROUTINE compute_Er_a
-  !
-  SUBROUTINE compute_Er_b(row_ind_ptr, col_ind_ptr, D31AX_spec, D32AX_spec, &
-       D33AX_spec, avEparB_ov_avb2, Er)
-    !
-    USE neo_precision
-    USE neo_control, ONLY: lab_swi
-    USE device_mod, ONLY : surface
-    USE mag_interface_mod, ONLY : mag_coordinates, &
-         boozer_s, boozer_theta_beg, boozer_phi_beg
-    USE partpa_mod,  ONLY : bmod0
-    USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat, &
-         compute_Gsymm, calc_thetaB_RZloc
-    USE collisionality_mod, ONLY : num_spec, species_tag, &
-         z_spec, m_spec, n_spec, T_spec
-    !
-    ! ---------------------------------------------------------------!
-    ! input:
-    ! ---------------------------------------------------------------!
-    ! row- and column indices (=species) of diffusion coefficients
-    INTEGER, DIMENSION(:), INTENT(in) :: row_ind_ptr, col_ind_ptr
-    ! species parallel flow
-    REAL(kind=dp), DIMENSION(:), INTENT(in) :: D31AX_spec, D32AX_spec
-    REAL(kind=dp), DIMENSION(:), INTENT(in) :: D33AX_spec
+    REAL(kind=dp), DIMENSION(:), INTENT(in), optional :: D33AX_spec_in
     ! drive A_3 normalized (=inductive electric field)
-    REAL(kind=dp), INTENT(in) :: avEparB_ov_avb2
+    REAL(kind=dp), INTENT(in), optional :: avEparB_ov_avb2_in
     ! ---------------------------------------------------------------!
     ! output:
     ! ---------------------------------------------------------------!
@@ -2107,6 +1826,22 @@ CONTAINS
     INTEGER :: ispec_ctr, spec_i, irow_spec, icol_spec, num_ctr
     REAL(kind=dp) :: denom_Er, nom_Er, fac1
     REAL(kind=dp) :: denom_Er_1, nom_Er_1, nom_Er_2, nom_Er_3, nom_Er_4, nom_Er_5
+
+    ! Variables for the optional parameters.
+    real(kind=dp), dimension(:) , allocatable:: D33AX_spec
+    real(kind=dp) :: avEparB_ov_avb2
+
+    allocate(D33AX_spec(lbound(row_ind_ptr,1):ubound(row_ind_ptr,1)))
+    if (present(D33AX_spec_in)) then
+      D33AX_spec = D33AX_spec_in
+    else
+      D33AX_spec = 0.0
+    end if
+    if (present(avEparB_ov_avb2_in)) then
+      avEparB_ov_avb2 = avEparB_ov_avb2_in
+    else
+      avEparB_ov_avb2 = 0.0
+    end if
     ! ---------------------------------------------------------------!
     !
     ! copy y-vector (see definition in rhs_kin.f90)
@@ -2323,8 +2058,9 @@ CONTAINS
     ALLOCATE(MtOvR_spec(0:num_spec-1))
     MtOvR_spec = (c * Er / (aiota_loc * sqrtg_bctrvr_phi)) / &
          SQRT(2.0_dp * T_spec / m_spec)
-    !
-  END SUBROUTINE compute_Er_b
+
+    if (allocated(D33AX_spec)) deallocate(D33AX_spec)
+  END SUBROUTINE compute_Er
   !
   SUBROUTINE compute_A3norm_a(row_ind_ptr, col_ind_ptr, D31AX_spec, D32AX_spec, &
        D33AX_spec, Er, avEparB_ov_avb2)
@@ -2990,7 +2726,7 @@ CONTAINS
        !
        ! Compute Er (with account of A_3)
        CALL compute_Er(row_ind_ptr, col_ind_ptr, Dijab_AX(3,1,:), Dijab_AX(3,2,:), &
-            Dijab_AX(3,3,:), avEparB_ov_avb2_prev, Er)
+            Er, Dijab_AX(3,3,:), avEparB_ov_avb2_prev)
        !
        ! Compute <E_par*B>/<B^2>
        CALL compute_A3norm(row_ind_ptr, col_ind_ptr, Dijab_AX(3,1,:), &
