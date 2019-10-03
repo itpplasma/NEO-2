@@ -3201,7 +3201,8 @@ CONTAINS
     END DO
     !
   END SUBROUTINE compute_VthtB_and_VphiB_a
-  !
+  !> \note Makes use of compute_VthtB_and_VphiB_a, to compute the
+  !>   corresponding quantities.
   SUBROUTINE compute_VthtB_and_VphiB_b(row_ind_ptr, col_ind_ptr, &
        D31AX_spec, D32AX_spec, D33AX_spec, Er, avEparB_ov_avb2, &
        VthtB_spec, VphiB_spec, VthtB_Ware_spec, VphiB_Ware_spec)
@@ -3420,7 +3421,8 @@ CONTAINS
     END DO
     !
   END SUBROUTINE compute_Gamma_a
-  !
+  !> \note Makes use of compute_Gamma_a, to compute the corresponding
+  !>   quantities.
   SUBROUTINE compute_Gamma_b(row_ind_ptr, col_ind_ptr, &
        D11_spec, D12_spec, D13_spec, Er, avEparB_ov_avb2, &
        Gamma_spec, Gamma_Ware_spec)
@@ -3545,7 +3547,8 @@ CONTAINS
     Qflux_spec = Qflux_spec * T_spec
     !
   END SUBROUTINE compute_Qflux_a
-  !
+  !> \note Makes use of compute_Qflux_a, to compute the corresponding
+  !>   quantities.
   SUBROUTINE compute_Qflux_b(row_ind_ptr, col_ind_ptr, &
        D21_spec, D22_spec, D23_spec, Er, avEparB_ov_avb2, &
        Qflux_spec, Qflux_Ware_spec)
@@ -3672,7 +3675,8 @@ CONTAINS
     ParFlow_spec = ParFlow_spec / n_spec
     !
   END SUBROUTINE compute_ParFlow_a
-  !
+  !> \note Makes use of compute_ParFlow_a, to compute the corresponding
+  !>   quantities.
   SUBROUTINE compute_ParFlow_b(row_ind_ptr, col_ind_ptr, &
        D31_spec, D32_spec, D33_spec, Er, avEparB_ov_avb2, &
        ParFlow_spec, ParFlow_Ware_spec)
