@@ -19,6 +19,8 @@ MODULE ntv_mod
   REAL(kind=dp), PARAMETER, PUBLIC :: c=2.9979e10_dp       ! speed of light
   REAL(kind=dp), PARAMETER, PUBLIC :: e=4.8032e-10_dp      ! elementary charge
   REAL(kind=dp), PARAMETER, PUBLIC :: u=1.660539040e-24_dp ! atomic mass unit
+
+  real(kind=dp), parameter, public :: epsilon_transport_coefficients = 1.0e-3
   !
   ! INPUT
   !> switch: turn on(=1)/off(=0) ntv mode (not used at the moment)
@@ -1755,7 +1757,195 @@ CONTAINS
     END IF
     !
     CALL h5_close(h5id_multispec)
-    !
+
+    if (.not. check_coefficients()) then
+      write(*,*) 'WARNING: sanity checks of the D1-_AX coefficients failed.'
+    end if
+
+  contains
+
+    !> \brief Perform some sanity checks on the coefficients.
+    function check_coefficients() result(passed)
+      logical :: passed
+
+      passed = check_ambipolarity_conditions() &
+        & .and. check_independence_radial_electric_field_condition()
+    end function check_coefficients
+
+    !> \brief Checks that come from the ambipolarity condition.
+    function check_ambipolarity_conditions() result(passed)
+      logical :: passed
+
+      passed = check_ambipolarity_condition_density() &
+        & .and. check_ambipolarity_condition_temperature() &
+        & .and. check_ambipolarity_condition_from_parallel_field() &
+        & .and. check_ambipolarity_condition_from_radial_field()
+    end function check_ambipolarity_conditions
+
+    !> \brief Check from the ambpolarity condition involving the density.
+    function check_ambipolarity_condition_density() result(passed)
+      use collisionality_mod, only : num_spec, z_spec, n_spec
+
+      implicit none
+
+      logical :: passed
+
+      real(kind=dp) :: sum_d11, sum_abs_d11
+      integer :: k,l
+
+      sum_d11 = 0.0
+      sum_abs_d11 = 0.0
+
+      do k = 1,num_spec
+        do l = 1,num_spec
+          ! \note dn_spec_ov_ds uses zero based index.
+          sum_d11 = sum_d11 + z_spec(k-1) * D11_AX(return_linear_species_index(k, l)) * dn_spec_ov_ds(l-1) / n_spec(l-1)
+          sum_abs_d11 = sum_abs_d11 &
+            & + abs(z_spec(k-1) * D11_AX(return_linear_species_index(k, l)) * dn_spec_ov_ds(l-1) / n_spec(l-1))
+        end do
+      end do
+
+      if (abs(sum_d11 / sum_abs_d11) < epsilon_transport_coefficients) then
+        passed = .true.
+      end if
+    end function check_ambipolarity_condition_density
+
+    !> \brief Check from the ambpolarity condition involving the temperature.
+    function check_ambipolarity_condition_temperature() result(passed)
+      use collisionality_mod, only : num_spec, z_spec, T_spec
+
+      implicit none
+
+      logical :: passed
+
+      real(kind=dp) :: sum_d112, sum_abs_d112
+      integer :: k,l
+
+      sum_d112 = 0.0
+      sum_abs_d112 = 0.0
+
+      do k = 1,num_spec
+        do l = 1,num_spec
+          ! \note dT_spec_ov_ds uses zero based index.
+          sum_d112 = sum_d112 &
+            & + z_spec(k-1) * dT_spec_ov_ds(l-1) / T_spec(l-1) &
+            & * (3*D11_AX(return_linear_species_index(k, l))/2 - D12_AX(return_linear_species_index(k, l)) )
+          sum_abs_d112 = sum_abs_d112 &
+            & + abs(z_spec(k-1) * dT_spec_ov_ds(l-1) / T_spec(l-1) &
+            & * (3*D11_AX(return_linear_species_index(k, l))/2 - D12_AX(return_linear_species_index(k, l)) ))
+        end do
+      end do
+
+      if (abs(sum_d112 / sum_abs_d112) < epsilon_transport_coefficients) then
+        passed = .true.
+      end if
+    end function check_ambipolarity_condition_temperature
+
+    !> \brief Check from the ambpolarity condition from the term involving the parallel electric field.
+    function check_ambipolarity_condition_from_parallel_field() result(passed)
+      use collisionality_mod, only : num_spec, z_spec, T_spec
+
+      implicit none
+
+      logical :: passed
+
+      real(kind=dp) :: sum_d13, sum_abs_d13
+      integer :: k,l
+
+      sum_d13 = 0.0
+      sum_abs_d13 = 0.0
+
+      do k = 1,num_spec
+        do l = 1,num_spec
+          sum_d13 = sum_d13 + z_spec(k-1) * D13_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1)
+          sum_abs_d13 = sum_abs_d13 &
+            & + abs(z_spec(k-1) * D13_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1))
+        end do
+      end do
+
+      if (abs(sum_d13 / sum_abs_d13) < epsilon_transport_coefficients) then
+        passed = .true.
+      end if
+    end function check_ambipolarity_condition_from_parallel_field
+
+    !> \brief Check from the ambpolarity condition from the term involving the radial electric field.
+    function check_ambipolarity_condition_from_radial_field() result(passed)
+      use collisionality_mod, only : num_spec, z_spec, T_spec
+
+      implicit none
+
+      logical :: passed
+
+      real(kind=dp) :: sum_d11, sum_abs_d11
+      integer :: k,l
+
+      sum_d11 = 0.0
+      sum_abs_d11 = 0.0
+
+      do k = 1,num_spec
+        do l = 1,num_spec
+          sum_d11 = sum_d11 + z_spec(k-1) * D11_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1)
+          sum_abs_d11 = sum_abs_d11 &
+            & + abs(z_spec(k-1) * D11_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1))
+        end do
+      end do
+
+      if (abs(sum_d11 / sum_abs_d11) < epsilon_transport_coefficients) then
+        passed = .true.
+      end if
+    end function check_ambipolarity_condition_from_radial_field
+
+    !> \brief Checks that come from the condition that particle flux is independent off the radial electric field.
+    !>
+    !> This function performs checks that come from the assumption that
+    !> the particle flux does not depend on the radial electric field,
+    !> which is valid when the centrifugal forces can be neglected.
+    function check_independence_radial_electric_field_condition() result(passed)
+      use collisionality_mod, only : num_spec, z_spec, T_spec
+
+      implicit none
+
+      logical :: passed
+
+      real(kind=dp), dimension(:), allocatable :: d11_alpha, d11_abs_alpha
+      integer :: k,l
+
+      passed = .false.
+
+      allocate(d11_alpha(1:num_spec))
+      d11_alpha = 0.0
+      allocate(d11_abs_alpha(1:num_spec))
+      d11_abs_alpha = 0.0
+
+      do k = 1,num_spec
+        do l = 1,num_spec
+          d11_alpha(k) = d11_alpha(k) &
+            & + D11_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1)
+          d11_abs_alpha(k) = d11_abs_alpha(k) &
+            & + abs(D11_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1))
+        end do
+      end do
+
+      if (all(abs(d11_alpha / d11_abs_alpha) < epsilon_transport_coefficients)) then
+        passed = .true.
+      end if
+
+      if (allocated(d11_alpha)) deallocate(d11_alpha)
+
+    end function check_independence_radial_electric_field_condition
+
+    function return_linear_species_index(k, l) result(ind)
+      use collisionality_mod, only : num_spec
+
+      implicit none
+
+      integer, intent(in) :: k, l
+
+      integer :: ind
+
+      ind = (k-1)*num_spec + (l-1)
+    end function return_linear_species_index
+
   END SUBROUTINE write_multispec_output_a
   !
   SUBROUTINE compute_Er(row_ind_ptr, col_ind_ptr, D31AX_spec, D32AX_spec, &
