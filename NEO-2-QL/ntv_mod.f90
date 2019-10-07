@@ -1758,37 +1758,40 @@ CONTAINS
     !
     CALL h5_close(h5id_multispec)
 
-    if (.not. check_coefficients()) then
+    if (.not. check_coefficients(.true.)) then
       write(*,*) 'WARNING: sanity checks of the D1-_AX coefficients failed.'
     end if
 
   contains
 
     !> \brief Perform some sanity checks on the coefficients.
-    function check_coefficients() result(passed)
+    function check_coefficients(verbose) result(passed)
       logical :: passed
+      logical, intent(in) :: verbose
 
-      passed = check_ambipolarity_conditions() &
-        & .and. check_independence_radial_electric_field_condition()
+      passed = check_ambipolarity_conditions(verbose) &
+        & .and. check_independence_radial_electric_field_condition(verbose)
     end function check_coefficients
 
     !> \brief Checks that come from the ambipolarity condition.
-    function check_ambipolarity_conditions() result(passed)
+    function check_ambipolarity_conditions(verbose) result(passed)
       logical :: passed
+      logical, intent(in) :: verbose
 
-      passed = check_ambipolarity_condition_density() &
-        & .and. check_ambipolarity_condition_temperature() &
-        & .and. check_ambipolarity_condition_from_parallel_field() &
-        & .and. check_ambipolarity_condition_from_radial_field()
+      passed = check_ambipolarity_condition_density(verbose) &
+        & .and. check_ambipolarity_condition_temperature(verbose) &
+        & .and. check_ambipolarity_condition_from_parallel_field(verbose) &
+        & .and. check_ambipolarity_condition_from_radial_field(verbose)
     end function check_ambipolarity_conditions
 
     !> \brief Check from the ambpolarity condition involving the density.
-    function check_ambipolarity_condition_density() result(passed)
+    function check_ambipolarity_condition_density(verbose) result(passed)
       use collisionality_mod, only : num_spec, z_spec, n_spec
 
       implicit none
 
       logical :: passed
+      logical, intent(in) :: verbose
 
       real(kind=dp) :: sum_d11, sum_abs_d11
       integer :: k,l
@@ -1807,16 +1810,20 @@ CONTAINS
 
       if (abs(sum_d11 / sum_abs_d11) < epsilon_transport_coefficients) then
         passed = .true.
+      else if(verbose) then
+        write(*,*) 'WARNING: sanity check check_ambipolarity_condition_density failed.'
+        write(*,*) '  Relative error: ', abs(sum_d11 / sum_abs_d11)
       end if
     end function check_ambipolarity_condition_density
 
     !> \brief Check from the ambpolarity condition involving the temperature.
-    function check_ambipolarity_condition_temperature() result(passed)
+    function check_ambipolarity_condition_temperature(verbose) result(passed)
       use collisionality_mod, only : num_spec, z_spec, T_spec
 
       implicit none
 
       logical :: passed
+      logical, intent(in) :: verbose
 
       real(kind=dp) :: sum_d112, sum_abs_d112
       integer :: k,l
@@ -1838,16 +1845,20 @@ CONTAINS
 
       if (abs(sum_d112 / sum_abs_d112) < epsilon_transport_coefficients) then
         passed = .true.
+      else if(verbose) then
+        write(*,*) 'WARNING: sanity check check_ambipolarity_condition_temperature failed.'
+        write(*,*) '  Relative error: ', abs(sum_d112 / sum_abs_d112)
       end if
     end function check_ambipolarity_condition_temperature
 
     !> \brief Check from the ambpolarity condition from the term involving the parallel electric field.
-    function check_ambipolarity_condition_from_parallel_field() result(passed)
+    function check_ambipolarity_condition_from_parallel_field(verbose) result(passed)
       use collisionality_mod, only : num_spec, z_spec, T_spec
 
       implicit none
 
       logical :: passed
+      logical, intent(in) :: verbose
 
       real(kind=dp) :: sum_d13, sum_abs_d13
       integer :: k,l
@@ -1865,16 +1876,20 @@ CONTAINS
 
       if (abs(sum_d13 / sum_abs_d13) < epsilon_transport_coefficients) then
         passed = .true.
+      else if(verbose) then
+        write(*,*) 'WARNING: sanity check check_ambipolarity_condition_from_parallel_field failed.'
+        write(*,*) '  Relative error: ', abs(sum_d13 / sum_abs_d13)
       end if
     end function check_ambipolarity_condition_from_parallel_field
 
     !> \brief Check from the ambpolarity condition from the term involving the radial electric field.
-    function check_ambipolarity_condition_from_radial_field() result(passed)
+    function check_ambipolarity_condition_from_radial_field(verbose) result(passed)
       use collisionality_mod, only : num_spec, z_spec, T_spec
 
       implicit none
 
       logical :: passed
+      logical, intent(in) :: verbose
 
       real(kind=dp) :: sum_d11, sum_abs_d11
       integer :: k,l
@@ -1892,6 +1907,9 @@ CONTAINS
 
       if (abs(sum_d11 / sum_abs_d11) < epsilon_transport_coefficients) then
         passed = .true.
+      else if(verbose) then
+        write(*,*) 'WARNING: sanity check check_ambipolarity_condition_from_radial_field failed.'
+        write(*,*) '  Relative error: ', abs(sum_d11 / sum_abs_d11)
       end if
     end function check_ambipolarity_condition_from_radial_field
 
@@ -1900,12 +1918,13 @@ CONTAINS
     !> This function performs checks that come from the assumption that
     !> the particle flux does not depend on the radial electric field,
     !> which is valid when the centrifugal forces can be neglected.
-    function check_independence_radial_electric_field_condition() result(passed)
+    function check_independence_radial_electric_field_condition(verbose) result(passed)
       use collisionality_mod, only : num_spec, z_spec, T_spec
 
       implicit none
 
       logical :: passed
+      logical, intent(in) :: verbose
 
       real(kind=dp), dimension(:), allocatable :: d11_alpha, d11_abs_alpha
       integer :: k,l
@@ -1928,6 +1947,9 @@ CONTAINS
 
       if (all(abs(d11_alpha / d11_abs_alpha) < epsilon_transport_coefficients)) then
         passed = .true.
+      else if(verbose) then
+        write(*,*) 'WARNING: sanity check check_independence_radial_electric_field_condition failed.'
+        write(*,*) '  Relative error: ', abs(d11_alpha / d11_abs_alpha)
       end if
 
       if (allocated(d11_alpha)) deallocate(d11_alpha)
