@@ -44,6 +44,7 @@ add_latex_document(UserDoc/main.tex
   UserDoc/Output.tex
   UserDoc/Programflow.tex
   UserDoc/Running.tex
+  UserDoc/Theory.tex
   UserDoc/Todo.tex
 )
 

@@ -1,0 +1,186 @@
+\chapter{Theory}
+This chapter is supposed to give a brief overview of the most important
+aspects of the theory.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Placements of eta levels}
+
+\begin{equation}
+  \eta = \frac{1 - \lambda^2}{B}
+\end{equation}
+with pitch angle parameter
+\begin{equation}
+  \lambda = \frac{v_{\parallel}}{v}
+\end{equation}
+
+As there is no dependence of $\eta$ on sign of velocity, there are two
+distribution functions, $f^{+}$ and $f^{-}$ which are linked over
+boundary condition at
+\begin{equation}
+  \eta_B = \frac{1}{B}
+\end{equation}
+
+Depends on input parameters, e.g. \codevariable{binsplit::eta\_part},
+\codevariable{settings::eta\_part\_global},
+\codevariable{settings::eta\_part\_globalfac},
+\codevariable{settings::eta\_part\_globalfac\_p},
+\codevariable{settings::eta\_part\_globalfac\_t},
+\codevariable{settings::eta\_part\_trapped}.
+
+If a field line closes after only a few rotations, this can lead to bad
+sampling of the flux surface. The code tries to avoid this by a small
+shift in the eta level, if such a case is found.\cite{Kapper:Diss:17}[Ch. 3.2]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Regularization}
+The system of equation for the symmetric background is singular. It
+can be solved nevertheless, but this results in a ``random'' offset.
+
+Currently this is solve be regularization of the equations, i.e. a
+slight change to the equation system, to make it non-singular.
+\codevariable{isw\_regper}
+
+The code parameters \codevariable{epserr\_sink} and
+\codevariable{epserr\_sink\_cmplx} belong to old variant of
+regularization.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Rotation}
+
+For slow rotation, plasma is incompressible, i.e. $\nabla \ve{v} = 0$
+holds. This is can be used to determine the parallel part of the
+velocity from the perpendicular part. This in turn is calculated from
+the crossproduct of the ideal MHD momentum conservation equation with
+the magnetic field.
+(In the code the electric field is computed from the rotation?)
+
+Depends on input paramters, e.g. \codevariable{settings::vphi}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Momentum conservation in the precomputed matrices}
+\begin{equation}
+  R_{\alpha\alpha'} = \int d^3p m_{\alpha} v_{\parallel} St(f_{\alpha}, f_{\alpha'})
+\end{equation}
+Due to newtwon
+\begin{equation}
+  R_{\alpha\alpha'} + R_{\alpha'\alpha}
+\end{equation}
+or
+\begin{equation}
+  R_{\alpha\alpha'} = - R_{\alpha'\alpha},
+\end{equation}
+i.e. $R_{\alpha\alpha'}$ is antisymmetric.
+
+Linearize the collision operator
+\begin{equation}
+    \int d^3p m_{\alpha} v_{\parallel} St(\delta f_{\alpha}, f_{0,\alpha'})
+  + \int d^3p m_{\alpha} v_{\parallel} St(f_{0,\alpha}, \delta f_{\alpha'})
+  + \int d^3p m_{\alpha'} v_{\parallel} St(\delta f_{\alpha'}, f_{0, \alpha})
+  + \int d^3p m_{\alpha'} v_{\parallel} St(f_{0,\alpha'}, \delta f_{\alpha}) = 0
+\end{equation}
+This must hold for all $\delta f_{\alpha'}$ so also for $\delta f_{\alpha'} = 0$.
+In this case
+\begin{equation}
+    \int d^3p m_{\alpha} v_{\parallel} St(\delta f_{\alpha}, f_{0,\alpha'})
+  + \int d^3p m_{\alpha'} v_{\parallel} St(f_{0,\alpha'}, \delta f_{\alpha}) = 0
+\end{equation}
+This means
+\begin{equation}
+    \int d^3p m_{\alpha} v_{\parallel} L_D^{\alpha\alpha'} \delta f_{\alpha}
+  + \int d^3p m_{\alpha'} v_{\parallel} L_I^{\alpha'\alpha} \delta f_{\alpha} = 0
+\end{equation}
+Now change integration from $d^3p$ to $d^3v$, and change the distribution
+function accordingly (to absorb the resulting factors).
+\begin{equation}
+    \int d^3v m_{\alpha} v_{\parallel} L_D^{\alpha\alpha'} \delta f_{\alpha}
+  + \int d^3v m_{\alpha'} v_{\parallel} L_I^{\alpha'\alpha} \delta f_{\alpha} = 0
+\end{equation}
+In a second step change make the velocity coordinates specific
+\begin{equation}
+  \int d^3v = 2\pi \int\limits_{0}^{\infty} dv v^2 \int\limits_{-1}^{+1} d\lambda
+\end{equation}
+which results in
+\begin{equation}
+    2\pi \int\limits_{0}^{\infty} dv v^2 \int\limits_{-1}^{+1} d\lambda m_{\alpha} v_{\parallel} L_D^{\alpha\alpha'} \delta f_{\alpha}
+  + 2\pi \int\limits_{0}^{\infty} dv v^2 \int\limits_{-1}^{+1} d\lambda m_{\alpha'} v_{\parallel} L_I^{\alpha'\alpha} \delta f_{\alpha} = 0
+\end{equation}
+Concentrate for now on the first term
+\begin{equation}
+  R_D = \frac{1}{2\pi} 2\pi \int\limits_{0}^{\infty} dv v^2 \int\limits_{-1}^{+1} d\lambda m_{\alpha} v_{\parallel} L_D^{\alpha\alpha'} \delta f_{\alpha}
+\end{equation}
+and introduce $\delta f_{\alpha} (v_{\parallel}, \lambda) = f_{0\alpha}(v_{\parallel}) g(\lambda)$
+\begin{equation}
+  R_D = \int\limits_{0}^{\infty} dv v^2 \int\limits_{-1}^{+1} d\lambda m_{\alpha} v_{\parallel} L_D^{\alpha\alpha'} \delta f_{\alpha}
+\end{equation}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Relations of axisymmetric transport coefficients for multispecies plasmas}
+Ambipolarity of the radial fluxes means
+\begin{equation}
+  \sum_{\alpha} \Gamma^{\alpha} = 0.
+\end{equation}
+Expressing the flux via the flux-force relations, we have
+\begin{equation}
+  0 = - \sum_{\alpha} e_{\alpha} \sum_{\alpha'} \left( D_{11}^{\alpha\alpha'} A_{1}^{\alpha'} + D_{12}^{\alpha\alpha'} A_{2}^{\alpha'} + D_{13}^{\alpha\alpha'} A_{3}^{\alpha'}\right).
+\end{equation}
+Inserting the thermodynamic forces
+\begin{equation}
+  0 = - \sum_{\alpha} \sum_{\alpha'} e_{\alpha} \left( D_{11}^{\alpha\alpha'} (\frac{1}{n_{\alpha'}} \pd{n_{\alpha'}}{r} - \frac{e_{\alpha'} E_r}{T_{\alpha'}} - \frac{3}{2 T_{\alpha'}} \pd{T_{\alpha'}}{r})
+    + D_{12}^{\alpha\alpha'} \frac{1}{T_{\alpha'}} \pd{T_{\alpha'}}{r} + D_{13}^{\alpha\alpha'} \frac{e_{\alpha'} \langle E_{\parallel} B \rangle}{T_{\alpha'} \langle B^2 \rangle} \right).
+\end{equation}
+The terms with the derivative of the temperature can be combined. Doing
+so, results in
+\begin{equation}
+  0 = - \sum_{\alpha, \alpha'} e_{\alpha} D_{11}^{\alpha\alpha'} \frac{1}{n_{\alpha'}} \pd{n_{\alpha'}}{r}
+      + E_r \sum_{\alpha, \alpha'} \frac{e_{\alpha} D_{11}^{\alpha\alpha'} e_{\alpha'}}{T_{\alpha'}}
+      + \sum_{\alpha, \alpha'} e_{\alpha} (\frac{3}{2} D_{11}^{\alpha\alpha'} - D_{12}^{\alpha\alpha'}) \frac{1}{T_{\alpha'}} \pd{T_{\alpha}}{r}
+      - \frac{\langle E_{\parallel} B \rangle}{\langle B^2 \rangle} \sum_{\alpha, \alpha'} e_{\alpha} D_{13}^{\alpha\alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}.
+\end{equation}
+It should be safe to assume that these terms can change individually,
+which means each of these must be zero on its own
+\begin{equation}
+  0 = \sum_{\alpha, \alpha'} e_{\alpha} D_{11}^{\alpha\alpha'} \frac{1}{n_{\alpha'}} \pd{n_{\alpha'}}{r}
+\end{equation}
+\begin{equation}
+  0 = \sum_{\alpha, \alpha'} \frac{e_{\alpha} D_{11}^{\alpha\alpha'} e_{\alpha'}}{T_{\alpha'}}\label{eq_ambipolarity_condition_from_radial_electric_field}
+\end{equation}
+\begin{equation}
+  0 = \sum_{\alpha, \alpha'} e_{\alpha} (\frac{3}{2} D_{11}^{\alpha\alpha'} - D_{12}^{\alpha\alpha'}) \frac{1}{T_{\alpha'}} \pd{T_{\alpha}}{r}
+\end{equation}
+\begin{equation}
+  0 = \sum_{\alpha, \alpha'} e_{\alpha} D_{13}^{\alpha\alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\end{equation}
+Another condition can be derived under the assumption that centrifugal
+forces are small. Then the corotating frame can be seen as an inertial
+system, where the radial flux has to be the same as in the original
+system. This is because it is perpendicular to the motion. But in the
+corotation frame the radial electric field vanishes, and so the radial
+particle flux must be independent of the radial electric field,
+\begin{equation}
+  \pd{\Gamma^{\alpha}}{E_r} = 0.
+\end{equation}
+As only the first thermodynamic force depends on the radial electric
+field, only those needs to be considered
+\begin{equation}
+  0 = - n_{\alpha} \pd{}{E_r} \sum_{\alpha'} D_{11}^{\alpha\alpha'} A_1^{\alpha'}.
+\end{equation}
+Inserting the force
+\begin{equation}
+  0 = - n_{\alpha} \pd{}{E_r} \sum_{\alpha'} D_{11}^{\alpha\alpha'} \left( \frac{1}{n_{\alpha'}} \pd{n_{\alpha'}}{r} - \frac{e_{\alpha'} E_r}{T_{\alpha'}} - \frac{3}{2 T_{\alpha'}} \pd{T_{\alpha'}}{r} \right),
+\end{equation}
+and doing the derivative
+\begin{equation}
+  0 = n_{\alpha} \sum_{\alpha'} D_{11}^{\alpha\alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}.
+\end{equation}
+This means
+\begin{equation}
+  0 = \sum_{\alpha'} D_{11}^{\alpha\alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}.
+\end{equation}
+This is a stricter version of
+Eq.~\eqref{eq_ambipolarity_condition_from_radial_electric_field}, as is
+easy to see.
