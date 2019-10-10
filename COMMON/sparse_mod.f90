@@ -1385,7 +1385,6 @@ CONTAINS
     INTEGER, INTENT(in) :: iopt_in
 
     INTEGER :: nrhs,ldb,n,info,iopt
-    INTEGER :: talk
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
@@ -1395,12 +1394,6 @@ CONTAINS
     n = nrow
     nrhs = 1
     ldb = n
-
-    IF (sparse_talk) THEN
-       talk = 1
-    ELSE
-       talk = 0
-    END IF
 
     info = 0
 
@@ -1467,7 +1460,6 @@ CONTAINS
     INTEGER, INTENT(in) :: iopt_in
 
     INTEGER :: nrhs,ldb,n,info,iopt
-    INTEGER :: talk
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
@@ -1477,12 +1469,6 @@ CONTAINS
     n = nrow
     nrhs = 1
     ldb = n
-
-    IF (sparse_talk) THEN
-       talk = 1
-    ELSE
-       talk = 0
-    END IF
 
     info = 0
 
@@ -1803,7 +1789,6 @@ CONTAINS
     INTEGER, INTENT(in) :: iopt_in
 
     INTEGER :: nrhs,ldb,n,info,iopt
-    INTEGER :: talk
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
@@ -1813,12 +1798,6 @@ CONTAINS
     n = nrow
     nrhs = SIZE(b,2)
     ldb = n
-
-    IF (sparse_talk) THEN
-       talk = 1
-    ELSE
-       talk = 0
-    END IF
 
     info = 0
 
@@ -1885,7 +1864,6 @@ CONTAINS
 
     INTEGER :: nrhs,ldb,n,info,iopt
     INTEGER :: i
-    INTEGER :: talk
     INTEGER :: info_store
 
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: bloc
@@ -1902,12 +1880,6 @@ CONTAINS
     IF (ALLOCATED(bloc)) DEALLOCATE(bloc)
     ALLOCATE(bloc(nrow))
     bloc = 0.0_dp
-
-    IF (sparse_talk) THEN
-       talk = 1
-    ELSE
-       talk = 0
-    END IF
 
     info_store = 0
     info = 0
@@ -1990,7 +1962,6 @@ CONTAINS
 
     INTEGER :: nrhs,ldb,n,info,iopt
     INTEGER :: i
-    INTEGER :: talk
     INTEGER :: info_store
 
     COMPLEX(kind=dp), DIMENSION(:), ALLOCATABLE :: bloc
@@ -2007,12 +1978,6 @@ CONTAINS
     IF (ALLOCATED(bloc)) DEALLOCATE(bloc)
     ALLOCATE(bloc(nrow))
     bloc = 0.0_dp
-
-    IF (sparse_talk) THEN
-       talk = 1
-    ELSE
-       talk = 0
-    END IF
 
     info_store = 0
     info = 0
