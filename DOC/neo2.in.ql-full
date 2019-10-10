@@ -254,7 +254,7 @@
  rbeg = 210.0  ! starting R. [181.d0]
  ripple_solver_accurfac = 3.0 ! [3.0d0]
  solver_talk = 0 ! [0]
- sparse_solve_method = 3
+ sparse_solve_method = 3 [3]
  sparse_talk = .false. ! [.false.]
  switch_off_asymp = 0 ! [0]
  xetama = 1.300001 ! Seems to be not used, value is overwriten in ripple
