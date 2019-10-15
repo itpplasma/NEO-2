@@ -391,11 +391,11 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   ! end reconstruction work by Winny
   !------------------------------------------------------------------------
 
-  IF (isw_momentum .EQ. 1) THEN ! Grid
-     PRINT *, 'isw_momentum = ',isw_momentum,' not implemented in ripple solver!'
-     PRINT *, 'I stop here'
-     STOP
-  END IF
+  if (isw_momentum .EQ. 1) then ! Grid
+    print *, 'ERROR: isw_momentum = ',isw_momentum,' not implemented in ripple solver!'
+    print *, 'I stop here'
+    stop
+  end if
 
 
 
@@ -938,11 +938,12 @@ PRINT *,ub_mag,ibeg,iend
 !
 ! Check for axisymmetry:
 !
-  IF(isw_axisymm.EQ.1.AND.npass_l.NE.npass_r) THEN
-    PRINT *,'ripple_solver: cannot run axisymmetric mode, sizes do not fit'
+  if ((isw_axisymm .EQ. 1) .AND. (npass_l .NE. npass_r)) then
+    print *,'ERROR in ripple_solver: cannot run axisymmetric mode, sizes do not fit'
+    print *,'  return to calling function.'
     ierr=1
-    RETURN
-  ENDIF
+    return
+  end if
 !
   iplot=prop_ripple_plot
 !
