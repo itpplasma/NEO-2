@@ -1115,20 +1115,22 @@ rotfactor=imun*m_phi
   h_phi_mfl=arr_real(:,1)
   geodcu_mfl=arr_comp(:,1)
   DEALLOCATE(arr_real,arr_comp)
-!
-  IF(MAXVAL(phi_divide).GT.1) THEN
+
+  ! Consistency check of phi_divide, if not sucessful, return from this
+  ! subroutine.
+  if (maxval(phi_divide) > 1) then
     ierr=3
-    DEALLOCATE(deriv_coef,npl)
-    DEALLOCATE(rhs_mat_lorentz,rhs_mat_energ)
-    DEALLOCATE(fun_coef,ttmp_mat)
-    DEALLOCATE(rhs_mat_energ2)        !NTV
-    DEALLOCATE(q_rip,q_rip_1,q_rip_incompress,q_rip_parflow)
-    DEALLOCATE(convol_flux,convol_curr,convol_flux_0)
-    DEALLOCATE(pleg_bra,pleg_ket,scalprod_pleg)
-    RETURN
-  ENDIF
-!collpar=collpar*1.d4
-!
+    deallocate(deriv_coef,npl)
+    deallocate(rhs_mat_lorentz,rhs_mat_energ)
+    deallocate(fun_coef,ttmp_mat)
+    deallocate(rhs_mat_energ2)        !NTV
+    deallocate(q_rip,q_rip_1,q_rip_incompress,q_rip_parflow)
+    deallocate(convol_flux,convol_curr,convol_flux_0)
+    deallocate(pleg_bra,pleg_ket,scalprod_pleg)
+    write(*,*) 'ERROR: maxval(phi_divide) > 1, returning.'
+    return
+  end if
+
   DO istep=ibeg,iend
 !
 ! semi-levels
