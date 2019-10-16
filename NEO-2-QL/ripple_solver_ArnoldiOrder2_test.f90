@@ -2829,7 +2829,7 @@ rotfactor=imun*m_phi
        ! NEO-2 can treat now multiple species -> qflux is now a 4D array
        ! (at the moment these arrays cannot be handled correctly using the
        ! propagator structure -> global variables used):
-       IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
+       if (.not. allocated(qflux_allspec)) stop "ERROR: Axisymm. solution does not exist!"
        qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
        qflux_symm_allspec=qflux_allspec
        IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
@@ -2846,14 +2846,14 @@ rotfactor=imun*m_phi
        ! NEO-2 can treat now multiple species -> qflux is now a 4D array
        ! (at the moment these arrays cannot be handled correctly using the
        ! propagator structure -> global variables used):
-       IF(.NOT. ALLOCATED(qflux_allspec)) STOP "Axisymm. solution does not exist!"
+       if (.not. allocated(qflux_allspec)) stop "ERROR: Axisymm. solution does not exist!"
        qflux_allspec=2.0d0*qflux_allspec ! Caution!!! factor 2 is not needed!!!
        qflux_symm_allspec=qflux_allspec
        IF(ALLOCATED(qflux_allspec)) DEALLOCATE(qflux_allspec)
        call save_qflux_symm_allspec()
        !! End Modification by Andreas F. Martitsch (23.08.2015)
     ELSE
-       STOP "Invalid input for isw_qflux_symm (0/1)!"
+       stop "ERROR: Invalid input for isw_qflux_symm (0/1)!"
     END IF
     !! End Modifications by Andreas F. Martitsch (28.07.2014)
 !
