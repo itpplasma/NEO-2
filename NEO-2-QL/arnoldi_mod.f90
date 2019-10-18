@@ -141,7 +141,7 @@ contains
 
     ENDIF
 
-    PRINT *,'iterator: number of bad modes = ', ngrow
+    if (ispec .eq. 0) print *,'iterator: number of bad modes = ', ngrow
     nsize=ngrow
 
     ALLOCATE(fold(n),fnew(n))
@@ -227,7 +227,7 @@ contains
       IF(iter.EQ.itermax) PRINT *,'iterator: maximum number of iterations reached'
     ENDDO
 
-    PRINT *,'iterator: number of stabilized iterations = ',iter-1
+    if (ispec .eq. 0) print *,'iterator: number of stabilized iterations = ', iter-1
 
     RESULT_=fnew
 
@@ -450,7 +450,7 @@ contains
       RETURN
     ENDIF
 
-    lwork=work(1)
+    lwork = int(work(1))
     DEALLOCATE(work)
     ALLOCATE(work(lwork))
 
