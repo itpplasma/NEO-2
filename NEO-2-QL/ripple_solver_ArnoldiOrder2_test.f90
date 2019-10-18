@@ -4040,9 +4040,122 @@ CONTAINS
     CLOSE(iunit_base)
 !
   END SUBROUTINE matlabplot
-!
-!------------------------------------------------------------------------
-!
+
+  !> version for real equation set
+  !>
+  !> Solves sparse set and refines the solution using preconditioned Richardson iteration
+  !> which for equation set
+  !>
+  !>     A x = b
+  !>
+  !> defines next iteration x_next via previous iteration x_prev as follows:
+  !>
+  !>     x_next = x_prev + Abar (b - A x_prev)
+  !>
+  !> Here Abar (preconditioner) is the approximate inverse to A computed by sparse solver
+  !>
+  !> Formal arguments:
+  !> refine  - (logical, input) : condition to refine the sparse solution (refines if refine=.true.)
+  !> bvec    - (double precision, inout) : rhs vector on input, solution on output
+  subroutine sparse_solve_refine_real(refine, bvec)
+    implicit none
+
+    integer,          parameter :: niter=10
+    double precision, parameter :: epserr=1d-10
+
+    logical :: refine
+    integer :: iter,i
+    double precision :: errnum,errdenom
+    double precision, dimension(n_2d_size) :: bvec,qin,afk,fk
+
+    qin = bvec
+    errdenom = sum(abs(qin))
+    if (errdenom .eq. 0.d0) then
+      bvec = 0.d0
+      return
+    end if
+
+    call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, dble(amat_sp(1:nz)), bvec, iopt)
+
+    if (refine) then
+      fk = bvec
+      do iter=1,niter
+        afk = 0.d0
+        do i=1,nz
+          afk(irow(i)) = afk(irow(i)) + dble(amat_sp(i))*fk(icol(i))
+        end do
+        afk = qin-afk
+        errnum = sum(abs(afk))
+        !print *,'ispec = ',ispec,' iter = ',iter,' err  = ',errnum/errdenom
+        if (errnum .lt. errdenom*epserr) exit
+
+        call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, dble(amat_sp(1:nz)), afk, iopt)
+
+        fk = fk+afk
+      end do
+      bvec = fk
+    end if
+
+  end subroutine sparse_solve_refine_real
+
+  !> version for complex equation set
+  !>
+  !> Solves sparse set and refines the solution using preconditioned Richardson iteration
+  !> which for equation set
+  !>
+  !>     A x = b
+  !>
+  !> defines next iteration x_next via previous iteration x_prev as follows:
+  !>
+  !>     x_next = x_prev + Abar (b - A x_prev)
+  !>
+  !> Here Abar (preconditioner) is the approximate inverse to A computed by sparse solver
+  !>
+  !> Formal arguments:
+  !> refine  - (logical, input) : condition to refine the sparse solution (refines if refine=.true.)
+  !> bvec    - (double precision, inout) : rhs vector on input, solution on output
+  subroutine sparse_solve_refine_complex(refine,bvec)
+
+    implicit none
+
+    integer,          parameter :: niter=10
+    double precision, parameter :: epserr=1d-10
+
+    logical :: refine
+    integer :: iter,i
+    double precision :: errnum,errdenom
+    double complex, dimension(n_2d_size) :: bvec, qin, afk, fk
+
+    qin = bvec
+    errdenom = sum(abs(qin))
+    if (errdenom .eq. 0.d0) then
+      bvec=0.d0
+      return
+    end if
+
+    CALL sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), bvec,iopt)
+
+    if (refine) then
+      fk = bvec
+      do iter=1,niter
+        afk = 0.d0
+        do i=1,nz
+          afk(irow(i)) = afk(irow(i)) + amat_sp(i)*fk(icol(i))
+        enddo
+        afk = qin-afk
+        errnum = sum(abs(afk))
+        !print *,'ispec = ',ispec,' iter = ',iter,' err  = ',errnum/errdenom
+        if (errnum .lt. errdenom*epserr) exit
+
+        call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), afk, iopt)
+
+        fk = fk+afk
+      end do
+      bvec = fk
+    end if
+
+  end subroutine sparse_solve_refine_complex
+
   SUBROUTINE solve_eqs(clean)
 !
 ! Solve the linear equation set:
@@ -5192,5 +5305,156 @@ CONTAINS
     end if
 
   end subroutine save_qflux_symm_allspec
+
+  !>  if normalize_output=.true.  normalizes output as distribution function (divides f_k by delta eta)
+  !>  if normalize_output=.false. no normalization (plots f_k as is)
+  subroutine matlabplot_allm(sourcevec_tmp, normalize_output)
+
+    implicit none
+
+    logical, intent(in) :: normalize_output
+    double precision, dimension(n_2d_size), intent(in) :: sourcevec_tmp
+
+    integer :: iunit_base,nmax,m,i,k
+    double precision, dimension(:,:), allocatable :: phi_mat,alam_mat,fun_mat
+
+    nmax = maxval(npl)+1
+    allocate(phi_mat(ibeg:iend,-nmax:nmax))
+    allocate(alam_mat(ibeg:iend,-nmax:nmax))
+    allocate(fun_mat(ibeg:iend,-nmax:nmax))
+
+    iunit_base = 12345
+    alam_mat = 10.d0
+
+    do m=0,lag
+      fun_mat = 0.d0
+
+      do istep=ibeg,iend
+
+        phi_mat(istep,:) = phi_mfl(istep)
+
+        npassing = npl(istep)
+        delta_eta = eta(1:npassing) - eta(0:npassing-1)
+        eta0 = 1.0d0/bhat_mfl(istep)
+        k = ind_start(istep) + 2*(npassing+1)*m
+        do i=1,npassing+1
+          if (i .le. npassing) then
+            alam_mat(istep, i-npassing-1) = 0.5d0*(alambd(i,istep)+alambd(i-1,istep))
+            if (normalize_output) then
+              fun_mat(istep, i-npassing-1) = sourcevec_tmp(k+2*(npassing+1)-i+1)/delta_eta(i)
+            else
+              fun_mat(istep, i-npassing-1) = sourcevec_tmp(k+2*(npassing+1)-i+1)
+            end if
+          else
+            alam_mat(istep, i-npassing-1) = 0.5d0*alambd(i-1,istep)
+            if (normalize_output) then
+              fun_mat(istep, i-npassing-1) = sourcevec_tmp(k+2*(npassing+1)-i+1)/(eta0-eta(i-1))
+            else
+              fun_mat(istep, i-npassing-1) = sourcevec_tmp(k+2*(npassing+1)-i+1)
+            end if
+          end if
+        end do
+        do i=npassing+1,1,-1
+          if (i .le. npassing) then
+            alam_mat(istep, npassing+2-i) = -0.5d0*(alambd(i,istep) + alambd(i-1,istep))
+            if (normalize_output) then
+              fun_mat(istep, npassing+2-i) = sourcevec_tmp(k+i)/delta_eta(i)
+            else
+              fun_mat(istep, npassing+2-i) = sourcevec_tmp(k+i)
+            end if
+          else
+            alam_mat(istep,npassing+2-i) = -0.5d0*alambd(i-1,istep)
+            if (normalize_output) then
+              fun_mat(istep, npassing+2-i) = sourcevec_tmp(k+i)/(eta0-eta(i-1))
+            else
+              fun_mat(istep, npassing+2-i) = sourcevec_tmp(k+i)
+            end if
+          end if
+        end do
+      end do
+
+      open(iunit_base, file='fun_matlab'//char(48+m)//'.dat')
+      do istep=ibeg,iend
+        write(iunit_base,*) fun_mat(istep,:)
+      end do
+      close(iunit_base)
+    end do
+
+    open(iunit_base, file='phi_matlab.dat')
+    do istep=ibeg,iend
+      write(iunit_base,*) phi_mat(istep,:)
+    end do
+    close(iunit_base)
+
+    open(iunit_base, file='lambda_matlab.dat')
+    do istep=ibeg,iend
+      write(iunit_base,*) alam_mat(istep,:)
+    end do
+    close(iunit_base)
+
+  end subroutine matlabplot_allm
+
+  !> Test of particle conservation by the finite difference scheme
+  !> Computes integrals over phase space (velocity space and flux tube) of the RHS
+  !> of kinetic equation, (L_V-L_D) f, where L_V - Vlasov operator and L_D is the
+  !> differential part of kinetic equation for arbitrary distribution functions f.
+  !> Integral is over phi, eta and v with Jacobian
+  !> $\pi B^\varphi \sqrt{g} v^2 /(h^\varphi |\lambda|) = C v^2 /(h^\varphi |\lambda|)$
+  !> where C=const for the flux tube. Arbitrary distribution functions f are
+  !> represented by f_ikm = 1 for i=i0, k=k0, m=m0 and f_ikm = 0 for all other ikm
+  !> where i enumerates phi knots, k enumerates eta levels and m enumerates base functions.
+  !> Due to (independent) particle conservation by L_V and L_D all such integrals should
+  !> be zero. In absence of energy diffusion operator the following relations should be held:
+  !> $\sum_I \delta \varphi_I A_{IJ}=0$
+  !> for any J where $A_{IJ}$ is the RHS matrix for L_V-L_D and $\delta \varphi_I$ is integration
+  !> step over $\varphi$ for the generalized index I. Generalized indices I and J are 3D vector
+  !> indices, i.e. I=ikm. Namely, $\delta \varphi_I = \delta \varphi_i^\sigma$ where $\sigma$ is
+  !> parallel velocity sign, $\delta \varphi_i^+=\varphi_i-\varphi_{i-1}$ and
+  !> $\delta \varphi_i^-=\varphi_i-\varphi_{i+1}$.
+  !> In presence of energy diffusion operator the above relation is generalized to
+  !> $\sum_I \delta \varphi_I w_I A_{IJ}=0$
+  !> where $w_I = w_m$ is velocity module weight for computation of particle density from the source term
+  !> corresponding to the definition of the scalar product. E.g., for the default scalar product,
+  !> $<a|b> = C \int \rd x x^4 exp(-x^2) a(x) b(x)$ weight $w_m$ corresponds to expansion coefficients
+  !> of function 1/x in basis functions, $1/x = \sum_m w_m \phi_m(x)$.
+  subroutine test_conservation(nz, irow, icol, amat)
+
+    implicit none
+
+    integer, intent(in) :: nz
+    integer, dimension(nz), intent(in) :: irow, icol
+    double complex, dimension(nz), intent(in) :: amat
+
+    integer :: i,k,m,npassing
+    double complex,   dimension(:), allocatable :: fun
+    double precision, dimension(:), allocatable :: step_of_irow
+    double precision, dimension(0:lag) :: densint
+
+    densint = weightlag(2,:)  !<= valid only for default scalar product, for alpha=-1 densint=1
+
+    allocate(step_of_irow(n_2d_size))
+    step_of_irow = 0.0d0
+
+    do istep=ibeg,iend
+      npassing = npl(istep)
+      do m=0,lag
+        k = ind_start(istep) + 2*(npassing+1)*m
+        step_of_irow(k+1:k+npassing+1) = delt_pos(istep)*densint(m)
+        step_of_irow(k+npassing+2:k+2*(npassing+1)) = delt_neg(istep)*densint(m)
+      end do
+    end do
+
+    allocate(fun(n_2d_size))
+    fun=(0.d0,0.d0)
+
+    do i=1,nz
+      fun(icol(i)) = fun(icol(i)) + amat(i)*step_of_irow(irow(i))
+    end do
+
+    call matlabplot_allm(real(fun),.false.) !TTT
+
+    deallocate(fun,step_of_irow)
+
+  end subroutine test_conservation
 
 END SUBROUTINE ripple_solver_ArnoldiO2
