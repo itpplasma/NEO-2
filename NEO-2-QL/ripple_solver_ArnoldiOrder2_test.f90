@@ -5419,6 +5419,8 @@ CONTAINS
   !> of function 1/x in basis functions, $1/x = \sum_m w_m \phi_m(x)$.
   subroutine test_conservation(nz, irow, icol, amat)
 
+    use collop, only : scalprod_alpha
+
     implicit none
 
     integer, intent(in) :: nz
@@ -5430,7 +5432,11 @@ CONTAINS
     double precision, dimension(:), allocatable :: step_of_irow
     double precision, dimension(0:lag) :: densint
 
-    densint = weightlag(2,:)  !<= valid only for default scalar product, for alpha=-1 densint=1
+    if (scalprod_alpha .eq. 0.0d0) then
+      densint = weightlag(2,:)  !<= valid only for default scalar product
+    else
+      densint = 1  !<= valid only for alpha=-1 (?)
+    end if
 
     allocate(step_of_irow(n_2d_size))
     step_of_irow = 0.0d0
