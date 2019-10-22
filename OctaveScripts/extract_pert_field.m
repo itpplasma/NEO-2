@@ -172,7 +172,7 @@ function extract_pert_field(file_base, file_ext)
 
     %extract single (toroidal) perturbations
     switch sw_spec
-    case 1 % this is the wanted form of the pectrum
+    case 1 % this is the wanted form of the spectrum
     case 2 % here Fourier coefficients must be mapped
       for n_pert=0:n_pert_max
         if n_pert == 0 % this is the axisymmetric field
