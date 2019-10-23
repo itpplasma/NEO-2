@@ -4261,7 +4261,7 @@ CONTAINS
         !source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow     
         !  multi-species part:
         DO ispecp=0,num_spec-1
-          PRINT *,'species',ispecp,':'
+          if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
           drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
                       & source_vector_all(:,k,ispecp), ispec, problem_type, &
