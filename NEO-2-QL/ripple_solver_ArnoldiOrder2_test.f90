@@ -315,7 +315,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
 !
   niter=100       !maximum number of integral part iterations
   n_arnoldi=500     !maximum number of Arnoldi iterations
-  isw_regper=0       !regulariization by periodic boundary condition
+  isw_regper=1       !regulariization by periodic boundary condition
   epserr_sink_cmplx=0.d0  !1.d-12 !sink for regularization, it is equal to
 !                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
 !                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
@@ -4169,6 +4169,7 @@ CONTAINS
     INTEGER :: ispecpp ! species indices (loop over sources)
     DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec_tmp
     !! End Modification by Andreas F. Martitsch (23.08.2015)
+    integer :: i_src ! source index
 !
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 
@@ -4215,15 +4216,22 @@ CONTAINS
        DO ispecp=0,num_spec-1
          !IF(problem_type .AND. ispecp .NE. ispec) CYCLE
          IF(ispecp .NE. ispec) CYCLE
-         CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
-                           source_vector_all_real(:,1:4,ispecp),iopt)
+!~          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
+!~                            source_vector_all_real(:,1:4,ispecp),iopt)
+         do i_src=1,4
+           call sparse_solve_refine_real(.true.,source_vector_all_real(:,i_src,ispec))
+         end do
        ENDDO
        source_vector_all=source_vector_all_real
+      call matlabplot_allm(source_vector_all_real(:,2,ispec), .true.)
     ELSE
        DO ispecp=0,num_spec-1
          !IF(problem_type .AND. ispecp .NE. ispec) CYCLE
-         CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                           source_vector_all(:,1:4,ispecp),iopt)
+!~          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
+!~                            source_vector_all(:,1:4,ispecp),iopt)
+         do i_src=1,4
+           call sparse_solve_refine_complex(.true.,source_vector_all(:,i_src,ispecp))
+         end do
        ENDDO
     ENDIF
 !
@@ -5255,10 +5263,12 @@ CONTAINS
        ALLOCATE(fnew_real(n),fnew_imag(n))
        fnew_real=DBLE(fnew)
        fnew_imag=AIMAG(fnew)
-       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
-                         fnew_real,iopt)
-       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
-                         fnew_imag,iopt)
+!~        CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
+!~                          fnew_real,iopt)
+!~        CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
+!~                          fnew_imag,iopt)
+       call sparse_solve_refine_real(.true.,fnew_real)
+       call sparse_solve_refine_real(.true.,fnew_imag)
        fnew=fnew_real+(0.d0,1.d0)*fnew_imag
        DEALLOCATE(fnew_real,fnew_imag)
        !
@@ -5266,14 +5276,15 @@ CONTAINS
        ! -> remove null-space of axisymmetric
        ! solution (energy conservation)
        !remove maxwellian particles
-       coef_dens=SUM(densvec_bra*fnew)/denom_dens
-       fnew=fnew-coef_dens*densvec_ket
+!~        coef_dens=SUM(densvec_bra*fnew)/denom_dens
+!~        fnew=fnew-coef_dens*densvec_ket
        coef_energ=SUM(energvec_bra*fnew)/denom_energ
        !PRINT *,'coef_energ = ',coef_energ
        fnew=fnew-coef_energ*energvec_ket
     ELSE
-       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
-                         fnew,iopt)
+!~        CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
+!~                          fnew,iopt)
+      call sparse_solve_refine_complex(.true.,fnew)
     ENDIF
 
   END SUBROUTINE next_iteration
