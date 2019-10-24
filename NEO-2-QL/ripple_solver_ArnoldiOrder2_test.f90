@@ -4969,17 +4969,36 @@ CONTAINS
 
   end subroutine save_qflux_symm_allspec
 
-  !>  if normalize_output=.true.  normalizes output as distribution function (divides f_k by delta eta)
-  !>  if normalize_output=.false. no normalization (plots f_k as is)
-  subroutine matlabplot_allm(sourcevec_tmp, normalize_output)
+  !> if write_coords=.true. writes phase space coordinates (phi, lambda, base functions)
+  !> if write_coords=.false. writes only the distribution function
+  !
+  !> prefix is added to file names of the distribution function
+  !> if normalize_output=.true.  normalizes output as distribution function (divides f_k by delta eta)
+  !> if normalize_output=.false. no normalization (plots f_k as is)
+  subroutine matlabplot_allm(sourcevec_tmp, normalize_output, write_coords, prefix)
+
+    use collop_bspline, only : init_phi_bspline, phi_bspline, phi_x_max
 
     implicit none
 
-    logical, intent(in) :: normalize_output
+    logical, intent(in) :: normalize_output, write_coords
     double precision, dimension(n_2d_size), intent(in) :: sourcevec_tmp
+    character(len=2), intent(in) :: prefix
+
+    integer, parameter :: nx=100
+
+    logical :: dir_exisits
 
     integer :: iunit_base,nmax,m,i,k
     double precision, dimension(:,:), allocatable :: phi_mat,alam_mat,fun_mat
+    double precision   :: hx
+    double precision, dimension(:),   allocatable :: xi
+    double precision, dimension(:,:), allocatable :: dummy2d
+
+    ! Check if folder with species number exists, if not return witout
+    ! writing the output.
+    inquire(file=char(48+ispec), exist=dir_exisits)
+    if (.not. dir_exisits) return
 
     nmax = maxval(npl)+1
     allocate(phi_mat(ibeg:iend,-nmax:nmax))
@@ -5036,24 +5055,43 @@ CONTAINS
         end do
       end do
 
-      open(iunit_base, file='fun_matlab'//char(48+m)//'.dat')
+      open(iunit_base, file=char(48+ispec)//'/fun_matlab'//trim(prefix)//char(48+m)//'.dat')
       do istep=ibeg,iend
         write(iunit_base,*) fun_mat(istep,:)
       end do
       close(iunit_base)
     end do
 
-    open(iunit_base, file='phi_matlab.dat')
-    do istep=ibeg,iend
-      write(iunit_base,*) phi_mat(istep,:)
-    end do
-    close(iunit_base)
+    if(write_coords) then
+      open(iunit_base,file=char(48+ispec)//'/phi_matlab.dat')
+      do istep=ibeg,iend
+        write(iunit_base,*) phi_mat(istep,:)
+      end do
+      close(iunit_base)
 
-    open(iunit_base, file='lambda_matlab.dat')
-    do istep=ibeg,iend
-      write(iunit_base,*) alam_mat(istep,:)
-    end do
-    close(iunit_base)
+      open(iunit_base,file=char(48+ispec)//'/lambda_matlab.dat')
+      do istep=ibeg,iend
+        write(iunit_base,*) alam_mat(istep,:)
+      end do
+      close(iunit_base)
+
+      call init_phi_bspline(lag,0)
+
+      allocate(xi(0:nx),dummy2d(0:nx,0:lag))
+      hx = phi_x_max/dble(nx)
+      do i=0,nx
+        xi(i) = dble(i)*hx
+        do m=0,lag
+          dummy2d(i,m) = phi_bspline(m,xi(i))
+        end do
+      end do
+      open(iunit_base, file=char(48+ispec)//'/exp_basis.dat')
+      do i=0,nx
+        write(iunit_base,*) xi(i),dummy2d(i,:)
+      end do
+      close(iunit_base)
+      deallocate(xi,dummy2d)
+    end if
 
   end subroutine matlabplot_allm
 
@@ -5145,7 +5183,7 @@ CONTAINS
       fun(icol(i)) = fun(icol(i)) + amat(i)*step_of_irow(irow(i))
     end do
 
-    call matlabplot_allm(real(fun),.false.) !TTT
+    call matlabplot_allm(real(fun), .false., .true., '  ')
 
     deallocate(fun,step_of_irow)
 
