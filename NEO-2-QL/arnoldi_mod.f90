@@ -223,7 +223,7 @@ contains
       fnew=fnew-MATMUL(eigvecs(:,1:nsize),coefren)
       break_cond1(ispec)=SUM(ABS(fnew-fold))
       break_cond2(ispec)=relerr*SUM(ABS(fnew))
-      PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
+      print *,iter,break_cond1(ispec),break_cond2(ispec),ispec
       CALL mpro%allgather_double_1(break_cond1(ispec), break_cond1)
       CALL mpro%allgather(break_cond2(ispec), break_cond2)
       IF(ALL(break_cond1 .LE. break_cond2)) EXIT
