@@ -286,7 +286,6 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   REAL(kind=dp), DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec
   LOGICAL :: problem_type
   DOUBLE PRECISION,   DIMENSION(:,:), ALLOCATABLE :: source_vector_real
-  DOUBLE PRECISION,   DIMENSION(:,:,:), ALLOCATABLE :: source_vector_all_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: ttmpfact
   LOGICAL :: colltest=.FALSE.
@@ -299,8 +298,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
 ! DEBUGGING
   INTEGER :: i_ctr=0, uw, uw_new
   LOGICAL :: lsw_debug_distfun=.FALSE.
-  logical :: addboucol=.true.
-  double precision :: eta_tp
+  logical :: addboucol=.false.
 !
   !! Modification by Andreas F. Martitsch (28.07.2015)
   ! multi-species part - MPI rank determines species
@@ -316,14 +314,10 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   niter=100       !maximum number of integral part iterations
   n_arnoldi=500     !maximum number of Arnoldi iterations
   isw_regper=1       !regulariization by periodic boundary condition
-  epserr_sink_cmplx=0.d0  !1.d-12 !sink for regularization, it is equal to
-!                    $\nu_s/(\sqrt{2} v_T \kappa)$ where
-!                    $\bu_s$ is sink rate, $v_T=\sqrt{T/m}$, and
-!                    $\kappa$ is inverse m.f.p. times 4 ("collpar")
-  epserr_sink=0.0d0
-!  
+
   sparse_solve_method = 3 !2 !2,3 - with and without iterative refinement, resp.
-!    
+
+  addboucol=.true.
   !------------------------------------------------------------------------
   ! END SERGEI
   !------------------------------------------------------------------------
@@ -934,7 +928,7 @@ PRINT *,ub_mag,ibeg,iend
   !------------------------------------------------------------------------
   ! SERGEI
   !------------------------------------------------------------------------
-  epserr_sink_cmplx=(0.d0,0.d0)
+
 !
 ! Check for axisymmetry:
 !
@@ -1584,7 +1578,7 @@ rotfactor=imun*m_phi
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)  
       IF(isw_regper.EQ.1.AND.m.LT.1) THEN
-        DO ipart=1,npassing+1
+        DO ipart=1,1
 !          if(ipart.le.npassing) then
 !            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
 !          else
@@ -1763,35 +1757,6 @@ rotfactor=imun*m_phi
 !
 !        amat_sp(nz_beg:nz)=fact_pos_e(istep)*amat_sp(nz_beg:nz)
 !
-!        nz_beg=nz+1
-!
-! regularization sink:
-!
-        DO ipart=1,npassing+1
-          DO kk=1,4
-            DO mm=0,lag
-              nz=nz+1
-!              irow(nz)=k+ipart
-!              icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
-            ENDDO
-          ENDDO
-!
-          IF(ipart.LE.npassing_prev+1) THEN
-            DO kk=1,4
-              DO mm=0,lag
-                nz=nz+1
-!                irow(nz)=k+ipart
-!                icol(nz)=k_prev+max(0,ipart-2)+kk+2*(npassing_prev+1)*(mm-m)
-!                amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
-              ENDDO
-            ENDDO
-          ENDIF
-!
-        ENDDO
-!
-!        amat_sp(nz_beg:nz)=-epserr_sink_cmplx*fact_pos_e(istep)*amat_sp(nz_beg:nz)
-!
       ENDIF
 !
     ENDDO
@@ -1834,7 +1799,7 @@ rotfactor=imun*m_phi
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct) 
       IF(isw_regper.EQ.1.AND.m.LT.1) THEN
-        DO ipart=1,npassing+1
+        DO ipart=1,1
 !          if(ipart.le.npassing) then
 !            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
 !          else
@@ -2012,35 +1977,7 @@ rotfactor=imun*m_phi
 !
 !        amat_sp(nz_beg:nz)=fact_neg_e(istep)*amat_sp(nz_beg:nz)
 !
-!        nz_beg=nz+1
-!
-! regularization sink:
-!
-        DO ipart=1,npassing+1
-          DO kk=1,4
-            DO mm=0,lag
-              nz=nz+1
-!              irow(nz)=k-ipart
-!              icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
-            ENDDO
-          ENDDO
-!
-          IF(ipart.LE.npassing_prev+1) THEN
-            DO kk=1,4
-              DO mm=0,lag
-                nz=nz+1
-!                irow(nz)=k-ipart
-!                icol(nz)=k_prev-max(0,ipart-2)-kk+2*(npassing_prev+1)*(mm-m)
-!                amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
-              ENDDO
-            ENDDO
-          ENDIF
-!
-        ENDDO
-!
-!        amat_sp(nz_beg:nz)=-epserr_sink_cmplx*fact_neg_e(istep)*amat_sp(nz_beg:nz)
-!
+
       ENDIF
 !
     ENDDO
@@ -2096,7 +2033,7 @@ rotfactor=imun*m_phi
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
       IF(isw_regper.EQ.1.AND.m.LT.1) THEN
-        DO ipart=1,npassing+1
+        DO ipart=1,1
           IF(ipart.LE.npassing) THEN
             deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
           ELSE
@@ -2287,8 +2224,7 @@ rotfactor=imun*m_phi
                 nz=nz+1
                 irow(nz)=k+ipart
                 icol(nz)=k+MAX(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0                          !<=REGULARIZATION
-                amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep)*0.5d0 !<=REGULARIZATION
+                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
                 nz_coll=nz_coll+1
                 irow_coll(nz_coll)=irow(nz)
                 icol_coll(nz_coll)=icol(nz)
@@ -2306,8 +2242,7 @@ rotfactor=imun*m_phi
                   nz=nz+1
                   irow(nz)=k+ipart
                   icol(nz)=k_prev+MAX(0,ipart-2)+kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0                          !<=REGULARIZATION
-                  amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep-1)*0.5d0 !<=REGULARIZATION
+                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
                 ENDDO
               ENDDO
             elseif (ipart.gt.npassing_prev+1.and.addboucol) then
@@ -2326,36 +2261,7 @@ rotfactor=imun*m_phi
         ENDIF
 !
         amat_sp(nz_beg:nz)=fact_pos_e(istep)*amat_sp(nz_beg:nz)
-!
-        nz_beg=nz+1
-!
-! regularization sink:
-!
-        DO ipart=1,npassing+1
-          DO kk=1,4
-            DO mm=0,lag
-              nz=nz+1
-              irow(nz)=k+ipart
-              icol(nz)=k+MAX(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
-            ENDDO
-          ENDDO
-!
-          IF(ipart.LE.npassing_prev+1) THEN
-            DO kk=1,4
-              DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k+ipart
-                icol(nz)=k_prev+MAX(0,ipart-2)+kk+2*(npassing_prev+1)*(mm-m)
-                amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
-              ENDDO
-            ENDDO
-          ENDIF
-!
-        ENDDO
-!
-        amat_sp(nz_beg:nz)=-epserr_sink_cmplx*fact_pos_e(istep)*amat_sp(nz_beg:nz)
-!
+
       ENDIF
 !
     ENDDO
@@ -2398,7 +2304,7 @@ rotfactor=imun*m_phi
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
       IF(isw_regper.EQ.1.AND.m.LT.1) THEN
-        DO ipart=1,npassing+1
+        DO ipart=1,1
           IF(ipart.LE.npassing) THEN
             deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
           ELSE
@@ -2587,8 +2493,7 @@ rotfactor=imun*m_phi
                 nz=nz+1
                 irow(nz)=k-ipart
                 icol(nz)=k-MAX(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0                          !<=REGULARIZATION
-                amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep)*0.5d0 !<=REGULARIZATION
+                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
                 nz_coll=nz_coll+1
                 irow_coll(nz_coll)=irow(nz)
                 icol_coll(nz_coll)=icol(nz)
@@ -2606,8 +2511,7 @@ rotfactor=imun*m_phi
                   nz=nz+1
                   irow(nz)=k-ipart
                   icol(nz)=k_prev-MAX(0,ipart-2)-kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0                          !<=REGULARIZATION
-                  amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep+1)*0.5d0 !<=REGULARIZATION
+                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
                 ENDDO
               ENDDO
             elseif(ipart.gt.npassing_prev+1.and.addboucol) then
@@ -2626,52 +2530,26 @@ rotfactor=imun*m_phi
         ENDIF
 !
         amat_sp(nz_beg:nz)=fact_neg_e(istep)*amat_sp(nz_beg:nz)
-!
-        nz_beg=nz+1
-!
-! regularization sink:
-!
-        DO ipart=1,npassing+1
-          DO kk=1,4
-            DO mm=0,lag
-              nz=nz+1
-              irow(nz)=k-ipart
-              icol(nz)=k-MAX(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-              amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
-            ENDDO
-          ENDDO
-!
-          IF(ipart.LE.npassing_prev+1) THEN
-            DO kk=1,4
-              DO mm=0,lag
-                nz=nz+1
-                irow(nz)=k-ipart
-                icol(nz)=k_prev-MAX(0,ipart-2)-kk+2*(npassing_prev+1)*(mm-m)
-                amat_sp(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
-              ENDDO
-            ENDDO
-          ENDIF
-!
-        ENDDO
-!
-        amat_sp(nz_beg:nz)=-epserr_sink_cmplx*fact_neg_e(istep)*amat_sp(nz_beg:nz)
-!
+
       ENDIF
 !
     ENDDO
 !
   ENDDO
+
+  !call test_conservation(nz,irow,icol,amat_sp)
 !
 ! Save the symmetric matrix:
 !
-  nz_symm=nz
+  call  remap_rc(nz, nz_symm, irow, icol, amat_sp)
+
   ALLOCATE(irow_symm(nz_symm),icol_symm(nz_symm),amat_symm(nz_symm))
-  irow_symm=irow
-  icol_symm=icol
+  irow_symm = irow(1:nz_symm)
+  icol_symm = icol(1:nz_symm)
   !! Modification by Andreas F. Martitsch (17.07.2015)
   ! fixed warning: Possible change of value in conversion
   ! from COMPLEX(8) to REAL(8)
-  amat_symm=REAL(amat_sp,dp)
+  amat_symm = real(amat_sp(1:nz_symm),dp)
   !! End Modification by Andreas F. Martitsch (17.07.2015)
 !
 ! End save symmetric matrix
@@ -3525,43 +3403,9 @@ rotfactor=imun*m_phi
   irow(nz_per_neg+1:nz_asymm)=irow_asymm(nz_per_neg+1:nz_asymm)
   icol(nz_per_neg+1:nz_asymm)=icol_asymm(nz_per_neg+1:nz_asymm)
   amat_sp(nz_per_neg+1:nz_asymm)=amat_asymm(nz_per_neg+1:nz_asymm)*rotfactor
-!
-!  DO ispecp=0,num_spec-1
-!     DO i=nz_symm+1,nz_asymm
-!        source_vector_all(irow(i),4,ispecp)=source_vector_all(irow(i),4,ispecp) &
-!             +amat_sp(i)*bvec_parflow(icol(i))
-!     ENDDO
-!  ENDDO
-!
+
   problem_type=.FALSE.
   CALL solve_eqs(.TRUE.)
-
-  ! Debugging - plot distribution function (NA problem)
-  IF(lsw_debug_distfun) THEN
-    DO ispecp=0,num_spec-1
-      uw=100000*(num_spec*ispec+ispecp+1)
-      istep=(ibeg+iend)/2
-      uw_new=uw
-      CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-      uw_new=uw+1000
-      CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
-      istep=ibeg
-      uw_new=uw+10
-      CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-      uw_new=uw+1010
-      CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
-      istep=iend
-      uw_new=uw+20
-      CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-      uw_new=uw+1020
-      CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
-      istep=ibeg+1
-      uw_new=uw+30
-      CALL plotsource(uw_new,REAL(source_vector_all(:,:,ispec)))
-      uw_new=uw+1030
-      CALL plotsource(uw_new,aimag(source_vector_all(:,:,ispec)))
-    END DO
-  END IF
 
   !! Modification by Andreas F. Martitsch (23.08.2015)
   ! NEO-2 can treat now multiple species -> qflux is now a 4D array
@@ -3693,9 +3537,7 @@ RETURN
         mode_iter=2
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & bvec_sp, ispec, problem_type, coef_dens, coef_energ, &
-          & denom_energ, denom_dens, densvec_bra, densvec_ket, &
-          & energvec_bra, energvec_ket,next_iteration)
+          & bvec_sp, ispec, next_iteration)
 !
       ENDIF
 !
@@ -3741,9 +3583,7 @@ RETURN
         mode_iter=2
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & bvec_sp, ispec, problem_type, coef_dens, coef_energ, &
-          & denom_energ, denom_dens, densvec_bra, densvec_ket, &
-          & energvec_bra, energvec_ket,next_iteration)
+          & bvec_sp, ispec, next_iteration)
 !
       ENDIF
 !
@@ -4041,121 +3881,6 @@ CONTAINS
 !
   END SUBROUTINE matlabplot
 
-  !> version for real equation set
-  !>
-  !> Solves sparse set and refines the solution using preconditioned Richardson iteration
-  !> which for equation set
-  !>
-  !>     A x = b
-  !>
-  !> defines next iteration x_next via previous iteration x_prev as follows:
-  !>
-  !>     x_next = x_prev + Abar (b - A x_prev)
-  !>
-  !> Here Abar (preconditioner) is the approximate inverse to A computed by sparse solver
-  !>
-  !> Formal arguments:
-  !> refine  - (logical, input) : condition to refine the sparse solution (refines if refine=.true.)
-  !> bvec    - (double precision, inout) : rhs vector on input, solution on output
-  subroutine sparse_solve_refine_real(refine, bvec)
-    implicit none
-
-    integer,          parameter :: niter=10
-    double precision, parameter :: epserr=1d-10
-
-    logical :: refine
-    integer :: iter,i
-    double precision :: errnum,errdenom
-    double precision, dimension(n_2d_size) :: bvec,qin,afk,fk
-
-    qin = bvec
-    errdenom = sum(abs(qin))
-    if (errdenom .eq. 0.d0) then
-      bvec = 0.d0
-      return
-    end if
-
-    call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, dble(amat_sp(1:nz)), bvec, iopt)
-
-    if (refine) then
-      fk = bvec
-      do iter=1,niter
-        afk = 0.d0
-        do i=1,nz
-          afk(irow(i)) = afk(irow(i)) + dble(amat_sp(i))*fk(icol(i))
-        end do
-        afk = qin-afk
-        errnum = sum(abs(afk))
-        !print *,'ispec = ',ispec,' iter = ',iter,' err  = ',errnum/errdenom
-        if (errnum .lt. errdenom*epserr) exit
-
-        call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, dble(amat_sp(1:nz)), afk, iopt)
-
-        fk = fk+afk
-      end do
-      bvec = fk
-    end if
-
-  end subroutine sparse_solve_refine_real
-
-  !> version for complex equation set
-  !>
-  !> Solves sparse set and refines the solution using preconditioned Richardson iteration
-  !> which for equation set
-  !>
-  !>     A x = b
-  !>
-  !> defines next iteration x_next via previous iteration x_prev as follows:
-  !>
-  !>     x_next = x_prev + Abar (b - A x_prev)
-  !>
-  !> Here Abar (preconditioner) is the approximate inverse to A computed by sparse solver
-  !>
-  !> Formal arguments:
-  !> refine  - (logical, input) : condition to refine the sparse solution (refines if refine=.true.)
-  !> bvec    - (double precision, inout) : rhs vector on input, solution on output
-  subroutine sparse_solve_refine_complex(refine,bvec)
-
-    implicit none
-
-    integer,          parameter :: niter=10
-    double precision, parameter :: epserr=1d-10
-
-    logical :: refine
-    integer :: iter,i
-    double precision :: errnum,errdenom
-    double complex, dimension(n_2d_size) :: bvec, qin, afk, fk
-
-    qin = bvec
-    errdenom = sum(abs(qin))
-    if (errdenom .eq. 0.d0) then
-      bvec=0.d0
-      return
-    end if
-
-    CALL sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), bvec,iopt)
-
-    if (refine) then
-      fk = bvec
-      do iter=1,niter
-        afk = 0.d0
-        do i=1,nz
-          afk(irow(i)) = afk(irow(i)) + amat_sp(i)*fk(icol(i))
-        enddo
-        afk = qin-afk
-        errnum = sum(abs(afk))
-        !print *,'ispec = ',ispec,' iter = ',iter,' err  = ',errnum/errdenom
-        if (errnum .lt. errdenom*epserr) exit
-
-        call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), afk, iopt)
-
-        fk = fk+afk
-      end do
-      bvec = fk
-    end if
-
-  end subroutine sparse_solve_refine_complex
-
   SUBROUTINE solve_eqs(clean)
 !
 ! Solve the linear equation set:
@@ -4169,7 +3894,6 @@ CONTAINS
     INTEGER :: ispecpp ! species indices (loop over sources)
     DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec_tmp
     !! End Modification by Andreas F. Martitsch (23.08.2015)
-    integer :: i_src ! source index
 !
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 
@@ -4210,79 +3934,51 @@ CONTAINS
 !
 ! Solution of inhomogeneus equation (account of sources):
 !
-    IF(problem_type) THEN
-       ALLOCATE(source_vector_all_real(n_2d_size,1:4,0:num_spec-1))
-       source_vector_all_real=DBLE(source_vector_all)
-       DO ispecp=0,num_spec-1
-         !IF(problem_type .AND. ispecp .NE. ispec) CYCLE
-         IF(ispecp .NE. ispec) CYCLE
-!~          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
-!~                            source_vector_all_real(:,1:4,ispecp),iopt)
-         do i_src=1,4
-           call sparse_solve_refine_real(.true.,source_vector_all_real(:,i_src,ispec))
-         end do
-       ENDDO
-       source_vector_all=source_vector_all_real
-      call matlabplot_allm(source_vector_all_real(:,2,ispec), .true.)
-    ELSE
-       DO ispecp=0,num_spec-1
-         !IF(problem_type .AND. ispecp .NE. ispec) CYCLE
-!~          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-!~                            source_vector_all(:,1:4,ispecp),iopt)
-         do i_src=1,4
-           call sparse_solve_refine_complex(.true.,source_vector_all(:,i_src,ispecp))
-         end do
-       ENDDO
-    ENDIF
-!
-! integral part:
-!
-    IF(isw_intp.EQ.1) THEN
+    denom_energ = sum(energvec_bra*energvec_ket)
+    denom_dens = sum(densvec_bra*densvec_ket)
 
-      denom_energ=SUM(energvec_bra*energvec_ket)
-      denom_dens=SUM(densvec_bra*densvec_ket)
-      !PRINT *,'denom_energ = ',denom_energ 
+    IF(isw_intp.EQ.0) THEN
+      ! no integral part:
+
+      mode_iter=1
 !
       DO k=1,3
-!
-        PRINT *,'source ',k,':'
-        ! preconditioned iterations ("next_iteration" provides
-        ! Af and q (provided as an input):
-        mode_iter=2
-        ! direct iterations:
-        !mode_iter=0
-!
+        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
+                    & source_vector_all(:,k,ispec), ispec, next_iteration)
+      ENDDO
+
+    ELSEIF(isw_intp.EQ.1) THEN
+      ! with integral part:
+
+      mode_iter=1
+
+      DO k=1,3
         !! Modification by Andreas F. Martitsch (23.08.2015)
         ! old behavior (for a single species):
         !CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-        !  & source_vector(:,k), ispec, problem_type, &
-        !  & coef_dens, coef_energ, denom_energ, denom_dens, densvec_bra, densvec_ket, &
-        !  & energvec_bra, energvec_ket, next_iteration)
+        !  & source_vector(:,k), ispec, next_iteration)
         !source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow     
         !  multi-species part:
         DO ispecp=0,num_spec-1
           if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
           drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
-                      & source_vector_all(:,k,ispecp), ispec, problem_type, &
-                      & coef_dens, coef_energ, denom_energ, denom_dens, densvec_bra, densvec_ket, &
-                      & energvec_bra, energvec_ket, next_iteration)
+                      & source_vector_all(:,k,ispecp), ispec, next_iteration)
         ENDDO
         !! End Modification by Andreas F. Martitsch (23.08.2015)  
 !
       ENDDO
-!
-      IF(clean) THEN
-        mode_iter=3
-!
-        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & source_vector(:,k), ispec, problem_type, coef_dens, coef_energ, &
-          & denom_energ, denom_dens, densvec_bra, densvec_ket, &
-          & energvec_bra, energvec_ket, next_iteration)
-!
-      ENDIF
-!
+
     ENDIF
+
+    IF(clean) THEN
+      mode_iter=3
+
+      CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
+        & source_vector(:,k), ispec, next_iteration)
+
+    ENDIF
+!
 !
 ! Plotting:
 !
@@ -4426,7 +4122,7 @@ CONTAINS
       IF(problem_type) THEN
          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)), &
                            bvec_sp_real,iopt)
-         DEALLOCATE(bvec_sp_real,source_vector_all_real)
+         DEALLOCATE(bvec_sp_real)
       ELSE
          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
       ENDIF
@@ -4456,9 +4152,10 @@ CONTAINS
     bvec_parflow=0.d0
     energvec_ket=0.d0
     energvec_bra=0.d0
-    densvec_ket = 0.d0
     densvec_bra = 0.d0
-!
+
+    call generate_maxwellian(densvec_ket)
+
     DO istep=ibeg,iend
 !
       ioddeven=MOD(istep-ibeg,2) !0 for full RK step, 1 for half RK step
@@ -4514,30 +4211,15 @@ CONTAINS
 !
         ! Use pre-conditioned iterations:
         ! -> remove null-space of axisymmetric solution (energy conservation)
-        !> Sergei 08.08.19: added null-space removal due to particle conservation.
-        !> Drive by inductive electric field gives also expansion coefficients $f_m$ for the unperturbed
-        !> Maxwellian, $ const(x) = \sum_m f_m \phi_m(x)$ where $f_m$=asource(m,2).
-        !> In case of Laguerre polynomials asource(0,2)=const>0 and the rest of asource(:,2) are zeros.
-        !> In case of B-splines all asource(:,2)=1.
-        !> Coefficients weightenerg(m) are expansion coefficients of unperturbed Maxwellian times $(x^2 - 3/2)$.
-        !> Such a weighted Maxwellian gives zero density but finite energy.
         energvec_ket(k+1:k+npassing) =                                      &
              weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
-        densvec_ket(k+1:k+npassing) =                                  &
-          & asource(m,2)*(eta(1:npassing)-eta(0:npassing-1))
         energvec_ket(k+2*npassing+2:k+npassing+3:-1) =                      &
              weightenerg(m)*(eta(1:npassing)-eta(0:npassing-1))
-        densvec_ket(k+2*npassing+2:k+npassing+3:-1) =                  &
-          & asource(m,2)*(eta(1:npassing)-eta(0:npassing-1))
 !
         energvec_ket(k+npassing+1) =                                      &
              weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
-        densvec_ket(k+npassing+1) =                                    &
-          & asource(m,2)*((1.d0/bhat_mfl(istep))-eta(npassing))
         energvec_ket(k+npassing+2) =                                      &
              weightenerg(m)*((1.d0/bhat_mfl(istep))-eta(npassing))
-        densvec_ket(k+npassing+2) =                                    &
-          & asource(m,2)*((1.d0/bhat_mfl(istep))-eta(npassing))
 !        
         energvec_bra(k+1:k+npassing+1) =                                     &
              step_factor_p*(weightlag(1,m)-1.5d0*weightden(m))*pleg_bra(0,1:npassing+1,istep)
@@ -5143,16 +4825,8 @@ CONTAINS
 !! Modification by Andreas F. Martitsch (20.08.2015)
 ! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
 ! (mpro%allgather supports 3D and 4D matrices)
-!PRINT *,'mpro%getrank() before:', mpro%getrank()
     CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
-!PRINT *,'mpro%getrank() after:', mpro%getrank()
-!PRINT *,'scalprod_pleg, species = ',ispec
-!IF(mpro%getrank() .EQ. 0) THEN
-!PRINT *,scalprod_pleg(:,:,ibeg,0)
-!PRINT *,scalprod_pleg(:,:,ibeg,1)
-!STOP
-!END IF
-!
+
     DO istep=ibeg,iend
 !
       npassing=npl(istep)
@@ -5218,6 +4892,12 @@ CONTAINS
         vec_out(k+1:k+npassing+1)=vec_out(k+1:k+npassing+1)             &
                                  +vec_tmp(m,1:npassing+1,istep-1)       &
                                  *fact_pos_e(istep)
+        npassing = npl(istep)
+        if (npassing .gt. npl(istep-1) .and. addboucol) then
+          vec_out(k+npassing+1) = vec_out(k+npassing+1)       &
+                               & +vec_tmp(m,npassing+2,istep) &
+                               & *fact_pos_e(istep)
+        end if
       ENDDO
 !
     ENDDO
@@ -5239,6 +4919,12 @@ CONTAINS
         vec_out(k-npassing:k)=vec_out(k-npassing:k)                     &
                              +vec_tmp(m,k_prev-npassing:k_prev,istep+1) &
                              *fact_neg_e(istep)
+        npassing = npl(istep)
+        if ((npassing .gt. npl(istep+1)) .and. addboucol) then
+          vec_out(k-npassing) = vec_out(k-npassing)         &
+                              & +vec_tmp(m,npassing+1,istep) &
+                              & *fact_neg_e(istep)
+        end if
       ENDDO
 !
     ENDDO
@@ -5246,10 +4932,24 @@ CONTAINS
     DEALLOCATE(vec_tmp)
 !
   END SUBROUTINE integral_part
-!
-!---------------------------------------------------------------------------------
-!
+
+  !---------------------------------------------------------------------------------
+  !> Single step of a preconditioned Richardson iteration which for equation set
+  !>
+  !>     L f = q,
+  !>
+  !> where L = L_V - L_D - L_I is evolution operator with L_V being Vlasov operator
+  !> L_D - differential part of collision operator and L_I - integral part of collision operator.
+  !>
+  !> defines next iteration f_new via previous iteration f_old as follows:
+  !>
+  !>     f_new = f_old + Lbar (q - L f_old)
+  !>
+  !> Here Lbar (preconditioner) is the approximate inverse to L_V-L_D computed by sparse solver
+  !> In case mode=2 skips q in the iteration (used by Arnoldi iterations)
   SUBROUTINE next_iteration(n,fold,fnew)
+
+    use arnoldi_mod, only : fzero, mode, tol
 
     IMPLICIT NONE
 
@@ -5257,34 +4957,51 @@ CONTAINS
     complex(kind=kind(1d0)), DIMENSION(n) :: fold,fnew
     DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fnew_real,fnew_imag
 
-    CALL integral_part(fold,fnew)
+    if (isw_intp .eq. 1) then
+      call integral_part(fold, fnew)
+    else
+      fnew = (0.0d0, 0.0d0)
+    end if
+
+    if (mode .ne. 2) then
+      fnew = fnew + fzero
+    end if
 
     IF(problem_type) THEN
+      do i=1,nz_symm
+        fnew(irow_symm(i)) = fnew(irow_symm(i)) - amat_symm(i)*fold(icol_symm(i))
+      end do
        ALLOCATE(fnew_real(n),fnew_imag(n))
        fnew_real=DBLE(fnew)
        fnew_imag=AIMAG(fnew)
-!~        CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
-!~                          fnew_real,iopt)
-!~        CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
-!~                          fnew_imag,iopt)
-       call sparse_solve_refine_real(.true.,fnew_real)
-       call sparse_solve_refine_real(.true.,fnew_imag)
+       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
+                         fnew_real,iopt)
+       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,DBLE(amat_sp(1:nz)),   &
+                         fnew_imag,iopt)
        fnew=fnew_real+(0.d0,1.d0)*fnew_imag
        DEALLOCATE(fnew_real,fnew_imag)
-       !
-       ! Use pre-conditioned iterations:
-       ! -> remove null-space of axisymmetric
-       ! solution (energy conservation)
-       !remove maxwellian particles
-!~        coef_dens=SUM(densvec_bra*fnew)/denom_dens
-!~        fnew=fnew-coef_dens*densvec_ket
-       coef_energ=SUM(energvec_bra*fnew)/denom_energ
-       !PRINT *,'coef_energ = ',coef_energ
-       fnew=fnew-coef_energ*energvec_ket
+
+      fnew = fnew + fold
+
+      ! -> remove null-space of axisymmetric
+      ! solution (particle and energy conservation)
+      coef_dens = sum(densvec_bra*fnew)/denom_dens
+      fnew = fnew - (1.d0-tol)*coef_dens*densvec_ket
+
+      if (isw_intp .eq. 1) then
+        coef_energ = sum(energvec_bra*fnew)/denom_energ
+        !PRINT *,'coef_energ = ',coef_energ
+        fnew = fnew - (1.d0-tol)*coef_energ*energvec_ket
+      end if
     ELSE
-!~        CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
-!~                          fnew,iopt)
-      call sparse_solve_refine_complex(.true.,fnew)
+
+      do i=1,nz
+        fnew(irow(i)) = fnew(irow(i)) - amat_sp(i)*fold(icol(i))
+      end do
+      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),         &
+                         fnew,iopt)
+
+      fnew = fnew + fold
     ENDIF
 
   END SUBROUTINE next_iteration
@@ -5404,6 +5121,31 @@ CONTAINS
     close(iunit_base)
 
   end subroutine matlabplot_allm
+
+  !> Generates Maxwellian distribution in discretized form. Needed for filtering out null-space and for testing.
+  subroutine generate_maxwellian(fmaxw)
+
+    implicit none
+
+    double complex, dimension(n_2d_size), intent(out) :: fmaxw
+
+    do istep=ibeg,iend
+
+      npassing = npl(istep)
+
+      do m=0,lag
+        k = ind_start(istep)+2*(npassing+1)*m
+        k_prev = k+2*npassing+3
+        do ipart=1,npassing
+          fmaxw(k+ipart) = (eta(ipart)-eta(ipart-1))*asource(m,2)
+          fmaxw(k_prev-ipart) = fmaxw(k+ipart)
+        end do
+        fmaxw(k+npassing+1) = (1.d0/bhat_mfl(istep) - eta(npassing))*asource(m,2)
+        fmaxw(k+npassing+2) = fmaxw(k+npassing+1)
+      end do
+    end do
+
+  end subroutine generate_maxwellian
 
   !> Test of particle conservation by the finite difference scheme
   !> Computes integrals over phase space (velocity space and flux tube) of the RHS

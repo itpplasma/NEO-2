@@ -15,24 +15,47 @@ contains
   !> is below the input value or maximum number of combined iterations
   !> is reached.
   !>
+  !> Method is a brand of preconditioned iteration:
+  !>
+  !>         f_new = f_old + P (A f_old + q - f_old)
+  !>
+  !> where P is a preconditioner which transforms the unstable Krylov subspace
+  !> to make it stable. Namely, preconditioner acts on unstbale eigenvecotrs
+  !> phi_m as follows
+  !>
+  !>         P phi_m = phi_m / (1 - lambda_m)
+  !>
+  !> where lambda_m is the corresponding eigenvalue, and it acts on stable
+  !> eigenvectors as follows
+  !>
+  !>         P phi_m = phi_m
+  !>
+  !> i.e. leaves them untouched.
+  !> Here this method is applied to preconditioned Richardson iteration given
+  !> by the routine "next_iteration". The resulting combination corresponds,
+  !> again, to Richardson iteration with a combined preconditioner:
+  !>
+  !>         f_new = f_old + P Lbar (q - L f_old)
+  !>
+  !> where the rest notation is described in comments to "next_iteration" routine.
+  !>
   !> Input  parameters:
   !>            Formal: mode_in        - iteration mode (0 - direct iterations,
   !>                                                         "next_iteration" provides Af
   !>                                                         and q is provided as an input via
   !>                                                         "result"
   !>                                                     1 - "next_iteration" provides Af+q,
-  !>                                                     2 - "next_iteration" provides Af
-  !>                                                         and q is provided as an input via
-  !>                                                         "result", preconditioner stays
-  !>                                                         allocated. If the routine is
-  !>                                                         re-entered with this mode, old
-  !>                                                         preconditioner is used
+  !>                                                         preconditioner stays allocated.
+  !>                                                         If the routine is re-entered
+  !>                                                         with this mode, old preconditioner
+  !>                                                         is used, otherwise it is updated
   !>                                                     3 - just dealocates preconditioner
   !>                    n              - system size
   !>                    narn           - maximum number of Arnoldi iterations
   !>                    relerr         - relative error
   !>                    itermax        - maximum number of combined iterations
-  !>                    result_        - used as an input in mode_in=2
+  !>                    result_        - source vector q for kinetic equation L f = q, see
+  !>                                     comments to "next_iteration" routine.
   !>                    next_iteration - routine computing next iteration, "fnew",
   !>                                     of the solution from the previous, "fold",
   !>                                          fnew = A fold + q
@@ -43,9 +66,8 @@ contains
   !>
   !> Output parameters:
   !>            Formal: result         - solution vector
-  SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, problem_type, &
-    & coef_dens, coef_energ, denom_energ, denom_dens, densvec_bra, densvec_ket, &
-    & energvec_bra, energvec_ket, next_iteration)
+  SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, &
+    & next_iteration)
 
     use mpiprovider_module, only : mpro
     use collisionality_mod, only : num_spec
@@ -55,7 +77,6 @@ contains
     ! tol0 - largest eigenvalue tolerated in combined iterations:
     INTEGER,          PARAMETER :: ntol0=10
     DOUBLE PRECISION, PARAMETER :: tol0=0.5d0
-    double precision, parameter :: urfac = 0.5d0
 
     interface
       subroutine next_iteration(n,fold,fnew)
@@ -65,11 +86,6 @@ contains
     end interface
 
     integer :: ispec
-    logical, intent(in) :: problem_type
-    complex(kind=kind(1d0)), intent(out) :: coef_dens, coef_energ
-    complex(kind=kind(1d0)), intent(in) :: denom_energ, denom_dens
-    complex(kind=kind(1d0)), dimension(:), intent(in) :: densvec_bra, densvec_ket
-    complex(kind=kind(1d0)), dimension(:), intent(in) :: energvec_bra, energvec_ket
     INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
     DOUBLE PRECISION :: relerr
     COMPLEX(kind=kind(1d0)), DIMENSION(n), intent(inout) :: RESULT_
@@ -86,18 +102,14 @@ contains
       mode=mode_in
       IF(ALLOCATED(ritznum)) DEALLOCATE(eigvecs,ritznum)
       RETURN
-    ELSEIF(mode_in.EQ.2) THEN
-      IF(mode.EQ.2) THEN
+    ELSEIF(mode_in.EQ.1) THEN
+      IF(mode.EQ.1) THEN
         iarnflag=0
       ELSE
         iarnflag=1
         IF(ALLOCATED(ritznum)) DEALLOCATE(eigvecs,ritznum)
         ALLOCATE(ritznum(narn))
       ENDIF
-    ELSEIF(mode_in.EQ.1) THEN
-      iarnflag=1
-      IF(ALLOCATED(ritznum)) DEALLOCATE(eigvecs,ritznum)
-      ALLOCATE(ritznum(narn))
     ELSEIF(mode_in.EQ.0) THEN
       iarnflag=0
       ngrow=0
@@ -107,21 +119,7 @@ contains
     ENDIF
 
     ALLOCATE(fzero(n))
-
-    if (mode_in .NE. 1) fzero = RESULT_
-    ! Regularization:
-    if (problem_type) then
-      ! remove maxwellian particles
-      coef_dens = SUM(densvec_bra*fzero)/denom_dens
-      fzero = fzero-coef_dens*densvec_ket
-      ! remove energy
-      coef_energ = SUM(energvec_bra*fzero)/denom_energ
-      fzero = fzero-coef_energ*energvec_ket
-    end if
-
-    IF(mode_in.NE.1) fzero=RESULT_
-
-    mode=mode_in
+    fzero = RESULT_
 
     IF(iarnflag.EQ.1) THEN
 
@@ -146,14 +144,20 @@ contains
 
     ALLOCATE(fold(n),fnew(n))
 
+    mode = mode_in
+
     ! there are no bad eigenvalues, use direct iterations:
     IF(ngrow.EQ.0) THEN
 
-      fold=fzero
+      if (mode .eq. 2) then
+        fold = fzero
+      else
+        fold = (0.0d0, 0.0d0)
+      end if
 
       DO iter=1,itermax
         CALL next_iteration(n,fold,fnew)
-        IF(mode.EQ.2 .OR. mode.EQ.0) fnew=fnew+fzero
+        if (mode .EQ. 2) fnew = fnew + fzero
         break_cond1(ispec)=SUM(ABS(fnew-fold))
         break_cond2(ispec)=relerr*SUM(ABS(fnew))
         PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
@@ -223,7 +227,7 @@ contains
       CALL mpro%allgather_double_1(break_cond1(ispec), break_cond1)
       CALL mpro%allgather(break_cond2(ispec), break_cond2)
       IF(ALL(break_cond1 .LE. break_cond2)) EXIT
-      fold = urfac*fold + (1.d0-urfac)*fnew
+      fold = fnew
       IF(iter.EQ.itermax) PRINT *,'iterator: maximum number of iterations reached'
     ENDDO
 
@@ -232,7 +236,6 @@ contains
     RESULT_=fnew
 
     DEALLOCATE(coefren,amat,bvec,ipiv,fold,fnew,fzero)
-    IF(mode.EQ.1) DEALLOCATE(eigvecs,ritznum)
 
   END SUBROUTINE iterator
 
@@ -292,12 +295,11 @@ contains
 
     hmat=(0.d0,0.d0)
 
-    IF(mode.EQ.1) THEN
-      CALL next_iteration(n,fold,fnew)
-      fzero=fnew
-    ELSEIF(mode.EQ.2) THEN
-      fnew=fzero
-    ENDIF
+    mode = 1
+
+    CALL next_iteration(n,fold,fnew)
+
+    mode = 2
 
     IF(ALLOCATED(q_spec)) DEALLOCATE(q_spec)
     ALLOCATE(q_spec(0:num_spec-1))
@@ -321,12 +323,7 @@ contains
 
       DO k=mbeg,m
         fold=qvecs(:,k-1)
-        CALL next_iteration(n,fold,fnew)
-        IF(mode.EQ.1) THEN
-          qvecs(:,k)=fnew-fzero
-        ELSEIF(mode.EQ.2) THEN
-          qvecs(:,k)=fnew
-        ENDIF
+        qvecs(:,k)=fnew
         DO j=1,k-1
           h_spec=0.0d0
           h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))

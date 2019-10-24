@@ -3889,9 +3889,7 @@ RETURN
         mode_iter=2
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & bvec_sp, ispec, problem_type, coef_dens, coef_energ, denom_energ, &
-          & denom_dens, densvec_bra, densvec_ket, &
-          & energvec_bra, energvec_ket,next_iteration)
+          & bvec_sp, ispec, next_iteration)
 !
       ENDIF
 !
@@ -3937,9 +3935,7 @@ RETURN
         mode_iter=2
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & bvec_sp, ispec, problem_type, coef_dens, coef_energ, denom_energ, &
-          & denom_dens, densvec_bra, densvec_ket, &
-          & energvec_bra, energvec_ket,next_iteration)
+          & bvec_sp, ispec, next_iteration)
 !
       ENDIF
 !
@@ -4324,19 +4320,14 @@ PRINT *,' '
         !! Modification by Andreas F. Martitsch (23.08.2015)
         ! old behavior (for a single species):
         !CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
-        !  & source_vector(:,k), ispec, problem_type, coef_dens, coef_energ, &
-        !  & denom_energ, denom_dens, densvec_bra, densvec_ket, &
-        !  & energvec_bra, energvec_ket,next_iteration)
+        !  & source_vector(:,k), ispec, next_iteration)
         !source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow     
         !  multi-species part:
         DO ispecp=0,num_spec-1
           PRINT *,'species',ispecp,':'
           drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
-                        source_vector_all(:,k,ispecp), ispec, problem_type, &
-                        & coef_dens, coef_energ, denom_energ, denom_dens, &
-                        & densvec_bra, densvec_ket, &
-                        & energvec_bra, energvec_ket,next_iteration)
+                        source_vector_all(:,k,ispecp), ispec, next_iteration)
 !
 ! Debugging - plot first eigenvector
 !IF(lsw_debug_eigvec .AND. mpro%getrank().EQ.0) THEN
@@ -4363,9 +4354,7 @@ PRINT *,' '
         mode_iter=3
 !
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & source_vector(:,k), ispec, problem_type, coef_dens, coef_energ, denom_energ, &
-          & denom_dens, densvec_bra, densvec_ket, &
-          & energvec_bra, energvec_ket, next_iteration)
+          & source_vector(:,k), ispec, next_iteration)
 !
       ENDIF
 !
