@@ -314,7 +314,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   niter=100       !maximum number of integral part iterations
   n_arnoldi=500     !maximum number of Arnoldi iterations
   isw_regper=1       !regulariization by periodic boundary condition
-
+  epserr_iter=1.d-7  !relative error of integral part iterations
   sparse_solve_method = 3 !2 !2,3 - with and without iterative refinement, resp.
 
   addboucol=.true.
