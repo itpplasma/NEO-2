@@ -3,20 +3,35 @@
 % Function that loads profile data for a shot and makes some
 % preprocessing.
 %
-% It requires the six files ne_ida_shot_designation_rhopol.dat,
-% ne_ida_shot_designation_rhotor.dat, Te_ida_shot_designation_rhopol.dat,
-% Ti_cez_shot_designation_rhopol.dat, vrot_ida_shot_designation_rhopol.dat,
-% and vrot_ida_shot_designation_R.dat. Here shot_designation is a common
-% part in the filenames, that might be specific to the shot (and
-% timepoint) one whant to load.
-%
+% It requires the quantities rhotoroidal, electron density, electron
+% temperature, ion temperature, rotation velocity and major radius, each
+% as a function of rhopoloidal.
+% Rhotoroidal might be given implicitly by having one quantity (e.g.
+% electron density) as a function of both, rhotoroidal and rhopoloidal
+% (maybe in different files), or explicitly in an own file.
+% Major radius can either be an additional column in the file with the
+% rotation velocity, or it can be given in an additional file with the
+% same grid as the rotation velocity.
+% In all the other cases it is assumed that the first column of the
+% respective file is rhopoloidal.
 %
 % Input:
 %   path_to_shot: string with the location to the shot, e.g. "example_folder/SHOTS/NUMBER_12345/".
-%   shot_designation: string whith the common part of the filenames. See
-%     above for the expected naming scheme.
+%   data_source: a structure with at least the fields 'rhopoloidal',
+%     'rhotoroidal', 'electron_density', 'electron_temperature',
+%     'ion_temperature', 'rotation_velocity' and 'major_radius'
+%     corresponding to the required quantities to generate the output.
+%     Each of these fields is expected to be a structure, with at least
+%     the fields 'filename' and 'column'. The former is a string that
+%     contains the name off the file where to find the data for the
+%     coresponding quantity, while the later is the number of the
+%     column in which to find this quantity in the file.
 %   gridpoints: number of points to use for the (equidistant) rho_pol grid.
 %   do_plots: logical, if true, do some plots.
+%   input_unit_type: determines in what units the input is.
+%     1: 10^19/m^3 for density (=10^13/cm^3), keV for temperatures,
+%       km?/s for velocity.
+%     2: 1/m^3 for density, eV for temperatures, rad/s for velocity
 %
 % Output:
 %  rho_pol
@@ -25,7 +40,9 @@
 %  Ti_eV
 %  Te_eV
 %  vrot
-function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, shot_designation, gridpoints, do_plots)
+function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, data_source, gridpoints, do_plots, input_unit_type)
+
+
   % Definitions for constants used for conversion
   transform_keV_to_eV = 1.0e3;
   transform_eV_to_keV = 1.0/transform_keV_to_eV;
@@ -36,32 +53,48 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
   transform_oneoverm3_to_1013overcm3 = 1.0e-19;
   transform_1013overcm3_to_oneoverm3 = 1.0/transform_oneoverm3_to_1013overcm3;
 
-  rho_pol=linspace(0,1,gridpoints);
+  switch (input_unit_type)
+  case 1
+    transform_density = transform_1013overcm3_to_oneoverm3;
+    transform_temperature = transform_keV_to_eV;
+    transform_rotation = transform_kHz_to_Hz;
+  case 2
+    transform_density = 1;
+    transform_temperature = 1;
+    transform_rotation = 1;
+  otherwise
+    transform_density = transform_1013overcm3_to_oneoverm3;
+    transform_temperature = transform_keV_to_eV;
+    transform_rotation = transform_kHz_to_Hz;
+  end
 
-  frp=load([path_to_shot, '/ne_ida_', shot_designation,'_rhopol.dat']);
-  frt=load([path_to_shot, '/ne_ida_', shot_designation,'_rhotor.dat']);
+  rho_pol = linspace(0,1,gridpoints);
 
-  rho_tor=spline(frp(:,1),frt(:,1),rho_pol);
-  rho_tor(1)=0;
-  rho_tor(end)=1;
+  frp = load([path_to_shot, data_source.rhopoloidal.filename]);
+  frt = load([path_to_shot, data_source.rhotoroidal.filename]);
 
-  ne_si=spline(frp(:,1),frp(:,2),rho_pol)*transform_1013overcm3_to_oneoverm3;
+  rho_tor = spline(frp(:, data_source.rhopoloidal.column), frt(:,data_source.rhotoroidal.column), rho_pol);
+  rho_tor(1) = 0;
+  rho_tor(end) = 1;
+
+  frp = load([path_to_shot, data_source.electron_density.filename]);
+  ne_si = spline(frp(:,1), frp(:, data_source.electron_density.column), rho_pol)*transform_density;
 
 
-  frp=load([path_to_shot, '/Te_ida_', shot_designation,'_rhopol.dat']);
-  Te_eV=spline(frp(:,1),frp(:,2),rho_pol)*transform_keV_to_eV;
+  frp = load([path_to_shot, data_source.electron_temperature.filename]);
+  Te_eV = spline(frp(:,1), frp(:, data_source.electron_temperature.column), rho_pol)*transform_temperature;
 
 
-  frp=load([path_to_shot, '/Ti_cez_', shot_designation,'_rhopol.dat']);
+  frp=load([path_to_shot, data_source.ion_temperature.filename]);
   rho_fit2=rho_pol.^2;
 
   % octave does not have a 'fit' function, only 'fsolve'. Thus this was replaced.
   %[fitobject,gof] = fit(frp(:,1).^2, frp(:,2) ,'poly6');
   %fit2 = fitobject.p1.*(rho_fit2.^6) + fitobject.p2.*(rho_fit2.^5) + fitobject.p3.*(rho_fit2.^4) + fitobject.p4.*(rho_fit2.^3) + fitobject.p5.*(rho_fit2.^2) + fitobject.p6.*rho_fit2+fitobject.p7;
-  [fitobject, gof] = polyfit(frp(:,1).^2, frp(:,2), 6);
+  [fitobject, gof] = polyfit(frp(:,1).^2, frp(:, data_source.electron_temperature.column), 6);
   fit2 = polyval(fitobject, rho_fit2);
 
-  Ti_eV=fit2*transform_keV_to_eV;
+  Ti_eV = fit2*transform_temperature;
 
   if do_plots
     figure
@@ -71,19 +104,24 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
   end
 
 
-  frp=load([path_to_shot, '/vrot_cez_', shot_designation,'_rhopol.dat']);
-  frr=load([path_to_shot, '/vrot_cez_', shot_designation,'_R.dat']);
+  frp = load([path_to_shot, data_source.rotation_velocity.filename]);
+  %frr = load([path_to_shot, data_source.major_radius.filename]);
 
-  frp(:,2)=frp(:,2)./frr(:,1);
-  frp(:,3)=frp(:,3)./frr(:,1);
-  frp(:,4)=frp(:,4)./frr(:,1);
+  switch (input_unit_type)
+  case 1
+    frp(:, data_source.rotation_velocity.column) = frp(:, data_source.rotation_velocity.column)./frr(:, data_source.major_radius.column);
+  case 2
+    frp(:, data_source.rotation_velocity.column) = frp(:, data_source.rotation_velocity.column);
+  otherwise
+    frp(:, data_source.rotation_velocity.column) = frp(:, data_source.rotation_velocity.column)./frr(:, data_source.major_radius.column);
+  end
 
-  frp(:,2:4)=frp(:,2:4)*transform_kHz_to_Hz;
+  frp(:, data_source.rotation_velocity.column) = frp(:, data_source.rotation_velocity.column)*transform_rotation;
 
-  [fitobject, gof] = polyfit(frp(:,1).^2, frp(:,2), 6);
+  [fitobject, gof] = polyfit(frp(:,1).^2, frp(:, data_source.rotation_velocity.column), 6);
   fit2 = polyval(fitobject, rho_fit2);
 
-  vrot=fit2;
+  vrot = fit2;
 
   if do_plots
     figure
