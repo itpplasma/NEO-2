@@ -6,10 +6,12 @@
 %   where '#mode' is replaced with the mode number.
 % file_ext: file extension of input file. If not passed or empty, it is
 %   assumed there is no file extension.
-function extract_pert_field(file_base, file_ext)
+function extract_pert_field(file_base, file_ext, file_descr)
+  if nargin < 3 || isempty(file_descr)
+    file_descr = 'cos_harm'; % additional info (some extra info given by the filename)
+  end
 
   %file_base = 'aug_2_n0_shortto_m12-pert-2-3'%'aug_2_rmp-n0.bc'; % 'tok-synch2.bc'; % data file base name (identifier)
-  file_descr = 'cos_harm'; % additional info (some extra info given by the filename)
   %file_ext = 'bc'; %extension
 
   % I try to read the file
