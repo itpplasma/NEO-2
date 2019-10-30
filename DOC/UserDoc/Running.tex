@@ -78,8 +78,13 @@ folder.
 
 \paragraph{Input profile}
 \neotwo requires the profile input to be in the form of a hdf5 file. The
-matlab script \program{generate\_neo2\_profile.m} is available to create
-these from text-data files (of density, temperature,...).
+matlab function \program{generate\_neo2\_profile.m} is available to create
+these from text-data files. As input, loaded from textfile, it requires
+the profiles of density, temperature, rotation velocity as a function of
+$\rho_{poloidal}$. Second the rotation veloctiy as a function
+of major radius is needed, if the rotation velocity is given in $m/s$
+(not if it is given in $rad/s$). Third, the values of $\rho_{toroidal}$
+corresponding to the values of $\rho_{poloidal}$ are needed.
 
 Copy the directory with the profiles (e.g. \tpath{/temp/kasilov/ASDEX\_MODES\_IGOSHINE/neo2\_profiles/}).
 
