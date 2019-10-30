@@ -1,15 +1,65 @@
 % matlab -nodesktop -nosplash -r "path('/afs/itp.tugraz.at/user/buchholz/Programs/neo-2/OctaveScripts', path); generate_neo2_profile; exit(0);"
 
-function generate_neo2_profile(hdf5FileName, path_to_shot, shot_designation)
+% Input:
+%   hdf5FileName: name for hdf5 file that is produced. Defaults to
+%     'multi_spec_Valentin.in'.
+%   path_to_shot: path to the shoot where the data is. Defaults to
+%     'SHOT35568/'.
+%   data_source: a structure, is passed to function 'load_profile_data',
+%     see there for details.
+%   species_definition: three dimensional array. The size of the first
+%     dimension determines the number of radial points to use. The
+%     second dimension determines the number of species. The third
+%     dimension has two entries, refering to the charge and mass of the
+%     corresponding species at the respecitve radial location.
+%     Might be hard to imagine why the mass should vary, but the charge
+%     could simply vary due to the change in temperature.
+function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_definition, isw_Vphi_loc, species_tag_Vphi, input_unit_type)
   if nargin() < 1 || isempty(hdf5FileName)
     hdf5FileName = 'multi_spec_Valentin.in';
   end
   if nargin() < 2 || isempty(path_to_shot)
     path_to_shot = 'SHOT35568/';
   end
-  if nargin() < 2 || isempty(shot_designation)
-    shot_designation = '35568_t2.6881';
+  if nargin() < 3 || isempty(data_source)
+    shot_designation = '35568_t2.6881'
+    data_source.rhopoloidal.filename = ['ne_ida_', shot_designation,'_rhopol.dat'];
+    data_source.rhopoloidal.column = 1;
+    data_source.rhotoroidal.filename = ['ne_ida_', shot_designation,'_rhotor.dat'];
+    data_source.rhotoroidal.column = 1;
+    data_source.electron_density.filename = ['ne_ida_', shot_designation,'_rhopol.dat'];
+    data_source.electron_density.column = 2;
+    data_source.electron_temperature.filename = ['Te_ida_', shot_designation,'_rhopol.dat'];
+    data_source.electron_temperature.column = 2;
+    data_source.ion_temperature.filename = ['Ti_cez_', shot_designation,'_rhopol.dat'];
+    data_source.ion_temperature.column = 2;
+    data_source.rotation_velocity.filename = ['vrot_cez_', shot_designation,'_rhopol.dat'];
+    data_source.rotation_velocity.column = 2;
+    data_source.major_radius.filename = ['vrot_cez_', shot_designation,'_R.dat'];
+    data_source.major_radius.column = 1;
   end
+  if nargin() < 4 || isempty(species_definition)
+    Zi=1; % ion charge number (deuterium)
+    mi=3.3436e-24; % ion mass (deuterium)
+    Ze=-1;% electron charge number
+    me=9.1094e-28; % electron mass
+    species_definition(1,1,1) = Ze;
+    species_definition(1,1,2) = me;
+    species_definition(1,2,1) = Zi;
+    species_definition(1,2,2) = mi;
+    species_definition = repmat(species_definition, gridpoints, 1, 1);
+  end
+  if nargin() < 5 || isempty(isw_Vphi_loc)
+    isw_Vphi_loc = 0;
+  end
+  if nargin() < 6 || isempty(species_tag_Vphi)
+    species_tag_Vphi = 2;
+  end
+  if nargin() < 7 || isempty(input_unit_type)
+    input_unit_type = 1;
+  end
+  gridpoints = size(species_definition, 1);
+  num_species = size(species_definition, 2);
 
   %% UNIT CONV DEF
   ELEMENTARY_CHARGE_SI = 1.60217662e-19;
@@ -18,20 +68,9 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, shot_designation)
   DENSITY_SI_TO_CGS = 1e-6;
   ENERGY_TO_CGS = 1e7;
   EV_TO_CGS = EV_TO_SI * ENERGY_TO_CGS;
-  CHARGE_SI_TO_CGS = 10*SPEED_OF_LIGHT_SI;% Conversion factor is not speed of light, but 10c.
+  CHARGE_SI_TO_CGS = 10*SPEED_OF_LIGHT_SI;% Conversion factor is not speed of light, but 10c_si.
 
-  gridpoints = 100;
-  num_species = 2;
-  isw_Vphi_loc = 0;
-  species_tag_Vphi = 2;
-
-  [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, shot_designation, gridpoints, 0);
-
-  %% SPEC DEF
-  Zi=1; % ion charge number (deuterium)
-  mi=3.3436e-24; % ion mass (deuterium)
-  Ze=-1;% electron charge number
-  me=9.1094e-28; % electron mass
+  [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, data_source, gridpoints, 0, input_unit_type);
 
   %% BOOZER S
   boozer_s = (rho_tor).^2;
@@ -53,12 +92,6 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, shot_designation)
   %% SPEC INIT
   num_radial_pts = length(rho_pol);
   species_tag=1:num_species;
-  species_def=zeros(num_radial_pts,num_species,2);
-
-  species_def(:,1,1) = Ze;
-  species_def(:,1,2) = me;
-  species_def(:,2,1) = Zi;
-  species_def(:,2,2) = mi;
 
   rel_stages = zeros(1, num_radial_pts);
   rel_stages(:) = species_tag_Vphi;
@@ -83,7 +116,7 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, shot_designation)
 
 
   %% WRITE HDF5
-  system(['rm ',hdf5FileName])
+  system(['rm ',hdf5FileName]);
 
   % The part below does not work in octave (at least 4.0.3), as h5create is missing.
   h5create(hdf5FileName,'/num_radial_pts',1,'DataType','int32')
@@ -94,7 +127,7 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, shot_designation)
   h5create(hdf5FileName,'/species_tag',num_species,'DataType','int32')
   h5write(hdf5FileName,'/species_tag',int32(species_tag))
   h5create(hdf5FileName,'/species_def',[num_radial_pts,num_species, 2],'DataType','double')
-  h5write(hdf5FileName,'/species_def',species_def)
+  h5write(hdf5FileName,'/species_def',species_definition)
 
 
   h5create(hdf5FileName,'/boozer_s',num_radial_pts,'DataType','double')
