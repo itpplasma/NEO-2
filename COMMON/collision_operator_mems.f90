@@ -52,8 +52,13 @@ module collop
     subroutine collop_construct()
       if ((mpro%getNumProcs() .ne. num_spec) .and. lsw_multispecies) then
         write(*,*)
-        write(*,*) 'WARNING: CODE might not be correct if number of processors is not equal to the number of species!'
+        write(*,*) 'WARNING: code might not be correct if number of processors is not equal to the number of species!'
+        write(*,*) ' Only case with #processors = 1 is allowed to&
+          & continue for testing purposes otherwise code will stop.'
         write(*,*)
+        if (mpro%getNumProcs() > 1) then
+          stop 'ERROR: number of species != number of processors > 1.'
+        end if
       end if
 
     end subroutine collop_construct
