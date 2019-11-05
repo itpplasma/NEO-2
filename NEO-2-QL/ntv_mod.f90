@@ -21,6 +21,7 @@ MODULE ntv_mod
   REAL(kind=dp), PARAMETER, PUBLIC :: u=1.660539040e-24_dp ! atomic mass unit
 
   real(kind=dp), parameter, public :: epsilon_transport_coefficients = 1.0e-3
+  real(kind=dp), parameter, public :: epsilon_particle_flux = 1.0e-3
   !
   ! INPUT
   !> switch: turn on(=1)/off(=0) ntv mode (not used at the moment)
@@ -1761,6 +1762,9 @@ CONTAINS
     if (.not. check_coefficients(.true.)) then
       write(*,*) 'WARNING: sanity checks of the D1-_AX coefficients failed.'
     end if
+    if (.not. check_ambipolarity_particle_flux(.true.)) then
+      write(*,*) 'WARNING: sanity check of ambipolarity of particle flux failed.'
+    end if
 
   contains
 
@@ -1968,6 +1972,32 @@ CONTAINS
       ind = (k-1)*num_spec + (l-1)
     end function return_linear_species_index
 
+    function check_ambipolarity_particle_flux(verbose) result(passed)
+      use collisionality_mod, only : num_spec, z_spec
+
+      implicit none
+
+      logical :: passed
+      logical, intent(in) :: verbose
+
+      real(kind=dp) :: sum_fluxes
+
+      integer :: k
+
+      sum_fluxes = 0.0
+      passed = .false.
+
+      do k = 1, num_spec
+        sum_fluxes = sum_fluxes + Gamma_AX_spec(k)*z_spec(k)
+      end do
+
+      if (abs(sum_fluxes) < epsilon_particle_flux) then
+        passed = .true.
+      else if (verbose) then
+        write(*,*) 'WARNING: particle flux not ambipolar to accuracy ', epsilon_particle_flux
+        write(*,*) '  sum is: ', sum_fluxes
+      end if
+    end function check_ambipolarity_particle_flux
   END SUBROUTINE write_multispec_output_a
   !
   SUBROUTINE compute_Er(row_ind_ptr, col_ind_ptr, D31AX_spec, D32AX_spec, &
