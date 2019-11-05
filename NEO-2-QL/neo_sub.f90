@@ -60,32 +60,30 @@ SUBROUTINE neo_init(npsi)
 ! Calculation of rt0 and bmref (innermost flux surface)
 ! might be changed later
 ! **********************************************************************
-  !! Modifications by Andreas F. Martitsch (18.09.2015)
-  !--> compute normalization Bref
-  ! old (Bref=B00 on innermost flux surface):
-!!$  rt0=0.0_dp
-!!$  bmref=0.0_dp
-!!$  DO imn=1,mnmax
-!!$     IF(ixm(imn).EQ.0 .AND. ixn(imn).EQ.0) THEN
-!!$        rt0 = rmnc(1,imn)
-!!$        bmref = bmnc(1,imn)
-!!$        
-!!$        rt0_g = rt0
-!!$        bmref_g = bmref
-!!$     ENDIF
-!!$  ENDDO
-  ! new (Bref set according to ref_swi):
   rt0=0.0_dp
   bmref=0.0_dp
-  CALL calc_Bref(bmref,rt0)
-  rt0_g = rt0
-  bmref_g = bmref
-  !! End Modifications by Andreas F. Martitsch (18.09.2015)
+  if (.false.) then
+    DO imn=1,mnmax
+       IF(ixm(imn).EQ.0 .AND. ixn(imn).EQ.0) THEN
+          rt0 = rmnc(1,imn)
+          bmref = bmnc(1,imn)
+
+          rt0_g = rt0
+          bmref_g = bmref
+       ENDIF
+    ENDDO
+  else
+    ! new (Bref set according to ref_swi):
+    CALL calc_Bref(bmref,rt0)
+    rt0_g = rt0
+    bmref_g = bmref
+  end if
+
   IF(rt0.EQ.0.0_dp .OR. bmref.EQ.0.0_dp) THEN
     WRITE (w_us,*) ' NEO_INIT: Fatal problem setting rt0 or bmref'
     STOP
   ENDIF
-!
+
   nper = nfp
 ! **********************************************************************
   w_u6_open = 0
