@@ -96,7 +96,7 @@ if (MPE_SUPPORT)
                 include_directories(${MPE_PATH}/include)
         endif ()
         add_definitions(-DMPE_SUPPORT)
-	find_library(MPE_lib mpe ${MPE_PATH}/lib)
+        find_library(MPE_lib mpe ${MPE_PATH}/lib)
 endif ()
 
 ### HDF5
@@ -178,32 +178,32 @@ configure_file (
 ### Define executable
 add_executable(${EXE_NAME}
         ${NEO2_SRC_FILES}
-	${NEO2_COMMON_FILES}
-	${SUITESPARSE_SRC_FILES}
-	${SUPERLU_SRC_FILES}
-	${FGSL_USERINTER_SRC_FILES}
-	${COLLOPLIB_FILES}
+        ${NEO2_COMMON_FILES}
+        ${SUITESPARSE_SRC_FILES}
+        ${SUPERLU_SRC_FILES}
+        ${FGSL_USERINTER_SRC_FILES}
+        ${COLLOPLIB_FILES}
 )
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-	set(LINALG_LIBRARIES ${open_blas_lib} ${open_blas_lapack_lib} pthread)
-	#  set(LINALG_LIBRARIES ${lapack_lib} ${f77blas_lib} ${atlas_lib})
+  set(LINALG_LIBRARIES ${open_blas_lib} ${open_blas_lapack_lib} pthread)
+  #  set(LINALG_LIBRARIES ${lapack_lib} ${f77blas_lib} ${atlas_lib})
 endif ()
 
 ### Add libraries linked with executable
 target_link_libraries(${EXE_NAME}
         ${fgsl_lib} ${gsl_lib}
         ${SUPERLU_LIBRARIES}
-	${SUITESPARSE_LIBRARIES}
+        ${SUITESPARSE_LIBRARIES}
         ${MyMPILib_lib}
         ${MPE_lib}
         ${MPI_Fortran_LIBRARIES}
-	${HDF5_tools_lib}
-	${HDF5_Fortran_HL_LIBRARIES}
-	${HDF5_HL_LIBRARIES}
-	${HDF5_Fortran_LIBRARIES}
-	${HDF5_LIBRARIES}
-	${LINALG_LIBRARIES}
+        ${HDF5_tools_lib}
+        ${HDF5_Fortran_HL_LIBRARIES}
+        ${HDF5_HL_LIBRARIES}
+        ${HDF5_Fortran_LIBRARIES}
+        ${HDF5_LIBRARIES}
+        ${LINALG_LIBRARIES}
         )
 
 add_custom_target(
