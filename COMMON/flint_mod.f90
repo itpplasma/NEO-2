@@ -56,7 +56,6 @@ contains
     ! and "magdata_for_particles".
     USE mag_sub, ONLY: mag
     !! End Modifications by Andreas F. Martitsch (09.03.2014)
-    USE mpiprovider_module
 
     IMPLICIT NONE
     INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -92,9 +91,6 @@ contains
     ! efit
     INTEGER :: ierr
     !
-
-    ! species index
-    INTEGER :: ispec, ispecp
 
     IF (mag_coordinates .EQ. 0) THEN
        IF (mag_magfield .EQ. 3) THEN ! EFIT
@@ -158,34 +154,49 @@ contains
        CALL make_magnetics(xstart)
     END IF
 
-    IF (.NOT. lsw_multispecies) THEN
+    call set_collpar()
+
+  END SUBROUTINE flint_prepare
+
+  subroutine set_collpar()
+    use mpiprovider_module, only : mpro
+
+    use collisionality_mod, only : collpar, conl_over_mfp, collpar_min, &
+      & collpar_max, lsw_multispecies, num_spec, conl_over_mfp_spec, collpar_spec
+    use device_mod, only : device
+
+    implicit none
+
+    integer, parameter :: dp = kind(1.0d0)
+    real(kind=dp), parameter :: pi=3.14159265358979d0
+
+    ! species index
+    integer :: ispec
+
+    if (.NOT. lsw_multispecies) then
        ! negative input for conl_over_mfp should provide collpar directly
-       IF (conl_over_mfp .GT. 0.0d0) THEN
+       if (conl_over_mfp .gt. 0.0d0) then
           collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
-       ELSE
+       else
           collpar=-conl_over_mfp
-       END IF
+       end if
        collpar_max = collpar
        collpar_min = collpar
-    ELSE
-       IF(ALLOCATED(collpar_spec)) DEALLOCATE(collpar_spec)
-       ALLOCATE(collpar_spec(0:num_spec-1))
+    else
+       if (allocated(collpar_spec)) deallocate(collpar_spec)
+       allocate(collpar_spec(0:num_spec-1))
        ! negative input for conl_over_mfp_spec should provide collpar_spec directly
-       IF (ALL(conl_over_mfp_spec .GT. 0.0d0)) THEN
+       if (all(conl_over_mfp_spec .gt. 0.0d0)) then
           collpar_spec=4.d0/(2.d0*pi*device%r0)*conl_over_mfp_spec
-          !PRINT *,'1'
-          !STOP
-       ELSE IF (ALL(conl_over_mfp_spec .LE. 0.0d0)) THEN
+       else if (all(conl_over_mfp_spec .le. 0.0d0)) then
           collpar_spec=-conl_over_mfp_spec
-          !PRINT *,'2'
-          !STOP
-       ELSE
-          PRINT *,"flint.f90: Values of collisionality &
+       else
+          print *,"set_collpar: Values of collisionality &
                &parameter conl_over_spec not consistent!"
-          PRINT *,"flint.f90: All entries of conl_over_spec &
+          print *,"set_collpar: All entries of conl_over_spec &
                &must be >0 or <=0"
-          STOP
-       END IF
+          stop
+       end if
        ! species index
        ispec = mpro%getRank()
        ! set collisionality parameter for species 'ispec'
@@ -197,9 +208,8 @@ contains
        ! (ToDo: species-dependent refinement - re-discretization)
        collpar_max = collpar_spec(0)
        collpar_min = collpar_spec(0)
-    END IF
-
-  END SUBROUTINE flint_prepare
+    end if
+  end subroutine set_collpar
 
   SUBROUTINE flint_prepare_2(bin_split_mode,eta_s_lim)
     USE collisionality_mod, ONLY : collpar_min
