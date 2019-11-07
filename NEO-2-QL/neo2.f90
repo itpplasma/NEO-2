@@ -14,7 +14,7 @@ PROGRAM neo2
        bsfunc_modelfunc_num,bsfunc_divide,                          &
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,        &
        bsfunc_local_shield_factor,bsfunc_shield, flint_prepare,     &
-       flint_prepare_2
+       flint_prepare_2, set_collpar
   USE device_mod
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
@@ -401,19 +401,26 @@ PROGRAM neo2
      STOP
   END IF
 
-  ! ---------------------------------------------------------------------------
-  ! some settings
-  ! nmat=npart*npart
-  ndim=ndim0
-  ! allocation of some arrays (should be moved)
-  ! this part was not touched
-  lalloc=.true.
-  CALL kin_allocate(lalloc)
-  ! ---------------------------------------------------------------------------
+  ! If necessary do this initialization now, if not, then they are done
+  ! after computing the collision operator.
+  if (((.not. lsw_multispecies) .and. conl_over_mfp .gt. 0.0d0) &
+    & .or. (lsw_multispecies .and. all(conl_over_mfp_spec .gt. 0.0d0))) then
+    ! ---------------------------------------------------------------------------
+    ! some settings
+    ! nmat=npart*npart
+    ndim=ndim0
+    ! allocation of some arrays (should be moved)
+    ! this part was not touched
+    lalloc=.true.
+    call kin_allocate(lalloc)
+    ! ---------------------------------------------------------------------------
 
-  ! ---------------------------------------------------------------------------
-  ! prepare the whole configuration
-  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
+    ! ---------------------------------------------------------------------------
+    ! prepare the whole configuration
+    call flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
+  else
+    call set_collpar()
+  end if
 
   ! ---------------------------------------------------------------------------
   ! matrix elements
@@ -455,24 +462,24 @@ PROGRAM neo2
   END IF
   ! ---------------------------------------------------------------------------
 
+  if (((.not. lsw_multispecies) .and. conl_over_mfp .le. 0.0d0) &
+    & .or. (lsw_multispecies .and. all(conl_over_mfp_spec .le. 0.0d0))) then
+    ! ---------------------------------------------------------------------------
+    ! some settings
+    ! nmat=npart*npart
+    ndim=ndim0
+    ! allocation of some arrays (should be moved)
+    ! this part was not touched
+    lalloc=.true.
+    CALL kin_allocate(lalloc)
+    ! ---------------------------------------------------------------------------
 
+    ! ---------------------------------------------------------------------------
+    ! prepare the whole configuration
+    call flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
+  end if
 
-     ! ---------------------------------------------------------------------------
-!!$  ! THIS PART WAS MOVED BEFORE COLLOP
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! some settings
-!!$  ! nmat=npart*npart
-!!$  ndim=ndim0
-!!$  ! allocation of some arrays (should be moved)
-!!$  ! this part was not touched
-!!$  lalloc=.true.
-!!$  CALL kin_allocate(lalloc)
-!!$  ! ---------------------------------------------------------------------------
-!!$
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! prepare the whole configuration
-!!$  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
-     CALL flint_prepare_2(bin_split_mode,eta_s_lim)
+  call flint_prepare_2(bin_split_mode,eta_s_lim)
 
      !*********************************************************
      ! Write information about the run to a HDF5 file
