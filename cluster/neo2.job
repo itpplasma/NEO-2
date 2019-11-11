@@ -1,0 +1,23 @@
+#!/bin/bash -l
+# Standard output and error:
+#SBATCH -o ./tjob.out.%j
+#SBATCH -e ./tjob.err.%j
+# Initial working directory:
+#SBATCH -D ./
+# Job Name:
+#SBATCH -J n2_vshift+0e0
+# Queue (Partition):
+#SBATCH --partition=medium
+# Number of nodes and MPI tasks per node:
+#SBATCH --nodes=20
+#SBATCH --ntasks-per-node=5
+#
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=calbert@ipp.mpg.de
+#
+# Wall clock limit:
+#SBATCH --time=12:00:00
+
+# Run the program:
+srun python batch.py
+

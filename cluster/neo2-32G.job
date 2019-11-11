@@ -1,0 +1,30 @@
+#!/bin/bash -l
+# Standard output and error:
+#SBATCH -o ./tjob.out.%j
+#SBATCH -e ./tjob.err.%j
+# Initial working directory:
+#SBATCH -D ./
+# Job Name:
+#SBATCH -J neo2
+# Queue (Partition):
+#SBATCH --partition=tiny
+
+# Don't specify '#SBATCH --nodes' !
+
+# Number of MPI Tasks, e.g. 8:
+#SBATCH --ntasks=2
+#SBATCH --ntasks-per-core=1
+# Memory usage [MB] of the job is required:
+#SBATCH --mem=32000
+#
+#SBATCH --mail-type=none
+#SBATCH --mail-user=calbert@rzg.mpg.de
+#
+# Wall clock limit:
+#SBATCH --time=12:00:00
+
+# Run the program:
+module load mkl 
+export LD_LIBRARY_PATH=$MKLROOT/lib/intel64:$LD_LIBRARY_PATH
+srun ./neo_2.x
+
