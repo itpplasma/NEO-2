@@ -114,11 +114,11 @@
           call alloc_odeint(nvar)
           return
         endif
-        if(abs(hnext).lt.hmin) pause
+        if(abs(hnext).lt.hmin) stop
      *'stepsize smaller than minimum in odeint'
         h=hnext
 16    continue
-      pause 'too many steps in odeint'
+      stop 'too many steps in odeint'
       ialloc=0
       call alloc_odeint(nvar)
       return

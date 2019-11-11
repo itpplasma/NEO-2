@@ -38,11 +38,13 @@ add_latex_document(UserDoc/main.tex
   INPUTS
   UserDoc/Commands.sty
   UserDoc/Bugs.tex
+  UserDoc/Building.tex
   UserDoc/Input.tex
   UserDoc/Introduction.tex
   UserDoc/Output.tex
   UserDoc/Programflow.tex
   UserDoc/Running.tex
+  UserDoc/Theory.tex
   UserDoc/Todo.tex
 )
 

@@ -9,7 +9,7 @@
     INTEGER,          DIMENSION(:),     ALLOCATABLE :: irow_per_neg,icol_per_neg
     DOUBLE PRECISION, DIMENSION(:),     ALLOCATABLE :: amat_symm
     DOUBLE PRECISION, DIMENSION(:),     ALLOCATABLE :: amat_regper
-    DOUBLE COMPLEX,   DIMENSION(:),     ALLOCATABLE :: amat_asymm
+    complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: amat_asymm
     DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: f0_coll,f0_ttmp
     DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: f0_coll_all,f0_ttmp_all
   END MODULE ntv_eqmat_mod
@@ -247,7 +247,6 @@ SUBROUTINE ripple_solver(                                 &
 
   ! integer :: isw_axisymm=0 ! now in collisionality_mod
   niter=1000
-  epserr_iter=1.d-3
   isw_regper=1       !regulariization by periodic boundary condition
 
   !! Modification by Andreas F. Martitsch (28.07.2015)
@@ -2478,8 +2477,6 @@ DO ispecp=0,num_spec-1
                     source_vector_all(:,1:3,ispecp),iopt)
 ENDDO
 !! End Modification by Andreas F. Martitsch (23.08.2015)
-!!$  CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-!!$                    source_vector(:,1:3),iopt)
 CALL cpu_TIME(time2)
 !write (*,*) "Time in first solver:", time2-time1
 !
@@ -2509,10 +2506,6 @@ call cpu_time(time1)
           !! Modification by Andreas F. Martitsch (20.08.2015)
           ! MPI Barrier -> Exchange exit conditions between
           ! different processes
-!!$          IF(SUM(ABS(source_vector(:,k)-bvec_prev)) .LT.                        &
-!!$             SUM(ABS(bvec_prev))*epserr_iter) THEN
-!!$            EXIT
-!!$          ENDIF
           break_cond1(ispec)=SUM(ABS(source_vector_all(:,k,ispecp)-bvec_prev))
           break_cond2(ispec)=SUM(ABS(bvec_prev))*epserr_iter
           PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
@@ -2767,11 +2760,6 @@ ENDDO
 qflux_allspec=qflux_allspec_tmp
 IF(ALLOCATED(qflux_allspec_tmp)) DEALLOCATE(qflux_allspec_tmp)
 IF(mpro%getrank() .EQ. 0) THEN
-  ! D33
-!!$  PRINT *,qflux_allspec(2,2,0,0)
-!!$  PRINT *,qflux_allspec(2,2,1,0)
-!!$  PRINT *,qflux_allspec(2,2,0,1)
-!!$  PRINT *,qflux_allspec(2,2,1,1)
   ! D11
   PRINT *,'qflux(1,1,0,0):'
   PRINT *,qflux_allspec(1,1,0,0)
@@ -3198,24 +3186,6 @@ SUBROUTINE integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
   CALL mpro%allgather_inplace(scalprod_pleg)
   !PRINT *,'mpro%getrank() after:', mpro%getrank()
   !PRINT *,'scalprod_pleg, species = ',ispec
-!!$  IF(mpro%getrank() .EQ. 0) THEN
-!!$  CALL h5_create('scalprod_pleg_ispec0.h5', h5id_scalprod_pleg)
-!!$  CALL h5_add(h5id_scalprod_pleg, 'scalprod_pleg', scalprod_pleg, &
-!!$       LBOUND(scalprod_pleg), UBOUND(scalprod_pleg))
-!!$  CALL h5_close(h5id_scalprod_pleg)
-!!$  !PRINT *,scalprod_pleg(:,:,ibeg,0)
-!!$  !PRINT *,scalprod_pleg(:,:,ibeg,1)
-!!$  END IF
-!!$  IF(mpro%getrank() .EQ. 1) THEN
-!!$  CALL h5_create('scalprod_pleg_ispec1.h5', h5id_scalprod_pleg)
-!!$  CALL h5_add(h5id_scalprod_pleg, 'scalprod_pleg', scalprod_pleg, &
-!!$       LBOUND(scalprod_pleg), UBOUND(scalprod_pleg))
-!!$  CALL h5_close(h5id_scalprod_pleg)
-!!$  !PRINT *,scalprod_pleg(:,:,ibeg,0)
-!!$  !PRINT *,scalprod_pleg(:,:,ibeg,1)
-!!$  END IF
-!!$  CALL mpro%barrier()
-!!$  STOP
   !! End Modification by Andreas F. Martitsch (20.08.2015)
 !
   DO istep=ibeg,iend

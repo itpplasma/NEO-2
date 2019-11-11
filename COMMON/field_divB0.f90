@@ -2,53 +2,11 @@ module period_mod
   double precision :: per_phi, per_tht
 end module period_mod
 
-module input_files
-  character*1024 :: eqfile, cfile, gfile,pfile,convexfile,fluxdatapath
-  integer :: iunit=1738
-  integer :: ieqfile=1
-!
-  data eqfile  /'ASDEX/d3d-087506.03687.equ'/
-  data cfile   /'DATA/ccoil.dat'/
-!  data gfile   /'gfiles/shot115452/g115452.03525'/
-!  data pfile   /'Conly/probe_g129_bfield.out'/  
-end module input_files
-!
-module field_c_mod
-  integer :: icall_c=0
-  integer :: ntor=16
-  integer :: nr,np,nz
-  integer :: icftype
-end module field_c_mod
-!
-module field_eq_mod
-  integer :: icall_eq=0
-  integer :: nrad,nzet,icp,nwindow_r,nwindow_z
-  real(kind=8), parameter                      :: pi=3.14159265358979d0
-  real(kind=8) :: psib,btf,rtf,hrad,hzet
-  real(kind=8), dimension(:,:), allocatable    :: psi, psi0
-  real(kind=8), dimension(:,:,:), allocatable  :: splpsi
-  real(kind=8), dimension(:), allocatable      :: rad, zet, xi,f
-  integer, dimension(:), allocatable           :: imi,ima,jmi,jma
-  integer, dimension(:,:), allocatable         :: ipoint
-  double precision :: psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
-end module field_eq_mod
-!
 module field_mod
   integer          :: icall=0
   integer          :: ipert,iequil
   double precision :: ampl
 end module field_mod
-!
-module inthecore_mod
-  logical :: prop=.true.
-  integer :: npoi,ijumpb,ibeg,iend
-  double precision, parameter :: epssep=1.d-6
-  double precision :: rc,zc,twopi,sig,psi_sep,psi_cut,sigpsi,cutoff
-  double precision, dimension(:), allocatable :: rho2i,theti
-  integer          :: incore
-  double precision :: vacf,dvacdr,dvacdz,d2vacdr2,d2vacdrdz,d2vacdz2
-  double precision :: plaf,dpladr,dpladz,d2pladr2,d2pladrdz,d2pladz2
-end module inthecore_mod
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 ! -----------------------------------------------------------------
@@ -414,7 +372,7 @@ subroutine read_dimeq1(nwEQD,nhEQD)
   implicit none
   integer :: nwEQD, nhEQD,i
   integer :: idum
-  character*10 :: dummy(6)
+  character(len=10) :: dummy(6)
 
   open(unit=iunit,file=trim(gfile),status='old',action='read')
   read(iunit,2000)(dummy(i),i=1,6),idum,nwEQD,nhEQD
@@ -436,7 +394,7 @@ subroutine read_eqfile1(nwEQD,nhEQD,psiSep, bt0, rzero, rad, zet, psiRZ)
 
   integer :: nwEQD, nhEQD
   integer :: gunit, idum
-  character*10 :: dummy(6)
+  character(len=10) :: dummy(6)
   integer :: i,j
   real (kind=8) :: xdim,zdim,r1,zmid,rmaxis,zmaxis,xdum
   real (kind=8) :: bt0, rzero, plas_cur, psiAxis, psiSep

@@ -10,49 +10,6 @@
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  module theta_rz_mod
-    integer :: icall=0
-    integer :: nsqp,nlab,nthe,icp_pt
-    integer, dimension(:,:), allocatable :: ipoint_pt
-    real(kind=8) :: hsqpsi,hlabel,htheqt,psiaxis,sigma_qt,raxis,zaxis
-    real(kind=8), dimension(:,:),   allocatable :: spllabel
-    real(kind=8), dimension(:,:,:), allocatable :: splthet
-    real(kind=8), dimension(:),     allocatable :: sqpsi,flab,theqt
-  end module theta_rz_mod
-!
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!
-  module amn_mod
-! Fourier ampitudes of the original field:
-    integer :: ntor_amn=1,mpol,ntor_ff,mpol_ff,nsqpsi,icall=0
-    double precision :: sqpsimin,sqpsimax,hsqpsi
-    double complex, dimension(:,:,:,:), allocatable :: splapsi,splatet
-    double complex, dimension(:,:), allocatable :: amnpsi,   amntet,     &
-                                                   amnpsi_s, amntet_s,   &
-                                                   amnpsi_ss,amntet_ss
-    double complex, dimension(:),   allocatable :: expthe,expphi
-! Formfactors:
-    integer :: nsqpsi_ff,nmodes_ff
-    double precision :: sqpsimin_ff,sqpsimax_ff,hsqpsi_ff
-    integer,        dimension(:,:), allocatable :: ipoi_ff
-    double complex, dimension(:,:,:), allocatable :: splffp,splfft
-    double complex, dimension(:),   allocatable :: fmnpsi,   fmntet,     &
-                                                   fmnpsi_s, fmntet_s,   &
-                                                   fmnpsi_ss,fmntet_ss
-  end module amn_mod
-!
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!
-  module extract_fluxcoord_mod
-    integer :: load_extract_fluxcoord=1
-    integer :: nphinorm
-    double precision :: psif_extract,theta_extract,psifmin,hpsif
-    double precision :: psifmax,phifmax,sigcos
-    double precision, dimension(:), allocatable :: phinorm_arr
-  end module extract_fluxcoord_mod
-!
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!
   subroutine vector_potentials(nr_in,np_in,nz_in,ntor_in,      &
              rmin_in,rmax_in,pmin_in,pmax_in,zmin_in,zmax_in,  &
              br,bp,bz)
@@ -77,8 +34,8 @@
   double precision, dimension(:,:),   allocatable :: a_re, a_im, rbpav_dummy
   double precision, dimension(:,:),   allocatable :: brm,bpm,bzm
 !
-  double complex :: four_ampl
-  double complex, dimension(:,:), allocatable :: expon
+  complex(kind=kind(1d0)) :: four_ampl
+  complex(kind=kind(1d0)), dimension(:,:), allocatable :: expon
 !
   integer, parameter :: mp=4 ! power of Lagrange's polynomial =3
   integer,          dimension(mp)    :: indx,indy
@@ -168,7 +125,7 @@
 !
   do n=1,ntor
     do ip=1,np
-      expon(ip,n)=exp(dcmplx(0.d0,-n*(ip-1)*hp))/np
+      expon(ip,n)=exp(cmplx(0.d0,-n*(ip-1)*hp, kind=kind(0d0)))/np
     enddo
   enddo
 !
@@ -176,7 +133,7 @@
     do ir=1,nr
       r=rmin+hr*(ir-1)
       do iz=1,nz
-        four_ampl=sum(br(ir,1:np,iz)*expon(:,n))*dcmplx(0.d0,-r/(n*pfac))
+        four_ampl=sum(br(ir,1:np,iz)*expon(:,n))*cmplx(0.d0,-r/(n*pfac), kind=kind(0d0))
         a_re(ir,iz)=dble(four_ampl)
         a_im(ir,iz)=aimag(four_ampl)
       enddo
@@ -186,7 +143,7 @@
     do ir=1,nr
       r=rmin+hr*(ir-1)
       do iz=1,nz
-        four_ampl=sum(bz(ir,1:np,iz)*expon(:,n))*dcmplx(0.d0,r/(n*pfac))
+        four_ampl=sum(bz(ir,1:np,iz)*expon(:,n))*cmplx(0.d0,r/(n*pfac), kind=kind(0d0))
         a_re(ir,iz)=dble(four_ampl)
         a_im(ir,iz)=aimag(four_ampl)
       enddo
@@ -257,8 +214,8 @@
   double precision :: deldBpdR,deldBpdp,deldBpdZ
   double precision :: deldBzdR,deldBzdp,deldBzdZ
   double precision :: ar,az,dar_dr,dar_dz,dar_dp,daz_dr,daz_dz,daz_dp
-  double complex :: expon,anr,anz,anr_r,anr_z,anz_r,anz_z
-  double complex :: anr_rr,anr_rz,anr_zz,anz_rr,anz_rz,anz_zz
+  complex(kind=kind(1d0)) :: expon,anr,anz,anr_r,anr_z,anz_r,anz_z
+  complex(kind=kind(1d0)) :: anr_rr,anr_rz,anr_zz,anz_rr,anz_rz,anz_zz
 !
 !
   call spline(nr,nz,rpoi,zpoi,hr,hz,icp,rbpav_coef,ipoint,r,z,         &
@@ -285,36 +242,36 @@
                 f,fr,fz,frr,frz,fzz,ierr)
     call spline(nr,nz,rpoi,zpoi,hr,hz,icp,arnim(:,:,:,n),ipoint,r,z,   &
                 g,gr,gz,grr,grz,gzz,ierr)
-    anr=dcmplx(f,g)
-    anr_r=dcmplx(fr,gr)
-    anr_z=dcmplx(fz,gz)
-    anr_rr=dcmplx(frr,grr)
-    anr_rz=dcmplx(frz,grz)
-    anr_zz=dcmplx(fzz,gzz)
+    anr=cmplx(f,g, kind=kind(0d0))
+    anr_r=cmplx(fr,gr, kind=kind(0d0))
+    anr_z=cmplx(fz,gz, kind=kind(0d0))
+    anr_rr=cmplx(frr,grr, kind=kind(0d0))
+    anr_rz=cmplx(frz,grz, kind=kind(0d0))
+    anr_zz=cmplx(fzz,gzz, kind=kind(0d0))
     call spline(nr,nz,rpoi,zpoi,hr,hz,icp,aznre(:,:,:,n),ipoint,r,z,   &
                 f,fr,fz,frr,frz,fzz,ierr)
     call spline(nr,nz,rpoi,zpoi,hr,hz,icp,aznim(:,:,:,n),ipoint,r,z,   &
                 g,gr,gz,grr,grz,gzz,ierr)
-    anz=dcmplx(f,g)
-    anz_r=dcmplx(fr,gr)
-    anz_z=dcmplx(fz,gz)
-    anz_rr=dcmplx(frr,grr)
-    anz_rz=dcmplx(frz,grz)
-    anz_zz=dcmplx(fzz,gzz)
+    anz=cmplx(f,g, kind=kind(0d0))
+    anz_r=cmplx(fr,gr, kind=kind(0d0))
+    anz_z=cmplx(fz,gz, kind=kind(0d0))
+    anz_rr=cmplx(frr,grr, kind=kind(0d0))
+    anz_rz=cmplx(frz,grz, kind=kind(0d0))
+    anz_zz=cmplx(fzz,gzz, kind=kind(0d0))
 !
-    expon=exp(dcmplx(0.d0,n*pfac*phi))
-    delbr=2.d0*dble(dcmplx(0.d0,pfac)*n*anz*expon/r)
-    delbz=-2.d0*dble(dcmplx(0.d0,pfac)*n*anr*expon/r)
+    expon=exp(cmplx(0.d0,n*pfac*phi, kind=kind(0d0)))
+    delbr=2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anz*expon/r)
+    delbz=-2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anr*expon/r)
     delbp=2.d0*dble((anr_z-anz_r)*expon)
-    deldBrdR=-delbr/r+2.d0*dble(dcmplx(0.d0,pfac)*n*anz_r*expon/r)
-    deldBrdZ=2.d0*dble(dcmplx(0.d0,pfac)*n*anz_z*expon/r)
+    deldBrdR=-delbr/r+2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anz_r*expon/r)
+    deldBrdZ=2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anz_z*expon/r)
     deldBrdp=-2.d0*dble((pfac*n)**2*anz*expon/r)
-    deldBzdR=-delbz/r-2.d0*dble(dcmplx(0.d0,pfac)*n*anr_r*expon/r)
-    deldBzdZ=-2.d0*dble(dcmplx(0.d0,pfac)*n*anr_z*expon/r)
+    deldBzdR=-delbz/r-2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anr_r*expon/r)
+    deldBzdZ=-2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*anr_z*expon/r)
     deldBzdp=2.d0*dble((pfac*n)**2*anr*expon/r)
     deldBpdR=2.d0*dble((anr_rz-anz_rr)*expon)
     deldBpdZ=2.d0*dble((anr_zz-anz_rz)*expon)
-    deldBpdp=2.d0*dble(dcmplx(0.d0,pfac)*n*(anr_z-anz_r)*expon)
+    deldBpdp=2.d0*dble(cmplx(0.d0,pfac, kind=kind(0d0))*n*(anr_z-anz_r)*expon)
 !
 !    if(incore.eq.-1.or.n.gt.ntor_amn) then
       br=br+delbr
@@ -1018,11 +975,11 @@
   integer :: n,i,ip1,ip2
   double precision :: h,rhop,rhom,fac,fpl31,fpl40,fmn31,fmn40          ,x
   double precision :: a11,a12,a13,a21,a22,a23,a31,a32,a33,det
-  double complex :: abeg,bbeg,cbeg,dbeg,ebeg,fbeg
-  double complex :: aend,bend,cend,dend,eend,fend
-  double complex :: b1,b2,b3
-  double complex, dimension(n) :: a,b,c,d,e,f
-  double complex, dimension(:), allocatable :: alp,bet,gam
+  complex(kind=kind(1d0)) :: abeg,bbeg,cbeg,dbeg,ebeg,fbeg
+  complex(kind=kind(1d0)) :: aend,bend,cend,dend,eend,fend
+  complex(kind=kind(1d0)) :: b1,b2,b3
+  complex(kind=kind(1d0)), dimension(n) :: a,b,c,d,e,f
+  complex(kind=kind(1d0)), dimension(:), allocatable :: alp,bet,gam
 !
   rhop=13.d0+sqrt(105.d0)
   rhom=13.d0-sqrt(105.d0)
@@ -1187,9 +1144,9 @@
 !
   integer, dimension(:,:), allocatable :: idummy2
 !
-  double complex :: expon
-  double complex, dimension(:), allocatable :: a,b,c,d,e,f
-  double complex, dimension(:,:,:), allocatable :: apsimn,athetmn
+  complex(kind=kind(1d0)) :: expon
+  complex(kind=kind(1d0)), dimension(:), allocatable :: a,b,c,d,e,f
+  complex(kind=kind(1d0)), dimension(:,:,:), allocatable :: apsimn,athetmn
 !
   integer, save :: nper
 !
@@ -1460,14 +1417,14 @@
   enddo
 !
   expthe(0)=(1.d0,0.d0)
-  expthe(1)=exp(dcmplx(0.d0,theta))
+  expthe(1)=exp(cmplx(0.d0,theta, kind=kind(0d0)))
   expthe(-1)=conjg(expthe(1))
   do m=2,mpol
     expthe(m)=expthe(m-1)*expthe(1)
     expthe(-m)=conjg(expthe(m))
   enddo
-!  expphi(1)=exp(dcmplx(0.d0,phi))
-  expphi(1)=exp(dcmplx(0.d0,pfac*phi))
+!  expphi(1)=exp(cmplx(0.d0,phi, kind=kind(0d0)))
+  expphi(1)=exp(cmplx(0.d0,pfac*phi, kind=kind(0d0)))
   do n=2,ntor_amn
     expphi(n)=expphi(n-1)*expphi(1)
   enddo

@@ -33,6 +33,9 @@ install_manifest.txt
 # Ignore backups of files.
 *.*~
 
+# Ignore file diffs
+*.*diff
+
 NEO-2-QL/.directory
 
 # Ignore directories for building the code.

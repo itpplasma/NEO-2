@@ -78,7 +78,8 @@
                            ! non-uniform knot distribution for
                            ! B-Splines. Default value is $1$ which
                            ! defines a uniform knot distribution (best
-                           ! choice). [1.0]
+                           ! choice). Values > 1 mean more of the points
+                           ! will be at low velocities. [1.0]
  collop_bspline_taylor = .true. ! [.true.]
  collop_path = "/afs/itp.tugraz.at/proj/plasma/documents/neo2/data-matrixelements/" !
                         ! variable not used. ['']
@@ -164,7 +165,11 @@
  isw_ntv_mode = 1  ! [0]
  isw_qflux_NA = 1 ! Turn on(=1)/off(=0) computation of non-axisymmetrix
                   ! part. [0]
- isw_ripple_solver = 3 ! Which ripple solver version should be used. [1]
+ isw_ripple_solver = 3 ! Which ripple solver version should be used.
+                       ! 1 first order direct [default]
+                       ! 2 Arnoldi, 1st order
+                       ! 3 Arnoldi, 2nd order
+                       ! 4 Arnoldi, 3rd order
  MtOvR = 0.0 ! The toroidal Mach number divided by major radius R0. [0.0d0]
 
 /
@@ -205,6 +210,7 @@
  boozer_phi_beg = -3.1415926 ! [0.0d0]
  boozer_s = 4.9e-3 ! Defines the flux surface as normalized toroidal flux. [0.5d0]
  boozer_theta_beg =  3.1415926 ! [0.0d0]
+ epserr_iter = 1d-5 ! relative error of integral part iterations [1.0d-5]
  eta_alpha_p =  2.0 ! Specify refinement differently [4.0d0]
  eta_alpha_t = -1.0 ! [1.0d0]
  eta_part_global =  0 !-1: equal distribution
@@ -248,10 +254,11 @@
  rbeg = 210.0  ! starting R. [181.d0]
  ripple_solver_accurfac = 3.0 ! [3.0d0]
  solver_talk = 0 ! [0]
- sparse_solve_method = 3
+ sparse_solve_method = 3 [3]
  sparse_talk = .false. ! [.false.]
  switch_off_asymp = 0 ! [0]
- xetama = 1.300001 ! [1.300001d0]
+ xetama = 1.300001 ! Seems to be not used, value is overwriten in ripple
+                   ! solver. [1.300001d0]
  xetami = 0.0 ! [0.0d0]
  zbeg = 0.0 ! [0.d0]
 /

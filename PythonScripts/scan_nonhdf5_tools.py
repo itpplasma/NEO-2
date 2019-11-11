@@ -8,7 +8,7 @@ class condor_run:
   on which the job did run, the start date and end date, and the maximum
   memory consumption.
 
-  Dates are stored ans datetime object. Note that the condor log does
+  Dates are stored as datetime object. Note that the condor log does
   not include a year, thus old jobs or jobs run around new year might
   cause problems.
   """
@@ -53,7 +53,12 @@ class condor_run:
     self.host = ''
     self.start_date = ''
     self.end_date = ''
+    self.num_processors = 1
+    self.usertime = ''
+    self.systemtime = ''
     self.memory = ''
+
+    self.aborted_by_user = False
 
   def set_start_date(self, text_start_date: str):
     """Parse passed text and set the start date.
@@ -73,6 +78,37 @@ class condor_run:
     """
     self.memory = int(text_memory)
 
+  def set_num_processors(self, text_num_processors: str):
+    """Parse passed text and set the number of processors.
+
+    Parsing might be a bit exagerated, the string is just converted to
+    an integer.
+    """
+    self.num_processors = int(text_num_processors)
+
+  def list_time_to_seconds(self, dayshoursminutesseconds):
+    """Returns the number of seconds for a list with days:hours:minutes:seconds.
+    """
+    return dayshoursminutesseconds[0]*24*60*60 + dayshoursminutesseconds[1]*60*60 + dayshoursminutesseconds[2]*60 + dayshoursminutesseconds[3]
+
+  def set_usertime(self, text_usertime: str):
+    """Parse passed text and set the usertime.
+
+    Time is expected as a string with days:hours:minutes:seconds.
+    """
+    if (text_usertime[-1] == ','):
+      text_usertime = text_usertime[0:-1]
+    parts = [int(x) for x in text_usertime.split(':')]
+    self.usertime = self.list_time_to_seconds(parts)
+
+  def set_systemtime(self, text_systemtime: str):
+    """Parse passed text and set the usertime.
+
+    Time is expected as a string with days:hours:minutes:seconds.
+    """
+    parts = [int(x) for x in text_systemtime.split(':')]
+    self.systemtime = self.list_time_to_seconds(parts)
+
   def parse_start_message(self, text_start_message):
     """Parse the start message to extract information and set members.
 
@@ -84,6 +120,9 @@ class condor_run:
 
   def parse_end_message(self, text_end_message):
     """Parse the start message to extract information and set members.
+
+    This includes messages with the identifiers 4 (evicted, e.g. abort
+    by user) and 5 (terminated, e.g. finished)
 
     Example of message:
     005 (1873.074.000) 06/04 14:30:28 Job terminated.
@@ -104,6 +143,19 @@ class condor_run:
     parts = text_end_message[0].split()
     self.set_end_date(parts[2] + ' ' + parts[3])
     self.set_memory(text_end_message[-1].split()[3])
+    self.set_num_processors(text_end_message[-3].split()[3])
+    self.set_usertime(text_end_message[2].split()[1] + ':' + text_end_message[2].split()[2])
+    self.set_systemtime(text_end_message[2].split()[4] + ':' + text_end_message[2].split()[5])
+
+  def parse_abort_message(self, text_abort_message):
+    """Parse abort message.
+
+    This function parses the abort message (identifier 9). So far the
+    only action is to set status aborted by user to true.
+    \Attention It is not known if this message is also send for other
+      reasons, like abort by the system.
+    """
+    self.aborted_by_user = True
 
   def get_scan_id(self):
     return self.scan_id
@@ -169,18 +221,21 @@ class condor_log:
     if message_identifier == 0:
       self.runs.append(condor_run(text_message))
     # job started
-    elif  message_identifier == 1:
+    elif message_identifier == 1:
       r = self.get_run(text_message[0].split()[1])
       r.parse_start_message(text_message)
-    # job terminated
-    elif  message_identifier == 5:
+    # job terminated or got evicted
+    elif message_identifier == 5 or message_identifier == 4:
       r = self.get_run(text_message[0].split()[1])
       r.parse_end_message(text_message)
     # update of image size.
-    elif  message_identifier == 6:
+    elif message_identifier == 6:
       # Do nothing, memory is parsed from end message.
       # Might be interesting in the future to get memory over time.
       None
+    elif message_identifier == 9:
+      r = self.get_run(text_message[0].split()[1])
+      r.parse_abort_message(text_message)
 
   def parse_text_messages(self, text_messages):
     """Parse the message: go through the list and parse each message.
@@ -245,6 +300,38 @@ class condor_log:
     [ids, time_per_job] = self.get_time_per_job()
 
     return max(time_per_job)
+
+  def get_usertime_per_job(self):
+    """Return lists with ids and usertime of the jobs.
+
+    This will return two lists. The first contains the scan and run id
+    of the jobs, the second the respective usertime needed of the job
+    in seconds.
+    """
+    ids = []
+    time_per_job = []
+
+    for r in self.runs:
+      ids.append([r.get_scan_id(), r.get_run_id()])
+      time_per_job.append(r.usertime)
+
+    return [ids, time_per_job]
+
+  def get_systemtime_per_job(self):
+    """Return lists with ids and systemtime of the jobs.
+
+    This will return two lists. The first contains the scan and run id
+    of the jobs, the second the respective systemtime needed of the job
+    in seconds.
+    """
+    ids = []
+    time_per_job = []
+
+    for r in self.runs:
+      ids.append([r.get_scan_id(), r.get_run_id()])
+      time_per_job.append(r.systemtime)
+
+    return [ids, time_per_job]
 
 def get_memory_consumption_of_run(lines, id_of_run: str):
   """Get memory consumption for 'id_of_run' from 'lines'.

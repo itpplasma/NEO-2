@@ -93,13 +93,13 @@ module collop_compute
   logical       :: integral_cutoff = .true.
   real(kind=dp) :: x_cutoff = 3.0d3
   logical       :: lsw_interval_sep = .true.
-  logical       :: lsw_split_interval = .true. ! split intervals manually into further sub-intervals
-  integer       :: num_sub_intervals = 5 ! number of sub-intervals between nodes (active if lsw_split_interval)
-  integer       :: num_sub_intervals_cutoff = 40 ! number of sub-intervals between last node and cutoff (active if lsw_split_interval)
+  logical       :: lsw_split_interval = .true. !> split intervals manually into further sub-intervals
+  integer       :: num_sub_intervals = 5 !> number of sub-intervals between nodes (active if lsw_split_interval)
+  integer       :: num_sub_intervals_cutoff = 40 !> number of sub-intervals between last node and cutoff (active if lsw_split_interval)
   ! Taylor expansion of (non-relativistic) matrix elements around x=0 (numerical stability):
-  logical       :: lsw_expand_kernel =.false. ! Taylor expansion of integral-part subintegrands
-  logical       :: lsw_expand_G =.true. ! Taylor expansion of Chandrasekhar function
-  ! corresponding domain of Taylor expansion (0 <= x <= xmax_expand_kernel)
+  logical       :: lsw_expand_kernel =.false. !> Taylor expansion of integral-part subintegrands
+  logical       :: lsw_expand_G =.true. !> Taylor expansion of Chandrasekhar function
+  !> corresponding domain of Taylor expansion (0 <= x <= xmax_expand_kernel)
   real(kind=dp) :: xmax_expand_kernel = 1.0d-5
   ! numerical stabilization of integral-part computation (I2 + I3 + I4)
   logical       :: lsw_stabilize_Immp=.true.
@@ -397,7 +397,12 @@ contains
     if(lsw_interval_sep) then
        if ((collop_base_prj .eq. 11) .or. (collop_base_exp .eq. 11)) then
           if (allocated(t_vec)) deallocate(t_vec)
-          allocate(t_vec(lbound(xknots,1):ubound(xknots,1)))
+          if (allocated(xknots)) then
+            allocate(t_vec(lbound(xknots,1):ubound(xknots,1)))
+          else
+            write(*,*) 'ERROR: in init_collop, xknots is expected to be allocated but is not.'
+            stop
+          end if
           t_vec = xknots
           !write (*,*) t_vec
 
@@ -1137,6 +1142,8 @@ contains
     real(kind=dp) :: x_sub_low, x_sub_up, x_sub_del ! Split integration domain into sub-intervals
     integer :: k_sub ! Split integration domain into sub-intervals
     real(kind=dp) :: x_cutoff_local
+
+    real(kind=dp), parameter :: stepsize_cutoff = 1.0
     
     interface  
        function func1d(x)
@@ -1156,8 +1163,8 @@ contains
 !!$    return
     if (integral_cutoff) then
       x_cutoff_local = x_cutoff
-      do while (abs(func1d(x_cutoff_local-1.0)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
-        x_cutoff_local = x_cutoff_local-1.0
+      do while (abs(func1d(x_cutoff_local-stepsize_cutoff)) < 1.0d-250 .and. (x_cutoff_local - a) > 10.0)
+        x_cutoff_local = x_cutoff_local-stepsize_cutoff
       end do
 !~       write(*,*) 'Using x_cutoff_local=', x_cutoff_local, 'with |f(x)|=', abs(func1d(x_cutoff_local))
     end if
@@ -2881,33 +2888,5 @@ contains
     call disp_gsl_integration_error()
 
   end subroutine compute_collop_inf
-
-  subroutine compute_collop_lorentz(tag_a, tag_b, m_a0, m_b0, T_a0, T_b0, anumm_s)
-    character(len=*) :: tag_a, tag_b
-    real(kind=dp)    :: m_a0, m_b0
-    real(kind=dp)    :: T_a0, T_b0
-    real(kind=dp), dimension(:,:)   :: anumm_s
-
-    m_a = m_a0
-    m_b = m_b0
-    T_a = T_a0
-    T_b = T_b0
-
-    v_ta = sqrt(2*T_a / m_a)
-    v_tb = sqrt(2*T_b / m_b)
-    gamma_ab = v_ta/v_tb
-    write (*,'(A,A,A,A,A,ES13.6)') " Computing collision operator for ", tag_a, "-", tag_b, " with gamma_ab =", gamma_ab
-
-    !**********************************************************
-    ! Define constants for offset correction
-    !**********************************************************
-    a_00_offset = 1.00d0
-    a_02_offset = 1.50d0
-    a_22_offset = 3.75d0
-    
-    call compute_lorentz(anumm_s)
-    call disp_gsl_integration_error()
-
-  end subroutine compute_collop_lorentz
 
 end module collop_compute

@@ -1,0 +1,42 @@
+\chapter{Building}
+For basic information and some more see the file \file{Build.md} in the
+\neotwo main directory.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Dependencies}
+This section aims at listing the dependencies, and giving some
+background on where there are used and how they are included in the
+code.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{GSL/FGSL}
+Then gnu scientific library is used via the fortran wrapper fgsl. The
+fgsl in turn is wrapped by neo-2. Only those files which actually use
+the fgsl code directly are compiled with the necessary include
+information.
+Currently besselfunction, numerical rootfinding, numerical integration
+and bsplines are used by \neotwo.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{SuiteSparse}
+Is used by sparse\_solver if \inputparameter{sparse\_solve\_method} is $1$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{SuperLU}
+Is used by sparse\_solver if \inputparameter{sparse\_solve\_method} is
+$2$ or $3$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{ATLAS}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{OpenBLAS}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{MPI/MyMPILib}
+Used for parallelization. In some places also OpenMP is used.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{HDF5/hdf5\_tools}
+Used for input and output.
