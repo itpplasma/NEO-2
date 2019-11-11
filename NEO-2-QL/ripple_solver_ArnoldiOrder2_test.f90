@@ -3445,179 +3445,13 @@ rotfactor=imun*m_phi
      CLOSE(070915)
      !STOP
   END IF
-!
-!! Modifications by Andreas F. Martitsch (17.12.2013)
-!! Create standard output (efinal.dat,fulltransp.dat)
-RETURN
-!! or stop here
-!! STOP
-!! End Modifications by Andreas F. Martitsch (17.12.2013)
-!
-  DO m=0,lag
-    DO kk=1,3
-      k=ind_start(ibeg)+2*npass_l*m
-      !! Modification by Andreas F. Martitsch (17.07.2015)
-      ! fixed warning: Possible change of value in conversion
-      ! from COMPLEX(8) to REAL(8)
-      source_m(npass_l*m+1:npass_l*m+npass_l,kk) &
-          =REAL(source_vector(k+2*npass_l:k+npass_l+1:-1,kk),dp)
-      !! End Modification by Andreas F. Martitsch (17.07.2015)
-      k=ind_start(iend)+2*npass_r*m
-      !! Modification by Andreas F. Martitsch (17.07.2015)
-      ! fixed warning: Possible change of value in conversion
-      ! from COMPLEX(8) to REAL(8)
-      source_p(npass_r*m+1:npass_r*m+npass_r,kk) &
-          =REAL(source_vector(k+1:k+npass_r,kk),dp)
-      !! End Modification by Andreas F. Martitsch (17.07.2015)
-    ENDDO
-  ENDDO
-!
-  IF(iplot.EQ.1.OR.isw_axisymm.EQ.1) THEN
-!
-    flux_p=0.d0
-    flux_m=0.d0
-    amat_plus_plus=0.d0
-    amat_plus_minus=0.d0
-    amat_minus_minus=0.d0
-    amat_minus_plus=0.d0
-!
-    DEALLOCATE(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp,bvec_parflow)
-!
-    ! Use pre-conditioned iterations:
-    ! -> remove null-space of axisymmetric solution (energy conservation)
-    DEALLOCATE(energvec_ket,energvec_bra)
-    deallocate(densvec_ket,densvec_bra)
-    ! Use pre-conditioned iterations
-!
-    IF(isw_intp.EQ.1) DEALLOCATE(bvec_iter,bvec_prev)
-    DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
-    DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
-    DEALLOCATE(enu_coef2,dellampow2,rhs_mat_energ2)
-    DEALLOCATE(npl,rhs_mat_fzero,rhs_mat_lorentz,rhs_mat_energ,q_rip,q_rip_1)
-    DEALLOCATE(q_rip_incompress,q_rip_parflow)
-    DEALLOCATE(fun_coef,ttmp_mat)
-    DEALLOCATE(convol_flux,convol_curr,ind_start,convol_flux_0)
-    DEALLOCATE(phi_mfl,bhat_mfl,geodcu_mfl,h_phi_mfl,dlogbdphi_mfl,eta)
-    !! Modifications by Andreas F. Martitsch (14.03.2014)
-    ! Optional output (necessary for modeling the magnetic rotation)
-    ! --> Deallocate the arrays
-    DEALLOCATE(dlogbds_mfl,bcovar_s_hat_mfl,dbcovar_s_hat_dphi_mfl)
-    !! End Modifications by Andreas F. Martitsch (14.03.2014)
-    DEALLOCATE(delt_pos,delt_neg,fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
-    IF (ALLOCATED(eta_prev)) DEALLOCATE(eta_prev)
-    IF (ALLOCATED(eta_next)) DEALLOCATE(eta_next)
-    IF (ALLOCATED(amat_z)) DEALLOCATE(amat_z,bvec_lapack_z,ipivot)
-    IF (ALLOCATED(scalprod)) DEALLOCATE(scalprod,basevec_p)
-!
-    CALL CPU_TIME(time_solver)
-    PRINT *,'solving completed       ',time_solver - time_factorization,' sec'
-!
-    RETURN
-!
-  ENDIF
-!
-! Calculation of propagators:
-!
-  DO m=0,lag
-    k=ind_start(ibeg)+2*npass_l*m
-    DO i=1,npass_l
-      bvec_sp=0.d0
-      bvec_sp(k+i)=1.d0
-!
-      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),   &
-                        bvec_sp,iopt)
-!
-! integral part:
-!
-      IF(isw_intp.EQ.1) THEN
-!
-        mode_iter=2
-!
-        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & bvec_sp, ispec, next_iteration)
-!
-      ENDIF
-!
-      DO mm=0,lag
-        kk=ind_start(iend)+2*npass_r*mm
-        !! Modification by Andreas F. Martitsch (17.07.2015)
-        ! fixed warning: Possible change of value in conversion
-        ! from COMPLEX(8) to REAL(8)
-        amat_plus_plus(npass_r*mm+1:npass_r*mm+npass_r,npass_l*m+i)    &
-                     =REAL(bvec_sp(kk+1:kk+npass_r),dp)
-        !! End Modification by Andreas F. Martitsch (17.07.2015)
-      ENDDO
-      DO mm=0,lag
-        kk=ind_start(ibeg)+2*npass_l*mm
-        !! Modification by Andreas F. Martitsch (17.07.2015)
-        ! fixed warning: Possible change of value in conversion
-        ! from COMPLEX(8) to REAL(8)
-        amat_plus_minus(npass_l*mm+1:npass_l*mm+npass_l,npass_l*m+i)   &
-                     =REAL(bvec_sp(kk+2*npass_l:kk+npass_l+1:-1),dp)
-        !! End Modification by Andreas F. Martitsch (17.07.2015)
-      ENDDO
-      !! Modification by Andreas F. Martitsch (17.07.2015)
-      ! fixed warning: Possible change of value in conversion
-      ! from COMPLEX(8) to REAL(8)
-      flux_p(:,npass_l*m+i)=REAL(MATMUL(flux_vector,bvec_sp(:)),dp)
-      !! End Modification by Andreas F. Martitsch (17.07.2015)
-    ENDDO
-  ENDDO
-!
-  DO m=0,lag
-    k=ind_start(iend)+2*npass_r*m
-    DO i=1,npass_r
-      bvec_sp=0.d0
-      bvec_sp(k+2*npass_r+1-i)=1.d0
-!
-      CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),   &
-                        bvec_sp,iopt)
-!
-! integral part:
-!
-      IF(isw_intp.EQ.1) THEN
-!
-        mode_iter=2
-!
-        CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-          & bvec_sp, ispec, next_iteration)
-!
-      ENDIF
-!
-      DO mm=0,lag
-        kk=ind_start(iend)+2*npass_r*mm
-        !! Modification by Andreas F. Martitsch (17.07.2015)
-        ! fixed warning: Possible change of value in conversion
-        ! from COMPLEX(8) to REAL(8)
-        amat_minus_plus(npass_r*mm+1:npass_r*mm+npass_r,npass_r*m+i)   &
-                     =REAL(bvec_sp(kk+1:kk+npass_r),dp)
-        !! End Modification by Andreas F. Martitsch (17.07.2015))
-      ENDDO
-      DO mm=0,lag
-        kk=ind_start(ibeg)+2*npass_l*mm
-        !! Modification by Andreas F. Martitsch (17.07.2015)
-        ! fixed warning: Possible change of value in conversion
-        ! from COMPLEX(8) to REAL(8)
-        amat_minus_minus(npass_l*mm+1:npass_l*mm+npass_l,npass_r*m+i)  &
-                     =REAL(bvec_sp(kk+2*npass_l:kk+npass_l+1:-1),dp)
-        !! End Modification by Andreas F. Martitsch (17.07.2015))
-      ENDDO
-      !! Modification by Andreas F. Martitsch (17.07.2015)
-      ! fixed warning: Possible change of value in conversion
-      ! from COMPLEX(8) to REAL(8)
-      flux_m(:,npass_r*m+i)=REAL(MATMUL(flux_vector,bvec_sp(:)),dp)
-      !! End Modification by Andreas F. Martitsch (17.07.2015))
-    ENDDO
-  ENDDO
-!
+
   iopt=3
 !
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
 !
   DEALLOCATE(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp,bvec_parflow)
 !
-  ! Use pre-conditioned iterations:
-  ! -> remove null-space of axisymmetric solution (energy conservation)
   DEALLOCATE(energvec_ket,energvec_bra)
   deallocate(densvec_ket,densvec_bra)
   ! Use pre-conditioned iterations
@@ -3626,114 +3460,9 @@ RETURN
     DEALLOCATE(bvec_iter,bvec_prev)
   ENDIF
 !
-!
-!
   CALL CPU_TIME(time_solver)
   PRINT *,'solving completed       ',time_solver - time_factorization,' sec'
 !
-!
-!
-!
-!
-  nplp1=npart_loc+1
-  ntotsize=(lag+1)*nplp1
-
-  PRINT *,'npart_loc = ',npart_loc,' npass_l = ',npass_l,' npass_r = ',npass_r
-
-  ndim=ntotsize
-
-  IF(fieldpropagator%tag.EQ.2) THEN
-    OPEN(112,file='onsager.dat')
-    OPEN(113,file='levhist.dat')
-    OPEN(111,file='qfluxhist.dat')
-  ELSE
-    OPEN(112,file='onsager.dat',position='append')
-    OPEN(113,file='levhist.dat',position='append')
-    OPEN(111,file='qfluxhist.dat',position='append')
-  ENDIF
-  facnorm_m=1.d0
-  facnorm_p=1.d0
-  !WRITE(112,*) fieldpropagator%tag,qflux(1:2,1),qflux(1:2,2),npart_loc &
-  !             ,b_max_l,b_max_r,facnorm_p,facnorm_m,ignore_boundary_layer_new &
-  !             ,ignore_boundary_layer,ifilter_l,ifilter_r
-  WRITE(112,*) fieldpropagator%tag,qflux(1:2,1),qflux(1:2,2),npart_loc &
-               ,b_max_l,b_max_r,facnorm_p,facnorm_m,ignore_lb &
-               ,ignore_rb,modify_bl,modify_br
-  !             ,ignore_rb,ifilter_l,ifilter_r
-  WRITE(111,*) fieldpropagator%tag,qflux
-  DO i=0,npart_loc
-    WRITE(113,*) fieldpropagator%tag,eta(i)
-  ENDDO
-  CLOSE(112)
-  CLOSE(113)
-  CLOSE(111)
-  PRINT *,qflux(1:2,1),qflux(1:2,2)
-
-  if (.false.) then
-
-    OPEN(111,file='flux_p.dat')
-    WRITE(111,'(4(1x,e12.5))') (alam_l(i),flux_p(:,i) ,i=1,npass_l)
-    CLOSE(111)
-    OPEN(111,file='flux_m.dat')
-    WRITE(111,'(4(1x,e12.5))') (alam_r(i),flux_m(:,i) ,i=1,npass_r)
-    CLOSE(111)
-    OPEN(111,file='source_p.dat')
-    WRITE(111,'(4(1x,e12.5))') (alam_r(i),source_p(i,:)/delta_eta_r(i) ,i=1,npass_r)
-    CLOSE(111)
-    OPEN(111,file='source_m.dat')
-    WRITE(111,'(4(1x,e12.5))') (alam_l(i),source_m(i,:)/delta_eta_l(i) ,i=1,npass_l)
-    CLOSE(111)
-    !amat_plus_plus=0.d0
-    !amat_plus_minus=0.d0
-    !amat_minus_plus=0.d0
-    !amat_minus_minus=0.d0
-    !do i=1,min(npass_l,npass_r)
-    !  amat_plus_plus(i,i)=1.d0
-    !  amat_minus_minus(i,i)=1.d0
-    !enddo
-    !do i=npass_r+1,npass_l
-    !  amat_plus_minus(i,i)=0.d0 !1.d0
-    !enddo
-    !do i=npass_l+1,npass_r
-    !  amat_minus_plus(i,i)=0.d0 !1.d0
-    !enddo
-
-    OPEN(111,file='amat_p_p.dat')
-    DO i=1,npass_r
-    WRITE(111,*) amat_plus_plus(i,1:npass_l)
-    !WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_plus_plus(i,1:npass_l)
-    ENDDO
-    CLOSE(111)
-    OPEN(111,file='amat_p_m.dat')
-    DO i=1,npass_l
-    WRITE(111,*) amat_plus_minus(i,1:npass_l)
-    !WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_plus_minus(i,1:npass_l)
-    ENDDO
-    CLOSE(111)
-    OPEN(111,file='amat_m_p.dat')
-    DO i=1,npass_r
-    WRITE(111,*) amat_minus_plus(i,1:npass_r)
-    !WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_minus_plus(i,1:npass_r)
-    ENDDO
-    CLOSE(111)
-    OPEN(111,file='amat_m_m.dat')
-    DO i=1,npass_l
-    WRITE(111,*) amat_minus_minus(i,1:npass_r)
-    !WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_minus_minus(i,1:npass_r)
-    ENDDO
-    CLOSE(111)
-    !open(111,file='lambda_l.dat')
-    !do i=1,npass_l
-    !write (111,*) -alam_l(i),delta_eta_l(i)
-    !enddo
-    !do i=npass_l,1,-1
-    !write (111,*) alam_l(i),delta_eta_l(i)
-    !enddo
-    !close(111)
-    !PAUSE 'written'
-  end if
-
-  PRINT *,' '
   DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
   DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
   DEALLOCATE(enu_coef2,dellampow2,rhs_mat_energ2)
@@ -3766,8 +3495,7 @@ RETURN
   IF (ALLOCATED(eta_next)) DEALLOCATE(eta_next)
 
   !------------------------------------------------------------------------
-  RETURN
-!
+
 CONTAINS
 !
 !------------------------------------------------------------------------
