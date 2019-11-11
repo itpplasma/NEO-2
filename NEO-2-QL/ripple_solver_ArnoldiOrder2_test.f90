@@ -1524,7 +1524,7 @@ rotfactor=imun*m_phi
   ! Use pre-conditioned iterations:
   ! -> remove null-space of axisymmetric solution (energy conservation)
   ALLOCATE(energvec_ket(n_2d_size),energvec_bra(n_2d_size))
-  allocate(densvec_ket(n_2d_size),densvec_bra(n_2d_size))
+  allocate(densvec_bra(n_2d_size),densvec_ket(n_2d_size))
   energvec_ket=0.d0
   energvec_bra=0.d0
   denom_energ=0.d0
