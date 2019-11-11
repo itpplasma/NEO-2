@@ -161,8 +161,8 @@ contains
         break_cond1(ispec)=SUM(ABS(fnew-fold))
         break_cond2(ispec)=relerr*SUM(ABS(fnew))
         PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
-        CALL mpro%allgather(break_cond1(ispec), break_cond1)
-        CALL mpro%allgather(break_cond2(ispec), break_cond2)
+        CALL mpro%allgather_inplace(break_cond1(ispec), break_cond1)
+        CALL mpro%allgather_inplace(break_cond2(ispec), break_cond2)
         IF(ALL(break_cond1 .LE. break_cond2)) EXIT
         !! End Modification by Andreas F. Martitsch (20.08.2015)
         fold=fnew
@@ -190,7 +190,7 @@ contains
       bvec(i,i)=(1.d0,0.d0)
       DO j=1,nsize
         amat_spec(ispec)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))
-        CALL mpro%allgather(amat_spec(ispec),amat_spec)
+        CALL mpro%allgather_inplace(amat_spec(ispec),amat_spec)
         amat(i,j)=SUM(amat_spec)*(ritznum(j)-(1.d0,0.d0))
       ENDDO
     ENDDO
@@ -217,15 +217,15 @@ contains
       DO j=1,nsize
         coefren_spec(ispec)=SUM(bvec(j,:)                           &
                   *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
-        CALL mpro%allgather(coefren_spec(ispec),coefren_spec)
+        CALL mpro%allgather_inplace(coefren_spec(ispec),coefren_spec)
         coefren(j)=ritznum(j)*SUM(coefren_spec)
       ENDDO
       fnew=fnew-MATMUL(eigvecs(:,1:nsize),coefren)
       break_cond1(ispec)=SUM(ABS(fnew-fold))
       break_cond2(ispec)=relerr*SUM(ABS(fnew))
       print *,iter,break_cond1(ispec),break_cond2(ispec),ispec
-      CALL mpro%allgather_double_1(break_cond1(ispec), break_cond1)
-      CALL mpro%allgather(break_cond2(ispec), break_cond2)
+      CALL mpro%allgather_inplace(break_cond1(ispec), break_cond1)
+      CALL mpro%allgather_inplace(break_cond2(ispec), break_cond2)
       IF(ALL(break_cond1 .LE. break_cond2)) EXIT
       fold = fnew
       IF(iter.EQ.itermax) PRINT *,'iterator: maximum number of iterations reached'
@@ -308,7 +308,7 @@ contains
     ALLOCATE(h_spec(0:num_spec-1))
     h_spec=0.0d0
     q_spec(ispec)=SUM(CONJG(fnew)*fnew)
-    CALL mpro%allgather(q_spec(ispec), q_spec)
+    CALL mpro%allgather_inplace(q_spec(ispec), q_spec)
     qvecs_prev(:,1)=fnew/SQRT(SUM(q_spec))
     ierr=0
     mbeg=2
@@ -327,13 +327,13 @@ contains
         DO j=1,k-1
           h_spec=0.0d0
           h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
-          CALL mpro%allgather(h_spec(ispec), h_spec)
+          CALL mpro%allgather_inplace(h_spec(ispec), h_spec)
           hmat(j,k-1)=SUM(h_spec)
           qvecs(:,k)=qvecs(:,k)-hmat(j,k-1)*qvecs(:,j)
         ENDDO
         h_spec=0.0d0
         h_spec(ispec)=SUM(CONJG(qvecs(:,k))*qvecs(:,k))
-        CALL mpro%allgather(h_spec(ispec), h_spec)
+        CALL mpro%allgather_inplace(h_spec(ispec), h_spec)
         hmat(k,k-1)=SQRT(SUM(h_spec))
         qvecs(:,k)=qvecs(:,k)/hmat(k,k-1)
       ENDDO

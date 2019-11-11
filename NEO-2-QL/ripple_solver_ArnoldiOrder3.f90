@@ -4546,7 +4546,7 @@ RETURN
     ENDDO
     ! order of species inidices (ispecp,ispec) interchanged
     ! (-> easier to handle within mpro%allgather)
-    CALL mpro%allgather(qflux_allspec(:,:,:,ispec),qflux_allspec)
+    CALL mpro%allgather_inplace(qflux_allspec(:,:,:,ispec),qflux_allspec)
     ! go back to the "natural" order of species indices (ispec,ispecp)
     IF(ALLOCATED(qflux_allspec_tmp)) DEALLOCATE(qflux_allspec_tmp)
     ALLOCATE(qflux_allspec_tmp(1:3,1:3,0:num_spec-1,0:num_spec-1))
@@ -5430,7 +5430,7 @@ RETURN
 !! Modification by Andreas F. Martitsch (20.08.2015)
 ! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
 ! (mpro%allgather supports 3D and 4D matrices)
-CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
+CALL mpro%allgather_inplace(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 !
     DO istep=ibeg,iend
 !
@@ -5726,8 +5726,8 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
       break_cond1(ispec)=SUM(ABS(fnew-fold))
       break_cond2(ispec)=relerr*SUM(ABS(fnew))
       PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
-      CALL mpro%allgather(break_cond1(ispec), break_cond1)
-      CALL mpro%allgather(break_cond2(ispec), break_cond2)
+      CALL mpro%allgather_inplace(break_cond1(ispec), break_cond1)
+      CALL mpro%allgather_inplace(break_cond2(ispec), break_cond2)
       IF(ALL(break_cond1 .LE. break_cond2)) EXIT
       !! End Modification by Andreas F. Martitsch (20.08.2015)
       fold=fnew
@@ -5763,7 +5763,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
       ! MPI Barrier -> Exchange amat between different processes
       !amat(i,j)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))*(ritznum(j)-(1.d0,0.d0))
       amat_spec(ispec)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))
-      CALL mpro%allgather(amat_spec(ispec),amat_spec)
+      CALL mpro%allgather_inplace(amat_spec(ispec),amat_spec)
       amat(i,j)=SUM(amat_spec)*(ritznum(j)-(1.d0,0.d0))
       !! End Modification by Andreas F. Martitsch (20.08.2015)
     ENDDO
@@ -5803,7 +5803,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
       !          *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
       coefren_spec(ispec)=SUM(bvec(j,:)                           &
                 *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
-      CALL mpro%allgather(coefren_spec(ispec),coefren_spec)
+      CALL mpro%allgather_inplace(coefren_spec(ispec),coefren_spec)
       coefren(j)=ritznum(j)*SUM(coefren_spec)
       !! End Modification by Andreas F. Martitsch (20.08.2015)
       !coefren(j)=ritznum(j)*SUM(bvec(j,:)                           &
@@ -5819,8 +5819,8 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
     break_cond1(ispec)=SUM(ABS(fnew-fold))
     break_cond2(ispec)=relerr*SUM(ABS(fnew))
     PRINT *,iter,break_cond1(ispec),break_cond2(ispec),ispec
-    CALL mpro%allgather_double_1(break_cond1(ispec), break_cond1)
-    CALL mpro%allgather(break_cond2(ispec), break_cond2)
+    CALL mpro%allgather_inplace(break_cond1(ispec), break_cond1)
+    CALL mpro%allgather_inplace(break_cond2(ispec), break_cond2)
     IF(ALL(break_cond1 .LE. break_cond2)) EXIT
     !! End Modification by Andreas F. Martitsch (20.08.2015)
 !    fold=fnew
@@ -5907,7 +5907,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
   ALLOCATE(h_spec(0:num_spec-1))
   h_spec=0.0d0
   q_spec(ispec)=SUM(CONJG(fnew)*fnew)
-  CALL mpro%allgather(q_spec(ispec), q_spec)
+  CALL mpro%allgather_inplace(q_spec(ispec), q_spec)
   qvecs_prev(:,1)=fnew/SQRT(SUM(q_spec))
 !! End Modification by Andreas F. Martitsch (20.08.2015)
 !
@@ -5937,7 +5937,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
         !hmat(j,k-1)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
         h_spec=0.0d0
         h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
-        CALL mpro%allgather(h_spec(ispec), h_spec)
+        CALL mpro%allgather_inplace(h_spec(ispec), h_spec)
         hmat(j,k-1)=SUM(h_spec)
         !! End Modification by Andreas F. Martitsch (20.08.2015)
         qvecs(:,k)=qvecs(:,k)-hmat(j,k-1)*qvecs(:,j)
@@ -5948,7 +5948,7 @@ CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
       !hmat(k,k-1)=SQRT(SUM(CONJG(qvecs(:,k))*qvecs(:,k)))
       h_spec=0.0d0
       h_spec(ispec)=SUM(CONJG(qvecs(:,k))*qvecs(:,k))
-      CALL mpro%allgather(h_spec(ispec), h_spec)
+      CALL mpro%allgather_inplace(h_spec(ispec), h_spec)
       hmat(k,k-1)=SQRT(SUM(h_spec))
       !! End Modification by Andreas F. Martitsch (20.08.2015)
       qvecs(:,k)=qvecs(:,k)/hmat(k,k-1)
