@@ -4757,7 +4757,7 @@ CONTAINS
 !! Modification by Andreas F. Martitsch (20.08.2015)
 ! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
 ! (mpro%allgather supports 3D and 4D matrices)
-    CALL mpro%allgather(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
+    CALL mpro%allgather_inplace(scalprod_pleg(:,:,:,ispec), scalprod_pleg)
 
     DO istep=ibeg,iend
 !
