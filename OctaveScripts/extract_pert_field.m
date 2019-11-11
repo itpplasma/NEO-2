@@ -6,10 +6,12 @@
 %   where '#mode' is replaced with the mode number.
 % file_ext: file extension of input file. If not passed or empty, it is
 %   assumed there is no file extension.
-function extract_pert_field(file_base, file_ext)
+function extract_pert_field(file_base, file_ext, file_descr)
+  if nargin < 3 || isempty(file_descr)
+    file_descr = 'cos_harm'; % additional info (some extra info given by the filename)
+  end
 
   %file_base = 'aug_2_n0_shortto_m12-pert-2-3'%'aug_2_rmp-n0.bc'; % 'tok-synch2.bc'; % data file base name (identifier)
-  file_descr = 'cos_harm'; % additional info (some extra info given by the filename)
   %file_ext = 'bc'; %extension
 
   % I try to read the file
@@ -55,54 +57,52 @@ function extract_pert_field(file_base, file_ext)
   % check the first block of the spectrum (negative n- or m-values)
   % (NEO-2 needs B field spectrum of the from n>=0 && m>-inf)
   spec = data_c(k_def+5:k_def+5+(n0b+1+m0b*(2*n0b+1))-1);
-  line_conv=str2num(spec{1});
-  spec_num=zeros(n0b+1+m0b*(2*n0b+1),size(line_conv,2));
-  spec_num(1,:)=line_conv;
+  line_conv = str2num(spec{1});
+  spec_num = zeros(n0b+1+m0b*(2*n0b+1),size(line_conv,2));
+  spec_num(1,:) = line_conv;
   for k=2:(n0b+1+m0b*(2*n0b+1))
-    line_conv=str2num(spec{k});
-    spec_num(k,:)=line_conv;
+    line_conv = str2num(spec{k});
+    spec_num(k,:) = line_conv;
   end
   %get the highest toroidal perturbation mode number
-  n_pert_max=max(unique(spec_num(:,2)));
+  n_pert_max = max(unique(spec_num(:,2)));
   %check m>-inf
-  check_m_symm=sum(flipud(unique(spec_num(:,1)))+unique(spec_num(:,1)))==0;
+  check_m_symm = sum(flipud(unique(spec_num(:,1)))+unique(spec_num(:,1)))==0;
   %check n>=0
-  check_n_symm=sum(flipud(unique(spec_num(:,2)))+unique(spec_num(:,2))-n0b)==0;
+  check_n_symm = sum(flipud(unique(spec_num(:,2)))+unique(spec_num(:,2))-n0b)==0;
   %specify switch for mapping Foruier coefficients
   if check_m_symm && check_n_symm % this is the wanted spectrum
-    sw_spec=1;
+    sw_spec = 1;
   else
     %check m>=0
-    check_m_symm=sum(flipud(unique(spec_num(:,1)))+unique(spec_num(:,1))-m0b)==0;
+    check_m_symm = sum(flipud(unique(spec_num(:,1)))+unique(spec_num(:,1))-m0b)==0;
     %check n>-inf
-    check_n_symm=sum(flipud(unique(spec_num(:,2)))+unique(spec_num(:,2)))==0;
+    check_n_symm = sum(flipud(unique(spec_num(:,2)))+unique(spec_num(:,2)))==0;
     if check_m_symm && check_n_symm % Fourier coefficients must be mapped
-      sw_spec=2;
+      sw_spec = 2;
     else
       error('Check your Boozer file (mode numbers)!')
     end
   end
-
   % change now n0b and m0b according to perturbation
+  dline(2) = 0; % only 1 toroidal mode number per file
   switch sw_spec
   case 1
-    dline(2) = 0; % only 1 toroidal mode number per file
     dline(1) = m0b;
-    data_c{k_def} = sprintf(' %d    %d    %d   %d   %.6e   %.5f   %.5f', dline);
   case 2
-    dline(2) = 0; % only 1 toroidal mode number per file
+    % Requires additional header for the n equal zero mode.
     data_c0(1:k_def)=data_c(1:k_def);
     data_c0{k_def} = sprintf(' %d    %d    %d   %d   %.6e   %.5f   %.5f', dline);
     dline(1) = m0b * 2; % because of negative perturbations
-    data_c{k_def} = sprintf(' %d    %d    %d   %d   %.6e   %.5f   %.5f', dline);
   end
+  data_c{k_def} = sprintf(' %d    %d    %d   %d   %.6e   %.5f   %.5f', dline);
 
   % open the output files for the different
   % (toroidal) perturbation mode numbers
   file_names=cell(1,n_pert_max+1);
   fids=cell(1,n_pert_max+1);
   for n_pert=0:n_pert_max
-    file_out=[file_base,'-n',num2str(n_pert)];
+    file_out = [file_base,'-n',num2str(n_pert)];
     if ~isempty(file_ext)
       file_out=[file_out,'.',file_ext]; %#ok<AGROW>
     end
@@ -110,14 +110,14 @@ function extract_pert_field(file_base, file_ext)
     fids{n_pert+1}=fopen(file_out,'w');
     if n_pert==0
       for kl = 1:k_def-1
-        fprintf(fids{n_pert+1},'%s\n',data_c0{kl});
+        fprintf(fids{n_pert+1}, '%s\n', data_c0{kl});
       end
       line_conv=str2num(data_c0{k_def});
       line_conv(4) = 1;
       fprintf(fids{n_pert+1},'  %2d    %2d   %4d    %2d    %9.8f     %9.8f     %9.8f\n', line_conv);
     else
       for kl = 1:k_def
-        fprintf(fids{n_pert+1},'%s\n',data_c{kl});
+        fprintf(fids{n_pert+1}, '%s\n', data_c{kl});
       end
     end
   end
@@ -129,17 +129,10 @@ function extract_pert_field(file_base, file_ext)
     head = data_c(k_start+1:k_start+4);
 
     %keyboard
-    if strcmp(file_descr,'cos_harm')
+    if strcmp(file_descr, 'cos_harm')
       head{end} =  ['    m    n      rmnc [m]         rmns [m]         zmnc [m]         zmns [m]         vmnc [ ]         vmns [ ]         bmnc [T]         bmns [T]'];
     end
-
     spec = data_c(k_start+5:k_start+5 + (n0b+1+m0b*(2*n0b+1)) - 1);
-
-    if strcmp(file_descr,'cos_harm')
-      k_start = k_start+5 + ((m0b+1)*(2*n0b+1)) - 1;
-    else
-      k_start = k_start+5 + (n0b+1+m0b*(2*n0b+1)) - 1;
-    end
 
 
     % write the original header for flux surface
@@ -148,14 +141,14 @@ function extract_pert_field(file_base, file_ext)
         for kl = 1:numel(head)-2
           fprintf(fids{n_pert+1},'%s\n',head{kl});
         end
-        line_conv=str2num(head{numel(head)-1});
+        line_conv = str2num(head{numel(head)-1});
         line_conv(3) = line_conv(3)*nper;
         line_conv(6) = line_conv(6)*nper;
-        fprintf(fids{n_pert+1},'   %9.8e   %9.8e   %9.8e   %9.8e  %9.8e  %9.8e\n', line_conv);
-        fprintf(fids{n_pert+1},'%s\n',head{numel(head)});
+        fprintf(fids{n_pert+1}, '   %9.8e   %9.8e   %9.8e   %9.8e  %9.8e  %9.8e\n', line_conv);
+        fprintf(fids{n_pert+1}, '%s\n', head{numel(head)});
       else
         for kl = 1:numel(head)
-          fprintf(fids{n_pert+1},'%s\n',head{kl});
+          fprintf(fids{n_pert+1}, '%s\n', head{kl});
         end
       end
     end
@@ -172,12 +165,12 @@ function extract_pert_field(file_base, file_ext)
 
     %extract single (toroidal) perturbations
     switch sw_spec
-    case 1 % this is the wanted form of the pectrum
+    case 1 % this is the wanted form of the spectrum
     case 2 % here Fourier coefficients must be mapped
       for n_pert=0:n_pert_max
         if n_pert == 0 % this is the axisymmetric field
-          L=spec_num(:,2)==0;
-          data_6cols=spec_num(L,:);
+          L = spec_num(:,2) == 0;
+          data_6cols = spec_num(L,:);
           switch size(data_6cols,2)
           case 6
             if strcmp(file_descr,'cos_harm')
@@ -232,6 +225,12 @@ function extract_pert_field(file_base, file_ext)
           end
         end
       end
+    end
+
+    if strcmp(file_descr,'cos_harm')
+      k_start = k_start+5 + ((m0b+1)*(2*n0b+1)) - 1;
+    else
+      k_start = k_start+5 + (n0b+1+m0b*(2*n0b+1)) - 1;
     end
 
   end

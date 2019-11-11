@@ -1,49 +1,49 @@
-! Usage of program
-!
-!   USE magfie_mod, ONLY: magfie, magfie_deallocate, stevvo
-!   USE neo_magfie_mod, ONLY: magfie_spline, magfie_sarray, magfie_result
-!
-! ATTENTION!!!!!!
-!
-! Standard outut of magfie produces arrays for SMT and BMC
-!
-! For other usage put magfie_result=1 (NEO)   
-!
-! EXAMPLE with splines (3 surfaces, can be less or more)
-!
-!   magfie_spline = 1
-!   ALLOCATE(magfie_sarray(3))
-!   magfie_sarray = (/0.4_dp,0.5_dp,0.6_dp/)
-!   CALL stevvo( RT0, R0i, L1i, cbfi, bz0i, bf0 )
-!   CALL magfie( x, bmoda, sqrtg, bder, hcovar, hctrvr, hcurl )
-!
-! EXAMPLE with splines (1 surface)
-!
-!   magfie_spline = 1
-!   ALLOCATE(magfie_sarray(1))
-!   magfie_sarray = (/0.4_dp/)
-!   CALL stevvo( RT0, R0i, L1i, cbfi, bz0i, bf0 )
-!   CALL magfie( x, bmoda, sqrtg, bder, hcovar, hctrvr, hcurl )
-!
-! EXAMPLE without splines
-!
-!   magfie_spline = 0
-!   CALL stevvo( RT0, R0i, L1i, cbfi, bz0i, bf0 )
-!   CALL magfie( x, bmoda, sqrtg, bder, hcovar, hctrvr, hcurl )
-!
-! EXAMPLE with loop over different s-values, spline, 3 surfaces
-!
-!   CALL stevvo( RT0, R0i, L1i, cbfi, bz0i, bf0 )
-!   magfie_spline = 1
-!   ALLOCATE( magfie_sarray(3) )
-!   DO ...... ! different Fluxsurfaces
-!      magfie_sarray = ......
-!      DO ..... ! theta, phi
-!         CALL magfie( x, bmoda, sqrtg, bder, hcovar, hctrvr, hcurl )
-!      END DO
-!      CALL magfie_deallocate
-!   END DO
-!   DEALLOCATE( magfie_sarray )
+!> Usage of module
+!>
+!>   USE magfie_mod, ONLY: magfie, magfie_deallocate, stevvo
+!>   USE neo_magfie_mod, ONLY: magfie_spline, magfie_sarray, magfie_result
+!>
+!> ATTENTION!
+!>
+!> Standard outut of magfie produces arrays for SMT and BMC
+!>
+!> For other usage put magfie_result=1 (NEO)
+!>
+!> EXAMPLE with splines (3 surfaces, can be less or more)
+!>
+!>   magfie_spline = 1
+!>   ALLOCATE(magfie_sarray(3))
+!>   magfie_sarray = (/0.4_dp,0.5_dp,0.6_dp/)
+!>   CALL stevvo( RT0, R0i, L1i, cbfi, bz0i, bf0 )
+!>   CALL magfie( x, bmoda, sqrtg, bder, hcovar, hctrvr, hcurl )
+!>
+!> EXAMPLE with splines (1 surface)
+!>
+!>   magfie_spline = 1
+!>   ALLOCATE(magfie_sarray(1))
+!>   magfie_sarray = (/0.4_dp/)
+!>   CALL stevvo( RT0, R0i, L1i, cbfi, bz0i, bf0 )
+!>   CALL magfie( x, bmoda, sqrtg, bder, hcovar, hctrvr, hcurl )
+!>
+!> EXAMPLE without splines
+!>
+!>   magfie_spline = 0
+!>   CALL stevvo( RT0, R0i, L1i, cbfi, bz0i, bf0 )
+!>   CALL magfie( x, bmoda, sqrtg, bder, hcovar, hctrvr, hcurl )
+!>
+!> EXAMPLE with loop over different s-values, spline, 3 surfaces
+!>
+!>   CALL stevvo( RT0, R0i, L1i, cbfi, bz0i, bf0 )
+!>   magfie_spline = 1
+!>   ALLOCATE( magfie_sarray(3) )
+!>   DO ...... ! different Fluxsurfaces
+!>      magfie_sarray = ......
+!>      DO ..... ! theta, phi
+!>         CALL magfie( x, bmoda, sqrtg, bder, hcovar, hctrvr, hcurl )
+!>      END DO
+!>      CALL magfie_deallocate
+!>   END DO
+!>   DEALLOCATE( magfie_sarray )
 
 MODULE magfie_mod
 

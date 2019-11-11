@@ -1760,7 +1760,7 @@ CONTAINS
           CALL h5_add(h5_group_id, 'ch_fir', h5_surface%ch_fir%tag)
           CALL h5_add(h5_group_id, 'ch_las', h5_surface%ch_las%tag)
           ! ------------------------------------------------------------------------
-          CALL h5_add(h5_group_id, 'bmod0',     h5_surface%bmod0)
+          CALL h5_add(h5_group_id, 'bmod0',     h5_surface%bmod0, comment='reference magnetic field in Tesla', unit='T')
           CALL h5_add(h5_group_id, 'aiota',     h5_surface%aiota)
           CALL h5_add(h5_group_id, 'r_min',     h5_surface%r_min)
           CALL h5_add(h5_group_id, 'r_max',     h5_surface%r_max)

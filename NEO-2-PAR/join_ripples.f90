@@ -423,7 +423,7 @@ DO i=1,o%p%npass_l
 WRITE(111,*) o%p%amat_m_m(i,1:o%p%npass_r)
 ENDDO
 CLOSE(111)
-!pause 'join ripples written' !Warning in gfortran-4.7
+print *,'join ripples written'
 endif
 
 !

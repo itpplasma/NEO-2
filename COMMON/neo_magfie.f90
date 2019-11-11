@@ -304,6 +304,16 @@ CONTAINS
     REAL(dp) :: isqrg, sqrg11
 
     !REAL(dp) :: s_sqrtg00_m Klaus
+
+    ! To silence a warning maybe used uninitialized (should be false positive).
+    bis = 0.0
+    bis_s = 0.0
+    lis = 0.0
+    lis_s = 0.0
+    ris = 0.0
+    ris_s = 0.0
+    zis = 0.0
+    zis_s = 0.0
     
     !*******************************************************************
     ! Initialisation if necessary

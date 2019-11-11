@@ -40,7 +40,7 @@ USE development
   INTEGER :: info
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ipivot
 !
-  INTEGER, PARAMETER :: joinripples_write=0
+  integer, parameter :: joinripples_write=0
 !
   ! WINNY
   ! made it compatible with propagator_mod
@@ -57,7 +57,7 @@ USE development
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: dummat1,dummat2
   DOUBLE PRECISION :: facnorm
 
-  INTEGER :: icount = 0
+  integer :: icount = 0
   !
   ! WINNY for SERGEI
   !  The following lines were forgotten in hurry in the evening so 
@@ -385,7 +385,7 @@ USE development
     ENDDO
   ENDIF
 !
-IF(joinripples_write.EQ.1) THEN
+if(joinripples_write.eq.1) then
 OPEN(111,file='tot_flux_p.dat')
 WRITE(111,'(3(1x,e12.5))') (o%p%flux_p(:,i) ,i=1,o%p%npass_l)
 CLOSE(111)
@@ -421,13 +421,8 @@ DO i=1,o%p%npass_l
 WRITE(111,*) o%p%amat_m_m(i,1:o%p%npass_r)
 ENDDO
 CLOSE(111)
-!! Modification by Andreas F. Martitsch (16.07.2015)
-! Warning: Deleted feature: PAUSE statement at (1)
-!PAUSE 'join ripples written'
-! print message
-PRINT *,'join ripples written'
-!! End Modification by Andreas F. Martitsch (16.07.2015)
-ENDIF
+print *,'join ripples written'
+endif
 
 !
   !

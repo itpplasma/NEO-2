@@ -14,7 +14,7 @@ PROGRAM neo2
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,        &
        bsfunc_local_shield_factor,bsfunc_shield,                    &
        bsfunc_lambda_loc_res, eta_savemem_dist1, eta_savemem_dist2, &
-       eta_savemem_sigma_mult
+       eta_savemem_sigma_mult, flint_prepare, flint_prepare_2
   USE device_mod
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
@@ -565,6 +565,8 @@ PROGRAM neo2
 
      ! ---------------------------------------------------------------------------
      ! this is just for christian, sergie please switch it off
+     ! Note: these subroutines have been moved to flint_mod and need to
+     !   be added to the use statement.
      ! CALL sort_theta
      ! nr,nz,nphi
      !CALL write_volume_data(40,40,100,'w7as_vol.dat')
@@ -1029,6 +1031,7 @@ CONTAINS
 
        CALL h5_define_group(h5_config_id, 'metadata', h5_config_group)
        CALL h5_add(h5_config_group, 'NEO-2 Version', Neo2_Version)
+       CALL h5_add(h5_config_group, 'NEO-2 Version Additional', Neo2_Version_Additional)
        CALL h5_add(h5_config_group, 'MPILib Version', MyMPILib_Version)
        CALL h5_add(h5_config_group, 'CMake_Compiler', CMake_Compiler)
        CALL h5_add(h5_config_group, 'CMake_Compiler_Version', CMake_Compiler_Version)

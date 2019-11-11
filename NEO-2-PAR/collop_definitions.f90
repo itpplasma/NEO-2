@@ -8,8 +8,8 @@ module collop_definitions
   !**********************************************************
   ! Weighting
   !**********************************************************
-  real(kind=dp)    :: alpha  = 0d0
-  real(kind=dp)    :: beta   = 0d0
+  real(kind=dp)    :: alpha  = 0
+  real(kind=dp)    :: beta   = 0
 
   !**********************************************************
   ! Species

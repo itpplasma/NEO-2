@@ -1,3 +1,25 @@
+% \brief Create a perturbed boozer file for given equlibrium input and displacements.
+%
+%
+% Input:
+% ------
+% file_base: base filename (i.e. without extension) for the input file
+%   with the background/unperturbed field.
+%   default value: 'eqdsk_35568_2.68800'
+% file_displacement: filename (i.e. with extension) for the input file
+%   with the displacements caused by the modes.
+%   default value: 'displacement_morepoints.txt'
+% amplitudes: array with the amplitudes of the single modes. At the
+%   moment two values are expected.
+%   default value: [1/100, 1/150]
+% phases: array with the phases of the single modes. At the moment two
+%   values are expected.
+%   default value: [0, pi]
+% plot_data: logical, if true, plots of the results are made.
+%   default value: false;
+% file_out_name: name for the output file, without extension.
+%   default value: [file_base,'-pert_kink_tear-n',num2str(n_pert),...
+%   '-','phase_kt-',num2str(delta_phase),'pi', '.bc']
 function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, plot_data, file_out_name)
   %% Parameters
   % Input files
@@ -154,9 +176,9 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
     Zmc_orig = data(:,5);
     Zms_orig = data(:,6);
 
-    all_b0_theta(ns, :) = b_fourier(m_orig, bmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, bms_orig, theta_vec(1:end-1));
-    all_R_theta(ns, :) = b_fourier(m_orig, Rmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, Rms_orig, theta_vec(1:end-1));
-    all_Z_theta(ns, :) = b_fourier(m_orig, Zmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, Zms_orig, theta_vec(1:end-1));
+    all_b0_theta(ns, :) = b_fourier_cos(m_orig, bmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, bms_orig, theta_vec(1:end-1));
+    all_R_theta(ns, :) = b_fourier_cos(m_orig, Rmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, Rms_orig, theta_vec(1:end-1));
+    all_Z_theta(ns, :) = b_fourier_cos(m_orig, Zmc_orig, theta_vec(1:end-1))+b_fourier_sin(m_orig, Zms_orig, theta_vec(1:end-1));
     all_T(ns,:) = theta_vec(1:end-1); %!!!
 
   end

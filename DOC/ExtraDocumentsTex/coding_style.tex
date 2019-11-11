@@ -75,6 +75,14 @@ Language (for names, documentation etc.) is british english.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{units}
+Units used in the code is cgs. Input might be expected in SI units (due
+to using external format, e.g. boozer files for magnetic field).
+
+RB: I support change to SI units.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{code}
 
 Use fortran 2008 standard, with files in free form.
@@ -107,6 +115,9 @@ implement the code for this.
 Use speaking, descriptive names, make them as long as needed but not
 longer than needed (and not longer than allowed by the standard).
 
+Avoid (re-)using names that are already in use for non-local (used in
+more than one file) variables/constants.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{comments}
 (Note: this subsection assumes, doxygen is used for automatic generation
@@ -116,6 +127,18 @@ For documentation of a variable on the same line use '!<'.
 Documentation for subroutines/classes/modules etc., should be put in
 front of the subroutine/class/module etc., and be started with '!>' and
 continued on following lines with '!>'.
+
+Comments should not repeat what the code does (exception see next
+point), but explain why the code was written as it is.
+
+An exception of the no-repetition clause holds for equations, as these
+might differ between what they would look like in print versus what they
+look like in code, but of course the comment should not only repeat the
+equation but make a connection between the ``symbols'' in the code and
+those in print.
+
+Exceptions/derivations made from the coding style, e.g. naming
+conventions, should usually be explained with a comment.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{case}
@@ -148,6 +171,13 @@ whitespace at the beginning of the line.
 \subsection{Line continuation}
 Put the continuation sign at the end of the line and as first
 non-whitespace character of the next line.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Arrays}
+Array indices should follow the fortran convention and start at 1,
+unless there are good reason do deviate (e.g. to include boundary
+points, where 0 would be the first point outside the boundary, -1 the
+second, etc.).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

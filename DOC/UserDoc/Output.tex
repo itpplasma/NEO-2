@@ -140,6 +140,213 @@ Note that both quantities require \inputparameter{isw\_calc\_Er} to be
 $=1$ and the latter additionally requires \inputparameter{nu\_spec} to be
 greater as one.
 
+\begin{table}[h]
+\begin{tabular}{|c|l|}
+\hline
+variable name in HDF file  & Comment
+\\
+\hline
+Bref & Reference magnetic field [Gauss] \\
+\hline
+D11\_AX & = D11\_AX\_Dpl * Dp0 \\
+\hline
+D11\_AX\_Dpl & \\
+\hline
+D11\_NA & = D11\_NA\_Dpl * Dp0 \\
+\hline
+D11\_NA\_Dpl & \\
+\hline
+D12\_AX & = D12\_AX\_Dpl * Dp0 \\
+\hline
+D12\_AX\_Dpl & \\
+\hline
+D12\_NA & = D12\_NA\_Dpl * Dp0 \\
+\hline
+D12\_NA\_Dpl & \\
+\hline
+D13\_AX & = D13\_AX\_D13ref * D31ref0 \\
+\hline
+D13\_AX\_D31ref & \\
+\hline
+D13\_NA & = D13\_NA\_D13ref * D31ref0 \\
+\hline
+D13\_NA\_D31ref & \\
+\hline
+D21\_AX & = D21\_AX\_Dpl * Dp0 \\
+\hline
+D21\_AX\_Dpl & \\
+\hline
+D21\_NA & = D21\_NA\_Dpl * Dp0 \\
+\hline
+D21\_NA\_Dpl & \\
+\hline
+D22\_AX & = D22\_AX\_Dpl * Dp0 \\
+\hline
+D22\_AX\_Dpl & \\
+\hline
+D22\_NA & = D22\_NA\_Dpl * Dp0 \\
+\hline
+D22\_NA\_Dpl & \\
+\hline
+D23\_AX & = D23\_AX\_D31ref * D31ref0 \\
+\hline
+D23\_AX\_D31ref & \\
+\hline
+D23\_NA & = D23\_NA\_D31ref * D31ref0 \\
+\hline
+D23\_NA\_D31ref & \\
+\hline
+D31\_AX & = D13\_AX\_D31ref * D31ref0 \\
+\hline
+D31\_AX\_D31ref & \\
+\hline
+D31\_NA & = D13\_NA\_D31ref * D31ref0 \\
+\hline
+D31\_NA\_D31ref & \\
+\hline
+D31ref0 & \\
+\hline
+D32\_AX & = D32\_AX\_D31ref * D31ref0 \\
+\hline
+D32\_AX\_D31ref & \\
+\hline
+D32\_NA & = D32\_NA\_D31ref * D31ref0 \\
+\hline
+D32\_NA\_D31ref & \\
+\hline
+D33L0\_Zeff & \\
+\hline
+D33\_AX & = D33\_AX\_norm * D33L00\_Zeff \\
+\hline
+D33\_AX\_norm & \\
+\hline
+D33\_NA & = D33\_NA\_norm * D33L00\_Zeff \\
+\hline
+D33\_NA\_norm & \\
+\hline
+Dp0 & \\
+\hline
+Er & \\
+\hline
+Gamma\_AX\_Ware\_spec & \\
+\hline
+Gamma\_AX\_spec & \\
+\hline
+Gamma\_NA\_Ware\_spec & \\
+\hline
+Gamma\_NA\_spec & \\
+\hline
+MtOvR & \\
+\hline
+ParFlow\_AX\_Ware\_spec & \\
+\hline
+ParFlow\_AX\_spec & \\
+\hline
+ParFlow\_NA\_Ware\_spec & \\
+\hline
+ParFlow\_NA\_spec & \\
+\hline
+Qflux\_AX\_Ware\_spec & \\
+\hline
+Qflux\_AX\_spec & \\
+\hline
+Qflux\_NA\_Ware\_spec & \\
+\hline
+Qflux\_NA\_spec & \\
+\hline
+R0 & major radius [cm] \\
+\hline
+R\_Vphi\_prof & \\
+\hline
+T\_spec & temperature of the species [erg] \\
+\hline
+TphiNA\_Ware\_spec & \\
+\hline
+TphiNA\_Ware\_tot & \\
+\hline
+TphiNA\_spec & \\
+\hline
+TphiNA\_tot & \\
+\hline
+VphiB\_Ware\_spec & \\
+\hline
+VphiB\_spec & \\
+\hline
+Vphi\_prof\_spec & \\
+\hline
+Vphi\_prof\_woWare\_spec & \\
+\hline
+VthtB\_Ware\_spec & \\
+\hline
+VthtB\_spec & \\
+\hline
+Vtht\_prof\_spec & \\
+\hline
+Vtht\_prof\_woWare\_spec & \\
+\hline
+Z\_Vphi\_prof & \\
+\hline
+aiota & toroidal transform, 1/q \\
+\hline
+avEparB\_ov\_avb2 & \\
+\hline
+av\_gphph & \\
+\hline
+av\_inv\_bhat & \\
+\hline
+avbhat & \\
+\hline
+avbhat2 & \\
+\hline
+avnabpsi & \\
+\hline
+bcovar\_phi & \\
+\hline
+bcovar\_tht & \\
+\hline
+boozer\_s & \\
+\hline
+col\_ind\_spec & \\
+\hline
+collpar\_spec & \\
+\hline
+dbcovar\_phi\_ds & \\
+\hline
+dbcovar\_theta\_ds & \\
+\hline
+eps\_M\_2 & \\
+\hline
+isw\_coul\_log & \\
+\hline
+m\_phi & \\
+\hline
+m\_spec & mass of the species [g] \\
+\hline
+n\_spec & density of the species [$1/cm^3$] \\
+\hline
+nu\_star\_spec & \\
+\hline
+num\_spec & number of species [1] \\
+\hline
+psi\_pr\_hat & \\
+\hline
+row\_ind\_spec & \\
+\hline
+species\_tag & \\
+\hline
+sqrtg\_bctrvr\_phi & \\
+\hline
+sqrtg\_bctrvr\_tht & \\
+\hline
+version & \\
+\hline
+z\_spec & charges of the species [1]
+
+\end{tabular}
+\caption{Contents of the output file ``neo2\_multispecies\_out.h5''}
+\end{table}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{precomp\_collop.h5}
 This file is produced as a result of the precomputation, i.e. with
@@ -160,12 +367,16 @@ Written in \file{collision\_operator\_mems.f90}.
 \paragraph{M\_transform\_inv}
 
 \paragraph{ailmm\_aa}
+Matrix for the integral part of the scattering, multiplied by
+\codevariable{M\_transform\_inv}.
 
 \paragraph{anumm\_aa}
+Matrix for pitch angle scattering, multiplied by \codevariable{M\_transform\_inv}.
 
 \paragraph{asource}
 
 \paragraph{denmm\_aa}
+Matrix for energy scattering, multiplied by \codevariable{M\_transform\_inv}.
 
 \paragraph{meta}
 Here the values of some of the input variables are documented.
@@ -215,7 +426,7 @@ This section will briefly describe the possibilities to read and edit
 the input and output of \neotwo.
 
 In table~\ref{tablereadinginoutput} is an overview of the formats used
-for input and output, along with usual ending and the possibilities to
+for input and output, along with usual file ending and the possibilities to
 edit these with other programs.
 
 \begin{table}
@@ -223,11 +434,11 @@ edit these with other programs.
     \begin{tabular}{cccccc}
 kind of in-/output & in/out & matlab & octave & python3 & texteditor \\
 data (text, dat)   & out    & yes    & yes    & yes     & yes \\
-boozer (bc)        & in     &        &        &         & yes$^2$ \\
+boozer (bc)        & in     &        &        & only reading & yes$^2$ \\
 netcdf (nc)$^4$    &        &        &        &         & no \\
 hdf5 (h5)          & in/out & yes    & yes$^3$&         & no$^1$ \\
-fortran namelist$^5$&in/out &        &        &         & yes$^2$ \\
-efit               & in     &        &        &         & yes$^2$
+fortran namelist$^5$&in/out &        &        & yes     & yes$^2$ \\
+efit               & in     &        &        & only reading & yes$^2$
     \end{tabular}
     \caption{Possibilities to read/write/edit the different in-/output
 file formats of \neotwo.

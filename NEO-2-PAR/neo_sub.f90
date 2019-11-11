@@ -62,20 +62,28 @@ SUBROUTINE neo_init(npsi)
 ! **********************************************************************
   rt0=0.0_dp
   bmref=0.0_dp
-  DO imn=1,mnmax
-     IF(ixm(imn).EQ.0 .AND. ixn(imn).EQ.0) THEN
-        rt0 = rmnc(1,imn)
-        bmref = bmnc(1,imn)
+  if (.true.) then
+    DO imn=1,mnmax
+       IF(ixm(imn).EQ.0 .AND. ixn(imn).EQ.0) THEN
+          rt0 = rmnc(1,imn)
+          bmref = bmnc(1,imn)
 
-        rt0_g = rt0
-        bmref_g = bmref
-     ENDIF
-  ENDDO
+          rt0_g = rt0
+          bmref_g = bmref
+       ENDIF
+    ENDDO
+  else
+    ! new (Bref set according to ref_swi):
+    CALL calc_Bref(bmref,rt0)
+    rt0_g = rt0
+    bmref_g = bmref
+  end if
+
   IF(rt0.EQ.0.0_dp .OR. bmref.EQ.0.0_dp) THEN
     WRITE (w_us,*) ' NEO_INIT: Fatal problem setting rt0 or bmref'
     STOP
   ENDIF
-!
+
   nper = nfp
 ! **********************************************************************
   w_u6_open = 0
@@ -84,9 +92,9 @@ SUBROUTINE neo_init(npsi)
   !**********************************************************
   ! Consistency check
   !**********************************************************
-  ! CALL neo_init_fluxsurface()
-  ! CALL neo_fourier()
-  ! STOP
+  !CALL neo_init_fluxsurface()
+  !CALL neo_fourier()
+  !STOP
 
   RETURN
 END SUBROUTINE neo_init
@@ -1426,7 +1434,10 @@ SUBROUTINE neo_read
      WRITE (w_us,*) 'FATAL: There is yet no other input type defined'
      STOP
   END IF
-!
+
+  ! To silence a warning maybe used uninitialized (should be false positive).
+  num_n = 0
+
 ! Filling of i_m and i_n 
 ! and pointers pixm from ixm to i_m, and pixn from ixn to i_n
   DO j = 1,mnmax
@@ -1580,6 +1591,8 @@ SUBROUTINE neo_read
      i_m =  i_m
      psi_pr = ABS(flux) / twopi
   !! Modifications by Andreas F. Martitsch (27.08.2014)
+  !-> definition of signs used in
+  !-> A F Martitsch et al 2016 Plasma Phys. Control. Fusion 58 074007
   ELSE IF  (lab_swi .EQ. 9) THEN         ! ASDEX-U (E. Strumberger)
      ! signs / conversion checked by Winny (24.10.2014)
      curr_pol = curr_pol * 2.d-7 * nfp   
@@ -1591,6 +1604,20 @@ SUBROUTINE neo_read
      i_m =  i_m
      psi_pr = ABS(flux) / twopi
   !! End Modifications by Andreas F. Martitsch (27.08.2014) 
+  !! Modifications by Andreas F. Martitsch (28.06.2017)
+  !-> changes of signs to account for left-handed coordinate system
+  !-> affects sign of transport coefficients related to Ware pinch
+  !-> and Bootstrap current
+  ELSE IF  (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
+     curr_pol = - curr_pol * 2.d-7 * nfp   ! = bcovar_phi [Tm]
+     curr_tor = - curr_tor * 2.d-7         ! = bcovar_tht [Tm]
+     max_n_mode = max_n_mode * nfp
+     ixn =  ixn * nfp
+     i_n =  i_n * nfp
+     ixm =  ixm
+     i_m =  i_m
+     psi_pr = flux / twopi
+  !! End Modifications by Andreas F. Martitsch (28.06.2017)
   ELSE
      WRITE(w_us,*) 'FATAL: There is yet no other Laboratory defined!'
      STOP
@@ -2019,7 +2046,13 @@ SUBROUTINE neo_fourier
   z_pb = 0.0d0
   p_pb = 0.0d0
   b_pb = 0.0d0
-  
+
+  ! To silence a warning maybe used uninitialized (should be false positive).
+  ri_s = 0.0d0
+  zi_s = 0.0d0
+  li_s = 0.0d0
+  bi_s = 0.0d0
+
   DO imn=1,mnmax
      ri = s_rmnc(imn)
      zi = s_zmnc(imn)
@@ -2493,7 +2526,13 @@ SUBROUTINE neo_eval(theta,phi,bval,gval,kval,pval,qval,rval)
      zz_pb = 0.0d0
      pp_pb = 0.0d0
      bb_pb = 0.0d0
-  
+
+     ! To silence a warning maybe used uninitialized (should be false positive).
+     ri_s = 0.0d0
+     zi_s = 0.0d0
+     li_s = 0.0d0
+     bi_s = 0.0d0
+
      DO imn = 1,mnmax
         ri = s_rmnc(imn)
         zi = s_zmnc(imn)

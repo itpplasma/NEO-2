@@ -9,7 +9,7 @@
 
 testcase=${1}
 which_code=${2}
-testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-XXXXXX`
+testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-${testcase}-XXXXXX`
 #echo "Testpath created: ${testpath}"
 
 executablename="neo_2.x"

@@ -24,6 +24,10 @@ Note: use git tag --list to get a list of available tags.
 
 NTV  same as multispecies?
 
+4c15fa6dcac129c645ffa1091736b563098a361c ; module-rewrite_common
+Moved modules in common to own files. Exception for modules that are
+used only in the file in which they are defined.
+
 9558c15a468a509bd11cde9fb05eef31bf21e904
 Introduced adaption of x_cutoff.
 0.5.5

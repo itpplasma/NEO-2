@@ -54,13 +54,12 @@ endif ()
 
 ### NEO2 ###
 set(NEO2_COMMON_FILES
+        ../COMMON/amn_mod.f90
         ../COMMON/bdivfree.f90
         ../COMMON/device_mod.f90
-        ../COMMON/neo_modules.f90
         ../COMMON/field_divB0.f90
         ../COMMON/compute_aiota.f90
         ../COMMON/nrutil.f90
-        ../COMMON/neo_mod.f90
         ../COMMON/neo_magfie.f90
         ../COMMON/magfie.f90
         ../COMMON/mag.f90
@@ -69,6 +68,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/magdata_for_particles.f90
         ../COMMON/rhs_kin.f90
         ../COMMON/rk4_kin.f90
+        ../COMMON/binarysplit_int.f90
         ../COMMON/binarysplit_mod.f90
         ../COMMON/sparse_mod.f90
         ../COMMON/fluxsplitter.f90
@@ -76,6 +76,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/kin_allocate.f90
         ../COMMON/lapack_band.f90
         ../COMMON/odeint_allroutines.f
+        ../COMMON/plot_distrf.f90
         ../COMMON/polleg.f90
         ../COMMON/prodband.f90
         ../COMMON/pspline.f90
@@ -93,9 +94,43 @@ set(NEO2_COMMON_FILES
         ../COMMON/collop_nbi.f90
         ../COMMON/collop_spline.f90
         ../COMMON/collision_operator_mems.f90
+        ../COMMON/collisionality_mod.f90
         ../COMMON/collop_compute.f90
+        ../COMMON/development.f90
+        ../COMMON/extract_fluxcoord_mod.f90
+        ../COMMON/field_c_mod.f90
+        ../COMMON/field_eq_mod.f90
+        ../COMMON/flint_mod.f90
+        ../COMMON/input_files.f90
+        ../COMMON/inter_precision.f90
+        ../COMMON/inthecore_mod.f90
+        ../COMMON/neo_actual_fluxs.f90
+        ../COMMON/neo_actual_spectra.f90
+        ../COMMON/neo_control.f90
+        ../COMMON/neo_eval_switch.f90
+        ../COMMON/neo_exchange.f90
+        ../COMMON/neo_input.f90
+        ../COMMON/neo_parameters.f90
+        ../COMMON/neo_precision.f90
+        ../COMMON/neo_spline.f90
+        ../COMMON/neo_spline_b00.f90
+        ../COMMON/neo_spline_data.f90
+        ../COMMON/neo_support.f90
+        ../COMMON/neo_units.f90
+        ../COMMON/neo_van.f90
+        ../COMMON/neo_work.f90
+        ../COMMON/nrtype.f90
+        ../COMMON/partpa_mod.f90
+        ../COMMON/plagrange_mod.f90
         ../COMMON/rel_kernels.f90
+        ../COMMON/rk4_kin_mod.f90
+        ../COMMON/rkstep_mod.f90
+        ../COMMON/size_mod.f90
+        ../COMMON/sizey_bo.f90
+        ../COMMON/sizey_cur.f90
+        ../COMMON/sizey_pla.f90
         ../COMMON/sparsevec_mod.f90
+        ../COMMON/theta_rz_mod.f90
 )
 
 set(NEO2_SRC_FILES
@@ -106,7 +141,6 @@ set(NEO2_SRC_FILES
         ./join_ripples_int.f90
         ./join_ripples.f90
         ./join_ends.f90
-        ./plot_distrf.f90
         ./neo2.f90
         ./timingInfo.f90
 )

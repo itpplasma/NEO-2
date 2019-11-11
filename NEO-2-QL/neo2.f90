@@ -13,7 +13,8 @@ PROGRAM neo2
        bsfunc_local_err_max_mult,bsfunc_max_mult_reach,             &
        bsfunc_modelfunc_num,bsfunc_divide,                          &
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,        &
-       bsfunc_local_shield_factor,bsfunc_shield
+       bsfunc_local_shield_factor,bsfunc_shield, flint_prepare,     &
+       flint_prepare_2
   USE device_mod
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,                         &
@@ -52,7 +53,7 @@ PROGRAM neo2
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
        scalprod_beta, lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
        !! and lsw_write_precom by Michael Draxler (25.08.2017)
-  USE rkstep_mod, ONLY : lag,leg,legmax                            
+  USE rkstep_mod, ONLY : lag, leg, legmax, epserr_iter
       
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
@@ -90,6 +91,7 @@ PROGRAM neo2
   !**********************************************************
   ! Include version information
   !**********************************************************
+  include "cmake_version.f90"
   INCLUDE "version.f90"
   !**********************************************************
 
@@ -212,7 +214,7 @@ PROGRAM neo2
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
-       mag_symmetric,mag_symmetric_shorten
+       mag_symmetric,mag_symmetric_shorten, epserr_iter
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
@@ -483,6 +485,8 @@ PROGRAM neo2
 
   ! ---------------------------------------------------------------------------
   ! this is just for christian, sergie please switch it off
+  ! Note: these subroutines have been moved to flint_mod and need to be
+  !   added to the use statement.
   ! CALL sort_theta
   ! nr,nz,nphi
   !CALL write_volume_data(40,40,100,'w7as_vol.dat')
@@ -545,17 +549,18 @@ CONTAINS
        CALL h5_create('neo2_config.h5', h5_config_id, 1)
 
        CALL h5_define_group(h5_config_id, 'metadata', h5_config_group)
-       !CALL h5_add(h5_config_group, 'NEO-2 Version', Neo2_Version)
-       !CALL h5_add(h5_config_group, 'MPILib Version', MyMPILib_Version)
-       !CALL h5_add(h5_config_group, 'CMake_Compiler', CMake_Compiler)
-       !CALL h5_add(h5_config_group, 'CMake_Compiler_Version', CMake_Compiler_Version)
-       !CALL h5_add(h5_config_group, 'CMake_Build_Type', CMake_Build_Type)
-       !CALL h5_add(h5_config_group, 'CMake_Flags', CMake_Flags)
-       !CALL h5_add(h5_config_group, 'CMake_Flags_Release', CMake_Flags_Release)
-       !CALL h5_add(h5_config_group, 'CMake_Flags_Debug', CMake_Flags_Debug)
-       !CALL h5_add(h5_config_group, 'CMake_System', CMake_System)
-       !CALL h5_add(h5_config_group, 'CMake_SuiteSparse_Dir', CMake_SuiteSparse_Dir)
-       !CALL h5_add(h5_config_group, 'CMake_Blas_Lib', CMake_Blas_Lib)
+       CALL h5_add(h5_config_group, 'NEO-2 Version', Neo2_Version)
+       CALL h5_add(h5_config_group, 'NEO-2 Version Additional', Neo2_Version_Additional)
+       CALL h5_add(h5_config_group, 'MPILib Version', MyMPILib_Version)
+       CALL h5_add(h5_config_group, 'CMake_Compiler', CMake_Compiler)
+       CALL h5_add(h5_config_group, 'CMake_Compiler_Version', CMake_Compiler_Version)
+       CALL h5_add(h5_config_group, 'CMake_Build_Type', CMake_Build_Type)
+       CALL h5_add(h5_config_group, 'CMake_Flags', CMake_Flags)
+       CALL h5_add(h5_config_group, 'CMake_Flags_Release', CMake_Flags_Release)
+       CALL h5_add(h5_config_group, 'CMake_Flags_Debug', CMake_Flags_Debug)
+       CALL h5_add(h5_config_group, 'CMake_System', CMake_System)
+       CALL h5_add(h5_config_group, 'CMake_SuiteSparse_Dir', CMake_SuiteSparse_Dir)
+       CALL h5_add(h5_config_group, 'CMake_Blas_Lib', CMake_Blas_Lib)
        CALL h5_close_group(h5_config_group)
 
        CALL h5_define_group(h5_config_id, 'neo', h5_config_group)
@@ -791,6 +796,7 @@ CONTAINS
     nperiod=500
     xetami=0.0d0
     xetama=1.300001d0
+    epserr_iter = 1e-5
     eta_part_global = 0
     eta_part_trapped = 10
     eta_part_globalfac = 3.0_dp
@@ -1067,7 +1073,7 @@ CONTAINS
     CALL h5_get(h5id_multispec_in,'species_tag_Vphi',species_tag_Vphi)
     CALL h5_get(h5id_multispec_in,'isw_Vphi_loc',isw_Vphi_loc)
     IF (isw_Vphi_loc .EQ. 1) THEN
-      PRINT *,"neo2.f90: Warning switch isw_Vphi_loc=1 is not tested!"
+      write(*,*) "ERROR: switch isw_Vphi_loc=1 is not tested!"
       STOP
 
       IF(ALLOCATED(R_Vphi_prof)) DEALLOCATE(R_Vphi_prof)
@@ -1081,7 +1087,7 @@ CONTAINS
       ALLOCATE(boozer_theta_Vphi_prof(num_radial_pts))
       CALL h5_get(h5id_multispec_in,'boozer_theta_Vphi',boozer_theta_Vphi_prof)
     ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
-      PRINT *,"neo2.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+      write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
       STOP
     END IF
 
@@ -1106,8 +1112,12 @@ CONTAINS
            TRIM(ADJUSTL(dir_name)) // '; fi'
 ! __INTEL_COMPILER is constant in the form VVSS, with VV major version and SS minor version
 ! taken from https://software.intel.com/en-us/fortran-compiler-developer-guide-and-reference-using-predefined-preprocessor-symbols
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
@@ -1119,30 +1129,46 @@ CONTAINS
       cmd_line = &
            'if [ ! -e ' // TRIM(ADJUSTL(in_file)) // ' ]; then ln -s ../' // &
            TRIM(ADJUSTL(in_file)) // ' . ; fi'
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
       cmd_line = &
            'if [ ! -e ' // TRIM(ADJUSTL(in_file_pert)) // ' ]; then ln -s ../' // &
            TRIM(ADJUSTL(in_file_pert)) // ' . ; fi'
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
       cmd_line = &
            'if [ ! -e neo.in ]; then ln -s ../neo.in . ; fi'
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
       cmd_line = &
            'if [ ! -e neo_2.x ]; then ln -s ../neo_2.x . ; fi'
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
@@ -1172,8 +1198,12 @@ CONTAINS
       END IF
       CLOSE(unit=u1)
       cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec))
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
@@ -1204,8 +1234,12 @@ CONTAINS
       END IF
       CLOSE(unit=u1)
       cmd_line = 'chmod u+x ' // TRIM(ADJUSTL(fname_exec_precom))
+#ifdef __INTEL_COMPILER
 #if __INTEL_COMPILER < 1500
       CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
 #else
       CALL execute_command_LINE(cmd_line)
 #endif
@@ -1216,7 +1250,7 @@ CONTAINS
       boozer_s = boozer_s_prof(ind_boozer_s)
       Vphi = Vphi_prof(ind_boozer_s)
       IF (isw_Vphi_loc .EQ. 1) THEN
-        PRINT *,"neo2.f90: Warning switch isw_Vphi_loc=1 is not tested!"
+        write(*,*) "ERROR: Warning switch isw_Vphi_loc=1 is not tested!"
         STOP
 
         R_Vphi = R_Vphi_prof(ind_boozer_s)
@@ -1224,7 +1258,7 @@ CONTAINS
       ELSE IF(isw_Vphi_loc .EQ. 2) THEN
         boozer_theta_Vphi = boozer_theta_Vphi_prof(ind_boozer_s)
       ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
-        PRINT *,"neo2.f90: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+        write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
         STOP
       END IF
 
@@ -1259,10 +1293,10 @@ CONTAINS
         IF (n_prof(ind_boozer_s,ind_spec) .LE. 0.0_dp) CYCLE
         ctr_spec = ctr_spec + 1
         IF (ctr_spec .GT. num_spec) THEN
-           PRINT *,"neo2.f90: Error during preparation of &
+           write(*,*) "neo2.f90: Error during preparation of &
                 &multi-species computations!"
-           PRINT *,"Number of density-values inconsistent &
-                &with number of relevant species!"
+           write(*,*) "Number of density-values (",num_species_all, ") inconsistent &
+                &with number of relevant species (",num_spec,")!"
            STOP
         END IF
         species_tag_vec(ctr_spec) = species_tag_prof(ind_spec)

@@ -7,7 +7,7 @@ testcase=${1}
 number_processors=${2}
 which_code=${3}
 
-testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-XXXXXX`
+testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-${testcase}-XXXXXX`
 echo "Testpath created: ${testpath}"
 
 referencepath='/temp/buchholz/Neo2/Testing/Reference/'
@@ -21,8 +21,6 @@ return_value=0
 
 START=0
 END=3
-
-check_absolute_if_relative_fails=no #yes
 
 ########################################################################
 ### Function definitions
@@ -48,63 +46,25 @@ function check_equality_hdf5 {
   testcase_local=${2}
   return_value_loc=0
 
-  # Specify path that should not be compared, because they are expected
-  # to differ.
-  # The /metadata object contains for example start and end times of the
-  # run, which are expected to differ.
-  exclude_paths="--exclude-path=/metadata --exclude-path=/Testcase1/NEO-2/neo2_config/metadata"
   # Specify the accuracy for the comparison.
-  exponent_def=-12
+  exponent_def=-6
   accuracy="1.0e$exponent_def"
 
   # If the run is in parallel, some modifications to the settings have
   # to be made.
   if [ ${number_processors} -gt 1 ] ; then
     echo "##### parallel mode #####"
-    # The object parallel_storage is indicator if the run was parallel
-    # or not, as the reference should be made with a single processor,
-    # this is expected to differ.
-    exclude_paths="$exclude_paths --exclude-path=/Testcase1/NEO-2/taginfo/parallel_storage"
   fi
 
   for h5file in `ls $referencepath_local/${testcase_local}/*.h5` ; do
-    # Note: return value of h5diff can not be used, as it can be 1, even
-    # if no difference is reported.
-    # Thus the use of grep -c, this will return 1 if the count is zero,
-    # and return 0 if there is at least one occurence.
-    if h5diff --relative=${accuracy} ${exclude_paths} $h5file ./`basename $h5file` | grep -c "difference" ; then
-      echo "comparing $h5file and ./`basename $h5file`"
-      echo "comparison command is 'h5diff --relative=${accuracy} ${exclude_paths}'"
-      h5diff --relative=${accuracy} ${exclude_paths} $h5file ./`basename $h5file`
+    testfile=`basename $h5file`
 
-      exponent=$exponent_def
-      another_round=yes
-      while [ "x$another_round" == "xyes" -a $exponent -le 1 ]  ; do
-        # \bug For some reason the line below does not work.
-        h5diff --relative=1.0e$exponent ${exclude_paths} -q $h5file ./`basename $h5file` | grep -c "difference"
-        if [ "x$?" = "x0" ] ; then
-          #~ exponent=`let $exponent + 1`
-          exponent=$[$exponent+1]
-        else
-          another_round=no
-        fi
-      done
-      echo
-      echo "Differences are up to order of ~$exponent."
-      echo
+    echo "comparing $h5file and ./testfile"
 
-      if [[ "x$check_absolute_if_relative_fails" == "xyes" ]] ; then
-        # Make another check, this time with absolute differences.
-        if h5diff --delta=${accuracy} ${exclude_paths} -q $h5file ./`basename $h5file` ; then
-          echo "Second try succesfull."
-        else
-          echo "Pass with absolute difference also failed."
-          return_value_loc=1
-        fi
-      else
-        return_value_loc=1
-      fi
-    fi
+    echo "from hdf5tools import compare_hdf5_files; import sys; \
+    res = compare_hdf5_files('$h5file', '${testfile}', ${accuracy}, [], '$referencepath_local/${testcase_local}/blacklist.txt', True); \
+    sys.exit(0 if res[0] else 1)" | python3
+    return_value_loc="$?"
   done
 
   return $return_value_loc
@@ -117,9 +77,8 @@ cp ./$executablename $testpath
 cd $testpath
 
 echo "Copying template..."
-cp -r -L ../../Template/${testcase}/ .
+cp -r -L ../../Template/${testcase}/* ./
 
-cd ${testcase}
 echo "Running Test ${testcase}..."
 
 if [ ${number_processors} -eq 0 ] ; then
@@ -127,7 +86,7 @@ if [ ${number_processors} -eq 0 ] ; then
   runcommand="$testpath/$executablename"
 else
   echo "Parallel mode np=${number_processors}"
-  runcommand="mpirun -np ${number_processors} $testpath/$executablename"
+  runcommand="mpirun --oversubscribe -np ${number_processors} $testpath/$executablename"
 fi
 
 if [ "x${which_code}" = "xQL" ] ; then

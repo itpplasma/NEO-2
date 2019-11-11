@@ -690,6 +690,10 @@ class BoozerFile:
 
     return bbeg
 
+  def get_iota(self):
+
+    return self.iota
+
   def __init__(self, filename: str):
     """Init routine which takes a string, representing the file to read.
     """
