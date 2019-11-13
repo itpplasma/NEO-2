@@ -323,6 +323,7 @@ contains
 
       DO k=mbeg,m
         fold=qvecs(:,k-1)
+        call next_iteration(n, fold, fnew)
         qvecs(:,k)=fnew
         DO j=1,k-1
           h_spec=0.0d0
@@ -500,7 +501,7 @@ contains
     ngrowing=0
     DO j=1,m
       IF(ABS(ritznum(j)).LT.tol) EXIT
-      ngrow=ngrow+1
+      ngrowing=ngrowing+1
       selec(j)=.TRUE.
     ENDDO
     rnum=ritznum
