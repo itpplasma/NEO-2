@@ -160,7 +160,7 @@ contains
         if (mode .EQ. 2) fnew = fnew + fzero
         break_cond1(ispec)=SUM(ABS(fnew-fold))
         break_cond2(ispec)=relerr*SUM(ABS(fnew))
-        PRINT *,iter,break_cond1(ispec),break_cond2(ispec)
+        PRINT *,iter,ispec,break_cond1(ispec),break_cond2(ispec)
         CALL mpro%allgather_inplace(break_cond1)
         CALL mpro%allgather_inplace(break_cond2)
         IF(ALL(break_cond1 .LE. break_cond2)) EXIT
