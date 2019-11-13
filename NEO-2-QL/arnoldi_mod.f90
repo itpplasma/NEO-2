@@ -3,6 +3,7 @@ MODULE arnoldi_mod
   INTEGER :: ntol,mode=0
   DOUBLE PRECISION :: tol
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
+  complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: f_init_arnoldi
   complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: eigvecs
 
 contains
@@ -149,11 +150,7 @@ contains
     ! there are no bad eigenvalues, use direct iterations:
     IF(ngrow.EQ.0) THEN
 
-      if (mode .eq. 2) then
-        fold = fzero
-      else
-        fold = (0.0d0, 0.0d0)
-      end if
+      fold = (0.0d0, 0.0d0)
 
       DO iter=1,itermax
         CALL next_iteration(n,fold,fnew)
@@ -295,9 +292,7 @@ contains
 
     hmat=(0.d0,0.d0)
 
-    mode = 1
-
-    CALL next_iteration(n,fold,fnew)
+    fnew = f_init_arnoldi
 
     mode = 2
 
