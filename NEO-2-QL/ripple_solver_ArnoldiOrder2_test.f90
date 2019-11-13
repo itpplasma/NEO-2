@@ -93,7 +93,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   ! support of different basis functions and replaces routine "lagxmm".
   USE collop
   !! End Modification by Andreas F. Martitsch (28.07.2015)
-  use arnoldi_mod, only : iterator
+  use arnoldi_mod, only : iterator, f_init_arnoldi
   
   IMPLICIT NONE
   !INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -1171,6 +1171,9 @@ rotfactor=imun*m_phi
   ENDDO
 !
   n_2d_size=ind_start(iend)+2*(lag+1)*(npl(iend)+1)
+
+  if (allocated(f_init_arnoldi)) deallocate(f_init_arnoldi)
+  allocate(f_init_arnoldi(n_2d_size))
 !
 !
   IF(ALLOCATED(alam_l)) DEALLOCATE(alam_l)
@@ -3541,7 +3544,7 @@ CONTAINS
 !
 ! Solve the linear equation set:
 !
-    use arnoldi_mod, only : iterator
+    use arnoldi_mod, only : iterator, f_init_arnoldi
 
     LOGICAL :: clean
     DOUBLE PRECISION,   DIMENSION(:),   ALLOCATABLE :: bvec_sp_real
@@ -3599,6 +3602,7 @@ CONTAINS
       mode_iter=1
 !
       DO k=1,3
+        f_init_arnoldi = source_vector_all(:,1,ispec)
         CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
                     & source_vector_all(:,k,ispec), ispec, next_iteration)
       ENDDO
@@ -3616,6 +3620,7 @@ CONTAINS
         !source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow     
         !  multi-species part:
         DO ispecp=0,num_spec-1
+          f_init_arnoldi = source_vector_all(:,1,ispec)
           if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
           drive_spec=ispecp
           CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter,&
