@@ -3455,11 +3455,7 @@ rotfactor=imun*m_phi
   DEALLOCATE(energvec_ket,energvec_bra)
   deallocate(densvec_ket,densvec_bra)
   ! Use pre-conditioned iterations
-!
-  IF(isw_intp.EQ.1) THEN
-    DEALLOCATE(bvec_iter,bvec_prev)
-  ENDIF
-!
+
   CALL CPU_TIME(time_solver)
   PRINT *,'solving completed       ',time_solver - time_factorization,' sec'
 !
