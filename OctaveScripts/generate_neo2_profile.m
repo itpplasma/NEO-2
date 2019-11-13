@@ -1,4 +1,5 @@
-% matlab -nodesktop -nosplash -r "path('/afs/itp.tugraz.at/user/buchholz/Programs/neo-2/OctaveScripts', path); generate_neo2_profile; exit(0);"
+% Generate script for a run which sets the required input paramters
+% matlab -nodesktop -nosplash -r "path('/afs/itp.tugraz.at/user/buchholz/Programs/neo-2/OctaveScripts', path); script_name; exit(0);"
 
 % Input:
 %   hdf5FileName: name for hdf5 file that is produced. Defaults to

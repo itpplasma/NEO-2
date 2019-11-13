@@ -79,19 +79,23 @@ folder.
 \paragraph{Input profile}
 \neotwo requires the profile input to be in the form of a hdf5 file. The
 matlab function \program{generate\_neo2\_profile.m} is available to create
-these from text-data files. As input, loaded from textfile, it requires
-the profiles of density, temperature, rotation velocity as a function of
-$\rho_{poloidal}$. Second the rotation veloctiy as a function
-of major radius is needed, if the rotation velocity is given in $m/s$
-(not if it is given in $rad/s$). Third, the values of $\rho_{toroidal}$
-corresponding to the values of $\rho_{poloidal}$ are needed.
+these from text-data files. As input, loaded from textfile, the function
+requires the profiles of density, temperature, rotation velocity as a
+function of $\rho_{poloidal}$. Second the rotation veloctiy as a
+function of major radius is needed, if the rotation velocity is given in
+$m/s$ (not if it is given in $rad/s$). Third, the values of
+$\rho_{toroidal}$ corresponding to the values of $\rho_{poloidal}$ are
+needed.
 
 Copy the directory with the profiles (e.g. \tpath{/temp/kasilov/ASDEX\_MODES\_IGOSHINE/neo2\_profiles/}).
 
-Run the matlab script \program{generate\_neo2\_profile.m} (does not work with
-octave, as octave so far lacks the necessary hdf5 functions).
-The first line of the script contains an example how to run the script
-as comment.
+Run the matlab function \program{generate\_neo2\_profile.m} (does not
+work with octave, as octave so far lacks the necessary hdf5 functions).
+Easiest way to do so, is to write a small script that sets the required
+input parameters and calls the function with these, as this makes it
+easier to remember the settings and to change them if necessary.
+The first line of the file with the function contains an example how to
+run the script as comment.
 The section called ``input'' (via comment) contains the parameters that
 might need to be changed. The script relies on the function
 \program{load\_profile\_data} to load the data (this function works also with
