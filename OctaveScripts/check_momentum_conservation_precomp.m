@@ -39,7 +39,7 @@
 function [res, res_rel] = check_momentum_conservation_precomp(precomp_filename, temperatures)
   temperatures = temperatures(:);
 
-  h = load('precomp_filename');
+  h = load(precomp_filename);
 
   num_species = size(temperatures, 1);
 
