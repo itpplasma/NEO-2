@@ -104,6 +104,14 @@ octave).
 The output will be an hdf5 file with the profiles necessary to create
 simulations for each radial position.
 
+Be carefull with large values for the number of profiles. While the
+(matlab) script has no problem with that, and the output hdf5 file
+should be fine, the generation of the subfolders by \neotwo can run into
+problems. Namely the names of the folders for some fluxsurfaces might
+clash due to the naming scheme.
+Observed has for example 400 flux surfaces resulting in 399 subfolders
+and 1000 flux surfaces into 996 subfolders.
+
 \paragraph{Magnetic equilibrium}
 Get as efit or boozer. If you need to create perturbed files, then the
 boozer format is required.
