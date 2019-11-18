@@ -63,8 +63,10 @@ function [res, res_rel] = check_momentum_conservation_precomp(precomp_filename, 
 
   for k = 1:4
     for l = 1:4
+      norm=sum(rd(:,k,l));
       res(:,k,l) = (rd(:,k,l) + ri(:,l,k))
-      res_rel(:,k,l) = res(:,k,l) ./ (abs(rd(:,k,l)) + abs(ri(:,l,k)));
+      %~ res_rel(:,k,l) = res(:,k,l) ./ (abs(rd(:,k,l)) + abs(ri(:,l,k)));
+      res_rel(:,k,l) = res(:,k,l) ./ norm
     end
   end
 end
