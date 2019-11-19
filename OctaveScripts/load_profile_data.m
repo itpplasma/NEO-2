@@ -30,8 +30,11 @@
 %   do_plots: logical, if true, do some plots.
 %   input_unit_type: determines in what units the input is.
 %     1: 10^19/m^3 for density (=10^13/cm^3), keV for temperatures,
-%       km?/s for velocity.
+%       km?/s for velocity. (default)
 %     2: 1/m^3 for density, eV for temperatures, rad/s for velocity
+%   switch_grid: determines what grid to use.
+%     1: equal spaced in rho poloidal (default)
+%     2: equal spaced in rho toroidal
 %
 % Output:
 %  rho_pol
@@ -40,7 +43,13 @@
 %  Ti_eV
 %  Te_eV
 %  vrot
-function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, data_source, gridpoints, do_plots, input_unit_type)
+function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, data_source, gridpoints, do_plots, input_unit_type, switch_grid)
+  if nargin() < 5 || isempty(input_unit_type)
+    input_unit_type = 1;
+  end
+  if nargin() < 6 || isempty(switch_grid)
+    switch_grid = 1;
+  end
 
 
   % Definitions for constants used for conversion
@@ -62,20 +71,25 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
     transform_density = 1;
     transform_temperature = 1;
     transform_rotation = 1;
-  otherwise
-    transform_density = transform_1013overcm3_to_oneoverm3;
-    transform_temperature = transform_keV_to_eV;
-    transform_rotation = transform_kHz_to_Hz;
   end
-
-  rho_pol = linspace(0,1,gridpoints);
 
   frp = load([path_to_shot, data_source.rhopoloidal.filename]);
   frt = load([path_to_shot, data_source.rhotoroidal.filename]);
 
-  rho_tor = spline(frp(:, data_source.rhopoloidal.column), frt(:,data_source.rhotoroidal.column), rho_pol);
-  rho_tor(1) = 0;
-  rho_tor(end) = 1;
+  switch (switch_grid)
+  case 1
+    rho_pol = linspace(0,1,gridpoints);
+
+    rho_tor = spline(frp(:, data_source.rhopoloidal.column), frt(:,data_source.rhotoroidal.column), rho_pol);
+    rho_tor(1) = 0;
+    rho_tor(end) = 1;
+  case 2
+    rho_tor = linspace(0,1,gridpoints);
+
+    rho_pol = spline(frt(:,data_source.rhotoroidal.column), frp(:, data_source.rhopoloidal.column), rho_tor);
+    rho_pol(1) = 0;
+    rho_pol(end) = 1;
+  end
 
   frp = load([path_to_shot, data_source.electron_density.filename]);
   ne_si = spline(frp(:,1), frp(:, data_source.electron_density.column), rho_pol)*transform_density;
