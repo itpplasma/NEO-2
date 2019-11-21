@@ -54,19 +54,19 @@ function [res, res_rel] = check_momentum_conservation_precomp(precomp_filename, 
     end
   end
 
-  for k = 1:4
-    for l = 1:4
+  for k = 1:num_species
+    for l = 1:num_species
       rd(:,k,l) =     sum(-vmm(:,:,k,l) + dmm(:,:,k,l), 1)/temperatures(k);
       ri(:,k,l) = 2/3*sum(imm(:,:,k,l), 1)/temperatures(k);
     end
   end
 
-  for k = 1:4
-    for l = 1:4
+  for k = 1:num_species
+    for l = 1:num_species
       norm=sum(rd(:,k,l));
-      res(:,k,l) = (rd(:,k,l) + ri(:,l,k))
+      res(:,k,l) = (rd(:,k,l) + ri(:,l,k));
       %~ res_rel(:,k,l) = res(:,k,l) ./ (abs(rd(:,k,l)) + abs(ri(:,l,k)));
-      res_rel(:,k,l) = res(:,k,l) ./ norm
+      res_rel(:,k,l) = res(:,k,l) ./ norm;
     end
   end
 end
