@@ -101,7 +101,7 @@ def copy_hdf5_from_subfolders_to_single_file(path: str, infilename: str, outfile
 
   This will look for files named 'infilename' in subfolders of 'path'.
   There content will be joined into a single file named 'outfilename',
-  placed into 'path'.
+  placed into the current folder.
   The content of each in-file will be put into a group with the name of
   the subfolder.
   """
@@ -113,7 +113,7 @@ def copy_hdf5_from_subfolders_to_single_file(path: str, infilename: str, outfile
 
   folders = [f for f in listdir(path) if not isfile(join(path, f))]
 
-  with get_hdf5file_replace(join(path, outfilename)) as o:
+  with get_hdf5file_replace(outfilename) as o:
     for foldername in folders:
       try:
         f = get_hdf5file(join(path, foldername, infilename))
