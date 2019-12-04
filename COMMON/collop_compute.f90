@@ -1007,7 +1007,7 @@ contains
 
        if (lsw_split_interval) then
           do k = 1, kmax-1
-             n_sub = num_sub_intervals
+             n_sub = num_sub_intervals*max(int(log(m_b/m_a)), 1)
              if ((.not. binknots) .and. (k .eq. kmax-1)) n_sub = num_sub_intervals_cutoff
              x_sub_del = (x_inter(k+1) - x_inter(k))/dble(n_sub)
              do k_sub = 1,n_sub
@@ -1102,7 +1102,7 @@ contains
 
        if (lsw_split_interval) then
           do k = 1, kmax-1
-             n_sub = num_sub_intervals
+             n_sub = num_sub_intervals*max(int(log(m_b/m_a)), 1)
              if ((.not. binknots) .and. (k .eq. kmax-1)) n_sub = num_sub_intervals_cutoff
              x_sub_del = (x_inter(k+1) - x_inter(k))/dble(n_sub)
              do k_sub = 1,n_sub
