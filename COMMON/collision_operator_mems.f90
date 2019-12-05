@@ -154,7 +154,7 @@ module collop
          ! has to be significantly higher than for the standard mode.
          integral_cutoff = .true.
          lsw_split_interval = .true.
-         num_sub_intervals = 5
+         num_sub_intervals = 50
          num_sub_intervals_cutoff = 40
          x_cutoff = 3.0d3
          epsabs = 1d-13
