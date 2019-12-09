@@ -98,7 +98,7 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_
   rel_stages(:) = species_tag_Vphi;
 
   %% KAPPA
-  % Coulomb logarithm (set as species-independent - see E A Belli an J Candy PPCF 54 015015 (2012))
+  % Coulomb logarithm (set as species-independent - see E A Belli and J Candy PPCF 54 015015 (2012))
   log_Lambda = 39.1 - 1.15*log10(ne_si) + 2.3*log10(Te_eV*1e-3);
 
   % Conversion cgs-units
