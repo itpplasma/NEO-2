@@ -104,13 +104,13 @@ module collop_compute
   ! numerical stabilization of integral-part computation (I2 + I3 + I4)
   logical       :: lsw_stabilize_Immp=.true.
   logical       :: lsw_precompute_inner_kernel = .true.
-  integer, parameter :: number_points_inner_kernel = 100
+  integer, parameter :: number_points_inner_kernel = 1000
   real(kind=dp) :: x_cutoff_inner_kernel = 7.0
 
   real(kind=dp), dimension(:,:,:), allocatable :: table_inner_kernel_zero_to_x
   real(kind=dp), dimension(:,:,:), allocatable :: table_inner_kernel_x_to_infty
 
-  integer,          parameter :: nlaghalf_fplm=2, nlag_fplm=2*nlaghalf_fplm
+  integer,          parameter :: nlaghalf_fplm=4, nlag_fplm=2*nlaghalf_fplm
   double precision, dimension(0:0,nlag_fplm) :: weight_fplm
   double precision, dimension(0:number_points_inner_kernel) :: xarr_fplm
   
