@@ -103,6 +103,16 @@ module collop_compute
   real(kind=dp) :: xmax_expand_kernel = 1.0d-5
   ! numerical stabilization of integral-part computation (I2 + I3 + I4)
   logical       :: lsw_stabilize_Immp=.true.
+  logical       :: lsw_precompute_inner_kernel = .true.
+  integer, parameter :: number_points_inner_kernel = 100
+  real(kind=dp) :: x_cutoff_inner_kernel = 7.0
+
+  real(kind=dp), dimension(:,:,:), allocatable :: table_inner_kernel_zero_to_x
+  real(kind=dp), dimension(:,:,:), allocatable :: table_inner_kernel_x_to_infty
+
+  integer,          parameter :: nlaghalf_fplm=2, nlag_fplm=2*nlaghalf_fplm
+  double precision, dimension(0:0,nlag_fplm) :: weight_fplm
+  double precision, dimension(0:number_points_inner_kernel) :: xarr_fplm
   
   !**********************************************************
   ! Pre-computed matrix elements
@@ -425,7 +435,16 @@ contains
 
        end if
     end if
- 
+
+    if (lsw_precompute_inner_kernel) then
+      if (allocated(table_inner_kernel_zero_to_x)) deallocate(table_inner_kernel_zero_to_x)
+      allocate(table_inner_kernel_zero_to_x(0:number_points_inner_kernel, 0:legmax+2, 0:lagmax))
+
+      if (allocated(table_inner_kernel_x_to_infty)) deallocate(table_inner_kernel_x_to_infty)
+      allocate(table_inner_kernel_x_to_infty(0:number_points_inner_kernel, -2:legmax, 0:lagmax))
+
+      call precompute_inner_kernel()
+    end if
   end subroutine init_collop
 
   subroutine chop_0(x)
@@ -2361,7 +2380,9 @@ contains
   contains
 
     function I_phi(x)
-      real(kind=dp) :: x, I1, I2, I_phi
+      real(kind=dp) :: x, I1, I2, I_phi, I3, I4
+
+      integer :: ierr
 
       if (lsw_expand_kernel .and. (x .le. xmax_expand_kernel)) then
          ! use 2nd order Taylor expansion around x=0 (numerical stability)
@@ -2371,20 +2392,26 @@ contains
          I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi_prj(m,x) * (I1 + x**l * I2)
       else
          if (lsw_stabilize_Immp) then
-          !> Integrating kernel 1 from zero to zero will lead to problems,
-          !> as this will result in a 0/0, as then also the parameter is zero.
-          !> Thus handle this case explicitly.
-          !> Also kernel 2 makes problems for x=0, (and param=0), thus
-          !> this is also handled explicitly, and for param=0 the
-          !> kernel is zero, except at x=0, which is only a single point
-          !> and thus should make no difference. Also this fits the not
-          !> stabilized case below, where I2 would be multiplied with 0.
-          if (x .eq. 0.0d0) then
-            I1 = 0.0d0
-            I2 = 0.0d0
+          if (lsw_precompute_inner_kernel) then
+            call fplusminus(l, mp, gamma_ab*x, I1, I2, I3, I4, ierr)
+            I1 = I1/gamma_ab**2
+            I2 = I2/gamma_ab**2
           else
-            I1 = integrate_param(I_phi_1_param, x, 0d0, x)
-            I2 = integrate_param(I_phi_2_param, x, x)
+            !> Integrating kernel 1 from zero to zero will lead to problems,
+            !> as this will result in a 0/0, as then also the parameter is zero.
+            !> Thus handle this case explicitly.
+            !> Also kernel 2 makes problems for x=0, (and param=0), thus
+            !> this is also handled explicitly, and for param=0 the
+            !> kernel is zero, except at x=0, which is only a single point
+            !> and thus should make no difference. Also this fits the not
+            !> stabilized case below, where I2 would be multiplied with 0.
+            if (x .eq. 0.0d0) then
+              I1 = 0.0d0
+              I2 = 0.0d0
+            else
+              I1 = integrate_param(I_phi_1_param, x, 0d0, x)
+              I2 = integrate_param(I_phi_2_param, x, x)
+            end if
           end if
 
             I_phi = x**(3+alpha) * exp(-(beta+1)*x**2) * phi_prj(m,x) * (I1 + I2)
@@ -2448,7 +2475,9 @@ contains
   contains
 
     function I_phi(x)
-      real(kind=dp) :: x, I1, I2, I_phi
+
+      real(kind=dp) :: x, I1, I2, I_phi, I3, I4
+      integer :: ierr
 
 
       if (lsw_expand_kernel .and. (x .le. xmax_expand_kernel)) then
@@ -2462,8 +2491,14 @@ contains
               (I1 + (x**l) * I2)
       else
          if (lsw_stabilize_Immp) then
+          if (lsw_precompute_inner_kernel) then
+            call fplusminus(l, mp, gamma_ab*x, I1, I2, I3, I4, ierr)
+            I1 = I1/gamma_ab**2
+            I2 = I2/gamma_ab**2
+          else
             I1 = integrate_param(I_phi_1_param, x, 0d0, x)
             I2 = integrate_param(I_phi_2_param, x, x)
+          end if
 
             I_phi = ((x**(3+alpha)) * exp(-(beta+1)*(x**2)) * &
                  (alpha-2*(beta+1)*(x**2)+4) * phi_prj(m,x) + &
@@ -2579,6 +2614,8 @@ contains
       real(kind=dp) :: K, x
       real(kind=dp) :: I1, I2, I3, I4
 
+      integer :: ierr
+
       if (lsw_expand_kernel .and. (x .le. xmax_expand_kernel)) then
          ! use 2nd order Taylor expansion around x=0 (numerical stability)
          
@@ -2607,10 +2644,26 @@ contains
          K = x**(-l-1)/(2*l+3)*I1 -  x**(-l+1)/(2*l-1)*I2 +  x**(l+2)/(2*l+3)*I3 - x**l/(2*l-1)*I4
       else
          if (lsw_stabilize_Immp) then
+          if (lsw_precompute_inner_kernel) then
+            call fplusminus(l, mp, gamma_ab*x, I2, I3, I1, I4, ierr)
+            I1 = I1*(x/gamma_ab)**2
+            I2 = I2*(x/gamma_ab)**2
+            I3 = I3*(x/gamma_ab)**2
+            ! For numerical reasons the negative l terms are treated
+            ! separately, to avoid infinity/nans as result.
+            if (l == 0) then
+              I4 = I4*(1.0d0/gamma_ab)**(2+2)
+            elseif (l == 1) then
+              I4 = I4*x*(1.0d0/gamma_ab)**(2+1)
+            else
+              I4 = I4*(x/gamma_ab)**2
+            end if
+          else
             I1 = integrate_param(I_psi_1_param, x, 0d0, x)
             I2 = integrate_param(I_psi_2_param, x, 0d0, x)
             I3 = integrate_param(I_psi_3_param, x, x)
             I4 = integrate_param(I_psi_4_param, x, x)
+          end if
 
             K = I1/(2*l+3) -  I2/(2*l-1) +  I3/(2*l+3) - I4/(2*l-1)
          else
@@ -2888,5 +2941,142 @@ contains
     call disp_gsl_integration_error()
 
   end subroutine compute_collop_inf
+
+  subroutine precompute_inner_kernel()
+    real(kind=dp) :: delta_x, recurence_factor
+
+    integer :: x_loop, l, m
+
+    delta_x = x_cutoff_inner_kernel/number_points_inner_kernel
+
+    do m = 0, lagmax
+
+      do l = 0, legmax+2
+        ! Integrand regular to zero, so integration from a to a should result in 0.
+        table_inner_kernel_zero_to_x(0, l, m) = 0.0d0 !integrate_param(kernel_0_to_x, 0.0d0, 0.0d0, 0.0d0)
+        do x_loop = 1, number_points_inner_kernel
+          table_inner_kernel_zero_to_x(x_loop, l, m) = &
+            & (((x_loop-1)*delta_x)/(x_loop*delta_x))**(l+1)*table_inner_kernel_zero_to_x(x_loop-1, l, m) &
+            & + integrate_param(kernel_0_to_x, x_loop*delta_x, (x_loop-1)*delta_x, x_loop*delta_x)
+        end do
+      end do
+
+      do l = -2, legmax
+        table_inner_kernel_x_to_infty(number_points_inner_kernel, l, m) = &
+          & integrate_param(kernel_x_to_infty, delta_x*number_points_inner_kernel, &
+          &   delta_x*number_points_inner_kernel)
+        do x_loop = number_points_inner_kernel-1,0,-1
+          ! For numerical reasons the negative l terms are treated separately, to avoid
+          ! infinity/nans as result.
+          if (l < 0) then
+            recurence_factor = 1.0d0
+          else
+            recurence_factor = ((x_loop*delta_x)/((x_loop+1)*delta_x))**l
+          end if
+          table_inner_kernel_x_to_infty(x_loop, l, m) = &
+            & recurence_factor*table_inner_kernel_x_to_infty(x_loop+1, l, m) &
+            & + integrate_param(kernel_x_to_infty, x_loop*delta_x, x_loop*delta_x, (x_loop+1)*delta_x)
+        end do
+      end do
+
+    end do
+
+!~     do x_loop = 0, number_points_inner_kernel
+!~       write(*,*) x_loop*delta_x, table_inner_kernel_zero_to_x(x_loop, 0, 1), &
+!~         & table_inner_kernel_x_to_infty(x_loop, -1, 0)
+!~     end do
+
+  contains
+
+    function kernel_0_to_x(xp, xval)
+      real(kind=dp) :: xp, kernel_0_to_x, xval
+
+      kernel_0_to_x = xp * (xp/xval)**(l+1) * exp(-xp**2) * phi_exp(m, xp)
+    end function kernel_0_to_x
+
+    function kernel_x_to_infty(xp, xval)
+      real(kind=dp) :: xp, kernel_x_to_infty, xval
+
+      ! For numerical reasons the negative l terms are treated separately, to avoid
+      ! infinity/nans as result.
+      if (l < 0) then
+        kernel_x_to_infty = xp**(abs(l)+1) * exp(-xp**2) * phi_exp(m, xp)
+      else
+        kernel_x_to_infty = xp * (xval/xp)**(l) * exp(-xp**2) * phi_exp(m, xp)
+      end if
+    end function kernel_x_to_infty
+
+  end subroutine precompute_inner_kernel
+
+  subroutine fplusminus(l,m,x,f_plus,f_minus,f_plus2,f_minus2,ierr)
+
+    use plagrange_mod, only : plagrange_coeff
+
+    implicit none
+
+    integer :: l,m,ierr,ix,i,ibeg,iend
+    double precision :: x,f_plus,f_minus,f_plus2,f_minus2
+    double precision :: hx_fplm
+
+    logical :: init_fplm = .true.
+
+    hx_fplm=x_cutoff_inner_kernel/dble(number_points_inner_kernel)
+
+    if(init_fplm) then
+      init_fplm=.false.
+      do i=0,number_points_inner_kernel
+        xarr_fplm(i)=hx_fplm*dble(i)
+      enddo
+    endif
+
+    ierr=0
+
+    if (x.lt.0.d0) then
+      print *,'fplusminus: x < 0'
+      ierr=1
+      return
+    end if
+
+    if (l.lt.0 .or. l.gt.legmax) then
+      print *,'fplusminus: l out of range'
+      ierr=2
+      return
+    end if
+
+    if (m.lt.0 .or. m.gt.lagmax) then
+      print *,'fplusminus: m out of range'
+      ierr=3
+      return
+    end if
+
+    if (x.lt.x_cutoff_inner_kernel) then
+      ix = int(x/hx_fplm)
+      ibeg = ix-nlaghalf_fplm
+      iend = ix+nlaghalf_fplm
+      ibeg = ibeg+1
+      if (ibeg.lt.0) then
+        ibeg = 0
+        iend = nlag_fplm-1
+      else if(iend.gt.number_points_inner_kernel) then
+        ibeg = number_points_inner_kernel-nlag_fplm+1
+        iend = number_points_inner_kernel
+      end if
+
+      call plagrange_coeff(nlag_fplm,0,x,xarr_fplm(ibeg:iend),weight_fplm)
+
+      f_plus = sum(weight_fplm(0,:)*table_inner_kernel_zero_to_x(ibeg:iend,l,m))
+      f_plus2 = sum(weight_fplm(0,:)*table_inner_kernel_zero_to_x(ibeg:iend,l+2,m))
+      f_minus = sum(weight_fplm(0,:)*table_inner_kernel_x_to_infty(ibeg:iend,l,m))
+      f_minus2 = sum(weight_fplm(0,:)*table_inner_kernel_x_to_infty(ibeg:iend,l-2,m))
+    else
+      f_plus = table_inner_kernel_zero_to_x(number_points_inner_kernel,l,m) &
+        & *(x_cutoff_inner_kernel/x)**(l+1)
+      f_plus2 = table_inner_kernel_zero_to_x(number_points_inner_kernel,l+2,m) &
+        & *(x_cutoff_inner_kernel/x)**(l+3)
+      f_minus = 0.d0
+      f_minus2 = 0.d0
+    endif
+
+  end subroutine fplusminus
 
 end module collop_compute
