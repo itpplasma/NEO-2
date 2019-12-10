@@ -466,7 +466,7 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
 
   This function checks if two given h5py groups contain the same
   subgroups and datasets.
-  The groups are considered to differ, if they length do not match, or
+  The groups are considered to differ, if the lengths do not match, or
   if the reference does contain keys which are not in the other group.
 
   input
@@ -651,8 +651,6 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
   lo = list(h5o.keys())
 
   keys_equal = compare_hdf5_group_keys(h5r, h5o, verbose)
-
-  files_are_equal_to_delta = True
 
   files_are_equal_to_delta = compare_hdf5_group_data(h5r, h5o, delta_relative, whitelist, blacklist, verbose)
 
