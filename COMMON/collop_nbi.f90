@@ -9,9 +9,11 @@ module collop_nbi
   character(len=80) :: name_nbi_data_file
 
   integer :: legmax_nbi
+
+  namelist /nbi/ legmax_nbi, name_nbi_data_file
   ! --------------------------------------------------------------------
 
-  logical :: lsw_nbi
+  logical :: lsw_nbi ! already in namelist collision
 
 contains
 
@@ -23,7 +25,10 @@ contains
     name_nbi_data_file = 'nbi_data.dat'
   end subroutine set_default_values_namelist
 
-  subroutine init_phi_nbi()
+  subroutine init_phi_nbi(namelist_file_unit)
+    integer :: namelist_file_unit
+
+    read(namelist_file_unit,nml=nbi)
     ! Load data
 
   end subroutine init_phi_nbi
