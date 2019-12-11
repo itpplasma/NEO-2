@@ -2,14 +2,30 @@ module collop_nbi
   use nrtype, only : dp, pi
 
   implicit none
-  
+
+  ! --------------------------------------------------------------------
+  ! -- namelist variables ----------------------------------------------
+  ! --------------------------------------------------------------------
+  character(len=80) :: name_nbi_data_file
+
+  integer :: legmax_nbi
+  ! --------------------------------------------------------------------
+
+  logical :: lsw_nbi
+
 contains
 
-  subroutine init_phi_nbi(lagmax, legmax)
-    integer :: lagmax, legmax
+  subroutine set_default_values_namelist()
+    legmax_nbi = 4
 
+    lsw_nbi = .false.
+
+    name_nbi_data_file = 'nbi_data.dat'
+  end subroutine set_default_values_namelist
+
+  subroutine init_phi_nbi()
     ! Load data
-    
+
   end subroutine init_phi_nbi
 
   function phi_nbi(m, x) result(phi)
