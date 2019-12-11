@@ -1989,8 +1989,8 @@ CONTAINS
       passed = .false.
 
       do k = 1, num_spec
-        sum_fluxes = sum_fluxes + Gamma_AX_spec(k)*z_spec(k)
-        sum_abs_fluxes = sum_abs_fluxes + abs(Gamma_AX_spec(k)*z_spec(k))
+        sum_fluxes = sum_fluxes + Gamma_AX_spec(k-1)*z_spec(k-1)
+        sum_abs_fluxes = sum_abs_fluxes + abs(Gamma_AX_spec(k-1)*z_spec(k-1))
       end do
 
       if (abs(sum_fluxes/sum_abs_fluxes) < epsilon_particle_flux) then
