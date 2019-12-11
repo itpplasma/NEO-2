@@ -21,7 +21,7 @@ MODULE ntv_mod
   REAL(kind=dp), PARAMETER, PUBLIC :: u=1.660539040e-24_dp ! atomic mass unit
 
   real(kind=dp), parameter, public :: epsilon_transport_coefficients = 1.0e-3
-  real(kind=dp), parameter, public :: epsilon_particle_flux = 1.0e-3
+  real(kind=dp), parameter, public :: epsilon_particle_flux = 1.0e-6
   !
   ! INPUT
   !> switch: turn on(=1)/off(=0) ntv mode (not used at the moment)
@@ -1980,22 +1980,24 @@ CONTAINS
       logical :: passed
       logical, intent(in) :: verbose
 
-      real(kind=dp) :: sum_fluxes
+      real(kind=dp) :: sum_fluxes, sum_abs_fluxes
 
       integer :: k
 
       sum_fluxes = 0.0
+      sum_abs_fluxes = 0.0
       passed = .false.
 
       do k = 1, num_spec
         sum_fluxes = sum_fluxes + Gamma_AX_spec(k)*z_spec(k)
+        sum_abs_fluxes = sum_abs_fluxes + abs(Gamma_AX_spec(k)*z_spec(k))
       end do
 
-      if (abs(sum_fluxes) < epsilon_particle_flux) then
+      if (abs(sum_fluxes/sum_abs_fluxes) < epsilon_particle_flux) then
         passed = .true.
       else if (verbose) then
-        write(*,*) 'WARNING: particle flux not ambipolar to accuracy ', epsilon_particle_flux
-        write(*,*) '  sum is: ', sum_fluxes
+        write(*,*) 'WARNING: particle flux not ambipolar to relative accuracy ', epsilon_particle_flux
+        write(*,*) '  sum is: ', sum_fluxes, ' relative sum is: ', sum_fluxes/sum_abs_fluxes
       end if
     end function check_ambipolarity_particle_flux
   END SUBROUTINE write_multispec_output_a
