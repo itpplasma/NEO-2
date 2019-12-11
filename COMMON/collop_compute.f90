@@ -1927,8 +1927,9 @@ contains
     end function integrand_rel1
   end subroutine compute_energyscattering
 
-  subroutine compute_integralpart(ailmm_s)
+  subroutine compute_integralpart(ailmm_s, legmax_local)
     real(kind=dp), dimension(:,:,:) :: ailmm_s
+    integer, intent(in) :: legmax_local
     integer                         :: l, m, mp
 
     write (*,*) "Computing momentum conservation part..."
@@ -1936,16 +1937,16 @@ contains
     if (precomp) then ! load pre-computed momentum conservation part
        call h5_open(trim(adjustl(matelem_name)), h5id_matelem)
        if (allocated(I1_mmp_s)) deallocate(I1_mmp_s) ! I1_mmp
-       allocate(I1_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
+       allocate(I1_mmp_s(0:lagmax, 0:lagmax, 0:legmax_local))
        call h5_get(h5id_matelem,'Immp1',I1_mmp_s(:,:,:))
        if (allocated(I2_mmp_s)) deallocate(I2_mmp_s) ! I2_mmp
-       allocate(I2_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
+       allocate(I2_mmp_s(0:lagmax, 0:lagmax, 0:legmax_local))
        call h5_get(h5id_matelem,'Immp2',I2_mmp_s(:,:,:))
        if (allocated(I3_mmp_s)) deallocate(I3_mmp_s) ! I3_mmp
-       allocate(I3_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
+       allocate(I3_mmp_s(0:lagmax, 0:lagmax, 0:legmax_local))
        call h5_get(h5id_matelem,'Immp3',I3_mmp_s(:,:,:))
        if (allocated(I4_mmp_s)) deallocate(I4_mmp_s) ! I4_mmp
-       allocate(I4_mmp_s(0:lagmax, 0:lagmax, 0:legmax))
+       allocate(I4_mmp_s(0:lagmax, 0:lagmax, 0:legmax_local))
        call h5_get(h5id_matelem,'Immp4',I4_mmp_s(:,:,:))
        call h5_close(h5id_matelem)
     else
@@ -1956,11 +1957,11 @@ contains
           call compute_I4_mmp_s()
 
           if (make_ortho) then ! make DKE orthogonal w.r.t. to derivative along field line
-             do l = 0, legmax
+             do l = 0, legmax_local
                 ailmm_s(:,:,l+1) = matmul(M_transform_inv, I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l))
              end do
           else
-             do l = 0, legmax
+             do l = 0, legmax_local
                 ailmm_s(:,:,l+1) = I1_mmp_s(:,:,l) + I2_mmp_s(:,:,l) + I3_mmp_s(:,:,l) + I4_mmp_s(:,:,l)
              end do
           end if
@@ -1971,7 +1972,7 @@ contains
           call compute_I2_mmp_s()
           call compute_I3_mmp_s()
           call compute_I4_mmp_s()
-          do l = 0, legmax
+          do l = 0, legmax_local
              do m = 0, lagmax
                 do mp = 0, lagmax
                    if (l .le. 1) then
@@ -1987,7 +1988,7 @@ contains
           end do
        elseif (isw_relativistic .eq. 2) then
 
-          do l = 0, legmax
+          do l = 0, legmax_local
              do m = 0, lagmax
                 do mp = 0, lagmax
                    write (*,'(A, I2, A, I2, A, I2,A)') " Computing matrix element (leg = ", l, ", m = ", m, ", mp = ", mp, ")"
@@ -2494,7 +2495,7 @@ contains
     call disp_gsl_integration_error()
     call compute_energyscattering(denmm_s)
     call disp_gsl_integration_error()
-    call compute_integralpart(ailmm_s)
+    call compute_integralpart(ailmm_s, legmax)
     call disp_gsl_integration_error()
 
   end subroutine compute_collop_rel
@@ -2527,7 +2528,7 @@ contains
     call disp_gsl_integration_error()
     call compute_energyscattering(denmm_s)
     call disp_gsl_integration_error()    
-    call compute_integralpart(ailmm_s)
+    call compute_integralpart(ailmm_s, legmax)
     call disp_gsl_integration_error()
     
   end subroutine compute_collop
@@ -2562,7 +2563,7 @@ contains
     call disp_gsl_integration_error()
     call compute_energyscattering(denmm_s)
     call disp_gsl_integration_error()
-    call compute_integralpart(ailmm_s)
+    call compute_integralpart(ailmm_s, legmax)
     call disp_gsl_integration_error()
 
   end subroutine compute_collop_inf
