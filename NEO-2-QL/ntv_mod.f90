@@ -1797,7 +1797,7 @@ CONTAINS
       logical :: passed
       logical, intent(in) :: verbose
 
-      real(kind=dp) :: sum_d11, sum_abs_d11
+      real(kind=dp) :: sum_d11, sum_abs_d11, summand
       integer :: k,l
 
       sum_d11 = 0.0
@@ -1806,9 +1806,10 @@ CONTAINS
       do k = 1,num_spec
         do l = 1,num_spec
           ! \note dn_spec_ov_ds uses zero based index.
-          sum_d11 = sum_d11 + z_spec(k-1) * D11_AX(return_linear_species_index(k, l)) * dn_spec_ov_ds(l-1) / n_spec(l-1)
-          sum_abs_d11 = sum_abs_d11 &
-            & + abs(z_spec(k-1) * D11_AX(return_linear_species_index(k, l)) * dn_spec_ov_ds(l-1) / n_spec(l-1))
+          summand = z_spec(k-1) * n_spec(k-1) &
+            & * D11_AX(return_linear_species_index(k, l)) * dn_spec_ov_ds(l-1) / n_spec(l-1)
+          sum_d11 = sum_d11 + summand
+          sum_abs_d11 = sum_abs_d11 + abs(summand)
         end do
       end do
 
@@ -1822,7 +1823,7 @@ CONTAINS
 
     !> \brief Check from the ambpolarity condition involving the temperature.
     function check_ambipolarity_condition_temperature(verbose) result(passed)
-      use collisionality_mod, only : num_spec, z_spec, T_spec
+      use collisionality_mod, only : num_spec, z_spec, T_spec, n_spec
 
       implicit none
 
@@ -1839,10 +1840,10 @@ CONTAINS
         do l = 1,num_spec
           ! \note dT_spec_ov_ds uses zero based index.
           sum_d112 = sum_d112 &
-            & + z_spec(k-1) * dT_spec_ov_ds(l-1) / T_spec(l-1) &
+            & + z_spec(k-1) * n_spec(k-1) * dT_spec_ov_ds(l-1) / T_spec(l-1) &
             & * (3*D11_AX(return_linear_species_index(k, l))/2 - D12_AX(return_linear_species_index(k, l)) )
           sum_abs_d112 = sum_abs_d112 &
-            & + abs(z_spec(k-1) * dT_spec_ov_ds(l-1) / T_spec(l-1) &
+            & + abs(z_spec(k-1) * n_spec(k-1) * dT_spec_ov_ds(l-1) / T_spec(l-1) &
             & * (3*D11_AX(return_linear_species_index(k, l))/2 - D12_AX(return_linear_species_index(k, l)) ))
         end do
       end do
@@ -1857,7 +1858,7 @@ CONTAINS
 
     !> \brief Check from the ambpolarity condition from the term involving the parallel electric field.
     function check_ambipolarity_condition_from_parallel_field(verbose) result(passed)
-      use collisionality_mod, only : num_spec, z_spec, T_spec
+      use collisionality_mod, only : num_spec, z_spec, T_spec, n_spec
 
       implicit none
 
@@ -1872,9 +1873,11 @@ CONTAINS
 
       do k = 1,num_spec
         do l = 1,num_spec
-          sum_d13 = sum_d13 + z_spec(k-1) * D13_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1)
+          sum_d13 = sum_d13 + z_spec(k-1) * n_spec(k-1) &
+            & * D13_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1)
           sum_abs_d13 = sum_abs_d13 &
-            & + abs(z_spec(k-1) * D13_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1))
+            & + abs(z_spec(k-1) * n_spec(k-1) &
+            &  * D13_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1))
         end do
       end do
 
@@ -1888,7 +1891,7 @@ CONTAINS
 
     !> \brief Check from the ambpolarity condition from the term involving the radial electric field.
     function check_ambipolarity_condition_from_radial_field(verbose) result(passed)
-      use collisionality_mod, only : num_spec, z_spec, T_spec
+      use collisionality_mod, only : num_spec, z_spec, T_spec, n_spec
 
       implicit none
 
@@ -1903,9 +1906,11 @@ CONTAINS
 
       do k = 1,num_spec
         do l = 1,num_spec
-          sum_d11 = sum_d11 + z_spec(k-1) * D11_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1)
+          sum_d11 = sum_d11 + z_spec(k-1) * n_spec(k-1) &
+            & * D11_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1)
           sum_abs_d11 = sum_abs_d11 &
-            & + abs(z_spec(k-1) * D11_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1))
+            & + abs(z_spec(k-1) * n_spec(k-1) &
+            &  * D11_AX(return_linear_species_index(k, l)) * z_spec(l-1) / T_spec(l-1))
         end do
       end do
 
