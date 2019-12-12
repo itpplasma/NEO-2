@@ -126,34 +126,34 @@ Ambipolarity of the radial fluxes means
 \end{equation}
 Expressing the flux via the flux-force relations, we have
 \begin{equation}
-  0 = - \sum_{\alpha} e_{\alpha} \sum_{\alpha'} \left( D_{11}^{\alpha\alpha'} A_{1}^{\alpha'} + D_{12}^{\alpha\alpha'} A_{2}^{\alpha'} + D_{13}^{\alpha\alpha'} A_{3}^{\alpha'}\right).
+  0 = - \sum_{\alpha} e_{\alpha} n_{\alpha} \sum_{\alpha'} \left( D_{11}^{\alpha\alpha'} A_{1}^{\alpha'} + D_{12}^{\alpha\alpha'} A_{2}^{\alpha'} + D_{13}^{\alpha\alpha'} A_{3}^{\alpha'}\right).
 \end{equation}
 Inserting the thermodynamic forces
 \begin{equation}
-  0 = - \sum_{\alpha} \sum_{\alpha'} e_{\alpha} \left( D_{11}^{\alpha\alpha'} (\frac{1}{n_{\alpha'}} \pd{n_{\alpha'}}{r} - \frac{e_{\alpha'} E_r}{T_{\alpha'}} - \frac{3}{2 T_{\alpha'}} \pd{T_{\alpha'}}{r})
+  0 = - \sum_{\alpha} \sum_{\alpha'} e_{\alpha} n_{\alpha} \left( D_{11}^{\alpha\alpha'} (\frac{1}{n_{\alpha'}} \pd{n_{\alpha'}}{r} - \frac{e_{\alpha'} E_r}{T_{\alpha'}} - \frac{3}{2 T_{\alpha'}} \pd{T_{\alpha'}}{r})
     + D_{12}^{\alpha\alpha'} \frac{1}{T_{\alpha'}} \pd{T_{\alpha'}}{r} + D_{13}^{\alpha\alpha'} \frac{e_{\alpha'} \langle E_{\parallel} B \rangle}{T_{\alpha'} \langle B^2 \rangle} \right).
 \end{equation}
 The terms with the derivative of the temperature can be combined. Doing
 so, results in
 \begin{equation}
-  0 = - \sum_{\alpha, \alpha'} e_{\alpha} D_{11}^{\alpha\alpha'} \frac{1}{n_{\alpha'}} \pd{n_{\alpha'}}{r}
-      + E_r \sum_{\alpha, \alpha'} \frac{e_{\alpha} D_{11}^{\alpha\alpha'} e_{\alpha'}}{T_{\alpha'}}
-      + \sum_{\alpha, \alpha'} e_{\alpha} (\frac{3}{2} D_{11}^{\alpha\alpha'} - D_{12}^{\alpha\alpha'}) \frac{1}{T_{\alpha'}} \pd{T_{\alpha}}{r}
-      - \frac{\langle E_{\parallel} B \rangle}{\langle B^2 \rangle} \sum_{\alpha, \alpha'} e_{\alpha} D_{13}^{\alpha\alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}.
+  0 = - \sum_{\alpha, \alpha'} e_{\alpha} n_{\alpha} D_{11}^{\alpha\alpha'} \frac{1}{n_{\alpha'}} \pd{n_{\alpha'}}{r}
+      + E_r \sum_{\alpha, \alpha'} \frac{e_{\alpha} n_{\alpha} D_{11}^{\alpha\alpha'} e_{\alpha'}}{T_{\alpha'}}
+      + \sum_{\alpha, \alpha'} e_{\alpha} n_{\alpha} (\frac{3}{2} D_{11}^{\alpha\alpha'} - D_{12}^{\alpha\alpha'}) \frac{1}{T_{\alpha'}} \pd{T_{\alpha}}{r}
+      - \frac{\langle E_{\parallel} B \rangle}{\langle B^2 \rangle} \sum_{\alpha, \alpha'} e_{\alpha} n_{\alpha} D_{13}^{\alpha\alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}.
 \end{equation}
 It should be safe to assume that these terms can change individually,
 which means each of these must be zero on its own
 \begin{equation}
-  0 = \sum_{\alpha, \alpha'} e_{\alpha} D_{11}^{\alpha\alpha'} \frac{1}{n_{\alpha'}} \pd{n_{\alpha'}}{r}
+  0 = \sum_{\alpha, \alpha'} e_{\alpha} n_{\alpha} D_{11}^{\alpha\alpha'} \frac{1}{n_{\alpha'}} \pd{n_{\alpha'}}{r}
 \end{equation}
 \begin{equation}
-  0 = \sum_{\alpha, \alpha'} \frac{e_{\alpha} D_{11}^{\alpha\alpha'} e_{\alpha'}}{T_{\alpha'}}\label{eq_ambipolarity_condition_from_radial_electric_field}
+  0 = \sum_{\alpha, \alpha'} \frac{e_{\alpha} n_{\alpha} D_{11}^{\alpha\alpha'} e_{\alpha'}}{T_{\alpha'}}\label{eq_ambipolarity_condition_from_radial_electric_field}
 \end{equation}
 \begin{equation}
-  0 = \sum_{\alpha, \alpha'} e_{\alpha} (\frac{3}{2} D_{11}^{\alpha\alpha'} - D_{12}^{\alpha\alpha'}) \frac{1}{T_{\alpha'}} \pd{T_{\alpha}}{r}
+  0 = \sum_{\alpha, \alpha'} e_{\alpha} n_{\alpha} (\frac{3}{2} D_{11}^{\alpha\alpha'} - D_{12}^{\alpha\alpha'}) \frac{1}{T_{\alpha'}} \pd{T_{\alpha}}{r}
 \end{equation}
 \begin{equation}
-  0 = \sum_{\alpha, \alpha'} e_{\alpha} D_{13}^{\alpha\alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+  0 = \sum_{\alpha, \alpha'} e_{\alpha} n_{\alpha} D_{13}^{\alpha\alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
 \end{equation}
 Another condition can be derived under the assumption that centrifugal
 forces are small. Then the corotating frame can be seen as an inertial
