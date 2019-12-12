@@ -191,9 +191,9 @@ contains
        else if (all(conl_over_mfp_spec .le. 0.0d0)) then
           collpar_spec=-conl_over_mfp_spec
        else
-          print *,"set_collpar: Values of collisionality &
+          print *,"ERROR in set_collpar: Values of collisionality &
                &parameter conl_over_spec not consistent!"
-          print *,"set_collpar: All entries of conl_over_spec &
+          print *,"ERROR in set_collpar: All entries of conl_over_spec &
                &must be >0 or <=0"
           stop
        end if
