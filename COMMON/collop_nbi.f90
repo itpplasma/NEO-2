@@ -1,3 +1,7 @@
+!> \attention For historical reasons the switch lsw_nbi is not part of
+!>   this module (it is in collisionality_mod), and it has so far not
+!>   been moved. Technicaly, it fits where it is now, and it can not be
+!>   part of the namelist anyway.
 module collop_nbi
   use nrtype, only : dp, pi
 
@@ -10,14 +14,16 @@ module collop_nbi
 
   integer :: legmax_nbi
 
+  !> \attention lsw_nbi needs to be known before reading this namelistt,
+  !>   and thus can not be a part of it.
   namelist /nbi/ legmax_nbi, name_nbi_data_file
   ! --------------------------------------------------------------------
-
-  logical :: lsw_nbi ! already in namelist collision
 
 contains
 
   subroutine set_default_values_namelist()
+    use collisionality_mod, only : lsw_nbi
+
     legmax_nbi = 4
 
     lsw_nbi = .false.
