@@ -983,34 +983,61 @@ CONTAINS
 
   end subroutine read_in_namelists
 
-  !> \brief Check if error occoured during read of namelist.
-  function check_iostat(ios, groupname, namelist_file_unit) result(stop_program)
+  !> \brief Check if error occoured duringi read of namelist.
+  !>
+  !> This function will check th iostat value of a read namelist statement,
+  !> and print a corresponding message to standard output.
+  !> The message will start with 'ERROR' or 'WARNING' depending on wether
+  !> the namelist is required or not.
+  function check_iostat(ios, groupname, namelist_file_unit, required_) result(stop_program)
     character(len=*), intent(in) :: groupname
     integer, intent(in) :: ios, namelist_file_unit
+    logical, optional, intent(in) :: required_
 
-    logical :: stop_program
+    logical :: stop_program, required
+
+    if (present(required_)) then
+      required = required_
+    else
+      required = .true.
+    end if
 
     stop_program = .false.
 
     if (ios .NE. 0) then
       call write_cant_read_message(groupname, namelist_file_unit)
-      stop_program = .true.
+      stop_program = .true. .and. required
     end if
   end function check_iostat
 
   !> \brief Write error message when a namelist could not be read.
-  subroutine write_cant_read_message(groupname, namelist_file_unit)
+  subroutine write_cant_read_message(groupname, namelist_file_unit, required_)
     character(len=*), intent(in) :: groupname
     integer, intent(in) :: namelist_file_unit
+    logical, intent(in), optional :: required_
 
     character(len=80) :: filename
-    logical :: is_named
+    character(len=7) :: error_or_warning
+    logical :: is_named, required
+
+    if (present(required_)) then
+      required = required_
+    else
+      required = .true.
+    end if
 
     inquire(namelist_file_unit, name=filename, named=is_named)
 
     if (.not. is_named) filename = ''
 
-    write(*,*) "ERROR: group ", groupname, " in file '", filename, "' cannot be read."
+    if (required) then
+      error_or_warning = "ERROR"
+    else
+      error_or_warning = "WARNING"
+    end if
+
+    write(*,*) error_or_warning, ": group ", groupname, " in file '", &
+     &  filename, "' cannot be read."
   end subroutine write_cant_read_message
 
   !> \brief Create directory structure and input files for multi-species scan.
