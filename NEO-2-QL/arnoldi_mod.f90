@@ -6,6 +6,8 @@ MODULE arnoldi_mod
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: f_init_arnoldi
   complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: eigvecs
 
+  logical :: lsw_write_flux_surface_distribution = .true.
+
 contains
   !---------------------------------------------------------------------------------
   !> \brief Solves the equation f=Af+q where A is a matrix and q is a given vector.
@@ -519,5 +521,69 @@ contains
     DEALLOCATE(hmat_work,work,rwork,selec,rnum,ifailr)
 
   END SUBROUTINE try_eigvecvals
+
+  subroutine write_flux_surface_distribution(geometrical_factor, distribution_function, &
+      & ind_start, number_passing_particles, delphi, phi_grid, number_elements)
+
+    use mpiprovider_module, only : mpro
+
+    use collisionality_mod, only : num_spec
+    use rkstep_mod, only : lag
+
+    implicit none
+
+    complex(kind=kind(1d0)), dimension(:,:), intent(in) :: geometrical_factor
+    complex(kind=kind(1d0)), dimension(:,:,:), intent(in) :: distribution_function
+    real(kind=kind(1d0)), dimension(:), intent(in) :: delphi, phi_grid
+
+    integer, dimension(:), intent(in) :: ind_start, number_passing_particles
+    integer, intent(in) :: number_elements
+
+    integer :: range_start, range_end
+    integer :: npassing, istep, ispec
+
+    character(len=2) :: number_as_string
+
+    real(kind=kind(1d0)), dimension(:,:,:,:), allocatable :: flux_surface_distribution
+
+    if (any(lbound(phi_grid) /= 1)) then
+      stop 'ERROR write_flux_surface_distribution: lbound has not expected value.'
+    end if
+    if (any(ubound(phi_grid) /= number_elements)) then
+      stop 'ERROR write_flux_surface_distribution: lbound has not expected value.'
+    end if
+
+    allocate(flux_surface_distribution(3,3,number_elements, num_spec))
+
+    ispec = mpro%getRank()+1
+
+    write(number_as_string,'(I2.2)') ispec
+    open(543+ispec,file="flux_surface_distribution_spec"//number_as_string//".dat")
+
+    do istep = 1,number_elements
+      npassing = number_passing_particles(istep)
+
+      range_start = ind_start(istep) + 1! +1 because here the elements are zero based.
+      range_end = range_start + 2*(lag + 1)*(npassing+1) - 1
+
+      if (istep < number_elements) then
+        if (range_end /= ind_start(istep+1)-1+1) then
+          write(*,*) 'ERROR: sanity check of range_end failed in subroutine'
+          write(*,*) '       write_flux_surface_distribution.'
+          write(*,*) 'istep: ', istep
+          write(*,*) 'range_start: ', range_start
+          write(*,*) 'range_end: ', range_end
+          write(*,*) 'ind_start(istep+1)...: ', ind_start(istep+1)-1+1
+          stop
+        end if
+      end if
+      flux_surface_distribution(:,:,istep,ispec) = flux_surface_distribution(:,:,istep,ispec) &
+        & + real(matmul(conjg(geometrical_factor(1:3, range_start:range_end)), &
+        &     distribution_function(range_start:range_end, 1:3, ispec))) / delphi(istep)
+      write(543+ispec,*) phi_grid(istep), flux_surface_distribution(:,:,istep,ispec)
+    end do
+
+    if (allocated(flux_surface_distribution)) deallocate(flux_surface_distribution)
+  end subroutine write_flux_surface_distribution
 
 END MODULE arnoldi_mod
