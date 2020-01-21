@@ -34,7 +34,15 @@ contains
   subroutine init_phi_nbi(namelist_file_unit)
     integer :: namelist_file_unit
 
-    read(namelist_file_unit,nml=nbi)
+    logical :: is_open
+
+    inquire(namelist_file_unit, opened=is_open)
+    if (.not. is_open) then
+      write(*,*) 'ERROR init_phi_nbi: file unit does not belong to an open file!'
+      stop
+    end if
+    read(namelist_file_unit, nml=nbi)
+
     ! Load data
 
   end subroutine init_phi_nbi
