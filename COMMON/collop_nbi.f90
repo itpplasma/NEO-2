@@ -14,6 +14,14 @@ module collop_nbi
 
   integer :: legmax_nbi
 
+  ! --------------------------------------------------------------------
+  ! -- module variables ------------------------------------------------
+  ! --------------------------------------------------------------------
+
+  real(kind=kind(1.0d0)), dimension(:) :: nbi_data
+
+  real(kind=kind(1.0d0)), dimension(:) :: nbi_data_grid
+
   !> \attention lsw_nbi needs to be known before reading this namelistt,
   !>   and thus can not be a part of it.
   namelist /nbi/ legmax_nbi, name_nbi_data_file
@@ -44,8 +52,13 @@ contains
     read(namelist_file_unit, nml=nbi)
 
     ! Load data
+    call load_nbi_data_file(name_nbi_data_file)
 
   end subroutine init_phi_nbi
+
+  subroutine load_nbi_data_file(filename)
+    character(len=80), intent(in) :: filename
+  end subroutine load_nbi_data_file
 
   function phi_nbi(m, x) result(phi)
     integer       :: m
