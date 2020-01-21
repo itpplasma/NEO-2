@@ -522,6 +522,23 @@ contains
 
   END SUBROUTINE try_eigvecvals
 
+  !---------------------------------------------------------------------
+  !> Write the distribution for the flux surface to a file. So far the
+  !> settings are all hardcoded (e.g. filename, filenumber, if to write).
+  !> If this subroutine is called should depend on the lsw_* variable.
+  !>
+  !> Side effects:
+  !> Creates one file for each species with output data.
+  !>
+  !> input:
+  !> ------
+  !> geometrical_factor: factors from integration for each point.
+  !> distribution_function:
+  !> ind_start: array with starting indices
+  !> number_passing_particles:
+  !> delphi: array with Delta phi values for each point.
+  !> phi_grid: array with phi values for each point.
+  !> number_elements: number of phi points (and size of delphi, phi_grid).
   subroutine write_flux_surface_distribution(geometrical_factor, distribution_function, &
       & ind_start, number_passing_particles, delphi, phi_grid, number_elements)
 
