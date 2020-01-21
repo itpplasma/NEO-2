@@ -2,6 +2,8 @@
 !>   this module (it is in collisionality_mod), and it has so far not
 !>   been moved. Technicaly, it fits where it is now, and it can not be
 !>   part of the namelist anyway.
+!>
+!> \todo Clarify format of nbi file
 module collop_nbi
   use nrtype, only : dp, pi
 
@@ -29,6 +31,8 @@ module collop_nbi
 
 contains
 
+  !> Thought to be called externally, this subroutine will set default
+  !> values for the namelist variables of this module.
   subroutine set_default_values_namelist()
     use collisionality_mod, only : lsw_nbi
 
@@ -39,6 +43,18 @@ contains
     name_nbi_data_file = 'nbi_data.dat'
   end subroutine set_default_values_namelist
 
+  !> Thought to be called externally, this subroutine will initialize
+  !> the module.
+  !> To do so, it gets the file unit of a file from which to read namelist
+  !> variables. It will also use other routines to set up the module.
+  !>
+  !> Side effects:
+  !> Will call load_nbi_data_file.
+  !> Will read namelist.
+  !>
+  !> input:
+  !> ------
+  !> namelist_file_unit: file unit for file which contains the namelist.
   subroutine init_phi_nbi(namelist_file_unit)
     integer :: namelist_file_unit
 
