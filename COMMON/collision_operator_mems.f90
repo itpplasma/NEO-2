@@ -1,6 +1,5 @@
 module collop
   use rkstep_mod
-  !use nrtype, only, private : pi, dp
   use hdf5_tools
   use collop_compute, only : init_collop, &
        compute_source, compute_collop, gamma_ab, M_transform, M_transform_inv, &
@@ -73,8 +72,6 @@ module collop
       talk = .true.
       if (present(opt_talk)) talk = opt_talk
 
-      !write (*,*) "Setting species to ", ispec
-
       !**********************************************************
       ! Switch collision operator matrices
       !**********************************************************
@@ -85,22 +82,6 @@ module collop
       else
          ailmm(0:lag, 0:lag, 0:leg) => ailmm_aa(:,:,:,mpro%getRank(),ispec)
       end if
-
-      !! Modification by Andreas F. Martitsch (21.02.2017)
-      ! ToDo: Delete this block - switch moved to flint_prepare for consistency!
-!!$      !**********************************************************
-!!$      ! Switch collisionality parameter
-!!$      !**********************************************************
-!!$      ! negative input for conl_over_mfp should provide collpar directly
-!!$      if (.not. collop_only_precompute) then
-!!$         conl_over_mfp=conl_over_mfp_spec(ispec)
-!!$         if (conl_over_mfp .gt. 0.0d0) then
-!!$            collpar=4.d0/(2.d0*pi*device%r0)*conl_over_mfp
-!!$         else
-!!$            collpar=-conl_over_mfp
-!!$         end if
-!!$      end if
-      !! End Modification by Andreas F. Martitsch (21.02.2017)
 
     end subroutine collop_set_species
 
@@ -122,8 +103,6 @@ module collop
          ! Usual integration settings for "single species" mode
          integral_cutoff = .true.
          lsw_split_interval = .false.
-         !num_sub_intervals = 1
-         !num_sub_intervals_cutoff = 1
          x_cutoff = 20d0
          epsabs = 1d-11
          epsrel = 1d-11
@@ -349,7 +328,6 @@ module collop
          !**********************************************************
          if (lsw_read_precom) then                                          !! Added by Michael Draxler (13.09.2017)
 
-           !write(*,*) "Read Precom_collop"
            call read_precom_meta_collop(succeded_precom_check)  !! succeded_precom_check succeed with 0 fails with 1 or higher and error with -1
            if (succeded_precom_check .EQ. 0) then
              call read_precom_collop()
@@ -375,44 +353,14 @@ module collop
            !**********************************************************
            ! Compute collision operator
            !**********************************************************
-           ! old: without MPI parallelization
-!!$         do a = 0, num_spec-1
-!!$            do b = 0, num_spec-1
-!!$
-!!$               spec_ind_in = (/ a, b /)
-!!$               call collop_exists(m_spec(a), m_spec(b), T_spec(a), T_spec(b), &
-!!$                    spec_ind_in, spec_ind_det)
-!!$
-!!$               if ( all(spec_ind_det .eq. -1) ) then
-!!$                  !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
-!!$                  !print *,'Do the computation.'
-!!$                  call compute_collop('a', 'b', m_spec(a), m_spec(b), T_spec(a), T_spec(b), &
-!!$                       anumm_aa(:,:,a,b), denmm_aa(:,:,a,b), ailmm_aa(:,:,:,a,b))
-!!$               else
-!!$                  !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
-!!$                  !print *,'Load matrices.'
-!!$                  anumm_aa(:,:,a,b) = anumm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
-!!$                  denmm_aa(:,:,a,b) = denmm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
-!!$                  ailmm_aa(:,:,:,a,b) = ailmm_aa(:,:,:,spec_ind_det(1),spec_ind_det(2))
-!!$               end if
-!!$
-!!$            end do
-!!$         end do
-         ! new: with MPI parallelization
-
-
            b = mpro%getRank()
            do a = 0, num_spec-1
               spec_ind_in = (/ a, b /)
               call collop_exists_mpi(m_spec(a), T_spec(a), spec_ind_in, spec_ind_det)
               if ( all(spec_ind_det .eq. -1) ) then
-                 !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
-                 !print *,'Do the computation.'
                  call compute_collop('a', 'b', m_spec(a), m_spec(b), T_spec(a), T_spec(b), &
                       anumm_aa(:,:,a,b), denmm_aa(:,:,a,b), ailmm_aa(:,:,:,a,b))
               else
-                 !print *,'a, b, spec_ind_det: ',a,b,spec_ind_det
-                 !print *,'Load matrices.'
                  anumm_aa(:,:,a,b) = anumm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
                  denmm_aa(:,:,a,b) = denmm_aa(:,:,spec_ind_det(1),spec_ind_det(2))
                  ailmm_aa(:,:,:,a,b) = ailmm_aa(:,:,:,spec_ind_det(1),spec_ind_det(2))
@@ -471,9 +419,6 @@ module collop
                   write(*,*) "Please use switch isw_coul_log = 0."
                   stop
                end if
-               !print *,'taa_ov_tab: ',a,b,taa_ov_tab_temp
-               !print *,coll_a_temp,coll_b_temp
-               !print *,za_temp,zb_temp
                anumm_a(:,:,a) = &
                     anumm_a(:,:,a) + anumm_aa(:,:,a,b) * taa_ov_tab_temp
                denmm_a(:,:,a) = &
@@ -506,15 +451,6 @@ module collop
       weightlag(3,:) = asource_temp
       deallocate(asource_temp)
 
-      !**********************************************************
-      ! Write to screen
-      !**********************************************************
-      !write (*,*) asource
-      !write (*,*) anumm
-      !write (*,*) denmm
-      !write (*,*) ailmm
-      !write (*,*) weightlag
-
       if (mpro%isMaster()) call write_collop()
 
     contains
@@ -535,8 +471,6 @@ module collop
            do b=0,ind_in(2)
               if ( (mb.ne.m_spec(b)) .or. (Tb.ne.T_spec(b)) ) cycle
               ind_out=(/a,b/)
-              !print *,'ind_in: ',ind_in
-              !print *,'ind_out: ',ind_out
               if ( all(ind_out.eq.ind_in) ) then
                  ind_out = -1
               end if
@@ -560,8 +494,6 @@ module collop
         do a=0,ind_in(1)
            if ( (ma.ne.m_spec(a)) .or. (Ta.ne.T_spec(a)) ) cycle
            ind_out=(/a,ind_in(2)/)
-           !print *,'ind_in: ',ind_in
-           !print *,'ind_out: ',ind_out
            if ( all(ind_out.eq.ind_in) ) then
               ind_out = -1
            end if
@@ -634,7 +566,6 @@ module collop
     subroutine read_precom_meta_collop(succeded_precom_check_tmp) !! Added by Michael Draxler (13.09.2017)
       !Routine should check if existing precom_collop.h5 matches required Parameters
       !check Version of precom_collop.h5 file
-      !USE rkstep_mod only lag,leg
       integer, Intent(OUT) :: succeded_precom_check_tmp
       integer(HID_T)   ::  h5id_meta
       integer                     :: collop_base_prj_precom  ! 0...Laguerre (Default), 1...Polynomial
@@ -729,7 +660,6 @@ module collop
       if (collop_base_prj .ne. collop_base_prj_precom) then
         write (*,*) "Precomputed collop_base_prj(", collop_base_prj_precom, ") is different from used "
         write (*,*) "collop_base_prj(" ,collop_base_prj, ")"
-        !write (*,*) "Precomputed collop_base_prj"
         succeded_precom_check_tmp= 1
         RETURN
       end if
@@ -737,7 +667,6 @@ module collop
       if (collop_base_exp .ne. collop_base_exp_precom) then
         write (*,*) "Precomputed collop_base_exp(",collop_base_exp_precom, ") is different from used ", &
         "collop_base_exp(",collop_base_exp,")"
-        !write (*,*) "Precomputed collop_base_exp"
         succeded_precom_check_tmp= 1
         RETURN
       end if
@@ -854,50 +783,17 @@ module collop
       call h5_add(h5id_collop, 'weightenerg', weightenerg, lbound(weightenerg), ubound(weightenerg))
       call h5_add(h5id_collop, 'Amm',Amm,lbound(Amm), ubound(Amm))
 
-      !call h5_add(h5id_collop, 'anumm_a', anumm_a, lbound(anumm_a), ubound(anumm_a))
-      !call h5_add(h5id_collop, 'denmm_a', denmm_a, lbound(denmm_a), ubound(denmm_a))
       call h5_add(h5id_collop, 'anumm_aa', anumm_aa, lbound(anumm_aa), ubound(anumm_aa))
       if (z_eff .ne. 0) call h5_add(h5id_collop, 'anumm_inf', anumm_inf, lbound(anumm_inf), ubound(anumm_inf))
       call h5_add(h5id_collop, 'denmm_aa', denmm_aa, lbound(denmm_aa), ubound(denmm_aa))
       call h5_add(h5id_collop, 'ailmm_aa', ailmm_aa, lbound(ailmm_aa), ubound(ailmm_aa))
 
-      !call h5_add(h5id_collop, 'anumm', anumm, lbound(anumm), ubound(anumm))
-      !call h5_add(h5id_collop, 'anumm_lag', anumm_lag, lbound(anumm_lag), ubound(anumm_lag))
-      !call h5_add(h5id_collop, 'anumm_aa0', anumm_aa(:,:,0,0), lbound(anumm_aa(:,:,0,0)), ubound(anumm_aa(:,:,0,0)))
-
-      !call h5_add(h5id_collop, 'denmm', denmm, lbound(denmm), ubound(denmm))
-      !call h5_add(h5id_collop, 'ailmm', ailmm, lbound(ailmm), ubound(ailmm))
-
       call h5_add(h5id_collop, 'M_transform_', M_transform, lbound(M_transform), ubound(M_transform))
       call h5_add(h5id_collop, 'M_transform_inv', M_transform_inv, lbound(M_transform_inv), ubound(M_transform_inv))
       call h5_add(h5id_collop, 'C_m', C_m, lbound(C_m), ubound(C_m))
 
-      !**********************************************************
-      ! Write test functions
-      !**********************************************************
-      !n_x = 999
-      !allocate(x(n_x))
-      !allocate(phi_x(0:lag, 1:n_x))
-      !allocate(dphi_x(0:lag, 1:n_x))
-      !allocate(ddphi_x(0:lag, 1:n_x))
-
-      !do m = 0, lag
-       !  do xi = 1, n_x
-        !    x(xi) = 10d0/(n_x-1) * (xi-1)
-         !   phi_x(m,xi)   = phi_exp(m,x(xi))
-          !  dphi_x(m,xi)  = d_phi_exp(m,x(xi))
-          !  ddphi_x(m,xi) = dd_phi_exp(m,x(xi))
-            !write (*,*) x(xi), m, phi_exp(m,x(xi)), d_phi_exp(m,x(xi)), dd_phi_exp(m,x(xi))
-         !end do
-      !end do
-
-      !call h5_add(h5id_collop, 'x', x, lbound(x), ubound(x))
-      !call h5_add(h5id_collop, 'phi_x', phi_x, lbound(phi_x), ubound(phi_x))
-      !call h5_add(h5id_collop, 'dphi_x', dphi_x, lbound(dphi_x), ubound(dphi_x))
-      !call h5_add(h5id_collop, 'ddphi_x', ddphi_x, lbound(ddphi_x), ubound(ddphi_x))
-
       call h5_close(h5id_collop)
-      !stop
+
     end subroutine write_precom_collop
 
 
@@ -912,18 +808,12 @@ module collop
 
 
          res_flt = abs(flt1 -flt2)
-         !write (*,*) "flt1: ", flt1
-         !write (*,*) "flt2: ", flt2
-         !write (*,*) "res_flt: ", res_flt
          if (( res_flt .eq. 0)) then
             compare_float = 0
-
-            !write (*,*) "Compare is equal "
 
          else if  ( res_flt .le.(eps* max(abs(flt1),abs(flt2), eps))) then
             compare_float = 1
             write (*,*) "Compare is nearly equal  "
-
          else
             compare_float = 2
             write (*,*) "Compare is inequal "
@@ -950,13 +840,9 @@ module collop
          if (all( res_flt .eq. 0)) then
             compare_floats_vec = 0
 
-            !write (*,*) "Compare is equal "
-
-
          else if  (all( res_flt .le.(eps* max(abs(flt1),abs(flt2), eps)))) then
             compare_floats_vec = 1
             write (*,*) "Compare is nearly equal!! "
-
          else
             compare_floats_vec = 2
             write (*,*) "Compare is inequal "
@@ -996,7 +882,6 @@ module collop
       call h5_add(h5id_collop, 'denmm_aa', denmm_aa, lbound(denmm_aa), ubound(denmm_aa))
       call h5_add(h5id_collop, 'ailmm_aa', ailmm_aa, lbound(ailmm_aa), ubound(ailmm_aa))
       call h5_add(h5id_collop, 'anumm', anumm, lbound(anumm), ubound(anumm))
-      !call h5_add(h5id_collop, 'anumm_lag', anumm_lag, lbound(anumm_lag), ubound(anumm_lag))
       call h5_add(h5id_collop, 'anumm_aa0', anumm_aa(:,:,0,0), lbound(anumm_aa(:,:,0,0)), ubound(anumm_aa(:,:,0,0)))
       if (z_eff .ne. 0) call h5_add(h5id_collop, 'anumm_inf', anumm_inf, lbound(anumm_inf), ubound(anumm_inf))
       call h5_add(h5id_collop, 'denmm', denmm, lbound(denmm), ubound(denmm))
@@ -1025,7 +910,6 @@ module collop
             phi_x(m,xi)   = phi_exp(m,x(xi))
             dphi_x(m,xi)  = d_phi_exp(m,x(xi))
             ddphi_x(m,xi) = dd_phi_exp(m,x(xi))
-            !write (*,*) x(xi), m, phi_exp(m,x(xi)), d_phi_exp(m,x(xi)), dd_phi_exp(m,x(xi))
          end do
       end do
 
@@ -1113,7 +997,6 @@ module collop
       end do
       close(f)
 
-      !stop
     end subroutine write_collop
 
 end module collop
