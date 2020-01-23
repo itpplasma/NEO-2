@@ -600,6 +600,8 @@ contains
       write(543+ispec,*) phi_grid(istep), flux_surface_distribution(:,:,istep,ispec)
     end do
 
+    close(543+ispec)
+
     if (allocated(flux_surface_distribution)) deallocate(flux_surface_distribution)
   end subroutine write_flux_surface_distribution
 
