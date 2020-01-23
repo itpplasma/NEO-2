@@ -559,7 +559,10 @@ contains
     integer :: range_start, range_end
     integer :: npassing, istep, ispec
 
-    character(len=2) :: number_as_string
+    integer, save :: number_of_call = 1
+
+    character(len=2) :: species_number_as_string
+    character(len=2) :: call_number_as_string
 
     real(kind=kind(1d0)), dimension(:,:,:,:), allocatable :: flux_surface_distribution
 
@@ -574,8 +577,9 @@ contains
 
     ispec = mpro%getRank()+1
 
-    write(number_as_string,'(I2.2)') ispec
-    open(543+ispec,file="flux_surface_distribution_spec"//number_as_string//".dat")
+    write(species_number_as_string,'(I2.2)') ispec
+    write(call_number_as_string,'(I2.2)') number_of_call
+    open(543+ispec,file="flux_surface_distribution_spec"//species_number_as_string//"_"//call_number_as_string//".dat")
 
     do istep = 1,number_elements
       npassing = number_passing_particles(istep)
@@ -601,6 +605,8 @@ contains
     end do
 
     close(543+ispec)
+
+    number_of_call = number_of_call + 1
 
     if (allocated(flux_surface_distribution)) deallocate(flux_surface_distribution)
   end subroutine write_flux_surface_distribution
