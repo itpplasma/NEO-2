@@ -3501,8 +3501,8 @@ CONTAINS
 !
   SUBROUTINE plotsource(iunit_base,sourcevec_tmp)
 !
-    INTEGER :: iunit_base
-    DOUBLE PRECISION, DIMENSION(n_2d_size,3) :: sourcevec_tmp
+    integer, intent(in) :: iunit_base
+    double precision, dimension(n_2d_size,3), intent(in) :: sourcevec_tmp
 !
     npassing=npl(istep)
     delta_eta=eta(1:npassing)-eta(0:npassing-1)
