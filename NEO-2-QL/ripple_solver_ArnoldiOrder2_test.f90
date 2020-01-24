@@ -159,7 +159,6 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   DOUBLE PRECISION                         :: subsq,subsqmin
   DOUBLE PRECISION                         :: diflam,diflampow,coefdir
   DOUBLE PRECISION                         :: coefenu,coefenu_averb   !!!term[1]
-  DOUBLE PRECISION :: alambd_save1
   DOUBLE PRECISION :: amin2ovb
   complex(kind=kind(1d0)) :: coef_cf
 !
@@ -3503,6 +3502,8 @@ CONTAINS
 !
     integer, intent(in) :: iunit_base
     double precision, dimension(n_2d_size,3), intent(in) :: sourcevec_tmp
+
+    double precision :: alambd_save1
 !
     npassing=npl(istep)
     delta_eta=eta(1:npassing)-eta(0:npassing-1)
