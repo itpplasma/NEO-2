@@ -570,7 +570,7 @@ contains
       stop 'ERROR write_flux_surface_distribution: lbound has not expected value.'
     end if
     if (any(ubound(phi_grid) /= number_elements)) then
-      stop 'ERROR write_flux_surface_distribution: lbound has not expected value.'
+      stop 'ERROR write_flux_surface_distribution: ubound has not expected value.'
     end if
 
     allocate(flux_surface_distribution(3,3,number_elements, num_spec))
