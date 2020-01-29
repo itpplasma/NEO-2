@@ -7,33 +7,49 @@ Created on Thu Dec 12 2019
 @author: Christopher Albert
 """
 
-import h5py, hdf5tools
-import numpy as np
+def rescale_velocity_profile(path:str, infilename:str, scaling_factor:float):
+  """
+  From a given neo2 hdf5-input file, create a new one with the velocity
+  profile rescaled.
 
-ref = hdf5tools.get_hdf5file('multi_spec_aug32169_t4.1500.in')
+  input:
+  ------
+  path,str: string with path where the input file can be found.
+  infilename: string with the name of the input file to use.
+  scaling_factor: floating point number, scaling factor to apply to the
+    velocity. Expected to be a single number applied to all radial
+    positions.
 
-vphi = ref['Vphi']
-vphi_lower = []
-vphi_larger = []
+  \todo Move to hdf5tools?
+  """
+  import h5py, hdf5tools
+  import numpy as np
 
-for k in vphi:
-  vphi_lower.append(k*0.9)
-  vphi_larger.append(k*1.1)
+  ref = hdf5tools.get_hdf5file(path+infilename)
 
-vphi_lower = np.array(vphi_lower)
-vphi_larger = np.array(vphi_larger)
+  vphi = ref['Vphi']
+  vphi_rescaled = []
 
-vphi_lo = hdf5tools.get_hdf5file_replace('multi_spec_aug32169_t4.1500_vphi_09.in')
-vphi_la = hdf5tools.get_hdf5file_replace('multi_spec_aug32169_t4.1500_vphi_11.in')
+  for k in vphi:
+    vphi_rescaled.append(k*scaling_factor)
 
-for k in ref.keys():
-  ref.copy(source='/'+k, dest=vphi_lo, name='/' + k)
-  ref.copy(source='/'+k, dest=vphi_la, name='/' + k)
+  vphi_rescaled = np.array(vphi_rescaled)
 
-dset = vphi_lo['Vphi']
-dset[...] = vphi_lower
-dset = vphi_la['Vphi']
-dset[...] = vphi_larger
+  nameparts = infilename.rsplit('.', 1)
 
-vphi_lo.close()
-vphi_la.close()
+  vphi_namepart= '_vphi_{0}'.format(scaling_factor)
+
+  if len(nameparts)==1:
+    outfilename = nameparts[0]+vphi_namepart
+  elif len(nameparts)==2:
+    outfilename = nameparts[0]+vphi_namepart+'.'+nameparts[1]
+
+  vphi_rs = hdf5tools.get_hdf5file_replace(outfilename)
+
+  for k in ref.keys():
+    ref.copy(source='/'+k, dest=vphi_rs, name='/' + k)
+
+  dset = vphi_rs['Vphi']
+  dset[...] = vphi_rescaled
+
+  vphi_rs.close()
