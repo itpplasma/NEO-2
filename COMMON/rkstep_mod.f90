@@ -1,12 +1,5 @@
 MODULE rkstep_mod
   INTEGER :: legmax,leg,lag
-  !**********************************************************
-  ! Changes required for multispecies support
-  !**********************************************************
-  ! Old Version
-  ! DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: anumm,denmm,asource
-  ! DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: ailmm
-  ! DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: weightlag
 
   ! New Version - up to now only differential part
   CHARACTER(len=3), DIMENSION(:), ALLOCATABLE       :: species_tags
@@ -26,11 +19,7 @@ MODULE rkstep_mod
   DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightparflow
   DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: weightenerg
   double precision, dimension(:,:,:),   allocatable :: Inbi_lmmp_a
-  !**********************************************************
-  ! WINNY - for flint
-  ! DOUBLE PRECISION, DIMENSION(:),       ALLOCATABLE :: collision_sigma_multiplier
-  ! WINNY - for flint
-  !**********************************************************
+
   DOUBLE PRECISION               :: epserr_sink       ! Regularization
   COMPLEX(kind=kind(1d0))        :: epserr_sink_cmplx ! Regularization
   DOUBLE PRECISION               :: epserr_iter       ! Relative error of integral part iterations
