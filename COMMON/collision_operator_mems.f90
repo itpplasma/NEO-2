@@ -86,6 +86,8 @@ module collop
     end subroutine collop_set_species
 
     subroutine collop_load()
+      use collop_nbi, only : legmax_nbi
+
       real(kind=dp), dimension(:), allocatable :: asource_temp
 
       real(kind=dp) :: alpha_temp, beta_temp
@@ -177,9 +179,8 @@ module collop
       allocate(ailmm_aa(0:lag,0:lag,0:leg,0:num_spec-1,0:num_spec-1))
 
       if (lsw_nbi) then
-         if (allocated(Inbi_lmmp_a)) deallocate(Inbi_lmmp_a)
-         ! In future leg should be changed to leg_nbi here
-         allocate(Inbi_lmmp_a(0:lag,0:leg,0:num_spec-1))
+        if (allocated(Inbi_lmmp_a)) deallocate(Inbi_lmmp_a)
+        allocate(Inbi_lmmp_a(0:lag,0:legmax_nbi,0:num_spec-1))
       end if
 
       if(allocated(weightlag)) deallocate(weightlag)
