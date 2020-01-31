@@ -20,9 +20,9 @@ module collop_nbi
   ! -- module variables ------------------------------------------------
   ! --------------------------------------------------------------------
 
-  real(kind=kind(1.0d0)), dimension(:) :: nbi_data
+  real(kind=kind(1.0d0)), dimension(:), allocatable :: nbi_data
 
-  real(kind=kind(1.0d0)), dimension(:) :: nbi_data_grid
+  real(kind=kind(1.0d0)), dimension(:), allocatable :: nbi_data_grid
 
   !> \attention lsw_nbi needs to be known before reading this namelistt,
   !>   and thus can not be a part of it.
