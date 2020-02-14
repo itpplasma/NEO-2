@@ -412,8 +412,6 @@ contains
 
     integer :: k,j,lwork,info
 
-    double precision, parameter :: tiny_diff = 1.d-12
-
     complex(kind=kind(1d0)) :: tmp
 
     logical,          dimension(:),   allocatable :: selec
@@ -462,33 +460,11 @@ contains
       RETURN
     ENDIF
 
-    ! Sort eigenvalues acording to magnitude.
-    DO k=1,m
-      info=0
-      DO j=2,m
-        IF(ABS(ritznum(j)).GT.ABS(ritznum(j-1))) THEN
-          info=1
-          tmp=ritznum(j-1)
-          ritznum(j-1)=ritznum(j)
-          ritznum(j)=tmp
-        ENDIF
-      ENDDO
-      IF(info.EQ.0) EXIT
-    ENDDO
-
-    ! Sort eigenvalues so that for conjugate pairs, the one with imaginary
-    ! part > 0 comes first.
+    ! Sort eigenvalues acording to magnitude, and so that for conjugate
+    ! pairs, the one with imaginary part > 0 comes first.
     ! If this is not done, they can be in arbitrary order in subsequent
     ! iterations, which will cause problems with checking of convergence.
-    do j=2,m
-      if(abs(ritznum(j)-conjg(ritznum(j-1))) .lt. tiny_diff) then
-        if(aimag(ritznum(j)).gt.0.d0) then
-          tmp = ritznum(j-1)
-          ritznum(j-1) = ritznum(j)
-          ritznum(j) = tmp
-        end if
-      end if
-    end do
+    call sort_eigenvalues(ritznum)
 
     DEALLOCATE(work)
 
@@ -610,5 +586,69 @@ contains
 
     if (allocated(flux_surface_distribution)) deallocate(flux_surface_distribution)
   end subroutine write_flux_surface_distribution
+
+  !> \brief Simple sorting routine for small 1d arrays (decreasing magnitude).
+  subroutine sort_complex_array(array)
+
+    implicit none
+
+    complex(kind=kind(1d0)), dimension(:), intent(inout) :: array
+
+    logical :: entries_swapped
+    integer :: m, k, j
+    complex(kind=kind(1d0)) :: temp
+
+    m = ubound(array, 1)
+
+    do k=1,m
+      entries_swapped = .false.
+      do j=2,m
+        if (abs(array(j)) .GT. abs(array(j-1))) then
+          entries_swapped = .true.
+          temp = array(j-1)
+          array(j-1) = array(j)
+          array(j) = temp
+        end if
+      end do
+      if (.not. entries_swapped) exit
+    end do
+
+  end subroutine sort_complex_array
+
+  !> \brief Sort 1d array of complex eigenvalues.
+  !>
+  !> This subroutine sorts a 1d array of complex eigenvalues. First
+  !> entries are sorted according to magnitude (largest first), then is
+  !> made sure, that conjugate pairs of eigenvalues always have the same
+  !> order, with one with positive imaginary coming first.
+  subroutine sort_eigenvalues(eiv)
+
+    implicit none
+
+    complex(kind=kind(1d0)), dimension(:), intent(inout) :: eiv
+
+    ! Absolute accuracy for determining conjugate pairs.
+    double precision, parameter :: tiny_diff = 1.d-12
+
+    integer :: j, m
+    complex(kind=kind(1d0)) :: temp
+
+    call sort_complex_array(eiv)
+
+    m = ubound(eiv, 1)
+
+    ! Additional sorting: make sure complex conjugate pairs do not have
+    ! random order.
+    do j=2,m
+      if (abs(eiv(j) - conjg(eiv(j-1))) .lt. tiny_diff) then
+        if (aimag(eiv(j)) .gt. 0.d0) then
+          temp = eiv(j-1)
+          eiv(j-1) = eiv(j)
+          eiv(j) = temp
+        end if
+      end if
+    end do
+
+  end subroutine sort_eigenvalues
 
 END MODULE arnoldi_mod
