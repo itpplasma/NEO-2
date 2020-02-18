@@ -560,7 +560,7 @@ contains
     do istep = 1,number_elements
       npassing = number_passing_particles(istep)
 
-      range_start = ind_start(istep) + 1! +1 because here the elements are zero based.
+      range_start = ind_start(istep) + 1
       range_end = range_start + 2*(lag + 1)*(npassing+1) - 1
 
       if (istep < number_elements) then
