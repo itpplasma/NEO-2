@@ -80,7 +80,9 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
   case 1
     rho_pol = linspace(0,1,gridpoints);
 
-    rho_tor = spline(frp(:, data_source.rhopoloidal.column), frt(:,data_source.rhotoroidal.column), rho_pol);
+    %~ rho_tor = spline(frp(:, data_source.rhopoloidal.column), frt(:,data_source.rhotoroidal.column), rho_pol);
+    rho_tor_fit = polyfit(frp(frp(:, data_source.rhopoloidal.column) <= 1.0, data_source.rhopoloidal.column), frt(frp(:, data_source.rhopoloidal.column) <= 1.0,data_source.rhotoroidal.column), 5);
+    rho_tor = polyval(rho_tor_fit, rho_pol);
     rho_tor(1) = 0;
     rho_tor(end) = 1;
   case 2
