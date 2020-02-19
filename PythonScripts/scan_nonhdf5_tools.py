@@ -412,7 +412,7 @@ def get_memory_consumption_of_scan(lines, id_scan: str, num_runs: int):
 
   return memory_consumption
 
-def set_neo2in(folder: str, subfolder_pattern: str, vphifilename: str, backup: bool):
+def set_neo2in(folder: str, subfolder_pattern: str, vphifilename: str, backup: bool, read_precom: bool):
   """Set read/write switches and vphi in neo2in files in subfolders.
 
   This function is intended to set the switches lsw_read_precom and
@@ -488,7 +488,7 @@ def set_neo2in(folder: str, subfolder_pattern: str, vphifilename: str, backup: b
     if (backup):
       nml.write(current_filename + '~')
 
-    nml['collision']['lsw_read_precom'] = True
+    nml['collision']['lsw_read_precom'] = read_precom
     nml['collision']['lsw_write_precom'] = False
 
     # Adjust the rotation, new value is background + shift, assuming
