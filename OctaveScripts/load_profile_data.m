@@ -121,7 +121,9 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
 
 
   frp = load([path_to_shot, data_source.rotation_velocity.filename]);
-  %frr = load([path_to_shot, data_source.major_radius.filename]);
+  if (input_unit_type == 1)
+    frr = load([path_to_shot, data_source.major_radius.filename]);
+  end
 
   switch (input_unit_type)
   case 1
