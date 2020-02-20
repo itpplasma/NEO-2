@@ -842,6 +842,24 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
         t = np.append(t, np.array(hin[dname])[:, index+1:, ...], 1)
         hout.create_dataset(dname, data=t)
 
+def write_axisymmetric_quantities(infilename:str, outfilename:str):
+  h = get_hdf5file(infilename)
+
+  with open(outfilename, 'w') as outfile:
+    outfile.write("!               s             aiota          avnabpsi          Bref [G]                Er   MtOvR electrons   MtOvR deuterium\n")
+    for k in range(h['Bref'].size):
+      outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(h['boozer_s'][k], h['aiota'][k], h['avnabpsi'][k], h['Bref'][k], h['Er'][k], h['MtOvR'][k][0], h['MtOvR'][k][1]))
+
+def write_nonaxisymmetric_quantities(infilename:str, outfilename:str):
+  h = get_hdf5file(infilename)
+
+  with open(outfilename, 'w') as outfile:
+    outfile.write("!               s    Gamma_NA elect     Gamma_NA deut  TphiNa electrons  TphiNa deuterium          D11ee_NA          D12ee_NA          D22ee_NA          D11ii_NA          D12ii_NA          D22ii_NA\n")
+    for k in range(h['Bref'].size):
+      outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(
+        h['boozer_s'][k], h['Gamma_NA_spec'][k][0], h['Gamma_NA_spec'][k][1], h['TphiNA_spec'][k][0], h['TphiNA_spec'][k][1],
+        h['D11_NA'][k][0], h['D12_NA'][k][0], h['D22_NA'][k][0], h['D11_NA'][k][3], h['D12_NA'][k][3], h['D22_NA'][k][3]))
+
 if __name__ == "__main__":
 
   import h5py
