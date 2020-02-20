@@ -93,7 +93,8 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   ! support of different basis functions and replaces routine "lagxmm".
   USE collop
   !! End Modification by Andreas F. Martitsch (28.07.2015)
-  use arnoldi_mod, only : iterator, f_init_arnoldi
+  use arnoldi_mod, only : iterator, f_init_arnoldi, &
+    & lsw_write_flux_surface_distribution, write_flux_surface_distribution
   
   IMPLICIT NONE
   !INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -220,6 +221,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   complex(kind=kind(1d0)), dimension(:),   allocatable :: densvec_bra, densvec_ket
   ! End Use pre-conditioned iterations
   complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
+  complex(kind=kind(1d0)), dimension(:,:), allocatable :: flux_vector_plot
   complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: basevec_p
   INTEGER :: isw_lor,isw_ene,isw_intp
   INTEGER,          DIMENSION(:),       ALLOCATABLE :: npl
@@ -1522,6 +1524,7 @@ rotfactor=imun*m_phi
 ! Compute vectors for convolution of fluxes and source vectors:
 !
   ALLOCATE(flux_vector(3,n_2d_size),source_vector(n_2d_size,4),bvec_parflow(n_2d_size))
+  allocate(flux_vector_plot(3,n_2d_size))
 !
   ! Use pre-conditioned iterations:
   ! -> remove null-space of axisymmetric solution (energy conservation)
@@ -2623,7 +2626,7 @@ rotfactor=imun*m_phi
     !--> Computation of D31/D32 not affected ( flux_vector(2,:) determined by convol_curr )
     geodcu_back=geodcu_forw
     !! End Modifications by Andreas F. Martitsch (28.08.2014)
-!
+
     CALL source_flux
     !! Modification by Andreas F. Martitsch (23.08.2015)
     ! save solution of the differential part for species=ispec
@@ -3453,6 +3456,7 @@ rotfactor=imun*m_phi
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
 !
   DEALLOCATE(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp,bvec_parflow)
+  if(allocated(flux_vector_plot)) deallocate(flux_vector_plot)
 !
   DEALLOCATE(energvec_ket,energvec_bra)
   deallocate(densvec_ket,densvec_bra)
@@ -3554,7 +3558,9 @@ CONTAINS
     INTEGER :: ispecpp ! species indices (loop over sources)
     DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE :: qflux_allspec_tmp
     !! End Modification by Andreas F. Martitsch (23.08.2015)
-!
+
+    integer :: i_src ! own source index for plotting the distribution function
+
     IF(isw_intp.EQ.1) ALLOCATE(bvec_iter(ncol),bvec_prev(ncol))
 
     CALL  remap_rc(nz,nz_sq,irow,icol,amat_sp)
@@ -3632,6 +3638,19 @@ CONTAINS
       ENDDO
 
     ENDIF
+
+    if (lsw_write_flux_surface_distribution) then
+      call write_flux_surface_distribution(flux_vector_plot, source_vector_all, &
+        & ind_start, npl, delt_pos, phi_mfl, iend-ibeg+1)
+    end if
+
+    i_src=1
+    if(problem_type) then
+      call matlabplot_allm(real(source_vector_all(:,i_src,ispec)),.true.,.true.,'  ')
+    else
+      call matlabplot_allm(real(source_vector_all(:,i_src,ispec)),.true.,.false.,'re')
+      call matlabplot_allm(dimag(source_vector_all(:,i_src,ispec)),.true.,.false.,'im')
+    endif
 
     IF(clean) THEN
       mode_iter=3
@@ -3749,7 +3768,7 @@ CONTAINS
       DEALLOCATE(fun_write)
 !
     ENDIF
-!
+
     !! Modification by Andreas F. Martitsch (23.08.2015)
     ! old behavior (for a single species)
     !qflux=0.5d0*REAL(MATMUL(CONJG(flux_vector),source_vector(:,1:3)))
@@ -3844,22 +3863,35 @@ CONTAINS
 !
       DO m=0,lag
         k=ind_start(istep)+2*(npassing+1)*m
-!
+
         flux_vector(1,k+1:k+npassing+1) =                                     &
               step_factor_p*weightlag(1,m)*convol_flux(1:npassing+1,istep)
         flux_vector(1,k+npassing+2:k+2*npassing+2)=                           &
               step_factor_m*weightlag(1,m)*convol_flux(npassing+1:1:-1,istep)
-!
+
         flux_vector(2,k+1:k+npassing+1) =                                     &
               step_factor_p*weightlag(2,m)*convol_curr(1:npassing+1,istep)
         flux_vector(2,k+npassing+2:k+2*npassing+2)=                           &
              -step_factor_m*weightlag(2,m)*convol_curr(npassing+1:1:-1,istep)
-!
+
         flux_vector(3,k+1:k+npassing+1) =                                     &
               step_factor_p*weightlag(3,m)*convol_flux(1:npassing+1,istep)
         flux_vector(3,k+npassing+2:k+2*npassing+2) =                          &
               step_factor_m*weightlag(3,m)*convol_flux(npassing+1:1:-1,istep)
-!
+
+        flux_vector_plot(1,k+1:k+npassing+1) =                         &
+              weightlag(1,m)*convol_flux(1:npassing+1,istep)
+        flux_vector_plot(1,k+npassing+2:k+2*npassing+2) =              &
+              weightlag(1,m)*convol_flux(npassing+1:1:-1,istep)
+        flux_vector_plot(2,k+1:k+npassing+1) =                         &
+              weightlag(2,m)*convol_curr(1:npassing+1,istep)
+        flux_vector_plot(2,k+npassing+2:k+2*npassing+2) =              &
+              -weightlag(2,m)*convol_curr(npassing+1:1:-1,istep)
+        flux_vector_plot(3,k+1:k+npassing+1) =                         &
+              weightlag(3,m)*convol_flux(1:npassing+1,istep)
+        flux_vector_plot(3,k+npassing+2:k+2*npassing+2) =              &
+              weightlag(3,m)*convol_flux(npassing+1:1:-1,istep)
+
         ! Use pre-conditioned iterations (not necessary/depricated):
         ! -> remove parallel flow from solution
         ! Computation of bvec_parflow generalized to non-orthogonal polynomials
