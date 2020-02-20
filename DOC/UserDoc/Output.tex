@@ -146,9 +146,9 @@ greater as one.
 variable name in HDF file  & Comment
 \\
 \hline
-Bref & Reference magnetic field [Gauss] \\
+Bref & Reference magnetic field for this flux surface [Gauss] \\
 \hline
-D11\_AX & = D11\_AX\_Dpl * Dp0 \\
+D11\_AX & = D11\_AX\_Dpl * Dp0, transport coefficients [cm^2/s] \\
 \hline
 D11\_AX\_Dpl & \\
 \hline
@@ -226,17 +226,17 @@ D33\_NA\_norm & \\
 \hline
 Dp0 & \\
 \hline
-Er & \\
+Er & radial electric field [statVolt/cm] \\
 \hline
 Gamma\_AX\_Ware\_spec & \\
 \hline
-Gamma\_AX\_spec & \\
+Gamma\_AX\_spec & particle flux density from axisymmetric part [1/(s cm^2)] \\
 \hline
 Gamma\_NA\_Ware\_spec & \\
 \hline
-Gamma\_NA\_spec & \\
+Gamma\_NA\_spec & particle flux density from non-axisymmetric part [1/(s cm^2)] \\
 \hline
-MtOvR & \\
+MtOvR & toroidal Mach numbers per species [1] \\
 \hline
 ParFlow\_AX\_Ware\_spec & \\
 \hline
@@ -260,13 +260,13 @@ R\_Vphi\_prof & \\
 \hline
 T\_spec & temperature of the species [erg] \\
 \hline
-TphiNA\_Ware\_spec & \\
+TphiNA\_Ware\_spec & [dyn/cm^2] \\
 \hline
-TphiNA\_Ware\_tot & \\
+TphiNA\_Ware\_tot & [dyn/cm^2] \\
 \hline
-TphiNA\_spec & \\
+TphiNA\_spec & torque density for each species [dyn/cm^2] \\
 \hline
-TphiNA\_tot & \\
+TphiNA\_tot & sum of species torque densities [dyn/cm^2] \\
 \hline
 VphiB\_Ware\_spec & \\
 \hline
