@@ -51,6 +51,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
     switch_grid = 1;
   end
 
+  write_data = 1;
 
   % Definitions for constants used for conversion
   transform_keV_to_eV = 1.0e3;
@@ -159,4 +160,13 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
     ylabel('n_e  [10^{13} cm^{-3}]')
   end
 
+  if write_data
+    fid = 0;
+    fid = fopen([path_to_shot, 'flux_coordinates_densities_temperatures.dat'], 'w');
+    fprintf(fid, "!              s          rho_tor          rho_pol density[1/cm^3] electrons    ions temperature[eV] electrons    ions\n");
+    for k = 1:gridpoints
+      fprintf(fid, "%16.10e %16.10e %16.10e %16.10e %16.10e %16.10e %16.10e\n", rho_tor(k).^2, rho_tor(k), rho_pol(k), ne_si(k)*1.0e-6, ne_si(k)*1.0e-6, Te_eV(k), Ti_eV(k));
+    end
+    fclose(fid);
+  end
 end
