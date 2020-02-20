@@ -576,7 +576,7 @@ contains
       end if
       flux_surface_distribution(:,:,istep,ispec) = flux_surface_distribution(:,:,istep,ispec) &
         & + real(matmul(conjg(geometrical_factor(1:3, range_start:range_end)), &
-        &     distribution_function(range_start:range_end, 1:3, ispec))) / delphi(istep)
+        &     real(distribution_function(range_start:range_end, 1:3, ispec))))
       write(543+ispec,*) phi_grid(istep), flux_surface_distribution(:,:,istep,ispec)
     end do
 
