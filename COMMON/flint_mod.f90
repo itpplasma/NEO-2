@@ -154,8 +154,6 @@ contains
        CALL make_magnetics(xstart)
     END IF
 
-    call set_collpar()
-
   END SUBROUTINE flint_prepare
 
   subroutine set_collpar()

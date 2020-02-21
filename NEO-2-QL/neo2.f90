@@ -418,9 +418,9 @@ PROGRAM neo2
     ! ---------------------------------------------------------------------------
     ! prepare the whole configuration
     call flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
-  else
-    call set_collpar()
   end if
+
+  call set_collpar()
 
   ! ---------------------------------------------------------------------------
   ! matrix elements
