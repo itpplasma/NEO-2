@@ -77,7 +77,7 @@ def get_hdf5data_from_subfolders(path: str, filename: str, dataname: str):
 
   This will check the given 'path' for folders. In each folder it will
   look for the hdf5-file 'filename' and read 'dataname' from it. The
-  values will be writeen to a single numpy array.
+  values will be writen to a single numpy array.
   """
 
   import numpy as np
