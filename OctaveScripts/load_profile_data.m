@@ -26,7 +26,10 @@
 %     contains the name off the file where to find the data for the
 %     coresponding quantity, while the later is the number of the
 %     column in which to find this quantity in the file.
-%   gridpoints: number of points to use for the (equidistant) rho_pol grid.
+%   gridpoints: either number of points to use for the (equidistant)
+%     rho_pol grid (scalar), or array with three values, first number of
+%     grid points, second lower boundary for flux surface label, and
+%     third upper boundary.
 %   do_plots: logical, if true, do some plots.
 %   input_unit_type: determines in what units the input is.
 %     1: 10^19/m^3 for density (=10^13/cm^3), keV for temperatures,
@@ -49,6 +52,15 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
   end
   if nargin() < 6 || isempty(switch_grid)
     switch_grid = 1;
+  end
+  if (size(gridpoints(:), 1) == 3)
+    number_gridpoints = gridpoints(1):
+    lower_limit_flux_label = gridpoints(2):
+    upper_limit_flux_label = gridpoints(3):
+  else
+    number_gridpoints = gridpoints:
+    lower_limit_flux_label = 0.0:
+    upper_limit_flux_label = 1.0:
   end
 
   write_data = 1;
@@ -79,7 +91,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
 
   switch (switch_grid)
   case 1
-    rho_pol = linspace(0,1,gridpoints);
+    rho_pol = linspace(0,1,number_gridpoints);
 
     %~ rho_tor = spline(frp(:, data_source.rhopoloidal.column), frt(:,data_source.rhotoroidal.column), rho_pol);
     rho_tor_fit = polyfit(frp(frp(:, data_source.rhopoloidal.column) <= 1.0, data_source.rhopoloidal.column), frt(frp(:, data_source.rhopoloidal.column) <= 1.0,data_source.rhotoroidal.column), 5);
@@ -87,7 +99,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
     rho_tor(1) = 0;
     rho_tor(end) = 1;
   case 2
-    rho_tor = linspace(0,1,gridpoints);
+    rho_tor = linspace(0,1,number_gridpoints);
 
     rho_pol = spline(frt(:,data_source.rhotoroidal.column), frp(:, data_source.rhopoloidal.column), rho_tor);
     rho_pol(1) = 0;
@@ -164,7 +176,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
     fid = 0;
     fid = fopen([path_to_shot, 'flux_coordinates_densities_temperatures.dat'], 'w');
     fprintf(fid, "!              s          rho_tor          rho_pol density[1/cm^3] electrons    ions temperature[eV] electrons    ions\n");
-    for k = 1:gridpoints
+    for k = 1:number_gridpoints
       fprintf(fid, "%16.10e %16.10e %16.10e %16.10e %16.10e %16.10e %16.10e\n", rho_tor(k).^2, rho_tor(k), rho_pol(k), ne_si(k)*1.0e-6, ne_si(k)*1.0e-6, Te_eV(k), Ti_eV(k));
     end
     fclose(fid);
