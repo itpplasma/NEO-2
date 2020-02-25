@@ -15,7 +15,14 @@
 %     corresponding species at the respecitve radial location.
 %     Might be hard to imagine why the mass should vary, but the charge
 %     could simply vary due to the change in temperature.
-function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_definition, isw_Vphi_loc, species_tag_Vphi, input_unit_type)
+%   isw_Vphi_loc:
+%   species_tag_Vphi: index of species for which the rotation velocity is
+%     given.
+%   input_unit_type: switch to determine what type/unit (and thus what
+%     conversions have to be done) the input has.
+%   bounds: two array index determining bounds for flux surface label in
+%     which to put the points.
+function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_definition, isw_Vphi_loc, species_tag_Vphi, input_unit_type, bounds)
   if nargin() < 1 || isempty(hdf5FileName)
     hdf5FileName = 'multi_spec_Valentin.in';
   end
@@ -59,7 +66,11 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_
   if nargin() < 7 || isempty(input_unit_type)
     input_unit_type = 1;
   end
-  gridpoints = size(species_definition, 1);
+  if nargin() < 8 || isempty(bounds)
+    gridpoints = size(species_definition, 1);
+  else
+    gridpoints = [size(species_definition, 1), bounds(1), bounds(2)];
+  end
   num_species = size(species_definition, 2);
 
   %% UNIT CONV DEF
