@@ -286,12 +286,22 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
         n = n_vec(nn);
 
         if (mod(n, n_pert) == 0)
-          bmnc(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(cos(m*T(:) - n*P(:)) .* b0_pert(:));
-          bmns(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(sin(m*T(:) - n*P(:)) .* b0_pert(:));
-          Rmnc(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(cos(m*T(:) - n*P(:)) .* R_pert(:));
-          Rmns(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(sin(m*T(:) - n*P(:)) .* R_pert(:));
-          Zmnc(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(cos(m*T(:) - n*P(:)) .* Z_pert(:));
-          Zmns(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(sin(m*T(:) - n*P(:)) .* Z_pert(:));
+          bmnc(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(cos(m*T(:) + n*P(:)) .* b0_pert(:));
+          bmns(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(sin(m*T(:) + n*P(:)) .* b0_pert(:));
+          Rmnc(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(cos(m*T(:) + n*P(:)) .* R_pert(:));
+          Rmns(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(sin(m*T(:) + n*P(:)) .* R_pert(:));
+          Zmnc(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(cos(m*T(:) + n*P(:)) .* Z_pert(:));
+          Zmns(mm, nn) = 1/(N_theta-1) * 1/(N_phi-1) * sum(sin(m*T(:) + n*P(:)) .* Z_pert(:));
+          if(m == 0)
+            if(n < 0)
+              bmnc(mm, nn) = 0;
+              bmns(mm, nn) = 0;
+              Rmnc(mm, nn) = 0;
+              Rmns(mm, nn) = 0;
+              Zmnc(mm, nn) = 0;
+              Zmns(mm, nn) = 0;
+            end
+          end
         else
           bmnc(mm, nn) = 0;
           bmns(mm, nn) = 0;
