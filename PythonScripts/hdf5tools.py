@@ -152,6 +152,10 @@ def reshape_hdf5_file(in_filename: str, out_filename: str):
   those of a subgroup from the original file, but where each data
   element has now one dimension more, which contains the original
   top-level group.
+
+  Note that there will be no ordering, it is implicitly assumed that
+  elements are already ordered.
+
   Example (the existence of subsubgoups is not implemented):
   /a1
     /b 1.0
