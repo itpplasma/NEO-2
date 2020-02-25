@@ -54,13 +54,13 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
     switch_grid = 1;
   end
   if (size(gridpoints(:), 1) == 3)
-    number_gridpoints = gridpoints(1):
-    lower_limit_flux_label = gridpoints(2):
-    upper_limit_flux_label = gridpoints(3):
+    number_gridpoints = gridpoints(1);
+    lower_limit_flux_label = gridpoints(2);
+    upper_limit_flux_label = gridpoints(3);
   else
-    number_gridpoints = gridpoints:
-    lower_limit_flux_label = 0.0:
-    upper_limit_flux_label = 1.0:
+    number_gridpoints = gridpoints;
+    lower_limit_flux_label = 0.0;
+    upper_limit_flux_label = 1.0;
   end
 
   write_data = 1;
@@ -91,13 +91,17 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
 
   switch (switch_grid)
   case 1
-    rho_pol = linspace(0,1,number_gridpoints);
+    rho_pol = linspace(lower_limit_flux_label, upper_limit_flux_label, number_gridpoints);
 
     %~ rho_tor = spline(frp(:, data_source.rhopoloidal.column), frt(:,data_source.rhotoroidal.column), rho_pol);
     rho_tor_fit = polyfit(frp(frp(:, data_source.rhopoloidal.column) <= 1.0, data_source.rhopoloidal.column), frt(frp(:, data_source.rhopoloidal.column) <= 1.0,data_source.rhotoroidal.column), 5);
     rho_tor = polyval(rho_tor_fit, rho_pol);
-    rho_tor(1) = 0;
-    rho_tor(end) = 1;
+    if (lower_limit_flux_label <= 0.0)
+      rho_tor(1) = 0;
+    end
+    if (upper_limit_flux_label >= 1.0)
+      rho_tor(end) = 1;
+    end
   case 2
     rho_tor = linspace(0,1,number_gridpoints);
 
