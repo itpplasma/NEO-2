@@ -96,6 +96,26 @@ def get_hdf5data_from_subfolders(path: str, filename: str, dataname: str):
 
   return np.array(values)
 
+def copy_hdf5_from_paths_to_single_file(paths: list, infilename: str, outfilename: str):
+  """Combine files 'infilename' located at given 'paths' into a single file 'outfilename'.
+
+  This function will collect hdf5 files with name 'infilename', at
+  locations given via list 'paths', and write data into single file with
+  name 'outfilename'.
+  Data from a file is put into a group according to its path.
+  """
+  from os.path import join
+
+  with get_hdf5file_replace(outfilename) as o:
+    for path in paths:
+      try:
+        f = get_hdf5file(join(path, infilename))
+      except OSError:
+        print('No file ', infilename, ' found in ', path)
+      else:
+        f.copy(source='/', dest=o, name='/' + path)
+        f.close()
+
 def copy_hdf5_from_subfolders_to_single_file(path: str, infilename: str, outfilename: str):
   """For 'infilename' in subfolders of 'path', join them into 'outfilename'.
 
@@ -109,19 +129,9 @@ def copy_hdf5_from_subfolders_to_single_file(path: str, infilename: str, outfile
   from os import listdir
   from os.path import isfile, join
 
-  values = []
-
   folders = [f for f in listdir(path) if not isfile(join(path, f))]
 
-  with get_hdf5file_replace(outfilename) as o:
-    for foldername in folders:
-      try:
-        f = get_hdf5file(join(path, foldername, infilename))
-      except OSError:
-        print('No file ', infilename,' found in ', foldername)
-      else:
-        f.copy(source='/', dest=o, name='/' + foldername)
-        f.close()
+  copy_hdf5_from_paths_to_single_file(folders, infilename, outfilename)
 
 def sort_x_y_pairs_according_to_x(x: list, y: list):
   """Sort pair of lists according to the first.
