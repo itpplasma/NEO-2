@@ -96,15 +96,30 @@ def get_hdf5data_from_subfolders(path: str, filename: str, dataname: str):
 
   return np.array(values)
 
-def copy_hdf5_from_paths_to_single_file(paths: list, infilename: str, outfilename: str):
+def copy_hdf5_from_paths_to_single_file(paths: list, infilename: str, outfilename: str, ignore_hdf5_path: bool):
   """Combine files 'infilename' located at given 'paths' into a single file 'outfilename'.
 
   This function will collect hdf5 files with name 'infilename', at
   locations given via list 'paths', and write data into single file with
   name 'outfilename'.
-  Data from a file is put into a group according to its path.
+  Data from a file is put into a group according to its path, unless
+  'ignore_hdf5_path' is set to True, in which case data will be put into
+  basename(normpath(path)). This is intended for combining results from
+  different runs, to have only the flux surface label of the subfolders
+  as a path inside the hdf5 file.
+
+  input:
+  ------
+  paths: list of foldernames at which locations to look for input.
+  infilename: name of the file to look for/from which to read data, i.e.
+    it is assumed that all the files have the same name and are just in
+    different paths.
+  outfilename: name to use for file in which data is collected.
+  ignore_hdf5_path: if False, data is copied from 'infilename' into
+    'outfilename' at 'path', if true then location will be
+    'basename(normpath(path))' instead.
   """
-  from os.path import join
+  from os.path import basename, join, normpath
 
   with get_hdf5file_replace(outfilename) as o:
     for path in paths:
@@ -113,10 +128,13 @@ def copy_hdf5_from_paths_to_single_file(paths: list, infilename: str, outfilenam
       except OSError:
         print('No file ', infilename, ' found in ', path)
       else:
-        f.copy(source='/', dest=o, name='/' + path)
+        if ignore_hdf5_path:
+          f.copy(source='/', dest=o, name='/' + basename(normpath(path)))
+        else:
+          f.copy(source='/', dest=o, name='/' + path)
         f.close()
 
-def copy_hdf5_from_subfolders_to_single_file(path: str, infilename: str, outfilename: str):
+def copy_hdf5_from_subfolders_to_single_file(path, infilename: str, outfilename: str, ignore_hdf5_path: bool = False):
   """For 'infilename' in subfolders of 'path', join them into 'outfilename'.
 
   This will look for files named 'infilename' in subfolders of 'path'.
@@ -124,14 +142,36 @@ def copy_hdf5_from_subfolders_to_single_file(path: str, infilename: str, outfile
   placed into the current folder.
   The content of each in-file will be put into a group with the name of
   the subfolder.
+  If a subfolder does not contain 'infilename', then the subfolder is
+  ignored.
+
+  input:
+  ------
+  path: either string with path to folders which contain data, or a list
+    of such paths.
+  infilename: name of the file(s) which to combine, i.e. which should be
+    in subfolders of given path.
+  outfilename: name of the file which should contain collected data.
+  ignore_hdf5_path: passed to copy_from_paths_to_single_file, please
+    look there for further information.
   """
 
+  from itertools import chain
   from os import listdir
   from os.path import isfile, join
 
-  folders = [f for f in listdir(path) if not isfile(join(path, f))]
+  folders = []
 
-  copy_hdf5_from_paths_to_single_file(folders, infilename, outfilename)
+  # Make sure path is a list.
+  if (type(path) == str):
+    path = [path]
+
+  for p in path:
+    folders.append([join(p, f) for f in listdir(p) if not isfile(join(p, f))])
+
+  folders = list(chain.from_iterable(folders))
+
+  copy_hdf5_from_paths_to_single_file(folders, infilename, outfilename, ignore_hdf5_path)
 
 def sort_x_y_pairs_according_to_x(x: list, y: list):
   """Sort pair of lists according to the first.
