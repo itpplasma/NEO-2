@@ -40,12 +40,12 @@
 %     2: equal spaced in rho toroidal
 %
 % Output:
-%  rho_pol
-%  rho_tor
-%  ne_si
-%  Ti_eV
-%  Te_eV
-%  vrot
+%  rho_pol: rho_poloidal grid.
+%  rho_tor: rho_toroidal at rho_pol.
+%  ne_si: density at rho_pol.
+%  Ti_eV: ion temperature at rho_pol.
+%  Te_eV: electron temperature at rho_pol.
+%  vrot: rotation velocitz at rho_pol.
 function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, data_source, gridpoints, do_plots, input_unit_type, switch_grid)
   if nargin() < 5 || isempty(input_unit_type)
     input_unit_type = 1;
