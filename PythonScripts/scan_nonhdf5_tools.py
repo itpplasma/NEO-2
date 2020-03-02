@@ -488,13 +488,85 @@ def set_neo2in(folder: str, subfolder_pattern: str, vphifilename: str, backup: b
     if (backup):
       nml.write(current_filename + '~')
 
-    nml['collision']['lsw_read_precom'] = read_precom
-    nml['collision']['lsw_write_precom'] = False
-
     # Adjust the rotation, new value is background + shift, assuming
     # The file contains already the background value.
-    nml['multi_spec']['vphi'] = nml['multi_spec']['vphi'] + vphi
+    name_value_tuples = [('collision', 'lsw_read_precom', read_precom),
+                         ('collision', 'lsw_write_precom', False),
+                         ('multi_spec', 'vphi', nml['multi_spec']['vphi'] + vphi)]
+    change_namelist_values_for_file_object(nml, name_value_tuples)
     nml.write(current_filename, True)
+
+def change_namelist_values_for_files(folder: str, subfolder_pattern: str, name_value_tuples: list, backup: bool):
+  """Change values of namelists files in subfolders.
+
+  \todo Allow setting of folder-dependent quantities (i.e. depending on
+    flux surface).
+
+  input:
+  ------
+  folder: a string, giving the location where to look for subfolders.
+  subfolder_pattern: a string, giving names of subfolders where namelist
+    files are located, as a regular expression, e.g 'es_*'.
+  name_value_tuples: list of tuples (namelist, element, value) of values
+    to set.
+    Note that this is the same for all namelist files, i.e. at the
+    moment it is not possible to vary values based on flux surface.
+  backup: boolean, if true, a backup of the original input file is
+    stored with added '~' at the end.
+  """
+  from os.path import join
+  from pathlib import Path
+
+  import f90nml.parser
+
+  # Get all objects in the folder
+  p = Path(folder)
+  #~ # Filter for the directories
+  #~ p = [x for x in p.iterdir() if x.is_dir()]
+  # Filter for the name of the subdirectories
+  folders = list(p.glob(subfolder_pattern))
+
+  parser = f90nml.parser.Parser()
+
+  for d in folders:
+    current_filename = join(folder, d.name, 'neo2.in')
+    nml = parser.read(current_filename)
+
+    print('Processing: ' + current_filename)
+
+    if (backup):
+      nml.write(current_filename + '~')
+
+    change_namelist_values_for_file_object(nml, name_value_tuples)
+    nml.write(current_filename, True)
+
+def change_namelist_values_for_file_object(fortran_namelist_file_object, name_value_tuples: list):
+  """Change values of a fortran namelist object.
+
+  Change multiple values of a fortran namelist object.
+
+  input:
+  ------
+  fortran_namelist_file_object: a parsed fortran namelist file, as
+    produced by f90nml.parser.Parser(). The values of this object are
+    changed.
+  name_value_tuples: list of tuples (namelist, element, value) of values
+    to set.
+  """
+  for k in name_value_tuples:
+    change_namelist_value_for_file_object(fortran_namelist_file_object, k)
+
+def change_namelist_value_for_file_object(fortran_namelist_file_object, name_value_tuple: tuple):
+  """Change one value of a fortran namelist file object.
+
+  input:
+  ------
+  fortran_namelist_file_object: a parsed fortran namelist file, as
+    produced by f90nml.parser.Parser(). The value of this object is
+    changed.
+  name_value_tuple: tuple (namelist, element, value) of value to set.
+  """
+  fortran_namelist_file_object[name_value_tuple[0]][name_value_tuple[1]] = name_value_tuple[2]
 
 if __name__ == "__main__":
   import matplotlib.pyplot as plt
