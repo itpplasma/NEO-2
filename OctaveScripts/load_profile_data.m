@@ -120,10 +120,6 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
 
 
   frp=load([path_to_shot, data_source.ion_temperature.filename]);
-
-  % octave does not have a 'fit' function, only 'fsolve'. Thus this was replaced.
-  %[fitobject,gof] = fit(frp(:,1).^2, frp(:,2) ,'poly6');
-  %fit2 = fitobject.p1.*(rho_fit2.^6) + fitobject.p2.*(rho_fit2.^5) + fitobject.p3.*(rho_fit2.^4) + fitobject.p4.*(rho_fit2.^3) + fitobject.p5.*(rho_fit2.^2) + fitobject.p6.*rho_fit2+fitobject.p7;
   [fitobject, gof] = polyfit(frp(:,1).^2, frp(:, data_source.electron_temperature.column), 6);
   fit2 = polyval(fitobject, interpolation_grid);
 
