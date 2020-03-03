@@ -112,11 +112,11 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
   interpolation_grid = rho_pol.^2;
 
   frp = load([path_to_shot, data_source.electron_density.filename]);
-  ne_si = spline(frp(:,1), frp(:, data_source.electron_density.column), interpolation_grid)*transform_density;
+  ne_si = spline(frp(:,1).^2, frp(:, data_source.electron_density.column), interpolation_grid)*transform_density;
 
 
   frp = load([path_to_shot, data_source.electron_temperature.filename]);
-  Te_eV = spline(frp(:,1), frp(:, data_source.electron_temperature.column), interpolation_grid)*transform_temperature;
+  Te_eV = spline(frp(:,1).^2, frp(:, data_source.electron_temperature.column), interpolation_grid)*transform_temperature;
 
 
   frp=load([path_to_shot, data_source.ion_temperature.filename]);
