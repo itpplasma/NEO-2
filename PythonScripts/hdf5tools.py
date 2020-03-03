@@ -921,10 +921,21 @@ def write_axisymmetric_quantities(infilename:str, outfilename:str):
 
   h = get_hdf5file(infilename)
 
+  try:
+    h['Gamma_NA_spec']
+    header = "!               s             aiota          avnabpsi          Bref [G]                Er   MtOvR electrons   MtOvR deuterium\n"
+    er_available = True
+  except KeyError:
+    er_available = False
+    header = "!               s             aiota          avnabpsi          Bref [G]\n"
+
   with open(outfilename, 'w') as outfile:
-    outfile.write("!               s             aiota          avnabpsi          Bref [G]                Er   MtOvR electrons   MtOvR deuterium\n")
+    outfile.write(header)
     for k in range(h['Bref'].size):
-      outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(h['boozer_s'][k], h['aiota'][k], h['avnabpsi'][k], h['Bref'][k], h['Er'][k], h['MtOvR'][k][0], h['MtOvR'][k][1]))
+      if er_available:
+        outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(h['boozer_s'][k], h['aiota'][k], h['avnabpsi'][k], h['Bref'][k], h['Er'][k], h['MtOvR'][k][0], h['MtOvR'][k][1]))
+      else:
+        outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(h['boozer_s'][k], h['aiota'][k], h['avnabpsi'][k], h['Bref'][k]))
 
 def write_nonaxisymmetric_quantities(infilename:str, outfilename:str):
   """ Write hardcoded set of output from hdf5-file to textfile.
@@ -934,12 +945,24 @@ def write_nonaxisymmetric_quantities(infilename:str, outfilename:str):
 
   h = get_hdf5file(infilename)
 
+  try:
+    h['Gamma_NA_spec']
+    header = "!               s    Gamma_NA elect     Gamma_NA deut  TphiNa electrons  TphiNa deuterium          D11ee_NA          D12ee_NA          D22ee_NA          D11ii_NA          D12ii_NA          D22ii_NA\n"
+    gamma_available = True
+  except KeyError:
+    gamma_available = False
+    header = "!               s          D11ee_NA          D12ee_NA          D22ee_NA          D11ii_NA          D12ii_NA          D22ii_NA\n"
+
   with open(outfilename, 'w') as outfile:
-    outfile.write("!               s    Gamma_NA elect     Gamma_NA deut  TphiNa electrons  TphiNa deuterium          D11ee_NA          D12ee_NA          D22ee_NA          D11ii_NA          D12ii_NA          D22ii_NA\n")
+    outfile.write(header)
     for k in range(h['Bref'].size):
-      outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(
-        h['boozer_s'][k], h['Gamma_NA_spec'][k][0], h['Gamma_NA_spec'][k][1], h['TphiNA_spec'][k][0], h['TphiNA_spec'][k][1],
-        h['D11_NA'][k][0], h['D12_NA'][k][0], h['D22_NA'][k][0], h['D11_NA'][k][3], h['D12_NA'][k][3], h['D22_NA'][k][3]))
+      if gamma_available:
+        outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(
+          h['boozer_s'][k], h['Gamma_NA_spec'][k][0], h['Gamma_NA_spec'][k][1], h['TphiNA_spec'][k][0], h['TphiNA_spec'][k][1],
+          h['D11_NA'][k][0], h['D12_NA'][k][0], h['D22_NA'][k][0], h['D11_NA'][k][3], h['D12_NA'][k][3], h['D22_NA'][k][3]))
+      else:
+        outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(
+          h['boozer_s'][k], h['D11_NA'][k][0], h['D12_NA'][k][0], h['D22_NA'][k][0], h['D11_NA'][k][3], h['D12_NA'][k][3], h['D22_NA'][k][3]))
 
 if __name__ == "__main__":
 
