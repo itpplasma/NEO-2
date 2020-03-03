@@ -1993,16 +1993,21 @@ CONTAINS
       sum_abs_fluxes = 0.0
       passed = .false.
 
-      do k = 1, num_spec
-        sum_fluxes = sum_fluxes + Gamma_AX_spec(k-1)*z_spec(k-1)
-        sum_abs_fluxes = sum_abs_fluxes + abs(Gamma_AX_spec(k-1)*z_spec(k-1))
-      end do
+      if (isw_calc_Er == 1) then
+        do k = 1, num_spec
+          sum_fluxes = sum_fluxes + Gamma_AX_spec(k-1)*z_spec(k-1)
+          sum_abs_fluxes = sum_abs_fluxes + abs(Gamma_AX_spec(k-1)*z_spec(k-1))
+        end do
 
-      if (abs(sum_fluxes/sum_abs_fluxes) < epsilon_particle_flux) then
-        passed = .true.
-      else if (verbose) then
-        write(*,*) 'WARNING: particle flux not ambipolar to relative accuracy ', epsilon_particle_flux
-        write(*,*) '  sum is: ', sum_fluxes, ' relative sum is: ', sum_fluxes/sum_abs_fluxes
+        if (abs(sum_fluxes/sum_abs_fluxes) < epsilon_particle_flux) then
+          passed = .true.
+        else if (verbose) then
+          write(*,*) 'WARNING: particle flux not ambipolar to relative accuracy ', epsilon_particle_flux
+          write(*,*) '  sum is: ', sum_fluxes, ' relative sum is: ', sum_fluxes/sum_abs_fluxes
+        end if
+      else
+        write(*,*) 'WARNING: particle flux ambipolarity could not be checked,'
+        write(*,*) '  as isw_calc_er is 0'
       end if
     end function check_ambipolarity_particle_flux
   END SUBROUTINE write_multispec_output_a
