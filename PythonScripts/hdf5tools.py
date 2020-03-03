@@ -256,7 +256,24 @@ def reshape_hdf5_file(in_filename: str, out_filename: str):
     i = i + 1
 
 def collect_and_reshape(path: str, infilename: str, outfilename: str):
+  """ Copy data to single file and reshape it.
+
+  input:
+  ------
+  path: string with the path in which to find subfolders to check for
+    input files.
+  infilename: name of the input files.
+  outfilename: name of the file into which to write the output, i.e. the
+    collected and reshaped data.
+
+  side effects:
+  -------------
+  Leaves a temporary file behind ('temp' + outfilename), from the copy
+  process.
+  """
+
   from os.path import join
+
   temp_filename = 'temp_' + outfilename
   copy_hdf5_from_subfolders_to_single_file(path, infilename, temp_filename)
   reshape_hdf5_file(join(path, temp_filename), join(path, outfilename))
@@ -897,6 +914,11 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
         hout.create_dataset(dname, data=t)
 
 def write_axisymmetric_quantities(infilename:str, outfilename:str):
+  """ Write hardcoded set of output from hdf5-file to textfile.
+
+  Was used for benchmarking with Jose Luis Velasco.
+  """
+
   h = get_hdf5file(infilename)
 
   with open(outfilename, 'w') as outfile:
@@ -905,6 +927,11 @@ def write_axisymmetric_quantities(infilename:str, outfilename:str):
       outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(h['boozer_s'][k], h['aiota'][k], h['avnabpsi'][k], h['Bref'][k], h['Er'][k], h['MtOvR'][k][0], h['MtOvR'][k][1]))
 
 def write_nonaxisymmetric_quantities(infilename:str, outfilename:str):
+  """ Write hardcoded set of output from hdf5-file to textfile.
+
+  Was used for benchmarking with Jose Luis Velasco.
+  """
+
   h = get_hdf5file(infilename)
 
   with open(outfilename, 'w') as outfile:
