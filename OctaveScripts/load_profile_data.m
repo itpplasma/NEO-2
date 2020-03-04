@@ -150,7 +150,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
   frp(:, data_source.rotation_velocity.column) = frp(:, data_source.rotation_velocity.column)*transform_rotation;
 
   [fitobject, gof] = polyfit(frp(:,1).^2, frp(:, data_source.rotation_velocity.column), 6);
-  fit2 = polyval(fitobject, rho_fit2);
+  fit2 = polyval(fitobject, interpolation_grid);
 
   vrot = fit2;
 
