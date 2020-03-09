@@ -520,6 +520,7 @@ contains
 
     use mpiprovider_module, only : mpro
 
+    use neo_magfie_mod, only: boozer_iota
     use collisionality_mod, only : num_spec
     use rkstep_mod, only : lag
 
@@ -540,16 +541,12 @@ contains
     character(len=2) :: species_number_as_string
     character(len=2) :: call_number_as_string
 
-    real(kind=kind(1d0)), dimension(:,:,:,:), allocatable :: flux_surface_distribution
-
     if (any(lbound(phi_grid) /= 1)) then
       stop 'ERROR write_flux_surface_distribution: lbound has not expected value.'
     end if
     if (any(ubound(phi_grid) /= number_elements)) then
       stop 'ERROR write_flux_surface_distribution: ubound has not expected value.'
     end if
-
-    allocate(flux_surface_distribution(3,3,number_elements, num_spec))
 
     ispec = mpro%getRank()+1
 
@@ -574,17 +571,15 @@ contains
           stop
         end if
       end if
-      flux_surface_distribution(:,:,istep,ispec) = flux_surface_distribution(:,:,istep,ispec) &
-        & + real(matmul(conjg(geometrical_factor(1:3, range_start:range_end)), &
+      write(543+ispec,*) boozer_iota*phi_grid(istep), &
+        & real(matmul(conjg(geometrical_factor(1:3, range_start:range_end)), &
         &     real(distribution_function(range_start:range_end, 1:3, ispec))))
-      write(543+ispec,*) phi_grid(istep), flux_surface_distribution(:,:,istep,ispec)
     end do
 
     close(543+ispec)
 
     number_of_call = number_of_call + 1
 
-    if (allocated(flux_surface_distribution)) deallocate(flux_surface_distribution)
   end subroutine write_flux_surface_distribution
 
   !> \brief Simple sorting routine for small 1d arrays (decreasing magnitude).
