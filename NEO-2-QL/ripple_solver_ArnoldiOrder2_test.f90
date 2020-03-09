@@ -877,7 +877,7 @@ PRINT *,ub_mag,ibeg,iend
 
      PRINT *, 'propagator tag         ', fieldpropagator%tag
 !solver_talk=1
-  IF (solver_talk .EQ. 1) THEN
+  IF (solver_talk .EQ. 1 .and. ispec.eq.0) THEN
      PRINT *, ' '
      PRINT *, 'I am in ripple_solver'
      PRINT *, ' '
@@ -3441,7 +3441,7 @@ rotfactor=imun*m_phi
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
 !
   DEALLOCATE(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp,bvec_parflow)
-  if(allocated(flux_vector_plot)) deallocate(flux_vector_plot)
+  if (allocated(flux_vector_plot)) deallocate(flux_vector_plot)
 !
   DEALLOCATE(energvec_ket,energvec_bra)
   deallocate(densvec_ket,densvec_bra)
@@ -4838,7 +4838,7 @@ CONTAINS
 
     implicit none
 
-    double complex, dimension(n_2d_size), intent(out) :: fmaxw
+    complex(kind=kind(1d0)), dimension(n_2d_size), intent(out) :: fmaxw
 
     do istep=ibeg,iend
 
