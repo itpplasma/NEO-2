@@ -205,7 +205,6 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
   DOUBLE PRECISION :: deleta_factor
   !DOUBLE PRECISION :: epserr_iter ! now defined via rkstep_mod (neo_mod.f90)
-  !complex(kind=kind(1d0)) :: epserr_sink_cmplx ! now defined via rkstep_mod (neo_mod.f90)
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow,icol,ipcol
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: irow_coll,icol_coll
@@ -1949,8 +1948,8 @@ rotfactor=imun*m_phi
                 nz=nz+1
                 nz_coll=nz_coll+1
 !                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)*0.5d0
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
+!                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
+!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
               ENDDO
             ENDDO
 !
@@ -2539,8 +2538,11 @@ rotfactor=imun*m_phi
     ENDDO
 !
   ENDDO
-
-  !call test_conservation(nz,irow,icol,amat_sp)
+!
+  if (.false.) then
+    ! test particle conservation by the equation matrix (stops the execution after plotting).
+    call test_conservation(nz,irow,icol,amat_sp)
+  end if
 !
 ! Save the symmetric matrix:
 !
@@ -2637,23 +2639,6 @@ rotfactor=imun*m_phi
 !
     problem_type=.TRUE.
     CALL solve_eqs(.TRUE.)
-!
-!open(12345,form='unformatted',file='solution.dat')
-!read(12345) source_vector
-!close(12345)
-!do
-!print *,'source number'
-!read *,i
-!bvec_sp=0.d0
-!do k=1,nz
-!bvec_sp(irow(k))=bvec_sp(irow(k))+amat_sp(k)*source_vector(icol(k),i)
-!enddo
-!CALL source_flux
-!bvec_sp=bvec_sp-source_vector(:,i)
-!!call matlabplot(real(source_vector(:,i)),0)
-!call matlabplot(real(bvec_sp),0)
-!enddo
-!stop
 !
     ! Debugging - plot distribution function (axisymmetric problem)
     IF(lsw_debug_distfun) THEN
@@ -3460,7 +3445,6 @@ rotfactor=imun*m_phi
 !
   DEALLOCATE(energvec_ket,energvec_bra)
   deallocate(densvec_ket,densvec_bra)
-  ! Use pre-conditioned iterations
 
   CALL CPU_TIME(time_solver)
   PRINT *,'solving completed       ',time_solver - time_factorization,' sec'
@@ -3621,10 +3605,6 @@ CONTAINS
 
       DO k=1,3
         !! Modification by Andreas F. Martitsch (23.08.2015)
-        ! old behavior (for a single species):
-        !CALL iterator(mode_iter,n_2d_size,n_arnoldi,epserr_iter,niter, &
-        !  & source_vector(:,k), ispec, next_iteration)
-        !source_vector(:,k)=source_vector(:,k)+coefincompr*bvec_parflow     
         !  multi-species part:
         DO ispecp=0,num_spec-1
           f_init_arnoldi = source_vector_all(:,1,ispec)
@@ -4684,7 +4664,6 @@ CONTAINS
 
       if (isw_intp .eq. 1) then
         coef_energ = sum(energvec_bra*fnew)/denom_energ
-        !PRINT *,'coef_energ = ',coef_energ
         fnew = fnew - (1.d0-tol)*coef_energ*energvec_ket
       end if
     ELSE
