@@ -3529,6 +3529,73 @@ CONTAINS
 
   END SUBROUTINE plotsource
 
+  subroutine fluxdenplot(sourcevec_tmp, asymplot, prefix, ind_spec)
+
+    implicit none
+
+    complex(kind=kind(1d0)), dimension(n_2d_size), intent(in) :: sourcevec_tmp
+    logical, intent(in) :: asymplot
+    character(len=2), intent(in) :: prefix
+    integer, intent(in) :: ind_spec
+
+    integer, parameter :: nx = 100
+
+    integer :: iunit_base, nmax, m, i, k
+    complex(kind=kind(1d0)), dimension(3) :: ab, abexp
+    real(kind=kind(1d0)), dimension(:,:), allocatable :: phi_mat, alam_mat, fun_mat
+    real(kind=kind(1d0)), dimension(:),   allocatable :: exp2inp
+    real(kind=kind(1d0)), dimension(:,:), allocatable :: dummy2d
+    real(kind=kind(1d0)) :: hx
+    logical :: dir_exisits
+
+    inquire(file=char(48+ispec), exist=dir_exisits)
+    if (.not.dir_exisits) return
+
+    iunit_base = 12345
+
+    if (.not.asymplot) then
+      open(iunit_base, file=char(48+ispec)//'/fluxden'//trim(prefix) &
+        &                  //char(48+ind_spec)//'.dat')
+      do istep=ibeg,iend
+        k=ind_start(istep)
+        npassing=npl(istep)
+        write(iunit_base,*) aiota*phi_mfl(istep), &
+             dble(matmul(conjg(flux_vector_plot(1:3,k+1:k+2*(npassing+1)*(lag+1))), &
+                         sourcevec_tmp(k+1:k+2*(npassing+1)*(lag+1))))
+      end do
+      close(iunit_base)
+
+    else
+      allocate(exp2inp(0:nx))
+      hx = 8.d0*atan(1.d0)/real(nx, kind=kind(1d0))
+      open(iunit_base, file=char(48+ispec)//'/phi1d.dat')
+      do i=0,nx
+        exp2inp(i) = exp(cmplx(0.d0,2.d0*hx*real(i*m_phi, kind=kind(1d0))))
+        write(iunit_base,*) hx*real(i, kind=kind(1d0))
+      end do
+      close(iunit_base)
+      open(iunit_base, file=char(48+ispec)//'/fluxden'//trim(prefix) &
+        &                 //char(48+ind_spec)//'.dat')
+      open(iunit_base+1, file=char(48+ispec)//'/theta1d.dat')
+      do istep=ibeg,iend
+        k = ind_start(istep)
+        npassing = npl(istep)
+        ab = matmul(conjg(flux_vector_plot(1:3,k+1:k+2*(npassing+1)*(lag+1))), &
+           & sourcevec_tmp(k+1:k+2*(npassing+1)*(lag+1)))
+        abexp = matmul(flux_vector_plot(1:3,k+1:k+2*(npassing+1)*(lag+1)), &
+           &  sourcevec_tmp(k+1:k+2*(npassing+1)*(lag+1)))               &
+           & *exp(cmplx(0.d0,-real(2*m_phi, kind=kind(1d0))*phi_mfl(istep)))
+        write(iunit_base,*) real(ab(1)+abexp(1)*exp2inp, kind=kind(1d0))
+        write(iunit_base+1,*) aiota*phi_mfl(istep)
+      end do
+      close(iunit_base)
+      close(iunit_base+1)
+      deallocate(exp2inp)
+
+    end if
+
+  end subroutine fluxdenplot
+
   SUBROUTINE solve_eqs(clean)
 !
 ! Solve the linear equation set:
@@ -3627,9 +3694,15 @@ CONTAINS
     i_src=1
     if(problem_type) then
       call matlabplot_allm(real(source_vector_all(:,i_src,ispec)),.true.,.true.,'  ')
+      do ispecp=0,num_spec-1
+        call fluxdenplot(source_vector_all(:,i_src,ispec), .false., 'ax', ispecp)
+      end do
     else
       call matlabplot_allm(real(source_vector_all(:,i_src,ispec)),.true.,.false.,'re')
       call matlabplot_allm(dimag(source_vector_all(:,i_src,ispec)),.true.,.false.,'im')
+      do ispecp=0,num_spec-1
+        call fluxdenplot(source_vector_all(:,i_src,ispec), .true., 'na', ispecp)
+      end do
     endif
 
     IF(clean) THEN
