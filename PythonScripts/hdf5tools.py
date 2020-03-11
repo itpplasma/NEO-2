@@ -615,7 +615,7 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   reference_group:
   other_group:
   delta_relative:
-  whitelist, blacklist: Both of these can be empty ([]), or one of them,
+  whitelist, blacklist: Both of these can be empty ([]), or one of them
     can either contain a string, or a list of strings.
     If it contains a string, this is assumed to be a filename which
     contains the entries for the whitelist/blacklist, one per line.
@@ -623,7 +623,7 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
     blacklist.
     If both of them are not empty, this is considered an error.
   verbose: logical, if true, then the keys for which there are
-    references are printed, together with the relative error.
+    differences are printed, together with the relative error.
 
   return value
   ----------
