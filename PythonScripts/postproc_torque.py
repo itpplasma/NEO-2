@@ -5,7 +5,8 @@ Created on Thu, 2019-05-16
 
 @author: Rico Buchholz
 
-Based on shell/matlab script by Matyas Aradi.
+Based on shell/matlab scripts plot_2spec_export and export_2spec_Matyas
+by Matyas Aradi.
 """
 
 def data_process(folder: str, filename: str, save_integrated_torque = False):
