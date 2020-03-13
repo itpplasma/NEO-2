@@ -83,7 +83,7 @@ def data_process(folder: str, filename: str, save_integrated_torque = False):
 
     # compute integral torque
     TphiNA_int_tot = (4*pi*pi)*boozer_psi_pr[-1]*integrate.cumtrapz(array(TphiNA_tot)*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s, 0)
-    TphiNA_int_ele = (4*pi*pi)*boozer_psi_pr[-1]*integrate.cumtrapz(TphiNA_ele*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s, 0)
+    TphiNA_int_ele = (4*pi*pi)*boozer_psi_pr[-1]*integrate.cumtrapz(array(TphiNA_ele)*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s, 0)
     TphiNA_int_io = (4*pi*pi)*boozer_psi_pr[-1]*integrate.cumtrapz(array(TphiNA_io)*(array(aiota)*array(bcovar_tht)+array(bcovar_phi))/avb2, boozer_s, 0)
 
     if save_integrated_torque:
