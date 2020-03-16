@@ -545,6 +545,9 @@ def change_namelist_values_for_file_object(fortran_namelist_file_object, name_va
 
   Change multiple values of a fortran namelist object.
 
+  \note This is thought of a low-level class, as a user, you probably
+  want to use change_namelist_values_for_files or set_neo2in.
+
   input:
   ------
   fortran_namelist_file_object: a parsed fortran namelist file, as
@@ -558,6 +561,9 @@ def change_namelist_values_for_file_object(fortran_namelist_file_object, name_va
 
 def change_namelist_value_for_file_object(fortran_namelist_file_object, name_value_tuple: tuple):
   """Change one value of a fortran namelist file object.
+
+  \note This is thought of a low-level class, as a user, you probably
+  want to use change_namelist_values_for_files or set_neo2in.
 
   input:
   ------
