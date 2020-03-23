@@ -424,7 +424,7 @@ def set_neo2in(folder: str, subfolder_pattern: str, vphifilename: str, backup: b
 
   Example usage:
   from scan_nonhdf5_tools import set_neo2in
-  set_neo2in('./', 'es_*', 'vphiref.in', True)
+  set_neo2in('./', 'es_*', 'vphiref.in', True, True)
 
   input:
   ------
