@@ -51,7 +51,8 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
   % Multiplier for number of modes
   n_multiplier = 4;
 
-  grid_multiplier = 20; %10; % 100;
+  grid_multiplier_theta = 10;
+  grid_multiplier_phi = 10;
 
   %% Code
 
@@ -105,8 +106,8 @@ function create_asdex_perturb(file_base, file_displacement, amplitudes, phases, 
   nsurf = dline(3);
 
   % Number of grid points
-  N_theta = m0b*grid_multiplier+2;
-  N_phi   = n_pert*grid_multiplier+2;
+  N_theta = m0b*grid_multiplier_theta+2;
+  N_phi   = n_pert*grid_multiplier_phi+2;
 
   % Modify and write
 
