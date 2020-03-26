@@ -604,14 +604,14 @@ iprintflag=1
 
 
   DO i = 1,ub_eta
-     IF(1.d0-b_l*eta(i)+10.d0*EPSILON(1.d0).GT.0.d0) npass_l = i
-     IF(1.d0-b_r*eta(i)+10.d0*EPSILON(1.d0).GT.0.d0) npass_r = i
+     IF((1.d0-b_l*eta(i))+10.d0*EPSILON(1.d0).GT.0.d0) npass_l = i
+     IF((1.d0-b_r*eta(i))+10.d0*EPSILON(1.d0).GT.0.d0) npass_r = i
   END DO
   DO i=1,ub_eta_prev
-    IF(1.d0-b_l*eta_prev(i)+10.d0*EPSILON(1.d0).GT.0.d0) npass_l_out = i
+    IF((1.d0-b_l*eta_prev(i))+10.d0*EPSILON(1.d0).GT.0.d0) npass_l_out = i
   ENDDO
   DO i=1,ub_eta_next
-    IF(1.d0-b_r*eta_next(i)+10.d0*EPSILON(1.d0).GT.0.d0) npass_r_out = i
+    IF((1.d0-b_r*eta_next(i))+10.d0*EPSILON(1.d0).GT.0.d0) npass_r_out = i
   ENDDO
 
   ! Ignore the boundary layer if it is too narrow
