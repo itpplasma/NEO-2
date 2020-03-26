@@ -934,6 +934,7 @@ PRINT *,ub_mag,ibeg,iend
 !
   if ((isw_axisymm .EQ. 1) .AND. (npass_l .NE. npass_r)) then
     print *,'ERROR in ripple_solver: cannot run axisymmetric mode, sizes do not fit'
+    print *, npass_l, ' =/= ', npass_r
     print *,'  return to calling function.'
     ierr=1
     return
