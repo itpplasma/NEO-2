@@ -882,7 +882,8 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
   """
   import numpy as np
 
-  no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol', 'species_tag_Vphi']
+  no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol']
+  special_treatment_needed = ['species_tag_Vphi']
   zero_dimension_species = ['T_prof', 'n_prof', 'kappa_prof', 'dn_ov_ds_prof', 'dT_ov_ds_prof']
   first_dimension_species = ['species_def']
 
@@ -890,6 +891,11 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
     with get_hdf5file_new(outfilename) as hout:
       for dname in no_change_needed:
         hout.create_dataset(dname, data=hin[dname])
+
+      nspecies_tag_vphi = np.array(hin['species_tag_Vphi'])
+      if index < nspecies_tag_vphi[0]:
+        nspecies_tag_vphi[0] -= 1
+      hout.create_dataset('species_tag_Vphi', data=nspecies_tag_vphi)
 
       nsp = np.array(hin['num_species'])
       nsp[0] -= 1
