@@ -199,11 +199,12 @@ module collop
       allocate(anumm_inf(0:lag, 0:lag))
       anumm_inf = 0.0
 
+      !**********************************************************
+      ! Now compute collision operator with desired base
+      !**********************************************************
+      call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
+
       if (.not. lsw_multispecies) then
-         !**********************************************************
-         ! Now compute collision operator with desired base
-         !**********************************************************
-         call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
 
          ! WINNY - for flint
          ! without any formula at the moment
@@ -300,11 +301,6 @@ module collop
       else
 
          write (*,*) "Multispecies test mode."
-
-         !**********************************************************
-         ! Now compute collision operator with desired base
-         !**********************************************************
-         call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
 
          ! New version with deflection frequency
          ! At the momement only for self-collisions !!!!!!!
