@@ -135,7 +135,7 @@ contains
       IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 
       IF(ierr.NE.0) THEN
-        PRINT *,'iterator: error in arnoldi'
+        PRINT *,'ERROR in iterator: error in arnoldi'
         DEALLOCATE(fzero,eigvecs,ritznum)
         RETURN
       ENDIF
