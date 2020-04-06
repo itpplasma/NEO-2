@@ -23,7 +23,7 @@ contains
   !>         f_new = f_old + P (A f_old + q - f_old)
   !>
   !> where P is a preconditioner which transforms the unstable Krylov subspace
-  !> to make it stable. Namely, preconditioner acts on unstbale eigenvecotrs
+  !> to make it stable. Namely, preconditioner acts on unstable eigenvecotrs
   !> phi_m as follows
   !>
   !>         P phi_m = phi_m / (1 - lambda_m)
