@@ -1,3 +1,5 @@
+% matlab -nodesktop -nosplash
+
 function export_2spec_Matyas()
 
   [boozer_s, TphiNA_tot, TphiNA_int_tot, TphiNA_int_ele, TphiNA_int_io, Mt_e, Mt_d] = data_process('.');
