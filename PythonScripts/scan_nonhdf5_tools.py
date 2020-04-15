@@ -167,6 +167,20 @@ class condor_log:
   """Class for scanning of the log file of a condor run and storing basic information.
 
   This is done by creating a list of condor_run objects.
+
+  Example usage:
+  # Creating
+  l = condor_log('path/filename')
+
+  # Get time needed per job
+  t = l.get_time_per_job()
+
+  # Get memory needed per job
+  m = l.get_memory_per_job()
+
+  # Plotting, assumes 'plot' is defined.
+  # This will plot 'minor' job number on x, and memory on y axis.
+  plot([k[1] for k in m[0]], m[1])
   """
 
   def split_into_text_messages(self, lines):
