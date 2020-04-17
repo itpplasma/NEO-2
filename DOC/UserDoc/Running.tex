@@ -234,7 +234,10 @@ collision::lsw\_write\_precom.
 Instead of doing this manually, you can use the shell script
 \program{set\_neo2in.sh} or the python function \program{set\_neo2in} of
 \program{scan\_nonhdf5\_tools.py}.
-Start the simulations as you would start a precomputation run.
+Start the simulations as you would start a precomputation run. If you are
+using condor or something similar, then note that the actual computation
+requires more memory (at least an order of magnitude) than
+precomputation.
 
 \paragraph{Checks}
 
