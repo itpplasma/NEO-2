@@ -3617,8 +3617,10 @@ CONTAINS
 
     CALL  remap_rc(nz,nz_sq,irow,icol,amat_sp)
 
+    print *, 'information for species = ', ispec
     PRINT *,'system size = ',n_2d_size
     PRINT *,'non-zeros before and after truncation = ',nz,nz_sq
+    print *, 'maximum value = ', maxval(abs(amat_sp))
     nz=nz_sq
 !
     CALL column_full2pointer(icol(1:nz),ipcol)
