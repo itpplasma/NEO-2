@@ -188,35 +188,6 @@ CONTAINS
        !Check the conversion to sparse 
        !CALL sparse2full(irow,pcol,val,nrow,ncol,A)
 
-!!$       !save the matrix in a sparse format for further analysis
-!!$       !(e.g. calculate the condition number rcond)
-!!$       CALL find_unit(unit)
-!!$       OPEN(unit=unit,file='/proj/plasma/Solver_Test/TestMatrices/mini_example.dat',&
-!!$            status='replace',action='write')
-!!$       DO i=1,ncol+1
-!!$          IF(i .EQ. ncol+1) THEN
-!!$             WRITE (unit=unit,fmt='(I5)',ADVANCE='YES') pcol(i)
-!!$          ELSE
-!!$             WRITE (unit=unit,fmt='(I5)',ADVANCE='NO') pcol(i)
-!!$          END IF
-!!$       END DO
-!!$       DO i=1,nz
-!!$          IF(i .EQ. nz) THEN
-!!$             WRITE (unit=unit,fmt='(I8)',ADVANCE='YES') irow(i)
-!!$          ELSE
-!!$             WRITE (unit=unit,fmt='(I8)',ADVANCE='NO') irow(i)
-!!$          END IF
-!!$       END DO
-!!$       DO i=1,nz
-!!$          IF(i .EQ. nz) THEN
-!!$             WRITE (unit=unit,fmt='(F16.8)',ADVANCE='YES') val(i)
-!!$          ELSE
-!!$             WRITE (unit=unit,fmt='(F16.8)',ADVANCE='NO') val(i)
-!!$          END IF
-!!$       END DO
-!!$       CLOSE(unit=unit)
-
-
        !construct an array of rhs
        IF (ALLOCATED(bb)) DEALLOCATE(bb)
        icmax = ncol
@@ -244,34 +215,6 @@ CONTAINS
        CALL load_standard_example(name,nrow,ncol,nz,irow,pcol,val)
        IF (sparse_talk) PRINT *, 'nrow=',nrow,' ncol=',ncol,' nz=',nz
 
-!!$       !save the matrix in a sparse format for further analysis
-!!$       !(e.g. calculate the condition number rcond)
-!!$       CALL find_unit(unit)
-!!$       OPEN(unit=unit,file='/proj/plasma/Solver_Test/TestMatrices/g10.dat',&
-!!$            status='replace',action='write')
-!!$       DO i=1,ncol+1
-!!$          IF(i .EQ. ncol+1) THEN
-!!$             WRITE (unit=unit,fmt='(I8)',ADVANCE='YES') pcol(i)
-!!$          ELSE
-!!$             WRITE (unit=unit,fmt='(I8)',ADVANCE='NO') pcol(i)
-!!$          END IF
-!!$       END DO
-!!$       DO i=1,nz
-!!$          IF(i .EQ. nz) THEN
-!!$             WRITE (unit=unit,fmt='(I8)',ADVANCE='YES') irow(i)
-!!$          ELSE
-!!$             WRITE (unit=unit,fmt='(I8)',ADVANCE='NO') irow(i)
-!!$          END IF
-!!$       END DO
-!!$       DO i=1,nz
-!!$          IF(i .EQ. nz) THEN
-!!$             WRITE (unit=unit,fmt='(F16.8)',ADVANCE='YES') val(i)
-!!$          ELSE
-!!$             WRITE (unit=unit,fmt='(F16.8)',ADVANCE='NO') val(i)
-!!$          END IF
-!!$       END DO
-!!$       CLOSE(unit=unit)
-
        ! construct the rhs
        IF (ALLOCATED(b)) DEALLOCATE(b)
        ALLOCATE(b(nrow))
@@ -291,34 +234,6 @@ CONTAINS
        name = '/proj/plasma/Libs/SuperLU/SuperLU_3.0/DATA/sparse_compressed_e100_s100_D0d001.dat'
        CALL load_compressed_example(name,nrow,ncol,nz,irow,pcol,val)
        IF (sparse_talk) PRINT *, 'nrow=',nrow,' ncol=',ncol,' nz=',nz
-
-!!$       !save the matrix in a sparse format for further analysis
-!!$       !(e.g. calculate the condition number rcond)
-!!$       CALL find_unit(unit)
-!!$       OPEN(unit=unit,file='/proj/plasma/Solver_Test/TestMatrices/sparse_compressed_e100_s100_D0d001.dat' &
-!!$            ,status='replace',action='write')
-!!$       DO i=1,ncol+1
-!!$          IF(i .EQ. ncol+1) THEN
-!!$             WRITE (unit=unit,fmt='(I8)',ADVANCE='YES') pcol(i)
-!!$          ELSE
-!!$             WRITE (unit=unit,fmt='(I8)',ADVANCE='NO') pcol(i)
-!!$          END IF
-!!$       END DO
-!!$       DO i=1,nz
-!!$          IF(i .EQ. nz) THEN
-!!$             WRITE (unit=unit,fmt='(I8)',ADVANCE='YES') irow(i)
-!!$          ELSE
-!!$             WRITE (unit=unit,fmt='(I8)',ADVANCE='NO') irow(i)
-!!$          END IF
-!!$       END DO
-!!$       DO i=1,nz
-!!$          IF(i .EQ. nz) THEN
-!!$             WRITE (unit=unit,fmt='(F16.8)',ADVANCE='YES') val(i)
-!!$          ELSE
-!!$             WRITE (unit=unit,fmt='(F16.8)',ADVANCE='NO') val(i)
-!!$          END IF
-!!$       END DO
-!!$       CLOSE(unit=unit)
 
        ! construct a rhs
        IF (ALLOCATED(b)) DEALLOCATE(b)
