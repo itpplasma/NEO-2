@@ -913,7 +913,24 @@ CONTAINS
     CLOSE(uw)
     !
   END SUBROUTINE write_ntv_output_a
-    !
+
+  !> \brief Write multispecies output to hdf5 file.
+  !>
+  !> This subroutine makes sure multispecies output quantities are
+  !> computed, and writes them to a hdf5 file.
+  !>
+  !> input:
+  !> ------
+  !> none
+  !>
+  !> output:
+  !> -------
+  !> none
+  !>
+  !> side effects:
+  !> -------------
+  !> - writes file to disk in current folder
+  !> - (?)
   SUBROUTINE write_multispec_output_a()
     !
     USE neo_precision
