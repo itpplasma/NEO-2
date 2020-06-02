@@ -171,6 +171,20 @@ def write_torque_data(folder: str, outfilename: str, torque_data):
     for numbers in torque_data:
       f.write('{:+e} {:+e} {:+e} {:+e}\n'.format(numbers[0], numbers[1], numbers[2], numbers[3]))
 
+from contextlib import contextmanager
+
+@contextmanager
+def cd(newdir: str):
+  import os
+
+  prevdir = os.getcwd()
+  # ~ os.chdir(os.path.expanduser(newdir))
+  os.chdir(newdir)
+  try:
+    yield
+  finally:
+    os.chdir(prevdir)
+
 def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vphiinfilename: str, torqueoutfilename: str):
   """Process data of scans over vphiref, calculate the torque and write it to file.
 
@@ -199,7 +213,8 @@ def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vp
     torque.
     Attention: this is only the name not the path.
   """
-  from os.path import join
+  from os import chdir, getcwd
+  from os.path import isfile, join
   from pathlib import Path
   from hdf5tools import copy_hdf5_from_subfolders_to_single_file
 
@@ -213,9 +228,12 @@ def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vp
     print('Processing folder: ' + d.name)
     current_path_name = join(folder, d.name)
 
-    # ... merge the neo2_multispecies output files ...
-    copy_hdf5_from_subfolders_to_single_file(current_path_name, hdf5infilename, 'final_' + hdf5infilename)
-    #print('- merging of hdf5 files done.')
+    if (not isfile(join(current_path_name, 'final_'+hdf5infilename))):
+      # ... merge the neo2_multispecies output files, if not already
+      # done (determined by existence of output file)  ...
+      with cd(current_path_name):
+        copy_hdf5_from_subfolders_to_single_file('./', hdf5infilename, 'final_' + hdf5infilename)
+      #print('- merging of hdf5 files done.')
 
     torque_data.append(export_2spec_Matyas(current_path_name, 'final_' + hdf5infilename, vphiinfilename))
     #print('- calculating NTV torque done.')
