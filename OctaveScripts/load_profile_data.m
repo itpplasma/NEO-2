@@ -94,7 +94,8 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
     rho_pol = linspace(lower_limit_flux_label, upper_limit_flux_label, number_gridpoints);
 
     %~ rho_tor = spline(frp(:, data_source.rhopoloidal.column), frt(:,data_source.rhotoroidal.column), rho_pol);
-    rho_tor_fit = polyfit(frp(frp(:, data_source.rhopoloidal.column) <= 1.0, data_source.rhopoloidal.column), frt(frp(:, data_source.rhopoloidal.column) <= 1.0,data_source.rhotoroidal.column), 5);
+    L = frp(:, data_source.rhopoloidal.column) <= 1.0;
+    rho_tor_fit = polyfit(frp(L, data_source.rhopoloidal.column), frt(L, data_source.rhotoroidal.column), 5);
     rho_tor = polyval(rho_tor_fit, rho_pol);
     if (lower_limit_flux_label <= 0.0)
       rho_tor(1) = 0;
