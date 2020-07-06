@@ -121,7 +121,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
 
 
   frp=load([path_to_shot, data_source.ion_temperature.filename]);
-  [fitobject, gof] = polyfit(frp(:,1).^2, frp(:, data_source.electron_temperature.column), 6);
+  [fitobject, gof] = polyfit(frp(:,1).^2, frp(:, data_source.ion_temperature.column), 6);
   fit2 = polyval(fitobject, interpolation_grid);
 
   Ti_eV = fit2*transform_temperature;
