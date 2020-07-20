@@ -48,6 +48,23 @@ regularization.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Calculation of Torque}
+The code calculates the torque for each species using the formula
+\begin{equation}
+       T_{\phi}^{NA} = &
+            fac\_flux\_force Z e \Gamma^{NA}
+\end{equation}
+where
+\begin{equation}
+  fac\_flux\_force = -\sqrt{g} B^{\theta} / c,
+\end{equation}
+and $\Gamma^{NA}$ is the particle flux.
+Calculation is only done by the main thread, as
+\subroutine{ntv\_mod::write\_multispec\_output} is only called by main
+thread.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Rotation}
 
 For slow rotation, plasma is incompressible, i.e. $\nabla \ve{v} = 0$
