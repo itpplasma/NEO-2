@@ -41,6 +41,27 @@ function check_equality_dat {
   return $return_value_loc
 }
 
+# \brief Check if hdf5 files of testcase are equal.
+#
+# This function checks if all the files of the reference directory are
+# equal (within a certain tolerance) to results of the testrun.
+#
+# Reference files are considered to be all hdf5 files, by extension .h5,
+# that are in the reference directory.
+# Over these files is iterated in a loop.
+#
+# The check itself is currently done via an inline python3 script, that
+# calls an appropriate function from module hdf5tools, and exits with
+# return value depending on output of the function.
+#
+# Note that at the moment only differences in data are considered. If
+# the files differ in what fields are present, then this is ignored.
+#
+# input:
+# ------
+# referencepath: string with the path where the reference folders are
+#   located.
+# testcase: name of the testcase and thus of the subfolder.
 function check_equality_hdf5 {
   referencepath_local=${1}
   testcase_local=${2}
