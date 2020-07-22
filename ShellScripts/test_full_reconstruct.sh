@@ -59,12 +59,16 @@ function check_equality_hdf5 {
   for h5file in `ls $referencepath_local/${testcase_local}/*.h5` ; do
     testfile=`basename $h5file`
 
-    echo "comparing $h5file and ./testfile"
+    echo "comparing $h5file and ${testfile}"
 
     echo "from hdf5tools import compare_hdf5_files; import sys; \
     res = compare_hdf5_files('$h5file', '${testfile}', ${accuracy}, [], '$referencepath_local/${testcase_local}/blacklist.txt', True); \
     sys.exit(0 if res[0] else 1)" | python3
-    return_value_loc="$?"
+    # Avoid setting the return value to zero, if it was already unequal
+    # zero.
+    if [ return_value_loc -eq 0 ] ; then
+      return_value_loc="$?"
+    fi
   done
 
   return $return_value_loc
