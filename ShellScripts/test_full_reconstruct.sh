@@ -87,7 +87,7 @@ function check_equality_hdf5 {
     sys.exit(0 if res[0] else 1)" | python3
     # Avoid setting the return value to zero, if it was already unequal
     # zero.
-    if [ return_value_loc -eq 0 ] ; then
+    if [ ${return_value_loc} -eq 0 ] ; then
       return_value_loc="$?"
     fi
   done
