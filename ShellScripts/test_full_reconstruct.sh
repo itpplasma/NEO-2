@@ -85,10 +85,11 @@ function check_equality_hdf5 {
     echo "from hdf5tools import compare_hdf5_files; import sys; \
     res = compare_hdf5_files('$h5file', '${testfile}', ${accuracy}, [], '$referencepath_local/${testcase_local}/blacklist.txt', True); \
     sys.exit(0 if res[0] else 1)" | python3
+    res="$?"
     # Avoid setting the return value to zero, if it was already unequal
     # zero.
     if [ ${return_value_loc} -eq 0 ] ; then
-      return_value_loc="$?"
+      return_value_loc="$res"
     fi
   done
 
