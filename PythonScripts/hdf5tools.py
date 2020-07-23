@@ -589,12 +589,19 @@ def fill_list(list_):
   The function then makes sure a list is returned, i.e. if the parameter
   contains an filename, it will read the content and return it as a
   list.
+  If the argument passed is a string but the file could not be opened,
+  an empty list is returned. A message about this is printed, but no
+  exeption is thrown by this function.
   If the parameter contains already a list, it is simply returned.
   """
   if isinstance(list_, str):
-    with open(list_) as f:
-      l = f.readlines()
-      return [x.strip() for x in l]
+    try:
+      with open(list_) as f:
+        l = f.readlines()
+        return [x.strip() for x in l]
+    except FileNotFoundError as e:
+      print('File could not be opened, return empty list.')
+      return list()
   elif isinstance(list_, list) and len(list_) > 0:
     return list_
 
