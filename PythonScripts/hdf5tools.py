@@ -643,6 +643,9 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
 
   limitations
   ----------
+  Not sure how nan and inf are treated.
+  At least encountering a nan should lead to a warning
+  'RuntimeWarning: invalid value encountered in greater'.
   """
   import numpy
   import h5py
