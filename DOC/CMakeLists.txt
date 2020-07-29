@@ -36,7 +36,6 @@ include(UseLATEX)
 # Command for the main documentation.
 add_latex_document(UserDoc/main.tex
   INPUTS
-  UserDoc/Commands.sty
   UserDoc/Bugs.tex
   UserDoc/Building.tex
   UserDoc/Input.tex
@@ -48,9 +47,5 @@ add_latex_document(UserDoc/main.tex
   UserDoc/Todo.tex
 )
 
-# Command for the coding style document. This is not done by default.
-add_latex_document(ExtraDocumentsTex/coding_style.tex
-  EXCLUDE_FROM_ALL
-)
     #BIBFILES mybib.bib
     #IMAGE_DIRS images
