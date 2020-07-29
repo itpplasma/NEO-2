@@ -51,8 +51,7 @@ regularization.
 \section{Calculation of Torque}
 The code calculates the torque for each species using the formula
 \begin{equation}
-       T_{\phi}^{NA} = &
-            fac\_flux\_force Z e \Gamma^{NA}
+       T_{\phi}^{NA} = fac\_flux\_force Z e \Gamma^{NA}
 \end{equation}
 where
 \begin{equation}
@@ -215,17 +214,17 @@ satisfy conditions
   0 = \nabla \cdot \ve{xi},
 \end{equation}
 with the magnetic field $\ve{B}$. Expressing this in Boozer coordinates
-$(\tho, \theta, \phi)$, where $\rho = \rho_{tor} = \sqrt{s} = \sqrt{\psi_{tor}/\psi_{tor}^a}$
+$(\rho, \theta, \phi)$, where $\rho = \rho_{tor} = \sqrt{s} = \sqrt{\psi_{tor}/\psi_{tor}^a}$
 is the normalized radius, we get
 \begin{equation}
   0 = B_{\rho} \xi^{\rho} + B_{\theta} \xi^{\theta} + B_{\phi} \xi^{\phi}\label{eq:perpendiculardisplacementboozer}
 \end{equation}
 \begin{equation}
-  0 = \pder{}{\rho} \sqrt{g} \xi^{\rho} + \pder{}{\theta} \sqrt{g} \xi^{\theta} + \pder{}{\phi} \sqrt{g} \xi^{\phi}
+  0 = \pd{}{\rho} \sqrt{g} \xi^{\rho} + \pd{}{\theta} \sqrt{g} \xi^{\theta} + \pd{}{\phi} \sqrt{g} \xi^{\phi}
   \label{eq:imcompressibledisplacementboozer}
 \end{equation}
 with covariant magnetic field components $B_{\rho} = B_{\rho}(\rho, \theta)$,
-$B_{\theta} = B_{\theta}(\rho}$ and $B_{\phi} = B_{\phi}(\phi)}$. Also
+$B_{\theta} = B_{\theta}(\rho)$ and $B_{\phi} = B_{\phi}(\phi)$. Also
 the metric determinant
 \begin{equation}
   \sqrt{g} = 2 \psi_{tor}^a \rho \frac{\iota B_{\theta} + B_{\phi}}{B^2}
@@ -241,18 +240,18 @@ $B_{\rho} / B_{\phi} \tilde \beta q / A \ll 1$ and
 $B_{\theta} / B_{\phi} \tilde 1/(qA^2) \ll 1$ where $\beta$ is plasma
 beta, and $A$ is aspect ratio. With this we get estimates
 \begin{equation}
-  \xi^{\theta} \tilde \frac{\xi^{\rho}}{m \Delta \rho}
+  \xi^{\theta} \tilde{} \frac{\xi^{\rho}}{m \Delta \rho}
 \end{equation}
 and
 \begin{equation}
-  \xi^{\phi} \tilde \frac{max(1, m \Delta \rho q^2 A \beta) \xi^{\theta}}{q A^2} \ll \xi^{\theta}
+  \xi^{\phi} \tilde{} \frac{max(1, m \Delta \rho q^2 A \beta) \xi^{\theta}}{q A^2} \ll \xi^{\theta}
 \end{equation}
 with mode number $m$ and mode width $\Delta \rho$. As $\xi^{\phi}$ is
 small, we ignore it. Ignoring also variation of $B$ within flux surfaces
 (terms of order $1/A$ in Eq.~\eqref{eq:metricdeterminant}), we obtain
 an equation for $\xi^{\theta}$
 \begin{equation}
-  \frac{1}{\rho} \pder{}{\rho}\rho \xi^{\rho} + \pder{\xi^{\theta}}{\theta} = 0.
+  \frac{1}{\rho} \pd{}{\rho}\rho \xi^{\rho} + \pd{\xi^{\theta}}{\theta} = 0.
   \label{eq:equationxitheta}
 \end{equation}
 Our specific perturbation $\xi^{\rho}$ is of the form
@@ -264,14 +263,14 @@ where the subscripts $K$ and $T$ stand for kink and tearing,
 respectively.
 The corresponding perurbation $\xi^{\theta}$ is of the form
 \begin{equation}
-  \xi^{\theta} = - \frac{1}{m_k \rho} \pder{\rho \xi_K^{\rho}}{\rho} \sin (m_K \theta - n \phi)
-                 - \frac{1}{m_T \rho} \pder{\rho \xi_T^{\rho}}{\rho} \sin (m_T \theta - n \phi).
+  \xi^{\theta} = - \frac{1}{m_k \rho} \pd{\rho \xi_K^{\rho}}{\rho} \sin (m_K \theta - n \phi)
+                 - \frac{1}{m_T \rho} \pd{\rho \xi_T^{\rho}}{\rho} \sin (m_T \theta - n \phi).
 \end{equation}
 Because the coordinate system $(s, \theta, \phi)$ is more convenient we
 change to this one.
 The condition Eq.~\eqref{eq:equationxitheta} changes to
 \begin{equation}
-  \pder{\xi^{s}}{\rho} + \pder{\xi^{\theta}}{\theta} = 0.
+  \pd{\xi^{s}}{\rho} + \pd{\xi^{\theta}}{\theta} = 0.
 \end{equation}
 Our infinitesimal displacement Eq.~\eqref{eq:perturbationkinktearing}
 can in this coordinates be written as
@@ -285,7 +284,7 @@ with
 \end{equation}
 while the respective displacement $\xi^{\theta}$ can be written as
 \begin{equation}
-  \xi^{\theta} = - \frac{1}{m_K}\pder{\xi_K^{s}}{s} \sin (m_K \theta - n \phi) - \frac{1}{m_T}\pder{\xi_T^{s}}{s} \sin (m_T \theta - n \phi)
+  \xi^{\theta} = - \frac{1}{m_K}\pd{\xi_K^{s}}{s} \sin (m_K \theta - n \phi) - \frac{1}{m_T}\pd{\xi_T^{s}}{s} \sin (m_T \theta - n \phi)
 \end{equation}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -295,7 +294,7 @@ and $B = const$, an incompressible deformation of space corresponds to
 an area preserving map $(s, \theta) \rightarrow (s', \theta')$, which
 has unit Jacobian
 \begin{equation}
-  \pder{(s', \theta)'}{(s, \theta)} = 1.
+  \pd{(s', \theta)'}{(s, \theta)} = 1.
   \label{eq:codnitionunitejacobian}
 \end{equation}
 In case of infinitesimal displacement the perturbed position is
@@ -310,21 +309,21 @@ found from implicit form Eq.~\eqref{eq:codnitionunitejacobian}, which
 determines $\theta = \theta(s, \theta', \phi)$.
 Namely, using
 \begin{equation}
-  \pder{(s', \theta')}{(s,\theta)} = \pder{(s',\theta')}{(s, \theta')} \pder{(s, \theta'}{(s, \theta)}
-  = \pder{s'}{s} \left( \pder{\theta}{\theta'} \right)^{-1} = 1,
+  \pd{(s', \theta')}{(s,\theta)} = \pd{(s',\theta')}{(s, \theta')} \pd{(s, \theta'}{(s, \theta)}
+  = \pd{s'}{s} \left( \pd{\theta}{\theta'} \right)^{-1} = 1,
 \end{equation}
 we get an equation for $\theta$
 \begin{equation}
-  \pder{}{\theta'} \theta(s, \theta', \phi) = 1 + \pder{}{s} \xi^{s} (s, \theta', \phi)
+  \pd{}{\theta'} \theta(s, \theta', \phi) = 1 + \pd{}{s} \xi^{s} (s, \theta', \phi)
 \end{equation}
 Inserting Eq.~\eqref{eq:infinitesimaldisplacements} leads to
 \begin{equation}
-  \pder{\theta}{\theta'} = 1 + \pder{\xi_K^{s}}{s}\cos(m_K \theta' - n \phi)
-                             + \pder{\xi_T^{s}}{s}\cos(m_T \theta' - n \phi)
+  \pd{\theta}{\theta'} = 1 + \pd{\xi_K^{s}}{s}\cos(m_K \theta' - n \phi)
+                           + \pd{\xi_T^{s}}{s}\cos(m_T \theta' - n \phi)
 \end{equation}
 with solution
 \begin{equation}
-  \theta = \theta' + \frac{1}{m_K} \pder{\xi_K^{s}}{s}\sin(m_K \theta' - n \phi)
-                   + \frac{1}{m_T} \pder{\xi_T^{s}}{s}\sin(m_T \theta' - n \phi)
+  \theta = \theta' + \frac{1}{m_K} \pd{\xi_K^{s}}{s}\sin(m_K \theta' - n \phi)
+                   + \frac{1}{m_T} \pd{\xi_T^{s}}{s}\sin(m_T \theta' - n \phi)
 \end{equation}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
