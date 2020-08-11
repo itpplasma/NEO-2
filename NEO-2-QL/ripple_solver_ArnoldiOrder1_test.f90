@@ -1516,6 +1516,7 @@ rotfactor=imun*m_phi
   ! Use pre-conditioned iterations:
   ! -> remove null-space of axisymmetric solution (energy conservation)
   ALLOCATE(energvec_ket(n_2d_size),energvec_bra(n_2d_size))
+  allocate(densvec_ket(n_2d_size),densvec_bra(n_2d_size))
   energvec_ket=0.d0
   energvec_bra=0.d0
   denom_energ=0.d0
@@ -3842,6 +3843,7 @@ RETURN
     ! Use pre-conditioned iterations:
     ! -> remove null-space of axisymmetric solution (energy conservation)
     DEALLOCATE(energvec_ket,energvec_bra)
+    deallocate(densvec_ket,densvec_bra)
     ! Use pre-conditioned iterations
 !
     IF(isw_intp.EQ.1) DEALLOCATE(bvec_iter,bvec_prev)
@@ -3974,6 +3976,7 @@ RETURN
   ! Use pre-conditioned iterations:
   ! -> remove null-space of axisymmetric solution (energy conservation)
   DEALLOCATE(energvec_ket,energvec_bra)
+  deallocate(densvec_ket,densvec_bra)
   ! Use pre-conditioned iterations
 !
   IF(isw_intp.EQ.1) THEN
@@ -4291,6 +4294,7 @@ PRINT *,' '
 !
     IF(isw_intp.EQ.1) THEN
       denom_energ=SUM(energvec_bra*energvec_ket)
+      denom_dens=SUM(densvec_bra*densvec_ket)
       !PRINT *,'denom_energ = ',denom_energ
 !
 ! Debugging - plot energvec_ket
@@ -4531,6 +4535,8 @@ PRINT *,' '
     bvec_parflow=0.d0
     energvec_ket=0.d0
     energvec_bra=0.d0
+    densvec_ket = 0.d0
+    densvec_bra = 0.d0
 !
     DO istep=ibeg,iend
 !
@@ -4599,11 +4605,17 @@ PRINT *,' '
 !
         energvec_bra(k+1:k+npassing+1) =                                     &
              step_factor_p*(weightlag(1,m)-1.5d0*weightden(m))*pleg_bra(0,1:npassing+1,istep)
+        densvec_bra(k+1:k+npassing+1) =                                &
+          & step_factor_p*weightden(m)*pleg_bra(0,1:npassing+1,istep)
         energvec_bra(k+npassing+2:k+2*npassing+2) =                          &
              step_factor_m*(weightlag(1,m)-1.5d0*weightden(m))*pleg_bra(0,npassing+1:1:-1,istep)
+        densvec_bra(k+npassing+2:k+2*npassing+2) =                     &
+          & step_factor_m*weightden(m)*pleg_bra(0,npassing+1:1:-1,istep)
 !
         energvec_bra(k+1:k+2*npassing+2) =                                   &
              energvec_bra(k+1:k+2*npassing+2)/(bhat_mfl(istep))
+        densvec_bra(k+1:k+2*npassing+2) =                              &
+          & densvec_bra(k+1:k+2*npassing+2)/(bhat_mfl(istep))
         ! End Use pre-conditioned iterations
 !
         IF(istep.GT.ibeg) THEN
@@ -5345,6 +5357,9 @@ CALL mpro%allgather_inplace(scalprod_pleg)
      ! Use pre-conditioned iterations:
      ! -> remove null-space of axisymmetric
      ! solution (energy conservation)
+     !remove maxwellian particles
+     coef_dens=SUM(densvec_bra*fnew)/denom_dens
+     fnew=fnew-coef_dens*densvec_ket
      coef_energ=SUM(energvec_bra*fnew)/denom_energ
      !PRINT *,'coef_energ = ',coef_energ
      fnew=fnew-coef_energ*energvec_ket
