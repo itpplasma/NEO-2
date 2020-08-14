@@ -5183,45 +5183,46 @@ PRINT *,' '
 !
       npassing=npl(istep)
 !
-IF(.FALSE.) THEN
-!if(istep.eq.ibeg) then
-DO m=0,lag
-DO i=1,npassing
-k=ind_start(istep)+i+2*(npassing+1)*m
-WRITE(2001,*) vec_in(k)/(eta(i)-eta(i-1))
-ENDDO
-i=npassing+1
-k=ind_start(istep)+i+2*(npassing+1)*m
-WRITE(2001,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
-k=ind_start(istep)+i+1+2*(npassing+1)*m
-WRITE(2001,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
-DO i=npassing,1,-1
-k=ind_start(istep)+2*npassing+3-i+2*(npassing+1)*m
-WRITE(2001,*) vec_in(k)/(eta(i)-eta(i-1))
-ENDDO
-ENDDO
-CLOSE(2001)
-ENDIF
-IF(.FALSE.) THEN
-!if(istep.eq.(ibeg+iend)/2) then
-DO m=0,lag
-DO i=1,npassing
-k=ind_start(istep)+i+2*(npassing+1)*m
-WRITE(2002,*) vec_in(k)/(eta(i)-eta(i-1))
-ENDDO
-i=npassing+1
-k=ind_start(istep)+i+2*(npassing+1)*m
-WRITE(2002,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
-k=ind_start(istep)+i+1+2*(npassing+1)*m
-WRITE(2002,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
-DO i=npassing,1,-1
-k=ind_start(istep)+2*npassing+3-i+2*(npassing+1)*m
-WRITE(2002,*) vec_in(k)/(eta(i)-eta(i-1))
-ENDDO
-ENDDO
-CLOSE(2002)
-!pause
-ENDIF
+      IF(.FALSE.) THEN
+      !if(istep.eq.ibeg) then
+        DO m=0,lag
+          DO i=1,npassing
+            k=ind_start(istep)+i+2*(npassing+1)*m
+            WRITE(2001,*) vec_in(k)/(eta(i)-eta(i-1))
+          ENDDO
+          i=npassing+1
+          k=ind_start(istep)+i+2*(npassing+1)*m
+          WRITE(2001,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
+          k=ind_start(istep)+i+1+2*(npassing+1)*m
+          WRITE(2001,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
+          DO i=npassing,1,-1
+            k=ind_start(istep)+2*npassing+3-i+2*(npassing+1)*m
+            WRITE(2001,*) vec_in(k)/(eta(i)-eta(i-1))
+          ENDDO
+        ENDDO
+        CLOSE(2001)
+      ENDIF
+
+      IF(.FALSE.) THEN
+        !if(istep.eq.(ibeg+iend)/2) then
+        DO m=0,lag
+          DO i=1,npassing
+            k=ind_start(istep)+i+2*(npassing+1)*m
+            WRITE(2002,*) vec_in(k)/(eta(i)-eta(i-1))
+          ENDDO
+          i=npassing+1
+          k=ind_start(istep)+i+2*(npassing+1)*m
+          WRITE(2002,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
+          k=ind_start(istep)+i+1+2*(npassing+1)*m
+          WRITE(2002,*) vec_in(k)/(1.d0/bhat_mfl(istep)-eta(i-1))
+          DO i=npassing,1,-1
+            k=ind_start(istep)+2*npassing+3-i+2*(npassing+1)*m
+            WRITE(2002,*) vec_in(k)/(eta(i)-eta(i-1))
+          ENDDO
+        ENDDO
+        CLOSE(2002)
+        !pause
+      ENDIF
 !
       DO m=0,lag
         k=ind_start(istep)+2*(npassing+1)*m
