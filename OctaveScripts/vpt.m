@@ -22,7 +22,7 @@ s_res=interp1(iota_vpt-iota_res,s_tor,0); %resonant radius
 del_s=0.01 %approximate separatrix half-width
 % Igichine model: del_s = 4 sqrt(s_res) ka / e,   ka=0.06
 ka=0.06
-del_s = 4*sqrt(s_res)*ka/exp(1)
+del_s = Igichine_model_del_s(s_res, ka)
 
 iota_pr=interp1(s_tor,gradient(iota_vpt)./gradient(s_tor),s_res) %derivative of iota at resonant radius
 s_pol=cumtrapz(s_tor,iota_vpt); %poloidal flux normalized to toroidal flux at the edge
@@ -173,4 +173,10 @@ hold off
 % At the moment this is done by 'rounding' towards zero (fix).
 function output = make_even(input)
   output = 2*fix(input/2);
+end
+
+% Igichine model: del_s = 4 sqrt(s_res) ka / e
+% ka=0.06
+function del_s = Igichine_model_del_s(s_res, ka)
+  del_s = 4*sqrt(s_res)*ka/exp(1);
 end
