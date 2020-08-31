@@ -10,9 +10,11 @@ nsbar=ns  %number of points (flux surfaces) for rescaled label
 iota_res=n0/m0; %resonant iota value
 ns_vpt=8000;
 nphi_vpt=300;
-nphi_vpt=2*fix(nphi_vpt/2); %nphi_vpt must be even
+
+nphi_vpt = make_even(nphi_vpt); %nphi_vpt must be even
+
 s_tor=[0:1:ns_vpt]/ns_vpt;
-iota_vpt=interp1(s,iota,s_tor,'linear','extrap');
+iota_vpt = interp1(s,iota,s_tor,'linear','extrap');
 phi_vpt=[0:1:nphi_vpt]/nphi_vpt*2*pi;
 cosphi=cos(phi_vpt);
 s_res=interp1(iota_vpt-iota_res,s_tor,0); %resonant radius
@@ -165,3 +167,10 @@ for i=1:dnplot:nsbar
   plot(phi_resc(i,:),s_resc(i,:))
 end
 hold off
+
+% \brief Make input(array) even.
+%
+% At the moment this is done by 'rounding' towards zero (fix).
+function output = make_even(input)
+  output = 2*fix(input/2);
+end
