@@ -20,7 +20,7 @@
 % file_out_name: name for the output file, without extension.
 %   default value: [file_base,'-pert_kink_tear-n',num2str(n_pert),...
 %   '-','phase_kt-',num2str(delta_phase),'pi', '.bc']
-function create_asdex_perturb_incompress(file_base, file_displacement, amplitudes, phases, plot_data, file_out_name)
+function create_asdex_perturb_vector(file_base, file_displacement, amplitudes, phases, plot_data, file_out_name)
 
   %% Parameters
   % Input files
