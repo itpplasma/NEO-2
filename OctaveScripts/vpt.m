@@ -1,27 +1,37 @@
 % External iputs:
+%
+%N_theta=300;
+%N_phi=301;
+N_theta
+N_phi
+%theta_vec = linspace(0, 2*pi, N_theta);
+%phi_vec   = linspace(0, 2*pi, N_phi);
+%[T, P] = meshgrid(theta_vec(1:end-1), phi_vec(1:end-1));
+
 n0=2; %toroidal number
 m0=3; %poloidal number
-ns=3000 % number of flux surfaces
-s=[0:1:ns]/ns; %normalized toroidal flux
-iota=1./(1+2*s.^2); %iota
+%ns=3000 % number of flux surfaces
+ns=nsurf % number of flux surfaces
+%s=[0:1:ns]/ns; %normalized toroidal flux
+s=s0; %normalized toroidal flux
+%iota=1./(1+2*s.^2); %iota
+iota=iota0; %iota
+
+% Igichine model: del_s = 4 sqrt(s_res) ka / e,   ka=0.06
+ka=0.06
 % End external iputs
 
 nsbar=ns  %number of points (flux surfaces) for rescaled label
 iota_res=n0/m0; %resonant iota value
 ns_vpt=8000;
 nphi_vpt=300;
-
 nphi_vpt = make_even(nphi_vpt); %nphi_vpt must be even
-
 s_tor=[0:1:ns_vpt]/ns_vpt;
 iota_vpt = interp1(s,iota,s_tor,'linear','extrap');
 phi_vpt=[0:1:nphi_vpt]/nphi_vpt*2*pi;
 cosphi=cos(phi_vpt);
 s_res=interp1(iota_vpt-iota_res,s_tor,0); %resonant radius
 
-del_s=0.01 %approximate separatrix half-width
-% Igichine model: del_s = 4 sqrt(s_res) ka / e,   ka=0.06
-ka=0.06
 del_s = Igichine_model_del_s(s_res, ka)
 
 iota_pr=interp1(s_tor,gradient(iota_vpt)./gradient(s_tor),s_res) %derivative of iota at resonant radius
@@ -84,6 +94,7 @@ for i=1:1:size(phi_vpt,2)
   ds_dsbar_out(:,i)=gradient(s_of_shel_out(:,i))./gradient(avs_of_shel_out');
 end
 
+
 % Computation of:
 % 1) perturbed helical Boozer angle phi_B as function of helical angle phi on perturbed flux surfaces (result - phib_in and phib_out),
 % 2) of helical angle phi as function of perturbed helical Boozer angle phi_B (inverse to the above dependence, result - phi_of_phib_in and phi_of_phib_out)
@@ -93,16 +104,16 @@ phi_of_phib_in=zeros(size(s_in,2),size(phi_vpt,2));
 s_of_phib_in=zeros(size(s_in,2),size(phi_vpt,2));
 for i=1:1:size(ds_dsbar_in,1)
   phib_in(i,:)=cumtrapz(phi_vpt,ds_dsbar_in(i,:));
-  phi_of_phib_in(i,:)=interp1(phib_in(i,:),phi_vpt,phi_vpt);
-  s_of_phib_in(i,:)=interp1(phi_vpt,s_of_shel_in(i,:),phi_of_phib_in(i,:));
+  phi_of_phib_in(i,:)=interp1(phib_in(i,:),phi_vpt,phi_vpt,'linear','extrap');
+  s_of_phib_in(i,:)=interp1(phi_vpt,s_of_shel_in(i,:),phi_of_phib_in(i,:),'linear','extrap');
 end
 phib_out=zeros(size(s_out,2),size(phi_vpt,2));
 phi_of_phib_out=zeros(size(s_out,2),size(phi_vpt,2));
 s_of_phib_out=zeros(size(s_out,2),size(phi_vpt,2));
 for i=1:1:size(ds_dsbar_out,1)
   phib_out(i,:)=cumtrapz(phi_vpt,ds_dsbar_out(i,:));
-  phi_of_phib_out(i,:)=interp1(phib_out(i,:),phi_vpt,phi_vpt);
-  s_of_phib_out(i,:)=interp1(phi_vpt,s_of_shel_out(i,:),phi_of_phib_out(i,:));
+  phi_of_phib_out(i,:)=interp1(phib_out(i,:),phi_vpt,phi_vpt,'linear','extrap');
+  s_of_phib_out(i,:)=interp1(phi_vpt,s_of_shel_out(i,:),phi_of_phib_out(i,:),'linear','extrap');
 end
 
 % compute iota_b (perturbed iota):
@@ -110,6 +121,7 @@ iotab_in=gradient(avs_pol_of_shel_in)./gradient(avs_of_shel_in);
 iotab_out=gradient(avs_pol_of_shel_out)./gradient(avs_of_shel_out);
 
 % Plot old and new iota:
+figure(1)
 plot(s_tor,iota_vpt,'b',s,s*0+iota_res,':',avs_of_shel_in,iotab_in,'r',avs_of_shel_out,iotab_out,'r'),xlim([0 1])
 legend('\iota(s)','\iota_{res}','\iota_b(s_b)')
 
@@ -139,15 +151,14 @@ legend('\iota(s)','\iota_b(s_{rescaled})')
 s_resc=zeros(size(sbar_resc,2),size(phi_vpt,2));
 phi_resc=zeros(size(sbar_resc,2),size(phi_vpt,2));
 for i=1:1:size(phi_vpt,2)
-  s_resc(1:nsbar_in,i)=interp1(avs_of_shel_in,s_of_phib_in(:,i),avs_equi_in);
-  s_resc(nsbar_in+1:end,i)=interp1(avs_of_shel_out,s_of_phib_out(:,i),avs_equi_out);
-  phi_resc(1:nsbar_in,i)=interp1(avs_of_shel_in,phi_of_phib_in(:,i),avs_equi_in);
-  phi_resc(nsbar_in+1:end,i)=interp1(avs_of_shel_out,phi_of_phib_out(:,i),avs_equi_out);
+  s_resc(1:nsbar_in,i)=interp1(avs_of_shel_in,s_of_phib_in(:,i),avs_equi_in,'linear','extrap');
+  s_resc(nsbar_in+1:end,i)=interp1(avs_of_shel_out,s_of_phib_out(:,i),avs_equi_out,'linear','extrap');
+  phi_resc(1:nsbar_in,i)=interp1(avs_of_shel_in,phi_of_phib_in(:,i),avs_equi_in,'linear','extrap');
+  phi_resc(nsbar_in+1:end,i)=interp1(avs_of_shel_out,phi_of_phib_out(:,i),avs_equi_out,'linear','extrap');
 end
 
 
-% plot perturbed flux surfaces
-
+% Plot perturbed flux surfaces:
 figure(3)
 %plot(phi_of_phib_in(end-3,:),s_of_phib_in(end-3,:),':')
 %hold on
@@ -158,15 +169,76 @@ figure(3)
 %for i=100:100:size(s_out,2)
 %plot(phi_of_phib_out(i,:),s_of_phib_out(i,:),':')
 %end
-
+%
 plot(phi_resc(1,:),s_resc(1,:))
 hold on
 nplot=300;
-dnplot=nsbar/nplot;
+dnplot=fix(nsbar/nplot);
 for i=1:dnplot:nsbar
   plot(phi_resc(i,:),s_resc(i,:))
 end
 hold off
+
+
+% Plot lines theta_b=const on a perturbed flux surface in unperturbed (original) coordinates (theta,phi):
+ntlines=40;
+ntstep=fix((N_theta-1)/ntlines);
+
+figure(4)
+ir=nsbar_in
+s_and_theta_on_angular_grid
+plot(P(:,1),theta_surf(:,1),'b')
+hold on
+for i=ntstep+1:ntstep:N_theta-1
+  plot(P(:,1),theta_surf(:,i),'b')
+end
+plot(P(:,1),P(:,1)*iota_resc(ir),'k','linewidth',2)
+hold off
+xlabel('$\varphi$','interpreter','latex')
+ylabel('\vartheta')
+title('near separatrix')
+
+figure(5)
+ir_qw=fix(nsbar*del_s/2)
+ir=nsbar_in-ir_qw;
+s_and_theta_on_angular_grid
+plot(P(:,1),theta_surf(:,1),'b')
+hold on
+for i=ntstep+1:ntstep:N_theta-1
+  plot(P(:,1),theta_surf(:,i),'b')
+end
+plot(P(:,1),P(:,1)*iota_resc(ir),'k','linewidth',2)
+hold off
+xlabel('$\varphi$','interpreter','latex')
+ylabel('\vartheta')
+title('at quarter-width')
+
+figure(6)
+ir_hw=fix(nsbar*del_s)
+ir=nsbar_in-ir_hw;
+s_and_theta_on_angular_grid
+plot(P(:,1),theta_surf(:,1),'b')
+hold on
+for i=ntstep+1:ntstep:N_theta-1
+  plot(P(:,1),theta_surf(:,i),'b')
+end
+plot(P(:,1),P(:,1)*iota_resc(ir),'k','linewidth',2)
+hold off
+xlabel('$\varphi$','interpreter','latex')
+ylabel('\vartheta')
+title('at half-width')
+
+figure(7)
+plot(phi_resc(nsbar_in+1,:),s_resc(nsbar_in+1,:),'r--')
+hold on
+plot(phi_resc(nsbar_in,:),s_resc(nsbar_in,:),'b')
+ir=nsbar_in-ir_qw;
+plot(phi_resc(ir,:),s_resc(ir,:),'b')
+ir=nsbar_in-ir_hw;
+plot(phi_resc(ir,:),s_resc(ir,:),'b')
+hold off
+xlabel('\phi')
+ylabel('s')
 
 % \brief Make input(array) even.
 %
