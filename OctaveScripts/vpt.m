@@ -239,16 +239,3 @@ plot(phi_resc(ir,:),s_resc(ir,:),'b')
 hold off
 xlabel('\phi')
 ylabel('s')
-
-% \brief Make input(array) even.
-%
-% At the moment this is done by 'rounding' towards zero (fix).
-function output = make_even(input)
-  output = 2*fix(input/2);
-end
-
-% Igichine model: del_s = 4 sqrt(s_res) ka / e
-% ka=0.06
-function del_s = Igichine_model_del_s(s_res, ka)
-  del_s = 4*sqrt(s_res)*ka/exp(1);
-end
