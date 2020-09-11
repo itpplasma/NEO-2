@@ -32,7 +32,7 @@ message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 # Include directories for NEO-2
 include_directories(${MPI_Fortran_INCLUDE_PATH})
 include_directories(${NEO2_Inc})
-include_directories(${MYMPILIB_PATH}/OBJS)
+include_directories(${MYMPILIB_PATH})
 
 # Generic compiler flags
 set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
@@ -111,6 +111,9 @@ find_package(SuperLU REQUIRED)
 # message(STATUS "${SUPERLU_VERSION_VAR}")
 
 ### Find libraries
+# libneo - shared library
+find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
+
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
 find_library(gsl_lib gsl ${GSL_LIB})
@@ -118,9 +121,9 @@ find_library(gsl_lib gsl ${GSL_LIB})
 #find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
 find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
 # MyMPIlib
-find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
+find_library(MyMPILib_lib MyMPILib ${NEO2_Libs}/src/MyMPILib/ NO_DEFAULT_PATH)
 # HDF5 interface
-find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs} NO_DEFAULT_PATH)
+find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_PATH)
 
 ### Source files
 include (CMakeSources.in)
@@ -162,6 +165,7 @@ target_link_libraries(${EXE_NAME}
   ${fgsl_lib} ${gsl_lib}
   ${SUPERLU_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
+  ${libneo_lib}
   ${MyMPILib_lib}
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}
