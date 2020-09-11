@@ -41,7 +41,6 @@ message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 # Include directories for NEO-2
 include_directories(${NEO2_Inc})
 include_directories(${MPI_Fortran_INCLUDE_PATH})
-include_directories(${MYMPILIB_PATH}/OBJS)
 
 ### Define flags for Fortran/C compiler
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
@@ -124,6 +123,9 @@ find_package(SuperLU REQUIRED)
 # message(STATUS "${SUPERLU_VERSION_VAR}")
 
 ### Find libraries
+# libneo - shared library
+find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
+
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
 find_library(gsl_lib gsl ${GSL_LIB})
@@ -142,10 +144,11 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
 endif ()
 
 # MyMPIlib
-find_library(MyMPILib_lib MyMPILib ${MYMPILIB_PATH})
+find_library(MyMPILib_lib MyMPILib ${NEO2_Libs}/src/MyMPILib/ NO_DEFAULT_PATH)
 
 # HDF5 interface
-find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs} NO_DEFAULT_PATH)
+find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_PATH)
+
 
 ### Source files
 include(CMakeSources.in)
@@ -196,6 +199,7 @@ target_link_libraries(${EXE_NAME}
         ${SUPERLU_LIBRARIES}
         ${SUITESPARSE_LIBRARIES}
         ${MyMPILib_lib}
+        ${libneo_lib}
         ${MPE_lib}
         ${MPI_Fortran_LIBRARIES}
         ${HDF5_tools_lib}
@@ -212,10 +216,7 @@ add_custom_target(
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
-        
-        
-        
-        
+
 ### Get location of the executable (depricated)
 #get_target_property(EXE_LOC ${EXE_NAME} LOCATION)
 #message(${EXE_LOC})
@@ -227,7 +228,7 @@ add_custom_target(copy
   ${CMAKE_CURRENT_BINARY_DIR}/${EXE_NAME}
   ${PROJECT_SOURCE_DIR}/../../TEST_RUNS/${EXE_NAME}
   ) 
-      
+
 ### Define target directory for "make install" 
 #install (TARGETS ${EXE_NAME} DESTINATION /temp/andfmar/)
 #set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
