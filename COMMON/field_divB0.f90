@@ -285,23 +285,23 @@ subroutine read_dimeq0(nrad,nzet)
   use input_files
   integer :: nrad, nzet
 
-     open(11,file=eqfile)
-     read(11,*)   
-     read(11,*)   
-     read(11,*)
-     read(11,*)   
-     read(11,*)
-     read(11,*)   
-     read(11,*)   
-     read(11,*)
-     read(11,*)   
-     read(11,*) 
+  open(11,file=eqfile)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
 
-     read(11,111) nrad
-     read(11,111) nzet
+  read(11,111) nrad
+  read(11,111) nzet
 111  format(12x,i3)
- 
-     close(11)
+
+  close(11)
   return
 end subroutine read_dimeq0
 
@@ -312,27 +312,27 @@ subroutine read_eqfile0(nrad, nzet, psib, btf, rtf, rad, zet, psi)
   real(kind=8) :: rad(nrad), zet(nzet)
   real(kind=8) :: psi(nrad,nzet)
 
-     open(11,file=eqfile)
-     read(11,*)   
-     read(11,*)   
-     read(11,*)
-     read(11,*)   
-     read(11,*)
-     read(11,*)   
-     read(11,*)   
-     read(11,*)
-     read(11,*)   
-     read(11,*) 
+  open(11,file=eqfile)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
+  read(11,*)
 
-     read(11,111) dum !nrad
-     read(11,111) dum !nzet
-     read(11,112) psib
-     read(11,112) btf
-     read(11,112) rtf
-     read(11,*) 
-     read(11,*) 
+  read(11,111) dum !nrad
+  read(11,111) dum !nzet
+  read(11,112) psib
+  read(11,112) btf
+  read(11,112) rtf
+  read(11,*)
+  read(11,*)
 
-     print *, nrad, nzet, psib, btf, rtf
+  print *, nrad, nzet, psib, btf, rtf
  
 !     nrad = nrad - 3
 !     nzet = nzet - 4
@@ -346,19 +346,19 @@ subroutine read_eqfile0(nrad, nzet, psib, btf, rtf, rad, zet, psi)
 !!$     read(11,113)(dummy,dummy,(psi(j,k),j=1,nrad),dummy,k=1,2)
 !!$     read(11,113)(dummy,dummy,(psi(j,k),j=1,nrad),dummy,k=1,nzet)
 
-     read(11,113)(rad(i),i=1,nrad)
-     read(11,*) 
-     read(11,*) 
-     read(11,113)(zet(i),i=1,nzet)
-     read(11,*) 
-     read(11,*) 
-     read(11,113)((psi(j,k),j=1,nrad),k=1,nzet)
+  read(11,113)(rad(i),i=1,nrad)
+  read(11,*)
+  read(11,*)
+  read(11,113)(zet(i),i=1,nzet)
+  read(11,*)
+  read(11,*)
+  read(11,113)((psi(j,k),j=1,nrad),k=1,nzet)
 
 !!$     do k=1,nzet
 !!$        write(41,*)(psi(j,k),j=1,nrad)
 !!$     enddo
-    close(11)
-    return
+  close(11)
+  return
 
 111  format(12x,i3)
 112  format(12x,f21.2)
@@ -834,7 +834,7 @@ end subroutine stretch_coords
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine inthecore(R,Z)
+subroutine inthecore(R,Z)
 !
   use inthecore_mod
   use input_files,  only : iunit,fluxdatapath
@@ -945,11 +945,11 @@ end subroutine stretch_coords
   d2vacdz2=-d2pladz2
 !
   return
-  end subroutine inthecore
+end subroutine inthecore
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine localizer(x1,x2,x,weight,dweight,ddweight)
+subroutine localizer(x1,x2,x,weight,dweight,ddweight)
 !
   implicit none
 !
@@ -980,11 +980,11 @@ end subroutine stretch_coords
   ddweight=ddweight/(x2-x1)**2
 !
   return
-  end subroutine localizer
+end subroutine localizer
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
-  subroutine window_filter(n,nw,arr_in,arr_out)
+subroutine window_filter(n,nw,arr_in,arr_out)
 !
   implicit none
 !
@@ -997,7 +997,7 @@ end subroutine stretch_coords
   enddo
 !
   return
-  end subroutine window_filter
+end subroutine window_filter
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
