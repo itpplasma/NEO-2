@@ -352,7 +352,7 @@ subroutine indef_bdf(u,umin,dum1,nup,indu)
   enddo
 
   return
-end
+end subroutine indef_bdf
 !---------------------------------------------------------------------
 subroutine indsmp_bdf(index,nup,indu)
 ! defines interval for 1D interpolation on uniform mesh
@@ -381,7 +381,7 @@ subroutine indsmp_bdf(index,nup,indu)
   enddo
 
   return
-end
+end subroutine indsmp_bdf
 !---------------------------------------------------------------------
 subroutine plag2d_bdf(x,y,fp,dxm1,dym1,xp,yp,polyl2d)
 !
@@ -412,7 +412,7 @@ subroutine plag2d_bdf(x,y,fp,dxm1,dym1,xp,yp,polyl2d)
   enddo
 !
   return
-end
+end subroutine plag2d_bdf
 !---------------------------------------------------------------------
 subroutine coefs_bdf(u,up,dum1,cu)
 !
@@ -427,7 +427,7 @@ subroutine coefs_bdf(u,up,dum1,cu)
   cu(3) = (u - up(1)) * (u - up(2)) * (u - up(4)) * (-0.5d0*du3)
   cu(4) = (u - up(1)) * (u - up(2)) * (u - up(3)) * (one6*du3)
   return
-end
+end subroutine coefs_bdf
 !---------------------------------------------------------------------
 !
 subroutine invert_mono_reg(nx,arry,xmin,xmax,ny,arrx,ymin,ymax)
@@ -485,7 +485,7 @@ subroutine invert_mono_reg(nx,arry,xmin,xmax,ny,arrx,ymin,ymax)
   enddo
 !
   return
-end
+end subroutine invert_mono_reg
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
@@ -551,7 +551,7 @@ subroutine invert_mono_per(nx,arry_in,xmin,xmax,ny,arrx,ymin,ymax)
   enddo
 !
   return
-end
+end subroutine invert_mono_per
 !
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
@@ -709,7 +709,7 @@ subroutine spl_five_per(n,h,a,b,c,d,e,f)
   deallocate(alp,bet,gam)
 !
   return
-end
+end subroutine spl_five_per
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
@@ -814,7 +814,7 @@ subroutine s2dring(nx,ny,hx,hy,f,icount,spl,ipoint)
   deallocate( ai,bi,ci,di,ei,fi )
 !
   return
-end
+end subroutine s2dring
 !
 ! ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
@@ -877,7 +877,7 @@ subroutine load_theta
                    ,              spllabel(4,:),spllabel(5,:),spllabel(6,:))
 !
   return
-end
+end subroutine load_theta
 !
 ! ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
@@ -1106,7 +1106,7 @@ subroutine cspl_five_reg(n,h,a,b,c,d,e,f)
   deallocate(alp,bet,gam)
 !
   return
-end
+end subroutine cspl_five_reg
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !
