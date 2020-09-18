@@ -141,8 +141,8 @@ avs_equi_out=sbar_equi(nsbar_in+1:end)+avs_of_shel_out(1)-avs_of_shel_in(end); %
 
 % iota_b for the rescaled label:
 iota_resc=zeros(size(sbar_resc));
-iota_resc(1:nsbar_in)=interp1(avs_of_shel_in,iotab_in,avs_equi_in);
-iota_resc(nsbar_in+1:end)=interp1(avs_of_shel_out,iotab_out,avs_equi_out);
+iota_resc(1:nsbar_in)=interp1(avs_of_shel_in,iotab_in,avs_equi_in,'linear','extrap');
+iota_resc(nsbar_in+1:end)=interp1(avs_of_shel_out,iotab_out,avs_equi_out,'linear','extrap');
 figure(2)
 plot(s_tor,iota_vpt,sbar_resc,iota_resc)
 legend('\iota(s)','\iota_b(s_{rescaled})')
