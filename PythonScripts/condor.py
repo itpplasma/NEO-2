@@ -20,6 +20,8 @@ class CondorSubmitFile:
   The queue_command is so far not treated correctly. It needs to be made
   a distinction between using name expansion (e.g. 'es_*') and using a
   list of files. This is not implemented yet.
+
+  Maybe use htcondor.Submit instead?
   """
 
   def read(self, filename: str):
