@@ -740,6 +740,9 @@ CONTAINS
   END SUBROUTINE write_version_info
 
   subroutine set_default_values()
+
+    use field_eq_mod, only : use_fpol
+
     implicit none
 
     species_tag_vec = (/ (ind_spec,ind_spec=0,MAXDIM-1) /)
@@ -915,6 +918,8 @@ CONTAINS
     isw_ripple_solver = 1
     isw_mag_shear = 0
     !! End Modification by Andreas F. Martitsch (14.07.2015)
+
+    use_fpol = .false. ! to switch off some features, which are untested with neo-2
 
     lsw_nbi = .false.
     T_nbi  = 70d3
