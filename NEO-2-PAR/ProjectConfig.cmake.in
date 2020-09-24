@@ -22,7 +22,7 @@ endif()
 set(FGSL_LIB ${FGSL_PATH}/lib/ CACHE STRING "FGSL lib")
 set(FGSL_INC ${FGSL_PATH}/include/fgsl/ CACHE STRING "FGSL include")
 
-set(NEO2_Libs ${LIBNEOLIBS}/Build-Debug/ CACHE STRING "Libneo path")
+set(NEO2_Libs ${LIBNEOLIBS}/Build/ CACHE STRING "Libneo path")
 set(NEO2_Inc ${NEO2_Libs})
 
 ### BLAS and LAPACK

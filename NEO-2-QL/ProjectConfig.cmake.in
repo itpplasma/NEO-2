@@ -33,7 +33,7 @@ else()
   set(OPEN_BLAS_PATH /usr/lib/openblas-base/ /usr/lib/x86_64-linux-gnu/)
 endif()
 
-set(NEO2_Libs ${LIBNEOLIBS}/Build-Debug/ CACHE STRING "Libneo path")
+set(NEO2_Libs ${LIBNEOLIBS}/Build/ CACHE STRING "Libneo path")
 set(NEO2_Inc ${NEO2_Libs})
 
 set(FGSL_LIB ${FGSL_PATH}/lib/ CACHE STRING "FGSL lib")
