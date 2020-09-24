@@ -520,7 +520,7 @@ contains
 
     use mpiprovider_module, only : mpro
 
-    use neo_magfie_mod, only: boozer_iota
+    use neo_magfie, only: boozer_iota
     use collisionality_mod, only : num_spec
     use rkstep_mod, only : lag
 

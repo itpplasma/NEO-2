@@ -376,7 +376,7 @@ CONTAINS
   ! make for device_struct
   ! 
   SUBROUTINE make_mag_device(name)
-    USE neo_magfie_mod, ONLY: magfie_result,magfie_spline,magfie_sarray
+    use neo_magfie, only: magfie_result,magfie_spline,magfie_sarray
     USE magfie_mod, ONLY : stevvo
     USE field_eq_mod, ONLY : rtf
     !! Modifications by Andreas F. Martitsch (18.09.2015)
@@ -475,7 +475,7 @@ CONTAINS
 
     USE rk4_kin_mod, ONLY : y
     USE plagrange_mod
-    USE neo_magfie_mod, ONLY : boozer_iota
+    use neo_magfie, only : boozer_iota
     use collisionality_mod, only : isw_axisymm
     use field_eq_mod, only : dpsidr, dpsidz
     !! Modifications by Andreas F. Martitsch (11.06.2014)

@@ -8,7 +8,7 @@ MODULE neo_magfie_perturbation
   USE inter_interfaces, ONLY: splinecof3_hi_driv,&
        tf, tfp, tfpp, tfppp, splint_horner3
   ! get boozer_iota (from the axiymmetric file - is the same)
-  USE neo_magfie_mod, ONLY: boozer_iota, compute_RZ
+  use neo_magfie, only : boozer_iota, compute_RZ
   ! magfie
   USE magfie_mod, ONLY : magfie
   ! used for normalization (hat-quantities)

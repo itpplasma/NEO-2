@@ -194,7 +194,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat
     !
     ! ---------------------------------------------------------------!
     ! input:
@@ -444,7 +444,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec, collpar_spec
     !
@@ -716,7 +716,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : collpar
     !
     ! ---------------------------------------------------------------!
@@ -940,7 +940,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat, &
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat, &
          boozer_curr_tor_hat_s, boozer_curr_pol_hat_s
     USE collisionality_mod, ONLY : collpar, num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec, collpar_spec, isw_coul_log
@@ -2039,7 +2039,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat, &
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat, &
          compute_Gsymm, calc_thetaB_RZloc
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
@@ -2337,7 +2337,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat, &
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat, &
          boozer_curr_pol_hat_s, boozer_curr_tor_hat_s, boozer_isqrg
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
@@ -2519,7 +2519,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat, &
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat, &
          boozer_curr_pol_hat_s, boozer_curr_tor_hat_s, &
          compute_Gsymm, calc_thetaB_RZloc, boozer_isqrg
     USE collisionality_mod, ONLY : num_spec, species_tag, &
@@ -3036,7 +3036,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat, &
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat, &
          compute_Gsymm, compute_RZ
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
@@ -3315,7 +3315,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
     !
@@ -3485,7 +3485,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
     !
@@ -4019,7 +4019,7 @@ CONTAINS
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    USE neo_magfie_mod, ONLY: boozer_curr_pol_hat, boozer_psi_pr_hat
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat
     USE collisionality_mod, ONLY : num_spec, z_spec
     !
     ! ---------------------------------------------------------------!
