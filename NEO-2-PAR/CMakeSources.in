@@ -54,10 +54,7 @@ endif ()
 
 ### NEO2 ###
 set(NEO2_COMMON_FILES
-        ../COMMON/amn_mod.f90
-        ../COMMON/bdivfree.f90
         ../COMMON/device_mod.f90
-        ../COMMON/field_divB0.f90
         ../COMMON/compute_aiota.f90
         ../COMMON/nrutil.f90
         ../COMMON/neo_magfie.f90
@@ -80,7 +77,6 @@ set(NEO2_COMMON_FILES
         ../COMMON/polleg.f90
         ../COMMON/prodband.f90
         ../COMMON/pspline.f90
-        ../COMMON/spline5_RZ.f90
         ../COMMON/spline_int.f90
         ../COMMON/spline_cof.f90
         ../COMMON/test_function.f90
@@ -97,13 +93,8 @@ set(NEO2_COMMON_FILES
         ../COMMON/collisionality_mod.f90
         ../COMMON/collop_compute.f90
         ../COMMON/development.f90
-        ../COMMON/extract_fluxcoord_mod.f90
-        ../COMMON/field_c_mod.f90
-        ../COMMON/field_eq_mod.f90
         ../COMMON/flint_mod.f90
-        ../COMMON/input_files.f90
         ../COMMON/inter_precision.f90
-        ../COMMON/inthecore_mod.f90
         ../COMMON/neo_actual_fluxs.f90
         ../COMMON/neo_actual_spectra.f90
         ../COMMON/neo_control.f90
@@ -130,7 +121,6 @@ set(NEO2_COMMON_FILES
         ../COMMON/sizey_cur.f90
         ../COMMON/sizey_pla.f90
         ../COMMON/sparsevec_mod.f90
-        ../COMMON/theta_rz_mod.f90
 )
 
 set(NEO2_SRC_FILES
