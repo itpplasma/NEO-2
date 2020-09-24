@@ -113,6 +113,8 @@ find_package(SuperLU REQUIRED)
 ### Find libraries
 # libneo - shared library
 find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
+# mc_efit - shared library
+find_library(MC_EFIT_lib mc_efit ${NEO2_Libs}/ NO_DEFAULT_PATH)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
@@ -166,6 +168,7 @@ target_link_libraries(${EXE_NAME}
   ${SUPERLU_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
   ${libneo_lib}
+  ${MC_EFIT_lib}
   ${MyMPILib_lib}
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}

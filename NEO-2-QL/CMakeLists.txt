@@ -125,6 +125,8 @@ find_package(SuperLU REQUIRED)
 ### Find libraries
 # libneo - shared library
 find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
+# mc_efit - shared library
+find_library(MC_EFIT_lib mc_efit ${NEO2_Libs}/ NO_DEFAULT_PATH)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
@@ -148,7 +150,6 @@ find_library(MyMPILib_lib MyMPILib ${NEO2_Libs}/src/MyMPILib/ NO_DEFAULT_PATH)
 
 # HDF5 interface
 find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_PATH)
-
 
 ### Source files
 include(CMakeSources.in)
@@ -200,6 +201,7 @@ target_link_libraries(${EXE_NAME}
         ${SUITESPARSE_LIBRARIES}
         ${MyMPILib_lib}
         ${libneo_lib}
+        ${MC_EFIT_lib}
         ${MPE_lib}
         ${MPI_Fortran_LIBRARIES}
         ${HDF5_tools_lib}
