@@ -60,6 +60,7 @@ PROGRAM neo2
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
+  use field_eq_mod, only : use_fpol
 
   !************************************
   ! HDF5
@@ -350,6 +351,8 @@ PROGRAM neo2
   lsw_save_dentf = .TRUE.
   lsw_save_enetf = .TRUE.
   lsw_save_spitf = .TRUE.
+
+  use_fpol = .false. ! to switch off some features, which are untested with neo-2
 
   lsw_nbi = .false.
   T_nbi   = 70d3
