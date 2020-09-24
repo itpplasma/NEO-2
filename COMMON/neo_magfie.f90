@@ -1,4 +1,4 @@
-MODULE neo_magfie_mod
+MODULE neo_magfie
 
   USE neo_precision
   USE neo_input,                                                       &
@@ -37,7 +37,7 @@ MODULE neo_magfie_mod
   ! Variable is computed in mag_interface.f90 ("boozer_bmod0").
   ! It is available for the first time after 1st call
   ! of "make_magnetics". Therefore, within the first two calls
-  ! of "neo_magfie" this variable is zero, but these calls are
+  ! of "neo_magfie_calc" this variable is zero, but these calls are
   ! not used for the computation of physical quantities.
   USE partpa_mod,  ONLY : bmod0
   !! End Modifications by Andreas F. Martitsch (12.03.2014)  
@@ -168,9 +168,9 @@ MODULE neo_magfie_mod
   REAL(dp), PRIVATE :: G_symm_val, G_symm_tb_val, G_symm_pb_val
   !! End Modifications by Andreas F. Martitsch (28.03.2017)
   
-  INTERFACE neo_magfie
+  INTERFACE neo_magfie_calc
      MODULE PROCEDURE neo_magfie_a, neo_magfie_b, neo_magfie_c
-  END INTERFACE neo_magfie
+  END INTERFACE neo_magfie_calc
 
   !! Modifications by Andreas F. Martitsch (28.03.2017)
   ! transformation function Boozer coord. -> Symm. flux coord.
@@ -1833,4 +1833,4 @@ CONTAINS
   END SUBROUTINE calc_thetaB_RZloc_a
   !! End Modifications by Andreas F. Martitsch (30.03.2017)
 
-END MODULE neo_magfie_mod
+END MODULE neo_magfie

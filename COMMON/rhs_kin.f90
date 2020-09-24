@@ -9,7 +9,7 @@ SUBROUTINE rhs_kin(phi,y,dery)
   ! to cgs-units within neo_magfie.
   ! This step requires changes within rhs_kin.f90 and
   ! ripple_solver.f90!
-  USE neo_magfie_mod, ONLY: boozer_iota,boozer_curr_pol_hat,&
+  use neo_magfie, only: boozer_iota,boozer_curr_pol_hat,&
        boozer_curr_tor_hat,boozer_sqrtg11,boozer_psi_pr_hat,&
        boozer_isqrg
   !! End Modifications by Andreas F. Martitsch (12.03.2014)
