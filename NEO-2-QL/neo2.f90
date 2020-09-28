@@ -5,6 +5,8 @@ PROGRAM neo2
   !**********************************************************
   USE mpiprovider_module
   USE hdf5_tools
+  use system_utility, only : get_rusage
+  use rusage_type, only : fortran_rusage, write_fortran_rusage
 
   USE size_mod
   !USE partpa_mod, ONLY : hxeta
@@ -189,6 +191,9 @@ PROGRAM neo2
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: n_vec ! species density (used only for isw_coul_log > 0)
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dT_vec_ov_ds
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dn_vec_ov_ds
+
+  type(fortran_rusage) :: usage
+
   !! End Modification by Andreas F. Martitsch (23.08.2015)
   ! groups for namelist
   !! Modification by Andreas F. Martitsch (21.02.2017)
@@ -530,12 +535,16 @@ PROGRAM neo2
      CALL collop_deconstruct
   END IF
 
+  if (mpro%isMaster()) then
+    usage = get_rusage()
+    call write_fortran_rusage(usage)
+  end if
+
   !*******************************************
   ! Deinitialize MPI module
   !*******************************************
   CALL mpro%deinit(.FALSE.)
   CALL h5_deinit()
-
 
   !! Modification by Andreas F. Martitsch (17.07.2014)
   ! Uncomment "STOP" to see IEEE floating-point exceptions (underflow is present).

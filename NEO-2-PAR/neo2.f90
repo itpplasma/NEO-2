@@ -4,6 +4,8 @@ PROGRAM neo2
   ! MPI SUPPORT
   !**********************************************************
   USE mpiprovider_module
+  use system_utility, only : get_rusage
+  use rusage_type, only : fortran_rusage, write_fortran_rusage
 
   USE size_mod
   !USE partpa_mod, ONLY : hxeta
@@ -126,6 +128,9 @@ PROGRAM neo2
   INTEGER :: eta_part_global,eta_part_trapped
   REAL(kind=dp) :: eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t
   REAL(kind=dp) :: eta_alpha_p,eta_alpha_t
+
+  type(fortran_rusage) :: usage
+
   ! ---------------------------------------------------------------------------
   !
   ! the input is read from 2 files
@@ -773,6 +778,11 @@ PROGRAM neo2
      !**********************************************************
      CALL prop_reconstruct_3()
   END IF
+
+  if (mpro%isMaster()) then
+    usage = get_rusage()
+    call write_fortran_rusage(usage)
+  end if
 
   !**********************************************************
   ! Deinitialize HDF5
