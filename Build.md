@@ -95,3 +95,8 @@ Note that some tools might have troubles with some of the methods, which
 can put further restrictions on your posibilities.
 
 With this the build process is done, and you can now do simulations.
+
+== Octave/Python/Shell scripts ==
+To be able to use these, the coresponding directory probably needs to be
+added to the coresponding path variable, so that the scripts can be
+found.
