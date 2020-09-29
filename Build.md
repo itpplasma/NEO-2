@@ -13,10 +13,18 @@ Here is a list of libraries and tools required for building/running neo2.
   * SuiteSparse, SuperLU
   * ATLAS, OpenBLAS
   * GSL, FGSL
-  * MPI, MyMPILib
+  * MPI
     Used for parallelization.
-  * HDF5, hdf5_tools
+  * HDF5
     Used for output.
+  * libneo
+    Contains common to different codes of the group. E.g. interface to
+    rusage.
+  * mc_efit
+    Part of libneo repository. Neo-2 uses magfie code of the library
+  * hdf5_tools, MyMPILib
+    Part of libneo repository.Fortran interfaces to the respective
+    library.
 
 Note, that as compiler, so far mainly gfortran has been used. The intel
 compiler should work, but this is so far not certain.
