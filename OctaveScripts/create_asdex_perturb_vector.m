@@ -1,4 +1,4 @@
-% \brief Create a perturbed boozer file for given equlibrium input and displacements.
+% \brief Create a perturbed (tearing) boozer file for given equlibrium input.
 %
 %
 % Input:
@@ -6,40 +6,22 @@
 % file_base: base filename (i.e. without extension) for the input file
 %   with the background/unperturbed field.
 %   default value: 'eqdsk_35568_2.68800'
-% file_displacement: filename (i.e. with extension) for the input file
-%   with the displacements caused by the modes.
-%   default value: 'displacement_morepoints.txt'
-% amplitudes: array with the amplitudes of the single modes. At the
-%   moment two values are expected.
-%   default value: [1/100, 1/150]
-% phases: array with the phases of the single modes. At the moment two
-%   values are expected.
-%   default value: [0, pi]
 % plot_data: logical, if true, plots of the results are made.
 %   default value: false;
 % file_out_name: name for the output file, without extension.
 %   default value: [file_base,'-pert_kink_tear-n',num2str(n_pert),...
 %   '-','phase_kt-',num2str(delta_phase),'pi', '.bc']
-function create_asdex_perturb_vector(file_base, file_displacement, amplitudes, phases, plot_data, file_out_name)
+function create_asdex_perturb_vector(file_base, plot_data, file_out_name)
 
   %% Parameters
   % Input files
   if nargin < 1 || isempty(file_base)
     file_base = 'eqdsk_35568_2.68800';
   end
-  if nargin < 2 || isempty(file_displacement)
-    file_displacement = 'displacement_morepoints.txt';
-  end
-  if nargin < 3 || isempty(amplitudes)
-    amplitudes = [1/100, 1/150];
-  end
-  if nargin < 4 || isempty(phases)
-    phases = [0, pi];
-  end
-  if nargin < 5 || isempty(plot_data)
+  if nargin < 2 || isempty(plot_data)
     plot_data = false;
   end
-  % nargin < 6 checked below, default value can not be calculated at
+  % nargin < 3 checked below, default value can not be calculated at
   % this point.
 
   file_ext = 'bc';
@@ -57,20 +39,11 @@ function create_asdex_perturb_vector(file_base, file_displacement, amplitudes, p
 
   %% Code
 
-  % coloumns: rho_tor, rho_tor^2, \Delta r_kink, \Delta r_tear
-  data_displacement = load(file_displacement);
-  rho_tor_dis = data_displacement(:,1);
-  delta_rho22 = data_displacement(:,3);
-  delta_rho32 = data_displacement(:,4);
-
-
   % Define filename
   file_in = [file_base,'.',file_ext];
 
-  delta_phase=(phases(2)-phases(1))/pi;
-
-  if nargin < 6 || isempty(file_out_name)
-    file_out = [file_base,'-pert_kink_tear-n',num2str(n_pert),'-','phase_kt-',num2str(delta_phase),'pi'];
+  if nargin < 3 || isempty(file_out_name)
+    file_out = [file_base,'-pert_kink_tear-n',num2str(n_pert)];
     file_out = [file_out, '.', file_ext];
   else
     file_out = file_out_name;
