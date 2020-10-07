@@ -588,6 +588,56 @@ def change_namelist_value_for_file_object(fortran_namelist_file_object, name_val
   """
   fortran_namelist_file_object[name_value_tuple[0]][name_value_tuple[1]] = name_value_tuple[2]
 
+def get_list_unsucessful_runs(folder: str, subfolder_pattern: str, file_to_check):
+  """
+  \brief Return a list of unsucessful runs.
+
+  This function will return a list of unsucessful runs, for subfolders
+  of a given pattern in a given folder.
+  'Unsucessful run' is thereby determined based on the absence of a file
+  with given name from the subfolder. The list returned will be a list
+  of the names of the subfolders.
+
+  input:
+  ------
+  folder: string, with the path to the folder where to look for
+    subfolders. You can use './' for the current working directory.
+  subfolder_pattern: string which describes the subfolders. This may
+    contain wildcards, e.g. 'es_*'.
+    Attention: the pattern should not include files that are also
+    present in the directory, as there is no check, to operate on
+    folders only.
+  file_to_check: string, name of the file which absence indicates an
+    unsucessful run.
+
+  output:
+  -------
+  List, containing strings with the name of the subfolders (not the full
+  path) which contain runs which where not sucessfull, i.e. which do
+  _not_ contain 'file_to_check'.
+  If no runs was unsucessful, then the list will be empty.
+  """
+  from os.path import join
+  from pathlib import Path
+
+  unsucessful_runs = []
+
+  p = Path(folder)
+  folders = list(p.glob(subfolder_pattern))
+
+  for d in folders:
+    current_filename = join(folder, d.name, file_to_check)
+
+    try:
+      with open(current_filename) as f:
+        continue
+    except FileNotFoundError:
+      unsucessful_runs.append(d.name)
+
+  unsucessful_runs.reverse() # Implementation detail - return list in increasing order.
+
+  return unsucessful_runs
+
 if __name__ == "__main__":
   import matplotlib.pyplot as plt
   import sys
