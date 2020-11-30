@@ -941,7 +941,8 @@ CONTAINS
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
     use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat, &
-         boozer_curr_tor_hat_s, boozer_curr_pol_hat_s
+         boozer_curr_tor_hat_s, boozer_curr_pol_hat_s, &
+      & boozer_iota_s
     USE collisionality_mod, ONLY : collpar, num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec, collpar_spec, isw_coul_log
     ! Output stored as HDF5-file
@@ -1572,6 +1573,8 @@ CONTAINS
     ! add B-field used for normalizations and further computations
     CALL h5_add(h5id_multispec, 'boozer_s', boozer_s, comment='', unit='1')
     CALL h5_add(h5id_multispec, 'aiota', aiota_loc, comment='toroidal transform, 1/q', unit='1')
+    call h5_add(h5id_multispec, 'diota_ds', boozer_iota_s, &
+      & comment='as calculated from spline interpolation', unit='1')
     CALL h5_add(h5id_multispec, 'R0', rt0, comment='major radius', unit='cm')
     CALL h5_add(h5id_multispec, 'Bref', (bmod0*1.0e4_dp), comment='reference magnetic field in gauss', unit='G')
     CALL h5_add(h5id_multispec, 'psi_pr_hat', boozer_psi_pr_hat)
