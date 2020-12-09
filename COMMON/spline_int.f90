@@ -116,6 +116,7 @@ SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
   klo=1
   khi=n
 
+  ! Bisection to find k value for which xa(klo) < x < xa(klo+1)
   DO WHILE ( (khi-klo) .GT. 1 )
      k=(khi+klo)/2
      IF(xa(k).GT.x)THEN
@@ -125,6 +126,7 @@ SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
      ENDIF
   END DO
 
+  ! Checks to see if bisection was sucessfull.
   IF ((klo < 0) .OR. (klo > n)) THEN
      PRINT *, 'splint_horner3: n, klo: ', n, klo
      STOP
