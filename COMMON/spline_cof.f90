@@ -536,9 +536,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   l = ii
   help_a   = help_a   + f(x(l),m) * f(x(l),m)
   help_inh = help_inh + f(x(l),m) * y(l)
-!!$  MA(i, (len_indx-1)*VAR+1) = help_a     ! allowed, if omega != 0
-!!$  MA(i, (len_indx-2)*VAR+5) = -1.0D0
-!!$  inh(i)                    = help_inh
+
   MA(i, (len_indx-1)*VAR+1) = omega((j-1)/VAR+1) * help_a
   MA(i, (len_indx-2)*VAR+5) = omega((j-1)/VAR+1) * (-1.0D0)
   inh(i)                    = omega((j-1)/VAR+1) * help_inh
@@ -553,14 +551,6 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   MA(i, (len_indx-1)*VAR+4) =  DBLE(rho1)
   MA(i, (len_indx-1)*VAR+5) =  DBLE(rho2)
 
-!!$! boundary condition 1
-!!$  i = i + 1
-!!$  MA(i, 2) = DBLE(mu1)
-!!$  MA(i, 3) = DBLE(nu1)
-!!$  MA(i, (len_indx-1)*VAR + 2) = DBLE(sig1)
-!!$  MA(i, (len_indx-1)*VAR + 3) = DBLE(rho1)
-!!$  inh(i) = c1
-
 ! boundary condition 2
   i = i + 1
   MA(i, 2) = DBLE(mu2)
@@ -569,29 +559,6 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   MA(i, (len_indx-1)*VAR + 3) = DBLE(rho2)
   inh(i) = cn
 
-! make column vector simqa out of matrix MA
-!!$  k = 1
-!!$  DO i=1, dim
-!!$     DO j=1,dim
-!!$        simqa(k) = MA(j,i)
-!!$        k = k + 1
-!!$     END DO
-!!$  END DO
-
-! --- for checking matrix ---
-!!$!  PRINT *, dim
-!!$  DO i=1, dim
-!!$!     PRINT *, 'i = ',i
-!!$     DO j=1,dim
-!!$        PRINT *, i, j, MA(i,j)
-!!$!        PRINT *, MA(i,:)
-!!$     END DO
-!!$  END DO
-!!$!  PRINT *,'inhom'
-!!$!  DO i=1, dim
-!!$!    PRINT *, i, inh(i)
-!!$!    PRINT *, inh(i)
-!!$!  END DO
 ! ---------------------------
 
 ! solve system
@@ -982,13 +949,7 @@ SUBROUTINE calc_opt_lambda3_a(x, y, lambda)
      ELSE
         CALL dist_lin(x(i-1:i+1), y(i-1:i+1), ymax, av_a)
      END IF
-!!$     IF (x(i) < 0.2) THEN
-!!$     lambda(i) = 1.0D0 - av_a**(1.5D0)
      lambda(i) = 1.0D0 - av_a**3
-!!$        lambda(i) = 1.0D0 - av_a**(2.5)
-!!$     ELSE
-!!$        lambda(i) = 1.0D0 - av_a**(5.5)
-!!$     END IF
   END DO
   av_a = SUM(lambda) / DBLE(SIZE(lambda))
 
