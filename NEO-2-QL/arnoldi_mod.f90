@@ -276,8 +276,8 @@ contains
       end subroutine next_iteration
     end interface
 
-    integer :: ispec
-    INTEGER                                       :: n,m,k,j,mmax,mbeg,ncount
+    integer, intent(in) :: ispec, n, mmax
+    INTEGER                                       :: m,k,j,mbeg,ncount
     INTEGER :: driv_spec
     complex(kind=kind(1d0)),   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
     complex(kind=kind(1d0)),   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
