@@ -397,3 +397,133 @@ SUBROUTINE splint_horner3_driv_c_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
   END DO
 
 END SUBROUTINE splint_horner3_driv_c_a
+
+!> Computes value y(x) dy/dx(x) from linear spline (linear interpolation)
+!>
+!> Attention - fastest routine; no check at all
+!>
+!> Input:
+!>         xa(n)         x-values
+!>         a(n),b(n),c(n),d(n)  coefs from spline
+!>         swd           Switch for derivatives (0: no / 1: yes)
+!>         m             powers of leading term
+!>         x_in          x-value for y(x_in) and yp(x_in)
+!>         f             'leading function' for spline
+!>         fp            'leading function' for spline, 1. derivative
+!>         fpp           'leading function' for spline, 2. derivative
+!>         fppp          'leading function' for spline, 3. derivative
+!> Output:
+!>         y             y-value at x_in
+!>         yp            dy/dx-value at x_in
+!>         ypp           d2y/dx2-value at x_in (= 0)
+!>         yppp          d3y/dx3-value at x_in (= 0)
+subroutine splint_horner1_a(xa, a, b, c, d, swd, m, x_in, f, fp, fpp, fppp, &
+                        & y, yp, ypp, yppp)
+  !---------------------------------------------------------------------
+  ! Modules
+  !---------------------------------------------------------------------
+  use inter_precision, only : I4B, DP
+
+  implicit none
+
+  integer(I4B),               intent(in)  :: swd
+  real(DP),                   intent(in)  :: m
+  real(DP),     dimension(:), intent(in)  :: xa, a, b, c, d
+  real(DP),                   intent(in)  :: x_in
+  real(DP),                   intent(out) :: y, yp, ypp, yppp
+  interface
+    function f(x,m)
+      use inter_precision, only : DP
+      implicit none
+      real(DP), intent(in) :: x
+      real(DP), intent(in) :: m
+      real(DP)             :: f
+    end function f
+  end interface
+  interface
+    function fp(x,m)
+      use inter_precision, only : DP
+      implicit none
+      real(DP), intent(in) :: x
+      real(DP), intent(in) :: m
+      real(DP)             :: fp
+    end function fp
+  end interface
+  interface
+    function fpp(x,m)
+      use inter_precision, only : DP
+      implicit none
+      real(DP), intent(in) :: x
+      real(DP), intent(in) :: m
+      real(DP)             :: fpp
+    end function fpp
+  end interface
+  interface
+    function fppp(x,m)
+      use inter_precision, only : DP
+      implicit none
+      real(DP), intent(in) :: x
+      real(DP), intent(in) :: m
+      real(DP)             :: fppp
+    end function fppp
+  end interface
+
+  integer(I4B) :: klo, khi, n
+  integer(I4B) :: k
+  real(DP)     :: h, p, p1, p2, p3, p1_
+  real(DP)     :: x
+!-----------------------------------------------------------------------
+  real(DP)     :: delta
+!-----------------------------------------------------------------------
+
+  n = size(a)
+
+  if (.not. ( n == size(b) .and. n == size(c) &
+      & .and. n == size(d) .and. n == size(xa) ) ) then
+    write (*,*) 'splint_horner3: assertion 1 failed'
+    write (*,*) size(a), size(b), size(c), size(d), size(xa)
+    stop 'program terminated'
+  end if
+
+  x  = x_in
+
+  klo = 1
+  khi = n
+
+  ! Bisection to find k value for which xa(klo) < x < xa(klo+1)
+  do while ( (khi-klo) > 1 )
+    k = (khi+klo)/2
+    if (xa(k) > x) then
+      khi=k
+    else
+      klo=k
+    end if
+  end do
+
+  ! Checks to see if bisection was sucessfull.
+  if ((klo < 0) .or. (klo > n)) then
+    write(*,*) 'splint_horner3: n, klo: ', n, klo
+    stop
+  end if
+  if ((khi < 0) .or. (khi > n)) then
+    write(*,*) 'splint_horner3: n, khi: ', n, khi
+    stop
+  end if
+
+  h = x - xa(klo)
+
+  p = a(klo) + h * b(klo)
+
+  y = f(x,m) * p
+
+  if ( swd .NE. 0 ) then
+    p1   = b(klo)
+    yp   = fp(x_in,m) * p + f(x_in,m) * p1
+  else
+    yp   = 0.0D0
+  end if
+
+  ypp  = 0.0D0
+  yppp = 0.0D0
+
+end subroutine splint_horner1_a

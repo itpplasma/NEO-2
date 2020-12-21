@@ -52,6 +52,31 @@ MODULE inter_interfaces
      END SUBROUTINE splinecof3_a
   END INTERFACE
 
+  interface splinecof1
+    subroutine splinecof1_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
+        & a, b, c, d, m, f)
+      use inter_precision, only : I4B, DP
+
+      real(DP),                   intent(inout) :: c1, cn
+      real(DP),     dimension(:), intent(in)    :: x
+      real(DP),     dimension(:), intent(in)    :: y
+      real(DP),     dimension(:), intent(in)    :: lambda1
+      integer(I4B), dimension(:), intent(in)    :: indx
+      real(DP),     dimension(:), intent(out)   :: a, b, c, d
+      integer(I4B),               intent(in)    :: sw1, sw2
+      real(DP),                   intent(in)    :: m
+      interface
+        function f(x,m)
+          use inter_precision, only : DP
+          implicit none
+          real(DP), intent(in) :: x
+          real(DP), intent(in) :: m
+          real(DP)             :: f
+        end function f
+      end interface
+    end subroutine splinecof1_a
+  end interface
+
 
   INTERFACE reconstruction3
      SUBROUTINE reconstruction3_a(ai, bi, ci, di, h, a, b, c, d)
@@ -177,6 +202,54 @@ MODULE inter_interfaces
      END SUBROUTINE splint_horner3_a
   END INTERFACE
 
+  interface splint_horner1
+    subroutine splint_horner1_a(xa, a, b, c, d, swd, m, x_in, &
+        & f, fp, fpp, fppp, y, yp, ypp, yppp)
+      use inter_precision, only : I4B, DP
+
+      integer(I4B),               intent(in)  :: swd
+      real(DP),                   intent(in)  :: m
+      real(DP),     dimension(:), intent(in)  :: xa, a, b, c, d
+      real(DP),                   intent(in)  :: x_in
+      real(DP),                   intent(out) :: y, yp, ypp, yppp
+      interface
+        function f(x,m)
+          use inter_precision, only : DP
+          implicit none
+          real(DP), intent(in) :: x
+          real(DP), intent(in) :: m
+          real(DP)             :: f
+        end function f
+      end interface
+      interface
+        function fp(x,m)
+          use inter_precision, only : DP
+          implicit none
+          real(DP), intent(in) :: x
+          real(DP), intent(in) :: m
+          real(DP)             :: fp
+        end function fp
+      end interface
+      interface
+        function fpp(x,m)
+          use inter_precision, only : DP
+          implicit none
+          real(DP), intent(in) :: x
+          real(DP), intent(in) :: m
+          real(DP)             :: fpp
+        end function fpp
+      end interface
+      interface
+        function fppp(x,m)
+          use inter_precision, only : DP
+          implicit none
+          real(DP), intent(in) :: x
+          real(DP), intent(in) :: m
+          real(DP)             :: fppp
+        end function fppp
+      end interface
+    end subroutine splint_horner1_a
+  end interface
 
   INTERFACE splint_horner3_driv_s
      SUBROUTINE splint_horner3_driv_s_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
