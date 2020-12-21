@@ -979,3 +979,134 @@ SUBROUTINE dist_lin_a(x, y, ymax, dist)
   dist = ABS((y(2) - (k*x(2) + d)) / ymax)
 
 END SUBROUTINE dist_lin_a
+
+! ------  first order spline (linear interpolation)
+
+!> compute coefs for smoothing spline with leading function f(x)
+!> positions of intervals are given by indx
+!>
+!> if dabs(c1) > 1e30 -> c1 = 0.0D0
+!> if dabs(cn) > 1e30 -> cn = 0.0D0
+!>
+!> INPUT:
+!>     integer(I4B),   dimension(len_indx) :: indx ... index vector
+!>                                             contains index of grid points
+!>                                             ATTENTION:
+!>                                             x(1),y(1) and x(len_x),y(len_x)
+!>                                             must be gridpoints!!!
+!>     real (kind=dp), dimension(len_x) :: x ...... x values
+!>     real (kind=dp), dimension(len_x) :: y ...... y values
+!>     real (kind=dp)                :: c1, cn .... ignored
+!>     real (kind=dp), dimension(len_indx) :: lambda ignored
+!>     integer(I4B)                        :: sw1 ignored
+!>     integer(I4B)                         :: sw2 ignored
+!>     real (kind=dp)                :: m ...... ignored
+!>     real (kind=dp)                :: f ...... ignored
+!>
+!> OUTPUT:
+!>     real (kind=dp), dimension(len_indx) :: a, b, c, d ... spline coefs
+subroutine splinecof1_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
+    & a, b, c, d, m, f)
+  !---------------------------------------------------------------------
+  ! Modules
+  !---------------------------------------------------------------------
+  use inter_precision,  only : I4B, DP
+
+  implicit none
+
+  real(DP),                   intent(inout) :: c1, cn
+  real(DP),     DIMENSION(:), intent(in)    :: x
+  real(DP),     DIMENSION(:), intent(in)    :: y
+  real(DP),     DIMENSION(:), intent(in)    :: lambda1
+  integer(I4B), DIMENSION(:), intent(in)    :: indx
+  real(DP),     DIMENSION(:), intent(out)   :: a, b, c, d
+  integer(I4B),               intent(in)    :: sw1, sw2
+  real(DP),                   intent(in)    :: m
+  interface
+    function f(x,m)
+      use inter_precision,  only : DP
+      implicit none
+      real(DP), intent(in) :: x
+      real(DP), intent(in) :: m
+      real(DP)             :: f
+    end function f
+  end interface
+
+  integer(I4B)            :: len_x, len_indx
+  integer(I4B)            :: i
+
+  len_x    = size(x)
+  len_indx = size(indx)
+
+  if ( .NOT. ( size(x) == size(y) ) ) then
+    write (*,*) 'splinecof1: assertion 1 failed'
+    stop 'program terminated'
+  end if
+  if ( .NOT. ( size(a) == size(b) .AND. size(a) == size(c) &
+       .AND.   size(a) == size(d) .AND. size(a) == size(indx) &
+       .AND.   size(a) == size(lambda1) ) ) then
+    write (*,*) 'splinecof1: assertion 2 failed'
+    stop 'program terminated'
+  end if
+
+  ! check whether points are monotonously increasing or not
+  do i = 1, len_x-1
+    if (x(i) >= x(i+1)) then
+      print *, 'SPLINECOF1: error i, x(i), x(i+1)', &
+           i, x(i), x(i+1)
+      stop 'SPLINECOF1: error  wrong order of x(i)'
+    end if
+  end do
+  ! check indx
+  do i = 1, len_indx-1
+    if (indx(i) < 1) then
+      print *, 'SPLINECOF1: error i, indx(i)', i, indx(i)
+      stop 'SPLINECOF1: error  indx(i) < 1'
+    end if
+    if (indx(i) >= indx(i+1)) then
+      print *, 'SPLINECOF1: error i, indx(i), indx(i+1)', &
+            i, indx(i), indx(i+1)
+      stop 'SPLINECOF1: error  wrong order of indx(i)'
+    end if
+    if (indx(i) > len_x) then
+      print *, 'SPLINECOF1: error i, indx(i), indx(i+1)', &
+            i, indx(i), indx(i+1)
+      stop 'SPLINECOF1: error  indx(i) > len_x'
+    end if
+  end do
+  if (indx(len_indx) < 1) then
+    print *, 'SPLINECOF1: error len_indx, indx(len_indx)', &
+          len_indx, indx(len_indx)
+    stop 'SPLINECOF3: error  indx(max) < 1'
+  end if
+  if (indx(len_indx) > len_x) then
+    print *, 'SPLINECOF1: error len_indx, indx(len_indx)', &
+          len_indx, indx(len_indx)
+    stop 'SPLINECOF1: error  indx(max) > len_x'
+  end if
+
+  if (sw1 == sw2) then
+    stop 'SPLINECOF1: error  two identical boundary conditions'
+  end if
+
+  if (dabs(c1) > 1.0E30) then
+     c1 = 0.0D0;
+  end if
+  if (dabs(cn) > 1.0E30) then
+     cn = 0.0D0;
+  end if
+
+  ! ---------------------------
+
+  do i = 1, len_indx - 1
+    b(i) = (y(i+1) - y(i)) / (x(i+1) - x(i))
+    a(i) = y(i) ! - b(i) * x(i) ! this term cancels, because we assume coordinate system is centered at x(i), and thus x(i) = 0.
+  end do
+
+  a(len_indx) = a(len_indx-1)
+  b(len_indx) = b(len_indx-1)
+
+  c = 0.0
+  d = 0.0
+
+end subroutine splinecof1_a
