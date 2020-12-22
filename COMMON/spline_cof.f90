@@ -1110,3 +1110,300 @@ subroutine splinecof1_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   d = 0.0
 
 end subroutine splinecof1_a
+
+!> reconstruct spline coefficients (a, b, c, d) on x(i)
+!>
+!> h := (x - x_i)
+!>
+!> INPUT:
+!>  rela(DP)                :: ai, bi, ci, di ... old coefs
+!>  real(DP)                :: h ................ h := x(i) - x(i-1)
+!>
+!> OUTPUT:
+!>  real(DP)                :: a, b, c, d ....... new coefs
+subroutine reconstruction1_a(ai, bi, ci, di, h, a, b, c, d)
+  !-----------------------------------------------------------------------
+  ! Modules
+  !-----------------------------------------------------------------------
+  use inter_precision, only : DP
+
+  implicit none
+
+  real(DP), intent(in)  :: ai, bi, ci, di
+  real(DP), intent(in)  :: h
+  real(DP), intent(out) :: a, b, c, d
+
+  d = 0.0
+  c = 0.0
+  b = bi
+  a = ai + h * bi
+
+end subroutine reconstruction1_a
+
+!> driver routine for splinecof1 ; used for Rmn, Zmn
+!>
+!> INPUT:
+!>     integer(I4B), dimension(len_indx) :: indx ... index vector
+!>                                             contains index of grid points
+!>     real(DP),     dimension(no) :: x ...... x values
+!>     real(DP),     dimension(no) :: y ...... y values
+!>     real(DP)                    :: c1, cn . 1. and last 2. derivative
+!>     real(DP),     dimension(ns) :: lambda . weight for 3. derivative
+!>     integer(I4B), dimension(ns) :: w ...... weight for point (0,1)
+!>     integer(I4B)                :: sw1 .... = 1 -> c1 = 1. deriv 1. point
+!>                                             = 2 -> c1 = 2. deriv 1. point
+!>                                             = 3 -> c1 = 1. deriv N. point
+!>                                             = 4 -> c1 = 2. deriv N. point
+!>     integer(I4B)                :: sw2 .... = 1 -> cn = 1. deriv 1. point
+!>                                             = 2 -> cn = 2. deriv 1. point
+!>                                             = 3 -> cn = 1. deriv N. point
+!>                                             = 4 -> cn = 2. deriv N. point
+!>     real(DP)                :: m ...... powers of leading term
+!>     real(DP)                :: f ...... test function
+!>
+!> OUTPUT:
+!>     real(DP), dimension(ns) :: a ...... spline coefs
+!>     real(DP), dimension(ns) :: b ...... spline coefs
+!>     real(DP), dimension(ns) :: c ...... spline coefs
+!>     real(DP), dimension(ns) :: d ...... spline coefs
+!>
+!> INTERNAL:
+!>     integer(I4B), parameter :: VAR = 7 ... no of variables
+subroutine splinecof1_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
+    & sw1, sw2, a, b, c, d, m, f)
+  !---------------------------------------------------------------------
+  ! Modules
+  !---------------------------------------------------------------------
+  use inter_precision,  only : I4B, DP
+  use inter_interfaces, only : splinecof1, reconstruction1
+
+  !-----------------------------------------------------------------------
+  implicit none
+
+  integer(I4B), dimension(:), intent(in)    :: indx
+  real(DP),                   intent(in)    :: m
+  real(DP),                   intent(inout) :: c1, cn
+  real(DP),     dimension(:), intent(in)    :: x
+  real(DP),     dimension(:), intent(in)    :: y
+  real(DP),     dimension(:), intent(in)    :: lambda
+  integer(I4B), dimension(:), intent(in)    :: w
+  real(DP),     dimension(:), intent(out)   :: a, b, c, d
+  integer(I4B),               intent(in)    :: sw1, sw2
+  interface
+     function f(x,m)
+       use inter_precision, only : DP
+       implicit none
+       real(DP), intent(in) :: x
+       real(DP), intent(in) :: m
+       real(DP)             :: f
+     end function f
+  end interface
+
+  integer(I4B)                              :: dim, no, ns, len_indx
+  integer(I4B)                              :: i, j, ie, i_alloc
+  integer(I4B)                              :: shift, shifti, shiftv
+  integer(I4B), dimension(:),   allocatable :: hi, indx1
+  real(DP)                                  :: h
+  real(DP),     dimension(:),   allocatable :: xn, yn, lambda1
+  real(DP),     dimension(:),   allocatable :: ai, bi, ci, di
+
+  no = size(x)
+  ns = size(a)
+  len_indx = size(indx)
+
+  !---------------------------------------------------------------------
+
+  dim = sum(w)
+
+  if (dim == 0) then
+     stop 'error in splinecof1_lo_driv: w == 0'
+  end if
+
+  allocate(ai(dim), bi(dim), ci(dim), di(dim),  stat = i_alloc)
+  if (i_alloc /= 0) stop 'splinecof1_lo_driv: allocation for arrays 1 failed!'
+  allocate(indx1(dim), lambda1(dim), hi(no),  stat = i_alloc)
+  if (i_alloc /= 0) stop 'splinecof1_lo_driv: allocation for arrays 2 failed!'
+
+
+  hi = 1
+  do i = 1, size(w)
+    if ( (w(i) /= 0) .AND. (w(i) /= 1) ) then
+      stop 'splinecof1_lo_driv: wrong value for w  (0/1)'
+    end if
+    if ( w(i) == 0 ) then
+      if ( (i+1) <= size(w) ) then
+        ie = indx(i+1)-1
+      else
+        ie = size(hi)
+      end if
+      do j = indx(i), ie
+        hi(j) = 0
+      end do
+    end if
+  end do
+
+  dim = sum(hi)
+  allocate(xn(dim), yn(dim), stat = i_alloc)
+  if (i_alloc /= 0) stop 'splinecof1_lo_driv: allocation for arrays 3 failed!'
+
+  ! create new vectors for indx and lambda with respect to skipped points
+  j = 1
+  shifti = 0
+  shiftv = 0
+  do i = 1, size(indx)
+    if ( j <= size(indx1) ) then
+      indx1(j)   = indx(i) - shiftv
+      lambda1(j) = lambda(i-shifti)
+    end if
+    if ( w(i) /= 0 ) then
+      j = j + 1
+    else
+      shifti = shifti + 1
+      if ( i+1 <= size(indx) ) then
+        shiftv = shiftv + indx(i+1) - indx(i)
+      end if
+    end if
+  end do
+
+  ! create new vectors for x and y with respect to skipped points
+  j = indx1(1)
+  do i = 1, size(hi)
+    if ( hi(i) /= 0 ) then
+      xn(j) = x(i)
+      yn(j) = y(i)
+      j = j+1
+    end if
+  end do
+
+  call splinecof1(xn, yn, c1, cn, lambda1, indx1, sw1, sw2, &
+      & ai, bi, ci, di, m, f)
+
+  ! find first regular point
+  shift = 1
+  do while ( ( shift <= size(w) ) .AND.  ( w(shift) == 0 ) )
+     shift = shift + 1
+  end do
+
+  ! reconstruct spline coefficients from 0 to first calculated coeff.
+  if ( ( shift > 1 ) .and. ( shift < size(w) ) ) then
+    a(shift) = ai(1)
+    b(shift) = bi(1)
+    c(shift) = ci(1)
+    d(shift) = di(1)
+    do i = shift-1, 1, -1
+      h = x(indx(i)) - x(indx(i+1))
+      call reconstruction1(a(i+1), b(i+1), c(i+1), d(i+1), h, &
+          & a(i), b(i), c(i), d(i))
+    end do
+  end if
+
+  ! reconstruct all other spline coefficients if needed
+  j = 0
+  do i = shift, ns
+    if (w(i) == 1) then
+      j = j + 1
+      a(i) = ai(j)
+      b(i) = bi(j)
+      c(i) = ci(j)
+      d(i) = di(j)
+    else
+      h = x(indx(i)) - x(indx(i-1))
+      call reconstruction1(a(i-1), b(i-1), c(i-1), d(i-1), h, &
+          & a(i), b(i), c(i), d(i))
+    end if
+  end do
+
+  deallocate(ai, bi, ci, di,  stat = i_alloc)
+  if (i_alloc /= 0) stop 'splinecof1_lo_driv: Deallocation for arrays 1 failed!'
+  deallocate(indx1, lambda1, hi,  stat = i_alloc)
+  if (i_alloc /= 0) stop 'splinecof1_lo_driv: Deallocation for arrays 2 failed!'
+  deallocate(xn, yn,  stat = i_alloc)
+  if (i_alloc /= 0) stop 'splinecof1_lo_driv: Deallocation for arrays 3 failed!'
+
+end subroutine splinecof1_lo_driv_a
+
+!> driver routine for splinecof1_lo_driv
+!>
+!> INPUT:
+!>     integer(I4B) , dimension(len_indx)  :: indx ... index vector
+!>                                            contains index of grid points
+!>     integer(I4B),                       :: choose_rz  1: calc Rmn; 2: Zmn
+!>     real(DP), dimension(no)        :: x ...... x values
+!>     real(DP), dimension(no,no_cur) :: y ...... y values
+!>     real(DP), dimension(no_cur)    :: m ...... powers of leading term
+!>     real(DP)                       :: f ...... test function
+!>
+!> OUTPUT:
+!>     real(DP), dimension(ns,no_cur) :: a ...... spline coefs
+!>     real(DP), dimension(ns,no_cur) :: b ...... spline coefs
+!>     real(DP), dimension(ns,no_cur) :: c ...... spline coefs
+!>     real(DP), dimension(ns,no_cur) :: d ...... spline coefs
+!> INTERNAL:
+!>     real(DP),     dimension(ns,no_cur) :: lambda3 . weight for 3. derivative
+!>     integer(I4B), dimension(ns,no_cur) :: w ....... weight for point (0,1)
+subroutine splinecof1_hi_driv_a(x, y, m, a, b, c, d, indx, f)
+  !---------------------------------------------------------------------
+  ! Modules
+  !---------------------------------------------------------------------
+  use inter_precision,  only : I4B, DP
+  use inter_interfaces, only : splinecof1_lo_driv
+
+  !---------------------------------------------------------------------
+
+  implicit none
+
+  integer(I4B), dimension(:),   intent(in)  :: indx
+  real(DP),     dimension(:),   intent(in)  :: m
+  real(DP),     dimension(:),   intent(in)  :: x
+  real(DP),     dimension(:,:), intent(in)  :: y
+  real(DP),     dimension(:,:), intent(out) :: a, b, c, d
+  interface
+     function f(x,m)
+       use inter_precision, only : DP
+       implicit none
+       real(DP), intent(in) :: x
+       real(DP), intent(in) :: m
+       real(DP)             :: f
+     end function f
+  end interface
+
+  real(DP),     dimension(:,:), allocatable :: lambda3
+  integer(I4B), dimension(:,:), allocatable :: w
+  integer(I4B)  :: ns, no_cur
+  integer(I4B)  :: i, sw1, sw2, i_alloc
+  real(DP)      :: c1, cn
+
+!-----------------------------------------------------------------------
+
+  ns     = size(a,1)
+  no_cur = size(y,2)
+
+  allocate (lambda3(ns,size(y,2)), w(ns,size(y,2)), stat = i_alloc)
+  if (i_alloc /= 0) stop 'splinecof1_hi_driv: Allocation for arrays failed!'
+
+  ! lambda3 = -1.0D0   !! automatic smoothing
+  lambda3 =  1.0D0     !! no smoothing
+
+
+  ! weights:  w(i)=0/1;  if (w(i)==0) ... do not use this point
+  w = 1
+
+  sw1 = 2
+  sw2 = 4
+
+  c1 = 0.0D0
+  cn = 0.0D0
+
+  do i = 1, no_cur
+    if ( m(i) /= 0.0D0 ) then
+      w(1,i) = 0   ! system is not defined at y(0)=0
+    end if
+    call splinecof1_lo_driv(x, y(:,i), c1, cn, &
+        & lambda3(:,i), w(:,i), indx, sw1, sw2,&
+        & a(:,i), b(:,i), c(:,i), d(:,i), m(i), f)
+  end do
+
+  deallocate (lambda3, w,  stat = i_alloc)
+  if (i_alloc /= 0) stop 'splinecof1_hi_driv: Deallocation for arrays failed!'
+
+end subroutine splinecof1_hi_driv_a
