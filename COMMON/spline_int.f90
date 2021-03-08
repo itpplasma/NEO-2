@@ -512,13 +512,10 @@ subroutine splint_horner1_a(xa, a, b, c, d, swd, m, x_in, f, fp, fpp, fppp, &
 
   h = x - xa(klo)
 
-  p = a(klo) + h * b(klo)
-
-  y = f(x,m) * p
+  y = a(klo) + h * b(klo)
 
   if ( swd .NE. 0 ) then
-    p1   = b(klo)
-    yp   = fp(x_in,m) * p + f(x_in,m) * p1
+    yp   = b(klo)
   else
     yp   = 0.0D0
   end if
