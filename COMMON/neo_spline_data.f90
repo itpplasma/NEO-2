@@ -27,4 +27,6 @@ MODULE neo_spline_data
   REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: r_m, r_mhalf
   INTEGER(I4B),  DIMENSION(:),   ALLOCATABLE :: sp_index
 
+  logical, save :: lsw_linear_boozer
+
 END MODULE neo_spline_data

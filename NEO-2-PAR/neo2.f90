@@ -63,6 +63,7 @@ PROGRAM neo2
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
   use field_eq_mod, only : use_fpol
+  use neo_spline_data, only : lsw_linear_boozer
 
   !************************************
   ! HDF5
@@ -214,6 +215,7 @@ PROGRAM neo2
   ! call omp_set_num_threads(4)
   !
   ! settings
+  lsw_linear_boozer = .FALSE.
   mag_magfield = 1
   magnetic_device = 1
   mag_nperiod_min = 300

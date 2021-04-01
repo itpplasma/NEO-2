@@ -74,6 +74,7 @@ PROGRAM neo2
   ! (with magnetic shear)
   use neo_magfie, only : isw_mag_shear
   !! End Modifications by Andreas F. Martitsch (17.03.2016)
+  use neo_spline_data, only : lsw_linear_boozer
   USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
 
@@ -219,7 +220,7 @@ PROGRAM neo2
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
-       mag_symmetric,mag_symmetric_shorten, epserr_iter
+       mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
@@ -784,6 +785,7 @@ CONTAINS
     ! multi-species part:
     lsw_multispecies = .FALSE.
     isw_multispecies_init = 0
+    lsw_linear_boozer = .FALSE.
     fname_multispec_in = ''
     ! isw_coul_log = 0: Coulomb logarithm set as species independent (overrides values for n_spec)
     ! isw_coul_log = 1: Coulomb logarithm computed for each species using n_spec, T_spec
