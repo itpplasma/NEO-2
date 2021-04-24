@@ -5,8 +5,8 @@ MODULE neo_magfie_perturbation
   ! module containing switches from the input file (neo.in)
   USE neo_control, ONLY: lab_swi, inp_swi
   ! interface to spline routines
-  USE inter_interfaces, ONLY: splinecof3_hi_driv,&
-       tf, tfp, tfpp, tfppp, splint_horner3
+  USE inter_interfaces, only : splinecof3_hi_driv, &
+       tf, tfp, tfpp, tfppp, splint_horner3, splint_horner1
   ! get boozer_iota (from the axiymmetric file - is the same)
   use neo_magfie, only : boozer_iota, compute_RZ
   ! magfie
@@ -235,6 +235,10 @@ CONTAINS
   !
   ! Initialization for splines along s
   SUBROUTINE neo_init_spline_pert()
+
+    use inter_interfaces, only : splinecof1_hi_driv
+    use neo_spline_data, only : lsw_linear_boozer
+
     !
     ! local definitions
     !
@@ -310,20 +314,24 @@ CONTAINS
     !     a_zmnc_pert, b_zmnc_pert, c_zmnc_pert, d_zmnc_pert, sp_index_pert, tf)
     !CALL splinecof3_hi_driv(es_pert, lmnc_pert, r_mhalf_pert,&
     !     a_lmnc_pert, b_lmnc_pert, c_lmnc_pert, d_lmnc_pert, sp_index_pert, tf)
-    CALL splinecof3_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
-         a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert, sp_index_pert, tf)
-    ! Additional data from Boozer files without Stellarator symmetry
-    IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
-       !at the moment unused stuff
-       !CALL splinecof3_hi_driv(es_pert, rmns_pert, r_mhalf_pert,&
-       !     a_rmns_pert, b_rmns_pert, c_rmns_pert, d_rmns_pert, sp_index_pert, tf)
-       !CALL splinecof3_hi_driv(es_pert, zmns_pert, r_mhalf_pert,&
-       !     a_zmns_pert, b_zmns_pert, c_zmns_pert, d_zmns_pert, sp_index_pert, tf)
-       !CALL splinecof3_hi_driv(es_pert, lmns_pert, r_mhalf_pert,&
-       !     a_lmns_pert, b_lmns_pert, c_lmns_pert, d_lmns_pert, sp_index_pert, tf)
-       CALL splinecof3_hi_driv(es_pert, bmns_pert, r_mhalf_pert,&
-            a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
-    END IF
+    if (lsw_linear_boozer) then
+      call splinecof1_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
+         & a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert, sp_index_pert, tf)
+      ! Additional data from Boozer files without Stellarator symmetry
+      if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+        call splinecof1_hi_driv(es_pert, bmns_pert, r_mhalf_pert,&
+           & a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
+      end if
+    else
+      call splinecof3_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
+         & a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert, sp_index_pert, tf)
+      ! Additional data from Boozer files without Stellarator symmetry
+      if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+        call splinecof3_hi_driv(es_pert, bmns_pert, r_mhalf_pert,&
+           & a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
+      end if
+    end if
+
     !
     ! Testing
     !
@@ -343,6 +351,9 @@ CONTAINS
   !
   ! Compute the perturbation field for a certain x-value
   SUBROUTINE neo_magfie_pert_a( x, bn_hat_pert )
+
+    use neo_spline_data, only : lsw_linear_boozer
+
     !
     ! input / output
     !
@@ -371,15 +382,27 @@ CONTAINS
     !PRINT *,'mnmax_pert: ', mnmax_pert
     DO i = 1, mnmax_pert
        swd = 1
-       CALL splint_horner3(es_pert, a_bmnc_pert(:,i), b_bmnc_pert(:,i),&
-            c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
-            x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
-       ! Additional data from Boozer files without Stellarator symmetry
-       IF (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
-          CALL splint_horner3(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
-               c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
-               x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
-       END IF
+       if (lsw_linear_boozer) then
+         call splint_horner1(es_pert, a_bmnc_pert(:,i), b_bmnc_pert(:,i),&
+            & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
+            & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
+         ! Additional data from Boozer files without Stellarator symmetry
+         if (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
+           call splint_horner1(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
+              & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
+              & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
+         end if
+       else
+         call splint_horner3(es_pert, a_bmnc_pert(:,i), b_bmnc_pert(:,i),&
+            & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
+            & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
+         ! Additional data from Boozer files without Stellarator symmetry
+         if (inp_swi .EQ. 9) then ! ASDEX-U (E. Strumberger)
+           call splint_horner3(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
+              & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
+              & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
+         end if
+       end if
 
        IF (inp_swi .EQ. 8) THEN ! NEW IPP TOKAMAK
           ! requested representation of the perturbation field
@@ -440,6 +463,9 @@ CONTAINS
   ! Compute the perturbation field for a certain x-value and its 
   ! derivative over theta
   SUBROUTINE neo_magfie_pert_b( x, bn_hat_pert, dbn_hat_pert_dtheta )
+
+    use neo_spline_data, only : lsw_linear_boozer
+
     !
     ! input / output
     !
@@ -467,19 +493,29 @@ CONTAINS
     !
     bn_hat_pert = (0.0_dp,0.0_dp)
     dbn_hat_pert_dtheta = (0.0_dp,0.0_dp)
-    !PRINT *,'mnmax_pert: ', mnmax_pert
     DO i = 1, mnmax_pert
        swd = 1
-       CALL splint_horner3(es_pert, a_bmnc_pert(:,i), b_bmnc_pert(:,i),&
-            c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
-            x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
-       ! Additional data from Boozer files without Stellarator symmetry
-       IF (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
-          CALL splint_horner3(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
-               c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
-               x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
-       END IF
-
+       if (lsw_linear_boozer) then
+         call splint_horner1(es_pert, a_bmnc_pert(:,i), b_bmnc_pert(:,i),&
+            & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
+            & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
+         ! Additional data from Boozer files without Stellarator symmetry
+         if (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
+           call splint_horner1(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
+              & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
+              & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
+         end if
+       else
+         call splint_horner3(es_pert, a_bmnc_pert(:,i), b_bmnc_pert(:,i),&
+            & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
+            & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
+         ! Additional data from Boozer files without Stellarator symmetry
+         if (inp_swi .EQ. 9) then ! ASDEX-U (E. Strumberger)
+           call splint_horner3(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
+              & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
+              & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
+         end if
+       end if
        IF (inp_swi .EQ. 8) THEN ! NEW IPP TOKAMAK
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
@@ -529,6 +565,7 @@ CONTAINS
     !PRINT *,'bhat, bn_hat_pert: ',(bn_hat_pert/bhat),(1.0d-3*EXP(imun*m_phi*x(2)))
     !PRINT *,'bn_hat_pert: ',bn_hat_pert
     !PRINT *,'bmod0: ',bmod0
+
   END SUBROUTINE neo_magfie_pert_b
   !
   SUBROUTINE calc_bnoverb0_arr(phi_arr,ibeg,iend,bnoverb0_arr,dbnoverb0_dphi_arr)
