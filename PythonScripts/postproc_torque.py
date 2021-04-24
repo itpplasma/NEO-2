@@ -185,16 +185,17 @@ def cd(newdir: str):
   finally:
     os.chdir(prevdir)
 
-def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vphiinfilename: str, torqueoutfilename: str):
+def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vphiinfilename: str, torqueoutfilename: str, try_to_create_nonexistant_output_files: bool = True):
   """Process data of scans over vphiref, calculate the torque and write it to file.
 
   This function will process data from a scan over vphiref. First the
   hdf5 output from the radial scan is merged into a single file per
-  vphiref value. From these the torque is calculated in SI units. The
+  vphiref value, if requested, if not just merged files that already
+  exist are used. From these the torque is calculated in SI units. The
   torque and vphiref is written to file.
 
   Example, if the subfolders are in the current folder:
-  postproc_torque('./', 'n2_vshift*', 'neo2_multispecies_out.h5', 'vphiref.in', 'NTV_torque_int_all.dat')
+  postproc_torque('./', 'n2_vshift*', 'neo2_multispecies_out.h5', 'vphiref.in', 'NTV_torque_int_all.dat', False)
 
   input:
   ------
@@ -212,6 +213,9 @@ def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vp
   torqueoutfilename: string, name of the file, where to store the
     torque.
     Attention: this is only the name not the path.
+  try_to_create_nonexistant_output_files: If this is true (default),
+    then if no output file is found in a subfolder, this function will
+    try to create it (no error handling is done at the moment).
   """
   from os import chdir, getcwd
   from os.path import isfile, join
@@ -228,14 +232,17 @@ def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vp
     print('Processing folder: ' + d.name)
     current_path_name = join(folder, d.name)
 
-    if (not isfile(join(current_path_name, 'final_'+hdf5infilename))):
-      # ... merge the neo2_multispecies output files, if not already
-      # done (determined by existence of output file)  ...
-      with cd(current_path_name):
-        copy_hdf5_from_subfolders_to_single_file('./', hdf5infilename, 'final_' + hdf5infilename)
-      #print('- merging of hdf5 files done.')
+    if (try_to_create_nonexistant_output_files):
+      if (not isfile(join(current_path_name, 'final_'+hdf5infilename))):
+        # ... merge the neo2_multispecies output files, if not already
+        # done (determined by existence of output file)  ...
+        with cd(current_path_name):
+          copy_hdf5_from_subfolders_to_single_file('./', hdf5infilename, 'final_' + hdf5infilename)
+        #print('- merging of hdf5 files done.')
 
-    torque_data.append(export_2spec_Matyas(current_path_name, 'final_' + hdf5infilename, vphiinfilename))
+    # Ignore folder with no output file
+    if isfile(join(current_path_name, 'final_'+hdf5infilename)):
+      torque_data.append(export_2spec_Matyas(current_path_name, 'final_' + hdf5infilename, vphiinfilename))
     #print('- calculating NTV torque done.')
 
   write_torque_data(folder, torqueoutfilename, torque_data)
