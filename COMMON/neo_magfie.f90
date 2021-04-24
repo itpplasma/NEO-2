@@ -24,7 +24,7 @@ MODULE neo_magfie
        a_pprime,   b_pprime,   c_pprime,   d_pprime,                   &
        a_sqrtg00,  b_sqrtg00,  c_sqrtg00,  d_sqrtg00
   USE inter_interfaces,                                                &
-       ONLY: splint_horner3,                                           &
+       only : splint_horner3, splint_horner1,                          &
        tf, tfp, tfpp, tfppp,                                           &
        tfone, tfzero
   USE neo_work,                                                        &
@@ -200,6 +200,9 @@ MODULE neo_magfie
 CONTAINS
 
   SUBROUTINE neo_magfie_a( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
+
+    use neo_spline_data, only : lsw_linear_boozer
+
     ! input / output
     REAL(dp), DIMENSION(:),       INTENT(in)            :: x
     REAL(dp),                     INTENT(out)           :: bmod
@@ -426,70 +429,116 @@ CONTAINS
           DO imn = 1, mnmax
              ! Switch swd turns on (1) / off (0) the computation of the
              ! radial derivatives within splint_horner3
-             swd = 1
-             CALL splint_horner3(es,                                   &
-                  a_bmnc(:,imn), b_bmnc(:,imn),                        &
-                  c_bmnc(:,imn), d_bmnc(:,imn),                        &
-                  swd, r_mhalf(imn),                                   &
-                  s, tf, tfp, tfpp, tfppp,                             &
-                  s_bmnc(imn), s_bmnc_s(imn), ypp, yppp)
-             !swd = 0 ! Now we want to compute the radial derivatives
-             swd = 1
-             CALL splint_horner3(es,                                   &
-                  a_rmnc(:,imn), b_rmnc(:,imn),                        &
-                  c_rmnc(:,imn), d_rmnc(:,imn),                        &
-                  swd, r_mhalf(imn),                                   &
-                  s, tf, tfp, tfpp, tfppp,                             &
-                  s_rmnc(imn), s_rmnc_s(imn), ypp, yppp)
-             swd = 1
-             CALL splint_horner3(es,                                   &
-                  a_zmnc(:,imn), b_zmnc(:,imn),                        &
-                  c_zmnc(:,imn), d_zmnc(:,imn),                        &
-                  swd, r_mhalf(imn),                                   &
-                  s, tf, tfp, tfpp, tfppp,                             &
-                  s_zmnc(imn), s_zmnc_s(imn), ypp, yppp)
-             swd = 1
-             CALL splint_horner3(es,                                   &
-                  a_lmnc(:,imn), b_lmnc(:,imn),                        &
-                  c_lmnc(:,imn), d_lmnc(:,imn),                        &
-                  swd, r_mhalf(imn),                                   &
-                  s, tf, tfp, tfpp, tfppp,                             &
-                  s_lmnc(imn), s_lmnc_s(imn), ypp, yppp)
+            swd = 1
+            if (lsw_linear_boozer) then
+              call splint_horner1(es, &
+                & a_bmnc(:,imn), b_bmnc(:,imn), &
+                & c_bmnc(:,imn), d_bmnc(:,imn), &
+                & swd, r_mhalf(imn),            &
+                & s, tf, tfp, tfpp, tfppp,      &
+                & s_bmnc(imn), s_bmnc_s(imn), ypp, yppp)
+              call splint_horner1(es, &
+                & a_rmnc(:,imn), b_rmnc(:,imn), &
+                & c_rmnc(:,imn), d_rmnc(:,imn), &
+                & swd, r_mhalf(imn),            &
+                & s, tf, tfp, tfpp, tfppp,      &
+                & s_rmnc(imn), s_rmnc_s(imn), ypp, yppp)
+              call splint_horner1(es, &
+                & a_zmnc(:,imn), b_zmnc(:,imn), &
+                & c_zmnc(:,imn), d_zmnc(:,imn), &
+                & swd, r_mhalf(imn),            &
+                & s, tf, tfp, tfpp, tfppp,      &
+                & s_zmnc(imn), s_zmnc_s(imn), ypp, yppp)
+              call splint_horner1(es, &
+                & a_lmnc(:,imn), b_lmnc(:,imn), &
+                & c_lmnc(:,imn), d_lmnc(:,imn), &
+                & swd, r_mhalf(imn),            &
+                & s, tf, tfp, tfpp, tfppp,      &
+                & s_lmnc(imn), s_lmnc_s(imn), ypp, yppp)
+             else
+              call splint_horner3(es, &
+                & a_bmnc(:,imn), b_bmnc(:,imn), &
+                & c_bmnc(:,imn), d_bmnc(:,imn), &
+                & swd, r_mhalf(imn),            &
+                & s, tf, tfp, tfpp, tfppp,      &
+                & s_bmnc(imn), s_bmnc_s(imn), ypp, yppp)
+              call splint_horner3(es, &
+                & a_rmnc(:,imn), b_rmnc(:,imn), &
+                & c_rmnc(:,imn), d_rmnc(:,imn), &
+                & swd, r_mhalf(imn),            &
+                & s, tf, tfp, tfpp, tfppp,      &
+                & s_rmnc(imn), s_rmnc_s(imn), ypp, yppp)
+              call splint_horner3(es, &
+                & a_zmnc(:,imn), b_zmnc(:,imn), &
+                & c_zmnc(:,imn), d_zmnc(:,imn), &
+                & swd, r_mhalf(imn),            &
+                & s, tf, tfp, tfpp, tfppp,      &
+                & s_zmnc(imn), s_zmnc_s(imn), ypp, yppp)
+              call splint_horner3(es, &
+                & a_lmnc(:,imn), b_lmnc(:,imn), &
+                & c_lmnc(:,imn), d_lmnc(:,imn), &
+                & swd, r_mhalf(imn),            &
+                & s, tf, tfp, tfpp, tfppp,      &
+                & s_lmnc(imn), s_lmnc_s(imn), ypp, yppp)
+             end if
              !
              !! Modifications by Andreas F. Martitsch (06.08.2014)
              ! Additional data from Boozer files without Stellarator symmetry
              IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
-                swd = 1
-                CALL splint_horner3(es,                                   &
-                     a_bmns(:,imn), b_bmns(:,imn),                        &
-                     c_bmns(:,imn), d_bmns(:,imn),                        &
-                     swd, r_mhalf(imn),                                   &
-                     s, tf, tfp, tfpp, tfppp,                             &
-                     s_bmns(imn), s_bmns_s(imn), ypp, yppp)
-                swd = 1
-                CALL splint_horner3(es,                                   &
-                     a_rmns(:,imn), b_rmns(:,imn),                        &
-                     c_rmns(:,imn), d_rmns(:,imn),                        &
-                     swd, r_mhalf(imn),                                   &
-                     s, tf, tfp, tfpp, tfppp,                             &
-                     s_rmns(imn), s_rmns_s(imn), ypp, yppp)
-                swd = 1
-                CALL splint_horner3(es,                                   &
-                     a_zmns(:,imn), b_zmns(:,imn),                        &
-                     c_zmns(:,imn), d_zmns(:,imn),                        &
-                     swd, r_mhalf(imn),                                   &
-                     s, tf, tfp, tfpp, tfppp,                             &
-                     s_zmns(imn), s_zmns_s(imn), ypp, yppp)
-                swd = 1
-                CALL splint_horner3(es,                                   &
-                     a_lmns(:,imn), b_lmns(:,imn),                        &
-                     c_lmns(:,imn), d_lmns(:,imn),                        &
-                     swd, r_mhalf(imn),                                   &
-                     s, tf, tfp, tfpp, tfppp,                             &
-                     s_lmns(imn), s_lmns_s(imn), ypp, yppp)
+               swd = 1
+               if (lsw_linear_boozer) then
+                 call splint_horner1(es, &
+                   & a_bmns(:,imn), b_bmns(:,imn), &
+                   & c_bmns(:,imn), d_bmns(:,imn), &
+                   & swd, r_mhalf(imn),            &
+                   & s, tf, tfp, tfpp, tfppp,      &
+                   & s_bmns(imn), s_bmns_s(imn), ypp, yppp)
+                 call splint_horner1(es, &
+                   & a_rmns(:,imn), b_rmns(:,imn), &
+                   & c_rmns(:,imn), d_rmns(:,imn), &
+                   & swd, r_mhalf(imn),            &
+                   & s, tf, tfp, tfpp, tfppp,      &
+                   & s_rmns(imn), s_rmns_s(imn), ypp, yppp)
+                 call splint_horner1(es, &
+                   & a_zmns(:,imn), b_zmns(:,imn), &
+                   & c_zmns(:,imn), d_zmns(:,imn), &
+                   & swd, r_mhalf(imn),            &
+                   & s, tf, tfp, tfpp, tfppp,      &
+                   & s_zmns(imn), s_zmns_s(imn), ypp, yppp)
+                 call splint_horner1(es, &
+                   & a_lmns(:,imn), b_lmns(:,imn), &
+                   & c_lmns(:,imn), d_lmns(:,imn), &
+                   & swd, r_mhalf(imn),            &
+                   & s, tf, tfp, tfpp, tfppp,      &
+                   & s_lmns(imn), s_lmns_s(imn), ypp, yppp)
+               else
+                 call splint_horner3(es, &
+                   & a_bmns(:,imn), b_bmns(:,imn), &
+                   & c_bmns(:,imn), d_bmns(:,imn), &
+                   & swd, r_mhalf(imn),            &
+                   & s, tf, tfp, tfpp, tfppp,      &
+                   & s_bmns(imn), s_bmns_s(imn), ypp, yppp)
+                 call splint_horner3(es, &
+                   & a_rmns(:,imn), b_rmns(:,imn), &
+                   & c_rmns(:,imn), d_rmns(:,imn), &
+                   & swd, r_mhalf(imn),            &
+                   & s, tf, tfp, tfpp, tfppp,      &
+                   & s_rmns(imn), s_rmns_s(imn), ypp, yppp)
+                 call splint_horner3(es, &
+                   & a_zmns(:,imn), b_zmns(:,imn), &
+                   & c_zmns(:,imn), d_zmns(:,imn), &
+                   & swd, r_mhalf(imn),            &
+                   & s, tf, tfp, tfpp, tfppp,      &
+                   & s_zmns(imn), s_zmns_s(imn), ypp, yppp)
+                 call splint_horner3(es, &
+                   & a_lmns(:,imn), b_lmns(:,imn), &
+                   & c_lmns(:,imn), d_lmns(:,imn), &
+                   & swd, r_mhalf(imn),            &
+                   & s, tf, tfp, tfpp, tfppp,      &
+                   & s_lmns(imn), s_lmns_s(imn), ypp, yppp)
+               end if
              END IF
-             !! End Modifications by Andreas F. Martitsch (06.08.2014)
-             !
+
           END DO
           !*************************************************************
           ! Fourier summation for the full theta-phi array
@@ -1171,35 +1220,58 @@ CONTAINS
              PRINT *, 'Prep of currents: ',s
           END IF
           swd = 1 ! derivative
-          CALL splint_horner3(es,                                      &
-               a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor,         &
-               swd, m0,                                                &
-               s, tfone, tfzero, tfzero, tfzero,                       &
-               curr_tor_array(k_es), curr_tor_s_array(k_es), ypp, yppp)
-          swd = 1 ! derivative
-          CALL splint_horner3(es,                                      &
-               a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol,         &
-               swd, m0,                                                &
-               s, tfone, tfzero, tfzero, tfzero,                       &
-               curr_pol_array(k_es), curr_pol_s_array(k_es) ,ypp, yppp)
-          !! Modifications by Andreas F. Martitsch (17.03.2016)
-          ! derivative of iota for non-local NTV computations
-          ! (with magnetic shear)
-          swd = 1 ! derivative
-          CALL splint_horner3(es,                                      &
-               a_iota, b_iota, c_iota, d_iota, swd, m0,                &
-               s, tfone, tfzero, tfzero, tfzero,                       &
-               iota_array(k_es), iota_s_array(k_es), ypp, yppp)
-          !! End Modifications by Andreas F. Martitsch (17.03.2016)
-          swd = 0 ! no derivative
-          CALL splint_horner3(es,                                      &
-               a_pprime, b_pprime, c_pprime, d_pprime, swd, m0,        &
-               s, tfone, tfzero, tfzero, tfzero,                       &
-               pprime_array(k_es), yp, ypp, yppp)
-          CALL splint_horner3(es,                                      &
-               a_sqrtg00, b_sqrtg00, c_sqrtg00, d_sqrtg00, swd, m0,    &
-               s, tfone, tfzero, tfzero, tfzero,                       &
-               sqrtg00_array(k_es), yp, ypp, yppp)
+          if (lsw_linear_boozer) then
+            call splint_horner1(es, &
+              & a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, &
+              & swd, m0,                                        &
+              & s, tfone, tfzero, tfzero, tfzero,               &
+              & curr_tor_array(k_es), curr_tor_s_array(k_es), ypp, yppp)
+            call splint_horner1(es, &
+              & a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, &
+              & swd, m0,                                        &
+              & s, tfone, tfzero, tfzero, tfzero,               &
+              & curr_pol_array(k_es), curr_pol_s_array(k_es) ,ypp, yppp)
+            ! derivative of iota for non-local NTV computations
+            ! (with magnetic shear)
+            call splint_horner1(es, &
+              & a_iota, b_iota, c_iota, d_iota, swd, m0, &
+              & s, tfone, tfzero, tfzero, tfzero,        &
+              & iota_array(k_es), iota_s_array(k_es), ypp, yppp)
+            swd = 0 ! no derivative
+            call splint_horner1(es, &
+              & a_pprime, b_pprime, c_pprime, d_pprime, swd, m0, &
+              & s, tfone, tfzero, tfzero, tfzero,                &
+              & pprime_array(k_es), yp, ypp, yppp)
+            call splint_horner1(es, &
+              & a_sqrtg00, b_sqrtg00, c_sqrtg00, d_sqrtg00, swd, m0, &
+              & s, tfone, tfzero, tfzero, tfzero,                    &
+              & sqrtg00_array(k_es), yp, ypp, yppp)
+          else
+            call splint_horner3(es, &
+              & a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, &
+              & swd, m0,                                        &
+              & s, tfone, tfzero, tfzero, tfzero,               &
+              & curr_tor_array(k_es), curr_tor_s_array(k_es), ypp, yppp)
+            call splint_horner3(es, &
+              & a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, &
+              & swd, m0,                                        &
+              & s, tfone, tfzero, tfzero, tfzero,               &
+              & curr_pol_array(k_es), curr_pol_s_array(k_es) ,ypp, yppp)
+            ! derivative of iota for non-local NTV computations
+            call splint_horner3(es, &
+              & a_iota, b_iota, c_iota, d_iota, swd, m0, &
+              & s, tfone, tfzero, tfzero, tfzero,        &
+              & iota_array(k_es), iota_s_array(k_es), ypp, yppp)
+            swd = 0 ! no derivative
+            call splint_horner3(es, &
+              & a_pprime, b_pprime, c_pprime, d_pprime, swd, m0, &
+              & s, tfone, tfzero, tfzero, tfzero,                &
+              & pprime_array(k_es), yp, ypp, yppp)
+            call splint_horner3(es, &
+              & a_sqrtg00, b_sqrtg00, c_sqrtg00, d_sqrtg00, swd, m0, &
+              & s, tfone, tfzero, tfzero, tfzero,                    &
+              & sqrtg00_array(k_es), yp, ypp, yppp)
+          end if
        END DO
        magfie_newspline = 0
     END IF
@@ -1455,11 +1527,19 @@ CONTAINS
 
        DO i = 1, mnmax
           swd = 1
-          CALL splint_horner3(es,                                    &
-               a_bmnc(:,i), b_bmnc(:,i), c_bmnc(:,i), d_bmnc(:,i),   &
-               swd, r_mhalf(i),                                      &
-               x(1), tf, tfp, tfpp, tfppp,                           &
+          if (lsw_linear_boozer) then
+            call splint_horner1(es, &
+               a_bmnc(:,i), b_bmnc(:,i), c_bmnc(:,i), d_bmnc(:,i), &
+               swd, r_mhalf(i),                                    &
+               x(1), tf, tfp, tfpp, tfppp,                         &
                bmnc, bmnc_s, ypp, yppp)
+          else
+            call splint_horner3(es, &
+               a_bmnc(:,i), b_bmnc(:,i), c_bmnc(:,i), d_bmnc(:,i), &
+               swd, r_mhalf(i),                                    &
+               x(1), tf, tfp, tfpp, tfppp,                         &
+               bmnc, bmnc_s, ypp, yppp)
+          end if
 
           m = ixm(i)
           n = ixn(i)
@@ -1473,21 +1553,39 @@ CONTAINS
        END DO
 
        swd = 1
-       CALL splint_horner3(es,                                       &
-            a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor,          &
-            swd, m0,                                                 &
-            x(1), tfone, tfzero, tfzero, tfzero,                     &
+       if (lsw_linear_boozer) then
+         call splint_horner1(es, &
+            a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, &
+            swd, m0,                                        &
+            x(1), tfone, tfzero, tfzero, tfzero,            &
             curr_tor, curr_tor_s, ypp, yppp)
-       CALL splint_horner3(es,                                       &
-            a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol,          &
-            swd, m0,                                                 &
-            x(1), tfone, tfzero, tfzero, tfzero,                     &
+         call splint_horner1(es, &
+            a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, &
+            swd, m0,                                        &
+            x(1), tfone, tfzero, tfzero, tfzero,            &
             curr_pol, curr_pol_s ,ypp, yppp)    
-       swd = 0 ! no derivative
-       CALL splint_horner3(es,                                       &
-            a_iota, b_iota, c_iota, d_iota, swd, m0,                 &
-            x(1), tfone, tfzero, tfzero, tfzero,                     &
+         swd = 0 ! no derivative
+         call splint_horner1(es, &
+            a_iota, b_iota, c_iota, d_iota, swd, m0, &
+            x(1), tfone, tfzero, tfzero, tfzero,     &
             iota, yp, ypp, yppp)       
+       else
+         call splint_horner3(es, &
+            a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, &
+            swd, m0,                                        &
+            x(1), tfone, tfzero, tfzero, tfzero,            &
+            curr_tor, curr_tor_s, ypp, yppp)
+         call splint_horner3(es, &
+            a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, &
+            swd, m0,                                        &
+            x(1), tfone, tfzero, tfzero, tfzero,            &
+            curr_pol, curr_pol_s ,ypp, yppp)
+         swd = 0 ! no derivative
+         call splint_horner3(es, &
+            a_iota, b_iota, c_iota, d_iota, swd, m0,  &
+            x(1), tfone, tfzero, tfzero, tfzero,      &
+            iota, yp, ypp, yppp)
+       end if
     END IF
 
     IF (magfie_result .EQ. 1) THEN
