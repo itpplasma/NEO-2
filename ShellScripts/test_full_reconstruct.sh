@@ -25,7 +25,7 @@ END=3
 ########################################################################
 ### Function definitions
 
-function check_equality_dat {
+function check_equality_md5sum {
   referencepath_local=${1}
   testcase_local=${2}
   numberofstage_local=${3}
@@ -124,8 +124,8 @@ numberofstage=$START
 while [ $numberofstage -le $END ] ; do
   switch_reconstruction.sh $numberofstage
   $runcommand >> job.log 2>&1
-  # check_equality_dat is a function.
-  if check_equality_dat $referencepath ${testcase} $numberofstage ; then
+  # check_equality_md5sum is a function.
+  if check_equality_md5sum $referencepath ${testcase} $numberofstage ; then
     echo "Test ($numberofstage/$totalnumberofstages) passed. Checksums correct."
   else
     echo "Test ($numberofstage/$totalnumberofstages) failed. Not all files are equal."
