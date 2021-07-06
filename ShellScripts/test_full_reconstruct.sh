@@ -99,14 +99,15 @@ function check_equality_hdf5 {
 ########################################################################
 ### Actual script
 
-cp ./$executablename $testpath
-cd $testpath
+cp ./$executablename ${testpath}/
+cd ${testpath}/
 
 echo "Copying template..."
 cp -r -L ../../Template/${testcase}/* ./
 
 echo "Running Test ${testcase}..."
 
+# Note: absolute paths are used for the location of the executable.
 if [ ${number_processors} -eq 0 ] ; then
   echo "Sequential mode"
   runcommand="$testpath/$executablename"
