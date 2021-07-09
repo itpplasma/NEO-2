@@ -41,6 +41,30 @@ function check_equality_md5sum {
   return $return_value_loc
 }
 
+function check_equality_dat {
+  referencepath_local=${1}
+  testcase_local=${2}
+
+  return_value_loc=0
+
+  abs_accuracy="1.0e-6"
+  rel_accuracy="1.0e-5"
+
+  for datfile in `ls $referencepath_local/${testcase_local}/*.dat` ; do
+    testfile=`basename $datfile`
+
+    #~ compare_data_files.m referencepath_local testcase_local abs_accuracy rel_accuracy
+    compare_data_files.py $referencepath_local/${testcase_local}/$testfile $testfile $abs_accuracy $rel_accuracy
+    res="$?"
+
+    if [ ${return_value_loc} -eq 0 ] ; then
+      return_value_loc="$res"
+    fi
+  done
+
+  return $return_value_loc
+}
+
 # \brief Check if hdf5 files of testcase are equal.
 #
 # This function checks if all the files of the reference directory are
@@ -134,6 +158,13 @@ while [ $numberofstage -le $END ] ; do
   fi
   numberofstage=$(($numberofstage+1))
 done
+
+if check_equality_dat ${referencepath} ${testcase} ; then
+  echo "Test of dat files passed."
+else
+  echo "Test of dat files failed, there are differences or files which could not be compared."
+  return_value=1
+fi
 
 if check_equality_hdf5 $referencepath ${testcase} ; then
   echo "Test of hdf5 files passed."
