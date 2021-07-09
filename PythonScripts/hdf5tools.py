@@ -610,18 +610,25 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
 
   This function checks if two given h5py groups contain the same data,
   i.e. if the respective datasets are equal.
-  Equality for a dataset of floats thereby means that absolute
-  differences divided by the absolute maximum of the reference is less
-  than a given delta. For integers and strings it refers to direct
-  equality.
+  Subgroups are checked recursively.
+  Equality for a dataset of floats thereby means that the normalized
+  values (to maximum value in dataset) differ less than a given delta.
+  The difference is determined from the objects attribute 'accuracy' if
+  it exists (considered to be an absolute accuracy) and from the
+  parameter 'delta_relative' if the attribute does not exist or is
+  either infinite or nan.
+  For integers and strings it refers to direct equality.
   Either a whitelist of keys to compare or a blacklist of keys to not
   compare, can be given.
 
   input
   ----------
-  reference_group:
-  other_group:
-  delta_relative:
+  reference_group, other_group: h5 (group) objects, the elements which
+    should be compared.
+  delta_relative: float, default value for the maximum error to use.
+    This will only be used if the onject (1) is a float (2) has no
+    attribute 'accuracy'. If the latter exists, then this is used as
+    absolute accuracy.
   whitelist, blacklist: Both of these can be empty ([]), or one of them
     can either contain a string, or a list of strings.
     If it contains a string, this is assumed to be a filename which
@@ -649,6 +656,7 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   """
   import numpy
   import h5py
+  from math import isnan, isinf
 
   lr = list(reference_group.keys())
   lo = list(other_group.keys())
@@ -669,12 +677,15 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
             max_value_dataset = max(numpy.nditer(abs(numpy.array(reference_group[key]))))
             if max_value_dataset == 0:
               max_value_dataset = 1.0
-            relative = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key]))) / max_value_dataset
+            abs_differences = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key])))
+            delta_abs = reference_group[key].attrs.get('accuracy', -1.0)
+            if (delta_abs < 0) or isnan(delta_abs) or isinf(delta_abs):
+              delta_abs = delta_relative * max_value_dataset
 
-            if (relative > delta_relative).any():
+            if (abs_differences > delta_abs).any():
               return_value = False
               if (verbose):
-                print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(relative)))))
+                print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(abs_differences/max_value_dataset)))))
           elif reference_group[key].dtype.kind == 'i':
             if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
               return_value = False
