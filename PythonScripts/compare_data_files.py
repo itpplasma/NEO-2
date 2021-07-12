@@ -228,7 +228,7 @@ def compare_text_files(file_1: str, file_2: str, abs_accuracy: float, rel_accura
   else:
     return False
 
-def compare_data_files(file_1: str, file_2: str, abs_accuracy: float, rel_accuracy: float, compare_string: int):
+def compare_data_files(file_1: str, file_2: str, abs_accuracy: float, rel_accuracy: float, switch_comparison_type: int):
   """
   Compare content of two data files.
 
@@ -238,7 +238,7 @@ def compare_data_files(file_1: str, file_2: str, abs_accuracy: float, rel_accura
   file_2: string, name of second file.
   abs_accuracy: floating point number, absolute accuracy to use for equality.
   rel_accuracy: floating point number, relative accuracy to use for equality.
-  compare_string: integer switch.
+  switch_comparison_type: integer switch.
     0 - do not compare strings
     1 - do compare strings
     2 - compare as strings
@@ -250,7 +250,7 @@ def compare_data_files(file_1: str, file_2: str, abs_accuracy: float, rel_accura
 
   tel = {0: compare_number_files, 1: compare_text_number_files, 2: compare_text_files}
 
-  return tel[compare_string](file_1, file_2, abs_accuracy, rel_accuracy)
+  return tel[switch_comparison_type](file_1, file_2, abs_accuracy, rel_accuracy)
 
 if __name__ == "__main__":
   import sys
