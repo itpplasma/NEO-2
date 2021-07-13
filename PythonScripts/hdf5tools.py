@@ -578,7 +578,7 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
   for key in lr:
     if key in lo:
       if isinstance(reference_group[key], h5py.Group):
-        return_value = compare_hdf5_group_keys(reference_group[key], other_group[key], verbose)
+        return_value = return_value and compare_hdf5_group_keys(reference_group[key], other_group[key], verbose)
     else:
       return_value = False
       print("Key '" + key + "' only found in reference.")
