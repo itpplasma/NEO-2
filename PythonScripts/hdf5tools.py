@@ -568,8 +568,12 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
   return_value = True
 
   if len(lr) != len(lo):
-    return_value = False
-    print('Lengths differ')
+    # No longer considered to mean the file differ, new file might
+    # include new data fields, not present in reference. The other way
+    # round is already covered in the for-loop belop.
+    # Thus just print a warning.
+    # ~ return_value = False
+    print('Warning: number of group keys differ in group ' + reference_group.name)
 
   for key in lr:
     if key in lo:
