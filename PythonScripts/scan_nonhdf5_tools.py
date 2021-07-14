@@ -588,7 +588,7 @@ def change_namelist_value_for_file_object(fortran_namelist_file_object, name_val
   """
   fortran_namelist_file_object[name_value_tuple[0]][name_value_tuple[1]] = name_value_tuple[2]
 
-def get_list_unsucessful_runs(folder: str, subfolder_pattern: str, file_to_check):
+def get_list_unsucessful_runs(folder: str, subfolder_pattern: str, file_to_check: str):
   """
   \brief Return a list of unsucessful runs.
 
