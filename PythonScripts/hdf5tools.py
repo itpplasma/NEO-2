@@ -741,16 +741,22 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
   import h5py
 
   h5r = get_hdf5file(reference_filename)
-  h5o = get_hdf5file(other_filename)
+  try:
+    h5o = get_hdf5file(other_filename)
 
-  lr = list(h5r.keys())
-  lo = list(h5o.keys())
+  except OSError as e:
+    print('ERROR: hdf5-Data file "' + other_filename + '" does not exist in test-folder!')
+    return [False, False]
 
-  keys_equal = compare_hdf5_group_keys(h5r, h5o, verbose)
+  else:
+    lr = list(h5r.keys())
+    lo = list(h5o.keys())
 
-  files_are_equal_to_delta = compare_hdf5_group_data(h5r, h5o, delta_relative, whitelist, blacklist, verbose)
+    keys_equal = compare_hdf5_group_keys(h5r, h5o, verbose)
 
-  return [files_are_equal_to_delta, keys_equal]
+    files_are_equal_to_delta = compare_hdf5_group_data(h5r, h5o, delta_relative, whitelist, blacklist, verbose)
+
+    return [files_are_equal_to_delta, keys_equal]
 
 def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, Ztrace: float, mtrace: float):
   """Add to profile input file a species by scaling existing ion species.
