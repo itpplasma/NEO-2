@@ -8,7 +8,6 @@ PROGRAM neo2
   use rusage_type, only : fortran_rusage, write_fortran_rusage
 
   USE size_mod
-  !USE partpa_mod, ONLY : hxeta
   USE flint_mod, ONLY : plot_gauss,plot_prop,phi_split_mode,        &
        phi_place_mode,phi_split_min,hphi_mult,max_solver_try,       &
        bsfunc_local_err_max_mult,bsfunc_max_mult_reach,             &
@@ -117,7 +116,6 @@ PROGRAM neo2
   REAL(kind=dp) :: xetama,xetami
 
   REAL(kind=dp) :: eta_s_lim
-  ! REAL(kind=dp) :: z_eff
 
   INTEGER :: proptag_first,proptag_last,proptag_start,proptag_end
   INTEGER :: proptag_begin,proptag_final
@@ -433,10 +431,7 @@ PROGRAM neo2
   IF(ALLOCATED(z_spec)) DEALLOCATE(z_spec)
   ALLOCATE(z_spec(0:num_spec-1))
   z_spec(0:num_spec-1)=z_vec(1:num_spec)
-  !
-  !PRINT *,conl_over_mfp_spec
-  !PRINT *,z_spec
-  !STOP
+
   !! End Modification by Andreas F. Martitsch (23.08.2015) 
 
   IF (mag_magfield .EQ. 0) THEN ! homogeneous case
@@ -472,14 +467,6 @@ PROGRAM neo2
      CALL write_version_info()
   END IF
 
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! test sparse solver
-!!$  sparse_talk = .TRUE.
-!!$  sparse_solve_method = 1
-!!$  CALL sparse_example(2)
-!!$  STOP
-!!$  ! ---------------------------------------------------------------------------  
-
   !**********************************************************
   ! Check reconstruction switch
   !**********************************************************
@@ -514,9 +501,6 @@ PROGRAM neo2
      ! ---------------------------------------------------------------------------
      ! matrix elements
      ! ---------------------------------------------------------------------------
-     !IF (isw_integral .EQ. 0 .AND. isw_energy .EQ. 0) THEN
-     !   isw_lorentz = 1
-     !END IF
      IF (isw_momentum .EQ. 0) THEN ! Laguerre
         CALL collop_construct
         CALL collop_load
@@ -525,8 +509,6 @@ PROGRAM neo2
         nvel = vel_num
         IF (vel_distri_swi .EQ. 0) THEN
            CALL linspace(0.0_dp,vel_max,vel_num+1,vel_array)
-           !print *, 'vel_array ',lbound(vel_array,1),ubound(vel_array,1)
-           !print *, vel_array
         ELSE
            PRINT *, 'vel_distri_swi = ',vel_distri_swi,' not implemented!'
            STOP
@@ -550,21 +532,8 @@ PROGRAM neo2
 
      END IF
 
-     ! ---------------------------------------------------------------------------
-!!$  ! THIS PART WAS MOVED BEFORE COLLOP
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! some settings
-!!$  ! nmat=npart*npart
-!!$  ndim=ndim0
-!!$  ! allocation of some arrays (should be moved)
-!!$  ! this part was not touched
-!!$  lalloc=.true.
-!!$  CALL kin_allocate(lalloc)
-!!$  ! ---------------------------------------------------------------------------
-!!$
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! prepare the whole configuration
-!!$  CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
+     ! -----------------------------------------------------------------
+     ! prepare the whole configuration
      CALL flint_prepare_2(bin_split_mode,eta_s_lim)
 
      !*********************************************************
@@ -620,8 +589,7 @@ PROGRAM neo2
            proptag_end = proptag_final
         END IF
      END IF
-     !
-     !IF (proptag_start .LE. proptag_end) THEN
+
      ! ------------------------------------------------------------------------
      ! real computation
      CALL flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
@@ -631,9 +599,7 @@ PROGRAM neo2
           bin_split_mode,                                                     &
           proptag_start,proptag_end)
      ! ------------------------------------------------------------------------
-     !ELSE
-     !   PRINT *, 'NOTHING TO COMPUTE'
-     !END IF
+
      !**********************************************************
      ! Save runtime to HDF5 neo2_config file
      !**********************************************************
@@ -660,29 +626,6 @@ PROGRAM neo2
               tag_last  = 3
            END IF
 
-!!$           DO k = tag_first, tag_last
-!!$              DO l = tag_first, tag_last
-!!$                 WRITE (h5_filename, '(I0,A,I0)') k, "_", l
-!!$
-!!$                 OPEN(unit=1234, iostat=ios, file="evolve_" // TRIM(h5_filename) // ".h5", status='old')
-!!$                 CLOSE(unit=1234)
-!!$
-!!$                 !**********************************************************
-!!$                 ! Check if file exists
-!!$                 !**********************************************************
-!!$                 IF (ios .EQ. 0) THEN
-!!$
-!!$                    CALL h5_open("evolve_" // TRIM(h5_filename) // ".h5", h5id_propfile)
-!!$                    CALL h5_copy(h5id_propfile, '/', h5id_prop, "/" // TRIM(h5_filename))
-!!$                    CALL h5_close(h5id_propfile)
-!!$
-!!$                    ! Delete file
-!!$                    OPEN(unit=1234, iostat=ios, file="evolve_" // TRIM(h5_filename) // ".h5", status='old')
-!!$                    CLOSE(unit=1234, status='delete')
-!!$                 END IF
-!!$              END DO
-!!$           END DO
-
            CALL h5_close(h5id_prop)
 
            CALL h5_open_rw('neo2_config.h5', h5_config_id)
@@ -699,13 +642,6 @@ PROGRAM neo2
         END IF
 
      END IF
-     ! ---------------------------------------------------------------------------
-     ! final deallocation of device and all its children
-     !PRINT *, 'Before destruct_magnetics'
-     !CALL destruct_magnetics(device)
-     ! ---------------------------------------------------------------------------
-     ! final deallocation of device
-     !PRINT *, 'Beforecollop_unload'
      
      IF (isw_momentum .EQ. 0) THEN
         CALL collop_unload
@@ -959,15 +895,6 @@ CONTAINS
        !**********************************************************
        OPEN(unit=1234, iostat=ios, file="propagator_0_0.h5", status='old')
        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-       !OPEN(unit=1234, iostat=ios, file="efinal.h5", status='old')
-       !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-       !OPEN(unit=1234, iostat=ios, file="fulltransp.h5", status='old')
-       !IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
-
-       !open(unit=1234, iostat=ios, file="neo2_config.h5", status='old')
-       !if (ios .eq. 0) close(unit=1234, status='delete')
 
        OPEN(unit=1234, iostat=ios, file="taginfo.h5", status='old')
        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')    
