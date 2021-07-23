@@ -24,6 +24,14 @@ collisionoperarot, otherwise continue.
 
 \paragraph{}
 Switch \codevariable{prop\_reconstruct}.
+If it is zero or one, then field line integration. For two, files are
+collected(?), for three cleanup(?).
+\begin{itemize}
+  \item Setting up propagators (all processors)
+  \item Fixing boundary problem (all processsors)
+  \item Fixing magnetics (all processors)
+  \item Solve propagators (parallelized)
+\end{itemize}
 
 \paragraph{}
 Deinitialize hdf5.
