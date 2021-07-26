@@ -22,6 +22,25 @@ differences of $\tilde \times 4$ are to be expected between core and
 edge.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Number of processors}
+Both variants can be run utilizing multiple processors via mpi. Basics
+of this, as needed for running the code is described here.
+
+\subsubsection{PAR version}
+The par version of \neotwo uses MyMPILIB to implement a scheduler-worker
+model for parallelization. This means one thread will supervise the
+others, and collect the results, while the other get theyre workload to
+process.
+Parallelization is done over fieldperiods. The number of fieldperiods
+does not need to be divisible by the number of processors/threads, or
+the number of workers (which would be one less).
+
+\subsubsection{Multispecies}
+The multispecies version parallelizes over the different species.
+At the moment it is such, that the number of processors must be equal to
+the number of species, otherwise results will probably be incorect.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Simple}
 Both variants of the code have hard coded names for parameter-input
