@@ -915,6 +915,53 @@ class BoozerFile:
 
     return rho_poloidal
 
+  def get_dR_dl(self, ind:int = -1, np:int = 100):
+    """
+    Get derivative of major radius R as a function of arc length l.
+
+    For a given radial surface index calculate the derivative of the
+    major radius R as a function of arc length l in a poloidal plane.
+
+    Note: 'usual order' of arc length is outboard side, top, inboard
+    side, bottom. Not sure how this is affected by sign conventions.
+
+    input:
+    ------
+    ind: integer, index of the surface to use. Defaults to -1, i.e. the
+        outermost surface.
+    np: integer, number of poloidal points to use for calculatiing the
+        derivative. Defaults to 100.
+    """
+
+    from math import cos, sin, pi, sqrt
+
+    phi = 0.0
+    R = [0.0 for i in range(np)]
+    Z = [0.0 for i in range(np)]
+    l = [0.0 for i in range(np)]
+    dR_dl = [0.0 for i in range(np)]
+
+    # Get R and z.
+    htheta = 2.0*pi/float(np)
+    theta = [htheta*x for x in range(0,np)]
+    for i in range(np):
+      R[i] = sum(rr * cos(m*theta[i] - n*phi) + rc * sin(m*theta[i] - n*phi) for rr, rc, m, n in zip(self.rmnc[ind], self.rmns[ind], self.m[ind], self.n[ind]))
+      Z[i] = sum(zr * cos(m*theta[i] - n*phi) + zc * sin(m*theta[i] - n*phi) for zr, zc, m, n in zip(self.zmnc[ind], self.zmns[ind], self.m[ind], self.n[ind]))
+
+    # Calculate l
+    l[0] = 0
+    for i in range(1, np):
+      l[i] = l[i-1] + sqrt(R[i]**2 + Z[i]**2)
+
+    # Calculate dR/dl with forward difference
+    for i in range(1, np-1):
+      dR_dl[i] = (R[i+1] - R[i]) / (l[i+1] - l[i])
+    # Last point calculated explicitly, note order in denumrator, this
+    # is necessary to get the correct sign due to the jump in l.
+    dR_dl[np-1] = (R[0] - R[np-1]) / (l[np-1] - l[0])
+
+    return [dR_dl, l]
+
 if __name__ == "__main__":
   import sys
 
