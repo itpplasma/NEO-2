@@ -21,7 +21,7 @@
 %References
 \usepackage[
     bibstyle=phys,
-    biblabel=brackets, 
+    biblabel=brackets,
     citestyle=numeric-comp,
     isbn=false,
     doi=false,
@@ -29,7 +29,7 @@
     url=false,
     defernumbers=true,
     bibencoding=utf8,
-    backend=biber, 
+    backend=biber,
     %maxbibnames=3,maxcitenames=3,
     %minnames=3,
     maxnames=30,
@@ -39,7 +39,7 @@
 \addbibresource[]{eccd_ref.bib}
 \DeclareBibliographyCategory{fullcited}
 \newcommand{\mybibexclude}[1]{\addtocategory{fullcited}{#1}}
-\DeclareFieldFormat{titlecase}{\MakeCapital{#1}} 
+\DeclareFieldFormat{titlecase}{\MakeCapital{#1}}
 \DeclareFieldFormat{sentencecase}{\MakeSentenceCase{#1}}
 
 \usepackage[font=small,labelfont=bf]{caption}
@@ -83,11 +83,17 @@
 \maketitle
 
 \section{Introduction}
-This is document is a collection of notes to continue the work on the ECCD and bootstrap tasks. It is not a document describing physical aspects but technical details. 
+This is document is a collection of notes to continue the work on the
+ECCD and bootstrap tasks. It is not a document describing physical
+aspects but technical details.
 
 \section{Technical background on NEO-2}
 \subsection{Overview}
-In the last years the development of NEO-2 has split into two branches, namely the more general branch for stellarators (and axisymmetric tokamaks) and the quasilinear version for tokamaks with 3D magnetic perturbations. The main differences between these two versions at time of writing this document is given in the following Table~\ref{tab:neo2branches}. 
+In the last years the development of NEO-2 has split into two branches,
+namely the more general branch for stellarators (and axisymmetric
+tokamaks) and the quasilinear version for tokamaks with 3D magnetic
+perturbations. The main differences between these two versions at time
+of writing this document is given in the following Table~\ref{tab:neo2branches}.
 
 \begin{table}[h]
 \centering
@@ -105,7 +111,9 @@ Distribution function & Yes & No (planned)\
 \end{table}
 
 \subsection{The Git repository}
-Since 2013 the general version of NEO-2 is under Git version control. Later, also the quasilinear version was added to this repository including its code history. The official repository is located here:
+Since 2013 the general version of NEO-2 is under Git version control.
+Later, also the quasilinear version was added to this repository
+including its code history. The official repository is located here:
 \begin{verbatim}
 /proj/plasma/Git/NEO-2-MODULAR.git/
 \end{verbatim}
@@ -114,12 +122,24 @@ In order to start a new local working copy, it is only required to do
 \begin{verbatim}
 git clone /proj/plasma/Git/NEO-2-MODULAR.git/ .
 \end{verbatim}
-in an empty directory (do not oversee the point at the end of the command line which defines the current directory).
+in an empty directory (do not oversee the point at the end of the
+command line which defines the current directory).
 
 \subsection{CMake}
-The build system of NEO-2 is CMake (since 2012). The main advantage is that this build system takes care of correct compilation order of the source files (dependency resolving) and that routines can be defined to automatically detected the installed libraries. The configuration file is called \verb|CMakeLists.txt|. Using CMake the source- and build-directories can be separated from each other. In order to build the source code it is necessary to create a build-directory, if not already provided from the Git clone. For reasons of readability it was decided to put the source files to be compiled in a separate file, called \vv{CMakeSources.in}. This file is then included in \vv{CMakeLists.txt}.
+The build system of NEO-2 is CMake (since 2012). The main advantage is
+that this build system takes care of correct compilation order of the
+source files (dependency resolving) and that routines can be defined to
+automatically detected the installed libraries. The configuration file
+is called \verb|CMakeLists.txt|. Using CMake the source- and
+build-directories can be separated from each other. In order to build
+the source code it is necessary to create a build-directory, if not
+already provided from the Git clone. For reasons of readability it was
+decided to put the source files to be compiled in a separate file,
+called \vv{CMakeSources.in}. This file is then included in
+\vv{CMakeLists.txt}.
 
-For testing purposes a build-directory is now created for the general version of NEO-2:
+For testing purposes a build-directory is now created for the general
+version of NEO-2:
 \begin{verbatim}
 cd NEO-2-PAR
 mkdir Build-Test
@@ -128,10 +148,20 @@ cmake ..
 make
 \end{verbatim}
 
-Running the command \verb|cmake ..| is only necessary the first time a new build directory is used. This command needs to know where \verb|CMakeLists.txt| is located (therefore the \verb|..|). A lot happens when this command is called, the most important steps are the Fortran compiler and library detection. A standard Makefile is generated which can be tested by running \vv{make}. 
+Running the command \verb|cmake ..| is only necessary the first time a
+new build directory is used. This command needs to know where
+\verb|CMakeLists.txt| is located (therefore the \verb|..|). A lot
+happens when this command is called, the most important steps are the
+Fortran compiler and library detection. A standard Makefile is generated
+which can be tested by running \vv{make}.
 
 \subsection{Libraries}
-NEO-2 depends on a number of external libraries. While during the last years some bleeding edge features of some of the libraries where used and thus it was necessary to build these libraries locally, with Debian 9 it was decided to change over to library versions distributed with Debian. This makes maintenance considerably easier. The libraries are:
+NEO-2 depends on a number of external libraries. While during the last
+years some bleeding edge features of some of the libraries where used
+and thus it was necessary to build these libraries locally, with
+Debian 9 it was decided to change over to library versions distributed
+with Debian. This makes maintenance considerably easier. The libraries
+are:
 \begin{itemize}
 \item SuiteSparse
 \item Metis
@@ -142,17 +172,40 @@ NEO-2 depends on a number of external libraries. While during the last years som
 \item OpenMPI (MyMPILib)
 \end{itemize}
 
-SuiteSparse is used for solving the sparse linear system of differential equations in the ripple solver. Metis is used by SuiteSparse for speedup of some specific routines and is not obligatory. SuperLU can be used instead of SuiteSparse by a switch in the input file. 
+SuiteSparse is used for solving the sparse linear system of differential
+equations in the ripple solver. Metis is used by SuiteSparse for speedup
+of some specific routines and is not obligatory. SuperLU can be used
+instead of SuiteSparse by a switch in the input file.
 
-The GSL (Gnu Scientific Library) and its Fortran Interface FGSL are used for several purposes. The first one provides very efficient numerical integration methods used for the computation of the matrix elements of the collision operator in \verb|collop_compute.f90|. Additionally, GSL provides B-spline routines, also used for the collision operator module (basis functions). While writing this document FGSL is not distributed with Debian, therefore this is build locally in \verb|/proj/plasma/Libs/|. 
+The GSL (Gnu Scientific Library) and its Fortran Interface FGSL are used
+for several purposes. The first one provides very efficient numerical
+integration methods used for the computation of the matrix elements of
+the collision operator in \verb|collop_compute.f90|. Additionally, GSL
+provides B-spline routines, also used for the collision operator module
+(basis functions). While writing this document FGSL is not distributed
+with Debian, therefore this is build locally in \verb|/proj/plasma/Libs/|.
 
-The HDF5 library is required for modern I/O of NEO-2. One advantage over text files is that each variable (dataset) has a unique name and can store additional attributes such as units or comments. The usage of HDF5 was unavoidable for storing the large datasets that occur when computing the generalized Spitzer function for stellarators. In order to simplify the calls a collection of wrapper routines has been created. This project has grown over the time so that it was decided to use these wrapper functions also in other projects, as in the interface, so that it became an own library called \vv{hdf5tools}.
+The HDF5 library is required for modern I/O of NEO-2. One advantage over
+text files is that each variable (dataset) has a unique name and can
+store additional attributes such as units or comments. The usage of HDF5
+was unavoidable for storing the large datasets that occur when computing
+the generalized Spitzer function for stellarators. In order to simplify
+the calls a collection of wrapper routines has been created. This
+project has grown over the time so that it was decided to use these
+wrapper functions also in other projects, as in the interface, so that
+it became an own library called \vv{hdf5tools}.
 
-For parallelization the Message Passing Interface (MPI) is used. The usage of MPI in NEO-2 is performed via an own library, called MyMPILib, and is not restricted to a particular MPI implementation. At our institute it is linked against OpenMPI, where on clusters Intel MPI is mostly used. MyMPILib was developed so that in the code of NEO-2 no native MPI commands have to be used. 
+For parallelization the Message Passing Interface (MPI) is used. The
+usage of MPI in NEO-2 is performed via an own library, called MyMPILib,
+and is not restricted to a particular MPI implementation. At our
+institute it is linked against OpenMPI, where on clusters Intel MPI is
+mostly used. MyMPILib was developed so that in the code of NEO-2 no
+native MPI commands have to be used.
 
 \section{Running an ECCD precomputation}
 \subsection{Preparations}
-To run NEO-2 with a Boozer file as input for the magnetic equilibrium, the following input files are required:
+To run NEO-2 with a Boozer file as input for the magnetic equilibrium,
+the following input files are required:
 \begin{itemize}
  \item \vv{neo.in}
  \item \vv{neo2.in}
@@ -160,38 +213,51 @@ To run NEO-2 with a Boozer file as input for the magnetic equilibrium, the follo
 \end{itemize}
 
 \subsubsection{neo.in}
-The first line of this file indicates the name of the Boozer file. Other parameters are e.g. related to interpolation of the magnetic field module and to the code NEO. 
+The first line of this file indicates the name of the Boozer file. Other
+parameters are e.g. related to interpolation of the magnetic field
+module and to the code NEO.
 
 \subsubsection{neo2.in}
-This file is a Fortran namelist file. It contains physical input quantities and a lot of numerical and technical parameters. Here, the most important (and new) parameters are described. 
+This file is a Fortran namelist file. It contains physical input
+quantities and a lot of numerical and technical parameters. Here, the
+most important (and new) parameters are described.
 
 \begin{itemize}
  \item \verb|boozer_s| \newline
- Defines the flux surface as normalized toroidal flux. 
+ Defines the flux surface as normalized toroidal flux.
  \item \verb|conl_over_mfp|\newline
- This is the collisionality parameter. When provided positive it is $L_c/l_c$ (connection length over mean free path) and when provided as negative value it is $\kappa = 2/l_c$. Please be aware that in our papers we define $\kappa = 1/l_c$, while internally in NEO-2 it has a slightly different normalization. 
+ This is the collisionality parameter. When provided positive it is
+ $L_c/l_c$ (connection length over mean free path) and when provided as
+ negative value it is $\kappa = 2/l_c$. Please be aware that in our
+ papers we define $\kappa = 1/l_c$, while internally in NEO-2 it has a
+ slightly different normalization.
  \item \verb|mag_nperiod_min|\newline
- Only used for stellarators. Defines the minimum number of field periods until the field line is closed artificially. 
+ Only used for stellarators. Defines the minimum number of field periods
+ until the field line is closed artificially.
 \end{itemize}
 
 New parameters related to the collision operator:
 \begin{itemize}
  \item \verb|lag|\newline
  Number of basis functions (former: number of Laguerre polynomials)
- \item \verb|leg|\newline 
+ \item \verb|leg|\newline
  Number of Legendre polynomials
- \item \verb|T_e|\newline 
+ \item \verb|T_e|\newline
  Electron temperature for relativistic collision operator in eV.
- \item \verb|isw_relativistic| 
+ \item \verb|isw_relativistic|
  \begin{itemize}
   \item 0: Non-relativistic limit (Default)
-  \item 1: Braams/Karney model. If $leg>1$, then higher Legendre polynomials are computed in the non-relativistic limit. 
+  \item 1: Braams/Karney model. If $leg>1$, then higher Legendre
+  polynomials are computed in the non-relativistic limit.
   \item 2: Direct evaluation of Beliaev/Budker form.
  \end{itemize}
  \item \verb|v_max_resolution|\newline
- Only affects level placement and defines the maximum normalized velocity that should by resolved by the grid. Experience showed that values of $2$ - $3$ are sufficient for reconstruction of the generalized Spitzer function up to $5$ times the thermal velocity. 
- \item \verb|collop_base_prj|\newline 
- Projection base for basis function expansion. 
+ Only affects level placement and defines the maximum normalized
+ velocity that should by resolved by the grid. Experience showed that
+ values of $2$ - $3$ are sufficient for reconstruction of the
+ generalized Spitzer function up to $5$ times the thermal velocity.
+ \item \verb|collop_base_prj|\newline
+ Projection base for basis function expansion.
  \begin{itemize}
   \item 0: Generalized Laguerre polynomials of order $3/2$ (Default).
   \item 1: Standard polynomials $\phi_m(x) = x^m$.
@@ -200,59 +266,100 @@ New parameters related to the collision operator:
   \item 11: General B-Splines (best choice).
  \end{itemize}
 
- \item \verb|collop_base_exp|\newline 
- Expansion base for basis function expansion. See \verb|collop_base_prj| for parameters. At the moment it was only tested for \verb|collop_base_prj = collop_base_exp|. 
+ \item \verb|collop_base_exp|\newline
+ Expansion base for basis function expansion. See \verb|collop_base_prj|
+ for parameters. At the moment it was only tested for
+ \verb|collop_base_prj = collop_base_exp|.
 
- \item \verb|collop_bspline_order|\newline 
- According to the B-Spline definition this is the order parameter $k$. As an example $k=3$ creates quadratic B-Splines and $k=4$ cubic B-Splines (best choice). 
- 
- \item \verb|collop_bspline_dist|\newline 
- This parameter was introduces for testing a non-uniform knot distribution for B-Splines. Default value is $1$ which defines a uniform knot distribution (best choice). 
- 
+ \item \verb|collop_bspline_order|\newline
+ According to the B-Spline definition this is the order parameter $k$.
+ As an example $k=3$ creates quadratic B-Splines and $k=4$ cubic
+ B-Splines (best choice).
+
+ \item \verb|collop_bspline_dist|\newline
+ This parameter was introduces for testing a non-uniform knot
+ distribution for B-Splines. Default value is $1$ which defines a
+ uniform knot distribution (best choice).
+
  \item \verb|phi_x_max|\newline
- Important parameter for numerical integration and definition of B-Spline knot distribution. The B-Splines are distributed between $x=0$ and this value. A typical choice is $5$. Above this value the B-Splines are extrapolated with a Taylor series.
- 
+ Important parameter for numerical integration and definition of
+ B-Spline knot distribution. The B-Splines are distributed between
+ $x=0$ and this value. A typical choice is $5$. Above this value the
+ B-Splines are extrapolated with a Taylor series.
+
  \item \vv{mag_write_hdf5}\newline
- Creates \vv{magnetic.h5} which contains all information of the magnetic field as it is ``seen'' from NEO-2.
- 
+ Creates \vv{magnetic.h5} which contains all information of the magnetic
+ field as it is ``seen'' from NEO-2.
+
  \item \vv{lsw_save_dentf}, \vv{lsw_save_enetf}, \vv{lsw_save_spitf}\newline
- Defines if the gradient driven distribution function (mainly used for bootstrap studies) or the generalized Spitzer function is stored. These settings of course require NEO-2 reconstruction runs.
- 
+ Defines if the gradient driven distribution function (mainly used for
+ bootstrap studies) or the generalized Spitzer function is stored. These
+ settings of course require NEO-2 reconstruction runs.
+
  \item \vv{prop_reconstruct}\newline
- 0 means a standard NEO-2 run. If \vv{prop_write = 2}, then all information for subsequent reconstruction runs are stored. For full reconstruction NEO-2 has to be run all reconstruction steps from 0 to 3, where 3 is a service run which cleans up the directory and merges all HDF5 files. Note that for the parallelized stellarator version only reconstruction steps 0 and 2 can be parallelized with MPI. 
-  
+ 0 means a standard NEO-2 run. If \vv{prop_write = 2}, then all
+ information for subsequent reconstruction runs are stored. For full
+ reconstruction NEO-2 has to be run all reconstruction steps from 0 to
+ 3, where 3 is a service run which cleans up the directory and merges
+ all HDF5 files. Note that for the parallelized stellarator version only
+ reconstruction steps 0 and 2 can be parallelized with MPI.
+
 \end{itemize}
 
 \subsection{Preparation of equilibrium}
-The main directory for everything related to ECCD is \vv{/proj/plasma/Neo2/Interface/}. The Boozer files for ECCD runs are located here: \vv{/proj/plasma/Neo2/Interface/Boozer/}. 
+The main directory for everything related to ECCD is
+\vv{/proj/plasma/Neo2/Interface/}. The Boozer files for ECCD runs are
+located here: \vv{/proj/plasma/Neo2/Interface/Boozer/}.
 
-Usually the W7-X files are already in the correct format to be read by NEO-2 despite of some additional comment lines at the beginning of the file which can be safely removed. An example of the original file and the slightly modified file (some comments have been removed) is given here: \vv{/proj/plasma/Neo2/Interface/Boozer/w7x-m111-b3-i1/}. 
+Usually the W7-X files are already in the correct format to be read by
+NEO-2 despite of some additional comment lines at the beginning of the
+file which can be safely removed. An example of the original file and
+the slightly modified file (some comments have been removed) is given
+here: \vv{/proj/plasma/Neo2/Interface/Boozer/w7x-m111-b3-i1/}.
 
 \subsection{Preparation of the plasma parameter profiles}
-The profiles for ECCD can be found here: \vv{/proj/plasma/Neo2/Interface/Profiles/}. Profiles are usually provided as text files, e.g., \vv{/proj/plasma/Neo2/Interface/Profiles/w7x-m111-b3-i1/prf.txt}. These plasma parameter profiles are used for computation of the collisionality parameter $\kappa$, which is then used as an input to NEO-2. Please note that the collisionality is a function of the flux surface label. For the converter is it necessary that the file has the appropriate format and the that units are correct. A MATLAB script is given in the file \vv{convert_prf.m}, while it should be noted that the reader section of this script is adapted for one particular input file format. The output file has to have the form of \vv{/proj/plasma/Neo2/Interface/Profiles/w7x-m111-b3-i1/profiles.dat}. 
+The profiles for ECCD can be found here:
+\vv{/proj/plasma/Neo2/Interface/Profiles/}. Profiles are usually
+provided as text files, e.g.,
+\vv{/proj/plasma/Neo2/Interface/Profiles/w7x-m111-b3-i1/prf.txt}. These
+plasma parameter profiles are used for computation of the collisionality
+parameter $\kappa$, which is then used as an input to NEO-2. Please note
+that the collisionality is a function of the flux surface label. For the
+converter is it necessary that the file has the appropriate format and
+the that units are correct. A MATLAB script is given in the file
+\vv{convert_prf.m}, while it should be noted that the reader section of
+this script is adapted for one particular input file format. The output
+file has to have the form of
+\vv{/proj/plasma/Neo2/Interface/Profiles/w7x-m111-b3-i1/profiles.dat}.
 \begin{itemize}
  \item 1. Column: Normalized toroidal flux (\vv{boozer_s}).
  \item 2. Column: Electron density in cm$^{-3}$.
- \item 3. Column: Electron temperature in eV. 
- \item 4. Column: Effective charge $Z_\mathrm{eff}$. 
+ \item 3. Column: Electron temperature in eV.
+ \item 4. Column: Effective charge $Z_\mathrm{eff}$.
 \end{itemize}
 
 \subsection{Preparation of the run directories}
-Next step is the preparation of the flux surface grid for the NEO-2 runs. It is started from an uniform grid where each grid point is slightly shifted if a low-order rational flux surface is detected. Afterwards the given profile file is read for computation of the collisionality parameter (by spline interpolation along the radial coordinate). 
+Next step is the preparation of the flux surface grid for the NEO-2
+runs. It is started from an uniform grid where each grid point is
+slightly shifted if a low-order rational flux surface is detected.
+Afterwards the given profile file is read for computation of the
+collisionality parameter (by spline interpolation along the radial
+coordinate).
 
-It is now necessary to copy the following required files to to an new empty directory, e.g., 
+It is now necessary to copy the following required files to to an new
+empty directory, e.g.,
 \begin{verbatim}
 cp /proj/plasma/Neo2/Interface/Boozer/w7x-m24li/w7x-m24li.bc .
 cp /proj/plasma/Neo2/Interface/Profiles/w7x-m24li/nT_profiles_from_TCode-mod.dat .
 cp /proj/plasma/Neo2/Interface/Magfie/Boozer/w7x-m24li/s025/neo.in .
 cp /proj/plasma/Neo2/Interface/Create_Surfaces/create_surfaces.in .
-ln -s /proj/plasma/Neo2/Interface/Create_Surfaces/Build/create_surfaces.x 
+ln -s /proj/plasma/Neo2/Interface/Create_Surfaces/Build/create_surfaces.x
 \end{verbatim}
 
 The namelist file \vv{create_surfaces.in} is described as follows:
 \begin{itemize}
  \item \vv{s_beg} \newline
- First flux surface (normalized toroidal flux) 
+ First flux surface (normalized toroidal flux)
  \item \vv{s_end} \newline
  Last flux surface (normalized toroidal flux)
  \item \vv{s_steps} \newline
@@ -260,26 +367,41 @@ The namelist file \vv{create_surfaces.in} is described as follows:
  \item \vv{mag_nperiod_min} \newline
  Minimum number of toroidal field periods
  \item \vv{mag_nperiod_max} \newline
- Maximum number of toroidal field periods (required for avoiding low-order rational flux surfaces)
+ Maximum number of toroidal field periods (required for avoiding
+ low-order rational flux surfaces)
  \item \vv{output_file} \newline
  Output file with input parameters for NEO-2
  \item \vv{isw_create_surfaces} \newline
- Defines if flux surfaces should be found for NEO-2 runs or if only the plasma parameter profiles should be splined (Default: true)
+ Defines if flux surfaces should be found for NEO-2 runs or if only the
+ plasma parameter profiles should be splined (Default: true)
  \item \vv{profiles_file} \newline
- Input file for plasma parameter profiles (as it was generated in the last step)
+ Input file for plasma parameter profiles (as it was generated in the
+ last step)
 \end{itemize}
 
-Running \vv{./create_surfaces.x} creates a grid in \vv{boozer_s} that fulfills the properties as defined in the config file. Afterwards a spline interpolation is used to compute the collisionality parameter per flux surface. The file \vv{surfaces.dat} (as defined by \vv{output_file} in the config file) is structured as follows:
+Running \vv{./create_surfaces.x} creates a grid in \vv{boozer_s} that
+fulfills the properties as defined in the config file. Afterwards a
+spline interpolation is used to compute the collisionality parameter per
+flux surface. The file \vv{surfaces.dat} (as defined by \vv{output_file}
+in the config file) is structured as follows:
 \begin{itemize}
  \item 1. Column: \vv{boozer_s}
- \item 2. Column: \vv{conl_over_mfp} (negative because this is $\kappa$ as used in NEO-2)
+ \item 2. Column: \vv{conl_over_mfp} (negative because this is $\kappa$
+ as used in NEO-2)
  \item 3. Column: \vv{Z_eff}
  \item 4. Column: \vv{T_e} (Electron temperature in eV)
 \end{itemize}
 
-Please note that the code for creating the surfaces allows for some surfaces to have more periods than defined in \vv{mag_nperiod_max} in order to not shift this surface to far away from the original equidistant grid. 
+Please note that the code for creating the surfaces allows for some
+surfaces to have more periods than defined in \vv{mag_nperiod_max} in
+order to not shift this surface to far away from the original
+equidistant grid.
 
-In the next step a template directory for the run directories has to be created. Here, an example of \vv{neo2.in} is used and the executable of NEO-2 is copied from the project directory. Please note that in the \vv{neo2.in} file the correct placeholders have to be defined before running the next script. 
+In the next step a template directory for the run directories has to be
+created. Here, an example of \vv{neo2.in} is used and the executable of
+NEO-2 is copied from the project directory. Please note that in the
+\vv{neo2.in} file the correct placeholders have to be defined before
+running the next script.
 \begin{verbatim}
 mkdir TEMPLATE_DIR
 cd TEMPLATE_DIR
@@ -290,31 +412,46 @@ cp /proj/plasma/Neo2/Interface/Examples/neo2.in .
 cp /proj/plasma/Neo2/Interface/Examples/condor-all.submit .
 \end{verbatim}
 
-The last line is only used if HTCondor should be used as batch system. Next, the code \vv{/proj/plasma/Neo2/Interface/Create_Surfaces/create_surf.py} has to be started:
+The last line is only used if HTCondor should be used as batch system.
+Next, the code
+\vv{/proj/plasma/Neo2/Interface/Create_Surfaces/create_surf.py} has to
+be started:
 \begin{verbatim}
 ln -s /proj/plasma/Neo2/Interface/Create_Surfaces/create_surf.py .
 ./create_surf.py
 \end{verbatim}
 
-This has created \vv{s_steps} directories, each with an modified \vv{neo2.in} file. It is recommended to change into one of these directories and to check if \vv{boozer_s}, \vv{conl_over_mfp}, and \vv{z_eff} have been set correctly. The Python script has an output representing the directory names that have been created. These names should now be copied into a file named \vv{jobs_list.txt}. 
+This has created \vv{s_steps} directories, each with an modified
+\vv{neo2.in} file. It is recommended to change into one of these
+directories and to check if \vv{boozer_s}, \vv{conl_over_mfp}, and
+\vv{z_eff} have been set correctly. The Python script has an output
+representing the directory names that have been created. These names
+should now be copied into a file named \vv{jobs_list.txt}.
 
 \subsection{Running the jobs}
 In order to start the jobs the script
 \begin{verbatim}
 /proj/plasma/Neo2/Interface/Examples/run_condor.sh condor-all.submit
 \end{verbatim}
-can be used, which submits a condor job for each directory given in \vv{jobs_list.txt}. Checking the output of \vv{condor_q} shows the number of submitted Condor jobs.
+can be used, which submits a condor job for each directory given in
+\vv{jobs_list.txt}. Checking the output of \vv{condor_q} shows the
+number of submitted Condor jobs.
 
-As soon as the jobs have finished, the code 
+As soon as the jobs have finished, the code
 \begin{verbatim}
-/proj/plasma/Neo2/Interface/h5merge/Build/h5merge.x 
+/proj/plasma/Neo2/Interface/h5merge/Build/h5merge.x
 \end{verbatim}
-has to be run. This code merges the output file of NEO-2 \vv{final.h5} of each directory defined in \vv{jobs_list.txt} into one output file. This output is file is already the one which is used by the NEO-2/TRAVIS interface.
+has to be run. This code merges the output file of NEO-2 \vv{final.h5}
+of each directory defined in \vv{jobs_list.txt} into one output file.
+This output is file is already the one which is used by the NEO-2/TRAVIS
+interface.
 
 \section{Studies of the generalized Spitzer function}
-For this is it necessary that for at least one flux surface the file \vv{final.h5} had been produced with a NEO-2 run. 
+For this is it necessary that for at least one flux surface the file
+\vv{final.h5} had been produced with a NEO-2 run.
 
-The best option is the create a plot-directory inside of the run directory of NEO-2:
+The best option is the create a plot-directory inside of the run
+directory of NEO-2:
 \begin{verbatim}
 mkdir PLOTS
 cd PLOTS
@@ -324,14 +461,25 @@ cp /proj/plasma/Neo2/Interface/Examples/spitzerinterface.in .
 ./neo2_g.x
 \end{verbatim}
 
-The config files are defined in the technical documentation of the interface\footnote{\vv{/proj/plasma/Neo2/Interface/Documentation/Internal/Interface.pdf}}. The result file (\vv{g_vs_lambda.h5}) can be plotted with MATLAB, e.g., with \vv{plot_g_xfix.m} from the main directory of all MATLAB scripts related to ECCD:
+The config files are defined in the technical documentation of the
+interface\footnote{\vv{/proj/plasma/Neo2/Interface/Documentation/Internal/Interface.pdf}}.
+The result file (\vv{g_vs_lambda.h5}) can be plotted with MATLAB, e.g.,
+with \vv{plot_g_xfix.m} from the main directory of all MATLAB scripts
+related to ECCD:
 \begin{verbatim}
 /proj/plasma/Neo2/Interface/Matlab
 \end{verbatim}
 
-Please note that the information about the magnetic field is stored per NEO-2 run in \vv{magnetics.h5} (only NEO-2-PAR has support for this). This file can also be used to plot the field module along the field line for visualization of the observations points. A useful MATLAB script is \vv{plot_levels_pgf.m} which also exports the correct format for \vv{g_vs_lambda.in}.
+Please note that the information about the magnetic field is stored per
+NEO-2 run in \vv{magnetics.h5} (only NEO-2-PAR has support for this).
+This file can also be used to plot the field module along the field line
+for visualization of the observations points. A useful MATLAB script is
+\vv{plot_levels_pgf.m} which also exports the correct format for
+\vv{g_vs_lambda.in}.
 
-Further plots of the magnetic field, such as a 2D distribution of the magnetic field module on a particular flux surface can be made with the tools located here:
+Further plots of the magnetic field, such as a 2D distribution of the
+magnetic field module on a particular flux surface can be made with the
+tools located here:
 \begin{verbatim}
  /proj/plasma/Neo2/Interface/Magfie
 \end{verbatim}
@@ -346,56 +494,99 @@ In order to start the GUI the following steps are necessary:
  \item \vv{/proj/plasma/TRAVIS/TRAVIS-16-04-08/bin/bin_ECRH/travisGUI64_IOTA}
  \item Say yes to the question if the last project should be loaded.
  \item Preferences -> Advanced -> Expert mode
- \item On the top right corner select the TRAVIS kernel for your demands (SYNCH, NEO-2 non-rel, NEO-2 rel, pure TRAVIS)
+ \item On the top right corner select the TRAVIS kernel for your demands
+ (SYNCH, NEO-2 non-rel, NEO-2 rel, pure TRAVIS)
 \end{itemize}
 
-The configuration with HDF5 input file for the interface is used has to be set in the usual \vv{spitzerinterface.in} file which is located in the RUN/TEMP directory of TRAVIS. This can also be selected in the settings of TRAVIS. If there is an upgrade to the NEO-2 interface or to SYNCH, the TRAVIS kernels have to be recompiled. This has to be done here:
+The configuration with HDF5 input file for the interface is used has to
+be set in the usual \vv{spitzerinterface.in} file which is located in
+the RUN/TEMP directory of TRAVIS. This can also be selected in the
+settings of TRAVIS. If there is an upgrade to the NEO-2 interface or to
+SYNCH, the TRAVIS kernels have to be recompiled. This has to be done
+here:
 \begin{verbatim}
 /proj/plasma/TRAVIS/TRAVIS-16-04-08/TRAVIS-src
 \end{verbatim}
-with the command \vv{make gnu}. However, before several config files have to be set, especially, \vv{makeunix/mkfiles/defs.mk}.
+with the command \vv{make gnu}. However, before several config files
+have to be set, especially, \vv{makeunix/mkfiles/defs.mk}.
 
 \section{Bootstrap}
-For plotting the bootstrap coefficient it is not necessary to run NEO-2 in the reconstruction mode. Plotting can be done with the script \vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/plot_evolve_h5.m}. This script has to be started in the directory where the complete NEO-2 run is located. 
+For plotting the bootstrap coefficient it is not necessary to run NEO-2
+in the reconstruction mode. Plotting can be done with the script
+\vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/plot_evolve_h5.m}.
+This script has to be started in the directory where the complete NEO-2
+run is located.
 
-For investigating the gradient driven distribution it is necessary to complete a full reconstruction run of NEO-2 (steps 0 to 3). Then one can use the MATLAB scripts from 
+For investigating the gradient driven distribution it is necessary to
+complete a full reconstruction run of NEO-2 (steps 0 to 3). Then one can
+use the MATLAB scripts from
 \begin{verbatim}
 /proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP
 \end{verbatim}
-in order to evaluate the antisymmetric part of the gradient driven distribution function at various observation points. The script \vv{count_maxima_bootstrap.m} is a good place to start with. 
+in order to evaluate the antisymmetric part of the gradient driven
+distribution function at various observation points. The script
+\vv{count_maxima_bootstrap.m} is a good place to start with.
 
-This script reads the file \vv{magnetics.h5} from the run directory of NEO-2 and shows a part of the field line. The variable \vv{point_phimfl} defines the angle along the field line defining the observation point indicated as dot in the figure. The MATLAB script has an output on the console of the following format:
+This script reads the file \vv{magnetics.h5} from the run directory of
+NEO-2 and shows a part of the field line. The variable \vv{point_phimfl}
+defines the angle along the field line defining the observation point
+indicated as dot in the figure. The MATLAB script has an output on the
+console of the following format:
 \begin{verbatim}
                   s              theta                phi     tag
      2.50000000e-01     4.43238764e+00     5.98323740e+00      p1
 \end{verbatim}
 
-This is the input for the NEO-2 interface computing the distribution function at the defined observation point(s). 
+This is the input for the NEO-2 interface computing the distribution
+function at the defined observation point(s).
 
-A good start for beginning is with LHD runs for the bootstrap tasks, e.g.: 
+A good start for beginning is with LHD runs for the bootstrap tasks, e.g.:
 \begin{verbatim}
 /temp/gernot_k/Neo2/RunsByDate/2017_07_Bootstrap/lhd/
 Short/conl_over_mfp=5m5-boozer_s=0.25d0-mag_nperiod_min=1-bsfunc_local_err=1m1
 \end{verbatim}
-In the subdirectory \vv{PLOTS} a symbolic link to the distribution function plotter for bootstrap is already prepared (\vv{/proj/plasma/Neo2/Interface/Spitzer_Interface/Build/dentf_lorentz.x}). Please note that this executable is slightly different to \vv{neo2_g.x} as used for Spitzer function, because a significant higher number of $x$-values (velocity module) are used for plotting. In \vv{g_vs_lambda.in} the two lines from the output of the MATLAB script should be inserted. Next, \vv{./dentf_lorentz.x} can be run in the \vv{../PLOTS} directory. This produces \vv{g_vs_lambda.h5} (as before for ECCD tasks). Finally, the MATLAB script from before can be run a second time and the distribution function including the relevant maxima is plotted. 
+In the subdirectory \vv{PLOTS} a symbolic link to the distribution
+function plotter for bootstrap is already prepared
+(\vv{/proj/plasma/Neo2/Interface/Spitzer_Interface/Build/dentf_lorentz.x}).
+Please note that this executable is slightly different to \vv{neo2_g.x}
+as used for Spitzer function, because a significant higher number of
+$x$-values (velocity module) are used for plotting. In
+\vv{g_vs_lambda.in} the two lines from the output of the MATLAB script
+should be inserted. Next, \vv{./dentf_lorentz.x} can be run in the
+\vv{../PLOTS} directory. This produces \vv{g_vs_lambda.h5} (as before
+for ECCD tasks). Finally, the MATLAB script from before can be run a
+second time and the distribution function including the relevant maxima
+is plotted.
 
-Please note, that if the observation point is changed, \vv{./dentf_lorentz.x} has to be run again with an updated input file. Otherwise, the MATALB plotter will show data from the previous run of the interface. 
+Please note, that if the observation point is changed,
+\vv{./dentf_lorentz.x} has to be run again with an updated input file.
+Otherwise, the MATALB plotter will show data from the previous run of
+the interface.
 
-The settings in \vv{spitzerinterface.in} are described in the interface documentation. It should be noted that the parameter \vv{plot_source} can have the values \vv{dentf}, \vv{enetf}, and \vv{spitf} defining the distribution function to be plotted. 
+The settings in \vv{spitzerinterface.in} are described in the interface
+documentation. It should be noted that the parameter \vv{plot_source}
+can have the values \vv{dentf}, \vv{enetf}, and \vv{spitf} defining the
+distribution function to be plotted.
 
 \subsection{Scripts for running the jobs in Condor}
-In 
+In
 \begin{verbatim}
 /proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP
 \end{verbatim}
-there are two important scripts which are useful for running many instances of NEO-2 at the same time via Condor. 
+there are two important scripts which are useful for running many
+instances of NEO-2 at the same time via Condor.
 
-The script \vv{create_dirs_paramvalue.sh} reads a file called \vv{dirs_list.txt} and copies from a directory \vv{TEMPLATE_DIR} all files to given subdirectories and modifies each \vv{neo2.in}. It is best explained by looking at some examples, e.g., here:
+The script \vv{create_dirs_paramvalue.sh} reads a file called
+\vv{dirs_list.txt} and copies from a directory \vv{TEMPLATE_DIR} all
+files to given subdirectories and modifies each \vv{neo2.in}. It is best
+explained by looking at some examples, e.g., here:
 \begin{verbatim}
 /itp/MooseFS/gernot_k/Neo2/RunsByDate/2017_07_Bootstrap/ratfieldline
 \end{verbatim}
 
-For running the jobs the same script can be used as introduced in the ECCD section of this writeup (\vv{run_condor.sh}). Here, the content of the condor submission file is described in more detail:
+For running the jobs the same script can be used as introduced in the
+ECCD section of this writeup (\vv{run_condor.sh}). Here, the content of
+the condor submission file is described in more detail:
 \begin{verbatim}
 Executable = NEO2-all.sh
 Universe   = vanilla
@@ -415,43 +606,80 @@ should_transfer_files = NEVER
 run_as_owner = true
 #requirements = (TARGET.Machine =!= "faepop02") && (TARGET.Machine =!= "faepop03")
 
-Queue 
+Queue
 \end{verbatim}
-The first line defines the executable which has to be located in \vv{/temp/} because Condor does not have access to AFS. The Universe defines the Condor environment and is always vanilla at our institute. The next three lines define the file names for the output files, where (\$Cluster) will be an ID which is created by Condor defining the job. The notification line defines if a mail is sent when the job has finished. 
+The first line defines the executable which has to be located in
+\vv{/temp/} because Condor does not have access to AFS. The Universe
+defines the Condor environment and is always vanilla at our institute.
+The next three lines define the file names for the output files, where
+(\$Cluster) will be an ID which is created by Condor defining the job.
+The notification line defines if a mail is sent when the job has
+finished.
 
-The launch script \vv{NEO2-all.sh} (located in the template directories) is written in a way that MPI is used for running NEO-2. Here, the number of processors used is given by \vv{request_cpus} in the Condor submission file. In the vanilla universe it is not possible to run the MPI jobs across machines so that a typical number is 4 to 8 at our institute. The requested memory (30*1024 = 30 GB) defines how much memory the job will need (all MPI processes together). This is not an upper limit, it only is used for Condor deciding on which machine the job will run. If the job will e.g. run on 50 GB machine it is no problem if the jobs requires e.g. 40 GB. However, if the same job runs on a 32 GB machine then \vv{neo_2.x} will crash and the requested memory should be increased so that the job is distributed to a machine with more memory. If Condor jobs are failing then one should look into the file NEO-2.e(\$SomeNumber) because there the error messages are located.
-Some IEEE underflow errors are "normal" at the moment. They arise from some underflow during the integration of the matrix elements and might be fixed in the future.
+The launch script \vv{NEO2-all.sh} (located in the template directories)
+is written in a way that MPI is used for running NEO-2. Here, the number
+of processors used is given by \vv{request_cpus} in the Condor
+submission file. In the vanilla universe it is not possible to run the
+MPI jobs across machines so that a typical number is 4 to 8 at our
+institute. The requested memory (30*1024 = 30 GB) defines how much
+memory the job will need (all MPI processes together). This is not an
+upper limit, it only is used for Condor deciding on which machine the
+job will run. If the job will e.g. run on 50 GB machine it is no problem
+if the jobs requires e.g. 40 GB. However, if the same job runs on a
+32 GB machine then \vv{neo_2.x} will crash and the requested memory
+should be increased so that the job is distributed to a machine with
+more memory. If Condor jobs are failing then one should look into the
+file NEO-2.e(\$SomeNumber) because there the error messages are located.
+Some IEEE underflow errors are "normal" at the moment. They arise from
+some underflow during the integration of the matrix elements and might
+be fixed in the future.
 
-The rest of the lines does not have to be changed except one would like to exclude a special machine from Condor. 
+The rest of the lines does not have to be changed except one would like
+to exclude a special machine from Condor.
 
 
 \subsection{Boozer file for rational field line}
-For creating a magnetic equilibrium with toroidal perturbations, the following MATLAB script can be used:
+For creating a magnetic equilibrium with toroidal perturbations, the
+following MATLAB script can be used:
 \vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/boozer_rational.m}
 
-This script starts from \vv{tok-synch2.bc}, adds a perturbation field with given mode number and perturbation amplitude. In addition, a flat rotational transform profile can be created. 
+This script starts from \vv{tok-synch2.bc}, adds a perturbation field
+with given mode number and perturbation amplitude. In addition, a flat
+rotational transform profile can be created.
 
-Running the script \vv{plot_evolve_h5.m} in the parent directory containing the run directories, plots the bootstrap coefficient. Using \vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/plot_levels.m} in a specific run directory (containing \vv{magnetics.h5}) plots the magnetic field module along the field line with level distribution. 
+Running the script \vv{plot_evolve_h5.m} in the parent directory
+containing the run directories, plots the bootstrap coefficient. Using
+\vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/plot_levels.m} in a
+specific run directory (containing \vv{magnetics.h5}) plots the magnetic
+field module along the field line with level distribution.
 
 \clearpage
 \section{Open tasks}
 \begin{itemize}
- \item Include NBI source term. 
+ \item Include NBI source term.
  \item Distribution function plotter in NEO-2-QL.
- \item Cleanup CMake files and prepare for next major Debian upgrade (maybe works already). 
+ \item Cleanup CMake files and prepare for next major Debian upgrade
+ (maybe works already).
  \item Save memory in level placement. (Done, December 2017)
- \item Diffusion coefficients with relativistic collision model in NEO-2-PAR. (Done, May 2018)
+ \item Diffusion coefficients with relativistic collision model in
+ NEO-2-PAR. (Done, May 2018)
  \item Adaptive Runge-Kutta solver for EFIT runs. (Done, May 2018)
- \item Different integration accuracy settings needed for single species and multispecies run. This needs to be a configuration for the input file. (Done, May 2018)
- \item Create magnetic equilibrium where Shaing-Callen limit can be reached with NEO-2. (Done, June 2018)
+ \item Different integration accuracy settings needed for single species
+ and multispecies run. This needs to be a configuration for the input
+ file. (Done, May 2018)
+ \item Create magnetic equilibrium where Shaing-Callen limit can be
+ reached with NEO-2. (Done, June 2018)
 \end{itemize}
 
 \section{More useful scripts}
 \begin{itemize}
- \item \vv{hdf5struct.m} Converts HDF5 file to MATLAB structure. 
- \item \vv{plot_g_xfix.m} Plots the distribution function for fixed velocity module. 
- \item \vv{plot_g_lamfix.m} Plots the distribution function for fixed pitch angle. 
- \item \vv{plot_levels.m} Plots the field module along the field line with level distribution (needs \vv{magnetics.h5}).
+ \item \vv{hdf5struct.m} Converts HDF5 file to MATLAB structure.
+ \item \vv{plot_g_xfix.m} Plots the distribution function for fixed
+ velocity module.
+ \item \vv{plot_g_lamfix.m} Plots the distribution function for fixed
+ pitch angle.
+ \item \vv{plot_levels.m} Plots the field module along the field line
+ with level distribution (needs \vv{magnetics.h5}).
 \end{itemize}
 
 %\clearpage
