@@ -68,7 +68,7 @@
 \newcommand{\vb}{\lstinline}
 \newcommand{\vv}[1]{\texttt{\detokenize{#1}}}
 
-\title{\textbf{Technical NEO-2 documentation\\June 2018}}
+\title{\textbf{Technical NEO-2 documentation\\June 2018, Updates 2021}}
 
 
 \author[1]{Gernot~Kapper}
@@ -104,7 +104,7 @@ Multispecies    & No & Yes\\
 Relativistic    & Yes & Yes (but not for multispecies)\\
 Parallelization & Yes (field line) & Yes (Species)\\
 Solver          & $1^\mathrm{st}$ Order & $1^\mathrm{st}$ and $2^\mathrm{st}$ Order\\
-Distribution function & Yes & No (planned)\
+Distribution function & Yes & No (planned)
 \end{tabular}
 \caption{NEO-2 branches}
 \label{tab:neo2branches}
@@ -113,14 +113,16 @@ Distribution function & Yes & No (planned)\
 \subsection{The Git repository}
 Since 2013 the general version of NEO-2 is under Git version control.
 Later, also the quasilinear version was added to this repository
-including its code history. The official repository is located here:
+including its code history. The official repository is located on github:
 \begin{verbatim}
-/proj/plasma/Git/NEO-2-MODULAR.git/
+https://github.com/itpplasma/NEO-2/
 \end{verbatim}
+At the moment it is set to private, which means you need to be logged in
+to be able to see it.
 
-In order to start a new local working copy, it is only required to do
+In order to start a new local working copy, it is required to do
 \begin{verbatim}
-git clone /proj/plasma/Git/NEO-2-MODULAR.git/ .
+git clone git@github.com:itpplasma/NEO-2.git .
 \end{verbatim}
 in an empty directory (do not oversee the point at the end of the
 command line which defines the current directory).
@@ -131,12 +133,14 @@ that this build system takes care of correct compilation order of the
 source files (dependency resolving) and that routines can be defined to
 automatically detected the installed libraries. The configuration file
 is called \verb|CMakeLists.txt|. Using CMake the source- and
-build-directories can be separated from each other. In order to build
+build-directories can be separated from each other, and neo-2 requires
+that this is done. In order to build
 the source code it is necessary to create a build-directory, if not
 already provided from the Git clone. For reasons of readability it was
 decided to put the source files to be compiled in a separate file,
-called \vv{CMakeSources.in}. This file is then included in
-\vv{CMakeLists.txt}.
+called \vv{CMakeSources.in}. Additionaly, some of the settings for paths
+are in a separate file, \vv{ProjectConfig.cmake.in}. These files are
+then included in \vv{CMakeLists.txt}.
 
 For testing purposes a build-directory is now created for the general
 version of NEO-2:
@@ -168,8 +172,9 @@ are:
 \item SuperLU
 \item GSL
 \item FGSL
-\item HDF5 (hdf5tools)
-\item OpenMPI (MyMPILib)
+\item HDF5 (interfaced via hdf5tools)
+\item OpenMPI (interfaced via MyMPILib)
+\item libneo
 \end{itemize}
 
 SuiteSparse is used for solving the sparse linear system of differential
@@ -202,6 +207,11 @@ institute it is linked against OpenMPI, where on clusters Intel MPI is
 mostly used. MyMPILib was developed so that in the code of NEO-2 no
 native MPI commands have to be used.
 
+Note that it was decided to no longer have \vv{hdf5tools} and
+\vv{MyMPILib} as separate libraries, but to add them to \vv{libneo},
+which is intended to collect code that is used by multiple programs of
+the group. \vv{libneo} is also available from github.
+
 \section{Running an ECCD precomputation}
 \subsection{Preparations}
 To run NEO-2 with a Boozer file as input for the magnetic equilibrium,
@@ -221,6 +231,12 @@ module and to the code NEO.
 This file is a Fortran namelist file. It contains physical input
 quantities and a lot of numerical and technical parameters. Here, the
 most important (and new) parameters are described.
+Check also \vv|neo2.in.par-full| in the DOC folder of the NEO-2
+repository. The file should contain an up-to-date list of all the input
+parameters together with a short explanation.
+
+Note on naming convention: the prefix lsw and isw stand for logical
+switch and integer switch, respectively.
 
 \begin{itemize}
  \item \verb|boozer_s| \newline
@@ -253,7 +269,7 @@ New parameters related to the collision operator:
  \end{itemize}
  \item \verb|v_max_resolution|\newline
  Only affects level placement and defines the maximum normalized
- velocity that should by resolved by the grid. Experience showed that
+ velocity that should be resolved by the grid. Experience showed that
  values of $2$ - $3$ are sufficient for reconstruction of the
  generalized Spitzer function up to $5$ times the thermal velocity.
  \item \verb|collop_base_prj|\newline
@@ -415,7 +431,7 @@ cp /proj/plasma/Neo2/Interface/Examples/condor-all.submit .
 The last line is only used if HTCondor should be used as batch system.
 Next, the code
 \vv{/proj/plasma/Neo2/Interface/Create_Surfaces/create_surf.py} has to
-be started:
+be started, in the parent directory of the template directory:
 \begin{verbatim}
 ln -s /proj/plasma/Neo2/Interface/Create_Surfaces/create_surf.py .
 ./create_surf.py
