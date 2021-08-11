@@ -453,6 +453,16 @@ can be used, which submits a condor job for each directory given in
 \vv{jobs_list.txt}. Checking the output of \vv{condor_q} shows the
 number of submitted Condor jobs.
 
+Another approach would be to use a condor submit file similar to
+\vv{condor_submit_example} in the DOC folder of the neo-2 repository.
+While the above will create one ``batch'' per subfolder, the
+example file would create one ``batch'' in total, which has one job per
+subfolder.
+It can be used with
+\begin{verbatim}
+condor_submit condor_submit_example
+\end{verbatim}
+
 As soon as the jobs have finished, the code
 \begin{verbatim}
 /proj/plasma/Neo2/Interface/h5merge/Build/h5merge.x
@@ -597,7 +607,7 @@ The script \vv{create_dirs_paramvalue.sh} reads a file called
 files to given subdirectories and modifies each \vv{neo2.in}. It is best
 explained by looking at some examples, e.g., here:
 \begin{verbatim}
-/itp/MooseFS/gernot_k/Neo2/RunsByDate/2017_07_Bootstrap/ratfieldline
+/temp/gernot_k/Neo2/RunsByDate/2017_07_Bootstrap/ratfieldline
 \end{verbatim}
 
 For running the jobs the same script can be used as introduced in the
@@ -652,6 +662,9 @@ be fixed in the future.
 
 The rest of the lines does not have to be changed except one would like
 to exclude a special machine from Condor.
+If your jobs fits into the memory of regular machines, then you should
+exclude the high memory machines (e.g. faepop12 and faepop13), so as to
+not block them for people who need the memory.
 
 
 \subsection{Boozer file for rational field line}
