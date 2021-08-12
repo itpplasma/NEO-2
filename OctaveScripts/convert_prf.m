@@ -1,21 +1,7 @@
 function convert_prf(file_in, file_out)
-  %~ file_in  = '/proj/plasma/Neo2/Interface/Profiles/w7x-m111-b3-i1/prf.txt';
-  %~ file_out = '/proj/plasma/Neo2/Interface/Profiles/w7x-m111-b3-i1/profiles.dat';
 
-  fid = fopen(file_in);
-
-  k = 1;
-  tline = fgetl(fid);
-  data_c{k} = tline;
-  while ischar(tline)
-    % disp(tline)
-    tline = fgetl(fid);
-    if ischar(tline)
-      k = k + 1;
-      data_c{k} = tline;
-    end
-  end
-  fclose(fid);
+  data_c = read_file_into_cell_array(file_in);
+  k = numel(data_c);
 
   skip = 1;
   %% open output file and write first lines
