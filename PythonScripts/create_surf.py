@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Interactive script to create flux surface subfolders of neo-2-par run.
+"""
 
 if __name__ == "__main__":
   import numpy as np
