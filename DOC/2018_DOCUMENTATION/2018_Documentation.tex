@@ -683,6 +683,80 @@ specific run directory (containing \vv{magnetics.h5}) plots the magnetic
 field module along the field line with level distribution.
 
 \clearpage
+\section{Short summary}
+\begin{itemize}
+  \item create directory for run
+  \item put in required scripts/executables
+  \item create template subdirectory
+  \item put in both folders corresponding required input and template files
+  \item create subfolders for flux surfaces
+  \item run simulations
+  \item posprocessing
+\end{itemize}
+
+required input includes:
+\begin{itemize}
+  \item boozer file
+  \item profile file (density, temperature, effective charge)
+  \item neo.in
+  \item create\_surfaces.in
+  \item neo2.in
+  \item (condor submit file)
+\end{itemize}
+
+\section{List of scripts/codes used besides neo-2}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cc}
+name/path   & comment \\
+/proj/plasma/Neo2/Interface/Create\_Surfaces/Build/create\_surfaces.x & \\
+/proj/plasma/Neo2/Interface/h5merge/Build/h5merge.x & \\
+/proj/plasma/Neo2/Interface/Spitzer\_Interface/Build/neo2\_g.x & \\
+/proj/plasma/Neo2/Interface/Spitzer\_Interface/Build/dentf\_lorentz.x &
+\end{tabular}
+\caption{additional executables used besides neo-2}
+\label{tab:additionalcodes}
+\end{table}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cc}
+name/path   & comment \\
+/proj/plasma/Neo2/Interface/Examples/run\_condor.sh & \\
+/proj/plasma/DOCUMENTS/PHD\_Gernot/2017\_BOOTSTRAP/create\_dirs\_paramvalue.sh & \\
+NEO2-all.sh &
+\end{tabular}
+\caption{additional shell scripts used}
+\label{tab:additionalshellscripts}
+\end{table}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cc}
+name/path   & comment \\
+/proj/plasma/Neo2/Interface/Create\_Surfaces/create\_surf.py & similar to create\_dirs\_paramvalue.sh
+\end{tabular}
+\caption{additional python3 scripts used}
+\label{tab:additionalpython3scripts}
+\end{table}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cc}
+name/path   & comment \\
+convert\_prf.m & \\
+plot\_g\_xfix.m & \\
+plot\_levels\_pgf.m & \\
+/proj/plasma/DOCUMENTS/PHD\_Gernot/2017\_BOOTSTRAP/plot\_evolve\_h5.m & \\
+/proj/plasma/DOCUMENTS/PHD\_Gernot/2017\_BOOTSTRAP/count\_maxima\_bootstrap.m & \\
+/proj/plasma/DOCUMENTS/PHD\_Gernot/2017\_BOOTSTRAP/boozer\_rational.m & \\
+/proj/plasma/DOCUMENTS/PHD\_Gernot/2017\_BOOTSTRAP/plot\_levels.m &
+\end{tabular}
+\caption{additional octave scripts used}
+\label{tab:additionaloctavescripts}
+\end{table}
+
 \section{Open tasks}
 \begin{itemize}
  \item Include NBI source term.
