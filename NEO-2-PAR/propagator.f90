@@ -4253,19 +4253,26 @@ CONTAINS
   END SUBROUTINE unit_prop
   ! ---------------------------------------------------------------------------
 
+  !> \brief constructs filenames for Spitzer output
+  !>
+  !> Will be of the form
+  !> basename[_boundary]_prop_start_prop_end.file-extension
+  !> Where basname is a string depending on prop_type, boundary is
+  !> included in the name if prop_bound is equal to one, prop_start and
+  !> prop_end are string representations of the corresponding inputs
+  !> and file-extension is choosen based on module variable
+  !> prop_fileformat.
+  !>
+  !> prop_type  - 1,2 : period
+  !>            - 3,4 : propagator
+  !>            - 5   : result
+  !>            - 6   : binarysplit
+  !> prop_bound - 0   : is no boundary
+  !>              1   : is boundary
+  !>
+  !> output is written on module variable prop_cfilename
   SUBROUTINE filename_prop(prop_type,prop_bound,prop_start,prop_end)
-    !
-    ! constructs filenames for Spitzer output
-    !
-    ! prop_type  - 1,2 : period
-    !            - 3,4 : propagator
-    !            - 5   : result
-    !            - 6   : binarysplit
-    ! prop_bound - 0   : is no boundary
-    !              1   : is boundary
-    !
-    ! output is written on prop_cfilename
-    !
+
     INTEGER, INTENT(in) :: prop_type
     INTEGER, INTENT(in) :: prop_bound
     INTEGER, INTENT(in) :: prop_start
