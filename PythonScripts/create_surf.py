@@ -43,30 +43,3 @@ if __name__ == "__main__":
       f.write(neo2)
       f.close()
       k = k + 1
-
-#print "Should I submit the jobs to condor [y,n]?"
-#ans = raw_input().lower()
-#if ans == 'y':
-#  k = 0
-#  for s in s_desired:
-#    dir_name = surf_dir_name + str(k+1)
-#    p = subprocess.Popen(["condor_submit_dag", "batch.dag"], cwd=dir_name)
-#    p.wait()
-#    k = k + 1
-
-
-#print "Should I prepare jobfiles for DCluster [y,n]?"
-#ans = raw_input().lower()
-#if ans == 'y':
-#  k = 0
-#  for s in s_vec:
-#    for j in range(0,3):
-#      dir_name = surf_dir_name + str(k+1)
-#      fin = open(dir_name + "/NEO2-"+str(j)+".job", "rt")
-#      jobfile = fin.read()
-#      jobfile = jobfile.replace('<jobname>', 'Neo2-' + dir_name)
-#      fin.close()
-#      fout = open(dir_name + "/NEO2-"+str(j)+".job", "wt")
-#      fout.write(jobfile)
-#      fout.close()
-#    k = k + 1
