@@ -13,10 +13,10 @@ if __name__ == "__main__":
 
   s_vec, collpar_vec, Z_vec, T_vec = np.loadtxt('surfaces.dat', unpack=True)
 
-  print "Should I create the surface directories [y,n]?"
-  ans = raw_input().lower()
-  print "Relativistic?"
-  rel = raw_input().lower()
+  print("Should I create the surface directories [y,n]?")
+  ans = input().lower()
+  print("Relativistic?")
+  rel = input().lower()
 
 
 
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     for s in s_vec:
       #dir_name = surf_dir_name + str(k+1)
       dir_name = surf_dir_name + ('%.9e' %(s_vec[k])).replace('e', 'd').replace('d-', 'm')
-      print dir_name
+      print(dir_name)
       shutil.rmtree(dir_name, ignore_errors=True)
       shutil.copytree('TEMPLATE_DIR', dir_name, symlinks=True)
       f = open(dir_name + "/neo2.in", "rt")
