@@ -4324,6 +4324,72 @@ CONTAINS
   END SUBROUTINE filename_prop
   ! ---------------------------------------------------------------------------
 
+  !> \brief Check if data for a propagator is already present.
+  !>
+  !> This function checks if the data for a propagator is already
+  !> present. How this is determined depends on settings, but usally
+  !> means that a hdf-5 file is present and readable or contains a
+  !> specific readable group.
+  !>
+  !> \note This function does not check if the data is consistent with
+  !>   physical/numerical parameters.
+  !>
+  !> input:
+  !> ------
+  !> prop_type:
+  !> prop_start:
+  !>
+  !> output (formal):
+  !> -------
+  !> o: pointer to propagator, might get reassigned. Will contain
+  !>   information from propagator file if it exists.
+  !>
+  !> return value:
+  !> -------------
+  !> logical, true if data is present, false if not.
+  !>
+  !> side effects:
+  !> -------------
+  !> propagator will contain read data.
+  !> prop_cfilename will be used.
+  function propagator_already_calculated(prop, prop_bound, prop_type, &
+      & prop_start, prop_end, prop_showall_in) result(res)
+    type(propagator), pointer :: prop
+    integer, intent(in) :: prop_bound
+    integer, intent(in) :: prop_type
+    integer, intent(in) :: prop_start
+    integer, intent(in) :: prop_end
 
+    integer, intent(in), optional :: prop_showall_in
+
+    logical :: res
+
+    integer, parameter :: u = 1234
+
+    integer :: ios
+
+    res = .false.
+
+    call filename_prop(prop_type, prop_bound, prop_start, prop_end)
+
+    open(unit=u, iostat=ios, file=prop_cfilename, status='old')
+    if (ios .eq. 0) then
+      close(unit=u)
+
+      call read_propagator_cont(prop, prop_type, prop_start, prop_end, prop_showall_in)
+
+!~       call filename_prop(6, prop_bound, prop_start, prop_end)
+!~       open(unit=u, iostat=ios, file=prop_cfilename, status='old')
+!~       if (ios .eq. 0) then
+!~         close(unit=u)
+!~         call read_binarysplit_cont(prop, prop_type, prop_start, prop_end, prop_showall_in)
+
+!~         res = .true.
+!~       end if
+
+      res = .true.
+    end if
+
+  end function propagator_already_calculated
 
 END MODULE propagator_mod
