@@ -1010,7 +1010,7 @@ class BoozerFile:
     # Calculate dR/dl with forward difference
     for i in range(1, np-1):
       dR_dl[i] = (R[i+1] - R[i]) / (l[i+1] - l[i])
-    # Last point calculated explicitly, note order in denumrator, this
+    # Last point calculated explicitly, note order in denumerator, this
     # is necessary to get the correct sign due to the jump in l.
     dR_dl[np-1] = (R[0] - R[np-1]) / (l[np-1] - l[0])
 
