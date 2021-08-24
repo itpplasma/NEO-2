@@ -540,7 +540,22 @@ class BoozerFile:
   """Storing the information in a boozer file.
 
   This class is designed to store the information of a boozer file.
+
+  Note that there are different versions of boozer files.
+  So far this class can read two of them. The first one is those of
+  Strumberger, the second is called 'other' until a better name is
+  found.
+  They differ in the number of modes present in the file, the number of
+  columns ('other' has only the real values) and in the order of the
+  modes.
+  Note that the functions were written with the order of 'Strumberger'
+  in mind, thus they might not work with 'other' (except for
+  'read_boozer').
   """
+  # Note: order due to history, only Strumberger was handled in the beginning.
+  file_versions_to_read = {'Strumberger': 0, 'other': 1}
+
+  file_version = file_versions_to_read['other']
 
   def read_boozer(self, filename: str):
     """Reads information from a file, whose name is given as a string.
@@ -552,6 +567,7 @@ class BoozerFile:
     Fields that depend on radius are lists, those that depend on radius
     and mode number lists of lists.
     """
+
     with open(filename) as f:
       lines = f.readlines()
 
@@ -601,6 +617,8 @@ class BoozerFile:
             self.R = float((lines[lineindex].split())[6])
             break
 
+    self.check_which_file_version()
+
     blocklines = []
 
     blockindex = -1
@@ -625,8 +643,14 @@ class BoozerFile:
       raise Exception
 
     head_number_of_lines = 4
-    # +1 for zero mode, and n modes go from -n to n, so also +1 for the zero mode.
-    expected_block_length = (self.m0b + 1)*(2*self.n0b + 1)
+    if (self.file_version == self.file_versions_to_read['Strumberger']):
+      # Strumberger format +1 for zero mode, and n modes go from -n to n,
+      # so also +1 for the zero mode.
+      expected_block_length = (self.m0b + 1)*(2*self.n0b + 1)
+    elif (self.file_version == self.file_versions_to_read['other']):
+      # other format: m = 0 has only n+1 positive modes, while other m
+      # modes have positivie and negative n, so 2n+1 for each
+      expected_block_length = 1*(self.n0b + 1) + self.m0b*(2*self.n0b + 1)
 
     for i in range(self.nsurf):
       if (len(blocklines[i]) != expected_block_length + head_number_of_lines):
@@ -656,18 +680,48 @@ class BoozerFile:
 
         if (j > 3):
           line_split = blocklines[i][j].split();
-          self.m[i].append(int(line_split[0]))
-          self.n[i].append(int(line_split[1]))
-          self.rmnc[i].append(float(line_split[2]))
-          self.rmns[i].append(float(line_split[3]))
-          self.zmnc[i].append(float(line_split[4]))
-          self.zmns[i].append(float(line_split[5]))
-          self.vmnc[i].append(float(line_split[6]))
-          self.vmns[i].append(float(line_split[7]))
-          self.bmnc[i].append(float(line_split[8]))
-          self.bmns[i].append(float(line_split[9]))
+          # Consider different formats(?)
+          if (len(line_split) == 10):
+            self.m[i].append(int(line_split[0]))
+            self.n[i].append(int(line_split[1]))
+            self.rmnc[i].append(float(line_split[2]))
+            self.rmns[i].append(float(line_split[3]))
+            self.zmnc[i].append(float(line_split[4]))
+            self.zmns[i].append(float(line_split[5]))
+            self.vmnc[i].append(float(line_split[6]))
+            self.vmns[i].append(float(line_split[7]))
+            self.bmnc[i].append(float(line_split[8]))
+            self.bmns[i].append(float(line_split[9]))
+          elif (len(line_split) == 6):
+            self.m[i].append(int(line_split[0]))
+            self.n[i].append(int(line_split[1]))
+            self.rmnc[i].append(float(line_split[2]))
+            self.rmns[i].append(0.0)
+            self.zmnc[i].append(float(line_split[3]))
+            self.zmns[i].append(0.0)
+            self.vmnc[i].append(float(line_split[4]))
+            self.vmns[i].append(0.0)
+            self.bmnc[i].append(float(line_split[5]))
+            self.bmns[i].append(0.0)
+          else:
+            print('Unknown format of the boozer file. Number of elements: ' + str(len(line_split)))
+            print('Can handle 6 and 10.')
+            raise Exception
 
     self._read_from = filename
+
+  def check_which_file_version(self):
+    """
+    Check comments to determine which type of boozer file this is.
+
+    So far two versions of boozer files can be read:
+    - Strumberger
+    - an unnamed version
+    """
+    for c in self.comments:
+      if 'Strumberger' in c:
+        self.file_version = self.file_versions_to_read['Strumberger']
+        return
 
   def get_rbeg(self):
     rbeg = []
