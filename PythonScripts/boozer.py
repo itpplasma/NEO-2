@@ -1005,7 +1005,7 @@ class BoozerFile:
     # Calculate l
     l[0] = 0
     for i in range(1, np):
-      l[i] = l[i-1] + sqrt(R[i]**2 + Z[i]**2)
+      l[i] = l[i-1] + sqrt((R[i]-R[i-1])**2 + (Z[i]-Z[i-1])**2)
 
     # Calculate dR/dl with forward difference
     for i in range(1, np-1):
