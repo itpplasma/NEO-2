@@ -785,9 +785,6 @@ class BoozerFile:
     nmodes = (self.m0b+1)*(2*self.n0b+1)
     modfactor = 30
     nt = self.m0b*modfactor
-    htheta = math.pi*2.0/float(nt)
-
-    theta = [htheta*x for x in range(0,nt+1)]
 
     Rnew = [0.0 for i in range(nt+1)]
     Znew = [0.0 for i in range(nt+1)]
@@ -804,9 +801,10 @@ class BoozerFile:
         Zold=Znew
         # The if condition requires R/Znew and R/Zold to be set, which
         # is, why this loop can not be moved inside the if-clause.
-        for i in range(nt+1):
-          Rnew[i] = sum(rr * math.cos(m*theta[i] - n*phi) + rc * math.sin(m*theta[i] - n*phi) for rr, rc, m, n in zip(self.rmnc[k], self.rmns[k], self.m[k], self.n[k]))
-          Znew[i] = sum(zr * math.cos(m*theta[i] - n*phi) + zc * math.sin(m*theta[i] - n*phi) for zr, zc, m, n in zip(self.zmnc[k], self.zmns[k], self.m[k], self.n[k]))
+        [Rnew, Znew] = self.get_R_Z(np = nt, phi = phi, ind = k)
+        # Add first point at end, to close the lines.
+        Rnew.append(Rnew[0])
+        Znew.append(Znew[0])
 
         if (s > s_plot):
           w=(s_plot-s_old)/(s-s_old)
@@ -969,6 +967,39 @@ class BoozerFile:
 
     return rho_poloidal
 
+  def get_R_Z(self, np:int = 100, phi:float = 0.0, ind:int = -1):
+    """
+    Get list of R and Z coordinates for given theta values.
+
+    Returns a list with two lists for R and Z, repectively, that
+    contains the values for flux surface with given index for equaly
+    spaced theta values.
+
+    input:
+    ------
+    np: integer, number of points to use for theta grid.
+    phi: float, the phi value to use for the calculations. So far this
+      can only be a single value. Defaults to 0.0.
+    ind: integer, index of the flux surface to use for the calculation.
+      Defaults to -1, i.e. the outermost flux surface.
+
+    output:
+    -------
+    List with two elements R and Z, which are also lists (of floats).
+    """
+    from math import cos, sin, pi
+
+    R = [0.0 for i in range(np)]
+    Z = [0.0 for i in range(np)]
+
+    htheta = 2.0*pi/float(np)
+    theta = [htheta*x for x in range(0,np)]
+    for i in range(np):
+      R[i] = sum(rr * cos(m*theta[i] - n*phi) + rc * sin(m*theta[i] - n*phi) for rr, rc, m, n in zip(self.rmnc[ind], self.rmns[ind], self.m[ind], self.n[ind]))
+      Z[i] = sum(zr * cos(m*theta[i] - n*phi) + zc * sin(m*theta[i] - n*phi) for zr, zc, m, n in zip(self.zmnc[ind], self.zmns[ind], self.m[ind], self.n[ind]))
+
+    return [R, Z]
+
   def get_dR_dl(self, ind:int = -1, np:int = 100):
     """
     Get derivative of major radius R as a function of arc length l.
@@ -987,7 +1018,7 @@ class BoozerFile:
         derivative. Defaults to 100.
     """
 
-    from math import cos, sin, pi, sqrt
+    from math import sqrt
 
     phi = 0.0
     R = [0.0 for i in range(np)]
@@ -995,12 +1026,7 @@ class BoozerFile:
     l = [0.0 for i in range(np)]
     dR_dl = [0.0 for i in range(np)]
 
-    # Get R and z.
-    htheta = 2.0*pi/float(np)
-    theta = [htheta*x for x in range(0,np)]
-    for i in range(np):
-      R[i] = sum(rr * cos(m*theta[i] - n*phi) + rc * sin(m*theta[i] - n*phi) for rr, rc, m, n in zip(self.rmnc[ind], self.rmns[ind], self.m[ind], self.n[ind]))
-      Z[i] = sum(zr * cos(m*theta[i] - n*phi) + zc * sin(m*theta[i] - n*phi) for zr, zc, m, n in zip(self.zmnc[ind], self.zmns[ind], self.m[ind], self.n[ind]))
+    [R, Z] = self.get_R_Z(np, phi, ind)
 
     # Calculate l
     l[0] = 0
