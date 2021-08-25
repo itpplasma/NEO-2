@@ -510,6 +510,68 @@ def set_neo2in(folder: str, subfolder_pattern: str, vphifilename: str, backup: b
     change_namelist_values_for_file_object(nml, name_value_tuples)
     nml.write(current_filename, True)
 
+def set_neo2in_reconstruction(folder: str, subfolder_pattern: str, backup: bool, value: int):
+  """
+  Top-level function to reset input variable 'prop_reconstruct'.
+
+  This is a top level function intended for use with the stellerator
+  variant of neo2.
+  It will set the input variable 'prop_reconstruct' to given value for
+  all subfolders that match a given pattern in a given folder.
+
+  WARNING: This function does not check if the given value is valid.
+    This is intentionaly to avoid having to change this function if the
+    range of valid values changes.
+
+  input:
+  ------
+  folder: string, including location, determining where to find the
+    subfolders. If they are in the local folder './' is an appropriate
+    value.
+  subfolder_pattern: string, determining names of the subfolders where
+    to look for neo2.in files to change. Example would be 'es_*' and
+    's*'.
+  backup: boolean, if true the original version is saved with '~'
+    appended to the name.
+  value: integer, the value to use for 'prop_reconstruct'.
+
+  output:
+  -------
+  No formal output.
+
+  Side-effects:
+  -------------
+  Changes the files determined by input parameters, and may create
+  copies of the older version.
+  """
+  from os.path import join
+  from pathlib import Path
+
+  import f90nml.parser
+
+  # Get all objects in the folder
+  p = Path(folder)
+  #~ # Filter for the directories
+  #~ p = [x for x in p.iterdir() if x.is_dir()]
+  # Filter for the name of the subdirectories
+  folders = list(p.glob(subfolder_pattern))
+
+  parser = f90nml.parser.Parser()
+  for d in folders:
+    current_filename = join(folder, d.name, 'neo2.in')
+    nml = parser.read(current_filename)
+
+    print('Processing: ' + current_filename)
+
+    if (backup):
+      nml.write(current_filename + '~')
+
+    # Adjust the rotation, new value is background + shift, assuming
+    # The file contains already the background value.
+    name_value_tuples = [('propagator', 'prop_reconstruct', value)]
+    change_namelist_values_for_file_object(nml, name_value_tuples)
+    nml.write(current_filename, True)
+
 def change_namelist_values_for_files(folder: str, subfolder_pattern: str, name_value_tuples: list, backup: bool):
   """Change values of namelists files in subfolders.
 
