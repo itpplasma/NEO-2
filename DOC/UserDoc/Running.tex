@@ -52,6 +52,19 @@ The parameter-input files define the file names for the input of the
 magnetic equilibrium (background and perturbed).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{PAR version}
+Runs with the par version are split into four parts, which are set by
+the parameter ropagator::prop\_reconstruct with values from 0 to 4.
+Note that only parts 0 and 2 can be parallelized, but 1 and 3 should
+usually not take much time (and memory?).
+There is a shell script, switch\_reconstruction.sh and a python
+function, scan\_nonhdf5\_tools::set_neo2in_reconstruction, to change the
+value. The former either changes the value of an input file in the
+current directory or will switch all files in directories listed in file
+job\_list.txt. The latter will set all input files in subfolders of a
+given folder, matching an expression.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Multispecies}
 A speciality of this multispecies run, is that the number of processors
 must be equal to the number of species. Other settings might produce
@@ -68,6 +81,12 @@ number of species for each flux surface.
 The variable num\_species in namelist multi\_spec will be set
 automatically, if you use \neotwo to set up the runs for the flux
 surfaces.
+
+Once upon a time, runs where split into precomputation which depends
+only on (?) and the actual computation. This has become unneccessary due
+to a speedup of the precomputation. Now the time savings can be
+considered small compared to the additional hassle due to the additional
+run.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
