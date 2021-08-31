@@ -33,7 +33,8 @@ function [ax, data, s] = plot_g_lamfix(h5file, quant, point, lam, x_cutoff, ax, 
   if nargin < 5 || isempty(x_cutoff), x_cutoff = 5; end
 
   epslam   = 1e-4;
-  h5  = h52struct(h5file);
+  %~ h5  = h52struct(h5file); % Uses h5info, thus works only in matlab.
+  h5 = load(h5file);
 
   if isa(point, 'char')
     points = cell(1);
