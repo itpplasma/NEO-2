@@ -1,3 +1,29 @@
+% Plot Spitzer function at fixed x.
+%
+% input:
+% ------
+% h5file: string with the name of the file to load, usually created by
+%   neo2_g.x.
+% quant: string determining which dataset of the hdf5 file should be
+%   plotted.
+%   List of possible fields (might contain deprecated elements, and
+%   missing others):
+%     bmfl        g    gtr     lambdas_levels  s      x    xtr
+%     eta_levels  gpa  lambda  phi             theta  xpa
+% point: either a string depicting the point for which to plot the
+%   choosen quantity, e.g. 'p1'; or a cell array of strings, that
+%   contain multiple of such strings.
+% x: x value at which to plot the choosen quantity.
+% ax: axes on which to do the plot. [axes]
+% style: string, linestyle to use for the plot. ['-']
+% color: string, color to use for the plot. ['b']
+%
+% output:
+% -------
+% ax:
+% data: structure with elements x and y, containing x and y values
+%   plotted.
+% s:
 function [ax, data, s] = plot_g_xfix(h5file, quant, point, x, ax, style, color)
 
   if nargin < 7 || isempty(color), color='b';  end
