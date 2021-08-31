@@ -1,9 +1,9 @@
 function [ax, data, s] = plot_g_lamfix(h5file, quant, point, lam, x_cutoff, ax, style, color)
 
-  if nargin < 7 || isempty(color), color='b';  end
-  if nargin < 6 || isempty(style), style='-';  end
-  if nargin < 5 || isempty(ax), ax = axes; end
-  if nargin < 4 || isempty(x_cutoff), x_cutoff = 5; end
+  if nargin < 8 || isempty(color) color='b';  end
+  if nargin < 7 || isempty(style), style='-';  end
+  if nargin < 6 || isempty(ax), ax = axes; end
+  if nargin < 5 || isempty(x_cutoff), x_cutoff = 5; end
 
   epslam   = 1e-4;
   h5  = h52struct(h5file);
@@ -45,6 +45,6 @@ function [ax, data, s] = plot_g_lamfix(h5file, quant, point, lam, x_cutoff, ax, 
     %set(gca,'XMinorTick','on','YMinorTick','on')
     data.x = h5p.x(Lx);
     data.y = g(Lx);
-    hold(ax, 'off')
   end
+  hold(ax, 'off')
 end
