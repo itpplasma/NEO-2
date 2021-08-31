@@ -39,6 +39,6 @@ function [ax, data, s] = plot_g_xfix(h5file, quant, point, x, ax, style, color)
     %set(gca,'XMinorTick','on','YMinorTick','on')
     data.x =  h5p.lambda;
     data.y = h5p.(quant)(kx,:);
-    hold(ax, 'off')
   end
+  hold(ax, 'off')
 end
