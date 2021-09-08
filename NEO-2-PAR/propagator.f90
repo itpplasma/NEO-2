@@ -4392,4 +4392,24 @@ CONTAINS
 
   end function propagator_already_calculated
 
+  subroutine get_taginfo(file_name, prop_write, prop_first_tag, prop_last_tag, parallel_storage)
+    character(len=*), intent(in) :: file_name
+
+    integer, intent(out) :: prop_write, prop_first_tag, prop_last_tag
+    logical, intent(out) :: parallel_storage
+
+    integer :: iparallel_storage
+
+    call h5_open(file_name, h5id)
+
+    call h5_get(h5id, 'prop_write', prop_write)
+    call h5_get(h5id, 'tag_first', prop_first_tag)
+    call h5_get(h5id, 'tag_last',  prop_last_tag)
+    call h5_get(h5id, 'parallel_storage', iparallel_storage)
+
+    parallel_storage = (iparallel_storage .eq. 1)
+
+    call h5_close(h5id)
+  end subroutine get_taginfo
+
 END MODULE propagator_mod
