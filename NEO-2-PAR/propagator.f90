@@ -111,6 +111,7 @@ MODULE propagator_mod
   CHARACTER(len=11),  PARAMETER, PRIVATE         :: prop_cbinarysplit = 'binarysplit'
   CHARACTER(len=12),  PARAMETER, PUBLIC          :: prop_ctaginfo = 'taginfo.prop'
   CHARACTER(len=10),  PARAMETER, PUBLIC          :: prop_ctaginfo_nc = 'taginfo.nc'   ! NetCDF
+  character(len=10),  parameter, public          :: prop_ctaginfo_h5 = 'taginfo.h5'   ! hdf5
   CHARACTER(len=16),  PARAMETER, PRIVATE         :: prop_cresult = 'reconstruct'
   CHARACTER(len=100),            PUBLIC          :: prop_cfilename
   INTEGER,                       PUBLIC          :: prop_unit = 150
@@ -3843,7 +3844,6 @@ CONTAINS
     INTEGER :: lb1,ub1,lb2,ub2
 
     INTEGER :: ierr_join
-    INTEGER :: iparallel_storage
     LOGICAL :: parallel_storage
 
 
@@ -3860,16 +3860,7 @@ CONTAINS
 
     if (prop_fileformat .eq. 1) then
 
-       call h5_open('taginfo.h5', h5id)
-
-       call h5_get(h5id, 'prop_write', prop_write)
-       call h5_get(h5id, 'tag_first', prop_first_tag)
-       call h5_get(h5id, 'tag_last',  prop_last_tag)
-       call h5_get(h5id, 'parallel_storage', iparallel_storage)
-
-       parallel_storage = (iparallel_storage .eq. 1)
-       
-       call h5_close(h5id)
+      call get_taginfo(prop_ctaginfo_h5, prop_write, prop_first_tag, prop_last_tag, parallel_storage)
 
     else
        CALL unit_propagator
