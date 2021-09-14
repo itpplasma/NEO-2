@@ -114,6 +114,8 @@ MODULE propagator_mod
   character(len=10),  parameter, public          :: prop_ctaginfo_h5 = 'taginfo.h5'   ! hdf5
   CHARACTER(len=16),  PARAMETER, PRIVATE         :: prop_cresult = 'reconstruct'
   CHARACTER(len=100),            PUBLIC          :: prop_cfilename
+  integer, parameter, public                     :: USE_HDF5_FORMAT = 1
+  integer, parameter, public                     :: USE_NETCDF_FORMAT = 2
   INTEGER,                       PUBLIC          :: prop_unit = 150
   INTEGER,                       PRIVATE         :: prop_first_tag = 0
   INTEGER,                       PRIVATE         :: prop_last_tag = 0
@@ -1015,7 +1017,7 @@ CONTAINS
     cadd = '_'//trim(adjustl(ctag_s))//'_'//trim(adjustl(ctag_e))
     !end if
 
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
        if (prop_write .lt. 0) then
           call h5_create('evolve' // trim(adjustl(cadd)) // '.h5', h5id)
 
@@ -1082,7 +1084,7 @@ CONTAINS
           END DO
        END DO
 
-       if (prop_fileformat .eq. 1) then
+       if (prop_fileformat .eq. USE_HDF5_FORMAT) then
 
           ! Write to HDF5 file
           call h5_create('fulltransp.h5', h5id, 1)
@@ -1123,7 +1125,7 @@ CONTAINS
           
        end if
 
-       if (prop_fileformat .eq. 1) then
+       if (prop_fileformat .eq. USE_HDF5_FORMAT) then
           
           ! normalization factor from plateau coefficient
           fac1=16.0_dp*rt0*aiota_loc/PI
@@ -2504,6 +2506,14 @@ CONTAINS
 
   subroutine write_propagator_cont(o,prop_type,prop_showall_in)
     ! writes the content of a propagator, which is specified in pointer o
+    !
+    ! input:
+    ! ------
+    ! o
+    ! prop_type
+    ! prop_showall_in: optional integer, selecting what is written to
+    !   file. Recognized values are 0, 1 and >1. Values >1 write only
+    !   part of the output compared to 1. [1]
 
     TYPE(propagator), POINTER  :: o
 
@@ -2541,7 +2551,7 @@ CONTAINS
 
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
     
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
        write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
 
        call h5_create(prop_cfilename_h5, h5id)
@@ -2815,7 +2825,7 @@ CONTAINS
 
     CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
 
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
        
        write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
 
@@ -2936,7 +2946,7 @@ CONTAINS
 
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
 
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
 
        write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
 
@@ -3131,7 +3141,7 @@ CONTAINS
     prop_bound = 0
     call filename_propagator(prop_type,prop_bound,prop_start,prop_end)
 
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
        call h5_open(prop_cfilename, h5id)
        
        if (prop_showall .eq. 1) then
@@ -3433,7 +3443,7 @@ CONTAINS
 
     CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
 
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
 
        call h5_open(prop_cfilename, h5id)
        
@@ -3616,7 +3626,7 @@ CONTAINS
 
     call filename_propagator(prop_type,prop_bound,prop_start,prop_end)
 
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
 
        call h5_open(prop_cfilename, h5id)
 
@@ -3790,7 +3800,7 @@ CONTAINS
     ! 0: no boundary
     CALL filename_propagator(5,0,tag,tag)
 
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
 
        call h5_open(prop_cfilename, h5id)
 
@@ -3858,7 +3868,7 @@ CONTAINS
  
     ! read the information about tags
 
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
 
       call get_taginfo(prop_ctaginfo_h5, prop_write, prop_first_tag, prop_last_tag, parallel_storage)
 
@@ -3976,7 +3986,7 @@ CONTAINS
     ! write the results - starting point
     CALL filename_propagator(5,0,prop_last_tag,prop_last_tag)
 
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
        write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
        call h5_create(prop_cfilename_h5, h5id)
 
@@ -4030,7 +4040,7 @@ CONTAINS
        ! output of new results
        CALL filename_propagator(5,0,N,N)
 
-       if (prop_fileformat .eq. 1) then
+       if (prop_fileformat .eq. USE_HDF5_FORMAT) then
           write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
           call h5_open_rw(prop_cfilename_h5, h5id)
 
@@ -4052,7 +4062,7 @@ CONTAINS
        
        CALL filename_propagator(5,0,N-1,N-1)
        
-       if (prop_fileformat .eq. 1) then
+       if (prop_fileformat .eq. USE_HDF5_FORMAT) then
 
           write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
           call h5_create(prop_cfilename_h5, h5id)
@@ -4086,7 +4096,7 @@ CONTAINS
     ! write the results - final point (from join_ends)
     CALL filename_propagator(5,0,prop_first_tag,prop_first_tag)
 
-    if (prop_fileformat .eq. 1) then
+    if (prop_fileformat .eq. USE_HDF5_FORMAT) then
 
        write(prop_cfilename_h5,'(100A)') trim(adjustl(prop_cfilename))
        call h5_open_rw(prop_cfilename_h5, h5id)
@@ -4275,9 +4285,9 @@ CONTAINS
     WRITE(ctag2,*) prop_end
 
     ! NetCDF
-    if (prop_fileformat .eq. 2) then
+    if (prop_fileformat .eq. USE_NETCDF_FORMAT) then
        prop_cext = 'nc'
-    elseif (prop_fileformat .eq. 1) then
+    elseif (prop_fileformat .eq. USE_HDF5_FORMAT) then
        prop_cext = 'h5'
     else
        prop_cext = 'prop'
