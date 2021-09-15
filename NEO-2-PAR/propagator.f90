@@ -4393,6 +4393,27 @@ CONTAINS
 
   end function propagator_already_calculated
 
+  !> \brief Read properties from taginfo file.
+  !>
+  !> Read properties from a taginfo file (usualy named taginfo.h5), and
+  !> return data from this file via arguments.
+  !>
+  !> input:
+  !> ------
+  !> file_name: string, depicting the name of the file from
+  !>   which to read.
+  !>
+  !> output (formal):
+  !> -------
+  !> prop_write, prop_first_tag, prop_last_tag: integer, read from the
+  !>   file.
+  !> parallel_storage: logical. Note that the corresponding data in the
+  !>   file is an integer, but this subroutine takes care of conversion.
+  !>
+  !> side effects:
+  !> -------------
+  !> None intended. File is just opened for reading and then closed. No
+  !> module variables should be changed.
   subroutine get_taginfo(file_name, prop_write, prop_first_tag, prop_last_tag, parallel_storage)
     character(len=*), intent(in) :: file_name
 
