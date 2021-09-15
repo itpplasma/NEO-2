@@ -1764,57 +1764,71 @@ CONTAINS
           END IF
        END IF
 
-       IF (prop_reconstruct .EQ. 2) THEN
-          CALL read_prop_recon_content(fieldpropagator%tag)
-       END IF
-       ! ---------------------------------------------------------------------------
-       ! call to ripple_solver for a propagator
-       prop_c%bin_split_mode = bin_split_mode
-       prop_c%p%npart = prop_npart
-       prop_c%fieldpropagator_tag_s = fieldpropagator%tag
-       prop_c%fieldpropagator_tag_e = fieldpropagator%tag
-       prop_c%fieldperiod_tag_s     = fieldpropagator%parent%tag
-       prop_c%fieldperiod_tag_e     = fieldpropagator%parent%tag
-       prop_c%phi_l = fieldpropagator%phi_l
-       prop_c%phi_r = fieldpropagator%phi_r
+       if (propagator_already_calculated(prop_c, prop_bound=0, &
+           & prop_type=3, prop_start=fieldpropagator%tag, prop_end=fieldpropagator%tag, prop_showall_in=1) &
+           & .and. prop_reconstruct .eq. 0) then
+         prop_c%bin_split_mode = bin_split_mode
+         if (bin_split_mode .EQ. 1) then
+           prop_c%eta_bs_l = eta_bs
+           prop_c%eta_bs_r = eta_bs
+         end if
+         ! propagator already read, as side effect of function propagator_already_calculated
+         ! so just read binarysplit in parallel case.
+         if (mpro%isParallel()) then
+           call read_binarysplit_cont(prop_c)
+         end if
+       else
+         IF (prop_reconstruct .EQ. 2) THEN
+           CALL read_prop_recon_content(fieldpropagator%tag)
+         END IF
+         ! ---------------------------------------------------------------------------
+         ! call to ripple_solver for a propagator
+         prop_c%bin_split_mode = bin_split_mode
+         prop_c%p%npart = prop_npart
+         prop_c%fieldpropagator_tag_s = fieldpropagator%tag
+         prop_c%fieldpropagator_tag_e = fieldpropagator%tag
+         prop_c%fieldperiod_tag_s     = fieldpropagator%parent%tag
+         prop_c%fieldperiod_tag_e     = fieldpropagator%parent%tag
+         prop_c%phi_l = fieldpropagator%phi_l
+         prop_c%phi_r = fieldpropagator%phi_r
 
-       ! put in eta_information
-       IF (bin_split_mode .EQ. 1) THEN
-          prop_c%eta_bs_l = eta_bs
-          prop_c%eta_bs_r = eta_bs
-       ENDIF
-       IF (ALLOCATED(prop_c%p%eta_l)) DEALLOCATE(prop_c%p%eta_l)
-       ALLOCATE(prop_c%p%eta_l( &
-            LBOUND(fieldpropagator%ch_act%eta,1):UBOUND(fieldpropagator%ch_act%eta,1) &
-            ))
-       prop_c%p%eta_l  = fieldpropagator%ch_act%eta
-       IF (ALLOCATED(prop_c%p%eta_r)) DEALLOCATE(prop_c%p%eta_r)
-       ALLOCATE(prop_c%p%eta_r( &
-            LBOUND(fieldpropagator%ch_act%eta,1):UBOUND(fieldpropagator%ch_act%eta,1) &
-            ))
-       prop_c%p%eta_r  = fieldpropagator%ch_act%eta
+         ! put in eta_information
+         IF (bin_split_mode .EQ. 1) THEN
+           prop_c%eta_bs_l = eta_bs
+           prop_c%eta_bs_r = eta_bs
+         ENDIF
+         IF (ALLOCATED(prop_c%p%eta_l)) DEALLOCATE(prop_c%p%eta_l)
+         ALLOCATE(prop_c%p%eta_l( &
+             LBOUND(fieldpropagator%ch_act%eta,1):UBOUND(fieldpropagator%ch_act%eta,1) &
+             ))
+         prop_c%p%eta_l  = fieldpropagator%ch_act%eta
+         IF (ALLOCATED(prop_c%p%eta_r)) DEALLOCATE(prop_c%p%eta_r)
+         ALLOCATE(prop_c%p%eta_r( &
+             LBOUND(fieldpropagator%ch_act%eta,1):UBOUND(fieldpropagator%ch_act%eta,1) &
+             ))
+         prop_c%p%eta_r  = fieldpropagator%ch_act%eta
 
-       IF (prop_diagnostic .GE. 2) THEN
-          PRINT *, '               in ripple_solver ',prop_count_call
-          PRINT *, '         ibegperiod, iendperiod ',prop_ibegperiod,iendperiod
-       END IF
-       IF (prop_timing .EQ. 1) CALL cpu_time(time_o)
+         IF (prop_diagnostic .GE. 2) THEN
+           PRINT *, '               in ripple_solver ',prop_count_call
+           PRINT *, '         ibegperiod, iendperiod ',prop_ibegperiod,iendperiod
+         END IF
+         IF (prop_timing .EQ. 1) CALL cpu_time(time_o)
 
-       ! try the ripple_solver
-       count_solv = 0
-       mult_solv  = hphi_mult
-       reduce_hphi: DO
-          count_solv = count_solv + 1
-          ierr_solv = 0
-          CALL ripple_solver_interface(ierr_solv)
-          IF (ierr_solv .EQ. 0) EXIT reduce_hphi
-          IF (ierr_solv .NE. 0 .AND. ierr_solv .NE. 3) THEN
+         ! try the ripple_solver
+         count_solv = 0
+         mult_solv  = hphi_mult
+         reduce_hphi: DO
+           count_solv = count_solv + 1
+           ierr_solv = 0
+           CALL ripple_solver_interface(ierr_solv)
+           IF (ierr_solv .EQ. 0) EXIT reduce_hphi
+           IF (ierr_solv .NE. 0 .AND. ierr_solv .NE. 3) THEN
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I give up'
              STOP
-          END IF
+           END IF
 
-          IF (ierr_solv .EQ. 3 .AND. count_solv .LT. max_solver_try) THEN
+           IF (ierr_solv .EQ. 3 .AND. count_solv .LT. max_solver_try) THEN
              mult_solv = mult_solv * 0.5_dp
              phi_split_mode_ori = phi_split_mode                  !<-in Winny
              phi_split_mode = 3                                   !<-in Winny
@@ -1827,47 +1841,50 @@ CONTAINS
 !!$             PRINT *, 'PAUSE - MODE'
 !!$             PAUSE
 !!$          END IF
-          ELSE IF (ierr_solv .EQ. 3 .AND. count_solv .GE. max_solver_try) THEN
+           ELSE IF (ierr_solv .EQ. 3 .AND. count_solv .GE. max_solver_try) THEN
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I give up'
              STOP
-          END IF
-       END DO reduce_hphi
+           END IF
+         END DO reduce_hphi
 
-       IF (prop_reconstruct .EQ. 2) RETURN
+         IF (prop_reconstruct .EQ. 2) RETURN
 
-       ! write the end value for y of the field propagator into prop_c
-       ! this is for computing physical output
-       !sy = SIZE(fieldpropagator%mdata%yend,1)
-       sy = SIZE(fieldpropagator%parent%mdata%yend,1) ! WINNY YEND
-       IF (ALLOCATED(prop_c%y)) DEALLOCATE(prop_c%y)
-       ALLOCATE(prop_c%y(sy))
-       !prop_c%y = fieldpropagator%mdata%yend
-       prop_c%y = fieldpropagator%parent%mdata%yend ! WINNY YEND
-       ! write eta at boundaries - replaced by modified stuff
-       !prop_c%p%eta_boundary_l = 1.0_dp / fieldpropagator%b_l
-       !prop_c%p%eta_boundary_r = 1.0_dp / fieldpropagator%b_r
-       prop_c%p%eta_boundary_l = eta_modboundary_l
-       prop_c%p%eta_boundary_r = eta_modboundary_r
-       ! link actual to current (mainly for results and diagnostic)
-       prop_a => prop_c
-       ! writing of propagators
-       !print *, 'I am before IF (prop_write .EQ. 2) THEN'
-       IF (prop_write .EQ. 2) THEN
-          !print *, 'I am before CALL write_propagator_content(prop_a,3)'
-          CALL write_propagator_content(prop_a,3)
-          ! WINNY PAR
-          ! This should only be done in a parallel run
+         ! write the end value for y of the field propagator into prop_c
+         ! this is for computing physical output
+         !sy = SIZE(fieldpropagator%mdata%yend,1)
+         sy = SIZE(fieldpropagator%parent%mdata%yend,1) ! WINNY YEND
+         IF (ALLOCATED(prop_c%y)) DEALLOCATE(prop_c%y)
+         ALLOCATE(prop_c%y(sy))
+         !prop_c%y = fieldpropagator%mdata%yend
+         prop_c%y = fieldpropagator%parent%mdata%yend ! WINNY YEND
+         ! write eta at boundaries - replaced by modified stuff
+         !prop_c%p%eta_boundary_l = 1.0_dp / fieldpropagator%b_l
+         !prop_c%p%eta_boundary_r = 1.0_dp / fieldpropagator%b_r
+         prop_c%p%eta_boundary_l = eta_modboundary_l
+         prop_c%p%eta_boundary_r = eta_modboundary_r
+         ! link actual to current (mainly for results and diagnostic)
+         prop_a => prop_c
+         ! writing of propagators
+         !print *, 'I am before IF (prop_write .EQ. 2) THEN'
+         IF (prop_write .EQ. 2) THEN
+           !print *, 'I am before CALL write_propagator_content(prop_a,3)'
+           CALL write_propagator_content(prop_a,3)
+           ! WINNY PAR
+           ! This should only be done in a parallel run
 #if defined(MPI_SUPPORT)
-          if (mpro%isParallel()) then
+           if (mpro%isParallel()) then
              !print *, 'I am before write_binarysplit_content(prop_a)' 
              CALL write_binarysplit_content(prop_a)
-          end if
+           end if
 #endif
-          ! WINNY PAR END
-          IF (prop_first_tag .EQ. 0) prop_first_tag = fieldpropagator%tag
-          prop_last_tag = fieldpropagator%tag
-       END IF
+           ! WINNY PAR END
+           IF (prop_first_tag .EQ. 0) prop_first_tag = fieldpropagator%tag
+           prop_last_tag = fieldpropagator%tag
+         END IF
+       end if
+
+
        ! ---------------------------------------------------------------------------
        IF (prop_diagphys .EQ. 1) THEN
           CALL diag_propagator_content
