@@ -8,7 +8,7 @@ Created on Mon Jul  9 17:21:45 2018
 ### Template from Ipthon Notebook doc_18_07_05
 
 import sys
-sys.path.append('/afs/itp.tugraz.at/user/wakatobi/Modul_neo/f90nml-0.21/')
+sys.path.append('/afs/itp.tugraz.at/user/wakatobi/test_f90nml/f90nml')
 import f90nml
 import os
 import yaml
@@ -174,10 +174,10 @@ class Neo2_common_objects():
     def _compare_nml2file(self,path):
         neonml=Neo2File(os.path.join(path,'neo2.in'))
         if self.neo2nml==neonml:
-            print('neo2.in in template and on path are the same')
+            print('loaded neo2.in and neo2.in onn path are the same')
             return
         else:
-            print('neo2in are not the same, using template path')
+            print('neo2in are not the same')
 
     def _checkreqfiles(self):
 
@@ -197,23 +197,8 @@ class Neo2_common_objects():
             return
 
 
-
-
-
     def _fill_req_files_names(self):
-        """Get additional required File names from neo.in and neo2.in Files"""
-
-## Reset if file is Changing
-        self._read_neo2in()
-        try:
-            self.req_files_names['multispec']=self.neo2nml['fname_multispec_in']
-        except KeyError:
-            print('The neo2.in File has no multispec parameter')
-            return
-
-        self.req_files_names['in_file_pert']=self.neo2nml['in_file_pert']
-
-
+        """Get additional magnetic File name from neo.in"""
 
         try:
             neo=self.req_files_paths['neoin']
@@ -276,12 +261,55 @@ class Neo2_common_objects():
 
 
 
+class Neo2QL(Neo2_common_objects):
+    def __init__(self,wdir,templatepath=None):
+        super().__init__(wdir,templatepath)
+
+
+    def _fill_req_files_names(self):
+        """Get additional required File names from neo.in and neo2.in Files"""
+
+## Reset if file is Changing
+        self._read_neo2in()
+        try:
+            self.req_files_names['multispec']=self.neo2nml['fname_multispec_in']
+        except KeyError:
+            print('The neo2.in File has no multispec parameter')
+            return
+
+        self.req_files_names['in_file_pert']=self.neo2nml['in_file_pert'].rstrip()
+
+
+
+        try:
+            neo=self.req_files_paths['neoin']
+            ## There must be a better catch if neoin is not a File
+        except:
+            print('neo.in File is missing')
+            return
+
+        with open(neo,'r') as f:
+            for line in f:
+                arg = line.split()
+                if 'in_file' in arg:
+                    self.req_files_names['in_file_axi']=arg[0]
+                    #print(arg[0])
+                    break
+
+
+class Neo2Par(Neo2_common_objects):
+    def __init__(self,wdir,templatepath=None):
+        super().__init__(wdir,templatepath)
+
+    def run_recon(self):
+        pass
 
 
 
 
 
-class Neo2Scan(Neo2_common_objects):
+
+class Neo2Scan(Neo2QL):
     """ Class for scans over one parameter
 
 
