@@ -176,6 +176,7 @@ class Neo2_common_objects():
                         continue
                 except AttributeError:
                     print('Neo2in was not read')
+
             if link:
                 os.symlink(os.path.realpath(j),destfile)
             else:
@@ -184,9 +185,7 @@ class Neo2_common_objects():
 
 
         i2=self.path2exe
-        print('path2exe = ', i2)
         destfile=os.path.join(singlerunpath,os.path.basename(i2))
-        print('destfile = ', destfile)
         if os.path.isfile(destfile):
             if overwrite:
                 print(destfile, ' is a file and is replaced')
@@ -199,7 +198,6 @@ class Neo2_common_objects():
         else:
             shutil.copy2(i2,destfile)
         self._Runiscreated=True
-
 
     def _compare_nml2file(self,path):
         self._read_neo2in()
@@ -337,7 +335,104 @@ class Neo2Par(Neo2_common_objects):
 
 
 
+class ReconRun(Neo2_common_objects):
+    def __init__(self,wdir,templatepath=None):
+        self.wdir=wdir
+        self.templatepath=templatepath
+        self.req_files_names={
+                'g_lambdain':'g_vs_lambda.in',
+                'spitzerinterface':'spitzerinterface.in',
+                'dentf_lorentz':'dentf_lorentz.x'}
+        self.req_files_paths=dict()
+        self.path2exe=''
+        self.spitzerin=None
+        self.g_lambdain=None
 
+    def _fill_req_files_names(self):
+
+        pass # Check of filename inside spitzer.in has to be done.
+
+    def _fill_req_files_paths(self,path='',overwrite=True,exename='dentf_lorentz.x'):
+        """Method for getting full paths from required Files"""
+
+        #TODO reset option if path is changing
+        if not path:
+            path=self.templatepath
+
+        try:
+            files=os.listdir(path)
+        except:
+            print('path is not set correctly')
+            return
+
+        for file,filename in self.req_files_names.items():
+
+            if filename in files:
+                if file in self.req_files_paths and overwrite==False:
+                    print(file, ' is already set to path: ', self.req_files_paths[file])
+                    continue
+        ##TODO find orginal path to files not only links
+                self.req_files_paths[file]=os.path.join(path,filename)
+
+
+        if exename in files:
+            if not self.path2exe:
+                self.path2exe=os.path.join(path,exename)
+            elif overwrite:
+                self.path2exe=os.path.join(path,exename)
+
+
+        ### DOTO Implement method to iterate over all sources, otherwise problems are occuring
+        if set(self.req_files_names) == set(self.req_files_paths):
+            return
+        else:
+            print('could not fill all required paths')
+
+    def _createfiles(self,singlerunpath='',overwrite=False,link=True):
+        """Create and/or link required files and folder into destination"""
+
+        if not singlerunpath:
+            singlerunpath=self.wdir
+
+
+        self._checkreqfiles()
+        if not os.path.exists(self.path2exe):
+            raise IOError('Path to Executable is missing')
+
+
+        os.makedirs(singlerunpath,exist_ok=True)
+
+        for i,j in self.req_files_paths.items():
+
+            destfile=os.path.join(singlerunpath,os.path.basename(j))
+
+            if os.path.isfile(destfile):
+                if overwrite:
+                    print(destfile, ' is a file and is replaced')
+                    os.remove(destfile)
+                else:
+                    print(destfile, ' is not updated') ### TODO Maybe check if it is the same file!!
+                    continue
+            if link:
+                os.symlink(os.path.realpath(j),destfile)
+            else:
+                shutil.copy2(j,destfile)
+
+
+
+        i2=self.path2exe
+        destfile=os.path.join(singlerunpath,os.path.basename(i2))
+        if os.path.isfile(destfile):
+            if overwrite:
+                print(destfile, ' is a file and is replaced')
+                os.remove(destfile)
+            else:
+                print(destfile, ' is not updated') ### Maybe check if it is the same file!!
+                return
+        if link:
+            os.symlink(os.path.realpath(i2),destfile)
+        else:
+            shutil.copy2(i2,destfile)
 
 
 class Neo2Scan(Neo2QL):
