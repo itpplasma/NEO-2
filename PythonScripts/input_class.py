@@ -15,7 +15,7 @@ import yaml
 from IPython import display
 import shutil
 import subprocess
-#sys.path.append('/afs/itp.tugraz.at/user/wakatobi/Documents/michi_Masterarbeit/jupyter_notebook/')
+sys.path.append('/afs/itp.tugraz.at/user/wakatobi/Documents/michi_Masterarbeit/jupyter_notebook/')
 import neo2post
 import h5py
 import numpy as np
@@ -465,6 +465,17 @@ class ReconPlot():
         for i in fig.axes:
             i.legend()
 
+
+    def magnetic_plot(self,poi=None,write=False):
+
+        magplot=neo2post.MagneticsPlot(rundir=self.rundir,plotdir=self.plotdir)
+        if poi:
+            magplot.plot_poi(poi)
+            if write:
+                magplot.write_poi(overwrite=True)
+        else:
+            magplot.plot_magnetics()
+        plt.show()
 
     def run_dentf(self,save_out=''):
         """Run dentf_lorentz"""
