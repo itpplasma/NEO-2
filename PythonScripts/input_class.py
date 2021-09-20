@@ -15,7 +15,11 @@ import yaml
 from IPython import display
 import shutil
 import subprocess
-
+#sys.path.append('/afs/itp.tugraz.at/user/wakatobi/Documents/michi_Masterarbeit/jupyter_notebook/')
+import neo2post
+import h5py
+import numpy as np
+import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
     print('I am main')
@@ -335,29 +339,29 @@ class Neo2Par(Neo2_common_objects):
 
 
 
-class ReconRun(Neo2_common_objects):
-    def __init__(self,wdir,templatepath=None):
-        self.wdir=wdir
+class ReconPlot():
+    def __init__(self,plotdir,rundir='',templatepath=None):
+        self.plotdir=plotdir
         self.templatepath=templatepath
         self.req_files_names={
                 'g_lambdain':'g_vs_lambda.in',
                 'spitzerinterface':'spitzerinterface.in',
                 'dentf_lorentz':'dentf_lorentz.x'}
         self.req_files_paths=dict()
-        self.path2exe=''
-        self.spitzerin=None
-        self.g_lambdain=None
 
     def _fill_req_files_names(self):
 
         pass # Check of filename inside spitzer.in has to be done.
 
-    def _fill_req_files_paths(self,path='',overwrite=True,exename='dentf_lorentz.x'):
+    def _fill_req_files_paths(self,path='',overwrite=True):
         """Method for getting full paths from required Files"""
 
         #TODO reset option if path is changing
         if not path:
-            path=self.templatepath
+            if not self.templatepath:
+                path=self.plotdir
+            else:
+                path=self.templatepath
 
         try:
             files=os.listdir(path)
@@ -375,11 +379,6 @@ class ReconRun(Neo2_common_objects):
                 self.req_files_paths[file]=os.path.join(path,filename)
 
 
-        if exename in files:
-            if not self.path2exe:
-                self.path2exe=os.path.join(path,exename)
-            elif overwrite:
-                self.path2exe=os.path.join(path,exename)
 
 
         ### DOTO Implement method to iterate over all sources, otherwise problems are occuring
@@ -388,23 +387,22 @@ class ReconRun(Neo2_common_objects):
         else:
             print('could not fill all required paths')
 
-    def _createfiles(self,singlerunpath='',overwrite=False,link=True):
+    def _createfiles(self,newplotdir='',overwrite=False,link=True):
         """Create and/or link required files and folder into destination"""
 
-        if not singlerunpath:
-            singlerunpath=self.wdir
+        if not newplotdir:
+            newplotdir=self.plotdir
 
 
-        self._checkreqfiles()
-        if not os.path.exists(self.path2exe):
-            raise IOError('Path to Executable is missing')
+        #self._checkreqfiles() #ToDO Make own _checkreqfiles()
 
 
-        os.makedirs(singlerunpath,exist_ok=True)
+
+        os.makedirs(newplotdir,exist_ok=True)
 
         for i,j in self.req_files_paths.items():
 
-            destfile=os.path.join(singlerunpath,os.path.basename(j))
+            destfile=os.path.join(newplotdir,os.path.basename(j))
 
             if os.path.isfile(destfile):
                 if overwrite:
@@ -418,22 +416,28 @@ class ReconRun(Neo2_common_objects):
             else:
                 shutil.copy2(j,destfile)
 
+    def plot(self):
+        self.hdf5=h5py.File(self.plotdir+'g_vs_lambda.h5','r')
+        self.plot=neo2post.Neo2Plot(self.hdf5['p1'],def_x='lambda')
 
-
-        i2=self.path2exe
-        destfile=os.path.join(singlerunpath,os.path.basename(i2))
-        if os.path.isfile(destfile):
-            if overwrite:
-                print(destfile, ' is a file and is replaced')
-                os.remove(destfile)
-            else:
-                print(destfile, ' is not updated') ### Maybe check if it is the same file!!
-                return
-        if link:
-            os.symlink(os.path.realpath(i2),destfile)
+    def run_dentf(self,save_out=''):
+        """Run denf_lorentz"""
+        curdir=os.getcwd()
+        os.chdir(self.plotdir)
+        try:
+            self.hdf5.close()
+        except:
+            pass
+        if not save_out:
+            with subprocess.Popen("./dentf_lorentz.x", stdout=subprocess.PIPE,
+                bufsize=1,stderr=subprocess.STDOUT,universal_newlines=True) as p3:
+                for line in p3.stdout:
+                    print(line, end='')
         else:
-            shutil.copy2(i2,destfile)
+            with open(save_out, "w") as outfile:
+                subprocess.run('./neo_2.x', stdout=outfile,stderr=outfile)
 
+        os.chdir(curdir)
 
 class Neo2Scan(Neo2QL):
     """ Class for scans over one parameter
