@@ -342,7 +342,7 @@ class Neo2Par(Neo2_common_objects):
 class ReconPlot():
     def __init__(self,plotdir,rundir='',templatepath=''):
 
-        self.templatepath=templatepath
+        self._templatepath=templatepath
         self.req_files_names={
                 'g_lambdain':'g_vs_lambda.in',
                 'spitzerinterface':'spitzerinterface.in',
@@ -354,16 +354,16 @@ class ReconPlot():
                 g_lambdain='/proj/plasma/Neo2/Interface/Examples/g_vs_lambda.in')
 
         if os.path.isdir(rundir):
-            self.rundir=rundir
+            self._rundir=rundir
         else:
             raise IOError('rundir must a valid path')
 
-        self.plotdir=os.path.join(rundir,plotdir)
+        self._plotdir=os.path.join(rundir,plotdir)
         # if plotdir is absolute, join only outputs plotdir
 
         self._fill_req_files_paths()
-        if os.path.exists(self.plotdir):
-            files=os.listdir(self.plotdir)
+        if os.path.exists(self._plotdir):
+            files=os.listdir(self._plotdir)
             for file,filename in self.req_files_names.items():
                 if filename not in files:
                     self._createfiles(link=False)
@@ -371,7 +371,6 @@ class ReconPlot():
             self._createfiles(link=False)
 
     def _fill_req_files_names(self):
-q
         pass # Check of filename inside spitzer.in has to be done.
 
     def _fill_req_files_paths(self,path='',replace=True):
@@ -379,10 +378,10 @@ q
 
         #TODO reset option if path is changing
         if not path:
-            if not self.templatepath:
-                path=self.plotdir
+            if not self._templatepath:
+                path=self._plotdir
             else:
-                path=self.templatepath
+                path=self._templatepath
 
         try:
             files=os.listdir(path)
@@ -399,25 +398,20 @@ q
         ##TODO find orginal path to files not only links
                 self.req_files_paths[file]=os.path.join(path,filename)
 
-
-
-
         ### DOTO Implement method to iterate over all sources, otherwise problems are occuring
         if set(self.req_files_names) == set(self.req_files_paths):
             return
         else:
             print('could not fill all required paths')
 
+
     def _createfiles(self,newplotdir='',overwrite=False,link=False):
         """Create and/or link required files and folder into destination"""
 
         if not newplotdir:
-            newplotdir=self.plotdir
-
+            newplotdir=self._plotdir
 
         #self._checkreqfiles() #ToDO Make own _checkreqfiles()
-
-
 
         os.makedirs(newplotdir,exist_ok=True)
 
@@ -440,7 +434,7 @@ q
 
     def g_plot(self,*args,tags='',subplots=False,**kwargs):
 
-        file=os.path.join(self.plotdir,'g_vs_lambda.h5')
+        file=os.path.join(self._plotdir,'g_vs_lambda.h5')
 
         if not os.path.exists(file):
             raise IOError(('Please write interested points first'))
@@ -473,7 +467,7 @@ q
 
     def magnetic_plot(self,poi=None,write=False):
 
-        magplot=neo2post.MagneticsPlot(rundir=self.rundir,plotdir=self.plotdir)
+        magplot=neo2post.MagneticsPlot(rundir=self._rundir,plotdir=self._plotdir)
         if poi:
             magplot.plot_poi(poi)
             if write:
@@ -484,7 +478,7 @@ q
 
     def _plot_write(self,value):
         self.g_plot(value)
-        self.run_dentf(show=False)
+        self._run_dentf(show=False)
 
     def interactive_plot(self):
         a=widgets.interactive(self.magnetic_plot,poi=10.,write=widgets.fixed(True))
@@ -496,10 +490,10 @@ q
         ad=widgets.HBox((a,d))
         display.display(ad)
 
-    def run_dentf(self,show=True):
+    def _run_dentf(self,show=True):
         """Run dentf_lorentz"""
         curdir=os.getcwd()
-        os.chdir(self.plotdir)
+        os.chdir(self._plotdir)
 
         if show:
             with subprocess.Popen("./dentf_lorentz.x", stdout=subprocess.PIPE,
