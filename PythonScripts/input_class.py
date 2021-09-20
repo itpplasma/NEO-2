@@ -13,6 +13,7 @@ import f90nml
 import os
 import yaml
 from IPython import display
+import shutil
 
 
 if __name__ == '__main__':
@@ -125,8 +126,11 @@ class Neo2_common_objects():
 
 
 
-    def _createfiles(self,singlerunpath,overwrite=False,link=True):
+    def _createfiles(self,singlerunpath='',overwrite=False,link=True):
         """Create and/or link required files and folder into destination"""
+
+        if not singlerunpath:
+            singlerunpath=self.wdir
 
 
         self._checkreqfiles()
@@ -148,10 +152,16 @@ class Neo2_common_objects():
                     print(destfile, ' is not updated') ### TODO Maybe check if it is the same file!!
                     continue
             if i == 'neo2in':
-                if self.neo2nml.ischanged:
-                    self.neo2nml.write(destfile)
-                    continue
-            os.symlink(os.path.realpath(j),destfile)
+                try:
+                    if self.neo2nml.ischanged:
+                        self.neo2nml.write(destfile)
+                        continue
+                except AttributeError:
+                    print('Neo2in was not read')
+            if link:
+                os.symlink(os.path.realpath(j),destfile)
+            else:
+                shutil.copy2(j,destfile)
 
 
 
@@ -166,8 +176,10 @@ class Neo2_common_objects():
             else:
                 print(destfile, ' is not updated') ### Maybe check if it is the same file!!
                 return
-
-        os.symlink(os.path.realpath(i2),destfile)
+        if link:
+            os.symlink(os.path.realpath(i2),destfile)
+        else:
+            shutil.copy2(i2,destfile)
         self._Runiscreated=True
 
 
@@ -254,7 +266,7 @@ class Neo2_common_objects():
         if set(self.req_files_names) == set(self.req_files_paths):
             return
         elif rec:
-            self._fill_req_files_paths(path=path,rec=False)
+            self._fill_req_files_paths(path=path,rec=False,overwrite=overwrite)
         else:
             print('could not fill all required paths')
 
