@@ -14,6 +14,7 @@ import os
 import yaml
 from IPython import display
 import shutil
+import subprocess
 
 
 if __name__ == '__main__':
@@ -116,6 +117,22 @@ class Neo2_common_objects():
         os.chdir(curdir)
         self.path2exe=exe+'neo_2.x'
 
+    def run_local(self,save_out=''):
+        """Start Job on local machine"""
+        curdir=os.getcwd()
+        os.chdir(self.wdir)
+
+        if not save_out:
+            with subprocess.Popen("./neo_2.x", stdout=subprocess.PIPE,
+                bufsize=1,stderr=subprocess.STDOUT,universal_newlines=True) as p3:
+                for line in p3.stdout:
+                    print(line, end='')
+        else:
+            with open(save_out, "w") as outfile:
+                subprocess.run('./neo_2.x', stdout=outfile,stderr=outfile)
+
+        os.chdir(curdir)
+
     def _read_neo2in(self):
         try:
             self.neo2nml=Neo2File(self.req_files_paths['neo2in'])
@@ -155,6 +172,7 @@ class Neo2_common_objects():
                 try:
                     if self.neo2nml.ischanged:
                         self.neo2nml.write(destfile)
+                        print('neo2.in was written')
                         continue
                 except AttributeError:
                     print('Neo2in was not read')
@@ -184,6 +202,7 @@ class Neo2_common_objects():
 
 
     def _compare_nml2file(self,path):
+        self._read_neo2in()
         neonml=Neo2File(os.path.join(path,'neo2.in'))
         if self.neo2nml==neonml:
             print('loaded neo2.in and neo2.in onn path are the same')
@@ -430,9 +449,7 @@ class Neo2Scan(Neo2QL):
         self.singlerun_templatepath=None
 
 
-    def run_local(self):
-        """Start Job on local machine"""
-        pass
+
 
     def run_condor(self):
         """Start Jobs with Condor"""
@@ -440,7 +457,7 @@ class Neo2Scan(Neo2QL):
 
 
     def _checktype(self,parameter):
-        """Check data type of parameter in neo2in file"""
+        """Old method Check data type of parameter in neo2in file"""
 
         if parameter in self.neo2nml:
             if isinstance(self.neo2nml[parameter],str):
@@ -834,8 +851,8 @@ class Neo2File(object):
     
     
     def __repr__(self):
-        #display.display_pretty(self._neo2dict)
-        return self._neo2dict
+        display.display_pretty(self._neo2dict)
+        #return self._neo2dict
     
     
     #def __repr__(self):
