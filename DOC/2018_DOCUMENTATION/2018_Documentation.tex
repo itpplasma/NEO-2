@@ -87,6 +87,8 @@ This is document is a collection of notes to continue the work on the
 ECCD and bootstrap tasks. It is not a document describing physical
 aspects but technical details.
 
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
 \section{Technical background on NEO-2}
 \subsection{Overview}
 In the last years the development of NEO-2 has split into two branches,
@@ -110,6 +112,7 @@ Distribution function & Yes & No (planned)
 \label{tab:neo2branches}
 \end{table}
 
+% ----------------------------------------------------------------------
 \subsection{The Git repository}
 Since 2013 the general version of NEO-2 is under Git version control.
 Later, also the quasilinear version was added to this repository
@@ -127,6 +130,7 @@ git clone git@github.com:itpplasma/NEO-2.git .
 in an empty directory (do not oversee the point at the end of the
 command line which defines the current directory).
 
+% ----------------------------------------------------------------------
 \subsection{CMake}
 The build system of NEO-2 is CMake (since 2012). The main advantage is
 that this build system takes care of correct compilation order of the
@@ -159,6 +163,7 @@ happens when this command is called, the most important steps are the
 Fortran compiler and library detection. A standard Makefile is generated
 which can be tested by running \vv{make}.
 
+% ----------------------------------------------------------------------
 \subsection{Libraries}
 NEO-2 depends on a number of external libraries. While during the last
 years some bleeding edge features of some of the libraries where used
@@ -212,6 +217,8 @@ Note that it was decided to no longer have \vv{hdf5tools} and
 which is intended to collect code that is used by multiple programs of
 the group. \vv{libneo} is also available from github.
 
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
 \section{Running an ECCD precomputation}
 \subsection{Preparations}
 To run NEO-2 with a Boozer file as input for the magnetic equilibrium,
@@ -322,6 +329,7 @@ New parameters related to the collision operator:
 
 \end{itemize}
 
+% ----------------------------------------------------------------------
 \subsection{Preparation of equilibrium}
 The main directory for everything related to ECCD is
 \vv{/proj/plasma/Neo2/Interface/}. The Boozer files for ECCD runs are
@@ -333,6 +341,7 @@ file which can be safely removed. An example of the original file and
 the slightly modified file (some comments have been removed) is given
 here: \vv{/proj/plasma/Neo2/Interface/Boozer/w7x-m111-b3-i1/}.
 
+% ----------------------------------------------------------------------
 \subsection{Preparation of the plasma parameter profiles}
 The profiles for ECCD can be found here:
 \vv{/proj/plasma/Neo2/Interface/Profiles/}. Profiles are usually
@@ -354,6 +363,7 @@ file has to have the form of
  \item 4. Column: Effective charge $Z_\mathrm{eff}$.
 \end{itemize}
 
+% ----------------------------------------------------------------------
 \subsection{Preparation of the run directories}
 Next step is the preparation of the flux surface grid for the NEO-2
 runs. It is started from an uniform grid where each grid point is
@@ -444,6 +454,7 @@ directories and to check if \vv{boozer_s}, \vv{conl_over_mfp}, and
 representing the directory names that have been created. These names
 should now be copied into a file named \vv{jobs_list.txt}.
 
+% ----------------------------------------------------------------------
 \subsection{Running the jobs}
 In order to start the jobs the script
 \begin{verbatim}
@@ -472,6 +483,8 @@ of each directory defined in \vv{jobs_list.txt} into one output file.
 This output is file is already the one which is used by the NEO-2/TRAVIS
 interface.
 
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
 \section{Studies of the generalized Spitzer function}
 For this is it necessary that for at least one flux surface the file
 \vv{final.h5} had been produced with a NEO-2 run.
@@ -510,6 +523,8 @@ tools located here:
  /proj/plasma/Neo2/Interface/Magfie
 \end{verbatim}
 
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
 \section{Running TRAVIS}
 TRAVIS is located here:
 \begin{verbatim}
@@ -536,6 +551,8 @@ here:
 with the command \vv{make gnu}. However, before several config files
 have to be set, especially, \vv{makeunix/mkfiles/defs.mk}.
 
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
 \section{Bootstrap}
 For plotting the bootstrap coefficient it is not necessary to run NEO-2
 in the reconstruction mode. Plotting can be done with the script
@@ -594,6 +611,7 @@ documentation. It should be noted that the parameter \vv{plot_source}
 can have the values \vv{dentf}, \vv{enetf}, and \vv{spitf} defining the
 distribution function to be plotted.
 
+% ----------------------------------------------------------------------
 \subsection{Scripts for running the jobs in Condor}
 In
 \begin{verbatim}
@@ -666,7 +684,7 @@ If your jobs fits into the memory of regular machines, then you should
 exclude the high memory machines (e.g. faepop12 and faepop13), so as to
 not block them for people who need the memory.
 
-
+% ----------------------------------------------------------------------
 \subsection{Boozer file for rational field line}
 For creating a magnetic equilibrium with toroidal perturbations, the
 following MATLAB script can be used:
@@ -704,6 +722,8 @@ required input includes:
   \item (condor submit file)
 \end{itemize}
 
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
 \section{List of scripts/codes used besides neo-2}
 
 \begin{table}[h]
@@ -757,6 +777,8 @@ plot\_levels\_pgf.m & \\
 \label{tab:additionaloctavescripts}
 \end{table}
 
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
 \section{Open tasks}
 \begin{itemize}
  \item Include NBI source term.
@@ -774,6 +796,8 @@ plot\_levels\_pgf.m & \\
  reached with NEO-2. (Done, June 2018)
 \end{itemize}
 
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
 \section{More useful scripts}
 \begin{itemize}
  \item \vv{hdf5struct.m} Converts HDF5 file to MATLAB structure.
