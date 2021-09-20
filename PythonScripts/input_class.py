@@ -51,13 +51,17 @@ class Neo2_common_objects():
         Submit all Jobs to Condor
     """
 
-    def __init__(self,wdir):
+    def __init__(self,wdir,templatepath=None):
 
 
         self._neo2path=os.environ.get('NEO2PATH')
         # If NEO2PATH is not available the Attribute is NONE
 
         self.wdir=wdir
+        if templatepath==None:
+            self.templatepath=''
+        else:
+            self.templatepath=templatepath
         if os.path.isdir(self._neo2path):
             self._path2code=self._neo2path
         else:
@@ -157,10 +161,12 @@ class Neo2_common_objects():
         if set(self.req_files_names) != set(self.req_files_paths):
             raise ValueError('Not all paths of required Files defined')
 
+        if not os.path.isfile(self.path2exe):
+            raise RuntimeError('Executable was not defined')
+
         for i,j in self.req_files_paths.items():
             if not os.path.exists(j):
                 raise RuntimeError(j,' is not a File')
-
 
         else:
             print('All required Files are existing')
@@ -223,6 +229,9 @@ class Neo2_common_objects():
         ##TODO find orginal path to files not only links
                 self.req_files_paths[file]=os.path.join(self.templatepath,filename)
         ##TODO: Check if neo2in file has already read.
+        if 'neo_2.x' in files:
+            self.path2exe=os.path.join(self.templatepath,'neo_2.x')
+
         self._fill_req_files_names()
         #read_Neo2File
 
@@ -341,10 +350,11 @@ class Neo2Scan(Neo2_common_objects):
     def __init__(self,wdir):
         super().__init__(wdir)
         self.structure=''
-        self.scanparameter=''
-        self.float_format='1.2e'
+        self.scanparameter=''#boozer_s/
+        self.float_format='{:.5f}'#'1.2e'
         self.scanvalues=''
         self.folder_name='{0}={1:{2}}'
+        self.single_runs=dict()
 
 
 
@@ -371,6 +381,16 @@ class Neo2Scan(Neo2_common_objects):
                 return float
             else:
                 raise AttributeError('Did not detect datatype of scanparameter')
+
+    def _set_singlerun_names(self):
+        if self.scanparameter=='boozer_s':
+                for i in self.scanvalues:
+                    dir_name=float2foldername(i,'{:.5f}')
+                    self.single_runs[dir_name]={self.scanparameter:i}
+
+        else:
+            raise NotImplementedError()
+
 
     def _set_folder_names(self,overwrite=False):
 
@@ -579,88 +599,49 @@ class SingleRun(Neo2_common_objects):
         
 ####### Implementend Functions: #########       
         
-        
-    def _fill_req_files_names(self): # Get required File paths from neo(2).in Files
-        """Get additional required File names from neo.in and neo2.in Files"""
-        
-        
-        self._read_neo2in()
-        try:
-            self.req_files_names['multispec']=self.neo_nml['fname_multispec_in']
-        except KeyError:
-            print('The neo2.in File has no multispec parameter')
-            return 
-        
-        
-        self.req_files_names['in_file_pert']=self.neo_nml['in_file_pert']
-        
-       
-        
-        try:
-            neo=self.req_files_paths['neoin']
-            ## There must be a better catch if neoin is not a File
-        except:
-            print('neo.in File is missing')
-            return
-        
-        with open(neo,'r') as f:
-            for line in f:
-                arg = line.split()
-                if 'in_file' in arg:
-                    self.req_files_names['in_file_axi']=arg[0]
-                    #print(arg[0])
-                    break 
-    # Ensure that it is running in the correct mode
-    
-    #def _SetSources(self): # name has to be better chosen:
-        
-        ##### Uniqifi path if only a oberpath is given
-       # self._sources=dict([('codesource','/proj/plasma/Neo2/MODULAR/'),
-                           #     ('pert_path','/temp/andfmar/Boozer_files_perturbation_field/ASDEX_U/32169/'),                            
-                #                ('singlerunsource','/temp/wakatobi/Startordner_Neo2/')])
-        
-        
-    def _fill_req_files_paths(self,overwrite=False):
-        """Method for getting full paths from required Files"""
 
-
-        try:
-            files=os.listdir(self._sources['singlerunsource'])
-        except:
-            print('sources not correct set')
-            return
         
-        for fdisc,fnames in self.req_files_names.items():
-            
-            if fnames in files:
-                if fnames in self.req_files_paths and overwrite==False:
-                    #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
-                    continue
-                self.req_files_paths[fdisc]=os.path.join(self._sources['singlerunsource'],fnames)
-                
-        self._fill_req_files_names()
-        #read_Neo2File
-        
-        
-        ### DOTO Implement method to iterate over all sources, otherwise problems are occuring
-        if set(self.req_files_names) == set(self.req_files_paths):
-            return
-        
-        try:
-            files=os.listdir(self._sources['pert_path'])
-        except:
-            print('sources2 not correct set')
-            return
-        
-        for fdisc,fnames in self.req_files_names.items():
-            
-            if fnames in files:
-                if fnames in self.req_files_paths:
-                    #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
-                    continue
-                self.req_files_paths[fdisc]=os.path.join(self._sources['pert_path'],fnames)
-        
-        self._fill_req_files_paths() # recursive Execution!!! maybe a problem!!!
+#    def _fill_req_files_paths(self,overwrite=False):
+#        """Method for getting full paths from required Files"""
+#
+#
+#        try:
+#            files=os.listdir(self._sources['singlerunsource'])
+#        except:
+#            print('sources not correct set')
+#            return
+#
+#        for fdisc,fnames in self.req_files_names.items():
+#
+#            if fnames in files:
+#                if fnames in self.req_files_paths and overwrite==False:
+#                    #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
+#                    continue
+#                self.req_files_paths[fdisc]=os.path.join(self._sources['singlerunsource'],fnames)
+#
+#        self._fill_req_files_names()
+#        #read_Neo2File
+#
+#
+#        ### DOTO Implement method to iterate over all sources, otherwise problems are occuring
+#        if set(self.req_files_names) == set(self.req_files_paths):
+#            return
+#
+#        try:
+#            files=os.listdir(self._sources['pert_path'])
+#        except:
+#            print('sources2 not correct set')
+#            return
+#
+#        for fdisc,fnames in self.req_files_names.items():
+#
+#            if fnames in files:
+#                if fnames in self.req_files_paths:
+#                    #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
+#                    continue
+#                self.req_files_paths[fdisc]=os.path.join(self._sources['pert_path'],fnames)
+#
+#        self._fill_req_files_paths() # recursive Execution!!! maybe a problem!!!
 
     
 #    def _read_neo2in(self):
@@ -719,6 +700,7 @@ class Neo2File(object):
                         print('before change: ',par,'=',self._neo2nml[i][par])
                         self._neo2nml[i][par]=kwargs[par]
                         print(par, ' in namelist', i, ' changed to : ', kwargs[par])
+                        self.ischanged=True
                     match=True
                     break
                 if match:
@@ -862,11 +844,15 @@ class Neo2File(object):
 
 
 
+def float2foldername(inp, form_sp):
+    return "_".join(["es", (form_sp.format(inp)).replace(".", "p")])
 
 
-
-
-
+def foldername2float(inp):
+    f = float(inp.replace("p", ".").split("_")[-1])
+    precission = len(inp.split("p")[-1])
+    form_sp=''.join(['{:.',str(precission),'f}'])
+    return f, form_sp
 
 
 
