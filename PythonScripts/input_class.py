@@ -57,7 +57,7 @@ class Neo2_common_objects():
         self._neo2path=os.environ.get('NEO2PATH')
         # If NEO2PATH is not available the Attribute is NONE
 
-        self.wdir=wdir
+        self.wdir=wdir ## runpath ist wahrscheinlich besser
         if templatepath==None:
             self.templatepath=''
         else:
@@ -68,6 +68,8 @@ class Neo2_common_objects():
             self._path2code=''
 
         self._path2exe=''
+        self.path2exe=''
+
 
         self.req_files_names={
         'neo2in': 'neo2.in',
@@ -75,6 +77,23 @@ class Neo2_common_objects():
         }
         #self._Load_default()
         self.req_files_paths=dict()
+
+## Prefill if Run exists
+
+        if os.path.isdir(wdir):
+            if templatepath:
+                self._fill_req_files_paths()
+                self._compare_nml2file(self.wdir)
+            else:
+                try:
+                    self._fill_req_files_paths(path=wdir)
+                except:
+                    print('path has no neo2.in')
+
+
+    def _check_runpath(self):
+        os.path.exists(self.wdir)
+        pass
 
     def compile(self,overwrite=False):
         curdir=os.getcwd()
@@ -126,7 +145,7 @@ class Neo2_common_objects():
                     print(destfile, ' is a file and is replaced')
                     os.remove(destfile)
                 else:
-                    print(destfile, ' is not updated') ### Maybe check if it is the same file!!
+                    print(destfile, ' is not updated') ### TODO Maybe check if it is the same file!!
                     continue
             if i == 'neo2in':
                 if self.neo2nml.ischanged:
@@ -152,8 +171,13 @@ class Neo2_common_objects():
         self._Runiscreated=True
 
 
-
-
+    def _compare_nml2file(self,path):
+        neonml=Neo2File(os.path.join(path,'neo2.in'))
+        if self.neo2nml==neonml:
+            print('neo2.in in template and on path are the same')
+            return
+        else:
+            print('neo2in are not the same, using template path')
 
     def _checkreqfiles(self):
 
@@ -179,8 +203,8 @@ class Neo2_common_objects():
     def _fill_req_files_names(self):
         """Get additional required File names from neo.in and neo2.in Files"""
 
-
-        self._read_neo2in() #TODO
+## Reset if file is Changing
+        self._read_neo2in()
         try:
             self.req_files_names['multispec']=self.neo2nml['fname_multispec_in']
         except KeyError:
@@ -208,29 +232,34 @@ class Neo2_common_objects():
 
 
 
-    def _fill_req_files_paths(self,overwrite=True):
+    def _fill_req_files_paths(self,overwrite=True,path='',rec=True):
         """Method for getting full paths from required Files"""
 
+        #TODO reset option if path is changing
+        if not path:
+            path=self.templatepath
+
         try:
-
-            files=os.listdir(self.templatepath)
+            files=os.listdir(path)
         except:
-
-            print('Templatepath is not set correctly')
+            print('path is not set correctly')
             return
 
         for file,filename in self.req_files_names.items():
 
             if filename in files:
-                if filename in self.req_files_paths and overwrite==False:
-                    print(filename, ' is already set to path: ', self.req_files_paths[filename])
+                if file in self.req_files_paths and overwrite==False:
+                    print(file, ' is already set to path: ', self.req_files_paths[file])
                     continue
-
         ##TODO find orginal path to files not only links
-                self.req_files_paths[file]=os.path.join(self.templatepath,filename)
-        ##TODO: Check if neo2in file has already read.
+                self.req_files_paths[file]=os.path.join(path,filename)
+
+
         if 'neo_2.x' in files:
-            self.path2exe=os.path.join(self.templatepath,'neo_2.x')
+            if not self.path2exe:
+                self.path2exe=os.path.join(path,'neo_2.x')
+            elif overwrite:
+                self.path2exe=os.path.join(path,'neo_2.x')
 
         self._fill_req_files_names()
         #read_Neo2File
@@ -239,8 +268,10 @@ class Neo2_common_objects():
         ### DOTO Implement method to iterate over all sources, otherwise problems are occuring
         if set(self.req_files_names) == set(self.req_files_paths):
             return
-
-        self._fill_req_files_paths() # recursive Execution!!! maybe a problem!!!
+        elif rec:
+            self._fill_req_files_paths(path=path,rec=False)
+        else:
+            print('could not fill all required paths')
 
 
 
@@ -347,15 +378,16 @@ class Neo2Scan(Neo2_common_objects):
 #        """Method to set Multispecies File"""
 #        pass
 
-    def __init__(self,wdir):
-        super().__init__(wdir)
+    def __init__(self,wdir,templatepath=None):
+        super().__init__(wdir,templatepath)
         self.structure=''
         self.scanparameter=''#boozer_s/
         self.float_format='{:.5f}'#'1.2e'
-        self.scanvalues=''
+        self.scanvalues=[]
         self.folder_name='{0}={1:{2}}'
-        self.single_runs=dict()
-
+        self.singleruns_names=dict()
+        self.singleruns_instances=[]
+        self.singlerun_templatepath=None
 
 
     def run_local(self):
@@ -382,17 +414,44 @@ class Neo2Scan(Neo2_common_objects):
             else:
                 raise AttributeError('Did not detect datatype of scanparameter')
 
-    def _set_singlerun_names(self):
+    def _set_singleruns_names(self):
+        '''Generate singlerun path names for boozer_s
+
+        Should be in Class Radialscan
+        '''
         if self.scanparameter=='boozer_s':
                 for i in self.scanvalues:
                     dir_name=float2foldername(i,'{:.5f}')
-                    self.single_runs[dir_name]={self.scanparameter:i}
+                    self.singleruns_names[dir_name]={self.scanparameter:i}
 
         else:
             raise NotImplementedError()
 
 
+    def _generate_singleruns_instances(self):
+        '''Generate a singlerun instance for every singlerun name'''
+
+        if  self.singlerun_templatepath:
+            templatepath=self.singlerun_templatepath
+        else:
+            print('No singlerun_templatepath is set, i use multirun template path')
+            templatepath=self.templatepath
+
+        for i in self.singleruns_names:
+            self.singleruns_instances.append(SingleRun(os.path.join(self.wdir,i),templatepath))
+            self.singleruns_instances[-1]._fill_req_files_paths() ## Should be included in Singlerun init
+            self.singleruns_instances[-1].neo2nml.chval(**self.singleruns_names[i])
+
+        pass
+
+    def _generate_singlerun_files(self):
+        ''' Generate only the necessarry files for the singleruns'''
+
+        pass
+
+
     def _set_folder_names(self,overwrite=False):
+        '''Old method for generating SingleRuns'''
 
         if self.scanparameter not in self.structure.split('/'):
             raise AttributeError('Scanparameter is not in Structure')
@@ -405,6 +464,7 @@ class Neo2Scan(Neo2_common_objects):
 
 
     def _set_folder_names_4_singlerun(self):
+        '''Old method for generating SingleRuns'''
         structure_list=self.structure.split('/')
         for i, j in enumerate(structure_list):
             if j in self.neo2nml:
@@ -459,10 +519,10 @@ class SingleRun(Neo2_common_objects):
 
     ### Methods should be used but not class in total.
     
-    def __init__(self,singlerunpath):
+    def __init__(self,singlerunpath,templatepath=None):
 
 
-        super().__init__(singlerunpath)
+        super().__init__(singlerunpath,templatepath)
         self.singlerunpath=singlerunpath
         #self.codesource=None
         #self.runsource=None # Executable
@@ -524,8 +584,6 @@ class SingleRun(Neo2_common_objects):
         #Cannot load self.req_files_names from YAML file
         self._sources=data.get('sources')
 
-        
-    
 
 
 #    def Run_Precomp(self,overwrite=False):
@@ -700,6 +758,7 @@ class Neo2File(object):
                         print('before change: ',par,'=',self._neo2nml[i][par])
                         self._neo2nml[i][par]=kwargs[par]
                         print(par, ' in namelist', i, ' changed to : ', kwargs[par])
+                        self._neo2dict[par]=kwargs[par]
                         self.ischanged=True
                     match=True
                     break
@@ -711,11 +770,12 @@ class Neo2File(object):
     
     
     def write(self,path=''):
+#Should control if write was successfull and then self.ischanged = False
         if path=='':
             return self._neo2nml.write()
         else:
             return self._neo2nml.write(path)
-    
+
     def _check_duplicate_parameter(self):
         te=dict(self._neo2nml)
         te2=dict(self._neo2nml)
@@ -734,7 +794,8 @@ class Neo2File(object):
     
     
     def __repr__(self):
-        display.display_pretty(self._neo2dict)
+        #display.display_pretty(self._neo2dict)
+        return self._neo2dict
     
     
     #def __repr__(self):
@@ -804,6 +865,7 @@ class Neo2File(object):
                         self._neo2nml[i][par]=val
                         print(par, ' in namelist', i, ' changed to : ', val)
                         self.ischanged=True
+                        self._neo2dict[par]=val
                         return
 
         # Auch unbedingt Kotrollen einführen
