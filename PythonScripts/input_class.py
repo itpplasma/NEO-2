@@ -440,6 +440,32 @@ class ReconPlot():
         if len(self.plot_list)==1:
             self.plot=self.plot_list[0]
 
+    def plot2(self,*args,tags='',subplots=False,**kwargs):
+
+        self.hdf5=h5py.File(os.path.join(self.plotdir,'g_vs_lambda.h5'),'r')
+        fig=plt.figure()
+        if subplots:
+            for i in range(len(args)):
+                fig.add_subplot(len(args),1,i+1)
+        else:
+            fig.add_subplot(111)
+
+        for i in self.hdf5:
+            if i=='version':
+                continue
+            if tags:
+                if isinstance(tags,(list,tuple)):
+                    if i not in tags:
+                        continue
+                else:
+                    if i!=tags:
+                        continue
+            plot=neo2post.Neo2Plot(self.hdf5[i],def_x='lambda')
+            plot.plot(*args,label=i,ax=fig.axes,**kwargs)
+        for i in fig.axes:
+            i.legend()
+
+
     def run_dentf(self,save_out=''):
         """Run dentf_lorentz"""
         curdir=os.getcwd()
