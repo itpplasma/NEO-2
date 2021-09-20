@@ -1185,7 +1185,7 @@ def compare2nml(path1,path2):
     for i in file1:
         aa=file1._neo2dict[i]
         bb=file2._neo2dict.pop(i,None)
-        if bb == None:
+        if bb is None:
             continue
         if aa==bb:
             continue
