@@ -654,6 +654,31 @@ class Neo2Scan(Neo2QL):
             raise NotImplementedError()
 
 
+    def _get_singleruns_names(self):
+
+        init=False
+        if self.singlerun_templatepath:
+            print('singlerun_templatepath will be overriden')
+        for root, dirs,files in os.walk(self.wdir):
+            for i in dirs:
+
+                f,form=foldername2float(i)
+                self.scanvalues.append(f)
+                #forms.add(form)
+
+                if not init:
+                    singlerun_templatepath=os.path.join(root,i,'neo2.in')
+                    self.singlerun_templatepath=singlerun_templatepath
+                    init=True
+                    continue
+                path2=os.path.join(root,i,'neo2.in')
+                dict_new=compare2nml(singlerun_templatepath,path2)
+                self.singleruns_names[i]=dict_new
+
+            self.scanparameter='boozer_s'
+            self.structure='boozer_s/'
+            break
+
     def _generate_singleruns_instances(self):
         '''Generate a singlerun instance for every singlerun name'''
 
@@ -739,10 +764,6 @@ class SingleRun(Neo2_common_objects):
         A list of runs for precomputation
     """
 
-
-
-
-
     ### Methods should be used but not class in total.
 
     def __init__(self,singlerunpath,templatepath=None):
@@ -770,8 +791,6 @@ class SingleRun(Neo2_common_objects):
 
         #self.SourcePaths=dict()
         #self.SetSourcepaths()
-
-
 
     #### INIT DONE FOR THE FIRST!!!!####
 
@@ -811,7 +830,6 @@ class SingleRun(Neo2_common_objects):
         self._sources=data.get('sources')
 
 
-
 #    def Run_Precomp(self,overwrite=False):
 #        """NOT READY YET!!!!"""
 #
@@ -821,7 +839,6 @@ class SingleRun(Neo2_common_objects):
 #        self.RunInitRuns()
 #        #self.gen_condorinput()
 #        #self.run_condor()
-
 
 
     def RunInitRuns(self):
@@ -842,10 +859,6 @@ class SingleRun(Neo2_common_objects):
                 #self.listofruns=b
                 break
             os.chdir(curdir)
-
-
-
-
 
 
     def SetNeo2file(self,neo2file): ## Method to set the path of the neo2 file and make all check(Setter of neo2.in)
@@ -880,9 +893,7 @@ class SingleRun(Neo2_common_objects):
 #        """Start Job on local machine"""
 #        pass
 #
-
 ####### Implementend Functions: #########
-
 
 
 #    def _fill_req_files_paths(self,overwrite=False):
@@ -934,8 +945,6 @@ class SingleRun(Neo2_common_objects):
 #        except:
 #            print('Couldn\'t read neo2.in')
 #            return
-
-
 
 
 
@@ -994,7 +1003,6 @@ class Neo2File(object):
                 print(par, ' is not in the neo2.in File')
 
 
-
     def write(self,path=''):
 #Should control if write was successfull and then self.ischanged = False
         if path=='':
@@ -1015,10 +1023,6 @@ class Neo2File(object):
       #print(nml2,'2nd')
 
 
-
-
-
-
     def __repr__(self):
         display.display_pretty(self._neo2dict)
         #return self._neo2dict
@@ -1032,7 +1036,6 @@ class Neo2File(object):
 
        # return '\n'.join(lines)
 
-
     #def __getattr__(self, attr):
       #  if attr=='write':
        #     return getattr(self._neo2nml,attr)
@@ -1042,8 +1045,6 @@ class Neo2File(object):
     #   return ['write']
         #return self._neo2nml.__dir__()
 
-
-
     #def __setattr__(self, attr, val):
        # print('attr = ',attr)
       #  if attr == '_neo2nml':
@@ -1052,8 +1053,8 @@ class Neo2File(object):
        # return setattr(self._neo2nml, attr, val)
 
     def __getitem__(self, key):
-
         ## Unbedingt Kontrollen einführen
+
         if key in self._neo2nml:
             print('Please adress your desired parameter directly')
             return None
@@ -1063,11 +1064,12 @@ class Neo2File(object):
                     #print('parameter: ',key,'found in namelist:',i )
                     return self._neo2nml[i][key]
         val = self._neo2nml.__getitem__(key)
+
         if isinstance(val,f90nml.namelist.Namelist):
             valout='namelist of key'
-
         else:
             valout=val
+
         print('getter: called: ',key,' with value:', valout)
         return val
 
@@ -1105,18 +1107,12 @@ class Neo2File(object):
         else:
             return False
 
-
     def __iter__(self):
        # def chain(*iterables):
             # chain('ABC', 'DEF') --> A B C D E F
         for it in self._neo2nml:
             for element in self._neo2nml[it]:
                 yield element
-
-
-
-
-
 
 
     #def update(self, *args, **kwargs):
@@ -1130,8 +1126,6 @@ class Neo2File(object):
 
 
 
-
-
 def float2foldername(inp, form_sp):
     return "_".join(["es", (form_sp.format(inp)).replace(".", "p")])
 
@@ -1141,3 +1135,21 @@ def foldername2float(inp):
     precission = len(inp.split("p")[-1])
     form_sp=''.join(['{:.',str(precission),'f}'])
     return f, form_sp
+
+def compare2nml(path1,path2):
+    file1=Neo2File(path1)
+    file2=Neo2File(path2)
+
+    cc=dict()
+    for i in file1:
+        aa=file1._neo2dict[i]
+        bb=file2._neo2dict.pop(i,None)
+        if bb == None:
+            continue
+        if aa==bb:
+            continue
+        else:
+            cc[i]=bb
+    for i in file2._neo2dict:
+        cc[i]=file2._neo2dict[i]
+    return cc
