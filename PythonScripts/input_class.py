@@ -709,7 +709,7 @@ class Neo2Scan(Neo2QL):
 
 class SingleRun(Neo2_common_objects):
     """Class for inputs with only one neo2.in configuration
-    
+
     So far Multispecies only,
     in Future there should be an MetaClass above these.
     Also some methods should then upmoved.
@@ -744,7 +744,7 @@ class SingleRun(Neo2_common_objects):
 
 
     ### Methods should be used but not class in total.
-    
+
     def __init__(self,singlerunpath,templatepath=None):
 
 
@@ -752,7 +752,7 @@ class SingleRun(Neo2_common_objects):
         self.singlerunpath=singlerunpath
         #self.codesource=None
         #self.runsource=None # Executable
-    
+
         #self.req_files_names={
         #'neo2in': 'neo2.in',
         #'neoin': 'neo.in'
@@ -765,20 +765,20 @@ class SingleRun(Neo2_common_objects):
        # self._neo2parSaved=False
         #self._Runiscreated=False # required Files exists
         #self._Runsettingsaved=False # required Files and Settings saved
-        
+
         ##########Info :self._sources=dict()
-       
+
         #self.SourcePaths=dict()
         #self.SetSourcepaths()
 
-    
-    
+
+
     #### INIT DONE FOR THE FIRST!!!!####
-    
-    
+
+
     def _Load_default(self):
         """Load default Values stored in input_default.yaml
-        
+
         is in the same directory as the input_class
         """
 
@@ -794,7 +794,7 @@ class SingleRun(Neo2_common_objects):
             path = os.path.dirname(os.path.realpath(self.__sourcedir))
         elif os.path.isdir(self.__realpath):
             path=self.__realpath
-    
+
         yamlpath = os.path.join(path, 'input_default.yaml')
         #print(path)
         try:
@@ -821,13 +821,13 @@ class SingleRun(Neo2_common_objects):
 #        self.RunInitRuns()
 #        #self.gen_condorinput()
 #        #self.run_condor()
-        
-        
-        
+
+
+
     def RunInitRuns(self):
         """Use Bash Routine from andfmar"""
-        
-        
+
+
         self._createfiles()
         if self.neo_nml['isw_multispecies_init'] != 1:
             raise AttributeError('isw_multispecies_init is not 1')
@@ -842,23 +842,23 @@ class SingleRun(Neo2_common_objects):
                 #self.listofruns=b
                 break
             os.chdir(curdir)
-        
-        
 
 
 
-        
+
+
+
     def SetNeo2file(self,neo2file): ## Method to set the path of the neo2 file and make all check(Setter of neo2.in)
         """Path to (new) neo2.in File"""
     ###Method to choose different neo2 Files###
         if os.path.isfile(neo2file):
             self.req_files_paths['neo2in']=os.path.abspath(neo2file)
-            
+
         if os.path.isdir(neo2file):
             self.req_files_paths['neoin']=os.path.join(os.path.abspath(neo2file),'neo.in')
             self.req_files_paths['neo2in']=os.path.join(os.path.abspath(neo2file),'neo2.in')
-            
-            
+
+
 
 ###### Methods to be implementend: #########
 
@@ -880,11 +880,11 @@ class SingleRun(Neo2_common_objects):
 #        """Start Job on local machine"""
 #        pass
 #
-        
-####### Implementend Functions: #########       
-        
 
-        
+####### Implementend Functions: #########
+
+
+
 #    def _fill_req_files_paths(self,overwrite=False):
 #        """Method for getting full paths from required Files"""
 #
@@ -927,7 +927,7 @@ class SingleRun(Neo2_common_objects):
 #
 #        self._fill_req_files_paths() # recursive Execution!!! maybe a problem!!!
 
-    
+
 #    def _read_neo2in(self):
 #        try:
 #            self.neo_nml=Neo2File(self.req_files_paths['neo2in'])
@@ -964,20 +964,20 @@ class Neo2File(object):
         self._neo2dict=dict()
         self._nmltodict()
         self._check_duplicate_parameter()
-    
-    
+
+
     def _nmltodict(self):
         for i in self:
             self._neo2dict[i]=self[i]
-    
+
     def chval(self,**kwargs):
-        
+
         print(self['plotting'])
         for par in kwargs:
-            
+
             match=False
             for i in self._neo2nml: # Iterating through namelists
-                if par in self._neo2nml[i]:  # if parameter in one namelist 
+                if par in self._neo2nml[i]:  # if parameter in one namelist
                     if self._neo2nml[i][par]==kwargs[par]:
                         print(par, ' in namelist', i, ' was already : ', kwargs[par])
                     else:
@@ -992,9 +992,9 @@ class Neo2File(object):
                     break
             else:
                 print(par, ' is not in the neo2.in File')
-    
-    
-    
+
+
+
     def write(self,path=''):
 #Should control if write was successfull and then self.ischanged = False
         if path=='':
@@ -1005,7 +1005,7 @@ class Neo2File(object):
     def _check_duplicate_parameter(self):
         te=dict(self._neo2nml)
         te2=dict(self._neo2nml)
-        
+
         for nml in te:
             del te2[nml]
             for nml2 in te2:
@@ -1013,26 +1013,26 @@ class Neo2File(object):
                      if par in te2[nml2]:
                          raise ImportError('This version accepts only one keyword for the whole neo2.in File')
       #print(nml2,'2nd')
-        
-        
-                            
-                            
-    
-    
+
+
+
+
+
+
     def __repr__(self):
         display.display_pretty(self._neo2dict)
         #return self._neo2dict
-    
-    
+
+
     #def __repr__(self):
      #   lines = ['{']
       #  for key, value in self._neo2dict.items():
        #     lines.append('{}:{}'.format(key, value))
         #lines.append(['}'])
-        
+
        # return '\n'.join(lines)
-    
-    
+
+
     #def __getattr__(self, attr):
       #  if attr=='write':
        #     return getattr(self._neo2nml,attr)
@@ -1041,19 +1041,19 @@ class Neo2File(object):
      #   print('__dir__ is called')
     #   return ['write']
         #return self._neo2nml.__dir__()
-       
 
-    
+
+
     #def __setattr__(self, attr, val):
        # print('attr = ',attr)
       #  if attr == '_neo2nml':
        #     object.__setattr__(self, attr, val)
 
        # return setattr(self._neo2nml, attr, val)
-    
+
     def __getitem__(self, key):
-        
-        ## Unbedingt Kontrollen einführen  
+
+        ## Unbedingt Kontrollen einführen
         if key in self._neo2nml:
             print('Please adress your desired parameter directly')
             return None
@@ -1065,24 +1065,24 @@ class Neo2File(object):
         val = self._neo2nml.__getitem__(key)
         if isinstance(val,f90nml.namelist.Namelist):
             valout='namelist of key'
-            
+
         else:
             valout=val
         print('getter: called: ',key,' with value:', valout)
         return val
 
     def __setitem__(self, par, val):
-               
+
         if par in self._neo2nml:
             print('Please adress your desired parameter directly')
             return None
-        else: 
+        else:
             for i in self._neo2nml:
                 if par in self._neo2nml[i]:
                     if not self._checktype(self._neo2nml[i][par],val):
                         print('wrong type of parameter', par,type(val),'-- old type was:', type(self._neo2nml[i][par]))
                         return
-                
+
                     if self._neo2nml[i][par]==val:
                         print(par, ' in namelist', i, ' was already : ', val)
                         return
@@ -1098,13 +1098,13 @@ class Neo2File(object):
         #print('setter:',key,'is set to :', val)
         #self._neo2nml.__setitem__(key, val)
         #write File when set.
-        
+
     def _checktype(self,val1,val2):
         if type(val1)==type(val2):
             return True
-        else: 
+        else:
             return False
-        
+
 
     def __iter__(self):
        # def chain(*iterables):
@@ -1112,18 +1112,18 @@ class Neo2File(object):
         for it in self._neo2nml:
             for element in self._neo2nml[it]:
                 yield element
-    
-        
 
 
-    
 
-    
+
+
+
+
     #def update(self, *args, **kwargs):
      #   print('updateoe', args, kwargs)
       #  for k, v in f90nml.namelist.Namelist(*args, **kwargs).iteritems():
        #     self[k] = v
-    
+
    # def __contains__(self, key):
     #    #print('contains called for ',key)
     #    return self._neo2nml.__contains__(key)
@@ -1141,10 +1141,3 @@ def foldername2float(inp):
     precission = len(inp.split("p")[-1])
     form_sp=''.join(['{:.',str(precission),'f}'])
     return f, form_sp
-
-
-
-
-
-
-
