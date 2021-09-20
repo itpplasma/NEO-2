@@ -340,6 +340,23 @@ class Neo2Par(Neo2_common_objects):
 
 
 class ReconPlot():
+    """ Class for plotting data from Neo2 Reconstruction runs
+
+    Attributes
+    ----------
+    magplot: MagneticsPlot
+        instance to plot magnetic fieldline and Points of Interest
+
+    Methods
+    -------
+    magneticplot(path):
+        set a neo2.in file as sample
+    g_plot()
+        plot of the spitzer function
+    interactive_plot():
+        Interactiv Plot for showing g along a magnetic fieldline
+    """
+
     def __init__(self,plotdir,rundir='',templatepath=''):
 
         self._templatepath=templatepath
@@ -1156,6 +1173,11 @@ def foldername2float(inp):
     return f, form_sp
 
 def compare2nml(path1,path2):
+    '''Compare function of two fortran namelist files
+
+    function compares only existing keys in file1
+    and returns the diff value as a dict'''
+
     file1=Neo2File(path1)
     file2=Neo2File(path2)
 
