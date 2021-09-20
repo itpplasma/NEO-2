@@ -467,13 +467,15 @@ class ReconPlot():
 
     def magnetic_plot(self,poi=None,write=False):
 
-        magplot=neo2post.MagneticsPlot(rundir=self._rundir,plotdir=self._plotdir)
+
+        if not hasattr(self,'magplot'):
+            self.magplot=neo2post.MagneticsPlot(rundir=self._rundir,plotdir=self._plotdir)
         if poi:
-            magplot.plot_poi(poi)
+            self.magplot.plot_poi(poi)
             if write:
-                magplot.write_poi(overwrite=True)
+                self.magplot.write_poi(overwrite=True)
         else:
-            magplot.plot_magnetics()
+            self.magplot.plot_magnetics()
         plt.show()
 
     def _plot_write(self,value):
@@ -481,14 +483,31 @@ class ReconPlot():
         self._run_dentf(show=False)
 
     def interactive_plot(self):
-        a=widgets.interactive(self.magnetic_plot,poi=10.,write=widgets.fixed(True))
+        if not hasattr(self,'magplot'):
+            self.magplot=neo2post.MagneticsPlot(rundir=self._rundir,plotdir=self._plotdir)
+        phi_range=widgets.FloatRangeSlider(
+            value=[self.magplot.phi_min,self.magplot.phi_max],
+            min=self.magplot.phi_min,
+            max=self.magplot.phi_max,
+            step=0.1,
+            continuous_update=False)
+        def set_range(phi_ends):
+            self.magplot.phi_begin=phi_ends[0]
+            self.magplot.phi_end=phi_ends[1]
+        h=widgets.interactive(set_range,phi_ends=phi_range)
+        f=widgets.FloatSlider(
+            min=self.magplot.phi_min,
+            max=self.magplot.phi_max,
+            step=0.05,
+            continuous_update=False)
+        a=widgets.interactive(self.magnetic_plot,poi=f,write=widgets.fixed(True))
         d=widgets.interactive(self._plot_write,value=['g','gpa','gtr'])
-        out=widgets.Output()
-        f=a.children[0]
+        c=widgets.FloatText()
+        widgets.jslink((c,'value'),(f,'value'))
         f.observe(d.update,'value')
-        f.continuous_update=False
+        phi_range.observe(a.update,'value')
         ad=widgets.HBox((a,d))
-        display.display(ad)
+        display.display(c,ad,h)
 
     def _run_dentf(self,show=True):
         """Run dentf_lorentz"""
