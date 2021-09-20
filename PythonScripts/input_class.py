@@ -20,7 +20,7 @@ import neo2post
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-
+from ipywidgets import widgets
 if __name__ == '__main__':
     print('I am main')
 
@@ -356,6 +356,7 @@ class ReconPlot():
 
         self.plotdir=os.path.join(rundir,plotdir)
         # if plotdir is absolute, join only outputs plotdir
+
     def _fill_req_files_names(self):
 
         pass # Check of filename inside spitzer.in has to be done.
@@ -464,6 +465,7 @@ class ReconPlot():
             plot.plot(*args,label=i,ax=fig.axes,**kwargs)
         for i in fig.axes:
             i.legend()
+        plt.show()
 
 
     def magnetic_plot(self,poi=None,write=False):
@@ -477,6 +479,18 @@ class ReconPlot():
             magplot.plot_magnetics()
         plt.show()
 
+    def plot_write(self,value):
+        self.plot2(value)
+        self.run_dentf()
+
+    def interactive_plot(self):
+        a=widgets.interactive(self.magnetic_plot,poi=10,write=True)
+        d=widgets.interactive(self.plot_write,value=['g','gpa','gtr'])
+        out=widgets.Output()
+        f=a.children[0]
+        f.observe(d.update,'value')
+        ad=widgets.HBox((a,d))
+        display.display(ad)
     def run_dentf(self,save_out=''):
         """Run dentf_lorentz"""
         curdir=os.getcwd()
