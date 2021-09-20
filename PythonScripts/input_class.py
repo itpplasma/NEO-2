@@ -341,7 +341,7 @@ class Neo2Par(Neo2_common_objects):
 
 class ReconPlot():
     def __init__(self,plotdir,rundir='',templatepath=None):
-        self.plotdir=plotdir
+
         self.templatepath=templatepath
         self.req_files_names={
                 'g_lambdain':'g_vs_lambda.in',
@@ -349,6 +349,13 @@ class ReconPlot():
                 'dentf_lorentz':'dentf_lorentz.x'}
         self.req_files_paths=dict()
 
+        if os.path.isdir(rundir):
+            self.rundir=rundir
+        else:
+            raise IOError('rundir must a valid path')
+
+        self.plotdir=os.path.join(rundir,plotdir)
+        # if plotdir is absolute, join only outputs plotdir
     def _fill_req_files_names(self):
 
         pass # Check of filename inside spitzer.in has to be done.
@@ -416,12 +423,25 @@ class ReconPlot():
             else:
                 shutil.copy2(j,destfile)
 
-    def plot(self):
-        self.hdf5=h5py.File(self.plotdir+'g_vs_lambda.h5','r')
-        self.plot=neo2post.Neo2Plot(self.hdf5['p1'],def_x='lambda')
+    def plot(self,tags=''):
+        self.plot_list=[]
+        self.hdf5=h5py.File(os.path.join(self.plotdir,'g_vs_lambda.h5'),'r')
+        for i in self.hdf5:
+            if i=='version':
+                continue
+            if tags:
+                if isinstance(tags,(list,tuple)):
+                    if i not in tags:
+                        continue
+                else:
+                    if i!=tags:
+                        continue
+            self.plot_list.append(neo2post.Neo2Plot(self.hdf5[i],def_x='lambda'))
+        if len(self.plot_list)==1:
+            self.plot=self.plot_list[0]
 
     def run_dentf(self,save_out=''):
-        """Run denf_lorentz"""
+        """Run dentf_lorentz"""
         curdir=os.getcwd()
         os.chdir(self.plotdir)
         try:
@@ -435,7 +455,7 @@ class ReconPlot():
                     print(line, end='')
         else:
             with open(save_out, "w") as outfile:
-                subprocess.run('./neo_2.x', stdout=outfile,stderr=outfile)
+                subprocess.run('./dentf_lorentz.x', stdout=outfile,stderr=outfile)
 
         os.chdir(curdir)
 
