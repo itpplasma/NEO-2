@@ -340,14 +340,18 @@ class Neo2Par(Neo2_common_objects):
 
 
 class ReconPlot():
-    def __init__(self,plotdir,rundir='',templatepath=None):
+    def __init__(self,plotdir,rundir='',templatepath=''):
 
         self.templatepath=templatepath
         self.req_files_names={
                 'g_lambdain':'g_vs_lambda.in',
                 'spitzerinterface':'spitzerinterface.in',
                 'dentf_lorentz':'dentf_lorentz.x'}
-        self.req_files_paths=dict()
+        self.req_files_paths=dict(
+                dentf_lorentz='/proj/plasma/Neo2/Interface/Spitzer_Interface/Build/'
+                'dentf_lorentz.x',
+                spitzerinterface='/proj/plasma/Neo2/Interface/Examples/spitzerinterface.in',
+                g_lambdain='/proj/plasma/Neo2/Interface/Examples/g_vs_lambda.in')
 
         if os.path.isdir(rundir):
             self.rundir=rundir
@@ -357,11 +361,20 @@ class ReconPlot():
         self.plotdir=os.path.join(rundir,plotdir)
         # if plotdir is absolute, join only outputs plotdir
 
-    def _fill_req_files_names(self):
+        self._fill_req_files_paths()
+        if os.path.exists(self.plotdir):
+            files=os.listdir(self.plotdir)
+            for file,filename in self.req_files_names.items():
+                if filename not in files:
+                    self._createfiles(link=False)
+        else:
+            self._createfiles(link=False)
 
+    def _fill_req_files_names(self):
+q
         pass # Check of filename inside spitzer.in has to be done.
 
-    def _fill_req_files_paths(self,path='',overwrite=True):
+    def _fill_req_files_paths(self,path='',replace=True):
         """Method for getting full paths from required Files"""
 
         #TODO reset option if path is changing
@@ -380,7 +393,7 @@ class ReconPlot():
         for file,filename in self.req_files_names.items():
 
             if filename in files:
-                if file in self.req_files_paths and overwrite==False:
+                if file in self.req_files_paths and replace==False:
                     print(file, ' is already set to path: ', self.req_files_paths[file])
                     continue
         ##TODO find orginal path to files not only links
@@ -395,7 +408,7 @@ class ReconPlot():
         else:
             print('could not fill all required paths')
 
-    def _createfiles(self,newplotdir='',overwrite=False,link=True):
+    def _createfiles(self,newplotdir='',overwrite=False,link=False):
         """Create and/or link required files and folder into destination"""
 
         if not newplotdir:
@@ -424,26 +437,15 @@ class ReconPlot():
             else:
                 shutil.copy2(j,destfile)
 
-    def plot(self,tags=''):
-        self.plot_list=[]
-        self.hdf5=h5py.File(os.path.join(self.plotdir,'g_vs_lambda.h5'),'r')
-        for i in self.hdf5:
-            if i=='version':
-                continue
-            if tags:
-                if isinstance(tags,(list,tuple)):
-                    if i not in tags:
-                        continue
-                else:
-                    if i!=tags:
-                        continue
-            self.plot_list.append(neo2post.Neo2Plot(self.hdf5[i],def_x='lambda'))
-        if len(self.plot_list)==1:
-            self.plot=self.plot_list[0]
 
-    def plot2(self,*args,tags='',subplots=False,**kwargs):
+    def g_plot(self,*args,tags='',subplots=False,**kwargs):
 
-        self.hdf5=h5py.File(os.path.join(self.plotdir,'g_vs_lambda.h5'),'r')
+        file=os.path.join(self.plotdir,'g_vs_lambda.h5')
+
+        if not os.path.exists(file):
+            raise IOError(('Please write interested points first'))
+
+        hdf5=h5py.File(file,'r')
         fig=plt.figure()
         if subplots:
             for i in range(len(args)):
@@ -451,7 +453,7 @@ class ReconPlot():
         else:
             fig.add_subplot(111)
 
-        for i in self.hdf5:
+        for i in hdf5:
             if i=='version':
                 continue
             if tags:
@@ -461,11 +463,12 @@ class ReconPlot():
                 else:
                     if i!=tags:
                         continue
-            plot=neo2post.Neo2Plot(self.hdf5[i],def_x='lambda')
+            plot=neo2post.Neo2Plot(hdf5[i],def_x='lambda')
             plot.plot(*args,label=i,ax=fig.axes,**kwargs)
         for i in fig.axes:
             i.legend()
         plt.show()
+        hdf5.close()
 
 
     def magnetic_plot(self,poi=None,write=False):
@@ -479,34 +482,36 @@ class ReconPlot():
             magplot.plot_magnetics()
         plt.show()
 
-    def plot_write(self,value):
-        self.plot2(value)
-        self.run_dentf()
+    def _plot_write(self,value):
+        self.g_plot(value)
+        self.run_dentf(show=False)
 
     def interactive_plot(self):
-        a=widgets.interactive(self.magnetic_plot,poi=10,write=True)
-        d=widgets.interactive(self.plot_write,value=['g','gpa','gtr'])
+        a=widgets.interactive(self.magnetic_plot,poi=10.,write=widgets.fixed(True))
+        d=widgets.interactive(self._plot_write,value=['g','gpa','gtr'])
         out=widgets.Output()
         f=a.children[0]
         f.observe(d.update,'value')
+        f.continuous_update=False
         ad=widgets.HBox((a,d))
         display.display(ad)
-    def run_dentf(self,save_out=''):
+
+    def run_dentf(self,show=True):
         """Run dentf_lorentz"""
         curdir=os.getcwd()
         os.chdir(self.plotdir)
-        try:
-            self.hdf5.close()
-        except:
-            pass
-        if not save_out:
+
+        if show:
             with subprocess.Popen("./dentf_lorentz.x", stdout=subprocess.PIPE,
                 bufsize=1,stderr=subprocess.STDOUT,universal_newlines=True) as p3:
                 for line in p3.stdout:
                     print(line, end='')
         else:
-            with open(save_out, "w") as outfile:
-                subprocess.run('./dentf_lorentz.x', stdout=outfile,stderr=outfile)
+             subprocess.Popen("./dentf_lorentz.x")
+
+#        else:
+#            #with open(save_out, "w") as outfile:
+#             #   subprocess.run('./dentf_lorentz.x', stdout=outfile,stderr=outfile)
 
         os.chdir(curdir)
 
