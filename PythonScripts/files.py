@@ -6,7 +6,7 @@
 """
 
 import h5py
-__version__="0.04"
+__version__="0.05"
 import numpy as np
 
 def compare2hdf5(path1,path2):
@@ -37,28 +37,29 @@ def compare2hdf5(path1,path2):
 
     return b
 
-def comparehdf5(*files):
+def comparehdf5(*paths):
+    ### Input paths which should be compared
 
-    if len(files)<2:
+    if len(paths)<2:
         raise TypeError('Input expected at least 2 arguments')
     diff=dict()
     init=True
-    for path in files:
+    for path in paths:
         if init:
-            path1=h5py.File(path)
+            file1=h5py.File(path)
             init=False
             continue
-        path2=h5py.File(path)
-        dict_new=compare2hdf5(path1,path2)
+        file2=h5py.File(path)
+        dict_new=compare2hdf5(file1,file2) # Compare always first File with the
         for key,value in dict_new.items():
             if key in diff:
-                diff[key].extend(value)
+                diff[key].append(value[1]) # Append only the new value
             else:
-                diff[key]=[*value]
+                diff[key]=[*value] ## Append both values
 
-        path2.close()
+        file2.close()
 
-    path1.close()
+    file1.close()
     return diff
 
 #class h5pz(h5py):
