@@ -54,14 +54,23 @@ class Neo2Plot():
 
     '''
 
-    def __init__(self,file,def_x=None):
+    def __init__(self,file,def_x=''):
         self.NA_list=['D11_NA_Dpl', 'D12_NA_Dpl', 'D21_NA_Dpl', 'D22_NA_Dpl']
+        if not isinstance(file,(h5py.File,h5py.Group)):
+            raise AttributeError('File must be h5py')
         self.file=file ## So far file must be h5py
-        if def_x==None:
+        if not def_x:
             self.def_x='boozer_s'
         else:
             self.def_x=def_x
 
+        self._valid_keys=list()
+        self._get_valid_keys()
+
+    def _get_valid_keys(self):
+        for i in self.file:
+            if isinstance(self.file[i],h5py.Dataset):
+                self._valid_keys.append(i)
 
     def plot(self,*args,**kwargs):
         fig=plt.figure()
@@ -83,7 +92,7 @@ class Neo2Plot():
         fig.tight_layout()
     def __dir__(self):
         '''Function for displaying Parameter as attribute'''
-        return(dir(Neo2Plot)+list(self.file))
+        return(dir(Neo2Plot)+self._valid_keys)
 
     def __getattr__(self,name):
         '''Function for plotting one Parameter as attribute'''
@@ -92,11 +101,11 @@ class Neo2Plot():
         if name not in list(self.file):
             raise AttributeError(name)
         self.plot(name)
-    def __repr__(self):
-        return "\n".join(list(self.file))
+    #def __repr__(self):
+        #return "\n".join(list(self.file))
     def _ipython_key_completions_(self):
         '''Auto complete possible plot parameter'''
-        return list(self.file)
+        return self._valid_keys
     def __getitem__(self,key):
         '''Also subscribing desired parameter to plot  is possible'''
         return self.plot(key)
