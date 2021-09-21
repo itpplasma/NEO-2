@@ -211,10 +211,9 @@ class MagneticsPlot():
         # if plotdir is absolute, join only outputs plotdir
 
         self.poi=[]
+        self._read_magnetics()
 
-
-    def plot_magnetics(self):
-
+    def _read_magnetics(self):
 
         magneticsh5=h5py.File(os.path.join(self.rundir,'magnetics.h5'),'r')
         self.s_0,self.phi_0,self.theta_0 = np.array(magneticsh5['fieldline']['1']['xstart'])
@@ -231,13 +230,32 @@ class MagneticsPlot():
             phi=np.array(magneticsh5['fieldpropagator'][str(prop)]['x2'])
             phi_bhat_line.append(phi)
 
-        self.phi_bhat_line_s=np.concatenate(phi_bhat_line)[np.concatenate(phi_bhat_line)<20]
-        self.bhat_line_s= np.concatenate(bhat_line)[np.concatenate(phi_bhat_line)<20]
+        self.phi_bhat_line_s=np.concatenate(phi_bhat_line[:-1])
+        self.bhat_line_s= np.concatenate(bhat_line[:-1])
+        self.phi_min=self.phi_bhat_line_s[0]
+        self.phi_max=self.phi_bhat_line_s[-1]
+        magneticsh5.close()
 
-        plt.plot(self.phi_bhat_line_s,self.bhat_line_s)
+    def plot_magnetics(self,begin=None,end=None):
+
+        phi_bhat_line_s=self.phi_bhat_line_s
+        bhat_line_s= self.bhat_line_s
+
+        if begin:
+            logical_begin=phi_bhat_line_s>begin
+            bhat_line_s= bhat_line_s[logical_begin]
+            phi_bhat_line_s=phi_bhat_line_s[logical_begin]
+
+        if end:
+            logical_end=phi_bhat_line_s<end
+            phi_bhat_line_s=phi_bhat_line_s[logical_end]
+            bhat_line_s= bhat_line_s[logical_end]
+
+        plt.plot(phi_bhat_line_s,bhat_line_s)
         plt.xlabel(r'$\varphi_s$')
         plt.ylabel(r'$1/\hat{B}$')
-        magneticsh5.close()
+
+
     def _plot_singlepoi(self,point,add_point=True):
 
         point_ind=np.where(self.phi_bhat_line_s-point>0)[0][0]
