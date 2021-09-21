@@ -6,7 +6,7 @@
 """
 
 import h5py
-__version__="0.05"
+__version__="0.07"
 import numpy as np
 
 def compare2hdf5(path1,path2):
@@ -14,9 +14,8 @@ def compare2hdf5(path1,path2):
 
     b=dict()
     if isinstance(path1,(h5py.File,h5py.Group)):
-        for i,j in zip(path1.values(),path2.values()):
-            #print(i.name,b)
-            b.update(compare2hdf5(i,j))
+        for i in path1:
+            b.update(compare2hdf5(path1.get(i),path2.get(i,'Different_version')))
 
     elif isinstance(path1,h5py.Dataset):
         try:
@@ -32,6 +31,11 @@ def compare2hdf5(path1,path2):
                 pass
             else:
                 b[path1.name]=[path1.value,path2.value]
+        except AttributeError:
+            if path2=='Different_version':
+                pass
+            else:
+                raise AttributeError('file2 has no attribute value')
     else:
         raise TypeError('Input must be h5py')
 
