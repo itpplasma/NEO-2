@@ -157,21 +157,21 @@ class RadialScan(Multirun):
 
 
 class MagneticsPlot():
-    '''Plot magnetics.h5'''
+    '''Plot magnetics.h5 after Neo2 Run
 
-    def __init__(self,path):
-        self.filename='magnetics.h5'
-        if os.path.isdir(path):
-            if self.filename in os.listdir(path):
-                self.dir=path
-                self.path=os.path.join(path,self.filename)
-            else:
-                raise AssertionError(self.filename, 'was not found')
-        elif os.path.isfile(path):
-            self.path=path
-            self.dir=os.path.dirname(path)
+    rundir must be an absolute path,
+    plotdir can be a relative path to the rundir or an absolute path
+    '''
+
+    def __init__(self,rundir,plotdir,templatedir=''):
+
+        if os.path.isdir(rundir):
+            self.rundir=rundir
         else:
-            raise AssertionError('No valid path')
+            raise IOError('rundir must a valid path')
+
+        self.plotdir=os.path.join(rundir,plotdir)
+        # if plotdir is absolute, join only outputs plotdir
 
         self.poi=[]
 
@@ -179,9 +179,8 @@ class MagneticsPlot():
     def plot_magnetics(self):
 
 
-        magneticsh5=h5py.File(self.path)
-
-        self.s_0,self.phi_0,self.theta_0=np.array(magneticsh5['fieldline']['1']['xstart'])
+        magneticsh5=h5py.File(os.path.join(self.rundir,'magnetics.h5'),'r')
+        self.s_0,self.phi_0,self.theta_0 = np.array(magneticsh5['fieldline']['1']['xstart'])
 
         self.iota=magneticsh5['surface']['1']['aiota'].value
         props=[int(i) for i in magneticsh5['fieldpropagator']]
@@ -210,16 +209,19 @@ class MagneticsPlot():
         if add_point:
             theta_point = self.theta_0 + self.iota *(self.phi_bhat_line_s[point_ind] - self.phi_0);
             phi_point   = self.phi_bhat_line_s[point_ind]
+            theta_point = theta_point%(2*np.pi)
+            phi_point = phi_point%(2*np.pi)
             self.poi.append((self.s_0,theta_point,phi_point))
 
     def write_poi(self,overwrite=False):
 
-        g_lambda='g_vs_lambda.in'
+        writepath=os.path.join(self.plotdir,'g_vs_lambda.in')
+        os.makedirs(self.plotdir,exist_ok=True)
         if overwrite:
             mode='w'
         else:
             mode='x'
-        with open(g_lambda,mode) as f:
+        with open(writepath,mode) as f:
             f.write('{:>18s}{:>18s}{:>18s}{:>7s}\n'.format('s', 'theta', 'phi', 'tag'))
             for i,j in enumerate(self.poi):
                 f.write('{:18.8e}{:18.8e}{:18.8e}{:>7s}\n'.format(*j,'p'+str(i)))
