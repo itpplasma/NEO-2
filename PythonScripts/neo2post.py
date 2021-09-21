@@ -9,6 +9,7 @@ Created on Fri Jul 31 16:43:38 2020
 import matplotlib.pyplot as plt
 import h5py
 import os
+import numpy as np
 
 
 def myplot(*args,ax=None,def_x=None,scalex=True, scaley=True, **kwargs):
@@ -153,3 +154,72 @@ class RadialScan(Multirun):
 
         self.finalhdf5=h5py.File(self.scanfile)
         self.plot=Neo2Plot(self.finalhdf5,def_x=self.def_x)
+
+
+class MagneticsPlot():
+    '''Plot magnetics.h5'''
+
+    def __init__(self,path):
+        self.filename='magnetics.h5'
+        if os.path.isdir(path):
+            if self.filename in os.listdir(path):
+                self.dir=path
+                self.path=os.path.join(path,self.filename)
+            else:
+                raise AssertionError(self.filename, 'was not found')
+        elif os.path.isfile(path):
+            self.path=path
+            self.dir=os.path.dirname(path)
+        else:
+            raise AssertionError('No valid path')
+
+        self.poi=[]
+
+
+    def plot_magnetics(self):
+
+
+        magneticsh5=h5py.File(self.path)
+
+        self.s_0,self.phi_0,self.theta_0=np.array(magneticsh5['fieldline']['1']['xstart'])
+
+        self.iota=magneticsh5['surface']['1']['aiota'].value
+        props=[int(i) for i in magneticsh5['fieldpropagator']]
+        props.sort()
+        bhat_line=[]
+        phi_bhat_line=[]
+        for prop in props:
+
+            bhat=np.array(magneticsh5['fieldpropagator'][str(prop)]['bhat'])
+            bhat_line.append(1/bhat)
+            phi=np.array(magneticsh5['fieldpropagator'][str(prop)]['x2'])
+            phi_bhat_line.append(phi)
+
+        self.phi_bhat_line_s=np.concatenate(phi_bhat_line)[np.concatenate(phi_bhat_line)<20]
+        self.bhat_line_s= np.concatenate(bhat_line)[np.concatenate(phi_bhat_line)<20]
+
+        plt.plot(self.phi_bhat_line_s,self.bhat_line_s)
+        plt.xlabel(r'$\varphi_s$')
+        plt.ylabel(r'$1/\hat{B}$')
+        magneticsh5.close()
+    def plot_poi(self,point,add_point=True):
+
+        point_ind=np.where(self.phi_bhat_line_s-point>0)[0][0]
+        plt.plot(self.phi_bhat_line_s[point_ind],self.bhat_line_s[point_ind],marker='o')
+
+        if add_point:
+            theta_point = self.theta_0 + self.iota *(self.phi_bhat_line_s[point_ind] - self.phi_0);
+            phi_point   = self.phi_bhat_line_s[point_ind]
+            self.poi.append((self.s_0,theta_point,phi_point))
+
+    def write_poi(self,overwrite=False):
+
+        g_lambda='g_vs_lambda.in'
+        if overwrite:
+            mode='w'
+        else:
+            mode='x'
+        with open(g_lambda,mode) as f:
+            f.write('{:>18s}{:>18s}{:>18s}{:>7s}\n'.format('s', 'theta', 'phi', 'tag'))
+            for i,j in enumerate(self.poi):
+                f.write('{:18.8e}{:18.8e}{:18.8e}{:>7s}\n'.format(*j,'p'+str(i)))
