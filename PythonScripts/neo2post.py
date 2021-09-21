@@ -53,10 +53,14 @@ class Neo2Plot():
     '''Plotting all types of NEO2Files
 
     '''
-    def_x='boozer_s'
-    def __init__(self,file):
+
+    def __init__(self,file,def_x=None):
         self.NA_list=['D11_NA_Dpl', 'D12_NA_Dpl', 'D21_NA_Dpl', 'D22_NA_Dpl']
         self.file=file ## So far file must be h5py
+        if def_x==None:
+            self.def_x='boozer_s'
+        else:
+            self.def_x=def_x
 
 
     def plot(self,*args,**kwargs):
@@ -79,7 +83,7 @@ class Neo2Plot():
         fig.tight_layout()
     def __dir__(self):
         '''Function for displaying Parameter as attribute'''
-        return(dir(Neo2Plot)+list(self.final))
+        return(dir(Neo2Plot)+list(self.file))
 
     def __getattr__(self,name):
         '''Function for plotting one Parameter as attribute'''
@@ -96,6 +100,9 @@ class Neo2Plot():
     def __getitem__(self,key):
         '''Also subscribing desired parameter to plot  is possible'''
         return self.plot(key)
+
+    def __call__(self,*args,**kwargs):
+        return self.plot(*args,**kwargs)
 
 class Multirun():
     '''Generel class for Neo2 run collections'''
@@ -121,4 +128,4 @@ class RadialScan(Multirun):
         self.NA_list=['D11_NA_Dpl', 'D12_NA_Dpl', 'D21_NA_Dpl', 'D22_NA_Dpl']
 
         self.finalhdf5=h5py.File(self.scanfile)
-        self.fig=Neo2Plot(self.finalhdf5)
+        self.plot=Neo2Plot(self.finalhdf5,def_x=self.def_x)
