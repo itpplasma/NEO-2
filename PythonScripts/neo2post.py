@@ -86,7 +86,10 @@ class Neo2Plot():
         else:
             label=''
 
-        ## Check ax in kwargs
+        ## iter_ax  =  0.. No axes
+        ##          =  1.. One axes
+        ##          =  2.. Multiple axes
+
         if 'ax' in kwargs:
             ax=kwargs.pop('ax')
             if isinstance(ax,(list)):
@@ -104,18 +107,20 @@ class Neo2Plot():
 
 
         for arg in args:
-            arglabel=arg + ' ' + label
+            arglabel=arg + '/' + label
 
             if iter_ax==0:
                 plot_h5py_Dataset(self.file[arg].value,def_x=self.file[def_x].value,label=arglabel,**kwargs)
             elif iter_ax==1:
                 ax.set_xlabel(def_x)
-                plot_h5py_Dataset(self.file[arg].value,ax=ax,def_x=self.file[def_x].value,label=arglabel,**kwargs)
+                plot_h5py_Dataset(self.file[arg].value,ax=ax,
+                                  def_x=self.file[def_x].value,label=arglabel,**kwargs)
             elif iter_ax==2:
                 i_ax=ax.pop()
-                i_ax.set_title(arg)
                 i_ax.set_xlabel(def_x)
-                plot_h5py_Dataset(self.file[arg].value,ax=i_ax,def_x=self.file[def_x].value,**kwargs)
+                i_ax.set_ylabel(arg)
+                plot_h5py_Dataset(self.file[arg].value,ax=i_ax,
+                                  def_x=self.file[def_x].value,label=label,**kwargs)
 
 
     def plot_NA(self):
