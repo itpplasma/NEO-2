@@ -112,11 +112,18 @@ class Neo2Plot():
             if iter_ax==0:
                 plot_h5py_Dataset(self.file[arg].value,def_x=self.file[def_x].value,label=arglabel,**kwargs)
             elif iter_ax==1:
-                ax.set_xlabel(def_x)
+                if def_x=='lambda':
+                    ax.set_xlabel(r'$\lambda$')
+                else:
+                    ax.set_xlabel(def_x)
                 plot_h5py_Dataset(self.file[arg].value,ax=ax,
                                   def_x=self.file[def_x].value,label=arglabel,**kwargs)
             elif iter_ax==2:
                 i_ax=ax.pop()
+                if def_x=='lambda':
+                    i_ax.set_xlabel(r'$\lambda$')
+                else:
+                    i_ax.set_xlabel(def_x)
                 i_ax.set_xlabel(def_x)
                 i_ax.set_ylabel(arg)
                 plot_h5py_Dataset(self.file[arg].value,ax=i_ax,
@@ -234,6 +241,8 @@ class MagneticsPlot():
         self.bhat_line_s= np.concatenate(bhat_line[:-1])
         self.phi_min=self.phi_bhat_line_s[0]
         self.phi_max=self.phi_bhat_line_s[-1]
+        self.phi_begin=self.phi_min
+        self.phi_end=self.phi_max
         magneticsh5.close()
 
     def plot_magnetics(self,begin=None,end=None):
@@ -270,7 +279,7 @@ class MagneticsPlot():
     def plot_poi(self,point,new_points=True):
         if new_points:
             self.poi=[]
-        self.plot_magnetics()
+        self.plot_magnetics(begin=self.phi_begin,end=self.phi_end)
         if isinstance(point,(list,tuple)):
             for i in point:
                 self._plot_singlepoi(i)
