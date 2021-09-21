@@ -8,7 +8,7 @@ Created on Fri Jul 31 16:43:38 2020
 
 import matplotlib.pyplot as plt
 import h5py
-
+import os
 
 
 def myplot(*args,ax=None,def_x=None,scalex=True, scaley=True, **kwargs):
@@ -68,9 +68,13 @@ class Neo2Plot():
         self._get_valid_keys()
 
     def _get_valid_keys(self):
+        x_shape=self.file[self.def_x].shape
         for i in self.file:
-            if isinstance(self.file[i],h5py.Dataset):
-                self._valid_keys.append(i)
+            try:
+                if self.file[i].shape[0] == x_shape[0]:
+                    self._valid_keys.append(i)
+            except:
+                pass
 
     def plot(self,*args,**kwargs):
         fig=plt.figure()
@@ -125,6 +129,17 @@ class Multirun():
         self.otherfiles=[]
         self.otherdirs=[]
 
+class Bootstrap(Multirun):
+    '''Plot up to distribtion function'''
+
+    def __init__(self,initdir):
+        files=os.listdir(initdir)
+        if 'final.h5' not in files:
+            raise IOError('This is not an reconstruction run')
+        super().__init__(initdir)
+
+    def interactive_plot(self):
+        pass
 
 
 class RadialScan(Multirun):
