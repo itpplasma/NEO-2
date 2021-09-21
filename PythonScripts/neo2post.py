@@ -18,18 +18,15 @@ def myplot(*args,ax=None,def_x=None,scalex=True, scaley=True, **kwargs):
     args and def_x should be Numpy Arrays
     '''
 
-    if ax==None:
-        fig=plt.figure()
-        ax=fig.add_subplot(111)
-        ax.set_xlabel('boozer_s')
-
+    if ax:
+        plt.sca(ax)
     if len(args)==1:
         #ax.set_xlabel('boozer_s')
         if len(args[0].shape)>2:
             pass
             #return ax.plot()
         else:
-            return ax.plot(def_x,*args,scalex=scalex,scaley=scaley,**kwargs)
+            return plt.plot(def_x,*args,scalex=scalex,scaley=scaley,**kwargs)
 
     else:
         raise NotImplementedError
@@ -77,14 +74,49 @@ class Neo2Plot():
             except:
                 pass
 
+
     def plot(self,*args,**kwargs):
-        fig=plt.figure()
-        for ind, i in enumerate(args):
-                ax=fig.add_subplot(4,1,ind+1)
-                plot_h5py_Dataset(self.file[i].value,ax=ax,def_x=self.file[self.def_x].value,**kwargs)
-                ax.grid(True)
-                ax.set_ylabel(i)
-        fig.tight_layout()
+
+        if 'def_x' in kwargs:
+            def_x=kwargs.pop('def_x')
+        else:
+            def_x=self.def_x
+        if 'label' in kwargs:
+            label=kwargs.pop('label')
+        else:
+            label=''
+
+        ## Check ax in kwargs
+        if 'ax' in kwargs:
+            ax=kwargs.pop('ax')
+            if isinstance(ax,(list)):
+                if len(ax)==1:
+                    iter_ax=1
+                    ax=ax[0]
+                elif len(ax)==len(args):
+                    iter_ax=2
+                else:
+                    raise IOError('Number of axes does not match with arguments')
+            else:
+                iter_ax=1
+        else:
+            iter_ax=0
+
+
+        for arg in args:
+            arglabel=arg + ' ' + label
+
+            if iter_ax==0:
+                plot_h5py_Dataset(self.file[arg].value,def_x=self.file[def_x].value,label=arglabel,**kwargs)
+            elif iter_ax==1:
+                ax.set_xlabel(def_x)
+                plot_h5py_Dataset(self.file[arg].value,ax=ax,def_x=self.file[def_x].value,label=arglabel,**kwargs)
+            elif iter_ax==2:
+                i_ax=ax.pop()
+                i_ax.set_title(arg)
+                i_ax.set_xlabel(def_x)
+                plot_h5py_Dataset(self.file[arg].value,ax=i_ax,def_x=self.file[def_x].value,**kwargs)
+
 
     def plot_NA(self):
         fig=plt.figure()
@@ -201,7 +233,7 @@ class MagneticsPlot():
         plt.xlabel(r'$\varphi_s$')
         plt.ylabel(r'$1/\hat{B}$')
         magneticsh5.close()
-    def plot_poi(self,point,add_point=True):
+    def _plot_singlepoi(self,point,add_point=True):
 
         point_ind=np.where(self.phi_bhat_line_s-point>0)[0][0]
         plt.plot(self.phi_bhat_line_s[point_ind],self.bhat_line_s[point_ind],marker='o')
@@ -212,15 +244,23 @@ class MagneticsPlot():
             theta_point = theta_point%(2*np.pi)
             phi_point = phi_point%(2*np.pi)
             self.poi.append((self.s_0,theta_point,phi_point))
+    def plot_poi(self,point,new_points=True):
+        if new_points:
+            self.poi=[]
+        self.plot_magnetics()
+        if isinstance(point,(list,tuple)):
+            for i in point:
+                self._plot_singlepoi(i)
+        else:
+            self._plot_singlepoi(point)
 
     def write_poi(self,overwrite=False):
 
         writepath=os.path.join(self.plotdir,'g_vs_lambda.in')
         os.makedirs(self.plotdir,exist_ok=True)
         if overwrite:
-            mode='w'
-        else:
-            mode='x'
+            os.remove(writepath)
+        mode='x'
         with open(writepath,mode) as f:
             f.write('{:>18s}{:>18s}{:>18s}{:>7s}\n'.format('s', 'theta', 'phi', 'tag'))
             for i,j in enumerate(self.poi):
