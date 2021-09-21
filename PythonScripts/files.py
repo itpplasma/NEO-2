@@ -6,31 +6,38 @@
 """
 
 import h5py
-__version__="0.03"
+__version__="0.04"
+import numpy as np
 
-def comparehdf5(path1,path2):
+def compare2hdf5(path1,path2):
     ##Instance check
 
     b=dict()
     if isinstance(path1,(h5py.File,h5py.Group)):
         for i,j in zip(path1.values(),path2.values()):
             #print(i.name,b)
-            b.update(comparehdf5(i,j))
+            b.update(compare2hdf5(i,j))
 
     elif isinstance(path1,h5py.Dataset):
-        if path1.value==path2.value:
+        try:
+            if path1.value==path2.value:
             #print('+++')
-            pass
-        else:
-            b[path1.name]=[path1.value,path2.value]
+
+                pass
+            else:
+                b[path1.name]=[path1.value,path2.value]
             #print("---",[path1.name],[path1.value,path2.value])
+        except ValueError:
+            if np.allclose(path1,path2):
+                pass
+            else:
+                b[path1.name]=[path1.value,path2.value]
     else:
         raise TypeError('Input must be h5py')
 
     return b
 
-
-def compare(*files):
+def comparehdf5(*files):
 
     if len(files)<2:
         raise TypeError('Input expected at least 2 arguments')
@@ -42,7 +49,7 @@ def compare(*files):
             init=False
             continue
         path2=h5py.File(path)
-        dict_new=comparehdf5(path1,path2)
+        dict_new=compare2hdf5(path1,path2)
         for key,value in dict_new.items():
             if key in diff:
                 diff[key].extend(value)
