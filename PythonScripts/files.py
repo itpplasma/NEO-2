@@ -15,7 +15,10 @@ def compare2hdf5(path1,path2):
     b=dict()
     if isinstance(path1,(h5py.File,h5py.Group)):
         for i in path1:
-            b.update(compare2hdf5(path1.get(i),path2.get(i,'Different_version')))
+            if i not in path2:
+                #print(i,'not in', path2.name)
+                continue
+            b.update(compare2hdf5(path1[i],path2.get(i,'Different_version')))
 
     elif isinstance(path1,h5py.Dataset):
         try:
@@ -31,6 +34,7 @@ def compare2hdf5(path1,path2):
                 pass
             else:
                 b[path1.name]=[path1.value,path2.value]
+
         except AttributeError:
             if path2=='Different_version':
                 pass
