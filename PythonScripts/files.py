@@ -6,7 +6,9 @@
 """
 
 import h5py
-def comparehdf5(self,path1,path2):
+__version__="0.02"
+
+def comparehdf5(path1,path2):
     ##Instance check
 
     b=dict()
@@ -27,6 +29,6 @@ def comparehdf5(self,path1,path2):
 
     return b
 
-class h5pz(h5py):
+#class h5pz(h5py):
 
-    comparehdf5=comparehdf5
+ #   comparehdf5=comparehdf5
