@@ -9,6 +9,7 @@ import os
 import matplotlib.pyplot as plt
 import h5py
 import numpy as np
+from matplotlib.figure import Figure
 
 def plot_g(path):
     """Plot odd part of distribution function
@@ -52,43 +53,52 @@ def plot_g(path):
 
     g_vs_h5.close()
 
+class Plotfunctions():
 
-def plot_boozer(pathtobch5,new_figure=True):
-    """Plots different representations of boozerfile
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.figures=list()
 
-    according to the choosen surface
-    """
+    def add_fig(self):
+        self.figures.append(plt.figure())
 
-    bch5=h5py.File(pathtobch5,'r')
-    theta_n=bch5['theta_n'].value
-    theta=np.array(bch5['theta'])
-    phi_n=bch5['phi_n'].value
-    phi=np.array(bch5['phi'])
+    def which_files_are_here(self):
+        pass
+    def search_h5_files(self):
+        pass
 
-    bmod=np.array(bch5['bmod'])
-    bmod=bmod.reshape(phi_n+1,theta_n+1)
+    def peak_into_dir(self):
+        pass
+    def plot_boozer(self, pathtobch5,new_figure=True):
+        """Plots different representations of boozerfile
 
-    if new_figure:
-        fig, axs = plt.subplots(1, 1)
-        magfield=axs.pcolor(phi,theta,bmod.T)
+        according to the choosen surface
+        """
+
+        bch5=h5py.File(pathtobch5,'r')
+        theta_n=bch5['theta_n'].value
+        theta=np.array(bch5['theta'])
+        phi_n=bch5['phi_n'].value
+        phi=np.array(bch5['phi'])
+
+        bmod=np.array(bch5['bmod'])
+        bmod=bmod.reshape(phi_n+1,theta_n+1)
         bch5.close()
+
+        if new_figure:
+            self.add_fig()
+        gcf=plt.gcf()
+        axs =gcf.subplots(1, 1)
+        magfield=axs.pcolor(phi,theta,bmod.T)
         cbar=plt.colorbar(magfield)
         axs.set_ylabel(r'$\theta$')
         axs.set_xlabel(r'$\varphi$')
         cbar.set_label('B')
-        return fig,axs,cbar
-    else:
 
-
-#Alternativ:
-#plt.contour(phi,theta,bmod.T,20)
-#oder
-#plt.contourf(phi,theta,bmod.T,20)
-        plt.pcolor(phi,theta,bmod.T)
-        plt.colorbar()
-        plt.ylabel(r'$\theta$')
-        plt.xlabel(r'$\varphi$')
-        bch5.close()
+    #Alternativ:
+    #plt.contour(phi,theta,bmod.T,20)
+    #oder
+    #plt.contourf(phi,theta,bmod.T,20)
 
 def plot_boozer_fieldline(pathtobch5,len_phi=12,phistart=0,thetastart=0,new_figure=True):
     """Plots the magnetic fieldline in inside the surface"""
