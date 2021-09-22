@@ -18,6 +18,7 @@ class Neo2Files:
 
     def __init__(self,path):
 
+        self._pathInitial=path
         self.exact_file_names=[]
         self.file_paths=[] ### dict with exact_file_name or list?
         if os.path.isfile(path):
@@ -30,16 +31,15 @@ class Neo2Files:
         for root, dirs, files in os.walk(self._pathInitial):
             for exact_file_name in self.exact_file_names:
                 if exact_file_name in files:
-                    self.file_paths.append(root)
+                    self.file_paths.append(os.path.join(root,exact_file_name))
                     #or if dict: self.dict(exact_name)=[].append(root)
                     #or "/".join(root,exact_name)
 
+class BootstrapFiles(Neo2Files):
 
-    def BootstrapFiles(Neo2Files):
-
-        def __init__():
-            super().__init__()
-
+        def __init__(self,path):
+            super().__init__(path)
+            self.exact_file_names.append("g_vs_lambda.h5")
 
 class output_files():
     """Abstract class of outputfiles for NEO2"""
