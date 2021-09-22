@@ -116,13 +116,6 @@ class Plotfunctions():
     def add_fig(self):
         self.figures.append(plt.figure())
 
-    def which_files_are_here(self):
-        pass
-    def search_h5_files(self):
-        pass
-
-    def peak_into_dir(self):
-        pass
     def plot_boozer(self,new_figure=True):
         """Plots different representations of boozerfile
 
