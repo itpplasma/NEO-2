@@ -69,17 +69,26 @@ def plot_boozer(pathtobch5,new_figure=True):
     bmod=bmod.reshape(phi_n+1,theta_n+1)
 
     if new_figure:
-        plt.figure()
-    plt.pcolor(phi,theta,bmod.T)
+        fig, axs = plt.subplots(1, 1)
+        magfield=axs.pcolor(phi,theta,bmod.T)
+        bch5.close()
+        cbar=plt.colorbar(magfield)
+        axs.set_ylabel(r'$\theta$')
+        axs.set_xlabel(r'$\varphi$')
+        cbar.set_label('B')
+        return fig,axs,cbar
+    else:
+
+
 #Alternativ:
 #plt.contour(phi,theta,bmod.T,20)
 #oder
 #plt.contourf(phi,theta,bmod.T,20)
-
-    plt.colorbar()
-    plt.ylabel(r'$\theta$')
-    plt.xlabel(r'$\varphi$')
-    bch5.close()
+        plt.pcolor(phi,theta,bmod.T)
+        plt.colorbar()
+        plt.ylabel(r'$\theta$')
+        plt.xlabel(r'$\varphi$')
+        bch5.close()
 
 def plot_boozer_fieldline(pathtobch5,len_phi=12,phistart=0,thetastart=0,new_figure=True):
     """Plots the magnetic fieldline in inside the surface"""
