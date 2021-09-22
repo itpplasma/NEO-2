@@ -61,7 +61,7 @@ class boozerfile_hdf5(output_files):
         super().__init__()
 
 
-def plot_g(path):
+def plot_g(path,title=''):
     """Plot odd part of distribution function
 
     Needs Reconstruct Mode from Neo2
@@ -98,8 +98,9 @@ def plot_g(path):
 
         plt.plot(odd_eta,odd_g)
     plt.xlim(0.8,1)
-    plt.xlabel('\eta_odd')
-    plt.ylabel('\g_1_odd')
+    plt.xlabel(r'$\eta$')
+    plt.ylabel(r'$g_1^a$')
+    plt.title(title)
 
     g_vs_h5.close()
 
