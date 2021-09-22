@@ -5,6 +5,7 @@ Created on Tue Feb 11 14:52:59 2020
 
 @author: wakatobi
 """
+__version__='0.0.1'
 import os
 import matplotlib.pyplot as plt
 import h5py
@@ -12,35 +13,44 @@ import numpy as np
 from matplotlib.figure import Figure
 
 class Neo2Files:
-    """Abstract class of File for Neo2 Runs""" # Abstract class usefull?
+    """Class of File for Neo2 Runs""" # Abstract class usefull?
 
-    """One File per Instance"""### One File per Class or other concept??
 
-    self.filedescription="" # Blablabla
-    self.filename="" #final.h5
-    self.type=""
-    self.fileformat="" # hdf5, fortan namelist
-    self.exact_file_names=[]
-    self.file_paths=[] ### dict with exact_file_name or list?
-    def __init__():
-        pass
+    def __init__(self,path):
+
+        self.exact_file_names=[]
+        self.file_paths=[] ### dict with exact_file_name or list?
+        if os.path.isfile(path):
+            pass
+
+
     def get_files_with_exact_names(self):
-        """Looking for Filenames form exact_file_names"""
+        """Looking for Filenames from exact_file_names"""
 
         for root, dirs, files in os.walk(self._pathInitial):
-            for exact_name in self.exact_file_names:
+            for exact_file_name in self.exact_file_names:
                 if exact_file_name in files:
                     self.file_paths.append(root)
                     #or if dict: self.dict(exact_name)=[].append(root)
                     #or "/".join(root,exact_name)
 
 
-class output_files(Neo2Files):
+    def BootstrapFiles(Neo2Files):
+
+        def __init__():
+            super().__init__()
+
+
+class output_files():
     """Abstract class of outputfiles for NEO2"""
 
-    def __init__():
-        super().__init__()
+    """One File per Instance"""### One File per Class or other concept??
+    def __init__(self):
+
+        self.filedescription="" # Blablabla
+        self.filename="" #final.h5
         self.type="output"
+        self.fileformat="" # hdf5, fortan namelist
 
 
 class boozerfile_hdf5(output_files):
