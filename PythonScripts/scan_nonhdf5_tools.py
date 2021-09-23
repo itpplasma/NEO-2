@@ -54,9 +54,9 @@ class condor_run:
     self.start_date = ''
     self.end_date = ''
     self.num_processors = 1
-    self.usertime = ''
-    self.systemtime = ''
-    self.memory = ''
+    self.usertime = 0
+    self.systemtime = 0
+    self.memory = 0
 
     self.aborted_by_user = False
 
