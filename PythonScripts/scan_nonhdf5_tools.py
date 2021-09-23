@@ -147,12 +147,18 @@ class condor_run:
       Memory (MB)          :    25659    31744     31744
     """
     parts = text_end_message[0].split()
+    time_index = 2
+    if (text_end_message[1].split()[-1] == '7)'):
+      # At least on line added. Might be more, then a search has to be
+      # done, but this is not implemented yet. (Only user and system
+      # time should be affected by this.)
+      time_index += 1
     try:
       self.set_end_date(parts[2] + ' ' + parts[3])
       self.set_memory(text_end_message[-1].split()[3])
       self.set_num_processors(text_end_message[-3].split()[3])
-      self.set_usertime(text_end_message[2].split()[1] + ':' + text_end_message[2].split()[2])
-      self.set_systemtime(text_end_message[2].split()[4] + ':' + text_end_message[2].split()[5])
+      self.set_usertime(text_end_message[time_index].split()[1] + ':' + text_end_message[time_index].split()[2])
+      self.set_systemtime(text_end_message[time_index].split()[4] + ':' + text_end_message[time_index].split()[5])
     except ValueError:
       print('Exception while parsing end message:')
       print(text_end_message)
