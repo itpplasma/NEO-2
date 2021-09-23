@@ -237,8 +237,10 @@ class condor_log:
     first line:
     0 submit
     1 start
+    4 evicted
     5 end
     6 update image size (not used at the moment)
+    9 aborted by user
     """
     message_identifier = int(text_message[0].split()[0])
 
