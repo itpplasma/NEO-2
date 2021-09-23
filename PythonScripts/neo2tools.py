@@ -807,25 +807,25 @@ class SingleRun(Neo2_common_objects):
 
         super().__init__(singlerunpath,templatepath)
         self.singlerunpath=singlerunpath
-        #self.codesource=None
-        #self.runsource=None # Executable
+        self.codesource=None
+        self.runsource=None # Executable
 
-        #self.req_files_names={
-        #'neo2in': 'neo2.in',
-        #'neoin': 'neo.in'
-       # }
-        #self._Load_default()
-        #self.req_files_paths=dict()
+        self.req_files_names={
+          'neo2in': 'neo2.in',
+          'neoin': 'neo.in'
+        }
+        self._Load_default()
+        self.req_files_paths=dict()
         #self._SetSources()
-        #self._fill_req_files_paths() # including Fill required Files from neo Files, which reads neo2.in
-        #self._neo2inSet=False
-       # self._neo2parSaved=False
-        #self._Runiscreated=False # required Files exists
-        #self._Runsettingsaved=False # required Files and Settings saved
+        self._fill_req_files_paths() # including Fill required Files from neo Files, which reads neo2.in
+        self._neo2inSet=False
+        self._neo2parSaved=False
+        self._Runiscreated=False # required Files exists
+        self._Runsettingsaved=False # required Files and Settings saved
 
         ##########Info :self._sources=dict()
 
-        #self.SourcePaths=dict()
+        self.SourcePaths=dict()
         #self.SetSourcepaths()
 
     #### INIT DONE FOR THE FIRST!!!!####
@@ -866,15 +866,15 @@ class SingleRun(Neo2_common_objects):
         self._sources=data.get('sources')
 
 
-#    def Run_Precomp(self,overwrite=False):
-#        """NOT READY YET!!!!"""
-#
-#        #load_parameter from an old run!
-#        self._checkreqfiles()
-#        self._createfiles(overwrite)
-#        self.RunInitRuns()
-#        #self.gen_condorinput()
-#        #self.run_condor()
+    def Run_Precomp(self,overwrite=False):
+        """NOT READY YET!!!!"""
+
+        #load_parameter from an old run!
+        self._checkreqfiles()
+        self._createfiles(overwrite)
+        self.RunInitRuns()
+        #self.gen_condorinput()
+        #self.run_condor()
 
 
     def RunInitRuns(self):
@@ -911,76 +911,77 @@ class SingleRun(Neo2_common_objects):
 
 ###### Methods to be implementend: #########
 
-#    def set_pert_file(self):
-#        """Method to set Pertubation File"""
-#        pass
-#
-#    def set_axi_sym_file(self):
-#        """Method to set axisymetric File"""
-#        pass
-#
-#
-#    def set_multispecies_file(self):
-#        """Method to set Multispecies File"""
-#        pass
-#
-#
-#    def run_local(self):
-#        """Start Job on local machine"""
-#        pass
-#
+    def set_pert_file(self):
+        """Method to set Pertubation File"""
+        pass
+
+    def set_axi_sym_file(self):
+        """Method to set axisymetric File"""
+        pass
+
+
+    def set_multispecies_file(self):
+        """Method to set Multispecies File"""
+        pass
+
+
+    def run_local(self):
+        """Start Job on local machine"""
+        pass
+
 ####### Implementend Functions: #########
 
 
-#    def _fill_req_files_paths(self,overwrite=False):
-#        """Method for getting full paths from required Files"""
-#
-#
-#        try:
-#            files=os.listdir(self._sources['singlerunsource'])
-#        except:
-#            print('sources not correct set')
-#            return
-#
-#        for fdisc,fnames in self.req_files_names.items():
-#
-#            if fnames in files:
-#                if fnames in self.req_files_paths and overwrite==False:
-#                    #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
-#                    continue
-#                self.req_files_paths[fdisc]=os.path.join(self._sources['singlerunsource'],fnames)
-#
-#        self._fill_req_files_names()
-#        #read_Neo2File
-#
-#
-#        ### DOTO Implement method to iterate over all sources, otherwise problems are occuring
-#        if set(self.req_files_names) == set(self.req_files_paths):
-#            return
-#
-#        try:
-#            files=os.listdir(self._sources['pert_path'])
-#        except:
-#            print('sources2 not correct set')
-#            return
-#
-#        for fdisc,fnames in self.req_files_names.items():
-#
-#            if fnames in files:
-#                if fnames in self.req_files_paths:
-#                    #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
-#                    continue
-#                self.req_files_paths[fdisc]=os.path.join(self._sources['pert_path'],fnames)
-#
-#        self._fill_req_files_paths() # recursive Execution!!! maybe a problem!!!
+    def _fill_req_files_paths(self,overwrite=False):
+        """Method for getting full paths from required Files"""
 
 
-#    def _read_neo2in(self):
-#        try:
-#            self.neo_nml=Neo2File(self.req_files_paths['neo2in'])
-#        except:
-#            print('Couldn\'t read neo2.in')
-#            return
+        try:
+            files=os.listdir(self._sources['singlerunsource'])
+        except:
+            print('sources not correct set')
+            return
+
+        for fdisc,fnames in self.req_files_names.items():
+
+            if fnames in files:
+                if fnames in self.req_files_paths and overwrite==False:
+                    #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
+                    continue
+                self.req_files_paths[fdisc]=os.path.join(self._sources['singlerunsource'],fnames)
+
+        self._fill_req_files_names()
+        #read_Neo2File
+
+
+        ### DOTO Implement method to iterate over all sources, otherwise problems are occuring
+        if set(self.req_files_names) == set(self.req_files_paths):
+            return
+
+        try:
+            files=os.listdir(self._sources['pert_path'])
+        except:
+            print('sources2 not correct set')
+            return
+
+        for fdisc,fnames in self.req_files_names.items():
+
+            if fnames in files:
+                if fnames in self.req_files_paths:
+                    #print(fnames, ' is already set to path: ' self.req_files_paths[fnames])
+                    continue
+                self.req_files_paths[fdisc]=os.path.join(self._sources['pert_path'],fnames)
+
+        self._fill_req_files_paths() # recursive Execution!!! maybe a problem!!!
+
+
+    def _read_neo2in(self):
+        try:
+            self.neo_nml=Neo2File(self.req_files_paths['neo2in'])
+            self._neo2inSet = False
+        except:
+            print('Couldn\'t read neo2.in')
+            return
 
 
 
