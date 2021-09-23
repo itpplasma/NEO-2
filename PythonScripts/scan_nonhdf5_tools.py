@@ -98,7 +98,13 @@ class condor_run:
     """
     if (text_usertime[-1] == ','):
       text_usertime = text_usertime[0:-1]
-    parts = [int(x) for x in text_usertime.split(':')]
+    try:
+      parts = [int(x) for x in text_usertime.split(':')]
+    except ValueError:
+      print('Excpetion while parsing string for usertime:')
+      print(text_usertime)
+      raise
+
     self.usertime = self.list_time_to_seconds(parts)
 
   def set_systemtime(self, text_systemtime: str):
@@ -141,11 +147,16 @@ class condor_run:
       Memory (MB)          :    25659    31744     31744
     """
     parts = text_end_message[0].split()
-    self.set_end_date(parts[2] + ' ' + parts[3])
-    self.set_memory(text_end_message[-1].split()[3])
-    self.set_num_processors(text_end_message[-3].split()[3])
-    self.set_usertime(text_end_message[2].split()[1] + ':' + text_end_message[2].split()[2])
-    self.set_systemtime(text_end_message[2].split()[4] + ':' + text_end_message[2].split()[5])
+    try:
+      self.set_end_date(parts[2] + ' ' + parts[3])
+      self.set_memory(text_end_message[-1].split()[3])
+      self.set_num_processors(text_end_message[-3].split()[3])
+      self.set_usertime(text_end_message[2].split()[1] + ':' + text_end_message[2].split()[2])
+      self.set_systemtime(text_end_message[2].split()[4] + ':' + text_end_message[2].split()[5])
+    except ValueError:
+      print('Exception while parsing end message:')
+      print(text_end_message)
+      raise
 
   def parse_abort_message(self, text_abort_message):
     """Parse abort message.
@@ -304,7 +315,14 @@ class condor_log:
 
     for r in self.runs:
       ids.append([r.get_scan_id(), r.get_run_id()])
-      time_per_job.append(r.end_date - r.start_date)
+      try:
+        time_per_job.append(r.end_date - r.start_date)
+      except TypeError:
+        print('Exception while determining time per job:')
+        print(ids[-1])
+        print(r.start_date)
+        print(r.end_date)
+        raise
 
     return [ids, time_per_job]
 
