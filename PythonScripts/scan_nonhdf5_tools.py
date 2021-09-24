@@ -317,7 +317,11 @@ class condor_log:
     This will return two lists. The first contains the scan and run id
     of the jobs, the second the respective time needed of the job, as a
     datetime.timedelta object.
+    If an entry could not be set due to a TypeError, then the timedelta
+    is set to -1 day.
     """
+    from datetime import timedelta
+
     ids = []
     time_per_job = []
 
@@ -326,6 +330,11 @@ class condor_log:
       try:
         time_per_job.append(r.end_date - r.start_date)
       except TypeError:
+        # Assumed that this happened because either end_date or end_date
+        # and start_date are not set, for example because the job was
+        # aborted by the user.
+        time_per_job.append(timedelta(days=-1))
+      except:
         print('Exception while determining time per job:')
         print(ids[-1])
         print(r.start_date)
