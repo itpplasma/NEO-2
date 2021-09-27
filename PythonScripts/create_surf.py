@@ -4,13 +4,13 @@
 Script to create flux surface subfolders of neo-2-par run.
 """
 
-def create_surfaces():
+def create_surfaces(surface_dat_file:str = 'surfaces.dat'):
   import numpy as np
   import shutil
 
   surf_dir_name = "s"
 
-  s_vec, collpar_vec, Z_vec, T_vec = np.loadtxt('surfaces.dat', unpack=True)
+  s_vec, collpar_vec, Z_vec, T_vec = np.loadtxt(surface_dat_file, unpack=True)
 
   k = 0
   for s in s_vec:
