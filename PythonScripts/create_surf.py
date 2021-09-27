@@ -4,10 +4,9 @@
 Script to create flux surface subfolders of neo-2-par run.
 """
 
-if __name__ == "__main__":
+def create_surfaces():
   import numpy as np
   import shutil
-  import subprocess
 
   surf_dir_name = "s"
 
@@ -33,3 +32,7 @@ if __name__ == "__main__":
     f.write(neo2)
     f.close()
     k = k + 1
+
+
+if __name__ == "__main__":
+  create_surfaces()
