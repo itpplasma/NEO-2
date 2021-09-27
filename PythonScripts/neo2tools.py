@@ -7,20 +7,24 @@ Created on Mon Jul  9 17:21:45 2018
 """
 ### Template from Ipthon Notebook doc_18_07_05
 
-import sys
-sys.path.append('/afs/itp.tugraz.at/user/wakatobi/test_f90nml/f90nml')
-import f90nml
 import os
-import yaml
+import sys
+
+import h5py
 from IPython import display
+from ipywidgets import widgets
+import matplotlib.pyplot as plt
+import numpy as np
 import shutil
 import subprocess
-sys.path.append('/afs/itp.tugraz.at/user/wakatobi/Documents/michi_Masterarbeit/jupyter_notebook/')
+import yaml
+
+import f90nml
 import neo2post
-import h5py
-import numpy as np
-import matplotlib.pyplot as plt
-from ipywidgets import widgets
+
+sys.path.append('/afs/itp.tugraz.at/user/wakatobi/test_f90nml/f90nml')
+sys.path.append('/afs/itp.tugraz.at/user/wakatobi/Documents/michi_Masterarbeit/jupyter_notebook/')
+
 if __name__ == '__main__':
     print('I am main')
 
