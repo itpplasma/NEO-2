@@ -22,9 +22,6 @@ import yaml
 import f90nml
 import neo2post
 
-sys.path.append('/afs/itp.tugraz.at/user/wakatobi/test_f90nml/f90nml')
-sys.path.append('/afs/itp.tugraz.at/user/wakatobi/Documents/michi_Masterarbeit/jupyter_notebook/')
-
 if __name__ == '__main__':
     print('I am main')
 
