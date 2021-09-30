@@ -291,6 +291,8 @@ class Neo2_common_objects():
             self._fill_req_files_paths(path=path,rec=False,overwrite=overwrite)
         else:
             print('could not fill all required paths')
+            print(self.req_files_names)
+            print(self.req_files_paths)
 
 
 
@@ -404,7 +406,8 @@ class ReconPlot():
         try:
             files=os.listdir(path)
         except:
-            print('path is not set correctly')
+            print('path is not set correctly:')
+            print(path)
             return
 
         for file,filename in self.req_files_names.items():
