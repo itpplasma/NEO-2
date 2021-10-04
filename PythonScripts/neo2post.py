@@ -40,8 +40,11 @@ def plot_h5py_Dataset(dataset,*args,**kwargs):
         if dataset.shape[1]<9:
             plot_h5py_stack_1d(dataset,*args,**kwargs)
         else:
-            pass
-            #plot_h5py_2d(dataset,*args,**kwargs)
+            if 'second_dimension_index' in kwargs:
+                second_dimension_index=int(kwargs.pop('second_dimension_index'))
+                plot_h5py_stack_1d(dataset[:,second_dimension_index],*args,**kwargs)
+            else:
+                pass
     else:
         pass
         #raise NotImplementedError("to many dimensions for a Line Plot")
