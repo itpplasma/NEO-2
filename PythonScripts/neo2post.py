@@ -124,7 +124,6 @@ class Neo2Plot():
                     i_ax.set_xlabel(r'$\lambda$')
                 else:
                     i_ax.set_xlabel(def_x)
-                i_ax.set_xlabel(def_x)
                 i_ax.set_ylabel(arg)
                 plot_h5py_Dataset(self.file[arg].value,ax=i_ax,
                                   def_x=self.file[def_x].value,label=label,**kwargs)
