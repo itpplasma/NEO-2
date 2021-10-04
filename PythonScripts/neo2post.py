@@ -55,11 +55,11 @@ class Neo2Plot():
 
     '''
 
-    def __init__(self,file,def_x=''):
+    def __init__(self,file_,def_x=''):
         self.NA_list=['D11_NA_Dpl', 'D12_NA_Dpl', 'D21_NA_Dpl', 'D22_NA_Dpl']
-        if not isinstance(file,(h5py.File,h5py.Group)):
+        if not isinstance(file_,(h5py.File,h5py.Group)):
             raise AttributeError('File must be h5py')
-        self.file=file ## So far file must be h5py
+        self.file=file_ ## So far file must be h5py
         if not def_x:
             self.def_x='boozer_s'
         else:
