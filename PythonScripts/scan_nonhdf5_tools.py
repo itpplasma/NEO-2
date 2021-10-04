@@ -735,6 +735,49 @@ def get_list_unsucessful_runs(folder: str, subfolder_pattern: str, file_to_check
 
   return unsucessful_runs
 
+def get_runcompletion_from_output_par(outputfilename: str):
+  """ Return percentage and list of propagators started.
+
+  Helper function to determine completion of a neo-2 par (Gernots version)
+  run. Gives the percentage of started propagators, and a list of the
+  tags of those.
+
+  note: uses so far started propagators. Percentage of finished
+  propagators could be calculated by reducing the number of started
+  propagators by the number of mpi processes-1, as each process, except
+  the scheduler, has one propagator started.
+  As this would require another scanning of the file, to get the number
+  of mpi-processes reliable, this was considered unnecessary for now.
+
+  input:
+  ------
+  outputfilename: string, the name of the file that contains the output
+    which should be parsed.
+
+  output:
+  -------
+  list, with first element is percantage of started propagators as
+    float, and the second is a list of the propagator tags (integers).
+  """
+
+  with open(outputfilename) as f:
+      lines = f.readlines()
+
+  propagators = [match.strip('\n') for match in lines if "Level placement for propagator" in match]
+
+  index_propagators = [int(k.split()[-1]) for k in propagators]
+
+  nr_propagators = max(index_propagators)
+
+  finished_propagators = [int(match.strip('\n').split()[-1]) for match in lines if "propagator tag" in match]
+  # To only have unique values
+  finished_propagators = list(set(finished_propagators))
+
+  # -1 in the denumerator, because tag '1' not used(?)
+  # numerator should be reduced by number of mpi-processes -1 to get
+  # number of propagators finished.
+  return [float(len(finished_propagators))/float(nr_propagators-1), finished_propagators]
+
 if __name__ == "__main__":
   import matplotlib.pyplot as plt
   import sys
