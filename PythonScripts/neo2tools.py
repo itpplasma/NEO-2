@@ -454,13 +454,41 @@ class ReconPlot():
 
 
     def g_plot(self,*args,tags='',subplots=False,**kwargs):
+        """Line plot of density function.
 
-        file=os.path.join(self._plotdir,'g_vs_lambda.h5')
+        Allows to plot quantities from file 'g_vs_lambda.h5'.
 
-        if not os.path.exists(file):
+        Example usage:
+        g_plot('g', second_dimension_index='100')
+
+        First entry is the quantity that should be plotted. As this is
+        two dimensional, a x-point (second dimension, x-grid) has to be
+        selected.
+        In this form you would get a line for each point of interest in
+        'g_vs_lamda.h5'.
+
+        input:
+        ------
+        *args: positional arguments, expected to be strings containing
+          the name of the quantity to plot, e.g. 'g'. These are passed
+          on to the plotting function called.
+        tags: string or list of strings, select from which top level
+          groups (points of interest) should be plotted, e.g. with
+          'tags="p1"' you could select the first point of interest in the
+          file. ['']
+        subplots: boolean, if true, then each line (for the tags), gets
+          is own graph. If false, then all lines are plotted into a
+          single figure. [False]
+        **kwargs: additional keyword arguments. These are passed on to
+          the plotting function called.
+        """
+
+        _file=os.path.join(self._plotdir,'g_vs_lambda.h5')
+
+        if not os.path.exists(_file):
             raise IOError(('Please write interested points first'))
 
-        hdf5=h5py.File(file,'r')
+        hdf5=h5py.File(_file,'r')
         fig=plt.figure()
         if subplots:
             for i in range(len(args)):
