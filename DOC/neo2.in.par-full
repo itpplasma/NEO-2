@@ -53,7 +53,7 @@
   eta_s_lim = 1.2d1              ! [1.2d0]
   hphi_mult = 1.0d0              ! 1.0d0 or a little bit more [1.0d0]
   lambda_equi = 0                ! 0/1 [0]
-  mag_dbhat_min
+  mag_dbhat_min = 0.1
   mag_local_sigma = 1            ! 0: compute sigma for eta-placement (old) [default]
                                  ! 1: add 2 local sigma-values within ripple
   mag_ripple_contribution = 2    ! 1: deprecated
@@ -91,7 +91,7 @@
                            ! creates quadratic B-Splines and $k=4$ cubic
                            ! B-Splines (best choice). [4]
   collop_bspline_taylor = .true. ! [.true.]
-  collop_only_precompute
+  collop_only_precompute = .false. ! [.false.]
   ! ['/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/']
   collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
                             ! variable not used ['']
