@@ -36,7 +36,22 @@ $2$ or $3$.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{MPI/MyMPILib}
 Used for parallelization. In some places also OpenMP is used.
+Now included in libneo.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{HDF5/hdf5\_tools}
 Used for input and output.
+Now included in libneo.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{libneo}
+Collection for common code of the work group.
+Includes MyMPILib and hdf5\_tools.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{f90nml}
+Python module, used to read and edit fortran namelist files.
+If not present on your system you can install it with
+\begin{verbatim}
+pip3 install --local f90nml
+\end{verbatim}
