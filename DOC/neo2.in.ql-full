@@ -226,7 +226,8 @@
                      ! 1: Boozer
  mag_cycle_ripples = 1 ! 0: old behaviour [default]
                        ! 1: cycle through
- mag_dbhat_min = 0.1 ! [0.1d0]
+ mag_dbhat_min = 0.1d0 ! Determining extrema of fieldline, absolute
+                       ! value of derivative must be smaller [0.1d0]
  mag_dphi_inf_min = 5.0e-002 ! [0.05d0]
  mag_inflection_mult = 3.0 ! [3.0d0]
  mag_magfield = 1 ! 0: homogeneous

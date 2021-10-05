@@ -188,7 +188,7 @@ PROGRAM neo2
        bsfunc_ignore_trap_levels,boundary_dist_limit_factor,                  &
        bsfunc_local_shield_factor,bsfunc_shield,sigma_shield_factor,          &
        split_inflection_points,split_at_period_boundary,                      &
-       bsfunc_lambda_loc_res,mag_dbhat_min, eta_savemem_dist1,                &
+       bsfunc_lambda_loc_res,eta_savemem_dist1,                               &
        eta_savemem_dist2, eta_savemem_sigma_mult
   NAMELIST /propagator/                                                       &
        prop_diagphys,prop_overwrite,                                          &
