@@ -25,6 +25,7 @@ import neo2post
 if __name__ == '__main__':
     print('I am main')
 
+example_files = {'neo-2-par': 'neo2.in.par-full', 'neo-2-ql': 'neo2.in.ql-full'}
 
 class Neo2_common_objects():
     """ objects appearing in both subclasses
@@ -58,7 +59,7 @@ class Neo2_common_objects():
         Submit all Jobs to Condor
     """
 
-    def __init__(self,wdir,templatepath=None):
+    def __init__(self, wdir, templatepath=None, code_variant:str='neo-2-ql'):
 
 
         self._neo2path=os.environ.get('NEO2PATH')
@@ -76,6 +77,8 @@ class Neo2_common_objects():
 
         self._path2exe=''
         self.path2exe=''
+
+        self.variant = code_variant
 
 
         self.req_files_names={
@@ -140,7 +143,7 @@ class Neo2_common_objects():
 
     def _read_neo2in(self):
         try:
-            self.neo2nml=Neo2File(self.req_files_paths['neo2in'])
+            self.neo2nml=Neo2File(self.req_files_paths['neo2in'], self.variant)
         except:
             print('Couldn\'t read neo2.in')
             return
@@ -206,7 +209,7 @@ class Neo2_common_objects():
 
     def _compare_nml2file(self,path):
         self._read_neo2in()
-        neonml=Neo2File(os.path.join(path,'neo2.in'))
+        neonml=Neo2File(os.path.join(path,'neo2.in'), self.variant)
         if self.neo2nml==neonml:
             print('loaded neo2.in and neo2.in onn path are the same')
             return
@@ -299,7 +302,7 @@ class Neo2_common_objects():
 
 class Neo2QL(Neo2_common_objects):
     def __init__(self,wdir,templatepath=None):
-        super().__init__(wdir,templatepath)
+        super().__init__(wdir,templatepath, 'neo-2-ql')
 
 
     def _fill_req_files_names(self):
@@ -335,7 +338,7 @@ class Neo2QL(Neo2_common_objects):
 
 class Neo2Par(Neo2_common_objects):
     def __init__(self,wdir,templatepath=None):
-        super().__init__(wdir,templatepath)
+        super().__init__(wdir,templatepath, 'neo-2-par')
 
     def run_recon(self):
         pass
@@ -577,7 +580,7 @@ class ReconPlot():
 
         os.chdir(curdir)
 
-class Neo2Scan(Neo2QL):
+class Neo2Scan(Neo2_common_objects):
     """ Class for scans over one parameter
 
 
@@ -653,7 +656,7 @@ class Neo2Scan(Neo2QL):
 
 #    def _read_neo2in(self):
 #        try:
-#            self.neo2nml=Neo2File(self.req_files_paths['neo2in'])
+#            self.neo2nml=Neo2File(self.req_files_paths['neo2in'], self.variant)
 #        except:
 #            print('Couldn\'t read neo2.in')
 #            return
@@ -674,8 +677,8 @@ class Neo2Scan(Neo2QL):
 #        """Method to set Multispecies File"""
 #        pass
 
-    def __init__(self,wdir,templatepath=None):
-        super().__init__(wdir,templatepath)
+    def __init__(self,wdir,templatepath=None, variant:str='neo-2-ql'):
+        super().__init__(wdir,templatepath, variant)
         self.structure=''
         self.scanparameter=''#boozer_s/
         self.float_format='{:.5f}'#'1.2e'
@@ -740,7 +743,7 @@ class Neo2Scan(Neo2QL):
                     init=True
                     continue
                 path2=os.path.join(root,i,'neo2.in')
-                dict_new=compare2nml(singlerun_templatepath,path2)
+                dict_new=compare2nml(singlerun_templatepath,path2, self.variant)
                 self.singleruns_names[i]=dict_new
 
             self.scanparameter='boozer_s'
@@ -837,7 +840,7 @@ class SingleRun(Neo2_common_objects):
     def __init__(self,singlerunpath,templatepath=None):
 
 
-        super().__init__(singlerunpath,templatepath)
+        super().__init__(singlerunpath,templatepath, 'neo-2-ql')
         self.singlerunpath=singlerunpath
         self.codesource=None
         self.runsource=None # Executable
@@ -851,6 +854,7 @@ class SingleRun(Neo2_common_objects):
         #self._SetSources()
         self._fill_req_files_paths() # including Fill required Files from neo Files, which reads neo2.in
         self._neo2inSet=False
+        self._read_neo2in()
         self._neo2parSaved=False
         self._Runiscreated=False # required Files exists
         self._Runsettingsaved=False # required Files and Settings saved
@@ -1009,12 +1013,11 @@ class SingleRun(Neo2_common_objects):
 
     def _read_neo2in(self):
         try:
-            self.neo_nml=Neo2File(self.req_files_paths['neo2in'])
-            self._neo2inSet = False
+            self.neo_nml=Neo2File(self.req_files_paths['neo2in'], self.variant)
+            self._neo2inSet = True
         except:
             print('Couldn\'t read neo2.in')
             return
-
 
 
 
@@ -1036,12 +1039,38 @@ class Neo2File(object):
     """
 
 
-    def __init__(self,neo2path):
+    def __init__(self,neo2path, variant: str):
         self.ischanged=False
-        self._neo2nml=f90nml.read(neo2path)
+        self._variant = variant
+        self._Load(neo2path)
         self._neo2dict=dict()
         self._nmltodict()
         self._check_duplicate_parameter()
+
+
+    def _Load(self, filename: str):
+      """Load a namelist file, given by name(+path)..
+
+      This function loads a namelist file for storing in this object.
+
+      Currently this is done in a two step process, to have all
+      parameters available, and not only those found in the file.
+
+      input:
+      ------
+      filename: string, filename and path of the file to load.
+      """
+      from os.path import join
+      from os import environ
+
+      from f90nml import read, Parser
+
+      nml = f90nml.read(filename)
+      # Parser is needed as f90nml.read can not patch.
+      parser = f90nml.Parser()
+      neo2path = environ.get('NEO2PATH')
+      # this will read in the example file, but overwrite the values with those in nml.
+      self._neo2nml = parser.read(join(neo2path, 'DOC', example_files[self._variant]), nml_patch_in=nml)
 
 
     def _nmltodict(self):
@@ -1205,14 +1234,35 @@ def foldername2float(inp):
     form_sp=''.join(['{:.',str(precission),'f}'])
     return f, form_sp
 
-def compare2nml(path1,path2):
-    '''Compare function of two fortran namelist files
+def compare2nml(path1,path2, variant: str):
+    '''Compare function for two fortran namelist files.
 
-    function compares only existing keys in file1
-    and returns the diff value as a dict'''
+    This uses the namelist element of Neo2File class, thus the names of
+    the namelists are not considered.
+    Each element in file1 is compared with the element in file2, and
+    differences are added to a dictionary, with value from the second
+    file.
+    Elements that are only in the first file are ignored. Elements that
+    are only in the second file are added to the dictionary.
 
-    file1=Neo2File(path1)
-    file2=Neo2File(path2)
+    Example usage:
+    neo2tools.compare2nml('surface1/neo2.in',
+                          'surface2/neo2.in', variant='neo-2-par')
+
+    Assuming that these files correspond to a radial scan, then usually
+    only 'boozer_s' and 'conl_over_mfp' should differ (for gernots
+    variant).
+
+    Input:
+    ------
+    file1, file2: strings, paths+name of the two neo2.in files to compare.
+    variant: string, either of the keys of dictionary example_files.
+      Determines if it is an input file for gernots or andreas version
+      of the code.
+    '''
+
+    file1=Neo2File(path1, variant)
+    file2=Neo2File(path2, variant)
 
     cc=dict()
     for i in file1:
