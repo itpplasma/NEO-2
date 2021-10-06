@@ -382,6 +382,54 @@ class condor_log:
 
     return [ids, time_per_job]
 
+def condor_submit_file_to_dict(filename: str):
+  """Create a dictionary from a htcondor submit file.
+
+  Example usage:
+  [d, q] = condor_submit_file_to_dict('./submit')
+
+  d will be the dictionary with parameters and q the line(s) containing
+  the queue command.
+  As queue lines are considered lines (either of these):
+  - which first element is 'queue'
+  - which contain only one element
+  - whose second element is not '='
+
+  input:
+  ------
+  filename: str, name(+path) of the file to load.
+
+  output:
+  -------
+  list with two elements. First is a dictionary with the parameter
+  entries of the file. The keys are converted to lowercase.
+  The second entry is a string holding the queue command line, (which is
+  not included in the dict).
+  """
+  with open(filename) as f:
+    lines = f.readlines()
+
+  lines = [l.strip() for l in lines]
+
+  d = dict()
+  q = ''
+  for l in lines:
+    if len(l) > 0:
+      if l[0] == '#':
+        continue
+      elif l.split()[0].lower() == 'queue':
+        q += l
+      elif len(l.split()) == 1:
+        q += l
+      elif l.split()[1] != '=':
+        q += l
+      else:
+        d[l.split()[0].lower()] = (''.join(l.strip('\n').split()[2:])).lower()
+
+  q = q.replace('\\', ' ')
+
+  return [d, q]
+
 def get_memory_consumption_of_run(lines, id_of_run: str):
   """Get memory consumption for 'id_of_run' from 'lines'.
 
