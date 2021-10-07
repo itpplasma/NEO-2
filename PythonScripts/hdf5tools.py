@@ -189,6 +189,195 @@ def copy_hdf5_from_subfolders_to_single_file(path, infilename: str, outfilename:
 
   copy_hdf5_from_paths_to_single_file(folders, infilename, outfilename, only_base_path, source_base_path)
 
+def prop_reconstruct_3(outfilename: str= 'final.h5'):
+  """Collect results for PAR version of neo-2 as function of same name.
+
+  This function is intended to copy the functionality of the subroutine
+  prop_reconstruct_3 of the PAR version of neo-2.
+  This means it will collect the (most) hdf5 output in a single hdf5
+  file, and delete most of the collected files (efinal.h5, fulltransp.h5
+  and neo2_config.h5 are the exceptions).
+
+  So far, compared to this subroutine there is an addition and a
+  difference.
+
+  Additionaly the name of the output file can be selected.
+  The difference is, that this function does not use the 'lsw_save_'
+  switches. It simply checks if the files are present, and if so adds
+  the content to the output file and deletes them afterwards.
+
+  input:
+  ------
+  outfilename: str, name(+path) of the output file. Defaults to
+    'final.h5'.
+  """
+  import os
+
+  print("Merging HDF5 files...\n")
+
+  #**********************************************************
+  # Open taginfo
+  #**********************************************************
+  with get_hdf5file('taginfo.h5') as taginfo:
+    tag_first = taginfo['tag_first'].value
+    tag_last = taginfo['tag_last'].value
+
+  with get_hdf5file('neo2_config.h5') as config:
+    if (config['/collision/isw_axisymm'].value == 1):
+      tag_first = 3
+      tag_last = 3
+
+  #**********************************************************
+  # Get current working directory
+  #**********************************************************
+  cwd = os.getcwd()
+  surfname = os.path.basename(cwd).strip()
+  print("Using " + surfname + " as surfname.")
+
+  #**********************************************************
+  # Create result file
+  #**********************************************************
+  final =  get_hdf5file_new(outfilename)
+  surf = final.create_group(surfname)
+  neo2 = surf.create_group('NEO-2')
+  propagators = neo2.create_group('propagators')
+
+  cg0_1_num_prop = []
+  cg2_1_num_prop = []
+  cg0_2_num_prop = []
+  cg2_2_num_prop = []
+  cg0_3_num_prop = []
+  cg2_3_num_prop = []
+  denom_mflint_prop = []
+
+  #**********************************************************
+  # Iterate over all propagators and merge files
+  #**********************************************************
+  for k in range(tag_first, tag_last+1):
+    h5_filename = '{0}'.format(k).strip()
+    prop = propagators.create_group(h5_filename)
+
+    if os.path.exists('spitf_' + h5_filename + '.h5'):
+      with get_hdf5file('spitf_' + h5_filename + '.h5') as propfile:
+        propfile.copy(source='/', dest=prop, name='spitf')
+
+    if os.path.exists('dentf_' + h5_filename + '.h5'):
+      with get_hdf5file('dentf_' + h5_filename + '.h5') as propfile:
+        propfile.copy(source='/', dest=prop, name='dentf')
+
+    if os.path.exists('enetf_' + h5_filename + '.h5'):
+      with get_hdf5file('enetf_' + h5_filename + '.h5') as propfile:
+        propfile.copy(source='/', dest=prop, name='enetf')
+
+    with get_hdf5file('phi_mesh_' + h5_filename + '.h5') as propfile:
+      cg0_1_num_prop.append(propfile['cg0_1_num'].value)
+      cg2_1_num_prop.append(propfile['cg2_1_num'].value)
+      cg0_2_num_prop.append(propfile['cg0_2_num'].value)
+      cg2_2_num_prop.append(propfile['cg2_2_num'].value)
+      cg0_3_num_prop.append(propfile['cg0_3_num'].value)
+      cg2_3_num_prop.append(propfile['cg2_1_num'].value)
+      denom_mflint_prop.append(propfile['denom_mflint'].value)
+      propfile.copy(source='/', dest=prop, name='phi_mesh')
+
+    with get_hdf5file('sizeplot_etalev_'+h5_filename+'.h5') as propfile:
+      propfile.copy(source='/', dest=prop, name='sizeplot_etalev')
+
+  cg0_1_avg = sum(cg0_1_num_prop) / sum(denom_mflint_prop)
+  cg2_1_avg = sum(cg2_1_num_prop) / sum(denom_mflint_prop)
+  cg0_2_avg = sum(cg0_2_num_prop) / sum(denom_mflint_prop)
+  cg2_2_avg = sum(cg2_2_num_prop) / sum(denom_mflint_prop)
+  cg0_3_avg = sum(cg0_3_num_prop) / sum(denom_mflint_prop)
+  cg2_3_avg = sum(cg2_3_num_prop) / sum(denom_mflint_prop)
+
+  print("cg0_1 = {}".format(cg0_1_avg))
+  print("cg2_1 = {}".format(cg2_1_avg))
+  print("cg0_2 = {}".format(cg0_2_avg))
+  print("cg2_2 = {}".format(cg2_2_avg))
+  print("cg0_3 = {}".format(cg0_3_avg))
+  print("cg2_3 = {}".format(cg2_3_avg))
+
+  #**********************************************************
+  # Merge additional files
+  #**********************************************************
+  with get_hdf5file('efinal.h5') as propfile:
+    propfile.copy(source='/', dest=neo2, name='efinal')
+
+  with get_hdf5file('fulltransp.h5') as propfile:
+    propfile.copy(source='/', dest=neo2, name='fulltransp')
+
+  with get_hdf5file('neo2_config.h5') as propfile:
+    propfile.copy(source='/', dest=neo2, name='neo2_config')
+
+  with get_hdf5file('taginfo.h5') as propfile:
+    propfile.copy(source='/', dest=neo2, name='taginfo')
+
+    neo2['taginfo/cg0_1_avg'] = cg0_1_avg
+    neo2['taginfo/cg2_1_avg'] = cg2_1_avg
+
+    neo2['taginfo/cg0_2_avg'] = cg0_2_avg
+    neo2['taginfo/cg2_2_avg'] = cg2_2_avg
+
+    neo2['taginfo/cg0_3_avg'] = cg0_3_avg
+    neo2['taginfo/cg2_3_avg'] = cg2_3_avg
+
+  print('Result file created. Deleting old files....')
+
+  # Delete single HDF5 files
+  os.remove('propagator_0_0.h5')
+  os.remove('taginfo.h5')
+
+  # Delete indexed HDF5 files
+  for k in range(tag_first, tag_last+1):
+    integer_part = '{0}'.format(k).strip()
+
+    try:
+      os.remove('spitf_' + integer_part + '.h5')
+    except FileNotFoundError:
+      pass
+
+    try:
+      os.remove('enetf_' + integer_part + '.h5')
+    except FileNotFoundError:
+      pass
+
+    try:
+      os.remove('dentf_' + integer_part + '.h5')
+    except FileNotFoundError:
+      pass
+
+    try:
+      os.remove('phi_mesh_' + integer_part + '.h5')
+    except FileNotFoundError:
+      pass
+
+    try:
+      os.remove('sizeplot_etalev_' + integer_part + '.h5')
+    except FileNotFoundError:
+      pass
+
+    for l in range(tag_first, tag_last+1):
+      two_integer_part = '{0}_{1}'.format(k,l).strip()
+      try:
+        os.remove('propagator_' + two_integer_part + '.h5')
+      except FileNotFoundError:
+        pass
+
+      try:
+        os.remove('propagator_boundary_' + two_integer_part + '.h5')
+      except FileNotFoundError:
+        pass
+
+      try:
+        os.remove('reconstruct_' + two_integer_part + '.h5')
+      except FileNotFoundError:
+        pass
+
+      try:
+        os.remove('binarysplit_' + two_integer_part + '.h5')
+      except FileNotFoundError:
+        pass
+
+  print("Done.\n")
 
 def sort_x_y_pairs_according_to_x(x: list, y: list):
   """Sort pair of lists according to the first.
