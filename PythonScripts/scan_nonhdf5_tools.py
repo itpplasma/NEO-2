@@ -430,6 +430,42 @@ def condor_submit_file_to_dict(filename: str):
 
   return [d, q]
 
+def dict_to_condor_submit_file(filename: str, d: dict, q: str, overwrite:bool = False):
+  """Create a condor submit file from dictionary and queue string.
+
+  Counterpart to condor_submit_file_to_dict.
+  Takes a dictionary and a queue string and writes them to a text file,
+  that can be used with 'condor_submit'.
+
+  input:
+  ------
+  filename: string, name (and path) of the file which to write.
+  d: dict, parameter values pairs that should be written to file.
+  q: string, queue command to be written to file.
+  overwrite: bool, if false, an exception will be raised if 'filename'
+    already exists. If true, existing files will be overwritten.
+
+  output:
+  -------
+  None.
+
+  side effects:
+  -------------
+  Creates a file. If 'overwrite' is true, an existing file will be
+  replaced.
+  """
+  from os import path
+  if (path.exists(filename) and not overwrite):
+    raise FileExistsError('File already exist and should not be overwriten: ' + filename)
+
+  with open(filename, 'w') as f:
+    for k in d.keys():
+      f.write(k + ' = ' + d[k] + '\n')
+
+    f.write('\n')
+
+    f.write(q + '\n')
+
 def get_memory_consumption_of_run(lines, id_of_run: str):
   """Get memory consumption for 'id_of_run' from 'lines'.
 
