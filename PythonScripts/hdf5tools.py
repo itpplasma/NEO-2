@@ -540,7 +540,7 @@ def get_maximum_sizes_of_groups(name_part: str, tag_first: int, tag_last: int, i
   return d
 
 
-def construct_group(group, sizes: dict, types: dict):
+def construct_group(group, sizes: dict, types: dict, variable_length_array:bool = False):
   """ Create subgroups for a given h5py group.
 
   This function will create a hierachie of subgroups recursively, by
@@ -555,13 +555,25 @@ def construct_group(group, sizes: dict, types: dict):
     structure.
   types: dictionary, same structure as sizes, but having h5py dtypes as
     entries.
+  variable_length_array: bool, if true then two dimensional datasets are
+    created as variable length arrays, i.e. only the first dimension is
+    fixed. [False]
   """
+  import h5py
+
   for k in sizes.keys():
     if type(sizes[k]) == type(dict()):
       subgroup = group.create_group(k)
       construct_group(subgroup, sizes[k], types[k])
     else:
-      group.create_dataset(k, tuple(sizes[k]), types[k])
+      dt = types[k]
+      size = tuple(sizes[k])
+      if variable_length_array and len(size) == 2:
+        # required for later versions (1.12+)?
+        # ~ dt = h5py.vlen_dtype(types[k])
+        dt = h5py.special_dtype(vlen=types[k])
+        size = (size[0],)
+      group.create_dataset(k, size, dt)
 
 
 def insert_size(sizes: dict, size_to_insert: int):
@@ -586,7 +598,7 @@ def insert_size(sizes: dict, size_to_insert: int):
   return sizes
 
 
-def copy_group(source, destination, index: int, ignore_version:bool = True):
+def copy_group(source, destination, index: int, ignore_version:bool = True, variable_length_array:bool = False):
   """ Copy the content of one group to another recursively.
 
   Copy the content of one file/group to another, with two assumptions
@@ -601,6 +613,9 @@ def copy_group(source, destination, index: int, ignore_version:bool = True):
   index: integer, first index for entries in destination.
   ignore_version: bool, if True fields named 'version' are ignored for
     creating the dictionary. [True]
+  variable_length_array: bool, if this is true then one dimensional
+    arrays from the source, are stored as variable length arrays in
+    destination. [False]
   """
   for k in source.keys():
     if (k.lower() == 'version' and ignore_version):
@@ -613,7 +628,10 @@ def copy_group(source, destination, index: int, ignore_version:bool = True):
         if len(size) == 0:
           destination[k][index] = source[k].value
         elif len(size) == 1:
-          destination[k][index, 0:size[0]] = source[k]
+          if variable_length_array:
+            destination[k][index] = source[k]
+          else:
+            destination[k][index, 0:size[0]] = source[k]
         elif len(size) == 2:
           destination[k][index, 0:size[0], 0:size[1]] = source[k]
         elif len(size) == 3:
@@ -634,12 +652,15 @@ def copy_group(source, destination, index: int, ignore_version:bool = True):
         raise
 
 
-def prop_reconstruct_3a(outfilename: str= 'testing_only_final.h5'):
+def prop_reconstruct_3a(outfilename: str= 'testing_only_final.h5', variable_length_array:bool = False):
   """
   input:
   ------
   outfilename: str, name(+path) of the output file. Defaults to
     'final.h5'.
+  variable_length_array: bool, if this is true, then one dimensional
+   arrays from the propagator inputs will be stored as variable length
+   arrays.
   """
   import os
 
@@ -691,7 +712,7 @@ def prop_reconstruct_3a(outfilename: str= 'testing_only_final.h5'):
       #**********************************************************
       insert_size(sizes, size_to_insert = tag_last - tag_first + 1)
       destination = surf.create_group(f)
-      construct_group(destination, sizes, types)
+      construct_group(destination, sizes, types, variable_length_array=variable_length_array)
 
       #**********************************************************
       # Copy the data
@@ -700,7 +721,7 @@ def prop_reconstruct_3a(outfilename: str= 'testing_only_final.h5'):
         integer_part = '_{0}'.format(t).strip()
 
         with get_hdf5file(f + integer_part + '.h5') as source:
-          copy_group(source, destination, index= t - tag_first, ignore_version=ignore_version_)
+          copy_group(source, destination, index= t - tag_first, ignore_version=ignore_version_, variable_length_array=variable_length_array)
 
           if f == 'phi_mesh': # ~ with get_hdf5file('phi_mesh_' + h5_filename + '.h5') as propfile:
             cg0_1_num_prop.append(source['cg0_1_num'].value)
