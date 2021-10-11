@@ -189,6 +189,66 @@ def copy_hdf5_from_subfolders_to_single_file(path, infilename: str, outfilename:
 
   copy_hdf5_from_paths_to_single_file(folders, infilename, outfilename, only_base_path, source_base_path)
 
+
+def clean_up_after_run(tag_first:int, tag_last: int):
+  import os
+
+  # Delete single HDF5 files
+  os.remove('propagator_0_0.h5')
+  os.remove('taginfo.h5')
+
+  # Delete indexed HDF5 files
+  for k in range(tag_first, tag_last+1):
+    integer_part = '{0}'.format(k).strip()
+
+    try:
+      os.remove('spitf_' + integer_part + '.h5')
+    except FileNotFoundError:
+      pass
+
+    try:
+      os.remove('enetf_' + integer_part + '.h5')
+    except FileNotFoundError:
+      pass
+
+    try:
+      os.remove('dentf_' + integer_part + '.h5')
+    except FileNotFoundError:
+      pass
+
+    try:
+      os.remove('phi_mesh_' + integer_part + '.h5')
+    except FileNotFoundError:
+      pass
+
+    try:
+      os.remove('sizeplot_etalev_' + integer_part + '.h5')
+    except FileNotFoundError:
+      pass
+
+    for l in range(tag_first, tag_last+1):
+      two_integer_part = '{0}_{1}'.format(k,l).strip()
+      try:
+        os.remove('propagator_' + two_integer_part + '.h5')
+      except FileNotFoundError:
+        pass
+
+      try:
+        os.remove('propagator_boundary_' + two_integer_part + '.h5')
+      except FileNotFoundError:
+        pass
+
+      try:
+        os.remove('reconstruct_' + two_integer_part + '.h5')
+      except FileNotFoundError:
+        pass
+
+      try:
+        os.remove('binarysplit_' + two_integer_part + '.h5')
+      except FileNotFoundError:
+        pass
+
+
 def prop_reconstruct_3(outfilename: str= 'final.h5'):
   """Collect results for PAR version of neo-2 as function of same name.
 
@@ -322,62 +382,379 @@ def prop_reconstruct_3(outfilename: str= 'final.h5'):
 
   print('Result file created. Deleting old files....')
 
-  # Delete single HDF5 files
-  os.remove('propagator_0_0.h5')
-  os.remove('taginfo.h5')
-
-  # Delete indexed HDF5 files
-  for k in range(tag_first, tag_last+1):
-    integer_part = '{0}'.format(k).strip()
-
-    try:
-      os.remove('spitf_' + integer_part + '.h5')
-    except FileNotFoundError:
-      pass
-
-    try:
-      os.remove('enetf_' + integer_part + '.h5')
-    except FileNotFoundError:
-      pass
-
-    try:
-      os.remove('dentf_' + integer_part + '.h5')
-    except FileNotFoundError:
-      pass
-
-    try:
-      os.remove('phi_mesh_' + integer_part + '.h5')
-    except FileNotFoundError:
-      pass
-
-    try:
-      os.remove('sizeplot_etalev_' + integer_part + '.h5')
-    except FileNotFoundError:
-      pass
-
-    for l in range(tag_first, tag_last+1):
-      two_integer_part = '{0}_{1}'.format(k,l).strip()
-      try:
-        os.remove('propagator_' + two_integer_part + '.h5')
-      except FileNotFoundError:
-        pass
-
-      try:
-        os.remove('propagator_boundary_' + two_integer_part + '.h5')
-      except FileNotFoundError:
-        pass
-
-      try:
-        os.remove('reconstruct_' + two_integer_part + '.h5')
-      except FileNotFoundError:
-        pass
-
-      try:
-        os.remove('binarysplit_' + two_integer_part + '.h5')
-      except FileNotFoundError:
-        pass
+  clean_up_after_run(tag_first, tag_last)
 
   print("Done.\n")
+
+
+def merge_maximum(a: list, b: list):
+  """Return a merged list by taking the maximum of each entry.
+
+  Example:
+  l = merge_maximum([2, 3, 4, 5], [3, 2, 1, 6])
+
+  would mean that
+  l = [3, 3, 4, 6]
+
+  input:
+  ------
+  a, b: lists, which to merge. Should have the same number of elements,
+    but this is not checked by this function.
+  """
+  return [max(*z) for z in zip(a,b)]
+
+
+def create_higher_dimensional_groupstructure(source, destination, size: int, ignore_version: bool = True):
+  for k in source.keys():
+    if (k.lower() == 'version' and ignore_version):
+      continue
+    # ~ if (type(source[k]) == type(h5py.group)):
+      # ~ sub = destination.create_group(k)
+      # ~ create_higher_dimensional_groupstructure(k, sub, size)
+    # ~ else:
+    shape = list(source[k].shape)
+    shape.insert(0, size)
+    destination.create_dataset(k, tuple(shape), dtype=source[k].dtype)
+
+
+def get_types_of_keys_in_group(group, types: dict, ignore_version: bool = True):
+  """Return the types of the keys in a given group as dictionary.
+
+  The function is used recursively for subgroups.
+
+  input:
+  ------
+  group: h5py group, for which to create the dictionary.
+  types: dict, dictionary to which to add the keys. For parent group of
+    hdf5 file you probably want to pass an empty dictionary.
+  ignore_version: bool, if True fields named 'version' are ignored for
+    creating the dictionary. [True]
+
+  output:
+  -------
+  (recursive) dictionare where each entry is the type of the
+  corresponding key.
+  """
+  for k in group.keys():
+    if type(group[k]) == type(group):
+      types[k] = {}
+      types[k] = get_types_of_keys_in_group(group[k], types[k], ignore_version)
+    else:
+      types[k] = group[k].dtype
+
+  return types
+
+
+def get_types_of_keys(name_part: str, tag_first: int, ignore_version: bool = True):
+  """Return the types that exist in a file as dictionary.
+
+  Assumes specific format of filename:
+
+  name_part + _ + #tag_first + '.h5'
+
+  Where #tag_first means the string representation of the input
+  parameter.
+
+  input:
+  ------
+  name_part: str, name part of the file from which to extract types.
+  tag_first: int, number part of the file from which to extract types.
+  ignore_version: bool, if True fields named 'version' are ignored for
+    creating the dictionary. [True]
+
+  output:
+  -------
+  (recursive) dictionare where each entry is the type of the
+  corresponding key.
+  """
+  types = {}
+  with get_hdf5file(name_part + '_{0}'.format(tag_first).strip() + '.h5') as f:
+    types = get_types_of_keys_in_group(f, types, ignore_version)
+
+  return types
+
+
+def get_size_of_keys_in_group(f, d: dict, ignore_version: bool = True):
+  """Determine size of data elements in group and return it as dictionary.
+
+  This function is used recursively for subgroups.
+
+  input:
+  ------
+  f: h5py group, for which to determine sizes.
+  d: dictionary, if no entry for a dataset exists, it is created. If one
+    exists already, then for each dimension the maximum is used. If this
+    function is called for the root '/', then this should be an empty
+    dictionary, unless you want to make sure that fields have a minimum
+    size.
+  ignore_version: bool, if True fields named 'version' are ignored for
+    creating the dictionary. [True]
+  """
+  for k in f.keys():
+    if (k.lower() == 'version' and ignore_version):
+      continue
+    if type(f[k]) == type(f):
+      if k not in d:
+        d[k] = {}
+      d[k] = ghi(f[k], d[k], ignore_version)
+    else:
+      if k not in d:
+        d[k] = list(f[k].shape)
+      else:
+        d[k] = merge_maximum(d[k], list(f[k].shape))
+
+  return d
+
+
+def get_maximum_sizes_of_groups(name_part: str, tag_first: int, tag_last: int, ignore_version:bool = True):
+  """Get maximum size of the groups in a batch of files as dictionary.
+
+  Get the maximum size of datasets within a batch of files, that follow
+  the naming convention
+
+  name_part_#.h5
+
+  where '#' stands for the string representation of a number from
+  tag_first to tag_last (including).
+
+  input:
+  ------
+  name_part: str, name part of the file from which to extract types.
+  tag_first, tag_last: integers, giving the range of the number part of
+    the file from which to extract sizes.
+  ignore_version: bool, if True fields named 'version' are ignored for
+    creating the dictionary. [True]
+
+  output:
+  -------
+  Dictionary, where entry of a key is either a list which corresponds to
+  the maximum size of that entry in the files, or a dictionary if the
+  key corresponds to a group.
+  """
+  d = {}
+  for t in range(tag_first, tag_last+1):
+    integer_part = '_{0}'.format(t).strip()
+    with get_hdf5file(name_part + integer_part + '.h5') as f:
+      get_size_of_keys_in_group(f, d, ignore_version)
+
+  return d
+
+
+def construct_group(group, sizes: dict, types: dict):
+  """ Create subgroups for a given h5py group.
+
+  This function will create a hierachie of subgroups recursively, by
+  using sizes and types given as dictionaries.
+
+  input:
+  ------
+  group: h5py group
+  sizes: dictionary, if a key corresponds to a dataset it contains a
+    list of integers giving the sizes for each dimension. If it
+    corresponds to a group, then it contains a dictionary with the same
+    structure.
+  types: dictionary, same structure as sizes, but having h5py dtypes as
+    entries.
+  """
+  for k in sizes.keys():
+    if type(sizes[k]) == type(dict()):
+      subgroup = group.create_group(k)
+      construct_group(subgroup, sizes[k], types[k])
+    else:
+      group.create_dataset(k, tuple(sizes[k]), types[k])
+
+
+def insert_size(sizes: dict, size_to_insert: int):
+  """Prepend size to entries in a dictionary.
+
+  This works on dictionaries thise created by get_maximum_sizes_of_groups
+  and prepends a size for all entries recursively.
+
+
+  input:
+  ------
+  sizes: dictionary, in all entries the given size is inserted as first
+    entry.
+  size_to_insert: integer, size which to insert.
+  """
+  for k in sizes.keys():
+    if type(sizes[k]) == type(dict()):
+      insert_size(sizes[k], size_to_insert)
+    else:
+      sizes[k].insert(0, size_to_insert)
+
+  return sizes
+
+
+def copy_group(source, destination, index: int, ignore_version:bool = True):
+  """ Copy the content of one group to another recursively.
+
+  Copy the content of one file/group to another, with two assumptions
+  - destination is already created with additional first dimension.
+  - copying is done to the other dimension, which are at least large
+    enough to hold the elements, but might be bigger.
+
+  input:
+  ------
+  source: h5py group from which to copy data.
+  destination: h5py group to which to copy data.
+  index: integer, first index for entries in destination.
+  ignore_version: bool, if True fields named 'version' are ignored for
+    creating the dictionary. [True]
+  """
+  for k in source.keys():
+    if (k.lower() == 'version' and ignore_version):
+      continue
+    if type(source[k]) == type(dict()):
+      copy_group(source[k], destionation[k], index, ignore_version)
+    else:
+      size = source[k].shape
+      try:
+        if len(size) == 0:
+          destination[k][index] = source[k].value
+        elif len(size) == 1:
+          destination[k][index, 0:size[0]] = source[k]
+        elif len(size) == 2:
+          destination[k][index, 0:size[0], 0:size[1]] = source[k]
+        elif len(size) == 3:
+          destination[k][index, 0:size[0], 0:size[1], 0:size[2]] = source[k]
+        elif len(size) == 4:
+          destination[k][index, 0:size[0], 0:size[1], 0:size[2], 0:size[3]] = source[k]
+        elif len(size) == 5:
+          destination[k][index, 0:size[0], 0:size[1], 0:size[2], 0:size[3], 0:size[4]] = source[k]
+        elif len(size) == 6:
+          destination[k][index, 0:size[0], 0:size[1], 0:size[2], 0:size[3], 0:size[4], 0:size[5]] = source[k]
+        else:
+          raise Exception('copy_group: dimension of source array not yet implemented!')
+      except KeyError:
+        print('Key error in copy_group: len(sizes) = {0}, key = {1}, index = {2}'.format(len(sizes), k, index))
+        raise
+      except TypeError:
+        print('Type error in copy_group: sizes = {0}, shape of source = {1}'.format(list(sizes[k]), source[k].shape))
+        raise
+
+
+def prop_reconstruct_3a(outfilename: str= 'testing_only_final.h5'):
+  """
+  input:
+  ------
+  outfilename: str, name(+path) of the output file. Defaults to
+    'final.h5'.
+  """
+  import os
+
+  ignore_version_ = True
+
+  print("Merging HDF5 files...\n")
+
+  #**********************************************************
+  # Open taginfo
+  #**********************************************************
+  with get_hdf5file('taginfo.h5') as taginfo:
+    tag_first = taginfo['tag_first'].value
+    tag_last = taginfo['tag_last'].value
+
+  with get_hdf5file('neo2_config.h5') as config:
+    if (config['/collision/isw_axisymm'].value == 1):
+      tag_first = 3
+      tag_last = 3
+
+  #**********************************************************
+  # Get current working directory
+  #**********************************************************
+  cwd = os.getcwd()
+  surfname = os.path.basename(cwd).strip()
+  print("Using " + surfname + " as surfname.")
+
+  #**********************************************************
+  # Create result file
+  #**********************************************************
+  final = get_hdf5file_new(outfilename)
+  surf = final.create_group(surfname)
+
+  cg0_1_num_prop = []
+  cg2_1_num_prop = []
+  cg0_2_num_prop = []
+  cg2_2_num_prop = []
+  cg0_3_num_prop = []
+  cg2_3_num_prop = []
+  denom_mflint_prop = []
+
+  file_batches_to_consider = ['spitf', 'dentf', 'enetf', 'phi_mesh', 'sizeplot_etalev']
+  for f in file_batches_to_consider:
+    if os.path.exists(f + '_{0}'.format(tag_first) + '.h5'):
+      types = get_types_of_keys(f, tag_first, ignore_version=ignore_version_)
+      sizes = get_maximum_sizes_of_groups(f, tag_first, tag_last, ignore_version=ignore_version_)
+
+      #**********************************************************
+      # Create data structure for result file
+      #**********************************************************
+      insert_size(sizes, size_to_insert = tag_last - tag_first + 1)
+      destination = surf.create_group(f)
+      construct_group(destination, sizes, types)
+
+      #**********************************************************
+      # Copy the data
+      #**********************************************************
+      for t in range(tag_first, tag_last+1):
+        integer_part = '_{0}'.format(t).strip()
+
+        with get_hdf5file(f + integer_part + '.h5') as source:
+          copy_group(source, destination, index= t - tag_first, ignore_version=ignore_version_)
+
+          if f == 'phi_mesh': # ~ with get_hdf5file('phi_mesh_' + h5_filename + '.h5') as propfile:
+            cg0_1_num_prop.append(source['cg0_1_num'].value)
+            cg2_1_num_prop.append(source['cg2_1_num'].value)
+            cg0_2_num_prop.append(source['cg0_2_num'].value)
+            cg2_2_num_prop.append(source['cg2_2_num'].value)
+            cg0_3_num_prop.append(source['cg0_3_num'].value)
+            cg2_3_num_prop.append(source['cg2_1_num'].value)
+            denom_mflint_prop.append(source['denom_mflint'].value)
+
+  cg0_1_avg = sum(cg0_1_num_prop) / sum(denom_mflint_prop)
+  cg2_1_avg = sum(cg2_1_num_prop) / sum(denom_mflint_prop)
+  cg0_2_avg = sum(cg0_2_num_prop) / sum(denom_mflint_prop)
+  cg2_2_avg = sum(cg2_2_num_prop) / sum(denom_mflint_prop)
+  cg0_3_avg = sum(cg0_3_num_prop) / sum(denom_mflint_prop)
+  cg2_3_avg = sum(cg2_3_num_prop) / sum(denom_mflint_prop)
+
+  print("cg0_1 = {}".format(cg0_1_avg))
+  print("cg2_1 = {}".format(cg2_1_avg))
+  print("cg0_2 = {}".format(cg0_2_avg))
+  print("cg2_2 = {}".format(cg2_2_avg))
+  print("cg0_3 = {}".format(cg0_3_avg))
+  print("cg2_3 = {}".format(cg2_3_avg))
+
+  #**********************************************************
+  # Merge additional files
+  #**********************************************************
+  with get_hdf5file('efinal.h5') as propfile:
+    propfile.copy(source='/', dest=surf, name='efinal')
+
+  with get_hdf5file('fulltransp.h5') as propfile:
+    propfile.copy(source='/', dest=surf, name='fulltransp')
+
+  with get_hdf5file('neo2_config.h5') as propfile:
+    propfile.copy(source='/', dest=surf, name='neo2_config')
+
+  with get_hdf5file('taginfo.h5') as propfile:
+    propfile.copy(source='/', dest=surf, name='taginfo')
+
+    surf['taginfo/cg0_1_avg'] = cg0_1_avg
+    surf['taginfo/cg2_1_avg'] = cg2_1_avg
+
+    surf['taginfo/cg0_2_avg'] = cg0_2_avg
+    surf['taginfo/cg2_2_avg'] = cg2_2_avg
+
+    surf['taginfo/cg0_3_avg'] = cg0_3_avg
+    surf['taginfo/cg2_3_avg'] = cg2_3_avg
+
+  print('Result file created. Deleting old files....')
+
+  clean_up_after_run(tag_start, tag_last)
+
+  print("Done.\n")
+
 
 def sort_x_y_pairs_according_to_x(x: list, y: list):
   """Sort pair of lists according to the first.
