@@ -13,9 +13,21 @@ import numpy as np
 
 
 def myplot(*args,ax=None,def_x=None,scalex=True, scaley=True, **kwargs):
-    ''' Function for plotting  values, possible with a default x_axis
+    ''' Function for plotting  values, possible with a default x_axis.
 
+    Interface for matplotlib.pyplot.plot?
     args and def_x should be Numpy Arrays
+
+    input:
+    ------
+    *args: positional arguments, passed to matplotlib.pyplot.plot.
+    ax: [None]
+    def_x: [None]
+    scalex: boolean, corresponds to scalex parameter of
+      matplotlib.pyplot.plot [True]
+    scaley: boolean, corresponds to scaley parameter of
+      matplotlib.pyplot.plot [True]
+    **kwargs: keyword arguments passed to matplotlib.pyplot.plot.
     '''
 
     if ax:
@@ -34,6 +46,9 @@ def myplot(*args,ax=None,def_x=None,scalex=True, scaley=True, **kwargs):
 plot_h5py_1d=myplot
 plot_h5py_stack_1d=myplot
 def plot_h5py_Dataset(dataset,*args,**kwargs):
+    """
+    Interface for myplot?
+    """
     if dataset.ndim == 1:
         plot_h5py_1d(dataset,*args,**kwargs)
     elif dataset.ndim == 2:
