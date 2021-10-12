@@ -387,6 +387,50 @@ def prop_reconstruct_3(outfilename: str= 'final.h5'):
   print("Done.\n")
 
 
+def prop_reconstruct_3_for_all_subfolders(path=['./'], outfilename: str= 'final.h5'):
+  """For all subfolders of 'path', run prop_reconstruct_3.
+
+  This function will change into each subdirectory of 'path', and run
+  prop_reconstruct_3 there.
+
+  If a required file is not found in a subdirectory, it is ignored.
+
+  input:
+  ------
+  path: either string with path to folders which contain data, or a list
+    of such paths. ['./']
+  outfilename: name of the file which should contain collected data.
+    ['final.h5']
+  """
+
+  from itertools import chain
+  from os import listdir, chdir, getcwd
+  from os.path import isfile, join
+  import errno
+
+  folders = []
+
+  # Make sure path is a list.
+  if (type(path) == str):
+    path = [path]
+
+  for p in path:
+    folders.append([join(p, f) for f in listdir(p) if not isfile(join(p, f))])
+
+  folders = list(chain.from_iterable(folders))
+
+  cwd = getcwd()
+
+  for f in folders:
+    chdir(f)
+    try:
+      prop_reconstruct_3(outfilename=outfilename)
+    except OSError as e:
+      print('A required file is not found for repository "{0}", ignoring it.'.format(f))
+    finally:
+      chdir(cwd)
+
+
 def merge_maximum(a: list, b: list):
   """Return a merged list by taking the maximum of each entry.
 
