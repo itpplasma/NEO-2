@@ -75,7 +75,6 @@ class Neo2_common_objects():
         else:
             self._path2code=''
 
-        self._path2exe=''
         self.path2exe=''
 
         self.variant = code_variant
