@@ -105,6 +105,17 @@ class Neo2_common_objects():
         pass
 
     def compile(self,overwrite=False):
+        """Wrapper for compiling the code.
+
+        \attention: for now only compiles NEO-2-QL, with hardcoded build
+          directory.
+
+        input:
+        ------
+        overwrite: boolean, if true then it is tolerated if the build
+          directory already exists, if false, this leads to an
+          exception. [False]
+        """
         curdir=os.getcwd()
         os.chdir(self._path2code)
         exe=self._path2code+'NEO-2-QL/Build_auto/'
@@ -114,6 +125,8 @@ class Neo2_common_objects():
             os.chdir(exe)
         else:
             if overwrite==False:
+                # Avoid side effects: get beack to original directory
+                # before raising the exception.
                 os.chdir(curdir)
                 raise FileExistsError('Please remove folder Build_auto')
 
