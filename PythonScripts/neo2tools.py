@@ -26,6 +26,7 @@ if __name__ == '__main__':
     print('I am main')
 
 example_files = {'neo-2-par': 'neo2.in.par-full', 'neo-2-ql': 'neo2.in.ql-full'}
+code_paths =  {'neo-2-par': 'NEO-2-PAR', 'neo-2-ql': 'NEO-2-QL'}
 
 class Neo2_common_objects():
     """ objects appearing in both subclasses
@@ -107,8 +108,7 @@ class Neo2_common_objects():
     def compile(self,overwrite=False):
         """Wrapper for compiling the code.
 
-        \attention: for now only compiles NEO-2-QL, with hardcoded build
-          directory.
+        \attention: for now only with hardcoded build directory name.
 
         input:
         ------
@@ -118,7 +118,7 @@ class Neo2_common_objects():
         """
         curdir=os.getcwd()
         os.chdir(self._path2code)
-        exe=self._path2code+'NEO-2-QL/Build_auto/'
+        exe = os.path.join(self._path2code, code_paths[self.variant], 'Build_auto/')
 
         if not os.path.exists(exe):
             os.mkdir(exe)
@@ -352,6 +352,7 @@ class Neo2QL(Neo2_common_objects):
 class Neo2Par(Neo2_common_objects):
     def __init__(self,wdir,templatepath=None):
         super().__init__(wdir,templatepath, 'neo-2-par')
+
 
     def run_recon(self):
         pass
