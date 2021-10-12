@@ -108,19 +108,20 @@ class Neo2_common_objects():
         curdir=os.getcwd()
         os.chdir(self._path2code)
         exe=self._path2code+'NEO-2-QL/Build_auto/'
-        if os.path.exists(exe):
-            if overwrite==False:
-                raise FileExistsError('Please remove folder Build_auto')
-            else:
-                os.chdir(exe)
-                print(os.popen("cmake -DCMAKE_BUILD_TYPE=RELEASE ..").read())
-                print(os.popen("make clean").read())
-                print(os.popen("make -j4").read())
-        else:
+
+        if not os.path.exists(exe):
             os.mkdir(exe)
             os.chdir(exe)
-            print(os.popen("cmake -DCMAKE_BUILD_TYPE=RELEASE ..").read())
-            print(os.popen("make -j4").read())
+        else:
+            if overwrite==False:
+                os.chdir(curdir)
+                raise FileExistsError('Please remove folder Build_auto')
+
+        os.chdir(exe)
+        print(os.popen("cmake -DCMAKE_BUILD_TYPE=RELEASE ..").read())
+        print(os.popen("make clean").read())
+        print(os.popen("make -j4").read())
+
         os.chdir(curdir)
         self.path2exe=exe+'neo_2.x'
 
