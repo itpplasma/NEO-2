@@ -105,7 +105,7 @@ class Neo2_common_objects():
         os.path.exists(self.wdir)
         pass
 
-    def compile(self,overwrite=False):
+    def compile(self, overwrite: bool = False, number_of_processors: int = 1):
         """Wrapper for compiling the code.
 
         \attention: for now only with hardcoded build directory name.
@@ -115,6 +115,8 @@ class Neo2_common_objects():
         overwrite: boolean, if true then it is tolerated if the build
           directory already exists, if false, this leads to an
           exception. [False]
+        number_of_processors: integer, number of processor make is
+          allowed to use. [1]
         """
         curdir=os.getcwd()
         os.chdir(self._path2code)
@@ -133,7 +135,7 @@ class Neo2_common_objects():
         os.chdir(exe)
         print(os.popen("cmake -DCMAKE_BUILD_TYPE=RELEASE ..").read())
         print(os.popen("make clean").read())
-        print(os.popen("make -j4").read())
+        print(os.popen("make -j{0}".format(number_of_processors)).read())
 
         os.chdir(curdir)
         self.path2exe=exe+'neo_2.x'
