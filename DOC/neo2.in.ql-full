@@ -107,7 +107,7 @@
  legmax = 5 ! maximum number of Legendre polynomials [20]
  lsw_nbi = .false. ! Switch to activate the code for neutral beam injection (not implemented so far). [.false.]
  lsw_read_precom = .false. ! [.false.]
- lsw_write_precom = .true. ! [.false.]
+ lsw_write_precom = .false. ! [.false.]
  m_nbi = 1.0     ! [3.343583719d-24]
  phi_x_max = 4.0 ! Important parameter for numerical integration and
                  ! definition of B-Spline knot distribution. The
