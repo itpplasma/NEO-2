@@ -940,7 +940,7 @@ class SingleRun(Neo2_common_objects):
             print('singlerunpath = ',self.singlerunpath)
             os.chdir(self.singlerunpath)
             print('Starting initrun')
-            print(os.popen("./neo_2.x").read())
+            print(os.popen("mpirun -np {0} ./neo_2.x".format(self.neo_nml[num_spec])).read())
             for a,b,c in os.walk('./'):
                 #self.listofruns=b
                 break
@@ -1036,7 +1036,7 @@ class SingleRun(Neo2_common_objects):
 
 
 class Neo2File(object):
-    """Class for reading and eding Neo2.in File
+    """Class for reading and editing Neo2.in File
 
 
     Attributes
