@@ -244,9 +244,7 @@ class Neo2_common_objects():
             if not os.path.exists(j):
                 raise RuntimeError(j,' is not a File')
 
-        else:
-            print('All required Files are existing')
-            return
+        print('All required Files are existing')
 
 
     def _fill_req_files_names(self):
