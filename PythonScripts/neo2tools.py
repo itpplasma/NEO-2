@@ -31,6 +31,9 @@ code_paths =  {'neo-2-par': 'NEO-2-PAR', 'neo-2-ql': 'NEO-2-QL'}
 class Neo2_common_objects():
     """ objects appearing in both subclasses
 
+    Construction requires definition of working directory, and
+    optionally a templatepath, and code_variant.
+
     Attributes
     ----------
     path2code: str
@@ -61,6 +64,15 @@ class Neo2_common_objects():
     """
 
     def __init__(self, wdir, templatepath=None, code_variant:str='neo-2-ql'):
+        """
+        input:
+        ------
+        wdir: string, containing working path.
+        templatepath: string containing location of templates. [None]
+        code_variant: string, either of the keys of dictionary
+          example_files. Determines if it is an input file for gernots
+          or andreas version of the code. ['neo-2-ql']
+        """
 
 
         self._neo2path=os.environ.get('NEO2PATH')
@@ -140,8 +152,16 @@ class Neo2_common_objects():
         os.chdir(curdir)
         self.path2exe=exe+'neo_2.x'
 
-    def run_local(self,save_out=''):
-        """Start Job on local machine"""
+    def run_local(self,save_out: str = ''):
+        """Start job on local machine
+
+        input:
+        ------
+        save_out: optional string, if given represents name(+path) of
+          file in which to save standard and error output of the run.
+          If not given, standard output (not errors) is printed to
+          standard output. ['']
+        """
         curdir=os.getcwd()
         os.chdir(self.wdir)
 
@@ -166,8 +186,23 @@ class Neo2_common_objects():
 
 
 
-    def _createfiles(self,singlerunpath='',overwrite=False,link=True):
-        """Create and/or link required files and folder into destination"""
+    def _createfiles(self,singlerunpath='',overwrite: bool = False, link: bool = True):
+        """Create and/or link required files and folder into destination
+
+        Create run directory, if it does not already exists.
+        Copy/link required files into the directory.
+
+        input:
+        ------
+        singlerunpath: string, location where the code should be run.
+          If it does not already exists it is created.
+          If not given, then the current working directory is used. ['']
+        overwrite: bool, if true then existing files are overwritten
+          with notice. If false, then print message but do not copy the
+          file(s). [False]
+        link: bool, if true, then required files are not copied but
+          linked. [True]
+        """
 
         if not singlerunpath:
             singlerunpath=self.wdir
@@ -191,6 +226,8 @@ class Neo2_common_objects():
                 else:
                     print(destfile, ' is not updated') ### TODO Maybe check if it is the same file!!
                     continue
+
+            # Special treatment for neo2.in:
             if i == 'neo2in':
                 try:
                     if self.neo2nml.ischanged:
@@ -206,7 +243,7 @@ class Neo2_common_objects():
                 shutil.copy2(j,destfile)
 
 
-
+        # Copy executable.
         i2=self.path2exe
         destfile=os.path.join(singlerunpath,os.path.basename(i2))
         if os.path.isfile(destfile):
@@ -223,6 +260,15 @@ class Neo2_common_objects():
         self._Runiscreated=True
 
     def _compare_nml2file(self,path):
+        """Read neo2.in related to this object and compare to other file.
+
+        Reads neo2.in that is associated to self, and compares this with
+        other file.
+
+        input:
+        ------
+        path: string, path of the neo2.in file to which to compare.
+        """
         self._read_neo2in()
         neonml=Neo2File(os.path.join(path,'neo2.in'), self.variant)
         if self.neo2nml==neonml:
@@ -267,8 +313,20 @@ class Neo2_common_objects():
 
 
 
-    def _fill_req_files_paths(self,overwrite=True,path='',rec=True):
-        """Method for getting full paths from required Files"""
+    def _fill_req_files_paths(self, overwrite: bool = True, path = '', rec: bool = True):
+        """Method for getting full paths from required Files
+
+        input:
+        ------
+        overwrite: bool, if true and a file is found in path, then use
+          this version, even if the corresponding path is already set.
+          [True]
+        path: string, location where the required files can be found.
+          If not given then templatepath will be used. ['']
+        rec: bool, if true, then method will call itself in case not all
+          files are set. If false, then this will cause an error
+          message. [True]
+        """
 
         #TODO reset option if path is changing
         if not path:
