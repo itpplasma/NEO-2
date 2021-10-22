@@ -127,24 +127,24 @@ class CondorSubmitFile:
     with open(filename) as f:
       lines = f.readlines()
 
-    _Executable = '/usr/bin/mpiexec'
-    _arguments = '-mca orte_tmpdir_base \"/tmp/\" -np  2 ./neo_2.x'
-    _Universe = 'vanilla'
-    _Error      = '../err.$(Process)'
-    _Log        = '../scan.log'
-    _run_as_owner = True
-    _notify_user  = 'buchholz@tugraz.at'
-    _notification = 'Error'
-    _nice_user    = False
-    _requirements = ''
-    _request_cpus = 1
-    _request_memory = 21
-    _Getenv = True
+    self._Executable = '/usr/bin/mpiexec'
+    self._arguments = '-mca orte_tmpdir_base \"/tmp/\" -np  2 ./neo_2.x'
+    self._Universe = 'vanilla'
+    self._Error      = '../err.$(Process)'
+    self._Log        = '../scan.log'
+    self._run_as_owner = True
+    self._notify_user  = 'buchholz@tugraz.at'
+    self._notification = 'Error'
+    self._nice_user    = False
+    self._requirements = ''
+    self._request_cpus = 1
+    self._request_memory = 21
+    self._Getenv = True
 
-    _Output     = 'out'
-    _initialdir = '$(dirname)'
-    _queue_command = 'Queue dirname matching dirs'
-    _folders = 'es_*'
+    self._Output     = 'out'
+    self._initialdir = '$(dirname)'
+    self._queue_command = 'Queue dirname matching dirs'
+    self._folders = 'es_*'
 
     for line in lines:
       if (len(line.strip()) > 0):
