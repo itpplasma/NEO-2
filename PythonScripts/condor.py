@@ -66,11 +66,12 @@ class CondorSubmitFile:
         elif l.split()[1] != '=':
           q += l
         else:
-          d[l.split()[0].lower()] = (''.join(l.strip('\n').split()[2:])).lower()
+          d[l.split('=')[0].strip().lower()] = ''.join(l.strip('\n').split('=', maxsplit=1)[1].strip())
 
     q = q.replace('\\', ' ')
 
     return [d, q]
+
 
   def dict_to_condor_submit_file(filename: str, d: dict, q: str, overwrite:bool = False):
     """Create a condor submit file from dictionary and queue string.
