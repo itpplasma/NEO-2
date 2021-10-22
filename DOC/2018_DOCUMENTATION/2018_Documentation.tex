@@ -224,17 +224,18 @@ the group. \vv{libneo} is also available from github.
 To run NEO-2 with a Boozer file as input for the magnetic equilibrium,
 the following input files are required:
 \begin{itemize}
- \item \vv{neo.in}
- \item \vv{neo2.in}
- \item Boozer file (*.bc)
+ \item \vv{neo.in} (see \ref{running_preparation_neoin})
+ \item \vv{neo2.in} (see \ref{running_preparation_neo2in})
+ \item Boozer file (*.bc) (see \ref{running_preparation_equilibrium})
+ \item profile file (see \ref{running_preparation_profiles})
 \end{itemize}
 
-\subsubsection{neo.in}
+\subsubsection{neo.in\label{running_preparation_neoin}}
 The first line of this file indicates the name of the Boozer file. Other
 parameters are e.g. related to interpolation of the magnetic field
 module and to the code NEO.
 
-\subsubsection{neo2.in}
+\subsubsection{neo2.in\label{running_preparation_neo2in}}
 This file is a Fortran namelist file. It contains physical input
 quantities and a lot of numerical and technical parameters. Here, the
 most important (and new) parameters are described.
@@ -330,7 +331,7 @@ New parameters related to the collision operator:
 \end{itemize}
 
 % ----------------------------------------------------------------------
-\subsection{Preparation of equilibrium}
+\subsection{Preparation of equilibrium\label{running_preparation_equilibrium}}
 The main directory for everything related to ECCD is
 \vv{/proj/plasma/Neo2/Interface/}. The Boozer files for ECCD runs are
 located here: \vv{/proj/plasma/Neo2/Interface/Boozer/}.
@@ -342,7 +343,7 @@ the slightly modified file (some comments have been removed) is given
 here: \vv{/proj/plasma/Neo2/Interface/Boozer/w7x-m111-b3-i1/}.
 
 % ----------------------------------------------------------------------
-\subsection{Preparation of the plasma parameter profiles}
+\subsection{Preparation of the plasma parameter profiles\label{running_preparation_profiles}}
 The profiles for ECCD can be found here:
 \vv{/proj/plasma/Neo2/Interface/Profiles/}. Profiles are usually
 provided as text files, e.g.,
@@ -373,7 +374,7 @@ collisionality parameter (by spline interpolation along the radial
 coordinate).
 
 It is now necessary to copy the following required files to to an new
-empty directory, e.g.,
+empty directory,
 \begin{verbatim}
 cp /proj/plasma/Neo2/Interface/Boozer/w7x-m24li/w7x-m24li.bc .
 cp /proj/plasma/Neo2/Interface/Profiles/w7x-m24li/nT_profiles_from_TCode-mod.dat .
@@ -439,20 +440,39 @@ cp /proj/plasma/Neo2/Interface/Examples/condor-all.submit .
 \end{verbatim}
 
 The last line is only used if HTCondor should be used as batch system.
+An alternative approach is the condor\_submit\_example file in the
+\vv{DOC} folder of NEO-2.
+
 Next, the code
 \vv{/proj/plasma/Neo2/Interface/Create_Surfaces/create_surf.py} has to
 be started, in the parent directory of the template directory:
 \begin{verbatim}
-ln -s /proj/plasma/Neo2/Interface/Create_Surfaces/create_surf.py .
 ./create_surf.py
 \end{verbatim}
 
 This has created \vv{s_steps} directories, each with an modified
 \vv{neo2.in} file. It is recommended to change into one of these
 directories and to check if \vv{boozer_s}, \vv{conl_over_mfp}, and
-\vv{z_eff} have been set correctly. The Python script has an output
-representing the directory names that have been created. These names
-should now be copied into a file named \vv{jobs_list.txt}.
+\vv{z_eff} have been set correctly.
+
+The Python script has an output representing the directory names that
+have been created. If you used the htcondor approach with
+\vv{condor-all.submit}, then the directory names should be copied into a
+file named \vv{jobs_list.txt}.
+
+\subsubsection{Notes on resources}
+The condor submit files determine the resources requested by the job in
+the two fields \vv{request_cpus} (note that this number should match
+the number for \vv{-np} in \vv{arguments}) and \vv{request_memory}.
+The amount of memory required is fixed by the parameters of the jobs
+(you may still request more to make sure they run on a specific subset
+of nodes, but there are other options for this).
+The number of processors can be choosen freely up to the number of
+processors available per node, but two points should be taken into
+account. First two processors should give no speedup compared to one
+processor. Second, higher numbers can restrict the number of jobs that
+can run at the same time on machines with large amounts of memory. If
+this is good or bad depends on what you want.
 
 % ----------------------------------------------------------------------
 \subsection{Running the jobs}
@@ -468,20 +488,43 @@ Another approach would be to use a condor submit file similar to
 \vv{condor_submit_example} in the DOC folder of the neo-2 repository.
 While the above will create one ``batch'' per subfolder, the
 example file would create one ``batch'' in total, which has one job per
-subfolder.
+subfolder starting with \vv{es_}.
 It can be used with
 \begin{verbatim}
 condor_submit condor_submit_example
 \end{verbatim}
 
-As soon as the jobs have finished, the code
+In either case (\vv{run_condor.sh} and \vv{condor_submit}), this runs
+only \vv{prop_reconstruction = 0} (see entry in
+sec.~\ref{running_preparation_neo2in}).
+You have to rerun each folder also for 1,2 and 3 (3 can be replaced with
+python3 function \vv{prop_reconstruct_3} of module \vv{hdf5tools}).
+Changing the value can be done with the script \vv{}, or with a python3
+function
+\begin{verbatim}
+from scan_nonhdf5_tools import set_neo2in_reconstruction
+set_neo2in_reconstruction(folder='./', subfolder_pattern='s[123456789].*', backup=False, value=1)
+\end{verbatim}
+
+
+Once the jobs have finished \vv{prop_reconstruction = 3}, the code
 \begin{verbatim}
 /proj/plasma/Neo2/Interface/h5merge/Build/h5merge.x
 \end{verbatim}
-has to be run. This code merges the output file of NEO-2 \vv{final.h5}
+needs to be run. This code merges the output file of NEO-2 \vv{final.h5}
 of each directory defined in \vv{jobs_list.txt} into one output file.
 This output is file is already the one which is used by the NEO-2/TRAVIS
 interface.
+
+There is also a python3 funtion as alternative
+\begin{verbatim}
+import hdf5tools
+hdf5tools.copy_hdf5_from_subfolders_to_single_file(path = './',
+  infilename = 'final.h5',
+  outfilename = 'collected_final.h5',
+  only_base_path = True
+  source_base_path = True)
+\end{verbatim}
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
