@@ -725,15 +725,17 @@ required input includes:
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
 \section{List of scripts/codes used besides neo-2}
+Note that \vv{$INTERFACE} is here short for \vv{/proj/plasma/Neo2/Interface/},
+\vv{$BOOTSTRAP} is short for \vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/}.
 
 \begin{table}[h]
 \centering
 \begin{tabular}{ll}
 name/path   & comment \\
-/proj/plasma/Neo2/Interface/Create\_Surfaces/Build/create\_surfaces.x & \\
-/proj/plasma/Neo2/Interface/h5merge/Build/h5merge.x & \\
-/proj/plasma/Neo2/Interface/Spitzer\_Interface/Build/neo2\_g.x & \\
-/proj/plasma/Neo2/Interface/Spitzer\_Interface/Build/dentf\_lorentz.x &
+\$INTERFACE/Create\_Surfaces/Build/create\_surfaces.x & \\
+\$INTERFACE/h5merge/Build/h5merge.x & \\
+\$INTERFACE/Spitzer\_Interface/Build/neo2\_g.x & \\
+\$INTERFACE/Spitzer\_Interface/Build/dentf\_lorentz.x &
 \end{tabular}
 \caption{additional executables used besides neo-2}
 \label{tab:additionalcodes}
@@ -744,7 +746,7 @@ name/path   & comment \\
 \begin{tabular}{ll}
 name/path   & comment \\
 /proj/plasma/Neo2/Interface/Examples/run\_condor.sh & \\
-/proj/plasma/DOCUMENTS/PHD\_Gernot/2017\_BOOTSTRAP/create\_dirs\_paramvalue.sh & \\
+\$BOOTSTRAP/create\_dirs\_paramvalue.sh & \\
 NEO2-all.sh &
 \end{tabular}
 \caption{additional shell scripts used}
@@ -755,7 +757,7 @@ NEO2-all.sh &
 \centering
 \begin{tabular}{ll}
 name/path   & comment \\
-/proj/plasma/Neo2/Interface/Create\_Surfaces/create\_surf.py & similar to create\_dirs\_paramvalue.sh
+\$INTERFACE/Create\_Surfaces/create\_surf.py & similar to create\_dirs\_paramvalue.sh
 \end{tabular}
 \caption{additional python3 scripts used}
 \label{tab:additionalpython3scripts}
@@ -768,10 +770,10 @@ name/path   & comment \\
 convert\_prf.m & \\
 plot\_g\_xfix.m & \\
 plot\_levels\_pgf.m & \\
-/proj/plasma/DOCUMENTS/PHD\_Gernot/2017\_BOOTSTRAP/plot\_evolve\_h5.m & \\
-/proj/plasma/DOCUMENTS/PHD\_Gernot/2017\_BOOTSTRAP/count\_maxima\_bootstrap.m & \\
-/proj/plasma/DOCUMENTS/PHD\_Gernot/2017\_BOOTSTRAP/boozer\_rational.m & \\
-/proj/plasma/DOCUMENTS/PHD\_Gernot/2017\_BOOTSTRAP/plot\_levels.m &
+\$BOOTSTRAP/plot\_evolve\_h5.m & \\
+\$BOOTSTRAP/count\_maxima\_bootstrap.m & \\
+\$BOOTSTRAP/boozer\_rational.m & \\
+\$BOOTSTRAP/plot\_levels.m &
 \end{tabular}
 \caption{additional octave scripts used}
 \label{tab:additionaloctavescripts}
