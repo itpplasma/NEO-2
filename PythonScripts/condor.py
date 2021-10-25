@@ -11,18 +11,17 @@ class CondorSubmitFile:
 
   This class represents the information in a file used to commit jobs
   via condor.
-  It will parse an existing file to fill the parameters (it knows) and
+  It will parse an existing file to fill the parameters and
   can be written to a file.
+
+  You can get a list of parameters, and the value of a parameter.
 
   There are methods for setting some of the parameters.
 
-  TODO:
-  The queue_command is so far not treated correctly. It needs to be made
-  a distinction between using name expansion (e.g. 'es_*') and using a
-  list of files. This is not implemented yet.
-
-  Maybe use htcondor.Submit instead?
+  The two functions condor_submit_file_to_dict and
+  dict_to_condor_submit_file do not require an object.
   """
+
 
   def condor_submit_file_to_dict(filename: str):
     """Create a dictionary from a htcondor submit file.
@@ -109,6 +108,7 @@ class CondorSubmitFile:
 
       f.write(q + '\n')
 
+
   def read(self, filename: str):
     """Reads in the file.
 
@@ -121,117 +121,110 @@ class CondorSubmitFile:
 
     TODO
     - Handle the case of non-existing file.
-    - The queue_command and the folder paramerts are not set correctly
-      so far.
     """
-    with open(filename) as f:
-      lines = f.readlines()
 
-    self._Executable = '/usr/bin/mpiexec'
-    self._arguments = '-mca orte_tmpdir_base \"/tmp/\" -np  2 ./neo_2.x'
-    self._Universe = 'vanilla'
-    self._Error      = '../err.$(Process)'
-    self._Log        = '../scan.log'
-    self._run_as_owner = True
-    self._notify_user  = 'buchholz@tugraz.at'
-    self._notification = 'Error'
-    self._nice_user    = False
-    self._requirements = ''
-    self._request_cpus = 1
-    self._request_memory = 21
-    self._Getenv = True
+    [self._parameters, self._queue_command] = CondorSubmitFile.condor_submit_file_to_dict(filename)
 
-    self._Output     = 'out'
-    self._initialdir = '$(dirname)'
-    self._queue_command = 'Queue dirname matching dirs'
-    self._folders = 'es_*'
 
-    for line in lines:
-      if (len(line.strip()) > 0):
-        if (line.split('=', 1)[0].strip() == 'Executable'):
-          self._Executable = line.split('=', 1)[1].strip()
-        if (line.split('=', 1)[0].strip() == 'arguments'):
-          self._arguments = line.split('=', 1)[1].strip()
-        if (line.split('=', 1)[0].strip() == 'Universe'):
-          self._Universe = line.split('=', 1)[1].strip()
-        if (line.split('=', 1)[0].strip() == 'Error'):
-          self._Error = line.split('=', 1)[1].strip()
-        if (line.split('=', 1)[0].strip() == 'Log'):
-          self._Log = line.split('=', 1)[1].strip()
-        if (line.split('=', 1)[0].strip() == 'run_as_owner'):
-          self._run_as_owner = bool(line.split('=', 1)[1].strip())
-        if (line.split('=', 1)[0].strip() == 'notify_user'):
-          self._notify_user = line.split('=', 1)[1].strip()
-        if (line.split('=', 1)[0].strip() == 'notification'):
-          self._notification = line.split('=', 1)[1].strip()
-        if (line.split('=', 1)[0].strip() == 'nice_user'):
-          self._nice_user = bool(line.split('=', 1)[1].strip())
-        if (line.split('=', 1)[0].strip() == 'requirements'):
-          self._requirements = line.split('=', 1)[1].strip()
-        if (line.split('=', 1)[0].strip() == 'request_cpus'):
-          self._request_cpus = int(line.split('=', 1)[1].strip())
-        if (line.split('=', 1)[0].strip() == 'request_memory'):
-          self._request_memory = int(line.split('=', 1)[1].strip().split('*')[0])
-        if (line.split('=', 1)[0].strip() == 'GetEnv'):
-          self._Getenv = bool(line.split('=', 1)[1].strip())
-        if (line.split('=', 1)[0].strip() == 'Output'):
-          self._Output = line.split('=', 1)[1].strip()
-        if (line.split('=', 1)[0].strip() == 'initaldir'):
-          self._initialdir = line.split('=', 1)[1].strip()
-        if (line.split()[0].strip() == 'Queue'):
-          self._queue_command = line
-
-  def _get_boolean_string(self, value: bool):
-    """Simple function to convert a python bool to a condor bool (as string).
-    """
-    if value:
-      boolean_string = 'true'
-    else:
-      boolean_string = 'false'
-    return boolean_string
-
-  def write(self, filename: str):
+  def write(self, filename: str, overwrite: bool = False):
     """Create a suitable condor file from this object.
 
     input
     -----
     filename: name under which to save the file.
-
-    TODO
-    The queue command needs correct treatment.
     """
-    lines = 'Executable = ' + self._Executable + '\n'
-    lines += 'arguments = ' + self._arguments + '\n'
-    lines += 'Universe = ' + self._Universe + '\n'
-    lines += 'Error = ' + self._Error + '\n'
-    lines += 'Log = ' + self._Log + '\n'
-    lines += 'run_as_owner = ' + self._get_boolean_string(self._run_as_owner) + '\n'
-    lines += 'notify_user = ' + self._notify_user + '\n'
-    lines += 'notification = ' + self._notification + '\n'
-    lines += 'nice_user = ' + self._get_boolean_string(self._nice_user) + '\n'
-    lines += 'requirements = ' + self._requirements + '\n'
-    lines += 'request_cpus = ' + str(self._request_cpus) + '\n'
-    lines += 'request_memory = ' + str(self._request_memory) + '*1024\n'
-    lines += 'Getenv = ' + self._get_boolean_string(self._Getenv) + '\n'
-    lines += '\n'
-    lines += 'Output = ' + self._Output + '\n'
-    lines += 'initialdir = ' + self._initialdir + '\n'
-    lines += self._queue_command #+ ' ' + self._folders + '\n'
+    CondorSubmitFile.dict_to_condor_submit_file(filename, self._parameters, self._queue_command, overwrite)
 
-    with open(filename, 'w') as f:
-      f.writelines(lines);
-
-  def set_folders(self, value: str):
-    self._folders = value
 
   def set_memory(self, value: int):
-    self._request_memory = value
+    """ Set memory requested by the job(s).
+
+    input:
+    ------
+    value: integer, memory that should be requested in GB.
+    """
+    self._parameters['request_memory'] = '{0}*1024'.format(value)
+
+
+  def _set_cpus_in_arguments(self, value: int):
+    """Set number of cpus in argument parameter.
+
+    This functions assumes the 'argument' parameter exists already and
+    has a key 'arguments', which contains a part '-np #', where here
+    '#' stands for a positive interger.
+
+    If the 'argument' parameter does not exit, then nothing is done.
+
+    input:
+    ------
+    value: integer, the number of cpus to request.
+    """
+    if 'arguments' in self._parameters.keys():
+      elements = self._parameters['arguments'].split()
+      if '-np' in elements:
+        for i,x in enumerate(elements):
+          if x == '-np':
+            elements[i+1] = '{0}'.format(value)
+            break
+        self._parameters['arguments'] = ' '.join(elements)
+
 
   def set_cpus(self, value: int):
-    self._request_cpus = value
+    """
+    input:
+    ------
+    value: integer, the number of cpus to request.
+    """
+    self._parameters['request_cpus'] = '{0}'.format(value)
+    self._set_cpus_in_arguments(value)
+
 
   def set_requirements(self, value: str):
-    self._requirements = value
+    """ Set requirements.
+
+    \note: this function does not check if the given string is a valid
+      list of requirements.
+    """
+    self._parameters['requirements'] = value
+
+
+  def add_requirements(self, value: str):
+    """ Add requirement with and.
+
+    \note: this function does not check if the given string is a valid
+      requirement.
+
+    input:
+    ------
+    value: str, containing the requirement, e.g.
+      'OpSysAndVer == "Debian10"' or
+      'TARGET.UtsnameNodename != "faepop27"'.
+    """
+    if 'requirements' in self._parameters.keys():
+      self._parameters['requirements'] = ' '.join(self._parameters['requirements'].split()[0:-1]) + ' && ' + value + ' )'
+    else:
+      self._parameters['requirements'] = '( ' + value + ' )'
+
+
+  def get_keys(self):
+    """Return list of parameters known.
+
+    Does not include queue command.
+    """
+    return list(self._parameters.keys())
+
+
+  def get_value(self, key: str):
+    """Return value of given parameter.
+
+    Does not include queue command.
+
+    input:
+    ------
+    key: string, name of the parameter for which to return the value.
+    """
+    return self._parameters[key]
+
 
   def __init__(self, filename: str):
     self.read(filename)
