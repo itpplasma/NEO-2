@@ -41,6 +41,7 @@ NEO-2-QL/.directory
 # Ignore directories for building the code.
 */[Bb]uild/*
 */[Bb]uild-*/*
+*/[Bb]uild_*/*
 
 # Ignore files created by latex.
 *.pdf
