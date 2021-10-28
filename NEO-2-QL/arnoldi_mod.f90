@@ -433,10 +433,9 @@ contains
 
     IF(info.NE.0) THEN
       IF(info.GT.0) THEN
-         PRINT *,'arnoldi: zhseqr failed to compute all eigenvalues'
-         PRINT *,'info: ',info
+         write(*,*)'try_eigvecvals: zhseqr failed to determine optimal value for lwork'
       ELSE
-        PRINT *,'arnoldi: argument ',-info,' has illigal value in zhseqr'
+        PRINT *,'try_eigvecvals: argument ',-info,' has illegal value in zhseqr'
       ENDIF
       DEALLOCATE(hmat_work,work)
       ierr=1
@@ -451,9 +450,9 @@ contains
 
     IF(info.NE.0) THEN
       IF(info.GT.0) THEN
-        PRINT *,'arnoldi: zhseqr failed to compute all eigenvalues'
+        PRINT *,'try_eigvecvals: zhseqr failed to compute all eigenvalues'
       ELSE
-        PRINT *,'arnoldi: argument ',-info,' has illigal value in zhseqr'
+        PRINT *,'try_eigvecvals: argument ',-info,' has illegal value in zhseqr'
       ENDIF
       DEALLOCATE(hmat_work,work)
       ierr=1
