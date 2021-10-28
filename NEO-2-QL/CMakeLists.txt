@@ -206,9 +206,7 @@ target_link_libraries(${EXE_NAME}
         ${MPI_Fortran_LIBRARIES}
         ${HDF5_tools_lib}
         ${HDF5_Fortran_HL_LIBRARIES}
-        ${HDF5_HL_LIBRARIES}
         ${HDF5_Fortran_LIBRARIES}
-        ${HDF5_LIBRARIES}
         ${LINALG_LIBRARIES}
         )
 
