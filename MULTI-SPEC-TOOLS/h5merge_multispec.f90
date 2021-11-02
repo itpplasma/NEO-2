@@ -1,3 +1,11 @@
+!> \brief Collect output from flux surfaces of multispecies run.
+!>
+!> Similar to the version in libneo/tools, but differs in some important
+!> points:
+!> - this version creates its own jobs_list.txt (via command line).
+!> - outputfilename is fixed (not equal to folder name).
+!> - copying is done directly (not subgroup to subgroup).
+!> - if there already exists an output file it is explicitly removed.
 PROGRAM h5merge_multispec
 
   !************************************
