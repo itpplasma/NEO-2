@@ -96,7 +96,7 @@ def get_hdf5data_from_subfolders(path: str, filename: str, dataname: str):
 
   return np.array(values)
 
-def copy_hdf5_from_paths_to_single_file(paths: list, infilename: str, outfilename: str, only_base_path: bool, source_base_path: bool):
+def copy_hdf5_from_paths_to_single_file(paths: list, infilename: str, outfilename: str, only_base_path: bool, source_base_path: bool, verbose: bool):
   """Combine files 'infilename' located at given 'paths' into a single file 'outfilename'.
 
   This function will collect hdf5 files with name 'infilename', at
@@ -128,9 +128,14 @@ def copy_hdf5_from_paths_to_single_file(paths: list, infilename: str, outfilenam
     from group '/'+'basename(normpath(path))'.
   """
   from os.path import basename, join, normpath
+  from time import localtime, strftime
 
   with get_hdf5file_replace(outfilename) as o:
     for path in paths:
+      if (verbose):
+        s = strftime('%Y-%m-%d %H:%M:%S', localtime())
+        print(s + ' Processing folder ', path, ' ...\n')
+
       try:
         f = get_hdf5file(join(path, infilename))
       except OSError:
@@ -149,7 +154,11 @@ def copy_hdf5_from_paths_to_single_file(paths: list, infilename: str, outfilenam
         f.copy(source=source_, dest=o, name=name_)
         f.close()
 
-def copy_hdf5_from_subfolders_to_single_file(path, infilename: str, outfilename: str, only_base_path: bool = False, source_base_path: bool = False):
+      if (verbose):
+        s = strftime('%Y-%m-%d %H:%M:%S', localtime())
+        print(s + ' ...done\n')
+
+def copy_hdf5_from_subfolders_to_single_file(path, infilename: str, outfilename: str, only_base_path: bool = False, source_base_path: bool = False, verbose: bool = False):
   """For 'infilename' in subfolders of 'path', join them into 'outfilename'.
 
   This will look for files named 'infilename' in subfolders of 'path'.
@@ -187,7 +196,7 @@ def copy_hdf5_from_subfolders_to_single_file(path, infilename: str, outfilename:
 
   folders = list(chain.from_iterable(folders))
 
-  copy_hdf5_from_paths_to_single_file(folders, infilename, outfilename, only_base_path, source_base_path)
+  copy_hdf5_from_paths_to_single_file(folders, infilename, outfilename, only_base_path, source_base_path, verbose)
 
 
 def clean_up_after_run(tag_first:int, tag_last: int):
