@@ -23,8 +23,7 @@
 % ax:
 % data: structure with elements x and y, containing x and y values
 %   plotted.
-% s:
-function [ax, data, s] = plot_g_xfix(h5file, quant, point, x, ax, style, color)
+function [ax, data] = plot_g_xfix(h5file, quant, point, x, ax, style, color)
 
   if nargin < 7 || isempty(color), color='b';  end
   if nargin < 6 || isempty(style), style='-';  end

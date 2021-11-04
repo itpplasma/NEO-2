@@ -24,8 +24,7 @@
 % -------
 % ax:
 % data:
-% s:
-function [ax, data, s] = plot_g_lamfix(h5file, quant, point, lam, x_cutoff, ax, style, color)
+function [ax, data] = plot_g_lamfix(h5file, quant, point, lam, x_cutoff, ax, style, color)
 
   if nargin < 8 || isempty(color) color='b';  end
   if nargin < 7 || isempty(style), style='-';  end
