@@ -141,7 +141,7 @@ which is required by \vv{neo-2}
 The build system of \vv{neo-2} and \vv{libneo} is CMake (since 2012).
 The main advantage is that this build system takes care of correct
 compilation order of the source files (dependency resolving) and that
-routines can be defined to automatically detected the installed
+routines can be defined to automatically detect the installed
 libraries. The configuration file is called \verb|CMakeLists.txt|. Using
 CMake the source- and build-directories can be separated from each
 other, and both codes require that this is done. Thus, in order to build
@@ -388,7 +388,7 @@ Afterwards the given profile file is read for computation of the
 collisionality parameter (by spline interpolation along the radial
 coordinate).
 
-It is now necessary to copy the following required files to to an new
+It is now necessary to copy the following required files to a new
 empty directory,
 \begin{verbatim}
 cp /proj/plasma/Neo2/Interface/Boozer/w7x-m24li/w7x-m24li.bc .
@@ -532,7 +532,7 @@ of each directory defined in \vv{jobs_list.txt} into one output file.
 This output is file is already the one which is used by the \vv{neo-2}/TRAVIS
 interface.
 
-There is also a python3 funtion as alternative
+There is also a python3 function as alternative
 \begin{verbatim}
 import hdf5tools
 hdf5tools.copy_hdf5_from_subfolders_to_single_file(path = './',
