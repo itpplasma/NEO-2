@@ -526,7 +526,8 @@ Once the jobs have finished \vv{prop_reconstruction = 3}, the code
 \begin{verbatim}
 /proj/plasma/Neo2/Interface/h5merge/Build/h5merge.x
 \end{verbatim}
-needs to be run. This code merges the output file of \vv{neo-2} \vv{final.h5}
+needs to be run. It can be found in \vv{libneo} in the tools subfolder.
+This code merges the output file of \vv{neo-2} \vv{final.h5}
 of each directory defined in \vv{jobs_list.txt} into one output file.
 This output is file is already the one which is used by the \vv{neo-2}/TRAVIS
 interface.
@@ -540,6 +541,9 @@ hdf5tools.copy_hdf5_from_subfolders_to_single_file(path = './',
   only_base_path = True
   source_base_path = True)
 \end{verbatim}
+This function does not use file \vv{jobs_list.txt}, but instead checks
+each folder for ``infilename'', and ignores folders that do not contain
+a file of this name.
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
