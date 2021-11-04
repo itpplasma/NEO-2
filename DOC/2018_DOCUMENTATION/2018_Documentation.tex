@@ -130,26 +130,29 @@ git clone git@github.com:itpplasma/NEO-2.git .
 in an empty directory (do not oversee the point at the end of the
 command line which defines the current directory).
 
+The same holds for \vv{libneo},
+\begin{verbatim}
+https://github.com/itpplasma/libneo/
+\end{verbatim}
+which is required by \vv{neo-2}
+
 % ----------------------------------------------------------------------
 \subsection{CMake}
-The build system of NEO-2 is CMake (since 2012). The main advantage is
-that this build system takes care of correct compilation order of the
-source files (dependency resolving) and that routines can be defined to
-automatically detected the installed libraries. The configuration file
-is called \verb|CMakeLists.txt|. Using CMake the source- and
-build-directories can be separated from each other, and neo-2 requires
-that this is done. In order to build
-the source code it is necessary to create a build-directory, if not
-already provided from the Git clone. For reasons of readability it was
-decided to put the source files to be compiled in a separate file,
-called \vv{CMakeSources.in}. Additionaly, some of the settings for paths
-are in a separate file, \vv{ProjectConfig.cmake.in}. These files are
-then included in \vv{CMakeLists.txt}.
+The build system of \vv{neo-2} and \vv{libneo} is CMake (since 2012).
+The main advantage is that this build system takes care of correct
+compilation order of the source files (dependency resolving) and that
+routines can be defined to automatically detected the installed
+libraries. The configuration file is called \verb|CMakeLists.txt|. Using
+CMake the source- and build-directories can be separated from each
+other, and both codes require that this is done. Thus, in order to build
+the source code it is necessary to create a build-directory. For reasons
+of readability it was decided to put the source files to be compiled in
+a separate file, called \vv{CMakeSources.in}. Additionaly, some of the
+settings for paths are in a separate file, \vv{ProjectConfig.cmake.in}.
+These files are then included in \vv{CMakeLists.txt}.
 
-For testing purposes a build-directory is now created for the general
-version of NEO-2:
+For testing purposes a build-directory is now created for \vv{libneo}:
 \begin{verbatim}
-cd NEO-2-PAR
 mkdir Build-Test
 cd Build-Test
 cmake ..
@@ -162,6 +165,15 @@ new build directory is used. This command needs to know where
 happens when this command is called, the most important steps are the
 Fortran compiler and library detection. A standard Makefile is generated
 which can be tested by running \vv{make}.
+
+After libneo is compiled, you can compile \vv{neo-2}:
+\begin{verbatim}
+cd NEO-2-PAR
+mkdir Build-Test
+cd Build-Test
+cmake ..
+make
+\end{verbatim}
 
 % ----------------------------------------------------------------------
 \subsection{Libraries}
@@ -229,6 +241,8 @@ the following input files are required:
  \item Boozer file (*.bc) (see \ref{running_preparation_equilibrium})
  \item profile file (see \ref{running_preparation_profiles})
 \end{itemize}
+Additionaly, are some tools involved in running the code, that require
+their own configuragion files.
 
 \subsubsection{neo.in\label{running_preparation_neoin}}
 The first line of this file indicates the name of the Boozer file. Other
@@ -241,7 +255,7 @@ quantities and a lot of numerical and technical parameters. Here, the
 most important (and new) parameters are described.
 Check also \vv|neo2.in.par-full| in the DOC folder of the NEO-2
 repository. The file should contain an up-to-date list of all the input
-parameters together with a short explanation.
+parameters together with default values and maybe a short explanation.
 
 Note on naming convention: the prefix lsw and isw stand for logical
 switch and integer switch, respectively.
