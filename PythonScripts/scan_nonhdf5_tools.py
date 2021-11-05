@@ -602,8 +602,7 @@ def set_neo2in_reconstruction(folder: str, subfolder_pattern: str, backup: bool,
     if (backup):
       nml.write(current_filename + '~')
 
-    # Adjust the rotation, new value is background + shift, assuming
-    # The file contains already the background value.
+    # Adjust prop_reconstruct.
     name_value_tuples = [('propagator', 'prop_reconstruct', value)]
     change_namelist_values_for_file_object(nml, name_value_tuples)
     nml.write(current_filename, True)
