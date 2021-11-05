@@ -548,7 +548,7 @@ def set_neo2in(folder: str, subfolder_pattern: str, vphifilename: str, backup: b
 
 def set_neo2in_reconstruction(folder: str, subfolder_pattern: str, backup: bool, value: int):
   """
-  Top-level function to reset input variable 'prop_reconstruct'.
+  \brief Top-level function to reset input variable 'prop_reconstruct'.
 
   This is a top level function intended for use with the stellerator
   variant of neo2.
@@ -580,10 +580,7 @@ def set_neo2in_reconstruction(folder: str, subfolder_pattern: str, backup: bool,
   Changes the files determined by input parameters, and may create
   copies of the older version.
   """
-  from os.path import join
   from pathlib import Path
-
-  import f90nml.parser
 
   # Get all objects in the folder
   p = Path(folder)
@@ -591,6 +588,44 @@ def set_neo2in_reconstruction(folder: str, subfolder_pattern: str, backup: bool,
   #~ p = [x for x in p.iterdir() if x.is_dir()]
   # Filter for the name of the subdirectories
   folders = list(p.glob(subfolder_pattern))
+
+  set_neo2in_reconstruction_for_folders(folders, folder, backup, value)
+
+
+def set_neo2in_reconstruction_for_folders(folders, folder: str, backup: bool, value: int):
+  """
+  \brief Medium-level function to reset input variable 'prop_reconstruct'.
+
+  This is a medium level function intended for use with the stellerator
+  variant of neo2.
+  It will set the input variable 'prop_reconstruct' to given value for
+  all folders given as a list.
+
+  WARNING: This function does not check if the given value is valid.
+    This is intentionaly to avoid having to change this function if the
+    range of valid values changes.
+
+  input:
+  ------
+  folders: list of folders to parse.
+  folder: string, determining where the folders are located. If they are
+    in the local folder './' is an appropriate value.
+  backup: boolean, if true the original version is saved with '~'
+    appended to the name.
+  value: integer, the value to use for 'prop_reconstruct'.
+
+  output:
+  -------
+  No formal output.
+
+  Side-effects:
+  -------------
+  Changes the files determined by input parameters, and may create
+  copies of the older version.
+  """
+  from os.path import join
+
+  import f90nml.parser
 
   parser = f90nml.parser.Parser()
   for d in folders:
