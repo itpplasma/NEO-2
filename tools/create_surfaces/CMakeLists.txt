@@ -24,7 +24,7 @@ set(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/../../COMMON/inter_interfaces.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_actual_fluxs.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_actual_spectra.f90
-    ../src/neo_control.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/neo_control.f90
     ../src/neo_eval_switch.f90
     ../src/neo_exchange.f90
     ../src/neo_input.f90
