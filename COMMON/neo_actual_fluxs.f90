@@ -1,6 +1,6 @@
 !> Actual data on flux surface
 MODULE neo_actual_fluxs
-  USE neo_precision
+  use nrtype, only : dp
   REAL(kind=dp)                                   :: s_es
   REAL(kind=dp)                                   :: s_iota
   REAL(kind=dp)                                   :: s_pprime
