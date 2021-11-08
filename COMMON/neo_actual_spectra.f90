@@ -1,6 +1,6 @@
 MODULE neo_actual_spectra
 ! Actual spectra on flux surface
-  USE neo_precision
+  use nrtype, only : dp
   REAL(kind=dp),    DIMENSION(:),     ALLOCATABLE :: s_rmnc, s_zmnc, s_lmnc
   REAL(kind=dp),    DIMENSION(:),     ALLOCATABLE :: s_bmnc
   !! Modifications by Andreas F. Martitsch (06.08.2014)
