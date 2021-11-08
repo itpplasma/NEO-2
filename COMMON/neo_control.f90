@@ -1,6 +1,6 @@
 !> Control parameters from input file
 MODULE neo_control
-  USE neo_precision
+  use nrtype, only : dp
   CHARACTER(20)                      :: in_file
   INTEGER                            :: theta_n
   INTEGER                            :: phi_n
