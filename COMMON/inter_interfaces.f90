@@ -20,7 +20,7 @@ MODULE inter_interfaces
 
   INTERFACE ludcmp
      SUBROUTINE ludcmp_a(a,indx,d)
-       USE inter_precision
+       use nrtype, only : I4B, DP
        REAL(DP),     DIMENSION(:,:), INTENT(INOUT) :: a
        INTEGER(I4B), DIMENSION(:),   INTENT(OUT)   :: indx
        REAL(DP),                     INTENT(OUT)   :: d
@@ -31,7 +31,7 @@ MODULE inter_interfaces
   INTERFACE splinecof3
      SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
           a, b, c, d, m, f)
-       USE inter_precision,  ONLY: I4B, DP
+       use nrtype, only : I4B, DP
        REAL(DP),                   INTENT(INOUT) :: c1, cn
        REAL(DP),     DIMENSION(:), INTENT(IN)    :: x
        REAL(DP),     DIMENSION(:), INTENT(IN)    :: y
@@ -42,7 +42,7 @@ MODULE inter_interfaces
        REAL(DP),                   INTENT(IN)    :: m
        INTERFACE
           FUNCTION f(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -55,7 +55,7 @@ MODULE inter_interfaces
   interface splinecof1
     subroutine splinecof1_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
         & a, b, c, d, m, f)
-      use inter_precision, only : I4B, DP
+      use nrtype, only : I4B, DP
 
       real(DP),                   intent(inout) :: c1, cn
       real(DP),     dimension(:), intent(in)    :: x
@@ -67,7 +67,7 @@ MODULE inter_interfaces
       real(DP),                   intent(in)    :: m
       interface
         function f(x,m)
-          use inter_precision, only : DP
+          use nrtype, only : DP
           implicit none
           real(DP), intent(in) :: x
           real(DP), intent(in) :: m
@@ -80,7 +80,7 @@ MODULE inter_interfaces
 
   INTERFACE reconstruction3
      SUBROUTINE reconstruction3_a(ai, bi, ci, di, h, a, b, c, d)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        REAL(DP), INTENT(IN)    :: ai, bi, ci, di
        REAL(DP), INTENT(IN)    :: h
        REAL(DP), INTENT(OUT)   :: a, b, c, d 
@@ -89,7 +89,7 @@ MODULE inter_interfaces
 
   interface reconstruction1
     subroutine reconstruction1_a(ai, bi, ci, di, h, a, b, c, d)
-      use inter_precision, only : DP
+      use nrtype, only : DP
       real(DP), intent(in)    :: ai, bi, ci, di
       real(DP), intent(in)    :: h
       real(DP), intent(out)   :: a, b, c, d
@@ -98,7 +98,7 @@ MODULE inter_interfaces
 
   INTERFACE calc_opt_lambda3
      SUBROUTINE calc_opt_lambda3_a(x, y, lambda)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        REAL(DP), DIMENSION(:), INTENT(IN)  :: x, y
        REAL(DP), DIMENSION(:), INTENT(OUT) :: lambda
      END SUBROUTINE calc_opt_lambda3_a
@@ -107,7 +107,7 @@ MODULE inter_interfaces
 
   INTERFACE dist_lin
      SUBROUTINE dist_lin_a(x, y, ymax, dist)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        REAL(DP), DIMENSION(:), INTENT(IN)  :: x, y
        REAL(DP),               INTENT(IN)  :: ymax
        REAL(DP),               INTENT(OUT) :: dist
@@ -118,7 +118,7 @@ MODULE inter_interfaces
   INTERFACE splinecof3_lo_driv
      SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
           sw1, sw2, a, b, c, d, m, f)
-       USE inter_precision,  ONLY: I4B, DP
+       use nrtype, only : I4B, DP
        INTEGER(I4B), DIMENSION(:), INTENT(IN)    :: indx
        REAL(DP),                   INTENT(IN)    :: m
        REAL(DP),                   INTENT(INOUT) :: c1, cn
@@ -130,7 +130,7 @@ MODULE inter_interfaces
        INTEGER(I4B),               INTENT(IN)    :: sw1, sw2
        INTERFACE
           FUNCTION f(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -143,7 +143,7 @@ MODULE inter_interfaces
   interface splinecof1_lo_driv
     subroutine splinecof1_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
         & sw1, sw2, a, b, c, d, m, f)
-      use inter_precision,  only : I4B, DP
+      use nrtype, only : I4B, DP
       integer(I4B), dimension(:), intent(in)    :: indx
       real(DP),                   intent(in)    :: m
       real(DP),                   intent(inout) :: c1, cn
@@ -155,7 +155,7 @@ MODULE inter_interfaces
       integer(I4B),               intent(in)    :: sw1, sw2
       interface
         function f(x,m)
-          use inter_precision, only : DP
+          use nrtype, only : DP
           implicit none
           real(DP), intent(in) :: x
           real(DP), intent(in) :: m
@@ -168,7 +168,7 @@ MODULE inter_interfaces
 
   INTERFACE splinecof3_hi_driv
      SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
-       USE inter_precision,  ONLY: I4B, DP
+       use nrtype, only : I4B, DP
        INTEGER(I4B), DIMENSION(:),   INTENT(IN)  :: indx
        REAL(DP),     DIMENSION(:),   INTENT(IN)  :: m
        REAL(DP),     DIMENSION(:),   INTENT(IN)  :: x
@@ -176,7 +176,7 @@ MODULE inter_interfaces
        REAL(DP),     DIMENSION(:,:), INTENT(OUT) :: a, b, c, d
        INTERFACE
           FUNCTION f(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -188,7 +188,7 @@ MODULE inter_interfaces
 
   interface splinecof1_hi_driv
     subroutine splinecof1_hi_driv_a(x, y, m, a, b, c, d, indx, f)
-      use inter_precision,  only : I4B, DP
+      use nrtype, only : I4B, DP
       integer(I4B), dimension(:),   intent(in)  :: indx
       real(DP),     dimension(:),   intent(in)  :: m
       real(DP),     dimension(:),   intent(in)  :: x
@@ -196,7 +196,7 @@ MODULE inter_interfaces
       real(DP),     dimension(:,:), intent(out) :: a, b, c, d
       interface
         function f(x,m)
-          use inter_precision, only : DP
+          use nrtype, only : DP
           implicit none
           real(DP), intent(in) :: x
           real(DP), intent(in) :: m
@@ -210,7 +210,7 @@ MODULE inter_interfaces
   INTERFACE splint_horner3
      SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
           y,yp,ypp,yppp)
-       USE inter_precision, ONLY: I4B, DP
+       use nrtype, only : I4B, DP
        INTEGER(I4B),               INTENT(IN)  :: swd
        REAL(DP),                   INTENT(IN)  :: m
        REAL(DP),     DIMENSION(:), INTENT(IN)  :: xa, a, b, c, d
@@ -218,7 +218,7 @@ MODULE inter_interfaces
        REAL(DP),                   INTENT(OUT) :: y, yp, ypp, yppp
        INTERFACE
           FUNCTION f(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -227,7 +227,7 @@ MODULE inter_interfaces
        END INTERFACE
        INTERFACE
           FUNCTION fp(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -236,7 +236,7 @@ MODULE inter_interfaces
        END INTERFACE
        INTERFACE
           FUNCTION fpp(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -245,7 +245,7 @@ MODULE inter_interfaces
        END INTERFACE
        INTERFACE
           FUNCTION fppp(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -258,7 +258,7 @@ MODULE inter_interfaces
   interface splint_horner1
     subroutine splint_horner1_a(xa, a, b, c, d, swd, m, x_in, &
         & f, fp, fpp, fppp, y, yp, ypp, yppp)
-      use inter_precision, only : I4B, DP
+      use nrtype, only : I4B, DP
 
       integer(I4B),               intent(in)  :: swd
       real(DP),                   intent(in)  :: m
@@ -267,7 +267,7 @@ MODULE inter_interfaces
       real(DP),                   intent(out) :: y, yp, ypp, yppp
       interface
         function f(x,m)
-          use inter_precision, only : DP
+          use nrtype, only : DP
           implicit none
           real(DP), intent(in) :: x
           real(DP), intent(in) :: m
@@ -276,7 +276,7 @@ MODULE inter_interfaces
       end interface
       interface
         function fp(x,m)
-          use inter_precision, only : DP
+          use nrtype, only : DP
           implicit none
           real(DP), intent(in) :: x
           real(DP), intent(in) :: m
@@ -285,7 +285,7 @@ MODULE inter_interfaces
       end interface
       interface
         function fpp(x,m)
-          use inter_precision, only : DP
+          use nrtype, only : DP
           implicit none
           real(DP), intent(in) :: x
           real(DP), intent(in) :: m
@@ -294,7 +294,7 @@ MODULE inter_interfaces
       end interface
       interface
         function fppp(x,m)
-          use inter_precision, only : DP
+          use nrtype, only : DP
           implicit none
           real(DP), intent(in) :: x
           real(DP), intent(in) :: m
@@ -307,7 +307,7 @@ MODULE inter_interfaces
   INTERFACE splint_horner3_driv_s
      SUBROUTINE splint_horner3_driv_s_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
           f,fp,fpp,fppp,y,ys,yt,yp)
-       USE inter_precision,  ONLY: I4B, DP
+       use nrtype, only : I4B, DP
        REAL(DP),     DIMENSION(:),   INTENT(IN)  :: svec
        REAL(DP),     DIMENSION(:,:), INTENT(IN)  :: a, b, c, d
        INTEGER(I4B),                 INTENT(IN)  :: swd
@@ -317,7 +317,7 @@ MODULE inter_interfaces
        REAL(DP),                     INTENT(OUT) :: y, ys, yt, yp
        INTERFACE
           FUNCTION f(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -326,7 +326,7 @@ MODULE inter_interfaces
        END INTERFACE
        INTERFACE
           FUNCTION fp(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -335,7 +335,7 @@ MODULE inter_interfaces
        END INTERFACE
        INTERFACE
           FUNCTION fpp(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -344,7 +344,7 @@ MODULE inter_interfaces
        END INTERFACE
        INTERFACE
           FUNCTION fppp(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -358,7 +358,7 @@ MODULE inter_interfaces
   INTERFACE splint_horner3_driv_c
      SUBROUTINE splint_horner3_driv_c_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
           f,fp,fpp,fppp,y,ys,yt,yp)
-       USE inter_precision,  ONLY: I4B, DP
+       use nrtype, only : I4B, DP
        REAL(DP),     DIMENSION(:),   INTENT(IN)  :: svec
        REAL(DP),     DIMENSION(:,:), INTENT(IN)  :: a, b, c, d
        INTEGER(I4B),                 INTENT(IN)  :: swd
@@ -368,7 +368,7 @@ MODULE inter_interfaces
        REAL(DP),                     INTENT(OUT) :: y, ys, yt, yp
        INTERFACE
           FUNCTION f(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -377,7 +377,7 @@ MODULE inter_interfaces
        END INTERFACE
        INTERFACE
           FUNCTION fp(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -386,7 +386,7 @@ MODULE inter_interfaces
        END INTERFACE
        INTERFACE
           FUNCTION fpp(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -395,7 +395,7 @@ MODULE inter_interfaces
        END INTERFACE
        INTERFACE
           FUNCTION fppp(x,m)
-            USE inter_precision, ONLY: DP
+            use nrtype, only : DP
             IMPLICIT NONE
             REAL(DP), INTENT(IN) :: x
             REAL(DP), INTENT(IN) :: m
@@ -408,7 +408,7 @@ MODULE inter_interfaces
 
   INTERFACE
      FUNCTION tf(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -417,7 +417,7 @@ MODULE inter_interfaces
   END INTERFACE
   INTERFACE
      FUNCTION tfp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -426,7 +426,7 @@ MODULE inter_interfaces
   END INTERFACE
   INTERFACE
      FUNCTION tfpp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -435,7 +435,7 @@ MODULE inter_interfaces
   END INTERFACE
   INTERFACE
      FUNCTION tfppp(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -445,7 +445,7 @@ MODULE inter_interfaces
 
   INTERFACE
      FUNCTION tfone(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -454,7 +454,7 @@ MODULE inter_interfaces
   END INTERFACE
   INTERFACE
      FUNCTION tfzero(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : I4B, DP
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
