@@ -787,15 +787,18 @@ required input includes:
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
 \section{List of scripts/codes used besides neo-2}
+Here three tables listing executables, shell scripts, python scripts and octave/matlab scripts,
+respectively, that are mentioned in this document besides \vv{neo-2}.
+
 Note that \vv{$INTERFACE} is here short for \vv{/proj/plasma/Neo2/Interface/},
 \vv{$BOOTSTRAP} is short for \vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/}.
 
 \begin{table}[h]
 \centering
-\begin{tabular}{ll}
-name/path   & comment \\
-\$INTERFACE/Create\_Surfaces/Build/create\_surfaces.x & \\
-\$INTERFACE/h5merge/Build/h5merge.x & \\
+\begin{tabular}{l|l}
+Name/path   & Comment \\ \hline
+tools/create\_surfaces & convert profile to form used by create\_surf.py \\
+libneo:tools/h5merge & merges final.h5 of subdirectories \\
 \$INTERFACE/Spitzer\_Interface/Build/neo2\_g.x & \\
 \$INTERFACE/Spitzer\_Interface/Build/dentf\_lorentz.x &
 \end{tabular}
@@ -805,11 +808,11 @@ name/path   & comment \\
 
 \begin{table}[h]
 \centering
-\begin{tabular}{ll}
-name/path   & comment \\
-/proj/plasma/Neo2/Interface/Examples/run\_condor.sh & \\
-\$BOOTSTRAP/create\_dirs\_paramvalue.sh & \\
-NEO2-all.sh &
+\begin{tabular}{l|l}
+Name/path   & Comment \\ \hline
+run\_condor.sh & \\
+create\_dirs\_paramvalue.sh & \\
+?/NEO2-all.sh &
 \end{tabular}
 \caption{additional shell scripts used}
 \label{tab:additionalshellscripts}
@@ -817,9 +820,9 @@ NEO2-all.sh &
 
 \begin{table}[h]
 \centering
-\begin{tabular}{ll}
-name/path   & comment \\
-\$INTERFACE/Create\_Surfaces/create\_surf.py & similar to create\_dirs\_paramvalue.sh
+\begin{tabular}{l|l}
+Name/path   & Comment \\ \hline
+PythonScripts/create\_surf.py & creates directories from template
 \end{tabular}
 \caption{additional python3 scripts used}
 \label{tab:additionalpython3scripts}
@@ -827,15 +830,16 @@ name/path   & comment \\
 
 \begin{table}[h]
 \centering
-\begin{tabular}{ll}
-name/path   & comment \\
-convert\_prf.m & \\
-plot\_g\_xfix.m & \\
-plot\_levels\_pgf.m & \\
-\$BOOTSTRAP/plot\_evolve\_h5.m & \\
-\$BOOTSTRAP/count\_maxima\_bootstrap.m & \\
-\$BOOTSTRAP/boozer\_rational.m & \\
-\$BOOTSTRAP/plot\_levels.m &
+\begin{tabular}{l|l}
+Name/path   & Comment \\ \hline
+boozer\_rational.m & \\
+convert\_prf.m & convert profile to form used by create\_surfaces \\
+count\_maxima\_bootstrap.m & \\
+plot\_evolve\_h5.m & \\
+plot\_g\_lamfix.m & plot distribtion function, velocity module fixed \\
+plot\_g\_xfix.m & plot distribtion function, pitch angle fixed \\
+plot\_levels.m & requires \vv{magnetics.h5}) \\
+plot\_levels\_pgf.m &
 \end{tabular}
 \caption{additional octave scripts used}
 \label{tab:additionaloctavescripts}
@@ -864,7 +868,9 @@ plot\_levels\_pgf.m & \\
 % ----------------------------------------------------------------------
 \section{More useful scripts}
 \begin{itemize}
- \item \vv{hdf5struct.m} Converts HDF5 file to MATLAB structure.
+ \item \vv{hdf5struct.m} Converts HDF5 file to MATLAB structure. Note,
+ that this does not work with octave, but is not required, as \vv{load}
+ does will load a hdf5 file and convert it to a structure.
  \item \vv{plot_g_xfix.m} Plots the distribution function for fixed
  velocity module.
  \item \vv{plot_g_lamfix.m} Plots the distribution function for fixed
