@@ -1,6 +1,6 @@
 !> Working parameters
 MODULE neo_exchange
-  USE neo_precision
+  use nrtype, only : dp
 
   REAL(kind=dp)              :: b_min, b_max
   INTEGER                    :: nper
