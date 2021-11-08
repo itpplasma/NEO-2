@@ -21,7 +21,7 @@ find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
 include_directories(${NEO2_Inc})
 
 set(SOURCE_FILES
-    ../src/inter_interfaces.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/inter_interfaces.f90
     ../src/neo_actual_fluxs.f90
     ../src/neo_actual_spectra.f90
     ../src/neo_control.f90
