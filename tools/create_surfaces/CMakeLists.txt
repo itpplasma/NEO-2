@@ -22,7 +22,7 @@ include_directories(${NEO2_Inc})
 
 set(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/../../COMMON/inter_interfaces.f90
-    ../src/neo_actual_fluxs.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/neo_actual_fluxs.f90
     ../src/neo_actual_spectra.f90
     ../src/neo_control.f90
     ../src/neo_eval_switch.f90
