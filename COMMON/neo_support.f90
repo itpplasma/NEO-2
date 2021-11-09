@@ -1,5 +1,4 @@
 MODULE neo_support
-  USE neo_precision
 
   INTERFACE unit_check
      MODULE PROCEDURE unit_check_1
@@ -27,7 +26,6 @@ CONTAINS
   END SUBROUTINE unit_check_1
 
   SUBROUTINE strip_extension_1(str_in,ext,str_out)
-    USE neo_precision
     IMPLICIT NONE
     CHARACTER(len=*), INTENT(in)    :: str_in
     CHARACTER(len=*), INTENT(in)    :: ext
@@ -45,7 +43,6 @@ CONTAINS
   END SUBROUTINE strip_extension_1
 
   SUBROUTINE add_extension_1(str_in,ext,str_out)
-    USE neo_precision
     IMPLICIT NONE
     CHARACTER(len=*), INTENT(in)    :: str_in
     CHARACTER(len=*), INTENT(in)    :: ext
@@ -56,7 +53,6 @@ CONTAINS
   END SUBROUTINE add_extension_1
 
   SUBROUTINE add_extension_2(str_in,int,str_out)
-    USE neo_precision
     IMPLICIT NONE
     CHARACTER(len=*), INTENT(in)    :: str_in
     INTEGER,          INTENT(in)    :: int
