@@ -35,7 +35,7 @@ set(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_support.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_units.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_van.f90
-    ../src/neo_work.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/neo_work.f90
     ../src/nrtype.f90
     ../src/sizey_bo.f90
     ../src/sizey_cur.f90
