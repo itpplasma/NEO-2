@@ -76,7 +76,6 @@ set(NEO2_COMMON_FILES
         ../COMMON/plot_distrf.f90
         ../COMMON/polleg.f90
         ../COMMON/prodband.f90
-        ../COMMON/pspline.f90
         ../COMMON/spline_int.f90
         ../COMMON/spline_cof.f90
         ../COMMON/test_function.f90
@@ -114,6 +113,7 @@ set(NEO2_COMMON_FILES
         ../COMMON/sizey_cur.f90
         ../COMMON/sizey_pla.f90
         ../COMMON/sparsevec_mod.f90
+        ../COMMON/spline_mod.f90
 )
 
 set(NEO2_SRC_FILES
