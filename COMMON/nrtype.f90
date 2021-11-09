@@ -28,4 +28,7 @@ MODULE nrtype
      INTEGER(I4B), DIMENSION(:), POINTER :: irow
      INTEGER(I4B), DIMENSION(:), POINTER :: jcol
   END TYPE sprs2_dp
+
+  logical :: splinecof_compatibility = .true.
+
 END MODULE nrtype
