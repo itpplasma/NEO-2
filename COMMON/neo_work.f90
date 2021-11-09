@@ -1,6 +1,6 @@
 MODULE neo_work
 ! Working parameters
-  USE neo_precision
+  use nrtype, only : dp
 
   REAL(kind=dp) ::   theta_start
   REAL(kind=dp) ::   theta_end
