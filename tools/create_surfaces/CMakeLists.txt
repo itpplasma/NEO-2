@@ -32,7 +32,7 @@ set(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_spline_data.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_spline.f90
     ../src/neo_sub_mod.f90
-    ../src/neo_support.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/neo_support.f90
     ../src/neo_units.f90
     ../src/neo_van.f90
     ../src/neo_work.f90
