@@ -43,7 +43,7 @@ set(SOURCE_FILES
     ../src/spline_cof.f90
     ../src/spline_int.f90
     ../src/spline_mod.f90
-    ../src/test_function.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/test_function.f90
 )
 
 set(Interface_Libs
