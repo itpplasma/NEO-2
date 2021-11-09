@@ -1,6 +1,5 @@
 !> Units and Formats
 MODULE neo_units
-  USE neo_precision
 
   INTEGER, PARAMETER ::   r_u1   = 3
   INTEGER, PARAMETER ::   r_u2   = 4
