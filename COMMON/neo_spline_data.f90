@@ -1,6 +1,6 @@
 MODULE neo_spline_data
   ! Splines along s
-  USE neo_precision
+  use nrtype, only : dp, I4B
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_rmnc,b_rmnc,c_rmnc,d_rmnc
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_zmnc,b_zmnc,c_zmnc,d_zmnc
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_lmnc,b_lmnc,c_lmnc,d_lmnc
