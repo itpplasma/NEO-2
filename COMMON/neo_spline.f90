@@ -1,6 +1,6 @@
 !> Spline arrays
 MODULE neo_spline
-  USE neo_precision
+  use nrtype, only : dp
   INTEGER, PARAMETER       ::   mt = 1
   INTEGER, PARAMETER       ::   mp = 1
   INTEGER                  ::   theta_ind, phi_ind
@@ -10,7 +10,7 @@ MODULE neo_spline
 
   ! Spline array for modb
   REAL(kind=dp),    DIMENSION(:,:,:,:), ALLOCATABLE :: b_spl
-  ! Spline array for geodesic curviture
+  ! Spline array for geodesic curvature
   REAL(kind=dp),    DIMENSION(:,:,:,:), ALLOCATABLE :: k_spl
   ! Spline array for sqrg11
   REAL(kind=dp),    DIMENSION(:,:,:,:), ALLOCATABLE :: g_spl
