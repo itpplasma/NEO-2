@@ -39,7 +39,7 @@ set(SOURCE_FILES
     ../src/nrtype.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/sizey_bo.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/sizey_cur.f90
-    ../src/sizey_pla.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/sizey_pla.f90
     ../src/spline_cof.f90
     ../src/spline_int.f90
     ../src/spline_mod.f90
