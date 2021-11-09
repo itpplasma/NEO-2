@@ -1,5 +1,5 @@
 MODULE sizey_pla
-  USE neo_precision
+  use nrtype, only : dp
   ! Definition for rk4d_pla
   INTEGER            ::  npart_pla
   INTEGER            ::  ndim_pla
