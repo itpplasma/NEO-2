@@ -1,5 +1,5 @@
 MODULE neo_van
-  USE neo_precision
+  use nrtype, only : dp
   REAL(kind=dp)                            :: v_phi0, v_theta0
   REAL(kind=dp)                            :: bmin_tol
   INTEGER                                  :: v_nper, v_steps
