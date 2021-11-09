@@ -1,6 +1,6 @@
 MODULE neo_input
 ! Input from data files (Boozer)
-  USE neo_precision
+  use nrtype, only : dp
   INTEGER, DIMENSION(:),     ALLOCATABLE :: ixm, ixn
   INTEGER, DIMENSION(:),     ALLOCATABLE :: pixm, pixn
   INTEGER, DIMENSION(:),     ALLOCATABLE :: i_m, i_n
