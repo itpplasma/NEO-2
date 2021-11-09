@@ -27,7 +27,7 @@ set(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_control.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_eval_switch.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_exchange.f90
-    ../src/neo_input.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/neo_input.f90
     ../src/neo_spline_b00.f90
     ../src/neo_spline_data.f90
     ../src/neo_spline.f90
