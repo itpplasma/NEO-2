@@ -142,13 +142,18 @@ The build system of \vv{neo-2} and \vv{libneo} is CMake (since 2012).
 The main advantage is that this build system takes care of correct
 compilation order of the source files (dependency resolving) and that
 routines can be defined to automatically detect the installed
-libraries. The configuration file is called \verb|CMakeLists.txt|. Using
-CMake the source- and build-directories can be separated from each
-other, and both codes require that this is done. Thus, in order to build
-the source code it is necessary to create a build-directory. For reasons
+libraries.
+However CMake can not take cae of building different projects in correct
+order. Thus remember that you first have to build \vv{libneo} and then
+\vv{neo-2}.
+Another advantage is that the source- and build-directories can be
+separated from each other, and both codes require that this is done.
+Thus, in order to build the source code it is necessary to create a
+build-directory.
+The main configuration file is called \verb|CMakeLists.txt|. For reasons
 of readability it was decided to put the source files to be compiled in
 a separate file, called \vv{CMakeSources.in}. Additionaly, some of the
-settings for paths are in a separate file, \vv{ProjectConfig.cmake.in}.
+settings for paths are in another file, \vv{ProjectConfig.cmake.in}.
 These files are then included in \vv{CMakeLists.txt}.
 
 For testing purposes a build-directory is now created for \vv{libneo}:
@@ -161,10 +166,14 @@ make
 
 Running the command \verb|cmake ..| is only necessary the first time a
 new build directory is used. This command needs to know where
-\verb|CMakeLists.txt| is located (therefore the \verb|..|). A lot
+\verb|CMakeLists.txt| is located, therefore the \verb|..|. A lot
 happens when this command is called, the most important steps are the
 Fortran compiler and library detection. A standard Makefile is generated
-which can be tested by running \vv{make}.
+which can be used by running \vv{make}.
+
+Before going on to compile \vv{neo-2} you should also compile the tool
+\vv{h5merge} in the corresponding subfolder. The procedure to do so is
+the same, just do it in the subfolder.
 
 After libneo is compiled, you can compile \vv{neo-2}:
 \begin{verbatim}
@@ -174,6 +183,9 @@ cd Build-Test
 cmake ..
 make
 \end{verbatim}
+
+Also in this case there is a tool that should be compiled,
+\vv{create_surfaces}.
 
 % ----------------------------------------------------------------------
 \subsection{Libraries}
