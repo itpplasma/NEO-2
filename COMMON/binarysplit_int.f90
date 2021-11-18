@@ -1,7 +1,5 @@
 MODULE binarysplit_int
 
-  USE hdf5_tools
-  USE hdf5_tools_f2003
   IMPLICIT NONE
 
   PRIVATE dp
