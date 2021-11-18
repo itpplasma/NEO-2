@@ -167,7 +167,7 @@ The same holds for \vv{libneo},
 \begin{verbatim}
 https://github.com/itpplasma/libneo/
 \end{verbatim}
-which is required by \vv{neo-2}
+which is required by \vv{neo-2}.
 
 % ----------------------------------------------------------------------
 \subsection{CMake}
@@ -812,7 +812,7 @@ field module along the field line with level distribution.
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
 \section{List of scripts/codes used besides neo-2}
-Here three tables listing executables, shell scripts, python scripts and octave/matlab scripts,
+Here four tables list executables, shell scripts, python scripts and octave/matlab scripts,
 respectively, that are mentioned in this document besides \vv{neo-2}.
 
 Note that \vv{$INTERFACE} is here short for \vv{/proj/plasma/Neo2/Interface/},
@@ -837,7 +837,7 @@ libneo:tools/h5merge & merges final.h5 of subdirectories \\
 Name/path   & Comment \\ \hline
 run\_condor.sh & \\
 create\_dirs\_paramvalue.sh & \\
-?/NEO2-all.sh &
+?/NEO2-all.sh & wrapper for running with condor
 \end{tabular}
 \caption{additional shell scripts used}
 \label{tab:additionalshellscripts}
@@ -895,7 +895,7 @@ plot\_levels\_pgf.m &
 \begin{itemize}
  \item \vv{hdf5struct.m} Converts HDF5 file to MATLAB structure. Note,
  that this does not work with octave, but is not required, as \vv{load}
- does will load a hdf5 file and convert it to a structure.
+ in octave loads a hdf5 file and converts it to a structure.
  \item \vv{plot_g_xfix.m} Plots the distribution function for fixed
  velocity module.
  \item \vv{plot_g_lamfix.m} Plots the distribution function for fixed
