@@ -370,7 +370,10 @@ CONTAINS
   END SUBROUTINE reallocate_binsplit
     
   ! reposition
-  SUBROUTINE reposition_binsplit(xbs)   
+  SUBROUTINE reposition_binsplit(xbs)
+
+    use hdf5_tools
+
     TYPE(binarysplit),               INTENT(inout) :: xbs
     
     INTEGER                                        :: n_ori,maxdim,s1,is

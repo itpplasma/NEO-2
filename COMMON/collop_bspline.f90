@@ -1,7 +1,4 @@
 module collop_bspline
-  use nrtype, only : dp, pi
-  use collisionality_mod, only : phi_x_max, collop_bspline_dist, collop_bspline_order, &
-       collop_bspline_taylor
   !use fgsl
   use gsl_bspline_routines_mod
 
@@ -32,6 +29,10 @@ contains
   ! Splines
   !**********************************************************
   subroutine init_phi_bspline(lagmax, legmax)
+    use nrtype, only : dp
+    use collisionality_mod, only : phi_x_max, collop_bspline_dist, collop_bspline_order, &
+      &  collop_bspline_taylor
+
     integer :: lagmax, legmax
     integer :: k
     real(kind=dp) :: xp, gam_all, x_del
@@ -78,6 +79,8 @@ contains
   end subroutine init_phi_bspline
 
   function phi_bspline(m, x) result(phi)
+    use nrtype, only : dp
+
     integer       :: m
     real(kind=dp) :: x, phi
 
@@ -88,6 +91,8 @@ contains
   end function phi_bspline
 
   function d_phi_bspline(m, x) result(d_phi)
+    use nrtype, only : dp 
+
     integer       :: m
     real(kind=dp) :: x, d_phi
 
@@ -97,6 +102,8 @@ contains
   end function d_phi_bspline
 
   function dd_phi_bspline(m, x) result(dd_phi)
+    use nrtype, only : dp
+
     integer       :: m
     real(kind=dp) :: x, dd_phi
     
