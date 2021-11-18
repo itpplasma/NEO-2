@@ -89,6 +89,39 @@ physical background.
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
+\section{Short summary}
+\subsection{Required input}
+\begin{itemize}
+  \item boozer file
+  \item profile file (density, temperature, effective charge)
+  \item neo.in
+  \item create\_surfaces.in
+  \item neo2.in
+  \item (condor submit file)
+\end{itemize}
+
+\subsection{Required steps}
+\begin{itemize}
+  \item get profiles
+  \item get magnetic field as boozer file
+  \item clone/update \vv{libneo} and \vv{neo-2} repositories
+  \item compile the codes
+  \item create working directory, and a template directory in this
+  \item transform input into required form for create\_surfaces.x
+  \item get/create configuration files
+  \item check/edit settings as necessary
+  \item run create\_surfaces.x
+  \item run create\_surf.py
+  \item run neo2.x for prop\_reconstruct=0
+  \item run neo2.x for prop\_reconstruct=1
+  \item run neo2.x for prop\_reconstruct=2
+  \item run neo2.x for prop\_reconstruct=3
+  \item run h5merge.x to collect data
+  \item postprocessing (e.g. plotting)
+\end{itemize}
+
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
 \section{Technical background on NEO-2}
 \subsection{Overview}
 In the last years the development of \vv{neo-2} has split into two branches,
@@ -775,26 +808,6 @@ specific run directory (containing \vv{magnetics.h5}) plots the magnetic
 field module along the field line with level distribution.
 
 \clearpage
-\section{Short summary}
-\begin{itemize}
-  \item create directory for run
-  \item put in required scripts/executables
-  \item create template subdirectory
-  \item put in both folders corresponding required input and template files
-  \item create subfolders for flux surfaces
-  \item run simulations
-  \item postprocessing
-\end{itemize}
-
-required input includes:
-\begin{itemize}
-  \item boozer file
-  \item profile file (density, temperature, effective charge)
-  \item neo.in
-  \item create\_surfaces.in
-  \item neo2.in
-  \item (condor submit file)
-\end{itemize}
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
