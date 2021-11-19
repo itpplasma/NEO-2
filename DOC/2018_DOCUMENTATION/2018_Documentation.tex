@@ -755,7 +755,8 @@ Getenv     = true
 should_transfer_files = NEVER
 
 run_as_owner = true
-#requirements = (TARGET.Machine =!= "faepop02") && (TARGET.Machine =!= "faepop03")
+#requirements = (TARGET.Machine != "faepop02") && (TARGET.Machine != "faepop03")
+#environment = "XDG_CACHE_HOME=/tmp"
 
 Queue
 \end{verbatim}
@@ -772,20 +773,19 @@ is written in a way that MPI is used for running \vv{neo-2}. Here, the number
 of processors used is given by \vv{request_cpus} in the Condor
 submission file. In the vanilla universe it is not possible to run the
 MPI jobs across machines so that a typical number is 4 to 8 at our
-institute. The requested memory (30*1024 = 30 GB) defines how much
-memory the job will need (all MPI processes together). This is not an
-upper limit, it only is used for Condor deciding on which machine the
-job will run. If the job will e.g. run on 50 GB machine it is no problem
-if the jobs requires e.g. 40 GB. However, if the same job runs on a
-32 GB machine then \vv{neo_2.x} will crash and the requested memory
-should be increased so that the job is distributed to a machine with
-more memory. If Condor jobs are failing then one should look into the
+institute. The requested memory (30*1024 MB = 30 GB) defines how much
+memory the job will be allowed to use (all MPI processes together).
+If Condor jobs are failing then one should look into the
 file NEO-2.e(\$SomeNumber) because there the error messages are located.
 Some IEEE underflow errors are "normal" at the moment. They arise from
 some underflow during the integration of the matrix elements and might
 be fixed in the future.
 
-The rest of the lines does not have to be changed except one would like
+The requirements and ernvironment lines are commented, i.g. not actually
+considered in this example.
+The environment needs to be set on the machines of the Institute of
+Theoretical and Computational Physics at TU Graz.
+The requirements do not have to be changed except one would like
 to exclude a special machine from Condor.
 If your jobs fits into the memory of regular machines, then you should
 exclude the high memory machines (e.g. faepop12 and faepop13), so as to
