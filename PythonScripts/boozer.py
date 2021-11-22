@@ -27,11 +27,11 @@ def append_boozer_block_head(filename, s, iota, bsubvB, bsubuB, pprime, vp, enfp
 
   mu0 = scipy.constants.mu_0
 
-  append_boozer_block_head(filename, s, iota,
+  _append_boozer_block_head(filename, s, iota,
     -2.0*np.pi/mu0*bsubvB/enfp, -2.0*np.pi/mu0*bsubuB, pprime,
     -4.0*np.pi**2*vp/enfp)
 
-def append_boozer_block_head(filename, s, iota, Jpol_divided_by_nper, Itor, pprime, sqrt_g_00):
+def _append_boozer_block_head(filename, s, iota, Jpol_divided_by_nper, Itor, pprime, sqrt_g_00):
   with open(filename, 'a') as outfile:
     outfile.write('        s               iota           Jpol/nper          '+
     'Itor            pprime         sqrt g(0,0)\n')
@@ -142,16 +142,24 @@ def convert_to_boozer(infile, ks, outfile):
     enfp =  np.copy(data['nfp'].data)
     vp =    np.copy(data['vp'].data)
 
-    rmnl = np.copy(data['rmnc'].data - 1.0j*data['rmns'].data)
-    zmnl = np.copy(data['zmnc'].data - 1.0j*data['zmns'].data)
-    lmnl = np.copy(data['lmnc'].data - 1.0j*data['lmns'].data)
-
-    bsubumn = np.copy(data['bsubumnc'].data - 1.0j*data['bsubumns'].data)
-    bsubvmn = np.copy(data['bsubvmnc'].data - 1.0j*data['bsubvmns'].data)
-    bsubsmn = np.copy(data['bsubsmnc'].data - 1.0j*data['bsubsmns'].data)
-
-    bsupumn = np.copy(data['bsupumnc'].data - 1.0j*data['bsupumns'].data)
-    bsupvmn = np.copy(data['bsupvmnc'].data - 1.0j*data['bsupvmns'].data)
+    try:
+      rmnl = np.copy(data['rmnc'].data - 1.0j*data['rmns'].data)
+      zmnl = np.copy(data['zmnc'].data - 1.0j*data['zmns'].data)
+      lmnl = np.copy(data['lmnc'].data - 1.0j*data['lmns'].data)
+      bsubumn = np.copy(data['bsubumnc'].data - 1.0j*data['bsubumns'].data)
+      bsubvmn = np.copy(data['bsubvmnc'].data - 1.0j*data['bsubvmns'].data)
+      bsubsmn = np.copy(data['bsubsmnc'].data - 1.0j*data['bsubsmns'].data)
+      bsupumn = np.copy(data['bsupumnc'].data - 1.0j*data['bsupumns'].data)
+      bsupvmn = np.copy(data['bsupvmnc'].data - 1.0j*data['bsupvmns'].data)
+    except:  # Stellarator-symmetric case
+      rmnl = np.copy(data['rmnc'].data)
+      zmnl = np.copy(- 1.0j*data['zmns'].data)
+      lmnl = np.copy(- 1.0j*data['lmns'].data)
+      bsubumn = np.copy(data['bsubumnc'].data)
+      bsubvmn = np.copy(data['bsubvmnc'].data)
+      bsubsmn = np.copy(- 1.0j*data['bsubsmns'].data)
+      bsupumn = np.copy(data['bsupumnc'].data)
+      bsupvmn = np.copy(data['bsupvmnc'].data)
 
     del data
     f.close()
@@ -395,8 +403,8 @@ def convert_to_boozer(infile, ks, outfile):
   # Calculate Boozer modes
   m0b = 2*empol-1
   n0b = 4*entor+1
-  mb = np.zeros((m0b-1)*n0b+(n0b-1)/2+1,dtype=int)
-  nb = np.zeros((m0b-1)*n0b+(n0b-1)/2+1,dtype=int)
+  mb = np.zeros(int((m0b-1)*n0b+(n0b-1)/2+1),dtype=int)
+  nb = np.zeros(int((m0b-1)*n0b+(n0b-1)/2+1),dtype=int)
   k=0
   for mk in range(m0b):
     nmin0 = -2*entor
