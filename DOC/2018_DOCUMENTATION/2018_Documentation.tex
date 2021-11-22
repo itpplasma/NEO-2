@@ -175,18 +175,15 @@ The build system of \vv{neo-2} and \vv{libneo} is CMake (since 2012).
 The main advantage is that this build system takes care of correct
 compilation order of the source files (dependency resolving) and that
 routines can be defined to automatically detect the installed
-libraries.
-However CMake can not take cae of building different projects in correct
-order. Thus remember that you first have to build \vv{libneo} and then
-\vv{neo-2}.
-Another advantage is that the source- and build-directories can be
-separated from each other, and both codes require that this is done.
-Thus, in order to build the source code it is necessary to create a
-build-directory.
-The main configuration file is called \verb|CMakeLists.txt|. For reasons
+libraries. The configuration file is called \verb|CMakeLists.txt|. Using
+CMake the source- and build-directories can be separated from each
+other, and both codes require that this is done. Thus, in order to build
+the source code it is necessary to create a build-directory. For reasons
 of readability it was decided to put the source files to be compiled in
 a separate file, called \vv{CMakeSources.in}. Additionaly, some of the
-settings for paths are in another file, \vv{ProjectConfig.cmake.in}.
+settings for paths are in a separate file, \vv{ProjectConfig.cmake.in}.
+Mainly these settings are related to required libraries (see
+sec.~\ref{technicalbackground_libraries}).
 These files are then included in \vv{CMakeLists.txt}.
 
 For testing purposes a build-directory is now created for \vv{libneo}:
@@ -199,7 +196,7 @@ make
 
 Running the command \verb|cmake ..| is only necessary the first time a
 new build directory is used. This command needs to know where
-\verb|CMakeLists.txt| is located, therefore the \verb|..|. A lot
+\verb|CMakeLists.txt| is located (therefore the \verb|..|). A lot
 happens when this command is called, the most important steps are the
 Fortran compiler and library detection. A standard Makefile is generated
 which can be used by running \vv{make}.
@@ -217,16 +214,15 @@ cmake ..
 make
 \end{verbatim}
 
+The first step is required as the two versions of \vv{neo-2} have
+separate folders and separate build-configuration files.
+
 Also in this case there is a tool that should be compiled,
 \vv{create_surfaces}.
 
 % ----------------------------------------------------------------------
-\subsection{Libraries}
-\vv{neo-2} depends on a number of external libraries. While during the last
-years some bleeding edge features of some of the libraries where used
-and thus it was necessary to build these libraries locally, with
-Debian 9 it was decided to change over to library versions distributed
-with Debian. This makes maintenance considerably easier. The libraries
+\subsection{Libraries\label{technicalbackground_libraries}}
+\vv{neo-2} depends on a number of external libraries. These libraries
 are:
 \begin{itemize}
 \item SuiteSparse
@@ -234,8 +230,8 @@ are:
 \item SuperLU
 \item GSL
 \item FGSL
-\item HDF5 (interfaced via hdf5tools)
-\item OpenMPI (interfaced via MyMPILib)
+\item HDF5 - interfaced via hdf5tools
+\item OpenMPI - interfaced via MyMPILib
 \item libneo
 \end{itemize}
 
@@ -251,10 +247,11 @@ the collision operator in \verb|collop_compute.f90|. Additionally, GSL
 provides B-spline routines, also used for the collision operator module
 (basis functions). While writing this document FGSL is not distributed
 with Debian, therefore this is build locally in \verb|/proj/plasma/Libs/|.
+If you are sitting somewhere else, you might need to install it.
 
 The HDF5 library is required for modern I/O of \vv{neo-2}. One advantage over
 text files is that each variable (dataset) has a unique name and can
-store additional attributes such as units or comments. The usage of HDF5
+store additional attributes such as units and/or comments. The usage of HDF5
 was unavoidable for storing the large datasets that occur when computing
 the generalized Spitzer function for stellarators. In order to simplify
 the calls a collection of wrapper routines has been created. This
@@ -288,7 +285,7 @@ the following input files are required:
  \item profile file (see \ref{running_preparation_profiles})
 \end{itemize}
 Additionaly, are some tools involved in running the code, that require
-their own configuragion files.
+their own configuration files.
 
 \subsubsection{neo.in\label{running_preparation_neoin}}
 The first line of this file indicates the name of the Boozer file. Other
@@ -299,7 +296,7 @@ module and to the code NEO.
 This file is a Fortran namelist file. It contains physical input
 quantities and a lot of numerical and technical parameters. Here, the
 most important (and new) parameters are described.
-Check also \vv|neo2.in.par-full| in the DOC folder of the \vv{neo-2}
+Check also \vv{neo2.in.par-full} in the DOC folder of the \vv{neo-2}
 repository. The file should contain an up-to-date list of all the input
 parameters together with default values and maybe a short explanation.
 
@@ -323,7 +320,7 @@ switch and integer switch, respectively.
 New parameters related to the collision operator:
 \begin{itemize}
  \item \verb|lag|\newline
- Number of basis functions (former: number of Laguerre polynomials)
+ Number of basis functions
  \item \verb|leg|\newline
  Number of Legendre polynomials
  \item \verb|T_e|\newline
@@ -385,7 +382,7 @@ New parameters related to the collision operator:
  information for subsequent reconstruction runs are stored. For full
  reconstruction \vv{neo-2} has to be run all reconstruction steps from 0 to
  3, where 3 is a service run which cleans up the directory and merges
- HDF5 files of that run. Note that for the parallelized stellarator version only
+ HDF5 files of this run. Note that for the parallelized stellarator version only
  reconstruction steps 0 and 2 can be parallelized with MPI.
 
 \end{itemize}
@@ -436,12 +433,14 @@ coordinate).
 It is now necessary to copy the following required files to a new
 empty directory,
 \begin{verbatim}
-cp /proj/plasma/Neo2/Interface/Boozer/w7x-m24li/w7x-m24li.bc .
-cp /proj/plasma/Neo2/Interface/Profiles/w7x-m24li/nT_profiles_from_TCode-mod.dat .
-cp /proj/plasma/Neo2/Interface/Magfie/Boozer/w7x-m24li/s025/neo.in .
-cp /proj/plasma/Neo2/Interface/Create_Surfaces/create_surfaces.in .
-ln -s /proj/plasma/Neo2/Interface/Create_Surfaces/Build/create_surfaces.x
+boozer file
+profile file
+neo.in configuration file
+create_surfaces.in configuration file
+ln -s $NEO2PATH/tools/create_surfaces/Build/create_surfaces.x
 \end{verbatim}
+(You have to replace ``Build'' by the name of the build directory you
+used.)
 
 The namelist file \vv{create_surfaces.in} is described as follows:
 \begin{itemize}
@@ -467,10 +466,10 @@ The namelist file \vv{create_surfaces.in} is described as follows:
 \end{itemize}
 
 Running \vv{./create_surfaces.x} creates a grid in \vv{boozer_s} that
-fulfills the properties as defined in the config file. Afterwards a
+fulfills the properties as defined in the configuration file. Afterwards a
 spline interpolation is used to compute the collisionality parameter per
 flux surface. The file \vv{surfaces.dat} (as defined by \vv{output_file}
-in the config file) is structured as follows:
+in the configuration file) is structured as follows:
 \begin{itemize}
  \item 1. Column: \vv{boozer_s}
  \item 2. Column: \vv{conl_over_mfp} (negative because this is $\kappa$
@@ -486,15 +485,13 @@ equidistant grid.
 
 In the next step a template directory for the run directories has to be
 created. Here, an example of \vv{neo2.in} is used and the executable of
-\vv{neo-2} is copied from the project directory. Please note that in the
-\vv{neo2.in} file the correct placeholders have to be defined before
-running the next script.
+\vv{neo-2} is copied from the project directory.
 \begin{verbatim}
 mkdir TEMPLATE_DIR
 cd TEMPLATE_DIR
-cp ../w7x-m24li.bc .
+cp ../BOOZER_FILE_NAME.bc .
 cp ../neo.in .
-cp /proj/plasma/Neo2/Code/Neo2-MODULAR/NEO-2-PAR/Build-Debug/neo_2.x .
+cp $NEO2PATH/NEO-2-PAR/Build/neo_2.x .
 cp /proj/plasma/Neo2/Interface/Examples/neo2.in .
 cp /proj/plasma/Neo2/Interface/Examples/condor-all.submit .
 \end{verbatim}
@@ -503,22 +500,36 @@ The last line is only used if HTCondor should be used as batch system.
 An alternative approach is the condor\_submit\_example file in the
 \vv{DOC} folder of \vv{neo-2}.
 
-Next, the code
-\vv{/proj/plasma/Neo2/Interface/Create_Surfaces/create_surf.py} has to
-be started, in the parent directory of the template directory:
-\begin{verbatim}
-./create_surf.py
-\end{verbatim}
+In file \vv{neo2.in} the values of the four quantities
+\vv{boozer_s} (in namelist settings), \vv{conl_over_mfp}, \vv{T_e} and
+\vv{z_eff} (in namelist collision) have to be set to their name (with
+case as given here) in \vv{< >} brackets. These serve as placeholders
+that are replaced in the following step.
 
-This has created \vv{s_steps} directories, each with an modified
+Next, the code
+\vv{\$NEO2PATH/PythonScripts/create_surf.py} has to has to
+be started, in the parent directory of the template directory.
+
+This creates \vv{s_steps} directories, each with an modified
 \vv{neo2.in} file. It is recommended to change into one of these
-directories and to check if \vv{boozer_s}, \vv{conl_over_mfp}, and
-\vv{z_eff} have been set correctly.
+directories and to check if \vv{boozer_s}, \vv{conl_over_mfp},
+\vv{z_eff} and \vv{T_e} have been set correctly. Note that the latter is
+only used by \vv{neo-2} in the relativistic case, i.e. \vv{isw_relativistic > 1}.
 
 The Python script has an output representing the directory names that
-have been created. If you used the htcondor approach with
-\vv{condor-all.submit}, then the directory names should be copied into a
-file named \vv{jobs_list.txt}.
+have been created. This output is required by some other tools, and thus
+should be copied into a file named \vv{jobs_list.txt}. You can achieve
+this by using either of the commands
+\begin{verbatim}
+./create_surf.py > jobs_list.txt
+\end{verbatim}
+or
+\begin{verbatim}
+./create_surf.py | tee jobs_list.txt
+\end{verbatim}
+instead of what is given above. We recomend the latter, as the output is
+written to file and to the screen and thus allows you to check the
+progress.
 
 \subsubsection{Notes on resources}
 The condor submit files determine the resources requested by the job in
