@@ -683,7 +683,7 @@ have to be set, especially, \vv{makeunix/mkfiles/defs.mk}.
 \section{Bootstrap}
 For plotting the bootstrap coefficient it is not necessary to run \vv{neo-2}
 in the reconstruction mode. Plotting can be done with the script
-\vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/plot_evolve_h5.m}.
+\vv{plot_evolve_h5.m}.
 This script has to be started in the directory where the complete \vv{neo-2}
 run is located.
 
@@ -741,11 +741,8 @@ distribution function to be plotted.
 
 % ----------------------------------------------------------------------
 \subsection{Scripts for running the jobs in Condor}
-In
-\begin{verbatim}
-/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP
-\end{verbatim}
-there are two important scripts which are useful for running many
+In the \vv{ShellScripts} subfolder of \vv{neo-2}
+are two important scripts which are useful for running many
 instances of \vv{neo-2} at the same time via Condor.
 
 The script \vv{create_dirs_paramvalue.sh} reads a file called
@@ -816,7 +813,7 @@ not block them for people who need the memory.
 \subsection{Boozer file for rational field line}
 For creating a magnetic equilibrium with toroidal perturbations, the
 MATLAB script
-\vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/boozer_rational.m}
+\vv{boozer_rational.m}
 can be used.
 
 This script starts from \vv{tok-synch2.bc}, adds a perturbation field
@@ -825,7 +822,7 @@ rotational transform profile can be created.
 
 Running the script \vv{plot_evolve_h5.m} in the parent directory
 containing the run directories, plots the bootstrap coefficient. Using
-\vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/plot_levels.m} in a
+\vv{plot_levels.m} in a
 specific run directory (containing \vv{magnetics.h5}) plots the magnetic
 field module along the field line with level distribution.
 
@@ -837,8 +834,7 @@ field module along the field line with level distribution.
 Here four tables list executables, shell scripts, python scripts and octave/matlab scripts,
 respectively, that are mentioned in this document besides \vv{neo-2}.
 
-Note that \vv{$INTERFACE} is here short for \vv{/proj/plasma/Neo2/Interface/},
-\vv{$BOOTSTRAP} is short for \vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/}.
+Note that \vv{$INTERFACE} is here short for \vv{/proj/plasma/Neo2/Interface/}.
 
 \begin{table}[h]
 \centering
