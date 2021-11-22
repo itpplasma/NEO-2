@@ -528,19 +528,17 @@ The amount of memory required is fixed by the parameters of the jobs
 (you may still request more to make sure they run on a specific subset
 of nodes, but there are other options for this).
 The number of processors can be choosen freely up to the number of
-processors available per node, but two points should be taken into
-account. First two processors should give no speedup compared to one
-processor. Second, higher numbers can restrict the number of jobs that
-can run at the same time on machines with large amounts of memory. If
-this is good or bad depends on what you want.
+processors available per node, or even more, but this is untested and
+may reduce performance due to limited bandwidth between nodes.
 
 % ----------------------------------------------------------------------
 \subsection{Running the jobs}
-In order to start the jobs the script
+In order to start the jobs the command
 \begin{verbatim}
-/proj/plasma/Neo2/Interface/Examples/run_condor.sh condor-all.submit
+run_condor.sh condor-all.submit
 \end{verbatim}
-can be used, which submits a condor job for each directory given in
+can be used (\vv{run_condor.sh} is part of \vv{neo-2}), which submits a
+condor job for each directory given in
 \vv{jobs_list.txt}. Checking the output of \vv{condor_q} shows the
 number of submitted Condor jobs.
 
@@ -559,17 +557,20 @@ only \vv{prop_reconstruction = 0} (see entry in
 sec.~\ref{running_preparation_neo2in}).
 You have to rerun each folder also for 1,2 and 3 (3 can be replaced with
 python3 function \vv{prop_reconstruct_3} of module \vv{hdf5tools}).
-Changing the value can be done with the script \vv{}, or with a python3
-function
+Changing the value can be done with the script \vv{switch_reconstruction.sh}
+for a single file, or with python3 function
 \begin{verbatim}
 from scan_nonhdf5_tools import set_neo2in_reconstruction
-set_neo2in_reconstruction(folder='./', subfolder_pattern='s[123456789].*', backup=False, value=1)
+set_neo2in_reconstruction(folder='./',
+                          subfolder_pattern='s[123456789].*',
+                          backup=False,
+                          value=1)
 \end{verbatim}
-
+for all files.
 
 Once the jobs have finished \vv{prop_reconstruction = 3}, the code
 \begin{verbatim}
-/proj/plasma/Neo2/Interface/h5merge/Build/h5merge.x
+h5merge.x
 \end{verbatim}
 needs to be run. It can be found in \vv{libneo} in the tools subfolder.
 This code merges the output file of \vv{neo-2} \vv{final.h5}
@@ -590,11 +591,16 @@ This function does not use file \vv{jobs_list.txt}, but instead checks
 each folder for ``infilename'', and ignores folders that do not contain
 a file of this name.
 
+In either case the operation is probably limited by filesystem operations
+and thus may take a while (in Graz is a gigabit network and speed is
+about 30-40 MB/s, with respect to output file, i.e. an output file size
+of 350 GB means this step will take approximately ten thousand seconds).
+
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
 \section{Studies of the generalized Spitzer function}
-For this is it necessary that for at least one flux surface the file
-\vv{final.h5} had been produced with a \vv{neo-2} run.
+The following works with the merged output of multiple flux surfaces or
+with the output of a single flux surface.
 
 The best option is the create a plot-directory inside of the run
 directory of \vv{neo-2}:
@@ -695,6 +701,7 @@ A good start for beginning is with LHD runs for the bootstrap tasks, e.g.:
 /temp/gernot_k/Neo2/RunsByDate/2017_07_Bootstrap/lhd/
 Short/conl_over_mfp=5m5-boozer_s=0.25d0-mag_nperiod_min=1-bsfunc_local_err=1m1
 \end{verbatim}
+Note that a newline was added in the above path, to improve readability.
 In the subdirectory \vv{PLOTS} a symbolic link to the distribution
 function plotter for bootstrap is already prepared
 (\vv{/proj/plasma/Neo2/Interface/Spitzer_Interface/Build/dentf_lorentz.x}).
@@ -794,8 +801,9 @@ not block them for people who need the memory.
 % ----------------------------------------------------------------------
 \subsection{Boozer file for rational field line}
 For creating a magnetic equilibrium with toroidal perturbations, the
-following MATLAB script can be used:
+MATLAB script
 \vv{/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP/boozer_rational.m}
+can be used.
 
 This script starts from \vv{tok-synch2.bc}, adds a perturbation field
 with given mode number and perturbation amplitude. In addition, a flat
