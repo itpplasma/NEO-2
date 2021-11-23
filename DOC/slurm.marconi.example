@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# Example script on how to submit neo-2 with slurm on marconi cluster.
+# Usage:
+# sbatch slurm.marconi.example
+#
+# Note that lines with #SBATCH are _not_ comments.
+
+# Name of the job
+#SBATCH --job-name=NEO-2-W7X
+# Number of nodes
+#SBATCH --nodes=1
+# Number of tasks per node
+#SBATCH --ntasks-per-node=24
+
+# Which partition, consider website for possible values, this also
+# depends on which project you belong to.
+#SBATCH --partition=skl_fua_prod
+
+# Not used/needed?
+#  SBATCH --qos=normal_0064
+
+# Time limit, for the partition used here 24 h should be the maximum.
+#SBATCH --time=24:00:00
+# Which account(=project?) will be billed for the time.
+# Note that this is not the user. A single user can belong to multiple
+# accounts, and an account can have multiple users.
+#SBATCH --account=FUA35_TSVVSTOP
+
+# Where to place standard and error output.
+#SBATCH --err=NEO-2-W7X.err
+#SBATCH	--out=NEO-2-W7X.out
+
+# Export variable, to restrict number of omp processes.
+# Used by libraries?
+export OMP_NUM_THREADS=2
+
+# Set variable for use in this script.
+NUMBER_OF_MPI_PROCESSES=24
+
+# Actual commands to run.
+# In this case full run, therefore the sed, to change the value of
+# prop_reconstruction.
+# Note that steps 1 and 3 are not parallelized.
+
+sed -i "s#prop_reconstruct.*=.*#prop_reconstruct = 0#" neo2.in
+srun -n$NUMBER_OF_MPI_PROCESSES -N1 ./neo_2.x
+
+sed -i "s#prop_reconstruct.*=.*#prop_reconstruct = 1#" neo2.in
+srun -n1 ./neo_2.x
+
+sed -i "s#prop_reconstruct.*=.*#prop_reconstruct = 2#" neo2.in
+srun -n$NUMBER_OF_MPI_PROCESSES -N1 ./neo_2.x
+
+sed -i "s#prop_reconstruct.*=.*#prop_reconstruct = 3#" neo2.in
+srun -n1 ./neo_2.x
