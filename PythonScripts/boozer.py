@@ -46,13 +46,14 @@ def _append_boozer_block_head(filename, s, iota, Jpol_divided_by_nper, Itor, ppr
     outfile.write('\n')
 
 def append_boozer_block(filename, mb, nb, rmnb, zmnb, vmnb, bmnb, enfp):
-  append_boozer_block(filename, mb, int(nb[k]/enfp),
-    float((rmnb[k].real)),-float(rmnb[k].imag),
-    float((zmnb[k].real)),-float(zmnb[k].imag),
-    float((vmnb[k].real)),-float(vmnb[k].imag),
-    float((bmnb[k].real)),-float(bmnb[k].imag))
+  from numpy import array, int32
+  _append_boozer_block(filename, mb, array(nb/enfp, dtype=int32),
+      rmnb.real, -rmnb.imag,
+      zmnb.real, -zmnb.imag,
+      vmnb.real, -vmnb.imag,
+      bmnb.real, -bmnb.imag)
 
-def append_boozer_block(filename, mb, nb, rmnc, rmns, zmnc, zmns, vmnc, vmns, bmnc, bmns):
+def _append_boozer_block(filename, mb, nb, rmnc, rmns, zmnc, zmns, vmnc, vmns, bmnc, bmns):
   with open(filename, 'a') as f:
     f.write('    m    n      rmnc [m]         rmns [m]         zmnc [m]  '+
             '       zmns [m]         vmnc [ ]         vmns [ ]         '+
@@ -769,7 +770,7 @@ class BoozerFile:
       append_boozer_block_head(filename, self.s[i], self.iota[i],
         self.Jpol_divided_by_nper[i], self.Itor[i], self.pprime[i],
         self.sqrt_g_00[i])
-      append_boozer_block(filename, self.m[i], self.n[i],
+      _append_boozer_block(filename, self.m[i], self.n[i],
         self.rmnc[i], self.rmns[i],
         self.zmnc[i], self.zmns[i],
         self.vmnc[i], self.vmns[i],
