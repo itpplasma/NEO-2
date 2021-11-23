@@ -153,6 +153,58 @@ Distribution function & Yes & No (planned)
 \end{table}
 
 % ----------------------------------------------------------------------
+\subsection{Libraries\label{technicalbackground_libraries}}
+\vv{neo-2} depends on a number of external libraries. These libraries
+are:
+\begin{itemize}
+\item SuiteSparse
+\item Metis
+\item SuperLU
+\item GSL
+\item FGSL
+\item HDF5 - interfaced via hdf5tools
+\item OpenMPI - interfaced via MyMPILib
+\item libneo
+\end{itemize}
+
+SuiteSparse is used for solving the sparse linear system of differential
+equations in the ripple solver. Metis is used by SuiteSparse for speedup
+of some specific routines and is not obligatory. SuperLU can be used
+instead of SuiteSparse by a switch in the input file.
+
+The GSL (Gnu Scientific Library) and its Fortran Interface FGSL are used
+for several purposes. The first one provides very efficient numerical
+integration methods used for the computation of the matrix elements of
+the collision operator in \verb|collop_compute.f90|. Additionally, GSL
+provides B-spline routines, also used for the collision operator module
+(basis functions). While writing this document FGSL is not distributed
+with Debian, therefore this is build locally in \verb|/proj/plasma/Libs/|.
+If you are sitting somewhere else, you might need to install it.
+
+The HDF5 library is required for modern I/O of \vv{neo-2}. One advantage over
+text files is that each variable (dataset) has a unique name and can
+store additional attributes such as units and/or comments. The usage of HDF5
+was unavoidable for storing the large datasets that occur when computing
+the generalized Spitzer function for stellarators. In order to simplify
+the calls a collection of wrapper routines has been created. This
+project has grown over the time so that it was decided to use these
+wrapper functions also in other projects, as in the interface, so that
+it became an own library called \vv{hdf5tools}.
+
+For parallelization the Message Passing Interface (MPI) is used. The
+usage of MPI in \vv{neo-2} is performed via an own library, called MyMPILib,
+and is not restricted to a particular MPI implementation. At our
+institute it is linked against OpenMPI, where on clusters Intel MPI is
+mostly used. MyMPILib was developed so that in the code of \vv{neo-2} no
+native MPI commands have to be used.
+
+Note that it was decided to no longer have \vv{hdf5tools} and
+\vv{MyMPILib} as separate libraries, but to add them to \vv{libneo},
+which is intended to collect code that is used by multiple programs of
+the group. As already mentioned, \vv{libneo} is also available from
+github.
+
+% ----------------------------------------------------------------------
 \subsection{The Git repository\label{technicalbackground_git}}
 Since 2013 the general version of \vv{neo-2} is under Git version control.
 Later, also the quasilinear version was added to this repository
@@ -226,58 +278,6 @@ separate folders and separate build-configuration files.
 
 Also in this case there is a tool that should be compiled,
 \vv{create_surfaces}.
-
-% ----------------------------------------------------------------------
-\subsection{Libraries\label{technicalbackground_libraries}}
-\vv{neo-2} depends on a number of external libraries. These libraries
-are:
-\begin{itemize}
-\item SuiteSparse
-\item Metis
-\item SuperLU
-\item GSL
-\item FGSL
-\item HDF5 - interfaced via hdf5tools
-\item OpenMPI - interfaced via MyMPILib
-\item libneo
-\end{itemize}
-
-SuiteSparse is used for solving the sparse linear system of differential
-equations in the ripple solver. Metis is used by SuiteSparse for speedup
-of some specific routines and is not obligatory. SuperLU can be used
-instead of SuiteSparse by a switch in the input file.
-
-The GSL (Gnu Scientific Library) and its Fortran Interface FGSL are used
-for several purposes. The first one provides very efficient numerical
-integration methods used for the computation of the matrix elements of
-the collision operator in \verb|collop_compute.f90|. Additionally, GSL
-provides B-spline routines, also used for the collision operator module
-(basis functions). While writing this document FGSL is not distributed
-with Debian, therefore this is build locally in \verb|/proj/plasma/Libs/|.
-If you are sitting somewhere else, you might need to install it.
-
-The HDF5 library is required for modern I/O of \vv{neo-2}. One advantage over
-text files is that each variable (dataset) has a unique name and can
-store additional attributes such as units and/or comments. The usage of HDF5
-was unavoidable for storing the large datasets that occur when computing
-the generalized Spitzer function for stellarators. In order to simplify
-the calls a collection of wrapper routines has been created. This
-project has grown over the time so that it was decided to use these
-wrapper functions also in other projects, as in the interface, so that
-it became an own library called \vv{hdf5tools}.
-
-For parallelization the Message Passing Interface (MPI) is used. The
-usage of MPI in \vv{neo-2} is performed via an own library, called MyMPILib,
-and is not restricted to a particular MPI implementation. At our
-institute it is linked against OpenMPI, where on clusters Intel MPI is
-mostly used. MyMPILib was developed so that in the code of \vv{neo-2} no
-native MPI commands have to be used.
-
-Note that it was decided to no longer have \vv{hdf5tools} and
-\vv{MyMPILib} as separate libraries, but to add them to \vv{libneo},
-which is intended to collect code that is used by multiple programs of
-the group. As already mentioned, \vv{libneo} is also available from
-github.
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
