@@ -105,22 +105,23 @@ physical background.
 
 \subsection{Required steps}
 \begin{itemize}
-  \item get profiles
-  \item get magnetic field as boozer file
-  \item clone/update \vv{libneo} and \vv{neo-2} repositories
-  \item compile the codes
-  \item create working directory, and a template directory in this
-  \item transform input into required form for create\_surfaces.x
-  \item get/create configuration files
-  \item check/edit settings as necessary
-  \item run create\_surfaces.x
-  \item run create\_surf.py
-  \item run neo2.x for prop\_reconstruct=0
-  \item run neo2.x for prop\_reconstruct=1
-  \item run neo2.x for prop\_reconstruct=2
-  \item run neo2.x for prop\_reconstruct=3
-  \item run h5merge.x to collect data
-  \item postprocessing (e.g. plotting)
+  \item get profiles (Sec.~\ref{running_preparation_profiles})
+  \item get magnetic field as boozer file (Sec.~\ref{running_preparation_equilibrium})
+  \item make sure you have all required libraries (Sec.~\ref{technicalbackground_libraries})
+  \item clone/update \vv{libneo} and \vv{neo-2} repositories (Sec.~\ref{technicalbackground_git})
+  \item compile the codes (Sec.~\ref{technicalbackground_cmake})
+  \item create working directory, and a template directory in this (Sec.~\ref{running_preparation_directories})
+  \item transform input into required form for create\_surfaces.x (Sec.~\ref{running_preparation_profiles})
+  \item get/create configuration files (Sec.~\ref{running_preparation_neo2in})
+  \item check/edit settings as necessary (Sec.~\ref{running_preparation_neo2in})
+  \item run create\_surfaces.x (Sec.~\ref{running_preparation_directories})
+  \item run create\_surf.py (Sec.~\ref{running_preparation_directories})
+  \item run neo2.x for prop\_reconstruct=0 (Sec.~\ref{running_running})
+  \item run neo2.x for prop\_reconstruct=1 (Sec.~\ref{running_running})
+  \item run neo2.x for prop\_reconstruct=2 (Sec.~\ref{running_running})
+  \item run neo2.x for prop\_reconstruct=3 (Sec.~\ref{running_running})
+  \item run h5merge.x to collect data (Sec.~\ref{running_running})
+  \item postprocessing (e.g. plotting) (Sec.~\ref{spitzer_function}, \ref{travis} and \ref{bootstrap})
 \end{itemize}
 
 % ----------------------------------------------------------------------
@@ -149,7 +150,7 @@ Distribution function & Yes & No (planned)
 \end{table}
 
 % ----------------------------------------------------------------------
-\subsection{The Git repository}
+\subsection{The Git repository\label{technicalbackground_git}}
 Since 2013 the general version of \vv{neo-2} is under Git version control.
 Later, also the quasilinear version was added to this repository
 including its code history. The official repository is located on github:
@@ -173,7 +174,7 @@ https://github.com/itpplasma/libneo/
 which is required by \vv{neo-2}.
 
 % ----------------------------------------------------------------------
-\subsection{CMake}
+\subsection{CMake and Compiling \label{technicalbackground_cmake}}
 The build system of \vv{neo-2} and \vv{libneo} is CMake (since 2012).
 The main advantage is that this build system takes care of correct
 compilation order of the source files (dependency resolving) and that
@@ -425,7 +426,7 @@ file has to have the form of
 \end{itemize}
 
 % ----------------------------------------------------------------------
-\subsection{Preparation of the run directories}
+\subsection{Preparation of the run directories\label{running_preparation_directories}}
 Next step is the preparation of the flux surface grid for the \vv{neo-2}
 runs. It is started from an uniform grid where each grid point is
 slightly shifted if a low-order rational flux surface is detected.
@@ -546,7 +547,7 @@ processors available per node, or even more, but this is untested and
 may reduce performance due to limited bandwidth between nodes.
 
 % ----------------------------------------------------------------------
-\subsection{Running the jobs}
+\subsection{Running the jobs\label{running_running}}
 In order to start the jobs the command
 \begin{verbatim}
 run_condor.sh condor-all.submit
@@ -612,7 +613,7 @@ of 350 GB means this step will take approximately ten thousand seconds).
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
-\section{Studies of the generalized Spitzer function}
+\section{Studies of the generalized Spitzer function\label{spitzer_function}}
 The following works with the merged output of multiple flux surfaces or
 with the output of a single flux surface.
 
@@ -652,7 +653,7 @@ tools located here:
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
-\section{Running TRAVIS}
+\section{Running TRAVIS\label{travis}}
 TRAVIS is located here:
 \begin{verbatim}
 /proj/plasma/TRAVIS
@@ -680,7 +681,7 @@ have to be set, especially, \vv{makeunix/mkfiles/defs.mk}.
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
-\section{Bootstrap}
+\section{Bootstrap\label{bootstrap}}
 For plotting the bootstrap coefficient it is not necessary to run \vv{neo-2}
 in the reconstruction mode. Plotting can be done with the script
 \vv{plot_evolve_h5.m}.
