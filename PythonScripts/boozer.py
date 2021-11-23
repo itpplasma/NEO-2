@@ -767,7 +767,7 @@ class BoozerFile:
       self.nper, self.flux, self.a, self.R)
 
     for i in range(self.nsurf):
-      append_boozer_block_head(filename, self.s[i], self.iota[i],
+      _append_boozer_block_head(filename, self.s[i], self.iota[i],
         self.Jpol_divided_by_nper[i], self.Itor[i], self.pprime[i],
         self.sqrt_g_00[i])
       _append_boozer_block(filename, self.m[i], self.n[i],
