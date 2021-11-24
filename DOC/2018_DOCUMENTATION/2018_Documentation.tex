@@ -830,6 +830,139 @@ containing the run directories, plots the bootstrap coefficient. Using
 specific run directory (containing \vv{magnetics.h5}) plots the magnetic
 field module along the field line with level distribution.
 
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
+\section{Running NEO-2 on marconi\label{marconi}}
+While in general the steps to run \vv{neo-2} are the same, there might
+be some points that differ. Those are covered here for running \vv{neo-2}
+on the marconi cluster, as well as some additional hints.
+
+Be sure to also take a look at the documentation
+\begin{verbatim}
+https://wiki.u-gov.it/confluence/display/SCAIUS/HPC+User+Guide
+\end{verbatim}
+
+% ----------------------------------------------------------------------
+\subsection{Getting data to/from marconi}
+Note that at the time of writing using \vv{scp}/\vv{rsync} on marconi to
+Graz does not work, i.e. you have to run these commands in Graz.
+You can check if you might suffer from the same problem by using \vv{ping}:
+\begin{verbatim}
+ping localadress
+\end{verbatim}
+if the packages arrive, then \vv{scp}/\vv{rsync} work.
+
+% ----------------------------------------------------------------------
+\subsection{Preparations}
+First you will need a user account for cineca, then acess to the HPC
+system. The necessary steps will not be repeated here, check the
+documentation for this (see link above).
+
+As other HPC environments marconi uses a module system, to provide
+different versions of software (e.g. compiler).
+
+The following list of modules was used, and loaded in \vv{.bashrc}
+
+\begin{verbatim}
+module load cmake/3.18.2
+module load intel/pe-xe-2018--binary
+module load intelmpi/2018--binary
+module load blas/3.8.0--intel--pe-xe-2018--binary
+module load lapack/3.8.0--intel--pe-xe-2018--binary
+module load metis/5.1.0--intel--pe-xe-2018--binary
+module load mkl/2018--binary
+
+# hdf5 requirements
+module load szip/2.1--gnu--6.1.0
+module load zlib/1.2.8--gnu--6.1.0
+
+module load hdf5/1.10.4--intelmpi--2018--binary
+module load python/3.6.4
+# following two are scipy requirements, scipy required for testing arnoldi
+module load mkl/2018--binary
+numpy/1.14.0--python--3.6.4
+module load scipy/1.2.2--python--3.6.4
+\end{verbatim}
+
+Note that there was a newer version of the intel compiler available,
+but some of the required modules had the 2018 compiler as prerequisite.
+
+Additionally these libraries had to be compiled:
+\begin{itemize}
+  \item gsl
+  \item fgsl
+  \item SuiteSparse
+\end{itemize}
+
+Note that there is a gsl module available, but for unknown reasons it
+was not found during configuration.
+
+Matching releases of \vv{gsl} and \vv{fgsl} have been downloaded localy
+and then copied to marconi.
+
+For the libraries shell scripts \vv{buildcommands.sh} have been written.
+Those of \vv{gsl} is
+\begin{verbatim}
+#! /bin/bash
+
+./configure --prefix=${HOME}/local/
+make
+make install
+\end{verbatim}
+Those of \vv{fgsl}
+\begin{verbatim}
+#! /bin/bash
+
+export gsl_LIBS=`gsl-config --libs`
+export gsl_CFLAGS=`gsl-config --cflags`
+./configure --prefix=${HOME}/local/
+make
+make install
+\end{verbatim}
+but before this can be used, once the commands
+\begin{verbatim}
+mkdir m4
+autoreconf -i
+\end{verbatim}
+are required.
+
+SuiteSparse was cloned from its git repository and then compiled
+\begin{verbatim}
+git clone https://github.com/DrTimothyAldenDavis/SuiteSparse.git
+make BLAS="-L${MKLROOT}/lib/intel64/ -lmkl_rt"
+\end{verbatim}
+Note that not all parts could be comiled succesfully, but as the required
+parts could be build, this was not further investigated. (\vv{SPQR}
+did not work because of compiler version.)
+
+To make sure \vv{gsl} and \vv{fgsl} are found, the following lines
+where added to the \vv{.bashrc}
+\begin{verbatim}
+export PATH=${HOME}/local/bin/:${PATH}
+export LD_LIBRARY_PATH=${HOME}/local/lib/:${LD_LIBRARY_PATH}
+export PKG_CONFIG_PATH=${HOME}/local/lib/pkgconfig/:${PKG_CONFIG_PATH}
+\end{verbatim}
+
+\subsection{Compiling libneo and NEO-2}
+Some specific modifications had to be made to get \vv{libneo} and
+\vv{neo-2} to compile on marconi.
+
+For \vv{libneo} the line
+\begin{verbatim}
+target_link_libraries(libneo lapack)
+\end{verbatim}
+in \vv{CMakeLists.in} had to be commented.
+Additionally the bodies of the routines \vv{h5_add_complex_1} and
+\vv{h5_add_complex_2} in \vv{src/hdf5_tools/hdf5_tools.f90} had to be
+commented. This is due to a bug in the intel compiler, which does not
+allow to use \vv{complex_number\%re} or \vv{complex_number\%im} (The
+slash \vv{\\} had to be added due to \LaTeX) as
+parameter for intent out or inout arguments. It is expected that this
+bug is also in the 2020 version, while newer versions might have it
+fixed.
+This should not be a problem for \vv{neo-2} as so far only real values
+need to be read.
+
 \clearpage
 
 % ----------------------------------------------------------------------
