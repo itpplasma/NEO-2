@@ -834,7 +834,7 @@ field module along the field line with level distribution.
 % ----------------------------------------------------------------------
 \section{Running NEO-2 on marconi\label{marconi}}
 While in general the steps to run \vv{neo-2} are the same, there might
-be some points that differ. Those are covered here for running \vv{neo-2}
+be some points that differ. Those are covered here for running the relativistic version of \vv{neo-2}
 on the marconi cluster, as well as some additional hints.
 
 Be sure to also take a look at the documentation
@@ -962,6 +962,85 @@ bug is also in the 2020 version, while newer versions might have it
 fixed.
 This should not be a problem for \vv{neo-2} as so far only real values
 need to be read.
+
+For \vv{neo-2}, in \vv{ProjectConfig.cmake.in} the lines
+\begin{verbatim}
+set(SUITESPARSE_INCLUDE_DIR_HINTS
+    /marconi/home/userexternal/rbuchhol/Programs/SuiteSparse/include/)
+set(SUITESPARSE_LIBRARY_DIR_HINTS
+    /marconi/home/userexternal/rbuchhol/Programs/SuiteSparse/lib/)
+\end{verbatim}
+have been added to make sure the \vv{SuiteSparse} library is found.
+The setting of PROJECTLIBS and MPE\_PATH have been commented, while
+setting of LIBNEOLIBS has been changed to
+\begin{verbatim}
+set(LIBNEOLIBS /marconi/home/userexternal/rbuchhol/Programs/libneo/
+    CACHE STRING "libneo library path")
+\end{verbatim}
+Final change for was in the else-clause of the compiler-id check. Where
+the following two lines belong
+\begin{verbatim}
+set(FGSL_PATH /marconi/home/userexternal/rbuchhol/local/)
+set(NEO2_Libs ${LIBNEOLIBS}/Build-Intel/ CACHE STRING "Libneo path")
+\end{verbatim}
+
+In \vv{CMakeSources.in} the lines corresponding to SuperLU have been
+commented, as it was decided to compile only one of SuiteSparse and SuperLU.
+
+In \vv{CMakeLists.txt} lines
+\begin{verbatim}
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+\end{verbatim}
+(after corresponding call for MPI) and
+\begin{verbatim}
+include_directories(${FGSL_INC})
+include_directories(${HDF5_Fortran_INCLUDE_DIRS})
+\end{verbatim}
+have been added (former with other include\_directory calls, the latter
+after the find\_package call).
+The lines correspondig to SuperLU have been commented.
+Searching for gsl is changed to (from find\_library)
+\begin{verbatim}
+find_package(GSL COMPONENTS GSL_LIBRARY GSL_CBLAS_LIBRARY REQUIRED)
+\end{verbatim}
+Finally in \vv{target_link_libraries} the entries for \vv{gsl}, \vv{fgsl} and
+\vv{blas}/\vv{lapack} are changed
+\begin{verbatim}
+${fgsl_lib}
+${gsl_lib}
+${GSL_LIBRARIES}
+${BLAS_LIBRARIES}
+${LAPACK_LIBRARIES}
+\end{verbatim}
+
+In \vv{COMMON/sparse_mod.f90} the body of the \vv{SuperLU} subroutines
+have been commented.
+Finally line 472 (at the time of writing) of \vv{COMMON/binarysplit_mod.f90}
+has to be commented (a call of \vv{h5_add} inside of a if(false) block).
+
+\subsubsection{Additional hints}
+If you get an error or the form
+\begin{verbatim}
+/PATH/file.f90(line): error #7002: Error in opening the compiled module file. &
+  &  Check INCLUDE paths. [HDF5]
+  USE hdf5_tools
+\end{verbatim}
+(same has been seen with \vv{[GSL]} and \vv{use fgsl}), then the problem
+is not that \vv{hdf5_tools} (or the modules) is not found, the problem
+is that \vv{hdf5} (or the modules) is not found.
+Note that a line break has been added, denoted with \& at the end of the
+line and the beginning of the continuation line.
+
+Error messages of the kind
+\begin{verbatim}
+PATH/sparse_mod.f90.o: In function `sparse_mod_mp_sparse_solve_superlucomplex_b1_':
+sparse_mod.f90:(.text+0xbc5a): undefined reference to `c_fortran_zgssv_'
+sparse_mod.f90:(.text+0xc540): undefined reference to `c_fortran_zgssv_'
+sparse_mod.f90:(.text+0xcdcf): undefined reference to `c_fortran_zgssv_'
+\end{verbatim}
+mean that there are still references to \vv{SuperLU} routines, either
+comment them or also compile SuperLU.
 
 \clearpage
 
