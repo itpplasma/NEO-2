@@ -210,10 +210,8 @@ Sec.~\ref{technicalbackground_git}).
 \subsection{The Git repository\label{technicalbackground_git}}
 Since 2013 the general version of \vv{neo-2} is under Git version control.
 Later, also the quasilinear version was added to this repository
-including its code history. The official repository is located on github:
-\begin{verbatim}
-https://github.com/itpplasma/NEO-2/
-\end{verbatim}
+including its code history. The official repository is located on github
+at \url{https://github.com/itpplasma/NEO-2/}.
 At the moment it is set to private, which means you need to be logged in
 to be able to see it.
 
@@ -224,11 +222,12 @@ git clone git@github.com:itpplasma/NEO-2.git .
 in an empty directory (do not oversee the point at the end of the
 command line which defines the current directory).
 
-The same holds for \vv{libneo},
+The same holds for \vv{libneo}, \url{https://github.com/itpplasma/libneo/},
+which is required by \vv{neo-2}. Here the command is
 \begin{verbatim}
-https://github.com/itpplasma/libneo/
+git clone git@github.com:itpplasma/libneo.git .
 \end{verbatim}
-which is required by \vv{neo-2}.
+which should be done in another empty directory.
 
 Once you have cloned \vv{libneo} and \vv{neo-2} you should set the
 variables \vv{LIBNEOPATH} and \vv{NEO2PATH} in your \vv{.bashrc} file.
