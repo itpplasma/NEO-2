@@ -250,7 +250,7 @@ For octave you can add a line
 addpath('/path/to/neo-2/OctaveScripts/', '-begin')
 \end{verbatim}
 in file \vv{.octaverc} (not sure if environment variables work in this
-file).
+file, i.e. if \vv{NEO2PATH} can be used).
 
 % ----------------------------------------------------------------------
 \subsection{CMake and Compiling \label{technicalbackground_cmake}}
@@ -616,6 +616,15 @@ set_neo2in_reconstruction(folder='./',
 \end{verbatim}
 for all files.
 
+%~ An alternative is the python script \vv{neo_2_par_wrapper.py} as
+%~ executable for condor, e.g.
+%~ \begin{verbatim}
+%~ Executable = ./neo_2_par_wrapper.py
+%~ arguments = -np  4
+%~ request_cpus = 4
+%~ \end{verbatim}
+%~ for a run which should use four processors.
+
 Once the jobs have finished \vv{prop_reconstruction = 3}, the code
 \begin{verbatim}
 h5merge.x
@@ -650,7 +659,7 @@ of 350 GB means this step will take approximately ten thousand seconds).
 The following works with the merged output of multiple flux surfaces or
 with the output of a single flux surface.
 
-The best option is the create a plot-directory inside of the run
+The best option is to create a plot-directory inside of the run
 directory of \vv{neo-2}:
 \begin{verbatim}
 mkdir PLOTS
@@ -1111,9 +1120,11 @@ create\_dirs\_paramvalue.sh & \\
 \centering
 \begin{tabular}{l|l}
 Name/path   & Comment \\ \hline
-PythonScripts/create\_surf.py & creates directories from template
+create\_surf.py & creates directories from template \\
+neo\_2\_par\_wrapper.py & to run all three reconstruction steps
 \end{tabular}
-\caption{additional python3 scripts used}
+\caption{Additional python3 scripts used. If not otherwise noted, they
+are in the \vv{PythonScripts/} subfolder of \vv{neo-2}}
 \label{tab:additionalpython3scripts}
 \end{table}
 
