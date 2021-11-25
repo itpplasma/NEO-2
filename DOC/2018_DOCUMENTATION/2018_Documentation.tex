@@ -93,6 +93,9 @@ This serves as documentation on how to do ECCD simulations with
 \vv{neo-2}. As such it describes the required tasks, but not the
 physical background.
 
+Note that the variable \vv{NEO2DATAPATH} used throughout this document,
+refers to \vv{/proj/plasma/Neo2/} at the ITCP of TU Graz.
+
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
 \section{Short summary}
@@ -425,21 +428,21 @@ New parameters related to the collision operator:
 % ----------------------------------------------------------------------
 \subsection{Preparation of equilibrium\label{running_preparation_equilibrium}}
 The main directory for everything related to ECCD is
-\vv{/proj/plasma/Neo2/Interface/}. The Boozer files for ECCD runs are
-located here: \vv{/proj/plasma/Neo2/Interface/Boozer/}.
+\vv{NEO2DATAPATH/Interface/}. The Boozer files for ECCD runs are
+located here: \vv{NEO2DATAPATH/Interface/Boozer/}.
 
 Usually the W7-X files are already in the correct format to be read by
 \vv{neo-2} despite of some additional comment lines at the beginning of the
 file which can be safely removed. An example of the original file and
 the slightly modified file (some comments have been removed) is given
-here: \vv{/proj/plasma/Neo2/Interface/Boozer/w7x-m111-b3-i1/}.
+here: \vv{NEO2DATAPATH/Interface/Boozer/w7x-m111-b3-i1/}.
 
 % ----------------------------------------------------------------------
 \subsection{Preparation of the plasma parameter profiles\label{running_preparation_profiles}}
 The profiles for ECCD can be found here:
-\vv{/proj/plasma/Neo2/Interface/Profiles/}. Profiles are usually
+\vv{NEO2DATAPATH/Interface/Profiles/}. Profiles are usually
 provided as text files, e.g.,
-\vv{/proj/plasma/Neo2/Interface/Profiles/w7x-m111-b3-i1/prf.txt}.
+\vv{NEO2DATAPATH/Interface/Profiles/w7x-m111-b3-i1/prf.txt}.
 You may also get them directly from a database.
 These
 plasma parameter profiles are used for computation of the collisionality
@@ -530,7 +533,7 @@ cp ../BOOZER_FILE_NAME.bc .
 cp ../neo.in .
 cp $NEO2PATH/NEO-2-PAR/Build/neo_2.x .
 cp $NEO2PATH/DOC/neo2.in.par-full ./neo2.in
-cp /proj/plasma/Neo2/Interface/Examples/condor-all.submit .
+cp $NEO2DATAPATH/Interface/Examples/condor-all.submit .
 \end{verbatim}
 
 The last line is only used if HTCondor should be used as batch system.
@@ -664,19 +667,19 @@ directory of \vv{neo-2}:
 \begin{verbatim}
 mkdir PLOTS
 cd PLOTS
-ln -s /proj/plasma/Neo2/Interface/Spitzer_Interface/Build/neo2_g.x
-cp /proj/plasma/Neo2/Interface/Examples/g_vs_lambda.in .
-cp /proj/plasma/Neo2/Interface/Examples/spitzerinterface.in .
+ln -s $NEO2DATAPATH/Interface/Spitzer_Interface/Build/neo2_g.x
+cp $NEO2DATAPATH/Interface/Examples/g_vs_lambda.in .
+cp $NEO2DATAPATH/Interface/Examples/spitzerinterface.in .
 ./neo2_g.x
 \end{verbatim}
 
 The config files are defined in the technical documentation of the
-interface\footnote{\vv{/proj/plasma/Neo2/Interface/Documentation/Internal/Interface.pdf}}.
+interface\footnote{\vv{NEO2DATAPATH/Interface/Documentation/Internal/Interface.pdf}}.
 The result file (\vv{g_vs_lambda.h5}) can be plotted with MATLAB, e.g.,
 with \vv{plot_g_xfix.m} from the main directory of all MATLAB scripts
 related to ECCD:
 \begin{verbatim}
-/proj/plasma/Neo2/Interface/Matlab
+$NEO2DATAPATH/Interface/Matlab
 \end{verbatim}
 
 Please note that the information about the magnetic field is stored per
@@ -690,7 +693,7 @@ Further plots of the magnetic field, such as a 2D distribution of the
 magnetic field module on a particular flux surface can be made with the
 tools located here:
 \begin{verbatim}
- /proj/plasma/Neo2/Interface/Magfie
+$NEO2DATAPATH/Interface/Magfie
 \end{verbatim}
 
 % ----------------------------------------------------------------------
@@ -731,11 +734,9 @@ This script has to be started in the directory where the complete \vv{neo-2}
 run is located.
 
 For investigating the gradient driven distribution it is necessary to
-complete a full reconstruction run of \vv{neo-2} (steps 0 to 3). Then one can
-use the MATLAB scripts from
-\begin{verbatim}
-/proj/plasma/DOCUMENTS/PHD_Gernot/2017_BOOTSTRAP
-\end{verbatim}
+complete a full reconstruction run of \vv{neo-2} (steps 0 to 3).
+Once the run(s) is(are) finished, plotting can be done with the
+MATLAB/octave scripts provided with \vv{neo-2},
 in order to evaluate the antisymmetric part of the gradient driven
 distribution function at various observation points. The script
 \vv{count_maxima_bootstrap.m} is a good place to start with.
@@ -761,7 +762,7 @@ Short/conl_over_mfp=5m5-boozer_s=0.25d0-mag_nperiod_min=1-bsfunc_local_err=1m1
 Note that a newline was added in the above path, to improve readability.
 In the subdirectory \vv{PLOTS} a symbolic link to the distribution
 function plotter for bootstrap is already prepared
-(\vv{/proj/plasma/Neo2/Interface/Spitzer_Interface/Build/dentf_lorentz.x}).
+(\vv{NEO2DATAPATH/Interface/Spitzer_Interface/Build/dentf_lorentz.x}).
 Please note that this executable is slightly different to \vv{neo2_g.x}
 as used for Spitzer function, because a significant higher number of
 $x$-values (velocity module) are used for plotting. In
@@ -1089,7 +1090,7 @@ comment them or also compile SuperLU.
 Here four tables list executables, shell scripts, python scripts and octave/matlab scripts,
 respectively, that are mentioned in this document besides \vv{neo-2}.
 
-Note that \vv{$INTERFACE} is here short for \vv{/proj/plasma/Neo2/Interface/}.
+Note that \vv{$INTERFACE} is here short for \vv{$NEO2DATAPATH/Interface/Spitzer_Interface/}.
 
 \begin{table}[h]
 \centering
@@ -1097,8 +1098,8 @@ Note that \vv{$INTERFACE} is here short for \vv{/proj/plasma/Neo2/Interface/}.
 Name/path   & Comment \\ \hline
 tools/create\_surfaces & convert profile to form used by create\_surf.py \\
 libneo:tools/h5merge & merges final.h5 of subdirectories \\
-\$INTERFACE/Spitzer\_Interface/Build/neo2\_g.x & \\
-\$INTERFACE/Spitzer\_Interface/Build/dentf\_lorentz.x &
+\$INTERFACE/Build/neo2\_g.x & \\
+\$INTERFACE/Build/dentf\_lorentz.x &
 \end{tabular}
 \caption{additional executables used besides neo-2}
 \label{tab:additionalcodes}
