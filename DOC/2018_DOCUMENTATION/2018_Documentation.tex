@@ -177,15 +177,17 @@ for several purposes. The first one provides very efficient numerical
 integration methods used for the computation of the matrix elements of
 the collision operator in \verb|collop_compute.f90|. Additionally, GSL
 provides B-spline routines, also used for the collision operator module
-(basis functions). While writing this document FGSL is not distributed
-with Debian, therefore this is build locally in \verb|/proj/plasma/Libs/|.
-If you are sitting somewhere else, you might need to install it.
+(basis functions). While \vv{gsl} usally installed on (scientific) linux
+systems, \vv{fgsl} is not. You thus probably need to compile it on your
+own. Be sure to select an \vv{fgsl} version that is suitable for the
+\vv{gsl} version used.
 
 The HDF5 library is required for modern I/O of \vv{neo-2}. One advantage over
 text files is that each variable (dataset) has a unique name and can
 store additional attributes such as units and/or comments. The usage of HDF5
 was unavoidable for storing the large datasets that occur when computing
-the generalized Spitzer function for stellarators. In order to simplify
+the generalized Spitzer function for stellarators ($\gtrsim 10\mathrm{GB}$ with \vv{hdf5}
+for a single flux surface). In order to simplify
 the calls a collection of wrapper routines has been created. This
 project has grown over the time so that it was decided to use these
 wrapper functions also in other projects, as in the interface, so that
@@ -228,15 +230,42 @@ https://github.com/itpplasma/libneo/
 \end{verbatim}
 which is required by \vv{neo-2}.
 
+Once you have cloned \vv{libneo} and \vv{neo-2} you should set the
+variables \vv{LIBNEOPATH} and \vv{NEO2PATH} in your \vv{.bashrc} file.
+In case you used above commands in your home folder the required lines
+could read
+\begin{verbatim}
+export NEO2PATH=${HOME}/NEO-2/
+export LIBNEOPATH=${HOME}/libneo/
+\end{verbatim}
+Variable \vv{NEO2PATH} is also used throughout this document.
+
+Three other variables that you might want to adapted are \vv{PATH},
+\vv{PYTHONPATH} and \vv{MATLABPATH}. Adding the script paths of \vv{neo-2}
+and \vv{libneo} to \vv{PATH} allows you to use the scripts within without
+having to type the full path or to copy/link them.
+The other two variables make sure python/matlab, respectively will find
+the corresponding scripts.
+For octave you can add a line
+\begin{verbatim}
+addpath('/path/to/neo-2/OctaveScripts/', '-begin')
+\end{verbatim}
+in file \vv{.octaverc} (not sure if environment variables work in this
+file).
+
 % ----------------------------------------------------------------------
 \subsection{CMake and Compiling \label{technicalbackground_cmake}}
 The build system of \vv{neo-2} and \vv{libneo} is CMake (since 2012).
 The main advantage is that this build system takes care of correct
 compilation order of the source files (dependency resolving) and that
 routines can be defined to automatically detect the installed
-libraries. The configuration file is called \verb|CMakeLists.txt|. Using
+libraries. For a range of often used libraries there are already routines
+available. Using
 CMake the source- and build-directories can be separated from each
-other, and both codes require that this is done. Thus, in order to build
+other, and both codes require that this is done.
+
+The configuration file for \vv{cmake} is called \verb|CMakeLists.txt|.
+Thus, in order to build
 the source code it is necessary to create a build-directory. For reasons
 of readability it was decided to put the source files to be compiled in
 a separate file, called \vv{CMakeSources.in}. Additionaly, some of the
@@ -262,7 +291,7 @@ which can be used by running \vv{make}.
 
 Before going on to compile \vv{neo-2} you should also compile the tool
 \vv{h5merge} in the corresponding subfolder. The procedure to do so is
-the same, just do it in the subfolder.
+the same, just in the subfolder \vv{tools/h5merge}.
 
 After libneo is compiled, you can compile \vv{neo-2}:
 \begin{verbatim}
@@ -301,8 +330,8 @@ module and to the code NEO.
 
 \subsubsection{neo2.in\label{running_preparation_neo2in}}
 This file is a Fortran namelist file. It contains physical input
-quantities and a lot of numerical and technical parameters. Here, the
-most important (and new) parameters are described.
+quantities, as well as numerical and technical parameters. Here, the
+most important parameters are described.
 Check also \vv{neo2.in.par-full} in the DOC folder of the \vv{neo-2}
 repository. The file should contain an up-to-date list of all the input
 parameters together with default values and maybe a short explanation.
@@ -356,7 +385,7 @@ New parameters related to the collision operator:
 
  \item \verb|collop_base_exp|\newline
  Expansion base for basis function expansion. See \verb|collop_base_prj|
- for parameters. At the moment it was only tested for
+ for parameters. At the moment it is only tested for
  \verb|collop_base_prj = collop_base_exp|.
 
  \item \verb|collop_bspline_order|\newline
@@ -411,7 +440,9 @@ here: \vv{/proj/plasma/Neo2/Interface/Boozer/w7x-m111-b3-i1/}.
 The profiles for ECCD can be found here:
 \vv{/proj/plasma/Neo2/Interface/Profiles/}. Profiles are usually
 provided as text files, e.g.,
-\vv{/proj/plasma/Neo2/Interface/Profiles/w7x-m111-b3-i1/prf.txt}. These
+\vv{/proj/plasma/Neo2/Interface/Profiles/w7x-m111-b3-i1/prf.txt}.
+You may also get them directly from a database.
+These
 plasma parameter profiles are used for computation of the collisionality
 parameter $\kappa$, which is then used as an input to \vv{neo-2}. Please note
 that the collisionality is a function of the flux surface label. For the
@@ -419,8 +450,7 @@ converter is it necessary that the file has the appropriate format and
 the that units are correct. A MATLAB script is given in the file
 \vv{convert_prf.m}, while it should be noted that the reader section of
 this script is adapted for one particular input file format. The output
-file has to have the form of
-\vv{/proj/plasma/Neo2/Interface/Profiles/w7x-m111-b3-i1/profiles.dat}.
+file has to have one line per flux surface, with four columns each:
 \begin{itemize}
  \item 1. Column: Normalized toroidal flux (\vv{boozer_s}).
  \item 2. Column: Electron density in cm$^{-3}$.
@@ -438,7 +468,7 @@ collisionality parameter (by spline interpolation along the radial
 coordinate).
 
 It is now necessary to copy the following required files to a new
-empty directory,
+empty directory (the working directory),
 \begin{verbatim}
 boozer file
 profile file
@@ -491,7 +521,8 @@ order to not shift this surface to far away from the original
 equidistant grid.
 
 In the next step a template directory for the run directories has to be
-created. Here, an example of \vv{neo2.in} is used and the executable of
+created. Here, a default \vv{neo2.in} is used (so be sure to chekc the
+settings) and the executable of
 \vv{neo-2} is copied from the project directory.
 \begin{verbatim}
 mkdir TEMPLATE_DIR
@@ -499,7 +530,7 @@ cd TEMPLATE_DIR
 cp ../BOOZER_FILE_NAME.bc .
 cp ../neo.in .
 cp $NEO2PATH/NEO-2-PAR/Build/neo_2.x .
-cp /proj/plasma/Neo2/Interface/Examples/neo2.in .
+cp $NEO2PATH/DOC/neo2.in.par-full ./neo2.in
 cp /proj/plasma/Neo2/Interface/Examples/condor-all.submit .
 \end{verbatim}
 
@@ -515,7 +546,7 @@ that are replaced in the following step.
 
 Next, the code
 \vv{\$NEO2PATH/PythonScripts/create_surf.py} has to has to
-be started, in the parent directory of the template directory.
+be started, in the working directory.
 
 This creates \vv{s_steps} directories, each with an modified
 \vv{neo2.in} file. It is recommended to change into one of these
