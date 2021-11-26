@@ -71,12 +71,11 @@
 \newcommand{\vb}{\lstinline}
 \newcommand{\vv}[1]{\texttt{\detokenize{#1}}}
 
-\title{\textbf{Technical NEO-2 documentation\\June 2018, Updates 2021}}
+\title{\textbf{Technical Documentation of NEO-2\\November 2021}}
 
 \author[1]{Rico~Buchholz}
 \author[1]{Winfried~Kernbichler}
 \author[1]{Sergei~Kasilov}
-\author[1]{Gernot~Kapper}
 \affil[1]{Fusion@\"OAW, Institute of Theoretical and Computational Physics, Graz University of Technology, Petersgasse 16, 8010 Graz, Austria}
 \renewcommand\Affilfont{\itshape\small}
 
@@ -94,9 +93,21 @@ efficiency) or evaluate transport coefficients with \vv{NEO-2} and how
 to do ECCD simulations with TRAVIS using \vv{NEO-2} input of ECCD efficiency.
 As such it describes the required tasks, but not the
 physical background.
+The relevant physical background can be found in
+\begin{itemize}
+  \item W. Kernbichler, S. Kasilov, G. Kapper, A. F. Martitsch, V. Nyemov, C. G. Albert, \& M. F. Heyn (2016). Solution of drift kinetic equation in stellarators and tokamaks with broken symmetry using the code NEO-2. Plasma Physics and Controlled Fusion, 58, 104001. \url{https://doi.org/10.1088/0741-3335/58/10/104001}
+
+  \item G. Kapper, S. Kasilov, W. Kernbichler, A. F. Martitsch, M. F. Heyn, N. B. Marushchenko, \& Y. Turkin (2016). Electron cyclotron current drive simulations for finite collisionality plasmas in Wendelstein 7-X using the full linearized collision model. Physics of plasmas, 23(11), 112511. \url{https://doi.org/10.1063/1.4968234}
+
+  \item G. Kapper, S. Kasilov, W. Kernbichler, \& M. Aradi (2018). Evaluation of relativistic transport coefficients and the generalized Spitzer function in devices with 3D geometry and finite collisionality. Physics of plasmas, 25(12), 122509. \url{https://doi.org/10.1063/1.5063564}
+\end{itemize}
 
 Note that the variable \vv{NEO2DATAPATH} used throughout this document,
 refers to \vv{/proj/plasma/Neo2/} at the ITCP of TU Graz.
+
+In case of questions regarding this document or \vv{NEO-2}, the authors
+can be reached by e-mail\footnote{\makeatletter \url{buchholz@tugraz.at}
+and \url{winfried.kernbichler@tugraz.at} \makeatother}.
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
@@ -264,7 +275,7 @@ file, i.e. if \vv{NEO2PATH} can be used).
 
 % ----------------------------------------------------------------------
 \subsection{CMake and Compiling \label{technicalbackground_cmake}}
-The build system of \vv{NEO-2} and \vv{libneo} is CMake (since 2012).
+The build system of \vv{NEO-2} and \vv{libneo} is CMake.
 The main advantage is that this build system takes care of correct
 compilation order of the source files (dependency resolving) and that
 routines can be defined to automatically detect the installed
@@ -439,9 +450,12 @@ The main directory for everything related to ECCD is
 Equilibrium magnetic field in Boozer coordinates is provided for NEO-2
 in the form of text files called in this document ``Boozer files'', with usual file ending ``bc''.
 They contain data in a specific format (meant here: not just a table of values).
-Example can be found in \vv{DOC/example_bg_field.bc} and \vv{DOC/example_pert_field.bc}
+Examples can be found in \vv{DOC/example_bg_field.bc} and \vv{DOC/example_pert_field.bc}.
 The Boozer files for ECCD runs are
-located here: \vv{NEO2DATAPATH/Interface/Boozer/}.
+located in
+\begin{verbatim}
+$NEO2DATAPATH/Interface/Boozer/
+\end{verbatim}
 
 Usually the W7-X files are already in the correct format to be read by
 \vv{NEO-2} despite of some additional comment lines at the beginning of the
@@ -453,8 +467,10 @@ here: \vv{NEO2DATAPATH/Interface/Boozer/w7x-m111-b3-i1/}.
 \subsection{Preparation of the plasma parameter profiles\label{running_preparation_profiles}}
 The profiles for ECCD can be found here:
 \vv{NEO2DATAPATH/Interface/Profiles/}. Profiles are usually
-provided as text files, e.g.,
-\vv{NEO2DATAPATH/Interface/Profiles/w7x-m111-b3-i1/prf.txt}.
+provided as text files, e.g.
+\begin{verbatim}
+$NEO2DATAPATH/Interface/Profiles/w7x-m111-b3-i1/prf.txt
+\end{verbatim}
 You may also get them directly from a database.
 These
 plasma parameter profiles are used for computation of the collisionality
@@ -475,7 +491,7 @@ file has to have one line per flux surface, with four columns each:
 % ----------------------------------------------------------------------
 \subsection{Preparation of the run directories\label{running_preparation_directories}}
 Next step is the preparation of the flux surface grid for the \vv{NEO-2}
-runs. It is started from an uniform grid where each grid point is
+runs. It is started from an uniform grid where a given radial grid point is
 slightly shifted if a low-order rational flux surface is detected.
 Afterwards the given profile file is read for computation of the
 collisionality parameter (by spline interpolation along the radial
@@ -664,7 +680,7 @@ each folder for ``infilename'', and ignores folders that do not contain
 a file of this name.
 
 In either case the operation is probably limited by filesystem operations
-and thus may take a while (in Graz is a gigabit network and speed is
+and thus may take a while (at ITCP of TU Graz is a gigabit network and speed is
 about 30-40 MB/s, with respect to output file, i.e. an output file size
 of 350 GB means this step will take approximately ten thousand seconds).
 
@@ -768,8 +784,8 @@ function at the defined observation point(s).
 
 A good start for beginning is with LHD runs for the bootstrap tasks, e.g.:
 \begin{verbatim}
-/temp/gernot_k/Neo2/RunsByDate/2017_07_Bootstrap/lhd/
-Short/conl_over_mfp=5m5-boozer_s=0.25d0-mag_nperiod_min=1-bsfunc_local_err=1m1
+$RUNPATH/
+conl_over_mfp_5m5-boozer_s_0.25d0-mag_nperiod_min_1-bsfunc_local_err_1m1
 \end{verbatim}
 Note that a newline was added in the above path, to improve readability.
 In the subdirectory \vv{PLOTS} a symbolic link to the distribution
@@ -806,7 +822,7 @@ The script \vv{create_dirs_paramvalue.sh} reads a file called
 files to given subdirectories and modifies each \vv{neo2.in}. It is best
 explained by looking at some examples, e.g., here:
 \begin{verbatim}
-/temp/gernot_k/Neo2/RunsByDate/2017_07_Bootstrap/ratfieldline
+$RUNPATH/RunsByDate__2017_07_Bootstrap__ratfieldline
 \end{verbatim}
 
 For running the jobs the same script can be used as introduced in the
@@ -855,9 +871,9 @@ Some IEEE underflow errors are "normal" at the moment. They arise from
 some underflow during the integration of the matrix elements and might
 be fixed in the future.
 
-The requirements and ernvironment lines are commented, i.g. not actually
+The \vv{requirements} and \vv{ernvironment} lines are commented, i.g. not actually
 considered in this example.
-The environment needs to be set on the machines of the Institute of
+The \vv{environment} needs to be set on the machines of the Institute of
 Theoretical and Computational Physics at TU Graz.
 The requirements do not have to be changed except one would like
 to exclude a special machine from Condor.
@@ -869,7 +885,9 @@ not block them for people who need the memory.
 \subsection{Boozer file for rational field line}
 For creating a magnetic equilibrium with toroidal perturbations, the
 MATLAB script
-\vv{boozer_rational.m}
+\begin{verbatim}
+boozer_rational.m
+\end{verbatim}
 can be used.
 
 This script starts from \vv{tok-synch2.bc}, adds a perturbation field
@@ -885,9 +903,9 @@ field module along the field line with level distribution.
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
 \section{Running NEO-2 on Marconi cluster\label{marconi}}
-While in general the steps to run \vv{NEO-2} are the same, there might
-be some points that differ. Those are covered here for running the relativistic version of \vv{NEO-2}
-on the marconi cluster, as well as some additional hints.
+While in general the steps to run \vv{NEO-2} are the same, there are
+some points that differ. Those are covered here for running the relativistic version of \vv{NEO-2}
+on the Marconi cluster, as well as some additional hints.
 
 Be sure to also take a look at the documentation
 \begin{verbatim}
@@ -896,8 +914,8 @@ https://wiki.u-gov.it/confluence/display/SCAIUS/HPC+User+Guide
 
 % ----------------------------------------------------------------------
 \subsection{Getting data to/from Marconi cluster}
-Note that at the time of writing using \vv{scp}/\vv{rsync} on marconi to
-Graz does not work, i.e. you have to run these commands in Graz.
+Note that at the time of writing using \vv{scp}/\vv{rsync} on Marconi to
+TU Graz does not work, i.e. you have to run these commands in Graz.
 You can check if you might suffer from the same problem by using \vv{ping}:
 \begin{verbatim}
 ping localadress
@@ -910,7 +928,7 @@ First you will need a user account for cineca, then acess to the HPC
 system. The necessary steps will not be repeated here, check the
 documentation for this (see link above).
 
-As other HPC environments marconi uses a module system, to provide
+As other HPC environments Marconi uses a module system, to provide
 different versions of software (e.g. compiler).
 
 The following list of modules was used, and loaded in \vv{.bashrc}
@@ -950,7 +968,7 @@ Note that there is a gsl module available, but for unknown reasons it
 was not found during configuration.
 
 Matching releases of \vv{gsl} and \vv{fgsl} have been downloaded localy
-and then copied to marconi.
+and then copied to Marconi.
 
 For the libraries shell scripts \vv{buildcommands.sh} have been written.
 Those of \vv{gsl} is
@@ -997,7 +1015,7 @@ export PKG_CONFIG_PATH=${HOME}/local/lib/pkgconfig/:${PKG_CONFIG_PATH}
 
 \subsection{Compiling libneo and NEO-2}
 Some specific modifications had to be made to get \vv{libneo} and
-\vv{NEO-2} to compile on marconi.
+\vv{NEO-2} to compile on Marconi.
 
 For \vv{libneo} the line
 \begin{verbatim}
@@ -1007,7 +1025,7 @@ in \vv{CMakeLists.in} had to be commented.
 Additionally the bodies of the routines \vv{h5_add_complex_1} and
 \vv{h5_add_complex_2} in \vv{src/hdf5_tools/hdf5_tools.f90} had to be
 commented. This is due to a bug in the intel compiler, which does not
-allow to use \vv{complex_number\%re} or \vv{complex_number\%im} (The
+allow to use \vv{complex\%re} or \vv{complex\%im} (The
 slash \vv{\\} had to be added due to \LaTeX) as
 parameter for intent out or inout arguments. It is expected that this
 bug is also in the 2020 version, while newer versions might have it
@@ -1093,8 +1111,6 @@ sparse_mod.f90:(.text+0xcdcf): undefined reference to `c_fortran_zgssv_'
 \end{verbatim}
 mean that there are still references to \vv{SuperLU} routines, either
 comment them or also compile SuperLU.
-
-\clearpage
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
