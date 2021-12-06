@@ -935,30 +935,36 @@ The following list of modules was used, and loaded in \vv{.bashrc}
 
 \begin{verbatim}
 module load cmake/3.18.2
-module load intel/pe-xe-2018--binary
-module load intelmpi/2018--binary
-module load blas/3.8.0--intel--pe-xe-2018--binary
-module load lapack/3.8.0--intel--pe-xe-2018--binary
-module load metis/5.1.0--intel--pe-xe-2018--binary
-module load mkl/2018--binary
+module load python/3.6.4
 
 # hdf5 requirements
 module load szip/2.1--gnu--6.1.0
 module load zlib/1.2.8--gnu--6.1.0
 
-module load hdf5/1.10.4--intelmpi--2018--binary
-module load python/3.6.4
-# following two are scipy requirements, scipy required for testing arnoldi
+#######################################################
+## Intel configuration
+module load intel/pe-xe-2018--binary
+module load blas/3.8.0--intel--pe-xe-2018--binary
+module load lapack/3.8.0--intel--pe-xe-2018--binary
+module load metis/5.1.0--intel--pe-xe-2018--binary
+
+## following two are scipy requirements
 module load mkl/2018--binary
-numpy/1.14.0--python--3.6.4
+module load numpy/1.14.0--python--3.6.4
 module load scipy/1.2.2--python--3.6.4
+
+#######################################################
+## gfortran configuration
+module load gnu/7.3.0
+module load openmpi/3.0.0--gnu--7.3.0
 \end{verbatim}
 
-Note that there was a newer version of the intel compiler available,
-but some of the required modules had the 2018 compiler as prerequisite.
+The intel compiler is loaded because it is a  prerequisite for \vv{blas}
+and \vv{lapack}, for compiling the libraries the gnu compiler was used.
 
 Additionally these libraries had to be compiled:
 \begin{itemize}
+  \item hdf5
   \item gsl
   \item fgsl
   \item SuiteSparse
@@ -966,28 +972,74 @@ Additionally these libraries had to be compiled:
 
 Note that there is a gsl module available, but for unknown reasons it
 was not found during configuration.
+The hdf5 library had only intel compiled versions available, which we
+can not use, as we need the fortran module files, which are compiler
+(and version) dependent.
+Note that the same holds for the mpi library and for \vv{fgsl}, while
+for \vv{gsl} and \vv{SuiteSparse} this should not be the case.
 
-Matching releases of \vv{gsl} and \vv{fgsl} have been downloaded localy
-and then copied to Marconi.
+Matching releases of \vv{hdf5}, \vv{gsl} and \vv{fgsl} have been
+downloaded localy and then copied to Marconi.
 
 For the libraries shell scripts \vv{buildcommands.sh} have been written.
+Those of \vv{hdf5} is
+\begin{verbatim}
+#! /bin/bash
+
+BUILDFOLDER=Build-7.3.0
+
+mkdir -p $BUILDFOLDER
+cd $BUILDFOLDER
+
+CC=/cineca/prod/opt/compilers/openmpi/3.0.0/gnu--7.3.0/bin/mpicc \
+  FC=/cineca/prod/opt/compilers/openmpi/3.0.0/gnu--7.3.0/bin/mpif90 \
+  ../configure --prefix=$HOME/local/ --enable-fortran --enable-parallel --enable-build-mode=production
+
+make
+make install
+
+cd ..
+\end{verbatim}
+If the c and fortran compilers where not set explicitly, then
+configuration failed with the message, that no working mpi compiler
+could be found.
+
 Those of \vv{gsl} is
 \begin{verbatim}
 #! /bin/bash
 
-./configure --prefix=${HOME}/local/
+BUILDFOLDER="Build-7.3.0"
+
+mkdir -p $BUILDFOLDER
+cd $BUILDFOLDER
+
+CC=/cineca/prod/opt/compilers/openmpi/3.0.0/gnu--7.3.0/bin/mpicc \
+  FC=/cineca/prod/opt/compilers/openmpi/3.0.0/gnu--7.3.0/bin/mpif90 \
+  ../configure --prefix=${HOME}/local/
 make
 make install
+
+cd ..
 \end{verbatim}
 Those of \vv{fgsl}
 \begin{verbatim}
 #! /bin/bash
 
+BUILDFOLDER=Build-7.3.0
+
+mkdir -p $BUILDFOLDER
+cd $BUILDFOLDER
+
 export gsl_LIBS=`gsl-config --libs`
 export gsl_CFLAGS=`gsl-config --cflags`
-./configure --prefix=${HOME}/local/
+
+CC=/cineca/prod/opt/compilers/openmpi/3.0.0/gnu--7.3.0/bin/mpicc \
+  FC=/cineca/prod/opt/compilers/openmpi/3.0.0/gnu--7.3.0/bin/mpif90 \
+  ../configure --prefix=${HOME}/local/
 make
 make install
+
+cd ..
 \end{verbatim}
 but before this can be used, once the commands
 \begin{verbatim}
@@ -1047,11 +1099,11 @@ setting of LIBNEOLIBS has been changed to
 set(LIBNEOLIBS /marconi/home/userexternal/rbuchhol/Programs/libneo/
     CACHE STRING "libneo library path")
 \end{verbatim}
-Final change for was in the else-clause of the compiler-id check. Where
-the following two lines belong
+Final change was adding a elseif-clause of the compiler-id check.
 \begin{verbatim}
-set(FGSL_PATH /marconi/home/userexternal/rbuchhol/local/)
-set(NEO2_Libs ${LIBNEOLIBS}/Build-Intel/ CACHE STRING "Libneo path")
+  elseif (CMAKE_Fortran_COMPILER_VERSION VERSION_EQUAL 7.3.0)
+    set(FGSL_PATH /marconi/home/userexternal/rbuchhol/local/)
+    set(NEO2_Libs ${LIBNEOLIBS}/Build-7.3.0/ CACHE STRING "Libneo path")
 \end{verbatim}
 
 In \vv{CMakeSources.in} the lines corresponding to SuperLU have been
@@ -1090,7 +1142,17 @@ Finally line 472 (at the time of writing) of \vv{COMMON/binarysplit_mod.f90}
 has to be commented (a call of \vv{h5_add} inside of a if(false) block).
 
 \subsubsection{Additional hints}
-If you get an error or the form
+The intel compiler has been used to compile \vv{libneo} and \vv{neo-2},
+but simulations did only run with one processor, with more, no work was
+actually done. It could be verified, that the \vv{initMaster} subroutine
+of the \vv{neo2scheduler_module} was not called, but those of the base
+class. The reason for this is unknown, and as there was neither an idea
+how to fix this, the gnu compiler was used instead.
+Note that this but was the reason for the introduction of \vv{test_mympilib}.
+At the time of writing this, it failed with the intel compiler on Marconi,
+but worked with the gnu compiler, also at the ITCP at TU Graz.
+
+When using the intel compiler, if you get an error or the form
 \begin{verbatim}
 /PATH/file.f90(line): error #7002: Error in opening the compiled module file. &
   &  Check INCLUDE paths. [HDF5]
