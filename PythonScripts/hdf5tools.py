@@ -1282,6 +1282,16 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   Either a whitelist of keys to compare or a blacklist of keys to not
   compare, can be given.
 
+  \note
+  This functions behaviour will differ depending on parameter verbose.
+  If the parameter is false, it is assumed that the function is called
+  to determine if the data of the given groups differ, and thus a short
+  circuited evaluation is used, subgroups will not be checked if
+  differences have already been found. If the parameter is true, then
+  the assumption is that the purpose of the call is also to determine
+  what are the differences, and thus no short-circuited evaluation is
+  used, to be able to report on all differences.
+
   input
   ----------
   reference_group, other_group: h5 (group) objects, the elements which
@@ -1357,7 +1367,11 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
               print('Difference in ' + key)
 
         else:
-          return_value = return_value and compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)
+          # Allow short circuited evaluation only if not verbose.
+          if (verbose):
+            return_value = all([return_value, compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)])
+          else:
+            return_value = return_value and compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)
 
   return return_value
 
