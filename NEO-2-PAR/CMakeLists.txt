@@ -23,6 +23,9 @@ include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
 # MPI is required by this NEO-2 version
 find_package(MPI REQUIRED)
 
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+
 # MPE allows graphical work load evaluation of parallel processes 
 option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" OFF)
 
@@ -175,7 +178,9 @@ target_link_libraries(${EXE_NAME}
   ${HDF5_tools_lib}
   ${HDF5_Fortran_HL_LIBRARIES}
   ${HDF5_Fortran_LIBRARIES}
-  ${BLAS_lib} -lz -lpthread
+  ${BLAS_LIBRARIES}
+  ${LAPACK_LIBRARIES}
+  -lz -lpthread
   #debug efence
 )
 

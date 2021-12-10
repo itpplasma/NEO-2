@@ -16,6 +16,9 @@ set(CMAKE_Fortran_FLAGS "-g -Wall")
 
 include(${CMAKE_SOURCE_DIR}/../../NEO-2-QL/ProjectConfig.cmake.in)
 
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+
 find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
 #~ include_directories(${CMAKE_SOURCE_DIR}/../../Build-11-1-0/ ${CMAKE_BINARY_DIR})
 include_directories(${NEO2_Inc})
@@ -48,8 +51,8 @@ set(SOURCE_FILES
 
 set(Interface_Libs
   ${libneo_lib}
-  lapack
-  blas
+  ${BLAS_LIBRARIES}
+  ${LAPACK_LIBRARIES}
 )
 
 ### Define executable
