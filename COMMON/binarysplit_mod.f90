@@ -372,7 +372,7 @@ CONTAINS
   ! reposition
   SUBROUTINE reposition_binsplit(xbs)
 
-    use hdf5_tools
+    use hdf5_tools_f2003
 
     TYPE(binarysplit),               INTENT(inout) :: xbs
     
