@@ -4791,7 +4791,8 @@ CONTAINS
   !> if normalize_output=.false. no normalization (plots f_k as is)
   subroutine matlabplot_allm(sourcevec_tmp, normalize_output, write_coords, prefix)
 
-    use collop_bspline, only : init_phi_bspline, phi_bspline, phi_x_max
+    use collisionality_mod, only : phi_x_max
+    use collop_bspline, only : init_phi_bspline, phi_bspline
 
     implicit none
 
