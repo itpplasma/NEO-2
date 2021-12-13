@@ -1085,12 +1085,9 @@ target_link_libraries(libneo lapack)
 in \vv{CMakeLists.in} had to be commented.
 Additionally the bodies of the routines \vv{h5_add_complex_1} and
 \vv{h5_add_complex_2} in \vv{src/hdf5_tools/hdf5_tools.f90} had to be
-commented. This is due to a bug in the intel compiler, which does not
+commented. This is because the version of the  compiler, does not
 allow to use \vv{complex\%re} or \vv{complex\%im} (The
-slash \vv{\\} had to be added due to \LaTeX) as
-parameter for intent out or inout arguments. It is expected that this
-bug is also in the 2020 version, while newer versions might have it
-fixed.
+slash \vv{\\} had to be added due to \LaTeX).
 This should not be a problem for \vv{NEO-2} as so far only real values
 need to be read.
 
