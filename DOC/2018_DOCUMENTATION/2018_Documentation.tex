@@ -962,6 +962,15 @@ module load openmpi/3.0.0--gnu--7.3.0
 The intel compiler is loaded because it is a  prerequisite for \vv{blas}
 and \vv{lapack}, for compiling the libraries the gnu compiler was used.
 
+It is also recommended to set an alias for easy changing to the scratch
+folder and for restricting the output of \vv{slurm} queue command, e.g.
+\begin{verbatim}
+alias cdscratch='cd ${CINECA_SCRATCH}'
+alias queue='squeue --user=${USER}'
+\end{verbatim}
+where the latter command would give you only your queued jobs, not those
+of all users.
+
 Additionally these libraries had to be compiled:
 \begin{itemize}
   \item hdf5
