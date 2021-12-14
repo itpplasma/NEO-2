@@ -1171,6 +1171,137 @@ mean that there are still references to \vv{SuperLU} routines, either
 comment them or also compile SuperLU.
 
 % ----------------------------------------------------------------------
+\subsection{Submitting a job}
+In the previous chapters the required libraries and \vv{NEO-2} have been
+compiled, so now it is time to submit a job.
+On the Marconi cluster the \vv{slurm} workload manager is used, which
+comes with a variety of tools. For submiting a job \vv{sbatch} is used.
+While it is possible to supply job requirements directly as parameter to
+\vv{sbatch}, we recommend to supply them with a script. A commented
+example can be found in the \vv{DOC} folder of \vv{NEO-2}, here we give
+just a basic example, together with some hints.
+\begin{verbatim}
+#!/bin/bash
+
+#SBATCH --job-name=NEO-2-W7X
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=24
+#SBATCH --ntasks-per-socket=12
+#SBATCH --cpus-per-task=1
+#SBATCH --time=24:00:00
+#SBATCH --partition=skl_fua_prod
+#SBATCH --account=FUA35_TSVVSTOP
+#SBATCH --err=%x.err
+#SBATCH	--out=%x.out
+
+export OMP_NUM_THREADS=1
+
+sed -i "s#prop_reconstruct.*=.*#prop_reconstruct = 0#" neo2.in
+srun --cpu-bind=cores ./neo_2.x
+
+sed -i "s#prop_reconstruct.*=.*#prop_reconstruct = 1#" neo2.in
+srun -n1 ./neo_2.x
+
+sed -i "s#prop_reconstruct.*=.*#prop_reconstruct = 2#" neo2.in
+srun --cpu-bind=cores ./neo_2.x
+
+sed -i "s#prop_reconstruct.*=.*#prop_reconstruct = 3#" neo2.in
+srun -n1 ./neo_2.x
+\end{verbatim}
+This example can be run with
+\begin{verbatim}
+sbatch filename
+\end{verbatim}
+As should be clear from the first line of the example this is basically a \vv{bash}
+script, with two special points. First are the lines starting with \vv{\#SBATCH}
+which indicates to \vv{sbatch} that there follows a command. Possible
+commands are the same that could be given on the commandline (check also
+the help of \vv{sbatch}). Second, instead of \vv{mpirun} (or something
+similar) \vv{srun} is used.
+
+What does this script? It will do all four stages of a single flux
+surface. Stages 0 and 2 are parallelized, the other two not.
+
+Lets go through the file in a bit more detail. Job name should be clear,
+the next four commands refer to the number of processors. At the time of
+writing this, a common composition is this: basic unit is a thread, which
+runs on one or more (physical) processors or cores or cpus. Many cores
+together form a chip, which sits in a socket. One or two sockets form a
+node (comparable to one motherboard).
+Hopefully this makes the commands a bit clearer. We request a single
+node, and want to start 24 threads on it, with half on each socket
+(Marconi has two chips per node). Each thread should use only one core
+(thus wasting half of them).
+The time parameter is the time we want to allow the job to run. The job
+will be canceled if it does not finish within the time limit.
+The two parameters partition and account are cluster specific. The
+former specifies on which part of the cluster the job should run (and
+thus which rules apply, like maximum number of nodes and time). The
+account means not a user account but a time billing account: from
+which projects time budget should the used time be substracted.
+The final two \vv{sbatch} lines define file names for error and standard
+output. We want to match the output filenames to match the job name, and
+thus make use of predefined variables. Within the \vv{sbatch} arguments
+these are indicated with a percent sign followed by a letter.
+
+Lines with \vv{\#SBATCH} are only processed until something other
+than a comment or an empty line is found.
+
+The export makes sure no additional \vv{OpenMP} parallelization is used.
+
+We make sure that \vv{prop_reconstruct} has the required value with the
+\vv{sed} command(s).
+After each of these, we start \vv{NEO-2}. The zeroth and second step
+have the additional parameter \vv{cpu-bind=cores}. The Marconi
+documentation recomends using these, when fewer cores than available are
+used. Note that this is a parameter of \vv{srun} and not \vv{sbatch},
+which is why it appears here an not at the top.
+The first and third step, overwrite the total number of tasks with
+\vv{-n1}, as these should not run in parallel.
+
+\subsubsection{Submitting multiple jobs}
+If you want to submit multiple jobs at once, i.e. doing a scan over flux
+surfaces, there are two possibilities.
+
+First you can have one \vv{slurm} batch file in each folder, and then submit
+each as a single job, either by hand or with a script.
+The slurm documentation does recommend not to use \vv{sbatch} in a loop.
+An easy way to get the \vv{slurm} batch file into each folder is to put
+it into the \vv{TEMPLATE_DIR} before running \vv{create_surf.py}.
+The script will then copy it into each folder along with the other files.
+
+The second option is to make use of the \vv{array} parameter of
+\vv{sbatch}. This is somewhat similar to parallelization with \vv{MPI},
+in the sense that you have to distinguish what each ``thread'' does, by
+its index. If you use folder names, that include numbering, this is easy
+to do with the means provided by \vv{sbatch}. With the foldernames as
+created by python script \vv{create_surf.py}, this is a bit more
+complicated, but doable. Add/replace the following lines/parts in the
+above \vv{slurm} example file, in the appropriate places.
+\begin{verbatim}
+#SBATCH --array=1-30
+#SBATCH --err=%x_%A_%a.err
+#SBATCH	--out=%x_%A_%a.out
+
+folder=$(ls -d s[123456789].* | sed -n ${SLURM_ARRAY_TASK_ID}p)
+cd ${folder}
+\end{verbatim}
+The first line determines we want to submit 30 copies of the script,
+with indices from one to 30. Note that starting at one is important.
+The output filenames are modified to also include the main job id and
+the task id (array index).
+The last two lines first determine which folder to use, and then change
+into the folder. Determining the folders is a two step process. First
+we generate a list of all folders, the \vv{-d} is important, otherwise
+\vv{ls} would generate a list which also contains all the content of the
+folders. In the second step we use \vv{sed} to print only those entry,
+that matches out array index. As \vv{sed} uses a one based index, it is
+important to also use a one based index for the array.
+This will then run \vv{NEO-2} in each of the folders, but the \vv{slurm}
+output files will still be in the working directory.
+Note that it is also not recomended to submit large arrays.
+
+% ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
 \section{List of scripts/codes used besides NEO-2}
 Here four tables list executables, shell scripts, python scripts and octave/matlab scripts,
