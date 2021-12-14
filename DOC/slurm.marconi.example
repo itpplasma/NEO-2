@@ -34,8 +34,8 @@
 #SBATCH --account=FUA35_TSVVSTOP
 
 # Files where to place standard and error output.
-#SBATCH --err=NEO-2-W7X.err
-#SBATCH	--out=NEO-2-W7X.out
+#SBATCH --err=%x.err
+#SBATCH --out=%x.out
 
 # Export variable, to restrict number of omp processes.
 # Should be same as cpus-per-task.
