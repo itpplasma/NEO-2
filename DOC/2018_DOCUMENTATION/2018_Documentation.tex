@@ -1117,38 +1117,28 @@ commented, as it was decided to compile only one of SuiteSparse and SuperLU.
 
 In \vv{CMakeLists.txt} lines
 \begin{verbatim}
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
-\end{verbatim}
-(after corresponding call for MPI) and
-\begin{verbatim}
 include_directories(${FGSL_INC})
 include_directories(${HDF5_Fortran_INCLUDE_DIRS})
 \end{verbatim}
-have been added (former with other include\_directory calls, the latter
-after the find\_package call).
+have been added (with other include\_directory calls).
 The lines correspondig to SuperLU have been commented.
 Searching for gsl is changed to (from find\_library)
 \begin{verbatim}
 find_package(GSL COMPONENTS GSL_LIBRARY GSL_CBLAS_LIBRARY REQUIRED)
 \end{verbatim}
-Finally in \vv{target_link_libraries} the entries for \vv{gsl}, \vv{fgsl} and
-\vv{blas}/\vv{lapack} are changed
+Finally in \vv{target_link_libraries} the entries for \vv{gsl}, and
+\vv{fgsl} are changed
 \begin{verbatim}
 ${fgsl_lib}
 ${gsl_lib}
 ${GSL_LIBRARIES}
-${BLAS_LIBRARIES}
-${LAPACK_LIBRARIES}
 \end{verbatim}
 
 In \vv{COMMON/sparse_mod.f90} the body of the \vv{SuperLU} subroutines
 have been commented.
-Finally line 472 (at the time of writing) of \vv{COMMON/binarysplit_mod.f90}
-has to be commented (a call of \vv{h5_add} inside of a if(false) block).
 
 \subsubsection{Additional hints}
-The intel compiler has been used to compile \vv{libneo} and \vv{neo-2},
+The intel compiler has been used to compile \vv{libneo} and \vv{NEO-2},
 but simulations did only run with one processor, with more, no work was
 actually done. It could be verified, that the \vv{initMaster} subroutine
 of the \vv{neo2scheduler_module} was not called, but those of the base
