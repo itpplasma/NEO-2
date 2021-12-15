@@ -1301,6 +1301,23 @@ This will then run \vv{NEO-2} in each of the folders, but the \vv{slurm}
 output files will still be in the working directory.
 Note that it is also not recomended to submit large arrays.
 
+\subsection{Additional hints}
+The given example script will place all standard output in the same
+file, which can make it hard to distinguish between the output of the
+different stages. Additionaly, if you use the single-batch file
+approach, it might be hard to determine which file belongs to which
+folder.
+These two points can be avoided partially by making use of the
+\vv{output} option of \vv{ſrun}, e.g.
+\begin{verbatim}
+srun ... --output=out0 ...
+\end{verbatim}
+for the zeroth stage. This will overwrite the setting made in the
+\vv{sbatch} script. By setting different names for the different stages,
+you will get the output in different files. The files will be located in
+the run folder(s). Disadvantage is, that the \vv{sbatch} output files
+are nevertheless created.
+
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
 \section{List of scripts/codes used besides NEO-2}
