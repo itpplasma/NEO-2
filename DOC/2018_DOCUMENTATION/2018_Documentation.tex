@@ -1137,7 +1137,7 @@ ${GSL_LIBRARIES}
 In \vv{COMMON/sparse_mod.f90} the body of the \vv{SuperLU} subroutines
 have been commented.
 
-\subsubsection{Additional hints}
+\subsubsection{Additional hints for compiling}
 The intel compiler has been used to compile \vv{libneo} and \vv{NEO-2},
 but simulations did only run with one processor, with more, no work was
 actually done. It could be verified, that the \vv{initMaster} subroutine
@@ -1169,6 +1169,27 @@ sparse_mod.f90:(.text+0xcdcf): undefined reference to `c_fortran_zgssv_'
 \end{verbatim}
 mean that there are still references to \vv{SuperLU} routines, either
 comment them or also compile SuperLU.
+
+\vv{SuperLU} has been compiled afterwards using a buildcommands file
+\begin{verbatim}
+#!/bin/bash
+
+BUILDFOLDER='Build-7.3.0'
+
+mkdir -p ${BUILDFOLDER}
+cd ${BUILDFOLDER}
+
+cmake .. \
+  -DCMAKE_INSTALL_PREFIX=../${BUILDFOLDER} \
+  -DTPL_BLAS_LIBRARIES=gslcblas
+make
+make install
+\end{verbatim}
+although it is not clear if the parameter \vv{TPL_BLAS_LIBRARIES} worked
+as intended, as the blas library suplied with \vv{SuperLU} was compiled
+anyway.
+Unfortunately the library could not be found during configuration of
+\vv{NEO-2}, and thus could not be used.
 
 % ----------------------------------------------------------------------
 \subsection{Submitting a job}
@@ -1301,7 +1322,7 @@ This will then run \vv{NEO-2} in each of the folders, but the \vv{slurm}
 output files will still be in the working directory.
 Note that it is also not recomended to submit large arrays.
 
-\subsection{Additional hints}
+\subsection{Additional hints for running}
 The given example script will place all standard output in the same
 file, which can make it hard to distinguish between the output of the
 different stages. Additionaly, if you use the single-batch file
