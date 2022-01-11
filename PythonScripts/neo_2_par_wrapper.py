@@ -72,7 +72,6 @@ if __name__ == "__main__":
   if (len(sys.argv) < 2):
     print("Usage:")
     print("./neo_2_par_wrapper.py -np nr_processors [last_stage_python] [name_executable]")
-    print("  with radii in cm")
   else:
     nr_processors = 1
     if (len(sys.argv) >= 3):
