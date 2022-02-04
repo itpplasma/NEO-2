@@ -663,6 +663,7 @@ class BoozerFile:
 
     for i in range(self.nsurf):
       if (len(blocklines[i]) != expected_block_length + head_number_of_lines):
+        print("ERROR: number of lines in block does not match expectation (modes+header)")
         print(str(len(blocklines[i])) + ' != ' + str(expected_block_length) + ' + ' + str(head_number_of_lines))
         raise Exception
 
