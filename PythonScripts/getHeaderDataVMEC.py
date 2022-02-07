@@ -12,13 +12,13 @@ def getHeadDataVmecNc(infile):
     a = np.copy(data['Aminor_p'].data)
     R0 = np.copy(data['Rmajor_p'].data)
     phipf = np.copy(data['phipf'].data)
-    m = np.array(np.copy(data['xm_nyq'].data),int)
-    n = np.array(-np.copy(data['xn_nyq'].data),int)
+    m = np.array(np.copy(data['xm'].data),int)
+    n = np.array(-np.copy(data['xn'].data),int)
     psi_tor_a = phipf[0]
-    empol = int(np.max(np.abs(m)) + 1)
+    empol = int(np.max(np.abs(m)))
     entor = int(np.max(np.abs(n)))
-    m0b = 2*empol-1
-    n0b = 4*entor+1
+    m0b = 2*empol
+    n0b = 2*entor
 
     del data
     f.close()
