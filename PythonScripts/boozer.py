@@ -89,7 +89,6 @@ def convert_to_boozer(infile, ks, outfile):
   import string
   import sys
   import time
-  #~ import scipy.constants.mu_0 as mu0
 
   def nextpow2(i):
     n = 1
@@ -108,14 +107,10 @@ def convert_to_boozer(infile, ks, outfile):
 
   pi = np.pi
 
-  #~ infile = sys.argv[1]
-  #~ ks     = int(sys.argv[2])  # flux surface nr.
   nl     = 3          # number of points on each side for Lagrange interpolation
   plot   = False
 
   t = time.time()
-
-  #infile = 'wout.test'
 
   low = True # use lower mode number for NetCDF (not Nyquist one)
   if infile.endswith('nc'):
@@ -268,7 +263,6 @@ def convert_to_boozer(infile, ks, outfile):
     nl = 1
 
   print('Defining parameters and functions')
-  #~ mu0 = 4e-7*np.pi
 
   cond1   = (m != 0)
   cond2   = (n != 0)
@@ -362,18 +356,6 @@ def convert_to_boozer(infile, ks, outfile):
   # TODO: check dV/ds and bvco enfp factor. Documentation says it's already included
   #       but it seems it needs to be added to get the correct output
   # TODO: pprime
-  #~ with open('boozer{}.out'.format(ks), 'w') as outfile:
-    #~ outfile.write('        s               iota           Jpol/nper          '+
-    #~ 'Itor            pprime         sqrt g(0,0)\n')
-    #~ outfile.write('                                          [A]           '+
-    #~ '[A]             [Pa]         (dV/ds)/nper\n')
-    #~ outfile.write(' {:16.8e}'.format(s[ks]))
-    #~ outfile.write(' {:16.8e}'.format(iota[ks]))
-    #~ outfile.write(' {:16.8e}'.format(-2.0*np.pi/mu0*bsubvB[ks]/enfp))
-    #~ outfile.write(' {:16.8e}'.format(-2.0*np.pi/mu0*bsubuB[ks]))
-    #~ outfile.write(' {:16.8e}'.format(pprime))
-    #~ outfile.write(' {:16.8e}'.format(-4.0*np.pi**2*vp[ks]/enfp))
-    #~ outfile.write('\n')
   append_boozer_block_head(outfile, s[ks], iota[ks], bsubvB[ks], bsubuB[ks], pprime, vp[ks], enfp)
 
   def sqrtgB(u,v): return np.abs(dpsitords[ks]*(iota[ks]*bsubuB[ks]+
@@ -457,21 +439,6 @@ def convert_to_boozer(infile, ks, outfile):
   vmnb = -enfp*dphmnb/(2*np.pi)
 
   append_boozer_block(outfile, mb, nb, rmnb, zmnb, vmnb, bmnb, enfp)
-  #~ with open('boozer{}.out'.format(ks), 'a') as f:
-    #~ f.write('    m    n      rmnc [m]         rmns [m]         zmnc [m]  '+
-            #~ '       zmns [m]         vmnc [m]         vmns [m]         '+
-            #~ 'bmnc [T]         bmns [T]\n')
-    #~ for k in range(mb.size):
-      #~ f.write(' {:4d} {:4d}'.format(mb[k],int(nb[k]/enfp)))
-      #~ f.write(' {:16.8e} {:16.8e}'.format(
-          #~ float((rmnb[k].real)),-float(rmnb[k].imag)))
-      #~ f.write(' {:16.8e} {:16.8e}'.format(
-          #~ float((zmnb[k].real)),-float(zmnb[k].imag)))
-      #~ f.write(' {:16.8e} {:16.8e}'.format(
-          #~ float((vmnb[k].real)),-float(vmnb[k].imag)))
-      #~ f.write(' {:16.8e} {:16.8e}'.format(
-          #~ float((bmnb[k].real)),-float(bmnb[k].imag)))
-      #~ f.write('\n')
 
   elapsed = time.time() - t
   print('Elapsed time: {} s'.format(elapsed))
@@ -533,16 +500,6 @@ def convert_to_boozer(infile, ks, outfile):
   #  plt.subplot(1,2,2)
   #  plt.title('zmn')
   #  plt.plot(zmnval[(n==0)&(m<5)])
-  #  plt.show()
-
-
-  #  plt.figure(4)
-  #  plt.subplot(1,2,1)
-  #  plt.title('bsupu')
-  #  plt.plot(s, bsupumn)
-  #  plt.subplot(1,2,2)
-  #  plt.title('bsupv')
-  #  plt.plot(s, bsupvmn)
   #  plt.show()
 
 class BoozerFile:
