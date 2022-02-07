@@ -1280,6 +1280,20 @@ which is why it appears here an not at the top.
 The first and third step, overwrite the total number of tasks with
 \vv{-n1}, as these should not run in parallel.
 
+\subsubsection{Resource usage}
+The example batch file uses only half the processors, because as every
+process has its own copy of the data, the total memory required is
+expected to scale linearly with the number of \vv{MPI} threads (it
+reality it might be a bit slower, but as experience shows not by much).
+In the tests done, each thread used about $6-7 GB$, which means with 48
+threads we would run out of memory.
+This of course only holds for a single nodes, 48 threads distributed
+over two nodes should work, and have been tested sucessfully. The
+scaling is good, the time required for two nodes was less than $60\%$ of
+the time for one node. This was not only the case for a single flux
+surface but for a scan, and thus at least for a (maybe narrow) range of
+parameters.
+
 \subsubsection{Submitting multiple jobs}
 If you want to submit multiple jobs at once, i.e. doing a scan over flux
 surfaces, there are two possibilities.
