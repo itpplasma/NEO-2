@@ -1065,9 +1065,11 @@ if __name__ == "__main__":
     nsurf = int(sys.argv[2])
     wout_name = infile + '.bc'
 
+    shot = -1
+
     [nfp, psi_tor_a, aminor, Rmajor, m0b, n0b] = getHeaderDataVMEC.getHeadDataVmecNc(infile)
 
-    write_boozer_head(wout_name, '01', m0b, n0b, nsurf, nfp, psi_tor_a, aminor, Rmajor)
+    write_boozer_head(wout_name, '01', shot, m0b, n0b, nsurf, nfp, psi_tor_a, aminor, Rmajor)
 
     for ind in range(1, nsurf+1):
       convert_to_boozer(infile, ind, wout_name)
