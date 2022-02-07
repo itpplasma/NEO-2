@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-def getHeadDataVmecNc(infile)
+def getHeadDataVmecNc(infile):
   import numpy as np
   import scipy.io.netcdf as ncdf
 
@@ -31,7 +31,7 @@ def getHeadDataVmecNc(infile)
     m0b = 0
     n0b = 0
 
-  return [enfp, psi_tor_a, a, R0]
+  return [enfp, psi_tor_a, a, R0, m0b, n0b]
 
 if __name__ == "__main__":
   import sys
