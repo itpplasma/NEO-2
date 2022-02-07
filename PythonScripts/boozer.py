@@ -1055,7 +1055,7 @@ class BoozerFile:
 if __name__ == "__main__":
   import sys
 
-  import getHeadDataVMEC
+  import getHeaderDataVMEC
 
   if (len(sys.argv) < 2):
     print("Usage:")
