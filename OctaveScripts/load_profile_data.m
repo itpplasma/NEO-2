@@ -38,6 +38,9 @@
 %   switch_grid: determines what grid to use.
 %     1: equal spaced in rho poloidal (default)
 %     2: equal spaced in rho toroidal
+%     3: equal spaced in sqrt(rho poloidal), this means there will be
+%       more points close to the edge, compared to the other two
+%       options.
 %
 % Output:
 %  rho_pol: rho_poloidal grid.
@@ -109,6 +112,19 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
     rho_pol = spline(frt(:,data_source.rhotoroidal.column), frp(:, data_source.rhopoloidal.column), rho_tor);
     rho_pol(1) = 0;
     rho_pol(end) = 1;
+  case 3
+    rho_pol = sqrt(linspace(lower_limit_flux_label, upper_limit_flux_label, number_gridpoints));
+
+    %~ rho_tor = spline(frp(:, data_source.rhopoloidal.column), frt(:,data_source.rhotoroidal.column), rho_pol);
+    L = frp(:, data_source.rhopoloidal.column) <= 1.0;
+    rho_tor_fit = polyfit(frp(L, data_source.rhopoloidal.column), frt(L, data_source.rhotoroidal.column), 5);
+    rho_tor = polyval(rho_tor_fit, rho_pol);
+    if (lower_limit_flux_label <= 0.0)
+      rho_tor(1) = 0;
+    end
+    if (upper_limit_flux_label >= 1.0)
+      rho_tor(end) = 1;
+    end
   end
   interpolation_grid = rho_pol.^2;
 
