@@ -199,3 +199,24 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
     fclose(fid);
   end
 end
+
+% Local wrapper for fit functions
+%
+% A simple wrapper, to allow easy switching between different
+% (polynomial, spline) interpolation methods.
+%
+% input:
+% ------
+% old_x: old grid on which the data is given.
+% old_y: data values on old grid.
+% new_x: new grid on which to calculate the y values.
+% order: optional, order of polynomial interpolation (if used).
+function fit = local_used_fit_function(old_x, old_y, new_x, order)
+  if nargin() < 4 || isempty(order)
+    order = 6;
+  end
+
+  %~ fitobject = polyfit(old_x, old_y, order);
+  %~ fit = polyval(fitobject, new_x);
+  fit = spline(old_x, old_y, new_x);
+end
