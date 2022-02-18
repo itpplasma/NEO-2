@@ -91,6 +91,23 @@ def convert_to_boozer(infile, ks, outfile):
   import time
 
   def nextpow2(i):
+    """Return next largest power of 2.
+
+    Return the smallest n > i, with n of the form n = 2^k.
+
+    input:
+    ------
+    i: number (if integer or float should not matter), for which to
+      calculate the next power of 2.
+
+    output:
+    -------
+    integer, as defined above.
+
+    sideeffects:
+    ------------
+    None
+    """
     n = 1
     while n < i: n *= 2
     return n
