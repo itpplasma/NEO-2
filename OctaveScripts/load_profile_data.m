@@ -200,13 +200,32 @@ end
 % old_x: old grid on which the data is given.
 % old_y: data values on old grid.
 % new_x: new grid on which to calculate the y values.
-% order: optional, order of polynomial interpolation (if used).
-function fit = local_used_fit_function(old_x, old_y, new_x, order)
+% order: optional, order of polynomial interpolation (if used). [6]
+% type: optional, type of interpolation to use. ['s']
+%   's': spline
+%   'p': polynomial
+%   'b': both, blend smoothly from polynomial at the axis to spline at
+%     the edge.
+function fit = local_used_fit_function(old_x, old_y, new_x, order, type)
   if nargin() < 4 || isempty(order)
     order = 6;
   end
+  if nargin() < 5 || isempty(type)
+    type = 's';
+  end
 
-  %~ fitobject = polyfit(old_x, old_y, order);
-  %~ fit = polyval(fitobject, new_x);
-  fit = spline(old_x, old_y, new_x);
+  switch (type)
+  case 's'
+    fit = spline(old_x, old_y, new_x);
+  case 'p'
+    fitobject = polyfit(old_x, old_y, order);
+    fit = polyval(fitobject, new_x);
+  case 'b'
+    fitobject = polyfit(old_x, old_y, order);
+    weight = (new_x - new_x(1)) ./ (new_x(end) - new_x(1));
+    fit = weight .* spline(old_x, old_y, new_x) + (1 - weight) .* polyval(fitobject, new_x);
+  otherwise
+    print(['Error: unknown value for type of interpolation: ', type])
+    quit()
+  end
 end
