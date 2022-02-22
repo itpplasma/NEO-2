@@ -97,9 +97,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
     rho_pol = linspace(lower_limit_flux_label, upper_limit_flux_label, number_gridpoints);
 
     L = frp(:, data_source.rhopoloidal.column) <= 1.0;
-    %~ rho_tor = spline(frp(L, data_source.rhopoloidal.column), frt(L,data_source.rhotoroidal.column), rho_pol);
-    rho_tor_fit = polyfit(frp(L, data_source.rhopoloidal.column), frt(L, data_source.rhotoroidal.column), 5);
-    rho_tor = polyval(rho_tor_fit, rho_pol);
+    rho_tor = local_used_fit_function(frp(L, data_source.rhopoloidal.column), frt(L,data_source.rhotoroidal.column), rho_pol, 5);
     if (lower_limit_flux_label <= 0.0)
       rho_tor(1) = 0;
     end
@@ -109,16 +107,14 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
   case 2
     rho_tor = linspace(0,1,number_gridpoints);
 
-    rho_pol = spline(frt(:,data_source.rhotoroidal.column), frp(:, data_source.rhopoloidal.column), rho_tor);
+    rho_pol = local_used_fit_function(frt(:,data_source.rhotoroidal.column), frp(:, data_source.rhopoloidal.column), rho_tor, 5);
     rho_pol(1) = 0;
     rho_pol(end) = 1;
   case 3
     rho_pol = sqrt(linspace(lower_limit_flux_label, upper_limit_flux_label, number_gridpoints));
 
     L = frp(:, data_source.rhopoloidal.column) <= 1.0;
-    %~ rho_tor = spline(frp(L, data_source.rhopoloidal.column), frt(L,data_source.rhotoroidal.column), rho_pol);
-    rho_tor_fit = polyfit(frp(L, data_source.rhopoloidal.column), frt(L, data_source.rhotoroidal.column), 5);
-    rho_tor = polyval(rho_tor_fit, rho_pol);
+    rho_tor = local_used_fit_function(frp(L, data_source.rhopoloidal.column), frt(L,data_source.rhotoroidal.column), rho_pol, 5);
     if (lower_limit_flux_label <= 0.0)
       rho_tor(1) = 0;
     end
@@ -129,18 +125,15 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
   interpolation_grid = rho_pol.^2;
 
   frp = load([path_to_shot, data_source.electron_density.filename]);
-  ne_si = spline(frp(:,1).^2, frp(:, data_source.electron_density.column), interpolation_grid)*transform_density;
+  ne_si = local_used_fit_function(frp(:,1).^2, frp(:, data_source.electron_density.column), interpolation_grid, 6)*transform_density;
 
 
   frp = load([path_to_shot, data_source.electron_temperature.filename]);
-  Te_eV = spline(frp(:,1).^2, frp(:, data_source.electron_temperature.column), interpolation_grid)*transform_temperature;
+  Te_eV = local_used_fit_function(frp(:,1).^2, frp(:, data_source.electron_temperature.column), interpolation_grid, 6)*transform_temperature;
 
 
   frp=load([path_to_shot, data_source.ion_temperature.filename]);
-  [fitobject, gof] = polyfit(frp(:,1).^2, frp(:, data_source.ion_temperature.column), 6);
-  fit2 = polyval(fitobject, interpolation_grid);
-
-  Ti_eV = fit2*transform_temperature;
+  Ti_eV = local_used_fit_function(frp(:,1).^2, frp(:, data_source.ion_temperature.column), interpolation_grid, 6)*transform_temperature;
 
   if do_plots
     figure
@@ -166,10 +159,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
 
   frp(:, data_source.rotation_velocity.column) = frp(:, data_source.rotation_velocity.column)*transform_rotation;
 
-  [fitobject, gof] = polyfit(frp(:,1).^2, frp(:, data_source.rotation_velocity.column), 6);
-  fit2 = polyval(fitobject, interpolation_grid);
-
-  vrot = fit2;
+  vrot = local_used_fit_function(frp(:,1).^2, frp(:, data_source.rotation_velocity.column), interpolation_grid, 6);
 
   if do_plots
     figure
