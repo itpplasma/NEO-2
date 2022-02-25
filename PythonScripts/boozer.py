@@ -416,7 +416,7 @@ def convert_to_boozer(infile, ks, outfile):
       k = k+1
 
   nu = 6*np.max(np.abs(m))-1
-  nv = 6*np.max(np.abs(n))-1
+  nv = 6*np.max(np.abs(n))+1
   du = 2.0*pi/nu
   dv = 2.0*pi/nv
   up = np.arange(0,2*pi,du)
