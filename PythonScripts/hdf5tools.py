@@ -1539,9 +1539,13 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
 
       sd = np.array(hin['species_def'])
       sd.resize((2, hout['num_species'][0], hout['num_radial_pts'][0]))
-      # This reordering is necessary as not the added column is filled
-      # with zeros.
-      sd[1, 1, ...] = sd[1, 0, ...]
+      # This reordering is necessary. The resize will cause the first
+      # entries for mass to appear in the charge part, the new entries
+      # are all at the end of the mass part.
+      # The following assumes only one species is added (at a time).
+      for k in range(nsp[0]-2, 0, -1):
+        sd[1, k, ...] = sd[1, k-1, ...]
+
       sd[1, 0, ...] = sd[0, -1, ...]
       sd[0, -1, ...] = Ztrace
       sd[1, -1, ...] = mtrace
