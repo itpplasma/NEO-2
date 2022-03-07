@@ -1512,29 +1512,29 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
 
       t = np.array(hin['T_prof'])
       t.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
-      t[2, ...] = t[1, ...]
+      t[nsp-1, ...] = t[1, ...]
       hout.create_dataset('T_prof', data=t)
 
       dt = np.array(hin['dT_ov_ds_prof'])
       dt.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
-      dt[2, ...] = dt[1, ...]
+      dt[nsp-1, ...] = dt[1, ...]
       hout.create_dataset('dT_ov_ds_prof', data=dt)
 
       n = np.array(hin['n_prof'])
       n.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
       n[1, ...] = factor_hydrogen * n[0, ...]
-      n[2, ...] = factor_trace * n[0, ...]
+      n[nsp-1, ...] = factor_trace * n[0, ...]
       hout.create_dataset('n_prof', data=n)
 
       dn = np.array(hin['dn_ov_ds_prof'])
       dn.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
       dn[1, ...] = factor_hydrogen * dn[0, ...]
-      dn[2, ...] = factor_trace * dn[0, ...]
+      dn[nsp-1, ...] = factor_trace * dn[0, ...]
       hout.create_dataset('dn_ov_ds_prof', data=dn)
 
       st = np.array(hin['species_tag'])
       st.resize( (hout['num_species'][0], ) )
-      st[2, ...] = hout['num_species'][0]
+      st[nsp-1, ...] = hout['num_species'][0]
       hout.create_dataset('species_tag', data=st)
 
       sd = np.array(hin['species_def'])
