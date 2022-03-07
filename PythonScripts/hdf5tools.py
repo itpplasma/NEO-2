@@ -1452,10 +1452,15 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
   fail. This might be usefull for having two hydrogen species, e.g. for
   testing.
 
+  Note: only the density of hydrogen species (i.e. second species) is
+  changed/relevant for calculation of (new) trace species. The hydrogen
+  density is reduced, and the trace species gets that amount divided by
+  its charge.
+
   input
   ----------
-  infilename:
-  outfilename:
+  infilename: string, name of the file to which to add a species.
+  outfilename: string, name under which to save the new file.
   Zeff: effective charge the plasma should have with the trace species.
   Ztrace: charge of the trace species in elementary charges.
   mtrace: mass of the trace species in [g]
@@ -1471,7 +1476,8 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
   limitations
   ----------
   Assumes second species is ions.
-  Assumes only a third species is added.
+  Assumes only one species is added (not multiple at once).
+  Zeff handling for adding forth+ species might be wrong.
   """
   import math
   import numpy as np
