@@ -1549,19 +1549,17 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
 
       Lambda = np.array([39.1 - 1.15*math.log10(x/DENSITY_SI_TO_CGS) + 2.3*math.log10(y/EV_TO_CGS*1e-3) for x, y in zip(n[0,...], t[0,...])])
 
-      k = np.array(hin['kappa_prof'])
-      k.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
+      kappa = np.array(hin['kappa_prof'])
+      kappa.resize( (hout['num_species'][0], hout['num_radial_pts'][0]) )
       # Value based on density and temperature, as the former changes,
       # needs to be recomputed for hydrogen, and computed for the trace.
       # As kappa seems to depent linearly on density and is independent
       # of charge, a simple rescaling might be enough?
-      le = 3/(4*math.sqrt(math.pi)) * t[0,...]**2 / (n[0, ...] * (sd[0, 0, ...]*ELEMENTARY_CHARGE_SI*CHARGE_SI_TO_CGS)**4 * Lambda)
-      li = 3/(4*math.sqrt(math.pi)) * t[1,...]**2 / (n[1, ...] * (sd[0, 1, ...]*ELEMENTARY_CHARGE_SI*CHARGE_SI_TO_CGS)**4 * Lambda)
-      lt = 3/(4*math.sqrt(math.pi)) * t[2,...]**2 / (n[2, ...] * (sd[0, 2, ...]*ELEMENTARY_CHARGE_SI*CHARGE_SI_TO_CGS)**4 * Lambda)
-      k[0, ...] = 2 / le
-      k[1, ...] = 2 / li
-      k[2, ...] = 2 / lt
-      hout.create_dataset('kappa_prof', data=k)
+      for k in range(nsp[0]):
+        l = 3/(4*math.sqrt(math.pi)) * t[k,...]**2 / (n[k, ...] * (sd[0, k, ...]*ELEMENTARY_CHARGE_SI*CHARGE_SI_TO_CGS)**4 * Lambda)
+        kappa[k, ...] = 2 / l
+
+      hout.create_dataset('kappa_prof', data=kappa)
 
 def remove_species_from_profile_file(infilename: str, outfilename: str, index: int):
   """
