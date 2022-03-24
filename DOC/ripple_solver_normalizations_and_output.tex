@@ -1,0 +1,1683 @@
+%\documentclass[12pt]{article}
+%\documentclass[preprint,prb,aps]{revtex4}
+\documentclass[preprint,prb,aps]{revtex4-1}
+%\documentclass[preprint,prb,aps]{revtex}
+%\sloppy
+\textheight24.0cm
+\textwidth18.0cm
+\topmargin-1.5cm
+\oddsidemargin-1.0cm
+\evensidemargin0.0cm
+\usepackage{times}
+\usepackage{amsmath}
+\DeclareMathOperator{\sign}{sign}
+\usepackage{exscale}
+%\usepackage{epsfig}
+\usepackage{graphicx}
+
+\usepackage{color}
+\newcommand{\red}[1]{{\color{red} #1}}
+\newcommand{\green}[1]{{\color{green} #1}}
+\newcommand{\blue}[1]{{\color{blue} #1}}
+
+%\newcommand{\baselinestretch}{2}
+\newcommand{\be}[1]{\begin{equation} \label{#1}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}[1]{\begin{eqnarray} \label{#1}}
+\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\bean}{\begin{eqnarray*}}
+\newcommand{\eean}{\end{eqnarray*}}
+
+\newcommand{\non}{\nonumber\\}
+\newcommand{\eq}[1]{(\ref{#1})}
+\newcommand{\difp}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\br}{{\bf r}}
+\newcommand{\bR}{{\bf R}}
+\newcommand{\bA}{{\bf A}}
+\newcommand{\bB}{{\bf B}}
+\newcommand{\bE}{{\bf E}}
+%\newcommand{\bm}{{\bf m}}
+\renewcommand{\bm}{{\bf m}}
+\newcommand{\bn}{{\bf n}}
+\newcommand{\bN}{{\bf N}}
+\newcommand{\bp}{{\bf p}}
+\newcommand{\bP}{{\bf P}}
+\newcommand{\bF}{{\bf F}}
+\newcommand{\by}{{\bf y}}
+\newcommand{\bz}{{\bf z}}
+\newcommand{\bZ}{{\bf Z}}
+\newcommand{\bV}{{\bf V}}
+\newcommand{\bv}{{\bf v}}
+\newcommand{\bu}{{\bf u}}
+\newcommand{\bx}{{\bf x}}
+\newcommand{\bX}{{\bf X}}
+\newcommand{\bW}{{\bf W}}
+\newcommand{\bJ}{{\bf J}}
+\newcommand{\bj}{{\bf j}}
+\newcommand{\bk}{{\bf k}}
+\newcommand{\bTheta}{{\bf \Theta}}
+\newcommand{\btheta}{{\boldsymbol\theta}}
+\newcommand{\bOmega}{{\bf \Omega}}
+\newcommand{\bomega}{{\boldsymbol\omega}}
+\newcommand{\brho}{{\boldsymbol\rho}}
+\newcommand{\rd}{{\rm d}}
+\newcommand{\rJ}{{\rm J}}
+\newcommand{\ph}{{\varphi}}
+\newcommand{\te}{\theta}
+\newcommand{\tht}{\vartheta}
+\newcommand{\vpar}{v_\parallel}
+\newcommand{\vparkb}{v_{\parallel k b}}
+\newcommand{\vparkm}{v_{\parallel k m}}
+\newcommand{\Jpar}{J_\parallel}
+\newcommand{\ppar}{p_\parallel}
+\newcommand{\Bpstar}{B_\parallel^*}
+\newcommand{\intpi}{\int\limits_{0}^{2\pi}}
+\newcommand{\summ}{\sum \limits_{m=-\infty}^\infty}
+\newcommand{\tb}{\tau_b(\uv)}
+\newcommand{\bh}{{\bf h}}
+\newcommand{\cE}{{\cal E}}
+\newcommand{\bsigma}{{\boldsymbol\sigma}}
+\newcommand{\bS}{{\mathbf S}}
+\newcommand{\bI}{{\mathbf I}}
+\newcommand{\odtwo}[2]{\frac{\rd #1}{\rd #2}}
+\newcommand{\pdone}[1]{\frac{\partial}{\partial #1}}
+\newcommand{\pdtwo}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\ds}{\displaystyle}
+%\newcommand{\bc}{\begin{center}
+%\newcommand{\ec}{\end{center}}
+%\input{prespan}
+
+\begin{document}
+
+\section{Solution vector}
+Solution is obtained after a call
+\\
+{\bf
+3277     CALL solve\_eqs(.TRUE.)
+}
+\\
+and is contained in the inout variable
+{\bf
+source\_vector\_all(:,1:3,ispecp)
+}
+where
+\\
+{\bf :} $= K$ is the phase space discretization index
+\\
+{\bf 1:3} $= L$ is a thermodynamic force index
+\\
+{\bf ispecp} $= \alpha^\prime$ is the driving species index
+\\
+We consider a single species case, $\alpha^\prime=\alpha$ and skip the species index.
+Phase space discretization index combines 3 indices, $K => (i,k,m)$, where
+$i$ numbers $\varphi$ steps, $k$ numbers $\eta$ levels and $m$ numbers base functions.
+\\
+We denote the value of the inout variable on entry as
+\\
+{\bf source\_vector\_all(:,1:3,ispecp)}$|_{entry}= B_{KL}=b_{(i,k,m)L}$
+\\
+and on exit as
+\\
+{\bf source\_vector\_all(:,1:3,ispecp)}$|_{exit}= Y_{KL}=y_{(i,k,m)L}$
+\\
+Equation matrix contained in the sparse form in {\bf amat\_sp(1:nz)} which we denote as
+\\
+{\bf amat\_sp(1:nz)} $= A_{KK^\prime}$.
+\\
+Thus, the equation set which is solved is
+\be{eqset}
+\sum_{K^\prime} A_{KK^\prime} Y_{K^\prime L} = B_{KL}.
+\ee
+It is sufficient to consider equation matrix without collisions:
+\\
+{\bf
+1659 !\\
+1660 ! free flight: \\
+1661 ! \\
+1662       DO ipart=1,npassing+1 \\
+1663         nz=nz+1 \\
+1664 !        irow(nz)=k+ipart \\
+1665 !        icol(nz)=k+ipart \\
+1666 !        amat\_sp(nz)=delphim1 \\
+1667         IF(colltest) nz\_ttmp=nz\_ttmp+1 \\
+1668       ENDDO \\
+1669 !\\
+1670       DO ipart=1,npassing \\
+1671         nz=nz+1 \\
+1672 !        irow(nz)=k+ipart \\
+1673 !        icol(nz)=k\_prev+ipart \\
+1674 !        amat\_sp(nz)=-delphim1 \\
+1675         IF(colltest) nz\_ttmp=nz\_ttmp+1 \\
+1676       ENDDO \\
+1677 !
+}
+\\
+Here {\bf irow(nz)}$=K$, {\bf icol(nz)}$=K^\prime$, {\bf delphim1}$=(\varphi_i-\varphi_{i-1})^{-1}=\Delta\varphi^{-1}$,
+and two types of matrix elements are filled:
+$$
+A_{KK}=\frac{1}{\Delta\varphi}, \qquad A_{KK_1}=-\frac{1}{\Delta\varphi},
+$$
+where $K=(i,k,m)$ and $K_1=(i-1,k,m)$
+Thefore, Eq.~\eq{eqset} in this simplified case is
+\be{sympleqset}
+\frac{1}{\Delta\varphi}\left(y_{(i,k,m)L}-y_{(i-1,k,m)L}\right)=b_{(i,k,m)L}.
+\ee
+The r.h.s., $b_{(i,k,m)L}$, is given by the inout variable on entry:
+\\
+{\bf
+4242             source\_vector(k+1:k+npassing+1,1)                                \& \\
+4243                  =source\_vector(k+1:k+npassing+1,1)                          \& \\
+4244                  +asource(m,1)/1.5d0*q\_rip(1:npassing+1,istep,1)             \& \\
+4245                  *fact\_pos\_e(istep)\\
+4246             source\_vector(k+1:k+npassing+1,2)                                \& \\
+4247                  =source\_vector(k+1:k+npassing+1,2)                          \& \\
+4248                  +asource(m,2)/1.5d0*q\_rip(1:npassing+1,istep,2)             \& \\
+4249                  *fact\_pos\_e(istep)\\
+4250             source\_vector(k+1:k+npassing+1,3)                                \& \\
+4251                  =source\_vector(k+1:k+npassing+1,3)                          \& \\
+4252                  +asource(m,3)/1.5d0*q\_rip(1:npassing+1,istep,1)             \& \\
+4253                  *fact\_pos\_e(istep)
+}
+\\
+This is a cubic order integration scheme (more operators from it were skipped). For our purpose it is enough
+to simplify it to the lowest order changing {\bf 1.5d0} $-> 1$ and setting {\bf fact\_pos\_e(istep)}=1 (this is the
+main case with exception of special $\varphi$ points):
+\\
+{\bf
+source\_vector(k+1:k+npassing+1,1)=asource(m,1)*q\_rip(1:npassing+1,istep,1) \\
+source\_vector(k+1:k+npassing+1,2)=asource(m,2)*q\_rip(1:npassing+1,istep,2) \\
+source\_vector(k+1:k+npassing+1,3)=asource(m,3)*q\_rip(1:npassing+1,istep,1)
+}
+\\
+Here {\bf k+1:k+npassing+1} is some range of $K$ values correponding to all $\eta$ levels with other indices fixed,
+{\bf m}=$m$ is base function index, {\bf 1:npassing+1} is a range of $\eta$ levels $k$ and {\bf istep} is $\varphi$
+step index $i$. Quantities
+\\
+{\bf asource(m,1)}$=a_m^{(1)}$, \\
+{\bf asource(m,2)}$=a_m^{(3)}$, \\
+{\bf asource(m,3)}$=a_m^{(2)}$ \\
+are defined by Georg's equations (5.12)-(5.15) (note the remapping of indices 2 and 3).
+Two other factors are defined by
+\\
+{\bf
+4186       q\_rip(1:npassing+1,istep,1)=q\_rip\_1(1:npassing+1,istep)           \& \\
+4187                                   *geodcu\_forw(istep)
+}
+\\
+where lines {\bf 3246-3257} define {\bf geodcu\_forw(istep)}$=k_G |\nabla s|$ for $\varphi=\varphi_i$
+\\
+{\bf
+1533     q\_rip\_1(1:npassing,istep)                                    \& \\
+1534           =Vg\_vp\_over\_B(1:npassing,istep)-Vg\_vp\_over\_B(0:npassing-1,istep) \\
+1535     q\_rip\_1(npassing+1,istep)=-Vg\_vp\_over\_B(npassing,istep) \\
+1536     q\_rip(npassing+1,istep,2)=eta0-eta(npassing) \\
+1537     q\_rip(1:npassing+1,istep,2)                                  \& \\
+1538           =q\_rip(1:npassing+1,istep,2)                           \& \\
+1539           *bhat\_mfl(istep)/h\_phi\_mfl(istep)
+}
+\\
+Here, lines {\bf 1533-1535} together with \\
+{\bf
+1205     eta0=1.d0/bhat\_mfl(istep) \\
+1206 ! \\
+1207     DO i=0,npart \\
+1208       subsq=1.d0-bhat\_mfl(istep)*eta(i) \\
+1209       IF(subsq.GT.subsqmin) THEN \\
+1210         npassing=i \\
+1211         alambd(i,istep)=SQRT(subsq) \\
+1212         Vg\_vp\_over\_B(i,istep)=alambd(i,istep)*eta0/h\_phi\_mfl(istep)            \& \\
+1213 !                             *(4.d0*eta0-eta(i))*geodcu\_mfl(istep)/3.d0 \\
+1214                              *(4.d0*eta0-eta(i))/3.d0 \\
+1215       ELSE \\
+1216         alambd(i,istep)=0.d0 \\
+1217         Vg\_vp\_over\_B(i,istep)=0.d0 \\
+1218       ENDIF \\
+1219     ENDDO
+}
+\\
+which define
+$$
+\mbox{{\bf Vg\_vp\_over\_B(k,i)}}= \frac{1}{h^\varphi}
+\frac{|\lambda|}{3\hat B}\left(\frac{4}{\hat B}-\eta\right)
+$$
+for $\varphi=\varphi_i$ and $\eta=\eta_k$ result in
+\\
+$$
+\mbox{{\bf q\_rip(k,i,1)}}=\frac{1}{h^\varphi}\int\limits_{\eta_{k-1}}^{\eta_k}\rd \eta q_1^\sigma,
+$$
+for $\varphi=\varphi_i$ where $q_1^\sigma$ is defined by Georg's (3.19) and
+flux surface label is the normalized toroidal flux, $k_G \nabla\psi -> k_G \nabla s$ in Georg's (3.4).
+\\
+In turn, lines {\bf 1536-1539} together with \\
+{\bf
+1160   DO i=1,npart \\
+1161     q\_rip(i,:,2)=eta(i)-eta(i-1) \\
+1162   ENDDO
+}
+\\
+define \\
+$$
+\mbox{{\bf q\_rip(k,i,2)}}=\frac{1}{h^\varphi}(\eta_k-\eta_{k-1})\hat B=\frac{1}{h^\varphi}
+\int\limits_{\eta_{k-1}}^{\eta_k}\rd \eta q_3^\sigma
+$$
+for $\varphi=\varphi_i$ and $\sigma=1$ where $q_3^\sigma$ is defined by Georg's (3.20).
+\\
+Thus,
+\be{bdef}
+b_{(i,k,m)L}=\frac{a_m^{(L)}}{h^\varphi} \int\limits_{\eta_{k-1}}^{\eta_k}\rd \eta q_L^\sigma
+\ee
+for $\varphi=\varphi_i$, and $\sigma=1$.
+\\
+Integrating Georg's equation (3.26) with renotation $j=L$,
+$$
+\sigma \difp{f^{\sigma(L)}_m}{s} - \dots = a_m^{(L)} q_L^\sigma,
+$$
+over the $\eta$ band and presenting there
+$$
+\difp{}{s}=h^\varphi\difp{}{\varphi}
+$$
+we get
+\be{georg3.26}
+\difp{}{\varphi} \int\limits_{\eta_{k-1}}^{\eta_k}\rd \eta f^{\sigma(L)}_m - \dots =
+\frac{a_m^{(L)}}{h^\varphi} \int\limits_{\eta_{k-1}}^{\eta_k}\rd \eta q_L^\sigma.
+\ee
+With the account of~\eq{bdef} we see that Eq.~\eq{sympleqset} is the lowest order discretization
+over $\varphi$ of Eq.~\eq{georg3.26}, and, therefore
+\be{soldef}
+\mbox{\bf source\_vector\_all(:,1:3,ispecp)}|_{exit}=Y_{KL}
+=y_{(i,k,m)L}= \int\limits_{\eta_{k-1}}^{\eta_k}\rd \eta \left .f^{\sigma(L)}_m\right|_{\varphi=\varphi_i}
+\ee
+with $k_G \nabla\psi -> k_G \nabla s$ and remapped drive indices.
+
+\section{Flux matrix}
+Axisymmetric flux matrix is computed after calling {\bf solve\_eqs} as follows
+\\
+{\bf
+3301        qflux\_allspec=2.0d0*qflux\_allspec ! Caution!!! factor 2 is not needed!!! \\
+3302        qflux\_symm\_allspec=qflux\_allspec
+}
+\\
+and within {\bf solve\_eqs} quantity {\bf qflux\_allspec} is computed as
+\\
+{\bf
+4146       qflux=0.5d0*REAL(MATMUL(CONJG(flux\_vector),source\_vector\_all(:,1:3,ispecp)),dp) \\
+4147       qflux\_allspec(:,:,ispecp,ispec)=qflux
+}
+\\
+Thus, for real matrices we can write directly in case of a single species ({\bf ispec=ispecp}=1)
+\\
+{\bf
+qflux\_symm\_allspec = MATMUL(flux\_vector,source\_vector\_all(:,1:3,ispecp))
+}
+\\
+We denote for a single species case, {\bf ispec=ispecp}=1,
+\\
+{\bf qflux\_symm\_allspec(1:3,1:3,ispecp,ispec)}$=q_{L,L^\prime}$
+\\
+and
+\\
+{\bf flux\_vector(1:3,:)}$=C_{LK}=c_{L(i,k,m)}$
+\\
+Thus with the account of~\eq{soldef} we get
+\be{gendef_qflux}
+q_{L,L^\prime} = \sum_K C_{LK} Y_{KL^\prime}=\sum_{i,k,m} c_{L(i,k,m)} y_{(i,k,m)L^\prime}.
+\ee
+Quantity $C_{LK}$ is determined by
+\\
+{\bf
+4222         flux\_vector(1,k+1:k+npassing+1) =                                     \& \\
+4223               step\_factor\_p*weightlag(1,m)*convol\_flux(1:npassing+1,istep) \\
+4224         flux\_vector(1,k+npassing+2:k+2*npassing+2)=                           \& \
+4225               step\_factor\_m*weightlag(1,m)*convol\_flux(npassing+1:1:-1,istep) \\
+4226 ! \\
+4227         flux\_vector(2,k+1:k+npassing+1) =                                     \& \\
+4228               step\_factor\_p*weightlag(2,m)*convol\_curr(1:npassing+1,istep) \\
+4229         flux\_vector(2,k+npassing+2:k+2*npassing+2)=                           \& \\
+4230              -step\_factor\_m*weightlag(2,m)*convol\_curr(npassing+1:1:-1,istep) \\
+4231 ! \\
+4232         flux\_vector(3,k+1:k+npassing+1) =                                     \& \\
+4233               step\_factor\_p*weightlag(3,m)*convol\_flux(1:npassing+1,istep) \\
+4234         flux\_vector(3,k+npassing+2:k+2*npassing+2) =                          \& \\
+4235               step\_factor\_m*weightlag(3,m)*convol\_flux(npassing+1:1:-1,istep) \\
+}
+\\
+Quantities {\bf step\_factor\_p} and {\bf step\_factor\_m} are computed in lines {\bf 4199 - 4215}
+for high order integration scheme over $\varphi$. In the lowest order scheme they can be set simply to
+the step size $\Delta \varphi$, see also
+\\
+{\bf
+5154   delt\_pos(ibeg+1:iend)=phi\_mfl(ibeg+1:iend)-phi\_mfl(ibeg:iend-1) \\
+5155   fact\_pos\_b=1.d0 \\
+5156   fact\_pos\_e=1.d0
+}
+\\
+and
+\\
+{\bf
+5418   delt\_neg(ibeg:iend-1)=delt\_pos(ibeg+1:iend) \\
+5419   fact\_neg\_b=fact\_pos\_e \\
+5420   fact\_neg\_e=fact\_pos\_b \\
+}
+\\
+Arrays {\bf weightlag} are defined as follows
+$$
+\mbox{\bf weightlag(1,m)}=\frac{1}{4} b^{(1)}_m
+$$
+$$
+\mbox{\bf weightlag(2,m)}=\frac{1}{4} b^{(3)}_m
+$$
+$$
+\mbox{\bf weightlag(3,m)}=\frac{1}{4} b^{(2)}_m
+$$
+where $b^{(L)}_m$ are defined by Georg's Eqs. (3.53) - (3.55).
+\\
+We introduce a general notation ${\cal C}_k^{(L)}(\varphi)$ such that
+$$
+{\cal C}_k^{(1)}(\varphi_i)={\cal C}_k^{(3)}(\varphi_i)=\mbox{\bf convol\_flux(k,i)}
+$$
+and
+$$
+{\cal C}_k^{(2)}(\varphi_i)=\mbox{\bf convol\_curr(k,i)}.
+$$
+With this we can present (ignoring remapping of drive indices $L$)
+\be{CLK_def}
+C_{LK}=c_{L(i,k,m)}=\frac{1}{4}\Delta\varphi b^{(L)}_m {\cal C}_k^{(L)}(\varphi_i).
+\ee
+Substituting~\eq{CLK_def} and~\eq{soldef} in~\eq{gendef_qflux} we get
+\be{approxqflux}
+q_{L,L^\prime} = \frac{1}{4}\sum_{i,k,m,\sigma}\Delta\varphi b^{(L)}_m {\cal C}_k^{(L)}(\varphi_i)
+\int\limits_{\eta_{k-1}}^{\eta_k}\rd \eta \left .f^{\sigma(L^\prime)}_m\right|_{\varphi=\varphi_i}
+\approx
+\frac{1}{4} \oint \rd \varphi \sum_{k,m,\sigma} b^{(L)}_m {\cal C}_k^{(L)}(\varphi)
+\int\limits_{\eta_{k-1}}^{\eta_k}\rd \eta f^{\sigma(L^\prime)}_m .
+\ee
+Here summation over $\sigma$ appears because it is implicitly included in $k$ summation in~\eq{gendef_qflux}.
+\\
+The easiest of ${\cal C}_k^{(L)}$ functions is
+\\
+{\bf
+1541     convol\_curr(1:npassing+1,istep)=bhat\_mfl(istep)/h\_phi\_mfl(istep)
+}
+\\
+It can be checked from the definition for the extended $k$ range (lines {\bf 4227 - 4230}) that
+$$
+{\cal C}_k^{(2)}(\varphi)=\frac{\sigma \hat B}{h^\varphi}=\frac{1}{h^\varphi} q_3^\sigma
+$$
+with $q_3^\sigma$ given by Georg's (3.20). Substituting this in~\eq{approxqflux} we get
+\bea{currents}
+q_{2,L^\prime} &\approx& \frac{1}{4} \oint \frac{\rd \varphi}{h^\varphi} \sum_{k,m,\sigma} b^{(3)}_m q_3^\sigma
+\int\limits_{\eta_{k-1}}^{\eta_k}\rd \eta f^{\sigma(L^\prime)}_m
+= \frac{1}{4} \oint \rd s \sum_{m,\sigma} b^{(3)}_m q_3^\sigma
+\int\limits_{0}^{1/\hat B}\rd \eta f^{\sigma(L^\prime)}_m
+\nonumber \\
+&=& -\frac{1}{4} \oint \rd s \sum_{m,\sigma} b^{(3)}_m
+\int\limits_{0}^{1/\hat B}\rd \eta f^{\sigma(L^\prime)}_m q_3^{-\sigma}.
+\eea
+Much more complicated is ${\cal C}_k^{(1)}$. It is given by
+\\
+{\bf
+4188       convol\_flux(1:npassing+1,istep)=convol\_flux\_0(1:npassing+1,istep) \& \\
+4189                                      *geodcu\_back(istep)
+}
+\\
+In the axisymmetric case
+\\
+{\bf geodcu\_back = geodcu\_forw}$ = k_G |\nabla s|$
+\\
+The other factor is computed as
+\\
+{\bf
+1494     coef\_cf=(1.d0,0.d0)/bhat\_mfl(istep)**2/h\_phi\_mfl(istep) \\
+1495     convol\_flux\_0(1:npassing+1,istep)                                        \& \\
+1496            =(convol\_polpow(0,1:npassing+1)+convol\_polpow(2,1:npassing+1))    \&\\
+1497            *coef\_cf
+}
+\\
+Here we need some intermediate results. Quantity {\bf vrecurr} computed on lines {\bf 1287 - 1322} is defined as
+$$
+\mbox{\bf vrecurr(n,m,k)}
+= \frac{1}{m!}\int\limits_{\lambda_k}^{\lambda_{k-1}}\rd\lambda \lambda^n (\lambda-\lambda_k)^m,
+$$
+where $\lambda_k=\lambda(\eta_k)=\sqrt{1-\hat B \eta_k}$.
+\\
+Quantity {\bf convol\_polpow} computed on lines {\bf 1436-1442} and {\bf 1453-1465} is defined via {\bf vrecurr}
+as
+\\
+{\bf
+1440         convol\_polpow(0:legmax,i-1:i+2)=convol\_polpow(0:legmax,i-1:i+2)      \& \\
+1441                  +MATMUL(vrecurr(0:legmax,0:3,i),bvec\_lapack)       !!!term[3]
+}
+\\
+where {\bf bvec\_lapack} according to the comments on lines {\bf 1417-1426} is defined in such a way that
+$$
+\left.\difp{^m f}{\lambda^m}\right|_{\lambda=\lambda_k}=\sum\limits_{j=1}^4
+\mbox{\bf bvec\_lapack(m+1,j)}\int\limits_{\eta_{k+j-3}}^{\eta_{k+j-2}}\rd \eta f.
+$$
+Respectively
+\bea{bandint}
+\int\limits_{\lambda_k}^{\lambda_{k-1}}\rd\lambda \lambda^n f
+&\approx &
+\int\limits_{\lambda_k}^{\lambda_{k-1}}\rd\lambda \lambda^n \sum\limits_{m=0}^3 \frac{(\lambda-\lambda_k)^m}{m!}
+\left.\difp{^m f}{\lambda^m}\right|_{\lambda=\lambda_k}
+\\
+&=&
+\sum\limits_{j=1}^4 \mbox{\bf MATMUL(vrecurr(n,0:3,k),bvec\_lapack(1:4,j))}
+\int\limits_{\eta_{k+j-3}}^{\eta_{k+j-2}}\rd \eta f.
+\nonumber
+\eea
+In lines {\bf 1440-1441} summation of integrals~\eq{bandint} over bands results in
+$$
+\int\limits_{-1}^{1}\rd\lambda \lambda^n f
+=
+\sum_{k,\sigma} \mbox{\rm convol\_polpow(n,k)}\; \sigma^n \int\limits_{\eta_{k}}^{\eta_{k-1}}\rd \eta f^\sigma.
+$$
+According to the lines {\bf 1494-1497} we have
+\bea{convol_flux_0}
+\sum_{k,\sigma} \mbox{\bf convol\_flux\_0(k,i)} \int\limits_{\eta_{k}}^{\eta_{k-1}}\rd \eta
+\left. f^\sigma\right|_{\varphi=\varphi_i}
+&=&
+\frac{1}{\hat B^2 h^\varphi} \int\limits_{-1}^{1}\rd\lambda (1+\lambda^2) f
+=
+\frac{1}{h^\varphi}\sum_\sigma \int\limits_0^{1/\hat B}\rd \eta\frac{1+\lambda^2}{2|\lambda|\hat B} f^\sigma
+\nonumber \\
+&=&
+-\frac{1}{h^\varphi} \sum_\sigma \int\limits_0^{1/\hat B}\rd \eta f^\sigma \difp{}{\eta}
+\left(\frac{|\lambda|}{\hat B}\frac{\hat V_G}{|\nabla\psi|k_G}\right),
+\nonumber
+\eea
+where $\hat V_G$ is given by Georg's (3.4).
+Using now {\bf convol\_flux = convol\_flux\_0} $k_G |\nabla s|$ we rewrite~\eq{convol_flux_0} to
+\bea{convol_flux_0_rewr}
+\sum_{k,\sigma} {\cal C}_k^1 \int\limits_{\eta_{k}}^{\eta_{k-1}}\rd \eta \left. f^\sigma\right|_{\varphi=\varphi_i}
+&=&
+\sum_{k,\sigma} \mbox{\bf convol\_flux\_0(k,i)} \int\limits_{\eta_{k}}^{\eta_{k-1}}\rd \eta
+\left. f^\sigma\right|_{\varphi=\varphi_i}
+=
+-\frac{1}{h^\varphi} \sum_\sigma \int\limits_0^{1/\hat B}\rd \eta f^\sigma q_1^{-\sigma},
+\eea
+where we used symmetry $q_1^{-\sigma}=q_1^{\sigma}$ and $q_1^\sigma$ has a re-defined geodesic curvature term
+$k_G |\nabla \psi| -> k_G |\nabla s|$. Thus the general expression retains the strucure of~\eq{currents},
+\bea{qflux_gen}
+q_{L_\ast,L_\ast^\prime}
+&=& -\frac{1}{4} \oint \rd s \sum_{m,\sigma} b^{(L)}_m
+\int\limits_{0}^{1/\hat B}\rd \eta f^{\sigma(L^\prime)}_m q_L^{-\sigma}.
+\eea
+Here we introduced indices $L_\ast=L_\ast(L)$ and $L_\ast^\prime=L_\ast(L^\prime)$
+in order to show index re-mapping explicitly,
+\be{indremap}
+L_\ast(1)=1, \qquad L_\ast(2)=3, \qquad L_\ast(3)=2.
+\ee
+Using the definition of flux surface average
+$$
+\langle A \rangle = \left(\oint \frac{\rd s}{\hat B}\right)^{-1} \oint \frac{\rd s}{\hat B} A,
+$$
+we can re-write~\eq{qflux_gen} as follows,
+\bea{qflux_gen_flaver}
+q_{L_\ast,L_\ast^\prime}
+&=& - \sum_{m,\sigma} b^{(L)}_m
+\left\langle \frac{\hat B}{4}\int\limits_{0}^{1/\hat B}\rd \eta f^{\sigma(L^\prime)}_m q_L^{-\sigma}\right\rangle
+\oint \frac{\rd s}{\hat B}.
+\eea
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Dimensional coefficients}
+Comparing~\eq{qflux_gen_flaver} with Georg's Eq.(3.51) and using there $l_c/\tau_{ee}=v_{te}\rightarrow v_{T\alpha}$
+(see definition of $l_c$ before Georg's Eq.(3.29) on page 21) we can write for a single species
+\be{Lcoefviaqflux}
+L_{LL^\prime}^\alpha=-n_\alpha v_{T\alpha} \beta_L \beta_{L^\prime}
+\left(\oint \frac{\rd s}{\hat B}\right)^{-1}
+q_{L_\ast,L_\ast^\prime}
+\ee
+with re-defined $\beta_L$ as compared to Georg's (3.18) because of different surface label ($\psi -> s$),
+\be{betas}
+\beta_1=\beta_2=\frac{\rho_\alpha}{\langle|\nabla s|\rangle}, \qquad \beta_3=1.
+\ee
+\red{
+Here
+\be{vtandrho}
+\rho_\alpha = \frac{v_{T\alpha}}{\omega_{c\alpha}^{\rm ref}},
+\qquad
+v_{T\alpha} = \sqrt{\frac{2 T_\alpha}{m_\alpha}},
+\qquad
+\omega_{c\alpha}^{\rm ref} = \frac{e_\alpha B_{\rm ref}}{m_\alpha c},
+\ee
+$e_\alpha$, $m_\alpha$ and $B_{\rm ref}$ are species charge and mass and the reference magentic field, respectively.
+}
+We notice now that definitions of $A_3$ and $I_3$ in Winny's paper given there by Eqs. (4) and (11)
+would have an opposite sign with respect to definitions of Georg, Eqs. (3.11) and (3.40),
+if electron charge there retains its sign, $e<0$. However, negative sign is not possible there because
+this would give the wrong sign of last terms in (3.9) and (3.10). Therefore $e$ must be a (positive) elementary
+charge in Georg's Eqs. (3.11) and (3.40) what is in agreement with Winny's definitions. This points to the
+inconsistency in Georg's notation because electron cyclotron frequency defined above (3.4) is positive.
+Thus, correction of this inconsistency would mean just using the definitions of $A_3$ and $I_3$ Winny what
+has no consequences for {\bf qflux}. Then, the only important difference
+with Georg's quantities is that they are defined via normalized magnetic field while Winny's are not.
+With this, diffusion coefficients $D_{jk}$ defined in Winny's paper by Eq. (14) are expressed via {\bf qflux} as
+follows
+\be{difcoefs}
+D_{LL^\prime}^\alpha=-v_{T\alpha} \bar\beta_L \bar\beta_{L^\prime}
+\left(\oint \frac{\rd s}{\hat B}\right)^{-1}
+q_{L_\ast,L_\ast^\prime},
+\ee
+where $\bar \beta_{1,2}=\beta_{1,2}$ and $\bar \beta_3= \beta_3 B_{\rm ref} = B_{\rm ref}$.
+Coefficients $D_{LL^\prime}$ for $L,L^\prime=1,2$ normalized by the plateau value
+\be{dplateau}
+D_p^\alpha = \frac{\pi v_{T\alpha} \rho_\alpha^2}{16\iota R_0}
+\ee
+are
+\be{platnorm}
+\frac{D_{LL^\prime}^\alpha}{D_p^\alpha}=-\frac{16\iota R}{\pi\langle|\nabla s|\rangle^2}
+\left(\oint \frac{\rd s}{\hat B}\right)^{-1}
+q_{L_\ast,L_\ast^\prime}, \qquad L,L^\prime=1,2.
+\ee
+\red{
+Value of $R_0$ in Eq~\eq{dplateau} corresponds to the major radius of the magnetic axis,
+and $\iota=\iota(s)$ is a local value.
+}
+Cross coefficients with the third drive or flux normalized by the ion-like Ware pitch coefficient
+\red{
+\be{wareion}
+D_{13}^{AX,\alpha}=\frac{c T_\alpha B_\varphi}{e_\alpha \sqrt{g}B^\vartheta}
+=\frac{v_{T\alpha}\rho_\alpha B_\varphi B_{\rm ref}}{2\sqrt{g}B^\vartheta}
+=\frac{v_{T\alpha}\rho_\alpha B_\varphi B_{\rm ref}}{2\iota \psi_a \langle|\nabla s|\rangle},
+\ee
+as follows
+\be{warenorm}
+\frac{D_{LL^\prime}^\alpha}{D_{13}^{AX,\alpha}}=-\frac{2\iota \psi_a}{B_\varphi}
+\left(\oint \frac{\rd s}{\hat B}\right)^{-1}
+q_{L_\ast,L_\ast^\prime}, \qquad L\ne 3, L^\prime=3 \quad\mbox{or}\quad L=3; L^\prime \ne 3.
+\ee
+}
+
+\noindent
+For normalization of $D_{33}^\alpha$ coefficients we use Lorentz conductivity in the homegeneous magnetic field
+(conductivity taking only electron-ion collisions for infinite mass ions with charge number $Z_{\rm eff}$)
+which is given by Georg's Eq.(6.28),
+\be{sigmaL}
+\sigma^L_{\rm NEO}=\frac{32}{3\pi}\frac{n_e e^2}{m_e}\frac{\tau_ee}{Z_{\rm eff}}=
+\frac{32}{3\pi}\frac{n_e e^2}{m_e}\frac{l_c}{v_{Te}Z_{\rm eff}},
+\ee
+where $l_c$ is defined by Eq.(16) of Winny and in the text below Eq.(16). Here one should take it for electrons.
+In the homogeneous magnetic field, $B=B_{\rm ref}$, using Winny's definitions of forces and fluxes one gets
+$$
+j_\parallel = -\frac{n_e e^4 D_{33}^e E_\parallel}{T_e B^2_{\rm ref}}=\sigma E_\parallel.
+$$
+Substituting here $\sigma = \sigma^L_{\rm NEO}$ from~\eq{sigmaL} one gets
+\be{D33L}
+D_{33}^{L}=-\frac{16}{3\pi} B^2_{\rm ref} v_{Te} \frac{l_c}{Z_{\rm eff}}.
+\ee
+Thus the normalized parallel flow coefficient is
+\be{D33norm}
+\frac{D^\alpha_{33}}{Z_{\rm eff} D_{33}^{L}}=\frac{3\pi}{16\, l_c} \sqrt{\frac{m_e T_\alpha}{m_\alpha T_e}}
+\left(\oint \frac{\rd s}{\hat B}\right)^{-1}q_{L_\ast(3),L_\ast(3)},
+\qquad q_{L_\ast(3),L_\ast(3)}=q_{2,2}.
+\ee
+For electrons this quantity corresponds to $\gamma_E / Z_{\rm eff}$ where $\gamma_E$ is given by Eq.(6.47) of Georg
+and its values are given in Table 6.1 there (this is actually the quantity tabulated in the original paper of
+Spitzer and H\"arm).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Transport coefficients computed by the multi-species version of NEO-2}
+
+In a multi-species plasma the thermodynamic fluxes $I_k^\alpha$,
+\bea{multispec:thermodyn_fluxes}
+I_1^\alpha &=& \Gamma_\alpha = \left\langle \int {\rd^3}v v_{g,\alpha}^r f_{\alpha 1} \right\rangle, \non
+I_2^\alpha &=& \frac{Q_\alpha}{T_\alpha} = \frac{1}{T_\alpha}\left\langle \int {\rd^3}v \frac{m_\alpha v^2}{2} v_{g,\alpha}^r f_{\alpha 1} \right\rangle, \non
+I_3^\alpha &=& n_\alpha \left\langle V_{\parallel,\alpha} B \right\rangle = \left\langle B \int {\rd^3}v v_\parallel f_{\alpha 1} \right\rangle,
+\eea
+are linked to the thermodynamic forces $A_k^{\alpha'}$,
+\be{multispec:thermodyn_forces}
+A_1^{\alpha'} = \frac{1}{n_{\alpha'}} \difp{n_{\alpha'}}{r} - \frac{e_{\alpha'} E_r}{T_{\alpha'}} -\frac{3}{2 T_{\alpha'}} \difp{T_{\alpha'}}{r}, \qquad
+A_2^{\alpha'} = \frac{1}{T_{\alpha'}} \difp{T_{\alpha'}}{r}, \qquad
+A_3^{\alpha'} = \frac{e_{\alpha'} \left\langle E_\parallel B \right\rangle}{T_{\alpha'} \left\langle B^2 \right\rangle},
+\ee
+via the relation,
+\be{multispec:thermodyn_fluxes_forces}
+I_j^\alpha = -n_\alpha \sum\limits_{\alpha'} \sum\limits_{k=1}^{3} D_{jk}^{\alpha \alpha'} A_{k}^{\alpha'}.
+\ee
+Here, $v_{g,\alpha}^r$ and $f_{\alpha 1}$ are the radial component of the guiding center drift velocity and
+the solution of the multi-species drift kinetic equation (DKE) system for species $\alpha$, respectively.
+The species particle flux density, heat flux density, parallel flow velocity, density, temperature, mass and charge
+are denoted by $\Gamma_\alpha$, $Q_\alpha$, $V_{\parallel,\alpha}$, $n_\alpha$, $T_\alpha$, $m_\alpha$ and $e_\alpha$, respectively,
+whereas $E_r$ is the radial electric field and $E_\parallel$ is the parallel electric field.
+In NEO-2 the multi-species transport coefficients $D_{jk}^{\alpha\alpha'}$ are calculated from the solution of the
+multi-species DKE system,
+\bea{multispec:DKEsystem}
+\hat{L}_{\rm D}^{\alpha_0} f_{(k \alpha')}^{\alpha_0} + \sum\limits_{\alpha''} \hat{L}_{\rm C,I}^{\alpha_0 \alpha''} f_{(k \alpha')}^{\alpha''} &=& 0 \non
+\vdots \hphantom{\hat{L}_{\rm D}^{\alpha} f_{(k \alpha')}^{\alpha} + \sum\limits_{\alpha''} \hat{L}_{\rm C,I}^{\alpha\alpha''}} &\vdots& \vdots \non
+\hat{L}_{\rm D}^{\alpha} f_{(k \alpha')}^{\alpha} + \sum\limits_{\alpha''} \hat{L}_{\rm C,I}^{\alpha\alpha''} f_{(k \alpha')}^{\alpha''} &=& 0 \non
+\vdots \hphantom{\hat{L}_{\rm D}^{\alpha} f_{(k \alpha')}^{\alpha} + \sum\limits_{\alpha''} \hat{L}_{\rm C,I}^{\alpha\alpha''}} &\vdots& \vdots \non
+\hat{L}_{\rm D}^{\alpha_{m-1}} f_{(k \alpha')}^{\alpha_{m-1}} + \sum\limits_{\alpha''} \hat{L}_{\rm C,I}^{\alpha_{m-1} \alpha''} f_{(k \alpha')}^{\alpha''} &=& 0 \non
+\hat{L}_{\rm D}^{\alpha'} f_{(k \alpha')}^{\alpha'} + \sum\limits_{\alpha''} \hat{L}_{\rm C,I}^{\alpha'\alpha''} f_{(k \alpha')}^{\alpha''} &=& \tilde{q}^{\sigma}_{(k \alpha')} f_{{\rm M},\alpha'} \non
+\hat{L}_{\rm D}^{\alpha_{m+1}} f_{(k \alpha')}^{\alpha_{m+1}} + \sum\limits_{\alpha''} \hat{L}_{\rm C,I}^{\alpha_{m+1} \alpha''} f_{(k \alpha')}^{\alpha''} &=& 0 \non
+\vdots \hphantom{\hat{L}_{\rm D}^{\alpha} f_{(k \alpha')}^{\alpha} + \sum\limits_{\alpha''} \hat{L}_{\rm C,I}^{\alpha\alpha''}} &\vdots& \vdots \non
+\hat{L}_{\rm D}^{\alpha_n} f_{(k \alpha')}^{\alpha_n} + \sum\limits_{\alpha''} \hat{L}_{\rm C,I}^{\alpha_n \alpha''} f_{(k \alpha')}^{\alpha''} &=& 0 ,
+\eea
+where the solution $f_{\alpha 1}$ has beeen expressed in terms of a superposition of species thermodynamic forces,
+\be{multispec:fa1expand}
+f_{\alpha 1} = \sum\limits_{\alpha'} \sum\limits_{k=1}^{3} f_{(k \alpha')}^{\alpha} A_k^{\alpha'},
+\ee
+because the problem is linear in the driving forces.
+Here, $\hat{L}_{\rm D}^{\alpha}$ and $\hat{L}_{\rm C,I}^{\alpha\alpha''}$ are the differential part of the multi-sepcies DKE system and
+the integral part of the Coulomb collision operator, respectively, and the quantity $\tilde{q}^{\sigma}_{(k \alpha)}$ can be expressed
+in the compact notation,
+\be{multispec:qktilde}
+\tilde{q}^{\sigma}_{(k \alpha)} = v_{T \alpha} \bar{\beta}_k^\alpha x^{2k-5\delta_{3k}} |\lambda| q^{\sigma}_{k},
+\ee
+where $v_{T \alpha}=\sqrt{2 T_\alpha / m_\alpha}$ is the species thermal velocity, $x=v/v_{T \alpha}$,
+$\bar{\beta}_1^\alpha = \bar{\beta}_2^\alpha = \rho_{\alpha 0} / \left\langle |\nabla s| \right\rangle$ and
+$\bar{\beta}_3^\alpha = B_{\rm ref}$.
+The species Larmor radius and normalized toroidal flux are $\rho_{\alpha 0}$ and $s$, respectively,
+and the quantities $q^{\sigma}_{k}$ are given by Eq.~(3.19) and Eq.~(3.20) of Georg's thesis
+using a re-defined geodesic curvature term $k_G |\nabla \psi| -> k_G |\nabla s|$.
+Analogous to Eq.~(3.43) of Georg's thesis the multi-species transport coefficients can be expressed as
+\be{multispec:difcoefs}
+D_{jk}^{\alpha \alpha'} = \frac{1}{n_\alpha} \left\langle \int {\rd}^3v
+\tilde{q}^{-\sigma}_{(j \alpha)} f_{(k \alpha')}^{\alpha} \right\rangle.
+\ee
+In the code the solution functions $f_{(k \alpha')}^{\alpha}$ are normalized by the
+species coefficient $\bar{\beta}_k^{\alpha'}$ appearing in the driving forces
+$\tilde{q}^{\sigma}_{(k \alpha')}$ in the right-hand side of the multi-species DKE system,
+\be{multispec:fa1norm}
+\hat{f}_{(k \alpha')}^{\alpha} = f_{(k \alpha')}^{\alpha} / \bar{\beta}_k^{\alpha'},
+\ee
+in order to make the multi-species DKE system independent of this coefficient.
+Furthermore, the normalized solution function is expressed in terms of test functions
+$\phi_m$ in order to resolve the energy dependence of the solution,
+\bea{multispec:fa1basisfun}
+\hat{f}_{(k \alpha')}^{\alpha}(r,s,x,\lambda)
+&=&
+f_{\alpha 0}(r,x) \sum\limits_{m} f_{m,(k \alpha')}^{\alpha}(r,s,\lambda) \phi_m(x) \non
+&=& \frac{n_\alpha}{\pi^{3/2} v_{T \alpha}^3} e^{-x^2}
+\sum\limits_{m} f_{m,(k \alpha')}^{\alpha}(r,s,\lambda) \phi_m(x).
+\eea
+Using Eq.~\eqref{multispec:qktilde}, Eq.~\eqref{multispec:fa1norm}, Eq.~\eqref{multispec:fa1basisfun}
+and the expression for the volume element in velocity space,
+\be{multispec:volumeelement}
+\int {\rd}^3v = \pi v_{T\alpha}^3 \hat{B} \sum\limits_{\sigma=\pm 1}
+\int\limits_0^\infty {\rd}x x^2 \int\limits_0^{1/\hat{B}} {\rd}\eta \frac{1}{|\lambda|},
+\ee
+the multi-species transport coefficients~\eqref{multispec:difcoefs} can be re-written as,
+\be{multispec:difcoefs_full}
+D_{jk}^{\alpha \alpha'} = v_{T \alpha} \bar{\beta}_j^{\alpha} \bar{\beta}_k^{\alpha'}
+\sum\limits_m \sum\limits_{\sigma=\pm 1}
+\underbrace{\left( \frac{4}{\sqrt{\pi}} \int\limits_0^\infty x^{2j+2-5\delta_{3j}} e^{-x^2} \phi_m(x) \right)}_{\equiv b_m^{(j)}}
+\left\langle \frac{\hat{B}}{4} \int\limits_0^{1/\hat{B}} {\rd}\eta q_j^{-\sigma} f_{m,(k \alpha')}^{\alpha} \right\rangle.
+\ee
+Analogous to Eq.~\eqref{difcoefs}, the multi-species diffusion coefficients $D_{jk}^{\alpha \alpha'}$
+can be expressed in terms of {\bf qflux} as follows,
+\be{multispec:difcoefs_final}
+D_{LL^\prime}^{\alpha \alpha'} =
+-v_{T\alpha} \bar\beta_{L}^{\alpha} \bar\beta_{L^\prime}^{\alpha'}
+\left(\oint \frac{\rd s}{\hat B}\right)^{-1}
+q_{L_\ast,L_\ast^\prime}^{\alpha \alpha'}.
+\ee
+In the NEO-2 subroutine \verb|compute_Dijab| of \verb|ntv_mod.f90|
+dimensional and normalized transport coefficients are computed.
+Normalizations of transport coefficients are introuced in the next subsection.
+Species particle flux density $\Gamma_\alpha$, species heat flux denstity $Q_\alpha$ and
+species parallel flow $\left\langle V_{\parallel,\alpha} B \right\rangle$ are
+conmputed by the NEO-2 subroutines \verb|compute_Gamma|, \verb|compute_Qflux| and
+\verb|compute_ParFlow| of \verb|ntv_mod.f90| , respectively.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Normalized transport coefficients}
+
+Coefficients $D_{LL^\prime}^{\alpha \alpha'}$ for $L,L^\prime=1,2$ normalized by the plateau value
+$D_p^{\alpha_1}$ Eq.~\eq{dplateau} of the first species, $\alpha_1=1$ (usually electrons)
+are
+\be{multispec:platnorm}
+\frac{D_{LL^\prime}^{\alpha \alpha'}}{D_p^{\alpha_1}}=
+-\frac{16\iota R}{\pi\langle|\nabla s|\rangle^2}
+\left(\oint \frac{\rd s}{\hat B}\right)^{-1}
+\left(\frac{m_\alpha m_{\alpha'}}{m_{\alpha_1}^2}\right)
+\left(\frac{v_{T \alpha}^2 v_{T \alpha'}}{v_{T \alpha_1}^3}\right)
+\left(\frac{Z_{\alpha_1}^2} {Z_\alpha Z_{\alpha'}}\right)
+q_{L_\ast,L_\ast^\prime}^{\alpha \alpha'}, \qquad L,L^\prime=1,2.
+\ee
+The cross coefficients for the third drive normalized by the ion-like Ware pitch coefficient
+$D_{13}^{{\rm AX},\alpha_1}$ Eq.~\eq{wareion} of the first species, $\alpha_1=1$ (usually electrons),
+are
+\be{multispec:warenorm}
+\frac{D_{LL^\prime}^{\alpha \alpha'}}{D_{13}^{{\rm AX},\alpha_1}}=
+-\frac{2\iota \psi_a}{B_\varphi}
+\left(\oint \frac{\rd s}{\hat B}\right)^{-1}
+\left(\frac{m_\alpha}{m_{\alpha_1}}\right)
+\left(\frac{v_{T \alpha}^2}{v_{T \alpha_1}^2}\right)
+\left(\frac{Z_{\alpha_1}} {Z_\alpha}\right)
+q_{L_\ast,L_\ast^\prime}^{\alpha \alpha'}, \qquad L\ne 3, L^\prime=3.
+\ee
+The cross coefficients for the third flux normalized by the ion-like Ware pitch coefficient
+of the first species (usually electrons) are
+\be{multispec:bootstrapnorm}
+\frac{D_{LL^\prime}^{\alpha \alpha'}}{D_{13}^{{\rm AX},\alpha_1}}=
+-\frac{2\iota \psi_a}{B_\varphi}
+\left(\oint \frac{\rd s}{\hat B}\right)^{-1}
+\left(\frac{m_{\alpha'}}{m_{\alpha_1}}\right)
+\left(\frac{v_{T \alpha} v_{T \alpha'}}{v_{T \alpha_1}^2}\right)
+\left(\frac{Z_{\alpha_1}} {Z_{\alpha'}}\right)
+q_{L_\ast,L_\ast^\prime}^{\alpha \alpha'}, \qquad L= 3, L^\prime \ne 3.
+\ee
+The normalized parallel flow coefficient is
+\be{multispec:D33norm}
+\frac{D^{\alpha \alpha'}_{33}}{Z_{\rm eff} D_{33}^{L}}=\frac{3\pi}{16\, l_{c,\alpha_1}}
+\sqrt{\frac{m_{\alpha_1} T_\alpha}{m_\alpha T_{\alpha_1}}}
+\left(\oint \frac{\rd s}{\hat B}\right)^{-1}q_{L_\ast(3),L_\ast(3)}^{\alpha \alpha'},
+\qquad q_{L_\ast(3),L_\ast(3)}^{\alpha \alpha'}=q_{2,2}^{\alpha \alpha'}.
+\ee
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Computation of the radial electric field}
+In the NEO-2 subroutine \verb|compute_Er| of \verb|ntv_mod.f90| the radial electric field is evaluated
+without or with account of the parallel electric field.
+The radial electric field is evaluated from the toroidal rotation velocity and plasma
+parameter profiles using the ideal MHD equilibrium equation for the ion component
+(see Eq.~(4) of [Kasilov et al., Physics of Plasmas 21, 092506 (2014)]),
+\be{multispec:idealMHDEq}
+\nabla p_\alpha = e_\alpha n_\alpha \left( \bE + \frac{1}{c} \bV_\alpha \times \bB \right).
+\ee
+Taking the cross-product of Eq.~\eqref{multispec:idealMHDEq} with $\bB$ gives
+the perpendicular component of the species flow velocity $\bV_{\alpha}$,
+\bea{multispec:VperpSpec}
+\bV_{\perp,\alpha}
+&=&
+\frac{c}{B} \bh \times \left( \frac{\nabla p_\alpha}{e_\alpha n_\alpha} - \bE \right) \non
+&=&
+\frac{c}{B} \left( \frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r} - E_r \right) \bh \times {\nabla}r,
+\eea
+using $p_\alpha = p_\alpha(r)$ and $\bE = - \nabla\Phi(r)$.
+In Boozer coordinates $(r,\tht_B,\ph_B)$ the contra-variant components of $\bV_{\perp,\alpha}$ are
+\bea{multispec:VperpSpec_ctrvr}
+V_{\perp,\alpha}^r &=& \bV_{\perp,\alpha} \cdot {\nabla}r = 0, \non
+V_{\perp,\alpha}^{\tht_B}(r)&=& \bV_{\perp,\alpha} \cdot {\nabla}\tht_B =
+\frac{c B_{\ph_B}}{\sqrt{g_B} B^2} \left(\frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r}-E_r\right), \non
+V_{\perp,\alpha}^{\ph_B}(r) &=& \bV_{\perp,\alpha} \cdot {\nabla}\ph_B =
+-\frac{c B_{\tht_B}}{\sqrt{g_B} B^2} \left(\frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r}-E_r\right).
+\eea
+Eq.~\eqref{multispec:VperpSpec} also implies that the radial contra-variant component of
+the species flow velocity is zero,
+\be{multispec:VrCtrvr}
+V_\alpha^r = \bV_\alpha \cdot {\nabla}r =
+\left( \bV_{\perp,\alpha} + \bh V_{\parallel,\alpha} \right) \cdot {\nabla}r = 0.
+\ee
+Furthermore, it is assumed that the species flow velocity is divergence-free,
+\be{multispec:VDivFree}
+\nabla \cdot \bV = 0.
+\ee
+The parallel component of the species flow velocity $V_{\parallel,\alpha}$ can be determined from
+Eq.~\eqref{multispec:VDivFree} taking into account Eq.~\eqref{multispec:VperpSpec},
+Eq.~\eqref{multispec:VrCtrvr} and the toroidal symmetry of the device,
+\bea{multispec:VDivFree_1D}
+\nabla \cdot \bV
+&=&
+\frac{1}{\sqrt{g_B}} \difp{}{r} \sqrt{g_B} \underbrace{V_\alpha^r}_{= \ 0} +
+\frac{1}{\sqrt{g_B}} \difp{}{\tht_B} \sqrt{g_B} V_\alpha^{\tht_B} +
+\frac{1}{\sqrt{g_B}} \underbrace{\difp{}{\ph_B} \sqrt{g_B} V_\alpha^{\ph_B}}_{\rightarrow \ 0} \non
+&=&
+\frac{1}{\sqrt{g_B}} \difp{}{\tht_B} \sqrt{g_B} \left(
+\frac{c B_{\ph_B}}{\sqrt{g_B} B^2} \left( \frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r} - E_r \right) +
+\frac{B^{\tht_B}}{B} V_{\parallel,\alpha}
+\right) \non
+&=&
+\frac{1}{\sqrt{g_B}} \difp{}{\tht_B} \underbrace{\sqrt{g_B} B^{\tht_B}}_{= \ f(r)} \left(
+\frac{c B_{\ph_B}}{\sqrt{g_B} B^{\tht_B} B^2} \left( \frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r} - E_r \right) +
+\frac{V_{\parallel,\alpha}}{B} \right) \non
+&\overset{!}{=} &  0,
+\eea
+as
+\bea{multispec:VparSpec}
+V_{\parallel,\alpha}
+&=&
+- \frac{c B_{\ph_B}}{\sqrt{g_B} B^{\tht_B} B}
+\left( \frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r} - E_r \right)
++ K(r) B \non
+&=&
+- \frac{c T_\alpha B_{\ph_B}}{e_\alpha \sqrt{g_B} B^{\tht_B} B}
+\left( \frac{1}{p_\alpha} \difp{p_\alpha}{r} - \frac{e_\alpha E_r}{T_\alpha} \right)
++ K(r) B.
+\eea
+Using Eqs.~\eqref{multispec:VperpSpec_ctrvr} and~\eqref{multispec:VparSpec},
+the radial electric field can be evaulated for a known (experimentally measuered)
+flux surface averaged toroidal rotation velocity $\left\langle V_\alpha^\ph \right\rangle$
+(activated for \verb|isw_Vphi_loc=0|).
+Here $\ph$ denotes the geometric angle.
+Firstly, the flux surface averaged toroidal rotation velocity in Boozer coordinates
+$\left\langle V_\alpha^{\ph_B} \right\rangle$ is expressed  in terms of the
+species parallel flow $\left\langle V_{\parallel,\alpha} B \right\rangle$,
+\be{multispec:calc_Er_step1}
+\left\langle V_\alpha^{\ph_B} \right\rangle =
+-\frac{c B_{\tht_B}}{\sqrt{g_B} B^2} \left(\frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r}-E_r\right) +
+\frac{B^{\ph_B}}{B^2} \left\langle V_{\parallel,\alpha} B \right\rangle.
+\ee
+The species parallel flow can be evaluated in terms of transport coefficients
+that are determined by the NEO-2 solution for the axisymmetric configuration,
+\bea{multispec:calc_Er_step1a}
+\left\langle V_{\parallel,\alpha} B \right\rangle
+&=&
+- \sum\limits_{\alpha'} \left(
+D_{31}^{\alpha \alpha'} \left(-\frac{e_{\alpha'} E_r}{T_{\alpha'}}\right) +
+D_{31}^{\alpha \alpha'} \frac{1}{p_{\alpha'}}\difp{p_{\alpha'}}{r} +{} \right. \non
+& & {}+ \left.
+\left( D_{32}^{\alpha \alpha'} - \frac{5}{2} D_{31}^{\alpha \alpha'}\right)
+\frac{1}{T_{\alpha'}}\difp{T_{\alpha'}}{r} +
+D_{33}^{\alpha \alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\frac{\left\langle E_{\parallel} B  \right\rangle }{\left\langle B^2 \right\rangle}
+\right) \non
+&\overset{!}{=}&
+\frac{B^2}{B^{\ph_B}} \left\langle V_\alpha^{\ph_B} \right\rangle +
+\frac{c B_{\tht_B}}{\sqrt{g_B} B^{\ph_B}}
+\left(\frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r}-E_r\right),
+\eea
+which in turn yields following expression for the radial electric field,
+\bea{multispec:calc_Er_step1b}
+E_r
+&=&
+\left[
+\frac{c B_{\tht_B}}{\sqrt{g_B} B^{\ph_B}} +
+\sum\limits_{\alpha'} D_{31}^{\alpha \alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\right]^{-1}
+\left(
+\frac{B^2}{B^{\ph_B}} \left\langle V_\alpha^{\ph_B} \right\rangle +
+\frac{c T_\alpha B_{\tht_B}}{e_\alpha \sqrt{g_B} B^{\ph_B}}
+\frac{1}{p_\alpha} \difp{p_\alpha}{r} \right. +{} \non
+& & +{} \left.
+\sum\limits_{\alpha'} \left[
+D_{31}^{\alpha \alpha'} \frac{1}{p_{\alpha'}}\difp{p_{\alpha'}}{r} +
+\left( D_{32}^{\alpha \alpha'} - \frac{5}{2} D_{31}^{\alpha \alpha'}\right)
+\frac{1}{T_{\alpha'}}\difp{T_{\alpha'}}{r} +
+D_{33}^{\alpha \alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\frac{\left\langle E_{\parallel} B  \right\rangle }{\left\langle B^2 \right\rangle}
+\right]
+\right).
+\eea
+Secondly, we show that
+$\left\langle V_\alpha^{\ph_B} \right\rangle = \left\langle V_\alpha^{\ph} \right\rangle$.
+In a Boozer file the transformation function $G$ between Boozer coordinates and
+symmetry flux coordinates (with respect to the geometric angle $\ph$ as a symmetry coordinate)
+is generally given as
+\bea{multispec:def_Gfun}
+\ph - \ph_B &=& +\frac{2\pi}{N_p} l \overset{!}{=} 2\pi \difp{\psi_{\rm tor}}{s} G(s,\tht_B,\ph_B)
+\quad {\rm for} \quad {\rm lab\_swi=9},\non
+\ph - \ph_B &=& -\frac{2\pi}{N_p} l \overset{!}{=} 2\pi \difp{\psi_{\rm tor}}{s} G(s,\tht_B,\ph_B)
+\quad {\rm for} \quad {\rm lab\_swi=else},
+\eea
+where $s=\psi_{\rm tor}/\psi_{\rm tor}^{\rm a}$ is the normalized toroidal flux
+(typically used as a flux surface label in a Boozer file instead of the effective radius $r$),
+$N_p$ is the number of field periods and the quantity $l$ is given in terms of Fourier coefficients,
+\bea{multispec:def_lmn}
+l &=& \sum\limits_{m,n}
+\left(
+l_{m,n}^{\rm c} \cos{\left(m\tht_B + n\ph_B\right)} +
+l_{m,n}^{\rm s} \sin{\left(m\tht_B + n\ph_B\right)}
+\right)
+\quad {\rm for} \quad {\rm lab\_swi=9},\non
+l &=&
+\sum\limits_{m,n}
+l_{m,n} \sin{\left(m\tht_B - n\ph_B\right)}
+\quad {\rm for} \quad {\rm lab\_swi=else}.
+\eea
+Using Eq.~\eqref{multispec:def_Gfun} $\left\langle V_\alpha^{\ph} \right\rangle$
+can be related to $\left\langle V_\alpha^{\ph_B} \right\rangle$,
+\be{multispec:calc_Er_step2a}
+\left\langle V_\alpha^{\ph} \right\rangle =
+\left\langle V_\alpha^{\ph_B} \right\rangle +
+2\pi \difp{\psi_{\rm tor}}{s}
+\left\langle \difp{G(s,\tht_B)}{\tht_B} V_\alpha^{\tht_B} \right\rangle,
+\ee
+where (to the lowest order) $G$ is assumed to be independent of $\ph_B$ due to the smallness
+of the perturbation field amplitude (quasilinear approximation).
+The second term on the right-hand side of Eq.~\eqref{multispec:calc_Er_step2a} is zero
+since $G$ is a periodic function of angles,
+\bea{multispec:calc_Er_step2b}
+\left\langle \difp{G(s,\tht_B)}{\tht_B} V_\alpha^{\tht_B} \right\rangle
+&=&
+\left(\int\limits_{0}^{2\pi} \rd\ph_B \int\limits_{0}^{2\pi} \rd\tht_B \sqrt{g_B}\right)^{-1}
+\int\limits_{0}^{2\pi} \rd\ph_B \int\limits_{0}^{2\pi} \rd\tht_B
+\underbrace{\sqrt{g_B} B^{\tht_B} K(r)}_{= f(r)} \difp{G}{\tht_B} \non
+&=&
+\left(\int\limits_{0}^{2\pi} \rd\ph_B \int\limits_{0}^{2\pi} \rd\tht_B \sqrt{g_B}\right)^{-1}
+\sqrt{g_B} B^{\tht_B} K(r) \int\limits_{0}^{2\pi} \rd\ph_B
+\underbrace{\int\limits_{0}^{2\pi} \rd\tht_B \difp{G}{\tht_B}}_{= 0} = 0,
+\eea
+and thus $\left\langle V_\alpha^{\ph} \right\rangle = \left\langle V_\alpha^{\ph_B} \right\rangle$.
+The expression for the radial electric field finally becomes
+\bea{multispec:Er_from_Vphiav}
+E_r
+&=&
+\left[
+\frac{c B_{\tht_B}}{\sqrt{g_B} B^{\ph_B}} +
+\sum\limits_{\alpha'} D_{31}^{\alpha \alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\right]^{-1}
+\left(
+\frac{B^2}{B^{\ph_B}} \left\langle V_\alpha^{\ph} \right\rangle +
+\frac{c T_\alpha B_{\tht_B}}{e_\alpha \sqrt{g_B} B^{\ph_B}}
+\frac{1}{p_\alpha} \difp{p_\alpha}{r} \right. +{} \non
+& & +{} \left.
+\sum\limits_{\alpha'} \left[
+D_{31}^{\alpha \alpha'} \frac{1}{p_{\alpha'}}\difp{p_{\alpha'}}{r} +
+\left( D_{32}^{\alpha \alpha'} - \frac{5}{2} D_{31}^{\alpha \alpha'}\right)
+\frac{1}{T_{\alpha'}}\difp{T_{\alpha'}}{r} +
+D_{33}^{\alpha \alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\frac{\left\langle E_{\parallel} B  \right\rangle }{\left\langle B^2 \right\rangle}
+\right]
+\right).
+\eea
+For a simple plasma with a single ion species ($\alpha=i$) an analytical solution for
+the bootstrap transport coefficient $D_{31}^{ii}$ is known
+(see Eq.~(10) of [Kasilov et al., Physics of Plasmas 21, 092506 (2014)]),
+\be{multispec:D31_analyt}
+D_{31}^{ii} = \frac{c T_i B_{\ph_B}}{e_i \sqrt{g_B} B^{\tht_B}}.
+\ee
+If the contribution from the parallel electric field is negligible small,
+the expression for $E_r$, Eq.~\eqref{multispec:Er_from_Vphiav},
+reduces then to
+\bea{multispec:Er_from_Vphiav_limit}
+E_r
+&=&
+\left[ \frac{c \left(B_{\tht_B} + q B_{\ph_B} \right)}{\sqrt{g_B} B^{\ph_B}} \right]^{-1}
+\left(
+\underbrace{\iota \left(B_{\tht_B} + q B_{\ph_B}\right)}_{= B^2 / B^{\ph_B}}
+\left\langle V_\alpha^{\ph} \right\rangle +
+\frac{c T_i \left(B_{\tht_B} + q B_{\ph_B} \right)}{e_i \sqrt{g_B} B^{\ph_B}}
+\frac{1}{p_i}\difp{p_i}{r} \right. -{} \non
+& & -{}
+\left.
+\frac{c T_i B_{\ph_B}}{e_i \sqrt{g_B} B^{\tht_B}} k(r) \frac{1}{T_i}\difp{T_i}{r}
+\right) \non
+&=&
+\frac{\sqrt{g_B} B^{\tht_B}}{c} \left\langle V_\alpha^{\ph} \right\rangle +
+\frac{1}{e_i n_i} \difp{p_i}{r} - \frac{k(r) B_{\ph_B}}
+{e_i \underbrace{\left(\iota B_{\tht_B} + B_{\ph_B}\right)}_{\approx \left\langle B^2 \right\rangle / B^{\ph_B}}}
+\difp{T_i}{r},
+\eea
+which agrees with Eq.~(6) [Kasilov et al., Physics of Plasmas 21, 092506 (2014)].\\
+
+If the toroidal rotation frequency is measured at a specific point on a flux surface $(r,\tht_B)$,
+activate \verb|isw_Vphi_loc=2| in order to compute the radial electric field.
+Fur this purpose the integration constant $K(r)$ can be evaluated in terms of transport coefficients,
+which are determined by the NEO-2 solution for the axisymmetric configuration,
+\bea{multispec:K_via_VparB}
+\left\langle V_{\parallel,\alpha} B \right\rangle
+&=&
+- \frac{c T_\alpha B_{\ph_B}}{e_\alpha \sqrt{g_B} B^{\tht_B}}
+\left( \frac{1}{p_\alpha} \difp{p_\alpha}{r} - \frac{e_\alpha E_r}{T_\alpha} \right)
++ K(r) \left\langle B^2 \right\rangle \non
+&\overset{!}{=}&
+- \sum\limits_{\alpha'} \left(
+D_{31}^{\alpha \alpha'} \left(-\frac{e_{\alpha'} E_r}{T_{\alpha'}}\right) +
+D_{31}^{\alpha \alpha'} \frac{1}{p_{\alpha'}}\difp{p_{\alpha'}}{r} +{} \right. \non
+& & {}+ \left.
+\left( D_{32}^{\alpha \alpha'} - \frac{5}{2} D_{31}^{\alpha \alpha'}\right)
+\frac{1}{T_{\alpha'}}\difp{T_{\alpha'}}{r} +
+D_{33}^{\alpha \alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\frac{\left\langle E_{\parallel} B  \right\rangle }{\left\langle B^2 \right\rangle}
+\right),
+\eea
+as
+\bea{multispec:constK}
+K(r) &=&
+\frac{1}{\left\langle B^2 \right\rangle} \left(
+E_r \left(-\frac{c B_{\ph_B}}{\sqrt{g_B} B^{\tht_B}} +
+\sum\limits_{\alpha'} D_{31}^{\alpha \alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}\right) +
+\frac{c T_\alpha B_{\ph_B}}{e_\alpha \sqrt{g_B} B^{\tht_B}}
+\frac{1}{p_\alpha} \difp{p_\alpha}{r} \right. -{} \non
+& & {}- \left.
+\sum\limits_{\alpha'} \left(
+D_{31}^{\alpha \alpha'} \frac{1}{p_{\alpha'}}\difp{p_{\alpha'}}{r} +
+\left( D_{32}^{\alpha \alpha'} - \frac{5}{2} D_{31}^{\alpha \alpha'}\right)
+\frac{1}{T_{\alpha'}}\difp{T_{\alpha'}}{r} +
+D_{33}^{\alpha \alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\frac{\left\langle E_{\parallel} B  \right\rangle }{\left\langle B^2 \right\rangle} \right)
+\right).
+\eea
+Using Eq.~\eqref{multispec:def_Gfun}, Eq.~\eqref{multispec:VrCtrvr},
+Eq.~\eqref{multispec:VparSpec} and Eq.~\eqref{multispec:constK},
+the toroidal rotation frequency is related to the radial electric field via
+\bea{multispec:calc_Er_step_loc}
+V_\alpha^{\ph} (r,\tht_B)
+&=&
+V_\alpha^{\ph_B} + 2\pi \psi_{\rm tor}^{\rm a}
+\difp{G(s,\tht_B)}{\tht_B} V_\alpha^{\tht_B} \non
+&=&
+- \frac{c T_\alpha \left(B_{\tht_B} + q B_{\ph_B} \right)} {e_\alpha \sqrt{g_B} B^2}
+\left( \frac{1}{p_\alpha} \difp{p_\alpha}{r} - \frac{e_\alpha E_r}{T_\alpha} \right) +
+B^{\ph_B} \left( 1 + 2 \pi \iota \psi_{\rm tor}^{\rm a} \difp{G}{\tht_B} \right) K(r).
+\eea
+This expression can be rearranged to determine the radial electric field as
+\bea{multispec:Er_from_VphiLoc}
+E_r
+&=&
+\left[
+\frac{c \left(B_{\tht_B} + q B_{\ph_B}\right)}{\sqrt{g_B} B^2} +
+\frac{B^{\ph_B}}{\left\langle B^2 \right\rangle}
+\left(1 + 2 \pi \iota \psi_{\rm tor}^{\rm a} \difp{G}{\tht_B}\right)
+\left(
+-\frac{c B_{\ph_B}}{\sqrt{g_B} B^{\tht_B}} +
+\sum\limits_{\alpha'} D_{31}^{\alpha \alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\right)
+\right]^{-1} \times{} \non
+& & {}\times
+\left(
+V_\alpha^{\ph}(r,\tht_B) +
+\frac{c T_\alpha}{e_\alpha} \left(
+\frac{B_{\tht_B} + q B_{\ph_B}}{\sqrt{g_B} B^2} -
+\left(1 + 2 \pi \iota \psi_{\rm tor}^{\rm a} \difp{G}{\tht_B}\right)
+\frac{B^{\ph_B} B_{\ph_B}}{\left\langle B^2 \right\rangle \sqrt{g_B} B^{\tht_B}}
+\right)
+\frac{1}{p_\alpha} \difp{p_\alpha}{r} \right. +{} \non
+& & +{}
+\frac{B^{\ph_B}}{\left\langle B^2 \right\rangle}
+\left(1 + 2 \pi \iota \psi_{\rm tor}^{\rm a} \difp{G}{\tht_B}\right)
+\sum\limits_{\alpha'} \left[
+D_{31}^{\alpha \alpha'} \frac{1}{p_{\alpha'}}\difp{p_{\alpha'}}{r} +
+\left( D_{32}^{\alpha \alpha'} - \frac{5}{2} D_{31}^{\alpha \alpha'}\right)
+\frac{1}{T_{\alpha'}}\difp{T_{\alpha'}}{r} \right. +{} \non
+& & +{} \left. \left.
+D_{33}^{\alpha \alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\frac{\left\langle E_{\parallel} B  \right\rangle }{\left\langle B^2 \right\rangle}
+\right]
+\right),
+\eea
+where the parallel electric field is assumed to be either known (see next section) or negligible small.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Computation of the parallel electric field}
+In the NEO-2 subroutine \verb|compute_A3norm| of \verb|ntv_mod.f90|
+the parallel electric field is evaluated from equilibrium currents
+specified in the Boozer file and from transport coefficients computed by NEO-2.
+The total, parallel equilibrium current is given by following expression
+(see next subsection for further details),
+\be{multispec:JparB_tot_result}
+\left\langle j_\parallel^{\rm tot} B \right\rangle =
+\frac{c}{4 \pi} \frac{\sigma_{\sqrt{g}} \left\langle B^2 \right\rangle}
+{|\psi_{\rm tor}^{\rm a} \left(B_{\ph_B} + \iota B_{\tht_B}\right)|}
+\left(B_{\ph_B} \difp{B_{\tht_B}}{s} -  B_{\tht_B} \difp{B_{\ph_B}}{s}\right),
+\ee
+where $\sigma_{\sqrt{g}}=\sign(\sqrt{g_B})$ takes into account a
+left-handed coordinate system.
+This total, parallel equilibrium current can be also expressed in terms of
+transport coefficients computed by NEO-2,
+\bea{multispec:JparB_tot_Dijab}
+\left\langle j_\parallel^{\rm tot} B \right\rangle
+&=&
+-  \sum\limits_{\alpha,\alpha'} \sum\limits_{k=1}^{3}
+e_\alpha n_\alpha D_{3k}^{\alpha\alpha'} A_k^{\alpha'}.
+\eea
+Using Eq.~\eqref{multispec:JparB_tot_result} and Eq.~\eqref{multispec:JparB_tot_Dijab},
+the parallel electric field can be expressed as,
+\bea{multispec:avEparB}
+\frac{\left\langle E_\parallel B \right\rangle}{\left\langle B^2 \right\rangle}
+&=&
+\left[
+-\sum\limits_{\alpha,\alpha'} e_\alpha n_\alpha
+D_{33}^{\alpha\alpha'} \frac{e_{\alpha'}}{T_{\alpha'}}
+\right]^{-1}
+\left(
+\frac{c}{4 \pi} \frac{\sigma_{\sqrt{g}} \left\langle B^2 \right\rangle}
+{|\psi_{\rm tor}^{\rm a} \left(B_{\ph_B} + \iota B_{\tht_B}\right)|}
+\left(B_{\ph_B} \difp{B_{\tht_B}}{s} -  B_{\tht_B} \difp{B_{\ph_B}}{s}\right)
+\right. +{} \non
+& & {}+
+\left.
+\sum\limits_{\alpha,\alpha'} e_\alpha n_\alpha
+\left[
+-D_{31}^{\alpha\alpha'} \frac{e_{\alpha'}}{T_{\alpha'}} E_r +
+D_{31}^{\alpha\alpha'} \difp{\log p_{\alpha'}}{r} +
+\left(D_{32}^{\alpha\alpha'}-\frac{5}{2}D_{31}^{\alpha\alpha'}\right)
+\difp{\log T_{\alpha'}}{r}
+\right]
+\right).
+\eea
+Eq.~\eqref{multispec:avEparB} and Eq.~\eqref{multispec:Er_from_Vphiav} /
+Eq.~\eqref{multispec:Er_from_VphiLoc} yield a system of equations
+for the parallel and radial electric field which can be solved
+iteratively (see subroutine \verb|get_Er| of \verb|ntv_mod.f90|)
+or directly (see subroutine \verb|compute_Er_and_A3norm| of \verb|ntv_mod.f90|).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Computation of the parallel equilibrium current from a Boozer file}
+The total, parallel equilibrium current can be computed from the
+magnetic field data provided by the Boozer file via Ampere's law,
+\be{multispec:AmpereLaw}
+\nabla \times \bB = \frac{4\pi}{c} \bj.
+\ee
+Firstly, the averaged toroidal and poloidal contra-variant components of the
+current density are calculated from Ampere's law,
+\bea{multispec:av_JphiCtrvr and_JthtCtrvr}
+\left\langle j^{\ph_B} \right\rangle
+&=&
+\hphantom{-} \pi c
+\left(
+\int\limits_{0}^{2\pi} \rd\ph_B \int\limits_{0}^{2\pi} \rd\tht_B \sqrt{g_B}
+\right)^{-1}
+\difp{B_{\tht_B}}{s}, \non
+%
+\left\langle j^{\tht_B} \right\rangle
+&=&
+-\pi c
+\left(
+\int\limits_{0}^{2\pi} \rd\ph_B \int\limits_{0}^{2\pi} \rd\tht_B \sqrt{g_B}
+\right)^{-1}
+\difp{B_{\ph_B}}{s}.
+\eea
+Please note that in this subsection $s$ is used as a flux surface label
+(i.e., ($\sqrt{g_B})^{-1}=({\nabla}s \times \nabla\tht_B)\cdot \nabla\ph_B$) which is common choice for Boozer files.
+Secondly, the averaged toroidal and poloidal contra-variant components of the
+current density are splitted into a parallel and perpendicular component
+with respect to the magnetic field line,
+\bea{multispec:JphiCtrvr and_JthtCtrvr_parperp}
+\left\langle j^{\ph_B} \right\rangle
+&=&
+\left\langle j_{\parallel}^{\rm tot} h^{\ph_B} \right\rangle +
+\left\langle j_{\perp}^{\ph_B} \right\rangle =
+\frac{B^{\ph_B}}{B^2}
+\left\langle j_{\parallel}^{\rm tot} B \right\rangle +
+\left\langle j_{\perp}^{\ph_B} \right\rangle, \non
+%
+\left\langle j^{\tht_B} \right\rangle
+&=&
+\left\langle j_{\parallel}^{\rm tot} h^{\tht_B} \right\rangle +
+\left\langle j_{\perp}^{\tht_B} \right\rangle =
+\frac{B^{\tht_B}}{B^2}
+\left\langle j_{\parallel}^{\rm tot} B \right\rangle +
+\left\langle j_{\perp}^{\tht_B} \right\rangle.
+\eea
+Using the ideal MHD force balance equation,
+\be{multispec:idealMHDforcebal}
+\nabla \times \bB = \frac{4\pi}{c} \bj,
+\ee
+the perpendicular component of the current density $\bj_\perp$
+can be determined,
+\be{multispec:jperp_via_MHDforcebal}
+\bj_\perp = \frac{c}{B^2} \bB \times {\nabla}p =
+\frac{c}{B^2} \difp{p}{s} \bB \times {\nabla}s.
+\ee
+The perpendicular components of $j^{\ph_B}$ and $j^{\tht_B}$
+are then
+\bea{multispec:jperp_ph_and_tht}
+j_{\perp}^{\ph_B}(s)
+&=&
+\frac{c}{B^2} \difp{p}{s} \left(\bB \times {\nabla}s\right) \cdot \nabla\ph_B =
+-c \difp{p}{s} \frac{B_{\tht_B}}{\sqrt{g_B} B^2}, \non
+%
+j_{\perp}^{\tht_B}(s)
+&=&
+\frac{c}{B^2} \difp{p}{s} \left(\bB \times {\nabla}s\right) \cdot \nabla\tht_B =
+\hphantom{-}c \difp{p}{s} \frac{B_{\ph_B}}{\sqrt{g_B} B^2}.
+\eea
+Using Eq.~\eqref{multispec:av_JphiCtrvr and_JthtCtrvr}, Eq.~\eqref{multispec:JphiCtrvr and_JthtCtrvr_parperp}
+and Eq.~\eqref{multispec:jperp_ph_and_tht}, $\left\langle j_{\parallel}^{\rm tot} B \right\rangle$
+can be computed,
+\bea{multispec:JparB_tot_step1}
+\left\langle j_{\parallel}^{\rm tot} B \right\rangle
+&=&
+\pi c
+\underbrace{
+\left(
+\int\limits_{0}^{2\pi} \rd\ph_B \int\limits_{0}^{2\pi} \rd\tht_B \sqrt{g_B}
+\right)^{-1}
+}_{= \left\langle B^2 \right\rangle /
+\left( 4\pi^2 \sigma_{\sqrt{g}} |\psi_{\rm tor}^{\rm a}
+\left(B_{\ph_B} + \iota B_{\tht_B}\right)|\right)}
+\left(B_{\ph_B} \difp{B_{\tht_B}}{s} -  B_{\tht_B} \difp{B_{\ph_B}}{s}\right) \non
+&=&
+\frac{c}{4 \pi} \frac{\sigma_{\sqrt{g}} \left\langle B^2 \right\rangle}
+{|\psi_{\rm tor}^{\rm a} \left(B_{\ph_B} + \iota B_{\tht_B}\right)|}
+\left(B_{\ph_B} \difp{B_{\tht_B}}{s} -  B_{\tht_B} \difp{B_{\ph_B}}{s}\right),
+\eea
+where $\sigma_{\sqrt{g}}=\sign(\sqrt{g_B})$ takes into account a
+left-handed coordinate system.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\subsection{Output files}
+The results for a given flux surface are stored in HDF5 file "neo2\_multispecies\_out.h5".
+Contents of this file is described in the tables below.
+
+\begin{table}[h]
+\begin{tabular}{|c|c|c|l|}
+\hline
+\hline
+\# & Variable name in HDF file & Dimension  & Comment \\
+\hline
+\hline
+55 & R0 & scalar & Major radius of the magnetic axis [cm],
+R0 = rt0 where rt0 = $R_0$.
+\\
+\hline
+80 & boozer\_s & scalar & Normalized toroidal flux (label) [dimensionless],
+boozer\_s = $s = \psi_{\rm tor}/\psi^a_{\rm tor}$.
+\\
+\hline
+71 & aiota & scalar & Rotational transform [dmls], aiota = aiota\_loc where
+aiota\_loc = $\iota(s)=1/q(s)$.
+\\
+\hline
+%
+1 & Bref & scalar & Reference magnetic field [G], Bref = bmod0*1e4 = $B_{\rm ref}$, \\
+ & & & Here bmod0 = $B_{00}(s_{\rm ref})$ is assumed to be in SI units, where $B_{00}$ is Boozer (0,0)\\
+ & & & harmonic of $B$ at the surface with normalized toroidal flux value $s_{\rm ref}$\\
+ & & & where $s_{\rm ref}=0$ for ref\_swi=1 and $s_{\rm ref}=s$ for ref\_swi=3. \\
+ & & & Variable ref\_swi is specified in the input file ``neo.in'' .
+\\
+\hline
+77 & avnabpsi & scalar &
+Flux surface averaged gradient of the label [1/cm],
+avnabpsi = $\langle |\nabla s| \rangle$.
+\\
+\hline
+75 & avbhat & scalar &
+Flux surface average normalized magnetic field [dmls],
+avbhat = $\langle B / B_{\rm ref}\rangle$.
+\\
+\hline
+74 & av\_inv\_bhat & scalar & Flux surface average inverse normalized magnetic field [dmls],
+\\
+ & & &
+av\_inv\_bhat = av\_inv\_bhat\_val where av\_inv\_bhat\_val = $\langle B_{\rm ref}/B\rangle$.
+\\
+\hline
+76 & avbhat2 & scalar &
+Flux surface average normalized magnetic field square [dmls],
+\\
+ & & &
+avbhat2  = $\langle \left(B / B_{\rm ref}\right)^2\rangle$.
+\\
+\hline
+73 & av\_gphph & scalar &
+Flux surface average covariant toroidal metric tensor component [cm$^2$],
+\\
+ & & &
+av\_gphph = av\_gphph\_val where av\_gphph\_val = $\langle g_{\varphi\varphi}\rangle$.
+\\
+\hline
+79 & bcovar\_tht & scalar & Covariant poloidal magnetic field component [G cm],
+bcovar\_tht = $B_\vartheta(s)$.
+\\
+\hline
+78 & bcovar\_phi & scalar & Covariant toroidal magnetic field component [G cm],
+bcovar\_phi = $B_\varphi(s)$.
+\\
+\hline
+84 & dbcovar\_theta\_ds & scalar &
+Derivative of covariant poloidal magnetic field component over label [G cm],
+\\
+ & & &
+dbcovar\_theta\_ds = $\partial B_\vartheta(s) / \partial s$.
+\\
+\hline
+83 & dbcovar\_phi\_ds & scalar &
+Derivative of covariant toroidal magnetic field component over label [G cm],
+\\
+ & & &
+dbcovar\_phi\_ds = $\partial B_\varphi(s) / \partial s$.
+\\
+\hline
+96 & sqrtg\_bctrvr\_tht & scalar &
+Poloidal contra-variant magentic field component times $\sqrt{g}$ [G cm$^2$],
+\\
+ & & &
+sqrtg\_bctrvr\_tht = $\sqrt{g} B^\vartheta$ where $\sqrt{g}$ is metric determinant of
+$(s,\vartheta,\varphi)$ variables.
+\\
+\hline
+95 & sqrtg\_bctrvr\_phi & scalar &
+Toroidal contra-variant magentic field component times $\sqrt{g}$ [G cm$^2$],
+\\
+ & & &
+sqrtg\_bctrvr\_phi = $\sqrt{g} B^\varphi$ where $\sqrt{g}$ is metric determinant of
+$(s,\vartheta,\varphi)$ variables.
+\\
+\hline
+92 & psi\_pr\_hat & scalar & Toroidal flux at the edge normalized by $2\pi B_{\rm ref}$ [dmls],
+psi\_pr\_hat = boozer\_psi\_pr\_hat
+\\
+ & & &
+where boozer\_psi\_pr\_hat =
+$(\partial \psi /\partial s) /B_{\rm ref} = \psi_{\rm tor}^a/B_{\rm ref} = \Psi_{\rm tor}^a /(2\pi B_{\rm ref})$.
+\\
+\hline
+\hline
+\end{tabular}
+\caption{Unperturbed magnetic field and flux surface geometry.}
+\end{table}
+
+
+
+
+
+
+\begin{table}[h]
+\begin{tabular}{|c|c|c|l|}
+\hline
+\hline
+\# & Variable name in HDF file & Dimension  & Comment \\
+\hline
+\hline
+%
+40 & Dp0 & scalar & Plateau diffusion coefficient [cm$^2$ / s], Dp0=Dp00 where Dp00 = $D_p^\alpha$ Eq.~\eqref{dplateau}\\
+ & & & taken for the first species $\alpha=1$ (usually electrons). \\
+ & & & Dp00 = PI*vt0*(rho0**2)/(16.0\_dp*aiota\_loc*rt0) \\
+\hline
+%
+30 & D31ref0 & scalar &  Ion-like Ware pinch coefficient \red{[cm$^2$ G / s]}, D31ref0=D31ref00  \\
+ & & & where D31ref00 = $D_{13}^{AX,\alpha}$ Eq.~\eq{wareion} taken for $\alpha=1$ (usually electrons). \\
+ & & & D31ref00 = vt0 * rho0 * bcovar\_phi\_hat * (bmod0*1e4) / \& \\
+ & & & (2 aiota\_loc * boozer\_psi\_pr\_hat * avnabpsi) \\
+\hline
+%
+35 & D33L0\_Zeff & scalar & Rescaled Lorentz conductivity \red{[cm$^2$ G$^2$ / s]}, D33L0\_Zeff = D33L00\_Zeff, \\
+ & & & where D33L00\_Zeff = $D_{33}^L$ Eq.~\eq{D33L}.\\
+ & & & D33L00\_Zeff = (-16.0\_dp/(3.0\_dp*PI)) * ((bmod0*1.0e4\_dp)**2) * \& \\
+ & & & vt0 * (2.0\_dp/collpar\_spec(0)) \\
+\hline
+\hline
+%
+3 & D11\_AX\_Dpl & vectors &
+Axisymmetric normalized transport coefficients Eq.~\eq{multispec:platnorm} [dimensionless].
+\\
+7 & D12\_AX\_Dpl & [num\_spec**2] &
+Notation: D12\_AX\_Dpl = $D_{12}^{\alpha \alpha'}/D_p^{\alpha_1}$, etc.
+Each coefficient is a matrix w.r.t.
+\\
+15 & D21\_AX\_Dpl & &
+species indices $\alpha, \alpha' = 1,\dots,$num\_spec. Matrix is put in a vector
+with order
+\\
+19 & D22\_AX\_Dpl & &
+of elements
+\red{
+$(\alpha,\alpha^\prime)$ = (1,1), (1,2), \dots (2,1), (2,2), \dots, (num\_spec, num\_spec).
+}
+\\
+\hline
+%
+11 & D13\_AX\_D31ref & vectors &
+Axisymmetric normalized transport coefficients Eqs.~\eq{multispec:warenorm}
+and~\eq{multispec:bootstrapnorm} [dmls].
+\\
+23 & D23\_AX\_D31ref &  [num\_spec**2] &
+Notation: D23\_AX\_D31ref = $D_{LL^\prime}^{\alpha \alpha'}/ D_{13}^{{\rm AX},\alpha_1}$, etc.
+\\
+27 & D31\_AX\_D31ref & &
+Odering of elements $(\alpha,\alpha^\prime)$ in vectors
+is the same
+\\
+32 & D32\_AX\_D31ref & &
+as for D11\_AX\_Dpl  through D22\_AX\_Dpl (see above).
+\\
+\hline
+37 & D33\_AX\_norm & vector &
+Axisymmetric normalized transport coefficient Eq.~\eq{multispec:D33norm} [dmls].
+\\
+ & & [num\_spec**2] &
+Notation: D33\_AX\_norm = $D^{\alpha \alpha'}_{33}/\left(Z_{\rm eff} D_{33}^{L}\right)$.
+\\
+ & & &
+Odering of elements $(\alpha,\alpha^\prime)$ in vectors
+is the same
+\\
+ & & &
+as for D11\_AX\_Dpl  through D22\_AX\_Dpl (see above).
+\\
+\hline
+\hline
+\end{tabular}
+\end{table}
+
+
+
+
+
+\begin{table}[h]
+\begin{tabular}{|c|c|c|l|}
+\hline
+\hline
+\# & Variable name in HDF file & Dimension  & Comment \\
+\hline
+\hline
+ & & vectors &
+Axisymmetric dimensional transport coefficients Eq.~\eq{multispec:difcoefs}. Ordering of elements
+\\
+ & & [num\_spec**2] &
+over species indices is the same as for axisymmetric normalized coefficients
+\\
+2 & D11\_AX & & = D11\_AX\_Dpl * Dp0 = $D^{\alpha \alpha'}_{11}$ [cm$^2$ / s]
+\\
+6 & D12\_AX & & = D12\_AX\_Dpl * Dp0 = $D^{\alpha \alpha'}_{12}$ [cm$^2$ / s]
+\\
+10 & D13\_AX & & = D13\_AX\_D13ref * D31ref0 = $D^{\alpha \alpha'}_{13}$ [cm$^2$ G / s]
+\\
+14 & D21\_AX & & = D21\_AX\_Dpl * Dp0 = $D^{\alpha \alpha'}_{21}$ [cm$^2$ / s]
+\\
+18 & D22\_AX & & = D22\_AX\_Dpl * Dp0 = $D^{\alpha \alpha'}_{22}$ [cm$^2$ / s]
+\\
+22 & D23\_AX & & = D23\_AX\_D31ref * D31ref0 = $D^{\alpha \alpha'}_{23}$ [cm$^2$ G / s]
+\\
+26 & D31\_AX & & = D31\_AX\_D31ref * D31ref0 = $D^{\alpha \alpha'}_{31}$ [cm$^2$ G / s]
+\\
+31 & D32\_AX & & = D32\_AX\_D31ref * D31ref0 = $D^{\alpha \alpha'}_{32}$ [cm$^2$ G / s]
+\\
+36 & D33\_AX & & = D33\_AX\_norm * D33L00\_Zeff = $D^{\alpha \alpha'}_{33}$ [cm$^2$ G$^2$ / s]
+\\
+\hline
+\hline
+5 & D11\_NA\_Dpl & vectors &
+Non-axisymmetric normalized transport coefficients Eq.~\eq{multispec:platnorm} [dmls].
+\\
+9 & D12\_NA\_Dpl &  [num\_spec**2] &
+Notation and species ordering are the same as for respective
+\\
+17 & D21\_NA\_Dpl & &
+axisymmetric coefficients D11\_AX\_Dpl, D12\_AX\_Dpl, D21\_AX\_Dpl
+\\
+21 & D22\_NA\_Dpl & &
+and D22\_AX\_Dpl.
+\\
+\hline
+13 & D13\_NA\_D31ref & vectors &
+Non-axisymmetric normalized transport coefficients Eqs.~\eq{multispec:warenorm}
+and~\eq{multispec:bootstrapnorm} [dmls].
+\\
+25 & D23\_NA\_D31ref &  [num\_spec**2] &
+Notation and species ordering are the same as for respective
+\\
+29 & D31\_NA\_D31ref & &
+axisymmetric coefficients D13\_AX\_D31ref, D23\_AX\_D31ref,
+\\
+34 & D32\_NA\_D31ref & &
+D31\_AX\_D31ref and D32\_AX\_D31ref.
+\\
+\hline
+39 & D33\_NA\_norm & vector &
+Non-axisymmetric normalized transport coefficient Eq.~\eq{multispec:D33norm} [dmls].
+\\
+ &  & [num\_spec**2] & Notation and species ordering is the same as for D33\_AX\_norm
+\\
+\hline
+\hline
+%
+4 & D11\_NA & vectors &
+Non-axisymmetric dimensional transport coefficients Eq.~\eq{multispec:difcoefs}.
+\\
+8 & D12\_NA & [num\_spec**2] &
+Units, notation and species ordering are the same as for respective
+\\
+12 & D13\_NA & &
+axisymmetric coefficients D11\_AX, D12\_AX, \dots, D33\_AX
+\\
+16 & D21\_NA & &
+\\
+20 & D22\_NA & &
+\\
+24 & D23\_NA & &
+\\
+28 & D31\_NA & &
+\\
+33 & D32\_NA & &
+\\
+38 & D33\_NA & &
+\\
+\hline
+\hline
+\end{tabular}
+%\caption{Contents of the output file ``neo2\_multispecies\_out.h5'', part 1}
+\end{table}
+
+\begin{table}[h]
+\begin{tabular}{|c|l|}
+\hline
+variable name in HDF file  & Comment \\
+\hline
+T\_spec & temperature of the species [erg] \\
+\hline
+col\_ind\_spec & \\
+\hline
+collpar\_spec & \\
+\hline
+\end{tabular}
+\caption{Contents of the output file ``neo2\_multispecies\_out.h5'', part 3}
+\end{table}
+
+\begin{table}[h]
+\begin{tabular}{|c|l|}
+\hline
+variable name in HDF file  & Comment \\
+\hline
+eps\_M\_2 & \\
+\hline
+isw\_coul\_log & \\
+\hline
+m\_phi & \\
+\hline
+m\_spec & mass of the species [g] \\
+\hline
+n\_spec & density of the species [$1/cm^3$] \\
+\hline
+nu\_star\_spec & \\
+\hline
+num\_spec & number of species [1] \\
+\hline
+row\_ind\_spec & \\
+\hline
+species\_tag & \\
+\hline
+version & \\
+\hline
+z\_spec & charges of the species [1]
+\end{tabular}
+\caption{Contents of the output file ``neo2\_multispecies\_out.h5'', part 4}
+\end{table}
+
+
+\begin{table}[h]
+\begin{tabular}{|c|c|c|l|}
+\hline
+\hline
+\# & Variable name in HDF file & Dimension  & Comment \\
+\hline
+\hline
+%
+41 & Er & scalar &
+Radial electric field [statvolt / cm], Er = $E_r$ Eq.~\eq{multispec:Er_from_VphiLoc}.
+\\
+\hline
+43 & Gamma\_AX\_spec & vector [num\_spec]&
+\\
+\hline
+45 & Gamma\_NA\_spec & &
+\\
+\hline
+ & MtOvR & &
+\\
+\hline
+ & ParFlow\_AX\_spec & &
+\\
+\hline
+ & ParFlow\_NA\_spec & &
+\\
+\hline
+ & Qflux\_AX\_spec & &
+\\
+\hline
+ & Qflux\_NA\_spec & &
+\\
+\hline
+ & R\_Vphi\_prof & &
+\\
+\hline
+ & TphiNA\_spec & &
+\\
+\hline
+ & TphiNA\_tot & &
+\\
+\hline
+ & VphiB\_spec & &
+\\
+\hline
+ & Vphi\_prof\_spec & &
+\\
+\hline
+ & VthtB\_spec & &
+\\
+\hline
+ & Vtht\_prof\_spec & &
+\\
+\hline
+ & Z\_Vphi\_prof & &
+\\
+\hline
+\hline
+\end{tabular}
+\caption{Contents of the output file ``neo2\_multispecies\_out.h5'',
+part 5. These quantities are onyl written if $isw\_calc\_Er=1$.}
+\end{table}
+
+
+
+
+
+
+
+\begin{table}[h]
+\begin{tabular}{|c|l|}
+\hline
+variable name in HDF file  & Comment \\
+\hline
+Gamma\_AX\_Ware\_spec & \\
+\hline
+Gamma\_NA\_Ware\_spec & \\
+\hline
+ParFlow\_AX\_Ware\_spec & \\
+\hline
+ParFlow\_NA\_Ware\_spec & \\
+\hline
+Qflux\_AX\_Ware\_spec & \\
+\hline
+Qflux\_NA\_Ware\_spec & \\
+\hline
+TphiNA\_Ware\_spec & \\
+\hline
+TphiNA\_Ware\_tot & \\
+\hline
+VphiB\_Ware\_spec & \\
+\hline
+Vphi\_prof\_woWare\_spec & \\
+\hline
+VthtB\_Ware\_spec & \\
+\hline
+Vtht\_prof\_woWare\_spec & \\
+\hline
+avEparB\_ov\_avb2 &
+\end{tabular}
+\caption{Contents of the output file ``neo2\_multispecies\_out.h5'',
+part 6. These quantities are only written if $isw\_calc\_Er=1$ and
+$num\_spec > 1$.}
+\end{table}
+
+
+\end{document}
