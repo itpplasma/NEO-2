@@ -6,6 +6,8 @@
 %   where '#mode' is replaced with the mode number.
 % file_ext: file extension of input file. If not passed or empty, it is
 %   assumed there is no file extension.
+% file_descr: string, additional information about fily type to read.
+%   Defaults to 'cos_harm'.
 function extract_pert_field(file_base, file_ext, file_descr)
   if nargin < 3 || isempty(file_descr)
     file_descr = 'cos_harm'; % additional info (some extra info given by the filename)
