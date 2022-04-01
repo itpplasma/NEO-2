@@ -82,36 +82,14 @@ if (MPE_SUPPORT)
   find_library(MPE_lib mpe ${MPE_PATH}/lib)
 endif ()
 
-### Debug settings
-#if(DEBUG)
-# set(DEBUGFLAG "-g -ggdb -C -p -pg -fbacktrace -ffpe-trap=invalid,zero,overflow,underflow")
-# set(FFLAG_DEBUG "-Waliasing -Wampersand  -Wline-truncation  -Wsurprising -Wno-tabs  -Wunderflow -cpp")  #-Wnonstd-intrinsics removed in 4.7, had to add -cpp, had to remove -MJOBS
-# set(CDEBUG_DEBUG "-g -ggdb -C -p -fbacktrace")
-# set(CFLAGS_DEBUG "-O0")
-# set(DBGLIBS "efence")
-#endif(DEBUG)
-
 ### HDF5
 find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
-# message(STATUS "${HDF5_INCLUDE_DIRS}")
-# message(STATUS "${HDF5_LIBRARIES}")
-# message(STATUS "${HDF5_Fortran_LIBRARIES}")
-# message(STATUS "${HDF5_HL_LIBRARIES}")
-# message(STATUS "${HDF5_Fortran_HL_LIBRARIES}")
-# message(STATUS "${HDF5_VERSION}")
 
 ### SuiteSparse and METIS
 find_package(SuiteSparse REQUIRED)
-# message(STATUS "${SUITESPARSE_INCLUDE_DIRS}")
-# message(STATUS "${SUITESPARSE_LIBRARIES}")
-# message(STATUS "${SUITESPARSE_VERSION}")
-# message(STATUS "${METIS_LIBRARY}")
 
 ### SuperLU
 find_package(SuperLU REQUIRED)
-# message(STATUS "${SUPERLU_INCLUDES}")
-# message(STATUS "${SUPERLU_LIBRARIES}")
-# message(STATUS "${SUPERLU_VERSION_VAR}")
 
 ### Find libraries
 # libneo - shared library
@@ -123,7 +101,6 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
 find_library(gsl_lib gsl ${GSL_LIB})
 # FGSL
-#find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
 find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
 # MyMPIlib
 find_library(MyMPILib_lib MyMPILib ${NEO2_Libs}/src/MyMPILib/ NO_DEFAULT_PATH)
@@ -208,8 +185,6 @@ endif()
 ADD_TEST(Test_Build_Code      "make")
 ADD_TEST(Test_Testcase1-Seq       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "0")
 ADD_TEST(Test_Testcase1-Par       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "6")
-#ADD_TEST(Test_Testcase2-Seq       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase2" "0")
-#ADD_TEST(Test_Testcase2-Par       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase2" "6")
 ADD_TEST(Test_Relativistic_BeliaevBudker-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BeliaevBudker" "0")
 ADD_TEST(Test_Relativistic_BeliaevBudker-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BeliaevBudker" "6")
 ADD_TEST(Test_Relativistic_BraamsKarney-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BraamsKarney" "0")
@@ -223,7 +198,3 @@ ADD_TEST(Test_par_cubic_splines-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_ful
 ADD_TEST(Test_par_cubic_splines-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_cubic_splines" "6")
 ADD_TEST(Test_par_general_bsplines-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_general_bsplines" "0")
 ADD_TEST(Test_par_general_bsplines-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_general_bsplines" "6")
-
-#ADD_TEST(Test_Testcase2       ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase2" "0")
-#ADD_TEST(Test_Testcase2-par4  ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase2" "4")
-#ADD_TEST(Test_Testcase3-par6  ${CMAKE_SOURCE_DIR}/../ShellScripts/test1.sh "Testcase3" "6")
