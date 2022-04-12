@@ -1,3 +1,7 @@
+% Extrakt toroidal modes from a boozer file.
+%
+% Take a file with many toroidal modes and write boozer files with one
+% toroidal mode in each.
 %
 % input:
 % ------
