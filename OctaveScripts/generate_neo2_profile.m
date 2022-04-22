@@ -140,16 +140,20 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_
   h5write(hdf5FileName,'/species_tag',int32(species_tag))
   h5create(hdf5FileName,'/species_def',[num_radial_pts,num_species, 2],'DataType','double')
   h5write(hdf5FileName,'/species_def',species_definition)
+  h5writeatt(hdf5FileName, '/species_def', 'unit', 'e; g');
 
 
   h5create(hdf5FileName,'/boozer_s',num_radial_pts,'DataType','double')
   h5write(hdf5FileName,'/boozer_s',boozer_s)
+  h5writeatt(hdf5FileName, '/boozer_s', 'unit', '1');
 
   h5create(hdf5FileName,'/rho_pol',num_radial_pts,'DataType','double')
   h5write(hdf5FileName,'/rho_pol',rho_pol)
+  h5writeatt(hdf5FileName, '/rho_pol', 'unit', '1');
 
   h5create(hdf5FileName,'/Vphi',num_radial_pts,'DataType','double')
   h5write(hdf5FileName,'/Vphi',vrot)
+  h5writeatt(hdf5FileName, '/Vphi', 'unit', 'rad / s');
   h5create(hdf5FileName,'/species_tag_Vphi',1,'DataType','int32')
   h5write(hdf5FileName,'/species_tag_Vphi',int32(species_tag_Vphi))
   h5create(hdf5FileName,'/isw_Vphi_loc',1,'DataType','int32')
@@ -160,11 +164,13 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_
 
   h5create(hdf5FileName,'/T_prof',[num_radial_pts,num_species],'DataType','double')
   h5write(hdf5FileName,'/T_prof',[Te;Ti]')
+  h5writeatt(hdf5FileName, '/T_prof', 'unit', 'erg');
   h5create(hdf5FileName,'/dT_ov_ds_prof',[num_radial_pts,num_species],'DataType','double')
   h5write(hdf5FileName,'/dT_ov_ds_prof',[dTe_ov_ds; dTi_ov_ds]')
 
   h5create(hdf5FileName,'/n_prof',[num_radial_pts,num_species],'DataType','double')
   h5write(hdf5FileName,'/n_prof',[ne; ni]')
+  h5writeatt(hdf5FileName, '/n_prof', 'unit', '1 / cm^3');
   h5create(hdf5FileName,'/dn_ov_ds_prof',[num_radial_pts,num_species],'DataType','double')
   h5write(hdf5FileName,'/dn_ov_ds_prof',[dne_ov_ds; dni_ov_ds]')
 
