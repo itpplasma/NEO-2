@@ -1051,7 +1051,7 @@ if __name__ == "__main__":
 
   if (len(sys.argv) < 2):
     print("Usage:")
-    print("./boozer.py infilename numberfluxsurfacesminusone")
+    print("./boozer.py infilename numberfluxsurfacesminustwo")
   else:
     infile = sys.argv[1]
     nsurf = int(sys.argv[2])
