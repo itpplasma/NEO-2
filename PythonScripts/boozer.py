@@ -66,6 +66,23 @@ def _append_boozer_block(filename, mb, nb, rmnc, rmns, zmnc, zmns, vmnc, vmns, b
       f.write(' {:16.8e} {:16.8e}'.format(bmnc[k], bmns[k]))
       f.write('\n')
 
+"""
+input:
+------
+infile: string, name(+path) of the input file (including extension).
+ks: integer, number of the flux surface to handle. Must be in the range
+  [1, n-2] where n is the number of flux surfaces in the file. This is
+  because of the interpolation that is done.
+outfile: string, name of the output file.
+
+output:
+-------
+none
+
+sideeffects:
+------------
+creates outfile.
+"""
 def convert_to_boozer(infile, ks, outfile):
   # Import modules.
 
@@ -165,6 +182,7 @@ def convert_to_boozer(infile, ks, outfile):
       bsupumn = np.copy(data['bsupumnc'].data - 1.0j*data['bsupumns'].data)
       bsupvmn = np.copy(data['bsupvmnc'].data - 1.0j*data['bsupvmns'].data)
     except:  # Stellarator-symmetric case
+      print('Stellarator-symmetric case')
       rmnl = np.copy(data['rmnc'].data)
       zmnl = np.copy(- 1.0j*data['zmns'].data)
       lmnl = np.copy(- 1.0j*data['lmns'].data)
@@ -1033,7 +1051,7 @@ if __name__ == "__main__":
 
   if (len(sys.argv) < 2):
     print("Usage:")
-    print("./boozer.py infilename fluxsurfacenumber")
+    print("./boozer.py infilename numberfluxsurfacesminusone")
   else:
     infile = sys.argv[1]
     nsurf = int(sys.argv[2])
