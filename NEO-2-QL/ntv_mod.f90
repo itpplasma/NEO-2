@@ -51,6 +51,7 @@ MODULE ntv_mod
   INTEGER, PUBLIC :: species_tag_Vphi
   !> isw_Vphi_loc=0: value of "Vphi" corresponds to flux surface average (<V_\varphi>)
   !> isw_Vphi_loc=1: value of "Vphi" is specified locally for given (R,Z)-position
+  !> isw_Vphi_loc=2: value of "Vphi" is specified for given \vartheta_B postion?
   INTEGER, PUBLIC :: isw_Vphi_loc
   !> toroidal (= geometric angle) rotation frequency of species i (e.g., main ion species)
   REAL(kind=dp), PUBLIC :: Vphi
