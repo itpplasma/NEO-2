@@ -17,6 +17,8 @@ function extract_pert_field(file_base, file_ext, file_descr)
     file_descr = 'cos_harm'; % additional info (some extra info given by the filename)
   end
 
+  disp(['file_descr is "', file_descr, '"'])
+
   %file_base = 'aug_2_n0_shortto_m12-pert-2-3'%'aug_2_rmp-n0.bc'; % 'tok-synch2.bc'; % data file base name (identifier)
   %file_ext = 'bc'; %extension
 
@@ -43,6 +45,8 @@ function extract_pert_field(file_base, file_ext, file_descr)
   fclose(fid);
   % all lines are now in data_c
 
+  disp(['File "', file_in,'" read.'])
+
   % find m0b and n0b
   for k = 1:numel(data_c)
     tline = data_c{k};
@@ -59,6 +63,9 @@ function extract_pert_field(file_base, file_ext, file_descr)
   n0b = dline(2);
   nsurf = dline(3);
   nper = dline(4);
+
+  disp(['Basic parameters found: ', num2str(m0b), ' ', num2str(n0b), ' ',...
+        num2str(nsurf), ' ', num2str(nper)])
 
   % check the first block of the spectrum (negative n- or m-values)
   % (NEO-2 needs B field spectrum of the from n>=0 && m>-inf)
@@ -127,6 +134,8 @@ function extract_pert_field(file_base, file_ext, file_descr)
       end
     end
   end
+
+  disp(['Start to go through flux surfaces.'])
 
   % separate spectra accodring to toroidal mode number and
   % write data into separate files
@@ -240,6 +249,8 @@ function extract_pert_field(file_base, file_ext, file_descr)
     end
 
   end
+
+  disp(['Finished to go through flux surfaces.'])
 
   % close the output files for the different
   % (toroidal) perturbation mode numbers
