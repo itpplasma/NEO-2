@@ -144,6 +144,7 @@
  isw_multispecies_init = 0 ! [0]
  isw_vphi_loc = 0   ! 0: <V_\varphi> [default]
                     ! 1: V_{\varphi}(R,Z)
+                    ! 2: V_{\varphi}(theta?)
  lsw_multispecies = .true. ! [.false.]
  m_vec =  9.1093999999999992e-028, 3.3435999999999997e-024 ! List with the masses (in g = 10^-3 kg) of the species. [1.672621637d-24]
  n_vec = 2*53112642031866.633 ! List with densities of the species. Unit is 1/cm^3 = 1/(10^-2 m)^3 = 1/(10^-6 m^3) = 10^6 / m^3. [1.0d13]
