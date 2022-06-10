@@ -1190,6 +1190,86 @@ def keep_only_elements_hdf5_file(in_filename: str, out_filename: str, original_s
 
   o['/num_radial_pts'][()] = np.array(len(elements_to_keep))
 
+
+def interpolate_hdf5_file(in_filename: str, out_filename: str, new_points: list):
+  """Change grid of a (neo2 input) hdf5 file.
+
+  Intended to change the grid (location and/or number of points) of a
+  grid of a (neo2 input) hdf5 file.
+
+  input
+  ----------
+  in_filename: File to read in and which content should be interpolated.
+  out_filename: Name under which to store the interpolated content.
+  elements_to_keep: list with new radial values.
+
+  return value
+  ----------
+  None, output is realized via side effect.
+
+  side effects
+  ----------
+  Creates hdf5-file with given name 'out_filename'.
+
+  limitations:
+  ------------
+  - might lead to trouble for integer quantities that change (e.g.
+    charge number)
+  - assumes last dimension of array needs to be integrated.
+  - can only handle up to 3 dimensions
+  - can fail if original number of points is equal to number of species
+  - data types other than float and int32 might lead to problems
+  """
+  import h5py
+  import numpy as np
+  from scipy.interpolate import InterpolatedUnivariateSpline as Spline
+  from scipy.special import round as sround
+
+  f = get_hdf5file(in_filename)
+
+  num_original = f['boozer_s'].shape[0]
+  num_new = len(new_points)
+
+  with get_hdf5file_new(out_filename) as o:
+    for key in list(f.keys()):
+
+      # Special treatment of grid itself maybe not neccessary, but
+      # probably better from numerical point of view.
+      if key == 'boozer_s':
+        dat = np.array(new_points)
+      else:
+        # Not sure if the interpolation could be done on complete
+        # multidimensional arrays, thus distinguish between number of
+        # dimensions
+        if len(f[key].shape) == 1:
+          # Length of 1 could mean quantitiy over grid, or something
+          # different (and thus no interpolation required).
+          if f[key].shape[0] == num_original:
+            s = Spline(f['boozer_s'], f[key])
+            dat = np.array([s(k) for k in new_points])
+          else:
+            dat = f[key]
+        if len(f[key].shape) == 2:
+          dat = np.zeros((f[key].shape[0], num_new))
+          for k in range(0, f[key].shape[0]):
+            s = Spline(f['boozer_s'], f[key][k])
+            dat[k, :] = np.array([s(k) for k in new_points])
+        if len(f[key].shape) == 3:
+          dat = np.zeros(f[key].shape[0:-1] + (num_new, ))
+          for k in range(0, f[key].shape[0]):
+            for l in range(0, f[key].shape[1]):
+              s = Spline(f['boozer_s'], f[key][k,l])
+              dat[k, l, :] = np.array([s(k) for k in new_points])
+
+      # Make sure type matches, otherwise integer quantities might make
+      # trouble.
+      if f[key].dtype == 'int32' and dat.dtype != 'int32':
+        o.create_dataset(key, data=sround(dat), dtype=f[key].dtype)
+      else:
+        o.create_dataset(key, data=dat, dtype=f[key].dtype)
+
+    o['/num_radial_pts'][()] = np.array(num_new)
+
 def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
   """Check if two h5py groups contain the same subgroups/datasets.
 
