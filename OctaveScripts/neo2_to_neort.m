@@ -14,17 +14,37 @@
 % ------------
 % Creates/overwrites file.
 function neo2_to_neort(infileneo2out, outfilename, number_surfaces)
-    nout = load(infileneo2out);
+  nout = load(infileneo2out);
 
   ds = 1.0 ./ number_surfaces;
 
+  cm3_to_m3 = 1.0e-6;
+  ev_to_cgs = 1.6022e-12;
+
+  s = ds*[1:number_surfaces];
+  mt = spline(nout.boozer_s, nout.MtOvR(2,:), s);
+  n = spline(nout.boozer_s, nout.n_spec(2,:), s);
+
   f = fopen(outfilename, 'w');
   for k = 1:number_surfaces
-    s = ds*k;
+    fprintf(f, '%13.7f  %13.7f  %13.7f\n', s(k), mt(k), n(k));
+  end
+  fclose(f);
 
-    mt = spline(nout.boozer_s, nout.MtOvR(2,:), s);
-    n = spline(nout.boozer_s, nout.n_spec(2,:), s);
-    fprintf(f, '%13.7f  %13.7f  %13.7f\n', s, mt, n);
+  n1 = spline(nout.boozer_s, nout.n_spec(2,:)/cm3_to_m3, s);
+  n2 = zeros(1, number_surfaces);
+
+  T1 = spline(nout.boozer_s, nout.T_spec(2,:)/ev_to_cgs, s);
+  T2 = T1;
+  Te = spline(nout.boozer_s, nout.T_spec(1,:)/ev_to_cgs, s);
+
+  f = fopen('plasma.in', 'w');
+  fprintf(f, '%% N am1 am2 Z1 Z2\n');
+  fprintf(f, '%4i %9.3f %9.3f %9.3f %9.3f\n', number_surfaces, nout.m_spec(2,1), nout.m_spec(2,1), nout.z_spec(2,1), nout.z_spec(2,1));
+  fprintf(f, '%% s ni_1[cm^-3] ni_2[cm^-3] Ti_1[eV] Ti_2[eV] Te[eV]\n');
+  for k = 1:number_surfaces
+    fprintf(f, '%13.7f %13.7f %13.7f %13.7f %13.7f %13.7f\n', ...
+        s(k), n1(k), n2(k), T1(k), T2(k), Te(k));
   end
   fclose(f);
 end
