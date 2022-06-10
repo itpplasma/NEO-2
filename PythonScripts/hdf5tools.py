@@ -1106,11 +1106,12 @@ def remove_ends_from_hdf5_file(in_filename: str, out_filename: str,
   if first_element_to_take >= first_element_not_to_take:
     return
 
-  resize_hdf5_file(in_filename, out_filename, original_size,
+  keep_only_elements_hdf5_file(in_filename, out_filename, original_size,
     range(first_element_to_take, first_element_not_to_take),
     operate_on_last_dimension)
 
-def resize_hdf5_file(in_filename: str, out_filename: str, original_size: int, elements_to_keep: list, operate_on_last_dimension: bool):
+
+def keep_only_elements_hdf5_file(in_filename: str, out_filename: str, original_size: int, elements_to_keep: list, operate_on_last_dimension: bool):
   """Resize the arrays of an hdf5 file.
 
   input
