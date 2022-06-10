@@ -1595,6 +1595,8 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
   no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol']
   special_treatment_needed = ['species_tag_Vphi']
   zero_dimension_species = ['T_prof', 'n_prof', 'kappa_prof', 'dn_ov_ds_prof', 'dT_ov_ds_prof']
+  # special treatment if number of remaining species = 2
+  zero_dimension_special = ['n_prof', 'dn_ov_ds_prof']
   first_dimension_species = ['species_def']
 
   with get_hdf5file(infilename) as hin:
@@ -1620,8 +1622,14 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
       hout.create_dataset('species_tag', data=st)
 
       for dname in zero_dimension_species:
-        t = np.array(hin[dname])[0:index, ...]
-        t = np.append(t, np.array(hin[dname])[index+1:, ...], 0)
+        # if two remaining species, special treatment for some
+        # quantities: set both to electron value(s).
+        if (dname in zero_dimension_special) and nsp[0] == 2:
+          t = np.array(np.array(hin[dname])[0, ...], ndmin=2)
+          t = np.append(t, np.array(np.array(hin[dname])[0, ...], ndmin=2), 0)
+        else:
+          t = np.array(hin[dname])[0:index, ...]
+          t = np.append(t, np.array(hin[dname])[index+1:, ...], 0)
         hout.create_dataset(dname, data=t)
 
       for dname in first_dimension_species:
