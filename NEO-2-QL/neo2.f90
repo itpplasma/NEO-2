@@ -700,6 +700,15 @@ CONTAINS
        CALL h5_add(h5_config_group, 'plot_prop', plot_prop)
        CALL h5_close_group(h5_config_group)
 
+       ! ntv_input
+       CALL h5_define_group(h5_config_id, 'ntv_input', h5_config_group)
+       CALL h5_add(h5_config_group, 'isw_qflux_NA', isw_qflux_NA)
+       CALL h5_add(h5_config_group, 'MtOvR', MtOvR)
+       CALL h5_add(h5_config_group, 'B_rho_L_loc', B_rho_L_loc)
+       CALL h5_add(h5_config_group, 'isw_ripple_solver', isw_ripple_solver)
+       CALL h5_add(h5_config_group, 'isw_mag_shear', isw_mag_shear)
+       CALL h5_close_group(h5_config_group)
+
        CALL h5_close(h5_config_id)
 
     END IF
