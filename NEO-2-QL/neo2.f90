@@ -44,11 +44,11 @@ PROGRAM neo2
   USE binarysplit_mod, ONLY : bsfunc_message,bsfunc_modelfunc,      &
        bsfunc_total_err, bsfunc_local_err, bsfunc_min_distance,     &
        bsfunc_max_index, bsfunc_max_splitlevel,                     &
-       bsfunc_sigma_mult, bsfunc_sigma_min, bsfunc_local_solver   
+       bsfunc_sigma_mult, bsfunc_sigma_min, bsfunc_local_solver
   USE binarysplit_int, ONLY : linspace
   !! Modifications by Andreas F. Martitsch (15.07.2014)
   ! Path for the collision operator matrices is now specified via neo2.in
-  ! (necessary for computations with Condor)  
+  ! (necessary for computations with Condor)
   USE collop, ONLY : collop_construct, collop_deconstruct,          &
        collop_load, collop_unload, z_eff, collop_path,              &
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
@@ -56,7 +56,7 @@ PROGRAM neo2
        scalprod_beta, lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
        !! and lsw_write_precom by Michael Draxler (25.08.2017)
   USE rkstep_mod, ONLY : lag, leg, legmax, epserr_iter
-      
+
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
@@ -98,8 +98,8 @@ PROGRAM neo2
   INCLUDE "version.f90"
   !**********************************************************
 
-  
-  
+
+
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
   !**********************************************************
@@ -134,7 +134,7 @@ PROGRAM neo2
   REAL(kind=dp)   :: cg0_2_avg, cg2_2_avg
   REAL(kind=dp)   :: cg0_3_avg, cg2_3_avg
   !**********************************************************
-  
+
   REAL(kind=dp) :: rbeg,zbeg
   REAL(kind=dp) :: phimi
   REAL(kind=dp) :: xetama,xetami
@@ -186,7 +186,7 @@ PROGRAM neo2
   ! -> read species-relevant info into a large array (dynamic allocation not supported)
   INTEGER, DIMENSION(:), ALLOCATABLE :: species_tag_vec   ! vector with species tags
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: conl_over_mfp_vec ! collisionality parameter
-  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: z_vec ! species charge number 
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: z_vec ! species charge number
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: m_vec ! species mass
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: T_vec ! species temperature
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: n_vec ! species density (used only for isw_coul_log > 0)
@@ -215,7 +215,7 @@ PROGRAM neo2
        eta_part_globalfac_p,eta_part_globalfac_t,                             &
        eta_alpha_p,eta_alpha_t,eta_part_trapped,                              &
        mag_coordinates,boozer_s,boozer_theta_beg,boozer_phi_beg,              &
-       mag_dbhat_min,mag_dphi_inf_min,mag_inflection_mult,                    & 
+       mag_dbhat_min,mag_dphi_inf_min,mag_inflection_mult,                    &
        solver_talk,switch_off_asymp,                                          &
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
@@ -224,7 +224,7 @@ PROGRAM neo2
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
-       isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &      
+       isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &
        collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta,       &
        phi_x_max, collop_bspline_order, collop_bspline_dist,                  &
        v_min_resolution, v_max_resolution, isw_relativistic, T_e,             &
@@ -297,7 +297,7 @@ PROGRAM neo2
   END DO
 
   call check()
-  
+
   !! Modification by Andreas F. Martitsch (20.02.2017)
   ! Prepare  multi-species computations for a given profile
   ! -> prepare input files, directories
@@ -342,7 +342,7 @@ PROGRAM neo2
   !
   IF(ALLOCATED(dn_spec_ov_ds)) DEALLOCATE(dn_spec_ov_ds)
   ALLOCATE(dn_spec_ov_ds(0:num_spec-1))
-  dn_spec_ov_ds(0:num_spec-1)=dn_vec_ov_ds(1:num_spec) 
+  dn_spec_ov_ds(0:num_spec-1)=dn_vec_ov_ds(1:num_spec)
   !
   ! print multi-species input
   IF(lsw_multispecies) THEN
@@ -356,7 +356,7 @@ PROGRAM neo2
      PRINT *,'n_spec             : ',n_spec
      !STOP
   END IF
-  !! End Modification by Andreas F. Martitsch (23.08.2015) 
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
 
   IF (mag_magfield .EQ. 0) THEN ! homogeneous case
      PRINT *, 'WARNING: some input quantities modified - homogeneous case!'
@@ -374,8 +374,8 @@ PROGRAM neo2
   ! Initialize MPI module
   !**********************************************************
   CALL mpro%init()
-  
-  
+
+
   !****************************************************
   !  Git version check
   !*****************************************************
@@ -383,8 +383,8 @@ PROGRAM neo2
     CALL write_version_info()
   END IF
 
- 
- 
+
+
   !! Modification by Andreas F. Martitsch (31.07.2014)
   ! Save here starting point of the field line for cylindircal
   ! coordinates (used for normalizations for final NTV output)
@@ -557,7 +557,7 @@ PROGRAM neo2
   ! fine-tune for which exceptions the warning should be shown.
   STOP
   !! End Modification by Andreas F. Martitsch (17.07.2014)
-  
+
 
 CONTAINS
 
@@ -621,7 +621,7 @@ CONTAINS
        CALL h5_add(h5_config_group, 'mag_dphi_inf_min', mag_dphi_inf_min)
        CALL h5_add(h5_config_group, 'mag_inflection_mult', mag_inflection_mult)
        CALL h5_add(h5_config_group, 'solver_talk', solver_talk)
-       CALL h5_add(h5_config_group, 'switch_off_asymp', switch_off_asymp) 
+       CALL h5_add(h5_config_group, 'switch_off_asymp', switch_off_asymp)
        CALL h5_add(h5_config_group, 'asymp_margin_zero', asymp_margin_zero)
        CALL h5_add(h5_config_group, 'asymp_margin_npass', asymp_margin_npass)
        CALL h5_add(h5_config_group, 'asymp_pardeleta', asymp_pardeleta)
@@ -698,7 +698,7 @@ CONTAINS
        CALL h5_define_group(h5_config_id, 'plotting', h5_config_group)
        CALL h5_add(h5_config_group, 'plot_gauss', plot_gauss)
        CALL h5_add(h5_config_group, 'plot_prop', plot_prop)
-       CALL h5_close_group(h5_config_group)        
+       CALL h5_close_group(h5_config_group)
 
        CALL h5_close(h5_config_id)
 
@@ -746,7 +746,7 @@ CONTAINS
        WRITE (*,*) "##########################################################################################################"
        WRITE (*,*) ''
     END IF
-    
+
   END SUBROUTINE write_version_info
 
   subroutine set_default_values()
@@ -948,6 +948,13 @@ CONTAINS
     if (any(n_vec < 0.0)) then
       write(*,*) 'ERROR: negative density.'
       write(*,*) '  Density should be >= 0'
+      write(*,*) 'Aborting...'
+      stop
+    end if
+
+    if (isw_calc_MagDrift == 0 .and. isw_mag_shear == 1) then
+      write(*,*) 'ERROR: Magnetic shear without magnetic drift.'
+      write(*,*) '  isw_calc_MagDrift must be 1 if isw_mag_shear == 1.'
       write(*,*) 'Aborting...'
       stop
     end if
