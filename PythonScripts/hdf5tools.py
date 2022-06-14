@@ -1778,6 +1778,62 @@ def write_nonaxisymmetric_quantities(infilename:str, outfilename:str):
         outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(
           h['boozer_s'][k], h['D11_NA'][k][0], h['D12_NA'][k][0], h['D22_NA'][k][0], h['D11_NA'][k][3], h['D12_NA'][k][3], h['D22_NA'][k][3]))
 
+
+def rescale_quantitiy_profile(path: str, infilename: str, scaling_factor: float, quantity: str):
+  """
+  From a given neo2 hdf5-input file, create a new one with quantity
+  profile rescaled.
+
+  Written for neo2 profile input files, but should work with every file.
+
+  Output file will be created in the current folder, input file can be
+  located somewhere else.
+
+  Output file name is determined from the input. '_quantity_scalingfactor_'
+  is aded/inserted to the given file name.
+
+  input:
+  ------
+  path: string, path where the input file can be found.
+  infilename: string, the name of the input file to use.
+  scaling_factor: floating point number, scaling factor to apply to the
+    velocity. Expected to be a single number applied to all radial
+    positions.
+  quantity: string, name of the quantity to change.
+
+  output:
+  -------
+  none
+
+  sideeffects:
+  ------------
+  Creates file in current folder.
+  """
+  import h5py, hdf5tools
+  import numpy as np
+
+  ref = hdf5tools.get_hdf5file(path+infilename)
+
+  quant = np.array(ref[quantity])
+  quant_rescaled = quant*scaling_factor
+
+  nameparts = infilename.rsplit('.', 1)
+  quant_namepart= '_' + quantity + '_{0}'.format(scaling_factor)
+  outfilename = nameparts[0] + quant_namepart
+  if len(nameparts)==2:
+    outfilename += '.' + nameparts[1]
+
+  quant_rs = hdf5tools.get_hdf5file_replace(outfilename)
+
+  for k in ref.keys():
+    ref.copy(source='/'+k, dest=quant_rs, name='/' + k)
+
+  dset = quant_rs[quantity]
+  dset[...] = quant_rescaled
+
+  quant_rs.close()
+
+
 if __name__ == "__main__":
 
   import h5py
