@@ -1797,9 +1797,41 @@ def rescale_quantitiy_profile(path: str, infilename: str, scaling_factor: float,
   path: string, path where the input file can be found.
   infilename: string, the name of the input file to use.
   scaling_factor: floating point number, scaling factor to apply to the
-    velocity. Expected to be a single number applied to all radial
-    positions.
+    quantity at all radial positions.
   quantity: string, name of the quantity to change.
+
+  output:
+  -------
+  none
+
+  sideeffects:
+  ------------
+  Creates file in current folder.
+  """
+  rescale_quantitiy_profiles(path, infilename, scaling_factor, [quantity])
+
+
+def rescale_quantitiy_profiles(path: str, infilename: str, scaling_factor: float, quantities: list):
+  """
+  From a given neo2 hdf5-input file, create a new one with some quantity
+  profiles rescaled (all with same factor).
+
+  Written for neo2 profile input files, but should work with every file.
+
+  Output file will be created in the current folder, input file can be
+  located somewhere else.
+
+  Output file name is determined from the input. '_quantities_scalingfactor_'
+  is aded/inserted to the given file name, where 'quantities' is a '_'
+  separated list of the quantities.
+
+  input:
+  ------
+  path: string, path where the input file can be found.
+  infilename: string, the name of the input file to use.
+  scaling_factor: floating point number, scaling factor to apply to the
+    quantities at all radial positions.
+  quantity: list of strings, name of the quantities to change.
 
   output:
   -------
@@ -1814,11 +1846,17 @@ def rescale_quantitiy_profile(path: str, infilename: str, scaling_factor: float,
 
   ref = hdf5tools.get_hdf5file(path+infilename)
 
-  quant = np.array(ref[quantity])
-  quant_rescaled = quant*scaling_factor
+  quant_namepart = ''
+  quant = {}
+  quant_rescaled = {}
+  for quantity in quantities:
+    quant[quantity] = np.array(ref[quantity])
+    quant_rescaled[quantity] = quant[quantity]*scaling_factor
 
+    quant_namepart += '_' + quantity
+
+  quant_namepart += '_{0}'.format(scaling_factor)
   nameparts = infilename.rsplit('.', 1)
-  quant_namepart= '_' + quantity + '_{0}'.format(scaling_factor)
   outfilename = nameparts[0] + quant_namepart
   if len(nameparts)==2:
     outfilename += '.' + nameparts[1]
@@ -1828,8 +1866,9 @@ def rescale_quantitiy_profile(path: str, infilename: str, scaling_factor: float,
   for k in ref.keys():
     ref.copy(source='/'+k, dest=quant_rs, name='/' + k)
 
-  dset = quant_rs[quantity]
-  dset[...] = quant_rescaled
+  for quantity in quantities:
+    dset = quant_rs[quantity]
+    dset[...] = quant_rescaled[quantity]
 
   quant_rs.close()
 
