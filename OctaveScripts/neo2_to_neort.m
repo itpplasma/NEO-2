@@ -3,7 +3,9 @@
 % input:
 % ------
 % infileneo2out: string, name of neo-2 output file to read.
-% outfilename: string, name under which to save the results.
+% outfilename_prefix: string, prefix for name under which to save the
+%     results. E.g. if outfilename_prefix='test_' the output files will
+%     be 'test_profile.in' and test_plasma.in'.
 % number_surfaces: number of flux surfaces to evaluate/write to file.
 %
 % output:
@@ -12,8 +14,8 @@
 %
 % sideeffects:
 % ------------
-% Creates/overwrites file.
-function neo2_to_neort(infileneo2out, outfilename, number_surfaces)
+% Creates/overwrites files.
+function neo2_to_neort(infileneo2out, outfilename_prefix, number_surfaces)
   nout = load(infileneo2out);
 
   ds = 1.0 ./ number_surfaces;
@@ -25,7 +27,7 @@ function neo2_to_neort(infileneo2out, outfilename, number_surfaces)
   mt = spline(nout.boozer_s, nout.MtOvR(2,:), s);
   n = spline(nout.boozer_s, nout.n_spec(2,:), s);
 
-  f = fopen(outfilename, 'w');
+  f = fopen([outfilename_prefix, 'profile.in'], 'w');
   for k = 1:number_surfaces
     fprintf(f, '%13.7f  %13.7f  %13.7f\n', s(k), mt(k), n(k));
   end
@@ -38,7 +40,7 @@ function neo2_to_neort(infileneo2out, outfilename, number_surfaces)
   T2 = T1;
   Te = spline(nout.boozer_s, nout.T_spec(1,:)/ev_to_cgs, s);
 
-  f = fopen('plasma.in', 'w');
+  f = fopen([outfilename_prefix, 'plasma.in'], 'w');
   fprintf(f, '%% N am1 am2 Z1 Z2\n');
   fprintf(f, '%4i %9.3f %9.3f %9.3f %9.3f\n', number_surfaces, nout.m_spec(2,1), nout.m_spec(2,1), nout.z_spec(2,1), nout.z_spec(2,1));
   fprintf(f, '%% s ni_1[cm^-3] ni_2[cm^-3] Ti_1[eV] Ti_2[eV] Te[eV]\n');
