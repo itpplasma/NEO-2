@@ -20,7 +20,7 @@ function neo2_to_neort(infileneo2out, outfilename_prefix, number_surfaces)
 
   ds = 1.0 ./ number_surfaces;
 
-  cm3_to_m3 = 1.0e-6;
+  cm3_to_m3 = 1.0e+6;
   ev_to_cgs = 1.6022e-12;
 
   s = ds*[1:number_surfaces];
@@ -33,7 +33,7 @@ function neo2_to_neort(infileneo2out, outfilename_prefix, number_surfaces)
   end
   fclose(f);
 
-  n1 = spline(nout.boozer_s, nout.n_spec(2,:)/cm3_to_m3, s);
+  n1 = spline(nout.boozer_s, nout.n_spec(2,:), s);
   n2 = zeros(1, number_surfaces);
 
   T1 = spline(nout.boozer_s, nout.T_spec(2,:)/ev_to_cgs, s);
