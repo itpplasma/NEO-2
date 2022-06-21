@@ -45,7 +45,7 @@ function neo2_to_neort(infileneo2out, outfilename_prefix, number_surfaces)
   fprintf(f, '%4i %9.3f %9.3f %9.3f %9.3f\n', number_surfaces, nout.m_spec(2,1), nout.m_spec(2,1), nout.z_spec(2,1), nout.z_spec(2,1));
   fprintf(f, '%% s ni_1[cm^-3] ni_2[cm^-3] Ti_1[eV] Ti_2[eV] Te[eV]\n');
   for k = 1:number_surfaces
-    fprintf(f, '%13.7f %13.7f %13.7f %13.7f %13.7f %13.7f\n', ...
+    fprintf(f, '%13.7e  %13.7e  %13.7e  %13.7e  %13.7e  %13.7e\n', ...
         s(k), n1(k), n2(k), T1(k), T2(k), Te(k));
   end
   fclose(f);
