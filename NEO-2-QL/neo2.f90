@@ -173,7 +173,7 @@ PROGRAM neo2
   INTEGER(HID_T) :: h5id_multispec_in
   CHARACTER(len=40) :: fname_multispec, fname_multispec_in
   CHARACTER(len=40) :: fname_exec, fname_exec_precom
-  CHARACTER(len=200) :: dir_name, cmd_line
+  CHARACTER(len=200) :: dir_name
   INTEGER :: num_radial_pts, num_species_all
   INTEGER, DIMENSION(:), ALLOCATABLE :: rel_stages_prof, species_tag_prof
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: boozer_s_prof, Vphi_prof
@@ -1076,6 +1076,8 @@ CONTAINS
   !>
   !> \note This subroutine will acesss variables from the main program.
   subroutine prepare_mulitspecies_scan()
+    character(len=200) :: cmd_line
+
     print *,'Prepare  multi-species computations for a given profile'
     isw_multispecies_init = 0
 
