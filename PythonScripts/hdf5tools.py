@@ -1858,6 +1858,53 @@ def rescale_quantitiy_profiles(path: str, infilename: str, scaling_factor: float
   quant_rs.close()
 
 
+def change_isw_vphi_loc(infilename: str, outfilename: str):
+  """
+  Change an input file to isw_Vphi_loc=2.
+
+  Change an input file to use isw_Vphi_loc=2 and also add the required
+  profile of boozer theta. This is assumed to be zero over the whole
+  range.
+  Everything else is just compied from the input file.
+
+  input
+  -----
+  infilename: string, name of the file (and path) to which to add a species.
+  outfilename: string, name (and path) under which to save the new file.
+
+  output
+  ------
+  none
+
+  sideeffects
+  -----------
+  Creates a new file with the given name.
+
+  limitations
+  -----------
+  Not robust against changes of the input file format.
+  """
+
+  import numpy as np
+
+  no_change_needed = ['boozer_s', 'dn_ov_ds_prof', 'dT_ov_ds_prof',
+                      'kappa_prof', 'n_prof', 'num_radial_pts',
+                      'num_species', 'rel_stages', 'rho_pol',
+                      'species_def', 'species_tag', 'species_tag_Vphi',
+                      'T_prof', 'Vphi']
+
+  with get_hdf5file(infilename) as hin:
+    with get_hdf5file_new(outfilename) as hout:
+      for dname in no_change_needed:
+        hout.create_dataset(dname, data=hin[dname])
+
+      hout.create_dataset('isw_Vphi_loc', data=2)
+
+      theta = np.array(hin['boozer_s']) # To have the required shape and type
+      theta[:] = 0.0
+      hout.create_dataset('boozer_theta_Vphi', data=theta)
+
+
 if __name__ == "__main__":
 
   import h5py
