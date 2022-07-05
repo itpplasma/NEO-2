@@ -1512,21 +1512,6 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
 
 def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, Ztrace: float, mtrace: float):
   """Add to profile input file a species by scaling existing ion species.
-  T_prof             needs to be changed ... done
-  Vphi               ok
-  boozer_s           ok
-  dT_ov_ds_prof      needs to be changed ... done
-  dn_ov_ds_prof      needs to be changed ... done
-  isw_Vphi_loc       ok?
-  kappa_prof         needs to be changed
-  n_prof             needs to be changed ... done
-  num_radial_pts     ok
-  num_species        needs to be changed ... done
-  rel_stages         needs to be changed ... done
-  rho_pol            ok
-  species_def        needs to be changed ... done
-  species_tag        needs to be changed ... done
-  species_tag_Vphi   ok?
 
   If Zeff = 1, then it is assumed that the density should be split
   evenly among the two ion species, as the term for Zeff /= 1 would
