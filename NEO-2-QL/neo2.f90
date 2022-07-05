@@ -1440,6 +1440,23 @@ CONTAINS
     END DO
   end subroutine prepare_mulitspecies_scan
 
+  !> \brief Wrapper for executing a string in a command line.
+  subroutine command_line_wrapper(cmd_line)
+    character(len=200), intent(in) :: cmd_line
+
+! __INTEL_COMPILER is constant in the form VVSS, with VV major version and SS minor version
+! taken from https://software.intel.com/en-us/fortran-compiler-developer-guide-and-reference-using-predefined-preprocessor-symbols
+#ifdef __INTEL_COMPILER
+#if __INTEL_COMPILER < 1500
+      CALL system(cmd_line)
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
+#else
+      CALL execute_command_LINE(cmd_line)
+#endif
+  end subroutine command_line_wrapper
+
   !> \brief Set variables proptag_start and proptag_end from main program.
   !>
   !> \note This subroutine does acess use-variables (fieldperiod?) and
