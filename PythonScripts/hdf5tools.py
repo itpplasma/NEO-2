@@ -1906,6 +1906,50 @@ def change_isw_vphi_loc(infilename: str, outfilename: str):
       hout.create_dataset('boozer_theta_Vphi', data=theta)
 
 
+def change_value(infilename: str, outfilename: str, field_to_change: str, new_value):
+  """
+  Change the value of a field of a hdf5 file.
+
+  Change (all) the values of a given field of an hdf5 file to a (single)
+  new value.
+
+  input
+  -----
+  infilename: string, name of the file (and path) of which to change the
+    field.
+  outfilename: string, name (and path) under which to save the new file.
+  field_to_change: string, name/key of the field whose value should be
+    changed.
+  new_value: no type specified, the new value for the field. No type
+    checks are made, it is the responsibility of the caller to make sure
+    the type fits.
+
+  output
+  ------
+  none
+
+  sideeffects
+  -----------
+  Creates a new file with the given name.
+
+  limitations
+  -----------
+  Not capable of changing values in subgroups.
+  Only single value for whole range.
+  """
+  import numpy as np
+
+  with get_hdf5file(infilename) as hin:
+    with get_hdf5file_new(outfilename) as hout:
+      for dname in hin.keys():
+        if dname == field_to_change:
+          temp = np.array(hin[dname]) # To have the required shape and type
+          temp[:] = new_value
+          hout.create_dataset(dname, data=temp)
+        else:
+          hout.create_dataset(dname, data=hin[dname])
+
+
 if __name__ == "__main__":
 
   import h5py
