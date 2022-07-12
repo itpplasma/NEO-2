@@ -1869,7 +1869,8 @@ def change_isw_vphi_loc(infilename: str, outfilename: str):
 
   input
   -----
-  infilename: string, name of the file (and path) to which to add a species.
+  infilename: string, name of the file (and path) of which to change
+    isw_Vphi_loc.
   outfilename: string, name (and path) under which to save the new file.
 
   output
