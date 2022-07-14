@@ -1469,7 +1469,7 @@ CONTAINS
     ! Compute D_p, D_{31,ref} and D_{33]^L for 0-species (=electrons)
     Dp00 = PI*vt0*(rho0**2)/(16.0_dp*aiota_loc*rt0)
     D31ref00 = vt0 * rho0 * bcovar_phi_hat * (bmod0*1.0e4_dp) / &
-         (2.0_dp * aiota_loc * boozer_psi_pr_hat * avnabpsi)
+         (2.0_dp * sqrtg_bctrvr_tht)
     D33L00_Zeff = (-16.0_dp/(3.0_dp*PI)) * ((bmod0*1.0e4_dp)**2) * &
          vt0 * (2.0_dp/collpar_spec(0))
     !
@@ -2250,7 +2250,7 @@ CONTAINS
     ELSE IF (isw_Vphi_loc .GE. 1) THEN
        fac1 = (hctrvr_tmp(2)*bmod_tmp*1.0e4_dp) * &
             (1.0_dp+TWOPI*aiota_loc*boozer_psi_pr*G_symm_tb) / avb2
-       denom_Er = (c / (avnabpsi*aiota_loc*boozer_psi_pr)) + &
+       denom_Er = (c / sqrtg_bctrvr_tht) + &
             fac1 * (-c*bcovar_phi/sqrtg_bctrvr_tht)
        !PRINT *,'denom_Er - 1st term: ',denom_Er
        DO ispec_ctr = LBOUND(row_ind_ptr,1),UBOUND(row_ind_ptr,1)
@@ -2292,7 +2292,7 @@ CONTAINS
           !
        END DO
     ELSE IF (isw_Vphi_loc .GE. 1) THEN
-       nom_Er_1 = ((c*T_ions/(z_ions*e)) / (avnabpsi*aiota_loc*boozer_psi_pr)) * &
+       nom_Er_1 = ((c*T_ions/(z_ions*e)) / sqrtg_bctrvr_tht) * &
             (dp_ions_ov_dr / p_ions)
        nom_Er_2 = (c*T_ions/(z_ions*e)) * (-fac1*bcovar_phi/sqrtg_bctrvr_tht) * &
             (dp_ions_ov_dr / p_ions)
@@ -2750,7 +2750,7 @@ CONTAINS
     ELSE IF (isw_Vphi_loc .GE. 1) THEN
        fac1 = (hctrvr_tmp(2)*bmod_tmp*1.0e4_dp) * &
             (1.0_dp+TWOPI*aiota_loc*boozer_psi_pr*G_symm_tb) / avb2
-       denom_Er_a = (c / (avnabpsi*aiota_loc*boozer_psi_pr)) + &
+       denom_Er_a = (c / sqrtg_bctrvr_tht) + &
             fac1 * (-c*bcovar_phi/sqrtg_bctrvr_tht)
        denom_Er_c = 0.0_dp
        denom_Epar_b = 0.0_dp
@@ -2814,7 +2814,7 @@ CONTAINS
           !
        END DO
     ELSE IF (isw_Vphi_loc .GE. 1) THEN
-       nom_Er_1 = ((c*T_ions/(z_ions*e)) / (avnabpsi*aiota_loc*boozer_psi_pr)) * &
+       nom_Er_1 = ((c*T_ions/(z_ions*e)) / sqrtg_bctrvr_tht) * &
             (dp_ions_ov_dr / p_ions)
        nom_Er_2 = (c*T_ions/(z_ions*e)) * (-fac1*bcovar_phi/sqrtg_bctrvr_tht) * &
             (dp_ions_ov_dr / p_ions)
@@ -3243,7 +3243,7 @@ CONTAINS
        coef_K_Er = -c*bcovar_phi/sqrtg_bctrvr_tht
        fac1 = (hctrvr_tmp(2)*bmod_tmp*1.0e4_dp) * &
             (1.0_dp+TWOPI*aiota_loc*boozer_psi_pr*G_symm_tb) / avb2
-       denom_Er = (c / (avnabpsi*aiota_loc*boozer_psi_pr)) + &
+       denom_Er = (c / sqrtg_bctrvr_tht) + &
             fac1 * (-c*bcovar_phi/sqrtg_bctrvr_tht)
        !PRINT *,'denom_Er - 1st term: ',denom_Er
        DO ispec_ctr = LBOUND(row_ind_ptr,1),UBOUND(row_ind_ptr,1)
@@ -3262,7 +3262,7 @@ CONTAINS
        nom_Er_2 = 0.0_dp
        DO irow_ctr = 0,num_spec-1
           nom_Er_1(irow_ctr) = ((c*T_spec(irow_ctr)/(z_spec(irow_ctr)*e)) / &
-               (avnabpsi*aiota_loc*boozer_psi_pr)) * &
+               sqrtg_bctrvr_tht) * &
                (dn_spec_ov_ds(irow_ctr) / n_spec(irow_ctr) + &
                dT_spec_ov_ds(irow_ctr) / T_spec(irow_ctr)) * avnabpsi
           nom_Er_2(irow_ctr) = (c*T_spec(irow_ctr)/(z_spec(irow_ctr)*e)) * &
