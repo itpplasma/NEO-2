@@ -3521,7 +3521,7 @@ CONTAINS
     ! co- and contra-variant B-field components using
     ! r_eff as a flux-surface label
     REAL(kind=dp) :: bcovar_tht, bcovar_phi
-    REAL(kind=dp) :: sqrtg_bctrvr_phi, boozer_psi_pr
+    REAL(kind=dp) :: sqrtg_bctrvr_phi
     REAL(kind=dp) :: sqrtg_b2
     ! normalized co-variant phi-component of B,  $\sqrt{g}B^\vartheta$
     REAL(kind=dp) :: bcovar_phi_hat, sqrtg_bctrvr_tht
@@ -3589,13 +3589,9 @@ CONTAINS
     END IF
     !
     ! compute additional B-field quantities
-    sqrtg_bctrvr_phi = sqrtg_bctrvr_tht/aiota_loc
     bcovar_phi = hcovar_tmp(2)*(bmod_tmp*1.0e4_dp)
     bcovar_tht = hcovar_tmp(3)*(bmod_tmp*1.0e4_dp)
-    boozer_psi_pr = boozer_psi_pr_hat*(bmod0*1.0e4_dp)
-    sqrtg_b2 = avnabpsi * boozer_psi_pr * &
-         (aiota_loc * bcovar_tht + bcovar_phi)
-    !
+
     ! compute species poloidal and toroidal rotation velocities
     ! without account of inductive electric field
     CALL compute_VthtB_and_VphiB_a(row_ind_ptr, col_ind_ptr, &
