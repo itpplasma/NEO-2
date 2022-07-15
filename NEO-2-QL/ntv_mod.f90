@@ -3423,9 +3423,9 @@ CONTAINS
     bcovar_phi = hcovar_tmp(2)*(bmod_tmp*1.0e4_dp)
     bcovar_tht = hcovar_tmp(3)*(bmod_tmp*1.0e4_dp)
     boozer_psi_pr = boozer_psi_pr_hat*(bmod0*1.0e4_dp)
-    sqrtg_b2 = avnabpsi * boozer_psi_pr * &
-         (aiota_loc * bcovar_tht + bcovar_phi)
-    !
+    sqrtg_b2 = sqrtg_bctrvr_tht / aiota_loc * &
+          & (aiota_loc * bcovar_tht + bcovar_phi)
+
     ! allocate species poloidal and toroidal rotation velocities
     IF(ALLOCATED(VthtB_spec)) DEALLOCATE(VthtB_spec)
     ALLOCATE(VthtB_spec(0:num_spec-1))
