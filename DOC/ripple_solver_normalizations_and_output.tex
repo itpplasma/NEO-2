@@ -1679,5 +1679,58 @@ part 6. These quantities are only written if $isw\_calc\_Er=1$ and
 $num\_spec > 1$.}
 \end{table}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Perpendicular fluid velocities}
+
+Perpendicular fluid velocity is given in the vector form by Eq.~\eq{multispec:VperpSpec}.
+According to~\eq{multispec:VperpSpec_ctrvr}, contra-variant components of this velocity in
+Boozer coordinates are flux functions. Let us indroduce a coordinate-free scalar quantity
+$V_{\perp,\alpha}$ which would be the same with perpendicular fluid velocity in the straight
+cylinder limit as follows
+\be{scalvperp}
+V_{\perp,\alpha}=\bV_{\perp,\alpha}\cdot\frac{\nabla r \times\bh}{|\nabla r|}
+=
+-\frac{c}{B} \left( \frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r} - E_r \right)
+\frac{|\bh \times {\nabla}r|^2}{|\nabla r|}
+=\frac{c}{B} \left( E_r - \frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r}\right) |\nabla r|.
+\ee
+This quantity still depends on the poloidal angle and should be averaged as follows
+\be{avvperp}
+\bar V_{\perp,\alpha}\equiv
+\frac{\langle B V_{\perp,\alpha}\rangle}{\langle B \rangle}
+=
+\frac{c}{\langle B \rangle}
+\left( E_r - \frac{1}{e_\alpha n_\alpha} \difp{p_\alpha}{r}\right),
+\ee
+where we used the definition of radius $\langle |\nabla r| \rangle = 1$.
+In addition, we are interested in a modified fluid velocity which is computed
+in absence of temperature gradient
+\be{avvperp_mod}
+\bar V_{\perp,\alpha}^{(mod)}
+=
+\frac{c}{\langle B \rangle}
+\left( E_r - \frac{T_\alpha}{e_\alpha n_\alpha} \difp{n_\alpha}{r}\right),
+\ee
+Both averaged velocities can be expressed in terms of thermodynamic
+forces~\eq{multispec:thermodyn_forces} as follows
+\be{avvperp_forces}
+\bar V_{\perp,\alpha} = -\frac{c T_\alpha}{e_\alpha \langle B \rangle}
+\left(A_1^\alpha+\frac{5}{2}A_2^\alpha\right),
+\qquad
+\bar V_{\perp,\alpha}^{(mod)} = -\frac{c T_\alpha}{e_\alpha \langle B \rangle}
+\left(A_1^\alpha+\frac{3}{2}A_2^\alpha\right).
+\ee
+Quantities required for evaluation of Eqs~\eq{avvperp} and~\eq{avvperp_mod} are available
+in the input file ``neo2.in'' and output file ``neo2\_multispecies\_out.h5''. One should
+note that radial derivatives of density and temperature given in the input file as the
+derivatives over normalized toroidal flux $s$ are converted to derivatives over
+the effective radius $r$ as follows,
+\be{radders}
+\difp{n_\alpha}{r}=\langle|\nabla s|\rangle \difp{n_\alpha}{s},
+\qquad
+\difp{T_\alpha}{r}=\langle|\nabla s|\rangle \difp{T_\alpha}{s},
+\ee
+where $\langle|\nabla s|\rangle$ is given in the output file variable ``avnabpsi''.
 
 \end{document}
