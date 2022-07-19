@@ -15,6 +15,12 @@
 % In all the other cases it is assumed that the first column of the
 % respective file is rhopoloidal.
 %
+% \attention Even if correspondence of rho_pol and rho_tor values is
+%   given via two files (e.g. electron density as function as rho_pol in
+%   one file and as function of rho_tor in another file), it is still
+%   assumed that the physical grid is the same, i.e. rho_pol(n) is
+%   directly related to rho_tor(n), with n the line number.
+%
 % Input:
 %   path_to_shot: string with the location to the shot, e.g. "example_folder/SHOTS/NUMBER_12345/".
 %   data_source: a structure with at least the fields 'rhopoloidal',
