@@ -72,8 +72,8 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
   transform_keV_to_eV = 1.0e3;
   transform_eV_to_keV = 1.0/transform_keV_to_eV;
 
-  transform_kHz_to_Hz = 1.0e3;
-  transform_Hz_to_kHz = 1.0/transform_kHz_to_Hz;
+  transform_krads_to_rads = 1.0e3;
+  transform_rads_to_krads = 1.0/transform_krads_to_rads;
 
   transform_oneoverm3_to_1013overcm3 = 1.0e-19;
   transform_1013overcm3_to_oneoverm3 = 1.0/transform_oneoverm3_to_1013overcm3;
@@ -82,7 +82,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
   case 1
     transform_density = transform_1013overcm3_to_oneoverm3;
     transform_temperature = transform_keV_to_eV;
-    transform_rotation = transform_kHz_to_Hz;
+    transform_rotation = transform_krads_to_rads;
   case 2
     transform_density = 1;
     transform_temperature = 1;
@@ -163,7 +163,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
 
   if do_plots
     figure
-    plot(rho_pol,vrot/pi*transform_Hz_to_kHz,'r',frp(:,1),frp(:,3)/pi*1e-3,'b--',frp(:,1),frp(:,4)/pi*1e-3,'b--')
+    plot(rho_pol,vrot/pi*transform_rads_to_krads,'r',frp(:,1),frp(:,3)/pi*1e-3,'b--',frp(:,1),frp(:,4)/pi*1e-3,'b--')
     title('f_{probe} = n\Omega_{tor}/(2 \pi),   n=2')
     xlabel('\rho_{pol}')
     ylabel('f_{probe}  [kHz]')
