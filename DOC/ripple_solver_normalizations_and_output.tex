@@ -1528,31 +1528,21 @@ axisymmetric coefficients D11\_AX, D12\_AX, \dots, D33\_AX
 %\caption{Contents of the output file ``neo2\_multispecies\_out.h5'', part 1}
 \end{table}
 
-\begin{table}[h]
-\begin{tabular}{|c|l|}
-\hline
-variable name in HDF file  & Comment \\
-\hline
-T\_spec & temperature of the species [erg] \\
-\hline
-col\_ind\_spec & \\
-\hline
-collpar\_spec & \\
-\hline
-\end{tabular}
-\caption{Contents of the output file ``neo2\_multispecies\_out.h5'', part 3}
-\end{table}
 
 \begin{table}[h]
 \begin{tabular}{|c|l|}
 \hline
 variable name in HDF file  & Comment \\
 \hline
-eps\_M\_2 & \\
+col\_ind\_spec & \\
 \hline
-isw\_coul\_log & \\
+collpar\_spec & \\
 \hline
-m\_phi & \\
+eps\_M\_2 & Square of modulation amplitude [1], eps\_M\_2 = eps\_M\_2\_val \\
+\hline
+isw\_coul\_log & Switch for the Coulomb logarithm formula \\
+\hline
+m\_phi & Toroidal mode number of the perturbation [1], m\_phi = $n$ \\
 \hline
 m\_spec & mass of the species [g] \\
 \hline
@@ -1565,6 +1555,8 @@ num\_spec & number of species [1] \\
 row\_ind\_spec & \\
 \hline
 species\_tag & \\
+\hline
+T\_spec & temperature of the species [erg] \\
 \hline
 version & \\
 \hline
