@@ -22,7 +22,10 @@
 %     conversions have to be done) the input has.
 %   bounds: two array index determining bounds for flux surface label in
 %     which to put the points.
-function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_definition, isw_Vphi_loc, species_tag_Vphi, input_unit_type, bounds)
+%   switch_grid: integer value (optional), passed to function
+%     'load_profile_data'. See documentation of that function for more
+%     details.
+function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_definition, isw_Vphi_loc, species_tag_Vphi, input_unit_type, bounds, switch_grid)
   if nargin() < 1 || isempty(hdf5FileName)
     hdf5FileName = 'multi_spec_Valentin.in';
   end
@@ -71,6 +74,12 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_
   else
     gridpoints = [size(species_definition, 1), bounds(1), bounds(2)];
   end
+  % \attention NO isemtpy!, parameter is just passed to load_profile_data
+  %   thus the function is responsible for default value. Here we make
+  %   just sure the parameter exists.
+  if nargin() < 9
+    switch_grid = [];
+  end
   num_species = size(species_definition, 2);
 
   %% UNIT CONV DEF
@@ -82,7 +91,7 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_
   EV_TO_CGS = EV_TO_SI * ENERGY_TO_CGS;
   CHARGE_SI_TO_CGS = 10*SPEED_OF_LIGHT_SI;% Conversion factor is not speed of light, but 10c_si.
 
-  [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, data_source, gridpoints, 0, input_unit_type);
+  [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_to_shot, data_source, gridpoints, 0, input_unit_type, switch_grid);
 
   %% BOOZER S
   boozer_s = (rho_tor).^2;
