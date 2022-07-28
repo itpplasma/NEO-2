@@ -813,6 +813,53 @@ def get_runcompletion_from_output_par(outputfilename: str):
   # number of propagators finished.
   return [float(len(finished_propagators))/float(nr_propagators-1), finished_propagators]
 
+
+def replace_in_file(infilename: str, outfilename, dic: dict):
+  """
+  Replace in file tokens with values given as dict; write to new file.
+
+  Within a given file, replace all occurences of given tokens with
+  corresponding values. Tokens and values are given as dictionary, with
+  the token being the keys of the dictionary. The result is written to
+  a new file.
+
+  Example:
+    dic = {
+      '<S_TOKEN>': s,
+      '<M_T_TOKEN>': M_t,
+      '<VTH_TOKEN>': vth,
+      '<EPSM_TOKEN>': epsm
+      }
+
+    replace_in_file('driftorbit.in.template', 'driftorbit.in', dict)
+
+  input:
+  ------
+  infilename: string, name of the file which contains the tokens.
+  outfilename: string, name of the file to which to write the result,
+    i.e. the infile with the tokens replaced.
+  dic: dictionary, the keys are the tokens, which are replaced with the
+    corresponding values.
+
+  output:
+  -------
+  none
+
+  sideeffects:
+  ------------
+  Creates new file. Overwrittes file, if already a file with the given
+  name exits.
+  """
+  import re
+
+  pattern = re.compile('|'.join(dic.keys()))
+
+  with open(infilename,'r') as infile, open(outfilename,'w') as outfile:
+    for line in infile:
+      result = pattern.sub(lambda x: str(dic[x.group()]), line)
+      outfile.write(result)
+
+
 if __name__ == "__main__":
   import matplotlib.pyplot as plt
   import sys
