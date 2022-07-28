@@ -43,10 +43,10 @@ function [rho_pol, rho_tor] = extract_normalized_rho_pol_tor(inputfilename, outp
 
   dat = load(inputfilename);
 
-  rho_pol = dat(:, 4);
+  rho_pol = sqrt(dat(:, 4));
   rho_pol = rho_pol ./ rho_pol(end);
 
-  rho_tor = dat(:, 6);
+  rho_tor = sqrt(dat(:, 6));
   rho_tor = rho_tor ./ rho_tor(end);
 
   if not(strcmp(strtrim(outputfilename), ''))
