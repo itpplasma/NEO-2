@@ -747,7 +747,7 @@ def get_list_unsucessful_runs(folder: str, subfolder_pattern: str, file_to_check
   List, containing strings with the name of the subfolders (not the full
   path) which contain runs which where not sucessfull, i.e. which do
   _not_ contain 'file_to_check'.
-  If no runs was unsucessful, then the list will be empty.
+  If all runs were sucessful, then the list will be empty.
   """
   from os.path import join
   from pathlib import Path
