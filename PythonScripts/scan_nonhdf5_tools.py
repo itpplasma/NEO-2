@@ -770,6 +770,41 @@ def get_list_unsucessful_runs(folder: str, subfolder_pattern: str, file_to_check
 
   return unsucessful_runs
 
+
+def append_list_unsucessful_runs(folder: str, subfolder_pattern: str, file_to_check: str, infilename: str, outfilename: str):
+  """
+  Determine list of unsucessful runs, and add list to file.
+
+  input:
+  ------
+  folder: string, with the path to the folder where to look for
+    subfolders. You can use './' for the current working directory.
+  subfolder_pattern: string which describes the subfolders. This may
+    contain wildcards, e.g. 'es_*'.
+    Attention: the pattern should not include files that are also
+    present in the directory, as there is no check, to operate on
+    folders only.
+  file_to_check: string, name of the file which absence indicates an
+    unsucessful run.
+  """
+
+  unsucessful_runs = get_list_unsucessful_runs(folder, subfolder_pattern, file_to_check)
+
+  with open(infilename,'r') as infile, open(outfilename,'w') as outfile:
+    for line in infile:
+      outfile.write(line)
+      if len(line.split()) > 0:
+        if line.split()[0] == 'Queue':
+          break
+
+    for run in unsucessful_runs:
+      if run == 'es_0p00000':
+        # Skip axis
+        continue
+
+      outfile.write('  {} \\\n'.format(run))
+
+
 def get_runcompletion_from_output_par(outputfilename: str):
   """ Return percentage and list of propagators started.
 
