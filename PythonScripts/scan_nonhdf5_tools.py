@@ -775,6 +775,17 @@ def append_list_unsucessful_runs(folder: str, subfolder_pattern: str, file_to_ch
   """
   Determine list of unsucessful runs, and add list to file.
 
+  Intended for adding the list at the end of a condor_submit file.
+  For this reason:
+  - lines after the 'Queue' command are ignored.
+  - list is written as one file per line with '\' at the end, to
+    indicate line continuation.
+    Note that also the last line has a '\', as this does not seem to be
+    a problem for HTcondor and it makes the code simpler.
+
+  Example:
+    append_list_unsucessful_runs('./', 'es_*', 'neo2_multispecies_out.h5', 'submit_failed_template', 'submit_failed')
+
   input:
   ------
   folder: string, with the path to the folder where to look for
@@ -786,6 +797,19 @@ def append_list_unsucessful_runs(folder: str, subfolder_pattern: str, file_to_ch
     folders only.
   file_to_check: string, name of the file which absence indicates an
     unsucessful run.
+  infilename: string, name (and path) of file to which to append the
+    list. Lines after a line with 'Queue' a the begining (whitespace
+    allowed?), are ignored.
+  outfilename: string, name (and path) of file to which to write the
+    result.
+
+  output:
+  -------
+  none
+
+  sideeffects:
+  ------------
+  Creates new file, overwritten if it already exists.
   """
 
   unsucessful_runs = get_list_unsucessful_runs(folder, subfolder_pattern, file_to_check)
