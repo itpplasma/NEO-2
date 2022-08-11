@@ -23,26 +23,28 @@ function neo2_to_neort(infileneo2out, outfilename_prefix, number_surfaces)
   cm3_to_m3 = 1.0e+6;
   ev_to_cgs = 1.6022e-12;
 
+  species = 2;
+
   s = ds*[1:number_surfaces];
-  mt = spline(nout.boozer_s, nout.MtOvR(2,:), s);
-  n = spline(nout.boozer_s, nout.n_spec(2,:), s);
+  mt = spline(nout.boozer_s, nout.MtOvR(species,:) .* nout.R0, s);
+  vth = spline(nout.boozer_s, sqrt(2*nout.T_spec(species,:) ./ nout.m_spec(species, :)), s);
 
   f = fopen([outfilename_prefix, 'profile.in'], 'w');
   for k = 1:number_surfaces
-    fprintf(f, '%13.7f  %13.7f  %13.7f\n', s(k), mt(k), n(k));
+    fprintf(f, '%13.7f  %13.7f  %13.7f\n', s(k), mt(k), vth(k));
   end
   fclose(f);
 
-  n1 = spline(nout.boozer_s, nout.n_spec(2,:), s);
+  n1 = spline(nout.boozer_s, nout.n_spec(species,:), s);
   n2 = zeros(1, number_surfaces);
 
-  T1 = spline(nout.boozer_s, nout.T_spec(2,:)/ev_to_cgs, s);
+  T1 = spline(nout.boozer_s, nout.T_spec(species,:)/ev_to_cgs, s);
   T2 = T1;
   Te = spline(nout.boozer_s, nout.T_spec(1,:)/ev_to_cgs, s);
 
   f = fopen([outfilename_prefix, 'plasma.in'], 'w');
   fprintf(f, '%% N am1 am2 Z1 Z2\n');
-  fprintf(f, '%4i %9.3f %9.3f %9.3f %9.3f\n', number_surfaces, nout.m_spec(2,1), nout.m_spec(2,1), nout.z_spec(2,1), nout.z_spec(2,1));
+  fprintf(f, '%4i %9.3f %9.3f %9.3f %9.3f\n', number_surfaces, nout.m_spec(species,1), nout.m_spec(species,1), nout.z_spec(species,1), nout.z_spec(species,1));
   fprintf(f, '%% s ni_1[cm^-3] ni_2[cm^-3] Ti_1[eV] Ti_2[eV] Te[eV]\n');
   for k = 1:number_surfaces
     fprintf(f, '%13.7e  %13.7e  %13.7e  %13.7e  %13.7e  %13.7e\n', ...
