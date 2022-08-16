@@ -1808,7 +1808,15 @@ def rescale_quantitiy_profiles(path: str, infilename: str, scaling_factor: float
 
   Output file name is determined from the input. '_quantities_scalingfactor_'
   is aded/inserted to the given file name, where 'quantities' is a '_'
-  separated list of the quantities.
+  separated list of the quantities. The slashes in the quantities are
+  also replaced with '_'.
+
+  Example:
+  --------
+  rescale_quantitiy_profile(path='./',
+                            infilename='multi_spec_Valentin.in.orig',
+                            scaling_factor=0.1,
+                            quantity='/Vphi')
 
   input:
   ------
