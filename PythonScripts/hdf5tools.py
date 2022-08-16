@@ -1838,7 +1838,7 @@ def rescale_quantitiy_profiles(path: str, infilename: str, scaling_factor: float
     quant[quantity] = np.array(ref[quantity])
     quant_rescaled[quantity] = quant[quantity]*scaling_factor
 
-    quant_namepart += '_' + quantity
+    quant_namepart += '_' + quantity.replace('/', '_')
 
   quant_namepart += '_{0}'.format(scaling_factor)
   nameparts = infilename.rsplit('.', 1)
