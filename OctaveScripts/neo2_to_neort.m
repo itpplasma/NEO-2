@@ -22,6 +22,8 @@ function neo2_to_neort(infileneo2out, outfilename_prefix, number_surfaces)
 
   cm3_to_m3 = 1.0e+6;
   ev_to_cgs = 1.6022e-12;
+  kg_to_dalton = 1.0/1.66053906660e-27;
+  g_to_kg = 1.0e-3;
 
   species = 2;
 
@@ -44,7 +46,12 @@ function neo2_to_neort(infileneo2out, outfilename_prefix, number_surfaces)
 
   f = fopen([outfilename_prefix, 'plasma.in'], 'w');
   fprintf(f, '%% N am1 am2 Z1 Z2\n');
-  fprintf(f, '%4i %9.3f %9.3f %9.3f %9.3f\n', number_surfaces, nout.m_spec(species,1), nout.m_spec(species,1), nout.z_spec(species,1), nout.z_spec(species,1));
+  fprintf(f, '%4i %9.3f %9.3f %9.3f %9.3f\n',
+              number_surfaces,
+              nout.m_spec(species,1)*g_to_kg*kg_to_dalton,
+              nout.m_spec(species,1)*g_to_kg*kg_to_dalton,
+              nout.z_spec(species,1),
+              nout.z_spec(species,1));
   fprintf(f, '%% s ni_1[cm^-3] ni_2[cm^-3] Ti_1[eV] Ti_2[eV] Te[eV]\n');
   for k = 1:number_surfaces
     fprintf(f, '%13.7e  %13.7e  %13.7e  %13.7e  %13.7e  %13.7e\n', ...
