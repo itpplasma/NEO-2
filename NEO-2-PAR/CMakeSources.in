@@ -52,6 +52,15 @@ set (MPI_SRC_FILES
 set_source_files_properties(${MPI_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 endif ()
 
+### net-cdf
+execute_process(COMMAND nc-config --includedir
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                OUTPUT_VARIABLE NETCDFINCLUDE_DIR)
+include_directories(${NETCDFINCLUDE_DIR})
+execute_process(COMMAND nc-config --flibs
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                OUTPUT_VARIABLE NETCDF_LIBS)
+
 ### NEO2 ###
 set(NEO2_COMMON_FILES
         ../COMMON/device_mod.f90
