@@ -157,8 +157,8 @@ target_link_libraries(${EXE_NAME}
   ${HDF5_Fortran_LIBRARIES}
   ${BLAS_LIBRARIES}
   ${LAPACK_LIBRARIES}
+  ${NETCDF_LIBS}
   -lz -lpthread
-  #debug efence
 )
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
