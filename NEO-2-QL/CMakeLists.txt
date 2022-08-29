@@ -182,7 +182,6 @@ configure_file (
 ### Define executable
 add_executable(${EXE_NAME}
         ${NEO2_SRC_FILES}
-        ${NEO2_COMMON_FILES}
         ${SUITESPARSE_SRC_FILES}
         ${SUPERLU_SRC_FILES}
         ${FGSL_USERINTER_SRC_FILES}
@@ -194,8 +193,11 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   #  set(LINALG_LIBRARIES ${lapack_lib} ${f77blas_lib} ${atlas_lib})
 endif ()
 
+add_subdirectory(common/)
+
 ### Add libraries linked with executable
 target_link_libraries(${EXE_NAME}
+        common
         ${fgsl_lib} ${gsl_lib}
         ${SUPERLU_LIBRARIES}
         ${SUITESPARSE_LIBRARIES}
@@ -207,8 +209,10 @@ target_link_libraries(${EXE_NAME}
         ${HDF5_tools_lib}
         ${HDF5_Fortran_HL_LIBRARIES}
         ${HDF5_Fortran_LIBRARIES}
+        ${NETCDF_LIBS}
         ${LINALG_LIBRARIES}
         )
+target_include_directories(${EXE_NAME} PUBLIC "$<TARGET_PROPERTY:common,Fortran_MODULE_DIRECTORY>")
 
 add_custom_target(
     NEO-2-Versioning
