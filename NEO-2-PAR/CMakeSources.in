@@ -133,7 +133,6 @@ set(NEO2_COMMON_FILES
 )
 
 set(NEO2_SRC_FILES
-        ./neo_sub.f90
         ./propagator.f90
         ./flint.f90
         ./ripple_solver.f90
@@ -143,4 +142,4 @@ set(NEO2_SRC_FILES
         ./neo2.f90
         ./timingInfo.f90
 )
-set_source_files_properties(${NEO2_SRC_FILES} ${NEO2_COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
+set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
