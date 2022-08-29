@@ -53,7 +53,7 @@ if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
 elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
         set (CMAKE_Fortran_FLAGS "-cpp -heap-arrays")
 endif ()
-set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
+set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/OBJS)
 
 # Create Fortran file with build information
 configure_file (
@@ -130,10 +130,11 @@ else(${ISW_SUPERLU_VERSION} LESS 0)
   set(SUPERLU_SRC_FILES "${SUPERLU_SRC_FILES_VER_5_0}")
 endif(${ISW_SUPERLU_VERSION} LESS 0)
 
+add_subdirectory(common/)
+
 ### Define executable
 add_executable(${EXE_NAME}
   ${NEO2_SRC_FILES}
-  ${NEO2_COMMON_FILES}
   ${SUITESPARSE_SRC_FILES}
   ${SUPERLU_SRC_FILES}
   ${FGSL_USERINTER_SRC_FILES}
@@ -144,6 +145,7 @@ set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAG
 
 ### Add libraries linked with executable
 target_link_libraries(${EXE_NAME}
+  common
   ${fgsl_lib} ${gsl_lib}
   ${SUPERLU_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
@@ -160,6 +162,7 @@ target_link_libraries(${EXE_NAME}
   ${NETCDF_LIBS}
   -lz -lpthread
 )
+target_include_directories(${EXE_NAME} PUBLIC "$<TARGET_PROPERTY:common,Fortran_MODULE_DIRECTORY>")
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
