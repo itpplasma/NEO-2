@@ -19,4 +19,7 @@ MODULE neo_control
   INTEGER                            :: eval_mode
   INTEGER                            :: no_fluxs, no_fluxs_s
   INTEGER, DIMENSION(:), ALLOCATABLE :: fluxs_arr
+
+  !> Controls setting of rt0 and bmref in neo_sub.
+  logical :: set_rt0_from_rmnc_for_zero_mode = .true.
 END MODULE neo_control

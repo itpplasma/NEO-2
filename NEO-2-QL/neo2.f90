@@ -76,7 +76,7 @@ PROGRAM neo2
   !! End Modifications by Andreas F. Martitsch (17.03.2016)
   use neo_spline_data, only : lsw_linear_boozer
   USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
-  USE neo_control, ONLY: in_file, inp_swi, lab_swi
+  USE neo_control, ONLY: in_file, inp_swi, lab_swi, set_rt0_from_rmnc_for_zero_mode
 
   !************************************
   ! HDF5
@@ -259,6 +259,8 @@ PROGRAM neo2
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, B_rho_L_loc,          &
        isw_ripple_solver, isw_mag_shear
   !! End Modification by Andreas F. Martitsch (14.07.2015)
+
+  set_rt0_from_rmnc_for_zero_mode = .false.
 
   IF(ALLOCATED(species_tag_vec)) DEALLOCATE(species_tag_vec)
   ALLOCATE(species_tag_vec(MAXDIM))

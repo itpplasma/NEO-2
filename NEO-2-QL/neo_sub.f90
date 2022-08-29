@@ -62,7 +62,7 @@ SUBROUTINE neo_init(npsi)
 ! **********************************************************************
   rt0=0.0_dp
   bmref=0.0_dp
-  if (.false.) then
+  if (set_rt0_from_rmnc_for_zero_mode) then
     DO imn=1,mnmax
        IF(ixm(imn).EQ.0 .AND. ixn(imn).EQ.0) THEN
           rt0 = rmnc(1,imn)
