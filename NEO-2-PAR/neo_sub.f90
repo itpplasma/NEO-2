@@ -104,7 +104,7 @@ END SUBROUTINE neo_init
 ! compute normalization Bref
 SUBROUTINE calc_Bref(bref,rmajor)
   USE neo_precision
-  USE neo_control, ONLY: fluxs_interp, ref_swi, no_fluxs, fluxs_arr 
+  USE neo_control, ONLY: fluxs_interp, ref_swi, no_fluxs, fluxs_arr
   USE neo_input, ONLY: b00, bmnc, rmnc, ixm, ixn, mnmax
   USE neo_actual_fluxs, ONLY: s_es, s_b00
   IMPLICIT NONE
@@ -165,7 +165,7 @@ SUBROUTINE neo_init_spline()
   USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf
 !  Test
 !  USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf,      &
-!       splint_horner3, tfp, tfpp, tfppp 
+!       splint_horner3, tfp, tfpp, tfppp
 !  Test End
   IMPLICIT NONE
   INTEGER      :: i
@@ -189,18 +189,18 @@ SUBROUTINE neo_init_spline()
   ALLOCATE ( c_zmnc(ns,mnmax), d_zmnc(ns,mnmax) )
   ALLOCATE ( a_lmnc(ns,mnmax), b_lmnc(ns,mnmax) )
   ALLOCATE ( c_lmnc(ns,mnmax), d_lmnc(ns,mnmax) )
-  ALLOCATE ( a_bmnc(ns,mnmax), b_bmnc(ns,mnmax) ) 
+  ALLOCATE ( a_bmnc(ns,mnmax), b_bmnc(ns,mnmax) )
   ALLOCATE ( c_bmnc(ns,mnmax), d_bmnc(ns,mnmax) )
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   ! Additional data from Boozer files without Stellarator symmetry
-  IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger) 
+  IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
      ALLOCATE ( a_rmns(ns,mnmax), b_rmns(ns,mnmax) )
      ALLOCATE ( c_rmns(ns,mnmax), d_rmns(ns,mnmax) )
      ALLOCATE ( a_zmns(ns,mnmax), b_zmns(ns,mnmax) )
      ALLOCATE ( c_zmns(ns,mnmax), d_zmns(ns,mnmax) )
      ALLOCATE ( a_lmns(ns,mnmax), b_lmns(ns,mnmax) )
      ALLOCATE ( c_lmns(ns,mnmax), d_lmns(ns,mnmax) )
-     ALLOCATE ( a_bmns(ns,mnmax), b_bmns(ns,mnmax) ) 
+     ALLOCATE ( a_bmns(ns,mnmax), b_bmns(ns,mnmax) )
      ALLOCATE ( c_bmns(ns,mnmax), d_bmns(ns,mnmax) )
   END IF
   !! End Modifications by Andreas F. Martitsch (06.08.2014)
@@ -215,7 +215,7 @@ SUBROUTINE neo_init_spline()
   ALLOCATE ( c_curr_tor(ns), d_curr_tor(ns) )
   ALLOCATE ( a_curr_pol(ns), b_curr_pol(ns) )
   ALLOCATE ( c_curr_pol(ns), d_curr_pol(ns) )
- 
+
   ALLOCATE ( r_m(mnmax), r_mhalf(mnmax) )
   ALLOCATE ( sp_index(ns) )
 
@@ -232,7 +232,7 @@ SUBROUTINE neo_init_spline()
      END IF
      r_mhalf(i) = r_m(i) / 2._dp
   END DO
-  sp_index = (/ (i, i=1,ns) /) 
+  sp_index = (/ (i, i=1,ns) /)
 
   ! 1-d splines of 2-d arrays
   CALL splinecof3_hi_driv(es, rmnc, r_mhalf,                         &
@@ -245,17 +245,17 @@ SUBROUTINE neo_init_spline()
        a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   ! Additional data from Boozer files without Stellarator symmetry
-  IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger) 
+  IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
      !PRINT *,"step 5"
      CALL splinecof3_hi_driv(es, rmns, r_mhalf,                         &
           a_rmns, b_rmns, c_rmns, d_rmns, sp_index, tf)
      !PRINT *,"step 6"
      CALL splinecof3_hi_driv(es, zmns, r_mhalf,                         &
           a_zmns, b_zmns, c_zmns, d_zmns, sp_index, tf)
-     !PRINT *,"step 7"  
+     !PRINT *,"step 7"
      CALL splinecof3_hi_driv(es, lmns, r_mhalf,                         &
           a_lmns, b_lmns, c_lmns, d_lmns, sp_index, tf)
-     !PRINT *,"step 8"  
+     !PRINT *,"step 8"
      CALL splinecof3_hi_driv(es, bmns, r_mhalf,                         &
           a_bmns, b_bmns, c_bmns, d_bmns, sp_index, tf)
   END IF
@@ -272,8 +272,8 @@ SUBROUTINE neo_init_spline()
 !!$          c_bmnc(:,i),d_bmnc(:,i),swd,m0,                       &
 !!$          f_es,tf,tfp,tfpp,tfppp,                               &
 !!$          f_bmnc,dummy,dummy,dummy)
-!!$     PRINT *, ixm(i),ixn(i),m0,bmnc(k,i),f_bmnc 
-!!$  END DO  
+!!$     PRINT *, ixm(i),ixn(i),m0,bmnc(k,i),f_bmnc
+!!$  END DO
   !
   ! End Testing
   !
@@ -284,7 +284,7 @@ SUBROUTINE neo_init_spline()
   ! input for test function for spline
   m0  = 0.0_dp
 ! boundary condition for spline
-  c1 = 0.0_dp  
+  c1 = 0.0_dp
   cn = 0.0_dp
 ! we use no smoothing for spline
   ALLOCATE ( lambda(ns) )
@@ -327,8 +327,8 @@ SUBROUTINE neo_init_s(psi,dpsi)
 ! **********************************************************************
   IMPLICIT NONE
 
-  REAL(kind=dp),                INTENT(out)     :: psi, dpsi 
-  INTEGER,       DIMENSION(2)                   :: b_minpos, b_maxpos 
+  REAL(kind=dp),                INTENT(out)     :: psi, dpsi
+  INTEGER,       DIMENSION(2)                   :: b_minpos, b_maxpos
 
   REAL(kind=dp), PARAMETER                      :: eps_newt = 1.0d-10
   INTEGER                                       :: iter, error
@@ -368,7 +368,7 @@ SUBROUTINE neo_init_s(psi,dpsi)
      flux_file = TRIM(in_file)//'.'//TRIM(ADJUSTL(flux_numc))//'.fsn'
      INQUIRE(FILE=flux_file,EXIST=ff_exist)
   END IF
-  
+
   ! Fourier should be done
   IF ((calc_fourier .EQ. 1) .OR.                                       &
        (calc_fourier .EQ. 0 .AND. .NOT. ff_exist) .OR.                 &
@@ -440,7 +440,7 @@ SUBROUTINE neo_init_s(psi,dpsi)
   b_min      = b(b_minpos(1),b_minpos(2))
   theta_bmin = theta_arr(b_minpos(1))
   phi_bmin   = phi_arr(b_minpos(2))
-  
+
   b_maxpos   = MAXLOC(b)
   b_max      = b(b_maxpos(1),b_maxpos(2))
   theta_bmax = theta_arr(b_maxpos(1))
@@ -534,7 +534,7 @@ SUBROUTINE neo_plot_files
   WRITE(f_ns,*) '(1x,',TRIM(ADJUSTL(c_ns)),TRIM(ADJUSTL(f_f)),')'
   WRITE(f_phi_n,*) '(1x,',TRIM(ADJUSTL(c_phi_n)),TRIM(ADJUSTL(f_f)),')'
   WRITE(f_theta_n,*) '(1x,',TRIM(ADJUSTL(c_theta_n)),TRIM(ADJUSTL(f_f)),')'
-  
+
 
   INQUIRE(IOLENGTH=irecl ) b
   OPEN(unit=uw, file=plot_file, status='replace', action='write', recl=irecl)
@@ -584,7 +584,7 @@ SUBROUTINE neo_plot_files
   WRITE (uw,*) '#c (theta_n, phi_n)'
   WRITE (uw,*) '#k modb'
   WRITE (uw,f_phi_n) TRANSPOSE(b)
- 
+
   WRITE (uw,*) '#a geom'
   WRITE (uw,*) '#c (theta_n, phi_n)'
   WRITE (uw,*) '#c r [m], z [m], d_phi = (phib-phi)*nper/twopi'
@@ -615,7 +615,7 @@ SUBROUTINE neo_plot_files
 !!$  WRITE(w_u1,*) bmnc(i,j)
 !!$  WRITE(w_u1,*) theta_arr(j)
 !!$  WRITE(w_u1,*) phi_arr(k)
-!!$ 
+!!$
 !!$
 !!$  DO i=1,theta_n
 !!$     DO j=1,phi_n
@@ -647,7 +647,7 @@ SUBROUTINE neo_init_fluxsurface
   USE neo_actual_fluxs
   USE neo_actual_spectra
   USE neo_spline_data
-  USE inter_interfaces, ONLY: splint_horner3, tf, tfp, tfpp, tfppp 
+  USE inter_interfaces, ONLY: splint_horner3, tf, tfp, tfpp, tfppp
 ! **********************************************************************
 ! Local Definitions
 ! **********************************************************************
@@ -738,10 +738,10 @@ SUBROUTINE neo_init_fluxsurface
           s_curr_tor,yp,ypp,yppp)
      CALL splint_horner3(es,a_curr_pol,b_curr_pol,c_curr_pol,d_curr_pol,swd,m0, &
           s_es,tf,tfp,tfpp,tfppp,                               &
-          s_curr_pol,yp,ypp,yppp)    
+          s_curr_pol,yp,ypp,yppp)
      CALL neo_get_b00
   END IF
-! 
+!
 END SUBROUTINE neo_init_fluxsurface
 
 SUBROUTINE neo_read_control
@@ -773,7 +773,7 @@ SUBROUTINE neo_read_control
   READ (r_u1,*) dummy
   READ (r_u1,*) in_file
 
-  READ (r_u1,*) fluxs_interp  
+  READ (r_u1,*) fluxs_interp
   READ (r_u1,*) no_fluxs
   IF (fluxs_interp .EQ. 0) THEN
      IF (no_fluxs .EQ. 0) THEN
@@ -808,7 +808,7 @@ SUBROUTINE neo_read_control
      n = 1000
      DO i = 1,s_num
         n = n + 1
-        fluxs_arr(i) = n 
+        fluxs_arr(i) = n
      END DO
      no_fluxs = s_num
   END IF
@@ -819,7 +819,7 @@ SUBROUTINE neo_read_control
   READ (r_u1,*) max_m_mode
   READ (r_u1,*) max_n_mode
   READ (r_u1,*) calc_eps
-  READ (r_u1,*) npart 
+  READ (r_u1,*) npart
   READ (r_u1,*) multra
   READ (r_u1,*) acc_req
   READ (r_u1,*) no_bins
@@ -893,7 +893,7 @@ SUBROUTINE neo_read_control
   READ (r_u1,*) v_num_mm
   READ (r_u1,*) no_gamma
   READ (r_u1,*) lambda_fac
-  READ (r_u1,*) temp_e  
+  READ (r_u1,*) temp_e
   READ (r_u1,*) tau_num
   READ (r_u1,*) gamma_eps
   READ (r_u1,*) phi_eps
@@ -939,7 +939,7 @@ SUBROUTINE neo_read
 !***********************************************************************
   OPEN(unit=r_u1,file=in_file,status='old',form='formatted')
 !***********************************************************************
-  IF (inp_swi .EQ. 1) THEN        !Princeton Boozer file        
+  IF (inp_swi .EQ. 1) THEN        !Princeton Boozer file
      READ (r_u1,*) dummy
      READ (r_u1,*) m0b,n0b,ns,nfp,flux
      m_max = m0b+1
@@ -957,7 +957,7 @@ SUBROUTINE neo_read
      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
 
-     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               & 
+     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
           pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
 
@@ -1004,7 +1004,7 @@ SUBROUTINE neo_read
      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
 
-     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               & 
+     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
           pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
 
@@ -1043,7 +1043,7 @@ SUBROUTINE neo_read
      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
 
-     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               & 
+     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
           pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
 
@@ -1063,7 +1063,7 @@ SUBROUTINE neo_read
      DO i =1, ns      ! normalize
         es(i) = es(i) / flux
      END DO
-     
+
      DO j = 1,n0b
         ixm(j) = 0
         ixn(j) = (-n0b + j - 1)*nfp
@@ -1081,7 +1081,7 @@ SUBROUTINE neo_read
         END DO
      END DO
 
-  ELSEIF (inp_swi .EQ. 4) THEN        !W7-X File        
+  ELSEIF (inp_swi .EQ. 4) THEN        !W7-X File
      READ (r_u1,*) dummy
      READ (r_u1,*) m0b,n0b,ns,nfp,flux,r_small,r_big
      m_max = m0b+1
@@ -1112,7 +1112,7 @@ SUBROUTINE neo_read
      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
 
-     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               & 
+     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
           pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
 
@@ -1153,7 +1153,7 @@ SUBROUTINE neo_read
      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
 
-     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               & 
+     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
           pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
 
@@ -1173,7 +1173,7 @@ SUBROUTINE neo_read
      DO i =1, ns      ! normalize
         es(i) = es(i) / flux
      END DO
-     
+
      DO j = 1,n0b
         ixm(j) = 0
         ixn(j) = (-n0b + j - 1)*nfp
@@ -1191,7 +1191,7 @@ SUBROUTINE neo_read
         END DO
      END DO
 
-  ELSEIF (inp_swi .EQ. 6) THEN        ! NEW IPP, HSX        
+  ELSEIF (inp_swi .EQ. 6) THEN        ! NEW IPP, HSX
      READ (r_u1,*) dummy
      READ (r_u1,*) dummy
      READ (r_u1,*) dummy
@@ -1216,7 +1216,7 @@ SUBROUTINE neo_read
      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
 
-     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               & 
+     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
           pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
 
@@ -1233,7 +1233,7 @@ SUBROUTINE neo_read
         READ(r_u1,*) es(i),iota(i),curr_pol(i),curr_tor(i),               &
              pprime(i),sqrtg00(i)
         READ(r_u1,*) dummy
-        
+
         extra_zero = .FALSE.
         extra_count = 0
         DO j=1,mnmax
@@ -1247,10 +1247,10 @@ SUBROUTINE neo_read
                IF (extra_count .EQ. n0b) extra_zero = .FALSE.
                ixm(j) = 0
                ixn(j) = -extra_count
-               rmnc(i,j) = 0.0d0 
-               zmnc(i,j) = 0.0d0 
-               lmnc(i,j) = 0.0d0 
-               bmnc(i,j) = 0.0d0 
+               rmnc(i,j) = 0.0d0
+               zmnc(i,j) = 0.0d0
+               lmnc(i,j) = 0.0d0
+               bmnc(i,j) = 0.0d0
            ELSE
                READ(r_u1,*) ixm(j),ixn(j),                                    &
                     rmnc(i,j),zmnc(i,j),lmnc(i,j),                            &
@@ -1259,7 +1259,7 @@ SUBROUTINE neo_read
         END DO
      END DO
 
-  ELSEIF (inp_swi .EQ. 7) THEN        !QPS File        
+  ELSEIF (inp_swi .EQ. 7) THEN        !QPS File
      READ (r_u1,*) dummy
      READ (r_u1,*) m0b,n0b,ns,nfp,flux,r_small,r_big
      m_max = m0b+1
@@ -1290,7 +1290,7 @@ SUBROUTINE neo_read
      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
 
-     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               & 
+     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
           pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
 
@@ -1321,7 +1321,7 @@ SUBROUTINE neo_read
                 bmnc(i,j)
         END DO
      END DO
-  ELSEIF (inp_swi .EQ. 8) THEN        ! NEW IPP TOKAMAK        
+  ELSEIF (inp_swi .EQ. 8) THEN        ! NEW IPP TOKAMAK
      READ (r_u1,*) dummy
      READ (r_u1,*) dummy
      READ (r_u1,*) dummy
@@ -1347,7 +1347,7 @@ SUBROUTINE neo_read
      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
 
-     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               & 
+     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
           pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
 
@@ -1364,7 +1364,7 @@ SUBROUTINE neo_read
         READ(r_u1,*) es(i),iota(i),curr_pol(i),curr_tor(i),               &
              pprime(i),sqrtg00(i)
         READ(r_u1,*) dummy
-        
+
         DO j=1,mnmax
            !print *, 'j: ',j
            READ(r_u1,*) ixm(j),ixn(j),                                    &
@@ -1373,8 +1373,8 @@ SUBROUTINE neo_read
            !print *, 'ixm,ixn: ',ixm(j),ixn(j)
         END DO
      END DO
-  !! Modifications by Andreas F. Martitsch (06.08.2014)   
-  ELSEIF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)        
+  !! Modifications by Andreas F. Martitsch (06.08.2014)
+  ELSEIF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
      READ (r_u1,*) dummy
      READ (r_u1,*) dummy
      READ (r_u1,*) dummy
@@ -1402,7 +1402,7 @@ SUBROUTINE neo_read
      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
 
-     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               & 
+     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
           pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
 
@@ -1419,7 +1419,7 @@ SUBROUTINE neo_read
         READ(r_u1,*) es(i),iota(i),curr_pol(i),curr_tor(i),               &
              pprime(i),sqrtg00(i)
         READ(r_u1,*) dummy
-        
+
         DO j=1,mnmax
            !print *, 'j: ',j
            READ(r_u1,*) ixm(j),ixn(j),                                    &
@@ -1429,7 +1429,7 @@ SUBROUTINE neo_read
            !PRINT *,'rmnc,rmns: ',rmnc(i,j),rmns(i,j)
         END DO
      END DO
-  !! End Modifications by Andreas F. Martitsch (06.08.2014)   
+  !! End Modifications by Andreas F. Martitsch (06.08.2014)
   ELSE
      WRITE (w_us,*) 'FATAL: There is yet no other input type defined'
      STOP
@@ -1438,7 +1438,7 @@ SUBROUTINE neo_read
   ! To silence a warning maybe used uninitialized (should be false positive).
   num_n = 0
 
-! Filling of i_m and i_n 
+! Filling of i_m and i_n
 ! and pointers pixm from ixm to i_m, and pixn from ixn to i_n
   DO j = 1,mnmax
      m = ixm(j)
@@ -1494,7 +1494,7 @@ SUBROUTINE neo_read
 !!$  PAUSE
 
   IF (lab_swi .EQ. 1) THEN              ! NCSX Boozer file
-! 
+!
 ! ATTENTION: Switch n TO -n
 !            Toroidal mode numbers have to multiplied by number of field periods
 !            Change iota to iota*nfp (PRINCETON)
@@ -1503,7 +1503,7 @@ SUBROUTINE neo_read
      i_n =  - i_n * nfp
      max_n_mode = max_n_mode * nfp
      iota = iota*nfp
-     psi_pr = ABS(flux) / twopi 
+     psi_pr = ABS(flux) / twopi
      curr_pol = curr_pol / twopi * nfp
      curr_tor = curr_tor / twopi
   ELSE IF  (lab_swi .EQ. 2) THEN         !ORNL Boozer file
@@ -1527,12 +1527,12 @@ SUBROUTINE neo_read
      ! /proj/plasma/DOCUMENTS/Neo2/Archive/
      !**********************************************************
      ! curr_tor = curr_tor * 2.d-7      ! Before patch
-     curr_tor = - curr_tor * 2.d-7 
+     curr_tor = - curr_tor * 2.d-7
 
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
      i_n =  i_n * nfp
-     ixm =  ixm 
+     ixm =  ixm
      i_m =  i_m
      psi_pr = ABS(flux) / twopi
   ELSE IF  (lab_swi .EQ. 5) THEN         !CHS Boozer file
@@ -1552,7 +1552,7 @@ SUBROUTINE neo_read
      !**********************************************************
      ! curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -   ! Before patch
      curr_pol = curr_pol * 2.d-7 * nfp               ! After patch
-     
+
      !**********************************************************
      ! Patch from Gernot Kapper - 20.11.2014
      ! See mail from Winfried Kernbichler archived at
@@ -1564,7 +1564,7 @@ SUBROUTINE neo_read
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
      i_n =  i_n * nfp
-     ixm =  ixm 
+     ixm =  ixm
      i_m =  i_m
      psi_pr = ABS(flux) / twopi
   ELSE IF  (lab_swi .EQ. 7) THEN         !QPS Boozer file
@@ -1583,11 +1583,11 @@ SUBROUTINE neo_read
      !**********************************************************
      ! curr_tor = curr_tor * 2.d-7 * nfp ! Henning   ! Before patch
      curr_tor = - curr_tor * 2.d-7         ! Henning
-     
+
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
      i_n =  i_n * nfp
-     ixm =  ixm 
+     ixm =  ixm
      i_m =  i_m
      psi_pr = ABS(flux) / twopi
   !! Modifications by Andreas F. Martitsch (27.08.2014)
@@ -1595,15 +1595,15 @@ SUBROUTINE neo_read
   !-> A F Martitsch et al 2016 Plasma Phys. Control. Fusion 58 074007
   ELSE IF  (lab_swi .EQ. 9) THEN         ! ASDEX-U (E. Strumberger)
      ! signs / conversion checked by Winny (24.10.2014)
-     curr_pol = curr_pol * 2.d-7 * nfp   
+     curr_pol = curr_pol * 2.d-7 * nfp
      curr_tor = curr_tor * 2.d-7
      max_n_mode = max_n_mode * nfp
      ixn =  ixn * nfp
      i_n =  i_n * nfp
-     ixm =  ixm 
+     ixm =  ixm
      i_m =  i_m
      psi_pr = ABS(flux) / twopi
-  !! End Modifications by Andreas F. Martitsch (27.08.2014) 
+  !! End Modifications by Andreas F. Martitsch (27.08.2014)
   !! Modifications by Andreas F. Martitsch (28.06.2017)
   !-> changes of signs to account for left-handed coordinate system
   !-> affects sign of transport coefficients related to Ware pinch
@@ -1639,7 +1639,7 @@ SUBROUTINE neo_read
 ! zmnc = zmnc * 2.0_dp
 ! curr_pol = curr_pol * 2.0_dp
 ! curr_tor = curr_tor * 2.0_dp
-! 
+!
   CLOSE (unit=r_u1)
 ! **********************************************************************
 ! Write optional output for Plotting
@@ -1735,14 +1735,14 @@ SUBROUTINE neo_prep_b00
   USE neo_precision
   USE neo_input
   USE neo_spline_b00
-  USE inter_interfaces, ONLY: splinecof3, tf 
+  USE inter_interfaces, ONLY: splinecof3, tf
   INTEGER                             :: i, j
   INTEGER(I4B) :: sw1, sw2
   REAL(dp)     :: m0, c1, cn
 
   REAL(dp), DIMENSION(:), ALLOCATABLE :: lambda
   INTEGER,  DIMENSION(:), ALLOCATABLE :: index_i
-  
+
   ! collect the b00 in a vector
   ALLOCATE ( lambda(ns) )
   ALLOCATE ( index_i(ns) )
@@ -1764,11 +1764,11 @@ SUBROUTINE neo_prep_b00
   ! input for test function for spline
   m0  = 0.0_dp
 ! boundary condition for spline
-  c1 = 0.0_dp  
+  c1 = 0.0_dp
   cn = 0.0_dp
 ! we use no smoothing for spline
   lambda = 1.0D0
-  index_i = (/ (i, i=1,ns) /) 
+  index_i = (/ (i, i=1,ns) /)
   CALL splinecof3(es, b00, c1, cn, lambda, index_i, sw1, sw2, &
        a_b00, b_b00, c_b00, d_b00, m0, tf)
 
@@ -1783,7 +1783,7 @@ SUBROUTINE neo_get_b00
   USE neo_input
   USE neo_actual_fluxs
   USE neo_spline_b00
-  USE inter_interfaces, ONLY: splint_horner3, tf, tfp, tfpp, tfppp 
+  USE inter_interfaces, ONLY: splint_horner3, tf, tfp, tfpp, tfppp
 
   IMPLICIT NONE
   INTEGER(I4B)  :: swd = 1
@@ -1836,7 +1836,7 @@ SUBROUTINE neo_prep
            stat = i_alloc)
   IF(i_alloc /= 0) STOP 'Allocation for theta/phi-arrays failed!'
 ! **********************************************************************
-! Allocation for arrays for output quantities 
+! Allocation for arrays for output quantities
 ! **********************************************************************
   ALLOCATE(b(theta_n,phi_n),stat = i_alloc)
   IF(i_alloc /= 0) STOP 'Allocation for b-array failed!'
@@ -2098,7 +2098,7 @@ SUBROUTINE neo_fourier
                  !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
                  !where  \phi=2\pi/N_p v.
                  !This expression differs by a minus sign from the
-                 !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                 !expression used by J. Geiger ( phi_b-\phi = ... )!
                  !-> previous versions used this definition:
                  !p_tb(it,ip) = p_tb(it,ip) + m*li*sinv - m*li_s*cosv ! -l_tb
                  !p_pb(it,ip) = p_pb(it,ip) + n*li*sinv - n*li_s*cosv ! -l_pb
@@ -2107,7 +2107,7 @@ SUBROUTINE neo_fourier
                  p_pb(it,ip) = p_pb(it,ip) - n*li*sinv + n*li_s*cosv ! +l_pb
                  !! End Modifications by Andreas F. Martitsch (12.11.2015)
                  b_tb(it,ip) = b_tb(it,ip) - m*bi*sinv + m*bi_s*cosv
-                 b_pb(it,ip) = b_pb(it,ip) - n*bi*sinv + n*bi_s*cosv                
+                 b_pb(it,ip) = b_pb(it,ip) - n*bi*sinv + n*bi_s*cosv
               ELSE
                  cosv = cosmth(it,im) * cosnph(ip,in) + sinmth(it,im) * sinnph(ip,in)
                  sinv = sinmth(it,im) * cosnph(ip,in) - cosmth(it,im) * sinnph(ip,in)
@@ -2176,12 +2176,12 @@ SUBROUTINE neo_fourier
 ! Derived quantities
 ! **********************************************************************
 ! metric tensor
-  gtbtb = r_tb*r_tb + z_tb*z_tb + r*r*p_tb*p_tb  
-  gpbpb = r_pb*r_pb + z_pb*z_pb + r*r*p_pb*p_pb  
-  gtbpb = r_tb*r_pb + z_tb*z_pb + r*r*p_tb*p_pb  
+  gtbtb = r_tb*r_tb + z_tb*z_tb + r*r*p_tb*p_tb
+  gpbpb = r_pb*r_pb + z_pb*z_pb + r*r*p_pb*p_pb
+  gtbpb = r_tb*r_pb + z_tb*z_pb + r*r*p_tb*p_pb
 ! $1/sqrt(g)$
   fac = s_curr_pol + s_iota * s_curr_tor  ! (J + iota I)
-  isqrg  = b*b / fac 
+  isqrg  = b*b / fac
 ! $sqrt(g^{11})$
   IF (g11_swi .EQ. 0) THEN
      sqrg11 = 1.0_dp
@@ -2189,7 +2189,7 @@ SUBROUTINE neo_fourier
      sqrg11 = SQRT( (gtbtb*gpbpb - gtbpb*gtbpb ) * isqrg**2)
   END IF
 !  PRINT *, 'fac: ',fac,s_curr_pol,s_iota,s_curr_tor
-! geodesic curvature term $k_G |\nabla \psi|$ 
+! geodesic curvature term $k_G |\nabla \psi|$
   kg = (s_curr_tor * b_pb - s_curr_pol * b_tb) / fac
 ! parallel derivative of mod-B
   pard = b_pb + s_iota * b_tb
@@ -2215,7 +2215,7 @@ SUBROUTINE neo_fourier
 
      hh1 = (fac/b)**2
      hh2 = s_iota**2 * gtbtb + 2.0_dp * s_iota * gtbpb + gpbpb
-  
+
      sqrga = 1 / isqrg
      sqrgb = SQRT(hh2) / b
      currpol_b = (gpbpb + s_iota * gtbpb) / sqrgb
@@ -2223,7 +2223,7 @@ SUBROUTINE neo_fourier
 
      shh1 = 0.0_dp
      shh2 = 0.0_dp
-  
+
      scurrpol_b  = 0.0_dp
      scurrpol_b2 = 0.0_dp
      scurrtor_b  = 0.0_dp
@@ -2242,12 +2242,12 @@ SUBROUTINE neo_fourier
      mhh   = shh1 / phi_n / theta_n
      mhh2  = shh2 / phi_n / theta_n
      shh   = SQRT(ABS(mhh2 - mhh**2))
-     
+
      mcurrpol_b  = scurrpol_b  / phi_n / theta_n
      mcurrpol_b2 = scurrpol_b2 / phi_n / theta_n
      mcurrtor_b  = scurrtor_b  / phi_n / theta_n
      mcurrtor_b2 = scurrtor_b2 / phi_n / theta_n
-     
+
      scpol = SQRT(ABS(mcurrpol_b2 - mcurrpol_b**2))
      sctor = SQRT(ABS(mcurrtor_b2 - mcurrtor_b**2))
 
@@ -2371,7 +2371,7 @@ SUBROUTINE neo_spline2d
 ! Allocation of spline arrays is done in neo_prep
 ! **********************************************************************
 ! **********************************************************************
-! Double periodic splines (parameter mt=1 and mp=1) 
+! Double periodic splines (parameter mt=1 and mp=1)
 ! **********************************************************************
 ! Spline for mod b
 ! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
@@ -2434,7 +2434,7 @@ SUBROUTINE neo_eval(theta,phi,bval,gval,kval,pval,qval,rval)
 ! **********************************************************************
   IMPLICIT NONE
 
-  REAL(kind=dp), INTENT(in)  ::   theta, phi 
+  REAL(kind=dp), INTENT(in)  ::   theta, phi
   REAL(kind=dp), INTENT(out) ::   bval, gval, kval, pval, qval, rval
 !
 ! New definitions for direct evaluation
@@ -2517,7 +2517,7 @@ SUBROUTINE neo_eval(theta,phi,bval,gval,kval,pval,qval,rval)
      zz = 0.0d0
      ll = 0.0d0
      bb = 0.0d0
-     
+
      rr_tb = 0.0d0
      zz_tb = 0.0d0
      pp_tb = 0.0d0
@@ -2573,16 +2573,16 @@ SUBROUTINE neo_eval(theta,phi,bval,gval,kval,pval,qval,rval)
               !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
               !where  \phi=2\pi/N_p v.
               !This expression differs by a minus sign from the
-              !expression used by J. Geiger ( phi_b-\phi = ... )! 
+              !expression used by J. Geiger ( phi_b-\phi = ... )!
               !-> previous versions used this definition:
               !pp_tb = pp_tb + m*li*sinv - m*li_s*cosv ! -l_tb
               !pp_pb = pp_pb + n*li*sinv - n*li_s*cosv ! -l_pb
               !-> corrected formulas:
               pp_tb = pp_tb - m*li*sinv + m*li_s*cosv ! +l_tb
-              pp_pb = pp_pb - n*li*sinv + n*li_s*cosv ! +l_pb                            
+              pp_pb = pp_pb - n*li*sinv + n*li_s*cosv ! +l_pb
               !! End Modifications by Andreas F. Martitsch (12.11.2015)
               bb_tb = bb_tb - m*bi*sinv + m*bi_s*cosv
-              bb_pb = bb_pb - n*bi*sinv + n*bi_s*cosv                
+              bb_pb = bb_pb - n*bi*sinv + n*bi_s*cosv
            ELSE
               rr = rr + ri*cosv
               zz = zz + zi*sinv
@@ -2608,19 +2608,19 @@ SUBROUTINE neo_eval(theta,phi,bval,gval,kval,pval,qval,rval)
 ! **********************************************************************
      bval = bb
 ! metric tensor
-     ggtbtb = rr_tb*rr_tb + zz_tb*zz_tb + rr*rr*pp_tb*pp_tb  
-     ggpbpb = rr_pb*rr_pb + zz_pb*zz_pb + rr*rr*pp_pb*pp_pb  
-     ggtbpb = rr_tb*rr_pb + zz_tb*zz_pb + rr*rr*pp_tb*pp_pb  
+     ggtbtb = rr_tb*rr_tb + zz_tb*zz_tb + rr*rr*pp_tb*pp_tb
+     ggpbpb = rr_pb*rr_pb + zz_pb*zz_pb + rr*rr*pp_pb*pp_pb
+     ggtbpb = rr_tb*rr_pb + zz_tb*zz_pb + rr*rr*pp_tb*pp_pb
 ! $1/sqrt(g)$
      ffac = s_curr_pol + s_iota * s_curr_tor
-     iisqrg  = bb*bb / ffac 
+     iisqrg  = bb*bb / ffac
 ! $sqrt(g^{11})$
      IF (g11_swi .EQ. 0) THEN
         gval = 1.0_dp          ! sqrg11
      ELSE
         gval = SQRT( (ggtbtb*ggpbpb - ggtbpb*ggtbpb ) * iisqrg**2)
      END IF
-! geodesic curvature term $k_G |\nabla \psi|$ 
+! geodesic curvature term $k_G |\nabla \psi|$
      kval = (s_curr_tor * bb_pb - s_curr_pol*bb_tb) / ffac ! kg
 ! parallel derivative of mod-B
      pval = bb_pb + s_iota * bb_tb  ! pard
@@ -2631,7 +2631,7 @@ SUBROUTINE neo_eval(theta,phi,bval,gval,kval,pval,qval,rval)
 ! Effective Radius Calculations
      ppsi_r = (pp_tb * zz_pb - zz_tb * pp_pb) * rr * iisqrg
      ppsi_z = (rr_tb * pp_pb - pp_tb * rr_pb) * rr * iisqrg
-     rval   = rr * ppsi_r + zz * ppsi_z    
+     rval   = rr * ppsi_r + zz * ppsi_z
 !
   END IF
 !
@@ -2650,7 +2650,7 @@ SUBROUTINE neo_bderiv(theta, phi, f, g, dfdx, dfdy, dgdx, dgdy)
 !         dfdy   d^2b/(dt dp)
 !         dgdx   d^2b/(dt dp)
 !         dgdy   d^2b/dp^2
-! 
+!
 ! Input/output consistent for neo_zeros2d
 ! **********************************************************************
 ! Modules
@@ -2668,11 +2668,11 @@ SUBROUTINE neo_bderiv(theta, phi, f, g, dfdx, dfdy, dgdx, dgdy)
 ! **********************************************************************
   IMPLICIT NONE
 
-  REAL(kind=dp), INTENT(in)    ::   theta, phi 
+  REAL(kind=dp), INTENT(in)    ::   theta, phi
   REAL(kind=dp), INTENT(out)   ::   f, g, dfdx, dfdy, dgdx, dgdy
 
-  REAL(kind=dp), DIMENSION(2)  ::   fderiv 
-  REAL(kind=dp), DIMENSION(3)  ::   sderiv 
+  REAL(kind=dp), DIMENSION(2)  ::   fderiv
+  REAL(kind=dp), DIMENSION(3)  ::   sderiv
 ! **********************************************************************
 ! Evaluation of pointer
 ! **********************************************************************
@@ -2687,7 +2687,7 @@ SUBROUTINE neo_bderiv(theta, phi, f, g, dfdx, dfdy, dgdx, dgdy)
              b_spl,fderiv)
 !  print *, 'before eva2d_sd'
   CALL eva2d_sd(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,         &
-             b_spl,sderiv)  
+             b_spl,sderiv)
 !  print *, 'after eva2d_sd'
 ! **********************************************************************
 ! Outputvalues (for neo_zeros2d)
@@ -2725,7 +2725,7 @@ SUBROUTINE neo_dealloc
   DEALLOCATE (es,iota,curr_pol,curr_tor,pprime,sqrtg00)
   DEALLOCATE (theta_arr,phi_arr)
   DEALLOCATE (rmnc,zmnc,lmnc,bmnc)
-! DEALLOCATE (cosval,sinval)  
+! DEALLOCATE (cosval,sinval)
   DEALLOCATE (ixm, ixn)
   DEALLOCATE (pixm, pixn)
   DEALLOCATE (i_m, i_n)
@@ -2761,7 +2761,7 @@ SUBROUTINE neo_dealloc
         DEALLOCATE ( a_bmns, b_bmns, c_bmns, d_bmns )
      END IF
      !! End Modifications by Andreas F. Martitsch (06.08.2014)
-     
+
      DEALLOCATE ( a_iota, b_iota )
      DEALLOCATE ( c_iota, d_iota )
      DEALLOCATE ( a_pprime, b_pprime )
@@ -2772,7 +2772,7 @@ SUBROUTINE neo_dealloc
      DEALLOCATE ( c_curr_tor, d_curr_tor )
      DEALLOCATE ( a_curr_pol, b_curr_pol )
      DEALLOCATE ( c_curr_pol, d_curr_pol )
- 
+
      DEALLOCATE ( r_m, r_mhalf )
      DEALLOCATE ( sp_index )
   END IF
@@ -2792,7 +2792,7 @@ SUBROUTINE neo_spline_test
   USE neo_units
   USE neo_parameters
   USE neo_control
-  USE neo_eval_switch  
+  USE neo_eval_switch
 ! **********************************************************************
 ! Local Definitions
 ! **********************************************************************
@@ -2801,7 +2801,7 @@ SUBROUTINE neo_spline_test
   INTEGER            :: i, j, n
   REAL(kind=dp)      :: theta, phi, bval, gval, kval, pval, qval, rval
   INTEGER, PARAMETER :: div = 5, ip = 43, it = 88
-  REAL(kind=dp)      :: td, pd 
+  REAL(kind=dp)      :: td, pd
 ! **********************************************************************
   eval_switch = (/1,1,1,1,0,0/)
   n = MIN(theta_n,phi_n)
@@ -2811,7 +2811,7 @@ SUBROUTINE neo_spline_test
      OPEN(unit=w_u2,file='sptest2.dat',status='unknown',form='formatted')
      td = theta_end - theta_start
      phi = phi_arr(ip)
-     theta = theta_start-td 
+     theta = theta_start-td
      DO WHILE (theta < theta_end+td)
         CALL neo_eval(theta,phi,bval,gval,kval,pval,qval,rval)
         WRITE(w_u1,*) theta,phi,bval,gval,kval
@@ -3043,7 +3043,7 @@ SUBROUTINE neo_write_bc
 ! Local definitions
 !***********************************************************************
   IMPLICIT NONE
- 
+
   REAL(kind=dp)              :: r_small,r_big
   INTEGER                    :: m0b_out,n0b_out
   INTEGER                    :: ii,i,j
@@ -3083,10 +3083,3 @@ SUBROUTINE neo_write_bc
 END SUBROUTINE neo_write_bc
 
 END MODULE neo_sub_mod
-
-
-
-
-
-
-
