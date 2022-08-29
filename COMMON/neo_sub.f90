@@ -162,7 +162,9 @@ SUBROUTINE neo_init_spline()
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   USE neo_control, ONLY: inp_swi
   !! End Modifications by Andreas F. Martitsch (06.08.2014)
-  USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf
+  USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf, &
+    & splinecof1_hi_driv, splinecof1
+  use neo_spline_data, only : lsw_linear_boozer
 !  Test
 !  USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf,      &
 !       splint_horner3, tfp, tfpp, tfppp
@@ -234,31 +236,48 @@ SUBROUTINE neo_init_spline()
   END DO
   sp_index = (/ (i, i=1,ns) /)
 
-  ! 1-d splines of 2-d arrays
-  CALL splinecof3_hi_driv(es, rmnc, r_mhalf,                         &
-       a_rmnc, b_rmnc, c_rmnc, d_rmnc, sp_index, tf)
-  CALL splinecof3_hi_driv(es, zmnc, r_mhalf,                         &
-       a_zmnc, b_zmnc, c_zmnc, d_zmnc, sp_index, tf)
-  CALL splinecof3_hi_driv(es, lmnc, r_mhalf,                         &
-       a_lmnc, b_lmnc, c_lmnc, d_lmnc, sp_index, tf)
-  CALL splinecof3_hi_driv(es, bmnc, r_mhalf,                         &
-       a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
+  if (lsw_linear_boozer) then
+    call splinecof1_hi_driv(es, rmnc, r_mhalf, &
+        & a_rmnc, b_rmnc, c_rmnc, d_rmnc, sp_index, tf)
+    call splinecof1_hi_driv(es, zmnc, r_mhalf, &
+        & a_zmnc, b_zmnc, c_zmnc, d_zmnc, sp_index, tf)
+    call splinecof1_hi_driv(es, lmnc, r_mhalf, &
+        & a_lmnc, b_lmnc, c_lmnc, d_lmnc, sp_index, tf)
+    call splinecof1_hi_driv(es, bmnc, r_mhalf, &
+        & a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   ! Additional data from Boozer files without Stellarator symmetry
-  IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
-     !PRINT *,"step 5"
-     CALL splinecof3_hi_driv(es, rmns, r_mhalf,                         &
-          a_rmns, b_rmns, c_rmns, d_rmns, sp_index, tf)
-     !PRINT *,"step 6"
-     CALL splinecof3_hi_driv(es, zmns, r_mhalf,                         &
-          a_zmns, b_zmns, c_zmns, d_zmns, sp_index, tf)
-     !PRINT *,"step 7"
-     CALL splinecof3_hi_driv(es, lmns, r_mhalf,                         &
-          a_lmns, b_lmns, c_lmns, d_lmns, sp_index, tf)
-     !PRINT *,"step 8"
-     CALL splinecof3_hi_driv(es, bmns, r_mhalf,                         &
-          a_bmns, b_bmns, c_bmns, d_bmns, sp_index, tf)
-  END IF
+    if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+      call splinecof1_hi_driv(es, rmns, r_mhalf, &
+          & a_rmns, b_rmns, c_rmns, d_rmns, sp_index, tf)
+      call splinecof1_hi_driv(es, zmns, r_mhalf, &
+          & a_zmns, b_zmns, c_zmns, d_zmns, sp_index, tf)
+      call splinecof1_hi_driv(es, lmns, r_mhalf, &
+          & a_lmns, b_lmns, c_lmns, d_lmns, sp_index, tf)
+      call splinecof1_hi_driv(es, bmns, r_mhalf, &
+          & a_bmns, b_bmns, c_bmns, d_bmns, sp_index, tf)
+    end if
+  else
+    ! 1-d splines of 2-d arrays
+    call splinecof3_hi_driv(es, rmnc, r_mhalf, &
+        & a_rmnc, b_rmnc, c_rmnc, d_rmnc, sp_index, tf)
+    call splinecof3_hi_driv(es, zmnc, r_mhalf, &
+        & a_zmnc, b_zmnc, c_zmnc, d_zmnc, sp_index, tf)
+    call splinecof3_hi_driv(es, lmnc, r_mhalf, &
+        & a_lmnc, b_lmnc, c_lmnc, d_lmnc, sp_index, tf)
+    call splinecof3_hi_driv(es, bmnc, r_mhalf, &
+        & a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
+    if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+      call splinecof3_hi_driv(es, rmns, r_mhalf, &
+          & a_rmns, b_rmns, c_rmns, d_rmns, sp_index, tf)
+      call splinecof3_hi_driv(es, zmns, r_mhalf, &
+          & a_zmns, b_zmns, c_zmns, d_zmns, sp_index, tf)
+      call splinecof3_hi_driv(es, lmns, r_mhalf, &
+          & a_lmns, b_lmns, c_lmns, d_lmns, sp_index, tf)
+      call splinecof3_hi_driv(es, bmns, r_mhalf, &
+          & a_bmns, b_bmns, c_bmns, d_bmns, sp_index, tf)
+    end if
+  end if
   !! End Modifications by Andreas F. Martitsch (06.08.2014)
   !
   ! Testing
@@ -289,18 +308,31 @@ SUBROUTINE neo_init_spline()
 ! we use no smoothing for spline
   ALLOCATE ( lambda(ns) )
   lambda = 1.0D0
-! 1-d splines of 1-d arrays
-  CALL splinecof3(es, iota, c1, cn, lambda, sp_index, sw1, sw2, &
-       a_iota, b_iota, c_iota, d_iota, m0, tf)
-  CALL splinecof3(es, pprime, c1, cn, lambda, sp_index, sw1, sw2, &
-       a_pprime, b_pprime, c_pprime, d_pprime, m0, tf)
-  CALL splinecof3(es, sqrtg00, c1, cn, lambda, sp_index, sw1, sw2, &
-       a_sqrtg00, b_sqrtg00, c_sqrtg00, d_sqrtg00, m0, tf)
-  CALL splinecof3(es, curr_tor, c1, cn, lambda, sp_index, sw1, sw2, &
-       a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, m0, tf)
-  CALL splinecof3(es, curr_pol, c1, cn, lambda, sp_index, sw1, sw2, &
-       a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, m0, tf)
-!
+  if (lsw_linear_boozer) then
+    call splinecof1(es, iota, c1, cn, lambda, sp_index, sw1, sw2, &
+        & a_iota, b_iota, c_iota, d_iota, m0, tf)
+    call splinecof1(es, pprime, c1, cn, lambda, sp_index, sw1, sw2, &
+        & a_pprime, b_pprime, c_pprime, d_pprime, m0, tf)
+    call splinecof1(es, sqrtg00, c1, cn, lambda, sp_index, sw1, sw2, &
+        & a_sqrtg00, b_sqrtg00, c_sqrtg00, d_sqrtg00, m0, tf)
+    call splinecof1(es, curr_tor, c1, cn, lambda, sp_index, sw1, sw2, &
+        & a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, m0, tf)
+    call splinecof1(es, curr_pol, c1, cn, lambda, sp_index, sw1, sw2, &
+        & a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, m0, tf)
+  else
+    ! 1-d splines of 1-d arrays
+    call splinecof3(es, iota, c1, cn, lambda, sp_index, sw1, sw2, &
+        & a_iota, b_iota, c_iota, d_iota, m0, tf)
+    call splinecof3(es, pprime, c1, cn, lambda, sp_index, sw1, sw2, &
+        & a_pprime, b_pprime, c_pprime, d_pprime, m0, tf)
+    call splinecof3(es, sqrtg00, c1, cn, lambda, sp_index, sw1, sw2, &
+        & a_sqrtg00, b_sqrtg00, c_sqrtg00, d_sqrtg00, m0, tf)
+    call splinecof3(es, curr_tor, c1, cn, lambda, sp_index, sw1, sw2, &
+        & a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, m0, tf)
+    call splinecof3(es, curr_pol, c1, cn, lambda, sp_index, sw1, sw2, &
+        & a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, m0, tf)
+  end if
+
   DEALLOCATE( lambda )
 
 END SUBROUTINE neo_init_spline
@@ -647,7 +679,9 @@ SUBROUTINE neo_init_fluxsurface
   USE neo_actual_fluxs
   USE neo_actual_spectra
   USE neo_spline_data
-  USE inter_interfaces, ONLY: splint_horner3, tf, tfp, tfpp, tfppp
+  USE inter_interfaces, ONLY: splint_horner3, tf, tfp, tfpp, tfppp, &
+    & splint_horner1
+  use neo_spline_data, only : lsw_linear_boozer
 ! **********************************************************************
 ! Local Definitions
 ! **********************************************************************
@@ -683,62 +717,118 @@ SUBROUTINE neo_init_fluxsurface
      swd = 0 ! no derivatives
      DO i=1,mnmax
         m0 = r_mhalf(i)
-        CALL splint_horner3(es,a_rmnc(:,i),b_rmnc(:,i),            &
-             c_rmnc(:,i),d_rmnc(:,i),swd,m0,                       &
-             s_es,tf,tfp,tfpp,tfppp,                               &
-             s_rmnc(i),yp,ypp,yppp)
-        CALL splint_horner3(es,a_zmnc(:,i),b_zmnc(:,i),            &
-             c_zmnc(:,i),d_zmnc(:,i),swd,m0,                       &
-             s_es,tf,tfp,tfpp,tfppp,                               &
-             s_zmnc(i),yp,ypp,yppp)
-        CALL splint_horner3(es,a_lmnc(:,i),b_lmnc(:,i),            &
-             c_lmnc(:,i),d_lmnc(:,i),swd,m0,                       &
-             s_es,tf,tfp,tfpp,tfppp,                               &
-             s_lmnc(i),yp,ypp,yppp)
-        CALL splint_horner3(es,a_bmnc(:,i),b_bmnc(:,i),            &
-             c_bmnc(:,i),d_bmnc(:,i),swd,m0,                       &
-             s_es,tf,tfp,tfpp,tfppp,                               &
-             s_bmnc(i),yp,ypp,yppp)
+        if (lsw_linear_boozer) then
+          call splint_horner1(es,a_rmnc(:,i),b_rmnc(:,i), &
+              & c_rmnc(:,i),d_rmnc(:,i),swd,m0,           &
+              & s_es,tf,tfp,tfpp,tfppp,                   &
+              & s_rmnc(i),yp,ypp,yppp)
+          call splint_horner1(es,a_zmnc(:,i),b_zmnc(:,i), &
+              & c_zmnc(:,i),d_zmnc(:,i),swd,m0,           &
+              & s_es,tf,tfp,tfpp,tfppp,                   &
+              & s_zmnc(i),yp,ypp,yppp)
+          call splint_horner1(es,a_lmnc(:,i),b_lmnc(:,i), &
+              & c_lmnc(:,i),d_lmnc(:,i),swd,m0,           &
+              & s_es,tf,tfp,tfpp,tfppp,                   &
+              & s_lmnc(i),yp,ypp,yppp)
+          call splint_horner1(es,a_bmnc(:,i),b_bmnc(:,i), &
+              & c_bmnc(:,i),d_bmnc(:,i),swd,m0,           &
+              & s_es,tf,tfp,tfpp,tfppp,                   &
+              & s_bmnc(i),yp,ypp,yppp)
         !! Modifications by Andreas F. Martitsch (06.08.2014)
-        ! Additional data from Boozer files without Stellarator symmetry
-        IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
-           CALL splint_horner3(es,a_rmns(:,i),b_rmns(:,i),            &
-                c_rmns(:,i),d_rmns(:,i),swd,m0,                       &
-                s_es,tf,tfp,tfpp,tfppp,                               &
-                s_rmns(i),yp,ypp,yppp)
-           CALL splint_horner3(es,a_zmns(:,i),b_zmns(:,i),            &
-                c_zmns(:,i),d_zmns(:,i),swd,m0,                       &
-                s_es,tf,tfp,tfpp,tfppp,                               &
-                s_zmns(i),yp,ypp,yppp)
-           CALL splint_horner3(es,a_lmns(:,i),b_lmns(:,i),            &
-                c_lmns(:,i),d_lmns(:,i),swd,m0,                       &
-                s_es,tf,tfp,tfpp,tfppp,                               &
-                s_lmns(i),yp,ypp,yppp)
-           CALL splint_horner3(es,a_bmns(:,i),b_bmns(:,i),            &
-                c_bmns(:,i),d_bmns(:,i),swd,m0,                       &
-                s_es,tf,tfp,tfpp,tfppp,                               &
-                s_bmns(i),yp,ypp,yppp)
-        END IF
+          ! Additional data from Boozer files without Stellarator symmetry
+          if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+            call splint_horner1(es,a_rmns(:,i),b_rmns(:,i), &
+                & c_rmns(:,i),d_rmns(:,i),swd,m0,           &
+                & s_es,tf,tfp,tfpp,tfppp,                   &
+                & s_rmns(i),yp,ypp,yppp)
+            call splint_horner1(es,a_zmns(:,i),b_zmns(:,i), &
+                & c_zmns(:,i),d_zmns(:,i),swd,m0,           &
+                & s_es,tf,tfp,tfpp,tfppp,                   &
+                & s_zmns(i),yp,ypp,yppp)
+            call splint_horner1(es,a_lmns(:,i),b_lmns(:,i), &
+                & c_lmns(:,i),d_lmns(:,i),swd,m0,           &
+                & s_es,tf,tfp,tfpp,tfppp,                   &
+                & s_lmns(i),yp,ypp,yppp)
+            call splint_horner1(es,a_bmns(:,i),b_bmns(:,i), &
+                & c_bmns(:,i),d_bmns(:,i),swd,m0,           &
+                & s_es,tf,tfp,tfpp,tfppp,                   &
+                & s_bmns(i),yp,ypp,yppp)
+          end if
+        else
+          call splint_horner3(es,a_rmnc(:,i),b_rmnc(:,i), &
+              & c_rmnc(:,i),d_rmnc(:,i),swd,m0,           &
+              & s_es,tf,tfp,tfpp,tfppp,                   &
+              & s_rmnc(i),yp,ypp,yppp)
+          call splint_horner3(es,a_zmnc(:,i),b_zmnc(:,i), &
+              & c_zmnc(:,i),d_zmnc(:,i),swd,m0,           &
+              & s_es,tf,tfp,tfpp,tfppp,                   &
+              & s_zmnc(i),yp,ypp,yppp)
+          call splint_horner3(es,a_lmnc(:,i),b_lmnc(:,i), &
+              & c_lmnc(:,i),d_lmnc(:,i),swd,m0,           &
+              & s_es,tf,tfp,tfpp,tfppp,                   &
+              & s_lmnc(i),yp,ypp,yppp)
+          call splint_horner3(es,a_bmnc(:,i),b_bmnc(:,i), &
+              & c_bmnc(:,i),d_bmnc(:,i),swd,m0,           &
+              & s_es,tf,tfp,tfpp,tfppp,                   &
+              & s_bmnc(i),yp,ypp,yppp)
+          ! Additional data from Boozer files without Stellarator symmetry
+          if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+            call splint_horner3(es,a_rmns(:,i),b_rmns(:,i), &
+                & c_rmns(:,i),d_rmns(:,i),swd,m0,           &
+                & s_es,tf,tfp,tfpp,tfppp,                   &
+                & s_rmns(i),yp,ypp,yppp)
+            call splint_horner3(es,a_zmns(:,i),b_zmns(:,i), &
+                & c_zmns(:,i),d_zmns(:,i),swd,m0,           &
+                & s_es,tf,tfp,tfpp,tfppp,                   &
+                & s_zmns(i),yp,ypp,yppp)
+            call splint_horner3(es,a_lmns(:,i),b_lmns(:,i), &
+                & c_lmns(:,i),d_lmns(:,i),swd,m0,           &
+                & s_es,tf,tfp,tfpp,tfppp,                   &
+                & s_lmns(i),yp,ypp,yppp)
+            call splint_horner3(es,a_bmns(:,i),b_bmns(:,i), &
+                & c_bmns(:,i),d_bmns(:,i),swd,m0,           &
+                & s_es,tf,tfp,tfpp,tfppp,                   &
+                & s_bmns(i),yp,ypp,yppp)
+          end if
+        end if
         !! End Modifications by Andreas F. Martitsch (06.08.2014)
      END DO
      ! evaluation of 1-d arrays
      swd = 0
      m0  = 0.0_dp
-     CALL splint_horner3(es,a_iota,b_iota,c_iota,d_iota,swd,m0, &
-          s_es,tf,tfp,tfpp,tfppp,                               &
-          s_iota,yp,ypp,yppp)
-     CALL splint_horner3(es,a_pprime,b_pprime,c_pprime,d_pprime,swd,m0, &
-          s_es,tf,tfp,tfpp,tfppp,                               &
-          s_pprime,yp,ypp,yppp)
-     CALL splint_horner3(es,a_sqrtg00,b_sqrtg00,c_sqrtg00,d_sqrtg00,swd,m0, &
-          s_es,tf,tfp,tfpp,tfppp,                               &
-          s_sqrtg00,yp,ypp,yppp)
-     CALL splint_horner3(es,a_curr_tor,b_curr_tor,c_curr_tor,d_curr_tor,swd,m0, &
-          s_es,tf,tfp,tfpp,tfppp,                               &
-          s_curr_tor,yp,ypp,yppp)
-     CALL splint_horner3(es,a_curr_pol,b_curr_pol,c_curr_pol,d_curr_pol,swd,m0, &
-          s_es,tf,tfp,tfpp,tfppp,                               &
-          s_curr_pol,yp,ypp,yppp)
+     if (lsw_linear_boozer) then
+       call splint_horner1(es,a_iota,b_iota,c_iota,d_iota,swd,m0, &
+           & s_es,tf,tfp,tfpp,tfppp, &
+           & s_iota,yp,ypp,yppp)
+       call splint_horner1(es,a_pprime,b_pprime,c_pprime,d_pprime,swd,m0, &
+           & s_es,tf,tfp,tfpp,tfppp, &
+           & s_pprime,yp,ypp,yppp)
+       call splint_horner1(es,a_sqrtg00,b_sqrtg00,c_sqrtg00,d_sqrtg00,swd,m0, &
+           & s_es,tf,tfp,tfpp,tfppp, &
+           & s_sqrtg00,yp,ypp,yppp)
+       call splint_horner1(es,a_curr_tor,b_curr_tor,c_curr_tor,d_curr_tor,swd,m0, &
+           & s_es,tf,tfp,tfpp,tfppp, &
+           & s_curr_tor,yp,ypp,yppp)
+       call splint_horner1(es,a_curr_pol,b_curr_pol,c_curr_pol,d_curr_pol,swd,m0, &
+          & s_es,tf,tfp,tfpp,tfppp, &
+          & s_curr_pol,yp,ypp,yppp)
+     else
+       call splint_horner3(es,a_iota,b_iota,c_iota,d_iota,swd,m0, &
+           & s_es,tf,tfp,tfpp,tfppp, &
+           & s_iota,yp,ypp,yppp)
+       call splint_horner3(es,a_pprime,b_pprime,c_pprime,d_pprime,swd,m0, &
+           & s_es,tf,tfp,tfpp,tfppp, &
+           & s_pprime,yp,ypp,yppp)
+       call splint_horner3(es,a_sqrtg00,b_sqrtg00,c_sqrtg00,d_sqrtg00,swd,m0, &
+           & s_es,tf,tfp,tfpp,tfppp, &
+           & s_sqrtg00,yp,ypp,yppp)
+       call splint_horner3(es,a_curr_tor,b_curr_tor,c_curr_tor,d_curr_tor,swd,m0, &
+           & s_es,tf,tfp,tfpp,tfppp, &
+           & s_curr_tor,yp,ypp,yppp)
+       call splint_horner3(es,a_curr_pol,b_curr_pol,c_curr_pol,d_curr_pol,swd,m0, &
+           & s_es,tf,tfp,tfpp,tfppp, &
+           & s_curr_pol,yp,ypp,yppp)
+     end if
      CALL neo_get_b00
   END IF
 !
@@ -1735,7 +1825,9 @@ SUBROUTINE neo_prep_b00
   USE neo_precision
   USE neo_input
   USE neo_spline_b00
-  USE inter_interfaces, ONLY: splinecof3, tf
+  use inter_interfaces, only : splinecof1, splinecof3, tf
+  use neo_spline_data, only : lsw_linear_boozer
+
   INTEGER                             :: i, j
   INTEGER(I4B) :: sw1, sw2
   REAL(dp)     :: m0, c1, cn
@@ -1769,8 +1861,13 @@ SUBROUTINE neo_prep_b00
 ! we use no smoothing for spline
   lambda = 1.0D0
   index_i = (/ (i, i=1,ns) /)
-  CALL splinecof3(es, b00, c1, cn, lambda, index_i, sw1, sw2, &
-       a_b00, b_b00, c_b00, d_b00, m0, tf)
+  if (lsw_linear_boozer) then
+    call splinecof1(es, b00, c1, cn, lambda, index_i, sw1, sw2, &
+        & a_b00, b_b00, c_b00, d_b00, m0, tf)
+  else
+    call splinecof3(es, b00, c1, cn, lambda, index_i, sw1, sw2, &
+        & a_b00, b_b00, c_b00, d_b00, m0, tf)
+  end if
 
   DEALLOCATE( lambda )
   DEALLOCATE( index_i )
@@ -1783,16 +1880,24 @@ SUBROUTINE neo_get_b00
   USE neo_input
   USE neo_actual_fluxs
   USE neo_spline_b00
-  USE inter_interfaces, ONLY: splint_horner3, tf, tfp, tfpp, tfppp
+  use inter_interfaces, only : splint_horner1, splint_horner3, &
+    & tf, tfp, tfpp, tfppp
+  use neo_spline_data, only : lsw_linear_boozer
 
   IMPLICIT NONE
   INTEGER(I4B)  :: swd = 1
   REAL(dp)      :: m0  = 0.0_dp
   REAL(dp)      :: ypp, yppp   ! dummies for derivatives
 
-  CALL splint_horner3(es,a_b00,b_b00,c_b00,d_b00,swd,m0,     &
-       s_es,tf,tfp,tfpp,tfppp,                               &
-       s_b00,s_b00_s,ypp,yppp)
+  if (lsw_linear_boozer) then
+    call splint_horner1(es,a_b00,b_b00,c_b00,d_b00,swd,m0, &
+        & s_es,tf,tfp,tfpp,tfppp,                          &
+        & s_b00,s_b00_s,ypp,yppp)
+  else
+    call splint_horner3(es,a_b00,b_b00,c_b00,d_b00,swd,m0, &
+        & s_es,tf,tfp,tfpp,tfppp,                          &
+        & s_b00,s_b00_s,ypp,yppp)
+  end if
 
 END SUBROUTINE neo_get_b00
 
