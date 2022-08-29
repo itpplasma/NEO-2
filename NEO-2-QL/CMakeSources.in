@@ -42,6 +42,15 @@ set(FGSL_USERINTER_SRC_FILES
 set(FGSL_USERINTER_FLAGS "-I${FGSL_INC}")
 set_source_files_properties(${FGSL_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTER_FLAGS})
 
+### net-cdf
+execute_process(COMMAND nc-config --includedir
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                OUTPUT_VARIABLE NETCDFINCLUDE_DIR)
+include_directories(${NETCDFINCLUDE_DIR})
+execute_process(COMMAND nc-config --flibs
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                OUTPUT_VARIABLE NETCDF_LIBS)
+
 set(COLLOPLIB_FILES
         ../COMMON/collop_compute.f90
         ../COMMON/collop_laguerre.f90
@@ -118,7 +127,6 @@ set(NEO2_COMMON_FILES
 
 set(NEO2_SRC_FILES
         ./arnoldi_mod.f90
-        ./neo_sub.f90
         ./ntv_mod.f90
         ./propagator.f90
         ./flint.f90
