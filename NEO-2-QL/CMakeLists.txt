@@ -184,7 +184,6 @@ add_executable(${EXE_NAME}
         ${NEO2_SRC_FILES}
         ${SUITESPARSE_SRC_FILES}
         ${SUPERLU_SRC_FILES}
-        ${FGSL_USERINTER_SRC_FILES}
         ${COLLOPLIB_FILES}
 )
 
