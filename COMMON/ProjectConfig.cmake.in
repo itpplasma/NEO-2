@@ -64,3 +64,6 @@ set(ATLASBLAS_LIB ${ATLASLIBS})
 
 set(OPEN_BLAS_LAPACK_LIB ${OPEN_BLAS_PATH})
 set(OPEN_BLAS_LIB ${OPEN_BLAS_PATH})
+
+### BLAS and LAPACK
+set(BLAS_lib "-llapack -lblas")

@@ -23,9 +23,9 @@ include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
 
 ### Define paths to external libraries (load external file)
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-  include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
+  include(${CMAKE_SOURCE_DIR}/common/ProjectConfig.cmake.in)
 elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-  include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in.intel)
+  include(${CMAKE_SOURCE_DIR}/common/ProjectConfig.cmake.in.intel)
 endif ()
 #include(${CMAKE_SOURCE_DIR}/ProjectConfig.Debian8.cmake.in)
 
