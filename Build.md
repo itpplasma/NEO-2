@@ -3,6 +3,8 @@
 This documents describes the basic steps to get the neo2 executable(s).
 It does not go into details on specific machines/clusters.
 
+The build system used by neo-2 is cmake.
+
 === Dependencies ===
 Here is a list of libraries and tools required for building/running neo2.
   * git
@@ -31,16 +33,14 @@ compiler should work, but this is so far not certain.
 
 === Configuration ===
 Configuration, i.e. setting of library paths, is done with the file
-ProjectConfig.cmake.in (should be made configurable).
-Setting of the paths for the required libraries, should be done in these
-file. There should already be a file, that can serve as an example.
-
-Note also, that the configuration is not done for both versions of neo-2
-simultanously, i.e. if you need both, you have to configure both.
+ProjectConfig.cmake.in (should be made configurable) in the COMMON/
+folder.
+Setting of the paths for the required libraries, should be done in this
+file.
 
 === Building ===
-As for the configuration, this has to be done for both versions of the
-code seperately, and also for the documentation.
+This has to be done for both versions of the code seperately, and also
+for the documentation.
 
 == Documentation ==
 Lets start with the latter.
