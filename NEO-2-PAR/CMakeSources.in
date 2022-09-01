@@ -32,16 +32,6 @@ set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
 set_source_files_properties(../COMMON/umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(../COMMON/umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
-### FGSL user-defined interface ###
-set(FGSL_USERINTER_SRC_FILES
-        ../COMMON/gsl_roots_routines_mod.f90
-        ../COMMON/gsl_integration_routines_mod.f90
-        ../COMMON/gsl_bspline_routines_mod.f90
-        ../COMMON/gsl_specialfunctions_mod.f90
-)
-set(FGSL_USERINTER_FLAGS "-I${FGSL_INC}")
-set_source_files_properties(${FGSL_USERINTER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTER_FLAGS})
-
 ### MPI FILES ###
 if (MPI_SUPPORT)
 set (MPI_SRC_FILES
@@ -51,86 +41,6 @@ set (MPI_SRC_FILES
 )
 set_source_files_properties(${MPI_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 endif ()
-
-### net-cdf
-execute_process(COMMAND nc-config --includedir
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                OUTPUT_VARIABLE NETCDFINCLUDE_DIR)
-include_directories(${NETCDFINCLUDE_DIR})
-execute_process(COMMAND nc-config --flibs
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                OUTPUT_VARIABLE NETCDF_LIBS)
-
-### NEO2 ###
-set(NEO2_COMMON_FILES
-        ../COMMON/device_mod.f90
-        ../COMMON/compute_aiota.f90
-        ../COMMON/nrutil.f90
-        ../COMMON/neo_magfie.f90
-        ../COMMON/magfie.f90
-        ../COMMON/mag.f90
-        ../COMMON/magnetics.f90
-        ../COMMON/mag_interface.f90
-        ../COMMON/magdata_for_particles.f90
-        ../COMMON/rhs_kin.f90
-        ../COMMON/rk4_kin.f90
-        ../COMMON/binarysplit_int.f90
-        ../COMMON/binarysplit_mod.f90
-        ../COMMON/sparse_mod.f90
-        ../COMMON/fluxsplitter.f90
-        ../COMMON/inter_interfaces.f90
-        ../COMMON/kin_allocate.f90
-        ../COMMON/lapack_band.f90
-        ../COMMON/odeint_allroutines.f
-        ../COMMON/plot_distrf.f90
-        ../COMMON/polleg.f90
-        ../COMMON/prodband.f90
-        ../COMMON/spline_int.f90
-        ../COMMON/spline_cof.f90
-        ../COMMON/test_function.f90
-        ../COMMON/vvn_legendre.f
-        ../COMMON/vvn_tok.f90
-        ../COMMON/vvn_w7as.f
-        ../COMMON/solve_system.f90
-        ../COMMON/collop_laguerre.f90
-        ../COMMON/collop_polynomial.f90
-        ../COMMON/collop_bspline.f90
-        ../COMMON/collop_nbi.f90
-        ../COMMON/collop_spline.f90
-        ../COMMON/collision_operator_mems.f90
-        ../COMMON/collisionality_mod.f90
-        ../COMMON/collop_compute.f90
-        ../COMMON/development.f90
-        ../COMMON/flint_mod.f90
-        ../COMMON/inter_precision.f90
-        ../COMMON/neo_actual_fluxs.f90
-        ../COMMON/neo_actual_spectra.f90
-        ../COMMON/neo_control.f90
-        ../COMMON/neo_eval_switch.f90
-        ../COMMON/neo_exchange.f90
-        ../COMMON/neo_input.f90
-        ../COMMON/neo_parameters.f90
-        ../COMMON/neo_precision.f90
-        ../COMMON/neo_spline.f90
-        ../COMMON/neo_spline_b00.f90
-        ../COMMON/neo_spline_data.f90
-        ../COMMON/neo_support.f90
-        ../COMMON/neo_units.f90
-        ../COMMON/neo_van.f90
-        ../COMMON/neo_work.f90
-        ../COMMON/nrtype.f90
-        ../COMMON/partpa_mod.f90
-        ../COMMON/plagrange_mod.f90
-        ../COMMON/rel_kernels.f90
-        ../COMMON/rk4_kin_mod.f90
-        ../COMMON/rkstep_mod.f90
-        ../COMMON/size_mod.f90
-        ../COMMON/sizey_bo.f90
-        ../COMMON/sizey_cur.f90
-        ../COMMON/sizey_pla.f90
-        ../COMMON/sparsevec_mod.f90
-        ../COMMON/spline_mod.f90
-)
 
 set(NEO2_SRC_FILES
         ./propagator.f90

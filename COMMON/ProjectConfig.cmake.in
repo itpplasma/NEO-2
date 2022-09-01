@@ -8,6 +8,15 @@ set(LIBNEOLIBS /temp/AG-plasma/codes/libneo/ CACHE STRING "libneo library path")
 ### Directories of MPE
 set(MPE_PATH /afs/itp.tugraz.at/opt/mpe/1.3.0/)
 
+### net-cdf
+execute_process(COMMAND nc-config --includedir
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                OUTPUT_VARIABLE NETCDFINCLUDE_DIR)
+include_directories(${NETCDFINCLUDE_DIR})
+execute_process(COMMAND nc-config --flibs
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                OUTPUT_VARIABLE NETCDF_LIBS)
+
 ### GSL
 ### FGSL
 ### HDF5
