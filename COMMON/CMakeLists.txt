@@ -10,6 +10,31 @@ enable_testing()
 ### Macro for comparison of version strings
 include(CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
 
+### Define paths to external libraries (load external file)
+include(${CMAKE_SOURCE_DIR}/../COMMON/ProjectConfig.cmake.in)
+
+set(CMAKE_Fortran_FLAGS " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
+
+find_library(gsl_lib gsl ${GSL_LIB})
+# FGSL
+find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
+include_directories(${FGSL_INC})
+
+### HDF5
+find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
+include_directories(${HDF5_INCLUDE_DIRS})
+# HDF5 interface
+find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_PATH)
+
+### SuperLU
+find_package(SuperLU REQUIRED)
+
+### SuiteSparse and METIS - ignore if already found.
+if (SUITESPARSEQR_FOUND)
+else (SUITESPARSEQR_FOUND)
+  find_package(SuiteSparse REQUIRED)
+endif (SUITESPARSEQR_FOUND)
+
 ### SUPERLU ###
 set(SUPERLU_SRC_FILES_VER_4_1
         c_fortran_dgssv.c
@@ -127,19 +152,11 @@ set(COMMON_FILES
   )
 set_source_files_properties(${COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 
-### SuperLU
-find_package(SuperLU REQUIRED)
-
-### SuiteSparse and METIS - ignore if already found.
-if (SUITESPARSEQR_FOUND)
-else (SUITESPARSEQR_FOUND)
-  find_package(SuiteSparse REQUIRED)
-endif (SUITESPARSEQR_FOUND)
-
 add_library(common STATIC
   ${COMMON_FILES}
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
+target_include_directories(common PUBLIC "${NEO2_Inc}")
 
 if ($ENV{COMMON_UNIT_TESTS}x STREQUAL "TRUEx")
   find_package(PFUNIT REQUIRED)
