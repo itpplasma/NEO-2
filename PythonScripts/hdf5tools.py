@@ -1777,13 +1777,21 @@ def rescale_quantitiy_profile(path: str, infilename: str, scaling_factor: float,
   Output file name is determined from the input. '_quantity_scalingfactor_'
   is aded/inserted to the given file name.
 
+
+  Example:
+  --------
+  rescale_quantitiy_profile(path='./',
+                            infilename='multi_spec_Valentin.in.orig',
+                            scaling_factor=0.1,
+                            quantity='Vphi')
+
   input:
   ------
   path: string, path where the input file can be found.
   infilename: string, the name of the input file to use.
   scaling_factor: floating point number, scaling factor to apply to the
     quantity at all radial positions.
-  quantity: string, name of the quantity to change.
+  quantity: string, name of the quantity to change without leading '/'.
 
   output:
   -------
@@ -1813,10 +1821,16 @@ def rescale_quantitiy_profiles(path: str, infilename: str, scaling_factor: float
 
   Example:
   --------
-  rescale_quantitiy_profile(path='./',
-                            infilename='multi_spec_Valentin.in.orig',
-                            scaling_factor=0.1,
-                            quantity='/Vphi')
+  rescale_quantitiy_profiles(path='./',
+                             infilename='multi_spec_Valentin.in__Vphi_0.1.orig',
+                             scaling_factor=5,
+                             quantities=["T_prof", "dT_ov_ds_prof"])
+  rescale_quantitiy_profiles(path='./',
+                             infilename='multi_spec_Valentin.in__Vphi_0.1_T_prof_dT_ov_ds_prof_5.orig',
+                             scaling_factor=2,
+                             quantities=["n_prof", "dn_ov_ds_prof"])
+  Here the second example builds on the first one, i.e. after scaling
+  the temperature (+gradient) also the density (+gradient) is scaled.
 
   input:
   ------
@@ -1824,7 +1838,8 @@ def rescale_quantitiy_profiles(path: str, infilename: str, scaling_factor: float
   infilename: string, the name of the input file to use.
   scaling_factor: floating point number, scaling factor to apply to the
     quantities at all radial positions.
-  quantity: list of strings, name of the quantities to change.
+  quantity: list of strings, name of the quantities to change without
+    leading '/'.
 
   output:
   -------
