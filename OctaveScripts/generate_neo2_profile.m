@@ -116,7 +116,7 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_
   Ti = Ti_eV * EV_TO_CGS;
 
   %% PROFILE DERIVATIVES
-  derivate = @ (s,t) [(s(3)-s(1)/t(3)-t(1)), (s(3:end)-s(1:end-2))./(t(3:end)-t(1:end-2)), (s(end)-s(end-2)/t(end)-t(end-2))];
+  derivate = @ (s,t) [(s(3)-s(1))./(t(3)-t(1)), (s(3:end)-s(1:end-2))./(t(3:end)-t(1:end-2)), (s(end)-s(end-2))./(t(end)-t(end-2))];
 
   dTe_ov_ds = derivate(Te,boozer_s);
   dTi_ov_ds = derivate(Ti,boozer_s);
