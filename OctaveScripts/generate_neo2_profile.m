@@ -25,6 +25,19 @@
 %   switch_grid: integer value (optional), passed to function
 %     'load_profile_data'. See documentation of that function for more
 %     details.
+%
+% output:
+% -------
+% None
+%
+% sideeffects:
+% ------------
+% Creates file to which the profiles are written.
+%
+% limitations:
+% ------------
+% Function is so far not capable of handling more than one ion species,
+%   i.e. two species total.
 function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_definition, isw_Vphi_loc, species_tag_Vphi, input_unit_type, bounds, switch_grid)
   if nargin() < 1 || isempty(hdf5FileName)
     hdf5FileName = 'multi_spec_Valentin.in';
