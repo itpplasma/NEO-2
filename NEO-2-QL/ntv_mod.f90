@@ -1591,7 +1591,12 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'av_inv_bhat', av_inv_bhat_val)
     CALL h5_add(h5id_multispec, 'av_gphph', av_gphph_val)
     CALL h5_add(h5id_multispec, 'm_phi', DBLE(m_phi))
-    CALL h5_add(h5id_multispec, 'eps_M_2', eps_M_2_val)
+    CALL h5_add(h5id_multispec, 'eps_M_2', eps_M_2_val, &
+        & comment='"average ripple strength", used for calculation of &
+            &ripple plateau diffusion coefficient. Ratio of integrals &
+            &over the poloidal angle in eq. 15 of Martitsch 2016, where &
+            &B_0 and B_n are replaced with normalized quantities &
+            &B_0 / B_ref and B_n / B_ref.')
     !
     ! add species tags, charge numbers, mass, temperatures,
     ! collpar, ...
