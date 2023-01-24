@@ -317,16 +317,12 @@ MODULE propagator_mod
   END INTERFACE
   ! ---------------------------------------------------------------------------
   ! Public helpers
-  !PRIVATE unit_propagator
-  !PRIVATE unit_prop
   PUBLIC unit_propagator
   PUBLIC unit_prop
   INTERFACE unit_propagator
      MODULE PROCEDURE unit_prop
   END INTERFACE
 
-  !PRIVATE filename_propagator
-  !PRIVATE filename_prop
   PUBLIC filename_propagator
   PUBLIC filename_prop
   INTERFACE filename_propagator
@@ -359,10 +355,8 @@ MODULE propagator_mod
      MODULE PROCEDURE deallocate_propagator_cont
   END INTERFACE
   ! ---------------------------------------------------------------------------
-  !PUBLIC ASSIGNMENT(=)
   PUBLIC assign_propagator_content
   PRIVATE assign_propagator_cont,assign_propagator_cont_qe
-  !INTERFACE ASSIGNMENT(=)
   INTERFACE assign_propagator_content
      MODULE PROCEDURE assign_propagator_cont,assign_propagator_cont_qe
   END INTERFACE
@@ -779,43 +773,35 @@ CONTAINS
 
     cname = 'source_p_g'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%source_p_g
     WRITE(uw,*) prop_a%p%source_p(:,1)                                     !<-in
     CLOSE(uw)
     cname = 'source_p_e'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%source_p_e
     WRITE(uw,*) prop_a%p%source_p(:,2)                                     !<-in
     CLOSE(uw)
     cname = 'source_m_g'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%source_m_g
     WRITE(uw,*) prop_a%p%source_m(:,1)                                     !<-in
     CLOSE(uw)
     cname = 'source_m_e'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%source_m_e
     WRITE(uw,*) prop_a%p%source_m(:,2)                                     !<-in
     CLOSE(uw)
 
     cname = 'flux_p'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%flux_p
     WRITE(uw,*) prop_a%p%flux_p(1,:)                                       !<-in
     CLOSE(uw)    
     cname = 'flux_m'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%flux_m
     WRITE(uw,*) prop_a%p%flux_m(1,:)                                       !<-in
     CLOSE(uw)
     cname = 'curr_p'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%curr_p
     WRITE(uw,*) prop_a%p%flux_p(2,:)                                       !<-in
     CLOSE(uw)    
     cname = 'curr_m'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%curr_m
     WRITE(uw,*) prop_a%p%flux_m(2,:)                                       !<-in
     CLOSE(uw)
     
@@ -844,12 +830,7 @@ CONTAINS
     WRITE(uw,*) 'npart           ',prop_a%p%npart
     WRITE(uw,*) 'npass_l         ',prop_a%p%npass_l
     WRITE(uw,*) 'npass_r         ',prop_a%p%npass_r
-!->out    WRITE(uw,*) 'npart_halfband  ',prop_a%p%npart_halfband
     WRITE(uw,*) 'nvelocity        ',prop_a%p%nvelocity                       !<-in
-!->out    WRITE(uw,*) 'qflux_g         ',prop_a%p%qflux_g
-!->out    WRITE(uw,*) 'qflux_e         ',prop_a%p%qflux_e
-!->out    WRITE(uw,*) 'qcurr_g         ',prop_a%p%qcurr_g
-!->out    WRITE(uw,*) 'qcurr_e         ',prop_a%p%qcurr_e
     WRITE(uw,*) 'qflux_g         ',prop_a%p%qflux(1,1)                     !<-in
     WRITE(uw,*) 'qflux_e         ',prop_a%p%qflux(1,2)                     !<-in
     WRITE(uw,*) 'qcurr_g         ',prop_a%p%qflux(2,1)                     !<-in
@@ -895,8 +876,7 @@ CONTAINS
        CLOSE(unit=uw)
        
     END IF
-    
-    !PAUSE
+
 #endif
 
   END SUBROUTINE diag_propagator_cont
@@ -952,10 +932,6 @@ CONTAINS
     allocate(gamma_out(3,3))
    
     ! taken from Sergei
-!->out    qflux_g = prop_a%p%qflux_g
-!->out    qcurr_g = prop_a%p%qcurr_g
-!->out    qflux_e = prop_a%p%qflux_e
-!->out    qcurr_e = prop_a%p%qcurr_e
     qflux_g = prop_a%p%qflux(1,1)                                          !<-in
     qcurr_g = prop_a%p%qflux(2,1)                                          !<-in
     qflux_e = prop_a%p%qflux(1,2)                                          !<-in
@@ -971,14 +947,7 @@ CONTAINS
     rt0 = device%r0
     phi = prop_a%phi_r
 
-!!$    PRINT *, 'y ',y
-!!$    PRINT *, 'aiota_loc ',aiota_loc 
-!!$    PRINT *, 'rt0 ',rt0
-!!$    PRINT *, 'phi ',phi
-!!$    PRINT *, 'qflux_g ',qflux_g
     transport_factor = qflux_g*y(6)*(y(14)/(y(7)*y(13)))**2
-!!$    PRINT *, 'transport_factor ',transport_factor
-!!$    PAUSE
     dmono_over_dplateau=-2.d0*SQRT(2.d0)/pi*rt0*aiota_loc*transport_factor
 
     epseff3_2=-(9.d0*pi/(16.d0*SQRT(2.d0)))*collpar*rt0**2     &
@@ -992,8 +961,6 @@ CONTAINS
     ! sigma / sigma_lorentz(zeff=1)
 !    gamma_E = (3.d0*SQRT(pi)*qcurr_e*collpar/(32.d0*y(9)))  !***change19.09.07
     gamma_E = (3.d0*pi*qcurr_e*collpar/(32.d0*y(9)))
-    !PRINT *, 'I am in diag_propagator_result'
-    !PRINT *, 'iota = ',aiota_loc, 'qflux_g = ',qflux_g,' qcurr_g = ',qcurr_g
     
     ! find free unit
     uw = 100
@@ -1008,14 +975,8 @@ CONTAINS
     !**********************************************************
     write(ctag_s,*) prop_a%fieldpropagator_tag_s
     write(ctag_e,*) prop_a%fieldpropagator_tag_e
-    !write(ctag_s,*) prop_c%tag
-    !write(ctag_e,*) prop_c%tag
-    
-    !if (prop_a%fieldpropagator_tag_s .eq. prop_a%fieldpropagator_tag_e) then
-    !   cadd = '_'//trim(adjustl(ctag_s))
-    !else
+
     cadd = '_'//trim(adjustl(ctag_s))//'_'//trim(adjustl(ctag_e))
-    !end if
 
     if (prop_fileformat .eq. USE_HDF5_FORMAT) then
        if (prop_write .lt. 0) then
@@ -1049,17 +1010,7 @@ CONTAINS
             (qflux_g),(qflux_e),(qcurr_g),(qcurr_e),    &
             (alambda_bb),(gamma_E), &
             (g_bs),    &                                              !<-GBS
-            (device%r0),(surface%bmod0)  !, &
-       !y(6),y(7),y(9),y(13),y(14)
-       ! WRITE (uw,*)                                   &
-       !     y
-!!$         WRITE (uw,'(1000(1x,e12.5))')                                   &
-!!$         REAL(phi),REAL(y(1:2)),REAL(aiota_loc),                    &
-!!$         REAL(dmono_over_dplateau),REAL(epseff3_2),REAL(alambda_b), &
-!!$         REAL(qflux_g),REAL(qflux_e),REAL(qcurr_g),REAL(qcurr_e)    &
-!!$         ,REAL(alambda_bb),REAL(3.d0*SQRT(pi)*qcurr_e*collpar/(32.d0*y(9)))*1.d0 &
-!!$         ,REAL(g_bs)    &                                              !<-GBS
-!!$         ,REAL(device%r0),REAL(surface%bmod0)
+            (device%r0),(surface%bmod0)
        close(uw)
     end if
 
@@ -1071,14 +1022,12 @@ CONTAINS
        avnabpsi = y(7) / y(6)
        avbhat2 = y(9) / y(6)
        dl1obhat = y(6)
-!       beta_out = (/ 1.0_dp/avnabpsi, 1.0_dp/avnabpsi, 1.0_dp /) ***change: 19.09.07
        beta_out = (/ y(14)/y(13)/avnabpsi, y(14)/y(13)/avnabpsi, y(13)/y(14) /)
     
        DO i = 1,3
           i_p = ind_map(i)
           DO j = 1,3
              j_p = ind_map(j)
-!             gamma_fco(i,j) = prop_a%p%qflux(i_p,j_p) / y(9)!***change: 19.09.07
              gamma_fco(i,j) = - prop_a%p%qflux(i_p,j_p) / y(6)
              gamma_out(i,j) = gamma_fco(i,j) * beta_out(i) * beta_out(j)
           END DO
@@ -1131,7 +1080,7 @@ CONTAINS
           fac1=16.0_dp*rt0*aiota_loc/PI
           ! normalization factor from gamma matrices
           fac2= - beta_out(1) * beta_out(1) / y(6)
-          !PRINT *,fac1,fac2
+
           ! convert indices for the gamma matrices according 
           ! to the paper Kernbichler(2008)
           i_p = ind_map(1)
@@ -1249,10 +1198,7 @@ CONTAINS
           fieldripple => fieldpropagator%ch_act
           rippletag = fieldripple%tag
           proptag = fieldpropagator%tag
-          !WRITE(c_propagator_tag,*) proptag
-          !WRITE(c_ripple_tag,*) rippletag
-          !WRITE(c_period_tag,*) fieldperiod%tag
-          
+
           clear_old_ripple = 0
           newripple_comp_np: IF (rippletag .NE. rippletag_old) THEN
              clear_old_ripple = 1
@@ -1307,163 +1253,6 @@ CONTAINS
        write (*,*) 'This part of the code is outsourced to the corresponding workunits.'
        write (*,*) 'However it can be used to study the parallelization process in the code. Stopping propgram.'
        stop
-!!$       ! here the fieldline is divided into parts, which consist
-!!$       ! of several fieldperiods (period_limit)
-!!$       ! within this parts everything is handled as before and
-!!$       ! propagator_solver is responsible for solving a propagator,
-!!$       ! joining within a fieldperiod and joining of fieldperiods
-!!$       
-!!$       ! go to the first propagator which is wanted
-!!$       fieldperiod => fieldline%ch_fir 
-!!$       fieldpropagator => fieldperiod%ch_fir
-!!$       DO WHILE (fieldpropagator%tag .LT. proptag_start)
-!!$          IF (.NOT. ASSOCIATED(fieldpropagator%next)) EXIT
-!!$          fieldpropagator => fieldpropagator%next
-!!$       END DO
-!!$       fieldripple => fieldpropagator%ch_act
-!!$       iend = 0
-!!$       iendperiod = 0
-!!$       rippletag_old = 0
-!!$       ! now the fieldpropagator points to the fieldpropagator
-!!$       ! with the tag proptag_start
-!!$
-!!$       ! we now go through groups of fieldperiods. the number of
-!!$       ! fieldperiods in group is period_limit (or less in the last one).
-!!$       ! these could be viewed as a group which is handled by a client.
-!!$       ! therefore client_count is used as a variable.
-!!$       !
-!!$       ! this can be viewed as an idea for parallelization. most of the necessary 
-!!$       ! elements are here. ne can see how to join two groups of fieldperiods.
-!!$       ! of course, a send and receive routine has to be programmed, because here
-!!$       ! it is only done through copying within the same client. 
-!!$       allperiods_p: do while (iend .eq. 0) 
-!!$          client_count = client_count + 1
-!!$          period_count = 0 ! counts the periods in a group of periods
-!!$
-!!$          ! we now go through all propagators in this group of fieldperiods
-!!$          allprops_comp_p: DO
-!!$             ! information about propagator is written out to the screen
-!!$             CALL info_magnetics(fieldpropagator)
-!!$             CALL info_magnetics(fieldpropagator%parent)
-!!$             
-!!$             ! fielperiod and fieldripple which belong the actual fieldpropagator
-!!$             fieldperiod => fieldpropagator%parent
-!!$             fieldripple => fieldpropagator%ch_act
-!!$             ! tags
-!!$             rippletag = fieldripple%tag
-!!$             proptag = fieldpropagator%tag
-!!$             
-!!$             ! here it is determined whether the end is reached (iend=1) or
-!!$             ! whether the end of a fieldperiod is reached (iendperiod=1) 
-!!$             IF (fieldpropagator%tag .EQ. proptag_end) THEN 
-!!$                iend = 1
-!!$                iendperiod = 1
-!!$             ELSE
-!!$                IF (ASSOCIATED(fieldpropagator%next)) THEN
-!!$                   IF (fieldpropagator%parent%tag .NE. fieldpropagator%next%parent%tag) THEN 
-!!$                      iendperiod = 1
-!!$                   ELSE
-!!$                      iendperiod = 0
-!!$                   END IF
-!!$                ELSE
-!!$                   iendperiod = 1
-!!$                END IF
-!!$             END IF
-!!$             
-!!$             ! at the end of a fieldperiod period_count is increased
-!!$             if (iendperiod .eq. 1) period_count = period_count + 1 
-!!$             
-!!$             ! propagator_solver now solves for one propagator, joins
-!!$             ! within periods and joins periods within a group of periods
-!!$             ! iend_sol=0 is passed to solver instead of iend. with this
-!!$             ! the final ends will not be joined
-!!$             iend_sol = 0
-!!$
-!!$             CALL propagator_solver(                                  &
-!!$                  iend_sol,iendperiod,bin_split_mode,eta_ori,         &
-!!$                  ierr_solv,ierr_join                                 &
-!!$                  )
-!!$
-!!$             
-!!$             ! go to the next propagator or exit
-!!$             IF (fieldpropagator%tag .EQ. proptag_end) EXIT allprops_comp_p
-!!$             IF (.NOT.(ASSOCIATED(fieldpropagator%next))) THEN
-!!$                fieldpropagator => fieldline%ch_fir%ch_fir
-!!$             ELSE
-!!$                IF (fieldpropagator%next%tag .LE. fieldline%ch_las%ch_las%tag) THEN
-!!$                   fieldpropagator => fieldpropagator%next
-!!$                ELSE
-!!$                   fieldpropagator => fieldline%ch_fir%ch_fir
-!!$                END IF
-!!$             END IF
-!!$             ! exit this loop when the period_limit is reached
-!!$             IF (period_count .EQ. period_limit) EXIT allprops_comp_p
-!!$          END DO allprops_comp_p
-!!$          ! the joined result now for the group of fieldperiods is available in
-!!$          ! prop_c%prev
-!!$
-!!$           !call store_propagator()
-!!$
-!!$          if (client_count .eq. 1) then
-!!$
-!!$          else
-!!$               !call external_joining(iend, ierr_join)
-!!$          end if
-!!$
-!!$          ! final joining
-!!$          ! the variable iend is 1 only at the very end when everthing is joined
-!!$          ! and the result is available in prop_s%prev
-!!$          !
-!!$          ! this has to happen only once to finalize everything
-!!$          if (iend .eq. 1) then
-!!$!             print *, ' '
-!!$!             print *, 'FINAL JOINING'
-!!$!             print *, ' '
-!!$!             ! for internal reasons the result has to be duplicated also to the
-!!$!             ! second entry of prop_s
-!!$!             CALL assign_propagator_content(prop_s,prop_s%prev)
-!!$!             ! now comes the final joining
-!!$!             prop_c_old => prop_s%prev
-!!$!             prop_c_new => prop_s
-!!$!             CALL join_ripples_interface(ierr_join,'final')
-!!$!             prop_s => prop_s%prev
-!!$!             ! and the final result is in prop_s now
-!!$!
-!!$!             ! this is just for final output
-!!$!             prop_a => prop_s
-!!$!
-!!$!             CALL diag_propagator_result(iend)
-!!$!             CALL diag_propagator_distrf
-!!$!
-!!$!             IF (prop_write .EQ. 1) THEN
-!!$!                ! final joining
-!!$!                CALL write_propagator_content(prop_a,2)
-!!$!             ELSEIF (prop_write .EQ. 2) THEN
-!!$!                ! final joining
-!!$!                CALL write_propagator_content(prop_a,4)
-!!$!             END IF
-!!$!             IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
-!!$!                ! taginfo
-!!$!                CALL unit_propagator
-!!$!                OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-!!$!                     form=prop_format,action='write')
-!!$!                WRITE(prop_unit,*) prop_write
-!!$!                WRITE(prop_unit,*) prop_first_tag   ! UNSOLVED PROBLEM
-!!$!                WRITE(prop_unit,*) prop_last_tag    ! UNSOLVED PROBLEM
-!!$!                CLOSE(unit=prop_unit)
-!!$!             END IF
-!!$
-!!$          end if
-!!$
-!!$          ! deallocate
-!!$          ! here everything is related to prop_c is deconstructed to be able
-!!$          ! to start again for a new group of fieldperiods
-!!$          propagator_tag_counter = 0
-!!$          prop_count_call = 0
-!!$          call destruct_all_propagators
-!!$
-!!$       end do allperiods_p
-!!$       ! this is the end of the while-loop, which terminates at iend=1
     else
        write (*,*) 'This parallel mode is not implemented! Stopping program!'
        write (*,*) 'Please have a look at propagator.f90'
@@ -1475,31 +1264,12 @@ CONTAINS
   subroutine external_joining()!, prop1, prop2)
     integer :: iend_sol = 0
     integer :: ierr_join
-    !type(propagator), pointer :: prop1
-    !type(propagator), pointer :: prop2
 
     ! Note that most of the commented lines were moved to the workunit (wuGenericNeo2Workunit.f90)
 
     print *, ' '
     print *, 'EXTERNAL JOINING'
     print *, ' '
-
-    ! call construct_propagator(prop_s)
-
-    ! the result of the new group of fieldperiods is stored in the
-    ! second entry of prop_s
-
-    ! CALL assign_propagator_content(prop_s,prop_c%prev)
-    ! prop_c_old and prop_c_new are pointers two propagators, which
-    ! have to be joined. here it points to the two results stored in
-    ! prop_s
-
-    ! write (*,*) allocated(prop1%p%cmat), allocated(prop2%p%cmat)
-
-    ! prop_c_old => prop1 !prop_s%prev
-    ! prop_c_new => prop2 !prop_s
-
-    ! write (*,*) allocated(prop_c_old%p%cmat), allocated(prop_c_new%p%cmat)
 
     CALL join_ripples_interface(ierr_join)
 
@@ -1552,18 +1322,7 @@ CONTAINS
 #endif
         ! WINNY PAR END
       END IF
-      
-!!$      IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
-!!$        ! taginfo
-!!$        CALL unit_propagator
-!!$        OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-!!$          form=prop_format,action='write')
-!!$        WRITE(prop_unit,*) prop_write
-!!$        WRITE(prop_unit,*) prop_first_tag   ! UNSOLVED PROBLEM
-!!$        WRITE(prop_unit,*) prop_last_tag    ! UNSOLVED PROBLEM
-!!$        CLOSE(unit=prop_unit)
-!!$      END IF
-      
+
     end subroutine final_joining
 
   ! --- MPI SUPPORT END ---
@@ -1586,7 +1345,6 @@ CONTAINS
     INTEGER,                      INTENT(in)  :: iendperiod
     INTEGER,                      INTENT(in)  :: bin_split_mode
     REAL(kind=dp), DIMENSION(0:), INTENT(in)  :: eta_ori
-    ! TYPE(binarysplit),            INTENT(in)  :: eta_bs
     INTEGER,                      INTENT(out) :: ierr_solv
     INTEGER,                      INTENT(out) :: ierr_join
     ! 
@@ -1708,10 +1466,6 @@ CONTAINS
              phi_split_mode = phi_split_mode_ori                  !<-in Winny
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I try it again ',count_solv+1
-!!$          IF (count_solv .GT. 1) THEN
-!!$             PRINT *, 'PAUSE - MODE'
-!!$             PAUSE
-!!$          END IF
           ELSE IF (ierr_solv .EQ. 3 .AND. count_solv .GE. max_solver_try) THEN
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I give up'
@@ -1720,25 +1474,15 @@ CONTAINS
        END DO reduce_hphi_axisym
        ! write the end value for y of the field propagator into prop_c
        ! this is for computing physical output
-       !sy = SIZE(fieldpropagator%mdata%yend,1)
        sy = SIZE(fieldpropagator%parent%mdata%yend,1) ! WINNY YEND
        IF (ALLOCATED(prop_c%y)) DEALLOCATE(prop_c%y)
        ALLOCATE(prop_c%y(sy))
-       !prop_c%y = fieldpropagator%mdata%yend
        prop_c%y = fieldpropagator%parent%mdata%yend ! WINNY YEND
        ! write eta at boundaries - replaced by modified stuff
-       !prop_c%p%eta_boundary_l = 1.0_dp / fieldpropagator%b_l
-       !prop_c%p%eta_boundary_r = 1.0_dp / fieldpropagator%b_r
        prop_c%p%eta_boundary_l = eta_modboundary_l
        prop_c%p%eta_boundary_r = eta_modboundary_r
        ! link actual to current (mainly for results and diagnostic)
        prop_a => prop_c
-       ! writing of propagators
-       !IF (prop_write .EQ. 2) THEN
-       !   CALL write_propagator_content(prop_a,3)
-       !   IF (prop_first_tag .EQ. 0) prop_first_tag = fieldpropagator%tag
-       !   prop_last_tag = fieldpropagator%tag
-       !END IF
        ! ---------------------------------------------------------------------------
        CALL diag_propagator_result(iend)
        CALL diag_propagator_distrf
@@ -1837,10 +1581,6 @@ CONTAINS
              phi_split_mode = phi_split_mode_ori                  !<-in Winny
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I try it again ',count_solv+1
-!!$          IF (count_solv .GT. 1) THEN
-!!$             PRINT *, 'PAUSE - MODE'
-!!$             PAUSE
-!!$          END IF
            ELSE IF (ierr_solv .EQ. 3 .AND. count_solv .GE. max_solver_try) THEN
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I give up'
@@ -1852,29 +1592,22 @@ CONTAINS
 
          ! write the end value for y of the field propagator into prop_c
          ! this is for computing physical output
-         !sy = SIZE(fieldpropagator%mdata%yend,1)
          sy = SIZE(fieldpropagator%parent%mdata%yend,1) ! WINNY YEND
          IF (ALLOCATED(prop_c%y)) DEALLOCATE(prop_c%y)
          ALLOCATE(prop_c%y(sy))
-         !prop_c%y = fieldpropagator%mdata%yend
          prop_c%y = fieldpropagator%parent%mdata%yend ! WINNY YEND
          ! write eta at boundaries - replaced by modified stuff
-         !prop_c%p%eta_boundary_l = 1.0_dp / fieldpropagator%b_l
-         !prop_c%p%eta_boundary_r = 1.0_dp / fieldpropagator%b_r
          prop_c%p%eta_boundary_l = eta_modboundary_l
          prop_c%p%eta_boundary_r = eta_modboundary_r
          ! link actual to current (mainly for results and diagnostic)
          prop_a => prop_c
          ! writing of propagators
-         !print *, 'I am before IF (prop_write .EQ. 2) THEN'
          IF (prop_write .EQ. 2) THEN
-           !print *, 'I am before CALL write_propagator_content(prop_a,3)'
            CALL write_propagator_content(prop_a,3)
            ! WINNY PAR
            ! This should only be done in a parallel run
 #if defined(MPI_SUPPORT)
            if (mpro%isParallel()) then
-             !print *, 'I am before write_binarysplit_content(prop_a)' 
              CALL write_binarysplit_content(prop_a)
            end if
 #endif
@@ -1912,7 +1645,6 @@ CONTAINS
        ELSEIF (prop_count_call .EQ. 1 .AND. prop_write .EQ. 2) THEN
           CALL construct_propagator
           prop_c%nr_joined = -1
-          ! prop_c => prop_c%prev
           prop_a => prop_c       
        ELSE
           IF (prop_ibegperiod .EQ. 0 .OR. iendperiod .EQ. 1 .OR. prop_write .EQ. 2) THEN 
@@ -2021,9 +1753,6 @@ CONTAINS
                 ! Winny 
                 ! here the periods are joined, so cmat should be available
                 ! but cmat is not stored, so this has to be handled
-                ! PRINT *, 'Joining of periods'
-                ! PRINT *,fieldpropagator%parent%prev%tag
-                ! PRINT *,fieldpropagator%parent%tag
                 IF (prop_write .EQ. 1) CALL write_prop_bound_content(prop_c%prev,prop_c,1)
                 IF (ALLOCATED(prop_c%prev%p%cmat)) DEALLOCATE(prop_c%prev%p%cmat)
                 IF (ALLOCATED(prop_c%p%cmat)) DEALLOCATE(prop_c%p%cmat)
@@ -2067,8 +1796,6 @@ CONTAINS
                 ! join ends
                 IF (prop_join_ends .EQ. 1) THEN
                    i_joined = 1
-                   !CALL construct_propagator()
-                   !print *, 'CREATED prop_c%tag ',prop_c%tag
                    prop_c => prop_c%next
                    CALL assign_propagator_content(prop_c,prop_c%prev)
                    print *, 'JOINED join ends prop_c%tag ',prop_c%prev%tag,prop_c%tag
@@ -2093,21 +1820,6 @@ CONTAINS
                    end if
 #endif
                 END IF
-                !IF (prop_write .EQ. 1 .OR. prop_write .EQ. 2) THEN
-                   ! --- Lines commented out by Gernot ---
-                   ! --- otherwise taginfo.prop is replaced by a wrong version ---
-		   ! taginfo
-                   !CALL unit_propagator
-                   !OPEN(unit=prop_unit,file=prop_ctaginfo,status='replace', &
-                   !     form=prop_format,action='write')
-                   ! WINNY PAR
-                   ! The last tag is wrong in a parallel run
-                   !WRITE(prop_unit,*) prop_write
-                   !WRITE(prop_unit,*) prop_first_tag
-                   !WRITE(prop_unit,*) prop_last_tag
-                   ! WINNY PAR END
-                   !CLOSE(unit=prop_unit)
-                !END IF
                 EXIT
              END IF
           END DO
@@ -2248,24 +1960,15 @@ CONTAINS
     
     INTEGER :: i
     INCLUDE 'longint.f90'
-    !INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE :: bin1,bin2
     type(sparsevec), dimension(:), allocatable :: bin1_sparse, bin2_sparse
     
     INTEGER :: deall
 
     REAL(kind=dp),   DIMENSION(:,:), ALLOCATABLE :: cmat_help
     ierr = 0
-    
-    !o => prop_c%prev
-    !n => prop_c
 
     o => prop_c_old
     n => prop_c_new
-
-    !prop_c_old => o
-    !prop_c_new => n
-     
-
 
 
     IF (PRESENT(cstat_in)) THEN
@@ -2282,8 +1985,6 @@ CONTAINS
 
     ! allocate cmat (c_forward and c_backward)
     ! c_forward
-    !write (*,*) "Associated o and n: ", associated(o), associated(n)
-    !write (*,*) o%p%npart
     IF (ALLOCATED(o%p%cmat)) DEALLOCATE(o%p%cmat)
     ALLOCATE( o%p%cmat(o%p%npass_r,o%p%npass_r) )
     o%p%cmat = 0.0_dp
@@ -2330,11 +2031,9 @@ CONTAINS
           PRINT *, 'JOIN binarysplit action - forward'
        END IF
        ! look for splits which are in o%eta_bs_r and not in n%eta_bs_l
-       !CALL compare_binarysplit(o%eta_bs_r,n%eta_bs_l,bin1,'diff')
        CALL compare_binarysplit(o%eta_bs_r,n%eta_bs_l,bin1_sparse,'diff')
        ! do the joining of levels
        ! use bin1 to remove them from o%eta_bs_r
-       !CALL join_binarysplit(loc_bs_1a,o%eta_bs_r,bin1)
        CALL join_binarysplit(loc_bs_1a,o%eta_bs_r,bin1_sparse)
        ! now loc_bs_1a is the modified o%eta_bs_r
 
@@ -2342,17 +2041,13 @@ CONTAINS
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'SPLIT binarysplit action - forward'
        END IF
-       ! 
-       !CALL compare_binarysplit(n%eta_bs_l,loc_bs_1a,bin2,'diff')
+
        CALL compare_binarysplit(n%eta_bs_l,loc_bs_1a,bin2_sparse,'diff')
        ! do the splitting of levels
-       !CALL dosplit_binarysplit(loc_bs_2a,loc_bs_1a,bin2)
        CALL dosplit_binarysplit(loc_bs_2a,loc_bs_1a,bin2_sparse)
        ! now loc_bs_2a is the final modified o%eta_bs_r
 
        ! remove unnecessary things
-       !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
-       !IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
        IF (ALLOCATED(bin1_sparse)) DEALLOCATE(bin1_sparse)
        IF (ALLOCATED(bin2_sparse)) DEALLOCATE(bin2_sparse)
        ! now we fix it backward
@@ -2361,10 +2056,8 @@ CONTAINS
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'JOIN binarysplit action - backward'
        END IF
-       !CALL compare_binarysplit(n%eta_bs_l,o%eta_bs_r,bin1,'diff')
        CALL compare_binarysplit(n%eta_bs_l,o%eta_bs_r,bin1_sparse,'diff')
        ! do the joining of levels
-       !CALL join_binarysplit(loc_bs_1b,n%eta_bs_l,bin1)
        CALL join_binarysplit(loc_bs_1b,n%eta_bs_l,bin1_sparse)
        ! now loc_bs_1b is the modified n%eta_bs_l
 
@@ -2372,23 +2065,12 @@ CONTAINS
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'SPLIT binarysplit action - backward'
        END IF
-       !CALL compare_binarysplit(o%eta_bs_r,loc_bs_1b,bin2,'diff')
        CALL compare_binarysplit(o%eta_bs_r,loc_bs_1b,bin2_sparse,'diff')
        ! do the splitting of levels
-       !CALL dosplit_binarysplit(loc_bs_2b,loc_bs_1b,bin2)
        CALL dosplit_binarysplit(loc_bs_2b,loc_bs_1b,bin2_sparse)
        ! now loc_bs_2b is the final modified n%eta_bs_l - not needed
 
-       ! put the eta_information on right side of propagator
-       ! o%eta_bs_r = loc_bs_2a 
-       ! CALL get_binarysplit(loc_bs_2a,o%p%eta_r,'x')
-       ! put the eta_information on left side of propagator
-       ! n%eta_bs_l = loc_bs_2b 
-       ! CALL get_binarysplit(loc_bs_2b,n%p%eta_l,'x')
-
        ! remove unnecessary things
-       !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
-       !IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
        if (allocated(bin1_sparse)) deallocate(bin1_sparse)
        if (allocated(bin2_sparse)) deallocate(bin2_sparse)
        
@@ -2430,12 +2112,10 @@ CONTAINS
 
           PRINT *,  'old propagator tag:   ', o%fieldpropagator_tag_s,o%fieldpropagator_tag_e
           PRINT *,  'size of o%p%amat_m_p: ', SIZE(o%p%amat_m_p,1),SIZE(o%p%amat_m_p,2)
-!->out          PRINT *,  ' should be            ', o%p%npass_r, o%p%npass_r
           PRINT *,  ' should be            ', o%p%npass_r*(o%p%nvelocity+1), o%p%npass_r*(o%p%nvelocity+1) !<-in
 
           PRINT *,  'new propagator tag:   ', n%fieldpropagator_tag_s,n%fieldpropagator_tag_e
           PRINT *,  'size of n%p%amat_p_m: ', SIZE(n%p%amat_p_m,1),SIZE(n%p%amat_p_m,2)
-!->out          PRINT *,  ' should be            ', n%p%npass_l, n%p%npass_l
           PRINT *,  ' should be            ', n%p%npass_l*(n%p%nvelocity+1), n%p%npass_l*(n%p%nvelocity+1)  !<-in
           
 
@@ -2453,24 +2133,14 @@ CONTAINS
              END IF
           END DO
 
-          !CALL compare_binarysplit(loc_bs_2a,n%eta_bs_l,bin1,'diff')
           CALL compare_binarysplit(loc_bs_2a,n%eta_bs_l,bin1_sparse,'diff')
-          !CALL printbin_binarysplit(bin1)
-          !PRINT *, 'Count difference forward:  ', COUNT(bin1 .NE. 0)
-          !PRINT *, 'Count difference forward:  ', COUNT(bin1_sparse .NE. 0)   !NOT SOLVED YET
-          !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
           if (allocated(bin1_sparse)) deallocate(bin1_sparse)
           
-          !call compare_binarysplit(loc_bs_2b,o%eta_bs_r,bin1,'diff')
           call compare_binarysplit(loc_bs_2b,o%eta_bs_r,bin1_sparse,'diff')
-          !CALL printbin_binarysplit(bin1)
-          !PRINT *, 'Count difference backward:   ', COUNT(bin1 .NE. 0)
-          !PRINT *, 'Count difference backward:   ', COUNT(bin1_sparse .NE. 0)  !NOT SOLVED YET
-          !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
           IF (ALLOCATED(bin1_sparse)) DEALLOCATE(bin1_sparse)
 
           PRINT *, 'c_forward.dat and c_backward.dat written'
-          !PAUSE
+
        END IF       
        END IF
        CALL deconstruct_binarysplit(loc_bs_1a)
@@ -2829,11 +2499,9 @@ CONTAINS
     prop_bound = 1
     IF (prop_type .EQ. 1) THEN
        prop_right = n%fieldperiod_tag_s
-       !prop_left  = o%fieldperiod_tag_e
        prop_left  = prop_right - 1
     ELSEIF (prop_type .EQ. 3) THEN
        prop_right = n%fieldpropagator_tag_s
-       !prop_left  = o%fieldperiod_tag_e
        prop_left  = prop_right - 1
     ELSE
        PRINT *, 'Propagator Writing: prop_type not implemented: ',prop_type
@@ -2857,16 +2525,6 @@ CONTAINS
        if (allocated(n%p%cmat)) call h5_add(h5id, 'c_backward', n%p%cmat, lbound(n%p%cmat), ubound(n%p%cmat))
 
        call h5_close(h5id)
-
-       !call h5fget_obj_count_f(H5F_OBJ_ALL_F, H5F_OBJ_ALL_F, obj_count, h5error)
-       !write (*,*) "Open HDF5 objects (all): ", obj_count, h5error
-       !call h5fget_obj_count_f(H5F_OBJ_ALL_F, H5F_OBJ_DATASET_F, obj_count, h5error)
-       !write (*,*) "Open HDF5 objects (dataset): ", obj_count, h5error
-       !call h5fget_obj_count_f(H5F_OBJ_ALL_F, H5F_OBJ_GROUP_F, obj_count, h5error)
-       !write (*,*) "Open HDF5 objects (groups): ", obj_count, h5error
-       !call h5fget_obj_count_f(H5F_OBJ_ALL_F, H5F_OBJ_DATATYPE_F, obj_count, h5error)
-       !write (*,*) "Open HDF5 objects (datatypes): ", obj_count, h5error
-
 
     else
        CALL unit_propagator
@@ -2916,11 +2574,6 @@ CONTAINS
     call h5_add(h5id_grp, 'n_ori', binsplit%n_ori)
     call h5_add(h5id_grp, 'n_split', binsplit%n_split)
 
-    !write (*,*) "In write_binarysplit_side_h5", allocated(binsplit%x_ori_poi), binsplit%x_ori_poi
-    !stop
-    
-    !call h5_add(h5id_grp, 'x_ori_bin', binsplit%x_ori_bin, lbound(binsplit%x_ori_bin), ubound(binsplit%x_ori_bin))
-    
     do k = 0, binsplit%n_ori
        write (h5_ds_name, '(A,I0)') "x_ori_bin_sparse_", k
        call h5_add(h5id_grp, trim(h5_ds_name) // '_idxvec', binsplit%x_ori_bin_sparse(k)%idxvec, &
@@ -2978,154 +2631,6 @@ CONTAINS
     else
        write (*,*) "Error in write_binarysplit_cont. This is not longer supported for ASCII files."
        stop
-       
-!!$
-!!$       CALL unit_propagator
-!!$       OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
-!!$            form=prop_format,action='write')
-!!$
-!!$       WRITE(prop_unit,*) o%bin_split_mode
-!!$
-!!$       ! binarysplit left
-!!$       WRITE(prop_unit,*) o%eta_bs_l%n_ori
-!!$       WRITE(prop_unit,*) o%eta_bs_l%n_split
-!!$       ! x_ori_bin
-!!$       IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,1),UBOUND(o%eta_bs_l%x_ori_bin,1)
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_bin,2),UBOUND(o%eta_bs_l%x_ori_bin,2)
-!!$          WRITE(prop_unit,*) o%eta_bs_l%x_ori_bin
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! x_ori_poi
-!!$       IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_ori_poi,1),UBOUND(o%eta_bs_l%x_ori_poi,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_l%x_ori_poi
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! x_poi
-!!$       IF (ALLOCATED(o%eta_bs_l%x_poi)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_poi,1),UBOUND(o%eta_bs_l%x_poi,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_l%x_poi
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! x_split
-!!$       IF (ALLOCATED(o%eta_bs_l%x_split)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_split,1),UBOUND(o%eta_bs_l%x_split,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_l%x_split
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! x_pos
-!!$       IF (ALLOCATED(o%eta_bs_l%x_pos)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x_pos,1),UBOUND(o%eta_bs_l%x_pos,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_l%x_pos
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! x
-!!$       IF (ALLOCATED(o%eta_bs_l%x)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%x,1),UBOUND(o%eta_bs_l%x,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_l%x
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! y
-!!$       IF (ALLOCATED(o%eta_bs_l%y)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%y,1),UBOUND(o%eta_bs_l%y,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_l%y
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! int
-!!$       IF (ALLOCATED(o%eta_bs_l%int)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%int,1),UBOUND(o%eta_bs_l%int,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_l%int
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! err
-!!$       IF (ALLOCATED(o%eta_bs_l%err)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_l%err,1),UBOUND(o%eta_bs_l%err,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_l%err
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$
-!!$       ! binarysplit right
-!!$       WRITE(prop_unit,*) o%eta_bs_r%n_ori
-!!$       WRITE(prop_unit,*) o%eta_bs_r%n_split
-!!$       ! x_ori_bin
-!!$       IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,1),UBOUND(o%eta_bs_r%x_ori_bin,1)
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_bin,2),UBOUND(o%eta_bs_r%x_ori_bin,2)
-!!$          WRITE(prop_unit,*) o%eta_bs_r%x_ori_bin
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! x_ori_poi
-!!$       IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_ori_poi,1),UBOUND(o%eta_bs_r%x_ori_poi,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_r%x_ori_poi
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! x_poi
-!!$       IF (ALLOCATED(o%eta_bs_r%x_poi)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_poi,1),UBOUND(o%eta_bs_r%x_poi,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_r%x_poi
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! x_split
-!!$       IF (ALLOCATED(o%eta_bs_r%x_split)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_split,1),UBOUND(o%eta_bs_r%x_split,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_r%x_split
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! x_pos
-!!$       IF (ALLOCATED(o%eta_bs_r%x_pos)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x_pos,1),UBOUND(o%eta_bs_r%x_pos,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_r%x_pos
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! x
-!!$       IF (ALLOCATED(o%eta_bs_r%x)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%x,1),UBOUND(o%eta_bs_r%x,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_r%x
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! y
-!!$       IF (ALLOCATED(o%eta_bs_r%y)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%y,1),UBOUND(o%eta_bs_r%y,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_r%y
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! int
-!!$       IF (ALLOCATED(o%eta_bs_r%int)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%int,1),UBOUND(o%eta_bs_r%int,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_r%int
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$       ! err
-!!$       IF (ALLOCATED(o%eta_bs_r%err)) THEN
-!!$          WRITE(prop_unit,*) LBOUND(o%eta_bs_r%err,1),UBOUND(o%eta_bs_r%err,1)
-!!$          WRITE(prop_unit,*) o%eta_bs_r%err
-!!$       ELSE
-!!$          WRITE(prop_unit,*) 0,0
-!!$       END IF
-!!$
-!!$       close(unit=prop_unit)
-
     end if
     
   end SUBROUTINE write_binarysplit_cont
@@ -3277,167 +2782,12 @@ CONTAINS
           
        end if
 
-       !write (*,*) "dims:", lbound(o%p%amat_p_p), ubound(o%p%amat_p_p)
-       
        call h5_close(h5id)
        
     else
 
        write (*,*) "Error in read_propagator_cont. This is not longer supported for ASCII files."
        stop
-
-       
-!!$       CALL unit_propagator
-!!$
-!!$       !PRINT *, prop_cfilename
-!!$
-!!$       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
-!!$            form=prop_format,action='read')
-!!$
-!!$       ! tags
-!!$       READ(prop_unit,*) dummy
-!!$       READ(prop_unit,*) dummy
-!!$
-!!$       ! info
-!!$       IF (prop_showall .EQ. 1) THEN
-!!$          READ(prop_unit,*) o%nr_joined
-!!$          READ(prop_unit,*) o%fieldpropagator_tag_s
-!!$          READ(prop_unit,*) o%fieldpropagator_tag_e
-!!$          READ(prop_unit,*) o%fieldperiod_tag_s
-!!$          READ(prop_unit,*) o%fieldperiod_tag_e
-!!$
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          IF (ub1 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%y)) DEALLOCATE(o%y)
-!!$             ALLOCATE(o%y(lb1:ub1))
-!!$             READ(prop_unit,*) o%y
-!!$          END IF
-!!$          READ(prop_unit,*) o%phi_l
-!!$          READ(prop_unit,*) o%phi_r
-!!$       END IF
-!!$
-!!$       ! Binarysplit stuff is not dumped
-!!$       IF (prop_showall .EQ. 0) THEN
-!!$          READ(prop_unit,*) o%bin_split_mode
-!!$       END IF
-!!$
-!!$       ! sizes
-!!$       IF (prop_showall .GE. 1) THEN
-!!$          READ(prop_unit,*) o%p%npart
-!!$          READ(prop_unit,*) o%p%npass_l
-!!$          READ(prop_unit,*) o%p%npass_r
-!!$          READ(prop_unit,*) o%p%nvelocity
-!!$       END IF
-!!$
-!!$       ! amat_p_p
-!!$       IF (prop_showall .GE. 1) THEN
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          READ(prop_unit,*) lb2,ub2
-!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%p%amat_p_p)) DEALLOCATE(o%p%amat_p_p)
-!!$             ALLOCATE(o%p%amat_p_p(lb1:ub1,lb2:ub2))
-!!$             READ(prop_unit,*) o%p%amat_p_p
-!!$          END IF
-!!$       END IF
-!!$       ! amat_m_m
-!!$       IF (prop_showall .EQ. 1) THEN
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          READ(prop_unit,*) lb2,ub2
-!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%p%amat_m_m)) DEALLOCATE(o%p%amat_m_m)
-!!$             ALLOCATE(o%p%amat_m_m(lb1:ub1,lb2:ub2))
-!!$             READ(prop_unit,*) o%p%amat_m_m
-!!$          END IF
-!!$       END IF
-!!$       ! amat_p_m
-!!$       IF (prop_showall .EQ. 1) THEN
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          READ(prop_unit,*) lb2,ub2
-!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%p%amat_p_m)) DEALLOCATE(o%p%amat_p_m)
-!!$             ALLOCATE(o%p%amat_p_m(lb1:ub1,lb2:ub2))
-!!$             READ(prop_unit,*) o%p%amat_p_m
-!!$          END IF
-!!$       END IF
-!!$       ! amat_m_p
-!!$       IF (prop_showall .GE. 1) THEN
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          READ(prop_unit,*) lb2,ub2
-!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%p%amat_m_p)) DEALLOCATE(o%p%amat_m_p)
-!!$             ALLOCATE(o%p%amat_m_p(lb1:ub1,lb2:ub2))
-!!$             READ(prop_unit,*) o%p%amat_m_p
-!!$          END IF
-!!$       END IF
-!!$
-!!$       ! source_p
-!!$       IF (prop_showall .GE. 1) THEN
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          READ(prop_unit,*) lb2,ub2
-!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%p%source_p)) DEALLOCATE(o%p%source_p)
-!!$             ALLOCATE(o%p%source_p(lb1:ub1,lb2:ub2))
-!!$             READ(prop_unit,*) o%p%source_p
-!!$          END IF
-!!$       END IF
-!!$       ! source_m
-!!$       IF (prop_showall .EQ. 1) THEN
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          READ(prop_unit,*) lb2,ub2
-!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%p%source_m)) DEALLOCATE(o%p%source_m)
-!!$             ALLOCATE(o%p%source_m(lb1:ub1,lb2:ub2))
-!!$             READ(prop_unit,*) o%p%source_m
-!!$          END IF
-!!$       END IF
-!!$
-!!$       ! flux_p
-!!$       IF (prop_showall .EQ. 1) THEN
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          READ(prop_unit,*) lb2,ub2
-!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%p%flux_p)) DEALLOCATE(o%p%flux_p)
-!!$             ALLOCATE(o%p%flux_p(lb1:ub1,lb2:ub2))
-!!$             READ(prop_unit,*) o%p%flux_p
-!!$          END IF
-!!$       END IF
-!!$       ! flux_m
-!!$       IF (prop_showall .EQ. 1) THEN
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          READ(prop_unit,*) lb2,ub2
-!!$          IF (ub1 .GT. 0 .AND. ub2 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%p%flux_m)) DEALLOCATE(o%p%flux_m)
-!!$             ALLOCATE(o%p%flux_m(lb1:ub1,lb2:ub2))
-!!$             READ(prop_unit,*) o%p%flux_m
-!!$          END IF
-!!$       END IF
-!!$
-!!$       ! qflux - Winny not fully ok
-!!$       IF (prop_showall .EQ. 1) THEN
-!!$          IF (ALLOCATED(o%p%qflux)) DEALLOCATE(o%p%qflux)
-!!$          ALLOCATE(o%p%qflux(3,3))
-!!$          READ(prop_unit,*) o%p%qflux
-!!$       END IF
-!!$
-!!$       ! eta
-!!$       IF (prop_showall .EQ. 1) THEN
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          IF (ub1 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%p%eta_l)) DEALLOCATE(o%p%eta_l)
-!!$             ALLOCATE(o%p%eta_l(lb1:ub1))
-!!$             READ(prop_unit,*) o%p%eta_l
-!!$          END IF
-!!$          READ(prop_unit,*) lb1,ub1
-!!$          IF (ub1 .GT. 0) THEN
-!!$             IF (ALLOCATED(o%p%eta_r)) DEALLOCATE(o%p%eta_r)
-!!$             ALLOCATE(o%p%eta_r(lb1:ub1))
-!!$             READ(prop_unit,*) o%p%eta_r
-!!$          END IF
-!!$          READ(prop_unit,*) o%p%eta_boundary_l
-!!$          READ(prop_unit,*) o%p%eta_boundary_r
-!!$       END IF
-!!$
-!!$       close(unit=prop_unit)
     end if
   END SUBROUTINE read_propagator_cont
   ! ---------------------------------------------------------------------------
@@ -3533,13 +2883,6 @@ CONTAINS
 
     call h5_get(h5id_grp, 'n_ori', binsplit%n_ori)
     call h5_get(h5id_grp, 'n_split', binsplit%n_split)
-    
-    !call h5_get_bounds(h5id_grp, 'x_ori_bin', lb1, lb2, ub1, ub2)
-    !if (ub1 .gt. lb1 .or. ub2 .gt. lb2) then
-    !   if (allocated(binsplit%x_ori_bin)) deallocate(binsplit%x_ori_bin)
-    !   allocate(binsplit%x_ori_bin(lb1:ub1,lb2:ub2))
-    !   call h5_get(h5id_grp, 'x_ori_bin', binsplit%x_ori_bin)
-    !end if
 
     if (allocated(binsplit%x_ori_bin_sparse)) deallocate(binsplit%x_ori_bin_sparse)
     allocate(binsplit%x_ori_bin_sparse(0:binsplit%n_ori))
@@ -3617,8 +2960,6 @@ CONTAINS
     end if
 
     call h5_close_group(h5id_grp)
-
-    !write (*,*) "Reconstruct binsplit", binsplit%x_pos, 'AA', lbound(binsplit%x_pos)
     
   end subroutine read_binarysplit_side_h5
   
@@ -3656,152 +2997,6 @@ CONTAINS
     else
        write (*,*) "Error in read_binarysplit_cont. This is not longer supported for ASCII files."
        stop
-       
-!!$
-!!$       CALL unit_propagator
-!!$       OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
-!!$            form=prop_format,action='read')
-!!$       
-!!$       READ(prop_unit,*) o%bin_split_mode
-!!$
-!!$       ! binarysplit left
-!!$       READ(prop_unit,*) o%eta_bs_l%n_ori
-!!$       READ(prop_unit,*) o%eta_bs_l%n_split
-!!$       ! x_ori_bin
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       READ(prop_unit,*) lb2,ub2
-!!$       IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
-!!$          IF (ALLOCATED(o%eta_bs_l%x_ori_bin)) DEALLOCATE(o%eta_bs_l%x_ori_bin)
-!!$          ALLOCATE(o%eta_bs_l%x_ori_bin(lb1:ub1,lb2:ub2))
-!!$          READ(prop_unit,*) o%eta_bs_l%x_ori_bin
-!!$       END IF
-!!$       ! x_ori_poi
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_l%x_ori_poi)) DEALLOCATE(o%eta_bs_l%x_ori_poi)
-!!$          ALLOCATE(o%eta_bs_l%x_ori_poi(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_l%x_ori_poi
-!!$       END IF
-!!$       ! x_poi
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_l%x_poi)) DEALLOCATE(o%eta_bs_l%x_poi)
-!!$          ALLOCATE(o%eta_bs_l%x_poi(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_l%x_poi
-!!$       END IF
-!!$       ! x_split
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_l%x_split)) DEALLOCATE(o%eta_bs_l%x_split)
-!!$          ALLOCATE(o%eta_bs_l%x_split(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_l%x_split
-!!$       END IF
-!!$       ! x_pos
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_l%x_pos)) DEALLOCATE(o%eta_bs_l%x_pos)
-!!$          ALLOCATE(o%eta_bs_l%x_pos(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_l%x_pos
-!!$       END IF
-!!$       ! x
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_l%x)) DEALLOCATE(o%eta_bs_l%x)
-!!$          ALLOCATE(o%eta_bs_l%x(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_l%x
-!!$       END IF
-!!$       ! y
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_l%y)) DEALLOCATE(o%eta_bs_l%y)
-!!$          ALLOCATE(o%eta_bs_l%y(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_l%y
-!!$       END IF
-!!$       ! int
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_l%int)) DEALLOCATE(o%eta_bs_l%int)
-!!$          ALLOCATE(o%eta_bs_l%int(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_l%int
-!!$       END IF
-!!$       ! err
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_l%err)) DEALLOCATE(o%eta_bs_l%err)
-!!$          ALLOCATE(o%eta_bs_l%err(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_l%err
-!!$       END IF
-!!$
-!!$       ! binarysplit right
-!!$       READ(prop_unit,*) o%eta_bs_r%n_ori
-!!$       READ(prop_unit,*) o%eta_bs_r%n_split
-!!$       ! x_ori_bin
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       READ(prop_unit,*) lb2,ub2
-!!$       IF (ub1 .GT. lb1 .or. ub2 .GT. lb2) THEN
-!!$          IF (ALLOCATED(o%eta_bs_r%x_ori_bin)) DEALLOCATE(o%eta_bs_r%x_ori_bin)
-!!$          ALLOCATE(o%eta_bs_r%x_ori_bin(lb1:ub1,lb2:ub2))
-!!$          READ(prop_unit,*) o%eta_bs_r%x_ori_bin
-!!$       END IF
-!!$       ! x_ori_poi
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_r%x_ori_poi)) DEALLOCATE(o%eta_bs_r%x_ori_poi)
-!!$          ALLOCATE(o%eta_bs_r%x_ori_poi(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_r%x_ori_poi
-!!$       END IF
-!!$       ! x_poi
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_r%x_poi)) DEALLOCATE(o%eta_bs_r%x_poi)
-!!$          ALLOCATE(o%eta_bs_r%x_poi(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_r%x_poi
-!!$       END IF
-!!$       ! x_split
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_r%x_split)) DEALLOCATE(o%eta_bs_r%x_split)
-!!$          ALLOCATE(o%eta_bs_r%x_split(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_r%x_split
-!!$       END IF
-!!$       ! x_pos
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_r%x_pos)) DEALLOCATE(o%eta_bs_r%x_pos)
-!!$          ALLOCATE(o%eta_bs_r%x_pos(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_r%x_pos
-!!$       END IF
-!!$       ! x
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_r%x)) DEALLOCATE(o%eta_bs_r%x)
-!!$          ALLOCATE(o%eta_bs_r%x(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_r%x
-!!$       END IF
-!!$       ! y
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_r%y)) DEALLOCATE(o%eta_bs_r%y)
-!!$          ALLOCATE(o%eta_bs_r%y(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_r%y
-!!$       END IF
-!!$       ! int
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_r%int)) DEALLOCATE(o%eta_bs_r%int)
-!!$          ALLOCATE(o%eta_bs_r%int(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_r%int
-!!$       END IF
-!!$       ! err
-!!$       READ(prop_unit,*) lb1,ub1
-!!$       IF (ub1 .GT. 0) THEN
-!!$          IF (ALLOCATED(o%eta_bs_r%err)) DEALLOCATE(o%eta_bs_r%err)
-!!$          ALLOCATE(o%eta_bs_r%err(lb1:ub1))
-!!$          READ(prop_unit,*) o%eta_bs_r%err
-!!$       END IF
-!!$
-!!$       close(unit=prop_unit)
-
     end if
 
     
@@ -3926,11 +3121,6 @@ CONTAINS
        CALL read_binarysplit_content(prop_c)
        
        print *, prop_c%p%npart,prop_c%p%npass_l,prop_c%p%npass_r
-       !print *, prop_c%eta_bs_l%n_ori,prop_c%eta_bs_l%n_split
-       !print *, prop_c%eta_bs_r%n_ori,prop_c%eta_bs_r%n_split
-       !print *, prop_c%eta_bs_l%x_ori_poi
-       !print *, prop_c%eta_bs_r%x_ori_poi
-       
        
        print *, ''
        ! other propagators
@@ -3946,10 +3136,7 @@ CONTAINS
           CALL read_binarysplit_content(prop_c)
           print *, prop_c%prev%p%npart,prop_c%prev%p%npass_l,prop_c%prev%p%npass_r
           print *, prop_c%p%npart,prop_c%p%npass_l,prop_c%p%npass_r
-          !print *, prop_c%eta_bs_l%n_ori,prop_c%eta_bs_l%n_split
-          !print *, prop_c%eta_bs_r%n_ori,prop_c%eta_bs_r%n_split
-          !print *, prop_c%eta_bs_l%x_ori_poi
-          !print *, prop_c%eta_bs_r%x_ori_poi
+
           ! join propagators - intermediate - do not clean c_mat
           prop_c_old => prop_c%prev
           prop_c_new => prop_c
@@ -3965,7 +3152,6 @@ CONTAINS
        prop_c_old => prop_c%prev
        prop_c_new => prop_c
        CALL join_ripples_interface(ierr_join,'final')
-       !prop_a => prop_c%prev    
        CALL write_propagator_content(prop_c%prev,4)
        
        print *, ''
@@ -3996,9 +3182,6 @@ CONTAINS
     ALLOCATE(source_m_N(lb1:ub1,lb2:ub2))
     source_m_N = l%p%source_m
     NULLIFY(l)
-
-    !PRINT *, 'source_p_0', SIZE(source_p_0,1),SIZE(source_p_0,2)
-    !PRINT *, 'source_m_N', SIZE(source_m_N,1),SIZE(source_m_N,2)
 
     ! write the results - starting point
     CALL filename_propagator(5,0,prop_last_tag,prop_last_tag)
@@ -4131,32 +3314,6 @@ CONTAINS
        write(prop_unit,*) source_p_0
        close(unit=prop_unit)
     end if
-
-
-!!$    ! for joining the cmat must go into the propagator
-!!$    ! forward goes to the left - l(eft)
-!!$    lb1 = LBOUND(b%c_forward,1)
-!!$    ub1 = UBOUND(b%c_forward,1)
-!!$    lb2 = LBOUND(b%c_forward,2)
-!!$    ub2 = UBOUND(b%c_forward,2)
-!!$    IF (ALLOCATED(l%p%cmat)) DEALLOCATE(l%p%cmat)
-!!$    ALLOCATE(l%p%cmat(lb1:ub1,lb2:ub2))
-!!$    l%p%cmat = b%c_forward
-!!$    ! backward goes to the right - r(ight)
-!!$    lb1 = LBOUND(b%c_backward,1)
-!!$    ub1 = UBOUND(b%c_backward,1)
-!!$    lb2 = LBOUND(b%c_backward,2)
-!!$    ub2 = UBOUND(b%c_backward,2)
-!!$    IF (ALLOCATED(r%p%cmat)) DEALLOCATE(r%p%cmat)
-!!$    ALLOCATE(r%p%cmat(lb1:ub1,lb2:ub2))
-!!$    r%p%cmat = b%c_backward
-!!$
-!!$    ! when you do joining the result is in prop_c
-!!$    prop_c => prop_c%next
-!!$    CALL join_ripples(ierr_join)
-
-
-
 
   END SUBROUTINE reconstruct_propagator_dist
 
@@ -4309,8 +3466,6 @@ CONTAINS
     else
        prop_cext = 'prop'
     end if
-    
-    !write (*,*) 'Setting prop extension to ', prop_cext
 
     ! choose basename
     IF (prop_type .EQ. 1 .OR. prop_type .EQ. 2) THEN ! period
@@ -4395,15 +3550,6 @@ CONTAINS
       close(unit=u)
 
       call read_propagator_cont(prop, prop_type, prop_start, prop_end, prop_showall_in)
-
-!~       call filename_prop(6, prop_bound, prop_start, prop_end)
-!~       open(unit=u, iostat=ios, file=prop_cfilename, status='old')
-!~       if (ios .eq. 0) then
-!~         close(unit=u)
-!~         call read_binarysplit_cont(prop, prop_type, prop_start, prop_end, prop_showall_in)
-
-!~         res = .true.
-!~       end if
 
       res = .true.
     end if

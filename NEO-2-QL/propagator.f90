@@ -141,28 +141,15 @@ MODULE propagator_mod
      INTEGER                                    :: npart
      INTEGER                                    :: npass_l
      INTEGER                                    :: npass_r
-!->out     INTEGER                                    :: npart_halfband
      INTEGER                                    :: nvelocity                !<-in
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_p_p
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_m_m
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_p_m
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_m_p
-!->out     REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: source_p_g
-!->out     REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: source_m_g
-!->out     REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: source_p_e
-!->out     REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: source_m_e
      REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p              !<-in
      REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m              !<-in
-!->out     REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: flux_p
-!->out     REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: flux_m
-!->out     REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: curr_p
-!->out     REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: curr_m
      REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: flux_p                !<-in
      REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: flux_m                !<-in
-!->out     REAL(kind=dp)                              :: qflux_g
-!->out     REAL(kind=dp)                              :: qflux_e
-!->out     REAL(kind=dp)                              :: qcurr_g
-!->out     REAL(kind=dp)                              :: qcurr_e
      REAL(kind=dp), DIMENSION(:,:),       ALLOCATABLE :: qflux             !<-in
      !
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: cmat
@@ -485,19 +472,12 @@ CONTAINS
     IF (ALLOCATED(prop_c%p%amat_m_p)) DEALLOCATE(prop_c%p%amat_m_p)
     !
     IF (ALLOCATED(prop_c%p%cmat)) DEALLOCATE(prop_c%p%cmat)
-!->out    ! 1-D quantities
-!->out    IF (ALLOCATED(prop_c%p%source_p_g)) DEALLOCATE(prop_c%p%source_p_g)
-!->out    IF (ALLOCATED(prop_c%p%source_m_g)) DEALLOCATE(prop_c%p%source_m_g)
-!->out    IF (ALLOCATED(prop_c%p%source_p_e)) DEALLOCATE(prop_c%p%source_p_e)
-!->out    IF (ALLOCATED(prop_c%p%source_m_e)) DEALLOCATE(prop_c%p%source_m_e)
+    ! 1-D quantities
     IF (ALLOCATED(prop_c%p%source_p)) DEALLOCATE(prop_c%p%source_p)        !<-in
     IF (ALLOCATED(prop_c%p%source_m)) DEALLOCATE(prop_c%p%source_m)        !<-in
 
     IF (ALLOCATED(prop_c%p%flux_p))   DEALLOCATE(prop_c%p%flux_p)
     IF (ALLOCATED(prop_c%p%flux_m))   DEALLOCATE(prop_c%p%flux_m)
-
-!->out    IF (ALLOCATED(prop_c%p%curr_p))   DEALLOCATE(prop_c%p%curr_p)
-!->out    IF (ALLOCATED(prop_c%p%curr_m))   DEALLOCATE(prop_c%p%curr_m)
 
     IF (ALLOCATED(prop_c%p%qflux))   DEALLOCATE(prop_c%p%qflux)            !<-in
 
@@ -549,13 +529,8 @@ CONTAINS
     pn%npart          = po%npart
     pn%npass_l        = po%npass_l
     pn%npass_r        = po%npass_r
-!->out    pn%npart_halfband = po%npart_halfband
     pn%nvelocity       = po%nvelocity                                        !<-in
 
-!->out    pn%qflux_g        = po%qflux_g
-!->out    pn%qflux_e        = po%qflux_e
-!->out    pn%qcurr_g        = po%qcurr_g
-!->out    pn%qcurr_e        = po%qcurr_e
     IF (ALLOCATED(po%qflux)) THEN                                          !<-in
        ALLOCATE(pn%qflux(SIZE(po%qflux,1),SIZE(po%qflux,2)))               !<-in
        pn%qflux    = po%qflux                                              !<-in
@@ -591,23 +566,7 @@ CONTAINS
        ALLOCATE(pn%w(SIZE(po%w,1),SIZE(po%w,2)))
        pn%w           = po%w
     END IF
-    
-!->out    IF (ALLOCATED(po%source_p_g)) THEN
-!->out       ALLOCATE(pn%source_p_g(SIZE(po%source_p_g,1)))
-!->out       pn%source_p_g  = po%source_p_g
-!->out    END IF
-!->out    IF (ALLOCATED(po%source_m_g)) THEN
-!->out       ALLOCATE(pn%source_m_g(SIZE(po%source_m_g,1)))
-!->out       pn%source_m_g  = po%source_m_g
-!->out    END IF
-!->out    IF (ALLOCATED(po%source_p_e)) THEN
-!->out       ALLOCATE(pn%source_p_e(SIZE(po%source_p_e,1)))
-!->out       pn%source_p_e  = po%source_p_e
-!->out    END IF
-!->out    IF (ALLOCATED(po%source_m_e)) THEN
-!->out       ALLOCATE(pn%source_m_e(SIZE(po%source_m_e,1)))
-!->out       pn%source_m_e  = po%source_m_e
-!->out    END IF
+
     IF (ALLOCATED(po%source_p)) THEN                                       !<-in
        ALLOCATE(pn%source_p(SIZE(po%source_p,1),SIZE(po%source_p,2)))      !<-in
        pn%source_p  = po%source_p                                          !<-in
@@ -618,23 +577,13 @@ CONTAINS
     END IF                                                                 !<-in
     
     IF (ALLOCATED(po%flux_p)) THEN
-!->out       ALLOCATE(pn%flux_p(SIZE(po%flux_p,1)))
        ALLOCATE(pn%flux_p(SIZE(po%flux_p,1),SIZE(po%flux_p,2)))            !<-in
        pn%flux_p     = po%flux_p
     END IF
     IF (ALLOCATED(po%flux_m)) THEN
-!->out       ALLOCATE(pn%flux_m(SIZE(po%flux_m,1)))
        ALLOCATE(pn%flux_m(SIZE(po%flux_m,1),SIZE(po%flux_m,2)))            !<-in
        pn%flux_m     = po%flux_m
     END IF
-!->out    IF (ALLOCATED(po%curr_p)) THEN
-!->out       ALLOCATE(pn%curr_p(SIZE(po%curr_p,1)))
-!->out       pn%curr_p     = po%curr_p
-!->out    END IF
-!->out    IF (ALLOCATED(po%curr_m)) THEN
-!->out       ALLOCATE(pn%curr_m(SIZE(po%curr_m,1)))
-!->out       pn%curr_m     = po%curr_m
-!->out    END IF
 
     IF (ALLOCATED(po%eta_l)) THEN
        ALLOCATE(pn%eta_l(LBOUND(po%eta_l,1):UBOUND(po%eta_l,1)))
@@ -714,43 +663,35 @@ CONTAINS
 
     cname = 'source_p_g'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%source_p_g
     WRITE(uw,*) prop_a%p%source_p(:,1)                                     !<-in
     CLOSE(uw)
     cname = 'source_p_e'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%source_p_e
     WRITE(uw,*) prop_a%p%source_p(:,2)                                     !<-in
     CLOSE(uw)
     cname = 'source_m_g'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%source_m_g
     WRITE(uw,*) prop_a%p%source_m(:,1)                                     !<-in
     CLOSE(uw)
     cname = 'source_m_e'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%source_m_e
     WRITE(uw,*) prop_a%p%source_m(:,2)                                     !<-in
     CLOSE(uw)
 
     cname = 'flux_p'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%flux_p
     WRITE(uw,*) prop_a%p%flux_p(1,:)                                       !<-in
     CLOSE(uw)    
     cname = 'flux_m'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%flux_m
     WRITE(uw,*) prop_a%p%flux_m(1,:)                                       !<-in
     CLOSE(uw)
     cname = 'curr_p'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%curr_p
     WRITE(uw,*) prop_a%p%flux_p(2,:)                                       !<-in
     CLOSE(uw)    
     cname = 'curr_m'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-!->out    WRITE(uw,*) prop_a%p%curr_m
     WRITE(uw,*) prop_a%p%flux_m(2,:)                                       !<-in
     CLOSE(uw)
     
@@ -779,12 +720,7 @@ CONTAINS
     WRITE(uw,*) 'npart           ',prop_a%p%npart
     WRITE(uw,*) 'npass_l         ',prop_a%p%npass_l
     WRITE(uw,*) 'npass_r         ',prop_a%p%npass_r
-!->out    WRITE(uw,*) 'npart_halfband  ',prop_a%p%npart_halfband
     WRITE(uw,*) 'nvelocity        ',prop_a%p%nvelocity                       !<-in
-!->out    WRITE(uw,*) 'qflux_g         ',prop_a%p%qflux_g
-!->out    WRITE(uw,*) 'qflux_e         ',prop_a%p%qflux_e
-!->out    WRITE(uw,*) 'qcurr_g         ',prop_a%p%qcurr_g
-!->out    WRITE(uw,*) 'qcurr_e         ',prop_a%p%qcurr_e
     WRITE(uw,*) 'qflux_g         ',prop_a%p%qflux(1,1)                     !<-in
     WRITE(uw,*) 'qflux_e         ',prop_a%p%qflux(1,2)                     !<-in
     WRITE(uw,*) 'qcurr_g         ',prop_a%p%qflux(2,1)                     !<-in
@@ -884,10 +820,6 @@ CONTAINS
     INTEGER :: full_version
 
     ! taken from Sergei
-!->out    qflux_g = prop_a%p%qflux_g
-!->out    qcurr_g = prop_a%p%qcurr_g
-!->out    qflux_e = prop_a%p%qflux_e
-!->out    qcurr_e = prop_a%p%qcurr_e
     qflux_g = prop_a%p%qflux(1,1)                                          !<-in
     qcurr_g = prop_a%p%qflux(2,1)                                          !<-in
     qflux_e = prop_a%p%qflux(1,2)                                          !<-in
@@ -903,14 +835,7 @@ CONTAINS
     rt0 = device%r0
     phi = prop_a%phi_r
 
-!!$    PRINT *, 'y ',y
-!!$    PRINT *, 'aiota_loc ',aiota_loc 
-!!$    PRINT *, 'rt0 ',rt0
-!!$    PRINT *, 'phi ',phi
-!!$    PRINT *, 'qflux_g ',qflux_g
     transport_factor = qflux_g*y(6)*(y(14)/(y(7)*y(13)))**2
-!!$    PRINT *, 'transport_factor ',transport_factor
-!!$    PAUSE
     dmono_over_dplateau=-2.d0*SQRT(2.d0)/pi*rt0*aiota_loc*transport_factor
 
     epseff3_2=-(9.d0*pi/(16.d0*SQRT(2.d0)))*collpar*rt0**2     &
@@ -935,23 +860,13 @@ CONTAINS
       uw = uw + 100
     END DO
     OPEN(uw,file='evolve.dat',position='append')
-!!$    WRITE (uw,'(1000(1x,e12.5))')                                   &
-!!$         REAL(phi),REAL(y(1:2)),REAL(aiota_loc),                    &
-!!$         REAL(dmono_over_dplateau),REAL(epseff3_2),REAL(alambda_b), &
-!!$         REAL(qflux_g),REAL(qflux_e),REAL(qcurr_g),REAL(qcurr_e)    &
-!!$         ,REAL(alambda_bb),REAL(3.d0*SQRT(pi)*qcurr_e*collpar/(32.d0*y(9)))*1.d0 &
-!!$         ,REAL(g_bs)    &                                              !<-GBS
-!!$         ,REAL(device%r0),REAL(surface%bmod0)
     WRITE (uw,'(1000(1x,e18.5))')                                   &
          (phi),(y(1:2)),(aiota_loc),                    &
          (dmono_over_dplateau),(epseff3_2),(alambda_b), &
          (qflux_g),(qflux_e),(qcurr_g),(qcurr_e),    &
          (alambda_bb),(gamma_E), &
          (g_bs),    &                                              !<-GBS
-         (device%r0),(surface%bmod0)  !, &
-         !y(6),y(7),y(9),y(13),y(14)
-    ! WRITE (uw,*)                                   &
-    !     y
+         (device%r0),(surface%bmod0)
     CLOSE(uw)
 
     ! Final output
@@ -960,14 +875,12 @@ CONTAINS
       avnabpsi = y(7) / y(6)
       avbhat2 = y(9) / y(6)
       dl1obhat = y(6)
-!      beta_out = (/ 1.0_dp/avnabpsi, 1.0_dp/avnabpsi, 1.0_dp /) ***change: 19.09.07
       beta_out = (/ y(14)/y(13)/avnabpsi, y(14)/y(13)/avnabpsi, y(13)/y(14) /)
 
       DO i = 1,3
         i_p = ind_map(i)
         DO j = 1,3
           j_p = ind_map(j)
-!          gamma_fco(i,j) = prop_a%p%qflux(i_p,j_p) / y(9)!***change: 19.09.07
           gamma_fco(i,j) = - prop_a%p%qflux(i_p,j_p) / y(6)
           gamma_out(i,j) = gamma_fco(i,j) * beta_out(i) * beta_out(j)
         END DO
@@ -1039,7 +952,6 @@ CONTAINS
       CLOSE(uw)
 
       OPEN(uw,file='sigma_alex.dat')
-!      write(uw,*) 1.5d0*sqrt(pi)**3*collpar*(device%r0), &
       WRITE(uw,*) 0.75d0*SQRT(pi)**3*collpar*(device%r0)/aiota_loc, &
                    -3.d0*pi/32.d0*collpar*gamma_out(3,3)
       CLOSE(uw)
@@ -1070,16 +982,11 @@ CONTAINS
   SUBROUTINE propagator_solver_loc(iend,iendperiod,bin_split_mode,            &
        eta_ori,ierr_solv,ierr_join                                            &
        )
-!  SUBROUTINE propagator_solver_loc(iend,iendperiod,bin_split_mode,            &
-!       eta_ori,eta_bs,ierr_solv,ierr_join                                     &
-!       )
-    !
+
     USE device_mod
     USE flint_mod , ONLY : phi_split_mode,phi_place_mode,  &
          phi_split_min,hphi_mult,max_solver_try
     !! Modifications by Andreas F. Martitsch (15.03.2017)
-    ! old:
-    !USE collisionality_mod, ONLY : isw_axisymm
     ! new: add exchange y-vector between ntv_mod and propagator_mod
     USE collisionality_mod, ONLY : isw_axisymm, y_axi_averages
     USE ntv_mod, ONLY : y_ntv_mod
@@ -1092,7 +999,6 @@ CONTAINS
     INTEGER,                      INTENT(in)  :: iendperiod
     INTEGER,                      INTENT(in)  :: bin_split_mode
     REAL(kind=dp), DIMENSION(0:), INTENT(in)  :: eta_ori
-    ! TYPE(binarysplit),            INTENT(in)  :: eta_bs
     INTEGER,                      INTENT(out) :: ierr_solv
     INTEGER,                      INTENT(out) :: ierr_join
     ! 
@@ -1227,10 +1133,6 @@ CONTAINS
              phi_split_mode = phi_split_mode_ori                  !<-in Winny
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I try it again ',count_solv+1
-!!$          IF (count_solv .GT. 1) THEN
-!!$             PRINT *, 'PAUSE - MODE'
-!!$             PAUSE
-!!$          END IF
           ELSE IF (ierr_solv .EQ. 3 .AND. count_solv .GE. max_solver_try) THEN
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I give up'
@@ -1243,28 +1145,15 @@ CONTAINS
        sy = SIZE(fieldpropagator%parent%mdata%yend,1) ! WINNY YEND
        IF (ALLOCATED(prop_c%y)) DEALLOCATE(prop_c%y)
        ALLOCATE(prop_c%y(sy))
-       !prop_c%y = fieldpropagator%mdata%yend
        prop_c%y = fieldpropagator%parent%mdata%yend ! WINNY YEND
        ! write eta at boundaries - replaced by modified stuff
-       !prop_c%p%eta_boundary_l = 1.0_dp / fieldpropagator%b_l
-       !prop_c%p%eta_boundary_r = 1.0_dp / fieldpropagator%b_r
        prop_c%p%eta_boundary_l = eta_modboundary_l
        prop_c%p%eta_boundary_r = eta_modboundary_r
        ! link actual to current (mainly for results and diagnostic)
        prop_a => prop_c
-       ! writing of propagators
-       !IF (prop_write .EQ. 2) THEN
-       !   CALL write_propagator_content(prop_a,3)
-       !   IF (prop_first_tag .EQ. 0) prop_first_tag = fieldpropagator%tag
-       !   prop_last_tag = fieldpropagator%tag
-       !END IF
        ! ---------------------------------------------------------------------------
        IF ( mpro%isMaster() ) CALL diag_propagator_result(iend)
-       !! Modification by Andreas F. Martitsch (16.07.2015)
-       ! not needed for NTV computations
-       ! (furthermore, several uninitialised value(s) are used - valgrind)
-       !CALL diag_propagator_distrf
-       !! End Modification by Andreas F. Martitsch (16.07.2015)
+
     ELSE ! this is the general case
    
        IF (prop_reconstruct .EQ. 0) THEN
@@ -1346,10 +1235,6 @@ CONTAINS
              phi_split_mode = phi_split_mode_ori                  !<-in Winny
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I try it again ',count_solv+1
-!!$          IF (count_solv .GT. 1) THEN
-!!$             PRINT *, 'PAUSE - MODE'
-!!$             PAUSE
-!!$          END IF
           ELSE IF (ierr_solv .EQ. 3 .AND. count_solv .GE. max_solver_try) THEN
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I give up'
@@ -1365,11 +1250,8 @@ CONTAINS
        sy = SIZE(fieldpropagator%parent%mdata%yend,1) ! WINNY YEND
        IF (ALLOCATED(prop_c%y)) DEALLOCATE(prop_c%y)
        ALLOCATE(prop_c%y(sy))
-       !prop_c%y = fieldpropagator%mdata%yend
        prop_c%y = fieldpropagator%parent%mdata%yend ! WINNY YEND
        ! write eta at boundaries - replaced by modified stuff
-       !prop_c%p%eta_boundary_l = 1.0_dp / fieldpropagator%b_l
-       !prop_c%p%eta_boundary_r = 1.0_dp / fieldpropagator%b_r
        prop_c%p%eta_boundary_l = eta_modboundary_l
        prop_c%p%eta_boundary_r = eta_modboundary_r
        ! link actual to current (mainly for results and diagnostic)
@@ -1407,7 +1289,6 @@ CONTAINS
        ELSEIF (prop_count_call .EQ. 1 .AND. prop_write .EQ. 2) THEN
           CALL construct_propagator
           prop_c%nr_joined = -1
-          ! prop_c => prop_c%prev
           prop_a => prop_c       
        ELSE
           IF (prop_ibegperiod .EQ. 0 .OR. iendperiod .EQ. 1 .OR. prop_write .EQ. 2) THEN 
@@ -1500,9 +1381,6 @@ CONTAINS
                 ! Winny 
                 ! here the periods are joined, so cmat should be available
                 ! but cmat is not stored, so this has to be handled
-                ! PRINT *, 'Joining of periods'
-                ! PRINT *,fieldpropagator%parent%prev%tag
-                ! PRINT *,fieldpropagator%parent%tag
                 IF (prop_write .EQ. 1) CALL write_prop_bound_content(prop_c%prev,prop_c,1)
                 IF (ALLOCATED(prop_c%prev%p%cmat)) DEALLOCATE(prop_c%prev%p%cmat)
                 IF (ALLOCATED(prop_c%p%cmat)) DEALLOCATE(prop_c%p%cmat)
@@ -1544,7 +1422,6 @@ CONTAINS
                 IF (prop_join_ends .EQ. 1) THEN
                    i_joined = 1
                    CALL construct_propagator()
-                   !prop_c = prop_c%prev
                    CALL assign_propagator_content(prop_c,prop_c%prev)
                    CALL join_ripples_interface(ierr_join,'final')
                    prop_c => prop_c%prev
@@ -1835,7 +1712,6 @@ CONTAINS
     
     INTEGER :: i
     INCLUDE 'longint.f90'
-    !INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE :: bin1,bin2
     type(sparsevec), dimension(:), allocatable :: bin1_sparse, bin2_sparse
     INTEGER :: deall
 
@@ -1905,11 +1781,9 @@ CONTAINS
           PRINT *, 'JOIN binarysplit action - forward'
        END IF
        ! look for splits which are in o%eta_bs_r and not in n%eta_bs_l
-       !CALL compare_binarysplit(o%eta_bs_r,n%eta_bs_l,bin1,'diff')
        CALL compare_binarysplit(o%eta_bs_r,n%eta_bs_l,bin1_sparse,'diff')
        ! do the joining of levels
        ! use bin1 to remove them from o%eta_bs_r
-       !CALL join_binarysplit(loc_bs_1a,o%eta_bs_r,bin1)
        CALL join_binarysplit(loc_bs_1a,o%eta_bs_r,bin1_sparse)
        ! now loc_bs_1a is the modified o%eta_bs_r
 
@@ -1918,16 +1792,12 @@ CONTAINS
           PRINT *, 'SPLIT binarysplit action - forward'
        END IF
        ! 
-       !CALL compare_binarysplit(n%eta_bs_l,loc_bs_1a,bin2,'diff')
        CALL compare_binarysplit(n%eta_bs_l,loc_bs_1a,bin2_sparse,'diff')
        ! do the splitting of levels
-       !CALL dosplit_binarysplit(loc_bs_2a,loc_bs_1a,bin2)
        CALL dosplit_binarysplit(loc_bs_2a,loc_bs_1a,bin2_sparse)
        ! now loc_bs_2a is the final modified o%eta_bs_r
 
        ! remove unnecessary things
-       !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
-       !IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
        IF (ALLOCATED(bin1_sparse)) DEALLOCATE(bin1_sparse)
        IF (ALLOCATED(bin2_sparse)) DEALLOCATE(bin2_sparse)
 
@@ -1937,10 +1807,8 @@ CONTAINS
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'JOIN binarysplit action - backward'
        END IF
-       !CALL compare_binarysplit(n%eta_bs_l,o%eta_bs_r,bin1,'diff')
        CALL compare_binarysplit(n%eta_bs_l,o%eta_bs_r,bin1_sparse,'diff')
        ! do the joining of levels
-       !CALL join_binarysplit(loc_bs_1b,n%eta_bs_l,bin1)
        CALL join_binarysplit(loc_bs_1b,n%eta_bs_l,bin1_sparse)
        ! now loc_bs_1b is the modified n%eta_bs_l
 
@@ -1948,23 +1816,12 @@ CONTAINS
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'SPLIT binarysplit action - backward'
        END IF
-       !CALL compare_binarysplit(o%eta_bs_r,loc_bs_1b,bin2,'diff')
        CALL compare_binarysplit(o%eta_bs_r,loc_bs_1b,bin2_sparse,'diff')
        ! do the splitting of levels
-       !CALL dosplit_binarysplit(loc_bs_2b,loc_bs_1b,bin2)
        CALL dosplit_binarysplit(loc_bs_2b,loc_bs_1b,bin2_sparse)
        ! now loc_bs_2b is the final modified n%eta_bs_l - not needed
 
-       ! put the eta_information on right side of propagator
-       ! o%eta_bs_r = loc_bs_2a 
-       ! CALL get_binarysplit(loc_bs_2a,o%p%eta_r,'x')
-       ! put the eta_information on left side of propagator
-       ! n%eta_bs_l = loc_bs_2b 
-       ! CALL get_binarysplit(loc_bs_2b,n%p%eta_l,'x')
-
        ! remove unnecessary things
-       !IF (ALLOCATED(bin1)) DEALLOCATE(bin1)
-       !IF (ALLOCATED(bin2)) DEALLOCATE(bin2)
        if (allocated(bin1_sparse)) deallocate(bin1_sparse)
        if (allocated(bin2_sparse)) deallocate(bin2_sparse)
        
@@ -2006,12 +1863,10 @@ CONTAINS
 
           PRINT *,  'old propagator tag:   ', o%fieldpropagator_tag_s,o%fieldpropagator_tag_e
           PRINT *,  'size of o%p%amat_m_p: ', SIZE(o%p%amat_m_p,1),SIZE(o%p%amat_m_p,2)
-!->out          PRINT *,  ' should be            ', o%p%npass_r, o%p%npass_r
           PRINT *,  ' should be            ', o%p%npass_r*(o%p%nvelocity+1), o%p%npass_r*(o%p%nvelocity+1) !<-in
 
           PRINT *,  'new propagator tag:   ', n%fieldpropagator_tag_s,n%fieldpropagator_tag_e
           PRINT *,  'size of n%p%amat_p_m: ', SIZE(n%p%amat_p_m,1),SIZE(n%p%amat_p_m,2)
-!->out          PRINT *,  ' should be            ', n%p%npass_l, n%p%npass_l
           PRINT *,  ' should be            ', n%p%npass_l*(n%p%nvelocity+1), n%p%npass_l*(n%p%nvelocity+1)  !<-in
           
 
@@ -2029,19 +1884,14 @@ CONTAINS
              END IF
           END DO
 
-          !CALL compare_binarysplit(loc_bs_2a,n%eta_bs_l,bin1,'diff')
           CALL compare_binarysplit(loc_bs_2a,n%eta_bs_l,bin1_sparse,'diff')
-          !CALL printbin_binarysplit(bin1)
           PRINT *, 'Count difference forward:  ', COUNT(bin1_sparse%len .NE. 0)
           if (allocated(bin1_sparse)) deallocate(bin1_sparse)
-          !call compare_binarysplit(loc_bs_2b,o%eta_bs_r,bin1,'diff')
           call compare_binarysplit(loc_bs_2b,o%eta_bs_r,bin1_sparse,'diff')
-          !CALL printbin_binarysplit(bin1)
           PRINT *, 'Count difference backward:   ', COUNT(bin1_sparse%len .NE. 0)
           IF (ALLOCATED(bin1_sparse)) DEALLOCATE(bin1_sparse)
 
           PRINT *, 'c_forward.dat and c_backward.dat written'
-          !PAUSE
        END IF       
        END IF
        CALL deconstruct_binarysplit(loc_bs_1a)
@@ -2291,11 +2141,9 @@ CONTAINS
     prop_bound = 1
     IF (prop_type .EQ. 1) THEN
        prop_right = n%fieldperiod_tag_s
-       !prop_left  = o%fieldperiod_tag_e
        prop_left  = prop_right - 1
     ELSEIF (prop_type .EQ. 3) THEN
        prop_right = n%fieldpropagator_tag_s
-       !prop_left  = o%fieldperiod_tag_e
        prop_left  = prop_right - 1
     ELSE
        PRINT *, 'Propagator Writing: prop_type not implemented: ',prop_type
@@ -2360,8 +2208,6 @@ CONTAINS
 
     CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
     CALL unit_propagator
-
-    !PRINT *, prop_cfilename
 
     OPEN(unit=prop_unit,file=prop_cfilename,status='old', &
          form=prop_format,action='read')
@@ -2648,9 +2494,6 @@ CONTAINS
     source_m_N = l%p%source_m
     NULLIFY(l)
 
-    !PRINT *, 'source_p_0', SIZE(source_p_0,1),SIZE(source_p_0,2)
-    !PRINT *, 'source_m_N', SIZE(source_m_N,1),SIZE(source_m_N,2)
-
     ! write the results - starting point
     CALL filename_propagator(5,0,prop_last_tag,prop_last_tag)
     CALL unit_propagator
@@ -2732,33 +2575,6 @@ CONTAINS
     WRITE(prop_unit,*) LBOUND(source_p_0,2),UBOUND(source_p_0,2)
     WRITE(prop_unit,*) source_p_0
     CLOSE(unit=prop_unit)
-
-
-
-!!$    ! for joining the cmat must go into the propagator
-!!$    ! forward goes to the left - l(eft)
-!!$    lb1 = LBOUND(b%c_forward,1)
-!!$    ub1 = UBOUND(b%c_forward,1)
-!!$    lb2 = LBOUND(b%c_forward,2)
-!!$    ub2 = UBOUND(b%c_forward,2)
-!!$    IF (ALLOCATED(l%p%cmat)) DEALLOCATE(l%p%cmat)
-!!$    ALLOCATE(l%p%cmat(lb1:ub1,lb2:ub2))
-!!$    l%p%cmat = b%c_forward
-!!$    ! backward goes to the right - r(ight)
-!!$    lb1 = LBOUND(b%c_backward,1)
-!!$    ub1 = UBOUND(b%c_backward,1)
-!!$    lb2 = LBOUND(b%c_backward,2)
-!!$    ub2 = UBOUND(b%c_backward,2)
-!!$    IF (ALLOCATED(r%p%cmat)) DEALLOCATE(r%p%cmat)
-!!$    ALLOCATE(r%p%cmat(lb1:ub1,lb2:ub2))
-!!$    r%p%cmat = b%c_backward
-!!$
-!!$    ! when you do joining the result is in prop_c
-!!$    prop_c => prop_c%next
-!!$    CALL join_ripples(ierr_join)
-
-
-
 
   END SUBROUTINE reconstruct_propagator_dist
 
