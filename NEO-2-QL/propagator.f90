@@ -92,6 +92,7 @@ MODULE propagator_mod
   CHARACTER(len=6),   PARAMETER, PRIVATE         :: prop_cperiod = 'period'
   CHARACTER(len=10),  PARAMETER, PRIVATE         :: prop_cpropagator = 'propagator'
   CHARACTER(len=8),   PARAMETER, PRIVATE         :: prop_cboundary = 'boundary'
+  CHARACTER(len=11),  PARAMETER, PRIVATE         :: prop_cbinarysplit = 'binarysplit'
   CHARACTER(len=12),  PARAMETER, PRIVATE         :: prop_ctaginfo = 'taginfo.prop'
   CHARACTER(len=16),  PARAMETER, PRIVATE         :: prop_cresult = 'reconstruct'
   CHARACTER(len=100),            PRIVATE         :: prop_cfilename
@@ -2724,8 +2725,10 @@ CONTAINS
        prop_cfilename = prop_cperiod
     ELSEIF (prop_type .EQ. 3 .OR. prop_type .EQ. 4) THEN ! propagator
        prop_cfilename = prop_cpropagator
-    ELSEIF (prop_type .EQ. 5) THEN ! propagator
+    ELSEIF (prop_type .EQ. 5) THEN ! result
        prop_cfilename = prop_cresult
+    ELSEIF (prop_type .EQ. 6) THEN ! binarysplit
+       prop_cfilename = prop_cbinarysplit
     END IF
 
     ! add boundary to name
