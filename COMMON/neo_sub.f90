@@ -1,5 +1,4 @@
 MODULE neo_sub_mod
-  USE mpiprovider_module
 
 CONTAINS
 
@@ -3046,6 +3045,8 @@ END SUBROUTINE neo_zeros2d
 ! **********************************************************************
 
 SUBROUTINE neo_filenames
+
+  use mpiprovider_module, only : mpro
 
   use nrtype
   USE neo_units
