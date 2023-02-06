@@ -12,7 +12,7 @@ SUBROUTINE spl2d(nx,ny,hx,hy,mx,my,f,spl)
 !         f(nx,ny)            f(x,y)-values
 ! Output: spl                 Array with spline parameters
 
-  USE neo_precision
+  use nrtype
 
   IMPLICIT NONE
 
@@ -76,7 +76,7 @@ SUBROUTINE eva2d(nx,ny,ix,iy,dx,dy,spl,spval)
 !         spl                 array with spline data
 ! Output: spval               evaluated function value
 
-  USE neo_precision
+  use nrtype
 
   IMPLICIT NONE
 
@@ -109,7 +109,7 @@ SUBROUTINE eva2d_fd(nx,ny,ix,iy,dx,dy,spl,spval)
 !                             spval(1) = df/dx
 !                             spval(2) = df/dy
 
-  USE neo_precision
+  use nrtype
 
   IMPLICIT NONE
 
@@ -175,7 +175,7 @@ SUBROUTINE eva2d_sd(nx,ny,ix,iy,dx,dy,spl,spval)
 !                             spval(2) = d^2f/(dxdy)
 !                             spval(3) = d^2f/dy^2
 
-  USE neo_precision
+  use nrtype
 
   IMPLICIT NONE
 
@@ -256,7 +256,7 @@ SUBROUTINE splreg(n,h,y,bi,ci,di)
 !         y(n)                y-values
 ! Output: bi(n),ci(n),di(n)   Spline parameters
 
-  USE neo_precision
+  use nrtype
 
   IMPLICIT NONE
 
@@ -310,7 +310,7 @@ SUBROUTINE splper(n,h,y,bi,ci,di)
 !         y(n)                y-values
 ! Output: bi(n),ci(n),di(n)   Spline parameters
 
-  USE neo_precision
+  use nrtype
 
   IMPLICIT NONE
 
@@ -381,7 +381,7 @@ SUBROUTINE spfper(np1,amx1,amx2,amx3)
 
 ! Helper routine for splfi
 
-  USE neo_precision
+  use nrtype
 
   IMPLICIT NONE
 
@@ -433,7 +433,7 @@ SUBROUTINE poi2d(hx,hy,mx,my,                         &
 !         dx, dy              distance from x(ix) and y(iy)
 !         ierr                error (> 0)
 
-  USE neo_precision
+  use nrtype
 
   IMPLICIT NONE
 

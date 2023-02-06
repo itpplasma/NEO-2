@@ -1,6 +1,6 @@
 MODULE neo_magfie
 
-  USE neo_precision
+  use nrtype
   USE neo_input,                                                       &
        ONLY: es, ixm, ixn, mnmax, psi_pr, pixm, pixn, nfp
   USE neo_control,                                                     &

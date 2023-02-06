@@ -11,8 +11,8 @@
 !>   neo_magfie_perturbation
 MODULE ntv_mod
   ! module containing numerical constants
-  USE neo_precision
-  !
+  use nrtype
+
   IMPLICIT NONE
   !
   ! Define physical constants (cgs-units)
@@ -187,8 +187,8 @@ MODULE ntv_mod
 CONTAINS
   !
   SUBROUTINE compute_Dij_norm_a(qflux_NA_in,qflux_AX_in,Dij_NA,Dij_AX)
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : device, surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -437,8 +437,8 @@ CONTAINS
   SUBROUTINE compute_Dijab_a(qflux_ab_NA_in, qflux_ab_AX_in, &
        row_ind_spec, col_ind_spec, row_ind_ptr, col_ind_ptr, &
        Dijab_NA, Dijab_AX, Dijab_norm_NA, Dijab_norm_AX)
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : device, surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -709,8 +709,8 @@ CONTAINS
   END SUBROUTINE compute_Dijab_a
   !
   SUBROUTINE write_ntv_output_a(qflux_in)
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : device, surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -933,8 +933,8 @@ CONTAINS
   !> - writes file to disk in current folder
   !> - (?)
   SUBROUTINE write_multispec_output_a()
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : device, surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -2040,8 +2040,8 @@ CONTAINS
   !
   SUBROUTINE compute_Er(row_ind_ptr, col_ind_ptr, D31AX_spec, D32AX_spec, &
        & Er, D33AX_spec_in, avEparB_ov_avb2_in)
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -2338,8 +2338,8 @@ CONTAINS
   !
   SUBROUTINE compute_A3norm_a(row_ind_ptr, col_ind_ptr, D31AX_spec, D32AX_spec, &
        D33AX_spec, Er, avEparB_ov_avb2)
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -2520,8 +2520,8 @@ CONTAINS
   !
   SUBROUTINE compute_Er_and_A3norm_a(row_ind_ptr, col_ind_ptr, D31AX_spec, D32AX_spec, &
        D33AX_spec, Er, avEparB_ov_avb2)
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -2879,8 +2879,8 @@ CONTAINS
   END SUBROUTINE compute_Er_and_A3norm_a
   !
   SUBROUTINE get_Er_a(qflux_ab_AX_in, Er)
-    !
-    USE neo_precision
+
+    use nrtype
     USE collisionality_mod, ONLY : num_spec
     !
     ! ---------------------------------------------------------------!
@@ -2927,8 +2927,8 @@ CONTAINS
   END SUBROUTINE get_Er_a
   !
   SUBROUTINE get_Er_b(qflux_ab_AX_in, Er, avEparB_ov_avb2)
-    !
-    USE neo_precision
+
+    use nrtype
     USE collisionality_mod, ONLY : num_spec
     !
     ! ---------------------------------------------------------------!
@@ -3016,8 +3016,8 @@ CONTAINS
   END SUBROUTINE get_Er_b
   !
   SUBROUTINE get_B_rho_L_loc_a()
-    !
-    USE neo_precision, ONLY : dp
+
+    use nrtype, only : dp
     USE collisionality_mod, ONLY : num_spec, z_spec, m_spec, T_spec
     !
     ! local indices
@@ -3037,8 +3037,8 @@ CONTAINS
   SUBROUTINE compute_Vphi_profile(row_ind_ptr, col_ind_ptr, &
        & D31AX_spec, D32AX_spec, Er, R_Vphi_prof, Z_Vphi_prof, &
        & Vphi_prof_spec, Vtht_prof_spec, D33AX_spec_in, avEparB_ov_avb2_in)
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -3316,8 +3316,8 @@ CONTAINS
   !
   SUBROUTINE compute_VthtB_and_VphiB_a(row_ind_ptr, col_ind_ptr, &
        D31AX_spec, D32AX_spec, Er, VthtB_spec, VphiB_spec)
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -3486,8 +3486,8 @@ CONTAINS
   SUBROUTINE compute_VthtB_and_VphiB_b(row_ind_ptr, col_ind_ptr, &
        D31AX_spec, D32AX_spec, D33AX_spec, Er, avEparB_ov_avb2, &
        VthtB_spec, VphiB_spec, VthtB_Ware_spec, VphiB_Ware_spec)
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -3637,8 +3637,8 @@ CONTAINS
   !
   SUBROUTINE compute_Gamma_a(row_ind_ptr, col_ind_ptr, &
        D11_spec, D12_spec, Er, Gamma_spec)
-    !
-    USE neo_precision
+
+    use nrtype
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
     !
@@ -3702,8 +3702,8 @@ CONTAINS
   SUBROUTINE compute_Gamma_b(row_ind_ptr, col_ind_ptr, &
        D11_spec, D12_spec, D13_spec, Er, avEparB_ov_avb2, &
        Gamma_spec, Gamma_Ware_spec)
-    !
-    USE neo_precision
+
+    use nrtype
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
     !
@@ -3761,8 +3761,8 @@ CONTAINS
   !
   SUBROUTINE compute_Qflux_a(row_ind_ptr, col_ind_ptr, &
        D21_spec, D22_spec, Er, Qflux_spec)
-    !
-    USE neo_precision
+
+    use nrtype
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
     !
@@ -3828,8 +3828,8 @@ CONTAINS
   SUBROUTINE compute_Qflux_b(row_ind_ptr, col_ind_ptr, &
        D21_spec, D22_spec, D23_spec, Er, avEparB_ov_avb2, &
        Qflux_spec, Qflux_Ware_spec)
-    !
-    USE neo_precision
+
+    use nrtype
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
     !
@@ -3889,8 +3889,8 @@ CONTAINS
   !
   SUBROUTINE compute_ParFlow_a(row_ind_ptr, col_ind_ptr, &
        D31_spec, D32_spec, Er, ParFlow_spec)
-    !
-    USE neo_precision
+
+    use nrtype
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
     !
@@ -3956,8 +3956,8 @@ CONTAINS
   SUBROUTINE compute_ParFlow_b(row_ind_ptr, col_ind_ptr, &
        D31_spec, D32_spec, D33_spec, Er, avEparB_ov_avb2, &
        ParFlow_spec, ParFlow_Ware_spec)
-    !
-    USE neo_precision
+
+    use nrtype
     USE collisionality_mod, ONLY : num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec
     !
@@ -4016,8 +4016,8 @@ CONTAINS
   END SUBROUTINE compute_ParFlow_b
   !
   SUBROUTINE compute_TphiNA_a(Gamma_NA_spec, TphiNA_spec, TphiNA_tot)
-    !
-    USE neo_precision
+
+    use nrtype
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
