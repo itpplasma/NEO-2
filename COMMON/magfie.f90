@@ -47,7 +47,7 @@
 
 MODULE magfie_mod
 
-  USE neo_precision,  ONLY: dp 
+  use nrtype, only : dp
   IMPLICIT NONE
 
   !! Modifications by Andreas F. Martitsch (09.03.2014)

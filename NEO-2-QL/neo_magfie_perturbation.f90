@@ -1,7 +1,7 @@
 MODULE neo_magfie_perturbation
   !
   ! module containing numerical constants
-  USE neo_precision
+  use nrtype
   ! module containing switches from the input file (neo.in)
   USE neo_control, ONLY: lab_swi, inp_swi
   ! interface to spline routines

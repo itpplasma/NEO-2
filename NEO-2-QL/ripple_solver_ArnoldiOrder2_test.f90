@@ -82,7 +82,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
        qflux_symm_allspec, qflux_ntv_allspec, &
        MtOvR_spec, isw_calc_Er, B_rho_L_loc_spec, isw_calc_MagDrift
   use ntv_mod, only : get_Er, get_B_rho_L_loc
-  !USE neo_precision, ONLY : PI
+  !use nrtype, only : PI
   !! End Modification by Andreas F. Martitsch (14.07.2015)
   !! Modification by Andreas F. Martitsch (28.07.2015)
   ! MPI SUPPORT for multi-species part

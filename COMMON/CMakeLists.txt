@@ -112,8 +112,6 @@ set(COMMON_FILES
   neo_exchange.f90
   neo_input.f90
   neo_magfie.f90
-  neo_parameters.f90
-  neo_precision.f90
   neo_spline_b00.f90
   neo_spline_data.f90
   neo_spline.f90
