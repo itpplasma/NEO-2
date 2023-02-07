@@ -12,7 +12,7 @@
 
 MODULE solve_systems
 
-  USE inter_precision, ONLY: I4B, DP
+  use nrtype, only : I4B, DP
 
   IMPLICIT NONE
 

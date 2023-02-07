@@ -68,7 +68,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 ! Modules
 !-----------------------------------------------------------------------
 
-  USE inter_precision,  ONLY: I4B, DP
+  use nrtype, only : I4B, DP
   USE inter_interfaces, ONLY: calc_opt_lambda3
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   !Replace standard solver from Lapack with sparse solver
@@ -91,7 +91,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   REAL(DP),                   INTENT(IN)    :: m
   INTERFACE
      FUNCTION f(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -611,7 +611,7 @@ SUBROUTINE reconstruction3_a(ai, bi, ci, di, h, a, b, c, d)
 ! Modules
 !-----------------------------------------------------------------------
 
-  USE inter_precision, ONLY: DP
+  use nrtype, only : DP
 
 !-----------------------------------------------------------------------
 
@@ -665,7 +665,7 @@ SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
 ! Modules
 !-----------------------------------------------------------------------
 
-  USE inter_precision,  ONLY: I4B, DP
+  use nrtype, only : I4B, DP
   USE inter_interfaces, ONLY: splinecof3, reconstruction3
 
 !-----------------------------------------------------------------------
@@ -683,7 +683,7 @@ SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
   INTEGER(I4B),               INTENT(IN)    :: sw1, sw2
   INTERFACE
      FUNCTION f(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -838,7 +838,7 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
 ! Modules
 !-----------------------------------------------------------------------
 
-  USE inter_precision,  ONLY: I4B, DP
+  use nrtype, only : I4B, DP
   USE inter_interfaces, ONLY: splinecof3_lo_driv
 
 !-----------------------------------------------------------------------
@@ -852,7 +852,7 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   REAL(DP),     DIMENSION(:,:), INTENT(OUT) :: a, b, c, d
   INTERFACE
      FUNCTION f(x,m)
-       USE inter_precision, ONLY: DP
+       use nrtype, only : DP
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
@@ -909,7 +909,7 @@ SUBROUTINE calc_opt_lambda3_a(x, y, lambda)
 ! Modules
 !-----------------------------------------------------------------------
 
-  USE inter_precision,  ONLY: I4B, DP
+  use nrtype, only : I4B, DP
   USE inter_interfaces, ONLY: dist_lin
 !-----------------------------------------------------------------------
 
@@ -962,7 +962,7 @@ END SUBROUTINE calc_opt_lambda3_a
 
 SUBROUTINE dist_lin_a(x, y, ymax, dist)
 
-  USE inter_precision, ONLY: DP
+  use nrtype, only : DP
 
   IMPLICIT NONE
 
@@ -1010,7 +1010,7 @@ subroutine splinecof1_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   !---------------------------------------------------------------------
   ! Modules
   !---------------------------------------------------------------------
-  use inter_precision,  only : I4B, DP
+  use nrtype,  only : I4B, DP
 
   implicit none
 
@@ -1024,7 +1024,7 @@ subroutine splinecof1_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   real(DP),                   intent(in)    :: m
   interface
     function f(x,m)
-      use inter_precision,  only : DP
+      use nrtype,  only : DP
       implicit none
       real(DP), intent(in) :: x
       real(DP), intent(in) :: m
@@ -1125,7 +1125,7 @@ subroutine reconstruction1_a(ai, bi, ci, di, h, a, b, c, d)
   !-----------------------------------------------------------------------
   ! Modules
   !-----------------------------------------------------------------------
-  use inter_precision, only : DP
+  use nrtype, only : DP
 
   implicit none
 
@@ -1174,7 +1174,7 @@ subroutine splinecof1_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
   !---------------------------------------------------------------------
   ! Modules
   !---------------------------------------------------------------------
-  use inter_precision,  only : I4B, DP
+  use nrtype,  only : I4B, DP
   use inter_interfaces, only : splinecof1, reconstruction1
 
   !-----------------------------------------------------------------------
@@ -1191,7 +1191,7 @@ subroutine splinecof1_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
   integer(I4B),               intent(in)    :: sw1, sw2
   interface
      function f(x,m)
-       use inter_precision, only : DP
+       use nrtype, only : DP
        implicit none
        real(DP), intent(in) :: x
        real(DP), intent(in) :: m
@@ -1345,7 +1345,7 @@ subroutine splinecof1_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   !---------------------------------------------------------------------
   ! Modules
   !---------------------------------------------------------------------
-  use inter_precision,  only : I4B, DP
+  use nrtype,  only : I4B, DP
   use inter_interfaces, only : splinecof1_lo_driv
 
   !---------------------------------------------------------------------
@@ -1359,7 +1359,7 @@ subroutine splinecof1_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   real(DP),     dimension(:,:), intent(out) :: a, b, c, d
   interface
      function f(x,m)
-       use inter_precision, only : DP
+       use nrtype, only : DP
        implicit none
        real(DP), intent(in) :: x
        real(DP), intent(in) :: m

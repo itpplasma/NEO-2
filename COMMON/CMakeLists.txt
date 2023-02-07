@@ -97,7 +97,6 @@ set(COMMON_FILES
   flint_mod.f90
   fluxsplitter.f90
   inter_interfaces.f90
-  inter_precision.f90
   kin_allocate.f90
   lapack_band.f90
   magdata_for_particles.f90
