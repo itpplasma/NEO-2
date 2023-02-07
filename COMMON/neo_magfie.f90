@@ -199,6 +199,20 @@ MODULE neo_magfie
 
 CONTAINS
 
+  !> \brief Calculate magnetic field quantities.
+  !>
+  !> input:
+  !> ------
+  !> x: vector of floats, 3 elements?, coordinates?
+  !>
+  !> output:
+  !> -------
+  !> bmod: float, magnetic field modulus at given location?
+  !> sqrtg: float, square root of metric determinant at given location?
+  !> bder: vector of floats, same size as x.
+  !> hcovar: vector of floats, same size as x.
+  !> hctrvr: vector of floats, same size as x.
+  !> hcurl: vector of floats, same size as x.
   SUBROUTINE neo_magfie_a( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
 
     use neo_spline_data, only : lsw_linear_boozer
@@ -1748,9 +1762,22 @@ CONTAINS
 !!$    boozer_isqrg = isqrg
 !!$    !! End Modifications by Andreas F. Martitsch (12.03.2014)
   END SUBROUTINE neo_magfie_a
-  
-  !! Modifications by Andreas F. Martitsch (11.03.2014)
-  ! Optional output (necessary for modeling the magnetic rotation)
+
+
+  !> \brief Calculate magnetic field quantities.
+  !>
+  !> Calculate magnetic field quantities, like neo_magfie_a, but with
+  !> an additional output (necessary for modeling the magnetic rotation).
+  !>
+  !> input:
+  !> ------
+  !> same as for magfie_a
+  !>
+  !> output:
+  !> -------
+  !> same as for magfie_a
+  !> bcovar_s_hat_der: vector of same size as x. Output of first
+  !>   quantity not yet implemented.
   SUBROUTINE neo_magfie_b( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl, bcovar_s_hat_der )
     ! input / output
     REAL(dp), DIMENSION(:),       INTENT(in)  :: x
@@ -1772,10 +1799,24 @@ CONTAINS
     bcovar_s_hat_der=bcovar_s_hat_der * 1.d2 ! conversion to cgs-units
     !
   END SUBROUTINE neo_magfie_b
-  !! End Modifications by Andreas F. Martitsch (11.03.2014)
 
-  !! Modifications by Andreas F. Martitsch (13.11.2014)
-  ! Optional output for NTV output
+
+  !> \brief Calculate magnetic field quantities.
+  !>
+  !> Calculate magnetic field quantities, like neo_magfie_b, but with
+  !> two additional outputs (necessary for NTV).
+  !>
+  !> input:
+  !> ------
+  !> same as for magfie_a
+  !>
+  !> output:
+  !> -------
+  !> same as for magfie_a
+  !> bcovar_s_hat_der: vector of same size as x. Output of first
+  !>   quantity not yet implemented.
+  !> R: float, radius in cgs units.
+  !> Z: float, vertical position in cgs units.
   SUBROUTINE neo_magfie_c( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl, bcovar_s_hat_der, R, Z )
     ! input / output
     REAL(dp), DIMENSION(:),       INTENT(in)  :: x
@@ -1795,7 +1836,7 @@ CONTAINS
     Z = z_val * 1.d2 ! conversion to cgs-units
     !
   END SUBROUTINE neo_magfie_c
-  !! End Modifications by Andreas F. Martitsch (13.11.2014)
+
 
   !! Modifications by Andreas F. Martitsch (28.03.2017)
   ! transformation function Boozer coord. -> Symm. flux coord.
