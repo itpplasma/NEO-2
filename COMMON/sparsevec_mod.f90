@@ -1,9 +1,7 @@
 module sparsevec_mod
+  use nrtype, only : longint
 
   implicit none
-  
-  private longint
-  include 'longint.f90'
 
   private dp
   integer, parameter    :: dp = kind(1.0d0)
@@ -31,6 +29,8 @@ module sparsevec_mod
 contains
 
   subroutine insert_sparsevec(this, idx, val, idxnear)
+    use nrtype, only : longint
+
     class(sparsevec) :: this
     integer          :: idx, idxnear
     integer(kind=longint) :: val
@@ -57,7 +57,7 @@ contains
        this%values(this%len_sparse) = val
     end if
 
- end if
+    end if
   end subroutine insert_sparsevec
   
   subroutine assign_sparsevec(this, obj)
@@ -83,6 +83,8 @@ contains
   end subroutine assign_sparsevec
   
   subroutine reallocate_sparsevec(this, len_sparse)
+    use nrtype, only : longint
+
     class(sparsevec)      :: this
     integer               :: len_sparse
     integer, dimension(:), allocatable :: idxvec_copy
@@ -135,6 +137,8 @@ contains
   end subroutine clear_sparsevec
   
   function get_sparsevec(this, idx) result(val)
+    use nrtype, only : longint
+
     class(sparsevec)      :: this
     integer               :: idx, idxnear
     integer(kind=longint) :: val
@@ -157,6 +161,8 @@ contains
   end function get_sparsevec
   
   subroutine modify_sparsevec(this, idx, val)
+    use nrtype, only : longint
+
     class(sparsevec) :: this
     integer :: idx
     integer(kind=longint) :: val
@@ -206,6 +212,8 @@ contains
   end function find_sparsevec
   
   subroutine ibset_sparsevec(this, idx, pos)
+    use nrtype, only : longint
+
     class(sparsevec) :: this
     integer          :: idx
     integer          :: pos

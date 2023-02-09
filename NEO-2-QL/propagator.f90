@@ -1712,7 +1712,7 @@ CONTAINS
     TYPE(binarysplit)                    :: loc_bs_1b,loc_bs_2b
     
     INTEGER :: i
-    INCLUDE 'longint.f90'
+
     type(sparsevec), dimension(:), allocatable :: bin1_sparse, bin2_sparse
     INTEGER :: deall
 
