@@ -19,16 +19,12 @@ MODULE binarysplit_mod
   PRIVATE binarysplit_y0limfac
   REAL(kind=dp) :: binarysplit_y0limfac = 1.d-1
 
-  PRIVATE longint
-  INCLUDE 'longint.f90'
-
   PRIVATE binarysplit_limit,binarysplit_checklimit
   INTEGER               :: binarysplit_limit,binarysplit_checklimit
   PUBLIC binarysplit
   TYPE binarysplit
      INTEGER                                        :: n_ori
      INTEGER                                        :: n_split
-     !INTEGER(kind=longint), dimension(:,:), allocatable   :: x_ori_bin
      TYPE(sparsevec), DIMENSION(:), ALLOCATABLE     :: x_ori_bin_sparse
      INTEGER,         DIMENSION(:),   ALLOCATABLE   :: x_ori_poi
      INTEGER,         DIMENSION(:),   ALLOCATABLE   :: x_poi
@@ -374,6 +370,8 @@ CONTAINS
 
     use hdf5_tools_f2003
 
+    use nrtype, only : longint
+
     TYPE(binarysplit),               INTENT(inout) :: xbs
     
     INTEGER                                        :: n_ori,maxdim,s1,is
@@ -387,7 +385,6 @@ CONTAINS
     INTEGER(kind=longint) :: zero
     integer :: sparselen
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: v_sparse
-    !integer(kind=longint) :: vec
         
     n_ori  = xbs%n_ori
     maxdim = n_ori + xbs%n_split
@@ -479,13 +476,11 @@ CONTAINS
   END SUBROUTINE reposition_binsplit
 
   SUBROUTINE reposition_binsplit_bin(bin_sparse)
-    !INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: bin !0:
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: bin_sparse
     
     INTEGER                                        :: n_ori,s1,is
     INTEGER                                        :: k,n,i
     INTEGER                                        :: pos_n,k_n,s1_n
-    !INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE   :: v
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: v_sparse
     
     !n_ori  = UBOUND(bin,2)
@@ -579,7 +574,6 @@ CONTAINS
   
   SUBROUTINE get_binsplit_i18(xbs,v_sparse,c)
     TYPE(binarysplit),                            INTENT(in)    :: xbs
-    !INTEGER(kind=longint), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: v
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE, INTENT(inout)   :: v_sparse
     CHARACTER(len=*),                             INTENT(in)    :: c
 
@@ -613,7 +607,6 @@ CONTAINS
     INTEGER                                       :: n_ori,n_split,s1
     INTEGER                                       :: nb2,nb,is
     INTEGER                                       :: ival,split,pos,pos_n
-    !INTEGER(kind=longint),   DIMENSION(:), ALLOCATABLE  :: bin
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE    :: bin_sparse
     INTEGER                                       :: nb1 
     real(kind=dp)                                 :: dval,dist
@@ -919,9 +912,10 @@ CONTAINS
 
  ! split at forced positions
   SUBROUTINE dosplit_binsplit(xbs1,xbs2,bin_sparse)
+    use nrtype, only : longint
+
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(in)    :: xbs2
-    !INTEGER(kind=longint),DIMENSION(:,:),ALLOCATABLE,INTENT(inout)   :: bin !0:
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: bin_sparse
     
     INTEGER :: n_ori,s1,is,nb1,nb2,nb,n_split
@@ -1042,8 +1036,7 @@ CONTAINS
   SUBROUTINE join_binsplit_va(xbs1,xbs2)
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(in)    :: xbs2
-     
-    !INTEGER(kind=longint),DIMENSION(:,:), ALLOCATABLE          :: bin
+
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: bin_sparse
     INTEGER                                                    :: n
 
@@ -1060,9 +1053,10 @@ CONTAINS
   END SUBROUTINE join_binsplit_va
 
   SUBROUTINE join_binsplit_v(xbs1,xbs2,bin_sparse)
+    use nrtype, only : longint
+
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(in)    :: xbs2
-    !INTEGER(kind=longint),DIMENSION(:,:), ALLOCATABLE,INTENT(in)    :: bin !0:
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE :: bin_sparse
     
     INTEGER                                                    :: n_ori,n_split
@@ -1203,9 +1197,10 @@ CONTAINS
 
   ! difference (what splits are in 1 and not in 2)
   SUBROUTINE compare_binsplit(xbs1,xbs2,bin_sparse,c)
+    use nrtype, only : longint
+
     TYPE(binarysplit),                           INTENT(inout) :: xbs1
     TYPE(binarysplit),                           INTENT(inout) :: xbs2
-    !integer(kind=longint),dimension(:,:),allocatable,  intent(inout) :: bin !0:
     TYPE(sparsevec), DIMENSION(:), ALLOCATABLE, INTENT(inout)  :: bin_sparse
     CHARACTER(len=*),                            INTENT(in)    :: c
 
@@ -1318,7 +1313,6 @@ CONTAINS
   END SUBROUTINE printbin_binsplit
 
   SUBROUTINE printbin_binsplit_bin(bin_sparse)
-    !integer(kind=longint), dimension(:,:),             intent(in) :: bin
     TYPE(sparsevec), DIMENSION(:),             INTENT(in) :: bin_sparse 
 
     INTEGER                                                 :: k
@@ -1393,6 +1387,8 @@ CONTAINS
 
   ! testing
   SUBROUTINE test_binsplit(test_join,test_printbin)
+    use nrtype, only : longint
+
     INTEGER, INTENT(in) :: test_join 
     INTEGER, INTENT(in) :: test_printbin
 

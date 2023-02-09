@@ -14,9 +14,6 @@ MODULE binarysplit_int
   PRIVATE bsfunc_evaldegree
   INTEGER               :: bsfunc_evaldegree = 2 ! 1   ! 3 or 4
 
-  PRIVATE longint
-  INCLUDE 'longint.f90'
-
   ! parameters for evaluation functions
   ! have to be set with (.e.g. for gauss)
   !   CALL construct_bsfunc(x0,s)
@@ -776,6 +773,8 @@ CONTAINS
 
   ! display (helper routine)
   SUBROUTINE disp_i8(i)
+    use nrtype, only : longint
+
     INTEGER(kind=longint), INTENT(in)  :: i
     INTEGER                      :: k
     INTEGER                      :: is
@@ -789,6 +788,8 @@ CONTAINS
   END SUBROUTINE disp_i8
 
   SUBROUTINE disp_i81(i)
+    use nrtype, only : longint
+
     INTEGER(kind=longint), DIMENSION(:), INTENT(in)  :: i
 
     INTEGER                                    :: k,ks
