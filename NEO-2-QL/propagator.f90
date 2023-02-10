@@ -96,6 +96,8 @@ MODULE propagator_mod
   CHARACTER(len=12),  PARAMETER, PRIVATE         :: prop_ctaginfo = 'taginfo.prop'
   CHARACTER(len=16),  PARAMETER, PRIVATE         :: prop_cresult = 'reconstruct'
   CHARACTER(len=100),            PRIVATE         :: prop_cfilename
+  integer, parameter, public                     :: USE_HDF5_FORMAT = 1
+  integer, parameter, public                     :: USE_NETCDF_FORMAT = 2
   INTEGER,                       PRIVATE         :: prop_unit = 150
   INTEGER,                       PRIVATE         :: prop_first_tag = 0
   INTEGER,                       PRIVATE         :: prop_last_tag = 0
@@ -114,6 +116,7 @@ MODULE propagator_mod
   INTEGER,            PUBLIC  :: prop_join_ends = 0
   INTEGER,            PUBLIC  :: prop_fluxsplitmode = 1
   INTEGER,            PUBLIC  :: prop_write = 0
+  INTEGER,            PUBLIC  :: prop_fileformat = 0     ! 0... ACSII, 1... HDF5
   INTEGER,            PUBLIC  :: prop_reconstruct = 0
   INTEGER,            PUBLIC  :: prop_ripple_plot = 0
   ! usage for communication purposes
@@ -915,42 +918,44 @@ CONTAINS
             gamma_out
       CLOSE(uw)
 
-      ! Write to HDF5 file
-      call h5_create('efinal.h5', h5id, 1)
+      if (prop_fileformat .eq. USE_HDF5_FORMAT) then
+        ! Write to HDF5 file
+        call h5_create('efinal.h5', h5id, 1)
 
-      call h5_add(h5id, 'phi', phi)
-      call h5_add(h5id, 'aiota_loc', aiota_loc)
-      call h5_add(h5id, 'dmono_over_dplateau', dmono_over_dplateau)
-      call h5_add(h5id, 'epseff3_2', epseff3_2)
-      call h5_add(h5id, 'alambda_b', alambda_b)
-      call h5_add(h5id, 'qflux_g', qflux_g)
-      call h5_add(h5id, 'qflux_e', qflux_e)
-      call h5_add(h5id, 'qcurr_g', qcurr_g)
-      call h5_add(h5id, 'qcurr_e', qcurr_e)
-      call h5_add(h5id, 'alambda_bb', alambda_bb)
-      call h5_add(h5id, 'gamma_E',gamma_E )
-      call h5_add(h5id, 'g_bs', g_bs)
-      call h5_add(h5id, 'r0', device%r0)
-      call h5_add(h5id, 'bmod0', surface%bmod0, comment='reference magnetic field in Tesla', unit='T')
-      call h5_add(h5id, 'y', y, lbound(y), ubound(y))
+        call h5_add(h5id, 'phi', phi)
+        call h5_add(h5id, 'aiota_loc', aiota_loc)
+        call h5_add(h5id, 'dmono_over_dplateau', dmono_over_dplateau)
+        call h5_add(h5id, 'epseff3_2', epseff3_2)
+        call h5_add(h5id, 'alambda_b', alambda_b)
+        call h5_add(h5id, 'qflux_g', qflux_g)
+        call h5_add(h5id, 'qflux_e', qflux_e)
+        call h5_add(h5id, 'qcurr_g', qcurr_g)
+        call h5_add(h5id, 'qcurr_e', qcurr_e)
+        call h5_add(h5id, 'alambda_bb', alambda_bb)
+        call h5_add(h5id, 'gamma_E',gamma_E )
+        call h5_add(h5id, 'g_bs', g_bs)
+        call h5_add(h5id, 'r0', device%r0)
+        call h5_add(h5id, 'bmod0', surface%bmod0, comment='reference magnetic field in Tesla', unit='T')
+        call h5_add(h5id, 'y', y, lbound(y), ubound(y))
 
-      !**********************************************************
-      ! D11_ov_Dpl
-      !**********************************************************
-      !call h5_add(h5id, 'D11_ov_Dpl', D11_NA_Dpl)
+        !**********************************************************
+        ! D11_ov_Dpl
+        !**********************************************************
+        !call h5_add(h5id, 'D11_ov_Dpl', D11_NA_Dpl)
 
-      call h5_close(h5id)
-
-      OPEN(uw,file='efinal.dat',status='replace')
-      WRITE (uw,'(1000(1x,e18.5))')                                   &
-            (phi),(y(1:2)),(aiota_loc),                    &
-            (dmono_over_dplateau),(epseff3_2),(alambda_b), &
-            (qflux_g),(qflux_e),(qcurr_g),(qcurr_e),    &
-            (alambda_bb),(gamma_E), &
-            (g_bs),    &
-            (device%r0),(surface%bmod0), &
-            y(6),y(7),y(9),y(13),y(14)
-      CLOSE(uw)
+        call h5_close(h5id)
+      else
+        OPEN(uw,file='efinal.dat',status='replace')
+        WRITE (uw,'(1000(1x,e18.5))')                                   &
+              (phi),(y(1:2)),(aiota_loc),                    &
+              (dmono_over_dplateau),(epseff3_2),(alambda_b), &
+              (qflux_g),(qflux_e),(qcurr_g),(qcurr_e),    &
+              (alambda_bb),(gamma_E), &
+              (g_bs),    &
+              (device%r0),(surface%bmod0), &
+              y(6),y(7),y(9),y(13),y(14)
+        CLOSE(uw)
+      end if
 
       OPEN(uw,file='sigma_alex.dat')
       WRITE(uw,*) 0.75d0*SQRT(pi)**3*collpar*(device%r0)/aiota_loc, &
