@@ -429,6 +429,7 @@ contains
     allocate(work(1))
     lwork=-1
 
+    ! Standard function(?) compute the eigenvalues of a Hessenberg matrix
     call zhseqr('E','N',m,1,m,hmat_work,m,ritznum,hmat_work,m,work,lwork,info)
 
     IF(info.NE.0) THEN
@@ -446,6 +447,7 @@ contains
     DEALLOCATE(work)
     ALLOCATE(work(lwork))
 
+    ! Standard function(?) compute the eigenvalues of a Hessenberg matrix
     CALL zhseqr('E','N',m,1,m,hmat_work,m,ritznum,hmat_work,m,work,lwork,info)
 
     IF(info.NE.0) THEN
