@@ -56,7 +56,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/OBJS)
 
 # Create Fortran file with build information
 configure_file (
-  "${PROJECT_SOURCE_DIR}/cmake_version.f90.in"
+  "${PROJECT_SOURCE_DIR}/common/cmake_version.f90.in"
   "${PROJECT_SOURCE_DIR}/cmake_version.f90"
   )
 
