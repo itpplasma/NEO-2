@@ -1,4 +1,16 @@
-
+!> \brief (De-)Allocate arrays from rk4_kin_mod.
+!>
+!> input:
+!> ------
+!> lalloc: logical, if true then allocate the arrays, otherwise
+!>   deallocate them.
+!>
+!> output:
+!> -------
+!>
+!> sideeffects:
+!> ------------
+!> Changes allocation status of arrays from rk4_kin_mod.
 subroutine kin_allocate(lalloc)
 
   use size_mod, only : ndim
