@@ -175,7 +175,7 @@ else(${ISW_SUPERLU_VERSION} LESS 0)
 endif(${ISW_SUPERLU_VERSION} LESS 0)
 
 configure_file (
-  "${PROJECT_SOURCE_DIR}/cmake_version.f90.in"
+  "${PROJECT_SOURCE_DIR}/common/cmake_version.f90.in"
   "${PROJECT_SOURCE_DIR}/cmake_version.f90"
   )
 
