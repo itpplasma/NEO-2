@@ -215,7 +215,10 @@ CONTAINS
   !> hcurl: vector of floats, same size as x.
   SUBROUTINE neo_magfie_a( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
 
+    use neo_exchange, only : b_min, b_max, theta_bmin, theta_bmax, &
+        & phi_bmin,phi_bmax
     use neo_spline_data, only : lsw_linear_boozer
+    use neo_work, only : phi_arr, theta_arr
 
     ! input / output
     REAL(dp), DIMENSION(:),       INTENT(in)            :: x
@@ -258,6 +261,8 @@ CONTAINS
     INTEGER                                          :: mp = 1
     INTEGER                                          :: theta_ind, phi_ind
     INTEGER                                          :: ierr
+    integer, dimension(2) :: b_minpos, b_maxpos
+
     REAL(dp)                                         :: s
     REAL(dp)                                         :: magfie_epsi = 1.e-9
     REAL(dp)                                         :: bi, bi_s, ri, zi, li
@@ -1166,7 +1171,6 @@ CONTAINS
 
           !stop "Compute magnetic field components via a spline (and not via direct Fourier summation)"
 
-          DEALLOCATE( bmod_a )
           DEALLOCATE( bb_s_a )
           DEALLOCATE( bb_tb_a )
           DEALLOCATE( bb_pb_a )
@@ -1288,6 +1292,24 @@ CONTAINS
           end if
        END DO
        magfie_newspline = 0
+
+       ! Minimum and Maximum in the new mode
+       if (magfie_sarray_len .eq. 1) then
+         ! **********************************************************************
+         ! Calculate absolute minimum and maximum of b and its location (theta, phi)
+         ! **********************************************************************
+         b_minpos   = minloc(bmod_a)
+         b_min      = bmod_a(b_minpos(1),b_minpos(2))
+         theta_bmin = theta_arr(b_minpos(1))
+         phi_bmin   = phi_arr(b_minpos(2))
+
+         b_maxpos   = maxloc(bmod_a)
+         b_max      = bmod_a(b_maxpos(1),b_maxpos(2))
+         theta_bmax = theta_arr(b_maxpos(1))
+         phi_bmax   = phi_arr(b_maxpos(2))
+       end if
+       deallocate( bmod_a )
+
     END IF
 
     s_detected = 0
