@@ -122,7 +122,7 @@
  vel_max = 5.0 ! [5.0d0]
  vel_num = 10  ! [10]
  v_max_resolution = 3.0 ! Only affects level placement and defines the
-                        ! maximum normalized velocity that should by
+                        ! maximum normalized velocity that should be
                         ! resolved by the grid. Experience showed that
                         ! values of $2$ - $3$ are sufficient for
                         ! reconstruction of the generalized Spitzer
