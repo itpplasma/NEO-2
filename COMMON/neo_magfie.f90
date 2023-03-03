@@ -325,8 +325,6 @@ CONTAINS
     
     REAL(dp) :: isqrg, sqrg11
 
-    !REAL(dp) :: s_sqrtg00_m Klaus
-
     ! To silence a warning maybe used uninitialized (should be false positive).
     bis = 0.0
     bis_s = 0.0
@@ -1035,29 +1033,10 @@ CONTAINS
 
           ! Winny for Klaus
           av_b2_m = theta_n * phi_n / SUM(1 / (bmod_a*bmod_a))
-          !PRINT *, 'theta_n,phi_n ',theta_n,phi_n 
-          !PRINT *, 'av_b2_m ',av_b2_m
           ! Winny for Klaus - Ende
 
-  
-          ! $1/sqrt(g)$
-          !! fac = s_curr_pol + s_iota * s_curr_tor  ! (J + iota I)
-          !! isqrg  = b*b / fac 
-          ! $sqrt(g^{11})$
-          !IF (g11_swi .EQ. 0) THEN
-          !   sqrg11 = 1.0_dp
-          !ELSE
-             !sqrg11 = SQRT( (gtbtb*gpbpb - gtbpb*gtbpb ) * isqrg**2)
-             sqrg11_met = SQRT( (gtbtb*gpbpb - gtbpb*gtbpb ) )
-          !END IF
+          sqrg11_met = SQRT( (gtbtb*gpbpb - gtbpb*gtbpb ) )
 
-             !PRINT *, 'max_gtbtb = ',maxval(gtbtb)
-             !PRINT *, 'min_gtbtb = ',MINVAL(gtbtb)
-             !PRINT *, 'max_gpbpb = ',maxval(gpbpb)
-             !PRINT *, 'min_gpbpb = ',MINVAL(gpbpb)
-             !PRINT *, 'max_gtbpb = ',MAXVAL(gtbpb)
-             !PRINT *, 'min_gtbpb = ',MINVAL(gtbpb)
-            
           !*************************************************************
           ! Do the 2-D periodic spline
           !*************************************************************
@@ -1165,11 +1144,6 @@ CONTAINS
           CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,            &
                G_symm_pb_a,p_spl)
           !! End Modifications by Andreas F. Martitsch (28.03.2017)
-          
-          !PRINT *, 'max_g11 = ', maxval(sqrg11_met)
-          !PRINT *, 'min_g11 = ', minval(sqrg11_met)
-
-          !stop "Compute magnetic field components via a spline (and not via direct Fourier summation)"
 
           DEALLOCATE( bb_s_a )
           DEALLOCATE( bb_tb_a )
@@ -1760,29 +1734,7 @@ CONTAINS
     ! Conversion from SI- to cgs-units has not yet been
     ! checked for this quantity
     boozer_sqrtg00 = s_sqrtg00
-!!$    !! Modifications by Andreas F. Martitsch (12.03.2014)
-!!$    ! Note! Every quantity given below is written in
-!!$    ! terms of SI-units. This part has been moved to the
-!!$    ! block with "magfie_result eq. 0), where the quantities are
-!!$    ! converted to cgs-units. In the previous version
-!!$    ! conversions were done partly within rhs_kin.f90 and
-!!$    ! partly within ripple_solver.f90.
-!!$    ! For this reason, please note also the changes in
-!!$    ! "rhs_kin" and "ripple_solver"!
-!!$    boozer_curr_tor = curr_tor
-!!$    boozer_curr_pol = curr_pol
-!!$    ! Compute the radial derivatives of toroidal / poloidal currents
-!!$    ! (In fact these currents are already the respective
-!!$    ! covariant B-field components; conversion done within
-!!$    ! neo_read)
-!!$    ! Caution! boozer_curr_tor/ boozer_curr_pol are given in SI-units [Tm].
-!!$    ! They are not converted to cgs-units - as done within (magfie_result .EQ. 0).
-!!$    boozer_curr_pol_s = curr_tor_s
-!!$    boozer_curr_tor_s = curr_pol_s
-!!$    boozer_psi_pr = psi_pr 
-!!$    boozer_sqrtg11 = sqrg11
-!!$    boozer_isqrg = isqrg
-!!$    !! End Modifications by Andreas F. Martitsch (12.03.2014)
+
   END SUBROUTINE neo_magfie_a
 
 
@@ -1934,17 +1886,7 @@ CONTAINS
     ! intialize start vector
     x = x_start
     thetaB = x_start(3)
-    !
-!!$    ! Debugging
-!!$    OPEN(unit=1234,file='RZ_coord.dat')
-!!$    DO k = 1,kmax
-!!$       thtB_Z_n=DBLE(k-1)*TWOPI/DBLE(kmax-1)
-!!$       x(3) = thtB_Z_n
-!!$       CALL compute_RZ( x, R, R_tb, Z, Z_tb )
-!!$       WRITE(1234,*) x(3), R, Z, R_tb, Z_tb
-!!$    END DO
-!!$    CLOSE(unit=1234)
-    !
+
     ! Newton iterations    
     break_cond = .FALSE.
     k = 0
