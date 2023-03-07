@@ -7,7 +7,6 @@ SUBROUTINE neo_init(npsi)
 ! **********************************************************************
 ! Modules
 ! **********************************************************************
-  use nrtype
   USE neo_input
   USE neo_work
   USE neo_exchange
