@@ -87,14 +87,6 @@ SUBROUTINE neo_init(npsi)
   w_u6_open = 0
 ! **********************************************************************
 
-  !**********************************************************
-  ! Consistency check
-  !**********************************************************
-  !CALL neo_init_fluxsurface()
-  !CALL neo_fourier()
-  !STOP
-
-  RETURN
 END SUBROUTINE neo_init
 ! **********************************************************************
 
@@ -163,26 +155,16 @@ SUBROUTINE neo_init_spline()
   USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf, &
     & splinecof1_hi_driv, splinecof1
   use neo_spline_data, only : lsw_linear_boozer
-!  Test
-!  USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf,      &
-!       splint_horner3, tfp, tfpp, tfppp
-!  Test End
+
   IMPLICIT NONE
+
   INTEGER      :: i
   INTEGER(I4B) :: sw1, sw2
   REAL(dp)     :: m0, c1, cn
   REAL(dp), DIMENSION(:), ALLOCATABLE :: lambda
   INTEGER(I4B) :: m
   INTEGER,  PARAMETER                 :: m_max_sp = 12
-!
-! Testing
-!
-!!$  INTEGER(I4B) :: swd
-!!$  INTEGER      :: k
-!!$  REAL(dp)     :: f_es, f_bmnc, dummy
-!
-! Testing End
-!
+
   ALLOCATE ( a_rmnc(ns,mnmax), b_rmnc(ns,mnmax) )
   ALLOCATE ( c_rmnc(ns,mnmax), d_rmnc(ns,mnmax) )
   ALLOCATE ( a_zmnc(ns,mnmax), b_zmnc(ns,mnmax) )
@@ -277,23 +259,6 @@ SUBROUTINE neo_init_spline()
     end if
   end if
   !! End Modifications by Andreas F. Martitsch (06.08.2014)
-  !
-  ! Testing
-  !
-!!$  swd = 0 ! no derivatives
-!!$  k = 3
-!!$  f_es = es(k)
-!!$  DO i=1,mnmax
-!!$     m0 = r_mhalf(i)
-!!$     CALL splint_horner3(es,a_bmnc(:,i),b_bmnc(:,i),            &
-!!$          c_bmnc(:,i),d_bmnc(:,i),swd,m0,                       &
-!!$          f_es,tf,tfp,tfpp,tfppp,                               &
-!!$          f_bmnc,dummy,dummy,dummy)
-!!$     PRINT *, ixm(i),ixn(i),m0,bmnc(k,i),f_bmnc
-!!$  END DO
-  !
-  ! End Testing
-  !
 
   ! boundary types (natural spline)
   sw1 = 2
@@ -373,21 +338,9 @@ SUBROUTINE neo_init_s(psi,dpsi)
   LOGICAL                                       :: ff_exist
   CHARACTER(30)                                 :: flux_file
   CHARACTER(3)                                  :: flux_numc
-!  REAL(kind=dp)  :: tht, pht, f, g, dfdx, dfdy, dgdx, dgdy
 ! **********************************************************************
   eval_switch = (/1,0,0,0,0,0/)
-!
-! **********************************************************************
-! Artificial Cutting of modes (wrong place has to be changed)
-! **********************************************************************
-!  DO imn=1,mnmax
-!     IF(ixm(imn).GE.5 .OR. ixn(imn).LE. -11*nper                       &
-!        .OR. ixn(imn).GE. 12*nper                                      &
-!        .OR. abs(bmnc(psi_ind,imn)) .LE. 1.d-4*bmref_a ) THEN
-!        bmnc(psi_ind,imn) = 0.0_dp
-!     ENDIF
-!  ENDDO
-!
+
 ! **********************************************************************
 ! Reading or writing of Data
 ! **********************************************************************
@@ -459,9 +412,7 @@ SUBROUTINE neo_init_s(psi,dpsi)
 ! **********************************************************************
 ! Initilaze spline arrays (2d-periodic)
 ! **********************************************************************
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'before neo_spline2d'
   CALL neo_spline2d
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'after  neo_spline2d'
 ! **********************************************************************
 ! Calculate absolute minimum and maximum of b and its location (theta, phi)
 ! **********************************************************************
@@ -475,17 +426,13 @@ SUBROUTINE neo_init_s(psi,dpsi)
   theta_bmax = theta_arr(b_maxpos(1))
   phi_bmax   = phi_arr(b_maxpos(2))
 
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'before neo_zeros2d (min)'
   CALL neo_zeros2d(theta_bmin, phi_bmin, eps_newt, iterma_newt, iter, error)
   CALL neo_eval(theta_bmin,phi_bmin,b_min,gval_bmin,kval_bmin,&
        pval_bmin,qval_bmin,rval_bmin)
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'after  neo_zeros2d'
 
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'before neo_zeros2d (max)'
   CALL neo_zeros2d(theta_bmax, phi_bmax, eps_newt, iterma_newt, iter, error)
   CALL neo_eval(theta_bmax,phi_bmax,b_max,gval_bmax,kval_bmax,&
        pval_bmax,qval_bmax,rval_bmax)
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'after  neo_zeros2d'
 ! **********************************************************************
 ! Calculation of dpsi (only on flussurface
 ! **********************************************************************
@@ -636,28 +583,6 @@ SUBROUTINE neo_plot_files
   WRITE (uw,*) '#k pard'
   WRITE (uw,f_phi_n) TRANSPOSE(pard)
 
-
-!!$  WRITE(w_u1,*)ixm(j),ixn(j)
-!!$  WRITE(w_u1,*) rmnc(i,j)
-!!$  WRITE(w_u1,*) zmnc(i,j)
-!!$  WRITE(w_u1,*) lmnc(i,j)
-!!$  WRITE(w_u1,*) bmnc(i,j)
-!!$  WRITE(w_u1,*) theta_arr(j)
-!!$  WRITE(w_u1,*) phi_arr(k)
-!!$
-!!$
-!!$  DO i=1,theta_n
-!!$     DO j=1,phi_n
-!!$        WRITE(w_u1,*)  r(i,j)
-!!$        WRITE(w_u1,*)  z(i,j)
-!!$        WRITE(w_u1,*)  l(i,j)
-!!$        WRITE(w_u1,*)  b(i,j)
-!!$        WRITE(w_u1,*)  isqrg(i,j)
-!!$        WRITE(w_u1,*)  sqrg11(i,j)
-!!$        WRITE(w_u1,*)  kg(i,j)
-!!$        WRITE(w_u1,*)  pard(i,j)
-!!$     END DO
-
   CLOSE(unit=uw)
 
 END SUBROUTINE neo_plot_files
@@ -708,9 +633,8 @@ SUBROUTINE neo_init_fluxsurface
      s_sqrtg00  = sqrtg00(psi_ind)
      s_iota     = iota(psi_ind)
      CALL neo_get_b00
-     !s_b00      = b00(psi_ind)
   ELSE ! from splines
-     ! avaluation of 2-d arrays
+     ! evaluation of 2-d arrays
      swd = 0 ! no derivatives
      DO i=1,mnmax
         m0 = r_mhalf(i)
@@ -1078,7 +1002,7 @@ SUBROUTINE neo_read
      ns = ns - 1
      m_max = m0b+1
      n_max = 2*n0b+1
-!     mnmax = m_max*n_max - n0b
+
 ! **********************************************************************
 ! Allocate storage arrays
 ! **********************************************************************
@@ -1174,18 +1098,6 @@ SUBROUTINE neo_read
      m_max = m0b+1
      n_max = 2*n0b+1
      mnmax = m_max*n_max
-
-!!$     PRINT *, 'm0b     ',m0b
-!!$     PRINT *, 'n0b     ',n0b
-!!$     PRINT *, 'ns      ',ns
-!!$     PRINT *, 'nfp     ',nfp
-!!$     PRINT *, 'flux    ',flux
-!!$     PRINT *, 'r_small ',r_small
-!!$     PRINT *, 'r_big   ',r_big
-!!$     PRINT *, 'm_max   ',m_max
-!!$     PRINT *, 'n_max   ',n_max
-!!$     PRINT *, 'mnmax   ',mnmax
-!!$     PAUSE
 
 ! **********************************************************************
 ! Allocate storage arrays
@@ -1288,8 +1200,6 @@ SUBROUTINE neo_read
      m_max = m0b+1
      n_max = 2*n0b+1
      mnmax = m_max*n_max
-     ! m = 0 , n only >= 0
-     ! mnmax = m0b * n_max + n0b + 1
 
 ! **********************************************************************
 ! Allocate storage arrays
@@ -1353,18 +1263,6 @@ SUBROUTINE neo_read
      n_max = 2*n0b+1
      mnmax = m_max*n_max
 
-!!$     PRINT *, 'm0b     ',m0b
-!!$     PRINT *, 'n0b     ',n0b
-!!$     PRINT *, 'ns      ',ns
-!!$     PRINT *, 'nfp     ',nfp
-!!$     PRINT *, 'flux    ',flux
-!!$     PRINT *, 'r_small ',r_small
-!!$     PRINT *, 'r_big   ',r_big
-!!$     PRINT *, 'm_max   ',m_max
-!!$     PRINT *, 'n_max   ',n_max
-!!$     PRINT *, 'mnmax   ',mnmax
-!!$     PAUSE
-
 ! **********************************************************************
 ! Allocate storage arrays
 ! **********************************************************************
@@ -1418,9 +1316,6 @@ SUBROUTINE neo_read
      m_max = m0b+1
      n_max = 2*n0b+1
      mnmax = m_max*n_max
-     ! print *, 'm_max,n_max,mnmax: ',m_max,n_max,mnmax
-     ! m = 0 , n only >= 0
-     ! mnmax = m0b * n_max + n0b + 1
 
 ! **********************************************************************
 ! Allocate storage arrays
@@ -1468,14 +1363,10 @@ SUBROUTINE neo_read
      READ (r_u1,*) dummy
      READ (r_u1,*) dummy
      READ (r_u1,*) m0b,n0b,ns,nfp,flux,r_small,r_big
-     !
-     !PRINT *,'nfp: ',nfp
+
      m_max = m0b+1
      n_max = 2*n0b+1
      mnmax = m_max*n_max
-     ! print *, 'm_max,n_max,mnmax: ',m_max,n_max,mnmax
-     ! m = 0 , n only >= 0
-     ! mnmax = m0b * n_max + n0b + 1
 
 ! **********************************************************************
 ! Allocate storage arrays
@@ -1512,8 +1403,6 @@ SUBROUTINE neo_read
            READ(r_u1,*) ixm(j),ixn(j),                                    &
                 rmnc(i,j),rmns(i,j),zmnc(i,j),zmns(i,j),                  &
                 lmnc(i,j),lmns(i,j),bmnc(i,j),bmns(i,j)
-           !print *, 'ixm,ixn: ',ixm(j),ixn(j)
-           !PRINT *,'rmnc,rmns: ',rmnc(i,j),rmns(i,j)
         END DO
      END DO
   !! End Modifications by Andreas F. Martitsch (06.08.2014)
@@ -1564,21 +1453,6 @@ SUBROUTINE neo_read
         END IF
      END IF
   END DO
-
-!!$  PRINT *, 'i_m'
-!!$  PRINT *, i_m
-!!$  PRINT *, 'i_n'
-!!$  PRINT *, i_n
-!!$  PRINT *, 'ixm(1:mnmax:2*n0b+1)'
-!!$  PRINT *, ixm(1:mnmax:2*n0b+1)
-!!$  PRINT *, 'ixn(1:2*n0b+1)'
-!!$  PRINT *, ixn(1:2*n0b+1)
-!!$  PAUSE
-!!$  PRINT *, 'pixm'
-!!$  PRINT *, pixm
-!!$  PRINT *, 'pixn'
-!!$  PRINT *, pixn
-!!$  PAUSE
 
   IF (lab_swi .EQ. 1) THEN              ! NCSX Boozer file
 !
@@ -1709,107 +1583,8 @@ SUBROUTINE neo_read
      WRITE(w_us,*) 'FATAL: There is yet no other Laboratory defined!'
      STOP
   END IF
-!
-! ATTENTION THIS IS JUST FOR TESTING
-!
-! For scaling of B change the following three with the same factor
-! eps_eff should then stay unchanged if the reference for B and R is the same!
-!
-! bmnc = bmnc * 2.0_dp
-! curr_pol = curr_pol * 2.0_dp
-! curr_tor = curr_tor * 2.0_dp
-!
-! For scaling of R change the following four with the same factor
-! eps_eff should then stay unchanged if the reference for B and R is the same!
-!
-! rmnc = rmnc * 2.0_dp
-! zmnc = zmnc * 2.0_dp
-! curr_pol = curr_pol * 2.0_dp
-! curr_tor = curr_tor * 2.0_dp
-!
+
   CLOSE (unit=r_u1)
-! **********************************************************************
-! Write optional output for Plotting
-! **********************************************************************
-!!$  IF (write_output_files .NE. 0) THEN
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write dimension.dat'
-!!$     OPEN(unit=w_u1,file='dimension.dat',status='unknown',form='formatted')
-!!$     WRITE (w_u1,*) ns
-!!$     WRITE (w_u1,*) mnmax
-!!$     WRITE (w_u1,*) nfp
-!!$     WRITE (w_u1,*) theta_n
-!!$     WRITE (w_u1,*) phi_n
-!!$     WRITE (w_u1,*) s_ind_in
-!!$     CLOSE(unit=w_u1)
-!!$  ENDIF
-!!$  IF (write_output_files .NE. 0) THEN
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write es_arr.dat'
-!!$     OPEN(unit=w_u1,file='es_arr.dat',status='unknown',form='formatted')
-!!$     DO j=1,ns
-!!$        WRITE(w_u1,format220) es(j),iota(j),curr_pol(j),curr_tor(j),       &
-!!$             pprime(j),sqrtg00(j)
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write mn_arr.dat'
-!!$     OPEN(unit=w_u1,file='mn_arr.dat',status='unknown',form='formatted')
-!!$     DO j = 1,mnmax
-!!$        WRITE(w_u1,*)ixm(j),ixn(j)
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$
-
-!!$  ! Write rmnc, zmnc, lmnc, bmnc
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write rmnc_arr.dat'
-!!$     OPEN(unit=w_u1,file='rmnc_arr.dat',status='unknown',form='formatted')
-!!$     WRITE(w_u1,*) ns
-!!$     WRITE(w_u1,*) mnmax
-!!$     DO i=1,ns
-!!$        DO j=1,mnmax
-!!$           WRITE(w_u1,*) rmnc(i,j)
-!!$        END DO
-!!$     END DO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write zmnc_arr.dat'
-!!$     OPEN(unit=w_u1,file='zmnc_arr.dat',status='unknown',form='formatted')
-!!$     WRITE(w_u1,*) ns
-!!$     WRITE(w_u1,*) mnmax
-!!$     DO i=1,ns
-!!$        DO j=1,mnmax
-!!$           WRITE(w_u1,*) zmnc(i,j)
-!!$        END DO
-!!$     END DO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write lmnc_arr.dat'
-!!$     OPEN(unit=w_u1,file='lmnc_arr.dat',status='unknown',form='formatted')
-!!$     WRITE(w_u1,*) ns
-!!$     WRITE(w_u1,*) mnmax
-!!$     DO i=1,ns
-!!$        DO j=1,mnmax
-!!$           WRITE(w_u1,*) lmnc(i,j)
-!!$        END DO
-!!$     END DO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write bmnc_arr.dat'
-!!$     OPEN(unit=w_u1,file='bmnc_arr.dat',status='unknown',form='formatted')
-!!$     WRITE(w_u1,*) ns
-!!$     WRITE(w_u1,*) mnmax
-!!$     DO i=1,ns
-!!$        DO j=1,mnmax
-!!$           WRITE(w_u1,*) bmnc(i,j)
-!!$        END DO
-!!$     END DO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     STOP
-
-!!$  ENDIF
-! **********************************************************************
-
-
 
   RETURN
 END SUBROUTINE neo_read
@@ -2009,16 +1784,6 @@ SUBROUTINE neo_prep
     phi_arr(ip) = phi_start + phi_int*(ip-1)
   ENDDO
 
-! DO imn=1,mnmax
-!   ixm_i = ixm(imn)
-!   ixn_i = ixn(imn)
-!   DO it=1,theta_n
-!     DO ip=1,phi_n
-!       sinval(ip,it,imn) = SIN(ixm_i*theta_arr(it) - ixn_i*phi_arr(ip))
-!       cosval(ip,it,imn) = COS(ixm_i*theta_arr(it) - ixn_i*phi_arr(ip))
-!     ENDDO
-!   ENDDO
-! ENDDO
   DO im = 1,m_max
      m = i_m(im)
      IF (ABS(m) .LE. max_m_mode) THEN
@@ -2037,26 +1802,7 @@ SUBROUTINE neo_prep
         ENDDO
      END IF
   ENDDO
-! **********************************************************************
-! Write optional output
-! **********************************************************************
-!!$  IF (write_output_files .NE. 0) THEN
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write theta_arr.dat'
-!!$     OPEN(unit=w_u1,file='theta_arr.dat',status='unknown',form='formatted')
-!!$     DO j=1,theta_n
-!!$        WRITE(w_u1,*) theta_arr(j)
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write phi_arr.dat'
-!!$     OPEN(unit=w_u1,file='phi_arr.dat',status='unknown',form='formatted')
-!!$     DO k=1,phi_n
-!!$        WRITE(w_u1,*) phi_arr(k)
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$  ENDIF
-! **********************************************************************
-  RETURN
+
 END SUBROUTINE neo_prep
 ! **********************************************************************
 
@@ -2172,12 +1918,11 @@ SUBROUTINE neo_fourier
      n = ixn(imn)
      im = pixm(imn)
      in = pixn(imn)
-     ! PRINT *, m,n,im,in
+
      IF (ABS(m) .LE. max_m_mode .AND. ABS(n) .LE. max_n_mode) THEN
         DO ip=1,phi_n
            DO it=1,theta_n
-!             cosv = cosval(ip,it,imn)
-!             sinv = sinval(ip,it,imn)
+
               !! Modifications by Andreas F. Martitsch (06.08.2014)
               ! Additional data from Boozer files without Stellarator symmetry
               IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
@@ -2269,10 +2014,6 @@ SUBROUTINE neo_fourier
   b_pb(theta_n,:) = b_pb(1,:)
   b_pb(:,phi_n)   = b_pb(:,1)
 
-  !PRINT *, theta_n
-  !DO it = 1,theta_n
-  !   PRINT *, it,r(it,10),z(it,10),l(it,10)
-  !END DO
 ! **********************************************************************
 ! Derived quantities
 ! **********************************************************************
@@ -2289,7 +2030,7 @@ SUBROUTINE neo_fourier
   ELSE
      sqrg11 = SQRT( (gtbtb*gpbpb - gtbpb*gtbpb ) * isqrg**2)
   END IF
-!  PRINT *, 'fac: ',fac,s_curr_pol,s_iota,s_curr_tor
+
 ! geodesic curvature term $k_G |\nabla \psi|$
   kg = (s_curr_tor * b_pb - s_curr_pol * b_tb) / fac
 ! parallel derivative of mod-B
@@ -2369,84 +2110,6 @@ SUBROUTINE neo_fourier
      DEALLOCATE (currtor_b)
   END IF
 
-! **********************************************************************
-! Optional Output
-! **********************************************************************
-!!$  IF (write_output_files .NE. 0) THEN
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write b_s_arr.dat'
-!!$     OPEN(unit=w_u1,file='b_s_arr.dat',status='unknown',form='formatted')
-!!$     DO i=1,theta_n
-!!$        DO j=1,phi_n
-!!$           WRITE(w_u1,*)  b(i,j)
-!!$        END DO
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write r_s_arr.dat'
-!!$     OPEN(unit=w_u1,file='r_s_arr.dat',status='unknown',form='formatted')
-!!$     DO i=1,theta_n
-!!$        DO j=1,phi_n
-!!$           WRITE(w_u1,*)  r(i,j)
-!!$        END DO
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write z_s_arr.dat'
-!!$     OPEN(unit=w_u1,file='z_s_arr.dat',status='unknown',form='formatted')
-!!$     DO i=1,theta_n
-!!$        DO j=1,phi_n
-!!$           WRITE(w_u1,*)  z(i,j)
-!!$        END DO
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write l_s_arr.dat'
-!!$     OPEN(unit=w_u1,file='l_s_arr.dat',status='unknown',form='formatted')
-!!$     DO i=1,theta_n
-!!$        DO j=1,phi_n
-!!$           WRITE(w_u1,*)  l(i,j)
-!!$        END DO
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write isqrg_arr.dat'
-!!$     OPEN(unit=w_u1,file='isqrg_arr.dat',status='unknown',form='formatted')
-!!$     DO i=1,theta_n
-!!$        DO j=1,phi_n
-!!$           WRITE(w_u1,*)  isqrg(i,j)
-!!$        END DO
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write sqrg11_arr.dat'
-!!$     OPEN(unit=w_u1,file='sqrg11_arr.dat',status='unknown',form='formatted')
-!!$     DO i=1,theta_n
-!!$        DO j=1,phi_n
-!!$           WRITE(w_u1,*)  sqrg11(i,j)
-!!$        END DO
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write kg_arr.dat'
-!!$     OPEN(unit=w_u1,file='kg_arr.dat',status='unknown',form='formatted')
-!!$     DO i=1,theta_n
-!!$        DO j=1,phi_n
-!!$           WRITE(w_u1,*)  kg(i,j)
-!!$        END DO
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$
-!!$     IF (write_progress .NE. 0) WRITE (w_us,*) 'write pard_arr.dat'
-!!$     OPEN(unit=w_u1,file='pard_arr.dat',status='unknown',form='formatted')
-!!$     DO i=1,theta_n
-!!$        DO j=1,phi_n
-!!$           WRITE(w_u1,*)  pard(i,j)
-!!$        END DO
-!!$     ENDDO
-!!$     CLOSE(unit=w_u1)
-!!$  ENDIF
-! **********************************************************************
-  RETURN
 END SUBROUTINE neo_fourier
 ! **********************************************************************
 
@@ -2474,31 +2137,25 @@ SUBROUTINE neo_spline2d
 ! Double periodic splines (parameter mt=1 and mp=1)
 ! **********************************************************************
 ! Spline for mod b
-! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
   CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,b,b_spl)
-! IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
+
 ! Spline for sqrg11
-! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
   CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,sqrg11,g_spl)
-! IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
+
 ! Spline for geodesic curviture
-! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
   CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,kg,k_spl)
-! IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
+
 ! Spline for parallel derivative
-! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
   CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,pard,p_spl)
-! IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
+
 ! Spline for quasi-toroidal phi component of b
   IF (calc_cur .EQ. 1) THEN
-!    IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
      CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,bqtphi,q_spl)
-!    IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
   END IF
+
 ! Spline for r_nabpsi
-! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
   CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,r_nabpsi,r_spl)
-! IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
+
 ! **********************************************************************
 ! Spline test
 ! **********************************************************************
@@ -2780,13 +2437,11 @@ SUBROUTINE neo_bderiv(theta, phi, f, g, dfdx, dfdy, dgdx, dgdy)
 ! **********************************************************************
 ! Evaluation of 2d-splines (first and second derivatives)
 ! **********************************************************************
-!  print *, 'before eva2d_fd'
   CALL eva2d_fd(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,         &
              b_spl,fderiv)
-!  print *, 'before eva2d_sd'
   CALL eva2d_sd(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,         &
              b_spl,sderiv)
-!  print *, 'after eva2d_sd'
+
 ! **********************************************************************
 ! Outputvalues (for neo_zeros2d)
 ! **********************************************************************
@@ -2822,7 +2477,6 @@ SUBROUTINE neo_dealloc
   DEALLOCATE (es,iota,curr_pol,curr_tor,pprime,sqrtg00)
   DEALLOCATE (theta_arr,phi_arr)
   DEALLOCATE (rmnc,zmnc,lmnc,bmnc)
-! DEALLOCATE (cosval,sinval)
   DEALLOCATE (ixm, ixn)
   DEALLOCATE (pixm, pixn)
   DEALLOCATE (i_m, i_n)
@@ -2994,10 +2648,7 @@ SUBROUTINE neo_zeros2d(x, y, eps, iter_ma, iter, error)
   DO iter = 1, iter_ma
 
      det = dfdx * dgdy - dfdy * dgdx
-!!$     PRINT *, 'f,    g    ', f, g
-!!$     PRINT *, 'dfdx, dgdx ', dfdx, dgdx
-!!$     PRINT *, 'dfdy, dgdy ', dfdy, dgdy
-!!$     PRINT *, 'det        ', det
+
      IF (det .NE. 0.0_dp) THEN
         x_n = x + ( dfdy *  g   -  f   * dgdy ) / det
         y_n = y + (  f   * dgdx - dfdx *  g   ) / det
@@ -3005,22 +2656,18 @@ SUBROUTINE neo_zeros2d(x, y, eps, iter_ma, iter, error)
         x_n = x - f / dfdx
         y_n = y
      END IF
-!!$     PRINT *, 'x,    y    ', x, y
-!!$     PRINT *, 'x_n,  y_n  ', x_n, y_n
 
 !    compute f(x,y), g(x,y) and all first derivatives
 !    at the new positions
-!     PRINT *, x_n, y_n
      CALL neo_bderiv(x_n, y_n, f_n, g_n, dfdx, dfdy, dgdx, dgdy)
 
 !    remaining relatve errors
-!     IF (x_n .NE. 0.0d0) THEN
      IF (ABS(x_n) .GT. eps) THEN
        x_err = ABS ( (x_n - x) / x_n )
      ELSE
        x_err = ABS ( x_n - x )
      END IF
-!     IF (y_n .NE. 0.0d0) THEN
+
      IF (ABS(y_n) .GT. eps) THEN
        y_err = ABS ( (y_n - y) / y_n )
      ELSE
