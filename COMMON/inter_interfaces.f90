@@ -454,7 +454,7 @@ MODULE inter_interfaces
   END INTERFACE
   INTERFACE
      FUNCTION tfzero(x,m)
-       use nrtype, only : I4B, DP
+       use nrtype, only : DP
        IMPLICIT NONE
        REAL(DP), INTENT(IN) :: x
        REAL(DP), INTENT(IN) :: m
