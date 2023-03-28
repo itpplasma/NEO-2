@@ -221,10 +221,11 @@ institute it is linked against OpenMPI, where on clusters Intel MPI is
 mostly used. MyMPILib was developed so that in the code of \vv{NEO-2} no
 native MPI commands have to be used.
 
-Note that it was decided to no longer have \vv{hdf5tools} and
-\vv{MyMPILib} as separate libraries, but to add them to \vv{libneo},
+Note that it was decided to no longer develop \vv{hdf5tools} and
+\vv{MyMPILib} separate, but to add them to \vv{libneo},
 which is intended to collect code that is used by multiple programs of
-the group. You can get \vv{libneo} from github (see
+the group. To be able to use only what is needed, compilation is still
+done into seperate library files. You can get \vv{libneo} from github (see
 Sec.~\ref{technicalbackground_git}).
 
 % ----------------------------------------------------------------------
@@ -551,7 +552,7 @@ order to not shift this surface to far away from the original
 equidistant grid.
 
 In the next step a template directory for the run directories has to be
-created. Here, a default \vv{neo2.in} is used (so be sure to chekc the
+created. Here, a default \vv{neo2.in} is used (so be sure to check the
 settings) and the executable of
 \vv{NEO-2} is copied from the project directory.
 \begin{verbatim}
