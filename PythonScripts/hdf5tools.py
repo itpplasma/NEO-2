@@ -1973,6 +1973,142 @@ def change_value(infilename: str, outfilename: str, field_to_change: str, new_va
           hout.create_dataset(dname, data=hin[dname])
 
 
+def change_neo2_profile_according_to_astra_output(path:str, neo2infilename:str, astrainfilename:str, outfilename:str):
+  """Take existing neo-2-ql profile input file and change density+temperature
+
+  This function takes an existing neo-2-ql profile hdf5 input file and
+  changes density, temperature and related quantities (grid, derivatives,
+  collision frequency), according to profiles from output of ASTRA,
+  given as mat file.
+  It is assumed that the input grid is the square root of the normalized
+  toroidal flux.
+
+  \attention
+  rho_pol is not recalculated, but instead set to zero.
+
+  Example usage:
+    change_neo2_profile_according_to_astra_output('./', 'multi_spec_Valentin.in', 'demo_2019_qh_1.mat', 'multi_spec_demo.in')
+
+  Would operate on files in the current folder and place the result in
+  the current folder.
+
+  input:
+  ------
+  path: string, folder where to operate. Is prepended to all the
+    filenames.
+  neo2infilename: string, name of the neo2 profile file to be used as
+    input.
+  astrainfilename: string, name of the astra octave/matlab file, to be
+    used as input.
+  outfilename: string, name of the file to be used for the output. Is
+    replaced if it already exists.
+
+  output:
+  -------
+  none
+
+  sideeffects:
+  ------------
+  Creates new file.
+  """
+
+  from math import pi, sqrt
+
+  from numpy import array, log10, zeros
+  from oct2py import octave
+  from scipy.interpolate import CubicSpline
+
+  ELEMENTARY_CHARGE_SI = 1.60217662e-19
+  SPEED_OF_LIGHT_SI = 2.99792458e8
+  ENERGY_SI_TO_CGS = 1e7
+  DENSITY_SI_TO_CGS = 1e-6
+  DENSITY_ASTRA_TO_SI = 1.0e+19
+  KEV_TO_EV = 1.0e+3
+  EV_TO_SI = ELEMENTARY_CHARGE_SI
+  EV_TO_CGS = EV_TO_SI * ENERGY_SI_TO_CGS
+  KEV_TO_CGS = EV_TO_CGS * KEV_TO_EV
+  DENSITY_ASTRA_TO_CGS = DENSITY_ASTRA_TO_SI * DENSITY_SI_TO_CGS
+  CHARGE_SI_TO_CGS = 10*SPEED_OF_LIGHT_SI # Conversion factor is not speed of light, but 10c.
+
+  octave.push('path', path)
+  octave.push('astrainfilename', astrainfilename)
+  octave.eval("""m = load([path, astrainfilename]);
+  te = m.te(:,end);
+  ti = m.ti(:,end);
+  ne = m.ne(:,end);
+  ni = m.ni(:,end);
+  x = m.x;
+  s = x.*x;
+  """)
+  te = octave.pull('te')*KEV_TO_CGS
+  ti = octave.pull('ti')*KEV_TO_CGS
+
+  ne = octave.pull('ne')*DENSITY_ASTRA_TO_CGS
+  ni = ne #octave.pull('ni')*DENSITY_ASTRA_TO_CGS # to have quasineutrality, astra output might have multiple ion species (and ndeut specifically for deuterium).
+
+  rho_toroidal = octave.pull('s')[:,0]
+
+  # Spline the profiles to the grid used by neo-2
+  sp_te = CubicSpline(rho_toroidal, te)
+  sp_ti = CubicSpline(rho_toroidal, ti)
+  sp_ne = CubicSpline(rho_toroidal, ne)
+  sp_ni = CubicSpline(rho_toroidal, ni)
+
+  with get_hdf5file_replace(path + outfilename) as out:
+
+    with get_hdf5file(path + neo2infilename) as ref:
+      # Copy everything, then change what needs to be changed.
+      for k in ref.keys():
+        ref.copy(source='/'+k, dest=out, name='/' + k)
+
+    # Interpolated Quantities
+    int_te = sp_te(out['boozer_s'])
+    int_ti = sp_ti(out['boozer_s'])
+    int_ne = sp_ne(out['boozer_s'])
+    int_ni = sp_ni(out['boozer_s'])
+    # Get derivative for the required quantities.
+    der_te = sp_te(out['boozer_s'], 1)
+    der_ti = sp_ti(out['boozer_s'], 1)
+    der_ne = sp_ne(out['boozer_s'], 1)
+    der_ni = sp_ni(out['boozer_s'], 1)
+
+    log_Lambda = 39.1 - 1.15*log10(int_ne/DENSITY_SI_TO_CGS) + 2.3*log10(int_te/KEV_TO_EV)
+
+    # Conversion cgs-units
+    e_e = -ELEMENTARY_CHARGE_SI * CHARGE_SI_TO_CGS #[statC]
+    e_i = +ELEMENTARY_CHARGE_SI * CHARGE_SI_TO_CGS #[statC]
+    Te_ov_ee = -int_te/e_e #[erg/statC]
+    Ti_ov_ei = int_ti/e_i #[erg/statC]
+
+    # mean free path
+    lc_e = (3.0/(4.0*sqrt(pi)))*(Te_ov_ee**2) / (int_ne*(e_e**2)*log_Lambda)
+    lc_i = (3.0/(4.0*sqrt(pi)))*(Ti_ov_ei**2) / (int_ni*(e_i**2)*log_Lambda)
+
+    # Compute kappa for electrons and main ion species
+    kappa_e = 2./lc_e
+    kappa_i = 2./lc_i
+
+    dset = out['n_prof']
+    dset[...] = array([int_ne, int_ni])[:,:,0]
+
+    dset = out['T_prof']
+    dset[...] = array([int_te, int_ti])[:,:,0]
+
+    dset = out['dn_ov_ds_prof']
+    dset[...] = array([der_ne, der_ni])[:,:,0]
+
+    dset = out['dT_ov_ds_prof']
+    dset[...] = array([der_te, der_ti])[:,:,0]
+
+    dset = out['kappa_prof']
+    dset[...] = array([kappa_e, kappa_i])[:,:,0]
+
+    dset = out['rho_pol']
+    dset[...] = zeros(dset.shape) # is not used, so ignore this for now.
+
+    out.close()
+
+
 if __name__ == "__main__":
 
   import h5py
