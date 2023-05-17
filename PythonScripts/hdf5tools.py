@@ -2072,7 +2072,7 @@ def change_neo2_profile_according_to_astra_output(path:str, neo2infilename:str, 
     der_ne = sp_ne(out['boozer_s'], 1)
     der_ni = sp_ni(out['boozer_s'], 1)
 
-    log_Lambda = 39.1 - 1.15*log10(int_ne/DENSITY_SI_TO_CGS) + 2.3*log10(int_te/KEV_TO_EV)
+    log_Lambda = 39.1 - 1.15*log10(int_ne/DENSITY_SI_TO_CGS) + 2.3*log10(int_te/KEV_TO_CGS)
 
     # Conversion cgs-units
     e_e = -ELEMENTARY_CHARGE_SI * CHARGE_SI_TO_CGS #[statC]
