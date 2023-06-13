@@ -50,34 +50,16 @@ MODULE neo_magfie_perturbation
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: zmns_pert
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: lmns_pert
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: bmns_pert
-  !
+
   ! storage arrays for the splines of the 2d
   ! Fourier arrays
-  !PRIVATE a_rmnc_pert, b_rmnc_pert, c_rmnc_pert, d_rmnc_pert
-  !PRIVATE a_zmnc_pert, b_zmnc_pert, c_zmnc_pert, d_zmnc_pert
-  !PRIVATE a_lmnc_pert, b_lmnc_pert, c_lmnc_pert, d_lmnc_pert
   PRIVATE a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert
-  !PRIVATE a_rmns_pert, b_rmns_pert, c_rmns_pert, d_rmns_pert
-  !PRIVATE a_zmns_pert, b_zmns_pert, c_zmns_pert, d_zmns_pert
-  !PRIVATE a_lmns_pert, b_lmns_pert, c_lmns_pert, d_lmns_pert
   PRIVATE a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_rmnc_pert, b_rmnc_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_rmnc_pert, d_rmnc_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_zmnc_pert, b_zmnc_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_zmnc_pert, d_zmnc_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_lmnc_pert, b_lmnc_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_lmnc_pert, d_lmnc_pert
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_bmnc_pert, b_bmnc_pert
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_bmnc_pert, d_bmnc_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_rmns_pert, b_rmns_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_rmns_pert, d_rmns_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_zmns_pert, b_zmns_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_zmns_pert, d_zmns_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_lmns_pert, b_lmns_pert
-  !REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_lmns_pert, d_lmns_pert
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: a_bmns_pert, b_bmns_pert
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_bmns_pert, d_bmns_pert
-  !
+
   ! storage arrays for r_mhalf and sp_index
   ! requested by the spline routines
   PRIVATE r_m_pert, r_mhalf_pert, sp_index_pert
@@ -153,11 +135,9 @@ CONTAINS
           READ(r_un,*) char_dummy
 
           DO j=1,mnmax_pert
-             !print *, 'j: ',j
              READ(r_un,*) ixm_pert(j),ixn_pert(j),&
                   rmnc_pert(i,j),zmnc_pert(i,j),lmnc_pert(i,j),&
                   bmnc_pert(i,j)
-             !PRINT *, 'ixm,ixn,bmnc: ',ixm_pert(j),ixn_pert(j),bmnc_pert(i,j)
           END DO
        END DO
     ELSEIF (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)     
@@ -204,11 +184,9 @@ CONTAINS
           READ(r_un,*) char_dummy
 
           DO j=1,mnmax_pert
-             !print *, 'j: ',j
              READ(r_un,*) ixm_pert(j),ixn_pert(j),&
                   rmnc_pert(i,j),rmns_pert(i,j),zmnc_pert(i,j),zmns_pert(i,j),&
                   lmnc_pert(i,j),lmns_pert(i,j),bmnc_pert(i,j),bmns_pert(i,j)
-             !PRINT *, 'ixm,ixn,bmnc: ',ixm_pert(j),ixn_pert(j),bmnc_pert(i,j),bmns_pert(i,j),es_pert(i)
           END DO
        END DO
     ELSE
@@ -248,33 +226,12 @@ CONTAINS
     ! some maximum value of poloidal mode numbers
     ! (used for the computation of r_mhalf)
     INTEGER, PARAMETER :: m_max_sp = 12
-    !
-    ! testing
-    !
-!!$    ! define switch and select a flux surface
-!!$    INTEGER(I4B) :: swd
-!!$    INTEGER      :: k
-!!$    REAL(dp)     :: m0, f_es_pert, f_bmnc_pert, dummy
-    !
+
     ! allocate 2d arrays for the splines of the Fourier coefficients
-    !at the moment unused stuff
-    !ALLOCATE ( a_rmnc_pert(ns_pert,mnmax_pert), b_rmnc_pert(ns_pert,mnmax_pert) )
-    !ALLOCATE ( c_rmnc_pert(ns_pert,mnmax_pert), d_rmnc_pert(ns_pert,mnmax_pert) )
-    !ALLOCATE ( a_zmnc_pert(ns_pert,mnmax_pert), b_zmnc_pert(ns_pert,mnmax_pert) )
-    !ALLOCATE ( c_zmnc_pert(ns_pert,mnmax_pert), d_zmnc_pert(ns_pert,mnmax_pert) )
-    !ALLOCATE ( a_lmnc_pert(ns_pert,mnmax_pert), b_lmnc_pert(ns_pert,mnmax_pert) )
-    !ALLOCATE ( c_lmnc_pert(ns_pert,mnmax_pert), d_lmnc_pert(ns_pert,mnmax_pert) )
     ALLOCATE ( a_bmnc_pert(ns_pert,mnmax_pert), b_bmnc_pert(ns_pert,mnmax_pert) ) 
     ALLOCATE ( c_bmnc_pert(ns_pert,mnmax_pert), d_bmnc_pert(ns_pert,mnmax_pert) )
     ! Additional data from Boozer files without Stellarator symmetry
     IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
-       !at the moment unused stuff
-       !ALLOCATE ( a_rmns_pert(ns_pert,mnmax_pert), b_rmns_pert(ns_pert,mnmax_pert) )
-       !ALLOCATE ( c_rmns_pert(ns_pert,mnmax_pert), d_rmns_pert(ns_pert,mnmax_pert) )
-       !ALLOCATE ( a_zmns_pert(ns_pert,mnmax_pert), b_zmns_pert(ns_pert,mnmax_pert) )
-       !ALLOCATE ( c_zmns_pert(ns_pert,mnmax_pert), d_zmns_pert(ns_pert,mnmax_pert) )
-       !ALLOCATE ( a_lmns_pert(ns_pert,mnmax_pert), b_lmns_pert(ns_pert,mnmax_pert) )
-       !ALLOCATE ( c_lmns_pert(ns_pert,mnmax_pert), d_lmns_pert(ns_pert,mnmax_pert) )
        ALLOCATE ( a_bmns_pert(ns_pert,mnmax_pert), b_bmns_pert(ns_pert,mnmax_pert) ) 
        ALLOCATE ( c_bmns_pert(ns_pert,mnmax_pert), d_bmns_pert(ns_pert,mnmax_pert) )
     END IF
@@ -307,13 +264,6 @@ CONTAINS
     sp_index_pert = (/ (i, i=1,ns_pert) /) 
     !
     ! 1-d splines of 2-d arrays
-    !at the moment unused stuff
-    !CALL splinecof3_hi_driv(es_pert, rmnc_pert, r_mhalf_pert,&
-    !     a_rmnc_pert, b_rmnc_pert, c_rmnc_pert, d_rmnc_pert, sp_index_pert, tf)
-    !CALL splinecof3_hi_driv(es_pert, zmnc_pert, r_mhalf_pert,&
-    !     a_zmnc_pert, b_zmnc_pert, c_zmnc_pert, d_zmnc_pert, sp_index_pert, tf)
-    !CALL splinecof3_hi_driv(es_pert, lmnc_pert, r_mhalf_pert,&
-    !     a_lmnc_pert, b_lmnc_pert, c_lmnc_pert, d_lmnc_pert, sp_index_pert, tf)
     if (lsw_linear_boozer) then
       call splinecof1_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
          & a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert, sp_index_pert, tf)
@@ -332,21 +282,6 @@ CONTAINS
       end if
     end if
 
-    !
-    ! Testing
-    !
-!!$    swd = 0 ! no derivatives
-!!$    k = 1
-!!$    f_es_pert = es_pert(k)
-!!$    DO i=1,mnmax_pert
-!!$       m0 = r_mhalf_pert(i)
-!!$       CALL splint_horner3(es_pert,a_bmnc_pert(:,i), b_bmnc_pert(:,i), c_bmnc_pert(:,i),&
-!!$            d_bmnc_pert(:,i), swd, m0, f_es_pert, tf, tfp, tfpp, tfppp, f_bmnc_pert,&
-!!$            dummy,dummy,dummy)
-!!$       PRINT *, ixm_pert(i),ixn_pert(i),bmnc_pert(k,i),f_bmnc_pert  
-!!$    END DO
-    !
-    RETURN
   END SUBROUTINE neo_init_spline_pert
   !
   ! Compute the perturbation field for a certain x-value
@@ -379,7 +314,6 @@ CONTAINS
     ! direct summation of Fourier components
     !
     bn_hat_pert = (0.0_dp,0.0_dp)
-    !PRINT *,'mnmax_pert: ', mnmax_pert
     DO i = 1, mnmax_pert
        swd = 1
        if (lsw_linear_boozer) then
@@ -408,11 +342,9 @@ CONTAINS
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
-          !PRINT *,'n: ',n
           ! minus sign due to spectrum of the form
           ! $B = \sum_{mn} b_{mn} cos(m\vartheta_B-n\varphi_B)$
           m = (-1)*ixm_pert(i)
-          !PRINT *,'m: ',m
 
           ! perturbation field is represented in terms of an expansion
           ! over the periodic toroidal Boozer angle times a phase
@@ -420,7 +352,6 @@ CONTAINS
           ! while x(3) is the coordinate along the field line! Make sure that
           ! the different periodicities are treated correctly)
           expv = EXP(imun*(m*x(3)+n*x(2)))
-          !PRINT *,'exponential (expv): ',expv
 
           ! part corresponding to the expansion over the periodic angle
           bn_hat_pert = bn_hat_pert + bmnc_pert_val * expv
@@ -434,7 +365,6 @@ CONTAINS
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
           m = ixm_pert(i)
-          !PRINT *,'m: ',m
 
           ! perturbation field is represented in terms of an expansion
           ! over the periodic toroidal Boozer angle times a phase
@@ -442,7 +372,6 @@ CONTAINS
           ! while x(3) is the coordinate along the field line! Make sure that
           ! the different periodicities are treated correctly)
           expv = EXP(imun*(m*x(3)+n*x(2)))
-          !PRINT *,'exponential (expv): ',expv
 
           ! part corresponding to the expansion over the periodic angle
           bn_hat_pert = bn_hat_pert + (bmnc_pert_val - imun * bmns_pert_val) * expv
@@ -455,9 +384,6 @@ CONTAINS
 
     END DO
     bn_hat_pert = bn_hat_pert / bmod0
-    !PRINT *,'bhat, bn_hat_pert: ',(bn_hat_pert/bhat),(1.0d-3*EXP(imun*m_phi*x(2)))
-    !PRINT *,'bn_hat_pert: ',bn_hat_pert
-    !PRINT *,'bmod0: ',bmod0
   END SUBROUTINE neo_magfie_pert_a
   !
   ! Compute the perturbation field for a certain x-value and its 
@@ -520,11 +446,9 @@ CONTAINS
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
-          !PRINT *,'n: ',n
           ! minus sign due to spectrum of the form
           ! $B = \sum_{mn} b_{mn} cos(m\vartheta_B-n\varphi_B)$
           m = (-1)*ixm_pert(i)
-          !PRINT *,'m: ',m
 
           ! perturbation field is represented in terms of an expansion
           ! over the periodic toroidal Boozer angle times a phase
@@ -532,7 +456,6 @@ CONTAINS
           ! while x(3) is the coordinate along the field line! Make sure that
           ! the different periodicities are treated correctly)
           expv = EXP(imun*(m*x(3)+n*x(2)))
-          !PRINT *,'exponential (expv): ',expv
 
           ! part corresponding to the expansion over the periodic angle
           bn_hat_pert = bn_hat_pert + bmnc_pert_val * expv
@@ -550,11 +473,9 @@ CONTAINS
           ! while x(3) is the coordinate along the field line! Make sure that
           ! the different periodicities are treated correctly)
           expv = EXP(imun*(m*x(3)+n*x(2)))
-          !PRINT *,'exponential (expv): ',expv
 
           ! part corresponding to the expansion over the periodic angle
           bn_hat_pert = bn_hat_pert + (bmnc_pert_val - imun * bmns_pert_val) * expv
-          !PRINT *,'m, n, expv, bn_hat_pert, bmnc, bmns: ',m,n,expv,bn_hat_pert,bmnc_pert_val,bmns_pert_val
           dbn_hat_pert_dtheta = dbn_hat_pert_dtheta +&
                imun * m * (bmnc_pert_val - imun * bmns_pert_val) * expv
        END IF
@@ -562,12 +483,9 @@ CONTAINS
     END DO
     bn_hat_pert = bn_hat_pert / bmod0
     dbn_hat_pert_dtheta = dbn_hat_pert_dtheta / bmod0
-    !PRINT *,'bhat, bn_hat_pert: ',(bn_hat_pert/bhat),(1.0d-3*EXP(imun*m_phi*x(2)))
-    !PRINT *,'bn_hat_pert: ',bn_hat_pert
-    !PRINT *,'bmod0: ',bmod0
 
   END SUBROUTINE neo_magfie_pert_b
-  !
+
   SUBROUTINE calc_bnoverb0_arr(phi_arr,ibeg,iend,bnoverb0_arr,dbnoverb0_dphi_arr)
     !
     ! input / output
@@ -700,8 +618,7 @@ CONTAINS
     fac1 = 0.5_dp * fac1
     fac2 = 0.5_dp * fac2
     av_gphph = fac1 / fac2
-    !PRINT *,'av_gphph: ',av_gphph
-    !
+
   END SUBROUTINE calc_av_gphph
 !
 END MODULE neo_magfie_perturbation
