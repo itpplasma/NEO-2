@@ -1,4 +1,4 @@
-==== Neo-2 Readme ====
+# Neo-2 Readme
 
 For build information and dependencies have a look in Build.md.
 
@@ -9,7 +9,16 @@ Shared code is located in COMMON, the relativistic code is under
 NEO-2-PAR and the multispecies version under NEO-2-QL.
 Also there are folders for cmake-/octave-/python-/shell-scripts.
 
-== COMMON ==
+# COMMON 
 Contains all code that is shared, or at least not specific for one code.
 Contains also other files that are shared, e.g. ProjectConfig.cmake.in
 and cmake_version.f90.in.
+
+# Installation
+
+## Prerequisites
+  * SuperLU
+  * SuiteSparse
+  * NetCDF
+  * GSL, FGSL
+  * libneo
