@@ -21,7 +21,11 @@ execute_process(COMMAND nc-config --flibs
 ### FGSL
 ### HDF5
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-  if (CMAKE_Fortran_COMPILER_VERSION VERSION_EQUAL 11.2.0)
+  if (CMAKE_Fortran_COMPILER_VERSION VERSION_EQUAL 12.2.0)
+    set(NEO2_Libs ${LIBNEOLIBS}/Build-12-2-0/ CACHE STRING "Libneo path")
+    set(FGSL_PATH ${PROJLIBS}FGSL_gcc-12.2.0/fgsl-1.5.0/LIB)
+    set(OPEN_BLAS_PATH /usr/lib/openblas/ /usr/lib/x86_64-linux-gnu/)
+  elseif (CMAKE_Fortran_COMPILER_VERSION VERSION_EQUAL 11.2.0)
     set(NEO2_Libs ${LIBNEOLIBS}/Build-11-2-0/ CACHE STRING "Libneo path")
     set(FGSL_PATH ${PROJLIBS}FGSL_gcc-11.2.0/fgsl-1.5.0/LIB)
     set(OPEN_BLAS_PATH /usr/lib/openblas/ /usr/lib/x86_64-linux-gnu/)
