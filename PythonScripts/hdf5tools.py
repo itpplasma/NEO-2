@@ -1849,10 +1849,11 @@ def rescale_quantitiy_profiles(path: str, infilename: str, scaling_factor: float
   ------------
   Creates file in current folder.
   """
+  import os
   import h5py, hdf5tools
   import numpy as np
 
-  ref = hdf5tools.get_hdf5file(path+infilename)
+  ref = hdf5tools.get_hdf5file(os.path.join(path,infilename))
 
   quant_namepart = ''
   quant = {}
