@@ -915,25 +915,38 @@ def reshape_hdf5_file(in_filename: str, out_filename: str):
 def collect_and_reshape(path: str, infilename: str, outfilename: str):
   """ Copy data to single file and reshape it.
 
+  Copy output from multiple files into a single file with one more
+  array dimension.
+
+  \note: As of now, this requires creating a temporary file, which is
+    not removed by the function for safety concerns (unwanted deletion
+    of additional files) in case one does something wrong.
+
   input:
   ------
   path: string with the path in which to find subfolders to check for
     input files.
   infilename: name of the input files.
   outfilename: name of the file into which to write the output, i.e. the
-    collected and reshaped data.
+    collected and reshaped data. Is created in the current folder, not
+    in path.
 
   side effects:
   -------------
-  Leaves a temporary file behind ('temp' + outfilename), from the copy
-  process.
+  Leaves a temporary file behind ('temp' + outfilename) in the current
+  folder, from the copy process.
+
+  limitations:
+  ------------
+  All input files need to have the same fields (not sure about this)
+  with the same size (this is definetly the case).
   """
 
   from os.path import join
 
   temp_filename = 'temp_' + outfilename
   copy_hdf5_from_subfolders_to_single_file(path, infilename, temp_filename)
-  reshape_hdf5_file(join(path, temp_filename), join(path, outfilename))
+  reshape_hdf5_file(temp_filename, outfilename)
 
 def dim_zero(data, elements_to_keep: list, operate_on_last_dimension: bool):
   return data
