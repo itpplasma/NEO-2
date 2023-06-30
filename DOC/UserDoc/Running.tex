@@ -118,14 +118,17 @@ occour.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{QL run for the computation of torque/plasma rotation}
 
+Here a short description is given how to do a scan over rotation
+velocity, with the aim of finding the rotation velocity for which the
+integral torque is zero.
+For the magnetic perturbation an analytical model is used.
+
 \paragraph{Directory setup}
-It is recommended to create a folder in your directory on \tpath{/temp/},
-which will contain all the runs that can share the same precomputation
-run. Subfolder contain then the scans over the radial domain, i.e. there
+It is recommended to create a folder in your directory on \tpath{/temp/}.
+Subfolder contain then the scans over the radial domain, i.e. there
 will be three levels - the base for the scans, the folders for the scans
-over rotation velocity and the folders for the radial position. Of
-course the last level does not need to be set up manually, \neotwo can
-do this.
+over rotation velocity and the folders for the radial position. The last
+level does not need to be set up manually, \neotwo can do this.
 
 Preparation of magnetic and profile files might also be done in the top
 folder.
@@ -168,13 +171,18 @@ and 1000 flux surfaces into 996 subfolders.
 
 Check that the magnitude of the density and temperature match the
 expecations, to verify that the units of the input have been interpreted
-correctly. (Density exponent $\approx 12-14$, temperature exponent $\approx (-10) - (-8)$?)
+correctly ($1/cm^3$ and $erg$ respectively). (Density exponent
+$\approx 12-14$, temperature exponent $\approx (-10) - (-8)$)
+
+Another possibility to create the intput profile would be to use an
+existing file and resacale quantities. There is a function for this in
+the python module \program{hdf5tools}.
 
 \paragraph{Magnetic equilibrium}
 Get as efit or boozer. If you need to create perturbed files, then the
 boozer format is required.
 There is a fortran program to convert efit into boozer. It is located at
-\tpath{/proj/plasma/Neo2/NTV/ASDEX\_MODES\_IGOSHINE/EFIT\_TO\_BOOZER/}.
+\tpath{/proj/plasma/CODE/efit\_to\_boozer/}.
 
 \paragraph{Magnetic perurbation}
 Creating the magnetic perurbation files is done in three steps.
@@ -219,8 +227,9 @@ displacement and the three perturbation files at once (not tested yet).
 
 The perturbed magnetic fields can be checked with the help of the
 method \program{contours\_in\_r\_z\_plane} of the python class
-\program{BoozerFile}. It will write contour lines to a file, that can be
-plotted, e.g. with gnuplot.
+\program{BoozerFile} (from module \program{boozer}, part of libneo). It
+will write contour lines to a file, that can be plotted, e.g. with
+gnuplot.
 
 The class also has method \program{calculate\_island\_width} to
 calculate the island width, to aid in
@@ -234,23 +243,28 @@ For the extraction there is the matlab/octave function
 Note that the n=0 mode is again the background.
 
 
-\paragraph{Precomputation Run}
-For further information regarding the input files, see Ch. \ref{ch:input}.
-
-Create in the main directory a subdirectory for the precomputation run.
+\paragraph{Computation Run}
 Create links to the background and perturbation file, as well as the
 file with the profiles (of density, temperature, etc), these are required
 as inputs for \neotwo.
+
 Copy neo.in and neo2.in into the folder, these files contain the input
 parameters and also define the names of the input files, so make sure
 the entries match the file names. Create or copy a submit file
 for condor, if you want to use condor. There is an example file in the
 \tpath{DOC} folder. Create a file vphiref.in, containing the line
 ``vphiref = 0''. This file contains the rotation velocity and is read by
-some scripts (for the precomputation it should be zero). Copy the
-\neotwo executable into the folder (usually you do not want a debug
-version as it is slower). Execute \neotwo, to produce the folders for
-the radial scan. Next step is to start the runs for the radial
+some scripts. Instead of the zero, you should use the appropriate value
+for that run. Note that some scripts requires this
+to be not in exponential format (i.e. the value should be written as,
+e.g. -100.2).
+
+Make sure the parameters multispec::vphi, collision::lsw\_read\_precom
+and collision::lsw\_write\_precom in neo2.in are both set to 'F' (or
+.false.').
+Copy the \neotwo executable into the folder, and run it. Running \neotwo
+will create the folders for the flux surfaces.
+Next step is to start the runs for the radial
 positions, either manually or via condor with
 \begin{verbatim}
 condor_submit submitfilename
@@ -259,35 +273,15 @@ condor_submit submitfilename
 Remember that the number of processors must be equal to the number of
 species.
 
-\paragraph{Computation Run}
-For a computation run, make a copy of the whole precomputation
-direcetory, i.e. including files, subfolders and files in the
-subfolders. Just the condor output, standard (scan.log) and error
-(err.*) might/should be removed. Change the value in the file vphiref.in
-to the one selected for this run. Note that some scripts requires this
-to be not in exponential format (i.e. the value should be written as,
-e.g. -100.2). Now some values in all the input files need to be adjusted.
-Namely multispec::vphi, collision::lsw\_read\_precom and
-collision::lsw\_write\_precom.
-Instead of doing this manually, you can use the shell script
-\program{set\_neo2in.sh} or the python function \program{set\_neo2in} of
-\program{scan\_nonhdf5\_tools.py}.
-Start the simulations as you would start a precomputation run. If you are
-using condor or something similar, then note that the actual computation
-requires more memory (at least an order of magnitude) than
-precomputation.
 
 \paragraph{Checks}
 
 \paragraph{Postprocessing Data}
 The torque data is in \file{neo2\_multispecies\_out.h5}, but so far the
-data is scattered over the folders for the radial scan. The python
-function \program{copy\_hdf5\_from\_subfolders\_to\_single\_file} can
-combine the files from the subfolders into a single file. The python
-function \program{reshape\_hdf5\_file}, can reshape sucha file, so that
-it no longer contains an entry for each subfolder, but instead arrays
-over radius. The python function \program{collect\_and\_reshape} does
-both at once.
+data is scattered over the folders for the radial scan.
+The python function \program{collect\_and\_reshape} collects the data
+and puts it into a single output file as arrays with one more dimension
+(for radial direction).
 
 Another aproach is the python function \program{postproc\_torque} from
 the file with the same name. This will read the data from different
