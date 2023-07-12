@@ -61,6 +61,7 @@ function [integrated_torque, s_grid, L] = integrate_torque_over_radius(h5file, e
       offset = integrated_torque_temp(end);
     else
       offset = 0.0;
+      integrated_torque_temp = [];
     end
 
     if any(L2)
