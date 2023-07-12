@@ -2123,6 +2123,98 @@ def change_neo2_profile_according_to_astra_output(path:str, neo2infilename:str, 
     out.close()
 
 
+def new_grid(infilename: str, outfilename: str, new_s_grid):
+  """Reinterpolate existing neo-2 profile file to new grid.
+
+  Example usage
+    import numpy as np
+    from hdf5tools import new_grid
+
+    new_s = np.linspace(0.0, 1.0, 500)
+    new_grid(infilename='input.in', outfilename='new.in', new_s_grid=new_s)
+
+  input:
+  ------
+  infilename: string, path+name of the file to reinterpolate.
+  outfilename: string, path+name of the file with the new grid.
+  new_s_grid: list with the new s-values to use.
+
+  output:
+  -------
+  none
+
+  sideeffects:
+  ------------
+  Creates new file.
+
+  limitations:
+  ------------
+  Has hard-coded treatment of fields, thus a change of the neo-2 input
+  file format will recuire changes.
+  Hard-coded treatment of fields, also means that it will not work for
+  other files.
+  """
+
+  from numpy import array
+  from scipy.interpolate import CubicSpline
+
+  with get_hdf5file_replace(outfilename) as out:
+    with get_hdf5file(infilename) as ref:
+      # Copy everything, then change what needs to be changed.
+      for k in ref.keys():
+        ref.copy(source='/'+k, dest=out, name='/' + k)
+
+    new_s_grid = array(new_s_grid)
+
+    sp_n = CubicSpline(out['boozer_s'], out['n_prof'], axis=1)
+    int_n = sp_n(new_s_grid)
+    der_n = sp_n(new_s_grid, 1)
+    dset = out['n_prof']
+    dset[...] = array(int_n)
+    dset = out['dn_ov_ds_prof']
+    dset[...] = array(der_n)
+
+    sp_t = CubicSpline(out['boozer_s'], out['T_prof'], axis=1)
+    int_t = sp_t(new_s_grid)
+    der_t = sp_t(new_s_grid, 1)
+    dset = out['T_prof']
+    dset[...] = array(int_t)
+    dset = out['dT_ov_ds_prof']
+    dset[...] = array(der_t)
+
+    sp_kappa = CubicSpline(out['boozer_s'], out['kappa_prof'], axis=1)
+    int_kappa = sp_kappa(new_s_grid)
+    dset = out['kappa_prof']
+    dset[...] = array(int_kappa)
+
+    sp_species_def = CubicSpline(out['boozer_s'], out['species_def'], axis=2)
+    int_species_def = sp_species_def(new_s_grid)
+    dset = out['species_def']
+    dset[...] = array(int_species_def)
+
+    sp_rho = CubicSpline(out['boozer_s'], out['rho_pol'])
+    int_rho = sp_rho(new_s_grid)
+    dset = out['rho_pol']
+    dset[...] = array(int_rho)
+
+    sp_rel_stages = CubicSpline(out['boozer_s'], out['rel_stages'])
+    int_rel_stages = sp_rel_stages(new_s_grid)
+    dset = out['rel_stages']
+    dset[...] = array(int_rel_stages)
+
+    sp_vphi = CubicSpline(out['boozer_s'], out['Vphi'])
+    int_vphi = sp_vphi(new_s_grid)
+    dset = out['Vphi']
+    dset[...] = array(int_vphi)
+
+
+    dset = out['boozer_s']
+    dset[...] = new_s_grid
+
+    dset = out['num_radial_pts']
+    dset[...] = len(new_s_grid)
+
+
 if __name__ == "__main__":
 
   import h5py
