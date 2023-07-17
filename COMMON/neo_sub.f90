@@ -77,7 +77,7 @@ SUBROUTINE neo_init(npsi)
   end if
 
   IF(rt0.EQ.0.0_dp .OR. bmref.EQ.0.0_dp) THEN
-    WRITE (w_us,*) ' NEO_INIT: Fatal problem setting rt0 or bmref'
+    WRITE (w_us,*) ' NEO_INIT: Fatal problem setting rt0 or bmref', rt0, bmref
     STOP
   ENDIF
 
