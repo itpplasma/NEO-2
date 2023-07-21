@@ -136,7 +136,8 @@ SUBROUTINE rhs_kin(phi,y,dery)
      !This was the old version (conversion to cgs is done here):
      !dery(6) = 1.d0 / boozer_isqrg * bmod0 * 1.0d2
      !Now the quantities are already converted within neo_magfie:
-     dery(6) = 1.0d0/(boozer_isqrg*boozer_psi_pr_hat)
+     dery(6) = 1.d0/abs(bhat*hctrvr(2))
+
      !! End Modifications by Andreas F. Martitsch (12.03.2014)
      
      !tdery  =(boozer_curr_pol + boozer_iota * boozer_curr_tor) / bmod0 / bhat**2 * 1.0d2
@@ -167,7 +168,9 @@ SUBROUTINE rhs_kin(phi,y,dery)
      !This was the old version (conversion to cgs is done here):
      !dery(7)= dery(6) * boozer_sqrtg11 / boozer_psi_pr / 1.d2
      !Now the quantities are already converted within neo_magfie:
+
      dery(7) = dery(6)*boozer_sqrtg11
+
      !PRINT *,'dery(6),dery(7) :',dery(6),dery(7)
      !! End Modifications by Andreas F. Martitsch (12.03.2014)
      
