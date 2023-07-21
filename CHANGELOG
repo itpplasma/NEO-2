@@ -22,7 +22,6 @@ Note: use git tag --list to get a list of available tags.
   Fixed [any bug fixes]
   Security [in case of vulnerabilities]
 
-NTV  same as multispecies?
 
 4c15fa6dcac129c645ffa1091736b563098a361c ; module-rewrite_common
 Moved modules in common to own files. Exception for modules that are
