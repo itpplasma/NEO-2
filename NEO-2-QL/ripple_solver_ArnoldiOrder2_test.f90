@@ -68,7 +68,7 @@ SUBROUTINE ripple_solver_ArnoldiO2(                       &
   ! ripple_solver.f90!
   use neo_magfie, only : boozer_iota,boozer_curr_pol_hat,&
        boozer_curr_tor_hat,boozer_psi_pr_hat,boozer_curr_pol_hat_s,&
-       boozer_curr_tor_hat_s, boozer_iota_s
+       boozer_curr_tor_hat_s, boozer_iota_s, boozer_isqrg
   !! End Modifications by Andreas F. Martitsch (12.03.2014)
   !! Modifications by Andreas F. Martitsch (12.06.2014)
   ! quantities of the perturbation field extracted
@@ -778,7 +778,6 @@ PRINT *,ub_mag,ibeg,iend
   h_phi_mfl(0:ub_mag) = fieldpropagator%mdata%h_phi
   sign_of_bphi= SIGN(1.d0,h_phi_mfl(0))                                !08.12.08
   h_phi_mfl(0:ub_mag)=h_phi_mfl(0:ub_mag)*sign_of_bphi                 !08.12.08
-  geodcu_mfl(0:ub_mag)=geodcu_mfl(0:ub_mag)*sign_of_bphi               !08.12.08
 
   IF (ALLOCATED(dlogbdphi_mfl)) DEALLOCATE(dlogbdphi_mfl)
   ALLOCATE(dlogbdphi_mfl(ibeg:iend))
@@ -1047,7 +1046,10 @@ DEALLOCATE(dbnoverb0_dphi_mfl_test)
 !This was the old version (conversion to cgs is done here):
 !scalefac_kG=1d-4*bmod0/(aiota*boozer_psi_pr)
 !Now the quantities are already converted within neo_magfie:
-scalefac_kG=1.0d0/(aiota*boozer_psi_pr_hat)
+
+  scalefac_kG=1.0d0/(aiota*boozer_psi_pr_hat)
+
+  scalefac_kG = scalefac_kG * sign(1.d0,boozer_psi_pr_hat*bcovar_phi_hat*boozer_isqrg)
 
 !PRINT *,'scalefac_kG: ',scalefac_kG
 !! Modifications by Andreas F. Martitsch (12.03.2014)
@@ -1467,7 +1469,7 @@ rotfactor=imun*m_phi
     q_rip(npassing+1,istep,2)=eta0-eta(npassing)
     q_rip(1:npassing+1,istep,2)                                  &
           =q_rip(1:npassing+1,istep,2)                           &
-          *bhat_mfl(istep)/h_phi_mfl(istep)
+          *bhat_mfl(istep)/h_phi_mfl(istep)*sign_of_bphi
     q_rip_incompress(1:npassing,istep)                           &
           =(alambd(0:npassing-1,istep)**3-alambd(0:npassing-1,istep) &
           - alambd(1:npassing,istep)**3+alambd(1:npassing,istep))    &
@@ -1478,9 +1480,9 @@ rotfactor=imun*m_phi
     q_rip_parflow(1:npassing,istep)=2.d0/3.d0                        &
           *(alambd(0:npassing-1,istep)**3-alambd(1:npassing,istep)**3)
     q_rip_parflow(npassing+1,istep)=2.d0/3.d0*alambd(npassing,istep)**3
-!
-    convol_curr(1:npassing+1,istep)=bhat_mfl(istep)/h_phi_mfl(istep)
-!
+
+    convol_curr(1:npassing+1,istep) = bhat_mfl(istep)/h_phi_mfl(istep)*sign_of_bphi
+
   ENDDO
 !
   DEALLOCATE(amat,bvec_lapack,ipivot)
@@ -2761,7 +2763,11 @@ rotfactor=imun*m_phi
   !hatOmegaB=((device%r0*PI)/(2.0d0*boozer_psi_pr_hat))*&
   !     (B_rho_L_loc/(avbhat*conl_over_mfp))
   !correct definition with collpar=4/$l_c$ ($l_c=2 v_{Ta} \tau_{aa}$)
+
   hatOmegaB=B_rho_L_loc/(2.0d0*boozer_psi_pr_hat*(bmod0*1.0d4)*collpar)
+
+  hatOmegaB = hatOmegaB * sign(1.d0,boozer_psi_pr_hat*bcovar_phi_hat*boozer_isqrg)
+
   ! print normalized rotation frequencies
   PRINT *,'hatOmegaB,hatOmegaE: ',hatOmegaB,hatOmegaE
   !STOP
@@ -4775,6 +4781,16 @@ CONTAINS
       write(070915,*) '% qflux(1,2,a,b}'
       do ispecp=0,num_spec-1
         write(070915,*) (qflux_symm_allspec(1,2,ispecp,ispecpp),&
+          & ispecpp=0,num_spec-1)
+      end do
+      write(070915,*) '% qflux(2,2,a,b}'
+      do ispecp=0,num_spec-1
+        write(070915,*) (qflux_symm_allspec(2,2,ispecp,ispecpp),&
+          & ispecpp=0,num_spec-1)
+      end do
+      write(070915,*) '% qflux(3,3,a,b}'
+      do ispecp=0,num_spec-1
+        write(070915,*) (qflux_symm_allspec(3,3,ispecp,ispecpp),&
           & ispecpp=0,num_spec-1)
       end do
       close(070915)
