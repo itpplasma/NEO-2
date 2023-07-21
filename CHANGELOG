@@ -23,6 +23,93 @@ Note: use git tag --list to get a list of available tags.
   Security [in case of vulnerabilities]
 
 
+228bcd397232e0e27ced0be43fb8b68738afbb00 ; fix_sign_geometry
+
+An inconsistency in the handling of signs was found and fixed. Sergei
+provided the following two comments (originaly within the code):
+
+!------------------------------------Begin comment 1 from 12.07.2023------------------------------
+! Sergei:
+! Status for 12.07.2023:
+! Consequencies of the reversed sign of $h^\varphi$ ("h_phi_mf"):
+!
+! Distribution function $\bar f$ computed with replacement $h^\varphi \rightarrow - h^\varphi$
+! is related to the distribution function $f$ computed with the normal sign of $h^\varphi$
+! as follows:
+! 1) for the sources $A_1$ and $A_2$ (gradient drive) $\bar f(v_\parallel) = f(-v_\parallel)$
+! 2) for the source $A_3$ (inductive electric field drive) $\bar f(v_\parallel) = - f(-v_\parallel)$
+!
+! Source terms $\bar q$ used for the computation of transport coefficients (convolution with $f$)
+! are related to original source terms $q$ as follows:
+! 1) for the sources $A_1$ and $A_2$ (gradient drive)
+!    $\bar q(v_\parallel) = \bar q(-v_\parallel) = - q(v_\parellel) = - q(-v_\parallel)$
+! 2) for the source $A_3$ (inductive electric field drive)
+!    $\bar q(v_\parallel) = - bar q(-v_\parallel) = - q(v_\parallel) = q(-v_\parallel)$
+!
+! Consequence for the intermediate transport coefficient $Q_{jk}$=qflux(j,k) are the following:
+! $\bar Q_{11} = - Q_{11}$, $\bar Q_{22} = - Q_{22}$, $\bar Q_{33} = - Q_{33}$
+! $\bar Q_{13} = Q_{13}$, $\bar Q_{31} = Q_{31}$, $\bar Q_{23} = Q_{23}$, $\bar Q_{32} = Q_{32}$
+!
+! Minus sign for the diagonal coeficients is OK - intermediate coefficients should keep the sign
+! of $h^\varphi$ because they are divided then by the integral y(6) = $\int \rd\varphi / h^\varphi$
+! Not OK is unchanged sign of cross coefficients (bootstrap, Ware pinch).
+!
+! Changes from 12.07.2023:
+! We multiply source term for drive $A_3$ with $sign(h^\varphi)$=sign_of_bphi (in addition to the elimination
+! of the sign of h_phi_nfl made previously). This is done for both, source term in the equation and
+! convolution term for the computation of fluxes.
+! With this, for all drives, $A_1$, $A_2$ and $A_3$, distribution function fulfills
+! $\bar f(v_\parallel) = f(-v_\parallel)$
+! and the sources fulfill
+! $\bar q(v_\parallel) = - q(- v_\parallel)$
+! Respectively, all transport coefficients fulfill
+! $\bar Q_{jk} = - Q_{jk}$
+! All respective changes in the code are marked with "<= Sergei 12.07.2023"
+!------------------------------------End comment 1 from 12.07.2023------------------------------
+
+!------------------------------------Begin comment 2 from 12.07.2023------------------------------
+! Sergei:
+! Status 12.07.2023:
+! 1) Definition of geodesic curvature in both, unperturbed and perturbed problems assumes that
+! metric determinant of Boozer coordinates $(s,\vartheta,\varphi)$ is given by
+!
+! $\sqrt{g} = \sigma_g \psi^a (\iota B_\vartheta + B_\varphi) / B^2 = \sigma_g \psi^a /B^\varphi$  (A1),
+!
+! $with sigma_g=1$.
+! In some cases $\sigma_g$ may have an opposite sign and lead to the wrong sign of geodesic curvature.
+! Namely, the original definition of the unperturbed geodesic curvature defined in usual (non-aligned)
+! Boozer coordinates $(s,\vartheta,\varphi)$ through the metric determinant (this definition does always
+! have a proper sign) is the following:
+!
+! $\sqrt{g}|\nabla s| = - \frac{B_\varphi}{B_0^2 \sqrt{g}}\difp{B_0}{\vartheta}$.
+!
+! In the code below, this geodesic curvature is defined as follows:
+!
+! $\sqrt{g}|\nabla s| = - \frac{B_\varphi}{\psi^a (B_\varphi+\iota B_\vartheta)} \difp{B_0}{\vartheta}$.
+!
+! Comparison of two expressions leads to Eq.(A1) with $\sigma_g=1$.
+!
+! Consequently, all cross transport coefficients $(D_{13}, D_{31}, D_{23}, D_{32})$ have an opposite
+! sign in case $\sigma_g = -1$. Fixed by correction 1 below.
+!
+! 2) Toroidal ExB precession is defined in "ntv_mod" using explicitly $\sqrt{g}$. Therefore sqrt(g) sign
+! problem does not appear for this precession. Magnetic precession is defined via spelled $\sqrt{g}$
+! with $\sigma_g=1$. Fixed similarly by correction 2 below.
+! Hint for the precession sign checks: ExB precession is in co-current direction for E_r>0,
+! magnetic precession for deeply trapped ions (at the outboard) is in co-current direction.
+! This is independent of the sign of the toroidal magnetic field (because precession signs are
+! determined by the sign of poloidal field)
+!
+!
+! Changes 12.07.2023:
+! 1) We correct the geodesic curvature sign by using directly quantity
+! "boozer_isqrg" = $1/sqrt{g}$ available in the module "neo_magfie" by multiplying "scalefac_kG"
+! with an appropriate sign factor $\sigma_g = \sign(\psi^a B_\varphi / \sqrt{g})$
+!
+! 2) We correct magnetic precession sign by multiplying hatOmegaB by the same factor $\sigma_g$ as above.
+!
+!------------------------------------End comment 2 from 12.07.2023------------------------------
+
 4c15fa6dcac129c645ffa1091736b563098a361c ; module-rewrite_common
 Moved modules in common to own files. Exception for modules that are
 used only in the file in which they are defined.
