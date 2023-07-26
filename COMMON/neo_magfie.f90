@@ -324,6 +324,7 @@ CONTAINS
     REAL(dp), DIMENSION(:,:,:,:), POINTER            :: p_spl
     
     REAL(dp) :: isqrg, sqrg11
+    REAL(dp) :: redef_sig_sqrtg
 
     ! To silence a warning maybe used uninitialized (should be false positive).
     bis = 0.0
@@ -1465,6 +1466,7 @@ CONTAINS
           !! End Modifications by Andreas F. Martitsch (26.06.2017)
           
           ! $1/sqrt(g)$
+          ! Sergei: here "curr_pol" and "curr_tor" mean $B_\varphi$ and $B_\vartheta$ in SI units, respectively.
           fac = curr_pol + iota * curr_tor  ! (J + iota I)
           isqrg  = bmod*bmod / fac
           !! Modifications by Andreas F. Martitsch (28.06.2017)
@@ -1472,7 +1474,35 @@ CONTAINS
           !-> affects sign of transport coefficients related to Ware pinch 
           !-> and Bootstrap current
           IF (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
-             isqrg  = ABS(isqrg) * SIGN(1.0d0,sqrtg_direct)
+            isqrg  = abs(isqrg) * sign(1.0d0, sqrtg_direct)
+            ! Sergei:
+            ! For this value of lab_swi=10, covariant magnetic field
+            ! components were set in "neo_sub.f90" to
+            ! curr_pol = - curr_pol * 2.d-7 * nfp   ! = bcovar_phi [Tm]
+            ! curr_tor = - curr_tor * 2.d-7         ! = bcovar_tht [Tm]
+            ! with "curr_pol" and "curr_tor" in the r.h.s. being
+            ! currents in [A]. In Gaussian units, this means
+            ! $B_\vartheta = - 2 * I_{tor} / c$ and
+            ! $B_\varphi = - 2 * I_{pol} / c$ where $I_{tor}$ and
+            ! $I_{pol}$ are the currents in Gaussian units [sA].
+            ! Sign "minus" in these expessions corresponds to negative
+            ! metric determinant of coordinates $(s,\vartheta,\varphi)$
+            ! (left handed set), which is a standard AUG case resulting
+            ! in "sqrtg_direct" < 0.
+            ! We extend this branch in order that it allows also the
+            ! right-handed set $(s,\vartheta,\varphi)$ with $\vartheta$
+            ! counted in the opposite direction (pointing down at the
+            ! outer mid-plane) resulting in "sqrtg_direct" > 0. In this
+            ! case, co-variant components should be defined with a
+            ! "plus" sign as $B_\vartheta = 2 * I_{tor} / c$ and
+            ! $B_\varphi = 2 * I_{pol} / c$ (gaussian units).
+            ! Thus, we re-define the sign here for all quantities
+            ! affected using the sign of $\sqrt{g}$ computed above from
+            ! the coordinate transform and stored in "sqrtg_direct".
+            redef_sig_sqrtg = - sign(1.0d0, sqrtg_direct)
+            curr_pol = curr_pol * redef_sig_sqrtg
+            curr_tor = curr_tor * redef_sig_sqrtg
+            fac = fac * redef_sig_sqrtg
           END IF    
           !! End Modifications by Andreas F. Martitsch (28.06.2017)
 
