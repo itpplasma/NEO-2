@@ -1502,6 +1502,8 @@ CONTAINS
             redef_sig_sqrtg = - sign(1.0d0, sqrtg_direct)
             curr_pol = curr_pol * redef_sig_sqrtg
             curr_tor = curr_tor * redef_sig_sqrtg
+            curr_pol_s = curr_pol_s * redef_sig_sqrtg
+            curr_tor_s = curr_tor_s * redef_sig_sqrtg
             fac = fac * redef_sig_sqrtg
           END IF    
           !! End Modifications by Andreas F. Martitsch (28.06.2017)
