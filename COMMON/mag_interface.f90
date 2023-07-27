@@ -627,7 +627,7 @@ CONTAINS
              ! the number 5 ensures that there are at least two periods
              ! otherwise there is a problem with logics regarding extra 
              ! children of a period (there is only one possible)
-             period_length   = 5.0_dp*pi/boozer_iota
+             period_length   = 5.0_dp*pi/abs(boozer_iota)
              split_inflection_points = .FALSE.
           ELSE
              PRINT *, 'isw_axisymm = ',isw_axisymm,' not implemented!'
@@ -781,6 +781,7 @@ CONTAINS
           ELSE
              ! Boozer
              IF (y(1) .GT. 2.0_dp*pi) y(1) = y(1) - 2.0_dp*pi
+             IF (y(1) < 0.d0) y(1) = y(1) + 2.0_dp*pi
              fieldperiod%coords%x1(i) = boozer_s
              fieldperiod%coords%x2(i) = phi
              fieldperiod%coords%x3(i) = y(1)
