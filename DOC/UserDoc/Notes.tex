@@ -1,0 +1,37 @@
+\chapter{Notes}
+This is intended for scribbling down notes.
+Idealy these would be added to an appropriate part of the documentation
+at some point.
+
+\section{Mode number n}
+The mode number n given in the boozer file has to be multiplied with
+\codevariable{nper} to get the actual mode number.
+
+\section{Computations}
+That the number of bad modes increases to the axis is to be expected/is observed behaviour.
+
+\section{Indexing of \codevariable{source\_vector}}
+The array \codevariable{source\_vector} is set in
+\subroutine{source\_flux} (e.g. in \subroutine{ripple\_solver\_ArnoldiOrder2}.
+Elements are set according to
+\begin{verbatim}
+source\_vector(k+1:k+npassing+1) += ...
+\end{verbatim}
+in loops over \codevariable{istep} and \codevariable{m} (\inputparameter{lag} number).
+Note that \codevariable{npassing} is an array over \codevariable{istep}.
+Index k is set as
+\begin{verbatim}
+k = ind_start(istep)+2*(npassing+1)*m
+\end{verbatim}
+which means that there are \codevariable{npassing} unused points inbeween.
+
+There is some more indexing, which may hide the fact that there is no
+unused part.
+
+Supported by the fact that output of whole array shows no unused data.
+
+\section{Use of \codevariable{ispec} in parallel PAR runs}
+In collision\_operator\_mems.f90, variable \codevariable{ispec} is set
+as thread number, why does this not lead to problems in runs of the PAR
+version that use multiple processors? In those runs parallelization is
+not done over species.

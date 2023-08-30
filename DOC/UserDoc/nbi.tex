@@ -1,0 +1,24 @@
+\section{nbi}
+
+Switch for activation \inputparameter{lsw\_nbi} in namelist
+\inputparameter{collision}.
+
+Other inputparameters are in own namelist \inputparameter{nbi}.
+This includes \inputparameter{legmax\_nbi},
+\inputparameter{name\_nbi\_data\_file} and
+\inputparameter{number\_nbi\_species}.
+
+Module \codevariable{collop\_nbi} stores the data, and namelist
+parameters.
+
+Implementation follows \subroutine{compute\_integralpart}. The subroutine
+itself can not be used as there is only one velocity module dependency
+(lag) for nbi part.
+Routines \subroutine{compute\_I1\_mmp\_s}-\subroutine{compute\_I4\_mmp\_s} can
+be reused, with resetting the pointers for base functions?
+What about relativistic case?
+\codevariable{M\_transform\_inv} can not be reused, as nbi-part has no
+velocity module dependence anymore?
+\codevariable{pleg\_ket} in \subroutine{ripple\_solver\_ArnoldiO2} can
+not be reused due to values of \inputparameter{leg}/\inputparameter{legmax}
+and \inputparameter{legmax_nbi}
