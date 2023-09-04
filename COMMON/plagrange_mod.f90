@@ -212,8 +212,6 @@ CONTAINS
        WRITE(u1,*) phi,bhat,bhatder
     END DO
     CLOSE(unit=u1)
-    !PRINT *, 'Derivative'
-    !PAUSE
 
     OPEN(unit=u1,file='testlagall.dat')
     DO i = 0, ndata
@@ -234,8 +232,6 @@ CONTAINS
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
     END DO
     CLOSE(unit=u1)
-
-
 
 
     PRINT *, '------ plag_testperiod ------'
@@ -369,8 +365,6 @@ CONTAINS
     REAL(kind=dp) :: phi_start,phi_end,phi_span
     INTEGER       :: nstep,mid,i
 
-
-    !INTEGER :: nstep
     REAL(kind=dp) ::  phi_l
     REAL(kind=dp) ::  phi_last,phi_first
 
@@ -921,14 +915,6 @@ CONTAINS
     bhat = SUM(coeff(0,:)*bhat_arr)
     bhatder = SUM(coeff(1,:)*bhat_arr)
 
-!!$    !if (abs(phi_l) .lt. 0.2) then
-!!$       print *, 'lagrange  ',stencel
-!!$       print *, 'lagrange  ',phi_arr
-!!$       print *, 'lagrange  ',bhat_arr
-!!$       print *, 'lagrange  ',phi_l,bhat
-!!$       print *, ' '
-!!$    !end if
-
     IF (ALLOCATED(stencel)) DEALLOCATE(stencel)
     IF (ALLOCATED(phi_arr)) DEALLOCATE(phi_arr)
     IF (ALLOCATED(bhat_arr)) DEALLOCATE(bhat_arr)
@@ -985,14 +971,6 @@ CONTAINS
     bhat = SUM(coeff(0,:)*bhat_arr)
     bhatder = SUM(coeff(1,:)*bhat_arr)
     bhatdder = SUM(coeff(2,:)*bhat_arr)
-
-!!$    !if (abs(phi_l) .lt. 0.2) then
-!!$       print *, 'lagrange  ',stencel
-!!$       print *, 'lagrange  ',phi_arr
-!!$       print *, 'lagrange  ',bhat_arr
-!!$       print *, 'lagrange  ',phi_l,bhat
-!!$       print *, ' '
-!!$    !end if
 
     IF (ALLOCATED(stencel)) DEALLOCATE(stencel)
     IF (ALLOCATED(phi_arr)) DEALLOCATE(phi_arr)
