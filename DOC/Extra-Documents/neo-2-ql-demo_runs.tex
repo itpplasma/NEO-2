@@ -1,0 +1,528 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{amsmath}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\usepackage[a4paper, top=3cm, bottom=3cm]{geometry}
+\usepackage{authblk}
+\usepackage{setspace}
+\usepackage{csquotes}
+\usepackage{booktabs}
+%%%%%%%%%%%%%%%%%% My preamble %%%%%%%%%%%%%%%%%%%%%%%%%%
+%\usepackage[numbers, sort&compress]{natbib}
+%\setcitestyle{numbers,square,comma,aysep={,},yysep={,},notesep={,}}
+%\bibliographystyle{unsrtnat}
+%\bibliographystyle{IEEEtranSN}
+
+%References
+\usepackage[
+    bibstyle=phys,
+    biblabel=brackets,
+    citestyle=numeric-comp,
+    isbn=false,
+    doi=false,
+    sorting=none,
+    url=false,
+    defernumbers=true,
+    bibencoding=utf8,
+    backend=biber,
+    %maxbibnames=3,maxcitenames=3,
+    %minnames=3,
+    maxnames=30,
+    ]{biblatex}
+\setcounter{biburllcpenalty}{7000}
+\setcounter{biburlucpenalty}{8000}
+\addbibresource[]{eccd_ref.bib}
+\DeclareBibliographyCategory{fullcited}
+\newcommand{\mybibexclude}[1]{\addtocategory{fullcited}{#1}}
+\DeclareFieldFormat{titlecase}{\MakeCapital{#1}}
+\DeclareFieldFormat{sentencecase}{\MakeSentenceCase{#1}}
+
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{listings}
+
+\usepackage{hyperref}
+
+\newcommand{\be}[1]{\begin{equation} \label{#1}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}[1]{\begin{eqnarray} \label{#1}}
+\newcommand{\eea}{\end{eqnarray}}
+\setlength\parindent{0pt}
+
+\newcommand{\br}{{\bf r}}
+\newcommand{\bh}{{\bf h}}
+\newcommand{\bb}{{\bf b}}
+\newcommand{\bv}{{\bf v}}
+\newcommand{\bB}{{\bf B}}
+\newcommand{\rd}{{\rm d}}
+\newcommand{\eq}[1]{(\ref{#1})}
+\newcommand{\bp}{{\bf p}}
+\newcommand{\difp}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\iotabar}{\mbox{$\iota$\hspace{-0.365em}-}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\lstset{basicstyle=\ttfamily}
+\newcommand{\vb}{\lstinline}
+\newcommand{\vv}[1]{\texttt{\detokenize{#1}}}
+
+\title{\textbf{Using NEO-2-QL for DEMO NTV caclulation\\September 2023}}
+
+\author[1]{Rico~Buchholz}
+\affil[1]{Fusion@\"OAW, Institute of Theoretical and Computational Physics, Graz University of Technology, Petersgasse 16, 8010 Graz, Austria}
+\renewcommand\Affilfont{\itshape\small}
+
+\date{}
+
+\begin{document}
+\onehalfspacing
+
+\maketitle
+
+\section{Introduction}
+This serves as documentation on how to do neoclassical toroidal
+viscosity calculations or evaluate transport coefficients with
+\vv{NEO-2-QL}.
+As such it describes the required tasks, but not the
+physical background.
+
+Note that the variable \vv{NEO2DATAPATH} used throughout this document,
+refers to \vv{/proj/plasma/Neo2/} at the ITCP of TU Graz.
+
+In case of questions regarding this document or \vv{NEO-2-QL}, the authors
+can be reached by e-mail\footnote{\makeatletter \url{buchholz@tugraz.at}}.
+
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
+\section{Short summary}
+Below, the required input files and the sequence of all necessary
+actions for computation NTV is
+summarized. In particular, this is a reminder for  those already
+familiar with \vv{NEO-2-QL}. Other usage of \vv{NEO-2-QL} is not described in this
+summary but is described in more details in the main text.
+\subsection{Required input}
+\begin{itemize}
+  \item boozer background file
+  \item boozer perturbation file
+  \item profile file (e.g. density, temperature)
+  \item neo.in
+  \item neo2.in
+  \item (condor submit file|slurm submit file)
+\end{itemize}
+
+\subsection{Required steps}
+\begin{itemize}
+  \item get profiles (Sec.~\ref{running_preparation_profiles})
+  \item get magnetic field as boozer file (Sec.~\ref{running_preparation_equilibrium})
+  \item make sure you have all required libraries (Sec.~\ref{technicalbackground_libraries})
+  \item clone/update \vv{libneo} and \vv{NEO-2} repositories (Sec.~\ref{technicalbackground_git})
+  \item compile the codes (Sec.~\ref{technicalbackground_cmake})
+  \item create working directory (Sec.~\ref{running_preparation_directories})
+  \item get/create configuration files (Sec.~\ref{running_preparation_neo2in})
+  \item check/edit settings as necessary (Sec.~\ref{running_preparation_neo2in})
+  \item run neo2.x to create subfolders (Sec.~\ref{running_running})
+  \item run neo2.x for each subfolder (Sec.~\ref{running_running})
+  \item collect data (Sec.~\ref{running_running})
+  \item checking output (e.g. plotting) (Sec.~\ref{plotting})
+\end{itemize}
+
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
+\section{Technical background on NEO-2}
+\subsection{Overview}
+In the last years the development of \vv{NEO-2} has split into two branches,
+namely the more general branch for stellarators (and axisymmetric
+tokamaks) and the quasilinear version for tokamaks with 3D magnetic
+perturbations. The main differences between these two versions at time
+of writing this document is given in the following Table~\ref{tab:neo2branches}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+Internal name   & NEO-2-PAR & NEO-2-QL\\
+Equilibrium     & Tokamak/Stellarator & Non-axisymmetric tokamak\\
+Multiple ion species & No & Yes\\
+Relativistic    & Yes & Yes (but not for multispecies)\\
+Parallelization & Yes (field line) & Yes (Species)\\
+Solver          & $1^\mathrm{st}$ Order & $1^\mathrm{st}$ and $2^\mathrm{st}$ Order%\\
+%Distribution function & Yes & Partial\footnote{For plotting only, no interface for fast interpolation}
+\end{tabular}
+\caption{Comparison of \vv{NEO-2} branches}
+\label{tab:neo2branches}
+\end{table}
+
+% ----------------------------------------------------------------------
+\subsection{Libraries\label{technicalbackground_libraries}}
+\vv{NEO-2} depends on a number of external libraries. These libraries
+are:
+\begin{itemize}
+\item SuiteSparse
+\item Metis
+\item SuperLU
+\item GSL
+\item FGSL
+\item HDF5 - interfaced via hdf5tools
+\item OpenMPI - interfaced via MyMPILib
+\item libneo
+\end{itemize}
+
+SuiteSparse is used for solving the sparse linear system of differential
+equations in the ripple solver. Metis is used by SuiteSparse for speedup
+of some specific routines and is not obligatory. SuperLU can be used
+instead of SuiteSparse by a switch in the input file.
+
+The GSL (Gnu Scientific Library) and its Fortran Interface FGSL are used
+for several purposes. The first one provides very efficient numerical
+integration methods used for the computation of the matrix elements of
+the collision operator in \verb|collop_compute.f90|. Additionally, GSL
+provides B-spline routines, also used for the collision operator module
+(basis functions). While \vv{gsl} usally installed on (scientific) linux
+systems, \vv{fgsl} is not. You thus probably need to compile it on your
+own. Be sure to select an \vv{fgsl} version that is suitable for the
+\vv{gsl} version used.
+
+The HDF5 library is required for modern I/O of \vv{NEO-2}. One advantage over
+text files is that each variable (dataset) has a unique name and can
+store additional attributes such as units and/or comments. The usage of HDF5
+was unavoidable for storing the large datasets that occur when computing
+the generalized Spitzer function for stellarators ($\gtrsim 10\mathrm{GB}$ with \vv{hdf5}
+for a single flux surface). In order to simplify
+the calls a collection of wrapper routines has been created. This
+project has grown over the time so that it was decided to use these
+wrapper functions also in other projects, as in the interface, so that
+it became an own library called \vv{hdf5tools}.
+
+For parallelization the Message Passing Interface (MPI) is used. The
+usage of MPI in \vv{NEO-2} is performed via an own library, called MyMPILib,
+and is not restricted to a particular MPI implementation. At our
+institute it is linked against OpenMPI, where on clusters Intel MPI is
+mostly used. MyMPILib was developed so that in the code of \vv{NEO-2} no
+native MPI commands have to be used.
+
+Note that it was decided to no longer develop \vv{hdf5tools} and
+\vv{MyMPILib} separate, but to add them to \vv{libneo},
+which is intended to collect code that is used by multiple programs of
+the group. To be able to use only what is needed, compilation is still
+done into seperate library files. You can get \vv{libneo} from github (see
+Sec.~\ref{technicalbackground_git}).
+
+% ----------------------------------------------------------------------
+\subsection{The Git repository\label{technicalbackground_git}}
+Since 2013 the general version of \vv{NEO-2} is under Git version control.
+Later, also the quasilinear version was added to this repository
+including its code history. The official repository is located on github
+at \url{https://github.com/itpplasma/NEO-2/}.
+At the moment it is set to private, which means you need to be logged in
+to be able to see it.
+
+In order to start a new local working copy, it is required to do
+\begin{verbatim}
+git clone git@github.com:itpplasma/NEO-2.git .
+\end{verbatim}
+in an empty directory (do not oversee the point at the end of the
+command line which defines the current directory).
+
+The same holds for \vv{libneo}, \url{https://github.com/itpplasma/libneo/},
+which is required by \vv{NEO-2}. Here the command is
+\begin{verbatim}
+git clone git@github.com:itpplasma/libneo.git .
+\end{verbatim}
+which should be done in another empty directory.
+
+Once you have cloned \vv{libneo} and \vv{NEO-2} you should set the
+variables \vv{LIBNEOPATH} and \vv{NEO2PATH} in your \vv{.bashrc} file.
+In case you used above commands in your home folder the required lines
+could read
+\begin{verbatim}
+export NEO2PATH=${HOME}/NEO-2/
+export LIBNEOPATH=${HOME}/libneo/
+\end{verbatim}
+Variable \vv{NEO2PATH} is also used throughout this document.
+
+Three other variables that you might want to adapted are \vv{PATH},
+\vv{PYTHONPATH} and \vv{MATLABPATH}. Adding the script paths of \vv{NEO-2}
+and \vv{libneo} to \vv{PATH} allows you to use the scripts within without
+having to type the full path or to copy/link them.
+The other two variables make sure python/matlab, respectively will find
+the corresponding scripts.
+For octave you can add a line
+\begin{verbatim}
+addpath('/path/to/NEO-2/OctaveScripts/', '-begin')
+\end{verbatim}
+in file \vv{.octaverc} (not sure if environment variables work in this
+file, i.e. if \vv{NEO2PATH} can be used).
+
+% ----------------------------------------------------------------------
+\subsection{CMake and Compiling \label{technicalbackground_cmake}}
+The build system of \vv{NEO-2} and \vv{libneo} is CMake.
+The main advantage is that this build system takes care of correct
+compilation order of the source files (dependency resolving) and that
+routines can be defined to automatically detect the installed
+libraries. For a range of often used libraries there are already routines
+available. Using
+CMake the source- and build-directories can be separated from each
+other, and both codes require that this is done.
+
+The configuration file for \vv{cmake} is called \verb|CMakeLists.txt|.
+In order to build
+the source code it is necessary to create a build-directory. For reasons
+of readability it was decided to put the source files to be compiled in
+a separate file, called \vv{CMakeSources.in}. Additionaly, some of the
+settings for paths are in a separate file, \vv{ProjectConfig.cmake.in}.
+Mainly these settings are related to required libraries (see
+sec.~\ref{technicalbackground_libraries}).
+These files are then included in \vv{CMakeLists.txt}.
+
+For our purpose a build-directory is now created for \vv{libneo}:
+\begin{verbatim}
+mkdir Build
+cd Build
+cmake ..
+make
+\end{verbatim}
+
+Running the command \verb|cmake ..| is only necessary the first time a
+new build directory is used. This command needs to know where
+\verb|CMakeLists.txt| is located (therefore the \verb|..|). A lot
+happens when this command is called, the most important steps are the
+Fortran compiler and library detection. A standard Makefile is generated
+which can be used by running \vv{make}.
+
+After libneo is compiled, you can compile \vv{NEO-2-QL}:
+\begin{verbatim}
+cd NEO-2-QL
+mkdir Build
+cd Build
+cmake ..
+make
+\end{verbatim}
+
+The first step is required as the two versions of \vv{NEO-2} have
+separate folders and separate build-configuration files.
+
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
+\section{Running an NTV computation}
+\subsection{Preparations}
+To run \vv{NEO-2} with a Boozer file as input for the magnetic field,
+the following input files are required:
+\begin{itemize}
+ \item \vv{neo.in} (see \ref{running_preparation_neoin})
+ \item \vv{neo2.in} (see \ref{running_preparation_neo2in})
+ \item Boozer files (*.bc) for background and perturbation (see \ref{running_preparation_equilibrium})
+ \item profile file (see \ref{running_preparation_profiles})
+\end{itemize}
+
+
+\subsubsection{neo.in\label{running_preparation_neoin}}
+The first line of this file indicates the name of the background boozer
+file. Other parameters are e.g. related to interpolation of the magnetic
+field module and to the code NEO.
+
+\subsubsection{neo2.in\label{running_preparation_neo2in}}
+This file is a Fortran namelist file. It contains physical input
+quantities, as well as numerical and technical parameters. Here, the
+most important parameters are described.
+Check also \vv{neo2.in.ql-full} in the DOC folder of the \vv{NEO-2}
+repository. The file should contain an up-to-date list of all the input
+parameters together with default values and maybe a short explanation.
+
+Note on naming convention: the prefix lsw and isw stand for logical
+switch and integer switch, respectively.
+
+\begin{itemize}
+ \item \verb|boozer_s| \newline
+ Defines the flux surface as normalized toroidal flux.
+ \item \verb|conl_over_mfp|\newline
+ This is the collisionality parameter. When provided positive it is
+ $L_c/l_c$ (connection length over mean free path) and when provided as
+ negative value it is $\kappa = 2/l_c$. Please be aware that in our
+ papers we define $\kappa = 1/l_c$, while internally in \vv{NEO-2} it has a
+ slightly different normalization.
+ \item \verb|lag|\newline
+ Number of basis functions
+ \item \verb|leg|\newline
+ Number of Legendre polynomials
+ \item \verb|fname_multispec_in|
+ Name of the profile file. Used when creating the subfolders for flux
+ surfaces.
+ \item \verb|v_max_resolution|\newline
+ Only affects level placement and defines the maximum normalized
+ velocity that should be resolved by the grid. Experience showed that
+ values of $2$ - $3$ are sufficient for reconstruction of the
+ generalized Spitzer function up to $5$ times the thermal velocity.
+ \item \verb|collop_base_prj|\newline
+ Projection base for basis function expansion.
+ \begin{itemize}
+  \item 0: Generalized Laguerre polynomials of order $3/2$ (Default).
+  \item 1: Standard polynomials $\phi_m(x) = x^m$.
+  \item 2: Quadratic polynomials $\phi_m(x) = x^{2m}$.
+  \item 10: Cubic Splines generated from a $y_m = (0, 0, ..., 1, ..., 0)$ grid.
+  \item 11: General B-Splines (best choice).
+ \end{itemize}
+
+ \item \verb|collop_base_exp|\newline
+ Expansion base for basis function expansion. See \verb|collop_base_prj|
+ for parameters. At the moment it is only tested for
+ \verb|collop_base_prj = collop_base_exp|.
+
+ \item \verb|collop_bspline_order|\newline
+ According to the B-Spline definition this is the order parameter $k$.
+ As an example $k=3$ creates quadratic B-Splines and $k=4$ cubic
+ B-Splines (best choice).
+
+ \item \verb|phi_x_max|\newline
+ Important parameter for numerical integration and definition of
+ B-Spline knot distribution. The B-Splines are distributed between
+ $x=0$ and this value. A typical choice is $5$. Above this value the
+ B-Splines are extrapolated with a Taylor series.
+
+ \item \vv{mag_write_hdf5}\newline
+ Creates \vv{magnetic.h5} which contains all information of the magnetic
+ field as it is ``seen'' from \vv{NEO-2}.
+
+ \item \vv{in_file_pert}\newline
+ Name of the boozer file with the perturbation.
+\end{itemize}
+
+% ----------------------------------------------------------------------
+\subsection{Preparation of equilibrium\label{running_preparation_equilibrium}}
+Equilibrium magnetic field in Boozer coordinates is provided for NEO-2
+in the form of text files called in this document ``Boozer files'', with usual file ending ``bc''.
+They contain data in a specific format (meant here: not just a table of values).
+Examples can be found in \vv{DOC/example_bg_field.bc} and \vv{DOC/example_pert_field.bc}.
+
+Equilibrium files might be generated from \vv{VMEC}. In this case they need
+to be converted, as file format and coordinate system does not match
+the requirements of \vv{NEO-2}.
+There are multiple ways to do this conversion, but we will here mention
+only two. The python file \vv{boozer.py} from \vv{libneo} contains a
+function to do this and a class with methods to do this. The easier
+way is to use the file as a script while providing the name of the \vv{VMEC}
+and optionally a multiplier for the internal grid.
+
+\begin{verbatim}
+$LIBNEOPATH/python/libneo/boozer.py wout_test.nc 10
+\end{verbatim}
+
+% ----------------------------------------------------------------------
+\subsection{Preparation of the plasma parameter profiles\label{running_preparation_profiles}}
+Profiles are usually provided as text files, e.g.
+\begin{verbatim}
+$NEO2DATAPATH/Interface/Profiles/w7x-m111-b3-i1/prf.txt
+\end{verbatim}
+You may also get them directly from a database.
+These
+plasma parameter profiles are used for computation of the collisionality
+parameter $\kappa$, which together with temperature and density profiels
+is used as an input to \vv{NEO-2-QL}.
+This input must be in the form of an hdf5 file.
+
+% ----------------------------------------------------------------------
+\subsection{Preparation of the run directories\label{running_preparation_directories}}
+Next step is the preparation of the flux surface grid for the \vv{NEO-2-QL}
+runs.
+This done with the profiles input file and the \vv{NEO-2-QL} executable.
+
+It is now necessary to copy the following required files to a new
+empty directory (the working directory),
+\begin{verbatim}
+boozer files
+profile file
+neo.in configuration file
+neo2.in configuration file
+NEO-2-QL executable
+optionally a condor/slurm submit file
+\end{verbatim}
+
+Running the \vv{NEO-2-QL} executable creates the folders for the flux
+surfaces, fills them with the required files and replaces the profile
+values in neo2.in.
+
+Subfolders will have a name \vv{es_*} where ``*'' will be a fixed point
+representation (with ``p'' instead of ``.'') of the flux surface label
+(e.g. \vv{es_0p22044}).
+
+\subsubsection{Notes on resources}
+The number of processors must match the number of species for the run.
+
+The condor submit files determine the resources requested by the job in
+the two fields \vv{request_cpus} (note that this number should match
+the number for \vv{-np} in \vv{arguments}) and \vv{request_memory}.
+The amount of memory required is fixed by the parameters of the jobs
+(you may still request more to make sure they run on a specific subset
+of nodes, but there are other options for this).
+
+% ----------------------------------------------------------------------
+\subsection{Running the jobs\label{running_running}}
+The easiest way to start simulations for all the flux surfaces is to use
+the condor system. There is an example submit file,
+\vv{DOC/condor_submit_example}, available.
+The example makes use of a glob pattern, to submit a job for each
+subfolder starting with \vv{es_}.
+Using condor can be done by executing the command
+\begin{verbatim}
+condor_submit name_of_condor_submit_file
+\end{verbatim}
+from the working directory.
+The command will report the number of submitted jobs.
+The status of the jobs (waiting, running, finished) can be checked with
+\vv{condor_q}.
+
+Once the jobs have finished, in the working directory, the python
+commands
+\begin{verbatim}
+import hdf5tools
+hdf5tools.collect_and_reshape('./', 'neo2_multispecies_out.h5', 'neo2_multispecies_out.h5')
+\end{verbatim}
+should be run. This will collect all the \vv{neo2_multispecies_out.h5}
+output files in the subfolders into a single output file (here with the
+same name) in the working directory.
+(Note: a temporary file is created, which so far needs to be removed
+manually).
+This should make it easier to work with the data.
+In normal cases the collection of data should not take more than a few
+minutes.
+
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
+\section{Plotting data\label{plotting}}
+The result of the simulations is stored in an hdf5 file.
+Octave is capable of loading these files directly.
+Matlab requires a specialised load routine.
+For python \vv{NEO-2} has the \vv{hdf5tools} module, with wrapper for
+the load routines, as well as functions for specific tasks (although at
+the moment not many for post-processing).
+Once the data is loaded, it can be post-processed and plotted as usual.
+
+
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
+\section{Open tasks}
+\begin{itemize}
+  \item Include NBI source term.
+  \item Distribution function plotter in NEO-2-QL.
+  \item Cleanup CMake files.
+\end{itemize}
+
+% ----------------------------------------------------------------------
+% ----------------------------------------------------------------------
+\section{More useful scripts}
+\begin{itemize}
+  \item \vv{hdf5struct.m} Converts HDF5 file to MATLAB structure. Note,
+  that this does not work with octave, but is not required, as \vv{load}
+  in octave loads a hdf5 file and converts it to a structure.
+  \item \vv{plot_levels.m} Plots the field module along the field line
+  with level distribution (needs \vv{magnetics.h5}).
+\end{itemize}
+
+%\clearpage
+%\renewcommand{\bibname}{References}
+%\printbibliography[notcategory=fullcited]
+
+\end{document}
