@@ -236,11 +236,13 @@ which should be done in another empty directory.
 
 Once you have cloned \vv{libneo} and \vv{NEO-2} you should set the
 variables \vv{LIBNEOPATH} and \vv{NEO2PATH} in your \vv{.bashrc} file.
+Additionally the \vv{PYTHONPATH} should be expanded.
 In case you used above commands in your home folder the required lines
 could read
 \begin{verbatim}
 export NEO2PATH=${HOME}/NEO-2/
 export LIBNEOPATH=${HOME}/libneo/
+export PYTHONPATH=$NEO2PATH/PythonScripts/:$LIBNEOPATH/python/
 \end{verbatim}
 Variable \vv{NEO2PATH} is also used throughout this document.
 
