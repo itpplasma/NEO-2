@@ -421,7 +421,23 @@ These
 plasma parameter profiles are used for computation of the collisionality
 parameter $\kappa$, which together with temperature and density profiels
 is used as an input to \vv{NEO-2-QL}.
-This input must be in the form of an hdf5 file.
+This input must be in the form of an hdf5 file. Default for the DEMO
+runs was the profile file
+\begin{verbatim}
+/proj/plasma/DATA/DEMO/teams/Equilibrium_DEMO2019_CHEASE/multi_spec_demo_version_1_2_equidistant_s.in
+\end{verbatim}
+
+For DEMO also runs have been done to estimate the slowing down rate. For
+these it is necessary to scale the rotation profile. This can be done
+with a function from the python module \vv{hdf5tools} of \vv{NEO-2}.
+Example usage
+\begin{verbatim}
+from hdf5tools import rescale_quantitiy_profile
+rescale_quantitiy_profile(path='./',
+                            infilename='multi_spec_Valentin.in.orig',
+                            scaling_factor=0.99,
+                            quantity='Vphi')
+\end{verbatim}
 
 % ----------------------------------------------------------------------
 \subsection{Preparation of the run directories\label{running_preparation_directories}}
@@ -444,7 +460,7 @@ Running the \vv{NEO-2-QL} executable creates the folders for the flux
 surfaces, fills them with the required files and replaces the profile
 values in neo2.in.
 
-Subfolders will have a name \vv{es_*} where ``*'' will be a fixed point
+Name of the subfolders is \vv{es_*} where ``*'' is a fixed point
 representation (with ``p'' instead of ``.'') of the flux surface label
 (e.g. \vv{es_0p22044}).
 
