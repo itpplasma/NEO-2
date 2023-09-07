@@ -7,7 +7,12 @@ run_as_owner = true
 notify_user  = buchholz@tugraz.at
 notification = Error
 nice_user    = false
-requirements = ( TARGET.UtsnameNodename != "faepop69" && TARGET.UtsnameNodename != "faepop72" )
+# The following two lines are to avoid 'black holes'
+# together with the 'target.machine =!= MachineAttrMachine1 && target.machine =!= MachineAttrMachine2'
+# part of requirements.
+job_machine_attrs = Machine
+job_machine_attrs_history_length = 5
+requirements = ( TARGET.UtsnameNodename != "faepop69" && TARGET.UtsnameNodename != "faepop72" && target.machine =!= MachineAttrMachine1 && target.machine =!= MachineAttrMachine2 )
 request_cpus = 2
 request_memory = 21*1024
 Getenv = true
