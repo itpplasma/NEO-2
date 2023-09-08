@@ -40,6 +40,7 @@ message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
 # Include directories for NEO-2
 include_directories(${NEO2_Inc})
+include_directories(${NEO2_Inc}/src/)
 include_directories(${MPI_Fortran_INCLUDE_PATH})
 
 ### Define flags for Fortran/C compiler
@@ -126,7 +127,7 @@ find_package(SuperLU REQUIRED)
 # libneo - shared library
 find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
 # mc_efit - shared library
-find_library(MC_EFIT_lib mc_efit ${NEO2_Libs}/ NO_DEFAULT_PATH)
+find_library(MC_EFIT_lib mc_efit ${NEO2_Libs}/src/ NO_DEFAULT_PATH)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
