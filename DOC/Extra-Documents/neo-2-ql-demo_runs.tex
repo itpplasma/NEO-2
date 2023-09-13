@@ -498,6 +498,31 @@ The command will report the number of submitted jobs.
 The status of the jobs (waiting, running, finished) can be checked with
 \vv{condor_q}.
 
+The python module \vv{scan_nonhdf5_tools} provides two other useful
+functions. \vv{get_list_unsucessful_runs} can be used to get a list of
+runs that were not sucessful, where sucess is determined due to the
+presence of some file.
+Example usage:
+\begin{verbatim}
+from scan_nonhdf5_tools import get_list_unsucessful_runs
+get_list_unsucessful_runs('./', 'es_*', 'neo2_multispecies_out.h5')
+\end{verbatim}
+The second one, \vv{append_list_unsucessful_runs} is similar, but
+instead of printing the list, it appends it to a template condor submit
+file, such that \vv{condor_submit} will run the failed jobs
+again.
+Example usage:
+\begin{verbatim}
+from scan_nonhdf5_tools import append_list_unsucessful_runs
+append_list_unsucessful_runs('./', 'es_*', 'neo2_multispecies_out.h5', 'submit_failed.template', 'submit_failed')
+\end{verbatim}
+Note that for this to work, the queue command in the template has have a
+different form than the one used in the example file of the \vv{NEO-2}
+documentation. The required form is
+\begin{verbatim}
+Queue dirname matching dirs \
+\end{verbatim}
+
 Once the jobs have finished, in the working directory, the python
 commands
 \begin{verbatim}
