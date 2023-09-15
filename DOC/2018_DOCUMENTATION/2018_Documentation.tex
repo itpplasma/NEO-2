@@ -310,11 +310,11 @@ happens when this command is called, the most important steps are the
 Fortran compiler and library detection. A standard Makefile is generated
 which can be used by running \vv{make}.
 
-Before going on to compile \vv{NEO-2} you should also compile the tool
+Before going on to compile \vv{NEO-2-PAR} you should also compile the tool
 \vv{h5merge} in the corresponding subfolder. The procedure to do so is
 the same, just in the subfolder \vv{tools/h5merge}.
 
-After libneo is compiled, you can compile \vv{NEO-2}:
+After libneo is compiled, you can compile \vv{NEO-2-PAR}:
 \begin{verbatim}
 cd NEO-2-PAR
 mkdir Build-Test
@@ -328,6 +328,21 @@ separate folders and separate build-configuration files.
 
 Also in this case there is a tool that should be compiled,
 \vv{create_surfaces}.
+
+Both codes, \vv{libneo} and \vv{NEO-2-PAR} define tests that can be run
+with
+\begin{verbatim}
+ctest
+\end{verbatim}
+in the corresponding build folder.
+Running all the tests for \vv{libneo} should be fast, less than one
+minute (at ITCP), while for \vv{NEO-2-PAR} it will take about half an
+hour (again at ITCP).
+Note however that the tests are not useful at the moment for \vv{NEO-2-PAR}.
+This is because of all the tests will probably fail (except for the
+first one that compiles the code). The tests fail for small differences
+and for large differences in small quantities. So far could not be
+determined if (some of) the differences are of importance or not.
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
