@@ -3,7 +3,7 @@ PROGRAM neo2
   !**********************************************************
   ! MPI Support
   !**********************************************************
-  USE mpiprovider_module
+  USE mpiprovider_module, only : mpro, MyMPILib_Version
   USE hdf5_tools
   use system_utility, only : get_rusage
   use rusage_type, only : fortran_rusage, write_fortran_rusage

@@ -64,7 +64,7 @@ SUBROUTINE ripple_solver(                                 &
   ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
   USE ntv_eqmat_mod, ONLY : nz_symm,irow_symm,icol_symm,amat_symm,             &
                             nz_regper,irow_regper,icol_regper,amat_regper
-  USE mpiprovider_module
+  use mpiprovider_module, only : mpro
   USE collop
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
@@ -3118,7 +3118,7 @@ SUBROUTINE integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
   !! Modification by Andreas F. Martitsch (28.07.2015)
   ! MPI SUPPORT for multi-species part
   ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
-  USE mpiprovider_module
+  use mpiprovider_module, only : mpro
   USE collop, ONLY : ailmm_aa, num_spec
   USE hdf5_tools
   !! End Modification by Andreas F. Martitsch (28.07.2015)

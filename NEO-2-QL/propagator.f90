@@ -793,7 +793,7 @@ CONTAINS
     !! End Modification by Andreas F. Martitsch (14.07.2015)
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
-    USE mpiprovider_module
+    use mpiprovider_module, only : mpro
 
     INTEGER, INTENT(in) :: iend
 
@@ -998,7 +998,7 @@ CONTAINS
     USE ntv_mod, ONLY : y_ntv_mod
     !! End Modifications by Andreas F. Martitsch (15.03.2017)
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield
-    USE mpiprovider_module             
+    use mpiprovider_module, only : mpro
 
     ! parameter list
     INTEGER,                      INTENT(in)  :: iend

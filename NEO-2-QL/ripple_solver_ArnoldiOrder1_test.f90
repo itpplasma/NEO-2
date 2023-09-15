@@ -88,7 +88,7 @@ SUBROUTINE ripple_solver_ArnoldiO1(                       &
   !! Modification by Andreas F. Martitsch (28.07.2015)
   ! MPI SUPPORT for multi-species part
   ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
-  USE mpiprovider_module
+  use mpiprovider_module, only : mpro
   USE collop
   !! End Modification by Andreas F. Martitsch (28.07.2015)
   use arnoldi_mod, only : f_init_arnoldi

@@ -29,7 +29,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   ! types and routines for splitting
   USE binarysplit_mod
   !
-  USE mpiprovider_module
+  USE mpiprovider_module, only : mpro
   !
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
