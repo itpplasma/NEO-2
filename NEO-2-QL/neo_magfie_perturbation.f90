@@ -22,7 +22,7 @@ MODULE neo_magfie_perturbation
        boozer_phi_beg
   ! routine mag for the computation of bmod
   USE mag_sub, ONLY: mag
-  USE mpiprovider_module
+  USE mpiprovider_module, only : mpro
   !
   IMPLICIT NONE
   !

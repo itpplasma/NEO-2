@@ -87,7 +87,7 @@ SUBROUTINE ripple_solver_ArnoldiO3(                       &
   !! Modification by Andreas F. Martitsch (28.07.2015)
   ! MPI SUPPORT for multi-species part
   ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
-  USE mpiprovider_module
+  use mpiprovider_module, only : mpro
   ! Load x1mm and x2mm (=energy dependence of drift frequencies)
   ! from collision operator module. This step allows for
   ! support of different basis functions and replaces routine "lagxmm".
