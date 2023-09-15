@@ -596,7 +596,7 @@ def get_maximum_sizes_of_groups(name_part: str, tag_first: int, tag_last: int, i
 def construct_group(group, sizes: dict, types: dict, variable_length_array:bool = False):
   """ Create subgroups for a given h5py group.
 
-  This function will create a hierachie of subgroups recursively, by
+  This function will create a hierarchie of subgroups recursively, by
   using sizes and types given as dictionaries.
 
   input:
