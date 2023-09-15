@@ -209,6 +209,8 @@ and is not restricted to a particular MPI implementation. At our
 institute it is linked against OpenMPI, where on clusters Intel MPI is
 mostly used. MyMPILib was developed so that in the code of \vv{NEO-2} no
 native MPI commands have to be used.
+Note that \vv{NEO-2-QL} does not use the scheduler-worker model
+implemented by \vv{MyMPILib}
 
 Note that it was decided to no longer develop \vv{hdf5tools} and
 \vv{MyMPILib} separate, but to add them to \vv{libneo},
@@ -280,7 +282,7 @@ The configuration file for \vv{cmake} is called \verb|CMakeLists.txt|.
 In order to build
 the source code it is necessary to create a build-directory. For reasons
 of readability it was decided to put the source files to be compiled in
-a separate file, called \vv{CMakeSources.in}. Additionaly, some of the
+a separate file, called \vv{CMakeSources.in}. For \vv{NEO-2} some of the
 settings for paths are in a separate file, \vv{ProjectConfig.cmake.in}.
 Mainly these settings are related to required libraries (see
 sec.~\ref{technicalbackground_libraries}).
@@ -312,6 +314,19 @@ make
 
 The first step is required as the two versions of \vv{NEO-2} have
 separate folders and separate build-configuration files.
+
+Both codes, \vv{libneo} and \vv{NEO-2-QL} define tests that can be run
+with
+\begin{verbatim}
+ctest
+\end{verbatim}
+in the corresponding build folder.
+Running all the tests for \vv{libneo} should be fast, less than one
+minute (at ITCP). The tests for \vv{NEO-2-QL} will take longer, about
+half an hour to an hour.
+Note that the tests for \vv{NEO-2-QL} will probably not pass (except the
+one for compiling). It could so far not be determined if the differences
+are of importance or not.
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
@@ -432,8 +447,11 @@ is used as an input to \vv{NEO-2-QL}.
 This input must be in the form of an hdf5 file. Default for the DEMO
 runs was the profile file
 \begin{verbatim}
-/proj/plasma/DATA/DEMO/teams/Equilibrium_DEMO2019_CHEASE/multi_spec_demo_version_1_2_equidistant_s.in
+/proj/plasma/DATA/DEMO/teams/
+  Equilibrium_DEMO2019_CHEASE/multi_spec_demo_version_1_2_equidistant_s.in
 \end{verbatim}
+(The line break has been added, because as single line this would not fit
+on the page.)
 
 For DEMO also runs have been done to estimate the slowing down rate. For
 these it is necessary to scale the rotation profile. This can be done
@@ -446,6 +464,10 @@ rescale_quantitiy_profile(path='./',
                             scaling_factor=0.99,
                             quantity='Vphi')
 \end{verbatim}
+Which would change the file \vv{multi_spec_Valentin.in.orig}, located in
+the current folder, by multiplying the velocity profile with a factor of
+$0.99$. The name of the output file is determined from the changed
+quantity and the scaling factor.
 
 % ----------------------------------------------------------------------
 \subsection{Preparation of the run directories\label{running_preparation_directories}}
