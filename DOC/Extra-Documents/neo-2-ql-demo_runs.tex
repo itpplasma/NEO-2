@@ -442,9 +442,58 @@ $NEO2DATAPATH/Interface/Profiles/w7x-m111-b3-i1/prf.txt
 You may also get them directly from a database.
 These
 plasma parameter profiles are used for computation of the collisionality
-parameter $\kappa$, which together with temperature and density profiels
+parameter $\kappa$, which together with temperature and density profiles
 is used as an input to \vv{NEO-2-QL}.
-This input must be in the form of an hdf5 file. Default for the DEMO
+This input must be in the form of an hdf5 file.
+The hdf5 files can be created from appropriate text files with the
+matlab function
+\begin{verbatim}
+generate_neo2_profile
+\end{verbatim}
+which can be found in the \vv{OctaveScripts} subfolder.
+Example usage is
+\begin{verbatim}
+hdf5FileName = 'multi_spec_Valentin_tearing.in';
+path_to_shot = '/path/';
+
+shoot_number_and_time = '_35568_t2.6881_';
+data_source.rhopoloidal.filename = ['ne_ida', shoot_number_and_time, 'rhopol.dat'];
+data_source.rhopoloidal.column = 1;
+data_source.rhotoroidal.filename = ['ne_ida', shoot_number_and_time, 'rhotor.dat'];
+data_source.rhotoroidal.column = 1;
+data_source.electron_density.filename = ['ne_ida', shoot_number_and_time, 'rhopol.dat'];
+data_source.electron_density.column = 2;
+data_source.electron_temperature.filename = ['Te_ida', shoot_number_and_time, 'rhopol.dat'];
+data_source.electron_temperature.column = 2;
+data_source.ion_temperature.filename = ['Ti_cez', shoot_number_and_time, 'rhopol.dat'];
+data_source.ion_temperature.column = 2;
+data_source.rotation_velocity.filename = ['vrot_cez', shoot_number_and_time, 'rhopol.dat'];
+data_source.rotation_velocity.column = 2;
+data_source.major_radius.filename = ['vrot_cez', shoot_number_and_time, 'R.dat'];
+data_source.major_radius.column = 1;
+
+gridpoints = 500;
+
+Zi=1; % ion charge number (deuterium)
+mi=3.3436e-24; % ion mass (deuterium)
+Ze=-1;% electron charge number
+me=9.1094e-28; % electron mass
+species_definition(1,1,1) = Ze;
+species_definition(1,1,2) = me;
+species_definition(1,2,1) = Zi;
+species_definition(1,2,2) = mi;
+species_definition = repmat(species_definition, gridpoints, 1, 1);
+
+isw_Vphi_loc = 0;
+species_tag_Vphi = 2;
+
+input_unit_type = 1;
+
+bounds = [0.0, 1.0];
+
+generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_definition, isw_Vphi_loc, species_tag_Vphi, input_unit_type, bounds);
+\end{verbatim}
+Default for the DEMO
 runs was the profile file
 \begin{verbatim}
 /proj/plasma/DATA/DEMO/teams/
