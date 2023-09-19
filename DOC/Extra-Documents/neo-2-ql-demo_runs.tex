@@ -536,8 +536,11 @@ again.
 Example usage:
 \begin{verbatim}
 from scan_nonhdf5_tools import append_list_unsucessful_runs
-append_list_unsucessful_runs('./', 'es_*', 'neo2_multispecies_out.h5', 'submit_failed.template', 'submit_failed')
+append_list_unsucessful_runs('./', 'es_*', 'neo2_multispecies_out.h5',
+    'submit_failed.template', 'submit_failed')
 \end{verbatim}
+(The line break has been added, because as single line this would not
+fit on the page, but python should not care.)
 Note that for this to work, the queue command in the template has have a
 different form than the one used in the example file of the \vv{NEO-2}
 documentation. The required form is
