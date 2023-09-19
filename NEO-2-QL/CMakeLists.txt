@@ -27,7 +27,6 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
 elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
   include(${CMAKE_SOURCE_DIR}/common/ProjectConfig.cmake.in.intel)
 endif ()
-#include(${CMAKE_SOURCE_DIR}/ProjectConfig.Debian8.cmake.in)
 
 ### MPI is required by this NEO-2 version
 find_package(MPI REQUIRED)
@@ -54,22 +53,12 @@ endif ()
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   set(MY_DEBUG_FLAG_LIST
   " -O0 -cpp -g"
-# " -O0 -g -ggdb -C -p -pg -fbacktrace " 
-# " -ffpe-trap=invalid,zero,overflow,underflow "
-# " -ffpe-trap=invalid,zero,overflow "
  " -ffpe-summary=invalid,zero,overflow "
  " -fcheck=all "
-# " -fcheck=bounds,mem,array-temps,pointer "
  " -fbacktrace "
-# " -Werror " 
-# " -fmem-report " 
-# " -Waliasing -Wampersand  -Wline-truncation " 
-# " -Wnonstd-intrinsics  -Wsurprising -Wno-tabs -Wunderflow " 
  " -Wall "
  " -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label "
  " -Wshadow "
-# " -Wno-underflow "
-# " -Wunused-parameter -Wconversion -Wimplicit-interface -Wcharacter-truncation " 
   )
   string(REPLACE ";" "" MY_DEBUG_FLAG  ${MY_DEBUG_FLAG_LIST})
   set(CMAKE_Fortran_FLAGS_DEBUG "${MY_DEBUG_FLAG}")
@@ -103,25 +92,11 @@ endif ()
 find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
 include_directories(${HDF5_INCLUDE_DIRS})
 
-# message(STATUS "${HDF5_INCLUDE_DIRS}")
-# message(STATUS "${HDF5_LIBRARIES}")
-# message(STATUS "${HDF5_Fortran_LIBRARIES}")
-# message(STATUS "${HDF5_HL_LIBRARIES}")
-# message(STATUS "${HDF5_Fortran_HL_LIBRARIES}")
-# message(STATUS "${HDF5_VERSION}")
-
 ### SuiteSparse and METIS
 find_package(SuiteSparse REQUIRED)
-# message(STATUS "${SUITESPARSE_INCLUDE_DIRS}")
-# message(STATUS "${SUITESPARSE_LIBRARIES}")
-# message(STATUS "${SUITESPARSE_VERSION}")
-# message(STATUS "${METIS_LIBRARY}")
 
 ### SuperLU
 find_package(SuperLU REQUIRED)
-# message(STATUS "${SUPERLU_INCLUDES}")
-# message(STATUS "${SUPERLU_LIBRARIES}")
-# message(STATUS "${SUPERLU_VERSION_VAR}")
 
 ### Find libraries
 # libneo - shared library
@@ -133,7 +108,6 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
 find_library(gsl_lib gsl ${GSL_LIB})
 # FGSL
-#find_library(fgsl_lib fgsl_gfortran ${FGSL_LIB} NO_DEFAULT_PATH)
 find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
 include_directories(${FGSL_INC})
 
@@ -190,7 +164,6 @@ add_executable(${EXE_NAME}
 
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   set(LINALG_LIBRARIES ${open_blas_lib} ${open_blas_lapack_lib} pthread)
-  #  set(LINALG_LIBRARIES ${lapack_lib} ${f77blas_lib} ${atlas_lib})
 endif ()
 
 add_subdirectory(common/)
@@ -221,21 +194,13 @@ add_custom_target(
 )
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
 
-### Get location of the executable (depricated)
-#get_target_property(EXE_LOC ${EXE_NAME} LOCATION)
-#message(${EXE_LOC})
 
 ### Specify command "make copy"
-#message(${CMAKE_CURRENT_BINARY_DIR})
 add_custom_target(copy
   COMMAND ${CMAKE_COMMAND} -E copy
   ${CMAKE_CURRENT_BINARY_DIR}/${EXE_NAME}
   ${PROJECT_SOURCE_DIR}/../../TEST_RUNS/${EXE_NAME}
   ) 
-
-### Define target directory for "make install" 
-#install (TARGETS ${EXE_NAME} DESTINATION /temp/andfmar/)
-#set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 ### Testing section
 ADD_TEST(Test_Build_Code "make")
