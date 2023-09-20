@@ -295,10 +295,9 @@ Mainly these settings are related to required libraries (see
 sec.~\ref{technicalbackground_libraries}).
 These files are then included in \vv{CMakeLists.txt}.
 
-For testing purposes a build-directory is now created for \vv{libneo}:
+For testing purposes we use an existing build-directory of \vv{libneo}:
 \begin{verbatim}
-mkdir Build-Test
-cd Build-Test
+cd Build-Debug
 cmake ..
 make
 \end{verbatim}
@@ -314,17 +313,23 @@ Before going on to compile \vv{NEO-2-PAR} you should also compile the tool
 \vv{h5merge} in the corresponding subfolder. The procedure to do so is
 the same, just in the subfolder \vv{tools/h5merge}.
 
-After libneo is compiled, you can compile \vv{NEO-2-PAR}:
+After libneo is compiled, you can compile \vv{NEO-2-PAR}. Again we will
+use one of the existing build directories:
 \begin{verbatim}
 cd NEO-2-PAR
-mkdir Build-Test
-cd Build-Test
+cd Build-Debug
 cmake ..
 make
 \end{verbatim}
 
 The first step is required as the two versions of \vv{NEO-2} have
 separate folders and separate build-configuration files.
+
+The difference between the \vv{Build-Debug} and \vv{Build-Release}
+folder is due to the \vv{BuildConfig.cmake.in} file already in the
+folder, which sets cmake in debug/release mode respectively. They differ
+in the compiler flags: the former will include debug information, while
+the latter will usally be faster.
 
 Also in this case there is a tool that should be compiled,
 \vv{create_surfaces}.
