@@ -74,7 +74,7 @@ function [rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot] = load_profile_data(path_
 
   write_data = 1;
 
-  % Definitions for constants used for conversion
+  % Definitions of constants used for conversion
   transform_keV_to_eV = 1.0e3;
   transform_eV_to_keV = 1.0/transform_keV_to_eV;
 
