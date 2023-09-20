@@ -150,9 +150,10 @@ function generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_
 
 
   %% WRITE HDF5
+  % Explicitly remove existing file, to avoid problems when writing.
   system(['rm ',hdf5FileName]);
 
-  % The part below does not work in octave (at least 4.0.3), as h5create is missing.
+  % The part below does not work in octave, as h5create is missing (up to at least 7.3.0).
   h5create(hdf5FileName,'/num_radial_pts',1,'DataType','int32')
   h5write(hdf5FileName,'/num_radial_pts',int32(num_radial_pts))
   h5create(hdf5FileName,'/num_species',1,'DataType','int32')
