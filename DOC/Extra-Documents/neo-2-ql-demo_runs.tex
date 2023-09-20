@@ -445,12 +445,25 @@ plasma parameter profiles are used for computation of the collisionality
 parameter $\kappa$, which together with temperature and density profiles
 is used as an input to \vv{NEO-2-QL}.
 This input must be in the form of an hdf5 file.
-The hdf5 files can be created from appropriate text files with the
+The hdf5 files can be created from appropriate text (profile) files with the
 matlab function
 \begin{verbatim}
 generate_neo2_profile
 \end{verbatim}
 which can be found in the \vv{OctaveScripts} subfolder.
+Required are the following profiles as function of $\rho_{pol}$
+\begin{itemize}
+  \item $\rho_{pol}$ (values are required explicitly)
+  \item $\rho_{tor}$, to be able to convert between the two.
+  \item electron density
+  \item electron temperature
+  \item ion temperature
+  \item rotation velocity
+  \item (major radius)
+\end{itemize}
+The major radius is only required if the rotation velocity is given in
+absolute ($\propto m/s$) units, not if it is given in rotations per time
+unit.
 Example usage is
 \begin{verbatim}
 hdf5FileName = 'multi_spec_Valentin_tearing.in';
