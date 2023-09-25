@@ -1,6 +1,9 @@
 % Generate script for a run which sets the required input paramters
-% matlab -nodesktop -nosplash -r "path('/afs/itp.tugraz.at/user/buchholz/Programs/neo-2/OctaveScripts', path); script_name; exit(0);"
-
+%
+% Note that you can run a script without starting starting matlab first
+% by using:
+% matlab -nodesktop -nosplash -r "path('$NEO2PATH/OctaveScripts', path); script_name; exit(0);"
+%
 % Input:
 %   hdf5FileName: name for hdf5 file that is produced. Defaults to
 %     'multi_spec_Valentin.in'.
