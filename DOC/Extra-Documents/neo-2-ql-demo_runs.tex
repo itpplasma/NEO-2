@@ -101,10 +101,9 @@ can be reached by e-mail\footnote{\makeatletter \url{buchholz@tugraz.at}}.
 % ----------------------------------------------------------------------
 \section{Short summary}
 Below, the required input files and the sequence of all necessary
-actions for computation NTV is
+actions for computation of NTV is
 summarized. In particular, this is a reminder for  those already
-familiar with \vv{NEO-2-QL}. Other usage of \vv{NEO-2-QL} is not described in this
-summary but is described in more details in the main text.
+familiar with \vv{NEO-2-QL}.
 \subsection{Required input}
 \begin{itemize}
   \item boozer background file
@@ -212,7 +211,7 @@ native MPI commands have to be used.
 Note that \vv{NEO-2-QL} does not use the scheduler-worker model
 implemented by \vv{MyMPILib}
 
-Note that it was decided to no longer develop \vv{hdf5tools} and
+It was decided to no longer develop \vv{hdf5tools} and
 \vv{MyMPILib} separate, but to add them to \vv{libneo},
 which is intended to collect code that is used by multiple programs of
 the group. To be able to use only what is needed, compilation is still
@@ -288,7 +287,9 @@ Mainly these settings are related to required libraries (see
 sec.~\ref{technicalbackground_libraries}).
 These files are then included in \vv{CMakeLists.txt}.
 
-For our purpose a build-directory is now created for \vv{libneo}:
+For our purpose a build-directory is now created for \vv{libneo}. To do
+this run the following commands inside of \vv{LIBNEOPATH} (see sec.
+\ref{technicalbackground_git} for definition)
 \begin{verbatim}
 mkdir Build
 cd Build
@@ -303,7 +304,8 @@ happens when this command is called, the most important steps are the
 Fortran compiler and library detection. A standard Makefile is generated
 which can be used by running \vv{make}.
 
-After libneo is compiled, you can compile \vv{NEO-2-QL}:
+After libneo is compiled, you can compile \vv{NEO-2-QL}. To do so run
+this commands inside of \vv{NEO2PATH}
 \begin{verbatim}
 cd NEO-2-QL
 mkdir Build
@@ -418,7 +420,9 @@ switch and integer switch, respectively.
 Equilibrium magnetic field in Boozer coordinates is provided for NEO-2
 in the form of text files called in this document ``Boozer files'', with usual file ending ``bc''.
 They contain data in a specific format (meant here: not just a table of values).
-Examples can be found in \vv{DOC/example_bg_field.bc} and \vv{DOC/example_pert_field.bc}.
+Examples can be found in \vv{$NEO2PATH/DOC/example_bg_field.bc} and
+\vv{$NEO2PATH/DOC/example_pert_field.bc} (see sec.
+\ref{technicalbackground_git} for definition of the constants).
 
 Equilibrium files might be generated from \vv{VMEC}. In this case they need
 to be converted, as file format and coordinate system does not match
@@ -570,7 +574,8 @@ of nodes, but there are other options for this).
 \subsection{Running the jobs\label{running_running}}
 The easiest way to start simulations for all the flux surfaces is to use
 the condor system. There is an example submit file,
-\vv{DOC/condor_submit_example}, available.
+\vv{NEO2PATH/DOC/condor_submit_example}, available (for definition of
+the constant see sec. \ref{technicalbackground_git}).
 The example makes use of a glob pattern, to submit a job for each
 subfolder starting with \vv{es_}.
 Remember to change the \vv{notify_user} variable to your email adress.
@@ -583,7 +588,7 @@ The command will report the number of submitted jobs.
 The status of the jobs (waiting, running, finished) can be checked with
 \vv{condor_q}.
 
-The python module \vv{scan_nonhdf5_tools} provides two other useful
+The python module \vv{scan_nonhdf5_tools} from \vv{NEO-2} provides two other useful
 functions. \vv{get_list_unsucessful_runs} can be used to get a list of
 runs that were not sucessful, where sucess is determined due to the
 presence of some file.
@@ -604,7 +609,7 @@ append_list_unsucessful_runs('./', 'es_*', 'neo2_multispecies_out.h5',
 \end{verbatim}
 (The line break has been added, because as single line this would not
 fit on the page, but python should not care.)
-Note that for this to work, the queue command in the template has have a
+Note that for this to work, the queue command in the template must have a
 different form than the one used in the example file of the \vv{NEO-2}
 documentation. The required form is
 \begin{verbatim}
