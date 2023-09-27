@@ -555,7 +555,8 @@ The namelist file \vv{create_surfaces.in} is described as follows:
  last step)
 \end{itemize}
 
-Running \vv{./create_surfaces.x} creates a grid in \vv{boozer_s} that
+Running \vv{./create_surfaces.x} uses the profile file from sec.
+\ref{running_preparation_profiles} to create a grid in \vv{boozer_s} that
 fulfills the properties as defined in the configuration file. Afterwards a
 spline interpolation is used to compute the collisionality parameter per
 flux surface. The file \vv{surfaces.dat} (as defined by \vv{output_file}
@@ -706,6 +707,19 @@ In either case the operation is probably limited by filesystem operations
 and thus may take a while (at ITCP of TU Graz is a gigabit network and speed is
 about 30-40 MB/s, with respect to output file, i.e. an output file size
 of 350 GB means this step will take approximately ten thousand seconds).
+
+\subsubsection{Further useful condor commands}
+As already said you can submit jobs with \vv{condor_submit}.
+The command \vv{condor_q} gives you a list/summary with the status of
+your jobs. The argument \vv{-analyze} can help you to determine why
+job(s) do not run.
+If you want to cancel a job, e.g. you noticed a wrong setting, you can
+do so with \vv{condor_rm} and the job id. The id is reported at job
+submission and by \vv{condor_q}.
+Under some circumstances your jobs might be put on hold by condor. This
+means they are abborted and not considered for further calculations. You
+can solve this either by \vv{condor_release} which will put the job(s)
+back into the waiting list or by canceling the job(s).
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
