@@ -500,8 +500,10 @@ that the collisionality is a function of the flux surface label. For the
 converter is it necessary that the file has the appropriate format and
 the that units are correct. A MATLAB script is given in the file
 \vv{convert_prf.m}, while it should be noted that the reader section of
-this script is adapted for one particular input file format. The output
-file has to have one line per flux surface, with four columns each:
+this script is adapted for one particular input file format. The first
+line of the output file must contain the number of flux surfaces. The
+rest of the file has to have one line per flux surface, with four
+columns each:
 \begin{itemize}
  \item 1. Column: Normalized toroidal flux (\vv{boozer_s}).
  \item 2. Column: Electron density in cm$^{-3}$.
