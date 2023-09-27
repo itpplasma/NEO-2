@@ -14,10 +14,19 @@ set(PROJECT_EXE_NAME "create_surfaces.x")
 set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
 set(CMAKE_Fortran_FLAGS "-g -Wall")
 
-include(${CMAKE_SOURCE_DIR}/../../NEO-2-QL/ProjectConfig.cmake.in)
+include(${CMAKE_SOURCE_DIR}/../../COMMON/ProjectConfig.cmake.in)
 
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
+
+### net-cdf
+execute_process(COMMAND nc-config --includedir
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                OUTPUT_VARIABLE NETCDFINCLUDE_DIR)
+include_directories(${NETCDFINCLUDE_DIR})
+execute_process(COMMAND nc-config --flibs
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                OUTPUT_VARIABLE NETCDF_LIBS)
 
 find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
 #~ include_directories(${CMAKE_SOURCE_DIR}/../../Build-11-1-0/ ${CMAKE_BINARY_DIR})
@@ -64,6 +73,7 @@ add_executable(${PROJECT_EXE_NAME}
 ### Linking
 target_link_libraries(${PROJECT_EXE_NAME}
   ${Interface_Libs}
+  ${NETCDF_LIBS}
 )
 
 ###
@@ -73,6 +83,7 @@ add_executable("nfp.x"
 )
 target_link_libraries("nfp.x"
   ${Interface_Libs}
+  ${NETCDF_LIBS}
 )
 ### For make install
 # install (TARGETS ${PROJECT_EXE_NAME} DESTINATION /temp/)
