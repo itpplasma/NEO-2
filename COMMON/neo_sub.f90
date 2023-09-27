@@ -118,8 +118,6 @@ SUBROUTINE calc_Bref(bref,rmajor)
      IF (fluxs_interp .NE. 0) THEN
         CALL neo_get_b00
         bref=s_b00
-        !PRINT *,s_es,s_b00
-        !STOP
      ELSE
         IF (no_fluxs .EQ. 1) THEN
            s_ind=fluxs_arr(1)
@@ -127,9 +125,6 @@ SUBROUTINE calc_Bref(bref,rmajor)
         ELSE
            bref=b00(1)
         END IF
-        !PRINT *,fluxs_arr
-        !PRINT *,bref
-        !STOP
      ENDIF
   ELSE
      STOP "Please enter a valid number for ref_swi!"
@@ -1698,9 +1693,6 @@ SUBROUTINE neo_prep
 ! **********************************************************************
 ! Allocate Storage Arrays
 ! **********************************************************************
-! ALLOCATE(cosval(phi_n,theta_n,mnmax),                                &
-!          sinval(phi_n,theta_n,mnmax),                                &
-!          stat = i_alloc)
   ALLOCATE(cosmth(theta_n,m_max),                                      &
            sinmth(theta_n,m_max),                                      &
            cosnph(phi_n,  n_max),                                      &
@@ -1826,7 +1818,6 @@ SUBROUTINE neo_fourier
 
   INTEGER       :: i_alloc
   INTEGER       :: im, in, m, n
-! INTEGER       :: i, j
   INTEGER       :: it, ip, imn
   INTEGER       :: uw = 100
   REAL(kind=dp) :: ri, zi, li, bi
