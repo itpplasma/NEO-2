@@ -1687,7 +1687,6 @@ SUBROUTINE neo_prep
 
   INTEGER :: i_alloc
   INTEGER :: ip, it
-! INTEGER :: k, j
   INTEGER :: im, in
   INTEGER :: m, n
 ! **********************************************************************

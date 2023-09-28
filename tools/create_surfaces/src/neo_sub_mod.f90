@@ -1372,15 +1372,11 @@ CONTAINS
 
     INTEGER :: i_alloc
     INTEGER :: ip, it
-  ! INTEGER :: k, j
     INTEGER :: im, in
     INTEGER :: m, n
   ! **********************************************************************
   ! Allocate Storage Arrays
   ! **********************************************************************
-  ! ALLOCATE(cosval(phi_n,theta_n,mnmax),                                &
-  !          sinval(phi_n,theta_n,mnmax),                                &
-  !          stat = i_alloc)
     ALLOCATE(cosmth(theta_n,m_max),                                      &
              sinmth(theta_n,m_max),                                      &
              cosnph(phi_n,  n_max),                                      &
@@ -1748,31 +1744,19 @@ CONTAINS
   ! Double periodic splines (parameter mt=1 and mp=1)
   ! **********************************************************************
   ! Spline for mod b
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
     CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,b,b_spl)
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
   ! Spline for sqrg11
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
     CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,sqrg11,g_spl)
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
   ! Spline for geodesic curviture
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
     CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,kg,k_spl)
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
   ! Spline for parallel derivative
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
     CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,pard,p_spl)
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
   ! Spline for quasi-toroidal phi component of b
     IF (calc_cur .EQ. 1) THEN
-  !    IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
        CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,bqtphi,q_spl)
-  !    IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
     END IF
   ! Spline for r_nabpsi
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'before spl2d'
     CALL spl2d(theta_n,phi_n,theta_int,phi_int,mt,mp,r_nabpsi,r_spl)
-  ! IF (write_progress .NE. 0) WRITE (w_us,*) 'after spl2d'
   ! **********************************************************************
   ! Spline test
   ! **********************************************************************
