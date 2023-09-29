@@ -64,9 +64,9 @@
 !>     solve_systems, calc_opt_lambda3
 SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
      a, b, c, d, m, f)
-!-----------------------------------------------------------------------
-! Modules
-!-----------------------------------------------------------------------
+  !-----------------------------------------------------------------------
+  ! Modules
+  !-----------------------------------------------------------------------
 
   use nrtype, only : I4B, DP
   USE inter_interfaces, ONLY: calc_opt_lambda3
@@ -77,7 +77,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   USE sparse_mod, ONLY : sparse_solve
   !! End Modifications by Andreas F. Martitsch (06.08.2014)
 
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
   IMPLICIT NONE
 
@@ -203,85 +203,85 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     write(*,*) 'size should be ', size(lambda1)
     stop
   end if
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
 
   IF (DABS(c1) > 1.0E30) THEN
-     c1 = 0.0D0;
+    c1 = 0.0D0;
   END IF
   IF (DABS(cn) > 1.0E30) THEN
-     cn = 0.0D0;
+    cn = 0.0D0;
   END IF
 
-! setting all to zero
+  ! setting all to zero
   MA(:,:) = 0.0D0
   inh(:)  = 0.0D0
 
-! calculate optimal weights for smooting (lambda)
+  ! calculate optimal weights for smooting (lambda)
   IF ( MAXVAL(lambda1) < 0.0D0 ) THEN
-     CALL calc_opt_lambda3(x, y, omega)
+    CALL calc_opt_lambda3(x, y, omega)
   ELSE
-     omega  = lambda1
+    omega  = lambda1
   END IF
   lambda = 1.0D0 - omega
 
   IF (sw1 == 1) THEN
-     mu1  = 1
-     nu1  = 0
-     sig1 = 0
-     rho1 = 0
+    mu1  = 1
+    nu1  = 0
+    sig1 = 0
+    rho1 = 0
   ELSE IF (sw1 == 2) THEN
-     mu1  = 0
-     nu1  = 1
-     sig1 = 0
-     rho1 = 0
+    mu1  = 0
+    nu1  = 1
+    sig1 = 0
+    rho1 = 0
   ELSE IF (sw1 == 3) THEN
-     mu1  = 0
-     nu1  = 0
-     sig1 = 1
-     rho1 = 0
+    mu1  = 0
+    nu1  = 0
+    sig1 = 1
+    rho1 = 0
   ELSE IF (sw1 == 4) THEN
-     mu1  = 0
-     nu1  = 0
-     sig1 = 0
-     rho1 = 1
+    mu1  = 0
+    nu1  = 0
+    sig1 = 0
+    rho1 = 1
   ELSE
-     STOP 'SPLINECOF3: error  in using boundary condition 1'
+    STOP 'SPLINECOF3: error  in using boundary condition 1'
   END IF
 
   IF (sw2 == 1) THEN
-     mu2  = 1
-     nu2  = 0
-     sig2 = 0
-     rho2 = 0
+    mu2  = 1
+    nu2  = 0
+    sig2 = 0
+    rho2 = 0
   ELSE IF (sw2 == 2) THEN
-     mu2  = 0
-     nu2  = 1
-     sig2 = 0
-     rho2 = 0
+    mu2  = 0
+    nu2  = 1
+    sig2 = 0
+    rho2 = 0
   ELSE IF (sw2 == 3) THEN
-     mu2  = 0
-     nu2  = 0
-     sig2 = 1
-     rho2 = 0
+    mu2  = 0
+    nu2  = 0
+    sig2 = 1
+    rho2 = 0
   ELSE IF (sw2 == 4) THEN
-     mu2  = 0
-     nu2  = 0
-     sig2 = 0
-     rho2 = 1
+    mu2  = 0
+    nu2  = 0
+    sig2 = 0
+    rho2 = 1
   ELSE
-     STOP 'SPLINECOF3: error  in using boundary condition 2'
+    STOP 'SPLINECOF3: error  in using boundary condition 2'
   END IF
 
 
-! coefs for first point
+  ! coefs for first point
   i  = 0
   j  = 1
   ii = indx((j-1)/VAR+1)
   ie = indx((j-1)/VAR+2) - 1
   h  = x(indx((j-1)/VAR+2)) - x(ii)
 
-! boundary condition 1
+  ! boundary condition 1
   i = i + 1
   MA(i, 2) = DBLE(mu1)
   MA(i, 3) = DBLE(nu1)
@@ -289,25 +289,25 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   MA(i, (len_indx-1)*VAR + 3) = DBLE(rho1)
   inh(i) = c1
 
-! A_i
+  ! A_i
   i = i + 1
   MA(i, j+0  +0) =  1.0D0
   MA(i, j+0  +1) =  h
   MA(i, j+0  +2) =  h * h
   MA(i, j+0  +3) =  h * h * h
   MA(i, j+VAR+0) = -1.0D0
-! B_i
+  ! B_i
   i = i + 1
   MA(i, j+0  +1) =  1.0D0
   MA(i, j+0  +2) =  2.0D0 * h
   MA(i, j+0  +3) =  3.0D0 * h * h
   MA(i, j+VAR+1) = -1.0D0
-! C_i
+  ! C_i
   i = i + 1
   MA(i, j+0  +2) =  1.0D0
   MA(i, j+0  +3) =  3.0D0 * h
   MA(i, j+VAR+2) = -1.0D0
-! delta a_i
+  ! delta a_i
   i = i + 1
   help_a = 0.0D0
   help_b = 0.0D0
@@ -315,13 +315,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   help_d = 0.0D0
   help_i = 0.0D0
   DO l = ii, ie
-     h_j = x(l) - x(ii)
-     x_h    = f(x(l),m) * f(x(l),m)
-     help_a = help_a + x_h
-     help_b = help_b + h_j * x_h
-     help_c = help_c + h_j * h_j * x_h
-     help_d = help_d + h_j * h_j * h_j * x_h
-     help_i = help_i + f(x(l),m) * y(l)
+    h_j = x(l) - x(ii)
+    x_h    = f(x(l),m) * f(x(l),m)
+    help_a = help_a + x_h
+    help_b = help_b + h_j * x_h
+    help_c = help_c + h_j * h_j * x_h
+    help_d = help_d + h_j * h_j * h_j * x_h
+    help_i = help_i + f(x(l),m) * y(l)
   END DO  ! DO l = ii, ie
   MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
   MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
@@ -329,7 +329,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
   MA(i, j+0  +4) =  1.0D0
   inh(i)         =  omega((j-1)/VAR+1) * help_i
-! delta b_i
+  ! delta b_i
   i = i + 1
   help_a = 0.0D0
   help_b = 0.0D0
@@ -337,13 +337,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   help_d = 0.0D0
   help_i = 0.0D0
   DO l = ii, ie
-     h_j = x(l) - x(ii)
-     x_h    = f(x(l),m) * f(x(l),m)
-     help_a = help_a + h_j * x_h
-     help_b = help_b + h_j * h_j * x_h
-     help_c = help_c + h_j * h_j * h_j * x_h
-     help_d = help_d + h_j * h_j * h_j * h_j * x_h
-     help_i = help_i + h_j * f(x(l),m) * y(l)
+    h_j = x(l) - x(ii)
+    x_h    = f(x(l),m) * f(x(l),m)
+    help_a = help_a + h_j * x_h
+    help_b = help_b + h_j * h_j * x_h
+    help_c = help_c + h_j * h_j * h_j * x_h
+    help_d = help_d + h_j * h_j * h_j * h_j * x_h
+    help_i = help_i + h_j * f(x(l),m) * y(l)
   END DO  ! DO l = ii, ie
   MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
   MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
@@ -354,7 +354,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   MA(i, (len_indx-1)*VAR+4) = DBLE(mu1)
   MA(i, (len_indx-1)*VAR+5) = DBLE(mu2)
   inh(i)         =  omega((j-1)/VAR+1) * help_i
-! delta c_i
+  ! delta c_i
   i = i + 1
   help_a = 0.0D0
   help_b = 0.0D0
@@ -362,13 +362,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   help_d = 0.0D0
   help_i = 0.0D0
   DO l = ii, ie
-     h_j = x(l) - x(ii)
-     x_h    = f(x(l),m) * f(x(l),m)
-     help_a = help_a + h_j * h_j * x_h
-     help_b = help_b + h_j * h_j * h_j * x_h
-     help_c = help_c + h_j * h_j * h_j * h_j * x_h
-     help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
-     help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
+    h_j = x(l) - x(ii)
+    x_h    = f(x(l),m) * f(x(l),m)
+    help_a = help_a + h_j * h_j * x_h
+    help_b = help_b + h_j * h_j * h_j * x_h
+    help_c = help_c + h_j * h_j * h_j * h_j * x_h
+    help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
+    help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
   END DO  ! DO l = ii, ie
   MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
   MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
@@ -380,7 +380,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   MA(i, (len_indx-1)*VAR+4) = DBLE(nu1)
   MA(i, (len_indx-1)*VAR+5) = DBLE(nu2)
   inh(i)         =  omega((j-1)/VAR+1) * help_i
-! delta DELTA d_i
+  ! delta DELTA d_i
   i = i + 1
   help_a = 0.0D0
   help_b = 0.0D0
@@ -388,13 +388,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   help_d = 0.0D0
   help_i = 0.0D0
   DO l = ii, ie
-     h_j = x(l) - x(ii)
-     x_h    = f(x(l),m) * f(x(l),m)
-     help_a = help_a + h_j * h_j * h_j * x_h
-     help_b = help_b + h_j * h_j * h_j * h_j * x_h
-     help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
-     help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
-     help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
+    h_j = x(l) - x(ii)
+    x_h    = f(x(l),m) * f(x(l),m)
+    help_a = help_a + h_j * h_j * h_j * x_h
+    help_b = help_b + h_j * h_j * h_j * h_j * x_h
+    help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
+    help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
+    help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
   END DO  ! DO l = ii, ie
   MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
   MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
@@ -405,129 +405,129 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   MA(i, j+0  +6) =  3.0D0 * h
   inh(i)         =  omega((j-1)/VAR+1) * help_i
 
-! coefs for point 2 to len_x_points-1
+  ! coefs for point 2 to len_x_points-1
   DO j = VAR+1, VAR*(len_indx-1)-1, VAR
-     ii = indx((j-1)/VAR+1)
-     ie = indx((j-1)/VAR+2) - 1
-     h  = x(indx((j-1)/VAR+2)) - x(ii)
-! A_i
-     i = i + 1
-     MA(i, j+0  +0) =  1.0D0
-     MA(i, j+0  +1) =  h
-     MA(i, j+0  +2) =  h * h
-     MA(i, j+0  +3) =  h * h * h
-     MA(i, j+VAR+0) = -1.0D0
-! B_i
-     i = i + 1
-     MA(i, j+0  +1) =  1.0D0
-     MA(i, j+0  +2) =  2.0D0 * h
-     MA(i, j+0  +3) =  3.0D0 * h * h
-     MA(i, j+VAR+1) = -1.0D0
-! C_i
-     i = i + 1
-     MA(i, j+0  +2) =  1.0D0
-     MA(i, j+0  +3) =  3.0D0 * h
-     MA(i, j+VAR+2) = -1.0D0
-! delta a_i
-     i = i + 1
-     help_a = 0.0D0
-     help_b = 0.0D0
-     help_c = 0.0D0
-     help_d = 0.0D0
-     help_i = 0.0D0
-     DO l = ii, ie
-        h_j = x(l) - x(ii)
-        x_h    = f(x(l),m) * f(x(l),m)
-        help_a = help_a + x_h
-        help_b = help_b + h_j * x_h
-        help_c = help_c + h_j * h_j * x_h
-        help_d = help_d + h_j * h_j * h_j * x_h
-        help_i = help_i + f(x(l),m) * y(l)
-     END DO   ! DO l = ii, ie
-     MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-     MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-     MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-     MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
-     MA(i, j+0  +4) =  1.0D0
-     MA(i, j-VAR+4) = -1.0D0
-     inh(i)         =  omega((j-1)/VAR+1) * help_i
-! delta b_i
-     i = i + 1
-     help_a = 0.0D0
-     help_b = 0.0D0
-     help_c = 0.0D0
-     help_d = 0.0D0
-     help_i = 0.0D0
-     DO l = ii, ie
-        h_j = x(l) - x(ii)
-        x_h    = f(x(l),m) * f(x(l),m)
-        help_a = help_a + h_j * x_h
-        help_b = help_b + h_j * h_j * x_h
-        help_c = help_c + h_j * h_j * h_j * x_h
-        help_d = help_d + h_j * h_j * h_j * h_j * x_h
-        help_i = help_i + h_j * f(x(l),m) * y(l)
-     END DO  ! DO l = ii, ie
-     MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-     MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-     MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-     MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
-     MA(i, j+0  +4) =  h
-     MA(i, j+0  +5) =  1.0D0
-     MA(i, j-VAR+5) = -1.0D0
-     inh(i)         =  omega((j-1)/VAR+1) * help_i
-! delta c_i
-     i = i + 1
-     help_a = 0.0D0
-     help_b = 0.0D0
-     help_c = 0.0D0
-     help_d = 0.0D0
-     help_i = 0.0D0
-     DO l = ii, ie
-        h_j = x(l) - x(ii)
-        x_h    = f(x(l),m) * f(x(l),m)
-        help_a = help_a + h_j * h_j * x_h
-        help_b = help_b + h_j * h_j * h_j * x_h
-        help_c = help_c + h_j * h_j * h_j * h_j * x_h
-        help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
-        help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
-     END DO  ! DO l = ii, ie
-     MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-     MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-     MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-     MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
-     MA(i, j+0  +4) =  h * h
-     MA(i, j+0  +5) =  2.0D0 * h
-     MA(i, j+0  +6) =  1.0D0
-     MA(i, j-VAR+6) = -1.0D0
-     inh(i)         =  omega((j-1)/VAR+1) * help_i
-! delta DELTA d_i
-     i = i + 1
-     help_a = 0.0D0
-     help_b = 0.0D0
-     help_c = 0.0D0
-     help_d = 0.0D0
-     help_i = 0.0D0
-     DO l = ii, ie
-        h_j = x(l) - x(ii)
-        x_h    = f(x(l),m) * f(x(l),m)
-        help_a = help_a + h_j * h_j * h_j * x_h
-        help_b = help_b + h_j * h_j * h_j * h_j * x_h
-        help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
-        help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
-        help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
-     END DO  ! DO l = ii, ie
-     MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-     MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-     MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-     MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1)
-     MA(i, j+0  +4) =  h * h * h
-     MA(i, j+0  +5) =  3.0D0 * h * h
-     MA(i, j+0  +6) =  3.0D0 * h
-     inh(i)         =  omega((j-1)/VAR+1) * help_i
+    ii = indx((j-1)/VAR+1)
+    ie = indx((j-1)/VAR+2) - 1
+    h  = x(indx((j-1)/VAR+2)) - x(ii)
+    ! A_i
+    i = i + 1
+    MA(i, j+0  +0) =  1.0D0
+    MA(i, j+0  +1) =  h
+    MA(i, j+0  +2) =  h * h
+    MA(i, j+0  +3) =  h * h * h
+    MA(i, j+VAR+0) = -1.0D0
+    ! B_i
+    i = i + 1
+    MA(i, j+0  +1) =  1.0D0
+    MA(i, j+0  +2) =  2.0D0 * h
+    MA(i, j+0  +3) =  3.0D0 * h * h
+    MA(i, j+VAR+1) = -1.0D0
+    ! C_i
+    i = i + 1
+    MA(i, j+0  +2) =  1.0D0
+    MA(i, j+0  +3) =  3.0D0 * h
+    MA(i, j+VAR+2) = -1.0D0
+    ! delta a_i
+    i = i + 1
+    help_a = 0.0D0
+    help_b = 0.0D0
+    help_c = 0.0D0
+    help_d = 0.0D0
+    help_i = 0.0D0
+    DO l = ii, ie
+      h_j = x(l) - x(ii)
+      x_h    = f(x(l),m) * f(x(l),m)
+      help_a = help_a + x_h
+      help_b = help_b + h_j * x_h
+      help_c = help_c + h_j * h_j * x_h
+      help_d = help_d + h_j * h_j * h_j * x_h
+      help_i = help_i + f(x(l),m) * y(l)
+    END DO   ! DO l = ii, ie
+    MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
+    MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
+    MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
+    MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
+    MA(i, j+0  +4) =  1.0D0
+    MA(i, j-VAR+4) = -1.0D0
+    inh(i)         =  omega((j-1)/VAR+1) * help_i
+    ! delta b_i
+    i = i + 1
+    help_a = 0.0D0
+    help_b = 0.0D0
+    help_c = 0.0D0
+    help_d = 0.0D0
+    help_i = 0.0D0
+    DO l = ii, ie
+      h_j = x(l) - x(ii)
+      x_h    = f(x(l),m) * f(x(l),m)
+      help_a = help_a + h_j * x_h
+      help_b = help_b + h_j * h_j * x_h
+      help_c = help_c + h_j * h_j * h_j * x_h
+      help_d = help_d + h_j * h_j * h_j * h_j * x_h
+      help_i = help_i + h_j * f(x(l),m) * y(l)
+    END DO  ! DO l = ii, ie
+    MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
+    MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
+    MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
+    MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
+    MA(i, j+0  +4) =  h
+    MA(i, j+0  +5) =  1.0D0
+    MA(i, j-VAR+5) = -1.0D0
+    inh(i)         =  omega((j-1)/VAR+1) * help_i
+    ! delta c_i
+    i = i + 1
+    help_a = 0.0D0
+    help_b = 0.0D0
+    help_c = 0.0D0
+    help_d = 0.0D0
+    help_i = 0.0D0
+    DO l = ii, ie
+      h_j = x(l) - x(ii)
+      x_h    = f(x(l),m) * f(x(l),m)
+      help_a = help_a + h_j * h_j * x_h
+      help_b = help_b + h_j * h_j * h_j * x_h
+      help_c = help_c + h_j * h_j * h_j * h_j * x_h
+      help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
+      help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
+    END DO  ! DO l = ii, ie
+    MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
+    MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
+    MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
+    MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
+    MA(i, j+0  +4) =  h * h
+    MA(i, j+0  +5) =  2.0D0 * h
+    MA(i, j+0  +6) =  1.0D0
+    MA(i, j-VAR+6) = -1.0D0
+    inh(i)         =  omega((j-1)/VAR+1) * help_i
+    ! delta DELTA d_i
+    i = i + 1
+    help_a = 0.0D0
+    help_b = 0.0D0
+    help_c = 0.0D0
+    help_d = 0.0D0
+    help_i = 0.0D0
+    DO l = ii, ie
+      h_j = x(l) - x(ii)
+      x_h    = f(x(l),m) * f(x(l),m)
+      help_a = help_a + h_j * h_j * h_j * x_h
+      help_b = help_b + h_j * h_j * h_j * h_j * x_h
+      help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
+      help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
+      help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
+    END DO  ! DO l = ii, ie
+    MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
+    MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
+    MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
+    MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1)
+    MA(i, j+0  +4) =  h * h * h
+    MA(i, j+0  +5) =  3.0D0 * h * h
+    MA(i, j+0  +6) =  3.0D0 * h
+    inh(i)         =  omega((j-1)/VAR+1) * help_i
   END DO  ! DO j = VAR+1, VAR*(len_indx-1)-1, VAR
 
-! last point
-! delta a_i
+  ! last point
+  ! delta a_i
   i = i + 1
   ii = indx((j-1)/VAR+1)
   ie = ii
@@ -540,18 +540,18 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   MA(i, (len_indx-1)*VAR+1) = omega((j-1)/VAR+1) * help_a
   MA(i, (len_indx-2)*VAR+5) = omega((j-1)/VAR+1) * (-1.0D0)
   inh(i)                    = omega((j-1)/VAR+1) * help_inh
-! delta b_i
+  ! delta b_i
   i = i + 1
   MA(i, (len_indx-2)*VAR+6) = -1.0D0
   MA(i, (len_indx-1)*VAR+4) =  DBLE(sig1)
   MA(i, (len_indx-1)*VAR+5) =  DBLE(sig2)
-! delta c_i
+  ! delta c_i
   i = i + 1
   MA(i, (len_indx-2)*VAR+7) = -1.0D0
   MA(i, (len_indx-1)*VAR+4) =  DBLE(rho1)
   MA(i, (len_indx-1)*VAR+5) =  DBLE(rho2)
 
-! boundary condition 2
+  ! boundary condition 2
   i = i + 1
   MA(i, 2) = DBLE(mu2)
   MA(i, 3) = DBLE(nu2)
@@ -561,7 +561,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
 ! ---------------------------
 
-! solve system
+  ! solve system
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   !Replace standard solver from Lapack with sparse solver
   !(Bad performance for more than 1000 flux surfaces ~ (3*nsurf)^2)
@@ -572,8 +572,8 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   !PRINT *,"After - solve system for spline coefficients"
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   
-!  PRINT *, ' A B C D'
-! take a(), b(), c(), d()
+  !  PRINT *, ' A B C D'
+  ! take a(), b(), c(), d()
   DO i = 1, len_indx
      a(i) = inh((i-1)*VAR+1) 
      b(i) = inh((i-1)*VAR+2) 
@@ -607,13 +607,13 @@ END SUBROUTINE splinecof3_a
 !> OUTPUT:
 !>  REAL(DP)                :: a, b, c, d ....... new coefs
 SUBROUTINE reconstruction3_a(ai, bi, ci, di, h, a, b, c, d)
-!-----------------------------------------------------------------------
-! Modules
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  ! Modules
+  !---------------------------------------------------------------------
 
   use nrtype, only : DP
 
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
   IMPLICIT NONE
 
@@ -621,7 +621,7 @@ SUBROUTINE reconstruction3_a(ai, bi, ci, di, h, a, b, c, d)
   REAL(DP), INTENT(IN)    :: h
   REAL(DP), INTENT(OUT)   :: a, b, c, d 
 
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
   d = di
   c = ci + 3.0D0 * h * di
@@ -661,14 +661,14 @@ END SUBROUTINE reconstruction3_a
 !>     INTEGER(I4B), PARAMETER :: VAR = 7 ... no of variables
 SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
      sw1, sw2, a, b, c, d, m, f)
-!-----------------------------------------------------------------------
-! Modules
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  ! Modules
+  !---------------------------------------------------------------------
 
   use nrtype, only : I4B, DP
   USE inter_interfaces, ONLY: splinecof3, reconstruction3
 
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
   IMPLICIT NONE
 
@@ -682,13 +682,13 @@ SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
   REAL(DP),     DIMENSION(:), INTENT(OUT)   :: a, b, c, d
   INTEGER(I4B),               INTENT(IN)    :: sw1, sw2
   INTERFACE
-     FUNCTION f(x,m)
-       use nrtype, only : DP
-       IMPLICIT NONE
-       REAL(DP), INTENT(IN) :: x
-       REAL(DP), INTENT(IN) :: m
-       REAL(DP)             :: f
-     END FUNCTION f
+    FUNCTION f(x,m)
+      use nrtype, only : DP
+      IMPLICIT NONE
+      REAL(DP), INTENT(IN) :: x
+      REAL(DP), INTENT(IN) :: m
+      REAL(DP)             :: f
+    END FUNCTION f
   END INTERFACE
 
   INTEGER(I4B)                              :: dim, no, ns, len_indx
@@ -703,12 +703,12 @@ SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
   ns = SIZE(a)
   len_indx = SIZE(indx)
 
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
   dim = SUM(w)
 
   IF (dim == 0) THEN
-     STOP 'error in splinecof3_lo_driv: w == 0'
+    STOP 'error in splinecof3_lo_driv: w == 0'
   END IF
 
   ALLOCATE(ai(dim), bi(dim), ci(dim), di(dim),  stat = i_alloc)
@@ -719,90 +719,90 @@ SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
 
   hi = 1
   DO i = 1, SIZE(w)
-     IF ( (w(i) /= 0) .AND. (w(i) /= 1) ) THEN
-        STOP 'splinecof3_lo_driv: wrong value for w  (0/1)'
-     END IF
-     IF ( w(i) == 0 ) THEN
-        IF ( (i+1) <= SIZE(w) ) THEN
-           ie = indx(i+1)-1
-        ELSE
-           ie = SIZE(hi)
-        END IF
-        DO j = indx(i), ie
-           hi(j) = 0
-        END DO
-     END IF
+    IF ( (w(i) /= 0) .AND. (w(i) /= 1) ) THEN
+      STOP 'splinecof3_lo_driv: wrong value for w  (0/1)'
+    END IF
+    IF ( w(i) == 0 ) THEN
+      IF ( (i+1) <= SIZE(w) ) THEN
+        ie = indx(i+1)-1
+      ELSE
+        ie = SIZE(hi)
+      END IF
+      DO j = indx(i), ie
+        hi(j) = 0
+      END DO
+    END IF
   END DO
 
   dim = SUM(hi)
   ALLOCATE(xn(dim), yn(dim),   stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3_lo_driv: allocation for arrays 3 failed!'
 
-! create new vectors for indx and lambda with respect to skipped points
+  ! create new vectors for indx and lambda with respect to skipped points
   j = 1
   shifti = 0
   shiftv = 0
   DO i = 1, SIZE(indx)
-     IF ( j <= SIZE(indx1) ) THEN
-        indx1(j)   = indx(i) - shiftv
-        lambda1(j) = lambda(i-shifti)
-     END IF
-     IF ( w(i) /= 0 ) THEN
-        j = j + 1
-     ELSE
-        shifti = shifti + 1
-        IF ( i+1 <= SIZE(indx) ) THEN
-           shiftv = shiftv + indx(i+1) - indx(i)
-        END IF
-     END IF
+    IF ( j <= SIZE(indx1) ) THEN
+      indx1(j)   = indx(i) - shiftv
+      lambda1(j) = lambda(i-shifti)
+    END IF
+    IF ( w(i) /= 0 ) THEN
+      j = j + 1
+    ELSE
+      shifti = shifti + 1
+      IF ( i+1 <= SIZE(indx) ) THEN
+        shiftv = shiftv + indx(i+1) - indx(i)
+      END IF
+    END IF
   END DO
 
-! create new vectors for x and y with respect to skipped points
+  ! create new vectors for x and y with respect to skipped points
   j = indx1(1)
   DO i = 1, SIZE(hi)
-     IF ( hi(i) /= 0 ) THEN
-        xn(j) = x(i)
-        yn(j) = y(i)
-        j = j+1
-     END IF
+    IF ( hi(i) /= 0 ) THEN
+      xn(j) = x(i)
+      yn(j) = y(i)
+      j = j+1
+    END IF
   END DO
 
   CALL splinecof3(xn, yn, c1, cn, lambda1, indx1, sw1, sw2, &
        ai, bi, ci, di, m, f)
 
-! find first regular point
+  ! find first regular point
   shift = 1
   DO WHILE ( ( shift <= SIZE(w) ) .AND.  ( w(shift) == 0 ) )
-     shift = shift + 1
+    shift = shift + 1
   END DO
 
-! reconstruct spline coefficients from 0 to first calculated coeff.
+  ! reconstruct spline coefficients from 0 to first calculated coeff.
   IF ( ( shift > 1 ) .AND. ( shift < SIZE(w) ) ) THEN
-     a(shift) = ai(1)
-     b(shift) = bi(1)
-     c(shift) = ci(1)
-     d(shift) = di(1)
-     DO i = shift-1, 1, -1
-        h = x(indx(i)) - x(indx(i+1))
-        CALL reconstruction3(a(i+1), b(i+1), c(i+1), d(i+1), h, &
-             a(i), b(i), c(i), d(i))
-     END DO
+    a(shift) = ai(1)
+    b(shift) = bi(1)
+    c(shift) = ci(1)
+    d(shift) = di(1)
+    DO i = shift-1, 1, -1
+      h = x(indx(i)) - x(indx(i+1))
+      CALL reconstruction3(a(i+1), b(i+1), c(i+1), d(i+1), h, &
+           a(i), b(i), c(i), d(i))
+    END DO
   END IF
 
-! reconstruct all other spline coefficients if needed
+  ! reconstruct all other spline coefficients if needed
   j = 0
   DO i = shift, ns
-     IF (w(i) == 1) THEN
-        j = j + 1
-        a(i) = ai(j)
-        b(i) = bi(j)
-        c(i) = ci(j)
-        d(i) = di(j)
-     ELSE
-        h = x(indx(i)) - x(indx(i-1))
-        CALL reconstruction3(a(i-1), b(i-1), c(i-1), d(i-1), h, &
-             a(i), b(i), c(i), d(i))
-     END IF
+    IF (w(i) == 1) THEN
+      j = j + 1
+      a(i) = ai(j)
+      b(i) = bi(j)
+      c(i) = ci(j)
+      d(i) = di(j)
+    ELSE
+      h = x(indx(i)) - x(indx(i-1))
+      CALL reconstruction3(a(i-1), b(i-1), c(i-1), d(i-1), h, &
+           a(i), b(i), c(i), d(i))
+    END IF
   END DO
 
   DEALLOCATE(ai, bi, ci, di,  stat = i_alloc)
@@ -834,14 +834,14 @@ END SUBROUTINE splinecof3_lo_driv_a
 !>     REAL(DP),     DIMENSION(ns,no_cur) :: lambda3 . weight for 3. derivative
 !>     INTEGER(I4B), DIMENSION(ns,no_cur) :: w ....... weight for point (0,1)
 SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
-!-----------------------------------------------------------------------
-! Modules
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  ! Modules
+  !---------------------------------------------------------------------
 
   use nrtype, only : I4B, DP
   USE inter_interfaces, ONLY: splinecof3_lo_driv
 
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
   IMPLICIT NONE
 
@@ -851,13 +851,13 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   REAL(DP),     DIMENSION(:,:), INTENT(IN)  :: y
   REAL(DP),     DIMENSION(:,:), INTENT(OUT) :: a, b, c, d
   INTERFACE
-     FUNCTION f(x,m)
-       use nrtype, only : DP
-       IMPLICIT NONE
-       REAL(DP), INTENT(IN) :: x
-       REAL(DP), INTENT(IN) :: m
-       REAL(DP)             :: f
-     END FUNCTION f
+    FUNCTION f(x,m)
+      use nrtype, only : DP
+      IMPLICIT NONE
+      REAL(DP), INTENT(IN) :: x
+      REAL(DP), INTENT(IN) :: m
+      REAL(DP)             :: f
+    END FUNCTION f
   END INTERFACE
 
   REAL(DP),     DIMENSION(:,:), ALLOCATABLE :: lambda3
@@ -866,7 +866,7 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   INTEGER(I4B)  :: i, sw1, sw2, i_alloc
   REAL(DP)      :: c1, cn
 
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
   ns     = SIZE(a,1)
   no_cur = SIZE(y,2)
@@ -878,7 +878,7 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   lambda3 =  1.0D0     !! no smoothing
 
 
-! weights:  w(i)=0/1;  if(w(i)==0) ... do not use this point
+  ! weights:  w(i)=0/1;  if(w(i)==0) ... do not use this point
   w = 1
  
   sw1 = 2
@@ -888,12 +888,12 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   cn = 0.0D0
 
   DO i = 1, no_cur
-     IF ( m(i) /= 0.0D0 ) THEN
-        w(1,i) = 0   ! system is not defined at y(0)=0
-     END IF
-     CALL splinecof3_lo_driv(x, y(:,i), c1, cn, &
-          lambda3(:,i), w(:,i), indx, sw1, sw2,&
-          a(:,i), b(:,i), c(:,i), d(:,i), m(i), f)
+    IF ( m(i) /= 0.0D0 ) THEN
+      w(1,i) = 0   ! system is not defined at y(0)=0
+    END IF
+    CALL splinecof3_lo_driv(x, y(:,i), c1, cn, &
+         lambda3(:,i), w(:,i), indx, sw1, sw2,&
+         a(:,i), b(:,i), c(:,i), d(:,i), m(i), f)
   END DO
 
   DEALLOCATE (lambda3, w,  stat = i_alloc)
@@ -905,13 +905,13 @@ END SUBROUTINE splinecof3_hi_driv_a
 !>
 !> \attention  NO FINAL VERSION NOW!!!!!
 SUBROUTINE calc_opt_lambda3_a(x, y, lambda)
-!-----------------------------------------------------------------------
-! Modules
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
+  ! Modules
+  !---------------------------------------------------------------------
 
   use nrtype, only : I4B, DP
   USE inter_interfaces, ONLY: dist_lin
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
   IMPLICIT NONE
 
@@ -922,7 +922,7 @@ SUBROUTINE calc_opt_lambda3_a(x, y, lambda)
   REAL(DP)     :: av_a
   REAL(DP)     :: ymax, xd(3), yd(3)
 
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
   no   = SIZE(x)
   av_a = 0.0D0
@@ -930,26 +930,26 @@ SUBROUTINE calc_opt_lambda3_a(x, y, lambda)
   IF ( ymax == 0.0D0 )   ymax = 1.0D0
 
   DO i = 1, no
-     IF ( i == 1 ) THEN
-        xd(1) = x(2)
-        xd(2) = x(1)
-        xd(3) = x(3)
-        yd(1) = y(2)
-        yd(2) = y(1)
-        yd(3) = y(3)
-        CALL dist_lin(xd, yd, ymax, av_a)
-     ELSE IF ( i == no ) THEN
-        xd(1) = x(no-2)
-        xd(2) = x(no)
-        xd(3) = x(no-1)
-        yd(1) = y(no-2)
-        yd(2) = y(no)
-        yd(3) = y(no-1)
-        CALL dist_lin(xd, yd, ymax, av_a)
-     ELSE
-        CALL dist_lin(x(i-1:i+1), y(i-1:i+1), ymax, av_a)
-     END IF
-     lambda(i) = 1.0D0 - av_a**3
+    IF ( i == 1 ) THEN
+      xd(1) = x(2)
+      xd(2) = x(1)
+      xd(3) = x(3)
+      yd(1) = y(2)
+      yd(2) = y(1)
+      yd(3) = y(3)
+      CALL dist_lin(xd, yd, ymax, av_a)
+    ELSE IF ( i == no ) THEN
+      xd(1) = x(no-2)
+      xd(2) = x(no)
+      xd(3) = x(no-1)
+      yd(1) = y(no-2)
+      yd(2) = y(no)
+      yd(3) = y(no-1)
+      CALL dist_lin(xd, yd, ymax, av_a)
+    ELSE
+      CALL dist_lin(x(i-1:i+1), y(i-1:i+1), ymax, av_a)
+    END IF
+    lambda(i) = 1.0D0 - av_a**3
   END DO
   av_a = SUM(lambda) / DBLE(SIZE(lambda))
 
@@ -971,7 +971,7 @@ SUBROUTINE dist_lin_a(x, y, ymax, dist)
   REAL(DP),               INTENT(OUT) :: dist
 
   REAL(DP) :: k, d
-! --------------------------------------------------------------------
+  ! --------------------------------------------------------------------
 
   k = (y(3) - y(1)) / (x(3) - x(1))
   d = (y(1)*x(3) - y(3)*x(1)) / (x(3) - x(1))
@@ -1190,13 +1190,13 @@ subroutine splinecof1_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
   real(DP),     dimension(:), intent(out)   :: a, b, c, d
   integer(I4B),               intent(in)    :: sw1, sw2
   interface
-     function f(x,m)
-       use nrtype, only : DP
-       implicit none
-       real(DP), intent(in) :: x
-       real(DP), intent(in) :: m
-       real(DP)             :: f
-     end function f
+    function f(x,m)
+      use nrtype, only : DP
+      implicit none
+      real(DP), intent(in) :: x
+      real(DP), intent(in) :: m
+      real(DP)             :: f
+    end function f
   end interface
 
   integer(I4B)                              :: dim, no, ns, len_indx
@@ -1358,13 +1358,13 @@ subroutine splinecof1_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   real(DP),     dimension(:,:), intent(in)  :: y
   real(DP),     dimension(:,:), intent(out) :: a, b, c, d
   interface
-     function f(x,m)
-       use nrtype, only : DP
-       implicit none
-       real(DP), intent(in) :: x
-       real(DP), intent(in) :: m
-       real(DP)             :: f
-     end function f
+    function f(x,m)
+      use nrtype, only : DP
+      implicit none
+      real(DP), intent(in) :: x
+      real(DP), intent(in) :: m
+      real(DP)             :: f
+    end function f
   end interface
 
   real(DP),     dimension(:,:), allocatable :: lambda3
@@ -1373,7 +1373,7 @@ subroutine splinecof1_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   integer(I4B)  :: i, sw1, sw2, i_alloc
   real(DP)      :: c1, cn
 
-!-----------------------------------------------------------------------
+  !---------------------------------------------------------------------
 
   ns     = size(a,1)
   no_cur = size(y,2)
