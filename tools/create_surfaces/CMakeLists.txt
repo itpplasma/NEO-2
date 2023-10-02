@@ -53,8 +53,8 @@ set(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/../../COMMON/sizey_cur.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/sizey_pla.f90
     ../src/spline_cof.f90
-    ../src/spline_int.f90
-    ../src/spline_mod.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/spline_int.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/spline_mod.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/test_function.f90
 )
 
