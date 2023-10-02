@@ -45,7 +45,7 @@ SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
   ! Modules
   !-----------------------------------------------------------------------
 
-  use nrtype, only : I4B, DP
+  use nrtype, only : I4B, DP, splinecof_compatibility
 
   !-----------------------------------------------------------------------
 
@@ -137,21 +137,14 @@ SUBROUTINE splint_horner3_a(xa,a,b,c,d,swd,m,x_in,f,fp,fpp,fppp,&
 
   h = x - xa(klo)
 
-  !! for equidistant points only!
-  ! h = xa(2) - xa(1)
-  ! klo = int((x - xa(1))/h) + 1
-  ! if (klo .le. 0) klo = 1
-  ! if (klo .ge. n) klo = n - 1
-  ! khi = klo + 1
-
-  !**************************************************************
-  ! Patch from Gernot Kapper
-  ! Here always a linear spline was used in all NEO-2 versions
-  !**************************************************************
-  p = a(klo) + h * (b(klo) + h * (c(klo) + h * d(klo)))
-  !  Attention linear interpolation
-  !  delta = xa(khi) - xa(klo)
-  !  p = a(klo) + h * (b(klo) + delta * (c(klo) + delta * d(klo)))
+  if (splinecof_compatibility) then
+    !  Linear interpolation
+    delta = xa(khi) - xa(klo)
+    p = a(klo) + h * (b(klo) + delta * (c(klo) + delta * d(klo)))
+  else
+    ! Nonlinear interpolation
+    p = a(klo) + h * (b(klo) + h * (c(klo) + h * d(klo)))
+  end if
 
   y = f(x,m) * p
 
