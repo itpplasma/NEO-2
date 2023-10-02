@@ -62,6 +62,7 @@ program nfp1
   double precision,parameter  :: p_mass   = 1.6726d-24
   double precision,parameter  :: ev       = 1.6022d-12
 
+  splinecof_compatibility = .true.
 
   !*************************************
   ! Read input arguments

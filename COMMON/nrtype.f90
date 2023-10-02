@@ -34,6 +34,8 @@ MODULE nrtype
      INTEGER(I4B), DIMENSION(:), POINTER :: jcol
   END TYPE sprs2_dp
 
-  logical :: splinecof_compatibility = .true.
+  !> Variable to be able to use linear interpolation (=true) for spline
+  !> coefficients. Value true is used by nfp from tools/create_surfaces.
+  logical :: splinecof_compatibility = .false.
 
 END MODULE nrtype
