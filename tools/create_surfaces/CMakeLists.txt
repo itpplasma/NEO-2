@@ -22,6 +22,9 @@ include(${CMAKE_SOURCE_DIR}/../../COMMON/ProjectConfig.cmake.in)
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
+# MPI
+find_package(MPI REQUIRED)
+
 ### SUPERLU ###
 find_package(SuperLU REQUIRED)
 set(SUPERLU_SRC_FILES
@@ -50,6 +53,8 @@ execute_process(COMMAND nc-config --flibs
                 OUTPUT_VARIABLE NETCDF_LIBS)
 
 find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
+# MyMPIlib
+find_library(MyMPILib_lib MyMPILib ${NEO2_Libs}/src/MyMPILib/ NO_DEFAULT_PATH)
 #~ include_directories(${CMAKE_SOURCE_DIR}/../../Build-11-1-0/ ${CMAKE_BINARY_DIR})
 include_directories(${NEO2_Inc})
 #include_directories(${NEO2_Inc}/src/)
@@ -65,7 +70,7 @@ set(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_spline_b00.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_spline_data.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_spline.f90
-    ../src/neo_sub_mod.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/neo_sub.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_support.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_units.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/neo_van.f90
@@ -99,6 +104,8 @@ add_executable(${PROJECT_EXE_NAME}
 ### Linking
 target_link_libraries(${PROJECT_EXE_NAME}
   ${Interface_Libs}
+  ${MyMPILib_lib}
+  ${MPI_Fortran_LIBRARIES}
   ${NETCDF_LIBS}
   ${SUPERLU_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
@@ -111,6 +118,8 @@ add_executable("nfp.x"
 )
 target_link_libraries("nfp.x"
   ${Interface_Libs}
+  ${MyMPILib_lib}
+  ${MPI_Fortran_LIBRARIES}
   ${NETCDF_LIBS}
   ${SUPERLU_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
