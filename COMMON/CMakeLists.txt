@@ -154,6 +154,7 @@ add_library(common STATIC
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
 target_include_directories(common PUBLIC "${NEO2_Inc}")
+target_include_directories(common PUBLIC "${NEO2_Inc}/src")
 
 if ($ENV{COMMON_UNIT_TESTS}x STREQUAL "TRUEx")
   find_package(PFUNIT REQUIRED)
