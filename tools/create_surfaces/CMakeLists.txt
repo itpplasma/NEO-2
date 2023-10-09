@@ -14,10 +14,31 @@ set(PROJECT_EXE_NAME "create_surfaces.x")
 set(CMAKE_Fortran_MODULE_DIRECTORY ./OBJS)
 set(CMAKE_Fortran_FLAGS "-g -Wall")
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../../COMMON/CMAKE_TOOLS")
+
 include(${CMAKE_SOURCE_DIR}/../../COMMON/ProjectConfig.cmake.in)
+
 
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
+
+### SUPERLU ###
+find_package(SuperLU REQUIRED)
+set(SUPERLU_SRC_FILES
+    ${CMAKE_SOURCE_DIR}/../../COMMON/c_fortran_dgssv_ver_5_0.c
+    ${CMAKE_SOURCE_DIR}/../../COMMON/c_fortran_zgssv_ver_5_0.c
+)
+set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFLAGS} -I${SUPERLU_INCLUDES}")
+set_source_files_properties(${SUPERLU_SRC_FILES} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
+
+### SUITESPARSE ###
+find_package(SuiteSparse REQUIRED)
+set(SUITESPARSE_SRC_FILES
+        ${CMAKE_SOURCE_DIR}/../../COMMON/umf4_f77wrapper_ver_4_5.c
+        ${CMAKE_SOURCE_DIR}/../../COMMON/umf4_f77zwrapper_ver_4_5.c
+)
+set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
+set_source_files_properties(${SUITESPARSE_SRC_FILES}  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 
 ### net-cdf
 execute_process(COMMAND nc-config --includedir
@@ -31,6 +52,7 @@ execute_process(COMMAND nc-config --flibs
 find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
 #~ include_directories(${CMAKE_SOURCE_DIR}/../../Build-11-1-0/ ${CMAKE_BINARY_DIR})
 include_directories(${NEO2_Inc})
+#include_directories(${NEO2_Inc}/src/)
 
 set(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/../../COMMON/inter_interfaces.f90
@@ -52,10 +74,14 @@ set(SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/../../COMMON/sizey_bo.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/sizey_cur.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/sizey_pla.f90
-    ../src/spline_cof.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/sparse_mod.f90
+    ${CMAKE_SOURCE_DIR}/../../COMMON/spline_cof.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/spline_int.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/spline_mod.f90
     ${CMAKE_SOURCE_DIR}/../../COMMON/test_function.f90
+
+    ${SUPERLU_SRC_FILES}
+    ${SUITESPARSE_SRC_FILES}
 )
 
 set(Interface_Libs
@@ -74,6 +100,8 @@ add_executable(${PROJECT_EXE_NAME}
 target_link_libraries(${PROJECT_EXE_NAME}
   ${Interface_Libs}
   ${NETCDF_LIBS}
+  ${SUPERLU_LIBRARIES}
+  ${SUITESPARSE_LIBRARIES}
 )
 
 ###
@@ -84,6 +112,8 @@ add_executable("nfp.x"
 target_link_libraries("nfp.x"
   ${Interface_Libs}
   ${NETCDF_LIBS}
+  ${SUPERLU_LIBRARIES}
+  ${SUITESPARSE_LIBRARIES}
 )
 ### For make install
 # install (TARGETS ${PROJECT_EXE_NAME} DESTINATION /temp/)
