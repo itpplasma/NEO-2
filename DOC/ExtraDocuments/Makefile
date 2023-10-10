@@ -1,4 +1,4 @@
-all: 2018_Documentation.pdf neo-2-ql-demo_runs.pdf
+all: neo-2-par-eccd_runs.pdf neo-2-ql-demo_runs.pdf
 
 %.pdf: %.ps
 	ps2pdf $<
