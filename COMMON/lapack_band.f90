@@ -288,62 +288,6 @@ CONTAINS
 
   END SUBROUTINE gbsv_b2
 
-!!$  SUBROUTINE gbsv_b2_ind(kl,ku,a,ipivot,b,info,ind_s,ind_e)
-!!$
-!!$    INTEGER, INTENT(in)                          :: kl
-!!$    INTEGER, INTENT(in)                          :: ku
-!!$    REAL(kind=dp), DIMENSION(:,:), INTENT(in)    :: a
-!!$    INTEGER,       DIMENSION(:),   INTENT(out)   :: ipivot
-!!$    REAL(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
-!!$    INTEGER,                       INTENT(out)   :: info
-!!$    INTEGER,       DIMENSION(:),   INTENT(in)    :: ind_s,ind_e
-!!$    
-!!$    INTEGER                                      :: n,nrhs,ldab,ldb
-!!$
-!!$    INTEGER                                      :: na,ns
-!!$    INTEGER                                      :: nrhsr = 1
-!!$    INTEGER                                      :: i_s,i_e
-!!$    INTEGER                                      :: k
-!!$
-!!$    REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE   :: a_band
-!!$    REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE   :: ar,br
-!!$    INTEGER,       DIMENSION(:),   ALLOCATABLE   :: ipivotr
-!!$
-!!$    CALL mat2band(a,kl,ku,a_band)
-!!$
-!!$    n = SIZE(a,2)
-!!$    ldb = n
-!!$    nrhs = SIZE(b,2)
-!!$    ldab = 2*kl + ku + 1
-!!$
-!!$    na = MAXVAL(ind_e-ind_s)+1
-!!$    ALLOCATE( br(na,1) )
-!!$
-!!$    DO k = 1,nrhs
-!!$       i_s = ind_s(k)
-!!$       i_e = ind_e(k)
-!!$       ns = i_e - i_s + 1
-!!$
-!!$       ALLOCATE( ar(ldab,ns) )
-!!$       ar(:,1:ns) = a_band(:,i_s:i_e)
-!!$       ALLOCATE( ipivotr(ns) )
-!!$       br(1:ns,1) = b(i_s:i_e,k)
-!!$
-!!$       CALL dgbsv(ns,kl,ku,nrhsr,ar,ldab,ipivotr,br,na,info)
-!!$
-!!$       !b(1:i_s-1,k) = 0.0_dp
-!!$       b(i_s:i_e,k) = br(1:ns,1)
-!!$       !b(i_e+1:n,k) = 0.0_dp       
-!!$       DEALLOCATE(ar)
-!!$       DEALLOCATE(ipivotr)
-!!$    END DO
-!!$    info = info
-!!$
-!!$    DEALLOCATE(a_band)
-!!$    DEALLOCATE(br)
-!!$
-!!$  END SUBROUTINE gbsv_b2_ind
-
 
   SUBROUTINE gbsv_b2_ind(kl,ku,a,ipivot,b,info,ind_s,ind_e)
 
@@ -412,9 +356,8 @@ CONTAINS
 
        CALL dgbsv(ns,kl,ku,nrhsr,ar,ldab,ipivotr,br,na,info)
 
-       !b(1:i_s-1,k) = 0.0_dp
        b(i_s:i_e,k) = br(1:ns,1)
-       !b(i_e+1:n,k) = 0.0_dp       
+
        DEALLOCATE(ar)
        DEALLOCATE(ipivotr)
     END DO
@@ -692,9 +635,8 @@ CONTAINS
        CALL dgbtrf(ns,ns,kl,ku,ar,ldab,ipivotr,info)
        CALL dgbtrs(trans,ns,kl,ku,nrhsr,ar,ldab,ipivotr,br,na,info2)
 
-       !b(1:i_s-1,k) = 0.0_dp
        b(i_s:i_e,k) = br(1:ns,1)
-       !b(i_e+1:n,k) = 0.0_dp       
+
        DEALLOCATE(ar)
        DEALLOCATE(ipivotr)
     END DO
@@ -754,9 +696,8 @@ CONTAINS
        ar(1:ns,1:ns) = a(i_s:i_e,i_s:i_e)
        br(1:ns,1) = b(i_s:i_e,k)
        CALL dgesv(ns,nrhsr,ar,na,ipivot,br,na,info)
-       !b(1:i_s-1,k) = 0.0_dp
+
        b(i_s:i_e,k) = br(1:ns,1)
-       !b(i_e+1:n,k) = 0.0_dp
     END DO
     
     DEALLOCATE(ar)

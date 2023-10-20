@@ -10,7 +10,6 @@ MODULE neo_work
   REAL(kind=dp) ::   phi_end
   REAL(kind=dp) ::   phi_int
 
-! REAL(kind=dp),    DIMENSION(:,:,:),   ALLOCATABLE :: cosval,sinval
   REAL(kind=dp),    DIMENSION(:,:),     ALLOCATABLE :: cosmth,sinmth
   REAL(kind=dp),    DIMENSION(:,:),     ALLOCATABLE :: cosnph,sinnph
   REAL(kind=dp),    DIMENSION(:),       ALLOCATABLE :: theta_arr,phi_arr

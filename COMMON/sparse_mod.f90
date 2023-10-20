@@ -6,7 +6,6 @@ MODULE sparse_mod
   INTEGER :: sparse_solve_method = 3
 
   PUBLIC sparse_talk
-  !LOGICAL :: sparse_talk = .TRUE.
   LOGICAL :: sparse_talk = .FALSE.
 
   PRIVATE dp
@@ -90,7 +89,6 @@ MODULE sparse_mod
 
   PUBLIC sparse_solve_superlu
   INTERFACE sparse_solve_superlu
-     !MODULE PROCEDURE sparse_solve_superlu_b1,sparse_solve_superlu_b2
      MODULE PROCEDURE sparse_solve_superlu_b1,sparse_solve_superlu_b2_loop, &
           sparse_solve_superluComplex_b1, sparse_solve_superluComplex_b2_loop
   END INTERFACE sparse_solve_superlu
@@ -185,8 +183,6 @@ CONTAINS
        ! convert to sparse
        CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
        IF (sparse_talk) PRINT *, 'nrow=',nrow,' ncol=',ncol,' nz=',nz
-       !Check the conversion to sparse 
-       !CALL sparse2full(irow,pcol,val,nrow,ncol,A)
 
        !construct an array of rhs
        IF (ALLOCATED(bb)) DEALLOCATE(bb)
@@ -210,7 +206,6 @@ CONTAINS
 
     ELSEIF (example .EQ. 3) THEN
        ! load the test-matrix g10
-       !name = 'data/g10'
        name = '/proj/plasma/Libs/SuperLU/SuperLU_3.0/DATA/g10'
        CALL load_standard_example(name,nrow,ncol,nz,irow,pcol,val)
        IF (sparse_talk) PRINT *, 'nrow=',nrow,' ncol=',ncol,' nz=',nz
@@ -230,7 +225,6 @@ CONTAINS
 
     ELSEIF (example .EQ. 4) THEN
        ! load the test-matrix of the compressed_example
-       !name = 'data/sparse_compressed_e100_s100_D0d001.dat'
        name = '/proj/plasma/Libs/SuperLU/SuperLU_3.0/DATA/sparse_compressed_e100_s100_D0d001.dat'
        CALL load_compressed_example(name,nrow,ncol,nz,irow,pcol,val)
        IF (sparse_talk) PRINT *, 'nrow=',nrow,' ncol=',ncol,' nz=',nz
@@ -251,7 +245,6 @@ CONTAINS
 
     ELSEIF (example .EQ. 5) THEN
        ! load the test-matrix of the compressed_example
-       !name = 'data/sparse_compressed_e100_s100_D0d001.dat'
        name = "/proj/plasma/Libs/SuperLU/SuperLU_3.0/DATA/&
             &sparse_compressed_e100_s100_D0d001.dat"
        CALL load_compressed_example(name,nrow,ncol,nz,irow,pcol,val)
@@ -267,7 +260,6 @@ CONTAINS
        xx = bb
        ! solve
        CALL sparse_solve(nrow,ncol,nz,irow,pcol,val,xx)
-       !PRINT *,xx
        ! test
        CALL sparse_solver_test(nrow,ncol,irow,pcol,val,xx,bb)
 
@@ -317,7 +309,7 @@ CONTAINS
        x = b
        ! solve
        CALL sparse_solve(nrow,ncol,nz,irow,pcol,val,x)
-       !PRINT *,x
+
        ! test
        CALL sparse_solver_test(nrow,ncol,irow,pcol,val,x,b)
 
@@ -437,7 +429,6 @@ CONTAINS
        xx = bb
        ! solve
        CALL sparse_solve(nrow,ncol,nz,irow,pcol,val,xx)
-       !PRINT *,xx
        ! test
        CALL sparse_solver_test(nrow,ncol,irow,pcol,val,xx,bb)
 
@@ -459,8 +450,6 @@ CONTAINS
     IF (ALLOCATED(z_bb)) DEALLOCATE(z_bb)
     IF (ALLOCATED(z_xx)) DEALLOCATE(z_xx)
 
-
-    RETURN
   END SUBROUTINE sparse_example
   !-------------------------------------------------------------------------------
 
@@ -476,12 +465,10 @@ CONTAINS
     A(:,4) = A(:,3)*2 + 2  
     A(:,5) = A(:,4)*9 + 2
 
-    !A(1,5) = 0.0_dp
     A(2,4) = 0.0_dp
     A(3,3) = 0.0_dp
     A(4,2) = 0.0_dp
-    !A(5,1) = 0.0_dp
-    RETURN
+
   END SUBROUTINE load_mini_ex
   !-------------------------------------------------------------------------------
 
@@ -507,7 +494,6 @@ CONTAINS
 
     CLOSE(unit=unit)
 
-    RETURN
   END SUBROUTINE load_compressed_ex
   !-------------------------------------------------------------------------------
 
@@ -547,7 +533,6 @@ CONTAINS
 
     CLOSE(unit=unit)
 
-    RETURN
   END SUBROUTINE load_standard_ex
   !-------------------------------------------------------------------------------
 
@@ -603,8 +588,6 @@ CONTAINS
     DO i=1,ncol
        pcol(i+1)=pcol(i)+pcol(i+1)
     END DO
-
-    RETURN
 
   END SUBROUTINE load_octave_mat
   !-------------------------------------------------------------------------------
@@ -666,62 +649,6 @@ CONTAINS
 
   END SUBROUTINE load_octave_matComplex
   !-------------------------------------------------------------------------------
-
-!!$  !-------------------------------------------------------------------------------
-!!$  ! solves the standard example from the SuperLU-Distribution
-!!$  SUBROUTINE solve_standard_ex(nrow,ncol,nz,irow,pcol,val,b)
-!!$    INTEGER, INTENT(in) :: nrow,ncol,nz
-!!$    INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(in) :: irow,pcol
-!!$    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(in) :: val
-!!$    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: b
-!!$
-!!$    INTEGER(kind=long) :: factors
-!!$    INTEGER :: nrhs,ldb,n,i,info,iopt
-!!$
-!!$    n = nrow
-!!$    nrhs = 1
-!!$    ldb = n
-!!$    
-!!$    IF (ALLOCATED(b)) DEALLOCATE(b)
-!!$    ALLOCATE(b(ldb))
-!!$    DO i = 1, ldb
-!!$       b(i) = 1.0d0
-!!$    ENDDO
-!!$
-!!$    ! First, factorize the matrix. The factors are stored in *factors* handle.
-!!$    iopt = 1
-!!$    CALL c_fortran_dgssv( iopt, n, nz, nrhs, val, irow, pcol, & 
-!!$         b, ldb, factors, info )
-!!$
-!!$    IF (sparse_talk) THEN
-!!$       IF (info .EQ. 0) THEN
-!!$          PRINT *, 'Factorization succeeded'
-!!$       ELSE
-!!$          PRINT *, 'INFO from factorization = ', info
-!!$       ENDIF
-!!$    END IF
-!!$
-!!$    ! Second, solve the system using the existing factors.
-!!$    iopt = 2
-!!$    CALL c_fortran_dgssv( iopt, n, nz, nrhs, val, irow, pcol, & 
-!!$         b, ldb, factors, info )
-!!$
-!!$    IF (sparse_talk) THEN
-!!$       IF (info .EQ. 0) THEN
-!!$          PRINT *, 'Solve succeeded'
-!!$          WRITE(*,*) (b(i), i=1, n)
-!!$       ELSE
-!!$          PRINT *, 'INFO from triangular solve = ', info
-!!$       ENDIF
-!!$    END IF
-!!$    ! Last, free the storage allocated inside SuperLU
-!!$    iopt = 3
-!!$    CALL c_fortran_dgssv( iopt, n, nz, nrhs, val, irow, pcol, & 
-!!$         b, ldb, factors, info )
-!!$
-!!$    RETURN
-!!$  END SUBROUTINE solve_standard_ex
-!!$  !-------------------------------------------------------------------------------
 
   !-------------------------------------------------------------------------------
   ! solves A*x = b for sparse A and 1-D vector b
@@ -887,7 +814,7 @@ CONTAINS
     END IF
 
     IF (ALLOCATED(pcoln)) DEALLOCATE(pcoln)
-    RETURN
+
   END SUBROUTINE sparse_solveComplex_b1
   !-------------------------------------------------------------------------------
 
@@ -971,7 +898,7 @@ CONTAINS
     END IF
 
     IF (ALLOCATED(pcoln)) DEALLOCATE(pcoln)
-    RETURN
+
   END SUBROUTINE sparse_solveReal_b2
   !-------------------------------------------------------------------------------
 
@@ -1055,7 +982,7 @@ CONTAINS
     END IF
 
     IF (ALLOCATED(pcoln)) DEALLOCATE(pcoln)
-    RETURN
+
   END SUBROUTINE sparse_solveComplex_b2
   !-------------------------------------------------------------------------------
 
@@ -1112,7 +1039,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sparse_solveReal_A_b1
   !-------------------------------------------------------------------------------
 
@@ -1169,7 +1096,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sparse_solveComplex_A_b1
   !-------------------------------------------------------------------------------
 
@@ -1226,7 +1153,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sparse_solveReal_A_b2
   !-------------------------------------------------------------------------------
 
@@ -1283,7 +1210,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sparse_solveComplex_A_b2
   !-------------------------------------------------------------------------------
 
@@ -1318,7 +1245,6 @@ CONTAINS
        CALL c_fortran_dgssv( iopt, n, nz, nrhs, val, irow, pcol, & 
             b, ldb, factors, info )
 
-
        IF (sparse_talk) THEN
           IF (info .EQ. 0) THEN
              PRINT *, 'Factorization succeeded'
@@ -1337,7 +1263,6 @@ CONTAINS
        IF (sparse_talk) THEN
           IF (info .EQ. 0) THEN
              PRINT *, 'Solve succeeded'
-             ! WRITE(*,*) (b(i), i=1, n)
           ELSE
              PRINT *, 'INFO from triangular solve = ', info
           ENDIF
@@ -1358,7 +1283,6 @@ CONTAINS
        END IF
     END IF
 
-    RETURN
   END SUBROUTINE sparse_solve_superlu_b1
   !-------------------------------------------------------------------------------
 
@@ -1412,7 +1336,6 @@ CONTAINS
        IF (sparse_talk) THEN
           IF (info .EQ. 0) THEN
              PRINT *, 'Solve succeeded'
-             ! WRITE(*,*) (b(i), i=1, n)
           ELSE
              PRINT *, 'INFO from triangular solve = ', info
           ENDIF
@@ -1433,7 +1356,6 @@ CONTAINS
        END IF
     END IF
 
-    RETURN
   END SUBROUTINE sparse_solve_superluComplex_b1
   !-------------------------------------------------------------------------------
 
@@ -1475,19 +1397,6 @@ CONTAINS
        CALL umf4sym (n, n, Ap, Ai, val, symbolic, control, info_suitesparse)
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
-!!$             PRINT 80, info_suitesparse (1), info_suitesparse (16), &
-!!$                  (info_suitesparse (21) * info_suitesparse (4)) / 2**20, &
-!!$                  (info_suitesparse (22) * info_suitesparse (4)) / 2**20, &
-!!$                  info_suitesparse (23), info_suitesparse (24), info_suitesparse (25)
-!!$80           FORMAT ('symbolic analysis:',/, &
-!!$                  '   status:  ', f5.0, /, &
-!!$                  '   time:    ', e10.2, ' (sec)'/, &
-!!$                  '   estimates (upper bound) for numeric LU:', /, &
-!!$                  '   size of LU:    ', f10.2, ' (MB)', /, &
-!!$                  '   memory needed: ', f10.2, ' (MB)', /, &
-!!$                  '   flop count:    ', e10.2, / &
-!!$                  '   nnz (L):       ', f10.0, / &
-!!$                  '   nnz (U):       ', f10.0)
           ELSE
              PRINT *, 'Error occurred in umf4sym: ', info_suitesparse (1)
           ENDIF
@@ -1498,19 +1407,7 @@ CONTAINS
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
              PRINT *, 'Factorization succeeded'
-!!$             PRINT 90, info_suitesparse (1), info_suitesparse (66), &
-!!$                  (info_suitesparse (41) * info_suitesparse (4)) / 2**20, &
-!!$                  info_suitesparse (42) * info_suitesparse (4)) / 2**20, &
-!!$                  info_suitesparse (43), info_suitesparse (44), info_suitesparse (45)
-!!$90           FORMAT ('numeric factorization:',/, &
-!!$                  '   status:  ', f5.0, /, &
-!!$                  '   time:    ', e10.2, /, &
-!!$                  '   actual numeric LU statistics:', /, &
-!!$                  '   size of LU:    ', f10.2, ' (MB)', /, &
-!!$                  '   memory needed: ', f10.2, ' (MB)', /, &
-!!$                  '   flop count:    ', e10.2, / &
-!!$                  '   nnz (L):       ', f10.0, / &
-!!$                  '   nnz (U):       ', f10.0)
+
           ELSE
              PRINT *, 'INFO from factorization = ', info_suitesparse(1)
           ENDIF
@@ -1529,7 +1426,6 @@ CONTAINS
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
              PRINT *, 'Solve succeeded'
-             ! WRITE(*,*) (b(i), i=1, n)
           ELSE
              PRINT *, 'INFO from triangular solve = ', info_suitesparse(1)
           ENDIF
@@ -1546,7 +1442,6 @@ CONTAINS
     IF (ALLOCATED(Ap)) DEALLOCATE(Ap)
     IF (ALLOCATED(x))  DEALLOCATE(x)
 
-    RETURN
   END SUBROUTINE sparse_solve_suitesparse_b1
   !-------------------------------------------------------------------------------
 
@@ -1664,7 +1559,6 @@ CONTAINS
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
              PRINT *, 'Solve succeeded'
-             ! WRITE(*,*) (b(i), i=1, n)
           ELSE
              PRINT *, 'INFO from triangular solve = ', info_suitesparse(1)
           ENDIF
@@ -1686,8 +1580,6 @@ CONTAINS
     IF (ALLOCATED(valx))  DEALLOCATE(valx)
     IF (ALLOCATED(valz))  DEALLOCATE(valz)
 
-
-    RETURN
   END SUBROUTINE sparse_solve_suitesparseComplex_b1
   !-------------------------------------------------------------------------------
 
@@ -1740,7 +1632,6 @@ CONTAINS
        IF (sparse_talk) THEN
           IF (info .EQ. 0) THEN
              PRINT *, 'Solve succeeded'
-             ! WRITE(*,*) (b(i), i=1, n)
           ELSE
              PRINT *, 'INFO from triangular solve = ', info
           ENDIF
@@ -1761,7 +1652,6 @@ CONTAINS
        END IF
     END IF
 
-    RETURN
   END SUBROUTINE sparse_solve_superlu_b2
   !-------------------------------------------------------------------------------
 
@@ -1824,8 +1714,6 @@ CONTAINS
 
           IF (sparse_talk) THEN
              IF (info .EQ. 0) THEN
-                !PRINT *, 'Solve succeeded',i
-                ! WRITE(*,*) (b(i), i=1, n)
              ELSE
                 info_store = info_store + info
                 PRINT *, 'INFO from triangular solve = ', info
@@ -1859,7 +1747,7 @@ CONTAINS
     END IF
 
     IF (ALLOCATED(bloc)) DEALLOCATE(bloc)
-    RETURN
+
   END SUBROUTINE sparse_solve_superlu_b2_loop
   !-------------------------------------------------------------------------------
 
@@ -1922,8 +1810,6 @@ CONTAINS
 
           IF (sparse_talk) THEN
              IF (info .EQ. 0) THEN
-                !PRINT *, 'Solve succeeded',i
-                ! WRITE(*,*) (b(i), i=1, n)
              ELSE
                 info_store = info_store + info
                 PRINT *, 'INFO from triangular solve = ', info
@@ -1982,7 +1868,6 @@ CONTAINS
     ! Patch from Gernot Kapper - 01.09.2015
     ! Wrong allocation size of x fixed
     !**********************************************************
-    !ALLOCATE( x(SIZE(b)) )
     ALLOCATE( x(nrow) )
     ALLOCATE( Ai(SIZE(irow)) )
     ALLOCATE( Ap(SIZE(pcol)) )
@@ -2013,19 +1898,6 @@ CONTAINS
        CALL umf4sym (n, n, Ap, Ai, val, symbolic, control, info_suitesparse)
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
-!!$             PRINT 80, info_suitesparse (1), info_suitesparse (16), &
-!!$                  (info_suitesparse (21) * info_suitesparse (4)) / 2**20, &
-!!$                  (info_suitesparse (22) * info_suitesparse (4)) / 2**20, &
-!!$                  info_suitesparse (23), info_suitesparse (24), info_suitesparse (25)
-!!$80           FORMAT ('symbolic analysis:',/, &
-!!$                  '   status:  ', f5.0, /, &
-!!$                  '   time:    ', e10.2, ' (sec)'/, &
-!!$                  '   estimates (upper bound) for numeric LU:', /, &
-!!$                  '   size of LU:    ', f10.2, ' (MB)', /, &
-!!$                  '   memory needed: ', f10.2, ' (MB)', /, &
-!!$                  '   flop count:    ', e10.2, / &
-!!$                  '   nnz (L):       ', f10.0, / &
-!!$                  '   nnz (U):       ', f10.0)
           ELSE
              PRINT *, 'Error occurred in umf4sym: ', info_suitesparse (1)
           ENDIF
@@ -2036,19 +1908,6 @@ CONTAINS
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
              PRINT *, 'Factorization succeeded'
-!!$             PRINT 90, info_suitesparse (1), info_suitesparse (66), &
-!!$                  (info_suitesparse (41) * info_suitesparse (4)) / 2**20, &
-!!$                  info_suitesparse (42) * info_suitesparse (4)) / 2**20, &
-!!$                  info_suitesparse (43), info_suitesparse (44), info_suitesparse (45)
-!!$90           FORMAT ('numeric factorization:',/, &
-!!$                  '   status:  ', f5.0, /, &
-!!$                  '   time:    ', e10.2, /, &
-!!$                  '   actual numeric LU statistics:', /, &
-!!$                  '   size of LU:    ', f10.2, ' (MB)', /, &
-!!$                  '   memory needed: ', f10.2, ' (MB)', /, &
-!!$                  '   flop count:    ', e10.2, / &
-!!$                  '   nnz (L):       ', f10.0, / &
-!!$                  '   nnz (U):       ', f10.0)
           ELSE
              PRINT *, 'INFO from factorization = ', info_suitesparse(1)
           ENDIF
@@ -2067,8 +1926,6 @@ CONTAINS
 
           IF (sparse_talk) THEN
              IF (info_suitesparse(1) .EQ. 0) THEN
-                !PRINT *, 'Solve succeeded'
-                ! WRITE(*,*) (b(i), i=1, n)
              ELSE
                 PRINT *, 'INFO from solve = ', info_suitesparse(1)
              ENDIF
@@ -2210,8 +2067,6 @@ CONTAINS
 
           IF (sparse_talk) THEN
              IF (info_suitesparse(1) .EQ. 0) THEN
-                !PRINT *, 'Solve succeeded'
-                ! WRITE(*,*) (b(i), i=1, n)
              ELSE
                 PRINT *, 'INFO from solve = ', info_suitesparse(1)
              ENDIF
@@ -2237,7 +2092,6 @@ CONTAINS
     IF (ALLOCATED(valx))  DEALLOCATE(valx)
     IF (ALLOCATED(valz))  DEALLOCATE(valz)
 
-    RETURN
   END SUBROUTINE sparse_solve_suitesparseComplex_b2_loop
   !-------------------------------------------------------------------------------
 
@@ -2261,7 +2115,7 @@ CONTAINS
        icol(nc_old+1:nc_old+nc) = c;
        nc_old = nc_old + nc;
     END DO
-    RETURN
+
   END SUBROUTINE col_pointer2full
   !-------------------------------------------------------------------------------
 
@@ -2303,7 +2157,6 @@ CONTAINS
     END DO
     IF (c_c .LT. ncol+1) pcol(c_c+1:ncol+1) = pcol(c_c)
 
-    RETURN
   END SUBROUTINE col_full2pointer
   !-------------------------------------------------------------------------------
 
@@ -2342,7 +2195,6 @@ CONTAINS
     END DO
     IF (ALLOCATED(icol)) DEALLOCATE(icol)
 
-    RETURN
   END SUBROUTINE sp2full
   !-------------------------------------------------------------------------------
 
@@ -2381,7 +2233,6 @@ CONTAINS
     END DO
     IF (ALLOCATED(icol)) DEALLOCATE(icol)
 
-    RETURN
   END SUBROUTINE sp2fullComplex
   !-------------------------------------------------------------------------------
 
@@ -2451,7 +2302,7 @@ CONTAINS
 
     IF (PRESENT(nz_out)) nz_out = nz
     IF (ALLOCATED(icol)) DEALLOCATE(icol)
-    RETURN
+
   END SUBROUTINE full2sp
   !-------------------------------------------------------------------------------
 
@@ -2501,7 +2352,7 @@ CONTAINS
 
     IF (PRESENT(nz_out)) nz_out = nz
     IF (ALLOCATED(icol)) DEALLOCATE(icol)
-    RETURN
+
   END SUBROUTINE full2spComplex
   !-------------------------------------------------------------------------------
 
@@ -2539,7 +2390,7 @@ CONTAINS
        STOP
     END IF
     IF (ALLOCATED(r)) DEALLOCATE(r)
-    !ALLOCATE(r(SIZE(x,1)))
+
     ALLOCATE(r(nrow))
     r = 0.0_dp
 
@@ -2549,7 +2400,7 @@ CONTAINS
        r(ir) = r(ir) + val(n)*x(ic)
     END DO
     IF (ALLOCATED(icol)) DEALLOCATE(icol)
-    RETURN
+
   END SUBROUTINE sp_matmul_b1
   !-------------------------------------------------------------------------------
 
@@ -2587,7 +2438,7 @@ CONTAINS
        STOP
     END IF
     IF (ALLOCATED(r)) DEALLOCATE(r)
-    !ALLOCATE(r(SIZE(x,1)))
+
     ALLOCATE(r(nrow))
     r = 0.0_dp
 
@@ -2597,7 +2448,7 @@ CONTAINS
        r(ir) = r(ir) + val(n)*x(ic)
     END DO
     IF (ALLOCATED(icol)) DEALLOCATE(icol)
-    RETURN
+
   END SUBROUTINE sp_matmulComplex_b1
   !-------------------------------------------------------------------------------
 
@@ -2643,7 +2494,7 @@ CONTAINS
        r(ir,:) = r(ir,:) + val(n)*x(ic,:)
     END DO
     IF (ALLOCATED(icol)) DEALLOCATE(icol)
-    RETURN
+
   END SUBROUTINE sp_matmul_b2
   !-------------------------------------------------------------------------------
 
@@ -2679,7 +2530,7 @@ CONTAINS
        STOP
     END IF
     IF (ALLOCATED(r)) DEALLOCATE(r)
-    !ALLOCATE(r(SIZE(x,1),SIZE(x,2)))
+
     ALLOCATE(r(nrow,SIZE(x,2)))
     r = 0.0_dp
 
@@ -2689,7 +2540,7 @@ CONTAINS
        r(ir,:) = r(ir,:) + val(n)*x(ic,:)
     END DO
     IF (ALLOCATED(icol)) DEALLOCATE(icol)
-    RETURN
+
   END SUBROUTINE sp_matmulComplex_b2
   !-------------------------------------------------------------------------------
 
@@ -2711,7 +2562,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sp_matmul_A_b1
   !-------------------------------------------------------------------------------
 
@@ -2733,7 +2584,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sp_matmulComplex_A_b1
   !-------------------------------------------------------------------------------
 
@@ -2755,7 +2606,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sp_matmul_A_b2
   !-------------------------------------------------------------------------------
 
@@ -2777,7 +2628,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sp_matmulComplex_A_b2
   !-------------------------------------------------------------------------------
 
@@ -2805,7 +2656,7 @@ CONTAINS
     IF (PRESENT(max_abs_err_out)) max_abs_err_out = max_abs_err
     IF (PRESENT(max_rel_err_out)) max_rel_err_out = max_rel_err
     IF (ALLOCATED(r)) DEALLOCATE(r)
-    RETURN
+
   END SUBROUTINE sp_test_b1
   !-------------------------------------------------------------------------------
 
@@ -2833,7 +2684,7 @@ CONTAINS
     IF (PRESENT(max_abs_err_out)) max_abs_err_out = max_abs_err
     IF (PRESENT(max_rel_err_out)) max_rel_err_out = max_rel_err
     IF (ALLOCATED(r)) DEALLOCATE(r)
-    RETURN
+
   END SUBROUTINE sp_testComplex_b1
   !-------------------------------------------------------------------------------
 
@@ -2866,7 +2717,6 @@ CONTAINS
     IF (PRESENT(max_abs_err_out)) max_abs_err_out = max_abs_err
     IF (PRESENT(max_rel_err_out)) max_rel_err_out = max_rel_err
 
-    RETURN
   END SUBROUTINE sp_test_b2
   !-------------------------------------------------------------------------------
 
@@ -2899,7 +2749,6 @@ CONTAINS
     IF (PRESENT(max_abs_err_out)) max_abs_err_out = max_abs_err
     IF (PRESENT(max_rel_err_out)) max_rel_err_out = max_rel_err
 
-    RETURN
   END SUBROUTINE sp_testComplex_b2
   !-------------------------------------------------------------------------------
 
@@ -2924,7 +2773,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sp_test_A_b1
   !-------------------------------------------------------------------------------
 
@@ -2949,7 +2798,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sp_testComplex_A_b1
   !-------------------------------------------------------------------------------
 
@@ -2974,7 +2823,7 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sp_test_A_b2
   !-------------------------------------------------------------------------------
 
@@ -2999,13 +2848,12 @@ CONTAINS
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
     IF (ALLOCATED(val))  DEALLOCATE(val)
-    RETURN
+
   END SUBROUTINE sp_testComplex_A_b2
   !-------------------------------------------------------------------------------
   
   !-------------------------------------------------------------------------------
   SUBROUTINE remap_rc_real(nz,nz_sqeezed,irow,icol,amat)
-    !
     ! Re-arranges matrix elements which may be unordered and may have
     ! different elements with the same row and column indices is such
     ! a way that column index, icol, forms a non-decreasing sequence
@@ -3020,8 +2868,7 @@ CONTAINS
     ! irow        - (inout)  row indices
     ! icol        - (inout)  column indices
     ! amat        - (inout)  matrix values
-    !
-    !
+
     INTEGER, INTENT(in)                          :: nz
     INTEGER, INTENT(out)                         :: nz_sqeezed
     INTEGER, DIMENSION(nz), INTENT(inout)        :: irow,icol
@@ -3031,36 +2878,35 @@ CONTAINS
     INTEGER, DIMENSION(:), ALLOCATABLE :: nrows,icount,ipoi
     INTEGER                            :: ksq_ne0
     INTEGER, DIMENSION(:), ALLOCATABLE :: kne0
-    !
+
     ncol=MAXVAL(icol)
     ALLOCATE(nrows(ncol),icount(ncol),ipoi(nz))
     nrows=0
-    !
+
     ! count number of rows in a given column:
-    !
     DO k=1,nz
        j=icol(k)
        nrows(j)=nrows(j)+1
     ENDDO
-    !
+
     ! compute starting index - 1 of rows in a general list for each column:
-    !
+
     icount(1)=0
-    !
+
     DO i=1,ncol-1
        icount(i+1)=icount(i)+nrows(i)
     ENDDO
-    !
+
     ! compute the pointer from the list ordered by columns to a general list
-    !
+
     DO k=1,nz
        j=icol(k)
        icount(j)=icount(j)+1
        ipoi(icount(j))=k
     ENDDO
-    !
+
     ! re-order row indices to non-decreasing sub-sequences
-    !
+
     DO i=1,ncol
        kend=icount(i)
        kbeg=kend-nrows(i)+1
@@ -3077,13 +2923,13 @@ CONTAINS
           IF(iflag.EQ.0) EXIT
        ENDDO
     ENDDO
-    !
+
     irow=irow(ipoi)
     icol=icol(ipoi)
     amat=amat(ipoi)
-    !
+
     ! squeese the data - sum up matrix elements with the same indices
-    !
+
     ksq=1
     !
     DO k=2,nz
@@ -3096,9 +2942,9 @@ CONTAINS
           amat(ksq)=amat(k)
        ENDIF
     ENDDO
-    !
+
     ! remove zeros from the sparse vector
-    !
+
     ALLOCATE(kne0(ksq))
     ksq_ne0=0
     DO k=1,ksq
@@ -3114,17 +2960,15 @@ CONTAINS
        icol(1:ksq_ne0)=icol(kne0(1:ksq_ne0))
        amat(1:ksq_ne0)=amat(kne0(1:ksq_ne0))
     ENDIF
-    !
+
     nz_sqeezed=ksq_ne0
     DEALLOCATE(nrows,icount,ipoi,kne0)
-    RETURN
-    !
+
   END SUBROUTINE remap_rc_real
   !-------------------------------------------------------------------------------
   
   !-------------------------------------------------------------------------------
   SUBROUTINE remap_rc_cmplx(nz,nz_sqeezed,irow,icol,amat)
-    !
     ! Re-arranges matrix elements which may be unordered and may have
     ! different elements with the same row and column indices is such
     ! a way that column index, icol, forms a non-decreasing sequence
@@ -3139,8 +2983,7 @@ CONTAINS
     ! irow        - (inout)  row indices
     ! icol        - (inout)  column indices
     ! amat        - (inout)  matrix values
-    !
-    !
+
     INTEGER, INTENT(in)                          :: nz
     INTEGER, INTENT(out)                         :: nz_sqeezed
     INTEGER, DIMENSION(nz), INTENT(inout)        :: irow,icol
@@ -3150,36 +2993,36 @@ CONTAINS
     INTEGER, DIMENSION(:), ALLOCATABLE :: nrows,icount,ipoi
     INTEGER                            :: ksq_ne0
     INTEGER, DIMENSION(:), ALLOCATABLE :: kne0
-    !
+
     ncol=MAXVAL(icol)
     ALLOCATE(nrows(ncol),icount(ncol),ipoi(nz))
     nrows=0
-    !
+
     ! count number of rows in a given column:
-    !
+
     DO k=1,nz
        j=icol(k)
        nrows(j)=nrows(j)+1
     ENDDO
-    !
+
     ! compute starting index - 1 of rows in a general list for each column:
-    !
+
     icount(1)=0
     !
     DO i=1,ncol-1
        icount(i+1)=icount(i)+nrows(i)
     ENDDO
-    !
+
     ! compute the pointer from the list ordered by columns to a general list
-    !
+
     DO k=1,nz
        j=icol(k)
        icount(j)=icount(j)+1
        ipoi(icount(j))=k
     ENDDO
-    !
+
     ! re-order row indices to non-decreasing sub-sequences
-    !
+
     DO i=1,ncol
        kend=icount(i)
        kbeg=kend-nrows(i)+1
@@ -3196,15 +3039,15 @@ CONTAINS
           IF(iflag.EQ.0) EXIT
        ENDDO
     ENDDO
-    !
+
     irow=irow(ipoi)
     icol=icol(ipoi)
     amat=amat(ipoi)
-    !
+
     ! squeese the data - sum up matrix elements with the same indices
-    !
+
     ksq=1
-    !
+
     DO k=2,nz
        IF(irow(k).EQ.irow(k-1).AND.icol(k).EQ.icol(k-1)) THEN
           amat(ksq)=amat(ksq)+amat(k)
@@ -3215,9 +3058,9 @@ CONTAINS
           amat(ksq)=amat(k)
        ENDIF
     ENDDO
-    !
+
     ! remove zeros from the sparse vector
-    !
+
     ALLOCATE(kne0(ksq))
     ksq_ne0=0
     DO k=1,ksq
@@ -3233,12 +3076,11 @@ CONTAINS
        icol(1:ksq_ne0)=icol(kne0(1:ksq_ne0))
        amat(1:ksq_ne0)=amat(kne0(1:ksq_ne0))
     ENDIF
-    !
+
     nz_sqeezed=ksq_ne0
     DEALLOCATE(nrows,icount,ipoi,kne0)
-    RETURN
-    !
+
   END SUBROUTINE remap_rc_cmplx
   !-------------------------------------------------------------------------------
-  !
+
 END MODULE sparse_mod

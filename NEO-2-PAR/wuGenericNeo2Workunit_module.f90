@@ -79,11 +79,8 @@ module wuGenericNeo2Workunit_module
     globalstorage%countSolver = globalstorage%countSolver + 1
     globalstorage%timeSolver = globalstorage%timeSolver + (MPI_WTime() - stime)
 
-    !Fixed Memory Leak
-    !nullify(this%prop_res)
-    !allocate(this%prop_res)
     ! Remember the pointer to the result
-    if (associated(prop_c)) then!(associated(this%prop_res) .and. associated(prop_c)) then
+    if (associated(prop_c)) then
 
        if (associated(prop_c%prev)) then
        
@@ -93,7 +90,6 @@ module wuGenericNeo2Workunit_module
           prop_c%prev => null()
           prop_r => prop_c
 
-          !call assign_propagator_content(this%prop_res, prop_c%prev)
        else
           if (prop_reconstruct == 2) then
              write (*,*) "prop_c%prev is not associated because of prop_reconstruct==2"
@@ -203,19 +199,8 @@ module wuGenericNeo2Workunit_module
       globalstorage%timeJoiner = globalstorage%timeJoiner + (MPI_WTime() - stime)
       globalstorage%countJoiner = globalstorage%countJoiner + 1
 
-      ! If uncommenting the following two lines, a segmentation fault will happen...?
-      !deallocate(prop1)
-      !prop1 => null()
-      !deallocate(prop2)
-      !prop2 => null()
-
-      ! Fixed memory leak
-      !nullify(this%prop_res)
-      !allocate(this%prop_res)
-
       ! Relinking pointers for storing the propagator without copying its content
       this%prop_res => prop_c_old
-      !call assign_propagator_content(this%prop_res, prop_c_old)
 
       if (this%iend == 1) then
 
@@ -291,16 +276,12 @@ module wuGenericNeo2Workunit_module
 
     if (this%isProcessed) then
 
-      !open(200, file="prop1.txt", action="write")
-
       associate (b => mpro%packBuffer)
         associate (prop => this%prop_res)
-          !write (*,*) "Packing propagator:"
+
           call b%add(prop%tag)
           call b%add(prop%nr_joined)
           call b%add(prop%bin_split_mode)
-
-          !write (*,*) prop%tag, prop%nr_joined, prop%bin_split_mode
 
           call this%packBinarySplit(prop%eta_bs_l)
           call this%packBinarySplit(prop%eta_bs_r)
@@ -313,14 +294,9 @@ module wuGenericNeo2Workunit_module
           call b%add(prop%phi_l)
           call b%add(prop%phi_r)
 
-          !write (200,*) prop%fieldpropagator_tag_s, prop%fieldpropagator_tag_e, prop%fieldperiod_tag_s, prop%fieldperiod_tag_e, &
-           !           prop%y, prop%phi_l, prop%phi_r
-
           call this%packQEPropagator(prop%p)
         end associate
       end associate
-
-      !close(200)
 
     end if
   end subroutine packPropagator_wuGenericNeo2Workunit
@@ -330,10 +306,7 @@ module wuGenericNeo2Workunit_module
     class(wuGenericNeo2Workunit) :: this
 
     if (this%isProcessed)  then
-      !open(200, file="prop2.txt", action="write")
 
-      !write (*,*) "Constructing prop"
-      !call construct_propagator(this%prop_res)
       allocate(this%prop_res)
 
       associate (b => mpro%packBuffer)
@@ -355,15 +328,10 @@ module wuGenericNeo2Workunit_module
           call b%get(prop%phi_l)
           call b%get(prop%phi_r)
 
-          !write (200,*) prop%fieldpropagator_tag_s, prop%fieldpropagator_tag_e, prop%fieldperiod_tag_s, prop%fieldperiod_tag_e, &
-           !           prop%y, prop%phi_l, prop%phi_r
-
           call this%unpackQEPropagator(prop%p)
 
         end associate
       end associate
-
-      !close(200)
 
     end if
   end subroutine unpackPropagator_wuGenericNeo2Workunit
@@ -400,10 +368,6 @@ module wuGenericNeo2Workunit_module
       call b%add(p%eta_boundary_r)
       call b%add(p%w)
 
-      !write (200,*) p%npart, p%npass_l, p%npass_r, p%nvelocity, p%amat_p_p, p%amat_m_m, p%amat_p_m, p%amat_m_p, &
-      !              p%source_p, p%source_m, p%flux_p, p%flux_m, p%qflux, p%cmat!, p%eta_l, p%eta_r!, p%eta_boundary_l, &
-                    !p%eta_boundary_r, p%w
-      !write (200, *) p%cmat
     end associate
   end subroutine packQEPropagator_wuGenericNeo2Workunit
 
@@ -440,10 +404,6 @@ module wuGenericNeo2Workunit_module
 
       call b%get(p%w)
 
-      !write (200,*) p%npart, p%npass_l, p%npass_r, p%nvelocity, p%amat_p_p, p%amat_m_m, p%amat_p_m, p%amat_m_p, &
-      !              p%source_p, p%source_m, p%flux_p, p%flux_m, p%qflux, p%cmat!, p%eta_l, p%eta_r!, p%eta_boundary_l, &
-                    !p%eta_boundary_r, p%w
-      !write (200, *) p%cmat
     end associate
   end subroutine unpackQEPropagator_wuGenericNeo2Workunit
 
@@ -457,15 +417,12 @@ module wuGenericNeo2Workunit_module
 
         call b%add(bs%n_ori)
         call b%add(bs%n_split)
-        !call b%add(bs%x_ori_bin)
 
         do k = 0, bs%n_ori
            call b%add(bs%x_ori_bin_sparse(k)%idxvec)
            call b%add(bs%x_ori_bin_sparse(k)%values)
            call b%add(bs%x_ori_bin_sparse(k)%len)
            call b%add(bs%x_ori_bin_sparse(k)%len_sparse)
-           !write (*,*) "Adding to packbuffer:", lbound(bs%x_ori_bin_sparse(k)%idxvec), &
-           !     ubound(bs%x_ori_bin_sparse(k)%idxvec)
         end do
         
         call b%add(bs%x_ori_poi)
@@ -476,8 +433,6 @@ module wuGenericNeo2Workunit_module
         call b%add(bs%y)
         call b%add(bs%int)
         call b%add(bs%err)
-
-        !write (200,*) bs%n_ori, bs%n_split, bs%x_ori_bin
 
     end associate
   end subroutine packBinarySplit_wuGenericNeo2Workunit
@@ -510,7 +465,6 @@ module wuGenericNeo2Workunit_module
       call b%get(bs%int)
       call b%get(bs%err)
 
-      !write (200,*) bs%n_ori, bs%n_split, bs%x_ori_bin
     end associate
   end subroutine unpackBinarySplit_wuGenericNeo2Workunit
 

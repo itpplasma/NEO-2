@@ -34,7 +34,7 @@
 !   source_p_new          =>   n%p%source_p_g
 !                         =>   n%p%source_p_e
 !   ............
-!
+
 
 SUBROUTINE join_ripples_bsfitsplit(eta,loc)
   ! this is the external routine which has to take care of 
@@ -42,7 +42,7 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
   !
   ! the location for the split is given in the variable loc
   ! eta contains this new value already at position loc
-  !
+
   USE propagator_mod
   USE fluxsplit_mod
 
@@ -72,11 +72,9 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
 
   ! pointer
   IF (prop_modifyold .EQ. 1) THEN
-     !a => prop_c%prev
      a => prop_c_old
      eta_boundary = a%p%eta_boundary_r
   ELSE
-     !a => prop_c
      a => prop_c_new
      eta_boundary = a%p%eta_boundary_l     
   END IF
@@ -95,8 +93,6 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
   !  forward  is on the old
   !  backward is on the new (automatically taken care of by prop_modifyold
 
-  ! 
-
   ! compute different weight for splitting if boundary has to be splitted
   IF (loc .EQ. npass+1 .AND. eta(loc) .LT. eta_boundary) THEN
      boundary_split = .TRUE.
@@ -113,7 +109,6 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
      ! working array and copy parts which are not effected
      ALLOCATE(work(n1+1,n2))
      work(1:loc-1,:) = a%p%cmat(1:loc-1,:)
-     !work(loc:loc+1,:) = 0.0_dp
      work(loc+2:,:)  = a%p%cmat(loc+1:,:)
      IF (mode .EQ. 0) THEN
         ! the simple mode 0
@@ -193,14 +188,14 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
         END DO
         CLOSE(unit=1000)
         PRINT *, 'join_ripples_bsfitsplit - cmat.dat written'
-        !PAUSE
+
      END IF
   END IF
   
 
   ! final cleaning
   NULLIFY(a)
-  RETURN
+
 END SUBROUTINE join_ripples_bsfitsplit
 
 SUBROUTINE join_ripples_bsfitjoin(eta,loc)
@@ -211,7 +206,7 @@ SUBROUTINE join_ripples_bsfitjoin(eta,loc)
   !
   ! in the test the next value is moved down
   ! in reality two levels have to be merged (sum?)
-  !
+
   USE propagator_mod
 
   IMPLICIT NONE
@@ -230,11 +225,9 @@ SUBROUTINE join_ripples_bsfitjoin(eta,loc)
 
   ! pointer
   IF (prop_modifyold .EQ. 1) THEN
-     !a => prop_c%prev
      a => prop_c_old
      eta_boundary = a%p%eta_boundary_r
   ELSE
-     !a => prop_c
      a => prop_c_new
      eta_boundary = a%p%eta_boundary_l
   END IF
@@ -270,14 +263,13 @@ SUBROUTINE join_ripples_bsfitjoin(eta,loc)
         END DO
         CLOSE(unit=1000)
         PRINT *, 'join_ripples_bsfitjoin - cmat.dat written'
-        !PAUSE
      END IF
   END IF
 
 
   ! final cleaning
   NULLIFY(a)
-  RETURN
+
 END SUBROUTINE join_ripples_bsfitjoin
 
 SUBROUTINE join_ripples_nn(ierr,cstat)
@@ -303,8 +295,7 @@ SUBROUTINE join_ripples_nn(ierr,cstat)
     
   ! initialize
   ierr = 0
-  !o => prop_c%prev
-  !n => prop_c
+
   o => prop_c_old
   n => prop_c_new
 
@@ -329,7 +320,6 @@ SUBROUTINE join_ripples_nn(ierr,cstat)
   ! fix right side of old propagator (it should have now 
   ! eta_boundary_r and npass_r from the new one
   o%p%eta_boundary_r   = n%p%eta_boundary_r
-  ! o%p%npass_r = n%p%npass_r (does the joiner)
 
   ! fix also the y value (actually yend of propagator)
   ! and phi_value at the end
@@ -341,9 +331,5 @@ SUBROUTINE join_ripples_nn(ierr,cstat)
   IF (ALLOCATED(o%p%eta_r)) DEALLOCATE(o%p%eta_r)
   ALLOCATE(o%p%eta_r(LBOUND(n%p%eta_r,1):UBOUND(n%p%eta_r,1)))
   o%p%eta_r = n%p%eta_r
-  ! final cleaning
-  ! NULLIFY(o)
-  ! NULLIFY(n)
-  !
-  RETURN
+
 END SUBROUTINE join_ripples_nn

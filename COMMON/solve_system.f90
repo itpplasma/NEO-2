@@ -1,14 +1,10 @@
-
-!
 ! AUTHOR: Bernhard Seiwald
 !
 ! DATE:   18.07.2001
-!
 
 
 ! simple wrapper for solvers for real system of linear
 ! equations  A * X = B
-
 
 MODULE solve_systems
 
@@ -20,12 +16,9 @@ MODULE solve_systems
 
 ! --------------------------------------------------------------------
 
-
 CONTAINS
 
   SUBROUTINE solve_eqsys(a, b, info)
-
-!    USE inter_interfaces, ONLY: ludcmp, lubksb 
 
     IMPLICIT NONE
 
@@ -55,6 +48,3 @@ CONTAINS
   END SUBROUTINE solve_eqsys
 
 END MODULE solve_systems
-
-
-

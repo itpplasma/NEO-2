@@ -51,7 +51,6 @@ MODULE collop
   
   ! ---------------------------------------------------------------------------
   ! public variables
-  !
   REAL(kind=dp), PUBLIC :: z_eff = 1.0_dp
 
   ! talk or be silent (not used at the moment)
@@ -485,15 +484,15 @@ CONTAINS
        collop_unit = collop_unit + 1
     END DO
   END SUBROUTINE check_unit_1
-!
+
   SUBROUTINE collop_load_all
-    !
+
     USE rkstep_mod, ONLY : lag,leg,asource,anumm,denmm,ailmm,weightlag
-    !
+
     integer, parameter       :: isw_adjoint=1
     REAL(kind=dp), PARAMETER :: pi=3.14159265358979d0
     integer                  :: l 
-!
+
     IF(collop_A_m_min.NE.0    .OR.                                          &
        collop_nu_m_min.NE.0   .OR.                                          &
        collop_nu_mp_min.NE.0  .OR.                                          &
@@ -507,7 +506,7 @@ CONTAINS
             collop_D_mp_min,collop_I_m_min,collop_I_mp_min,collop_I_lp_min
        STOP
     ENDIF
-!
+
     IF(collop_A_m_max.LT.lag  .OR.                                          &
        collop_nu_m_max.LT.lag .OR.                                          &
        collop_nu_mp_max.LT.lag.OR.                                          &
@@ -523,7 +522,7 @@ CONTAINS
             ' or ',leg,' > ',collop_I_lp_max
        STOP
     ENDIF
-!
+
     IF(ALLOCATED(anumm)) DEALLOCATE(anumm)
     ALLOCATE(anumm(0:lag,0:lag))
     IF(ALLOCATED(denmm)) DEALLOCATE(denmm)
@@ -534,12 +533,12 @@ CONTAINS
     ALLOCATE(ailmm(0:lag,0:lag,0:leg))
     IF(ALLOCATED(weightlag)) DEALLOCATE(weightlag)
     ALLOCATE(weightlag(3,0:lag))
-!
+
 ! Comment from 19.09.07:
 ! Here sources, asource, and flux convolution factors, weightlag, have 
 ! opposite signs compared to the short writeup of Georg. This does not change
 ! signs of diffusion matrix
-!
+
     if(isw_adjoint.eq.0) then
       asource(0:lag,1)=collop_A(0:lag,1)
       asource(0:lag,2)=collop_A(0:lag,3)
@@ -569,13 +568,13 @@ CONTAINS
       asource(0,3)=5.d0*SQRT(6.d0*pi)/8.d0
       IF(lag.GT.0) asource(1,3)=-SQRT(15.d0*pi)/4.d0
     endif
-    !
+
   END SUBROUTINE collop_load_all
-!
+
   SUBROUTINE collop_unload_all
-    !
+
     USE rkstep_mod, ONLY : asource,anumm,denmm,ailmm,weightlag
-    !
+
     IF(ALLOCATED(anumm)) DEALLOCATE(anumm)
     IF(ALLOCATED(denmm)) DEALLOCATE(denmm)
     IF(ALLOCATED(asource)) DEALLOCATE(asource)

@@ -290,16 +290,10 @@ CONTAINS
   FUNCTION eval_bslimit_1(err) RESULT(l)
     REAL(kind=dp), DIMENSION(0:), INTENT(in) :: err  !0:
     LOGICAL                                 :: l, l1, l2
-    !l1 = SUM(err,1) .GT. bsfunc_total_err
+
     l2 = MAXVAL(err,1) .GT. bsfunc_local_err
-    !PRINT *, 'Local Error ',MAXVAL(err,1),bsfunc_local_err
-    !l  = l1 .OR. l2
     l = l2
-!!$    IF (.NOT. l1) THEN
-!!$       IF (bsfunc_message .GT. 0) THEN
-!!$          PRINT *, 'Message: Total Error Limits reached!'
-!!$       END IF
-!!$    END IF
+
     IF (.NOT. l2) THEN
       IF (bsfunc_message .GT. 0) THEN
         PRINT *, 'Message: Local Error Limits reached!'
@@ -385,43 +379,18 @@ CONTAINS
       DO k = 1, SIZE(x0,1)
         g = g + EXP(- (x-x0(k))**2 / s(k)**2 / 2.0_dp) ! / s(k)
       END DO
-      ! g = g * os2pi
 
-!!$       IF (bsfunc_evaldegree .NE. 2) THEN
-!!$          DO k = 1, SIZE(x0,1)
-!!$             g = g + EXP(- ((x-x0(k)) / s(k))**2 / 2) / s(k)
-!!$          END DO
-!!$          g = g * os2pi
-!!$       ELSE
-!!$          DO k = 1, SIZE(x0,1)
-!!$             g = g + EXP(- ((x-x0(k)) / s(k))**2 / 2)
-!!$          END DO
-!!$       END IF
     ELSEIF (bsfunc_modelfunc .EQ. 2) THEN
       DO k = 1, SIZE(x0,1)
         g = g + SQRT( s(k)**2/(2.0_dp*(x-x0(k))**2+s(k)**2) )
       END DO
-       !g = g/size(x0,1)
-!       IF (bsfunc_evaldegree .NE. 2) THEN
-!          DO k = 1, SIZE(x0,1)
-!             !->out          g = g + EXP(- ABS(x-x0(k)) / s(k) / sq2) / s(k)
-!             g=g+s(k)/((x-x0(k))**2+s(k)**2/0.12732200375004d0)              !<-in
-!          END DO
-!          !->out       g = g * os8
-!          g = g / (pi*0.35682208977310d0)
-!       ELSE
-!          DO k = 1, SIZE(x0,1)
-!             g=g+s(k)/((x-x0(k))**2+s(k)**2/0.12732200375004d0) / 0.12732200375004d0 * s(k)
-!          END DO
-!       END IF
+
     ELSEIF (bsfunc_modelfunc .EQ. 3) THEN
       IF (bsfunc_evaldegree .NE. 2) THEN
         DO k = 1, SIZE(x0,1)
-          !->out          g = g + s(k) / ( (x-x0(k))**2 + s(k)**2 )
-          g=g+s(k)/((x-x0(k))**2+s(k)**2/0.87267799624997d0)              !<-in
+          g=g+s(k)/((x-x0(k))**2+s(k)**2/0.87267799624997d0)
         END DO
-        !->out       g = g / pi
-        g = g / (pi*0.93417235896272)                                      !<-in
+        g = g / (pi*0.93417235896272)
       ELSE
         DO k = 1, SIZE(x0,1)
           g=g+s(k)/((x-x0(k))**2+s(k)**2/0.87267799624997d0) / 0.87267799624997d0 * s(k)
@@ -435,7 +404,6 @@ CONTAINS
     ELSEIF (bsfunc_modelfunc .EQ. 5) THEN
       g = 1.0_dp
       DO k = 1, SIZE(x0,1)
-        !g = g * (1.0_dp + EXP(- ((x-x0(k)) / s(k))**2 / 2) / s(k))
          g = g * SIGN(x-x0(k),1.0d0) * (s(k) * ABS(x-x0(k)))**(8.0d0/8.0d0)
       END DO
       g = (s(k) * ABS(x0(k)))**(8.0d0/8.0d0) - g
@@ -461,7 +429,7 @@ CONTAINS
 
   ! evaluation of error for splitting
   SUBROUTINE eval_bsinterr_d1(x,y,int0,err,splitloc)
-    !USE plagrange_mod
+
     REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: x !0:
     REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: y !0:
     REAL(kind=dp), DIMENSION(0:), INTENT(inout) :: int0 !0:
@@ -494,15 +462,13 @@ CONTAINS
     ALLOCATE(yp(lb:ub))
     ALLOCATE(ypp(lb:ub))
 
-    !PRINT *, 'eval_bsinterr_d1'
     IF (bsfunc_evaldegree .EQ. 1) THEN
       sint0 = 0.0_dp
       in = 8
       in1 = 8
       in2 = 64 ! around max
       fac = 2.0_dp
-      !DO WHILE (ABS(sint0) .LT. 1.0d-4)
-        !PRINT *, 'ub, in ',ub,in
+
       DO k = 1, ub
         dx = x(k)-x(k-1)
         IF (x(k) .LT. bsfunc_p1(1) - fac*bsfunc_p2(1) .OR. &
@@ -527,7 +493,6 @@ CONTAINS
           int0(k) = int0(k) * dx / DBLE(in2)
           IF (int0(k) .LT. 1.d-4) THEN
             int0(k) = 1.0_dp
-            !PRINT *, 'set to 1.0'
           END IF
         ELSE
           int0(k) = 0.0_dp
@@ -543,26 +508,17 @@ CONTAINS
         err(k)  = ABS(err(k)-int0(k))
       END DO
       sint0 = SUM(int0)
-      !PRINT *, 'int0'
-      !PRINT *, int0
-      !PRINT *, 'err'
-      !PRINT *, err
-      !PRINT *, 'sint0 ',sint0,in
-      !PRINT *, 'max err ',MAXVAL(err)
-      !PAUSE
-      !   in = in * 10
-      !END DO
 
     ELSEIF (bsfunc_evaldegree .EQ. 2) THEN
       ! new stuff with third derivative
       err = 0.0_dp
-      !print *,'lb,ub ',lbound(err,1),ubound(err,1)
+
       int0 = 0.0_dp
       ALLOCATE( coeff(0:nder,npoi) )
       DO k = 1, ub
 
         CALL plag_stencil(ub,npoi,k,k1,k2,i1,i2)
-        !print *, ub,npoi,k,k1,k2,i1,i2
+
         ALLOCATE(xlag(i1:i2))
         ALLOCATE(ylag(i1:i2))
         xlag = x(k1:k2)
@@ -575,38 +531,18 @@ CONTAINS
         d1   = ABS(xlag(1)-xlag(0))
 
         dlag = SUM(coeff(3,:)*ylag) / 6.0_dp
-        ! ori
         clag = ( SUM(coeff(2,:)*ylag) - dlag*6.0_dp*dloc ) / 2.0_dp
-        ! modified
-        ! clag = ( SUM(coeff(2,:)*ylag) ) / 2.0_dp
-        ! ori
         err(k) = ( ABS(clag) * d1**2 + ABS(dlag) * d1**3 ) / 2.0_dp
-        ! modified
-        ! err(k) = ( ABS(clag) * d1**2 + ABS(dlag) * d1**3 )
-        ! err(k) = ABS( clag*d1**2 + dlag*d1**3 )
-        ! err(k) = max( ABS(clag) * d1**2 , ABS(dlag) * d1**3 )
 
         ! relative error for second model_func
         IF (bsfunc_modelfunc .EQ. 2) THEN
           err(k) = err(k) /  ( ABS( SUM(coeff(0,:)*ylag) ) )
         END IF
-        !print *, 'k,cla,dlag,err ',k,ABS(clag),ABS(dlag),d1,err(k)
-        !print *, 'xlag ',xlag
-        !print *, 'ylag ',ylag
+
         DEALLOCATE(xlag)
         DEALLOCATE(ylag)
       END DO
-      !PRINT *, ''
-      !PRINT *,'x'
-      !PRINT *,x
-      !PRINT *, 'y'
-      !PRINT *,y
-      !PRINT *,'err'
-      !PRINT *,err
-      !print *, 'sumerr ',sum(err)
-      !print *, 'ub splitloc maxerr', ubound(err,1),maxloc(err)-1,maxval(err)
-      !PRINT *, ''
-      !pause
+
       DEALLOCATE(coeff)
       ! end of new stuff with third derivative
 
@@ -669,9 +605,7 @@ CONTAINS
       END DO
     END IF
     splitloc = MAXLOC(err,1)-1
-    !PRINT *, 'loc ',splitloc, err(splitloc), SUM(err),x(splitloc)
-    !PRINT *, ' '
-    !PAUSE
+
     DEALLOCATE(yp)
     DEALLOCATE(ypp)
   END SUBROUTINE eval_bsinterr_d1
@@ -766,7 +700,7 @@ CONTAINS
         y(k-1) = e*dx4 + d*dx3 + c*dx2 + b*dx + a
       END DO
     END IF
-    !splitloc = MAXLOC(err,1)-1
+
     DEALLOCATE(yp)
     DEALLOCATE(ypp)
   END SUBROUTINE eval_bsinterr_test
@@ -811,7 +745,6 @@ CONTAINS
 
 
   SUBROUTINE plag_coeff(npoi,nder,x,xp,coef)
-    !
     ! npoi - number of points (determines the order of Lagrange polynomial
     ! which is equal npoi-1)
     ! nder - number of derivatives computed 0 - function only, 1 - first
@@ -821,19 +754,18 @@ CONTAINS
     ! coef(0:nder,npoi) - weights for computation of function and derivatives,
     ! f=sum(fun(1:npoi)*coef(0,1:npoi) gives the function value
     ! df=sum(fun(1:npoi)*coef(1,1:npoi) gives the derivative value value
-    !
-    !
+
     INTEGER, INTENT(in)                                :: npoi,nder
     REAL(kind=dp), INTENT(in)                          :: x
     REAL(kind=dp), DIMENSION(npoi), INTENT(in)         :: xp
     REAL(kind=dp), DIMENSION(0:nder,npoi), INTENT(out) :: coef
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE           :: dummy
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE           :: fak_i
-    !
+
     INTEGER                                            :: i,k,j,l,m
     REAL(kind=dp)                                      :: fac
     REAL(kind=dp)                                      :: j_sum,l_sum,m_sum,k_prod
-    !
+
     DO i=1,npoi
       coef(0,i)=1.d0
       DO k=1,npoi
@@ -841,11 +773,11 @@ CONTAINS
         coef(0,i)=coef(0,i)*(x-xp(k))/(xp(i)-xp(k))
       ENDDO
     ENDDO
-    !
+
     IF(nder.EQ.0) RETURN
-    !
+
     ALLOCATE(dummy(npoi))
-    !
+
     DO i=1,npoi
       dummy=1.d0
       dummy(i)=0.d0
@@ -862,12 +794,12 @@ CONTAINS
       ENDDO
       coef(1,i)=SUM(dummy)
     ENDDO
-    !
+
     DEALLOCATE(dummy)
-    !
+
     ! second derivative
     IF(nder.LE.1) RETURN
-    !
+
     ALLOCATE(fak_i(npoi))
     do_i: DO i = 1,npoi
       fak_i = 0.0d0
@@ -896,7 +828,7 @@ CONTAINS
 
     ! third derivative
     IF(nder.LE.2) RETURN
-    !
+
     ALLOCATE(fak_i(npoi))
     do_i3: DO i = 1,npoi
       fak_i = 0.0d0
@@ -928,7 +860,6 @@ CONTAINS
     END DO do_i3
     DEALLOCATE(fak_i)
 
-    RETURN
   END SUBROUTINE plag_coeff
 
   SUBROUTINE plag_stencil(ub,npoi,k,k1,k2,i1,i2)
@@ -950,7 +881,6 @@ CONTAINS
     k2 = k1 + npoi - 1
     i2 = i1 + npoi - 1
 
-    RETURN
   END SUBROUTINE plag_stencil
 
   SUBROUTINE plag_test
@@ -969,7 +899,6 @@ CONTAINS
     INTEGER, PARAMETER :: ndata = 25
 
     ! basic data
-    !CALL linspace(-pi,pi,ndata,x_ori)
 
     ALLOCATE(x_ori(0:ndata))
     x_ori(0) = -pi
@@ -1036,7 +965,7 @@ CONTAINS
     DEALLOCATE(x)
     DEALLOCATE(y0,y1,y2,y3)
     DEALLOCATE(coeff)
-    RETURN
+
   END SUBROUTINE plag_test
 
 END MODULE binarysplit_int

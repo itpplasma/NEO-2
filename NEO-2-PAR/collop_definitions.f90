@@ -36,7 +36,6 @@ module collop_definitions
   real(kind=dp) :: epsabs = 1d-10
   real(kind=dp) :: epsrel = 1d-10
   integer       :: sw_qag_rule = 2
-  !real(kind=dp) :: x_max    = 20
 
   abstract interface
      subroutine init_phi_interface(lagmax, legmax)
@@ -73,29 +72,27 @@ module collop_definitions
 contains
   
   subroutine init_legendre(n)
-    !
     ! Computes coefficients of Legendre polynomials of orders from 0 to n
-
     !
     ! Input parameters:
     !           Formal: n            - maximum order of Legendre polynomials
     ! Output parameters:
     !           Formal: coefleg(i,j) - j-th coefficient of Legendre polynomial
     !                                  of the order i
-    !
+
     integer :: n,i,j
-    !
+
     double precision :: frontfac,rearfac
-    !
+
     if(allocated(coefleg)) return
     write (*,*) "Initializing Legendre coefficients..."
     allocate(coefleg(0:n,0:n))
-    !
+
     coefleg=0.d0
     coefleg(0,0)=1.d0
     coefleg(1,1)=1.d0
     frontfac=1.d0
-    !
+
     do i=2,n
        frontfac=frontfac*(2.d0-1.d0/dble(i))
        rearfac=frontfac

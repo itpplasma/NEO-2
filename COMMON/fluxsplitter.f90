@@ -1,7 +1,7 @@
 MODULE fluxsplit_mod
 
   USE lapack_band
-!
+
   IMPLICIT NONE
 
   ! private variables
@@ -14,9 +14,8 @@ MODULE fluxsplit_mod
 
 CONTAINS
 
-!
+
   SUBROUTINE fluxsplitter(mode,ishift,wsplit,eta_in,splitmatrix,ierr)
-    !
     ! Splits the flux in the band in two parts. Uses the flux values
     ! in neigbouring bands for determination of the split ratio.
     ! The original bands are numbered from -2 to 2, their boundaries
@@ -50,8 +49,7 @@ CONTAINS
     ! Output arguments:
     !          Formal: splitmatrix - splitting matrix
     !                  ierr        - error code (0 - normal work)
-    !
-    !
+
     INTEGER, INTENT(in)                     :: mode,ishift
     INTEGER, INTENT(out)                    :: ierr
     REAL(kind=dp), INTENT(in)               :: wsplit
@@ -60,19 +58,18 @@ CONTAINS
     ! make it allocatable
     ! DOUBLE PRECISION, DIMENSION(2,-2:2) :: splitmatrix
     REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: splitmatrix
-    !
+
     INTEGER                                       :: i,info,ndim,k
     INTEGER, DIMENSION(:), ALLOCATABLE            :: ipivot
     REAL(kind=dp)                                 :: deleta,deletapow
     REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE    :: amat,bvec,etapow
-!
+
     ierr=0
     
     ! WINNY: allocate
     IF (ALLOCATED(splitmatrix)) DEALLOCATE(splitmatrix)
     ALLOCATE(splitmatrix(2,-mode:mode))
     
-    !
     IF(mode.EQ.0) THEN
        IF(ABS(ishift).GT.2) THEN
           PRINT *,'fluxsplitter : shift is too large, ishift = ',ishift
@@ -156,7 +153,7 @@ CONTAINS
        PRINT *,'fluxsplitter : unknown mode, mode = ',mode
        ierr=1
     ENDIF
-    !
+
     RETURN
   END SUBROUTINE fluxsplitter
   

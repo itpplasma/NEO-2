@@ -192,7 +192,7 @@ SUBROUTINE splint_horner3_driv_s_a(svec,a,b,c,d,swd,ixm,ixn,s,theta,phi,&
   !         ys            dy/ds
   !         yt            d2y/dteta
   !         yp            d3y/dphi
-  !
+
   !-----------------------------------------------------------------------
   ! Modules
   !-----------------------------------------------------------------------

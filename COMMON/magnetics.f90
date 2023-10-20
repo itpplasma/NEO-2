@@ -536,13 +536,13 @@ CONTAINS
     REAL(kind=dp), INTENT(in) :: dlogbds(0:)
     CALL set_magnetics_data(fieldpropagator,x1,x2,x3,bhat,&
          geodcu,h_phi,dlogbdphi,ybeg,yend)
-    !
+
     ! These are the additional entries:
     CALL set_magnetics_data(fieldpropagator%mdata%dbcovar_s_hat_dphi,&
          dbcovar_s_hat_dphi)
     CALL set_magnetics_data(fieldpropagator%mdata%bcovar_s_hat,bcovar_s_hat)
     CALL set_magnetics_data(fieldpropagator%mdata%dlogbds,dlogbds)
-    !
+
   END SUBROUTINE set_mag_data_prop2
   !! End Modifications by Andreas F. Martitsch (13.03.2014)
   ! ---------------------------------------------------------------------------
@@ -604,7 +604,7 @@ CONTAINS
     device%tag = device_tag
 
     IF (mag_talk) PRINT *, 'magnetics: device created: ', device%tag
-    RETURN
+
   END SUBROUTINE construct_mag_device
   ! ---------------------------------------------------------------------------
   !> \brief  Destructor for device_struct.
@@ -659,7 +659,7 @@ CONTAINS
     !
     IF (mag_talk) PRINT *, 'magnetics: surface added: ',my_tag, &
          ' parent: ',surface%parent%tag
-    RETURN
+
   END SUBROUTINE construct_mag_surface
   ! ---------------------------------------------------------------------------
   !> \brief Destructor for surface_struct
@@ -740,7 +740,7 @@ CONTAINS
     ! end additional quantities    
     IF (mag_talk) PRINT *, 'magnetics: fieldline added: ',my_tag, &
          ' parent: ',fieldline%parent%tag
-    RETURN
+
   END SUBROUTINE construct_mag_fieldline
   !> \brief Destructor for fieldline_struct.
   SUBROUTINE destruct_mag_fieldline(fieldline)
@@ -840,7 +840,7 @@ CONTAINS
     ! end additional quantities
     IF (mag_talk) PRINT *, 'magnetics: fieldperiod added, tag: ',my_tag, &
          ' parent: ',fieldperiod%parent%tag
-    RETURN
+
   END SUBROUTINE construct_mag_fieldperiod
   !> \brief Destructor for fieldperiod_struct.
   SUBROUTINE destruct_mag_fieldperiod(fieldperiod)
@@ -925,7 +925,6 @@ CONTAINS
     IF (ALLOCATED(fieldperiod%width_left)) DEALLOCATE(fieldperiod%width_left)
     IF (ALLOCATED(fieldperiod%width_right)) DEALLOCATE(fieldperiod%width_right)
 
-    !CALL set_magnetics_data(fieldpropagator)
     IF (ALLOCATED(fieldperiod%coords%x1)) DEALLOCATE(fieldperiod%coords%x1)
     IF (ALLOCATED(fieldperiod%coords%x2)) DEALLOCATE(fieldperiod%coords%x2)
     IF (ALLOCATED(fieldperiod%coords%x3)) DEALLOCATE(fieldperiod%coords%x3)
@@ -950,7 +949,6 @@ CONTAINS
     NULLIFY(fieldperiod%coords)
     NULLIFY(fieldperiod%mdata)
 
-    !
     ! final deallocation
     NULLIFY(fieldperiod%parent)
     NULLIFY(fieldperiod%prev)
@@ -1022,7 +1020,7 @@ CONTAINS
 
     IF (mag_talk) PRINT *, 'magnetics: fieldpropagator added: ',my_tag, &
          ' parent: ',fieldpropagator%parent%tag
-    RETURN
+
   END SUBROUTINE construct_mag_fieldpropagator
   !> \brief Destructor for fieldpropagator_struct.
   SUBROUTINE destruct_mag_fieldpropagator(fieldpropagator,action)
@@ -1169,12 +1167,10 @@ CONTAINS
        fieldripple%parent           => fieldpropagator
        fieldripple%parent%ch_tag    =  my_tag                 
     END IF
-    ! additional quantities
-    !
-    ! end additional quantities
+
     IF (mag_talk) PRINT *, 'magnetics: fieldripple added: ',my_tag, &
          ' parent: ',fieldripple%parent%tag
-    RETURN
+
   END SUBROUTINE construct_mag_fieldripple
   !> \brief Destructor for fieldripple_struct.
   SUBROUTINE destruct_mag_fieldripple(fieldripple)
@@ -1262,7 +1258,7 @@ CONTAINS
     END IF
     IF (mag_talk .AND. .NOT. ASSOCIATED(device)) &
        PRINT *, 'magnetics info: device not associated'
-    RETURN
+
   END SUBROUTINE info_mag_device
   ! ---------------------------------------------------------------------------
   !> \brief Screen output of basic information for surface_struct.
@@ -1292,7 +1288,7 @@ CONTAINS
     END IF
     IF (mag_talk .AND. .NOT. ASSOCIATED(surface)) &
        PRINT *, 'magnetics info: surface not associated'
-    RETURN
+
   END SUBROUTINE info_mag_surface
   ! ---------------------------------------------------------------------------
   !> \brief Screen output of basic information for fieldline_struct.
@@ -1320,7 +1316,7 @@ CONTAINS
     END IF
     IF (mag_talk .AND. .NOT. ASSOCIATED(fieldline)) &
        PRINT *, 'magnetics info: fieldline not associated'
-    RETURN
+
   END SUBROUTINE info_mag_fieldline
   ! ---------------------------------------------------------------------------
   !> \brief Screen output of basic information for fieldperiod_struct.
@@ -1376,7 +1372,7 @@ CONTAINS
     END IF
     IF (mag_talk .AND. .NOT. ASSOCIATED(fieldperiod)) &
        PRINT *, 'magnetics info: fieldperiod not associated'
-    RETURN
+
   END SUBROUTINE info_mag_fieldperiod
   ! ---------------------------------------------------------------------------
   !> \brief Screen output of basic information for fieldpropagator_struct.
@@ -1444,7 +1440,7 @@ CONTAINS
     END IF
     IF (mag_talk .AND. .NOT. ASSOCIATED(fieldpropagator)) &
        PRINT *, 'magnetics info: fieldpropagator not associated'
-    RETURN
+
   END SUBROUTINE info_mag_fieldpropagator
   ! ---------------------------------------------------------------------------
   !> \brief Screen output of basic information for fieldripple_struct.
@@ -1508,7 +1504,7 @@ CONTAINS
     END IF
     IF (mag_talk .AND. .NOT. ASSOCIATED(fieldripple)) &
        PRINT *, 'magnetics info: fieldripple not associated'
-    RETURN
+
   END SUBROUTINE info_mag_fieldripple
   ! ---------------------------------------------------------------------------
 
@@ -2327,9 +2323,9 @@ CONTAINS
     ! final closing
     INQUIRE(unit=unit,opened=opened)
     IF (opened) CLOSE(unit)
-    !
-    RETURN
+
   END SUBROUTINE plot_mag_fieldperiod
+
   ! ---------------------------------------------------------------------------
   SUBROUTINE plot_mag_fieldpropagator_tag(fieldpropagator,tags,tage,name_in)
     TYPE(fieldpropagator_struct), POINTER    :: fieldpropagator
@@ -2383,7 +2379,7 @@ CONTAINS
     ! final closing
     INQUIRE(unit=unit,opened=opened)
     IF (opened) CLOSE(unit)
-    RETURN
+
   END SUBROUTINE plot_mag_fieldpropagator_tag
   ! ---------------------------------------------------------------------------
   SUBROUTINE plot_mag_fieldpropagator(fieldpropagator,unit,name_in)
@@ -2412,7 +2408,6 @@ CONTAINS
           DO i = is,ie
              !! Modifications by Andreas F. Martitsch (11.06.2014)
              ! Optional output (necessary for modeling the magnetic rotation)
-             !
              IF ( ALLOCATED(fieldpropagator%mdata%dbcovar_s_hat_dphi) .AND. &
                   ALLOCATED(fieldpropagator%mdata%bcovar_s_hat)       .AND. &
                   ALLOCATED(fieldpropagator%mdata%dlogbds) ) THEN
@@ -2437,7 +2432,6 @@ CONTAINS
                      fieldpropagator%mdata%h_phi(i),          &
                      fieldpropagator%mdata%dlogbdphi(i)
              END IF
-             !
              !! End Modifications by Andreas F. Martitsch (11.06.2014)
           END DO
        ELSE
@@ -2565,8 +2559,7 @@ CONTAINS
     ! final closing
     INQUIRE(unit=unit,opened=opened)
     IF (opened) CLOSE(unit)
-    !
-    RETURN
+
   END SUBROUTINE plot_mag_fieldripple
   ! end plot
 

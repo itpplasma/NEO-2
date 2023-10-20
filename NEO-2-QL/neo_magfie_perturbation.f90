@@ -1,5 +1,5 @@
 MODULE neo_magfie_perturbation
-  !
+
   ! module containing numerical constants
   use nrtype
   ! module containing switches from the input file (neo.in)
@@ -23,15 +23,15 @@ MODULE neo_magfie_perturbation
   ! routine mag for the computation of bmod
   USE mag_sub, ONLY: mag
   USE mpiprovider_module, only : mpro
-  !
+
   IMPLICIT NONE
-  !
+
   ! define kind of double complex, quad, quad complex
   PRIVATE dcp, qp, qcp
   INTEGER, PARAMETER :: dcp=KIND((1.0_dp,1.0_dp))
   INTEGER, PARAMETER :: qp=SELECTED_REAL_KIND(33, 4931)
   INTEGER, PARAMETER :: qcp=KIND((1.0_qp,1.0_qp))
-  !
+
   ! internal (private) storage arrays for the
   ! Fourier spectra from the input file
   PRIVATE mnmax_pert, ns_pert
@@ -65,20 +65,20 @@ MODULE neo_magfie_perturbation
   PRIVATE r_m_pert, r_mhalf_pert, sp_index_pert
   REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: r_m_pert, r_mhalf_pert
   INTEGER(I4B),  DIMENSION(:),   ALLOCATABLE :: sp_index_pert
-  !
+
   PUBLIC neo_magfie_pert
   PRIVATE neo_magfie_pert_a, neo_magfie_pert_b
   INTERFACE neo_magfie_pert
      MODULE PROCEDURE neo_magfie_pert_a, neo_magfie_pert_b
   END INTERFACE neo_magfie_pert
-  !
+
 CONTAINS
-  !
+
   ! Read Boozer files for the perturbation field
   SUBROUTINE neo_read_pert()
-    !
+
     ! local definitions
-    !
+
     ! specify mode numbers and number of flux surfaces
     INTEGER :: m0b_pert, n0b_pert
     INTEGER :: m_max_pert, n_max_pert
@@ -90,12 +90,12 @@ CONTAINS
     INTEGER :: int_dummy
     REAL(kind=dp) :: real_dummy
     CHARACTER(5) :: char_dummy
-    !
+
     ! open Boozer file and read first quantities
     r_un=27052014
     in_file_pert=TRIM(ADJUSTL(in_file_pert))
     OPEN(unit=r_un,file=in_file_pert,status='old',form='formatted')
-    !
+
     IF (inp_swi .EQ. 8) THEN ! NEW IPP TOKAMAK        
        READ (r_un,*) char_dummy
        READ (r_un,*) char_dummy
@@ -107,26 +107,26 @@ CONTAINS
        m_max_pert = m0b_pert+1
        n_max_pert = n0b_pert+1
        mnmax_pert = m_max_pert*n_max_pert
-       !
+
        ! allocate storage arrays
        ALLOCATE(ixm_pert(mnmax_pert), ixn_pert(mnmax_pert), stat = i_alloc)
        IF(i_alloc /= 0) THEN
           STOP "Allocation for the arrays containing the mode numbers&
                & of the perturbation field failed!"
        END IF
-       !
+
        ALLOCATE(es_pert(ns_pert), stat = i_alloc)
        IF(i_alloc /= 0) THEN
           STOP "Allocation for the real array containing&
                & the s-values of the perturbation field failed!"
        END IF
-       !
+
        ALLOCATE(rmnc_pert(ns_pert,mnmax_pert), zmnc_pert(ns_pert,mnmax_pert),&
             lmnc_pert(ns_pert,mnmax_pert), bmnc_pert(ns_pert,mnmax_pert), stat = i_alloc)
        IF(i_alloc /= 0) THEN
           STOP "Allocation for the Fourier arrays for the perturbation field failed!"
        END IF
-       !
+
        ! read input arrays
        DO i =1, ns_pert
           READ(r_un,*) char_dummy
@@ -151,20 +151,20 @@ CONTAINS
        m_max_pert = m0b_pert+1
        n_max_pert = n0b_pert+1
        mnmax_pert = m_max_pert*n_max_pert
-       !
+
        ! allocate storage arrays
        ALLOCATE(ixm_pert(mnmax_pert), ixn_pert(mnmax_pert), stat = i_alloc)
        IF(i_alloc /= 0) THEN
           STOP "Allocation for the arrays containing the mode numbers&
                & of the perturbation field failed!"
        END IF
-       !
+
        ALLOCATE(es_pert(ns_pert), stat = i_alloc)
        IF(i_alloc /= 0) THEN
           STOP "Allocation for the real array containing&
                & the s-values of the perturbation field failed!"
        END IF
-       !
+
        ALLOCATE(rmnc_pert(ns_pert,mnmax_pert), zmnc_pert(ns_pert,mnmax_pert),&
             lmnc_pert(ns_pert,mnmax_pert), bmnc_pert(ns_pert,mnmax_pert), stat = i_alloc)
        IF(i_alloc /= 0) THEN
@@ -175,7 +175,7 @@ CONTAINS
        IF(i_alloc /= 0) THEN
           STOP "Allocation for the Fourier arrays for the perturbation field failed!"
        END IF
-       !
+
        ! read input arrays
        DO i =1, ns_pert
           READ(r_un,*) char_dummy
@@ -193,7 +193,7 @@ CONTAINS
        PRINT *,'FATAL: There is yet no other input type for the perturbed field defined'
        STOP
     END IF
-    !
+
     IF (lab_swi .EQ. 8) THEN ! NEW IPP TOKAMAK
        ixn_pert =  ixn_pert * nfp_pert
        m_phi = ixn_pert(1)
@@ -210,16 +210,16 @@ CONTAINS
     CLOSE (unit=r_un)
     RETURN
   END SUBROUTINE neo_read_pert
-  !
+
   ! Initialization for splines along s
   SUBROUTINE neo_init_spline_pert()
 
     use inter_interfaces, only : splinecof1_hi_driv
     use neo_spline_data, only : lsw_linear_boozer
 
-    !
+
     ! local definitions
-    !
+
     ! loop variables, poloidal mode number
     INTEGER :: i
     INTEGER(I4B) :: m
@@ -238,7 +238,7 @@ CONTAINS
     ! allocate arrays requested by the spline routines
     ALLOCATE ( r_m_pert(mnmax_pert), r_mhalf_pert(mnmax_pert) )
     ALLOCATE ( sp_index_pert(ns_pert) )
-    !
+
     ! compute r_mhalf_pert and sp_index_pert requested by the spline routines
     ! (r_mhalf_pert enters the test function tf, which is used within the spline
     ! routines - tf(x) = x^r_mhalf_pert, x is here boozer_s. Since mode number m
@@ -262,7 +262,7 @@ CONTAINS
        r_mhalf_pert(i) = r_m_pert(i) / 2._dp
     END DO
     sp_index_pert = (/ (i, i=1,ns_pert) /) 
-    !
+
     ! 1-d splines of 2-d arrays
     if (lsw_linear_boozer) then
       call splinecof1_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
@@ -283,36 +283,36 @@ CONTAINS
     end if
 
   END SUBROUTINE neo_init_spline_pert
-  !
+
   ! Compute the perturbation field for a certain x-value
   SUBROUTINE neo_magfie_pert_a( x, bn_hat_pert )
 
     use neo_spline_data, only : lsw_linear_boozer
 
-    !
+
     ! input / output
-    !
+
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: x
     COMPLEX(kind=dcp), INTENT(out) :: bn_hat_pert
-    !
+
     ! local definitions
-    !
+
     COMPLEX(kind=dcp), PARAMETER :: imun=(0.0_dp,1.0_dp)
     INTEGER(i4b) :: swd
     INTEGER :: i, m, n
     REAL(kind=dp) :: yp, ypp, yppp
     REAL(kind=dp) :: bmnc_pert_val, bmns_pert_val
     COMPLEX(kind=dcp) :: expv
-    !
+
     ! read Boozer file and prepare spline routines (1st call)
-    !
+
     IF (.NOT. ALLOCATED(es_pert)) THEN
        CALL neo_read_pert()
        CALL neo_init_spline_pert()
     END IF
-    !
+
     ! direct summation of Fourier components
-    !
+
     bn_hat_pert = (0.0_dp,0.0_dp)
     DO i = 1, mnmax_pert
        swd = 1
@@ -385,38 +385,38 @@ CONTAINS
     END DO
     bn_hat_pert = bn_hat_pert / bmod0
   END SUBROUTINE neo_magfie_pert_a
-  !
+
   ! Compute the perturbation field for a certain x-value and its 
   ! derivative over theta
   SUBROUTINE neo_magfie_pert_b( x, bn_hat_pert, dbn_hat_pert_dtheta )
 
     use neo_spline_data, only : lsw_linear_boozer
 
-    !
+
     ! input / output
-    !
+
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: x
     COMPLEX(kind=dcp), INTENT(out) :: bn_hat_pert
     COMPLEX(kind=dcp), INTENT(out) :: dbn_hat_pert_dtheta
-    !
+
     ! local definitions
-    !
+
     COMPLEX(kind=dcp), PARAMETER :: imun=(0.0_dp,1.0_dp)
     INTEGER(i4b) :: swd
     INTEGER :: i, m, n
     REAL(kind=dp) :: yp, ypp, yppp
     REAL(kind=dp) :: bmnc_pert_val, bmns_pert_val
     COMPLEX(kind=dcp) :: expv
-    !
+
     ! read Boozer file and prepare spline routines (1st call)
-    !
+
     IF (.NOT. ALLOCATED(es_pert)) THEN
        CALL neo_read_pert()
        CALL neo_init_spline_pert()
     END IF
-    !
+
     ! direct summation of Fourier components
-    !
+
     bn_hat_pert = (0.0_dp,0.0_dp)
     dbn_hat_pert_dtheta = (0.0_dp,0.0_dp)
     DO i = 1, mnmax_pert
@@ -465,7 +465,6 @@ CONTAINS
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
           m = ixm_pert(i)
-          !PRINT *,'m: ',m
 
           ! perturbation field is represented in terms of an expansion
           ! over the periodic toroidal Boozer angle times a phase
@@ -487,58 +486,57 @@ CONTAINS
   END SUBROUTINE neo_magfie_pert_b
 
   SUBROUTINE calc_bnoverb0_arr(phi_arr,ibeg,iend,bnoverb0_arr,dbnoverb0_dphi_arr)
-    !
+
     ! input / output
-    !
+
     INTEGER, INTENT(in) :: ibeg, iend
     REAL(kind=dp), DIMENSION(ibeg:iend), INTENT(in) :: phi_arr
     COMPLEX(kind=dcp), DIMENSION(ibeg:iend), INTENT(inout) :: bnoverb0_arr
     COMPLEX(kind=dcp), DIMENSION(ibeg:iend), INTENT(inout) :: dbnoverb0_dphi_arr
-    !
+
     ! local definitions
-    !
+
     COMPLEX(kind=dcp), PARAMETER :: imun=(0.0_dp,1.0_dp)
     COMPLEX(kind=dcp) :: bn_hat_pert, dbn_hat_pert_dtheta
     REAL(kind=dp) :: phi_val, theta_val, bmod, sqrtg
     REAL(kind=dp), DIMENSION(3) :: x, bder, hcovar, hctrvr
     REAL(kind=dp), DIMENSION(3,3) :: hcoder,hctder
     INTEGER :: ind_arr
-    !
+
     DO ind_arr = ibeg,iend
-       !
+
        phi_val=phi_arr(ind_arr)
        theta_val=boozer_theta_beg+(phi_val-boozer_phi_beg)*boozer_iota
        IF (theta_val .GT. 2.0_dp*PI) theta_val = theta_val - 2.0_dp*PI
        x = (/boozer_s,phi_val,theta_val/)
-       !
+
        CALL mag(x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder)
        CALL neo_magfie_pert(x,bn_hat_pert,dbn_hat_pert_dtheta)
-       !
+
        bnoverb0_arr(ind_arr) = (bn_hat_pert * bmod0) / bmod
        dbnoverb0_dphi_arr(ind_arr) = &
             (dbn_hat_pert_dtheta * bmod0 / bmod) * boozer_iota + &
             bnoverb0_arr(ind_arr) * (imun * m_phi - bder(3) * boozer_iota)
-       !
     END DO
-    !
+
   END SUBROUTINE calc_bnoverb0_arr
-  !
+
   SUBROUTINE calc_ntv_output(phi_arr,bhat_arr,bnoverb0_arr,ibeg,iend,eps_M_2,av_inv_bhat,av_gphph)
-    !
+
     ! input / output
-    !
+
     INTEGER, INTENT(in) :: ibeg, iend
     REAL(kind=dp), DIMENSION(ibeg:iend), INTENT(in) :: phi_arr, bhat_arr
     COMPLEX(kind=dcp), DIMENSION(ibeg:iend), INTENT(in) :: bnoverb0_arr
     REAL(kind=dp), INTENT(out) :: eps_M_2, av_gphph, av_inv_bhat
-    !
+
     ! local definitions
-    !
+
     INTEGER :: k
     REAL(kind=dp) :: bnoverb0_k, bnoverb0_kp1
     REAL(kind=dp), DIMENSION(3) :: x
     COMPLEX(kind=dcp), PARAMETER :: imun=(0.0_dp,1.0_dp)
-    !
+
     ! compute $\bar{1/\hat{B}}$
     av_inv_bhat=0.0_dp
     DO k = ibeg,iend-1
@@ -546,7 +544,7 @@ CONTAINS
             ( (1.0_dp/(bhat_arr(k+1)**2.0_dp)) + (1.0_dp/(bhat_arr(k)**2.0_dp)) )
     END DO
     av_inv_bhat = 0.5_dp * av_inv_bhat / (phi_arr(iend)-phi_arr(ibeg))
-    !
+
     ! compute $\bar{ (({\delta}B/B)^2) * (1/\hat{B}) }$
     eps_M_2 = 0.0_dp
     DO k = ibeg,iend-1
@@ -563,32 +561,32 @@ CONTAINS
     END DO
     eps_M_2 = 0.5_dp * eps_M_2 / (phi_arr(iend)-phi_arr(ibeg))
     eps_M_2 = eps_M_2 / av_inv_bhat
-    !
+
     ! compute $\langle g_{\varphi\varphi} \rangle$
     x = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
     CALL calc_av_gphph(x,phi_arr,ibeg,iend,av_gphph)
-    !
+
   END SUBROUTINE calc_ntv_output
-  !
+
   ! compute the flux surface average of $g_{\varphi\varphi}$
   ! for symmetry flux coordinates
   SUBROUTINE calc_av_gphph(x_start,phi_arr,ibeg,iend,av_gphph)
-    !
+
     ! input / output
-    !
+
     INTEGER, INTENT(in) :: ibeg, iend
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: x_start
     REAL(kind=dp), DIMENSION(ibeg:iend), INTENT(in) :: phi_arr
     REAL(kind=dp), INTENT(out) :: av_gphph
-    !
+
     ! local definitions:
-    !
+
     INTEGER :: k, w_un
     REAL(kind=dp) :: bmoda, sqrtg, R_val, Z_val, fac1, fac2
     REAL(kind=dp), DIMENSION(3) :: x, bder, hcovar, hctrvr
     REAL(kind=dp), DIMENSION(3) :: hcurl, bcovar_s_hat_der
     REAL(kind=dp), DIMENSION(ibeg:iend) :: R_arr, bmod_arr
-    !
+
     ! compute R, bmod as a function of phi
     w_un=14112014
     IF ( mpro%isMaster() ) &
@@ -604,7 +602,7 @@ CONTAINS
        IF ( mpro%isMaster() ) WRITE(w_un,*) x(2), R_val, Z_val, bmoda
     END DO
     IF ( mpro%isMaster() ) CLOSE(unit=w_un)
-    !
+
     ! evaluate flux surface average
     fac1 = 0.0_dp 
     fac2 = 0.0_dp 
@@ -620,5 +618,5 @@ CONTAINS
     av_gphph = fac1 / fac2
 
   END SUBROUTINE calc_av_gphph
-!
+
 END MODULE neo_magfie_perturbation

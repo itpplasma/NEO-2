@@ -1,5 +1,5 @@
 module collop_bspline
-  !use fgsl
+
   use gsl_bspline_routines_mod
 
   implicit none
@@ -57,7 +57,6 @@ contains
        xknots(1) = 0d0
        x_del = phi_x_max / gam_all
        do k = 1, knots-1
-          !x_dat(k) = k*x_del
           xknots(k+1) = xknots(k) + x_del * collop_bspline_dist**k
        end do
       
@@ -69,11 +68,6 @@ contains
 
        ! Testing
 
-       !write (*,*) phi_bspline(2, 4d0)
-       !write (*,*) d_phi_bspline(2, 4d0)
-       !write (*,*) dd_phi_bspline(2, 4d0)
-
-       !stop
       call check()
     end if
   end subroutine init_phi_bspline
@@ -85,7 +79,7 @@ contains
     real(kind=dp) :: x, phi
 
     call bspline_eval(x, b)
-    !call bspline_deriv_eval(x, 0, b)
+
     phi = b(m+1)
     
   end function phi_bspline

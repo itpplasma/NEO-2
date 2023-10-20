@@ -1342,11 +1342,9 @@ CONTAINS
         READ(r_u1,*) dummy
 
         DO j=1,mnmax
-          !print *, 'j: ',j
           READ(r_u1,*) ixm(j),ixn(j),                                    &
                 rmnc(i,j),zmnc(i,j),lmnc(i,j),                            &
                 bmnc(i,j)
-          !print *, 'ixm,ixn: ',ixm(j),ixn(j)
         END DO
       END DO
     !! Modifications by Andreas F. Martitsch (06.08.2014)
@@ -1393,7 +1391,6 @@ CONTAINS
         READ(r_u1,*) dummy
 
         DO j=1,mnmax
-          !print *, 'j: ',j
           READ(r_u1,*) ixm(j),ixn(j),                                    &
                 rmnc(i,j),rmns(i,j),zmnc(i,j),zmns(i,j),                  &
                 lmnc(i,j),lmns(i,j),bmnc(i,j),bmns(i,j)
@@ -1449,7 +1446,6 @@ CONTAINS
     END DO
 
     IF (lab_swi .EQ. 1) THEN              ! NCSX Boozer file
-      !
       ! ATTENTION: Switch n TO -n
       !            Toroidal mode numbers have to multiplied by number of field periods
       !            Change iota to iota*nfp (PRINCETON)
@@ -2181,9 +2177,9 @@ CONTAINS
 
     REAL(kind=dp), INTENT(in)  ::   theta, phi
     REAL(kind=dp), INTENT(out) ::   bval, gval, kval, pval, qval, rval
-    !
+
     ! New definitions for direct evaluation
-    !
+
     INTEGER       :: i_alloc
     INTEGER       :: imn, m, n, im, in
     REAL(kind=dp) :: ri, zi, li, bi
@@ -2201,7 +2197,7 @@ CONTAINS
 
     ALLOCATE(cosval(mnmax), sinval(mnmax), stat = i_alloc)
     IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-    !
+
     ! **********************************************************************
     ! Using splines for evaluation
     ! **********************************************************************
@@ -2385,7 +2381,6 @@ CONTAINS
 
   ! **********************************************************************
   SUBROUTINE neo_bderiv(theta, phi, f, g, dfdx, dfdy, dgdx, dgdy)
-    !
     ! Calculates first and second derivatives of b using the 2d-splines
     !
     ! Input:  theta, phi

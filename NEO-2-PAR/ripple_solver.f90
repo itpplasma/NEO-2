@@ -13,7 +13,7 @@ SUBROUTINE ripple_solver(                                 &
      )
 
   USE device_mod
-  USE flint_mod, ONLY : phi_divide                      !<-in Winny
+  USE flint_mod, ONLY : phi_divide
   USE size_mod, ONLY : ndim0
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
        isw_energy,isw_integral,isw_axisymm, & !<-in Winny
@@ -24,7 +24,6 @@ SUBROUTINE ripple_solver(                                 &
   USE lapack_band
   USE rkstep_mod
   USE polleg_mod
-  ! USE binarysplit_mod, ONLY : bsfunc_reconstruct_levels !<- LOCAL
   ! new switch in propagator_mod
   USE propagator_mod,ONLY : prop_ripple_plot,prop_reconstruct,flux_mr,flux_pl, &
                             eta_modboundary_l,eta_modboundary_r,               &
@@ -66,8 +65,6 @@ SUBROUTINE ripple_solver(                                 &
   INTEGER,                                    INTENT(out)   :: ierr
   
   ! local stuff
-  ! Winny's output
-  ! INTEGER, PARAMETER :: solver_talk = 0 ! (0: silent, 1: output)
 
   INTEGER :: add_global_eta
   INTEGER :: ub_eta,ub_mag,ub_eta_loc
@@ -94,7 +91,6 @@ SUBROUTINE ripple_solver(                                 &
   ! SERGEI
   !------------------------------------------------------------------------
   ! additional definitions from Sergei
-  ! you can also use "double precision" isntead of  "REAL(kind=dp)"
   INTEGER :: itotstep,ntotstep,npart_loc,info
   INTEGER :: ndim,nhalf,istep,nstep,nback,npoints,npassing,ioddeven
   INTEGER :: ipart,nhalfstep,idir,inhom
@@ -105,7 +101,7 @@ SUBROUTINE ripple_solver(                                 &
   INTEGER :: kmax,kshift,npass_bound,ibottom
   INTEGER, DIMENSION(:), ALLOCATABLE :: ipivot,iminvec,imaxvec
   INTEGER, DIMENSION(:), ALLOCATABLE :: iend_renorm
-!
+
   DOUBLE PRECISION                         :: hf,theta_beg,theta_end,aiota
   DOUBLE PRECISION                         :: phi,hneg,eta0
   DOUBLE PRECISION                         :: dlu,subsq,subsqmin
@@ -116,7 +112,7 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION :: hxeta,fun_bound_new,amin2ovb
   DOUBLE PRECISION :: a11,a12,a21,a22,determ,deleta_b,dum_phi,dum_a3
   DOUBLE PRECISION :: exl,exprenorm,accurfac,renormfac
-!
+
   DOUBLE PRECISION, DIMENSION(6)           :: alp,bet,gam,del
   DOUBLE PRECISION, DIMENSION(4)           :: old_fun
   DOUBLE PRECISION, DIMENSION(ndim0)       :: ybeg
@@ -146,9 +142,9 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE ::  dellampow !!!term[3]
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE ::  convol_polpow !!!term[3]
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE ::  coefleg      !!!terms[2,3]
-!
+
   INTEGER :: ntotsize,ntotsize_m,nts_r,nts_l,kk,kk1,isplit
-!
+
   DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE :: derivs_plot,fun_write
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: alpha_plot,beta_plot
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: f_plus_plot,g_plus_plot
@@ -165,30 +161,30 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION :: bhat_changed_l,bhat_changed_r
   DOUBLE PRECISION :: bhat_changed_l_out,bhat_changed_r_out
   DOUBLE PRECISION :: stiffpar,delphi_stfp,phi_stfp_prev,phinext
-  DOUBLE PRECISION :: sign_of_bphi                                     !08.12.08
+  DOUBLE PRECISION :: sign_of_bphi
   INTEGER :: nsplit_stfp,npass_prev
   INTEGER, DIMENSION(:),   ALLOCATABLE :: irkstep_stfp
   INTEGER :: icounter
-!
+
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
   INTEGER :: iter,nphiequi,npassing_next
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
- ! DOUBLE PRECISION :: epserr_iter
+
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
-!
+
 !  Off-set:
-!
+
   double precision :: cg0_1_num,cg2_1_num, cg0_2_num, cg2_2_num, cg0_3_num, cg2_3_num
   double precision :: cg0_1_num_orig, cg0_2_num_orig, cg0_3_num_orig
   double precision :: denom_mflint
   double precision, dimension(:),   allocatable :: avden_vector,avpres_vector
-!
+
 !  End off-set
-!
+
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
   INTEGER :: isw_lor,isw_ene,isw_intp
   INTEGER,          DIMENSION(:),       ALLOCATABLE :: npl
@@ -217,13 +213,7 @@ SUBROUTINE ripple_solver(                                 &
   double precision, dimension(:), allocatable       :: phi_mfl_h5, bhat_mfl_h5, npassing_h5
   double precision, dimension(:,:,:,:), allocatable :: dentf_p_h5, enetf_p_h5, spitf_p_h5
   double precision, dimension(:,:,:,:), allocatable :: dentf_m_h5, enetf_m_h5, spitf_m_h5
-  
-  ! integer :: isw_axisymm=0 ! now in collisionality_mod
-  ! double precision :: epserr_sink  !<=REGULARIZATION
-  ! epserr_sink = 1.d-2              !<=REGULARIZATION
-  ! niter=100
-  ! epserr_iter=1.d-5
-  !
+
   !------------------------------------------------------------------------
   ! END SERGEI
   !------------------------------------------------------------------------
@@ -280,12 +270,6 @@ SUBROUTINE ripple_solver(                                 &
   ! (as requested by Sergei)
   IF (prop_reconstruct .EQ. 2) THEN
      prop_ripple_plot = 1
-!     ALLOCATE(fun_mr(LBOUND(flux_mr,1):UBOUND(flux_mr,1),0:UBOUND(flux_mr,2)))
-!     fun_mr = 0.0_dp
-!     fun_mr(LBOUND(flux_mr,1):UBOUND(flux_mr,1),1:UBOUND(flux_mr,2)) = flux_mr
-!     ALLOCATE(fun_pl(LBOUND(flux_pl,1):UBOUND(flux_pl,1),0:UBOUND(flux_pl,2)))
-!     fun_pl = 0.0_dp
-!     fun_pl(LBOUND(flux_pl,1):UBOUND(flux_pl,1),1:UBOUND(flux_pl,2)) = flux_pl
   END IF
   !------------------------------------------------------------------------
   ! end reconstruction work by Winny
@@ -299,12 +283,11 @@ SUBROUTINE ripple_solver(                                 &
 
 
   ierr=0
-  !accurfac=3.d0 !10.d0
   accurfac=ripple_solver_accurfac ! in develpment
-  renormfac=1.d5 !1.d3 !1d1
+  renormfac=1.d5
   deleta_b_min=1.d-12
   boundlayer_ignore=0.01d0
-!
+
   iunit_phi=200
   iunit_sizes=201
   iunit_dt_p=300
@@ -313,7 +296,7 @@ SUBROUTINE ripple_solver(                                 &
   iunit_sp_m=303
   iunit_et_p=304
   iunit_et_m=305
-!
+
   IF(isw_lorentz.EQ.1) THEN
     lag=0
     nvel=0
@@ -330,20 +313,19 @@ SUBROUTINE ripple_solver(                                 &
     isw_ene=isw_energy
     isw_intp=isw_integral
   ENDIF
-!
+
   nvelocity=nvel
-!
+
 
 iprintflag=1
   !------------------------------------------------------------------------
   ! here i get everything for you what you might need
-  !
+
 
   ! eta related stuff
   ub_eta = UBOUND(fieldpropagator%ch_act%eta,1)
   npart  = ub_eta
   add_global_eta = 0
-  ! IF (bsfunc_local_solver .EQ. 0 .or. bsfunc_local_solver .GT. 2) THEN  !<- SOLVER
   IF (prop_reconstruct_levels .EQ. 0) THEN
      ! This is the old stuff
      ! here eta = eta_glob = eta_loc
@@ -373,7 +355,6 @@ iprintflag=1
         eta_glob_ind(i) = i
      END DO
 
-  ! ELSEIF (bsfunc_local_solver .EQ. 1 .OR. bsfunc_local_solver .EQ. 2) THEN  !<- SOLVER
   ELSE
      ! This is the new stuff from Winny
      !
@@ -462,7 +443,7 @@ iprintflag=1
         END IF
      END DO
 
-  END IF  !<- SOLVER
+  END IF
   xetami = eta(0)
   xetama = eta(ub_eta)
 
@@ -521,7 +502,7 @@ iprintflag=1
   DO i=1,ub_eta_next
     IF(1.d0-b_r*eta_next(i)+10.d0*EPSILON(1.d0).GT.0.d0) npass_r_out = i
   ENDDO
-!  
+
 ! Ignore the boundary layer if it is too narrow
 ignore_lb=0
 bhat_changed_l=0.d0
@@ -534,9 +515,9 @@ ignore_rb_out=0
 bhat_changed_r_out=0.d0
 modify_br=0
 goto 10
-!
+
 ! Left boundary:
-!
+
 ! check own eta-levels
   IF(eta_l-eta(npass_l) .LT.                                         &
     (eta(npass_l)-eta(npass_l-1))*boundlayer_ignore) THEN
@@ -546,7 +527,7 @@ goto 10
     ignore_lb=0
     bhat_changed_l=0.d0
   ENDIF
-!
+
 ! check outer eta-levels
   IF(eta_l-eta_prev(npass_l_out) .LT.                                &
     (eta_prev(npass_l_out)-eta_prev(npass_l_out-1))*boundlayer_ignore) THEN
@@ -556,7 +537,7 @@ goto 10
     ignore_lb_out=0
     bhat_changed_l_out=0.d0
   ENDIF
-!
+
 ! forbid bhat modification if a regular band is eliminated in addition to b.l.
   IF(1.d0-bhat_changed_l*eta_prev(npass_l_out-1)+10.d0*EPSILON(1.d0) &
      .LE.0.d0) THEN
@@ -570,7 +551,7 @@ goto 10
     bhat_changed_l_out=0.d0
     PRINT *,'cannot ignore right boundary layer: jump over normal band'
   ENDIF
-!
+
 ! final value of modified bhat
   IF(ignore_lb.EQ.1 .OR. ignore_lb_out.EQ.1) THEN
     bhat_changed_l=MAX(bhat_changed_l,bhat_changed_l_out)
@@ -579,7 +560,7 @@ PRINT *,'field at the left boundary modified'
   ELSE
     modify_bl=0
   ENDIF
-!
+
 ! final decision on the boundary layer
   IF(modify_bl.EQ.1) THEN
     IF(1.d0-bhat_changed_l*eta(npass_l)+10.d0*EPSILON(1.d0).LE.0.d0) THEN
@@ -589,9 +570,9 @@ PRINT *,'left boundary layer ignored'
       ignore_lb=0
     ENDIF
   ENDIF
-!
+
 ! Right boundary:
-!
+
 ! check own eta-levels
   IF(eta_r-eta(npass_r) .LT.                                         &
     (eta(npass_r)-eta(npass_r-1))*boundlayer_ignore) THEN
@@ -601,7 +582,7 @@ PRINT *,'left boundary layer ignored'
     ignore_rb=0
     bhat_changed_r=0.d0
   ENDIF
-!
+
 ! check outer eta-levels
   IF(eta_r-eta_next(npass_r_out) .LT.                                &
     (eta_next(npass_r_out)-eta_next(npass_r_out-1))*boundlayer_ignore) THEN
@@ -611,7 +592,7 @@ PRINT *,'left boundary layer ignored'
     ignore_rb_out=0
     bhat_changed_r_out=0.d0
   ENDIF
-!
+
 ! forbid bhat modification if a regular band is eliminated in addition to b.l.
   IF(1.d0-bhat_changed_r*eta_next(npass_r_out-1)+10.d0*EPSILON(1.d0) &
      .LE.0.d0) THEN
@@ -625,7 +606,7 @@ PRINT *,'left boundary layer ignored'
     bhat_changed_r_out=0.d0
     PRINT *,'cannot ignore left boundary layer: jump over normal band'
   ENDIF
-!
+
 ! final value of modified bhat
   IF(ignore_rb.EQ.1 .OR. ignore_rb_out.EQ.1) THEN
     bhat_changed_r=MAX(bhat_changed_r,bhat_changed_r_out)
@@ -634,7 +615,7 @@ PRINT *,'field at the right boundary modified'
   ELSE
     modify_br=0
   ENDIF
-!
+
 ! final decision on the boundary layer
   IF(modify_br.EQ.1) THEN
     IF(1.d0-bhat_changed_r*eta(npass_r)+10.d0*EPSILON(1.d0).LE.0.d0) THEN
@@ -645,7 +626,7 @@ PRINT *,'right boundary layer ignored'
     ENDIF
   ENDIF
 10 continue
-!
+
   ! place for boundary
   npass_l = npass_l + 1 - ignore_lb
   npass_r = npass_r + 1 - ignore_rb
@@ -655,9 +636,9 @@ PRINT *,'right boundary layer ignored'
   ibeg   = 0 - 2*modify_bl
   iend   = ub_mag + 2*modify_br
 
-  IF (ALLOCATED(phi_divide)) DEALLOCATE(phi_divide)           !<-in Winny
-  ALLOCATE(phi_divide(1:ub_mag))                              !<-in Winny
-  phi_divide = 2                                              !<-in Winny
+  IF (ALLOCATED(phi_divide)) DEALLOCATE(phi_divide)
+  ALLOCATE(phi_divide(1:ub_mag))
+  phi_divide = 2
 
   IF (ALLOCATED(phi_mfl)) DEALLOCATE(phi_mfl)
   ALLOCATE(phi_mfl(ibeg:iend))
@@ -676,9 +657,9 @@ PRINT *,'right boundary layer ignored'
   IF (ALLOCATED(h_phi_mfl)) DEALLOCATE(h_phi_mfl)
   ALLOCATE(h_phi_mfl(ibeg:iend))
   h_phi_mfl(0:ub_mag) = fieldpropagator%mdata%h_phi
-  sign_of_bphi= sign(1.d0,h_phi_mfl(0))                                !08.12.08
-  h_phi_mfl(0:ub_mag)=h_phi_mfl(0:ub_mag)*sign_of_bphi                 !08.12.08
-  geodcu_mfl(0:ub_mag)=geodcu_mfl(0:ub_mag)*sign_of_bphi               !08.12.08
+  sign_of_bphi= sign(1.d0,h_phi_mfl(0))
+  h_phi_mfl(0:ub_mag)=h_phi_mfl(0:ub_mag)*sign_of_bphi
+  geodcu_mfl(0:ub_mag)=geodcu_mfl(0:ub_mag)*sign_of_bphi
 
   IF (ALLOCATED(dlogbdphi_mfl)) DEALLOCATE(dlogbdphi_mfl)
   ALLOCATE(dlogbdphi_mfl(ibeg:iend))
@@ -703,7 +684,7 @@ PRINT *,'right boundary layer ignored'
   ! allocation
   !  at the moment everything from 1:npart
   !  attention eta is from 0:npart-1
-  !
+
   ! 2-D quantities
   nts_l=(lag+1)*npass_l
   nts_r=(lag+1)*npass_r
@@ -715,17 +696,17 @@ PRINT *,'right boundary layer ignored'
   ALLOCATE(amat_plus_minus(nts_l,nts_l))
   IF (ALLOCATED(amat_minus_plus)) DEALLOCATE(amat_minus_plus)
   ALLOCATE(amat_minus_plus(nts_r,nts_r))
-!
+
   IF (ALLOCATED(source_p)) DEALLOCATE(source_p)
   ALLOCATE(source_p(nts_r,3))
   IF (ALLOCATED(source_m)) DEALLOCATE(source_m)
   ALLOCATE(source_m(nts_l,3))
-  !
+
   IF (ALLOCATED(flux_p)) DEALLOCATE(flux_p)
   ALLOCATE(flux_p(3,nts_l))
   IF (ALLOCATED(flux_m)) DEALLOCATE(flux_m)
   ALLOCATE(flux_m(3,nts_r))
-  !
+
   IF (ALLOCATED(qflux)) DEALLOCATE(qflux)
   ALLOCATE(qflux(3,3))
 
@@ -787,35 +768,34 @@ PRINT *,'right boundary layer ignored'
      ENDDO
      CLOSE(123)
 
-     ! PAUSE 'bmod and eta written' !Warning in gfortran-4.7
   END IF
 
   !------------------------------------------------------------------------
   ! SERGEI
   !------------------------------------------------------------------------
-!
+
 ! Check for axisymmetry:
-!
+
   if(isw_axisymm.eq.1.and.npass_l.ne.npass_r) then
      print *, 'npass_l,npass_r ',npass_l,npass_r
     print *,'ripple_solver: cannot run axisymmetric mode, sizes do not fit'
     ierr=1
     return
   endif
-!
+
 ! Check for minimum number of levels:
-!
+
   if ((npass_l .lt. 4) .or. (npass_r .lt. 4)) then
      print *, 'npass_l,npass_r ',npass_l,npass_r
      print *, 'Minimum number of levels in passing region has to be at least 4'
      ierr=1
      return
   end if
-!
+
   iplot=prop_ripple_plot
-!
+
 ! Preparation of coefficients for the kinetic equation solver
-!
+
   ALLOCATE(deriv_coef(4,0:npart+1))
   ALLOCATE(enu_coef(4,npart+1))                                    !!!term[1]
   ALLOCATE(alambd(0:npart+3,ibeg:iend),Vg_vp_over_B(0:npart,ibeg:iend))
@@ -834,37 +814,32 @@ PRINT *,'right boundary layer ignored'
   ALLOCATE(convol_flux(npart+1,ibeg:iend),convol_curr(npart+1,ibeg:iend))
   ALLOCATE(ind_start(ibeg:iend))
   IF(iplot.EQ.1) ALLOCATE(derivs_plot(0:3,4,npart+1,ibeg:iend))
-!
+
 ! Compute coefficients of Legendre polynomials of the order 0,...,legmax:
   CALL polleg(legmax,coefleg)
 ! coefleg(l,k) - coefficient of $x^k$ of polynomial $P_l(x)$
-!
+
   q_rip(:,:,0)=0.d0
   DO i=1,npart
     q_rip(i,:,2)=eta(i)-eta(i-1)
   ENDDO
-!
+
   ndim=4
   ALLOCATE(amat(ndim,ndim),bvec_lapack(ndim,ndim),ipivot(ndim))
-!
+
   npart_loc=0
 
-  !**********************************************************
-  ! Change to EPSILON - 10/2017
-  !********************************************************** 
-  ! subsqmin=1.d5*EPSILON(1.d0)
   subsqmin=1.d0*EPSILON(1.d0)
-  !**********************************************************
-  !
+
   allocate(delt_pos(ibeg:iend),delt_neg(ibeg:iend))
   allocate(fact_pos_b(ibeg:iend),fact_neg_b(ibeg:iend))
   allocate(fact_pos_e(ibeg:iend),fact_neg_e(ibeg:iend))
-!
+
   call rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
                          phi_mfl,bhat_mfl,geodcu_mfl,h_phi_mfl,eta,  &
                          delt_pos,delt_neg,                          &
                          fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
-!
+
   if(maxval(phi_divide).gt.1) then
     ierr=3
     DEALLOCATE(deriv_coef,npl)
@@ -874,13 +849,13 @@ PRINT *,'right boundary layer ignored'
     DEALLOCATE(pleg_bra,pleg_ket,scalprod_pleg)
     return
   endif
-!
+
   DO istep=ibeg,iend
-!
+
 ! semi-levels
-!
+
     eta0=1.d0/bhat_mfl(istep)
-!
+
     DO i=0,npart
       subsq=1.d0-bhat_mfl(istep)*eta(i)
       IF(subsq.GT.subsqmin) THEN
@@ -893,35 +868,35 @@ PRINT *,'right boundary layer ignored'
         Vg_vp_over_B(i,istep)=0.d0
       ENDIF
     ENDDO
-!
+
     alambd(npart+1:npart+3,istep)=0.d0
     alambd(npassing+1,istep)=0.d0
     alambd(npassing+2,istep)=-alambd(npassing,istep)
     alambd(npassing+3,istep)=-alambd(npassing-1,istep)
-!
+
     npl(istep)=npassing
-!
+
     npart_loc=MAX(npart_loc,npassing)
-!
+
     IF(istep.EQ.ibeg) THEN 
       npass_l=npassing+1
     ELSEIF(istep.EQ.iend) THEN 
       npass_r=npassing+1
     ENDIF
-!
+
   ENDDO
-!
+
 ! compute starting index for 2D vectors
-!
+
   ind_start(ibeg)=0
-!
+
   do istep=ibeg,iend-1
     ind_start(istep+1)=ind_start(istep)+2*(lag+1)*(npl(istep)+1)
   enddo
-!
+
   n_2d_size=ind_start(iend)+2*(lag+1)*(npl(iend)+1)
-!
-!
+
+
   IF(ALLOCATED(alam_l)) DEALLOCATE(alam_l)
   IF(ALLOCATED(alam_r)) DEALLOCATE(alam_r)
   IF(ALLOCATED(delta_eta_l)) DEALLOCATE(delta_eta_l)
@@ -943,23 +918,23 @@ PRINT *,'right boundary layer ignored'
   i=npass_r
   alam_r(i)=SQRT(1.d0-0.5d0*(eta(i-1)*bhat_mfl(iend)+1.d0))
   delta_eta_r(i)=1.d0/bhat_mfl(iend)-eta(i-1)
-!
-!
+
+
 ! Calculation of the ODE coefficients
-!
+
   DO istep=ibeg,iend
-!
+
     npassing=npl(istep)
     eta0=1.d0/bhat_mfl(istep)
     amin2ovb=-2.d0/bhat_mfl(istep)
     coefdir=0.5*collpar/h_phi_mfl(istep)
     coefenu_averb=0.5d0*collpar/h_phi_mfl(istep)           !!!term[1]
     coefenu=-coefenu_averb*2.d0/bhat_mfl(istep)             !!!term[1]
-!
-!
+
+
 !-----------------------------
 ! begin terms[2,3]
-!
+
 ! here dellampow(m,n)=$(\lambda_{n-1}-\lambda_{n})^m$
     dellampow(1,1:npassing+1)                                                &
          =alambd(0:npassing,istep)-alambd(1:npassing+1,istep)
@@ -968,14 +943,14 @@ PRINT *,'right boundary layer ignored'
       dellampow(k,1:npassing+1)=dellampow(km1,1:npassing+1)                  &
                                *dellampow(1,1:npassing+1)
     ENDDO
-!
+
     alampow(1,0:npassing+1)=alambd(0:npassing+1,istep)
     DO k=2,legmax+1
       km1=k-1
       alampow(k,0:npassing+1)=alambd(0:npassing+1,istep)                     &
                              *alampow(km1,0:npassing+1)
     ENDDO
-!
+
     DO k=1,legmax+1
 ! Caution: 
 ! here power index is shifted (instead of term (k) -> term (k-1) is computed)
@@ -996,16 +971,16 @@ PRINT *,'right boundary layer ignored'
                                    /DBLE(mfactorial)
       ENDDO
     ENDDO
-!
+
 ! re-definition: here dellampow(m,n)=$(\lambda_{n-1}-\lambda_{n})^m/m!$
 ! (divided by factorial)
-!
+
     mfactorial=1
     DO m=2,4
       mfactorial=mfactorial*m
       dellampow(m,1:npassing+1)=dellampow(m,1:npassing+1)/DBLE(mfactorial)
     ENDDO
-!
+
 ! term[2] (Legendre polynomials) -  ket-vector
 ! numbering of levels (N=npassing): 1-N - $f_n$, N+1 - $f^b$, N+2 - $f^a$
 ! even powers:
@@ -1030,18 +1005,18 @@ PRINT *,'right boundary layer ignored'
            *(alampow(kp1,1:npassing+1)-alampow(kp1,0:npassing))/DBLE(kp1)
       ENDDO
     ENDDO
-!
+
     convol_polpow=0.d0
-!
+
 ! end terms[2,3]
 !---------------------------------------
-!
+
     DO i=1,npassing+1
-!
+
       i1min=MAX(0,i-2)
-!
+
       kmax=5
-!
+
       DO k=1,kmax
         i1=k-1+i1min
         diflam=alambd(i1,istep)-alambd(i,istep)
@@ -1054,28 +1029,28 @@ PRINT *,'right boundary layer ignored'
         diflampow=diflam*diflampow
         del(k)=(alambd(i,istep)/24.d0+diflam/30.d0)*diflampow
       ENDDO
-!
+
       DO k=1,4
         amat(k,1)=(alp(k+1)-alp(k))*amin2ovb
         amat(k,2)=(bet(k+1)-bet(k))*amin2ovb
         amat(k,3)=(gam(k+1)-gam(k))*amin2ovb
         amat(k,4)=(del(k+1)-del(k))*amin2ovb
       ENDDO
-!
+
       IF(i.EQ.npassing) THEN
         amat(4,:)=-amat(4,:)
       ELSEIF(i.EQ.npassing+1) THEN
         amat(3,:)=-amat(3,:)
         amat(4,:)=-amat(4,:)
       ENDIF
-!
+
       bvec_lapack=0.d0
       DO k=1,ndim
         bvec_lapack(k,k)=1.d0
       ENDDO
-!
+
       CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)         
-!
+
 ! bvec_lapack(j,k) - contribution to the derivative of the distribution 
 ! function $\hat f^\sigma$ of the order j-1=0,1,2,3 at the boundary 
 ! $\lambda=\lambda_i$ (at the level $\eta=\eta_i$) from the band i+k-2, 
@@ -1086,13 +1061,13 @@ PRINT *,'right boundary layer ignored'
 ! contributions for k=1,2,3,4 come from fun(N),fun(N+1),fun_b(N+1),fun_b(N)
 ! Actual derivative can be obtained by summation of corresponding
 ! band-integrated fluxes, $f_{i+k-2}$, multiplied with these contributions
-!
-!
+
+
       IF(iplot.EQ.1) derivs_plot(0:3,1:4,i,istep)=bvec_lapack(1:4,1:4)
       deriv_coef(:,i)=bvec_lapack(2,:)*coefdir*MIN(eta(i),eta0)
-!
+
       enu_coef(:,i)=MATMUL(dellampow(:,i),bvec_lapack)*coefenu      !!!term[1]
-!
+
       IF(i.EQ.1) THEN
         convol_polpow(0:legmax,i:i+3)=convol_polpow(0:legmax,i:i+3)          &
                  +MATMUL(vrecurr(0:legmax,0:3,i),bvec_lapack)       !!!term[3]
@@ -1105,25 +1080,25 @@ PRINT *,'right boundary layer ignored'
 ! f0=sum(fun(npassing:npassing+3)*rhs_mat_fzero(:,istep,0))
         rhs_mat_fzero(:,istep,0)=bvec_lapack(1,:)
       ENDIF
-!
+
     ENDDO
-!
+
 ! Eliminate stepping over the boundary:
-!
+
     DO k=0,legmax,2
       convol_polpow(k,npassing)  =convol_polpow(k,npassing)                    &
                                  +convol_polpow(k,npassing+3)
       convol_polpow(k,npassing+1)=convol_polpow(k,npassing+1)                  &
                                  +convol_polpow(k,npassing+2)
     ENDDO
-!
+
     DO k=1,legmax,2
       convol_polpow(k,npassing)  =convol_polpow(k,npassing)                    &
                                  -convol_polpow(k,npassing+3)
       convol_polpow(k,npassing+1)=convol_polpow(k,npassing+1)                  &
                                  -convol_polpow(k,npassing+2)
     ENDDO
-!
+
 ! term[3] (Legendre polynomials) -  bra-vector
 ! numbering of levels (N=npassing): 1-N - $f_n$, N+1 - $f^b$, N+2 - $f^a$
 ! even powers:
@@ -1146,19 +1121,19 @@ PRINT *,'right boundary layer ignored'
                                                 *convol_polpow(k,1:npassing+1)
       ENDDO
     ENDDO
-!
+
     pleg_bra(0:legmax,1:npassing+1,istep)                        &
            =pleg_bra(0:legmax,1:npassing+1,istep)*coefenu_averb
-!
+
     coef_cf=geodcu_mfl(istep)/bhat_mfl(istep)**2/h_phi_mfl(istep)
     convol_flux(1:npassing+1,istep)                                          &
            =(convol_polpow(0,1:npassing+1)+convol_polpow(2,1:npassing+1))    &
            *coef_cf
-!
+
 ! levels
-!
+
     rhs_mat_lorentz(5,1:npassing+1,istep)=0.d0
-!
+
     rhs_mat_lorentz(1:4,1,istep)=deriv_coef(:,1)
     rhs_mat_lorentz(1:4,2,istep)=deriv_coef(:,2)-deriv_coef(:,1)
     rhs_mat_lorentz(1:4,3:npassing+1,istep)                      &
@@ -1166,19 +1141,18 @@ PRINT *,'right boundary layer ignored'
     rhs_mat_lorentz(2:5,3:npassing+1,istep)                      &
                  =rhs_mat_lorentz(2:5,3:npassing+1,istep)        &
                  +deriv_coef(:,3:npassing+1)
-!
+
     rhs_mat_fzero(:,istep,1)=deriv_coef(:,npassing+1)
-!
+
 ! Change of the boundary layer width
-!
-!
-!
+
+
 ! begin term[1]:
-!
+
     rhs_mat_energ(:,1:npassing+1,istep)=enu_coef(:,1:npassing+1)
-!
+
 ! end term[1]
-!
+
     q_rip(1:npassing,istep,1)                                    &
           =Vg_vp_over_B(1:npassing,istep)-Vg_vp_over_B(0:npassing-1,istep)
     q_rip(npassing+1,istep,1)=-Vg_vp_over_B(npassing,istep)
@@ -1186,14 +1160,14 @@ PRINT *,'right boundary layer ignored'
     q_rip(1:npassing+1,istep,2)                                  &
           =q_rip(1:npassing+1,istep,2)                           &
           *bhat_mfl(istep)/h_phi_mfl(istep)
-!
+
     convol_curr(1:npassing+1,istep)=bhat_mfl(istep)/h_phi_mfl(istep)
-!
+
   ENDDO
-!
+
   DEALLOCATE(amat,bvec_lapack,ipivot)
-!
-!
+
+
 ! Preparation of data for sparce solver
 !
 ! The solution vector has the following structure:
@@ -1215,32 +1189,32 @@ PRINT *,'right boundary layer ignored'
 !    contains the counter-passing flux through the boundary layer, and
 !    element 2*npassing+2 contains the counter-passing flux through the
 !    first band.
-!
-!
+
+
 ! Matrix size:
-!
+
   nrow=n_2d_size
   ncol=n_2d_size
-!
+
 ! Compute vectors for convolution of fluxes and source vectors:
-!
+
   allocate(flux_vector(3,n_2d_size),source_vector(n_2d_size,3))
   flux_vector=0.d0
   source_vector=0.d0
-!
+
 !  Off set:
-!
+
   allocate(avden_vector(n_2d_size),avpres_vector(n_2d_size))
   avden_vector=0.d0
   avpres_vector=0.d0
   denom_mflint=0.d0
-!
+
 !  End off-set
-!
+
   do istep=ibeg,iend
-!
+
     ioddeven=mod(istep-ibeg,2) !0 for full RK step, 1 for half RK step
-!
+
     if(istep.eq.ibeg) then
       step_factor_p=delt_pos(ibeg+1)*fact_pos_b(ibeg)/3.d0
       step_factor_m=delt_neg(ibeg)*fact_neg_e(ibeg)/3.d0
@@ -1258,56 +1232,54 @@ PRINT *,'right boundary layer ignored'
       step_factor_m=(delt_neg(istep-1)*fact_neg_b(istep)       &
                    + delt_neg(istep)*fact_neg_e(istep))/3.d0
     endif
-!
+
     npassing=npl(istep)
-!
+
 !  Off-set:
-!
+
     denom_mflint = denom_mflint + 0.125d0*(step_factor_p+step_factor_m)     &
                  / (bhat_mfl(istep)*h_phi_mfl(istep))
-!
+
 !  End off-set
-!
+
     do m=0,lag
       k=ind_start(istep)+2*(npassing+1)*m
-!
+
       flux_vector(1,k+1:k+npassing+1) =                                     &
             step_factor_p*weightlag(1,m)*convol_flux(1:npassing+1,istep)
       flux_vector(1,k+npassing+2:k+2*npassing+2)=                           &
             step_factor_m*weightlag(1,m)*convol_flux(npassing+1:1:-1,istep)
-!
+
       flux_vector(2,k+1:k+npassing+1) =                                     &
             step_factor_p*weightlag(2,m)*convol_curr(1:npassing+1,istep)
       flux_vector(2,k+npassing+2:k+2*npassing+2)=                           &
            -step_factor_m*weightlag(2,m)*convol_curr(npassing+1:1:-1,istep)
-!
+
       flux_vector(3,k+1:k+npassing+1) =                                     &
             step_factor_p*weightlag(3,m)*convol_flux(1:npassing+1,istep)
       flux_vector(3,k+npassing+2:k+2*npassing+2) =                          &
             step_factor_m*weightlag(3,m)*convol_flux(npassing+1:1:-1,istep)
-!
+
 !  Off-set:
-!
+
       avden_vector(k+1:k+npassing+1) =                                      &
             step_factor_p*weightden(m)*pleg_bra(0,1:npassing+1,istep)
       avden_vector(k+npassing+2:k+2*npassing+2) =                           &
             step_factor_m*weightden(m)*pleg_bra(0,npassing+1:1:-1,istep)
-!
+
       avpres_vector(k+1:k+npassing+1) =                                     &
            step_factor_p*weightenerg_offset(m)*pleg_bra(0,1:npassing+1,istep)
-!          step_factor_p*weightlag(1,m)*pleg_bra(0,1:npassing+1,istep)
       avpres_vector(k+npassing+2:k+2*npassing+2) =                          &
            step_factor_m*weightenerg_offset(m)*pleg_bra(0,npassing+1:1:-1,istep)
-!          step_factor_m*weightlag(1,m)*pleg_bra(0,npassing+1:1:-1,istep)
-!
+
       avden_vector(k+1:k+2*npassing+2) =                                    &
             avden_vector(k+1:k+2*npassing+2)/(collpar*bhat_mfl(istep))
       avpres_vector(k+1:k+2*npassing+2) =                                   &
             avpres_vector(k+1:k+2*npassing+2)/(collpar*bhat_mfl(istep))
-!
+
 !  End off-set
-!
-!
+
+
       if(istep.gt.ibeg) then
         npassing_prev=npl(istep-1)
         k_prev=ind_start(istep-1)+2*(npassing_prev+1)*m
@@ -1585,140 +1557,112 @@ PRINT *,'right boundary layer ignored'
         source_vector(k+npassing+2:k+2*npassing+2,:)                     &
                        =flux_mr(npass_r*(m+1):npass_r*m+1:-1,:)
       endif
-!
+
     enddo
   enddo
-!
 
-! Artificial Off-set:
-!!$do istep=ibeg,iend
-!!$npassing=npl(istep)
-!!$do m=0,lag
-!!$k=ind_start(istep)+2*(npassing+1)*m
-!!$if(m.eq.0) then
-!!$source_vector(k+1:k+npassing,1)=eta(1:npassing)-eta(0:npassing-1)
-!!$source_vector(k+npassing+1,1)=1.d0/bhat_mfl(istep)-eta(npassing)
-!!$!source_vector(k+1:k+npassing+1,1)=source_vector(k+1:k+npassing+1,1)/sqrt(8.d0*3.14159265358979d0/3.d0)
-!!$source_vector(k+1:k+npassing+1,2)=0d0
-!!$elseif(m.eq.2) then
-!!$source_vector(k+1:k+npassing+1,1)=0.d0
-!!$source_vector(k+1:k+npassing,2)=eta(1:npassing)-eta(0:npassing-1)
-!!$source_vector(k+npassing+1,2)=1.d0/bhat_mfl(istep)-eta(npassing)
-!!$!source_vector(k+1:k+npassing+1,2)=-source_vector(k+1:k+npassing+1,2)*0.25d0/sqrt(3.14159265358979d0/15.d0)
-!!$else
-!!$source_vector(k+1:k+npassing+1,1)=0.d0
-!!$endif
-!!$source_vector(k+2*npassing+2:k+npassing+2:-1,1)=source_vector(k+1:k+npassing+1,1)
-!!$source_vector(k+2*npassing+2:k+npassing+2:-1,2)=source_vector(k+1:k+npassing+1,2)
-!!$enddo
-!!$enddo
-!!$!print *,sum(avden_vector*source_vector(:,1))/denom_mflint,sum(avpres_vector*source_vector(:,1))/denom_mflint
-!!$!print *,sum(avden_vector*source_vector(:,2))/denom_mflint,sum(avpres_vector*source_vector(:,2))/denom_mflint
-!!$!stop
-!!$goto 11  
 
-!
 ! Determine the size of arrays (number of non-zero elements):
-!
+
   nz=0
-!
+
 ! Co-passing: sigma=1
-!
+
   istep=ibeg
   npassing=npl(istep)
-!
+
 ! entry:
-!
+
   do m=0,lag
     k=ind_start(istep)+2*(npassing+1)*m
-!
+
     do ipart=1,npassing+1
       nz=nz+1
 !      irow(nz)=k+ipart
 !      icol(nz)=k+ipart
 !      amat_sp(nz)=1.d0
     enddo
-!
+
     if(isw_axisymm.eq.1) then
       k_prev=ind_start(iend)+2*(npassing+1)*m
-!
+
       do ipart=1,npassing+1
         nz=nz+1
 !        irow(nz)=k+ipart
 !        icol(nz)=k_prev+ipart
 !        amat_sp(nz)=-1.d0
       enddo
-!
+
     endif
-!
+
   enddo
-!
+
   do istep=ibeg+1,iend
     npassing_prev=npl(istep-1)
     npassing=npl(istep)
 !    delphim1=1.d0/delt_pos(istep)
 !    deloneovb=0.5d0*delphim1*(1.d0/bhat_mfl(istep-1)-1.d0/bhat_mfl(istep))
-!
+
     do m=0,lag
       k_prev=ind_start(istep-1)+2*(npassing_prev+1)*m
       k=ind_start(istep)+2*(npassing+1)*m
-!
+
 ! free flight:
-!
+
       do ipart=1,npassing+1
         nz=nz+1
 !        irow(nz)=k+ipart
 !        icol(nz)=k+ipart
 !        amat_sp(nz)=delphim1
       enddo
-!
+
       do ipart=1,npassing
         nz=nz+1
 !        irow(nz)=k+ipart
 !        icol(nz)=k_prev+ipart
 !        amat_sp(nz)=-delphim1
       enddo
-!
+
       if(npassing_prev.ge.npassing) then
         nz=nz+1
 !        irow(nz)=k+npassing+1
 !        icol(nz)=k_prev+npassing+1
 !        amat_sp(nz)=-delphim1
       endif
-!
+
 ! mirroring:
-!
+
       if(npassing_prev.eq.npassing) then
-!
+
         do kk=1,4
           nz=nz+1
 !          irow(nz)=k+npassing+1
 !          icol(nz)=k+npassing+kk-1
 !          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
         enddo
-!
+
         do kk=1,4
           nz=nz+1
 !          irow(nz)=k+npassing+1
 !          icol(nz)=k_prev+npassing_prev+kk-1
 !          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
         enddo
-!
+
       elseif(npassing_prev.gt.npassing) then
         nz=nz+1
 !        irow(nz)=k_prev+npassing_prev+2
 !        icol(nz)=k_prev+npassing_prev+1
 !        amat_sp(nz)=-delphim1
       endif
-!
+
 ! collisions:
-!
+
       if(fact_pos_e(istep).ne.0.d0) then
-!
+
 ! Lorentz operator:
-!
+
         if(isw_lor.eq.1) then
-!
+
           do ipart=1,npassing+1
             do kk=1,5
               do mm=0,lag
@@ -1730,9 +1674,9 @@ PRINT *,'right boundary layer ignored'
               enddo
             enddo
           enddo
-!
+
 ! matching collisional flux through the boundary in backward Euler scheme:
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -1742,7 +1686,7 @@ PRINT *,'right boundary layer ignored'
 !                         *fact_pos_e(istep)
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -1752,15 +1696,15 @@ PRINT *,'right boundary layer ignored'
 !                         *fact_pos_b(istep-1)
             enddo
           enddo
-!
+
         endif
-!
+
 !        nz_beg=nz+1
-!
+
 ! energy diffusion operator:
-!
+
         if(isw_ene.eq.1) then
-!
+
           do ipart=1,npassing
             do kk=1,4
               do mm=0,lag
@@ -1771,7 +1715,7 @@ PRINT *,'right boundary layer ignored'
               enddo
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -1781,7 +1725,7 @@ PRINT *,'right boundary layer ignored'
 !                         *rhs_mat_energ(kk,npassing+1,istep)
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -1791,111 +1735,111 @@ PRINT *,'right boundary layer ignored'
 !                         *rhs_mat_energ(kk,npassing_prev+1,istep-1)
             enddo
           enddo
-!
+
         endif
-!
+
 !        amat_sp(nz_beg:nz)=fact_pos_e(istep)*amat_sp(nz_beg:nz)
       endif
-!
+
     enddo
-!
+
   enddo
-!
+
 ! Counter-passing: sigma=-1
-!
+
   istep=iend
   npassing=npl(istep)
-!
+
 ! entry:
-!
+
   do m=0,lag
     k=ind_start(istep)+2*(npassing+1)*m+2*npassing+3
-!
+
     do ipart=1,npassing+1
       nz=nz+1
 !      irow(nz)=k-ipart
 !      icol(nz)=k-ipart
 !      amat_sp(nz)=1.d0
     enddo
-!
+
     if(isw_axisymm.eq.1) then
       k_prev=ind_start(ibeg)+2*(npassing+1)*m+2*npassing+3
-!
+
       do ipart=1,npassing+1
         nz=nz+1
 !        irow(nz)=k-ipart
 !        icol(nz)=k_prev-ipart
 !        amat_sp(nz)=-1.d0
       enddo
-!
+
     endif
-!
+
   enddo
-!
+
   do istep=ibeg,iend-1
     npassing_prev=npl(istep+1)
     npassing=npl(istep)
 !    delphim1=1.d0/delt_neg(istep)
 !    deloneovb=0.5d0*delphim1*(1.d0/bhat_mfl(istep+1)-1.d0/bhat_mfl(istep))
-!
+
     do m=0,lag
       k_prev=ind_start(istep+1)+2*(npassing_prev+1)*m+2*npassing_prev+3
       k=ind_start(istep)+2*(npassing+1)*m+2*npassing+3
-!
+
 ! free flight:
-!
+
       do ipart=1,npassing+1
         nz=nz+1
 !        irow(nz)=k-ipart
 !        icol(nz)=k-ipart
 !        amat_sp(nz)=delphim1
       enddo
-!
+
       do ipart=1,npassing
         nz=nz+1
 !        irow(nz)=k-ipart
 !        icol(nz)=k_prev-ipart
 !        amat_sp(nz)=-delphim1
       enddo
-!
+
       if(npassing_prev.ge.npassing) then
         nz=nz+1
 !        irow(nz)=k-npassing-1
 !        icol(nz)=k_prev-npassing-1
 !        amat_sp(nz)=-delphim1
       endif
-!
+
 ! mirroring:
-!
+
       if(npassing_prev.eq.npassing) then
-!
+
         do kk=1,4
           nz=nz+1
 !          irow(nz)=k-npassing-1
 !          icol(nz)=k-npassing-kk+1
 !          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
         enddo
-!
+
         do kk=1,4
           nz=nz+1
 !          irow(nz)=k-npassing-1
 !          icol(nz)=k_prev-npassing_prev-kk+1
 !          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
         enddo
-!
+
       elseif(npassing_prev.gt.npassing) then
         nz=nz+1
 !        irow(nz)=k_prev-npassing_prev-2
 !        icol(nz)=k_prev-npassing_prev-1
 !        amat_sp(nz)=-delphim1
       endif
-!
+
 ! collisions:
-!
+
       if(fact_neg_e(istep).ne.0.d0) then
-!
+
 ! Lorentz operator:
-!
+
         if(isw_lor.eq.1) then
 !
           do ipart=1,npassing+1
@@ -1909,9 +1853,9 @@ PRINT *,'right boundary layer ignored'
               enddo
             enddo
           enddo
-!
+
 ! matching collisional flux through the boundary in backward Euler scheme:
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -1921,7 +1865,7 @@ PRINT *,'right boundary layer ignored'
 !                         *fact_neg_e(istep)
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -1931,15 +1875,15 @@ PRINT *,'right boundary layer ignored'
 !                         *fact_neg_b(istep+1)
             enddo
           enddo
-!
+
         endif
-!
+
 !        nz_beg=nz+1
-!
+
 ! energy diffusion operator:
-!
+
         if(isw_ene.eq.1) then
-!
+
           do ipart=1,npassing
             do kk=1,4
               do mm=0,lag
@@ -1950,7 +1894,7 @@ PRINT *,'right boundary layer ignored'
               enddo
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -1960,7 +1904,7 @@ PRINT *,'right boundary layer ignored'
 !                         *rhs_mat_energ(kk,npassing+1,istep)
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -1970,121 +1914,121 @@ PRINT *,'right boundary layer ignored'
 !                         *rhs_mat_energ(kk,npassing_prev+1,istep+1)
             enddo
           enddo
-!
+
         endif
-!
+
 !        amat_sp(nz_beg:nz)=fact_neg_e(istep)*amat_sp(nz_beg:nz)
       endif
-!
+
     enddo
-!
+
   enddo
-!
-!
+
+
   allocate(irow(nz),icol(nz),amat_sp(nz),ipcol(ncol),bvec_sp(ncol))
   if(isw_intp.eq.1) allocate(bvec_iter(ncol),bvec_lor(ncol),bvec_prev(ncol))
-!
+
 ! Fill the arrays:
-!
+
   nz=0
-!
+
 ! Co-passing: sigma=1
-!
+
   istep=ibeg
   npassing=npl(istep)
-!
+
 ! entry:
-!
+
   do m=0,lag
     k=ind_start(istep)+2*(npassing+1)*m
-!
+
     do ipart=1,npassing+1
       nz=nz+1
       irow(nz)=k+ipart
       icol(nz)=k+ipart
       amat_sp(nz)=1.d0
     enddo
-!
+
     if(isw_axisymm.eq.1) then
       k_prev=ind_start(iend)+2*(npassing+1)*m
-!
+
       do ipart=1,npassing+1
         nz=nz+1
         irow(nz)=k+ipart
         icol(nz)=k_prev+ipart
         amat_sp(nz)=-1.d0
       enddo
-!
+
     endif
-!
+
   enddo
-!
+
   do istep=ibeg+1,iend
     npassing_prev=npl(istep-1)
     npassing=npl(istep)
     delphim1=1.d0/delt_pos(istep)
     deloneovb=0.5d0*delphim1*(1.d0/bhat_mfl(istep-1)-1.d0/bhat_mfl(istep))
-!
+
     do m=0,lag
       k_prev=ind_start(istep-1)+2*(npassing_prev+1)*m
       k=ind_start(istep)+2*(npassing+1)*m
-!
+
 ! free flight:
-!
+
       do ipart=1,npassing+1
         nz=nz+1
         irow(nz)=k+ipart
         icol(nz)=k+ipart
         amat_sp(nz)=delphim1
       enddo
-!
+
       do ipart=1,npassing
         nz=nz+1
         irow(nz)=k+ipart
         icol(nz)=k_prev+ipart
         amat_sp(nz)=-delphim1
       enddo
-!
+
       if(npassing_prev.ge.npassing) then
         nz=nz+1
         irow(nz)=k+npassing+1
         icol(nz)=k_prev+npassing+1
         amat_sp(nz)=-delphim1
       endif
-!
+
 ! mirroring:
-!
+
       if(npassing_prev.eq.npassing) then
-!
+
         do kk=1,4
           nz=nz+1
           irow(nz)=k+npassing+1
           icol(nz)=k+npassing+kk-1
           amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
         enddo
-!
+
         do kk=1,4
           nz=nz+1
           irow(nz)=k+npassing+1
           icol(nz)=k_prev+npassing_prev+kk-1
           amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
         enddo
-!
+
       elseif(npassing_prev.gt.npassing) then
         nz=nz+1
         irow(nz)=k_prev+npassing_prev+2
         icol(nz)=k_prev+npassing_prev+1
         amat_sp(nz)=-delphim1
       endif
-!
+
 ! collisions:
-!
+
       if(fact_pos_e(istep).ne.0.d0) then
-!
+
 ! Lorentz operator:
-!
+
         if(isw_lor.eq.1) then
-!
+
           do ipart=1,npassing+1
             do kk=1,5
               do mm=0,lag
@@ -2096,9 +2040,9 @@ PRINT *,'right boundary layer ignored'
               enddo
             enddo
           enddo
-!
+
 ! matching collisional flux through the boundary in backward Euler scheme:
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -2108,7 +2052,7 @@ PRINT *,'right boundary layer ignored'
                          *fact_pos_e(istep)
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -2118,155 +2062,152 @@ PRINT *,'right boundary layer ignored'
                          *fact_pos_b(istep-1)
             enddo
           enddo
-!
+
         endif
-!
+
         nz_beg=nz+1
-!
+
 ! energy diffusion operator:
-!
+
         if(isw_ene.eq.1) then
-!
+
           do ipart=1,npassing
             do kk=1,4
               do mm=0,lag
                 nz=nz+1
                 irow(nz)=k+ipart
                 icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)                         !<=REGULARIZATION
                 amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep)!<=REGULARIZATION
               enddo
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
               irow(nz)=k+npassing+1
               icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &                !<=REGULARIZATION
               amat_sp(nz)=0.5d0*(denmm(m,mm)-epserr_sink*anumm(m,mm))        &                 !<=REGULARIZATION
                          *rhs_mat_energ(kk,npassing+1,istep)
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
               irow(nz)=k+npassing+1
               icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &                !<=REGULARIZATION
               amat_sp(nz)=0.5d0*(denmm(m,mm)-epserr_sink*anumm(m,mm))        &                 !<=REGULARIZATION
                          *rhs_mat_energ(kk,npassing_prev+1,istep-1)
             enddo
           enddo
-!
+
         endif
-!
+
         amat_sp(nz_beg:nz)=fact_pos_e(istep)*amat_sp(nz_beg:nz)
       endif
-!
+
     enddo
-!
+
   enddo
-!
+
 ! Counter-passing: sigma=-1
-!
+
   istep=iend
   npassing=npl(istep)
-!
+
 ! entry:
-!
+
   do m=0,lag
     k=ind_start(istep)+2*(npassing+1)*m+2*npassing+3
-!
+
     do ipart=1,npassing+1
       nz=nz+1
       irow(nz)=k-ipart
       icol(nz)=k-ipart
       amat_sp(nz)=1.d0
     enddo
-!
+
     if(isw_axisymm.eq.1) then
       k_prev=ind_start(ibeg)+2*(npassing+1)*m+2*npassing+3
-!
+
       do ipart=1,npassing+1
         nz=nz+1
         irow(nz)=k-ipart
         icol(nz)=k_prev-ipart
         amat_sp(nz)=-1.d0
       enddo
-!
+
     endif
-!
+
   enddo
-!
+
   do istep=ibeg,iend-1
     npassing_prev=npl(istep+1)
     npassing=npl(istep)
     delphim1=1.d0/delt_neg(istep)
     deloneovb=0.5d0*delphim1*(1.d0/bhat_mfl(istep+1)-1.d0/bhat_mfl(istep))
-!
+
     do m=0,lag
       k_prev=ind_start(istep+1)+2*(npassing_prev+1)*m+2*npassing_prev+3
       k=ind_start(istep)+2*(npassing+1)*m+2*npassing+3
-!
+
 ! free flight:
-!
+
       do ipart=1,npassing+1
         nz=nz+1
         irow(nz)=k-ipart
         icol(nz)=k-ipart
         amat_sp(nz)=delphim1
       enddo
-!
+
       do ipart=1,npassing
         nz=nz+1
         irow(nz)=k-ipart
         icol(nz)=k_prev-ipart
         amat_sp(nz)=-delphim1
       enddo
-!
+
       if(npassing_prev.ge.npassing) then
         nz=nz+1
         irow(nz)=k-npassing-1
         icol(nz)=k_prev-npassing-1
         amat_sp(nz)=-delphim1
       endif
-!
+
 ! mirroring:
-!
+
       if(npassing_prev.eq.npassing) then
-!
+
         do kk=1,4
           nz=nz+1
           irow(nz)=k-npassing-1
           icol(nz)=k-npassing-kk+1
           amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
         enddo
-!
+
         do kk=1,4
           nz=nz+1
           irow(nz)=k-npassing-1
           icol(nz)=k_prev-npassing_prev-kk+1
           amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
         enddo
-!
+
       elseif(npassing_prev.gt.npassing) then
         nz=nz+1
         irow(nz)=k_prev-npassing_prev-2
         icol(nz)=k_prev-npassing_prev-1
         amat_sp(nz)=-delphim1
       endif
-!
+
 ! collisions:
-!
+
       if(fact_neg_e(istep).ne.0.d0) then
-!
+
 ! Lorentz operator:
-!
+
         if(isw_lor.eq.1) then
-!
+
           do ipart=1,npassing+1
             do kk=1,5
               do mm=0,lag
@@ -2278,9 +2219,9 @@ PRINT *,'right boundary layer ignored'
               enddo
             enddo
           enddo
-!
+
 ! matching collisional flux through the boundary in backward Euler scheme:
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -2290,7 +2231,7 @@ PRINT *,'right boundary layer ignored'
                          *fact_neg_e(istep)
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
@@ -2300,118 +2241,113 @@ PRINT *,'right boundary layer ignored'
                          *fact_neg_b(istep+1)
             enddo
           enddo
-!
+
         endif
-!
+
         nz_beg=nz+1
-!
+
 ! energy diffusion operator:
-!
+
         if(isw_ene.eq.1) then
-!
+
           do ipart=1,npassing
             do kk=1,4
               do mm=0,lag
                 nz=nz+1
                 irow(nz)=k-ipart
                 icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)                         !<=REGULARIZATION
                 amat_sp(nz)=(denmm(m,mm)-epserr_sink*anumm(m,mm))*rhs_mat_energ(kk,ipart,istep)!<=REGULARIZATION
               enddo
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
               irow(nz)=k-npassing-1
               icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &                !<=REGULARIZATION
               amat_sp(nz)=0.5d0*(denmm(m,mm)-epserr_sink*anumm(m,mm))        &                 !<=REGULARIZATION
                          *rhs_mat_energ(kk,npassing+1,istep)
             enddo
           enddo
-!
+
           do kk=1,4
             do mm=0,lag
               nz=nz+1
               irow(nz)=k-npassing-1
               icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &                !<=REGULARIZATION
               amat_sp(nz)=0.5d0*(denmm(m,mm)-epserr_sink*anumm(m,mm))        &                 !<=REGULARIZATION
                          *rhs_mat_energ(kk,npassing_prev+1,istep+1)
             enddo
           enddo
-!
+
         endif
-!
+
         amat_sp(nz_beg:nz)=fact_neg_e(istep)*amat_sp(nz_beg:nz)
       endif
-!
+
     enddo
-!
+
   enddo
-!
+
 ! Solve the linear equation set:
-!
+
   call  remap_rc(nz,nz_sq,irow,icol,amat_sp)
-!
+
   print *,'system size = ',n_2d_size
   print *,'non-zeros before and after truncation = ',nz,nz_sq
   nz=nz_sq
-!
+
   CALL column_full2pointer(icol(1:nz),ipcol)
-!
+
 ! There are now three different calls sparse_solve
 !   iopt = 1 ; factorization
 !   iopt = 2 ; solve
 !   iopt = 3 ; free memory
 ! without iopt or with iopt = 0: old behaviour (factorize,solve,free)
-!
+
 ! factorization:
-!
+
   bvec_sp=0.d0
   iopt=1
-!
+
   call cpu_time(time_start)
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
                     bvec_sp,iopt)
-!
+
   call cpu_time(time_factorization)
   print *,'factorization completed ',time_factorization - time_start,' sec'
-!
+
   iopt=2
-!
+
 ! Solution of inhomogeneus equation (account of sources):
-!
+
 call cpu_time(time1)
 
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
                     source_vector(:,1:3),iopt)
 call cpu_time(time2)
-!write (*,*) "Time in first solver:", time2-time1
-!
+
 ! integral part:
-!
+
 call cpu_time(time1)
   if(isw_intp.eq.1) then
-!
+
     do k=1,3
       bvec_lor=source_vector(:,k)
-!
+
       do iter=1,niter
         bvec_prev=source_vector(:,k)
-!
+
         call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start,   &
                            phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),   &
                            ailmm,source_vector(:,k),bvec_iter)
-!
+
         CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),        &
                           bvec_iter,iopt)
 
-!
+
         source_vector(:,k)=bvec_lor+bvec_iter
-        !write (*,*) "1 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
@@ -2424,47 +2360,11 @@ call cpu_time(time1)
         stop
      end if
     enddo
-!
+
   endif
   call cpu_time(time2)
-  !write (*,*) "Time in integral part:", time2 - time1
 
-  !  Off-set:
-  !*****************************************************************************
-  ! Method for non-relativsitic Maxwellian has been replaced
-  ! by more general computation of a_00, a_02, and a_22 (see collop_compute.f90)
-  !*****************************************************************************
-!!$     ! 11 continue
-!!$     ! Drive 1
-!!$     cg0_1_num=sum(avden_vector*source_vector(:,1))
-!!$     cg2_1_num=sum(avpres_vector*source_vector(:,1))
-!!$     cg0_1_num=2.5d0*cg0_1_num-cg2_1_num
-!!$     cg2_1_num=(4.d0/15.d0)*cg2_1_num-0.4d0*cg0_1_num
-!!$     !
-!!$     cg0_1_num=cg0_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
-!!$     cg2_1_num=cg2_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
-!!$     print *,'Local off-set drive 1: ',cg0_1_num/denom_mflint,cg2_1_num/denom_mflint, denom_mflint
-!!$
-!!$     ! Drive 2 (Spitzer)
-!!$     cg0_2_num=sum(avden_vector*source_vector(:,2))
-!!$     cg2_2_num=sum(avpres_vector*source_vector(:,2))
-!!$     cg0_2_num=2.5d0*cg0_2_num-cg2_2_num
-!!$     cg2_2_num=(4.d0/15.d0)*cg2_2_num-0.4d0*cg0_2_num
-!!$     !
-!!$     cg0_2_num=cg0_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
-!!$     cg2_2_num=cg2_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
-!!$     print *,'Local off-set drive 2: ',cg0_2_num/denom_mflint,cg2_2_num/denom_mflint, denom_mflint
-!!$
-!!$     ! Drive 3
-!!$     cg0_3_num=sum(avden_vector*source_vector(:,3))
-!!$     cg2_3_num=sum(avpres_vector*source_vector(:,3))
-!!$     cg0_3_num=2.5d0*cg0_3_num-cg2_3_num
-!!$     cg2_3_num=(4.d0/15.d0)*cg2_3_num-0.4d0*cg0_3_num
-!!$     !
-!!$     cg0_3_num=cg0_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
-!!$     cg2_3_num=cg2_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
-!!$     print *,'Local off-set drive 3: ',cg0_3_num/denom_mflint,cg2_3_num/denom_mflint, denom_mflint
-  
+
   write (*,*) "Parameters for offset correction: ", a_00_offset, a_02_offset, a_22_offset
   write (*,*) "Weightenerg for offset correction: ", weightenerg_offset
   
@@ -2476,7 +2376,7 @@ call cpu_time(time1)
        - (a_02_offset/a_00_offset / (a_22_offset - a_02_offset**2/a_00_offset))*cg2_1_num
   cg2_1_num=-a_02_offset/a_00_offset * cg0_1_num_orig / (a_22_offset - a_02_offset**2/a_00_offset) &
        + cg2_1_num / (a_22_offset - a_02_offset**2/a_00_offset)
-  !
+
   cg0_1_num=cg0_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
   cg2_1_num=cg2_1_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
   print *,'Local off-set drive 1: ',cg0_1_num/denom_mflint,cg2_1_num/denom_mflint, denom_mflint
@@ -2489,7 +2389,7 @@ call cpu_time(time1)
        - (a_02_offset/a_00_offset / (a_22_offset - a_02_offset**2/a_00_offset))*cg2_2_num
   cg2_2_num=-a_02_offset/a_00_offset * cg0_2_num_orig / (a_22_offset - a_02_offset**2/a_00_offset) &
        + cg2_2_num / (a_22_offset - a_02_offset**2/a_00_offset)
-  !
+
   cg0_2_num=cg0_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
   cg2_2_num=cg2_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
   print *,'Local off-set drive 2: ',cg0_2_num/denom_mflint,cg2_2_num/denom_mflint, denom_mflint
@@ -2502,18 +2402,17 @@ call cpu_time(time1)
        - (a_02_offset/a_00_offset / (a_22_offset - a_02_offset**2/a_00_offset))*cg2_3_num
   cg2_3_num=-a_02_offset/a_00_offset * cg0_3_num_orig / (a_22_offset - a_02_offset**2/a_00_offset) &
        + cg2_3_num / (a_22_offset - a_02_offset**2/a_00_offset)
-  !
+
   cg0_3_num=cg0_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
   cg2_3_num=cg2_3_num*collpar*3.d0*sqrt(3.14159265358979d0)/8.d0  !<=Normalization!
   print *,'Local off-set drive 3: ',cg0_3_num/denom_mflint,cg2_3_num/denom_mflint, denom_mflint
-!
+
   deallocate(avden_vector,avpres_vector)
-!  stop
-!
+
 !  End off-set
-!
+
 ! Plotting:
-!
+
   if(iplot.eq.1) then
     nphiplot=200    !serves as an upper limit for data output
     delphiplot=maxval(phi_mfl(ibeg+1:iend)-phi_mfl(ibeg:iend-1))
@@ -2528,31 +2427,25 @@ call cpu_time(time1)
     ALLOCATE(fun_write(0:lag,0:3,0:nplp1,3))
     icounter=0
     phiplot=phi_mfl(ibeg)-1.d0
-!
+
     write(propname,*) fieldpropagator%tag
 
     if (prop_fileformat .eq. 1) then
 
-       !call h5_create('spitzer_' // trim(adjustl(propname)) // '.h5', h5id_final_spitzer)
-
        ! Create unlimited arrays in HDF5 file
 
        call h5_create('phi_mesh_' // trim(adjustl(propname)) // '.h5', h5id_phi_mesh)
-       !call h5_define_group(h5id_final_spitzer, 'phi_mesh', h5id_phi_mesh)
 
        if (lsw_save_dentf) then
           call h5_create('dentf_' // trim(adjustl(propname)) // '.h5', h5id_dentf)
-          !call h5_define_group(h5id_final, 'dentf', h5id_dentf)
        end if
 
        if (lsw_save_enetf) then
           call h5_create('enetf_' // trim(adjustl(propname)) // '.h5', h5id_enetf)
-          !call h5_define_group(h5id_final, 'enetf', h5id_enetf)
        end if
 
        if (lsw_save_spitf) then
           call h5_create('spitf_' // trim(adjustl(propname)) // '.h5', h5id_spitf)
-          !call h5_define_group(h5id_final_spitzer, 'spitf', h5id_spitf)
        end if
     else
 
@@ -2572,7 +2465,7 @@ call cpu_time(time1)
        open(iunit_et_m,form='unformatted',file='enetf_m.'     &
             //trim(adjustl(propname))//'.dat')
     end if
-    !
+
 
     !**********************************************************
     ! Allocate space for datasets written to HDF5 at once
@@ -2603,7 +2496,7 @@ call cpu_time(time1)
       phiplot=phi_mfl(istep)+delphiplot
       npassing=npl(istep)
       eta0=1.d0/bhat_mfl(istep)
-      !
+
       if (prop_fileformat .eq. 1) then
          phi_mfl_h5(icounter)  = phi_mfl(istep)
          bhat_mfl_h5(icounter) = bhat_mfl(istep)
@@ -2611,7 +2504,7 @@ call cpu_time(time1)
       else
          write (iunit_phi,*) phi_mfl(istep),npassing,bhat_mfl(istep)
       end if
-      !
+
       fun_write=0.d0
       do m=0,lag
         k=ind_start(istep)+2*(npassing+1)*m
@@ -2622,7 +2515,7 @@ call cpu_time(time1)
                                     source_vector(k+i-1:k+i+2,:))
         enddo
       enddo
-      !
+
       if (prop_fileformat .eq. 1) then
          dentf_p_h5(:,:,:,icounter) = fun_write(:,:,:,1)
          spitf_p_h5(:,:,:,icounter) = fun_write(:,:,:,2)/surface_boozer_B00
@@ -2632,7 +2525,7 @@ call cpu_time(time1)
          write(iunit_sp_p) fun_write(:,:,:,2)/surface_boozer_B00
          write(iunit_et_p) fun_write(:,:,:,3)
       end if
-      !
+
       fun_write=0.d0
       do m=0,lag
         k=ind_start(istep)+2*(npassing+1)*(m+1)
@@ -2643,7 +2536,7 @@ call cpu_time(time1)
                                     source_vector(k-i+2:k-i-1:-1,:))
         enddo
       enddo
-      !
+
       if (prop_fileformat .eq. 1) then
          dentf_m_h5(:,:,:,icounter) = fun_write(:,:,:,1)
          spitf_m_h5(:,:,:,icounter) = fun_write(:,:,:,2)/surface_boozer_B00
@@ -2653,7 +2546,7 @@ call cpu_time(time1)
          write(iunit_sp_m) fun_write(:,:,:,2)/surface_boozer_B00
          write(iunit_et_m) fun_write(:,:,:,3)
       end if
-      !
+
     enddo
 
     if (prop_fileformat .eq. 1) then
@@ -2713,20 +2606,15 @@ call cpu_time(time1)
        close(iunit_et_p)
        close(iunit_et_m)
     end if
-    !
+
     if (prop_fileformat .eq. 1) then
        call h5_create('sizeplot_etalev_' // trim(adjustl(propname)) // '.h5', h5id_sizeplot)
-       !call h5_define_group(h5id_final_spitzer, 'sizeplot_etalev', h5id_sizeplot)
        call h5_add(h5id_sizeplot, 'lag', lag)
        call h5_add(h5id_sizeplot, 'nplp1', nplp1, comment='number of eta levels')
        call h5_add(h5id_sizeplot, 'icounter', icounter, comment='number of phi points')
        call h5_add(h5id_sizeplot, 'collpar', collpar)
        call h5_add(h5id_sizeplot, 'travis_convfac', travis_convfac )
        call h5_add(h5id_sizeplot, 'eta', eta(0:nplp1), lbound(eta(0:nplp1)), ubound(eta(0:nplp1)))
-       !call h5_add(h5id_sizeplot, 'eta_all', eta, lbound(eta), ubound(eta))
-       !call h5_add(h5id_sizeplot, 'eta_glob', eta_glob, lbound(eta_glob), ubound(eta_glob))
-       !call h5_add(h5id_sizeplot, 'eta_loc', eta_loc, lbound(eta_loc), ubound(eta_loc))
-       !call h5_close_group(h5id_sizeplot)
        call h5_add(h5id_sizeplot, 'ripple_tag',fieldpropagator%ch_act%tag)
        call h5_add(h5id_sizeplot, 'ripple_b_max_l',fieldpropagator%ch_act%b_max_l)
        call h5_add(h5id_sizeplot, 'ripple_b_max_r',fieldpropagator%ch_act%b_max_r)
@@ -2738,19 +2626,15 @@ call cpu_time(time1)
        write(iunit_sizes,*) eta(0:nplp1)
        close(iunit_sizes)       
     end if
-!
+
     DEALLOCATE(fun_write)
-!
+
   endif
-!
+
 call cpu_time(time1)
 qflux=matmul(flux_vector,source_vector)
 call cpu_time(time2)
-!write (*,*) "Time in matmul(): ", time2-time1, iplot
-!call gemm(qflux, flux_vector, source_vector)
-!write (*,*) flux_vector
-!write (*,*) source_vector
-!
+
   do m=0,lag
     do kk=1,3
       k=ind_start(ibeg)+2*npass_l*m
@@ -2761,16 +2645,16 @@ call cpu_time(time2)
           =source_vector(k+1:k+npass_r,kk)
     enddo
   enddo
-!
+
   if(iplot.eq.1.or.isw_axisymm.eq.1) then
-!
+
     flux_p=0.d0
     flux_m=0.d0
     amat_plus_plus=0.d0
     amat_plus_minus=0.d0
     amat_minus_minus=0.d0
     amat_minus_plus=0.d0
-!
+
     deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
     if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
     DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
@@ -2781,16 +2665,16 @@ call cpu_time(time2)
     DEALLOCATE(delt_pos,delt_neg,fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
     IF (ALLOCATED(eta_prev)) DEALLOCATE(eta_prev)
     IF (ALLOCATED(eta_next)) DEALLOCATE(eta_next)
-!
+
     call cpu_time(time_solver)
     print *,'solving (1) completed       ',time_solver - time_factorization,' sec'
-!
+
     return
-!
+
   endif
-!
+
 ! Calculation of propagators:
-!
+
 time3 = 0
 call cpu_time(time1)
   do m=0,lag
@@ -2798,48 +2682,46 @@ call cpu_time(time1)
     do i=1,npass_l
       bvec_sp=0.d0
       bvec_sp(k+i)=1.d0
-!
+
 call cpu_time(time4)
       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),   &
                         bvec_sp,iopt)
 call cpu_time(time5)
 time3 = time3 + (time5-time4)
-!
+
 ! integral part:
-!
+
       if(isw_intp.eq.1) then
         bvec_lor=bvec_sp
-!
+
         do iter=1,niter
           bvec_prev=bvec_sp
-!
+
           call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
                              ailmm,bvec_sp,bvec_iter)
-!
+
           call cpu_time(time4)
           CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),      &
                             bvec_iter,iopt)
           call cpu_time(time5)
           time3 = time3 + (time5-time4)
-!
+
           bvec_sp=bvec_lor+bvec_iter
-          !write (*,*) "2 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
-   	     !write (*,*) "Left - Number of iterations: ", iter
             exit
           endif
-!
+
         enddo
-        !
+
         if (niter .eq. iter) then
            write (*,*) "Left - Maximum number of iterations reached in ripple solver."
            stop
         end if
       endif
-!
+
       do mm=0,lag
         kk=ind_start(iend)+2*npass_r*mm
         amat_plus_plus(npass_r*mm+1:npass_r*mm+npass_r,npass_l*m+i)    &
@@ -2853,54 +2735,52 @@ time3 = time3 + (time5-time4)
       flux_p(:,npass_l*m+i)=matmul(flux_vector,bvec_sp(:))
     enddo
   enddo
-!
+
   do m=0,lag
     k=ind_start(iend)+2*npass_r*m
     do i=1,npass_r
       bvec_sp=0.d0
       bvec_sp(k+2*npass_r+1-i)=1.d0
-!
+
       call cpu_time(time4)
       CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),   &
                         bvec_sp,iopt)
       call cpu_time(time5)
       time3 = time3 + (time5-time4)
-!
+
 ! integral part:
-!
+
       if(isw_intp.eq.1) then
         bvec_lor=bvec_sp
-!
+
         do iter=1,niter
           bvec_prev=bvec_sp
-!
+
           call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
                              ailmm,bvec_sp,bvec_iter)
-!
+
           call cpu_time(time4)
           CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),      &
                             bvec_iter,iopt)
           call cpu_time(time5)
           time3 = time3 + (time5-time4)
-!
+
           bvec_sp=bvec_lor+bvec_iter
-          !write (*,*) "3 ", iter, sum(abs(bvec_sp-bvec_prev)), sum(abs(bvec_prev))*epserr_iter
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
-             !write (*,*) "Right - Number of iterations: ", iter
              exit
           endif
-!
+
         enddo
-        !
+
         if (niter .eq. iter) then
            write (*,*) "Right - Maximum number of iterations reached in ripple solver."
            stop
         end if
       endif
-!
+
       do mm=0,lag
         kk=ind_start(iend)+2*npass_r*mm
         amat_minus_plus(npass_r*mm+1:npass_r*mm+npass_r,npass_r*m+i)   &
@@ -2914,9 +2794,9 @@ time3 = time3 + (time5-time4)
       flux_m(:,npass_r*m+i)=matmul(flux_vector,bvec_sp(:))
     enddo
   enddo
-!
+
   iopt=3
-!
+
 call cpu_time(time2)
 write (*,*) "Time in solver in calculating propagator: ", time3
 write (*,*) "Time in calculating propagator: ", time2 - time1
@@ -2925,27 +2805,22 @@ write (*,*) "Time in calculating propagator: ", time2 - time1
 call cpu_time(time1)
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
 call cpu_time(time2)
-!write (*,*) "Time in solver:", time2 - time1
-!
+
   deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
   if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
-!
-!
-!
+
+
   call cpu_time(time_solver)
   print *,'solving completed (2)       ',time_solver - time_factorization,' sec'
-!
-!
-!
-!
-!
+
+
   nplp1=npart_loc+1
   ntotsize=(lag+1)*nplp1
-!
+
 PRINT *,'npart_loc = ',npart_loc,' npass_l = ',npass_l,' npass_r = ',npass_r
-!
+
   ndim=ntotsize
-!
+
 IF(fieldpropagator%tag.EQ.2) THEN
 
 #if !defined(MPI_SUPPORT)
@@ -2960,14 +2835,10 @@ OPEN(111,file='qfluxhist.dat',position='append')
 ENDIF
 facnorm_m=1.d0
 facnorm_p=1.d0
-!WRITE(112,*) fieldpropagator%tag,qflux(1:2,1),qflux(1:2,2),npart_loc &
-!             ,b_max_l,b_max_r,facnorm_p,facnorm_m,ignore_boundary_layer_new &
-!             ,ignore_boundary_layer,ifilter_l,ifilter_r
 #if !defined(MPI_SUPPORT)
 WRITE(112,*) fieldpropagator%tag,qflux(1:2,1),qflux(1:2,2),npart_loc &
              ,b_max_l,b_max_r,facnorm_p,facnorm_m,ignore_lb &
              ,ignore_rb,modify_bl,modify_br
-!             ,ignore_rb,ifilter_l,ifilter_r
 write(111,*) fieldpropagator%tag,qflux
 DO i=0,npart_loc
 WRITE(113,*) fieldpropagator%tag,eta(i)
@@ -2978,10 +2849,9 @@ CLOSE(111)
 #endif
 
 PRINT *,qflux(1:2,1),qflux(1:2,2)
-!!PAUSE
-!
+
 GOTO 1
-!
+
 #if !defined(MPI_SUPPORT)
 OPEN(111,file='flux_p.dat')
 WRITE(111,'(4(1x,e12.5))') (alam_l(i),flux_p(:,i) ,i=1,npass_l)
@@ -2996,63 +2866,37 @@ OPEN(111,file='source_m.dat')
 WRITE(111,'(4(1x,e12.5))') (alam_l(i),source_m(i,:)/delta_eta_l(i) ,i=1,npass_l)
 CLOSE(111)
 #endif
-!amat_plus_plus=0.d0
-!amat_plus_minus=0.d0
-!amat_minus_plus=0.d0
-!amat_minus_minus=0.d0
-!do i=1,min(npass_l,npass_r)
-!amat_plus_plus(i,i)=1.d0
-!amat_minus_minus(i,i)=1.d0
-!enddo
-!do i=npass_r+1,npass_l
-!amat_plus_minus(i,i)=0.d0 !1.d0
-!enddo
-!do i=npass_l+1,npass_r
-!amat_minus_plus(i,i)=0.d0 !1.d0
-!enddo
-!
+
 OPEN(111,file='amat_p_p.dat')
 DO i=1,npass_r
 WRITE(111,*) amat_plus_plus(i,1:npass_l)
-!WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_plus_plus(i,1:npass_l)
 ENDDO
 CLOSE(111)
 OPEN(111,file='amat_p_m.dat')
 DO i=1,npass_l
 WRITE(111,*) amat_plus_minus(i,1:npass_l)
-!WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_plus_minus(i,1:npass_l)
 ENDDO
 CLOSE(111)
 OPEN(111,file='amat_m_p.dat')
 DO i=1,npass_r
 WRITE(111,*) amat_minus_plus(i,1:npass_r)
-!WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_minus_plus(i,1:npass_r)
 ENDDO
 CLOSE(111)
 OPEN(111,file='amat_m_m.dat')
 DO i=1,npass_l
 WRITE(111,*) amat_minus_minus(i,1:npass_r)
-!WRITE(111,*) 0.5d0*(eta(i)+eta(i-1)),amat_minus_minus(i,1:npass_r)
 ENDDO
 CLOSE(111)
-!open(111,file='lambda_l.dat')
-!do i=1,npass_l
-!write (111,*) -alam_l(i),delta_eta_l(i)
-!enddo
-!do i=npass_l,1,-1
-!write (111,*) alam_l(i),delta_eta_l(i)
-!enddo
-!close(111)
-!PAUSE 'written' ! Warning in gfortran-4.7
+
 1 CONTINUE
-!
+
 PRINT *,' '
   DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
   DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
   DEALLOCATE(npl,rhs_mat_fzero,rhs_mat_lorentz,rhs_mat_energ,q_rip)
   DEALLOCATE(convol_flux,convol_curr,ind_start)
   DEALLOCATE(delt_pos,delt_neg,fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
-!
+
   !------------------------------------------------------------------------
   ! END SERGEI
   !------------------------------------------------------------------------
@@ -3071,30 +2915,30 @@ PRINT *,' '
   !------------------------------------------------------------------------
   RETURN
 END SUBROUTINE ripple_solver
-!
+
+
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!
 subroutine integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                          phi_mfl,pleg_bra,pleg_ket,ailmm,vec_in,vec_out)
-!
+
   implicit none
-!
+
   integer :: npart,leg,lag,ibeg,iend,n_2d_size
   integer :: l,m,i,k,istep,npassing
-!
+
   integer,          dimension(ibeg:iend)                 :: npl,ind_start
   double precision, dimension(ibeg:iend)                 :: phi_mfl
   double precision, dimension(n_2d_size)                 :: vec_in,vec_out
   double precision, dimension(0:leg,1:npart+1,ibeg:iend) :: pleg_bra,pleg_ket
   double precision, dimension(0:lag,0:lag,0:leg)         :: ailmm
   double precision, dimension(0:lag,0:leg)               :: scalprod_pleg
-!
+
   vec_out=0.d0
-!
+
   do istep=ibeg,iend
-!
+
     npassing=npl(istep)
-!
+
     do m=0,lag
       k=ind_start(istep)+2*(npassing+1)*m
       do l=0,leg
@@ -3111,23 +2955,23 @@ subroutine integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
            -sum(pleg_bra(l,1:npassing+1,istep)*vec_in(k:k-npassing:-1))
       enddo
     enddo
-!
+
     do l=0,leg
       scalprod_pleg(0:lag,l)=matmul(ailmm(0:lag,0:lag,l),scalprod_pleg(0:lag,l))
     enddo
-!
+
     do m=0,lag
       k=ind_start(istep)+2*(npassing+1)*m
-!
+
       if(istep.gt.ibeg) then
         do l=0,leg
           vec_out(k+1:k+npassing+1)=vec_out(k+1:k+npassing+1)            &
                       +scalprod_pleg(m,l)*pleg_ket(l,1:npassing+1,istep)
         enddo
       endif
-!
+
       k=k+2*(npassing+1)
-!
+
       if(istep.lt.iend) then
         do l=0,leg,2
           vec_out(k:k-npassing:-1)=vec_out(k:k-npassing:-1)              &
@@ -3138,44 +2982,42 @@ subroutine integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                       -scalprod_pleg(m,l)*pleg_ket(l,1:npassing+1,istep)
         enddo
       endif
-!
+
     enddo
-!
+
   enddo
-!
+
 end subroutine integral_part
-!
+
+
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!
 subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
                              phi_mfl,bhat_mfl,geodcu_mfl,h_phi_mfl,eta,  &
                              delt_pos,delt_neg,                          &
                              fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
-!
 ! Mnemonics: 
 ! fact_pos_b(i) - integration step in positive direction starts at point i
 ! fact_pos_e(i) - integration step in positive direction ends at point i
 ! fact_neg_b(i) - integration step in negative direction starts at point i
 ! fact_neg_e(i) - integration step in negative direction ends at point i
-!
+
   USE plagrange_mod
-!
+
   implicit none
-!
-!  logical, parameter :: stepmode=.true.
+
   logical, parameter :: stepmode=.false.
   INTEGER, PARAMETER :: npoi=6, nder=0, npoihalf=npoi/2, nstepmin=8
   double precision, parameter :: bparabmax=0.2d0
-!
+
   integer :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
   integer :: ncross_l,ncross_r,ib,ie,intb,inte,k,imid,isplit
-!
+
   double precision :: subsqmin,ht,ht2,bparab,x1,x2,f1,f2
-!
+
   integer, dimension(1)              :: idummy
   integer, dimension(1:iend)         :: phi_divide
   integer, dimension(:), allocatable :: icross_l,icross_r
-!
+
   DOUBLE PRECISION, DIMENSION(npoi)           :: tp,weight
   DOUBLE PRECISION, DIMENSION(0:nder,npoi)    :: coeff
   double precision, dimension(0:npart)        :: eta
@@ -3191,18 +3033,18 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
 
   call fix_phiplacement_problem(ibeg,iend,npart,subsqmin,        &
                                 phi_mfl,bhat_mfl,eta)
-!
+
   phi_divide=1
-!
+
   delt_pos(ibeg+1:iend)=phi_mfl(ibeg+1:iend)-phi_mfl(ibeg:iend-1)
   fact_pos_b=1.d0
   fact_pos_e=1.d0
-!
+
 ! determine level crossings:
-!
+
   idummy=minloc(bhat_mfl(ibeg:iend))
   ibmin=idummy(1)+ibeg-1
-!
+
   ncross_l=0
   if(ibmin.gt.ibeg) then
     istep=ibmin
@@ -3255,7 +3097,7 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
       enddo
     endif
   endif
-!
+
   ncross_r=0
   if(ibmin.lt.iend) then
     istep=ibmin
@@ -3308,9 +3150,9 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
       enddo
     endif
   endif
-!
+
 ! place ibmin to an odd point:
-!
+
   if(mod(ibmin-ibeg,2).eq.1) then
     if(ncross_l.gt.0.and.ncross_r.gt.0) then
       if(icross_r(1)-ibmin.gt.ibmin-icross_l(1)) then
@@ -3324,9 +3166,9 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
       ibmin=ibmin-1
     endif
   endif
-!
+
 ! check the number of steps in sub-intervals for parabolic bhat term:
-!
+
   if(ncross_l.gt.0) then
     ie=icross_l(1)
     do i=2,ncross_l
@@ -3351,7 +3193,7 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
       phi_divide(ib+1:ie)=isplit
     endif
   endif
-!
+
   if(ncross_r.gt.0) then
     ib=icross_r(1)
     do i=2,ncross_r
@@ -3376,20 +3218,20 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
       phi_divide(ib+1:ie)=isplit
     endif
   endif
-!
+
   if(maxval(phi_divide).gt.1) return
-!
+
 ! change the integration variable phi -> sqrt(phi-phi0):
-!
+
   if(stepmode) then
-!
+
     allocate(phi_new(ibeg:iend),bhat_new(ibeg:iend))
     allocate(geodcu_new(ibeg:iend),h_phi_new(ibeg:iend))
     phi_new=phi_mfl
     bhat_new=bhat_mfl
     geodcu_new=geodcu_mfl
     h_phi_new=h_phi_mfl
-!
+
     ie=ibmin
     do i=1,ncross_l
       ib=icross_l(i)
@@ -3405,9 +3247,9 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
         enddo
         intb=max(ibeg,min(iend-npoi+1,k-npoihalf))
         inte=intb+npoi-1
-!
+
         CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
-!
+
         bhat_new(istep)=sum(coeff(0,:)*bhat_mfl(intb:inte))
         geodcu_new(istep)=sum(coeff(0,:)*geodcu_mfl(intb:inte))
         h_phi_new(istep)=sum(coeff(0,:)*h_phi_mfl(intb:inte))
@@ -3418,7 +3260,7 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
       fact_pos_b(ib+1:ie-1)=fact_pos_e(ib+1:ie-1)
       ie=ib
     enddo
-!
+
     ib=ibmin
     do i=1,ncross_r
       ie=icross_r(i)
@@ -3434,9 +3276,9 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
         enddo
         intb=max(ibeg,min(iend-npoi+1,k-npoihalf))
         inte=intb+npoi-1
-!
+
         CALL plagrange_coeff(npoi,nder,phi_new(istep),phi_mfl(intb:inte),coeff)
-!
+
         bhat_new(istep)=sum(coeff(0,:)*bhat_mfl(intb:inte))
         geodcu_new(istep)=sum(coeff(0,:)*geodcu_mfl(intb:inte))
         h_phi_new(istep)=sum(coeff(0,:)*h_phi_mfl(intb:inte))
@@ -3447,21 +3289,21 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
       fact_pos_e(ib+1:ie-1)=fact_pos_b(ib+1:ie-1)
       ib=ie
     enddo
-!
+
     phi_mfl=phi_new
     bhat_mfl=bhat_new
     geodcu_mfl=geodcu_new
     h_phi_mfl=h_phi_new
-!
+
     deallocate(phi_new,bhat_new,geodcu_new,h_phi_new)
-!
+
   endif
-!
+
   delt_neg(ibeg:iend-1)=delt_pos(ibeg+1:iend)
   fact_neg_b=fact_pos_e
   fact_neg_e=fact_pos_b
-!
+
   if(allocated(icross_l)) deallocate(icross_l)
   if(allocated(icross_r)) deallocate(icross_r)
-!
+
 end subroutine rearrange_phideps

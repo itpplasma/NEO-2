@@ -90,7 +90,6 @@ contains
 
     ! efit
     INTEGER :: ierr
-    !
 
     IF (mag_coordinates .EQ. 0) THEN
        IF (mag_magfield .EQ. 3) THEN ! EFIT
@@ -99,7 +98,7 @@ contains
           x(2) = 0.0d0
           x(3) = 0.0d0
           CALL compute_aiota(rbeg,efit_raxis,efit_zaxis,aiota_tokamak,ierr)
-          !print *, 'aiota_tokamak = ', aiota_tokamak
+
           IF (ierr .EQ. 1) THEN
              PRINT *, 'Wrong radius for EFIT - I better stop'
              STOP
@@ -119,20 +118,20 @@ contains
        x(1)=y(1)   ! R
        x(2)=phimi  ! phi
        x(3)=y(2)   ! Z
+
        ! this creates the device (look in magnetics for device_struct)
-       !print *, 'flint: before make_magnetics'
        CALL make_magnetics('W7_AS')
+
        ! this is here only for computation of bmod0 (avoid)
-       !print *, 'flint: before mag'
        CALL mag(x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder)
        bmod0=bmod ! seems to be the first value
+
        ! this now creates surface and fieldline
-       !print *, 'flint: before make_magnetics(bmod0,nperiod,nstep,ndim0)'
        CALL make_magnetics(bmod0,nperiod,nstep,ndim0)
        xstart = (/rbeg,phimi,zbeg/)
-       !print *, 'flint: before make_magnetics(xstart)'
+
        CALL make_magnetics(xstart)
-       !print *, 'flint: after make_magnetics'
+
     ELSE
        ! boozer
        y(1)=boozer_theta_beg
@@ -146,7 +145,7 @@ contains
        CALL make_magnetics('Boozer')
        ! this is here only for computation of bmod0 (avoid)
        CALL mag(x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder)
-       !bmod0=bmod ! seems to be the first value
+
        ! this now creates surface and fieldline
        bmod0 = boozer_bmod0
        CALL make_magnetics(bmod0,nperiod,nstep,ndim0)
@@ -223,7 +222,7 @@ contains
     IF (bin_split_mode .EQ. 1) THEN
        CALL ripple_eta_magnetics(collpar_min,eta_s_lim)
     END IF
-    ! print *, 'After ripple_eta_magnetics'
+
   END SUBROUTINE flint_prepare_2
 
   SUBROUTINE write_volume_data(n_r,n_z,n_phi,fname)
@@ -601,7 +600,7 @@ contains
     NULLIFY(p_t)
     NULLIFY(p_min)
     NULLIFY(p_max)
-    RETURN
+
   END SUBROUTINE sort_theta
 
   SUBROUTINE phi_placer(phi_place_mode,phi_split_min,u_eta,eta_m1, &
@@ -630,7 +629,7 @@ contains
     INTEGER :: imin,ub,ip,ips,ipe,iphi,i_eta,k,ie_dir,i,m,n
     INTEGER :: phi_count,arr_phi_count
     INTEGER :: nfp,nstep
-    ! REAL(kind=dp)              :: x(3),y(3),t(3) ! quadratic
+
     REAL(kind=dp), ALLOCATABLE :: phi(:), barr(:)
     REAL(kind=dp), ALLOCATABLE :: arr_phi_sl(:), arr_phi_el(:), arr_b_d(:)
     INTEGER,       ALLOCATABLE :: arr_i_eta(:),arr_ip(:)
@@ -644,11 +643,6 @@ contains
     REAL(kind=dp) :: phi_el,phi_sl,hphi,dpl
     REAL(kind=dp) :: delta_p = 1.d-13 ! 13
     REAL(kind=dp) :: delta_b = 1.d-4  ! 8
-
-    !REAL(kind=dp) :: phi_loc(6), barr_loc(6)
-    !INTEGER :: ubprev,nprev
-    !INTEGER :: k_min,k_max
-    !REAL(kind=dp) :: lag_fac(6)
 
     INTEGER :: phi_placer_status
     INTEGER :: bin_counter
@@ -671,7 +665,7 @@ contains
     IF (ALLOCATED(phiarr)) DEALLOCATE(phiarr)
     phibeg = fieldpropagator%coords%x2(0)
     phiend = fieldpropagator%coords%x2(ub)
-    !hphi = fieldpropagator%coords%x2(1) - phibeg
+
     nfp   = fieldpropagator%parent%parent%parent%parent%nfp ! device
     nstep = fieldpropagator%parent%parent%parent%nstep      ! surface
     hphi  = (twopi / nfp) / nstep
@@ -685,7 +679,6 @@ contains
 
     ! first phi at begin of propagator
     phi_sl = phibeg
-    !CALL set_new(phi_p,phibeg)
 
     ! eta_m1 stands for 1/eta
     !
@@ -693,7 +686,7 @@ contains
     !  towards minimum (1) and from minimum to end (2)
     phi_count = 0
     arr_phi_count = 0
-    !IF (fieldpropagator%tag .EQ. 82) OPEN(123,file='phi_placer.dat')
+
     parts: DO ip = 1,2
        IF (ip .EQ. 1) THEN ! to the minimum
           ips = 0 ! 1
@@ -740,24 +733,6 @@ contains
              ! here i find something
              IF ( (ip.EQ.1 .AND. barr(k).GT.e_k .AND. barr(k+1).LE.e_k) .OR. &
                   (ip.EQ.2 .AND. barr(k).LT.e_k .AND. barr(k+1).GE.e_k) ) THEN
-
-  !!$              ! prepare for 5-th order Lagrange polynomial
-  !!$              ! d_p    = phi(k+1) - phi(k)
-  !!$              IF (ub .GE. 5) THEN
-  !!$                 k_min = MAX(k-2,0)
-  !!$                 k_max = MIN(k+3,ub)
-  !!$                 IF (k_min .EQ. 0)  k_max = k_min + 5
-  !!$                 IF (k_max .EQ. ub) k_min = k_max - 5
-  !!$                 phi_loc  = phi(k_min:k_max)
-  !!$                 barr_loc = barr(k_min:k_max)
-  !!$              ELSE
-  !!$                 ubprev = UBOUND(fieldpropagator%prev%coords%x2,1)
-  !!$                 nprev  = 6-ub-1
-  !!$                 phi_loc(1:nprev)  = fieldpropagator%prev%coords%x2(ubprev-nprev:ubprev-1)
-  !!$                 barr_loc(1:nprev) = fieldpropagator%prev%mdata%bhat(ubprev-nprev:ubprev-1)
-  !!$                 phi_loc(6-ub:6)   = phi(0:ub)
-  !!$                 barr_loc(6-ub:6)  = barr(0:ub)
-  !!$              END IF
                 ! do a binary search
                 p_l = phi(k)
                 p_u = phi(k+1)
@@ -767,8 +742,6 @@ contains
                 binsearch: DO WHILE ( (p_u-p_l) > delta_p )
                    bin_counter = bin_counter + 1
                    p_m = (p_l + p_u) / 2.0_dp
-                   !CALL lagrange_coefs5(p_m,phi_loc,lag_fac)
-                   !b_m = SUM(lag_fac*barr_loc)
                    CALL plagrange_interp(fieldperiod,p_m,nlagrange,b_m,dummy)
                    IF ( (ip.EQ.1 .AND. b_m.LE.e_k) .OR. &
                         (ip.EQ.2 .AND. b_m.GE.e_k) ) THEN
@@ -789,8 +762,6 @@ contains
                    b_d    = b_l
                 END IF
 
-                !IF (fieldpropagator%tag .EQ. 82) WRITE(123,*) e_k,1.0_dp/e_k,phi_el,b_d
-
                 IF (b_d > e_k) THEN
                    PRINT *, 'WARNING', fieldpropagator%tag
                    PRINT *, 'ip,phi_el,b_d,e_k ',ip,phi_el,b_d,e_k
@@ -798,9 +769,7 @@ contains
                    phi_el = phi_el + (e_k - 1.d-13 - b_d) / dummy
                    CALL plagrange_interp(fieldperiod,phi_el,nlagrange,b_d,dummy)
                    PRINT *, 'ip,phi_el,b_d,e_k ',ip,phi_el,b_d,e_k
-                   !PAUSE
                 END IF
-                ! PRINT *, 'phi_el ',phi_el
 
                 ! now one has to move phi by a small value to ensure
                 ! $(1-\eta \Bhat)>0$
@@ -840,7 +809,6 @@ contains
           IF (k .GT. ipe) EXIT philoop
        END DO philoop
     END DO parts
-    !IF (fieldpropagator%tag .EQ. 82) CLOSE(123)
 
     IF (arr_phi_count .EQ. 0) THEN
        phi_placer_status = 1
@@ -858,8 +826,6 @@ contains
     ELSE
        arr_i_eta(arr_phi_count) = arr_i_eta(arr_phi_count-1) - 1
     END IF
-    ! PRINT *, 'Size arr_i_eta: ',SIZE(arr_i_eta)
-    ! PRINT *, arr_phi_count
 
     DO k = 1, arr_phi_count
        phi_sl = arr_phi_sl(k)
@@ -867,26 +833,6 @@ contains
        b_d = arr_b_d(k)
        i_eta = arr_i_eta(k)
        ip = arr_ip(k)
-       ! PRINT *, 'i_eta: ',i_eta
-       ! PRINT *, 'ip:    ',ip
-
-  !!$     ! not necessary
-  !!$     ! handle the shift in phi
-  !!$     delta_phi = 0.0_dp
-  !!$     IF (k .LT. arr_phi_count) THEN
-  !!$        IF (b_d .NE. 0.0_dp) THEN
-  !!$           delta_phi = ABS(delta_b / b_d)
-  !!$        ELSE
-  !!$           delta_phi = 1.0_dp
-  !!$        END IF
-  !!$        delta_phi = MIN( (phi_el-phi_sl)/10.0_dp , delta_phi)
-  !!$        delta_phi = - SIGN(1.0_dp,b_d)*delta_phi
-  !!$        phi_el = phi_el + delta_phi
-  !!$        arr_phi_el(k) = phi_el
-  !!$        arr_phi_sl(k+1) = phi_el
-  !!$     END IF
-
-       !PRINT *, ip,phi_sl,phi_el,phi_el-phi_sl,delta_phi
 
        ! make the phi between phi_sl and phi_el
        ! last one is only recorded for the last sub-intervall
@@ -924,26 +870,6 @@ contains
     DO n = 0,u_eta
        IF (phi_eta_ind(n,2) .LT. 0) phi_eta_ind(n,2) = ub
     END DO
-
-  !!$  IF (fieldpropagator%tag .EQ. 82) THEN
-  !!$     OPEN(123,file='phiarr.dat')
-  !!$     DO i=LBOUND(phiarr,1),UBOUND(phiarr,1)
-  !!$        WRITE(123,*) i,phiarr(i)
-  !!$     ENDDO
-  !!$     CLOSE(123)
-  !!$
-  !!$     OPEN(123,file='phiind.dat')
-  !!$     DO i=0,u_eta
-  !!$        IF (phi_eta_ind(i,1) .GT. 0 .AND. phi_eta_ind(i,1) .LT. u_eta) THEN
-  !!$           WRITE(123,*) eta_m1(i),phiarr(phi_eta_ind(i,1))
-  !!$        END IF
-  !!$        IF (phi_eta_ind(i,2) .NE. 0.AND. phi_eta_ind(i,2) .LT. u_eta ) THEN
-  !!$           WRITE(123,*) eta_m1(i),phiarr(phi_eta_ind(i,2))
-  !!$        END IF
-  !!$     ENDDO
-  !!$     CLOSE(123)
-  !!$  END IF
-
 
     ! get rid of pointers
     CALL delete_all(phi_p)
@@ -1010,13 +936,6 @@ contains
     ! extract information to phiarr which is used in the caller
     CALL extract_array(phi_p,phiarr)
 
-  !!$  OPEN(unit=9999,file='divide.dat')
-  !!$  DO iphi = 1,ub
-  !!$     WRITE (9999,*) phi_divide(iphi)
-  !!$  END DO
-  !!$  CLOSE(unit=9999)
-  !!$  !stop
-
     ! get rid of pointers
     CALL delete_all(phi_p)
 
@@ -1027,13 +946,13 @@ contains
   END SUBROUTINE phi_divider
 
   SUBROUTINE lagrange_coefs5(u,up,cu)
-  !
+
     IMPLICIT NONE
-    !
+
     INTEGER,          PARAMETER     :: mp=6
     DOUBLE PRECISION                :: u
     DOUBLE PRECISION, DIMENSION(mp) :: up,cu
-    !
+
     cu(1) = (u - up(2))/(up(1) - up(2))        &
          * (u - up(3))/(up(1) - up(3))         &
          * (u - up(4))/(up(1) - up(4))         &
@@ -1064,8 +983,7 @@ contains
          * (u - up(3))/(up(6) - up(3))         &
          * (u - up(4))/(up(6) - up(4))         &
          * (u - up(5))/(up(6) - up(5))
-    !
-    RETURN
+
   END SUBROUTINE lagrange_coefs5
 
 END MODULE flint_mod

@@ -562,24 +562,14 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 ! ---------------------------
 
   ! solve system
-  !! Modifications by Andreas F. Martitsch (06.08.2014)
-  !Replace standard solver from Lapack with sparse solver
-  !(Bad performance for more than 1000 flux surfaces ~ (3*nsurf)^2)
-  !PRINT *,"Before - solve system for spline coefficients"
-  !CALL solve_eqsys(MA, inh, info)
-  !IF (info /= 0) STOP 'splinecof3_a: Singular matrix in solve_eqsys()!'
   CALL sparse_solve(MA, inh)
-  !PRINT *,"After - solve system for spline coefficients"
-  !! Modifications by Andreas F. Martitsch (06.08.2014)
   
-  !  PRINT *, ' A B C D'
   ! take a(), b(), c(), d()
   DO i = 1, len_indx
      a(i) = inh((i-1)*VAR+1) 
      b(i) = inh((i-1)*VAR+2) 
      c(i) = inh((i-1)*VAR+3)
      d(i) = inh((i-1)*VAR+4) 
-!     PRINT *, a(i), b(i), c(i), d(i)
   END DO
   
 
@@ -1381,7 +1371,6 @@ subroutine splinecof1_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   allocate (lambda3(ns,size(y,2)), w(ns,size(y,2)), stat = i_alloc)
   if (i_alloc /= 0) stop 'splinecof1_hi_driv: Allocation for arrays failed!'
 
-  ! lambda3 = -1.0D0   !! automatic smoothing
   lambda3 =  1.0D0     !! no smoothing
 
 

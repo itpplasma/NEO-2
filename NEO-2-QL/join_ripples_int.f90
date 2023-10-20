@@ -34,7 +34,7 @@
 !   source_p_new          =>   n%p%source_p_g
 !                         =>   n%p%source_p_e
 !   ............
-!
+
 
 SUBROUTINE join_ripples_bsfitsplit(eta,loc)
   ! this is the external routine which has to take care of 
@@ -42,7 +42,7 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
   !
   ! the location for the split is given in the variable loc
   ! eta contains this new value already at position loc
-  !
+
   USE propagator_mod
   USE fluxsplit_mod
 
@@ -93,8 +93,6 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
   !  forward  is on the old
   !  backward is on the new (automatically taken care of by prop_modifyold
 
-  ! 
-
   ! compute different weight for splitting if boundary has to be splitted
   IF (loc .EQ. npass+1 .AND. eta(loc) .LT. eta_boundary) THEN
      boundary_split = .TRUE.
@@ -111,7 +109,6 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
      ! working array and copy parts which are not effected
      ALLOCATE(work(n1+1,n2))
      work(1:loc-1,:) = a%p%cmat(1:loc-1,:)
-     !work(loc:loc+1,:) = 0.0_dp
      work(loc+2:,:)  = a%p%cmat(loc+1:,:)
      IF (mode .EQ. 0) THEN
         ! the simple mode 0
@@ -191,14 +188,13 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
         END DO
         CLOSE(unit=1000)
         PRINT *, 'join_ripples_bsfitsplit - cmat.dat written'
-        !PAUSE
      END IF
   END IF
   
 
   ! final cleaning
   NULLIFY(a)
-  RETURN
+
 END SUBROUTINE join_ripples_bsfitsplit
 
 SUBROUTINE join_ripples_bsfitjoin(eta,loc)
@@ -209,7 +205,7 @@ SUBROUTINE join_ripples_bsfitjoin(eta,loc)
   !
   ! in the test the next value is moved down
   ! in reality two levels have to be merged (sum?)
-  !
+
   USE propagator_mod
 
   IMPLICIT NONE
@@ -266,14 +262,13 @@ SUBROUTINE join_ripples_bsfitjoin(eta,loc)
         END DO
         CLOSE(unit=1000)
         PRINT *, 'join_ripples_bsfitjoin - cmat.dat written'
-        !PAUSE
      END IF
   END IF
 
 
   ! final cleaning
   NULLIFY(a)
-  RETURN
+
 END SUBROUTINE join_ripples_bsfitjoin
 
 SUBROUTINE join_ripples_nn(ierr,cstat)
@@ -337,6 +332,5 @@ SUBROUTINE join_ripples_nn(ierr,cstat)
   ! final cleaning
   NULLIFY(o)
   NULLIFY(n)
-  !
-  RETURN
+
 END SUBROUTINE join_ripples_nn

@@ -17,7 +17,6 @@ contains
     integer       :: m
     real(kind=dp) :: x, phi_polynomial
 
-    !phi_polynomial = sqrt(pi**1.5d0) * sqrt(2d0/gamma(5d0/2d0 + m)) * x**(m)
     phi_polynomial = x**m
   end function phi_polynomial
 
@@ -25,7 +24,6 @@ contains
     integer       :: m
     real(kind=dp) :: x, d_phi_polynomial
 
-    !d_phi_polynomial =  sqrt(pi**1.5d0) * sqrt(2d0/gamma(5d0/2d0 + m)) * m * x**(m-1)
     d_phi_polynomial = m * x**(m-1)
   end function d_phi_polynomial
 
@@ -33,7 +31,6 @@ contains
     integer :: m
     real(kind=dp) :: x, dd_phi_polynomial
 
-    !dd_phi_polynomial =  sqrt(pi**1.5d0) * sqrt(2d0/gamma(5d0/2d0 + m)) * m*(m-1) * x**(m-2)
     dd_phi_polynomial = m*(m-1) * x**(m-2)
   end function dd_phi_polynomial
 
@@ -49,7 +46,6 @@ contains
     integer       :: m
     real(kind=dp) :: x, phi_polynomial_2
 
-    !phi_polynomial = sqrt(pi**1.5d0) * sqrt(2d0/gamma(5d0/2d0 + m)) * x**(m)
     phi_polynomial_2 = x**(2*m)
   end function phi_polynomial_2
 
@@ -57,7 +53,6 @@ contains
     integer       :: m
     real(kind=dp) :: x, d_phi_polynomial_2
 
-    !d_phi_polynomial =  sqrt(pi**1.5d0) * sqrt(2d0/gamma(5d0/2d0 + m)) * m * x**(m-1)
     d_phi_polynomial_2 = (2*m) * x**(2*m-1)
   end function d_phi_polynomial_2
 
@@ -65,7 +60,6 @@ contains
     integer :: m
     real(kind=dp) :: x, dd_phi_polynomial_2
 
-    !dd_phi_polynomial =  sqrt(pi**1.5d0) * sqrt(2d0/gamma(5d0/2d0 + m)) * m*(m-1) * x**(m-2)
     dd_phi_polynomial_2 = 2*m*(2*m-1) * x**(2*m-2)
   end function dd_phi_polynomial_2
 
@@ -81,7 +75,6 @@ contains
     integer       :: m
     real(kind=dp) :: x, phi_polynomial_3
 
-    !phi_polynomial = sqrt(pi**1.5d0) * sqrt(2d0/gamma(5d0/2d0 + m)) * x**(m)
     phi_polynomial_3 = x**(2*(m+1))
   end function phi_polynomial_3
 
@@ -89,7 +82,6 @@ contains
     integer       :: m
     real(kind=dp) :: x, d_phi_polynomial_3
 
-    !d_phi_polynomial =  sqrt(pi**1.5d0) * sqrt(2d0/gamma(5d0/2d0 + m)) * m * x**(m-1)
     d_phi_polynomial_3 = 2*(m+1) * x**(2*m+1)
   end function d_phi_polynomial_3
 
@@ -97,7 +89,6 @@ contains
     integer :: m
     real(kind=dp) :: x, dd_phi_polynomial_3
 
-    !dd_phi_polynomial =  sqrt(pi**1.5d0) * sqrt(2d0/gamma(5d0/2d0 + m)) * m*(m-1) * x**(m-2)
     dd_phi_polynomial_3 = 2*(m+1)*(2*m+1) * x**(2*m)
   end function dd_phi_polynomial_3
   

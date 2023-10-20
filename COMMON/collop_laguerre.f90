@@ -90,7 +90,6 @@ contains
 
     d_phi_laguerre = 2d0 * x * dplag * pi**(3d0/4d0) * phi_hm(m)
 
-    !write (*,*) x2, dplag, xpow, add, phi_hm(m)
   end function d_phi_laguerre
 
   function dd_phi_laguerre(m, x)
