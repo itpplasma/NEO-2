@@ -68,13 +68,11 @@ contains
     if (allocated(obj%idxvec)) then
        if (allocated(this%idxvec)) deallocate(this%idxvec)
        allocate(this%idxvec, source=obj%idxvec)
-       !this%idxvec = obj%idxvec
 
     end if
     if (allocated(obj%values)) then
        if (allocated(this%values)) deallocate(this%values)
        allocate(this%values, source=obj%values)
-       !this%values = obj%values
 
     end if
     this%len        = obj%len
@@ -120,8 +118,6 @@ contains
        else
           allocate(this%idxvec(len_sparse))
           allocate(this%values(len_sparse))
-          !this%idxvec = 0
-          !this%values = 0         
        end if
        this%len_sparse = len_sparse
 
@@ -146,10 +142,6 @@ contains
 
     val = 0
     if (allocated(this%idxvec)) then
-       !if (.not. any(this%idxvec .eq. idx)) then
-       !   val = 0
-       !   return
-       !end if
 
        idx_sparse = this%find(idx, idxnear)
        if (idx_sparse .gt. 0) then
@@ -186,17 +178,6 @@ contains
     integer, intent(out)         :: idxnear
     integer          :: k
     logical          :: found
-
-    !**********************************************************
-    ! Linear find
-    !**********************************************************
-    !idx_sparse = -1
-    !do k = 1,this%len_sparse
-    !   if (this%idxvec(k) .eq. idx) then
-    !      idx_sparse = k
-    !      return
-    !   end if
-    !end do
 
     !**********************************************************
     ! Binary find

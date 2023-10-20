@@ -9,64 +9,63 @@
 !-----------------------------------------------------------------------------------------!
 
 MODULE pspline_routines_mod
-  !
+
   USE EZspline_obj
   USE EZspline
-  !
+
   IMPLICIT NONE
-  !
+
   ! This is the definition of double precision numbers in PSPLINE
   ! (Note: This has the same kind as dp [dp=kind(1.0d0)])
   INTEGER, PARAMETER :: r8 = SELECTED_REAL_KIND(12,100)
-  !
+
   public cub1d_pspline_0
   private cub1d_pspline_0_sca, cub1d_pspline_0_vec
   interface cub1d_pspline_0
      module procedure cub1d_pspline_0_sca, cub1d_pspline_0_vec
   end interface cub1d_pspline_0
-  !
+
   public cub1d_pspline_1
   private cub1d_pspline_1_sca, cub1d_pspline_1_vec
   interface cub1d_pspline_1
      module procedure cub1d_pspline_1_sca, cub1d_pspline_1_vec
   end interface cub1d_pspline_1
-  !
+
   public cub1d_pspline_2
   private cub1d_pspline_2_sca, cub1d_pspline_2_vec
   interface cub1d_pspline_2
      module procedure cub1d_pspline_2_sca, cub1d_pspline_2_vec
   end interface cub1d_pspline_2
-  !
+
   public cub1d_pspline_allder1
   private cub1d_pspline_allder1_sca, cub1d_pspline_allder1_vec
   interface cub1d_pspline_allder1
      module procedure cub1d_pspline_allder1_sca, cub1d_pspline_allder1_vec
   end interface cub1d_pspline_allder1
-  !
+
   public cub1d_pspline_allder2
   private cub1d_pspline_allder2_sca, cub1d_pspline_allder2_vec
   interface cub1d_pspline_allder2
      module procedure cub1d_pspline_allder2_sca, cub1d_pspline_allder2_vec
   end interface cub1d_pspline_allder2
-  !
+
 CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Evaluate 1d cubic spline (scalar)
   FUNCTION cub1d_pspline_0_sca(xd,yd,x,isw)
-    !
     ! Function cub1d_pspline_0_sca interpolates a given set of data (xd,yd) by
     ! a cubic spline at position x (scalar)
-    !
+
     REAL(r8), DIMENSION(:) :: xd,yd
     REAL(r8) :: x
     REAL(r8) :: cub1d_pspline_0_sca
     INTEGER :: isw
-    !
+
     TYPE(EZspline1_r8) :: spl
     INTEGER :: nmax, ier, bcs1(2)
-    !
+
     nmax=SIZE(xd,1)
-    !
+
     ! Select boundary condition type
     SELECT CASE(isw)
        CASE(1)
@@ -104,7 +103,7 @@ CONTAINS
        CASE default
           STOP '**ERROR** in cub1d_pspline_0_sca'
     END SELECT
-    !
+
     ! Set data for x1-coordinate
     spl%x1 = xd
     ! Check the grid
@@ -133,21 +132,20 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Evaluate 1d cubic spline (vector)
   FUNCTION cub1d_pspline_0_vec(xd,yd,x,isw)
-    !
     ! Function cub1d_pspline_0_vec interpolates a given set of data (xd,yd) by
     ! a cubic spline at position x (vector)
-    !
+
     REAL(r8), DIMENSION(:) :: xd,yd
     REAL(r8), DIMENSION(:) :: x
     REAL(r8), DIMENSION(SIZE(x,1)) :: cub1d_pspline_0_vec
     INTEGER :: isw
-    !
+
     TYPE(EZspline1_r8) :: spl
     INTEGER :: nmax, num_x, ier, bcs1(2)
-    !
+
     nmax=SIZE(xd,1)
     num_x=SIZE(x,1)
-    !
+
     ! Select boundary condition type
     SELECT CASE(isw)
        CASE(1)
@@ -185,7 +183,7 @@ CONTAINS
        CASE default
           STOP '**ERROR** in cub1d_pspline_0_vec'
     END SELECT
-    !
+
     ! Set data for x1-coordinate
     spl%x1 = xd
     ! Check the grid
@@ -208,26 +206,25 @@ CONTAINS
     CALL EZspline_free(spl, ier)
     CALL EZspline_error(ier)
     IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_0_vec'
-    !
+
   END FUNCTION cub1d_pspline_0_vec
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Evaluate derivative from 1d cubic spline (scalar)
   FUNCTION cub1d_pspline_1_sca(xd,yd,x,isw)
-    !
     ! Function cub1d_pspline_1_sca interpolates a given set of data (xd,yd) by
     ! a cubic spline and evaluates the derivative at position x (scalar)
-    !
+
     REAL(r8), DIMENSION(:) :: xd,yd
     REAL(r8) :: x
     REAL(r8) :: cub1d_pspline_1_sca
     INTEGER :: isw
-    !
+
     TYPE(EZspline1_r8) :: spl
     INTEGER :: nmax, ier, bcs1(2)
-    !
+
     nmax=SIZE(xd,1)
-    !
+
     ! Select boundary condition type
     SELECT CASE(isw)
        CASE(1)
@@ -265,7 +262,7 @@ CONTAINS
        CASE default
           STOP '**ERROR** in cub1d_pspline_1_sca'
     END SELECT
-    !
+
     ! Set data for x1-coordinate
     spl%x1 = xd
     ! Check the grid
@@ -288,27 +285,26 @@ CONTAINS
     CALL EZspline_free(spl, ier)
     CALL EZspline_error(ier)
     IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_1_sca'
-    !
+
   END FUNCTION cub1d_pspline_1_sca
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Evaluate derivative from 1d cubic spline (vector)
   FUNCTION cub1d_pspline_1_vec(xd,yd,x,isw)
-    !
     ! Function cub1d_pspline_1_vec interpolates a given set of data (xd,yd) by
     ! a cubic spline and evaluates the derivative at position x (vector)
-    !
+
     REAL(r8), DIMENSION(:) :: xd,yd
     REAL(r8), DIMENSION(:) :: x
     REAL(r8), DIMENSION(SIZE(x,1)) :: cub1d_pspline_1_vec
     INTEGER :: isw
-    !
+
     TYPE(EZspline1_r8) :: spl
     INTEGER :: nmax, num_x, ier, bcs1(2)
-    !
+
     nmax=SIZE(xd,1)
     num_x=SIZE(x,1)
-    !
+
     ! Select boundary condition type
     SELECT CASE(isw)
        CASE(1)
@@ -346,7 +342,7 @@ CONTAINS
        CASE default
           STOP '**ERROR** in cub1d_pspline_1_vec'
     END SELECT
-    !
+
     ! Set data for x1-coordinate
     spl%x1 = xd
     ! Check the grid
@@ -375,20 +371,19 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Evaluate 2nd derivative from 1d cubic spline (scalar)
   FUNCTION cub1d_pspline_2_sca(xd,yd,x,isw)
-    !
     ! Function cub1d_pspline_2_sca interpolates a given set of data (xd,yd) by
     ! a cubic spline and evaluates the 2nd derivative at position x (scalar)
-    !
+
     REAL(r8), DIMENSION(:) :: xd,yd
     REAL(r8) :: x
     REAL(r8) :: cub1d_pspline_2_sca
     INTEGER :: isw
-    !
+
     TYPE(EZspline1_r8) :: spl
     INTEGER :: nmax, ier, bcs1(2)
-    !
+
     nmax=SIZE(xd,1)
-    !
+
     ! Select boundary condition type
     SELECT CASE(isw)
        CASE(1)
@@ -426,7 +421,7 @@ CONTAINS
        CASE default
           STOP '**ERROR** in cub1d_pspline_2_sca'
     END SELECT
-    !
+
     ! Set data for x1-coordinate
     spl%x1 = xd
     ! Check the grid
@@ -449,27 +444,26 @@ CONTAINS
     CALL EZspline_free(spl, ier)
     CALL EZspline_error(ier)
     IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_2_sca'
-    !
+
   END FUNCTION cub1d_pspline_2_sca
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Evaluate 2nd derivative from 1d cubic spline (vector)
   FUNCTION cub1d_pspline_2_vec(xd,yd,x,isw)
-    !
     ! Function cub1d_pspline_2_vec interpolates a given set of data (xd,yd) by
     ! a cubic spline and evaluates the 2nd derivative at position x (vector)
-    !
+
     REAL(r8), DIMENSION(:) :: xd,yd
     REAL(r8), DIMENSION(:) :: x
     REAL(r8), DIMENSION(SIZE(x,1)) :: cub1d_pspline_2_vec
     INTEGER :: isw
-    !
+
     TYPE(EZspline1_r8) :: spl
     INTEGER :: nmax, num_x, ier, bcs1(2)
-    !
+
     nmax=SIZE(xd,1)
     num_x=SIZE(x,1)
-    !
+
     ! Select boundary condition type
     SELECT CASE(isw)
        CASE(1)
@@ -507,7 +501,7 @@ CONTAINS
        CASE default
           STOP '**ERROR** in cub1d_pspline_2_vec'
     END SELECT
-    !
+
     ! Set data for x1-coordinate
     spl%x1 = xd
     ! Check the grid
@@ -530,26 +524,25 @@ CONTAINS
     CALL EZspline_free(spl, ier)
     CALL EZspline_error(ier)
     IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_2_vec'
-    !
+
   END FUNCTION cub1d_pspline_2_vec
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Evaluate 1d cubic spline and its derivative (scalar)
   FUNCTION cub1d_pspline_allder1_sca(xd,yd,x,isw)
-    !
     ! Function cub1d_pspline_allder1_sca interpolates a given set of data (xd,yd) by
     ! a cubic spline, and computes the value and its derivative at position x (scalar)
-    !
+
     REAL(r8), DIMENSION(:) :: xd,yd
     REAL(r8) :: x
     REAL(r8), DIMENSION(2) :: cub1d_pspline_allder1_sca
     INTEGER :: isw
-    !
+
     TYPE(EZspline1_r8) :: spl
     INTEGER :: nmax, ier, bcs1(2)
-    !
+
     nmax=SIZE(xd,1)
-    !
+
     ! Select boundary condition type
     SELECT CASE(isw)
        CASE(1)
@@ -587,7 +580,7 @@ CONTAINS
        CASE default
           STOP '**ERROR** in cub1d_pspline_allder1_sca'
     END SELECT
-    !
+
     ! Set data for x1-coordinate
     spl%x1 = xd
     ! Check the grid
@@ -614,27 +607,26 @@ CONTAINS
     CALL EZspline_free(spl, ier)
     CALL EZspline_error(ier)
     IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder1_sca'
-    !
+
   END FUNCTION cub1d_pspline_allder1_sca
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Evaluate 1d cubic spline and its derivative (vector)
   FUNCTION cub1d_pspline_allder1_vec(xd,yd,x,isw)
-    !
     ! Function cub1d_pspline_allder1_vec interpolates a given set of data (xd,yd) by
     ! a cubic spline, and computes the value and its derivative at position x (vector)
-    !
+
     REAL(r8), DIMENSION(:) :: xd,yd
     REAL(r8), DIMENSION(:) :: x
     REAL(r8), DIMENSION(2,SIZE(x,1)) :: cub1d_pspline_allder1_vec
     INTEGER :: isw
-    !
+
     TYPE(EZspline1_r8) :: spl
     INTEGER :: nmax, num_x, ier, bcs1(2)
-    !
+
     nmax=SIZE(xd,1)
     num_x=SIZE(x,1)
-    !
+
     ! Select boundary condition type
     SELECT CASE(isw)
        CASE(1)
@@ -672,7 +664,7 @@ CONTAINS
        CASE default
           STOP '**ERROR** in cub1d_pspline_allder1_vec'
     END SELECT
-    !
+
     ! Set data for x1-coordinate
     spl%x1 = xd
     ! Check the grid
@@ -699,27 +691,26 @@ CONTAINS
     CALL EZspline_free(spl, ier)
     CALL EZspline_error(ier)
     IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder1_vec'
-    !
+
   END FUNCTION cub1d_pspline_allder1_vec
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Evaluate 1d cubic spline, the derivative and the second derivative (scalar)
   FUNCTION cub1d_pspline_allder2_sca(xd,yd,x,isw)
-    !
     ! Function cub1d_pspline_allder2_sca interpolates a given set of data (xd,yd) by
     ! a cubic spline, and computes the value, the derivative and the
     ! second derivative at position x (scalar)
-    !
+
     REAL(r8), DIMENSION(:) :: xd,yd
     REAL(r8) :: x
     REAL(r8), DIMENSION(3) :: cub1d_pspline_allder2_sca
     INTEGER :: isw
-    !
+
     TYPE(EZspline1_r8) :: spl
     INTEGER :: nmax, ier, bcs1(2)
-    !
+
     nmax=SIZE(xd,1)
-    !
+
     ! Select boundary condition type
     SELECT CASE(isw)
        CASE(1)
@@ -757,7 +748,7 @@ CONTAINS
        CASE default
           STOP '**ERROR** in cub1d_pspline_allder2_sca'
     END SELECT
-    !
+
     ! Set data for x1-coordinate
     spl%x1 = xd
     ! Check the grid
@@ -788,28 +779,27 @@ CONTAINS
     CALL EZspline_free(spl, ier)
     CALL EZspline_error(ier)
     IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder2_sca'
-    !
+
   END FUNCTION cub1d_pspline_allder2_sca
   !--------------------------------------------------------------------------------------!
   !--------------------------------------------------------------------------------------!
   ! Evaluate 1d cubic spline, the derivative and the second derivative (vector)
   FUNCTION cub1d_pspline_allder2_vec(xd,yd,x,isw)
-    !
     ! Function cub1d_pspline_allder2_vec interpolates a given set of data (xd,yd) by
     ! a cubic spline, and computes the value, the derivative and the
     ! second derivative at position x (vector)
-    !
+
     REAL(r8), DIMENSION(:) :: xd,yd
     REAL(r8), DIMENSION(:) :: x
     REAL(r8), DIMENSION(3,SIZE(x,1)) :: cub1d_pspline_allder2_vec
     INTEGER :: isw
-    !
+
     TYPE(EZspline1_r8) :: spl
     INTEGER :: nmax, num_x, ier, bcs1(2)
-    !
+
     nmax=SIZE(xd,1)
     num_x=SIZE(x,1)
-    !
+
     ! Select boundary condition type
     SELECT CASE(isw)
        CASE(1)
@@ -847,7 +837,7 @@ CONTAINS
        CASE default
           STOP '**ERROR** in cub1d_pspline_allder2_vec'
     END SELECT
-    !
+
     ! Set data for x1-coordinate
     spl%x1 = xd
     ! Check the grid
@@ -878,7 +868,7 @@ CONTAINS
     CALL EZspline_free(spl, ier)
     CALL EZspline_error(ier)
     IF(ier /=0 ) STOP '**ERROR** in cub1d_pspline_allder2_vec'
-    !
+
   END FUNCTION cub1d_pspline_allder2_vec
   !--------------------------------------------------------------------------------------!
 END MODULE pspline_routines_mod

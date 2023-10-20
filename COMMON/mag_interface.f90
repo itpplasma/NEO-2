@@ -1,18 +1,18 @@
 MODULE gfactor_mod
-  !
+
   IMPLICIT NONE
   INTEGER :: ienter=1,npoia,npoib
   DOUBLE PRECISION :: ha,hb
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: garr
-  !
+
 CONTAINS
-  !
+
   DOUBLE PRECISION FUNCTION gfactor(a,b)
-    !
+
     INTEGER :: nistep,i,k,j
     DOUBLE PRECISION :: a,b,atmp,btmp,wa,wb,x,hint
     DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: arr
-    !
+
     IF(ienter.EQ.1) THEN
        ienter=0
        npoia=100
@@ -36,21 +36,20 @@ CONTAINS
        ENDDO
        DEALLOCATE(arr)
     ENDIF
-    !
+
     wa=a/ha
     j=INT(wa)
     j=MIN(npoia-1,MAX(0,j))
     wa=wa-j
-    !
+
     wb=b/hb
     k=INT(wb)
     k=MIN(npoib-1,MAX(0,k))
     wb=MIN(1.d0,wb-k)
-    !
+
     gfactor=(1.d0-wa)*(garr(j,k)*(1.d0-wb)+garr(j,k+1)*wb)                    &
          +       wa*(garr(j+1,k)*(1.d0-wb)+garr(j+1,k+1)*wb)
-    !
-    RETURN
+
   END FUNCTION gfactor
 END MODULE gfactor_mod
 
@@ -68,7 +67,6 @@ MODULE extremum_mod
   INTERFACE find_extremum
      MODULE PROCEDURE find_ext
   END INTERFACE
-
 
 CONTAINS
   !---------------------------------------------------------------------
@@ -376,9 +374,9 @@ CONTAINS
           ELSEIF (magnetic_device .EQ. 1) THEN ! W7-AS
              CALL stevvo_1(device%r0,r0i,device%nfp,cbfi,bz0i,bf0)
              device%z0 = 0.0_dp
-          ELSEIF (magnetic_device .EQ. 2) THEN ! W7-AS                 !<-in
-             CALL stevvo_l(device%r0,r0i,device%nfp,cbfi,bz0i,bf0)     !<-in
-             device%z0 = 0.0_dp                                        !<-in
+          ELSEIF (magnetic_device .EQ. 2) THEN ! W7-AS
+             CALL stevvo_l(device%r0,r0i,device%nfp,cbfi,bz0i,bf0)
+             device%z0 = 0.0_dp
           ELSE
              PRINT *, 'Magnetic Device not implemented'
              STOP
@@ -2502,8 +2500,7 @@ CONTAINS
              END DO walk
 
           END DO leftright
-          ! sort the eta_x0 from small to large (together with eta_s)
-          ! CALL sort(fieldripple%eta_x0,fieldripple%eta_s)
+
           ! go to the next fieldripple or exit
           IF (ASSOCIATED(fieldripple%next)) THEN
              fieldripple => fieldripple%next
@@ -2702,7 +2699,7 @@ CONTAINS
              ! now walk away
              walk2: DO
                 walker_tag = ripplewalker%tag
-                ! if (ripple_tag .eq. 129) print *, 'walker ',walker_tag
+
                 IF (ilr .EQ. 1) THEN ! left
                    b_max_loc = ripplewalker%b_max_l
                 ELSE ! right
@@ -2874,7 +2871,6 @@ CONTAINS
                       END IF
                    END IF
                 ELSE
-                   !print *, 'before if ',ripplewalker%tag,ripple_tag,iwfirst
                    IF (ripplewalker%tag .EQ. ripple_tag .AND. iwfirst .NE. 1) THEN
                       EXIT walk2
                    ELSE
@@ -3133,7 +3129,6 @@ CONTAINS
 
                    iwfirst = 0
                 END DO walk2inf
-                !PAUSE
              END DO leftright2inf
           end if
           ! End of inflection handling
@@ -3321,5 +3316,3 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
 END MODULE mag_interface_mod
-
-

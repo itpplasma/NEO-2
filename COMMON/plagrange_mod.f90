@@ -41,7 +41,6 @@ CONTAINS
   !---------------------------------------------------------------------
 
   SUBROUTINE plag_coeff(npoi,nder,x,xp,coef)
-    !
     ! npoi - number of points (determines the order of Lagrange polynomial
     ! which is equal npoi-1)
     ! nder - number of derivatives computed 0 - function only, 1 - first
@@ -51,19 +50,18 @@ CONTAINS
     ! coef(0:nder,npoi) - weights for computation of function and derivatives,
     ! f=sum(fun(1:npoi)*coef(0,1:npoi) gives the function value
     ! df=sum(fun(1:npoi)*coef(1,1:npoi) gives the derivative value value
-    !
-    !
+
     INTEGER, INTENT(in)                                :: npoi,nder
     REAL(kind=dp), INTENT(in)                          :: x
     REAL(kind=dp), DIMENSION(npoi), INTENT(in)         :: xp
     REAL(kind=dp), DIMENSION(0:nder,npoi), INTENT(out) :: coef
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE           :: dummy
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE           :: fak_i
-    !
+
     INTEGER                                            :: i,k,j,l
     REAL(kind=dp)                                      :: fac
     REAL(kind=dp)                                      :: j_sum,l_sum,k_prod
-    !
+
     DO i=1,npoi
        coef(0,i)=1.d0
        DO k=1,npoi
@@ -71,11 +69,11 @@ CONTAINS
           coef(0,i)=coef(0,i)*(x-xp(k))/(xp(i)-xp(k))
        ENDDO
     ENDDO
-    !
+
     IF(nder.EQ.0) RETURN
-    !
+
     ALLOCATE(dummy(npoi))
-    !
+
     DO i=1,npoi
        dummy=1.d0
        dummy(i)=0.d0
@@ -92,11 +90,11 @@ CONTAINS
        ENDDO
        coef(1,i)=SUM(dummy)
     ENDDO
-    !
+
     DEALLOCATE(dummy)
-    !
+
     IF(nder.LE.1) RETURN
-    !
+
     ALLOCATE(fak_i(npoi))
     do_i: DO i = 1,npoi
        fak_i = 0.0d0
@@ -135,9 +133,9 @@ CONTAINS
     REAL(kind=dp)                              :: u,umax
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE   :: up,fun
     REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: coeff
-    !
+
     umax=3.1415926d0
-    !
+
     ALLOCATE( up(npoi) )
     ALLOCATE( fun(npoi) )
     ALLOCATE( coeff(0:nder,npoi) )
@@ -149,7 +147,7 @@ CONTAINS
        WRITE (1,*) up(i),fun(i)
     ENDDO
     CLOSE(1)
-    !
+
     OPEN(1,file='sinus.dat')
     DO i=1,imax
        u=umax*(float(i-1)/float(imax-1))
@@ -157,7 +155,7 @@ CONTAINS
        WRITE (1,*) u,SIN(u),SUM(coeff(0,:)*fun),COS(u),SUM(coeff(1,:)*fun)
     ENDDO
     CLOSE(1)
-    !
+
   END SUBROUTINE plag_test
 
   !---------------------------------------------------------------------

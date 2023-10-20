@@ -19,7 +19,6 @@ module gsl_bspline_routines_mod
   ! FGSL Workspace
   !**********************************************************
   type(fgsl_bspline_workspace), private :: sw  
-  !type(fgsl_bspline_workspace), private :: dw !! derived workspace was depricated with gsl version 2.0
 
   !**********************************************************
   ! FGSL variables
@@ -41,7 +40,6 @@ module gsl_bspline_routines_mod
   real(fgsl_double), dimension(:,:), allocatable , target :: dby_end
 
   logical :: taylorExpansion = .true.
-  !logical :: taylorExpansion = .false.
 
 contains
 
@@ -92,9 +90,6 @@ contains
     allocate(by(fgsl_ncbf))
     call fgsl_check(fgsl_vector_align(by, fgsl_ncbf, fgsl_by, fgsl_ncbf, 0_fgsl_size_t, 1_fgsl_size_t))
 
-    !write (*,*) "ncoefs:"
-    !write (*,*) fgsl_bspline_ncoeffs(sw)
-
     !**********************************************************
     ! Initialize Taylor expansion coefficients
     !**********************************************************
@@ -128,7 +123,6 @@ contains
        call fgsl_check(fgsl_bspline_eval(x, fgsl_by, sw))
        by_loc = fgsl_by
     elseif (taylorExpansion) then
-       !write (*,*) "Taylor Expansion of BSplines", x
        by_loc = by_end
        do m = 1, fgsl_ncbf
           gam = 1d0
@@ -139,8 +133,6 @@ contains
        end do
     else
        by_loc = 0.0_fgsl_double
-       !write (*,*) "Stop, BSpline not defined outside interval."
-       !stop
     end if
     
   end subroutine bspline_eval
@@ -158,7 +150,6 @@ contains
        call fgsl_check(fgsl_bspline_deriv_eval(x, fgsl_nder, fgsl_dby, sw))
        dby_loc = dby(nder+1, :)
     elseif (taylorExpansion) then
-       !write (*,*) "Taylor Expansion of BSplines (deriv)", nder, x
        dby_loc = dby_end(nder, :)
        do m = 1, fgsl_ncbf
           gam = 1d0
@@ -169,8 +160,6 @@ contains
        end do
     else
        dby_loc = 0.0_fgsl_double
-       !write (*,*) "Stop, BSpline not defined outside interval."
-       !stop            
     end if
     
   end subroutine bspline_deriv_eval

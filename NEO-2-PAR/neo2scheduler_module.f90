@@ -50,8 +50,6 @@ contains
         proptag_start_client = globalstorage%fieldperiod%ch_fir%tag
         proptag_end_client   = globalstorage%fieldperiod%ch_las%tag
 
-        !write (*,*) "Client", current_client, proptag_start_client, proptag_end_client
-
         ! Create the workunit
         call this%createWorkunit(current_client, proptag_start_client, proptag_end_client)
 
@@ -127,11 +125,6 @@ contains
 
   subroutine deinit_neo2scheduler(this)
     class(neo2scheduler) :: this
-
-!    write (*,*) "Client", mpro%getRank(), " Solver: ", globalstorage%timeSolver / globalstorage%countSolver, &
-!                                                       globalstorage%countSolver, &
-!                                          " Joiner: ", globalstorage%timeJoiner / globalstorage%countJoiner, &
-!                                                       globalstorage%countJoiner
 
     call this%scheduler%deinit()
   end subroutine deinit_neo2scheduler

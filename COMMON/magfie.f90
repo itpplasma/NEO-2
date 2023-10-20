@@ -188,8 +188,7 @@ CONTAINS
 
     CALL magfie( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
 
-!!!    bigR = rt0      ! big radius
-    bigR = rt0 * 1d2 ! big radius (cm)                    !!!
+    bigR = rt0 * 1d2 ! big radius (cm)
     R0i  = 0.3_dp    ! small radius - not really used
     L1i  = nfp       ! number of field periods
     cbfi = 0.0_dp    ! unused

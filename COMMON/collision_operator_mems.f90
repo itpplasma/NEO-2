@@ -232,9 +232,8 @@ module collop
 
          ! Non-relativistic Limit according to Trubnikov
 
-         if (lsw_read_precom) then                                            !! Added by Michael Draxler (13.09.2017)
+         if (lsw_read_precom) then
 
-           !write(*,*) "Read Precom_collop"
            call read_precom_meta_collop(succeded_precom_check)  !! succeded_precom_check succeed with 0 fails with 1 or higher and error with -1
            if (succeded_precom_check .EQ. 0) then
              call read_precom_collop()
@@ -248,7 +247,7 @@ module collop
            end if
          end if
 
-         if ((.not. lsw_read_precom) .or.(succeded_precom_check .GT. 0)) THEN  !! Added by Michael Draxler (13.09.2017)
+         if ((.not. lsw_read_precom) .or.(succeded_precom_check .GT. 0)) THEN
 
            if (isw_relativistic .eq. 0) then
 
@@ -274,15 +273,14 @@ module collop
            elseif (isw_relativistic .ge. 1) then
               call compute_collop_rel(isw_relativistic, T_e, asource, weightlag, weightden, weightparflow, &
                    weightenerg, Amm, anumm_aa(:,:,0,0), anumm_inf, denmm_aa(:,:,0,0), ailmm_aa(:,:,:,0,0))
-              !stop
            else
               write (*,*) "Relativistic switch ", isw_relativistic, " not defined."
            end if
 
-           if (lsw_write_precom) then        !! Added by Michael Draxler (25.08.2017)
-             write(*,*) "Write Precom_collop"!!
-             call write_precom_collop()      !!
-           end if!!
+           if (lsw_write_precom) then
+             write(*,*) "Write Precom_collop"
+             call write_precom_collop()
+           end if
 
          end if
 
@@ -310,9 +308,6 @@ module collop
             stop
          else
             ! (ToDo: species-dependent eta-grid refinement - re-discretization)
-            !collpar_max = collpar * nu_D_hat(v_min_resolution)
-            !collpar_min = collpar * nu_D_hat(v_max_resolution)
-
             ! For testing make eta-grid species independent
             ! (collpar_max and collpar_min set for main species)
             write (*,*) "For testing make eta-grid species independent."
@@ -323,7 +318,7 @@ module collop
          !**********************************************************
          ! Compute sources
          !**********************************************************
-         if (lsw_read_precom) then                                          !! Added by Michael Draxler (13.09.2017)
+         if (lsw_read_precom) then
 
            call read_precom_meta_collop(succeded_precom_check)  !! succeded_precom_check succeed with 0 fails with 1 or higher and error with -1
            if (succeded_precom_check .EQ. 0) then
@@ -338,7 +333,7 @@ module collop
            end if
          end if
 
-         if ((.not. lsw_read_precom) .or.(succeded_precom_check .GT. 0)) THEN !! Added by Michael Draxler (13.09.2017)
+         if ((.not. lsw_read_precom) .or.(succeded_precom_check .GT. 0)) THEN
            call compute_source(asource, weightlag, weightden, weightparflow, &
                 weightenerg, Amm)
 
@@ -378,24 +373,23 @@ module collop
              call mpro%allgather_inplace(Inbi_lmmp_a)
            end if
 
-           if (lsw_write_precom) then            !! Added by Michael Draxler (13.09.2017)
+           if (lsw_write_precom) then
              if (mpro%isMaster()) then
-               write(*,*) "Write Precom_collop"!!
-               call write_precom_collop()      !!
+               write(*,*) "Write Precom_collop"
+               call write_precom_collop()
              end if
              call mpro%barrier()
              call mpro%deinit()
              stop
-           end if!!
-         end if                                 !! Added by Michael Draxler (13.09.2017)
+           end if
+         end if
 
          !**********************************************************
          ! Sum up matrices
          !**********************************************************
          anumm_a = 0d0
          denmm_a = 0d0
-         !print *,num_spec
-         !stop
+
          do a = 0, num_spec-1
             coll_a_temp = collpar_spec(a)
             za_temp = z_spec(a)
@@ -451,7 +445,7 @@ module collop
       if (mpro%isMaster()) call write_collop()
 
     contains
-      !
+
       subroutine collop_exists(ma,mb,Ta,Tb,ind_in,ind_out)
         ! input / output
         real(kind=dp), intent(in) :: ma, mb, Ta, Tb
@@ -459,7 +453,7 @@ module collop
         integer, dimension(2), intent(out) :: ind_out
         ! internal
         integer :: a, b
-        !
+
         ! ind_out = -1: matrix elements not available for
         !               species (ma,Ta;mb,Tb) - do the computation
         ind_out = -1
@@ -474,9 +468,9 @@ module collop
               return
            end do
         end do
-        !
+
       end subroutine collop_exists
-      !
+
       subroutine collop_exists_mpi(ma,Ta,ind_in,ind_out)
         ! input / output
         real(kind=dp), intent(in) :: ma, Ta
@@ -484,7 +478,7 @@ module collop
         integer, dimension(2), intent(out) :: ind_out
         ! internal
         integer :: a, b
-        !
+
         ! ind_out = -1: matrix elements not available for
         !               species (ma,Ta;mb,Tb) - do the computation
         ind_out = -1
@@ -496,9 +490,9 @@ module collop
            end if
            return
         end do
-        !
+
       end subroutine collop_exists_mpi
-      !
+
     end subroutine collop_load
 
     subroutine collop_unload()
@@ -521,7 +515,7 @@ module collop
 
     end subroutine collop_deconstruct
 
-    subroutine read_precom_collop()   !! Added by Michael Draxler (25.08.2017)
+    subroutine read_precom_collop()
       integer(HID_T)   :: h5id_read_collop, h5id_meta
       integer          :: m, mp, l, xi, n_x
       integer          :: f = 4238
@@ -554,13 +548,12 @@ module collop
       call h5_get(h5id_read_collop, 'M_transform_', M_transform)
       call h5_get(h5id_read_collop, 'M_transform_inv', M_transform_inv)
       call h5_get(h5id_read_collop, 'C_m', C_m)
-      !call h5_get(h5id_read_collop, 'meta/gamma_ab', gamma_ab)
 
       call h5_close(h5id_read_collop)
 
     end subroutine read_precom_collop
 
-    subroutine read_precom_meta_collop(succeded_precom_check_tmp) !! Added by Michael Draxler (13.09.2017)
+    subroutine read_precom_meta_collop(succeded_precom_check_tmp)
       !Routine should check if existing precom_collop.h5 matches required Parameters
       !check Version of precom_collop.h5 file
       integer, Intent(OUT) :: succeded_precom_check_tmp
@@ -729,7 +722,7 @@ module collop
     end subroutine read_precom_meta_collop
 
 
-    subroutine write_precom_collop() !! Added by Michael Draxler (25.08.2017)
+    subroutine write_precom_collop()
       integer(HID_T)   :: h5id_collop, h5id_meta
       integer          :: m, mp, l, xi, n_x
       integer          :: f = 4238
@@ -737,7 +730,7 @@ module collop
       real(kind=dp), dimension(:,:), allocatable :: phi_x, dphi_x, ddphi_x
 
       call h5_create('precom_collop.h5', h5id_collop)
-      !call h5_define_group(h5id_collop, trim(tag_a) //'-'// trim(tag_b), h5id_species)
+
       call h5_define_group(h5id_collop, 'meta', h5id_meta)
 
       call h5_add(h5id_meta, 'lag', lag, comment='number of basis functions')
@@ -845,7 +838,6 @@ module collop
             write (*,*) "Compare is inequal "
          end if
 
-        !
     end function compare_floats_vec
 
 
@@ -857,7 +849,7 @@ module collop
       real(kind=dp), dimension(:,:), allocatable :: phi_x, dphi_x, ddphi_x
 
       call h5_create('collop.h5', h5id_collop)
-      !call h5_define_group(h5id_collop, trim(tag_a) //'-'// trim(tag_b), h5id_species)
+
       call h5_define_group(h5id_collop, 'meta', h5id_meta)
 
       call h5_add(h5id_meta, 'lag', lag, &

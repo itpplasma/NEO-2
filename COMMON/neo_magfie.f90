@@ -41,10 +41,6 @@ MODULE neo_magfie
   ! not used for the computation of physical quantities.
   USE partpa_mod,  ONLY : bmod0
   !! End Modifications by Andreas F. Martitsch (12.03.2014)  
-  
-  !---------------------------------------------------------------------------
-  !USE var_sub_misc, ONLY: fac_c,iota_m ! fac_m
-  !---------------------------------------------------------------------------
 
   IMPLICIT NONE
   REAL(dp), DIMENSION(:), ALLOCATABLE              :: magfie_sarray
@@ -429,7 +425,7 @@ CONTAINS
           ALLOCATE ( s_zmnc_s(mnmax) ) ! radial derivatives
           ALLOCATE ( s_lmnc_s(mnmax) )
           !! End Modifications by Andreas F. Martitsch (06.03.2014)
-          !
+
           !! Modifications by Andreas F. Martitsch (06.08.2014)
           ! Additional data from Boozer files without Stellarator symmetry
           IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
@@ -443,7 +439,7 @@ CONTAINS
              ALLOCATE ( s_lmns_s(mnmax) )             
           END IF
           !! End Modifications by Andreas F. Martitsch (06.08.2014)
-          !
+
           DO imn = 1, mnmax
              ! Switch swd turns on (1) / off (0) the computation of the
              ! radial derivatives within splint_horner3
@@ -499,7 +495,7 @@ CONTAINS
                 & s, tf, tfp, tfpp, tfppp,      &
                 & s_lmnc(imn), s_lmnc_s(imn), ypp, yppp)
              end if
-             !
+
              !! Modifications by Andreas F. Martitsch (06.08.2014)
              ! Additional data from Boozer files without Stellarator symmetry
              IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
@@ -655,17 +651,17 @@ CONTAINS
              !! Modifications by Andreas F. Martitsch (06.08.2014)
              ! Additional data from Boozer files without Stellarator symmetry
              IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
-                !
+
                 ris = s_rmns(imn)
                 zis = s_zmns(imn)
                 lis = s_lmns(imn)
                 bis = s_bmns(imn)
-                !
+
                 ris_s = s_rmns_s(imn)
                 zis_s = s_zmns_s(imn)
                 lis_s = s_lmns_s(imn)
                 bis_s = s_bmns_s(imn)
-                !
+
              END IF
              !! End Modifications by Andreas F. Martitsch (06.08.2014)
              m = ixm(imn)
@@ -854,7 +850,7 @@ CONTAINS
           DEALLOCATE( s_zmnc_s )
           DEALLOCATE( s_lmnc_s )
           !! End Modifications by Andreas F. Martitsch (07.03.2014)
-          !
+
           !! Modifications by Andreas F. Martitsch (06.08.2014)
           ! Additional data from Boozer files without Stellarator symmetry
           IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
@@ -868,7 +864,7 @@ CONTAINS
              DEALLOCATE ( s_lmns_s )             
           END IF
           !! End Modifications by Andreas F. Martitsch (06.08.2014)
-          !
+
           IF (lab_swi .EQ. 5 .OR. lab_swi .EQ. 3) THEN ! CHS, LHD
              !! Modifications by Andreas F. Martitsch (26.06.2017)
              ! compute toroidal angle phi for consistency checks
@@ -1150,7 +1146,7 @@ CONTAINS
           DEALLOCATE( bb_tb_a )
           DEALLOCATE( bb_pb_a )
 
-          DEALLOCATE( r )  ! NEW
+          DEALLOCATE( r )
           DEALLOCATE( z ) 
           DEALLOCATE( l )
           !! Modifications by Andreas F. Martitsch (26.06.2017)
@@ -1300,8 +1296,6 @@ CONTAINS
           END IF
        END DO
        IF (s_detected .EQ. 1) THEN
-          !PRINT *,magfie_sarray(k_es)
-          !STOP "flux surface s detected"
           curr_tor   = curr_tor_array(k_es)
           curr_tor_s = curr_tor_s_array(k_es)
           curr_pol   = curr_pol_array(k_es)
@@ -1338,31 +1332,24 @@ CONTAINS
           !! Modifications by Andreas F. Martitsch (11.03.2014)
           ! Evaluate the 2d periodic splines (over the flux-surface)
           ! of the additionally needed metric tensor elements
-          !PRINT *,'x: ',x(1),x(2),x(3)
           p_spl => gstb_spl(:,:,:,:,k_es)
           CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
                p_spl,gstb)
-          !PRINT *,'gstb: ', gstb
           p_spl => gspb_spl(:,:,:,:,k_es)
           CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
                p_spl,gspb)
-          !PRINT *,'gspb: ', gspb
           p_spl => gstb_tb_spl(:,:,:,:,k_es)
           CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
                p_spl,gstb_tb)
-          !PRINT *,'gstb_tb: ', gstb_tb
           p_spl => gspb_tb_spl(:,:,:,:,k_es)
           CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
                p_spl,gspb_tb)
-          !PRINT *,'gspb_tb: ', gspb_tb
           p_spl => gstb_pb_spl(:,:,:,:,k_es)
           CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
                p_spl,gstb_pb)
-          !PRINT *,'gstb_pb: ', gstb_pb
           p_spl => gspb_pb_spl(:,:,:,:,k_es)
           CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
                p_spl,gspb_pb)
-          !PRINT *,'gspb_pb: ', gspb_pb
           !! End Modifications by Andreas F. Martitsch (11.03.2014)
           !! Modifications by Andreas F. Martitsch (13.11.2014)
           ! Evaluate the 2d periodic splines (over the flux-surface)
@@ -1434,35 +1421,17 @@ CONTAINS
           e_pb(2) = rpb_val*SIN(p_val)+ppb_val*r_val*COS(p_val)
           e_pb(3) = zpb_val
           e_pb = 1.0d2*e_pb
-          !-> print unit vectors:
-          !PRINT *, 's, tb, pb: ',x(1),x(3),x(2)
-          !PRINT *,'e_s: ',e_s
-          !PRINT *,'e_tb: ',e_tb
-          !PRINT *,'e_pb: ',e_pb
           !-> compute jacobian from unit vectors
           sqrtg_direct = &
                e_pb(1)*(e_s(2)*e_tb(3)-e_s(3)*e_tb(2)) + &
                e_pb(2)*(e_s(3)*e_tb(1)-e_s(1)*e_tb(3)) + &
                e_pb(3)*(e_s(1)*e_tb(2)-e_s(2)*e_tb(1))
-          !PRINT *,'sqrtg (direct):  ',sqrtg_direct
-          !PRINT *,'sqrtg (current): ',&
-          !     ((ABS(curr_pol) + iota * ABS(curr_tor))/(bmod*bmod)) * psi_pr * 1d6
-          !-> check sign of currents for AUG equilibrium (should be in the same direction)
-          !IF ( (ABS(curr_pol) + ABS(curr_tor)) .NE. ABS(curr_pol+curr_tor) ) THEN
-          !   PRINT *,'Warning: Currents are not in the same direction!'
-          !   STOP
-          !END IF
-          !
+
           !-> compute co-variant B-field component
           hcovar_direct = 0.0d0
           hcovar_direct(3) = (SUM(e_pb*e_tb)+iota*SUM(e_tb*e_tb))/ABS(sqrtg_direct)
           hcovar_direct(2) = (SUM(e_pb*e_pb)+iota*SUM(e_tb*e_pb))/ABS(sqrtg_direct)
           hcovar_direct = (hcovar_direct * (psi_pr*1.0d8) / (bmod*1.0d4))
-          !PRINT *,'hcovar(3) (direct):  ',hcovar_direct(3)
-          !PRINT *,'hcovar(3) (current): ',(curr_tor/bmod)*1.0d2
-          !PRINT *,'hcovar(2) (direct):  ',hcovar_direct(2)
-          !PRINT *,'hcovar(2) (current): ',(curr_pol/bmod)*1.0d2
-          !PAUSE
           !! End Modifications by Andreas F. Martitsch (26.06.2017)
           
           ! $1/sqrt(g)$
@@ -1509,25 +1478,10 @@ CONTAINS
           !! End Modifications by Andreas F. Martitsch (28.06.2017)
 
           ! Winny for Klaus
-          !s_sqrtg00_m = fac / av_b2_m
           s_sqrtg00 = fac / av_b2_m
-          !PRINT *, 's_sqrtg00, s_sqrtg00_m ',s_sqrtg00, s_sqrtg00_m
-          !PRINT *, 'fac, av_b2_m ',fac, av_b2_m
-          !PAUSE
           ! Winny for Klaus - Ende
 
-          !PRINT *, ' '
-          !PRINT *, 'curr_pol = ',curr_pol
-          !PRINT *, 'curr_tor = ',curr_tor
-          !PRINT *, 'iota     = ',iota
-          !PRINT *, 'fac      = ',fac
-          !PRINT *, 'bmod     = ',bmod
-          !PRINT *, 'isqrg    = ',isqrg
-          !PRINT *, 'sqrg     = ',1.d0 / isqrg
-
-          !PRINT *, 'sqrg11_n = ',sqrg11
           sqrg11 = sqrg11 * ABS(isqrg)
-          !PRINT *, 'sqrg11   = ',sqrg11
 
           !! Modifications by Andreas F. Martitsch (11.03.2014)
           ! Compute the values of the additionally needed 
@@ -1536,11 +1490,8 @@ CONTAINS
           bcovar_s = (bmod*bmod / fac)*(gstb*iota+gspb)
           dbcovar_s_dtheta = (2.0d0*bmod*bb_tb/fac)*(gstb*iota+gspb) + &
                (bmod*bmod / fac)*(gstb_tb*iota+gspb_tb)
-          !PRINT *,'dbcovar_s_dtheta: ', dbcovar_s_dtheta
           dbcovar_s_dphi = (2.0d0*bmod*bb_pb/fac)*(gstb*iota+gspb) + &
                (bmod*bmod / fac)*(gstb_pb*iota+gspb_pb)
-          !PRINT *, 'dbcovar_s_dphi: ', dbcovar_s_dphi
-          !STOP 
           !! End Modifications by Andreas F. Martitsch (11.03.2014)
        ELSE
           PRINT *, 'neo_magfie: s not detected!'
@@ -1564,8 +1515,6 @@ CONTAINS
        bb_s   = 0.0_dp
        bb_tb  = 0.0_dp
        bb_pb  = 0.0_dp
-
-       !stop "Compute magnetic field components via direct Fourier summation"
 
        DO i = 1, mnmax
           swd = 1
@@ -1663,11 +1612,10 @@ CONTAINS
        ! derived quantities in (s,theta_b,phi_b)-system
        !fac   = (curr_pol + iota * curr_tor) * psi_pr
        ! This is used in NEO2
-       fac   =  curr_pol + iota * curr_tor                       !!!
+       fac   =  curr_pol + iota * curr_tor
        fac1  = fac  / bmod                 ! sqrtg*bmod
-       fac = fac * psi_pr                                        !!!
-       !    sqrtg = fac1 / bmod 
-       sqrtg = - fac1 / bmod * psi_pr * 1d6                      !!!
+       fac = fac * psi_pr
+       sqrtg = - fac1 / bmod * psi_pr * 1d6
        !! Modifications by Andreas F. Martitsch (28.06.2017)
        !-> changes of signs to account for left-handed coordinate system
        !-> affects sign of transport coefficients related to Ware pinch 
@@ -1676,16 +1624,11 @@ CONTAINS
           sqrtg = ABS(sqrtg) * SIGN(1.0d0,sqrtg_direct)
        END IF    
        !! End Modifications by Andreas F. Martitsch (28.06.2017)
-       !---------------------------------------------------------------------------
-       !  iota_m = iota
-       ! fac_m  =  (curr_pol + iota * curr_tor) * 1d6 * psi_pr
-       !  fac_c  =  (curr_pol + iota * curr_tor) * 1d6 
-       !---------------------------------------------------------------------------
 
        bder(1) = bb_s
        bder(3) = bb_tb
        bder(2) = bb_pb
-       bder=bder / bmod                                          !!!
+       bder=bder / bmod
        
        !! Modifications by Andreas F. Martitsch (07.03.2014)
        ! Radial covariant B-field component is now available
@@ -1693,18 +1636,17 @@ CONTAINS
        !! End Modifications by Andreas F. Martitsch (07.03.2014)
        hcovar(3) = curr_tor / bmod
        hcovar(2) = curr_pol / bmod
-       hcovar=hcovar * 1.d2                                      !!!
+       hcovar=hcovar * 1.d2
 
        hctrvr(1) = 0.0_dp
        hctrvr(3) = iota / fac1
        hctrvr(2) = 1.0_dp / fac1
-       hctrvr=hctrvr * 1d-2                                      !!!
+       hctrvr=hctrvr * 1d-2
 
-       !    hcurl(1)  = (curr_pol * bb_pb      - curr_tor * bb_tb     ) / fac 
-       hcurl(1)  = (curr_tor * bb_pb      - curr_pol * bb_tb     ) / fac  !!!
+       hcurl(1)  = (curr_tor * bb_pb      - curr_pol * bb_tb     ) / fac
        hcurl(3)  = (curr_pol * bb_s       - bmod     * curr_pol_s) / fac 
        hcurl(2)  = (bmod     * curr_tor_s - curr_tor * bb_s      ) / fac 
-       hcurl=hcurl * 1d-4                                                 !!!
+       hcurl=hcurl * 1d-4
 
        !! Modifications by Andreas F. Martitsch (12.03.2014)
        ! boozer_curr_tor, boozer_curr_pol, boozer_psi_pr,
@@ -1713,14 +1655,12 @@ CONTAINS
        ! This step requires changes within rhs_kin.f90 and
        ! ripple_solver.f90!
        IF (bmod0 .EQ. 0.0d0) THEN
-          !PRINT *,bmod0
           boozer_curr_tor_hat=0.0d0
           boozer_curr_pol_hat=0.0d0
           boozer_curr_tor_hat_s=0.0d0
           boozer_curr_pol_hat_s=0.0d0
           boozer_psi_pr_hat=0.0d0
        ELSE
-          !PRINT *,bmod0
           boozer_curr_tor_hat = (curr_tor/bmod0)*1.0d2
           boozer_curr_pol_hat = (curr_pol/bmod0)*1.0d2
           !! Modifications by Andreas F. Martitsch (24.04.2015)
@@ -1794,16 +1734,16 @@ CONTAINS
     REAL(dp), DIMENSION(SIZE(x)), INTENT(out) :: hctrvr
     REAL(dp), DIMENSION(SIZE(x)), INTENT(out) :: hcurl
     REAL(dp), DIMENSION(SIZE(x)), INTENT(out) :: bcovar_s_hat_der
-    !
+
     CALL neo_magfie_a( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
-    !
+
     ! Compute the derivatives of the radial covariant 
     ! B-field component (Note: cgs-units used)
     bcovar_s_hat_der(1) = 0.0_dp ! not implemented at the moment
     bcovar_s_hat_der(3) = dbcovar_s_dtheta / bmod0
     bcovar_s_hat_der(2) = dbcovar_s_dphi / bmod0
     bcovar_s_hat_der=bcovar_s_hat_der * 1.d2 ! conversion to cgs-units
-    !
+
   END SUBROUTINE neo_magfie_b
 
 
@@ -1835,12 +1775,12 @@ CONTAINS
     REAL(dp), DIMENSION(SIZE(x)), INTENT(out) :: bcovar_s_hat_der
     REAL(dp),                     INTENT(out) :: R
     REAL(dp),                     INTENT(out) :: Z
-    !
+
     CALL neo_magfie_b( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl, bcovar_s_hat_der )
-    !
+
     R = r_val * 1.d2 ! conversion to cgs-units
     Z = z_val * 1.d2 ! conversion to cgs-units
-    !
+
   END SUBROUTINE neo_magfie_c
 
 
@@ -1859,10 +1799,10 @@ CONTAINS
     REAL(dp), DIMENSION(SIZE(x)) :: hcovar
     REAL(dp), DIMENSION(SIZE(x)) :: hctrvr
     REAL(dp), DIMENSION(SIZE(x)) :: hcurl
-    !
+
     ! Compute G_symm_val, G_symm_tb_val and G_symm_pb_val using neo_magfie
     CALL neo_magfie_a( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
-    !
+
     G_symm = G_symm_val
     G_symm_tb = G_symm_tb_val
     G_symm_pb = G_symm_pb_val
@@ -1885,17 +1825,18 @@ CONTAINS
     REAL(dp), DIMENSION(SIZE(x)) :: hcovar
     REAL(dp), DIMENSION(SIZE(x)) :: hctrvr
     REAL(dp), DIMENSION(SIZE(x)) :: hcurl
-    !
+
     ! Compute r_val, z_val, rtb_val and ztb_val using neo_magfie
     CALL neo_magfie_a( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
-    !
+
     R=r_val * 1.d2 ! conversion to cgs-units
     Z=z_val * 1.d2 ! conversion to cgs-units
     R_tb=rtb_val * 1.d2 ! conversion to cgs-units
     Z_tb=ztb_val * 1.d2 ! conversion to cgs-units
-    !
+
   END SUBROUTINE compute_RZ_a
-  !
+
+
   ! Evaluation of the poloidal variation of the toroidal rotation velocity:
   ! -> compute Boozer angle $\vartheta_B$ for a given flux surface "s" and
   ! -> cylindrical "R"- or "Z"-coordinate.
@@ -1914,7 +1855,7 @@ CONTAINS
     LOGICAL :: break_cond
     REAL(kind=dp) :: R, R_tb, Z, Z_tb
     REAL(kind=dp), DIMENSION(3) :: x
-    !
+
     ! intialize start vector
     x = x_start
     thetaB = x_start(3)
@@ -1930,7 +1871,7 @@ CONTAINS
           PRINT *,"calc_thetaB_RZloc: Maximum number of Newton iterations reached!"
           STOP
        END IF
-       !
+
        x(3) = thtB_R_n
        CALL compute_RZ( x, R, R_tb, Z, Z_tb )
        fR = R - R_loc
@@ -1940,7 +1881,7 @@ CONTAINS
        abserr_R = ABS(thtB_R_n-thtB_R_np1)
        thtB_R_n = thtB_R_np1
        PRINT *,thtB_R_n,abserr_R,ABS(R-R_loc)
-       !
+
        x(3) = thtB_Z_n
        CALL compute_RZ( x, R, R_tb, Z, Z_tb )
        fZ = Z - Z_loc
@@ -1949,9 +1890,9 @@ CONTAINS
        thtB_Z_np1 = MODULO(thtB_Z_np1,TWOPI)
        abserr_Z = ABS(thtB_Z_n-thtB_Z_np1)
        thtB_Z_n = thtB_Z_np1
-       !
+
        PRINT *,thtB_Z_n,abserr_Z,ABS(Z-Z_loc)
-       !
+
        IF( (abserr_R .LT. accur) .AND. (abserr_Z .LT. accur)) THEN
           abserr_tht = ABS(thtB_R_n-thtB_Z_n)
           IF( (abserr_tht .LT. accur) ) THEN
@@ -1959,12 +1900,10 @@ CONTAINS
              break_cond=.TRUE.
           END IF
        END IF
-       !
+
     END DO
-    !
+
     PRINT *,"calc_thetaB_RZloc: thetaB = ",thetaB
-    !STOP
-    !
   END SUBROUTINE calc_thetaB_RZloc_a
   !! End Modifications by Andreas F. Martitsch (30.03.2017)
 

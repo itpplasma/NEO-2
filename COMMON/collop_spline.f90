@@ -37,12 +37,11 @@ contains
     allocate(y_dat(0:lagmax, 0:lagmax))
     x_dat = 0d0
     y_dat = 0d0
-    !x_del = v_max_resolution / lagmax
+
     x_del = v_max_resolution / gam_all
     x_dat(0) = 0d0
     y_dat(0,0) = 1d0
     do k = 1, lagmax
-       !x_dat(k) = k*x_del
        x_dat(k) = x_dat(k-1) + x_del * gam**k
        y_dat(k,k) = 1.0d0
     end do
@@ -71,17 +70,11 @@ contains
 
        call splinecof3(x_dat, y_dat(m,:), c1, cn, lambda, sp_index, sw1, sw2, &
             a_spl(m,:), b_spl(m,:), c_spl(m,:), d_spl(m,:), m0, tf)
-
-       !write (*,*) x_dat, y_dat(m,:), c1, cn, lambda, sp_index, sw1, sw2, a_spl(m,:), &
-       !     b_spl(m,:), c_spl(m,:), d_spl(m,:), m0
        
     end do
 
     deallocate(sp_index)
     deallocate(lambda)
-
-    !write (*,*) x_dat
-    !stop
     
   end subroutine init_phi_spline
 

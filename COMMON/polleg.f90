@@ -1,4 +1,3 @@
-!
 MODULE polleg_mod
 
   PUBLIC  polleg
@@ -14,11 +13,9 @@ MODULE polleg_mod
   END INTERFACE
 
 CONTAINS
-!
-  SUBROUTINE polleg_1(n,coefleg)
-!
-! Computes coefficients of Legendre polynomials of orders from 0 to n
 
+  SUBROUTINE polleg_1(n,coefleg)
+! Computes coefficients of Legendre polynomials of orders from 0 to n
 !
 ! Input parameters:
 !           Formal: n            - maximum order of Legendre polynomials
@@ -26,20 +23,20 @@ CONTAINS
 !           Formal: coefleg(i,j) - j-th coefficient of Legendre polynomial
 !                                  of the order i
   IMPLICIT NONE
-!
+
   INTEGER :: n,i,j
-!
+
   DOUBLE PRECISION :: frontfac,rearfac
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: coefleg
-!
+
   IF(ALLOCATED(coefleg)) DEALLOCATE(coefleg)
   ALLOCATE(coefleg(0:n,0:n))
-!
+
   coefleg=0.d0
   coefleg(0,0)=1.d0
   coefleg(1,1)=1.d0
   frontfac=1.d0
-!
+
   DO i=2,n
     frontfac=frontfac*(2.d0-1.d0/DBLE(i))
     rearfac=frontfac
@@ -49,12 +46,10 @@ CONTAINS
       coefleg(i,j)=rearfac
     ENDDO
   ENDDO
-!
-  RETURN
+
 END SUBROUTINE polleg_1
-!
+
   SUBROUTINE binomial_1(n,coefbin)
-!
 ! Computes binomial coefficients of orders from 0 to n
 !
 ! Input parameters:
@@ -62,19 +57,19 @@ END SUBROUTINE polleg_1
 ! Output parameters:
 !           Formal: coefbin(i,j) - j-th coefficient of the binom
   IMPLICIT NONE
-!
+
   INTEGER :: n,i,j
-!
+
   DOUBLE PRECISION :: frontfac,factforw,factbackw
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: coefbin
-!
+
   IF(ALLOCATED(coefbin)) DEALLOCATE(coefbin)
   ALLOCATE(coefbin(0:n,0:n))
-!
+
   coefbin=0.d0
   coefbin(0,0)=1.d0
   frontfac=1.d0
-!
+
   DO i=1,n
     frontfac=frontfac*DBLE(i)
     factforw=1.d0
@@ -85,7 +80,6 @@ END SUBROUTINE polleg_1
       coefbin(i,j)=frontfac/factforw/factbackw
     ENDDO
   ENDDO
-!
-  RETURN
+
 END SUBROUTINE binomial_1
 END MODULE

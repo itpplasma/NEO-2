@@ -171,19 +171,19 @@ MODULE propagator_mod
      INTEGER                                    :: npart
      INTEGER                                    :: npass_l
      INTEGER                                    :: npass_r
-     INTEGER                                    :: nvelocity                !<-in
+     INTEGER                                    :: nvelocity
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_p_p
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_m_m
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_p_m
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: amat_m_p
-     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p              !<-in
-     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m              !<-in
-     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: flux_p                !<-in
-     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: flux_m                !<-in
-     REAL(kind=dp), DIMENSION(:,:),       ALLOCATABLE :: qflux             !<-in
-     !
+     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p
+     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m
+     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: flux_p
+     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: flux_m
+     REAL(kind=dp), DIMENSION(:,:),       ALLOCATABLE :: qflux
+
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: cmat
-     !
+
      ! eta at left and right boundary
      REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: eta_l
      REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: eta_r
@@ -471,12 +471,11 @@ CONTAINS
   SUBROUTINE construct_prop_1(prop)
     TYPE(propagator), POINTER            :: prop
     TYPE(propagator), POINTER            :: prop_new
-    !
     ! Subroutine to setup a new propagator
     !
     ! At the moment prop_c has to be placed at the end and the
     ! new prop_c is associated with the new end of the linked list!
-    ! 
+
     ! Allocate memory for a new node.
     ALLOCATE( prop_new )
     ! If current is already associated its pointer next has to point
@@ -496,16 +495,14 @@ CONTAINS
     ! indicated that it is not being used at the moment
     prop%nr_joined = -2
     NULLIFY( prop_new )
-    !
-  END SUBROUTINE construct_prop_1
 
+  END SUBROUTINE construct_prop_1
 
 
   ! ---------------------------------------------------------------------------
   SUBROUTINE destruct_prop
-    !
     ! Removes the current propagator prop_c 
-    !
+
     ! Remove content
     CALL deallocate_propagator_content
     IF (.NOT. ASSOCIATED(prop_c%prev) .AND. ASSOCIATED(prop_c%next)) THEN
@@ -535,30 +532,29 @@ CONTAINS
        DEALLOCATE( prop_c )
        NULLIFY( prop_c )
     END IF
-    !
+
   END SUBROUTINE destruct_prop
 
   ! ---------------------------------------------------------------------------
   SUBROUTINE destruct_all_prop
-    !
     ! Subroutine to remove all propagators starting from the 
     ! last one (prop_l)
+
     prop_c => prop_l
     DO
        CALL destruct_propagator
        IF (.NOT. ASSOCIATED(prop_c)) EXIT
     END DO
-    !
+
   END SUBROUTINE destruct_all_prop
 
   ! ---------------------------------------------------------------------------
   SUBROUTINE deallocate_propagator_cont()
-    !
     ! Deallocates all parts of current propagator prop_c
     !
     ! Has to be changed if physical content of propagator changes!
     ! (see type declaration of propagator)
-    !
+
     if (associated(prop_c)) then
        ! 2-D quantities
        IF (ALLOCATED(prop_c%p%amat_p_p)) DEALLOCATE(prop_c%p%amat_p_p)
@@ -567,15 +563,15 @@ CONTAINS
        IF (ALLOCATED(prop_c%p%amat_m_p)) DEALLOCATE(prop_c%p%amat_m_p)
        !
        IF (ALLOCATED(prop_c%p%cmat)) DEALLOCATE(prop_c%p%cmat)
-       IF (ALLOCATED(prop_c%p%source_p)) DEALLOCATE(prop_c%p%source_p)        !<-in
-       IF (ALLOCATED(prop_c%p%source_m)) DEALLOCATE(prop_c%p%source_m)        !<-in
+       IF (ALLOCATED(prop_c%p%source_p)) DEALLOCATE(prop_c%p%source_p)
+       IF (ALLOCATED(prop_c%p%source_m)) DEALLOCATE(prop_c%p%source_m)
        
        IF (ALLOCATED(prop_c%p%flux_p))   DEALLOCATE(prop_c%p%flux_p)
        IF (ALLOCATED(prop_c%p%flux_m))   DEALLOCATE(prop_c%p%flux_m)
        
-       IF (ALLOCATED(prop_c%p%qflux))   DEALLOCATE(prop_c%p%qflux)            !<-in
+       IF (ALLOCATED(prop_c%p%qflux))   DEALLOCATE(prop_c%p%qflux)
        
-       ! 1-D quantities                                                       !<-in
+       ! 1-D quantities
        IF (ALLOCATED(prop_c%p%eta_l))   DEALLOCATE(prop_c%p%eta_l)
        IF (ALLOCATED(prop_c%p%eta_r))   DEALLOCATE(prop_c%p%eta_r)
        
@@ -588,7 +584,7 @@ CONTAINS
        CALL deconstruct_binarysplit(prop_c%eta_bs_l)
        CALL deconstruct_binarysplit(prop_c%eta_bs_r)
     end if
-    !
+
   END SUBROUTINE deallocate_propagator_cont
 
   ! ---------------------------------------------------------------------------
@@ -624,13 +620,13 @@ CONTAINS
     pn%npart          = po%npart
     pn%npass_l        = po%npass_l
     pn%npass_r        = po%npass_r
-    pn%nvelocity       = po%nvelocity                                        !<-in
+    pn%nvelocity       = po%nvelocity
 
-    IF (ALLOCATED(po%qflux)) THEN                                          !<-in
+    IF (ALLOCATED(po%qflux)) THEN
        if (allocated(pn%qflux)) deallocate(pn%qflux)
-       ALLOCATE(pn%qflux(SIZE(po%qflux,1),SIZE(po%qflux,2)))               !<-in
-       pn%qflux    = po%qflux                                              !<-in
-    END IF                                                                 !<-in
+       ALLOCATE(pn%qflux(SIZE(po%qflux,1),SIZE(po%qflux,2)))
+       pn%qflux    = po%qflux
+    END IF
 
 
     pn%eta_boundary_l = po%eta_boundary_l
@@ -662,32 +658,32 @@ CONTAINS
        ALLOCATE(pn%cmat(SIZE(po%cmat,1),SIZE(po%cmat,2)))
        pn%cmat        = po%cmat
     END IF
-    
+
     IF (ALLOCATED(po%w)) THEN
        if (allocated(pn%w)) deallocate(pn%w)
        ALLOCATE(pn%w(SIZE(po%w,1),SIZE(po%w,2)))
        pn%w           = po%w
     END IF
-    
-    IF (ALLOCATED(po%source_p)) THEN                                       !<-in
+
+    IF (ALLOCATED(po%source_p)) THEN
        if (allocated(pn%source_p)) deallocate(pn%source_p)
-       ALLOCATE(pn%source_p(SIZE(po%source_p,1),SIZE(po%source_p,2)))      !<-in
-       pn%source_p  = po%source_p                                          !<-in
-    END IF                                                                 !<-in
-    IF (ALLOCATED(po%source_m)) THEN                                       !<-in
+       ALLOCATE(pn%source_p(SIZE(po%source_p,1),SIZE(po%source_p,2)))
+       pn%source_p  = po%source_p
+    END IF
+    IF (ALLOCATED(po%source_m)) THEN
        if (allocated(pn%source_m)) deallocate(pn%source_m)
-       ALLOCATE(pn%source_m(SIZE(po%source_m,1),SIZE(po%source_m,2)))      !<-in
-       pn%source_m  = po%source_m                                          !<-in
-    END IF                                                                 !<-in
-    
+       ALLOCATE(pn%source_m(SIZE(po%source_m,1),SIZE(po%source_m,2)))
+       pn%source_m  = po%source_m
+    END IF
+
     IF (ALLOCATED(po%flux_p)) THEN
        if (allocated(pn%flux_p)) deallocate(pn%flux_p)
-       ALLOCATE(pn%flux_p(SIZE(po%flux_p,1),SIZE(po%flux_p,2)))            !<-in
+       ALLOCATE(pn%flux_p(SIZE(po%flux_p,1),SIZE(po%flux_p,2)))
        pn%flux_p     = po%flux_p
     END IF
     IF (ALLOCATED(po%flux_m)) THEN
        if (allocated(pn%flux_m)) deallocate(pn%flux_m)
-       ALLOCATE(pn%flux_m(SIZE(po%flux_m,1),SIZE(po%flux_m,2)))            !<-in
+       ALLOCATE(pn%flux_m(SIZE(po%flux_m,1),SIZE(po%flux_m,2)))
        pn%flux_m     = po%flux_m
     END IF
 
@@ -707,7 +703,7 @@ CONTAINS
 
   ! ---------------------------------------------------------------------------
   SUBROUTINE diag_propagator_cont()
-    !
+
     USE magnetics_mod
     USE device_mod
     ! physical diagnostic
@@ -773,38 +769,38 @@ CONTAINS
 
     cname = 'source_p_g'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-    WRITE(uw,*) prop_a%p%source_p(:,1)                                     !<-in
+    WRITE(uw,*) prop_a%p%source_p(:,1)
     CLOSE(uw)
     cname = 'source_p_e'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-    WRITE(uw,*) prop_a%p%source_p(:,2)                                     !<-in
+    WRITE(uw,*) prop_a%p%source_p(:,2)
     CLOSE(uw)
     cname = 'source_m_g'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-    WRITE(uw,*) prop_a%p%source_m(:,1)                                     !<-in
+    WRITE(uw,*) prop_a%p%source_m(:,1)
     CLOSE(uw)
     cname = 'source_m_e'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-    WRITE(uw,*) prop_a%p%source_m(:,2)                                     !<-in
+    WRITE(uw,*) prop_a%p%source_m(:,2)
     CLOSE(uw)
 
     cname = 'flux_p'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-    WRITE(uw,*) prop_a%p%flux_p(1,:)                                       !<-in
+    WRITE(uw,*) prop_a%p%flux_p(1,:)
     CLOSE(uw)    
     cname = 'flux_m'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-    WRITE(uw,*) prop_a%p%flux_m(1,:)                                       !<-in
+    WRITE(uw,*) prop_a%p%flux_m(1,:)
     CLOSE(uw)
     cname = 'curr_p'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-    WRITE(uw,*) prop_a%p%flux_p(2,:)                                       !<-in
+    WRITE(uw,*) prop_a%p%flux_p(2,:)
     CLOSE(uw)    
     cname = 'curr_m'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
-    WRITE(uw,*) prop_a%p%flux_m(2,:)                                       !<-in
+    WRITE(uw,*) prop_a%p%flux_m(2,:)
     CLOSE(uw)
-    
+
     cname = 'eta'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
     IF (prop_a%bin_split_mode .EQ. 1) THEN
@@ -830,11 +826,11 @@ CONTAINS
     WRITE(uw,*) 'npart           ',prop_a%p%npart
     WRITE(uw,*) 'npass_l         ',prop_a%p%npass_l
     WRITE(uw,*) 'npass_r         ',prop_a%p%npass_r
-    WRITE(uw,*) 'nvelocity        ',prop_a%p%nvelocity                       !<-in
-    WRITE(uw,*) 'qflux_g         ',prop_a%p%qflux(1,1)                     !<-in
-    WRITE(uw,*) 'qflux_e         ',prop_a%p%qflux(1,2)                     !<-in
-    WRITE(uw,*) 'qcurr_g         ',prop_a%p%qflux(2,1)                     !<-in
-    WRITE(uw,*) 'qcurr_e         ',prop_a%p%qflux(2,2)                     !<-in
+    WRITE(uw,*) 'nvelocity        ',prop_a%p%nvelocity
+    WRITE(uw,*) 'qflux_g         ',prop_a%p%qflux(1,1)
+    WRITE(uw,*) 'qflux_e         ',prop_a%p%qflux(1,2)
+    WRITE(uw,*) 'qcurr_g         ',prop_a%p%qflux(2,1)
+    WRITE(uw,*) 'qcurr_e         ',prop_a%p%qflux(2,2)
     WRITE(uw,*) 'eta_boundary_l  ',prop_a%p%eta_boundary_l
     WRITE(uw,*) 'eta_boundary_r  ',prop_a%p%eta_boundary_r
     CLOSE(uw)
@@ -897,7 +893,7 @@ CONTAINS
     LOGICAL :: opened
     INTEGER :: uw
 
-    REAL(kind=dp) :: g_bs                                                 !<-GBS
+    REAL(kind=dp) :: g_bs
 
     REAL(kind=dp) :: transport_factor
     REAL(kind=dp) :: qflux_g,qcurr_g
@@ -932,10 +928,10 @@ CONTAINS
     allocate(gamma_out(3,3))
    
     ! taken from Sergei
-    qflux_g = prop_a%p%qflux(1,1)                                          !<-in
-    qcurr_g = prop_a%p%qflux(2,1)                                          !<-in
-    qflux_e = prop_a%p%qflux(1,2)                                          !<-in
-    qcurr_e = prop_a%p%qflux(2,2)                                          !<-in
+    qflux_g = prop_a%p%qflux(1,1)
+    qcurr_g = prop_a%p%qflux(2,1)
+    qflux_e = prop_a%p%qflux(1,2)
+    qcurr_e = prop_a%p%qflux(2,2)
     if ( (magnetic_device .EQ. 0 .and. isw_axisymm .eq. 1) .or. mag_magfield .eq. 0 ) then
        ALLOCATE(y(SIZE(y_axi_averages,1)))
        y = y_axi_averages
@@ -955,11 +951,10 @@ CONTAINS
 
     alambda_b=-0.75d0 * qcurr_g *y(6)/(y(7)*y(9))
     alambda_bb=alambda_b * y(9) / y(6)
-    g_bs=2.d0*qcurr_g/(y(7)*(collpar*qcurr_e/y(9)-8.d0/3.d0))             !<-GBS
+    g_bs=2.d0*qcurr_g/(y(7)*(collpar*qcurr_e/y(9)-8.d0/3.d0))
     ! gamma_E from the Spitzer-Haerm paper 
     ! to get the values there, the result has to be multiplied by Zeff
     ! sigma / sigma_lorentz(zeff=1)
-!    gamma_E = (3.d0*SQRT(pi)*qcurr_e*collpar/(32.d0*y(9)))  !***change19.09.07
     gamma_E = (3.d0*pi*qcurr_e*collpar/(32.d0*y(9)))
     
     ! find free unit
@@ -1009,12 +1004,11 @@ CONTAINS
             (dmono_over_dplateau),(epseff3_2),(alambda_b), &
             (qflux_g),(qflux_e),(qcurr_g),(qcurr_e),    &
             (alambda_bb),(gamma_E), &
-            (g_bs),    &                                              !<-GBS
+            (g_bs),    &
             (device%r0),(surface%bmod0)
        close(uw)
     end if
 
-    
 
     ! Final output
     IF ( iend .EQ. 1) THEN
@@ -1053,7 +1047,6 @@ CONTAINS
           call h5_add(h5id, 'gamma_out', gamma_out, lbound(gamma_out), ubound(gamma_out))
           call h5_add(h5id, 'qflux', prop_a%p%qflux, lbound(prop_a%p%qflux), ubound(prop_a%p%qflux))
 
-          !k_cof = (2.5_dp-D32_AX_D31ref/D31_AX_D31ref)
           k_cof = 2.5_dp - prop_a%p%qflux(2,3) / prop_a%p%qflux(2,1)
           write (*,*) "k", k_cof
           call h5_add(h5id, 'k_cof', k_cof)
@@ -1246,7 +1239,7 @@ CONTAINS
        ! deallocate
        propagator_tag_counter = 0
        prop_count_call = 0
-       !call destruct_all_propagators
+
           
     elseif (fakeparallel .eq. 1) then ! fake parallelization
        write (*,*) 'This parallel mode is the fake parallelization on one client.'
@@ -1279,7 +1272,7 @@ CONTAINS
 
     ! now the result of joining is stored in prop_s%prev
     ! it is ready for further joining with next groups of fieldperiods
-    ! print *, 'ERROR FROM JOINING PERIODS ',ierr_join
+
     end subroutine external_joining
 
     subroutine final_joining()
@@ -1863,7 +1856,6 @@ CONTAINS
   
   ! ---------------------------------------------------------------------------
   SUBROUTINE ripple_solver_int(ierr)
-    !
     ! Interface routine for subroutine ripple_solver
     ! Connects to the outside
     !
@@ -1875,43 +1867,43 @@ CONTAINS
     
     INTERFACE ripple_solver
        SUBROUTINE ripple_solver(                                 &
-            npass_l,npass_r,nvelocity,                           &         !<-in
+            npass_l,npass_r,nvelocity,                           &
             amat_plus_plus,amat_minus_minus,                     &
             amat_plus_minus,amat_minus_plus,                     &
-            source_p,source_m,                                   &         !<-in
+            source_p,source_m,                                   &
             flux_p,flux_m,                                       &
-            qflux,                                               &         !<-in
+            qflux,                                               &
             ierr                                                 &
             )
          INTEGER, PARAMETER                                        :: dp = KIND(1.0d0)
 
          INTEGER,                                    INTENT(out)   :: npass_l
          INTEGER,                                    INTENT(out)   :: npass_r
-         INTEGER,   INTENT(out)   :: nvelocity                              !<-in
+         INTEGER,   INTENT(out)   :: nvelocity
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_plus_plus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_minus_minus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_plus_minus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_minus_plus
          REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) ::         &
-                                       source_p,source_m,flux_p,flux_m     !<-in
-         REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(out) :: qflux  !<-in
+                                       source_p,source_m,flux_p,flux_m
+         REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(out) :: qflux
          INTEGER,                                    INTENT(out)   :: ierr
        END SUBROUTINE ripple_solver
     END INTERFACE
 
     CALL ripple_solver(                                                  &
-         prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,           & !<-in
+         prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,           &
          prop_c%p%amat_p_p, prop_c%p%amat_m_m,                           &
          prop_c%p%amat_p_m, prop_c%p%amat_m_p,                           &
-         prop_c%p%source_p, prop_c%p%source_m,                           & !<-in
+         prop_c%p%source_p, prop_c%p%source_m,                           &
          prop_c%p%flux_p, prop_c%p%flux_m,                               & 
-         prop_c%p%qflux,                                                 & !<-in
+         prop_c%p%qflux,                                                 &
          ierr                                                            &
          )
 
-    prop_c%p%npass_l = SIZE(prop_c%p%amat_p_m,1)/(prop_c%p%nvelocity+1)     !<-in
-    prop_c%p%npass_r = SIZE(prop_c%p%amat_m_p,1)/(prop_c%p%nvelocity+1)     !<-in
-    !
+    prop_c%p%npass_l = SIZE(prop_c%p%amat_p_m,1)/(prop_c%p%nvelocity+1)
+    prop_c%p%npass_r = SIZE(prop_c%p%amat_m_p,1)/(prop_c%p%nvelocity+1)
+
   END SUBROUTINE ripple_solver_int
 
   SUBROUTINE plot_distrf_int
@@ -1935,7 +1927,6 @@ CONTAINS
   END SUBROUTINE plot_distrf_int
 
   SUBROUTINE join_ripples_int(ierr,cstat_in,deall_in)
-    !  
     ! Interface for subroutine join_ripples
     ! Joines current propagator prop_c with previous propagator prop_c%prev
     ! and puts result into the previous one.
@@ -2149,8 +2140,6 @@ CONTAINS
        CALL deconstruct_binarysplit(loc_bs_2b)
     END IF
 
-
-
     
     IF (prop_diagnostic .GE. 2) THEN
        PRINT *, ' '
@@ -2185,9 +2174,7 @@ CONTAINS
 
     NULLIFY(o)
     NULLIFY(n)
-    
-    !
-    RETURN
+
   END SUBROUTINE join_ripples_int
   ! ---------------------------------------------------------------------------
 
@@ -2308,14 +2295,12 @@ CONTAINS
        !    qflux
        !    eta
 
-       !
        ! what is written for prop_showall > 1 (reduced for joined)
        !    tags  : prop_start,prop_end
        !    sizes : o%p%npart, o%p%npass_l, o%p%npass_r, o%p%velocity
        !    amat_p_p
        !    amat_m_p
        !    source_p
-
 
        ! tags
        WRITE(prop_unit,*) prop_start
@@ -2637,9 +2622,8 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   SUBROUTINE read_propagator_cont(o,prop_type,prop_start,prop_end,prop_showall_in)
-    !
     ! reads the content of a propagator 
-    !
+
     TYPE(propagator), POINTER  :: o
     INTEGER, INTENT(in), OPTIONAL :: prop_showall_in
 
@@ -2793,9 +2777,8 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   SUBROUTINE read_prop_bound_cont(b,prop_type,prop_left,prop_right)
-    !
     ! reads the content of a boundary between propagators
-    !
+
     TYPE(prop_boundary)  :: b
     
     INTEGER, INTENT(in) :: prop_type
@@ -3320,9 +3303,9 @@ CONTAINS
   ! ---------------------------------------------------------------------------
   SUBROUTINE reconstruct_propagator_dist_1(l,r,b, &
        source_p_0,source_m_N,source_m_N1,source_p_N)
-!
+
     USE lapack_band
-!
+
     TYPE(propagator), POINTER            :: l  ! left
     TYPE(propagator), POINTER            :: r  ! right
     TYPE(prop_boundary)  :: b
@@ -3367,13 +3350,13 @@ CONTAINS
 
     ! SERGEI - here comes all the stuff
   nvel = r%p%nvelocity
-!
+
   ndim=r%p%npass_l*(nvel+1)
   ndim1=l%p%npass_r*(nvel+1)
-!
+
   ALLOCATE(amat(ndim,ndim),bvec_lapack(ndim,3),ipivot(ndim))
   ALLOCATE(a_mp(ndim,ndim1),a_pm(ndim1,ndim),q_p(ndim,3),q_m(ndim1,3))
-!
+
   DO m=0,nvel
     k=m*r%p%npass_l
     k1=m*l%p%npass_r
@@ -3388,32 +3371,31 @@ CONTAINS
            =MATMUL(b%c_backward,r%p%source_m(k+1:k+r%p%npass_l,:)   &
            +MATMUL(r%p%amat_m_m(k+1:k+r%p%npass_l,:),source_m_N))
   ENDDO
-!
+
 ! Now the set of equations has the aligned dimensions and is of the form:
 ! $f^+ = A^{-+} f^- + q^+$
 ! $f^- = A^{+-} f^+ + q^-$
-!
+
   amat=0.d0
   DO i=1,ndim
     amat(i,i)=1.d0
   ENDDO
   amat=amat-MATMUL(a_mp,a_pm)
   bvec_lapack=q_p+MATMUL(a_mp,q_m)
-!
+
   CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
-!
+
   IF(info.NE.0) THEN
     PRINT *,'gbsv error ',info,' in reconstruct_propagator_dist'
     RETURN
   ENDIF
-!
+
   ALLOCATE(source_p_N(ndim,3),source_m_N1(ndim1,3))
-!
+
   source_p_N=bvec_lapack
   source_m_N1=q_m+MATMUL(a_pm,bvec_lapack)
-!
+
   DEALLOCATE(amat,bvec_lapack,ipivot,a_mp,a_pm,q_p,q_m)
-!
 
   END SUBROUTINE reconstruct_propagator_dist_1
   ! ---------------------------------------------------------------------------

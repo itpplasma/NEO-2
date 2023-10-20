@@ -3,7 +3,6 @@ MODULE spline_mod
 CONTAINS
 
   SUBROUTINE spl2d(nx,ny,hx,hy,mx,my,f,spl)
-
     ! Makes a 2-dimensional cubic spline of function f(x,y)
     !
     ! Input:  nx, ny              number of values in x and y
@@ -63,11 +62,10 @@ CONTAINS
     END DO
     DEALLOCATE ( bi, ci, di, s )
 
-    RETURN
   END SUBROUTINE spl2d
+
   !=====================================================
   SUBROUTINE eva2d(nx,ny,ix,iy,dx,dy,spl,spval)
-
     ! Evaluates a 2-dimensional cubic spline of function f(x,y)
     !
     ! Input:  nx, ny              number of values in x and y
@@ -94,11 +92,10 @@ CONTAINS
     END DO
     spval = a(1)+dy*(a(2)+dy*(a(3)+dy*a(4)))
 
-    RETURN
   END SUBROUTINE eva2d
+
   !=====================================================
   SUBROUTINE eva2d_fd(nx,ny,ix,iy,dx,dy,spl,spval)
-
     ! Evaluates the first derivatives of 2-dimensional cubic spline of function f(x,y)
     !
     ! Input:  nx, ny              number of values in x and y
@@ -159,11 +156,10 @@ CONTAINS
       END DO
     END DO
 
-    RETURN
   END SUBROUTINE eva2d_fd
+
   !=====================================================
   SUBROUTINE eva2d_sd(nx,ny,ix,iy,dx,dy,spl,spval)
-
     ! Evaluates the second derivatives of 2-dimensional cubic spline of function f(x,y)
     !
     ! Input:  nx, ny              number of values in x and y
@@ -244,11 +240,10 @@ CONTAINS
       END DO
     END DO
 
-    RETURN
   END SUBROUTINE eva2d_sd
+
   !=====================================================
   SUBROUTINE splreg(n,h,y,bi,ci,di)
-
     ! Makes a cubic spline of function y(x)
     !
     ! Input:  n                   number of values in y
@@ -298,11 +293,10 @@ CONTAINS
     END DO
     DEALLOCATE ( al, bt )
 
-    RETURN
   END SUBROUTINE splreg
+
   !=====================================================
   SUBROUTINE splper(n,h,y,bi,ci,di)
-
     ! Makes a cubic spline of periodic function y(x)
     !
     ! Input:  n                   number of values in y
@@ -373,11 +367,10 @@ CONTAINS
 
     DEALLOCATE ( bmx, yl, amx1, amx2, amx3 )
 
-    RETURN
   END SUBROUTINE splper
+
   !=====================================================
   SUBROUTINE spfper(np1,amx1,amx2,amx3)
-
     ! Helper routine for splfi
 
     use nrtype
@@ -414,8 +407,8 @@ CONTAINS
     END DO
     amx1(n) = SQRT(4.d0-ss)
 
-    RETURN
   END SUBROUTINE spfper
+
   !=====================================================
   SUBROUTINE poi2d(hx,hy,mx,my,                         &
      xmin,xmax,ymin,ymax,                             &
@@ -496,7 +489,6 @@ CONTAINS
     dy = hy*(y1-DBLE(float(iy)))
     iy = iy+1
 
-    RETURN
   END SUBROUTINE poi2d
 
 END MODULE spline_mod

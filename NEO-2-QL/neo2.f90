@@ -9,7 +9,6 @@ PROGRAM neo2
   use rusage_type, only : fortran_rusage, write_fortran_rusage
 
   USE size_mod
-  !USE partpa_mod, ONLY : hxeta
   USE flint_mod, ONLY : plot_gauss,plot_prop,phi_split_mode,        &
        phi_place_mode,phi_split_min,hphi_mult,max_solver_try,       &
        bsfunc_local_err_max_mult,bsfunc_max_mult_reach,             &
@@ -53,27 +52,24 @@ PROGRAM neo2
        collop_load, collop_unload, z_eff, collop_path,              &
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
-       scalprod_beta, lsw_read_precom, lsw_write_precom !! Added lsw_read_precom
-       !! and lsw_write_precom by Michael Draxler (25.08.2017)
+       scalprod_beta, lsw_read_precom, lsw_write_precom
   USE rkstep_mod, ONLY : lag, leg, legmax, epserr_iter
 
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
-  !! Modification by Andreas F. Martitsch (14.07.2015)
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
        MtOvR, B_rho_L_loc, xstart_cyl, isw_ripple_solver,           &
        isw_calc_Er, isw_calc_MagDrift, species_tag_Vphi,            &
        isw_Vphi_loc, Vphi, R_Vphi, Z_Vphi, boozer_theta_Vphi,       &
        dn_spec_ov_ds, dT_spec_ov_ds
-  !! End Modification by Andreas F. Martitsch (14.07.2015)
-  !! Modifications by Andreas F. Martitsch (17.03.2016)
+
   ! derivative of iota for non-local NTV computations
   ! (with magnetic shear)
   use neo_magfie, only : isw_mag_shear
-  !! End Modifications by Andreas F. Martitsch (17.03.2016)
+
   use neo_spline_data, only : lsw_linear_boozer
   USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
   USE neo_control, ONLY: in_file, inp_swi, lab_swi, set_rt0_from_rmnc_for_zero_mode
@@ -83,7 +79,7 @@ PROGRAM neo2
   !************************************
   USE hdf5_tools
   USE hdf5_tools_f2003
-  !
+
   IMPLICIT NONE
 
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -99,14 +95,8 @@ PROGRAM neo2
   !**********************************************************
 
 
-
   REAL(kind=dp), PARAMETER :: pi=3.14159265358979_dp
 
-  !**********************************************************
-  ! Include version information
-  !**********************************************************
-  !INCLUDE "cmake_version.f90"
-  !INCLUDE "version.f90"
 
   !************************************************
   ! HDF5
@@ -140,7 +130,6 @@ PROGRAM neo2
   REAL(kind=dp) :: xetama,xetami
 
   REAL(kind=dp) :: eta_s_lim
-  ! REAL(kind=dp) :: z_eff
 
   INTEGER :: proptag_start,proptag_end
   INTEGER :: proptag_begin,proptag_final
@@ -253,12 +242,10 @@ PROGRAM neo2
        prop_reconstruct_levels
   NAMELIST /plotting/                                                         &
        plot_gauss,plot_prop
-  !! Modification by Andreas F. Martitsch (14.07.2015)
   ! Extra input for NTV computation
   NAMELIST /ntv_input/                                                        &
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, B_rho_L_loc,          &
        isw_ripple_solver, isw_mag_shear
-  !! End Modification by Andreas F. Martitsch (14.07.2015)
 
   set_rt0_from_rmnc_for_zero_mode = .false.
 
@@ -300,7 +287,6 @@ PROGRAM neo2
 
   call check()
 
-  !! Modification by Andreas F. Martitsch (20.02.2017)
   ! Prepare  multi-species computations for a given profile
   ! -> prepare input files, directories
   IF(lsw_multispecies .AND. (isw_multispecies_init .GT. 0)) THEN
@@ -308,44 +294,43 @@ PROGRAM neo2
 
     STOP
   END IF
-  !! End Modification by Andreas F. Martitsch (20.02.2017)
 
   !! Modification by Andreas F. Martitsch (23.08.2015)
   ! multi-species part:
   ! -> read species-relevant info into a large array (allocatable not supported)
-  !
+
   IF(ALLOCATED(species_tag)) DEALLOCATE(species_tag)
   ALLOCATE(species_tag(0:num_spec-1))
   species_tag(0:num_spec-1)=species_tag_vec(1:num_spec)
-  !
+
   IF(ALLOCATED(conl_over_mfp_spec)) DEALLOCATE(conl_over_mfp_spec)
   ALLOCATE(conl_over_mfp_spec(0:num_spec-1))
   conl_over_mfp_spec(0:num_spec-1)=conl_over_mfp_vec(1:num_spec)
-  !
+
   IF(ALLOCATED(z_spec)) DEALLOCATE(z_spec)
   ALLOCATE(z_spec(0:num_spec-1))
   z_spec(0:num_spec-1)=z_vec(1:num_spec)
-  !
+
   IF(ALLOCATED(m_spec)) DEALLOCATE(m_spec)
   ALLOCATE(m_spec(0:num_spec-1))
   m_spec(0:num_spec-1)=m_vec(1:num_spec)
-  !
+
   IF(ALLOCATED(T_spec)) DEALLOCATE(T_spec)
   ALLOCATE(T_spec(0:num_spec-1))
   T_spec(0:num_spec-1)=T_vec(1:num_spec)
-  !
+
   IF(ALLOCATED(n_spec)) DEALLOCATE(n_spec)
   ALLOCATE(n_spec(0:num_spec-1))
   n_spec(0:num_spec-1)=n_vec(1:num_spec)
-  !
+
   IF(ALLOCATED(dT_spec_ov_ds)) DEALLOCATE(dT_spec_ov_ds)
   ALLOCATE(dT_spec_ov_ds(0:num_spec-1))
   dT_spec_ov_ds(0:num_spec-1)=dT_vec_ov_ds(1:num_spec)
-  !
+
   IF(ALLOCATED(dn_spec_ov_ds)) DEALLOCATE(dn_spec_ov_ds)
   ALLOCATE(dn_spec_ov_ds(0:num_spec-1))
   dn_spec_ov_ds(0:num_spec-1)=dn_vec_ov_ds(1:num_spec)
-  !
+
   ! print multi-species input
   IF(lsw_multispecies) THEN
      PRINT *,'isw_coul_log       : ',isw_coul_log
@@ -356,7 +341,6 @@ PROGRAM neo2
      PRINT *,'m_spec             : ',m_spec
      PRINT *,'T_spec             : ',T_spec
      PRINT *,'n_spec             : ',n_spec
-     !STOP
   END IF
   !! End Modification by Andreas F. Martitsch (23.08.2015)
 
@@ -386,21 +370,9 @@ PROGRAM neo2
   END IF
 
 
-
-  !! Modification by Andreas F. Martitsch (31.07.2014)
   ! Save here starting point of the field line for cylindircal
   ! coordinates (used for normalizations for final NTV output)
   xstart_cyl = (/rbeg,phimi,zbeg/)
-  !! End Modification by Andreas F. Martitsch (31.07.2014)
-
-
-!!$  ! ---------------------------------------------------------------------------
-!!$  ! test sparse solver
-!!$  sparse_talk = .TRUE.
-!!$  sparse_solve_method = 1
-!!$  CALL sparse_example(2)
-!!$  STOP
-!!$  ! ---------------------------------------------------------------------------
 
   IF (prop_reconstruct .EQ. 1) THEN
      PRINT *, 'Reconstruction run!'
@@ -433,9 +405,6 @@ PROGRAM neo2
   ! ---------------------------------------------------------------------------
   ! matrix elements
   ! ---------------------------------------------------------------------------
-  !IF (isw_integral .EQ. 0 .AND. isw_energy .EQ. 0) THEN
-  !   isw_lorentz = 1
-  !END IF
   IF (isw_momentum .EQ. 0) THEN ! Laguerre
      CALL collop_construct
      CALL collop_load
@@ -444,8 +413,6 @@ PROGRAM neo2
      nvel = vel_num
      IF (vel_distri_swi .EQ. 0) THEN
         CALL linspace(0.0_dp,vel_max,vel_num+1,vel_array)
-        !print *, 'vel_array ',lbound(vel_array,1),ubound(vel_array,1)
-        !print *, vel_array
      ELSE
         PRINT *, 'vel_distri_swi = ',vel_distri_swi,' not implemented!'
         STOP
@@ -497,20 +464,9 @@ PROGRAM neo2
      END IF
 
 
-
-  ! ---------------------------------------------------------------------------
-  ! this is just for christian, sergie please switch it off
-  ! Note: these subroutines have been moved to flint_mod and need to be
-  !   added to the use statement.
-  ! CALL sort_theta
-  ! nr,nz,nphi
-  !CALL write_volume_data(40,40,100,'w7as_vol.dat')
-  !CALL write_surface_data('w7as_sur_181.dat')
-
   call set_proptag_start_end()
 
-  !
-  !IF (proptag_start .LE. proptag_end) THEN
+
   ! ------------------------------------------------------------------------
   ! real computation
   CALL flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
@@ -519,22 +475,13 @@ PROGRAM neo2
        eta_part_global,eta_part_trapped,                                   &
        bin_split_mode,                                                     &
        proptag_start,proptag_end)
-  ! ------------------------------------------------------------------------
-  !ELSE
-  !   PRINT *, 'NOTHING TO COMPUTE'
-  !END IF
 
 
-  ! ---------------------------------------------------------------------------
-  ! final deallocation of device and all its children
-  !PRINT *, 'Before destruct_magnetics'
-  !CALL destruct_magnetics(device)
   ! ---------------------------------------------------------------------------
   ! final deallocation of device
-  !PRINT *, 'Beforecollop_unload'
   IF (isw_momentum .EQ. 0) THEN
      CALL collop_unload
-     !PRINT *, 'Beforecollop_deconstruct'
+
      CALL collop_deconstruct
   END IF
 
@@ -693,7 +640,6 @@ CONTAINS
        CALL h5_add(h5_config_group, 'hphi_lim', hphi_lim)
        CALL h5_add(h5_config_group, 'prop_write', prop_write)
        CALL h5_add(h5_config_group, 'prop_reconstruct',prop_reconstruct )
-       !CALL h5_add(h5_config_group, 'prop_fileformat',prop_fileformat )
        CALL h5_add(h5_config_group, 'prop_ripple_plot',prop_ripple_plot )
        CALL h5_close_group(h5_config_group)
 
@@ -743,6 +689,7 @@ CONTAINS
 
   END SUBROUTINE write_run_info
 
+
   SUBROUTINE write_version_info()
 
     WRITE (*,*) ''
@@ -759,6 +706,7 @@ CONTAINS
     END IF
 
   END SUBROUTINE write_version_info
+
 
   subroutine set_default_values()
 
@@ -790,9 +738,9 @@ CONTAINS
     fname_exec_precom = 'run_neo2_precom.sh'
     ! ---------------------------------------------------------------------------
     ! defaults
-    !
+
     ! settings
-      !! Modification by Andreas F. Martitsch (21.02.2017)
+
     ! multi-species part:
     lsw_multispecies = .FALSE.
     isw_multispecies_init = 0
@@ -803,10 +751,8 @@ CONTAINS
     !                   (overrides values for collisionality parameters)
     isw_coul_log = 0
     num_spec = 1
-
     dT_vec_ov_ds = 0.0d0 ! temperature [erg] (=1keV)
     dn_vec_ov_ds = 0.0d0 ! density  [cm^-3]
-    !! End Modification by Andreas F. Martitsch (21.02.2017)
     mag_magfield = 1
     magnetic_device = 1
     mag_nperiod_min = 300
@@ -948,6 +894,7 @@ CONTAINS
     m_nbi  = 3.343583719d-24
   end subroutine set_default_values
 
+
   subroutine check()
     if (any(t_vec < 0.0)) then
       write(*,*) 'ERROR: negative temperature.'
@@ -970,6 +917,7 @@ CONTAINS
       stop
     end if
   end subroutine check
+
 
   !> brief Routine to read in all the namelist with errorhandling.
   !>
@@ -1017,6 +965,7 @@ CONTAINS
 
   end subroutine read_in_namelists
 
+
   !> \brief Check if error occoured duringi read of namelist.
   !>
   !> This function will check th iostat value of a read namelist statement,
@@ -1043,6 +992,7 @@ CONTAINS
       stop_program = .true. .and. required
     end if
   end function check_iostat
+
 
   !> \brief Write error message when a namelist could not be read.
   subroutine write_cant_read_message(groupname, namelist_file_unit, required_)
@@ -1074,6 +1024,7 @@ CONTAINS
      &  filename, "' cannot be read."
   end subroutine write_cant_read_message
 
+
   !> \brief Create directory structure and input files for multi-species scan.
   !>
   !> \note This subroutine will acesss variables from the main program.
@@ -1088,7 +1039,7 @@ CONTAINS
     CALL neo_read_control()
 
     ! read multi-species input (HDF5 file)
-    !
+
     ! open file
     CALL h5_open(TRIM(ADJUSTL(fname_multispec_in)), h5id_multispec_in)
     ! get size of arrays
@@ -1168,14 +1119,13 @@ CONTAINS
       ! get number of relevant species for each radial point
       num_spec = rel_stages_prof(ind_boozer_s)
       IF (num_spec .EQ. 0) CYCLE ! try next radial point
-      !
+
       ! directory name
       WRITE(dir_name,fmt='(F10.5)') boozer_s_prof(ind_boozer_s)
       ind_char=INDEX(dir_name,'.')
       dir_name=dir_name(:ind_char-1) // 'p' // dir_name(ind_char+1:)
       dir_name = 'es_' // TRIM(ADJUSTL(dir_name))
-      !PRINT *,dir_name
-      !
+
       ! shell command: create directories
       cmd_line = &
            'if [ ! -d ' // TRIM(ADJUSTL(dir_name)) // ' ]; then mkdir ' // &
@@ -1384,6 +1334,7 @@ CONTAINS
     END DO
   end subroutine prepare_mulitspecies_scan
 
+
   !> \brief Wrapper for executing a string in a command line.
   subroutine command_line_wrapper(cmd_line)
     character(len=200), intent(in) :: cmd_line
@@ -1400,6 +1351,7 @@ CONTAINS
       CALL execute_command_LINE(cmd_line)
 #endif
   end subroutine command_line_wrapper
+
 
   !> \brief Set variables proptag_start and proptag_end from main program.
   !>

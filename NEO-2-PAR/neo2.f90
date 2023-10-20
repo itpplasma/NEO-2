@@ -205,13 +205,10 @@ PROGRAM neo2
   ! ---------------------------------------------------------------------------
   ! filenames (default file and specific input file) for namelist
   fnames = (/'neo2.def','neo2.in '/) ! removed because it is not used
-  !fnames = (/'neo2.in '/)
 
   ! ---------------------------------------------------------------------------
   ! defaults
-  !
-  ! call omp_set_num_threads(4)
-  !
+
   ! settings
   lsw_linear_boozer = .FALSE.
   mag_magfield = 1
@@ -544,15 +541,6 @@ PROGRAM neo2
      END IF
 
      ! ---------------------------------------------------------------------------
-     ! this is just for christian, sergie please switch it off
-     ! Note: these subroutines have been moved to flint_mod and need to
-     !   be added to the use statement.
-     ! CALL sort_theta
-     ! nr,nz,nphi
-     !CALL write_volume_data(40,40,100,'w7as_vol.dat')
-     !CALL write_surface_data('w7as_sur_181.dat')
-
-     ! ---------------------------------------------------------------------------
      ! these are the tags of the first and last fieldpropagator
      ! of the actual fieldline (we have only one at the moment)
      !  fieldline has a first and a last child : fieldperiod
@@ -645,14 +633,14 @@ PROGRAM neo2
      
      IF (isw_momentum .EQ. 0) THEN
         CALL collop_unload
-        !PRINT *, 'Beforecollop_deconstruct'
+
         CALL collop_deconstruct
      END IF
      
   ELSEIF (prop_reconstruct .EQ. 1) THEN
      IF (isw_axisymm .EQ. 1) THEN
         WRITE (*,*) "Skipping reconstruction for axisymmetric mode"
-        !stop
+
      END IF
 
      IF (mpro%isMaster()) THEN

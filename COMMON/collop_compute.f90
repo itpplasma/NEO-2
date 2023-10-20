@@ -183,14 +183,14 @@ module collop_compute
 contains
 
 !     ..................................................................
-!
+
   subroutine DBESK(X,N,BK,IER)
-!
+
       double precision X, BK
       double precision T, B
       double precision G0, G1, GJ
       integer N,IER,L,J
-!
+
       dimension T(12)
       BK=.0
       if(N)10,11,11
@@ -207,9 +207,9 @@ contains
       do 26 L=2,12
    26 T(L)=T(L-1)*B
       if(N-1)27,29,27
-!
+
 !     COMPUTE KO USING POLYNOMIAL APPROXIMATION
-!
+
    27 G0=(1.2533141-.1566642*T(1)+.08811128*T(2)-.09139095*T(3)   &
       +.1344596*T(4)-.2299850*T(5)+.3792410*T(6)-.5247277*T(7)    &
       +.5575368*T(8)-.4262633*T(9)+.2184518*T(10)-.06680977*T(11) &
@@ -217,9 +217,9 @@ contains
       if(N)20,28,29
    28 BK=G0
       return
-!
+
 !     COMPUTE K1 USING POLYNOMIAL APPROXIMATION
-!
+
    29 G1=(1.2533141+.4699927*T(1)-.1468583*T(2)+.1280427*T(3)     &
       -.1736432*T(4)+.2847618*T(5)-.4594342*T(6)+.6283381*T(7)    &
       -.6632295*T(8)+.5050239*T(9)-.2581304*T(10)+.07880001*T(11) &
@@ -227,9 +227,9 @@ contains
       if(N-1)20,30,31
    30 BK=G1
       return
-!
+
 !     FROM KO,K1 COMPUTE KN USING RECURRENCE RELATION
-!
+
    31 do 35 J=2,N
       GJ=2.*(FLOAT(J)-1.)*G1/X+G0
       if(GJ-1.0D300)33,33,32
@@ -239,12 +239,12 @@ contains
    35 G1=GJ
    34 BK=GJ
       return
-!   
+
    36 IER=3
       BK=0.
       return
   end subroutine
-!
+
   
   subroutine init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
     use rkstep_mod, only : lag, leg
@@ -1321,29 +1321,27 @@ contains
   end function integrate_a_to_infinity_param
 
   subroutine init_legendre(n)
-    !
     ! Computes coefficients of Legendre polynomials of orders from 0 to n
-
     !
     ! Input parameters:
     !           Formal: n            - maximum order of Legendre polynomials
     ! Output parameters:
     !           Formal: coefleg(i,j) - j-th coefficient of Legendre polynomial
     !                                  of the order i
-    !
+
     integer :: n,i,j
-    !
+
     double precision :: frontfac,rearfac
-    !
+
     if(allocated(coefleg)) return
     write (*,*) "Initializing Legendre coefficients..."
     allocate(coefleg(0:n,0:n))
-    !
+
     coefleg=0.d0
     coefleg(0,0)=1.d0
     coefleg(1,1)=1.d0
     frontfac=1.d0
-    !
+
     do i=2,n
        frontfac=frontfac*(2.d0-1.d0/dble(i))
        rearfac=frontfac
@@ -2446,8 +2444,8 @@ contains
     real(kind=dp), dimension(:)   :: bzero_s, weightparflow_s, weightenerg_s
     real(kind=dp), dimension(:,:)   :: anumm_s, anumm_inf_s, denmm_s
     real(kind=dp), dimension(:,:,:) :: ailmm_s
-    real(kind=dp) :: T_e!, rmu_beg, rmu_end
-    integer :: ierr, n, isw_rel!, rmu_steps
+    real(kind=dp) :: T_e
+    integer :: ierr, n, isw_rel
 
     !**********************************************************
     ! Preparations for relativistic formulas
