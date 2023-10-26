@@ -55,3 +55,5 @@ NEO-2-QL/.directory
 *.blg
 *.run.xml
 *.out
+*.synctex.gz
+*.fdb_latexmk
