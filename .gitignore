@@ -57,3 +57,6 @@ NEO-2-QL/.directory
 *.out
 *.synctex.gz
 *.fdb_latexmk
+*.toc
+DOC/html/*
+DOC/latex/*
