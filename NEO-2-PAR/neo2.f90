@@ -378,38 +378,44 @@ PROGRAM neo2
      OPEN(unit=u1,file=fnames(jf),status='old',iostat=ios)
      IF (ios .NE. 0) THEN
         PRINT *, 'WARNING: File ',fnames(jf),' cannot be OPENED!'
-        PRINT *, ''
+        PRINT *, 'iostat = ', ios
         STOP
      ELSE
         ! Read variables from group settings
         READ(u1,nml=settings,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group settings in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
+           PRINT *, 'iostat = ', ios
            STOP
         END IF
+        ! non-advancing io is not permitted with namelists, thus we have
+        ! to rewind before each subsequent read
+        rewind(u1)
         READ(u1,nml=collision,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group collision in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
+           PRINT *, 'iostat = ', ios
            STOP
         END IF
+        rewind(u1)
         READ(u1,nml=binsplit,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group binsplit in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
+           PRINT *, 'iostat = ', ios
            STOP
         END IF
+        rewind(u1)
         READ(u1,nml=propagator,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group propagator in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
+           PRINT *, 'iostat = ', ios
            STOP
         END IF
+        rewind(u1)
         READ(u1,nml=plotting,iostat=ios)
         IF (ios .NE. 0) THEN
            PRINT *, 'WARNING: group plotting in ',fnames(jf),' cannot be READ!'
-           PRINT *, ''
+           PRINT *, 'iostat = ', ios
            STOP
         END IF
      END IF
