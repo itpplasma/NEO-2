@@ -7,7 +7,24 @@ testcase=${1}
 number_processors=${2}
 which_code=${3}
 
-testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-${testcase}-XXXXXX`
+# Check if the directory /temp/$LOGNAME/Neo2/Testing/Runs/ exists
+if [ ! -d "/temp/$LOGNAME/Neo2/Testing/Runs/" ] && [ -z "$NEO2_TEST_PATH" ]; then
+    echo "There is no directory defined for storing test data. Please create the /temp/$LOGNAME/Neo2/Testing/Runs/ directory or define a new location in the environment variable NEO2_TEST_PATH."
+    exit 1
+fi
+# Check if NEO2_TEST_PATH is defined
+if [ -n "$NEO2_TEST_PATH" ]; then
+    # Check if the directory defined in NEO2_TEST_PATH exists
+    if [ ! -d "$NEO2_TEST_PATH" ]; then
+        echo "The directory defined in NEO2_TEST_PATH does not exist. Please define an existing directory."
+        exit 1
+    fi
+fi
+if [ -d "/temp/$LOGNAME/Neo2/Testing/Runs/" ]; then
+    testpath=`mktemp -d /temp/$LOGNAME/Neo2/Testing/Runs/Test-${testcase}-XXXXXX`
+else
+    testpath=`mktemp -d $NEO2_TEST_PATH/Test-${testcase}-XXXXXX`
+fi
 echo "Testpath created: ${testpath}"
 
 referencepath='/temp/buchholz/Neo2/Testing/Reference/'
@@ -127,7 +144,8 @@ cp ./$executablename ${testpath}/
 cd ${testpath}/
 
 echo "Copying template..."
-cp -r -L ../../Template/${testcase}/* ./
+# From the saved test templates location (hard coded)
+cp -r -L /temp/AG-plasma/codes/neo-2_test_templates/${testcase}/* ./
 
 echo "Running Test ${testcase}..."
 

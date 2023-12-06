@@ -42,6 +42,9 @@ NEO-2-QL/.directory
 */[Bb]uild/*
 */[Bb]uild-*/*
 */[Bb]uild_*/*
+*/*/[Bb]uild/*
+*/*/[Bb]uild-*/*
+*/*/[Bb]uild_*/*
 
 # Ignore files created by latex.
 *.pdf
