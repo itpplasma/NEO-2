@@ -1,0 +1,19 @@
+Executable = /usr/bin/mpiexec
+Universe   = vanilla
+Error      = ../err_failed.$(Process)
+Log        = ../scan.log
+run_as_owner = true
+notify_user  = georg.grassler@tugraz.at
+notification = Error
+nice_user    = false
+#requirements = ( TARGET.UtsnameNodename != "faepop69" && TARGET.UtsnameNodename != "faepop72" )
+requirements = ( OpSysAndVer == "Debian12" && TARGET.UtsnameNodename != "faepop14" )
+request_cpus = 2
+request_memory = 50*1024
+Getenv = true
+environment = "XDG_CACHE_HOME=/tmp OMP_NUM_THREADS=1"
+
+Output     = out
+initialdir = $(dirname)
+arguments = -mca orte_tmpdir_base \"/tmp/\" -np  2 ./neo_2.x
+Queue dirname matching dirs \
