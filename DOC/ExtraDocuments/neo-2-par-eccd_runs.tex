@@ -76,6 +76,7 @@
 \author[1]{Rico~Buchholz}
 \author[1]{Winfried~Kernbichler}
 \author[1]{Sergei~Kasilov}
+\author[1]{Georg~Grassler}
 \affil[1]{Fusion@\"OAW, Institute of Theoretical and Computational Physics, Graz University of Technology, Petersgasse 16, 8010 Graz, Austria}
 \renewcommand\Affilfont{\itshape\small}
 
@@ -720,6 +721,27 @@ Under some circumstances your jobs might be put on hold by condor. This
 means they are abborted and not considered for further calculations. You
 can solve this either by \vv{condor_release} which will put the job(s)
 back into the waiting list or by canceling the job(s).
+
+\subsection{Rerunning failed jobs}
+There can be multiple reasons why a job fails or more specifically, why it is put on hold by condor.
+The most common case is exceeding the requested memory. Especially when executing all the reconstruction
+runs at once using for example a .sh script, this is unfortunate, as the subsequent reconstruction runs fail
+when one of them is aborted prematurely for any reason. One can recognize a failed run via the \vv{out} file in the respective
+folder as well as, more obvious, by the presence of files that should be cleaned up by the final (merge) run (e.g. propagator*.h5).
+Using this info, one can identify the faulty run folders and setup a re-run for them (using a adjusted submit file e.g. bigger memory)
+with the python function \vv{setup_retry_of_failed_runs_PAR_VERSION}. It identifies the faulty runs, creates
+a new submit file from a template \vv{submit_failed.template} using the names of these runs and set up clean versions
+of their respective run folders. Afterwards, on can just resubmit these runs to condor via the new submit file.
+
+\begin{verbatim}
+	cd WORKINGDIR (that contains all the subrunfolders)
+	cp $NEO2PATH/DOC/condor_submit_failed.template submit_failed.template
+	setup_retry_of_failed_runs_PAR_VERSION.py
+	condor_submit submit_failed
+\end{verbatim}
+
+As the folders do not contain the faulty files anymore after the setup, a backup record of the failed run names is kept in
+\vv{record_of_failed_runs.txt}.
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
