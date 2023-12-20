@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 ###################################################################################################
 ###########################################FUNCTIONS###############################################
 ###################################################################################################
@@ -117,7 +120,8 @@ def append_list_unsucessful_runs_par(folder: str, subfolder_pattern: str, file_t
 ###########################################MAIN####################################################
 ###################################################################################################
 
-def setup_retry_of_failed_runs_PAR_VERSION(faulty_file_pattern: str = "propagator*.h5", use_failed_record: bool = False, minimum_label_length: int = 11):
+def setup_retry_of_failed_runs_PAR_VERSION(faulty_file_pattern: str = "propagator*.h5", use_failed_record: bool = False, 
+                                           eps: float = 1e-10, no_sideeffects: bool = False):
     """
 
     Make new submit file and reset folders for failed surfaces to retry the runs.
@@ -135,14 +139,15 @@ def setup_retry_of_failed_runs_PAR_VERSION(faulty_file_pattern: str = "propagato
     ------
     faulty_file_pattern: string, name of the file which PRESENCE indicates a failure.
     use_failed_record: bool, if True, the list of failed runs is read from record_of_failed_runs.txt
-    minimum_label_length: int, minimal agreement between entry in surfaces.dat and the name of
-                          the detected faulty run. The folder name is shorter compared to the flux
-                          label entry in sufaces.dat, which leads to a mismatch in the last digits.
-                          (rounding of last digit in folder name that can propagate to higher digits as well)
-                          The whole logic only works with strings (to avoid conversion erros). so to find all
-                          the entries in surfaces.dat, the foldername is continously shortenend until either
-                          a match or the minimum_label_length is reached. The routine signals, if increasing
-                          the minimum_label_length is necessary. (default: 11)
+    eps: float, minimal agreement between entry in surfaces.dat and the name of the detected faulty run 
+         in terms of (relative) numerical difference. The folder name is shorter compared to the flux
+         label entry in sufaces.dat, which leads to a mismatch in the last digits (rounding of last digit in 
+         folder name that can propagate to higher digits as well) The whole logic is first performed only with 
+         strings (to avoid conversion erros). However, should the flux label of some of the faulty runs not be
+         detected this way, a float number comparison of these not detected cases with the entries in surfaces.dat
+         is performed. Should still no sucessfull match happen, one ought to change eps or check surface.dat by hand.
+         (default: 1e-10)
+    no_sideeffects: bool, if True, only print list of failed runs. No sideeffects.
     
     output:
     -------
@@ -170,6 +175,11 @@ def setup_retry_of_failed_runs_PAR_VERSION(faulty_file_pattern: str = "propagato
         print('No failed runs found. Nothing to do.')
         return
     
+    if no_sideeffects:
+        print('Only printing list of failed runs. No sideeffects.')
+        print(list_unsucessful_runs)
+        return
+    
     # After recreating the folder in later steps, the runs are not considered as failed anymore.
     # Therefore, the list of failed runs is written to a file as backup.
     # Existing entries are not overwritten to further not loose the information.
@@ -185,25 +195,46 @@ def setup_retry_of_failed_runs_PAR_VERSION(faulty_file_pattern: str = "propagato
         list_unsucessful_flux_labels[i] = '0.'+parts[0]+parts[1]
 
     data_to_extract = []
-    while len(data_to_extract) < len(list_unsucessful_flux_labels):
-        if len(list_unsucessful_flux_labels[0]) < minimum_label_length:
-            print('Could not find all surfaces. Minimum label length reached.')
-            print('Possibly increase minimum_label_length to acount for rounding at trailing digits.')
-            break
-        data_to_extract = []
+    with open('surfaces.dat', 'r') as surface_file:
+        for line in surface_file:
+            columns = line.strip().split(' ')
+            flux_label = columns[0] 
+            if any(fnmatch.fnmatch(flux_label, run) for run in list_unsucessful_flux_labels):
+                data_to_extract.append(line)
+
+    if len(data_to_extract) < len(list_unsucessful_flux_labels):
+        list_not_found = [run[:-1] for run in list_unsucessful_flux_labels if run not in [line.split(' ')[0] for line in data_to_extract]]
+        print('Could not find all surfaces. Convert to float to handle rounding.')
+        list_not_found = [float(run) for run in list_not_found]
         with open('surfaces.dat', 'r') as surface_file:
             for line in surface_file:
                 columns = line.strip().split(' ')
-                flux_label = columns[0] 
-                if any(fnmatch.fnmatch(flux_label, run) for run in list_unsucessful_flux_labels):
-                    data_to_extract.append(line)
-        list_unsucessful_flux_labels = [run[:-2] + run[-1:] for run in list_unsucessful_flux_labels]
+                flux_label = float(columns[0])
 
-    with open('surfaces_failed.dat', 'w') as file:
-        file.writelines(data_to_extract)
+                if abs(flux_label) < eps:
+                    reference = 1 # compare absolut difference
+                else:
+                    reference = flux_label # compare relative difference
+
+                if any(abs(flux_label - run)/reference < eps for run in list_not_found):
+                    data_to_extract.append(line)
+
+        if len(data_to_extract) < len(list_unsucessful_flux_labels):
+            print('Could not find all surfaces, considering a relative tolerance of .' + eps)
+            print('Possibly increase tolerance eps or check surface.dat for not agreeing case.')
+            print('List of not found surfaces:')
+            print(list_not_found)
+    
+    if len(data_to_extract) > len(list_unsucessful_flux_labels):
+        raise ValueError('Something went wrong. More surfaces found than failed runs.')
+
+    print('Found ' + str(len(data_to_extract)) + ' surfaces in surfaces.dat for failed runs.')
 
     for item in data_to_extract:
         print(item, end='')
+
+    with open('surfaces_failed.dat', 'w') as file:
+        file.writelines(data_to_extract)
 
     # Make submit file for failed runs
     append_list_unsucessful_runs_par("./", "s[1234567890]*", faulty_file_pattern,"submit_failed.template", "submit_failed")
@@ -215,4 +246,11 @@ def setup_retry_of_failed_runs_PAR_VERSION(faulty_file_pattern: str = "propagato
     return
 
 if __name__ == '__main__':
-    setup_retry_of_failed_runs_PAR_VERSION()
+    import argparse
+    parser = argparse.ArgumentParser(description='Setup retry of failed runs for PAR version.')
+    parser.add_argument('--faulty_file_pattern', type=str, default="propagator*.h5", help='Name of the file which PRESENCE indicates a failure.')
+    parser.add_argument('--use_failed_record', type=bool, default=False, help='If True, the list of failed runs is read from record_of_failed_runs.txt')
+    parser.add_argument('--eps', type=float, default=1e-10, help='Allowed (relative) rounding difference between folder name and flux label in surfaces.dat.')
+    parser.add_argument('--no_sideeffects', type=bool, default=False, help='If True, only print list of failed runs. No sideeffects.')
+    args = parser.parse_args()
+    setup_retry_of_failed_runs_PAR_VERSION(args.faulty_file_pattern, args.use_failed_record, args.eps, args.no_sideeffects)
