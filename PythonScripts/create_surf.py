@@ -12,6 +12,12 @@ def create_surfaces(surface_dat_file:str = 'surfaces.dat'):
 
   s_vec, collpar_vec, Z_vec, T_vec = np.loadtxt(surface_dat_file, unpack=True)
 
+  if isinstance(s_vec, float): # if only one surface is given
+    s_vec = np.array([s_vec])
+    collpar_vec = np.array([collpar_vec])
+    Z_vec = np.array([Z_vec])
+    T_vec = np.array([T_vec])
+
   k = 0
   for s in s_vec:
     #dir_name = surf_dir_name + str(k+1)
