@@ -59,9 +59,9 @@ def get_list_unsucessful_runs_par(folder: str, subfolder_pattern: str, file_to_c
 
 ###################################################################################################
 
-def append_list_unsucessful_runs_par(folder: str, subfolder_pattern: str, file_to_check: str, infilename: str, outfilename: str):
+def append_list_unsucessful_runs_par(list_unsucessful_runs: list, infilename: str, outfilename: str):
   """
-  Determine list of unsucessful runs, and add list to file.
+  Determine add list of unsucessful runs to file.
 
   Intended for adding the list at the end of a condor_submit file.
   For this reason:
@@ -72,19 +72,12 @@ def append_list_unsucessful_runs_par(folder: str, subfolder_pattern: str, file_t
     a problem for HTcondor and it makes the code simpler.
 
   Example:
-    append_list_unsucessful_runs('./', 'es_*', 'neo2_multispecies_out.h5', 'submit_failed_template', 'submit_failed')
+    append_list_unsucessful_runs(list_unsucessful_runs 'submit_failed_template', 'submit_failed')
 
   input:
   ------
-  folder: string, with the path to the folder where to look for
-    subfolders. You can use './' for the current working directory.
-  subfolder_pattern: string which describes the subfolders. This may
-    contain wildcards, e.g. 'es_*'.
-    Attention: the pattern should not include files that are also
-    present in the directory, as there is no check, to operate on
-    folders only.
-  file_to_check: string, name of the file which PRESENCE indicates an
-    unsucessful run.
+  list_unsucessful_runs: list of strings, containing the names of the
+    subfolders of the unsucessful runs.
   infilename: string, name (and path) of file to which to append the
     list. Lines after a line with 'Queue' a the begining (whitespace
     allowed?), are ignored.
@@ -100,8 +93,6 @@ def append_list_unsucessful_runs_par(folder: str, subfolder_pattern: str, file_t
   Creates new file, overwritten if it already exists.
   """
 
-  unsucessful_runs = get_list_unsucessful_runs_par(folder, subfolder_pattern, file_to_check)
-
   with open(infilename,'r') as infile, open(outfilename,'w') as outfile:
     for line in infile:
       outfile.write(line)
@@ -109,7 +100,7 @@ def append_list_unsucessful_runs_par(folder: str, subfolder_pattern: str, file_t
         if line.split()[0] == 'Queue':
           break
 
-    for run in unsucessful_runs:
+    for run in list_unsucessful_runs:
       if run == 's1.000000000m03':
         # Skip axis
         continue
@@ -203,9 +194,14 @@ def setup_retry_of_failed_runs_PAR_VERSION(faulty_file_pattern: str = "propagato
                 data_to_extract.append(line)
 
     if len(data_to_extract) < len(list_unsucessful_flux_labels):
-        list_not_found = [run[:-1] for run in list_unsucessful_flux_labels if run not in [line.split(' ')[0] for line in data_to_extract]]
-        print('Could not find all surfaces. Convert to float to handle rounding.')
+        list_not_found = [run[:-1] for run in list_unsucessful_flux_labels if not any(fnmatch.fnmatch(line.strip().split(' ')[0],run) for line in data_to_extract)]
         list_not_found = [float(run) for run in list_not_found]
+        print('Up to this point extracted data:')
+        for item in data_to_extract:
+            print(item, end='')
+        print('Up to this point not found surfaces:')
+        print(list_not_found)
+        print('Could not find all surfaces. Convert to float to handle rounding.') 
         with open('surfaces.dat', 'r') as surface_file:
             for line in surface_file:
                 columns = line.strip().split(' ')
@@ -226,9 +222,11 @@ def setup_retry_of_failed_runs_PAR_VERSION(faulty_file_pattern: str = "propagato
             print(list_not_found)
     
     if len(data_to_extract) > len(list_unsucessful_flux_labels):
+        print('Data found corresponding to the not successfull runs:')
+        print(data_to_extract)
         raise ValueError('Something went wrong. More surfaces found than failed runs.')
 
-    print('Found ' + str(len(data_to_extract)) + ' surfaces in surfaces.dat for failed runs.')
+    print('Found in total ' + str(len(data_to_extract)) + ' surfaces in surfaces.dat for failed runs.')
 
     for item in data_to_extract:
         print(item, end='')
@@ -237,9 +235,10 @@ def setup_retry_of_failed_runs_PAR_VERSION(faulty_file_pattern: str = "propagato
         file.writelines(data_to_extract)
 
     # Make submit file for failed runs
-    append_list_unsucessful_runs_par("./", "s[1234567890]*", faulty_file_pattern,"submit_failed.template", "submit_failed")
+    append_list_unsucessful_runs_par(list_unsucessful_runs,"submit_failed.template", "submit_failed")
 
     # Make surfaces folders for failed runs
+    print('Executing create_surf.py to generate new folders of failed runs:')
     import create_surf
     create_surf.create_surfaces('surfaces_failed.dat')
 
