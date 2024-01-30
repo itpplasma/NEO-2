@@ -709,6 +709,70 @@ and thus may take a while (at ITCP of TU Graz is a gigabit network and speed is
 about 30-40 MB/s, with respect to output file, i.e. an output file size
 of 350 GB means this step will take approximately ten thousand seconds).
 
+\subsubsection{Doing all reconstruction runs at once}
+Instead of starting condor for each reconstruction stage of a complete NEO2 run 
+manually, one can automate the process. One possible way, is to not instruct Condor
+to directly run NEO2 with MPI, but specify a wrapper script that changes the input
+files of the corresponding reconstruction modes. In the distribution logic a possible
+approach is to assign the execution of said script as a separate job for each
+surface/subfolder. For example
+
+\begin{itemize}
+	\item \vv{condor_submit condor_submit_all_recontructions}
+		\begin{itemize}
+			\item NEO2-all.sh runs in surface s10000000m1 on computer A
+				\begin{itemize}
+					\item starts reconstruction run 0 with MPI (multiple CPUS on computer A)
+					\item starts reconstruction run 1 with MPI (multiple CPUS on computer A)
+					\item starts reconstruction run 2 with MPI (multiple CPUS on computer A)
+					\item starts reconstruction run 3 with MPI (multiple CPUS on computer A)
+					\item NEO2-all.sh stops on computer A and job is finished
+				\end{itemize}
+			\item NEO2-all.sh runs in surface s20000000m1 on computer B
+				\begin{itemize}
+					\item starts reconstruction run 0
+					\item starts reconstruction run 1 with MPI (multiple CPUS on computer B)
+					\item ...
+				\end{itemize}
+			\item ...
+		\end{itemize}
+\end{itemize}
+
+The shellscript NEO2-all.sh can be found in the Shellscript folder of NEO2. However, when you wanna
+use it with condor as described above, you have to make a HARD copy of it into the \vv{temp} folder
+e.g. your run folder, as Condor can only access scripts that are located in the non private regions
+of the file system (your home directory \vv{~} and its subdirectories can for example NOT be accessed).
+
+In following we provide the complete \vv{condor_submit_all_reconstructions} file
+\begin{verbatim}
+	Executable = ./NEO2-all.sh
+	arguments = 4
+	Universe   = vanilla
+	Error      = ../err.$(Process)
+	Log        = ../scan.log
+	run_as_owner = true
+	notify_user  = your.email@adresse
+	notification = Error
+	nice_user    = false
+	# The following two lines are to avoid 'black holes'
+	# together with the 'target.machine =!= MachineAttrMachine1 
+	# && target.machine =!= MachineAttrMachine2' part of requirements.
+	job_machine_attrs = Machine
+	job_machine_attrs_history_length = 5
+	requirements = (target.machine =!= MachineAttrMachine1 && target.machine =!= MachineAttrMachine2)
+	request_cpus = 4
+	request_memory = 40*1024
+	Getenv = true
+	
+	Output     = out
+	initialdir = $(dirname)
+	Queue dirname matching dirs s*
+\end{verbatim}
+
+The distribution of the jobs (i.e. the execution of NEO2-all.sh) is done using the regular expression in the Queue section: In all folders in the current directory that start with `s` Condor starts an instance of NEO2-all.sh. The above example assumes that said
+NEO2-all.sh lies in the run directory (see the '\vv{./}'). NOTE that '\vv{arguments}' and '\vv{requested_cpus}' have to be the same.
+The file can be also found in DOC.
+
 \subsubsection{Further useful condor commands}
 As already said you can submit jobs with \vv{condor_submit}.
 The command \vv{condor_q} gives you a list/summary with the status of
@@ -887,6 +951,7 @@ $RUNPATH/RunsByDate__2017_07_Bootstrap__ratfieldline
 For running the jobs the same script can be used as introduced in the
 ECCD section of this writeup (\vv{run_condor.sh}). Here, the content of
 the condor submission file is described in more detail:
+
 \begin{verbatim}
 Executable = NEO2-all.sh
 Universe   = vanilla
