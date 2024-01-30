@@ -1,0 +1,22 @@
+Executable = ./NEO2-all.sh
+arguments = 4
+Universe   = vanilla
+Error      = ../err.$(Process)
+Log        = ../scan.log
+run_as_owner = true
+notify_user  = your.email@adresse 
+notification = Error
+nice_user    = false
+# The following two lines are to avoid 'black holes'
+# together with the 'target.machine =!= MachineAttrMachine1 && target.machine =!= MachineAttrMachine2'
+# part of requirements.
+job_machine_attrs = Machine
+job_machine_attrs_history_length = 5
+requirements = ( TARGET.UtsnameNodename != "faepop14" && target.machine =!= MachineAttrMachine1 && target.machine =!= MachineAttrMachine2 )
+request_cpus = 4
+request_memory = 40*1024
+Getenv = true
+
+Output     = out
+initialdir = $(dirname)
+Queue dirname matching dirs s*
