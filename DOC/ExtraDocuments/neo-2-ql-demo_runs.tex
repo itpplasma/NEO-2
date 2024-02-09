@@ -380,7 +380,8 @@ Some notes regarding the input parameters in \vv{neo.in}:
 	\end{itemize}
 
 	TD;LR: Check the number of columns in your input \vv{.bc} file and choose 
-	one of the two choices above accordingly.
+	one of the two choices above accordingly. For the NEO-QL, which deals with tokamaks,
+	there is usually no stellerator symmetry, so \vv{inp_swi=9} should be your default.
 	
 	Additional note: Neither of the above \vv{inp_swi} accounts for a common 
 	convention in the listing of the fouriermodes, where there are no negative 
@@ -415,9 +416,10 @@ Some notes regarding the input parameters in \vv{neo.in}:
 		\item \vv{lab_swi=10}: applies an additional minus sign to the toroidal 
 		\& poloidal ELECTRICAL current read-in, uses the the tordoidal magnetic 
 		flux at the seperatrix divided by $2\pi$ INCLUDING the sign/direction
-		
-		TODO: further differences in NTV calculation if \vv{lab_swi=10}
+		THIS OPTION IS THE ONLY ONE THAT SHOULD BE USED FOR NTV CALCULATIONS
 	\end{itemize}
+	
+	TD;LR: if you are doing NTV calculations, use \vv{lab_swi=10}
 
 \end{itemize}
 
@@ -508,6 +510,36 @@ and optionally a multiplier for the internal grid.
 \begin{verbatim}
 $LIBNEOPATH/python/libneo/boozer.py wout_test.nc 10
 \end{verbatim}
+
+\subsubsection{Regarding the orientation (left/right handed system)}
+A boozer file containsthe necessary coefficients to make the transformation 
+$R(s,\theta_B,\varphi_B)$, $\varphi(s,\theta_B,\varphi_B)= \varphi_B + \lambda(s,\theta_B,\varphi_B)$), $Z(s,\theta_B,\varphi_B)$. So by calculating
+
+\begin{equation*}
+	\frac{d(R,\varphi,Z)}{ds},\; \frac{d(R,\varphi,Z)}{d\theta_B},\; \frac{d(R,\varphi,Z)}{d\varphi_B}
+\end{equation*}
+
+at a point one gets the three coordinate direction, and can check if the 
+system $(s,\theta_B,\varphi_B)$ is right or left handed (e.g. by determinant 
+of the trafo, assuming one knows the orientation of the cylindrical system). 
+However, the boozer file also contains signed values of the toroidal flux, 
+the metric determinant, as well as of the electrical currents. These values 
+only get meaning when one understands how the coordinate system for it is 
+actually aligned i.e. the real physical picture (see also \vv{https://gitlab.tugraz.at/plasma/info} 
+for more on that). While NEO-2 can handle the input anyway and give you 
+results, the results might not be of the physical situation that you want. 
+This is best illustrated if you have an axissymmetric boozer file and a 
+perturbation boozer file that were NOT generated from one common boozer 
+file (e.g. you got the perturbation from an external code that did not 
+read your axissymmetric boozer file, and wrote an own boozer file from 
+that external output). While NEO-2 ignores basically everything besides 
+the magnetic field coefficients from the perturbation file, if these 
+perturbations were generated from a physical different picture than 
+what is described in your axissymetric file, the result can not be trusted anymore.
+
+TD;LR: The generation of any boozer file has to be accompanied by keeping in mind the 
+corresponding real-world physical picture that the file describes. That is the ONLY way one can be
+sure that one gets the output that one really wants. NEO-2 will run regardless.
 
 % ----------------------------------------------------------------------
 \subsection{Preparation of the plasma parameter profiles\label{running_preparation_profiles}}
