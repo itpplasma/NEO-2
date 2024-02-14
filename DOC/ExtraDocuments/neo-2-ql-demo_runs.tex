@@ -639,6 +639,16 @@ the current folder, by multiplying the velocity profile with a factor of
 $0.99$. The name of the output file is determined from the changed
 quantity and the scaling factor.
 
+\subsubsection{Notes regarding raw input profiles}
+The above noted $\rho_\text{pol}$ and $\rho_\text{tor}$ are not the normalized 
+poloidal or toroidal flux, but rather their respective square roots. The 
+$\sqrt{s_\text{pol}}$ is commonly used in experiemental context and therefore 
+measured profile data. Furthermore, $\sqrt{s_\text{pol}}$ is the used input for 
+the MARS code from the OMFIT library. For that reason, during generation of the 
+NEO-2 profile input, \vv{generate_neo2_profile} makes a mapping 
+$\sqrt{s_\text{pol}} \rightarrow \sqrt{s_\text{tor}}$ and then saves the profile 
+in terms of $s = \sqrt{s_\text{tor}}^2$, which is the adequat input for NEO-2.
+
 % ----------------------------------------------------------------------
 \subsection{Preparation of the run directories\label{running_preparation_directories}}
 Next step is the preparation of the flux surface grid for the \vv{NEO-2-QL}
