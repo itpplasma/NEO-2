@@ -1,0 +1,27 @@
+[project]
+name = "neo2"
+version = "0.1.0"
+description = "Setup tools for NEO-2 runs"
+authors = [
+    { name = "Georg Grassler", email = "georg.grassler@tugraz.at" },
+]
+license = {text = "MIT License"}
+readme = "README.md"
+keywords = ["NEO-2"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "elabapy>=1.1.0",
+]
+
+[project.urls]
+homepage = "https://example.com"
+repository = "https://example.com""
+documentation = "https://example.com/docs"
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
