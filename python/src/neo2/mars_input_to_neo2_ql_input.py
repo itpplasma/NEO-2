@@ -1,61 +1,115 @@
-# %%
+# %% Standard libraries
 import numpy as np
-import matplotlib.pyplot as plt
+import os
 from omfit_classes.omfit_mars import OMFITmars
 
-from libneo import FluxConverter, read_eqdsk
+# Homebrew libraries
+from libneo import FluxConverter
 
 ########################################################################################
 
-def get_mars_q_profile_over_stor(path_to_mars_folder: str):
-    mars_input_profiles = get_mars_input_profiles(path_to_mars_folder)
-    stor = convert_sqrt_spol_to_stor(mars_input_profiles['s_eq'],mars_input_profiles['q_prof'])
-    return stor, mars_input_profiles['q_prof']
+def write_input_for_generate_neo2_profile_from_mars(mars_folder: str, output_dir: str):
+    input_profiles_mars = get_input_profiles_mars(mars_folder)
+    write_dat_files_from_profiles(input_profiles_mars, output_dir)
 
-def get_mars_input_profiles(path_to_mars_folder: str) -> dict:
+########################################################################################
+
+def get_input_profiles_mars(path_to_mars_folder: str) -> dict:
+    filenames = ['PROFDEN', 'PROFTE', 'PROFTI', 'PROFROT']
+    input_profiles_mars = {}
+    for filename in filenames:
+        path_to_file = os.path.join(path_to_mars_folder, filename + '.IN')
+        input_profiles_mars[filename] = np.loadtxt(path_to_file, skiprows=1)
+    input_profiles_mars['PROFSQRTSTOR'] = get_sqrt_stor_profile(path_to_mars_folder)
+    return input_profiles_mars
+
+def get_sqrt_stor_profile(path_to_mars_folder: str) -> np.ndarray:
+    sqrt_spol = get_sqrt_spol_of_input_profiles_mars(path_to_mars_folder)
+    sqrt_stor = get_sqrt_stor_of_input_profiles_mars(path_to_mars_folder)
+    sqrt_stor_profile = np.array([sqrt_spol, sqrt_stor]).T
+    return sqrt_stor_profile
+
+########################################################################################
+
+def get_sqrt_stor_of_input_profiles_mars(path_to_mars_folder: str) -> np.ndarray:
+    sqrt_spol_mars = get_sqrt_spol_of_input_profiles_mars(path_to_mars_folder)
+    q_prof = get_q_prof_mars(path_to_mars_folder)
+    sqrt_stor_mars = convert_sqrt_spol_to_sqrt_stor(q_prof['sqrt_spol'], q_prof['values'],
+                                                    sqrt_spol_mars)
+    return sqrt_stor_mars
+
+def get_sqrt_spol_of_input_profiles_mars (path_to_mars_folder: str) -> np.ndarray:
+    path_to_file = os.path.join(path_to_mars_folder, 'PROFDEN.IN')
+    sqrt_spol = np.loadtxt(path_to_file, skiprows=1)[:, 0]
+    return sqrt_spol
+
+def get_q_prof_mars(path_to_mars_folder: str) -> dict:
     data = OMFITmars(path_to_mars_folder)
     data.load()
-    return data['PROFEQ']
+    q_prof = {}
+    q_prof['values'] = data['PROFEQ']['q_prof'].values
+    q_prof['sqrt_spol'] = data['PROFEQ']['q_prof'].coords['s_eq'].values
+    return q_prof
 
-def convert_sqrt_spol_to_stor(sqrt_spol,q_profil):
-    spol = sqrt_spol**2
-    _, q_profile_over_equidist_spol = get_q_profile_over_equidist_spol(spol, q_profil)
-    converter = FluxConverter(q_profile_over_equidist_spol)
-    stor = converter.spol2stor(spol)
+def convert_sqrt_spol_to_sqrt_stor(q_prof_sqrt_spol, q_prof_values, sqrt_spol_to_evaluate):
+    _, q_prof_over_equidist_spol = get_q_prof_over_equidist_spol(q_prof_sqrt_spol, q_prof_values)
+    stor = convert_sqrt_spol_to_stor(q_prof_over_equidist_spol, sqrt_spol_to_evaluate)
+    return np.sqrt(stor)
+
+def get_q_prof_over_equidist_spol(q_prof_sqrt_spol, q_prof_values):
+    spol_prof = q_prof_sqrt_spol**2
+    equidist_spol = np.linspace(np.min(spol_prof), np.max(spol_prof), spol_prof.shape[0])
+    q_prof_over_equidist_spol = np.interp(equidist_spol, spol_prof, q_prof_values)
+    return equidist_spol, q_prof_over_equidist_spol
+
+def convert_sqrt_spol_to_stor(q_prof_over_equidist_spol, sqrt_spol_to_evaluate):
+    converter = FluxConverter(q_prof_over_equidist_spol)
+    spol_to_evaluate = sqrt_spol_to_evaluate ** 2
+    stor = converter.spol2stor(spol_to_evaluate)
     return stor
+########################################################################################
 
-def get_q_profile_over_equidist_spol(spol, q_profil):
-    equidist_spol = np.linspace(np.min(spol), np.max(spol), spol.shape[0])
-    q_profile_over_equidist_spol = np.interp(equidist_spol, spol, q_profil)
-    return equidist_spol, q_profile_over_equidist_spol
+def write_dat_files_from_profiles(input_profiles_mars: dict, output_dir: str):
+    os.makedirs(output_dir, exist_ok=True)
+    for profile_name, profile_data in input_profiles_mars.items():
+        filename = f"{output_dir}/{profile_name}.dat"
+        np.savetxt(filename, profile_data)
 
 ########################################################################################
 
-def get_eqdsk_q_profile_over_stor(filename_eqdsk: str):
-    eqdsk = read_eqdsk(filename_eqdsk)
-    q_profile = eqdsk['qprof']
-    converter = FluxConverter(q_profile)
-    stor = converter.spol2stor(eqdsk['rho_poloidal'])
-    return stor, q_profile
-
-def get_eqdsk_q_profile_over_sqrt_spol(filename_eqdsk: str) -> dict:
-    eqdsk = read_eqdsk(filename_eqdsk)
-    q_profile = eqdsk['qprof']
-    converter = FluxConverter(q_profile)
-    sqrt_spol = np.sqrt(eqdsk['rho_poloidal'])
-    return sqrt_spol, q_profile
+# def add_variable_to_Dataset(Dataset,variable_data,variable_coordinate:str, variable_name:str):
+#     existing_variable_name = list(Dataset.variables)[0]
+#     Dataset = Dataset.assign(**{variable_name: ((variable_coordinate), variable_data)})
+#     return Dataset
 
 ########################################################################################
 
-def convert_sqrt_spol_to_sqrt_stor(sqrt_spol,q_profil):
-    return np.sqrt(convert_sqrt_spol_to_stor(sqrt_spol,q_profil))
+# def write_dat_files_from_dataset(Dataset, variables_to_write: list, output_dir: str):
+#     os.makedirs(output_dir, exist_ok=True)
+#     for variable_name in  variables_to_write:
+#         variable = Dataset[variable_name]
+#         filename = f"{output_dir}/{variable_name}.dat"
+#         write_dat_file_from_dataset_variable(variable, filename)
+
+# def write_dat_file_from_dataset_variable(variable, filename):
+
+#     dataframe = variable.to_dataframe()
+#     for coord in variable.coords:
+#         dataframe.insert(0, coord, variable.coords[coord])
+#     dataframe.to_csv(filename, sep=' ', index=False, header=False)
 
 ########################################################################################
 
-path_to_mars_folder = "/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/"
-mars_input_profiles = get_mars_input_profiles(path_to_mars_folder)
-stor_mars = convert_sqrt_spol_to_stor(mars_input_profiles['s_eq'],mars_input_profiles['q_prof'])
+def get_mars_q_prof_over_stor(path_to_mars_folder: str):
+    input_profiles_mars = get_input_profiles_mars(path_to_mars_folder)
+    stor = convert_sqrt_spol_to_stor(input_profiles_mars['rho_pol'],input_profiles_mars['q_prof_values'])
+    return stor, input_profiles_mars['q_prof_values']
 
-filename_eqdsk = '/proj/plasma/DATA/DEMO/teams/Equilibrium_DEMO2019_CHEASE/MOD_Qprof_Test/EQDSK_DEMO2019_q1_COCOS_02.OUT'
-stor_eqdsk, q_profile_eqdsk = get_eqdsk_q_profile_over_stor(filename_eqdsk)
-sqrt_spol_eqdsk, _ = get_eqdsk_q_profile_over_sqrt_spol(filename_eqdsk)
+########################################################################################
+
+if __name__ == "__main__":
+
+    path_to_mars_folder = "/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/"
+    output_dir = "/temp/grassl_g/TEST_NTV_DEMO/input_files_for_generate_neo2_profile"
+    #dataset_mars = get_input_profiles_mars(path_to_mars_folder)
+    write_input_for_generate_neo2_profile_from_mars(path_to_mars_folder, output_dir)
