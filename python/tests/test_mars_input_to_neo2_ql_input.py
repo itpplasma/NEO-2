@@ -3,7 +3,9 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 #Module to test
-from neo2 import get_mars_input_profiles, convert_sqrt_spol_to_sqrt_stor
+from neo2 import write_input_for_generate_neo2_profile_from_mars
+from neo2 import get_sqrt_stor_profile 
+from neo2 import get_q_over_equidist_spol_mars, convert_sqrt_spol_to_sqrt_stor
 
 test_sqrt_spol = np.array([0, 0.0010, 0.0020, 0.0030, 0.0040, 0.0050, 0.0060, 0.0070, 0.0080, 0.0090, 0.0100, 0.0110, 0.0120, 0.0130, 0.0140, 0.0150, 0.0160, 0.0170, 0.0179, 0.0189, 0.0199, 0.0209, 0.0219, 0.0229, 0.0239, 0.0249, 0.0259, 0.0269, 0.0279, 0.0289, 0.0299, 0.0309, 0.0319, 0.0329, 0.0339, 0.0349, 0.0359, 0.0369, 0.0379, 0.0389, 0.0399, 0.0409, 0.0419, 0.0429, 0.0439, 0.0449, 0.0459, 0.0469, 0.0479, 0.0489, 0.0499, 0.0509, 0.0518, 0.0528, 0.0538, 0.0548, 0.0558, 0.0568, 0.0578, 0.0588, 0.0598, 0.0608, 0.0618, 0.0628, 0.0638, 0.0648, 0.0658, 0.0668, 0.0678, 0.0688, 0.0698, 0.0708, 0.0718, 0.0728, 0.0738, 0.0748, 0.0758, 0.0768, 0.0778, 0.0788, 0.0798, 0.0808, 0.0818, 0.0828, 0.0838, 0.0848, 0.0857, 0.0867, 0.0877, 0.0887, 0.0897, 0.0907, 0.0917, 0.0927, 0.0937, 0.0947, 0.0957, 0.0967, 0.0977, 0.0987, 0.0997, 0.1007, 0.1017, 0.1027, 0.1037, 0.1047, 0.1057, 0.1067, 0.1077, 0.1087, 0.1097, 0.1107, 0.1117, 0.1127, 0.1137, 0.1147, 0.1157, 0.1167, 0.1177, 0.1187, 0.1196, 0.1206, 0.1216, 0.1226, 0.1236, 0.1246, 0.1256, 0.1266, 0.1276, 0.1286, 0.1296, 0.1306, 0.1316, 0.1326, 0.1336, 0.1346, 0.1356, 0.1366, 0.1376, 0.1386, 0.1396, 0.1406, 0.1416, 0.1426, 0.1436, 0.1446, 0.1456, 0.1466, 0.1476, 0.1486, 0.1496, 0.1506, 0.1516, 0.1526, 0.1535, 0.1545, 0.1555, 0.1565, 0.1575, 0.1585, 0.1595, 0.1605, 0.1615, 0.1625, 0.1635, 0.1645, 0.1655, 0.1665, 0.1675, 0.1685, 0.1695, 0.1705, 0.1715, 0.1725, 0.1735, 0.1745, 0.1755, 0.1765, 0.1775, 0.1785, 0.1795, 0.1805, 0.1815, 0.1825, 0.1835, 0.1845, 0.1855, 0.1865, 0.1874, 0.1884, 0.1894, 0.1904, 0.1914, 0.1924, 0.1934, 0.1944, 0.1954, 0.1964, 0.1974, 0.1984, 0.1994, 0.2004, 0.2014, 0.2024, 0.2034, 0.2044, 0.2054, 0.2064, 0.2074, 0.2084, 0.2094, 0.2104, 0.2114, 0.2124, 0.2134, 0.2144, 0.2154, 0.2164, 0.2174, 0.2184, 0.2194, 0.2204, 0.2213, 0.2223, 0.2233, 0.2243, 0.2253, 0.2263, 0.2273, 0.2283, 0.2293, 0.2303, 0.2313, 0.2323, 0.2333, 0.2343, 0.2353, 0.2363, 0.2373, 0.2383, 0.2393, 0.2403, 0.2413, 0.2423, 0.2433, 0.2443, 0.2453, 0.2463, 0.2473, 0.2483, 0.2493, 
                            0.2503, 0.2513, 0.2523, 0.2533, 0.2543, 0.2552, 0.2562, 0.2572, 0.2582, 0.2592, 0.2602, 0.2612, 0.2622, 0.2632, 0.2642, 0.2652, 0.2662, 0.2672, 0.2682, 0.2692, 0.2702, 0.2712, 0.2722, 0.2732, 0.2742, 0.2752, 0.2762, 0.2772, 0.2782, 0.2792, 0.2802, 0.2812, 0.2822, 0.2832, 0.2842, 0.2852, 0.2862, 0.2872, 0.2882, 0.2891, 0.2901, 0.2911, 0.2921, 0.2931, 0.2941, 0.2951, 0.2961, 0.2971, 0.2981, 0.2991, 0.3001, 0.3011, 0.3021, 0.3031, 0.3041, 0.3051, 0.3061, 0.3071, 0.3081, 0.3091, 0.3101, 0.3111, 0.3121, 0.3131, 0.3141, 0.3151, 0.3161, 0.3171, 0.3181, 0.3191, 0.3201, 0.3211, 0.3221, 0.3230, 0.3240, 0.3250, 0.3260, 0.3270, 0.3280, 0.3290, 0.3300, 0.3310, 0.3320, 0.3330, 0.3340, 0.3350, 0.3360, 0.3370, 0.3380, 0.3390, 0.3400, 0.3410, 0.3420, 0.3430, 0.3440, 0.3450, 0.3460, 0.3470, 0.3480, 0.3490, 0.3500, 0.3510, 0.3520, 0.3530, 0.3540, 0.3550, 0.3560, 0.3570, 0.3579, 0.3589, 0.3599, 0.3609, 0.3619, 0.3629, 0.3639, 0.3649, 0.3659, 0.3669, 0.3679, 0.3689, 0.3699, 0.3709, 0.3719, 0.3729, 0.3739, 0.3749, 0.3759, 0.3769, 0.3779, 0.3789, 0.3799, 0.3809, 0.3819, 0.3829, 0.3839, 0.3849, 0.3859, 0.3869, 0.3879, 0.3889, 0.3899, 0.3909, 0.3918, 0.3928, 0.3938, 0.3948, 0.3958, 0.3968, 0.3978, 0.3988, 0.3998, 0.4008, 0.4018, 0.4028, 0.4038, 0.4048, 0.4058, 0.4068, 0.4078, 0.4088, 0.4098, 0.4108, 0.4118, 0.4128, 0.4138, 0.4148, 0.4158, 0.4168, 0.4178, 0.4188, 0.4198, 0.4208, 0.4218, 0.4228, 0.4238, 0.4248, 0.4257, 0.4267, 0.4277, 0.4287, 0.4297, 0.4307, 0.4317, 0.4327, 0.4337, 0.4347, 0.4357, 0.4367, 0.4377, 0.4387, 0.4397, 0.4407, 0.4417, 0.4427, 0.4437, 0.4447, 0.4457, 0.4467, 0.4477, 0.4487, 0.4497, 0.4507, 0.4517, 0.4527, 0.4537, 0.4547, 0.4557, 0.4567, 0.4577, 0.4587, 0.4596, 0.4606, 0.4616, 0.4626, 0.4636, 0.4646, 0.4656, 0.4666, 0.4676, 0.4686, 0.4696, 0.4706, 0.4716, 0.4726, 0.4736, 0.4746, 0.4756, 0.4766, 0.4776, 0.4786, 0.4796, 0.4806, 0.4816, 0.4826, 0.4836, 0.4846, 0.4856, 0.4866, 0.4876, 0.4886, 0.4896, 0.4906, 0.4916, 0.4926, 0.4935, 0.4945, 0.4955, 0.4965, 0.4975, 0.4985, 0.4995, 
@@ -18,21 +20,31 @@ test_path_to_mars_folder = "/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2
 
 def test_conversion_sqrt_spol_to_sqrt_stor():
 
-    mars_input_profiles = get_mars_input_profiles(test_path_to_mars_folder)
-    sqrt_spol_mars = mars_input_profiles['s_eq']
-    sqrt_stor_mars = convert_sqrt_spol_to_sqrt_stor(sqrt_spol_mars,mars_input_profiles['q_prof'])
+    # 1st way to get sqrt_stor_profile
+    sqrt_stor_profile_mars = get_sqrt_stor_profile(test_path_to_mars_folder)
+    result_sqrt_stor_1 = np.interp(test_sqrt_spol, sqrt_stor_profile_mars[:, 0], sqrt_stor_profile_mars[:, 1])
+    
+    # 2nd way to get sqrt_stor_profile
+    q_over_equidist_spol_mars = get_q_over_equidist_spol_mars(test_path_to_mars_folder)
+    result_sqrt_stor_2 = convert_sqrt_spol_to_sqrt_stor(q_over_equidist_spol_mars, test_sqrt_spol)
 
-    result_sqrt_stor = np.interp(test_sqrt_spol, sqrt_spol_mars, sqrt_stor_mars)
+    assert_allclose(result_sqrt_stor_1, result_sqrt_stor_2, rtol=0, atol=1e-2) # values are in range 0-1 -> absolute before relative tolerance
+    print('Conversion sqrt_spol to sqrt_stor is consistent')
+    assert_allclose(result_sqrt_stor_1, control_sqrt_stor, rtol=0, atol=1e-2) # values are in range 0-1 -> absolute before relative tolerance
+    print('Conversion sqrt_spol to sqrt_stor is agrees with control data')
+    assert_allclose(result_sqrt_stor_2, control_sqrt_stor, rtol=0, atol=1e-2) # values are in range 0-1 -> absolute before relative tolerance
+    print('Alternative conversion sqrt_spol to sqrt_stor is agrees with control data')
 
     import matplotlib.pyplot as plt
     plt.figure()
     plt.plot(test_sqrt_spol[::20], control_sqrt_stor[::20], 'kx', label='control')
-    plt.plot(test_sqrt_spol[::20], result_sqrt_stor[::20], 'ro', fillstyle='none', label='result')
-    plt.plot(sqrt_spol_mars[::10], sqrt_stor_mars[::10], '+', color=[0.4,0.4,1], label='mars')
+    plt.plot(test_sqrt_spol[::20], result_sqrt_stor_1[::20], 'ro', fillstyle='none', label='result_1')
+    plt.plot(test_sqrt_spol[::20], result_sqrt_stor_2[::20], 'b+', label='result_2')
     plt.xlabel('sqrt_spol')
     plt.ylabel('sqrt_stor')
     plt.legend()
     plt.title('Comparison of sqrt_stor from control data \n and generated by conversion using mars input profiles')
     plt.show()
 
-    assert_allclose(result_sqrt_stor, control_sqrt_stor, rtol=0, atol=1e-2) # values are in range 0-1 -> absolute before relative tolerance
+if __name__ == "__main__":
+    test_conversion_sqrt_spol_to_sqrt_stor()
