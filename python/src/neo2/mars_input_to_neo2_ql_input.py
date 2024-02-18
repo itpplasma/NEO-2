@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # %% Standard libraries
 import numpy as np
 import os
@@ -80,7 +82,8 @@ def write_profiles_to_dat_files(input_profiles_mars: dict, output_dir: str):
 
 if __name__ == "__main__":
 
-    path_to_mars_folder = "/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/"
+    #path_to_mars_folder = "/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/"
+    path_to_mars_folder = "/proj/plasma/DATA/DEMO/teams/MARSQ_OUTPUTS/DATA_equil_qmod/MARSQ_OUTPUTS_100kAt_dBkinetic_NTVkinetic_NEO2profs"
     output_dir = "/temp/grassl_g/TEST_NTV_DEMO/input_files_for_generate_neo2_profile"
     #dataset_mars = get_input_profiles_mars(path_to_mars_folder)
     write_input_for_generate_neo2_profile_from_mars(path_to_mars_folder, output_dir)
