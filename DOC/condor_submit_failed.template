@@ -3,7 +3,7 @@ Universe   = vanilla
 Error      = ../err_failed.$(Process)
 Log        = ../scan.log
 run_as_owner = true
-notify_user  = georg.grassler@tugraz.at
+notify_user  = email-adress
 notification = Error
 nice_user    = false
 #requirements = ( TARGET.UtsnameNodename != "faepop69" && TARGET.UtsnameNodename != "faepop72" )
