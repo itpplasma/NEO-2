@@ -23,8 +23,8 @@ def load_profile_data(path_to_shot, data_source, gridpoints, do_plots=False, inp
 
     if len(np.array(gridpoints).flatten()) == 3:
         number_gridpoints = gridpoints[0]
-        lower_limit_flux_label = gridpoints[1]
-        upper_limit_flux_label = gridpoints[2]
+        lower_limit_flux_label = max(gridpoints[1],0.0)
+        upper_limit_flux_label = min(gridpoints[2],1.0)
     else:
         number_gridpoints = gridpoints
         lower_limit_flux_label = 0.0
@@ -64,12 +64,15 @@ def load_profile_data(path_to_shot, data_source, gridpoints, do_plots=False, inp
         if upper_limit_flux_label >= 1.0:
             rho_tor[-1] = 1
     elif switch_grid == 2:
-        rho_tor = np.linspace(0, 1, number_gridpoints)
+        rho_tor = np.sqrt(np.linspace(lower_limit_flux_label, upper_limit_flux_label, number_gridpoints))
 
-        rho_pol = local_used_fit_function(frt[:, data_source['rhotoroidal']['column']],
-                                          frp[:, data_source['rhopoloidal']['column']], rho_tor, 5)
-        rho_pol[0] = 0
-        rho_pol[-1] = 1
+        L = frt[:, data_source['rhotoroidal']['column']] <= 1.0
+        rho_pol = local_used_fit_function(frt[L, data_source['rhotoroidal']['column']],
+                                          frp[L, data_source['rhopoloidal']['column']], rho_tor, 5)
+        if lower_limit_flux_label == 0.0:
+            rho_pol[0] = 0
+        if upper_limit_flux_label == 1.0:
+            rho_pol[-1] = 1
     elif switch_grid == 3:
         rho_pol = np.sqrt(np.linspace(lower_limit_flux_label, upper_limit_flux_label, number_gridpoints))
 

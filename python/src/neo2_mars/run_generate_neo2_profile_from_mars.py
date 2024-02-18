@@ -24,9 +24,6 @@ def run_generate_neo2_profile(path_to_input_files, number_of_surfaces, bounds):
     isw_Vphi_loc = 0
     species_tag_Vphi = 2
     input_unit_type = 2
-    switch_grid = 1
+    switch_grid = 2
     generate_neo2_profile(hdf5FileName, path_to_input_files, data_source, species_definition, isw_Vphi_loc,
                           species_tag_Vphi, input_unit_type, bounds, switch_grid)
-    
-if __name__ == '__main__':
-    run_generate_neo2_profile(200, [0.0, 1.0])
