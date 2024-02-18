@@ -70,7 +70,7 @@ def update_row_col(row, col):
 
 ########################################################################################
 
-input_profiles_h5filename = "/temp/grassl_g/TEST_NTV_DEMO/TEST_NTV_DEMO_PROFIL.in"
+input_profiles_h5filename = "/temp/grassl_g/TEST_NTV_DEMO/multi_spec_demo.in"
 control_input_profiles_h5filename = "/temp/grassl_g/TEST_NTV_DEMO/control_profile.in"
 
 input_profiles = get_input_profiles_neo2_ql(input_profiles_h5filename)

@@ -1,6 +1,6 @@
 [project]
 name = "neo2"
-version = "0.1.0"
+version = "0.1.1"
 description = "Setup tools for NEO-2 runs"
 authors = [
     { name = "Georg Grassler"}, {email = "georg.grassler@tugraz.at" },
@@ -16,7 +16,8 @@ classifiers = [
 dependencies = [
     "numpy>=1.20.0",
     "omfit_classes>=3.2023.47.2",
-    "libneo>=0.0.1"
+    "libneo>=0.0.1",
+    "h5py>=3.10.0"
 ]
 
 [project.urls]
