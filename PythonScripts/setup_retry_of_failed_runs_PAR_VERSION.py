@@ -61,7 +61,7 @@ def get_list_failed_runs_par(folder: str, subfolder_pattern: str, file_to_check:
 
 def append_list_failed_runs_par(failed_runs: list, infilename: str, outfilename: str):
   """
-  Determine add list of unsucessful runs to file.
+  Add list of unsucessful runs to file.
 
   Intended for adding the list at the end of a condor_submit file.
   For this reason:

@@ -120,18 +120,18 @@ familiar with \vv{NEO-2}. Other usage of \vv{NEO-2} is not described in this
 summary but is described in more details in the main text.
 \subsection{Required input}
 \begin{itemize}
-  \item boozer file
+  \item Boozer file
   \item profile file (density, temperature, effective charge)
   \item neo.in
   \item create\_surfaces.in
   \item neo2.in
-  \item (condor submit file|slurm submit file)
+  \item (Condor submit file|slurm submit file)
 \end{itemize}
 
 \subsection{Required steps}
 \begin{itemize}
   \item get profiles (Sec.~\ref{running_preparation_profiles})
-  \item get magnetic field as boozer file (Sec.~\ref{running_preparation_equilibrium})
+  \item get magnetic field as Boozer file (Sec.~\ref{running_preparation_equilibrium})
   \item make sure you have all required libraries (Sec.~\ref{technicalbackground_libraries})
   \item clone/update \vv{libneo} and \vv{NEO-2} repositories (Sec.~\ref{technicalbackground_git})
   \item compile the codes (Sec.~\ref{technicalbackground_cmake})
@@ -421,7 +421,7 @@ New parameters related to the collision operator:
   \item 0: Generalized Laguerre polynomials of order $3/2$ (Default).
   \item 1: Standard polynomials $\phi_m(x) = x^m$.
   \item 2: Quadratic polynomials $\phi_m(x) = x^{2m}$.
-  \item 10: Cubic Splines generated from a $y_m = (0, 0, ..., 1, ..., 0)$ grid.
+  \item 10: Cubic Splines generated from a $y_m = (0, 0, \ldots, 1, \ldots, 0)$ grid.
   \item 11: General B-Splines (best choice).
  \end{itemize}
 
@@ -524,7 +524,7 @@ coordinate).
 It is now necessary to copy the following required files to a new
 empty directory (the working directory),
 \begin{verbatim}
-boozer file
+Boozer file
 profile file
 neo.in configuration file
 create_surfaces.in configuration file
@@ -625,7 +625,7 @@ written to file and to the screen and thus allows you to check the
 progress.
 
 \subsubsection{Notes on resources}
-The condor submit files determine the resources requested by the job in
+The Condor submit files determine the resources requested by the job in
 the two fields \vv{request_cpus} (note that this number should match
 the number for \vv{-np} in \vv{arguments}) and \vv{request_memory}.
 The amount of memory required is fixed by the parameters of the jobs
@@ -642,11 +642,11 @@ In order to start the jobs the command
 run_condor.sh condor-all.submit
 \end{verbatim}
 can be used (\vv{run_condor.sh} is part of \vv{NEO-2}), which submits a
-condor job for each directory given in
+Condor job for each directory given in
 \vv{jobs_list.txt}. Checking the output of \vv{condor_q} shows the
 number of submitted Condor jobs.
 
-Another approach would be to use a condor submit file similar to
+Another approach would be to use a Condor submit file similar to
 \vv{condor_submit_example} in the DOC folder of the \vv{NEO-2} repository.
 While the above will create one ``batch'' per subfolder, the
 example file would create one ``batch'' in total, which has one job per
@@ -673,7 +673,7 @@ set_neo2in_reconstruction(folder='./',
 for all files.
 
 %~ An alternative is the python script \vv{neo_2_par_wrapper.py} as
-%~ executable for condor, e.g.
+%~ executable for Condor, e.g.
 %~ \begin{verbatim}
 %~ Executable = ./neo_2_par_wrapper.py
 %~ arguments = -np  4
@@ -710,9 +710,9 @@ about 30-40 MB/s, with respect to output file, i.e. an output file size
 of 350 GB means this step will take approximately ten thousand seconds).
 
 \subsubsection{Doing all reconstruction runs at once}
-Instead of starting condor for each reconstruction stage of a complete NEO2 run 
+Instead of starting Condor for each reconstruction stage of a complete NEO-2 run 
 manually, one can automate the process. One possible way, is to not instruct Condor
-to directly run NEO2 with MPI, but specify a wrapper script that changes the input
+to directly run NEO-2 with MPI, but specify a wrapper script that changes the input
 files of the corresponding reconstruction modes. In the distribution logic a possible
 approach is to assign the execution of said script as a separate job for each
 surface/subfolder. For example
@@ -720,30 +720,30 @@ surface/subfolder. For example
 \begin{itemize}
 	\item \vv{condor_submit condor_submit_all_recontructions}
 		\begin{itemize}
-			\item NEO2-all.sh runs in surface s10000000m1 on computer A
+			\item \vv{NEO2-all.sh} runs in surface s10000000m1 on computer A
 				\begin{itemize}
 					\item starts reconstruction run 0 with MPI (multiple CPUS on computer A)
 					\item starts reconstruction run 1 with MPI (multiple CPUS on computer A)
 					\item starts reconstruction run 2 with MPI (multiple CPUS on computer A)
 					\item starts reconstruction run 3 with MPI (multiple CPUS on computer A)
-					\item NEO2-all.sh stops on computer A and job is finished
+					\item \vv{NEO2-all.sh} stops on computer A and job is finished
 				\end{itemize}
-			\item NEO2-all.sh runs in surface s20000000m1 on computer B
+			\item \vv{NEO2-all.sh} runs in surface s20000000m1 on computer B
 				\begin{itemize}
 					\item starts reconstruction run 0
 					\item starts reconstruction run 1 with MPI (multiple CPUS on computer B)
-					\item ...
+					\item \ldots
 				\end{itemize}
-			\item ...
+			\item \ldots
 		\end{itemize}
 \end{itemize}
 
-The shellscript NEO2-all.sh can be found in the Shellscript folder of NEO2. However, when you wanna
-use it with condor as described above, you have to make a HARD copy of it into the \vv{temp} folder
-e.g. your run folder, as Condor can only access scripts that are located in the non private regions
-of the file system (your home directory \vv{~} and its subdirectories can for example NOT be accessed).
+The shell script \vv{NEO2-all.sh} can be found in the \vv{ShellScripts} folder of NEO-2. However, when you want to
+use it with Condor as described above, you have to make an actual copy instad of a symbolic link of it in the 
+\vv{/temp} folder e.g. your run folder, as Condor can only access scripts that are located on AFS, which mostly
+affects your home directory \vv{~} with its subdirectories, as well as \vv{/proj}.
 
-In following we provide the complete \vv{condor_submit_all_reconstructions} file
+In the following we provide the complete \vv{condor_submit_all_reconstructions} file
 \begin{verbatim}
 	Executable = ./NEO2-all.sh
 	arguments = 4
@@ -751,7 +751,7 @@ In following we provide the complete \vv{condor_submit_all_reconstructions} file
 	Error      = ../err.$(Process)
 	Log        = ../scan.log
 	run_as_owner = true
-	notify_user  = your.email@adresse
+	notify_user  = example.com
 	notification = Error
 	nice_user    = false
 	# The following two lines are to avoid 'black holes'
@@ -769,11 +769,18 @@ In following we provide the complete \vv{condor_submit_all_reconstructions} file
 	Queue dirname matching dirs s*
 \end{verbatim}
 
-The distribution of the jobs (i.e. the execution of NEO2-all.sh) is done using the regular expression in the Queue section: In all folders in the current directory that start with `s` Condor starts an instance of NEO2-all.sh. The above example assumes that said
-NEO2-all.sh lies in the run directory (see the '\vv{./}'). NOTE that '\vv{arguments}' and '\vv{requested_cpus}' have to be the same.
-The file can be also found in DOC.
+The distribution of the jobs (i.e. the execution of \vv{NEO2-all.sh}) is done using the file globbing in the Queue 
+section: In all folders in the current directory that start with `s` Condor starts an instance of \vv{NEO2-all.sh}. 
+The above example assumes that said \vv{NEO2-all.sh} lies in the run directory (see the '\vv{./}'). NOTE that 
+'\vv{arguments}' and '\vv{requested_cpus}' have to be the same. Furthermore, one can exclude certain machines from
+running the jobs. This is done by the \vv{requirements} attribute. If the \vv{requirements} expression evaluates to \vv{TRUE}, 
+the job is run on the machine. Note the \vv{=!=} expression. Similar to \vv{!=} it acts as a "is not equal". The difference is
+that \vv{!=} can only check if the content of two operands is not equal for operands of the same type (e.g. it throws \vv{UNDEFINED} 
+or \vv{ERROR} if one tries to compare a \vv{char} with a \vv{int}). On the other hand, \vv{=!=} will always give
+either \vv{TRUE} or \vv{FALSE}, as it does not only compares the content, but also the types of the two operands (e.g.
+\vv{1=!='1'} will give \vv{TRUE}).The file can be also found in DOC.
 
-\subsubsection{Further useful condor commands}
+\subsubsection{Further useful Condor commands}
 As already said you can submit jobs with \vv{condor_submit}.
 The command \vv{condor_q} gives you a list/summary with the status of
 your jobs. The argument \vv{-analyze} can help you to determine why
@@ -781,13 +788,13 @@ job(s) do not run.
 If you want to cancel a job, e.g. you noticed a wrong setting, you can
 do so with \vv{condor_rm} and the job id. The id is reported at job
 submission and by \vv{condor_q}.
-Under some circumstances your jobs might be put on hold by condor. This
+Under some circumstances your jobs might be put on hold by Condor. This
 means they are abborted and not considered for further calculations. You
 can solve this either by \vv{condor_release} which will put the job(s)
 back into the waiting list or by canceling the job(s).
 
 \subsection{Rerunning failed jobs}
-There can be multiple reasons why a job fails or more specifically, why it is put on hold by condor.
+There can be multiple reasons why a job fails or more specifically, why it is put on hold by Condor.
 The most common case is exceeding the requested memory. Especially when executing all the reconstruction
 runs at once using for example a .sh script, this is unfortunate, as the subsequent reconstruction runs fail
 when one of them is aborted prematurely for any reason. One can recognize a failed run via the \vv{out} file in the respective
@@ -795,7 +802,7 @@ folder as well as, more obvious, by the presence of files that should be cleaned
 Using this info, one can identify the faulty run folders and setup a re-run for them (using a adjusted submit file e.g. bigger memory)
 with the python function \vv{setup_retry_of_failed_runs_PAR_VERSION}. It identifies the faulty runs, creates
 a new submit file from a template \vv{submit_failed.template} using the names of these runs and set up clean versions
-of their respective run folders. Afterwards, on can just resubmit these runs to condor via the new submit file.
+of their respective run folders. Afterwards, on can just resubmit these runs to Condor via the new submit file.
 
 \begin{verbatim}
 	cd WORKINGDIR (that contains all the subrunfolders)
@@ -950,7 +957,7 @@ $RUNPATH/RunsByDate__2017_07_Bootstrap__ratfieldline
 
 For running the jobs the same script can be used as introduced in the
 ECCD section of this writeup (\vv{run_condor.sh}). Here, the content of
-the condor submission file is described in more detail:
+the Condor submission file is described in more detail:
 
 \begin{verbatim}
 Executable = NEO2-all.sh
@@ -1504,7 +1511,7 @@ libneo:tools/h5merge & merges final.h5 of subdirectories \\
 Name/path   & Comment \\ \hline
 run\_condor.sh & \\
 create\_dirs\_paramvalue.sh & \\
-?/NEO2-all.sh & wrapper for running with condor
+?/NEO2-all.sh & wrapper for running with Condor
 \end{tabular}
 \caption{additional shell scripts used}
 \label{tab:additionalshellscripts}
@@ -1572,6 +1579,9 @@ plot\_levels\_pgf.m &
  \item \vv{plot_levels.m} Plots the field module along the field line
  with level distribution (needs \vv{magnetics.h5}).
 \end{itemize}
+
+\section{Further readings}\label{furtherreadings}
+See \vv{https://gitlab.tugraz.at/plasma/info} for further information.
 
 %\clearpage
 %\renewcommand{\bibname}{References}
