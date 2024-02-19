@@ -356,9 +356,10 @@ Some notes regarding the input parameters in \vv{neo.in}:
 	\item \vv{inp_swi}: \vv{NEO-2-QL} as well as \vv{NEO-2-PAR} get their magnetic 
      field data from so-called Boozer files. Boozer files are plaintext files 
      which commonly use the extension \vv{.bc} and contain the Fourier modes in 
-     Boozer coordinates. See the relevant sections on \href{https://gitlab.tugraz.at/plasma/info/}{INFO} 
-     for more details on Boozer files and magnetic field formats. There 
-	 is no way to sugarcoat this, but due to non-uniform formating of the 
+     Boozer coordinates. See the relevant sections in the documentation of libneo
+     (further readings section~\ref{furtherreading}) for more details on Boozer 
+     files and magnetic field formats. There is no way to sugarcoat this, 
+     but due to non-uniform formating of the 
 	 different Boozer files, many read-in options for the files exist in 
 	 \vv{NEO-2}. While the choice of \vv{inp_swi} seems therefore difficult, 
 	 in certain case the choice is actually quite limited and clear. 
@@ -375,8 +376,7 @@ Some notes regarding the input parameters in \vv{neo.in}:
 		one would be zero for stellerator symmetry). Practically speaking, 
 		in such a file there would be only 4 columns of coefficients (6 columns 
 		in total if you include the modenumber columns). See also the chapter about fileformats
-        in the MHD equillibria section on `gitlab.tugraz.at/info' (link in further readings 
-        section~\ref{furtherreading}).
+        in the libneo repo (link in further readings section~\ref{furtherreading}).
 		\item \vv{inp_swi=9} does not assume stellerator symmetry, therefore 
 		expecting 8 coefficient colummns. 
 	\end{itemize}
@@ -535,11 +535,21 @@ $LIBNEOPATH/python/libneo/boozer.py wout_test.nc 10
 \subsubsection{Regarding the orientation (left/right handed system)}
 A Boozer file contains the necessary coefficients to perform the transformation 
 
-\begin{align*}
-    (s,\theta_B,\varphi_B) &\to& R(s,\theta_B,\varphi_B) &  \\
-                         &   & \varphi(s,\theta_B,\varphi_B) &= \varphi_B + \lambda(s,\theta_B,\varphi_B) \\
-                         &   & Z(s,\theta_B,\varphi_B) & \; .
-\end{align*}
+\begin{equation*}
+    (s,\theta_B,\varphi_B) \to (R,\varphi,Z)
+\end{equation*}
+
+with
+
+\begin{equation*}
+    R = R(s,\theta_B,\varphi_B)
+\end{equation*}
+\begin{equation*}
+    \varphi = \varphi_B + \lambda(s,\theta_B,\varphi_B)
+\end{equation*}
+\begin{equation*}
+	Z = Z(s,\theta_B,\varphi_B) \; .
+\end{equation*}
 
 So by calculating
 
@@ -553,8 +563,8 @@ the Jacobian of the transformation, assuming one knows the orientation of the cy
 However, the Boozer file also contains signed values of the toroidal flux, 
 the metric determinant, as well as of the electrical currents. These values 
 only get meaning when one understands how the coordinate system for it is 
-actually aligned i.e. the real physical picture (for more information see the 
-respective section on \href{https://gitlab.tugraz.at/plasma/info/-/blob/GeorgGrassler/TOPIC_MHD_Equilibria/Conventions.md}{INFO}). 
+actually aligned i.e. the real physical picture. For more information see the 
+writeups on regarding conventions on libneo (see section~\ref{furtherreading}). 
 While \vv{NEO-2} can handle the input anyway and give you 
 results, the results might not be of the physical situation that you want. 
 This is best illustrated if you have an axisymmetric Boozer file and a 
@@ -811,7 +821,7 @@ Once the data is loaded, it can be post-processed and plotted as usual.
 %\printbibliography[notcategory=fullcited]
 
 \section{Further readings}\label{furtherreading}
-See \vv{https://gitlab.tugraz.at/plasma/info} for further information about 
-concepts mentioned in this documentation (e.g. Boozer files).
+See the documentatioin folder of \vv{https://github.com/itpplasma/libneo/} for 
+further information about concepts mentioned in this documentation (e.g. Boozer files).
 
 \end{document}
