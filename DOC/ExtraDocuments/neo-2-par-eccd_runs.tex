@@ -421,7 +421,7 @@ New parameters related to the collision operator:
   \item 0: Generalized Laguerre polynomials of order $3/2$ (Default).
   \item 1: Standard polynomials $\phi_m(x) = x^m$.
   \item 2: Quadratic polynomials $\phi_m(x) = x^{2m}$.
-  \item 10: Cubic Splines generated from a $y_m = (0, 0, \ldots, 1, \ldots, 0)$ grid.
+  \item 10: Cubic Splines generated from a $y_m = (0, 0, \dotsc, 1, \dotsc, 0)$ grid.
   \item 11: General B-Splines (best choice).
  \end{itemize}
 
@@ -740,7 +740,7 @@ surface/subfolder. For example
 
 The shell script \vv{NEO2-all.sh} can be found in the \vv{ShellScripts} folder of NEO-2. However, when you want to
 use it with Condor as described above, you have to make an actual copy instad of a symbolic link of it in the 
-\vv{/temp} folder e.g. your run folder, as Condor can only access scripts that are located on AFS, which mostly
+\vv{/temp} folder e.g. your run folder, as Condor can not access scripts that are located on AFS, which mostly
 affects your home directory \vv{~} with its subdirectories, as well as \vv{/proj}.
 
 In the following we provide the complete \vv{condor_submit_all_reconstructions} file
@@ -751,7 +751,7 @@ In the following we provide the complete \vv{condor_submit_all_reconstructions} 
 	Error      = ../err.$(Process)
 	Log        = ../scan.log
 	run_as_owner = true
-	notify_user  = example.com
+	notify_user  = your.email@example.com
 	notification = Error
 	nice_user    = false
 	# The following two lines are to avoid 'black holes'
@@ -778,7 +778,7 @@ the job is run on the machine. Note the \vv{=!=} expression. Similar to \vv{!=} 
 that \vv{!=} can only check if the content of two operands is not equal for operands of the same type (e.g. it throws \vv{UNDEFINED} 
 or \vv{ERROR} if one tries to compare a \vv{char} with a \vv{int}). On the other hand, \vv{=!=} will always give
 either \vv{TRUE} or \vv{FALSE}, as it does not only compares the content, but also the types of the two operands (e.g.
-\vv{1=!='1'} will give \vv{TRUE}).The file can be also found in DOC.
+\vv{1=!='1'} will give \vv{TRUE}). The file can be also found in DOC.
 
 \subsubsection{Further useful Condor commands}
 As already said you can submit jobs with \vv{condor_submit}.

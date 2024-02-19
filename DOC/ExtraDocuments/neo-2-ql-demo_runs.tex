@@ -356,8 +356,8 @@ Some notes regarding the input parameters in \vv{neo.in}:
 	\item \vv{inp_swi}: \vv{NEO-2-QL} as well as \vv{NEO-2-PAR} get their magnetic 
      field data from so-called Boozer files. Boozer files are plaintext files 
      which commonly use the extension \vv{.bc} and contain the Fourier modes in 
-     Boozer coordinates. (see the relevant sections on \href{https://gitlab.tugraz.at/plasma/info/}{INFO} 
-     for more details on Boozer files and magnetic field formats). There 
+     Boozer coordinates. See the relevant sections on \href{https://gitlab.tugraz.at/plasma/info/}{INFO} 
+     for more details on Boozer files and magnetic field formats. There 
 	 is no way to sugarcoat this, but due to non-uniform formating of the 
 	 different Boozer files, many read-in options for the files exist in 
 	 \vv{NEO-2}. While the choice of \vv{inp_swi} seems therefore difficult, 
@@ -374,8 +374,9 @@ Some notes regarding the input parameters in \vv{neo.in}:
 		Fourier coefficients are given, but only the cosine one (as the sine 
 		one would be zero for stellerator symmetry). Practically speaking, 
 		in such a file there would be only 4 columns of coefficients (6 columns 
-		in total if you include the modenumber columns). See again the relevant
-        section on \href{https://gitlab.tugraz.at/plasma/info/-/blob/GeorgGrassler/TOPIC_MHD_Equilibria/Fileformats.md}{INFO}.
+		in total if you include the modenumber columns). See also the chapter about fileformats
+        in the MHD equillibria section on `gitlab.tugraz.at/info' (link in further readings 
+        section~\ref{furtherreading}).
 		\item \vv{inp_swi=9} does not assume stellerator symmetry, therefore 
 		expecting 8 coefficient colummns. 
 	\end{itemize}
@@ -385,18 +386,20 @@ Some notes regarding the input parameters in \vv{neo.in}:
 	there is usually no stellerator symmetry, so \vv{inp_swi=9} should be your default.
 	
 	Additional note: Neither of the above \vv{inp_swi} accounts for a common 
-	convention in the listing of the fouriermodes, where there are no negative 
-	toroidal $n$ modes for the 0th poloidal mode $m=0$ (see \href{https://gitlab.tugraz.at/plasma/info/-/blob/GeorgGrassler/TOPIC_MHD_Equilibria/Fileformats.md}{INFO}
-    for the definitions of the Fourier series represented in the Boozer files).
+	convention in the listing of the Fourier modes, where there are no negative 
+	toroidal $n$ modes for the 0th poloidal mode $m=0$. See again the fileformats chapter 
+    on `gitlab.tugraz.at/info' for the definitions of the Fourier series represented in the 
+    Boozer files. The series take the form
     
     \begin{equation*}
         f = \sum_{m=0}^{\infty}\sum_{n=-\infty}^{\infty}{f^\text{c}_{mn}}\cos{(m\theta + n\varphi)} + {f^\text{s}_{mn}}\sin{(m\theta + n\varphi)},
     \end{equation*}
-	but
+	with
 	\begin{equation*}
-		 f^\text{s}_{0n} = f^\text{c}_{0n} = 0 \quad\text{for } n<0 \rightarrow \text{left out in Boozer file}
+		 f^\text{s}_{0n} = f^\text{c}_{0n} = 0 \quad\text{for } n<0.
 	\end{equation*}
 
+    Due to being zero, these negative toroidal modes are commonly left out in the Boozer files.
     This would usually lead to a crash of the reader as it would 
     expect $(m_\text{max} + 1)*(2*n_\text{max} + 1)$ 
 	modes, while actually due to the missing negative toroidal modes it is 
@@ -530,11 +533,13 @@ $LIBNEOPATH/python/libneo/boozer.py wout_test.nc 10
 \end{verbatim}
 
 \subsubsection{Regarding the orientation (left/right handed system)}
-A Boozer file containsthe necessary coefficients to make the transformation 
+A Boozer file contains the necessary coefficients to perform the transformation 
 
-\begin{equation*}
-    R(s,\theta_B,\varphi_B),\quad \varphi(s,\theta_B,\varphi_B)= \varphi_B + \lambda(s,\theta_B,\varphi_B), \quad Z(s,\theta_B,\varphi_B) \; .
-\end{equation*}
+\begin{align*}
+    (s,\theta_B,\varphi_B) &\to& R(s,\theta_B,\varphi_B) &  \\
+                         &   & \varphi(s,\theta_B,\varphi_B) &= \varphi_B + \lambda(s,\theta_B,\varphi_B) \\
+                         &   & Z(s,\theta_B,\varphi_B) & \; .
+\end{align*}
 
 So by calculating
 
@@ -559,7 +564,7 @@ read your axisymmetric Boozer file, and wrote an own Boozer file from
 that external output). While \vv{NEO-2} ignores basically everything besides 
 the magnetic field coefficients from the perturbation file, if these 
 perturbations were generated from a physically different picture from
-what is described in your axisymetric file, the result can not be trusted anymore.
+what is described in your axisymmetric file, the result can not be trusted anymore.
 
 TD;LR: The generation of any Boozer file has to be accompanied by keeping in mind the 
 corresponding real-world physical picture that the file describes. That is the ONLY way one can be
