@@ -4,7 +4,7 @@ Universe   = vanilla
 Error      = ../err.$(Process)
 Log        = ../scan.log
 run_as_owner = true
-notify_user  = example.com
+notify_user  = your.email@example.com
 notification = Error
 nice_user    = false
 # The following two lines are to avoid 'black holes'
