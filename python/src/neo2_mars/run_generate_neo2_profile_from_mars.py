@@ -21,6 +21,7 @@ def run_generate_neo2_profile(path_to_input_files, number_of_surfaces, bounds):
     Ze = -1  # electron charge number
     me = 9.1094e-28  # electron mass
     species_definition = np.array([[[Ze, me], [Zi, mi]]] * number_of_surfaces)
+    species_definition = species_definition.transpose(2, 1, 0)
     isw_Vphi_loc = 0
     species_tag_Vphi = 2
     input_unit_type = 2

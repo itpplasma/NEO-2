@@ -45,12 +45,12 @@ def generate_neo2_profile(hdf5FileName=None, path_to_shot=None, data_source=None
     if bounds is None:
         gridpoints = species_definition.shape[0]
     else:
-        gridpoints = [species_definition.shape[0], bounds[0], bounds[1]]
+        gridpoints = [species_definition.shape[2], bounds[0], bounds[1]]
 
     if switch_grid is None:
         switch_grid = []
 
-    num_species = species_definition.shape[1]
+    num_species = species_definition.shape[0]
 
     # UNIT CONVERSION CONSTANTS
     ELEMENTARY_CHARGE_SI = 1.60217662e-19
