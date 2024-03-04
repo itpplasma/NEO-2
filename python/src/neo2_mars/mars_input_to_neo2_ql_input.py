@@ -46,6 +46,12 @@ def get_sqrt_spol_of_input_profiles_mars (path_to_mars_folder: str) -> np.ndarra
     sqrt_spol = np.loadtxt(path_to_file, skiprows=1)[:, 0]
     return sqrt_spol
 
+def mars_sqrtspol2stor(path_to_mars_folder,sqrt_spol):
+    q_over_equidist_spol = get_q_over_equidist_spol_mars(path_to_mars_folder)
+    converter = FluxConverter(q_over_equidist_spol)
+    stor = converter.spol2stor(sqrt_spol ** 2)
+    return stor
+
 def get_q_over_equidist_spol_mars(path_to_mars_folder: str) -> np.ndarray:
     q_prof = get_q_prof_mars(path_to_mars_folder)
     spol = q_prof['sqrt_spol']**2
