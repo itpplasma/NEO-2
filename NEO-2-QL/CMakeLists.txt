@@ -31,7 +31,7 @@ endif ()
 ### MPI is required by this NEO-2 version
 find_package(MPI REQUIRED)
 
-# MPE allows graphical work load evaluation of parallel processes 
+# MPE allows graphical work load evaluation of parallel processes
 option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" OFF)
 
 # Print the current compiler
@@ -99,9 +99,7 @@ find_package(SuiteSparse REQUIRED)
 find_package(SuperLU REQUIRED)
 
 ### Find libraries
-# libneo - shared library
 find_library(libneo_lib neo ${NEO2_Libs}/src/ NO_DEFAULT_PATH)
-# mc_efit - shared library
 find_library(magfie_lib magfie ${NEO2_Libs}/src/ NO_DEFAULT_PATH)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -200,7 +198,7 @@ add_custom_target(copy
   COMMAND ${CMAKE_COMMAND} -E copy
   ${CMAKE_CURRENT_BINARY_DIR}/${EXE_NAME}
   ${PROJECT_SOURCE_DIR}/../../TEST_RUNS/${EXE_NAME}
-  ) 
+  )
 
 ### Testing section
 ADD_TEST(Test_Build_Code "make")
