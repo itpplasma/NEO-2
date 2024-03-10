@@ -99,8 +99,8 @@ find_package(SuiteSparse REQUIRED)
 find_package(SuperLU REQUIRED)
 
 ### Find libraries
-find_library(libneo_lib neo ${NEO2_Libs}/src/ NO_DEFAULT_PATH)
-find_library(magfie_lib magfie ${NEO2_Libs}/src/ NO_DEFAULT_PATH)
+find_library(libneo_lib neo ${NEO2_Libs} NO_DEFAULT_PATH)
+find_library(magfie_lib magfie ${NEO2_Libs} NO_DEFAULT_PATH)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
