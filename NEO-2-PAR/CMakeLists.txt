@@ -25,7 +25,7 @@ find_package(MPI REQUIRED)
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
-# MPE allows graphical work load evaluation of parallel processes 
+# MPE allows graphical work load evaluation of parallel processes
 option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" OFF)
 
 # Print the current compiler
@@ -91,10 +91,8 @@ find_package(SuiteSparse REQUIRED)
 find_package(SuperLU REQUIRED)
 
 ### Find libraries
-# libneo - shared library
-find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
-# mc_efit - shared library
-find_library(MC_EFIT_lib mc_efit ${NEO2_Libs}/src/ NO_DEFAULT_PATH)
+find_library(libneo_lib neo ${NEO2_Libs} NO_DEFAULT_PATH)
+find_library(magfie_lib magfie ${NEO2_Libs} NO_DEFAULT_PATH)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
@@ -148,7 +146,7 @@ target_link_libraries(${EXE_NAME}
   ${SUPERLU_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
   ${libneo_lib}
-  ${MC_EFIT_lib}
+  ${magfie_lib}
   ${MyMPILib_lib}
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}
