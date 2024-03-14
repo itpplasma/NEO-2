@@ -74,6 +74,7 @@
 \title{\textbf{Using NEO-2-QL for DEMO NTV caclulation\\September 2023}}
 
 \author[1]{Rico~Buchholz}
+\author[1]{Georg Graßler}
 \affil[1]{Fusion@\"OAW, Institute of Theoretical and Computational Physics, Graz University of Technology, Petersgasse 16, 8010 Graz, Austria}
 \renewcommand\Affilfont{\itshape\small}
 
@@ -106,18 +107,18 @@ summarized. In particular, this is a reminder for  those already
 familiar with \vv{NEO-2-QL}.
 \subsection{Required input}
 \begin{itemize}
-  \item boozer background file
-  \item boozer perturbation file
+  \item Boozer background file
+  \item Boozer perturbation file
   \item profile file (e.g. density, temperature)
   \item neo.in
   \item neo2.in
-  \item (condor submit file|slurm submit file)
+  \item (Condor submit file|slurm submit file)
 \end{itemize}
 
 \subsection{Required steps}
 \begin{itemize}
   \item get profiles (Sec.~\ref{running_preparation_profiles})
-  \item get magnetic field as boozer file (Sec.~\ref{running_preparation_equilibrium})
+  \item get magnetic field as Boozer file (Sec.~\ref{running_preparation_equilibrium})
   \item make sure you have all required libraries (Sec.~\ref{technicalbackground_libraries})
   \item clone/update \vv{libneo} and \vv{NEO-2} repositories (Sec.~\ref{technicalbackground_git})
   \item compile the codes (Sec.~\ref{technicalbackground_cmake})
@@ -138,7 +139,7 @@ but they might require recompilation.
 
 % ----------------------------------------------------------------------
 % ----------------------------------------------------------------------
-\section{Technical background on NEO-2}
+\section{Technical background on \vv{NEO-2}}
 \subsection{Overview}
 In the last years the development of \vv{NEO-2} has split into two branches,
 namely the more general branch for stellarators (and axisymmetric
@@ -345,9 +346,103 @@ the following input files are required:
 
 
 \subsubsection{neo.in\label{running_preparation_neoin}}
-The first line of this file indicates the name of the background boozer
+The first line of this file indicates the name of the background Boozer
 file. Other parameters are e.g. related to interpolation of the magnetic
 field module and to the code NEO.
+
+Some notes regarding the input parameters in \vv{neo.in}:
+
+\begin{itemize}
+	\item \vv{inp_swi}: \vv{NEO-2-QL} as well as \vv{NEO-2-PAR} get their magnetic 
+     field data from so-called Boozer files. Boozer files are plaintext files 
+     which commonly use the extension \vv{.bc} and contain the Fourier modes in 
+     Boozer coordinates. See the relevant sections in the documentation of libneo
+     (further readings section~\ref{furtherreading}) for more details on Boozer 
+     files and magnetic field formats. There is no way to sugarcoat this, 
+     but due to non-uniform formating of the 
+	 different Boozer files, many read-in options for the files exist in 
+	 \vv{NEO-2}. While the choice of \vv{inp_swi} seems therefore difficult, 
+	 in certain case the choice is actually quite limited and clear. 
+	 For an NTV calculation \vv{NEO-2} has to read an axisymmetric field 
+	 and a perturbation field. Internally it is hard-coded that the same 
+	 \vv{inp_switch} is used for both files, but for the read of the 
+	 perturbation field, only \vv{inp_swi} values of 8 or 9 are available. The 
+	 difference between the two options is
+	
+	\begin{itemize}
+		\item \vv{inp_swi=8} expects stellerator symmetry. This means that 
+		for example for the $R$ coordinate not both the sine and cosine 
+		Fourier coefficients are given, but only the cosine one (as the sine 
+		one would be zero for stellerator symmetry). Practically speaking, 
+		in such a file there would be only 4 columns of coefficients (6 columns 
+		in total if you include the modenumber columns). See also the chapter about fileformats
+        in the libneo repo (link in further readings section~\ref{furtherreading}).
+		\item \vv{inp_swi=9} does not assume stellerator symmetry, therefore 
+		expecting 8 coefficient colummns. 
+	\end{itemize}
+
+	TD;LR: Check the number of columns in your input \vv{.bc} file and pick 
+	one of the two choices above accordingly. For \vv{NEO-2-QL}, which deals with tokamaks,
+	there is usually no stellerator symmetry, so \vv{inp_swi=9} should be your default.
+	
+	Additional note: Neither of the above \vv{inp_swi} accounts for a common 
+	convention in the listing of the Fourier modes, where there are no negative 
+	toroidal $n$ modes for the 0th poloidal mode $m=0$. See again the fileformats chapter 
+    on `gitlab.tugraz.at/info' for the definitions of the Fourier series represented in the 
+    Boozer files. The series take the form
+    
+    \begin{equation*}
+        f = \sum_{m=0}^{\infty}\sum_{n=-\infty}^{\infty}{f^\text{c}_{mn}}\cos{(m\theta + n\varphi)} + {f^\text{s}_{mn}}\sin{(m\theta + n\varphi)},
+    \end{equation*}
+	with
+	\begin{equation*}
+		 f^\text{s}_{0n} = f^\text{c}_{0n} = 0 \quad\text{for } n<0.
+	\end{equation*}
+
+    Due to being zero, these negative toroidal modes are commonly left out in the Boozer files.
+    This would usually lead to a crash of the reader as it would 
+    expect $(m_\text{max} + 1)*(2*n_\text{max} + 1)$ 
+	modes, while actually due to the missing negative toroidal modes it is 
+	$n_\text{max}$ less than that. However, as an axisymmetric field has $0$ 
+	toroidal modes, i.e.
+	
+	\begin{equation*}
+		f = \sum_{m=0}^{\infty}{f^\text{c}_{m0}}\cos{(m\theta)} + {f^\text{s}_{m0}}\sin{(m\theta)},
+	\end{equation*}
+
+	the discrepancy is $0$ as well and the code "runs without 
+	errors". The reading in of the perturbation field uses a similar "hack", 
+	by only providing a single toroidal mode (e.g. $n=-1$), but "declaring" 
+	in the Boozer file header that the max modenumber of $n$ is $0$.
+	
+	TD;LR: If you have anything that contains more than a single toroidal mode 
+	(like having $n=0$ AND $n=1$ in one file), consider the reader option \vv{inp_swi=6}, 
+	which "checks" (also very finicky check) if negative toroidal modes are 
+	missing in a Boozer file for the $m=0$ modes. For NTV calculations you are 
+	still locked to the above options.
+	
+	\item \vv{lab_swi}: Similar to \vv{inp_swi}, the option \vv{lab_swi} tries 
+	to account for different conventions like signs and normalizations in the 
+	read-in input from the files. Again, many options, but for NTV calculation 
+	you (again hard-coded) only have the choice between \vv{lab_swi=8,9 or 10} 
+	(note that the numbers not necessarily have to align with the choice in \vv{inp_swi}):
+	
+	\begin{itemize}
+		\item \vv{lab_swi=8}: applies an additional minus sign to the toroidal 
+		\& poloidal ELECTRICAL current read-in, uses the absolute value of the 
+		tordoidal magnetic flux at the seperatrix divided by $2\pi$
+		\item \vv{lab_swi=9}: applies NO additional minus sign to the toroidal 
+		\& poloidal ELECTRICAL current read-in, uses the absolute value of the 
+		tordoidal magnetic flux at the seperatrix divided by $2\pi$
+		\item \vv{lab_swi=10}: applies an additional minus sign to the toroidal 
+		\& poloidal ELECTRICAL current read-in, uses the the tordoidal magnetic 
+		flux at the seperatrix divided by $2\pi$ INCLUDING the sign/direction
+		THIS OPTION IS THE ONLY ONE THAT SHOULD BE USED FOR NTV CALCULATIONS
+	\end{itemize}
+	
+	TD;LR: if you are doing NTV calculations, use \vv{lab_swi=10}
+
+\end{itemize}
 
 \subsubsection{neo2.in\label{running_preparation_neo2in}}
 This file is a Fortran namelist file. It contains physical input
@@ -412,12 +507,12 @@ switch and integer switch, respectively.
  field as it is ``seen'' from \vv{NEO-2}.
 
  \item \vv{in_file_pert}\newline
- Name of the boozer file with the perturbation.
+ Name of the Boozer file with the perturbation.
 \end{itemize}
 
 % ----------------------------------------------------------------------
 \subsection{Preparation of equilibrium\label{running_preparation_equilibrium}}
-Equilibrium magnetic field in Boozer coordinates is provided for NEO-2
+Equilibrium magnetic field in Boozer coordinates is provided for \vv{NEO-2}
 in the form of text files called in this document ``Boozer files'', with usual file ending ``bc''.
 They contain data in a specific format (meant here: not just a table of values).
 Examples can be found in \vv{$NEO2PATH/DOC/example_bg_field.bc} and
@@ -436,6 +531,50 @@ and optionally a multiplier for the internal grid.
 \begin{verbatim}
 $LIBNEOPATH/python/libneo/boozer.py wout_test.nc 10
 \end{verbatim}
+
+\subsubsection{Regarding the orientation (left/right handed system)}
+A Boozer file contains the necessary coefficients to perform the transformation 
+
+\begin{equation*}
+    (s,\theta_B,\varphi_B) \to (R,\varphi,Z)
+\end{equation*}
+
+with
+
+\begin{align*}
+    R &= R(s, \theta_B, \varphi_B), \\
+    \varphi &= \varphi_B + \lambda(s, \theta_B, \varphi_B), \\
+    Z &= Z(s, \theta_B, \varphi_B).
+\end{align*}
+
+So by calculating
+
+\begin{equation*}
+	\frac{d(R,\varphi,Z)}{ds},\; \frac{d(R,\varphi,Z)}{d\theta_B},\; \frac{d(R,\varphi,Z)}{d\varphi_B}
+\end{equation*}
+
+at a point one gets the three coordinate directions, and can check if the 
+system $(s,\theta_B,\varphi_B)$ is right or left handed. For example, by calculating
+the Jacobian of the transformation, assuming one knows the orientation of the cylindrical system. 
+However, the Boozer file also contains signed values of the toroidal flux, 
+the metric determinant, as well as of the electrical currents. These values 
+only get meaning when one understands how the coordinate system for it is 
+actually aligned i.e. the real physical picture. For more information see the 
+writeups on regarding conventions on libneo (see section~\ref{furtherreading}). 
+While \vv{NEO-2} can handle the input anyway and give you 
+results, the results might not be of the physical situation that you want. 
+This is best illustrated if you have an axisymmetric Boozer file and a 
+perturbation Boozer file that were NOT generated from one common Boozer 
+file (e.g. you got the perturbation from an external code that did not 
+read your axisymmetric Boozer file, and wrote an own Boozer file from 
+that external output). While \vv{NEO-2} ignores basically everything besides 
+the magnetic field coefficients from the perturbation file, if these 
+perturbations were generated from a physically different picture from
+what is described in your axisymmetric file, the result can not be trusted anymore.
+
+TD;LR: The generation of any Boozer file has to be accompanied by keeping in mind the 
+corresponding real-world physical picture that the file describes. That is the ONLY way one can be
+sure that one gets the output that one really wants. \vv{NEO-2} will run regardless.
 
 % ----------------------------------------------------------------------
 \subsection{Preparation of the plasma parameter profiles\label{running_preparation_profiles}}
@@ -535,6 +674,16 @@ the current folder, by multiplying the velocity profile with a factor of
 $0.99$. The name of the output file is determined from the changed
 quantity and the scaling factor.
 
+\subsubsection{Notes regarding raw input profiles}
+The above noted $\rho_\text{pol}$ and $\rho_\text{tor}$ are not the normalized 
+poloidal or toroidal flux, but rather their respective square roots. The 
+profiles used as input for the code MARS from the OMFIT library, are given in terms
+of $\sqrt{s_\text{pol}}$. For that reason, during generation of the 
+\vv{NEO-2} profile input, \vv{generate_neo2_profile} maps the values of
+$\sqrt{s_\text{pol}}$ to the corresponding values of $\sqrt{s_\text{tor}}$.
+It then saves the profile in terms of $s = \sqrt{s_\text{tor}}^2$, which is 
+the adequate input for \vv{NEO-2}.
+
 % ----------------------------------------------------------------------
 \subsection{Preparation of the run directories\label{running_preparation_directories}}
 Next step is the preparation of the flux surface grid for the \vv{NEO-2-QL}
@@ -544,12 +693,12 @@ This done with the profiles input file and the \vv{NEO-2-QL} executable.
 It is now necessary to copy the following required files to a new
 empty directory (the working directory),
 \begin{verbatim}
-boozer files
+Boozer files
 profile file
 neo.in configuration file
 neo2.in configuration file
 NEO-2-QL executable
-optionally a condor/slurm submit file
+optionally a Condor/slurm submit file
 \end{verbatim}
 
 Running the \vv{NEO-2-QL} executable creates the folders for the flux
@@ -563,7 +712,7 @@ representation (with ``p'' instead of ``.'') of the flux surface label
 \subsubsection{Notes on resources}
 The number of processors must match the number of species for the run.
 
-The condor submit files determine the resources requested by the job in
+The Condor submit files determine the resources requested by the job in
 the two fields \vv{request_cpus} (note that this number should match
 the number for \vv{-np} in \vv{arguments}) and \vv{request_memory}.
 The amount of memory required is fixed by the parameters of the jobs
@@ -573,13 +722,13 @@ of nodes, but there are other options for this).
 % ----------------------------------------------------------------------
 \subsection{Running the jobs\label{running_running}}
 The easiest way to start simulations for all the flux surfaces is to use
-the condor system. There is an example submit file,
+the Condor system. There is an example submit file,
 \vv{NEO2PATH/DOC/condor_submit_example}, available (for definition of
 the constant see sec. \ref{technicalbackground_git}).
 The example makes use of a glob pattern, to submit a job for each
 subfolder starting with \vv{es_}.
 Remember to change the \vv{notify_user} variable to your email adress.
-Using condor can be done by executing the command
+Using Condor can be done by executing the command
 \begin{verbatim}
 condor_submit name_of_condor_submit_file
 \end{verbatim}
@@ -598,7 +747,7 @@ from scan_nonhdf5_tools import get_list_unsucessful_runs
 get_list_unsucessful_runs('./', 'es_*', 'neo2_multispecies_out.h5')
 \end{verbatim}
 The second one, \vv{append_list_unsucessful_runs} is similar, but
-instead of printing the list, it appends it to a template condor submit
+instead of printing the list, it appends it to a template Condor submit
 file, such that \vv{condor_submit} will run the failed jobs
 again.
 Example usage:
@@ -648,7 +797,7 @@ Once the data is loaded, it can be post-processed and plotted as usual.
 \section{Open tasks}
 \begin{itemize}
   \item Include NBI source term.
-  \item Distribution function plotter in NEO-2-QL.
+  \item Distribution function plotter in \vv{NEO-2-QL}.
   \item Cleanup CMake files.
 \end{itemize}
 
@@ -666,5 +815,9 @@ Once the data is loaded, it can be post-processed and plotted as usual.
 %\clearpage
 %\renewcommand{\bibname}{References}
 %\printbibliography[notcategory=fullcited]
+
+\section{Further readings}\label{furtherreading}
+See the documentatioin folder of \url{https://github.com/itpplasma/libneo/} for 
+further information about concepts mentioned in this documentation (e.g. Boozer files).
 
 \end{document}
