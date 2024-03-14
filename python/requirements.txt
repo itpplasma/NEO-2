@@ -1,0 +1,4 @@
+numpy
+omfit_classes
+libneo
+h5py
