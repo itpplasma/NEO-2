@@ -532,6 +532,72 @@ and optionally a multiplier for the internal grid.
 $LIBNEOPATH/python/libneo/boozer.py wout_test.nc 10
 \end{verbatim}
 
+\subsubsection{Splitting of axisymmetric and perturbation field}
+The above python script does not only perform a transformation into Boozer Coordinates,
+but subsequently also splits this Boozer spectrum into an axisymmetric and perturbation part.
+Specifically, it generates three kinds of files
+
+\begin{enumerate}
+	\item \vv{wout_test.bc} - the total Boozer spectrum of the field
+	\item \vv{wout_test-n0.bc} - the axisymmetric part of the spectrum ($m=0, \ldots, +m_\text{max}$, $n=0$)
+	\item \vv{wout_test-n*.bc} - the $n$-mode perturbation extracted from the spectrum, one file per specific $n$ ($m=-m_\text{max}, \ldots, +m_\text{max}$, $n=*$)
+\end{enumerate}
+
+\vv{NEO-2-QL} needs the latter two (the axisymetric part and \textbf{one} selected $n$-mode of the perturbation) for the NTV calculation.
+
+Depending on how the original total Boozer spectrum of the field is given, a mapping has to be performed for the extracted data to be suitable for \vv{NEO-2}. \vv{NEO-2-QL} expects a spectrum of the form
+
+\begin{equation}
+	f = \sum_{m=-\infty}^{\infty} \sum_{n=0}^{\infty} \hat{f}^c_{mn}\cos{(m\theta_B - n\varphi_B)} + \hat{f}^s_{mn}\sin{(m\theta_B - n\varphi_B)} \label{eqFourierNhalfside}
+\end{equation}
+
+to be split into
+
+\begin{equation}
+	f_0 = \sum_{m=-\infty}^{\infty} \hat{f}^c_{m0}\cos{(m\theta_B - n\varphi_B)} + \hat{f}^s_{m0}\sin{(m\theta_B - n\varphi_B)}
+\end{equation}
+\begin{equation}
+	f_n = \sum_{m=-\infty}^{\infty} \hat{f}^c_{mn}\cos{(m\theta_B - n\varphi_B)} + \hat{f}^s_{mn}\sin{(m\theta_B - n\varphi_B)} \text{ for } n = 0,\ldots, \infty 
+\end{equation}
+
+If the spectrum is given in the form~\ref{eqFourierNhalfside}, this can be done directly by taking the individual coefficients of the total spectrum, saving them into separate files. However, often the spectrum is given as
+
+\begin{equation}
+	f = \sum_{m=0}^{\infty} \sum_{n=-\infty}^{\infty} \tilde{f}^c_{mn}\cos{(m\theta_B - n\varphi_B)} + \tilde{f}^s_{mn}\sin{(m\theta_B - n\varphi_B)},
+\end{equation}
+
+where now the toroidal mode number goes from $-\infty$ to $\infty$, while the poloidal mode number only covers non-negative values. The corresponding coefficients $\tilde{f}_{mn}$ are therefore different compared to $\hat{f}_{mn}$. A mapping between these coefficients can be found by considering the full Fourier series these two half-side representations are based on:
+
+\begin{equation}
+	f = \sum_{m=-\infty}^{\infty} \sum_{n=-\infty}^{\infty} f^c_{mn}\cos{(m\theta_B - n\varphi_B)} + f^s_{mn}\sin{(m\theta_B - n\varphi_B)}.
+\end{equation}
+
+The coefficients fulfill the following conditions:
+
+\begin{enumerate}
+	\item $f^c_{mn} = f^c_{-m-n}$
+	\item $f^s_{mn} = -f^s_{-m-n}$
+\end{enumerate}
+
+(These conditions follow from the complex Fourier representation of a real valued function)
+One can now combine terms of the sums together, choosing to half the summation of one of the mode numbers:
+
+\begin{equation*}
+	\tilde{f}^c_{mn} \equiv f^c_{mn} + f^c_{-m-n} \text{ for } m \geq 0
+\end{equation*}
+\begin{equation*}
+	\tilde{f}^s_{mn} \equiv f^s_{mn} - f^s_{-m-n} \text{ for } m \geq 0
+\end{equation*}
+
+or
+
+\begin{equation*}
+	\hat{f}^c_{mn} \equiv f^c_{mn} + f^c_{-m-n} \text{ for } n \geq 0
+\end{equation*}
+\begin{equation*}
+	\hat{f}^s_{mn} \equiv f^s_{mn} - f^s_{-m-n} \text{ for } n \geq 0
+\end{equation*}
+
 \subsubsection{Regarding the orientation (left/right handed system)}
 A Boozer file contains the necessary coefficients to perform the transformation 
 
