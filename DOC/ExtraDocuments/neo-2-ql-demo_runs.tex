@@ -579,24 +579,35 @@ The coefficients fulfill the following conditions:
 	\item $f^s_{mn} = -f^s_{-m-n}$
 \end{enumerate}
 
-(These conditions follow from the complex Fourier representation of a real valued function)
+These conditions follow from the complex Fourier representation of a real valued function.
 One can now combine terms of the sums together, choosing to half the summation of one of the mode numbers:
 
 \begin{equation*}
-	\tilde{f}^c_{mn} \equiv f^c_{mn} + f^c_{-m-n} \text{ for } m \geq 0
+	\tilde{f}^c_{mn} \equiv f^c_{mn} + f^c_{-m-n} \text{ for } m \geq 0 , n \in \mathbb{Z}
 \end{equation*}
 \begin{equation*}
-	\tilde{f}^s_{mn} \equiv f^s_{mn} - f^s_{-m-n} \text{ for } m \geq 0
+	\tilde{f}^s_{mn} \equiv f^s_{mn} - f^s_{-m-n} \text{ for } m \geq 0 , n \in \mathbb{Z}
 \end{equation*}
 
 or
 
 \begin{equation*}
-	\hat{f}^c_{mn} \equiv f^c_{mn} + f^c_{-m-n} \text{ for } n \geq 0
+	\hat{f}^c_{mn} \equiv f^c_{mn} + f^c_{-m-n} \text{ for } n \geq 0 , m \in \mathbb{Z}
 \end{equation*}
 \begin{equation*}
-	\hat{f}^s_{mn} \equiv f^s_{mn} - f^s_{-m-n} \text{ for } n \geq 0
+	\hat{f}^s_{mn} \equiv f^s_{mn} - f^s_{-m-n} \text{ for } n \geq 0 , m \in \mathbb{Z}
 \end{equation*}
+
+The definition of the coefficients are formally the same. However, note that there are no $\tilde{f}_{mn}$ for negative $m$. For the desired representation~\ref{eqFourierNhalfside} one needs coefficients with $m<0$ as well. The coefficients $\hat{f}^s_{mn}$ still formally fulfill the symmetry/anti-symmetry conditions of the original coefficients (like $\hat{f}^s_{mn} = -\hat{f}^s_{-m-n}$). This one can use to get a mapping for the necessary $\hat{f}_{mn}$ from the $\tilde{f}_{mn}$. In the following, $m_+$ notes a non-negative toroidal mode number (including $m=0$) and $m_- \equiv -m_+$ the corresponding negative counterpart (analogous for $n$).
+
+\begin{enumerate}
+	\item $\hat{f}^c_{m_+n_+} = +\tilde{f}^c_{m_+n_+}$
+	\item $\hat{f}^s_{m_+n_+} = +\tilde{f}^s_{m_+n_+}$
+	\item $\hat{f}^c_{m_-n_+} = +\hat{f}^c_{m_+n_-} = +\tilde{f}^c_{m_+n_-}$
+	\item $\hat{f}^s_{m_-n_+} = -\hat{f}^s_{m_+n_-} = -\tilde{f}^s_{m_+n_-}$
+\end{enumerate}
+
+
 
 \subsubsection{Regarding the orientation (left/right handed system)}
 A Boozer file contains the necessary coefficients to perform the transformation 
