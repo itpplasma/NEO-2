@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
 
-from .load_profile_data import load_profile_data
+from .load_profile_data import get_profiles_over_equidist_grid
 
 def generate_neo2_profile(hdf5FileName=None, path_to_shot=None, data_source=None, species_definition=None, isw_Vphi_loc=None, species_tag_Vphi=None, input_unit_type=None, bounds=None, switch_grid=None):
     if hdf5FileName is None or hdf5FileName == '':
@@ -62,7 +62,7 @@ def generate_neo2_profile(hdf5FileName=None, path_to_shot=None, data_source=None
     CHARGE_SI_TO_CGS = 10 * SPEED_OF_LIGHT_SI  # Conversion factor is not speed of light, but 10c_si.
 
     # Define profile data
-    rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot = load_profile_data(path_to_shot, data_source, gridpoints, 0, input_unit_type, switch_grid)
+    rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot = get_profiles_over_equidist_grid(path_to_shot, data_source, gridpoints, 0, input_unit_type, switch_grid)
 
     # Calculate boozer_s
     boozer_s = rho_tor ** 2

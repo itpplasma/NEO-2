@@ -1,30 +1,34 @@
-# %%Standard imports
-from neo2_mars import load_profile_data
+#%% Standard modules
+import os
 
-MARS_DIR = '/proj/plasma/DATA/DEMO/teams/MARSQ_OUTPUTS/DATA_equil_qmod/MARSQ_OUTPUTS_100kAt_dBkinetic_NTVkinetic_NEO2profs'
-MARS_DIR = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
-OUTPUT_DIR = './processed_mars_inputs/'
+# Custion modules
+from neo2_mars import write_neo2_input_profile_from_mars
 
-from omfit_classes.omfit_mars import OMFITmars
-data = OMFITmars(MARS_DIR)
-data.load()
-q_prof = {}
-q_prof['values'] = data['PROFEQ']['q_prof'].values
-q_prof['sqrt_spol'] = data['PROFEQ']['q_prof'].coords['s_eq'].values
+# Modules to test
+from neo2_mars import get_profiles_over_equidist_grid
 
-from libneo import read_eqdsk
-eqdsk_ASTRA_1 = read_eqdsk('/proj/plasma/DATA/DEMO/teams/ASTRA/BASELINE_2019/eqdska.gsef')
-eqdsk_ASTRA_2 = read_eqdsk('/proj/plasma/DATA/DEMO/teams/ASTRA/BASELINE_2019/Correct_ASTRA_eqdsk_2PCR4X_v1_0.dat')
-eqdsk_CHEASE = read_eqdsk('/proj/plasma/DATA/DEMO/teams/Equilibrium_DEMO2019_CHEASE/MOD_Qprof_Test/EQDSK_DEMO2019_q1_COCOS_02.OUT')
+test_mars_dir = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
+test_output_dir = '/tmp/'
+test_src = {
+    'sqrtspol': {'filename': os.path.join(test_output_dir, 'sqrtstor.dat'), 'column': 0},
+    'sqrtstor': {'filename': os.path.join(test_output_dir, 'sqrtstor.dat'), 'column': 1},
+    'ne': {'filename': os.path.join(test_output_dir, 'ne.dat'), 'column': 1},
+    'Te': {'filename': os.path.join(test_output_dir, 'Te.dat'), 'column': 1},
+    'Ti': {'filename': os.path.join(test_output_dir, 'Ti.dat'), 'column': 1},
+    'vrot': {'filename': os.path.join(test_output_dir, 'vrot.dat'), 'column': 1}   
+}
 
-import matplotlib.pyplot as plt
-plt.figure()
-plt.plot(eqdsk_ASTRA_1['rho_poloidal'], eqdsk_ASTRA_1['qprof'], label='eqdska.gsef')
-plt.plot(eqdsk_ASTRA_2['rho_poloidal'], eqdsk_ASTRA_2['qprof'], label='Correct_ASTRA_eqdsk_2PCR4X_v1_0.dat')
-plt.plot(q_prof['sqrt_spol'], q_prof['values'], label='MARS')
-plt.plot(np.sqrt(eqdsk_CHEASE['rho_poloidal']), eqdsk_CHEASE['qprof'], '--',label='EQDSK_DEMO2019_q1_COCOS_02.OUT')
-plt.legend()
+def test_equidistant_grid():
+    write_neo2_input_profile_from_mars(test_mars_dir, test_output_dir)
+    profiles = get_profiles_over_equidist_grid(test_src, 'sqrtspol')
+    assert is_equidistant(profiles['sqrtspol'])
+    profiles = get_profiles_over_equidist_grid(test_src, 'sqrtstor')
+    assert is_equidistant(profiles['sqrtstor'])
+    profiles = get_profiles_over_equidist_grid(test_src, 'spol')
+    assert is_equidistant(profiles['sqrtspol']**2)
 
-#%%
-from neo2_mars import write_input_for_generate_neo2_profile_from_mars
-write_input_for_generate_neo2_profile_from_mars(MARS_DIR, OUTPUT_DIR)
+def is_equidistant(x):
+    return np.allclose(np.diff(x), np.diff(x)[0])
+
+if __name__ == '__main__':
+    test_equidistant_grid()
