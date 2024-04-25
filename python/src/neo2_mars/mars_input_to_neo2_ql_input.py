@@ -14,10 +14,10 @@ def write_neo2_input_profile_from_mars(mars_folder: str, output_dir: str):
 
 def get_profiles_mars(mars_dir: str) -> dict:
     profiles_mars = {}
-    profiles_mars['n'] = np.loadtxt(os.path.join(mars_dir,'PROFDEN.IN'), skiprows=1)
-    profiles_mars['te'] = np.loadtxt(os.path.join(mars_dir,'PROFTE.IN'), skiprows=1)
-    profiles_mars['ti'] = np.loadtxt(os.path.join(mars_dir,'PROFTI.IN'), skiprows=1)
-    profiles_mars['rot'] = np.loadtxt(os.path.join(mars_dir,'PROFROT.IN'), skiprows=1)
+    profiles_mars['ne'] = np.loadtxt(os.path.join(mars_dir,'PROFDEN.IN'), skiprows=1)
+    profiles_mars['Te'] = np.loadtxt(os.path.join(mars_dir,'PROFTE.IN'), skiprows=1)
+    profiles_mars['Ti'] = np.loadtxt(os.path.join(mars_dir,'PROFTI.IN'), skiprows=1)
+    profiles_mars['vrot'] = np.loadtxt(os.path.join(mars_dir,'PROFROT.IN'), skiprows=1)
     profiles_mars['sqrtstor'] = get_sqrtstor_profile(mars_dir)
     return profiles_mars
 
