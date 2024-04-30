@@ -1,25 +1,12 @@
 import h5py
 import numpy as np
 
-from .load_profile_data import get_profiles_over_equidist_grid
+from .load_profile_data import load_profiles_and_interp
 
-def generate_neo2_profile(hdf5FileName=None, path_to_shot=None, data_source=None, species_definition=None, isw_Vphi_loc=None, species_tag_Vphi=None, input_unit_type=None, bounds=None, switch_grid=None):
-    if hdf5FileName is None or hdf5FileName == '':
-        hdf5FileName = 'multi_spec_Valentin.in'
-    if path_to_shot is None or path_to_shot == '':
-        path_to_shot = 'SHOT35568/'
-
-    if data_source is None:
-        shot_designation = '35568_t2.6881'
-        data_source = {
-            'rhopoloidal': {'filename': f'ne_ida_{shot_designation}_rhopol.dat', 'column': 1},
-            'rhotoroidal': {'filename': f'ne_ida_{shot_designation}_rhotor.dat', 'column': 1},
-            'electron_density': {'filename': f'ne_ida_{shot_designation}_rhopol.dat', 'column': 2},
-            'electron_temperature': {'filename': f'Te_ida_{shot_designation}_rhopol.dat', 'column': 2},
-            'ion_temperature': {'filename': f'Ti_cez_{shot_designation}_rhopol.dat', 'column': 2},
-            'rotation_velocity': {'filename': f'vrot_cez_{shot_designation}_rhopol.dat', 'column': 2},
-            'major_radius': {'filename': f'vrot_cez_{shot_designation}_R.dat', 'column': 1}
-        }
+def generate_neo2_profile(hdf5_file_name: str, src: dict, isw_Vphi_loc=None, species_tag_Vphi=None, input_unit_type=None, bounds=None, switch_grid=None):
+    
+    if hdf5_file_name is None or hdf5_file_name == '':
+        hdf5_file_name = 'profiles.in'
 
     if species_definition is None:
         Zi = 1  # ion charge number (deuterium)
@@ -62,7 +49,7 @@ def generate_neo2_profile(hdf5FileName=None, path_to_shot=None, data_source=None
     CHARGE_SI_TO_CGS = 10 * SPEED_OF_LIGHT_SI  # Conversion factor is not speed of light, but 10c_si.
 
     # Define profile data
-    rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot = get_profiles_over_equidist_grid(path_to_shot, data_source, gridpoints, 0, input_unit_type, switch_grid)
+    rho_pol, rho_tor, ne_si, Ti_eV, Te_eV, vrot = get_profiles_over_equidist_grid(path_to_shot, src, gridpoints, 0, input_unit_type, switch_grid)
 
     # Calculate boozer_s
     boozer_s = rho_tor ** 2
@@ -104,7 +91,7 @@ def generate_neo2_profile(hdf5FileName=None, path_to_shot=None, data_source=None
     kappa_i = 2 / lc_i
 
     # Write to HDF5
-    with h5py.File(hdf5FileName, 'w') as f:
+    with h5py.File(hdf5_file_name, 'w') as f:
         f.create_dataset('/num_radial_pts', data=np.int32([num_radial_pts]))
         f.create_dataset('/num_species', data=np.int32([num_species]))
         f.create_dataset('/species_tag', data=np.int32(species_tag))

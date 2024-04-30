@@ -10,4 +10,4 @@ from .mars_input_to_neo2_ql_input import get_sqrtstor_profile
 from .mars_input_to_neo2_ql_input import get_mars_q_over_equidist_spol, mars_sqrtspol2sqrtstor
 from .mars_input_to_neo2_ql_input import mars_sqrtspol2stor
 from .run_generate_neo2_profile_from_mars import run_generate_neo2_profile
-from .load_profile_data import get_profiles_over_equidist_grid
+from .load_profile_data import load_profiles_and_interp
