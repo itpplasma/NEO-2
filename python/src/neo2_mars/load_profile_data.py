@@ -6,7 +6,8 @@ def load_profiles_and_interp(src:dict, equidist_grid:str, options:dict={}):
 
     profiles, sqrtspol, sqrtstor = load_profiles(src)
     if options['is_not_SI']:
-        profiles = convert_units_to_SI(profiles)
+        profiles = convert_units_from_norm_to_SI(profiles)
+    profiles = convert_units_from_SI_to_CGS(profiles)
 
     if equidist_grid == 'sqrtspol':
         sqrtspol, sqrtstor = interp_y_to_equidist_s(s=sqrtspol, y=sqrtstor, options=options)
@@ -41,15 +42,26 @@ def load_profiles(src):
     profiles['sqrtspol'] = sqrtspol.copy()
     return profiles, sqrtspol, sqrtstor
 
-def convert_units_to_SI(profiles):
-    keV2eV = 1.0e3
-    krads2rads = 1.0e3
-    norm_density2si_density = 1.0e+19
-    profiles['Te'] *= keV2eV
-    profiles['Ti'] *= keV2eV
+def convert_units_from_norm_to_SI(profiles):
+    KEV2EV = 1.0e3
+    KRADS2RADS = 1.0e3
+    NORM_DENSITY2SI_DENSITY = 1.0e+19
+    profiles['Te'] *= KEV2EV
+    profiles['Ti'] *= KEV2EV
     profiles['vrot'] /= profiles['major_radius']
-    profiles['vrot'] *= krads2rads
-    profiles['ne'] *= norm_density2si_density
+    profiles['vrot'] *= KRADS2RADS
+    profiles['ne'] *= NORM_DENSITY2SI_DENSITY
+    return profiles
+
+def convert_units_from_SI_to_CGS(profiles):
+    ELEMENTARY_CHARGE_SI = 1.60217662e-19
+    ENERGY_TO_CGS = 1e7
+    DENSITY_TO_CGS = 1e-6
+    profiles['Te'] *= ELEMENTARY_CHARGE_SI * ENERGY_TO_CGS
+    profiles['Ti'] *= ELEMENTARY_CHARGE_SI * ENERGY_TO_CGS
+    profiles['ne'] *= DENSITY_TO_CGS
+    return profiles
+
 
 def interp_y_to_equidist_s(s, y, options):
     equidist_s = np.linspace(options['min_s'], options['max_s'], options['n_s'])
