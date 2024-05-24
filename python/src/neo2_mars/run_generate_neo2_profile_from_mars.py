@@ -2,7 +2,7 @@
 import numpy as np
 
 # Homebrew imports
-from .generate_neo2_profile import generate_neo2_profile
+from neo2_ql import generate_neo2_profile
 
 def run_generate_neo2_profile(path_to_input_files, number_of_surfaces, bounds):
     hdf5FileName = 'multi_spec_demo.in'

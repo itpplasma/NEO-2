@@ -2,12 +2,12 @@
 import os
 import numpy as np
 
-# Custion modules
+# Custom modules
 from neo2_mars import write_neo2_input_profile_from_mars
 
 # Modules to test
-from neo2_mars import load_profiles_and_interp
-from neo2_mars import convert_units_from_norm_to_SI, convert_units_from_SI_to_CGS
+from neo2_ql import load_profiles_and_interp
+from neo2_ql import convert_units_from_norm_to_SI, convert_units_from_SI_to_CGS
 
 test_mars_dir = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
 test_output_dir = '/tmp/'
@@ -192,5 +192,5 @@ if __name__ == '__main__':
     test_equidistant_grid()
     test_interpolation()
     test_unit_conversion()
-    #test_interpolation_visual_check()
     print('All tests passed')
+    test_interpolation_visual_check()
