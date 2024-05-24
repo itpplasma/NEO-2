@@ -3,23 +3,29 @@ import os
 import numpy as np
 import h5py
 
-# Custion modules
-from neo2_ql import write_neo2ql_inputs_to_hdf5
+# Custom modules
+from test_load_profile_data import trial_profiles_sqrtspol, write_trial_profiles
+from test_load_profile_data import test_mars_dir, test_output_dir
+from test_load_profile_data import test_profiles_src, test_mars_profiles_src
+
+# modules to test
+from neo2_ql import write_multispec_to_hdf5
 from neo2_ql import get_coulomb_logarithm, get_kappa, derivative
+from neo2_ql import generate_multispec_input
+from neo2_ql import get_species_def_array
 
-test_mars_dir = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
-test_output_dir = '/tmp/'
-test_hdf5_filename = os.path.join(test_output_dir, 'test_neo2ql_profiles.in')
-test_src = {
-    'sqrtspol': {'filename': os.path.join(test_output_dir, 'sqrtstor.dat'), 'column': 0},
-    'sqrtstor': {'filename': os.path.join(test_output_dir, 'sqrtstor.dat'), 'column': 1},
-    'ne': {'filename': os.path.join(test_output_dir, 'ne.dat'), 'column': 1},
-    'Te': {'filename': os.path.join(test_output_dir, 'Te.dat'), 'column': 1},
-    'Ti': {'filename': os.path.join(test_output_dir, 'Ti.dat'), 'column': 1},
-    'vrot': {'filename': os.path.join(test_output_dir, 'vrot.dat'), 'column': 1}   
-}
+test_hdf5_filename = os.path.join(test_output_dir, 'test_multispec.in')
+test_config = {
+    'hdf5_filename': test_hdf5_filename, 
+    'species_tag_Vphi': 1, 
+    'isw_Vphi_loc': 0, 
+    'Ze': 1, 
+    'Zi': 1, 
+    'me': 9.10938356e-28,
+    'mi': 3.3436e-24,
+    }
 
-test_inputs = {
+test_multispec = {
     '/num_radial_pts': 10,
     '/num_species': 2,
     '/species_tag': np.array([1, 2], dtype=np.int32),
@@ -37,7 +43,7 @@ test_inputs = {
     '/kappa_prof': np.column_stack([np.linspace(60,6,10), np.linspace(70,7,10)]), 
 }
 
-test_inputs_types = {
+test_multispec_types = {
     '/num_radial_pts': 'int32',
     '/num_species': 'int32',
     '/species_tag': 'int32',
@@ -55,7 +61,7 @@ test_inputs_types = {
     '/kappa_prof': 'float64'
 }
 
-test_inputs_attributes = {
+test_multispec_attributes = {
     '/species_def': {'unit': 'e; g'},
     '/boozer_s': {'unit': '1'},
     '/rho_pol': {'unit': '1'},
@@ -64,13 +70,13 @@ test_inputs_attributes = {
     '/n_prof': {'unit': '1 / cm^3'}
 }
 
-def test_write_neo2ql_inputs_to_hdf5():
-    write_neo2ql_inputs_to_hdf5(test_hdf5_filename, test_inputs)
+def test_write_multispec_to_hdf5():
+    write_multispec_to_hdf5(test_hdf5_filename, test_multispec)
     with h5py.File(test_hdf5_filename, 'r') as hdf5_file:
-        assert are_all_quantities_present(hdf5_file, test_inputs)
-        assert are_data_types_correct(hdf5_file, test_inputs_types)
-        assert are_values_correct(hdf5_file, test_inputs)
-        assert are_attributes_correct(hdf5_file, test_inputs_attributes)
+        assert are_all_quantities_present(hdf5_file, test_multispec)
+        assert are_data_types_correct(hdf5_file, test_multispec_types)
+        assert are_values_correct(hdf5_file, test_multispec)
+        assert are_attributes_correct(hdf5_file, test_multispec_attributes)
 
 def are_all_quantities_present(hdf5_file, inputs):
     for key in inputs.keys():
@@ -104,29 +110,43 @@ def test_derivative():
     y = np.cos(x)**2
     dy_dx = derivative(x, y)
     control_dy_dx = -2*np.cos(x)*np.sin(x)
-    print(np.max(np.abs(dy_dx-control_dy_dx)))
     assert np.allclose(dy_dx, control_dy_dx, atol=1e-2)
 
 def test_get_kappa():
-    n_CGS = 1.22931e+14
-    T_CGS = 6.6154e-08
-    charge_CGS = -1 * 1.60217662e-19 * 2.99792458e8 * 10
-    kappa = get_kappa(n_CGS, T_CGS, charge_CGS)
+    n_cgs = 1.22931e+14
+    T_cgs = 6.6154e-08
+    charge_cgs = -1 * 1.60217662e-19 * 2.99792458e8 * 10
+    kappa = get_kappa(n_cgs, T_cgs, charge_cgs)
     control_kappa = 1.39308e-07
     assert np.isclose(kappa, control_kappa, rtol=1e-4)
 
 def test_coulomb_logarithm():
-    n_SI = 1e19
+    n_si = 1e19
     T_eV = 1e6
-    log_Lambda_from_SI = get_coulomb_logarithm_from_SI_input(n_SI, T_eV)
-    n_CGS = n_SI * 1e-6
-    T_CGS = T_eV * 1.60217662e-19 * 1e7
-    log_Lambda = get_coulomb_logarithm(n_CGS, T_CGS)
-    assert np.isclose(log_Lambda_from_SI, log_Lambda, rtol=1e-4)
+    log_Lambda_from_si = get_coulomb_logarithm_from_si_input(n_si, T_eV)
+    n_cgs = n_si * 1e-6
+    T_cgs = T_eV * 1.60217662e-19 * 1e7
+    log_Lambda = get_coulomb_logarithm(n_cgs, T_cgs)
+    assert np.isclose(log_Lambda_from_si, log_Lambda, rtol=1e-4)
 
-def get_coulomb_logarithm_from_SI_input(n_SI, T_eV):
+def test_generate_multispec_input_call():
+    write_trial_profiles(trial_profiles_sqrtspol, test_output_dir)
+    generate_multispec_input(test_config, test_profiles_src, profiles_interp_config={})
+
+def test_get_species_def_array():
+    species_def_control = np.array([[test_config['Ze'], test_config['me']], 
+                                    [test_config['Zi'], test_config['mi']]])
+    species_def = get_species_def_array(test_config, 1)
+    assert np.allclose(species_def, species_def_control)
+    species_def = get_species_def_array(test_config, 2)
+    print(species_def)
+    print("want form")
+    print(np.array([[[1,1,1],[-1,-1,-1]],[[2,2,2],[3,3,3]]]))
+
+
+def get_coulomb_logarithm_from_si_input(n_si, T_eV):
     # Coulomb logarithm (set as species-independent - see E A Belli and J Candy PPCF 54 015015 (2012))
-    log_Lambda = 39.1 - 1.15 * np.log10(n_SI) + 2.3 * np.log10(T_eV * 1e-3)
+    log_Lambda = 39.1 - 1.15 * np.log10(n_si) + 2.3 * np.log10(T_eV * 1e-3)
     return log_Lambda
 
 def test_derivative_visual_check():
@@ -141,9 +161,11 @@ def test_derivative_visual_check():
 
     
 if __name__ == '__main__':
-    test_write_neo2ql_inputs_to_hdf5()
+    test_write_multispec_to_hdf5()
     test_derivative()
     test_coulomb_logarithm()
     test_get_kappa()
+    test_generate_multispec_input_call()
+    test_get_species_def_array()
     print('All tests passed.')
     test_derivative_visual_check()
