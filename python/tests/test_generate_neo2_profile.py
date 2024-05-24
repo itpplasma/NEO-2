@@ -4,8 +4,8 @@ import numpy as np
 import h5py
 
 # Custion modules
-from neo2_mars import write_neo2ql_inputs_to_hdf5
-from neo2_mars import get_coulomb_logarithm, get_kappa, derivative
+from neo2_ql import write_neo2ql_inputs_to_hdf5
+from neo2_ql import get_coulomb_logarithm, get_kappa, derivative
 
 test_mars_dir = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
 test_output_dir = '/tmp/'
@@ -107,16 +107,6 @@ def test_derivative():
     print(np.max(np.abs(dy_dx-control_dy_dx)))
     assert np.allclose(dy_dx, control_dy_dx, atol=1e-2)
 
-def test_derivative_visual_check():
-    import matplotlib.pyplot as plt
-    x = np.linspace(0, 2*np.pi, 60)
-    y = np.cos(x)**2
-    dy_dx = derivative(x, y)
-    control_dy_dx = -2*np.cos(x)*np.sin(x)
-    plt.plot(x, control_dy_dx - dy_dx)
-    plt.title('Difference between control and calculated derivative')
-    plt.show()
-
 def test_get_kappa():
     n_CGS = 1.22931e+14
     T_CGS = 6.6154e-08
@@ -139,12 +129,21 @@ def get_coulomb_logarithm_from_SI_input(n_SI, T_eV):
     log_Lambda = 39.1 - 1.15 * np.log10(n_SI) + 2.3 * np.log10(T_eV * 1e-3)
     return log_Lambda
 
-    
+def test_derivative_visual_check():
+    import matplotlib.pyplot as plt
+    x = np.linspace(0, 2*np.pi, 60)
+    y = np.cos(x)**2
+    dy_dx = derivative(x, y)
+    control_dy_dx = -2*np.cos(x)*np.sin(x)
+    plt.plot(x, control_dy_dx - dy_dx)
+    plt.title('Difference between control and calculated derivative')
+    plt.show()
 
+    
 if __name__ == '__main__':
     test_write_neo2ql_inputs_to_hdf5()
     test_derivative()
-    test_derivative_visual_check()
     test_coulomb_logarithm()
     test_get_kappa()
     print('All tests passed.')
+    test_derivative_visual_check()
