@@ -17,8 +17,7 @@ test_output_dir = '/tmp/'
 test_hdf5_filename = os.path.join(test_output_dir, 'test_multispec.in')
 test_config = {
     'hdf5_filename': test_hdf5_filename, 
-    'species_tag_Vphi': 1, 
-    'isw_Vphi_loc': 0, 
+    'species_of_vrot': 'electron', 
     'Ze': -1, 
     'Zi': 1, 
     'me': 9.10938356e-28,

@@ -7,8 +7,9 @@ def generate_multispec_input(config: dict, profiles_src: dict, profiles_interp_c
     multispec = {}
     multispec['/num_species'] = 2
     multispec['/species_tag'] = np.array([1, 2], dtype=np.int32)
-    multispec['/species_tag_Vphi'] = config['species_tag_Vphi']
-    multispec['/isw_Vphi_loc'] = config['isw_Vphi_loc']
+    species_tag_map = {'electron': 1, 'ion': 2}
+    multispec['/species_tag_Vphi'] = species_tag_map[config['species_of_vrot']]
+    multispec['/isw_Vphi_loc'] = 0
 
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, profiles_interp_config)
 
