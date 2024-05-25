@@ -2,9 +2,9 @@
 import numpy as np
 
 # Homebrew imports
-from neo2_ql import generate_neo2_profile
+from neo2_ql import generate_multispec_input
 
-def run_generate_neo2_profile(path_to_input_files, number_of_surfaces, bounds):
+def run_generate_multispec_input(path_to_input_files, number_of_surfaces, bounds):
     hdf5FileName = 'multi_spec_demo.in'
     path_to_input_files = './input_files_for_generate_neo2_profile/'
     
@@ -26,5 +26,5 @@ def run_generate_neo2_profile(path_to_input_files, number_of_surfaces, bounds):
     species_tag_Vphi = 2
     input_unit_type = 2
     switch_grid = 2
-    generate_neo2_profile(hdf5FileName, path_to_input_files, data_source, species_definition, isw_Vphi_loc,
-                          species_tag_Vphi, input_unit_type, bounds, switch_grid)
+    generate_multispec_input(hdf5FileName, path_to_input_files, data_source, species_definition, isw_Vphi_loc,
+                             species_tag_Vphi, input_unit_type, bounds, switch_grid)

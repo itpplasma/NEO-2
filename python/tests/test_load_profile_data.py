@@ -4,7 +4,7 @@ import numpy as np
 import copy
 
 # Custom modules
-from neo2_mars import write_neo2_input_profile_from_mars
+from neo2_mars import write_neo2_input_profiles_from_mars
 
 # Modules to test
 from neo2_ql import load_cgs_profiles_and_interp
@@ -25,11 +25,11 @@ test_mars_profiles_src = copy.deepcopy(test_profiles_src)
 test_mars_profiles_src['ni']['filename'] = os.path.join(test_output_dir, 'ne.dat')
 
 def test_write_and_read_compatiblity():
-    write_neo2_input_profile_from_mars(test_mars_dir, test_output_dir)
+    write_neo2_input_profiles_from_mars(test_mars_dir, test_output_dir)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src)
 
 def test_output_type():
-    write_neo2_input_profile_from_mars(test_mars_dir, test_output_dir)
+    write_neo2_input_profiles_from_mars(test_mars_dir, test_output_dir)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'sqrtspol'})
     assert is_profile_types_correct(profiles, sqrtspol, sqrtstor)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'spol'})
@@ -46,7 +46,7 @@ def is_profile_types_correct(profiles, sqrtspol, sqrtstor):
     return bool
 
 def test_output_shape():
-    write_neo2_input_profile_from_mars(test_mars_dir, test_output_dir)
+    write_neo2_input_profiles_from_mars(test_mars_dir, test_output_dir)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'sqrtspol'})
     assert is_profile_shapes_correct(profiles, sqrtspol, sqrtstor)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'spol'})
@@ -64,7 +64,7 @@ def is_profile_shapes_correct(profiles, sqrtspol, sqrtstor):
     return bool
 
 def test_equidistant_grid():
-    write_neo2_input_profile_from_mars(test_mars_dir, test_output_dir)
+    write_neo2_input_profiles_from_mars(test_mars_dir, test_output_dir)
     _, sqrtspol, _ = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'sqrtspol'})
     assert is_equidistant(sqrtspol)
     _, _, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'sqrtstor'})
