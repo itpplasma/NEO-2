@@ -9,7 +9,7 @@ from libneo import FluxConverter, read_eqdsk
 #Module to test
 from neo2_mars import mars_sqrtspol2sqrtstor
 from neo2_mars import get_profiles_mars
-from neo2_mars import write_neo2_input_profile_from_mars
+from neo2_mars import write_neo2_input_profiles_from_mars
 
 
 test_sqrtspol = np.array([0, 0.0010, 0.0020, 0.0030, 0.0040, 0.0050, 0.0060, 0.0070, 0.0080, 0.0090, 0.0100, 0.0110, 0.0120, 0.0130, 0.0140, 0.0150, 0.0160, 0.0170, 0.0179, 0.0189, 0.0199, 0.0209, 0.0219, 0.0229, 0.0239, 0.0249, 0.0259, 0.0269, 0.0279, 0.0289, 0.0299, 0.0309, 0.0319, 0.0329, 0.0339, 0.0349, 0.0359, 0.0369, 0.0379, 0.0389, 0.0399, 0.0409, 0.0419, 0.0429, 0.0439, 0.0449, 0.0459, 0.0469, 0.0479, 0.0489, 0.0499, 0.0509, 0.0518, 0.0528, 0.0538, 0.0548, 0.0558, 0.0568, 0.0578, 0.0588, 0.0598, 0.0608, 0.0618, 0.0628, 0.0638, 0.0648, 0.0658, 0.0668, 0.0678, 0.0688, 0.0698, 0.0708, 0.0718, 0.0728, 0.0738, 0.0748, 0.0758, 0.0768, 0.0778, 0.0788, 0.0798, 0.0808, 0.0818, 0.0828, 0.0838, 0.0848, 0.0857, 0.0867, 0.0877, 0.0887, 0.0897, 0.0907, 0.0917, 0.0927, 0.0937, 0.0947, 0.0957, 0.0967, 0.0977, 0.0987, 0.0997, 0.1007, 0.1017, 0.1027, 0.1037, 0.1047, 0.1057, 0.1067, 0.1077, 0.1087, 0.1097, 0.1107, 0.1117, 0.1127, 0.1137, 0.1147, 0.1157, 0.1167, 0.1177, 0.1187, 0.1196, 0.1206, 0.1216, 0.1226, 0.1236, 0.1246, 0.1256, 0.1266, 0.1276, 0.1286, 0.1296, 0.1306, 0.1316, 0.1326, 0.1336, 0.1346, 0.1356, 0.1366, 0.1376, 0.1386, 0.1396, 0.1406, 0.1416, 0.1426, 0.1436, 0.1446, 0.1456, 0.1466, 0.1476, 0.1486, 0.1496, 0.1506, 0.1516, 0.1526, 0.1535, 0.1545, 0.1555, 0.1565, 0.1575, 0.1585, 0.1595, 0.1605, 0.1615, 0.1625, 0.1635, 0.1645, 0.1655, 0.1665, 0.1675, 0.1685, 0.1695, 0.1705, 0.1715, 0.1725, 0.1735, 0.1745, 0.1755, 0.1765, 0.1775, 0.1785, 0.1795, 0.1805, 0.1815, 0.1825, 0.1835, 0.1845, 0.1855, 0.1865, 0.1874, 0.1884, 0.1894, 0.1904, 0.1914, 0.1924, 0.1934, 0.1944, 0.1954, 0.1964, 0.1974, 0.1984, 0.1994, 0.2004, 0.2014, 0.2024, 0.2034, 0.2044, 0.2054, 0.2064, 0.2074, 0.2084, 0.2094, 0.2104, 0.2114, 0.2124, 0.2134, 0.2144, 0.2154, 0.2164, 0.2174, 0.2184, 0.2194, 0.2204, 0.2213, 0.2223, 0.2233, 0.2243, 0.2253, 0.2263, 0.2273, 0.2283, 0.2293, 0.2303, 0.2313, 0.2323, 0.2333, 0.2343, 0.2353, 0.2363, 0.2373, 0.2383, 0.2393, 0.2403, 0.2413, 0.2423, 0.2433, 0.2443, 0.2453, 0.2463, 0.2473, 0.2483, 0.2493, 
@@ -44,8 +44,8 @@ def test_mars_sqrtspol2sqrtstor_visual_check():
     plt.plot(test_sqrtspol, control_sqrtstor, 'ob', label='control')
     plt.plot(test_sqrtspol, result_sqrtstor_eqdsk, '-r', label='libneo spol2stor on eqdsk')
     plt.plot(test_sqrtspol, result_sqrtstor_mars, '--y', label='mars_sqrtspol2sqrtstor')
-    plt.xlabel(r'$\sqrt{s_{pol}}$')
-    plt.ylabel(r'$\sqrt{s_{tor}}$')
+    plt.xlabel(r'$\sqrt{s_\mathrm{pol}}$')
+    plt.ylabel(r'$\sqrt{s_\mathrm{tor}}$')
     plt.legend()
     plt.show()
 
@@ -83,35 +83,36 @@ def test_mars_profiles_visual_check():
     fig, ax = plt.subplots(int(np.ceil(len(mars_profiles)/2)), 2)
     for i, (key, profile) in enumerate(mars_profiles.items()):
         ax[i//2, i%2].plot(profile[:,0], profile[:,1], '-r')
-        ax[i//2, i%2].set_xlabel(r'$\sqrt{s_{pol}}$')
+        ax[i//2, i%2].set_xlabel(r'$\sqrt{s_\mathrm{pol}}$')
         ax[i//2, i%2].set_ylabel(key)
     plt.subplots_adjust(wspace=0.5, hspace=0.6)
 
 def test_write_neo2_input_profile_from_mars():
-    write_neo2_input_profile_from_mars(test_mars_dir, '/tmp/')
+    write_neo2_input_profiles_from_mars(test_mars_dir, '/tmp/')
     mars_profiles = get_profiles_mars(test_mars_dir)
     for key, profile in mars_profiles.items():
         neo2_profile = np.loadtxt(f'/tmp/{key}.dat')
         assert np.allclose(profile, neo2_profile, atol=1e-4)
 
 def test_write_neo2_input_profile_from_mars_visual_check():
-    write_neo2_input_profile_from_mars(test_mars_dir, '/tmp/')
+    write_neo2_input_profiles_from_mars(test_mars_dir, '/tmp/')
     mars_profiles = get_profiles_mars(test_mars_dir)
     fig, ax = plt.subplots(int(np.ceil(len(mars_profiles)/2)), 2)
     for i, (key, profile) in enumerate(mars_profiles.items()):
         neo2_profile = np.loadtxt(f'/tmp/{key}.dat')
         ax[i//2, i%2].plot(profile[:,0], profile[:,1], '-r', label='MARS')
         ax[i//2, i%2].plot(neo2_profile[:,0], neo2_profile[:,1], '--b', label='NEO2')
-        ax[i//2, i%2].set_xlabel(r'$\sqrt{s_{pol}}$')
+        ax[i//2, i%2].set_xlabel(r'$\sqrt{s_\mathrm{pol}}$')
         ax[i//2, i%2].set_ylabel(key)
         ax[i//2, i%2].legend()
     plt.subplots_adjust(wspace=0.5, hspace=0.6)
 
 if __name__ == "__main__":
     test_mars_sqrtspol2sqrtstor()
-    #test_mars_sqrtspol2sqrtstor_visual_check()
     test_mars_profiles_size()
     test_mars_profiles_sqrtstor()
-    #test_mars_profiles_visual_check()
     test_write_neo2_input_profile_from_mars()
-    #test_write_neo2_input_profile_from_mars_visual_check()
+    print("All tests passed!")
+    test_mars_sqrtspol2sqrtstor_visual_check()
+    test_mars_profiles_visual_check()
+    test_write_neo2_input_profile_from_mars_visual_check()

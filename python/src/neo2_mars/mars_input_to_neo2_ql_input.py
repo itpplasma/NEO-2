@@ -6,7 +6,7 @@ import os
 
 ########################################################################################
 
-def write_neo2_input_profile_from_mars(mars_folder: str, output_dir: str):
+def write_neo2_input_profiles_from_mars(mars_folder: str, output_dir: str):
     profiles_mars = get_profiles_mars(mars_folder)
     write_profiles_to_dat_files(profiles_mars, output_dir)
 
