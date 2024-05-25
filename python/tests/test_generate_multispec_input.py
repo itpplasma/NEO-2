@@ -4,8 +4,7 @@ import numpy as np
 import h5py
 
 # Custom modules
-from test_load_profile_data import trial_profiles_sqrtspol, write_trial_profiles
-from test_load_profile_data import test_mars_dir, test_output_dir
+from test_load_profile_data import write_trial_profiles
 from test_load_profile_data import test_profiles_src, test_mars_profiles_src
 
 # modules to test
@@ -14,12 +13,13 @@ from neo2_ql import get_coulomb_logarithm, get_kappa, derivative
 from neo2_ql import generate_multispec_input
 from neo2_ql import get_species_def_array
 
+test_output_dir = '/tmp/'
 test_hdf5_filename = os.path.join(test_output_dir, 'test_multispec.in')
 test_config = {
     'hdf5_filename': test_hdf5_filename, 
     'species_tag_Vphi': 1, 
     'isw_Vphi_loc': 0, 
-    'Ze': 1, 
+    'Ze': -1, 
     'Zi': 1, 
     'me': 9.10938356e-28,
     'mi': 3.3436e-24,
@@ -130,19 +130,26 @@ def test_coulomb_logarithm():
     assert np.isclose(log_Lambda_from_si, log_Lambda, rtol=1e-4)
 
 def test_generate_multispec_input_call():
-    write_trial_profiles(trial_profiles_sqrtspol, test_output_dir)
+    write_trial_profiles(trial_profiles_sqrtspol_non_zero, test_output_dir)
     generate_multispec_input(test_config, test_profiles_src, profiles_interp_config={})
 
-def test_get_species_def_array():
-    species_def_control = np.array([[test_config['Ze'], test_config['me']], 
-                                    [test_config['Zi'], test_config['mi']]])
-    species_def = get_species_def_array(test_config, 1)
-    assert np.allclose(species_def, species_def_control)
-    species_def = get_species_def_array(test_config, 2)
-    print(species_def)
-    print("want form")
-    print(np.array([[[1,1,1],[-1,-1,-1]],[[2,2,2],[3,3,3]]]))
+def trial_profiles_sqrtspol_non_zero(sqrtspol):
+    from test_load_profile_data import trial_profiles_sqrtspol
+    profiles, sqrtspol, sqrtstor = trial_profiles_sqrtspol(sqrtspol)
+    for profile in profiles:
+        profiles[profile] += 1
+    return profiles, sqrtspol, sqrtstor
 
+def test_get_species_def_array():
+    species_def_control = np.array([[[test_config['Ze']], [test_config['Zi']]], 
+                                    [[test_config['me']], [test_config['mi']]]])
+    species_def = get_species_def_array(test_config, 1)
+    assert species_def.shape == species_def_control.shape
+    assert np.allclose(species_def, species_def_control)
+    species_def = get_species_def_array(test_config, 10)
+    for i in range(10):
+        assert species_def[:,:,i:i+1].shape == species_def_control.shape
+        assert np.allclose(species_def[:,:,i:i+1], species_def_control)
 
 def get_coulomb_logarithm_from_si_input(n_si, T_eV):
     # Coulomb logarithm (set as species-independent - see E A Belli and J Candy PPCF 54 015015 (2012))
