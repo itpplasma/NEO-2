@@ -26,7 +26,7 @@ def get_sqrtstor_profile(mars_dir: str) -> np.ndarray:
     sqrtstor = mars_sqrtspol2sqrtstor(mars_dir,sqrtspol)
     return np.array([sqrtspol, sqrtstor]).T
 
-def get_mars_sqrtspol (mars_dir: str) -> np.ndarray:
+def get_mars_sqrtspol(mars_dir: str) -> np.ndarray:
     path_to_file = os.path.join(mars_dir, 'PROFDEN.IN')
     sqrtspol = np.loadtxt(path_to_file, skiprows=1)[:, 0]
     return sqrtspol

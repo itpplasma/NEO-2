@@ -7,12 +7,12 @@ from neo2_ql import generate_multispec_input
 from .mars_profiles_to_neo2_ql_profiles import write_neo2_input_profiles_from_mars
 
 def generate_multispec_input_from_mars(mars_dir: str, output_file: str='multi_spec.in',
-                                       number_of_surfaces: int=10, bounds: list=[0, 1]):
+                                       number_of_surfaces: int=10, bounds: list=[0, 1], grid: str='spol'):
     working_dir = '/tmp/'
     write_neo2_input_profiles_from_mars(mars_dir, working_dir)
     config = {
             'hdf5_filename': output_file, 
-            'species_of_vrot': 'electron', 
+            'species_tag_of_vrot': 2, 
              }
     config['Ze'], config['Zi'], config['me'], config['mi'] = get_species_cgs_from_mars(mars_dir)
     profiles_src = {
@@ -25,7 +25,7 @@ def generate_multispec_input_from_mars(mars_dir: str, output_file: str='multi_sp
     'vrot': {'filename': os.path.join(working_dir, 'vrot.dat'), 'column': 1}
     }
     profiles_interp_config = {'n_s': number_of_surfaces, 'min_s': bounds[0], 'max_s': bounds[1],
-                              'grid': 'sqrtspol'}
+                              'grid': grid}
     generate_multispec_input(config, profiles_src, profiles_interp_config)
 
 def get_species_cgs_from_mars(mars_dir):
