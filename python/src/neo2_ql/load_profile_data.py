@@ -16,6 +16,9 @@ def load_cgs_profiles_and_interp(src:dict, interp_config:dict={}):
     elif interp_config['grid'] == 'spol':
         spol, sqrtstor = interp_y_to_equidist_s(s=sqrtspol**2, y=sqrtstor, options=interp_config)
         sqrtspol = np.sqrt(spol)
+    elif interp_config['grid'] == 'stor':
+        stor, sqrtspol = interp_y_to_equidist_s(s=sqrtstor**2, y=sqrtspol, options=interp_config)
+        sqrtstor = np.sqrt(stor)
     else:
         raise ValueError('Unknown grid type: ' + interp_config['grid'])
 
