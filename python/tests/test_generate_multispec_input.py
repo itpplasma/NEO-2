@@ -17,7 +17,7 @@ test_output_dir = '/tmp/'
 test_hdf5_filename = os.path.join(test_output_dir, 'test_multispec.in')
 test_config = {
     'hdf5_filename': test_hdf5_filename, 
-    'species_of_vrot': 'electron', 
+    'species_tag_of_vrot': 1, 
     'Ze': -1, 
     'Zi': 1, 
     'me': 9.10938356e-28,
