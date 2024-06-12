@@ -11,4 +11,4 @@ from .mars_profiles_to_neo2_ql_profiles import get_mars_q_over_equidist_spol, ma
 from .mars_profiles_to_neo2_ql_profiles import mars_sqrtspol2stor
 from .generate_multispec_input_from_mars import generate_multispec_input_from_mars
 from .generate_multispec_input_from_mars import get_species_cgs_from_mars
-from .generate_omegate_from_neo2ql import get_omegate_from_neo2ql
+from .generate_omega_e_from_neo2ql import get_omega_e_from_neo2ql
