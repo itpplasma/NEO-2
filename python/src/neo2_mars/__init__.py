@@ -12,3 +12,8 @@ from .mars_profiles_to_neo2_ql_profiles import mars_sqrtspol2stor
 from .generate_multispec_input_from_mars import generate_multispec_input_from_mars
 from .generate_multispec_input_from_mars import get_species_cgs_from_mars
 from .generate_omega_e_from_neo2ql import get_omega_e_from_neo2ql
+from .generate_omega_e_from_neo2ql import neo2ql_stor2sqrtspol
+from .generate_omega_e_from_neo2ql import write_omega_e_to_mars_input
+from .generate_omega_e_from_neo2ql import generate_omega_e_for_mars
+from .generate_vrot_from_neo2ql import generate_vrot_for_mars
+from .generate_nu_from_neo2ql import generate_nu_for_mars
