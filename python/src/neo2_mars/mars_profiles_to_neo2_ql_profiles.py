@@ -8,6 +8,7 @@ import os
 
 def write_neo2_input_profiles_from_mars(mars_folder: str, output_dir: str):
     profiles_mars = get_profiles_mars(mars_folder)
+    profiles_mars = interpolate_profiles_to_same_grid(profiles_mars)
     write_profiles_to_dat_files(profiles_mars, output_dir)
 
 ########################################################################################
@@ -56,6 +57,17 @@ def interp_to_equidist_grid(y: np.ndarray, x: np.ndarray) -> np.ndarray:
     equidist_x = np.linspace(np.min(x), np.max(x), x.shape[0])
     equidist_y = np.interp(equidist_x, x, y)
     return equidist_y
+
+########################################################################################
+
+def interpolate_profiles_to_same_grid(profiles: dict) -> dict:
+    sqrtspol = profiles['sqrtstor'][:, 0]
+    interp_profiles = {}
+    for kind in profiles.keys():
+        interp_profiles[kind] = np.zeros((sqrtspol.shape[0], 2))
+        interp_profiles[kind][:, 1] = np.interp(sqrtspol, profiles[kind][:, 0], profiles[kind][:, 1])
+        interp_profiles[kind][:, 0] = sqrtspol.copy()
+    return interp_profiles
 
 ########################################################################################
 
