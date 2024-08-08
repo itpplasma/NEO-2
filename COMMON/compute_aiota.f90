@@ -109,6 +109,9 @@
 !                     hcoder
 !
 !  Called routines:  field_eq
+      use field_sub, only : field_eq
+
+      implicit none
 
       double precision x,bmod,sqrtg,bder,hcovar,hctrvr,hcoder,hctder
       double precision hr,hf,hz
@@ -183,6 +186,7 @@
   use field_eq_mod, only : icall_eq,rtf,btf,nrad,nzet,rad,zet             &
                          , psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
   use field_c_mod,  only : icall_c
+  use field_sub, only : field
 
   implicit none
 
