@@ -52,7 +52,7 @@ execute_process(COMMAND nc-config --flibs
                 OUTPUT_STRIP_TRAILING_WHITESPACE
                 OUTPUT_VARIABLE NETCDF_LIBS)
 
-find_library(libneo_lib libneo ${NEO2_Libs} NO_DEFAULT_PATH)
+find_library(LIBNEO libneo ${NEO2_Libs} NO_DEFAULT_PATH)
 # MyMPIlib
 find_library(MyMPILib_lib MyMPILib ${NEO2_Libs}/src/MyMPILib/ NO_DEFAULT_PATH)
 #~ include_directories(${CMAKE_SOURCE_DIR}/../../Build-11-1-0/ ${CMAKE_BINARY_DIR})
@@ -90,7 +90,7 @@ set(SOURCE_FILES
 )
 
 set(Interface_Libs
-  ${libneo_lib}
+  ${LIBNEO}
   ${BLAS_LIBRARIES}
   ${LAPACK_LIBRARIES}
 )

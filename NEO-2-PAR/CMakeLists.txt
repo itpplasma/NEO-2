@@ -91,14 +91,14 @@ find_package(SuiteSparse REQUIRED)
 find_package(SuperLU REQUIRED)
 
 ### Find libraries
-find_library(libneo_lib neo ${NEO2_Libs} NO_DEFAULT_PATH)
-find_library(magfie_lib magfie ${NEO2_Libs} NO_DEFAULT_PATH)
+find_library(LIBNEO neo ${NEO2_Libs} NO_DEFAULT_PATH)
+find_library(LIBMAGFIE magfie ${NEO2_Libs} NO_DEFAULT_PATH)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
-find_library(gsl_lib gsl ${GSL_LIB})
+find_library(LIBGSL gsl)
 # FGSL
-find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
+find_library(LIBFGSL fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
 # MyMPIlib
 find_library(MyMPILib_lib MyMPILib ${NEO2_Libs}/src/MyMPILib/ NO_DEFAULT_PATH)
 # HDF5 interface
@@ -142,11 +142,11 @@ set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAG
 ### Add libraries linked with executable
 target_link_libraries(${EXE_NAME}
   common
-  ${fgsl_lib} ${gsl_lib}
+  ${LIBFGSL} ${LIBGSL}
   ${SUPERLU_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
-  ${libneo_lib}
-  ${magfie_lib}
+  ${LIBNEO}
+  ${LIBMAGFIE}
   ${MyMPILib_lib}
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}

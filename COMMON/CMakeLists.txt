@@ -15,9 +15,9 @@ include(${CMAKE_SOURCE_DIR}/../COMMON/ProjectConfig.cmake.in)
 
 set(CMAKE_Fortran_FLAGS " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
 
-find_library(gsl_lib gsl ${GSL_LIB})
+find_library(LIBGSL gsl)
 # FGSL
-find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
+find_library(LIBFGSL fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
 include_directories(${FGSL_INC})
 
 ### HDF5

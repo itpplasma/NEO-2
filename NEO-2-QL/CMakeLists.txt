@@ -99,14 +99,14 @@ find_package(SuiteSparse REQUIRED)
 find_package(SuperLU REQUIRED)
 
 ### Find libraries
-find_library(libneo_lib neo ${NEO2_Libs} NO_DEFAULT_PATH)
-find_library(magfie_lib magfie ${NEO2_Libs} NO_DEFAULT_PATH)
+find_library(LIBNEO neo ${NEO2_Libs} NO_DEFAULT_PATH)
+find_library(LIBMAGFIE magfie ${NEO2_Libs} NO_DEFAULT_PATH)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 # GSL
-find_library(gsl_lib gsl ${GSL_LIB})
+find_library(LIBGSL gsl)
 # FGSL
-find_library(fgsl_lib fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
+find_library(LIBFGSL fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
 include_directories(${FGSL_INC})
 
 # LAPACK and BLAS
@@ -169,12 +169,12 @@ add_subdirectory(common/)
 ### Add libraries linked with executable
 target_link_libraries(${EXE_NAME}
         common
-        ${fgsl_lib} ${gsl_lib}
+        ${LIBFGSL} ${LIBGSL}
         ${SUPERLU_LIBRARIES}
         ${SUITESPARSE_LIBRARIES}
         ${MyMPILib_lib}
-        ${libneo_lib}
-        ${magfie_lib}
+        ${LIBNEO}
+        ${LIBMAGFIE}
         ${MPE_lib}
         ${MPI_Fortran_LIBRARIES}
         ${HDF5_tools_lib}
