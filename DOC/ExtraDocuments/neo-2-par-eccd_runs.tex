@@ -1260,8 +1260,8 @@ find_package(GSL COMPONENTS GSL_LIBRARY GSL_CBLAS_LIBRARY REQUIRED)
 Finally in \vv{target_link_libraries} the entries for \vv{gsl}, and
 \vv{fgsl} are changed
 \begin{verbatim}
-${fgsl_lib}
-${gsl_lib}
+${LIBFGSL}
+${LIBGSL}
 ${GSL_LIBRARIES}
 \end{verbatim}
 
