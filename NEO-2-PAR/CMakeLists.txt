@@ -35,6 +35,7 @@ message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 include_directories(${MPI_Fortran_INCLUDE_PATH})
 include_directories(${NEO2_Inc})
 include_directories(${NEO2_Inc}/src/)
+include_directories(${NEO2_Libs}/include)
 
 # Generic compiler flags
 set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
