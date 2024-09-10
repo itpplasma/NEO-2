@@ -41,7 +41,7 @@ message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 include_directories(${NEO2_Inc})
 include_directories(${NEO2_Inc}/src/)
 include_directories(${MPI_Fortran_INCLUDE_PATH})
-#include_directories(${NEO2_Libs}/include)
+include_directories(${NEO2_Libs}/include)
 
 ### Define flags for Fortran/C compiler
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
