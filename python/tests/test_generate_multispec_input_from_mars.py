@@ -16,11 +16,11 @@ test_mars_dir = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
 test_outpu_dir = '/tmp/'
 
 def test_get_species_cgs_from_mars():
-    Ze, Zi, me, mi = get_species_cgs_from_mars(test_mars_dir)
-    assert Ze == -1
-    assert Zi == 1
-    assert np.isclose(me, 9.10938356e-28, rtol=1e-4, atol=0)
-    assert np.isclose(mi, 3.343583719e-24, rtol=1e-3, atol=0) # off due MARS using not atomic unit, but proton mass
+    Z, m = get_species_cgs_from_mars(test_mars_dir)
+    assert Z[0] == -1
+    assert Z[1] == 1
+    assert np.isclose(m[0], 9.10938356e-28, rtol=1e-4, atol=0)
+    assert np.isclose(m[1], 3.343583719e-24, rtol=1e-3, atol=0) # off due MARS using not atomic unit, but proton mass
 
 def test_generate_multispec_input_from_mars_init():
     output_file = os.path.join(test_outpu_dir, 'multi_spec.in')
@@ -55,12 +55,10 @@ def add_mars_profiles_to_axes(mars_dir, axes, color: str='r', label: str='MARS')
     EV2ERG = 1.60217662e-12
     M3_TO_CM3 = 1e+6
     profiles['T_prof'] = {'x': profiles_mars['sqrtstor'][:, 1]**2, 
-                          'y': np.row_stack([profiles_mars['Te'][:, 1] * EV2ERG, 
-                                             profiles_mars['Ti'][:, 1] * EV2ERG])}
+                          'y': profiles_mars['T'][:, 1:].T * EV2ERG}
     profiles['dT_ov_ds_prof'] = {'x': np.array([]), 'y': np.array([])}
     profiles['n_prof'] = {'x': profiles_mars['sqrtstor'][:, 1]**2,
-                          'y': np.row_stack([profiles_mars['ne'][:, 1] / M3_TO_CM3, 
-                                             profiles_mars['ne'][:, 1] / M3_TO_CM3])}
+                          'y': profiles_mars['n'][:, 1:].T / M3_TO_CM3}
     profiles['dn_ov_ds_prof'] = {'x': np.array([]), 'y': np.array([])}
     profiles['kappa_prof'] = {'x': np.array([]), 'y': np.array([])}
     profiles['Vphi'] = {'x': profiles_mars['sqrtstor'][:, 1]**2,
@@ -74,4 +72,4 @@ if __name__ == '__main__':
     test_generate_multispec_input_from_mars_init()
     test_generate_multispec_input_from_mars_ion_tag_vrot()
     print('All tests passed.')
-    #test_generate_multispec_input_from_mars_visual_check()
+    test_generate_multispec_input_from_mars_visual_check()

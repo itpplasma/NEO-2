@@ -14,14 +14,12 @@ def generate_multispec_input_from_mars(mars_dir: str, output_file: str='multi_sp
             'hdf5_filename': output_file, 
             'species_tag_of_vrot': 2, 
              }
-    config['Ze'], config['Zi'], config['me'], config['mi'] = get_species_cgs_from_mars(mars_dir)
+    config['Z'], config['m'] = get_species_cgs_from_mars(mars_dir)
     profiles_src = {
     'sqrtspol': {'filename': os.path.join(working_dir, 'sqrtstor.dat'), 'column': 0},
     'sqrtstor': {'filename': os.path.join(working_dir, 'sqrtstor.dat'), 'column': 1},
-    'ne': {'filename': os.path.join(working_dir, 'ne.dat'), 'column': 1},
-    'ni': {'filename': os.path.join(working_dir, 'ne.dat'), 'column': 1}, 
-    'Te': {'filename': os.path.join(working_dir, 'Te.dat'), 'column': 1},
-    'Ti': {'filename': os.path.join(working_dir, 'Ti.dat'), 'column': 1},
+    'n': {'filename': os.path.join(working_dir, 'n.dat'), 'column': [1,2]},
+    'T': {'filename': os.path.join(working_dir, 'T.dat'), 'column': [1,2]},
     'vrot': {'filename': os.path.join(working_dir, 'vrot.dat'), 'column': 1}
     }
     profiles_interp_config = {'n_s': number_of_surfaces, 'min_s': bounds[0], 'max_s': bounds[1],
@@ -41,4 +39,6 @@ def get_species_cgs_from_mars(mars_dir):
             Zi = Z
     mass_numbers = run_config['KINETIC']['ESPECIES_M']
     me, mi = mass_numbers[Zs.index(Ze)] * PROTON_MASS_CGS, mass_numbers[Zs.index(Zi)] * PROTON_MASS_CGS
-    return Ze, Zi, me, mi
+    Z = [Ze, Zi]
+    m = [me, mi]
+    return Z, m
