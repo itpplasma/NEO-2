@@ -2,10 +2,10 @@
 import os
 import numpy as np
 import h5py
+import copy
 
 # Custom modules
 from test_load_profile_data import write_trial_profiles
-from test_load_profile_data import profiles_src
 
 # modules to test
 from neo2_ql import write_multispec_to_hdf5
@@ -13,18 +13,35 @@ from neo2_ql import get_coulomb_logarithm, get_kappa, derivative
 from neo2_ql import generate_multispec_input
 from neo2_ql import get_species_def_array
 
-test_output_dir = '/tmp/'
-test_hdf5_filename = os.path.join(test_output_dir, 'test_multispec.in')
-test_config = {
-    'hdf5_filename': test_hdf5_filename, 
+output_dir = '/tmp/'
+hdf5_filename = os.path.join(output_dir, 'test_multispec.in')
+
+profiles_src = {
+    'sqrtspol': {'filename': os.path.join(output_dir, 'sqrtstor.dat'), 'column': 0},
+    'sqrtstor': {'filename': os.path.join(output_dir, 'sqrtstor.dat'), 'column': 1},
+    'n': {'filename': os.path.join(output_dir, 'n.dat'), 'column': 1},
+    'T': {'filename': os.path.join(output_dir, 'T.dat'), 'column': 1},
+    'vrot': {'filename': os.path.join(output_dir, 'vrot.dat'), 'column': 1}   
+}
+
+profiles_src_2species = copy.deepcopy(profiles_src)
+profiles_src_2species['n']['column'] = [1,2]
+profiles_src_2species['T']['column'] = [1,2]
+config_2species = {
+    'hdf5_filename': hdf5_filename, 
     'species_tag_of_vrot': 1, 
-    'Ze': -1, 
-    'Zi': 1, 
-    'me': 9.10938356e-28,
-    'mi': 3.3436e-24,
+    'Z': [-1, 1],
+    'm': [9.10938356e-28, 3.3436e-24]
     }
 
-test_multispec = {
+profiles_src_3species = copy.deepcopy(profiles_src_2species)
+profiles_src_3species['n']['column'] = [1,2,3]
+profiles_src_3species['T']['column'] = [1,2,3]
+config_3species = copy.deepcopy(config_2species)
+config_3species['Z'].append(2)
+config_3species['m'].append(3.3436e-24 * 4)
+
+multispec = {
     '/num_radial_pts': 10,
     '/num_species': 2,
     '/species_tag': np.array([1, 2], dtype=np.int32),
@@ -42,7 +59,7 @@ test_multispec = {
     '/kappa_prof': np.column_stack([np.linspace(60,6,10), np.linspace(70,7,10)]), 
 }
 
-test_multispec_types = {
+multispec_types = {
     '/num_radial_pts': 'int32',
     '/num_species': 'int32',
     '/species_tag': 'int32',
@@ -60,7 +77,7 @@ test_multispec_types = {
     '/kappa_prof': 'float64'
 }
 
-test_multispec_attributes = {
+multispec_attributes = {
     '/species_def': {'unit': 'e; g'},
     '/boozer_s': {'unit': '1'},
     '/rho_pol': {'unit': '1'},
@@ -70,12 +87,12 @@ test_multispec_attributes = {
 }
 
 def test_write_multispec_to_hdf5():
-    write_multispec_to_hdf5(test_hdf5_filename, test_multispec)
-    with h5py.File(test_hdf5_filename, 'r') as hdf5_file:
-        assert are_all_quantities_present(hdf5_file, test_multispec)
-        assert are_data_types_correct(hdf5_file, test_multispec_types)
-        assert are_values_correct(hdf5_file, test_multispec)
-        assert are_attributes_correct(hdf5_file, test_multispec_attributes)
+    write_multispec_to_hdf5(hdf5_filename, multispec)
+    with h5py.File(hdf5_filename, 'r') as hdf5_file:
+        assert are_all_quantities_present(hdf5_file, multispec)
+        assert are_data_types_correct(hdf5_file, multispec_types)
+        assert are_values_correct(hdf5_file, multispec)
+        assert are_attributes_correct(hdf5_file, multispec_attributes)
 
 def are_all_quantities_present(hdf5_file, inputs):
     for key in inputs.keys():
@@ -129,23 +146,54 @@ def test_coulomb_logarithm():
     assert np.isclose(log_Lambda_from_si, log_Lambda, rtol=1e-4)
 
 def test_generate_multispec_input_call():
-    write_trial_profiles(trial_profiles_sqrtspol_non_zero, test_output_dir)
-    generate_multispec_input(test_config, profiles_src, profiles_interp_config={})
+    write_trial_profiles(trial_profiles_2species, output_dir)
+    generate_multispec_input(config_2species, profiles_src_2species, profiles_interp_config={})
+    with h5py.File(hdf5_filename, 'r') as hdf5_file:
+        check_if_shapes_correct(hdf5_file)
 
-def trial_profiles_sqrtspol_non_zero(sqrtspol):
-    from test_load_profile_data import trial_profiles_sqrtspol
-    profiles, sqrtspol, sqrtstor = trial_profiles_sqrtspol(sqrtspol)
+def test_call_for_more_species():
+    write_trial_profiles(trial_profiles_3species, output_dir)
+    generate_multispec_input(config_3species, profiles_src_3species, profiles_interp_config={})
+    with h5py.File(hdf5_filename, 'r') as hdf5_file:
+        assert hdf5_file['/num_species'][()] == 3
+        assert np.all(hdf5_file['/species_tag'][()] == np.array([1, 2, 3]))
+        check_if_shapes_correct(hdf5_file)
+
+def check_if_shapes_correct(hdf5_file):
+    nsurf = hdf5_file['/num_radial_pts'][()]
+    nspecies = hdf5_file['/num_species'][()]
+    assert hdf5_file['/species_tag'].shape == (nspecies,)
+    assert hdf5_file['/species_def'].shape == (2, nspecies, nsurf)
+    assert hdf5_file['/rel_stages'].shape == (nsurf,)
+    assert hdf5_file['/boozer_s'].shape == (nsurf,)
+    assert hdf5_file['/rho_pol'].shape == (nsurf,)
+    assert hdf5_file['/T_prof'].shape == (nspecies, nsurf)
+    assert hdf5_file['/dT_ov_ds_prof'].shape == (nspecies, nsurf)
+    assert hdf5_file['/n_prof'].shape == (nspecies, nsurf)
+    assert hdf5_file['/dn_ov_ds_prof'].shape == (nspecies, nsurf)
+    assert hdf5_file['/Vphi'].shape == (nsurf,)
+    assert hdf5_file['/kappa_prof'].shape == (nspecies, nsurf)
+
+def trial_profiles_2species(sqrtspol):
+    from test_load_profile_data import trial_multispec_profiles_sqrtspol
+    profiles, sqrtspol, sqrtstor = trial_multispec_profiles_sqrtspol(sqrtspol)
     for profile in profiles:
         profiles[profile] += 1
     return profiles, sqrtspol, sqrtstor
 
+def trial_profiles_3species(sqrtspol):
+    profiles, sqrtspol, sqrtstor = trial_profiles_2species(sqrtspol)
+    profiles['n'] = np.vstack([profiles['n'], sqrtspol*1.5 + 1])
+    profiles['T'] = np.vstack([profiles['T'], sqrtspol*3.5 + 1])
+    return profiles, sqrtspol, sqrtstor
+
 def test_get_species_def_array():
-    species_def_control = np.array([[[test_config['Ze']], [test_config['Zi']]], 
-                                    [[test_config['me']], [test_config['mi']]]])
-    species_def = get_species_def_array(test_config, 1)
+    species_def_control = np.array([[[config_2species['Z'][0]], [config_2species['Z'][1]]], 
+                                    [[config_2species['m'][0]], [config_2species['m'][1]]]])
+    species_def = get_species_def_array(config_2species, 1)
     assert species_def.shape == species_def_control.shape
     assert np.allclose(species_def, species_def_control)
-    species_def = get_species_def_array(test_config, 10)
+    species_def = get_species_def_array(config_2species, 10)
     for i in range(10):
         assert species_def[:,:,i:i+1].shape == species_def_control.shape
         assert np.allclose(species_def[:,:,i:i+1], species_def_control)
@@ -172,6 +220,7 @@ if __name__ == '__main__':
     test_coulomb_logarithm()
     test_get_kappa()
     test_generate_multispec_input_call()
+    test_call_for_more_species()
     test_get_species_def_array()
     print('All tests passed.')
     test_derivative_visual_check()

@@ -19,10 +19,10 @@ profiles_src = {
     'T': {'filename': os.path.join(output_dir, 'T.dat'), 'column': 1},
     'vrot': {'filename': os.path.join(output_dir, 'vrot.dat'), 'column': 1}   
 }
-multispec_profiles_src = copy.deepcopy(profiles_src)
-multispec_profiles_src['n']['column'] = [1,2]
-multispec_profiles_src['T']['column'] = [1,2]
-mars_profiles_src = copy.deepcopy(multispec_profiles_src)
+profiles_src_2species = copy.deepcopy(profiles_src)
+profiles_src_2species['n']['column'] = [1,2]
+profiles_src_2species['T']['column'] = [1,2]
+mars_profiles_src = copy.deepcopy(profiles_src_2species)
 
 def test_write_and_read_compatiblity():
     write_neo2_input_profiles_from_mars(mars_dir, output_dir)
@@ -134,7 +134,7 @@ def test_equidist_stor_interpolation():
 
 def test_multispec_interpolation():
     write_trial_profiles(trial_multispec_profiles_sqrtspol, output_dir)
-    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(multispec_profiles_src, 
+    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src_2species, 
                                                       interp_config={'grid':'sqrtstor'})
     assert not is_equidistant(sqrtspol)
     assert is_equidistant(sqrtstor)
