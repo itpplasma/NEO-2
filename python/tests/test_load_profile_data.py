@@ -10,28 +10,31 @@ from neo2_mars import write_neo2_input_profiles_from_mars
 from neo2_ql import load_cgs_profiles_and_interp
 from neo2_ql import convert_units_from_norm_to_si, convert_units_from_si_to_cgs
 
-test_mars_dir = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
-test_output_dir = '/tmp/'
-test_profiles_src = {
-    'sqrtspol': {'filename': os.path.join(test_output_dir, 'sqrtstor.dat'), 'column': 0},
-    'sqrtstor': {'filename': os.path.join(test_output_dir, 'sqrtstor.dat'), 'column': 1},
-    'n': {'filename': os.path.join(test_output_dir, 'n.dat'), 'column': [1,2]},
-    'T': {'filename': os.path.join(test_output_dir, 'T.dat'), 'column': [1,2]},
-    'vrot': {'filename': os.path.join(test_output_dir, 'vrot.dat'), 'column': 1}   
+mars_dir = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
+output_dir = '/tmp/'
+profiles_src = {
+    'sqrtspol': {'filename': os.path.join(output_dir, 'sqrtstor.dat'), 'column': 0},
+    'sqrtstor': {'filename': os.path.join(output_dir, 'sqrtstor.dat'), 'column': 1},
+    'n': {'filename': os.path.join(output_dir, 'n.dat'), 'column': 1},
+    'T': {'filename': os.path.join(output_dir, 'T.dat'), 'column': 1},
+    'vrot': {'filename': os.path.join(output_dir, 'vrot.dat'), 'column': 1}   
 }
-test_mars_profiles_src = copy.deepcopy(test_profiles_src)
+multispec_profiles_src = copy.deepcopy(profiles_src)
+multispec_profiles_src['n']['column'] = [1,2]
+multispec_profiles_src['T']['column'] = [1,2]
+mars_profiles_src = copy.deepcopy(multispec_profiles_src)
 
 def test_write_and_read_compatiblity():
-    write_neo2_input_profiles_from_mars(test_mars_dir, test_output_dir)
-    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src)
+    write_neo2_input_profiles_from_mars(mars_dir, output_dir)
+    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src)
 
 def test_output_type():
-    write_neo2_input_profiles_from_mars(test_mars_dir, test_output_dir)
-    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'sqrtspol'})
+    write_neo2_input_profiles_from_mars(mars_dir, output_dir)
+    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtspol'})
     assert is_profile_types_correct(profiles, sqrtspol, sqrtstor)
-    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'spol'})
+    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'spol'})
     assert is_profile_types_correct(profiles, sqrtspol, sqrtstor)
-    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'sqrtstor'})
+    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtstor'})
     assert is_profile_types_correct(profiles, sqrtspol, sqrtstor)
 
 def is_profile_types_correct(profiles, sqrtspol, sqrtstor):
@@ -43,12 +46,12 @@ def is_profile_types_correct(profiles, sqrtspol, sqrtstor):
     return bool
 
 def test_output_shape():
-    write_neo2_input_profiles_from_mars(test_mars_dir, test_output_dir)
-    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'sqrtspol'})
+    write_neo2_input_profiles_from_mars(mars_dir, output_dir)
+    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtspol'})
     assert is_profile_shapes_correct(profiles, sqrtspol, sqrtstor)
-    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'spol'})
+    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'spol'})
     assert is_profile_shapes_correct(profiles, sqrtspol, sqrtstor)
-    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'sqrtstor'})
+    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtstor'})
     assert is_profile_shapes_correct(profiles, sqrtspol, sqrtstor)
 
 def is_profile_shapes_correct(profiles, sqrtspol, sqrtstor):
@@ -57,22 +60,22 @@ def is_profile_shapes_correct(profiles, sqrtspol, sqrtstor):
     bool = bool and sqrtspol.shape == (n_s,)
     bool = bool and sqrtstor.shape == (n_s,)
     for profile in profiles:
-        bool = bool and profiles[profile].shape == (n_s,)
+        if profile == 'T' or profile == 'n':
+            bool = bool and profiles[profile].shape == (2,n_s)
+        else:
+            bool = bool and profiles[profile].shape == (n_s,)
     return bool
 
 def test_equidistant_grid():
-    write_neo2_input_profiles_from_mars(test_mars_dir, test_output_dir)
-    _, sqrtspol, _ = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'sqrtspol'})
+    write_neo2_input_profiles_from_mars(mars_dir, output_dir)
+    _, sqrtspol, _ = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtspol'})
     assert is_equidistant(sqrtspol)
-    _, _, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'sqrtstor'})
+    _, _, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtstor'})
     assert is_equidistant(sqrtstor)
-    _, sqrtspol, _ = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'spol'})
+    _, sqrtspol, _ = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'spol'})
     assert is_equidistant(sqrtspol**2)
-    _, _, sqrtstor = load_cgs_profiles_and_interp(test_mars_profiles_src, interp_config={'grid':'stor'})
+    _, _, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'stor'})
     assert is_equidistant(sqrtstor**2)
-
-def is_equidistant(x):
-    return np.allclose(np.diff(x), np.diff(x)[0])
 
 def test_interpolation():
     test_equidist_sqrtspol_interpolation()
@@ -81,39 +84,33 @@ def test_interpolation():
     test_equidist_stor_interpolation()
 
 def test_equidist_sqrtspol_interpolation():
-    write_trial_profiles(trial_profiles_sqrtspol, test_output_dir)
-    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'sqrtspol'})
+    write_trial_profiles(trial_profiles_sqrtspol, output_dir)
+    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, interp_config={'grid':'sqrtspol'})
     assert is_equidistant(sqrtspol)
     assert not is_equidistant(sqrtstor)
     trial_profiles = backconvert_trial_profiles_from_cgs(trial_profiles)
-    assert is_equidistant(trial_profiles['ne']/1)
-    assert is_equidistant(trial_profiles['ni']/2)
-    assert is_equidistant(trial_profiles['Te']/3)
-    assert is_equidistant(trial_profiles['Ti']/4)
+    assert is_equidistant(trial_profiles['n']/1)
+    assert is_equidistant(trial_profiles['T']/3)
     assert is_equidistant(trial_profiles['vrot']/5)
 
 def test_equidist_spol_interpolation():
-    write_trial_profiles(trial_profiles_spol, test_output_dir)
-    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'spol'})
+    write_trial_profiles(trial_profiles_spol, output_dir)
+    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, interp_config={'grid':'spol'})
     assert is_equidistant(sqrtspol**2)
     assert not is_equidistant(sqrtstor)
     trial_profiles = backconvert_trial_profiles_from_cgs(trial_profiles)
-    assert is_equidistant((trial_profiles['ne']/1)**2)
-    assert is_equidistant((trial_profiles['ni']/2)**2)
-    assert is_equidistant((trial_profiles['Te']/3)**2)
-    assert is_equidistant((trial_profiles['Ti']/4)**2)
+    assert is_equidistant((trial_profiles['n']/1)**2)
+    assert is_equidistant((trial_profiles['T']/3)**2)
     assert is_equidistant((trial_profiles['vrot']/5)**2)
 
 def test_equidist_sqrtstor_interpolation():
-    write_trial_profiles(trial_profiles_sqrtstor, test_output_dir)
-    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'sqrtstor'})
+    write_trial_profiles(trial_profiles_sqrtstor, output_dir)
+    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, interp_config={'grid':'sqrtstor'})
     assert not is_equidistant(sqrtspol)
     assert is_equidistant(sqrtstor)
     trial_profiles = backconvert_trial_profiles_from_cgs(trial_profiles)
-    assert is_equidistant(trial_sqrtspol2sqrtstor(trial_profiles['ne']/1))
-    assert is_equidistant(trial_sqrtspol2sqrtstor(trial_profiles['ni']/2))
-    assert is_equidistant(trial_sqrtspol2sqrtstor(trial_profiles['Te']/3))
-    assert is_equidistant(trial_sqrtspol2sqrtstor(trial_profiles['Ti']/4))
+    assert is_equidistant(trial_sqrtspol2sqrtstor(trial_profiles['n']/1))
+    assert is_equidistant(trial_sqrtspol2sqrtstor(trial_profiles['T']/3))
     assert is_equidistant(trial_sqrtspol2sqrtstor(trial_profiles['vrot']/5))
 
 def test_equidist_stor_interpolation():
@@ -126,22 +123,29 @@ def test_equidist_stor_interpolation():
     def trial_sqrtspol2stor(sqrtspol): # We do take this inconsistency to keep
         return sqrtspol**(1/3)         # stor-sqrtspol exact cubic interpolatable
 
-    write_trial_profiles(trial_profiles_stor, test_output_dir)
-    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'stor'})
+    write_trial_profiles(trial_profiles_stor, output_dir)
+    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, interp_config={'grid':'stor'})
     assert not is_equidistant(sqrtspol)
     assert is_equidistant(sqrtstor**2)
     trial_profiles = backconvert_trial_profiles_from_cgs(trial_profiles)
-    assert is_equidistant(trial_sqrtspol2stor(trial_profiles['ne']/1))
-    assert is_equidistant(trial_sqrtspol2stor(trial_profiles['ni']/2))
-    assert is_equidistant(trial_sqrtspol2stor(trial_profiles['Te']/3))
-    assert is_equidistant(trial_sqrtspol2stor(trial_profiles['Ti']/4))
+    assert is_equidistant(trial_sqrtspol2stor(trial_profiles['n']/1))
+    assert is_equidistant(trial_sqrtspol2stor(trial_profiles['T']/3))
     assert is_equidistant(trial_sqrtspol2stor(trial_profiles['vrot']/5))
 
-def test_multiple_species_interpolation():
-    write_trial_profiles(trial_multiple_species_profiles_sqrtspol, test_output_dir)
-    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'sqrtspol'})
+def test_multispec_interpolation():
+    write_trial_profiles(trial_multispec_profiles_sqrtspol, output_dir)
+    profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(multispec_profiles_src, 
+                                                      interp_config={'grid':'sqrtstor'})
+    assert not is_equidistant(sqrtspol)
+    assert is_equidistant(sqrtstor)
+    profiles = backconvert_trial_profiles_from_cgs(profiles)
+    assert is_equidistant(trial_sqrtspol2sqrtstor(profiles['n'][0]/1))
+    assert is_equidistant(trial_sqrtspol2sqrtstor(profiles['n'][1]/2))
+    assert is_equidistant(trial_sqrtspol2sqrtstor(profiles['T'][0]/3))
+    assert is_equidistant(trial_sqrtspol2sqrtstor(profiles['T'][1]/4))
+    assert is_equidistant(trial_sqrtspol2sqrtstor(profiles['vrot']/5))
 
-def trial_multiple_species_profiles_sqrtspol(sqrtspol):
+def trial_multispec_profiles_sqrtspol(sqrtspol):
     profiles = {
         'n': np.array([sqrtspol*1, sqrtspol*2]),
         'T': np.array([sqrtspol*3, sqrtspol*4]),
@@ -150,9 +154,12 @@ def trial_multiple_species_profiles_sqrtspol(sqrtspol):
     sqrtstor = trial_sqrtspol2sqrtstor(sqrtspol)
     return profiles, sqrtspol, sqrtstor
 
+def is_equidistant(x):
+    return np.allclose(np.diff(x), np.diff(x)[0])
+
 def test_unit_conversion():
-    write_trial_profiles(trial_profiles_sqrtspol, test_output_dir)
-    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'sqrtspol'})
+    write_trial_profiles(trial_profiles_sqrtspol, output_dir)
+    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, interp_config={'grid':'sqrtspol'})
     trial_profiles_cgs = trial_profiles_sqrtspol_cgs(sqrtspol)
     assert are_same_profiles(trial_profiles, trial_profiles_cgs)
 
@@ -189,28 +196,22 @@ def trial_profiles_sqrtspol_cgs(sqrtspol):
 
 def trial_profiles_sqrtspol(sqrtspol):
     profiles = {
-        'ne': sqrtspol*1,
-        'ni': sqrtspol*2,
-        'Te': sqrtspol*3,
-        'Ti': sqrtspol*4,
+        'n': sqrtspol*1,
+        'T': sqrtspol*3,
         'vrot': sqrtspol*5,
     }
     sqrtstor = trial_sqrtspol2sqrtstor(sqrtspol)
     return profiles, sqrtspol, sqrtstor
 
 def convert_trial_profiles_to_cgs(profiles):
-    profiles['ne'] *= 1e-6
-    profiles['ni'] *= 1e-6
-    profiles['Te'] *= 1.60217662e-19 * 1e7
-    profiles['Ti'] *= 1.60217662e-19 * 1e7
+    profiles['n'] *= 1e-6
+    profiles['T'] *= 1.60217662e-19 * 1e7
     profiles['vrot'] *= 1.0
     return profiles
 
 def backconvert_trial_profiles_from_cgs(profiles):
-    profiles['ne'] /= 1e-6
-    profiles['ni'] /= 1e-6
-    profiles['Te'] /= 1.60217662e-19 * 1e7
-    profiles['Ti'] /= 1.60217662e-19 * 1e7
+    profiles['n'] /= 1e-6
+    profiles['T'] /= 1.60217662e-19 * 1e7
     profiles['vrot'] /= 1.0
     return profiles
 
@@ -223,17 +224,17 @@ def are_same_profiles(profiles1, profiles2):
 def test_interpolation_visual_check():
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(4, 4, figsize=(12, 6))
-    write_trial_profiles(trial_profiles_sqrtspol, test_output_dir)
-    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'sqrtspol'})
+    write_trial_profiles(trial_profiles_sqrtspol, output_dir)
+    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, interp_config={'grid':'sqrtspol'})
     plot_profiles(ax[:,0], trial_profiles, sqrtspol)
-    write_trial_profiles(trial_profiles_spol, test_output_dir)
-    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'spol'})
+    write_trial_profiles(trial_profiles_spol, output_dir)
+    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, interp_config={'grid':'spol'})
     plot_profiles(ax[:,1], trial_profiles, sqrtspol)
-    write_trial_profiles(trial_profiles_sqrtstor, test_output_dir)
-    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'sqrtstor'})
+    write_trial_profiles(trial_profiles_sqrtstor, output_dir)
+    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, interp_config={'grid':'sqrtstor'})
     plot_profiles(ax[:,2], trial_profiles, sqrtspol)
-    write_trial_profiles(trial_profiles_stor, test_output_dir)
-    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'stor'})
+    write_trial_profiles(trial_profiles_stor, output_dir)
+    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, interp_config={'grid':'stor'})
     plot_profiles(ax[:,3], trial_profiles, sqrtspol)
     plt.subplots_adjust(hspace=0.8, wspace=0.3)
     ax[0,0].set_title('equidist sqrtspol grid')
@@ -255,12 +256,11 @@ def plot_profiles(ax, profiles, sqrtspol):
 
 if __name__ == '__main__':
     test_write_and_read_compatiblity()
-    #test_output_type()
-    #test_output_shape()
-    #test_equidistant_grid()
-    #test_interpolation()
-    test_multiple_species_interpolation()
-    #test_unit_conversion()
+    test_output_type()
+    test_output_shape()
+    test_equidistant_grid()
+    test_interpolation()
+    test_multispec_interpolation()
+    test_unit_conversion()
     print('All tests passed')
-    #test_interpolation_visual_check()
-# %%
+    test_interpolation_visual_check()

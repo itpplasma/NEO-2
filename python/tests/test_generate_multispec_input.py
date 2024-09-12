@@ -5,7 +5,7 @@ import h5py
 
 # Custom modules
 from test_load_profile_data import write_trial_profiles
-from test_load_profile_data import test_profiles_src, test_mars_profiles_src
+from test_load_profile_data import profiles_src
 
 # modules to test
 from neo2_ql import write_multispec_to_hdf5
@@ -130,7 +130,7 @@ def test_coulomb_logarithm():
 
 def test_generate_multispec_input_call():
     write_trial_profiles(trial_profiles_sqrtspol_non_zero, test_output_dir)
-    generate_multispec_input(test_config, test_profiles_src, profiles_interp_config={})
+    generate_multispec_input(test_config, profiles_src, profiles_interp_config={})
 
 def trial_profiles_sqrtspol_non_zero(sqrtspol):
     from test_load_profile_data import trial_profiles_sqrtspol
