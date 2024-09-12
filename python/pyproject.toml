@@ -1,5 +1,5 @@
 [project]
-name = "neo2_mars"
+name = "neo2"
 version = "0.1.2"
 description = "Setup tools for NEO-2 runs"
 authors = [
