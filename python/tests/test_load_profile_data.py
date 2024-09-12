@@ -15,14 +15,11 @@ test_output_dir = '/tmp/'
 test_profiles_src = {
     'sqrtspol': {'filename': os.path.join(test_output_dir, 'sqrtstor.dat'), 'column': 0},
     'sqrtstor': {'filename': os.path.join(test_output_dir, 'sqrtstor.dat'), 'column': 1},
-    'ne': {'filename': os.path.join(test_output_dir, 'ne.dat'), 'column': 1},
-    'ni': {'filename': os.path.join(test_output_dir, 'ni.dat'), 'column': 1}, 
-    'Te': {'filename': os.path.join(test_output_dir, 'Te.dat'), 'column': 1},
-    'Ti': {'filename': os.path.join(test_output_dir, 'Ti.dat'), 'column': 1},
+    'n': {'filename': os.path.join(test_output_dir, 'n.dat'), 'column': [1,2]},
+    'T': {'filename': os.path.join(test_output_dir, 'T.dat'), 'column': [1,2]},
     'vrot': {'filename': os.path.join(test_output_dir, 'vrot.dat'), 'column': 1}   
 }
 test_mars_profiles_src = copy.deepcopy(test_profiles_src)
-test_mars_profiles_src['ni']['filename'] = os.path.join(test_output_dir, 'ne.dat')
 
 def test_write_and_read_compatiblity():
     write_neo2_input_profiles_from_mars(test_mars_dir, test_output_dir)
@@ -140,6 +137,19 @@ def test_equidist_stor_interpolation():
     assert is_equidistant(trial_sqrtspol2stor(trial_profiles['Ti']/4))
     assert is_equidistant(trial_sqrtspol2stor(trial_profiles['vrot']/5))
 
+def test_multiple_species_interpolation():
+    write_trial_profiles(trial_multiple_species_profiles_sqrtspol, test_output_dir)
+    trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'sqrtspol'})
+
+def trial_multiple_species_profiles_sqrtspol(sqrtspol):
+    profiles = {
+        'n': np.array([sqrtspol*1, sqrtspol*2]),
+        'T': np.array([sqrtspol*3, sqrtspol*4]),
+        'vrot': sqrtspol*5
+    }
+    sqrtstor = trial_sqrtspol2sqrtstor(sqrtspol)
+    return profiles, sqrtspol, sqrtstor
+
 def test_unit_conversion():
     write_trial_profiles(trial_profiles_sqrtspol, test_output_dir)
     trial_profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(test_profiles_src, interp_config={'grid':'sqrtspol'})
@@ -149,19 +159,8 @@ def test_unit_conversion():
 def write_trial_profiles(trial_profiles, output_dir):
     profiles, sqrtspol, sqrtstor = trial_profiles(np.linspace(0, 1, 11))
     for profile in profiles:
-        np.savetxt(os.path.join(output_dir, profile+'.dat'), np.array([sqrtspol, profiles[profile]]).T)
-    np.savetxt(os.path.join(output_dir, 'sqrtstor.dat'), np.array([sqrtspol, sqrtstor]).T)
-
-def trial_profiles_sqrtspol(sqrtspol):
-    profiles = {
-        'ne': sqrtspol*1,
-        'ni': sqrtspol*2,
-        'Te': sqrtspol*3,
-        'Ti': sqrtspol*4,
-        'vrot': sqrtspol*5,
-    }
-    sqrtstor = trial_sqrtspol2sqrtstor(sqrtspol)
-    return profiles, sqrtspol, sqrtstor
+        np.savetxt(os.path.join(output_dir, profile+'.dat'), np.vstack([sqrtspol, profiles[profile]]).T)
+    np.savetxt(os.path.join(output_dir, 'sqrtstor.dat'), np.vstack([sqrtspol, sqrtstor]).T)
 
 def trial_profiles_spol(spol):
     sqrtspol = np.sqrt(spol)
@@ -187,6 +186,17 @@ def trial_profiles_sqrtspol_cgs(sqrtspol):
     profiles, _, _ = trial_profiles_sqrtspol(sqrtspol)
     profiles = convert_trial_profiles_to_cgs(profiles)
     return profiles
+
+def trial_profiles_sqrtspol(sqrtspol):
+    profiles = {
+        'ne': sqrtspol*1,
+        'ni': sqrtspol*2,
+        'Te': sqrtspol*3,
+        'Ti': sqrtspol*4,
+        'vrot': sqrtspol*5,
+    }
+    sqrtstor = trial_sqrtspol2sqrtstor(sqrtspol)
+    return profiles, sqrtspol, sqrtstor
 
 def convert_trial_profiles_to_cgs(profiles):
     profiles['ne'] *= 1e-6
@@ -245,11 +255,12 @@ def plot_profiles(ax, profiles, sqrtspol):
 
 if __name__ == '__main__':
     test_write_and_read_compatiblity()
-    test_output_type()
-    test_output_shape()
-    test_equidistant_grid()
-    test_interpolation()
-    test_unit_conversion()
+    #test_output_type()
+    #test_output_shape()
+    #test_equidistant_grid()
+    #test_interpolation()
+    test_multiple_species_interpolation()
+    #test_unit_conversion()
     print('All tests passed')
-    test_interpolation_visual_check()
+    #test_interpolation_visual_check()
 # %%

@@ -54,7 +54,10 @@ def test_mars_profiles_size():
     mars_profiles = get_profiles_mars(test_mars_dir)
     for key, profile in mars_profiles.items():
         assert profile.shape[0] == 200
-        assert profile.shape[1] == 2
+        if key == 'T' or key == 'n':
+            assert profile.shape[1] == 3
+        else:
+            assert profile.shape[1] == 2
 
 def test_mars_profiles_sqrtstor():
     mars_profiles = get_profiles_mars(test_mars_dir)
@@ -81,6 +84,7 @@ def test_mars_profiles_visual_check():
         ax[i//2, i%2].set_xlabel(r'$\sqrt{s_\mathrm{pol}}$')
         ax[i//2, i%2].set_ylabel(key)
     plt.subplots_adjust(wspace=0.5, hspace=0.6)
+    plt.show()
 
 def test_interpolate_profiles_to_same_grid():
     profiles_on_same_grid = get_profiles_mars(test_mars_dir)
@@ -119,6 +123,7 @@ def test_write_neo2_input_profile_from_mars_visual_check():
         ax[i//2, i%2].set_ylabel(key)
         ax[i//2, i%2].legend()
     plt.subplots_adjust(wspace=0.5, hspace=0.6)
+    plt.show()
 
 if __name__ == "__main__":
     test_mars_sqrtspol2sqrtstor()

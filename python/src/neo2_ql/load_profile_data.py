@@ -23,7 +23,6 @@ def load_cgs_profiles_and_interp(src:dict, interp_config:dict={}):
         raise ValueError('Unknown grid type: ' + interp_config['grid'])
 
     profiles = interp_profiles(profiles, sqrtspol)
-
     return profiles, sqrtspol, sqrtstor
 
 def set_default_config_where_missing(options):
@@ -41,7 +40,7 @@ def load_profiles(src):
     for profile in src:
         data = np.loadtxt(src[profile]['filename'])
         if profile != 'sqrtspol' and profile != 'sqrtstor':
-            profiles[profile] = data[:,src[profile]['column']]
+            profiles[profile] = data[:,src[profile]['column']].T
     data = np.loadtxt(src['sqrtspol']['filename'])
     sqrtspol = data[:,src['sqrtspol']['column']]
     sqrtstor = data[:,src['sqrtstor']['column']]
@@ -52,22 +51,18 @@ def convert_units_from_norm_to_si(profiles):
     KEV2EV = 1.0e3
     KRADS2RADS = 1.0e3
     NORM_DENSITY2SI_DENSITY = 1.0e+19
-    profiles['Te'] *= KEV2EV
-    profiles['Ti'] *= KEV2EV
+    profiles['T'] *= KEV2EV
     profiles['vrot'] /= profiles['major_radius']
     profiles['vrot'] *= KRADS2RADS
-    profiles['ne'] *= NORM_DENSITY2SI_DENSITY
-    profiles['ni'] *= NORM_DENSITY2SI_DENSITY
+    profiles['n'] *= NORM_DENSITY2SI_DENSITY
     return profiles
 
 def convert_units_from_si_to_cgs(profiles):
     ELEMENTARY_CHARGE_SI = 1.60217662e-19
     ENERGY_TO_CGS = 1e7
     DENSITY_TO_CGS = 1e-6
-    profiles['Te'] *= ELEMENTARY_CHARGE_SI * ENERGY_TO_CGS
-    profiles['Ti'] *= ELEMENTARY_CHARGE_SI * ENERGY_TO_CGS
-    profiles['ne'] *= DENSITY_TO_CGS
-    profiles['ni'] *= DENSITY_TO_CGS
+    profiles['T'] *= ELEMENTARY_CHARGE_SI * ENERGY_TO_CGS
+    profiles['n'] *= DENSITY_TO_CGS
     return profiles
 
 
@@ -88,6 +83,24 @@ def interp_profiles(profiles, sqrtspol):
     return profiles
 
 def interp_cubic(x_new, x , y):
+    if len(y.shape) == 2:
+        f_eval = matrix_interp_cubic(x_new, x, y)
+    elif len(y.shape) == 1:
+        f_eval = vector_interp_cubic(x_new, x, y)
+    else:
+        raise ValueError('Unknown shape of y: ' + y.shape)
+    return f_eval
+
+def matrix_interp_cubic(x_new, x , y):
+    size_f = np.array(y.shape)
+    size_f[1] = len(x_new)
+    f_eval = np.zeros(size_f)
+    for i in range(size_f[0]):
+        f_eval[i,:] = vector_interp_cubic(x_new, x, y[i,:])
+    return f_eval
+
+def vector_interp_cubic(x_new, x , y):
     from scipy.interpolate import interp1d
     f = interp1d(x, y, kind='cubic')
-    return f(x_new)
+    f_eval = f(x_new)
+    return f_eval
