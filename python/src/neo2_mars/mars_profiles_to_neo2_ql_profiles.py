@@ -4,6 +4,9 @@
 import numpy as np
 import os
 
+# Custom libraries
+from neo2_ql import interpolate_profiles_to_same_grid
+
 ########################################################################################
 
 def write_neo2_input_profiles_from_mars(mars_folder: str, output_dir: str):
@@ -60,26 +63,6 @@ def interp_to_equidist_grid(y: np.ndarray, x: np.ndarray) -> np.ndarray:
     equidist_x = np.linspace(np.min(x), np.max(x), x.shape[0])
     equidist_y = np.interp(equidist_x, x, y)
     return equidist_y
-
-########################################################################################
-
-def interpolate_profiles_to_same_grid(profiles: dict) -> dict:
-    sqrtspol = profiles['sqrtstor'][:, 0]
-    interp_profiles = {}
-    for kind in profiles.keys():
-        interp_profiles[kind] = np.zeros((sqrtspol.shape[0], profiles[kind].shape[1]))
-        if profiles[kind].shape[1] > 2:
-            interp_profiles[kind][:, 1:] = matrix_interpolate(sqrtspol, profiles[kind][:,0], profiles[kind][:,1:])
-        else:
-            interp_profiles[kind][:, 1] = np.interp(sqrtspol, profiles[kind][:,0], profiles[kind][:,1])
-        interp_profiles[kind][:, 0] = sqrtspol.copy()
-    return interp_profiles
-
-def matrix_interpolate(x_new: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-    y_new = np.zeros((x_new.shape[0], y.shape[1]))
-    for i in range(y.shape[1]):
-        y_new[:, i] = np.interp(x_new, x, y[:,i])
-    return y_new
 
 ########################################################################################
 

@@ -9,7 +9,6 @@ from libneo import FluxConverter, read_eqdsk
 #Module to test
 from neo2_mars import mars_sqrtspol2sqrtstor
 from neo2_mars import get_profiles_mars
-from neo2_mars import interpolate_profiles_to_same_grid
 from neo2_mars import write_neo2_input_profiles_from_mars
 
 
@@ -86,24 +85,6 @@ def test_mars_profiles_visual_check():
     plt.subplots_adjust(wspace=0.5, hspace=0.6)
     plt.show()
 
-def test_interpolate_profiles_to_same_grid():
-    profiles_on_same_grid = get_profiles_mars(test_mars_dir)
-    interp_profiles = interpolate_profiles_to_same_grid(profiles_on_same_grid)
-    assert is_same_grid_for_all(interp_profiles)
-    assert is_same_for_all_entries(profiles_on_same_grid, interp_profiles)
-
-def is_same_grid_for_all(profiles):
-    for key, profile in profiles.items():
-        if not np.allclose(profile[:,0], profiles['sqrtstor'][:,0]):
-            return False
-    return True
-
-def is_same_for_all_entries(profiles1, profiles2):
-    for key, profile in profiles1.items():
-        if not np.allclose(profiles1[key][:,1], profiles2[key][:,1], atol=1e-4):
-            return False
-    return True
-
 def test_write_neo2_input_profile_from_mars():
     write_neo2_input_profiles_from_mars(test_mars_dir, '/tmp/')
     mars_profiles = get_profiles_mars(test_mars_dir)
@@ -129,7 +110,6 @@ if __name__ == "__main__":
     test_mars_sqrtspol2sqrtstor()
     test_mars_profiles_size()
     test_mars_profiles_sqrtstor()
-    test_interpolate_profiles_to_same_grid()
     test_write_neo2_input_profile_from_mars()
     print("All tests passed!")
     test_mars_sqrtspol2sqrtstor_visual_check()
