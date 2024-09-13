@@ -6,6 +6,7 @@ import os
 
 # Custom libraries
 from neo2_ql import interpolate_profiles_to_same_grid
+from neo2_ql import write_profiles_to_dat_files
 
 ########################################################################################
 
@@ -63,13 +64,3 @@ def interp_to_equidist_grid(y: np.ndarray, x: np.ndarray) -> np.ndarray:
     equidist_x = np.linspace(np.min(x), np.max(x), x.shape[0])
     equidist_y = np.interp(equidist_x, x, y)
     return equidist_y
-
-########################################################################################
-
-def write_profiles_to_dat_files(profiles_mars: dict, output_dir: str):
-    os.makedirs(output_dir, exist_ok=True)
-    for profile_name, profile_data in profiles_mars.items():
-        filename = f"{output_dir}/{profile_name}.dat"
-        np.savetxt(filename, profile_data)
-
-########################################################################################
