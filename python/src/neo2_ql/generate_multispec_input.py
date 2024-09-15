@@ -15,7 +15,7 @@ def generate_multispec_input(config: dict, profiles_src: dict, profiles_interp_c
 
     multispec['/num_radial_pts'] = len(sqrtspol)
     multispec['/species_def'] = get_species_def_array(config, multispec['/num_radial_pts'])
-    multispec['/rel_stages'] = np.full(multispec['/num_radial_pts'], multispec['/species_tag_Vphi'])
+    multispec['/rel_stages'] = np.full(multispec['/num_radial_pts'], nspecies)
     multispec['/rho_pol'] = sqrtspol
     stor = sqrtstor**2
     multispec['/boozer_s'] = stor
