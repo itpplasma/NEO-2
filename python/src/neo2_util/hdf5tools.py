@@ -1670,6 +1670,7 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
   name.
   """
   import numpy as np
+  from neo2_ql import get_kappa
 
   no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol']
   special_treatment_needed = ['species_tag_Vphi']
@@ -1715,6 +1716,19 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
         t = np.array(hin[dname])[:, 0:index, ...]
         t = np.append(t, np.array(hin[dname])[:, index+1:, ...], 1)
         hout.create_dataset(dname, data=t)
+
+      if nsp[0] == 2:
+        kappa = np.array(np.array(hin['kappa_prof'])[0, ...], ndmin=2)
+        ELEMENTARY_CHARGE_CGS = 1.60217662e-19 * 2.99792458e8 * 10
+        ion_charge = hout['species_def'][0, 1, ...] * ELEMENTARY_CHARGE_CGS
+        kappa_ion = get_kappa(hout['n_prof'][1, ...], hout['T_prof'][1, ...], ion_charge)
+        print(kappa_ion)
+        print(hout['n_prof'][1, ...])
+        print(hout['T_prof'][1, ...])
+        print(hout['species_def'][0, 1, ...])
+        kappa = np.append(kappa, np.array(kappa_ion,ndmin=2), 0)
+        del hout['kappa_prof']
+        hout.create_dataset('kappa_prof', data=kappa,)
 
 def write_axisymmetric_quantities(infilename:str, outfilename:str):
   """ Write hardcoded set of output from hdf5-file to textfile.
