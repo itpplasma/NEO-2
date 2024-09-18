@@ -22,10 +22,10 @@ def rescale_velocity_profile(path:str, infilename:str, scaling_factor:float):
 
   \todo Move to hdf5tools?
   """
-  import h5py, hdf5tools
+  import h5py, neo2_util
   import numpy as np
 
-  ref = hdf5tools.get_hdf5file(path+infilename)
+  ref = neo2_util.get_hdf5file(path+infilename)
 
   vphi = ref['Vphi']
   vphi_rescaled = []
@@ -44,7 +44,7 @@ def rescale_velocity_profile(path:str, infilename:str, scaling_factor:float):
   elif len(nameparts)==2:
     outfilename = nameparts[0]+vphi_namepart+'.'+nameparts[1]
 
-  vphi_rs = hdf5tools.get_hdf5file_replace(outfilename)
+  vphi_rs = neo2_util.get_hdf5file_replace(outfilename)
 
   for k in ref.keys():
     ref.copy(source='/'+k, dest=vphi_rs, name='/' + k)
@@ -69,10 +69,10 @@ def rescale_density_profile(path:str, infilename:str, scaling_factor:float):
 
   \todo Move to hdf5tools?
   """
-  import h5py, hdf5tools
+  import h5py, neo2_util
   import numpy as np
 
-  ref = hdf5tools.get_hdf5file(path+infilename)
+  ref = neo2_util.get_hdf5file(path+infilename)
 
   n_prof = np.array(ref['n_prof'])
   n_prof_rescaled = n_prof*scaling_factor
@@ -89,7 +89,7 @@ def rescale_density_profile(path:str, infilename:str, scaling_factor:float):
   elif len(nameparts)==2:
     outfilename = nameparts[0] + n_namepart+'.'+nameparts[1]
 
-  n_rs = hdf5tools.get_hdf5file_replace(outfilename)
+  n_rs = neo2_util.get_hdf5file_replace(outfilename)
 
   for k in ref.keys():
     ref.copy(source='/'+k, dest=n_rs, name='/' + k)

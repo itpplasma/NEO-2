@@ -40,7 +40,7 @@ def neo_2_par_wrapper(nr_processors: int = 1, last_stage_python: bool = True, na
   from pathlib import Path
 
   from scan_nonhdf5_tools import set_neo2in_reconstruction_for_folders
-  from hdf5tools import prop_reconstruct_3
+  from neo2_util import prop_reconstruct_3
 
   multi_runcommand = 'mpirun -mca orte_tmpdir_base \"/tmp/\" -np {0} ./{1}'.format(nr_processors, name_executable)
   single_runcommand = "./" + name_executable
@@ -60,7 +60,7 @@ def neo_2_par_wrapper(nr_processors: int = 1, last_stage_python: bool = True, na
   set_neo2in_reconstruction_for_folders(folders, folder='./', backup=False, value=2)
   system(runcommand)
   if last_stage_python:
-    prop_reconstruct_3(outfilename: str= 'final.h5'):
+    prop_reconstruct_3(outfilename='final.h5')
   else:
     set_neo2in_reconstruction_for_folders(folders, folder='./', backup=False, value=3)
     system(single_runcommand)

@@ -25,7 +25,7 @@ coefficients have only four entries in total.
 if __name__ == "__main__":
   from os.path import join
   from pathlib import Path
-  from hdf5tools import get_hdf5file
+  from neo2_util import get_hdf5file
   import matplotlib.pyplot as plt
 
   p = Path('./')

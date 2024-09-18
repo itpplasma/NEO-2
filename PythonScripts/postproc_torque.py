@@ -26,7 +26,7 @@ def data_process(folder: str, filename: str, save_integrated_torque = False):
     merged data of the radial scan.
   """
   from os.path import join
-  from hdf5tools import get_hdf5file
+  from neo2_util import get_hdf5file
   from numpy import array
   from math import pi
   import scipy.integrate as integrate
@@ -220,7 +220,7 @@ def postproc_torque(folder: str, subfolder_pattern: str, hdf5infilename: str, vp
   from os import chdir, getcwd
   from os.path import isfile, join
   from pathlib import Path
-  from hdf5tools import copy_hdf5_from_subfolders_to_single_file
+  from neo2_util import copy_hdf5_from_subfolders_to_single_file
 
   p = Path(folder)
   folders = list(p.glob(subfolder_pattern))
