@@ -27,7 +27,9 @@ def generate_multispec_input(config: dict, profiles_src: dict, profiles_interp_c
     ELEMENTARY_CHARGE_CGS = 1.60217662e-19 * 2.99792458e8 * 10
     charge = np.array(config['Z'])*ELEMENTARY_CHARGE_CGS
     charge = charge[:, np.newaxis]
-    multispec['/kappa_prof'] = get_kappa(profiles['n'], profiles['T'], charge)
+    log_Lambda = get_coulomb_logarithm(profiles['n'][0,:], profiles['T'][0,:])
+    kappa = get_kappa(profiles['n'], profiles['T'], charge, log_Lambda)
+    multispec['/kappa_prof'] = kappa
     
     write_multispec_to_hdf5(config['hdf5_filename'], multispec)
 
@@ -56,16 +58,15 @@ def vector_derivative(x,y):
     right_border = (3/2*y[-1] - 2*y[-2] + 1/2*y[-3]) / (x[-1] - x[-2])
     return np.concatenate([[left_border], middle, [right_border]])
 
-def get_kappa(n_cgs, T_cgs, charge_cgs):
-    log_Lambda = get_coulomb_logarithm(n_cgs, T_cgs)
+def get_kappa(n_cgs, T_cgs, charge_cgs, log_Lambda):
     mean_free_path = (3 / (4 * np.sqrt(np.pi)) * (T_cgs/charge_cgs) ** 2 / 
                                     (n_cgs * (charge_cgs ** 2) * log_Lambda))
     kappa = 2 / mean_free_path
     return kappa
 
-def get_coulomb_logarithm(n_cgs, T_cgs):
+def get_coulomb_logarithm(ne_cgs, Te_cgs):
     # Coulomb logarithm (set as species-independent - see E A Belli and J Candy PPCF 54 015015 (2012))
-    log_Lambda = 52.43 - 1.15 * np.log10(n_cgs) + 2.3 * np.log10(T_cgs)
+    log_Lambda = 52.43 - 1.15 * np.log10(ne_cgs) + 2.3 * np.log10(Te_cgs)
     return log_Lambda
 
 def write_multispec_to_hdf5(hdf5_filename, multispec):

@@ -129,20 +129,23 @@ def test_derivative():
     assert np.allclose(dy_dx, control_dy_dx, atol=1e-2)
 
 def test_get_kappa():
-    n_cgs = 1.22931e+14
-    T_cgs = 6.6154e-08
-    charge_cgs = -1 * 1.60217662e-19 * 2.99792458e8 * 10
-    kappa = get_kappa(n_cgs, T_cgs, charge_cgs)
-    control_kappa = 1.39308e-07
+    ne_cgs = 4.05254e+13
+    n_cgs = 1.01313e+11
+    Te_cgs = 3.34727e-09
+    T_cgs = 2.51226e-09
+    charge_cgs = +5 * 1.60217662e-19 * 2.99792458e8 * 10
+    log_Lamdba = get_coulomb_logarithm(ne_cgs, Te_cgs)
+    kappa = get_kappa(n_cgs, T_cgs, charge_cgs, log_Lamdba)
+    control_kappa = 4.36322e-05
     assert np.isclose(kappa, control_kappa, rtol=1e-4)
 
 def test_coulomb_logarithm():
-    n_si = 1e19
-    T_eV = 1e6
-    log_Lambda_from_si = get_coulomb_logarithm_from_si_input(n_si, T_eV)
-    n_cgs = n_si * 1e-6
-    T_cgs = T_eV * 1.60217662e-19 * 1e7
-    log_Lambda = get_coulomb_logarithm(n_cgs, T_cgs)
+    ne_si = 1e19
+    Te_eV = 1e6
+    log_Lambda_from_si = get_coulomb_logarithm_from_si_input(ne_si, Te_eV)
+    ne_cgs = ne_si * 1e-6
+    Te_cgs = Te_eV * 1.60217662e-19 * 1e7
+    log_Lambda = get_coulomb_logarithm(ne_cgs, Te_cgs)
     assert np.isclose(log_Lambda_from_si, log_Lambda, rtol=1e-4)
 
 def test_generate_multispec_input_call():
@@ -174,17 +177,17 @@ def check_if_shapes_correct(hdf5_file):
     assert hdf5_file['/Vphi'].shape == (nsurf,)
     assert hdf5_file['/kappa_prof'].shape == (nspecies, nsurf)
 
+def trial_profiles_3species(sqrtspol):
+    profiles, sqrtspol, sqrtstor = trial_profiles_2species(sqrtspol)
+    profiles['n'] = np.vstack([profiles['n'], sqrtspol*1.5 + 1])
+    profiles['T'] = np.vstack([profiles['T'], sqrtspol*3.5 + 1])
+    return profiles, sqrtspol, sqrtstor
+
 def trial_profiles_2species(sqrtspol):
     from test_load_profile_data import trial_multispec_profiles_sqrtspol
     profiles, sqrtspol, sqrtstor = trial_multispec_profiles_sqrtspol(sqrtspol)
     for profile in profiles:
         profiles[profile] += 1
-    return profiles, sqrtspol, sqrtstor
-
-def trial_profiles_3species(sqrtspol):
-    profiles, sqrtspol, sqrtstor = trial_profiles_2species(sqrtspol)
-    profiles['n'] = np.vstack([profiles['n'], sqrtspol*1.5 + 1])
-    profiles['T'] = np.vstack([profiles['T'], sqrtspol*3.5 + 1])
     return profiles, sqrtspol, sqrtstor
 
 def test_get_species_def_array():
@@ -198,9 +201,9 @@ def test_get_species_def_array():
         assert species_def[:,:,i:i+1].shape == species_def_control.shape
         assert np.allclose(species_def[:,:,i:i+1], species_def_control)
 
-def get_coulomb_logarithm_from_si_input(n_si, T_eV):
+def get_coulomb_logarithm_from_si_input(ne_si, Te_eV):
     # Coulomb logarithm (set as species-independent - see E A Belli and J Candy PPCF 54 015015 (2012))
-    log_Lambda = 39.1 - 1.15 * np.log10(n_si) + 2.3 * np.log10(T_eV * 1e-3)
+    log_Lambda = 39.1 - 1.15 * np.log10(ne_si) + 2.3 * np.log10(Te_eV * 1e-3)
     return log_Lambda
 
 def test_derivative_visual_check():
