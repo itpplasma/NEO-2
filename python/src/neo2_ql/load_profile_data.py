@@ -9,19 +9,7 @@ def load_cgs_profiles_and_interp(src:dict, interp_config:dict={}):
         profiles = convert_units_from_norm_to_si(profiles)
     profiles = convert_units_from_si_to_cgs(profiles)
 
-    if interp_config['grid'] == 'sqrtspol':
-        sqrtspol, sqrtstor = interp_y_to_equidist_s(s=sqrtspol, y=sqrtstor, options=interp_config)
-    elif interp_config['grid'] == 'sqrtstor':
-        sqrtstor, sqrtspol = interp_y_to_equidist_s(s=sqrtstor, y=sqrtspol, options=interp_config)
-    elif interp_config['grid'] == 'spol':
-        spol, sqrtstor = interp_y_to_equidist_s(s=sqrtspol**2, y=sqrtstor, options=interp_config)
-        sqrtspol = np.sqrt(spol)
-    elif interp_config['grid'] == 'stor':
-        stor, sqrtspol = interp_y_to_equidist_s(s=sqrtstor**2, y=sqrtspol, options=interp_config)
-        sqrtstor = np.sqrt(stor)
-    else:
-        raise ValueError('Unknown grid type: ' + interp_config['grid'])
-
+    sqrtspol, sqrtstor = interp_grid(sqrtspol, sqrtstor, interp_config)
     profiles = interp_profiles(profiles, sqrtspol)
     return profiles, sqrtspol, sqrtstor
 
@@ -66,6 +54,22 @@ def convert_units_from_si_to_cgs(profiles):
     return profiles
 
 
+def interp_grid(sqrtspol, sqrtstor, interp_config):
+    if interp_config['grid'] == 'sqrtspol':
+        sqrtspol, sqrtstor = interp_y_to_equidist_s(s=sqrtspol, y=sqrtstor, options=interp_config)
+    elif interp_config['grid'] == 'sqrtstor':
+        sqrtstor, sqrtspol = interp_y_to_equidist_s(s=sqrtstor, y=sqrtspol, options=interp_config)
+    elif interp_config['grid'] == 'spol':
+        spol, sqrtstor = interp_y_to_equidist_s(s=sqrtspol**2, y=sqrtstor, options=interp_config)
+        sqrtspol = np.sqrt(spol)
+    elif interp_config['grid'] == 'stor':
+        stor, sqrtspol = interp_y_to_equidist_s(s=sqrtstor**2, y=sqrtspol, options=interp_config)
+        sqrtstor = np.sqrt(stor)
+    else:
+        raise ValueError('Unknown grid type: ' + interp_config['grid'])
+
+    return sqrtspol, sqrtstor
+
 def interp_y_to_equidist_s(s, y, options):
     equidist_s = np.linspace(options['min_s'], options['max_s'], options['n_s'])
     equidist_y = interp_cubic(equidist_s, s, y)
@@ -101,6 +105,6 @@ def matrix_interp_cubic(x_new, x , y):
 
 def vector_interp_cubic(x_new, x , y):
     from scipy.interpolate import interp1d
-    f = interp1d(x, y, kind='cubic')
+    f = interp1d(x, y, kind='cubic', fill_value="extrapolate")
     f_eval = f(x_new)
     return f_eval
