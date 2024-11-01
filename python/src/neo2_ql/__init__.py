@@ -4,7 +4,7 @@ neo2_ql
 
 This is the package containing tools for post-processing NEO-2-QL runs.
 """
-from .get_integral_ntv import get_integral_ntv_neo2ql
+from .get_integral_ntv import get_integral_ntv_torque_neo2ql
 from .load_profile_data import load_cgs_profiles_and_interp
 from .load_profile_data import convert_units_from_norm_to_si, convert_units_from_si_to_cgs
 from .load_profile_data import interp_grid, interp_profiles, interp_cubic
