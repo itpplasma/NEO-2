@@ -15,7 +15,7 @@ def get_volume_element(neo2_ql_hdf5):
     with get_hdf5file(neo2_ql_hdf5) as output:
         s = output['boozer_s'][:]
         volume_element = ((2*np.pi)**2 * output['psi_pr_hat'][-1] * output['Bref'][-1] 
-                    * (output['bcovar_tht'][:] + 1/output['aiota'][:] * output['bcovar_phi'][:])
+                    * (output['bcovar_tht'][:]*output['aiota'][:] + output['bcovar_phi'][:])
                     / (output['avbhat2'][:] * output['Bref'][:]**2))
     return volume_element, s
 
