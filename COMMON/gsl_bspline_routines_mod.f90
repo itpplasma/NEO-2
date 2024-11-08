@@ -1,6 +1,6 @@
 !-----------------------------------------------------------------------------------------!
 ! module: gsl_bspline_routines_mod                                                        !
-! authors: Gernot Kapper, Andreas F. Martitsch                                            !
+! authors: TU Graz ITPcp Plasma, Andreas F. Martitsch                                     !
 ! date: 06.10.2016                                                                        !
 ! version: 0.2.1                                                                          !
 !-----------------------------------------------------------------------------------------!
@@ -18,7 +18,7 @@ module gsl_bspline_routines_mod
   !**********************************************************
   ! FGSL Workspace
   !**********************************************************
-  type(fgsl_bspline_workspace), private :: sw  
+  type(fgsl_bspline_workspace), private :: sw
 
   !**********************************************************
   ! FGSL variables
@@ -50,9 +50,9 @@ contains
        write (*,*) "FGSL Error: ", status, fgsl_strerror(status)
        stop
     end if
-    
+
   end subroutine fgsl_check
-  
+
   subroutine init_bspline(order, nbreak)
     integer :: order, nbreak
 
@@ -60,14 +60,14 @@ contains
     fgsl_nbreak   = nbreak
     fgsl_ncbf     = nbreak + order - 2
     fgsl_max_nder = order
-    
+
     sw = fgsl_bspline_alloc(fgsl_order, fgsl_nbreak)
 
     if (allocated(dby)) deallocate(dby)
     allocate(dby(1:fgsl_max_nder+1, 1:nbreak+order-2))
     fgsl_dby = fgsl_matrix_init(1.0_fgsl_double)
     call fgsl_check(fgsl_matrix_align(dby, fgsl_max_nder+1, fgsl_max_nder+1, fgsl_ncbf, fgsl_dby))
-    
+
   end subroutine init_bspline
 
   subroutine set_bspline_knots(xd)
@@ -79,7 +79,7 @@ contains
     xd_beg = xd(1)
     xd_end = xd(fgsl_nbreak)
 
-    
+
     fgsl_xd = fgsl_vector_init(1.0_fgsl_double)
     call fgsl_check(fgsl_vector_align(xd, fgsl_nbreak, fgsl_xd, fgsl_nbreak, 0_fgsl_size_t, 1_fgsl_size_t))
     call fgsl_check(fgsl_bspline_knots(fgsl_xd, sw))
@@ -98,7 +98,7 @@ contains
     fgsl_by_end = fgsl_vector_init(1.0_fgsl_double)
     call fgsl_check(fgsl_vector_align(by_end, fgsl_ncbf, fgsl_by_end, fgsl_ncbf, 0_fgsl_size_t, 1_fgsl_size_t))
     call fgsl_check(fgsl_bspline_eval(xd_end, fgsl_by_end, sw))
-        
+
     if (allocated(dby_end)) deallocate(dby_end)
     allocate(dby_end(0:fgsl_max_nder, 1:fgsl_ncbf))
     fgsl_dby_end = fgsl_matrix_init(1.0_fgsl_double)
@@ -110,15 +110,15 @@ contains
   subroutine set_bspline_knots_uniform(a, b)
     real(fgsl_double) :: a, b
     call fgsl_check(fgsl_bspline_knots_uniform(a, b, sw))
-    
+
   end subroutine set_bspline_knots_uniform
 
-  recursive subroutine bspline_eval(x, by_loc) 
+  recursive subroutine bspline_eval(x, by_loc)
     real(fgsl_double) :: x
     real(fgsl_double), dimension(:) :: by_loc
     integer(fgsl_size_t) :: k, m
     real(fgsl_double)    :: gam
-    
+
     if (x .le. xd_end) then
        call fgsl_check(fgsl_bspline_eval(x, fgsl_by, sw))
        by_loc = fgsl_by
@@ -134,7 +134,7 @@ contains
     else
        by_loc = 0.0_fgsl_double
     end if
-    
+
   end subroutine bspline_eval
 
   recursive subroutine bspline_deriv_eval(x, nder, dby_loc)
@@ -161,7 +161,7 @@ contains
     else
        dby_loc = 0.0_fgsl_double
     end if
-    
+
   end subroutine bspline_deriv_eval
-  
+
 end module gsl_bspline_routines_mod

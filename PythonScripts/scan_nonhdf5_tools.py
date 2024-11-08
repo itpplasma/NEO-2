@@ -832,7 +832,7 @@ def append_list_unsucessful_runs(folder: str, subfolder_pattern: str, file_to_ch
 def get_runcompletion_from_output_par(outputfilename: str):
   """ Return percentage and list of propagators started.
 
-  Helper function to determine completion of a neo-2 par (Gernots version)
+  Helper function to determine completion of a neo-2 par version
   run. Gives the percentage of started propagators, and a list of the
   tags of those.
 

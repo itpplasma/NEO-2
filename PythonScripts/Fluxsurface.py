@@ -18,7 +18,7 @@ class Fluxsurface():
             'neoin':'neo.in',
             'surface_exe':'create_surface.x'} # Create Surf.py, #neo2.in
     self.filepaths=dict(
-            neoin='/temp/gernot_k/Neo2/AG/Interface/Productive/2016_02_w7x-m24li/neo.in',
+            neoin='/path/to/Neo2/AG/Interface/Productive/2016_02_w7x-m24li/neo.in',
             surface_exe='/proj/plasma/Neo2/Interface/Create_Surfaces/Build/'
             'create_surfaces.x',
             spitzerinterface='/proj/plasma/Neo2/Interface/Create_Surfaces/'
@@ -31,7 +31,7 @@ class Fluxsurface():
       raise IOError('rundir must a valid path')
 
     self.get_filenames()
-    self.get_filepaths(path='/temp/gernot_k/Neo2/AG/Interface/Productive/2016_02_w7x-m24li/',
+    self.get_filepaths(path='/path/to/Neo2/AG/Interface/Productive/2016_02_w7x-m24li/',
                                replace=False) ## Fühlt nur missende auf,(in_file_axi)
     self._createfiles()
     if new_dir:
@@ -128,10 +128,10 @@ class Fluxsurface():
             'neo2_exe':'create_surface.x',
             'in_file_axi': 'w7x-m24li.bc'} # Create Surf.py, #neo2.in
     self.single_filepaths=dict(
-            neoin='/temp/gernot_k/Neo2/AG/Interface/Productive/2016_02_w7x-m24li/neo.in',
-            neo2in= '/temp/gernot_k/Neo2/AG/Interface/Productive/2016_02_w7x-m24li/SURF1/neo2.in',
+            neoin='/path/to/Neo2/AG/Interface/Productive/2016_02_w7x-m24li/neo.in',
+            neo2in= '/path/to/Neo2/AG/Interface/Productive/2016_02_w7x-m24li/SURF1/neo2.in',
             neo2_exe='/temp/wakatobi/2020_Surface/new_scan/neo_2.x',
-            in_file_axi= '/temp/gernot_k/Neo2/AG/Interface/Productive/2016_02_w7x-m24li/w7x-m24li.bc'
+            in_file_axi= '/path/to/Neo2/AG/Interface/Productive/2016_02_w7x-m24li/w7x-m24li.bc'
            )
     ##get_single_filenames
 

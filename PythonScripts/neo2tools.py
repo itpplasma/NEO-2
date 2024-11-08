@@ -70,8 +70,8 @@ class Neo2_common_objects():
         wdir: string, containing working path.
         templatepath: string containing location of templates. [None]
         code_variant: string, either of the keys of dictionary
-          example_files. Determines if it is an input file for gernots
-          or andreas version of the code. ['neo-2-ql']
+          example_files. Determines if it is an input file for PAR
+          or QL version of the code. ['neo-2-ql']
         """
 
 
@@ -1322,14 +1322,14 @@ def compare2nml(path1,path2, variant: str):
                           'surface2/neo2.in', variant='neo-2-par')
 
     Assuming that these files correspond to a radial scan, then usually
-    only 'boozer_s' and 'conl_over_mfp' should differ (for gernots
+    only 'boozer_s' and 'conl_over_mfp' should differ (for PAR
     variant).
 
     Input:
     ------
     file1, file2: strings, paths+name of the two neo2.in files to compare.
     variant: string, either of the keys of dictionary example_files.
-      Determines if it is an input file for gernots or andreas version
+      Determines if it is an input file for PAR or QL version
       of the code.
     '''
 

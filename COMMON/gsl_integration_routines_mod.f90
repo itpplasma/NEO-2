@@ -1,6 +1,6 @@
 !-----------------------------------------------------------------------------------------!
 ! module: gsl_integration_routines_mod                                                    !
-! authors: Andreas F. Martitsch,  TU Graz ITPcp Plasma                                           !
+! authors: Andreas F. Martitsch, TU Graz ITPcp Plasma                                            !
 ! date: 27.07.2015                                                                        !
 ! version: 0.3                                                                            !
 ! description:                                                                            !

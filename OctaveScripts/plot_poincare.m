@@ -14,7 +14,7 @@
 % -------------
 % Makes a plot
 function [x1, x2, x3] = plot_poincare(filename)
-  %~ h5file = '/temp/gernot_k/Neo2/RunsByDate/2017_07_Bootstrap/w7as/conl_over_mfp=1m1-boozer_s=0.25d0-mag_nperiod_min=100-bsfunc_local_err=3m2/magnetics.h5';
+  %~ h5file = '/path/to/Neo2/RunsByDate/2017_07_Bootstrap/w7as/conl_over_mfp=1m1-boozer_s=0.25d0-mag_nperiod_min=100-bsfunc_local_err=3m2/magnetics.h5';
   %~ h5 = h52struct(h5file);
   h5 = load(filename);
 

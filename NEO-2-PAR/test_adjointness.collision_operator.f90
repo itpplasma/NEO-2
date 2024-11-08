@@ -23,7 +23,7 @@ MODULE collop
   !  collop_A1,collop_A2,collop_A3,collop_A_m_min,collop_A_m_max
   ! C(m)
   !  collop_C,collop_C_m_min,collop_C_m_max
-  ! nu_gee(m,mp), nu_ginf(m,mp), 
+  ! nu_gee(m,mp), nu_ginf(m,mp),
   !  collop_nu_gee,collop_nu_inf
   !  collop_nu_m_min,collop_nu_m_max,collop_nu_mp_min,collop_nu_mp_max
   ! D_gee(m,mp)
@@ -43,24 +43,24 @@ MODULE collop
   !  collop_file_I
 
   IMPLICIT NONE
-  
+
   ! ---------------------------------------------------------------------------
   ! private parameters
   INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0d0)
   INTEGER, PARAMETER, PRIVATE :: dummy_read = 20
-  
+
   ! ---------------------------------------------------------------------------
   ! public variables
   REAL(kind=dp), PUBLIC :: z_eff = 1.0_dp
 
   ! talk or be silent (not used at the moment)
-  LOGICAL, PUBLIC :: collop_talk      =  .TRUE. 
-  LOGICAL, PUBLIC :: collop_talk_much =  .TRUE. 
+  LOGICAL, PUBLIC :: collop_talk      =  .TRUE.
+  LOGICAL, PUBLIC :: collop_talk_much =  .TRUE.
 
   ! path to data
-  CHARACTER(len=100), PUBLIC :: collop_path = '/afs/itp.tugraz.at/proj/plasma/DOCUMENTS/Neo2/data-MatrixElements/'
+  CHARACTER(len=100), PUBLIC :: collop_path = '/path/to/Neo2/data-MatrixElements/'
 #if MPI_SUPPORT==1
- collop_path = '/temp/gernot_k/Neo2/data-MatrixElements/'
+ collop_path = '/path/to/Neo2/data-MatrixElements/'
 #endif
   ! file names
   CHARACTER(len=100), PUBLIC :: collop_file_A        = 'SourceAa123m_Cm.dat'
@@ -72,46 +72,46 @@ MODULE collop
 
   ! data arrays
   ! source terms
-  ! either 
+  ! either
   !        collop_A1(:),collop_A2(:),collop_A3(:)
   ! or
   !        collop_A(:,1),collop_A(:,2),collop_A(:,3)
   !
-  INTEGER, PUBLIC                    :: collop_A_m_min = 0    
-  INTEGER, PUBLIC                    :: collop_A_m_max = 0    
+  INTEGER, PUBLIC                    :: collop_A_m_min = 0
+  INTEGER, PUBLIC                    :: collop_A_m_max = 0
   REAL(kind=dp), ALLOCATABLE, PUBLIC :: collop_A(:,:)
   REAL(kind=dp), ALLOCATABLE, PUBLIC :: collop_A1(:)
   REAL(kind=dp), ALLOCATABLE, PUBLIC :: collop_A2(:)
   REAL(kind=dp), ALLOCATABLE, PUBLIC :: collop_A3(:)
-  INTEGER, PUBLIC                    :: collop_C_m_min = 0    
-  INTEGER, PUBLIC                    :: collop_C_m_max = 0    
+  INTEGER, PUBLIC                    :: collop_C_m_min = 0
+  INTEGER, PUBLIC                    :: collop_C_m_max = 0
   REAL(kind=dp), ALLOCATABLE, PUBLIC :: collop_C(:)
 
   ! nu(m,mp)
-  INTEGER, PUBLIC                    :: collop_nu_m_min  = 0      
-  INTEGER, PUBLIC                    :: collop_nu_m_max  = 0      
-  INTEGER, PUBLIC                    :: collop_nu_mp_min = 0      
-  INTEGER, PUBLIC                    :: collop_nu_mp_max = 0      
+  INTEGER, PUBLIC                    :: collop_nu_m_min  = 0
+  INTEGER, PUBLIC                    :: collop_nu_m_max  = 0
+  INTEGER, PUBLIC                    :: collop_nu_mp_min = 0
+  INTEGER, PUBLIC                    :: collop_nu_mp_max = 0
   REAL(kind=dp), ALLOCATABLE, PUBLIC :: collop_nu_gee(:,:)
   REAL(kind=dp), ALLOCATABLE, PUBLIC :: collop_nu_ginf(:,:)
 
   ! D(m,mp)
-  INTEGER, PUBLIC                    :: collop_D_m_min  = 0      
-  INTEGER, PUBLIC                    :: collop_D_m_max  = 0      
-  INTEGER, PUBLIC                    :: collop_D_mp_min = 0      
-  INTEGER, PUBLIC                    :: collop_D_mp_max = 0      
+  INTEGER, PUBLIC                    :: collop_D_m_min  = 0
+  INTEGER, PUBLIC                    :: collop_D_m_max  = 0
+  INTEGER, PUBLIC                    :: collop_D_mp_min = 0
+  INTEGER, PUBLIC                    :: collop_D_mp_max = 0
   REAL(kind=dp), ALLOCATABLE, PUBLIC :: collop_D_gee(:,:)
 
   ! I(m,mp,lp)
-  INTEGER, PUBLIC                    :: collop_I_m_min  = 0      
-  INTEGER, PUBLIC                    :: collop_I_m_max  = 0      
-  INTEGER, PUBLIC                    :: collop_I_mp_min = 0      
-  INTEGER, PUBLIC                    :: collop_I_mp_max = 0      
-  INTEGER, PUBLIC                    :: collop_I_lp_min = 0      
-  INTEGER, PUBLIC                    :: collop_I_lp_max = 0      
+  INTEGER, PUBLIC                    :: collop_I_m_min  = 0
+  INTEGER, PUBLIC                    :: collop_I_m_max  = 0
+  INTEGER, PUBLIC                    :: collop_I_mp_min = 0
+  INTEGER, PUBLIC                    :: collop_I_mp_max = 0
+  INTEGER, PUBLIC                    :: collop_I_lp_min = 0
+  INTEGER, PUBLIC                    :: collop_I_lp_max = 0
   REAL(kind=dp), ALLOCATABLE, PUBLIC :: collop_I_gee(:,:,:)
   ! ---------------------------------------------------------------------------
-  ! private variables 
+  ! private variables
   !
   ! unit
   INTEGER, PRIVATE :: collop_unit = 300
@@ -180,7 +180,7 @@ CONTAINS
     IF (ALLOCATED(collop_A3)) DEALLOCATE(collop_A3)
     IF (ALLOCATED(collop_C))  DEALLOCATE(collop_C)
     ! open
-    OPEN(unit=collop_unit,file=full_file(collop_file_A), & 
+    OPEN(unit=collop_unit,file=full_file(collop_file_A), &
          status='old',action='read',iostat=openstatus)
     IF (openstatus .NE. 0) THEN
        PRINT *, 'Can not open file: ',full_file(collop_file_A)
@@ -228,7 +228,7 @@ CONTAINS
     ! deallocate
     IF (ALLOCATED(collop_nu_gee))  DEALLOCATE(collop_nu_gee)
     ! open
-    OPEN(unit=collop_unit,file=full_file(collop_file_nu_gee), & 
+    OPEN(unit=collop_unit,file=full_file(collop_file_nu_gee), &
          status='old',action='read',iostat=openstatus)
     IF (openstatus .NE. 0) THEN
        PRINT *, 'Can not open file: ',full_file(collop_file_nu_gee)
@@ -275,7 +275,7 @@ CONTAINS
     ! deallocate
     IF (ALLOCATED(collop_nu_ginf))  DEALLOCATE(collop_nu_ginf)
     ! open
-    OPEN(unit=collop_unit,file=full_file(collop_file_nu_ginf), & 
+    OPEN(unit=collop_unit,file=full_file(collop_file_nu_ginf), &
          status='old',action='read',iostat=openstatus)
     IF (openstatus .NE. 0) THEN
        PRINT *, 'Can not open file: ',full_file(collop_file_nu_ginf)
@@ -322,7 +322,7 @@ CONTAINS
     ! deallocate
     IF (ALLOCATED(collop_D_gee))  DEALLOCATE(collop_D_gee)
     ! open
-    OPEN(unit=collop_unit,file=full_file(collop_file_D), & 
+    OPEN(unit=collop_unit,file=full_file(collop_file_D), &
          status='old',action='read',iostat=openstatus)
     IF (openstatus .NE. 0) THEN
        PRINT *, 'Can not open file: ',full_file(collop_file_D)
@@ -369,7 +369,7 @@ CONTAINS
     ! deallocate
     IF (ALLOCATED(collop_I_gee))  DEALLOCATE(collop_I_gee)
     ! open
-    OPEN(unit=collop_unit,file=full_file(collop_file_I), & 
+    OPEN(unit=collop_unit,file=full_file(collop_file_I), &
          status='old',action='read',iostat=openstatus)
     IF (openstatus .NE. 0) THEN
        PRINT *, 'Can not open file: ',full_file(collop_file_I)
@@ -427,7 +427,7 @@ CONTAINS
   END SUBROUTINE collop_construct_all
 
   ! ---------------------------------------------------------------------------
-  SUBROUTINE collop_deconstruct_all    
+  SUBROUTINE collop_deconstruct_all
     ! -------------------------------------------------------------------------
     ! A(m,k) k = 1,2,3
     IF (ALLOCATED(collop_A))  DEALLOCATE(collop_A)
@@ -491,7 +491,7 @@ CONTAINS
 
     integer, parameter       :: isw_adjoint=1
     REAL(kind=dp), PARAMETER :: pi=3.14159265358979d0
-    integer                  :: l 
+    integer                  :: l
 
     IF(collop_A_m_min.NE.0    .OR.                                          &
        collop_nu_m_min.NE.0   .OR.                                          &
@@ -535,7 +535,7 @@ CONTAINS
     ALLOCATE(weightlag(3,0:lag))
 
 ! Comment from 19.09.07:
-! Here sources, asource, and flux convolution factors, weightlag, have 
+! Here sources, asource, and flux convolution factors, weightlag, have
 ! opposite signs compared to the short writeup of Georg. This does not change
 ! signs of diffusion matrix
 

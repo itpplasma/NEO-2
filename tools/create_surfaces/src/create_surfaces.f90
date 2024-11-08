@@ -328,7 +328,7 @@ program create_surfaces
       tau_ee=3.d0*e_mass**2*v_te**3/(16.d0*sqrt(pi)*n_surf(k)*e_charge**4*collog)
 
       !**********************************************************
-      ! Change by  TU Graz ITPcp Plasma- 11.02.2016
+      ! Change by TU Graz ITPcp Plasma - 11.02.2016
       ! Internal consistency check of collisionality shows that in NEO-2
       ! $\kappa = 2/l_c$, where $l_c = 1/(v_{te} T_{ee})$
       !**********************************************************

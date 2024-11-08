@@ -1473,7 +1473,7 @@ CONTAINS
     ELSE IF  (lab_swi .EQ. 4) THEN         ! W7X file
       curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -
       !**********************************************************
-      ! Patch from  TU Graz ITPcp Plasma- 20.11.2014
+      ! Patch from TU Graz ITPcp Plasma - 20.11.2014
       ! See mail from Winfried Kernbichler archived at
       ! /proj/plasma/DOCUMENTS/Neo2/Archive/
       !**********************************************************
@@ -1497,7 +1497,7 @@ CONTAINS
       iota     = iota
     ELSE IF  (lab_swi .EQ. 6) THEN         ! NEW IPP, HSX
       !**********************************************************
-      ! Change from  TU Graz ITPcp Plasma- 02.12.2015
+      ! Change from TU Graz ITPcp Plasma - 02.12.2015
       ! This corrects the direction of the poloidal current to
       ! match the Boozer file w7x-m24li.bc
       !**********************************************************
@@ -1505,7 +1505,7 @@ CONTAINS
       curr_pol = curr_pol * 2.d-7 * nfp               ! After patch
 
       !**********************************************************
-      ! Patch from  TU Graz ITPcp Plasma- 20.11.2014
+      ! Patch from TU Graz ITPcp Plasma - 20.11.2014
       ! See mail from Winfried Kernbichler archived at
       ! /proj/plasma/DOCUMENTS/Neo2/Archive/
       !**********************************************************
@@ -1528,7 +1528,7 @@ CONTAINS
     ELSE IF  (lab_swi .EQ. 8) THEN         ! NEW IPP TOKAMAKK
       curr_pol = - curr_pol * 2.d-7 * nfp   ! ? -
       !**********************************************************
-      ! Patch from  TU Graz ITPcp Plasma- 20.11.2014
+      ! Patch from TU Graz ITPcp Plasma - 20.11.2014
       ! See mail from Winfried Kernbichler archived at
       ! /proj/plasma/DOCUMENTS/Neo2/Archive/
       !**********************************************************

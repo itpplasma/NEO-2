@@ -136,46 +136,46 @@ Old stable version?
 Version used for example by Matyas.
 0.5.2
 
-k_coefficient_in_par 31ddff0af2fa8701fbf37cd15d358466c992583f
+k_coefficient_in_par 0a1d1d742db80074a741a776e1ed714217fd1302
 Computation of k coefficient in NEO-2-PAR version
 0.5.1
 
-multispecies 47f03ca51b7c6ff4f84fbbc90730c54be1cda943
+multispecies 7ddb095bbe2ccd4dbe73526047026477de7f9546
 Support for multi-species computations
 0.5
 
-merge_magnetic_routines 5e3cbc630999f535b974c9b0562ccf353996c606
+merge_magnetic_routines 8b6845ef60e7f7e90d1970979b130b22b6bec1a8
 Final merge of magnetics routines.
 0.4.1
 
-relativistic_collision_operator 42ff711b72681e3f2b80e74d293b51c451931dd1
+relativistic_collision_operator 10fc644158fd701f31d5bc21f7979b6644adf1df
 Support for relativistic collision operator (for Braams/Karney and high
     order Legendre expansion). Results benchmarked to SYNCH.
 0.4
 
-merging_of_codes a73c83c0d7e89ac2ddaba24daabdf3ac861f274f
-Merging of codes by gernot and andreas
+merging_of_codes dcb6855c2edd4a6b23d51e73e16dc0de00350c4a
+Merging of PAR and QL codes
 0.3
 
-first_modular_version 2e44f415f4a88822544c721a8fb34016bf8845e1
+first_modular_version 551d2c38cd47f5c720ef07abd062c54895b839dd
 first modular version
 0.2.1
 
-hdf5_support 0d367fabd851ccedfb3988743cf9a857e780a54d
+hdf5_support fbf60e2167edf34900607f5926e9a49941b6f2a8
 HDF5 Support
 0.2
 
-arbitrary_base_functions 33ca47c8f67c24da67e59c571b856f17fe5ca680
+arbitrary_base_functions 227d735fb50bf3a334c106fd1603d0cc164d8c14
 arbitrary base functions
 0.1
 
-initial_release_martitsch 1b2e1ac1ce869a7cbbb294c0a32138166ed8b8f8
-initial release of Andreas branch.
-0.0martitsch
+initial_release_ql 7928e9a6be17852982dd90e5b804a1e6887934fa
+initial release of QL branch.
+0.0ql
 
-initial_release_kapper 425b1fd81b40364ff5893245527fccdfe8658d9b
-initial release of Gernot branch.
-0.0kapper
+initial_release_par dcd0a68b23b4c5e57414d63c96f434c7fece4048
+initial release of PAR branch.
+0.0par
 
 
 

@@ -1,6 +1,6 @@
 !-----------------------------------------------------------------------------------------!
 ! module: gsl_specialfunctions_mod                                                        !
-! authors: Gernot Kapper, Andreas F. Martitsch                                            !
+! authors: TU Graz ITPcp Plasma, Andreas F. Martitsch                                            !
 ! date: 14.03.2017                                                                        !
 ! version: 0.1                                                                            !
 !-----------------------------------------------------------------------------------------!
@@ -15,13 +15,13 @@ module gsl_specialfunctions_mod
   implicit none
 
   contains
-  
+
   function besselk(n, z)
     integer :: n
     real(fgsl_double) :: z, besselk
-    
+
     besselk = fgsl_sf_bessel_kcn(n, z)
-    
+
   end function besselk
-  
+
 end module gsl_specialfunctions_mod
