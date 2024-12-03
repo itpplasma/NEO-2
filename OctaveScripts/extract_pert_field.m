@@ -35,7 +35,7 @@ function extract_pert_field(file_base, file_ext, file_descr)
   tline = fgetl(fid);
   data_c{k} = tline;
   while ischar(tline)
-    % disp(tline)
+        % disp(tline)
     tline = fgetl(fid);
     if ischar(tline)
       k = k + 1;
@@ -197,7 +197,7 @@ function extract_pert_field(file_base, file_ext, file_descr)
           otherwise
             error('Invalid format in input .bc file.')
           end
-
+          
 
           data(:,7)=data(:,7)/nper;
           data(:,8)=data(:,8)/nper;
@@ -243,9 +243,9 @@ function extract_pert_field(file_base, file_ext, file_descr)
     end
 
     if strcmp(file_descr,'cos_harm')
-      k_start = k_start+5 + ((m0b+1)*(2*n0b+1)) - 1;
+        k_start = k_start+5 + (n0b+1+m0b*(2*n0b+1)) - 1;
     else
-      k_start = k_start+5 + (n0b+1+m0b*(2*n0b+1)) - 1;
+        k_start = k_start+5 + ((m0b+1)*(2*n0b+1)) - 1;
     end
 
   end
