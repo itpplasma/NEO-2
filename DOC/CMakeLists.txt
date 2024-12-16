@@ -14,7 +14,7 @@ find_package(Doxygen
 
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/Doxygen_Reference_Manual.pdf
-  COMMAND cmake -E chdir ${PROJECT_BINARY_DIR}/latex/ make && cp ${PROJECT_BINARY_DIR}/latex/refman.pdf ${CMAKE_BINARY_DIR}/Doxygen_Reference_Manual.pdf
+  COMMAND cmake -E chdir ${PROJECT_BINARY_DIR}/latex/ make && mv ${PROJECT_BINARY_DIR}/latex/refman.pdf ${PROJECT_BINARY_DIR}/Doxygen_Reference_Manual.pdf
   DEPENDS latex
   )
 
@@ -50,4 +50,4 @@ add_latex_document(ExtraDocuments/neo-2-par-eccd_runs.tex)
 add_latex_document(ExtraDocuments/neo-2-ql-demo_runs.tex)
 
 add_custom_target(doc
-  ALL DEPENDS ${CMAKE_BINARY_DIR}/Doxygen_Reference_Manual.pdf DOC/safepdf)
+  ALL DEPENDS ${PROJEC_BINARY_DIR}/Doxygen_Reference_Manual.pdf DOC/safepdf)
