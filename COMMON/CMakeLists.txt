@@ -1,9 +1,7 @@
-cmake_minimum_required (VERSION 3.18)
+cmake_minimum_required(VERSION 3.20)
 
-project (NEO-2-COMMON)
+project(NEO-2-COMMON)
 enable_testing()
-
-include(${PROJECT_SOURCE_DIR}/ProjectConfig.cmake.in)
 
 ### SUITESPARSE
 set(SUITESPARSE_SRC_FILES

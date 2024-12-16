@@ -9,7 +9,6 @@ enable_language(Fortran)
 
 ### Define paths to external libraries (load external file)
 include(${CMAKE_SOURCE_DIR}/ProjectConfig.cmake.in)
-#include(${CMAKE_SOURCE_DIR}/ProjectConfig.Debian8.cmake.in)
 
 ### Define the name of the executable
 set(PROJECT_EXE_NAME "h5merge_multispec.x")
@@ -20,12 +19,6 @@ set(CMAKE_Fortran_FLAGS "-g -O2 -Wall")
 
 ### HDF5
 find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
-# message(STATUS "${HDF5_INCLUDE_DIRS}")
-# message(STATUS "${HDF5_LIBRARIES}")
-# message(STATUS "${HDF5_Fortran_LIBRARIES}")
-# message(STATUS "${HDF5_HL_LIBRARIES}")
-# message(STATUS "${HDF5_Fortran_HL_LIBRARIES}")
-# message(STATUS "${HDF5_VERSION}")
 
 # HDF5 interface
 include_directories(${NEO2_Inc})
@@ -43,7 +36,7 @@ set(Interface_Libs
 	${HDF5_Fortran_LIBRARIES}
 	${HDF5_LIBRARIES}
         lapack
-        blas	
+        blas
 )
 
 ### Linking

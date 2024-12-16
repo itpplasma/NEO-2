@@ -2,8 +2,13 @@
 set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
 ### Path to the external libraries
-set(PROJLIBS $ENV{CODE}/external CACHE STRING "External library path")
-set(LIBNEOLIBS $ENV{CODE}/libneo CACHE STRING "libneo path")
+if (DEFINED ENV{CODE})
+    message(STATUS "External libraries in $CODE=" $ENV{CODE})
+    set(PROJLIBS $ENV{CODE}/external CACHE STRING "External library path")
+    set(LIBNEOLIBS $ENV{CODE}/libneo CACHE STRING "libneo path")
+else()
+    add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty)
+endif()
 
 ### Directories of MPE
 set(MPE_PATH /afs/itp.tugraz.at/opt/mpe/1.3.0/)

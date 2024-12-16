@@ -1,6 +1,6 @@
-cmake_minimum_required (VERSION 3.18)
+cmake_minimum_required(VERSION 3.20)
 
-project (NEO-2-PAR)
+project(NEO-2-PAR)
 enable_testing()
 
 set(EXE_NAME "neo_2_par.x")
