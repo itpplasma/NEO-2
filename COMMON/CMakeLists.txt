@@ -1,36 +1,16 @@
 ### Initialize CMake (some internal stuff)
 cmake_minimum_required (VERSION 3.18)
 
-project (neo-2-common)
-enable_language (Fortran)
+project (NEO-2-COMMON)
 enable_testing()
 
 ### Define paths to external libraries (load external file)
 include(${PROJECT_SOURCE_DIR}/ProjectConfig.cmake.in)
 
-set(CMAKE_Fortran_FLAGS " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
-
-find_library(LIBGSL gsl)
-# FGSL
-find_library(LIBFGSL fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
-include_directories(${FGSL_INC})
-
-### HDF5
-find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
-include_directories(${HDF5_INCLUDE_DIRS})
-# HDF5 interface
-find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_PATH)
-
-### SuiteSparse and METIS - ignore if already found.
-if (SUITESPARSEQR_FOUND)
-else (SUITESPARSEQR_FOUND)
-  find_package(SuiteSparse REQUIRED)
-endif (SUITESPARSEQR_FOUND)
-
 ### SUITESPARSE ###
-set(SUITESPARSE_SRC_FILES_VER
-        umf4_f77wrapper_ver_4_5.c
-        umf4_f77zwrapper_ver_4_5.c
+set(SUITESPARSE_SRC_FILES
+  umf4_f77wrapper_ver_4_5.c
+  umf4_f77zwrapper_ver_4_5.c
 )
 set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
 set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
@@ -117,10 +97,27 @@ set_source_files_properties(${COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLA
 
 add_library(common STATIC
   ${COMMON_FILES}
+  ${SUITESPARSE_SRC_FILES}
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
 target_include_directories(common PUBLIC "${NEO2_Inc}")
 target_include_directories(common PUBLIC "${NEO2_Inc}/src")
+target_link_libraries(common PUBLIC
+  ${LIBFGSL} ${GSL_LIBRARIES}
+  ${SUITESPARSE_LIBRARIES}
+  ${LIBNEO}
+  ${LIBMAGFIE}
+  ${MyMPILib_lib}
+  ${MPE_lib}
+  ${MPI_Fortran_LIBRARIES}
+  ${HDF5_tools_lib}
+  ${HDF5_Fortran_HL_LIBRARIES}
+  ${HDF5_Fortran_LIBRARIES}
+  ${BLAS_LIBRARIES}
+  ${LAPACK_LIBRARIES}
+  ${NETCDF_LIBS}
+  -lz -lpthread
+)
 
 if ($ENV{COMMON_UNIT_TESTS}x STREQUAL "TRUEx")
   find_package(PFUNIT REQUIRED)
@@ -128,9 +125,14 @@ if ($ENV{COMMON_UNIT_TESTS}x STREQUAL "TRUEx")
   add_subdirectory(unit_tests)
 endif()
 
+configure_file (
+  "${PROJECT_SOURCE_DIR}/cmake_version.f90.in"
+  "${PROJECT_BINARY_DIR}/cmake_version.f90"
+  )
+
 add_custom_target(
     NEO-2-Versioning
-    COMMAND ../ShellScripts/tag_version.sh
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    COMMAND ${CMAKE_SOURCE_DIR}/ShellScripts/tag_version.sh
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
 )
 add_dependencies(common NEO-2-Versioning)
