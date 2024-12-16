@@ -4,7 +4,7 @@ project (NEO-2-Par)
 enable_language (Fortran)
 enable_testing()
 
-set(EXE_NAME "neo_2.x")
+set(EXE_NAME "neo_2_par.x")
 
 # Custom CMake Modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../COMMON/CMAKE_TOOLS")
@@ -76,11 +76,11 @@ if (MPI_SUPPORT)
 endif ()
 
 if (MPE_SUPPORT)
-        message(STATUS "MPE-Support activated, MPE-Path: ${MPE_PATH}")
-        if (DEFINED MPE_PATH)
-                include_directories(${MPE_PATH}/include)
-        endif ()
-        add_definitions(-DMPE_SUPPORT)
+  message(STATUS "MPE-Support activated, MPE-Path: ${MPE_PATH}")
+    if (DEFINED MPE_PATH)
+      include_directories(${MPE_PATH}/include)
+    endif ()
+    add_definitions(-DMPE_SUPPORT)
   find_library(MPE_lib mpe ${MPE_PATH}/lib)
 endif ()
 

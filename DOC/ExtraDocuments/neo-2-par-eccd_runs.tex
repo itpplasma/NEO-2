@@ -181,7 +181,6 @@ are:
 \begin{itemize}
 \item SuiteSparse
 \item Metis
-\item SuperLU
 \item GSL
 \item FGSL
 \item HDF5 - interfaced via hdf5tools
@@ -191,8 +190,7 @@ are:
 
 SuiteSparse is used for solving the sparse linear system of differential
 equations in the ripple solver. Metis is used by SuiteSparse for speedup
-of some specific routines and is not obligatory. SuperLU can be used
-instead of SuiteSparse by a switch in the input file.
+of some specific routines and is not obligatory. 
 
 The GSL (Gnu Scientific Library) and its Fortran Interface FGSL are used
 for several purposes. The first one provides very efficient numerical
@@ -1243,16 +1241,12 @@ Final change was adding a elseif-clause of the compiler-id check.
     set(NEO2_Libs ${LIBNEOLIBS}/Build-7.3.0/ CACHE STRING "Libneo path")
 \end{verbatim}
 
-In \vv{CMakeSources.in} the lines corresponding to SuperLU have been
-commented, as it was decided to compile only one of SuiteSparse and SuperLU.
-
 In \vv{CMakeLists.txt} lines
 \begin{verbatim}
 include_directories(${FGSL_INC})
 include_directories(${HDF5_Fortran_INCLUDE_DIRS})
 \end{verbatim}
 have been added (with other include\_directory calls).
-The lines correspondig to SuperLU have been commented.
 Searching for gsl is changed to (from find\_library)
 \begin{verbatim}
 find_package(GSL COMPONENTS GSL_LIBRARY GSL_CBLAS_LIBRARY REQUIRED)
@@ -1264,9 +1258,6 @@ ${LIBFGSL}
 ${LIBGSL}
 ${GSL_LIBRARIES}
 \end{verbatim}
-
-In \vv{COMMON/sparse_mod.f90} the body of the \vv{SuperLU} subroutines
-have been commented.
 
 \subsubsection{Additional hints for compiling}
 The intel compiler has been used to compile \vv{libneo} and \vv{NEO-2},
@@ -1290,37 +1281,6 @@ is not that \vv{hdf5_tools} (or the modules) is not found, the problem
 is that \vv{hdf5} (or the modules) is not found.
 Note that a line break has been added, denoted with \& at the end of the
 line and the beginning of the continuation line.
-
-Error messages of the kind
-\begin{verbatim}
-PATH/sparse_mod.f90.o: In function `sparse_mod_mp_sparse_solve_superlucomplex_b1_':
-sparse_mod.f90:(.text+0xbc5a): undefined reference to `c_fortran_zgssv_'
-sparse_mod.f90:(.text+0xc540): undefined reference to `c_fortran_zgssv_'
-sparse_mod.f90:(.text+0xcdcf): undefined reference to `c_fortran_zgssv_'
-\end{verbatim}
-mean that there are still references to \vv{SuperLU} routines, either
-comment them or also compile SuperLU.
-
-\vv{SuperLU} has been compiled afterwards using a buildcommands file
-\begin{verbatim}
-#!/bin/bash
-
-BUILDFOLDER='Build-7.3.0'
-
-mkdir -p ${BUILDFOLDER}
-cd ${BUILDFOLDER}
-
-cmake .. \
-  -DCMAKE_INSTALL_PREFIX=../${BUILDFOLDER} \
-  -DTPL_BLAS_LIBRARIES=gslcblas
-make
-make install
-\end{verbatim}
-although it is not clear if the parameter \vv{TPL_BLAS_LIBRARIES} worked
-as intended, as the blas library suplied with \vv{SuperLU} was compiled
-anyway.
-Unfortunately the library could not be found during configuration of
-\vv{NEO-2}, and thus could not be used.
 
 % ----------------------------------------------------------------------
 \subsection{Submitting a job}

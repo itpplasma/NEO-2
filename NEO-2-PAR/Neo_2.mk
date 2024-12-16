@@ -58,13 +58,6 @@ BLAS_LIB    = -lblas
 
 # Project Libraries
 PROJLIBS = /proj/plasma/Libs/
-# SuperLU V. 4.1 and SuiteSparse V. 3.6.0
-# Fortran-Interface of SuiteSparse is only tested 
-SUPERLU_VER = 4.1
-SUPERLU_DIR = $(PROJLIBS)SuperLU/SuperLU_$(SUPERLU_VER)/
-SUPERLU_HDR = $(SUPERLU_DIR)SRC/
-SUPERLU_F90 = $(SUPERLU_DIR)FORTRAN/
-SUPERLU_LIB = -L$(SUPERLU_DIR)lib/ -lsuperlu_4.1
 SUITESPARSE_DIR = $(PROJLIBS)SuiteSparse_libandinclude/
 SUITESPARSE_HDR= $(SUITESPARSE_DIR)include/
 SUITESPARSE_F90 = $(SUITESPARSE_DIR)F90/
@@ -148,7 +141,7 @@ ifeq ($(OSTYPE), Linux)
     CFLAGS    += "-D DOUBLE_APPEND_FORTRAN"
     LDFLAGS   += # -static
     #LIBS = -L/usr/lib/gcc-lib/i386-redhat-linux/2.96/ -L/proj/plasma/Libs/ -llapack_amd_lah -lblas_amd_lah -lg2c
-    LIBS = $(SUPERLU_LIB) $(LAPACK_LIB) $(BLAS_LIB) # -lg2c
+    LIBS = $(LAPACK_LIB) $(BLAS_LIB) # -lg2c
     CUT_ASM_WARN = 2>&1 | grep -v "/tmp/asm"
   endif
 
@@ -215,7 +208,7 @@ ifeq ($(OSTYPE), Linux)
     CFLAGS    += "-D DOUBLE_APPEND_FORTRAN"
     LDFLAGS   += #-static
     CUT_ASM_WARN = 
-    LIBS = $(SUPERLU_LIB) $(SUITESPARSE_LIB) $(LAPACK_LIB) $(BLAS_LIB) # -lg2c
+    LIBS = $(SUITESPARSE_LIB) $(LAPACK_LIB) $(BLAS_LIB) # -lg2c
   endif
 
   ifdef DEBUG    # valgrind --leak-check=yes myprog arg1 arg2
@@ -369,12 +362,6 @@ OBJS/vvn_w7as.o: vvn_w7as.f Neo_2.mk
 OBJS/vvn_legendre.o: vvn_legendre.f Neo_2.mk
 	$(FC) $(DEBUGFLAG) $(FFLAGS) -c vvn_legendre.f
 	mv vvn_legendre.o OBJS
-OBJS/c_fortran_dgssv.o: $(SUPERLU_F90)c_fortran_dgssv.c Neo_2.mk
-	$(CC) $(CDEBUGFLAG) $(CFLAGS) -I$(SUPERLU_HDR) -c $(SUPERLU_F90)c_fortran_dgssv.c
-	mv c_fortran_dgssv.o OBJS
-OBJS/c_fortran_zgssv.o: $(SUPERLU_F90)c_fortran_zgssv.c Neo_2.mk
-	$(CC) $(CDEBUGFLAG) $(CFLAGS) -I$(SUPERLU_HDR) -c $(SUPERLU_F90)c_fortran_zgssv.c
-	mv c_fortran_zgssv.o OBJS
 OBJS/umf4_f77wrapper64.o: $(SUITESPARSE_F90)umf4_f77wrapper.c Neo_2.mk
 	$(CC) -I$(SUITESPARSE_HDR) -DDLONG -c $(SUITESPARSE_F90)umf4_f77wrapper.c -o umf4_f77wrapper64.o
 	mv umf4_f77wrapper64.o OBJS

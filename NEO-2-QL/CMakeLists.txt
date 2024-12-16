@@ -1,5 +1,5 @@
-### Initialize CMake (some internal stuff)
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required (VERSION 3.18)
+
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../COMMON/CMAKE_TOOLS")
 
@@ -16,10 +16,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
   set(CMAKE_BUILD_TYPE "RELEASE")
 endif ()
 
-set(EXE_NAME "neo_2.x")
-
-### Macro for comparison of version strings
-include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
+set(EXE_NAME "neo_2_ql.x")
 
 ### Define paths to external libraries (load external file)
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
@@ -96,9 +93,6 @@ include_directories(${HDF5_INCLUDE_DIRS})
 ### SuiteSparse and METIS
 find_package(SuiteSparse REQUIRED)
 
-### SuperLU
-find_package(SuperLU REQUIRED)
-
 ### Find libraries
 find_library(LIBNEO neo ${NEO2_Libs} NO_DEFAULT_PATH)
 find_library(LIBMAGFIE magfie ${NEO2_Libs} NO_DEFAULT_PATH)
@@ -128,26 +122,6 @@ find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_P
 ### Source files
 include(CMakeSources.in)
 
-### Select C/Fortran-Interface for SuiteSparse
-COMPARE_VERSION_STRINGS(${SUITESPARSE_VERSION} "4.4" ISW_SUITESPARSE_VERSION)
-if(${ISW_SUITESPARSE_VERSION} LESS 0)
-  message(STATUS "Select C/Fortran-Interface for SuiteSparse version <  4.4 ...")
-  set(SUITESPARSE_SRC_FILES "${SUITESPARSE_SRC_FILES_VER_3_6}")
-else(${ISW_SUITESPARSE_VERSION} LESS 0)
-  message(STATUS "Select C/Fortran-Interface for SuiteSparse version >= 4.4 ...")
-  set(SUITESPARSE_SRC_FILES "${SUITESPARSE_SRC_FILES_VER_4_5}")
-endif(${ISW_SUITESPARSE_VERSION} LESS 0)
-
-### Select C/Fortran-Interface for SuperLU
-COMPARE_VERSION_STRINGS(${SUPERLU_VERSION_VAR} "5.0" ISW_SUPERLU_VERSION)
-if(${ISW_SUPERLU_VERSION} LESS 0)
-  message(STATUS "Select C/Fortran-Interface for SuperLU version <  5.0 ...")
-  set(SUPERLU_SRC_FILES "${SUPERLU_SRC_FILES_VER_4_1}")
-else(${ISW_SUPERLU_VERSION} LESS 0)
-  message(STATUS "Select C/Fortran-Interface for SuperLU version >= 5.0 ...")
-  set(SUPERLU_SRC_FILES "${SUPERLU_SRC_FILES_VER_5_0}")
-endif(${ISW_SUPERLU_VERSION} LESS 0)
-
 configure_file (
   "${PROJECT_SOURCE_DIR}/common/cmake_version.f90.in"
   "${PROJECT_SOURCE_DIR}/cmake_version.f90"
@@ -157,7 +131,6 @@ configure_file (
 add_executable(${EXE_NAME}
         ${NEO2_SRC_FILES}
         ${SUITESPARSE_SRC_FILES}
-        ${SUPERLU_SRC_FILES}
         ${COLLOPLIB_FILES}
 )
 
@@ -171,7 +144,6 @@ add_subdirectory(common/)
 target_link_libraries(${EXE_NAME}
         common
         ${LIBFGSL} ${LIBGSL}
-        ${SUPERLU_LIBRARIES}
         ${SUITESPARSE_LIBRARIES}
         ${MyMPILib_lib}
         ${LIBNEO}
