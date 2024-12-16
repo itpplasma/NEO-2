@@ -1,29 +1,19 @@
-### Initialize CMake (some internal stuff)
-cmake_minimum_required (VERSION 2.8.9)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../COMMON/CMAKE_TOOLS")
+cmake_minimum_required (VERSION 3.18)
 
-# Enable project
 project (NEO-2-Par)
 enable_language (Fortran)
 enable_testing()
 
-### Build name
 set(EXE_NAME "neo_2.x")
 
-### Macro for comparison of version strings
-include(../COMMON/CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
+# Custom CMake Modules
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../COMMON/CMAKE_TOOLS")
 
 # Include BuildConfig, where paths are defined
 if (EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
   include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 endif()
-include(${CMAKE_SOURCE_DIR}/common/ProjectConfig.cmake.in)
-
-# MPI is required by this NEO-2 version
-find_package(MPI REQUIRED)
-
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
+include(${PROJECT_SOURCE_DIR}/common/ProjectConfig.cmake.in)
 
 # MPE allows graphical work load evaluation of parallel processes
 option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" OFF)
@@ -82,14 +72,12 @@ if (MPE_SUPPORT)
   find_library(MPE_lib mpe ${MPE_PATH}/lib)
 endif ()
 
-### HDF5
+### Upstream dependencies
+find_package(MPI REQUIRED)
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
 find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
-
-### SuiteSparse and METIS
 find_package(SuiteSparse REQUIRED)
-
-### SuperLU
-find_package(SuperLU REQUIRED)
 
 ### Find libraries
 find_library(LIBNEO neo ${NEO2_Libs} NO_DEFAULT_PATH)
@@ -108,25 +96,6 @@ find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_P
 ### Source files
 include (CMakeSources.in)
 
-### Select C/Fortran-Interface for SuiteSparse
-COMPARE_VERSION_STRINGS(${SUITESPARSE_VERSION} "4.4" ISW_SUITESPARSE_VERSION)
-if(${ISW_SUITESPARSE_VERSION} LESS 0)
-  message(STATUS "Select C/Fortran-Interface for SuiteSparse version <  4.4 ...")
-  set(SUITESPARSE_SRC_FILES "${SUITESPARSE_SRC_FILES_VER_3_6}")
-else(${ISW_SUITESPARSE_VERSION} LESS 0)
-  message(STATUS "Select C/Fortran-Interface for SuiteSparse version >= 4.4 ...")
-  set(SUITESPARSE_SRC_FILES "${SUITESPARSE_SRC_FILES_VER_4_5}")
-endif(${ISW_SUITESPARSE_VERSION} LESS 0)
-
-### Select C/Fortran-Interface for SuperLU
-COMPARE_VERSION_STRINGS(${SUPERLU_VERSION_VAR} "5.0" ISW_SUPERLU_VERSION)
-if(${ISW_SUPERLU_VERSION} LESS 0)
-  message(STATUS "Select C/Fortran-Interface for SuperLU version <  5.0 ...")
-  set(SUPERLU_SRC_FILES "${SUPERLU_SRC_FILES_VER_4_1}")
-else(${ISW_SUPERLU_VERSION} LESS 0)
-  message(STATUS "Select C/Fortran-Interface for SuperLU version >= 5.0 ...")
-  set(SUPERLU_SRC_FILES "${SUPERLU_SRC_FILES_VER_5_0}")
-endif(${ISW_SUPERLU_VERSION} LESS 0)
 
 add_subdirectory(common/)
 
@@ -134,7 +103,6 @@ add_subdirectory(common/)
 add_executable(${EXE_NAME}
   ${NEO2_SRC_FILES}
   ${SUITESPARSE_SRC_FILES}
-  ${SUPERLU_SRC_FILES}
   ${MPI_SRC_FILES}
 )
 set_target_properties(${EXE_NAME} PROPERTIES COMPILE_FLAGS "${MPI_Fortran_COMPILE_FLAGS}")
@@ -144,7 +112,6 @@ set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAG
 target_link_libraries(${EXE_NAME}
   common
   ${LIBFGSL} ${LIBGSL}
-  ${SUPERLU_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
   ${LIBNEO}
   ${LIBMAGFIE}
@@ -167,7 +134,7 @@ set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
 add_custom_target(
     NEO-2-Versioning
     COMMAND ../ShellScripts/tag_version.sh
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 )
 add_dependencies(${EXE_NAME} NEO-2-Versioning)
 
@@ -183,18 +150,18 @@ endif()
 
 ### Testing section
 ADD_TEST(Test_Build_Code      "make")
-ADD_TEST(Test_Testcase1-Seq       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "0")
-ADD_TEST(Test_Testcase1-Par       ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "6")
-ADD_TEST(Test_Relativistic_BeliaevBudker-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BeliaevBudker" "0")
-ADD_TEST(Test_Relativistic_BeliaevBudker-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BeliaevBudker" "6")
-ADD_TEST(Test_Relativistic_BraamsKarney-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BraamsKarney" "0")
-ADD_TEST(Test_Relativistic_BraamsKarney-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BraamsKarney" "6")
+ADD_TEST(Test_Testcase1-Seq       ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "0")
+ADD_TEST(Test_Testcase1-Par       ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "6")
+ADD_TEST(Test_Relativistic_BeliaevBudker-Seq ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BeliaevBudker" "0")
+ADD_TEST(Test_Relativistic_BeliaevBudker-Par ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BeliaevBudker" "6")
+ADD_TEST(Test_Relativistic_BraamsKarney-Seq ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BraamsKarney" "0")
+ADD_TEST(Test_Relativistic_BraamsKarney-Par ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BraamsKarney" "6")
 
-ADD_TEST(Test_par_standard_polynomials-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_standard_polynomials" "0")
-ADD_TEST(Test_par_standard_polynomials-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_standard_polynomials" "6")
-ADD_TEST(Test_par_quadratic_polynomials-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_quadratic_polynomials" "0")
-ADD_TEST(Test_par_quadratic_polynomials-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_quadratic_polynomials" "6")
-ADD_TEST(Test_par_cubic_splines-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_cubic_splines" "0")
-ADD_TEST(Test_par_cubic_splines-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_cubic_splines" "6")
-ADD_TEST(Test_par_general_bsplines-Seq ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_general_bsplines" "0")
-ADD_TEST(Test_par_general_bsplines-Par ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_general_bsplines" "6")
+ADD_TEST(Test_par_standard_polynomials-Seq ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_standard_polynomials" "0")
+ADD_TEST(Test_par_standard_polynomials-Par ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_standard_polynomials" "6")
+ADD_TEST(Test_par_quadratic_polynomials-Seq ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_quadratic_polynomials" "0")
+ADD_TEST(Test_par_quadratic_polynomials-Par ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_quadratic_polynomials" "6")
+ADD_TEST(Test_par_cubic_splines-Seq ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_cubic_splines" "0")
+ADD_TEST(Test_par_cubic_splines-Par ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_cubic_splines" "6")
+ADD_TEST(Test_par_general_bsplines-Seq ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_general_bsplines" "0")
+ADD_TEST(Test_par_general_bsplines-Par ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_general_bsplines" "6")

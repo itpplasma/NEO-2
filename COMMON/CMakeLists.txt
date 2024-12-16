@@ -1,17 +1,12 @@
 ### Initialize CMake (some internal stuff)
-cmake_minimum_required (VERSION 2.8.9)
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMAKE_TOOLS")
+cmake_minimum_required (VERSION 3.18)
 
 project (neo-2-common)
 enable_language (Fortran)
 enable_testing()
 
-### Macro for comparison of version strings
-include(CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
-
 ### Define paths to external libraries (load external file)
-include(${CMAKE_SOURCE_DIR}/../COMMON/ProjectConfig.cmake.in)
+include(${PROJECT_SOURCE_DIR}/../../COMMON/ProjectConfig.cmake.in)
 
 set(CMAKE_Fortran_FLAGS " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
 
@@ -26,43 +21,14 @@ include_directories(${HDF5_INCLUDE_DIRS})
 # HDF5 interface
 find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_PATH)
 
-### SuperLU
-find_package(SuperLU REQUIRED)
-
 ### SuiteSparse and METIS - ignore if already found.
 if (SUITESPARSEQR_FOUND)
 else (SUITESPARSEQR_FOUND)
   find_package(SuiteSparse REQUIRED)
 endif (SUITESPARSEQR_FOUND)
 
-### SUPERLU ###
-set(SUPERLU_SRC_FILES_VER_4_1
-        c_fortran_dgssv.c
-        c_fortran_zgssv.c
-)
-set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFLAGS} -I${SUPERLU_INCLUDES}")
-set_source_files_properties(${SUPERLU_SRC_FILES_VER_4_1} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
-
-### SUPERLU Version 5.0 ###
-set(SUPERLU_SRC_FILES_VER_5_0
-        c_fortran_dgssv_ver_5_0.c
-        c_fortran_zgssv_ver_5_0.c
-)
-set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFLAGS} -I${SUPERLU_INCLUDES}")
-set_source_files_properties(${SUPERLU_SRC_FILES_VER_5_0} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
-
-
 ### SUITESPARSE ###
-set(SUITESPARSE_SRC_FILES_VER_3_6
-        ../COMMON/umf4_f77wrapper.c
-        ../COMMON/umf4_f77zwrapper.c
-)
-set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
-set_source_files_properties(../COMMON/umf4_f77wrapper.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(../COMMON/umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
-
-### SUITESPARSE Version 4.5 ###
-set(SUITESPARSE_SRC_FILES_VER_4_5
+set(SUITESPARSE_SRC_FILES_VER
         ../COMMON/umf4_f77wrapper_ver_4_5.c
         ../COMMON/umf4_f77zwrapper_ver_4_5.c
 )

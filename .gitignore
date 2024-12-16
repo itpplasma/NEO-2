@@ -39,6 +39,9 @@ install_manifest.txt
 NEO-2-QL/.directory
 
 # Ignore directories for building the code.
+[Bb]uild/*
+[Bb]uild-*/*
+*/[Bb]uild_*/*
 */[Bb]uild/*
 */[Bb]uild-*/*
 */[Bb]uild_*/*
@@ -63,3 +66,4 @@ NEO-2-QL/.directory
 *.toc
 DOC/html/*
 DOC/latex/*
+build/cmake_install.cmake
