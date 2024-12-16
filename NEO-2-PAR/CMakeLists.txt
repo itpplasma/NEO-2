@@ -4,35 +4,17 @@ project (NEO-2-PAR)
 enable_testing()
 
 set(EXE_NAME "neo_2_par.x")
+set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/OBJS)
 
-# Generic compiler flags
-set (CMAKE_Fortran_FLAGS_RELEASE "-O2")
-
-# Compiler dependent settings
-if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU")
-  set (CMAKE_Fortran_FLAGS "-cpp -ffpe-summary=invalid,zero,overflow")
-  set (CMAKE_Fortran_FLAGS_DEBUG "-g -fcheck=all -Wall -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label -Wshadow")
-elseif (${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
-        set (CMAKE_Fortran_FLAGS "-cpp -heap-arrays")
-endif ()
-set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/OBJS)
-
-# Coverage and unit tests
-set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
-set (CMAKE_Fortran_FLAGS_TEST "-O2 --coverage")
-
-### Source files
 include (CMakeSources.in)
 
-### Define executable
 add_executable(${EXE_NAME}
-  ${NEO2_SRC_FILES}
+  ${NEO2_PAR_SRC_FILES}
   ${MPI_SRC_FILES}
 )
 set_target_properties(${EXE_NAME} PROPERTIES COMPILE_FLAGS "${MPI_Fortran_COMPILE_FLAGS}")
 set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAGS}")
 
-### Add libraries linked with executable
 target_link_libraries(${EXE_NAME} common)
 target_include_directories(${EXE_NAME} PUBLIC "$<TARGET_PROPERTY:common,Fortran_MODULE_DIRECTORY>")
 
@@ -49,7 +31,6 @@ if (COPY_TO_ARCHIVE)
     )
 endif()
 
-### Testing section
 ADD_TEST(Test_Build_Code      "make")
 ADD_TEST(Test_Testcase1-Seq       ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "0")
 ADD_TEST(Test_Testcase1-Par       ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "6")

@@ -1,13 +1,11 @@
-### Initialize CMake (some internal stuff)
 cmake_minimum_required (VERSION 3.18)
 
 project (NEO-2-COMMON)
 enable_testing()
 
-### Define paths to external libraries (load external file)
 include(${PROJECT_SOURCE_DIR}/ProjectConfig.cmake.in)
 
-### SUITESPARSE ###
+### SUITESPARSE
 set(SUITESPARSE_SRC_FILES
   umf4_f77wrapper_ver_4_5.c
   umf4_f77zwrapper_ver_4_5.c
@@ -16,7 +14,7 @@ set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
 set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
-### FGSL user-defined interface ###
+### FGSL user-defined interface
 set(FGSL_USERINTERFACE_SOURCE_FILES
       gsl_roots_routines_mod.f90
       gsl_integration_routines_mod.f90

@@ -1,30 +1,20 @@
-### SUITESPARSE ###
-set(SUITESPARSE_SRC_FILES
-        ../COMMON/umf4_f77wrapper_ver_4_5.c
-        ../COMMON/umf4_f77zwrapper_ver_4_5.c
-)
-set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
-set_source_files_properties(../COMMON/umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(../COMMON/umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
-
-### MPI FILES ###
 if (MPI_SUPPORT)
-set (MPI_SRC_FILES
-        ./neo2scheduler_module.f90
-        ./parallelStorage_module.f90
-        ./wuGenericNeo2Workunit_module.f90
-)
-set_source_files_properties(${MPI_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
+  set (MPI_SRC_FILES
+    ./neo2scheduler_module.f90
+    ./parallelStorage_module.f90
+    ./wuGenericNeo2Workunit_module.f90
+  )
+  set_source_files_properties(${MPI_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 endif ()
 
-set(NEO2_SRC_FILES
-        ./propagator.f90
-        ./flint.f90
-        ./ripple_solver.f90
-        ./join_ripples_int.f90
-        ./join_ripples.f90
-        ./join_ends.f90
-        ./neo2.f90
-        ./timingInfo.f90
+set(NEO2_PAR_SRC_FILES
+  ./propagator.f90
+  ./flint.f90
+  ./ripple_solver.f90
+  ./join_ripples_int.f90
+  ./join_ripples.f90
+  ./join_ends.f90
+  ./neo2.f90
+  ./timingInfo.f90
 )
-set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
+set_source_files_properties(${NEO2_PAR_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")

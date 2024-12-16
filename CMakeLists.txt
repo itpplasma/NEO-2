@@ -19,7 +19,34 @@ endif ()
 option(MPI_SUPPORT "Enable MPI support?" ON)
 option(MPE_SUPPORT "Enable MPE for graphical MPI work load evaluation?" OFF)
 
+### Compiler flags
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
+
+if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
+elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+  message(STATUS "Setting Intel flags.")
+  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -cpp -mkl -heap-arrays -stand f08")
+endif ()
+
+if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  set(MY_DEBUG_FLAG_LIST
+  " -O0 -cpp -g"
+ " -ffpe-summary=invalid,zero,overflow "
+ " -fcheck=all "
+ " -fbacktrace "
+ " -Wall "
+ " -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label "
+ " -Wshadow "
+  )
+  string(REPLACE ";" "" MY_DEBUG_FLAG  ${MY_DEBUG_FLAG_LIST})
+  set(CMAKE_Fortran_FLAGS_DEBUG "${MY_DEBUG_FLAG}")
+elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+  set(CMAKE_Fortran_FLAGS_DEBUG "-cpp -mkl -g -warn all -stand f08 ")
+endif ()
+
+set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
+set (CMAKE_Fortran_FLAGS_TEST "-O2 --coverage")
 
 ### Upstream dependencies
 find_package(MPI REQUIRED)
