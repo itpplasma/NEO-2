@@ -13,5 +13,8 @@ ninja: $(BUILD_NINJA)
 test: ninja
 	cd $(BUILD_DIR) && ctest
 
+doc: ninja
+	cmake --build --preset default --target doc
+
 clean:
 	rm -rf $(BUILD_DIR)

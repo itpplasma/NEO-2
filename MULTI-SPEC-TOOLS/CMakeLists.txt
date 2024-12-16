@@ -1,5 +1,5 @@
 ### Basic settings
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required(VERSION 3.20)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 ### Define the project
@@ -16,6 +16,8 @@ set(CMAKE_Fortran_FLAGS "-g -O2 -Wall")
 add_executable(${PROJECT_EXE_NAME}
 	./h5merge_multispec.f90
 )
+
+add_dependencies(${PROJECT_EXE_NAME} LIBNEO)
 
 set(Interface_Libs
 	${HDF5_tools_lib}

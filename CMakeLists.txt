@@ -89,3 +89,6 @@ add_subdirectory(NEO-2-PAR)
 add_subdirectory(NEO-2-QL)
 add_subdirectory(MULTI-SPEC-TOOLS)
 add_subdirectory(tools/create_surfaces)
+
+### Optional target for docs
+add_subdirectory(DOC EXCLUDE_FROM_ALL)
