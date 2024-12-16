@@ -17,10 +17,6 @@ cmake_version.f90
 # File is created automatically from ?.
 version.f90
 
-# The make file is created by the cmake system, and thus not under
-# version controll.
-Makefile
-
 BuildConfig.txt
 
 # Ignore created executable.
