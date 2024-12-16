@@ -1,21 +1,10 @@
 cmake_minimum_required (VERSION 3.18)
 
-project (NEO-2-Par)
-enable_language (Fortran)
+project (NEO-2-PAR)
 enable_testing()
 
 set(EXE_NAME "neo_2_par.x")
 
-# Custom CMake Modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../COMMON/CMAKE_TOOLS")
-
-# Upstream dependencies
-find_package(MPI REQUIRED)
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
-find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
-find_package(GSL REQUIRED)
-find_package(SuiteSparse REQUIRED)
 
 # Include BuildConfig, where paths are defined
 if (EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
@@ -99,9 +88,6 @@ find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_P
 ### Source files
 include (CMakeSources.in)
 
-
-add_subdirectory(common/)
-
 ### Define executable
 add_executable(${EXE_NAME}
   ${NEO2_SRC_FILES}
@@ -133,13 +119,6 @@ target_include_directories(${EXE_NAME} PUBLIC "$<TARGET_PROPERTY:common,Fortran_
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-add_custom_target(
-    NEO-2-Versioning
-    COMMAND ../ShellScripts/tag_version.sh
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-)
-add_dependencies(${EXE_NAME} NEO-2-Versioning)
 
 if (COPY_TO_ARCHIVE)
   add_custom_command(

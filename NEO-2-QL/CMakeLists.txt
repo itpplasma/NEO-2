@@ -1,11 +1,7 @@
 cmake_minimum_required (VERSION 3.18)
 
-set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../COMMON/CMAKE_TOOLS")
-
 # Enable project
 project(NEO-2-NTV)
-enable_language(Fortran)
 enable_testing()
 
 ### Check Build-Type and set Build-Name extension
@@ -17,19 +13,6 @@ if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
 endif ()
 
 set(EXE_NAME "neo_2_ql.x")
-
-### Define paths to external libraries (load external file)
-if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-  include(${CMAKE_SOURCE_DIR}/common/ProjectConfig.cmake.in)
-elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-  include(${CMAKE_SOURCE_DIR}/common/ProjectConfig.cmake.in.intel)
-endif ()
-
-### MPI is required by this NEO-2 version
-find_package(MPI REQUIRED)
-
-# MPE allows graphical work load evaluation of parallel processes
-option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" OFF)
 
 # Print the current compiler
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
@@ -86,13 +69,6 @@ if (MPE_SUPPORT)
         find_library(MPE_lib mpe ${MPE_PATH}/lib)
 endif ()
 
-### HDF5
-find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
-include_directories(${HDF5_INCLUDE_DIRS})
-
-### SuiteSparse and METIS
-find_package(SuiteSparse REQUIRED)
-
 ### Find libraries
 find_library(LIBNEO neo ${NEO2_Libs} NO_DEFAULT_PATH)
 find_library(LIBMAGFIE magfie ${NEO2_Libs} NO_DEFAULT_PATH)
@@ -103,15 +79,6 @@ find_library(LIBGSL gsl)
 # FGSL
 find_library(LIBFGSL fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
 include_directories(${FGSL_INC})
-
-# LAPACK and BLAS
-if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-  find_library(lapack_lib lapack ${LAPACK_LIB} NO_DEFAULT_PATH)
-  find_library(f77blas_lib f77blas ${F77BLAS_LIB} NO_DEFAULT_PATH)
-  find_library(atlas_lib atlas ${ATLASBLAS_LIB} NO_DEFAULT_PATH)
-  find_library(open_blas_lapack_lib lapack ${OPEN_BLAS_LAPACK_LIB} NO_DEFAULT_PATH)
-  find_library(open_blas_lib blas ${OPEN_BLAS_LIB} NO_DEFAULT_PATH)
-endif ()
 
 # MyMPIlib
 find_library(MyMPILib_lib MyMPILib ${NEO2_Libs}/src/MyMPILib/ NO_DEFAULT_PATH)
@@ -134,37 +101,25 @@ add_executable(${EXE_NAME}
         ${COLLOPLIB_FILES}
 )
 
-if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-  set(LINALG_LIBRARIES ${open_blas_lib} ${open_blas_lapack_lib} pthread)
-endif ()
-
-add_subdirectory(common/)
-
 ### Add libraries linked with executable
 target_link_libraries(${EXE_NAME}
-        common
-        ${LIBFGSL} ${LIBGSL}
-        ${SUITESPARSE_LIBRARIES}
-        ${MyMPILib_lib}
-        ${LIBNEO}
-        ${LIBMAGFIE}
-        ${MPE_lib}
-        ${MPI_Fortran_LIBRARIES}
-        ${HDF5_tools_lib}
-        ${HDF5_Fortran_HL_LIBRARIES}
-        ${HDF5_Fortran_LIBRARIES}
-        ${NETCDF_LIBS}
-        ${LINALG_LIBRARIES}
-        )
-target_include_directories(${EXE_NAME} PUBLIC "$<TARGET_PROPERTY:common,Fortran_MODULE_DIRECTORY>")
-
-add_custom_target(
-    NEO-2-Versioning
-    COMMAND ../ShellScripts/tag_version.sh
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  common
+  ${LIBFGSL} ${GSL_LIBRARIES}
+  ${SUITESPARSE_LIBRARIES}
+  ${LIBNEO}
+  ${LIBMAGFIE}
+  ${MyMPILib_lib}
+  ${MPE_lib}
+  ${MPI_Fortran_LIBRARIES}
+  ${HDF5_tools_lib}
+  ${HDF5_Fortran_HL_LIBRARIES}
+  ${HDF5_Fortran_LIBRARIES}
+  ${BLAS_LIBRARIES}
+  ${LAPACK_LIBRARIES}
+  ${NETCDF_LIBS}
+  -lz -lpthread
 )
-add_dependencies(${EXE_NAME} NEO-2-Versioning)
-
+target_include_directories(${EXE_NAME} PUBLIC "$<TARGET_PROPERTY:common,Fortran_MODULE_DIRECTORY>")
 
 ### Specify command "make copy"
 add_custom_target(copy
@@ -175,6 +130,6 @@ add_custom_target(copy
 
 ### Testing section
 ADD_TEST(Test_Build_Code "make")
-ADD_TEST(Extended_QL_Multispecies  ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies" "2" "QL")
-ADD_TEST(Extended_QL_Multispecies_Read  ${CMAKE_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies_Read" "2" "QL")
+ADD_TEST(Extended_QL_Multispecies  ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies" "2" "QL")
+ADD_TEST(Extended_QL_Multispecies_Read  ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies_Read" "2" "QL")
 #ADD_TEST(Extended_QL_Multispecies  ${CMAKE_SOURCE_DIR}/../ShellScripts/test_scan.sh "Extended_QL_Scan_Kink" "QL")

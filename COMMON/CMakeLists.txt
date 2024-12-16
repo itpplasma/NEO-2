@@ -6,7 +6,7 @@ enable_language (Fortran)
 enable_testing()
 
 ### Define paths to external libraries (load external file)
-include(${PROJECT_SOURCE_DIR}/../../COMMON/ProjectConfig.cmake.in)
+include(${PROJECT_SOURCE_DIR}/ProjectConfig.cmake.in)
 
 set(CMAKE_Fortran_FLAGS " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
 
@@ -29,12 +29,12 @@ endif (SUITESPARSEQR_FOUND)
 
 ### SUITESPARSE ###
 set(SUITESPARSE_SRC_FILES_VER
-        ../COMMON/umf4_f77wrapper_ver_4_5.c
-        ../COMMON/umf4_f77zwrapper_ver_4_5.c
+        umf4_f77wrapper_ver_4_5.c
+        umf4_f77zwrapper_ver_4_5.c
 )
 set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
-set_source_files_properties(../COMMON/umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(../COMMON/umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
+set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
+set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
 ### FGSL user-defined interface ###
 set(FGSL_USERINTERFACE_SOURCE_FILES
@@ -127,3 +127,10 @@ if ($ENV{COMMON_UNIT_TESTS}x STREQUAL "TRUEx")
   enable_testing()
   add_subdirectory(unit_tests)
 endif()
+
+add_custom_target(
+    NEO-2-Versioning
+    COMMAND ../ShellScripts/tag_version.sh
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+)
+add_dependencies(common NEO-2-Versioning)
