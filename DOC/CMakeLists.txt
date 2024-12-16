@@ -46,5 +46,8 @@ add_latex_document(UserDoc/main.tex
   UserDoc/Todo.tex
 )
 
+add_latex_document(ExtraDocuments/neo-2-par-eccd_runs.tex)
+add_latex_document(ExtraDocuments/neo-2-ql-demo_runs.tex)
 
-add_custom_target(doc ALL DEPENDS ${CMAKE_BINARY_DIR}/Doxygen_Reference_Manual.pdf DOC/main)
+add_custom_target(doc
+  ALL DEPENDS ${CMAKE_BINARY_DIR}/Doxygen_Reference_Manual.pdf DOC/safepdf)
