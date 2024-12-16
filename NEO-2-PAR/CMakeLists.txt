@@ -9,14 +9,26 @@ set(EXE_NAME "neo_2.x")
 # Custom CMake Modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../COMMON/CMAKE_TOOLS")
 
+# Upstream dependencies
+find_package(MPI REQUIRED)
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
+find_package(GSL REQUIRED)
+find_package(SuiteSparse REQUIRED)
+
 # Include BuildConfig, where paths are defined
 if (EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
   include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 endif()
 include(${PROJECT_SOURCE_DIR}/common/ProjectConfig.cmake.in)
 
+# MPI support
+option(MPI_SUPPORT "Should the MPI-library be built with MPE-Support?" ON)
+
 # MPE allows graphical work load evaluation of parallel processes
 option(MPE_SUPPORT "Should the MPI-library be built with MPE-Support?" OFF)
+
 
 # Print the current compiler
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
@@ -55,14 +67,14 @@ configure_file (
 set (CMAKE_Fortran_FLAGS_COVERAGE "--coverage")
 set (CMAKE_Fortran_FLAGS_TEST "-O2 --coverage")
 
-set (MPI_SUPPORT 1)
 if (MPI_SUPPORT)
-        message(STATUS "MPI-Support activated")
-        if (DEFINED MPI_PATH)
-                include_directories(${MPI_PATH}/include)
-        endif ()
-        add_definitions(-DMPI_SUPPORT)
+  message(STATUS "MPI-Support activated")
+  if (DEFINED MPI_PATH)
+    include_directories(${MPI_PATH}/include)
+  endif ()
+  add_definitions(-DMPI_SUPPORT)
 endif ()
+
 if (MPE_SUPPORT)
         message(STATUS "MPE-Support activated, MPE-Path: ${MPE_PATH}")
         if (DEFINED MPE_PATH)
@@ -72,20 +84,11 @@ if (MPE_SUPPORT)
   find_library(MPE_lib mpe ${MPE_PATH}/lib)
 endif ()
 
-### Upstream dependencies
-find_package(MPI REQUIRED)
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
-find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
-find_package(SuiteSparse REQUIRED)
-
 ### Find libraries
 find_library(LIBNEO neo ${NEO2_Libs} NO_DEFAULT_PATH)
 find_library(LIBMAGFIE magfie ${NEO2_Libs} NO_DEFAULT_PATH)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-# GSL
-find_library(LIBGSL gsl)
 # FGSL
 find_library(LIBFGSL fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
 # MyMPIlib
@@ -111,7 +114,7 @@ set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAG
 ### Add libraries linked with executable
 target_link_libraries(${EXE_NAME}
   common
-  ${LIBFGSL} ${LIBGSL}
+  ${LIBFGSL} ${GSL_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
   ${LIBNEO}
   ${LIBMAGFIE}
