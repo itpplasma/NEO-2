@@ -62,4 +62,5 @@ NEO-2-QL/.directory
 *.toc
 DOC/html/*
 DOC/latex/*
+*-SAVE-ERROR
 build/cmake_install.cmake
