@@ -13,9 +13,3 @@ ExternalProject_Add(
     BUILD_IN_SOURCE 1
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
-
-# Optionally, you can add include directories and link libraries
-# to your project if you need to use FGSL in your code.
-# For example:
-# include_directories(${CMAKE_BINARY_DIR}/fgsl/src/FGSL/include)
-# target_link_libraries(your_target ${CMAKE_BINARY_DIR}/fgsl/src/FGSL/.libs/libfgsl.a)
