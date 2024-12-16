@@ -78,15 +78,6 @@ include_directories(${HDF5_INCLUDE_DIRS})
 find_package(GSL REQUIRED)
 find_package(SuiteSparse REQUIRED)
 
-### Own libraries and includes
-find_library(LIBNEO neo ${NEO2_Libs} NO_DEFAULT_PATH)
-find_library(LIBMAGFIE magfie ${NEO2_Libs} NO_DEFAULT_PATH)
-
-set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-find_library(LIBFGSL fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
-find_library(MyMPILib_lib MyMPILib ${NEO2_Libs}/src/MyMPILib/ NO_DEFAULT_PATH)
-find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_PATH)
-
 include_directories(${NEO2_Inc})
 include_directories(${NEO2_Inc}/src)
 include_directories(${NEO2_Libs}/include)

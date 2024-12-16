@@ -1,14 +1,33 @@
 ### Installation directory
 set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
+
 ### Path to the external libraries
 if (DEFINED ENV{CODE})
-    message(STATUS "External libraries in $CODE=" $ENV{CODE})
-    set(PROJLIBS $ENV{CODE}/external CACHE STRING "External library path")
-    set(LIBNEOLIBS $ENV{CODE}/libneo CACHE STRING "libneo path")
+    message(STATUS "External libraries prebuilt in $CODE=" $ENV{CODE})
+    add_custom_target(LIBNEO ALL)
+    add_custom_target(FGSL ALL)
+
+    set(LIBNEO_PATH $ENV{CODE}/libneo/ CACHE STRING "libneo path")
+    set(FGSL_PATH $ENV{CODE}/external/fgsl-1.6.0/ CACHE STRING "FGSL path")
 else()
-    add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty)
+    message(STATUS "Downloading and building external libraries")
+    add_subdirectory(${CMAKE_SOURCE_DIR}/external)
+
+    set(LIBNEO_PATH ${CMAKE_BINARY_DIR}/libneo/src/LIBNEO CACHE STRING "libneo path")
+    set(FGSL_PATH ${CMAKE_BINARY_DIR}/fgsl/src/FGSL CACHE STRING "FGSL path")
 endif()
+
+set(FGSL_INC ${FGSL_PATH} CACHE STRING "FGSL include")
+set(LIBFGSL ${FGSL_PATH}/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE STRING "FGSL lib")
+
+set(NEO2_Libs ${LIBNEO_PATH}/build CACHE STRING "NEO-2 external lib path")
+set(NEO2_Inc ${NEO2_Libs})
+
+set(LIBNEOLIB ${NEO2_Libs}/libneo${CMAKE_SHARED_LIBRARY_SUFFIX})
+set(LIBMAGFIE ${NEO2_Libs}/libmagfie${CMAKE_SHARED_LIBRARY_SUFFIX})
+set(MyMPILib_lib ${NEO2_Libs}/src/MyMPILib/libMyMPILib${CMAKE_STATIC_LIBRARY_SUFFIX})
+set(HDF5_tools_lib ${NEO2_Libs}/src/hdf5_tools/libhdf5_tools${CMAKE_STATIC_LIBRARY_SUFFIX})
 
 ### Directories of MPE
 set(MPE_PATH /afs/itp.tugraz.at/opt/mpe/1.3.0/)
@@ -41,28 +60,3 @@ string(REPLACE " " ";" NETCDF_FLIBS ${NETCDF_FLIBS})
 include_directories(${NETCDFINCLUDE_DIR})
 link_directories(${NETCDFLIB_DIR})
 add_link_options(${NETCDF_FLIBS})
-
-### libneo
-
-set(NEO2_Libs ${LIBNEOLIBS}/build/ CACHE STRING "Libneo path")
-set(FGSL_PATH ${PROJLIBS}/fgsl-1.6.0)
-set(OPEN_BLAS_PATH /usr/lib/x86_64-linux-gnu/)
-
-set(NEO2_Inc ${NEO2_Libs})
-
-set(FGSL_LIB ${FGSL_PATH}/.libs/ CACHE STRING "FGSL lib")
-set(FGSL_INC ${FGSL_PATH} CACHE STRING "FGSL include")
-
-### Path to the ATLAS libraries
-set(ATLASLIBS /usr/lib/atlas-base/)
-set(LAPACK_LIB ${ATLASLIBS}/atlas/)
-set(F77BLAS_LIB ${ATLASLIBS})
-set(ATLASBLAS_LIB ${ATLASLIBS})
-
-### Path to OpenBLAS
-
-set(OPEN_BLAS_LAPACK_LIB ${OPEN_BLAS_PATH})
-set(OPEN_BLAS_LIB ${OPEN_BLAS_PATH})
-
-### BLAS and LAPACK
-set(BLAS_lib "-llapack -lblas")

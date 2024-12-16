@@ -190,7 +190,7 @@ are:
 
 SuiteSparse is used for solving the sparse linear system of differential
 equations in the ripple solver. Metis is used by SuiteSparse for speedup
-of some specific routines and is not obligatory. 
+of some specific routines and is not obligatory.
 
 The GSL (Gnu Scientific Library) and its Fortran Interface FGSL are used
 for several purposes. The first one provides very efficient numerical
@@ -708,7 +708,7 @@ about 30-40 MB/s, with respect to output file, i.e. an output file size
 of 350 GB means this step will take approximately ten thousand seconds).
 
 \subsubsection{Doing all reconstruction runs at once}
-Instead of starting Condor for each reconstruction stage of a complete NEO-2 run 
+Instead of starting Condor for each reconstruction stage of a complete NEO-2 run
 manually, one can automate the process. One possible way, is to not instruct Condor
 to directly run NEO-2 with MPI, but specify a wrapper script that changes the input
 files of the corresponding reconstruction modes. In the distribution logic a possible
@@ -737,7 +737,7 @@ surface/subfolder. For example
 \end{itemize}
 
 The shell script \vv{NEO2-all.sh} can be found in the \vv{ShellScripts} folder of NEO-2. However, when you want to
-use it with Condor as described above, you have to make an actual copy instad of a symbolic link of it in the 
+use it with Condor as described above, you have to make an actual copy instad of a symbolic link of it in the
 \vv{/temp} folder e.g. your run folder, as Condor can not access scripts that are located on AFS, which mostly
 affects your home directory \vv{~} with its subdirectories, as well as \vv{/proj}.
 
@@ -753,7 +753,7 @@ In the following we provide the complete \vv{condor_submit_all_reconstructions} 
 	notification = Error
 	nice_user    = false
 	# The following two lines are to avoid 'black holes'
-	# together with the 'target.machine =!= MachineAttrMachine1 
+	# together with the 'target.machine =!= MachineAttrMachine1
 	# && target.machine =!= MachineAttrMachine2' part of requirements.
 	job_machine_attrs = Machine
 	job_machine_attrs_history_length = 5
@@ -761,19 +761,19 @@ In the following we provide the complete \vv{condor_submit_all_reconstructions} 
 	request_cpus = 4
 	request_memory = 40*1024
 	Getenv = true
-	
+
 	Output     = out
 	initialdir = $(dirname)
 	Queue dirname matching dirs s*
 \end{verbatim}
 
-The distribution of the jobs (i.e. the execution of \vv{NEO2-all.sh}) is done using the file globbing in the Queue 
-section: In all folders in the current directory that start with `s` Condor starts an instance of \vv{NEO2-all.sh}. 
-The above example assumes that said \vv{NEO2-all.sh} lies in the run directory (see the '\vv{./}'). NOTE that 
+The distribution of the jobs (i.e. the execution of \vv{NEO2-all.sh}) is done using the file globbing in the Queue
+section: In all folders in the current directory that start with `s` Condor starts an instance of \vv{NEO2-all.sh}.
+The above example assumes that said \vv{NEO2-all.sh} lies in the run directory (see the '\vv{./}'). NOTE that
 '\vv{arguments}' and '\vv{requested_cpus}' have to be the same. Furthermore, one can exclude certain machines from
-running the jobs. This is done by the \vv{requirements} attribute. If the \vv{requirements} expression evaluates to \vv{TRUE}, 
+running the jobs. This is done by the \vv{requirements} attribute. If the \vv{requirements} expression evaluates to \vv{TRUE},
 the job is run on the machine. Note the \vv{=!=} expression. Similar to \vv{!=} it acts as a "is not equal". The difference is
-that \vv{!=} can only check if the content of two operands is not equal for operands of the same type (e.g. it throws \vv{UNDEFINED} 
+that \vv{!=} can only check if the content of two operands is not equal for operands of the same type (e.g. it throws \vv{UNDEFINED}
 or \vv{ERROR} if one tries to compare a \vv{char} with a \vv{int}). On the other hand, \vv{=!=} will always give
 either \vv{TRUE} or \vv{FALSE}, as it does not only compares the content, but also the types of the two operands (e.g.
 \vv{1=!='1'} will give \vv{TRUE}). The file can be also found in DOC.
@@ -1229,16 +1229,16 @@ set(SUITESPARSE_LIBRARY_DIR_HINTS
 \end{verbatim}
 have been added to make sure the \vv{SuiteSparse} library is found.
 The setting of PROJECTLIBS and MPE\_PATH have been commented, while
-setting of LIBNEOLIBS has been changed to
+setting of LIBNEO_PATH has been changed to
 \begin{verbatim}
-set(LIBNEOLIBS /marconi/home/userexternal/rbuchhol/Programs/libneo/
+set(LIBNEO_PATH /marconi/home/userexternal/rbuchhol/Programs/libneo/
     CACHE STRING "libneo library path")
 \end{verbatim}
 Final change was adding a elseif-clause of the compiler-id check.
 \begin{verbatim}
   elseif (CMAKE_Fortran_COMPILER_VERSION VERSION_EQUAL 7.3.0)
     set(FGSL_PATH /marconi/home/userexternal/rbuchhol/local/)
-    set(NEO2_Libs ${LIBNEOLIBS}/Build-7.3.0/ CACHE STRING "Libneo path")
+    set(NEO2_Libs ${LIBNEO_PATH}/Build-7.3.0/ CACHE STRING "Libneo path")
 \end{verbatim}
 
 In \vv{CMakeLists.txt} lines

@@ -96,12 +96,11 @@ add_library(common STATIC
   ${SUITESPARSE_SRC_FILES}
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
-target_include_directories(common PUBLIC "${NEO2_Inc}")
-target_include_directories(common PUBLIC "${NEO2_Inc}/src")
+add_dependencies(common LIBNEO FGSL)
 target_link_libraries(common PUBLIC
   ${LIBFGSL} ${GSL_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
-  ${LIBNEO}
+  ${LIBNEOLIB}
   ${LIBMAGFIE}
   ${MyMPILib_lib}
   ${MPE_lib}
