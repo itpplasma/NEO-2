@@ -28,8 +28,6 @@ add_custom_command(
   DEPENDS ${COMMON_SOURCES} ${NEO_2_PAR_SOURCES} ${NEO_2_QL_SOURCES}
   )
 
-add_custom_target(doc ALL DEPENDS ${CMAKE_BINARY_DIR}/Doxygen_Reference_Manual.pdf)
-
 # Include script that allows easy compilation of LaTeX files with cmake.
 # Not from us, but added to the repository for easy acess.
 include(UseLATEX)
@@ -47,3 +45,6 @@ add_latex_document(UserDoc/main.tex
   UserDoc/Theory.tex
   UserDoc/Todo.tex
 )
+
+
+add_custom_target(doc ALL DEPENDS ${CMAKE_BINARY_DIR}/Doxygen_Reference_Manual.pdf DOC/main)
