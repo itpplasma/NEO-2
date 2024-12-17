@@ -11,16 +11,22 @@ def get_integral_ntv_torque_neo2ql(neo2_ql_hdf5):
     return integral_torque, boozer_s
 
 def get_volume_element(neo2_ql_hdf5):
-    from hdf5tools import get_hdf5file
+    from neo2_util import get_hdf5file, get_hdf5dataset_value
     with get_hdf5file(neo2_ql_hdf5) as output:
-        s = output['boozer_s'][:]
-        volume_element = ((2*np.pi)**2 * output['psi_pr_hat'][-1] * output['Bref'][-1] 
-                    * (output['bcovar_tht'][:]*output['aiota'][:] + output['bcovar_phi'][:])
-                    / (output['avbhat2'][:] * output['Bref'][:]**2))
-    return volume_element, s
+        s = get_hdf5dataset_value(output, 'boozer_s')
+        Bref = get_hdf5dataset_value(output, 'Bref')
+        psi_tor_edge = get_hdf5dataset_value(output, 'psi_pr_hat') * Bref
+        bcovar_tht = get_hdf5dataset_value(output, 'bcovar_tht')
+        aiota = get_hdf5dataset_value(output, 'aiota')
+        bcovar_phi = get_hdf5dataset_value(output, 'bcovar_phi')
+        average_b2 = get_hdf5dataset_value(output, 'avbhat2') * Bref**2
+
+        dV_ds = ((2*np.pi)**2 * psi_tor_edge * (bcovar_tht * aiota + bcovar_phi)
+                / average_b2)
+    return dV_ds, s
 
 def get_torque_density(neo2_ql_hdf5):
-    from hdf5tools import get_hdf5file
+    from neo2_util import get_hdf5file
     with get_hdf5file(neo2_ql_hdf5) as output:
         s = output['boozer_s'][:]
         ntv_density = (output['TphiNA_spec'][:].T)
