@@ -5,7 +5,7 @@ BUILD_NINJA := $(BUILD_DIR)/build.ninja
 all: ninja
 
 $(BUILD_NINJA):
-	cmake --preset default
+	cmake --preset default -DCMAKE_COLOR_DIAGNOSTICS=ON
 
 ninja: $(BUILD_NINJA)
 	cmake --build --preset default
