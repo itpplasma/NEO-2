@@ -9,9 +9,10 @@ def get_fluxsurface_area(neo2_ouput):
 
 def get_average_nabla_stor(neo2_ouput):
     import h5py
+    from neo2_util import get_hdf5dataset_value
     with h5py.File(neo2_ouput) as file:
-        average_nabla_stor = file["avnabpsi"][:]
-        stor = file["boozer_s"][:]
+        average_nabla_stor = get_hdf5dataset_value(file, "avnabpsi")
+        stor = get_hdf5dataset_value(file, "boozer_s")
     return average_nabla_stor, stor
 
 if __name__=="__main__":
