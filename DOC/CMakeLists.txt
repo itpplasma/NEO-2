@@ -7,7 +7,8 @@ set(LATEX_DEFAULT_BUILD "SafePdf")
 project(neo-2-documentation)
 
 find_package(LATEX)
-find_package(Doxygen dot
+find_package(Doxygen
+             REQUIRED dot
              OPTIONAL_COMPONENTS mscgen dia)
 
 
