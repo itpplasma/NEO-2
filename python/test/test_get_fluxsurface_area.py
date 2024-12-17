@@ -23,6 +23,25 @@ def neo2_output():
     yield filename, content
     clean_up(filename)
 
+@pytest.fixture
+def neo2_output_single_surface():
+    filename = "neo2_ouput.h5"
+    clean_up(filename)
+    content = {}
+    content["boozer_s"] = 0.5
+    content["avnabpsi"] = 0.5
+    content["avbhat2"] = 0.5 
+    content["Bref"] = 0.5
+    content["psi_pr_hat"] = -0.5
+    content["bcovar_tht"] = -0.5
+    content["bcovar_phi"] = -0.5
+    content["aiota"] = 0.5
+    with h5py.File(filename, "w") as file:
+        for name in content.keys():
+            dataset = file.create_dataset(name, data=content[name], dtype="f")
+    yield filename, content
+    clean_up(filename)
+
 
 def clean_up(filename):
     import os
@@ -40,6 +59,12 @@ def test_read_neo2_output(neo2_output):
 def test_call_get_fluxsurface_area(neo2_output):
     from neo2_ql import get_fluxsurface_area
     filename, _ = neo2_output
+    _, _ = get_fluxsurface_area(filename)
+
+
+def test_call_get_fluxsurface_area_single_surface(neo2_output_single_surface):
+    from neo2_ql import get_fluxsurface_area
+    filename, _ = neo2_output_single_surface
     _, _ = get_fluxsurface_area(filename)
 
 

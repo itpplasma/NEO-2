@@ -72,6 +72,16 @@ def get_hdf5data(hdf5file, dataname: str):
 
   return data
 
+
+def get_hdf5dataset_value(hdf5file, dataname: str):
+  data = hdf5file[dataname]
+  if data.shape == ():
+      value = data[()]
+  else:
+      value = data[:]
+  return value
+
+
 def get_hdf5data_from_subfolders(path: str, filename: str, dataname: str):
   """Get dataset from each 'filename' in subfolders of 'path'.
 
