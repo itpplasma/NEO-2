@@ -8,7 +8,7 @@ project(neo-2-documentation)
 
 find_package(LATEX)
 find_package(Doxygen
-             REQUIRED dot
+             dot
              OPTIONAL_COMPONENTS mscgen dia)
 
 
