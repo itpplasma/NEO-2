@@ -2,7 +2,8 @@
 
 sudo -Sy --needed git cmake make ninja patch gcc gcc-fortran \
     openblas hdf5 netcdf netcdf-fortran suitesparse boost openmpi \
-    fftw gsl python python-numpy debugedit fakeroot
+    fftw gsl python python-numpy debugedit fakeroot autoconf automake \
+    pkgconf
 
 pushd /tmp
     git clone https://aur.archlinux.org/gklib.git
