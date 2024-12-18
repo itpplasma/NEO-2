@@ -72,6 +72,11 @@ endif()
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
+find_package(SuiteSparse QUIET)
+if(NOT SUITESPARSE_FOUND)
+  include(${CMAKE_SOURCE_DIR}/external/suitesparse.cmake)
+endif()
+
 find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
 include_directories(${HDF5_INCLUDE_DIRS})
 
