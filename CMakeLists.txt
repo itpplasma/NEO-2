@@ -76,7 +76,6 @@ find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
 include_directories(${HDF5_INCLUDE_DIRS})
 
 find_package(GSL REQUIRED)
-find_package(SuiteSparse REQUIRED)
 
 include_directories(${NEO2_Inc})
 include_directories(${NEO2_Inc}/src)

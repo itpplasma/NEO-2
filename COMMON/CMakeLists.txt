@@ -3,11 +3,29 @@ cmake_minimum_required(VERSION 3.20)
 project(NEO-2-COMMON)
 enable_testing()
 
-### SUITESPARSE
 set(SUITESPARSE_SRC_FILES
   umf4_f77wrapper_ver_4_5.c
   umf4_f77zwrapper_ver_4_5.c
 )
+
+add_library(common STATIC
+  ${COMMON_FILES}
+  ${SUITESPARSE_SRC_FILES}
+  ${FGSL_USERINTERFACE_SOURCE_FILES}
+  )
+add_dependencies(common LIBNEO FGSL)
+
+find_package(SuiteSparse)
+if(NOT SUITESPARSE_FOUND)
+  include(${CMAKE_SOURCE_DIR}/external/suitesparse.cmake)
+  add_dependencies(common SUITESPARSE)
+  set(SUITESPARSE_DIR "${CMAKE_BINARY_DIR}/suitesparse")
+  set(SUITESPARSE_INCLUDE_DIRS "${SUITESPARSE_DIR}/include/suitesparse")
+  set(SUITESPARSE_LIBRARIES
+    "${SUITESPARSE_DIR}/lib64/libumfpack${CMAKE_STATIC_LIBRARY_SUFFIX}"
+  )
+endif()
+
 set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
 set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
@@ -91,12 +109,6 @@ set(COMMON_FILES
   )
 set_source_files_properties(${COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 
-add_library(common STATIC
-  ${COMMON_FILES}
-  ${SUITESPARSE_SRC_FILES}
-  ${FGSL_USERINTERFACE_SOURCE_FILES}
-  )
-add_dependencies(common LIBNEO FGSL)
 target_link_libraries(common PUBLIC
   ${LIBFGSL} ${GSL_LIBRARIES}
   ${SUITESPARSE_LIBRARIES}
