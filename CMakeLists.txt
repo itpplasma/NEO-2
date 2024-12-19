@@ -71,7 +71,7 @@ endif()
 
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
-find_package(SuiteSparse REQUIRED)
+find_package(SuiteSparse REQUIRED PATHS ${PROJECT_SOURCE_DIR}/external/build/_deps/)
 find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
 include_directories(${HDF5_INCLUDE_DIRS})
 

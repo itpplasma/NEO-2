@@ -5,3 +5,4 @@ enable_language(C Fortran)
 
 include(libneo.cmake)
 include(fgsl.cmake)
+include(suitesparse.cmake)
