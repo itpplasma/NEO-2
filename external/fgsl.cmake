@@ -1,12 +1,11 @@
-ExternalProject_Add(
+FetchContent_Declare(
     FGSL
-    URL https://github.com/reinh-bader/fgsl/archive/refs/tags/v1.6.0.tar.gz
-    PREFIX ${CMAKE_BINARY_DIR}/fgsl
-    CONFIGURE_COMMAND mkdir m4 && autoreconf -i && ./configure
-    BUILD_COMMAND make
-    INSTALL_COMMAND ""
-    BUILD_IN_SOURCE 1
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    URL "https://github.com/reinh-bader/fgsl/archive/refs/tags/v1.6.0.tar.gz"
+    CONFIGURE_COMMAND "mkdir m4 && autoreconf -i && ./configure"
+    BUILD_COMMAND make
     BUILD_BYPRODUCTS
-        ${CMAKE_BINARY_DIR}/fgsl/src/FGSL/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX}
+        ${CMAKE_BINARY_DIR}/_deps/fgsl-build/src/FGSL/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
+
+FetchContent_MakeAvailable(FGSL)
