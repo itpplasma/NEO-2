@@ -12,8 +12,8 @@ Here is a list of libraries and tools required for building/running neo2.
   * cmake
     Used for configuration, has so far only been used in connection with
     GNUMake.
-  * SuiteSparse, SuperLU
-  * ATLAS, OpenBLAS
+  * SuiteSparse
+  * Either OpenBLAS, MKL, or ATLAS for LAPACK/BLAS
   * GSL, FGSL
   * MPI
     Used for parallelization.

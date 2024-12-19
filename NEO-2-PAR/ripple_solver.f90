@@ -218,51 +218,7 @@ SUBROUTINE ripple_solver(                                 &
   ! END SERGEI
   !------------------------------------------------------------------------
 
-  !------------------------------------------------------------------------
-  ! Winny: sparse
-  !------------------------------------------------------------------------
-  ! if sparse_solve should talk
-  !  sparse_talk= .TRUE. ! default .FALSE. - neo2.in - settings
-  !
-  ! sparse method - only 1 (SuperLU) implemented
-  !  sparse_solve_method = 1 ! default 0 - neo2.in - settings
-  ! if sparse_solve is called with (sparse_solve_method .eq. 0)
-  !  program stops
-  !  one should call a normal solver in this case
-  !
-  ! These are three possibilities to call sparse_solve
-  !  CALL sparse_solve(nrow,ncol,nz,irow,icol,val,b)  ! full column index
-  !  CALL sparse_solve(nrow,ncol,nz,irow,pcol,val,b)  ! column pointer
-  !  CALL sparse_solve(A,b)                           ! full matrix
-  ! results are returned in b
-  !
-  ! Input
-  !  INTEGER :: nrow,ncol,nz,nrhs
-  !  INTEGER, DIMENSION(:), ALLOCATABLE :: irow,icol,pcol
-  !  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: val
-  !  REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: A
-  !
-  ! In/output
-  !  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: b
-  ! or
-  !  REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: b
-  !
-  ! Matrix - square
-  !  ncol = nrow
-  !  ALLOCATE( irow(nz) )     ! row index
-  !  ALLOCATE( icol(nz) )     ! column index (column ordering)
-  !  ALLOCATE( pcol(ncol+1) ) ! column pointer (other possibility)
-  !  ALLOCATE( val(nz) )      ! values
-  !  ALLOCATE( A(nrow,ncol) ) ! full matrix will be converted to sparse
-  !
-  ! rhs
-  !  ALLOCATE( b(nrow) )
-  ! or
-  !  ALLOCATE( b(nrow,nrhs) )
-  !
-  !------------------------------------------------------------------------
-
-  !------------------------------------------------------------------------
+    !------------------------------------------------------------------------
   ! reconstruction work by Winny
   !------------------------------------------------------------------------
   ! values of reconstructed fluxes are put into fun_mr and fun_pl
