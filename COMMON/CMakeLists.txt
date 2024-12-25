@@ -94,7 +94,8 @@ add_library(common STATIC
   )
 add_dependencies(common FGSL)
 target_link_libraries(common PUBLIC
-  ${LIBFGSL} ${GSL_LIBRARIES}
+  ${LIBFGSL}
+  GSL::gsl
   SuiteSparse::UMFPACK
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}
