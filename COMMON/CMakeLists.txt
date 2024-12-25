@@ -105,8 +105,9 @@ target_link_libraries(common PUBLIC
   GSL::gsl
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}
-  ${HDF5_Fortran_HL_LIBRARIES}
-  ${HDF5_Fortran_LIBRARIES}
+  hdf5::hdf5
+  hdf5::hdf5_fortran
+  hdf5::hdf5_hl_fortran
   BLAS::BLAS
   LAPACK::LAPACK
   ${NETCDF_LIBS}

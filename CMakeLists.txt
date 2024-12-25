@@ -83,7 +83,6 @@ else()
 endif()
 
 find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
-include_directories(${HDF5_INCLUDE_DIRS})
 
 find_package(GSL REQUIRED)
 
