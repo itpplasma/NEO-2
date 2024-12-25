@@ -106,6 +106,7 @@ target_link_libraries(common PUBLIC
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}
   hdf5::hdf5
+  hdf5::hdf5_hl
   hdf5::hdf5_fortran
   hdf5::hdf5_hl_fortran
   BLAS::BLAS

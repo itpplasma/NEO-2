@@ -12,10 +12,10 @@ add_executable(${PROJECT_EXE_NAME}
 )
 
 set(Interface_Libs
-	${HDF5_Fortran_HL_LIBRARIES}
-	${HDF5_HL_LIBRARIES}
-	${HDF5_Fortran_LIBRARIES}
-	${HDF5_LIBRARIES}
+	hdf5::hdf5
+	hdf5::hdf5_hl
+	hdf5::hdf5_fortran
+	hdf5::hdf5_hl_fortran
 	BLAS::BLAS
 	LAPACK::LAPACK
 )
@@ -27,10 +27,12 @@ target_link_libraries(${PROJECT_EXE_NAME}
 
 if(DEFINED ENV{CODE})
 	target_link_libraries(${PROJECT_EXE_NAME}
+		${LIBNEOLIB}
 		${HDF5_tools_lib}
 	)
 else()
 	target_link_libraries(${PROJECT_EXE_NAME}
+		LIBNEO::neo
 		LIBNEO::hdf5_tools
 	)
 endif()

@@ -82,7 +82,7 @@ else()
   include(suitesparse)
 endif()
 
-find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
+find_package(HDF5 COMPONENTS C HL Fortran Fortran_HL REQUIRED)
 
 find_package(GSL REQUIRED)
 
