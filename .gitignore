@@ -64,3 +64,5 @@ DOC/html/*
 DOC/latex/*
 *-SAVE-ERROR
 build/cmake_install.cmake
+
+.DS_Store
