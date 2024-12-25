@@ -86,6 +86,13 @@ set(SUITESPARSE_SRC_FILES
   umf4_f77wrapper_ver_4_5.c
   umf4_f77zwrapper_ver_4_5.c
 )
+if(LEGACY_SUITESPARSE)
+  set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
+else()
+  set(SUITESPARSE_FLAGS "")
+endif()
+set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
+set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
 add_library(common STATIC
   ${COMMON_FILES}
@@ -96,7 +103,6 @@ add_dependencies(common FGSL)
 target_link_libraries(common PUBLIC
   ${LIBFGSL}
   GSL::gsl
-  SuiteSparse::UMFPACK
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}
   ${HDF5_Fortran_HL_LIBRARIES}
@@ -106,6 +112,11 @@ target_link_libraries(common PUBLIC
   ${NETCDF_LIBS}
   -lz -lpthread
 )
+if(LEGACY_SUITESPARSE)
+  target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES} klu)
+else()
+  target_link_libraries(common PUBLIC SuiteSparse::umfpack)
+endif()
 
 if(DEFINED ENV{CODE})
 target_link_libraries(common PUBLIC
@@ -122,6 +133,10 @@ target_link_libraries(common PUBLIC
   LIBNEO::hdf5_tools
 )
 endif()
+
+target_link_libraries(common PUBLIC
+  MPI::MPI_Fortran
+)
 
 if ($ENV{COMMON_UNIT_TESTS}x STREQUAL "TRUEx")
   find_package(PFUNIT REQUIRED)

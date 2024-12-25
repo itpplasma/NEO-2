@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 project(NEO-2)
 enable_language(C Fortran)
@@ -73,10 +75,14 @@ find_package(LAPACK REQUIRED)
 
 find_package(UMFPACK)
 if(NOT UMFPACK_FOUND)
-  message(STATUS "UMFPACK not found. Building.")
-  include(external/suitesparse.cmake)
+  set(LEGACY_SUITESPARSE ON)
+  message(STATUS "UMFPACK not found. Trying legacy SuiteSparse.")
+  find_package(SuiteSparse)
+  if(NOT SUITESPARSE_FOUND)
+    message(STATUS "SuiteSparse not found. Building.")
+    include(suitesparse)
+  endif()
 endif()
-
 
 find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
 include_directories(${HDF5_INCLUDE_DIRS})

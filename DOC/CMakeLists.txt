@@ -1,6 +1,5 @@
 cmake_minimum_required (VERSION 3.20)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CmakeScripts/")
 
 set(LATEX_DEFAULT_BUILD "SafePdf")
 
