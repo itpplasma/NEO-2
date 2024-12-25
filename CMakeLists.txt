@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.24)
 
 project(NEO-2)
 enable_language(C Fortran)
@@ -71,7 +71,14 @@ endif()
 
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
-find_package(SuiteSparse REQUIRED PATHS ${PROJECT_SOURCE_DIR}/external/build/_deps/)
+
+find_package(UMFPACK)
+if(NOT UMFPACK_FOUND)
+  message(STATUS "UMFPACK not found. Building.")
+  include(external/suitesparse.cmake)
+endif()
+
+
 find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
 include_directories(${HDF5_INCLUDE_DIRS})
 
@@ -81,6 +88,7 @@ include_directories(${NEO2_Inc})
 include_directories(${NEO2_Inc}/src)
 include_directories(${NEO2_Libs}/include)
 include_directories(${CMAKE_BINARY_DIR}/COMMON)
+include_directories(${FGSL_INC})
 
 ### Projects to build
 add_subdirectory(COMMON)

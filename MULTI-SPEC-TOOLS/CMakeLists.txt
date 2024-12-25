@@ -1,11 +1,5 @@
-### Basic settings
-cmake_minimum_required(VERSION 3.20)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
-
-### Define the project
 project(HDF5-MERGE-MULTISPEC-OUTPUT)
-
-### Define the name of the executable
 set(PROJECT_EXE_NAME "h5merge_multispec.x")
 
 ### Set compiler flags
@@ -17,10 +11,8 @@ add_executable(${PROJECT_EXE_NAME}
 	./h5merge_multispec.f90
 )
 
-add_dependencies(${PROJECT_EXE_NAME} LIBNEO)
-
 set(Interface_Libs
-	${HDF5_tools_lib}
+	LIBNEO::hdf5_tools
 	${HDF5_Fortran_HL_LIBRARIES}
 	${HDF5_HL_LIBRARIES}
 	${HDF5_Fortran_LIBRARIES}

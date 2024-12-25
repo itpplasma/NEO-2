@@ -1,11 +1,8 @@
-cmake_minimum_required(VERSION 3.20)
-
 project(NEO-2-COMMON)
 enable_testing()
 
-set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
-set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
+set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "-DDLONG")
+set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "-DZLONG")
 
 ### FGSL user-defined interface
 set(FGSL_USERINTERFACE_SOURCE_FILES
@@ -14,8 +11,6 @@ set(FGSL_USERINTERFACE_SOURCE_FILES
       gsl_bspline_routines_mod.f90
       gsl_specialfunctions_mod.f90
 )
-set(FGSL_USERINTERFACE_FLAGS "-I${FGSL_INC}")
-set_source_files_properties(${FGSL_USERINTERFACE_SOURCE_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTERFACE_FLAGS})
 
 set(COMMON_FILES
   binarysplit_int.f90
@@ -97,20 +92,19 @@ add_library(common STATIC
   ${SUITESPARSE_SRC_FILES}
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
-add_dependencies(common LIBNEO FGSL)
 target_link_libraries(common PUBLIC
   ${LIBFGSL} ${GSL_LIBRARIES}
-  ${SUITESPARSE_LIBRARIES}
-  ${LIBNEOLIB}
-  ${LIBMAGFIE}
-  ${MyMPILib_lib}
+  SuiteSparse::UMFPACK
+  LIBNEO::neo
+  LIBNEO::magfie
+  LIBNEO::MyMPILib
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}
-  ${HDF5_tools_lib}
+  LIBNEO::hdf5_tools
   ${HDF5_Fortran_HL_LIBRARIES}
   ${HDF5_Fortran_LIBRARIES}
-  ${BLAS_LIBRARIES}
-  ${LAPACK_LIBRARIES}
+  BLAS::BLAS
+  LAPACK::LAPACK
   ${NETCDF_LIBS}
   -lz -lpthread
 )

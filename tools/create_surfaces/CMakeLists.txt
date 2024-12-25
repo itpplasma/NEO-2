@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.24)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 project (create_surfaces_tool)
@@ -25,7 +25,7 @@ add_executable(${PROJECT_EXE_NAME}
 ### Linking
 target_link_libraries(${PROJECT_EXE_NAME}
   ${Interface_Libs}
-  ${MyMPILib_lib}
+  #${MyMPILib_lib}
   ${MPI_Fortran_LIBRARIES}
   ${NETCDF_LIBS}
   ${SUPERLU_LIBRARIES}
@@ -39,7 +39,7 @@ add_executable("nfp.x"
 )
 target_link_libraries("nfp.x"
   ${Interface_Libs}
-  ${MyMPILib_lib}
+  #${MyMPILib_lib}
   ${MPI_Fortran_LIBRARIES}
   ${NETCDF_LIBS}
   ${SUPERLU_LIBRARIES}

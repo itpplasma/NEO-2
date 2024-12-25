@@ -5,23 +5,22 @@ set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 ### Path to the external libraries
 if (DEFINED ENV{CODE})
     message(STATUS "External libraries prebuilt in $CODE=" $ENV{CODE})
-    add_custom_target(LIBNEO ALL)
-    add_custom_target(FGSL ALL)
 
     set(LIBNEO_PATH $ENV{CODE}/libneo/ CACHE STRING "libneo path")
+    set(NEO2_Libs ${LIBNEO_PATH}/build CACHE STRING "NEO-2 external lib path")
     set(FGSL_PATH $ENV{CODE}/external/fgsl-1.6.0/ CACHE STRING "FGSL path")
 else()
     message(STATUS "Downloading and building external libraries")
-    add_subdirectory(${CMAKE_SOURCE_DIR}/external)
+    include(external/fgsl.cmake)
+    include(external/libneo.cmake)
 
-    set(LIBNEO_PATH ${CMAKE_BINARY_DIR}/libneo/src/LIBNEO CACHE STRING "libneo path")
+    set(NEO2_Libs ${CMAKE_BINARY_DIR}/_deps/libneo-build CACHE STRING "NEO-2 external lib path")
     set(FGSL_PATH ${CMAKE_BINARY_DIR}/fgsl/src/FGSL CACHE STRING "FGSL path")
 endif()
 
 set(FGSL_INC ${FGSL_PATH} CACHE STRING "FGSL include")
 set(LIBFGSL ${FGSL_PATH}/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE STRING "FGSL lib")
 
-set(NEO2_Libs ${LIBNEO_PATH}/build CACHE STRING "NEO-2 external lib path")
 set(NEO2_Inc ${NEO2_Libs})
 
 set(LIBNEOLIB ${NEO2_Libs}/libneo${CMAKE_SHARED_LIBRARY_SUFFIX})
