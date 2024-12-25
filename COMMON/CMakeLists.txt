@@ -113,7 +113,7 @@ target_link_libraries(common PUBLIC
   -lz -lpthread
 )
 if(LEGACY_SUITESPARSE)
-  target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES} klu)
+  target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES})
 else()
   target_link_libraries(common PUBLIC SuiteSparse::umfpack)
 endif()
