@@ -1,5 +1,6 @@
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 project(HDF5-MERGE-MULTISPEC-OUTPUT)
+enable_language(C Fortran)
 set(PROJECT_EXE_NAME "h5merge_multispec.x")
 
 ### Set compiler flags

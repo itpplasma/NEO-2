@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 project (create_surfaces_tool)
+enable_language(C Fortran)
 
 set(PROJECT_EXE_NAME "create_surfaces.x")
 

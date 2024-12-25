@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(NEO-2-QL)
+enable_language(C Fortran)
 enable_testing()
 
 set(EXE_NAME "neo_2_ql.x")
