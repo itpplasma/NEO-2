@@ -92,6 +92,7 @@ add_library(common STATIC
   ${SUITESPARSE_SRC_FILES}
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
+add_dependencies(common FGSL)
 target_link_libraries(common PUBLIC
   ${LIBFGSL} ${GSL_LIBRARIES}
   SuiteSparse::UMFPACK

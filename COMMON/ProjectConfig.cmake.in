@@ -5,6 +5,8 @@ set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 ### Path to the external libraries
 if (DEFINED ENV{CODE})
     message(STATUS "External libraries prebuilt in $CODE=" $ENV{CODE})
+    add_custom_target(FGSL)
+    add_custom_target(LIBNEO)
 
     set(LIBNEO_PATH $ENV{CODE}/libneo/ CACHE STRING "libneo path")
     set(NEO2_Libs ${LIBNEO_PATH}/build CACHE STRING "NEO-2 external lib path")
