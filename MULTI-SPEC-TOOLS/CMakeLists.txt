@@ -16,8 +16,8 @@ set(Interface_Libs
 	${HDF5_HL_LIBRARIES}
 	${HDF5_Fortran_LIBRARIES}
 	${HDF5_LIBRARIES}
-	${BLAS_LIBRARIES}
-	${LAPACK_LIBRARIES}
+	BLAS::BLAS
+	LAPACK::LAPACK
 )
 
 ### Linking

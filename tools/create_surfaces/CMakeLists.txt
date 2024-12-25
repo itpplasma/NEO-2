@@ -12,8 +12,8 @@ set(CMAKE_Fortran_FLAGS "-g -Wall")
 set(Interface_Libs
   common
   ${LIBNEO}
-  ${BLAS_LIBRARIES}
-  ${LAPACK_LIBRARIES}
+	BLAS::BLAS
+	LAPACK::LAPACK
 )
 
 ### Define executable
