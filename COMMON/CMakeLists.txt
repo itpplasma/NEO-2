@@ -96,12 +96,8 @@ add_dependencies(common FGSL)
 target_link_libraries(common PUBLIC
   ${LIBFGSL} ${GSL_LIBRARIES}
   SuiteSparse::UMFPACK
-  LIBNEO::neo
-  LIBNEO::magfie
-  LIBNEO::MyMPILib
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}
-  LIBNEO::hdf5_tools
   ${HDF5_Fortran_HL_LIBRARIES}
   ${HDF5_Fortran_LIBRARIES}
   BLAS::BLAS
@@ -109,6 +105,22 @@ target_link_libraries(common PUBLIC
   ${NETCDF_LIBS}
   -lz -lpthread
 )
+
+if(DEFINED ENV{CODE})
+target_link_libraries(common PUBLIC
+  ${LIBNEOLIB}
+  ${LIBMAGFIE}
+  ${MyMPILib_lib}
+  ${HDF5_tools_lib}
+)
+else()
+target_link_libraries(common PUBLIC
+  LIBNEO::neo
+  LIBNEO::magfie
+  LIBNEO::MyMPILib
+  LIBNEO::hdf5_tools
+)
+endif()
 
 if ($ENV{COMMON_UNIT_TESTS}x STREQUAL "TRUEx")
   find_package(PFUNIT REQUIRED)

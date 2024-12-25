@@ -11,6 +11,11 @@ if (DEFINED ENV{CODE})
     set(LIBNEO_PATH $ENV{CODE}/libneo/ CACHE STRING "libneo path")
     set(NEO2_Libs ${LIBNEO_PATH}/build CACHE STRING "NEO-2 external lib path")
     set(FGSL_PATH $ENV{CODE}/external/fgsl-1.6.0/ CACHE STRING "FGSL path")
+
+    set(LIBNEOLIB ${NEO2_Libs}/libneo${CMAKE_SHARED_LIBRARY_SUFFIX})
+    set(LIBMAGFIE ${NEO2_Libs}/libmagfie${CMAKE_SHARED_LIBRARY_SUFFIX})
+    set(MyMPILib_lib ${NEO2_Libs}/src/MyMPILib/libMyMPILib${CMAKE_STATIC_LIBRARY_SUFFIX})
+    set(HDF5_tools_lib ${NEO2_Libs}/src/hdf5_tools/libhdf5_tools${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
     message(STATUS "Downloading and building external libraries")
     include(external/fgsl.cmake)
@@ -24,11 +29,6 @@ set(FGSL_INC ${FGSL_PATH} CACHE STRING "FGSL include")
 set(LIBFGSL ${FGSL_PATH}/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE STRING "FGSL lib")
 
 set(NEO2_Inc ${NEO2_Libs})
-
-set(LIBNEOLIB ${NEO2_Libs}/libneo${CMAKE_SHARED_LIBRARY_SUFFIX})
-set(LIBMAGFIE ${NEO2_Libs}/libmagfie${CMAKE_SHARED_LIBRARY_SUFFIX})
-set(MyMPILib_lib ${NEO2_Libs}/src/MyMPILib/libMyMPILib${CMAKE_STATIC_LIBRARY_SUFFIX})
-set(HDF5_tools_lib ${NEO2_Libs}/src/hdf5_tools/libhdf5_tools${CMAKE_STATIC_LIBRARY_SUFFIX})
 
 ### Directories of MPE
 set(MPE_PATH /afs/itp.tugraz.at/opt/mpe/1.3.0/)
