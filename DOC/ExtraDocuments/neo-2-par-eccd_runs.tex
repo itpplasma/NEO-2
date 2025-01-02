@@ -145,7 +145,7 @@ summary but is described in more details in the main text.
   \item run neo2.x for prop\_reconstruct=1 (Sec.~\ref{running_running})
   \item run neo2.x for prop\_reconstruct=2 (Sec.~\ref{running_running})
   \item run neo2.x for prop\_reconstruct=3 (Sec.~\ref{running_running})
-  \item run h5merge.x to collect data (Sec.~\ref{running_running})
+  \item run h5merge.x from libneo to collect data (Sec.~\ref{running_running})
   \item checking output (e.g. plotting) (Sec.~\ref{spitzer_function}, \ref{travis} and \ref{bootstrap})
 \end{itemize}
 
@@ -307,10 +307,6 @@ new build directory is used. This command needs to know where
 happens when this command is called, the most important steps are the
 Fortran compiler and library detection. A standard Makefile is generated
 which can be used by running \vv{make}.
-
-Before going on to compile \vv{NEO-2-PAR} you should also compile the tool
-\vv{h5merge} in the corresponding subfolder. The procedure to do so is
-the same, just in the subfolder \vv{tools/h5merge}.
 
 After libneo is compiled, you can compile \vv{NEO-2-PAR}. Again we will
 use one of the existing build directories:

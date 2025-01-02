@@ -1,9 +1,6 @@
 project(NEO-2-COMMON)
 enable_testing()
 
-set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "-DDLONG")
-set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "-DZLONG")
-
 ### FGSL user-defined interface
 set(FGSL_USERINTERFACE_SOURCE_FILES
       gsl_roots_routines_mod.f90
