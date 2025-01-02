@@ -15,7 +15,7 @@ add_executable(${EXE_NAME}
 )
 
 target_link_libraries(${EXE_NAME} common)
-target_include_directories(${EXE_NAME} PUBLIC "$<TARGET_PROPERTY:common,Fortran_MODULE_DIRECTORY>")
+target_include_directories(${EXE_NAME} PUBLIC "${CMAKE_BINARY_DIR}/COMMON")
 
 add_custom_target(copy
   COMMAND ${CMAKE_COMMAND} -E copy
