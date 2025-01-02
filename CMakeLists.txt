@@ -106,7 +106,7 @@ add_subdirectory(tools/create_surfaces)
 
 ### Optional target for docs
 find_package(LATEX)
-find_package(Doxygen)
-if(LATEX_FOUND AND DOXYGEN_FOUND)
+find_package(Doxygen OPTIONAL_COMPONENTS dot)
+if(LATEX_FOUND AND DOXYGEN_FOUND AND DOXYGEN_DOT_FOUND)
   add_subdirectory(DOC EXCLUDE_FROM_ALL)
 endif()
