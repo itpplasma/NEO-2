@@ -1,52 +1,18 @@
-### SUPERLU ###
-set(SUPERLU_SRC_FILES_VER_4_1
-        ../COMMON/c_fortran_dgssv.c
-        ../COMMON/c_fortran_zgssv.c
+set(NEO2_QL_SRC_FILES
+  ./arnoldi_mod.f90
+  ./ntv_mod.f90
+  ./propagator.f90
+  ./flint.f90
+  ./ripple_solver_axi_test.f90
+  ./ripple_solver_ArnoldiOrder1_test.f90
+  ./ripple_solver_ArnoldiOrder2_test.f90 # (Testing of mirroring part discretization)
+  ./ripple_solver_ArnoldiOrder3.f90
+  ./join_ripples_int.f90
+  ./join_ripples.f90
+  ./join_ends.f90
+  ./lagxmm.f90
+  ./neo_magfie_perturbation.f90
+  ./collop_definitions.f90
+  ./neo2.f90
 )
-set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFLAGS} -I${SUPERLU_INCLUDES}")
-set_source_files_properties(${SUPERLU_SRC_FILES_VER_4_1} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
-
-### SUPERLU Version 5.0 ###
-set(SUPERLU_SRC_FILES_VER_5_0
-        ../COMMON/c_fortran_dgssv_ver_5_0.c
-        ../COMMON/c_fortran_zgssv_ver_5_0.c
-)
-set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFLAGS} -I${SUPERLU_INCLUDES}")
-set_source_files_properties(${SUPERLU_SRC_FILES_VER_5_0} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
-
-### SUITESPARSE ###
-set(SUITESPARSE_SRC_FILES_VER_3_6
-        ../COMMON/umf4_f77wrapper.c
-        ../COMMON/umf4_f77zwrapper.c
-)
-set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
-set_source_files_properties(../COMMON/umf4_f77wrapper.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(../COMMON/umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
-
-### SUITESPARSE Version 4.5 ###
-set(SUITESPARSE_SRC_FILES_VER_4_5
-        ../COMMON/umf4_f77wrapper_ver_4_5.c
-        ../COMMON/umf4_f77zwrapper_ver_4_5.c
-)
-set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
-set_source_files_properties(../COMMON/umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(../COMMON/umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
-
-set(NEO2_SRC_FILES
-        ./arnoldi_mod.f90
-        ./ntv_mod.f90
-        ./propagator.f90
-        ./flint.f90
-        ./ripple_solver_axi_test.f90
-        ./ripple_solver_ArnoldiOrder1_test.f90
-        ./ripple_solver_ArnoldiOrder2_test.f90 # (Testing of mirroring part discretization)
-        ./ripple_solver_ArnoldiOrder3.f90
-        ./join_ripples_int.f90
-        ./join_ripples.f90
-        ./join_ends.f90
-        ./lagxmm.f90
-        ./neo_magfie_perturbation.f90
-        ./collop_definitions.f90
-        ./neo2.f90
-)
-set_source_files_properties(${NEO2_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS}")
+set_source_files_properties(${NEO2_QL_SRC_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS}")

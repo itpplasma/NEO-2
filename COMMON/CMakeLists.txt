@@ -1,84 +1,13 @@
-### Initialize CMake (some internal stuff)
-cmake_minimum_required (VERSION 2.8.9)
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMAKE_TOOLS")
-
-project (neo-2-common)
-enable_language (Fortran)
+project(NEO-2-COMMON)
 enable_testing()
 
-### Macro for comparison of version strings
-include(CMAKE_TOOLS/MacroCompareVersionStrings.cmake)
-
-### Define paths to external libraries (load external file)
-include(${CMAKE_SOURCE_DIR}/../COMMON/ProjectConfig.cmake.in)
-
-set(CMAKE_Fortran_FLAGS " -O2 -cpp -ffpe-summary=invalid,zero,overflow")
-
-find_library(LIBGSL gsl)
-# FGSL
-find_library(LIBFGSL fgsl ${FGSL_LIB} NO_DEFAULT_PATH)
-include_directories(${FGSL_INC})
-
-### HDF5
-find_package(HDF5 COMPONENTS C Fortran HL REQUIRED)
-include_directories(${HDF5_INCLUDE_DIRS})
-# HDF5 interface
-find_library(HDF5_tools_lib hdf5_tools ${NEO2_Libs}/src/hdf5_tools/ NO_DEFAULT_PATH)
-
-### SuperLU
-find_package(SuperLU REQUIRED)
-
-### SuiteSparse and METIS - ignore if already found.
-if (SUITESPARSEQR_FOUND)
-else (SUITESPARSEQR_FOUND)
-  find_package(SuiteSparse REQUIRED)
-endif (SUITESPARSEQR_FOUND)
-
-### SUPERLU ###
-set(SUPERLU_SRC_FILES_VER_4_1
-        c_fortran_dgssv.c
-        c_fortran_zgssv.c
-)
-set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFLAGS} -I${SUPERLU_INCLUDES}")
-set_source_files_properties(${SUPERLU_SRC_FILES_VER_4_1} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
-
-### SUPERLU Version 5.0 ###
-set(SUPERLU_SRC_FILES_VER_5_0
-        c_fortran_dgssv_ver_5_0.c
-        c_fortran_zgssv_ver_5_0.c
-)
-set(SUPERLU_FLAGS "${CFLAGS_DEBUG} ${CFLAGS} -I${SUPERLU_INCLUDES}")
-set_source_files_properties(${SUPERLU_SRC_FILES_VER_5_0} PROPERTIES COMPILE_FLAGS ${SUPERLU_FLAGS})
-
-
-### SUITESPARSE ###
-set(SUITESPARSE_SRC_FILES_VER_3_6
-        ../COMMON/umf4_f77wrapper.c
-        ../COMMON/umf4_f77zwrapper.c
-)
-set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
-set_source_files_properties(../COMMON/umf4_f77wrapper.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(../COMMON/umf4_f77zwrapper.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
-
-### SUITESPARSE Version 4.5 ###
-set(SUITESPARSE_SRC_FILES_VER_4_5
-        ../COMMON/umf4_f77wrapper_ver_4_5.c
-        ../COMMON/umf4_f77zwrapper_ver_4_5.c
-)
-set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
-set_source_files_properties(../COMMON/umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(../COMMON/umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
-
-### FGSL user-defined interface ###
+### FGSL user-defined interface
 set(FGSL_USERINTERFACE_SOURCE_FILES
       gsl_roots_routines_mod.f90
       gsl_integration_routines_mod.f90
       gsl_bspline_routines_mod.f90
       gsl_specialfunctions_mod.f90
 )
-set(FGSL_USERINTERFACE_FLAGS "-I${FGSL_INC}")
-set_source_files_properties(${FGSL_USERINTERFACE_SOURCE_FILES} PROPERTIES COMPILE_FLAGS ${FGSL_USERINTERFACE_FLAGS})
 
 set(COMMON_FILES
   binarysplit_int.f90
@@ -149,15 +78,79 @@ set(COMMON_FILES
   )
 set_source_files_properties(${COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 
+
+set(SUITESPARSE_SRC_FILES
+  umf4_f77wrapper_ver_4_5.c
+  umf4_f77zwrapper_ver_4_5.c
+)
+if(LEGACY_SUITESPARSE)
+  set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
+else()
+  set(SUITESPARSE_FLAGS "")
+endif()
+set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
+set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
+
 add_library(common STATIC
   ${COMMON_FILES}
+  ${SUITESPARSE_SRC_FILES}
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
-target_include_directories(common PUBLIC "${NEO2_Inc}")
-target_include_directories(common PUBLIC "${NEO2_Inc}/src")
+add_dependencies(common FGSL)
+target_link_libraries(common PUBLIC
+  ${LIBFGSL}
+  GSL::gsl
+  ${MPE_lib}
+  ${MPI_Fortran_LIBRARIES}
+  hdf5::hdf5
+  hdf5::hdf5_hl
+  hdf5::hdf5_fortran
+  hdf5::hdf5_hl_fortran
+  BLAS::BLAS
+  LAPACK::LAPACK
+  ${NETCDF_LIBS}
+  -lz -lpthread
+)
+if(LEGACY_SUITESPARSE)
+  target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES})
+else()
+  target_link_libraries(common PUBLIC SuiteSparse::umfpack)
+endif()
+
+if(DEFINED ENV{CODE})
+target_link_libraries(common PUBLIC
+  ${LIBNEOLIB}
+  ${LIBMAGFIE}
+  ${MyMPILib_lib}
+  ${HDF5_tools_lib}
+)
+else()
+target_link_libraries(common PUBLIC
+  LIBNEO::neo
+  LIBNEO::magfie
+  LIBNEO::MyMPILib
+  LIBNEO::hdf5_tools
+)
+endif()
+
+target_link_libraries(common PUBLIC
+  MPI::MPI_Fortran
+)
 
 if ($ENV{COMMON_UNIT_TESTS}x STREQUAL "TRUEx")
   find_package(PFUNIT REQUIRED)
   enable_testing()
   add_subdirectory(unit_tests)
 endif()
+
+configure_file (
+  "${PROJECT_SOURCE_DIR}/cmake_version.f90.in"
+  "${PROJECT_BINARY_DIR}/cmake_version.f90"
+  )
+
+add_custom_target(
+    NEO-2-Versioning
+    COMMAND ${CMAKE_SOURCE_DIR}/ShellScripts/tag_version.sh
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+)
+add_dependencies(common NEO-2-Versioning)

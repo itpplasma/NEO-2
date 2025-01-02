@@ -1,9 +1,0 @@
-### Installation directory
-set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
-
-### Path to the external libraries
-set(PROJLIBS /proj/plasma/Libs/)
-
-### HDF5
-set(NEO2_Libs /proj/plasma/Neo2/Libs/hdf5_tools/lib/)
-set(NEO2_Inc /proj/plasma/Neo2/Libs/hdf5_tools/include/)

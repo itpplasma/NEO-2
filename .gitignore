@@ -17,10 +17,6 @@ cmake_version.f90
 # File is created automatically from ?.
 version.f90
 
-# The make file is created by the cmake system, and thus not under
-# version controll.
-Makefile
-
 BuildConfig.txt
 
 # Ignore created executable.
@@ -39,6 +35,9 @@ install_manifest.txt
 NEO-2-QL/.directory
 
 # Ignore directories for building the code.
+[Bb]uild/*
+[Bb]uild-*/*
+*/[Bb]uild_*/*
 */[Bb]uild/*
 */[Bb]uild-*/*
 */[Bb]uild_*/*
@@ -63,3 +62,7 @@ NEO-2-QL/.directory
 *.toc
 DOC/html/*
 DOC/latex/*
+*-SAVE-ERROR
+build/cmake_install.cmake
+
+.DS_Store

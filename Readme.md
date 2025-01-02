@@ -17,7 +17,6 @@ and cmake_version.f90.in.
 # Installation
 
 ## Prerequisites
-  * SuperLU
   * SuiteSparse
   * NetCDF
   * GSL, FGSL
