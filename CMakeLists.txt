@@ -75,9 +75,14 @@ find_package(LAPACK REQUIRED)
 
 find_package(SuiteSparse)
 if(SUITESPARSE_FOUND)
+  # In Debian bookworm being standard in 2025, SuiteSparse v5.12 packages don't have
+  # their own CMake files for find_package. As soon as this changes,
+  # find_package(SuiteSparse) should be replaced by find_package(UMFPACK) and
+  # the legacy switch removed.
   set(LEGACY_SUITESPARSE ON)
   message(STATUS "SuiteSparse found.")
 else()
+  # Use more recent SuiteSparse v7.6.1 from GitHub.
   message(STATUS "SuiteSparse not found. Building.")
   include(suitesparse)
 endif()
