@@ -89,9 +89,6 @@ find_package(HDF5 COMPONENTS C HL Fortran Fortran_HL REQUIRED)
 
 find_package(GSL REQUIRED)
 
-include_directories(${NEO2_Inc})
-include_directories(${NEO2_Inc}/src)
-include_directories(${NEO2_Libs}/include)
 include_directories(${CMAKE_BINARY_DIR}/COMMON)
 include_directories(${FGSL_INC})
 

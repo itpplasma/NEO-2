@@ -9,21 +9,18 @@ if (DEFINED ENV{CODE})
     add_custom_target(LIBNEO)
 
     add_subdirectory($ENV{CODE}/libneo libneo EXCLUDE_FROM_ALL)
-    set(NEO2_Libs ${LIBNEO_PATH}/build CACHE STRING "NEO-2 external lib path")
     set(FGSL_PATH $ENV{CODE}/external/fgsl-1.6.0/ CACHE STRING "FGSL path")
 else()
     message(STATUS "Downloading and building external libraries")
     include(fgsl)
     include(libneo)
 
-    set(NEO2_Libs ${CMAKE_BINARY_DIR}/_deps/libneo-build CACHE STRING "NEO-2 external lib path")
     set(FGSL_PATH ${CMAKE_BINARY_DIR}/fgsl/src/FGSL CACHE STRING "FGSL path")
 endif()
 
 set(FGSL_INC ${FGSL_PATH} CACHE STRING "FGSL include")
 set(LIBFGSL ${FGSL_PATH}/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE STRING "FGSL lib")
 
-set(NEO2_Inc ${NEO2_Libs})
 
 ### Directories of MPE
 set(MPE_PATH /afs/itp.tugraz.at/opt/mpe/1.3.0/)
