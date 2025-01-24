@@ -21,19 +21,8 @@ set(Interface_Libs
 	LAPACK::LAPACK
 )
 
-### Linking
 target_link_libraries(${PROJECT_EXE_NAME}
+	LIBNEO::neo
+	LIBNEO::hdf5_tools
 	${Interface_Libs}
 )
-
-if(DEFINED ENV{CODE})
-	target_link_libraries(${PROJECT_EXE_NAME}
-		${LIBNEOLIB}
-		${HDF5_tools_lib}
-	)
-else()
-	target_link_libraries(${PROJECT_EXE_NAME}
-		LIBNEO::neo
-		LIBNEO::hdf5_tools
-	)
-endif()

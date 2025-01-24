@@ -102,10 +102,6 @@ target_link_libraries(common PUBLIC
   GSL::gsl
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}
-  hdf5::hdf5
-  hdf5::hdf5_hl
-  hdf5::hdf5_fortran
-  hdf5::hdf5_hl_fortran
   BLAS::BLAS
   LAPACK::LAPACK
   ${NETCDF_LIBS}
@@ -117,21 +113,12 @@ else()
   target_link_libraries(common PUBLIC SuiteSparse::umfpack)
 endif()
 
-if(DEFINED ENV{CODE})
-target_link_libraries(common PUBLIC
-  ${LIBNEOLIB}
-  ${LIBMAGFIE}
-  ${MyMPILib_lib}
-  ${HDF5_tools_lib}
-)
-else()
 target_link_libraries(common PUBLIC
   LIBNEO::neo
   LIBNEO::magfie
   LIBNEO::MyMPILib
   LIBNEO::hdf5_tools
 )
-endif()
 
 target_link_libraries(common PUBLIC
   MPI::MPI_Fortran
