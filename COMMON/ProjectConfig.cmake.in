@@ -1,19 +1,18 @@
 ### Installation directory
 set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
+include(Util)
+find_or_fetch(libneo)
 
 ### Path to the external libraries
 if (DEFINED ENV{CODE})
     message(STATUS "External libraries prebuilt in $CODE=" $ENV{CODE})
     add_custom_target(FGSL)
-    add_custom_target(LIBNEO)
 
-    add_subdirectory($ENV{CODE}/libneo libneo EXCLUDE_FROM_ALL)
     set(FGSL_PATH $ENV{CODE}/external/fgsl-1.6.0/ CACHE STRING "FGSL path")
 else()
     message(STATUS "Downloading and building external libraries")
     include(fgsl)
-    include(libneo)
 
     set(FGSL_PATH ${CMAKE_BINARY_DIR}/fgsl/src/FGSL CACHE STRING "FGSL path")
 endif()
