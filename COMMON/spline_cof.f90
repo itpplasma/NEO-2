@@ -1,6 +1,6 @@
 
 !***********************************************************************
-! 
+!
 ! routines for calculating spline coefficients
 !              drivers
 !
@@ -13,7 +13,7 @@
 
 
 !***********************************************************************
-! 
+!
 ! routines for third order spline
 !
 !***********************************************************************
@@ -562,16 +562,18 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 ! ---------------------------
 
   ! solve system
-  CALL sparse_solve(MA, inh)
-  
+  !CALL sparse_solve(MA, inh)
+  ! solve with LAPACK instead of sparse_solve
+  CALL dgesv(size_dimension, 1, MA, size_dimension, indx_lu, inh, info)
+
   ! take a(), b(), c(), d()
   DO i = 1, len_indx
-     a(i) = inh((i-1)*VAR+1) 
-     b(i) = inh((i-1)*VAR+2) 
+     a(i) = inh((i-1)*VAR+1)
+     b(i) = inh((i-1)*VAR+2)
      c(i) = inh((i-1)*VAR+3)
-     d(i) = inh((i-1)*VAR+4) 
+     d(i) = inh((i-1)*VAR+4)
   END DO
-  
+
 
   DEALLOCATE(MA,  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for arrays 1 failed!'
@@ -609,7 +611,7 @@ SUBROUTINE reconstruction3_a(ai, bi, ci, di, h, a, b, c, d)
 
   REAL(DP), INTENT(IN)    :: ai, bi, ci, di
   REAL(DP), INTENT(IN)    :: h
-  REAL(DP), INTENT(OUT)   :: a, b, c, d 
+  REAL(DP), INTENT(OUT)   :: a, b, c, d
 
   !---------------------------------------------------------------------
 
@@ -688,7 +690,7 @@ SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
   REAL(DP)                                  :: h
   REAL(DP),     DIMENSION(:),   ALLOCATABLE :: xn, yn, lambda1
   REAL(DP),     DIMENSION(:),   ALLOCATABLE :: ai, bi, ci, di
-  
+
   no = SIZE(x)
   ns = SIZE(a)
   len_indx = SIZE(indx)
@@ -870,11 +872,11 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
 
   ! weights:  w(i)=0/1;  if(w(i)==0) ... do not use this point
   w = 1
- 
+
   sw1 = 2
   sw2 = 4
 
-  c1 = 0.0D0  
+  c1 = 0.0D0
   cn = 0.0D0
 
   DO i = 1, no_cur
