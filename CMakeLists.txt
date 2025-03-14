@@ -22,7 +22,7 @@ option(MPE_SUPPORT "Enable MPE for graphical MPI work load evaluation?" OFF)
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
 if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-  set(CMAKE_Fortran_FLAGS_RELEASE " -O3 -cpp -g -fbacktrace -mtune=generic -ffpe-summary=invalid,zero,overflow")
+  set(CMAKE_Fortran_FLAGS_RELEASE " -O3 -cpp -g -fbacktrace -march=sandybridge -mtune=generic -ffpe-summary=invalid,zero,overflow")
 elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
   message(STATUS "Setting Intel flags.")
   set(CMAKE_Fortran_FLAGS_RELEASE " -O3 -cpp -mkl -heap-arrays -stand f08")
