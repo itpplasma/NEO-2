@@ -562,9 +562,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 ! ---------------------------
 
   ! solve system
-  !CALL sparse_solve(MA, inh)
-  ! solve with LAPACK instead of sparse_solve
-  CALL dgesv(size_dimension, 1, MA, size_dimension, indx_lu, inh, size_dimension, info)
+  CALL sparse_solve(MA, inh)
 
   ! take a(), b(), c(), d()
   DO i = 1, len_indx
