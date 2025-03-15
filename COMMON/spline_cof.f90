@@ -583,68 +583,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   DEALLOCATE(omega,  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for omega failed!'
 
-  call write_golden_record_splinecof3a(size(x), size(indx), c1, cn, x, y, lambda1, indx, a, b, c, d, sw1, sw2, m)
-
 END SUBROUTINE splinecof3_a
-
-
-subroutine write_golden_record_splinecof3a(len_x, len_idx, c1, cn, x, y, lambda1, indx, a, b, c, d, sw1, sw2, m)
-  use nrtype, only : I4B, DP
-
-  IMPLICIT NONE
-
-  INTEGER(I4B),               INTENT(in) :: len_x
-  INTEGER(I4B),               INTENT(in) :: len_idx
-  REAL(DP),                   INTENT(in) :: c1, cn
-  REAL(DP),     DIMENSION(len_x), INTENT(IN)    :: x
-  REAL(DP),     DIMENSION(len_x), INTENT(IN)    :: y
-  REAL(DP),     DIMENSION(len_idx), INTENT(IN)    :: lambda1
-  INTEGER(I4B), DIMENSION(len_idx), INTENT(IN)    :: indx
-  REAL(DP),     DIMENSION(len_idx), INTENT(in)   :: a, b, c, d
-  INTEGER(I4B),               INTENT(IN)    :: sw1, sw2
-  REAL(DP),                   INTENT(IN)    :: m
-
-  character(len=14) :: outfile
-  integer :: funit
-
-  call generate_random_filename(outfile)
-  ! open file in binary mode
-  open(newunit=funit, file=outfile, status='unknown', form='unformatted', action='write')
-  write(funit) len_x, len_idx
-  write(funit) c1, cn
-  write(funit) x, y
-  write(funit) lambda1, indx, a, b, c, d
-  write(funit) sw1, sw2, m
-  close(funit)
-
-end subroutine write_golden_record_splinecof3a
-
-subroutine generate_random_filename(filename)
-  implicit none
-
-  integer, parameter :: filename_length = 10
-  integer :: i
-  character(len=filename_length+4), intent(out) :: filename
-  character(len=62) :: chars
-  integer :: index
-  real :: rand
-
-  chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-
-  ! Initialize the random number generator
-  call random_seed()
-
-  ! Generate the random part of the filename
-  do i = 1, filename_length
-      call random_number(rand)
-      index = 1 + int(rand * 62)  ! Ensure index is in range [1,62]
-      filename(i:i) = chars(index:index)
-  end do
-
-  ! Append the ".out" extension
-  filename(filename_length + 1:) = '.out'
-end subroutine generate_random_filename
-
 
 !> reconstruct spline coefficients (a, b, c, d) on x(i)
 !>
