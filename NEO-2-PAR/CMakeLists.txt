@@ -17,7 +17,6 @@ set_target_properties(${EXE_NAME} PROPERTIES COMPILE_FLAGS "${MPI_Fortran_COMPIL
 set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAGS}")
 
 target_link_libraries(${EXE_NAME} common)
-target_include_directories(${EXE_NAME} PUBLIC "${CMAKE_BINARY_DIR}/COMMON")
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)

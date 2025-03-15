@@ -4,9 +4,10 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 project(NEO-2)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 enable_language(C Fortran)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
-if(EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
-  include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
+if(EXISTS ${PROJECT_BINARY_DIR}/BuildConfig.cmake.in)
+  include (${PROJECT_BINARY_DIR}/BuildConfig.cmake.in)
 endif()
 include(${PROJECT_SOURCE_DIR}/COMMON/ProjectConfig.cmake.in)
 
