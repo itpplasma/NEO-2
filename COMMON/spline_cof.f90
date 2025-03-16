@@ -890,6 +890,37 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
 
 END SUBROUTINE splinecof3_hi_driv_a
 
+SUBROUTINE splinecof3_fast(x, y, a, b, c, d)
+  use nrtype, only : I4B, DP
+  real(DP), intent(in) :: x(:), y(:)
+  real(DP), dimension(size(x)-1), intent(out) :: a, b, c, d
+  integer(I4B) :: n, info
+  real(DP) :: r(size(x)-1), h(size(x)-1),&
+        dl(size(x)-3), ds(size(x)-2), cs(size(x)-2)
+
+  n = size(x)
+
+  h = x(2:) - x(1:n-1)
+  r = y(2:) - y(1:n-1)
+
+  dl = h(2:n-2)
+  ds = 2d0*(h(1:n-2)+h(2:))
+
+  cs = 3d0*(r(2:)/h(2:)-r(1:n-2)/h(1:n-2))
+
+  call dptsv(n-2, 1, ds, dl, cs, n-2, info)
+
+  a = y(1:n-1)
+  b(1) = r(1)/h(1) - h(1)/3d0*cs(1)
+  b(2:n-2) = r(2:n-2)/h(2:n-2)-h(2:n-2)/3d0*(cs(2:n-2)+2*cs(1:n-3))
+  b(n-1)   = r(n-1)/h(n-1)-h(n-1)/3d0*(2*cs(n-2))
+  c(4)     = 0
+  c(2:)    = cs
+  d(1)     = 1/(3*h(1))*cs(1)
+  d(2:n-2) = 1/(3*h(2:n-2))*(cs(2:n-2)-cs(1:n-3))
+  d(n-1)   = 1/(3*h(n-1))*(-cs(n-2))
+END SUBROUTINE splinecof3_fast
+
 !> calculate optimal weights for smooting (lambda)
 !>
 !> \attention  NO FINAL VERSION NOW!!!!!
