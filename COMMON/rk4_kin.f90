@@ -1,6 +1,7 @@
 SUBROUTINE rk4_kin(x,h)
 
   USE rk4_kin_mod
+  USE odeint_allroutines_sub
 
   IMPLICIT NONE
 
