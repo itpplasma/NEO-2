@@ -73,8 +73,8 @@ CONTAINS
 
   SUBROUTINE find_ext(fieldperiod,x1i,x2i,dxi,x,y)
     TYPE(fieldperiod_struct), POINTER :: fieldperiod
-    REAL(kind=dp), INTENT(in)   :: x1i,x2i,dxi 
-    REAL(kind=dp), INTENT(out)  :: x,y 
+    REAL(kind=dp), INTENT(in)   :: x1i,x2i,dxi
+    REAL(kind=dp), INTENT(out)  :: x,y
 
     REAL(kind=dp) :: A,d,x_hlp,d2,dummy,dx,x1_p,x2_p
     REAL(kind=dp) :: x1_in,x2_in,x1,x2,x3,x4
@@ -97,7 +97,7 @@ CONTAINS
 
     x1_in = x1
     x2_in = x2
-    
+
     ! second derivative
     CALL plagrange_interp(fieldperiod,x1,nlagrange,fx1,dummy)
     CALL plagrange_interp(fieldperiod,x2,nlagrange,fx2,dummy)
@@ -109,7 +109,7 @@ CONTAINS
        d = x2 - x1
        x3 = x1 + A * d
        x4 = x2 - A * d
-    
+
        CALL plagrange_interp(fieldperiod,x3,nlagrange,fx3,dummy)
        CALL plagrange_interp(fieldperiod,x4,nlagrange,fx4,dummy)
 
@@ -132,7 +132,7 @@ CONTAINS
           ELSE
              x2 = x3
              x3 = x4
-             fx3 = fx4 
+             fx3 = fx4
              d = x2 - x1
              x4 = x2 - A * d
              CALL plagrange_interp(fieldperiod,x4,nlagrange,fx4,dummy)
@@ -145,15 +145,15 @@ CONTAINS
 
        CALL plagrange_interp(fieldperiod,x1,nlagrange,fx1,dummy)
        CALL plagrange_interp(fieldperiod,x2,nlagrange,fx2,dummy)
-    
+
        IF (d2 .LT. 0) THEN
           L = fx2 < fx1
        ELSE
           L = fx1 < fx2
        END IF
-    
+
        IF (L) THEN
-          x = x1 
+          x = x1
           y = fx1
        ELSE
           x = x2
@@ -194,14 +194,14 @@ MODULE mag_interface_mod
   ! double precision
   INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0d0)
 
-  ! public 
+  ! public
   INTEGER, PUBLIC       :: mag_local_sigma = 0
   LOGICAL, PUBLIC       :: mag_symmetric = .FALSE.
   LOGICAL, PUBLIC       :: mag_symmetric_shorten = .FALSE.
   LOGICAL, PUBLIC       :: split_inflection_points = .TRUE.
   LOGICAL, PUBLIC       :: split_at_period_boundary = .FALSE.
   REAL(kind=dp), PUBLIC :: hphi_lim = 1.0d-10
-  REAL(kind=dp), PUBLIC :: sigma_shield_factor = 5.0d0  
+  REAL(kind=dp), PUBLIC :: sigma_shield_factor = 5.0d0
   INTEGER, PUBLIC       :: mag_magfield = 1
   INTEGER, PUBLIC       :: mag_coordinates = 0
   INTEGER, PUBLIC       :: mag_nperiod_min
@@ -229,7 +229,7 @@ MODULE mag_interface_mod
   REAL(kind=dp), PUBLIC :: average_one_over_bhat
   REAL(kind=dp), PUBLIC :: surface_boozer_B00
   REAL(kind=dp), PUBLIC :: travis_convfac
-  
+
 
   ! default values
   CHARACTER(len=100), PRIVATE :: name_def    = 'unnamed'
@@ -343,7 +343,7 @@ CONTAINS
 
   ! ---------------------------------------------------------------------------
   ! make for device_struct
-  ! 
+  !
   SUBROUTINE make_mag_device(name)
     use neo_magfie, only: magfie_result,magfie_spline,magfie_sarray
     USE magfie_mod, ONLY : stevvo
@@ -391,7 +391,7 @@ CONTAINS
           device%nfp = 1
        ELSE ! does not exist
           PRINT *, 'Not implemented: mag_magfield = ',mag_magfield
-          STOP          
+          STOP
        END IF
     ELSE
        ! Boozer
@@ -411,7 +411,7 @@ CONTAINS
     END IF
   END SUBROUTINE make_mag_device
   ! ---------------------------------------------------------------------------
-  
+
   ! ---------------------------------------------------------------------------
   ! make for surface_struct
   SUBROUTINE make_mag_surface( &
@@ -434,14 +434,14 @@ CONTAINS
 
   ! ---------------------------------------------------------------------------
   ! make for fieldline_struct
-  ! 
+  !
   SUBROUTINE make_mag_fieldline_newperiod(xstart)
 
     USE rk4_kin_mod, ONLY : y
     USE plagrange_mod
     use neo_magfie, only : boozer_iota
     use collisionality_mod, only : isw_axisymm
-    use field_eq_mod, only : dpsidr, dpsidz
+    use field_sub, only : dpsidr, dpsidz
     !! Modifications by Andreas F. Martitsch (11.06.2014)
     ! Optional output (necessary for modeling the magnetic rotation)
     ! Note: This requires changes in "modify_propagator"
@@ -459,7 +459,7 @@ CONTAINS
     !! End Modifications by Andreas F. Martitsch (11.06.2014)
 
     REAL(kind=dp),                INTENT(in) :: xstart(3)
-    
+
     ! local
     INTEGER       :: nperiod,nstep,ndim,nfp
     INTEGER       :: i_period,i
@@ -503,8 +503,8 @@ CONTAINS
 
     ! local copies
     nperiod = surface%nperiod
-    nstep   = surface%nstep  
-    ndim    = surface%ndim   
+    nstep   = surface%nstep
+    ndim    = surface%ndim
     nfp     = surface%parent%nfp
 
     ! y-vector at the beginning
@@ -528,7 +528,7 @@ CONTAINS
        y(3) = 1.0_dp
        y(4:ndim) = 0.0_dp
     END IF
-       
+
     ! construct a fieldline
     CALL construct_magnetics(surface,fieldline)
     fieldline%xstart = xstart
@@ -567,10 +567,10 @@ CONTAINS
              period_length   = 2.0_dp*pi/aiota_tokamak/CEILING(1.0_dp/aiota_tokamak)
           ELSEIF (isw_axisymm .EQ. 1) THEN
              ! the number 5 ensures that there are at least two periods
-             ! otherwise there is a problem with logics regarding extra 
+             ! otherwise there is a problem with logics regarding extra
              ! children of a period (there is only one possible)
              period_length   = 5.0_dp*pi/aiota_tokamak
-             split_inflection_points = .FALSE. 
+             split_inflection_points = .FALSE.
           ELSE
              PRINT *, 'isw_axisymm = ',isw_axisymm,' not implemented!'
              STOP
@@ -585,7 +585,7 @@ CONTAINS
              period_length   = 2.0_dp*pi/boozer_iota/CEILING(1.0_dp/boozer_iota)
           ELSEIF (isw_axisymm .EQ. 1) THEN
              ! the number 5 ensures that there are at least two periods
-             ! otherwise there is a problem with logics regarding extra 
+             ! otherwise there is a problem with logics regarding extra
              ! children of a period (there is only one possible)
              period_length   = 5.0_dp*pi/abs(boozer_iota)
              split_inflection_points = .FALSE.
@@ -639,7 +639,7 @@ CONTAINS
        fieldperiod%mdata%ybeg = y
        fieldperiod%phi_l = phi
        IF (mag_coordinates .EQ. 0) THEN
-          ! cylindrical       
+          ! cylindrical
           theta_b = ATAN2(y(2),y(1)-device%r0)
        ELSE
           ! Boozer
@@ -650,7 +650,7 @@ CONTAINS
        ! Optional output (necessary for modeling the magnetic rotation) ->
        ! Compute the additional entries
        CALL magdata_for_particles(                  &
-            phi,                                    & 
+            phi,                                    &
             fieldperiod%mdata%bhat(0),              &
             fieldperiod%mdata%geodcu(0),            &
             fieldperiod%mdata%h_phi(0),             &
@@ -704,7 +704,7 @@ CONTAINS
           ! Optional output (necessary for modeling the magnetic rotation) ->
           ! Compute the additional entries
           CALL magdata_for_particles(                  &
-               phi,                                    & 
+               phi,                                    &
                fieldperiod%mdata%bhat(i),              &
                fieldperiod%mdata%geodcu(i),            &
                fieldperiod%mdata%h_phi(i),             &
@@ -734,16 +734,16 @@ CONTAINS
           end if
 
        END DO all_steps
-       ! final storage 
+       ! final storage
        fieldperiod%mdata%yend = y
        fieldperiod%phi_r = phi
-       
+
        IF (mag_coordinates .EQ. 0) THEN
           ! cylindrical
           ! distance and aiota
           dist = SQRT( (y(1)-r_start)**2 + (y(2)-z_start)**2 )
           theta_e = ATAN2(y(2),y(1)-device%r0)
-          IF (.NOT. (mag_magfield .NE. 0 .AND. magnetic_device .EQ. 0)) THEN ! no Tokamak       
+          IF (.NOT. (mag_magfield .NE. 0 .AND. magnetic_device .EQ. 0)) THEN ! no Tokamak
              aiota = aiota + theta_e - theta_b
              IF(theta_e .LT. theta_b) aiota = aiota + 2.0_dp*pi
           END IF
@@ -770,7 +770,7 @@ CONTAINS
                 EXIT construct_periods
              END IF
           ELSE ! no Tokamak
-             IF (i_period .LE. mag_nperiod_min) THEN 
+             IF (i_period .LE. mag_nperiod_min) THEN
                 dist_min_req = MIN(dist_min_req,dist)
              ELSE
                 IF (dist .LT. dist_min_req) THEN
@@ -787,14 +787,14 @@ CONTAINS
                 EXIT construct_periods
              END IF
           ELSE ! no Tokamak
-             IF (i_period .LE. mag_nperiod_min) THEN 
+             IF (i_period .LE. mag_nperiod_min) THEN
                 dist_min_req = MIN(dist_min_req,dist)
              ELSE
                 IF (dist .LT. dist_min_req) THEN
                    EXIT construct_periods
                 END IF
              END IF
-          END IF ! end tok - no tok          
+          END IF ! end tok - no tok
        END IF
     END DO construct_periods
 
@@ -815,7 +815,7 @@ CONTAINS
     ! output
     IF (mag_coordinates .EQ. 0) THEN
        ! cylindrical
-       IF (.NOT. (mag_magfield .NE. 0 .AND. magnetic_device .EQ. 0)) THEN ! no Tokamak       
+       IF (.NOT. (mag_magfield .NE. 0 .AND. magnetic_device .EQ. 0)) THEN ! no Tokamak
           surface%aiota = aiota / (phi - phibeg)
        END IF
     END IF
@@ -865,7 +865,7 @@ CONTAINS
           fieldperiod%mdata%yend = y
           fieldperiod%phi_r = phi
           IF (mag_coordinates .EQ. 0) THEN
-             ! cylindrical       
+             ! cylindrical
              theta_b = ATAN2(y(2),y(1)-device%r0)
           ELSE
              ! Boozer
@@ -877,7 +877,7 @@ CONTAINS
           ! Optional output (necessary for modeling the magnetic rotation) ->
           ! Compute the additional entries
           CALL magdata_for_particles(                  &
-               phi,                                    & 
+               phi,                                    &
                fieldperiod%mdata%bhat(nstep),              &
                fieldperiod%mdata%geodcu(nstep),            &
                fieldperiod%mdata%h_phi(nstep),             &
@@ -931,7 +931,7 @@ CONTAINS
              ! Optional output (necessary for modeling the magnetic rotation) ->
              ! Compute the additional entries
              CALL magdata_for_particles(                  &
-                  phi,                                    & 
+                  phi,                                    &
                   fieldperiod%mdata%bhat(i),              &
                   fieldperiod%mdata%geodcu(i),            &
                   fieldperiod%mdata%h_phi(i),             &
@@ -959,7 +959,7 @@ CONTAINS
                 fieldperiod%coords%x3(i) = y(1)
              END IF
           END DO all_steps_back
-          ! final storage 
+          ! final storage
           fieldperiod%mdata%ybeg = y
           fieldperiod%phi_l = phi
 
@@ -978,7 +978,7 @@ CONTAINS
                 EXIT destruct_mag
              END IF
           END DO destruct_mag
-       ELSE   
+       ELSE
           i_period = 2 * i_period
        END IF
        ! fix period_tag
@@ -1030,7 +1030,7 @@ CONTAINS
        dlogbds_end            = fieldperiod%mdata%dlogbds(nstep)
        dbcovar_s_hat_dphi_end = fieldperiod%mdata%dbcovar_s_hat_dphi(nstep)
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
-       
+
        ! new end points for both sides
        x1_mid = (x1_start + x1_end) / 2.0d0
        x3_mid = (x3_start + x3_end) / 2.0d0
@@ -1114,7 +1114,7 @@ CONTAINS
        END DO
 
     ELSE ! normal not symmetric case
-       IF (mag_close_fieldline .EQ. 1) THEN 
+       IF (mag_close_fieldline .EQ. 1) THEN
           ! modify all
           phi_start = x2_start
           phi_end   = x2_end
@@ -1145,13 +1145,13 @@ CONTAINS
                      (dlogbds_start - dlogbds_end) * phi_mult
                 fieldperiod%mdata%dbcovar_s_hat_dphi(i) = &
                      fieldperiod%mdata%dbcovar_s_hat_dphi(i) + &
-                     (dbcovar_s_hat_dphi_start - dbcovar_s_hat_dphi_end) * phi_mult               
+                     (dbcovar_s_hat_dphi_start - dbcovar_s_hat_dphi_end) * phi_mult
                 !! End Modifications by Andreas F. Martitsch (11.06.2014)
              END DO
              IF (.NOT.(ASSOCIATED(fieldperiod%next))) EXIT
              fieldperiod => fieldperiod%next
           END DO
-       ELSEIF (mag_close_fieldline .EQ. 2) THEN 
+       ELSEIF (mag_close_fieldline .EQ. 2) THEN
           ! modify only last period
           fieldperiod => fieldline%ch_las ! last period
 
@@ -1195,7 +1195,7 @@ CONTAINS
     average_one_over_bhat = 0.0d0
     count_sum_bhat = 0
     one_over_h_phi_int=0.0d0
-    b_over_h_phi_int=0.0d0 
+    b_over_h_phi_int=0.0d0
     b2_over_h_phi_int=0.0d0
     DO ! go through all periods
        uplim = UBOUND(fieldperiod%mdata%bhat,1)
@@ -1286,10 +1286,10 @@ CONTAINS
   ! ---------------------------------------------------------------------------
   ! joins all props in a fieldripple on a whole fieldline
   ! practical only for tokamaks
-  ! 
+  !
   SUBROUTINE ripple_prop_join(fieldline)
     TYPE(fieldline_struct),         POINTER :: fieldline
- 
+
     TYPE(fieldperiod_struct),       POINTER :: fieldperiod
     TYPE(fieldpropagator_struct),   POINTER :: fieldpropagator
     TYPE(fieldpropagator_struct),   POINTER :: fieldpropagator_add
@@ -1300,7 +1300,7 @@ CONTAINS
     fieldperiod => fieldline%ch_fir
     fieldpropagator => fieldperiod%ch_fir
     fieldripple => fieldpropagator%ch_act
-       
+
     fieldpropagator => fieldripple%pa_fir
     proptag_first = fieldpropagator%tag
     proptag_last  = fieldripple%pa_las%tag
@@ -1326,7 +1326,7 @@ CONTAINS
     PRINT *, 'fieldripple%pa_las%phi_l   ',fieldripple%pa_las%phi_l
     PRINT *, 'fieldripple%pa_las%phi_r   ',fieldripple%pa_las%phi_r
     PRINT *, '-----------'
-    
+
     fieldpropagator_add => fieldpropagator
     IF (proptag_first .NE. proptag_last) THEN
        allpropsinripple: DO proptag = proptag_first,proptag_last-1
@@ -1365,7 +1365,7 @@ CONTAINS
   ! ---------------------------------------------------------------------------
   ! looks for all extrema in all periods and stores the information within
   ! the fieldperiod structure
-  ! 
+  !
   SUBROUTINE find_extrema
 
     USE plagrange_mod
@@ -1439,7 +1439,7 @@ CONTAINS
              ELSE
                 minmax_ext(count) = 0 ! Minimum
              END IF
-             
+
           ELSEIF (d2er0*d2er1 .LE. 0.0_dp .AND. d2er1 .NE. 0.0_dp .AND. split_inflection_points) THEN
              d2er1i = d2er1
              hh = h
@@ -1479,7 +1479,7 @@ CONTAINS
           der0  = der1
           d2er0 = d2er1
        END DO all_steps
-       
+
        IF (count .GT. 0) THEN
           ALLOCATE(fieldperiod%phi_ext(count))
           fieldperiod%phi_ext = phi_ext(1:count)
@@ -1505,7 +1505,7 @@ CONTAINS
     END DO search_all_periods
 
     ! find the appropriate width for exact treatment around maxima
-    ! and inflection points   
+    ! and inflection points
     fieldperiod => fieldline%ch_fir
     nstep = fieldperiod%parent%parent%nstep
     search_all_periods_width: DO
@@ -1526,7 +1526,7 @@ CONTAINS
           EXIT search_all_periods_width
        END IF
     END DO search_all_periods_width
-       
+
   END SUBROUTINE find_extrema
 
   SUBROUTINE find_width(start,count)
@@ -1558,7 +1558,7 @@ CONTAINS
     REAL(kind=dp) :: end_phi
 
     TYPE(fieldperiod_struct),     POINTER :: periodwalker
-    
+
     periodwalker => fieldperiod
     s = start
     c = count
@@ -1624,7 +1624,7 @@ CONTAINS
     REAL(kind=dp), DIMENSION(1:2), INTENT(in)  :: x,y,yp,ypp
     REAL(kind=dp), DIMENSION(1:6), INTENT(out) :: p
     REAL(kind=dp) :: d
-    
+
     d = -x(2)**5 - 10*x(1)**2*x(2)**3 + 10*x(2)**2*x(1)**3 - &
          5*x(1)**4*x(2) + 5*x(1)*x(2)**4 + x(1)**5
     p(1) = -(12*y(2) - 12*y(1) - 2*x(1)*x(2)*ypp(2) + 6*x(1)*yp(2) - &
@@ -1674,13 +1674,13 @@ CONTAINS
     REAL(kind=dp), DIMENSION(1:2), INTENT(in)  :: phi
     REAL(kind=dp), DIMENSION(1:6), INTENT(in)  :: p
     REAL(kind=dp), INTENT(out) :: width
-    
+
     ! test
     REAL(kind=dp), DIMENSION(100) :: x,y
     INTEGER :: i
 
     width = ABS(phi(2)-phi(1)) / 3.0_dp
-    
+
     ! test
     x(1) = phi(1)
     DO i = 2,99
@@ -1693,11 +1693,11 @@ CONTAINS
 
   ! ---------------------------------------------------------------------------
   ! with the information in fieldperiods now the fieldpropagators are set up
-  ! 
+  !
   SUBROUTINE setup_fieldpropagators
 
     USE plagrange_mod
-    
+
     INTEGER, PARAMETER :: nlagrange = 5
 
     INTEGER :: count,i,k
@@ -1810,7 +1810,7 @@ CONTAINS
                      UBOUND(fieldperiod%mdata%dlogbds,1) &
                     ) &
                   )
-          fieldpropagator%mdata%dlogbds=fieldperiod%mdata%dlogbds       
+          fieldpropagator%mdata%dlogbds=fieldperiod%mdata%dlogbds
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
           ALLOCATE(fieldpropagator%mdata%ybeg(LBOUND(fieldperiod%mdata%ybeg,1):UBOUND(fieldperiod%mdata%ybeg,1)))
           fieldpropagator%mdata%ybeg = fieldperiod%mdata%ybeg
@@ -1829,7 +1829,7 @@ CONTAINS
           fieldripple%pa_las => fieldpropagator
           fieldpropagator%ch_act => fieldripple
           fieldpropagator%ch_tag =  fieldripple%tag
-          
+
           IF (ASSOCIATED(fieldperiod%next)) THEN
              fieldperiod => fieldperiod%next
           ELSE
@@ -1840,12 +1840,12 @@ CONTAINS
        fieldline%abs_min_ptag = fieldpropagator%tag
        fieldline%b_abs_min = fieldripple%b_min
        fieldline%b_abs_max = fieldripple%b_max_l
-       
+
        RETURN
     END IF
 
     icount=0
-    
+
     nstep = fieldperiod%parent%parent%nstep
     phi_span = fieldline%ch_las%coords%x2(nstep) - fieldline%ch_fir%coords%x2(0)
 
@@ -1992,7 +1992,7 @@ CONTAINS
        all_props: DO
           ! make all necessary propagators in one period
           CALL construct_magnetics(fieldperiod,fieldpropagator)
-          
+
           IF (first_extra) THEN
              ! the first extra propagator
              fieldperiod%ch_ext => fieldpropagator ! extra propagator
@@ -2009,12 +2009,12 @@ CONTAINS
              ELSE
                 fieldpropagator%phi_min = fieldpropagator%phi_r ! right side
                 fieldpropagator%b_min = fieldpropagator%b_r
-                fieldpropagator%has_min = 0             
+                fieldpropagator%has_min = 0
              END IF
 
              ripple_start = .TRUE.
              ripple_end   = .FALSE.
-             first_extra  = .FALSE. 
+             first_extra  = .FALSE.
              all_props_end = .FALSE.
           ELSEIF (last_extra) THEN
              ! the last extra propagator
@@ -2032,11 +2032,11 @@ CONTAINS
              ELSE
                 fieldpropagator%phi_min = fieldpropagator%phi_l ! left side
                 fieldpropagator%b_min = fieldpropagator%b_l
-                fieldpropagator%has_min = 0             
+                fieldpropagator%has_min = 0
              END IF
 
              ripple_end = .TRUE.
-             last_extra  = .FALSE. 
+             last_extra  = .FALSE.
              all_props_end = .TRUE.
           ELSE
              ! normal propagators
@@ -2076,13 +2076,13 @@ CONTAINS
              END IF
 
              ! left side
-             fieldpropagator%phi_l  = fieldpropagator%prev%phi_r 
-             fieldpropagator%b_l    = fieldpropagator%prev%b_r 
+             fieldpropagator%phi_l  = fieldpropagator%prev%phi_r
+             fieldpropagator%b_l    = fieldpropagator%prev%b_r
              ! right side
              IF (has_max) THEN ! maximum
                 fieldpropagator%phi_r = fieldperiod%phi_ext(max_count)
                 fieldpropagator%b_r   = fieldperiod%bhat_ext(max_count)
-                ripple_end = .TRUE.                
+                ripple_end = .TRUE.
              ELSEIF (has_inf) THEN ! inflection
                 fieldpropagator%phi_r = fieldperiod%phi_ext(inf_count)
                 fieldpropagator%b_r   = fieldperiod%bhat_ext(inf_count)
@@ -2111,12 +2111,12 @@ CONTAINS
                 ! exit if maximum is at the end of period (otherwise zerowidth propagator)
                 IF (fieldpropagator%phi_r .EQ. fieldperiod%coords%x2(nstep) ) THEN
                    all_props_end = .TRUE.
-                   props_count = props_count + 1 
+                   props_count = props_count + 1
                 END IF
              ELSE
                 all_props_end = .TRUE.
              END IF
-             
+
 
              IF (last_period .AND. props_count .EQ. props_num) THEN
                 ! handles the last extra propagator
@@ -2144,7 +2144,7 @@ CONTAINS
              fieldripple%b_max_l = fieldpropagator%b_l
              ripple_phi_l = fieldpropagator%phi_l
           END IF
-          IF (fieldpropagator%has_min .EQ. 1) THEN 
+          IF (fieldpropagator%has_min .EQ. 1) THEN
              ripple_phi_min = fieldpropagator%phi_min
              ripple_b_min = fieldpropagator%b_min
           END IF
@@ -2225,7 +2225,7 @@ CONTAINS
           phi_borders(3) = fieldpropagator%phi_r
           phi_num(1) = CEILING((phi_borders(2)-phi_borders(1)) / period_length * DBLE(nstep))
           phi_num(1) = MAX(n_addlim,phi_num(1)-MOD(phi_num(1),2))
-          phi_num(2) = CEILING((phi_borders(3)-phi_borders(2)) / period_length * DBLE(nstep))      
+          phi_num(2) = CEILING((phi_borders(3)-phi_borders(2)) / period_length * DBLE(nstep))
           phi_num(2) = MAX(n_addlim,phi_num(2)-MOD(phi_num(2),2))
        ELSE
           ALLOCATE(phi_borders(2))
@@ -2252,7 +2252,7 @@ CONTAINS
           fieldpropagator%coords%x2(phi_ub) = phi_borders(3)
        END IF
        fieldpropagator%i_min = phi_num(1)
-       IF (fieldpropagator%has_min .EQ. 0 .AND. & 
+       IF (fieldpropagator%has_min .EQ. 0 .AND. &
             fieldpropagator%b_l .LT. fieldpropagator%b_r) fieldpropagator%i_min = 0
        DEALLOCATE(phi_borders)
        DEALLOCATE(phi_num)
@@ -2268,7 +2268,7 @@ CONTAINS
        ! Allocate the additional entries
        ALLOCATE(fieldpropagator%mdata%dbcovar_s_hat_dphi(0:phi_ub))
        ALLOCATE(fieldpropagator%mdata%bcovar_s_hat(0:phi_ub))
-       ALLOCATE(fieldpropagator%mdata%dlogbds(0:phi_ub))      
+       ALLOCATE(fieldpropagator%mdata%dlogbds(0:phi_ub))
        !! End Modifications by Andreas F. Martitsch (11.06.2014)
 
        DO i = 0,phi_ub
@@ -2289,7 +2289,7 @@ CONTAINS
                )
           !! End Modifications by Andreas F. Martitsch (11.06.2014)
        END DO
-       
+
        IF (ASSOCIATED(fieldpropagator%next)) THEN
           fieldpropagator => fieldpropagator%next
        ELSE
@@ -2302,7 +2302,7 @@ CONTAINS
 
 
   ! ---------------------------------------------------------------------------
-  ! place eta in ripples 
+  ! place eta in ripples
   ! SUBROUTINE ripple_eta_mag(fieldline,collpar,eta_s_lim)
   SUBROUTINE ripple_eta_mag(collpar,eta_s_lim)
 
@@ -2332,7 +2332,7 @@ CONTAINS
     REAL(kind=dp) :: phi_inf_loc,b_inf_loc,dbdp_inf_loc
     REAL(kind=dp) :: b_max_locb_left,b_max_locb_right,width_left,width_right
 
-    REAL(kind=dp) :: eta,eta_b_abs_max,eta_loc_shield  
+    REAL(kind=dp) :: eta,eta_b_abs_max,eta_loc_shield
     REAL(kind=dp) :: eta_for_sigma,etas2_contrib,count_shielding
 
     INTEGER :: ripple_tag,walker_tag,back_tag
@@ -2356,7 +2356,7 @@ CONTAINS
        PRINT *, 'This is a dead branch'
        STOP
        ! now go through all fieldripples
-       allripples : DO 
+       allripples : DO
           ripple_tag = fieldripple%tag
           ! make proper allocation
           IF (ASSOCIATED(fieldripple%eta_x0)) THEN
@@ -2419,7 +2419,7 @@ CONTAINS
                       etas2 = etas2 + eta_loc * lam_loc * col_loc
 
                       ! end of contributions
-                      ! make the next step backwards or exit 
+                      ! make the next step backwards or exit
                       IF (back_tag .EQ. ripple_tag) THEN
                          EXIT walkback
                       ELSE
@@ -2459,7 +2459,7 @@ CONTAINS
                          CALL set_new(fieldripple%eta_s,etas)
                          CALL set_new(fieldripple%eta_cl,DBLE(count))
                       END IF
-                      
+
                 END IF
                 ! next ripple when walking away or exit
                 IF (mag_cycle_ripples .EQ. 0) THEN
@@ -2664,7 +2664,7 @@ CONTAINS
        fieldperiod     => fieldline%ch_fir
        fieldpropagator => fieldperiod%ch_fir
        fieldripple     => fieldpropagator%ch_act
-       allripples2 : DO 
+       allripples2 : DO
           ripple_tag = fieldripple%tag
           ! make proper allocation
           IF (ASSOCIATED(fieldripple%eta_x0)) THEN
@@ -2745,7 +2745,7 @@ CONTAINS
                       gamma1 = MIN(1.0d0,gamma1)
                       gamma2 = (b_max_locb - b_min_locb) / b_max_locb
                       etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb * gfactor(gamma1,gamma2)
-                      etas2 = etas2 + etas2_contrib                      
+                      etas2 = etas2 + etas2_contrib
                       IF (etas2_contrib .LT. 0.0_dp) THEN
                          PRINT *, 'negative etas2 contribution left',ripple_tag
                          STOP
@@ -2757,7 +2757,7 @@ CONTAINS
                       gamma1 = MIN(1.0d0,gamma1)
                       gamma2 = (b_max_locb - b_min_locb) / b_max_locb
                       etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb * gfactor(gamma1,gamma2)
-                      etas2 = etas2 + etas2_contrib                      
+                      etas2 = etas2 + etas2_contrib
                       IF (etas2_contrib .LT. 0.0_dp) THEN
                          PRINT *, 'negative etas2 contribution right',ripple_tag
                          STOP
@@ -2774,7 +2774,7 @@ CONTAINS
                                     rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act%tag .EQ. ripple_tag) &
                                     rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act
                             ELSE
-                               rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act 
+                               rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act
                                ! if the first is not connected to a propagator (max at the beginning)
                                IF (ASSOCIATED(rippleback%prev)) rippleback => rippleback%prev
                                ! Winny avoid double counting of last and first ripple which are identical
@@ -2816,7 +2816,7 @@ CONTAINS
                       ELSE ! go right
                          IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
                             CALL set_new(fieldripple%eta_shield,2.0d0) ! shielded
-                         ELSE  
+                         ELSE
                             CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
                          END IF
                       END IF
@@ -2831,7 +2831,7 @@ CONTAINS
                       ELSE ! go right
                          IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
                             CALL set_new(fieldripple%eta_shield,1.0d0) ! shielded
-                         ELSE  
+                         ELSE
                             CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
                          END IF
                       END IF
@@ -2851,7 +2851,7 @@ CONTAINS
                       CALL set_new(fieldripple%eta_s,etas)
                       CALL set_new(fieldripple%eta_cl,DBLE(count))
                       CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
-                      CALL set_new(fieldripple%eta_type,3.0d0)                       
+                      CALL set_new(fieldripple%eta_type,3.0d0)
                    END IF
 
                 END IF
@@ -2929,7 +2929,7 @@ CONTAINS
                       ! find out if inflection point is left or right of minimum
                       IF (phi_inf_loc .LT. ripplewalker%pa_fir%phi_l + ripplewalker%width_l) THEN
                          ! I am left of min
-                         IF (ilr .EQ. 2) CYCLE infloop 
+                         IF (ilr .EQ. 2) CYCLE infloop
                       ELSE
                          ! I am right of min
                          IF (ilr .EQ. 1) CYCLE infloop
@@ -2991,7 +2991,7 @@ CONTAINS
                             gamma1 = MIN(1.0d0,gamma1)
                             gamma2 = (b_max_locb_left - b_min_locb) / b_max_locb_left
                             etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb_left * gfactor(gamma1,gamma2)
-                            etas2 = etas2 + etas2_contrib                      
+                            etas2 = etas2 + etas2_contrib
                             IF (etas2_contrib .LT. 0.0_dp) THEN
                                PRINT *, 'negative etas2 contribution left',ripple_tag,walker_tag
                                PRINT *, 'width ',width_left
@@ -3005,7 +3005,7 @@ CONTAINS
                             gamma1 = MIN(1.0d0,gamma1)
                             gamma2 = (b_max_locb_right - b_min_locb) / b_max_locb_right
                             etas2_contrib = col_loc * eta_loc * lam_loc / b_max_locb_right * gfactor(gamma1,gamma2)
-                            etas2 = etas2 + etas2_contrib                      
+                            etas2 = etas2 + etas2_contrib
                             IF (etas2_contrib .LT. 0.0_dp) THEN
                                PRINT *, 'negative etas2 contribution right',ripple_tag,walker_tag
                                STOP
@@ -3022,7 +3022,7 @@ CONTAINS
                                           rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act%tag .EQ. ripple_tag) &
                                           rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act
                                   ELSE
-                                     rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act 
+                                     rippleback => rippleback%parent%parent%parent%ch_fir%ch_fir%ch_act
                                      ! if the first is not connected to a propagator (max at the beginning)
                                      IF (ASSOCIATED(rippleback%prev)) rippleback => rippleback%prev
                                      ! Winny avoid double counting of last and first ripple which are identical
@@ -3062,7 +3062,7 @@ CONTAINS
                             ELSE ! go right
                                IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
                                   CALL set_new(fieldripple%eta_shield,2.0d0) ! shielded
-                               ELSE  
+                               ELSE
                                   CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
                                END IF
                             END IF
@@ -3077,7 +3077,7 @@ CONTAINS
                             ELSE ! go right
                                IF (ripplewalker%shielding_rl .AND. ripplewalker%shielding_rr) THEN
                                   CALL set_new(fieldripple%eta_shield,1.0d0) ! shielded
-                               ELSE  
+                               ELSE
                                   CALL set_new(fieldripple%eta_shield,0.0d0) ! not shielded
                                END IF
                             END IF
@@ -3255,7 +3255,7 @@ CONTAINS
           END DO allripplesmod
 
           ! WINNY-TOK - still a problem
-          ! make the last ripple an exact copy of the first ripple 
+          ! make the last ripple an exact copy of the first ripple
           ! first ripple
           fieldperiod     => fieldline%ch_fir
           fieldpropagator => fieldperiod%ch_fir
