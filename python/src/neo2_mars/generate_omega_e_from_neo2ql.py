@@ -5,7 +5,7 @@ def generate_omega_e_for_mars(neo2ql_output_file, neo2ql_input_file):
     species_omega_e, stor = get_omega_e_from_neo2ql(neo2ql_output_file)
     sqrtspol = neo2ql_stor2sqrtspol(neo2ql_input_file, stor)
     omega_e = species_omega_e[:,0].T
-    write_omega_e_to_mars_input(omega_e, sqrtspol)
+    write_omega_e_to_mars_input(-omega_e, sqrtspol) # MARS has opposite phi direction
 
 def get_omega_e_from_neo2ql(neo2ql_output_file):
     neo2ql = h5py.File(neo2ql_output_file, "r")
