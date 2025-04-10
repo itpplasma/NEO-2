@@ -5,7 +5,7 @@ MODULE neo_magfie
        ONLY: es, ixm, ixn, mnmax, psi_pr, pixm, pixn, nfp
   USE neo_control,                                                     &
        ONLY: fluxs_interp, write_progress, phi_n, theta_n, lab_swi,    &
-       inp_swi
+       inp_swi, INP_SWI_TOK
   USE neo_sub_mod,                                                     &
        ONLY: neo_read_control, neo_init, neo_init_spline
   USE neo_spline_data,                                                 &
@@ -40,7 +40,7 @@ MODULE neo_magfie
   ! of "neo_magfie_calc" this variable is zero, but these calls are
   ! not used for the computation of physical quantities.
   USE partpa_mod,  ONLY : bmod0
-  !! End Modifications by Andreas F. Martitsch (12.03.2014)  
+  !! End Modifications by Andreas F. Martitsch (12.03.2014)
 
   IMPLICIT NONE
   REAL(dp), DIMENSION(:), ALLOCATABLE              :: magfie_sarray
@@ -48,7 +48,7 @@ MODULE neo_magfie
   INTEGER                                          :: magfie_newspline = 1
   ! switch for different output:
   !  0:  output for SMT and BMC
-  !  1:  output for NEO 
+  !  1:  output for NEO
   INTEGER                                          :: magfie_result    = 0
   INTEGER                                          :: magfie_sarray_len
   !! Modifications by Andreas F. Martitsch (17.03.2016)
@@ -112,7 +112,7 @@ MODULE neo_magfie
   REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: G_symm_tb_spl
   REAL(dp), DIMENSION(:,:,:,:,:), ALLOCATABLE, TARGET      :: G_symm_pb_spl
   !! End Modifications by Andreas F. Martitsch (28.03.2017)
-  
+
   REAL(dp) :: boozer_iota
   !! Modifications by Andreas F. Martitsch (17.03.2016)
   ! derivative of iota for non-local NTV computations
@@ -138,13 +138,13 @@ MODULE neo_magfie
   REAL(dp) :: boozer_sqrtg11 ! Test
   REAL(dp) :: boozer_isqrg
   !! End Modifications by Andreas F. Martitsch (12.03.2014)
-  
+
   REAL(dp), PRIVATE :: av_b2_m ! Klaus
-  
+
   !! Modifications by Andreas F. Martitsch (11.03.2014)
-  ! Transfer the computed values of the additionally needed 
+  ! Transfer the computed values of the additionally needed
   ! B-field components between neo_magfie_a and neo_magfie_b
-  ! (best solution at the moment, since keyword optional 
+  ! (best solution at the moment, since keyword optional
   ! does not seem to work for a module procedure)
   REAL(dp), PRIVATE :: dbcovar_s_dtheta
   REAL(dp), PRIVATE :: dbcovar_s_dphi
@@ -163,7 +163,7 @@ MODULE neo_magfie
   ! Boozer coord. -> Symm. flux coord.
   REAL(dp), PRIVATE :: G_symm_val, G_symm_tb_val, G_symm_pb_val
   !! End Modifications by Andreas F. Martitsch (28.03.2017)
-  
+
   INTERFACE neo_magfie_calc
      MODULE PROCEDURE neo_magfie_a, neo_magfie_b, neo_magfie_c
   END INTERFACE neo_magfie_calc
@@ -185,7 +185,7 @@ MODULE neo_magfie
   INTERFACE compute_RZ
      MODULE PROCEDURE compute_RZ_a
   END INTERFACE compute_RZ
-  
+
   PRIVATE calc_thetaB_RZloc_a
   PUBLIC calc_thetaB_RZloc
   INTERFACE calc_thetaB_RZloc
@@ -226,12 +226,12 @@ CONTAINS
     REAL(dp), DIMENSION(SIZE(x)), INTENT(out)           :: hcurl
     ! local definitions
     !! Modifications by Andreas F. Martitsch (11.03.2014)
-    ! Locally computed values of the additionally needed 
+    ! Locally computed values of the additionally needed
     ! metric tensor elements
     REAL(dp)                                         :: gstb, gspb
     REAL(dp)                                         :: gstb_tb, gspb_tb
     REAL(dp)                                         :: gstb_pb, gspb_pb
-    ! Locally computed value of the additionally needed 
+    ! Locally computed value of the additionally needed
     ! B-field component
     REAL(dp)                                         :: bcovar_s
     !! End Modifications by Andreas F. Martitsch (11.03.2014)
@@ -251,7 +251,7 @@ CONTAINS
 
     INTEGER                                          :: k_es
     INTEGER                                          :: s_detected
-    INTEGER                                          :: imn    
+    INTEGER                                          :: imn
     INTEGER                                          :: it, ip, im, in
     INTEGER                                          :: mt = 1
     INTEGER                                          :: mp = 1
@@ -269,7 +269,7 @@ CONTAINS
     REAL(dp)                                         :: ris_s, zis_s, lis_s
     !! End Modifications by Andreas F. Martitsch (07.03.2014)
     REAL(dp)                                         :: theta_d, phi_d
-    
+
     REAL(dp), DIMENSION(:), ALLOCATABLE              :: s_bmnc, s_bmnc_s
     REAL(dp), DIMENSION(:), ALLOCATABLE              :: s_rmnc, s_zmnc, s_lmnc
     !! Modifications by Andreas F. Martitsch (06.03.2014)
@@ -278,7 +278,7 @@ CONTAINS
     !! End Modifications by Andreas F. Martitsch (06.03.2014)
     !! Modifications by Andreas F. Martitsch (06.08.2014)
     ! Additional data from Boozer files without Stellarator symmetry
-    REAL(kind=dp),    DIMENSION(:),     ALLOCATABLE :: s_bmns, s_bmns_s    
+    REAL(kind=dp),    DIMENSION(:),     ALLOCATABLE :: s_bmns, s_bmns_s
     REAL(kind=dp),    DIMENSION(:),     ALLOCATABLE :: s_rmns, s_zmns, s_lmns
     REAL(kind=dp),    DIMENSION(:),     ALLOCATABLE :: s_rmns_s, s_zmns_s, s_lmns_s
     !! End Modifications by Andreas F. Martitsch (06.08.2014)
@@ -318,7 +318,7 @@ CONTAINS
     REAL(dp), DIMENSION(:,:), ALLOCATABLE            :: sqrg11_met
 
     REAL(dp), DIMENSION(:,:,:,:), POINTER            :: p_spl
-    
+
     REAL(dp) :: isqrg, sqrg11
     REAL(dp) :: redef_sig_sqrtg
 
@@ -331,7 +331,7 @@ CONTAINS
     ris_s = 0.0
     zis = 0.0
     zis_s = 0.0
-    
+
     !*******************************************************************
     ! Initialisation if necessary
     !*******************************************************************
@@ -358,7 +358,7 @@ CONTAINS
        !! Modifications by Andreas F. Martitsch (11.03.2014)
        ! Allocate the storage arrays for the 2d spline interpolation
        ! (over the flux-surface) of the additionally needed metric
-       ! tensor elements 
+       ! tensor elements
        ALLOCATE( gstb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
        ALLOCATE( gspb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
        ALLOCATE( gstb_tb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
@@ -388,7 +388,7 @@ CONTAINS
        ALLOCATE( G_symm_tb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
        ALLOCATE( G_symm_pb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
        !! End Modifications by Andreas F. Martitsch (28.03.2017)
-       
+
        ALLOCATE( curr_tor_array(magfie_sarray_len) )
        ALLOCATE( curr_tor_s_array(magfie_sarray_len) )
        ALLOCATE( curr_pol_array(magfie_sarray_len) )
@@ -399,11 +399,11 @@ CONTAINS
        ! (with magnetic shear)
        ALLOCATE( iota_s_array(magfie_sarray_len) )
        !! End Modifications by Andreas F. Martitsch (17.03.2016)
-       
+
        ALLOCATE( pprime_array(magfie_sarray_len) )
        ALLOCATE( sqrtg00_array(magfie_sarray_len) )
        !****************************************************************
-       ! Loop over predefined s-values 
+       ! Loop over predefined s-values
        !****************************************************************
        DO k_es = 1, magfie_sarray_len
           s = magfie_sarray(k_es)
@@ -419,7 +419,7 @@ CONTAINS
           ALLOCATE ( s_zmnc(mnmax) )
           ALLOCATE ( s_lmnc(mnmax) )
           !! Modifications by Andreas F. Martitsch (06.03.2014)
-          ! Compute the necessary radial derivatives for the 
+          ! Compute the necessary radial derivatives for the
           ! (R,Z,phi)-components obtained from the 1d spline
           ALLOCATE ( s_rmnc_s(mnmax) ) ! Allocate arrays for additional
           ALLOCATE ( s_zmnc_s(mnmax) ) ! radial derivatives
@@ -428,7 +428,7 @@ CONTAINS
 
           !! Modifications by Andreas F. Martitsch (06.08.2014)
           ! Additional data from Boozer files without Stellarator symmetry
-          IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+          IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
              ALLOCATE ( s_bmns(mnmax) )
              ALLOCATE ( s_bmns_s(mnmax) )
              ALLOCATE ( s_rmns(mnmax) )
@@ -436,7 +436,7 @@ CONTAINS
              ALLOCATE ( s_lmns(mnmax) )
              ALLOCATE ( s_rmns_s(mnmax) )
              ALLOCATE ( s_zmns_s(mnmax) )
-             ALLOCATE ( s_lmns_s(mnmax) )             
+             ALLOCATE ( s_lmns_s(mnmax) )
           END IF
           !! End Modifications by Andreas F. Martitsch (06.08.2014)
 
@@ -498,7 +498,7 @@ CONTAINS
 
              !! Modifications by Andreas F. Martitsch (06.08.2014)
              ! Additional data from Boozer files without Stellarator symmetry
-             IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+             IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
                swd = 1
                if (lsw_linear_boozer) then
                  call splint_horner1(es, &
@@ -560,9 +560,9 @@ CONTAINS
           IF (write_progress .EQ. 1) THEN
              PRINT *, 'Do Fourier'
           END IF
-          ALLOCATE( bmod_a(theta_n,phi_n) ) 
-          ALLOCATE( bb_s_a(theta_n,phi_n) ) 
-          ALLOCATE( bb_tb_a(theta_n,phi_n) ) 
+          ALLOCATE( bmod_a(theta_n,phi_n) )
+          ALLOCATE( bb_s_a(theta_n,phi_n) )
+          ALLOCATE( bb_tb_a(theta_n,phi_n) )
           ALLOCATE( bb_pb_a(theta_n,phi_n) )
           bmod_a  = 0.0_dp
           bb_s_a  = 0.0_dp
@@ -570,18 +570,18 @@ CONTAINS
           bb_pb_a = 0.0_dp
 
           ALLOCATE( r(theta_n,phi_n) )  ! NEW
-          ALLOCATE( z(theta_n,phi_n) ) 
+          ALLOCATE( z(theta_n,phi_n) )
           ALLOCATE( l(theta_n,phi_n) )
           !! Modifications by Andreas F. Martitsch (26.06.2017)
           ! compute toroidal angle phi for consistency checks
           ALLOCATE( p(theta_n,phi_n) )
           !! End Modifications by Andreas F. Martitsch (26.06.2017)
-          ALLOCATE( r_tb(theta_n,phi_n) ) 
-          ALLOCATE( z_tb(theta_n,phi_n) ) 
-          ALLOCATE( p_tb(theta_n,phi_n) ) 
-          ALLOCATE( r_pb(theta_n,phi_n) ) 
-          ALLOCATE( z_pb(theta_n,phi_n) ) 
-          ALLOCATE( p_pb(theta_n,phi_n) ) 
+          ALLOCATE( r_tb(theta_n,phi_n) )
+          ALLOCATE( z_tb(theta_n,phi_n) )
+          ALLOCATE( p_tb(theta_n,phi_n) )
+          ALLOCATE( r_pb(theta_n,phi_n) )
+          ALLOCATE( z_pb(theta_n,phi_n) )
+          ALLOCATE( p_pb(theta_n,phi_n) )
           r = 0.0d0
           z = 0.0d0
           l = 0.0d0
@@ -604,18 +604,18 @@ CONTAINS
           ALLOCATE( r_stb(theta_n,phi_n) )
           ALLOCATE( z_stb(theta_n,phi_n) )
           ALLOCATE( p_stb(theta_n,phi_n) )
-          ALLOCATE( r_tbtb(theta_n,phi_n) ) 
-          ALLOCATE( z_tbtb(theta_n,phi_n) ) 
-          ALLOCATE( p_tbtb(theta_n,phi_n) ) 
-          ALLOCATE( r_pbtb(theta_n,phi_n) ) 
-          ALLOCATE( z_pbtb(theta_n,phi_n) ) 
+          ALLOCATE( r_tbtb(theta_n,phi_n) )
+          ALLOCATE( z_tbtb(theta_n,phi_n) )
+          ALLOCATE( p_tbtb(theta_n,phi_n) )
+          ALLOCATE( r_pbtb(theta_n,phi_n) )
+          ALLOCATE( z_pbtb(theta_n,phi_n) )
           ALLOCATE( p_pbtb(theta_n,phi_n) )
           ALLOCATE( r_spb(theta_n,phi_n) )
           ALLOCATE( z_spb(theta_n,phi_n) )
           ALLOCATE( p_spb(theta_n,phi_n) )
-          ALLOCATE( r_pbpb(theta_n,phi_n) ) 
-          ALLOCATE( z_pbpb(theta_n,phi_n) ) 
-          ALLOCATE( p_pbpb(theta_n,phi_n) ) 
+          ALLOCATE( r_pbpb(theta_n,phi_n) )
+          ALLOCATE( z_pbpb(theta_n,phi_n) )
+          ALLOCATE( p_pbpb(theta_n,phi_n) )
           r_s = 0.0d0
           z_s = 0.0d0
           p_s = 0.0d0
@@ -650,7 +650,7 @@ CONTAINS
              bi_s = s_bmnc_s(imn)
              !! Modifications by Andreas F. Martitsch (06.08.2014)
              ! Additional data from Boozer files without Stellarator symmetry
-             IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+             IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
 
                 ris = s_rmns(imn)
                 zis = s_zmns(imn)
@@ -672,7 +672,7 @@ CONTAINS
                 DO it=1,theta_n
                    !! Modifications by Andreas F. Martitsch (06.08.2014)
                    ! Additional data from Boozer files without Stellarator symmetry
-                   IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+                   IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
                       cosv = cosmth(it,im) * cosnph(ip,in) - sinmth(it,im) * sinnph(ip,in)
                       sinv = sinmth(it,im) * cosnph(ip,in) + cosmth(it,im) * sinnph(ip,in)
 
@@ -680,10 +680,10 @@ CONTAINS
                       bb_s_a(it,ip) = bb_s_a(it,ip)     + bi_s*cosv + bis_s*sinv
                       bb_tb_a(it,ip)  = bb_tb_a(it,ip)  - m*bi*sinv + m*bis*cosv
                       bb_pb_a(it,ip)  = bb_pb_a(it,ip)  - n*bi*sinv + n*bis*cosv
-                      
+
                       r(it,ip) = r(it,ip) + ri*cosv + ris*sinv
                       z(it,ip) = z(it,ip) + zi*cosv + zis*sinv
-                      l(it,ip) = l(it,ip) + li*cosv + lis*sinv                     
+                      l(it,ip) = l(it,ip) + li*cosv + lis*sinv
 
                       r_tb(it,ip) = r_tb(it,ip) - m*ri*sinv + m*ris*cosv
                       r_pb(it,ip) = r_pb(it,ip) - n*ri*sinv + n*ris*cosv
@@ -695,7 +695,7 @@ CONTAINS
                       !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
                       !where  \phi=2\pi/N_p v.
                       !This expression differs by a minus sign from the
-                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !expression used by J. Geiger ( phi_b-\phi = ... )!
                       !-> previous versions used this definition:
                       !p_tb(it,ip) = p_tb(it,ip) + m*li*sinv - m*lis*cosv ! -l_tb
                       !p_pb(it,ip) = p_pb(it,ip) + n*li*sinv - n*lis*cosv ! -l_pb
@@ -712,13 +712,13 @@ CONTAINS
                       !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
                       !where  \phi=2\pi/N_p v.
                       !This expression differs by a minus sign from the
-                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !expression used by J. Geiger ( phi_b-\phi = ... )!
                       !-> previous versions used this definition:
                       !p_s(it,ip) = p_s(it,ip) - li_s*cosv - lis_s*sinv ! -l_s
                       !-> corrected formulas:
                       p_s(it,ip) = p_s(it,ip) + li_s*cosv + lis_s*sinv ! +l_s
                       !! End Modifications by Andreas F. Martitsch (12.11.2015)
-                      
+
                       r_stb(it,ip) = r_stb(it,ip) - m*ri_s*sinv + m*ris_s*cosv
                       z_stb(it,ip) = z_stb(it,ip) - m*zi_s*sinv + m*zis_s*cosv
                       !! Modifications by Andreas F. Martitsch (12.11.2015)
@@ -727,7 +727,7 @@ CONTAINS
                       !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
                       !where  \phi=2\pi/N_p v.
                       !This expression differs by a minus sign from the
-                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !expression used by J. Geiger ( phi_b-\phi = ... )!
                       !-> previous versions used this definition:
                       !p_stb(it,ip) = p_stb(it,ip) + m*li_s*sinv - m*lis_s*cosv ! -l_stb
                       !-> corrected formulas:
@@ -742,13 +742,13 @@ CONTAINS
                       !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
                       !where  \phi=2\pi/N_p v.
                       !This expression differs by a minus sign from the
-                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !expression used by J. Geiger ( phi_b-\phi = ... )!
                       !-> previous versions used this definition:
                       !p_spb(it,ip) = p_spb(it,ip) + n*li_s*sinv - n*lis_s*cosv ! -l_spb
                       !-> corrected formulas:
                       p_spb(it,ip) = p_spb(it,ip) - n*li_s*sinv + n*lis_s*cosv ! +l_spb
                       !! End Modifications by Andreas F. Martitsch (12.11.2015)
-                      
+
                       r_tbtb(it,ip) = r_tbtb(it,ip) - m*m*ri*cosv - m*m*ris*sinv
                       z_tbtb(it,ip) = z_tbtb(it,ip) - m*m*zi*cosv - m*m*zis*sinv
                       !! Modifications by Andreas F. Martitsch (12.11.2015)
@@ -757,7 +757,7 @@ CONTAINS
                       !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
                       !where  \phi=2\pi/N_p v.
                       !This expression differs by a minus sign from the
-                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !expression used by J. Geiger ( phi_b-\phi = ... )!
                       !-> previous versions used this definition:
                       !p_tbtb(it,ip) = p_tbtb(it,ip) + m*m*li*cosv + m*m*lis*sinv ! -l_tbtb
                       !-> corrected formulas:
@@ -772,13 +772,13 @@ CONTAINS
                       !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
                       !where  \phi=2\pi/N_p v.
                       !This expression differs by a minus sign from the
-                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !expression used by J. Geiger ( phi_b-\phi = ... )!
                       !-> previous versions used this definition:
                       !p_pbtb(it,ip) = p_pbtb(it,ip) + m*n*li*cosv + m*n*lis*sinv ! -l_pbtb
                       !-> corrected formulas:
                       p_pbtb(it,ip) = p_pbtb(it,ip) - m*n*li*cosv - m*n*lis*sinv ! +l_pbtb
                       !! End Modifications by Andreas F. Martitsch (12.11.2015)
-                      
+
                       r_pbpb(it,ip) = r_pbpb(it,ip) - n*n*ri*cosv - n*n*ris*sinv
                       z_pbpb(it,ip) = z_pbpb(it,ip) - n*n*zi*cosv - n*n*zis*sinv
                       !! Modifications by Andreas F. Martitsch (12.11.2015)
@@ -787,7 +787,7 @@ CONTAINS
                       !"\phi-phi_b = 2\pi/N_p \sum ( c \cos(2\pi (m u + n v) ) + s \sin(2\pi (m u+n v) ) )"
                       !where  \phi=2\pi/N_p v.
                       !This expression differs by a minus sign from the
-                      !expression used by J. Geiger ( phi_b-\phi = ... )! 
+                      !expression used by J. Geiger ( phi_b-\phi = ... )!
                       !-> previous versions used this definition:
                       !p_pbpb(it,ip) = p_pbpb(it,ip) + n*n*li*cosv + n*n*lis*sinv ! -l_pbpb
                       !-> corrected formulas:
@@ -853,7 +853,7 @@ CONTAINS
 
           !! Modifications by Andreas F. Martitsch (06.08.2014)
           ! Additional data from Boozer files without Stellarator symmetry
-          IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+          IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
              DEALLOCATE ( s_bmns )
              DEALLOCATE ( s_bmns_s )
              DEALLOCATE ( s_rmns )
@@ -861,7 +861,7 @@ CONTAINS
              DEALLOCATE ( s_lmns )
              DEALLOCATE ( s_rmns_s )
              DEALLOCATE ( s_zmns_s )
-             DEALLOCATE ( s_lmns_s )             
+             DEALLOCATE ( s_lmns_s )
           END IF
           !! End Modifications by Andreas F. Martitsch (06.08.2014)
 
@@ -879,7 +879,7 @@ CONTAINS
           ELSE
              !! Modifications by Andreas F. Martitsch (26.06.2017)
              ! compute toroidal angle phi for consistency checks
-             IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+             IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
                 p = x(2) + l * twopi / nfp
              ELSE
                 p = x(2) - l * twopi / nfp
@@ -897,7 +897,7 @@ CONTAINS
              p_pbpb = p_pbpb * twopi / nfp
              !! End Modifications by Andreas F. Martitsch (11.03.2014)
           END IF
-          
+
           ! **********************************************************************
           ! Ensure periodicity boundaries to be the same
           ! **********************************************************************
@@ -979,13 +979,13 @@ CONTAINS
           !! End Modifications by Andreas F. Martitsch (25.08.2014)
           bb_pb_a(theta_n,:) = bb_pb_a(1,:)
           bb_pb_a(:,phi_n)   = bb_pb_a(:,1)
-          
+
           ! **********************************************************************
           ! Derived quantities
           ! **********************************************************************
-          ALLOCATE( gtbtb(theta_n,phi_n) ) 
-          ALLOCATE( gpbpb(theta_n,phi_n) ) 
-          ALLOCATE( gtbpb(theta_n,phi_n) ) 
+          ALLOCATE( gtbtb(theta_n,phi_n) )
+          ALLOCATE( gpbpb(theta_n,phi_n) )
+          ALLOCATE( gtbpb(theta_n,phi_n) )
           ALLOCATE( sqrg11_met(theta_n,phi_n) )
           !! Modifications by Andreas F. Martitsch (11.03.2014)
           ! Allocate temporary storage arrays for the Fourier summations
@@ -998,12 +998,12 @@ CONTAINS
           ALLOCATE( gspb_pb_a(theta_n,phi_n) )
           !! End Modifications by Andreas F. Martitsch (11.03.2014)
           ! metric tensor
-          gtbtb = r_tb*r_tb + z_tb*z_tb + r*r*p_tb*p_tb  
-          gpbpb = r_pb*r_pb + z_pb*z_pb + r*r*p_pb*p_pb  
+          gtbtb = r_tb*r_tb + z_tb*z_tb + r*r*p_tb*p_tb
+          gpbpb = r_pb*r_pb + z_pb*z_pb + r*r*p_pb*p_pb
           gtbpb = r_tb*r_pb + z_tb*z_pb + r*r*p_tb*p_pb
           !! Modifications by Andreas F. Martitsch (11.03.2014)
           ! Compute the additionally needed metric tensor elements
-          gstb_a = r_s*r_tb + z_s*z_tb + r*r*p_s*p_tb  
+          gstb_a = r_s*r_tb + z_s*z_tb + r*r*p_s*p_tb
           gspb_a = r_s*r_pb + z_s*z_pb + r*r*p_s*p_pb
           gstb_tb_a = r_stb*r_tb + r_s*r_tbtb  + z_stb*z_tb + z_s*z_tbtb + &
                2.0d0*r*r_tb*p_s*p_tb + r*r*(p_stb*p_tb + p_s*p_tbtb)
@@ -1019,7 +1019,7 @@ CONTAINS
           ! transformation function Boozer coord. -> Symm. flux coord.
           ALLOCATE( G_symm_a(theta_n,phi_n) )
           G_symm_a = -l / (nfp * (psi_pr*1.0e8_dp)) ! cgs-units
-          IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+          IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
              G_symm_a = -G_symm_a
           END IF
           ALLOCATE( G_symm_tb_a(theta_n,phi_n) )
@@ -1147,22 +1147,22 @@ CONTAINS
           DEALLOCATE( bb_pb_a )
 
           DEALLOCATE( r )
-          DEALLOCATE( z ) 
+          DEALLOCATE( z )
           DEALLOCATE( l )
           !! Modifications by Andreas F. Martitsch (26.06.2017)
           ! compute toroidal angle phi for consistency checks
           DEALLOCATE( p )
           !! End Modifications by Andreas F. Martitsch (26.06.2017)
-          DEALLOCATE( r_tb ) 
-          DEALLOCATE( z_tb ) 
-          DEALLOCATE( p_tb ) 
-          DEALLOCATE( r_pb ) 
-          DEALLOCATE( z_pb ) 
-          DEALLOCATE( p_pb ) 
+          DEALLOCATE( r_tb )
+          DEALLOCATE( z_tb )
+          DEALLOCATE( p_tb )
+          DEALLOCATE( r_pb )
+          DEALLOCATE( z_pb )
+          DEALLOCATE( p_pb )
 
-          DEALLOCATE( gtbtb ) 
-          DEALLOCATE( gpbpb ) 
-          DEALLOCATE( gtbpb ) 
+          DEALLOCATE( gtbtb )
+          DEALLOCATE( gpbpb )
+          DEALLOCATE( gtbpb )
           DEALLOCATE( sqrg11_met )
 
           !! Modifications by Andreas F. Martitsch (11.03.2014)
@@ -1175,23 +1175,23 @@ CONTAINS
           DEALLOCATE( r_stb )
           DEALLOCATE( z_stb )
           DEALLOCATE( p_stb )
-          DEALLOCATE( r_tbtb ) 
-          DEALLOCATE( z_tbtb ) 
-          DEALLOCATE( p_tbtb ) 
-          DEALLOCATE( r_pbtb ) 
-          DEALLOCATE( z_pbtb ) 
+          DEALLOCATE( r_tbtb )
+          DEALLOCATE( z_tbtb )
+          DEALLOCATE( p_tbtb )
+          DEALLOCATE( r_pbtb )
+          DEALLOCATE( z_pbtb )
           DEALLOCATE( p_pbtb )
-          DEALLOCATE( gstb_a ) 
-          DEALLOCATE( gspb_a ) 
-          DEALLOCATE( gstb_tb_a ) 
+          DEALLOCATE( gstb_a )
+          DEALLOCATE( gspb_a )
+          DEALLOCATE( gstb_tb_a )
           DEALLOCATE( gspb_tb_a )
           DEALLOCATE( r_spb )
           DEALLOCATE( z_spb )
           DEALLOCATE( p_spb )
-          DEALLOCATE( r_pbpb ) 
-          DEALLOCATE( z_pbpb ) 
+          DEALLOCATE( r_pbpb )
+          DEALLOCATE( z_pbpb )
           DEALLOCATE( p_pbpb )
-          DEALLOCATE( gstb_pb_a ) 
+          DEALLOCATE( gstb_pb_a )
           DEALLOCATE( gspb_pb_a )
           !! Modifications by Andreas F. Martitsch (28.03.2017)
           ! transformation function Boozer coord. -> Symm. flux coord.
@@ -1403,7 +1403,7 @@ CONTAINS
           CALL eva2d(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d,    &
                p_spl,G_symm_pb_val)
           !! End Modifications by Andreas F. Martitsch (28.03.2017)
-          
+
           !! Modifications by Andreas F. Martitsch (26.06.2017)
           ! compute unit vectors for consistency checks
           !-> co-variant radial unit vector
@@ -1433,14 +1433,14 @@ CONTAINS
           hcovar_direct(2) = (SUM(e_pb*e_pb)+iota*SUM(e_tb*e_pb))/ABS(sqrtg_direct)
           hcovar_direct = (hcovar_direct * (psi_pr*1.0d8) / (bmod*1.0d4))
           !! End Modifications by Andreas F. Martitsch (26.06.2017)
-          
+
           ! $1/sqrt(g)$
           ! Sergei: here "curr_pol" and "curr_tor" mean $B_\varphi$ and $B_\vartheta$ in SI units, respectively.
           fac = curr_pol + iota * curr_tor  ! (J + iota I)
           isqrg  = bmod*bmod / fac
           !! Modifications by Andreas F. Martitsch (28.06.2017)
           !-> changes of signs to account for left-handed coordinate system
-          !-> affects sign of transport coefficients related to Ware pinch 
+          !-> affects sign of transport coefficients related to Ware pinch
           !-> and Bootstrap current
           IF (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
             isqrg  = abs(isqrg) * sign(1.0d0, sqrtg_direct)
@@ -1474,7 +1474,7 @@ CONTAINS
             curr_pol_s = curr_pol_s * redef_sig_sqrtg
             curr_tor_s = curr_tor_s * redef_sig_sqrtg
             fac = fac * redef_sig_sqrtg
-          END IF    
+          END IF
           !! End Modifications by Andreas F. Martitsch (28.06.2017)
 
           ! Winny for Klaus
@@ -1484,7 +1484,7 @@ CONTAINS
           sqrg11 = sqrg11 * ABS(isqrg)
 
           !! Modifications by Andreas F. Martitsch (11.03.2014)
-          ! Compute the values of the additionally needed 
+          ! Compute the values of the additionally needed
           ! B-field components
           ! 28.06.2017: account of left-handed coord. system
           bcovar_s = (bmod*bmod / fac)*(gstb*iota+gspb)
@@ -1504,7 +1504,7 @@ CONTAINS
           PRINT *, 'WARNING from neo_magfie - s out of range: ',s
           PRINT *, ' Using Fourier Summation directly'
        END IF
-       
+
        PRINT *, 'magfie_spline .EQ. 0 not implemented'
        STOP
 
@@ -1536,7 +1536,7 @@ CONTAINS
           n = ixn(i)
           sinv = SIN(m*x(3) - n*x(2))
           cosv = COS(m*x(3) - n*x(2))
-          
+
           bmod   = bmod   +     bmnc   * cosv
           bb_s   = bb_s   +     bmnc_s * cosv
           bb_tb  = bb_tb  - m * bmnc   * sinv
@@ -1554,12 +1554,12 @@ CONTAINS
             a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, &
             swd, m0,                                        &
             x(1), tfone, tfzero, tfzero, tfzero,            &
-            curr_pol, curr_pol_s ,ypp, yppp)    
+            curr_pol, curr_pol_s ,ypp, yppp)
          swd = 0 ! no derivative
          call splint_horner1(es, &
             a_iota, b_iota, c_iota, d_iota, swd, m0, &
             x(1), tfone, tfzero, tfzero, tfzero,     &
-            iota, yp, ypp, yppp)       
+            iota, yp, ypp, yppp)
        else
          call splint_horner3(es, &
             a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, &
@@ -1580,11 +1580,11 @@ CONTAINS
     END IF
 
     IF (magfie_result .EQ. 1) THEN
-       ! This was the original version:     
+       ! This was the original version:
        ! derived quantities in (s,theta_b,phi_b)-system
        fac   = (curr_pol + iota * curr_tor) * psi_pr
        fac1  = fac  / bmod                 ! sqrtg*bmod
-       sqrtg = fac1 / bmod 
+       sqrtg = fac1 / bmod
 
        bder(1) = bb_s
        bder(2) = bb_tb
@@ -1598,13 +1598,13 @@ CONTAINS
        hctrvr(2) = iota / fac1
        hctrvr(3) = 1.0_dp / fac1
 
-       hcurl(1)  = (curr_pol * bb_pb      - curr_tor * bb_tb     ) / fac 
-       hcurl(2)  = (curr_pol * bb_s       - bmod     * curr_pol_s) / fac 
-       hcurl(3)  = (bmod     * curr_tor_s - curr_tor * bb_s      ) / fac 
+       hcurl(1)  = (curr_pol * bb_pb      - curr_tor * bb_tb     ) / fac
+       hcurl(2)  = (curr_pol * bb_s       - bmod     * curr_pol_s) / fac
+       hcurl(3)  = (bmod     * curr_tor_s - curr_tor * bb_s      ) / fac
        ! Remark by Winny:
        ! The consisteny check for curr_pol shows a problem in all
        ! Greifswald (standard) input files
-       ! According to the consistency check, 
+       ! According to the consistency check,
        ! curr_pol has to be changed to -curr_pol
 
     ELSEIF ( magfie_result .EQ. 0 ) THEN
@@ -1618,18 +1618,18 @@ CONTAINS
        sqrtg = - fac1 / bmod * psi_pr * 1d6
        !! Modifications by Andreas F. Martitsch (28.06.2017)
        !-> changes of signs to account for left-handed coordinate system
-       !-> affects sign of transport coefficients related to Ware pinch 
+       !-> affects sign of transport coefficients related to Ware pinch
        !-> and Bootstrap current
        IF (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
           sqrtg = ABS(sqrtg) * SIGN(1.0d0,sqrtg_direct)
-       END IF    
+       END IF
        !! End Modifications by Andreas F. Martitsch (28.06.2017)
 
        bder(1) = bb_s
        bder(3) = bb_tb
        bder(2) = bb_pb
        bder=bder / bmod
-       
+
        !! Modifications by Andreas F. Martitsch (07.03.2014)
        ! Radial covariant B-field component is now available
        hcovar(1) = bcovar_s / bmod
@@ -1644,8 +1644,8 @@ CONTAINS
        hctrvr=hctrvr * 1d-2
 
        hcurl(1)  = (curr_tor * bb_pb      - curr_pol * bb_tb     ) / fac
-       hcurl(3)  = (curr_pol * bb_s       - bmod     * curr_pol_s) / fac 
-       hcurl(2)  = (bmod     * curr_tor_s - curr_tor * bb_s      ) / fac 
+       hcurl(3)  = (curr_pol * bb_s       - bmod     * curr_pol_s) / fac
+       hcurl(2)  = (bmod     * curr_tor_s - curr_tor * bb_s      ) / fac
        hcurl=hcurl * 1d-4
 
        !! Modifications by Andreas F. Martitsch (12.03.2014)
@@ -1680,16 +1680,16 @@ CONTAINS
        boozer_isqrg = (1.0d0/psi_pr)*isqrg*1.0d-6
        !! Modifications by Andreas F. Martitsch (28.06.2017)
        !-> changes of signs to account for left-handed coordinate system
-       !-> affects sign of transport coefficients related to Ware pinch 
+       !-> affects sign of transport coefficients related to Ware pinch
        !-> and Bootstrap current
        IF (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
           boozer_isqrg = ABS(boozer_isqrg) * SIGN(1.0d0,sqrtg_direct)
-       END IF    
+       END IF
        !! End Modifications by Andreas F. Martitsch (28.06.2017)
        !! End Modifications by Andreas F. Martitsch (12.03.2014)
 
     END IF
-    
+
     boozer_iota = iota
     !! Modifications by Andreas F. Martitsch (17.03.2016)
     ! derivative of iota for non-local NTV computations
@@ -1737,7 +1737,7 @@ CONTAINS
 
     CALL neo_magfie_a( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl )
 
-    ! Compute the derivatives of the radial covariant 
+    ! Compute the derivatives of the radial covariant
     ! B-field component (Note: cgs-units used)
     bcovar_s_hat_der(1) = 0.0_dp ! not implemented at the moment
     bcovar_s_hat_der(3) = dbcovar_s_dtheta / bmod0
@@ -1860,7 +1860,7 @@ CONTAINS
     x = x_start
     thetaB = x_start(3)
 
-    ! Newton iterations    
+    ! Newton iterations
     break_cond = .FALSE.
     k = 0
     thtB_R_n = thetaB
@@ -1875,7 +1875,7 @@ CONTAINS
        x(3) = thtB_R_n
        CALL compute_RZ( x, R, R_tb, Z, Z_tb )
        fR = R - R_loc
-       fRp = R_tb 
+       fRp = R_tb
        thtB_R_np1 = thtB_R_n - fR / fRp
        thtB_R_np1 = MODULO(thtB_R_np1,TWOPI)
        abserr_R = ABS(thtB_R_n-thtB_R_np1)
@@ -1885,7 +1885,7 @@ CONTAINS
        x(3) = thtB_Z_n
        CALL compute_RZ( x, R, R_tb, Z, Z_tb )
        fZ = Z - Z_loc
-       fZp = Z_tb 
+       fZp = Z_tb
        thtB_Z_np1 = thtB_Z_n - fZ / fZp
        thtB_Z_np1 = MODULO(thtB_Z_np1,TWOPI)
        abserr_Z = ABS(thtB_Z_n-thtB_Z_np1)

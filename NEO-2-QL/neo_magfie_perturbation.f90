@@ -3,7 +3,7 @@ MODULE neo_magfie_perturbation
   ! module containing numerical constants
   use nrtype
   ! module containing switches from the input file (neo.in)
-  USE neo_control, ONLY: lab_swi, inp_swi
+  USE neo_control, ONLY: lab_swi, inp_swi, INP_SWI_TOK, INP_SWI_TOK_CIRC
   ! interface to spline routines
   USE inter_interfaces, only : splinecof3_hi_driv, &
        tf, tfp, tfpp, tfppp, splint_horner3, splint_horner1
@@ -96,7 +96,7 @@ CONTAINS
     in_file_pert=TRIM(ADJUSTL(in_file_pert))
     OPEN(unit=r_un,file=in_file_pert,status='old',form='formatted')
 
-    IF (inp_swi .EQ. 8) THEN ! NEW IPP TOKAMAK        
+    IF (inp_swi == INP_SWI_TOK_CIRC) THEN ! NEW IPP TOKAMAK
        READ (r_un,*) char_dummy
        READ (r_un,*) char_dummy
        READ (r_un,*) char_dummy
@@ -140,7 +140,7 @@ CONTAINS
                   bmnc_pert(i,j)
           END DO
        END DO
-    ELSEIF (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)     
+    ELSEIF (inp_swi == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
        READ (r_un,*) char_dummy
        READ (r_un,*) char_dummy
        READ (r_un,*) char_dummy
@@ -228,11 +228,11 @@ CONTAINS
     INTEGER, PARAMETER :: m_max_sp = 12
 
     ! allocate 2d arrays for the splines of the Fourier coefficients
-    ALLOCATE ( a_bmnc_pert(ns_pert,mnmax_pert), b_bmnc_pert(ns_pert,mnmax_pert) ) 
+    ALLOCATE ( a_bmnc_pert(ns_pert,mnmax_pert), b_bmnc_pert(ns_pert,mnmax_pert) )
     ALLOCATE ( c_bmnc_pert(ns_pert,mnmax_pert), d_bmnc_pert(ns_pert,mnmax_pert) )
     ! Additional data from Boozer files without Stellarator symmetry
-    IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
-       ALLOCATE ( a_bmns_pert(ns_pert,mnmax_pert), b_bmns_pert(ns_pert,mnmax_pert) ) 
+    IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
+       ALLOCATE ( a_bmns_pert(ns_pert,mnmax_pert), b_bmns_pert(ns_pert,mnmax_pert) )
        ALLOCATE ( c_bmns_pert(ns_pert,mnmax_pert), d_bmns_pert(ns_pert,mnmax_pert) )
     END IF
     ! allocate arrays requested by the spline routines
@@ -261,14 +261,14 @@ CONTAINS
        END IF
        r_mhalf_pert(i) = r_m_pert(i) / 2._dp
     END DO
-    sp_index_pert = (/ (i, i=1,ns_pert) /) 
+    sp_index_pert = (/ (i, i=1,ns_pert) /)
 
     ! 1-d splines of 2-d arrays
     if (lsw_linear_boozer) then
       call splinecof1_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
          & a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert, sp_index_pert, tf)
       ! Additional data from Boozer files without Stellarator symmetry
-      if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+      if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
         call splinecof1_hi_driv(es_pert, bmns_pert, r_mhalf_pert,&
            & a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
       end if
@@ -276,7 +276,7 @@ CONTAINS
       call splinecof3_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
          & a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert, sp_index_pert, tf)
       ! Additional data from Boozer files without Stellarator symmetry
-      if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+      if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
         call splinecof3_hi_driv(es_pert, bmns_pert, r_mhalf_pert,&
            & a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
       end if
@@ -321,7 +321,7 @@ CONTAINS
             & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
             & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
          ! Additional data from Boozer files without Stellarator symmetry
-         if (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
+         if (inp_swi == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
            call splint_horner1(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
               & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
               & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
@@ -331,14 +331,14 @@ CONTAINS
             & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
             & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
          ! Additional data from Boozer files without Stellarator symmetry
-         if (inp_swi .EQ. 9) then ! ASDEX-U (E. Strumberger)
+         if (inp_swi == INP_SWI_TOK) then ! ASDEX-U (E. Strumberger)
            call splint_horner3(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
               & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
               & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
          end if
        end if
 
-       IF (inp_swi .EQ. 8) THEN ! NEW IPP TOKAMAK
+       IF (inp_swi == INP_SWI_TOK_CIRC) THEN ! NEW IPP TOKAMAK
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
@@ -360,7 +360,7 @@ CONTAINS
           !m = ixm_pert(i)
           !bn_hat_pert = bn_hat_pert + bmnc_pert_val * COS((m*boozer_iota-n)*x(2)) - &
           !     imun * bmnc_pert_val * SIN((m*boozer_iota-n)*x(2))
-       ELSEIF (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
+       ELSEIF (inp_swi == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
@@ -386,7 +386,7 @@ CONTAINS
     bn_hat_pert = bn_hat_pert / bmod0
   END SUBROUTINE neo_magfie_pert_a
 
-  ! Compute the perturbation field for a certain x-value and its 
+  ! Compute the perturbation field for a certain x-value and its
   ! derivative over theta
   SUBROUTINE neo_magfie_pert_b( x, bn_hat_pert, dbn_hat_pert_dtheta )
 
@@ -426,7 +426,7 @@ CONTAINS
             & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
             & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
          ! Additional data from Boozer files without Stellarator symmetry
-         if (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
+         if (inp_swi == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
            call splint_horner1(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
               & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
               & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
@@ -436,13 +436,13 @@ CONTAINS
             & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
             & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
          ! Additional data from Boozer files without Stellarator symmetry
-         if (inp_swi .EQ. 9) then ! ASDEX-U (E. Strumberger)
+         if (inp_swi == INP_SWI_TOK) then ! ASDEX-U (E. Strumberger)
            call splint_horner3(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
               & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
               & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
          end if
        end if
-       IF (inp_swi .EQ. 8) THEN ! NEW IPP TOKAMAK
+       IF (inp_swi == INP_SWI_TOK_CIRC) THEN ! NEW IPP TOKAMAK
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
@@ -460,7 +460,7 @@ CONTAINS
           ! part corresponding to the expansion over the periodic angle
           bn_hat_pert = bn_hat_pert + bmnc_pert_val * expv
           dbn_hat_pert_dtheta = dbn_hat_pert_dtheta + imun * m * bmnc_pert_val * expv
-       ELSEIF (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
+       ELSEIF (inp_swi == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
@@ -604,14 +604,14 @@ CONTAINS
     IF ( mpro%isMaster() ) CLOSE(unit=w_un)
 
     ! evaluate flux surface average
-    fac1 = 0.0_dp 
-    fac2 = 0.0_dp 
+    fac1 = 0.0_dp
+    fac2 = 0.0_dp
     DO k = ibeg,iend-1
        fac1 = fac1 + (phi_arr(k+1)-phi_arr(k)) * &
             ( (R_arr(k+1)/bmod_arr(k+1))**2.0_dp + (R_arr(k)/bmod_arr(k))**2.0_dp )
        fac2 = fac2 + (phi_arr(k+1)-phi_arr(k)) * &
             ( (1.0_dp/bmod_arr(k+1))**2.0_dp + (1.0_dp/bmod_arr(k))**2.0_dp )
-       
+
     END DO
     fac1 = 0.5_dp * fac1
     fac2 = 0.5_dp * fac2
