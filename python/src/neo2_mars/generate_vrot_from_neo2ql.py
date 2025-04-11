@@ -3,7 +3,7 @@ import h5py
 
 def generate_vrot_for_mars(neo2ql_input_file):
     sqrtspol, ion_vrot = get_vrot_from_neo2ql(neo2ql_input_file)
-    write_vrot_to_mars_input(ion_vrot, sqrtspol)
+    write_vrot_to_mars_input(-ion_vrot, sqrtspol) # MARS has opposite phi direction
 
 def get_vrot_from_neo2ql(neo2ql_input_file):
     neo2ql = h5py.File(neo2ql_input_file, "r")
