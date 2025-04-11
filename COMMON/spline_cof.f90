@@ -1,6 +1,6 @@
 
 !***********************************************************************
-! 
+!
 ! routines for calculating spline coefficients
 !              drivers
 !
@@ -13,7 +13,7 @@
 
 
 !***********************************************************************
-! 
+!
 ! routines for third order spline
 !
 !***********************************************************************
@@ -563,15 +563,15 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
   ! solve system
   CALL sparse_solve(MA, inh)
-  
+
   ! take a(), b(), c(), d()
   DO i = 1, len_indx
-     a(i) = inh((i-1)*VAR+1) 
-     b(i) = inh((i-1)*VAR+2) 
+     a(i) = inh((i-1)*VAR+1)
+     b(i) = inh((i-1)*VAR+2)
      c(i) = inh((i-1)*VAR+3)
-     d(i) = inh((i-1)*VAR+4) 
+     d(i) = inh((i-1)*VAR+4)
   END DO
-  
+
 
   DEALLOCATE(MA,  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for arrays 1 failed!'
@@ -609,7 +609,7 @@ SUBROUTINE reconstruction3_a(ai, bi, ci, di, h, a, b, c, d)
 
   REAL(DP), INTENT(IN)    :: ai, bi, ci, di
   REAL(DP), INTENT(IN)    :: h
-  REAL(DP), INTENT(OUT)   :: a, b, c, d 
+  REAL(DP), INTENT(OUT)   :: a, b, c, d
 
   !---------------------------------------------------------------------
 
@@ -688,7 +688,7 @@ SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
   REAL(DP)                                  :: h
   REAL(DP),     DIMENSION(:),   ALLOCATABLE :: xn, yn, lambda1
   REAL(DP),     DIMENSION(:),   ALLOCATABLE :: ai, bi, ci, di
-  
+
   no = SIZE(x)
   ns = SIZE(a)
   len_indx = SIZE(indx)
@@ -870,11 +870,11 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
 
   ! weights:  w(i)=0/1;  if(w(i)==0) ... do not use this point
   w = 1
- 
+
   sw1 = 2
   sw2 = 4
 
-  c1 = 0.0D0  
+  c1 = 0.0D0
   cn = 0.0D0
 
   DO i = 1, no_cur
@@ -890,6 +890,35 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   IF(i_alloc /= 0) STOP 'splinecof3_hi_driv: Deallocation for arrays failed!'
 
 END SUBROUTINE splinecof3_hi_driv_a
+
+SUBROUTINE splinecof3_fast(n, x, y, a, b, c, d)
+  use nrtype, only : I4B, DP
+  integer(I4B) :: n
+  real(DP), intent(in) :: x(n), y(n)
+  real(DP), dimension(n-1), intent(out) :: a, b, c, d
+  integer(I4B) :: info
+  real(DP) :: r(n-1), h(n-1), dl(n-3), ds(n-2), cs(n-2)
+
+  h = x(2:) - x(1:n-1)
+  r = y(2:) - y(1:n-1)
+
+  dl = h(2:n-2)
+  ds = 2d0*(h(1:n-2)+h(2:))
+
+  cs = 3d0*(r(2:)/h(2:)-r(1:n-2)/h(1:n-2))
+
+  call dptsv(n-2, 1, ds, dl, cs, n-2, info)
+
+  a = y(1:n-1)
+  b(1) = r(1)/h(1) - h(1)/3d0*cs(1)
+  b(2:n-2) = r(2:n-2)/h(2:n-2)-h(2:n-2)/3d0*(cs(2:n-2) + 2d0*cs(1:n-3))
+  b(n-1)   = r(n-1)/h(n-1)-h(n-1)/3d0*(2d0*cs(n-2))
+  c(4)     = 0
+  c(2:)    = cs
+  d(1)     = 1d0/(3d0*h(1))*cs(1)
+  d(2:n-2) = 1d0/(3d0*h(2:n-2))*(cs(2:n-2)-cs(1:n-3))
+  d(n-1)   = 1d0/(3d0*h(n-1))*(-cs(n-2))
+END SUBROUTINE splinecof3_fast
 
 !> calculate optimal weights for smooting (lambda)
 !>
