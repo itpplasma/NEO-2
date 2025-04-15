@@ -182,7 +182,7 @@ program create_surfaces
         i_period = i_period + 1
 
         ! Changed NEO-2 behavior for theta_e, but with same results
-        theta_e = theta_e + (2.0_dp*pi)/nfp * s_iota
+        theta_e = theta_e + (2.0_dp*pi)/nfp * abs(s_iota)
 
         if (theta_e .ge. 2.0_dp*pi) theta_e = theta_e - 2.0_dp*pi
         dist = abs(theta_e - theta_start)
