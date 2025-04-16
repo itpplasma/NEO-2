@@ -17,8 +17,8 @@ def get_omega_e_from_neo2ql(neo2ql_output_file):
 
 def neo2ql_stor2sqrtspol(neo2ql_input_file, stor):
     neo2ql = h5py.File(neo2ql_input_file, "r")
-    stor_i = np.array(neo2ql["boozer_s"])
-    sqrtspol_i = np.array(neo2ql["rho_pol"])
+    stor_i = np.array(neo2ql["boozer_s"]).ravel()
+    sqrtspol_i = np.array(neo2ql["rho_pol"]).ravel()
     sqrtspol = np.interp(stor, stor_i, sqrtspol_i)
     return sqrtspol
 

@@ -16,4 +16,4 @@ def write_vrot_to_mars_input(vrot, sqrtspol):
     number_of_surfaces = len(vrot)
     type_of_radial_variable = 1 # 1 means sqrtspol for MARS
     header = f"{number_of_surfaces} {type_of_radial_variable}"
-    np.savetxt(vrot_file, np.array([sqrtspol, vrot]).T, header=header, comments="")
+    np.savetxt(vrot_file, np.array([sqrtspol.ravel(), vrot.ravel()]).T, header=header, comments="")
