@@ -9,15 +9,15 @@ MODULE propagator_mod
   !   subroutine propagator_solver
   !
   ! ATTENTION:
-  !  
+  !
   !  If physical content is changed then pertinent changes have to
   !  be made in several places!
   !
   ! External quantities: <default>
   !  prop_timing      0: no timing; <1: timing of module>
-  !  prop_diagnostic  0: no diagnostic; <1: normal>; 2: extented 
-  !  prop_binary      0: normal joining; <1: binary joining> 
-  !  
+  !  prop_diagnostic  0: no diagnostic; <1: normal>; 2: extented
+  !  prop_binary      0: normal joining; <1: binary joining>
+  !
   ! TODO: Make it save for subsequent calls to flint
   !
   ! Winfried Kernbichler 19.08.2004
@@ -28,7 +28,7 @@ MODULE propagator_mod
   ! ---------------------------------------------------------------------------
   ! ---------------------------------------------------------------------------
   ! mnemonics
-  !  
+  !
   ! "_p" - means "plus"  - particles with positive velocity (left  to right)
   ! "_m" - means "minus" - particles with negative velocity (right to left )
   !
@@ -37,15 +37,15 @@ MODULE propagator_mod
   !
   ! npart          - number of particles
   ! npass_l        - number of passing particles on the left  side
-  ! npass_r        - number of passing particles on the right side 
+  ! npass_r        - number of passing particles on the right side
   ! npart_halfband
   !
   ! ---------------------------------------------------------------------------
   ! flux and current (from the outside)
   !
-  ! flux_p(npass_l) - particles enter with positive velocity from the left side 
+  ! flux_p(npass_l) - particles enter with positive velocity from the left side
   ! flux_m(npass_r) - particles enter with negative velocity from the left side
-  ! curr_p(npass_l) - particles enter with positive velocity from the left side 
+  ! curr_p(npass_l) - particles enter with positive velocity from the left side
   ! curr_m(npass_r) - particles enter with negative velocity from the left side
   !
   ! ---------------------------------------------------------------------------
@@ -77,7 +77,7 @@ MODULE propagator_mod
   USE binarysplit_mod
 
   IMPLICIT NONE
-  
+
   ! ---------------------------------------------------------------------------
   ! private variables
   INTEGER, PARAMETER, PRIVATE :: dp = KIND(1.0D0)
@@ -108,8 +108,8 @@ MODULE propagator_mod
 
 
   ! public variables (input file)
-  INTEGER,            PUBLIC  :: prop_diagphys 
-  INTEGER,            PUBLIC  :: prop_overwrite 
+  INTEGER,            PUBLIC  :: prop_diagphys
+  INTEGER,            PUBLIC  :: prop_overwrite
   INTEGER,            PUBLIC  :: prop_diagnostic = 1
   INTEGER,            PUBLIC  :: prop_binary = 0
   INTEGER,            PUBLIC  :: prop_timing = 1
@@ -167,7 +167,7 @@ MODULE propagator_mod
      ! working field for intermediate storage during reallocation
      REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: w
   END TYPE prop_qe
-  
+
   PUBLIC prop_boundary
   TYPE prop_boundary
           REAL(kind=dp)  :: fieldpropagator_tag_left
@@ -226,7 +226,7 @@ MODULE propagator_mod
   TYPE(propagator), POINTER, PUBLIC             :: prop_c ! current
   TYPE(propagator), POINTER, PRIVATE            :: prop_n ! new
   TYPE(propagator), POINTER, PRIVATE            :: prop_l ! last
-  
+
   ! ---------------------------------------------------------------------------
   ! public routines for propagator handling
   PUBLIC  propagator_solver
@@ -292,13 +292,13 @@ MODULE propagator_mod
      MODULE PROCEDURE construct_prop
   END INTERFACE
   ! ---------------------------------------------------------------------------
-  PRIVATE destruct_propagator 
+  PRIVATE destruct_propagator
   PRIVATE destruct_prop
   INTERFACE destruct_propagator
      MODULE PROCEDURE destruct_prop
   END INTERFACE
   ! ---------------------------------------------------------------------------
-  PRIVATE destruct_all_propagators 
+  PRIVATE destruct_all_propagators
   PRIVATE destruct_all_prop
   INTERFACE destruct_all_propagators
      MODULE PROCEDURE destruct_all_prop
@@ -335,7 +335,7 @@ MODULE propagator_mod
   INTERFACE diag_propagator_distrf
      MODULE PROCEDURE diag_propagator_dis
   END INTERFACE
- 
+
   ! ---------------------------------------------------------------------------
   ! Private interface to the ripple_solver and join_ripples subroutine
   PRIVATE ripple_solver_interface
@@ -376,7 +376,7 @@ CONTAINS
     !
     ! At the moment prop_c has to be placed at the end and the
     ! new prop_c is associated with the new end of the linked list!
-    ! 
+    !
     ! Allocate memory for a new node.
     ALLOCATE( prop_n )
     ! At the beginning of the loop root is not associated to some
@@ -387,12 +387,12 @@ CONTAINS
     ! The pointer prev of newnode has to point towards current.
 
     IF (before .EQ. 0) THEN
-       IF ( ASSOCIATED( prop_c) ) THEN   
+       IF ( ASSOCIATED( prop_c) ) THEN
           prop_c%next => prop_n
           prop_n%prev => prop_c
        END IF
     ELSE
-       IF ( ASSOCIATED( prop_c) ) THEN   
+       IF ( ASSOCIATED( prop_c) ) THEN
           prop_c%prev => prop_n
           prop_n%next => prop_c
        END IF
@@ -406,13 +406,13 @@ CONTAINS
     ! At this moment the pointer current points towards this memory.
     NULLIFY( prop_n )
     ! indicated that it is not being used at the moment
-    prop_c%nr_joined = -2 
+    prop_c%nr_joined = -2
 
   END SUBROUTINE construct_prop
 
   ! ---------------------------------------------------------------------------
   SUBROUTINE destruct_prop
-    ! Removes the current propagator prop_c 
+    ! Removes the current propagator prop_c
 
     ! Remove content
     CALL deallocate_propagator_content
@@ -448,7 +448,7 @@ CONTAINS
 
   ! ---------------------------------------------------------------------------
   SUBROUTINE destruct_all_prop
-    ! Subroutine to remove all propagators starting from the 
+    ! Subroutine to remove all propagators starting from the
     ! last one (prop_l)
 
     prop_c => prop_l
@@ -500,7 +500,7 @@ CONTAINS
   SUBROUTINE assign_propagator_cont(n,o)
     TYPE(propagator), POINTER  :: n
     TYPE(propagator), POINTER  :: o
-    
+
     n%nr_joined             = o%nr_joined
     n%bin_split_mode        = o%bin_split_mode
     IF (o%bin_split_mode .EQ. 1) THEN
@@ -561,7 +561,7 @@ CONTAINS
        ALLOCATE(pn%cmat(SIZE(po%cmat,1),SIZE(po%cmat,2)))
        pn%cmat        = po%cmat
     END IF
-    
+
     IF (ALLOCATED(po%w)) THEN
        ALLOCATE(pn%w(SIZE(po%w,1),SIZE(po%w,2)))
        pn%w           = po%w
@@ -575,7 +575,7 @@ CONTAINS
        ALLOCATE(pn%source_m(SIZE(po%source_m,1),SIZE(po%source_m,2)))
        pn%source_m  = po%source_m
     END IF
-    
+
     IF (ALLOCATED(po%flux_p)) THEN
        ALLOCATE(pn%flux_p(SIZE(po%flux_p,1),SIZE(po%flux_p,2)))
        pn%flux_p     = po%flux_p
@@ -610,7 +610,7 @@ CONTAINS
     CHARACTER(len=22) :: cadd,tags
 
     TYPE(fieldpropagator_struct), POINTER :: plotpropagator
-    
+
     ! find free unit
     uw = 100
     DO
@@ -631,7 +631,7 @@ CONTAINS
     IF (prop_overwrite .EQ. 1) THEN
        cadd = '.dat'
     END IF
-    
+
     cname = 'amat_p_p'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
     DO i = 1,SIZE(prop_a%p%amat_p_p,1)
@@ -680,7 +680,7 @@ CONTAINS
     cname = 'flux_p'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
     WRITE(uw,*) prop_a%p%flux_p(1,:)
-    CLOSE(uw)    
+    CLOSE(uw)
     cname = 'flux_m'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
     WRITE(uw,*) prop_a%p%flux_m(1,:)
@@ -688,12 +688,12 @@ CONTAINS
     cname = 'curr_p'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
     WRITE(uw,*) prop_a%p%flux_p(2,:)
-    CLOSE(uw)    
+    CLOSE(uw)
     cname = 'curr_m'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
     WRITE(uw,*) prop_a%p%flux_m(2,:)
     CLOSE(uw)
-    
+
     cname = 'eta'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
     IF (prop_a%bin_split_mode .EQ. 1) THEN
@@ -706,7 +706,7 @@ CONTAINS
             fieldpropagator%ch_act%eta(1:)
     END IF
     CLOSE(uw)
-    
+
     ! summary
     cname = 'summary'
     OPEN(unit=uw,file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)))
@@ -727,7 +727,7 @@ CONTAINS
     WRITE(uw,*) 'eta_boundary_l  ',prop_a%p%eta_boundary_l
     WRITE(uw,*) 'eta_boundary_r  ',prop_a%p%eta_boundary_r
     CLOSE(uw)
-    
+
     PRINT *, 'Physical Output written on files *'//TRIM(ADJUSTL(cadd))
     PRINT *, 'Involved propagator tags:         '  &
          //TRIM(ADJUSTL(ctag_s))//' '//TRIM(ADJUSTL(ctag_e))
@@ -743,7 +743,7 @@ CONTAINS
        CALL plot_magnetics(plotpropagator,proptag,proptag,  &
             TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd)) &
             )
-        
+
        cname = 'etam'
        OPEN(unit=uw,status='replace',                       &
             file=TRIM(ADJUSTL(cname))//TRIM(ADJUSTL(cadd))  &
@@ -753,7 +753,7 @@ CONTAINS
                i,fieldpropagator%phi_eta_ind(i,1),      &
                fieldpropagator%phi_eta_ind(i,2),        &
                fieldpropagator%ch_act%eta(i),           &
-               1.0_dp - fieldpropagator%ch_act%eta(i) * & 
+               1.0_dp - fieldpropagator%ch_act%eta(i) * &
                fieldpropagator%mdata%bhat(              &
                fieldpropagator%phi_eta_ind(i,1)         &
                ),                                       &
@@ -763,7 +763,7 @@ CONTAINS
                )
        END DO
        CLOSE(unit=uw)
-       
+
     END IF
 
   END SUBROUTINE diag_propagator_cont
@@ -836,16 +836,16 @@ CONTAINS
     dmono_over_dplateau=-2.d0*SQRT(2.d0)/pi*rt0*aiota_loc*transport_factor
 
     epseff3_2=-(9.d0*pi/(16.d0*SQRT(2.d0)))*collpar*rt0**2     &
-         *transport_factor 
+         *transport_factor
 
     alambda_b=-0.75d0 * qcurr_g *y(6)/(y(7)*y(9))
     alambda_bb=alambda_b * y(9) / y(6)
     g_bs=2.d0*qcurr_g/(y(7)*(collpar*qcurr_e/y(9)-8.d0/3.d0))
-    ! gamma_E from the Spitzer-Haerm paper 
+    ! gamma_E from the Spitzer-Haerm paper
     ! to get the values there, the result has to be multiplied by Zeff
     ! sigma / sigma_lorentz(zeff=1)
     gamma_E = (3.d0*pi*qcurr_e*collpar/(32.d0*y(9)))
-    
+
     ! find free unit
     uw = 100
     DO
@@ -1264,7 +1264,7 @@ CONTAINS
        ! make a new propagator or join
        i_joined = 0
        ! ---------------------------------------------------------------------------
-       IF (prop_ibegperiod .EQ. 1 .AND. iendperiod .EQ. 1 .AND. prop_write .NE. 2) THEN 
+       IF (prop_ibegperiod .EQ. 1 .AND. iendperiod .EQ. 1 .AND. prop_write .NE. 2) THEN
           i_joined = 1
           prop_a => prop_c
           prop_ibegperiod = 1
@@ -1278,9 +1278,9 @@ CONTAINS
        ELSEIF (prop_count_call .EQ. 1 .AND. prop_write .EQ. 2) THEN
           CALL construct_propagator
           prop_c%nr_joined = -1
-          prop_a => prop_c       
+          prop_a => prop_c
        ELSE
-          IF (prop_ibegperiod .EQ. 0 .OR. iendperiod .EQ. 1 .OR. prop_write .EQ. 2) THEN 
+          IF (prop_ibegperiod .EQ. 0 .OR. iendperiod .EQ. 1 .OR. prop_write .EQ. 2) THEN
              IF (prop_diagnostic .GE. 2) THEN
                 PRINT *, '               join_ripples within period'
              END IF
@@ -1293,7 +1293,7 @@ CONTAINS
              END IF
              prop_a => prop_c%prev
              ! writing of propagators (joined within period)
-             IF (prop_write .EQ. 2) THEN 
+             IF (prop_write .EQ. 2) THEN
                 CALL write_prop_bound_content(prop_c%prev,prop_c,3)
                 CALL write_propagator_content(prop_c%prev,3,2) ! reduced for joined
              END IF
@@ -1312,7 +1312,7 @@ CONTAINS
              ! Winny: This is the place to write things to the file
              ! Things at this point are in prop_a => prop_c%prev
              ! cmat is computed when you join periods, so it can not be written here
-             IF (prop_write .EQ. 1) THEN 
+             IF (prop_write .EQ. 1) THEN
                 CALL write_propagator_content(prop_a,1)
                 IF (prop_first_tag .EQ. 0) prop_first_tag = fieldpropagator%parent%tag
                 prop_last_tag = fieldpropagator%parent%tag
@@ -1367,7 +1367,7 @@ CONTAINS
                 END IF
                 IF (prop_timing .EQ. 1) CALL CPU_TIME(time_o)
                 CALL join_ripples_interface(ierr_join,'inter',0)
-                ! Winny 
+                ! Winny
                 ! here the periods are joined, so cmat should be available
                 ! but cmat is not stored, so this has to be handled
                 IF (prop_write .EQ. 1) CALL write_prop_bound_content(prop_c%prev,prop_c,1)
@@ -1392,7 +1392,7 @@ CONTAINS
        ! Final joining
        IF (iend .EQ. 1) THEN
           k = 1
-          DO 
+          DO
              prop_c => prop_c%prev
              IF ( ASSOCIATED(prop_c%prev) ) THEN
                 k = k + 1
@@ -1401,7 +1401,7 @@ CONTAINS
                 END IF
                 IF (prop_timing .EQ. 1) CALL CPU_TIME(time_o)
                 CALL join_ripples_interface(ierr_join)
-                i_joined = 1 
+                i_joined = 1
                 IF (prop_timing .EQ. 1) THEN
                    CALL CPU_TIME(time_jf)
                    stime_jf = stime_jf + time_jf - time_o
@@ -1445,7 +1445,7 @@ CONTAINS
        END IF
        ! diagnostic
        IF (i_joined .EQ. 1 .AND. prop_diagphys .EQ. 1) THEN
-          CALL diag_propagator_content 
+          CALL diag_propagator_content
        END IF
        ! physical output
        IF (i_joined .EQ. 1 .AND. iendperiod .EQ. 1) THEN
@@ -1453,27 +1453,27 @@ CONTAINS
        END IF
 
        IF (i_joined .EQ. 1 .AND. iend .EQ. 1) THEN
-          CALL diag_propagator_distrf 
+          CALL diag_propagator_distrf
        END IF
     END IF
 
     IF (iend .EQ. 1 .AND. prop_timing .EQ. 1) THEN
        PRINT *, ' '
-       PRINT *, 'Time for construction      :', stime_co 
+       PRINT *, 'Time for construction      :', stime_co
        PRINT *, 'Time for solver            :', stime_so
-       PRINT *, 'Time for joining in period :', stime_jp 
-       PRINT *, 'Time for advanced joining  :', stime_ja 
+       PRINT *, 'Time for joining in period :', stime_jp
+       PRINT *, 'Time for advanced joining  :', stime_ja
        PRINT *, 'Time for final joining     :', stime_jf
        PRINT *, ' '
        PRINT *, 'Total Time for joining     :', stime_jp + stime_ja + stime_jf
-       PRINT *, 'Total Time in module       :', stime_tot 
+       PRINT *, 'Total Time in module       :', stime_tot
        PRINT *, ' '
     END IF
 
     CALL deconstruct_binarysplit(eta_bs)
 
   END SUBROUTINE propagator_solver_loc
-  
+
   ! ---------------------------------------------------------------------------
   SUBROUTINE ripple_solver_int(ierr)
     ! Interface routine for subroutine ripple_solver
@@ -1490,7 +1490,7 @@ CONTAINS
     !! End Modification by Andreas F. Martitsch (27.07.2015)
 
     INTEGER :: ierr
-    
+
     INTERFACE ripple_solver
        SUBROUTINE ripple_solver(                                 &
             npass_l,npass_r,nvelocity,                            &
@@ -1516,33 +1516,7 @@ CONTAINS
          INTEGER,                                    INTENT(out)   :: ierr
        END SUBROUTINE ripple_solver
     END INTERFACE ripple_solver
-    !! Modification by Andreas F. Martitsch (27.07.2015)
-    ! Interface Arnoldi Solver Order 1
-    INTERFACE ripple_solver_ArnoldiO1
-       SUBROUTINE ripple_solver_ArnoldiO1(                       &
-            npass_l,npass_r,nvelocity,                            &
-            amat_plus_plus,amat_minus_minus,                     &
-            amat_plus_minus,amat_minus_plus,                     &
-            source_p,source_m,                                   &
-            flux_p,flux_m,                                       &
-            qflux,                                               &
-            ierr                                                 &
-            )
-         INTEGER, PARAMETER                                        :: dp = KIND(1.0d0)
 
-         INTEGER,                                    INTENT(out)   :: npass_l
-         INTEGER,                                    INTENT(out)   :: npass_r
-         INTEGER,   INTENT(out)   :: nvelocity
-         REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_plus_plus
-         REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_minus_minus
-         REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_plus_minus
-         REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: amat_minus_plus
-         REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) ::         &
-                                       source_p,source_m,flux_p,flux_m
-         REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(out) :: qflux
-         INTEGER,                                    INTENT(out)   :: ierr
-       END SUBROUTINE ripple_solver_ArnoldiO1
-    END INTERFACE ripple_solver_ArnoldiO1
     ! Interface Arnoldi Solver Order 2
     INTERFACE ripple_solver_ArnoldiO2
        SUBROUTINE ripple_solver_ArnoldiO2(                       &
@@ -1569,35 +1543,7 @@ CONTAINS
          INTEGER,                                    INTENT(out)   :: ierr
        END SUBROUTINE ripple_solver_ArnoldiO2
     END INTERFACE ripple_solver_ArnoldiO2
-    !! End Modification by Andreas F. Martitsch (27.07.2015)
 
-    interface ripple_solver_ArnoldiO3
-      subroutine ripple_solver_ArnoldiO3(                    &
-        npass_l,npass_r,nvelocity,                           &
-        amat_plus_plus,amat_minus_minus,                     &
-        amat_plus_minus,amat_minus_plus,                     &
-        source_p,source_m,                                   &
-        flux_p,flux_m,                                       &
-        qflux,                                               &
-        ierr                                                 &
-        )
-        integer, parameter :: dp = kind(1.0d0)
-
-        integer, intent(out)   :: npass_l
-        integer, intent(out)   :: npass_r
-        integer, intent(out)   :: nvelocity
-        real(kind=dp), dimension(:,:), allocatable, intent(inout) :: amat_plus_plus
-        real(kind=dp), dimension(:,:), allocatable, intent(inout) :: amat_minus_minus
-        real(kind=dp), dimension(:,:), allocatable, intent(inout) :: amat_plus_minus
-        real(kind=dp), dimension(:,:), allocatable, intent(inout) :: amat_minus_plus
-        real(kind=dp), dimension(:,:), allocatable, intent(inout) ::         &
-                                       source_p,source_m,flux_p,flux_m
-        real(kind=dp), dimension(:,:), allocatable, intent(out) :: qflux
-        integer, intent(out)   :: ierr
-      end subroutine ripple_solver_ArnoldiO3
-    end interface ripple_solver_ArnoldiO3
-
-    !! Modification by Andreas F. Martitsch (27.07.2015)
     ! Select ripple_solver version
     IF (isw_ripple_solver .EQ. 1) THEN
        CALL ripple_solver(                                                  &
@@ -1605,17 +1551,7 @@ CONTAINS
             prop_c%p%amat_p_p, prop_c%p%amat_m_m,                           &
             prop_c%p%amat_p_m, prop_c%p%amat_m_p,                           &
             prop_c%p%source_p, prop_c%p%source_m,                           &
-            prop_c%p%flux_p, prop_c%p%flux_m,                               & 
-            prop_c%p%qflux,                                                 &
-            ierr                                                            &
-            )
-    ELSEIF (isw_ripple_solver .EQ. 2) THEN
-       CALL ripple_solver_ArnoldiO1(                                        &
-            prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,            &
-            prop_c%p%amat_p_p, prop_c%p%amat_m_m,                           &
-            prop_c%p%amat_p_m, prop_c%p%amat_m_p,                           &
-            prop_c%p%source_p, prop_c%p%source_m,                           &
-            prop_c%p%flux_p, prop_c%p%flux_m,                               & 
+            prop_c%p%flux_p, prop_c%p%flux_m,                               &
             prop_c%p%qflux,                                                 &
             ierr                                                            &
             )
@@ -1625,19 +1561,9 @@ CONTAINS
             prop_c%p%amat_p_p, prop_c%p%amat_m_m,                           &
             prop_c%p%amat_p_m, prop_c%p%amat_m_p,                           &
             prop_c%p%source_p, prop_c%p%source_m,                           &
-            prop_c%p%flux_p, prop_c%p%flux_m,                               & 
+            prop_c%p%flux_p, prop_c%p%flux_m,                               &
             prop_c%p%qflux,                                                 &
             ierr                                                            &
-            )
-    elseif (isw_ripple_solver .eq. 4) then
-      call ripple_solver_ArnoldiO3(                               &
-            prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity, &
-            prop_c%p%amat_p_p, prop_c%p%amat_m_m,                 &
-            prop_c%p%amat_p_m, prop_c%p%amat_m_p,                 &
-            prop_c%p%source_p, prop_c%p%source_m,                 &
-            prop_c%p%flux_p, prop_c%p%flux_m,                     &
-            prop_c%p%qflux,                                       &
-            ierr                                                  &
             )
     ELSE
        STOP "Undefined version of ripple_solver selected (isw_ripple_solver)!"
@@ -1658,7 +1584,7 @@ CONTAINS
     !! End Modification by Andreas F. Martitsch (17.07.2015)
        SUBROUTINE plot_distrf(source_p,source_m,eta_l,eta_r,eta_boundary_l,eta_boundary_r)
          INTEGER, PARAMETER :: dp = KIND(1.0d0)
-         
+
          REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE, INTENT(inout) :: source_p
          REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE, INTENT(inout) :: source_m
          REAL(kind=dp), DIMENSION(:),     ALLOCATABLE, INTENT(inout) :: eta_l
@@ -1684,19 +1610,19 @@ CONTAINS
     ! Call to external program join_ripples
 
     USE binarysplit_mod
-    
+
     INTEGER, INTENT(out) :: ierr
     CHARACTER(len=5), OPTIONAL, INTENT(in) :: cstat_in
     INTEGER, OPTIONAL, INTENT(in) :: deall_in
 
     CHARACTER(len=5)                     :: cstat
-    
+
     TYPE(propagator), POINTER            :: o
     TYPE(propagator), POINTER            :: n
-    
+
     TYPE(binarysplit)                    :: loc_bs_1a,loc_bs_2a
     TYPE(binarysplit)                    :: loc_bs_1b,loc_bs_2b
-    
+
     INTEGER :: i
 
     type(sparsevec), dimension(:), allocatable :: bin1_sparse, bin2_sparse
@@ -1704,7 +1630,7 @@ CONTAINS
 
     REAL(kind=dp),   DIMENSION(:,:), ALLOCATABLE :: cmat_help
     ierr = 0
-    
+
     o => prop_c%prev
     n => prop_c
 
@@ -1751,7 +1677,7 @@ CONTAINS
        PRINT *, ' npass_r old new          ', o%p%npass_r,n%p%npass_r
        PRINT *, ' '
     END IF
-        
+
     IF (o%bin_split_mode .NE. n%bin_split_mode) THEN
        PRINT *, 'ERROR: A difference of bin_split_mode of 1 and 2'
        PRINT *, '       cannot be handled!'
@@ -1762,7 +1688,7 @@ CONTAINS
     IF (o%bin_split_mode .EQ. 1) THEN
 
        ! we first fix it forward
-       prop_modifyold = 1       
+       prop_modifyold = 1
        ! first: remove those splits in old which are not in new
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'JOIN binarysplit action - forward'
@@ -1789,7 +1715,7 @@ CONTAINS
        IF (ALLOCATED(bin2_sparse)) DEALLOCATE(bin2_sparse)
 
        ! now we fix it backward
-       prop_modifyold = 0       
+       prop_modifyold = 0
        ! first: remove those splits in new which are not in old
        IF (prop_diagnostic .GE. 3) THEN
           PRINT *, 'JOIN binarysplit action - backward'
@@ -1811,9 +1737,9 @@ CONTAINS
        ! remove unnecessary things
        if (allocated(bin1_sparse)) deallocate(bin1_sparse)
        if (allocated(bin2_sparse)) deallocate(bin2_sparse)
-       
+
        IF (cstat .EQ. 'final') THEN
-       IF (prop_diagnostic .GE. 2) THEN     
+       IF (prop_diagnostic .GE. 2) THEN
           OPEN(unit=1000,file='c_forward.dat')
           DO i = 1,SIZE(o%p%cmat,1)
              WRITE(1000,'(1000e14.5)') o%p%cmat(i,:)
@@ -1855,7 +1781,7 @@ CONTAINS
           PRINT *,  'new propagator tag:   ', n%fieldpropagator_tag_s,n%fieldpropagator_tag_e
           PRINT *,  'size of n%p%amat_p_m: ', SIZE(n%p%amat_p_m,1),SIZE(n%p%amat_p_m,2)
           PRINT *,  ' should be            ', n%p%npass_l*(n%p%nvelocity+1), n%p%npass_l*(n%p%nvelocity+1)  !<-in
-          
+
 
           PRINT *, 'Difference in forward'
           DO i = 0,UBOUND(loc_bs_2a%x_split,1)
@@ -1879,7 +1805,7 @@ CONTAINS
           IF (ALLOCATED(bin1_sparse)) DEALLOCATE(bin1_sparse)
 
           PRINT *, 'c_forward.dat and c_backward.dat written'
-       END IF       
+       END IF
        END IF
        CALL deconstruct_binarysplit(loc_bs_1a)
        CALL deconstruct_binarysplit(loc_bs_2a)
@@ -1889,14 +1815,14 @@ CONTAINS
 
 
 
-    
+
     IF (prop_diagnostic .GE. 2) THEN
        PRINT *, ' '
        PRINT *, ' I am now after binarysplit joining amd splitting'
        PRINT *, ' npart old new          ', o%p%npart,n%p%npart
        PRINT *, ' npass_l old new        ', o%p%npass_l,n%p%npass_l
        PRINT *, ' npass_r old new        ', o%p%npass_r,n%p%npass_r
-       PRINT *, ' '    
+       PRINT *, ' '
     END IF
 
     ! here the two array c_forward and c_backward should be finished
@@ -1958,14 +1884,14 @@ CONTAINS
        RETURN
     END IF
 
-    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end) 
+    CALL filename_propagator(prop_type,prop_bound,prop_start,prop_end)
     CALL unit_propagator
     OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
          form=prop_format,action='write')
     ! tags
     WRITE(prop_unit,*) prop_start
     WRITE(prop_unit,*) prop_end
-    
+
     ! info
     IF (prop_showall .EQ. 1) THEN
        WRITE(prop_unit,*) o%nr_joined
@@ -2039,7 +1965,7 @@ CONTAINS
           WRITE(prop_unit,*) 0,0
        END IF
     END IF
-    
+
     ! source_p
     IF (prop_showall .GE. 1) THEN
        IF (ALLOCATED(o%p%source_p)) THEN
@@ -2063,7 +1989,7 @@ CONTAINS
        END IF
     END IF
 
-    
+
     ! flux_p
     IF (prop_showall .EQ. 1) THEN
        IF (ALLOCATED(o%p%flux_p)) THEN
@@ -2109,7 +2035,7 @@ CONTAINS
        WRITE(prop_unit,*) o%p%eta_boundary_l
        WRITE(prop_unit,*) o%p%eta_boundary_r
     END IF
-    
+
     CLOSE(unit=prop_unit)
 
 
@@ -2137,7 +2063,7 @@ CONTAINS
        RETURN
     END IF
 
-    CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right) 
+    CALL filename_propagator(prop_type,prop_bound,prop_left,prop_right)
     CALL unit_propagator
     OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
          form=prop_format,action='write')
@@ -2159,14 +2085,14 @@ CONTAINS
     IF (ALLOCATED(n%p%cmat)) THEN
        WRITE(prop_unit,*) LBOUND(n%p%cmat,1),UBOUND(n%p%cmat,1)
        WRITE(prop_unit,*) LBOUND(n%p%cmat,2),UBOUND(n%p%cmat,2)
-       WRITE(prop_unit,*) n%p%cmat    
+       WRITE(prop_unit,*) n%p%cmat
     ELSE
        WRITE(prop_unit,*) 0,0
        WRITE(prop_unit,*) 0,0
     END IF
 
     CLOSE(unit=prop_unit)
-    
+
   END SUBROUTINE write_prop_bound_cont
 
 
@@ -2203,7 +2129,7 @@ CONTAINS
     ! tags
     READ(prop_unit,*) dummy
     READ(prop_unit,*) dummy
-    
+
     ! info
     IF (prop_showall .EQ. 1) THEN
        READ(prop_unit,*) o%nr_joined
@@ -2275,7 +2201,7 @@ CONTAINS
           READ(prop_unit,*) o%p%amat_m_p
        END IF
     END IF
-    
+
     ! source_p
     IF (prop_showall .GE. 1) THEN
        READ(prop_unit,*) lb1,ub1
@@ -2340,7 +2266,7 @@ CONTAINS
        READ(prop_unit,*) o%p%eta_boundary_l
        READ(prop_unit,*) o%p%eta_boundary_r
     END IF
-    
+
     CLOSE(unit=prop_unit)
 
   END SUBROUTINE read_propagator_cont
@@ -2349,7 +2275,7 @@ CONTAINS
   ! ---------------------------------------------------------------------------
   SUBROUTINE read_prop_bound_cont(b,prop_type,prop_left,prop_right)
     TYPE(prop_boundary)  :: b
-    
+
     INTEGER, INTENT(in) :: prop_type
     INTEGER, INTENT(in) :: prop_left
     INTEGER, INTENT(in) :: prop_right
@@ -2385,9 +2311,9 @@ CONTAINS
        ALLOCATE(b%c_backward(lb1:ub1,lb2:ub2))
        READ(prop_unit,*) b%c_backward
     END IF
-   
+
     CLOSE(unit=prop_unit)
-  
+
   END SUBROUTINE read_prop_bound_cont
 
 
@@ -2437,11 +2363,11 @@ CONTAINS
     INTEGER :: ierr_join
 
     ! from the finally joined propagator
-    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_0               
-    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N  
+    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_0
+    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N
 
-    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_N               
-    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N1  
+    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_N
+    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N1
 
     ! read the information about tags
     CALL unit_propagator
@@ -2451,7 +2377,7 @@ CONTAINS
     READ(prop_unit,*) prop_first_tag
     READ(prop_unit,*) prop_last_tag
     CLOSE(unit=prop_unit)
-    
+
     IF (prop_write .EQ. 1) THEN
        prop_type = 1
     ELSEIF (prop_write .EQ. 2) THEN
@@ -2495,7 +2421,7 @@ CONTAINS
     WRITE(prop_unit,*) LBOUND(source_m_N,2),UBOUND(source_m_N,2)
     WRITE(prop_unit,*) source_m_N
     CLOSE(unit=prop_unit)
-    
+
     ! propagators
     r => prop_c ! the first one is the right one
     CALL construct_propagator(1)
@@ -2504,13 +2430,13 @@ CONTAINS
     DO N = prop_last_tag, prop_first_tag + 1, -1
 
        PRINT *, N,prop_last_tag, prop_first_tag
-       
+
        ! now read the propagator N into the right (r)
        prop_start = N
        prop_end   = N
        prop_showall = 1
        CALL read_propagator_content(r,prop_type,prop_start,prop_end,prop_showall)
-    
+
        ! read the one from the first to (N-1) into the left (l) propagator
        prop_start = prop_first_tag
        prop_end     = N - 1
@@ -2526,7 +2452,7 @@ CONTAINS
        ! do the computation with left (l), right (r), boundary (b)
        CALL reconstruct_prop_dist(l,r,b, &
             source_p_0,source_m_N,source_m_N1,source_p_N)
-       
+
        ! output of new results
        CALL filename_propagator(5,0,N,N)
        CALL unit_propagator
@@ -2543,12 +2469,12 @@ CONTAINS
        OPEN(unit=prop_unit,file=prop_cfilename,status='replace', &
             form=prop_format,action='write')
        WRITE(prop_unit,*) N - 1
-       ! source_m for N-1       
+       ! source_m for N-1
        WRITE(prop_unit,*) LBOUND(source_m_N1,1),UBOUND(source_m_N1,1)
        WRITE(prop_unit,*) LBOUND(source_m_N1,2),UBOUND(source_m_N1,2)
        WRITE(prop_unit,*) source_m_N1
        CLOSE(unit=prop_unit)
-      
+
        ! now make source_m or N-1 the new starting value
        DEALLOCATE(source_m_N)
        ALLOCATE(source_m_N(SIZE(source_m_N1,1),SIZE(source_m_N1,2))) !<-SERGEI
@@ -2584,12 +2510,12 @@ CONTAINS
 
 
     ! from the finally joined propagator
-    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_0               
+    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_0
     ! from the last iteration
-    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N  
+    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N
     ! new results
-    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N1  
-    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_N               
+    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_m_N1
+    REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: source_p_N
 
     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: amat,bvec_lapack
     REAL(kind=dp), DIMENSION(:,:),   ALLOCATABLE :: a_mp,a_pm,q_p,q_m
@@ -2607,10 +2533,10 @@ CONTAINS
     ! source_p_N
 
     ! there are two pointers
-    ! l : jpoined from the beginning to N-1 
+    ! l : jpoined from the beginning to N-1
     !     (with limited information) A_p_p,A_m_p,q_p and the sizes)
-    ! r : the actual propagator at N 
-    !     (with all information) 
+    ! r : the actual propagator at N
+    !     (with all information)
 
     ! there is also the boundary
     ! b : with
