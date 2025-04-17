@@ -1,6 +1,14 @@
 !> Control parameters from input file
 MODULE neo_control
   use nrtype, only : dp
+
+  IMPLICIT NONE
+
+  INTEGER, PARAMETER                 :: INP_SWI_STEL = 6, &
+                                        INP_SWI_STEL_QPS = 7, &
+                                        INP_SWI_TOK_CIRC = 8, &
+                                        INP_SWI_TOK = 9
+
   CHARACTER(20)                      :: in_file
   INTEGER                            :: theta_n
   INTEGER                            :: phi_n
