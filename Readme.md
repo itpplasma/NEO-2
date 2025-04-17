@@ -1,23 +1,37 @@
-# Neo-2 Readme
-
-For build information and dependencies have a look in Build.md.
-
-User manual and developer documentation can be found in the DOC folder,
-for how to make the files, refer to Build.md.
-
-Shared code is located in COMMON, the relativistic code is under
-NEO-2-PAR and the multispecies version under NEO-2-QL.
-Also there are folders for cmake-/octave-/python-/shell-scripts.
-
-# COMMON 
-Contains all code that is shared, or at least not specific for one code.
-Contains also other files that are shared, e.g. ProjectConfig.cmake.in
-and cmake_version.f90.in.
-
 # Installation
 
 ## Prerequisites
-  * SuiteSparse
-  * NetCDF
-  * GSL, FGSL
-  * libneo
+git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (OpenBLAS or MKL), SuiteSparse, FFTW, GSL, HDF5/NetCDF with Fortran libraries. If SuiteSparse is not available on your system, it will be built automatically by NEO-2. On Debian or Ubuntu run
+
+    sudo apt install git cmake make ninja-build gcc g++ gfortran
+    sudo apt install openmpi-bin openmpi-common libopenmpi-dev 
+    sudo apt install libopenblas-dev libsuitesparse-dev 
+    sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
+
+
+## Build
+Run 
+
+    make
+
+inside the NEO-2 directory. This will handle the whole build process, including `cmake` calls. 
+
+Known issue: if you encounter errors like
+
+    Fatal Error: Cannot open module file
+
+just run `make` again a few times until they disappear.
+
+You obtain a `build` directory with subdirectories
+
+* `NEO-2-QL` with binary `neo_2_ql.x` for the tokamak version.
+* `NEO-2-PAR` with binary `neo_2_par.x` for the stellarator version.
+
+If you have additional compilers and MPI implementations (e.g. Intel) installed, be sure to set the environment like
+
+    export CC=gcc
+    export CXX=g++
+    export FC=gfortran
+    export MPI_HOME=/usr
+
+before the build. You may also need to `deactivate` Python environments such as Anaconda.
