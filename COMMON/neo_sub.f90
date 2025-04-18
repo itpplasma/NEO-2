@@ -143,9 +143,8 @@ CONTAINS
     USE neo_spline_data
     USE neo_input
     USE neo_exchange
-    !! Modifications by Andreas F. Martitsch (06.08.2014)
-    USE neo_control, ONLY: inp_swi
-    !! End Modifications by Andreas F. Martitsch (06.08.2014)
+    USE neo_control, ONLY: inp_swi, INP_SWI_STEL, INP_SWI_STEL_QPS, &
+      & INP_SWI_TOK_CIRC, INP_SWI_TOK
     USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf, &
       & splinecof1_hi_driv, splinecof1
     use neo_spline_data, only : lsw_linear_boozer
@@ -169,7 +168,7 @@ CONTAINS
     ALLOCATE ( c_bmnc(ns,mnmax), d_bmnc(ns,mnmax) )
     !! Modifications by Andreas F. Martitsch (06.08.2014)
     ! Additional data from Boozer files without Stellarator symmetry
-    IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+    IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
       ALLOCATE ( a_rmns(ns,mnmax), b_rmns(ns,mnmax) )
       ALLOCATE ( c_rmns(ns,mnmax), d_rmns(ns,mnmax) )
       ALLOCATE ( a_zmns(ns,mnmax), b_zmns(ns,mnmax) )
@@ -221,7 +220,7 @@ CONTAINS
           & a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
     !! Modifications by Andreas F. Martitsch (06.08.2014)
     ! Additional data from Boozer files without Stellarator symmetry
-      if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+      if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
         call splinecof1_hi_driv(es, rmns, r_mhalf, &
             & a_rmns, b_rmns, c_rmns, d_rmns, sp_index, tf)
         call splinecof1_hi_driv(es, zmns, r_mhalf, &
@@ -241,7 +240,7 @@ CONTAINS
           & a_lmnc, b_lmnc, c_lmnc, d_lmnc, sp_index, tf)
       call splinecof3_hi_driv(es, bmnc, r_mhalf, &
           & a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
-      if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+      if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
         call splinecof3_hi_driv(es, rmns, r_mhalf, &
             & a_rmns, b_rmns, c_rmns, d_rmns, sp_index, tf)
         call splinecof3_hi_driv(es, zmns, r_mhalf, &
@@ -614,7 +613,7 @@ CONTAINS
       s_bmnc(:)  = bmnc(psi_ind,:)
       !! Modifications by Andreas F. Martitsch (06.08.2014)
       ! Additional data from Boozer files without Stellarator symmetry
-      IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+      IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
         s_rmns(:)  = rmns(psi_ind,:)
         s_zmns(:)  = zmns(psi_ind,:)
         s_lmns(:)  = lmns(psi_ind,:)
@@ -651,7 +650,7 @@ CONTAINS
               & s_bmnc(i),yp,ypp,yppp)
          !! Modifications by Andreas F. Martitsch (06.08.2014)
           ! Additional data from Boozer files without Stellarator symmetry
-          if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+          if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
             call splint_horner1(es,a_rmns(:,i),b_rmns(:,i), &
                 & c_rmns(:,i),d_rmns(:,i),swd,m0,           &
                 & s_es,tf,tfp,tfpp,tfppp,                   &
@@ -687,7 +686,7 @@ CONTAINS
               & s_es,tf,tfp,tfpp,tfppp,                   &
               & s_bmnc(i),yp,ypp,yppp)
           ! Additional data from Boozer files without Stellarator symmetry
-          if (inp_swi .EQ. 9) then        ! ASDEX-U (E. Strumberger)
+          if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
             call splint_horner3(es,a_rmns(:,i),b_rmns(:,i), &
                 & c_rmns(:,i),d_rmns(:,i),swd,m0,           &
                 & s_es,tf,tfp,tfpp,tfppp,                   &
@@ -944,247 +943,7 @@ CONTAINS
     !***********************************************************************
     OPEN(unit=r_u1,file=in_file,status='old',form='formatted')
     !***********************************************************************
-    IF (inp_swi .EQ. 1) THEN        !Princeton Boozer file
-      READ (r_u1,*) dummy
-      READ (r_u1,*) m0b,n0b,ns,nfp,flux
-      m_max = m0b+1
-      n_max = 2*n0b+1
-      mnmax = m_max*n_max
-      ! **********************************************************************
-      ! Allocate storage arrays
-      ! **********************************************************************
-      ALLOCATE(ixm(mnmax), ixn(mnmax), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-
-      ALLOCATE(pixm(mnmax), pixn(mnmax), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays pointers failed!'
-
-      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-
-      ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
-          pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
-
-      ALLOCATE(rmnc(ns,mnmax), zmnc(ns,mnmax), lmnc(ns,mnmax),             &
-          bmnc(ns,mnmax),                                                 &
-          stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for fourier arrays (1) failed!'
-      !***********************************************************************
-      ! Read input arrays
-      !***********************************************************************
-      DO i =1, ns
-        READ(r_u1,*) dummy
-        READ(r_u1,*) es(i),iota(i),curr_pol(i),curr_tor(i),               &
-             pprime(i),sqrtg00(i)
-        READ(r_u1,*) dummy
-        DO j=1,mnmax
-          READ(r_u1,*) ixm(j),ixn(j),                                    &
-               rmnc(i,j),zmnc(i,j),lmnc(i,j),                            &
-               bmnc(i,j)
-        END DO
-      END DO
-
-    ELSE IF(inp_swi .EQ. 2) THEN        !ORNL Boozer file
-      READ(r_u1,'(a)') cdum
-      READ(r_u1,'(a)') cdum
-      READ(r_u1,'(a45,10i5)') cdum,ns,id1,id2,id3,id4,m0b,n0b,id5,nfp,mnmax
-      READ(r_u1,'(a44,10i5)') cdum,id1,id2,id3,id4,id5,id6,id7
-      DO i=1,4
-        READ(r_u1,'(a)')cdum
-      END DO
-      ns = ns - 1
-      m_max = m0b+1
-      n_max = 2*n0b+1
-
-      ! **********************************************************************
-      ! Allocate storage arrays
-      ! **********************************************************************
-      ALLOCATE(ixm(mnmax), ixn(mnmax), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-
-      ALLOCATE(pixm(mnmax), pixn(mnmax), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays pointers failed!'
-
-      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-
-      ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
-          pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
-
-      ALLOCATE(rmnc(ns,mnmax), zmnc(ns,mnmax), lmnc(ns,mnmax),             &
-          bmnc(ns,mnmax),                                                 &
-          stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for fourier arrays (1) failed!'
-      !***********************************************************************
-      ! Read input arrays
-      !***********************************************************************
-      DO  i = 1,ns
-        READ(r_u1,'(a)') cdum
-        READ(r_u1,'(5e12.4)') es(i),iota(i),curr_pol(i),curr_tor(i),flux
-        pprime(i) = 0.; sqrtg00(i) = 0.
-        READ(r_u1,'(a)') cdum
-        READ(r_u1,"(2i5,1p,4e16.8)") (ixm(j),ixn(j),rmnc(i,j),zmnc(i,j),  &
-             lmnc(i,j),bmnc(i,j),j=1,mnmax)
-        READ(r_u1,'(a)') cdum
-      END DO
-
-    ELSE IF(inp_swi .EQ. 3) THEN        !LHD Boozer file
-      READ (r_u1,*) mnmax,ns,n0b,nfp,xra,xrm
-      n_max = 2*n0b+1
-      m_max = (mnmax-n0b-1)/n_max + 1
-      m0b = m_max-1
-      mnmax = mnmax + n0b ! negativ n for m=0
-      ! **********************************************************************
-      ! Allocate storage arrays
-      ! **********************************************************************
-      ALLOCATE(ixm(mnmax), ixn(mnmax), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-
-      ALLOCATE(pixm(mnmax), pixn(mnmax), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays pointers failed!'
-
-      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-
-      ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
-          pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
-
-      ALLOCATE(rmnc(ns,mnmax), zmnc(ns,mnmax), lmnc(ns,mnmax),             &
-          bmnc(ns,mnmax),                                                 &
-          stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for fourier arrays (1) failed!'
-      !***********************************************************************
-      ! Read input arrays
-      !***********************************************************************
-      DO i =1, ns
-        READ(r_u1,*) es(i),iota(i),curr_tor(i),curr_pol(i)
-      END DO
-      pprime  = 0.0_dp ! not given
-      sqrtg00 = 0.0_dp
-      flux = es(ns)
-      DO i =1, ns      ! normalize
-        es(i) = es(i) / flux
-      END DO
-
-      DO j = 1,n0b
-        ixm(j) = 0
-        ixn(j) = (-n0b + j - 1)*nfp
-        bmnc(:,j) = 0.0_dp
-        rmnc(:,j) = 0.0_dp
-        zmnc(:,j) = 0.0_dp
-        lmnc(:,j) = 0.0_dp
-      END DO
-      DO j = n0b+1,mnmax
-        READ(r_u1,'(2i4)') mm,nn
-        ixm(j) = mm
-        ixn(j) = nn
-        DO i=1,ns
-          READ(r_u1,*) bmnc(i,j),rmnc(i,j),zmnc(i,j),lmnc(i,j)
-        END DO
-      END DO
-
-    ELSEIF (inp_swi .EQ. 4) THEN        !W7-X File
-      READ (r_u1,*) dummy
-      READ (r_u1,*) m0b,n0b,ns,nfp,flux,r_small,r_big
-      m_max = m0b+1
-      n_max = 2*n0b+1
-      mnmax = m_max*n_max
-
-      ! **********************************************************************
-      ! Allocate storage arrays
-      ! **********************************************************************
-      ALLOCATE(ixm(mnmax), ixn(mnmax), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-
-      ALLOCATE(pixm(mnmax), pixn(mnmax), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays pointers failed!'
-
-      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-
-      ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
-          pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
-
-      ALLOCATE(rmnc(ns,mnmax), zmnc(ns,mnmax), lmnc(ns,mnmax),             &
-          bmnc(ns,mnmax),                                                 &
-          stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for fourier arrays (1) failed!'
-      !***********************************************************************
-      ! Read input arrays
-      !***********************************************************************
-      DO i =1, ns
-        READ(r_u1,*) dummy
-        READ(r_u1,*) es(i),iota(i),curr_pol(i),curr_tor(i),               &
-             pprime(i),sqrtg00(i)
-        READ(r_u1,*) dummy
-        DO j=1,mnmax
-          READ(r_u1,*) ixm(j),ixn(j),                                    &
-               rmnc(i,j),zmnc(i,j),lmnc(i,j),                            &
-               bmnc(i,j)
-        END DO
-      END DO
-
-    ELSE IF(inp_swi .EQ. 5) THEN        !CHS Boozer file
-      READ (r_u1,*) mnmax,ns,n0b,nfp
-      n_max = 2*n0b+1
-      m_max = (mnmax-n0b-1)/n_max + 1
-      m0b = m_max-1
-      mnmax = mnmax + n0b ! negativ n for m=0
-      ! **********************************************************************
-      ! Allocate storage arrays
-      ! **********************************************************************
-      ALLOCATE(ixm(mnmax), ixn(mnmax), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-
-      ALLOCATE(pixm(mnmax), pixn(mnmax), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays pointers failed!'
-
-      ALLOCATE(i_m(m_max), i_n(n_max), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for integer arrays failed!'
-
-      ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns),               &
-          pprime(ns), sqrtg00(ns), b00(ns), stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for real arrays failed!'
-
-      ALLOCATE(rmnc(ns,mnmax), zmnc(ns,mnmax), lmnc(ns,mnmax),             &
-          bmnc(ns,mnmax),                                                 &
-          stat = i_alloc)
-      IF(i_alloc /= 0) STOP 'Allocation for fourier arrays (1) failed!'
-      !***********************************************************************
-      ! Read input arrays
-      !***********************************************************************
-      DO i =1, ns
-        READ(r_u1,*) es(i),iota(i),curr_tor(i),curr_pol(i)
-      END DO
-      pprime  = 0.0_dp ! not given
-      sqrtg00 = 0.0_dp
-      flux = es(ns)
-      DO i =1, ns      ! normalize
-        es(i) = es(i) / flux
-      END DO
-
-      DO j = 1,n0b
-        ixm(j) = 0
-        ixn(j) = (-n0b + j - 1)*nfp
-        bmnc(:,j) = 0.0_dp
-        rmnc(:,j) = 0.0_dp
-        zmnc(:,j) = 0.0_dp
-        lmnc(:,j) = 0.0_dp
-      END DO
-      DO j = n0b+1,mnmax
-        READ(r_u1,'(2i4)') mm,nn
-        ixm(j) = mm
-        ixn(j) = nn
-        DO i=1,ns
-          READ(r_u1,*) bmnc(i,j),rmnc(i,j),zmnc(i,j),lmnc(i,j)
-        END DO
-      END DO
-
-    ELSEIF (inp_swi .EQ. 6) THEN        ! NEW IPP, HSX
+    IF (inp_swi == INP_SWI_STEL) THEN
       READ (r_u1,*) dummy
       READ (r_u1,*) dummy
       READ (r_u1,*) dummy
@@ -1250,7 +1009,7 @@ CONTAINS
         END DO
       END DO
 
-    ELSEIF (inp_swi .EQ. 7) THEN        !QPS File
+    ELSEIF (inp_swi == INP_SWI_STEL_QPS) THEN
       READ (r_u1,*) dummy
       READ (r_u1,*) m0b,n0b,ns,nfp,flux,r_small,r_big
       m_max = m0b+1
@@ -1300,7 +1059,7 @@ CONTAINS
                 bmnc(i,j)
         END DO
       END DO
-    ELSEIF (inp_swi .EQ. 8) THEN        ! NEW IPP TOKAMAK
+    ELSEIF (inp_swi == INP_SWI_TOK_CIRC) THEN
       READ (r_u1,*) dummy
       READ (r_u1,*) dummy
       READ (r_u1,*) dummy
@@ -1348,7 +1107,7 @@ CONTAINS
         END DO
       END DO
     !! Modifications by Andreas F. Martitsch (06.08.2014)
-    ELSEIF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+    ELSEIF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
       READ (r_u1,*) dummy
       READ (r_u1,*) dummy
       READ (r_u1,*) dummy
@@ -1741,7 +1500,7 @@ CONTAINS
     IF(i_alloc /= 0) STOP 'Allocation for spectra on flux surfaces!'
     !! Modifications by Andreas F. Martitsch (06.08.2014)
     ! Additional data from Boozer files without Stellarator symmetry
-    IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+    IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
       ALLOCATE(s_rmns(mnmax),                                          &
             s_zmns(mnmax),                                              &
             s_lmns(mnmax),                                              &
@@ -1892,7 +1651,7 @@ CONTAINS
       bi = s_bmnc(imn)
       !! Modifications by Andreas F. Martitsch (06.08.2014)
       ! Additional data from Boozer files without Stellarator symmetry
-      IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+      IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
         ri_s = s_rmns(imn)
         zi_s = s_zmns(imn)
         li_s = s_lmns(imn)
@@ -1910,7 +1669,7 @@ CONTAINS
 
               !! Modifications by Andreas F. Martitsch (06.08.2014)
               ! Additional data from Boozer files without Stellarator symmetry
-            IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+            IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
               cosv = cosmth(it,im) * cosnph(ip,in) - sinmth(it,im) * sinnph(ip,in)
               sinv = sinmth(it,im) * cosnph(ip,in) + cosmth(it,im) * sinnph(ip,in)
 
@@ -2242,7 +2001,7 @@ CONTAINS
 
       !! Modifications by Andreas F. Martitsch (06.08.2014)
       ! Additional data from Boozer files without Stellarator symmetry
-      IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+      IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
         sinval = SIN(ixm*theta + ixn*phi)
         cosval = COS(ixm*theta + ixn*phi)
       ELSE
@@ -2281,7 +2040,7 @@ CONTAINS
         bi = s_bmnc(imn)
         !! Modifications by Andreas F. Martitsch (06.08.2014)
         ! Additional data from Boozer files without Stellarator symmetry
-        IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+        IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
           ri_s = s_rmns(imn)
           zi_s = s_zmns(imn)
           li_s = s_lmns(imn)
@@ -2298,7 +2057,7 @@ CONTAINS
           sinv = sinval(imn)
           !! Modifications by Andreas F. Martitsch (06.08.2014)
           ! Additional data from Boozer files without Stellarator symmetry
-          IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+          IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
             rr = rr + ri*cosv + ri_s*sinv
             zz = zz + zi*cosv + zi_s*sinv
             ll = ll + li*cosv + li_s*sinv
@@ -2477,7 +2236,7 @@ CONTAINS
     DEALLOCATE (s_rmnc, s_zmnc, s_lmnc, s_bmnc)
     !! Modifications by Andreas F. Martitsch (06.08.2014)
     ! Additional data from Boozer files without Stellarator symmetry
-    IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+    IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
       DEALLOCATE (s_rmns, s_zmns, s_lmns, s_bmns)
     END IF
     !! End Modifications by Andreas F. Martitsch (06.08.2014)
@@ -2489,7 +2248,7 @@ CONTAINS
       DEALLOCATE ( a_bmnc, b_bmnc, c_bmnc, d_bmnc )
       !! Modifications by Andreas F. Martitsch (06.08.2014)
       ! Additional data from Boozer files without Stellarator symmetry
-      IF (inp_swi .EQ. 9) THEN        ! ASDEX-U (E. Strumberger)
+      IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
         DEALLOCATE ( a_rmns, b_rmns, c_rmns, d_rmns )
         DEALLOCATE ( a_zmns, b_zmns, c_zmns, d_zmns )
         DEALLOCATE ( a_lmns, b_lmns, c_lmns, d_lmns )

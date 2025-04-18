@@ -3,7 +3,7 @@ import h5py
 
 def generate_vrot_for_mars(neo2ql_input_file):
     sqrtspol, ion_vrot = get_vrot_from_neo2ql(neo2ql_input_file)
-    write_vrot_to_mars_input(ion_vrot, sqrtspol)
+    write_vrot_to_mars_input(-ion_vrot, sqrtspol) # MARS has opposite phi direction
 
 def get_vrot_from_neo2ql(neo2ql_input_file):
     neo2ql = h5py.File(neo2ql_input_file, "r")
@@ -16,4 +16,4 @@ def write_vrot_to_mars_input(vrot, sqrtspol):
     number_of_surfaces = len(vrot)
     type_of_radial_variable = 1 # 1 means sqrtspol for MARS
     header = f"{number_of_surfaces} {type_of_radial_variable}"
-    np.savetxt(vrot_file, np.array([sqrtspol, vrot]).T, header=header, comments="")
+    np.savetxt(vrot_file, np.array([sqrtspol.ravel(), vrot.ravel()]).T, header=header, comments="")

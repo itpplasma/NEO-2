@@ -47,7 +47,7 @@
 14    CONTINUE
         X=X+H
       RETURN
-      END SUBROUTINE RK4D  
+      END SUBROUTINE RK4D
 
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -183,8 +183,8 @@
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
   subroutine compute_aiota(R,raxis,zaxis,aiota,ierr)
 
-  use field_eq_mod, only : icall_eq,rtf,btf,nrad,nzet,rad,zet             &
-                         , psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
+  use field_eq_mod, only : icall_eq,rtf,btf,nrad,nzet,rad,zet
+  use field_sub, only : psif,dpsidr,dpsidz,d2psidr2,d2psidrdz,d2psidz2
   use field_c_mod,  only : icall_c
   use field_sub, only : field
 
