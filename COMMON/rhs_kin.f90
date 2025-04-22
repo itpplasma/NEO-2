@@ -18,18 +18,18 @@ SUBROUTINE rhs_kin(phi,y,dery)
   !! End Modifications by Andreas F. Martitsch (12.03.2014)
   !! Modifications by Andreas F. Martitsch (09.03.2014)
   ! Collection of subroutines (mag.f90) converted to a module.
-  ! This allows one to make use of generic interfaces 
+  ! This allows one to make use of generic interfaces
   ! for module procedures (e.g., for a different number of
   ! arguments).
-  ! Note: This requires changes in "flint_prepare" and 
+  ! Note: This requires changes in "flint_prepare" and
   ! "write_volume_data" (both flint.f90), and "rhs_kin"
-  ! and "magdata_for_particles". 
+  ! and "magdata_for_particles".
   USE mag_sub, ONLY: mag
   !! End Modifications by Andreas F. Martitsch (09.03.2014)
 
   !   y(1)                     - $R$
   !   y(2)                     - $Z$
-  !   y(3)-y(5)                - $\nabla \psi$ 
+  !   y(3)-y(5)                - $\nabla \psi$
   !   y(6)                     - $\int \rd s / B$
   !   y(7)                     - $\int \rd s |\nabla \psi| / B$
   !   y(8)                     - $\int \rd s \br \cdot \nabla \psi / B$
@@ -49,8 +49,9 @@ SUBROUTINE rhs_kin(phi,y,dery)
 
   IMPLICIT NONE
 
-  DOUBLE PRECISION                           :: phi
-  DOUBLE PRECISION, DIMENSION(:)         :: y,dery
+  DOUBLE PRECISION, INTENT(IN)     :: phi
+  DOUBLE PRECISION, INTENT(IN)     :: y(:)
+  DOUBLE PRECISION, INTENT(OUT)    :: dery(:)
 
   INTEGER :: i,j,npassing
   DOUBLE PRECISION                 :: bmod,sqrtg
@@ -104,13 +105,13 @@ SUBROUTINE rhs_kin(phi,y,dery)
      dery(13)=y(9)
      dery(14)=y(10)
   ELSE
-     ! Boozer 
+     ! Boozer
      dery(1)=boozer_iota
      dery(2)=0.0d0
      dery(3)=0.0d0
      dery(4)=0.0d0
      dery(5)=0.0d0
-     
+
      !! Modifications by Andreas F. Martitsch (12.03.2014)
      ! boozer_curr_tor, boozer_curr_pol, boozer_psi_pr,
      ! boozer_sqrtg11 and boozer_isqrg are now converted
@@ -144,7 +145,7 @@ SUBROUTINE rhs_kin(phi,y,dery)
      dery(11)=y(7)
      dery(12)=y(8)
      dery(13)=y(9)
-     dery(14)=y(10)    
+     dery(14)=y(10)
   END IF
 
 END SUBROUTINE rhs_kin
