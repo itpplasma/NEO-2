@@ -1,7 +1,8 @@
 SUBROUTINE rk4_kin(x,h)
 
   USE rk4_kin_mod
-  USE odeint_allroutines_sub
+  USE odeint_allroutines_sub, only: odeint_allroutines, compute_derivative
+  USE rhs_kin_sub, only: rhs_kin
 
   IMPLICIT NONE
 
@@ -9,8 +10,6 @@ SUBROUTINE rk4_kin(x,h)
 
   INTEGER          :: n
   DOUBLE PRECISION :: x,h,xh
-
-  external :: rhs_kin
 
   n=SIZE(y)
   xh=x+h
