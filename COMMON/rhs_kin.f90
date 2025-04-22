@@ -47,7 +47,7 @@ SUBROUTINE rhs_kin(phi,y,dery)
   IMPLICIT NONE
 
   DOUBLE PRECISION                           :: phi
-  DOUBLE PRECISION, DIMENSION(ndim0)         :: y,dery
+  DOUBLE PRECISION, DIMENSION(:)         :: y,dery
 
   INTEGER :: i,j,npassing
   DOUBLE PRECISION                 :: bmod,sqrtg
