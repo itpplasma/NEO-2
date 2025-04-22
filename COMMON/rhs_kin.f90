@@ -1,3 +1,6 @@
+module rhs_kin_sub
+implicit none
+contains
 !
 SUBROUTINE rhs_kin(phi,y,dery)
   USE mag_interface_mod, ONLY: mag_coordinates,boozer_s
@@ -145,3 +148,4 @@ SUBROUTINE rhs_kin(phi,y,dery)
   END IF
 
 END SUBROUTINE rhs_kin
+end module rhs_kin_sub
