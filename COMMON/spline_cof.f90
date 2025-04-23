@@ -68,7 +68,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   ! Modules
   !-----------------------------------------------------------------------
 
-  USE nrtype, ONLY : DP, I4B
+  use nrtype, only : I4B, DP
   USE inter_interfaces, ONLY: calc_opt_lambda3
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   !Replace standard solver from Lapack with sparse solver
