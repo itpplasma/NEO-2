@@ -21,8 +21,14 @@ option(MPE_SUPPORT "Enable MPE for graphical MPI work load evaluation?" OFF)
 ### Compiler flags
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
+add_compile_options(-g -fPIC)
 if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -fopenmp -ffpe-summary=invalid,zero,overflow")
+  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -fbacktrace -fopenmp -ffpe-summary=invalid,zero,overflow")
+  if(APPLE)
+    add_compile_options(-march=native)
+  else()
+    add_compile_options(-march=x86-64-v2 -mtune=generic)
+  endif()
 elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
   message(STATUS "Setting Intel flags.")
   set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -qopenmp -qmkl -heap-arrays -stand f08")
@@ -30,10 +36,10 @@ endif()
 
 if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   set(MY_DEBUG_FLAG_LIST
-  " -O0 -cpp -g"
+  " -O0"
+  " -fbacktrace "
  " -ffpe-summary=invalid,zero,overflow "
  " -fcheck=all "
- " -fbacktrace "
  " -Wall "
  " -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label "
  " -Wshadow "

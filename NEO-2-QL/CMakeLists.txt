@@ -9,13 +9,21 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/OBJS)
 
 include(CMakeSources.in)
 
-add_executable(${EXE_NAME}
+add_library(neo2_ql STATIC
   ${NEO2_QL_SRC_FILES}
   ${COLLOPLIB_FILES}
 )
+target_link_libraries(neo2_ql
+  PUBLIC
+  common
+)
+target_include_directories(neo2_ql PUBLIC "${PROJECT_BINARY_DIR}/../COMMON")
 
-target_link_libraries(${EXE_NAME} common)
-target_include_directories(${EXE_NAME} PUBLIC "${CMAKE_BINARY_DIR}/COMMON")
+add_executable(${EXE_NAME}
+  neo2_main.f90
+)
+
+target_link_libraries(${EXE_NAME} neo2_ql)
 
 add_custom_target(copy
   COMMAND ${CMAKE_COMMAND} -E copy
