@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.24)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 project(NEO-2)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 enable_language(C Fortran)
 
 if(EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
   include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 endif()
-include(${CMAKE_SOURCE_DIR}/COMMON/ProjectConfig.cmake.in)
+include(${PROJECT_SOURCE_DIR}/COMMON/ProjectConfig.cmake.in)
 
 if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
   message("Building in release mode (default)...")
@@ -89,7 +89,7 @@ find_package(HDF5 COMPONENTS C HL Fortran Fortran_HL REQUIRED)
 
 find_package(GSL REQUIRED)
 
-include_directories(${CMAKE_BINARY_DIR}/COMMON)
+include_directories(${PROJECT_BINARY_DIR}/COMMON)
 include_directories(${FGSL_INC})
 
 ### Projects to build

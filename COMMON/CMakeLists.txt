@@ -136,7 +136,7 @@ configure_file (
 
 add_custom_target(
     NEO-2-Versioning
-    COMMAND ${CMAKE_SOURCE_DIR}/ShellScripts/tag_version.sh
+    COMMAND ${PROJECT_SOURCE_DIR}/../ShellScripts/tag_version.sh
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
 )
 add_dependencies(common NEO-2-Versioning)
