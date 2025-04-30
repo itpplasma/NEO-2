@@ -12,3 +12,5 @@ from .hdf5tools import get_hdf5file_replace
 from .hdf5tools import get_hdf5file
 from .hdf5tools import prop_reconstruct_3_for_all_subfolders
 from .hdf5tools import get_hdf5dataset_value
+from .hdf5tools import compare_hdf5_files
+
