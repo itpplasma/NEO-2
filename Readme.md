@@ -15,12 +15,6 @@ Run
 
 inside the NEO-2 directory. This will handle the whole build process, including `cmake` calls. 
 
-Known issue: if you encounter errors like
-
-    Fatal Error: Cannot open module file
-
-just run `make` again a few times until they disappear.
-
 You obtain a `build` directory with subdirectories
 
 * `NEO-2-QL` with binary `neo_2_ql.x` for the tokamak version.
