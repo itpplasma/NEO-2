@@ -1,4 +1,4 @@
-PROGRAM neo2
+module neo2_ql
 
   !**********************************************************
   ! MPI Support
@@ -247,28 +247,11 @@ PROGRAM neo2
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, B_rho_L_loc,          &
        isw_ripple_solver, isw_mag_shear
 
-  set_rt0_from_rmnc_for_zero_mode = .false.
+contains
 
-  IF(ALLOCATED(species_tag_vec)) DEALLOCATE(species_tag_vec)
-  ALLOCATE(species_tag_vec(MAXDIM))
-  IF(ALLOCATED(conl_over_mfp_vec)) DEALLOCATE(conl_over_mfp_vec)
-  ALLOCATE(conl_over_mfp_vec(MAXDIM))
-  IF(ALLOCATED(z_vec)) DEALLOCATE(z_vec)
-  ALLOCATE(z_vec(MAXDIM))
-  IF(ALLOCATED(m_vec)) DEALLOCATE(m_vec)
-  ALLOCATE(m_vec(MAXDIM))
-  IF(ALLOCATED(T_vec)) DEALLOCATE(T_vec)
-  ALLOCATE(T_vec(MAXDIM))
-  IF(ALLOCATED(n_vec)) DEALLOCATE(n_vec)
-  ALLOCATE(n_vec(MAXDIM))
-  IF(ALLOCATED(dT_vec_ov_ds)) DEALLOCATE(dT_vec_ov_ds)
-  ALLOCATE(dT_vec_ov_ds(MAXDIM))
-  IF(ALLOCATED(dn_vec_ov_ds)) DEALLOCATE(dn_vec_ov_ds)
-  ALLOCATE(dn_vec_ov_ds(MAXDIM))
-
-  call set_default_values()
-
-  CALL h5_init()
+subroutine main
+  call init
+  call h5_init
 
   ! Reading of namelist files.
   DO jf = 1,SIZE(fnames)
@@ -507,8 +490,33 @@ PROGRAM neo2
   STOP
   !! End Modification by Andreas F. Martitsch (17.07.2014)
 
+  end subroutine main
 
-CONTAINS
+  subroutine init
+    eval_bsfitsplit_external => join_ripples_bsfitsplit
+    eval_bsfitjoin_external => join_ripples_bsfitjoin
+    set_rt0_from_rmnc_for_zero_mode = .false.
+
+    IF(ALLOCATED(species_tag_vec)) DEALLOCATE(species_tag_vec)
+    ALLOCATE(species_tag_vec(MAXDIM))
+    IF(ALLOCATED(conl_over_mfp_vec)) DEALLOCATE(conl_over_mfp_vec)
+    ALLOCATE(conl_over_mfp_vec(MAXDIM))
+    IF(ALLOCATED(z_vec)) DEALLOCATE(z_vec)
+    ALLOCATE(z_vec(MAXDIM))
+    IF(ALLOCATED(m_vec)) DEALLOCATE(m_vec)
+    ALLOCATE(m_vec(MAXDIM))
+    IF(ALLOCATED(T_vec)) DEALLOCATE(T_vec)
+    ALLOCATE(T_vec(MAXDIM))
+    IF(ALLOCATED(n_vec)) DEALLOCATE(n_vec)
+    ALLOCATE(n_vec(MAXDIM))
+    IF(ALLOCATED(dT_vec_ov_ds)) DEALLOCATE(dT_vec_ov_ds)
+    ALLOCATE(dT_vec_ov_ds(MAXDIM))
+    IF(ALLOCATED(dn_vec_ov_ds)) DEALLOCATE(dn_vec_ov_ds)
+    ALLOCATE(dn_vec_ov_ds(MAXDIM))
+
+    call set_default_values()
+  end subroutine init
+
 
   SUBROUTINE write_run_info()
     IF (prop_reconstruct .EQ. 0 ) THEN
@@ -1400,4 +1408,4 @@ CONTAINS
     end if
   end subroutine set_proptag_start_end
 
-END PROGRAM neo2
+end module neo2_ql

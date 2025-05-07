@@ -66,19 +66,7 @@ MODULE binarysplit_int
   PRIVATE eval_bsfitsplit_4
   INTERFACE eval_bsfitsplit
     MODULE PROCEDURE eval_bsfitsplit_4
-  END INTERFACE
-
-  PUBLIC eval_bsfitsplit_external
-  PRIVATE eval_bsfitsplit_ext
-  INTERFACE eval_bsfitsplit_external
-    MODULE PROCEDURE eval_bsfitsplit_ext
-  END INTERFACE
-
-  PUBLIC eval_bsfitjoin_external
-  PRIVATE eval_bsfitjoin_ext
-  INTERFACE eval_bsfitjoin_external
-    MODULE PROCEDURE eval_bsfitjoin_ext
-  END INTERFACE
+  END interface
 
   PUBLIC linspace
   PRIVATE linspace_d
@@ -133,6 +121,28 @@ MODULE binarysplit_int
   INTERFACE plagrange_test
     MODULE PROCEDURE plag_test
   END INTERFACE
+
+  ! external procedure when you split
+  ! has to be adopted for your problem
+  INTERFACE join_ripples_bsfitsplit
+    SUBROUTINE join_ripples_bsfitsplit(x,loc)
+      import :: dp
+      REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: x
+      INTEGER,                      INTENT(in)    :: loc
+    END SUBROUTINE join_ripples_bsfitsplit
+  END INTERFACE
+  procedure(join_ripples_bsfitsplit), pointer :: eval_bsfitsplit_external => null()
+
+  ! external procedure when you join
+  ! has to be adopted for your problem
+  INTERFACE join_ripples_bsfitjoin
+    SUBROUTINE join_ripples_bsfitjoin(x,loc)
+      import :: dp
+      REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: x
+      INTEGER,                      INTENT(in)    :: loc
+    END SUBROUTINE join_ripples_bsfitjoin
+  END INTERFACE
+  procedure(join_ripples_bsfitjoin), pointer :: eval_bsfitjoin_external => null()
 
 CONTAINS
 
@@ -218,38 +228,6 @@ CONTAINS
     e(loc+1) = e(loc)
     CALL eval_bsfitsplit_external(x,loc)
   END SUBROUTINE eval_bsfitsplit_4
-
-  ! external procedure when you split
-  ! has to be adopted for your problem
-  SUBROUTINE eval_bsfitsplit_ext(x,loc)
-    REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: x !0:
-    INTEGER,                     INTENT(in)    :: loc
-    INTERFACE join_ripples_bsfitsplit
-      SUBROUTINE join_ripples_bsfitsplit(x,loc)
-        INTEGER, PARAMETER :: dp = KIND(1.0d0)
-        REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: x !0:
-        INTEGER,                     INTENT(in)    :: loc
-      END SUBROUTINE join_ripples_bsfitsplit
-    END INTERFACE
-    ! add here what is necessary for external stuff
-    CALL join_ripples_bsfitsplit(x,loc) !EXTERNAL
-  END SUBROUTINE eval_bsfitsplit_ext
-
-  ! external procedure when you join
-  ! has to be adopted for your problem
-  SUBROUTINE eval_bsfitjoin_ext(x,loc)
-    REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: x !0:
-    INTEGER,                      INTENT(in)   :: loc
-    INTERFACE join_ripples_bsfitjoin
-      SUBROUTINE join_ripples_bsfitjoin(x,loc)
-        INTEGER, PARAMETER :: dp = KIND(1.0d0)
-        REAL(kind=dp), DIMENSION(0:), INTENT(in)    :: x !0:
-        INTEGER,                      INTENT(in)    :: loc
-      END SUBROUTINE join_ripples_bsfitjoin
-    END INTERFACE
-    ! add here what is necessary for external stuff
-    CALL join_ripples_bsfitjoin(x,loc) !EXTERNAL
-  END SUBROUTINE eval_bsfitjoin_ext
 
   ! limits
   SUBROUTINE create_bslimit_opt(total_err,local_err,min_distance, &
