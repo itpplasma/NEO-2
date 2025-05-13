@@ -20,6 +20,7 @@ echo "Project root (current): $PROJECT_ROOT_CUR"
 
 main() {
     build "$PROJECT_ROOT_CUR"
+    install_python "$PROJECT_ROOT_CUR"
     export CURRENT_NEO2_PAR=$PROJECT_ROOT_CUR/build/NEO-2-PAR/neo_2_par.x
     export CURRENT_NEO2_QL=$PROJECT_ROOT_CUR/build/NEO-2-QL/neo_2_ql.x
     get_test_data_and_run
@@ -54,6 +55,14 @@ build() {
     echo "Building NEO-2 in $PROJECT_ROOT"
     cd $PROJECT_ROOT
     make
+}
+
+install_python() {
+    local PROJECT_ROOT="$1"
+    echo "Installing NEO-2 python package"
+    cd $PROJECT_ROOT/python
+    pip install -e .
+    cd -
 }
 
 main "$@"
