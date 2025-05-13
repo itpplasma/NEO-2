@@ -1,7 +1,6 @@
 #!/bin/bash
 CLONE_URL="https://github.com/itpplasma/NEO-2.git"
 
-REF_VER="a543d7377d6a7225c18f5793ee2016d7b0d668f6"
 TMP_DIR=${1:-"$(mktemp -d)"}
 if [ ! -d "$TMP_DIR" ]; then
     echo "Create temporary dir"
@@ -21,7 +20,6 @@ fi
 PROJECT_ROOT_CUR=$(cd "$SCRIPT_DIR/../.." && pwd)
 
 echo "Temporary directory: $TMP_DIR"
-echo "Reference version: $REF_VER"
 echo "Current version: $CUR_VER"
 echo "Project root (current): $PROJECT_ROOT_CUR"
 
