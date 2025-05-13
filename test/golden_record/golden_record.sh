@@ -12,11 +12,6 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 CUR_VER=$(git -C "$SCRIPT_DIR" describe --tags --always --dirty)
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
-if [ "$REF_VER" == "$CUR_VER" ]; then
-    echo "Reference version and current version are the same. Exiting."
-    exit 1
-fi
-
 PROJECT_ROOT_CUR=$(cd "$SCRIPT_DIR/../.." && pwd)
 
 echo "Temporary directory: $TMP_DIR"
