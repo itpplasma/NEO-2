@@ -38,7 +38,8 @@ get_test_data_and_run() {
         echo "Fetching test data..."
         git clone https://oauth2:${GITLAB_ACCESS_TOKEN}@gitlab.tugraz.at/plasma/data.git
     fi
-    cd data
+    source data/activate.sh
+    cd $DATA
     git checkout $CURRENT_BRANCH
     git pull
     git config lfs.fetchinclude "$TEST_DIR"
@@ -46,8 +47,8 @@ get_test_data_and_run() {
     git lfs pull
     git lfs checkout $TEST_DIR
     cd $TEST_DIR
+    echo "test_dir=$(pwd)" >> "$GITHUB_OUTPUT"
     make
-    #wget https://github.com/hiddenSymmetries/simsopt/raw/master/tests/test_files/wout_LandremanPaul2021_QA_reactorScale_lowres_reference.nc -O wout.nc > /dev/null 2>&1
 }
 
 build() {
