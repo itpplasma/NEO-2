@@ -1,0 +1,64 @@
+name: Run Test
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - '**'
+
+jobs:
+  run-golden-record:
+    runs-on: ubuntu-24.04
+
+    env:
+      CC: gcc
+      CXX: g++
+      FC: gfortran
+      MPI_HOME: /usr
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y -q --no-install-recommends python3-dev
+          python -m pip install --upgrade pip
+          pip install numpy
+
+      - name: Install required packages
+        run: |
+          sudo apt update
+          sudo apt install git cmake make ninja-build gcc g++ gfortran
+          sudo apt install openmpi-bin openmpi-common libopenmpi-dev
+          sudo apt install libopenblas-dev libsuitesparse-dev
+          sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
+
+      - name: Install libneo python
+        run: pip install git+https://github.com/itpplasma/libneo.git
+
+      - name: Make test script executable
+        run: chmod +x test/golden_record/golden_record.sh
+
+      - name: Run golden record test
+        id: run_test
+        continue-on-error: true
+        env:
+          GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
+        run: ./test/golden_record/golden_record.sh
+
+      - name: Upload test output on failure
+        if: steps.run_test.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-test-output
+          path: |
+            ${{ steps.run_test.outputs.test_dir }}/lorentz/current/summary.h5
+            ${{ steps.run_test.outputs.test_dir }}/lorentz/current/out
+
+      - name: Fail the job on test failure
+        if: steps.run_test.outcome == 'failure'
+        run: exit 1
