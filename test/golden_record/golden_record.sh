@@ -38,7 +38,7 @@ get_test_data_and_run() {
         git clone https://oauth2:${GITLAB_ACCESS_TOKEN}@gitlab.tugraz.at/plasma/data.git
     fi
     source data/activate.sh
-    cd $DATA
+    cd "$DATA"
     git checkout $CURRENT_BRANCH
     git pull
     git config lfs.fetchinclude "$TEST_DIR"
