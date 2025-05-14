@@ -618,5 +618,56 @@ CONTAINS
     av_gphph = fac1 / fac2
 
   END SUBROUTINE calc_av_gphph
+!
+  ! Compute the perturbation field amplitude
+  ! for constant toroidal modenumber n = ixm_pert(1)
+  SUBROUTINE neo_magfie_pert_amp( x, bn_hat_pert )
+    !
+    ! input / output
+    !
+    REAL(kind=dp), DIMENSION(:), INTENT(in) :: x
+    COMPLEX(kind=dcp), INTENT(out) :: bn_hat_pert
+    !
+    ! local definitions
+    !
+    COMPLEX(kind=dcp), PARAMETER :: imun=(0.0_dp,1.0_dp)
+    INTEGER(i4b) :: swd
+    INTEGER :: i, m
+    REAL(kind=dp) :: yp, ypp, yppp
+    REAL(kind=dp) :: bmnc_pert_val, bmns_pert_val
+    COMPLEX(kind=dcp) :: expv
+    !
+    ! read Boozer file and prepare spline routines (1st call)
+    !
+    IF (.NOT. ALLOCATED(es_pert)) THEN
+       CALL neo_read_pert()
+       CALL neo_init_spline_pert()
+    END IF
 
+    bn_hat_pert = (0.0_dp,0.0_dp)
+    DO i = 1, mnmax_pert
+       swd = 1
+       CALL splint_horner3(es_pert, a_bmnc_pert(:,i), b_bmnc_pert(:,i),&
+            c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
+            x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
+
+       ! Additional data from Boozer files without Stellarator symmetry
+       IF (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
+          CALL splint_horner3(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
+               c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
+               x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
+       END IF
+
+       IF (inp_swi .EQ. 8) THEN ! NEW IPP TOKAMAK
+          m = (-1)*ixm_pert(i)
+             expv = EXP(imun*m*x(3))
+             bn_hat_pert = bn_hat_pert + bmnc_pert_val * expv
+       ELSEIF (inp_swi .EQ. 9) THEN ! ASDEX-U (E. Strumberger)
+             expv = EXP(imun*m*x(3))
+             bn_hat_pert = bn_hat_pert + (bmnc_pert_val-imun*bmns_pert_val)*expv
+       END IF
+
+    END DO
+    bn_hat_pert = bn_hat_pert / bmod0
+  END SUBROUTINE neo_magfie_pert_amp
 END MODULE neo_magfie_perturbation
