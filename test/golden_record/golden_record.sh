@@ -1,5 +1,4 @@
 #!/bin/bash
-CLONE_URL="https://github.com/itpplasma/NEO-2.git"
 
 TMP_DIR=${1:-"$(mktemp -d)"}
 if [ ! -d "$TMP_DIR" ]; then
