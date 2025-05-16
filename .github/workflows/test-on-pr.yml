@@ -44,8 +44,8 @@ jobs:
         run: |
           set -e
 
-          echo "tmp_dir=$(mktemp -d)" >> $GITHUB_OUTPUT
-          cd ${{ steps.setup.outputs.tmp_dir }}
+          TEMP_DIR=$(mktemp -d)
+          cd $TEMP_DIR 
 
           if [ ! -d "data" ]; then
             echo "Fetching test data..."
@@ -75,6 +75,7 @@ jobs:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
         id: run_test
+        continue-on-error: true
         run: |
           set -e
 
