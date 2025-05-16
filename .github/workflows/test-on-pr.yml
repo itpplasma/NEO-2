@@ -64,10 +64,16 @@ jobs:
           pip install -e .
 
       - name: Build NEO-2
+        id: build
         run: |
           make
+          echo "neo2_par=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
+          echo "neo2_ql=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
 
       - name: Run golden record test
+        env:
+          CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
+          CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
         id: run_test
         run: |
           set -e
