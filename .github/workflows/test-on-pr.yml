@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python 3
         run: |
@@ -37,18 +37,56 @@ jobs:
           sudo apt install libopenblas-dev libsuitesparse-dev
           sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
 
-      - name: Install libneo python
+      - name: Clone test data
+        id: data
+        env:
+          GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
+        run: |
+          set -e
+
+          echo "tmp_dir=$(mktemp -d)" >> $GITHUB_OUTPUT
+          cd ${{ steps.setup.outputs.tmp_dir }}
+
+          if [ ! -d "data" ]; then
+            echo "Fetching test data..."
+            git clone https://oauth2:${GITLAB_ACCESS_TOKEN}@gitlab.tugraz.at/plasma/data.git
+          fi
+
+          cd data
+          echo "data_dir=$(pwd)" >> $GITHUB_OUTPUT
+          
+      - name: Install libneo python required by NEO-2 python
         run: pip install git+https://github.com/itpplasma/libneo.git
 
-      - name: Make test script executable
-        run: chmod +x test/golden_record/golden_record.sh
+      - name: Install NEO-2 python
+        run: |
+          cd python
+          pip install -e .
+
+      - name: Build NEO-2
+        run: |
+          make
 
       - name: Run golden record test
         id: run_test
-        continue-on-error: true
-        env:
-          GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
-        run: ./test/golden_record/golden_record.sh
+        run: |
+          set -e
+
+          NEO2_BRANCH=${{ github.head_ref }}
+          TEST_DIR=TESTS/NEO-2/golden_record/
+
+          cd ${{ steps.data.outputs.data_dir }}
+          git checkout NEO2_BRANCH
+          git pull
+          source activate.sh
+          git config lfs.fetchinclude "$TEST_DIR"
+          git config lfs.fetchexclude ""
+          git lfs pull
+          git lfs checkout "$TEST_DIR"
+          cd "$TEST_DIR"
+          echo "test_dir=$(pwd)" >> $GITHUB_OUTPUT
+
+          make lorentz
 
       - name: Upload test output on failure
         if: steps.run_test.outcome == 'failure'
