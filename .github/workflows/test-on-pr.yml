@@ -93,7 +93,6 @@ jobs:
             git checkout main
           fi
 
-          git checkout $NEO2_BRANCH
           git pull
           source activate.sh
           git config lfs.fetchinclude "$TEST_DIR"
