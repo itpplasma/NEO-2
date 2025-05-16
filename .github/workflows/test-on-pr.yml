@@ -76,7 +76,7 @@ jobs:
           TEST_DIR=TESTS/NEO-2/golden_record/
 
           cd ${{ steps.data.outputs.data_dir }}
-          git checkout NEO2_BRANCH
+          git checkout $NEO2_BRANCH
           git pull
           source activate.sh
           git config lfs.fetchinclude "$TEST_DIR"
