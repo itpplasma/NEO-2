@@ -103,6 +103,7 @@ jobs:
           echo "test_dir=$(pwd)" >> $GITHUB_OUTPUT
 
           make lorentz
+          make ql
 
       - name: Upload test output on failure
         if: steps.run_test.outcome == 'failure'
