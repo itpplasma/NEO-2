@@ -105,6 +105,17 @@ jobs:
           make lorentz
           make ql
 
+      - name: Run par golden record test on pull request
+        if: github.event_name == 'pull_request'
+        env:
+          CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
+        id: run_par_test
+        continue-on-error: true
+        run: |
+          set -e
+          cd ${{ steps.run_test.outputs.test_dir }}
+          make par
+
       - name: Upload test output on failure
         if: steps.run_test.outcome == 'failure'
         uses: actions/upload-artifact@v4
