@@ -19,3 +19,5 @@ doc: $(BUILD_NINJA)
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -rf NEO-2-PAR/version.f90
+	rm -rf NEO-2-QL/version.f90
