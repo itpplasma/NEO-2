@@ -618,4 +618,5 @@ CONTAINS
     av_gphph = fac1 / fac2
 
   END SUBROUTINE calc_av_gphph
+
 END MODULE neo_magfie_perturbation
