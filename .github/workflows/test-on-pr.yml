@@ -113,6 +113,8 @@ jobs:
           path: |
             ${{ steps.run_test.outputs.test_dir }}/lorentz/current/summary.h5
             ${{ steps.run_test.outputs.test_dir }}/lorentz/current/out
+            ${{ steps.run_test.outputs.test_dir }}/ql/current/summary.h5
+            ${{ steps.run_test.outputs.test_dir }}/ql/current/out
 
       - name: Fail the job on test failure
         if: steps.run_test.outcome == 'failure'
