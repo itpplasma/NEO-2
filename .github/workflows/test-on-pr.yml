@@ -128,5 +128,5 @@ jobs:
             ${{ steps.run_test.outputs.test_dir }}/ql/current/out
 
       - name: Fail the job on test failure
-        if: steps.run_test.outcome == 'failure'
+        if: steps.run_test.outcome == 'failure' || steps.run_par_test.outcome == 'failure'
         run: exit 1
