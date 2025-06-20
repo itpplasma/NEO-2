@@ -1,7 +1,7 @@
 ! This routines handle the work between propagtaor and join_ripples
 !
-! at the moment 
-!   join_ripples_bsfitsplit 
+! at the moment
+!   join_ripples_bsfitsplit
 !   join_ripples_bsfitjoin
 ! cannot be used (not really implemeted)
 !
@@ -15,13 +15,13 @@
 !
 ! naming convention
 !
-! one has to use e.g. (same for all relevant variables) 
+! one has to use e.g. (same for all relevant variables)
 !  o%p%amat_p_p   old value of amat_plus_plus
 !  n%p%amat_p_p   new value of amat_plus_plus
 !  o%p%source_p_g old value of source_p_g
 !  n%p%source_p_g new value of source_p_g
 !
-! one should be able to use the old join_ripples with a 
+! one should be able to use the old join_ripples with a
 !  translation of variables
 !
 !   old name              =>   new name
@@ -37,13 +37,14 @@
 
 
 SUBROUTINE join_ripples_bsfitsplit(eta,loc)
-  ! this is the external routine which has to take care of 
+  ! this is the external routine which has to take care of
   !  splitting information because of a new level in eta
   !
   ! the location for the split is given in the variable loc
   ! eta contains this new value already at position loc
 
-  USE propagator_mod
+  USE propagator_mod, ONLY: binarysplit, propagator, prop_c, prop_diagnostic, &
+         & prop_modifyold, prop_fluxsplitmode
   USE fluxsplit_mod
 
   IMPLICIT NONE
@@ -61,7 +62,7 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
 
   INTEGER                              :: mode,ishift,ierr
   INTEGER                              :: j1,j2,ub
-  
+
   INTEGER                              :: n1,n2,npass,i
   TYPE(propagator), POINTER            :: a
 
@@ -76,7 +77,7 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
      eta_boundary = a%p%eta_boundary_r
   ELSE
      a => prop_c
-     eta_boundary = a%p%eta_boundary_l     
+     eta_boundary = a%p%eta_boundary_l
   END IF
   ! sizes
   n1 = SIZE(a%p%cmat,1)
@@ -133,11 +134,11 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
         IF (j2 .GT. npass+1) THEN
            ishift = j2 - (npass+1)
            j1 = j1 - ishift
-           j2 = j2 - ishift           
+           j2 = j2 - ishift
         END IF
         ! now take eta values which should be given to the fluxsplitter
         ! and call the fluxsplitter
-        ALLOCATE(eta_splitmat(2*mode+2))        
+        ALLOCATE(eta_splitmat(2*mode+2))
         IF (j2 .EQ. npass+1) THEN
            eta_splitmat = (/eta_mod(j1:j2-1),eta_boundary/)
         ELSE
@@ -177,11 +178,11 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
      a%p%cmat = work
      DEALLOCATE(work)
      ! diagnostic
-     IF (prop_diagnostic .GE. 3) THEN     
+     IF (prop_diagnostic .GE. 3) THEN
         PRINT *, ' '
         PRINT *, 'join_ripples_bsfitsplit ',loc,eta(loc)
      END IF
-     IF (prop_diagnostic .GE. 3) THEN     
+     IF (prop_diagnostic .GE. 3) THEN
         OPEN(unit=1000,file='cmat.dat')
         DO i = 1,n1+1
            WRITE(1000,'(1000f12.5)') a%p%cmat(i,:)
@@ -190,7 +191,7 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
         PRINT *, 'join_ripples_bsfitsplit - cmat.dat written'
      END IF
   END IF
-  
+
 
   ! final cleaning
   NULLIFY(a)
@@ -198,7 +199,7 @@ SUBROUTINE join_ripples_bsfitsplit(eta,loc)
 END SUBROUTINE join_ripples_bsfitsplit
 
 SUBROUTINE join_ripples_bsfitjoin(eta,loc)
-  ! this is the external routine which has to take care of 
+  ! this is the external routine which has to take care of
   !  joining information because of a disappearing level in eta
   !
   ! in the array eta this value is already removed
@@ -206,7 +207,8 @@ SUBROUTINE join_ripples_bsfitjoin(eta,loc)
   ! in the test the next value is moved down
   ! in reality two levels have to be merged (sum?)
 
-  USE propagator_mod
+  USE propagator_mod, only: binarysplit, propagator, prop_c, prop_diagnostic, &
+         & prop_modifyold
 
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -251,11 +253,11 @@ SUBROUTINE join_ripples_bsfitjoin(eta,loc)
      a%p%cmat = work
      DEALLOCATE(work)
      ! diagnostic
-     IF (prop_diagnostic .GE. 3) THEN     
+     IF (prop_diagnostic .GE. 3) THEN
         PRINT *, ' '
         PRINT *, 'join_ripples_bsfitjoin  ',loc,eta(loc)
      END IF
-     IF (prop_diagnostic .GE. 3) THEN     
+     IF (prop_diagnostic .GE. 3) THEN
         OPEN(unit=1000,file='cmat.dat')
         DO i = 1,n1-1
            WRITE(1000,'(1000f12.5)') a%p%cmat(i,:)
@@ -298,7 +300,7 @@ SUBROUTINE join_ripples_nn(ierr,cstat)
   n => prop_c
 
   o%fieldpropagator_tag_e = n%fieldpropagator_tag_e
-  
+
   ! here comes the real physical process of joining
   ! (see naming convention from top of the file)
 
@@ -311,10 +313,10 @@ SUBROUTINE join_ripples_nn(ierr,cstat)
      STOP
   END IF
   ! WINNY
-  ! 
+  !
   ! npart??? has one to do something
   !
-  ! fix right side of old propagator (it should have now 
+  ! fix right side of old propagator (it should have now
   ! eta_boundary_r and npass_r from the new one
   o%p%eta_boundary_r   = n%p%eta_boundary_r
   ! o%p%npass_r = n%p%npass_r (does the joiner)
@@ -323,7 +325,7 @@ SUBROUTINE join_ripples_nn(ierr,cstat)
   ! and phi_value at the end
   o%y = n%y
   o%phi_r = n%phi_r
-  ! fix also the binarysplit information  
+  ! fix also the binarysplit information
   o%eta_bs_r = n%eta_bs_r
   ! fix also eta information
   IF (ALLOCATED(o%p%eta_r)) DEALLOCATE(o%p%eta_r)

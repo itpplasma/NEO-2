@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.24)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 project(NEO-2)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 enable_language(C Fortran)
 
 if(EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
   include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 endif()
-include(${CMAKE_SOURCE_DIR}/COMMON/ProjectConfig.cmake.in)
+include(${PROJECT_SOURCE_DIR}/COMMON/ProjectConfig.cmake.in)
 
 if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
   message("Building in release mode (default)...")
@@ -21,8 +21,14 @@ option(MPE_SUPPORT "Enable MPE for graphical MPI work load evaluation?" OFF)
 ### Compiler flags
 message(STATUS "The Compiler ID is ${CMAKE_Fortran_COMPILER_ID}")
 
+add_compile_options(-g -fPIC)
 if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -fopenmp -ffpe-summary=invalid,zero,overflow")
+  set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -fbacktrace -fopenmp -ffpe-summary=invalid,zero,overflow")
+  if(APPLE)
+    add_compile_options(-march=native)
+  else()
+    add_compile_options(-march=x86-64-v2 -mtune=generic)
+  endif()
 elseif (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
   message(STATUS "Setting Intel flags.")
   set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -qopenmp -qmkl -heap-arrays -stand f08")
@@ -30,10 +36,10 @@ endif()
 
 if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   set(MY_DEBUG_FLAG_LIST
-  " -O0 -cpp -g"
+  " -O0"
+  " -fbacktrace "
  " -ffpe-summary=invalid,zero,overflow "
  " -fcheck=all "
- " -fbacktrace "
  " -Wall "
  " -Wno-unused-variable -Wno-unused-dummy-argument -Wno-unused-label "
  " -Wshadow "
@@ -89,7 +95,7 @@ find_package(HDF5 COMPONENTS C HL Fortran Fortran_HL REQUIRED)
 
 find_package(GSL REQUIRED)
 
-include_directories(${CMAKE_BINARY_DIR}/COMMON)
+include_directories(${PROJECT_BINARY_DIR}/COMMON)
 include_directories(${FGSL_INC})
 
 ### Projects to build

@@ -148,7 +148,7 @@ PROGRAM neo2
   ! -> read species-relevant info into a large array (allocatable not supported)
   REAL(kind=dp), DIMENSION(1000) :: conl_over_mfp_vec
   REAL(kind=dp), DIMENSION(1000) :: z_vec
-  !! End Modification by Andreas F. Martitsch (23.08.2015)  
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
   ! groups for namelist
   NAMELIST /settings/                                                         &
        phimi,nstep,nperiod,xetami,xetama,ndim0,zbeg,rbeg,                     &
@@ -208,6 +208,8 @@ PROGRAM neo2
 
   ! ---------------------------------------------------------------------------
   ! defaults
+  eval_bsfitsplit_external => join_ripples_bsfitsplit
+  eval_bsfitjoin_external => join_ripples_bsfitjoin
 
   ! settings
   lsw_linear_boozer = .FALSE.
@@ -289,7 +291,7 @@ PROGRAM neo2
   vel_distri_swi = 0
   vel_num = 10
   vel_max = 5.0d0
-  lsw_read_precom = .FALSE. !! Added lsw_read_precom and lsw_write_precom 
+  lsw_read_precom = .FALSE. !! Added lsw_read_precom and lsw_write_precom
   lsw_write_precom = .FALSE.   !! by Michael Draxler (25.08.2017)
   ! binsplit
   eta_s_lim = 1.2d0
@@ -359,7 +361,7 @@ PROGRAM neo2
   lsw_nbi = .false.
   T_nbi   = 70d3
   m_nbi   = 3.343583719d-24
-  
+
   !**********************************
   ! Init HDF5 Fortran interface
   !**********************************
@@ -369,7 +371,7 @@ PROGRAM neo2
   ! Init MPI
   !**********************************************************
   CALL mpro%init()
-  
+
   !**********************************************************
   ! Read config files
   !**********************************************************
@@ -435,7 +437,7 @@ PROGRAM neo2
   ALLOCATE(z_spec(0:num_spec-1))
   z_spec(0:num_spec-1)=z_vec(1:num_spec)
 
-  !! End Modification by Andreas F. Martitsch (23.08.2015) 
+  !! End Modification by Andreas F. Martitsch (23.08.2015)
 
   IF (mag_magfield .EQ. 0) THEN ! homogeneous case
      PRINT *, 'WARNING: some input quantities modified - homogeneous case!'
@@ -454,15 +456,15 @@ PROGRAM neo2
   !**********************************************************
   IF (collop_only_precompute) THEN
      WRITE (*,*) "Precomputation of collision operator..."
-     
+
      CALL collop_construct
      CALL collop_load
-     
-     WRITE (*,*) "Done."     
+
+     WRITE (*,*) "Done."
      STOP
   END IF
 
-  
+
   !**********************************************************
   ! Write run information to HDF5
   !**********************************************************
@@ -607,7 +609,7 @@ PROGRAM neo2
            CALL h5_open_rw('taginfo.h5', h5id_taginfo)
            CALL h5_get(h5id_taginfo, 'tag_first', tag_first)
            CALL h5_get(h5id_taginfo, 'tag_last',  tag_last)
-           CALL h5_close(h5id_taginfo)     
+           CALL h5_close(h5id_taginfo)
 
            !**********************************************************
            ! Merge evolve-files
@@ -636,13 +638,13 @@ PROGRAM neo2
         END IF
 
      END IF
-     
+
      IF (isw_momentum .EQ. 0) THEN
         CALL collop_unload
 
         CALL collop_deconstruct
      END IF
-     
+
   ELSEIF (prop_reconstruct .EQ. 1) THEN
      IF (isw_axisymm .EQ. 1) THEN
         WRITE (*,*) "Skipping reconstruction for axisymmetric mode"
@@ -791,7 +793,7 @@ CONTAINS
        DO k = tag_first, tag_last
           WRITE (h5_filename, '(I0)') k
           CALL h5_define_group(h5id_propagators, h5_filename, h5id_prop)
-          
+
           IF (lsw_save_spitf) THEN
              CALL h5_open("spitf_" // TRIM(h5_filename) // ".h5", h5id_propfile)
              CALL h5_copy(h5id_propfile, '/', h5id_prop, "spitf")
@@ -809,7 +811,7 @@ CONTAINS
              CALL h5_copy(h5id_propfile, '/', h5id_prop, "enetf")
              CALL h5_close(h5id_propfile)
           END IF
-          
+
           CALL h5_open("phi_mesh_" // TRIM(h5_filename) // ".h5", h5id_propfile)
           CALL h5_get(h5id_propfile, 'cg0_1_num', cg0_1_num_prop(k))
           CALL h5_get(h5id_propfile, 'cg2_1_num', cg2_1_num_prop(k))
@@ -891,7 +893,7 @@ CONTAINS
        IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
 
        OPEN(unit=1234, iostat=ios, file="taginfo.h5", status='old')
-       IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')    
+       IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
 
        DO k = tag_first, tag_last
           DO l = tag_first, tag_last
@@ -929,7 +931,7 @@ CONTAINS
              OPEN(unit=1234, iostat=ios, file="dentf_" // TRIM(h5_filename) // ".h5", status='old')
              IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
           END IF
-          
+
           OPEN(unit=1234, iostat=ios, file="phi_mesh_" // TRIM(h5_filename) // ".h5", status='old')
           IF (ios .EQ. 0) CLOSE(unit=1234, status='delete')
 
@@ -1022,7 +1024,7 @@ CONTAINS
        CALL h5_add(h5_config_group, 'mag_dphi_inf_min', mag_dphi_inf_min)
        CALL h5_add(h5_config_group, 'mag_inflection_mult', mag_inflection_mult)
        CALL h5_add(h5_config_group, 'solver_talk', solver_talk)
-       CALL h5_add(h5_config_group, 'switch_off_asymp', switch_off_asymp) 
+       CALL h5_add(h5_config_group, 'switch_off_asymp', switch_off_asymp)
        CALL h5_add(h5_config_group, 'asymp_margin_zero', asymp_margin_zero)
        CALL h5_add(h5_config_group, 'asymp_margin_npass', asymp_margin_npass)
        CALL h5_add(h5_config_group, 'asymp_pardeleta', asymp_pardeleta)
@@ -1106,7 +1108,7 @@ CONTAINS
        CALL h5_define_group(h5_config_id, 'plotting', h5_config_group)
        CALL h5_add(h5_config_group, 'plot_gauss', plot_gauss)
        CALL h5_add(h5_config_group, 'plot_prop', plot_prop)
-       CALL h5_close_group(h5_config_group)        
+       CALL h5_close_group(h5_config_group)
 
        CALL h5_close(h5_config_id)
 
