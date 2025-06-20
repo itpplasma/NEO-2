@@ -105,7 +105,7 @@ jobs:
           make lorentz
           make ql
 
-      - name: Run par golden record test on pull request
+      - name: Run (slow) par golden record test on pull request
         if: github.event_name == 'pull_request'
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
@@ -126,6 +126,15 @@ jobs:
             ${{ steps.run_test.outputs.test_dir }}/lorentz/current/out
             ${{ steps.run_test.outputs.test_dir }}/ql/current/summary.h5
             ${{ steps.run_test.outputs.test_dir }}/ql/current/out
+
+      - name: Upload par test output on failure
+        if: steps.run_par_test.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-test-par-output
+          path: |
+            ${{ steps.run_test.outputs.test_dir }}/par/current/summary.h5
+            ${{ steps.run_test.outputs.test_dir }}/par/current/out
 
       - name: Fail the job on test failure
         if: steps.run_test.outcome == 'failure' || steps.run_par_test.outcome == 'failure'
