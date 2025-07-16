@@ -150,7 +150,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   character(200) :: error_message
 
   if (.not. m == 0) goto 100  ! skip if m is not 0
-  if (.not. sw1 == 2 .and. sw2 == 4) goto 100  ! skip if not natural boundary condis
+  if (.not. (sw1 == 2 .and. sw2 == 4)) goto 100  ! skip if not natural boundary condis
   if (.not. abs(c1 - 0d0) < 1d-13) goto 100  ! skip if nonzero boundary condi
   if (.not. abs(cn - 0d0) < 1d-13) goto 100  ! skip if nonzero boundary condi
   if (.not. all(abs(lambda1 - 1d0) < 1d-13)) goto 100  ! skip if lambda1 is not 1
