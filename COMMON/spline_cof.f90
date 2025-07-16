@@ -42,6 +42,17 @@ SUBROUTINE splinecof3_fast(x, y, a, b, c, d)
 
   call dptsv(n-2, 1, ds, dl, cs, n-2, info)
 
+  if (info /= 0) then
+    if (info < 0) then
+      write(*,'(A,I0,A)') 'splinecof3_fast: LAPACK dptsv error - illegal value in argument ', -info, '.'
+      error stop 'splinecof3_fast: Invalid argument to dptsv'
+    else
+      write(*,'(A,I0,A)') 'splinecof3_fast: LAPACK dptsv error - diagonal element ', info, ' is zero.'
+      write(*,*) 'The tridiagonal system is singular and cannot be solved.'
+      error stop 'splinecof3_fast: Singular tridiagonal system in dptsv'
+    end if
+  end if
+
   a(1:n-1) = y(1:n-1)
   b(1) = r(1)/h(1) - h(1)/3d0*cs(1)
   b(2:n-2) = r(2:n-2)/h(2:n-2)-h(2:n-2)/3d0*(cs(2:n-2) + 2d0*cs(1:n-3))
