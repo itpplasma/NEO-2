@@ -1,6 +1,6 @@
 
 !***********************************************************************
-!
+! 
 ! routines for calculating spline coefficients
 !              drivers
 !
@@ -13,11 +13,47 @@
 
 
 !***********************************************************************
-!
+! 
 ! routines for third order spline
 !
 !***********************************************************************
+module fastspline
 
+contains
+
+SUBROUTINE splinecof3_fast(x, y, a, b, c, d)
+  use nrtype, only : I4B, DP
+  real(DP), dimension(:), intent(in) :: x, y
+  real(DP), dimension(:), intent(out) :: a, b, c, d
+
+  integer(I4B) :: info
+  real(DP) :: r(size(x)-1), h(size(x)-1), dl(size(x)-3), ds(size(x)-2), cs(size(x)-2)
+  integer(I4B) :: n
+
+  n = size(x)
+
+  h = x(2:) - x(1:n-1)
+  r = y(2:) - y(1:n-1)
+
+  dl = h(2:n-2)
+  ds = 2d0*(h(1:n-2)+h(2:))
+
+  cs = 3d0*(r(2:)/h(2:)-r(1:n-2)/h(1:n-2))
+
+  call dptsv(n-2, 1, ds, dl, cs, n-2, info)
+
+  a(1:n-1) = y(1:n-1)
+  b(1) = r(1)/h(1) - h(1)/3d0*cs(1)
+  b(2:n-2) = r(2:n-2)/h(2:n-2)-h(2:n-2)/3d0*(cs(2:n-2) + 2d0*cs(1:n-3))
+  b(n-1)   = r(n-1)/h(n-1)-h(n-1)/3d0*(2d0*cs(n-2))
+  c(4)     = 0
+  c(2:n-1)    = cs
+  d(1)     = 1d0/(3d0*h(1))*cs(1)
+  d(2:n-2) = 1d0/(3d0*h(2:n-2))*(cs(2:n-2)-cs(1:n-3))
+  d(n-1)   = 1d0/(3d0*h(n-1))*(-cs(n-2))
+END SUBROUTINE splinecof3_fast
+
+end module fastspline
 
 ! ------  third order spline: with testfunction, LSQ, smoothing
 !
@@ -61,7 +97,7 @@
 !>     INTEGER(I4B), PARAMETER :: VAR = 7 ... no of variables
 !>
 !> NEEDS:
-!>     solve_systems, calc_opt_lambda3
+!>     calc_opt_lambda3
 SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
      a, b, c, d, m, f)
   !-----------------------------------------------------------------------
@@ -75,6 +111,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   !(Bad performance for more than 1000 flux surfaces ~ (3*nsurf)^2)
   USE sparse_mod, ONLY : sparse_solve
   !! End Modifications by Andreas F. Martitsch (06.08.2014)
+  use fastspline, only: splinecof3_fast
 
   !---------------------------------------------------------------------
 
@@ -112,7 +149,23 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: inh, simqa, lambda, omega
   character(200) :: error_message
 
-  len_x    = SIZE(x)
+  if (.not. m == 0) goto 100  ! skip if m is not 0
+  if (.not. sw1 == 2 .and. sw2 == 4) goto 100  ! skip if not natural boundary condis
+  if (.not. abs(c1 - 0d0) < 1d-13) goto 100  ! skip if nonzero boundary condi
+  if (.not. abs(cn - 0d0) < 1d-13) goto 100  ! skip if nonzero boundary condi
+  if (.not. all(abs(lambda1 - 1d0) < 1d-13)) goto 100  ! skip if lambda1 is not 1
+
+  call splinecof3_fast(x, y, a, b, c, d)
+  a(size(x)) = 0d0
+  b(size(x)) = 0d0
+  c(size(x)) = 0d0
+  d(size(x)) = 0d0
+
+  return
+
+
+  ! Cannot use fast splines, fall back to long spline routine
+100  len_x    = SIZE(x)
   len_indx = SIZE(indx)
   size_dimension = VAR * len_indx - 2
 
@@ -562,15 +615,15 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
   ! solve system
   CALL sparse_solve(MA, inh)
-
+  
   ! take a(), b(), c(), d()
   DO i = 1, len_indx
-     a(i) = inh((i-1)*VAR+1)
-     b(i) = inh((i-1)*VAR+2)
+     a(i) = inh((i-1)*VAR+1) 
+     b(i) = inh((i-1)*VAR+2) 
      c(i) = inh((i-1)*VAR+3)
-     d(i) = inh((i-1)*VAR+4)
+     d(i) = inh((i-1)*VAR+4) 
   END DO
-
+  
 
   DEALLOCATE(MA,  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for arrays 1 failed!'
@@ -608,7 +661,7 @@ SUBROUTINE reconstruction3_a(ai, bi, ci, di, h, a, b, c, d)
 
   REAL(DP), INTENT(IN)    :: ai, bi, ci, di
   REAL(DP), INTENT(IN)    :: h
-  REAL(DP), INTENT(OUT)   :: a, b, c, d
+  REAL(DP), INTENT(OUT)   :: a, b, c, d 
 
   !---------------------------------------------------------------------
 
@@ -687,7 +740,7 @@ SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
   REAL(DP)                                  :: h
   REAL(DP),     DIMENSION(:),   ALLOCATABLE :: xn, yn, lambda1
   REAL(DP),     DIMENSION(:),   ALLOCATABLE :: ai, bi, ci, di
-
+  
   no = SIZE(x)
   ns = SIZE(a)
   len_indx = SIZE(indx)
@@ -869,11 +922,11 @@ SUBROUTINE splinecof3_hi_driv_a(x, y, m, a, b, c, d, indx, f)
 
   ! weights:  w(i)=0/1;  if(w(i)==0) ... do not use this point
   w = 1
-
+ 
   sw1 = 2
   sw2 = 4
 
-  c1 = 0.0D0
+  c1 = 0.0D0  
   cn = 0.0D0
 
   DO i = 1, no_cur
