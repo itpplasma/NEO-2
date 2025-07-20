@@ -6,7 +6,12 @@ module splinecof3_direct_sparse_mod
   implicit none
   
   private
-  public :: splinecof3_direct_sparse
+  public :: splinecof3_direct_sparse, splinecof3_direct_sparse_get_coo
+  
+  ! Module variables to store COO matrix for inspection
+  INTEGER(I4B), DIMENSION(:), ALLOCATABLE, SAVE :: last_irow_coo, last_icol_coo
+  REAL(DP), DIMENSION(:), ALLOCATABLE, SAVE :: last_val_coo, last_rhs_coo
+  INTEGER(I4B), SAVE :: last_nnz = 0, last_n = 0
   
 contains
 
@@ -425,6 +430,20 @@ contains
        STOP
     END IF
 
+    ! Store COO matrix for inspection
+    IF (ALLOCATED(last_irow_coo)) DEALLOCATE(last_irow_coo)
+    IF (ALLOCATED(last_icol_coo)) DEALLOCATE(last_icol_coo)
+    IF (ALLOCATED(last_val_coo)) DEALLOCATE(last_val_coo)
+    IF (ALLOCATED(last_rhs_coo)) DEALLOCATE(last_rhs_coo)
+    ALLOCATE(last_irow_coo(nnz), last_icol_coo(nnz), last_val_coo(nnz), &
+             last_rhs_coo(size_dimension))
+    last_irow_coo(1:nnz) = irow_coo(1:nnz)
+    last_icol_coo(1:nnz) = icol_coo(1:nnz)
+    last_val_coo(1:nnz) = val_coo(1:nnz)
+    last_rhs_coo = inh
+    last_nnz = nnz
+    last_n = size_dimension
+
     ! Now convert from COO to CSC format
     ! First count entries per column
     ALLOCATE(col_count(ncol), pcol_csc(ncol+1), stat = i_alloc)
@@ -479,4 +498,45 @@ contains
 
   END SUBROUTINE splinecof3_direct_sparse
 
+  !> Get the last computed COO matrix for inspection
+  SUBROUTINE splinecof3_direct_sparse_get_coo(irow, icol, val, rhs, nnz, n)
+    INTEGER(I4B), DIMENSION(:), ALLOCATABLE, INTENT(OUT) :: irow, icol
+    REAL(DP), DIMENSION(:), ALLOCATABLE, INTENT(OUT) :: val, rhs
+    INTEGER(I4B), INTENT(OUT) :: nnz, n
+    
+    nnz = last_nnz
+    n = last_n
+    IF (nnz > 0 .AND. ALLOCATED(last_irow_coo)) THEN
+       ALLOCATE(irow(nnz), icol(nnz), val(nnz), rhs(n))
+       irow = last_irow_coo
+       icol = last_icol_coo
+       val = last_val_coo
+       rhs = last_rhs_coo
+    END IF
+  END SUBROUTINE splinecof3_direct_sparse_get_coo
+
 end module splinecof3_direct_sparse_mod
+
+! Wrapper subroutine to match interface expectations
+SUBROUTINE splinecof3_direct_sparse_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
+     a, b, c, d, m, f)
+  use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
+  use nrtype, only : I4B, DP
+  REAL(DP),                   INTENT(INOUT) :: c1, cn
+  REAL(DP),     DIMENSION(:), INTENT(IN)    :: x, y, lambda1
+  INTEGER(I4B), DIMENSION(:), INTENT(IN)    :: indx
+  REAL(DP),     DIMENSION(:), INTENT(OUT)   :: a, b, c, d
+  INTEGER(I4B),               INTENT(IN)    :: sw1, sw2
+  REAL(DP),                   INTENT(IN)    :: m
+  INTERFACE
+     FUNCTION f(x,m)
+       use nrtype, only : DP
+       IMPLICIT NONE
+       REAL(DP), INTENT(IN) :: x, m
+       REAL(DP)             :: f
+     END FUNCTION f
+  END INTERFACE
+
+  CALL splinecof3_direct_sparse(x, y, c1, cn, lambda1, indx, sw1, sw2, &
+       a, b, c, d, m, f)
+END SUBROUTINE splinecof3_direct_sparse_a

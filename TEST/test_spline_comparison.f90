@@ -9,14 +9,20 @@ program test_spline_comparison
     logical :: all_tests_passed = .true.
     integer(I4B) :: i_test
     
-    ! Test case 1: Simple linear data
-    call test_case_1()
+    ! Test case 1: Fast path - Natural boundary conditions with default parameters
+    call test_case_1_fast_path()
     
-    ! Test case 2: Quadratic data
-    call test_case_2()
+    ! Test case 2: Non-fast path - Different boundary conditions  
+    call test_case_2_non_fast_path()
     
-    ! Test case 3: Oscillatory data with more points
-    call test_case_3()
+    ! Test case 3: Non-fast path - Non-zero m parameter
+    call test_case_3_non_zero_m()
+    
+    ! Test case 4: Non-fast path - Non-zero boundary values
+    call test_case_4_non_zero_boundaries()
+    
+    ! Test case 5: Non-fast path - Custom lambda weights
+    call test_case_5_custom_lambda()
     
     if (all_tests_passed) then
         write(*,'(A)') 'All tests PASSED!'
@@ -312,45 +318,43 @@ contains
         f_val = 1.0_DP  ! Simple weight function
     end function test_function
 
-    !> Test case 1: Linear data
-    subroutine test_case_1()
+    !> Test case 1: Fast path - Natural boundary conditions (should use fast spline)
+    subroutine test_case_1_fast_path()
         integer(I4B), parameter :: n = 5
         real(DP) :: x(n), y(n)
         integer(I4B) :: indx(3)
         real(DP) :: lambda1(3)
         real(DP) :: a_direct(3), b_direct(3), c_direct(3), d_direct(3)
-        real(DP) :: a_orig(3), b_orig(3), c_orig(3), d_orig(3)
         real(DP) :: c1, cn, m
-        integer(I4B) :: sw1, sw2, i
+        integer(I4B) :: sw1, sw2
         logical :: test_passed
         
-        write(*,'(A)') 'Running Test Case 1: Linear data'
+        write(*,'(A)') 'Running Test Case 1: Fast path (natural boundary conditions)'
         
-        ! Setup linear test data
+        ! Setup test data that should trigger fast path
         x = [0.0_DP, 1.0_DP, 2.0_DP, 3.0_DP, 4.0_DP]
-        y = [0.0_DP, 1.0_DP, 2.0_DP, 3.0_DP, 4.0_DP]
+        y = [0.0_DP, 1.0_DP, 4.0_DP, 9.0_DP, 16.0_DP]  ! x^2
         indx = [1, 3, 5]
-        lambda1 = [1.0_DP, 1.0_DP, 1.0_DP]
-        c1 = 0.0_DP
-        cn = 0.0_DP
-        sw1 = 2
-        sw2 = 4
-        m = 0.0_DP
+        lambda1 = [1.0_DP, 1.0_DP, 1.0_DP]  ! All ones for fast path
+        c1 = 0.0_DP  ! Zero boundary condition
+        cn = 0.0_DP  ! Zero boundary condition
+        sw1 = 2      ! Natural boundary condition
+        sw2 = 4      ! Natural boundary condition
+        m = 0.0_DP   ! Zero m for fast path
         
-        ! Test direct sparse implementation
+        ! Test direct sparse implementation (should use fast path)
         call splinecof3_direct_sparse(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                                      a_direct, b_direct, c_direct, d_direct, m, test_function)
         
-        ! For this simple test, just check if the call completed successfully
         test_passed = .true.
-        write(*,'(A,L1)') '  Direct sparse method completed: ', test_passed
+        write(*,'(A,L1)') '  Fast path completed: ', test_passed
         
         if (.not. test_passed) all_tests_passed = .false.
         
-    end subroutine test_case_1
+    end subroutine test_case_1_fast_path
 
-    !> Test case 2: Quadratic data
-    subroutine test_case_2()
+    !> Test case 2: Non-fast path - Different boundary conditions
+    subroutine test_case_2_non_fast_path()
         integer(I4B), parameter :: n = 6
         real(DP) :: x(n), y(n)
         integer(I4B) :: indx(3)
@@ -360,33 +364,103 @@ contains
         integer(I4B) :: sw1, sw2
         logical :: test_passed
         
-        write(*,'(A)') 'Running Test Case 2: Quadratic data'
+        write(*,'(A)') 'Running Test Case 2: Non-fast path (different boundary conditions)'
         
-        ! Setup quadratic test data: y = x^2
+        ! Setup data with non-natural boundary conditions (forces non-fast path)
         x = [0.0_DP, 0.5_DP, 1.0_DP, 1.5_DP, 2.0_DP, 2.5_DP]
         y = x**2
         indx = [1, 3, 6]
         lambda1 = [1.0_DP, 1.0_DP, 1.0_DP]
         c1 = 0.0_DP
         cn = 0.0_DP
-        sw1 = 2
-        sw2 = 4
+        sw1 = 1      ! First derivative boundary condition (not natural)
+        sw2 = 3      ! Different boundary condition (forces sparse path)
         m = 0.0_DP
         
-        ! Test direct sparse implementation
         call splinecof3_direct_sparse(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                                      a_direct, b_direct, c_direct, d_direct, m, test_function)
         
         test_passed = .true.
-        write(*,'(A,L1)') '  Direct sparse method completed: ', test_passed
+        write(*,'(A,L1)') '  Non-fast path (boundary conditions) completed: ', test_passed
         
         if (.not. test_passed) all_tests_passed = .false.
         
-    end subroutine test_case_2
+    end subroutine test_case_2_non_fast_path
 
-    !> Test case 3: Oscillatory data
-    subroutine test_case_3()
-        integer(I4B), parameter :: n = 10
+    !> Test case 3: Non-fast path - Non-zero m parameter
+    subroutine test_case_3_non_zero_m()
+        integer(I4B), parameter :: n = 8
+        real(DP) :: x(n), y(n)
+        integer(I4B) :: indx(3)
+        real(DP) :: lambda1(3)
+        real(DP) :: a_direct(3), b_direct(3), c_direct(3), d_direct(3)
+        real(DP) :: c1, cn, m
+        integer(I4B) :: sw1, sw2, i
+        logical :: test_passed
+        real(DP), parameter :: pi = 3.14159265358979323846_DP
+        
+        write(*,'(A)') 'Running Test Case 3: Non-fast path (non-zero m parameter)'
+        
+        ! Setup oscillatory test data with non-zero m (forces sparse path)
+        do i = 1, n
+            x(i) = real(i-1, DP) * pi / real(n-1, DP)
+            y(i) = sin(x(i))
+        end do
+        indx = [1, 4, 8]
+        lambda1 = [1.0_DP, 1.0_DP, 1.0_DP]
+        c1 = 0.0_DP
+        cn = 0.0_DP
+        sw1 = 2
+        sw2 = 4
+        m = 1.5_DP   ! Non-zero m forces sparse path
+        
+        call splinecof3_direct_sparse(x, y, c1, cn, lambda1, indx, sw1, sw2, &
+                                     a_direct, b_direct, c_direct, d_direct, m, test_function)
+        
+        test_passed = .true.
+        write(*,'(A,L1)') '  Non-fast path (non-zero m) completed: ', test_passed
+        
+        if (.not. test_passed) all_tests_passed = .false.
+        
+    end subroutine test_case_3_non_zero_m
+
+    !> Test case 4: Non-fast path - Non-zero boundary values
+    subroutine test_case_4_non_zero_boundaries()
+        integer(I4B), parameter :: n = 5
+        real(DP) :: x(n), y(n)
+        integer(I4B) :: indx(3)
+        real(DP) :: lambda1(3)
+        real(DP) :: a_direct(3), b_direct(3), c_direct(3), d_direct(3)
+        real(DP) :: c1, cn, m
+        integer(I4B) :: sw1, sw2
+        logical :: test_passed
+        
+        write(*,'(A)') 'Running Test Case 4: Non-fast path (non-zero boundary values)'
+        
+        ! Setup data with non-zero boundary conditions (forces sparse path)
+        x = [0.0_DP, 1.0_DP, 2.0_DP, 3.0_DP, 4.0_DP]
+        y = [0.0_DP, 1.0_DP, 4.0_DP, 9.0_DP, 16.0_DP]
+        indx = [1, 3, 5]
+        lambda1 = [1.0_DP, 1.0_DP, 1.0_DP]
+        c1 = 2.0_DP  ! Non-zero boundary condition forces sparse path
+        cn = -1.5_DP ! Non-zero boundary condition forces sparse path
+        sw1 = 2
+        sw2 = 4
+        m = 0.0_DP
+        
+        call splinecof3_direct_sparse(x, y, c1, cn, lambda1, indx, sw1, sw2, &
+                                     a_direct, b_direct, c_direct, d_direct, m, test_function)
+        
+        test_passed = .true.
+        write(*,'(A,L1)') '  Non-fast path (non-zero boundaries) completed: ', test_passed
+        
+        if (.not. test_passed) all_tests_passed = .false.
+        
+    end subroutine test_case_4_non_zero_boundaries
+
+    !> Test case 5: Non-fast path - Custom lambda weights
+    subroutine test_case_5_custom_lambda()
+        integer(I4B), parameter :: n = 7
         real(DP) :: x(n), y(n)
         integer(I4B) :: indx(4)
         real(DP) :: lambda1(4)
@@ -394,32 +468,28 @@ contains
         real(DP) :: c1, cn, m
         integer(I4B) :: sw1, sw2, i
         logical :: test_passed
-        real(DP), parameter :: pi = 3.14159265358979323846_DP
         
-        write(*,'(A)') 'Running Test Case 3: Oscillatory data'
+        write(*,'(A)') 'Running Test Case 5: Non-fast path (custom lambda weights)'
         
-        ! Setup oscillatory test data: y = sin(x)
-        do i = 1, n
-            x(i) = real(i-1, DP) * pi / real(n-1, DP)
-            y(i) = sin(x(i))
-        end do
-        indx = [1, 4, 7, 10]
-        lambda1 = [1.0_DP, 1.0_DP, 1.0_DP, 1.0_DP]
+        ! Setup data with custom lambda weights (forces sparse path)
+        x = [0.0_DP, 1.0_DP, 2.0_DP, 3.0_DP, 4.0_DP, 5.0_DP, 6.0_DP]
+        y = x**3  ! Cubic data
+        indx = [1, 3, 5, 7]
+        lambda1 = [0.8_DP, 0.9_DP, 0.7_DP, 0.85_DP]  ! Non-unity weights force sparse path
         c1 = 0.0_DP
         cn = 0.0_DP
         sw1 = 2
         sw2 = 4
         m = 0.0_DP
         
-        ! Test direct sparse implementation
         call splinecof3_direct_sparse(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                                      a_direct, b_direct, c_direct, d_direct, m, test_function)
         
         test_passed = .true.
-        write(*,'(A,L1)') '  Direct sparse method completed: ', test_passed
+        write(*,'(A,L1)') '  Non-fast path (custom lambda) completed: ', test_passed
         
         if (.not. test_passed) all_tests_passed = .false.
         
-    end subroutine test_case_3
+    end subroutine test_case_5_custom_lambda
 
 end program test_spline_comparison
