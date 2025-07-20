@@ -25,17 +25,6 @@
 !
 ! DATE:   05.07.2001
 
-!> Module containing spline implementation with efficient sparse solver
-module spline_cof_mod
-  use nrtype, only : I4B, DP
-  use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
-  implicit none
-  
-  private
-  public :: splinecof3_a, splinecof1_a, splinecof3_hi_driv_a, splinecof1_hi_driv_a
-  public :: splinecof3_lo_driv_a, reconstruction3_a, calc_opt_lambda3_a, dist_lin_a
-  
-contains
 
 !> compute coefs for smoothing spline with leading function f(x)
 !> positions of intervals are given by indx
@@ -977,4 +966,3 @@ subroutine splinecof1_hi_driv_a(x, y, m, a, b, c, d, indx, f)
 
 end subroutine splinecof1_hi_driv_a
 
-end module spline_cof_mod

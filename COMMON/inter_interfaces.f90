@@ -6,7 +6,6 @@
 ! --------------------------------------------------------------------
 
 MODULE inter_interfaces
-  use spline_cof_mod, only: splinecof3_a
 
 
   INTERFACE lubksb
@@ -30,7 +29,24 @@ MODULE inter_interfaces
 
 
   INTERFACE splinecof3
-     MODULE PROCEDURE splinecof3_a
+     SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
+          a, b, c, d, m, f)
+       use nrtype, only : I4B, DP
+       REAL(DP),                   INTENT(INOUT) :: c1, cn
+       REAL(DP),     DIMENSION(:), INTENT(IN)    :: x, y, lambda1
+       INTEGER(I4B), DIMENSION(:), INTENT(IN)    :: indx
+       REAL(DP),     DIMENSION(:), INTENT(OUT)   :: a, b, c, d
+       INTEGER(I4B),               INTENT(IN)    :: sw1, sw2
+       REAL(DP),                   INTENT(IN)    :: m
+       INTERFACE
+          FUNCTION f(x,m)
+            use nrtype, only : DP
+            IMPLICIT NONE
+            REAL(DP), INTENT(IN) :: x, m
+            REAL(DP)             :: f
+          END FUNCTION f
+       END INTERFACE
+     END SUBROUTINE splinecof3_a
   END INTERFACE
 
   interface splinecof1

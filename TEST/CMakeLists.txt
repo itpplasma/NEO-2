@@ -4,7 +4,7 @@ enable_testing()
 # Test executable
 add_executable(test_spline_comparison
     test_spline_comparison.f90
-    spline_cof_original_full.f90
+    spline_cof_original_dense.f90
 )
 
 # Set compiler flags
