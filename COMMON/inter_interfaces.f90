@@ -33,7 +33,9 @@ MODULE inter_interfaces
           a, b, c, d, m, f)
        use nrtype, only : I4B, DP
        REAL(DP),                   INTENT(INOUT) :: c1, cn
-       REAL(DP),     DIMENSION(:), INTENT(IN)    :: x, y, lambda1
+       REAL(DP),     DIMENSION(:), INTENT(IN)    :: x
+       REAL(DP),     DIMENSION(:), INTENT(IN)    :: y
+       REAL(DP),     DIMENSION(:), INTENT(IN)    :: lambda1
        INTEGER(I4B), DIMENSION(:), INTENT(IN)    :: indx
        REAL(DP),     DIMENSION(:), INTENT(OUT)   :: a, b, c, d
        INTEGER(I4B),               INTENT(IN)    :: sw1, sw2
@@ -42,7 +44,8 @@ MODULE inter_interfaces
           FUNCTION f(x,m)
             use nrtype, only : DP
             IMPLICIT NONE
-            REAL(DP), INTENT(IN) :: x, m
+            REAL(DP), INTENT(IN) :: x
+            REAL(DP), INTENT(IN) :: m
             REAL(DP)             :: f
           END FUNCTION f
        END INTERFACE
@@ -53,6 +56,7 @@ MODULE inter_interfaces
     subroutine splinecof1_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
         & a, b, c, d, m, f)
       use nrtype, only : I4B, DP
+
       real(DP),                   intent(inout) :: c1, cn
       real(DP),     dimension(:), intent(in)    :: x
       real(DP),     dimension(:), intent(in)    :: y
