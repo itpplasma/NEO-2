@@ -152,9 +152,8 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   end if
 
   ! Check if we can use the fast path for natural cubic splines
-  use_fast_path = (m == 0.0_DP) .AND. (sw1 == 2) .AND. (sw2 == 4) .AND. &
-                  (DABS(c1) < 1.0E-30) .AND. (DABS(cn) < 1.0E-30) .AND. &
-                  (ALL(lambda1 == 1.0_DP))
+  ! DISABLED: Fast path needs different algorithm for NEO-2's smoothing splines
+  use_fast_path = .FALSE.
 
   IF (use_fast_path) THEN
      ! Use the optimized fast path implementation
