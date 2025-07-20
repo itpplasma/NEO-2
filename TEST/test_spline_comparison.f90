@@ -99,7 +99,8 @@ contains
         integer(I4B) :: indx(3)
         real(DP) :: lambda1(3)
         real(DP) :: a_direct(3), b_direct(3), c_direct(3), d_direct(3)
-        real(DP) :: c1, cn, m
+        real(DP) :: a_orig(3), b_orig(3), c_orig(3), d_orig(3)
+        real(DP) :: c1, cn, m, c1_orig, cn_orig
         integer(I4B) :: sw1, sw2
         logical :: test_passed
         
@@ -116,11 +117,30 @@ contains
         sw2 = 4      ! Natural boundary condition
         m = 0.0_DP   ! Zero m for fast path
         
-        ! Test direct sparse implementation (should use fast path)
+        ! Test both implementations and compare results
+        
+        ! Test original implementation
+        c1_orig = c1; cn_orig = cn
+        call splinecof3_original_dense(x, y, c1_orig, cn_orig, lambda1, indx, sw1, sw2, &
+                                      a_orig, b_orig, c_orig, d_orig, m, test_function)
+        
+        ! Test new implementation (should use fast path)
         call splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                           a_direct, b_direct, c_direct, d_direct, m, test_function)
         
-        test_passed = .true.
+        ! Compare results
+        test_passed = all(abs(a_direct - a_orig) < tolerance) .and. &
+                     all(abs(b_direct - b_orig) < tolerance) .and. &
+                     all(abs(c_direct - c_orig) < tolerance) .and. &
+                     all(abs(d_direct - d_orig) < tolerance)
+        
+        if (.not. test_passed) then
+            write(*,'(A)') '  FAILED: Results differ between implementations!'
+            write(*,'(A,3E15.6)') '  a diff:', abs(a_direct - a_orig)
+            write(*,'(A,3E15.6)') '  b diff:', abs(b_direct - b_orig)
+            write(*,'(A,3E15.6)') '  c diff:', abs(c_direct - c_orig)
+            write(*,'(A,3E15.6)') '  d diff:', abs(d_direct - d_orig)
+        end if
         write(*,'(A,L1)') '  Fast path completed: ', test_passed
         
         if (.not. test_passed) all_tests_passed = .false.
@@ -134,7 +154,8 @@ contains
         integer(I4B) :: indx(3)
         real(DP) :: lambda1(3)
         real(DP) :: a_direct(3), b_direct(3), c_direct(3), d_direct(3)
-        real(DP) :: c1, cn, m
+        real(DP) :: a_orig(3), b_orig(3), c_orig(3), d_orig(3)
+        real(DP) :: c1, cn, m, c1_orig, cn_orig
         integer(I4B) :: sw1, sw2
         logical :: test_passed
         
@@ -151,10 +172,30 @@ contains
         sw2 = 3      ! Different boundary condition (forces sparse path)
         m = 0.0_DP
         
+        ! Test both implementations and compare results
+        
+        ! Test original implementation
+        c1_orig = c1; cn_orig = cn
+        call splinecof3_original_dense(x, y, c1_orig, cn_orig, lambda1, indx, sw1, sw2, &
+                                      a_orig, b_orig, c_orig, d_orig, m, test_function)
+        
+        ! Test new implementation (should use sparse path)
         call splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                           a_direct, b_direct, c_direct, d_direct, m, test_function)
         
-        test_passed = .true.
+        ! Compare results
+        test_passed = all(abs(a_direct - a_orig) < tolerance) .and. &
+                     all(abs(b_direct - b_orig) < tolerance) .and. &
+                     all(abs(c_direct - c_orig) < tolerance) .and. &
+                     all(abs(d_direct - d_orig) < tolerance)
+        
+        if (.not. test_passed) then
+            write(*,'(A)') '  FAILED: Results differ between implementations!'
+            write(*,'(A,3E15.6)') '  a diff:', abs(a_direct - a_orig)
+            write(*,'(A,3E15.6)') '  b diff:', abs(b_direct - b_orig)
+            write(*,'(A,3E15.6)') '  c diff:', abs(c_direct - c_orig)
+            write(*,'(A,3E15.6)') '  d diff:', abs(d_direct - d_orig)
+        end if
         write(*,'(A,L1)') '  Non-fast path (boundary conditions) completed: ', test_passed
         
         if (.not. test_passed) all_tests_passed = .false.
