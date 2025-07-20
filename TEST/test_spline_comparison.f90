@@ -343,7 +343,11 @@ contains
             time_new = real(clock_end - clock_start, DP) / real(clock_rate, DP) / real(n_repeats, DP)
             
             ! Calculate speedup
-            speedup = time_orig / time_new
+            if (time_new > 0.0_DP) then
+                speedup = time_orig / time_new
+            else
+                speedup = 999.99_DP  ! Cap at 999.99x for display when too fast to measure
+            end if
             
             ! Output results
             write(*,'(I12,A,F12.6,A,F14.6,A,F14.2,A)') &

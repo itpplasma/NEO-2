@@ -3,6 +3,7 @@ module splinecof3_direct_sparse_mod
   use nrtype, only : I4B, DP
   use sparse_mod, only: sparse_solve
   use inter_interfaces, only: calc_opt_lambda3
+  use splinecof3_fast_mod, only: splinecof3_fast
   implicit none
   
   private

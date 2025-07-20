@@ -12,7 +12,7 @@ ninja: $(BUILD_NINJA)
 	cmake --build --preset default
 
 test: ninja
-	cd $(BUILD_DIR) && ctest -R spline_comparison_test
+	cd $(BUILD_DIR) && ctest --test-dir TEST --output-on-failure
 
 doc: $(BUILD_NINJA)
 	cmake --build --preset default --target doc
