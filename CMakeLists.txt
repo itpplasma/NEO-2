@@ -4,6 +4,7 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 project(NEO-2)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 enable_language(C Fortran)
+enable_testing()
 
 if(EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
   include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
@@ -104,6 +105,7 @@ add_subdirectory(NEO-2-PAR)
 add_subdirectory(NEO-2-QL)
 add_subdirectory(MULTI-SPEC-TOOLS)
 add_subdirectory(tools/create_surfaces)
+add_subdirectory(TEST)
 
 ### Optional target for docs
 find_package(LATEX)
