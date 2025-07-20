@@ -17,25 +17,60 @@
 ! routines for third order spline
 !
 !***********************************************************************
+module fastspline
 
+contains
+
+SUBROUTINE splinecof3_fast(x, y, a, b, c, d)
+  use nrtype, only : I4B, DP
+  real(DP), dimension(:), intent(in) :: x, y
+  real(DP), dimension(:), intent(out) :: a, b, c, d
+
+  integer(I4B) :: info
+  real(DP) :: r(size(x)-1), h(size(x)-1), dl(size(x)-3), ds(size(x)-2), cs(size(x)-2)
+  integer(I4B) :: n
+
+  n = size(x)
+
+  h = x(2:) - x(1:n-1)
+  r = y(2:) - y(1:n-1)
+
+  dl = h(2:n-2)
+  ds = 2d0*(h(1:n-2)+h(2:))
+
+  cs = 3d0*(r(2:)/h(2:)-r(1:n-2)/h(1:n-2))
+
+  call dptsv(n-2, 1, ds, dl, cs, n-2, info)
+
+  if (info /= 0) then
+    if (info < 0) then
+      write(*,'(A,I0,A)') 'splinecof3_fast: LAPACK dptsv error - illegal value in argument ', -info, '.'
+      error stop 'splinecof3_fast: Invalid argument to dptsv'
+    else
+      write(*,'(A,I0,A)') 'splinecof3_fast: LAPACK dptsv error - diagonal element ', info, ' is zero.'
+      write(*,*) 'The tridiagonal system is singular and cannot be solved.'
+      error stop 'splinecof3_fast: Singular tridiagonal system in dptsv'
+    end if
+  end if
+
+  a(1:n-1) = y(1:n-1)
+  b(1) = r(1)/h(1) - h(1)/3d0*cs(1)
+  b(2:n-2) = r(2:n-2)/h(2:n-2)-h(2:n-2)/3d0*(cs(2:n-2) + 2d0*cs(1:n-3))
+  b(n-1)   = r(n-1)/h(n-1)-h(n-1)/3d0*(2d0*cs(n-2))
+  c(1)     = 0d0
+  c(2:n-1) = cs
+  d(1)     = 1d0/(3d0*h(1))*cs(1)
+  d(2:n-2) = 1d0/(3d0*h(2:n-2))*(cs(2:n-2)-cs(1:n-3))
+  d(n-1)   = 1d0/(3d0*h(n-1))*(-cs(n-2))
+END SUBROUTINE splinecof3_fast
+
+end module fastspline
 
 ! ------  third order spline: with testfunction, LSQ, smoothing
 !
 ! AUTHOR: Bernhard Seiwald
 !
 ! DATE:   05.07.2001
-
-!> Module containing spline implementation with efficient sparse solver
-module spline_cof_mod
-  use nrtype, only : I4B, DP
-  use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
-  implicit none
-  
-  private
-  public :: splinecof3_a, splinecof1_a, splinecof3_hi_driv_a, splinecof1_hi_driv_a
-  public :: splinecof3_lo_driv_a, reconstruction3_a, calc_opt_lambda3_a, dist_lin_a
-  
-contains
 
 !> compute coefs for smoothing spline with leading function f(x)
 !> positions of intervals are given by indx
@@ -73,15 +108,18 @@ contains
 !>     INTEGER(I4B), PARAMETER :: VAR = 7 ... no of variables
 !>
 !> NEEDS:
-!>     solve_systems, calc_opt_lambda3
+!>     calc_opt_lambda3
 SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
      a, b, c, d, m, f)
   !-----------------------------------------------------------------------
   ! Modules
   !-----------------------------------------------------------------------
+
   use nrtype, only : I4B, DP
   use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
-  
+
+  !---------------------------------------------------------------------
+
   IMPLICIT NONE
 
   REAL(DP),                   INTENT(INOUT) :: c1, cn
@@ -102,65 +140,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
      END FUNCTION f
   END INTERFACE
 
-  ! Local variables for validation only
-  INTEGER(I4B) :: len_x, len_indx, i
-
-  len_x    = SIZE(x)
-  len_indx = SIZE(indx)
-
-  ! Validation checks - keep all original validation
-  if ( .NOT. ( size(x) == size(y) ) ) then
-    write (*,*) 'splinecof3: assertion 1 failed'
-    stop 'program terminated'
-  end if
-  if ( .NOT. ( size(a) == size(b) .AND. size(a) == size(c) &
-       .AND.   size(a) == size(d) .AND. size(a) == size(indx) &
-       .AND.   size(a) == size(lambda1) ) ) then
-    write (*,*) 'splinecof3: assertion 2 failed'
-    stop 'program terminated'
-  end if
-
-  ! check whether points are monotonously increasing or not
-  do i = 1, len_x-1
-    if (x(i) >= x(i+1)) then
-      print *, 'SPLINECOF3: error i, x(i), x(i+1)', &
-           i, x(i), x(i+1)
-      stop 'SPLINECOF3: error  wrong order of x(i)'
-    end if
-  end do
-  ! check indx
-  do i = 1, len_indx-1
-    if (indx(i) < 1) then
-      print *, 'SPLINECOF3: error i, indx(i)', i, indx(i)
-      stop 'SPLINECOF3: error  indx(i) < 1'
-    end if
-    if (indx(i) >= indx(i+1)) then
-      print *, 'SPLINECOF3: error i, indx(i), indx(i+1)', &
-            i, indx(i), indx(i+1)
-      stop 'SPLINECOF3: error  wrong order of indx(i)'
-    end if
-    if (indx(i) > len_x) then
-      print *, 'SPLINECOF3: error i, indx(i), indx(i+1)', &
-            i, indx(i), indx(i+1)
-      stop 'SPLINECOF3: error  indx(i) > len_x'
-    end if
-  end do
-  if (indx(len_indx) < 1) then
-    print *, 'SPLINECOF3: error len_indx, indx(len_indx)', &
-          len_indx, indx(len_indx)
-    stop 'SPLINECOF3: error  indx(max) < 1'
-  end if
-  if (indx(len_indx) > len_x) then
-    print *, 'SPLINECOF3: error len_indx, indx(len_indx)', &
-          len_indx, indx(len_indx)
-    stop 'SPLINECOF3: error  indx(max) > len_x'
-  end if
-
-  if (sw1 == sw2) then
-    stop 'SPLINECOF3: error  two identical boundary conditions'
-  end if
-
-  ! Call the new direct sparse implementation
+  ! Call direct sparse routine (includes fast path optimization internally)
   CALL splinecof3_direct_sparse(x, y, c1, cn, lambda1, indx, sw1, sw2, &
        a, b, c, d, m, f)
 
@@ -976,5 +956,3 @@ subroutine splinecof1_hi_driv_a(x, y, m, a, b, c, d, indx, f)
   if (i_alloc /= 0) stop 'splinecof1_hi_driv: Deallocation for arrays failed!'
 
 end subroutine splinecof1_hi_driv_a
-
-end module spline_cof_mod
