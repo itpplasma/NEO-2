@@ -1,5 +1,4 @@
 project(NEO-2-COMMON)
-enable_testing()
 
 ### FGSL user-defined interface
 set(FGSL_USERINTERFACE_SOURCE_FILES
