@@ -81,6 +81,10 @@ jobs:
 
           # Get latest stable release tag from GitHub API
           LATEST_RELEASE=$(curl -s https://api.github.com/repos/itpplasma/NEO-2/releases/latest | jq -r '.tag_name')
+          if [ -z "$LATEST_RELEASE" ] || [ "$LATEST_RELEASE" == "null" ]; then
+            echo "Error: Failed to fetch the latest release tag from GitHub API." >&2
+            exit 1
+          fi
           echo "Building reference version from latest stable release: $LATEST_RELEASE"
           git checkout $LATEST_RELEASE
 
