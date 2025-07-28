@@ -163,6 +163,13 @@ jobs:
             ${{ steps.run_test.outputs.test_dir }}/lorentz/current/out
             ${{ steps.run_test.outputs.test_dir }}/ql/current/summary.h5
             ${{ steps.run_test.outputs.test_dir }}/ql/current/out
+
+      - name: Upload performance test output on failure
+        if: steps.run_performance_test.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-output
+          path: |
             ${{ steps.run_test.outputs.test_dir }}/performance_ql/current/timing.txt
             ${{ steps.run_test.outputs.test_dir }}/performance_ql/reference/timing.txt
             ${{ steps.run_test.outputs.test_dir }}/performance_ql/performance_report.txt
