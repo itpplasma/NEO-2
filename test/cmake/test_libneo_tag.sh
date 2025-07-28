@@ -30,12 +30,11 @@ run_test() {
     (
         mkdir -p "$TEST_DIR/$name"
         cd "$TEST_DIR/$name"
-        git clone -q https://github.com/itpplasma/NEO-2.git . 
-        git checkout -q "$CURRENT_BRANCH"
+        git clone -q --depth 1 --branch "$CURRENT_BRANCH" https://github.com/itpplasma/NEO-2.git .
         
         if make clean >/dev/null 2>&1 && make $make_args 2>&1 | tee build.log; then
             pass "Build completed"
-            grep -q "$expected_msg" build.log && pass "Found: $expected_msg" || fail "Missing: $expected_msg"
+	    (grep -q "$expected_msg" build.log) && pass "Found: $expected_msg" || fail "Missing: $expected_msg"
             
             # Check both executables
             for exe in "NEO-2-QL/neo_2_ql.x" "NEO-2-PAR/neo_2_par.x"; do
