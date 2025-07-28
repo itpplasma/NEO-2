@@ -32,7 +32,7 @@ jobs:
       - name: Install required packages
         run: |
           sudo apt update
-          sudo apt install git cmake make ninja-build gcc g++ gfortran
+          sudo apt install git cmake make ninja-build gcc g++ gfortran jq
           sudo apt install openmpi-bin openmpi-common libopenmpi-dev
           sudo apt install libopenblas-dev libsuitesparse-dev
           sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
@@ -79,9 +79,9 @@ jobs:
 
           git clone https://github.com/itpplasma/NEO-2.git .
 
-          # Get latest release tag
-          LATEST_RELEASE=$(git describe --tags --abbrev=0)
-          echo "Building reference version from latest release: $LATEST_RELEASE"
+          # Get latest stable release tag from GitHub API
+          LATEST_RELEASE=$(curl -s https://api.github.com/repos/itpplasma/NEO-2/releases/latest | jq -r '.tag_name')
+          echo "Building reference version from latest stable release: $LATEST_RELEASE"
           git checkout $LATEST_RELEASE
 
           # Use same tag for libneo (synchronized versioning)
