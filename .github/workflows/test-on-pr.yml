@@ -130,6 +130,16 @@ jobs:
 
           make lorentz
           make ql
+
+      - name: Run QL performance test
+        env:
+          CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
+          REFERENCE_NEO2_QL: ${{ steps.build_reference.outputs.neo2_ql_ref }}
+        id: run_performance_test
+        continue-on-error: true
+        run: |
+          set -e
+          cd ${{ steps.run_test.outputs.test_dir }}
           make performance_ql
 
       - name: Run (slow) par golden record test on pull request
