@@ -63,17 +63,39 @@ jobs:
           cd python
           pip install -e .
 
-      - name: Build NEO-2
+      - name: Build NEO-2 (current version)
         id: build
         run: |
           make
           echo "neo2_par=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
           echo "neo2_ql=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
 
+      - name: Build NEO-2 (reference version - latest release)
+        id: build_reference
+        run: |
+          # Build reference version in temp directory
+          REFERENCE_DIR=$(mktemp -d)
+          cd $REFERENCE_DIR
+
+          git clone https://github.com/itpplasma/NEO-2.git .
+
+          # Get latest release tag
+          LATEST_RELEASE=$(git describe --tags --abbrev=0)
+          echo "Building reference version from latest release: $LATEST_RELEASE"
+          git checkout $LATEST_RELEASE
+
+          # Use same tag for libneo (synchronized versioning)
+          echo "Using synchronized libneo tag: $LATEST_RELEASE"
+          make LIBNEO_GIT_TAG=$LATEST_RELEASE
+
+          echo "neo2_ql_ref=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
+          echo "neo2_par_ref=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
+
       - name: Run golden record test
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
+          REFERENCE_NEO2_QL: ${{ steps.build_reference.outputs.neo2_ql_ref }}
         id: run_test
         continue-on-error: true
         run: |
@@ -104,6 +126,7 @@ jobs:
 
           make lorentz
           make ql
+          make performance_ql
 
       - name: Run (slow) par golden record test on pull request
         if: github.event_name == 'pull_request'
@@ -126,6 +149,9 @@ jobs:
             ${{ steps.run_test.outputs.test_dir }}/lorentz/current/out
             ${{ steps.run_test.outputs.test_dir }}/ql/current/summary.h5
             ${{ steps.run_test.outputs.test_dir }}/ql/current/out
+            ${{ steps.run_test.outputs.test_dir }}/performance_ql/current/timing.txt
+            ${{ steps.run_test.outputs.test_dir }}/performance_ql/reference/timing.txt
+            ${{ steps.run_test.outputs.test_dir }}/performance_ql/performance_report.txt
 
       - name: Upload par test output on failure
         if: steps.run_par_test.outcome == 'failure'
@@ -135,6 +161,14 @@ jobs:
           path: |
             ${{ steps.run_test.outputs.test_dir }}/par/current/summary.h5
             ${{ steps.run_test.outputs.test_dir }}/par/current/out
+
+      - name: Report performance comparison
+        if: always()
+        run: |
+          if [ -f "${{ steps.run_test.outputs.test_dir }}/performance_ql/performance_report.txt" ]; then
+            echo "## Performance Test Results" >> $GITHUB_STEP_SUMMARY
+            cat "${{ steps.run_test.outputs.test_dir }}/performance_ql/performance_report.txt" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Fail the job on test failure
         if: steps.run_test.outcome == 'failure' || steps.run_par_test.outcome == 'failure'
