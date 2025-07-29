@@ -153,7 +153,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
-          REFERENCE_NEO2_QL: ${{ steps.build_reference.outputs.neo2_ql_main }}
+          REFERENCE_NEO2_QL: ${{ steps.build_reference_main.outputs.neo2_ql_main }}
         id: run_performance_test
         continue-on-error: true
         run: |
