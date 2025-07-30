@@ -6,8 +6,16 @@ function(find_or_fetch DEPENDENCY)
         message(STATUS "Using ${DEPENDENCY} in $ENV{CODE}/${DEPENDENCY}")
     else()
         set(REPO_URL https://github.com/itpplasma/${DEPENDENCY}.git)
-        get_branch_or_main(${REPO_URL} REMOTE_BRANCH)
-        message(STATUS "Using ${DEPENDENCY} branch ${REMOTE_BRANCH} from ${REPO_URL}")
+
+        # Check if a specific git tag is provided for this dependency
+        string(TOUPPER ${DEPENDENCY} DEPENDENCY_UPPER)
+        if(DEFINED ${DEPENDENCY_UPPER}_GIT_TAG)
+            set(REMOTE_BRANCH ${${DEPENDENCY_UPPER}_GIT_TAG})
+            message(STATUS "Using ${DEPENDENCY} tag ${REMOTE_BRANCH} from ${REPO_URL}")
+        else()
+            get_branch_or_main(${REPO_URL} REMOTE_BRANCH)
+            message(STATUS "Using ${DEPENDENCY} branch ${REMOTE_BRANCH} from ${REPO_URL}")
+        endif()
 
         FetchContent_Declare(
             ${DEPENDENCY}

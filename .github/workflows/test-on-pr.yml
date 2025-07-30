@@ -32,7 +32,7 @@ jobs:
       - name: Install required packages
         run: |
           sudo apt update
-          sudo apt install git cmake make ninja-build gcc g++ gfortran
+          sudo apt install git cmake make ninja-build gcc g++ gfortran jq
           sudo apt install openmpi-bin openmpi-common libopenmpi-dev
           sudo apt install libopenblas-dev libsuitesparse-dev
           sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
@@ -63,17 +63,44 @@ jobs:
           cd python
           pip install -e .
 
-      - name: Build NEO-2
+      - name: Build NEO-2 (current version)
         id: build
         run: |
           make
           echo "neo2_par=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
           echo "neo2_ql=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
 
+      - name: Build NEO-2 (reference version - latest stable release)
+        id: build_reference
+        run: |
+          # Build reference version in temp directory
+          REFERENCE_DIR=$(mktemp -d)
+          cd $REFERENCE_DIR
+
+          git clone https://github.com/itpplasma/NEO-2.git .
+
+          # Get latest stable release tag from GitHub API
+          LATEST_RELEASE=$(curl -s https://api.github.com/repos/itpplasma/NEO-2/releases/latest | jq -r '.tag_name')
+          if [ -z "$LATEST_RELEASE" ] || [ "$LATEST_RELEASE" == "null" ]; then
+            echo "Error: Failed to fetch the latest release tag from GitHub API." >&2
+            exit 1
+          fi
+          echo "Building reference version from latest stable release: $LATEST_RELEASE"
+          git checkout $LATEST_RELEASE
+
+          # Use same tag for libneo (synchronized versioning)
+          echo "Using synchronized libneo tag: $LATEST_RELEASE"
+          make LIBNEO_GIT_TAG=$LATEST_RELEASE
+
+          echo "neo2_ql_stable=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
+          echo "neo2_par_stable=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
+
       - name: Run golden record test
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
+          REFERENCE_NEO2_PAR: ${{ steps.build_reference.outputs.neo2_par_stable }}
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
+          REFERENCE_NEO2_QL: ${{ steps.build_reference.outputs.neo2_ql_stable }}
         id: run_test
         continue-on-error: true
         run: |
@@ -105,6 +132,35 @@ jobs:
           make lorentz
           make ql
 
+      - name: Build NEO-2 (reference version - main branch)
+        if: github.event_name == 'pull_request'
+        id: build_reference_main
+        run: |
+          # Build reference version from main branch for PR comparison
+          REFERENCE_MAIN_DIR=$(mktemp -d)
+          cd $REFERENCE_MAIN_DIR
+
+          git clone https://github.com/itpplasma/NEO-2.git .
+
+          echo "Building reference version from main branch"
+          git checkout main
+
+          make
+
+          echo "neo2_ql_main=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
+
+      - name: Run QL performance test
+        if: github.event_name == 'pull_request'
+        env:
+          CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
+          REFERENCE_NEO2_QL: ${{ steps.build_reference_main.outputs.neo2_ql_main }}
+        id: run_performance_test
+        continue-on-error: true
+        run: |
+          set -e
+          cd ${{ steps.run_test.outputs.test_dir }}
+          make performance_ql
+
       - name: Run (slow) par golden record test on pull request
         if: github.event_name == 'pull_request'
         env:
@@ -124,8 +180,26 @@ jobs:
           path: |
             ${{ steps.run_test.outputs.test_dir }}/lorentz/current/summary.h5
             ${{ steps.run_test.outputs.test_dir }}/lorentz/current/out
+            ${{ steps.run_test.outputs.test_dir }}/lorentz/reference/summary.h5
+            ${{ steps.run_test.outputs.test_dir }}/lorentz/reference/out
             ${{ steps.run_test.outputs.test_dir }}/ql/current/summary.h5
             ${{ steps.run_test.outputs.test_dir }}/ql/current/out
+            ${{ steps.run_test.outputs.test_dir }}/ql/reference/summary.h5
+            ${{ steps.run_test.outputs.test_dir }}/ql/reference/out
+
+      - name: Upload performance test output on failure
+        if: steps.run_performance_test.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-output
+          path: |
+            ${{ steps.run_test.outputs.test_dir }}/performance_ql/current/summary.h5
+            ${{ steps.run_test.outputs.test_dir }}/performance_ql/current/out
+            ${{ steps.run_test.outputs.test_dir }}/performance_ql/current/timing.txt
+            ${{ steps.run_test.outputs.test_dir }}/performance_ql/reference/summary.h5
+            ${{ steps.run_test.outputs.test_dir }}/performance_ql/reference/out
+            ${{ steps.run_test.outputs.test_dir }}/performance_ql/reference/timing.txt
+            ${{ steps.run_test.outputs.test_dir }}/performance_ql/performance_report.txt
 
       - name: Upload par test output on failure
         if: steps.run_par_test.outcome == 'failure'
@@ -136,6 +210,14 @@ jobs:
             ${{ steps.run_test.outputs.test_dir }}/par/current/summary.h5
             ${{ steps.run_test.outputs.test_dir }}/par/current/out
 
+      - name: Report performance comparison
+        if: always()
+        run: |
+          if [ -f "${{ steps.run_test.outputs.test_dir }}/performance_ql/performance_report.txt" ]; then
+            echo "## Performance Test Results" >> $GITHUB_STEP_SUMMARY
+            cat "${{ steps.run_test.outputs.test_dir }}/performance_ql/performance_report.txt" >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Fail the job on test failure
-        if: steps.run_test.outcome == 'failure' || steps.run_par_test.outcome == 'failure'
+        if: steps.run_test.outcome == 'failure' || steps.run_par_test.outcome == 'failure' || steps.run_performance_test.outcome == 'failure'
         run: exit 1

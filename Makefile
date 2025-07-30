@@ -6,7 +6,7 @@ CONFIG ?= Release
 all: ninja
 
 $(BUILD_NINJA):
-	cmake --preset default -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_BUILD_TYPE=$(CONFIG)
+	cmake --preset default -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_BUILD_TYPE=$(CONFIG) $(if $(LIBNEO_GIT_TAG),-DLIBNEO_GIT_TAG=$(LIBNEO_GIT_TAG))
 
 ninja: $(BUILD_NINJA)
 	cmake --build --preset default
