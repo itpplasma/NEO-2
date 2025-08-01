@@ -306,3 +306,69 @@ set_tests_properties(sparse_conversion_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests PASSED!"
     FAIL_REGULAR_EXPRESSION "Some tests FAILED!"
 )
+
+# Sparse I/O test executable
+add_executable(test_sparse_io
+    ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_sparse_io.f90
+)
+
+# Set compiler flags
+target_compile_options(test_sparse_io PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_sparse_io
+    common
+)
+
+# Include directories
+target_include_directories(test_sparse_io PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME sparse_io_test 
+         COMMAND test_sparse_io
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(sparse_io_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "All tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some tests FAILED!"
+)
+
+# Sparse arithmetic test executable
+add_executable(test_sparse_arithmetic
+    ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_sparse_arithmetic.f90
+)
+
+# Set compiler flags
+target_compile_options(test_sparse_arithmetic PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_sparse_arithmetic
+    common
+)
+
+# Include directories
+target_include_directories(test_sparse_arithmetic PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME sparse_arithmetic_test 
+         COMMAND test_sparse_arithmetic
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(sparse_arithmetic_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "All tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some tests FAILED!"
+)
