@@ -4,6 +4,7 @@ MODULE sparse_solvers_mod
   
   USE sparse_types_mod, ONLY: dp, long
   USE sparse_conversion_mod
+  USE sparse_arithmetic_mod, ONLY: sparse_talk
   IMPLICIT NONE
   
   PUBLIC :: sparse_solve
@@ -13,6 +14,9 @@ MODULE sparse_solvers_mod
   
   INTEGER :: sparse_solve_method = 3
   LOGICAL :: factorization_exists = .FALSE.
+  
+  ! Initialization of the parameters of Super_LU c-Routines
+  INTEGER(kind=long), PRIVATE :: factors
   
   ! SuiteSparse solver data address pointers
   INTEGER(kind=long), PRIVATE :: symbolic, numeric
@@ -514,8 +518,8 @@ CONTAINS
     Ax_len = nz
     Az_len = 0 ! nz
     ALLOCATE(Ap(Ap_len), Ai(Ai_len))
-    Ap = pcol
-    Ai = irow
+    Ap = pcol - 1  ! convert from 1 to 0-based indexing
+    Ai = irow - 1  ! convert from 1 to 0-based indexing
     
     IF (iopt_in .EQ. 3) THEN  ! free memory from last solution
        CALL umf4fnum(numeric)
@@ -526,13 +530,14 @@ CONTAINS
     
     ALLOCATE(x(nrow))
     
+    ! Set default parameters
+    CALL umf4def(control)
+    control(1) = 0 ! No output - there are other options, see the manual
+    
+    n = nrow  ! convert from 1 to 0-based indexing
+    
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
-       IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
-          CALL umf4def(control)
-          control(1) = 0 ! No output - there are other options, see the manual
-       ELSE IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2) iterative refinement)
-          CALL umf4def(control)
-          control(1) = 0 ! No output - there are other options, see the manual
+       IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2) iterative refinement)
           control(8) = 10 ! max number of iterative refinement steps
        END IF
        
@@ -551,7 +556,6 @@ CONTAINS
     ! Note: in newer versions, the function interfaces has been changed to match the types in an cleaner way
     !       use n instead of nrow
     !       use nc instead of ncol
-    n = nrow
     nc = ncol
     
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
@@ -616,8 +620,8 @@ CONTAINS
     Ax_len = nz
     Az_len = nz
     ALLOCATE(Ap(Ap_len), Ai(Ai_len))
-    Ap = pcol
-    Ai = irow
+    Ap = pcol - 1  ! convert from 1 to 0-based indexing
+    Ai = irow - 1  ! convert from 1 to 0-based indexing
     
     ALLOCATE(valx(nz), valz(nz))
     valx = REAL(val)
@@ -660,7 +664,6 @@ CONTAINS
     ! Note: in newer versions, the function interfaces has been changed to match the types in an cleaner way
     !       use n instead of nrow
     !       use nc instead of ncol
-    n = nrow
     nc = ncol
     
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
@@ -729,8 +732,8 @@ CONTAINS
     Ax_len = nz
     Az_len = 0 ! nz
     ALLOCATE(Ap(Ap_len), Ai(Ai_len))
-    Ap = pcol
-    Ai = irow
+    Ap = pcol - 1  ! convert from 1 to 0-based indexing
+    Ai = irow - 1  ! convert from 1 to 0-based indexing
     
     IF (iopt_in .EQ. 3) THEN  ! free memory from last solution
        CALL umf4fnum(numeric)
@@ -742,13 +745,14 @@ CONTAINS
     nrhs = SIZE(b,2)
     ALLOCATE(x(nrow), bloc(nrow))
     
+    ! Set default parameters
+    CALL umf4def(control)
+    control(1) = 0 ! No output - there are other options, see the manual
+    
+    n = nrow  ! convert from 1 to 0-based indexing
+    
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
-       IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
-          CALL umf4def(control)
-          control(1) = 0 ! No output - there are other options, see the manual
-       ELSE IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2) iterative refinement)
-          CALL umf4def(control)
-          control(1) = 0 ! No output - there are other options, see the manual
+       IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2) iterative refinement)
           control(8) = 10 ! max number of iterative refinement steps
        END IF
        
@@ -767,7 +771,6 @@ CONTAINS
     ! Note: in newer versions, the function interfaces has been changed to match the types in an cleaner way
     !       use n instead of nrow
     !       use nc instead of ncol
-    n = nrow
     nc = ncol
     
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
@@ -835,8 +838,8 @@ CONTAINS
     Ax_len = nz
     Az_len = nz
     ALLOCATE(Ap(Ap_len), Ai(Ai_len))
-    Ap = pcol
-    Ai = irow
+    Ap = pcol - 1  ! convert from 1 to 0-based indexing
+    Ai = irow - 1  ! convert from 1 to 0-based indexing
     
     ALLOCATE(valx(nz), valz(nz))
     valx = REAL(val)
@@ -876,7 +879,6 @@ CONTAINS
     ! Note: in newer versions, the function interfaces has been changed to match the types in an cleaner way
     !       use n instead of nrow
     !       use nc instead of ncol
-    n = nrow
     nc = ncol
     
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
