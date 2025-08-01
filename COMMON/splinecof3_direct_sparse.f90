@@ -3,6 +3,7 @@ module splinecof3_direct_sparse_mod
   use nrtype, only : I4B, DP
   use sparse_mod, only: sparse_solve
   use inter_interfaces, only: calc_opt_lambda3
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
   implicit none
   
   private
@@ -1029,8 +1030,14 @@ contains
     nnz = idx
     
     ! Allocate with exact count (no waste)
-    ALLOCATE(irow_coo(nnz), icol_coo(nnz), val_coo(nnz), stat = i_alloc)
-    if(i_alloc /= 0) stop 'Allocation for COO arrays failed!'
+    ALLOCATE(irow_coo(nnz), icol_coo(nnz), val_coo(nnz), stat=i_alloc, errmsg=error_message)
+    if(i_alloc /= 0) then
+      write(*,'(A,I0)') 'SPLINECOF3_DIRECT_SPARSE: COO allocation failed (error code: ', i_alloc, ')'
+      write(*,'(A)') 'Error message: ' // trim(error_message)
+      write(*,'(A,I0)') 'Attempted to allocate arrays of size nnz=', nnz
+      write(*,'(A,F0.2,A)') 'Estimated memory required: ', real(nnz*3)*8.0/1024.0/1024.0, ' MB'
+      error stop 'SPLINECOF3_DIRECT_SPARSE: Memory allocation failure for COO arrays'
+    end if
 
     ! Second pass: fill the arrays
     idx = 0
@@ -1087,15 +1094,25 @@ contains
        c(i) = inh((i-1)*VAR+3)
        d(i) = inh((i-1)*VAR+4)
        
-       ! Check for NaN or Inf in solution
-       IF (.NOT. (ABS(a(i)) <= HUGE(a(i)) .AND. ABS(b(i)) <= HUGE(b(i)) .AND. &
-                  ABS(c(i)) <= HUGE(c(i)) .AND. ABS(d(i)) <= HUGE(d(i)))) THEN
-          WRITE(*,*) 'ERROR: NaN or Inf detected in spline coefficients at interval', i
-          WRITE(*,*) '  a =', a(i), ' b =', b(i), ' c =', c(i), ' d =', d(i)
-          WRITE(*,*) '  This indicates a numerical problem in the spline fitting.'
-          WRITE(*,*) '  Possible causes: ill-conditioned matrix, insufficient data points,'
-          WRITE(*,*) '  or numerical overflow in matrix construction.'
-          ERROR STOP 'SPLINECOF3_DIRECT_SPARSE: NaN/Inf in spline coefficients'
+       ! Check for NaN or Inf in solution using IEEE intrinsics
+       IF (.NOT. ieee_is_finite(a(i)) .OR. .NOT. ieee_is_finite(b(i)) .OR. &
+           .NOT. ieee_is_finite(c(i)) .OR. .NOT. ieee_is_finite(d(i))) THEN
+          WRITE(*,'(A,I0)') 'ERROR: Non-finite values in spline coefficients at interval ', i
+          WRITE(*,'(A,4ES15.6)') '  Spline coefficients [a,b,c,d]: ', a(i), b(i), c(i), d(i)
+          IF (ieee_is_nan(a(i)) .OR. ieee_is_nan(b(i)) .OR. ieee_is_nan(c(i)) .OR. ieee_is_nan(d(i))) THEN
+            WRITE(*,*) '  NaN detected - likely caused by:'
+            WRITE(*,*) '    - Singular or ill-conditioned matrix'
+            WRITE(*,*) '    - Invalid boundary conditions or lambda weights'
+            WRITE(*,*) '    - Duplicate or improperly ordered x values'
+          ELSE
+            WRITE(*,*) '  Infinite values detected - likely caused by:'
+            WRITE(*,*) '    - Numerical overflow in matrix construction'
+            WRITE(*,*) '    - Extreme values in input data or boundary conditions'
+          END IF
+          WRITE(*,'(A,2I0)') '  Problem size: len_x=', len_x, ', len_indx=', len_indx
+          WRITE(*,'(A,2ES15.6)') '  Boundary conditions c1, cn: ', c1, cn
+          WRITE(*,'(A,2I0)') '  Boundary condition types sw1, sw2: ', sw1, sw2
+          ERROR STOP 'SPLINECOF3_DIRECT_SPARSE: Non-finite spline coefficients'
        END IF
     END DO
     

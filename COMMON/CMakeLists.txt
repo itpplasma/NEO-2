@@ -68,6 +68,7 @@ set(COMMON_FILES
   sparsevec_mod.f90
   spline_cof.f90
   splinecof3_direct_sparse.f90
+  splinecof3_fast.f90
   spline_int.f90
   spline_mod.f90
   test_function.f90
