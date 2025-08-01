@@ -15,6 +15,865 @@ module splinecof3_direct_sparse_mod
   
 contains
 
+  !> Add a matrix entry if non-zero (counting mode just increments counter)
+  SUBROUTINE add_entry(counting, idx, i, j, val, irow, icol, vals)
+    LOGICAL, INTENT(IN) :: counting
+    INTEGER(I4B), INTENT(INOUT) :: idx
+    INTEGER(I4B), INTENT(IN) :: i, j
+    REAL(DP), INTENT(IN) :: val
+    INTEGER(I4B), DIMENSION(:), INTENT(INOUT), OPTIONAL :: irow, icol
+    REAL(DP), DIMENSION(:), INTENT(INOUT), OPTIONAL :: vals
+    
+    ! Match sparse_mod's exact zero comparison: only skip exactly 0.0_DP values
+    IF (val .NE. 0.0_DP) THEN
+       idx = idx + 1
+       IF (.NOT. counting) THEN
+          irow(idx) = i
+          icol(idx) = j
+          vals(idx) = val
+       END IF
+    END IF
+  END SUBROUTINE add_entry
+  
+  !> Add boundary condition entries
+  SUBROUTINE add_boundary_condition_1(counting, idx, i, mu1, nu1, sig1, rho1, &
+                                       len_indx, VAR, irow, icol, vals)
+    LOGICAL, INTENT(IN) :: counting
+    INTEGER(I4B), INTENT(INOUT) :: idx, i
+    INTEGER(I4B), INTENT(IN) :: mu1, nu1, sig1, rho1, len_indx, VAR
+    INTEGER(I4B), DIMENSION(:), INTENT(INOUT), OPTIONAL :: irow, icol
+    REAL(DP), DIMENSION(:), INTENT(INOUT), OPTIONAL :: vals
+    
+    i = i + 1
+    IF (mu1 /= 0) CALL add_entry(counting, idx, i, 2, DBLE(mu1), irow, icol, vals)
+    IF (nu1 /= 0) CALL add_entry(counting, idx, i, 3, DBLE(nu1), irow, icol, vals)
+    IF (sig1 /= 0) CALL add_entry(counting, idx, i, (len_indx-1)*VAR + 2, DBLE(sig1), irow, icol, vals)
+    IF (rho1 /= 0) CALL add_entry(counting, idx, i, (len_indx-1)*VAR + 3, DBLE(rho1), irow, icol, vals)
+  END SUBROUTINE add_boundary_condition_1
+  
+  !> Add continuity conditions
+  SUBROUTINE add_continuity_conditions(counting, idx, i, j, h, VAR, irow, icol, vals)
+    LOGICAL, INTENT(IN) :: counting
+    INTEGER(I4B), INTENT(INOUT) :: idx, i
+    INTEGER(I4B), INTENT(IN) :: j, VAR
+    REAL(DP), INTENT(IN) :: h
+    INTEGER(I4B), DIMENSION(:), INTENT(INOUT), OPTIONAL :: irow, icol
+    REAL(DP), DIMENSION(:), INTENT(INOUT), OPTIONAL :: vals
+    
+    ! A_i continuity
+    i = i + 1
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j; vals(idx) = 1.0D0
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+1; vals(idx) = h
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+2; vals(idx) = h*h
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+3; vals(idx) = h*h*h
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+VAR; vals(idx) = -1.0D0
+    END IF
+    
+    ! B_i continuity
+    i = i + 1
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+1; vals(idx) = 1.0D0
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+2; vals(idx) = 2.0D0*h
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+3; vals(idx) = 3.0D0*h*h
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+VAR+1; vals(idx) = -1.0D0
+    END IF
+    
+    ! C_i continuity
+    i = i + 1
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+2; vals(idx) = 1.0D0
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+3; vals(idx) = 3.0D0*h
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+VAR+2; vals(idx) = -1.0D0
+    END IF
+  END SUBROUTINE add_continuity_conditions
+  
+  !> Compute fitting coefficients for an interval
+  SUBROUTINE compute_fitting_coeffs(ii, ie, x, y, m, f, help_a, help_b, help_c, help_d, help_i)
+    INTEGER(I4B), INTENT(IN) :: ii, ie
+    REAL(DP), DIMENSION(:), INTENT(IN) :: x, y
+    REAL(DP), INTENT(IN) :: m
+    INTERFACE
+       FUNCTION f(x,m)
+         use nrtype, only : DP
+         IMPLICIT NONE
+         REAL(DP), INTENT(IN) :: x, m
+         REAL(DP)             :: f
+       END FUNCTION f
+    END INTERFACE
+    REAL(DP), INTENT(OUT) :: help_a, help_b, help_c, help_d, help_i
+    
+    INTEGER(I4B) :: l
+    REAL(DP) :: h_j, x_h
+    
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + x_h
+       help_b = help_b + h_j * x_h
+       help_c = help_c + h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * x_h
+       help_i = help_i + f(x(l),m) * y(l)
+    END DO
+  END SUBROUTINE compute_fitting_coeffs
+  
+  !> Process one interval's matrix entries
+  SUBROUTINE process_interval(counting, idx, i, j, ii, ie, x, y, m, f, omega, lambda, &
+                               mu1, mu2, VAR, indx, irow, icol, vals, inh)
+    LOGICAL, INTENT(IN) :: counting
+    INTEGER(I4B), INTENT(INOUT) :: idx, i
+    INTEGER(I4B), INTENT(IN) :: j, ii, ie, mu1, mu2, VAR
+    REAL(DP), DIMENSION(:), INTENT(IN) :: x, y, omega, lambda
+    INTEGER(I4B), DIMENSION(:), INTENT(IN) :: indx
+    REAL(DP), INTENT(IN) :: m
+    INTERFACE
+       FUNCTION f(x,m)
+         use nrtype, only : DP
+         IMPLICIT NONE
+         REAL(DP), INTENT(IN) :: x, m
+         REAL(DP)             :: f
+       END FUNCTION f
+    END INTERFACE
+    INTEGER(I4B), DIMENSION(:), INTENT(INOUT), OPTIONAL :: irow, icol
+    REAL(DP), DIMENSION(:), INTENT(INOUT), OPTIONAL :: vals, inh
+    
+    REAL(DP) :: help_a, help_b, help_c, help_d, help_i, h_j, x_h, h
+    INTEGER(I4B) :: interval_idx, l, len_indx
+    
+    interval_idx = (j-1)/VAR + 1
+    len_indx = SIZE(indx)
+    h = x(indx((j-1)/VAR+2)) - x(ii)
+    
+    ! Delta a_i
+    CALL compute_fitting_coeffs(ii, ie, x, y, m, f, help_a, help_b, help_c, help_d, help_i)
+    i = i + 1
+    CALL add_entry(counting, idx, i, j, omega(interval_idx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, omega(interval_idx) * help_b, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, omega(interval_idx) * help_c, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, omega(interval_idx) * help_d, irow, icol, vals)
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+4; vals(idx) = 1.0D0
+    END IF
+    IF (j > 1) THEN
+       idx = idx + 1
+       IF (.NOT. counting) THEN
+          irow(idx) = i; icol(idx) = j-VAR+4; vals(idx) = -1.0D0
+       END IF
+    END IF
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+    ! Delta b_i
+    i = i + 1
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + h_j * x_h
+       help_b = help_b + h_j * h_j * x_h
+       help_c = help_c + h_j * h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * h_j * x_h
+       help_i = help_i + h_j * f(x(l),m) * y(l)
+    END DO
+    CALL add_entry(counting, idx, i, j, omega(interval_idx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, omega(interval_idx) * help_b, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, omega(interval_idx) * help_c, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, omega(interval_idx) * help_d, irow, icol, vals)
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+4; vals(idx) = h
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+5; vals(idx) = 1.0D0
+    END IF
+    IF (j == 1) THEN
+       IF (mu1 == 1) CALL add_entry(counting, idx, i, (len_indx-1)*VAR+4, DBLE(mu1), irow, icol, vals)
+       IF (mu2 == 1) CALL add_entry(counting, idx, i, (len_indx-1)*VAR+5, DBLE(mu2), irow, icol, vals)
+    ELSE
+       idx = idx + 1
+       IF (.NOT. counting) THEN
+          irow(idx) = i; icol(idx) = j-VAR+5; vals(idx) = -1.0D0
+       END IF
+    END IF
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+    ! Delta c_i
+    i = i + 1
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + h_j * h_j * h_j * x_h
+       help_b = help_b + h_j * h_j * h_j * h_j * x_h
+       help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
+       help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
+    END DO
+    CALL add_entry(counting, idx, i, j, omega(interval_idx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, omega(interval_idx) * help_b, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, omega(interval_idx) * help_c, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, omega(interval_idx) * help_d + lambda(interval_idx), irow, icol, vals)
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+4; vals(idx) = h * h * h
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+5; vals(idx) = 3.0D0 * h * h
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+6; vals(idx) = 3.0D0 * h
+    END IF
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+  END SUBROUTINE process_interval
+
+  !> Process first interval fitting conditions exactly as in dense reference
+  SUBROUTINE process_first_interval(counting, idx, i, j, ii, ie, x, y, m, f, omega, lambda, &
+                                   mu1, mu2, nu1, nu2, VAR, len_indx, indx, irow, icol, vals, inh)
+    LOGICAL, INTENT(IN) :: counting
+    INTEGER(I4B), INTENT(INOUT) :: idx, i
+    INTEGER(I4B), INTENT(IN) :: j, ii, ie, mu1, mu2, nu1, nu2, VAR, len_indx
+    REAL(DP), DIMENSION(:), INTENT(IN) :: x, y, omega, lambda
+    INTEGER(I4B), DIMENSION(:), INTENT(IN) :: indx
+    REAL(DP), INTENT(IN) :: m
+    INTERFACE
+       FUNCTION f(x,m)
+         use nrtype, only : DP
+         IMPLICIT NONE
+         REAL(DP), INTENT(IN) :: x, m
+         REAL(DP)             :: f
+       END FUNCTION f
+    END INTERFACE
+    INTEGER(I4B), DIMENSION(:), INTENT(INOUT), OPTIONAL :: irow, icol
+    REAL(DP), DIMENSION(:), INTENT(INOUT), OPTIONAL :: vals, inh
+    
+    REAL(DP) :: help_a, help_b, help_c, help_d, help_i, h_j, x_h, h
+    INTEGER(I4B) :: interval_idx, l
+    
+    interval_idx = (j-1)/VAR + 1
+    h = x(indx((j-1)/VAR+2)) - x(ii)
+    
+    ! delta a_i
+    i = i + 1
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + x_h
+       help_b = help_b + h_j * x_h
+       help_c = help_c + h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * x_h
+       help_i = help_i + f(x(l),m) * y(l)
+    END DO
+    ! Always add fitting coefficients (even if small) to match dense structure
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+0; vals(idx) = omega(interval_idx) * help_a
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+1; vals(idx) = omega(interval_idx) * help_b
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+2; vals(idx) = omega(interval_idx) * help_c
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = j+3; vals(idx) = omega(interval_idx) * help_d
+    END IF
+    CALL add_entry(counting, idx, i, j+4, 1.0D0, irow, icol, vals)
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+    ! delta b_i
+    i = i + 1
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + h_j * x_h
+       help_b = help_b + h_j * h_j * x_h
+       help_c = help_c + h_j * h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * h_j * x_h
+       help_i = help_i + h_j * f(x(l),m) * y(l)
+    END DO
+    CALL add_entry(counting, idx, i, j+0, omega(interval_idx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, omega(interval_idx) * help_b, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, omega(interval_idx) * help_c, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, omega(interval_idx) * help_d, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+4, h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+5, 1.0D0, irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR+4, DBLE(mu1), irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR+5, DBLE(mu2), irow, icol, vals)
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+    ! delta c_i
+    i = i + 1
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + h_j * h_j * x_h
+       help_b = help_b + h_j * h_j * h_j * x_h
+       help_c = help_c + h_j * h_j * h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
+       help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
+    END DO
+    CALL add_entry(counting, idx, i, j+0, omega(interval_idx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, omega(interval_idx) * help_b, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, omega(interval_idx) * help_c, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, omega(interval_idx) * help_d, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+4, h*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+5, 2.0D0*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+6, 1.0D0, irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR+4, DBLE(nu1), irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR+5, DBLE(nu2), irow, icol, vals)
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+    ! delta DELTA d_i
+    i = i + 1
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + h_j * h_j * h_j * x_h
+       help_b = help_b + h_j * h_j * h_j * h_j * x_h
+       help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
+       help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
+    END DO
+    CALL add_entry(counting, idx, i, j+0, omega(interval_idx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, omega(interval_idx) * help_b, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, omega(interval_idx) * help_c, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, omega(interval_idx) * help_d + lambda(interval_idx), irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+4, h*h*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+5, 3.0D0*h*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+6, 3.0D0*h, irow, icol, vals)
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+  END SUBROUTINE process_first_interval
+
+  !> Process middle interval fitting conditions exactly as in dense reference
+  SUBROUTINE process_middle_interval(counting, idx, i, j, ii, ie, x, y, m, f, omega, lambda, &
+                                    VAR, indx, irow, icol, vals, inh)
+    LOGICAL, INTENT(IN) :: counting
+    INTEGER(I4B), INTENT(INOUT) :: idx, i
+    INTEGER(I4B), INTENT(IN) :: j, ii, ie, VAR
+    REAL(DP), DIMENSION(:), INTENT(IN) :: x, y, omega, lambda
+    INTEGER(I4B), DIMENSION(:), INTENT(IN) :: indx
+    REAL(DP), INTENT(IN) :: m
+    INTERFACE
+       FUNCTION f(x,m)
+         use nrtype, only : DP
+         IMPLICIT NONE
+         REAL(DP), INTENT(IN) :: x, m
+         REAL(DP)             :: f
+       END FUNCTION f
+    END INTERFACE
+    INTEGER(I4B), DIMENSION(:), INTENT(INOUT), OPTIONAL :: irow, icol
+    REAL(DP), DIMENSION(:), INTENT(INOUT), OPTIONAL :: vals, inh
+    
+    REAL(DP) :: help_a, help_b, help_c, help_d, help_i, h_j, x_h, h
+    INTEGER(I4B) :: interval_idx, l
+    
+    interval_idx = (j-1)/VAR + 1
+    h = x(indx((j-1)/VAR+2)) - x(ii)
+    
+    ! delta a_i
+    i = i + 1
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + x_h
+       help_b = help_b + h_j * x_h
+       help_c = help_c + h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * x_h
+       help_i = help_i + f(x(l),m) * y(l)
+    END DO
+    CALL add_entry(counting, idx, i, j+0, omega(interval_idx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, omega(interval_idx) * help_b, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, omega(interval_idx) * help_c, irow, icol, vals)  
+    CALL add_entry(counting, idx, i, j+3, omega(interval_idx) * help_d, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+4, 1.0D0, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j-VAR+4, -1.0D0, irow, icol, vals)
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+    ! delta b_i
+    i = i + 1
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + h_j * x_h
+       help_b = help_b + h_j * h_j * x_h
+       help_c = help_c + h_j * h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * h_j * x_h
+       help_i = help_i + h_j * f(x(l),m) * y(l)
+    END DO
+    CALL add_entry(counting, idx, i, j+0, omega(interval_idx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, omega(interval_idx) * help_b, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, omega(interval_idx) * help_c, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, omega(interval_idx) * help_d, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+4, h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+5, 1.0D0, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j-VAR+5, -1.0D0, irow, icol, vals)
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+    ! delta c_i
+    i = i + 1
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + h_j * h_j * x_h
+       help_b = help_b + h_j * h_j * h_j * x_h
+       help_c = help_c + h_j * h_j * h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
+       help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
+    END DO
+    CALL add_entry(counting, idx, i, j+0, omega(interval_idx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, omega(interval_idx) * help_b, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, omega(interval_idx) * help_c, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, omega(interval_idx) * help_d, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+4, h*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+5, 2.0D0*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+6, 1.0D0, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j-VAR+6, -1.0D0, irow, icol, vals)
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+    ! delta DELTA d_i
+    i = i + 1
+    help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0; help_i = 0.0D0
+    DO l = ii, ie
+       h_j = x(l) - x(ii)
+       x_h = f(x(l),m) * f(x(l),m)
+       help_a = help_a + h_j * h_j * h_j * x_h
+       help_b = help_b + h_j * h_j * h_j * h_j * x_h
+       help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
+       help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
+       help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
+    END DO
+    CALL add_entry(counting, idx, i, j+0, omega(interval_idx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, omega(interval_idx) * help_b, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, omega(interval_idx) * help_c, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, omega(interval_idx) * help_d + lambda(interval_idx), irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+4, h*h*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+5, 3.0D0*h*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+6, 3.0D0*h, irow, icol, vals)
+    IF (.NOT. counting) inh(i) = omega(interval_idx) * help_i
+    
+  END SUBROUTINE process_middle_interval
+
+  !> Build matrix in two passes: count non-zeros, then fill
+  SUBROUTINE build_matrix_two_pass(counting, idx, i, x, y, m, f, lambda, omega, &
+                                   indx, mu1, mu2, nu1, nu2, sig1, sig2, rho1, rho2, &
+                                   c1, cn, VAR, len_indx, irow, icol, vals, inh)
+    LOGICAL, INTENT(IN) :: counting
+    INTEGER(I4B), INTENT(INOUT) :: idx, i
+    REAL(DP), DIMENSION(:), INTENT(IN) :: x, y, lambda, omega
+    REAL(DP), INTENT(IN) :: m, c1, cn
+    INTEGER(I4B), DIMENSION(:), INTENT(IN) :: indx
+    INTEGER(I4B), INTENT(IN) :: mu1, mu2, nu1, nu2, sig1, sig2, rho1, rho2
+    INTEGER(I4B), INTENT(IN) :: VAR, len_indx
+    INTERFACE
+       FUNCTION f(x,m)
+         use nrtype, only : DP
+         IMPLICIT NONE
+         REAL(DP), INTENT(IN) :: x, m
+         REAL(DP)             :: f
+       END FUNCTION f
+    END INTERFACE
+    INTEGER(I4B), DIMENSION(:), INTENT(INOUT), OPTIONAL :: irow, icol
+    REAL(DP), DIMENSION(:), INTENT(INOUT), OPTIONAL :: vals, inh
+    
+    INTEGER(I4B) :: j, ii, ie, l
+    REAL(DP) :: h, h_j, x_h, help_a, help_b, help_c, help_d, help_i, help_inh
+    
+    ! Initialize
+    idx = 0
+    i = 0
+    
+    ! Boundary condition 1 - Always add these entries (even if zero) to match dense structure
+    i = i + 1
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = 2; vals(idx) = DBLE(mu1)
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = 3; vals(idx) = DBLE(nu1)
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = (len_indx-1)*VAR + 2; vals(idx) = DBLE(sig1)
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = (len_indx-1)*VAR + 3; vals(idx) = DBLE(rho1)
+    END IF
+    IF (.NOT. counting) inh(i) = c1
+    
+    ! Coefs for first point
+    j = 1
+    ii = indx((j-1)/VAR+1)
+    ie = indx((j-1)/VAR+2) - 1
+    h = x(indx((j-1)/VAR+2)) - x(ii)
+    
+    ! A_i
+    i = i + 1
+    CALL add_entry(counting, idx, i, j+0, 1.0D0, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+1, h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, h*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, h*h*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+VAR+0, -1.0D0, irow, icol, vals)
+    
+    ! B_i
+    i = i + 1
+    CALL add_entry(counting, idx, i, j+1, 1.0D0, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+2, 2.0D0*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, 3.0D0*h*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+VAR+1, -1.0D0, irow, icol, vals)
+    
+    ! C_i
+    i = i + 1
+    CALL add_entry(counting, idx, i, j+2, 1.0D0, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+3, 3.0D0*h, irow, icol, vals)
+    CALL add_entry(counting, idx, i, j+VAR+2, -1.0D0, irow, icol, vals)
+    
+    ! delta a_i, b_i, c_i, d_i for first interval - exactly as in dense reference
+    CALL process_first_interval(counting, idx, i, j, ii, ie, x, y, m, f, omega, lambda, &
+                               mu1, mu2, nu1, nu2, VAR, len_indx, indx, irow, icol, vals, inh)
+    
+    ! Coefs for points 2 to len_indx-1 - exactly matching dense loop structure
+    DO j = VAR+1, VAR*(len_indx-1)-1, VAR
+       ii = indx((j-1)/VAR+1)
+       ie = indx((j-1)/VAR+2) - 1
+       h = x(indx((j-1)/VAR+2)) - x(ii)
+       
+       ! A_i
+       i = i + 1
+       CALL add_entry(counting, idx, i, j+0, 1.0D0, irow, icol, vals)
+       CALL add_entry(counting, idx, i, j+1, h, irow, icol, vals)
+       CALL add_entry(counting, idx, i, j+2, h*h, irow, icol, vals)
+       CALL add_entry(counting, idx, i, j+3, h*h*h, irow, icol, vals)
+       CALL add_entry(counting, idx, i, j+VAR+0, -1.0D0, irow, icol, vals)
+       
+       ! B_i
+       i = i + 1
+       CALL add_entry(counting, idx, i, j+1, 1.0D0, irow, icol, vals)
+       CALL add_entry(counting, idx, i, j+2, 2.0D0*h, irow, icol, vals)
+       CALL add_entry(counting, idx, i, j+3, 3.0D0*h*h, irow, icol, vals)
+       CALL add_entry(counting, idx, i, j+VAR+1, -1.0D0, irow, icol, vals)
+       
+       ! C_i  
+       i = i + 1
+       CALL add_entry(counting, idx, i, j+2, 1.0D0, irow, icol, vals)
+       CALL add_entry(counting, idx, i, j+3, 3.0D0*h, irow, icol, vals)
+       CALL add_entry(counting, idx, i, j+VAR+2, -1.0D0, irow, icol, vals)
+       
+       ! delta a_i, b_i, c_i, d_i for middle intervals
+       CALL process_middle_interval(counting, idx, i, j, ii, ie, x, y, m, f, omega, lambda, &
+                                   VAR, indx, irow, icol, vals, inh)
+    END DO
+    
+    ! Last point - exactly as in dense reference
+    ii = indx(len_indx)
+    ie = ii
+    help_a = 0.0D0
+    help_inh = 0.0D0
+    l = ii
+    help_a = help_a + f(x(l),m) * f(x(l),m)
+    help_inh = help_inh + f(x(l),m) * y(l)
+    
+    ! delta a_i
+    i = i + 1
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR+1, omega(len_indx) * help_a, irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-2)*VAR+5, omega(len_indx) * (-1.0D0), irow, icol, vals)
+    IF (.NOT. counting) inh(i) = omega(len_indx) * help_inh
+    
+    ! delta b_i
+    i = i + 1
+    CALL add_entry(counting, idx, i, (len_indx-2)*VAR+6, -1.0D0, irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR+4, DBLE(sig1), irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR+5, DBLE(sig2), irow, icol, vals)
+    
+    ! delta c_i
+    i = i + 1
+    CALL add_entry(counting, idx, i, (len_indx-2)*VAR+7, -1.0D0, irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR+4, DBLE(rho1), irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR+5, DBLE(rho2), irow, icol, vals)
+    
+    ! Boundary condition 2 - Always add these entries (even if zero) to match dense structure
+    i = i + 1
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = 2; vals(idx) = DBLE(mu2)
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = 3; vals(idx) = DBLE(nu2)
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = (len_indx-1)*VAR + 2; vals(idx) = DBLE(sig2)
+    END IF
+    idx = idx + 1
+    IF (.NOT. counting) THEN
+       irow(idx) = i; icol(idx) = (len_indx-1)*VAR + 3; vals(idx) = DBLE(rho2)
+    END IF
+    IF (.NOT. counting) inh(i) = cn
+    
+  END SUBROUTINE build_matrix_two_pass
+
+  !> Build matrix using original proven approach (single pass)
+  SUBROUTINE build_matrix_original(idx, i, x, y, m, f, lambda, omega, &
+                                   indx, mu1, mu2, nu1, nu2, sig1, sig2, rho1, rho2, &
+                                   c1, cn, VAR, len_indx, irow_coo, icol_coo, val_coo, inh)
+    INTEGER(I4B), INTENT(INOUT) :: idx, i
+    REAL(DP), DIMENSION(:), INTENT(IN) :: x, y, lambda, omega
+    INTEGER(I4B), DIMENSION(:), INTENT(IN) :: indx
+    REAL(DP), INTENT(IN) :: m, c1, cn
+    INTEGER(I4B), INTENT(IN) :: mu1, mu2, nu1, nu2, sig1, sig2, rho1, rho2, VAR, len_indx
+    INTERFACE
+       FUNCTION f(x,m)
+         use nrtype, only : DP
+         IMPLICIT NONE
+         REAL(DP), INTENT(IN) :: x, m
+         REAL(DP)             :: f
+       END FUNCTION f
+    END INTERFACE
+    INTEGER(I4B), DIMENSION(:), INTENT(INOUT) :: irow_coo, icol_coo
+    REAL(DP), DIMENSION(:), INTENT(INOUT) :: val_coo, inh
+
+    INTEGER(I4B) :: j, ii, ie, l
+    REAL(DP) :: help_a, help_b, help_c, help_d, help_i, help_inh, h, h_j, x_h
+
+    ! Boundary condition 1
+    i = i + 1
+    ! For sparse matrices, only add non-zero entries
+    IF (mu1 /= 0) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 2; val_coo(idx) = DBLE(mu1)
+    END IF
+    IF (nu1 /= 0) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 3; val_coo(idx) = DBLE(nu1)
+    END IF
+    IF (sig1 /= 0) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 2; val_coo(idx) = DBLE(sig1)
+    END IF
+    IF (rho1 /= 0) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 3; val_coo(idx) = DBLE(rho1)
+    END IF
+    inh(i) = c1
+
+    ! Main loop for each interval
+    DO j = 1, VAR*(len_indx-1), VAR
+       ii = indx((j-1)/VAR+1)
+       ie = indx((j-1)/VAR+2) - 1
+       h = x(indx((j-1)/VAR+2)) - x(ii)
+
+       ! delta a_i
+       i = i + 1
+       help_a = 0.0D0
+       help_b = 0.0D0
+       help_c = 0.0D0
+       help_d = 0.0D0
+       help_i = 0.0D0
+       DO l = ii, ie
+          h_j = x(l) - x(ii)
+          x_h = f(x(l),m) * f(x(l),m)
+          help_a = help_a + x_h
+          help_b = help_b + h_j * x_h
+          help_c = help_c + h_j * h_j * x_h
+          help_d = help_d + h_j * h_j * h_j * x_h
+          help_i = help_i + f(x(l),m) * y(l)
+       END DO
+       IF (ABS(help_a) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
+       END IF
+       IF (ABS(help_b) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
+       END IF
+       IF (ABS(help_c) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
+       END IF
+       IF (ABS(help_d) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d
+       END IF
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = 1.0D0
+       IF (j > 1) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j-VAR+4; val_coo(idx) = -1.0D0
+       END IF
+       inh(i) = omega((j-1)/VAR+1) * help_i
+
+       ! delta b_i
+       i = i + 1
+       help_a = 0.0D0
+       help_b = 0.0D0
+       help_c = 0.0D0
+       help_d = 0.0D0
+       help_i = 0.0D0
+       DO l = ii, ie
+          h_j = x(l) - x(ii)
+          x_h = f(x(l),m) * f(x(l),m)
+          help_a = help_a + h_j * x_h
+          help_b = help_b + h_j * h_j * x_h
+          help_c = help_c + h_j * h_j * h_j * x_h
+          help_d = help_d + h_j * h_j * h_j * h_j * x_h
+          help_i = help_i + h_j * f(x(l),m) * y(l)
+       END DO
+       IF (ABS(help_a) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
+       END IF
+       IF (ABS(help_b) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
+       END IF
+       IF (ABS(help_c) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
+       END IF
+       IF (ABS(help_d) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d
+       END IF
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = h
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+5; val_coo(idx) = 1.0D0
+       IF (j == 1) THEN
+          IF (nu1 == 1) THEN
+             idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+4; val_coo(idx) = DBLE(nu1)
+          END IF
+          IF (nu2 == 1) THEN
+             idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+5; val_coo(idx) = DBLE(nu2)
+          END IF
+       ELSE
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j-VAR+5; val_coo(idx) = -1.0D0
+       END IF
+       inh(i) = omega((j-1)/VAR+1) * help_i
+
+       ! delta c_i
+       i = i + 1
+       help_a = 0.0D0
+       help_b = 0.0D0
+       help_c = 0.0D0
+       help_d = 0.0D0
+       help_i = 0.0D0
+       DO l = ii, ie
+          h_j = x(l) - x(ii)
+          x_h = f(x(l),m) * f(x(l),m)
+          help_a = help_a + h_j * h_j * h_j * x_h
+          help_b = help_b + h_j * h_j * h_j * h_j * x_h
+          help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
+          help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
+          help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
+       END DO
+       IF (ABS(help_a) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
+       END IF
+       IF (ABS(help_b) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
+       END IF
+       IF (ABS(help_c) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
+       END IF
+       IF (ABS(help_d) > 1D-15 .OR. ABS(lambda((j-1)/VAR+1)) > 1D-15) THEN
+          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1)
+       END IF
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = h * h * h
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+5; val_coo(idx) = 3.0D0 * h * h
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+6; val_coo(idx) = 3.0D0 * h
+       inh(i) = omega((j-1)/VAR+1) * help_i
+    END DO
+
+    ! Last segment special conditions
+    j = VAR*(len_indx-1)+1
+    ii = indx(len_indx)
+    ie = ii  ! Last point only, matching original algorithm
+    
+    ! delta a_{N-1}
+    i = i + 1
+    help_a = 0.0D0
+    help_inh = 0.0D0
+    l = ii
+    help_a = help_a + f(x(l),m) * f(x(l),m)
+    help_inh = help_inh + f(x(l),m) * y(l)
+    IF (ABS(help_a) > 1D-15) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+1; val_coo(idx) = omega(len_indx) * help_a
+    END IF
+    idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-2)*VAR+5; val_coo(idx) = -1.0D0
+    inh(i) = omega(len_indx) * help_inh
+    
+    ! delta b_{N-1}
+    i = i + 1
+    idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-2)*VAR+6; val_coo(idx) = -1.0D0
+    IF (sig1 == 1) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+4; val_coo(idx) = DBLE(sig1)
+    END IF
+    IF (sig2 == 1) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+5; val_coo(idx) = DBLE(sig2)
+    END IF
+    
+    ! delta c_{N-1}
+    i = i + 1
+    idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-2)*VAR+7; val_coo(idx) = -1.0D0
+    IF (rho1 == 1) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+4; val_coo(idx) = DBLE(rho1)
+    END IF
+    IF (rho2 == 1) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+5; val_coo(idx) = DBLE(rho2)
+    END IF
+    
+    ! Boundary condition 2
+    i = i + 1
+    ! For sparse matrices, only add non-zero entries
+    IF (mu2 /= 0) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 2; val_coo(idx) = DBLE(mu2)
+    END IF
+    IF (nu2 /= 0) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 3; val_coo(idx) = DBLE(nu2)
+    END IF
+    IF (sig2 /= 0) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 2; val_coo(idx) = DBLE(sig2)
+    END IF
+    IF (rho2 /= 0) THEN
+       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 3; val_coo(idx) = DBLE(rho2)
+    END IF
+    inh(i) = cn
+
+  END SUBROUTINE build_matrix_original
+
   !> Direct sparse implementation matching splinecof3_a algorithm
   SUBROUTINE splinecof3_direct_sparse(x, y, c1, cn, lambda1, indx, sw1, sw2, &
        a, b, c, d, m, f)
@@ -35,11 +894,10 @@ contains
 
     ! Local variables
     INTEGER(I4B) :: len_indx, VAR, size_dimension
-    INTEGER(I4B) :: i, j, k, l, ii, ie, nnz, idx, max_nnz
+    INTEGER(I4B) :: i, j, k, nnz, idx, nnz_max, ii, ie, l, neq
     INTEGER(I4B) :: i_alloc, mu1, mu2, nu1, nu2, sig1, sig2, rho1, rho2
     INTEGER(I4B) :: nrow, ncol, pos, len_x
-    REAL(DP) :: h, h_j, x_h
-    REAL(DP) :: help_a, help_b, help_c, help_d, help_i, help_inh
+    REAL(DP) :: help_a, help_b, help_c, help_d, help_i, h, h_j, x_h
     REAL(DP), DIMENSION(:), ALLOCATABLE :: lambda, omega, inh
     ! COO format arrays
     INTEGER(I4B), DIMENSION(:), ALLOCATABLE :: irow_coo, icol_coo
@@ -156,303 +1014,31 @@ contains
     CASE(4); rho2 = 1
     END SELECT
 
-    ! Conservative estimate for maximum non-zeros:
-    ! Use a safety factor to account for all possible matrix entries
-    ! Based on dense matrix size with sparsity considerations
-    max_nnz = MIN(size_dimension * size_dimension, &
-                  2 * size_dimension * VAR)  ! Conservative upper bound
+    ! Calculate system size exactly as in dense reference implementation
+    size_dimension = VAR * len_indx - 2
+    neq = size_dimension
+    ncol = size_dimension
+    nrow = size_dimension
     
-    ! Allocate COO format arrays
-    ALLOCATE(irow_coo(max_nnz), icol_coo(max_nnz), val_coo(max_nnz), &
-             stat = i_alloc)
-    if(i_alloc /= 0) stop 'Allocation for COO arrays failed!'
-    
-    ! Build the sparse matrix in COO format
+    ! Use two-pass approach: first count exact non-zeros, then allocate and fill
     idx = 0
     i = 0
-
-    ! Boundary condition 1
-    i = i + 1
-    ! For sparse matrices, only add non-zero entries
-    IF (mu1 /= 0) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 2; val_coo(idx) = DBLE(mu1)
-    END IF
-    IF (nu1 /= 0) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 3; val_coo(idx) = DBLE(nu1)
-    END IF
-    IF (sig1 /= 0) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 2; val_coo(idx) = DBLE(sig1)
-    END IF
-    IF (rho1 /= 0) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 3; val_coo(idx) = DBLE(rho1)
-    END IF
-    inh(i) = c1
-
-    ! Main loop over intervals
-    DO j = 1, VAR*(len_indx-1)-1, VAR
-       ii = indx((j-1)/VAR+1)
-       ie = indx((j-1)/VAR+2) - 1
-       h  = x(indx((j-1)/VAR+2)) - x(ii)
-
-       ! Continuity conditions - A_i, B_i, C_i
-       ! A_i continuity
-       i = i + 1
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = 1.0D0
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = h*h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = h*h*h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+VAR; val_coo(idx) = -1.0D0
-
-       ! B_i continuity
-       i = i + 1
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = 1.0D0
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = 2.0D0*h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = 3.0D0*h*h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+VAR+1; val_coo(idx) = -1.0D0
-
-       ! C_i continuity
-       i = i + 1
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = 1.0D0
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = 3.0D0*h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+VAR+2; val_coo(idx) = -1.0D0
-
-       ! Fitting conditions - compute coefficients
-       help_a = 0.0D0; help_b = 0.0D0; help_c = 0.0D0; help_d = 0.0D0
-       help_i = 0.0D0
-       
-       DO l = ii, ie
-          h_j = x(l) - x(ii)
-          x_h = f(x(l),m) * f(x(l),m)
-          help_a = help_a + x_h
-          help_b = help_b + h_j * x_h
-          help_c = help_c + h_j * h_j * x_h
-          help_d = help_d + h_j * h_j * h_j * x_h
-          help_i = help_i + f(x(l),m) * y(l)
-       END DO
-
-       ! delta a_i
-       i = i + 1
-       IF (ABS(help_a) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
-       END IF
-       IF (ABS(help_b) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
-       END IF
-       IF (ABS(help_c) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
-       END IF
-       IF (ABS(help_d) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d
-       END IF
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = 1.0D0
-       IF (j > 1) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j-VAR+4; val_coo(idx) = -1.0D0
-       END IF
-       inh(i) = omega((j-1)/VAR+1) * help_i
-
-       ! delta b_i
-       i = i + 1
-       help_a = 0.0D0
-       help_b = 0.0D0
-       help_c = 0.0D0
-       help_d = 0.0D0
-       help_i = 0.0D0
-       DO l = ii, ie
-          h_j = x(l) - x(ii)
-          x_h = f(x(l),m) * f(x(l),m)
-          help_a = help_a + h_j * x_h
-          help_b = help_b + h_j * h_j * x_h
-          help_c = help_c + h_j * h_j * h_j * x_h
-          help_d = help_d + h_j * h_j * h_j * h_j * x_h
-          help_i = help_i + h_j * f(x(l),m) * y(l)
-       END DO
-       IF (ABS(help_a) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
-       END IF
-       IF (ABS(help_b) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
-       END IF
-       IF (ABS(help_c) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
-       END IF
-       IF (ABS(help_d) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d
-       END IF
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+5; val_coo(idx) = 1.0D0
-       IF (j == 1) THEN
-          IF (mu1 == 1) THEN
-             idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+4; val_coo(idx) = DBLE(mu1)
-          END IF
-          IF (mu2 == 1) THEN
-             idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+5; val_coo(idx) = DBLE(mu2)
-          END IF
-       ELSE
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j-VAR+5; val_coo(idx) = -1.0D0
-       END IF
-       inh(i) = omega((j-1)/VAR+1) * help_i
-
-       ! delta c_i
-       i = i + 1
-       help_a = 0.0D0
-       help_b = 0.0D0
-       help_c = 0.0D0
-       help_d = 0.0D0
-       help_i = 0.0D0
-       DO l = ii, ie
-          h_j = x(l) - x(ii)
-          x_h = f(x(l),m) * f(x(l),m)
-          help_a = help_a + h_j * h_j * x_h
-          help_b = help_b + h_j * h_j * h_j * x_h
-          help_c = help_c + h_j * h_j * h_j * h_j * x_h
-          help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
-          help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
-       END DO
-       IF (ABS(help_a) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
-       END IF
-       IF (ABS(help_b) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
-       END IF
-       IF (ABS(help_c) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
-       END IF
-       IF (ABS(help_d) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d
-       END IF
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = h * h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+5; val_coo(idx) = 2.0D0 * h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+6; val_coo(idx) = 1.0D0
-       IF (j == 1) THEN
-          IF (nu1 == 1) THEN
-             idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+4; val_coo(idx) = DBLE(nu1)
-          END IF
-          IF (nu2 == 1) THEN
-             idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+5; val_coo(idx) = DBLE(nu2)
-          END IF
-       ELSE
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j-VAR+6; val_coo(idx) = -1.0D0
-       END IF
-       inh(i) = omega((j-1)/VAR+1) * help_i
-
-       ! delta DELTA d_i
-       i = i + 1
-       help_a = 0.0D0
-       help_b = 0.0D0
-       help_c = 0.0D0
-       help_d = 0.0D0
-       help_i = 0.0D0
-       DO l = ii, ie
-          h_j = x(l) - x(ii)
-          x_h = f(x(l),m) * f(x(l),m)
-          help_a = help_a + h_j * h_j * h_j * x_h
-          help_b = help_b + h_j * h_j * h_j * h_j * x_h
-          help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
-          help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
-          help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
-       END DO
-       IF (ABS(help_a) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
-       END IF
-       IF (ABS(help_b) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
-       END IF
-       IF (ABS(help_c) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
-       END IF
-       IF (ABS(help_d) > 1D-15 .OR. ABS(lambda((j-1)/VAR+1)) > 1D-15) THEN
-          idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1)
-       END IF
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = h * h * h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+5; val_coo(idx) = 3.0D0 * h * h
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+6; val_coo(idx) = 3.0D0 * h
-       inh(i) = omega((j-1)/VAR+1) * help_i
-    END DO
-
-    ! Last segment special conditions
-    j = VAR*(len_indx-1)+1
-    ii = indx(len_indx)
-    ie = ii  ! Last point only, matching original algorithm
-    
-    ! delta a_{N-1}
-    i = i + 1
-    help_a = 0.0D0
-    help_inh = 0.0D0
-    l = ii
-    help_a = help_a + f(x(l),m) * f(x(l),m)
-    help_inh = help_inh + f(x(l),m) * y(l)
-    IF (ABS(help_a) > 1D-15) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+1; val_coo(idx) = omega(len_indx) * help_a
-    END IF
-    idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-2)*VAR+5; val_coo(idx) = -1.0D0
-    inh(i) = omega(len_indx) * help_inh
-    
-    ! delta b_{N-1}
-    i = i + 1
-    idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-2)*VAR+6; val_coo(idx) = -1.0D0
-    IF (sig1 == 1) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+4; val_coo(idx) = DBLE(sig1)
-    END IF
-    IF (sig2 == 1) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+5; val_coo(idx) = DBLE(sig2)
-    END IF
-    
-    ! delta c_{N-1}
-    i = i + 1
-    idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-2)*VAR+7; val_coo(idx) = -1.0D0
-    IF (rho1 == 1) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+4; val_coo(idx) = DBLE(rho1)
-    END IF
-    IF (rho2 == 1) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+5; val_coo(idx) = DBLE(rho2)
-    END IF
-    
-    ! Boundary condition 2
-    i = i + 1
-    ! For sparse matrices, only add non-zero entries
-    IF (mu2 /= 0) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 2; val_coo(idx) = DBLE(mu2)
-    END IF
-    IF (nu2 /= 0) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 3; val_coo(idx) = DBLE(nu2)
-    END IF
-    IF (sig2 /= 0) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 2; val_coo(idx) = DBLE(sig2)
-    END IF
-    IF (rho2 /= 0) THEN
-       idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 3; val_coo(idx) = DBLE(rho2)
-    END IF
-    inh(i) = cn
-
-    ! Total non-zeros
+    CALL build_matrix_two_pass(.TRUE., idx, i, x, y, m, f, lambda, omega, &
+                              indx, mu1, mu2, nu1, nu2, sig1, sig2, rho1, rho2, &
+                              c1, cn, VAR, len_indx)
     nnz = idx
     
-    IF (nnz == 0) THEN
-       WRITE(0,*) 'ERROR: No non-zero entries in matrix!'
-       STOP
-    END IF
-    
-    IF (nnz > max_nnz) THEN
-       WRITE(0,*) 'CRITICAL ERROR: Buffer overflow detected!'
-       WRITE(0,*) 'Actual non-zeros:', nnz, ' > estimated max:', max_nnz
-       WRITE(0,*) 'This indicates memory corruption has occurred.'
-       WRITE(0,*) 'Increase max_nnz estimate in splinecof3_direct_sparse.f90'
-       STOP 'Memory safety violation detected'
-    END IF
+    ! Allocate with exact count (no waste)
+    ALLOCATE(irow_coo(nnz), icol_coo(nnz), val_coo(nnz), stat = i_alloc)
+    if(i_alloc /= 0) stop 'Allocation for COO arrays failed!'
 
-    ! Store COO matrix for inspection
-    IF (ALLOCATED(last_irow_coo)) DEALLOCATE(last_irow_coo)
-    IF (ALLOCATED(last_icol_coo)) DEALLOCATE(last_icol_coo)
-    IF (ALLOCATED(last_val_coo)) DEALLOCATE(last_val_coo)
-    IF (ALLOCATED(last_rhs_coo)) DEALLOCATE(last_rhs_coo)
-    ALLOCATE(last_irow_coo(nnz), last_icol_coo(nnz), last_val_coo(nnz), &
-             last_rhs_coo(size_dimension))
-    last_irow_coo(1:nnz) = irow_coo(1:nnz)
-    last_icol_coo(1:nnz) = icol_coo(1:nnz)
-    last_val_coo(1:nnz) = val_coo(1:nnz)
-    last_rhs_coo = inh
-    last_nnz = nnz
-    last_n = size_dimension
+    ! Second pass: fill the arrays
+    idx = 0
+    i = 0
+    CALL build_matrix_two_pass(.FALSE., idx, i, x, y, m, f, lambda, omega, &
+                              indx, mu1, mu2, nu1, nu2, sig1, sig2, rho1, rho2, &
+                              c1, cn, VAR, len_indx, irow_coo, icol_coo, val_coo, inh)
+    nnz = idx
 
     ! Now convert from COO to CSC format
     ! First count entries per column
@@ -494,12 +1080,23 @@ contains
     ! Call sparse_solve with CSC format
     CALL sparse_solve(nrow, ncol, nnz, irow_csc, pcol_csc, val_csc, inh)
     
-    ! Extract solution
+    ! Extract solution and check for NaN/Inf
     DO i = 1, len_indx
        a(i) = inh((i-1)*VAR+1)
        b(i) = inh((i-1)*VAR+2)
        c(i) = inh((i-1)*VAR+3)
        d(i) = inh((i-1)*VAR+4)
+       
+       ! Check for NaN or Inf in solution
+       IF (.NOT. (ABS(a(i)) <= HUGE(a(i)) .AND. ABS(b(i)) <= HUGE(b(i)) .AND. &
+                  ABS(c(i)) <= HUGE(c(i)) .AND. ABS(d(i)) <= HUGE(d(i)))) THEN
+          WRITE(*,*) 'ERROR: NaN or Inf detected in spline coefficients at interval', i
+          WRITE(*,*) '  a =', a(i), ' b =', b(i), ' c =', c(i), ' d =', d(i)
+          WRITE(*,*) '  This indicates a numerical problem in the spline fitting.'
+          WRITE(*,*) '  Possible causes: ill-conditioned matrix, insufficient data points,'
+          WRITE(*,*) '  or numerical overflow in matrix construction.'
+          ERROR STOP 'SPLINECOF3_DIRECT_SPARSE: NaN/Inf in spline coefficients'
+       END IF
     END DO
     
     ! Clean up
@@ -514,15 +1111,9 @@ contains
     REAL(DP), DIMENSION(:), ALLOCATABLE, INTENT(OUT) :: val, rhs
     INTEGER(I4B), INTENT(OUT) :: nnz, n
     
-    nnz = last_nnz
-    n = last_n
-    IF (nnz > 0 .AND. ALLOCATED(last_irow_coo)) THEN
-       ALLOCATE(irow(nnz), icol(nnz), val(nnz), rhs(n))
-       irow = last_irow_coo
-       icol = last_icol_coo
-       val = last_val_coo
-       rhs = last_rhs_coo
-    END IF
+    ! Storage disabled to avoid allocation issues
+    nnz = 0
+    n = 0
   END SUBROUTINE splinecof3_direct_sparse_get_coo
 
 end module splinecof3_direct_sparse_mod

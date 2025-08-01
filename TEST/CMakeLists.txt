@@ -37,3 +37,36 @@ set_tests_properties(spline_comparison_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests PASSED!"
     FAIL_REGULAR_EXPRESSION "Some tests FAILED!"
 )
+
+# Unit test executable
+add_executable(test_spline_unit
+    test_spline_unit.f90
+)
+
+# Set compiler flags
+target_compile_options(test_spline_unit PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_spline_unit
+    common
+)
+
+# Include directories
+target_include_directories(test_spline_unit PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME spline_unit_test 
+         COMMAND test_spline_unit
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(spline_unit_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "All large spline tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some large spline tests FAILED!"
+)
