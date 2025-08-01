@@ -1,0 +1,109 @@
+name: Unit Tests with Coverage
+
+on:
+  push:
+    branches: [ main, develop, faster-spline ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  unit-tests-coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install required packages
+        run: |
+          sudo apt update
+          sudo apt install git cmake make ninja-build gcc g++ gfortran jq lcov
+          sudo apt install openmpi-bin openmpi-common libopenmpi-dev
+          sudo apt install libopenblas-dev libsuitesparse-dev
+          sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
+
+      - name: Install lcov_cobertura for XML conversion
+        run: pip install lcov-cobertura
+
+      - name: Cache libneo build
+        uses: actions/cache@v4
+        with:
+          path: |
+            libneo/build
+            libneo/install
+          key: ${{ runner.os }}-libneo-${{ hashFiles('libneo/**') }}
+          restore-keys: |
+            ${{ runner.os }}-libneo-
+
+      - name: Build libneo
+        run: |
+          cd libneo
+          if [ ! -f install/lib/libneo.a ]; then
+            echo "Building libneo..."
+            make install
+          else
+            echo "Using cached libneo build"
+          fi
+
+      - name: Build NEO-2 with coverage flags
+        run: |
+          export CC=gcc CXX=g++ FC=gfortran
+          cmake --preset default -DCMAKE_BUILD_TYPE=Coverage
+          cmake --build --preset default
+
+      - name: Run unit tests with coverage
+        run: |
+          make test
+
+      - name: Generate coverage report
+        run: |
+          # Capture coverage data with proper settings for Fortran
+          cd build && lcov --capture --directory . --output-file coverage.info \
+            --rc branch_coverage=1 \
+            --rc geninfo_unexecuted_blocks=1 \
+            --ignore-errors inconsistent,mismatch,empty,unused
+          
+          # Filter coverage data to include only source code
+          lcov --remove coverage.info \
+            '*/build/*' \
+            '*/TEST/*' \
+            '*/libneo/*' \
+            '*/thirdparty/*' \
+            '*/DOC/*' \
+            '*/MULTI-SPEC-TOOLS/*' \
+            '*/tools/*' \
+            '/usr/*' \
+            '/tmp/*' \
+            --output-file coverage_filtered.info \
+            --rc branch_coverage=1 \
+            --ignore-errors unused,empty
+          
+          # Generate XML for Codecov
+          lcov_cobertura coverage_filtered.info -o coverage.xml
+          
+          # Show coverage summary
+          echo "=== Coverage Summary ===" >> $GITHUB_STEP_SUMMARY
+          lcov --summary coverage_filtered.info >> $GITHUB_STEP_SUMMARY || echo "No coverage data found" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./build/coverage.xml
+          flags: unittests
+          name: unit-tests-coverage
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            build/coverage.info
+            build/coverage_filtered.info
+            build/coverage.xml
+          retention-days: 7

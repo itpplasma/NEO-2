@@ -1,9 +1,7 @@
 project(NEO-2-TESTS)
 enable_testing()
 
-# Add coverage flags for all test executables
-set(COVERAGE_FLAGS -g --coverage -fprofile-arcs -ftest-coverage)
-set(COVERAGE_LINK_FLAGS --coverage)
+# Coverage flags are now handled globally via CMAKE_BUILD_TYPE=Coverage
 
 # Test executable
 # QODO NOTE: spline_cof_original_dense.f90 is intentionally kept as a reference
@@ -14,11 +12,10 @@ add_executable(test_spline_comparison
     spline_cof_original_dense.f90
 )
 
-# Set compiler flags with coverage
+# Set compiler flags
 target_compile_options(test_spline_comparison PRIVATE
-    -g -fbacktrace ${COVERAGE_FLAGS}
+    -g -fbacktrace
 )
-target_link_options(test_spline_comparison PRIVATE ${COVERAGE_LINK_FLAGS})
 
 # Link to the common library which contains all our modules
 target_link_libraries(test_spline_comparison
@@ -48,11 +45,10 @@ add_executable(test_spline_unit
     test_spline_unit.f90
 )
 
-# Set compiler flags with coverage
+# Set compiler flags
 target_compile_options(test_spline_unit PRIVATE
-    -g -fbacktrace ${COVERAGE_FLAGS}
+    -g -fbacktrace
 )
-target_link_options(test_spline_unit PRIVATE ${COVERAGE_LINK_FLAGS})
 
 # Link to the common library which contains all our modules
 target_link_libraries(test_spline_unit
@@ -83,11 +79,10 @@ add_executable(test_spline_analytical
     spline_cof_original_dense.f90
 )
 
-# Set compiler flags with coverage
+# Set compiler flags
 target_compile_options(test_spline_analytical PRIVATE
-    -g -fbacktrace ${COVERAGE_FLAGS}
+    -g -fbacktrace
 )
-target_link_options(test_spline_analytical PRIVATE ${COVERAGE_LINK_FLAGS})
 
 # Link to the common library which contains all our modules
 target_link_libraries(test_spline_analytical
@@ -118,11 +113,10 @@ add_executable(test_spline_three_way
     spline_cof_original_dense.f90
 )
 
-# Set compiler flags with coverage
+# Set compiler flags
 target_compile_options(test_spline_three_way PRIVATE
-    -g -fbacktrace ${COVERAGE_FLAGS}
+    -g -fbacktrace
 )
-target_link_options(test_spline_three_way PRIVATE ${COVERAGE_LINK_FLAGS})
 
 # Link to the common library which contains all our modules
 target_link_libraries(test_spline_three_way
@@ -153,11 +147,10 @@ add_executable(test_spline_matrix_comparison
     spline_cof_original_dense.f90
 )
 
-# Set compiler flags with coverage
+# Set compiler flags
 target_compile_options(test_spline_matrix_comparison PRIVATE
-    -g -fbacktrace ${COVERAGE_FLAGS}
+    -g -fbacktrace
 )
-target_link_options(test_spline_matrix_comparison PRIVATE ${COVERAGE_LINK_FLAGS})
 
 # Link to the common library which contains all our modules
 target_link_libraries(test_spline_matrix_comparison
