@@ -33,7 +33,7 @@ jobs:
       - name: Cache apt packages
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: git cmake make ninja-build gcc g++ gfortran jq lcov libopenblas-dev liblapack-dev libsuitesparse-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev
+          packages: git cmake make ninja-build gcc g++ gfortran jq lcov libopenblas-dev liblapack-dev libsuitesparse-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev
           version: 1.0
 
       - name: Install MPI packages separately
