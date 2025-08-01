@@ -181,67 +181,238 @@ SuiteSparse (UMFPACK) doesn't provide standalone ILU - it uses complete LU facto
 3. Begin Phase 1.1 implementation
 4. Weekly progress reviews and adjustments
 
-## Analysis of Current Arnoldi-Richardson Implementation
+## Comprehensive Solver Framework with Test-Driven Development
 
-### Critical Re-evaluation
+### Solver Architecture Overview
 
-After deeper analysis, the Arnoldi-Richardson method appears to be **over-engineered** for the problem:
+We need a **unified solver framework** that:
+1. Maintains all solvers (including legacy Arnoldi-Richardson)
+2. Provides clean configuration via namelist
+3. Centralizes solver dispatch logic
+4. Includes comprehensive testing for each method
+5. Makes solver selection transparent to users
 
-1. **What it actually does:**
-   - Solves `f = Af + q` by finding eigenvalues |λ| ≥ 0.5 of iteration matrix A
-   - Explicitly deflates these eigenvalues using expensive Arnoldi iteration
-   - Applies modified Richardson iteration with deflation
+### Solver Methods and Use Cases
 
-2. **Why BiCGSTAB+ILU is superior:**
-   - **Handles conditioning implicitly** - ILU preconditioner approximates (I-A)^(-1)
-   - **No expensive eigenvalue computation** - saves memory and computation
-   - **More robust** - BiCGSTAB designed for indefinite/ill-conditioned systems
-   - **Simpler implementation** - fewer points of failure
+| Method | ID | Use Case | Memory | Speed | Status |
+|--------|----|-|--------|-------|---------|
+| **UMFPACK** | 3 | Small problems, validation | High | Fast (small) | Keep |
+| **BiCGSTAB+ILU** | 4 | Default production solver | Low | Fast (large) | Primary |
+| **Arnoldi-Richardson** | 5 | Legacy, stability analysis | Medium | Medium | Maintain |
+| **GMRES+ILU** | 6 | Future option | Low | Fast | Future |
 
-3. **The fundamental issue:**
-   - The system `(I-A)f = q` may be ill-conditioned if A has eigenvalues near 1
-   - Arnoldi-Richardson explicitly finds and deflates these modes
-   - But **ILU preconditioning achieves the same effect** without eigenvalue computation
-   - Modern Krylov methods like BiCGSTAB are designed precisely for such systems
+### Phase 0: Solver Framework Infrastructure (Week 0.5)
 
-### Revised Recommendation: Replace Completely
+#### 0.1 Central Solver Dispatcher Module
+**File:** `COMMON/solver_dispatch_mod.f90`
+```fortran
+module solver_dispatch_mod
+  use sparse_mod
+  use bicgstab_mod
+  use arnoldi_mod
+  
+  integer :: global_solver_method = 4  ! Default BiCGSTAB
+  logical :: solver_verbose = .false.
+  character(len=32) :: solver_name = "BiCGSTAB+ILU"
+  
+contains
+  subroutine solve_linear_system(matrix, rhs, solution, info)
+    ! Central dispatch based on global_solver_method
+  subroutine get_solver_info(method, name, description)
+    ! Return human-readable solver information
+end module
+```
 
-**BiCGSTAB+ILU should replace ALL solver methods** for the following reasons:
+#### 0.2 Configuration via Namelist
+**Update:** Add to existing namelist structure in `neo2.f90`
+```fortran
+! New namelist group
+namelist /solver_control/ &
+  solver_method,          & ! 3=UMFPACK, 4=BiCGSTAB, 5=Arnoldi-Richardson
+  solver_tolerance,       & ! Iterative solver tolerance (default 1e-12)
+  solver_max_iter,        & ! Maximum iterations (default 1000)
+  solver_verbose,         & ! Print convergence info
+  ilu_fill_level,         & ! ILU(k) level (default 1)
+  ilu_drop_tolerance,     & ! ILU drop tolerance (default 0)
+  arnoldi_max_eigvals,    & ! Max eigenvalues for Arnoldi (default 10)
+  arnoldi_threshold       & ! Eigenvalue threshold (default 0.5)
+```
 
-1. **Conditioning**: ILU(1) handles the same conditioning issues that Arnoldi targets
-2. **Memory**: Eliminates eigenvalue storage and Arnoldi basis vectors
-3. **Performance**: No expensive eigenvalue computation overhead
-4. **Robustness**: BiCGSTAB is more stable than Richardson iteration
-5. **Simplicity**: One solver for all cases reduces code complexity
+#### 0.3 Test Framework Infrastructure
+**File:** `COMMON/test_solvers_framework_mod.f90`
+- [ ] Test matrix generators (diagonal, tridiagonal, random sparse)
+- [ ] Solution verification utilities
+- [ ] Performance timing framework
+- [ ] Automated test runner
 
-### Why Arnoldi-Richardson is Obsolete
+### Phase 1: Core Solver Implementations (Week 1)
 
-The Arnoldi-Richardson approach is essentially:
-- Find problematic eigenvalues (expensive)
-- Modify them explicitly (complex)
-- Iterate with modification (slow)
+#### 1.1 BiCGSTAB+ILU Implementation
+As previously detailed, but with integration hooks:
+- [ ] Implement core BiCGSTAB algorithm
+- [ ] ILU(1) preconditioner
+- [ ] Integration with dispatcher
+- [ ] **Unit tests:**
+  - Diagonal systems
+  - SPD matrices
+  - Indefinite systems
 
-BiCGSTAB+ILU achieves the same goal:
-- ILU approximates the inverse (handles conditioning)
-- BiCGSTAB iterates robustly (handles indefiniteness)
-- No eigenvalue computation needed (fast)
+#### 1.2 Arnoldi-Richardson Testing Framework
+**File:** `COMMON/test_arnoldi_mod.f90`
+- [ ] Extract current Arnoldi implementation into testable units
+- [ ] Create test cases for eigenvalue computation
+- [ ] Test Richardson iteration with deflation
+- [ ] **Legacy validation tests:**
+  - Compare with existing NEO-2-QL results
+  - Verify eigenvalue deflation works correctly
+  - Test on known unstable systems
 
-### Final Solver Strategy
+#### 1.3 UMFPACK Testing
+**File:** `COMMON/test_umfpack_mod.f90`
+- [ ] Wrapper for consistent testing interface
+- [ ] Memory usage profiling
+- [ ] **Validation tests:**
+  - Small dense systems
+  - Factorization accuracy
+  - Multiple RHS handling
 
-| Method | Use Case | Status |
-|--------|----------|--------|
-| **UMFPACK** (method 3) | Fallback for small problems | Keep temporarily |
-| **BiCGSTAB+ILU** (method 4) | **ALL PROBLEMS** | Primary solver |
-| **Arnoldi-Richardson** | None - obsolete | Phase out |
+### Phase 2: Comprehensive Testing Suite (Week 2)
 
-### Updated Integration Plan
+#### 2.1 Solver Comparison Framework
+**File:** `COMMON/test_solver_comparison_mod.f90`
+```fortran
+type :: solver_test_result
+  integer :: method
+  real(dp) :: solve_time
+  real(dp) :: memory_used
+  real(dp) :: residual_norm
+  integer :: iterations
+  logical :: converged
+end type
 
-1. **Implement BiCGSTAB+ILU as universal solver**
-2. **Test on all existing test cases** including those using Arnoldi
-3. **Remove Arnoldi-Richardson** after validation
-4. **Simplify codebase** with single solver path
+subroutine run_solver_comparison(matrix, rhs, results)
+  ! Run all available solvers on same problem
+  ! Compare accuracy, performance, memory
+end subroutine
+```
 
-The physics is preserved - we're solving the same linear system, just more efficiently.
+#### 2.2 Physics-Based Test Cases
+**File:** `COMMON/test_physics_matrices_mod.f90`
+- [ ] Extract real collision operator matrices
+- [ ] Create simplified drift-kinetic test problems
+- [ ] Generate matrices with known eigenvalue distributions
+- [ ] **Test categories:**
+  - Well-conditioned collision operators
+  - Ill-conditioned with eigenvalues near 1
+  - Multi-species coupling matrices
+
+#### 2.3 Automated Test Suite
+**File:** `tests/run_solver_tests.f90`
+```fortran
+program run_solver_tests
+  ! Test matrix sizes: 100, 1000, 10000
+  ! Test types: diagonal, tridiagonal, collision-like
+  ! For each solver method:
+  !   - Verify correctness
+  !   - Measure performance
+  !   - Check memory usage
+  !   - Test convergence behavior
+  ! Generate comparison report
+end program
+```
+
+### Phase 3: Integration and Configuration (Week 3)
+
+#### 3.1 Solver Selection Logic
+**Update:** `COMMON/solver_dispatch_mod.f90`
+- [ ] Auto-selection based on problem size
+- [ ] Override mechanism via namelist
+- [ ] Fallback chain: BiCGSTAB → Arnoldi → UMFPACK
+- [ ] Clear logging of solver choice
+
+#### 3.2 User Documentation
+**File:** `DOC/SOLVERS.md`
+- [ ] Solver selection guide
+- [ ] Performance characteristics
+- [ ] When to use each solver
+- [ ] Configuration examples
+
+#### 3.3 Integration Tests
+- [ ] Full NEO-2-QL runs with each solver
+- [ ] NEO-2-PAR compatibility (BiCGSTAB, UMFPACK)
+- [ ] Golden record tests with solver variations
+- [ ] Memory scaling tests with increasing lag
+
+### Phase 4: Validation and Benchmarking (Week 4)
+
+#### 4.1 Solver Validation Matrix
+| Test Case | UMFPACK | BiCGSTAB | Arnoldi | Expected |
+|-----------|---------|----------|---------|----------|
+| Small collision op | ✓ | ✓ | ✓ | Baseline |
+| Large collision op | ✓ | ✓ | ✓ | BiCGSTAB fastest |
+| Unstable system | ✓ | ✓ | ✓ | Arnoldi most robust |
+| Multi-species | ✓ | ✓ | ✓ | All converge |
+
+#### 4.2 Performance Benchmarks
+- [ ] Runtime vs matrix size for each solver
+- [ ] Memory usage vs matrix size
+- [ ] Iteration counts for iterative methods
+- [ ] Scaling with lag parameter
+
+#### 4.3 Production Readiness
+- [ ] Default solver selection (BiCGSTAB+ILU)
+- [ ] Clear error messages for solver failures
+- [ ] Automatic fallback on convergence failure
+- [ ] Performance regression tests
+
+### Configuration Examples
+
+#### Default Configuration (BiCGSTAB+ILU)
+```fortran
+&solver_control
+  solver_method = 4           ! BiCGSTAB+ILU
+  solver_tolerance = 1.0e-12
+  solver_max_iter = 1000
+  ilu_fill_level = 1
+/
+```
+
+#### Legacy Arnoldi-Richardson
+```fortran
+&solver_control
+  solver_method = 5           ! Arnoldi-Richardson
+  arnoldi_max_eigvals = 20
+  arnoldi_threshold = 0.5
+  solver_verbose = .true.
+/
+```
+
+#### High-Accuracy UMFPACK
+```fortran
+&solver_control
+  solver_method = 3           ! UMFPACK direct
+  solver_verbose = .false.
+/
+```
+
+### Test-Driven Development Workflow
+
+1. **Write tests first** for each solver component
+2. **Implement minimal code** to pass tests
+3. **Refactor** for performance and clarity
+4. **Integration test** with existing NEO-2 code
+5. **Document** configuration and usage
+6. **Benchmark** against current implementation
+
+### Success Criteria
+
+1. **All solvers pass comprehensive test suite**
+2. **BiCGSTAB+ILU achieves 2-3x speedup** on large problems
+3. **Memory usage reduced by 5x** for high-lag cases
+4. **Legacy Arnoldi results reproduced** exactly
+5. **Clean configuration** via namelist
+6. **Transparent solver selection** with clear logging
+7. **No regression** in golden record tests
 
 ---
 
