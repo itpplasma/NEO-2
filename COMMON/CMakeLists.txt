@@ -68,6 +68,7 @@ set(COMMON_FILES
   sparse_conversion_mod.f90
   sparse_io_mod.f90
   sparse_arithmetic_mod.f90
+  sparse_solvers_mod.f90
   sparse_mod.f90
   sparsevec_mod.f90
   spline_cof.f90
