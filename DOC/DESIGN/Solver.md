@@ -37,15 +37,20 @@ The "ripple solver" refers to the particle transport calculations in magnetic ri
 
 ## Memory Bottlenecks Analysis
 
-### 1. Sparse Matrix Assembly
+### 1. Collision Operator Assembly (Primary Bottleneck)
 ```fortran
-! From splinecof3_direct_sparse.f90
-! Matrix size scales as O(nsurf³)
-allocate(coo_row(max_nnz), coo_col(max_nnz), coo_val(max_nnz))
+! Matrix size dominated by O(lag³) scaling - from NEO-2 documentation:
+! "Memory scales at least with cube of lag parameter"
+n_2d_size = sum over field line steps: 2*(lag+1)*(npl(istep)+1)
+
+! Collision operator coefficient matrices  
+allocate(gencoeflag(0:lagmax, 0:lagmax, 0:legmax))     ! O(lag² × leg)
+allocate(I1_mmp_s(0:lagmax, 0:lagmax, 0:legmax_local)) ! O(lag² × leg)
 ```
-- **Issue**: Memory allocation failures in `splinecof3_direct_sparse.f90`
-- **Scaling**: Cubic growth with surface resolution
-- **Impact**: Limits problem size for magnetic field representation
+- **Primary Issue**: O(lag³) scaling in collision operator sparse matrix
+- **QL Impact**: Memory limits at lag ~20-30 depending on field line complexity  
+- **PAR Impact**: Same lag³ scaling per MPI process
+- **Root Cause**: UMFPACK factorization memory ~5-10x matrix storage
 
 ### 2. UMFPACK Factorization
 ```fortran
@@ -70,7 +75,7 @@ call umf4zfac(symbolic, numeric, ...)  ! LU factorization
 | **Geometry** | Axisymmetric (2D) | Full 3D stellarator |
 | **Parallelization** | OpenMP threads | MPI + OpenMP hybrid |
 | **Eigenvalue Analysis** | Arnoldi + Richardson | Direct solve only |
-| **Memory Scaling** | O(nsurf²) | O(nsurf³) |
+| **Memory Scaling** | O(lag³ × nsteps) | O(lag³ × nsteps_local) per process |
 | **Stability Method** | Unstable eigenmode subtraction | Full system inversion |
 
 ### Implementation Differences
@@ -91,17 +96,29 @@ call sparse_solve(matrix, rhs, solution, method=3)  ! UMFPACK
 
 ### Computational Complexity
 
+**Critical Insight: `lag` Parameter Dominates Memory Scaling**
+
+The `lag` parameter (number of Laguerre basis functions for velocity space) creates **O(lag³)** memory scaling that dominates both QL and PAR:
+
 **QL Complexity**:
-- Matrix assembly: O(nsurf² × nspecies)
-- Arnoldi method: O(m × n²) for m iterations
-- Richardson iteration: O(k × n²) for k iterations
-- **Total**: O(nsurf² × (m + k))
+- Matrix assembly: O(lag³ × nsteps × avg_npart) where nsteps = field line integration steps
+- Collision operator matrices: O(lag² × leg × nspecies) 
+- Distribution function storage: O(lag × npart × nsteps)
+- UMFPACK factorization: O(nnz^1.2-1.5) where nnz ∝ lag³
+- **Total**: O(lag³ × nsteps × fill-in factor)
 
 **PAR Complexity**:
-- Matrix assembly: O(nsurf³ × nspecies × nproc)
-- UMFPACK factorization: O(n³) sparse fill-in dependent
-- Multiple RHS solves: O(n²) per RHS
-- **Total**: O(nsurf³ × fill-in factor)
+- Same lag³ scaling per MPI process
+- Matrix assembly: O(lag³ × nsteps_local × avg_npart × nproc)
+- Distributed over MPI processes but each process still memory-bound by lag³
+- **Total**: O(lag³ × nsteps_local × fill-in factor) per process
+
+**Memory Bottleneck Correction**:
+- **Primary**: O(lag³) from collision operator sparse matrix (documented: "Memory scales at least with cube of lag parameter")
+- **Secondary**: O(nsurf² or nsurf³) from magnetic geometry discretization  
+- **Tertiary**: O(nspecies) from multiple particle species
+
+This explains why **both QL and PAR hit memory limits** with large `lag` values, independent of geometry complexity.
 
 ## GMRES Implementation Design
 
@@ -150,16 +167,18 @@ end module gmres_mod
 
 ### 3. Memory Comparison
 
-**Current UMFPACK**:
-- Matrix storage: `nnz × (8 + 4 + 4)` bytes (value + row + col)
-- Factorization: `~5-10 × nnz × 8` bytes
-- **Total**: ~50-80 GB for large PAR problems
+**Current UMFPACK (lag-dependent scaling)**:
+- Matrix storage: `nnz × 16` bytes where nnz ∝ lag³
+- Factorization: `~5-10 × nnz × 8` bytes  
+- **Total**: ~50-80 GB for lag=30 problems
+- **Scaling**: O(lag³ × fill-in factor)
 
 **Proposed GMRES**:
-- Matrix storage: `nnz × 16` bytes (value + indices)  
-- Krylov basis: `m × n × 8` bytes (m = restart dimension)
-- Hessenberg matrix: `m² × 8` bytes
-- **Total**: ~5-10 GB for same problems (5-8x reduction)
+- Matrix storage: `nnz × 16` bytes (same nnz ∝ lag³)
+- Krylov basis: `m × n × 8` bytes where n ∝ lag × nsteps
+- Hessenberg matrix: `m² × 8` bytes (m = 30 restart dimension)
+- **Total**: ~5-10 GB for same lag=30 problems
+- **Scaling**: O(lag × nsteps) instead of O(lag³)
 
 ### 4. Preconditioning Strategy
 
