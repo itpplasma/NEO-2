@@ -33,13 +33,27 @@ jobs:
       - name: Cache apt packages
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: git cmake make ninja-build gcc g++ gfortran jq lcov libopenblas-dev liblapack-dev libsuitesparse-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev
+          packages: git cmake make ninja-build gcc g++ gfortran jq lcov libopenblas-dev liblapack-dev libsuitesparse-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev openmpi-bin openmpi-common libopenmpi-dev
           version: 1.0
+          execute_install_scripts: true
 
-      - name: Install MPI packages separately
+      - name: Ensure BLAS and MPI are properly configured
         run: |
+          # Fallback installation to ensure pkg-config files are present
           sudo apt-get update
-          sudo apt-get install -y openmpi-bin openmpi-common libopenmpi-dev
+          sudo apt-get install -y --reinstall libopenblas-dev pkg-config
+          sudo apt-get install -y --reinstall openmpi-bin openmpi-common libopenmpi-dev
+          
+          # Verify BLAS can be found
+          pkg-config --exists openblas && echo "OpenBLAS pkg-config found" || echo "Warning: OpenBLAS pkg-config not found"
+          
+          # Verify MPI can be found
+          pkg-config --exists ompi && echo "OpenMPI pkg-config found" || echo "Warning: OpenMPI pkg-config not found"
+          which mpifort && echo "mpifort found at: $(which mpifort)" || echo "Warning: mpifort not found"
+          
+          # Set environment variables to help CMake
+          echo "BLA_VENDOR=OpenBLAS" >> $GITHUB_ENV
+          echo "MPI_HOME=/usr" >> $GITHUB_ENV
 
       - name: Set up Python 3
         run: |
