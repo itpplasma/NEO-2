@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-NEO-2's current solver architecture relies heavily on direct sparse solvers (UMFPACK) which creates significant memory bottlenecks, particularly for the stellarator (PAR) variant. The sparse operator inversion hits memory bounds at ~6-7 GB per MPI process, limiting scalability. This document analyzes the current solver framework and proposes GMRES integration to overcome memory limitations.
+NEO-2's current solver architecture relies heavily on direct sparse solvers (UMFPACK) which creates significant memory bottlenecks for both tokamak (QL) and stellarator (PAR) variants. The primary bottleneck is **O(lag³) scaling from collision operators** in velocity space, where `lag` controls energy/speed discretization and `leg` controls pitch angle discretization. Both variants hit memory limits when increasing velocity space resolution, limiting physics accuracy. This document analyzes the velocity space basis functions, operator structure, and proposes GMRES integration to break the cubic scaling limitation.
 
 ## Current Solver Architecture
 
@@ -35,22 +35,53 @@ The "ripple solver" refers to the particle transport calculations in magnetic ri
 - **LAPACK Interface** (`COMMON/lapack_band.f90`): Dense system wrapper
 - **Simple Solver** (`COMMON/solve_system.f90`): Basic LAPACK integration
 
-## Memory Bottlenecks Analysis
+## Velocity Space Basis Functions and Memory Scaling
 
-### 1. Collision Operator Assembly (Primary Bottleneck)
+### Velocity Space Discretization
+
+#### Energy/Speed Direction (`lag` parameter)
+- **Physical quantity**: v/v_th (normalized velocity magnitude)  
+- **Default values**: lag=10 (QL), lag=3 (PAR testing)
+- **Basis function options**:
+  - **Laguerre basis** (`collop_base_prj = 0`): Generalized Laguerre L^(3/2)_m(x²) [DEFAULT]
+  - **B-spline basis** (`collop_base_prj = 11`): B-splines with order `collop_bspline_order` [RECOMMENDED]
+  - **Polynomial basis** (`collop_base_prj = 1,2`): Standard or quadratic polynomials
+  - **Cubic splines** (`collop_base_prj = 10`): Traditional cubic splines
+
+#### Pitch Angle Direction (`leg` parameter)  
+- **Physical quantity**: ξ = v_∥/v (pitch angle cosine)
+- **Default values**: leg=20 (QL), leg=3 (PAR testing)
+- **Basis functions**: Legendre polynomials P_l(ξ) (fixed choice for physics reasons)
+
+### Memory Bottlenecks Analysis
+
+#### 1. Collision Operator Assembly (Primary Bottleneck)
 ```fortran
-! Matrix size dominated by O(lag³) scaling - from NEO-2 documentation:
-! "Memory scales at least with cube of lag parameter"
+! From collision_operator_mems.f90 - critical allocations:
+allocate(anumm_aa(0:lag,0:lag,0:num_spec-1,0:num_spec-1))          ! O(lag² × species²)
+allocate(ailmm_aa(0:lag,0:lag,0:leg,0:num_spec-1,0:num_spec-1))    ! O(lag² × leg × species²)
+
+! Rosenbluth potential integrals
+allocate(I1_mmp_s(0:lagmax, 0:lagmax, 0:legmax_local))             ! O(lag² × leg)
+allocate(I2_mmp_s(0:lagmax, 0:lagmax, 0:legmax_local))             ! O(lag² × leg)
+allocate(I3_mmp_s(0:lagmax, 0:lagmax, 0:legmax_local))             ! O(lag² × leg)
+allocate(I4_mmp_s(0:lagmax, 0:lagmax, 0:legmax_local))             ! O(lag² × leg)
+```
+
+#### 2. Sparse Matrix Scaling
+```fortran
+! Main system matrix size from field line discretization:
 n_2d_size = sum over field line steps: 2*(lag+1)*(npl(istep)+1)
 
-! Collision operator coefficient matrices  
-allocate(gencoeflag(0:lagmax, 0:lagmax, 0:legmax))     ! O(lag² × leg)
-allocate(I1_mmp_s(0:lagmax, 0:lagmax, 0:legmax_local)) ! O(lag² × leg)
+! Matrix elements scale as: nnz ∝ lag³ × nsteps
+! Documentation: "Memory scales at least with cube of lag parameter"
 ```
-- **Primary Issue**: O(lag³) scaling in collision operator sparse matrix
-- **QL Impact**: Memory limits at lag ~20-30 depending on field line complexity  
-- **PAR Impact**: Same lag³ scaling per MPI process
-- **Root Cause**: UMFPACK factorization memory ~5-10x matrix storage
+
+**Complete Memory Scaling**:
+- **Collision operators**: O(lag² × leg × nspecies²)
+- **Distribution functions**: O(lag × 4 × npart × nperiods)  
+- **Sparse matrix storage**: O(lag³ × nsteps) 
+- **UMFPACK factorization**: O(lag³ × nsteps × fill_factor), fill_factor ~5-10x
 
 ### 2. UMFPACK Factorization
 ```fortran
@@ -62,63 +93,169 @@ call umf4zfac(symbolic, numeric, ...)  ! LU factorization
 - **Constraint**: Limits to ~48 threads per node
 
 ### 3. Matrix Storage Format
-- **CSC Storage**: `(nnz + n + 1)` memory for values + pointers
+- **CSC Storage**: `(nnz + n + 1)` memory for values + pointers where nnz ∝ lag³ × nsteps
 - **Problem**: No memory reuse between different RHS vectors
-- **3D Complexity**: Stellarator geometry creates much larger systems than tokamaks
+- **Factorization dominance**: UMFPACK memory ~5-10x matrix storage
 
-## QL vs PAR Solver Differences
+## Operator Structure and Discretization
 
-### Algorithmic Differences
+### Differential Operators
+
+#### Field Line Transport
+```fortran
+! Parallel derivative along field lines
+∂f/∂s where s = arc length parameter
+! Discretized via finite differences on field line grid
+```
+- **Magnetic drifts**: ∇B and curvature drift operators
+- **Bounce/transit**: Particle classification at turning points
+- **Field line following**: RK4 integration of dx/ds = B/|B|
+
+#### Velocity Space Derivatives  
+```fortran
+! Collision operator derivatives in velocity space
+∂/∂v (energy direction) and ∂/∂ξ (pitch angle direction)
+! Discretized via basis function derivatives
+```
+- **Energy direction**: Laguerre/B-spline basis derivatives
+- **Pitch angle**: Legendre polynomial derivatives  
+- **Mixed derivatives**: Cross-terms ∂²/(∂v∂ξ)
+
+### Integral Operators
+
+#### Collision Integrals (Rosenbluth Potentials)
+```fortran
+! From collop_compute.f90 - precomputed integral matrices:
+I1_mmp_s: Momentum exchange integrals    ∫∫ G(v,v') dv' terms
+I2_mmp_s: Energy exchange integrals      ∫∫ H(v,v') dv' terms  
+I3_mmp_s: Mixed momentum-energy terms    ∫∫ mixed dv' terms
+I4_mmp_s: Angular scattering integrals   ∫∫ angular dv' terms
+```
+- **Rosenbluth potentials**: G(v,v') and H(v,v') computed via GSL adaptive quadrature
+- **Precomputation**: Matrix elements stored and reused when possible
+- **Numerical integration**: High-precision quadrature with error control
+
+#### Field Line Integrals
+```fortran
+! Bounce/transit averaging integrals
+∫ ds/v_∥ over particle orbits
+! Numerical integration along field lines
+```
+- **Orbit integration**: Particle trajectory following
+- **Magnetic well resolution**: Binary splitting for ripple structure
+- **Boundary conditions**: Periodic/reflecting boundary treatment
+
+## QL vs PAR Detailed Comparison
+
+### Velocity Space Treatment (IDENTICAL)
+
+| Component | QL Implementation | PAR Implementation |
+|-----------|------------------|-------------------|
+| **Energy basis** | Same options: Laguerre/B-spline/polynomial | Same options: Laguerre/B-spline/polynomial |
+| **Pitch angle basis** | Legendre polynomials P_l(ξ) | Legendre polynomials P_l(ξ) |
+| **Collision operators** | Same I1-I4 Rosenbluth integral assembly | Same I1-I4 Rosenbluth integral assembly |
+| **Basis coefficients** | O(lag² × leg × nspecies²) | O(lag² × leg × nspecies²) |
+| **Memory per collision op** | Same scaling with lag³ | Same scaling with lag³ |
+
+### Field Line and Matrix Differences
 
 | Aspect | NEO-2-QL | NEO-2-PAR |
 |--------|----------|-----------|
-| **Geometry** | Axisymmetric (2D) | Full 3D stellarator |
-| **Parallelization** | OpenMP threads | MPI + OpenMP hybrid |
-| **Eigenvalue Analysis** | Arnoldi + Richardson | Direct solve only |
-| **Memory Scaling** | O(lag³ × nsteps) | O(lag³ × nsteps_local) per process |
-| **Stability Method** | Unstable eigenmode subtraction | Full system inversion |
+| **Magnetic geometry** | Axisymmetric (2D) | Full 3D stellarator |
+| **Field line complexity** | ~1-4 periods | ~100+ periods typical |
+| **Parallelization** | OpenMP threads only | MPI + OpenMP hybrid |
+| **Matrix assembly** | Single-process assembly | MPI-parallel with allgather |
+| **Eigenvalue methods** | Arnoldi + Richardson available | Direct solve only |
+| **Memory scaling** | O(lag³ × nsteps_total) | O(lag³ × nsteps_local) per process |
+| **Typical nsteps** | ~1000-10000 | ~10000-100000 (distributed) |
 
-### Implementation Differences
+### Algorithmic Implementation Differences
 
-**NEO-2-QL Approach**:
+**NEO-2-QL Multi-method Approach**:
 ```fortran
-! Arnoldi method for unstable eigenmodes
+! Option 1: Arnoldi eigenvalue analysis for stability
 call arnoldi_iteration(matrix, rhs, eigenvals, eigenvecs)
-! Richardson iteration with preconditioning
 call richardson_preconditioned(matrix, rhs, solution, eigenvecs)
+
+! Option 2: Direct sparse solver  
+call sparse_solve(matrix, rhs, solution, method=3)  ! UMFPACK
 ```
 
-**NEO-2-PAR Approach**:
+**NEO-2-PAR Direct-only Approach**:
 ```fortran
+! MPI-parallel collision operator assembly
+do a = 0, num_spec-1
+   call compute_collop('a', 'b', m_spec(a), m_spec(b), anumm_aa(:,:,a,b), ...)
+end do
+call mpro%allgather_inplace(anumm_aa)  ! Distribute collision data
+
 ! Direct sparse solver only
 call sparse_solve(matrix, rhs, solution, method=3)  ! UMFPACK
 ```
 
+### Critical Memory Bottleneck Insight
+
+**Both QL and PAR hit identical velocity space limitations**:
+1. **Collision operators**: O(lag² × leg × nspecies²) scaling identical
+2. **Main matrix size**: Both scale as lag³, only constants differ
+3. **UMFPACK factorization**: Same ~5-10x memory penalty
+4. **Practical limits**: Both reach memory walls at similar lag values (~20-30)
+
+**Key difference**: PAR distributes field line work but **not collision operator work**
+- Field line scaling: QL O(nsteps_total) vs PAR O(nsteps_local)  
+- Collision scaling: **Both O(lag³) with identical computational kernels**
+- Memory bottleneck: **Collision operators dominate for both variants**
+
+### Operator Structure Comparison
+
+**Differential Operators (Similar)**:
+- Both use same finite difference schemes for field line derivatives
+- Both use same basis function derivatives in velocity space
+- Field line complexity differs but discretization methods identical
+
+**Integral Operators (Identical)**:  
+- Same Rosenbluth potential computation algorithms
+- Same GSL numerical integration for collision integrals
+- Same precomputation and storage strategies for I1-I4 matrices
+
+**Matrix Assembly (Different parallelization)**:
+- QL: Single-process assembly, full matrix storage
+- PAR: MPI-parallel assembly with communication, distributed storage
+
 ### Computational Complexity
 
-**Critical Insight: `lag` Parameter Dominates Memory Scaling**
+**Critical Insight: Velocity Space Parameters Dominate Memory Scaling**
 
-The `lag` parameter (number of Laguerre basis functions for velocity space) creates **O(lag³)** memory scaling that dominates both QL and PAR:
+Both `lag` (energy/speed) and `leg` (pitch angle) parameters create significant memory scaling:
+
+**Complete Memory Scaling Analysis**:
 
 **QL Complexity**:
-- Matrix assembly: O(lag³ × nsteps × avg_npart) where nsteps = field line integration steps
-- Collision operator matrices: O(lag² × leg × nspecies) 
-- Distribution function storage: O(lag × npart × nsteps)
-- UMFPACK factorization: O(nnz^1.2-1.5) where nnz ∝ lag³
-- **Total**: O(lag³ × nsteps × fill-in factor)
+- **Collision operator coefficients**: O(lag² × leg × nspecies²)
+- **Rosenbluth integrals**: O(lag² × leg) for each of I1-I4 matrices  
+- **Main sparse matrix**: O(lag³ × nsteps) where nsteps ~ field line discretization
+- **Distribution functions**: O(lag × 4 × npart × nperiods)
+- **UMFPACK factorization**: O(nnz^1.2-1.5 × fill_factor) where nnz ∝ lag³ × nsteps
+- **Total memory**: O(lag³ × nsteps × fill_factor) + O(lag² × leg × nspecies²)
 
-**PAR Complexity**:
-- Same lag³ scaling per MPI process
-- Matrix assembly: O(lag³ × nsteps_local × avg_npart × nproc)
-- Distributed over MPI processes but each process still memory-bound by lag³
-- **Total**: O(lag³ × nsteps_local × fill-in factor) per process
+**PAR Complexity (per MPI process)**:
+- **Same collision operator scaling**: O(lag² × leg × nspecies²) per process
+- **Local sparse matrix**: O(lag³ × nsteps_local) where nsteps_local < nsteps_total
+- **Distribution functions**: O(lag × 4 × npart_local × nperiods_local)  
+- **UMFPACK factorization**: O(nnz_local^1.2-1.5 × fill_factor)
+- **Total memory per process**: O(lag³ × nsteps_local × fill_factor) + O(lag² × leg × nspecies²)
 
-**Memory Bottleneck Correction**:
-- **Primary**: O(lag³) from collision operator sparse matrix (documented: "Memory scales at least with cube of lag parameter")
-- **Secondary**: O(nsurf² or nsurf³) from magnetic geometry discretization  
-- **Tertiary**: O(nspecies) from multiple particle species
+**Memory Bottleneck Hierarchy**:
+1. **Primary**: O(lag³) from UMFPACK factorization of collision-dominated sparse matrix
+2. **Secondary**: O(lag² × leg × nspecies²) from collision operator coefficient storage
+3. **Tertiary**: O(lag × nsteps) from distribution function storage
+4. **Quaternary**: Field line discretization (nsteps vs nsteps_local)
 
-This explains why **both QL and PAR hit memory limits** with large `lag` values, independent of geometry complexity.
+**Why both QL and PAR hit similar limits**:
+- Collision operator memory scaling **identical** between variants
+- UMFPACK factorization penalty **identical** (5-10x matrix storage)
+- Field line distribution only affects constants, not asymptotic scaling
+- Practical memory limits reached at **similar lag values (~20-30)** for both
 
 ## GMRES Implementation Design
 
@@ -167,18 +304,27 @@ end module gmres_mod
 
 ### 3. Memory Comparison
 
-**Current UMFPACK (lag-dependent scaling)**:
-- Matrix storage: `nnz × 16` bytes where nnz ∝ lag³
-- Factorization: `~5-10 × nnz × 8` bytes  
-- **Total**: ~50-80 GB for lag=30 problems
-- **Scaling**: O(lag³ × fill-in factor)
+**Current UMFPACK (velocity space scaling)**:
+- **Matrix storage**: `nnz × 16` bytes where nnz ∝ lag³ × nsteps  
+- **Collision operators**: O(lag² × leg × nspecies²) coefficient matrices
+- **Factorization memory**: `~5-10 × nnz × 8` bytes for LU factors
+- **Total for lag=30, leg=20**: ~50-80 GB (factorization dominates)
+- **Memory scaling**: O(lag³ × nsteps × fill_factor) + O(lag² × leg × nspecies²)
 
 **Proposed GMRES**:
-- Matrix storage: `nnz × 16` bytes (same nnz ∝ lag³)
-- Krylov basis: `m × n × 8` bytes where n ∝ lag × nsteps
-- Hessenberg matrix: `m² × 8` bytes (m = 30 restart dimension)
-- **Total**: ~5-10 GB for same lag=30 problems
-- **Scaling**: O(lag × nsteps) instead of O(lag³)
+- **Matrix storage**: Same `nnz × 16` bytes (matrix-vector products only)
+- **Collision operators**: Same O(lag² × leg × nspecies²) coefficient storage  
+- **Krylov basis**: `m × n × 8` bytes where n ∝ lag × nsteps, m = restart dim
+- **Hessenberg matrix**: `m² × 8` bytes (typically m = 30-50)
+- **Working vectors**: O(n) temporary storage for matrix-vector products
+- **Total for lag=30, leg=20**: ~5-10 GB (eliminates factorization memory)
+- **Memory scaling**: O(lag × nsteps) + O(lag² × leg × nspecies²)
+
+**Key GMRES Memory Advantage**:
+- **Eliminates O(lag³) UMFPACK factorization memory** 
+- **Retains O(lag² × leg) collision operator storage** (unavoidable)
+- **Net scaling reduction**: From O(lag³) to O(lag²) for large lag values
+- **Practical impact**: Enables lag ~50-100 instead of lag ~20-30 limit
 
 ### 4. Preconditioning Strategy
 
