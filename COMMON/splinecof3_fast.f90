@@ -24,6 +24,7 @@ contains
 
     integer(I4B) :: info, n, i
     real(DP), allocatable :: h(:), r(:), dl(:), ds(:), cs(:)
+    real(DP) :: m_n  ! End second derivative for clamped end condition
     logical :: natural_start, natural_end, clamped_start, clamped_end
 
     n = size(x)
@@ -116,16 +117,31 @@ contains
     if (natural_start) then
       c(1) = 0.0_DP  ! Natural boundary
     else
-      ! For clamped start, compute boundary second derivative
-      c(1) = 3.0_DP/h(1)*(r(1)/h(1) - c1) - cs(1)/2.0_DP
+      ! For clamped start: M1 = (3/(2h1))*((y2-y1)/h1 - c1) - M2/2
+      c(1) = 3.0_DP/(2.0_DP*h(1))*(r(1)/h(1) - c1) - cs(1)/2.0_DP
     end if
     
     c(2:n-1) = cs  ! Interior second derivatives from tridiagonal solve
     
-    ! d coefficients
-    d(1) = 1.0_DP/(3.0_DP*h(1))*cs(1)
+    ! Handle clamped end boundary second derivative
+    if (clamped_end) then
+      ! For clamped end: Mn = (3/(2hn-1))*(cn - (yn-yn-1)/hn-1) - Mn-1/2
+      ! But we don't store c(n) as it's set to zero in spline_cof convention
+      ! The end second derivative is already incorporated into the coefficient calculations
+    end if
+    
+    ! d coefficients: d(i) = (M_{i+1} - M_i)/(3*h_i)
+    d(1) = 1.0_DP/(3.0_DP*h(1))*(cs(1) - c(1))  ! d(1) = (M2 - M1)/(3*h1)
     d(2:n-2) = 1.0_DP/(3.0_DP*h(2:n-2))*(cs(2:n-2) - cs(1:n-3))
-    d(n-1) = 1.0_DP/(3.0_DP*h(n-1))*(-cs(n-2))
+    
+    ! For last coefficient d(n-1) = (Mn - Mn-1)/(3*hn-1)
+    if (clamped_end) then
+      ! Compute Mn for clamped end: Mn = (3/(2hn-1))*(cn - (yn-yn-1)/hn-1) - Mn-1/2
+      m_n = 3.0_DP/(2.0_DP*h(n-1))*(cn - (y(n)-y(n-1))/h(n-1)) - cs(n-2)/2.0_DP
+      d(n-1) = 1.0_DP/(3.0_DP*h(n-1))*(m_n - cs(n-2))
+    else
+      d(n-1) = 1.0_DP/(3.0_DP*h(n-1))*(-cs(n-2))  ! Natural end: Mn = 0
+    end if
 
     ! Follow spline_cof convention: set n-th element to zero
     a(n) = 0.0_DP
