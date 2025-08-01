@@ -1116,6 +1116,12 @@ contains
        END IF
     END DO
     
+    ! Follow spline_cof convention: set n-th element to zero
+    a(len_x) = 0.0_DP
+    b(len_x) = 0.0_DP
+    c(len_x) = 0.0_DP
+    d(len_x) = 0.0_DP
+    
     ! Clean up
     DEALLOCATE(irow_coo, icol_coo, val_coo, irow_csc, pcol_csc, val_csc, &
                col_count, lambda, omega, inh)
