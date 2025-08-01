@@ -185,96 +185,283 @@ SuiteSparse (UMFPACK) doesn't provide standalone ILU - it uses complete LU facto
 
 ### Solver Architecture Overview
 
-We need a **unified solver framework** that:
-1. Maintains all solvers (including legacy Arnoldi-Richardson)
-2. Provides clean configuration via namelist
-3. Centralizes solver dispatch logic
-4. Includes comprehensive testing for each method
-5. Makes solver selection transparent to users
+We need a **unified solver framework** with:
+1. **Orthogonal solver and preconditioner selection**
+2. **Named constants** (no magic numbers!)
+3. Clean configuration via namelist
+4. Centralized dispatch logic
+5. Comprehensive testing for all combinations
+6. Transparent operation with clear logging
 
-### Solver Methods and Use Cases
+### Solver and Preconditioner Matrix
 
-| Method | ID | Use Case | Memory | Speed | Status |
-|--------|----|-|--------|-------|---------|
-| **UMFPACK** | 3 | Small problems, validation | High | Fast (small) | Keep |
-| **BiCGSTAB+ILU** | 4 | Default production solver | Low | Fast (large) | Primary |
-| **Arnoldi-Richardson** | 5 | Legacy, stability analysis | Medium | Medium | Maintain |
-| **GMRES+ILU** | 6 | Future option | Low | Fast | Future |
+#### Solvers
+| Solver | Constant | Use Case | Memory | Status |
+|--------|----------|----------|--------|---------|
+| **UMFPACK** | `SOLVER_UMFPACK` | Direct solver, small problems | High | Existing |
+| **BiCGSTAB** | `SOLVER_BICGSTAB` | Default iterative solver | Low | Implement |
+| **GMRES** | `SOLVER_GMRES` | Alternative iterative | Low | Implement |
+| **Arnoldi-Richardson** | `SOLVER_ARNOLDI` | Legacy, stability analysis | Medium | Existing |
+
+#### Preconditioners
+| Preconditioner | Constant | Use Case | Compatible With |
+|----------------|----------|----------|-----------------|
+| **None** | `PRECOND_NONE` | Well-conditioned problems | All iterative |
+| **ILU(k)** | `PRECOND_ILU` | General purpose | All iterative |
+| **AMG** | `PRECOND_AMG` | Stretch goal, elliptic problems | All iterative |
 
 ### Phase 0: Solver Framework Infrastructure (Week 0.5)
 
-#### 0.1 Central Solver Dispatcher Module
-**File:** `COMMON/solver_dispatch_mod.f90`
+#### 0.1 Constants and Types Module
+**File:** `COMMON/solver_constants_mod.f90`
 ```fortran
-module solver_dispatch_mod
-  use sparse_mod
-  use bicgstab_mod
-  use arnoldi_mod
+module solver_constants_mod
+  implicit none
   
-  integer :: global_solver_method = 4  ! Default BiCGSTAB
-  logical :: solver_verbose = .false.
-  character(len=32) :: solver_name = "BiCGSTAB+ILU"
+  ! Solver method constants
+  integer, parameter :: SOLVER_UMFPACK = 1
+  integer, parameter :: SOLVER_BICGSTAB = 2
+  integer, parameter :: SOLVER_GMRES = 3
+  integer, parameter :: SOLVER_ARNOLDI = 4
   
-contains
-  subroutine solve_linear_system(matrix, rhs, solution, info)
-    ! Central dispatch based on global_solver_method
-  subroutine get_solver_info(method, name, description)
-    ! Return human-readable solver information
+  ! Preconditioner constants
+  integer, parameter :: PRECOND_NONE = 0
+  integer, parameter :: PRECOND_ILU = 1
+  integer, parameter :: PRECOND_AMG = 2  ! Future
+  
+  ! Solver configuration type
+  type :: solver_config
+    integer :: method = SOLVER_BICGSTAB
+    integer :: preconditioner = PRECOND_ILU
+    real(dp) :: tolerance = 1.0e-12
+    integer :: max_iter = 1000
+    logical :: verbose = .false.
+    ! ILU parameters
+    integer :: ilu_level = 1
+    real(dp) :: ilu_drop_tol = 0.0
+    ! GMRES parameters
+    integer :: gmres_restart = 30
+    ! Arnoldi parameters
+    integer :: arnoldi_max_eigvals = 10
+    real(dp) :: arnoldi_threshold = 0.5
+    ! AMG parameters (future)
+    integer :: amg_levels = 4
+    integer :: amg_smoother_steps = 2
+  end type
+  
 end module
 ```
 
-#### 0.2 Configuration via Namelist
-**Update:** Add to existing namelist structure in `neo2.f90`
+#### 0.2 Central Solver Dispatcher Module
+**File:** `COMMON/solver_dispatch_mod.f90`
 ```fortran
-! New namelist group
-namelist /solver_control/ &
-  solver_method,          & ! 3=UMFPACK, 4=BiCGSTAB, 5=Arnoldi-Richardson
-  solver_tolerance,       & ! Iterative solver tolerance (default 1e-12)
-  solver_max_iter,        & ! Maximum iterations (default 1000)
-  solver_verbose,         & ! Print convergence info
-  ilu_fill_level,         & ! ILU(k) level (default 1)
-  ilu_drop_tolerance,     & ! ILU drop tolerance (default 0)
-  arnoldi_max_eigvals,    & ! Max eigenvalues for Arnoldi (default 10)
-  arnoldi_threshold       & ! Eigenvalue threshold (default 0.5)
+module solver_dispatch_mod
+  use solver_constants_mod
+  use sparse_mod
+  use bicgstab_mod
+  use gmres_mod
+  use arnoldi_mod
+  use preconditioner_mod
+  
+  type(solver_config) :: global_solver_config
+  
+contains
+  subroutine solve_linear_system(matrix, rhs, solution, config, info)
+    type(sparse_matrix) :: matrix
+    real(dp), dimension(:) :: rhs, solution
+    type(solver_config), optional :: config
+    integer :: info
+    
+    type(solver_config) :: local_config
+    type(preconditioner_data) :: precond
+    
+    ! Use provided config or global default
+    if (present(config)) then
+      local_config = config
+    else
+      local_config = global_solver_config
+    endif
+    
+    ! Setup preconditioner
+    call setup_preconditioner(matrix, local_config, precond)
+    
+    ! Dispatch to appropriate solver
+    select case(local_config%method)
+      case(SOLVER_UMFPACK)
+        call solve_umfpack(matrix, rhs, solution, info)
+      case(SOLVER_BICGSTAB)
+        call solve_bicgstab(matrix, rhs, solution, precond, local_config, info)
+      case(SOLVER_GMRES)
+        call solve_gmres(matrix, rhs, solution, precond, local_config, info)
+      case(SOLVER_ARNOLDI)
+        call solve_arnoldi_richardson(matrix, rhs, solution, local_config, info)
+      case default
+        error stop "Unknown solver method"
+    end select
+    
+    ! Cleanup preconditioner
+    call cleanup_preconditioner(precond)
+    
+  end subroutine
+  
+  function get_solver_name(method) result(name)
+    integer :: method
+    character(len=32) :: name
+    
+    select case(method)
+      case(SOLVER_UMFPACK)
+        name = "UMFPACK (direct)"
+      case(SOLVER_BICGSTAB)
+        name = "BiCGSTAB"
+      case(SOLVER_GMRES)
+        name = "GMRES"
+      case(SOLVER_ARNOLDI)
+        name = "Arnoldi-Richardson"
+      case default
+        name = "Unknown"
+    end select
+  end function
+  
+  function get_preconditioner_name(precond) result(name)
+    integer :: precond
+    character(len=32) :: name
+    
+    select case(precond)
+      case(PRECOND_NONE)
+        name = "None"
+      case(PRECOND_ILU)
+        name = "ILU"
+      case(PRECOND_AMG)
+        name = "AMG"
+      case default
+        name = "Unknown"
+    end select
+  end function
+  
+end module
 ```
 
-#### 0.3 Test Framework Infrastructure
+#### 0.3 Configuration via Namelist
+**Update:** Add to existing namelist structure in `neo2.f90`
+```fortran
+! Import solver constants
+use solver_constants_mod
+
+! Solver configuration variables
+integer :: solver_method = SOLVER_BICGSTAB
+integer :: solver_preconditioner = PRECOND_ILU
+real(dp) :: solver_tolerance = 1.0e-12
+integer :: solver_max_iter = 1000
+logical :: solver_verbose = .false.
+integer :: ilu_fill_level = 1
+real(dp) :: ilu_drop_tolerance = 0.0
+integer :: gmres_restart_dim = 30
+integer :: arnoldi_max_eigvals = 10
+real(dp) :: arnoldi_threshold = 0.5
+
+! New namelist group
+namelist /solver_control/ &
+  solver_method,          & ! SOLVER_UMFPACK, SOLVER_BICGSTAB, etc.
+  solver_preconditioner,  & ! PRECOND_NONE, PRECOND_ILU, etc.
+  solver_tolerance,       & ! Iterative solver tolerance
+  solver_max_iter,        & ! Maximum iterations
+  solver_verbose,         & ! Print convergence info
+  ilu_fill_level,         & ! ILU(k) level
+  ilu_drop_tolerance,     & ! ILU drop tolerance
+  gmres_restart_dim,      & ! GMRES restart dimension
+  arnoldi_max_eigvals,    & ! Max eigenvalues for Arnoldi
+  arnoldi_threshold       & ! Eigenvalue threshold
+```
+
+#### 0.4 Preconditioner Module
+**File:** `COMMON/preconditioner_mod.f90`
+```fortran
+module preconditioner_mod
+  use solver_constants_mod
+  use sparse_mod
+  
+  type :: preconditioner_data
+    integer :: type = PRECOND_NONE
+    ! ILU data
+    type(sparse_matrix) :: L, U
+    integer, allocatable :: pivot(:)
+    ! AMG data (future)
+    type(amg_hierarchy) :: amg_data
+  end type
+  
+contains
+  subroutine setup_preconditioner(matrix, config, precond)
+    ! Dispatch to appropriate preconditioner setup
+    select case(config%preconditioner)
+      case(PRECOND_NONE)
+        precond%type = PRECOND_NONE
+      case(PRECOND_ILU)
+        call setup_ilu(matrix, config%ilu_level, config%ilu_drop_tol, precond)
+      case(PRECOND_AMG)
+        call setup_amg(matrix, config, precond)  ! Future
+    end select
+  end subroutine
+  
+  subroutine apply_preconditioner(precond, x, y)
+    ! Apply M^{-1}x = y
+    select case(precond%type)
+      case(PRECOND_NONE)
+        y = x  ! Identity
+      case(PRECOND_ILU)
+        call ilu_solve(precond%L, precond%U, x, y)
+      case(PRECOND_AMG)
+        call amg_solve(precond%amg_data, x, y)  ! Future
+    end select
+  end subroutine
+end module
+```
+
+#### 0.5 Test Framework Infrastructure
 **File:** `COMMON/test_solvers_framework_mod.f90`
 - [ ] Test matrix generators (diagonal, tridiagonal, random sparse)
 - [ ] Solution verification utilities
 - [ ] Performance timing framework
+- [ ] Solver/preconditioner combination testing
 - [ ] Automated test runner
 
 ### Phase 1: Core Solver Implementations (Week 1)
 
-#### 1.1 BiCGSTAB+ILU Implementation
-As previously detailed, but with integration hooks:
-- [ ] Implement core BiCGSTAB algorithm
-- [ ] ILU(1) preconditioner
-- [ ] Integration with dispatcher
+#### 1.1 Preconditioner Implementations
+**File:** `COMMON/ilu_precond_mod.f90`
+- [ ] ILU(0) implementation
+- [ ] ILU(k) with configurable fill level
+- [ ] Drop tolerance support
+- [ ] CSR format optimization
 - [ ] **Unit tests:**
-  - Diagonal systems
-  - SPD matrices
-  - Indefinite systems
+  - Verify L*U approximates A
+  - Test on diagonal dominant matrices
+  - Test singular matrix handling
 
-#### 1.2 Arnoldi-Richardson Testing Framework
-**File:** `COMMON/test_arnoldi_mod.f90`
-- [ ] Extract current Arnoldi implementation into testable units
-- [ ] Create test cases for eigenvalue computation
-- [ ] Test Richardson iteration with deflation
-- [ ] **Legacy validation tests:**
-  - Compare with existing NEO-2-QL results
-  - Verify eigenvalue deflation works correctly
-  - Test on known unstable systems
+#### 1.2 BiCGSTAB Implementation
+**File:** `COMMON/bicgstab_mod.f90`
+- [ ] Core BiCGSTAB algorithm
+- [ ] Support for arbitrary preconditioner
+- [ ] Convergence monitoring
+- [ ] **Unit tests:**
+  - Test with no preconditioner
+  - Test with ILU preconditioner
+  - Compare convergence rates
 
-#### 1.3 UMFPACK Testing
-**File:** `COMMON/test_umfpack_mod.f90`
-- [ ] Wrapper for consistent testing interface
-- [ ] Memory usage profiling
-- [ ] **Validation tests:**
-  - Small dense systems
-  - Factorization accuracy
-  - Multiple RHS handling
+#### 1.3 GMRES Implementation
+**File:** `COMMON/gmres_mod.f90`
+- [ ] Restarted GMRES(m) algorithm
+- [ ] Orthogonalization via modified Gram-Schmidt
+- [ ] Support for arbitrary preconditioner
+- [ ] **Unit tests:**
+  - Test restart behavior
+  - Compare with BiCGSTAB on same problems
+  - Memory usage vs restart parameter
+
+#### 1.4 Solver Wrappers
+**Files:** Update existing modules
+- [ ] UMFPACK wrapper for consistent interface
+- [ ] Arnoldi-Richardson wrapper
+- [ ] Consistent error handling across all solvers
 
 ### Phase 2: Comprehensive Testing Suite (Week 2)
 
@@ -345,53 +532,107 @@ end program
 
 ### Phase 4: Validation and Benchmarking (Week 4)
 
-#### 4.1 Solver Validation Matrix
-| Test Case | UMFPACK | BiCGSTAB | Arnoldi | Expected |
-|-----------|---------|----------|---------|----------|
-| Small collision op | ✓ | ✓ | ✓ | Baseline |
-| Large collision op | ✓ | ✓ | ✓ | BiCGSTAB fastest |
-| Unstable system | ✓ | ✓ | ✓ | Arnoldi most robust |
-| Multi-species | ✓ | ✓ | ✓ | All converge |
+#### 4.1 Solver/Preconditioner Validation Matrix
+| Test Case | UMFPACK | BiCGSTAB+None | BiCGSTAB+ILU | GMRES+None | GMRES+ILU | Arnoldi |
+|-----------|---------|---------------|--------------|------------|-----------|---------|
+| Small collision op | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Large collision op | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Ill-conditioned | ✓ | ✗ | ✓ | ✗ | ✓ | ✓ |
+| Multi-species | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+Expected results:
+- **UMFPACK**: Reliable but memory intensive
+- **BiCGSTAB+ILU**: Best overall performance
+- **GMRES+ILU**: More robust than BiCGSTAB for difficult problems
+- **No preconditioner**: Only works for well-conditioned problems
+- **Arnoldi**: Most robust for unstable systems
 
 #### 4.2 Performance Benchmarks
-- [ ] Runtime vs matrix size for each solver
-- [ ] Memory usage vs matrix size
-- [ ] Iteration counts for iterative methods
+- [ ] Runtime vs matrix size for each solver/preconditioner combo
+- [ ] Memory usage comparison
+- [ ] Iteration counts with/without preconditioning
+- [ ] Effect of GMRES restart parameter
 - [ ] Scaling with lag parameter
+- [ ] Preconditioner setup time vs solve time
 
 #### 4.3 Production Readiness
-- [ ] Default solver selection (BiCGSTAB+ILU)
-- [ ] Clear error messages for solver failures
-- [ ] Automatic fallback on convergence failure
+- [ ] Default configuration: BiCGSTAB + ILU(1)
+- [ ] Clear solver/preconditioner selection logging
+- [ ] Automatic fallback chain on failure
 - [ ] Performance regression tests
+- [ ] Memory usage monitoring
 
 ### Configuration Examples
 
 #### Default Configuration (BiCGSTAB+ILU)
 ```fortran
 &solver_control
-  solver_method = 4           ! BiCGSTAB+ILU
+  solver_method = SOLVER_BICGSTAB
+  solver_preconditioner = PRECOND_ILU
   solver_tolerance = 1.0e-12
   solver_max_iter = 1000
   ilu_fill_level = 1
 /
 ```
 
+#### GMRES with ILU(2) for Difficult Problems
+```fortran
+&solver_control
+  solver_method = SOLVER_GMRES
+  solver_preconditioner = PRECOND_ILU
+  solver_tolerance = 1.0e-12
+  solver_max_iter = 2000
+  gmres_restart_dim = 50
+  ilu_fill_level = 2
+  solver_verbose = .true.
+/
+```
+
+#### Well-Conditioned Problems (No Preconditioner)
+```fortran
+&solver_control
+  solver_method = SOLVER_BICGSTAB
+  solver_preconditioner = PRECOND_NONE
+  solver_tolerance = 1.0e-10
+  solver_max_iter = 500
+/
+```
+
 #### Legacy Arnoldi-Richardson
 ```fortran
 &solver_control
-  solver_method = 5           ! Arnoldi-Richardson
+  solver_method = SOLVER_ARNOLDI
+  solver_preconditioner = PRECOND_NONE  ! Arnoldi handles preconditioning internally
   arnoldi_max_eigvals = 20
   arnoldi_threshold = 0.5
   solver_verbose = .true.
 /
 ```
 
-#### High-Accuracy UMFPACK
+#### High-Accuracy Direct Solver
 ```fortran
 &solver_control
-  solver_method = 3           ! UMFPACK direct
+  solver_method = SOLVER_UMFPACK
+  solver_preconditioner = PRECOND_NONE  ! Not used for direct solver
   solver_verbose = .false.
+/
+```
+
+### AMG Stretch Goal (Future)
+
+#### Algebraic Multigrid Preconditioner
+**When implemented:**
+- Best for elliptic-like problems
+- Excellent scalability for large systems
+- Higher setup cost, lower iteration count
+
+```fortran
+&solver_control
+  solver_method = SOLVER_BICGSTAB
+  solver_preconditioner = PRECOND_AMG
+  solver_tolerance = 1.0e-12
+  amg_levels = 4
+  amg_smoother_steps = 2
 /
 ```
 
