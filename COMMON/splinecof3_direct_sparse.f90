@@ -156,9 +156,13 @@ contains
     CASE(4); rho2 = 1
     END SELECT
 
-    ! Estimate maximum non-zeros (extremely conservative to prevent overflow)
-    ! Each equation can have up to ~15 non-zeros, size_dimension equations total
-    max_nnz = 20 * size_dimension
+    ! Calculate exact maximum non-zeros analytically:
+    ! - 2 boundary equations with up to 4 entries each = 8
+    ! - (len_indx-1) intervals, each with exactly:
+    !   * 3 continuity equations × 5,4,3 entries = 12
+    !   * 4 fitting equations × max 7,9,9,4 entries = 29  
+    ! Total: 8 + (len_indx-1) × 41
+    max_nnz = 8 + 41 * (len_indx - 1)
     
     ! Allocate COO format arrays
     ALLOCATE(irow_coo(max_nnz), icol_coo(max_nnz), val_coo(max_nnz), &
