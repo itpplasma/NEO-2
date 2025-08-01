@@ -2,54 +2,54 @@ name: Unit Tests with Coverage
 
 on:
   push:
-    branches: [ main, develop, faster-spline ]
+    branches:
+      - main
+      - master
   pull_request:
-    branches: [ main, develop ]
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - main
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests-coverage:
-    runs-on: ubuntu-latest
-    
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+
+    env:
+      CC: gcc
+      CXX: g++
+      FC: gfortran
+      MPI_HOME: /usr
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Cache apt packages
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          submodules: recursive
+          packages: git cmake make ninja-build gcc g++ gfortran jq lcov libopenblas-dev libsuitesparse-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev
+          version: 1.0
 
-      - name: Install required packages
+      - name: Install MPI packages separately
         run: |
-          sudo apt update
-          sudo apt install git cmake make ninja-build gcc g++ gfortran jq lcov
-          sudo apt install openmpi-bin openmpi-common libopenmpi-dev
-          sudo apt install libopenblas-dev libsuitesparse-dev
-          sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
+          sudo apt-get update
+          sudo apt-get install -y openmpi-bin openmpi-common libopenmpi-dev
 
-      - name: Install lcov_cobertura for XML conversion
-        run: pip install lcov-cobertura
-
-      - name: Cache libneo build
-        uses: actions/cache@v4
-        with:
-          path: |
-            libneo/build
-            libneo/install
-          key: ${{ runner.os }}-libneo-${{ hashFiles('libneo/**') }}
-          restore-keys: |
-            ${{ runner.os }}-libneo-
-
-      - name: Build libneo
+      - name: Set up Python 3
         run: |
-          cd libneo
-          if [ ! -f install/lib/libneo.a ]; then
-            echo "Building libneo..."
-            make install
-          else
-            echo "Using cached libneo build"
-          fi
+          python -m pip install --upgrade pip
+          pip install numpy lcov-cobertura
+
+
 
       - name: Build NEO-2 with coverage flags
         run: |
-          export CC=gcc CXX=g++ FC=gfortran
           cmake --preset default -DCMAKE_BUILD_TYPE=Coverage
           cmake --build --preset default
 
@@ -59,7 +59,7 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          # Capture coverage data with proper settings for Fortran
+          # Capture coverage data
           cd build && lcov --capture --directory . --output-file coverage.info \
             --rc branch_coverage=1 \
             --rc geninfo_unexecuted_blocks=1 \

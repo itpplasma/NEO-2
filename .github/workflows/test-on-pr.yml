@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
+      - master
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - main
+      - master
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -30,18 +32,24 @@ jobs:
 
       - name: Set up Python 3
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y -q --no-install-recommends python3-dev
           python -m pip install --upgrade pip
           pip install numpy
 
-      - name: Install required packages
+      - name: Cache apt packages
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: git cmake make ninja-build gcc g++ gfortran jq libopenblas-dev libsuitesparse-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev
+          version: 1.0
+
+      - name: Install MPI packages separately
         run: |
-          sudo apt update
-          sudo apt install git cmake make ninja-build gcc g++ gfortran jq
-          sudo apt install openmpi-bin openmpi-common libopenmpi-dev
-          sudo apt install libopenblas-dev libsuitesparse-dev
-          sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
+          sudo apt-get update
+          sudo apt-get install -y openmpi-bin openmpi-common libopenmpi-dev
+
+      - name: Set up Python 3
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy
 
       - name: Clone test data
         id: data
@@ -69,14 +77,13 @@ jobs:
           cd python
           pip install -e .
 
+
       - name: Build NEO-2 (current version)
         id: build
         run: |
           make
           echo "neo2_par=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
           echo "neo2_ql=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
-
-      # Skip unit tests here - they're run in the separate unit-tests-coverage workflow
 
       - name: Build NEO-2 (reference version - latest stable release)
         id: build_reference
