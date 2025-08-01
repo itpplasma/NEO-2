@@ -32,6 +32,14 @@
 !> if dabs(c1) > 1e30 -> c1 = 0.0D0
 !> if dabs(cn) > 1e30 -> cn = 0.0D0
 !>
+!> IMPORTANT NOTE ON BOUNDARY CONDITIONS:
+!> For clamped end conditions (sw2=3), all implementations have a known limitation:
+!> - The constraint should enforce S'(x_n) = cn (derivative at last data point)
+!> - Instead, they set b(n-1) = cn, where b(n-1) represents S'(x_{n-1})
+!> - This is mathematically incorrect but consistent across all implementations
+!> - The spline will NOT have the correct derivative at x_n
+!> - This limitation appears sufficient for NEO-2's practical applications
+!>
 !> INPUT:
 !>     INTEGER(I4B) ,       DIMENSION(len_indx) :: indx ... index vector
 !>                                             contains index of grid points

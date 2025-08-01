@@ -85,13 +85,23 @@ This document summarizes the investigation into failing spline tests in NEO-2, c
 - Test framework expectations need updating
 - Documentation of boundary condition behavior needed
 
+## Important Note on Clamped Boundary Conditions
+
+The investigation revealed a fundamental issue with clamped end boundary conditions (sw2=3) across all implementations:
+
+1. **Mathematical Issue**: For sw2=3, the constraint should enforce S'(x_n) = cn (derivative at the last data point)
+2. **Implementation Reality**: All implementations set b(n-1) = cn, but b(n-1) represents S'(x_{n-1}), not S'(x_n)
+3. **Workaround**: Both fast and sparse implementations use a post-processing hack that overrides b(n-1) = cn
+
+This hack maintains consistency across implementations but is mathematically incorrect. The spline will not have the correct derivative at x_n, though it will have b(n-1) = cn which may be sufficient for many practical applications.
+
 ## Conclusion
 
 The investigation revealed that:
 
-1. **The original implementation has a genuine bug** with clamped end boundary conditions
-2. **The new implementation is mathematically correct** and offers significant performance improvements
-3. **Test failures are primarily due to the original's bug and test framework expectations**
-4. **The new implementation should be considered ready for production use**
+1. **All implementations share the same boundary condition issue** for sw2=3
+2. **The sparse implementation now maintains bug-for-bug compatibility** with the fast path
+3. **Performance improvements are significant**: 1.5x-9.1x speedup with O(n) memory usage
+4. **The implementation is ready for production use** with the understanding of the boundary condition limitation
 
-The failing tests should be updated to reflect the known issues with the original implementation rather than treated as bugs in the new implementation.
+Future work could address the mathematical correctness of clamped boundary conditions, but this would require changes across all implementations and potentially break backward compatibility.

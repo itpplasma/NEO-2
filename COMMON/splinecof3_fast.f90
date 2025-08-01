@@ -12,6 +12,16 @@ contains
   !> General fast cubic spline using tridiagonal solver
   !> 
   !> Supports: (2,4) natural, (1,3) clamped, (1,4) mixed, (2,3) mixed
+  !>
+  !> IMPORTANT NOTE ON BOUNDARY CONDITIONS:
+  !> For clamped end conditions (sw2=3), this implementation has a known limitation:
+  !> - The constraint should enforce S'(x_n) = cn (derivative at last data point)
+  !> - Instead, it sets b(n-1) = cn via post-processing override
+  !> - b(n-1) represents S'(x_{n-1}), not S'(x_n)
+  !> - This is mathematically incorrect but maintains compatibility with the
+  !>   original implementation
+  !> - The spline will NOT have the correct derivative at x_n
+  !>
   SUBROUTINE splinecof3_general_fast(x, y, c1, cn, sw1, sw2, a, b, c, d)
     real(DP), dimension(:), intent(in) :: x, y
     real(DP), intent(in) :: c1, cn
