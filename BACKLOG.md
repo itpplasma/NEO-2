@@ -181,6 +181,59 @@ SuiteSparse (UMFPACK) doesn't provide standalone ILU - it uses complete LU facto
 3. Begin Phase 1.1 implementation
 4. Weekly progress reviews and adjustments
 
+## Analysis of Current Arnoldi-Richardson Implementation
+
+### Current Implementation Assessment
+
+The existing Arnoldi-Richardson method in NEO-2-QL is **mathematically sound** but has limitations:
+
+1. **What it does:**
+   - Uses Arnoldi iteration to find unstable eigenvalues (|λ| ≥ 0.5)
+   - Applies Richardson iteration with eigenvalue deflation/preconditioning
+   - Stabilizes iterations by projecting out unstable eigenvectors
+   - Formula: `f_new = f_old + P(Af_old + q - f_old)` where P modifies unstable modes
+
+2. **Why it's valid:**
+   - Correctly identifies and handles unstable modes in the collision operator
+   - Mathematically rigorous eigenvalue deflation technique
+   - Appropriate for drift-kinetic equations with potential instabilities
+
+3. **Limitations:**
+   - Only available in NEO-2-QL (tokamak), not NEO-2-PAR (stellarator)
+   - High memory cost for eigenvalue computation
+   - Complex implementation with multiple iteration layers
+   - Not suitable for very large problems due to Arnoldi memory requirements
+
+### Recommendation: Keep but Complement
+
+**DO NOT REPLACE** the Arnoldi-Richardson method. Instead:
+
+1. **Keep it as an option** for stability analysis and cases with known instabilities
+2. **Add BiCGSTAB as the default** for most production runs
+3. **Use Arnoldi for diagnostics** when BiCGSTAB convergence is poor
+
+### Updated Solver Strategy
+
+| Method | Use Case | Memory | Speed | Stability |
+|--------|----------|--------|-------|-----------|
+| **UMFPACK** (method 3) | Small problems, debugging | High | Fast (small) | Excellent |
+| **BiCGSTAB+ILU** (method 4) | Production runs, large problems | Low | Fast (large) | Good |
+| **Arnoldi-Richardson** (QL only) | Unstable problems, analysis | Medium | Medium | Excellent |
+
+### Integration Plan Update
+
+Add to Phase 3:
+- [ ] Preserve Arnoldi-Richardson as alternative solver path
+- [ ] Add solver selection logic based on problem characteristics
+- [ ] Document when to use each solver method
+
+### Physics Considerations
+
+The Arnoldi method provides valuable physics insights:
+- Identifies growing modes in the collision operator
+- Useful for stability analysis of new configurations
+- Can diagnose why BiCGSTAB might struggle with certain problems
+
 ---
 
 *Last updated: 2025-08-01*
