@@ -246,6 +246,10 @@ contains
             write(*,'(A,3E12.5)') '    b diff:', abs(b_sparse - b_orig)
             write(*,'(A,3E12.5)') '    c diff:', abs(c_sparse - c_orig)
             write(*,'(A,3E12.5)') '    d diff:', abs(d_sparse - d_orig)
+            write(*,'(A)') '  Debug: b values'
+            write(*,'(A,3F10.6)') '    Original b:', b_orig
+            write(*,'(A,3F10.6)') '    Sparse b:  ', b_sparse
+            write(*,'(A,F10.6)') '    cn value: ', cn
             test_passed = .false.
         else
             write(*,'(A)') '  PASSED: Sparse and Original agree'

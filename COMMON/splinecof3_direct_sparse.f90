@@ -7,12 +7,7 @@ module splinecof3_direct_sparse_mod
   implicit none
   
   private
-  public :: splinecof3_direct_sparse, splinecof3_direct_sparse_get_coo
-  
-  ! Module variables to store COO matrix for inspection
-  INTEGER(I4B), DIMENSION(:), ALLOCATABLE, SAVE :: last_irow_coo, last_icol_coo
-  REAL(DP), DIMENSION(:), ALLOCATABLE, SAVE :: last_val_coo, last_rhs_coo
-  INTEGER(I4B), SAVE :: last_nnz = 0, last_n = 0
+  public :: splinecof3_direct_sparse
   
 contains
 
@@ -25,8 +20,9 @@ contains
     INTEGER(I4B), DIMENSION(:), INTENT(INOUT), OPTIONAL :: irow, icol
     REAL(DP), DIMENSION(:), INTENT(INOUT), OPTIONAL :: vals
     
-    ! Match sparse_mod's exact zero comparison: only skip exactly 0.0_DP values
-    IF (val .NE. 0.0_DP) THEN
+    ! Add entry if non-zero to maintain sparse structure
+    ! Use same threshold as dense implementation
+    IF (ABS(val) > 0.0_DP) THEN
        idx = idx + 1
        IF (.NOT. counting) THEN
           irow(idx) = i
@@ -689,7 +685,7 @@ contains
 
     ! Boundary condition 1
     i = i + 1
-    ! For sparse matrices, only add non-zero entries
+    ! Only add non-zero boundary condition entries
     IF (mu1 /= 0) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 2; val_coo(idx) = DBLE(mu1)
     END IF
@@ -726,16 +722,17 @@ contains
           help_d = help_d + h_j * h_j * h_j * x_h
           help_i = help_i + f(x(l),m) * y(l)
        END DO
-       IF (ABS(help_a) > 1D-15) THEN
+       ! Add fitting coefficients - use small threshold to avoid numerical issues
+       IF (ABS(omega((j-1)/VAR+1) * help_a) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
        END IF
-       IF (ABS(help_b) > 1D-15) THEN
+       IF (ABS(omega((j-1)/VAR+1) * help_b) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
        END IF
-       IF (ABS(help_c) > 1D-15) THEN
+       IF (ABS(omega((j-1)/VAR+1) * help_c) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
        END IF
-       IF (ABS(help_d) > 1D-15) THEN
+       IF (ABS(omega((j-1)/VAR+1) * help_d) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d
        END IF
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = 1.0D0
@@ -760,16 +757,17 @@ contains
           help_d = help_d + h_j * h_j * h_j * h_j * x_h
           help_i = help_i + h_j * f(x(l),m) * y(l)
        END DO
-       IF (ABS(help_a) > 1D-15) THEN
+       ! Add fitting coefficients - use small threshold to avoid numerical issues
+       IF (ABS(omega((j-1)/VAR+1) * help_a) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
        END IF
-       IF (ABS(help_b) > 1D-15) THEN
+       IF (ABS(omega((j-1)/VAR+1) * help_b) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
        END IF
-       IF (ABS(help_c) > 1D-15) THEN
+       IF (ABS(omega((j-1)/VAR+1) * help_c) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
        END IF
-       IF (ABS(help_d) > 1D-15) THEN
+       IF (ABS(omega((j-1)/VAR+1) * help_d) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d
        END IF
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = h
@@ -802,16 +800,17 @@ contains
           help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
           help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
        END DO
-       IF (ABS(help_a) > 1D-15) THEN
+       ! Add fitting coefficients - use small threshold to avoid numerical issues
+       IF (ABS(omega((j-1)/VAR+1) * help_a) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
        END IF
-       IF (ABS(help_b) > 1D-15) THEN
+       IF (ABS(omega((j-1)/VAR+1) * help_b) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
        END IF
-       IF (ABS(help_c) > 1D-15) THEN
+       IF (ABS(omega((j-1)/VAR+1) * help_c) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
        END IF
-       IF (ABS(help_d) > 1D-15 .OR. ABS(lambda((j-1)/VAR+1)) > 1D-15) THEN
+       IF (ABS(omega((j-1)/VAR+1) * help_d) > 1.0D-15 .OR. ABS(lambda((j-1)/VAR+1)) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1)
        END IF
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = h * h * h
@@ -832,7 +831,7 @@ contains
     l = ii
     help_a = help_a + f(x(l),m) * f(x(l),m)
     help_inh = help_inh + f(x(l),m) * y(l)
-    IF (ABS(help_a) > 1D-15) THEN
+    IF (ABS(omega(len_indx) * help_a) > 1.0D-15) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+1; val_coo(idx) = omega(len_indx) * help_a
     END IF
     idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-2)*VAR+5; val_coo(idx) = -1.0D0
@@ -860,15 +859,13 @@ contains
     
     ! Boundary condition 2
     i = i + 1
-    ! For sparse matrices, only add non-zero entries
+    ! Only add non-zero boundary condition entries
     IF (mu2 /= 0) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 2; val_coo(idx) = DBLE(mu2)
     END IF
     IF (nu2 /= 0) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 3; val_coo(idx) = DBLE(nu2)
     END IF
-    
-    ! Original boundary constraint (matches original dense implementation)
     IF (sig2 /= 0) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 2; val_coo(idx) = DBLE(sig2)
     END IF
@@ -887,7 +884,8 @@ contains
   !> - Instead, it sets b(n-1) = cn, where b(n-1) represents S'(x_{n-1})
   !> - This is mathematically incorrect but maintains compatibility with all other
   !>   implementations in NEO-2 (original dense, fast path)
-  !> - A post-processing override ensures b(n-1) = cn for consistency
+  !> - The sparse matrix construction naturally produces this behavior, matching
+  !>   the original dense implementation exactly
   !> - The spline will NOT have the correct derivative at x_n, but this appears
   !>   sufficient for NEO-2's practical applications
   !>
@@ -924,6 +922,7 @@ contains
     ! Helper arrays
     INTEGER(I4B), DIMENSION(:), ALLOCATABLE :: col_count
     character(200) :: error_message
+    logical :: consecutive_indices
 
     ! Initialize variables
     VAR = 7
@@ -1131,39 +1130,21 @@ contains
        END IF
     END DO
     
-    ! Override b values for clamped boundaries to maintain compatibility
-    ! NOTE: This is a hack that maintains consistency with the fast path,
-    ! but is mathematically incorrect as it sets b(n-1) = cn where b(n-1) 
-    ! should represent S'(x_{n-1}), not S'(x_n)
-    IF (sw1 == 1) THEN  ! Clamped start
-      b(1) = c1
-    END IF
-    IF (sw2 == 3) THEN  ! Clamped end
-      b(len_indx-1) = cn
-    END IF
     
     ! Follow spline_cof convention: set n-th element to zero
-    a(len_x) = 0.0_DP
-    b(len_x) = 0.0_DP
-    c(len_x) = 0.0_DP
-    d(len_x) = 0.0_DP
+    ! Note: arrays are size len_indx, not len_x when indx is a subset
+    IF (len_indx == len_x) THEN
+       a(len_x) = 0.0_DP
+       b(len_x) = 0.0_DP
+       c(len_x) = 0.0_DP
+       d(len_x) = 0.0_DP
+    END IF
     
     ! Clean up
     DEALLOCATE(irow_coo, icol_coo, val_coo, irow_csc, pcol_csc, val_csc, &
                col_count, lambda, omega, inh)
 
   END SUBROUTINE splinecof3_direct_sparse
-
-  !> Get the last computed COO matrix for inspection
-  SUBROUTINE splinecof3_direct_sparse_get_coo(irow, icol, val, rhs, nnz, n)
-    INTEGER(I4B), DIMENSION(:), ALLOCATABLE, INTENT(OUT) :: irow, icol
-    REAL(DP), DIMENSION(:), ALLOCATABLE, INTENT(OUT) :: val, rhs
-    INTEGER(I4B), INTENT(OUT) :: nnz, n
-    
-    ! Storage disabled to avoid allocation issues
-    nnz = 0
-    n = 0
-  END SUBROUTINE splinecof3_direct_sparse_get_coo
 
 end module splinecof3_direct_sparse_mod
 
