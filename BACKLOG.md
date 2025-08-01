@@ -183,56 +183,65 @@ SuiteSparse (UMFPACK) doesn't provide standalone ILU - it uses complete LU facto
 
 ## Analysis of Current Arnoldi-Richardson Implementation
 
-### Current Implementation Assessment
+### Critical Re-evaluation
 
-The existing Arnoldi-Richardson method in NEO-2-QL is **mathematically sound** but has limitations:
+After deeper analysis, the Arnoldi-Richardson method appears to be **over-engineered** for the problem:
 
-1. **What it does:**
-   - Uses Arnoldi iteration to find unstable eigenvalues (|λ| ≥ 0.5)
-   - Applies Richardson iteration with eigenvalue deflation/preconditioning
-   - Stabilizes iterations by projecting out unstable eigenvectors
-   - Formula: `f_new = f_old + P(Af_old + q - f_old)` where P modifies unstable modes
+1. **What it actually does:**
+   - Solves `f = Af + q` by finding eigenvalues |λ| ≥ 0.5 of iteration matrix A
+   - Explicitly deflates these eigenvalues using expensive Arnoldi iteration
+   - Applies modified Richardson iteration with deflation
 
-2. **Why it's valid:**
-   - Correctly identifies and handles unstable modes in the collision operator
-   - Mathematically rigorous eigenvalue deflation technique
-   - Appropriate for drift-kinetic equations with potential instabilities
+2. **Why BiCGSTAB+ILU is superior:**
+   - **Handles conditioning implicitly** - ILU preconditioner approximates (I-A)^(-1)
+   - **No expensive eigenvalue computation** - saves memory and computation
+   - **More robust** - BiCGSTAB designed for indefinite/ill-conditioned systems
+   - **Simpler implementation** - fewer points of failure
 
-3. **Limitations:**
-   - Only available in NEO-2-QL (tokamak), not NEO-2-PAR (stellarator)
-   - High memory cost for eigenvalue computation
-   - Complex implementation with multiple iteration layers
-   - Not suitable for very large problems due to Arnoldi memory requirements
+3. **The fundamental issue:**
+   - The system `(I-A)f = q` may be ill-conditioned if A has eigenvalues near 1
+   - Arnoldi-Richardson explicitly finds and deflates these modes
+   - But **ILU preconditioning achieves the same effect** without eigenvalue computation
+   - Modern Krylov methods like BiCGSTAB are designed precisely for such systems
 
-### Recommendation: Keep but Complement
+### Revised Recommendation: Replace Completely
 
-**DO NOT REPLACE** the Arnoldi-Richardson method. Instead:
+**BiCGSTAB+ILU should replace ALL solver methods** for the following reasons:
 
-1. **Keep it as an option** for stability analysis and cases with known instabilities
-2. **Add BiCGSTAB as the default** for most production runs
-3. **Use Arnoldi for diagnostics** when BiCGSTAB convergence is poor
+1. **Conditioning**: ILU(1) handles the same conditioning issues that Arnoldi targets
+2. **Memory**: Eliminates eigenvalue storage and Arnoldi basis vectors
+3. **Performance**: No expensive eigenvalue computation overhead
+4. **Robustness**: BiCGSTAB is more stable than Richardson iteration
+5. **Simplicity**: One solver for all cases reduces code complexity
 
-### Updated Solver Strategy
+### Why Arnoldi-Richardson is Obsolete
 
-| Method | Use Case | Memory | Speed | Stability |
-|--------|----------|--------|-------|-----------|
-| **UMFPACK** (method 3) | Small problems, debugging | High | Fast (small) | Excellent |
-| **BiCGSTAB+ILU** (method 4) | Production runs, large problems | Low | Fast (large) | Good |
-| **Arnoldi-Richardson** (QL only) | Unstable problems, analysis | Medium | Medium | Excellent |
+The Arnoldi-Richardson approach is essentially:
+- Find problematic eigenvalues (expensive)
+- Modify them explicitly (complex)
+- Iterate with modification (slow)
 
-### Integration Plan Update
+BiCGSTAB+ILU achieves the same goal:
+- ILU approximates the inverse (handles conditioning)
+- BiCGSTAB iterates robustly (handles indefiniteness)
+- No eigenvalue computation needed (fast)
 
-Add to Phase 3:
-- [ ] Preserve Arnoldi-Richardson as alternative solver path
-- [ ] Add solver selection logic based on problem characteristics
-- [ ] Document when to use each solver method
+### Final Solver Strategy
 
-### Physics Considerations
+| Method | Use Case | Status |
+|--------|----------|--------|
+| **UMFPACK** (method 3) | Fallback for small problems | Keep temporarily |
+| **BiCGSTAB+ILU** (method 4) | **ALL PROBLEMS** | Primary solver |
+| **Arnoldi-Richardson** | None - obsolete | Phase out |
 
-The Arnoldi method provides valuable physics insights:
-- Identifies growing modes in the collision operator
-- Useful for stability analysis of new configurations
-- Can diagnose why BiCGSTAB might struggle with certain problems
+### Updated Integration Plan
+
+1. **Implement BiCGSTAB+ILU as universal solver**
+2. **Test on all existing test cases** including those using Arnoldi
+3. **Remove Arnoldi-Richardson** after validation
+4. **Simplify codebase** with single solver path
+
+The physics is preserved - we're solving the same linear system, just more efficiently.
 
 ---
 
