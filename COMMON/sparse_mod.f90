@@ -1,5 +1,7 @@
 MODULE sparse_mod
 
+  USE sparse_types_mod, ONLY: dp, long
+  USE sparse_conversion_mod
   IMPLICIT NONE
 
   PUBLIC sparse_solve_method
@@ -7,12 +9,10 @@ MODULE sparse_mod
 
   PUBLIC sparse_talk
   LOGICAL :: sparse_talk = .FALSE.
-
-  PRIVATE dp
-  INTEGER, PARAMETER :: dp = KIND(1.0d0)
-
-  PRIVATE long
-  INTEGER, PARAMETER :: long = 8
+  
+  ! Re-export conversion routines for backward compatibility
+  PUBLIC :: column_pointer2full, column_full2pointer
+  PUBLIC :: sparse2full, full2sparse
 
   PRIVATE factorization_exists
   LOGICAL :: factorization_exists = .FALSE.
@@ -57,29 +57,6 @@ MODULE sparse_mod
      MODULE PROCEDURE load_octave_mat, load_octave_matComplex
   END INTERFACE load_octave_matrices
 
-  PUBLIC column_pointer2full
-  PRIVATE col_pointer2full
-  INTERFACE column_pointer2full
-     MODULE PROCEDURE col_pointer2full
-  END INTERFACE column_pointer2full
-
-  PUBLIC column_full2pointer
-  PRIVATE col_full2pointer
-  INTERFACE column_full2pointer
-     MODULE PROCEDURE col_full2pointer
-  END INTERFACE column_full2pointer
-
-  PUBLIC sparse2full
-  PRIVATE sp2full
-  INTERFACE sparse2full
-     MODULE PROCEDURE sp2full, sp2fullComplex
-  END INTERFACE sparse2full
-
-  PUBLIC full2sparse
-  PRIVATE full2sp
-  INTERFACE full2sparse
-     MODULE PROCEDURE full2sp,full2spComplex
-  END INTERFACE full2sparse
 
   PUBLIC sparse_solve
   INTERFACE sparse_solve
@@ -1561,266 +1538,6 @@ CONTAINS
   END SUBROUTINE sparse_solve_suitesparseComplex_b2_loop
   !-------------------------------------------------------------------------------
 
-  !-------------------------------------------------------------------------------
-  ! column pointer pcol to full column index icol
-  SUBROUTINE col_pointer2full(pcol,icol)
-
-    INTEGER, DIMENSION(:), INTENT(in) :: pcol
-    INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(inout) :: icol
-
-    INTEGER :: nz
-    INTEGER :: nc_old,c,nc,ncol
-
-    ncol = SIZE(pcol,1)-1
-    nz = pcol(ncol+1) - 1
-    IF (ALLOCATED(icol)) DEALLOCATE(icol)
-    ALLOCATE(icol(nz))
-    nc_old = 0
-    DO c = 1,ncol
-       nc = pcol(c+1) - pcol(c)
-       icol(nc_old+1:nc_old+nc) = c;
-       nc_old = nc_old + nc;
-    END DO
-
-  END SUBROUTINE col_pointer2full
-  !-------------------------------------------------------------------------------
-
-  !-------------------------------------------------------------------------------
-  ! full column index icol to column pointer pcol
-  SUBROUTINE col_full2pointer(icol,pcol)
-
-    INTEGER, DIMENSION(:), INTENT(in) :: icol
-    INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(inout) :: pcol
-
-    INTEGER :: ncol,nz
-    INTEGER :: c_c,c_old,k,c,kc
-
-    ncol = MAXVAL(icol)
-    nz = SIZE(icol,1)
-
-    IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
-    ALLOCATE(pcol(ncol+1))
-
-    c_c = 1
-    pcol(c_c) = 1
-    c_old = 0
-    DO k = 1,nz
-       c = icol(k)
-       IF (c .NE. c_old) THEN
-          IF (c .GT. c_old + 1) THEN
-             DO kc = c_old+1,c
-                c_c = c_c + 1
-                pcol(c_c) = k
-             END DO
-          ELSE
-             c_c = c_c + 1
-             pcol(c_c) = k+1
-          END IF
-          c_old = c
-       ELSE
-          pcol(c_c) = k+1;
-       END IF
-    END DO
-    IF (c_c .LT. ncol+1) pcol(c_c+1:ncol+1) = pcol(c_c)
-
-  END SUBROUTINE col_full2pointer
-  !-------------------------------------------------------------------------------
-
-  !-------------------------------------------------------------------------------
-  ! sparse to full conversion
-  SUBROUTINE sp2full(irow,pcol,val,nrow,ncol,A)
-
-    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
-    REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
-    INTEGER, INTENT(in) :: nrow,ncol
-    REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: A
-
-    INTEGER :: nz,n,ir,ic
-    INTEGER, DIMENSION(:), ALLOCATABLE :: icol
-
-    nz = SIZE(val,1)
-    IF (SIZE(pcol,1) .NE. nz) THEN
-       IF (SIZE(pcol,1) .EQ. ncol+1) THEN
-          CALL column_pointer2full(pcol,icol)
-       ELSE
-          PRINT *, 'Error in sparse2full: icol is not correct'
-          STOP
-       END IF
-    ELSE
-       ALLOCATE(icol(SIZE(pcol)))
-       icol = pcol
-    END IF
-
-    IF (ALLOCATED(A)) DEALLOCATE(A)
-    ALLOCATE(A(nrow,ncol))
-    A = 0.0_dp
-    DO n = 1,nz
-       ir = irow(n)
-       ic = icol(n)
-       A(ir,ic) = A(ir,ic) + val(n)
-    END DO
-    IF (ALLOCATED(icol)) DEALLOCATE(icol)
-
-  END SUBROUTINE sp2full
-  !-------------------------------------------------------------------------------
-
-  !-------------------------------------------------------------------------------
-  ! sparse to full conversion for complex matrices
-  SUBROUTINE sp2fullComplex(irow,pcol,val,nrow,ncol,A)
-
-    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
-    COMPLEX(kind=dp), DIMENSION(:), INTENT(in) :: val
-    INTEGER, INTENT(in) :: nrow,ncol
-    COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: A
-
-    INTEGER :: nz,n,ir,ic
-    INTEGER, DIMENSION(:), ALLOCATABLE :: icol
-
-    nz = SIZE(val,1)
-    IF (SIZE(pcol,1) .NE. nz) THEN
-       IF (SIZE(pcol,1) .EQ. ncol+1) THEN
-          CALL column_pointer2full(pcol,icol)
-       ELSE
-          PRINT *, 'Error in sparse2full: icol is not correct'
-          STOP
-       END IF
-    ELSE
-       ALLOCATE(icol(SIZE(pcol)))
-       icol = pcol
-    END IF
-
-    IF (ALLOCATED(A)) DEALLOCATE(A)
-    ALLOCATE(A(nrow,ncol))
-    A = 0.0_dp
-    DO n = 1,nz
-       ir = irow(n)
-       ic = icol(n)
-       A(ir,ic) = A(ir,ic) + val(n)
-    END DO
-    IF (ALLOCATED(icol)) DEALLOCATE(icol)
-
-  END SUBROUTINE sp2fullComplex
-  !-------------------------------------------------------------------------------
-
-  !-------------------------------------------------------------------------------
-  !> \brief Full to sparse conversion for real matrix.
-  !>
-  !> input:
-  !> A: matrix (intent in) to convert to a sparse format. Note that this
-  !>   is formally the only input of this subroutine.
-  !> irow: allocatable vector (intent inout), where the row indices will
-  !>   be stored.
-  !>   Note that the original content is not read, the intent
-  !>   is because the array is deallocated if it is already allocated.
-  !> pcol: allocatable vector (intent inout), stores ?
-  !>   Note that the original content is not read, the intent
-  !>   is because the array is deallocated if it is already allocated.
-  !> values: allocatable vector (intent inout), stores the nonzero
-  !>   values of the matrix.
-  !>   Note that the original content is not read, the intent
-  !>   is because the array is deallocated if it is already allocated.
-  !> nrow, ncol: integers (intent out), giving the size of the original
-  !>   matrix.
-  !> nz_out: integer (intent out, optional), giving the number of
-  !>   nonzero elements of matrix A, i.e. the size of the vectors irow,
-  !>   pcol(?) and values on output.
-  SUBROUTINE full2sp(A,irow,pcol,values,nrow,ncol,nz_out)
-
-    REAL(kind=dp), DIMENSION(:,:), INTENT(in) :: A
-    INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(inout) :: irow,pcol
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: values
-    INTEGER, INTENT(out) :: nrow,ncol
-    INTEGER, OPTIONAL, INTENT(out) :: nz_out
-
-    INTEGER, DIMENSION(:), ALLOCATABLE :: icol
-    INTEGER :: nz,nc,nr,n
-
-    nrow = SIZE(A,1)
-    ncol = SIZE(A,2)
-
-    nz = 0
-    DO nc = 1,ncol
-       DO nr = 1,nrow
-          IF (A(nr,nc) .NE. 0.0_dp) nz = nz + 1
-       END DO
-    END DO
-
-    IF (ALLOCATED(irow)) DEALLOCATE(irow)
-    ALLOCATE(irow(nz))
-    IF (ALLOCATED(icol)) DEALLOCATE(icol)
-    ALLOCATE(icol(nz))
-    IF (ALLOCATED(values)) DEALLOCATE(values)
-    ALLOCATE(values(nz))
-
-    n = 0
-    DO nc = 1,ncol
-       DO nr = 1,nrow
-          IF (A(nr,nc) .NE. 0.0_dp) THEN
-             n = n + 1
-             irow(n) = nr
-             icol(n) = nc
-             values(n) = A(nr,nc)
-          END IF
-       END DO
-    END DO
-
-    CALL column_full2pointer(icol,pcol)
-
-    IF (PRESENT(nz_out)) nz_out = nz
-    IF (ALLOCATED(icol)) DEALLOCATE(icol)
-
-  END SUBROUTINE full2sp
-  !-------------------------------------------------------------------------------
-
-  !-------------------------------------------------------------------------------
-  ! full to sparse conversion for complex matrices
-  SUBROUTINE full2spComplex(A,irow,pcol,val,nrow,ncol,nz_out)
-
-    COMPLEX(kind=dp), DIMENSION(:,:), INTENT(in) :: A
-    INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(inout) :: irow,pcol
-    COMPLEX(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(inout) :: val
-    INTEGER, INTENT(out) :: nrow,ncol
-    INTEGER, OPTIONAL, INTENT(out) :: nz_out
-
-    INTEGER, DIMENSION(:), ALLOCATABLE :: icol
-    INTEGER :: nz,nc,nr,n
-
-    nrow = SIZE(A,1)
-    ncol = SIZE(A,2)
-
-    nz = 0
-    DO nc = 1,ncol
-       DO nr = 1,nrow
-          IF (A(nr,nc) .NE. 0.0_dp) nz = nz + 1
-       END DO
-    END DO
-
-    IF (ALLOCATED(irow)) DEALLOCATE(irow)
-    ALLOCATE(irow(nz))
-    IF (ALLOCATED(icol)) DEALLOCATE(icol)
-    ALLOCATE(icol(nz))
-    IF (ALLOCATED(val)) DEALLOCATE(val)
-    ALLOCATE(val(nz))
-
-    n = 0
-    DO nc = 1,ncol
-       DO nr = 1,nrow
-          IF (A(nr,nc) .NE. 0.0_dp) THEN
-             n = n + 1
-             irow(n) = nr
-             icol(n) = nc
-             val(n)  = A(nr,nc)
-          END IF
-       END DO
-    END DO
-
-    CALL column_full2pointer(icol,pcol)
-
-    IF (PRESENT(nz_out)) nz_out = nz
-    IF (ALLOCATED(icol)) DEALLOCATE(icol)
-
-  END SUBROUTINE full2spComplex
-  !-------------------------------------------------------------------------------
 
   !-------------------------------------------------------------------------------
   ! computes A*x for sparse A and 1-D array x
