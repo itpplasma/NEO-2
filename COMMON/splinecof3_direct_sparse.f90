@@ -156,13 +156,11 @@ contains
     CASE(4); rho2 = 1
     END SELECT
 
-    ! Calculate exact maximum non-zeros analytically:
-    ! - 2 boundary equations with up to 4 entries each = 8
-    ! - (len_indx-1) intervals, each with exactly:
-    !   * 3 continuity equations × 5,4,3 entries = 12
-    !   * 4 fitting equations × max 7,9,9,4 entries = 29  
-    ! Total: 8 + (len_indx-1) × 41
-    max_nnz = 8 + 41 * (len_indx - 1)
+    ! Conservative estimate for maximum non-zeros:
+    ! Use a safety factor to account for all possible matrix entries
+    ! Based on dense matrix size with sparsity considerations
+    max_nnz = MIN(size_dimension * size_dimension, &
+                  2 * size_dimension * VAR)  ! Conservative upper bound
     
     ! Allocate COO format arrays
     ALLOCATE(irow_coo(max_nnz), icol_coo(max_nnz), val_coo(max_nnz), &
@@ -194,7 +192,7 @@ contains
     DO j = 1, VAR*(len_indx-1)-1, VAR
        ii = indx((j-1)/VAR+1)
        ie = indx((j-1)/VAR+2) - 1
-       h  = x(ie+1) - x(ii)
+       h  = x(indx((j-1)/VAR+2)) - x(ii)
 
        ! Continuity conditions - A_i, B_i, C_i
        ! A_i continuity
@@ -374,16 +372,15 @@ contains
     ! Last segment special conditions
     j = VAR*(len_indx-1)+1
     ii = indx(len_indx)
-    ie = SIZE(x)
+    ie = ii  ! Last point only, matching original algorithm
     
     ! delta a_{N-1}
     i = i + 1
     help_a = 0.0D0
     help_inh = 0.0D0
-    DO l = ii, ie
-       help_a = help_a + f(x(l),m) * f(x(l),m)
-       help_inh = help_inh + f(x(l),m) * y(l)
-    END DO
+    l = ii
+    help_a = help_a + f(x(l),m) * f(x(l),m)
+    help_inh = help_inh + f(x(l),m) * y(l)
     IF (ABS(help_a) > 1D-15) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+1; val_coo(idx) = omega(len_indx) * help_a
     END IF

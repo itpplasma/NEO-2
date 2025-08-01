@@ -122,7 +122,7 @@ contains
         
         ! Check if fast path conditions are actually met
         use_fast_path = (m == 0.0_DP) .AND. (sw1 == 2) .AND. (sw2 == 4) .AND. &
-                        (DABS(c1) < 1.0E-30) .AND. (DABS(cn) < 1.0E-30) .AND. &
+                        (DABS(c1) < tolerance) .AND. (DABS(cn) < tolerance) .AND. &
                         (ALL(lambda1 == 1.0_DP))
         
         if (use_fast_path) then
@@ -187,7 +187,7 @@ contains
         
         ! Check if fast path conditions are met (should NOT be for this test)
         use_fast_path = (m == 0.0_DP) .AND. (sw1 == 2) .AND. (sw2 == 4) .AND. &
-                        (DABS(c1) < 1.0E-30) .AND. (DABS(cn) < 1.0E-30) .AND. &
+                        (DABS(c1) < tolerance) .AND. (DABS(cn) < tolerance) .AND. &
                         (ALL(lambda1 == 1.0_DP))
         
         if (.not. use_fast_path) then
@@ -407,8 +407,12 @@ contains
             time_new = real(clock_end - clock_start, DP) / real(clock_rate, DP) / real(n_repeats, DP)
             
             ! Calculate speedup
-            if (time_new > 0.0_DP) then
+            if (time_new > 0.0_DP .and. time_orig > 0.0_DP) then
                 speedup = time_orig / time_new
+            else if (time_orig <= 0.0_DP .and. time_new <= 0.0_DP) then
+                speedup = 1.0_DP  ! Both too fast to measure, assume equal
+            else if (time_orig <= 0.0_DP) then
+                speedup = 0.0_DP  ! Original too fast, new measurable
             else
                 speedup = 999.99_DP  ! Cap at 999.99x for display when too fast to measure
             end if
