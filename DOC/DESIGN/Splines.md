@@ -2,13 +2,13 @@
 
 ## Overview
 
-The `COMMON/spline_cof.f90` module provides spline interpolation functionality for NEO-2. It contains routines for calculating spline coefficients for both third-order (cubic) and first-order (linear) splines. The module has been significantly optimized with a robust sparse matrix implementation.
+The `COMMON/spline_cof.f90` module provides spline interpolation functionality for NEO-2. It contains routines for calculating spline coefficients for both third-order (cubic) and first-order (linear) splines. The module uses a robust sparse matrix implementation for optimal performance and memory efficiency.
 
-## Current Implementation (Post-Refactoring)
+## Current Implementation
 
-### Performance Improvements
+### Performance Characteristics
 
-The spline implementation now features:
+The spline implementation features:
 - **Direct sparse matrix construction** in COO format, converted to CSC for solving
 - **Memory usage reduced** from O(n²) to O(n) 
 - **Buffer overflow protection** with runtime bounds checking
@@ -101,22 +101,23 @@ Comprehensive test suite (`TEST/test_spline_comparison.f90`) validates:
 - Numerical accuracy and mathematical equivalence
 - Memory safety and bounds checking
 
-## Summary of Improvements (Final Status)
+## Design Benefits
 
 1. **Unified robust implementation**: Single sparse implementation handles all cases safely
 2. **Memory efficiency**: Sparse matrix reduces memory from O(n²) to O(n)
 3. **Performance gains**: Up to 999x speedup for large problems
 4. **Security hardening**: Buffer overflow protection prevents memory corruption
-5. **Code cleanup**: Removed 5500+ lines of dead/duplicate code
+5. **Clean codebase**: Eliminated redundant implementations and dead code
 6. **Backward compatibility**: Identical numerical results as original implementation
 7. **Production ready**: Comprehensive testing and safety features
 
 ## Architecture Decisions
 
-**Fast Path Removal**: The original PR included a fast path optimization for natural cubic splines. However, during code review it was determined that:
-- The fast path implemented standard natural cubic splines (interpolation)
-- NEO-2 requires smoothing splines with least squares fitting and test functions f(x,m)
-- These are fundamentally different mathematical algorithms
-- For correctness and maintainability, the robust sparse implementation handles all cases
+**Unified Implementation Approach**: The design uses a single robust sparse implementation rather than multiple specialized algorithms:
 
-The sparse implementation provides excellent performance across all scenarios while maintaining mathematical correctness and code simplicity.
+- **Mathematical Requirements**: NEO-2 requires smoothing splines with least squares fitting and test functions f(x,m), not simple interpolation
+- **Complexity Management**: A single well-tested implementation is easier to maintain than multiple code paths
+- **Performance**: The sparse implementation provides excellent performance across all parameter combinations
+- **Correctness**: Unified approach eliminates potential inconsistencies between different algorithms
+
+The sparse matrix approach handles all boundary conditions, smoothing parameters, and test functions while maintaining optimal performance characteristics.
