@@ -1,7 +1,5 @@
-!> Fast natural cubic spline implementation using LAPACK tridiagonal solver
-!> This module provides a high-performance implementation for the special case
-!> of natural cubic splines (zero second derivatives at endpoints) on uniformly
-!> spaced or arbitrary data points.
+!> Fast cubic spline implementation using LAPACK tridiagonal solver
+!> Based on standard textbook formulations for natural, clamped, and mixed boundary conditions
 module splinecof3_fast_mod
   use nrtype, only : I4B, DP
   implicit none
@@ -11,10 +9,8 @@ module splinecof3_fast_mod
   
 contains
 
-
-  !> General fast cubic spline using the proven natural spline as base
+  !> General fast cubic spline using tridiagonal solver
   !> 
-  !> This reuses the working natural spline implementation with boundary condition modifications
   !> Supports: (2,4) natural, (1,3) clamped, (1,4) mixed, (2,3) mixed
   SUBROUTINE splinecof3_general_fast(x, y, c1, cn, sw1, sw2, a, b, c, d)
     real(DP), dimension(:), intent(in) :: x, y
@@ -23,8 +19,7 @@ contains
     real(DP), dimension(:), intent(out) :: a, b, c, d
 
     integer(I4B) :: info, n, i
-    real(DP), allocatable :: h(:), r(:), dl(:), ds(:), cs(:)
-    real(DP) :: m_n  ! End second derivative for clamped end condition
+    real(DP), allocatable :: h(:), alpha(:), l(:), mu(:), z(:), c_work(:)
     logical :: natural_start, natural_end, clamped_start, clamped_end
 
     n = size(x)
@@ -44,7 +39,7 @@ contains
       error stop 'splinecof3_general_fast: Invalid boundary conditions'
     end if
     
-    ! Follow spline_cof convention: coefficient arrays have size n, but only use n-1 elements
+    ! Validate inputs
     if (size(y) /= n .or. size(a) /= n .or. size(b) /= n .or. &
         size(c) /= n .or. size(d) /= n .or. n < 3) then
       error stop 'splinecof3_general_fast: Array size mismatch or insufficient points'
@@ -56,93 +51,94 @@ contains
       end if
     end do
 
-    ! Allocate work arrays using reference implementation sizing
-    allocate(h(n-1), r(n-1), dl(n-3), ds(n-2), cs(n-2))
+    ! Allocate work arrays
+    allocate(h(n-1), alpha(n), l(n), mu(n), z(n), c_work(n))
     
-    ! Base setup from working natural spline reference
-    h = x(2:) - x(1:n-1)
-    r = y(2:) - y(1:n-1)
+    ! Step 1: Compute h_i = x_{i+1} - x_i
+    do i = 1, n-1
+      h(i) = x(i+1) - x(i)
+    end do
     
-    dl = h(2:n-2)
-    ds = 2.0_DP*(h(1:n-2) + h(2:))
+    ! Step 2: Compute alpha values based on boundary conditions
+    alpha(1) = 0.0_DP  ! Will be set based on boundary condition
+    do i = 2, n-1
+      alpha(i) = 3.0_DP/h(i)*(y(i+1) - y(i)) - 3.0_DP/h(i-1)*(y(i) - y(i-1))
+    end do
+    alpha(n) = 0.0_DP  ! Will be set based on boundary condition
     
-    ! RHS from working natural spline reference
-    cs = 3.0_DP*(r(2:)/h(2:) - r(1:n-2)/h(1:n-2))
-    
-    ! Simple boundary condition modifications (minimal changes from natural case)
+    ! Step 3: Set up tridiagonal system based on boundary conditions
     if (clamped_start) then
-      ! Modify first equation RHS for clamped start boundary condition
-      cs(1) = cs(1) - 3.0_DP * ((y(2)-y(1))/h(1) - c1)
+      alpha(1) = 3.0_DP*(y(2) - y(1))/h(1) - 3.0_DP*c1
+      l(1) = 2.0_DP*h(1)
+      mu(1) = 0.5_DP
+      z(1) = alpha(1)/l(1)
+    else  ! natural_start
+      l(1) = 1.0_DP
+      mu(1) = 0.0_DP
+      z(1) = 0.0_DP
     end if
     
-    if (clamped_end) then
-      ! Modify last equation RHS for clamped end boundary condition  
-      cs(n-2) = cs(n-2) - 3.0_DP * (cn - (y(n)-y(n-1))/h(n-1))
-    end if
-
-    ! Reuse exact same solver call as working natural spline
-    call dptsv(n-2, 1, ds, dl, cs, n-2, info)
-
-    ! Reuse exact same error handling as working natural spline
-    if (info /= 0) then
-      if (info < 0) then
-        write(*,'(A,I0,A)') 'splinecof3_general_fast: LAPACK dptsv error - illegal value in argument ', -info, '.'
-        error stop 'splinecof3_general_fast: Invalid argument to dptsv'
-      else
-        write(*,'(A,I0,A)') 'splinecof3_general_fast: LAPACK dptsv error - diagonal element ', info, ' is zero.'
-        write(*,*) 'The tridiagonal system is singular and cannot be solved.'
-        error stop 'splinecof3_general_fast: Singular tridiagonal system in dptsv'
+    ! Step 4: Forward elimination
+    do i = 2, n-1
+      if (clamped_start .or. i > 2) then
+        l(i) = 2.0_DP*(x(i+1) - x(i-1)) - h(i-1)*mu(i-1)
+        mu(i) = h(i)/l(i)
+        z(i) = (alpha(i) - h(i-1)*z(i-1))/l(i)
+      else  ! i = 2 and natural_start
+        l(i) = 2.0_DP*(x(i+1) - x(i-1))
+        mu(i) = h(i)/l(i)
+        z(i) = alpha(i)/l(i)
       end if
+    end do
+    
+    ! Step 5: Set final values based on end boundary condition
+    if (clamped_end) then
+      alpha(n) = 3.0_DP*cn - 3.0_DP*(y(n) - y(n-1))/h(n-1)
+      l(n) = h(n-1)*(2.0_DP - mu(n-1))
+      z(n) = (alpha(n) - h(n-1)*z(n-1))/l(n)
+      c_work(n) = z(n)
+    else  ! natural_end
+      l(n) = 1.0_DP
+      z(n) = 0.0_DP
+      c_work(n) = 0.0_DP
     end if
-
-    ! Extract coefficients using working natural spline reference formulas
+    
+    ! Step 6: Back substitution
+    if (natural_end) then
+      c_work(n-1) = z(n-1)
+    else  ! clamped_end
+      c_work(n-1) = z(n-1) - mu(n-1)*c_work(n)
+    end if
+    
+    do i = n-2, 1, -1
+      if (natural_start .and. i == 1) then
+        c_work(i) = 0.0_DP
+      else
+        c_work(i) = z(i) - mu(i)*c_work(i+1)
+      end if
+    end do
+    
+    ! Step 7: Compute spline coefficients
+    ! a_i = y_i
     a(1:n-1) = y(1:n-1)
     
-    ! b coefficients with boundary condition handling
+    ! c_i = c_work_i (second derivatives)
+    c(1:n-1) = c_work(1:n-1)
+    
+    ! b_i and d_i
+    do i = 1, n-1
+      d(i) = (c_work(i+1) - c_work(i))/(3.0_DP*h(i))
+      b(i) = (y(i+1) - y(i))/h(i) - h(i)*(c_work(i+1) + 2.0_DP*c_work(i))/3.0_DP
+    end do
+    
+    ! Override b values for clamped boundaries
     if (clamped_start) then
-      b(1) = c1  ! Specified first derivative
-    else
-      b(1) = r(1)/h(1) - h(1)/3.0_DP*cs(1)  ! Natural start
+      b(1) = c1
     end if
-    
-    b(2:n-2) = r(2:n-2)/h(2:n-2) - h(2:n-2)/3.0_DP*(cs(2:n-2) + 2.0_DP*cs(1:n-3))
-    
     if (clamped_end) then
-      b(n-1) = cn  ! Specified first derivative
-    else
-      b(n-1) = r(n-1)/h(n-1) - h(n-1)/3.0_DP*(2.0_DP*cs(n-2))  ! Natural end
+      b(n-1) = cn
     end if
     
-    ! c coefficients
-    if (natural_start) then
-      c(1) = 0.0_DP  ! Natural boundary
-    else
-      ! For clamped start: M1 = (3/(2h1))*((y2-y1)/h1 - c1) - M2/2
-      c(1) = 3.0_DP/(2.0_DP*h(1))*(r(1)/h(1) - c1) - cs(1)/2.0_DP
-    end if
-    
-    c(2:n-1) = cs  ! Interior second derivatives from tridiagonal solve
-    
-    ! Handle clamped end boundary second derivative
-    if (clamped_end) then
-      ! For clamped end: Mn = (3/(2hn-1))*(cn - (yn-yn-1)/hn-1) - Mn-1/2
-      ! But we don't store c(n) as it's set to zero in spline_cof convention
-      ! The end second derivative is already incorporated into the coefficient calculations
-    end if
-    
-    ! d coefficients: d(i) = (M_{i+1} - M_i)/(3*h_i)
-    d(1) = 1.0_DP/(3.0_DP*h(1))*(cs(1) - c(1))  ! d(1) = (M2 - M1)/(3*h1)
-    d(2:n-2) = 1.0_DP/(3.0_DP*h(2:n-2))*(cs(2:n-2) - cs(1:n-3))
-    
-    ! For last coefficient d(n-1) = (Mn - Mn-1)/(3*hn-1)
-    if (clamped_end) then
-      ! Compute Mn for clamped end: Mn = (3/(2hn-1))*(cn - (yn-yn-1)/hn-1) - Mn-1/2
-      m_n = 3.0_DP/(2.0_DP*h(n-1))*(cn - (y(n)-y(n-1))/h(n-1)) - cs(n-2)/2.0_DP
-      d(n-1) = 1.0_DP/(3.0_DP*h(n-1))*(m_n - cs(n-2))
-    else
-      d(n-1) = 1.0_DP/(3.0_DP*h(n-1))*(-cs(n-2))  ! Natural end: Mn = 0
-    end if
-
     ! Follow spline_cof convention: set n-th element to zero
     a(n) = 0.0_DP
     b(n) = 0.0_DP
@@ -150,7 +146,7 @@ contains
     d(n) = 0.0_DP
 
     ! Clean up
-    deallocate(h, r, dl, ds, cs)
+    deallocate(h, alpha, l, mu, z, c_work)
     
   END SUBROUTINE splinecof3_general_fast
 
