@@ -183,6 +183,130 @@ SuiteSparse (UMFPACK) doesn't provide standalone ILU - it uses complete LU facto
 
 ## Comprehensive Solver Framework with Test-Driven Development
 
+### IMMEDIATE PRIORITY: Code Cleanup and Modularization
+
+Before implementing new solvers, we **MUST** refactor the existing codebase:
+
+#### Phase -1: Foundation Cleanup (Week 0 - URGENT)
+
+##### -1.1 Sparse Module Refactoring
+**Current state:** `sparse_mod.f90` is >33,000 tokens (too large to read in one go!)
+
+**Refactoring plan:**
+1. **Split into logical modules:**
+   - `sparse_types_mod.f90` - Data structures only
+   - `sparse_conversion_mod.f90` - Format conversions (COO, CSC, CSR)
+   - `sparse_io_mod.f90` - Matrix I/O operations
+   - `sparse_arithmetic_mod.f90` - Matrix operations (multiply, etc.)
+   - `sparse_solvers_mod.f90` - Solver interfaces
+   - `sparse_utils_mod.f90` - Utilities and helpers
+
+2. **Remove dead code:**
+   - [ ] Identify unused subroutines
+   - [ ] Remove commented-out code blocks
+   - [ ] Clean up obsolete interfaces
+
+3. **Simplify long routines:**
+   - [ ] Break down routines >100 lines
+   - [ ] Extract common patterns
+   - [ ] Improve variable naming
+
+4. **Add comprehensive tests FIRST:**
+   - [ ] Create test suite for current functionality
+   - [ ] Ensure 100% coverage of public interfaces
+   - [ ] Run tests after each refactoring step
+
+##### -1.2 Arnoldi Module Cleanup
+**File:** `arnoldi_mod.f90`
+- [ ] Extract eigenvalue computation into separate routine
+- [ ] Simplify the complex iterator logic
+- [ ] Add unit tests for each component
+- [ ] Document the algorithm clearly
+- [ ] Remove MPI coupling where possible
+
+##### -1.3 Testing Infrastructure
+**File:** `tests/test_existing_solvers.f90`
+```fortran
+program test_existing_solvers
+  ! Test current UMFPACK implementation
+  ! Test current Arnoldi-Richardson
+  ! Ensure identical results after refactoring
+  ! Performance regression tests
+end program
+```
+
+**Critical:** Run full test suite after EVERY refactoring step!
+
+##### -1.4 Refactoring Strategy for sparse_mod.f90
+
+**Safe refactoring approach:**
+1. **Create comprehensive test harness FIRST**
+   ```fortran
+   ! tests/test_sparse_legacy.f90
+   ! Capture current behavior of ALL public interfaces
+   ! Test matrix operations, conversions, solvers
+   ! Save reference outputs for regression testing
+   ```
+
+2. **Incremental extraction** (one module at a time):
+   - Start with types (no logic to break)
+   - Then conversions (well-defined operations)
+   - Then I/O (isolated functionality)
+   - Finally solvers (most complex)
+
+3. **Maintain backward compatibility**:
+   - Keep `sparse_mod.f90` as a facade
+   - Re-export all interfaces from new modules
+   - Allows gradual migration
+
+4. **Example refactoring step:**
+   ```fortran
+   ! OLD: sparse_mod.f90 (33,000+ tokens)
+   module sparse_mod
+     type :: sparse_matrix
+       ...
+     end type
+     contains
+     subroutine convert_coo_to_csc(...)
+       ! 200 lines of code
+     end subroutine
+     ! ... hundreds more routines ...
+   end module
+   
+   ! NEW: sparse_types_mod.f90
+   module sparse_types_mod
+     type :: sparse_matrix
+       ...
+     end type
+   end module
+   
+   ! NEW: sparse_conversion_mod.f90
+   module sparse_conversion_mod
+     use sparse_types_mod
+     contains
+     subroutine convert_coo_to_csc(...)
+       ! Same 200 lines, but tested
+     end subroutine
+   end module
+   
+   ! TEMPORARY: sparse_mod.f90 (facade)
+   module sparse_mod
+     use sparse_types_mod
+     use sparse_conversion_mod
+     ! Re-export everything for compatibility
+   end module
+   ```
+
+##### -1.5 Code Quality Metrics
+
+Track progress with measurable goals:
+- [ ] No routine longer than 100 lines
+- [ ] No module larger than 1000 lines
+- [ ] McCabe complexity < 10 for all routines
+- [ ] Test coverage > 90% for public interfaces
+- [ ] Zero compiler warnings
+- [ ] All magic numbers replaced with named constants
+
 ### Solver Architecture Overview
 
 We need a **unified solver framework** with:
@@ -210,7 +334,9 @@ We need a **unified solver framework** with:
 | **ILU(k)** | `PRECOND_ILU` | General purpose | All iterative |
 | **AMG** | `PRECOND_AMG` | Stretch goal, elliptic problems | All iterative |
 
-### Phase 0: Solver Framework Infrastructure (Week 0.5)
+### Phase 0: Solver Framework Infrastructure (Week 1.5)
+
+**Note:** This phase now starts after Phase -1 cleanup is complete.
 
 #### 0.1 Constants and Types Module
 **File:** `COMMON/solver_constants_mod.f90`
@@ -654,6 +780,29 @@ Expected results:
 5. **Clean configuration** via namelist
 6. **Transparent solver selection** with clear logging
 7. **No regression** in golden record tests
+
+### Revised Timeline Summary
+
+| Phase | Week | Description | Priority |
+|-------|------|-------------|----------|
+| **-1** | 0 | Foundation cleanup & testing | **URGENT** |
+| **0** | 1.5 | Solver framework infrastructure | High |
+| **1** | 2-3 | Core solver implementations | High |
+| **2** | 4 | Comprehensive testing suite | High |
+| **3** | 5 | Integration and configuration | Medium |
+| **4** | 6 | Validation and benchmarking | Medium |
+
+**Total duration:** 6 weeks (1 extra week for critical cleanup)
+
+### Why Cleanup First?
+
+1. **Current sparse_mod.f90 is unmaintainable** (>33,000 tokens)
+2. **No existing test coverage** risks introducing bugs
+3. **Building on messy foundation** compounds technical debt
+4. **Refactoring later** would be much more expensive
+5. **Clean modules** make new solver implementation easier
+
+The investment in cleanup will pay dividends throughout the implementation.
 
 ---
 
