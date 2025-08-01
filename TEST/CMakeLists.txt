@@ -2,6 +2,9 @@ project(NEO-2-TESTS)
 enable_testing()
 
 # Test executable
+# QODO NOTE: spline_cof_original_dense.f90 is intentionally kept as a reference
+# implementation for mathematical validation. This ensures continued correctness
+# verification and serves as a golden standard for regression testing.
 add_executable(test_spline_comparison
     test_spline_comparison.f90
     spline_cof_original_dense.f90

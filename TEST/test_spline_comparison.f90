@@ -53,6 +53,9 @@ program test_spline_comparison
     
     write(*,'(A)') '=== Spline Performance Comparison Tests ==='
     write(*,'(A)') ''
+    write(*,'(A)') 'NOTE: Performance gains are most significant for large problems'
+    write(*,'(A)') '(>200 intervals). For small problems, overhead may dominate.'
+    write(*,'(A)') ''
     
     ! Test case 1: Fast path - Natural boundary conditions with default parameters
     call test_case_1_fast_path()
