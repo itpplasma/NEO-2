@@ -104,3 +104,37 @@ set_tests_properties(spline_analytical_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All analytical tests PASSED!"
     FAIL_REGULAR_EXPRESSION "Some analytical tests FAILED!"
 )
+
+# Three-way comparison test executable
+add_executable(test_spline_three_way
+    test_spline_three_way.f90
+    spline_cof_original_dense.f90
+)
+
+# Set compiler flags
+target_compile_options(test_spline_three_way PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_spline_three_way
+    common
+)
+
+# Include directories
+target_include_directories(test_spline_three_way PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME spline_three_way_test 
+         COMMAND test_spline_three_way
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(spline_three_way_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "All tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some tests FAILED!"
+)

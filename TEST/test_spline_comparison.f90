@@ -101,7 +101,7 @@ contains
         f_val = 1.0_DP  ! Simple weight function
     end function test_function
 
-    !> Test case 1: Fast path - Natural boundary conditions (should use fast spline)
+    !> Test case 1: Sparse path - Natural boundary conditions with non-consecutive indices
     subroutine test_case_1_fast_path()
         integer(I4B), parameter :: n = 5
         real(DP) :: x(n), y(n)
@@ -110,10 +110,10 @@ contains
         real(DP) :: a_direct(3), b_direct(3), c_direct(3), d_direct(3)
         real(DP) :: a_orig(3), b_orig(3), c_orig(3), d_orig(3)
         real(DP) :: c1, cn, m, c1_orig, cn_orig
-        integer(I4B) :: sw1, sw2
+        integer(I4B) :: sw1, sw2, i, len_x, len_indx
         logical :: test_passed, use_fast_path
         
-        write(*,'(A)') 'Running Test Case 1: Fast path (natural boundary conditions)'
+        write(*,'(A)') 'Running Test Case 1: Sparse path (natural BC, non-consecutive indices)'
         
         ! Setup test data that should trigger fast path
         x = [0.0_DP, 1.0_DP, 2.0_DP, 3.0_DP, 4.0_DP]
@@ -126,41 +126,47 @@ contains
         sw2 = 4      ! Natural boundary condition
         m = 0.0_DP   ! Zero m for fast path
         
+        len_x = SIZE(x)
+        len_indx = SIZE(indx)
+        
         ! Check if fast path conditions are actually met
+        ! Note: Fast path also requires consecutive indices, which this test does NOT have
         use_fast_path = (m == 0.0_DP) .AND. (sw1 == 2) .AND. (sw2 == 4) .AND. &
                         (DABS(c1) < tolerance) .AND. (DABS(cn) < tolerance) .AND. &
-                        (ALL(lambda1 == 1.0_DP))
+                        (ALL(lambda1 == 1.0_DP)) .AND. &
+                        (len_indx == len_x) .AND. all(indx == [(i, i=1,len_indx)])
         
         if (use_fast_path) then
-            write(*,'(A)') '  Fast path conditions met - testing comparison'
+            write(*,'(A)') '  ERROR: Fast path conditions should NOT be met for this test!'
+            write(*,'(A)') '  This test uses non-consecutive indices [1,3,5]'
+            test_passed = .false.
+        else
+            write(*,'(A)') '  Sparse path conditions met (non-consecutive indices) - testing comparison'
             
             ! Test original implementation
             c1_orig = c1; cn_orig = cn
             call splinecof3_original_dense(x, y, c1_orig, cn_orig, lambda1, indx, sw1, sw2, &
                                           a_orig, b_orig, c_orig, d_orig, m, test_function)
             
-            ! Test new implementation (should use fast path)
+            ! Test new implementation (should use sparse path)
             call splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                               a_direct, b_direct, c_direct, d_direct, m, test_function)
             
-            ! Compare results
-            test_passed = all(abs(a_direct(1:n-1) - a_orig(1:n-1)) < tolerance) .and. &
-                         all(abs(b_direct(1:n-1) - b_orig(1:n-1)) < tolerance) .and. &
-                         all(abs(c_direct(1:n-1) - c_orig(1:n-1)) < tolerance) .and. &
-                         all(abs(d_direct(1:n-1) - d_orig(1:n-1)) < tolerance)
+            ! Compare results - note we're comparing only the 3 intervals defined by indx
+            test_passed = all(abs(a_direct - a_orig) < tolerance) .and. &
+                         all(abs(b_direct - b_orig) < tolerance) .and. &
+                         all(abs(c_direct - c_orig) < tolerance) .and. &
+                         all(abs(d_direct - d_orig) < tolerance)
             
             if (.not. test_passed) then
                 write(*,'(A)') '  FAILED: Results differ between implementations!'
-                write(*,'(A,3E15.6)') '  a diff:', abs(a_direct(1:n-1) - a_orig(1:n-1))
-                write(*,'(A,3E15.6)') '  b diff:', abs(b_direct(1:n-1) - b_orig(1:n-1))
-                write(*,'(A,3E15.6)') '  c diff:', abs(c_direct(1:n-1) - c_orig(1:n-1))
-                write(*,'(A,3E15.6)') '  d diff:', abs(d_direct(1:n-1) - d_orig(1:n-1))
+                write(*,'(A,3E15.6)') '  a diff:', abs(a_direct - a_orig)
+                write(*,'(A,3E15.6)') '  b diff:', abs(b_direct - b_orig)
+                write(*,'(A,3E15.6)') '  c diff:', abs(c_direct - c_orig)
+                write(*,'(A,3E15.6)') '  d diff:', abs(d_direct - d_orig)
             end if
-        else
-            write(*,'(A)') '  Fast path conditions NOT met - skipping comparison'
-            test_passed = .true.  ! Don't fail test when fast path isn't used
         end if
-        write(*,'(A,L1)') '  Fast path completed: ', test_passed
+        write(*,'(A,L1)') '  Sparse path test completed: ', test_passed
         
         if (.not. test_passed) all_tests_passed = .false.
         
@@ -208,18 +214,18 @@ contains
             call splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                               a_direct, b_direct, c_direct, d_direct, m, test_function)
             
-            ! Compare results
-            test_passed = all(abs(a_direct(1:n-1) - a_orig(1:n-1)) < tolerance) .and. &
-                         all(abs(b_direct(1:n-1) - b_orig(1:n-1)) < tolerance) .and. &
-                         all(abs(c_direct(1:n-1) - c_orig(1:n-1)) < tolerance) .and. &
-                         all(abs(d_direct(1:n-1) - d_orig(1:n-1)) < tolerance)
+            ! Compare results - arrays have size of indx, not n
+            test_passed = all(abs(a_direct - a_orig) < tolerance) .and. &
+                         all(abs(b_direct - b_orig) < tolerance) .and. &
+                         all(abs(c_direct - c_orig) < tolerance) .and. &
+                         all(abs(d_direct - d_orig) < tolerance)
             
             if (.not. test_passed) then
                 write(*,'(A)') '  FAILED: Results differ between implementations!'
-                write(*,'(A,3E15.6)') '  a diff:', abs(a_direct(1:n-1) - a_orig(1:n-1))
-                write(*,'(A,3E15.6)') '  b diff:', abs(b_direct(1:n-1) - b_orig(1:n-1))
-                write(*,'(A,3E15.6)') '  c diff:', abs(c_direct(1:n-1) - c_orig(1:n-1))
-                write(*,'(A,3E15.6)') '  d diff:', abs(d_direct(1:n-1) - d_orig(1:n-1))
+                write(*,'(A,3E15.6)') '  a diff:', abs(a_direct - a_orig)
+                write(*,'(A,3E15.6)') '  b diff:', abs(b_direct - b_orig)
+                write(*,'(A,3E15.6)') '  c diff:', abs(c_direct - c_orig)
+                write(*,'(A,3E15.6)') '  d diff:', abs(d_direct - d_orig)
             end if
         else
             write(*,'(A)') '  WARNING: Fast path conditions met unexpectedly - skipping comparison'
@@ -441,17 +447,17 @@ contains
             call splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                               a_direct, b_direct, c_direct, d_direct, m, test_function)
             
-            ! Compare results
-            test_passed = all(abs(a_direct(1:n-1) - a_orig(1:n-1)) < tolerance) .and. &
-                         all(abs(b_direct(1:n-1) - b_orig(1:n-1)) < tolerance) .and. &
-                         all(abs(c_direct(1:n-1) - c_orig(1:n-1)) < tolerance) .and. &
-                         all(abs(d_direct(1:n-1) - d_orig(1:n-1)) < tolerance)
+            ! Compare results - arrays have size of indx (4), not n (8)
+            test_passed = all(abs(a_direct - a_orig) < tolerance) .and. &
+                         all(abs(b_direct - b_orig) < tolerance) .and. &
+                         all(abs(c_direct - c_orig) < tolerance) .and. &
+                         all(abs(d_direct - d_orig) < tolerance)
             
             if (.not. test_passed) then
                 write(*,'(A,I2,A)') '      FAILED: Test ', i_bc, ' results differ!'
                 write(*,'(A,4E12.4)') '      Max diffs [a,b,c,d]: ', &
-                    maxval(abs(a_direct(1:n-1) - a_orig(1:n-1))), maxval(abs(b_direct(1:n-1) - b_orig(1:n-1))), &
-                    maxval(abs(c_direct(1:n-1) - c_orig(1:n-1))), maxval(abs(d_direct(1:n-1) - d_orig(1:n-1)))
+                    maxval(abs(a_direct - a_orig)), maxval(abs(b_direct - b_orig)), &
+                    maxval(abs(c_direct - c_orig)), maxval(abs(d_direct - d_orig))
                 n_failed = n_failed + 1
                 all_tests_passed = .false.
             else
