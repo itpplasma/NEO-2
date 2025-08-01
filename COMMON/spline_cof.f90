@@ -70,7 +70,6 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   !-----------------------------------------------------------------------
   use nrtype, only : I4B, DP
   use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
-  use splinecof3_fast_mod, only: splinecof3_fast
   
   IMPLICIT NONE
 
@@ -94,7 +93,6 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
   ! Local variables for validation only
   INTEGER(I4B) :: len_x, len_indx, i
-  LOGICAL :: use_fast_path
 
   len_x    = SIZE(x)
   len_indx = SIZE(indx)
@@ -151,19 +149,9 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     stop 'SPLINECOF3: error  two identical boundary conditions'
   end if
 
-  ! Check if we can use the fast path for natural cubic splines
-  ! DISABLED: Fast path needs different algorithm for NEO-2's smoothing splines
-  use_fast_path = .FALSE.
-
-  IF (use_fast_path) THEN
-     ! Use the optimized fast path implementation
-     CALL splinecof3_fast(x, y, c1, cn, lambda1, indx, sw1, sw2, &
-          a, b, c, d, m, f)
-  ELSE
-     ! Call the new direct sparse implementation
-     CALL splinecof3_direct_sparse(x, y, c1, cn, lambda1, indx, sw1, sw2, &
-          a, b, c, d, m, f)
-  END IF
+  ! Use the robust sparse implementation for all cases
+  CALL splinecof3_direct_sparse(x, y, c1, cn, lambda1, indx, sw1, sw2, &
+       a, b, c, d, m, f)
 
 END SUBROUTINE splinecof3_a
 

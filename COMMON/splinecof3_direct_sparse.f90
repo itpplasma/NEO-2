@@ -3,7 +3,6 @@ module splinecof3_direct_sparse_mod
   use nrtype, only : I4B, DP
   use sparse_mod, only: sparse_solve
   use inter_interfaces, only: calc_opt_lambda3
-  use splinecof3_fast_mod, only: splinecof3_fast
   implicit none
   
   private
@@ -157,8 +156,9 @@ contains
     CASE(4); rho2 = 1
     END SELECT
 
-    ! Estimate maximum non-zeros (very conservative)
-    max_nnz = 50 * size_dimension
+    ! Estimate maximum non-zeros (extremely conservative to prevent overflow)
+    ! Each equation can have up to ~15 non-zeros, size_dimension equations total
+    max_nnz = 20 * size_dimension
     
     ! Allocate COO format arrays
     ALLOCATE(irow_coo(max_nnz), icol_coo(max_nnz), val_coo(max_nnz), &
@@ -429,6 +429,14 @@ contains
     IF (nnz == 0) THEN
        WRITE(0,*) 'ERROR: No non-zero entries in matrix!'
        STOP
+    END IF
+    
+    IF (nnz > max_nnz) THEN
+       WRITE(0,*) 'CRITICAL ERROR: Buffer overflow detected!'
+       WRITE(0,*) 'Actual non-zeros:', nnz, ' > estimated max:', max_nnz
+       WRITE(0,*) 'This indicates memory corruption has occurred.'
+       WRITE(0,*) 'Increase max_nnz estimate in splinecof3_direct_sparse.f90'
+       STOP 'Memory safety violation detected'
     END IF
 
     ! Store COO matrix for inspection
