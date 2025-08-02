@@ -78,10 +78,9 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   !-----------------------------------------------------------------------
   use nrtype, only : I4B, DP
   use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
-  use splinecof3_fast_mod, only: splinecof3_general_fast
-  use neo_spline_data, only: use_fast_splines
   
   IMPLICIT NONE
+  
 
   REAL(DP),                   INTENT(INOUT) :: c1, cn
   REAL(DP),     DIMENSION(:), INTENT(IN)    :: x
@@ -159,25 +158,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     stop 'SPLINECOF3: error  two identical boundary conditions'
   end if
 
-  ! Fast path for tridiagonal boundary conditions (consolidated)
-  ! Supports: (2,4) natural, (1,3) clamped, (1,4) mixed, (2,3) mixed
-  if (use_fast_splines .and. &
-      m == 0.0_DP .and. all(abs(lambda1 - 1.0_DP) < 1.0e-13_DP) .and. &
-      len_indx == len_x .and. all(indx == [(i, i=1,len_indx)])) then
-    
-    ! Check for supported tridiagonal boundary condition combinations
-    if ((sw1 == 2 .and. sw2 == 4) .or. &  ! Natural: S''(x1)=0, S''(xn)=0
-        (sw1 == 1 .and. sw2 == 3) .or. &  ! Clamped: S'(x1)=c1, S'(xn)=cn  
-        (sw1 == 1 .and. sw2 == 4) .or. &  ! Mixed: S'(x1)=c1, S''(xn)=0
-        (sw1 == 2 .and. sw2 == 3)) then   ! Mixed: S''(x1)=0, S'(xn)=cn
-      
-      ! Use unified tridiagonal solver for all cases (eliminates code duplication)
-      call splinecof3_general_fast(x, y, c1, cn, sw1, sw2, a, b, c, d)
-      return  
-    end if
-  end if
-
-  ! Use the robust sparse implementation for all other cases
+  ! Use the robust sparse implementation for all cases
   ! QODO REVIEW RESPONSE: This implementation addresses all QODO concerns:
   ! 1. Mathematical equivalence verified via comprehensive testing (TEST/test_spline_comparison.f90)
   !    - Tolerance-based comparison down to 1e-12 across all boundary conditions

@@ -1,6 +1,5 @@
 program test_spline_analytical
     use nrtype, only: I4B, DP
-    use neo_spline_data, only: use_fast_splines
     use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
     implicit none
     
@@ -159,7 +158,7 @@ contains
         real(DP) :: c1, cn, m, c1_orig, cn_orig
         integer(I4B) :: sw1, sw2, i, j
         logical :: test_passed_new, test_passed_orig, test_passed_direct
-        real(DP), parameter :: tol = 1.0e-10
+        real(DP), parameter :: tol = 1.0e-13  ! Tolerance accounting for numerical precision
         real(DP) :: x_test, y_eval_orig, yp_eval_orig, ypp_eval_orig, yppp_eval_orig
         real(DP) :: y_eval_new, yp_eval_new, ypp_eval_new, yppp_eval_new
         real(DP) :: y_eval_direct, yp_eval_direct, ypp_eval_direct, yppp_eval_direct
@@ -203,13 +202,11 @@ contains
         call splinecof3_original_dense(x, y, c1_orig, cn_orig, lambda1, indx, sw1, sw2, &
                                       a_orig, b_orig, c_orig, d_orig, m, test_function)
         
-        ! Test direct sparse implementation (force it to avoid fast path)
+        ! Test direct sparse implementation
         c1_orig = c1
         cn_orig = cn
-        use_fast_splines = .false.
         call splinecof3_direct_sparse(x, y, c1_orig, cn_orig, lambda1, indx, sw1, sw2, &
                                      a_direct, b_direct, c_direct, d_direct, m, test_function)
-        use_fast_splines = .true.
         
         ! Check new implementation
         write(*,'(A)') '  New implementation results:'
@@ -251,7 +248,7 @@ contains
         do i = 2, n-2
             ! First derivative from spline at x(i) should equal exact derivative
             if (abs(b_new(i) - dy_dx_exact(i)) > tol) then
-                write(*,'(A,I0,A,2F12.6)') '    FAILED: b(', i, ') != y''(x_', i, '): ', &
+                write(*,'(A,I0,A,I0,A,2F12.6)') '    FAILED: b(', i, ') != y''(x_', i, '): ', &
                     b_new(i), dy_dx_exact(i)
                 test_passed_new = .false.
             end if
@@ -404,7 +401,7 @@ contains
         real(DP) :: c1, cn, m, c1_orig, cn_orig
         integer(I4B) :: sw1, sw2, i
         logical :: test_passed_new, test_passed_orig
-        real(DP), parameter :: tol = 1.0e-10
+        real(DP), parameter :: tol = 1.0e-13  ! Tolerance accounting for numerical precision
         
         write(*,'(A)') 'Test 2: Linear function with clamped boundaries'
         write(*,'(A)') '  Function: y = 3x + 2'
@@ -475,7 +472,7 @@ contains
         real(DP) :: c1, cn, m
         integer(I4B) :: sw1, sw2, i
         logical :: test_passed
-        real(DP), parameter :: tol = 1.0e-10
+        real(DP), parameter :: tol = 1.0e-13  ! Tolerance accounting for numerical precision
         
         write(*,'(A)') 'Test 3: Quadratic function with mixed boundaries'
         write(*,'(A)') '  Function: y = x² - 2x + 3'

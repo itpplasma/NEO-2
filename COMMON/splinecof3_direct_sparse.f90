@@ -7,7 +7,7 @@ module splinecof3_direct_sparse_mod
   implicit none
   
   private
-  public :: splinecof3_direct_sparse
+  public :: splinecof3_direct_sparse, splinecof3_assemble_matrix
   
 contains
 
@@ -20,9 +20,8 @@ contains
     INTEGER(I4B), DIMENSION(:), INTENT(INOUT), OPTIONAL :: irow, icol
     REAL(DP), DIMENSION(:), INTENT(INOUT), OPTIONAL :: vals
     
-    ! Add entry if non-zero to maintain sparse structure
-    ! Use same threshold as dense implementation
-    IF (ABS(val) > 0.0_DP) THEN
+    ! Add entry following original dense implementation behavior
+    IF (should_include_element(val)) THEN
        idx = idx + 1
        IF (.NOT. counting) THEN
           irow(idx) = i
@@ -31,6 +30,14 @@ contains
        END IF
     END IF
   END SUBROUTINE add_entry
+  
+  !> Check if matrix element should be included (matches original dense implementation)
+  LOGICAL FUNCTION should_include_element(val)
+    REAL(DP), INTENT(IN) :: val
+    ! Match the behavior of full2sparse which excludes exact zeros
+    ! This ensures exact numerical compatibility with dense->sparse conversion
+    should_include_element = (val /= 0.0_DP)
+  END FUNCTION should_include_element
   
   !> Add boundary condition entries
   SUBROUTINE add_boundary_condition_1(counting, idx, i, mu1, nu1, sig1, rho1, &
@@ -42,10 +49,11 @@ contains
     REAL(DP), DIMENSION(:), INTENT(INOUT), OPTIONAL :: vals
     
     i = i + 1
-    IF (mu1 /= 0) CALL add_entry(counting, idx, i, 2, DBLE(mu1), irow, icol, vals)
-    IF (nu1 /= 0) CALL add_entry(counting, idx, i, 3, DBLE(nu1), irow, icol, vals)
-    IF (sig1 /= 0) CALL add_entry(counting, idx, i, (len_indx-1)*VAR + 2, DBLE(sig1), irow, icol, vals)
-    IF (rho1 /= 0) CALL add_entry(counting, idx, i, (len_indx-1)*VAR + 3, DBLE(rho1), irow, icol, vals)
+    ! Add ALL boundary parameters unconditionally to match original dense implementation
+    CALL add_entry(counting, idx, i, 2, DBLE(mu1), irow, icol, vals)
+    CALL add_entry(counting, idx, i, 3, DBLE(nu1), irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR + 2, DBLE(sig1), irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR + 3, DBLE(rho1), irow, icol, vals)
   END SUBROUTINE add_boundary_condition_1
   
   !> Add continuity conditions
@@ -217,8 +225,8 @@ contains
        irow(idx) = i; icol(idx) = j+5; vals(idx) = 1.0D0
     END IF
     IF (j == 1) THEN
-       IF (mu1 == 1) CALL add_entry(counting, idx, i, (len_indx-1)*VAR+4, DBLE(mu1), irow, icol, vals)
-       IF (mu2 == 1) CALL add_entry(counting, idx, i, (len_indx-1)*VAR+5, DBLE(mu2), irow, icol, vals)
+       CALL add_entry(counting, idx, i, (len_indx-1)*VAR+4, DBLE(mu1), irow, icol, vals)
+       CALL add_entry(counting, idx, i, (len_indx-1)*VAR+5, DBLE(mu2), irow, icol, vals)
     ELSE
        idx = idx + 1
        IF (.NOT. counting) THEN
@@ -636,26 +644,12 @@ contains
     CALL add_entry(counting, idx, i, (len_indx-1)*VAR+4, DBLE(rho1), irow, icol, vals)
     CALL add_entry(counting, idx, i, (len_indx-1)*VAR+5, DBLE(rho2), irow, icol, vals)
     
-    ! Boundary condition 2 - Always add these entries (even if zero) to match dense structure
+    ! Boundary condition 2 - use add_entry to handle zero exclusion consistently
     i = i + 1
-    idx = idx + 1
-    IF (.NOT. counting) THEN
-       irow(idx) = i; icol(idx) = 2; vals(idx) = DBLE(mu2)
-    END IF
-    idx = idx + 1
-    IF (.NOT. counting) THEN
-       irow(idx) = i; icol(idx) = 3; vals(idx) = DBLE(nu2)
-    END IF
-    
-    ! Original boundary constraint (matches original dense implementation)
-    idx = idx + 1
-    IF (.NOT. counting) THEN
-       irow(idx) = i; icol(idx) = (len_indx-1)*VAR + 2; vals(idx) = DBLE(sig2)
-    END IF
-    idx = idx + 1
-    IF (.NOT. counting) THEN
-       irow(idx) = i; icol(idx) = (len_indx-1)*VAR + 3; vals(idx) = DBLE(rho2)
-    END IF
+    CALL add_entry(counting, idx, i, 2, DBLE(mu2), irow, icol, vals)
+    CALL add_entry(counting, idx, i, 3, DBLE(nu2), irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR + 2, DBLE(sig2), irow, icol, vals)
+    CALL add_entry(counting, idx, i, (len_indx-1)*VAR + 3, DBLE(rho2), irow, icol, vals)
     IF (.NOT. counting) inh(i) = cn
     
   END SUBROUTINE build_matrix_two_pass
@@ -685,17 +679,18 @@ contains
 
     ! Boundary condition 1
     i = i + 1
-    ! Only add non-zero boundary condition entries
-    IF (mu1 /= 0) THEN
+    ! Add ALL boundary parameters unconditionally to match original dense implementation
+    ! The should_include_element check will handle zero exclusion
+    IF (should_include_element(DBLE(mu1))) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 2; val_coo(idx) = DBLE(mu1)
     END IF
-    IF (nu1 /= 0) THEN
+    IF (should_include_element(DBLE(nu1))) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = 3; val_coo(idx) = DBLE(nu1)
     END IF
-    IF (sig1 /= 0) THEN
+    IF (should_include_element(DBLE(sig1))) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 2; val_coo(idx) = DBLE(sig1)
     END IF
-    IF (rho1 /= 0) THEN
+    IF (should_include_element(DBLE(rho1))) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR + 3; val_coo(idx) = DBLE(rho1)
     END IF
     inh(i) = c1
@@ -722,17 +717,17 @@ contains
           help_d = help_d + h_j * h_j * h_j * x_h
           help_i = help_i + f(x(l),m) * y(l)
        END DO
-       ! Add fitting coefficients - use small threshold to avoid numerical issues
-       IF (ABS(omega((j-1)/VAR+1) * help_a) > 1.0D-15) THEN
+       ! Add fitting coefficients - matches original dense implementation behavior
+       IF (should_include_element(omega((j-1)/VAR+1) * help_a)) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
        END IF
-       IF (ABS(omega((j-1)/VAR+1) * help_b) > 1.0D-15) THEN
+       IF (should_include_element(omega((j-1)/VAR+1) * help_b)) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
        END IF
-       IF (ABS(omega((j-1)/VAR+1) * help_c) > 1.0D-15) THEN
+       IF (should_include_element(omega((j-1)/VAR+1) * help_c)) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
        END IF
-       IF (ABS(omega((j-1)/VAR+1) * help_d) > 1.0D-15) THEN
+       IF (should_include_element(omega((j-1)/VAR+1) * help_d)) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d
        END IF
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = 1.0D0
@@ -757,26 +752,26 @@ contains
           help_d = help_d + h_j * h_j * h_j * h_j * x_h
           help_i = help_i + h_j * f(x(l),m) * y(l)
        END DO
-       ! Add fitting coefficients - use small threshold to avoid numerical issues
-       IF (ABS(omega((j-1)/VAR+1) * help_a) > 1.0D-15) THEN
+       ! Add fitting coefficients - matches original dense implementation behavior
+       IF (should_include_element(omega((j-1)/VAR+1) * help_a)) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j; val_coo(idx) = omega((j-1)/VAR+1) * help_a
        END IF
-       IF (ABS(omega((j-1)/VAR+1) * help_b) > 1.0D-15) THEN
+       IF (should_include_element(omega((j-1)/VAR+1) * help_b)) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+1; val_coo(idx) = omega((j-1)/VAR+1) * help_b
        END IF
-       IF (ABS(omega((j-1)/VAR+1) * help_c) > 1.0D-15) THEN
+       IF (should_include_element(omega((j-1)/VAR+1) * help_c)) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
        END IF
-       IF (ABS(omega((j-1)/VAR+1) * help_d) > 1.0D-15) THEN
+       IF (should_include_element(omega((j-1)/VAR+1) * help_d)) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d
        END IF
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = h
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+5; val_coo(idx) = 1.0D0
        IF (j == 1) THEN
-          IF (nu1 == 1) THEN
+          IF (should_include_element(DBLE(nu1))) THEN
              idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+4; val_coo(idx) = DBLE(nu1)
           END IF
-          IF (nu2 == 1) THEN
+          IF (should_include_element(DBLE(nu2))) THEN
              idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+5; val_coo(idx) = DBLE(nu2)
           END IF
        ELSE
@@ -810,7 +805,7 @@ contains
        IF (ABS(omega((j-1)/VAR+1) * help_c) > 1.0D-15) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+2; val_coo(idx) = omega((j-1)/VAR+1) * help_c
        END IF
-       IF (ABS(omega((j-1)/VAR+1) * help_d) > 1.0D-15 .OR. ABS(lambda((j-1)/VAR+1)) > 1.0D-15) THEN
+       IF (should_include_element(omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1))) THEN
           idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+3; val_coo(idx) = omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1)
        END IF
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = j+4; val_coo(idx) = h * h * h
@@ -831,7 +826,7 @@ contains
     l = ii
     help_a = help_a + f(x(l),m) * f(x(l),m)
     help_inh = help_inh + f(x(l),m) * y(l)
-    IF (ABS(omega(len_indx) * help_a) > 1.0D-15) THEN
+    IF (should_include_element(omega(len_indx) * help_a)) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+1; val_coo(idx) = omega(len_indx) * help_a
     END IF
     idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-2)*VAR+5; val_coo(idx) = -1.0D0
@@ -840,20 +835,20 @@ contains
     ! delta b_{N-1}
     i = i + 1
     idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-2)*VAR+6; val_coo(idx) = -1.0D0
-    IF (sig1 == 1) THEN
+    IF (should_include_element(DBLE(sig1))) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+4; val_coo(idx) = DBLE(sig1)
     END IF
-    IF (sig2 == 1) THEN
+    IF (should_include_element(DBLE(sig2))) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+5; val_coo(idx) = DBLE(sig2)
     END IF
     
     ! delta c_{N-1}
     i = i + 1
     idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-2)*VAR+7; val_coo(idx) = -1.0D0
-    IF (rho1 == 1) THEN
+    IF (should_include_element(DBLE(rho1))) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+4; val_coo(idx) = DBLE(rho1)
     END IF
-    IF (rho2 == 1) THEN
+    IF (should_include_element(DBLE(rho2))) THEN
        idx = idx + 1; irow_coo(idx) = i; icol_coo(idx) = (len_indx-1)*VAR+5; val_coo(idx) = DBLE(rho2)
     END IF
     
@@ -1145,6 +1140,174 @@ contains
                col_count, lambda, omega, inh)
 
   END SUBROUTINE splinecof3_direct_sparse
+
+  !> Extract matrix assembly logic from splinecof3_direct_sparse
+  !> Returns the assembled COO matrix and RHS vector without solving
+  SUBROUTINE splinecof3_assemble_matrix(x, y, c1, cn, lambda1, indx, sw1, sw2, &
+       m, f, nrow, ncol, nnz, irow_coo, icol_coo, val_coo, rhs)
+    REAL(DP),                   INTENT(INOUT) :: c1, cn
+    REAL(DP),     DIMENSION(:), INTENT(IN)    :: x, y, lambda1
+    INTEGER(I4B), DIMENSION(:), INTENT(IN)    :: indx
+    INTEGER(I4B),               INTENT(IN)    :: sw1, sw2
+    REAL(DP),                   INTENT(IN)    :: m
+    INTERFACE
+       FUNCTION f(x,m)
+         use nrtype, only : DP
+         IMPLICIT NONE
+         REAL(DP), INTENT(IN) :: x, m
+         REAL(DP)             :: f
+       END FUNCTION f
+    END INTERFACE
+    
+    ! Output: COO matrix and RHS
+    INTEGER(I4B), INTENT(OUT) :: nrow, ncol, nnz
+    INTEGER(I4B), DIMENSION(:), ALLOCATABLE, INTENT(OUT) :: irow_coo, icol_coo
+    REAL(DP), DIMENSION(:), ALLOCATABLE, INTENT(OUT) :: val_coo, rhs
+    
+    ! Local variables (copied from splinecof3_direct_sparse)
+    INTEGER(I4B) :: len_indx, VAR, size_dimension
+    INTEGER(I4B) :: i, idx, i_alloc
+    INTEGER(I4B) :: mu1, mu2, nu1, nu2, sig1, sig2, rho1, rho2
+    INTEGER(I4B) :: len_x
+    REAL(DP), DIMENSION(:), ALLOCATABLE :: lambda, omega, inh
+    character(200) :: error_message
+
+    ! Initialize variables (copied from splinecof3_direct_sparse)
+    VAR = 7
+    len_x = SIZE(x)
+    len_indx = SIZE(indx)
+    size_dimension = VAR * len_indx - 2
+    nrow = size_dimension
+    ncol = size_dimension
+
+    ! Validation checks (copied from splinecof3_direct_sparse)
+    if ( .NOT. ( size(x) == size(y) ) ) then
+      write (*,*) 'splinecof3_assemble_matrix: assertion 1 failed'
+      stop 'program terminated'
+    end if
+    if ( .NOT. ( size(indx) == size(lambda1) ) ) then
+      write (*,*) 'splinecof3_assemble_matrix: assertion 2 failed'
+      stop 'program terminated'
+    end if
+
+    do i = 1, len_x-1
+      if (x(i) >= x(i+1)) then
+        print *, 'SPLINECOF3_ASSEMBLE_MATRIX: error i, x(i), x(i+1)', &
+             i, x(i), x(i+1)
+        stop 'SPLINECOF3_ASSEMBLE_MATRIX: error  wrong order of x(i)'
+      end if
+    end do
+    do i = 1, len_indx-1
+      if (indx(i) < 1) then
+        print *, 'SPLINECOF3_ASSEMBLE_MATRIX: error i, indx(i)', i, indx(i)
+        stop 'SPLINECOF3_ASSEMBLE_MATRIX: error  indx(i) < 1'
+      end if
+      if (indx(i) >= indx(i+1)) then
+        print *, 'SPLINECOF3_ASSEMBLE_MATRIX: error i, indx(i), indx(i+1)', &
+              i, indx(i), indx(i+1)
+        stop 'SPLINECOF3_ASSEMBLE_MATRIX: error  wrong order of indx(i)'
+      end if
+      if (indx(i) > len_x) then
+        print *, 'SPLINECOF3_ASSEMBLE_MATRIX: error i, indx(i), indx(i+1)', &
+              i, indx(i), indx(i+1)
+        stop 'SPLINECOF3_ASSEMBLE_MATRIX: error  indx(i) > len_x'
+      end if
+    end do
+    if (indx(len_indx) < 1) then
+      print *, 'SPLINECOF3_ASSEMBLE_MATRIX: error len_indx, indx(len_indx)', &
+            len_indx, indx(len_indx)
+      stop 'SPLINECOF3_ASSEMBLE_MATRIX: error  indx(max) < 1'
+    end if
+    if (indx(len_indx) > len_x) then
+      print *, 'SPLINECOF3_ASSEMBLE_MATRIX: error len_indx, indx(len_indx)', &
+            len_indx, indx(len_indx)
+      stop 'SPLINECOF3_ASSEMBLE_MATRIX: error  indx(max) > len_x'
+    end if
+
+    if (sw1 == sw2) then
+      stop 'SPLINECOF3_ASSEMBLE_MATRIX: error  two identical boundary conditions'
+    end if
+
+    ! Allocate work arrays (copied from splinecof3_direct_sparse)
+    ALLOCATE(lambda(len_indx), omega(len_indx), inh(size_dimension), &
+             stat = i_alloc, errmsg=error_message)
+    if(i_alloc /= 0) then
+      write(*,*) 'splinecof3_assemble_matrix: Allocation failed:', trim(error_message)
+      stop
+    end if
+
+    ! Process boundary conditions (copied from splinecof3_direct_sparse)
+    IF (DABS(c1) > 1.0E30) THEN
+      c1 = 0.0D0
+    END IF
+    IF (DABS(cn) > 1.0E30) THEN
+      cn = 0.0D0
+    END IF
+
+    ! Calculate optimal weights for smoothing (copied from splinecof3_direct_sparse)
+    IF ( MAXVAL(lambda1) < 0.0D0 ) THEN
+      CALL calc_opt_lambda3(x, y, omega)
+    ELSE
+      omega  = lambda1
+    END IF
+    lambda = 1.0D0 - omega
+    
+    ! Initialize RHS vector
+    inh = 0.0D0
+
+    ! Set boundary condition switches (copied from splinecof3_direct_sparse)
+    mu1  = 0; mu2  = 0
+    nu1  = 0; nu2  = 0
+    sig1 = 0; sig2 = 0
+    rho1 = 0; rho2 = 0
+
+    SELECT CASE(sw1)
+    CASE(1); mu1 = 1
+    CASE(2); nu1 = 1
+    CASE(3); sig1 = 1
+    CASE(4); rho1 = 1
+    END SELECT
+
+    SELECT CASE(sw2)
+    CASE(1); mu2 = 1
+    CASE(2); nu2 = 1
+    CASE(3); sig2 = 1
+    CASE(4); rho2 = 1
+    END SELECT
+    
+    ! Use two-pass approach to count exact non-zeros, then allocate and fill
+    idx = 0
+    i = 0
+    CALL build_matrix_two_pass(.TRUE., idx, i, x, y, m, f, lambda, omega, &
+                              indx, mu1, mu2, nu1, nu2, sig1, sig2, rho1, rho2, &
+                              c1, cn, VAR, len_indx)
+    nnz = idx
+    
+    ! Allocate COO arrays with exact count
+    ALLOCATE(irow_coo(nnz), icol_coo(nnz), val_coo(nnz), rhs(size_dimension), &
+             stat=i_alloc, errmsg=error_message)
+    if(i_alloc /= 0) then
+      write(*,'(A,I0)') 'SPLINECOF3_ASSEMBLE_MATRIX: COO allocation failed (error code: ', i_alloc, ')'
+      write(*,'(A)') 'Error message: ' // trim(error_message)
+      write(*,'(A,I0)') 'Attempted to allocate arrays of size nnz=', nnz
+      error stop 'SPLINECOF3_ASSEMBLE_MATRIX: Memory allocation failure for COO arrays'
+    end if
+
+    ! Second pass: fill the arrays  
+    idx = 0
+    i = 0
+    CALL build_matrix_two_pass(.FALSE., idx, i, x, y, m, f, lambda, omega, &
+                              indx, mu1, mu2, nu1, nu2, sig1, sig2, rho1, rho2, &
+                              c1, cn, VAR, len_indx, irow_coo, icol_coo, val_coo, inh)
+    nnz = idx
+    
+    ! Copy RHS to output
+    rhs = inh
+    
+    ! Clean up work arrays
+    DEALLOCATE(lambda, omega, inh)
+    
+  END SUBROUTINE splinecof3_assemble_matrix
 
 end module splinecof3_direct_sparse_mod
 

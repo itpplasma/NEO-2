@@ -107,68 +107,38 @@ set_tests_properties(spline_analytical_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "Some analytical tests FAILED!"
 )
 
-# Three-way comparison test executable
-add_executable(test_spline_three_way
-    test_spline_three_way.f90
+# Simple sparse vs dense comparison test executable
+add_executable(test_spline_simple
+    test_spline_simple.f90
     spline_cof_original_dense.f90
 )
 
 # Set compiler flags
-target_compile_options(test_spline_three_way PRIVATE
+target_compile_options(test_spline_simple PRIVATE
     -g -fbacktrace
 )
 
 # Link to the common library which contains all our modules
-target_link_libraries(test_spline_three_way
+target_link_libraries(test_spline_simple
     common
 )
 
 # Include directories
-target_include_directories(test_spline_three_way PRIVATE
+target_include_directories(test_spline_simple PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
     ${CMAKE_BINARY_DIR}/COMMON
 )
 
 # Add the test
-add_test(NAME spline_three_way_test 
-         COMMAND test_spline_three_way
+add_test(NAME spline_simple_test 
+         COMMAND test_spline_simple
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 # Set test properties
-set_tests_properties(spline_three_way_test PROPERTIES
+set_tests_properties(spline_simple_test PROPERTIES
     TIMEOUT 30
     PASS_REGULAR_EXPRESSION "All tests PASSED!"
     FAIL_REGULAR_EXPRESSION "Some tests FAILED!"
 )
 
-# Matrix comparison test executable
-add_executable(test_spline_matrix_comparison
-    test_spline_matrix_comparison.f90
-    spline_cof_original_dense.f90
-)
 
-# Set compiler flags
-target_compile_options(test_spline_matrix_comparison PRIVATE
-    -g -fbacktrace
-)
-
-# Link to the common library which contains all our modules
-target_link_libraries(test_spline_matrix_comparison
-    common
-)
-
-# Include directories
-target_include_directories(test_spline_matrix_comparison PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-)
-
-# Add the test
-add_test(NAME spline_matrix_comparison_test 
-         COMMAND test_spline_matrix_comparison
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# Set test properties
-set_tests_properties(spline_matrix_comparison_test PROPERTIES
-    TIMEOUT 30
-)

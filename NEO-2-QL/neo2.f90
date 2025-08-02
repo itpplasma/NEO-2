@@ -70,7 +70,7 @@ module neo2_ql
   ! (with magnetic shear)
   use neo_magfie, only : isw_mag_shear
 
-  use neo_spline_data, only : lsw_linear_boozer, use_fast_splines
+  use neo_spline_data, only : lsw_linear_boozer
   USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
   USE neo_control, ONLY: in_file, inp_swi, lab_swi, set_rt0_from_rmnc_for_zero_mode
 
@@ -209,8 +209,7 @@ module neo2_ql
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
-       mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer,   &
-       use_fast_splines
+       mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &

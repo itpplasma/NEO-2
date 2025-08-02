@@ -24,7 +24,7 @@ program test_spline_unit
     end interface
 
     ! Test parameters
-    real(DP), parameter :: tolerance = 1.0e-10
+    real(DP), parameter :: tolerance = 1.0e-12  ! Tolerance for numerical differences between implementations
     logical :: all_tests_passed = .true.
     
     write(*,'(A)') '=== Large Spline Unit Tests ==='
