@@ -729,9 +729,8 @@ CONTAINS
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4zsolr: ', info_suitesparse(1)
        END IF
+       b = CMPLX(xx, xz, KIND=dp)
     END IF
-    
-    b = CMPLX(xx, xz, KIND=dp)
     
     ! Last, free the storage allocated inside SuiteSparse
     IF (iopt_in .EQ. IOPT_FREE_MEMORY) THEN
@@ -830,8 +829,8 @@ CONTAINS
     !       use nc instead of ncol
     nc = ncol
     
-    IF (iopt_in .EQ. IOPT_FULL_SOLVE .OR. iopt_in .EQ. IOPT_FACTORIZE_ONLY .OR. &
-         iopt_in .EQ. IOPT_SOLVE_ONLY) THEN
+    ! Solve phase - only if not just factorizing
+    IF (iopt_in .EQ. IOPT_FULL_SOLVE .OR. iopt_in .EQ. IOPT_SOLVE_ONLY) THEN
        DO i = 1,nrhs
           bloc = b(:,i)
           IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
@@ -980,5 +979,33 @@ CONTAINS
     
   END SUBROUTINE sparse_solve_suitesparseComplex_b2_loop
   !-------------------------------------------------------------------------------
-  
+
+  !-------------------------------------------------------------------------------
+  ! Helper functions for robust iopt parameter handling
+  !-------------------------------------------------------------------------------
+
+  !-------------------------------------------------------------------------------
+  ! Determines if factorization should be performed based on iopt value
+  PURE FUNCTION should_factorize(iopt) RESULT(do_factorize)
+    INTEGER, INTENT(in) :: iopt
+    LOGICAL :: do_factorize
+    do_factorize = (iopt == IOPT_FULL_SOLVE .OR. iopt == IOPT_FACTORIZE_ONLY)
+  END FUNCTION should_factorize
+
+  !-------------------------------------------------------------------------------
+  ! Determines if solving should be performed based on iopt value  
+  PURE FUNCTION should_solve(iopt) RESULT(do_solve)
+    INTEGER, INTENT(in) :: iopt
+    LOGICAL :: do_solve
+    do_solve = (iopt == IOPT_FULL_SOLVE .OR. iopt == IOPT_SOLVE_ONLY)
+  END FUNCTION should_solve
+
+  !-------------------------------------------------------------------------------
+  ! Determines if memory cleanup should be performed based on iopt value
+  PURE FUNCTION should_cleanup(iopt) RESULT(do_cleanup)
+    INTEGER, INTENT(in) :: iopt
+    LOGICAL :: do_cleanup
+    do_cleanup = (iopt == IOPT_FREE_MEMORY)
+  END FUNCTION should_cleanup
+
 END MODULE sparse_solvers_mod
