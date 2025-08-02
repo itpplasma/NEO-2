@@ -72,6 +72,7 @@ set(COMMON_FILES
   ilu_precond_mod.f90
   bicgstab_mod.f90
   gmres_mod.f90
+  idrs_mod.f90
   sparse_mod.f90
   sparsevec_mod.f90
   spline_cof.f90

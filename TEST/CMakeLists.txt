@@ -771,3 +771,104 @@ set_tests_properties(amg_realistic_test PROPERTIES
     PASS_REGULAR_EXPRESSION "SUCCESS: All AMG realistic tests passed"
     FAIL_REGULAR_EXPRESSION "FAILURE: Some AMG realistic tests failed"
 )
+
+# IDR(s) simple test executable
+add_executable(test_idrs_simple
+    test_idrs_simple.f90
+)
+
+# Set compiler flags
+target_compile_options(test_idrs_simple PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_idrs_simple
+    common
+)
+
+# Include directories
+target_include_directories(test_idrs_simple PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME idrs_simple_test 
+         COMMAND test_idrs_simple
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(idrs_simple_test PROPERTIES
+    TIMEOUT 60
+    PASS_REGULAR_EXPRESSION "IDR\\(s\\) simple test passed!"
+    FAIL_REGULAR_EXPRESSION "ERROR: IDR\\(s\\) simple test failed!"
+)
+
+# GMRES+AMG spline test executable
+add_executable(test_spline_gmres_amg
+    test_spline_gmres_amg.f90
+)
+
+# Set compiler flags
+target_compile_options(test_spline_gmres_amg PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_spline_gmres_amg
+    common
+)
+
+# Include directories
+target_include_directories(test_spline_gmres_amg PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+    ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
+)
+
+# Add the test
+add_test(NAME spline_gmres_amg_test 
+         COMMAND test_spline_gmres_amg
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(spline_gmres_amg_test PROPERTIES
+    TIMEOUT 300
+    PASS_REGULAR_EXPRESSION "GMRES\\+AMG integration ready for implementation"
+    FAIL_REGULAR_EXPRESSION "ERROR:"
+)
+
+# IDR(s)+AMG spline test executable
+add_executable(test_spline_idrs_amg
+    test_spline_idrs_amg.f90
+)
+
+# Set compiler flags
+target_compile_options(test_spline_idrs_amg PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_spline_idrs_amg
+    common
+)
+
+# Include directories
+target_include_directories(test_spline_idrs_amg PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+    ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
+)
+
+# Add the test
+add_test(NAME spline_idrs_amg_test 
+         COMMAND test_spline_idrs_amg
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(spline_idrs_amg_test PROPERTIES
+    TIMEOUT 300
+    PASS_REGULAR_EXPRESSION "IDR\\(s\\)\\+AMG integration ready for implementation"
+    FAIL_REGULAR_EXPRESSION "ERROR:"
+)
