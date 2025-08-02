@@ -1,5 +1,4 @@
 project(NEO-2-COMMON)
-enable_testing()
 
 ### FGSL user-defined interface
 set(FGSL_USERINTERFACE_SOURCE_FILES
@@ -68,6 +67,7 @@ set(COMMON_FILES
   sparse_mod.f90
   sparsevec_mod.f90
   spline_cof.f90
+  splinecof3_direct_sparse.f90
   spline_int.f90
   spline_mod.f90
   test_function.f90
