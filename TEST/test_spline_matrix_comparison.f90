@@ -1,6 +1,6 @@
 program test_spline_matrix_comparison
     use nrtype, only: I4B, DP
-    use spline_test_control, only: disable_fast_path
+    use neo_spline_data, only: use_fast_splines
     use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
     use sparse_mod, only: full2sparse, sparse2full
     implicit none
@@ -113,10 +113,10 @@ contains
         ! Run sparse implementation (force sparse path)
         c1_copy = c1
         cn_copy = cn
-        disable_fast_path = .true.
+        use_fast_splines = .false.
         call splinecof3_direct_sparse(x, y, c1_copy, cn_copy, lambda1, indx, sw1, sw2, &
                                      a_sparse, b_sparse, c_sparse, d_sparse, m, test_function)
-        disable_fast_path = .false.
+        use_fast_splines = .true.
         
         ! Compare coefficients
         coeffs_match = .true.

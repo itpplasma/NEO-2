@@ -71,7 +71,6 @@ set(COMMON_FILES
   splinecof3_fast.f90
   spline_int.f90
   spline_mod.f90
-  spline_test_control.f90
   test_function.f90
   vvn_legendre.f
   vvn_tok.f90

@@ -1,7 +1,7 @@
 program test_spline_three_way
     use nrtype, only: I4B, DP
     use splinecof3_fast_mod, only: splinecof3_general_fast
-    use spline_test_control, only: disable_fast_path
+    use neo_spline_data, only: use_fast_splines
     implicit none
     
     interface
@@ -115,7 +115,7 @@ contains
         
         ! Wrapper with fast path enabled (should use fast path)
         c1 = 0.0_DP; cn = 0.0_DP
-        disable_fast_path = .false.
+        use_fast_splines = .true.
         call splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                           a_sparse, b_sparse, c_sparse, d_sparse, m, test_function)
         
@@ -291,18 +291,18 @@ contains
         
         ! Normal call (should use fast path)
         c1 = 0.0_DP; cn = 0.0_DP
-        disable_fast_path = .false.
+        use_fast_splines = .true.
         call splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                           a_sparse, b_sparse, c_sparse, d_sparse, m, test_function)
         
         ! Forced sparse path
         c1 = 0.0_DP; cn = 0.0_DP
-        disable_fast_path = .true.
+        use_fast_splines = .false.
         call splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                           a_forced, b_forced, c_forced, d_forced, m, test_function)
         
         ! Reset flag
-        disable_fast_path = .false.
+        use_fast_splines = .true.
         
         ! Compare all three
         test_passed = .true.

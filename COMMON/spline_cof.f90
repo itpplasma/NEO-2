@@ -79,7 +79,6 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   use nrtype, only : I4B, DP
   use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
   use splinecof3_fast_mod, only: splinecof3_general_fast
-  use spline_test_control, only: disable_fast_path
   use neo_spline_data, only: use_fast_splines
   
   IMPLICIT NONE
@@ -162,7 +161,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
   ! Fast path for tridiagonal boundary conditions (consolidated)
   ! Supports: (2,4) natural, (1,3) clamped, (1,4) mixed, (2,3) mixed
-  if (.not. disable_fast_path .and. use_fast_splines .and. &
+  if (use_fast_splines .and. &
       m == 0.0_DP .and. all(abs(lambda1 - 1.0_DP) < 1.0e-13_DP) .and. &
       len_indx == len_x .and. all(indx == [(i, i=1,len_indx)])) then
     
