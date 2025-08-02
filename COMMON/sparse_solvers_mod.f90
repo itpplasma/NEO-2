@@ -15,11 +15,40 @@ MODULE sparse_solvers_mod
   USE sparse_utils_mod, ONLY: csc_to_csr_real, csc_to_csr_complex
   USE bicgstab_mod
   USE ilu_precond_mod
+  USE gmres_mod
   IMPLICIT NONE
   
   ! Solver method constants (no magic numbers)
   INTEGER, PARAMETER, PUBLIC :: SOLVER_UMFPACK = 3
   INTEGER, PARAMETER, PUBLIC :: SOLVER_BICGSTAB = 4
+  INTEGER, PARAMETER, PUBLIC :: SOLVER_GMRES = 5
+
+  ! Preconditioner type constants
+  INTEGER, PARAMETER, PUBLIC :: PRECOND_NONE = 0
+  INTEGER, PARAMETER, PUBLIC :: PRECOND_ILU = 1
+
+  ! Unified iterative solver parameter structure
+  TYPE, PUBLIC :: iterative_solver_params
+    ! Convergence parameters (shared by all iterative solvers)
+    REAL(kind=dp) :: abs_tolerance = 1.0e-14_dp     ! Absolute tolerance
+    REAL(kind=dp) :: rel_tolerance = 1.0e-12_dp     ! Relative tolerance  
+    INTEGER :: max_iterations = 1000                 ! Maximum iterations
+    LOGICAL :: verbose = .FALSE.                     ! Print convergence info
+    
+    ! Preconditioning parameters (shared)
+    INTEGER :: preconditioner_type = PRECOND_ILU    ! Type of preconditioning
+    INTEGER :: ilu_fill_level = 1                   ! ILU(k) fill level
+    REAL(kind=dp) :: ilu_drop_tolerance = 0.0_dp    ! ILU drop tolerance
+    
+    ! GMRES-specific parameters
+    INTEGER :: gmres_restart = 30                   ! GMRES restart parameter
+    
+    ! BiCGSTAB-specific parameters  
+    INTEGER :: bicgstab_restart_limit = 3           ! BiCGSTAB restart limit
+  END TYPE iterative_solver_params
+
+  ! Global default parameters (backward compatibility)
+  TYPE(iterative_solver_params), PUBLIC :: default_iterative_params
   
   ! Module variables that need to be accessible
   INTEGER :: sparse_solve_method = 0  ! Auto-select: UMFPACK for small matrices, BiCGSTAB for large
@@ -27,9 +56,10 @@ MODULE sparse_solvers_mod
   
   ! BiCGSTAB solver parameters (configurable via namelist)
   REAL(kind=dp) :: bicgstab_abs_tolerance = 1.0e-14_dp    ! Absolute tolerance floor (||r|| < abs_tol)
-  REAL(kind=dp) :: bicgstab_rel_tolerance = 1.0e-8_dp     ! Relative tolerance (||r|| < rel_tol*||b||)
+  REAL(kind=dp) :: bicgstab_rel_tolerance = 1.0e-12_dp    ! Relative tolerance (||r|| < rel_tol*||b||)
   INTEGER :: bicgstab_max_iter = 1000                      ! Maximum iterations
   INTEGER :: bicgstab_restart_limit = 3                    ! Number of restarts allowed
+  INTEGER :: bicgstab_stabilization_param = 1             ! BiCGSTAB(ℓ) stabilization parameter (1=standard, 2=BiCGSTAB(2), etc.)
   LOGICAL :: bicgstab_verbose = .FALSE.                    ! Print convergence info
   LOGICAL :: bicgstab_adaptive_tolerance = .FALSE.         ! Automatically adjust tolerance based on matrix conditioning
 
@@ -58,7 +88,7 @@ MODULE sparse_solvers_mod
   PUBLIC :: sparse_solve_method
   PUBLIC :: factorization_exists
   PUBLIC :: bicgstab_abs_tolerance, bicgstab_rel_tolerance
-  PUBLIC :: bicgstab_max_iter, bicgstab_restart_limit, bicgstab_verbose
+  PUBLIC :: bicgstab_max_iter, bicgstab_restart_limit, bicgstab_stabilization_param, bicgstab_verbose
   PUBLIC :: bicgstab_adaptive_tolerance
   PUBLIC :: ilu_fill_level, ilu_drop_tolerance
   PUBLIC :: auto_solver_threshold
@@ -161,11 +191,11 @@ CONTAINS
             PRINT *, 'INFO in ', routine_name, ': Auto-selected BiCGSTAB for large matrix (', nrow, 'x', ncol, ')'
           END IF
         END IF
-      CASE (2, SOLVER_UMFPACK, SOLVER_BICGSTAB)
+      CASE (2, SOLVER_UMFPACK, SOLVER_BICGSTAB, SOLVER_GMRES)
         ! Valid explicit solver methods
       CASE DEFAULT
         PRINT *, 'ERROR in ', routine_name, ': Invalid solver method', solver_method
-        PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+        PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
         ERROR STOP 'Invalid solver method'
     END SELECT
     
@@ -258,9 +288,15 @@ CONTAINS
        ELSE
           CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
+    ELSE IF (sparse_solve_method .EQ. SOLVER_GMRES) THEN
+       IF (pcol_modified) THEN
+          CALL sparse_solve_gmres_real(nrow,ncol,nz,irow,pcoln,val,b,iopt)
+       ELSE
+          CALL sparse_solve_gmres_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
+       END IF
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
        STOP
     END IF
     
@@ -327,9 +363,15 @@ CONTAINS
        ELSE
           CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
+    ELSE IF (sparse_solve_method .EQ. SOLVER_GMRES) THEN
+       IF (pcol_modified) THEN
+          CALL sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcoln,val,b,iopt)
+       ELSE
+          CALL sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcol,val,b,iopt)
+       END IF
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
        STOP
     END IF
     
@@ -399,9 +441,18 @@ CONTAINS
              CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
           END IF
        END DO
+    ELSE IF (sparse_solve_method .EQ. SOLVER_GMRES) THEN
+       ! GMRES doesn't support 2D arrays directly, solve each column separately
+       DO i = 1, SIZE(b,2)
+          IF (pcol_modified) THEN
+             CALL sparse_solve_gmres_real(nrow,ncol,nz,irow,pcoln,val,b(:,i),iopt)
+          ELSE
+             CALL sparse_solve_gmres_real(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
+          END IF
+       END DO
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
        STOP
     END IF
     
@@ -471,9 +522,18 @@ CONTAINS
              CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
           END IF
        END DO
+    ELSE IF (sparse_solve_method .EQ. SOLVER_GMRES) THEN
+       ! GMRES doesn't support 2D arrays directly, solve each column separately
+       DO i = 1, SIZE(b,2)
+          IF (pcol_modified) THEN
+             CALL sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcoln,val,b(:,i),iopt)
+          ELSE
+             CALL sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
+          END IF
+       END DO
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
        STOP
     END IF
     
@@ -530,9 +590,11 @@ CONTAINS
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE IF (sparse_solve_method .EQ. SOLVER_BICGSTAB) THEN
        CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE IF (sparse_solve_method .EQ. SOLVER_GMRES) THEN
+       CALL sparse_solve_gmres_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
        STOP
     END IF
     
@@ -587,9 +649,11 @@ CONTAINS
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE IF (sparse_solve_method .EQ. SOLVER_BICGSTAB) THEN
        CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE IF (sparse_solve_method .EQ. SOLVER_GMRES) THEN
+       CALL sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
        STOP
     END IF
     
@@ -647,9 +711,14 @@ CONTAINS
        DO i = 1, SIZE(b,2)
           CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
        END DO
+    ELSE IF (sparse_solve_method .EQ. SOLVER_GMRES) THEN
+       ! GMRES doesn't support 2D arrays directly, solve each column separately
+       DO i = 1, SIZE(b,2)
+          CALL sparse_solve_gmres_real(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
+       END DO
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
        STOP
     END IF
     
@@ -707,9 +776,14 @@ CONTAINS
        DO i = 1, SIZE(b,2)
           CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
        END DO
+    ELSE IF (sparse_solve_method .EQ. SOLVER_GMRES) THEN
+       ! GMRES doesn't support 2D arrays directly, solve each column separately
+       DO i = 1, SIZE(b,2)
+          CALL sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
+       END DO
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
        STOP
     END IF
     
@@ -1278,9 +1352,9 @@ CONTAINS
     b = 0.0_dp  ! Zero initial guess
     
     IF (ilu_fill_level > 0) THEN
-      ! Use ILU-preconditioned BiCGSTAB
+      ! Use ILU-preconditioned BiCGSTAB(ℓ)
       IF (bicgstab_verbose) THEN
-        PRINT *, 'INFO: Using ILU(',ilu_fill_level,') preconditioning for BiCGSTAB'
+        PRINT *, 'INFO: Using BiCGSTAB(',bicgstab_stabilization_param,') + ILU(',ilu_fill_level,') preconditioning'
       END IF
       
       ! Compute ILU factorization
@@ -1289,17 +1363,22 @@ CONTAINS
       
       IF (ilu_info == 0) THEN
         ! ILU factorization successful, use preconditioned solver
-        CALL bicgstab_solve_precond(nrow, csr_row_ptr, csr_col_idx, csr_val, &
-                                    b_save, b, ilu_fac, abs_tol, rel_tol, max_iter, &
-                                    converged, iter, stats)
+        CALL bicgstab_l_solve_precond(nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                      b_save, b, abs_tol, rel_tol, max_iter, &
+                                      bicgstab_stabilization_param, ilu_fac, &
+                                      bicgstab_verbose, converged, iter, stats)
         CALL ilu_free(ilu_fac)
       ELSE
-        ! ILU factorization failed, fall back to unpreconditioned solver
+        ! ILU factorization failed, fall back to unpreconditioned BiCGSTAB(ℓ)
         IF (bicgstab_verbose) THEN
-          PRINT *, 'WARNING: ILU factorization failed, using unpreconditioned BiCGSTAB'
+          PRINT *, 'WARNING: ILU factorization failed, using unpreconditioned BiCGSTAB(', bicgstab_stabilization_param, ')'
         END IF
-        CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b_save, b, &
-                            abs_tol, rel_tol, max_iter, converged, iter, stats)
+        ! Create dummy ILU factorization for interface compatibility
+        CALL ilu_free(ilu_fac)  ! Ensure clean state
+        CALL bicgstab_l_solve_precond(nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                      b_save, b, abs_tol, rel_tol, max_iter, &
+                                      bicgstab_stabilization_param, ilu_fac, &
+                                      bicgstab_verbose, converged, iter, stats)
       END IF
     ELSE
       ! Use unpreconditioned BiCGSTAB (ilu_fill_level = 0)
@@ -1375,9 +1454,9 @@ CONTAINS
     b = (0.0_dp, 0.0_dp)  ! Zero initial guess for complex
     
     IF (ilu_fill_level > 0) THEN
-      ! Use ILU-preconditioned BiCGSTAB
+      ! Use ILU-preconditioned BiCGSTAB(ℓ)
       IF (bicgstab_verbose) THEN
-        PRINT *, 'INFO: Using ILU(',ilu_fill_level,') preconditioning for BiCGSTAB'
+        PRINT *, 'INFO: Using BiCGSTAB(',bicgstab_stabilization_param,') + ILU(',ilu_fill_level,') preconditioning'
       END IF
       
       ! Compute ILU factorization
@@ -1386,17 +1465,22 @@ CONTAINS
       
       IF (ilu_info == 0) THEN
         ! ILU factorization successful, use preconditioned solver
-        CALL bicgstab_solve_precond(nrow, csr_row_ptr, csr_col_idx, csr_val, &
-                                    b_save, b, ilu_fac, abs_tol, rel_tol, max_iter, &
-                                    converged, iter, stats)
+        CALL bicgstab_l_solve_precond(nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                      b_save, b, abs_tol, rel_tol, max_iter, &
+                                      bicgstab_stabilization_param, ilu_fac, &
+                                      bicgstab_verbose, converged, iter, stats)
         CALL ilu_free(ilu_fac)
       ELSE
-        ! ILU factorization failed, fall back to unpreconditioned solver
+        ! ILU factorization failed, fall back to unpreconditioned BiCGSTAB(ℓ)
         IF (bicgstab_verbose) THEN
-          PRINT *, 'WARNING: ILU factorization failed, using unpreconditioned BiCGSTAB'
+          PRINT *, 'WARNING: ILU factorization failed, using unpreconditioned BiCGSTAB(', bicgstab_stabilization_param, ')'
         END IF
-        CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b_save, b, &
-                            abs_tol, rel_tol, max_iter, converged, iter, stats)
+        ! Create dummy ILU factorization for interface compatibility
+        CALL ilu_free(ilu_fac)  ! Ensure clean state
+        CALL bicgstab_l_solve_precond(nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                      b_save, b, abs_tol, rel_tol, max_iter, &
+                                      bicgstab_stabilization_param, ilu_fac, &
+                                      bicgstab_verbose, converged, iter, stats)
       END IF
     ELSE
       ! Use unpreconditioned BiCGSTAB (ilu_fill_level = 0)
@@ -1529,5 +1613,194 @@ CONTAINS
     bicgstab_rel_tolerance = rel_tol
     
   END SUBROUTINE apply_adaptive_tolerance_real
+
+  !===============================================================================
+  ! GMRES solver interfaces
+  !===============================================================================
+  
+  !-------------------------------------------------------------------------------
+  ! GMRES solver wrapper for real systems
+  ! Note: GMRES is an iterative solver with optional ILU preconditioning
+  SUBROUTINE sparse_solve_gmres_real(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
+    INTEGER, INTENT(in) :: nrow,ncol,nz
+    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
+    REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
+    REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
+    INTEGER, INTENT(in) :: iopt_in
+    
+    ! Local variables for CSR conversion
+    INTEGER, ALLOCATABLE :: csr_row_ptr(:), csr_col_idx(:)
+    REAL(kind=dp), ALLOCATABLE :: csr_val(:)
+    REAL(kind=dp), ALLOCATABLE :: b_save(:), x(:)
+    
+    ! GMRES solver parameters (use configurable values from default_iterative_params)
+    REAL(kind=dp) :: abs_tol, rel_tol, residual_norm
+    INTEGER :: max_iter, restart_dim
+    LOGICAL :: converged
+    INTEGER :: iter, info
+    TYPE(gmres_workspace) :: workspace
+    
+    ! ILU preconditioning variables
+    TYPE(ilu_factorization) :: ilu_fac
+    INTEGER :: ilu_info
+    LOGICAL :: use_ilu
+    
+    ! Initialize variables
+    iter = 0
+    info = 0
+    converged = .FALSE.
+    
+    ! Use module-level configurable parameters
+    abs_tol = default_iterative_params%abs_tolerance
+    rel_tol = default_iterative_params%rel_tolerance
+    max_iter = default_iterative_params%max_iterations
+    restart_dim = default_iterative_params%gmres_restart
+    
+    ! Determine if using ILU preconditioning
+    use_ilu = (default_iterative_params%preconditioner_type == PRECOND_ILU)
+    
+    IF (default_iterative_params%verbose) THEN
+      PRINT *, 'GMRES: preconditioner_type =', default_iterative_params%preconditioner_type
+      PRINT *, 'GMRES: PRECOND_ILU =', PRECOND_ILU
+      PRINT *, 'GMRES: use_ilu =', use_ilu
+    END IF
+    
+    ! For dense GMRES without preconditioning, we might need more iterations
+    IF (.NOT. use_ilu) THEN
+      max_iter = MAX(max_iter, nrow * 2)  ! Allow more iterations for unpreconditioned
+    END IF
+    
+    ! Convert CSC to CSR format for GMRES
+    ALLOCATE(csr_row_ptr(nrow+1), csr_col_idx(nz), csr_val(nz))
+    CALL csc_to_csr_real(nrow, ncol, nz, pcol, irow, val, csr_row_ptr, csr_col_idx, csr_val)
+    
+    ! Initialize GMRES workspace
+    CALL create_gmres_workspace(workspace, nrow, restart_dim)
+    
+    ! Setup ILU preconditioning if requested
+    IF (use_ilu) THEN
+      IF (default_iterative_params%verbose) THEN
+        PRINT *, 'GMRES: Setting up ILU(', default_iterative_params%ilu_fill_level, ') preconditioning...'
+      END IF
+      
+      CALL ilu_factorize(nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                         default_iterative_params%ilu_fill_level, &
+                         default_iterative_params%ilu_drop_tolerance, &
+                         ilu_fac, ilu_info)
+      
+      IF (ilu_info /= 0) THEN
+        IF (sparse_talk .OR. default_iterative_params%verbose) THEN
+          PRINT *, 'WARNING: ILU factorization failed with info =', ilu_info
+          PRINT *, 'Proceeding without preconditioning'
+        END IF
+        use_ilu = .FALSE.
+      ELSE
+        IF (default_iterative_params%verbose) THEN
+          PRINT *, 'GMRES: ILU factorization successful'
+        END IF
+      END IF
+    END IF
+    
+    ! Allocate solution vector
+    ALLOCATE(x(nrow))
+    x = 0.0_dp  ! Initial guess
+    
+    ! Solve using GMRES
+    IF (use_ilu) THEN
+      IF (default_iterative_params%verbose) THEN
+        PRINT *, 'GMRES: Using preconditioned solver with ILU'
+      END IF
+      CALL gmres_solve_structured_preconditioned(workspace, nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                                 b, x, max_iter, abs_tol, ilu_fac, &
+                                                 x, iter, residual_norm, converged, info, &
+                                                 use_preconditioner=.TRUE.)
+    ELSE
+      ! For non-preconditioned, need to convert to dense matrix format
+      BLOCK
+        REAL(kind=dp), ALLOCATABLE :: A_dense(:,:)
+        INTEGER :: i, j, k
+        
+        ALLOCATE(A_dense(nrow, nrow))
+        A_dense = 0.0_dp
+        
+        ! Convert CSR to dense
+        DO i = 1, nrow
+          DO k = csr_row_ptr(i), csr_row_ptr(i+1) - 1
+            j = csr_col_idx(k)
+            A_dense(i, j) = csr_val(k)
+          END DO
+        END DO
+        
+        ! Use zero initial guess
+        BLOCK
+          REAL(DP), ALLOCATABLE :: x_initial(:)
+          REAL(DP) :: norm_b, rel_tol_for_gmres
+          
+          ALLOCATE(x_initial(nrow))
+          x_initial = 0.0_dp
+          
+          ! Compute norm of b for tolerance conversion and debug output
+          norm_b = SQRT(DOT_PRODUCT(b, b))
+          
+          IF (default_iterative_params%verbose) THEN
+            PRINT *, 'GMRES without preconditioning:'
+            PRINT *, '  Matrix size:', nrow
+            PRINT *, '  Restart dimension:', restart_dim
+            PRINT *, '  Max iterations:', max_iter
+            PRINT *, '  Tolerance:', abs_tol
+            PRINT *, '  Norm of b:', norm_b
+          END IF
+          
+          ! GMRES uses relative tolerance, so convert our absolute tolerance
+          IF (norm_b > TINY(1.0_DP)) THEN
+            rel_tol_for_gmres = abs_tol / norm_b
+          ELSE
+            rel_tol_for_gmres = abs_tol
+          END IF
+          
+          CALL gmres_solve_structured(workspace, A_dense, b, x_initial, max_iter, rel_tol_for_gmres, &
+                                      x, iter, residual_norm, converged, info)
+          
+          DEALLOCATE(x_initial)
+        END BLOCK
+        
+        DEALLOCATE(A_dense)
+      END BLOCK
+    END IF
+    
+    ! Copy solution back to b
+    b = x
+    
+    ! Print convergence info if verbose
+    IF (default_iterative_params%verbose) THEN
+      IF (converged) THEN
+        PRINT '(A,I5,A,ES10.3)', ' GMRES converged in ', iter, ' iterations, residual = ', residual_norm
+      ELSE
+        PRINT '(A,I5,A,ES10.3)', ' GMRES failed to converge after ', iter, ' iterations, residual = ', residual_norm
+      END IF
+    END IF
+    
+    ! Clean up
+    CALL destroy_gmres_workspace(workspace)
+    IF (use_ilu) CALL ilu_free(ilu_fac)
+    DEALLOCATE(csr_row_ptr, csr_col_idx, csr_val, x)
+    
+  END SUBROUTINE sparse_solve_gmres_real
+  
+  !-------------------------------------------------------------------------------
+  ! GMRES solver wrapper for complex systems
+  ! Note: Complex GMRES not yet implemented - placeholder for future
+  SUBROUTINE sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
+    INTEGER, INTENT(in) :: nrow,ncol,nz
+    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
+    COMPLEX(kind=dp), DIMENSION(:), INTENT(in) :: val
+    COMPLEX(kind=dp), DIMENSION(:), INTENT(inout) :: b
+    INTEGER, INTENT(in) :: iopt_in
+    
+    PRINT *, 'ERROR: Complex GMRES solver not yet implemented'
+    PRINT *, 'Please use SOLVER_UMFPACK or SOLVER_BICGSTAB for complex systems'
+    STOP
+    
+  END SUBROUTINE sparse_solve_gmres_complex
 
 END MODULE sparse_solvers_mod
