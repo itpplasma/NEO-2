@@ -92,12 +92,26 @@ contains
     real(dp), intent(in) :: theta
     
     integer :: i, j, k, nnz_s
-    real(dp) :: diag_i, diag_j, aij, threshold, row_scale
+    real(dp) :: diag_i, diag_j, aij, eps_aii, val_sq, max_col_entry
+    real(dp), allocatable :: diags(:)
     
-    ! Build proper strength matrix following Julia AlgebraicMultigrid.jl approach
-    ! For theta=0.0, keep all connections (most permissive)
+    ! Exact replication of Julia SymmetricStrength algorithm
+    ! From strength.jl lines 77-122
     
-    ! Allocate strength matrix (S) - same structure as A for simplicity
+    ! Step 1: Extract diagonal norms exactly like Julia (lines 89-101)
+    allocate(diags(level%n))
+    do i = 1, level%n
+      diag_i = 0.0_dp
+      do k = level%row_ptr(i), level%row_ptr(i+1)-1
+        j = level%col_idx(k)
+        if (i == j) then
+          diag_i = diag_i + level%values(k)
+        end if
+      end do
+      diags(i) = abs(diag_i)  ! Julia: norm(diag)
+    end do
+    
+    ! Step 2: Allocate strength matrix (S) - same structure as A
     if (.not. allocated(level%S_row_ptr)) then
       allocate(level%S_row_ptr(level%n + 1))
       allocate(level%S_col_idx(level%nnz))
@@ -108,135 +122,197 @@ contains
     level%S_col_idx = level%col_idx
     level%nnz_s = level%nnz
     
-    ! Build strength matrix with proper scaling
-    nnz_s = 0
+    ! Step 3: Copy A to S initially (line 86: S = copy(A))
+    level%S_values = level%values
+    
+    ! Step 4: Apply strength criterion exactly like Julia (lines 103-114)
     do i = 1, level%n
-      diag_i = abs(level%diagonal(i))
+      eps_aii = theta * theta * diags(i)  ! Julia: eps_Aii = θ * θ * diags[i]
       
-      ! Compute row scaling factor (simpler approach)
-      row_scale = 1.0_dp  ! Disable row scaling for now to debug
-      
-      ! Fill strength matrix entries
       do k = level%row_ptr(i), level%row_ptr(i+1)-1
         j = level%col_idx(k)
-        nnz_s = nnz_s + 1
         
-        if (i == j) then
-          ! Diagonal entry
-          level%S_values(nnz_s) = level%values(k)
-        else
-          ! Off-diagonal: apply strength criterion
-          diag_j = abs(level%diagonal(j))
-          aij = abs(level%values(k))
-          threshold = theta * theta * diag_i * diag_j
-          
-          if (theta == 0.0_dp .or. aij * aij >= threshold) then
-            ! Strong connection - use scaled value for local weighting
-            level%S_values(nnz_s) = level%values(k) * row_scale
-          else
-            ! Weak connection - set to zero
-            level%S_values(nnz_s) = 0.0_dp
+        if (i /= j) then  ! Off-diagonal only
+          val_sq = level%values(k) * level%values(k)  ! Julia: val*val
+          if (val_sq < eps_aii * diags(j)) then  ! Julia: val*val < eps_Aii * diags[row]
+            level%S_values(k) = 0.0_dp  ! Zero out weak connections
           end if
         end if
       end do
     end do
     
+    ! Step 5: Take absolute values (line 118: S.nzval .= abs.(S.nzval))
+    do k = 1, level%nnz_s
+      level%S_values(k) = abs(level%S_values(k))
+    end do
+    
+    ! Step 6: Scale columns by largest entry (line 119: scale_cols_by_largest_entry!(S))
+    call scale_cols_by_largest_entry(level)
+    
+    deallocate(diags)
+    
   end subroutine sa_compute_strength
+  
+  subroutine scale_cols_by_largest_entry(level)
+    type(amg_level), intent(inout) :: level
+    
+    integer :: i, k, j
+    real(dp) :: max_val
+    
+    ! Exact replication of Julia scale_cols_by_largest_entry! function
+    ! From strength.jl lines 61-70
+    
+    do i = 1, level%n
+      ! Find maximum entry in column i (Julia: _m = find_max(A, i))
+      max_val = 0.0_dp
+      do k = level%S_row_ptr(i), level%S_row_ptr(i+1)-1
+        max_val = max(max_val, level%S_values(k))
+      end do
+      
+      ! Scale all entries in column i by max_val (Julia: A.nzval[j] /= _m)
+      if (max_val > 1.0e-14_dp) then
+        do k = level%S_row_ptr(i), level%S_row_ptr(i+1)-1
+          level%S_values(k) = level%S_values(k) / max_val
+        end do
+      end if
+    end do
+    
+  end subroutine scale_cols_by_largest_entry
   
   subroutine sa_aggregate_nodes(level)
     type(amg_level), intent(inout) :: level
     
-    integer :: i, j, k, agg_count, current_agg
-    integer :: phase, neighbor
-    logical, allocatable :: aggregated(:)
-    integer, allocatable :: agg_size(:)
+    ! Exact replication of Julia StandardAggregation algorithm
+    ! From aggregate.jl lines 4-113
+    
+    integer :: i, j, k, next_aggregate
+    logical :: has_agg_neighbors, has_neighbors
+    integer :: x_row, xi
+    integer, allocatable :: x(:), y(:)
     
     allocate(level%aggregates(level%n))
-    allocate(aggregated(level%n))
-    allocate(agg_size(level%n))
+    allocate(x(level%n))
+    allocate(y(level%n))
     
-    level%aggregates = 0
-    aggregated = .false.
-    agg_size = 0
-    agg_count = 0
+    x = 0  ! Julia: x = zeros(R, n)
+    y = 0  ! Julia: y = zeros(R, n)
+    next_aggregate = 1
     
-    ! Phase 1: Create root nodes more selectively using distance-2 strategy
+    ! Pass 1: Exactly like Julia lines 12-44
     do i = 1, level%n
-      if (.not. aggregated(i)) then
-        ! Check if this node can be a root (no aggregated neighbors)
-        current_agg = 0
-        do k = level%row_ptr(i), level%row_ptr(i+1)-1
-          j = level%col_idx(k)
-          if (i /= j .and. aggregated(j)) then
-            current_agg = -1  ! Has aggregated neighbor, can't be root
+      if (x(i) /= 0) cycle  ! Julia: if x[i] != 0; continue; end
+      
+      has_agg_neighbors = .false.
+      has_neighbors = .false.
+      
+      ! Check neighbors (Julia lines 20-29)
+      do k = level%S_row_ptr(i), level%S_row_ptr(i+1)-1
+        j = level%S_col_idx(k)
+        if (j /= i) then
+          has_neighbors = .true.
+          if (x(j) /= 0) then
+            has_agg_neighbors = .true.
             exit
           end if
+        end if
+      end do
+      
+      if (.not. has_neighbors) then
+        x(i) = -level%n  ! Julia: x[i] = -n
+      else if (.not. has_agg_neighbors) then
+        x(i) = next_aggregate  ! Julia: x[i] = next_aggregate
+        y(next_aggregate) = i  ! Julia: y[next_aggregate] = i
+        
+        ! Add all neighbors to this aggregate (Julia lines 37-40)
+        do k = level%S_row_ptr(i), level%S_row_ptr(i+1)-1
+          j = level%S_col_idx(k)
+          x(j) = next_aggregate  ! Julia: x[row] = next_aggregate
         end do
         
-        if (current_agg == 0) then
-          ! Create new aggregate with i as root
-          agg_count = agg_count + 1
-          level%aggregates(i) = agg_count
-          aggregated(i) = .true.
-          agg_size(agg_count) = 1
-          
-          ! Immediately add all unaggregated neighbors to this aggregate
-          do k = level%row_ptr(i), level%row_ptr(i+1)-1
-            j = level%col_idx(k)
-            if (i /= j .and. .not. aggregated(j)) then
-              level%aggregates(j) = agg_count
-              aggregated(j) = .true.
-              agg_size(agg_count) = agg_size(agg_count) + 1
-            end if
-          end do
+        next_aggregate = next_aggregate + 1
+      end if
+    end do
+    
+    ! Pass 2: Exactly like Julia lines 47-61
+    do i = 1, level%n
+      if (x(i) /= 0) cycle
+      
+      do k = level%S_row_ptr(i), level%S_row_ptr(i+1)-1
+        j = level%S_col_idx(k)
+        x_row = x(j)
+        if (x_row > 0) then
+          x(i) = -x_row  ! Julia: x[i] = -x_row
+          exit
         end if
-      end if
+      end do
     end do
     
-    ! Phase 2: Add neighbors to existing aggregates
+    next_aggregate = next_aggregate - 1  ! Julia: next_aggregate -= 1
+    
+    ! Pass 3: Exactly like Julia lines 65-91
     do i = 1, level%n
-      if (.not. aggregated(i)) then
-        ! Look for aggregated neighbors
-        do k = level%row_ptr(i), level%row_ptr(i+1)-1
-          j = level%col_idx(k)
-          if (i /= j .and. aggregated(j)) then
-            current_agg = level%aggregates(j)
-            level%aggregates(i) = current_agg
-            aggregated(i) = .true.
-            agg_size(current_agg) = agg_size(current_agg) + 1
-            exit
-          end if
-        end do
+      xi = x(i)
+      if (xi /= 0) then
+        if (xi > 0) then
+          x(i) = xi - 1  ! Julia: x[i] = xi - 1
+        else if (xi == -level%n) then
+          x(i) = -1  ! Julia: x[i] = -1
+        else
+          x(i) = -xi - 1  ! Julia: x[i] = -xi - 1
+        end if
+        cycle
       end if
+      
+      x(i) = next_aggregate  ! Julia: x[i] = next_aggregate
+      y(next_aggregate + 1) = i  ! Julia: y[next_aggregate + 1] = i
+      
+      do k = level%S_row_ptr(i), level%S_row_ptr(i+1)-1
+        j = level%S_col_idx(k)
+        if (x(j) == 0) then
+          x(j) = next_aggregate
+        end if
+      end do
+      
+      next_aggregate = next_aggregate + 1
     end do
     
-    ! Phase 3: Handle remaining unaggregated nodes
+    ! Convert to 1-based indexing for Fortran (Julia uses 0-based aggregates)
     do i = 1, level%n
-      if (.not. aggregated(i)) then
-        agg_count = agg_count + 1
-        level%aggregates(i) = agg_count
-        aggregated(i) = .true.
-        agg_size(agg_count) = 1
+      if (x(i) >= 0) then
+        level%aggregates(i) = x(i) + 1
+      else if (x(i) == -1) then
+        ! Isolated nodes get their own aggregate (Julia handling)
+        next_aggregate = next_aggregate + 1
+        level%aggregates(i) = next_aggregate
+      else
+        level%aggregates(i) = 0  ! Should not happen with correct Julia algorithm
       end if
     end do
     
-    level%n_aggregates = agg_count
-    level%n_coarse = agg_count
+    level%n_aggregates = next_aggregate
+    level%n_coarse = next_aggregate
     
-    deallocate(aggregated, agg_size)
+    deallocate(x, y)
     
   end subroutine sa_aggregate_nodes
   
   subroutine sa_fit_candidates(level)
     type(amg_level), intent(inout) :: level
     
+    ! Exact replication of Julia fit_candidates function
+    ! From aggregation.jl lines 91-126
+    ! Note: For simplicity, we implement the constant vector case (m=1)
+    ! The full QR approach would require LAPACK integration
+    
     integer :: i, j, k, agg, nnz_p
     integer :: agg_start, agg_size
     integer, allocatable :: nodes_in_agg(:), agg_ptr(:)
-    real(dp), allocatable :: Q(:,:), work(:)
-    integer :: lwork, info
+    real(dp) :: tol = 1.0e-10_dp
     
-    ! Build aggregate-to-node mapping
+    ! For SA-AMG with constant vector candidates, we can use simpler injection
+    ! This matches Julia's QR result for constant vectors
+    
+    ! Build aggregate-to-node mapping (Julia AggOp structure)
     allocate(agg_ptr(level%n_aggregates + 1))
     allocate(nodes_in_agg(level%n))
     
@@ -244,7 +320,9 @@ contains
     agg_ptr = 0
     do i = 1, level%n
       agg = level%aggregates(i)
-      agg_ptr(agg+1) = agg_ptr(agg+1) + 1
+      if (agg > 0) then  ! Valid aggregate
+        agg_ptr(agg+1) = agg_ptr(agg+1) + 1
+      end if
     end do
     
     ! Convert to pointers
@@ -256,8 +334,10 @@ contains
     ! Fill node list
     do i = 1, level%n
       agg = level%aggregates(i)
-      nodes_in_agg(agg_ptr(agg)) = i
-      agg_ptr(agg) = agg_ptr(agg) + 1
+      if (agg > 0) then
+        nodes_in_agg(agg_ptr(agg)) = i
+        agg_ptr(agg) = agg_ptr(agg) + 1
+      end if
     end do
     
     ! Restore pointers
@@ -266,8 +346,16 @@ contains
     end do
     agg_ptr(1) = 1
     
-    ! Build tentative prolongation (simple injection for constant vector)
-    nnz_p = level%n  ! One nonzero per row
+    ! Build tentative prolongation exactly like Julia's QR result for constant vectors
+    ! Julia: Qs = spzeros(T, n_fine, n_coarse) with proper orthogonalization
+    nnz_p = 0
+    do i = 1, level%n
+      agg = level%aggregates(i)
+      if (agg > 0) then
+        nnz_p = nnz_p + 1
+      end if
+    end do
+    
     level%n_fine = level%n
     level%n_coarse = level%n_aggregates
     level%nnz_p = nnz_p
@@ -276,19 +364,24 @@ contains
     allocate(level%P_col_idx(nnz_p))
     allocate(level%P_values(nnz_p))
     
-    ! Build tentative prolongation with proper scaling
-    ! For each node, P(i, agg(i)) = 1/sqrt(agg_size)
+    ! Build prolongation with proper normalization (Julia QR orthogonalization result)
     nnz_p = 0
     level%P_row_ptr(1) = 1
     
     do i = 1, level%n
       agg = level%aggregates(i)
-      agg_size = agg_ptr(agg+1) - agg_ptr(agg)
-      
-      nnz_p = nnz_p + 1
-      level%P_col_idx(nnz_p) = agg
-      level%P_values(nnz_p) = 1.0_dp / sqrt(real(agg_size, dp))
-      level%P_row_ptr(i+1) = nnz_p + 1
+      if (agg > 0) then
+        agg_size = agg_ptr(agg+1) - agg_ptr(agg)
+        
+        nnz_p = nnz_p + 1
+        level%P_col_idx(nnz_p) = agg
+        ! Julia QR for constant vector gives 1/sqrt(aggregate_size)
+        level%P_values(nnz_p) = 1.0_dp / sqrt(real(agg_size, dp))
+        level%P_row_ptr(i+1) = nnz_p + 1
+      else
+        ! Unaggregated node - this shouldn't happen with correct aggregation
+        level%P_row_ptr(i+1) = level%P_row_ptr(i)
+      end if
     end do
     
     deallocate(agg_ptr, nodes_in_agg)
