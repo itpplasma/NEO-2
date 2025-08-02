@@ -60,8 +60,9 @@ PROGRAM neo2
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
-  USE sparse_solvers_mod, ONLY : bicgstab_abs_tolerance, bicgstab_rel_tolerance, bicgstab_tolerance, &
-       bicgstab_max_iter, bicgstab_restart_limit, bicgstab_verbose, auto_solver_threshold
+  USE sparse_solvers_mod, ONLY : bicgstab_abs_tolerance, bicgstab_rel_tolerance, &
+       bicgstab_max_iter, bicgstab_restart_limit, bicgstab_verbose, auto_solver_threshold, &
+       ilu_fill_level, ilu_drop_tolerance
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
   use field_eq_mod, only : use_fpol
   use neo_spline_data, only : lsw_linear_boozer
@@ -166,8 +167,9 @@ PROGRAM neo2
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method,mag_symmetric,mag_symmetric_shorten,   &
-       bicgstab_abs_tolerance, bicgstab_rel_tolerance, bicgstab_tolerance, &
+       bicgstab_abs_tolerance, bicgstab_rel_tolerance, &
        bicgstab_max_iter, bicgstab_restart_limit, bicgstab_verbose, auto_solver_threshold, &
+       ilu_fill_level, ilu_drop_tolerance, &
        epserr_sink, epserr_iter, niter, lsw_linear_boozer
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &

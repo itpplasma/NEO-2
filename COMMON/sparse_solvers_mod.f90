@@ -31,8 +31,10 @@ MODULE sparse_solvers_mod
   INTEGER :: bicgstab_max_iter = 1000                      ! Maximum iterations
   INTEGER :: bicgstab_restart_limit = 3                    ! Number of restarts allowed
   LOGICAL :: bicgstab_verbose = .FALSE.                    ! Print convergence info
-  ! Legacy support - map old parameter to new ones
-  REAL(kind=dp) :: bicgstab_tolerance = 1.0e-8_dp         ! Deprecated: use bicgstab_rel_tolerance
+  
+  ! ILU preconditioning parameters (configurable via namelist in neo2.in)
+  INTEGER :: ilu_fill_level = 1                            ! ILU(k) fill level (0=no ILU, 1=ILU(1), 2=ILU(2), etc.)
+  REAL(kind=dp) :: ilu_drop_tolerance = 0.0_dp             ! Drop tolerance for ILU factorization
   
   ! Adaptive solver selection parameters
   INTEGER :: auto_solver_threshold = 100               ! Switch to BiCGSTAB for matrices >= this size
@@ -41,8 +43,9 @@ MODULE sparse_solvers_mod
   PUBLIC :: sparse_solve_suitesparse
   PUBLIC :: sparse_solve_method
   PUBLIC :: factorization_exists
-  PUBLIC :: bicgstab_abs_tolerance, bicgstab_rel_tolerance, bicgstab_tolerance
+  PUBLIC :: bicgstab_abs_tolerance, bicgstab_rel_tolerance
   PUBLIC :: bicgstab_max_iter, bicgstab_restart_limit, bicgstab_verbose
+  PUBLIC :: ilu_fill_level, ilu_drop_tolerance
   PUBLIC :: auto_solver_threshold
   
   ! Named constants for iopt parameter values (compatible with original sparse_mod.f90)
@@ -1225,6 +1228,7 @@ CONTAINS
     ! Local variables for CSR conversion
     INTEGER, ALLOCATABLE :: csr_row_ptr(:), csr_col_idx(:)
     REAL(kind=dp), ALLOCATABLE :: csr_val(:)
+    REAL(kind=dp), ALLOCATABLE :: b_save(:)
     
     ! BiCGSTAB solver parameters (use configurable values)
     REAL(kind=dp) :: abs_tol, rel_tol
@@ -1233,25 +1237,56 @@ CONTAINS
     INTEGER :: iter
     TYPE(bicgstab_stats) :: stats
     
+    ! ILU preconditioning variables
+    TYPE(ilu_factorization) :: ilu_fac
+    INTEGER :: ilu_info
+    
     ! Use module-level configurable parameters
-    ! Support legacy single tolerance parameter
-    IF (bicgstab_tolerance /= bicgstab_rel_tolerance) THEN
-      ! User set the legacy parameter
-      rel_tol = bicgstab_tolerance
-      abs_tol = bicgstab_abs_tolerance
-    ELSE
-      rel_tol = bicgstab_rel_tolerance
-      abs_tol = bicgstab_abs_tolerance
-    END IF
+    rel_tol = bicgstab_rel_tolerance
+    abs_tol = bicgstab_abs_tolerance
     max_iter = bicgstab_max_iter
     
     ! Convert from CSC to CSR format for BiCGSTAB
     ALLOCATE(csr_row_ptr(nrow+1), csr_col_idx(nz), csr_val(nz))
+    PRINT *, 'DEBUG: BiCGSTAB about to convert CSC to CSR, nrow=', nrow, 'nz=', nz
     CALL csc_to_csr_real(nrow, ncol, nz, pcol, irow, val, csr_row_ptr, csr_col_idx, csr_val)
     
-    ! Solve using BiCGSTAB with dual tolerances
-    CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b, b, &
-                        abs_tol, rel_tol, max_iter, converged, iter, stats)
+    ! Solve using BiCGSTAB (with ILU preconditioning if enabled)
+    ! b is used as both RHS and solution vector (solution overwrites b)
+    ! Start with zero initial guess
+    ALLOCATE(b_save(nrow))
+    b_save = b  ! Save RHS
+    b = 0.0_dp  ! Zero initial guess
+    
+    IF (ilu_fill_level > 0) THEN
+      ! Use ILU-preconditioned BiCGSTAB
+      PRINT *, 'DEBUG: Using ILU(',ilu_fill_level,') preconditioning for BiCGSTAB'
+      
+      ! Compute ILU factorization
+      CALL ilu_factorize(nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                         ilu_fill_level, ilu_drop_tolerance, ilu_fac, ilu_info)
+      
+      IF (ilu_info == 0) THEN
+        ! ILU factorization successful, use preconditioned solver
+        CALL bicgstab_solve_precond(nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                    b_save, b, ilu_fac, abs_tol, rel_tol, max_iter, &
+                                    converged, iter, stats)
+        CALL ilu_free(ilu_fac)
+      ELSE
+        ! ILU factorization failed, fall back to unpreconditioned solver
+        IF (bicgstab_verbose) THEN
+          PRINT *, 'WARNING: ILU factorization failed, using unpreconditioned BiCGSTAB'
+        END IF
+        CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b_save, b, &
+                            abs_tol, rel_tol, max_iter, converged, iter, stats)
+      END IF
+    ELSE
+      ! Use unpreconditioned BiCGSTAB (ilu_fill_level = 0)
+      CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b_save, b, &
+                          abs_tol, rel_tol, max_iter, converged, iter, stats)
+    END IF
+    
+    DEALLOCATE(b_save)
     
     IF (.NOT. converged) THEN
       PRINT *, 'WARNING: BiCGSTAB did not converge after', iter, 'iterations'
@@ -1289,6 +1324,7 @@ CONTAINS
     ! Local variables for CSR conversion
     INTEGER, ALLOCATABLE :: csr_row_ptr(:), csr_col_idx(:)
     COMPLEX(kind=dp), ALLOCATABLE :: csr_val(:)
+    COMPLEX(kind=dp), ALLOCATABLE :: b_save(:)
     
     ! BiCGSTAB solver parameters (use configurable values)
     REAL(kind=dp) :: abs_tol, rel_tol
@@ -1297,25 +1333,55 @@ CONTAINS
     INTEGER :: iter
     TYPE(bicgstab_stats) :: stats
     
+    ! ILU preconditioning variables
+    TYPE(ilu_factorization_complex) :: ilu_fac
+    INTEGER :: ilu_info
+    
     ! Use module-level configurable parameters
-    ! Support legacy single tolerance parameter
-    IF (bicgstab_tolerance /= bicgstab_rel_tolerance) THEN
-      ! User set the legacy parameter
-      rel_tol = bicgstab_tolerance
-      abs_tol = bicgstab_abs_tolerance
-    ELSE
-      rel_tol = bicgstab_rel_tolerance
-      abs_tol = bicgstab_abs_tolerance
-    END IF
+    rel_tol = bicgstab_rel_tolerance
+    abs_tol = bicgstab_abs_tolerance
     max_iter = bicgstab_max_iter
     
     ! Convert from CSC to CSR format for BiCGSTAB
     ALLOCATE(csr_row_ptr(nrow+1), csr_col_idx(nz), csr_val(nz))
     CALL csc_to_csr_complex(nrow, ncol, nz, pcol, irow, val, csr_row_ptr, csr_col_idx, csr_val)
     
-    ! Solve using BiCGSTAB with dual tolerances
-    CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b, b, &
-                        abs_tol, rel_tol, max_iter, converged, iter, stats)
+    ! Solve using BiCGSTAB (with ILU preconditioning if enabled)
+    ! b is used as both RHS and solution vector (solution overwrites b)
+    ! Start with zero initial guess
+    ALLOCATE(b_save(nrow))
+    b_save = b  ! Save RHS
+    b = (0.0_dp, 0.0_dp)  ! Zero initial guess for complex
+    
+    IF (ilu_fill_level > 0) THEN
+      ! Use ILU-preconditioned BiCGSTAB
+      PRINT *, 'DEBUG: Using ILU(',ilu_fill_level,') preconditioning for BiCGSTAB'
+      
+      ! Compute ILU factorization
+      CALL ilu_factorize(nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                         ilu_fill_level, ilu_drop_tolerance, ilu_fac, ilu_info)
+      
+      IF (ilu_info == 0) THEN
+        ! ILU factorization successful, use preconditioned solver
+        CALL bicgstab_solve_precond(nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                    b_save, b, ilu_fac, abs_tol, rel_tol, max_iter, &
+                                    converged, iter, stats)
+        CALL ilu_free(ilu_fac)
+      ELSE
+        ! ILU factorization failed, fall back to unpreconditioned solver
+        IF (bicgstab_verbose) THEN
+          PRINT *, 'WARNING: ILU factorization failed, using unpreconditioned BiCGSTAB'
+        END IF
+        CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b_save, b, &
+                            abs_tol, rel_tol, max_iter, converged, iter, stats)
+      END IF
+    ELSE
+      ! Use unpreconditioned BiCGSTAB (ilu_fill_level = 0)
+      CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b_save, b, &
+                          abs_tol, rel_tol, max_iter, converged, iter, stats)
+    END IF
+    
+    DEALLOCATE(b_save)
     
     IF (.NOT. converged) THEN
       PRINT *, 'WARNING: BiCGSTAB did not converge after', iter, 'iterations'

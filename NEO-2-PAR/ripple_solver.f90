@@ -32,7 +32,7 @@ SUBROUTINE ripple_solver(                                 &
                             prop_fileformat, lsw_save_dentf, lsw_save_enetf,   &
                             lsw_save_spitf
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
-       column_full2pointer,sparse_solver_test
+       column_full2pointer,sparse_solver_test,remap_rc
   USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
                                surface_boozer_B00,travis_convfac,              &
                                mag_magfield
