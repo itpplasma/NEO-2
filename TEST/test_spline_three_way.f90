@@ -1,7 +1,7 @@
 program test_spline_three_way
     use nrtype, only: I4B, DP
     use splinecof3_fast_mod, only: splinecof3_general_fast
-    use spline_test_control_mod, only: disable_fast_path
+    use spline_test_control, only: disable_fast_path
     implicit none
     
     interface

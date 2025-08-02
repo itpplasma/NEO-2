@@ -62,8 +62,7 @@ PROGRAM neo2
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
   use field_eq_mod, only : use_fpol
-  use neo_spline_data, only : lsw_linear_boozer
-  USE spline_test_control, ONLY: use_fast_splines
+  use neo_spline_data, only : lsw_linear_boozer, use_fast_splines
 
   !************************************
   ! HDF5

@@ -79,7 +79,8 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   use nrtype, only : I4B, DP
   use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
   use splinecof3_fast_mod, only: splinecof3_general_fast
-  use spline_test_control, only: disable_fast_path, use_fast_splines
+  use spline_test_control, only: disable_fast_path
+  use neo_spline_data, only: use_fast_splines
   
   IMPLICIT NONE
 

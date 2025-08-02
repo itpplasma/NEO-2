@@ -1,6 +1,6 @@
 program test_spline_matrix_comparison
     use nrtype, only: I4B, DP
-    use spline_test_control_mod, only: disable_fast_path
+    use spline_test_control, only: disable_fast_path
     use splinecof3_direct_sparse_mod, only: splinecof3_direct_sparse
     use sparse_mod, only: full2sparse, sparse2full
     implicit none

@@ -70,10 +70,9 @@ module neo2_ql
   ! (with magnetic shear)
   use neo_magfie, only : isw_mag_shear
 
-  use neo_spline_data, only : lsw_linear_boozer
+  use neo_spline_data, only : lsw_linear_boozer, use_fast_splines
   USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
   USE neo_control, ONLY: in_file, inp_swi, lab_swi, set_rt0_from_rmnc_for_zero_mode
-  USE spline_test_control, ONLY: use_fast_splines
 
   !************************************
   ! HDF5
