@@ -656,114 +656,108 @@ contains
     type(amg_level), intent(in) :: level_fine
     type(amg_level), intent(inout) :: level_coarse
     
-    ! Compute RAP = R * A * P where R = P^T for Smoothed Aggregation
-    ! This implements the correct SA-AMG coarse operator construction
+    ! Simplified RAP computation matching Julia: A_coarse = R * A * P
+    ! where R = P^T for Smoothed Aggregation (Julia line 81: A = R * A * P)
     
-    integer :: i, j, k, ic, jc, nnz_count, kp_i, kp_j, kr_ic
-    real(dp) :: value, r_val, p_val
+    integer :: i, j, k, ic, jc, nnz_count, kp
+    real(dp) :: value
     integer, allocatable :: temp_i(:), temp_j(:)
     real(dp), allocatable :: temp_v(:)
     integer :: max_nnz_estimate
+    real(dp), allocatable :: AP_values(:), RAP_entry(:,:)
     
-    ! Step 1: Estimate maximum nonzeros in coarse matrix
-    max_nnz_estimate = level_coarse%n * level_coarse%n  ! Conservative upper bound
+    ! Step 1: Allocate temporary dense matrix for simplicity (like Julia)
+    allocate(RAP_entry(level_coarse%n, level_coarse%n))
+    RAP_entry = 0.0_dp
     
-    ! Allocate temporary storage
-    allocate(temp_i(max_nnz_estimate))
-    allocate(temp_j(max_nnz_estimate))
-    allocate(temp_v(max_nnz_estimate))
-    
-    nnz_count = 0
-    
-    ! Step 2: Compute RAP = R * A * P using proper SA theory
-    ! A_coarse[ic, jc] = sum_{i,k} R[ic, i] * A[i, k] * P[k, jc]
-    ! For SA: R = P^T, so R[ic, i] = P[i, ic]
+    ! Step 2: Compute RAP using matrix triple product 
+    ! A_coarse[ic, jc] = sum_i sum_j R[ic, i] * A[i, j] * P[j, jc]
+    ! For SA-AMG: R[ic, i] = P[i, ic] (transpose)
     
     do ic = 1, level_coarse%n
       do jc = 1, level_coarse%n
         value = 0.0_dp
         
-        ! Triple sum: sum over fine nodes i and k
         do i = 1, level_fine%n
-          ! Get R[ic, i] = P[i, ic] (restriction from prolongation transpose)
-          r_val = 0.0_dp
+          ! Check if node i belongs to aggregate ic (R[ic, i] = P[i, ic])
           if (level_fine%aggregates(i) == ic) then
-            kp_i = level_fine%P_row_ptr(i)
-            if (level_fine%P_col_idx(kp_i) == ic) then
-              r_val = level_fine%P_values(kp_i)
-            end if
-          end if
-          
-          if (abs(r_val) > 1.0e-14_dp) then
-            ! Sum over connections in row i of A
-            do k = level_fine%row_ptr(i), level_fine%row_ptr(i+1)-1
-              j = level_fine%col_idx(k)
-              
-              ! Get P[j, jc] (prolongation value)
-              p_val = 0.0_dp
-              if (level_fine%aggregates(j) == jc) then
-                kp_j = level_fine%P_row_ptr(j)
-                if (level_fine%P_col_idx(kp_j) == jc) then
-                  p_val = level_fine%P_values(kp_j)
-                end if
-              end if
-              
-              if (abs(p_val) > 1.0e-14_dp) then
-                ! Add contribution: R[ic,i] * A[i,j] * P[j,jc]
-                value = value + r_val * level_fine%values(k) * p_val
-                
-                ! Debug output for diagonal entries that become negative
-                if (ic == jc .and. ic <= 3 .and. value < 0.0_dp) then
-                  print '(A,2I3,A,3E12.3)', '  DEBUG RAP diagonal ic=', ic, jc, &
-                    ' contrib:', r_val, level_fine%values(k), p_val
-                  print '(A,E12.3)', '    running value:', value
-                end if
+            ! Get P[i, ic] value from prolongation matrix
+            do k = level_fine%P_row_ptr(i), level_fine%P_row_ptr(i+1)-1
+              if (level_fine%P_col_idx(k) == ic) then
+                ! Found P[i, ic], now multiply by A[i, :] * P[:, jc]
+                do j = level_fine%row_ptr(i), level_fine%row_ptr(i+1)-1
+                  ! A[i, j] contribution
+                  if (level_fine%aggregates(level_fine%col_idx(j)) == jc) then
+                    ! Find P[j, jc]
+                    do kp = level_fine%P_row_ptr(level_fine%col_idx(j)), &
+                           level_fine%P_row_ptr(level_fine%col_idx(j)+1)-1
+                      if (level_fine%P_col_idx(kp) == jc) then
+                        value = value + level_fine%P_values(k) * &
+                                       level_fine%values(j) * &
+                                       level_fine%P_values(kp)
+                        exit
+                      end if
+                    end do
+                  end if
+                end do
+                exit
               end if
             end do
           end if
         end do
         
-        ! Store nonzero entry
-        if (abs(value) > 1.0e-14_dp) then
+        RAP_entry(ic, jc) = value
+      end do
+    end do
+    
+    ! Step 3: Convert dense matrix to CSR format
+    nnz_count = 0
+    do ic = 1, level_coarse%n
+      do jc = 1, level_coarse%n
+        if (abs(RAP_entry(ic, jc)) > 1.0e-14_dp) then
           nnz_count = nnz_count + 1
-          if (nnz_count > max_nnz_estimate) then
-            ! Should not happen with conservative estimate
-            error stop "RAP product: exceeded nonzero estimate"
-          end if
-          temp_i(nnz_count) = ic
-          temp_j(nnz_count) = jc  
-          temp_v(nnz_count) = value
         end if
       end do
     end do
     
-    ! Step 3: Convert to CSR format
     level_coarse%nnz = nnz_count
+    allocate(temp_i(nnz_count))
+    allocate(temp_j(nnz_count))
+    allocate(temp_v(nnz_count))
     
-    ! Sort entries by row, then column (required for CSR)
+    nnz_count = 0
+    do ic = 1, level_coarse%n
+      do jc = 1, level_coarse%n
+        if (abs(RAP_entry(ic, jc)) > 1.0e-14_dp) then
+          nnz_count = nnz_count + 1
+          temp_i(nnz_count) = ic
+          temp_j(nnz_count) = jc
+          temp_v(nnz_count) = RAP_entry(ic, jc)
+        end if
+      end do
+    end do
+    
+    ! Convert to CSR format
     call sort_csr_entries(temp_i, temp_j, temp_v, nnz_count)
     
-    ! Fill CSR arrays
     level_coarse%row_ptr(1) = 1
     j = 1
     do i = 1, nnz_count
       level_coarse%col_idx(i) = temp_j(i)
       level_coarse%values(i) = temp_v(i)
       
-      ! Update row pointers
       do while (j < temp_i(i))
         j = j + 1
         level_coarse%row_ptr(j) = i
       end do
     end do
     
-    ! Fill remaining row pointers
     do while (j <= level_coarse%n)
       j = j + 1
       level_coarse%row_ptr(j) = nnz_count + 1
     end do
     
-    deallocate(temp_i, temp_j, temp_v)
+    deallocate(temp_i, temp_j, temp_v, RAP_entry)
     
   end subroutine sparse_rap_product
   
