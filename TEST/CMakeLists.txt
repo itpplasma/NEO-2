@@ -438,3 +438,36 @@ set_tests_properties(sparse_utils_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All sparse utils tests PASSED!"
     FAIL_REGULAR_EXPRESSION "Some sparse utils tests FAILED!"
 )
+
+# ILU preconditioner test executable
+add_executable(test_ilu_precond
+    ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_ilu_precond.f90
+)
+
+# Set compiler flags
+target_compile_options(test_ilu_precond PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_ilu_precond
+    common
+)
+
+# Include directories
+target_include_directories(test_ilu_precond PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME ilu_precond_test 
+         COMMAND test_ilu_precond
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(ilu_precond_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "All ILU preconditioner tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some ILU preconditioner tests FAILED!"
+)
