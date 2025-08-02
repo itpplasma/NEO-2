@@ -66,3 +66,16 @@ DOC/latex/*
 build/cmake_install.cmake
 
 .DS_Store
+
+# Ignore coverage files and reports
+*.gcov
+*.gcda
+*.gcno
+coverage.info
+coverage_filtered.info
+coverage.xml
+
+# Ignore test output directories  
+TEST/Testing/
+*/TEST/Testing/
+*/*/TEST/Testing/

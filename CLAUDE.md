@@ -73,3 +73,6 @@ Install with: `cd python && pip install -e .`
 - Output data in HDF5 format for efficiency
 - Keep MPI code isolated to PAR variant
 - Test changes with golden record tests before submitting PRs
+
+## Build Tips
+- You don't have to run make clean usually. Only as a last resort when build fails repeatedly.
