@@ -2082,17 +2082,13 @@ CONTAINS
       
       ! Use native sparse AMG-preconditioned IDR(s)
       BLOCK
-        USE idrs_mod, ONLY: idrs_workspace, create_idrs_workspace, destroy_idrs_workspace, &
-                            idrs_solve_amg_preconditioned
-        TYPE(idrs_workspace) :: idrs_ws
+        USE idrs_mod, ONLY: idrs_solve_amg_preconditioned
+        INTEGER :: dummy_workspace  ! Dummy for interface compatibility
         REAL(kind=dp) :: residual_norm
         LOGICAL :: converged
         
-        ! Create workspace
-        CALL create_idrs_workspace(idrs_ws, nrow, shadow_dim)
-        
         ! Solve with native sparse AMG-preconditioned IDR(s)
-        CALL idrs_solve_amg_preconditioned(idrs_ws, nrow, csr_row_ptr, csr_col_idx, csr_val, &
+        CALL idrs_solve_amg_preconditioned(dummy_workspace, nrow, csr_row_ptr, csr_col_idx, csr_val, &
                                           b, x, max_iter, abs_tol, amg_hier, &
                                           shadow_dim, x, iter, residual_norm, converged, info)
         
@@ -2100,9 +2096,6 @@ CONTAINS
           PRINT *, 'IDR(s)+AMG: Converged =', converged, ', Iterations =', iter
           PRINT *, 'IDR(s)+AMG: Final residual =', residual_norm
         END IF
-        
-        ! Clean up workspace
-        CALL destroy_idrs_workspace(idrs_ws)
       END BLOCK
     ELSE
       ! For non-preconditioned, use dense matrix format
@@ -2122,14 +2115,17 @@ CONTAINS
         END DO
         
         IF (default_iterative_params%verbose) THEN
-          PRINT *, 'IDR(s) without preconditioning:'
+          PRINT *, 'IDR(s) without preconditioning not yet implemented in native sparse mode'
           PRINT *, '  Matrix size:', nrow
           PRINT *, '  Shadow space dimension:', shadow_dim
           PRINT *, '  Max iterations:', max_iter
           PRINT *, '  Tolerance:', abs_tol
         END IF
         
-        CALL idrs_solve_real(A_dense, b, x, shadow_dim, info)
+        ! For now, fallback to BiCGSTAB
+        PRINT *, 'WARNING: Falling back to BiCGSTAB solver'
+        sparse_solve_method = SOLVER_BICGSTAB
+        CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
         
         DEALLOCATE(A_dense)
       END BLOCK

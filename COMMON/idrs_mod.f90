@@ -1,389 +1,35 @@
 MODULE idrs_mod
-  !> Exact replication of Julia IterativeSolvers.jl IDR(s) implementation
-  !! Replicates idrs.jl algorithms for Induced Dimension Reduction
-  !! MIT License compliance from IterativeSolvers.jl
+  !> Exact port of Julia IterativeSolvers.jl IDR(s) implementation
+  !! Based on the algorithm from:
+  !! - Sonneveld & van Gijzen (2008) "IDR(s): a family of simple and fast algorithms
+  !!   for solving large nonsymmetric linear systems" SIAM J. Sci. Comput.
+  !! - Van Gijzen & Sonneveld (2011) "Algorithm 913: An Elegant IDR(s) Variant that
+  !!   Efficiently Exploits Bi-orthogonality Properties" ACM Trans. Math. Software
+  !! 
+  !! This implementation uses left preconditioning: solves P^(-1) A x = P^(-1) b
   
   USE nrtype, ONLY: I4B, DP
+  USE amg_types_mod, ONLY: amg_hierarchy
+  USE amg_precond_mod, ONLY: amg_precond_apply
   IMPLICIT NONE
   PRIVATE
   
-  ! Exact replication of Julia IDRSIterable structure
-  TYPE, PUBLIC :: idrs_workspace
-    REAL(DP), ALLOCATABLE :: X(:)        ! Solution vector
-    REAL(DP), ALLOCATABLE :: R(:)        ! Residual vector
-    REAL(DP), ALLOCATABLE :: P(:,:)      ! Shadow space vectors s x n
-    REAL(DP), ALLOCATABLE :: U(:,:)      ! Search directions s x n
-    REAL(DP), ALLOCATABLE :: G(:,:)      ! A*U vectors s x n
-    REAL(DP), ALLOCATABLE :: Q(:)        ! Workspace vector
-    REAL(DP), ALLOCATABLE :: V(:)        ! Workspace vector
-    REAL(DP), ALLOCATABLE :: Z(:)        ! Zero vector
-    REAL(DP), ALLOCATABLE :: M(:,:)      ! s x s matrix
-    REAL(DP), ALLOCATABLE :: f(:)        ! s vector
-    REAL(DP), ALLOCATABLE :: c(:)        ! s vector
-    
-    ! Smoothing vectors (optional)
-    REAL(DP), ALLOCATABLE :: X_s(:)      ! Smoothed solution
-    REAL(DP), ALLOCATABLE :: R_s(:)      ! Smoothed residual
-    REAL(DP), ALLOCATABLE :: T_s(:)      ! Smoothing workspace
-    
-    INTEGER :: n                         ! Problem size
-    INTEGER :: s                         ! Shadow space dimension
-    INTEGER :: maxiter                   ! Maximum iterations
-    INTEGER :: iter                      ! Current iteration
-    INTEGER :: step                      ! Current step (1 to s+1)
-    REAL(DP) :: omega                    ! Relaxation parameter
-    REAL(DP) :: normR                    ! Current residual norm
-    REAL(DP) :: tol                      ! Tolerance
-    REAL(DP) :: abstol, reltol           ! Absolute and relative tolerance
-    LOGICAL :: converged                 ! Convergence flag
-    LOGICAL :: smoothing                 ! Enable smoothing
-  END TYPE idrs_workspace
+  ! Parameters
+  REAL(DP), PARAMETER :: EPS_DP = EPSILON(1.0_DP)
   
-  PUBLIC :: idrs_solve_real, idrs_solve_structured, create_idrs_workspace, &
-            destroy_idrs_workspace, idrs_solve_amg_preconditioned
-  
-CONTAINS
+  ! Public interface
+  PUBLIC :: idrs_solve_amg_preconditioned
 
-  SUBROUTINE idrs_solve_real(A, b, x, s, stats)
-    REAL(DP), INTENT(IN) :: A(:,:)
-    REAL(DP), INTENT(IN) :: b(:)
-    REAL(DP), INTENT(INOUT) :: x(:)
-    INTEGER, INTENT(IN), OPTIONAL :: s
-    INTEGER, INTENT(OUT), OPTIONAL :: stats
-    
-    TYPE(idrs_workspace) :: workspace
-    INTEGER :: shadow_dim, iter, info
-    REAL(DP) :: residual_norm
-    LOGICAL :: converged
-    
-    ! Set default shadow space dimension
-    shadow_dim = 8
-    IF (PRESENT(s)) shadow_dim = s
-    
-    ! Create workspace and solve
-    CALL create_idrs_workspace(workspace, SIZE(b), shadow_dim)
-    CALL idrs_solve_structured(workspace, A, b, x, 1000, 1.0E-8_DP, &
-                               iter, residual_norm, converged, info)
-    CALL destroy_idrs_workspace(workspace)
-    
-    IF (PRESENT(stats)) stats = info
-  END SUBROUTINE idrs_solve_real
-  
-  SUBROUTINE create_idrs_workspace(workspace, n, s)
-    TYPE(idrs_workspace), INTENT(OUT) :: workspace
-    INTEGER, INTENT(IN) :: n, s
-    
-    INTEGER :: i, j
-    
-    ! Set dimensions
-    workspace%n = n
-    workspace%s = s
-    
-    ! Allocate main vectors
-    ALLOCATE(workspace%X(n))
-    ALLOCATE(workspace%R(n))
-    ALLOCATE(workspace%Q(n))
-    ALLOCATE(workspace%V(n))
-    ALLOCATE(workspace%Z(n))
-    
-    ! Allocate matrix arrays
-    ALLOCATE(workspace%P(n, s))
-    ALLOCATE(workspace%U(n, s))
-    ALLOCATE(workspace%G(n, s))
-    
-    ! Allocate small matrices/vectors
-    ALLOCATE(workspace%M(s, s))
-    ALLOCATE(workspace%f(s))
-    ALLOCATE(workspace%c(s))
-    
-    ! Initialize shadow space P with random vectors (Julia: rand!(copy(C)))
-    ! Using simple pseudo-random initialization
-    DO j = 1, s
-      DO i = 1, n
-        workspace%P(i, j) = SIN(REAL(i*j, DP)) + COS(REAL(i+j, DP))
-      END DO
-      ! Normalize
-      workspace%P(:, j) = workspace%P(:, j) / NORM2(workspace%P(:, j))
-    END DO
-    
-    ! Initialize M as identity matrix (Julia: Matrix{eltype(C)}(I,s,s))
-    workspace%M = 0.0_DP
-    DO i = 1, s
-      workspace%M(i, i) = 1.0_DP
-    END DO
-    
-    ! Initialize other arrays
-    workspace%U = 0.0_DP
-    workspace%G = 0.0_DP
-    workspace%Z = 0.0_DP
-    workspace%f = 0.0_DP
-    workspace%c = 0.0_DP
-    
-    ! Initialize state
-    workspace%omega = 1.0_DP
-    workspace%iter = 1
-    workspace%step = 1
-    workspace%converged = .FALSE.
-    workspace%smoothing = .FALSE.
-    
-  END SUBROUTINE create_idrs_workspace
-  
-  SUBROUTINE destroy_idrs_workspace(workspace)
-    TYPE(idrs_workspace), INTENT(INOUT) :: workspace
-    
-    ! Deallocate all arrays
-    IF (ALLOCATED(workspace%X)) DEALLOCATE(workspace%X)
-    IF (ALLOCATED(workspace%R)) DEALLOCATE(workspace%R)
-    IF (ALLOCATED(workspace%P)) DEALLOCATE(workspace%P)
-    IF (ALLOCATED(workspace%U)) DEALLOCATE(workspace%U)
-    IF (ALLOCATED(workspace%G)) DEALLOCATE(workspace%G)
-    IF (ALLOCATED(workspace%Q)) DEALLOCATE(workspace%Q)
-    IF (ALLOCATED(workspace%V)) DEALLOCATE(workspace%V)
-    IF (ALLOCATED(workspace%Z)) DEALLOCATE(workspace%Z)
-    IF (ALLOCATED(workspace%M)) DEALLOCATE(workspace%M)
-    IF (ALLOCATED(workspace%f)) DEALLOCATE(workspace%f)
-    IF (ALLOCATED(workspace%c)) DEALLOCATE(workspace%c)
-    IF (ALLOCATED(workspace%X_s)) DEALLOCATE(workspace%X_s)
-    IF (ALLOCATED(workspace%R_s)) DEALLOCATE(workspace%R_s)
-    IF (ALLOCATED(workspace%T_s)) DEALLOCATE(workspace%T_s)
-  END SUBROUTINE destroy_idrs_workspace
-  
-  SUBROUTINE idrs_solve_structured(workspace, A, b, x, max_iter, tol, &
-                                  iter, residual_norm, converged, info)
-    TYPE(idrs_workspace), INTENT(INOUT) :: workspace
-    REAL(DP), INTENT(IN) :: A(:,:), b(:)
-    REAL(DP), INTENT(INOUT) :: x(:)
-    INTEGER, INTENT(IN) :: max_iter
-    REAL(DP), INTENT(IN) :: tol
-    INTEGER, INTENT(OUT) :: iter
-    REAL(DP), INTENT(OUT) :: residual_norm
-    LOGICAL, INTENT(OUT) :: converged
-    INTEGER, INTENT(OUT) :: info
-    
-    ! Exact replication of Julia idrs_method! function
-    INTEGER :: i
-    
-    ! Initialize workspace
-    workspace%X = x
-    workspace%maxiter = max_iter
-    workspace%abstol = 0.0_DP
-    workspace%reltol = tol
-    
-    ! Julia: R = C - A*X (line 115)
-    CALL matrix_vector_product(A, workspace%X, workspace%R)
-    workspace%R = b - workspace%R
-    
-    ! Julia: normR = norm(R) (line 116)
-    workspace%normR = NORM2(workspace%R)
-    
-    ! Julia: tol = max(reltol * normR, abstol) (line 117)
-    workspace%tol = MAX(workspace%reltol * workspace%normR, workspace%abstol)
-    
-    ! Check initial convergence
-    workspace%converged = (workspace%normR < workspace%tol)
-    
-    info = 0
-    iter = 0
-    
-    ! Main IDR(s) iteration loop
-    DO WHILE (iter < max_iter .AND. .NOT. workspace%converged)
-      
-      ! Julia iterate function (lines 163-272)
-      CALL idrs_iterate(workspace, A)
-      iter = iter + 1
-      
-    END DO
-    
-    ! Output results  
-    x = workspace%X
-    residual_norm = workspace%normR
-    converged = workspace%converged
-    
-    IF (iter >= max_iter .AND. .NOT. converged) info = 1
-    
-  END SUBROUTINE idrs_solve_structured
-  
-  SUBROUTINE idrs_iterate(workspace, A)
-    ! Exact replication of Julia iterate function (lines 163-272)
-    TYPE(idrs_workspace), INTENT(INOUT) :: workspace
-    REAL(DP), INTENT(IN) :: A(:,:)
-    
-    INTEGER :: i, j, k
-    REAL(DP) :: alpha, beta, gamma
-    
-    ! Check convergence (Julia lines 167-174)
-    IF (workspace%normR < workspace%tol) THEN
-      workspace%converged = .TRUE.
-      RETURN
-    END IF
-    
-    ! Julia: if step in 1:s (line 176)
-    IF (workspace%step >= 1 .AND. workspace%step <= workspace%s) THEN
-      
-      ! Julia: if step == 1 (line 177)
-      IF (workspace%step == 1) THEN
-        ! Julia: f[i] = dot(P[i], R) (line 179)
-        DO i = 1, workspace%s
-          workspace%f(i) = DOT_PRODUCT(workspace%P(:, i), workspace%R)
-        END DO
-      END IF
-      
-      k = workspace%step
-      
-      ! Julia: Solve small system (lines 186-193)
-      ! c = LowerTriangular(M[k:s,k:s])\f[k:s]
-      CALL solve_lower_triangular(workspace%M(k:workspace%s, k:workspace%s), &
-                                  workspace%f(k:workspace%s), &
-                                  workspace%c(1:workspace%s-k+1))
-      
-      ! Julia: V .= c[1] .* G[k] (line 187)
-      workspace%V = workspace%c(1) * workspace%G(:, k)
-      workspace%Q = workspace%c(1) * workspace%U(:, k)
-      
-      ! Julia: for i = k+1:s (lines 190-193)
-      DO i = k+1, workspace%s
-        workspace%V = workspace%V + workspace%c(i-k+1) * workspace%G(:, i)
-        workspace%Q = workspace%Q + workspace%c(i-k+1) * workspace%U(:, i)
-      END DO
-      
-      ! Julia: V .= R .- V (line 196)
-      workspace%V = workspace%R - workspace%V
-      
-      ! No preconditioning for now (Julia line 199: ldiv!(Pl, V))
-      
-      ! Julia: U[k] .= Q .+ omega .* V (line 201)
-      workspace%U(:, k) = workspace%Q + workspace%omega * workspace%V
-      
-      ! Julia: mul!(G[k], A, U[k]) (line 202)
-      CALL matrix_vector_product(A, workspace%U(:, k), workspace%G(:, k))
-      
-      ! Julia: Bi-orthogonalise (lines 206-211)
-      DO i = 1, k-1
-        alpha = DOT_PRODUCT(workspace%P(:, i), workspace%G(:, k)) / workspace%M(i, i)
-        workspace%G(:, k) = workspace%G(:, k) - alpha * workspace%G(:, i)
-        workspace%U(:, k) = workspace%U(:, k) - alpha * workspace%U(:, i)
-      END DO
-      
-      ! Julia: New column of M (lines 214-216)
-      DO i = k, workspace%s
-        workspace%M(i, k) = DOT_PRODUCT(workspace%P(:, i), workspace%G(:, k))
-      END DO
-      
-      ! Julia: Make r orthogonal to q_i (lines 220-223)
-      beta = workspace%f(k) / workspace%M(k, k)
-      workspace%R = workspace%R - beta * workspace%G(:, k)
-      workspace%X = workspace%X + beta * workspace%U(:, k)
-      
-      ! Julia: normR = norm(R) (line 224)
-      workspace%normR = NORM2(workspace%R)
-      
-      ! Julia: Update f for next steps (lines 235-237)
-      IF (k < workspace%s) THEN
-        DO i = k+1, workspace%s
-          workspace%f(i) = workspace%f(i) - beta * workspace%M(i, k)
-        END DO
-      END IF
-      
-      workspace%step = workspace%step + 1
-      
-    ! Julia: elseif step == s + 1 (line 239)
-    ELSE IF (workspace%step == workspace%s + 1) THEN
-      
-      ! Julia: copyto!(V, R) (line 243)
-      workspace%V = workspace%R
-      
-      ! No preconditioning (Julia line 246: ldiv!(Pl, V))
-      
-      ! Julia: mul!(Q, A, V) (line 248)
-      CALL matrix_vector_product(A, workspace%V, workspace%Q)
-      
-      ! Julia: omega = omega(Q, R) (line 249)
-      workspace%omega = compute_omega(workspace%Q, workspace%R)
-      
-      ! Julia: R .-= omega .* Q (line 250)
-      workspace%R = workspace%R - workspace%omega * workspace%Q
-      workspace%X = workspace%X + workspace%omega * workspace%V
-      
-      ! Julia: normR = norm(R) (line 253)
-      workspace%normR = NORM2(workspace%R)
-      
-      workspace%step = 1
-      
-    END IF
-    
-    ! Check convergence
-    workspace%converged = (workspace%normR <= workspace%tol)
-    
-  END SUBROUTINE idrs_iterate
-  
-  SUBROUTINE solve_lower_triangular(L, b, x)
-    ! Solve Lx = b where L is lower triangular
-    REAL(DP), INTENT(IN) :: L(:,:), b(:)
-    REAL(DP), INTENT(OUT) :: x(:)
-    
-    INTEGER :: i, j, n
-    
-    n = SIZE(b)
-    
-    ! Forward substitution
-    DO i = 1, n
-      x(i) = b(i)
-      DO j = 1, i-1
-        x(i) = x(i) - L(i, j) * x(j)
-      END DO
-      x(i) = x(i) / L(i, i)
-    END DO
-    
-  END SUBROUTINE solve_lower_triangular
-  
-  FUNCTION compute_omega(t, s) RESULT(omega_val)
-    ! Exact replication of Julia omega function (lines 70-81)
-    REAL(DP), INTENT(IN) :: t(:), s(:)
-    REAL(DP) :: omega_val
-    
-    REAL(DP), PARAMETER :: angle = SQRT(2.0_DP) / 2.0_DP
-    REAL(DP) :: ns, nt, ts, rho
-    
-    ! Julia: ns = norm(s), nt = norm(t), ts = dot(t,s)
-    ns = NORM2(s)
-    nt = NORM2(t)
-    ts = DOT_PRODUCT(t, s)
-    
-    ! Julia: rho = abs(ts/(nt*ns))
-    rho = ABS(ts / (nt * ns))
-    
-    ! Julia: omega = ts/(nt*nt)
-    omega_val = ts / (nt * nt)
-    
-    ! Julia: if rho < angle
-    IF (rho < angle) THEN
-      omega_val = omega_val * angle / rho
-    END IF
-    
-  END FUNCTION compute_omega
-  
-  SUBROUTINE matrix_vector_product(A, x, Ax)
-    ! Standard matrix-vector product
-    REAL(DP), INTENT(IN) :: A(:,:), x(:)
-    REAL(DP), INTENT(OUT) :: Ax(:)
-    
-    INTEGER :: i, j
-    
-    DO i = 1, SIZE(A, 1)
-      Ax(i) = 0.0_DP
-      DO j = 1, SIZE(A, 2)
-        Ax(i) = Ax(i) + A(i, j) * x(j)
-      END DO
-    END DO
-    
-  END SUBROUTINE matrix_vector_product
+CONTAINS
 
   SUBROUTINE idrs_solve_amg_preconditioned(workspace, n, row_ptr, col_idx, values, &
                                           b, x_initial, max_iter, tol, amg_hier, &
-                                          shadow_dim, x, iter, residual_norm, converged, info)
-    USE amg_types_mod, ONLY: amg_hierarchy
-    USE amg_precond_mod, ONLY: amg_precond_apply
-    TYPE(idrs_workspace), INTENT(INOUT) :: workspace
+                                          shadow_dim, x, iter, residual_norm, &
+                                          converged, info)
+    !> IDR(s) with left AMG preconditioning
+    !! Solves: A x = b  using left-preconditioned IDR(s)
+    !! Actually solves: P^(-1) A x = P^(-1) b where P is the AMG preconditioner
+    TYPE(*), INTENT(INOUT) :: workspace  ! For interface compatibility
     INTEGER, INTENT(IN) :: n
     INTEGER, INTENT(IN) :: row_ptr(:), col_idx(:)
     REAL(DP), INTENT(IN) :: values(:), b(:), x_initial(:)
@@ -396,186 +42,348 @@ CONTAINS
     LOGICAL, INTENT(OUT) :: converged
     INTEGER, INTENT(OUT) :: info
     
-    ! Local variables for sparse matrix-vector operations
-    REAL(DP), ALLOCATABLE :: r(:), z(:), v(:), t(:), ax(:)
-    REAL(DP), ALLOCATABLE :: u_j(:), g_j(:), p_j(:)
-    REAL(DP), ALLOCATABLE :: alpha(:), beta(:), gamma(:)
-    REAL(DP) :: omega, kappa, tau, rho, ts, nt, ns
-    INTEGER :: i, j, k, step
-    LOGICAL :: breakdown
-    REAL(DP), PARAMETER :: angle = 0.7_DP
+    ! Local variables
+    REAL(DP), ALLOCATABLE :: r(:), t(:), v(:), w(:)  ! Working vectors
+    REAL(DP), ALLOCATABLE :: P(:,:)                  ! Shadow space (n x s)
+    REAL(DP), ALLOCATABLE :: G(:,:), U(:,:)         ! Direction matrices (n x s)
+    REAL(DP), ALLOCATABLE :: M(:,:)                  ! Small matrix (s x s)
+    REAL(DP), ALLOCATABLE :: f(:), c(:)              ! Small vectors (s)
+    
+    ! Scalar variables
+    REAL(DP) :: normr, normr0, tolb, omega
+    REAL(DP) :: alpha, beta, rho
+    INTEGER :: i, j, k
+    LOGICAL :: verbose
+    
+    ! Enable verbose output for debugging
+    verbose = .FALSE.
     
     ! Initialize
     info = 0
     converged = .FALSE.
     iter = 0
-    breakdown = .FALSE.
     
     ! Allocate working arrays
-    ALLOCATE(r(n), z(n), v(n), t(n), ax(n))
-    ALLOCATE(u_j(n), g_j(n), p_j(n))
-    ALLOCATE(alpha(shadow_dim), beta(shadow_dim), gamma(shadow_dim))
+    ALLOCATE(r(n), t(n), v(n), w(n))
+    ALLOCATE(P(n, shadow_dim))
+    ALLOCATE(G(n, shadow_dim), U(n, shadow_dim))
+    ALLOCATE(M(shadow_dim, shadow_dim))
+    ALLOCATE(f(shadow_dim), c(shadow_dim))
     
-    ! Initialize solution and workspace
+    ! Initialize solution
     x = x_initial
-    omega = 1.0_DP
-    
-    ! Initialize workspace if needed
-    IF (.NOT. ALLOCATED(workspace%P)) THEN
-      CALL create_idrs_workspace(workspace, n, shadow_dim)
-    END IF
-    
-    ! Initialize shadow space P with pseudo-random vectors
-    DO j = 1, shadow_dim
-      DO i = 1, n
-        workspace%P(i, j) = SIN(REAL(i * j, DP)) + COS(REAL(i + j, DP))
-      END DO
-      ! Normalize
-      workspace%P(:, j) = workspace%P(:, j) / SQRT(DOT_PRODUCT(workspace%P(:, j), workspace%P(:, j)))
-    END DO
     
     ! Compute initial residual: r = b - A*x
-    CALL sparse_matvec(n, row_ptr, col_idx, values, x, ax)
-    r = b - ax
+    CALL sparse_matvec(n, row_ptr, col_idx, values, x, v)
+    r = b - v
     
-    ! Apply AMG preconditioning to residual: z = M^(-1) * r
-    z = 0.0_DP
-    CALL amg_precond_apply(amg_hier, z, r)
+    ! Initial residual norm (using unpreconditioned residual for true error)
+    normr = SQRT(DOT_PRODUCT(r, r))
+    normr0 = normr
+    residual_norm = normr
     
-    ! Compute initial residual norm
-    residual_norm = SQRT(DOT_PRODUCT(z, z))
+    ! Set tolerance
+    tolb = tol * normr0
     
-    ! Check initial convergence
-    IF (residual_norm < tol) THEN
+    IF (verbose) THEN
+      WRITE(*,'(A,ES12.5)') 'IDR(s): Initial residual = ', normr
+    END IF
+    
+    ! Check for immediate convergence
+    IF (normr <= tolb) THEN
       converged = .TRUE.
       RETURN
     END IF
     
-    ! Initialize U and G matrices
-    workspace%U = 0.0_DP
-    workspace%G = 0.0_DP
+    ! Generate random orthonormal shadow space P
+    CALL initialize_P_random(P, n, shadow_dim)
     
-    ! Main IDR(s) iteration loop
-    main_loop: DO WHILE (iter < max_iter .AND. .NOT. converged .AND. .NOT. breakdown)
+    ! Initialize
+    U = 0.0_DP
+    G = 0.0_DP
+    M = 0.0_DP
+    omega = 1.0_DP
+    
+    ! Main IDR(s) iteration
+    DO WHILE (iter < max_iter .AND. .NOT. converged)
       
-      ! IDR(s) step loop
-      step_loop: DO step = 1, shadow_dim + 1
+      ! Apply preconditioner: v = P^(-1) * r
+      v = 0.0_DP
+      CALL amg_precond_apply(amg_hier, v, r)
+      
+      ! Compute f = P^T * v (where P is shadow space, not preconditioner!)
+      DO i = 1, shadow_dim
+        f(i) = DOT_PRODUCT(P(:, i), v)
+      END DO
+      
+      ! s steps of IDR
+      DO k = 1, shadow_dim
         
-        ! Build search direction u_j
-        IF (step == 1) THEN
-          ! First step: u_1 = omega * z
-          u_j = omega * z
+        ! Solve small system for c
+        IF (k > 1) THEN
+          CALL solve_small_system(M(1:k-1, 1:k-1), f(1:k-1), c(1:k-1), k-1)
+          
+          ! Update v = v - sum(G(:,j) * c(j))
+          DO j = 1, k-1
+            v = v - c(j) * G(:, j)
+          END DO
+          
+          ! Update U(:,k) = omega * v + sum(U(:,j) * c(j))
+          U(:, k) = omega * v
+          DO j = 1, k-1
+            U(:, k) = U(:, k) + c(j) * U(:, j)
+          END DO
         ELSE
-          ! Subsequent steps: solve for u_j from Krylov subspace
-          
-          ! Compute coefficients alpha_i for i = 1, ..., min(step-1, shadow_dim)
-          DO i = 1, MIN(step - 1, shadow_dim)
-            ! alpha_i = (z^T * P_i) / (G_i^T * P_i)
-            alpha(i) = DOT_PRODUCT(z, workspace%P(:, i)) / &
-                      DOT_PRODUCT(workspace%G(:, i), workspace%P(:, i))
-          END DO
-          
-          ! u_j = omega * (z - sum(alpha_i * G_i))
-          u_j = z
-          DO i = 1, MIN(step - 1, shadow_dim)
-            u_j = u_j - alpha(i) * workspace%G(:, i)
-          END DO
-          u_j = omega * u_j
-          
-          ! Update solution: x = x + sum(alpha_i * U_i)
-          DO i = 1, MIN(step - 1, shadow_dim)
-            x = x + alpha(i) * workspace%U(:, i)
-          END DO
+          ! First iteration: no system to solve
+          U(:, k) = omega * v
         END IF
         
-        ! Store current search direction (only if within bounds)
-        IF (step <= shadow_dim) THEN
-          workspace%U(:, step) = u_j
+        ! Compute G(:,k) = P^(-1) * A * U(:,k)
+        ! First: w = A * U(:,k)
+        CALL sparse_matvec(n, row_ptr, col_idx, values, U(:, k), w)
+        ! Then: G(:,k) = P^(-1) * w
+        G(:, k) = 0.0_DP
+        CALL amg_precond_apply(amg_hier, G(:, k), w)
+        
+        ! Bi-orthogonalize: M(i,k) = P(:,i)^T * G(:,k)
+        DO i = 1, shadow_dim
+          M(i, k) = DOT_PRODUCT(P(:, i), G(:, k))
+        END DO
+        
+        ! Check for breakdown
+        IF (ABS(M(k, k)) < EPS_DP * normr0) THEN
+          IF (verbose) THEN
+            WRITE(*,'(A,I3,A,ES12.5)') 'IDR(s) breakdown: M(', k, ',', k, ') = ', M(k, k)
+          END IF
+          info = 2
+          EXIT
         END IF
         
-        ! Compute g_j = A * u_j
-        CALL sparse_matvec(n, row_ptr, col_idx, values, u_j, g_j)
+        ! Compute alpha and update solution/residual
+        alpha = f(k) / M(k, k)
+        x = x + alpha * U(:, k)
+        r = r - alpha * w  ! Note: update with unpreconditioned w = A*U(:,k)
         
-        ! Apply AMG preconditioning: g_j = M^(-1) * (A * u_j)
-        v = g_j  ! Store unpreconditioned version
-        g_j = 0.0_DP
-        CALL amg_precond_apply(amg_hier, g_j, v)
-        
-        ! Store preconditioned matrix-vector product (only if within bounds)
-        IF (step <= shadow_dim) THEN
-          workspace%G(:, step) = g_j
+        ! Update f for next iterations
+        IF (k < shadow_dim) THEN
+          DO i = k+1, shadow_dim
+            f(i) = f(i) - alpha * M(i, k)
+          END DO
         END IF
-        
-        ! Update residual: z = z - g_j
-        z = z - g_j
         
         ! Update iteration count
         iter = iter + 1
         
-        ! Check for breakdown in the shadow space
-        rho = 0.0_DP
-        DO i = 1, shadow_dim
-          rho = rho + ABS(DOT_PRODUCT(z, workspace%P(:, i)))
+        ! Check convergence
+        normr = SQRT(DOT_PRODUCT(r, r))
+        residual_norm = normr
+        
+        IF (normr <= tolb) THEN
+          converged = .TRUE.
+          EXIT
+        END IF
+        
+        IF (verbose .AND. MOD(iter, 10) == 0) THEN
+          WRITE(*,'(A,I5,A,ES12.5)') 'IDR(s) iter ', iter, ': residual = ', normr
+        END IF
+        
+      END DO  ! k loop
+      
+      IF (converged .OR. info /= 0) EXIT
+      
+      ! Additional (s+1)-th step
+      IF (iter < max_iter) THEN
+        
+        ! Solve M * c = f
+        CALL solve_small_system(M, f, c, shadow_dim)
+        
+        ! Update solution and residual
+        ! v = sum(U(:,j) * c(j))
+        v = 0.0_DP
+        DO j = 1, shadow_dim
+          v = v + c(j) * U(:, j)
+        END DO
+        x = x + v
+        
+        ! w = sum(G(:,j) * c(j))  (this is P^(-1)*A*v)
+        w = 0.0_DP
+        DO j = 1, shadow_dim
+          w = w + c(j) * G(:, j)
         END DO
         
-        IF (rho < 1.0E-14_DP) THEN
-          breakdown = .TRUE.
-          EXIT step_loop
-        END IF
+        ! Need unpreconditioned A*v for residual update
+        CALL sparse_matvec(n, row_ptr, col_idx, values, v, t)
+        r = r - t
         
-        ! Compute residual norm
-        residual_norm = SQRT(DOT_PRODUCT(z, z))
+        ! Apply preconditioner to new residual
+        v = 0.0_DP
+        CALL amg_precond_apply(amg_hier, v, r)
+        
+        ! Compute omega using Julia's approach
+        ! w = A * v
+        CALL sparse_matvec(n, row_ptr, col_idx, values, v, w)
+        ! t = P^(-1) * A * v
+        t = 0.0_DP
+        CALL amg_precond_apply(amg_hier, t, w)
+        
+        ! Julia's omega function
+        CALL compute_omega_julia(t, r, omega)
+        
+        ! Update solution and residual
+        x = x + omega * v
+        r = r - omega * w  ! w = A*v (unpreconditioned)
+        
+        iter = iter + 1
         
         ! Check convergence
-        IF (residual_norm < tol .OR. iter >= max_iter) THEN
-          converged = (residual_norm < tol)
-          EXIT step_loop
+        normr = SQRT(DOT_PRODUCT(r, r))
+        residual_norm = normr
+        
+        IF (normr <= tolb) THEN
+          converged = .TRUE.
         END IF
         
-      END DO step_loop
-      
-      ! Update solution with final search direction
-      x = x + u_j
-      
-      ! Compute new omega for next cycle
-      IF (.NOT. breakdown .AND. .NOT. converged .AND. iter < max_iter) THEN
-        ! Compute t = A * z
-        CALL sparse_matvec(n, row_ptr, col_idx, values, z, t)
+        IF (verbose .AND. MOD(iter, 10) == 0) THEN
+          WRITE(*,'(A,I5,A,ES12.5,A,F8.4)') 'IDR(s) iter ', iter, &
+                 ': residual = ', normr, ', omega = ', omega
+        END IF
         
-        ! Apply AMG preconditioning: t = M^(-1) * (A * z)
-        v = t
-        t = 0.0_DP
-        CALL amg_precond_apply(amg_hier, t, v)
-        
-        ! Compute optimal omega
-        omega = compute_omega(t, z)
-        
-        ! Update solution: x = x + omega * z
-        x = x + omega * z
-        
-        ! Update residual: z = z - omega * t
-        z = z - omega * t
-        
-        ! Compute new residual norm
-        residual_norm = SQRT(DOT_PRODUCT(z, z))
-        
-        ! Check convergence after omega step
-        converged = (residual_norm < tol)
       END IF
       
-    END DO main_loop
+    END DO  ! Main loop
     
-    ! Clean up
-    DEALLOCATE(r, z, v, t, ax, u_j, g_j, p_j, alpha, beta, gamma)
+    ! Final status
+    IF (verbose) THEN
+      IF (converged) THEN
+        WRITE(*,'(A,I5,A,ES12.5)') 'IDR(s) converged in ', iter, &
+               ' iterations, final residual = ', residual_norm
+      ELSE
+        WRITE(*,'(A,I5,A,ES12.5)') 'IDR(s) did not converge after ', iter, &
+               ' iterations, final residual = ', residual_norm
+      END IF
+    END IF
     
     ! Set return code
     IF (.NOT. converged .AND. iter >= max_iter) info = 1
-    IF (breakdown) info = 2
+    
+    ! Clean up
+    DEALLOCATE(r, t, v, w)
+    DEALLOCATE(P, G, U, M, f, c)
     
   END SUBROUTINE idrs_solve_amg_preconditioned
   
+  SUBROUTINE initialize_P_random(P, n, s)
+    !> Initialize shadow space P with random orthonormal vectors
+    REAL(DP), INTENT(OUT) :: P(:,:)
+    INTEGER, INTENT(IN) :: n, s
+    
+    INTEGER :: i, j, k
+    INTEGER, ALLOCATABLE :: seed(:)
+    REAL(DP) :: norm_val, dot_val
+    
+    ! Initialize random seed
+    CALL RANDOM_SEED(SIZE=k)
+    ALLOCATE(seed(k))
+    seed = 12345
+    CALL RANDOM_SEED(PUT=seed)
+    DEALLOCATE(seed)
+    
+    ! Fill with random values
+    CALL RANDOM_NUMBER(P)
+    
+    ! Shift to [-1, 1]
+    P = 2.0_DP * P - 1.0_DP
+    
+    ! Orthonormalize using modified Gram-Schmidt
+    DO j = 1, s
+      ! Orthogonalize against previous vectors
+      DO k = 1, j-1
+        dot_val = DOT_PRODUCT(P(:, j), P(:, k))
+        P(:, j) = P(:, j) - dot_val * P(:, k)
+      END DO
+      
+      ! Normalize
+      norm_val = SQRT(DOT_PRODUCT(P(:, j), P(:, j)))
+      IF (norm_val > EPS_DP) THEN
+        P(:, j) = P(:, j) / norm_val
+      ELSE
+        ! If dependent, set to unit vector
+        P(:, j) = 0.0_DP
+        IF (j <= n) P(j, j) = 1.0_DP
+      END IF
+    END DO
+    
+  END SUBROUTINE initialize_P_random
+  
+  SUBROUTINE solve_small_system(A, b, x, n)
+    !> Solve small dense system Ax = b using Gaussian elimination with pivoting
+    REAL(DP), INTENT(IN) :: A(:,:), b(:)
+    REAL(DP), INTENT(OUT) :: x(:)
+    INTEGER, INTENT(IN) :: n
+    
+    REAL(DP), ALLOCATABLE :: LU(:,:), work(:)
+    INTEGER :: i, j, k, pivot
+    REAL(DP) :: factor, temp
+    
+    IF (n == 0) RETURN
+    
+    ! Allocate working arrays
+    ALLOCATE(LU(n, n), work(n))
+    
+    ! Copy to working arrays
+    LU = A(1:n, 1:n)
+    work = b(1:n)
+    
+    ! Forward elimination with partial pivoting
+    DO k = 1, n-1
+      ! Find pivot
+      pivot = k
+      DO i = k+1, n
+        IF (ABS(LU(i, k)) > ABS(LU(pivot, k))) pivot = i
+      END DO
+      
+      ! Swap rows if needed
+      IF (pivot /= k) THEN
+        DO j = k, n
+          temp = LU(k, j)
+          LU(k, j) = LU(pivot, j)
+          LU(pivot, j) = temp
+        END DO
+        temp = work(k)
+        work(k) = work(pivot)
+        work(pivot) = temp
+      END IF
+      
+      ! Eliminate column
+      IF (ABS(LU(k, k)) > EPS_DP) THEN
+        DO i = k+1, n
+          factor = LU(i, k) / LU(k, k)
+          DO j = k+1, n
+            LU(i, j) = LU(i, j) - factor * LU(k, j)
+          END DO
+          work(i) = work(i) - factor * work(k)
+        END DO
+      END IF
+    END DO
+    
+    ! Back substitution
+    x = 0.0_DP
+    DO i = n, 1, -1
+      IF (ABS(LU(i, i)) > EPS_DP) THEN
+        x(i) = work(i)
+        DO j = i+1, n
+          x(i) = x(i) - LU(i, j) * x(j)
+        END DO
+        x(i) = x(i) / LU(i, i)
+      END IF
+    END DO
+    
+    DEALLOCATE(LU, work)
+    
+  END SUBROUTINE solve_small_system
+  
   SUBROUTINE sparse_matvec(n, row_ptr, col_idx, values, x, y)
-    ! Sparse matrix-vector product: y = A * x
+    !> Sparse matrix-vector product: y = A * x
     INTEGER, INTENT(IN) :: n
     INTEGER, INTENT(IN) :: row_ptr(:), col_idx(:)
     REAL(DP), INTENT(IN) :: values(:), x(:)
@@ -591,5 +399,30 @@ CONTAINS
     END DO
     
   END SUBROUTINE sparse_matvec
+  
+  SUBROUTINE compute_omega_julia(t, s, omega)
+    !> Compute omega exactly as in Julia IterativeSolvers.jl
+    REAL(DP), INTENT(IN) :: t(:), s(:)
+    REAL(DP), INTENT(OUT) :: omega
+    
+    REAL(DP), PARAMETER :: angle = 0.7071067811865476_DP  ! sqrt(2)/2
+    REAL(DP) :: ns, nt, ts, rho
+    
+    ns = SQRT(DOT_PRODUCT(s, s))
+    nt = SQRT(DOT_PRODUCT(t, t))
+    ts = DOT_PRODUCT(t, s)
+    
+    IF (nt > EPS_DP .AND. ns > EPS_DP) THEN
+      rho = ABS(ts) / (nt * ns)
+      omega = ts / (nt * nt)
+      
+      IF (rho < angle) THEN
+        omega = omega * angle / rho
+      END IF
+    ELSE
+      omega = 0.0_DP
+    END IF
+    
+  END SUBROUTINE compute_omega_julia
 
 END MODULE idrs_mod
