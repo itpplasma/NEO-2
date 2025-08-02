@@ -505,3 +505,93 @@ set_tests_properties(solver_integration_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All solver integration tests PASSED!"
     FAIL_REGULAR_EXPRESSION "Some solver integration tests FAILED!"
 )
+
+# BiCGSTAB accuracy test (diagnostic tool, not a regular test)
+add_executable(test_spline_bicgstab_accuracy
+    test_spline_bicgstab_accuracy.f90
+)
+
+# Simple BiCGSTAB test for debugging
+add_executable(test_bicgstab_simple
+    test_bicgstab_simple.f90
+)
+
+# Ill-conditioned BiCGSTAB test
+add_executable(test_bicgstab_illcond
+    test_bicgstab_illcond.f90
+)
+
+# Set compiler flags
+target_compile_options(test_spline_bicgstab_accuracy PRIVATE
+    -g -fbacktrace
+)
+
+target_compile_options(test_bicgstab_simple PRIVATE
+    -g -fbacktrace
+)
+
+target_compile_options(test_bicgstab_illcond PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_spline_bicgstab_accuracy
+    common
+)
+
+target_link_libraries(test_bicgstab_simple
+    common
+)
+
+target_link_libraries(test_bicgstab_illcond
+    common
+)
+
+# Include directories
+target_include_directories(test_spline_bicgstab_accuracy PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+target_include_directories(test_bicgstab_simple PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+target_include_directories(test_bicgstab_illcond PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Adaptive tolerance test executable
+add_executable(test_adaptive_tolerance
+    test_adaptive_tolerance.f90
+)
+
+# Set compiler flags
+target_compile_options(test_adaptive_tolerance PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_adaptive_tolerance
+    common
+)
+
+# Include directories
+target_include_directories(test_adaptive_tolerance PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test (expecting failure in RED phase)
+add_test(NAME adaptive_tolerance_test 
+         COMMAND test_adaptive_tolerance
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties (expecting failure until implementation is complete)
+set_tests_properties(adaptive_tolerance_test PROPERTIES
+    TIMEOUT 60
+    PASS_REGULAR_EXPRESSION "All adaptive tolerance tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some adaptive tolerance tests FAILED!"
+)

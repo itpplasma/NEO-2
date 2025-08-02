@@ -31,6 +31,7 @@ MODULE sparse_solvers_mod
   INTEGER :: bicgstab_max_iter = 1000                      ! Maximum iterations
   INTEGER :: bicgstab_restart_limit = 3                    ! Number of restarts allowed
   LOGICAL :: bicgstab_verbose = .FALSE.                    ! Print convergence info
+  LOGICAL :: bicgstab_adaptive_tolerance = .FALSE.         ! Automatically adjust tolerance based on matrix conditioning
   
   ! ILU preconditioning parameters (configurable via namelist in neo2.in)
   INTEGER :: ilu_fill_level = 1                            ! ILU(k) fill level (0=no ILU, 1=ILU(1), 2=ILU(2), etc.)
@@ -45,6 +46,7 @@ MODULE sparse_solvers_mod
   PUBLIC :: factorization_exists
   PUBLIC :: bicgstab_abs_tolerance, bicgstab_rel_tolerance
   PUBLIC :: bicgstab_max_iter, bicgstab_restart_limit, bicgstab_verbose
+  PUBLIC :: bicgstab_adaptive_tolerance
   PUBLIC :: ilu_fill_level, ilu_drop_tolerance
   PUBLIC :: auto_solver_threshold
   
