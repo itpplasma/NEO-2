@@ -1094,6 +1094,8 @@ contains
     END DO
     
     ! Call sparse_solve with CSC format
+    ! NOTE: Spline matrices are often ill-conditioned. UMFPACK (method 3) is recommended
+    ! over BiCGSTAB (method 4) for better stability and accuracy.
     CALL sparse_solve(nrow, ncol, nnz, irow_csc, pcol_csc, val_csc, inh)
     
     ! Extract solution and check for NaN/Inf
