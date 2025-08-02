@@ -174,4 +174,37 @@ set_tests_properties(spline_coverage_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "Some coverage tests FAILED!"
 )
 
+# Error path coverage test executable
+add_executable(test_spline_error_paths
+    test_spline_error_paths.f90
+)
+
+# Set compiler flags
+target_compile_options(test_spline_error_paths PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_spline_error_paths
+    common
+)
+
+# Include directories
+target_include_directories(test_spline_error_paths PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME spline_error_paths_test 
+         COMMAND test_spline_error_paths
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(spline_error_paths_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "All error path tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some error path tests FAILED!"
+)
+
 
