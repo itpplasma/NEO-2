@@ -79,3 +79,6 @@ coverage.xml
 TEST/Testing/
 */TEST/Testing/
 */*/TEST/Testing/
+
+# Ignore embedded Julia repository (used for algorithm reference only)
+thirdparty/AlgebraicMultigrid.jl

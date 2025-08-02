@@ -67,8 +67,8 @@ contains
       ! Build tentative prolongation via candidate fitting
       call sa_fit_candidates(hierarchy%levels(level))
       
-      ! Skip prolongation smoothing for debugging
-      ! call sa_smooth_prolongation(hierarchy%levels(level), hierarchy%params%prolongation_damping)
+      ! Smooth prolongation (exact Julia AlgebraicMultigrid.jl implementation)
+      call sa_smooth_prolongation(hierarchy%levels(level), hierarchy%params%prolongation_damping)
       
       ! Build restriction (transpose of prolongation for SA)
       call build_restriction(hierarchy%levels(level))
@@ -299,50 +299,104 @@ contains
     type(amg_level), intent(inout) :: level
     real(dp), intent(in) :: omega
     
-    integer :: i, j, k, jp, kp, kp_j
-    real(dp) :: diag_inv, sp_val, damping
-    real(dp), allocatable :: SP_values(:)
+    ! Exact replication of Julia AlgebraicMultigrid.jl JacobiProlongation with LocalWeighting
+    ! From smoother.jl lines 157-194:
+    ! function (j::JacobiProlongation)(A, T, S, B, degree = 1, weighting = LocalWeighting())
+    !     D_inv_S = weight(weighting, A, j.ω)  
+    !     P = T
+    !     for i = 1:degree
+    !         P = P - (D_inv_S * P)
+    !     end
+    !     P
+    ! end
     
-    ! Compute smoothed prolongation following Julia AlgebraicMultigrid.jl approach:
-    ! P_smooth = P - α * D^(-1) * S * P
-    ! where S is the strength matrix and α = 4/3 (fixed damping)
+    integer :: i, j, k, kp, kp_j, nnz_ds
+    real(dp) :: row_sum, d_inv_val
+    real(dp), allocatable :: D(:), D_inv_S_values(:), DSP_values(:)
+    integer, allocatable :: D_inv_S_row_ptr(:), D_inv_S_col_idx(:)
     
-    ! Use much smaller damping to prevent numerical blow-up  
-    damping = 0.1_dp  ! Conservative value for debugging
+    ! Step 1: Compute LocalWeighting exactly like Julia (lines 178-194)
+    ! D = zeros(eltype(S), size(S,1))  
+    ! for i = 1:size(S, 1)
+    !     for j in nzrange(S, i)
+    !         row = S.rowval[j]
+    !         val = S.nzval[j]
+    !         D[row] += abs(val)
+    !     end
+    ! end
     
-    ! Compute S*P (strength matrix times prolongation)
-    allocate(SP_values(level%nnz_p))
-    SP_values = 0.0_dp
+    allocate(D(level%n))
+    D = 0.0_dp
     
-    ! For each row of strength matrix S
+    ! Compute row sums of absolute values (Julia's LocalWeighting)
     do i = 1, level%n
-      ! Get P value for this row
-      kp = level%P_row_ptr(i)
-      jp = level%P_col_idx(kp)
-      
-      ! Multiply row i of S with column jp of P
       do k = level%S_row_ptr(i), level%S_row_ptr(i+1)-1
         j = level%S_col_idx(k)
+        D(j) = D(j) + abs(level%S_values(k))
+      end do
+    end do
+    
+    ! for i = 1:size(D, 1)
+    !     if D[i] != 0
+    !         D[i] = 1/D[i]
+    !     end
+    ! end
+    do i = 1, level%n
+      if (abs(D(i)) > 1.0e-14_dp) then
+        D(i) = 1.0_dp / D(i)
+      else
+        D(i) = 0.0_dp
+      end if
+    end do
+    
+    ! Step 2: Build D_inv_S = scale_rows(S, D) * ω
+    ! This creates D_inv_S matrix (same structure as S)
+    nnz_ds = level%nnz_s
+    allocate(D_inv_S_row_ptr(level%n + 1))
+    allocate(D_inv_S_col_idx(nnz_ds))
+    allocate(D_inv_S_values(nnz_ds))
+    
+    D_inv_S_row_ptr = level%S_row_ptr
+    D_inv_S_col_idx = level%S_col_idx
+    
+    ! D_inv_S = scale_rows(S, D) with omega scaling
+    do i = 1, level%n
+      do k = level%S_row_ptr(i), level%S_row_ptr(i+1)-1
+        j = level%S_col_idx(k)
+        ! Scale by row weight and omega (Julia: rmul!(D_inv_S, eltype(S)(ω)))
+        D_inv_S_values(k) = level%S_values(k) * D(j) * omega
+      end do
+    end do
+    
+    ! Step 3: Apply smoothing exactly like Julia: P = P - (D_inv_S * P)
+    ! Compute D_inv_S * P 
+    allocate(DSP_values(level%nnz_p))
+    DSP_values = 0.0_dp
+    
+    do i = 1, level%n
+      kp = level%P_row_ptr(i)
+      
+      ! Multiply row i of D_inv_S with prolongation
+      do k = D_inv_S_row_ptr(i), D_inv_S_row_ptr(i+1)-1
+        j = D_inv_S_col_idx(k)
         
-        ! Find P(j, jp) using proper prolongation value
-        if (level%aggregates(j) == jp) then
-          ! Use normalized prolongation value from candidate fitting
+        ! Find P(j, :) contribution
+        if (j <= level%n) then
           kp_j = level%P_row_ptr(j)
-          SP_values(kp) = SP_values(kp) + level%S_values(k) * level%P_values(kp_j)
+          if (level%P_col_idx(kp) == level%P_col_idx(kp_j)) then
+            DSP_values(kp) = DSP_values(kp) + D_inv_S_values(k) * level%P_values(kp_j)
+          end if
         end if
       end do
     end do
     
-    ! Apply Jacobi-style prolongation smoothing: P = P - α * D^(-1) * S * P
+    ! Final step: P = P - (D_inv_S * P)
     do i = 1, level%n
       kp = level%P_row_ptr(i)
-      diag_inv = 1.0_dp / max(abs(level%diagonal(i)), 1.0e-12_dp)
-      
-      ! P_new = P - damping * D^(-1) * SP
-      level%P_values(kp) = level%P_values(kp) - damping * diag_inv * SP_values(kp)
+      level%P_values(kp) = level%P_values(kp) - DSP_values(kp)
     end do
     
-    deallocate(SP_values)
+    deallocate(D, D_inv_S_row_ptr, D_inv_S_col_idx, D_inv_S_values, DSP_values)
     
   end subroutine sa_smooth_prolongation
   
