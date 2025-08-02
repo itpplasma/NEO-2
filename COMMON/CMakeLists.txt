@@ -64,7 +64,6 @@ set(COMMON_FILES
   sizey_cur.f90
   sizey_pla.f90
   solve_system.f90
-  sparse_types_mod.f90
   sparse_conversion_mod.f90
   sparse_io_mod.f90
   sparse_arithmetic_mod.f90
@@ -99,13 +98,20 @@ endif()
 set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
+# Create a minimal library with just sparse types for AMG to depend on
+add_library(sparse_types STATIC
+  sparse_types_mod.f90
+)
+
 add_library(common STATIC
   ${COMMON_FILES}
   ${SUITESPARSE_SRC_FILES}
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
-add_dependencies(common FGSL)
+add_dependencies(common FGSL sparse_types)
 target_link_libraries(common PUBLIC
+  sparse_types
+  neo2_amg
   ${LIBFGSL}
   GSL::gsl
   ${MPE_lib}

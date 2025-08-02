@@ -112,6 +112,7 @@ include_directories(${FGSL_INC})
 
 ### Projects to build
 add_subdirectory(COMMON)
+add_subdirectory(thirdparty/amg)
 add_subdirectory(NEO-2-PAR)
 add_subdirectory(NEO-2-QL)
 add_subdirectory(MULTI-SPEC-TOOLS)

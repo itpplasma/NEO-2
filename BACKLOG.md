@@ -1,10 +1,57 @@
 # NEO-2 Development Backlog
 
-## Sparse Solver Refactoring and New Solver Implementation
+## CURRENT PRIORITY: AMG Preconditioner Implementation
 
-### Completed Work
+### Immediate Task: Port AlgebraicMultigrid.jl to Fortran
 
-#### gmres Branch (PR #42) - COMPLETED ✅
+**Context:** ILU preconditioning fails on ill-conditioned spline matrices (structural zeros on diagonal). AMG is needed as a robust alternative preconditioner.
+
+### AMG Implementation Plan
+
+#### Phase 1: Setup and Initial Port (IMMEDIATE)
+1. **Create thirdparty/amg/ structure**
+   - Copy MIT license from AlgebraicMultigrid.jl
+   - Create README.md with attribution
+   - Set up Fortran module structure
+
+2. **Port core AMG algorithms**
+   - Classical AMG with Ruge-Stüben coarsening
+   - Smoothed aggregation AMG
+   - V-cycle and W-cycle implementations
+   - Gauss-Seidel and Jacobi smoothers
+
+#### Phase 2: Integration (Week 1)
+1. **Add to preconditioner framework**
+   - Extend `PRECOND_AMG = 2` constant
+   - Implement AMG setup/apply in preconditioner_mod
+   - Support both BiCGSTAB and GMRES
+
+2. **Test on case 404**
+   - 404×404 ill-conditioned spline matrix
+   - Compare AMG vs ILU vs no preconditioner
+   - Verify convergence where ILU fails
+
+#### Phase 3: Optimization (Week 2)
+1. **Performance tuning**
+   - Optimize coarsening strategy
+   - Tune smoother iterations
+   - Memory optimization
+
+2. **Production readiness**
+   - Configuration parameters
+   - Documentation
+   - Comprehensive testing
+
+### Expected Benefits
+- **Robustness:** Works on matrices where ILU fails (structural zeros)
+- **Scalability:** Better performance on large ill-conditioned systems
+- **Flexibility:** Multiple AMG variants for different problem types
+
+---
+
+## Completed Work
+
+### gmres Branch (PR #42) - COMPLETED ✅
 Successfully refactored the sparse solver module and fixed critical bugs:
 - **Modularized sparse_mod.f90** from >33,000 tokens into manageable modules
 - **Fixed memory corruption bug** from shared factorization variables
@@ -13,37 +60,6 @@ Successfully refactored the sparse solver module and fixed critical bugs:
 - **Maintained full backward compatibility**
 
 The foundation is now ready for implementing new iterative solvers.
-
-## BiCGSTAB with ILU(1) Preconditioner Implementation Plan
-
-### Overview
-Implement BiCGSTAB iterative solver with ILU(1) preconditioning to achieve:
-- **2-5x memory reduction** (from O(lag³) to O(lag))
-- **20-60% runtime improvement** for large problems
-- **Better scalability** for high-resolution velocity space (large lag values)
-
-### Key Decision: ILU Implementation Strategy
-
-**Recommendation: Implement our own ILU(1) factorization**
-
-Reasons:
-1. **Full control** over memory layout and optimization
-2. **Tight integration** with BiCGSTAB solver
-3. **Avoid dependency issues** with SuiteSparse ILU routines
-4. **Custom optimization** for NEO-2's sparse matrix structure
-5. **Easier debugging** and profiling
-
-SuiteSparse (UMFPACK) doesn't provide standalone ILU - it uses complete LU factorization. We would need to add another dependency (e.g., ILUPACK) or implement our own.
-
-### Implementation Phases
-
-### Phase 0: Foundation Complete ✅
-
-The sparse solver framework has been successfully refactored into a modular architecture (PR #42):
-- Clean separation of concerns across specialized modules
-- Fixed critical memory corruption bug in original implementation
-- Full backward compatibility maintained
-- Ready for new solver backend integration
 
 ## Phase 1: Core Infrastructure (Week 1) - **COMPLETED** ✅
 

@@ -29,12 +29,13 @@ program test_spline_unit
     real(DP), parameter :: tolerance = 1.0e-12  ! Tolerance for numerical differences between implementations
     logical :: all_tests_passed = .true.
     real(DP) :: saved_abs_tol, saved_rel_tol
-    integer :: saved_max_iter
+    integer :: saved_max_iter, saved_solve_method
     
     ! Save current BiCGSTAB settings
     saved_abs_tol = bicgstab_abs_tolerance
     saved_rel_tol = bicgstab_rel_tolerance
     saved_max_iter = bicgstab_max_iter
+    saved_solve_method = sparse_solve_method
     
     ! Set appropriate tolerances for spline problems
     ! The spline test expects 1e-12 accuracy, but spline problems are ill-conditioned
@@ -62,6 +63,7 @@ program test_spline_unit
     bicgstab_abs_tolerance = saved_abs_tol
     bicgstab_rel_tolerance = saved_rel_tol
     bicgstab_max_iter = saved_max_iter
+    sparse_solve_method = saved_solve_method
     
     if (all_tests_passed) then
         write(*,'(A)') ''

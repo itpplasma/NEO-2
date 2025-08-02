@@ -3,7 +3,9 @@ PROGRAM test_sparse_types
   ! NOTE: This test is currently minimal as the generic interfaces
   ! sparse_get_dimensions and sparse_deallocate are not yet implemented
   
-  USE sparse_types_mod
+  USE sparse_types_mod, ONLY: sparse_matrix_csc_real, sparse_matrix_csc_complex, &
+                              sparse_matrix_csr_real, sparse_matrix_csr_complex, &
+                              allocate_sparse, deallocate_sparse
   IMPLICIT NONE
   
   ! Test variables

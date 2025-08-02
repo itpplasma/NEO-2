@@ -197,6 +197,16 @@ target_include_directories(test_sparse_legacy PRIVATE
     ${CMAKE_BINARY_DIR}/COMMON
 )
 
+# AMG Components Unit Test
+add_executable(test_amg_components test_amg_components.f90)
+target_compile_options(test_amg_components PRIVATE -g -fbacktrace)
+target_link_libraries(test_amg_components common)
+target_include_directories(test_amg_components PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+    ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
+)
+
 # Add the test
 add_test(NAME sparse_legacy_test 
          COMMAND test_sparse_legacy
@@ -205,7 +215,7 @@ add_test(NAME sparse_legacy_test
 # Set test properties
 set_tests_properties(sparse_legacy_test PROPERTIES
     TIMEOUT 60
-    PASS_REGULAR_EXPRESSION "Tests passed: *21"
+    PASS_REGULAR_EXPRESSION "Tests passed: *22"
     FAIL_REGULAR_EXPRESSION "STOP 1"
 )
 
@@ -663,261 +673,37 @@ set_tests_properties(spline_ilu_fill_levels_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAILURE: BiCGSTAB did not converge"
 )
 
-# GMRES data structures test executable
-add_executable(test_gmres_data_structures
-    test_gmres_data_structures.f90
+# AMG preconditioner test executable
+add_executable(test_spline_amg
+    test_spline_amg.f90
 )
 
 # Set compiler flags
-target_compile_options(test_gmres_data_structures PRIVATE
+target_compile_options(test_spline_amg PRIVATE
     -g -fbacktrace
 )
 
 # Link to the common library which contains all our modules
-target_link_libraries(test_gmres_data_structures
+target_link_libraries(test_spline_amg
     common
 )
 
 # Include directories
-target_include_directories(test_gmres_data_structures PRIVATE
+target_include_directories(test_spline_amg PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
     ${CMAKE_BINARY_DIR}/COMMON
 )
 
 # Add the test
-add_test(NAME gmres_data_structures_test 
-         COMMAND test_gmres_data_structures
+add_test(NAME spline_amg_test 
+         COMMAND test_spline_amg
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 # Set test properties
-set_tests_properties(gmres_data_structures_test PROPERTIES
-    TIMEOUT 30
-    PASS_REGULAR_EXPRESSION "All tests PASSED"
-    FAIL_REGULAR_EXPRESSION "Some tests FAILED"
-)
-
-# GMRES Arnoldi test executable
-add_executable(test_gmres_arnoldi
-    test_gmres_arnoldi.f90
-)
-
-# Set compiler flags
-target_compile_options(test_gmres_arnoldi PRIVATE
-    -g -fbacktrace
-)
-
-# Link to the common library which contains all our modules
-target_link_libraries(test_gmres_arnoldi
-    common
-)
-
-# Include directories
-target_include_directories(test_gmres_arnoldi PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-)
-
-# Add the test
-add_test(NAME gmres_arnoldi_test 
-         COMMAND test_gmres_arnoldi
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# Set test properties
-set_tests_properties(gmres_arnoldi_test PROPERTIES
-    TIMEOUT 30
-    PASS_REGULAR_EXPRESSION "All tests PASSED"
-    FAIL_REGULAR_EXPRESSION "Some tests FAILED"
-)
-
-# GMRES QR decomposition test executable
-add_executable(test_gmres_qr
-    test_gmres_qr.f90
-)
-
-# Set compiler flags
-target_compile_options(test_gmres_qr PRIVATE
-    -g -fbacktrace
-)
-
-# Link to the common library which contains all our modules
-target_link_libraries(test_gmres_qr
-    common
-)
-
-# Include directories
-target_include_directories(test_gmres_qr PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-)
-
-# Add the test
-add_test(NAME gmres_qr_test 
-         COMMAND test_gmres_qr
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# Set test properties
-set_tests_properties(gmres_qr_test PROPERTIES
-    TIMEOUT 30
-    PASS_REGULAR_EXPRESSION "All tests PASSED"
-    FAIL_REGULAR_EXPRESSION "Some tests FAILED"
-)
-
-# GMRES complete algorithm test executable
-add_executable(test_gmres_complete
-    test_gmres_complete.f90
-)
-
-# Set compiler flags
-target_compile_options(test_gmres_complete PRIVATE
-    -g -fbacktrace
-)
-
-# Link to the common library which contains all our modules
-target_link_libraries(test_gmres_complete
-    common
-)
-
-# Include directories
-target_include_directories(test_gmres_complete PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-)
-
-# Add the test
-add_test(NAME gmres_complete_test 
-         COMMAND test_gmres_complete
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# Set test properties
-set_tests_properties(gmres_complete_test PROPERTIES
-    TIMEOUT 60
-    PASS_REGULAR_EXPRESSION "All tests PASSED"
-    FAIL_REGULAR_EXPRESSION "Some tests FAILED"
-)
-
-# GMRES ILU integration test executable
-add_executable(test_gmres_ilu_integration
-    test_gmres_ilu_integration.f90
-)
-
-# Set compiler flags
-target_compile_options(test_gmres_ilu_integration PRIVATE
-    -g -fbacktrace
-)
-
-# Link to the common library which contains all our modules
-target_link_libraries(test_gmres_ilu_integration
-    common
-)
-
-# Include directories
-target_include_directories(test_gmres_ilu_integration PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-)
-
-# Add the test
-add_test(NAME gmres_ilu_integration_test 
-         COMMAND test_gmres_ilu_integration
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# Set test properties
-set_tests_properties(gmres_ilu_integration_test PROPERTIES
-    TIMEOUT 60
-    PASS_REGULAR_EXPRESSION "All tests PASSED"
-    FAIL_REGULAR_EXPRESSION "Some tests FAILED"
-)
-
-# GMRES sparse solvers integration test executable
-add_executable(test_gmres_sparse_solvers_integration
-    test_gmres_sparse_solvers_integration.f90
-)
-
-# Set compiler flags
-target_compile_options(test_gmres_sparse_solvers_integration PRIVATE
-    -g -fbacktrace
-)
-
-# Link to the common library which contains all our modules
-target_link_libraries(test_gmres_sparse_solvers_integration
-    common
-)
-
-# Include directories
-target_include_directories(test_gmres_sparse_solvers_integration PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-)
-
-# Add the test
-add_test(NAME gmres_sparse_solvers_integration_test 
-         COMMAND test_gmres_sparse_solvers_integration
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# Set test properties
-set_tests_properties(gmres_sparse_solvers_integration_test PROPERTIES
-    TIMEOUT 60
-    PASS_REGULAR_EXPRESSION "All tests PASSED"
-    FAIL_REGULAR_EXPRESSION "Some tests FAILED"
-)
-
-# GMRES pathological spline matrix test
-add_executable(test_gmres_spline_pathological
-    test_gmres_spline_pathological.f90
-)
-
-# Set compiler flags
-target_compile_options(test_gmres_spline_pathological PRIVATE
-    -g -fbacktrace
-)
-
-# Link to the common library which contains all our modules
-target_link_libraries(test_gmres_spline_pathological
-    common
-)
-
-# Include directories
-target_include_directories(test_gmres_spline_pathological PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-)
-
-# Add the test
-add_test(NAME gmres_spline_pathological_test 
-         COMMAND test_gmres_spline_pathological
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# GMRES critical 404x404 spline matrix test
-add_executable(test_gmres_spline_404
-    test_gmres_spline_404.f90
-)
-
-# Set compiler flags
-target_compile_options(test_gmres_spline_404 PRIVATE
-    -g -fbacktrace
-)
-
-# Link to the common library which contains all our modules
-target_link_libraries(test_gmres_spline_404
-    common
-)
-
-# Include directories
-target_include_directories(test_gmres_spline_404 PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-)
-
-# Add the test
-add_test(NAME gmres_spline_404_test 
-         COMMAND test_gmres_spline_404
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# Set test properties
-set_tests_properties(gmres_spline_pathological_test PROPERTIES
-    TIMEOUT 120
-    PASS_REGULAR_EXPRESSION "All tests PASSED"
-    FAIL_REGULAR_EXPRESSION "Some tests FAILED"
+set_tests_properties(spline_amg_test PROPERTIES
+    TIMEOUT 300
+    PASS_REGULAR_EXPRESSION "Test PASSED: AMG preconditioner works"
+    FAIL_REGULAR_EXPRESSION "Test FAILED: AMG preconditioner did not converge"
 )
 
 # BiCGSTAB(ℓ) systematic test on pathological spline matrix
@@ -951,4 +737,37 @@ set_tests_properties(bicgstab_l_spline_test PROPERTIES
     TIMEOUT 300
     PASS_REGULAR_EXPRESSION "SUCCESS:"
     FAIL_REGULAR_EXPRESSION "COMPLETE FAILURE:"
+)
+
+# AMG realistic/well-conditioned test executable
+add_executable(test_amg_realistic
+    test_amg_realistic.f90
+)
+
+# Set compiler flags
+target_compile_options(test_amg_realistic PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_amg_realistic
+    common
+)
+
+# Include directories
+target_include_directories(test_amg_realistic PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME amg_realistic_test 
+         COMMAND test_amg_realistic
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(amg_realistic_test PROPERTIES
+    TIMEOUT 180
+    PASS_REGULAR_EXPRESSION "SUCCESS: All AMG realistic tests passed"
+    FAIL_REGULAR_EXPRESSION "FAILURE: Some AMG realistic tests failed"
 )

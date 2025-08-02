@@ -352,21 +352,39 @@ CONTAINS
     REAL(kind=dp), INTENT(IN) :: b(:)
     REAL(kind=dp), INTENT(OUT) :: x(:)
     
-    INTEGER :: i, k
+    INTEGER :: i, k, col_idx
     REAL(kind=dp), ALLOCATABLE :: y(:)
     INTEGER :: n
     
     n = ilu_fac%n
+    
+    ! Validate input dimensions
+    IF (SIZE(b) /= n .OR. SIZE(x) /= n) THEN
+      STOP 'ilu_solve_real: dimension mismatch'
+    END IF
+    
+    ! Validate ILU factorization structure
+    IF (.NOT. ALLOCATED(ilu_fac%L_row_ptr) .OR. &
+        .NOT. ALLOCATED(ilu_fac%L_col_idx) .OR. &
+        .NOT. ALLOCATED(ilu_fac%L_val)) THEN
+      STOP 'ilu_solve_real: ILU factorization not properly allocated'
+    END IF
+    
     ALLOCATE(y(n))
     
     ! Forward substitution: L*y = b
     DO i = 1, n
       y(i) = b(i)
-      DO k = ilu_fac%L_row_ptr(i), ilu_fac%L_row_ptr(i+1)-1
-        IF (ilu_fac%L_col_idx(k) < i) THEN
-          y(i) = y(i) - ilu_fac%L_val(k) * y(ilu_fac%L_col_idx(k))
-        END IF
-      END DO
+      IF (ilu_fac%L_row_ptr(i) <= ilu_fac%L_row_ptr(i+1)-1) THEN
+        DO k = ilu_fac%L_row_ptr(i), ilu_fac%L_row_ptr(i+1)-1
+          IF (k >= 1 .AND. k <= SIZE(ilu_fac%L_col_idx)) THEN
+            col_idx = ilu_fac%L_col_idx(k)
+            IF (col_idx >= 1 .AND. col_idx < i .AND. col_idx <= n) THEN
+              y(i) = y(i) - ilu_fac%L_val(k) * y(col_idx)
+            END IF
+          END IF
+        END DO
+      END IF
     END DO
     
     ! Backward substitution: U*x = y
@@ -399,39 +417,70 @@ CONTAINS
     COMPLEX(kind=dp), INTENT(IN) :: b(:)
     COMPLEX(kind=dp), INTENT(OUT) :: x(:)
     
-    INTEGER :: i, k
+    INTEGER :: i, k, col_idx
     COMPLEX(kind=dp), ALLOCATABLE :: y(:)
     INTEGER :: n
     
     n = ilu_fac%n
+    
+    ! Validate input dimensions
+    IF (SIZE(b) /= n .OR. SIZE(x) /= n) THEN
+      STOP 'ilu_solve_complex: dimension mismatch'
+    END IF
+    
+    ! Validate ILU factorization structure
+    IF (.NOT. ALLOCATED(ilu_fac%L_row_ptr) .OR. &
+        .NOT. ALLOCATED(ilu_fac%L_col_idx) .OR. &
+        .NOT. ALLOCATED(ilu_fac%L_val)) THEN
+      STOP 'ilu_solve_complex: ILU factorization not properly allocated'
+    END IF
+    
     ALLOCATE(y(n))
     
     ! Forward substitution: L*y = b
     DO i = 1, n
       y(i) = b(i)
-      DO k = ilu_fac%L_row_ptr(i), ilu_fac%L_row_ptr(i+1)-1
-        IF (ilu_fac%L_col_idx(k) < i) THEN
-          y(i) = y(i) - ilu_fac%L_val(k) * y(ilu_fac%L_col_idx(k))
-        END IF
-      END DO
+      IF (ilu_fac%L_row_ptr(i) <= ilu_fac%L_row_ptr(i+1)-1) THEN
+        DO k = ilu_fac%L_row_ptr(i), ilu_fac%L_row_ptr(i+1)-1
+          IF (k >= 1 .AND. k <= SIZE(ilu_fac%L_col_idx)) THEN
+            col_idx = ilu_fac%L_col_idx(k)
+            IF (col_idx >= 1 .AND. col_idx < i .AND. col_idx <= n) THEN
+              y(i) = y(i) - ilu_fac%L_val(k) * y(col_idx)
+            END IF
+          END IF
+        END DO
+      END IF
     END DO
     
     ! Backward substitution: U*x = y
     DO i = n, 1, -1
       x(i) = y(i)
       ! First subtract off-diagonal terms
-      DO k = ilu_fac%U_row_ptr(i), ilu_fac%U_row_ptr(i+1)-1
-        IF (ilu_fac%U_col_idx(k) > i) THEN
-          x(i) = x(i) - ilu_fac%U_val(k) * x(ilu_fac%U_col_idx(k))
-        END IF
-      END DO
+      IF (ilu_fac%U_row_ptr(i) <= ilu_fac%U_row_ptr(i+1)-1) THEN
+        DO k = ilu_fac%U_row_ptr(i), ilu_fac%U_row_ptr(i+1)-1
+          IF (k >= 1 .AND. k <= SIZE(ilu_fac%U_col_idx)) THEN
+            col_idx = ilu_fac%U_col_idx(k)
+            IF (col_idx > i .AND. col_idx <= n) THEN
+              x(i) = x(i) - ilu_fac%U_val(k) * x(col_idx)
+            END IF
+          END IF
+        END DO
+      END IF
       ! Then divide by diagonal element
-      DO k = ilu_fac%U_row_ptr(i), ilu_fac%U_row_ptr(i+1)-1
-        IF (ilu_fac%U_col_idx(k) == i) THEN
-          x(i) = x(i) / ilu_fac%U_val(k)
-          EXIT
-        END IF
-      END DO
+      IF (ilu_fac%U_row_ptr(i) <= ilu_fac%U_row_ptr(i+1)-1) THEN
+        DO k = ilu_fac%U_row_ptr(i), ilu_fac%U_row_ptr(i+1)-1
+          IF (k >= 1 .AND. k <= SIZE(ilu_fac%U_col_idx)) THEN
+            IF (ilu_fac%U_col_idx(k) == i) THEN
+              IF (ABS(ilu_fac%U_val(k)) > 1.0e-14_dp) THEN
+                x(i) = x(i) / ilu_fac%U_val(k)
+              ELSE
+                STOP 'ilu_solve_complex: diagonal element is zero or near-zero'
+              END IF
+              EXIT
+            END IF
+          END IF
+        END DO
+      END IF
     END DO
     
     DEALLOCATE(y)

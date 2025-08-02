@@ -16,6 +16,8 @@ MODULE sparse_solvers_mod
   USE bicgstab_mod
   USE ilu_precond_mod
   USE gmres_mod
+  USE amg_types_mod
+  USE amg_precond_mod
   IMPLICIT NONE
   
   ! Solver method constants (no magic numbers)
@@ -26,6 +28,7 @@ MODULE sparse_solvers_mod
   ! Preconditioner type constants
   INTEGER, PARAMETER, PUBLIC :: PRECOND_NONE = 0
   INTEGER, PARAMETER, PUBLIC :: PRECOND_ILU = 1
+  INTEGER, PARAMETER, PUBLIC :: PRECOND_AMG = 2
 
   ! Unified iterative solver parameter structure
   TYPE, PUBLIC :: iterative_solver_params
@@ -1326,9 +1329,13 @@ CONTAINS
     INTEGER :: iter
     TYPE(bicgstab_stats) :: stats
     
-    ! ILU preconditioning variables
+    ! Preconditioning variables
     TYPE(ilu_factorization) :: ilu_fac
     INTEGER :: ilu_info
+    
+    ! AMG preconditioning variables
+    TYPE(amg_hierarchy) :: amg_hier
+    INTEGER :: amg_info
     
     ! Use module-level configurable parameters
     rel_tol = bicgstab_rel_tolerance
@@ -1344,14 +1351,14 @@ CONTAINS
     ALLOCATE(csr_row_ptr(nrow+1), csr_col_idx(nz), csr_val(nz))
     CALL csc_to_csr_real(nrow, ncol, nz, pcol, irow, val, csr_row_ptr, csr_col_idx, csr_val)
     
-    ! Solve using BiCGSTAB (with ILU preconditioning if enabled)
+    ! Solve using BiCGSTAB with appropriate preconditioning
     ! b is used as both RHS and solution vector (solution overwrites b)
     ! Start with zero initial guess
     ALLOCATE(b_save(nrow))
     b_save = b  ! Save RHS
     b = 0.0_dp  ! Zero initial guess
     
-    IF (ilu_fill_level > 0) THEN
+    IF (default_iterative_params%preconditioner_type == PRECOND_ILU) THEN
       ! Use ILU-preconditioned BiCGSTAB(ℓ)
       IF (bicgstab_verbose) THEN
         PRINT *, 'INFO: Using BiCGSTAB(',bicgstab_stabilization_param,') + ILU(',ilu_fill_level,') preconditioning'
@@ -1380,8 +1387,54 @@ CONTAINS
                                       bicgstab_stabilization_param, ilu_fac, &
                                       bicgstab_verbose, converged, iter, stats)
       END IF
+    ELSE IF (default_iterative_params%preconditioner_type == PRECOND_AMG) THEN
+      ! Use AMG-preconditioned BiCGSTAB
+      IF (bicgstab_verbose) THEN
+        PRINT *, 'INFO: Using BiCGSTAB(',bicgstab_stabilization_param,') + AMG preconditioning'
+      END IF
+      
+      ! Set up AMG hierarchy
+      CALL amg_precond_setup(amg_hier, nrow, nz, csr_row_ptr, csr_col_idx, csr_val)
+      
+      ! Verify AMG hierarchy was built successfully
+      IF (.NOT. ALLOCATED(amg_hier%levels) .OR. amg_hier%n_levels < 1) THEN
+        amg_info = -1  ! AMG setup failed
+        IF (bicgstab_verbose) THEN
+          PRINT *, 'WARNING: AMG hierarchy setup failed - hierarchy not properly allocated'
+        END IF
+      ELSE IF (amg_hier%levels(1)%n /= nrow) THEN
+        amg_info = -2  ! AMG setup failed - dimension mismatch
+        IF (bicgstab_verbose) THEN
+          PRINT *, 'WARNING: AMG hierarchy setup failed - dimension mismatch'
+          PRINT *, '  Expected n =', nrow, ', got n =', amg_hier%levels(1)%n
+        END IF
+      ELSE
+        amg_info = 0  ! AMG setup successful
+        IF (bicgstab_verbose) THEN
+          PRINT *, 'INFO: AMG hierarchy built with', amg_hier%n_levels, 'levels'
+        END IF
+      END IF
+      
+      IF (amg_info == 0) THEN
+        ! AMG setup successful, use AMG-preconditioned solver
+        CALL bicgstab_l_solve_amg_precond(nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                          b_save, b, abs_tol, rel_tol, max_iter, &
+                                          bicgstab_stabilization_param, amg_hier, &
+                                          bicgstab_verbose, converged, iter, stats)
+        CALL amg_precond_destroy(amg_hier)
+      ELSE
+        ! AMG setup failed, fall back to unpreconditioned BiCGSTAB
+        IF (bicgstab_verbose) THEN
+          PRINT *, 'WARNING: AMG setup failed, using unpreconditioned BiCGSTAB(', bicgstab_stabilization_param, ')'
+        END IF
+        CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b_save, b, &
+                            abs_tol, rel_tol, max_iter, converged, iter, stats)
+      END IF
     ELSE
-      ! Use unpreconditioned BiCGSTAB (ilu_fill_level = 0)
+      ! Use unpreconditioned BiCGSTAB (PRECOND_NONE)
+      IF (bicgstab_verbose) THEN
+        PRINT *, 'INFO: Using unpreconditioned BiCGSTAB(',bicgstab_stabilization_param,')'
+      END IF
       CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b_save, b, &
                           abs_tol, rel_tol, max_iter, converged, iter, stats)
     END IF
