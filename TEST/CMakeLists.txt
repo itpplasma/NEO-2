@@ -471,3 +471,36 @@ set_tests_properties(ilu_precond_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All ILU preconditioner tests PASSED!"
     FAIL_REGULAR_EXPRESSION "Some ILU preconditioner tests FAILED!"
 )
+
+# BiCGSTAB solver test executable
+add_executable(test_bicgstab
+    ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_bicgstab.f90
+)
+
+# Set compiler flags
+target_compile_options(test_bicgstab PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_bicgstab
+    common
+)
+
+# Include directories
+target_include_directories(test_bicgstab PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME bicgstab_test 
+         COMMAND test_bicgstab
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(bicgstab_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "All BiCGSTAB tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some BiCGSTAB tests FAILED!"
+)
