@@ -7,8 +7,9 @@ MODULE sparse_mod
   USE sparse_solvers_mod
   IMPLICIT NONE
 
-  ! Re-export sparse_solve_method for backward compatibility
+  ! Re-export sparse_solve_method and solver constants for backward compatibility
   PUBLIC :: sparse_solve_method
+  PUBLIC :: SOLVER_UMFPACK, SOLVER_BICGSTAB
   
   ! Re-export conversion routines for backward compatibility
   PUBLIC :: column_pointer2full, column_full2pointer

@@ -79,7 +79,7 @@ CONTAINS
     ! Local variables
     INTEGER :: i, j, k, kk, jj, jpos
     INTEGER :: nnz_in, nnz_ilu
-    REAL(kind=dp) :: pivot, multiplier, sum
+    REAL(kind=dp) :: pivot, multiplier, sum, u_kj
     INTEGER, ALLOCATABLE :: ilu_row_ptr(:), ilu_col_idx(:)
     REAL(kind=dp), ALLOCATABLE :: ilu_val(:), w(:)
     INTEGER, ALLOCATABLE :: jw(:)
@@ -124,7 +124,7 @@ CONTAINS
       ! Eliminate using previous rows
       DO k = 1, i-1
         ! Check if element (i,k) exists
-        IF (w(k) /= 0.0_dp) THEN
+        IF (ABS(w(k)) > 1.0e-15_dp) THEN
           ! Find pivot U(k,k) in row k of ILU
           pivot = 0.0_dp
           DO kk = ilu_row_ptr(k), ilu_row_ptr(k+1)-1
@@ -143,14 +143,17 @@ CONTAINS
             DO kk = ilu_row_ptr(k), ilu_row_ptr(k+1)-1
               j = ilu_col_idx(kk)
               IF (j > k) THEN
+                ! Get U(k,j) value - must be diagonal or upper part of row k
+                u_kj = ilu_val(kk)
+                
                 ! For ILU(0), only update if (i,j) exists in original pattern
                 IF (fill_level == 0) THEN
                   IF (jw(j) /= 0) THEN
-                    w(j) = w(j) - multiplier * ilu_val(kk)
+                    w(j) = w(j) - multiplier * u_kj
                   END IF
                 ELSE
                   ! For ILU(k), allow fill-in
-                  w(j) = w(j) - multiplier * ilu_val(kk)
+                  w(j) = w(j) - multiplier * u_kj
                   IF (jw(j) == 0) jw(j) = j  ! Mark new fill-in
                 END IF
               END IF
@@ -217,7 +220,7 @@ CONTAINS
     ! Local variables
     INTEGER :: i, j, k, kk, jj, jpos
     INTEGER :: nnz_in, nnz_ilu
-    COMPLEX(kind=dp) :: pivot, multiplier
+    COMPLEX(kind=dp) :: pivot, multiplier, u_kj
     INTEGER, ALLOCATABLE :: ilu_row_ptr(:), ilu_col_idx(:)
     COMPLEX(kind=dp), ALLOCATABLE :: ilu_val(:), w(:)
     INTEGER, ALLOCATABLE :: jw(:)
@@ -262,7 +265,7 @@ CONTAINS
       ! Eliminate using previous rows
       DO k = 1, i-1
         ! Check if element (i,k) exists
-        IF (ABS(w(k)) > 0.0_dp) THEN
+        IF (ABS(w(k)) > 1.0e-15_dp) THEN
           ! Find pivot U(k,k) in row k of ILU
           pivot = (0.0_dp, 0.0_dp)
           DO kk = ilu_row_ptr(k), ilu_row_ptr(k+1)-1
@@ -281,14 +284,17 @@ CONTAINS
             DO kk = ilu_row_ptr(k), ilu_row_ptr(k+1)-1
               j = ilu_col_idx(kk)
               IF (j > k) THEN
+                ! Get U(k,j) value - must be upper part of row k
+                u_kj = ilu_val(kk)
+                
                 ! For ILU(0), only update if (i,j) exists in original pattern
                 IF (fill_level == 0) THEN
                   IF (jw(j) /= 0) THEN
-                    w(j) = w(j) - multiplier * ilu_val(kk)
+                    w(j) = w(j) - multiplier * u_kj
                   END IF
                 ELSE
                   ! For ILU(k), allow fill-in
-                  w(j) = w(j) - multiplier * ilu_val(kk)
+                  w(j) = w(j) - multiplier * u_kj
                   IF (jw(j) == 0) jw(j) = j  ! Mark new fill-in
                 END IF
               END IF
@@ -366,11 +372,17 @@ CONTAINS
     ! Backward substitution: U*x = y
     DO i = n, 1, -1
       x(i) = y(i)
+      ! First subtract off-diagonal terms
       DO k = ilu_fac%U_row_ptr(i), ilu_fac%U_row_ptr(i+1)-1
         IF (ilu_fac%U_col_idx(k) > i) THEN
           x(i) = x(i) - ilu_fac%U_val(k) * x(ilu_fac%U_col_idx(k))
-        ELSE IF (ilu_fac%U_col_idx(k) == i) THEN
+        END IF
+      END DO
+      ! Then divide by diagonal element
+      DO k = ilu_fac%U_row_ptr(i), ilu_fac%U_row_ptr(i+1)-1
+        IF (ilu_fac%U_col_idx(k) == i) THEN
           x(i) = x(i) / ilu_fac%U_val(k)
+          EXIT
         END IF
       END DO
     END DO
@@ -407,11 +419,17 @@ CONTAINS
     ! Backward substitution: U*x = y
     DO i = n, 1, -1
       x(i) = y(i)
+      ! First subtract off-diagonal terms
       DO k = ilu_fac%U_row_ptr(i), ilu_fac%U_row_ptr(i+1)-1
         IF (ilu_fac%U_col_idx(k) > i) THEN
           x(i) = x(i) - ilu_fac%U_val(k) * x(ilu_fac%U_col_idx(k))
-        ELSE IF (ilu_fac%U_col_idx(k) == i) THEN
+        END IF
+      END DO
+      ! Then divide by diagonal element
+      DO k = ilu_fac%U_row_ptr(i), ilu_fac%U_row_ptr(i+1)-1
+        IF (ilu_fac%U_col_idx(k) == i) THEN
           x(i) = x(i) / ilu_fac%U_val(k)
+          EXIT
         END IF
       END DO
     END DO

@@ -13,6 +13,9 @@ MODULE sparse_utils_mod
   PUBLIC :: csr_matvec
   PUBLIC :: csr_extract_diagonal
   
+  ! Export specific procedures for sparse_solvers_mod
+  PUBLIC :: csc_to_csr_real, csc_to_csr_complex
+  
   ! Generic interfaces for real and complex versions
   INTERFACE csc_to_csr
     MODULE PROCEDURE csc_to_csr_real

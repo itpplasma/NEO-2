@@ -12,14 +12,21 @@ MODULE sparse_solvers_mod
   USE sparse_types_mod, ONLY: dp, long
   USE sparse_conversion_mod
   USE sparse_arithmetic_mod, ONLY: sparse_talk
+  USE sparse_utils_mod, ONLY: csc_to_csr_real, csc_to_csr_complex
+  USE bicgstab_mod
+  USE ilu_precond_mod
   IMPLICIT NONE
+  
+  ! Solver method constants (no magic numbers)
+  INTEGER, PARAMETER, PUBLIC :: SOLVER_UMFPACK = 3
+  INTEGER, PARAMETER, PUBLIC :: SOLVER_BICGSTAB = 4
   
   PUBLIC :: sparse_solve
   PUBLIC :: sparse_solve_suitesparse
   PUBLIC :: sparse_solve_method
   PUBLIC :: factorization_exists
   
-  INTEGER :: sparse_solve_method = 3
+  INTEGER :: sparse_solve_method = SOLVER_UMFPACK
   LOGICAL :: factorization_exists = .FALSE.
   
   ! Named constants for iopt parameter values (compatible with original sparse_mod.f90)
@@ -91,7 +98,7 @@ CONTAINS
     
     ! For iopt=1 (factorize only), save factorization for later reuse with iopt=2
     IF (.NOT. factorization_exists_real .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
           ELSE
@@ -106,11 +113,17 @@ CONTAINS
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_real
     
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
        IF (pcol_modified) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,iopt)
        ELSE
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+       END IF
+    ELSE IF (sparse_solve_method .EQ. SOLVER_BICGSTAB) THEN
+       IF (pcol_modified) THEN
+          CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcoln,val,b,iopt)
+       ELSE
+          CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
@@ -150,7 +163,7 @@ CONTAINS
     
     ! For iopt=1 (factorize only), save factorization for later reuse with iopt=2
     IF (.NOT. factorization_exists_complex .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
           ELSE
@@ -165,11 +178,17 @@ CONTAINS
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_complex
     
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
        IF (pcol_modified) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,iopt)
        ELSE
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+       END IF
+    ELSE IF (sparse_solve_method .EQ. SOLVER_BICGSTAB) THEN
+       IF (pcol_modified) THEN
+          CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcoln,val,b,iopt)
+       ELSE
+          CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
@@ -1007,5 +1026,91 @@ CONTAINS
     LOGICAL :: do_cleanup
     do_cleanup = (iopt == IOPT_FREE_MEMORY)
   END FUNCTION should_cleanup
+
+  !-------------------------------------------------------------------------------
+  ! BiCGSTAB solver wrapper for real systems
+  ! Note: BiCGSTAB is a one-shot solver (no persistent factorization)
+  !       iopt parameter is ignored except for compatibility
+  SUBROUTINE sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
+    INTEGER, INTENT(in) :: nrow,ncol,nz
+    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
+    REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
+    REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
+    INTEGER, INTENT(in) :: iopt_in
+    
+    ! Local variables for CSR conversion
+    INTEGER, ALLOCATABLE :: csr_row_ptr(:), csr_col_idx(:)
+    REAL(kind=dp), ALLOCATABLE :: csr_val(:)
+    
+    ! BiCGSTAB solver parameters
+    REAL(kind=dp) :: tol = 1.0e-10_dp
+    INTEGER :: max_iter = 1000
+    LOGICAL :: converged
+    INTEGER :: iter
+    TYPE(bicgstab_stats) :: stats
+    
+    ! Convert from CSC to CSR format for BiCGSTAB
+    ALLOCATE(csr_row_ptr(nrow+1), csr_col_idx(nz), csr_val(nz))
+    CALL csc_to_csr_real(nrow, ncol, nz, pcol, irow, val, csr_row_ptr, csr_col_idx, csr_val)
+    
+    ! Solve using BiCGSTAB
+    CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b, b, &
+                        tol, max_iter, converged, iter, stats)
+    
+    IF (.NOT. converged) THEN
+      PRINT *, 'WARNING: BiCGSTAB did not converge after', iter, 'iterations'
+      PRINT *, '         Final residual:', stats%final_residual
+    END IF
+    
+    IF (sparse_talk) THEN
+      PRINT *, 'BiCGSTAB converged in', iter, 'iterations, residual =', stats%final_residual
+    END IF
+    
+    DEALLOCATE(csr_row_ptr, csr_col_idx, csr_val)
+    
+  END SUBROUTINE sparse_solve_bicgstab_real
+
+  !-------------------------------------------------------------------------------
+  ! BiCGSTAB solver wrapper for complex systems  
+  ! Note: BiCGSTAB is a one-shot solver (no persistent factorization)
+  !       iopt parameter is ignored except for compatibility
+  SUBROUTINE sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
+    INTEGER, INTENT(in) :: nrow,ncol,nz
+    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
+    COMPLEX(kind=dp), DIMENSION(:), INTENT(in) :: val
+    COMPLEX(kind=dp), DIMENSION(:), INTENT(inout) :: b
+    INTEGER, INTENT(in) :: iopt_in
+    
+    ! Local variables for CSR conversion
+    INTEGER, ALLOCATABLE :: csr_row_ptr(:), csr_col_idx(:)
+    COMPLEX(kind=dp), ALLOCATABLE :: csr_val(:)
+    
+    ! BiCGSTAB solver parameters
+    REAL(kind=dp) :: tol = 1.0e-10_dp
+    INTEGER :: max_iter = 1000
+    LOGICAL :: converged
+    INTEGER :: iter
+    TYPE(bicgstab_stats) :: stats
+    
+    ! Convert from CSC to CSR format for BiCGSTAB
+    ALLOCATE(csr_row_ptr(nrow+1), csr_col_idx(nz), csr_val(nz))
+    CALL csc_to_csr_complex(nrow, ncol, nz, pcol, irow, val, csr_row_ptr, csr_col_idx, csr_val)
+    
+    ! Solve using BiCGSTAB
+    CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b, b, &
+                        tol, max_iter, converged, iter, stats)
+    
+    IF (.NOT. converged) THEN
+      PRINT *, 'WARNING: BiCGSTAB did not converge after', iter, 'iterations'
+      PRINT *, '         Final residual:', stats%final_residual
+    END IF
+    
+    IF (sparse_talk) THEN
+      PRINT *, 'BiCGSTAB converged in', iter, 'iterations, residual =', stats%final_residual
+    END IF
+    
+    DEALLOCATE(csr_row_ptr, csr_col_idx, csr_val)
+    
+  END SUBROUTINE sparse_solve_bicgstab_complex
 
 END MODULE sparse_solvers_mod
