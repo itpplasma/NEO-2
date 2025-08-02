@@ -405,3 +405,36 @@ set_tests_properties(sparse_solvers_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests PASSED!"
     FAIL_REGULAR_EXPRESSION "Some tests FAILED!"
 )
+
+# Sparse utils test executable
+add_executable(test_sparse_utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_sparse_utils.f90
+)
+
+# Set compiler flags
+target_compile_options(test_sparse_utils PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_sparse_utils
+    common
+)
+
+# Include directories
+target_include_directories(test_sparse_utils PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME sparse_utils_test 
+         COMMAND test_sparse_utils
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(sparse_utils_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "All sparse utils tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some sparse utils tests FAILED!"
+)

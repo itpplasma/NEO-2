@@ -33,13 +33,20 @@ The sparse solver framework has been successfully refactored into a modular arch
 
 ## Phase 1: Core Infrastructure (Week 1)
 
-### 1.1 Sparse Matrix Utilities Module
+### 1.1 Sparse Matrix Utilities Module - **COMPLETED** ✅
 **File:** `COMMON/sparse_utils_mod.f90`
-- [ ] CSR (Compressed Sparse Row) format conversion routines
-- [ ] CSC ↔ CSR conversion utilities
-- [ ] Matrix-vector multiplication for CSR format
-- [ ] Diagonal extraction routines
-- [ ] **Unit tests:** Verify conversions preserve matrix structure
+- [x] CSR (Compressed Sparse Row) format conversion routines
+- [x] CSC ↔ CSR conversion utilities
+- [x] Matrix-vector multiplication for CSR format
+- [x] Diagonal extraction routines
+- [x] **Unit tests:** Verify conversions preserve matrix structure
+
+**Implemented:**
+- Full CSC ↔ CSR conversions for both real and complex matrices
+- Efficient CSR matrix-vector multiplication with OpenMP potential
+- Diagonal extraction with support for non-square matrices
+- Comprehensive test suite with 10 tests covering all functionality
+- All tests pass (100% success rate)
 
 ### 1.2 ILU(1) Preconditioner Module
 **File:** `COMMON/ilu_precond_mod.f90`
