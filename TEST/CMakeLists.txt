@@ -595,3 +595,36 @@ set_tests_properties(adaptive_tolerance_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All adaptive tolerance tests PASSED!"
     FAIL_REGULAR_EXPRESSION "Some adaptive tolerance tests FAILED!"
 )
+
+# ILU fill level progression test executable  
+add_executable(test_ilu_fill_levels
+    test_ilu_fill_levels.f90
+)
+
+# Set compiler flags
+target_compile_options(test_ilu_fill_levels PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_ilu_fill_levels
+    common
+)
+
+# Include directories
+target_include_directories(test_ilu_fill_levels PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME ilu_fill_levels_test 
+         COMMAND test_ilu_fill_levels
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(ilu_fill_levels_test PROPERTIES
+    TIMEOUT 120
+    PASS_REGULAR_EXPRESSION "SUCCESS: BiCGSTAB converged"
+    FAIL_REGULAR_EXPRESSION "FAILURE: BiCGSTAB did not converge"
+)

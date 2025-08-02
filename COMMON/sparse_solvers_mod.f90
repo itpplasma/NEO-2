@@ -1279,7 +1279,9 @@ CONTAINS
     
     IF (ilu_fill_level > 0) THEN
       ! Use ILU-preconditioned BiCGSTAB
-      PRINT *, 'DEBUG: Using ILU(',ilu_fill_level,') preconditioning for BiCGSTAB'
+      IF (bicgstab_verbose) THEN
+        PRINT *, 'INFO: Using ILU(',ilu_fill_level,') preconditioning for BiCGSTAB'
+      END IF
       
       ! Compute ILU factorization
       CALL ilu_factorize(nrow, csr_row_ptr, csr_col_idx, csr_val, &
@@ -1374,7 +1376,9 @@ CONTAINS
     
     IF (ilu_fill_level > 0) THEN
       ! Use ILU-preconditioned BiCGSTAB
-      PRINT *, 'DEBUG: Using ILU(',ilu_fill_level,') preconditioning for BiCGSTAB'
+      IF (bicgstab_verbose) THEN
+        PRINT *, 'INFO: Using ILU(',ilu_fill_level,') preconditioning for BiCGSTAB'
+      END IF
       
       ! Compute ILU factorization
       CALL ilu_factorize(nrow, csr_row_ptr, csr_col_idx, csr_val, &
