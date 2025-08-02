@@ -44,14 +44,15 @@ CONTAINS
   ! BiCGSTAB solver without preconditioning - Real version
   !==============================================================================
   SUBROUTINE bicgstab_solve_real(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                                  tol, max_iter, converged, iter, stats)
+                                  abs_tol, rel_tol, max_iter, converged, iter, stats)
     INTEGER, INTENT(IN) :: n
     INTEGER, INTENT(IN) :: csr_row_ptr(n+1)
     INTEGER, INTENT(IN) :: csr_col_idx(:)
     REAL(kind=dp), INTENT(IN) :: csr_val(:)
     REAL(kind=dp), INTENT(IN) :: b(n)
     REAL(kind=dp), INTENT(INOUT) :: x(n)
-    REAL(kind=dp), INTENT(IN) :: tol
+    REAL(kind=dp), INTENT(IN) :: abs_tol
+    REAL(kind=dp), INTENT(IN) :: rel_tol
     INTEGER, INTENT(IN) :: max_iter
     LOGICAL, INTENT(OUT) :: converged
     INTEGER, INTENT(OUT) :: iter
@@ -60,14 +61,15 @@ CONTAINS
     ! Local variables
     REAL(kind=dp), ALLOCATABLE :: r(:), r0(:), p(:), v(:), s(:), t(:)
     REAL(kind=dp) :: rho, rho_old, alpha, omega, beta
-    REAL(kind=dp) :: rnorm, bnorm, relative_tol
+    REAL(kind=dp) :: rnorm, bnorm, tol_eff
     INTEGER :: i
     REAL(kind=dp) :: r0_dot_r, r0_dot_v, t_dot_s, t_dot_t
     REAL(kind=dp) :: start_time, end_time
     
     ! Basic input validation
     IF (n <= 0) ERROR STOP "BiCGSTAB: n must be positive"
-    IF (tol <= 0.0_dp) ERROR STOP "BiCGSTAB: tolerance must be positive"
+    IF (abs_tol <= 0.0_dp) ERROR STOP "BiCGSTAB: absolute tolerance must be positive"
+    IF (rel_tol <= 0.0_dp) ERROR STOP "BiCGSTAB: relative tolerance must be positive"
     IF (max_iter <= 0) ERROR STOP "BiCGSTAB: max_iter must be positive"
     
     ! Initialize statistics
@@ -102,11 +104,11 @@ CONTAINS
       RETURN
     END IF
     
-    ! Set relative tolerance
-    relative_tol = tol * bnorm
+    ! Set effective tolerance: max(abs_tol, rel_tol * ||b||)
+    tol_eff = MAX(abs_tol, rel_tol * bnorm)
     
     ! Check initial convergence
-    IF (rnorm < relative_tol) THEN
+    IF (rnorm < tol_eff) THEN
       converged = .TRUE.
       iter = 0
       stats%final_residual = rnorm
@@ -146,7 +148,7 @@ CONTAINS
       
       ! Check convergence of s
       rnorm = SQRT(DOT_PRODUCT(s, s))
-      IF (rnorm < relative_tol) THEN
+      IF (rnorm < tol_eff) THEN
         x = x + alpha * p
         converged = .TRUE.
         iter = i
@@ -175,7 +177,7 @@ CONTAINS
       
       ! Check convergence
       rnorm = SQRT(DOT_PRODUCT(r, r))
-      IF (rnorm < relative_tol) THEN
+      IF (rnorm < tol_eff) THEN
         converged = .TRUE.
         iter = i
         stats%final_residual = rnorm
@@ -230,14 +232,15 @@ CONTAINS
   ! BiCGSTAB solver without preconditioning - Complex version
   !==============================================================================
   SUBROUTINE bicgstab_solve_complex(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                                     tol, max_iter, converged, iter, stats)
+                                     abs_tol, rel_tol, max_iter, converged, iter, stats)
     INTEGER, INTENT(IN) :: n
     INTEGER, INTENT(IN) :: csr_row_ptr(n+1)
     INTEGER, INTENT(IN) :: csr_col_idx(:)
     COMPLEX(kind=dp), INTENT(IN) :: csr_val(:)
     COMPLEX(kind=dp), INTENT(IN) :: b(n)
     COMPLEX(kind=dp), INTENT(INOUT) :: x(n)
-    REAL(kind=dp), INTENT(IN) :: tol
+    REAL(kind=dp), INTENT(IN) :: abs_tol
+    REAL(kind=dp), INTENT(IN) :: rel_tol
     INTEGER, INTENT(IN) :: max_iter
     LOGICAL, INTENT(OUT) :: converged
     INTEGER, INTENT(OUT) :: iter
@@ -246,14 +249,15 @@ CONTAINS
     ! Local variables
     COMPLEX(kind=dp), ALLOCATABLE :: r(:), r0(:), p(:), v(:), s(:), t(:)
     COMPLEX(kind=dp) :: rho, rho_old, alpha, omega, beta
-    REAL(kind=dp) :: rnorm, bnorm, relative_tol
+    REAL(kind=dp) :: rnorm, bnorm, tol_eff
     INTEGER :: i
     COMPLEX(kind=dp) :: r0_dot_r, r0_dot_v, t_dot_s, t_dot_t
     REAL(kind=dp) :: start_time, end_time
     
     ! Basic input validation
     IF (n <= 0) ERROR STOP "BiCGSTAB: n must be positive"
-    IF (tol <= 0.0_dp) ERROR STOP "BiCGSTAB: tolerance must be positive"
+    IF (abs_tol <= 0.0_dp) ERROR STOP "BiCGSTAB: absolute tolerance must be positive"
+    IF (rel_tol <= 0.0_dp) ERROR STOP "BiCGSTAB: relative tolerance must be positive"
     IF (max_iter <= 0) ERROR STOP "BiCGSTAB: max_iter must be positive"
     
     ! Initialize statistics
@@ -288,11 +292,11 @@ CONTAINS
       RETURN
     END IF
     
-    ! Set relative tolerance
-    relative_tol = tol * bnorm
+    ! Set effective tolerance: max(abs_tol, rel_tol * ||b||)
+    tol_eff = MAX(abs_tol, rel_tol * bnorm)
     
     ! Check initial convergence
-    IF (rnorm < relative_tol) THEN
+    IF (rnorm < tol_eff) THEN
       converged = .TRUE.
       iter = 0
       stats%final_residual = rnorm
@@ -332,7 +336,7 @@ CONTAINS
       
       ! Check convergence of s
       rnorm = SQRT(SUM(ABS(s)**2))
-      IF (rnorm < relative_tol) THEN
+      IF (rnorm < tol_eff) THEN
         x = x + alpha * p
         converged = .TRUE.
         iter = i
@@ -361,7 +365,7 @@ CONTAINS
       
       ! Check convergence
       rnorm = SQRT(SUM(ABS(r)**2))
-      IF (rnorm < relative_tol) THEN
+      IF (rnorm < tol_eff) THEN
         converged = .TRUE.
         iter = i
         stats%final_residual = rnorm
@@ -416,7 +420,7 @@ CONTAINS
   ! BiCGSTAB solver with preconditioning - Real version
   !==============================================================================
   SUBROUTINE bicgstab_solve_precond_real(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                                          ilu_fac, tol, max_iter, converged, iter, stats)
+                                          ilu_fac, abs_tol, rel_tol, max_iter, converged, iter, stats)
     INTEGER, INTENT(IN) :: n
     INTEGER, INTENT(IN) :: csr_row_ptr(n+1)
     INTEGER, INTENT(IN) :: csr_col_idx(:)
@@ -424,7 +428,8 @@ CONTAINS
     REAL(kind=dp), INTENT(IN) :: b(n)
     REAL(kind=dp), INTENT(INOUT) :: x(n)
     TYPE(ilu_factorization), INTENT(IN) :: ilu_fac
-    REAL(kind=dp), INTENT(IN) :: tol
+    REAL(kind=dp), INTENT(IN) :: abs_tol
+    REAL(kind=dp), INTENT(IN) :: rel_tol
     INTEGER, INTENT(IN) :: max_iter
     LOGICAL, INTENT(OUT) :: converged
     INTEGER, INTENT(OUT) :: iter
@@ -434,14 +439,15 @@ CONTAINS
     REAL(kind=dp), ALLOCATABLE :: r(:), r0(:), p(:), v(:), s(:), t(:)
     REAL(kind=dp), ALLOCATABLE :: z(:), y(:)  ! Preconditioned vectors
     REAL(kind=dp) :: rho, rho_old, alpha, omega, beta
-    REAL(kind=dp) :: rnorm, bnorm, relative_tol
+    REAL(kind=dp) :: rnorm, bnorm, tol_eff
     INTEGER :: i
     REAL(kind=dp) :: r0_dot_z, r0_dot_v, t_dot_s, t_dot_t
     REAL(kind=dp) :: start_time, end_time
     
     ! Basic input validation
     IF (n <= 0) ERROR STOP "BiCGSTAB: n must be positive"
-    IF (tol <= 0.0_dp) ERROR STOP "BiCGSTAB: tolerance must be positive"
+    IF (abs_tol <= 0.0_dp) ERROR STOP "BiCGSTAB: absolute tolerance must be positive"
+    IF (rel_tol <= 0.0_dp) ERROR STOP "BiCGSTAB: relative tolerance must be positive"
     IF (max_iter <= 0) ERROR STOP "BiCGSTAB: max_iter must be positive"
     
     ! Initialize statistics
@@ -476,11 +482,11 @@ CONTAINS
       RETURN
     END IF
     
-    ! Set relative tolerance
-    relative_tol = tol * bnorm
+    ! Set effective tolerance: max(abs_tol, rel_tol * ||b||)
+    tol_eff = MAX(abs_tol, rel_tol * bnorm)
     
     ! Check initial convergence
-    IF (rnorm < relative_tol) THEN
+    IF (rnorm < tol_eff) THEN
       converged = .TRUE.
       iter = 0
       stats%final_residual = rnorm
@@ -524,7 +530,7 @@ CONTAINS
       
       ! Check convergence of s
       rnorm = SQRT(DOT_PRODUCT(s, s))
-      IF (rnorm < relative_tol) THEN
+      IF (rnorm < tol_eff) THEN
         x = x + alpha * p
         converged = .TRUE.
         iter = i
@@ -556,7 +562,7 @@ CONTAINS
       
       ! Check convergence
       rnorm = SQRT(DOT_PRODUCT(r, r))
-      IF (rnorm < relative_tol) THEN
+      IF (rnorm < tol_eff) THEN
         converged = .TRUE.
         iter = i
         stats%final_residual = rnorm
@@ -616,7 +622,7 @@ CONTAINS
   ! BiCGSTAB solver with preconditioning - Complex version
   !==============================================================================
   SUBROUTINE bicgstab_solve_precond_complex(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                                             ilu_fac, tol, max_iter, converged, iter, stats)
+                                             ilu_fac, abs_tol, rel_tol, max_iter, converged, iter, stats)
     INTEGER, INTENT(IN) :: n
     INTEGER, INTENT(IN) :: csr_row_ptr(n+1)
     INTEGER, INTENT(IN) :: csr_col_idx(:)
@@ -624,7 +630,8 @@ CONTAINS
     COMPLEX(kind=dp), INTENT(IN) :: b(n)
     COMPLEX(kind=dp), INTENT(INOUT) :: x(n)
     TYPE(ilu_factorization_complex), INTENT(IN) :: ilu_fac
-    REAL(kind=dp), INTENT(IN) :: tol
+    REAL(kind=dp), INTENT(IN) :: abs_tol
+    REAL(kind=dp), INTENT(IN) :: rel_tol
     INTEGER, INTENT(IN) :: max_iter
     LOGICAL, INTENT(OUT) :: converged
     INTEGER, INTENT(OUT) :: iter
@@ -634,14 +641,15 @@ CONTAINS
     COMPLEX(kind=dp), ALLOCATABLE :: r(:), r0(:), p(:), v(:), s(:), t(:)
     COMPLEX(kind=dp), ALLOCATABLE :: z(:), y(:)  ! Preconditioned vectors
     COMPLEX(kind=dp) :: rho, rho_old, alpha, omega, beta
-    REAL(kind=dp) :: rnorm, bnorm, relative_tol
+    REAL(kind=dp) :: rnorm, bnorm, tol_eff
     INTEGER :: i
     COMPLEX(kind=dp) :: r0_dot_z, r0_dot_v, t_dot_s, t_dot_t
     REAL(kind=dp) :: start_time, end_time
     
     ! Basic input validation
     IF (n <= 0) ERROR STOP "BiCGSTAB: n must be positive"
-    IF (tol <= 0.0_dp) ERROR STOP "BiCGSTAB: tolerance must be positive"
+    IF (abs_tol <= 0.0_dp) ERROR STOP "BiCGSTAB: absolute tolerance must be positive"
+    IF (rel_tol <= 0.0_dp) ERROR STOP "BiCGSTAB: relative tolerance must be positive"
     IF (max_iter <= 0) ERROR STOP "BiCGSTAB: max_iter must be positive"
     
     ! Initialize statistics
@@ -676,11 +684,11 @@ CONTAINS
       RETURN
     END IF
     
-    ! Set relative tolerance
-    relative_tol = tol * bnorm
+    ! Set effective tolerance: max(abs_tol, rel_tol * ||b||)
+    tol_eff = MAX(abs_tol, rel_tol * bnorm)
     
     ! Check initial convergence
-    IF (rnorm < relative_tol) THEN
+    IF (rnorm < tol_eff) THEN
       converged = .TRUE.
       iter = 0
       stats%final_residual = rnorm
@@ -724,7 +732,7 @@ CONTAINS
       
       ! Check convergence of s
       rnorm = SQRT(SUM(ABS(s)**2))
-      IF (rnorm < relative_tol) THEN
+      IF (rnorm < tol_eff) THEN
         x = x + alpha * p
         converged = .TRUE.
         iter = i
@@ -756,7 +764,7 @@ CONTAINS
       
       ! Check convergence
       rnorm = SQRT(SUM(ABS(r)**2))
-      IF (rnorm < relative_tol) THEN
+      IF (rnorm < tol_eff) THEN
         converged = .TRUE.
         iter = i
         stats%final_residual = rnorm

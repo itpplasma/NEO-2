@@ -59,7 +59,7 @@ PROGRAM test_bicgstab
   tol = 1.0e-12_dp
   max_iter = 100
   CALL bicgstab_solve(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                      tol, max_iter, converged, iter, stats)
+                      1.0e-14_dp, tol, max_iter, converged, iter, stats)
   
   IF (converged) THEN
     error_norm = SQRT(SUM((x - x_exact)**2))
@@ -104,7 +104,7 @@ PROGRAM test_bicgstab
   tol = 1.0e-10_dp
   max_iter = 50
   CALL bicgstab_solve(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                      tol, max_iter, converged, iter, stats)
+                      1.0e-14_dp, tol, max_iter, converged, iter, stats)
   
   IF (converged) THEN
     error_norm = SQRT(SUM((x - x_exact)**2))
@@ -153,7 +153,7 @@ PROGRAM test_bicgstab
     tol = 1.0e-8_dp  ! Slightly relaxed tolerance for preconditioned solver
     max_iter = 50
     CALL bicgstab_solve_precond(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                                ilu_fac, tol, max_iter, converged, iter, stats)
+                                ilu_fac, 1.0e-14_dp, tol, max_iter, converged, iter, stats)
     
     IF (converged) THEN
       error_norm = SQRT(SUM((x - x_exact)**2))
@@ -219,7 +219,7 @@ PROGRAM test_bicgstab
   tol = 1.0e-8_dp
   max_iter = 50
   CALL bicgstab_solve(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                      tol, max_iter, converged, iter, stats)
+                      1.0e-14_dp, tol, max_iter, converged, iter, stats)
   
   IF (converged) THEN
     ! Check that residual decreased monotonically (approximately)
@@ -259,7 +259,7 @@ PROGRAM test_bicgstab
   tol = 1.0e-12_dp
   max_iter = 10
   CALL bicgstab_solve(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                      tol, max_iter, converged, iter, stats)
+                      1.0e-14_dp, tol, max_iter, converged, iter, stats)
   
   IF (converged .AND. iter == 0) THEN
     IF (MAXVAL(ABS(x)) < tol) THEN
@@ -303,7 +303,7 @@ PROGRAM test_bicgstab
   tol = 1.0e-10_dp
   max_iter = 50
   CALL bicgstab_solve(n, csr_row_ptr, csr_col_idx, z_csr_val, z_b, z_x, &
-                      tol, max_iter, converged, iter, stats)
+                      1.0e-14_dp, tol, max_iter, converged, iter, stats)
   
   IF (converged) THEN
     error_norm = SQRT(SUM(ABS(z_x - z_x_exact)**2))
@@ -352,7 +352,7 @@ PROGRAM test_bicgstab
     tol = 1.0e-6_dp
     max_iter = 20
     CALL bicgstab_solve_precond(n, csr_row_ptr, csr_col_idx, z_csr_val, z_b, z_x, &
-                                z_ilu_fac, tol, max_iter, converged, iter, stats)
+                                z_ilu_fac, 1.0e-14_dp, tol, max_iter, converged, iter, stats)
     
     IF (converged) THEN
       error_norm = SQRT(SUM(ABS(z_x - z_x_exact)**2))
@@ -400,7 +400,7 @@ PROGRAM test_bicgstab
   tol = 1.0e-12_dp
   max_iter = 2
   CALL bicgstab_solve(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                      tol, max_iter, converged, iter, stats)
+                      1.0e-14_dp, tol, max_iter, converged, iter, stats)
   
   IF (.NOT. converged .AND. iter == max_iter) THEN
     WRITE(*,'(A)') "[PASS] Iteration limit enforced correctly"
@@ -433,7 +433,7 @@ PROGRAM test_bicgstab
   tol = 1.0e-10_dp
   max_iter = 100
   CALL bicgstab_solve(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                      tol, max_iter, converged, iter, stats)
+                      1.0e-14_dp, tol, max_iter, converged, iter, stats)
   
   IF (converged) THEN
     WRITE(*,'(A,I0,A)') "[PASS] BiCGSTAB with restart capability converged in ", &
@@ -466,7 +466,7 @@ PROGRAM test_bicgstab
   tol = 1.0e-10_dp
   max_iter = 50
   CALL bicgstab_solve(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                      tol, max_iter, converged, iter, stats)
+                      1.0e-14_dp, tol, max_iter, converged, iter, stats)
   
   IF (converged) THEN
     ! Manually compute residual r = b - A*x
@@ -528,7 +528,7 @@ PROGRAM test_bicgstab
   tol = 1.0e-8_dp
   max_iter = 200
   CALL bicgstab_solve(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                      tol, max_iter, converged, iter, stats)
+                      1.0e-14_dp, tol, max_iter, converged, iter, stats)
   
   IF (converged .AND. iter < 100) THEN
     WRITE(*,'(A,I0,A,E12.4)') "[PASS] Large system converged in ", iter, &
@@ -568,7 +568,7 @@ PROGRAM test_bicgstab
   tol = 1.0e-10_dp
   max_iter = 10
   CALL bicgstab_solve(n, csr_row_ptr, csr_col_idx, csr_val, b, x, &
-                      tol, max_iter, converged, iter, stats)
+                      1.0e-14_dp, tol, max_iter, converged, iter, stats)
   
   ! If we reach here, validation didn't crash with valid inputs
   WRITE(*,'(A)') "[PASS] Input validation allows valid inputs"

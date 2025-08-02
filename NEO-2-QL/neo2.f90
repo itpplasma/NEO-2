@@ -59,6 +59,8 @@ module neo2_ql
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
+  USE sparse_solvers_mod, ONLY : bicgstab_abs_tolerance, bicgstab_rel_tolerance, bicgstab_tolerance, &
+       bicgstab_max_iter, bicgstab_restart_limit, bicgstab_verbose, auto_solver_threshold
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
        MtOvR, B_rho_L_loc, xstart_cyl, isw_ripple_solver,           &
@@ -209,6 +211,8 @@ module neo2_ql
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
+       bicgstab_abs_tolerance, bicgstab_rel_tolerance, bicgstab_tolerance, &
+       bicgstab_max_iter, bicgstab_restart_limit, bicgstab_verbose, auto_solver_threshold, &
        mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &

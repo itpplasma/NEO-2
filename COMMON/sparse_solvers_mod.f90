@@ -21,13 +21,29 @@ MODULE sparse_solvers_mod
   INTEGER, PARAMETER, PUBLIC :: SOLVER_UMFPACK = 3
   INTEGER, PARAMETER, PUBLIC :: SOLVER_BICGSTAB = 4
   
+  ! Module variables that need to be accessible
+  INTEGER :: sparse_solve_method = 0  ! Auto-select: UMFPACK for small matrices, BiCGSTAB for large
+  LOGICAL :: factorization_exists = .FALSE.
+  
+  ! BiCGSTAB solver parameters (configurable via namelist)
+  REAL(kind=dp) :: bicgstab_abs_tolerance = 1.0e-14_dp    ! Absolute tolerance floor (||r|| < abs_tol)
+  REAL(kind=dp) :: bicgstab_rel_tolerance = 1.0e-8_dp     ! Relative tolerance (||r|| < rel_tol*||b||)
+  INTEGER :: bicgstab_max_iter = 1000                      ! Maximum iterations
+  INTEGER :: bicgstab_restart_limit = 3                    ! Number of restarts allowed
+  LOGICAL :: bicgstab_verbose = .FALSE.                    ! Print convergence info
+  ! Legacy support - map old parameter to new ones
+  REAL(kind=dp) :: bicgstab_tolerance = 1.0e-8_dp         ! Deprecated: use bicgstab_rel_tolerance
+  
+  ! Adaptive solver selection parameters
+  INTEGER :: auto_solver_threshold = 100               ! Switch to BiCGSTAB for matrices >= this size
+  
   PUBLIC :: sparse_solve
   PUBLIC :: sparse_solve_suitesparse
   PUBLIC :: sparse_solve_method
   PUBLIC :: factorization_exists
-  
-  INTEGER :: sparse_solve_method = SOLVER_UMFPACK
-  LOGICAL :: factorization_exists = .FALSE.
+  PUBLIC :: bicgstab_abs_tolerance, bicgstab_rel_tolerance, bicgstab_tolerance
+  PUBLIC :: bicgstab_max_iter, bicgstab_restart_limit, bicgstab_verbose
+  PUBLIC :: auto_solver_threshold
   
   ! Named constants for iopt parameter values (compatible with original sparse_mod.f90)
   ! Usage pattern: call with iopt=1 to factorize, then iopt=2 to solve multiple RHS
@@ -67,6 +83,23 @@ MODULE sparse_solvers_mod
 CONTAINS
 
   !-------------------------------------------------------------------------------
+  ! Auto-selection of sparse solver method based on matrix size
+  !-------------------------------------------------------------------------------
+  SUBROUTINE handle_auto_selection(nrow, ncol)
+    INTEGER, INTENT(in) :: nrow, ncol
+    
+    IF (sparse_solve_method .EQ. 0) THEN
+       IF (nrow < auto_solver_threshold) THEN
+          sparse_solve_method = SOLVER_UMFPACK
+          IF (sparse_talk) PRINT *, 'Auto-selected UMFPACK for small matrix (', nrow, 'x', ncol, ')'
+       ELSE
+          sparse_solve_method = SOLVER_BICGSTAB
+          IF (sparse_talk) PRINT *, 'Auto-selected BiCGSTAB for large matrix (', nrow, 'x', ncol, ')'
+       END IF
+    END IF
+  END SUBROUTINE handle_auto_selection
+
+  !-------------------------------------------------------------------------------
   ! Parameter validation for sparse solver input
   !-------------------------------------------------------------------------------
   SUBROUTINE validate_sparse_solver_params(nrow, ncol, nz, solver_method, routine_name)
@@ -95,13 +128,26 @@ CONTAINS
       PRINT *, '         Consider using BiCGSTAB (method 4) for better memory efficiency'
     END IF
     
-    ! Check solver method
+    ! Check solver method and implement auto-selection
     SELECT CASE (solver_method)
+      CASE (0)
+        ! Auto-select based on matrix size
+        IF (nrow < auto_solver_threshold) THEN
+          sparse_solve_method = SOLVER_UMFPACK
+          IF (sparse_talk) THEN
+            PRINT *, 'INFO in ', routine_name, ': Auto-selected UMFPACK for small matrix (', nrow, 'x', ncol, ')'
+          END IF
+        ELSE
+          sparse_solve_method = SOLVER_BICGSTAB
+          IF (sparse_talk) THEN
+            PRINT *, 'INFO in ', routine_name, ': Auto-selected BiCGSTAB for large matrix (', nrow, 'x', ncol, ')'
+          END IF
+        END IF
       CASE (2, SOLVER_UMFPACK, SOLVER_BICGSTAB)
-        ! Valid solver methods
+        ! Valid explicit solver methods
       CASE DEFAULT
         PRINT *, 'ERROR in ', routine_name, ': Invalid solver method', solver_method
-        PRINT *, 'Valid options: 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+        PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
         ERROR STOP 'Invalid solver method'
     END SELECT
     
@@ -179,6 +225,9 @@ CONTAINS
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_real
     
+    ! Handle auto-selection
+    CALL handle_auto_selection(nrow, ncol)
+    
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
        IF (pcol_modified) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,iopt)
@@ -193,7 +242,7 @@ CONTAINS
        END IF
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
        STOP
     END IF
     
@@ -245,6 +294,9 @@ CONTAINS
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_complex
     
+    ! Handle auto-selection
+    CALL handle_auto_selection(nrow, ncol)
+    
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
        IF (pcol_modified) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,iopt)
@@ -259,7 +311,7 @@ CONTAINS
        END IF
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
        STOP
     END IF
     
@@ -280,7 +332,7 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
     
     INTEGER :: iopt = 0
-    INTEGER :: n
+    INTEGER :: n, i
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
     LOGICAL :: pcol_modified
     
@@ -296,7 +348,7 @@ CONTAINS
     
     ! For iopt=1 (factorize only), save factorization for later reuse with iopt=2
     IF (.NOT. factorization_exists_real .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
           ELSE
@@ -311,15 +363,27 @@ CONTAINS
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_real
     
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+    ! Handle auto-selection
+    CALL handle_auto_selection(nrow, ncol)
+    
+    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
        IF (pcol_modified) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,iopt)
        ELSE
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
+    ELSE IF (sparse_solve_method .EQ. SOLVER_BICGSTAB) THEN
+       ! BiCGSTAB doesn't support 2D arrays directly, solve each column separately
+       DO i = 1, SIZE(b,2)
+          IF (pcol_modified) THEN
+             CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcoln,val,b(:,i),iopt)
+          ELSE
+             CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
+          END IF
+       END DO
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
        STOP
     END IF
     
@@ -340,7 +404,7 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
     
     INTEGER :: iopt = 0
-    INTEGER :: n
+    INTEGER :: n, i
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
     LOGICAL :: pcol_modified
     
@@ -356,7 +420,7 @@ CONTAINS
     
     ! For iopt=1 (factorize only), save factorization for later reuse with iopt=2
     IF (.NOT. factorization_exists_complex .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
           ELSE
@@ -371,15 +435,27 @@ CONTAINS
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_complex
     
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+    ! Handle auto-selection
+    CALL handle_auto_selection(nrow, ncol)
+    
+    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
        IF (pcol_modified) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,iopt)
        ELSE
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
+    ELSE IF (sparse_solve_method .EQ. SOLVER_BICGSTAB) THEN
+       ! BiCGSTAB doesn't support 2D arrays directly, solve each column separately
+       DO i = 1, SIZE(b,2)
+          IF (pcol_modified) THEN
+             CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcoln,val,b(:,i),iopt)
+          ELSE
+             CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
+          END IF
+       END DO
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
        STOP
     END IF
     
@@ -410,12 +486,12 @@ CONTAINS
     
     ! check about existing factorization
     IF (factorization_exists_real .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
     IF (.NOT. factorization_exists_real .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists_real = .TRUE.
@@ -426,12 +502,19 @@ CONTAINS
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_real
     
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+    ! Convert full matrix to sparse format
+    CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+    
+    ! Handle auto-selection
+    CALL handle_auto_selection(nrow, ncol)
+    
+    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE IF (sparse_solve_method .EQ. SOLVER_BICGSTAB) THEN
+       CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
        STOP
     END IF
     
@@ -460,12 +543,12 @@ CONTAINS
     
     ! check about existing factorization
     IF (factorization_exists_complex .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
     IF (.NOT. factorization_exists_complex .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists_complex = .TRUE.
@@ -476,12 +559,19 @@ CONTAINS
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_complex
     
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+    ! Convert full matrix to sparse format
+    CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+    
+    ! Handle auto-selection
+    CALL handle_auto_selection(nrow, ncol)
+    
+    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE IF (sparse_solve_method .EQ. SOLVER_BICGSTAB) THEN
+       CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
        STOP
     END IF
     
@@ -502,7 +592,7 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
     
     INTEGER :: iopt = 0
-    INTEGER :: nrow,ncol,nz
+    INTEGER :: nrow,ncol,nz,i
     INTEGER, DIMENSION(:), ALLOCATABLE :: irow,pcol
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: val
     
@@ -510,12 +600,12 @@ CONTAINS
     
     ! check about existing factorization
     IF (factorization_exists_real .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
     IF (.NOT. factorization_exists_real .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists_real = .TRUE.
@@ -526,12 +616,22 @@ CONTAINS
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_real
     
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+    ! Convert full matrix to sparse format
+    CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+    
+    ! Handle auto-selection
+    CALL handle_auto_selection(nrow, ncol)
+    
+    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE IF (sparse_solve_method .EQ. SOLVER_BICGSTAB) THEN
+       ! BiCGSTAB doesn't support 2D arrays directly, solve each column separately
+       DO i = 1, SIZE(b,2)
+          CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
+       END DO
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
        STOP
     END IF
     
@@ -552,7 +652,7 @@ CONTAINS
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
     
     INTEGER :: iopt = 0
-    INTEGER :: nrow,ncol,nz
+    INTEGER :: nrow,ncol,nz,i
     INTEGER, DIMENSION(:), ALLOCATABLE :: irow,pcol
     COMPLEX(kind=dp), DIMENSION(:), ALLOCATABLE :: val
     
@@ -560,12 +660,12 @@ CONTAINS
     
     ! check about existing factorization
     IF (factorization_exists_complex .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
     IF (.NOT. factorization_exists_complex .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists_complex = .TRUE.
@@ -576,12 +676,22 @@ CONTAINS
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_complex
     
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+    ! Convert full matrix to sparse format
+    CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+    
+    ! Handle auto-selection
+    CALL handle_auto_selection(nrow, ncol)
+    
+    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. SOLVER_UMFPACK) ) THEN
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE IF (sparse_solve_method .EQ. SOLVER_BICGSTAB) THEN
+       ! BiCGSTAB doesn't support 2D arrays directly, solve each column separately
+       DO i = 1, SIZE(b,2)
+          CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
+       END DO
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
        STOP
     END IF
     
@@ -1116,25 +1226,37 @@ CONTAINS
     INTEGER, ALLOCATABLE :: csr_row_ptr(:), csr_col_idx(:)
     REAL(kind=dp), ALLOCATABLE :: csr_val(:)
     
-    ! BiCGSTAB solver parameters
-    REAL(kind=dp) :: tol = 1.0e-10_dp
-    INTEGER :: max_iter = 1000
+    ! BiCGSTAB solver parameters (use configurable values)
+    REAL(kind=dp) :: abs_tol, rel_tol
+    INTEGER :: max_iter
     LOGICAL :: converged
     INTEGER :: iter
     TYPE(bicgstab_stats) :: stats
+    
+    ! Use module-level configurable parameters
+    ! Support legacy single tolerance parameter
+    IF (bicgstab_tolerance /= bicgstab_rel_tolerance) THEN
+      ! User set the legacy parameter
+      rel_tol = bicgstab_tolerance
+      abs_tol = bicgstab_abs_tolerance
+    ELSE
+      rel_tol = bicgstab_rel_tolerance
+      abs_tol = bicgstab_abs_tolerance
+    END IF
+    max_iter = bicgstab_max_iter
     
     ! Convert from CSC to CSR format for BiCGSTAB
     ALLOCATE(csr_row_ptr(nrow+1), csr_col_idx(nz), csr_val(nz))
     CALL csc_to_csr_real(nrow, ncol, nz, pcol, irow, val, csr_row_ptr, csr_col_idx, csr_val)
     
-    ! Solve using BiCGSTAB
+    ! Solve using BiCGSTAB with dual tolerances
     CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b, b, &
-                        tol, max_iter, converged, iter, stats)
+                        abs_tol, rel_tol, max_iter, converged, iter, stats)
     
     IF (.NOT. converged) THEN
       PRINT *, 'WARNING: BiCGSTAB did not converge after', iter, 'iterations'
       PRINT *, '         Final residual:', stats%final_residual
-      PRINT *, '         Target tolerance:', tol
+      PRINT *, '         Target tolerance: abs=', abs_tol, ', rel=', rel_tol
       PRINT *, '         Matrix size:', nrow, 'x', nrow
       PRINT *, '         Non-zeros:', nz
       IF (stats%final_residual > 1.0e-6_dp) THEN
@@ -1145,7 +1267,7 @@ CONTAINS
       END IF
     END IF
     
-    IF (sparse_talk) THEN
+    IF (sparse_talk .OR. bicgstab_verbose) THEN
       PRINT *, 'BiCGSTAB converged in', iter, 'iterations, residual =', stats%final_residual
     END IF
     
@@ -1168,25 +1290,37 @@ CONTAINS
     INTEGER, ALLOCATABLE :: csr_row_ptr(:), csr_col_idx(:)
     COMPLEX(kind=dp), ALLOCATABLE :: csr_val(:)
     
-    ! BiCGSTAB solver parameters
-    REAL(kind=dp) :: tol = 1.0e-10_dp
-    INTEGER :: max_iter = 1000
+    ! BiCGSTAB solver parameters (use configurable values)
+    REAL(kind=dp) :: abs_tol, rel_tol
+    INTEGER :: max_iter
     LOGICAL :: converged
     INTEGER :: iter
     TYPE(bicgstab_stats) :: stats
+    
+    ! Use module-level configurable parameters
+    ! Support legacy single tolerance parameter
+    IF (bicgstab_tolerance /= bicgstab_rel_tolerance) THEN
+      ! User set the legacy parameter
+      rel_tol = bicgstab_tolerance
+      abs_tol = bicgstab_abs_tolerance
+    ELSE
+      rel_tol = bicgstab_rel_tolerance
+      abs_tol = bicgstab_abs_tolerance
+    END IF
+    max_iter = bicgstab_max_iter
     
     ! Convert from CSC to CSR format for BiCGSTAB
     ALLOCATE(csr_row_ptr(nrow+1), csr_col_idx(nz), csr_val(nz))
     CALL csc_to_csr_complex(nrow, ncol, nz, pcol, irow, val, csr_row_ptr, csr_col_idx, csr_val)
     
-    ! Solve using BiCGSTAB
+    ! Solve using BiCGSTAB with dual tolerances
     CALL bicgstab_solve(nrow, csr_row_ptr, csr_col_idx, csr_val, b, b, &
-                        tol, max_iter, converged, iter, stats)
+                        abs_tol, rel_tol, max_iter, converged, iter, stats)
     
     IF (.NOT. converged) THEN
       PRINT *, 'WARNING: BiCGSTAB did not converge after', iter, 'iterations'
       PRINT *, '         Final residual:', stats%final_residual
-      PRINT *, '         Target tolerance:', tol
+      PRINT *, '         Target tolerance: abs=', abs_tol, ', rel=', rel_tol
       PRINT *, '         Matrix size:', nrow, 'x', nrow
       PRINT *, '         Non-zeros:', nz
       IF (stats%final_residual > 1.0e-6_dp) THEN
@@ -1197,7 +1331,7 @@ CONTAINS
       END IF
     END IF
     
-    IF (sparse_talk) THEN
+    IF (sparse_talk .OR. bicgstab_verbose) THEN
       PRINT *, 'BiCGSTAB converged in', iter, 'iterations, residual =', stats%final_residual
     END IF
     
