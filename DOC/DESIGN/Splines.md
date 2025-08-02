@@ -125,3 +125,52 @@ Comprehensive test suite (`TEST/test_spline_comparison.f90`) validates:
 - **Correctness**: Unified approach eliminates potential inconsistencies between different algorithms
 
 The sparse matrix approach handles all boundary conditions, smoothing parameters, and test functions while maintaining optimal performance characteristics.
+
+## Known Issues and Limitations
+
+### Clamped End Boundary Condition (sw2=3)
+
+**Issue**: All implementations (original dense, fast path, and sparse) have a mathematical limitation with clamped end boundary conditions:
+
+1. **Expected behavior**: For sw2=3, the constraint should enforce S'(x_n) = cn (derivative at the last data point)
+2. **Actual behavior**: All implementations set b(n-1) = cn, where b(n-1) represents S'(x_{n-1}), not S'(x_n)
+3. **Impact**: The spline will NOT have the correct derivative at x_n
+
+**Status**: This limitation is maintained for backward compatibility. All implementations use the same post-processing approach to ensure consistent behavior across NEO-2.
+
+### Array Size Convention
+
+Coefficient arrays have size n for n data points, but mathematically should have size n-1 (one per interval). Both implementations maintain consistency with the existing interface.
+
+## Test Results Summary
+
+| Test | Status | Notes |
+|------|---------|-------|
+| test_spline_unit | ✅ PASS | Basic functionality tests |
+| test_spline_three_way | ✅ PASS | Validates fast path correctness |
+| test_spline_analytical | ✅ PASS | Confirms known boundary condition behavior |
+| test_spline_comparison | ✅ PASS | Verifies numerical equivalence |
+
+## Implementation Verification
+
+### Fast Path Support
+- ✅ Natural boundaries (sw1=2, sw2=4)
+- ✅ Clamped boundaries (sw1=1, sw2=3) - With known limitation
+- ✅ Mixed boundaries (sw1=1, sw2=4) and (sw1=2, sw2=3)
+
+### Sparse Path Support
+- ✅ Non-consecutive indices
+- ✅ Non-unity lambda weights  
+- ✅ Non-zero m parameters
+- ✅ All boundary condition combinations
+
+### Configuration Options
+
+As of the latest update, NEO-2 includes a configuration option to control spline implementation:
+
+```fortran
+! In neo2.in namelist &settings
+use_fast_splines = .false.  ! Default: use direct sparse implementation
+```
+
+Setting `use_fast_splines = .true.` enables the fast tridiagonal solver for supported cases, providing up to 9.1x speedup while maintaining numerical accuracy within 1e-12.
