@@ -65,6 +65,11 @@ CONTAINS
     REAL(kind=dp) :: r0_dot_r, r0_dot_v, t_dot_s, t_dot_t
     REAL(kind=dp) :: start_time, end_time
     
+    ! Basic input validation
+    IF (n <= 0) ERROR STOP "BiCGSTAB: n must be positive"
+    IF (tol <= 0.0_dp) ERROR STOP "BiCGSTAB: tolerance must be positive"
+    IF (max_iter <= 0) ERROR STOP "BiCGSTAB: max_iter must be positive"
+    
     ! Initialize statistics
     CALL CPU_TIME(start_time)
     stats%iterations = 0
@@ -245,6 +250,11 @@ CONTAINS
     INTEGER :: i
     COMPLEX(kind=dp) :: r0_dot_r, r0_dot_v, t_dot_s, t_dot_t
     REAL(kind=dp) :: start_time, end_time
+    
+    ! Basic input validation
+    IF (n <= 0) ERROR STOP "BiCGSTAB: n must be positive"
+    IF (tol <= 0.0_dp) ERROR STOP "BiCGSTAB: tolerance must be positive"
+    IF (max_iter <= 0) ERROR STOP "BiCGSTAB: max_iter must be positive"
     
     ! Initialize statistics
     CALL CPU_TIME(start_time)
@@ -428,6 +438,11 @@ CONTAINS
     INTEGER :: i
     REAL(kind=dp) :: r0_dot_z, r0_dot_v, t_dot_s, t_dot_t
     REAL(kind=dp) :: start_time, end_time
+    
+    ! Basic input validation
+    IF (n <= 0) ERROR STOP "BiCGSTAB: n must be positive"
+    IF (tol <= 0.0_dp) ERROR STOP "BiCGSTAB: tolerance must be positive"
+    IF (max_iter <= 0) ERROR STOP "BiCGSTAB: max_iter must be positive"
     
     ! Initialize statistics
     CALL CPU_TIME(start_time)
@@ -623,6 +638,11 @@ CONTAINS
     INTEGER :: i
     COMPLEX(kind=dp) :: r0_dot_z, r0_dot_v, t_dot_s, t_dot_t
     REAL(kind=dp) :: start_time, end_time
+    
+    ! Basic input validation
+    IF (n <= 0) ERROR STOP "BiCGSTAB: n must be positive"
+    IF (tol <= 0.0_dp) ERROR STOP "BiCGSTAB: tolerance must be positive"
+    IF (max_iter <= 0) ERROR STOP "BiCGSTAB: max_iter must be positive"
     
     ! Initialize statistics
     CALL CPU_TIME(start_time)
