@@ -358,7 +358,7 @@ CONTAINS
     ! Create a simple complex test matrix
     nrow = 3
     ncol = 3
-    nz = 7
+    nz = 6
     
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
@@ -370,7 +370,7 @@ CONTAINS
     irow = (/1, 2, 1, 2, 2, 3/)
     z_val = (/(3.0_dp, 0.0_dp), (1.0_dp, -1.0_dp), &
              (1.0_dp, 1.0_dp), (4.0_dp, 0.0_dp), &
-             (2.0_dp, -1.0_dp), (2.0_dp, 1.0_dp), (5.0_dp, 0.0_dp)/)
+             (2.0_dp, -1.0_dp), (5.0_dp, 0.0_dp)/)
     
     ! Create RHS
     IF (ALLOCATED(z_b)) DEALLOCATE(z_b)
@@ -396,13 +396,14 @@ CONTAINS
   
   SUBROUTINE test_complex_solver_multiple_rhs()
     REAL(kind=dp) :: max_abs_err, max_rel_err
+    COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE :: z_B_orig_full
     
     WRITE(*,'(A)') "Test 9: Complex solver with multiple RHS"
     
     ! Use same matrix as test 8
     nrow = 3
     ncol = 3
-    nz = 7
+    nz = 6
     
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
@@ -413,13 +414,17 @@ CONTAINS
     irow = (/1, 2, 1, 2, 2, 3/)
     z_val = (/(3.0_dp, 0.0_dp), (1.0_dp, -1.0_dp), &
              (1.0_dp, 1.0_dp), (4.0_dp, 0.0_dp), &
-             (2.0_dp, -1.0_dp), (2.0_dp, 1.0_dp), (5.0_dp, 0.0_dp)/)
+             (2.0_dp, -1.0_dp), (5.0_dp, 0.0_dp)/)
     
     ! Create multiple RHS
     IF (ALLOCATED(z_B_full)) DEALLOCATE(z_B_full)
     ALLOCATE(z_B_full(nrow, 2))
     z_B_full(:,1) = (/(1.0_dp, 1.0_dp), (2.0_dp, -1.0_dp), (3.0_dp, 0.0_dp)/)
     z_B_full(:,2) = (/(0.0_dp, 1.0_dp), (1.0_dp, 0.0_dp), (2.0_dp, 2.0_dp)/)
+    
+    ! Save original B values
+    ALLOCATE(z_B_orig_full(nrow, 2))
+    z_B_orig_full = z_B_full
     
     ! Solve
     IF (ALLOCATED(z_X_full)) DEALLOCATE(z_X_full)
@@ -428,7 +433,9 @@ CONTAINS
     CALL sparse_solve(nrow, ncol, nz, irow, pcol, z_val, z_X_full)
     
     ! Test
-    CALL sparse_solver_test(nrow, ncol, irow, pcol, z_val, z_X_full, z_B_full, max_abs_err, max_rel_err)
+    CALL sparse_solver_test(nrow, ncol, irow, pcol, z_val, z_X_full, z_B_orig_full, max_abs_err, max_rel_err)
+    
+    DEALLOCATE(z_B_orig_full)
     
     CALL check_result("Complex multiple RHS accuracy", &
          max_abs_err < tol_abs .AND. max_rel_err < tol_rel)

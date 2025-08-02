@@ -592,6 +592,9 @@ CONTAINS
        IF ((iopt_in .EQ. IOPT_FACTORIZE_ONLY .OR. iopt_in .EQ. IOPT_SOLVE_ONLY) .AND. &
             .NOT. factorization_exists_real) THEN
           PRINT *, 'ERROR: Factorization reuse requested but no factorization exists!'
+          IF (ALLOCATED(Ap)) DEALLOCATE(Ap)
+          IF (ALLOCATED(Ai)) DEALLOCATE(Ai)
+          IF (ALLOCATED(x)) DEALLOCATE(x)
           RETURN
        END IF
        
