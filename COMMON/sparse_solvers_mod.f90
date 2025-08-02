@@ -16,6 +16,7 @@ MODULE sparse_solvers_mod
   USE bicgstab_mod
   USE ilu_precond_mod
   USE gmres_mod
+  USE idrs_mod
   USE amg_types_mod
   USE amg_precond_mod
   IMPLICIT NONE
@@ -24,6 +25,7 @@ MODULE sparse_solvers_mod
   INTEGER, PARAMETER, PUBLIC :: SOLVER_UMFPACK = 3
   INTEGER, PARAMETER, PUBLIC :: SOLVER_BICGSTAB = 4
   INTEGER, PARAMETER, PUBLIC :: SOLVER_GMRES = 5
+  INTEGER, PARAMETER, PUBLIC :: SOLVER_IDRS = 6
 
   ! Preconditioner type constants
   INTEGER, PARAMETER, PUBLIC :: PRECOND_NONE = 0
@@ -48,6 +50,9 @@ MODULE sparse_solvers_mod
     
     ! BiCGSTAB-specific parameters  
     INTEGER :: bicgstab_restart_limit = 3           ! BiCGSTAB restart limit
+    
+    ! IDR(s)-specific parameters
+    INTEGER :: idrs_shadow_space_dim = 4            ! IDR(s) shadow space dimension
   END TYPE iterative_solver_params
 
   ! Global default parameters (backward compatibility)
@@ -194,11 +199,11 @@ CONTAINS
             PRINT *, 'INFO in ', routine_name, ': Auto-selected BiCGSTAB for large matrix (', nrow, 'x', ncol, ')'
           END IF
         END IF
-      CASE (2, SOLVER_UMFPACK, SOLVER_BICGSTAB, SOLVER_GMRES)
+      CASE (2, SOLVER_UMFPACK, SOLVER_BICGSTAB, SOLVER_GMRES, SOLVER_IDRS)
         ! Valid explicit solver methods
       CASE DEFAULT
         PRINT *, 'ERROR in ', routine_name, ': Invalid solver method', solver_method
-        PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
+        PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5), SOLVER_IDRS(6)'
         ERROR STOP 'Invalid solver method'
     END SELECT
     
@@ -297,9 +302,15 @@ CONTAINS
        ELSE
           CALL sparse_solve_gmres_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
+    ELSE IF (sparse_solve_method .EQ. SOLVER_IDRS) THEN
+       IF (pcol_modified) THEN
+          CALL sparse_solve_idrs_real(nrow,ncol,nz,irow,pcoln,val,b,iopt)
+       ELSE
+          CALL sparse_solve_idrs_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
+       END IF
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5), SOLVER_IDRS(6)'
        STOP
     END IF
     
@@ -372,9 +383,14 @@ CONTAINS
        ELSE
           CALL sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
+    ELSE IF (sparse_solve_method .EQ. SOLVER_IDRS) THEN
+       ! Complex IDR(s) not implemented yet, should error
+       PRINT *, 'ERROR: Complex IDR(s) solver not yet implemented'
+       PRINT *, 'Please use SOLVER_UMFPACK or SOLVER_BICGSTAB for complex systems'
+       STOP
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5), SOLVER_IDRS(6)'
        STOP
     END IF
     
@@ -453,9 +469,18 @@ CONTAINS
              CALL sparse_solve_gmres_real(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
           END IF
        END DO
+    ELSE IF (sparse_solve_method .EQ. SOLVER_IDRS) THEN
+       ! IDR(s) doesn't support 2D arrays directly, solve each column separately
+       DO i = 1, SIZE(b,2)
+          IF (pcol_modified) THEN
+             CALL sparse_solve_idrs_real(nrow,ncol,nz,irow,pcoln,val,b(:,i),iopt)
+          ELSE
+             CALL sparse_solve_idrs_real(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
+          END IF
+       END DO
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5), SOLVER_IDRS(6)'
        STOP
     END IF
     
@@ -534,9 +559,14 @@ CONTAINS
              CALL sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
           END IF
        END DO
+    ELSE IF (sparse_solve_method .EQ. SOLVER_IDRS) THEN
+       ! Complex IDR(s) not implemented yet, should error
+       PRINT *, 'ERROR: Complex IDR(s) solver not yet implemented'
+       PRINT *, 'Please use SOLVER_UMFPACK or SOLVER_BICGSTAB for complex systems'
+       STOP
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5), SOLVER_IDRS(6)'
        STOP
     END IF
     
@@ -595,9 +625,11 @@ CONTAINS
        CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE IF (sparse_solve_method .EQ. SOLVER_GMRES) THEN
        CALL sparse_solve_gmres_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE IF (sparse_solve_method .EQ. SOLVER_IDRS) THEN
+       CALL sparse_solve_idrs_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5), SOLVER_IDRS(6)'
        STOP
     END IF
     
@@ -654,9 +686,14 @@ CONTAINS
        CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE IF (sparse_solve_method .EQ. SOLVER_GMRES) THEN
        CALL sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE IF (sparse_solve_method .EQ. SOLVER_IDRS) THEN
+       ! Complex IDR(s) not implemented yet, should error
+       PRINT *, 'ERROR: Complex IDR(s) solver not yet implemented'
+       PRINT *, 'Please use SOLVER_UMFPACK or SOLVER_BICGSTAB for complex systems'
+       STOP
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5), SOLVER_IDRS(6)'
        STOP
     END IF
     
@@ -719,9 +756,14 @@ CONTAINS
        DO i = 1, SIZE(b,2)
           CALL sparse_solve_gmres_real(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
        END DO
+    ELSE IF (sparse_solve_method .EQ. SOLVER_IDRS) THEN
+       ! IDR(s) doesn't support 2D arrays directly, solve each column separately
+       DO i = 1, SIZE(b,2)
+          CALL sparse_solve_idrs_real(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
+       END DO
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5), SOLVER_IDRS(6)'
        STOP
     END IF
     
@@ -784,9 +826,14 @@ CONTAINS
        DO i = 1, SIZE(b,2)
           CALL sparse_solve_gmres_complex(nrow,ncol,nz,irow,pcol,val,b(:,i),iopt)
        END DO
+    ELSE IF (sparse_solve_method .EQ. SOLVER_IDRS) THEN
+       ! Complex IDR(s) not implemented yet, should error
+       PRINT *, 'ERROR: Complex IDR(s) solver not yet implemented'
+       PRINT *, 'Please use SOLVER_UMFPACK or SOLVER_BICGSTAB for complex systems'
+       STOP
     ELSE
        PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
-       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5)'
+       PRINT *, 'Valid options: 0 (auto), 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), SOLVER_GMRES(5), SOLVER_IDRS(6)'
        STOP
     END IF
     
@@ -1698,6 +1745,11 @@ CONTAINS
     INTEGER :: ilu_info
     LOGICAL :: use_ilu
     
+    ! AMG preconditioning variables
+    TYPE(amg_hierarchy) :: amg_hier
+    INTEGER :: amg_info
+    LOGICAL :: use_amg
+    
     ! Initialize variables
     iter = 0
     info = 0
@@ -1709,17 +1761,18 @@ CONTAINS
     max_iter = default_iterative_params%max_iterations
     restart_dim = default_iterative_params%gmres_restart
     
-    ! Determine if using ILU preconditioning
+    ! Determine preconditioning type
     use_ilu = (default_iterative_params%preconditioner_type == PRECOND_ILU)
+    use_amg = (default_iterative_params%preconditioner_type == PRECOND_AMG)
     
     IF (default_iterative_params%verbose) THEN
       PRINT *, 'GMRES: preconditioner_type =', default_iterative_params%preconditioner_type
-      PRINT *, 'GMRES: PRECOND_ILU =', PRECOND_ILU
-      PRINT *, 'GMRES: use_ilu =', use_ilu
+      PRINT *, 'GMRES: PRECOND_ILU =', PRECOND_ILU, ', PRECOND_AMG =', PRECOND_AMG
+      PRINT *, 'GMRES: use_ilu =', use_ilu, ', use_amg =', use_amg
     END IF
     
     ! For dense GMRES without preconditioning, we might need more iterations
-    IF (.NOT. use_ilu) THEN
+    IF (.NOT. use_ilu .AND. .NOT. use_amg) THEN
       max_iter = MAX(max_iter, nrow * 2)  ! Allow more iterations for unpreconditioned
     END IF
     
@@ -1730,7 +1783,7 @@ CONTAINS
     ! Initialize GMRES workspace
     CALL create_gmres_workspace(workspace, nrow, restart_dim)
     
-    ! Setup ILU preconditioning if requested
+    ! Setup preconditioning
     IF (use_ilu) THEN
       IF (default_iterative_params%verbose) THEN
         PRINT *, 'GMRES: Setting up ILU(', default_iterative_params%ilu_fill_level, ') preconditioning...'
@@ -1752,6 +1805,39 @@ CONTAINS
           PRINT *, 'GMRES: ILU factorization successful'
         END IF
       END IF
+    ELSE IF (use_amg) THEN
+      IF (default_iterative_params%verbose) THEN
+        PRINT *, 'GMRES: Setting up AMG preconditioning...'
+      END IF
+      
+      ! Set up AMG hierarchy
+      CALL amg_precond_setup(amg_hier, nrow, nz, csr_row_ptr, csr_col_idx, csr_val)
+      
+      ! Verify AMG hierarchy was built successfully
+      IF (.NOT. ALLOCATED(amg_hier%levels) .OR. amg_hier%n_levels < 1) THEN
+        amg_info = -1  ! AMG setup failed
+        IF (default_iterative_params%verbose) THEN
+          PRINT *, 'WARNING: AMG hierarchy setup failed - hierarchy not properly allocated'
+        END IF
+      ELSE IF (amg_hier%levels(1)%n /= nrow) THEN
+        amg_info = -2  ! AMG setup failed - dimension mismatch
+        IF (default_iterative_params%verbose) THEN
+          PRINT *, 'WARNING: AMG hierarchy setup failed - dimension mismatch'
+          PRINT *, '  Expected n =', nrow, ', got n =', amg_hier%levels(1)%n
+        END IF
+      ELSE
+        amg_info = 0  ! AMG setup successful
+        IF (default_iterative_params%verbose) THEN
+          PRINT *, 'GMRES: AMG hierarchy built with', amg_hier%n_levels, 'levels'
+        END IF
+      END IF
+      
+      IF (amg_info /= 0) THEN
+        IF (sparse_talk .OR. default_iterative_params%verbose) THEN
+          PRINT *, 'WARNING: AMG setup failed, proceeding without preconditioning'
+        END IF
+        use_amg = .FALSE.
+      END IF
     END IF
     
     ! Allocate solution vector
@@ -1767,6 +1853,44 @@ CONTAINS
                                                  b, x, max_iter, abs_tol, ilu_fac, &
                                                  x, iter, residual_norm, converged, info, &
                                                  use_preconditioner=.TRUE.)
+    ELSE IF (use_amg) THEN
+      IF (default_iterative_params%verbose) THEN
+        PRINT *, 'GMRES: Using native AMG-preconditioned sparse solver'
+      END IF
+      
+      ! Use native sparse AMG-preconditioned GMRES
+      BLOCK
+        REAL(DP), ALLOCATABLE :: x_initial(:)
+        REAL(DP) :: norm_b, rel_tol_for_gmres
+        
+        ALLOCATE(x_initial(nrow))
+        x_initial = 0.0_dp
+        
+        ! Compute norm of b for tolerance conversion
+        norm_b = SQRT(DOT_PRODUCT(b, b))
+        
+        IF (default_iterative_params%verbose) THEN
+          PRINT *, 'GMRES+AMG: Using native sparse AMG-preconditioned implementation'
+          PRINT *, '  Matrix size:', nrow
+          PRINT *, '  Restart dimension:', restart_dim
+          PRINT *, '  Max iterations:', max_iter
+          PRINT *, '  Tolerance:', abs_tol
+          PRINT *, '  Norm of b:', norm_b
+        END IF
+        
+        ! GMRES uses relative tolerance, so convert our absolute tolerance
+        IF (norm_b > TINY(1.0_DP)) THEN
+          rel_tol_for_gmres = abs_tol / norm_b
+        ELSE
+          rel_tol_for_gmres = abs_tol
+        END IF
+        
+        CALL gmres_solve_amg_preconditioned(workspace, nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                          b, x_initial, max_iter, rel_tol_for_gmres, amg_hier, &
+                                          x, iter, residual_norm, converged, info)
+        
+        DEALLOCATE(x_initial)
+      END BLOCK
     ELSE
       ! For non-preconditioned, need to convert to dense matrix format
       BLOCK
@@ -1836,6 +1960,7 @@ CONTAINS
     ! Clean up
     CALL destroy_gmres_workspace(workspace)
     IF (use_ilu) CALL ilu_free(ilu_fac)
+    IF (use_amg .AND. amg_info == 0) CALL amg_precond_destroy(amg_hier)
     DEALLOCATE(csr_row_ptr, csr_col_idx, csr_val, x)
     
   END SUBROUTINE sparse_solve_gmres_real
@@ -1855,5 +1980,177 @@ CONTAINS
     STOP
     
   END SUBROUTINE sparse_solve_gmres_complex
+
+  !-------------------------------------------------------------------------------
+  ! IDR(s) solver wrapper for real systems with AMG preconditioning
+  SUBROUTINE sparse_solve_idrs_real(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
+    INTEGER, INTENT(in) :: nrow,ncol,nz
+    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
+    REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
+    REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
+    INTEGER, INTENT(in) :: iopt_in
+    
+    ! Local variables for CSR conversion
+    INTEGER, ALLOCATABLE :: csr_row_ptr(:), csr_col_idx(:)
+    REAL(kind=dp), ALLOCATABLE :: csr_val(:)
+    REAL(kind=dp), ALLOCATABLE :: x(:)
+    
+    ! IDR(s) solver parameters
+    REAL(kind=dp) :: abs_tol, rel_tol
+    INTEGER :: max_iter, shadow_dim
+    INTEGER :: iter, info
+    
+    ! AMG preconditioning variables
+    TYPE(amg_hierarchy) :: amg_hier
+    INTEGER :: amg_info
+    LOGICAL :: use_amg
+    
+    ! Initialize variables
+    iter = 0
+    info = 0
+    
+    ! Use module-level configurable parameters
+    abs_tol = default_iterative_params%abs_tolerance
+    rel_tol = default_iterative_params%rel_tolerance
+    max_iter = default_iterative_params%max_iterations
+    shadow_dim = default_iterative_params%idrs_shadow_space_dim
+    
+    ! Determine if using AMG preconditioning
+    use_amg = (default_iterative_params%preconditioner_type == PRECOND_AMG)
+    
+    IF (default_iterative_params%verbose) THEN
+      PRINT *, 'IDR(s): preconditioner_type =', default_iterative_params%preconditioner_type
+      PRINT *, 'IDR(s): PRECOND_AMG =', PRECOND_AMG
+      PRINT *, 'IDR(s): use_amg =', use_amg
+      PRINT *, 'IDR(s): shadow_space_dim =', shadow_dim
+    END IF
+    
+    ! For IDR(s) without preconditioning, we might need more iterations
+    IF (.NOT. use_amg) THEN
+      max_iter = MAX(max_iter, nrow * 2)  ! Allow more iterations for unpreconditioned
+    END IF
+    
+    ! Convert CSC to CSR format for IDR(s)
+    ALLOCATE(csr_row_ptr(nrow+1), csr_col_idx(nz), csr_val(nz))
+    CALL csc_to_csr_real(nrow, ncol, nz, pcol, irow, val, csr_row_ptr, csr_col_idx, csr_val)
+    
+    ! Setup AMG preconditioning if requested
+    IF (use_amg) THEN
+      IF (default_iterative_params%verbose) THEN
+        PRINT *, 'IDR(s): Setting up AMG preconditioning...'
+      END IF
+      
+      ! Set up AMG hierarchy
+      CALL amg_precond_setup(amg_hier, nrow, nz, csr_row_ptr, csr_col_idx, csr_val)
+      
+      ! Verify AMG hierarchy was built successfully
+      IF (.NOT. ALLOCATED(amg_hier%levels) .OR. amg_hier%n_levels < 1) THEN
+        amg_info = -1  ! AMG setup failed
+        IF (default_iterative_params%verbose) THEN
+          PRINT *, 'WARNING: AMG hierarchy setup failed - hierarchy not properly allocated'
+        END IF
+      ELSE IF (amg_hier%levels(1)%n /= nrow) THEN
+        amg_info = -2  ! AMG setup failed - dimension mismatch
+        IF (default_iterative_params%verbose) THEN
+          PRINT *, 'WARNING: AMG hierarchy setup failed - dimension mismatch'
+          PRINT *, '  Expected n =', nrow, ', got n =', amg_hier%levels(1)%n
+        END IF
+      ELSE
+        amg_info = 0  ! AMG setup successful
+        IF (default_iterative_params%verbose) THEN
+          PRINT *, 'IDR(s): AMG hierarchy built with', amg_hier%n_levels, 'levels'
+        END IF
+      END IF
+      
+      IF (amg_info /= 0) THEN
+        IF (sparse_talk .OR. default_iterative_params%verbose) THEN
+          PRINT *, 'WARNING: AMG setup failed, proceeding without preconditioning'
+        END IF
+        use_amg = .FALSE.
+      END IF
+    END IF
+    
+    ! Allocate solution vector
+    ALLOCATE(x(nrow))
+    x = 0.0_dp  ! Initial guess
+    
+    ! Solve using IDR(s)
+    IF (use_amg) THEN
+      IF (default_iterative_params%verbose) THEN
+        PRINT *, 'IDR(s): Using native sparse AMG-preconditioned solver'
+      END IF
+      
+      ! Use native sparse AMG-preconditioned IDR(s)
+      BLOCK
+        USE idrs_mod, ONLY: idrs_workspace, create_idrs_workspace, destroy_idrs_workspace, &
+                            idrs_solve_amg_preconditioned
+        TYPE(idrs_workspace) :: idrs_ws
+        REAL(kind=dp) :: residual_norm
+        LOGICAL :: converged
+        
+        ! Create workspace
+        CALL create_idrs_workspace(idrs_ws, nrow, shadow_dim)
+        
+        ! Solve with native sparse AMG-preconditioned IDR(s)
+        CALL idrs_solve_amg_preconditioned(idrs_ws, nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                          b, x, max_iter, abs_tol, amg_hier, &
+                                          shadow_dim, x, iter, residual_norm, converged, info)
+        
+        IF (default_iterative_params%verbose) THEN
+          PRINT *, 'IDR(s)+AMG: Converged =', converged, ', Iterations =', iter
+          PRINT *, 'IDR(s)+AMG: Final residual =', residual_norm
+        END IF
+        
+        ! Clean up workspace
+        CALL destroy_idrs_workspace(idrs_ws)
+      END BLOCK
+    ELSE
+      ! For non-preconditioned, use dense matrix format
+      BLOCK
+        REAL(kind=dp), ALLOCATABLE :: A_dense(:,:)
+        INTEGER :: i, j, k
+        
+        ALLOCATE(A_dense(nrow, nrow))
+        A_dense = 0.0_dp
+        
+        ! Convert CSR to dense
+        DO i = 1, nrow
+          DO k = csr_row_ptr(i), csr_row_ptr(i+1) - 1
+            j = csr_col_idx(k)
+            A_dense(i, j) = csr_val(k)
+          END DO
+        END DO
+        
+        IF (default_iterative_params%verbose) THEN
+          PRINT *, 'IDR(s) without preconditioning:'
+          PRINT *, '  Matrix size:', nrow
+          PRINT *, '  Shadow space dimension:', shadow_dim
+          PRINT *, '  Max iterations:', max_iter
+          PRINT *, '  Tolerance:', abs_tol
+        END IF
+        
+        CALL idrs_solve_real(A_dense, b, x, shadow_dim, info)
+        
+        DEALLOCATE(A_dense)
+      END BLOCK
+    END IF
+    
+    ! Copy solution back to b
+    b = x
+    
+    ! Print convergence info if verbose
+    IF (default_iterative_params%verbose) THEN
+      IF (info == 0) THEN
+        PRINT '(A)', ' IDR(s) converged'
+      ELSE
+        PRINT '(A,I0)', ' IDR(s) failed with info = ', info
+      END IF
+    END IF
+    
+    ! Clean up
+    IF (use_amg .AND. amg_info == 0) CALL amg_precond_destroy(amg_hier)
+    DEALLOCATE(csr_row_ptr, csr_col_idx, csr_val, x)
+    
+  END SUBROUTINE sparse_solve_idrs_real
 
 END MODULE sparse_solvers_mod

@@ -37,7 +37,8 @@ MODULE gmres_mod
   END TYPE gmres_workspace
 
   PUBLIC :: gmres_solve_real, gmres_solve_complex, gmres_solve_structured_preconditioned, &
-            gmres_solve_structured, create_gmres_workspace, destroy_gmres_workspace
+            gmres_solve_structured, gmres_solve_amg_preconditioned, &
+            create_gmres_workspace, destroy_gmres_workspace
 
 CONTAINS
 
@@ -462,5 +463,174 @@ CONTAINS
     END IF
     
   END SUBROUTINE givens_rotation
+
+  SUBROUTINE gmres_solve_amg_preconditioned(workspace, n, row_ptr, col_idx, values, &
+                                           b, x_initial, max_iter, tol, amg_hier, &
+                                           x, iter, residual_norm, converged, info)
+    USE amg_types_mod, ONLY: amg_hierarchy
+    USE amg_precond_mod, ONLY: amg_precond_apply
+    TYPE(gmres_workspace), INTENT(INOUT) :: workspace
+    INTEGER, INTENT(IN) :: n
+    INTEGER, INTENT(IN) :: row_ptr(:), col_idx(:)
+    REAL(DP), INTENT(IN) :: values(:), b(:), x_initial(:)
+    INTEGER, INTENT(IN) :: max_iter
+    REAL(DP), INTENT(IN) :: tol
+    TYPE(amg_hierarchy), INTENT(INOUT) :: amg_hier
+    REAL(DP), INTENT(OUT) :: x(:)
+    INTEGER, INTENT(OUT) :: iter
+    REAL(DP), INTENT(OUT) :: residual_norm
+    LOGICAL, INTENT(OUT) :: converged
+    INTEGER, INTENT(OUT) :: info
+    
+    ! Local variables for sparse matrix-vector operations
+    REAL(DP), ALLOCATABLE :: Ax(:), r(:), z(:), v(:)
+    REAL(DP), ALLOCATABLE :: H(:,:), g(:), cs(:), sn(:)
+    REAL(DP) :: beta, h_val, h_new, c, s, temp
+    INTEGER :: i, j, k, krylov_dim, restart_dim
+    LOGICAL :: breakdown
+    
+    ! Initialize
+    info = 0
+    converged = .FALSE.
+    iter = 0
+    restart_dim = workspace%restart
+    breakdown = .FALSE.
+    
+    ! Allocate working arrays
+    ALLOCATE(Ax(n), r(n), z(n), v(n))
+    ALLOCATE(H(restart_dim+1, restart_dim), g(restart_dim+1))
+    ALLOCATE(cs(restart_dim), sn(restart_dim))
+    
+    ! Initialize solution
+    x = x_initial
+    
+    ! Main GMRES restart loop
+    restart_loop: DO WHILE (iter < max_iter .AND. .NOT. converged)
+      
+      ! Compute initial residual: r = b - A*x
+      CALL sparse_matvec(n, row_ptr, col_idx, values, x, Ax)
+      r = b - Ax
+      
+      ! Apply AMG preconditioning to residual: z = M^(-1) * r
+      z = 0.0_DP
+      CALL amg_precond_apply(amg_hier, z, r)
+      
+      ! Compute norm of preconditioned residual
+      beta = SQRT(DOT_PRODUCT(z, z))
+      residual_norm = beta
+      
+      ! Check convergence
+      IF (beta < tol) THEN
+        converged = .TRUE.
+        EXIT restart_loop
+      END IF
+      
+      ! Initialize Krylov subspace
+      workspace%arnoldi%V(:, 1) = z / beta
+      g = 0.0_DP
+      g(1) = beta
+      H = 0.0_DP
+      
+      ! Arnoldi iteration
+      arnoldi_loop: DO krylov_dim = 1, restart_dim
+        
+        ! Matrix-vector product: v = A * V(:, krylov_dim)
+        CALL sparse_matvec(n, row_ptr, col_idx, values, workspace%arnoldi%V(:, krylov_dim), v)
+        
+        ! Apply AMG preconditioning: z = M^(-1) * v
+        z = 0.0_DP
+        CALL amg_precond_apply(amg_hier, z, v)
+        
+        ! Modified Gram-Schmidt orthogonalization
+        DO i = 1, krylov_dim
+          H(i, krylov_dim) = DOT_PRODUCT(z, workspace%arnoldi%V(:, i))
+          z = z - H(i, krylov_dim) * workspace%arnoldi%V(:, i)
+        END DO
+        
+        ! Compute norm and check for breakdown
+        H(krylov_dim+1, krylov_dim) = SQRT(DOT_PRODUCT(z, z))
+        
+        IF (H(krylov_dim+1, krylov_dim) < 1.0E-14_DP) THEN
+          breakdown = .TRUE.
+          EXIT arnoldi_loop
+        END IF
+        
+        ! Normalize and store next Krylov vector
+        IF (krylov_dim < restart_dim) THEN
+          workspace%arnoldi%V(:, krylov_dim+1) = z / H(krylov_dim+1, krylov_dim)
+        END IF
+        
+        ! Apply previous Givens rotations to H
+        DO i = 1, krylov_dim-1
+          temp = cs(i) * H(i, krylov_dim) + sn(i) * H(i+1, krylov_dim)
+          H(i+1, krylov_dim) = -sn(i) * H(i, krylov_dim) + cs(i) * H(i+1, krylov_dim)
+          H(i, krylov_dim) = temp
+        END DO
+        
+        ! Compute new Givens rotation
+        CALL givens_rotation(H(krylov_dim, krylov_dim), H(krylov_dim+1, krylov_dim), &
+                            cs(krylov_dim), sn(krylov_dim), H(krylov_dim, krylov_dim))
+        H(krylov_dim+1, krylov_dim) = 0.0_DP
+        
+        ! Apply to RHS
+        temp = cs(krylov_dim) * g(krylov_dim) + sn(krylov_dim) * g(krylov_dim+1)
+        g(krylov_dim+1) = -sn(krylov_dim) * g(krylov_dim) + cs(krylov_dim) * g(krylov_dim+1)
+        g(krylov_dim) = temp
+        
+        ! Check convergence
+        residual_norm = ABS(g(krylov_dim+1))
+        iter = iter + 1
+        
+        IF (residual_norm < tol .OR. iter >= max_iter) THEN
+          converged = (residual_norm < tol)
+          EXIT arnoldi_loop
+        END IF
+        
+      END DO arnoldi_loop
+      
+      ! Solve upper triangular system: H * y = g
+      ! Back substitution
+      DO i = MIN(krylov_dim, restart_dim), 1, -1
+        g(i) = g(i) / H(i, i)
+        DO j = i-1, 1, -1
+          g(j) = g(j) - H(j, i) * g(i)
+        END DO
+      END DO
+      
+      ! Update solution: x = x + V * y
+      DO i = 1, MIN(krylov_dim, restart_dim)
+        x = x + g(i) * workspace%arnoldi%V(:, i)
+      END DO
+      
+      ! Exit if converged or max iterations reached
+      IF (converged .OR. iter >= max_iter .OR. breakdown) EXIT restart_loop
+      
+    END DO restart_loop
+    
+    ! Clean up
+    DEALLOCATE(Ax, r, z, v, H, g, cs, sn)
+    
+    ! Set return code
+    IF (.NOT. converged .AND. iter >= max_iter) info = 1
+    
+  END SUBROUTINE gmres_solve_amg_preconditioned
+  
+  SUBROUTINE sparse_matvec(n, row_ptr, col_idx, values, x, y)
+    ! Sparse matrix-vector product: y = A * x
+    INTEGER, INTENT(IN) :: n
+    INTEGER, INTENT(IN) :: row_ptr(:), col_idx(:)
+    REAL(DP), INTENT(IN) :: values(:), x(:)
+    REAL(DP), INTENT(OUT) :: y(:)
+    
+    INTEGER :: i, j
+    
+    y = 0.0_DP
+    DO i = 1, n
+      DO j = row_ptr(i), row_ptr(i+1) - 1
+        y(i) = y(i) + values(j) * x(col_idx(j))
+      END DO
+    END DO
+    
+  END SUBROUTINE sparse_matvec
 
 END MODULE gmres_mod

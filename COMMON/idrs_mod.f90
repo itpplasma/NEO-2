@@ -40,7 +40,7 @@ MODULE idrs_mod
   END TYPE idrs_workspace
   
   PUBLIC :: idrs_solve_real, idrs_solve_structured, create_idrs_workspace, &
-            destroy_idrs_workspace
+            destroy_idrs_workspace, idrs_solve_amg_preconditioned
   
 CONTAINS
 
@@ -377,5 +377,219 @@ CONTAINS
     END DO
     
   END SUBROUTINE matrix_vector_product
+
+  SUBROUTINE idrs_solve_amg_preconditioned(workspace, n, row_ptr, col_idx, values, &
+                                          b, x_initial, max_iter, tol, amg_hier, &
+                                          shadow_dim, x, iter, residual_norm, converged, info)
+    USE amg_types_mod, ONLY: amg_hierarchy
+    USE amg_precond_mod, ONLY: amg_precond_apply
+    TYPE(idrs_workspace), INTENT(INOUT) :: workspace
+    INTEGER, INTENT(IN) :: n
+    INTEGER, INTENT(IN) :: row_ptr(:), col_idx(:)
+    REAL(DP), INTENT(IN) :: values(:), b(:), x_initial(:)
+    INTEGER, INTENT(IN) :: max_iter, shadow_dim
+    REAL(DP), INTENT(IN) :: tol
+    TYPE(amg_hierarchy), INTENT(INOUT) :: amg_hier
+    REAL(DP), INTENT(OUT) :: x(:)
+    INTEGER, INTENT(OUT) :: iter
+    REAL(DP), INTENT(OUT) :: residual_norm
+    LOGICAL, INTENT(OUT) :: converged
+    INTEGER, INTENT(OUT) :: info
+    
+    ! Local variables for sparse matrix-vector operations
+    REAL(DP), ALLOCATABLE :: r(:), z(:), v(:), t(:), ax(:)
+    REAL(DP), ALLOCATABLE :: u_j(:), g_j(:), p_j(:)
+    REAL(DP), ALLOCATABLE :: alpha(:), beta(:), gamma(:)
+    REAL(DP) :: omega, kappa, tau, rho, ts, nt, ns
+    INTEGER :: i, j, k, step
+    LOGICAL :: breakdown
+    REAL(DP), PARAMETER :: angle = 0.7_DP
+    
+    ! Initialize
+    info = 0
+    converged = .FALSE.
+    iter = 0
+    breakdown = .FALSE.
+    
+    ! Allocate working arrays
+    ALLOCATE(r(n), z(n), v(n), t(n), ax(n))
+    ALLOCATE(u_j(n), g_j(n), p_j(n))
+    ALLOCATE(alpha(shadow_dim), beta(shadow_dim), gamma(shadow_dim))
+    
+    ! Initialize solution and workspace
+    x = x_initial
+    omega = 1.0_DP
+    
+    ! Initialize workspace if needed
+    IF (.NOT. ALLOCATED(workspace%P)) THEN
+      CALL create_idrs_workspace(workspace, n, shadow_dim)
+    END IF
+    
+    ! Initialize shadow space P with pseudo-random vectors
+    DO j = 1, shadow_dim
+      DO i = 1, n
+        workspace%P(i, j) = SIN(REAL(i * j, DP)) + COS(REAL(i + j, DP))
+      END DO
+      ! Normalize
+      workspace%P(:, j) = workspace%P(:, j) / SQRT(DOT_PRODUCT(workspace%P(:, j), workspace%P(:, j)))
+    END DO
+    
+    ! Compute initial residual: r = b - A*x
+    CALL sparse_matvec(n, row_ptr, col_idx, values, x, ax)
+    r = b - ax
+    
+    ! Apply AMG preconditioning to residual: z = M^(-1) * r
+    z = 0.0_DP
+    CALL amg_precond_apply(amg_hier, z, r)
+    
+    ! Compute initial residual norm
+    residual_norm = SQRT(DOT_PRODUCT(z, z))
+    
+    ! Check initial convergence
+    IF (residual_norm < tol) THEN
+      converged = .TRUE.
+      RETURN
+    END IF
+    
+    ! Initialize U and G matrices
+    workspace%U = 0.0_DP
+    workspace%G = 0.0_DP
+    
+    ! Main IDR(s) iteration loop
+    main_loop: DO WHILE (iter < max_iter .AND. .NOT. converged .AND. .NOT. breakdown)
+      
+      ! IDR(s) step loop
+      step_loop: DO step = 1, shadow_dim + 1
+        
+        ! Build search direction u_j
+        IF (step == 1) THEN
+          ! First step: u_1 = omega * z
+          u_j = omega * z
+        ELSE
+          ! Subsequent steps: solve for u_j from Krylov subspace
+          
+          ! Compute coefficients alpha_i for i = 1, ..., min(step-1, shadow_dim)
+          DO i = 1, MIN(step - 1, shadow_dim)
+            ! alpha_i = (z^T * P_i) / (G_i^T * P_i)
+            alpha(i) = DOT_PRODUCT(z, workspace%P(:, i)) / &
+                      DOT_PRODUCT(workspace%G(:, i), workspace%P(:, i))
+          END DO
+          
+          ! u_j = omega * (z - sum(alpha_i * G_i))
+          u_j = z
+          DO i = 1, MIN(step - 1, shadow_dim)
+            u_j = u_j - alpha(i) * workspace%G(:, i)
+          END DO
+          u_j = omega * u_j
+          
+          ! Update solution: x = x + sum(alpha_i * U_i)
+          DO i = 1, MIN(step - 1, shadow_dim)
+            x = x + alpha(i) * workspace%U(:, i)
+          END DO
+        END IF
+        
+        ! Store current search direction (only if within bounds)
+        IF (step <= shadow_dim) THEN
+          workspace%U(:, step) = u_j
+        END IF
+        
+        ! Compute g_j = A * u_j
+        CALL sparse_matvec(n, row_ptr, col_idx, values, u_j, g_j)
+        
+        ! Apply AMG preconditioning: g_j = M^(-1) * (A * u_j)
+        v = g_j  ! Store unpreconditioned version
+        g_j = 0.0_DP
+        CALL amg_precond_apply(amg_hier, g_j, v)
+        
+        ! Store preconditioned matrix-vector product (only if within bounds)
+        IF (step <= shadow_dim) THEN
+          workspace%G(:, step) = g_j
+        END IF
+        
+        ! Update residual: z = z - g_j
+        z = z - g_j
+        
+        ! Update iteration count
+        iter = iter + 1
+        
+        ! Check for breakdown in the shadow space
+        rho = 0.0_DP
+        DO i = 1, shadow_dim
+          rho = rho + ABS(DOT_PRODUCT(z, workspace%P(:, i)))
+        END DO
+        
+        IF (rho < 1.0E-14_DP) THEN
+          breakdown = .TRUE.
+          EXIT step_loop
+        END IF
+        
+        ! Compute residual norm
+        residual_norm = SQRT(DOT_PRODUCT(z, z))
+        
+        ! Check convergence
+        IF (residual_norm < tol .OR. iter >= max_iter) THEN
+          converged = (residual_norm < tol)
+          EXIT step_loop
+        END IF
+        
+      END DO step_loop
+      
+      ! Update solution with final search direction
+      x = x + u_j
+      
+      ! Compute new omega for next cycle
+      IF (.NOT. breakdown .AND. .NOT. converged .AND. iter < max_iter) THEN
+        ! Compute t = A * z
+        CALL sparse_matvec(n, row_ptr, col_idx, values, z, t)
+        
+        ! Apply AMG preconditioning: t = M^(-1) * (A * z)
+        v = t
+        t = 0.0_DP
+        CALL amg_precond_apply(amg_hier, t, v)
+        
+        ! Compute optimal omega
+        omega = compute_omega(t, z)
+        
+        ! Update solution: x = x + omega * z
+        x = x + omega * z
+        
+        ! Update residual: z = z - omega * t
+        z = z - omega * t
+        
+        ! Compute new residual norm
+        residual_norm = SQRT(DOT_PRODUCT(z, z))
+        
+        ! Check convergence after omega step
+        converged = (residual_norm < tol)
+      END IF
+      
+    END DO main_loop
+    
+    ! Clean up
+    DEALLOCATE(r, z, v, t, ax, u_j, g_j, p_j, alpha, beta, gamma)
+    
+    ! Set return code
+    IF (.NOT. converged .AND. iter >= max_iter) info = 1
+    IF (breakdown) info = 2
+    
+  END SUBROUTINE idrs_solve_amg_preconditioned
+  
+  SUBROUTINE sparse_matvec(n, row_ptr, col_idx, values, x, y)
+    ! Sparse matrix-vector product: y = A * x
+    INTEGER, INTENT(IN) :: n
+    INTEGER, INTENT(IN) :: row_ptr(:), col_idx(:)
+    REAL(DP), INTENT(IN) :: values(:), x(:)
+    REAL(DP), INTENT(OUT) :: y(:)
+    
+    INTEGER :: i, j
+    
+    y = 0.0_DP
+    DO i = 1, n
+      DO j = row_ptr(i), row_ptr(i+1) - 1
+        y(i) = y(i) + values(j) * x(col_idx(j))
+      END DO
+    END DO
+    
+  END SUBROUTINE sparse_matvec
 
 END MODULE idrs_mod
