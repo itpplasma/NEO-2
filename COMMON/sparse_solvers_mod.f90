@@ -65,6 +65,67 @@ MODULE sparse_solvers_mod
   PRIVATE :: sparse_solve_suitesparseComplex_b1, sparse_solve_suitesparseComplex_b2_loop
   
 CONTAINS
+
+  !-------------------------------------------------------------------------------
+  ! Parameter validation for sparse solver input
+  !-------------------------------------------------------------------------------
+  SUBROUTINE validate_sparse_solver_params(nrow, ncol, nz, solver_method, routine_name)
+    INTEGER, INTENT(in) :: nrow, ncol, nz, solver_method
+    CHARACTER(len=*), INTENT(in) :: routine_name
+    
+    ! Check matrix dimensions
+    IF (nrow <= 0) THEN
+      PRINT *, 'ERROR in ', routine_name, ': nrow must be positive, got', nrow
+      ERROR STOP 'Invalid matrix dimensions'
+    END IF
+    
+    IF (ncol <= 0) THEN
+      PRINT *, 'ERROR in ', routine_name, ': ncol must be positive, got', ncol
+      ERROR STOP 'Invalid matrix dimensions'
+    END IF
+    
+    IF (nz < 0) THEN
+      PRINT *, 'ERROR in ', routine_name, ': nz cannot be negative, got', nz
+      ERROR STOP 'Invalid number of non-zeros'
+    END IF
+    
+    ! Check for reasonable matrix size
+    IF (nrow > 1000000 .OR. ncol > 1000000) THEN
+      PRINT *, 'WARNING in ', routine_name, ': Large matrix size', nrow, 'x', ncol
+      PRINT *, '         Consider using BiCGSTAB (method 4) for better memory efficiency'
+    END IF
+    
+    ! Check solver method
+    SELECT CASE (solver_method)
+      CASE (2, SOLVER_UMFPACK, SOLVER_BICGSTAB)
+        ! Valid solver methods
+      CASE DEFAULT
+        PRINT *, 'ERROR in ', routine_name, ': Invalid solver method', solver_method
+        PRINT *, 'Valid options: 2 (legacy), SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4)'
+        ERROR STOP 'Invalid solver method'
+    END SELECT
+    
+    ! Optional informational messages (controlled by sparse_talk)
+    IF (sparse_talk) THEN
+      ! BiCGSTAB-specific recommendations
+      IF (solver_method == SOLVER_BICGSTAB) THEN
+        IF (nrow < 10) THEN
+          PRINT *, 'INFO in ', routine_name, ': Small matrix (', nrow, 'x', ncol, ')'
+          PRINT *, '      UMFPACK might be more efficient for very small problems'
+        ELSE IF (nrow > 1000) THEN
+          PRINT *, 'INFO in ', routine_name, ': Large matrix (', nrow, 'x', ncol, ')'
+          PRINT *, '      BiCGSTAB should provide good memory efficiency'
+        END IF
+      END IF
+      
+      ! UMFPACK-specific warnings for large problems
+      IF ((solver_method == SOLVER_UMFPACK .OR. solver_method == 2) .AND. nrow > 1000) THEN
+        PRINT *, 'INFO in ', routine_name, ': Large matrix with direct solver'
+        PRINT *, '      Consider BiCGSTAB (method 4) for reduced memory usage'
+      END IF
+    END IF
+    
+  END SUBROUTINE validate_sparse_solver_params
   
   !-------------------------------------------------------------------------------
   ! solves A*x = b for sparse A and 1-D vector b
@@ -87,6 +148,11 @@ CONTAINS
     LOGICAL :: pcol_modified
     
     IF (PRESENT(iopt_in)) iopt = iopt_in
+    
+    ! Validate input parameters (only for initial factorization)
+    IF (iopt == 0 .OR. iopt == 1) THEN
+      CALL validate_sparse_solver_params(nrow, ncol, nz, sparse_solve_method, 'sparse_solveReal_b1')
+    END IF
     
     pcol_modified = .FALSE.
     ! pcoln to remove "C convention" used in SuiteSparse
@@ -126,7 +192,8 @@ CONTAINS
           CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
     ELSE
-       PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
+       PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
+       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
        STOP
     END IF
     
@@ -191,7 +258,8 @@ CONTAINS
           CALL sparse_solve_bicgstab_complex(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
     ELSE
-       PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
+       PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
+       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
        STOP
     END IF
     
@@ -250,7 +318,8 @@ CONTAINS
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
     ELSE
-       PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
+       PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
+       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
        STOP
     END IF
     
@@ -309,7 +378,8 @@ CONTAINS
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
     ELSE
-       PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
+       PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
+       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
        STOP
     END IF
     
@@ -360,7 +430,8 @@ CONTAINS
        CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
-       PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
+       PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
+       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
        STOP
     END IF
     
@@ -409,7 +480,8 @@ CONTAINS
        CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
-       PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
+       PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
+       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
        STOP
     END IF
     
@@ -458,7 +530,8 @@ CONTAINS
        CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
-       PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
+       PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
+       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
        STOP
     END IF
     
@@ -507,7 +580,8 @@ CONTAINS
        CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
-       PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
+       PRINT *, 'ERROR: Invalid sparse_solve_method =', sparse_solve_method
+       PRINT *, 'Valid options: SOLVER_UMFPACK(3), SOLVER_BICGSTAB(4), legacy method(2)'
        STOP
     END IF
     
@@ -1060,6 +1134,15 @@ CONTAINS
     IF (.NOT. converged) THEN
       PRINT *, 'WARNING: BiCGSTAB did not converge after', iter, 'iterations'
       PRINT *, '         Final residual:', stats%final_residual
+      PRINT *, '         Target tolerance:', tol
+      PRINT *, '         Matrix size:', nrow, 'x', nrow
+      PRINT *, '         Non-zeros:', nz
+      IF (stats%final_residual > 1.0e-6_dp) THEN
+        PRINT *, '         CAUTION: Large residual may indicate solution inaccuracy'
+        PRINT *, '         Consider: 1) Increasing max_iter 2) Relaxing tolerance 3) Using UMFPACK'
+      ELSE
+        PRINT *, '         INFO: Small residual suggests acceptable solution despite non-convergence'
+      END IF
     END IF
     
     IF (sparse_talk) THEN
@@ -1103,6 +1186,15 @@ CONTAINS
     IF (.NOT. converged) THEN
       PRINT *, 'WARNING: BiCGSTAB did not converge after', iter, 'iterations'
       PRINT *, '         Final residual:', stats%final_residual
+      PRINT *, '         Target tolerance:', tol
+      PRINT *, '         Matrix size:', nrow, 'x', nrow
+      PRINT *, '         Non-zeros:', nz
+      IF (stats%final_residual > 1.0e-6_dp) THEN
+        PRINT *, '         CAUTION: Large residual may indicate solution inaccuracy'
+        PRINT *, '         Consider: 1) Increasing max_iter 2) Relaxing tolerance 3) Using UMFPACK'
+      ELSE
+        PRINT *, '         INFO: Small residual suggests acceptable solution despite non-convergence'
+      END IF
     END IF
     
     IF (sparse_talk) THEN
