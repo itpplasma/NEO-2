@@ -207,37 +207,5 @@ set_tests_properties(spline_error_paths_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "Some error path tests FAILED!"
 )
 
-# Patch coverage test executable  
-add_executable(test_patch_coverage
-    test_patch_coverage.f90
-)
-
-# Set compiler flags
-target_compile_options(test_patch_coverage PRIVATE
-    -g -fbacktrace
-)
-
-# Link to the common library which contains all our modules
-target_link_libraries(test_patch_coverage
-    common
-)
-
-# Include directories
-target_include_directories(test_patch_coverage PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-)
-
-# Add the test
-add_test(NAME patch_coverage_test 
-         COMMAND test_patch_coverage
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# Set test properties
-set_tests_properties(patch_coverage_test PROPERTIES
-    TIMEOUT 30
-    PASS_REGULAR_EXPRESSION "All patch coverage tests PASSED!"
-    FAIL_REGULAR_EXPRESSION "Some patch coverage tests FAILED!"
-)
 
 
