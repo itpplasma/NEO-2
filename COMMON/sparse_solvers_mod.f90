@@ -1,6 +1,13 @@
 MODULE sparse_solvers_mod
   ! Module containing sparse matrix solver operations
   ! Extracted from sparse_mod.f90 for better modularity
+  !
+  ! This module fixes a critical bug from the original sparse_mod.f90 where
+  ! real and complex solvers shared the same factorization pointers (symbolic, numeric),
+  ! causing memory corruption when alternating between solver types.
+  !
+  ! The fix uses separate pointers for real and complex factorizations and
+  ! properly cleans up the opposing type's factorization when switching.
   
   USE sparse_types_mod, ONLY: dp, long
   USE sparse_conversion_mod
@@ -14,6 +21,12 @@ MODULE sparse_solvers_mod
   
   INTEGER :: sparse_solve_method = 3
   LOGICAL :: factorization_exists = .FALSE.
+  
+  ! Named constants for iopt parameter values
+  INTEGER, PARAMETER, PRIVATE :: IOPT_FULL_SOLVE = 0     ! Factorize + solve + cleanup
+  INTEGER, PARAMETER, PRIVATE :: IOPT_FACTORIZE_ONLY = 1 ! Factorize only  
+  INTEGER, PARAMETER, PRIVATE :: IOPT_SOLVE_ONLY = 2     ! Solve only (reuse factorization)
+  INTEGER, PARAMETER, PRIVATE :: IOPT_FREE_MEMORY = 3    ! Free memory only
   
   ! Initialization of the parameters of Super_LU c-Routines
   INTEGER(kind=long), PRIVATE :: factors
@@ -49,6 +62,10 @@ CONTAINS
   ! solves A*x = b for sparse A and 1-D vector b
   ! A is specified through nrow,ncol,nz,irow,pcol,val
   ! results are returned in b
+  ! iopt_in: 0 = full solve (factorize+solve+cleanup)
+  !          1 = reuse factorization (solve only)
+  !          2 = solve with new factorization
+  !          3 = cleanup only (free memory)
   SUBROUTINE sparse_solveReal_b1(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
     INTEGER, INTENT(in) :: nrow,ncol,nz
     INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
@@ -72,7 +89,7 @@ CONTAINS
     END IF
     
     ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
-    IF (.NOT. factorization_exists_real .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_real .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
@@ -82,8 +99,8 @@ CONTAINS
        END IF
        factorization_exists_real = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists_real = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists_real = .FALSE.
+    IF (iopt .EQ. IOPT_FACTORIZE_ONLY) factorization_exists_real = .TRUE.
+    IF (iopt .EQ. IOPT_FREE_MEMORY) factorization_exists_real = .FALSE.
     
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_real
@@ -131,7 +148,7 @@ CONTAINS
     END IF
     
     ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
-    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
@@ -141,8 +158,8 @@ CONTAINS
        END IF
        factorization_exists_complex = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists_complex = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists_complex = .FALSE.
+    IF (iopt .EQ. IOPT_FACTORIZE_ONLY) factorization_exists_complex = .TRUE.
+    IF (iopt .EQ. IOPT_FREE_MEMORY) factorization_exists_complex = .FALSE.
     
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_complex
@@ -190,7 +207,7 @@ CONTAINS
     END IF
     
     ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
-    IF (.NOT. factorization_exists_real .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_real .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
@@ -200,8 +217,8 @@ CONTAINS
        END IF
        factorization_exists_real = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists_real = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists_real = .FALSE.
+    IF (iopt .EQ. IOPT_FACTORIZE_ONLY) factorization_exists_real = .TRUE.
+    IF (iopt .EQ. IOPT_FREE_MEMORY) factorization_exists_real = .FALSE.
     
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_real
@@ -249,7 +266,7 @@ CONTAINS
     END IF
     
     ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
-    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
@@ -259,8 +276,8 @@ CONTAINS
        END IF
        factorization_exists_complex = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists_complex = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists_complex = .FALSE.
+    IF (iopt .EQ. IOPT_FACTORIZE_ONLY) factorization_exists_complex = .TRUE.
+    IF (iopt .EQ. IOPT_FREE_MEMORY) factorization_exists_complex = .FALSE.
     
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_complex
@@ -285,6 +302,10 @@ CONTAINS
   ! solves A*x = b for sparse A and 1-D vector b
   ! A is given as a full matrix
   ! results are returned in b
+  ! iopt_in: 0 = full solve (factorize+solve+cleanup)
+  !          1 = reuse factorization (solve only)
+  !          2 = solve with new factorization
+  !          3 = cleanup only (free memory)
   SUBROUTINE sparse_solveReal_A_b1(A,b,iopt_in)
     REAL(kind=dp), DIMENSION(:,:), INTENT(in) :: A
     REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
@@ -298,19 +319,19 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     ! check about existing factorization
-    IF (factorization_exists_real .AND. iopt .EQ. 1) THEN ! free memory first
+    IF (factorization_exists_real .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
-    IF (.NOT. factorization_exists_real .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_real .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists_real = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists_real = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists_real = .FALSE.
+    IF (iopt .EQ. IOPT_FACTORIZE_ONLY) factorization_exists_real = .TRUE.
+    IF (iopt .EQ. IOPT_FREE_MEMORY) factorization_exists_real = .FALSE.
     
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_real
@@ -347,19 +368,19 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     ! check about existing factorization
-    IF (factorization_exists_complex .AND. iopt .EQ. 1) THEN ! free memory first
+    IF (factorization_exists_complex .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
-    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists_complex = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists_complex = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists_complex = .FALSE.
+    IF (iopt .EQ. IOPT_FACTORIZE_ONLY) factorization_exists_complex = .TRUE.
+    IF (iopt .EQ. IOPT_FREE_MEMORY) factorization_exists_complex = .FALSE.
     
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_complex
@@ -396,19 +417,19 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     ! check about existing factorization
-    IF (factorization_exists_real .AND. iopt .EQ. 1) THEN ! free memory first
+    IF (factorization_exists_real .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
-    IF (.NOT. factorization_exists_real .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_real .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists_real = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists_real = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists_real = .FALSE.
+    IF (iopt .EQ. IOPT_FACTORIZE_ONLY) factorization_exists_real = .TRUE.
+    IF (iopt .EQ. IOPT_FREE_MEMORY) factorization_exists_real = .FALSE.
     
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_real
@@ -445,19 +466,19 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     ! check about existing factorization
-    IF (factorization_exists_complex .AND. iopt .EQ. 1) THEN ! free memory first
+    IF (factorization_exists_complex .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
-    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. IOPT_SOLVE_ONLY) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists_complex = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists_complex = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists_complex = .FALSE.
+    IF (iopt .EQ. IOPT_FACTORIZE_ONLY) factorization_exists_complex = .TRUE.
+    IF (iopt .EQ. IOPT_FREE_MEMORY) factorization_exists_complex = .FALSE.
     
     ! Update global flag for compatibility
     factorization_exists = factorization_exists_complex
@@ -516,7 +537,7 @@ CONTAINS
     Ap = pcol - 1  ! convert from 1 to 0-based indexing
     Ai = irow - 1  ! convert from 1 to 0-based indexing
     
-    IF (iopt_in .EQ. 3) THEN  ! free memory from last solution
+    IF (iopt_in .EQ. IOPT_FREE_MEMORY) THEN  ! free memory from last solution
        CALL umf4fnum(numeric_real)
        factorization_exists_real = .FALSE.
        DEALLOCATE(Ap, Ai)
@@ -541,7 +562,7 @@ CONTAINS
        factorization_exists_complex = .FALSE.
     END IF
     
-    IF (iopt_in .EQ. 0) THEN ! Only factorize for full solve
+    IF (iopt_in .EQ. IOPT_FULL_SOLVE) THEN ! Only factorize for full solve
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2) iterative refinement)
           control(8) = 10 ! max number of iterative refinement steps
        END IF
@@ -565,9 +586,11 @@ CONTAINS
     !       use nc instead of ncol
     nc = ncol
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) THEN
+    IF (iopt_in .EQ. IOPT_FULL_SOLVE .OR. iopt_in .EQ. IOPT_FACTORIZE_ONLY .OR. &
+         iopt_in .EQ. IOPT_SOLVE_ONLY) THEN
        ! Check if factorization exists for reuse cases
-       IF ((iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) .AND. .NOT. factorization_exists_real) THEN
+       IF ((iopt_in .EQ. IOPT_FACTORIZE_ONLY .OR. iopt_in .EQ. IOPT_SOLVE_ONLY) .AND. &
+            .NOT. factorization_exists_real) THEN
           PRINT *, 'ERROR: Factorization reuse requested but no factorization exists!'
           RETURN
        END IF
@@ -585,7 +608,7 @@ CONTAINS
     b = x
     
     ! Last, free the storage allocated inside SuiteSparse
-    IF (iopt_in .EQ. 3) THEN
+    IF (iopt_in .EQ. IOPT_FREE_MEMORY) THEN
        CALL umf4fnum (numeric_real)
        CALL umf4fsym (symbolic_real)  
        factorization_exists_real = .FALSE.
@@ -645,7 +668,7 @@ CONTAINS
     bx = REAL(b)
     bz = AIMAG(b)
     
-    IF (iopt_in .EQ. 3) THEN  ! free memory from last solution
+    IF (iopt_in .EQ. IOPT_FREE_MEMORY) THEN  ! free memory from last solution
        CALL umf4zfnum(numeric_complex)
        factorization_exists_complex = .FALSE.
        DEALLOCATE(Ap, Ai, valx, valz, bx, bz)
@@ -666,7 +689,7 @@ CONTAINS
        factorization_exists_real = .FALSE.
     END IF
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
+    IF (iopt_in .EQ. IOPT_FULL_SOLVE .OR. iopt_in .EQ. IOPT_FACTORIZE_ONLY) THEN
        IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
           CALL umf4zdef(control)
           control(1) = 0 ! No output - there are other options, see the manual
@@ -692,7 +715,8 @@ CONTAINS
     !       use nc instead of ncol
     nc = ncol
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) THEN
+    IF (iopt_in .EQ. IOPT_FULL_SOLVE .OR. iopt_in .EQ. IOPT_FACTORIZE_ONLY .OR. &
+         iopt_in .EQ. IOPT_SOLVE_ONLY) THEN
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
           CALL umf4zsolr (sys, Ap, Ai, valx, valz, xx, xz, bx, bz, numeric_complex, &
                control, info_suitesparse) !iterative refinement
@@ -707,7 +731,7 @@ CONTAINS
     b = CMPLX(xx, xz, KIND=dp)
     
     ! Last, free the storage allocated inside SuiteSparse
-    IF (iopt_in .EQ. 3) THEN
+    IF (iopt_in .EQ. IOPT_FREE_MEMORY) THEN
        CALL umf4zfnum (numeric_complex)
        CALL umf4zfsym (symbolic_complex)
        factorization_exists_complex = .FALSE.
@@ -763,7 +787,7 @@ CONTAINS
     Ap = pcol - 1  ! convert from 1 to 0-based indexing
     Ai = irow - 1  ! convert from 1 to 0-based indexing
     
-    IF (iopt_in .EQ. 3) THEN  ! free memory from last solution
+    IF (iopt_in .EQ. IOPT_FREE_MEMORY) THEN  ! free memory from last solution
        CALL umf4fnum(numeric_real)
        factorization_exists_real = .FALSE.
        DEALLOCATE(Ap, Ai)
@@ -779,7 +803,7 @@ CONTAINS
     
     n = nrow  ! convert from 1 to 0-based indexing
     
-    IF (iopt_in .EQ. 0) THEN ! Only factorize for full solve
+    IF (iopt_in .EQ. IOPT_FULL_SOLVE) THEN ! Only factorize for full solve
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2) iterative refinement)
           control(8) = 10 ! max number of iterative refinement steps
        END IF
@@ -803,7 +827,8 @@ CONTAINS
     !       use nc instead of ncol
     nc = ncol
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) THEN
+    IF (iopt_in .EQ. IOPT_FULL_SOLVE .OR. iopt_in .EQ. IOPT_FACTORIZE_ONLY .OR. &
+         iopt_in .EQ. IOPT_SOLVE_ONLY) THEN
        DO i = 1,nrhs
           bloc = b(:,i)
           IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
@@ -819,7 +844,7 @@ CONTAINS
     END IF
     
     ! Last, free the storage allocated inside SuiteSparse
-    IF (iopt_in .EQ. 3) THEN
+    IF (iopt_in .EQ. IOPT_FREE_MEMORY) THEN
        CALL umf4fnum (numeric_real)
        CALL umf4fsym (symbolic_real)  
        factorization_exists_real = .FALSE.
@@ -877,7 +902,7 @@ CONTAINS
     valx = REAL(val)
     valz = AIMAG(val)
     
-    IF (iopt_in .EQ. 3) THEN  ! free memory from last solution
+    IF (iopt_in .EQ. IOPT_FREE_MEMORY) THEN  ! free memory from last solution
        CALL umf4zfnum(numeric_complex)
        factorization_exists_complex = .FALSE.
        DEALLOCATE(Ap, Ai, valx, valz)
@@ -890,7 +915,7 @@ CONTAINS
     n = nrow  ! Initialize n for UMFPACK interface
     nc = ncol
     
-    IF (iopt_in .EQ. 0) THEN ! Only factorize for full solve
+    IF (iopt_in .EQ. IOPT_FULL_SOLVE) THEN ! Only factorize for full solve
        IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
           CALL umf4zdef(control)
           control(1) = 0 ! No output - there are other options, see the manual
@@ -916,7 +941,8 @@ CONTAINS
     !       use nc instead of ncol
     nc = ncol
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) THEN
+    IF (iopt_in .EQ. IOPT_FULL_SOLVE .OR. iopt_in .EQ. IOPT_FACTORIZE_ONLY .OR. &
+         iopt_in .EQ. IOPT_SOLVE_ONLY) THEN
        DO i = 1,nrhs
           blocx = REAL(b(:,i))
           blocz = AIMAG(b(:,i))
@@ -934,7 +960,7 @@ CONTAINS
     END IF
     
     ! Last, free the storage allocated inside SuiteSparse
-    IF (iopt_in .EQ. 3) THEN
+    IF (iopt_in .EQ. IOPT_FREE_MEMORY) THEN
        CALL umf4zfnum (numeric_complex)
        CALL umf4zfsym (symbolic_complex)
        factorization_exists_complex = .FALSE.
