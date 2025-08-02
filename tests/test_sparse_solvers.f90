@@ -119,13 +119,10 @@ PROGRAM test_sparse_solvers
   ALLOCATE(z_b(2))
   z_b = (/(2.0_dp, 1.0_dp), (2.0_dp, -1.0_dp)/)  ! Solution: [1, i]
   
-  WRITE(*,'(A,2("(",F8.4,",",F8.4,")"))') "  Input RHS: ", z_b
   
   iopt = 0
   CALL sparse_solve(nrow, ncol, nz, irow, pcol, z_val, z_b, iopt)
   
-  WRITE(*,'(A,2("(",F8.4,",",F8.4,")"))') "  Solution: ", z_b
-  WRITE(*,'(A,2("(",F8.4,",",F8.4,")"))') "  Expected: ", (/(1.0_dp, 0.0_dp), (1.0_dp, 0.0_dp)/)
   
   IF (ABS(REAL(z_b(1)) - 1.0_dp) < tol .AND. &
       ABS(AIMAG(z_b(1)) - 0.0_dp) < tol .AND. &
@@ -182,17 +179,13 @@ PROGRAM test_sparse_solvers
   ALLOCATE(b(3,1))
   b(:,1) = (/5.0_dp, 4.0_dp, 2.0_dp/)
   iopt = 0  ! Perform factorization
-  WRITE(*,'(A)') "  Before first solve - performing factorization"
   CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
-  WRITE(*,'(A,3F10.6)') "  First solve result: ", b(:,1)
   
   ! Second solve reusing factorization
   b(:,1) = (/8.0_dp, 7.0_dp, 4.0_dp/)
   iopt = 1  ! Reuse factorization
-  WRITE(*,'(A)') "  Before second solve - reusing factorization"
   CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
   
-  WRITE(*,'(A,3F10.6)') "  Second solve result: ", b(:,1)
   
   IF (ABS(b(1,1) - (17.0_dp/11.0_dp)) < tol .AND. &
       ABS(b(2,1) - (20.0_dp/11.0_dp)) < tol .AND. &

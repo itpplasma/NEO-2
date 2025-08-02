@@ -19,9 +19,14 @@ MODULE sparse_solvers_mod
   INTEGER(kind=long), PRIVATE :: factors
   
   ! SuiteSparse solver data address pointers
-  INTEGER(kind=long), PRIVATE :: symbolic, numeric
+  ! Separate pointers for real and complex factorizations to avoid conflicts
+  INTEGER(kind=long), PRIVATE :: symbolic_real = 0, numeric_real = 0
+  INTEGER(kind=long), PRIVATE :: symbolic_complex = 0, numeric_complex = 0
   INTEGER(kind=long), PRIVATE :: sys = 0
   REAL(kind=dp), PRIVATE :: control(20), info_suitesparse(90)
+  LOGICAL, PRIVATE :: factorization_exists_real = .FALSE.
+  LOGICAL, PRIVATE :: factorization_exists_complex = .FALSE.
+  INTEGER, PRIVATE :: current_factorization_type = 0  ! 0=none, 1=real, 2=complex
   
   INTERFACE sparse_solve
     MODULE PROCEDURE sparse_solveReal_b1, sparse_solveReal_b2, sparse_solveReal_A_b1, sparse_solveReal_A_b2, &
@@ -67,7 +72,7 @@ CONTAINS
     END IF
     
     ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
-    IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_real .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
@@ -75,10 +80,13 @@ CONTAINS
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
           END IF
        END IF
-       factorization_exists = .TRUE.
+       factorization_exists_real = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists = .FALSE.
+    IF (iopt .EQ. 1) factorization_exists_real = .TRUE.
+    IF (iopt .EQ. 3) factorization_exists_real = .FALSE.
+    
+    ! Update global flag for compatibility
+    factorization_exists = factorization_exists_real
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
        IF (pcol_modified) THEN
@@ -123,7 +131,7 @@ CONTAINS
     END IF
     
     ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
-    IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
@@ -131,10 +139,13 @@ CONTAINS
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
           END IF
        END IF
-       factorization_exists = .TRUE.
+       factorization_exists_complex = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists = .FALSE.
+    IF (iopt .EQ. 1) factorization_exists_complex = .TRUE.
+    IF (iopt .EQ. 3) factorization_exists_complex = .FALSE.
+    
+    ! Update global flag for compatibility
+    factorization_exists = factorization_exists_complex
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
        IF (pcol_modified) THEN
@@ -179,7 +190,7 @@ CONTAINS
     END IF
     
     ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
-    IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_real .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
@@ -187,10 +198,13 @@ CONTAINS
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
           END IF
        END IF
-       factorization_exists = .TRUE.
+       factorization_exists_real = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists = .FALSE.
+    IF (iopt .EQ. 1) factorization_exists_real = .TRUE.
+    IF (iopt .EQ. 3) factorization_exists_real = .FALSE.
+    
+    ! Update global flag for compatibility
+    factorization_exists = factorization_exists_real
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
        IF (pcol_modified) THEN
@@ -235,7 +249,7 @@ CONTAINS
     END IF
     
     ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
-    IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
@@ -243,10 +257,13 @@ CONTAINS
              CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
           END IF
        END IF
-       factorization_exists = .TRUE.
+       factorization_exists_complex = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists = .FALSE.
+    IF (iopt .EQ. 1) factorization_exists_complex = .TRUE.
+    IF (iopt .EQ. 3) factorization_exists_complex = .FALSE.
+    
+    ! Update global flag for compatibility
+    factorization_exists = factorization_exists_complex
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
        IF (pcol_modified) THEN
@@ -281,19 +298,22 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     ! check about existing factorization
-    IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
+    IF (factorization_exists_real .AND. iopt .EQ. 1) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
-    IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_real .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
-       factorization_exists = .TRUE.
+       factorization_exists_real = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists = .FALSE.
+    IF (iopt .EQ. 1) factorization_exists_real = .TRUE.
+    IF (iopt .EQ. 3) factorization_exists_real = .FALSE.
+    
+    ! Update global flag for compatibility
+    factorization_exists = factorization_exists_real
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
        CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
@@ -327,19 +347,22 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     ! check about existing factorization
-    IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
+    IF (factorization_exists_complex .AND. iopt .EQ. 1) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
-    IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
-       factorization_exists = .TRUE.
+       factorization_exists_complex = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists = .FALSE.
+    IF (iopt .EQ. 1) factorization_exists_complex = .TRUE.
+    IF (iopt .EQ. 3) factorization_exists_complex = .FALSE.
+    
+    ! Update global flag for compatibility
+    factorization_exists = factorization_exists_complex
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
        CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
@@ -373,19 +396,22 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     ! check about existing factorization
-    IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
+    IF (factorization_exists_real .AND. iopt .EQ. 1) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
-    IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_real .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
-       factorization_exists = .TRUE.
+       factorization_exists_real = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists = .FALSE.
+    IF (iopt .EQ. 1) factorization_exists_real = .TRUE.
+    IF (iopt .EQ. 3) factorization_exists_real = .FALSE.
+    
+    ! Update global flag for compatibility
+    factorization_exists = factorization_exists_real
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
        CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
@@ -419,19 +445,22 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     ! check about existing factorization
-    IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
+    IF (factorization_exists_complex .AND. iopt .EQ. 1) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
-    IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
+    IF (.NOT. factorization_exists_complex .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
-       factorization_exists = .TRUE.
+       factorization_exists_complex = .TRUE.
     END IF
-    IF (iopt .EQ. 1) factorization_exists = .TRUE.
-    IF (iopt .EQ. 3) factorization_exists = .FALSE.
+    IF (iopt .EQ. 1) factorization_exists_complex = .TRUE.
+    IF (iopt .EQ. 3) factorization_exists_complex = .FALSE.
+    
+    ! Update global flag for compatibility
+    factorization_exists = factorization_exists_complex
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
        CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
@@ -476,6 +505,8 @@ CONTAINS
     INTEGER(kind=long) :: umf4sol_
     INTEGER(kind=long) :: umf4fnum_
     INTEGER(kind=long) :: umf4fsym_
+    INTEGER(kind=long) :: umf4zfnum_
+    INTEGER(kind=long) :: umf4zfsym_
     
     Ap_len = ncol + 1
     Ai_len = nz
@@ -486,8 +517,8 @@ CONTAINS
     Ai = irow - 1  ! convert from 1 to 0-based indexing
     
     IF (iopt_in .EQ. 3) THEN  ! free memory from last solution
-       CALL umf4fnum(numeric)
-       factorization_exists = .FALSE.
+       CALL umf4fnum(numeric_real)
+       factorization_exists_real = .FALSE.
        DEALLOCATE(Ap, Ai)
        RETURN
     END IF
@@ -495,23 +526,20 @@ CONTAINS
     ALLOCATE(x(nrow))
     x = 0.0_dp  ! Initialize solution vector
     
-    ! Debug: print matrix format info
-    PRINT *, 'DEBUG: nrow=', nrow, ' ncol=', ncol, ' nz=', nz
-    PRINT *, 'DEBUG: SIZE(pcol)=', SIZE(pcol), ' SIZE(irow)=', SIZE(irow), ' SIZE(val)=', SIZE(val)
-    IF (SIZE(pcol) > 0) PRINT *, 'DEBUG: pcol(1:min(5,SIZE(pcol)))=', pcol(1:min(5,SIZE(pcol)))
-    IF (SIZE(irow) > 0) PRINT *, 'DEBUG: irow(1:min(5,SIZE(irow)))=', irow(1:min(5,SIZE(irow)))
-    IF (SIZE(val) > 0) PRINT *, 'DEBUG: val(1:min(5,SIZE(val)))=', val(1:min(5,SIZE(val)))
-    PRINT *, 'DEBUG: 0-based Ap(1:min(5,SIZE(Ap)))=', Ap(1:min(5,SIZE(Ap)))
-    PRINT *, 'DEBUG: 0-based Ai(1:min(5,SIZE(Ai)))=', Ai(1:min(5,SIZE(Ai)))
-    
     ! Set default parameters
     CALL umf4def(control)
     control(1) = 0 ! No output - there are other options, see the manual
     
     n = nrow  ! convert from 1 to 0-based indexing
     
-    PRINT *, 'DEBUG: iopt_in =', iopt_in
-    PRINT *, 'DEBUG: Start of function, numeric =', numeric, ' factorization_exists =', factorization_exists
+    ! Clear any previous complex factorization data
+    IF (factorization_exists_complex) THEN
+       CALL umf4zfnum(numeric_complex)
+       CALL umf4zfsym(symbolic_complex)
+       symbolic_complex = 0
+       numeric_complex = 0
+       factorization_exists_complex = .FALSE.
+    END IF
     
     IF (iopt_in .EQ. 0) THEN ! Only factorize for full solve
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2) iterative refinement)
@@ -519,19 +547,17 @@ CONTAINS
        END IF
        
        ! Pre-order and symbolic analysis
-       CALL umf4sym (n, n, Ap, Ai, val, symbolic, control, info_suitesparse)
-       PRINT *, 'DEBUG: umf4sym info =', info_suitesparse(1)
+       CALL umf4sym (n, n, Ap, Ai, val, symbolic_real, control, info_suitesparse)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4sym: ', info_suitesparse(1)
        END IF
        
-       CALL umf4num(Ap, Ai, val, symbolic, numeric, control, info_suitesparse)
-       PRINT *, 'DEBUG: umf4num info =', info_suitesparse(1)
+       CALL umf4num(Ap, Ai, val, symbolic_real, numeric_real, control, info_suitesparse)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4num: ', info_suitesparse(1)
        END IF
        
-       factorization_exists = .TRUE.
+       factorization_exists_real = .TRUE.
     END IF
     
     ! Note: in newer versions, the function interfaces has been changed to match the types in an cleaner way
@@ -541,38 +567,29 @@ CONTAINS
     
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) THEN
        ! Check if factorization exists for reuse cases
-       IF ((iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) .AND. .NOT. factorization_exists) THEN
+       IF ((iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) .AND. .NOT. factorization_exists_real) THEN
           PRINT *, 'ERROR: Factorization reuse requested but no factorization exists!'
           RETURN
        END IF
        
-       PRINT *, 'DEBUG: sys =', sys, ' sparse_solve_method =', sparse_solve_method
-       PRINT *, 'DEBUG: factorization_exists =', factorization_exists
-       PRINT *, 'DEBUG: numeric pointer =', numeric
-       PRINT *, 'DEBUG: b before solve =', b
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
-          CALL umf4solr (sys, Ap, Ai, val, x, b, numeric, control, info_suitesparse) !iterative refinement
+          CALL umf4solr (sys, Ap, Ai, val, x, b, numeric_real, control, info_suitesparse) !iterative refinement
        ELSE IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
-          CALL umf4sol (sys, x, b, numeric, control, info_suitesparse)
+          CALL umf4sol (sys, x, b, numeric_real, control, info_suitesparse)
        END IF
-       PRINT *, 'DEBUG: umf4sol info =', info_suitesparse(1)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4solr: ', info_suitesparse(1)
        END IF
     END IF
     
-    PRINT *, 'DEBUG: x solution before copy =', x
     b = x
-    PRINT *, 'DEBUG: b solution after copy =', b
     
     ! Last, free the storage allocated inside SuiteSparse
     IF (iopt_in .EQ. 3) THEN
-       CALL umf4fnum (numeric)
-       CALL umf4fsym (symbolic)  
-       factorization_exists = .FALSE.
+       CALL umf4fnum (numeric_real)
+       CALL umf4fsym (symbolic_real)  
+       factorization_exists_real = .FALSE.
     END IF
-    
-    PRINT *, 'DEBUG: End of function, numeric =', numeric, ' factorization_exists =', factorization_exists
     
     IF (ALLOCATED(Ap))  DEALLOCATE(Ap)
     IF (ALLOCATED(Ai))  DEALLOCATE(Ai)
@@ -629,8 +646,8 @@ CONTAINS
     bz = AIMAG(b)
     
     IF (iopt_in .EQ. 3) THEN  ! free memory from last solution
-       CALL umf4zfnum(numeric)
-       factorization_exists = .FALSE.
+       CALL umf4zfnum(numeric_complex)
+       factorization_exists_complex = .FALSE.
        DEALLOCATE(Ap, Ai, valx, valz, bx, bz)
        RETURN
     END IF
@@ -640,15 +657,13 @@ CONTAINS
     n = nrow  ! Initialize n for UMFPACK interface
     nc = ncol
     
-    PRINT *, 'DEBUG: Complex solver starting, symbolic =', symbolic, ' numeric =', numeric
-    PRINT *, 'DEBUG: factorization_exists =', factorization_exists
-    
     ! Clear any previous real factorization data
-    IF (factorization_exists) THEN
-       PRINT *, 'DEBUG: Clearing previous factorization data'
-       symbolic = 0
-       numeric = 0
-       factorization_exists = .FALSE.
+    IF (factorization_exists_real) THEN
+       CALL umf4fnum(numeric_real)
+       CALL umf4fsym(symbolic_real)
+       symbolic_real = 0
+       numeric_real = 0
+       factorization_exists_real = .FALSE.
     END IF
     
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
@@ -661,12 +676,12 @@ CONTAINS
           control(8) = 10 ! max number of iterative refinement steps
        END IF
        ! Pre-order and symbolic analysis
-       CALL umf4zsym (n, n, Ap, Ai, valx, valz, symbolic, control, info_suitesparse)
+       CALL umf4zsym (n, n, Ap, Ai, valx, valz, symbolic_complex, control, info_suitesparse)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4zsym: ', info_suitesparse(1)
        END IF
        
-       CALL umf4znum(Ap, Ai, valx, valz, symbolic, numeric, control, info_suitesparse)
+       CALL umf4znum(Ap, Ai, valx, valz, symbolic_complex, numeric_complex, control, info_suitesparse)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4znum: ', info_suitesparse(1)
        END IF
@@ -679,10 +694,10 @@ CONTAINS
     
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) THEN
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
-          CALL umf4zsolr (sys, Ap, Ai, valx, valz, xx, xz, bx, bz, numeric, &
+          CALL umf4zsolr (sys, Ap, Ai, valx, valz, xx, xz, bx, bz, numeric_complex, &
                control, info_suitesparse) !iterative refinement
        ELSE IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
-          CALL umf4zsol (sys, xx, xz, bx, bz, numeric, control, info_suitesparse)
+          CALL umf4zsol (sys, xx, xz, bx, bz, numeric_complex, control, info_suitesparse)
        END IF
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4zsolr: ', info_suitesparse(1)
@@ -692,9 +707,10 @@ CONTAINS
     b = CMPLX(xx, xz, KIND=dp)
     
     ! Last, free the storage allocated inside SuiteSparse
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 3) THEN
-       CALL umf4zfnum (numeric)
-       CALL umf4zfsym (symbolic)
+    IF (iopt_in .EQ. 3) THEN
+       CALL umf4zfnum (numeric_complex)
+       CALL umf4zfsym (symbolic_complex)
+       factorization_exists_complex = .FALSE.
     END IF
     
     IF (ALLOCATED(Ap))   DEALLOCATE(Ap)
@@ -748,8 +764,8 @@ CONTAINS
     Ai = irow - 1  ! convert from 1 to 0-based indexing
     
     IF (iopt_in .EQ. 3) THEN  ! free memory from last solution
-       CALL umf4fnum(numeric)
-       factorization_exists = .FALSE.
+       CALL umf4fnum(numeric_real)
+       factorization_exists_real = .FALSE.
        DEALLOCATE(Ap, Ai)
        RETURN
     END IF
@@ -769,19 +785,17 @@ CONTAINS
        END IF
        
        ! Pre-order and symbolic analysis
-       CALL umf4sym (n, n, Ap, Ai, val, symbolic, control, info_suitesparse)
-       PRINT *, 'DEBUG: umf4sym info =', info_suitesparse(1)
+       CALL umf4sym (n, n, Ap, Ai, val, symbolic_real, control, info_suitesparse)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4sym: ', info_suitesparse(1)
        END IF
        
-       CALL umf4num(Ap, Ai, val, symbolic, numeric, control, info_suitesparse)
-       PRINT *, 'DEBUG: umf4num info =', info_suitesparse(1)
+       CALL umf4num(Ap, Ai, val, symbolic_real, numeric_real, control, info_suitesparse)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4num: ', info_suitesparse(1)
        END IF
        
-       factorization_exists = .TRUE.
+       factorization_exists_real = .TRUE.
     END IF
     
     ! Note: in newer versions, the function interfaces has been changed to match the types in an cleaner way
@@ -793,9 +807,9 @@ CONTAINS
        DO i = 1,nrhs
           bloc = b(:,i)
           IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
-             CALL umf4solr (sys, Ap, Ai, val, x, bloc, numeric, control, info_suitesparse) !iterative refinement
+             CALL umf4solr (sys, Ap, Ai, val, x, bloc, numeric_real, control, info_suitesparse) !iterative refinement
           ELSE IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
-             CALL umf4sol (sys, x, bloc, numeric, control, info_suitesparse)
+             CALL umf4sol (sys, x, bloc, numeric_real, control, info_suitesparse)
           END IF
           IF (info_suitesparse(1) .LT. 0) THEN
              PRINT *, 'Error occurred in umf4solr: ', info_suitesparse(1)
@@ -806,9 +820,9 @@ CONTAINS
     
     ! Last, free the storage allocated inside SuiteSparse
     IF (iopt_in .EQ. 3) THEN
-       CALL umf4fnum (numeric)
-       CALL umf4fsym (symbolic)  
-       factorization_exists = .FALSE.
+       CALL umf4fnum (numeric_real)
+       CALL umf4fsym (symbolic_real)  
+       factorization_exists_real = .FALSE.
     END IF
     
     IF (ALLOCATED(Ap))  DEALLOCATE(Ap)
@@ -864,8 +878,8 @@ CONTAINS
     valz = AIMAG(val)
     
     IF (iopt_in .EQ. 3) THEN  ! free memory from last solution
-       CALL umf4zfnum(numeric)
-       factorization_exists = .FALSE.
+       CALL umf4zfnum(numeric_complex)
+       factorization_exists_complex = .FALSE.
        DEALLOCATE(Ap, Ai, valx, valz)
        RETURN
     END IF
@@ -873,7 +887,10 @@ CONTAINS
     nrhs = SIZE(b,2)
     ALLOCATE(xx(nrow), xz(nrow), blocx(nrow), blocz(nrow))
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
+    n = nrow  ! Initialize n for UMFPACK interface
+    nc = ncol
+    
+    IF (iopt_in .EQ. 0) THEN ! Only factorize for full solve
        IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
           CALL umf4zdef(control)
           control(1) = 0 ! No output - there are other options, see the manual
@@ -883,12 +900,12 @@ CONTAINS
           control(8) = 10 ! max number of iterative refinement steps
        END IF
        ! Pre-order and symbolic analysis
-       CALL umf4zsym (n, n, Ap, Ai, valx, valz, symbolic, control, info_suitesparse)
+       CALL umf4zsym (n, n, Ap, Ai, valx, valz, symbolic_complex, control, info_suitesparse)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4zsym: ', info_suitesparse(1)
        END IF
        
-       CALL umf4znum(Ap, Ai, valx, valz, symbolic, numeric, control, info_suitesparse)
+       CALL umf4znum(Ap, Ai, valx, valz, symbolic_complex, numeric_complex, control, info_suitesparse)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4znum: ', info_suitesparse(1)
        END IF
@@ -904,10 +921,10 @@ CONTAINS
           blocx = REAL(b(:,i))
           blocz = AIMAG(b(:,i))
           IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
-             CALL umf4zsolr (sys, Ap, Ai, valx, valz, xx, xz, blocx, blocz, numeric,&
+             CALL umf4zsolr (sys, Ap, Ai, valx, valz, xx, xz, blocx, blocz, numeric_complex,&
                   control, info_suitesparse) !iterative refinement
           ELSE IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
-             CALL umf4zsol (sys, xx, xz, blocx, blocz, numeric, control, info_suitesparse)
+             CALL umf4zsol (sys, xx, xz, blocx, blocz, numeric_complex, control, info_suitesparse)
           END IF
           IF (info_suitesparse(1) .LT. 0) THEN
              PRINT *, 'Error occurred in umf4zsolr: ', info_suitesparse(1)
@@ -917,9 +934,10 @@ CONTAINS
     END IF
     
     ! Last, free the storage allocated inside SuiteSparse
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 3) THEN
-       CALL umf4zfnum (numeric)
-       CALL umf4zfsym (symbolic)
+    IF (iopt_in .EQ. 3) THEN
+       CALL umf4zfnum (numeric_complex)
+       CALL umf4zfsym (symbolic_complex)
+       factorization_exists_complex = .FALSE.
     END IF
     
     IF (ALLOCATED(Ap))    DEALLOCATE(Ap)
