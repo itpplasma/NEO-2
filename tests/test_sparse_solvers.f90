@@ -9,7 +9,7 @@ PROGRAM test_sparse_solvers
   ! Test variables
   INTEGER :: nrow, ncol, nz
   INTEGER, ALLOCATABLE :: irow(:), pcol(:)
-  REAL(kind=dp), ALLOCATABLE :: val(:), b(:), x(:)
+  REAL(kind=dp), ALLOCATABLE :: val(:), b(:,:), x(:)
   REAL(kind=dp), ALLOCATABLE :: A_full(:,:)
   COMPLEX(kind=dp), ALLOCATABLE :: z_val(:), z_b(:), z_x(:)
   COMPLEX(kind=dp), ALLOCATABLE :: z_A_full(:,:)
@@ -42,23 +42,24 @@ PROGRAM test_sparse_solvers
   CALL full2sparse(A_full, irow, pcol, val, nrow, ncol, nz)
   
   ! Create RHS
-  ALLOCATE(b(3))
-  b = (/5.0_dp, 4.0_dp, 2.0_dp/)  ! Solution should be x = [1, 1, 1]
+  ALLOCATE(b(3,1))
+  b(:,1) = (/5.0_dp, 4.0_dp, 2.0_dp/)  ! Solution should be x = [1, 1, 1]
   
   ! Set solver method
   sparse_solve_method = 3  ! UMFPACK
+  iopt = 0  ! Full solve (factorize + solve + cleanup)
   
   ! Solve the system
   CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
   
   ! Check solution
-  IF (ABS(b(1) - 1.0_dp) < tol .AND. &
-      ABS(b(2) - 1.0_dp) < tol .AND. &
-      ABS(b(3) - 1.0_dp) < tol) THEN
+  IF (ABS(b(1,1) - 1.0_dp) < tol .AND. &
+      ABS(b(2,1) - 1.0_dp) < tol .AND. &
+      ABS(b(3,1) - 1.0_dp) < tol) THEN
     WRITE(*,'(A)') "[PASS] Direct solver (UMFPACK)"
   ELSE
     WRITE(*,'(A)') "[FAIL] Direct solver (UMFPACK)"
-    WRITE(*,'(A,3F10.6)') "  Solution: ", b
+    WRITE(*,'(A,3F10.6)') "  Solution: ", b(:,1)
     test_passed = .FALSE.
   END IF
   
@@ -78,22 +79,27 @@ PROGRAM test_sparse_solvers
   
   CALL full2sparse(A_full, irow, pcol, val, nrow, ncol, nz)
   
-  ! Create multiple RHS
-  ALLOCATE(b(3*2))  ! 2 RHS vectors
-  b(1:3) = (/5.0_dp, 4.0_dp, 2.0_dp/)    ! First RHS
-  b(4:6) = (/8.0_dp, 7.0_dp, 4.0_dp/)    ! Second RHS
+  ! Create multiple RHS as 2D array
+  ALLOCATE(b(3,2))  ! 3 rows, 2 RHS vectors
+  b(:,1) = (/5.0_dp, 4.0_dp, 2.0_dp/)    ! First RHS
+  b(:,2) = (/8.0_dp, 7.0_dp, 4.0_dp/)    ! Second RHS
   
+  iopt = 0
   CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
   
-  IF (ABS(b(1) - 1.0_dp) < tol .AND. &
-      ABS(b(2) - 1.0_dp) < tol .AND. &
-      ABS(b(3) - 1.0_dp) < tol .AND. &
-      ABS(b(4) - 2.0_dp) < tol .AND. &
-      ABS(b(5) - 2.0_dp) < tol .AND. &
-      ABS(b(6) - 2.0_dp) < tol) THEN
+  IF (ABS(b(1,1) - 1.0_dp) < tol .AND. &
+      ABS(b(2,1) - 1.0_dp) < tol .AND. &
+      ABS(b(3,1) - 1.0_dp) < tol .AND. &
+      ABS(b(1,2) - (17.0_dp/11.0_dp)) < tol .AND. &
+      ABS(b(2,2) - (20.0_dp/11.0_dp)) < tol .AND. &
+      ABS(b(3,2) - 2.0_dp) < tol) THEN
     WRITE(*,'(A)') "[PASS] Multiple RHS"
   ELSE
     WRITE(*,'(A)') "[FAIL] Multiple RHS"
+    WRITE(*,'(A,3F12.8)') "  Solution 1: ", b(:,1)
+    WRITE(*,'(A,3F12.8)') "  Solution 2: ", b(:,2)
+    WRITE(*,'(A,3F12.8)') "  Expected 1: ", (/1.0_dp, 1.0_dp, 1.0_dp/)
+    WRITE(*,'(A,3F12.8)') "  Expected 2: ", (/17.0_dp/11.0_dp, 20.0_dp/11.0_dp, 2.0_dp/)
     test_passed = .FALSE.
   END IF
   
@@ -113,12 +119,18 @@ PROGRAM test_sparse_solvers
   ALLOCATE(z_b(2))
   z_b = (/(2.0_dp, 1.0_dp), (2.0_dp, -1.0_dp)/)  ! Solution: [1, i]
   
+  WRITE(*,'(A,2("(",F8.4,",",F8.4,")"))') "  Input RHS: ", z_b
+  
+  iopt = 0
   CALL sparse_solve(nrow, ncol, nz, irow, pcol, z_val, z_b, iopt)
+  
+  WRITE(*,'(A,2("(",F8.4,",",F8.4,")"))') "  Solution: ", z_b
+  WRITE(*,'(A,2("(",F8.4,",",F8.4,")"))') "  Expected: ", (/(1.0_dp, 0.0_dp), (1.0_dp, 0.0_dp)/)
   
   IF (ABS(REAL(z_b(1)) - 1.0_dp) < tol .AND. &
       ABS(AIMAG(z_b(1)) - 0.0_dp) < tol .AND. &
-      ABS(REAL(z_b(2)) - 0.0_dp) < tol .AND. &
-      ABS(AIMAG(z_b(2)) - 1.0_dp) < tol) THEN
+      ABS(REAL(z_b(2)) - 1.0_dp) < tol .AND. &
+      ABS(AIMAG(z_b(2)) - 0.0_dp) < tol) THEN
     WRITE(*,'(A)') "[PASS] Complex solver"
   ELSE
     WRITE(*,'(A)') "[FAIL] Complex solver"
@@ -136,14 +148,15 @@ PROGRAM test_sparse_solvers
   A_full(2,2) = 3.0_dp
   A_full(3,3) = 4.0_dp
   
-  ALLOCATE(b(3))
-  b = (/2.0_dp, 6.0_dp, 12.0_dp/)  ! Solution: [1, 2, 3]
+  ALLOCATE(b(3,1))
+  b(:,1) = (/2.0_dp, 6.0_dp, 12.0_dp/)  ! Solution: [1, 2, 3]
   
+  iopt = 0
   CALL sparse_solve(A_full, b, iopt)
   
-  IF (ABS(b(1) - 1.0_dp) < tol .AND. &
-      ABS(b(2) - 2.0_dp) < tol .AND. &
-      ABS(b(3) - 3.0_dp) < tol) THEN
+  IF (ABS(b(1,1) - 1.0_dp) < tol .AND. &
+      ABS(b(2,1) - 2.0_dp) < tol .AND. &
+      ABS(b(3,1) - 3.0_dp) < tol) THEN
     WRITE(*,'(A)') "[PASS] Full matrix interface"
   ELSE
     WRITE(*,'(A)') "[FAIL] Full matrix interface"
@@ -166,19 +179,24 @@ PROGRAM test_sparse_solvers
   CALL full2sparse(A_full, irow, pcol, val, nrow, ncol, nz)
   
   ! First solve with factorization
-  ALLOCATE(b(3))
-  b = (/5.0_dp, 4.0_dp, 2.0_dp/)
+  ALLOCATE(b(3,1))
+  b(:,1) = (/5.0_dp, 4.0_dp, 2.0_dp/)
   iopt = 0  ! Perform factorization
+  WRITE(*,'(A)') "  Before first solve - performing factorization"
   CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
+  WRITE(*,'(A,3F10.6)') "  First solve result: ", b(:,1)
   
   ! Second solve reusing factorization
-  b = (/8.0_dp, 7.0_dp, 4.0_dp/)
+  b(:,1) = (/8.0_dp, 7.0_dp, 4.0_dp/)
   iopt = 1  ! Reuse factorization
+  WRITE(*,'(A)') "  Before second solve - reusing factorization"
   CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
   
-  IF (ABS(b(1) - 2.0_dp) < tol .AND. &
-      ABS(b(2) - 2.0_dp) < tol .AND. &
-      ABS(b(3) - 2.0_dp) < tol) THEN
+  WRITE(*,'(A,3F10.6)') "  Second solve result: ", b(:,1)
+  
+  IF (ABS(b(1,1) - (17.0_dp/11.0_dp)) < tol .AND. &
+      ABS(b(2,1) - (20.0_dp/11.0_dp)) < tol .AND. &
+      ABS(b(3,1) - 2.0_dp) < tol) THEN
     WRITE(*,'(A)') "[PASS] Factorization reuse"
   ELSE
     WRITE(*,'(A)') "[FAIL] Factorization reuse"

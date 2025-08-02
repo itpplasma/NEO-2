@@ -66,16 +66,7 @@ CONTAINS
        pcoln = pcol + 1
     END IF
     
-    ! check about existing factorization
-    IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,3)
-          ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
-          END IF
-       END IF
-    END IF
+    ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
@@ -131,16 +122,7 @@ CONTAINS
        pcoln = pcol + 1
     END IF
     
-    ! check about existing factorization
-    IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,3)
-          ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
-          END IF
-       END IF
-    END IF
+    ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
@@ -196,16 +178,7 @@ CONTAINS
        pcoln = pcol + 1
     END IF
     
-    ! check about existing factorization
-    IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,3)
-          ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
-          END IF
-       END IF
-    END IF
+    ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
@@ -261,16 +234,7 @@ CONTAINS
        pcoln = pcol + 1
     END IF
     
-    ! check about existing factorization
-    IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,3)
-          ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
-          END IF
-       END IF
-    END IF
+    ! For iopt=1 (reuse factorization), do NOT free memory - we want to reuse it!
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
           IF (pcol_modified) THEN
@@ -496,12 +460,12 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
     
-    INTEGER :: n,nc
+    INTEGER(kind=long) :: n,nc
     INTEGER :: nrhs = 1
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x
     
     INTEGER :: Ap_len, Ai_len, Ax_len, Az_len
-    INTEGER, DIMENSION(:), ALLOCATABLE :: Ap, Ai, p
+    INTEGER(kind=long), DIMENSION(:), ALLOCATABLE :: Ap, Ai, p
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Ax, Az
     
     ! C wrappers of SuiteSparse functions
@@ -529,6 +493,16 @@ CONTAINS
     END IF
     
     ALLOCATE(x(nrow))
+    x = 0.0_dp  ! Initialize solution vector
+    
+    ! Debug: print matrix format info
+    PRINT *, 'DEBUG: nrow=', nrow, ' ncol=', ncol, ' nz=', nz
+    PRINT *, 'DEBUG: SIZE(pcol)=', SIZE(pcol), ' SIZE(irow)=', SIZE(irow), ' SIZE(val)=', SIZE(val)
+    IF (SIZE(pcol) > 0) PRINT *, 'DEBUG: pcol(1:min(5,SIZE(pcol)))=', pcol(1:min(5,SIZE(pcol)))
+    IF (SIZE(irow) > 0) PRINT *, 'DEBUG: irow(1:min(5,SIZE(irow)))=', irow(1:min(5,SIZE(irow)))
+    IF (SIZE(val) > 0) PRINT *, 'DEBUG: val(1:min(5,SIZE(val)))=', val(1:min(5,SIZE(val)))
+    PRINT *, 'DEBUG: 0-based Ap(1:min(5,SIZE(Ap)))=', Ap(1:min(5,SIZE(Ap)))
+    PRINT *, 'DEBUG: 0-based Ai(1:min(5,SIZE(Ai)))=', Ai(1:min(5,SIZE(Ai)))
     
     ! Set default parameters
     CALL umf4def(control)
@@ -536,21 +510,28 @@ CONTAINS
     
     n = nrow  ! convert from 1 to 0-based indexing
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
+    PRINT *, 'DEBUG: iopt_in =', iopt_in
+    PRINT *, 'DEBUG: Start of function, numeric =', numeric, ' factorization_exists =', factorization_exists
+    
+    IF (iopt_in .EQ. 0) THEN ! Only factorize for full solve
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2) iterative refinement)
           control(8) = 10 ! max number of iterative refinement steps
        END IF
        
        ! Pre-order and symbolic analysis
        CALL umf4sym (n, n, Ap, Ai, val, symbolic, control, info_suitesparse)
+       PRINT *, 'DEBUG: umf4sym info =', info_suitesparse(1)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4sym: ', info_suitesparse(1)
        END IF
        
        CALL umf4num(Ap, Ai, val, symbolic, numeric, control, info_suitesparse)
+       PRINT *, 'DEBUG: umf4num info =', info_suitesparse(1)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4num: ', info_suitesparse(1)
        END IF
+       
+       factorization_exists = .TRUE.
     END IF
     
     ! Note: in newer versions, the function interfaces has been changed to match the types in an cleaner way
@@ -558,24 +539,40 @@ CONTAINS
     !       use nc instead of ncol
     nc = ncol
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
+    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) THEN
+       ! Check if factorization exists for reuse cases
+       IF ((iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) .AND. .NOT. factorization_exists) THEN
+          PRINT *, 'ERROR: Factorization reuse requested but no factorization exists!'
+          RETURN
+       END IF
+       
+       PRINT *, 'DEBUG: sys =', sys, ' sparse_solve_method =', sparse_solve_method
+       PRINT *, 'DEBUG: factorization_exists =', factorization_exists
+       PRINT *, 'DEBUG: numeric pointer =', numeric
+       PRINT *, 'DEBUG: b before solve =', b
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
           CALL umf4solr (sys, Ap, Ai, val, x, b, numeric, control, info_suitesparse) !iterative refinement
        ELSE IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
           CALL umf4sol (sys, x, b, numeric, control, info_suitesparse)
        END IF
+       PRINT *, 'DEBUG: umf4sol info =', info_suitesparse(1)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4solr: ', info_suitesparse(1)
        END IF
     END IF
     
+    PRINT *, 'DEBUG: x solution before copy =', x
     b = x
+    PRINT *, 'DEBUG: b solution after copy =', b
     
     ! Last, free the storage allocated inside SuiteSparse
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 3) THEN
+    IF (iopt_in .EQ. 3) THEN
        CALL umf4fnum (numeric)
-       CALL umf4fsym (symbolic)
+       CALL umf4fsym (symbolic)  
+       factorization_exists = .FALSE.
     END IF
+    
+    PRINT *, 'DEBUG: End of function, numeric =', numeric, ' factorization_exists =', factorization_exists
     
     IF (ALLOCATED(Ap))  DEALLOCATE(Ap)
     IF (ALLOCATED(Ai))  DEALLOCATE(Ai)
@@ -596,14 +593,14 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
     
-    INTEGER :: n,nc
+    INTEGER(kind=long) :: n,nc
     INTEGER :: nrhs = 1
     COMPLEX(kind=dp), DIMENSION(:), ALLOCATABLE :: x
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: xx, xz, bx, bz
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: valx, valz
     
     INTEGER :: Ap_len, Ai_len, Ax_len, Az_len
-    INTEGER, DIMENSION(:), ALLOCATABLE :: Ap, Ai, p
+    INTEGER(kind=long), DIMENSION(:), ALLOCATABLE :: Ap, Ai, p
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Ax, Az
     
     ! C wrappers of SuiteSparse functions
@@ -640,6 +637,20 @@ CONTAINS
     
     ALLOCATE(xx(nrow), xz(nrow))
     
+    n = nrow  ! Initialize n for UMFPACK interface
+    nc = ncol
+    
+    PRINT *, 'DEBUG: Complex solver starting, symbolic =', symbolic, ' numeric =', numeric
+    PRINT *, 'DEBUG: factorization_exists =', factorization_exists
+    
+    ! Clear any previous real factorization data
+    IF (factorization_exists) THEN
+       PRINT *, 'DEBUG: Clearing previous factorization data'
+       symbolic = 0
+       numeric = 0
+       factorization_exists = .FALSE.
+    END IF
+    
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
        IF ( sparse_solve_method .EQ. 3 ) THEN ! SuiteSparse (without (=3) iterative refinement)
           CALL umf4zdef(control)
@@ -666,7 +677,7 @@ CONTAINS
     !       use nc instead of ncol
     nc = ncol
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
+    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) THEN
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
           CALL umf4zsolr (sys, Ap, Ai, valx, valz, xx, xz, bx, bz, numeric, &
                control, info_suitesparse) !iterative refinement
@@ -711,11 +722,12 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
     
-    INTEGER :: n,nc,i,nrhs
+    INTEGER(kind=long) :: n,nc
+    INTEGER :: i,nrhs
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x,bloc
     
     INTEGER :: Ap_len, Ai_len, Ax_len, Az_len
-    INTEGER, DIMENSION(:), ALLOCATABLE :: Ap, Ai, p
+    INTEGER(kind=long), DIMENSION(:), ALLOCATABLE :: Ap, Ai, p
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Ax, Az
     
     ! C wrappers of SuiteSparse functions
@@ -751,21 +763,25 @@ CONTAINS
     
     n = nrow  ! convert from 1 to 0-based indexing
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
+    IF (iopt_in .EQ. 0) THEN ! Only factorize for full solve
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2) iterative refinement)
           control(8) = 10 ! max number of iterative refinement steps
        END IF
        
        ! Pre-order and symbolic analysis
        CALL umf4sym (n, n, Ap, Ai, val, symbolic, control, info_suitesparse)
+       PRINT *, 'DEBUG: umf4sym info =', info_suitesparse(1)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4sym: ', info_suitesparse(1)
        END IF
        
        CALL umf4num(Ap, Ai, val, symbolic, numeric, control, info_suitesparse)
+       PRINT *, 'DEBUG: umf4num info =', info_suitesparse(1)
        IF (info_suitesparse(1) .LT. 0) THEN
           PRINT *, 'Error occurred in umf4num: ', info_suitesparse(1)
        END IF
+       
+       factorization_exists = .TRUE.
     END IF
     
     ! Note: in newer versions, the function interfaces has been changed to match the types in an cleaner way
@@ -773,7 +789,7 @@ CONTAINS
     !       use nc instead of ncol
     nc = ncol
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
+    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) THEN
        DO i = 1,nrhs
           bloc = b(:,i)
           IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
@@ -789,9 +805,10 @@ CONTAINS
     END IF
     
     ! Last, free the storage allocated inside SuiteSparse
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 3) THEN
+    IF (iopt_in .EQ. 3) THEN
        CALL umf4fnum (numeric)
-       CALL umf4fsym (symbolic)
+       CALL umf4fsym (symbolic)  
+       factorization_exists = .FALSE.
     END IF
     
     IF (ALLOCATED(Ap))  DEALLOCATE(Ap)
@@ -815,13 +832,14 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
     
-    INTEGER :: n,nc,i,nrhs
+    INTEGER(kind=long) :: n,nc
+    INTEGER :: i,nrhs
     COMPLEX(kind=dp), DIMENSION(:), ALLOCATABLE :: x,bloc
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: xx, xz, blocx, blocz
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: valx, valz
     
     INTEGER :: Ap_len, Ai_len, Ax_len, Az_len
-    INTEGER, DIMENSION(:), ALLOCATABLE :: Ap, Ai, p
+    INTEGER(kind=long), DIMENSION(:), ALLOCATABLE :: Ap, Ai, p
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Ax, Az
     
     ! C wrappers of SuiteSparse functions
@@ -881,7 +899,7 @@ CONTAINS
     !       use nc instead of ncol
     nc = ncol
     
-    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
+    IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1 .OR. iopt_in .EQ. 2) THEN
        DO i = 1,nrhs
           blocx = REAL(b(:,i))
           blocz = AIMAG(b(:,i))
