@@ -5,6 +5,7 @@ MODULE sparse_mod
   USE sparse_io_mod
   USE sparse_arithmetic_mod
   USE sparse_solvers_mod
+  USE sparse_utils_mod, ONLY: remap_rc
   IMPLICIT NONE
 
   ! Re-export sparse_solve_method and solver constants for backward compatibility
@@ -26,6 +27,9 @@ MODULE sparse_mod
   ! Re-export solver routines for backward compatibility
   PUBLIC :: sparse_solve, sparse_solve_suitesparse
   PUBLIC :: factorization_exists
+  
+  ! Re-export utilities for backward compatibility
+  PUBLIC :: remap_rc
 
   PUBLIC sparse_example
 
@@ -47,7 +51,7 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:), ALLOCATABLE :: z_b, z_x
     COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE :: z_bb, z_xx
 
-    INTEGER :: nrow, ncol, nz
+    INTEGER :: nrow, ncol, nz, i
 
     PRINT *, 'starting sparse_example'
 
@@ -59,8 +63,8 @@ CONTAINS
     CALL sparse_matmul(A,b,x)
     PRINT *, 'x=',x
 
-    x = 0.0_dp
-    CALL sparse_solve(A,b,x)
+    x = b
+    CALL sparse_solve(A,x)
     PRINT *, 'x=',x
     b = 1.0_dp
     CALL sparse_solver_test(A,b,x)
@@ -78,8 +82,8 @@ CONTAINS
     PRINT *, 'xx(:,1)=',xx(:,1)
     PRINT *, 'xx(:,7)=',xx(:,7)
 
-    xx = 0.0_dp
-    CALL sparse_solve(A,bb,xx)
+    xx = bb
+    CALL sparse_solve(A,xx)
     PRINT *, 'xx(:,1)=',xx(:,1)
     PRINT *, 'xx(:,7)=',xx(:,7)
     bb(:,1) = 1
@@ -101,24 +105,31 @@ CONTAINS
     PRINT *, 'testing 10x10 real octave matrix'
 
     CALL load_octave_matrices('../COMMON/testcases/octave_test_sparse.real', &
-         nrow,ncol,nz,icol,pcol,val, &
-         b,x,bb,xx)
-    CALL sparse_matmul(icol,pcol,val,b,x)
+         nrow,ncol,nz,icol,pcol,val)
+    
+    ! Allocate b, x, bb, xx arrays
+    IF (ALLOCATED(b)) DEALLOCATE(b)
+    IF (ALLOCATED(x)) DEALLOCATE(x)
+    IF (ALLOCATED(bb)) DEALLOCATE(bb)
+    IF (ALLOCATED(xx)) DEALLOCATE(xx)
+    ALLOCATE(b(nrow), x(nrow), bb(nrow,10), xx(nrow,10))
+    b = (/ (i, i=1,nrow) /)  ! Initialize b
+    CALL sparse_matmul(nrow,ncol,icol,pcol,val,b,x)
     PRINT *, 'x=',x
 
-    x = 0.0_dp
-    CALL sparse_solve(icol,pcol,val,b,x)
+    x = b
+    CALL sparse_solve(nrow,ncol,nz,icol,pcol,val,x)
     PRINT *, 'x=',x
     b(:) = (/ 1,2,3,4,5,6,7,8,9,10 /)
-    CALL sparse_solver_test(icol,pcol,val,b,x)
+    CALL sparse_solver_test(nrow,ncol,icol,pcol,val,x,b)
     PRINT *, 'b_out =',b
 
-    CALL sparse_matmul(icol,pcol,val,bb,xx)
+    CALL sparse_matmul(nrow,ncol,icol,pcol,val,bb,xx)
     PRINT *, 'xx(:,1)=',xx(:,1)
     PRINT *, 'xx(:,10)=',xx(:,10)
 
-    xx = 0.0_dp
-    CALL sparse_solve(icol,pcol,val,bb,xx)
+    xx = bb
+    CALL sparse_solve(nrow,ncol,nz,icol,pcol,val,xx)
     PRINT *, 'xx(:,1)=',xx(:,1)
     PRINT *, 'xx(:,10)=',xx(:,10)
 
@@ -132,7 +143,7 @@ CONTAINS
     bb(:,8) = (/ 8,9,10,11,12,13,14,15,16,17 /)
     bb(:,9) = (/ 9,10,11,12,13,14,15,16,17,18 /)
     bb(:,10) = (/ 10,11,12,13,14,15,16,17,18,19 /)
-    CALL sparse_solver_test(icol,pcol,val,bb,xx)
+    CALL sparse_solver_test(nrow,ncol,icol,pcol,val,xx,bb)
     PRINT *, 'bb(:,1) =',bb(:,1)
     PRINT *, 'bb(:,10) =',bb(:,10)
 
@@ -144,26 +155,35 @@ CONTAINS
     PRINT *, 'testing 10x10 complex octave matrix'
 
     CALL load_octave_matrices('../COMMON/testcases/octave_test_sparse.complex', &
-         nrow,ncol,nz,icol,pcol,z_val, &
-         z_b,z_x,z_bb,z_xx)
-    CALL sparse_matmul(icol,pcol,z_val,z_b,z_x)
+         nrow,ncol,nz,icol,pcol,z_val)
+    
+    ! Allocate z_b, z_x, z_bb, z_xx arrays
+    IF (ALLOCATED(z_b)) DEALLOCATE(z_b)
+    IF (ALLOCATED(z_x)) DEALLOCATE(z_x)
+    IF (ALLOCATED(z_bb)) DEALLOCATE(z_bb)
+    IF (ALLOCATED(z_xx)) DEALLOCATE(z_xx)
+    ALLOCATE(z_b(nrow), z_x(nrow), z_bb(nrow,10), z_xx(nrow,10))
+    DO i = 1, nrow
+      z_b(i) = CMPLX(i*1.0_dp, i*1.0_dp, kind=dp)
+    END DO
+    CALL sparse_matmul(nrow,ncol,icol,pcol,z_val,z_b,z_x)
     PRINT *, 'z_x=',z_x
 
-    z_x = (0.0_dp,0.0_dp)
-    CALL sparse_solve(icol,pcol,z_val,z_b,z_x)
+    z_x = z_b
+    CALL sparse_solve(nrow,ncol,nz,icol,pcol,z_val,z_x)
     PRINT *, 'z_x=',z_x
     z_b(:) = (/ (1.0_dp,1.0_dp),(2.0_dp,2.0_dp),(3.0_dp,3.0_dp), &
          (4.0_dp,4.0_dp),(5.0_dp,5.0_dp),(6.0_dp,6.0_dp), &
          (7.0_dp,7.0_dp),(8.0_dp,8.0_dp),(9.0_dp,9.0_dp),(10.0_dp,10.0_dp) /)
-    CALL sparse_solver_test(icol,pcol,z_val,z_b,z_x)
+    CALL sparse_solver_test(nrow,ncol,icol,pcol,z_val,z_x,z_b)
     PRINT *, 'z_b_out =',z_b
 
-    CALL sparse_matmul(icol,pcol,z_val,z_bb,z_xx)
+    CALL sparse_matmul(nrow,ncol,icol,pcol,z_val,z_bb,z_xx)
     PRINT *, 'z_xx(:,1)=',z_xx(:,1)
     PRINT *, 'z_xx(:,10)=',z_xx(:,10)
 
-    z_xx = (0.0_dp,0.0_dp)
-    CALL sparse_solve(icol,pcol,z_val,z_bb,z_xx)
+    z_xx = z_bb
+    CALL sparse_solve(nrow,ncol,nz,icol,pcol,z_val,z_xx)
     PRINT *, 'z_xx(:,1)=',z_xx(:,1)
     PRINT *, 'z_xx(:,10)=',z_xx(:,10)
 
@@ -198,7 +218,7 @@ CONTAINS
          (13.0_dp,13.0_dp),(14.0_dp,14.0_dp),(15.0_dp,15.0_dp), &
          (16.0_dp,16.0_dp),(17.0_dp,17.0_dp),(18.0_dp,18.0_dp),(19.0_dp,19.0_dp) /)
 
-    CALL sparse_solver_test(icol,pcol,z_val,z_bb,z_xx)
+    CALL sparse_solver_test(nrow,ncol,icol,pcol,z_val,z_xx,z_bb)
     PRINT *, 'z_bb(:,1) =',z_bb(:,1)
     PRINT *, 'z_bb(:,10) =',z_bb(:,10)
 
@@ -210,19 +230,14 @@ CONTAINS
     CALL load_compressed_example('../COMMON/testcases/example.dat', &
          nrow,ncol,nz,icol,pcol,val)
 
-    ! conversion test column_pointer2full, if you have data
-    ! compressed column format pointer
-    CALL column_pointer2full(pcol,A)
+    ! conversion test sparse2full
+    IF (ALLOCATED(A)) DEALLOCATE(A)
+    ALLOCATE(A(nrow,ncol))
+    CALL sparse2full(icol,pcol,val,nrow,ncol,A)
     PRINT *, 'test full'
     PRINT '(12f6.1)', A
 
-    ! conversion test column_full2pointer, if you have data
-    ! full column format, but want the pointer
-    ALLOCATE(A(nrow,ncol))
-    CALL sparse2full(icol,pcol,val,A)
-    PRINT *, 'test full2pointer'
-    CALL column_full2pointer(A,pcol)
-    PRINT *, 'pcol  ',pcol
+    ! Note: column_full2pointer converts icol to pcol format, not A matrix to pcol
 
     !-----------------------------------------------------------------------------------------
 

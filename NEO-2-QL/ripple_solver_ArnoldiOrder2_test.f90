@@ -44,7 +44,7 @@ subroutine ripple_solver_ArnoldiO2( &
                               eta_modboundary_l, eta_modboundary_r, &
                               prop_reconstruct_levels
     use sparse_mod, only: sparse_solve_method, sparse_solve, &
-                          column_full2pointer, remap_rc, sparse_solver_test
+                          column_full2pointer, sparse_solver_test
     use mag_interface_mod, only: surface_boozer_B00, travis_convfac, boozer_s, mag_magfield
     use ntv_eqmat_mod, only: nz_symm, nz_asymm, nz_per_pos, nz_per_neg, &
                              irow_symm, icol_symm, amat_symm, &

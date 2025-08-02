@@ -358,11 +358,7 @@ CONTAINS
     ! Create a simple complex test matrix
     nrow = 3
     ncol = 3
-<<<<<<< HEAD
-    nz = 6
-=======
     nz = 7
->>>>>>> a1e4b81 (refactor: Extract sparse types and conversions into separate modules)
     
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
@@ -374,11 +370,7 @@ CONTAINS
     irow = (/1, 2, 1, 2, 2, 3/)
     z_val = (/(3.0_dp, 0.0_dp), (1.0_dp, -1.0_dp), &
              (1.0_dp, 1.0_dp), (4.0_dp, 0.0_dp), &
-<<<<<<< HEAD
-             (2.0_dp, -1.0_dp), (5.0_dp, 0.0_dp)/)
-=======
              (2.0_dp, -1.0_dp), (2.0_dp, 1.0_dp), (5.0_dp, 0.0_dp)/)
->>>>>>> a1e4b81 (refactor: Extract sparse types and conversions into separate modules)
     
     ! Create RHS
     IF (ALLOCATED(z_b)) DEALLOCATE(z_b)
@@ -404,21 +396,13 @@ CONTAINS
   
   SUBROUTINE test_complex_solver_multiple_rhs()
     REAL(kind=dp) :: max_abs_err, max_rel_err
-<<<<<<< HEAD
-    COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE :: z_B_orig_full
-=======
->>>>>>> a1e4b81 (refactor: Extract sparse types and conversions into separate modules)
     
     WRITE(*,'(A)') "Test 9: Complex solver with multiple RHS"
     
     ! Use same matrix as test 8
     nrow = 3
     ncol = 3
-<<<<<<< HEAD
-    nz = 6
-=======
     nz = 7
->>>>>>> a1e4b81 (refactor: Extract sparse types and conversions into separate modules)
     
     IF (ALLOCATED(irow)) DEALLOCATE(irow)
     IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
@@ -429,11 +413,7 @@ CONTAINS
     irow = (/1, 2, 1, 2, 2, 3/)
     z_val = (/(3.0_dp, 0.0_dp), (1.0_dp, -1.0_dp), &
              (1.0_dp, 1.0_dp), (4.0_dp, 0.0_dp), &
-<<<<<<< HEAD
-             (2.0_dp, -1.0_dp), (5.0_dp, 0.0_dp)/)
-=======
              (2.0_dp, -1.0_dp), (2.0_dp, 1.0_dp), (5.0_dp, 0.0_dp)/)
->>>>>>> a1e4b81 (refactor: Extract sparse types and conversions into separate modules)
     
     ! Create multiple RHS
     IF (ALLOCATED(z_B_full)) DEALLOCATE(z_B_full)
@@ -441,13 +421,6 @@ CONTAINS
     z_B_full(:,1) = (/(1.0_dp, 1.0_dp), (2.0_dp, -1.0_dp), (3.0_dp, 0.0_dp)/)
     z_B_full(:,2) = (/(0.0_dp, 1.0_dp), (1.0_dp, 0.0_dp), (2.0_dp, 2.0_dp)/)
     
-<<<<<<< HEAD
-    ! Save original B values
-    ALLOCATE(z_B_orig_full(nrow, 2))
-    z_B_orig_full = z_B_full
-    
-=======
->>>>>>> a1e4b81 (refactor: Extract sparse types and conversions into separate modules)
     ! Solve
     IF (ALLOCATED(z_X_full)) DEALLOCATE(z_X_full)
     ALLOCATE(z_X_full(nrow, 2))
@@ -455,13 +428,7 @@ CONTAINS
     CALL sparse_solve(nrow, ncol, nz, irow, pcol, z_val, z_X_full)
     
     ! Test
-<<<<<<< HEAD
-    CALL sparse_solver_test(nrow, ncol, irow, pcol, z_val, z_X_full, z_B_orig_full, max_abs_err, max_rel_err)
-    
-    DEALLOCATE(z_B_orig_full)
-=======
     CALL sparse_solver_test(nrow, ncol, irow, pcol, z_val, z_X_full, z_B_full, max_abs_err, max_rel_err)
->>>>>>> a1e4b81 (refactor: Extract sparse types and conversions into separate modules)
     
     CALL check_result("Complex multiple RHS accuracy", &
          max_abs_err < tol_abs .AND. max_rel_err < tol_rel)
@@ -469,14 +436,34 @@ CONTAINS
   END SUBROUTINE test_complex_solver_multiple_rhs
   
   SUBROUTINE test_umfpack_solver()
+    USE sparse_solvers_mod, ONLY: SOLVER_UMFPACK, SOLVER_BICGSTAB
     REAL(kind=dp) :: max_abs_err, max_rel_err
-    INTEGER :: old_method
+    INTEGER :: old_method, isolver, solver_method
+    INTEGER :: solvers(2) 
+    CHARACTER(len=20) :: solver_name
+    REAL(kind=dp) :: solver_tol
     
-    WRITE(*,'(A)') "Test 10: UMFPACK solver (method 3)"
+    WRITE(*,'(A)') "Test 10: Sparse solvers (UMFPACK and BiCGSTAB)"
     
     ! Save old method
     old_method = sparse_solve_method
-    sparse_solve_method = 3
+    
+    ! Test both solvers
+    solvers = (/SOLVER_UMFPACK, SOLVER_BICGSTAB/)
+    
+    DO isolver = 1, 2
+      solver_method = solvers(isolver)
+      sparse_solve_method = solver_method
+      
+      IF (solver_method == SOLVER_UMFPACK) THEN
+        solver_name = "UMFPACK"
+        solver_tol = tol_abs
+      ELSE
+        solver_name = "BiCGSTAB"
+        solver_tol = 1.0e-8_dp  ! Relaxed tolerance for iterative solver
+      END IF
+      
+      WRITE(*,'(A,A,A,I0,A)') "  Testing ", TRIM(solver_name), " (method ", solver_method, ")"
     
     ! Create test matrix
     IF (ALLOCATED(A_full)) DEALLOCATE(A_full)
@@ -508,8 +495,10 @@ CONTAINS
     ! Test
     CALL sparse_solver_test(nrow, ncol, irow, pcol, val, x, b_orig, max_abs_err, max_rel_err)
     
-    CALL check_result("UMFPACK solver accuracy", &
-         max_abs_err < tol_abs .AND. max_rel_err < tol_rel)
+    CALL check_result(TRIM(solver_name) // " solver accuracy", &
+         max_abs_err < solver_tol .AND. max_rel_err < solver_tol)
+    
+    END DO  ! End solver loop
     
     ! Restore method
     sparse_solve_method = old_method
@@ -553,9 +542,11 @@ CONTAINS
   !END SUBROUTINE test_suitesparse_interface
   
   SUBROUTINE test_solver_method_switching()
+    USE sparse_solvers_mod, ONLY: SOLVER_UMFPACK, SOLVER_BICGSTAB
     REAL(kind=dp) :: max_abs_err1, max_rel_err1, max_abs_err2, max_rel_err2
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: x1, x2
     INTEGER :: old_method
+    REAL(kind=dp), PARAMETER :: compare_tol = 1.0e-6_dp
     
     WRITE(*,'(A)') "Test 12: Solver method switching"
     
@@ -580,23 +571,23 @@ CONTAINS
     ALLOCATE(b(nrow))
     b = (/1.0_dp, 2.0_dp, 3.0_dp/)
     
-    ! Solve with method 3
-    sparse_solve_method = 3
+    ! Solve with UMFPACK
+    sparse_solve_method = SOLVER_UMFPACK
     IF (ALLOCATED(x1)) DEALLOCATE(x1)
     ALLOCATE(x1(nrow))
     x1 = b
     CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, x1)
     
-    ! Solve with method 3 again to test consistency 
-    sparse_solve_method = 3
+    ! Solve with BiCGSTAB
+    sparse_solve_method = SOLVER_BICGSTAB
     IF (ALLOCATED(x2)) DEALLOCATE(x2)
     ALLOCATE(x2(nrow))
     x2 = b
     CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, x2)
     
-    ! Compare solutions
-    CALL check_result("Method switching consistency", &
-         MAXVAL(ABS(x1 - x2)) < 1.0e-8_dp)
+    ! Compare solutions - they should be close within iterative solver tolerance
+    CALL check_result("UMFPACK vs BiCGSTAB consistency", &
+         MAXVAL(ABS(x1 - x2)) < compare_tol)
     
     ! Restore method
     sparse_solve_method = old_method

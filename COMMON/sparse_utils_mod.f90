@@ -12,6 +12,7 @@ MODULE sparse_utils_mod
   PUBLIC :: csr_to_csc
   PUBLIC :: csr_matvec
   PUBLIC :: csr_extract_diagonal
+  PUBLIC :: remap_rc
   
   ! Export specific procedures for sparse_solvers_mod
   PUBLIC :: csc_to_csr_real, csc_to_csr_complex
@@ -36,6 +37,11 @@ MODULE sparse_utils_mod
     MODULE PROCEDURE csr_extract_diagonal_real
     MODULE PROCEDURE csr_extract_diagonal_complex
   END INTERFACE csr_extract_diagonal
+  
+  INTERFACE remap_rc
+    MODULE PROCEDURE remap_rc_real
+    MODULE PROCEDURE remap_rc_complex
+  END INTERFACE remap_rc
   
 CONTAINS
 
@@ -372,5 +378,238 @@ CONTAINS
     END DO
     
   END SUBROUTINE csr_extract_diagonal_complex
+  
+  !==============================================================================
+  ! Re-arrange and squeeze sparse matrix elements - Real version
+  !==============================================================================
+  SUBROUTINE remap_rc_real(nz,nz_sqeezed,irow,icol,amat)
+    ! Re-arranges matrix elements which may be unordered and may have
+    ! different elements with the same row and column indices is such
+    ! a way that column index, icol, forms a non-decreasing sequence
+    ! and row index, irow, forms increasing sub-sequences for itervals
+    ! with a fixed column index. Sums up elements of the matrix which
+    ! have the same row and column indices to one element with these
+    ! indices
+    !
+    ! Arguments:
+    ! nz          - (input)  number of elements in irow,icol,amat
+    ! nz_sqeezed  - (output) number of elements with different (irow(k),icol(k))
+    ! irow        - (inout)  row indices
+    ! icol        - (inout)  column indices
+    ! amat        - (inout)  matrix values
+
+    INTEGER, INTENT(in)                          :: nz
+    INTEGER, INTENT(out)                         :: nz_sqeezed
+    INTEGER, DIMENSION(nz), INTENT(inout)        :: irow,icol
+    REAL(kind=dp), DIMENSION(nz), INTENT(inout)  :: amat
+
+    INTEGER                            :: ncol,i,j,k,kbeg,kend,ips,iflag,ksq
+    INTEGER, DIMENSION(:), ALLOCATABLE :: nrows,icount,ipoi
+    INTEGER                            :: ksq_ne0
+    INTEGER, DIMENSION(:), ALLOCATABLE :: kne0
+
+    ncol=MAXVAL(icol)
+    ALLOCATE(nrows(ncol),icount(ncol),ipoi(nz))
+    nrows=0
+
+    ! count number of rows in a given column:
+    DO k=1,nz
+       j=icol(k)
+       nrows(j)=nrows(j)+1
+    ENDDO
+
+    ! compute starting index - 1 of rows in a general list for each column:
+
+    icount(1)=0
+
+    DO i=1,ncol-1
+       icount(i+1)=icount(i)+nrows(i)
+    ENDDO
+
+    ! compute the pointer from the list ordered by columns to a general list
+
+    DO k=1,nz
+       j=icol(k)
+       icount(j)=icount(j)+1
+       ipoi(icount(j))=k
+    ENDDO
+
+    ! re-order row indices to non-decreasing sub-sequences
+
+    DO i=1,ncol
+       kend=icount(i)
+       kbeg=kend-nrows(i)+1
+       DO j=1,kend-kbeg
+          iflag=0
+          DO k=kbeg+1,kend
+             IF(irow(ipoi(k)).LT.irow(ipoi(k-1))) THEN
+                iflag=1
+                ips=ipoi(k)
+                ipoi(k)=ipoi(k-1)
+                ipoi(k-1)=ips
+             ENDIF
+          ENDDO
+          IF(iflag.EQ.0) EXIT
+       ENDDO
+    ENDDO
+
+    irow=irow(ipoi)
+    icol=icol(ipoi)
+    amat=amat(ipoi)
+
+    ! squeese the data - sum up matrix elements with the same indices
+
+    ksq=1
+    !
+    DO k=2,nz
+       IF(irow(k).EQ.irow(k-1).AND.icol(k).EQ.icol(k-1)) THEN
+          amat(ksq)=amat(ksq)+amat(k)
+       ELSE
+          ksq=ksq+1
+          irow(ksq)=irow(k)
+          icol(ksq)=icol(k)
+          amat(ksq)=amat(k)
+       ENDIF
+    ENDDO
+
+    ! remove zeros from the sparse vector
+
+    ALLOCATE(kne0(ksq))
+    ksq_ne0=0
+    DO k=1,ksq
+       IF(amat(k) .NE. 0.0d0) THEN
+          ksq_ne0=ksq_ne0+1
+          kne0(ksq_ne0)=k
+       ENDIF
+    ENDDO
+    IF(ksq_ne0 .EQ. 0) THEN
+       PRINT *,'sparse_utils_mod/remap_rc: All entries of the sparse vector are zero!'
+    ELSE
+       irow(1:ksq_ne0)=irow(kne0(1:ksq_ne0))
+       icol(1:ksq_ne0)=icol(kne0(1:ksq_ne0))
+       amat(1:ksq_ne0)=amat(kne0(1:ksq_ne0))
+    ENDIF
+
+    nz_sqeezed=ksq_ne0
+    DEALLOCATE(nrows,icount,ipoi,kne0)
+
+  END SUBROUTINE remap_rc_real
+  
+  !==============================================================================
+  ! Re-arrange and squeeze sparse matrix elements - Complex version
+  !==============================================================================
+  SUBROUTINE remap_rc_complex(nz,nz_sqeezed,irow,icol,amat)
+    ! Re-arranges matrix elements which may be unordered and may have
+    ! different elements with the same row and column indices is such
+    ! a way that column index, icol, forms a non-decreasing sequence
+    ! and row index, irow, forms increasing sub-sequences for itervals
+    ! with a fixed column index. Sums up elements of the matrix which
+    ! have the same row and column indices to one element with these
+    ! indices
+    !
+    ! Arguments:
+    ! nz          - (input)  number of elements in irow,icol,amat
+    ! nz_sqeezed  - (output) number of elements with different (irow(k),icol(k))
+    ! irow        - (inout)  row indices
+    ! icol        - (inout)  column indices
+    ! amat        - (inout)  matrix values
+
+    INTEGER, INTENT(in)                          :: nz
+    INTEGER, INTENT(out)                         :: nz_sqeezed
+    INTEGER, DIMENSION(nz), INTENT(inout)        :: irow,icol
+    COMPLEX(kind=dp), DIMENSION(nz), INTENT(inout) :: amat
+
+    INTEGER                            :: ncol,i,j,k,kbeg,kend,ips,iflag,ksq
+    INTEGER, DIMENSION(:), ALLOCATABLE :: nrows,icount,ipoi
+    INTEGER                            :: ksq_ne0
+    INTEGER, DIMENSION(:), ALLOCATABLE :: kne0
+
+    ncol=MAXVAL(icol)
+    ALLOCATE(nrows(ncol),icount(ncol),ipoi(nz))
+    nrows=0
+
+    ! count number of rows in a given column:
+
+    DO k=1,nz
+       j=icol(k)
+       nrows(j)=nrows(j)+1
+    ENDDO
+
+    ! compute starting index - 1 of rows in a general list for each column:
+
+    icount(1)=0
+    !
+    DO i=1,ncol-1
+       icount(i+1)=icount(i)+nrows(i)
+    ENDDO
+
+    ! compute the pointer from the list ordered by columns to a general list
+
+    DO k=1,nz
+       j=icol(k)
+       icount(j)=icount(j)+1
+       ipoi(icount(j))=k
+    ENDDO
+
+    ! re-order row indices to non-decreasing sub-sequences
+
+    DO i=1,ncol
+       kend=icount(i)
+       kbeg=kend-nrows(i)+1
+       DO j=1,kend-kbeg
+          iflag=0
+          DO k=kbeg+1,kend
+             IF(irow(ipoi(k)).LT.irow(ipoi(k-1))) THEN
+                iflag=1
+                ips=ipoi(k)
+                ipoi(k)=ipoi(k-1)
+                ipoi(k-1)=ips
+             ENDIF
+          ENDDO
+          IF(iflag.EQ.0) EXIT
+       ENDDO
+    ENDDO
+
+    irow=irow(ipoi)
+    icol=icol(ipoi)
+    amat=amat(ipoi)
+
+    ! squeese the data - sum up matrix elements with the same indices
+
+    ksq=1
+
+    DO k=2,nz
+       IF(irow(k).EQ.irow(k-1).AND.icol(k).EQ.icol(k-1)) THEN
+          amat(ksq)=amat(ksq)+amat(k)
+       ELSE
+          ksq=ksq+1
+          irow(ksq)=irow(k)
+          icol(ksq)=icol(k)
+          amat(ksq)=amat(k)
+       ENDIF
+    ENDDO
+
+    ! remove zeros from the sparse vector
+
+    ALLOCATE(kne0(ksq))
+    ksq_ne0=0
+    DO k=1,ksq
+       IF(amat(k) .NE. (0.d0,0.d0)) THEN
+          ksq_ne0=ksq_ne0+1
+          kne0(ksq_ne0)=k
+       ENDIF
+    ENDDO
+    IF(ksq_ne0 .EQ. 0) THEN
+       PRINT *,'sparse_utils_mod/remap_rc: All entries of the sparse vector are zero!'
+    ELSE
+       irow(1:ksq_ne0)=irow(kne0(1:ksq_ne0))
+       icol(1:ksq_ne0)=icol(kne0(1:ksq_ne0))
+       amat(1:ksq_ne0)=amat(kne0(1:ksq_ne0))
+    ENDIF
+
+    nz_sqeezed=ksq_ne0
+    DEALLOCATE(nrows,icount,ipoi,kne0)
+
+  END SUBROUTINE remap_rc_complex
   
 END MODULE sparse_utils_mod
