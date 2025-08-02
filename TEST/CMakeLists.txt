@@ -472,3 +472,36 @@ set_tests_properties(bicgstab_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All BiCGSTAB tests PASSED!"
     FAIL_REGULAR_EXPRESSION "Some BiCGSTAB tests FAILED!"
 )
+
+# Solver integration test executable
+add_executable(test_solver_integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_solver_integration.f90
+)
+
+# Set compiler flags
+target_compile_options(test_solver_integration PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_solver_integration
+    common
+)
+
+# Include directories
+target_include_directories(test_solver_integration PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME solver_integration_test 
+         COMMAND test_solver_integration
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(solver_integration_test PROPERTIES
+    TIMEOUT 60
+    PASS_REGULAR_EXPRESSION "All solver integration tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some solver integration tests FAILED!"
+)
