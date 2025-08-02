@@ -1118,9 +1118,9 @@ contains
             WRITE(*,*) '    - Numerical overflow in matrix construction'
             WRITE(*,*) '    - Extreme values in input data or boundary conditions'
           END IF
-          WRITE(*,'(A,2I0)') '  Problem size: len_x=', len_x, ', len_indx=', len_indx
+          WRITE(*,'(A,I0,A,I0)') '  Problem size: len_x=', len_x, ', len_indx=', len_indx
           WRITE(*,'(A,2ES15.6)') '  Boundary conditions c1, cn: ', c1, cn
-          WRITE(*,'(A,2I0)') '  Boundary condition types sw1, sw2: ', sw1, sw2
+          WRITE(*,'(A,I0,A,I0)') '  Boundary condition types sw1, sw2: ', sw1, ', sw2: ', sw2
           ERROR STOP 'SPLINECOF3_DIRECT_SPARSE: Non-finite spline coefficients'
        END IF
     END DO

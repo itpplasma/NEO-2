@@ -141,4 +141,37 @@ set_tests_properties(spline_simple_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "Some tests FAILED!"
 )
 
+# Comprehensive coverage test executable
+add_executable(test_spline_coverage
+    test_spline_coverage.f90
+)
+
+# Set compiler flags
+target_compile_options(test_spline_coverage PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_spline_coverage
+    common
+)
+
+# Include directories
+target_include_directories(test_spline_coverage PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME spline_coverage_test 
+         COMMAND test_spline_coverage
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(spline_coverage_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "All coverage tests PASSED!"
+    FAIL_REGULAR_EXPRESSION "Some coverage tests FAILED!"
+)
+
 
