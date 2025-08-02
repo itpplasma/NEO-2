@@ -73,7 +73,8 @@ SUBROUTINE splinecof3_original_dense(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   !Replace standard solver from Lapack with sparse solver
   !(Bad performance for more than 1000 flux surfaces ~ (3*nsurf)^2)
-  USE sparse_mod, ONLY : sparse_solve
+  USE sparse_conversion_mod, ONLY : full2sparse
+  USE sparse_solvers_mod, ONLY : sparse_solve
   !! End Modifications by Andreas F. Martitsch (06.08.2014)
 
   !---------------------------------------------------------------------
@@ -110,6 +111,10 @@ SUBROUTINE splinecof3_original_dense(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   REAL(DP)                :: help_a, help_b, help_c, help_d
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: MA
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: inh, simqa, lambda, omega
+  ! Variables for sparse solver
+  INTEGER :: nrow, ncol, nz
+  INTEGER, DIMENSION(:), ALLOCATABLE :: irow, pcol
+  REAL(DP), DIMENSION(:), ALLOCATABLE :: val
   character(200) :: error_message
 
   len_x    = SIZE(x)
@@ -560,8 +565,11 @@ SUBROUTINE splinecof3_original_dense(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
 ! ---------------------------
 
+  ! Convert dense matrix to sparse format
+  CALL full2sparse(MA, irow, pcol, val, nrow, ncol, nz)
+  
   ! solve system
-  CALL sparse_solve(MA, inh)
+  CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, inh)
 
   ! take a(), b(), c(), d()
   DO i = 1, len_indx
@@ -582,5 +590,9 @@ SUBROUTINE splinecof3_original_dense(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for lambda failed!'
   DEALLOCATE(omega,  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for omega failed!'
+  ! Deallocate sparse arrays
+  IF(ALLOCATED(irow)) DEALLOCATE(irow)
+  IF(ALLOCATED(pcol)) DEALLOCATE(pcol)
+  IF(ALLOCATED(val)) DEALLOCATE(val)
 
 END SUBROUTINE splinecof3_original_dense
