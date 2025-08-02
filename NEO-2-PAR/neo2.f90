@@ -63,6 +63,7 @@ PROGRAM neo2
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
   use field_eq_mod, only : use_fpol
   use neo_spline_data, only : lsw_linear_boozer
+  USE spline_test_control, ONLY: use_fast_splines
 
   !************************************
   ! HDF5
@@ -164,7 +165,7 @@ PROGRAM neo2
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method,mag_symmetric,mag_symmetric_shorten,   &
-       epserr_sink, epserr_iter, niter, lsw_linear_boozer
+       epserr_sink, epserr_iter, niter, lsw_linear_boozer, use_fast_splines
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
