@@ -1,9 +1,23 @@
 # NEO-2 Development Backlog
 
+## Sparse Solver Refactoring and New Solver Implementation
+
+### Completed Work
+
+#### gmres Branch (PR #42) - COMPLETED ✅
+Successfully refactored the sparse solver module and fixed critical bugs:
+- **Modularized sparse_mod.f90** from >33,000 tokens into manageable modules
+- **Fixed memory corruption bug** from shared factorization variables
+- **Fixed iopt parameter handling** for factorization reuse pattern
+- **Added comprehensive test coverage** with error path testing
+- **Maintained full backward compatibility**
+
+The foundation is now ready for implementing new iterative solvers.
+
 ## BiCGSTAB with ILU(1) Preconditioner Implementation Plan
 
 ### Overview
-Replace the current UMFPACK direct solver with BiCGSTAB iterative solver using ILU(1) preconditioning to achieve:
+Implement BiCGSTAB iterative solver with ILU(1) preconditioning to achieve:
 - **2-5x memory reduction** (from O(lag³) to O(lag))
 - **20-60% runtime improvement** for large problems
 - **Better scalability** for high-resolution velocity space (large lag values)
@@ -25,13 +39,15 @@ SuiteSparse (UMFPACK) doesn't provide standalone ILU - it uses complete LU facto
 
 ### Phase 0: Foundation Complete ✅
 
-The sparse solver framework has been successfully refactored into a modular architecture:
+The sparse solver framework has been successfully refactored into a modular architecture (PR #42):
 - Clean separation of concerns across specialized modules
 - Fixed critical memory corruption bug in original implementation
 - Full backward compatibility maintained
 - Ready for new solver backend integration
 
-## Phase 1: Core Infrastructure (Week 1)
+## Phase 1: Core Infrastructure (Week 1) - IN PROGRESS 🚧
+
+**Current Branch:** `bicgstab`
 
 ### 1.1 Sparse Matrix Utilities Module - **COMPLETED** ✅
 **File:** `COMMON/sparse_utils_mod.f90`
@@ -191,9 +207,9 @@ The sparse solver framework has been successfully refactored into a modular arch
 
 ## Next Steps
 
-1. Create feature branch: `feature/bicgstab-ilu-solver`
+1. ~~Create feature branch: `feature/bicgstab-ilu-solver`~~ ✅ Created branch: `bicgstab`
 2. Set up test framework infrastructure
-3. Begin Phase 1.1 implementation
+3. Begin Phase 1.1 implementation - **IN PROGRESS**
 4. Weekly progress reviews and adjustments
 
 ## Comprehensive Solver Framework with Test-Driven Development
@@ -237,18 +253,20 @@ Before implementing new solvers, we **MUST** refactor the existing codebase:
 **Build Status:** ✅ All modules compile successfully
 **Test Status:** ✅ All tests pass (11/11 = 100% success rate)
 
-##### -1.6 URGENT: Debug Segmentation Fault - **COMPLETED** ✅
+##### -1.6 URGENT: Debug Segmentation Fault - **COMPLETED** ✅ (PR #42)
 
 **Resolution Summary:**
 1. **Fixed INTEGER type mismatch:** UMFPACK C interface requires `INTEGER(kind=long)` for pointers
 2. **Fixed memory corruption:** Separated real/complex factorization variables (`symbolic_real`, `numeric_real`, `symbolic_complex`, `numeric_complex`)
 3. **Fixed test bugs:** Corrected sparse matrix structure errors and uninitialized variables
 4. **Added memory cleanup:** Proper deallocation in error paths
+5. **Fixed iopt parameter handling:** Corrected logic for factorization reuse pattern (iopt=1 → iopt=2)
 
 **Critical Bug Discovery:**
 - Original `sparse_mod.f90` had **shared factorization pointers** between real and complex solvers
 - This caused memory corruption when alternating between solver types
-- Fix improves reliability for mixed real/complex usage
+- ripple_solver.f90 uses iopt=1 for factorization, then iopt=2 for multiple solves
+- Fix improves reliability for mixed real/complex usage and factorization reuse
 
 **Completed Tasks:**
 - [x] Fixed SuiteSparse state variable initialization
@@ -258,6 +276,8 @@ Before implementing new solvers, we **MUST** refactor the existing codebase:
 - [x] Fixed factorization state tracking with separate flags
 - [x] Added named constants for iopt parameter values
 - [x] Updated API documentation
+- [x] Added comprehensive error path testing
+- [x] Created helper functions for robust iopt handling
 
 ##### -1.2 Arnoldi Module Cleanup
 **File:** `arnoldi_mod.f90`
@@ -849,4 +869,4 @@ The investment in cleanup will pay dividends throughout the implementation.
 
 ---
 
-*Last updated: 2025-08-01*
+*Last updated: 2025-08-02*
