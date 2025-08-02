@@ -260,6 +260,8 @@
  sparse_solve_method = 3 ! [3]
  sparse_talk = .false. ! [.false.]
  switch_off_asymp = 0 ! [0]
+ use_fast_splines = .false. ! .false.: use direct sparse implementation [default]
+                            ! .true.: enable fast tridiagonal solver for supported cases
  xetama = 1.300001 ! Seems to be not used, value is overwriten in ripple
                    ! solver. [1.300001d0]
  xetami = 0.0 ! [0.0d0]
