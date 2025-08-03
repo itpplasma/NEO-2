@@ -39,6 +39,10 @@ For PR submissions, the CI runs:
 - Lorentz and QL tests on all pushes
 - PAR tests only on pull requests (due to longer runtime)
 
+## Environment Variables
+
+- There is a `$DATA` environment variable where one can find golden record tests
+
 ## Code Architecture
 
 ### Core Components

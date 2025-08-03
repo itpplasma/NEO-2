@@ -1221,6 +1221,39 @@ set_tests_properties(idrs_amg_tridiag_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAILURE:"
 )
 
+# IDR(s) PAR integration test executable
+add_executable(test_idrs_par_integration
+    test_idrs_par_integration.f90
+)
+
+# Set compiler flags
+target_compile_options(test_idrs_par_integration PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_idrs_par_integration
+    common
+)
+
+# Include directories
+target_include_directories(test_idrs_par_integration PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME idrs_par_integration_test 
+         COMMAND test_idrs_par_integration
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(idrs_par_integration_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "SUCCESS: All IDR\\(s\\) PAR integration tests passed"
+    FAIL_REGULAR_EXPRESSION "FAILURE: Some PAR integration tests failed"
+)
+
 # IDR(s)+AMG spline test executable (temporarily disabled due to compilation issues)
 # add_executable(test_spline_idrs_amg
 #     test_spline_idrs_amg.f90
