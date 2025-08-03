@@ -80,10 +80,16 @@ jobs:
             --ignore-errors inconsistent,mismatch,empty,unused
           
           # Filter coverage data to include only source code
-          lcov --extract coverage.info \
-            '*/COMMON/*' \
-            '*/NEO-2-PAR/*' \
-            '*/NEO-2-QL/*' \
+          lcov --remove coverage.info \
+            '*/build/*' \
+            '*/TEST/*' \
+            '*/libneo/*' \
+            '*/thirdparty/*' \
+            '*/DOC/*' \
+            '*/MULTI-SPEC-TOOLS/*' \
+            '*/tools/*' \
+            '/usr/*' \
+            '/tmp/*' \
             --output-file coverage_filtered.info \
             --rc branch_coverage=1 \
             --ignore-errors unused,empty
@@ -100,7 +106,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./build/coverage.xml
-          flags: common,neo2par,neo2ql
+          flags: unittests
           name: unit-tests-coverage
           fail_ci_if_error: false
           verbose: true

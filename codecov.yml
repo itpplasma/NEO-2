@@ -24,20 +24,6 @@ comment:
   behavior: default
   require_changes: false
 
-# Define flags for different source directories
-flags:
-  common:
-    paths:
-      - COMMON/
-    carryforward: true
-  neo2par:
-    paths:
-      - NEO-2-PAR/
-    carryforward: true
-  neo2ql:
-    paths:
-      - NEO-2-QL/
-    carryforward: true
 
 ignore:
   - "TEST/"
