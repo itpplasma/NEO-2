@@ -100,33 +100,6 @@ jobs:
           # Show coverage summary
           echo "=== Coverage Summary ===" >> $GITHUB_STEP_SUMMARY
           lcov --summary coverage_filtered.info >> $GITHUB_STEP_SUMMARY || echo "No coverage data found" >> $GITHUB_STEP_SUMMARY
-          
-          # Debug: Show which files are in the coverage report
-          echo "=== Files in Coverage Report ===" >> $GITHUB_STEP_SUMMARY
-          lcov --list coverage_filtered.info >> $GITHUB_STEP_SUMMARY || echo "Could not list coverage files" >> $GITHUB_STEP_SUMMARY
-          
-          # Debug: Show XML file info
-          echo "=== Coverage XML Info ===" >> $GITHUB_STEP_SUMMARY
-          echo "Coverage XML file size: $(ls -lh coverage.xml | awk '{print $5}')" >> $GITHUB_STEP_SUMMARY
-          echo "Coverage XML first 20 lines:" >> $GITHUB_STEP_SUMMARY
-          head -20 coverage.xml >> $GITHUB_STEP_SUMMARY
-
-      - name: Debug before Codecov upload
-        run: |
-          echo "=== Debug Info Before Codecov Upload ==="
-          echo "Current directory: $(pwd)"
-          echo "Coverage file exists: $(test -f ./build/coverage.xml && echo 'YES' || echo 'NO')"
-          echo "Coverage file path: $(realpath ./build/coverage.xml)"
-          echo "Git branch: $(git branch --show-current)"
-          echo "Git commit: $(git rev-parse HEAD)"
-          echo "GitHub context:"
-          echo "  GITHUB_REF: $GITHUB_REF"
-          echo "  GITHUB_SHA: $GITHUB_SHA"
-          echo "  GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
-          echo "  GITHUB_EVENT_NAME: $GITHUB_EVENT_NAME"
-          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            echo "  PR Number: ${{ github.event.number }}"
-          fi
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -135,14 +108,8 @@ jobs:
           file: ./build/coverage.xml
           flags: unittests
           name: unit-tests-coverage
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           verbose: true
-
-      - name: Check Codecov upload result
-        run: |
-          echo "=== Codecov Upload Completed ==="
-          echo "Check coverage at: https://app.codecov.io/gh/itpplasma/NEO-2/tree/${{ github.head_ref || github.ref_name }}"
-          echo "PR coverage: https://app.codecov.io/gh/itpplasma/NEO-2/pull/${{ github.event.number }}"
 
       - name: Upload coverage artifacts
         if: always()
