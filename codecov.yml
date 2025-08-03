@@ -1,12 +1,5 @@
 codecov:
   require_ci_to_pass: yes
-  # Specify directories to search for coverage
-  directory: .
-  # Specify source directories
-  paths:
-    - COMMON/
-    - NEO-2-PAR/
-    - NEO-2-QL/
 
 coverage:
   status:
@@ -30,6 +23,21 @@ comment:
   layout: "reach, diff, flags, files"
   behavior: default
   require_changes: false
+
+# Define flags for different source directories
+flags:
+  common:
+    paths:
+      - COMMON/
+    carryforward: true
+  neo2par:
+    paths:
+      - NEO-2-PAR/
+    carryforward: true
+  neo2ql:
+    paths:
+      - NEO-2-QL/
+    carryforward: true
 
 ignore:
   - "TEST/"
