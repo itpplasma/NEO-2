@@ -90,18 +90,19 @@ PROGRAM test_idrs_404_spline
   END IF
   WRITE(*,*)
   
-  ! Test 2: BiCGSTAB for comparison
-  WRITE(*,'(A)') '2. Testing BiCGSTAB for comparison...'
+  ! Test 2: IDR(s)+AMG with relaxed tolerance (Julia pattern)
+  WRITE(*,'(A)') '2. Testing IDR(s)+AMG with relaxed tolerance (Julia pattern)...'
   
-  ! Configure BiCGSTAB
-  default_iterative_params%preconditioner_type = PRECOND_NONE
-  default_iterative_params%max_iterations = 2000
-  default_iterative_params%abs_tolerance = 1.0E-10_DP
-  default_iterative_params%rel_tolerance = 1.0E-8_DP
+  ! Configure IDR(s)+AMG like Julia AlgebraicMultigrid.jl tests
+  default_iterative_params%preconditioner_type = PRECOND_AMG
+  default_iterative_params%idrs_shadow_space_dim = 4
+  default_iterative_params%max_iterations = 1000  ! More iterations like Julia tests
+  default_iterative_params%abs_tolerance = 1.0E-8_DP   ! Relaxed tolerance
+  default_iterative_params%rel_tolerance = 1.0E-6_DP   ! Relaxed tolerance
   default_iterative_params%verbose = .FALSE.
   
-  ! Call spline with BiCGSTAB 
-  sparse_solve_method = 5  ! BiCGSTAB
+  ! Call spline with IDR(s)+AMG
+  sparse_solve_method = SOLVER_IDRS
   CALL splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                     a_idrs, b_idrs, c_idrs, d_idrs, m, dummy_function)
   
@@ -110,7 +111,7 @@ PROGRAM test_idrs_404_spline
       ANY(c_idrs /= c_idrs) .OR. ANY(d_idrs /= d_idrs)) THEN
     WRITE(*,'(A)') '   [FAILURE] IDR(s) produced NaN values'
   ELSE
-    WRITE(*,'(A)') '   [SUCCESS] BiCGSTAB computed coefficients without NaN!'
+    WRITE(*,'(A)') '   [SUCCESS] IDR(s)+AMG computed coefficients without NaN!'
     
     ! Check magnitude of coefficients
     WRITE(*,'(A,ES12.5)') '   Max |a| coefficient: ', MAXVAL(ABS(a_idrs))
@@ -131,9 +132,9 @@ PROGRAM test_idrs_404_spline
                   MAXVAL(ABS(c_idrs - c_umf)) + MAXVAL(ABS(d_idrs - d_umf))
     
     IF (total_error < 1.0e-3_DP) THEN
-      WRITE(*,'(A)') '   [SUCCESS] BiCGSTAB results match UMFPACK within tolerance'
+      WRITE(*,'(A)') '   [SUCCESS] IDR(s)+AMG results match UMFPACK within tolerance'
     ELSE
-      WRITE(*,'(A,ES12.5)') '   [FAILURE] BiCGSTAB differs from UMFPACK, total error = ', total_error
+      WRITE(*,'(A,ES12.5)') '   [FAILURE] IDR(s)+AMG differs from UMFPACK, total error = ', total_error
     END IF
   END IF
   

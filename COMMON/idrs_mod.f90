@@ -59,7 +59,7 @@ CONTAINS
     info = 0
     converged = .FALSE.
     iter = 0
-    verbose = .TRUE.
+    verbose = .FALSE.
     
     ! Allocate working arrays
     ALLOCATE(R(n), V(n), Q(n), Z(n))
@@ -196,8 +196,9 @@ CONTAINS
           WRITE(*,'(A,I3,A,ES12.5)') '  Before AMG: step=', step, ', norm(V)=', SQRT(DOT_PRODUCT(V, V))
         END IF
         
-        ! Apply AMG preconditioning: solve M*Z = V for Z (correct way)
-        Z = 0.0_DP  ! Zero initial guess like GMRES
+        ! Apply AMG preconditioning: solve M*Z = V for Z (Julia pattern)
+        ! AMG as preconditioner: one V-cycle with zero initial guess
+        Z = 0.0_DP  ! Zero initial guess (AlgebraicMultigrid.jl line 14)
         CALL amg_precond_apply(amg_hier, Z, V)
         V = Z  ! Copy preconditioned result back to V
         
@@ -275,8 +276,9 @@ CONTAINS
           WRITE(*,'(A,ES12.5)') '  Before 2nd AMG: norm(V)=', SQRT(DOT_PRODUCT(V, V))
         END IF
         
-        ! Apply AMG preconditioning: solve M*Z = V for Z (correct way)
-        Z = 0.0_DP  ! Zero initial guess like GMRES
+        ! Apply AMG preconditioning: solve M*Z = V for Z (Julia pattern)
+        ! AMG as preconditioner: one V-cycle with zero initial guess
+        Z = 0.0_DP  ! Zero initial guess (AlgebraicMultigrid.jl line 14)
         CALL amg_precond_apply(amg_hier, Z, V)
         V = Z  ! Copy preconditioned result back to V
         
