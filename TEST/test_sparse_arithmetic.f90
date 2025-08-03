@@ -299,6 +299,168 @@ PROGRAM test_sparse_arithmetic
   
   DEALLOCATE(z_x_2d, z_r_2d, irow, pcol, z_val)
   
+  ! Test 11: Complex full matrix interface
+  WRITE(*,'(A)') "Test 11: Complex full matrix interface"
+  
+  ALLOCATE(z_A_full(2,2))
+  z_A_full(1,1) = (1.0_dp, 0.0_dp)
+  z_A_full(1,2) = (0.0_dp, 1.0_dp)
+  z_A_full(2,1) = (0.0_dp, -1.0_dp)
+  z_A_full(2,2) = (2.0_dp, 0.0_dp)
+  
+  ALLOCATE(z_x(2))
+  z_x = (/(1.0_dp, 0.0_dp), (0.0_dp, 1.0_dp)/)
+  
+  CALL sparse_matmul(z_A_full, z_x, z_r)
+  
+  IF (SIZE(z_r) == 2) THEN
+    WRITE(*,'(A)') "[PASS] Complex full matrix interface"
+  ELSE
+    WRITE(*,'(A)') "[FAIL] Complex full matrix interface"
+    test_passed = .FALSE.
+  END IF
+  
+  DEALLOCATE(z_A_full, z_x, z_r)
+  
+  ! Test 12: Complex 2D full matrix interface
+  WRITE(*,'(A)') "Test 12: Complex 2D full matrix interface"
+  
+  ALLOCATE(z_A_full(2,2))
+  z_A_full(1,1) = (2.0_dp, 0.0_dp)
+  z_A_full(1,2) = (1.0_dp, 1.0_dp)
+  z_A_full(2,1) = (1.0_dp, -1.0_dp)
+  z_A_full(2,2) = (2.0_dp, 0.0_dp)
+  
+  ALLOCATE(z_x_2d(2, 2))
+  z_x_2d(:,1) = (/(1.0_dp, 0.0_dp), (1.0_dp, 0.0_dp)/)
+  z_x_2d(:,2) = (/(0.0_dp, 1.0_dp), (0.0_dp, -1.0_dp)/)
+  
+  CALL sparse_matmul(z_A_full, z_x_2d, z_r_2d)
+  
+  IF (SIZE(z_r_2d,1) == 2 .AND. SIZE(z_r_2d,2) == 2) THEN
+    WRITE(*,'(A)') "[PASS] Complex 2D full matrix interface"
+  ELSE
+    WRITE(*,'(A)') "[FAIL] Complex 2D full matrix interface"
+    test_passed = .FALSE.
+  END IF
+  
+  DEALLOCATE(z_A_full, z_x_2d, z_r_2d)
+  
+  ! Test 13: Complex 2D solver test
+  WRITE(*,'(A)') "Test 13: Complex 2D solver test"
+  
+  nrow = 2
+  ncol = 2
+  nz = 4
+  ALLOCATE(irow(nz), pcol(ncol+1), z_val(nz))
+  
+  pcol = (/1, 3, 5/)
+  irow = (/1, 2, 1, 2/)
+  z_val = (/(2.0_dp, 0.0_dp), (0.0_dp, 1.0_dp), (1.0_dp, 0.0_dp), (2.0_dp, 0.0_dp)/)
+  
+  ALLOCATE(z_x_2d(ncol, 2))
+  z_x_2d(:,1) = (/(1.0_dp, 0.0_dp), (1.0_dp, 0.0_dp)/)
+  z_x_2d(:,2) = (/(0.0_dp, 1.0_dp), (0.0_dp, 1.0_dp)/)
+  
+  ! Compute expected b = A*x for both columns
+  ALLOCATE(z_r_2d(nrow, 2))
+  CALL sparse_matmul(nrow, ncol, irow, pcol, z_val, z_x_2d, z_r_2d)
+  
+  CALL sparse_solver_test(nrow, ncol, irow, pcol, z_val, z_x_2d, z_r_2d, max_abs_err, max_rel_err)
+  
+  IF (max_abs_err >= 0.0_dp .AND. max_rel_err >= 0.0_dp) THEN
+    WRITE(*,'(A)') "[PASS] Complex 2D solver test"
+  ELSE
+    WRITE(*,'(A)') "[FAIL] Complex 2D solver test"
+    test_passed = .FALSE.
+  END IF
+  
+  DEALLOCATE(z_x_2d, z_r_2d, irow, pcol, z_val)
+  
+  ! Test 14: Complex full matrix solver test
+  WRITE(*,'(A)') "Test 14: Complex full matrix solver test"
+  
+  ALLOCATE(z_A_full(2,2))
+  z_A_full(1,1) = (3.0_dp, 0.0_dp)
+  z_A_full(1,2) = (1.0_dp, 1.0_dp)
+  z_A_full(2,1) = (1.0_dp, -1.0_dp)
+  z_A_full(2,2) = (3.0_dp, 0.0_dp)
+  
+  ALLOCATE(z_x(2))
+  z_x = (/(1.0_dp, 0.0_dp), (1.0_dp, 0.0_dp)/)
+  
+  ! Compute b = A*x
+  ALLOCATE(z_r(2))
+  CALL sparse_matmul(z_A_full, z_x, z_r)
+  
+  CALL sparse_solver_test(z_A_full, z_x, z_r, max_abs_err, max_rel_err)
+  
+  IF (max_abs_err >= 0.0_dp .AND. max_rel_err >= 0.0_dp) THEN
+    WRITE(*,'(A)') "[PASS] Complex full matrix solver test"
+  ELSE
+    WRITE(*,'(A)') "[FAIL] Complex full matrix solver test"
+    test_passed = .FALSE.
+  END IF
+  
+  DEALLOCATE(z_A_full, z_x, z_r)
+  
+  ! Test 15: Full matrix 2D solver test
+  WRITE(*,'(A)') "Test 15: Full matrix 2D solver test"
+  
+  ALLOCATE(A_full(3,3))
+  A_full = 0.0_dp
+  A_full(1,1) = 5.0_dp
+  A_full(2,2) = 5.0_dp
+  A_full(3,3) = 5.0_dp
+  A_full(1,2) = 1.0_dp
+  A_full(2,3) = 1.0_dp
+  
+  ALLOCATE(x_2d(3, 2))
+  x_2d(:,1) = (/1.0_dp, 1.0_dp, 1.0_dp/)
+  x_2d(:,2) = (/2.0_dp, 2.0_dp, 2.0_dp/)
+  
+  ! Compute b = A*x
+  CALL sparse_matmul(A_full, x_2d, r_2d)
+  
+  CALL sparse_solver_test(A_full, x_2d, r_2d, max_abs_err, max_rel_err)
+  
+  IF (max_abs_err >= 0.0_dp .AND. max_rel_err >= 0.0_dp) THEN
+    WRITE(*,'(A)') "[PASS] Full matrix 2D solver test"
+  ELSE
+    WRITE(*,'(A)') "[FAIL] Full matrix 2D solver test"
+    test_passed = .FALSE.
+  END IF
+  
+  DEALLOCATE(A_full, x_2d, r_2d)
+  
+  ! Test 16: Complex full matrix 2D solver test
+  WRITE(*,'(A)') "Test 16: Complex full matrix 2D solver test"
+  
+  ALLOCATE(z_A_full(2,2))
+  z_A_full(1,1) = (4.0_dp, 0.0_dp)
+  z_A_full(1,2) = (0.0_dp, 2.0_dp)
+  z_A_full(2,1) = (0.0_dp, -2.0_dp)
+  z_A_full(2,2) = (4.0_dp, 0.0_dp)
+  
+  ALLOCATE(z_x_2d(2, 2))
+  z_x_2d(:,1) = (/(1.0_dp, 0.0_dp), (1.0_dp, 0.0_dp)/)
+  z_x_2d(:,2) = (/(0.0_dp, 1.0_dp), (0.0_dp, 1.0_dp)/)
+  
+  ! Compute b = A*x
+  ALLOCATE(z_r_2d(2, 2))
+  CALL sparse_matmul(z_A_full, z_x_2d, z_r_2d)
+  
+  CALL sparse_solver_test(z_A_full, z_x_2d, z_r_2d, max_abs_err, max_rel_err)
+  
+  IF (max_abs_err >= 0.0_dp .AND. max_rel_err >= 0.0_dp) THEN
+    WRITE(*,'(A)') "[PASS] Complex full matrix 2D solver test"
+  ELSE
+    WRITE(*,'(A)') "[FAIL] Complex full matrix 2D solver test"
+    test_passed = .FALSE.
+  END IF
+  
+  DEALLOCATE(z_A_full, z_x_2d, z_r_2d)
+  
   ! Summary
   WRITE(*,*)
   WRITE(*,'(A)') "================================="

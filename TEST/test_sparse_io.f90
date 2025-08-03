@@ -162,6 +162,7 @@ PROGRAM test_sparse_io
     test_passed = .FALSE.
   END IF
   
+  
   ! Summary
   WRITE(*,*)
   WRITE(*,'(A)') "================================="
