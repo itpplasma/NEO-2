@@ -59,7 +59,7 @@ CONTAINS
     info = 0
     converged = .FALSE.
     iter = 0
-    verbose = .FALSE.
+    verbose = .TRUE.
     
     ! Allocate working arrays
     ALLOCATE(R(n), V(n), Q(n), Z(n))
@@ -74,6 +74,14 @@ CONTAINS
     ! Line 115: R = C - A*X (compute initial residual)
     CALL sparse_matvec(n, row_ptr, col_idx, values, x, R)
     R = b - R
+    
+    ! Debug: Check magnitudes
+    IF (verbose) THEN
+      WRITE(*,'(A,ES12.5)') 'DEBUG: norm(b) = ', SQRT(DOT_PRODUCT(b, b))
+      WRITE(*,'(A,ES12.5)') 'DEBUG: norm(A*x) = ', SQRT(DOT_PRODUCT(R + (b - R), R + (b - R)))
+      WRITE(*,'(A,ES12.5)') 'DEBUG: max|b| = ', MAXVAL(ABS(b))
+      WRITE(*,'(A,ES12.5)') 'DEBUG: max|x| = ', MAXVAL(ABS(x))
+    END IF
     
     ! Line 116: normR = norm(R)
     normR = SQRT(DOT_PRODUCT(R, R))
