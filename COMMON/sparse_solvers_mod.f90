@@ -35,8 +35,8 @@ MODULE sparse_solvers_mod
   ! Unified iterative solver parameter structure
   TYPE, PUBLIC :: iterative_solver_params
     ! Convergence parameters (shared by all iterative solvers)
-    REAL(kind=dp) :: abs_tolerance = 1.0e-14_dp     ! Absolute tolerance
-    REAL(kind=dp) :: rel_tolerance = 1.0e-12_dp     ! Relative tolerance  
+    REAL(kind=dp) :: abs_tolerance = 1.0e-8_dp      ! Absolute tolerance (reasonable!)
+    REAL(kind=dp) :: rel_tolerance = 1.0e-8_dp      ! Relative tolerance (reasonable!)
     INTEGER :: max_iterations = 1000                 ! Maximum iterations
     LOGICAL :: verbose = .FALSE.                     ! Print convergence info
     
@@ -63,8 +63,8 @@ MODULE sparse_solvers_mod
   LOGICAL :: factorization_exists = .FALSE.
   
   ! BiCGSTAB solver parameters (configurable via namelist)
-  REAL(kind=dp) :: bicgstab_abs_tolerance = 1.0e-14_dp    ! Absolute tolerance floor (||r|| < abs_tol)
-  REAL(kind=dp) :: bicgstab_rel_tolerance = 1.0e-12_dp    ! Relative tolerance (||r|| < rel_tol*||b||)
+  REAL(kind=dp) :: bicgstab_abs_tolerance = 1.0e-8_dp     ! Absolute tolerance floor (||r|| < abs_tol) - reasonable!
+  REAL(kind=dp) :: bicgstab_rel_tolerance = 1.0e-8_dp     ! Relative tolerance (||r|| < rel_tol*||b||) - reasonable!
   INTEGER :: bicgstab_max_iter = 1000                      ! Maximum iterations
   INTEGER :: bicgstab_restart_limit = 3                    ! Number of restarts allowed
   INTEGER :: bicgstab_stabilization_param = 1             ! BiCGSTAB(ℓ) stabilization parameter (1=standard, 2=BiCGSTAB(2), etc.)

@@ -1544,6 +1544,30 @@ CONTAINS
        END SUBROUTINE ripple_solver_ArnoldiO2
     END INTERFACE ripple_solver_ArnoldiO2
 
+    ! IDR(s) ripple solver interface  
+    INTERFACE ripple_solver_idrs
+       SUBROUTINE ripple_solver_idrs( &
+           npass_l, npass_r, nvelocity, &
+           amat_plus_plus, amat_minus_minus, &
+           amat_plus_minus, amat_minus_plus, &
+           source_p, source_m, &
+           flux_p, flux_m, &
+           qflux, &
+           ierr &
+           )
+         USE nrtype, ONLY: DP
+         INTEGER, INTENT(OUT)   :: npass_l
+         INTEGER, INTENT(OUT)   :: npass_r
+         INTEGER, INTENT(OUT)   :: nvelocity
+         REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) ::         &
+                                       amat_plus_plus, amat_minus_minus,      &
+                                       amat_plus_minus, amat_minus_plus,      &
+                                       source_p,source_m,flux_p,flux_m
+         REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(out) :: qflux
+         INTEGER,                                    INTENT(out)   :: ierr
+       END SUBROUTINE ripple_solver_idrs
+    END INTERFACE ripple_solver_idrs
+
     ! Select ripple_solver version
     IF (isw_ripple_solver .EQ. 1) THEN
        CALL ripple_solver(                                                  &
@@ -1557,6 +1581,16 @@ CONTAINS
             )
     ELSEIF (isw_ripple_solver .EQ. 3) THEN
        CALL ripple_solver_ArnoldiO2(                                        &
+            prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,            &
+            prop_c%p%amat_p_p, prop_c%p%amat_m_m,                           &
+            prop_c%p%amat_p_m, prop_c%p%amat_m_p,                           &
+            prop_c%p%source_p, prop_c%p%source_m,                           &
+            prop_c%p%flux_p, prop_c%p%flux_m,                               &
+            prop_c%p%qflux,                                                 &
+            ierr                                                            &
+            )
+    ELSEIF (isw_ripple_solver .EQ. 4) THEN
+       CALL ripple_solver_idrs(                                             &
             prop_c%p%npass_l,prop_c%p%npass_r,prop_c%p%nvelocity,            &
             prop_c%p%amat_p_p, prop_c%p%amat_m_m,                           &
             prop_c%p%amat_p_m, prop_c%p%amat_m_p,                           &

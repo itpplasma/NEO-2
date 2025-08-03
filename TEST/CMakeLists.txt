@@ -40,6 +40,39 @@ set_tests_properties(spline_comparison_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "Some tests FAILED!"
 )
 
+# IDR(s) integration test executable
+add_executable(test_idrs_ripple_solver_integration
+    test_idrs_ripple_solver_integration.f90
+)
+
+# Set compiler flags for IDR(s) test
+target_compile_options(test_idrs_ripple_solver_integration PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library 
+target_link_libraries(test_idrs_ripple_solver_integration
+    common
+)
+
+# Include directories for IDR(s) test
+target_include_directories(test_idrs_ripple_solver_integration PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the IDR(s) integration test
+add_test(NAME idrs_integration_test 
+         COMMAND test_idrs_ripple_solver_integration
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set IDR(s) test properties
+set_tests_properties(idrs_integration_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "SUCCESS: All IDR\\(s\\) integration tests passed"
+    FAIL_REGULAR_EXPRESSION "FAILURE: Some tests failed"
+)
+
 # Unit test executable
 add_executable(test_spline_unit
     test_spline_unit.f90
