@@ -102,14 +102,11 @@ jobs:
           lcov --summary coverage_filtered.info >> $GITHUB_STEP_SUMMARY || echo "No coverage data found" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./build/coverage.xml
-          flags: unittests
-          name: unit-tests-coverage
-          fail_ci_if_error: false
-          verbose: true
+          slug: itpplasma/NEO-2
 
       - name: Upload coverage artifacts
         if: always()
