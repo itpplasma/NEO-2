@@ -2,9 +2,16 @@
 
 ## CURRENT PRIORITY: IDR(s) Integration for Kinetic Equations
 
-### Updated 2025-08-03: Strategic Pivot Based on Validation Results
+### Updated 2025-08-03: Legacy Code Preservation and New Defaults
 
-**Context:** Comprehensive validation reveals that **IDR(s) is optimal for kinetic equations** while **UMFPACK remains best for splines**. AMG development is **deprioritized** due to mathematical incompatibility with spline matrices.
+**Context:** Comprehensive validation reveals that **IDR(s) is optimal for kinetic equations** while **UMFPACK remains best for splines**. **All legacy code will be preserved as alternative options** with current state well documented.
+
+**Current Production Defaults (from main branch analysis):**
+- `sparse_solve_method = 3` (UMFPACK direct solver) - default for splines  
+- `isw_ripple_solver = 3` (Arnoldi 2nd order) - default for kinetic equations in NEO-2-QL
+- Both QL and PAR input files document comprehensive solver options including BiCGSTAB parameters
+
+**Strategy:** Add IDR(s) as new high-performance option while maintaining all existing solvers as documented alternatives.
 
 ### Key Findings from Unified Validation:
 1. **Spline matrices**: UMFPACK optimal (1.4-8.2x speedup), iterative methods perform poorly
@@ -14,12 +21,13 @@
 
 ### IDR(s) Integration Plan - IMMEDIATE PRIORITY
 
-#### Phase 1: Kinetic Equation Integration (Week 1)
-1. **Replace Arnoldi+Richardson in NEO-2-QL**
-   - Target: `ripple_solver_ArnoldiOrder2_test.f90`
-   - Remove complex eigenvalue analysis preprocessing  
-   - Replace with direct IDR(s) calls: `idrs_solve(matrix, rhs, solution, shadow_dim=4)`
-   - Memory reduction: 500n → 8n (60x improvement)
+#### Phase 1: IDR(s) as New Option (Week 1)
+1. **Add IDR(s) alongside existing Arnoldi+Richardson in NEO-2-QL**
+   - Target: Add `isw_ripple_solver = 4` (IDR(s)) option to existing choices
+   - Preserve existing `isw_ripple_solver = 3` (Arnoldi 2nd order) as default
+   - Implement direct IDR(s) calls: `idrs_solve(matrix, rhs, solution, shadow_dim=4)`
+   - Memory reduction potential: 500n → 8n (60x improvement)
+   - **Legacy preservation**: Keep all existing Arnoldi code untouched as alternative
 
 2. **Validation and testing**
    - Verify physics accuracy vs current Arnoldi+Richardson
@@ -28,8 +36,9 @@
    - Performance comparison: iteration count and solve time
 
 #### Phase 2: PAR Integration (Week 2)  
-1. **MPI-parallel IDR(s) for stellarator problems**
-   - Extend to `NEO-2-PAR/ripple_solver.f90`
+1. **Add MPI-parallel IDR(s) option for stellarator problems**
+   - Extend to `NEO-2-PAR/ripple_solver.f90` as additional solver option
+   - Preserve existing PAR solver choices as documented alternatives
    - Enable larger lag/leg parameters (target: lag=50-100 vs current lag=20-30)
    - Test on distributed kinetic matrices
    - Measure memory usage per MPI process
@@ -52,9 +61,10 @@
 
 ### Expected Benefits (Validated)
 - **Memory breakthrough:** 60x reduction for kinetic equation solver memory
-- **Scalability:** Enable lag=50-100 vs current lag=20-30 limit
+- **Scalability:** Enable lag=50-100 vs current lag=20-30 limit  
 - **Physics accuracy:** Better velocity space resolution for transport calculations
-- **Code simplification:** Replace complex Arnoldi+Richardson with single IDR(s) call
+- **User choice:** Add high-performance IDR(s) option while preserving all legacy solvers
+- **Backward compatibility:** All existing configurations continue to work unchanged
 
 ---
 
