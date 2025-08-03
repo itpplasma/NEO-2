@@ -141,6 +141,40 @@ set_tests_properties(spline_simple_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "Some tests FAILED!"
 )
 
+# Unified validation test executable
+add_executable(test_spline_unified_validation
+    test_spline_unified_validation.f90
+    spline_cof_original_dense.f90
+)
+
+# Set compiler flags
+target_compile_options(test_spline_unified_validation PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_spline_unified_validation
+    common
+)
+
+# Include directories
+target_include_directories(test_spline_unified_validation PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME spline_unified_validation_test 
+         COMMAND test_spline_unified_validation
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(spline_unified_validation_test PROPERTIES
+    TIMEOUT 60
+    PASS_REGULAR_EXPRESSION "RESULT: ALL TESTS PASSED!"
+    FAIL_REGULAR_EXPRESSION "RESULT: SOME TESTS FAILED!"
+)
+
 
 # Error path coverage test executable
 add_executable(test_spline_error_paths
@@ -912,33 +946,189 @@ set_tests_properties(idrs_no_precond_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAILURE:"
 )
 
+# IDR(s)+AMG effectiveness test executable (REMOVED - consolidated into unified test)
+# add_executable(test_idrs_amg_effectiveness
+#     test_idrs_amg_effectiveness.f90
+# )
+
+# Set compiler options for IDR(s)+AMG effectiveness test
+# target_compile_options(test_idrs_amg_effectiveness PRIVATE
+#     ${fpe_flags}
+#     ${omp_flags}
+# )
+
+# target_link_libraries(test_idrs_amg_effectiveness
+#     common
+# )
+
+# target_include_directories(test_idrs_amg_effectiveness PRIVATE
+#     ${CMAKE_SOURCE_DIR}/COMMON/sparse_mod  
+#     ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
+# )
+
+# Add the test
+# add_test(NAME idrs_amg_effectiveness_test 
+#          COMMAND test_idrs_amg_effectiveness
+#          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+# set_tests_properties(idrs_amg_effectiveness_test PROPERTIES
+#     TIMEOUT 60
+#     PASS_REGULAR_EXPRESSION "Summary:"
+#     FAIL_REGULAR_EXPRESSION "ERROR:"
+# )
+
+# IDR(s) normal spline test (REMOVED - consolidated into unified test)
+# add_executable(test_idrs_normal_spline
+#     test_idrs_normal_spline.f90
+# )
+
+# target_compile_options(test_idrs_normal_spline PRIVATE
+#     ${fpe_flags}
+#     ${omp_flags}
+# )
+
+# target_link_libraries(test_idrs_normal_spline
+#     common
+# )
+
+# target_include_directories(test_idrs_normal_spline PRIVATE
+#     ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
+# )
+
+# IDR(s) simple spline test (REMOVED - consolidated into unified test)
+# add_executable(test_idrs_simple_spline
+#     test_idrs_simple_spline.f90
+# )
+
+# target_compile_options(test_idrs_simple_spline PRIVATE
+#     ${fpe_flags}
+#     ${omp_flags}
+# )
+
+# target_link_libraries(test_idrs_simple_spline
+#     common
+# )
+
+# target_include_directories(test_idrs_simple_spline PRIVATE
+#     ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
+# )
+
+# Spline matrix structure test (REMOVED - consolidated into unified test)
+# add_executable(test_spline_matrix_structure
+#     test_spline_matrix_structure.f90
+# )
+
+# target_compile_options(test_spline_matrix_structure PRIVATE
+#     ${fpe_flags}
+#     ${omp_flags}
+# )
+
+# target_link_libraries(test_spline_matrix_structure
+#     common
+# )
+
+# Spline preconditioners test (REMOVED - consolidated into unified test)
+# add_executable(test_spline_preconditioners
+#     test_spline_preconditioners.f90
+# )
+
+# target_compile_options(test_spline_preconditioners PRIVATE
+#     -g -fbacktrace
+# )
+
+# target_link_libraries(test_spline_preconditioners
+#     common
+# )
+
+# target_include_directories(test_spline_preconditioners PRIVATE
+#     ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+#     ${CMAKE_BINARY_DIR}/COMMON
+# )
+
+# Realistic spline solvers test (REMOVED - consolidated into unified test)
+# add_executable(test_realistic_spline_solvers
+#     test_realistic_spline_solvers.f90
+# )
+
+# target_compile_options(test_realistic_spline_solvers PRIVATE
+#     -g -fbacktrace
+# )
+
+# target_link_libraries(test_realistic_spline_solvers
+#     common
+# )
+
+# target_include_directories(test_realistic_spline_solvers PRIVATE
+#     ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+#     ${CMAKE_BINARY_DIR}/COMMON
+# )
+
+# Simple spline convergence test (REMOVED - consolidated into unified test)
+# add_executable(test_simple_spline_convergence
+#     test_simple_spline_convergence.f90
+# )
+
+# target_compile_options(test_simple_spline_convergence PRIVATE
+#     -g -fbacktrace
+# )
+
+# target_link_libraries(test_simple_spline_convergence
+#     common
+# )
+
+# target_include_directories(test_simple_spline_convergence PRIVATE
+#     ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+#     ${CMAKE_BINARY_DIR}/COMMON
+#     ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
+# )
+
 # IDR(s)+AMG tridiagonal test executable
 add_executable(test_idrs_amg_tridiag
     test_idrs_amg_tridiag.f90
 )
 
-# IDR(s) 404x404 spline test executable  
-add_executable(test_idrs_404_spline
-    test_idrs_404_spline.f90
-)
+# IDR(s) 404x404 spline test executable (REMOVED - consolidated into unified test)
+# add_executable(test_idrs_404_spline
+#     test_idrs_404_spline.f90
+# )
+
+# IDR(s) 404x404 NEO-2 standard test (REMOVED - consolidated into unified test)
+# add_executable(test_idrs_404_neo2_standard
+#     test_idrs_404_neo2_standard.f90
+# )
+
+# target_compile_options(test_idrs_404_neo2_standard PRIVATE
+#     -g -fbacktrace
+# )
+
+# target_link_libraries(test_idrs_404_neo2_standard
+#     common
+# )
+
+# target_include_directories(test_idrs_404_neo2_standard PRIVATE
+#     ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+#     ${CMAKE_BINARY_DIR}/COMMON
+#     ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
+# )
 
 # Set compiler flags
 target_compile_options(test_idrs_amg_tridiag PRIVATE
     -g -fbacktrace
 )
 
-target_compile_options(test_idrs_404_spline PRIVATE
-    -g -fbacktrace
-)
+# target_compile_options(test_idrs_404_spline PRIVATE
+#     -g -fbacktrace
+# )
 
 # Link to the common library which contains all our modules
 target_link_libraries(test_idrs_amg_tridiag
     common
 )
 
-target_link_libraries(test_idrs_404_spline
-    common
-)
+# target_link_libraries(test_idrs_404_spline
+#     common
+# )
 
 # Include directories
 target_include_directories(test_idrs_amg_tridiag PRIVATE
@@ -947,11 +1137,11 @@ target_include_directories(test_idrs_amg_tridiag PRIVATE
     ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
 )
 
-target_include_directories(test_idrs_404_spline PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-    ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
-)
+# target_include_directories(test_idrs_404_spline PRIVATE
+#     ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+#     ${CMAKE_BINARY_DIR}/COMMON
+#     ${CMAKE_BINARY_DIR}/thirdparty/amg/modules
+# )
 
 # Add the test
 add_test(NAME idrs_amg_tridiag_test 
