@@ -32,16 +32,10 @@ coverage: clean
 		--rc geninfo_unexecuted_blocks=1 \
 		--ignore-errors inconsistent,mismatch,empty,unused
 	@echo "Filtering coverage data..."
-	cd $(BUILD_DIR) && lcov --remove coverage.info \
-		'*/build/*' \
-		'*/TEST/*' \
-		'*/libneo/*' \
-		'*/thirdparty/*' \
-		'*/DOC/*' \
-		'*/MULTI-SPEC-TOOLS/*' \
-		'*/tools/*' \
-		'/usr/*' \
-		'/tmp/*' \
+	cd $(BUILD_DIR) && lcov --extract coverage.info \
+		'*/COMMON/*' \
+		'*/NEO-2-PAR/*' \
+		'*/NEO-2-QL/*' \
 		--output-file coverage_filtered.info \
 		--rc branch_coverage=1 \
 		--ignore-errors unused,empty
