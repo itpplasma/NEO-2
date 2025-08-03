@@ -1750,25 +1750,25 @@ def write_axisymmetric_quantities(infilename:str, outfilename:str):
 
   try:
     h['Gamma_NA_spec']
-    header = "!               s             aiota          avnabpsi          Bref [G]                Er   MtOvR electrons   MtOvR deuterium D13  D23 D31 D32\n"
+    header = "!               s             aiota          avnabstor          Bref [G]                Er   MtOvR electrons   MtOvR deuterium D13  D23 D31 D32\n"
     er_available = True
   except KeyError:
     er_available = False
-    header = "!               s             aiota          avnabpsi          Bref [G]\n"
+    header = "!               s             aiota          avnabstor          Bref [G]\n"
 
   with open(outfilename, 'w') as outfile:
     outfile.write(header)
     for k in range(h['Bref'].size):
       if er_available:
         outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}  {: 16.10e}\n".format(
-          h['boozer_s'][k], h['aiota'][k], h['avnabpsi'][k], h['Bref'][k],
+          h['boozer_s'][k], h['aiota'][k], h['avnabstor'][k], h['Bref'][k],
           h['Er'][k], h['MtOvR'][k][0], h['MtOvR'][k][1],
           h['D13_AX'][k][0], h['D13_AX'][k][3], h['D23_AX'][k][0],
           h['D23_AX'][k][3], h['D31_AX'][k][0], h['D31_AX'][k][3],
           h['D32_AX'][k][0], h['D32_AX'][k][3]))
       else:
         outfile.write("{: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e} {: 16.10e}\n".format(
-          h['boozer_s'][k], h['aiota'][k], h['avnabpsi'][k], h['Bref'][k],
+          h['boozer_s'][k], h['aiota'][k], h['avnabstor'][k], h['Bref'][k],
           h['D13_AX'][k][0], h['D13_AX'][k][3], h['D23_AX'][k][0],
           h['D23_AX'][k][3], h['D31_AX'][k][0], h['D31_AX'][k][3],
           h['D32_AX'][k][0], h['D32_AX'][k][3]))
