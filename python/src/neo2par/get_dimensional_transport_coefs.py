@@ -11,7 +11,7 @@ def get_D_coef_neo2par(neo2par_runfolder, T, m, Z):
     with h5py.File(transp_par) as file:
         qflux = file["qflux"][()]
         int_1_ov_B_dl = file["dl1obhat"][()]
-        average_nabla_s = file["avnabpsi"][()]
+        average_nabla_s = file["avnabstor"][()]
     with h5py.File(magnetics_par) as file:
         Bref = file["bmod0"][()] * 1e4 # G
 
