@@ -105,7 +105,7 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./build/coverage.xml
+          files: ./build/coverage.xml
           slug: itpplasma/NEO-2
 
       - name: Upload coverage artifacts
