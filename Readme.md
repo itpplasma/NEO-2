@@ -1,6 +1,6 @@
 # NEO-2
 
-[![codecov](https://codecov.io/gh/itpplasma/NEO-2/graph/badge.svg?token=PFJ8YGPLUW)](https://codecov.io/gh/itpplasma/NEO-2)
+[![Codacy Badge](https://app.codacy.com/project/badge/Coverage/itpplasma/NEO-2)](https://app.codacy.com/gh/itpplasma/NEO-2/dashboard)
 
 # Installation
 
