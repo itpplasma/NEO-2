@@ -108,9 +108,12 @@ jobs:
           CODACY_USERNAME: itpplasma
           CODACY_PROJECT_NAME: NEO-2
         with:
-          api-token: ${{ secrets.CODACY_API_TOKEN }}
-          coverage-reports: lcov.info
-          language: fortran
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./build/coverage.xml
+          flags: common,neo2par,neo2ql
+          name: unit-tests-coverage
+          fail_ci_if_error: false
+          verbose: true
 
       - name: Upload coverage artifacts
         if: always()
