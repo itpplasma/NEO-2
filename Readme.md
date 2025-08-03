@@ -1,3 +1,7 @@
+# NEO-2
+
+[![codecov](https://codecov.io/gh/itpplasma/NEO-2/graph/badge.svg?token=PFJ8YGPLUW)](https://codecov.io/gh/itpplasma/NEO-2)
+
 # Installation
 
 ## Prerequisites
