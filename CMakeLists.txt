@@ -116,7 +116,6 @@ add_subdirectory(NEO-2-PAR)
 add_subdirectory(NEO-2-QL)
 add_subdirectory(MULTI-SPEC-TOOLS)
 add_subdirectory(tools/create_surfaces)
-
 add_subdirectory(TEST)
 
 ### Optional target for docs
