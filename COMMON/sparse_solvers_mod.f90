@@ -1998,7 +1998,7 @@ CONTAINS
     ! IDR(s) solver parameters
     REAL(kind=dp) :: abs_tol, rel_tol
     INTEGER :: max_iter, shadow_dim
-    INTEGER :: iter, info
+    INTEGER :: iter, info, i
     
     ! AMG preconditioning variables
     TYPE(amg_hierarchy) :: amg_hier
@@ -2098,37 +2098,50 @@ CONTAINS
         END IF
       END BLOCK
     ELSE
-      ! For non-preconditioned, use dense matrix format
+      ! For non-preconditioned, create identity AMG hierarchy
+      IF (default_iterative_params%verbose) THEN
+        PRINT *, 'IDR(s): Using identity preconditioner (no preconditioning)'
+      END IF
+      
+      ! Create dummy identity AMG hierarchy
+      amg_hier%n_levels = 1
+      ALLOCATE(amg_hier%levels(1))
+      amg_hier%levels(1)%n = nrow
+      amg_hier%levels(1)%nnz = nrow
+      ALLOCATE(amg_hier%levels(1)%row_ptr(nrow+1))
+      ALLOCATE(amg_hier%levels(1)%col_idx(nrow))
+      ALLOCATE(amg_hier%levels(1)%values(nrow))
+      
+      ! Build identity matrix in CSR format
+      DO i = 1, nrow
+        amg_hier%levels(1)%row_ptr(i) = i
+        amg_hier%levels(1)%col_idx(i) = i
+        amg_hier%levels(1)%values(i) = 1.0_dp
+      END DO
+      amg_hier%levels(1)%row_ptr(nrow+1) = nrow + 1
+      
+      ! Now solve with identity-preconditioned IDR(s)
       BLOCK
-        REAL(kind=dp), ALLOCATABLE :: A_dense(:,:)
-        INTEGER :: i, j, k
+        USE idrs_mod, ONLY: idrs_solve_amg_preconditioned
+        INTEGER :: dummy_workspace
+        REAL(kind=dp) :: residual_norm
+        LOGICAL :: converged
         
-        ALLOCATE(A_dense(nrow, nrow))
-        A_dense = 0.0_dp
-        
-        ! Convert CSR to dense
-        DO i = 1, nrow
-          DO k = csr_row_ptr(i), csr_row_ptr(i+1) - 1
-            j = csr_col_idx(k)
-            A_dense(i, j) = csr_val(k)
-          END DO
-        END DO
+        CALL idrs_solve_amg_preconditioned(dummy_workspace, nrow, csr_row_ptr, csr_col_idx, csr_val, &
+                                          b, x, max_iter, abs_tol, amg_hier, &
+                                          shadow_dim, x, iter, residual_norm, converged, info)
         
         IF (default_iterative_params%verbose) THEN
-          PRINT *, 'IDR(s) without preconditioning not yet implemented in native sparse mode'
-          PRINT *, '  Matrix size:', nrow
-          PRINT *, '  Shadow space dimension:', shadow_dim
-          PRINT *, '  Max iterations:', max_iter
-          PRINT *, '  Tolerance:', abs_tol
+          PRINT *, 'IDR(s)+Identity: Converged =', converged, ', Iterations =', iter
+          PRINT *, 'IDR(s)+Identity: Final residual =', residual_norm
         END IF
-        
-        ! For now, fallback to BiCGSTAB
-        PRINT *, 'WARNING: Falling back to BiCGSTAB solver'
-        sparse_solve_method = SOLVER_BICGSTAB
-        CALL sparse_solve_bicgstab_real(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
-        
-        DEALLOCATE(A_dense)
       END BLOCK
+      
+      ! Clean up identity AMG hierarchy
+      DEALLOCATE(amg_hier%levels(1)%row_ptr)
+      DEALLOCATE(amg_hier%levels(1)%col_idx)
+      DEALLOCATE(amg_hier%levels(1)%values)
+      DEALLOCATE(amg_hier%levels)
     END IF
     
     ! Copy solution back to b
@@ -2144,7 +2157,9 @@ CONTAINS
     END IF
     
     ! Clean up
-    IF (use_amg .AND. amg_info == 0) CALL amg_precond_destroy(amg_hier)
+    IF (use_amg .AND. amg_info == 0) THEN
+      CALL amg_precond_destroy(amg_hier)
+    END IF
     DEALLOCATE(csr_row_ptr, csr_col_idx, csr_val, x)
     
   END SUBROUTINE sparse_solve_idrs_real
