@@ -104,6 +104,9 @@ jobs:
           name: unit-tests-coverage
           fail_ci_if_error: false
           verbose: true
+          override_branch: ${{ github.head_ref || github.ref_name }}
+          override_commit: ${{ github.sha }}
+          override_pr: ${{ github.event.number }}
 
       - name: Upload coverage artifacts
         if: always()
