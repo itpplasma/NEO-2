@@ -28,6 +28,12 @@ The build system uses CMake with Ninja as the generator. Executables are created
 - `build/NEO-2-QL/neo_2_ql.x`
 - `build/NEO-2-PAR/neo_2_par.x`
 
+## Build System Notes
+
+- We have an outer Makefile on the project top level that handles cmake magic
+- Just run make to build and make test to test and make coverage to generate coverage
+- Never run make inside build directory, just use ninja but prefer outer make
+
 ## Testing
 
 Golden record tests are run via GitHub Actions on PRs. To run tests locally:

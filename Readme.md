@@ -1,12 +1,13 @@
 # Installation
 
 ## Prerequisites
-git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (OpenBLAS or MKL), SuiteSparse, FFTW, GSL, HDF5/NetCDF with Fortran libraries. If SuiteSparse is not available on your system, it will be built automatically by NEO-2. On Debian or Ubuntu run
+git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (OpenBLAS or MKL), SuiteSparse, FFTW, GSL, HDF5/NetCDF with Fortran libraries. If SuiteSparse is not available on your system, it will be built automatically by NEO-2. For code coverage, lcov is also required. On Debian or Ubuntu run
 
     sudo apt install git cmake make ninja-build gcc g++ gfortran
     sudo apt install openmpi-bin openmpi-common libopenmpi-dev
     sudo apt install libopenblas-dev libsuitesparse-dev
     sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
+    sudo apt install lcov  # Optional, for code coverage
 
 ## Build
 Run
@@ -19,6 +20,27 @@ You obtain a `build` directory with subdirectories
 
 * `NEO-2-QL` with binary `neo_2_ql.x` for the tokamak version.
 * `NEO-2-PAR` with binary `neo_2_par.x` for the stellarator version.
+
+## Testing
+
+To run tests:
+
+    make test
+
+To generate code coverage report:
+
+    make coverage
+
+This will build with coverage instrumentation, run all tests, and display a coverage summary. Coverage data files are generated in the `build` directory.
+
+To view detailed coverage report:
+
+    # After running make coverage, view the summary
+    lcov --summary build/coverage_filtered.info
+    
+    # Generate HTML report for detailed viewing
+    cd build && genhtml coverage_filtered.info --output-directory coverage_html
+    # Open build/coverage_html/index.html in a web browser
 
 If you have additional compilers and MPI implementations (e.g. Intel) installed, be sure to set the environment like
 
