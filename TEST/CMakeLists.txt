@@ -1288,40 +1288,6 @@ set_tests_properties(ripple_solver_comparison_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAILURE: Some ripple solver comparison tests failed"
 )
 
-# Actual Arnoldi vs IDR(s) ripple solver test executable
-add_executable(test_ripple_solver_arnoldi_vs_idrs
-    test_ripple_solver_arnoldi_vs_idrs.f90
-)
-
-# Set compiler flags
-target_compile_options(test_ripple_solver_arnoldi_vs_idrs PRIVATE
-    -g -fbacktrace
-)
-
-# Link to the common library which contains all our modules
-target_link_libraries(test_ripple_solver_arnoldi_vs_idrs
-    common
-    neo2_ql
-)
-
-# Include directories
-target_include_directories(test_ripple_solver_arnoldi_vs_idrs PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
-    ${CMAKE_BINARY_DIR}/COMMON
-    ${CMAKE_CURRENT_SOURCE_DIR}/../NEO-2-QL
-)
-
-# Add the test
-add_test(NAME ripple_solver_arnoldi_vs_idrs_test 
-         COMMAND test_ripple_solver_arnoldi_vs_idrs
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-# Set test properties
-set_tests_properties(ripple_solver_arnoldi_vs_idrs_test PROPERTIES
-    TIMEOUT 60
-    PASS_REGULAR_EXPRESSION "SUCCESS: All ripple solver tests passed"
-    FAIL_REGULAR_EXPRESSION "FAILURE: Some ripple solver tests failed"
-)
 
 # Ripple solver interface dispatch test executable
 add_executable(test_ripple_solver_interface_dispatch
@@ -1356,6 +1322,39 @@ set_tests_properties(ripple_solver_interface_dispatch_test PROPERTIES
     TIMEOUT 30
     PASS_REGULAR_EXPRESSION "SUCCESS: All interface dispatch tests passed"
     FAIL_REGULAR_EXPRESSION "FAILURE: Some interface tests failed"
+)
+
+# Definitive Arnoldi core extraction test executable
+add_executable(test_arnoldi_core_extraction
+    test_arnoldi_core_extraction.f90
+)
+
+# Set compiler flags
+target_compile_options(test_arnoldi_core_extraction PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_arnoldi_core_extraction
+    common
+)
+
+# Include directories
+target_include_directories(test_arnoldi_core_extraction PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the definitive core extraction test
+add_test(NAME arnoldi_core_extraction_test 
+         COMMAND test_arnoldi_core_extraction
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(arnoldi_core_extraction_test PROPERTIES
+    TIMEOUT 60
+    PASS_REGULAR_EXPRESSION "SUCCESS: All Arnoldi core extraction tests passed"
+    FAIL_REGULAR_EXPRESSION "FAILURE: Some Arnoldi core extraction tests failed"
 )
 
 # IDR(s)+AMG spline test executable (temporarily disabled due to compilation issues)
