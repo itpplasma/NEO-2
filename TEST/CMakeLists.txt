@@ -73,6 +73,39 @@ set_tests_properties(idrs_integration_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAILURE: Some tests failed"
 )
 
+# IDR(s) golden record validation test executable
+add_executable(test_idrs_golden_record_validation
+    test_idrs_golden_record_validation.f90
+)
+
+# Set compiler flags for IDR(s) golden record test
+target_compile_options(test_idrs_golden_record_validation PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library 
+target_link_libraries(test_idrs_golden_record_validation
+    common
+)
+
+# Include directories for IDR(s) golden record test
+target_include_directories(test_idrs_golden_record_validation PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the IDR(s) golden record validation test
+add_test(NAME idrs_golden_record_test 
+         COMMAND test_idrs_golden_record_validation
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set IDR(s) golden record test properties
+set_tests_properties(idrs_golden_record_test PROPERTIES
+    TIMEOUT 60
+    PASS_REGULAR_EXPRESSION "SUCCESS: IDR\\(s\\) passes all golden record validations!"
+    FAIL_REGULAR_EXPRESSION "FAILURE: Some golden record validations failed"
+)
+
 # Unit test executable
 add_executable(test_spline_unit
     test_spline_unit.f90

@@ -1,0 +1,7 @@
+&INDATA
+  inp = 'DOC/neo2.in.ql-full'
+/
+
+&ntv_input
+  isw_ripple_solver = 3  ! 3=Arnoldi O2, 4=IDR(s)
+/
