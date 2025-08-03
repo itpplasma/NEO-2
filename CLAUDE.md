@@ -39,6 +39,10 @@ For PR submissions, the CI runs:
 - Lorentz and QL tests on all pushes
 - PAR tests only on pull requests (due to longer runtime)
 
+## Environment Variables
+
+- There is a `$DATA` environment variable where one can find golden record tests
+
 ## Code Architecture
 
 ### Core Components
@@ -73,3 +77,6 @@ Install with: `cd python && pip install -e .`
 - Output data in HDF5 format for efficiency
 - Keep MPI code isolated to PAR variant
 - Test changes with golden record tests before submitting PRs
+
+## Build Tips
+- You don't have to run make clean usually. Only as a last resort when build fails repeatedly.

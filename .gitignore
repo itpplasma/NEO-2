@@ -66,3 +66,37 @@ DOC/latex/*
 build/cmake_install.cmake
 
 .DS_Store
+
+# Ignore coverage files and reports
+*.gcov
+*.gcda
+*.gcno
+coverage.info
+coverage_filtered.info
+coverage.xml
+
+# Ignore test output directories  
+TEST/Testing/
+*/TEST/Testing/
+*/*/TEST/Testing/
+
+# Ignore embedded Julia repository (used for algorithm reference only)
+thirdparty/AlgebraicMultigrid.jl
+
+# Ignore debug and temporary test files in root directory
+debug_*.f90
+test_*.f90
+test_*
+!TEST/test_*.f90
+
+# Ignore simulation output files
+*.h5
+*.dat
+*.chk
+*.cur
+*.sp.*
+
+# Ignore test output directories
+test_comparison/
+test_run/
+golden_record_test/*/

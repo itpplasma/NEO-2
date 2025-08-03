@@ -44,7 +44,7 @@ subroutine ripple_solver_ArnoldiO2( &
                               eta_modboundary_l, eta_modboundary_r, &
                               prop_reconstruct_levels
     use sparse_mod, only: sparse_solve_method, sparse_solve, &
-                          column_full2pointer, remap_rc, sparse_solver_test
+                          column_full2pointer, sparse_solver_test, remap_rc
     use mag_interface_mod, only: surface_boozer_B00, travis_convfac, boozer_s, mag_magfield
     use ntv_eqmat_mod, only: nz_symm, nz_asymm, nz_per_pos, nz_per_neg, &
                              irow_symm, icol_symm, amat_symm, &
@@ -4838,6 +4838,38 @@ CONTAINS
     end subroutine test_conservation
 
 end subroutine ripple_solver_ArnoldiO2
+
+!> Simple wrapper to make Arnoldi's sparse solving testable
+!! This extracts just the core sparse solve logic used by Arnoldi
+!! without requiring all the NEO-2 specific setup
+subroutine arnoldi_sparse_solve_test(nrow, ncol, nz, irow, pcol, val, b)
+    use sparse_mod, only: sparse_solve_method, sparse_solve
+    implicit none
+    
+    ! Arguments
+    integer, intent(in) :: nrow, ncol, nz
+    integer, dimension(:), intent(in) :: irow, pcol
+    real(kind=8), dimension(:), intent(in) :: val
+    real(kind=8), dimension(:), intent(inout) :: b
+    
+    ! Local variables
+    integer :: old_method, iopt
+    
+    ! Save current method
+    old_method = sparse_solve_method
+    
+    ! Use Arnoldi's preferred sparse method (UMFPACK without iterative refinement)
+    sparse_solve_method = 3
+    
+    ! Use the same solve approach as in Arnoldi
+    iopt = 0  ! Full solve (factorize + solve + free)
+    
+    call sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
+    
+    ! Restore original method
+    sparse_solve_method = old_method
+    
+end subroutine arnoldi_sparse_solve_test
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !! Modifications by Andreas F. Martitsch (27.07.2015)

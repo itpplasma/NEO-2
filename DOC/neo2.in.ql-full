@@ -257,7 +257,18 @@
  rbeg = 210.0  ! starting R. [181.d0]
  ripple_solver_accurfac = 3.0 ! [3.0d0]
  solver_talk = 0 ! [0]
- sparse_solve_method = 3 ! [3]
+ sparse_solve_method = 0 ! Sparse linear solver method:
+                        ! 0: Auto-select: UMFPACK for small (<100x100), BiCGSTAB for large (default)
+                        ! 2: UMFPACK with iterative refinement (legacy)
+                        ! 3: UMFPACK direct solver
+                        ! 4: BiCGSTAB iterative solver
+ auto_solver_threshold = 100  ! Matrix size threshold for auto-selection [100]
+ bicgstab_abs_tolerance = 1.0e-14 ! BiCGSTAB absolute tolerance floor (||r|| < abs_tol) [1.0e-14]
+ bicgstab_rel_tolerance = 1.0e-8  ! BiCGSTAB relative tolerance (||r|| < rel_tol*||b||) [1.0e-8]
+ bicgstab_tolerance = 1.0e-8      ! DEPRECATED: use bicgstab_rel_tolerance [same as bicgstab_rel_tolerance]
+ bicgstab_max_iter = 1000         ! BiCGSTAB maximum iterations [1000]
+ bicgstab_restart_limit = 3       ! BiCGSTAB restart limit [3]
+ bicgstab_verbose = .false.       ! BiCGSTAB verbose output [.false.]
  sparse_talk = .false. ! [.false.]
  switch_off_asymp = 0 ! [0]
  xetama = 1.300001 ! Seems to be not used, value is overwriten in ripple

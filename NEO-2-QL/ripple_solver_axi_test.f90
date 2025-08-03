@@ -48,7 +48,7 @@ SUBROUTINE ripple_solver(                                 &
                             prop_reconstruct_levels!,                           &
                             !prop_fileformat
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
-       column_full2pointer,remap_rc,sparse_solver_test
+       column_full2pointer,sparse_solver_test,remap_rc
   USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
                                surface_boozer_B00,travis_convfac,              &
                                mag_magfield,boozer_s
