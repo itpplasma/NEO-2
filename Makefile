@@ -52,12 +52,6 @@ coverage: clean
 		--ignore-errors source || echo "HTML generation completed with warnings"
 	@echo "=== Coverage Summary ==="
 	@cd $(BUILD_DIR) && lcov --summary coverage_filtered.info || echo "No coverage data found"
-	@if command -v lcov_cobertura >/dev/null 2>&1; then \
-		echo "Generating XML report for CI/CD..."; \
-		cd $(BUILD_DIR) && lcov_cobertura coverage_filtered.info -o coverage.xml; \
-	else \
-		echo "Note: Install lcov_cobertura (pip install lcov-cobertura) to generate XML reports"; \
-	fi
 	@echo "Coverage report generated in $(BUILD_DIR)/coverage_html/index.html"
 
 clean-coverage:
