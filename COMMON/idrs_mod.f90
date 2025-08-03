@@ -188,10 +188,10 @@ CONTAINS
           WRITE(*,'(A,I3,A,ES12.5)') '  Before AMG: step=', step, ', norm(V)=', SQRT(DOT_PRODUCT(V, V))
         END IF
         
+        ! Apply AMG preconditioning: solve M*Z = V for Z (correct way)
+        Z = 0.0_DP  ! Zero initial guess like GMRES
         CALL amg_precond_apply(amg_hier, Z, V)
-        ! Apply only a fraction of AMG correction to prevent over-solving
-        ! This maintains mild preconditioning instead of exact solving
-        V = V + 0.1_DP * (Z - V)  ! 10% of AMG correction
+        V = Z  ! Copy preconditioned result back to V
         
         IF (verbose) THEN
           WRITE(*,'(A,I3,A,ES12.5)') '  After AMG: step=', step, ', norm(V)=', SQRT(DOT_PRODUCT(V, V))
@@ -267,10 +267,10 @@ CONTAINS
           WRITE(*,'(A,ES12.5)') '  Before 2nd AMG: norm(V)=', SQRT(DOT_PRODUCT(V, V))
         END IF
         
+        ! Apply AMG preconditioning: solve M*Z = V for Z (correct way)
+        Z = 0.0_DP  ! Zero initial guess like GMRES
         CALL amg_precond_apply(amg_hier, Z, V)
-        ! Apply only a fraction of AMG correction to prevent over-solving
-        ! This maintains mild preconditioning instead of exact solving
-        V = V + 0.1_DP * (Z - V)  ! 10% of AMG correction
+        V = Z  ! Copy preconditioned result back to V
         
         IF (verbose) THEN
           WRITE(*,'(A,ES12.5)') '  After 2nd AMG: norm(V)=', SQRT(DOT_PRODUCT(V, V))

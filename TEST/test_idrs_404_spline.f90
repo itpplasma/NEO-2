@@ -3,7 +3,7 @@ PROGRAM test_idrs_404_spline
   
   USE nrtype, ONLY: I4B, DP
   USE sparse_solvers_mod, ONLY: sparse_solve_idrs_real, default_iterative_params, &
-                                PRECOND_NONE, sparse_solve_method, SOLVER_UMFPACK, SOLVER_IDRS
+                                PRECOND_NONE, PRECOND_AMG, sparse_solve_method, SOLVER_UMFPACK, SOLVER_IDRS
   IMPLICIT NONE
   
   INTERFACE
@@ -28,8 +28,8 @@ PROGRAM test_idrs_404_spline
   END INTERFACE
 
   ! Test parameters - let's try smaller, better-conditioned problems
-  INTEGER(I4B), PARAMETER :: n_points = 35  ! Medium problem size
-  REAL(DP), PARAMETER :: lambda_small = 1.0e-5_DP  ! Moderate conditioning
+  INTEGER(I4B), PARAMETER :: n_points = 67  ! Back to 404x404 problem
+  REAL(DP), PARAMETER :: lambda_small = 1.0e-6_DP  ! Original challenging conditioning
   
   ! Variables
   INTEGER(I4B) :: i, info, actual_matrix_size
@@ -41,7 +41,7 @@ PROGRAM test_idrs_404_spline
   INTEGER(I4B) :: sw1, sw2
   
   WRITE(*,'(A)') '========================================================='
-  WRITE(*,'(A)') 'Testing IDR(s) on Medium Moderately-Conditioned Spline Matrix'
+  WRITE(*,'(A)') 'Testing IDR(s) on 404x404 Challenging Spline Matrix'
   WRITE(*,'(A)') '========================================================='
   
   ! Allocate arrays - using the exact same structure as test_spline_amg
@@ -90,18 +90,18 @@ PROGRAM test_idrs_404_spline
   END IF
   WRITE(*,*)
   
-  ! Test 2: IDR(s) without preconditioning
-  WRITE(*,'(A)') '2. Testing IDR(s) WITHOUT preconditioning...'
+  ! Test 2: IDR(s) with AMG preconditioning (test the fix!)
+  WRITE(*,'(A)') '2. Testing IDR(s) WITH AMG preconditioning (FIXED VERSION)...'
   
-  ! Configure IDR(s) without preconditioning
-  default_iterative_params%preconditioner_type = PRECOND_NONE
+  ! Configure IDR(s) with AMG preconditioning
+  default_iterative_params%preconditioner_type = PRECOND_AMG
   default_iterative_params%idrs_shadow_space_dim = 4
-  default_iterative_params%max_iterations = 1000  ! Allow more iterations for medium problem
+  default_iterative_params%max_iterations = 1000
   default_iterative_params%abs_tolerance = 1.0E-10_DP
   default_iterative_params%rel_tolerance = 1.0E-8_DP
   default_iterative_params%verbose = .TRUE.  ! Enable verbose to see convergence
   
-  ! Call spline with IDR(s) (this will use sparse_solve_idrs_real internally)
+  ! Call spline with IDR(s)+AMG
   sparse_solve_method = SOLVER_IDRS
   CALL splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
                     a_idrs, b_idrs, c_idrs, d_idrs, m, dummy_function)
@@ -109,10 +109,9 @@ PROGRAM test_idrs_404_spline
   ! Check if spline coefficients are reasonable
   IF (ANY(a_idrs /= a_idrs) .OR. ANY(b_idrs /= b_idrs) .OR. &
       ANY(c_idrs /= c_idrs) .OR. ANY(d_idrs /= d_idrs)) THEN
-    WRITE(*,'(A)') '   [FAILURE] IDR(s) produced NaN values'
-    WRITE(*,'(A)') '   IDR(s) cannot solve this 404x404 ill-conditioned problem'
+    WRITE(*,'(A)') '   [FAILURE] IDR(s)+AMG produced NaN values'
   ELSE
-    WRITE(*,'(A)') '   [SUCCESS] IDR(s) computed spline coefficients without NaN'
+    WRITE(*,'(A)') '   [SUCCESS] IDR(s)+AMG computed coefficients without NaN!'
     
     ! Check magnitude of coefficients
     WRITE(*,'(A,ES12.5)') '   Max |a| coefficient: ', MAXVAL(ABS(a_idrs))
@@ -133,9 +132,9 @@ PROGRAM test_idrs_404_spline
                   MAXVAL(ABS(c_idrs - c_umf)) + MAXVAL(ABS(d_idrs - d_umf))
     
     IF (total_error < 1.0e-3_DP) THEN
-      WRITE(*,'(A)') '   [SUCCESS] IDR(s) results match UMFPACK within tolerance'
+      WRITE(*,'(A)') '   [SUCCESS] IDR(s)+AMG results match UMFPACK within tolerance'
     ELSE
-      WRITE(*,'(A,ES12.5)') '   [FAILURE] IDR(s) differs significantly from UMFPACK, total error = ', total_error
+      WRITE(*,'(A,ES12.5)') '   [FAILURE] IDR(s)+AMG differs from UMFPACK, total error = ', total_error
     END IF
   END IF
   
