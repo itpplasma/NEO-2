@@ -13,7 +13,7 @@ PROGRAM test_sparse_solvers
   REAL(kind=dp), ALLOCATABLE :: A_full(:,:)
   COMPLEX(kind=dp), ALLOCATABLE :: z_val(:), z_b(:), z_x(:)
   COMPLEX(kind=dp), ALLOCATABLE :: z_A_full(:,:)
-  INTEGER :: iopt, info
+  INTEGER :: iopt
   REAL(kind=dp) :: max_abs_err, max_rel_err
   INTEGER :: i, j
   LOGICAL :: test_passed
@@ -330,6 +330,125 @@ PROGRAM test_sparse_solvers
   CALL sparse_solve(nrow, ncol, nz, irow, pcol, z_val, z_b, iopt)
   
   DEALLOCATE(z_A_full, z_b, irow, pcol, z_val)
+  
+  ! Test 4: Direct solver with iterative refinement (method 2)
+  WRITE(*,'(A)') "Test 4: Direct solver with iterative refinement (method 2)"
+  
+  ! Create a simple 3x3 test system
+  ALLOCATE(A_full(3,3))
+  A_full = 0.0_dp
+  A_full(1,1) = 10.0_dp
+  A_full(1,2) = 2.0_dp
+  A_full(2,1) = 2.0_dp
+  A_full(2,2) = 10.0_dp
+  A_full(3,3) = 5.0_dp
+  
+  ! Convert to sparse format
+  CALL full2sparse(A_full, irow, pcol, val, nrow, ncol, nz)
+  
+  ! Create RHS
+  ALLOCATE(b(3,1))
+  b(:,1) = (/12.0_dp, 12.0_dp, 5.0_dp/)  ! Solution should be x = [1, 1, 1]
+  
+  ! Set solver method
+  sparse_solve_method = 2  ! UMFPACK with iterative refinement
+  iopt = 0  ! Full solve
+  
+  ! Solve the system
+  ALLOCATE(x(3))
+  CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
+  x = b(:,1)  ! Solution is returned in b
+  
+  ! Check solution
+  IF (ABS(x(1) - 1.0_dp) < tol .AND. &
+      ABS(x(2) - 1.0_dp) < tol .AND. &
+      ABS(x(3) - 1.0_dp) < tol) THEN
+    WRITE(*,'(A)') "[PASS] Direct solver with iterative refinement"
+  ELSE
+    WRITE(*,'(A)') "[FAIL] Direct solver with iterative refinement"
+    test_passed = .FALSE.
+  END IF
+  
+  DEALLOCATE(A_full, b, x, irow, pcol, val)
+  
+  ! Test 5: Complex system solver
+  WRITE(*,'(A)') "Test 5: Complex system solver"
+  
+  ! Create a complex 2x2 test system
+  ALLOCATE(z_A_full(2,2))
+  z_A_full(1,1) = (2.0_dp, 0.0_dp)
+  z_A_full(1,2) = (1.0_dp, 1.0_dp)
+  z_A_full(2,1) = (1.0_dp, -1.0_dp)
+  z_A_full(2,2) = (2.0_dp, 0.0_dp)
+  
+  ! Convert to sparse format
+  CALL full2sparse(z_A_full, irow, pcol, z_val, nrow, ncol, nz)
+  
+  ! Create complex RHS
+  ALLOCATE(z_b(2))
+  z_b = (/(3.0_dp, 1.0_dp), (3.0_dp, -1.0_dp)/)  ! Solution should be x = [1, 1]
+  
+  ! Set solver method
+  sparse_solve_method = 3  ! UMFPACK
+  iopt = 0
+  
+  ! Solve the complex system
+  ALLOCATE(z_x(2))
+  CALL sparse_solve(nrow, ncol, nz, irow, pcol, z_val, z_b, iopt)
+  z_x = z_b  ! Solution is returned in z_b
+  
+  ! Check solution
+  IF (ABS(REAL(z_x(1)) - 1.0_dp) < tol .AND. &
+      ABS(AIMAG(z_x(1))) < tol .AND. &
+      ABS(REAL(z_x(2)) - 1.0_dp) < tol .AND. &
+      ABS(AIMAG(z_x(2))) < tol) THEN
+    WRITE(*,'(A)') "[PASS] Complex system solver"
+  ELSE
+    WRITE(*,'(A)') "[FAIL] Complex system solver"
+    test_passed = .FALSE.
+  END IF
+  
+  DEALLOCATE(z_A_full, z_b, z_x, irow, pcol, z_val)
+  
+  ! Test 6: Factorization and separate solve (iopt=1,2,3)
+  WRITE(*,'(A)') "Test 6: Factorization and separate solve"
+  
+  ! Create test system
+  ALLOCATE(A_full(2,2))
+  A_full(1,1) = 4.0_dp
+  A_full(1,2) = 1.0_dp
+  A_full(2,1) = 1.0_dp
+  A_full(2,2) = 3.0_dp
+  
+  CALL full2sparse(A_full, irow, pcol, val, nrow, ncol, nz)
+  
+  ALLOCATE(b(2,1))
+  b(:,1) = (/5.0_dp, 4.0_dp/)  ! Solution: x = [1, 1]
+  
+  sparse_solve_method = 3
+  
+  ! First factorize (iopt=1)
+  iopt = 1
+  CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
+  
+  ! Then solve (iopt=2)
+  iopt = 2
+  CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
+  
+  ! Check solution
+  IF (ABS(b(1,1) - 1.0_dp) < tol .AND. &
+      ABS(b(2,1) - 1.0_dp) < tol) THEN
+    WRITE(*,'(A)') "[PASS] Factorization and separate solve"
+  ELSE
+    WRITE(*,'(A)') "[FAIL] Factorization and separate solve"
+    test_passed = .FALSE.
+  END IF
+  
+  ! Clean up (iopt=3)
+  iopt = 3
+  CALL sparse_solve(nrow, ncol, nz, irow, pcol, val, b, iopt)
+  
+  DEALLOCATE(A_full, b, irow, pcol, val)
   
   ! Summary
   WRITE(*,*)
