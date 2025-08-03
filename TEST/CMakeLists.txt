@@ -1254,6 +1254,110 @@ set_tests_properties(idrs_par_integration_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAILURE: Some PAR integration tests failed"
 )
 
+# Ripple solver comparison test executable
+add_executable(test_ripple_solver_comparison
+    test_ripple_solver_comparison.f90
+)
+
+# Set compiler flags
+target_compile_options(test_ripple_solver_comparison PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_ripple_solver_comparison
+    common
+    neo2_ql
+)
+
+# Include directories
+target_include_directories(test_ripple_solver_comparison PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+)
+
+# Add the test
+add_test(NAME ripple_solver_comparison_test 
+         COMMAND test_ripple_solver_comparison
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(ripple_solver_comparison_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "SUCCESS: All ripple solver comparison tests passed"
+    FAIL_REGULAR_EXPRESSION "FAILURE: Some ripple solver comparison tests failed"
+)
+
+# Actual Arnoldi vs IDR(s) ripple solver test executable
+add_executable(test_ripple_solver_arnoldi_vs_idrs
+    test_ripple_solver_arnoldi_vs_idrs.f90
+)
+
+# Set compiler flags
+target_compile_options(test_ripple_solver_arnoldi_vs_idrs PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_ripple_solver_arnoldi_vs_idrs
+    common
+    neo2_ql
+)
+
+# Include directories
+target_include_directories(test_ripple_solver_arnoldi_vs_idrs PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+    ${CMAKE_CURRENT_SOURCE_DIR}/../NEO-2-QL
+)
+
+# Add the test
+add_test(NAME ripple_solver_arnoldi_vs_idrs_test 
+         COMMAND test_ripple_solver_arnoldi_vs_idrs
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(ripple_solver_arnoldi_vs_idrs_test PROPERTIES
+    TIMEOUT 60
+    PASS_REGULAR_EXPRESSION "SUCCESS: All ripple solver tests passed"
+    FAIL_REGULAR_EXPRESSION "FAILURE: Some ripple solver tests failed"
+)
+
+# Ripple solver interface dispatch test executable
+add_executable(test_ripple_solver_interface_dispatch
+    test_ripple_solver_interface_dispatch.f90
+)
+
+# Set compiler flags
+target_compile_options(test_ripple_solver_interface_dispatch PRIVATE
+    -g -fbacktrace
+)
+
+# Link to the common library which contains all our modules
+target_link_libraries(test_ripple_solver_interface_dispatch
+    common
+    neo2_ql
+)
+
+# Include directories
+target_include_directories(test_ripple_solver_interface_dispatch PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../COMMON
+    ${CMAKE_BINARY_DIR}/COMMON
+    ${CMAKE_CURRENT_SOURCE_DIR}/../NEO-2-QL
+)
+
+# Add the test
+add_test(NAME ripple_solver_interface_dispatch_test 
+         COMMAND test_ripple_solver_interface_dispatch
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+# Set test properties
+set_tests_properties(ripple_solver_interface_dispatch_test PROPERTIES
+    TIMEOUT 30
+    PASS_REGULAR_EXPRESSION "SUCCESS: All interface dispatch tests passed"
+    FAIL_REGULAR_EXPRESSION "FAILURE: Some interface tests failed"
+)
+
 # IDR(s)+AMG spline test executable (temporarily disabled due to compilation issues)
 # add_executable(test_spline_idrs_amg
 #     test_spline_idrs_amg.f90

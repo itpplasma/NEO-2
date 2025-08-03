@@ -1,0 +1,279 @@
+!
+! This documents _all_ the input parameters for the quasi-linear version
+! of NEO-2. Not all of the settings may be of relevance for a specific
+! mode of NEO-2.
+! Values given here should be such, that it is possible to run use this
+! as an actually (maybe crude) input.
+! Namelists are ordered alphabetically, and so are the parameters.
+! Underscores are treated as non-existant, i.e. for the sake of order
+! 'a_b' is treated as 'ab'.
+! Documentation for each parameter is either at the end of the line (and
+! subsequent lines) or in the line(s) before the parameter.
+! Default values set in the code are given at the end of the
+! documentation in square brackets, e.g. '[5]', or for switches are
+! indicated with '[default]' at the appropriate entry.
+!
+! isw stands for integer switch.
+! lsw stands for logical switch.
+!
+&binsplit
+ bin_split_mode = 1 ! 0: no binary split for eta
+                    !    original eta used (higher eta_part necessary)
+                    ! 1: binary split is done [default]
+ boundary_dist_limit_factor =  9.9999997764825821e-003 ! [1.e-2]
+ bsfunc_divide = 0 ! [0]
+ bsfunc_ignore_trap_levels = 0 ! [0]
+ bsfunc_local_err =  3.0e-002 ! [1.0d-2]
+ bsfunc_local_err_max_mult =  1.0 ! [1.0d0]
+ bsfunc_local_shield_factor =  1.0 ! [1.0d0]
+ bsfunc_local_solver = 3 ! [0]
+ bsfunc_message = 0 ! [0]
+ bsfunc_max_index = 300 ! [20*eta_part]
+ bsfunc_max_mult_reach =  3.0 ! [3.0d0]
+ bsfunc_max_splitlevel = 30 ! [32]
+ bsfunc_min_distance = 1.0e-004 ! [0.0d0]
+ bsfunc_modelfunc = 3 ! 1: Gauss [default]
+                      ! 2: prop to exp(-|x-x0|/sqrt(2)/sigma)
+                      ! 3: prop to 1/(|x-x0|^2+\sigma^2)
+ bsfunc_modelfunc_num = 3 ! [0]
+ bsfunc_shield = .false. ! [.false.]
+ bsfunc_sigma_min = 9.9999999999999995e-021 ! [0.0d0]
+ bsfunc_sigma_mult =  1.0 ! [1.0d0]
+ bsfunc_total_err = 0.10 ! [1.0d-1]
+ eta_part = 10 ! [100] - Reduced for quick test
+ eta_s_lim = 1.58e-007  ! [1.2d0]
+ hphi_mult = 1.0 ! [1.0d0]
+ lambda_equi = 0 ! [0]
+ mag_local_sigma = 1 ! 0: compute sigma for eta-placement (old) [default]
+                     ! 1: add 2 local sigma-values within ripple
+ mag_ripple_contribution = 2 ! 1: ? [default]
+                             ! 2: new sigma formula.
+ max_solver_try = 10 ! How often the solver trys on error. [1]
+ phi_place_mode = 2 ! 1: only one point between automatic phi's
+                    ! 2: odd number of points between  automatic phi's
+                    !    according to hphi * hphi_mult [default]
+ phi_split_min = 3  ! [1]
+ phi_split_mode = 2 ! 1: halfstep
+                    ! 2: automatic [default]
+ sigma_shield_factor =  3.0 ! [3.0d0]
+ split_inflection_points = .true. ! [.true.]
+/
+&collision
+ collop_base_exp = 11 ! Expansion base for basis function expansion. See
+                      ! \verb|collop_base_prj| for parameters. At the
+                      ! moment it was only tested for
+                      ! \verb|collop_base_prj = collop_base_exp|. [0]
+ ! Projection base for basis function expansion.
+ ! 0: Generalized Laguerre polynomials of order $3/2$ [default].
+ ! 1: Standard polynomials $\phi_m(x) = x^m$.
+ ! 2: Quadratic polynomials $\phi_m(x) = x^{2m}$.
+ ! 10: Cubic Splines generated from a $y_m = (0, 0, ..., 1, ..., 0)$ grid.
+ ! 11: General B-Splines (best choice).
+ collop_base_prj = 11
+ collop_bspline_order = 3 ! According to the B-Spline definition this is
+                          ! the order parameter $k$. As an example $k=3$
+                          ! creates quadratic B-Splines and $k=4$ cubic
+                          ! B-Splines (best choice). [4]
+ collop_bspline_dist = 1.0 ! This parameter was introduces for testing a
+                           ! non-uniform knot distribution for
+                           ! B-Splines. Default value is $1$ which
+                           ! defines a uniform knot distribution (best
+                           ! choice). Values > 1 mean more of the points
+                           ! will be at low velocities. [1.0]
+ collop_bspline_taylor = .true. ! [.true.]
+ collop_path = "/afs/itp.tugraz.at/proj/plasma/documents/neo2/data-matrixelements/" !
+                        ! variable not used. ['']
+ conl_over_mfp = 1.0e-3 ! This is the collisionality parameter. When
+                        ! provided positive it is $L_c/l_c$ (connection
+                        ! length over mean free path) and when provided
+                        ! as negative value it is $\kappa = 2/l_c$.
+                        ! Please be aware that in our papers we define
+                        ! $\kappa = 1/l_c$, while internally in NEO-2 it
+                        ! has a slightly different normalization. [1.0d-3]
+ isw_axisymm = 1        ! [0]
+ isw_energy = 1         ! 0: no energy conservation [default]
+                        ! 1: with energy conservation
+ isw_integral = 1     ! 0: no momentum convervation [default]
+                      ! 1: (mainly) have momentum conservation
+ isw_lorentz = 0      ! [1]
+ isw_momentum = 0     ! [0]
+ isw_relativistic = 0 ! 0: Non-relativistic limit [default].
+                      ! 1: Braams/Karney model. If $leg>1$, then higher
+                      !    Legendre polynomials are computed in the
+                      !    non-relativistic limit.
+                      ! 2: Direct evaluation of Beliaev/Budker form.
+ lag = 3 ! Number of basis functions (former: number of Laguerre polynomials) [10]
+ leg = 3 ! number of Legendre polynomials [20]
+ legmax = 5 ! maximum number of Legendre polynomials [20]
+ lsw_nbi = .false. ! Switch to activate the code for neutral beam injection (not implemented so far). [.false.]
+ lsw_read_precom = .false. ! [.false.]
+ lsw_write_precom = .false. ! [.false.]
+ m_nbi = 1.0     ! [3.343583719d-24]
+ phi_x_max = 4.0 ! Important parameter for numerical integration and
+                 ! definition of B-Spline knot distribution. The
+                 ! B-Splines are distributed between $x=0$ and this
+                 ! value. A typical choice is $5$. Above this value the
+                 ! B-Splines are extrapolated with a Taylor series. [5.0d0]
+ scalprod_alpha = 0.0 ! [0.0d0]
+ scalprod_beta = 0.0 ! [0.0d0]
+ t_e = 1.0 ! Electron temperature for relativistic collision operator in eV. [1.0]
+ T_nbi = 1.0 ! [70d3]
+ vel_distri_swi = 0 ! [0]
+ vel_max = 5.0 ! [5.0d0]
+ vel_num = 10  ! [10]
+ v_max_resolution = 3.0 ! Only affects level placement and defines the
+                        ! maximum normalized velocity that should be
+                        ! resolved by the grid. Experience showed that
+                        ! values of $2$ - $3$ are sufficient for
+                        ! reconstruction of the generalized Spitzer
+                        ! function up to $5$ times the thermal velocity. [5.0d0]
+ v_min_resolution = 0.1 ! [0.1d0]
+ z_eff = 1.0 ! [1.0d0]
+/
+&multi_spec
+ boozer_theta_vphi = 0.0 ! only used for isw_Vphi_loc=2 [0.0d0]
+ conl_over_mfp_vec = -2.8980601244164802e-006, -4.7125144425366139e-006 ! [1.0d-3]
+ dn_vec_ov_ds = 2*-205346467242207.16 ! Radial derivatives of the densities of the species. [0.0d0]
+ dt_vec_ov_ds = -1.2342081697267263e-007, -5.6876762615227536e-008 ! Radial derivatives of the temperatures of the species. [0.0d0]
+ fname_multispec_in = "multi_spec_aug32169_t4.0210.in" ! ['']
+ isw_calc_er = 1 ! [0]
+ isw_calc_magdrift = 1 ! [0]
+ isw_coul_log = 0   ! 0: Coulomb logarithm set as species independent (overrides values for n_spec) [default]
+                    ! 1: Coulomb logarithm computed for each species using n_spec, T_spec
+                    !    (overrides values for collisionality parameters)
+ isw_multispecies_init = 0 ! [0]
+ isw_vphi_loc = 0   ! 0: <V_\varphi> [default]
+                    ! 1: V_{\varphi}(R,Z)
+                    ! 2: V_{\varphi}(theta?)
+ lsw_multispecies = .true. ! [.false.]
+ m_vec =  9.1093999999999992e-028, 3.3435999999999997e-024 ! List with the masses (in g = 10^-3 kg) of the species. [1.672621637d-24]
+ n_vec = 2*53112642031866.633 ! List with densities of the species. Unit is 1/cm^3 = 1/(10^-2 m)^3 = 1/(10^-6 m^3) = 10^6 / m^3. [1.0d13]
+ num_spec = 2 ! [1]
+ r_vphi = 0.0 ! only used for isw_Vphi_loc=1 [0.0d0]
+ species_tag_vec = 1, 2 ! [1,..,number of species]
+ species_tag_vphi = 2 ! 0: species index should be the same for all flux surfaces [default]
+ t_vec =  9.1495920740775243e-009,  7.1751185399075415e-009 ! List with the temperatures of the species in erg (1 erg ~ 6.241*10^11 eV). [1.6d-9]
+ vphi = 77048.433690608756 ! [0.0d0]
+ z_vec = -1.0,  1.0 ! List with the specific charges of the species. [1.0d0]
+ z_vphi = 0.0 ! only used for isw_Vphi_loc=1 [0.0d0]
+/
+&ntv_input
+ B_rho_L_loc = 0.0 ! Larmor radius times magnetic field. [0.0d0]
+ in_file_pert = 'filename' ! File that contains perturbation of the
+                           ! magnetic field.
+ isw_mag_shear = 1 ! Turn on(=1)/off(=0) non-local computations (mag.
+                   ! shear). [0]
+ isw_ntv_mode = 1  ! [0]
+ isw_qflux_NA = 1 ! Turn on(=1)/off(=0) computation of non-axisymmetrix
+                  ! part. [0]
+ isw_ripple_solver = 4 ! Which ripple solver version should be used.
+                       ! 1 first order direct [default]
+                       ! 2 Arnoldi, 1st order
+                       ! 3 Arnoldi, 2nd order
+                       ! 4 IDR(s) iterative solver [NEW]
+                       ! 4 Arnoldi, 3rd order
+ MtOvR = 0.0 ! The toroidal Mach number divided by major radius R0. [0.0d0]
+
+/
+&plotting
+ plot_gauss = 0 ! Plotting of gauss function in flint. [0]
+ plot_prop = 0  ! Plotting of propagator info in flint. [0]
+/
+&propagator
+ hphi_lim=  9.9999999999999995e-007 ! 1.0d-6
+ mag_infotalk = .false. ! [.true.]
+ mag_talk = .false. ! [.true.]
+ prop_binary = 0 ! [0]
+ prop_diagnostic = 0 ! [1]
+ prop_diagphys = 0 ! [1]
+ prop_fluxsplitmode = 2 ! [1]
+ prop_join_ends = 1 ! [0]
+ prop_overwrite = 1 ! [1]
+ prop_reconstruct = 0 ! 0 means a standard NEO-2 run. If
+                      ! \vv{prop_write = 2}, then all information for
+                      ! subsequent reconstruction runs are stored. For
+                      ! full reconstruction NEO-2 has to be run all
+                      ! reconstruction steps from 0 to 3, where 3 is a
+                      ! service run which cleans up the directory and
+                      ! merges all HDF5 files. Note that for the
+                      ! parallelized stellarator version only
+                      ! reconstruction steps 0 and 2 can be parallelized
+                      ! with MPI. [0]
+ prop_reconstruct_levels = 0 ! [0]
+ prop_ripple_plot = 0 ! [0]
+ prop_timing = 0 ! [1]
+ prop_write = 2 ! [0]
+/
+&settings
+ aiota_tokamak = 0.35144999999999998 ! [1.0d0/3.0d0]
+ asymp_margin_npass = 4 ! [4]
+ asymp_margin_zero = 10 ! [10]
+ asymp_pardeleta = 10.0 ! [10.0d0]
+ boozer_phi_beg = -3.1415926 ! [0.0d0]
+ boozer_s = 4.9e-3 ! Defines the flux surface as normalized toroidal flux. [0.5d0]
+ boozer_theta_beg =  3.1415926 ! [0.0d0]
+ epserr_iter = 1d-5 ! relative error of integral part iterations [1.0d-5]
+ eta_alpha_p =  2.0 ! Specify refinement differently [4.0d0]
+ eta_alpha_t = -1.0 ! [1.0d0]
+ eta_part_global =  0 !-1: equal distribution
+                      ! 0: use eta_alpha_p/t for an adjusted distribution of initial levels [default]
+ eta_part_globalfac = 3.0 ! [3.0d0]
+ eta_part_globalfac_p = 3.0 ! [3.0d0]
+ eta_part_globalfac_t = 3.0 ! [3.0d0]
+ eta_part_trapped = 35 ! Number of eta-levels in trapped region [10]
+ lsw_linear_boozer = F ! Use linear interpolation for boozer file [F]
+ mag_close_fieldline = 2 ! 0: do not
+                         ! 1: close fieldline artificially [default]
+ mag_coordinates = 1 ! 0: cylindrical [default]
+                     ! 1: Boozer
+ mag_cycle_ripples = 1 ! 0: old behaviour [default]
+                       ! 1: cycle through
+ mag_dbhat_min = 0.1d0 ! Determining extrema of fieldline, absolute
+                       ! value of derivative must be smaller [0.1d0]
+ mag_dphi_inf_min = 5.0e-002 ! [0.05d0]
+ mag_inflection_mult = 3.0 ! [3.0d0]
+ mag_magfield = 1 ! 0: homogeneous
+                  ! 1: normal [default]
+                  ! 2: Legendre
+                  ! 3: efit
+ magnetic_device = 0 ! 0: Tokamak
+                     ! 1: W7-AS [default]
+ mag_nperiod_min = 1 ! Only used for stellarators. Defines the minimum
+                     ! number of field periods until the field line is
+                     ! closed artificially. [300]
+ mag_save_memory = 0 ! Not used at the moment [1]
+ mag_start_special = 0 ! 0: original [default]
+                       ! 1: abs max
+                       ! 2: abs min
+                       ! 3: proptag_begin
+ mag_symmetric = .false. ! [.false.]
+ mag_symmetric_shorten = .false. ! [.false.]
+ ndim0 = 14  ! [14]
+ nperiod = 100 ! Number of periods. [500]
+ nstep = 20   ! Number of integration steps per period. [480]
+ omp_num_threads = 4 ! [1]
+ phimi = 0.0   ! Beginning of period. [0.0d0]
+ proptag_begin = 0 ! 0 take first from fieldline [default], otherwise begin
+ proptag_final = 0 ! 0 take last from fieldline [default], otherwise end
+ rbeg = 210.0  ! starting R. [181.d0]
+ ripple_solver_accurfac = 3.0 ! [3.0d0]
+ solver_talk = 0 ! [0]
+ sparse_solve_method = 0 ! Sparse linear solver method:
+                        ! 0: Auto-select: UMFPACK for small (<100x100), BiCGSTAB for large (default)
+                        ! 2: UMFPACK with iterative refinement (legacy)
+                        ! 3: UMFPACK direct solver
+                        ! 4: BiCGSTAB iterative solver
+ auto_solver_threshold = 100  ! Matrix size threshold for auto-selection [100]
+ bicgstab_abs_tolerance = 1.0e-14 ! BiCGSTAB absolute tolerance floor (||r|| < abs_tol) [1.0e-14]
+ bicgstab_rel_tolerance = 1.0e-8  ! BiCGSTAB relative tolerance (||r|| < rel_tol*||b||) [1.0e-8]
+ bicgstab_tolerance = 1.0e-8      ! DEPRECATED: use bicgstab_rel_tolerance [same as bicgstab_rel_tolerance]
+ bicgstab_max_iter = 1000         ! BiCGSTAB maximum iterations [1000]
+ bicgstab_restart_limit = 3       ! BiCGSTAB restart limit [3]
+ bicgstab_verbose = .false.       ! BiCGSTAB verbose output [.false.]
+ sparse_talk = .false. ! [.false.]
+ switch_off_asymp = 0 ! [0]
+ xetama = 1.300001 ! Seems to be not used, value is overwriten in ripple
+                   ! solver. [1.300001d0]
+ xetami = 0.0 ! [0.0d0]
+ zbeg = 0.0 ! [0.d0]
+/
