@@ -78,4 +78,8 @@ Install with: `cd python && pip install -e .`
 - Maintain separation between QL and PAR implementations
 - Output data in HDF5 format for efficiency
 - Keep MPI code isolated to PAR variant
-- Test changes with golden record tests before submitting PRs
+
+## Testing Guidelines
+
+- Tests must be non-shallow, non-tautological, and as small and fast as possible
+- Avoid any file or network I/O wherever possible
