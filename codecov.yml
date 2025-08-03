@@ -1,5 +1,12 @@
 codecov:
   require_ci_to_pass: yes
+  # Specify directories to search for coverage
+  directory: .
+  # Specify source directories
+  paths:
+    - COMMON/
+    - NEO-2-PAR/
+    - NEO-2-QL/
 
 coverage:
   status:
