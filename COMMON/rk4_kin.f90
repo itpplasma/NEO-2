@@ -1,7 +1,7 @@
 SUBROUTINE rk4_kin(x,h)
 
   USE rk4_kin_mod
-  USE odeint_allroutines_sub, only: odeint_allroutines, compute_derivative
+  USE odeint_allroutines_sub, only: odeint_allroutines
   USE rhs_kin_sub, only: rhs_kin
 
   IMPLICIT NONE
