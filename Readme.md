@@ -30,11 +30,15 @@ You obtain a `build` directory with subdirectories
 
 To run tests:
 
+```bash
     make test
+```
 
 To generate code coverage report:
 
+```bash
     make coverage
+```
 
 This will build with coverage instrumentation, run all tests, and display a coverage summary. Coverage data files are generated in the `build` directory.
 
