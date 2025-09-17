@@ -26,7 +26,7 @@ function [Drp] = calculate_cgs_ripple_plateau_coefficient_for_file(filename, n, 
 
   h = load('neo2_multispecies_out.h5');
 
-  F = 1.0 ./ h.avnabpsi.^2 ./ (h.psi_pr_hat.^2 .*h.Bref) .*(h.aiota.*h.bcovar_tht + h.bcovar_phi) ./ h.aiota.^2;
+  F = 1.0 ./ h.av_nabla_stor.^2 ./ (h.psi_pr_hat.^2 .*h.Bref) .*(h.aiota.*h.bcovar_tht + h.bcovar_phi) ./ h.aiota.^2;
 
   omega_co = e0*h.Bref ./ (h.m_spec(species,:)*c);
   vthermal = sqrt(2*h.T_spec(species,:) ./ (h.m_spec(species,:)));

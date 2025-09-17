@@ -9,7 +9,7 @@ def neo2_output():
     n_surf = 10
     content = {}
     content["boozer_s"] = np.linspace(0, 1, n_surf)
-    content["avnabpsi"] = np.linspace(0.1, 1, n_surf)
+    content["av_nabla_stor"] = np.linspace(0.1, 1, n_surf)
     content["avbhat2"] = np.linspace(1, 0.91, n_surf)
     content["Bref"] = np.linspace(0.1, 1, n_surf)
     content["psi_pr_hat"] = -np.linspace(0.1, 1, n_surf)
@@ -29,7 +29,7 @@ def neo2_output_single_surface():
     clean_up(filename)
     content = {}
     content["boozer_s"] = 0.5
-    content["avnabpsi"] = 0.5
+    content["av_nabla_stor"] = 0.5
     content["avbhat2"] = 0.5 
     content["Bref"] = 0.5
     content["psi_pr_hat"] = -0.5
@@ -72,7 +72,7 @@ def test_get_average_nable_stor(neo2_output):
     from neo2_ql import get_average_nabla_stor
     filename, content = neo2_output
     average_nabla_stor, stor = get_average_nabla_stor(filename)
-    assert np.allclose(average_nabla_stor, content["avnabpsi"])
+    assert np.allclose(average_nabla_stor, content["av_nabla_stor"])
     assert np.allclose(stor, content["boozer_s"])
 
     

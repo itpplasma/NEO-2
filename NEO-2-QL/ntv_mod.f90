@@ -213,7 +213,7 @@ CONTAINS
     INTEGER, DIMENSION(3), PARAMETER :: ind_map = (/1,3,2/)
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
     REAL(kind=dp), DIMENSION(3) :: beta_out
-    REAL(kind=dp) :: aiota_loc, rt0, avnabpsi
+    REAL(kind=dp) :: aiota_loc, rt0, av_nabla_stor
     ! ---------------------------------------------------------------!
     ! D11 and D12 for the non-axisymmetric problem
     ! normalized with the plateau coefficient
@@ -269,11 +269,11 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! R0, aiota, avnabpsi, beta_out:
+    ! R0, aiota, av_nabla_stor, beta_out:
     rt0 = device%r0
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
-    beta_out = (/ y(14)/y(13)/avnabpsi, y(14)/y(13)/avnabpsi, y(13)/y(14) /)
+    av_nabla_stor = y(7) / y(6)
+    beta_out = (/ y(14)/y(13)/av_nabla_stor, y(14)/y(13)/av_nabla_stor, y(13)/y(14) /)
 
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
@@ -289,7 +289,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
        x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
@@ -308,12 +308,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF               
     END IF
 
@@ -474,7 +474,7 @@ CONTAINS
     ! local definitions:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, rt0, avnabpsi
+    REAL(kind=dp) :: aiota_loc, rt0, av_nabla_stor
     ! ---------------------------------------------------------------!
     INTEGER :: ispec_row, ispec_col, ispec_ctr
     REAL(kind=dp) :: ma, mb, m0
@@ -502,10 +502,10 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! R0, aiota, avnabpsi :
+    ! R0, aiota, av_nabla_stor :
     rt0 = device%r0
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
+    av_nabla_stor = y(7) / y(6)
 
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
@@ -523,7 +523,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
        x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
@@ -542,12 +542,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF
     END IF
 
@@ -603,7 +603,7 @@ CONTAINS
     !-> However, normalizations used in 'compute_Dij_norm_a' are
     !-> generally valid and, therfore, this is inconsistent. 
     !D31ref00 = vt0 * rho0 * bcovar_phi_hat * (bmod0*1.0e4_dp) / &
-    !     (2.0_dp * aiota_loc * boozer_psi_pr_hat * avnabpsi)
+    !     (2.0_dp * aiota_loc * boozer_psi_pr_hat * av_nabla_stor)
     !-> new:
     D31ref00 = vt0 * rho0 * bcovar_phi_hat * ((bmod0*1.0e4_dp)**2) / &
          (2.0_dp * sqrtg_bctrvr_tht)
@@ -727,7 +727,7 @@ CONTAINS
     ! local definitions:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, rt0, avnabpsi
+    REAL(kind=dp) :: aiota_loc, rt0, av_nabla_stor
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(3,3) :: Dij_AX, Dij_NA, dummy_33
     ! D11 and D12 for the non-axisymmetric problem
@@ -764,10 +764,10 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! R0, aiota, avnabpsi :
+    ! R0, aiota, av_nabla_stor :
     rt0 = device%r0
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
+    av_nabla_stor = y(7) / y(6)
 
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
@@ -783,7 +783,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
        x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
@@ -802,12 +802,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF
     END IF
 
@@ -897,7 +897,7 @@ CONTAINS
          D31_AX_D31ref, D32_AX_D31ref, k_cof, &
          D11_NA_Dpl, D12_NA_Dpl, D13_NA_D31ref, &
          aiota_loc, rt0, (bmod0*1.0e4_dp), &
-         boozer_psi_pr_hat, avnabpsi, &
+         boozer_psi_pr_hat, av_nabla_stor, &
          sqrtg_bctrvr_tht, sqrtg_bctrvr_phi, bcovar_tht, bcovar_phi, &
          DBLE(m_phi), avbhat2, av_inv_bhat_val, eps_M_2_val, &
          av_gphph_val, avbhat, D11_AX_Dpl, D12_AX_Dpl
@@ -944,7 +944,7 @@ CONTAINS
     ! local definitions:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, rt0, avnabpsi
+    REAL(kind=dp) :: aiota_loc, rt0, av_nabla_stor
     ! ---------------------------------------------------------------!
     INTEGER :: ispec_row, ispec_col, ispec_ctr
     REAL(kind=dp) :: ma, mb, m0
@@ -1086,10 +1086,10 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! R0, aiota, avnabpsi :
+    ! R0, aiota, av_nabla_stor :
     rt0 = device%r0
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
+    av_nabla_stor = y(7) / y(6)
 
     ! reference mass, thermal velocity and charge number (=electrons)
     m0 = m_spec(0)
@@ -1116,7 +1116,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
        x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
@@ -1138,12 +1138,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF
     END IF
 
@@ -1568,7 +1568,7 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'R0', rt0, comment='major radius', unit='cm')
     CALL h5_add(h5id_multispec, 'Bref', (bmod0*1.0e4_dp), comment='reference magnetic field in gauss', unit='G')
     CALL h5_add(h5id_multispec, 'psi_pr_hat', boozer_psi_pr_hat)
-    CALL h5_add(h5id_multispec, 'avnabpsi', avnabpsi)
+    CALL h5_add(h5id_multispec, 'av_nabla_stor', av_nabla_stor)
     CALL h5_add(h5id_multispec, 'sqrtg_bctrvr_tht', sqrtg_bctrvr_tht)
     CALL h5_add(h5id_multispec, 'sqrtg_bctrvr_phi', sqrtg_bctrvr_phi)
     CALL h5_add(h5id_multispec, 'bcovar_tht', bcovar_tht)
@@ -2062,7 +2062,7 @@ CONTAINS
     ! local:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, avnabpsi
+    REAL(kind=dp) :: aiota_loc, av_nabla_stor
     ! ---------------------------------------------------------------!
     ! co- and contra-variant B-field components using
     ! r_eff as a flux-surface label
@@ -2112,9 +2112,9 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! aiota, avnabpsi :
+    ! aiota, av_nabla_stor :
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
+    av_nabla_stor = y(7) / y(6)
     avbhat2 = y(9) / y(6)
 
     spec_i = -1
@@ -2142,7 +2142,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
 
@@ -2186,12 +2186,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF
     END IF
 
@@ -2222,9 +2222,9 @@ CONTAINS
 
     z_ions = z_spec(spec_i)
     T_ions = T_spec(spec_i)
-    dT_ions_ov_dr = dT_spec_ov_ds(spec_i) * avnabpsi
+    dT_ions_ov_dr = dT_spec_ov_ds(spec_i) * av_nabla_stor
     n_ions = n_spec(spec_i)
-    dn_ions_ov_dr = dn_spec_ov_ds(spec_i) * avnabpsi
+    dn_ions_ov_dr = dn_spec_ov_ds(spec_i) * av_nabla_stor
     p_ions = n_ions*T_ions
     dp_ions_ov_dr = T_ions * dn_ions_ov_dr + n_ions * dT_ions_ov_dr
 
@@ -2268,10 +2268,10 @@ CONTAINS
           IF (irow_spec .NE. spec_i) CYCLE
 
           icol_spec = col_ind_ptr(ispec_ctr)
-          nom_Er_3 = avnabpsi * D31AX_spec(ispec_ctr) * &
+          nom_Er_3 = av_nabla_stor * D31AX_spec(ispec_ctr) * &
                (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec) + &
                dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-          nom_Er_4 = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
+          nom_Er_4 = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
                (D32AX_spec(ispec_ctr) - 2.5_dp * D31AX_spec(ispec_ctr))
           nom_Er_5 = D33AX_spec(ispec_ctr) * avEparB_ov_avb2 * &
                (z_spec(icol_spec)*e) / T_spec(icol_spec)
@@ -2289,10 +2289,10 @@ CONTAINS
           IF (irow_spec .NE. spec_i) CYCLE
 
           icol_spec = col_ind_ptr(ispec_ctr)
-          nom_Er_3 = avnabpsi * D31AX_spec(ispec_ctr) * &
+          nom_Er_3 = av_nabla_stor * D31AX_spec(ispec_ctr) * &
                (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec) + &
                dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-          nom_Er_4 = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
+          nom_Er_4 = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
                (D32AX_spec(ispec_ctr) - 2.5_dp * D31AX_spec(ispec_ctr))
           nom_Er_5 = D33AX_spec(ispec_ctr) * avEparB_ov_avb2 * &
                (z_spec(icol_spec)*e) / T_spec(icol_spec)
@@ -2347,7 +2347,7 @@ CONTAINS
     ! local:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, avnabpsi
+    REAL(kind=dp) :: aiota_loc, av_nabla_stor
     ! ---------------------------------------------------------------!
     ! co- and contra-variant B-field components using
     ! r_eff as a flux-surface label
@@ -2380,9 +2380,9 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! aiota, avnabpsi, avbhat2:
+    ! aiota, av_nabla_stor, avbhat2:
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
+    av_nabla_stor = y(7) / y(6)
     avbhat2 = y(9) / y(6)
 
     ! computation of the normalization for D31 and D32 (-> D31_ref)
@@ -2407,7 +2407,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
        x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
@@ -2429,12 +2429,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF
     END IF
 
@@ -2467,8 +2467,8 @@ CONTAINS
        irow_spec = row_ind_ptr(ispec_ctr)
        icol_spec = col_ind_ptr(ispec_ctr)
 
-       A2_b = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-       A1_b = avnabpsi * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
+       A2_b = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
+       A1_b = av_nabla_stor * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
             1.5_dp * A2_b - Er * (z_spec(icol_spec)*e) / T_spec(icol_spec)
 
        nom_Epar_1 = - (z_spec(irow_spec)*e) * n_spec(irow_spec) * &
@@ -2524,7 +2524,7 @@ CONTAINS
     ! local:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, avnabpsi
+    REAL(kind=dp) :: aiota_loc, av_nabla_stor
     ! ---------------------------------------------------------------!
     ! co- and contra-variant B-field components using
     ! r_eff as a flux-surface label
@@ -2566,9 +2566,9 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! aiota, avnabpsi, avbhat2:
+    ! aiota, av_nabla_stor, avbhat2:
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
+    av_nabla_stor = y(7) / y(6)
     avbhat2 = y(9) / y(6)
 
     spec_i = -1
@@ -2602,7 +2602,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
 
@@ -2649,12 +2649,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF
     END IF
 
@@ -2687,9 +2687,9 @@ CONTAINS
 
     z_ions = z_spec(spec_i)
     T_ions = T_spec(spec_i)
-    dT_ions_ov_dr = dT_spec_ov_ds(spec_i) * avnabpsi
+    dT_ions_ov_dr = dT_spec_ov_ds(spec_i) * av_nabla_stor
     n_ions = n_spec(spec_i)
-    dn_ions_ov_dr = dn_spec_ov_ds(spec_i) * avnabpsi
+    dn_ions_ov_dr = dn_spec_ov_ds(spec_i) * av_nabla_stor
     p_ions = n_ions*T_ions
     dp_ions_ov_dr = T_ions * dn_ions_ov_dr + n_ions * dT_ions_ov_dr
 
@@ -2772,16 +2772,16 @@ CONTAINS
           icol_spec = col_ind_ptr(ispec_ctr)
 
           IF (irow_spec .EQ. spec_i) THEN
-             nom_Er_3 = avnabpsi * D31AX_spec(ispec_ctr) * &
+             nom_Er_3 = av_nabla_stor * D31AX_spec(ispec_ctr) * &
                   (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec) + &
                   dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-             nom_Er_4 = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
+             nom_Er_4 = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
                   (D32AX_spec(ispec_ctr) - 2.5_dp * D31AX_spec(ispec_ctr))
              nom_Er = nom_Er + nom_Er_3 + nom_Er_4
           END IF
 
-          dlogT_ov_dr = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-          dlogn_ov_dr = avnabpsi * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec))
+          dlogT_ov_dr = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
+          dlogn_ov_dr = av_nabla_stor * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec))
 
           nom_Epar_1 = (z_spec(irow_spec)*e) * n_spec(irow_spec) * &
                (D31AX_spec(ispec_ctr)*(dlogn_ov_dr+dlogT_ov_dr) + &
@@ -2803,16 +2803,16 @@ CONTAINS
           icol_spec = col_ind_ptr(ispec_ctr)
 
           IF (irow_spec .EQ. spec_i) THEN
-             nom_Er_3 = avnabpsi * D31AX_spec(ispec_ctr) * &
+             nom_Er_3 = av_nabla_stor * D31AX_spec(ispec_ctr) * &
                   (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec) + &
                   dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-             nom_Er_4 = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
+             nom_Er_4 = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
                   (D32AX_spec(ispec_ctr) - 2.5_dp * D31AX_spec(ispec_ctr))
              nom_Er = nom_Er + fac1 * (nom_Er_3 + nom_Er_4)
           END IF
 
-          dlogT_ov_dr = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-          dlogn_ov_dr = avnabpsi * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec))
+          dlogT_ov_dr = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
+          dlogn_ov_dr = av_nabla_stor * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec))
 
           nom_Epar_1 = (z_spec(irow_spec)*e) * n_spec(irow_spec) * &
                (D31AX_spec(ispec_ctr)*(dlogn_ov_dr+dlogT_ov_dr) + &
@@ -3041,7 +3041,7 @@ CONTAINS
     ! local:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, avnabpsi
+    REAL(kind=dp) :: aiota_loc, av_nabla_stor
     ! ---------------------------------------------------------------!
     ! co- and contra-variant B-field components using
     ! r_eff as a flux-surface label
@@ -3093,9 +3093,9 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! aiota, avnabpsi :
+    ! aiota, av_nabla_stor :
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
+    av_nabla_stor = y(7) / y(6)
     avbhat2 = y(9) / y(6)
 
     ! computation of the normalization for D31 and D32 (-> D31_ref)
@@ -3118,7 +3118,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
 
@@ -3143,12 +3143,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF
     END IF
 
@@ -3231,11 +3231,11 @@ CONTAINS
           nom_Er_1(irow_ctr) = ((c*T_spec(irow_ctr)/(z_spec(irow_ctr)*e)) / &
                sqrtg_bctrvr_tht) * &
                (dn_spec_ov_ds(irow_ctr) / n_spec(irow_ctr) + &
-               dT_spec_ov_ds(irow_ctr) / T_spec(irow_ctr)) * avnabpsi
+               dT_spec_ov_ds(irow_ctr) / T_spec(irow_ctr)) * av_nabla_stor
           nom_Er_2(irow_ctr) = (c*T_spec(irow_ctr)/(z_spec(irow_ctr)*e)) * &
                (-fac1*bcovar_phi/sqrtg_bctrvr_tht) * &
                (dn_spec_ov_ds(irow_ctr) / n_spec(irow_ctr) + &
-               dT_spec_ov_ds(irow_ctr) / T_spec(irow_ctr)) * avnabpsi
+               dT_spec_ov_ds(irow_ctr) / T_spec(irow_ctr)) * av_nabla_stor
           coef_K_grad(irow_ctr) = nom_Er_2(irow_ctr) / (-fac1)
        END DO
        nom_Er = nom_Er_1 + nom_Er_2
@@ -3243,10 +3243,10 @@ CONTAINS
           irow_spec = row_ind_ptr(ispec_ctr)
           icol_spec = col_ind_ptr(ispec_ctr)
 
-          nom_Er_3 = avnabpsi * D31AX_spec(ispec_ctr) * &
+          nom_Er_3 = av_nabla_stor * D31AX_spec(ispec_ctr) * &
                (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec) + &
                dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-          nom_Er_4 = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
+          nom_Er_4 = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec)) * &
                (D32AX_spec(ispec_ctr) - 2.5_dp * D31AX_spec(ispec_ctr))
           nom_Er_5 = D33AX_spec(ispec_ctr) * avEparB_ov_avb2 * &
                (z_spec(icol_spec)*e) / T_spec(icol_spec)
@@ -3308,7 +3308,7 @@ CONTAINS
     ! local:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, avnabpsi
+    REAL(kind=dp) :: aiota_loc, av_nabla_stor
     ! ---------------------------------------------------------------!
     ! co- and contra-variant B-field components using
     ! r_eff as a flux-surface label
@@ -3336,9 +3336,9 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! aiota, avnabpsi :
+    ! aiota, av_nabla_stor :
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
+    av_nabla_stor = y(7) / y(6)
 
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
@@ -3356,7 +3356,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
        x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
@@ -3375,12 +3375,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF
     END IF
 
@@ -3406,7 +3406,7 @@ CONTAINS
     DO irow_spec = 0,num_spec-1
 
        pressure_a = n_spec(irow_spec) * T_spec(irow_spec)
-       dpressure_ov_dr_a = avnabpsi * &
+       dpressure_ov_dr_a = av_nabla_stor * &
             (T_spec(irow_spec) * dn_spec_ov_ds(irow_spec) + &
             n_spec(irow_spec) * dT_spec_ov_ds(irow_spec))
        Ta_ov_ea = T_spec(irow_spec) / (z_spec(irow_spec) * e)
@@ -3427,8 +3427,8 @@ CONTAINS
        irow_spec = row_ind_ptr(ispec_ctr)
        icol_spec = col_ind_ptr(ispec_ctr)
 
-       A2_b = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-       A1_b = avnabpsi * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
+       A2_b = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
+       A1_b = av_nabla_stor * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
             1.5_dp * A2_b - Er * (z_spec(icol_spec)*e) / T_spec(icol_spec)
 
        VparB_a = -(D31AX_spec(ispec_ctr) * A1_b + D32AX_spec(ispec_ctr) * A2_b)
@@ -3484,7 +3484,7 @@ CONTAINS
     ! local:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, avnabpsi
+    REAL(kind=dp) :: aiota_loc, av_nabla_stor
     ! ---------------------------------------------------------------!
     ! co- and contra-variant B-field components using
     ! r_eff as a flux-surface label
@@ -3508,9 +3508,9 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! aiota, avnabpsi :
+    ! aiota, av_nabla_stor :
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
+    av_nabla_stor = y(7) / y(6)
 
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
@@ -3528,7 +3528,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
        x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
@@ -3547,12 +3547,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF
     END IF
 
@@ -3624,7 +3624,7 @@ CONTAINS
     ! local:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: avnabpsi
+    REAL(kind=dp) :: av_nabla_stor
     ! ---------------------------------------------------------------!
     ! loop indices, temporary variables
     INTEGER :: ispec_ctr, irow_spec, icol_spec
@@ -3635,8 +3635,8 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! avnabpsi :
-    avnabpsi = y(7) / y(6)
+    ! av_nabla_stor :
+    av_nabla_stor = y(7) / y(6)
 
     ! allocate species particle flux density
     IF(ALLOCATED(Gamma_spec)) DEALLOCATE(Gamma_spec)
@@ -3649,8 +3649,8 @@ CONTAINS
        irow_spec = row_ind_ptr(ispec_ctr)
        icol_spec = col_ind_ptr(ispec_ctr)
 
-       A2_b = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-       A1_b = avnabpsi * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
+       A2_b = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
+       A1_b = av_nabla_stor * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
             1.5_dp * A2_b - Er * (z_spec(icol_spec)*e) / T_spec(icol_spec)
 
        flux_a = -n_spec(irow_spec) * &
@@ -3750,7 +3750,7 @@ CONTAINS
     ! local:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: avnabpsi
+    REAL(kind=dp) :: av_nabla_stor
     ! ---------------------------------------------------------------!
     ! loop indices, temporary variables
     INTEGER :: ispec_ctr, irow_spec, icol_spec
@@ -3761,8 +3761,8 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! avnabpsi :
-    avnabpsi = y(7) / y(6)
+    ! av_nabla_stor :
+    av_nabla_stor = y(7) / y(6)
 
     ! allocate species heat flux density
     IF(ALLOCATED(Qflux_spec)) DEALLOCATE(Qflux_spec)
@@ -3775,8 +3775,8 @@ CONTAINS
        irow_spec = row_ind_ptr(ispec_ctr)
        icol_spec = col_ind_ptr(ispec_ctr)
 
-       A2_b = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-       A1_b = avnabpsi * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
+       A2_b = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
+       A1_b = av_nabla_stor * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
             1.5_dp * A2_b - Er * (z_spec(icol_spec)*e) / T_spec(icol_spec)
 
        flux_a = -n_spec(irow_spec) * &
@@ -3879,7 +3879,7 @@ CONTAINS
     ! local:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: avnabpsi
+    REAL(kind=dp) :: av_nabla_stor
     ! ---------------------------------------------------------------!
     ! loop indices, temporary variables
     INTEGER :: ispec_ctr, irow_spec, icol_spec
@@ -3890,8 +3890,8 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! avnabpsi :
-    avnabpsi = y(7) / y(6)
+    ! av_nabla_stor :
+    av_nabla_stor = y(7) / y(6)
 
     ! allocate species parallel flow
     IF(ALLOCATED(ParFlow_spec)) DEALLOCATE(ParFlow_spec)
@@ -3904,8 +3904,8 @@ CONTAINS
        irow_spec = row_ind_ptr(ispec_ctr)
        icol_spec = col_ind_ptr(ispec_ctr)
 
-       A2_b = avnabpsi * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
-       A1_b = avnabpsi * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
+       A2_b = av_nabla_stor * (dT_spec_ov_ds(icol_spec) / T_spec(icol_spec))
+       A1_b = av_nabla_stor * (dn_spec_ov_ds(icol_spec) / n_spec(icol_spec)) - &
             1.5_dp * A2_b - Er * (z_spec(icol_spec)*e) / T_spec(icol_spec)
 
        flux_a = -n_spec(irow_spec) * &
@@ -4009,7 +4009,7 @@ CONTAINS
     ! local:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
-    REAL(kind=dp) :: aiota_loc, avnabpsi
+    REAL(kind=dp) :: aiota_loc, av_nabla_stor
     ! ---------------------------------------------------------------!
     ! normalized co-variant phi-component of B,  $\sqrt{g}B^\vartheta$
     REAL(kind=dp) :: bcovar_phi_hat, sqrtg_bctrvr_tht
@@ -4034,9 +4034,9 @@ CONTAINS
     ALLOCATE(y(SIZE(y_ntv_mod,1)))
     y = y_ntv_mod
 
-    ! aiota, avnabpsi :
+    ! aiota, av_nabla_stor :
     aiota_loc = surface%aiota
-    avnabpsi = y(7) / y(6)
+    av_nabla_stor = y(7) / y(6)
 
     ! computation of the normalization for D31 and D32 (-> D31_ref)
     IF (mag_coordinates .EQ. 0) THEN
@@ -4054,7 +4054,7 @@ CONTAINS
        ! restore value of $\sqrt{g}B^\vartheta$ for
        ! symmetry flux coordinates from quantities
        ! given in cylindircal coordinates
-       sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
+       sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0e4_dp)
     ELSE
        ! boozer coordinates
        x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
@@ -4073,12 +4073,12 @@ CONTAINS
        IF (lab_swi .EQ. 10) THEN ! ASDEX-U (E. Strumberger)
           ! this is the same up to a minus sign resulting from the
           ! definition of sqrtg_tmp (left-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
+          sqrtg_bctrvr_tht = av_nabla_stor*sqrtg_tmp*(hctrvr_tmp(3)*bmod_tmp*1.0d4) 
        ELSE
           ! restore value of $\sqrt{g}B^\vartheta$ for
           ! symmetry flux coordinates from the quantities
           ! given in Boozer coordinates (only valid for right-handed system)
-          sqrtg_bctrvr_tht = avnabpsi*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+          sqrtg_bctrvr_tht = av_nabla_stor*aiota_loc*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
        END IF
     END IF
 

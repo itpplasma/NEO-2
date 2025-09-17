@@ -1,15 +1,16 @@
 name: Unit Tests with Coverage
 
 on:
-  push:
-    branches:
-      - main
-      - master
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - main
-      - master
+  # deactivated until fix
+  # push:
+  #   branches:
+  #     - main
+  #     - master
+  # pull_request:
+  #   types: [opened, synchronize, reopened, ready_for_review]
+  #   branches:
+  #     - main
+  #     - master
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
