@@ -24,7 +24,7 @@ bcovar_phi_NEO2=cell(num_data_NEO2,1);
 avb2_NEO2=cell(num_data_NEO2,1);
 Er_NEO2=cell(num_data_NEO2,1);
 avEparB_ov_avb2_NEO2=cell(num_data_NEO2,1);
-avnabpsi_NEO2=cell(num_data_NEO2,1);
+av_nabla_stor_NEO2=cell(num_data_NEO2,1);
 Mt_e_NEO2=cell(num_data_NEO2,1);
 Mt_d_NEO2=cell(num_data_NEO2,1);
 TphiNA_tot_NEO2=cell(num_data_NEO2,1);
@@ -57,7 +57,7 @@ for file_ind=1:num_data_NEO2
     R0_NEO2_tmp=zeros(numel(data_fname),1);
     Er_NEO2_tmp=zeros(numel(data_fname),1);
     avEparB_ov_avb2_NEO2_tmp=zeros(numel(data_fname),1);
-    avnabpsi_NEO2_tmp=zeros(numel(data_fname),1);
+    av_nabla_stor_NEO2_tmp=zeros(numel(data_fname),1);
     MteOvR_NEO2_tmp=zeros(numel(data_fname),1);
     MtdOvR_NEO2_tmp=zeros(numel(data_fname),1);
     TphiNA_tot_NEO2_tmp=zeros(numel(data_fname),1);
@@ -90,7 +90,7 @@ for file_ind=1:num_data_NEO2
         R0_NEO2_tmp(es_ind)=data_struct.(data_fname{es_ind}).R0;
         Er_NEO2_tmp(es_ind)=data_struct.(data_fname{es_ind}).Er;
         avEparB_ov_avb2_NEO2_tmp(es_ind)=data_struct.(data_fname{es_ind}).avEparB_ov_avb2;
-        avnabpsi_NEO2_tmp(es_ind)=data_struct.(data_fname{es_ind}).avnabpsi;
+        av_nabla_stor_NEO2_tmp(es_ind)=data_struct.(data_fname{es_ind}).av_nabla_stor;
         MteOvR_NEO2_tmp(es_ind)=data_struct.(data_fname{es_ind}).MtOvR(1);
         MtdOvR_NEO2_tmp(es_ind)=data_struct.(data_fname{es_ind}).MtOvR(2);
         TphiNA_tot_NEO2_tmp(es_ind)=data_struct.(data_fname{es_ind}).TphiNA_tot;
@@ -117,7 +117,7 @@ for file_ind=1:num_data_NEO2
     avb2_NEO2{file_ind}=avbhat2_NEO2_tmp(1:data_ctr).*(Bref_NEO2_tmp(1:data_ctr).^2);
     Er_NEO2{file_ind}=Er_NEO2_tmp(1:data_ctr);
     avEparB_ov_avb2_NEO2{file_ind}=avEparB_ov_avb2_NEO2_tmp(1:data_ctr);
-    avnabpsi_NEO2{file_ind}=avnabpsi_NEO2_tmp(1:data_ctr);
+    av_nabla_stor_NEO2{file_ind}=av_nabla_stor_NEO2_tmp(1:data_ctr);
     Mt_e_NEO2{file_ind}=MteOvR_NEO2_tmp(1:data_ctr).*R0_NEO2_tmp(1:data_ctr);
     Mt_d_NEO2{file_ind}=MtdOvR_NEO2_tmp(1:data_ctr).*R0_NEO2_tmp(1:data_ctr);
     TphiNA_tot_NEO2{file_ind}=TphiNA_tot_NEO2_tmp(1:data_ctr);
@@ -146,7 +146,7 @@ for file_ind=1:num_data_NEO2
     bcovar_tht_NEO2_tmp=bcovar_tht_NEO2{file_ind};
     bcovar_phi_NEO2_tmp=bcovar_phi_NEO2{file_ind};
     avb2_NEO2_tmp=avb2_NEO2{file_ind};
-    avnabpsi_NEO2_tmp=avnabpsi_NEO2{file_ind};
+    av_nabla_stor_NEO2_tmp=av_nabla_stor_NEO2{file_ind};
     TphiNA_tot_NEO2_tmp=TphiNA_tot_NEO2{file_ind};
     % local array
     TphiNA_int_tot_NEO2_tmp=zeros(size(TphiNA_tot_NEO2_tmp));
@@ -161,7 +161,7 @@ for file_ind=1:num_data_NEO2
     TphiNA_int_tot_NEO2_tmp=(4*pi^2)*boozer_psi_pr_NEO2_tmp.*TphiNA_int_tot_NEO2_tmp;
     % store data for plotting
     TphiNA_int_tot_NEO2{file_ind}=TphiNA_int_tot_NEO2_tmp;
-    surf_area_NEO2{file_ind}=(4*(pi^2)*avnabpsi_NEO2_tmp./avb2_NEO2_tmp).*...
+    surf_area_NEO2{file_ind}=(4*(pi^2)*av_nabla_stor_NEO2_tmp./avb2_NEO2_tmp).*...
         abs(boozer_psi_pr_NEO2_tmp.*(aiota_NEO2_tmp.*bcovar_tht_NEO2_tmp+bcovar_phi_NEO2_tmp));
 end
 
@@ -170,7 +170,7 @@ end
 % 2 species results (3D VMEC equilibrium 31021 + Profiles 32169 wo hel. core)
 ind_data_NEO2=1; % select NEO-2 output data file (HDF5)
 
-E_rhotor=2*Er_NEO2{ind_data_NEO2}.*sqrt(boozer_s_NEO2{ind_data_NEO2})./avnabpsi_NEO2{ind_data_NEO2}; % [statV]
+E_rhotor=2*Er_NEO2{ind_data_NEO2}.*sqrt(boozer_s_NEO2{ind_data_NEO2})./av_nabla_stor_NEO2{ind_data_NEO2}; % [statV]
 E_rhotor=E_rhotor*3e2*1e-3; % [kV]
 
 E_rhotor_for_Hakan=[sqrt(boozer_s_NEO2{ind_data_NEO2}),E_rhotor];
