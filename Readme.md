@@ -14,6 +14,7 @@ git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (
     sudo apt install lcov  # Optional, for code coverage
 
 ## Build
+
 Run
 
     make
