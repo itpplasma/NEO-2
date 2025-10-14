@@ -166,7 +166,7 @@ jobs:
           make lorentz
 
           export TOL=1e-10
-          export LEGACY_TOL = 1e-8
+          export LEGACY_TOL=1e-8
           make ql
 
       - name: Upload test (against stable) output on failure
@@ -218,7 +218,7 @@ jobs:
           make lorentz
 
           export TOL=1e-15
-          export LEGACY_TOL = 1e-8
+          export LEGACY_TOL=1e-8
           make ql
 
       - name: Upload test (against main) output on failure
