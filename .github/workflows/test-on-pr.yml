@@ -173,7 +173,7 @@ jobs:
         if: steps.run_test_stable.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: golden-test-output
+          name: golden-test-stable-output
           path: |
             ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/current/summary.h5
             ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/current/out
@@ -225,7 +225,7 @@ jobs:
         if: steps.run_test_main.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: golden-test-output
+          name: golden-test-main-output
           path: |
             ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/current/summary.h5
             ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/current/out
