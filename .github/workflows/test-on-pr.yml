@@ -126,13 +126,13 @@ jobs:
           echo "neo2_ql_stable=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
           echo "neo2_par_stable=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
 
-      - name: Run golden record test
+      - name: Run golden record test against stable version (rough check)
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
           REFERENCE_NEO2_PAR: ${{ steps.build_reference.outputs.neo2_par_stable }}
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
           REFERENCE_NEO2_QL: ${{ steps.build_reference.outputs.neo2_ql_stable }}
-        id: run_test
+        id: run_test_golden_record_against_stable
         continue-on-error: true
         run: |
           set -e
@@ -160,7 +160,13 @@ jobs:
           cd "$TEST_DIR"
           echo "test_dir=$(pwd)" >> $GITHUB_OUTPUT
 
+          export TOL=1e-14
+          export LEGACY_TOL=1e-10
+          export MAGNETICS_TOL=1e-12
           make lorentz
+
+          export TOL=1e-10
+          export LEGACY_TOL = 1e-8
           make ql
 
       - name: Build NEO-2 (reference version - main branch)
@@ -190,6 +196,8 @@ jobs:
         run: |
           set -e
           cd ${{ steps.run_test.outputs.test_dir }}
+
+          export TOL=1e-15
           make performance_ql
 
       - name: Run (slow) par golden record test on pull request
@@ -201,6 +209,9 @@ jobs:
         run: |
           set -e
           cd ${{ steps.run_test.outputs.test_dir }}
+
+          export TOL=1e-15
+          export LEGACY_TOL=2e-8
           make par
 
       - name: Upload test output on failure
