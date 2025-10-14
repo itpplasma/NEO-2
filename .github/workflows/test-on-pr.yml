@@ -102,7 +102,7 @@ jobs:
           echo "neo2_ql=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
 
       - name: Build NEO-2 (reference version - latest stable release)
-        id: build_reference
+        id: build_reference_stable
         run: |
           # Build reference version in temp directory
           REFERENCE_DIR=$(mktemp -d)
@@ -129,9 +129,9 @@ jobs:
       - name: Run golden record test against stable version (rough check)
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
-          REFERENCE_NEO2_PAR: ${{ steps.build_reference.outputs.neo2_par_stable }}
+          REFERENCE_NEO2_PAR: ${{ steps.build_reference_stable.outputs.neo2_par_stable }}
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
-          REFERENCE_NEO2_QL: ${{ steps.build_reference.outputs.neo2_ql_stable }}
+          REFERENCE_NEO2_QL: ${{ steps.build_reference_stable.outputs.neo2_ql_stable }}
         id: run_test_stable
         continue-on-error: true
         run: |
@@ -206,7 +206,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
-          REFERENCE_NEO2_PAR: ${{ steps.build_reference.outputs.neo2_par_main }}
+          REFERENCE_NEO2_PAR: ${{ steps.build_reference_main.outputs.neo2_par_main }}
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
           REFERENCE_NEO2_QL: ${{ steps.build_reference_main.outputs.neo2_ql_main }}
         id: run_test_main
