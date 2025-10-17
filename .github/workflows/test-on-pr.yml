@@ -102,7 +102,7 @@ jobs:
           echo "neo2_ql=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
 
       - name: Build NEO-2 (reference version - latest stable release)
-        id: build_reference
+        id: build_reference_stable
         run: |
           # Build reference version in temp directory
           REFERENCE_DIR=$(mktemp -d)
@@ -126,13 +126,13 @@ jobs:
           echo "neo2_ql_stable=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
           echo "neo2_par_stable=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
 
-      - name: Run golden record test
+      - name: Run golden record test against stable version (rough check)
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
-          REFERENCE_NEO2_PAR: ${{ steps.build_reference.outputs.neo2_par_stable }}
+          REFERENCE_NEO2_PAR: ${{ steps.build_reference_stable.outputs.neo2_par_stable }}
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
-          REFERENCE_NEO2_QL: ${{ steps.build_reference.outputs.neo2_ql_stable }}
-        id: run_test
+          REFERENCE_NEO2_QL: ${{ steps.build_reference_stable.outputs.neo2_ql_stable }}
+        id: run_test_stable
         continue-on-error: true
         run: |
           set -e
@@ -160,8 +160,29 @@ jobs:
           cd "$TEST_DIR"
           echo "test_dir=$(pwd)" >> $GITHUB_OUTPUT
 
+          export TOL=1e-14
+          export LEGACY_TOL=1e-10
+          export MAGNETICS_TOL=1e-12
           make lorentz
+
+          export TOL=1e-10
+          export LEGACY_TOL=1e-8
           make ql
+
+      - name: Upload test (against stable) output on failure
+        if: steps.run_test_stable.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-test-stable-output
+          path: |
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/current/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/current/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/reference/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/reference/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/current/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/current/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/out
 
       - name: Build NEO-2 (reference version - main branch)
         if: github.event_name == 'pull_request'
@@ -179,6 +200,44 @@ jobs:
           make
 
           echo "neo2_ql_main=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
+          echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
+
+      - name: Run golden record test against main version (exact check)
+        if: github.event_name == 'pull_request'
+        env:
+          CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
+          REFERENCE_NEO2_PAR: ${{ steps.build_reference_main.outputs.neo2_par_main }}
+          CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
+          REFERENCE_NEO2_QL: ${{ steps.build_reference_main.outputs.neo2_ql_main }}
+        id: run_test_main
+        continue-on-error: true
+        run: |
+          set -e
+          cd ${{ steps.run_test_stable.outputs.test_dir }}
+
+          export TOL=1e-14
+          export LEGACY_TOL=1e-10
+          export MAGNETICS_TOL=1e-12
+          make lorentz
+
+          export TOL=1e-15
+          export LEGACY_TOL=1e-8
+          make ql
+
+      - name: Upload test (against main) output on failure
+        if: steps.run_test_main.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-test-main-output
+          path: |
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/current/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/current/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/reference/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/reference/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/current/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/current/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/out
 
       - name: Run QL performance test
         if: github.event_name == 'pull_request'
@@ -189,8 +248,24 @@ jobs:
         continue-on-error: true
         run: |
           set -e
-          cd ${{ steps.run_test.outputs.test_dir }}
+          cd ${{ steps.run_test_stable.outputs.test_dir }}
+
+          export TOL=1e-15
           make performance_ql
+
+      - name: Upload performance test output on failure
+        if: steps.run_performance_test.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-output
+          path: |
+            ${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/current/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/current/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/current/timing.txt
+            ${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/reference/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/reference/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/reference/timing.txt
+            ${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt
 
       - name: Run (slow) par golden record test on pull request
         if: github.event_name == 'pull_request'
@@ -200,37 +275,11 @@ jobs:
         continue-on-error: true
         run: |
           set -e
-          cd ${{ steps.run_test.outputs.test_dir }}
+          cd ${{ steps.run_test_stable.outputs.test_dir }}
+
+          export TOL=1e-15
+          export LEGACY_TOL=2e-8
           make par
-
-      - name: Upload test output on failure
-        if: steps.run_test.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: golden-test-output
-          path: |
-            ${{ steps.run_test.outputs.test_dir }}/lorentz/current/summary.h5
-            ${{ steps.run_test.outputs.test_dir }}/lorentz/current/out
-            ${{ steps.run_test.outputs.test_dir }}/lorentz/reference/summary.h5
-            ${{ steps.run_test.outputs.test_dir }}/lorentz/reference/out
-            ${{ steps.run_test.outputs.test_dir }}/ql/current/summary.h5
-            ${{ steps.run_test.outputs.test_dir }}/ql/current/out
-            ${{ steps.run_test.outputs.test_dir }}/ql/reference/summary.h5
-            ${{ steps.run_test.outputs.test_dir }}/ql/reference/out
-
-      - name: Upload performance test output on failure
-        if: steps.run_performance_test.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: performance-test-output
-          path: |
-            ${{ steps.run_test.outputs.test_dir }}/performance_ql/current/summary.h5
-            ${{ steps.run_test.outputs.test_dir }}/performance_ql/current/out
-            ${{ steps.run_test.outputs.test_dir }}/performance_ql/current/timing.txt
-            ${{ steps.run_test.outputs.test_dir }}/performance_ql/reference/summary.h5
-            ${{ steps.run_test.outputs.test_dir }}/performance_ql/reference/out
-            ${{ steps.run_test.outputs.test_dir }}/performance_ql/reference/timing.txt
-            ${{ steps.run_test.outputs.test_dir }}/performance_ql/performance_report.txt
 
       - name: Upload par test output on failure
         if: steps.run_par_test.outcome == 'failure'
@@ -238,17 +287,17 @@ jobs:
         with:
           name: golden-test-par-output
           path: |
-            ${{ steps.run_test.outputs.test_dir }}/par/current/summary.h5
-            ${{ steps.run_test.outputs.test_dir }}/par/current/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/par/current/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/par/current/out
 
       - name: Report performance comparison
         if: always()
         run: |
-          if [ -f "${{ steps.run_test.outputs.test_dir }}/performance_ql/performance_report.txt" ]; then
+          if [ -f "${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt" ]; then
             echo "## Performance Test Results" >> $GITHUB_STEP_SUMMARY
-            cat "${{ steps.run_test.outputs.test_dir }}/performance_ql/performance_report.txt" >> $GITHUB_STEP_SUMMARY
+            cat "${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Fail the job on test failure
-        if: steps.run_test.outcome == 'failure' || steps.run_par_test.outcome == 'failure' || steps.run_performance_test.outcome == 'failure'
+        if: steps.run_test_stable.outcome == 'failure' || steps.run_test_main.outcome == 'failure' || steps.run_par_test.outcome == 'failure' || steps.run_performance_test.outcome == 'failure'
         run: exit 1
