@@ -2,9 +2,10 @@
 
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/71e55b695f624fd9b5e18f97acdf95fd)](https://app.codacy.com/gh/itpplasma/NEO-2/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
-# Installation
+## Installation
 
-## Prerequisites
+### Prerequisites
+
 git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (OpenBLAS or MKL), SuiteSparse, FFTW, GSL, HDF5/NetCDF with Fortran libraries. If SuiteSparse is not available on your system, it will be built automatically by NEO-2. For code coverage, lcov is also required. On Debian or Ubuntu run
 
     sudo apt install git cmake make ninja-build gcc g++ gfortran
@@ -13,7 +14,7 @@ git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (
     sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
     sudo apt install lcov  # Optional, for code coverage
 
-## Build
+### Build
 
 Run
 
@@ -30,15 +31,11 @@ You obtain a `build` directory with subdirectories
 
 To run tests:
 
-```bash
     make test
-```
 
 To generate code coverage report:
 
-```bash
     make coverage
-```
 
 This will build with coverage instrumentation, run all tests, and display a coverage summary. Coverage data files are generated in the `build` directory.
 
@@ -60,7 +57,7 @@ If you have additional compilers and MPI implementations (e.g. Intel) installed,
 
 before the build. You may also need to `deactivate` Python environments such as Anaconda.
 
-# Run
+## Run
 
 NEO-2 requires Boozer files for MHD equilibria in text format (`.bc` ending). These can be generated via executables / functions in https://github.com/itpplasma/libneo/
 
