@@ -64,6 +64,12 @@ set(COMMON_FILES
   sizey_cur.f90
   sizey_pla.f90
   solve_system.f90
+  sparse_types_mod.f90
+  sparse_conversion_mod.f90
+  sparse_io_mod.f90
+  sparse_arithmetic_mod.f90
+  sparse_solvers_mod.f90
+  sparse_utils_mod.f90
   sparse_mod.f90
   sparsevec_mod.f90
   spline_cof.f90
