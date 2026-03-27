@@ -210,12 +210,9 @@ native MPI commands have to be used.
 Note that \vv{NEO-2-QL} does not use the scheduler-worker model
 implemented by \vv{MyMPILib}
 
-It was decided to no longer develop \vv{hdf5tools} and
-\vv{MyMPILib} separate, but to add them to \vv{libneo},
-which is intended to collect code that is used by multiple programs of
-the group. To be able to use only what is needed, compilation is still
-done into seperate library files. You can get \vv{libneo} from github (see
-Sec.~\ref{technicalbackground_git}).
+Here \vv{hdf5tools} still comes from \vv{libneo}, while
+\vv{MyMPILib} lives directly in the \vv{NEO-2} repository. That keeps
+the MPI support code with the codebase that actually uses it.
 
 % ----------------------------------------------------------------------
 \subsection{The Git repository\label{technicalbackground_git}}

@@ -95,11 +95,14 @@ add_library(common STATIC
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
 add_dependencies(common FGSL)
+target_include_directories(common PUBLIC
+  ${CMAKE_BINARY_DIR}/COMMON
+  ${FGSL_INC}
+)
 target_link_libraries(common PUBLIC
   ${LIBFGSL}
   GSL::gsl
   ${MPE_lib}
-  ${MPI_Fortran_LIBRARIES}
   BLAS::BLAS
   LAPACK::LAPACK
   ${NETCDF_LIBS}
@@ -114,12 +117,8 @@ endif()
 target_link_libraries(common PUBLIC
   LIBNEO::neo
   LIBNEO::magfie
-  LIBNEO::MyMPILib
+  NEO2MyMPILib
   LIBNEO::hdf5_tools
-)
-
-target_link_libraries(common PUBLIC
-  MPI::MPI_Fortran
 )
 
 if ($ENV{COMMON_UNIT_TESTS}x STREQUAL "TRUEx")

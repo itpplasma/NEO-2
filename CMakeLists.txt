@@ -66,9 +66,6 @@ endif()
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Coverage" CACHE STRING "" FORCE)
 
 ### Upstream dependencies
-find_package(MPI REQUIRED)
-include_directories(${MPI_Fortran_INCLUDE_PATH})
-
 if(MPI_SUPPORT)
   message(STATUS "MPI-Support activated")
   if (DEFINED MPI_PATH)
@@ -108,9 +105,9 @@ find_package(HDF5 COMPONENTS C HL Fortran Fortran_HL REQUIRED)
 find_package(GSL REQUIRED)
 
 include_directories(${PROJECT_BINARY_DIR}/COMMON)
-include_directories(${FGSL_INC})
 
 ### Projects to build
+add_subdirectory(COMMON/MyMPILib)
 add_subdirectory(COMMON)
 add_subdirectory(NEO-2-PAR)
 add_subdirectory(NEO-2-QL)

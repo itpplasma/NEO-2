@@ -27,7 +27,7 @@ run_test() {
     (
         mkdir -p "$TEST_DIR/$name"
         cd "$TEST_DIR/$name"
-        git clone -q --depth 1 --branch "$CURRENT_BRANCH" https://github.com/itpplasma/NEO-2.git .
+        git clone -q --depth 1 --branch "$CURRENT_BRANCH" git@github.com:itpplasma/NEO-2.git .
         
         if make clean >/dev/null 2>&1 && make $make_args 2>&1 | tee build.log; then
             pass "Build completed"
