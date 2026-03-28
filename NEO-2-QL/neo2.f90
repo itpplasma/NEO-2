@@ -29,7 +29,7 @@ module neo2_ql
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
-       prop_write,prop_reconstruct,prop_ripple_plot,                &
+       prop_write,prop_fileformat,prop_reconstruct,prop_ripple_plot,&
        prop_reconstruct_levels
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
@@ -238,7 +238,7 @@ module neo2_ql
        prop_fluxsplitmode,                                                    &
        mag_talk,mag_infotalk,                                                 &
        hphi_lim,                                                              &
-       prop_write,prop_reconstruct,prop_ripple_plot,                          &
+       prop_write,prop_fileformat,prop_reconstruct,prop_ripple_plot,          &
        prop_reconstruct_levels
   NAMELIST /plotting/                                                         &
        plot_gauss,plot_prop

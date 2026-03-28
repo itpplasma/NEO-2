@@ -803,6 +803,7 @@ CONTAINS
     REAL(kind=dp) :: gamma_E
     REAL(kind=dp) :: aiota_loc,rt0
     REAL(kind=dp) :: phi
+    REAL(kind=dp) :: fac1, fac2, D11_ov_Dpl
 
     REAL(kind=dp), ALLOCATABLE :: y(:)
 
@@ -908,6 +909,12 @@ CONTAINS
             gamma_out
       CLOSE(uw)
 
+      fac1 = 16.0_dp * rt0 * aiota_loc / PI
+      fac2 = -beta_out(1) * beta_out(1) / y(6)
+      i_p = ind_map(1)
+      j_p = ind_map(1)
+      D11_ov_Dpl = fac1 * fac2 * prop_a%p%qflux(i_p, j_p)
+
       if (prop_fileformat .eq. USE_HDF5_FORMAT) then
         ! Write to HDF5 file
         call h5_create('efinal.h5', h5id, 1)
@@ -927,6 +934,7 @@ CONTAINS
         call h5_add(h5id, 'r0', device%r0)
         call h5_add(h5id, 'bmod0', surface%bmod0, comment='reference magnetic field in Tesla', unit='T')
         call h5_add(h5id, 'y', y, lbound(y), ubound(y))
+        call h5_add(h5id, 'D11_ov_Dpl', D11_ov_Dpl)
 
         call h5_close(h5id)
       else
