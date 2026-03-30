@@ -6,10 +6,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 enable_language(C Fortran)
 enable_testing()
 
-if(NOT DEFINED Python_EXECUTABLE AND EXISTS "/usr/bin/python3")
-  set(Python_EXECUTABLE /usr/bin/python3 CACHE FILEPATH "Python interpreter used by subprojects")
-endif()
-
 find_package(Python COMPONENTS Interpreter Development.Module NumPy REQUIRED)
 set(Python_EXECUTABLE ${Python_EXECUTABLE} CACHE FILEPATH "Python interpreter used by subprojects" FORCE)
 
