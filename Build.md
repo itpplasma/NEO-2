@@ -40,20 +40,6 @@ folder.
 Setting of the paths for the required libraries, should be done in this
 file.
 
-For normal builds, the repository can now be configured without setting
-the CODE environment variable. In that mode, CMake fetches libneo and
-builds FGSL locally when needed.
-
-If a local libneo checkout should be used instead, pass
-`LIBNEO_SOURCE_DIR=/path/to/libneo` to `make` or
-`-DLIBNEO_SOURCE_DIR=/path/to/libneo` to CMake.
-
-If a prebuilt FGSL tree should be reused, pass
-`FGSL_PATH=/path/to/fgsl-1.6.0`.
-
-If CMake should use a specific Python interpreter, pass
-`PYTHON_EXECUTABLE=/usr/bin/python3`.
-
 === Building ===
 This has to be done for both versions of the code seperately, and also
 for the documentation.

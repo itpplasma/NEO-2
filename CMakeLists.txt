@@ -6,6 +6,13 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 enable_language(C Fortran)
 enable_testing()
 
+if(NOT DEFINED Python_EXECUTABLE AND EXISTS "/usr/bin/python3")
+  set(Python_EXECUTABLE /usr/bin/python3 CACHE FILEPATH "Python interpreter used by subprojects")
+endif()
+
+find_package(Python COMPONENTS Interpreter Development.Module NumPy REQUIRED)
+set(Python_EXECUTABLE ${Python_EXECUTABLE} CACHE FILEPATH "Python interpreter used by subprojects" FORCE)
+
 if(EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
   include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 endif()
@@ -66,6 +73,9 @@ endif()
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;Coverage" CACHE STRING "" FORCE)
 
 ### Upstream dependencies
+find_package(MPI REQUIRED)
+include_directories(${MPI_Fortran_INCLUDE_PATH})
+
 if(MPI_SUPPORT)
   message(STATUS "MPI-Support activated")
   if (DEFINED MPI_PATH)
@@ -105,6 +115,7 @@ find_package(HDF5 COMPONENTS C HL Fortran Fortran_HL REQUIRED)
 find_package(GSL REQUIRED)
 
 include_directories(${PROJECT_BINARY_DIR}/COMMON)
+include_directories(${FGSL_INC})
 
 ### Projects to build
 add_subdirectory(COMMON/MyMPILib)

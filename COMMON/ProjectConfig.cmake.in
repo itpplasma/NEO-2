@@ -2,42 +2,23 @@
 set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
 include(Util)
-set(LIBNEO_SOURCE_DIR "" CACHE PATH "Path to a local libneo checkout")
 find_or_fetch(libneo)
 
 ### Path to the external libraries
-set(FGSL_PATH "" CACHE PATH "Path to a built FGSL source tree")
-
-if (NOT "${FGSL_PATH}" STREQUAL "")
-    if (EXISTS "${FGSL_PATH}/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX}")
-        message(STATUS "Using FGSL at ${FGSL_PATH}")
-        add_custom_target(FGSL)
-    else()
-        message(STATUS "FGSL_PATH=${FGSL_PATH} does not contain a built FGSL library; building FGSL locally instead")
-        set(FGSL_PATH "" CACHE PATH "Path to a built FGSL source tree" FORCE)
-    endif()
-endif()
-
-if ("${FGSL_PATH}" STREQUAL "" AND DEFINED ENV{CODE} AND EXISTS "$ENV{CODE}/external/fgsl-1.6.0/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX}")
-    message(STATUS "Using prebuilt FGSL in $CODE=" $ENV{CODE})
+if (DEFINED ENV{CODE})
+    message(STATUS "External libraries prebuilt in $CODE=" $ENV{CODE})
     add_custom_target(FGSL)
 
-    set(FGSL_PATH $ENV{CODE}/external/fgsl-1.6.0/ CACHE PATH "FGSL path" FORCE)
-endif()
-
-if ("${FGSL_PATH}" STREQUAL "")
-    if (DEFINED ENV{CODE})
-        message(STATUS "No prebuilt FGSL found in $CODE=$ENV{CODE}; building FGSL locally")
-    else()
-        message(STATUS "Downloading and building external libraries")
-    endif()
+    set(FGSL_PATH $ENV{CODE}/external/fgsl-1.6.0/ CACHE STRING "FGSL path")
+else()
+    message(STATUS "Downloading and building external libraries")
     include(fgsl)
 
-    set(FGSL_PATH ${CMAKE_BINARY_DIR}/fgsl/src/FGSL CACHE PATH "FGSL path" FORCE)
+    set(FGSL_PATH ${CMAKE_BINARY_DIR}/fgsl/src/FGSL CACHE STRING "FGSL path")
 endif()
 
-set(FGSL_INC ${FGSL_PATH} CACHE PATH "FGSL include")
-set(LIBFGSL ${FGSL_PATH}/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE FILEPATH "FGSL lib")
+set(FGSL_INC ${FGSL_PATH} CACHE STRING "FGSL include")
+set(LIBFGSL ${FGSL_PATH}/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE STRING "FGSL lib")
 
 
 ### Directories of MPE

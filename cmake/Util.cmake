@@ -1,19 +1,14 @@
 include(FetchContent)
 
 function(find_or_fetch DEPENDENCY)
-    string(TOUPPER ${DEPENDENCY} DEPENDENCY_UPPER)
-    set(DEPENDENCY_SOURCE_VAR "${DEPENDENCY_UPPER}_SOURCE_DIR")
-
-    if(DEFINED ${DEPENDENCY_SOURCE_VAR} AND NOT "${${DEPENDENCY_SOURCE_VAR}}" STREQUAL "")
-        set(${DEPENDENCY}_SOURCE_DIR "${${DEPENDENCY_SOURCE_VAR}}")
-        message(STATUS "Using ${DEPENDENCY} source dir ${${DEPENDENCY_SOURCE_VAR}}")
-    elseif(DEFINED ENV{CODE} AND EXISTS $ENV{CODE}/${DEPENDENCY})
+    if(DEFINED ENV{CODE} AND EXISTS $ENV{CODE}/${DEPENDENCY})
         set(${DEPENDENCY}_SOURCE_DIR $ENV{CODE}/${DEPENDENCY})
         message(STATUS "Using ${DEPENDENCY} in $ENV{CODE}/${DEPENDENCY}")
     else()
-        set(REPO_URL git@github.com:itpplasma/${DEPENDENCY}.git)
+        set(REPO_URL https://github.com/itpplasma/${DEPENDENCY}.git)
 
         # Check if a specific git tag is provided for this dependency
+        string(TOUPPER ${DEPENDENCY} DEPENDENCY_UPPER)
         if(DEFINED ${DEPENDENCY_UPPER}_GIT_TAG)
             set(REMOTE_BRANCH ${${DEPENDENCY_UPPER}_GIT_TAG})
             message(STATUS "Using ${DEPENDENCY} tag ${REMOTE_BRANCH} from ${REPO_URL}")
