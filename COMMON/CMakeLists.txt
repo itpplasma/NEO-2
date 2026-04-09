@@ -95,10 +95,6 @@ add_library(common STATIC
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
 add_dependencies(common FGSL)
-target_include_directories(common PUBLIC
-  ${CMAKE_BINARY_DIR}/COMMON
-  ${FGSL_INC}
-)
 target_link_libraries(common PUBLIC
   ${LIBFGSL}
   GSL::gsl

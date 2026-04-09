@@ -6,9 +6,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 enable_language(C Fortran)
 enable_testing()
 
-find_package(Python COMPONENTS Interpreter Development.Module NumPy REQUIRED)
-set(Python_EXECUTABLE ${Python_EXECUTABLE} CACHE FILEPATH "Python interpreter used by subprojects" FORCE)
-
 if(EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
   include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 endif()
