@@ -114,7 +114,7 @@ endif()
 target_link_libraries(common PUBLIC
   LIBNEO::neo
   LIBNEO::magfie
-  LIBNEO::MyMPILib
+  NEO2MyMPILib
   LIBNEO::hdf5_tools
 )
 

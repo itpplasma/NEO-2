@@ -24,9 +24,11 @@ Here is a list of libraries and tools required for building/running neo2.
     rusage.
   * mc_efit
     Part of libneo repository. Neo-2 uses magfie code of the library
-  * hdf5_tools, MyMPILib
-    Part of libneo repository.Fortran interfaces to the respective
-    library.
+  * hdf5_tools
+    Part of libneo repository. Fortran interface to HDF5.
+  * MyMPILib
+    Part of the NEO-2 repository. Fortran interface to MPI used by the
+    parallel code paths.
 
 Note, that as compiler, so far mainly gfortran has been used. The intel
 compiler should work, but this is so far not certain.

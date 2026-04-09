@@ -16,3 +16,5 @@ set_tests_properties(nrutil_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+add_subdirectory(mympilib)
