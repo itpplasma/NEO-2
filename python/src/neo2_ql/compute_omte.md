@@ -345,6 +345,12 @@ writes `T_spec` and `n_spec` back to `neo2_multispecies_out.h5`.
 Those fields are therefore solver state for a completed single-surface run,
 not replacements for the original radial profile arrays.
 
+The same output writer now also stores the active reconstruction inputs
+`dn_spec_ov_ds`, `dT_spec_ov_ds`, `species_tag_Vphi`, `isw_Vphi_loc`, and
+`Vphi` in `neo2_multispecies_out.h5`. That makes the output file
+self-contained for replaying the exact `compute_Er()` algebra in Python
+without reopening the original input deck.
+
 The rotation input `Vphi` written by
 [`generate_multispec_input.py`](generate_multispec_input.py)
 is stored with the HDF5 unit attribute `rad / s`, while
@@ -375,6 +381,25 @@ which preserves the reduced `compute_Er()` algebra instead of converting
 `Vphi` to a velocity proxy.  On the AUG fixture below, that strict form is
 much farther from the full NEO-2 result because it still omits the transport
 terms in both numerator and denominator.
+
+
+## Full-output reconstruction
+
+[`compute_omte_from_neo2_output()`](neo2_output_omte.py) has two distinct modes:
+
+- `mode="stored"` reads the `Er` written by NEO-2 and converts it directly to
+  $\Omega_{tE}$.
+- `mode="transport"` replays the full `compute_Er()` force-balance algebra from
+  the stored `D31/D32/D33` coefficients, `avEparB_ov_avb2`, the active species
+  gradients, and the measured rotation selector written into
+  `neo2_multispecies_out.h5`.
+
+For a current-output file from the patched writer, those two modes must agree
+to numerical roundoff. The circular-tokamak regression fixture used by the
+tests is regenerated with
+[`regenerate_neo2_ql_axisymmetric_fixture.sh`](../../test/data/regenerate_neo2_ql_axisymmetric_fixture.sh),
+which reruns a single-surface multispecies axisymmetric case and refreshes
+[`neo2_ql_axisymmetric_multispecies_out.h5`](../../test/data/neo2_ql_axisymmetric_multispecies_out.h5).
 
 
 ## Validation against NEO-2

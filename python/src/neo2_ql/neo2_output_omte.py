@@ -156,6 +156,17 @@ def _surface_z_spec(species_def, species_tag, surface_index, num_surfaces):
     raise ValueError('species_def shape is incompatible with species/surface axes')
 
 
+def _get_output_handle(handle):
+    if 'Er' in handle:
+        return handle
+    required_transport_fields = {'aiota', 'sqrtg_bctrvr_phi', 'row_ind_spec', 'D31_AX'}
+    if required_transport_fields.issubset(handle.keys()):
+        return handle
+    if 'neo2_multispecies_out' in handle:
+        return handle['neo2_multispecies_out']
+    raise KeyError('Could not find neo2_multispecies_out datasets in file')
+
+
 def _species_state_from_handle(handle, surface_index):
     n_spec = _dataset_or_none(handle, 'n_spec')
     T_spec = _dataset_or_none(handle, 'T_spec')
@@ -203,6 +214,7 @@ def compute_omte_from_neo2_output(path, mode='stored'):
     """
     path = Path(path)
     with h5py.File(path, 'r') as handle:
+        handle = _get_output_handle(handle)
         aiota = np.asarray(handle['aiota'])
         sqrtg_bctrvr_phi = np.asarray(handle['sqrtg_bctrvr_phi'])
 
@@ -216,7 +228,12 @@ def compute_omte_from_neo2_output(path, mode='stored'):
 
         species_tag = np.asarray(handle['species_tag'])
         species_tag_vphi = np.asarray(handle['species_tag_Vphi']).reshape(-1)[0]
-        species_def = np.asarray(handle['species_def'])
+        if 'z_spec' in handle:
+            z_spec = np.asarray(handle['z_spec'])
+        else:
+            species_def = np.asarray(handle['species_def'])
+            num_surfaces = int(np.atleast_1d(aiota).shape[0])
+            z_spec = _surface_z_spec(species_def, species_tag, 0, num_surfaces)
 
         row_ind = np.asarray(handle['row_ind_spec'])
         col_ind = np.asarray(handle['col_ind_spec'])
@@ -236,7 +253,13 @@ def compute_omte_from_neo2_output(path, mode='stored'):
             n_spec, T_spec, dn_spec_ov_ds, dT_spec_ov_ds = _species_state_from_handle(
                 handle, surface_index
             )
-            z_spec = _surface_z_spec(species_def, species_tag, surface_index, num_surfaces)
+            if 'z_spec' not in handle:
+                z_spec = _surface_z_spec(
+                    np.asarray(handle['species_def']),
+                    species_tag,
+                    surface_index,
+                    num_surfaces,
+                )
             er[surface_index] = compute_neo2_er_from_transport_coefficients(
                 n_spec=n_spec,
                 T_spec=T_spec,

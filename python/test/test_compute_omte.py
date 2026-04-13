@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+from pathlib import Path
 
 import h5py
 import numpy as np
@@ -23,6 +24,9 @@ from neo2_ql.neo2_output_omte import (
     compute_omte_from_neo2_output,
 )
 from neo2_ql.plot_omte_reference import get_omte_reference_models
+
+FIXTURE_DIR = Path(__file__).with_name('data')
+AXISYMMETRIC_OUTPUT_FIXTURE = FIXTURE_DIR / 'neo2_ql_axisymmetric_multispecies_out.h5'
 
 
 # --- Unit tests with analytic profiles ---
@@ -446,6 +450,57 @@ def test_compute_omte_from_output_reconstructs_transport_mode():
         om_tE,
         np.array([C_CGS * er_expected / (kwargs['aiota'] * kwargs['sqrtg_bctrvr_phi'])]),
     )
+
+
+def test_compute_omte_from_output_reads_summary_group():
+    """Summary files should be readable via the neo2_multispecies_out group."""
+    with tempfile.NamedTemporaryFile(suffix='.h5') as tmp:
+        with h5py.File(tmp.name, 'w') as handle:
+            group = handle.create_group('neo2_multispecies_out')
+            group.create_dataset('Er', data=np.array([-0.2, -0.5]))
+            group.create_dataset('aiota', data=np.array([0.4, 0.5]))
+            group.create_dataset('sqrtg_bctrvr_phi', data=np.array([5.0e5, 7.0e5]))
+        om_tE, er = compute_omte_from_neo2_output(tmp.name, mode='stored')
+    assert np.allclose(er, np.array([-0.2, -0.5]))
+    assert np.allclose(
+        om_tE,
+        C_CGS * np.array([-0.2, -0.5]) / (np.array([0.4, 0.5]) * np.array([5.0e5, 7.0e5])),
+    )
+
+
+def test_axisymmetric_output_fixture_reconstructs_full_er():
+    """Real NEO-2 output should replay the full compute_Er algebra."""
+    assert AXISYMMETRIC_OUTPUT_FIXTURE.exists()
+    with h5py.File(AXISYMMETRIC_OUTPUT_FIXTURE, 'r') as handle:
+        for name in (
+            'species_tag_Vphi',
+            'isw_Vphi_loc',
+            'Vphi',
+            'dn_spec_ov_ds',
+            'dT_spec_ov_ds',
+            'av_nabla_stor',
+        ):
+            assert name in handle
+
+    om_stored, er_stored = compute_omte_from_neo2_output(
+        AXISYMMETRIC_OUTPUT_FIXTURE, mode='stored'
+    )
+    om_transport, er_transport = compute_omte_from_neo2_output(
+        AXISYMMETRIC_OUTPUT_FIXTURE, mode='transport'
+    )
+
+    er_stored = np.asarray(er_stored).reshape(-1)
+    om_stored = np.asarray(om_stored).reshape(-1)
+    er_transport = np.asarray(er_transport).reshape(-1)
+    om_transport = np.asarray(om_transport).reshape(-1)
+
+    assert np.allclose(er_stored, np.array([0.11359881049568062]), rtol=0.0, atol=1e-15)
+    assert np.allclose(om_stored, np.array([8166.1521825278678]), rtol=0.0, atol=1e-10)
+    assert np.allclose(er_transport, np.array([0.11359863968963073]), rtol=0.0, atol=1e-15)
+    assert np.allclose(om_transport, np.array([8166.1399039820699]), rtol=0.0, atol=1e-10)
+
+    assert np.allclose(er_transport, er_stored, rtol=2e-6, atol=1e-9)
+    assert np.allclose(om_transport, om_stored, rtol=2e-6, atol=1e-5)
 
 
 def test_invalid_zero_density_raises():
