@@ -12,7 +12,7 @@ All quantities are in CGS (Gaussian) units to match NEO-2 conventions:
 Model levels:
   Level 0 (diamagnetic): pressure gradient only, no flows
   Level 1: adds measured toroidal rotation
-  Level 2 (planned): adds neoclassical poloidal velocity estimate
+  Level 2: adds neoclassical poloidal velocity estimate
 """
 
 import numpy as np
@@ -61,6 +61,8 @@ def compute_omte_force_balance(
     av_nabla_stor,
     v_phi=None,
     b_theta=None,
+    v_theta=None,
+    b_phi=None,
 ):
     """Compute Om_tE from radial force balance.
 
@@ -96,6 +98,12 @@ def compute_omte_force_balance(
     b_theta : float or array, optional
         Poloidal magnetic field [G]. Must be provided together with `v_phi`
         for Level 1.
+    v_theta : float or array, optional
+        Poloidal rotation velocity [cm/s]. Must be provided together with
+        `b_phi` for Level 2.
+    b_phi : float or array, optional
+        Toroidal magnetic field [G]. Must be provided together with
+        `v_theta` for Level 2.
 
     Returns
     -------
@@ -124,11 +132,15 @@ def compute_omte_force_balance(
 
     if (v_phi is None) != (b_theta is None):
         raise ValueError('v_phi and b_theta must be provided together')
+    if (v_theta is None) != (b_phi is None):
+        raise ValueError('v_theta and b_phi must be provided together')
 
     Er = _compute_diamagnetic_er(n, T, dn_ds, dT_ds, z, av_nabla_stor)
 
     if v_phi is not None:
         Er = Er + np.asarray(v_phi) * np.asarray(b_theta) / C_CGS
+    if v_theta is not None:
+        Er = Er - np.asarray(v_theta) * np.asarray(b_phi) / C_CGS
 
     Om_tE = C_CGS * Er / (aiota * sqrtg_bctrvr_phi)
     return Om_tE, Er
@@ -173,4 +185,63 @@ def compute_omte_toroidal_rotation(
         av_nabla_stor=av_nabla_stor,
         v_phi=v_phi,
         b_theta=b_theta,
+    )
+
+
+def compute_poloidal_rotation_neoclassical(dT_ds, z, b_phi, av_nabla_stor, k_i):
+    """Estimate poloidal rotation from the ion temperature gradient.
+
+    Uses the simple Kim-Diamond-Groebner-type estimate
+        v_theta = K_i / (Z e B_phi) * dT/dr
+    with
+        dT/dr = dT/ds * <|nabla s|>.
+    """
+    dT_ds = np.asarray(dT_ds)
+    b_phi = np.asarray(b_phi)
+    av_nabla_stor = np.asarray(av_nabla_stor)
+
+    if z == 0.0:
+        raise ValueError('z must be nonzero to compute v_theta')
+    if np.any(b_phi == 0.0):
+        raise ValueError('b_phi must be nonzero to compute v_theta')
+
+    dT_dr = dT_ds * av_nabla_stor
+    return k_i * dT_dr / (z * E_CGS * b_phi)
+
+
+def compute_omte_neoclassical_poloidal(
+    n,
+    T,
+    dn_ds,
+    dT_ds,
+    z,
+    aiota,
+    sqrtg_bctrvr_phi,
+    av_nabla_stor,
+    v_phi,
+    b_theta,
+    b_phi,
+    k_i,
+):
+    """Compute Om_tE with measured toroidal and estimated poloidal rotation."""
+    v_theta = compute_poloidal_rotation_neoclassical(
+        dT_ds=dT_ds,
+        z=z,
+        b_phi=b_phi,
+        av_nabla_stor=av_nabla_stor,
+        k_i=k_i,
+    )
+    return compute_omte_force_balance(
+        n=n,
+        T=T,
+        dn_ds=dn_ds,
+        dT_ds=dT_ds,
+        z=z,
+        aiota=aiota,
+        sqrtg_bctrvr_phi=sqrtg_bctrvr_phi,
+        av_nabla_stor=av_nabla_stor,
+        v_phi=v_phi,
+        b_theta=b_theta,
+        v_theta=v_theta,
+        b_phi=b_phi,
     )

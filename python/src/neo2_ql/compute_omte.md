@@ -144,7 +144,7 @@ falling back to Level 0 when `v_phi` and `b_theta` are omitted.
 **GitHub issue:**
 [#73](https://github.com/itpplasma/NEO-2/issues/73).
 
-### Level 2: Neoclassical poloidal velocity estimate (planned)
+### Level 2: Neoclassical poloidal velocity estimate
 
 Include all three terms in eq. (2), estimating $v_{\vartheta,i}$ from
 neoclassical theory.  In the banana regime the poloidal velocity is (Kim,
@@ -163,6 +163,12 @@ where $K_i$ depends on the collisionality regime:
 | Banana | $\nu^* \ll 1$ | $-1.17$ |
 | Plateau | $\nu^* \sim 1$ | $\approx -0.5$ |
 | Pfirsch--Schluter | $\nu^* \gg 1$ | $\approx +0.5$ |
+
+The Python implementation is
+[`compute_omte_neoclassical_poloidal()`](compute_omte.py),
+which uses
+[`compute_poloidal_rotation_neoclassical()`](compute_omte.py)
+with a manually selected coefficient `K_i`.
 
 **GitHub issue:**
 [#74](https://github.com/itpplasma/NEO-2/issues/74).
@@ -339,6 +345,19 @@ complete Level 1 curve:
 For this AUG reference, the Level 1 proxy roughly halves the mean absolute
 error relative to Level 0, although it is still missing the poloidal-flow and
 transport terms from the full NEO-2 solve.
+
+Using the simple banana-regime Level 2 estimate with `K_i = -1.17`
+does not visibly move the curve for this reference:
+
+| $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 2 proxy $\Omega_{tE}$ | Ratio |
+|:-:|:-:|:-:|:-:|
+| 0.2527 | $-44.80\,\text{krad/s}$ | $-78.54\,\text{krad/s}$ | 1.75 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $-82.83\,\text{krad/s}$ | 0.75 |
+
+That near-overlap is expected from the simple analytic estimate because
+the `-v_\vartheta B_\varphi/c` contribution reduces to
+`-K_i (dT_i/dr)/(Z_i e c)` and is very small here compared to the toroidal
+rotation proxy term.
 
 
 ## Algebraic consistency with NEO-2 Fortran

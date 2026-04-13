@@ -6,6 +6,8 @@ from neo2_ql.compute_omte import (
     compute_omte_diamagnetic,
     compute_omte_force_balance,
     compute_omte_toroidal_rotation,
+    compute_poloidal_rotation_neoclassical,
+    compute_omte_neoclassical_poloidal,
     C_CGS,
     E_CGS,
 )
@@ -187,6 +189,19 @@ def test_toroidal_rotation_contribution():
     assert np.isclose(om_tE, om_expected, rtol=1e-12)
 
 
+def test_neoclassical_poloidal_rotation_formula():
+    """The Level 2 poloidal estimate should match its analytic definition."""
+    v_theta = compute_poloidal_rotation_neoclassical(
+        dT_ds=-2e-9,
+        z=1.0,
+        b_phi=-2e4,
+        av_nabla_stor=0.02,
+        k_i=-1.17,
+    )
+    expected = -1.17 * (-2e-9 * 0.02) / (E_CGS * -2e4)
+    assert np.isclose(v_theta, expected, rtol=1e-12)
+
+
 def test_invalid_zero_density_raises():
     """Public API should fail explicitly on zero-density input."""
     try:
@@ -224,6 +239,26 @@ def test_missing_toroidal_rotation_pair_raises():
         assert str(exc) == 'v_phi and b_theta must be provided together'
     else:
         raise AssertionError('Expected ValueError for incomplete Level 1 inputs')
+
+
+def test_missing_poloidal_rotation_pair_raises():
+    """v_theta and b_phi must be supplied together."""
+    try:
+        compute_omte_force_balance(
+            n=1e13,
+            T=1e-9,
+            dn_ds=0.0,
+            dT_ds=0.0,
+            z=1.0,
+            aiota=0.5,
+            sqrtg_bctrvr_phi=1e6,
+            av_nabla_stor=0.01,
+            v_theta=1e5,
+        )
+    except ValueError as exc:
+        assert str(exc) == 'v_theta and b_phi must be provided together'
+    else:
+        raise AssertionError('Expected ValueError for incomplete Level 2 inputs')
 
 
 # --- E2E test against NEO-2 reference ---
@@ -346,6 +381,34 @@ def test_toroidal_rotation_proxy_reduces_aug_reference_error():
     )
 
 
+def test_neoclassical_poloidal_proxy_regression():
+    """Level 2 banana-regime proxy should be stable on the AUG reference."""
+    ref = np.load(FIXTURE)
+
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+
+    om_lvl2, er_lvl2 = compute_omte_neoclassical_poloidal(
+        n=ref['n_prof'][:, ion_idx],
+        T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i,
+        aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+        v_phi=ref['R0'] * ref['Vphi'],
+        b_theta=ref['bcovar_tht'] / ref['R0'],
+        b_phi=ref['bcovar_phi'] / ref['R0'],
+        k_i=-1.17,
+    )
+
+    er_expected = np.array([-1.06905889, -1.15607731])
+    om_expected = np.array([-78536.3915, -82834.9494])
+    assert np.allclose(er_lvl2, er_expected, rtol=1e-5)
+    assert np.allclose(om_lvl2, om_expected, rtol=1e-5)
+
+
 if __name__ == '__main__':
     test_uniform_profiles_give_zero()
     test_negative_density_gradient_gives_negative_omte()
@@ -355,8 +418,11 @@ if __name__ == '__main__':
     test_charge_number_scaling()
     test_array_input()
     test_toroidal_rotation_contribution()
+    test_neoclassical_poloidal_rotation_formula()
     test_invalid_zero_density_raises()
     test_missing_toroidal_rotation_pair_raises()
+    test_missing_poloidal_rotation_pair_raises()
     test_diamagnetic_vs_neo2_sign_and_order_of_magnitude()
     test_toroidal_rotation_proxy_reduces_aug_reference_error()
+    test_neoclassical_poloidal_proxy_regression()
     print('\nAll tests passed.')

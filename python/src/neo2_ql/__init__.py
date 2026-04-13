@@ -19,3 +19,5 @@ from .write_profiles import write_profiles_to_dat_files
 from .get_fluxsurface_area import get_average_nabla_stor, get_fluxsurface_area
 from .compute_omte import compute_omte_diamagnetic
 from .compute_omte import compute_omte_force_balance, compute_omte_toroidal_rotation
+from .compute_omte import compute_poloidal_rotation_neoclassical
+from .compute_omte import compute_omte_neoclassical_poloidal
