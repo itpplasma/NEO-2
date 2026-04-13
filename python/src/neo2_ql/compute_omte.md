@@ -240,6 +240,23 @@ The mode `isw_calc_Er=2` (added in the `om-te-profile-support` branch,
 calculation and reads an externally provided $\Omega_{tE}(s)$ profile, which is
 the intended consumer of the output from this module.
 
+### Output-backed exact mode
+
+For debugging and validation there are now two output-backed Python modes in
+[`neo2_output_omte.py`](neo2_output_omte.py):
+
+- `compute_omte_from_neo2_output(..., mode="stored")`
+  reads the converged `Er` written by NEO-2 and converts it to $\Omega_{tE}$.
+- `compute_omte_from_neo2_output(..., mode="transport")`
+  reconstructs `Er` from the stored `D31_AX`, `D32_AX`, `D33_AX`,
+  `avEparB_ov_avb2`, geometry, and species state for the tested
+  `isw_Vphi_loc=0` branch.
+
+The second path mirrors the Fortran `compute_Er()` algebra directly and is the
+right bridge between the reduced Python models and the full NEO-2 solve.
+It is not a reduced model.  It is an exact reconstruction path from NEO-2
+output data.
+
 
 ## Coordinate system and units
 
@@ -456,6 +473,7 @@ $\langle|\nabla s|\rangle$, $\iota$, $\sqrt{g} B^\varphi$.
 | File | Role |
 |------|------|
 | [`compute_omte.py`](compute_omte.py) | Python implementation of force balance models |
+| [`neo2_output_omte.py`](neo2_output_omte.py) | Stored and reconstructed Om_tE from NEO-2 output |
 | [`plot_omte_reference.py`](plot_omte_reference.py) | Reproducible AUG comparison plot helper |
 | [`test_compute_omte.py`](../../test/test_compute_omte.py) | Unit + e2e tests |
 | [`omte_reference_aug30835.npz`](../../test/data/omte_reference_aug30835.npz) | Reference fixture (AUG #30835) |

@@ -1,6 +1,9 @@
 """Tests for Om_tE force balance computation."""
 
 import os
+import tempfile
+
+import h5py
 import numpy as np
 from neo2_ql.compute_omte import (
     compute_omte_diamagnetic,
@@ -13,6 +16,11 @@ from neo2_ql.compute_omte import (
     select_poloidal_rotation_coefficient,
     C_CGS,
     E_CGS,
+)
+from neo2_ql.neo2_output_omte import (
+    compute_neo2_er_from_transport_coefficients,
+    compute_neo2_omte_from_transport_coefficients,
+    compute_omte_from_neo2_output,
 )
 from neo2_ql.plot_omte_reference import get_omte_reference_models
 
@@ -220,6 +228,29 @@ def test_toroidal_rotation_neo2_convention_regression():
     assert np.isclose(om_tE, om_expected, rtol=1e-12)
 
 
+def test_toroidal_rotation_neo2_convention_without_vphi_matches_diamagnetic():
+    """The reduced NEO-2 convention must collapse to Level 0 when Vphi=0."""
+    inputs = {
+        'n': np.array([2.1e13, 3.2e13]),
+        'T': np.array([2.0e-9, 3.0e-9]),
+        'dn_ds': np.array([-1.0e13, -2.0e13]),
+        'dT_ds': np.array([-1.0e-9, -2.0e-9]),
+        'z': 1.0,
+        'aiota': np.array([0.4, 0.5]),
+        'sqrtg_bctrvr_phi': np.array([5.0e5, 7.0e5]),
+        'av_nabla_stor': np.array([0.01, 0.02]),
+    }
+    om_dia, er_dia = compute_omte_diamagnetic(**inputs)
+    om_exact, er_exact = compute_omte_toroidal_rotation_neo2_convention(
+        **inputs,
+        vphi=np.zeros(2),
+        bcovar_tht=np.array([-1.0e3, -2.0e3]),
+        bcovar_phi=np.array([-4.0e4, -5.0e4]),
+    )
+    assert np.allclose(er_exact, er_dia, rtol=1e-12)
+    assert np.allclose(om_exact, om_dia, rtol=1e-12)
+
+
 def test_neoclassical_poloidal_rotation_formula():
     """The Level 2 poloidal estimate should match its analytic definition."""
     v_theta = compute_poloidal_rotation_neoclassical(
@@ -238,6 +269,183 @@ def test_select_poloidal_rotation_coefficient():
     nu_star = np.array([0.01, 1.0, 100.0])
     k_i = select_poloidal_rotation_coefficient(nu_star)
     assert np.allclose(k_i, np.array([-1.17, -0.5, 0.5]))
+
+
+def test_transport_reconstruction_reduces_to_exact_convention_without_transport_terms():
+    """The transport reconstruction must reduce to the reduced Vphi formula."""
+    common = {
+        'n_spec': np.array([5.0e13, 2.0e13]),
+        'T_spec': np.array([8.0e-9, 3.0e-9]),
+        'dn_spec_ov_ds': np.array([-1.0e13, -2.0e13]),
+        'dT_spec_ov_ds': np.array([-1.0e-9, -3.0e-9]),
+        'species_tag': np.array([1, 2]),
+        'species_tag_vphi': 2,
+        'z_spec': np.array([-1.0, 1.0]),
+        'Vphi': 2.0e5,
+        'aiota': 0.6,
+        'sqrtg_bctrvr_phi': 9.0e5,
+        'av_nabla_stor': 0.02,
+        'bcovar_tht': -2.0e3,
+        'bcovar_phi': -4.0e4,
+        'row_ind': np.array([1, 1]),
+        'col_ind': np.array([0, 1]),
+        'D31_AX': np.zeros(2),
+        'D32_AX': np.zeros(2),
+        'D33_AX': np.zeros(2),
+        'avEparB_ov_avb2': 0.0,
+    }
+    om_recon, er_recon = compute_neo2_omte_from_transport_coefficients(**common)
+    om_exact, er_exact = compute_omte_toroidal_rotation_neo2_convention(
+        n=common['n_spec'][1],
+        T=common['T_spec'][1],
+        dn_ds=common['dn_spec_ov_ds'][1],
+        dT_ds=common['dT_spec_ov_ds'][1],
+        z=common['z_spec'][1],
+        aiota=common['aiota'],
+        sqrtg_bctrvr_phi=common['sqrtg_bctrvr_phi'],
+        av_nabla_stor=common['av_nabla_stor'],
+        vphi=common['Vphi'],
+        bcovar_tht=common['bcovar_tht'],
+        bcovar_phi=common['bcovar_phi'],
+    )
+    assert np.isclose(er_recon, er_exact, rtol=1e-12)
+    assert np.isclose(om_recon, om_exact, rtol=1e-12)
+
+
+def test_transport_reconstruction_matches_manual_formula():
+    """The D31/D32/D33 reconstruction should match the explicit Fortran sums."""
+    kwargs = {
+        'n_spec': np.array([4.0e13, 2.5e13]),
+        'T_spec': np.array([6.0e-9, 2.0e-9]),
+        'dn_spec_ov_ds': np.array([-1.5e13, -2.5e13]),
+        'dT_spec_ov_ds': np.array([-1.0e-9, -4.0e-9]),
+        'species_tag': np.array([1, 2]),
+        'species_tag_vphi': 2,
+        'z_spec': np.array([-1.0, 1.0]),
+        'Vphi': 3.0e5,
+        'aiota': 0.5,
+        'sqrtg_bctrvr_phi': 8.0e5,
+        'av_nabla_stor': 0.015,
+        'bcovar_tht': -1.5e3,
+        'bcovar_phi': -3.8e4,
+        'row_ind': np.array([1, 1, 0, 0]),
+        'col_ind': np.array([0, 1, 0, 1]),
+        'D31_AX': np.array([1.2e5, -2.5e5, 4.0e4, -6.0e4]),
+        'D32_AX': np.array([2.0e5, 3.0e5, -5.0e4, 8.0e4]),
+        'D33_AX': np.array([4.0e4, -3.0e4, 2.0e4, -1.0e4]),
+        'avEparB_ov_avb2': 2.5e-7,
+    }
+    er = compute_neo2_er_from_transport_coefficients(**kwargs)
+
+    spec_i = 1
+    z_i = kwargs['z_spec'][spec_i]
+    T_i = kwargs['T_spec'][spec_i]
+    n_i = kwargs['n_spec'][spec_i]
+    dp_dr = (
+        T_i * kwargs['dn_spec_ov_ds'][spec_i] + n_i * kwargs['dT_spec_ov_ds'][spec_i]
+    ) * kwargs['av_nabla_stor']
+    pressure = n_i * T_i
+    denom = C_CGS * kwargs['bcovar_tht'] / kwargs['sqrtg_bctrvr_phi']
+    nom = (
+        kwargs['Vphi'] * (kwargs['aiota'] * kwargs['bcovar_tht'] + kwargs['bcovar_phi'])
+        + (C_CGS * T_i * kwargs['bcovar_tht'] / (z_i * E_CGS * kwargs['sqrtg_bctrvr_phi']))
+        * (dp_dr / pressure)
+    )
+    for idx, irow in enumerate(kwargs['row_ind']):
+        icol = kwargs['col_ind'][idx]
+        if irow == spec_i:
+            denom += kwargs['D31_AX'][idx] * (kwargs['z_spec'][icol] * E_CGS) / kwargs['T_spec'][icol]
+            nom += kwargs['av_nabla_stor'] * kwargs['D31_AX'][idx] * (
+                kwargs['dn_spec_ov_ds'][icol] / kwargs['n_spec'][icol]
+                + kwargs['dT_spec_ov_ds'][icol] / kwargs['T_spec'][icol]
+            )
+            nom += kwargs['av_nabla_stor'] * (
+                kwargs['dT_spec_ov_ds'][icol] / kwargs['T_spec'][icol]
+            ) * (kwargs['D32_AX'][idx] - 2.5 * kwargs['D31_AX'][idx])
+            nom += kwargs['D33_AX'][idx] * kwargs['avEparB_ov_avb2'] * (
+                kwargs['z_spec'][icol] * E_CGS
+            ) / kwargs['T_spec'][icol]
+
+    assert np.isclose(er, nom / denom, rtol=1e-12)
+
+
+def test_compute_omte_from_output_reads_stored_er():
+    """Stored-output mode should return the exact stored Er curve."""
+    with tempfile.NamedTemporaryFile(suffix='.h5') as tmp:
+        with h5py.File(tmp.name, 'w') as handle:
+            handle.create_dataset('Er', data=np.array([-0.2, -0.5]))
+            handle.create_dataset('aiota', data=np.array([0.4, 0.5]))
+            handle.create_dataset('sqrtg_bctrvr_phi', data=np.array([5.0e5, 7.0e5]))
+        om_tE, er = compute_omte_from_neo2_output(tmp.name, mode='stored')
+    assert np.allclose(er, np.array([-0.2, -0.5]))
+    assert np.allclose(
+        om_tE,
+        C_CGS * np.array([-0.2, -0.5]) / (np.array([0.4, 0.5]) * np.array([5.0e5, 7.0e5])),
+    )
+
+
+def test_compute_omte_from_output_reconstructs_transport_mode():
+    """Transport-output mode should reproduce the reconstructed Er curve."""
+    species_tag = np.array([1, 2], dtype=np.int32)
+    species_tag_vphi = np.array([2], dtype=np.int32)
+    species_def = np.array(
+        [
+            [[-1.0], [1.0]],
+            [[9.1e-28], [3.34e-24]],
+        ]
+    )
+    kwargs = {
+        'n_spec': np.array([4.0e13, 2.5e13]),
+        'T_spec': np.array([6.0e-9, 2.0e-9]),
+        'dn_spec_ov_ds': np.array([-1.5e13, -2.5e13]),
+        'dT_spec_ov_ds': np.array([-1.0e-9, -4.0e-9]),
+        'species_tag': species_tag,
+        'species_tag_vphi': 2,
+        'z_spec': np.array([-1.0, 1.0]),
+        'Vphi': 3.0e5,
+        'aiota': 0.5,
+        'sqrtg_bctrvr_phi': 8.0e5,
+        'av_nabla_stor': 0.015,
+        'bcovar_tht': -1.5e3,
+        'bcovar_phi': -3.8e4,
+        'row_ind': np.array([1, 1, 0, 0]),
+        'col_ind': np.array([1, 2, 1, 2]),
+        'D31_AX': np.array([1.2e5, -2.5e5, 4.0e4, -6.0e4]),
+        'D32_AX': np.array([2.0e5, 3.0e5, -5.0e4, 8.0e4]),
+        'D33_AX': np.array([4.0e4, -3.0e4, 2.0e4, -1.0e4]),
+        'avEparB_ov_avb2': 2.5e-7,
+    }
+    er_expected = compute_neo2_er_from_transport_coefficients(**kwargs)
+
+    with tempfile.NamedTemporaryFile(suffix='.h5') as tmp:
+        with h5py.File(tmp.name, 'w') as handle:
+            handle.create_dataset('species_tag', data=species_tag)
+            handle.create_dataset('species_tag_Vphi', data=species_tag_vphi)
+            handle.create_dataset('species_def', data=species_def)
+            handle.create_dataset('n_spec', data=np.array([kwargs['n_spec']]))
+            handle.create_dataset('T_spec', data=np.array([kwargs['T_spec']]))
+            handle.create_dataset('dn_ov_ds_prof', data=np.array([kwargs['dn_spec_ov_ds']]))
+            handle.create_dataset('dT_ov_ds_prof', data=np.array([kwargs['dT_spec_ov_ds']]))
+            handle.create_dataset('aiota', data=np.array([kwargs['aiota']]))
+            handle.create_dataset('sqrtg_bctrvr_phi', data=np.array([kwargs['sqrtg_bctrvr_phi']]))
+            handle.create_dataset('av_nabla_stor', data=np.array([kwargs['av_nabla_stor']]))
+            handle.create_dataset('bcovar_tht', data=np.array([kwargs['bcovar_tht']]))
+            handle.create_dataset('bcovar_phi', data=np.array([kwargs['bcovar_phi']]))
+            handle.create_dataset('Vphi', data=np.array([kwargs['Vphi']]))
+            handle.create_dataset('row_ind_spec', data=np.array([kwargs['row_ind']]))
+            handle.create_dataset('col_ind_spec', data=np.array([kwargs['col_ind']]))
+            handle.create_dataset('D31_AX', data=np.array([kwargs['D31_AX']]))
+            handle.create_dataset('D32_AX', data=np.array([kwargs['D32_AX']]))
+            handle.create_dataset('D33_AX', data=np.array([kwargs['D33_AX']]))
+            handle.create_dataset('avEparB_ov_avb2', data=np.array([kwargs['avEparB_ov_avb2']]))
+            handle.create_dataset('isw_Vphi_loc', data=np.array([0], dtype=np.int32))
+        om_tE, er = compute_omte_from_neo2_output(tmp.name, mode='transport')
+
+    assert np.allclose(er, np.array([er_expected]))
+    assert np.allclose(
+        om_tE,
+        np.array([C_CGS * er_expected / (kwargs['aiota'] * kwargs['sqrtg_bctrvr_phi'])]),
+    )
 
 
 def test_invalid_zero_density_raises():
@@ -541,8 +749,13 @@ if __name__ == '__main__':
     test_array_input()
     test_toroidal_rotation_contribution()
     test_toroidal_rotation_neo2_convention_regression()
+    test_toroidal_rotation_neo2_convention_without_vphi_matches_diamagnetic()
     test_neoclassical_poloidal_rotation_formula()
     test_select_poloidal_rotation_coefficient()
+    test_transport_reconstruction_reduces_to_exact_convention_without_transport_terms()
+    test_transport_reconstruction_matches_manual_formula()
+    test_compute_omte_from_output_reads_stored_er()
+    test_compute_omte_from_output_reconstructs_transport_mode()
     test_invalid_zero_density_raises()
     test_exact_neo2_convention_zero_pressure_raises()
     test_missing_toroidal_rotation_pair_raises()
