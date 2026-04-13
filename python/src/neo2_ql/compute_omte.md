@@ -119,7 +119,7 @@ $\mathrm{d}T_i/\mathrm{d}s$, charge number $Z_i$, and the geometry quantities
 $\iota$, $\sqrt{g} B^\varphi$, $\langle|\nabla s|\rangle$ from a Boozer-coordinate
 equilibrium or a previous NEO-2 run.
 
-### Level 1: Measured toroidal rotation (planned)
+### Level 1: Measured toroidal rotation
 
 Retain the $v_\varphi B_\vartheta$ term in eq. (2), using the experimentally
 measured toroidal rotation velocity from charge-exchange recombination
@@ -134,6 +134,12 @@ $$
 
 This is the standard approach used in experimental $E_r$ determination; see
 Viezzer et al. [4] section 2.
+
+The Python implementation is
+[`compute_omte_toroidal_rotation()`](compute_omte.py),
+with the unified entry point
+[`compute_omte_force_balance()`](compute_omte.py)
+falling back to Level 0 when `v_phi` and `b_theta` are omitted.
 
 **GitHub issue:**
 [#73](https://github.com/itpplasma/NEO-2/issues/73).
@@ -281,6 +287,25 @@ writes `T_spec` and `n_spec` back to `neo2_multispecies_out.h5`.
 Those fields are therefore solver state for a completed single-surface run,
 not replacements for the original radial profile arrays.
 
+The rotation input `Vphi` written by
+[`generate_multispec_input.py`](generate_multispec_input.py)
+is the toroidal geometric-angle rotation frequency in `rad/s`.
+Level 1 in this module accepts the physical toroidal velocity `v_phi` in
+`cm/s`, so when only the HDF5 input is available a practical proxy is
+
+$$
+v_\varphi \approx R_0 V^\varphi,
+\qquad
+B_\vartheta \approx \frac{B_\vartheta^\text{cov}}{R_0}
+$$
+
+which gives the additional Level 1 contribution
+
+$$
+\Delta \Omega_{tE}^{(1)} \approx
+\frac{V^\varphi B_\vartheta^\text{cov}}{\iota \sqrt{g} B^\varphi}.
+$$
+
 
 ## Validation against NEO-2
 
@@ -302,6 +327,18 @@ balance. The sign is
 correct (negative $\Omega_{tE}$, corresponding to inward-pointing $E_r$).
 
 Test: [`test_diamagnetic_vs_neo2_sign_and_order_of_magnitude()`](../../test/test_compute_omte.py).
+
+Using the `Vphi` input profile together with the proxy above gives a more
+complete Level 1 curve:
+
+| $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 1 proxy $\Omega_{tE}$ | Ratio |
+|:-:|:-:|:-:|:-:|
+| 0.2527 | $-44.80\,\text{krad/s}$ | $-78.54\,\text{krad/s}$ | 1.75 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $-82.83\,\text{krad/s}$ | 0.75 |
+
+For this AUG reference, the Level 1 proxy roughly halves the mean absolute
+error relative to Level 0, although it is still missing the poloidal-flow and
+transport terms from the full NEO-2 solve.
 
 
 ## Algebraic consistency with NEO-2 Fortran

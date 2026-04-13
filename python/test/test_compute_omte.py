@@ -2,7 +2,13 @@
 
 import os
 import numpy as np
-from neo2_ql.compute_omte import compute_omte_diamagnetic, C_CGS, E_CGS
+from neo2_ql.compute_omte import (
+    compute_omte_diamagnetic,
+    compute_omte_force_balance,
+    compute_omte_toroidal_rotation,
+    C_CGS,
+    E_CGS,
+)
 
 
 # --- Unit tests with analytic profiles ---
@@ -91,6 +97,26 @@ def test_temperature_gradient_contribution():
     assert np.isclose(Om_tE, Om_tE_expected, rtol=1e-12)
 
 
+def test_force_balance_without_vphi_matches_diamagnetic():
+    """Unified force-balance API must preserve Level 0 behavior."""
+    inputs = {
+        'n': 1e13,
+        'T': 2e-9,
+        'dn_ds': -1e13,
+        'dT_ds': -1e-9,
+        'z': 1.0,
+        'aiota': 0.5,
+        'sqrtg_bctrvr_phi': 1e6,
+        'av_nabla_stor': 0.01,
+    }
+
+    om_dia, er_dia = compute_omte_diamagnetic(**inputs)
+    om_full, er_full = compute_omte_force_balance(**inputs)
+
+    assert np.isclose(om_full, om_dia, rtol=1e-12)
+    assert np.isclose(er_full, er_dia, rtol=1e-12)
+
+
 def test_charge_number_scaling():
     """Om_tE scales as 1/Z for the same pressure gradient."""
     n = 1e13
@@ -139,6 +165,28 @@ def test_array_input():
         assert np.isclose(Er[i], Er_i, rtol=1e-12)
 
 
+def test_toroidal_rotation_contribution():
+    """Level 1 adds the toroidal-rotation term v_phi * B_theta / c."""
+    om_tE, er = compute_omte_toroidal_rotation(
+        n=1e13,
+        T=1e-9,
+        dn_ds=0.0,
+        dT_ds=0.0,
+        z=1.0,
+        aiota=0.5,
+        sqrtg_bctrvr_phi=1e6,
+        av_nabla_stor=0.01,
+        v_phi=2e7,
+        b_theta=-1e3,
+    )
+
+    er_expected = 2e7 * (-1e3) / C_CGS
+    om_expected = C_CGS * er_expected / (0.5 * 1e6)
+
+    assert np.isclose(er, er_expected, rtol=1e-12)
+    assert np.isclose(om_tE, om_expected, rtol=1e-12)
+
+
 def test_invalid_zero_density_raises():
     """Public API should fail explicitly on zero-density input."""
     try:
@@ -156,6 +204,26 @@ def test_invalid_zero_density_raises():
         assert str(exc) == 'n must be nonzero to compute E_r and Om_tE'
     else:
         raise AssertionError('Expected ValueError for zero density')
+
+
+def test_missing_toroidal_rotation_pair_raises():
+    """v_phi and b_theta must be supplied together."""
+    try:
+        compute_omte_force_balance(
+            n=1e13,
+            T=1e-9,
+            dn_ds=0.0,
+            dT_ds=0.0,
+            z=1.0,
+            aiota=0.5,
+            sqrtg_bctrvr_phi=1e6,
+            av_nabla_stor=0.01,
+            v_phi=1e7,
+        )
+    except ValueError as exc:
+        assert str(exc) == 'v_phi and b_theta must be provided together'
+    else:
+        raise AssertionError('Expected ValueError for incomplete Level 1 inputs')
 
 
 # --- E2E test against NEO-2 reference ---
@@ -227,13 +295,68 @@ def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
         )
 
 
+def test_toroidal_rotation_proxy_reduces_aug_reference_error():
+    """Level 1 proxy should improve the AUG reference fit over Level 0."""
+    ref = np.load(FIXTURE)
+
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+
+    om_dia, _ = compute_omte_diamagnetic(
+        n=ref['n_prof'][:, ion_idx],
+        T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i,
+        aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+    )
+
+    # The HDF5 input stores a toroidal rotation frequency Vphi [rad/s].
+    # For the current reference plot we reconstruct a surface-averaged
+    # velocity/field pair via v_phi = R0 * Vphi and B_theta ≈ bcovar_tht / R0.
+    om_lvl1, er_lvl1 = compute_omte_toroidal_rotation(
+        n=ref['n_prof'][:, ion_idx],
+        T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i,
+        aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+        v_phi=ref['R0'] * ref['Vphi'],
+        b_theta=ref['bcovar_tht'] / ref['R0'],
+    )
+
+    er_expected = np.array([-1.06905889, -1.15607731])
+    om_expected = np.array([-78536.3915, -82834.9494])
+    assert np.allclose(er_lvl1, er_expected, rtol=1e-5), (
+        f'Level 1 Er regression: got {er_lvl1}, expected {er_expected}'
+    )
+    assert np.allclose(om_lvl1, om_expected, rtol=1e-5), (
+        f'Level 1 Om_tE regression: got {om_lvl1}, expected {om_expected}'
+    )
+
+    om_neo2 = C_CGS * ref['Er_neo2'] / (ref['aiota'] * ref['sqrtg_bctrvr_phi'])
+    dia_mae = np.mean(np.abs(om_dia - om_neo2))
+    lvl1_mae = np.mean(np.abs(om_lvl1 - om_neo2))
+    assert lvl1_mae < dia_mae, (
+        f'Expected Level 1 to improve MAE: level0={dia_mae}, level1={lvl1_mae}'
+    )
+
+
 if __name__ == '__main__':
     test_uniform_profiles_give_zero()
     test_negative_density_gradient_gives_negative_omte()
     test_analytic_linear_profiles()
     test_temperature_gradient_contribution()
+    test_force_balance_without_vphi_matches_diamagnetic()
     test_charge_number_scaling()
     test_array_input()
+    test_toroidal_rotation_contribution()
     test_invalid_zero_density_raises()
+    test_missing_toroidal_rotation_pair_raises()
     test_diamagnetic_vs_neo2_sign_and_order_of_magnitude()
+    test_toroidal_rotation_proxy_reduces_aug_reference_error()
     print('\nAll tests passed.')
