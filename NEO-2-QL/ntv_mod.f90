@@ -1702,13 +1702,17 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'D33_NA', D33_NA, LBOUND(D33_NA), UBOUND(D33_NA), &
       & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
 
-    ! add radial electric field and species Mach numbers
-    IF (isw_calc_Er .EQ. 1) THEN
-
-       CALL h5_add(h5id_multispec, 'Er', Er)
+    ! add ExB rotation frequency and species Mach numbers
+    IF (isw_calc_Er .GE. 1) THEN
        CALL h5_add(h5id_multispec, 'Om_tE', Om_tE)
        CALL h5_add(h5id_multispec, 'MtOvR', MtOvR_spec, &
             LBOUND(MtOvR_spec), UBOUND(MtOvR_spec))
+    END IF
+
+    ! add radial electric field and derived quantities (neoclassical only)
+    IF (isw_calc_Er .EQ. 1) THEN
+
+       CALL h5_add(h5id_multispec, 'Er', Er)
 
        CALL h5_add(h5id_multispec, 'VthtB_spec', VthtB_spec, &
             LBOUND(VthtB_spec), UBOUND(VthtB_spec))
