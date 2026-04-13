@@ -54,6 +54,53 @@ def compute_neo2_er_from_transport_coefficients(
     isw_Vphi_loc=0,
 ):
     """Mirror NEO-2 `compute_Er()` for the tested `isw_Vphi_loc=0` branch."""
+    return decompose_neo2_er_transport_terms(
+        n_spec=n_spec,
+        T_spec=T_spec,
+        dn_spec_ov_ds=dn_spec_ov_ds,
+        dT_spec_ov_ds=dT_spec_ov_ds,
+        species_tag=species_tag,
+        species_tag_vphi=species_tag_vphi,
+        z_spec=z_spec,
+        Vphi=Vphi,
+        aiota=aiota,
+        sqrtg_bctrvr_phi=sqrtg_bctrvr_phi,
+        av_nabla_stor=av_nabla_stor,
+        bcovar_tht=bcovar_tht,
+        bcovar_phi=bcovar_phi,
+        row_ind=row_ind,
+        col_ind=col_ind,
+        D31_AX=D31_AX,
+        D32_AX=D32_AX,
+        D33_AX=D33_AX,
+        avEparB_ov_avb2=avEparB_ov_avb2,
+        isw_Vphi_loc=isw_Vphi_loc,
+    )['er_total']
+
+
+def decompose_neo2_er_transport_terms(
+    n_spec,
+    T_spec,
+    dn_spec_ov_ds,
+    dT_spec_ov_ds,
+    species_tag,
+    species_tag_vphi,
+    z_spec,
+    Vphi,
+    aiota,
+    sqrtg_bctrvr_phi,
+    av_nabla_stor,
+    bcovar_tht,
+    bcovar_phi,
+    row_ind,
+    col_ind,
+    D31_AX,
+    D32_AX,
+    D33_AX=None,
+    avEparB_ov_avb2=0.0,
+    isw_Vphi_loc=0,
+):
+    """Return the exact term breakdown of the tested NEO-2 `compute_Er()` branch."""
     if int(isw_Vphi_loc) != 0:
         raise NotImplementedError('Only isw_Vphi_loc=0 is implemented')
 
@@ -81,7 +128,6 @@ def compute_neo2_er_from_transport_coefficients(
         raise ValueError('bcovar_tht must be nonzero to reconstruct NEO-2 E_r')
 
     spec_i = _species_index_from_tag(species_tag, species_tag_vphi)
-
     z_ions = z_spec[spec_i]
     T_ions = T_spec[spec_i]
     n_ions = n_spec[spec_i]
@@ -92,30 +138,67 @@ def compute_neo2_er_from_transport_coefficients(
         raise ValueError('ion pressure must be nonzero to reconstruct NEO-2 E_r')
     dp_ions_ov_dr = T_ions * dn_ions_ov_dr + n_ions * dT_ions_ov_dr
 
-    denom_er = C_CGS * bcovar_tht / sqrtg_bctrvr_phi
-    nom_er = (
-        Vphi * (aiota * bcovar_tht + bcovar_phi)
-        + (C_CGS * T_ions * bcovar_tht / (z_ions * E_CGS * sqrtg_bctrvr_phi))
-        * (dp_ions_ov_dr / p_ions)
-    )
+    denom_base = C_CGS * bcovar_tht / sqrtg_bctrvr_phi
+    nom_dia = (
+        C_CGS * T_ions * bcovar_tht / (z_ions * E_CGS * sqrtg_bctrvr_phi)
+    ) * (dp_ions_ov_dr / p_ions)
+    nom_vphi = Vphi * (aiota * bcovar_tht + bcovar_phi)
+    nom_d31 = 0.0
+    nom_d32 = 0.0
+    nom_d33 = 0.0
+    denom_d31 = 0.0
 
     for idx in range(D31_AX.size):
         irow_spec = row_ind[idx]
         icol_spec = col_ind[idx]
         if irow_spec == spec_i:
-            denom_er += D31_AX[idx] * (z_spec[icol_spec] * E_CGS) / T_spec[icol_spec]
-            nom_er += av_nabla_stor * D31_AX[idx] * (
+            denom_d31 += D31_AX[idx] * (z_spec[icol_spec] * E_CGS) / T_spec[icol_spec]
+            nom_d31 += av_nabla_stor * D31_AX[idx] * (
                 dn_spec_ov_ds[icol_spec] / n_spec[icol_spec]
                 + dT_spec_ov_ds[icol_spec] / T_spec[icol_spec]
             )
-            nom_er += av_nabla_stor * (
+            nom_d32 += av_nabla_stor * (
                 dT_spec_ov_ds[icol_spec] / T_spec[icol_spec]
             ) * (D32_AX[idx] - 2.5 * D31_AX[idx])
-            nom_er += D33_AX[idx] * avEparB_ov_avb2 * (
+            nom_d33 += D33_AX[idx] * avEparB_ov_avb2 * (
                 z_spec[icol_spec] * E_CGS
             ) / T_spec[icol_spec]
 
-    return nom_er / denom_er
+    nom_base = nom_dia + nom_vphi
+    nom_total = nom_base + nom_d31 + nom_d32 + nom_d33
+    denom_total = denom_base + denom_d31
+
+    er_dia = nom_dia / denom_base
+    er_vphi = nom_vphi / denom_base
+    er_d31 = nom_d31 / denom_base
+    er_d32 = nom_d32 / denom_base
+    er_d33 = nom_d33 / denom_base
+    er_before_denom = nom_total / denom_base
+    er_denom = (nom_total / denom_total) - er_before_denom
+    er_total = nom_total / denom_total
+
+    return {
+        'species_index': spec_i,
+        'dp_ions_ov_dr': dp_ions_ov_dr,
+        'p_ions': p_ions,
+        'denom_base': denom_base,
+        'denom_d31': denom_d31,
+        'denom_total': denom_total,
+        'nom_dia': nom_dia,
+        'nom_vphi': nom_vphi,
+        'nom_d31': nom_d31,
+        'nom_d32': nom_d32,
+        'nom_d33': nom_d33,
+        'nom_total': nom_total,
+        'er_dia': er_dia,
+        'er_vphi': er_vphi,
+        'er_d31': er_d31,
+        'er_d32': er_d32,
+        'er_d33': er_d33,
+        'er_denom': er_denom,
+        'er_before_denom': er_before_denom,
+        'er_total': er_total,
+    }
 
 
 def compute_neo2_omte_from_transport_coefficients(**kwargs):

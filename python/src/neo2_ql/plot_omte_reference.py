@@ -2,31 +2,38 @@
 
 from pathlib import Path
 
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
 from .compute_omte import (
     C_CGS,
+    compute_poloidal_rotation_neoclassical,
     compute_omte_diamagnetic,
     compute_omte_neoclassical_poloidal_auto_k,
     compute_omte_toroidal_rotation,
     compute_omte_toroidal_rotation_neo2_convention,
 )
+from .neo2_output_omte import decompose_neo2_er_transport_terms
 
 
 FIXTURE = Path(__file__).resolve().parents[2] / 'test' / 'data' / 'omte_reference_aug30835.npz'
+TRANSPORT_FIXTURE = (
+    Path(__file__).resolve().parents[2] / 'test' / 'data' / 'neo2_ql_axisymmetric_multispecies_out.h5'
+)
 
 
-def get_omte_reference_models(fixture=FIXTURE, nu_star=None):
-    """Return Om_tE model curves for the stored AUG reference fixture."""
+def get_omte_reference_models(fixture=FIXTURE):
+    """Return Om_tE model curves for the stored AUG reference fixture.
+
+    The Level 1/2 curves use the NEO-2-native Boozer component pairs
+    `(Vphi, bcovar_tht)` and `(Vtheta, bcovar_phi)` rather than cylindrical
+    `R0`-based proxies.
+    """
     ref = np.load(fixture)
     ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
     z_i = ref['species_def'][0, ion_idx, 0]
-
-    if nu_star is None:
-        nu_star = np.full_like(ref['boozer_s'], 0.05, dtype=float)
-    else:
-        nu_star = np.asarray(nu_star, dtype=float)
+    nu_star = np.full_like(ref['boozer_s'], 0.05, dtype=float)
 
     common = {
         'n': ref['n_prof'][:, ion_idx],
@@ -40,17 +47,17 @@ def get_omte_reference_models(fixture=FIXTURE, nu_star=None):
     }
 
     om_neo2 = C_CGS * ref['Er_neo2'] / (ref['aiota'] * ref['sqrtg_bctrvr_phi'])
-    om_lvl0, _ = compute_omte_diamagnetic(**common)
-    om_lvl1, _ = compute_omte_toroidal_rotation(
+    om_lvl0, er_dia = compute_omte_diamagnetic(**common)
+    om_lvl1, er_lvl1 = compute_omte_toroidal_rotation(
         **common,
-        v_phi=ref['R0'] * ref['Vphi'],
-        b_theta=ref['bcovar_tht'] / ref['R0'],
+        v_phi=ref['Vphi'],
+        b_theta=ref['bcovar_tht'],
     )
-    om_lvl2, _ = compute_omte_neoclassical_poloidal_auto_k(
+    om_lvl2, er_lvl2 = compute_omte_neoclassical_poloidal_auto_k(
         **common,
-        v_phi=ref['R0'] * ref['Vphi'],
-        b_theta=ref['bcovar_tht'] / ref['R0'],
-        b_phi=ref['bcovar_phi'] / ref['R0'],
+        v_phi=ref['Vphi'],
+        b_theta=ref['bcovar_tht'],
+        b_phi=ref['bcovar_phi'],
         nu_star=nu_star,
     )
     om_exact, _ = compute_omte_toroidal_rotation_neo2_convention(
@@ -59,6 +66,16 @@ def get_omte_reference_models(fixture=FIXTURE, nu_star=None):
         bcovar_tht=ref['bcovar_tht'],
         bcovar_phi=ref['bcovar_phi'],
     )
+    v_theta = compute_poloidal_rotation_neoclassical(
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i,
+        b_phi=ref['bcovar_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+        k_i=np.full_like(ref['boozer_s'], -1.17, dtype=float),
+    )
+    er_tor = np.asarray(ref['Vphi']) * np.asarray(ref['bcovar_tht']) / C_CGS
+    er_pol = -v_theta * np.asarray(ref['bcovar_phi']) / C_CGS
+    er_remainder = np.asarray(ref['Er_neo2']) - er_lvl2
 
     return {
         'boozer_s': ref['boozer_s'],
@@ -68,52 +85,134 @@ def get_omte_reference_models(fixture=FIXTURE, nu_star=None):
         'om_lvl2': om_lvl2,
         'om_exact': om_exact,
         'nu_star': nu_star,
+        'er_neo2': np.asarray(ref['Er_neo2']),
+        'er_dia': er_dia,
+        'er_tor': er_tor,
+        'er_pol': er_pol,
+        'er_lvl1': er_lvl1,
+        'er_lvl2': er_lvl2,
+        'er_remainder': er_remainder,
     }
 
 
-def make_figure_omte_reference(fixture=FIXTURE, nu_star=None):
-    """Create a two-panel figure for practical and strict Om_tE models."""
-    models = get_omte_reference_models(fixture=fixture, nu_star=nu_star)
+def get_transport_reference_decomposition(fixture=TRANSPORT_FIXTURE):
+    """Return a full transport-term decomposition for the stored HDF5 fixture."""
+    with h5py.File(fixture, 'r') as handle:
+        terms = decompose_neo2_er_transport_terms(
+            n_spec=np.asarray(handle['n_spec']),
+            T_spec=np.asarray(handle['T_spec']),
+            dn_spec_ov_ds=np.asarray(handle['dn_spec_ov_ds']),
+            dT_spec_ov_ds=np.asarray(handle['dT_spec_ov_ds']),
+            species_tag=np.asarray(handle['species_tag']),
+            species_tag_vphi=np.asarray(handle['species_tag_Vphi']).reshape(-1)[0],
+            z_spec=np.asarray(handle['z_spec']),
+            Vphi=float(np.asarray(handle['Vphi'])),
+            aiota=float(np.asarray(handle['aiota'])),
+            sqrtg_bctrvr_phi=float(np.asarray(handle['sqrtg_bctrvr_phi'])),
+            av_nabla_stor=float(np.asarray(handle['av_nabla_stor'])),
+            bcovar_tht=float(np.asarray(handle['bcovar_tht'])),
+            bcovar_phi=float(np.asarray(handle['bcovar_phi'])),
+            row_ind=np.asarray(handle['row_ind_spec']),
+            col_ind=np.asarray(handle['col_ind_spec']),
+            D31_AX=np.asarray(handle['D31_AX']),
+            D32_AX=np.asarray(handle['D32_AX']),
+            D33_AX=np.asarray(handle['D33_AX']),
+            avEparB_ov_avb2=float(np.asarray(handle['avEparB_ov_avb2'])),
+            isw_Vphi_loc=int(np.asarray(handle['isw_Vphi_loc']).reshape(-1)[0]),
+        )
+        terms['er_stored'] = float(np.asarray(handle['Er']))
+    return terms
+
+
+def _plot_transport_waterfall(axis, terms):
+    """Show how the full NEO-2 transport terms move Er away from the common core."""
+    labels = ['pressure', 'Vphi', 'D31', 'D32', 'D33', 'denom']
+    deltas = np.array(
+        [
+            terms['er_dia'],
+            terms['er_vphi'],
+            terms['er_d31'],
+            terms['er_d32'],
+            terms['er_d33'],
+            terms['er_denom'],
+        ]
+    )
+    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown']
+    running = 0.0
+    for xpos, (label, delta, color) in enumerate(zip(labels, deltas, colors)):
+        axis.bar(xpos, delta, bottom=running, width=0.7, color=color, label=label)
+        running += delta
+    axis.bar(len(labels), terms['er_total'], width=0.7, color='0.2', label='reconstructed Er')
+    axis.axhline(0.0, color='0.7', linewidth=1.0)
+    axis.axhline(terms['er_stored'], color='0.1', linewidth=1.2, linestyle='--', label='stored Er')
+    axis.set_xticks(range(len(labels) + 1), labels + ['total'])
+    axis.set_ylabel('Er [statV/cm]')
+    axis.set_title('Full transport waterfall from the exact HDF5 output fixture')
+    axis.legend(ncol=4, fontsize=8)
+
+
+def make_figure_omte_reference(fixture=FIXTURE, transport_fixture=TRANSPORT_FIXTURE):
+    """Create a three-panel figure for reduced curves and transport-term breakdown."""
+    models = get_omte_reference_models(fixture=fixture)
+    transport_terms = get_transport_reference_decomposition(fixture=transport_fixture)
     boozer_s = models['boozer_s']
 
-    fig, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True, constrained_layout=True)
+    fig, axes = plt.subplots(3, 1, figsize=(10, 12), constrained_layout=True)
 
     axes[0].plot(boozer_s, models['om_neo2'] / 1.0e3, 'o-k', label='NEO-2')
     axes[0].plot(boozer_s, models['om_lvl0'] / 1.0e3, 's--', color='tab:blue', label='Level 0')
-    axes[0].plot(boozer_s, models['om_lvl1'] / 1.0e3, 'd-.', color='tab:orange', label='Level 1 proxy')
+    axes[0].plot(
+        boozer_s,
+        models['om_lvl1'] / 1.0e3,
+        'd-.',
+        color='tab:orange',
+        label='Level 1 (Vphi, bcovar_tht)',
+    )
     axes[0].plot(
         boozer_s,
         models['om_lvl2'] / 1.0e3,
         '^-',
         color='tab:green',
-        label='Level 2 proxy (auto K_i)',
+        label='Level 2 (auto K_i)',
     )
     axes[0].axhline(0.0, color='0.7', linewidth=1.0)
     axes[0].set_ylabel('Omega_tE [krad/s]')
-    axes[0].set_title('Practical force-balance models')
+    axes[0].set_title('Reduced force-balance hierarchy')
     axes[0].legend()
 
-    axes[1].plot(boozer_s, models['om_neo2'] / 1.0e6, 'o-k', label='NEO-2')
-    axes[1].plot(
-        boozer_s,
-        models['om_exact'] / 1.0e6,
-        'x-',
-        color='tab:red',
-        linewidth=2.0,
-        label='Strict NEO-2 Vphi convention',
+    x = np.arange(len(boozer_s))
+    width = 0.18
+    axes[1].bar(x - 1.5 * width, models['er_dia'], width, color='tab:blue', label='pressure')
+    axes[1].bar(x - 0.5 * width, models['er_tor'], width, color='tab:orange', label='Vphi')
+    axes[1].bar(x + 0.5 * width, models['er_pol'], width, color='tab:green', label='Vtheta')
+    axes[1].bar(
+        x + 1.5 * width,
+        models['er_neo2'],
+        width,
+        color='0.2',
+        label='NEO-2 total',
     )
     axes[1].axhline(0.0, color='0.7', linewidth=1.0)
-    axes[1].set_xlabel('s_tor')
-    axes[1].set_ylabel('Omega_tE [Mrad/s]')
-    axes[1].set_title('Reduced isw_Vphi_loc=0 algebra')
+    axes[1].set_xticks(x, [f's={value:.3f}' for value in boozer_s])
+    axes[1].set_ylabel('Er [statV/cm]')
+    axes[1].set_title('AUG common terms: what the reduced models actually contain')
     axes[1].legend()
 
-    return fig, axes, models
+    _plot_transport_waterfall(axes[2], transport_terms)
+
+    return fig, axes, {'aug': models, 'transport': transport_terms}
 
 
-def save_figure_omte_reference(output_path, fixture=FIXTURE, nu_star=None):
+def save_figure_omte_reference(
+    output_path,
+    fixture=FIXTURE,
+    transport_fixture=TRANSPORT_FIXTURE,
+):
     """Save the Om_tE comparison figure and return the resolved output path."""
-    fig, _, _ = make_figure_omte_reference(fixture=fixture, nu_star=nu_star)
+    fig, _, _ = make_figure_omte_reference(
+        fixture=fixture,
+        transport_fixture=transport_fixture,
+    )
     output_path = Path(output_path).resolve()
     fig.savefig(output_path, dpi=200, bbox_inches='tight')
     plt.close(fig)

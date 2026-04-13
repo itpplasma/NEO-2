@@ -1,10 +1,9 @@
 # %%Standard Python modules
 import numpy as np
-from numpy.testing import assert_allclose
 import matplotlib.pyplot as plt
+import os
 
-# Custom modules
-from libneo import FluxConverter, read_eqdsk
+from mars_test_utils import create_test_mars_dir
 
 #Module to test
 from neo2_mars import mars_sqrtspol2sqrtstor
@@ -21,50 +20,45 @@ control_sqrtstor = np.array([0, 0.0008, 0.0016, 0.0024, 0.0032, 0.0040, 0.0048, 
                               0.5000, 0.5009, 0.5017, 0.5026, 0.5035, 0.5044, 0.5053, 0.5062, 0.5071, 0.5080, 0.5089, 0.5098, 0.5107, 0.5116, 0.5125, 0.5134, 0.5143, 0.5152, 0.5161, 0.5170, 0.5179, 0.5188, 0.5197, 0.5206, 0.5215, 0.5224, 0.5233, 0.5242, 0.5251, 0.5260, 0.5269, 0.5278, 0.5287, 0.5296, 0.5306, 0.5315, 0.5324, 0.5333, 0.5342, 0.5351, 0.5361, 0.5370, 0.5379, 0.5388, 0.5397, 0.5407, 0.5416, 0.5425, 0.5435, 0.5444, 0.5453, 0.5462, 0.5472, 0.5481, 0.5490, 0.5500, 0.5509, 0.5518, 0.5528, 0.5537, 0.5547, 0.5556, 0.5566, 0.5575, 0.5584, 0.5594, 0.5603, 0.5613, 0.5622, 0.5632, 0.5641, 0.5651, 0.5661, 0.5670, 0.5680, 0.5689, 0.5699, 0.5709, 0.5718, 0.5728, 0.5737, 0.5747, 0.5757, 0.5767, 0.5776, 0.5786, 0.5796, 0.5806, 0.5815, 0.5825, 0.5835, 0.5845, 0.5855, 0.5865, 0.5874, 0.5884, 0.5894, 0.5904, 0.5914, 0.5924, 0.5934, 0.5944, 0.5954, 0.5964, 0.5974, 0.5984, 0.5994, 0.6004, 0.6015, 0.6025, 0.6035, 0.6045, 0.6055, 0.6065, 0.6076, 0.6086, 0.6096, 0.6107, 0.6117, 0.6127, 0.6138, 0.6148, 0.6158, 0.6169, 0.6179, 0.6190, 0.6200, 0.6211, 0.6221, 0.6232, 0.6242, 0.6253, 0.6263, 0.6274, 0.6285, 0.6295, 0.6306, 0.6317, 0.6328, 0.6338, 0.6349, 0.6360, 0.6371, 0.6382, 0.6393, 0.6404, 0.6414, 0.6425, 0.6436, 0.6447, 0.6458, 0.6470, 0.6481, 0.6492, 0.6503, 0.6514, 0.6525, 0.6537, 0.6548, 0.6559, 0.6570, 0.6582, 0.6593, 0.6604, 0.6616, 0.6627, 0.6639, 0.6650, 0.6662, 0.6673, 0.6685, 0.6697, 0.6708, 0.6720, 0.6732, 0.6743, 0.6755, 0.6767, 0.6779, 0.6791, 0.6803, 0.6815, 0.6827, 0.6839, 0.6851, 0.6863, 0.6875, 0.6887, 0.6899, 0.6911, 0.6924, 0.6936, 0.6948, 0.6960, 0.6973, 0.6985, 0.6998, 0.7010, 0.7023, 0.7035, 0.7048, 0.7061, 0.7073, 0.7086, 0.7099, 0.7111, 0.7124, 0.7137, 0.7150, 0.7163, 0.7176, 0.7189, 0.7202, 0.7215, 0.7228, 0.7241, 0.7255, 0.7268, 0.7281, 0.7295, 0.7308, 0.7321, 0.7335, 0.7348, 0.7362, 0.7375, 0.7389, 0.7403, 0.7417, 0.7430, 0.7444, 0.7458, 0.7472, 0.7486, 0.7500, 
                               0.7514, 0.7528, 0.7542, 0.7556, 0.7571, 0.7585, 0.7599, 0.7614, 0.7628, 0.7643, 0.7657, 0.7672, 0.7686, 0.7701, 0.7716, 0.7730, 0.7745, 0.7760, 0.7775, 0.7790, 0.7805, 0.7820, 0.7835, 0.7851, 0.7866, 0.7881, 0.7896, 0.7912, 0.7927, 0.7943, 0.7958, 0.7974, 0.7990, 0.8006, 0.8021, 0.8037, 0.8053, 0.8069, 0.8085, 0.8101, 0.8117, 0.8134, 0.8150, 0.8166, 0.8183, 0.8199, 0.8216, 0.8232, 0.8249, 0.8265, 0.8282, 0.8299, 0.8316, 0.8333, 0.8350, 0.8367, 0.8384, 0.8401, 0.8419, 0.8436, 0.8453, 0.8471, 0.8488, 0.8506, 0.8524, 0.8542, 0.8559, 0.8577, 0.8595, 0.8613, 0.8631, 0.8649, 0.8668, 0.8686, 0.8704, 0.8723, 0.8741, 0.8760, 0.8779, 0.8797, 0.8816, 0.8835, 0.8854, 0.8873, 0.8892, 0.8911, 0.8931, 0.8950, 0.8969, 0.8989, 0.9009, 0.9028, 0.9048, 0.9068, 0.9088, 0.9108, 0.9128, 0.9148, 0.9168, 0.9188, 0.9209, 0.9229, 0.9250, 0.9270, 0.9291, 0.9312, 0.9333, 0.9354, 0.9375, 0.9396, 0.9417, 0.9439, 0.9460, 0.9482, 0.9503, 0.9525, 0.9547, 0.9568, 0.9590, 0.9612, 0.9635, 0.9657, 0.9679, 0.9701, 0.9724, 0.9747, 0.9769, 0.9792, 0.9815, 0.9838, 0.9861, 0.9884, 0.9907, 0.9931, 0.9954, 0.9978, 1.0000])
 
-test_mars_dir = "/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/"
-# The mars folder has the following equilibrium file as basis
-test_eqdsk_file = '/proj/plasma/DATA/DEMO/teams/Equilibrium_DEMO2019_CHEASE/MOD_Qprof_Test/EQDSK_DEMO2019_q1_COCOS_02.OUT'
+def test_mars_sqrtspol2sqrtstor(tmp_path):
+    fixture = create_test_mars_dir(tmp_path / 'mars')
+    result_sqrtstor_mars = mars_sqrtspol2sqrtstor(fixture['mars_dir'], fixture['sqrtspol'])
+    assert np.allclose(result_sqrtstor_mars, fixture['sqrtstor'], atol=1e-12)
 
-def test_mars_sqrtspol2sqrtstor():
-
-    q_over_spol_eqdsk = read_eqdsk(test_eqdsk_file)['qprof']
-    converter = FluxConverter(q_over_spol_eqdsk)
-    result_sqrtstor_eqdsk = np.sqrt(converter.spol2stor(test_sqrtspol**2))
-
-    result_sqrtstor_mars = mars_sqrtspol2sqrtstor(test_mars_dir, test_sqrtspol)
-    assert np.allclose(result_sqrtstor_eqdsk, result_sqrtstor_mars, atol=1e-4)
-
-def test_mars_sqrtspol2sqrtstor_visual_check():
-    q_over_spol_eqdsk = read_eqdsk(test_eqdsk_file)['qprof']
-    converter = FluxConverter(q_over_spol_eqdsk)
-    result_sqrtstor_eqdsk = np.sqrt(converter.spol2stor(test_sqrtspol**2))
-    result_sqrtstor_mars = mars_sqrtspol2sqrtstor(test_mars_dir, test_sqrtspol)
+def test_mars_sqrtspol2sqrtstor_visual_check(tmp_path):
+    fixture = create_test_mars_dir(tmp_path / 'mars')
+    result_sqrtstor_mars = mars_sqrtspol2sqrtstor(fixture['mars_dir'], fixture['sqrtspol'])
 
     plt.figure()
-    plt.plot(test_sqrtspol, control_sqrtstor, 'ob', label='control')
-    plt.plot(test_sqrtspol, result_sqrtstor_eqdsk, '-r', label='libneo spol2stor on eqdsk')
-    plt.plot(test_sqrtspol, result_sqrtstor_mars, '--y', label='mars_sqrtspol2sqrtstor')
+    plt.plot(fixture['sqrtspol'], fixture['sqrtstor'], 'ob', label='control')
+    plt.plot(fixture['sqrtspol'], result_sqrtstor_mars, '--y', label='mars_sqrtspol2sqrtstor')
     plt.xlabel(r'$\sqrt{s_\mathrm{pol}}$')
     plt.ylabel(r'$\sqrt{s_\mathrm{tor}}$')
     plt.legend()
-    plt.show()
+    output_file = '/tmp/test_mars_sqrtspol2sqrtstor_visual_check.png'
+    plt.savefig(output_file)
+    plt.close()
+    assert os.path.exists(output_file)
 
-def test_mars_profiles_size():
+def test_mars_profiles_size(tmp_path):
+    test_mars_dir = create_test_mars_dir(tmp_path / 'mars')['mars_dir']
     mars_profiles = get_profiles_mars(test_mars_dir)
     for key, profile in mars_profiles.items():
-        assert profile.shape[0] == 200
+        assert profile.shape[0] == 11
         if key == 'T' or key == 'n':
             assert profile.shape[1] == 3
         else:
             assert profile.shape[1] == 2
 
-def test_mars_profiles_sqrtstor():
+def test_mars_profiles_sqrtstor(tmp_path):
+    test_mars_dir = create_test_mars_dir(tmp_path / 'mars')['mars_dir']
     mars_profiles = get_profiles_mars(test_mars_dir)
     sqrtspol = mars_profiles['sqrtstor'][:,0]
     sqrtstor = mars_profiles['sqrtstor'][:,1]
     assert np.allclose(sqrtstor, mars_sqrtspol2sqrtstor(test_mars_dir, sqrtspol), atol=1e-4)
 
-def test_mars_profiles_sqrtspol_grid():
+def test_mars_profiles_sqrtspol_grid(tmp_path):
+    test_mars_dir = create_test_mars_dir(tmp_path / 'mars')['mars_dir']
     mars_profiles = get_profiles_mars(test_mars_dir)
     for kind in mars_profiles.keys():
         sqrtspol = mars_profiles[kind][:,0]
@@ -75,7 +69,8 @@ def test_mars_profiles_sqrtspol_grid():
 def is_monotonic(x):
     return np.all(np.diff(x) >= 0)
 
-def test_mars_profiles_visual_check():
+def test_mars_profiles_visual_check(tmp_path):
+    test_mars_dir = create_test_mars_dir(tmp_path / 'mars')['mars_dir']
     mars_profiles = get_profiles_mars(test_mars_dir)
     fig, ax = plt.subplots(int(np.ceil(len(mars_profiles)/2)), 2)
     for i, (key, profile) in enumerate(mars_profiles.items()):
@@ -83,16 +78,21 @@ def test_mars_profiles_visual_check():
         ax[i//2, i%2].set_xlabel(r'$\sqrt{s_\mathrm{pol}}$')
         ax[i//2, i%2].set_ylabel(key)
     plt.subplots_adjust(wspace=0.5, hspace=0.6)
-    plt.show()
+    output_file = '/tmp/test_mars_profiles_visual_check.png'
+    fig.savefig(output_file)
+    plt.close(fig)
+    assert os.path.exists(output_file)
 
-def test_write_neo2_input_profile_from_mars():
+def test_write_neo2_input_profile_from_mars(tmp_path):
+    test_mars_dir = create_test_mars_dir(tmp_path / 'mars')['mars_dir']
     write_neo2_input_profiles_from_mars(test_mars_dir, '/tmp/')
     mars_profiles = get_profiles_mars(test_mars_dir)
     for key, profile in mars_profiles.items():
         neo2_profile = np.loadtxt(f'/tmp/{key}.dat')
         assert np.allclose(profile, neo2_profile, atol=1e-4)
 
-def test_write_neo2_input_profile_from_mars_visual_check():
+def test_write_neo2_input_profile_from_mars_visual_check(tmp_path):
+    test_mars_dir = create_test_mars_dir(tmp_path / 'mars')['mars_dir']
     write_neo2_input_profiles_from_mars(test_mars_dir, '/tmp/')
     mars_profiles = get_profiles_mars(test_mars_dir)
     fig, ax = plt.subplots(int(np.ceil(len(mars_profiles)/2)), 2)
@@ -104,7 +104,10 @@ def test_write_neo2_input_profile_from_mars_visual_check():
         ax[i//2, i%2].set_ylabel(key)
         ax[i//2, i%2].legend()
     plt.subplots_adjust(wspace=0.5, hspace=0.6)
-    plt.show()
+    output_file = '/tmp/test_write_neo2_input_profile_from_mars_visual_check.png'
+    fig.savefig(output_file)
+    plt.close(fig)
+    assert os.path.exists(output_file)
 
 if __name__ == "__main__":
     test_mars_sqrtspol2sqrtstor()

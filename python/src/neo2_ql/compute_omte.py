@@ -11,9 +11,9 @@ All quantities are in CGS (Gaussian) units to match NEO-2 conventions:
 
 Model levels:
   Level 0 (diamagnetic): pressure gradient only, no flows
-  Level 1: adds measured toroidal rotation
-  Level 2: adds neoclassical poloidal velocity estimate
-  Exact NEO-2 Vphi convention: reduced isw_Vphi_loc=0 algebra
+  Level 1: adds toroidal rotation through a coordinate-consistent pair
+  Level 2: adds a neoclassical poloidal rotation estimate
+  Reduced NEO-2 Vphi convention: isw_Vphi_loc=0 algebra without transport
 """
 
 import numpy as np
@@ -70,8 +70,15 @@ def compute_omte_force_balance(
     Uses the radial force balance:
         E_r = (1 / (Z e n)) dp/dr
             + v_phi * B_theta / c
+            - v_theta * B_phi / c
     and converts to the E x B rotation frequency:
         Om_tE = c E_r / (iota * sqrt(g) B^phi)
+
+    Only the products ``v_phi * B_theta`` and ``v_theta * B_phi`` enter.
+    These must therefore be supplied as coordinate-consistent pairs:
+    physical cylindrical velocities [cm/s] with fields [G], or NEO-2 Boozer
+    contravariant angular frequencies [rad/s] with Boozer covariant field
+    components [G cm].
 
     Parameters
     ----------
@@ -94,17 +101,22 @@ def compute_omte_force_balance(
     av_nabla_stor : float or array
         Flux surface average of |nabla s_tor| [1/cm].
     v_phi : float or array, optional
-        Toroidal rotation velocity [cm/s]. If omitted together with
-        `b_theta`, this falls back to Level 0.
+        Toroidal rotation quantity paired with `b_theta`. Use either a
+        physical toroidal velocity [cm/s] or the NEO-2 contravariant
+        toroidal angular frequency `Vphi` [rad/s].
     b_theta : float or array, optional
-        Poloidal magnetic field [G]. Must be provided together with `v_phi`
-        for Level 1.
+        Poloidal field quantity paired with `v_phi`. Use either a physical
+        field [G] or the NEO-2 Boozer covariant component `bcovar_tht`
+        [G cm]. Must be provided together with `v_phi` for Level 1.
     v_theta : float or array, optional
-        Poloidal rotation velocity [cm/s]. Must be provided together with
-        `b_phi` for Level 2.
+        Poloidal rotation quantity paired with `b_phi`. Use either a
+        physical poloidal velocity [cm/s] or a Boozer contravariant
+        poloidal angular frequency [rad/s].
     b_phi : float or array, optional
-        Toroidal magnetic field [G]. Must be provided together with
-        `v_theta` for Level 2.
+        Toroidal field quantity paired with `v_theta`. Use either a
+        physical field [G] or the NEO-2 Boozer covariant component
+        `bcovar_phi` [G cm]. Must be provided together with `v_theta`
+        for Level 2.
 
     Returns
     -------
@@ -118,6 +130,9 @@ def compute_omte_force_balance(
     `n`, `T`, `dn_ds`, and `dT_ds` must come from the radial profile input
     used for the run. The scalar species state written to `n_spec`/`T_spec`
     in the multispecies output is not a substitute for those profiles.
+
+    ``compute_omte_from_neo2_output`` provides exact replay paths from stored
+    NEO-2 output data. Those are not part of the reduced Level 0-2 hierarchy.
     """
     (
         n,
@@ -174,7 +189,12 @@ def compute_omte_toroidal_rotation(
     v_phi,
     b_theta,
 ):
-    """Compute Om_tE including measured toroidal rotation (Level 1)."""
+    """Compute Om_tE including toroidal rotation (Level 1).
+
+    `v_phi` and `b_theta` may be supplied either as a physical
+    toroidal-velocity / poloidal-field pair or as the NEO-2-native
+    contravariant/covariant Boozer pair `(Vphi, bcovar_tht)`.
+    """
     return compute_omte_force_balance(
         n=n,
         T=T,
@@ -202,15 +222,34 @@ def compute_omte_toroidal_rotation_neo2_convention(
     bcovar_tht,
     bcovar_phi,
 ):
-    """Compute Om_tE using NEO-2's native isw_Vphi_loc=0 convention.
+    """Compute the reduced isw_Vphi_loc=0 numerator/denominator without transport.
 
-    In the Fortran solver, `Vphi` enters the `isw_Vphi_loc=0` force-balance
-    algebra directly. Setting only the toroidal-rotation and pressure-gradient
-    terms in `compute_Er()` gives
+    This mirrors the algebraic structure of the Fortran ``compute_Er()``
+    subroutine for ``isw_Vphi_loc=0``, but **without** the D31/D32/D33
+    transport coefficient sums.  It is NOT a standalone physical model.
 
-        Er = [ Vphi * (iota B_theta + B_phi)
-               + c T B_theta / (Z e sqrt(g) B^phi) * (1/p) dp/dr ]
-             / [ c B_theta / (sqrt(g) B^phi) ].
+    In the full Fortran solver, ``Vphi`` [rad/s] (the species toroidal angular
+    frequency) enters through:
+
+        nom = Vphi * (iota*B_theta_cov + B_phi_cov)
+              + c*T*B_theta_cov/(Z*e*sqrtg) * dp/dr/p
+              + sum over transport terms (D31, D32, D33)
+        denom = c*B_theta_cov/sqrtg + sum over D31 terms
+        Er = nom / denom
+
+    Without the transport sums, the Vphi term dominates and gives results
+    that are orders of magnitude off from the self-consistent Er.  Use this
+    function only as a building block inside the full-output replay path
+    (``neo2_output_omte.py``), not as a standalone Om_tE estimate.
+
+    Parameters
+    ----------
+    vphi : float or array
+        Species toroidal angular frequency [rad/s] (from NEO-2 HDF5 ``Vphi``).
+    bcovar_tht : float or array
+        Boozer covariant poloidal B component [G cm].
+    bcovar_phi : float or array
+        Boozer covariant toroidal B component [G cm].
     """
     (
         n,
@@ -257,12 +296,18 @@ def select_poloidal_rotation_coefficient(nu_star):
 
 
 def compute_poloidal_rotation_neoclassical(dT_ds, z, b_phi, av_nabla_stor, k_i):
-    """Estimate poloidal rotation from the ion temperature gradient.
+    """Estimate the Level 2 poloidal rotation quantity from dT/dr.
 
     Uses the simple Kim-Diamond-Groebner-type estimate
         v_theta = K_i / (Z e B_phi) * dT/dr
     with
         dT/dr = dT/ds * <|nabla s|>.
+
+    If `b_phi` is a physical toroidal field [G], the return value is a
+    physical poloidal velocity [cm/s]. If `b_phi` is the NEO-2 Boozer
+    covariant component `bcovar_phi` [G cm], the return value is the
+    matching contravariant poloidal angular frequency [rad/s]. In both cases
+    the product `v_theta * b_phi` entering force balance is identical.
     """
     dT_ds = np.asarray(dT_ds)
     b_phi = np.asarray(b_phi)
@@ -291,7 +336,12 @@ def compute_omte_neoclassical_poloidal(
     b_phi,
     k_i,
 ):
-    """Compute Om_tE with measured toroidal and estimated poloidal rotation."""
+    """Compute Om_tE with toroidal and estimated poloidal rotation (Level 2).
+
+    The toroidal pair `(v_phi, b_theta)` and the poloidal pair
+    `(v_theta, b_phi)` may be supplied either in physical cylindrical form
+    or in the NEO-2 Boozer contravariant/covariant form.
+    """
     v_theta = compute_poloidal_rotation_neoclassical(
         dT_ds=dT_ds,
         z=z,

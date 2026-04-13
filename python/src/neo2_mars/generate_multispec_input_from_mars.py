@@ -27,18 +27,44 @@ def generate_multispec_input_from_mars(mars_dir: str, output_file: str='multi_sp
     generate_multispec_input(config, profiles_src, profiles_interp_config)
 
 def get_species_cgs_from_mars(mars_dir):
-    import f90nml
-    import os
     PROTON_MASS_CGS = 1.67262192369e-24
-    run_config = f90nml.read(os.path.join(mars_dir, 'RUN.IN'))
-    Zs = run_config['KINETIC']['ESPECIES_Z']
+
+    try:
+        import f90nml
+    except ModuleNotFoundError:
+        f90nml = None
+
+    run_in = os.path.join(mars_dir, 'RUN.IN')
+    if f90nml is not None:
+        run_config = f90nml.read(run_in)
+        Zs = run_config['KINETIC']['ESPECIES_Z']
+        mass_numbers = run_config['KINETIC']['ESPECIES_M']
+    else:
+        Zs, mass_numbers = _parse_species_from_run_in(run_in)
+
     for Z in Zs:
         if Z < 0:
             Ze = Z
         if Z > 0:
             Zi = Z
-    mass_numbers = run_config['KINETIC']['ESPECIES_M']
+
     me, mi = mass_numbers[Zs.index(Ze)] * PROTON_MASS_CGS, mass_numbers[Zs.index(Zi)] * PROTON_MASS_CGS
     Z = [Ze, Zi]
     m = [me, mi]
     return Z, m
+
+
+def _parse_species_from_run_in(path):
+    with open(path, 'r', encoding='utf-8') as handle:
+        content = handle.read()
+
+    def _values(name):
+        for line in content.splitlines():
+            if name in line:
+                _, values = line.split('=', 1)
+                return [float(value.strip().strip(',')) for value in values.split(',') if value.strip()]
+        raise ValueError(f'Could not find {name} in {path}')
+
+    z_values = [int(value) for value in _values('ESPECIES_Z')]
+    m_values = _values('ESPECIES_M')
+    return z_values, m_values

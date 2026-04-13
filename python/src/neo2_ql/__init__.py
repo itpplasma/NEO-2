@@ -4,6 +4,8 @@ neo2_ql
 
 This is the package containing tools for post-processing NEO-2-QL runs.
 """
+from importlib import import_module
+
 from .get_integral_ntv import get_integral_ntv_torque_neo2ql
 from .load_profile_data import load_cgs_profiles_and_interp
 from .load_profile_data import convert_units_from_norm_to_si, convert_units_from_si_to_cgs
@@ -13,10 +15,6 @@ from .generate_multispec_input import write_multispec_to_hdf5
 from .generate_multispec_input import get_coulomb_logarithm, get_kappa, derivative
 from .generate_multispec_input import get_species_def_array
 from .interpolate_profiles import interpolate_profiles_to_same_grid
-from .plot_neo2_ql_input_profiles import get_neo2_ql_input_profiles
-from .plot_neo2_ql_input_profiles import make_figure_neo2_ql_input_profiles, add_profiles_to_axes
-from .plot_omte_reference import get_omte_reference_models
-from .plot_omte_reference import make_figure_omte_reference, save_figure_omte_reference
 from .neo2_output_omte import compute_neo2_er_from_transport_coefficients
 from .neo2_output_omte import compute_neo2_omte_from_transport_coefficients
 from .neo2_output_omte import compute_omte_from_neo2_output
@@ -29,3 +27,26 @@ from .compute_omte import compute_poloidal_rotation_neoclassical
 from .compute_omte import compute_omte_neoclassical_poloidal
 from .compute_omte import compute_omte_neoclassical_poloidal_auto_k
 from .compute_omte import select_poloidal_rotation_coefficient
+
+_LAZY_EXPORTS = {
+    'get_neo2_ql_input_profiles': ('.plot_neo2_ql_input_profiles', 'get_neo2_ql_input_profiles'),
+    'make_figure_neo2_ql_input_profiles': (
+        '.plot_neo2_ql_input_profiles',
+        'make_figure_neo2_ql_input_profiles',
+    ),
+    'add_profiles_to_axes': ('.plot_neo2_ql_input_profiles', 'add_profiles_to_axes'),
+    'get_omte_reference_models': ('.plot_omte_reference', 'get_omte_reference_models'),
+    'make_figure_omte_reference': ('.plot_omte_reference', 'make_figure_omte_reference'),
+    'save_figure_omte_reference': ('.plot_omte_reference', 'save_figure_omte_reference'),
+}
+
+
+def __getattr__(name):
+    if name not in _LAZY_EXPORTS:
+        raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
+
+    module_name, attr_name = _LAZY_EXPORTS[name]
+    module = import_module(module_name, __name__)
+    value = getattr(module, attr_name)
+    globals()[name] = value
+    return value

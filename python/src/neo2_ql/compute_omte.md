@@ -205,7 +205,7 @@ $$
 This is implemented by
 [`compute_omte_toroidal_rotation_neo2_convention()`](compute_omte.py).
 It is useful for checking consistency with the code path in NEO-2, but it is
-not the same thing as the practical Level 1 proxy above and it should not be
+not the same thing as the Level 1 component-pair model above and it should not be
 interpreted as the next point in the experimental-model hierarchy.
 
 ### Level 3: Full neoclassical (NEO-2 internal)
@@ -353,32 +353,29 @@ without reopening the original input deck.
 
 The rotation input `Vphi` written by
 [`generate_multispec_input.py`](generate_multispec_input.py)
-is stored with the HDF5 unit attribute `rad / s`, while
-[`ntv_mod.f90`](../../../NEO-2-QL/ntv_mod.f90) documents it as a toroidal
-geometric-angle / flux-surface-averaged quantity and uses it directly in the
-`Vphi * (iota * bcovar_tht + bcovar_phi)` term of `compute_Er()`.
-That distinction matters.
-
-Level 1 in this Python module accepts the physical toroidal velocity `v_phi`
-in `cm/s`, so when only the HDF5 input is available a practical proxy is
+is stored with the HDF5 unit attribute `rad / s`. In the Kasilov 2014
+notation and in the NEO-2 force-balance implementation this is the
+contravariant toroidal angular frequency, not a cylindrical velocity.
+Accordingly, Level 1 and Level 2 in this Python module accept the
+NEO-2-native Boozer component pairs directly:
 
 $$
-v_\varphi \approx R_0 V^\varphi,
+\Delta E_r^{(1)} = \frac{V^\varphi B_\vartheta^\text{cov}}{c},
 \qquad
-B_\vartheta \approx \frac{B_\vartheta^\text{cov}}{R_0}
+\Delta E_r^{(2)} = -\frac{V^\vartheta B_\varphi^\text{cov}}{c}.
 $$
 
-which gives the additional Level 1 contribution
+The helper functions are written so that either
 
-$$
-\Delta \Omega_{tE}^{(1)} \approx
-\frac{V^\varphi B_\vartheta^\text{cov}}{\iota \sqrt{g} B^\varphi}.
-$$
+- physical cylindrical velocity/field pairs, or
+- Boozer contravariant/covariant pairs
 
-The strict repo-native alternative is
+can be supplied, because only the products entering force balance matter.
+
+The reduced repo-native alternative is
 [`compute_omte_toroidal_rotation_neo2_convention()`](compute_omte.py),
-which preserves the reduced `compute_Er()` algebra instead of converting
-`Vphi` to a velocity proxy.  On the AUG fixture below, that strict form is
+which preserves the reduced `compute_Er()` algebra without the transport
+terms. On the AUG fixture below, that strict form is
 much farther from the full NEO-2 result because it still omits the transport
 terms in both numerator and denominator.
 
@@ -393,6 +390,9 @@ terms in both numerator and denominator.
   the stored `D31/D32/D33` coefficients, `avEparB_ov_avb2`, the active species
   gradients, and the measured rotation selector written into
   `neo2_multispecies_out.h5`.
+
+These are exact replay paths from NEO-2 output, not additional reduced-model
+levels.
 
 For a current-output file from the patched writer, those two modes must agree
 to numerical roundoff. The circular-tokamak regression fixture used by the
@@ -423,15 +423,15 @@ correct (negative $\Omega_{tE}$, corresponding to inward-pointing $E_r$).
 
 Test: [`test_diamagnetic_vs_neo2_sign_and_order_of_magnitude()`](../../test/test_compute_omte.py).
 
-Using the `Vphi` input profile together with the proxy above gives a more
-complete Level 1 curve:
+Using the NEO-2 pair `(Vphi, bcovar_tht)` gives a more complete Level 1
+curve:
 
-| $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 1 proxy $\Omega_{tE}$ | Ratio |
+| $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 1 $\Omega_{tE}$ | Ratio |
 |:-:|:-:|:-:|:-:|
 | 0.2527 | $-44.80\,\text{krad/s}$ | $-78.54\,\text{krad/s}$ | 1.75 |
 | 0.4984 | $-111.09\,\text{krad/s}$ | $-82.83\,\text{krad/s}$ | 0.75 |
 
-For this AUG reference, the Level 1 proxy roughly halves the mean absolute
+For this AUG reference, Level 1 roughly halves the mean absolute
 error relative to Level 0, although it is still missing the poloidal-flow and
 transport terms from the full NEO-2 solve.
 
@@ -440,7 +440,7 @@ or equivalently the auto-selected low-collisionality branch of
 [`compute_omte_neoclassical_poloidal_auto_k()`](compute_omte.py),
 does not visibly move the curve for this reference:
 
-| $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 2 proxy $\Omega_{tE}$ | Ratio |
+| $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 2 $\Omega_{tE}$ | Ratio |
 |:-:|:-:|:-:|:-:|
 | 0.2527 | $-44.80\,\text{krad/s}$ | $-78.54\,\text{krad/s}$ | 1.75 |
 | 0.4984 | $-111.09\,\text{krad/s}$ | $-82.83\,\text{krad/s}$ | 0.75 |
@@ -448,7 +448,7 @@ does not visibly move the curve for this reference:
 That near-overlap is expected from the simple analytic estimate because
 the `-v_\vartheta B_\varphi/c` contribution reduces to
 `-K_i (dT_i/dr)/(Z_i e c)` and is very small here compared to the toroidal
-rotation proxy term.
+rotation contribution.
 
 Applying the strict reduced `isw_Vphi_loc=0` algebra gives a very different
 curve:
