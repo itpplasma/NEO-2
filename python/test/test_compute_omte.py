@@ -154,10 +154,6 @@ def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
 
     ref = np.load(FIXTURE)
 
-    # Ion species index (species_tag_Vphi points to the ion species)
-    isp = int(ref['species_tag_Vphi']) - 1
-    z_i = ref['z_spec'][0, abs(int(ref['z_spec'][0].argmax()))]  # positive charge species
-    # Find the ion species (z > 0)
     z_spec = ref['z_spec'][0]  # same for all surfaces
     ion_idx = np.where(z_spec > 0)[0][0]
     z_i = z_spec[ion_idx]
@@ -173,6 +169,16 @@ def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
         av_nabla_stor=ref['av_nabla_stor'],
     )
 
+    # Regression values from verified computation (AUG #30835)
+    Er_expected = np.array([-0.21285562, -0.233579])
+    Om_tE_expected = np.array([-15637.036, -16736.342])
+    assert np.allclose(Er_dia, Er_expected, rtol=1e-5), (
+        f'Er regression: got {Er_dia}, expected {Er_expected}'
+    )
+    assert np.allclose(Om_tE_dia, Om_tE_expected, rtol=1e-5), (
+        f'Om_tE regression: got {Om_tE_dia}, expected {Om_tE_expected}'
+    )
+
     # NEO-2 reference Om_tE (computed from stored Er)
     Om_tE_neo2 = C_CGS * ref['Er_neo2'] / (ref['aiota'] * ref['sqrtg_bctrvr_phi'])
 
@@ -183,28 +189,14 @@ def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
             f'dia={Om_tE_dia[i]:.1f}, neo2={Om_tE_neo2[i]:.1f}'
         )
 
-    # Order of magnitude: ratio must be between 0.01 and 100
+    # Diamagnetic alone underestimates because it omits toroidal rotation
+    # and neoclassical transport terms (D31, D32, D33).
     ratio = np.abs(Om_tE_dia / Om_tE_neo2)
     for i in range(len(ratio)):
-        assert 0.01 < ratio[i] < 100, (
-            f'Order of magnitude mismatch at s={ref["boozer_s"][i]:.4f}: '
+        assert 0.1 < ratio[i] < 1.0, (
+            f'Unexpected ratio at s={ref["boozer_s"][i]:.4f}: '
             f'ratio={ratio[i]:.4f}'
         )
-
-    # Diamagnetic alone should underestimate (ratio < 1) because it
-    # misses rotation and neoclassical terms.
-    for i in range(len(ratio)):
-        assert ratio[i] < 1.0, (
-            f'Diamagnetic exceeds full neoclassical at s={ref["boozer_s"][i]:.4f}: '
-            f'ratio={ratio[i]:.4f} (expected < 1)'
-        )
-
-    # Print comparison for manual inspection
-    print('\nOm_tE comparison (Level 0 diamagnetic vs NEO-2):')
-    print(f'{"s_tor":>8s}  {"NEO-2 [krad/s]":>16s}  {"Level 0 [krad/s]":>16s}  {"ratio":>8s}')
-    for i in range(len(Om_tE_neo2)):
-        print(f'{ref["boozer_s"][i]:8.4f}  {Om_tE_neo2[i]/1e3:16.2f}  '
-              f'{Om_tE_dia[i]/1e3:16.2f}  {ratio[i]:8.4f}')
 
 
 if __name__ == '__main__':
