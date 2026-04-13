@@ -6,11 +6,15 @@ from neo2_ql.compute_omte import (
     compute_omte_diamagnetic,
     compute_omte_force_balance,
     compute_omte_toroidal_rotation,
+    compute_omte_toroidal_rotation_neo2_convention,
     compute_poloidal_rotation_neoclassical,
     compute_omte_neoclassical_poloidal,
+    compute_omte_neoclassical_poloidal_auto_k,
+    select_poloidal_rotation_coefficient,
     C_CGS,
     E_CGS,
 )
+from neo2_ql.plot_omte_reference import get_omte_reference_models
 
 
 # --- Unit tests with analytic profiles ---
@@ -189,6 +193,33 @@ def test_toroidal_rotation_contribution():
     assert np.isclose(om_tE, om_expected, rtol=1e-12)
 
 
+def test_toroidal_rotation_neo2_convention_regression():
+    """Exact NEO-2 Vphi convention should match the reduced Fortran formula."""
+    om_tE, er = compute_omte_toroidal_rotation_neo2_convention(
+        n=1e13,
+        T=2e-9,
+        dn_ds=-1e13,
+        dT_ds=0.0,
+        z=1.0,
+        aiota=0.5,
+        sqrtg_bctrvr_phi=1e6,
+        av_nabla_stor=0.01,
+        vphi=2e5,
+        bcovar_tht=-2e3,
+        bcovar_phi=-4e4,
+    )
+    dp_dr = 2e-9 * (-1e13) * 0.01
+    pressure = 1e13 * 2e-9
+    denom = C_CGS * (-2e3) / 1e6
+    nom = 2e5 * (0.5 * (-2e3) - 4e4) + (
+        C_CGS * 2e-9 * (-2e3) / (E_CGS * 1e6)
+    ) * (dp_dr / pressure)
+    er_expected = nom / denom
+    om_expected = C_CGS * er_expected / (0.5 * 1e6)
+    assert np.isclose(er, er_expected, rtol=1e-12)
+    assert np.isclose(om_tE, om_expected, rtol=1e-12)
+
+
 def test_neoclassical_poloidal_rotation_formula():
     """The Level 2 poloidal estimate should match its analytic definition."""
     v_theta = compute_poloidal_rotation_neoclassical(
@@ -200,6 +231,13 @@ def test_neoclassical_poloidal_rotation_formula():
     )
     expected = -1.17 * (-2e-9 * 0.02) / (E_CGS * -2e4)
     assert np.isclose(v_theta, expected, rtol=1e-12)
+
+
+def test_select_poloidal_rotation_coefficient():
+    """Auto-K selection should follow the simple regime map."""
+    nu_star = np.array([0.01, 1.0, 100.0])
+    k_i = select_poloidal_rotation_coefficient(nu_star)
+    assert np.allclose(k_i, np.array([-1.17, -0.5, 0.5]))
 
 
 def test_invalid_zero_density_raises():
@@ -219,6 +257,28 @@ def test_invalid_zero_density_raises():
         assert str(exc) == 'n must be nonzero to compute E_r and Om_tE'
     else:
         raise AssertionError('Expected ValueError for zero density')
+
+
+def test_exact_neo2_convention_zero_pressure_raises():
+    """Exact NEO-2 Vphi path should fail on zero pressure."""
+    try:
+        compute_omte_toroidal_rotation_neo2_convention(
+            n=1e13,
+            T=0.0,
+            dn_ds=-1e13,
+            dT_ds=0.0,
+            z=1.0,
+            aiota=0.5,
+            sqrtg_bctrvr_phi=1e6,
+            av_nabla_stor=0.01,
+            vphi=1e5,
+            bcovar_tht=-2e3,
+            bcovar_phi=-4e4,
+        )
+    except ValueError as exc:
+        assert str(exc) == 'n*T must be nonzero to compute NEO-2 Vphi model'
+    else:
+        raise AssertionError('Expected ValueError for zero pressure')
 
 
 def test_missing_toroidal_rotation_pair_raises():
@@ -409,6 +469,68 @@ def test_neoclassical_poloidal_proxy_regression():
     assert np.allclose(om_lvl2, om_expected, rtol=1e-5)
 
 
+def test_neoclassical_poloidal_auto_k_regression():
+    """Auto-K should reproduce the banana-regime result for low nu_star."""
+    ref = np.load(FIXTURE)
+
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+    nu_star = np.array([0.05, 0.05])
+
+    om_lvl2, er_lvl2 = compute_omte_neoclassical_poloidal_auto_k(
+        n=ref['n_prof'][:, ion_idx],
+        T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i,
+        aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+        v_phi=ref['R0'] * ref['Vphi'],
+        b_theta=ref['bcovar_tht'] / ref['R0'],
+        b_phi=ref['bcovar_phi'] / ref['R0'],
+        nu_star=nu_star,
+    )
+    er_expected = np.array([-1.06905889, -1.15607731])
+    om_expected = np.array([-78536.3915, -82834.9494])
+    assert np.allclose(er_lvl2, er_expected, rtol=1e-5)
+    assert np.allclose(om_lvl2, om_expected, rtol=1e-5)
+
+
+def test_aug_reference_neo2_vphi_convention_regression():
+    """Document the strict NEO-2 Vphi convention as a separate model option."""
+    ref = np.load(FIXTURE)
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+    om_exact, er_exact = compute_omte_toroidal_rotation_neo2_convention(
+        n=ref['n_prof'][:, ion_idx],
+        T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i,
+        aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+        vphi=ref['Vphi'],
+        bcovar_tht=ref['bcovar_tht'],
+        bcovar_phi=ref['bcovar_phi'],
+    )
+    er_expected = np.array([232.59525273, 165.06607002])
+    om_expected = np.array([17087170.7154, 11827270.8903])
+    assert np.allclose(er_exact, er_expected, rtol=1e-5)
+    assert np.allclose(om_exact, om_expected, rtol=1e-5)
+
+
+def test_reference_plot_models_regression():
+    """The plotting helper should reproduce the reference model set."""
+    models = get_omte_reference_models(FIXTURE)
+    assert np.allclose(models['boozer_s'], np.array([0.25270707, 0.49841414]))
+    assert np.allclose(models['om_lvl0'], np.array([-14809.7343, -16736.3417]), rtol=1e-5)
+    assert np.allclose(models['om_lvl1'], np.array([-78536.3915, -82834.9494]), rtol=1e-5)
+    assert np.allclose(models['om_lvl2'], np.array([-78536.3915, -82834.9494]), rtol=1e-5)
+    assert np.allclose(models['om_exact'], np.array([17087170.7154, 11827270.8903]), rtol=1e-5)
+
+
 if __name__ == '__main__':
     test_uniform_profiles_give_zero()
     test_negative_density_gradient_gives_negative_omte()
@@ -418,11 +540,17 @@ if __name__ == '__main__':
     test_charge_number_scaling()
     test_array_input()
     test_toroidal_rotation_contribution()
+    test_toroidal_rotation_neo2_convention_regression()
     test_neoclassical_poloidal_rotation_formula()
+    test_select_poloidal_rotation_coefficient()
     test_invalid_zero_density_raises()
+    test_exact_neo2_convention_zero_pressure_raises()
     test_missing_toroidal_rotation_pair_raises()
     test_missing_poloidal_rotation_pair_raises()
     test_diamagnetic_vs_neo2_sign_and_order_of_magnitude()
     test_toroidal_rotation_proxy_reduces_aug_reference_error()
     test_neoclassical_poloidal_proxy_regression()
+    test_neoclassical_poloidal_auto_k_regression()
+    test_aug_reference_neo2_vphi_convention_regression()
+    test_reference_plot_models_regression()
     print('\nAll tests passed.')

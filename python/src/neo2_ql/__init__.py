@@ -15,9 +15,14 @@ from .generate_multispec_input import get_species_def_array
 from .interpolate_profiles import interpolate_profiles_to_same_grid
 from .plot_neo2_ql_input_profiles import get_neo2_ql_input_profiles
 from .plot_neo2_ql_input_profiles import make_figure_neo2_ql_input_profiles, add_profiles_to_axes
+from .plot_omte_reference import get_omte_reference_models
+from .plot_omte_reference import make_figure_omte_reference, save_figure_omte_reference
 from .write_profiles import write_profiles_to_dat_files
 from .get_fluxsurface_area import get_average_nabla_stor, get_fluxsurface_area
 from .compute_omte import compute_omte_diamagnetic
 from .compute_omte import compute_omte_force_balance, compute_omte_toroidal_rotation
+from .compute_omte import compute_omte_toroidal_rotation_neo2_convention
 from .compute_omte import compute_poloidal_rotation_neoclassical
 from .compute_omte import compute_omte_neoclassical_poloidal
+from .compute_omte import compute_omte_neoclassical_poloidal_auto_k
+from .compute_omte import select_poloidal_rotation_coefficient

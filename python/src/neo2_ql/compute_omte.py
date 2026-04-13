@@ -13,6 +13,7 @@ Model levels:
   Level 0 (diamagnetic): pressure gradient only, no flows
   Level 1: adds measured toroidal rotation
   Level 2: adds neoclassical poloidal velocity estimate
+  Exact NEO-2 Vphi convention: reduced isw_Vphi_loc=0 algebra
 """
 
 import numpy as np
@@ -188,6 +189,73 @@ def compute_omte_toroidal_rotation(
     )
 
 
+def compute_omte_toroidal_rotation_neo2_convention(
+    n,
+    T,
+    dn_ds,
+    dT_ds,
+    z,
+    aiota,
+    sqrtg_bctrvr_phi,
+    av_nabla_stor,
+    vphi,
+    bcovar_tht,
+    bcovar_phi,
+):
+    """Compute Om_tE using NEO-2's native isw_Vphi_loc=0 convention.
+
+    In the Fortran solver, `Vphi` enters the `isw_Vphi_loc=0` force-balance
+    algebra directly. Setting only the toroidal-rotation and pressure-gradient
+    terms in `compute_Er()` gives
+
+        Er = [ Vphi * (iota B_theta + B_phi)
+               + c T B_theta / (Z e sqrt(g) B^phi) * (1/p) dp/dr ]
+             / [ c B_theta / (sqrt(g) B^phi) ].
+    """
+    (
+        n,
+        T,
+        dn_ds,
+        dT_ds,
+        aiota,
+        sqrtg_bctrvr_phi,
+        av_nabla_stor,
+    ) = _prepare_common_inputs(
+        n, T, dn_ds, dT_ds, z, aiota, sqrtg_bctrvr_phi, av_nabla_stor
+    )
+    bcovar_tht = np.asarray(bcovar_tht)
+    bcovar_phi = np.asarray(bcovar_phi)
+    vphi = np.asarray(vphi)
+
+    if np.any(bcovar_tht == 0.0):
+        raise ValueError('bcovar_tht must be nonzero to compute NEO-2 Vphi model')
+
+    dp_ds = T * dn_ds + n * dT_ds
+    dp_dr = dp_ds * av_nabla_stor
+    pressure = n * T
+    if np.any(pressure == 0.0):
+        raise ValueError('n*T must be nonzero to compute NEO-2 Vphi model')
+    denom_er = C_CGS * bcovar_tht / sqrtg_bctrvr_phi
+    nom_er = (
+        vphi * (aiota * bcovar_tht + bcovar_phi)
+        + (C_CGS * T * bcovar_tht / (z * E_CGS * sqrtg_bctrvr_phi))
+        * (dp_dr / pressure)
+    )
+    er = nom_er / denom_er
+    om_tE = C_CGS * er / (aiota * sqrtg_bctrvr_phi)
+    return om_tE, er
+
+
+def select_poloidal_rotation_coefficient(nu_star):
+    """Select K_i from a simple collisionality regime map."""
+    nu_star = np.asarray(nu_star)
+    k_i = np.empty_like(nu_star, dtype=float)
+    k_i[nu_star < 0.1] = -1.17
+    k_i[(nu_star >= 0.1) & (nu_star < 10.0)] = -0.5
+    k_i[nu_star >= 10.0] = 0.5
+    return k_i
+
+
 def compute_poloidal_rotation_neoclassical(dT_ds, z, b_phi, av_nabla_stor, k_i):
     """Estimate poloidal rotation from the ion temperature gradient.
 
@@ -244,4 +312,35 @@ def compute_omte_neoclassical_poloidal(
         b_theta=b_theta,
         v_theta=v_theta,
         b_phi=b_phi,
+    )
+
+
+def compute_omte_neoclassical_poloidal_auto_k(
+    n,
+    T,
+    dn_ds,
+    dT_ds,
+    z,
+    aiota,
+    sqrtg_bctrvr_phi,
+    av_nabla_stor,
+    v_phi,
+    b_theta,
+    b_phi,
+    nu_star,
+):
+    """Compute Level 2 using a simple collisionality-based K_i selection."""
+    return compute_omte_neoclassical_poloidal(
+        n=n,
+        T=T,
+        dn_ds=dn_ds,
+        dT_ds=dT_ds,
+        z=z,
+        aiota=aiota,
+        sqrtg_bctrvr_phi=sqrtg_bctrvr_phi,
+        av_nabla_stor=av_nabla_stor,
+        v_phi=v_phi,
+        b_theta=b_theta,
+        b_phi=b_phi,
+        k_i=select_poloidal_rotation_coefficient(nu_star),
     )

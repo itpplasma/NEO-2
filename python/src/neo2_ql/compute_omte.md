@@ -109,7 +109,7 @@ $$
 $$
 
 **Implementation:**
-[`compute_omte_diamagnetic()`](compute_omte.py) (lines 24--63).
+[`compute_omte_diamagnetic()`](compute_omte.py)
 
 **GitHub issue:**
 [#72](https://github.com/itpplasma/NEO-2/issues/72).
@@ -169,9 +169,44 @@ The Python implementation is
 which uses
 [`compute_poloidal_rotation_neoclassical()`](compute_omte.py)
 with a manually selected coefficient `K_i`.
+For convenience,
+[`compute_omte_neoclassical_poloidal_auto_k()`](compute_omte.py)
+selects `K_i` from a simple collisionality map:
+
+| Regime | $\nu^*$ range | $K_i$ |
+|--------|--------------|-------|
+| Banana | $\nu^* < 0.1$ | $-1.17$ |
+| Plateau | $0.1 \le \nu^* < 10$ | $-0.5$ |
+| Pfirsch--Schluter | $\nu^* \ge 10$ | $+0.5$ |
 
 **GitHub issue:**
 [#74](https://github.com/itpplasma/NEO-2/issues/74).
+
+### Auxiliary model: Strict NEO-2 `Vphi` convention
+
+The solver also supports a repo-native interpretation of the toroidal
+rotation input through the reduced `isw_Vphi_loc=0` algebra in
+[`compute_Er()`](../../../NEO-2-QL/ntv_mod.f90).  If the neoclassical
+transport terms are suppressed but the `Vphi` term is kept exactly as written
+in the Fortran, the resulting model is
+
+$$
+E_r^{(\text{exact }V_\varphi)} =
+\frac{
+  V_\varphi (\iota B_\vartheta + B_\varphi)
+  + \frac{c\, T_i B_\vartheta}{Z_i e\, \sqrt{g} B^\varphi}
+    \frac{1}{p_i}\frac{\mathrm{d}p_i}{\mathrm{d}r}
+}{
+  \frac{c\, B_\vartheta}{\sqrt{g} B^\varphi}
+}
+\tag{9}
+$$
+
+This is implemented by
+[`compute_omte_toroidal_rotation_neo2_convention()`](compute_omte.py).
+It is useful for checking consistency with the code path in NEO-2, but it is
+not the same thing as the practical Level 1 proxy above and it should not be
+interpreted as the next point in the experimental-model hierarchy.
 
 ### Level 3: Full neoclassical (NEO-2 internal)
 
@@ -193,7 +228,7 @@ E_r = \frac{
   \frac{c\, B_\vartheta}{\sqrt{g} B^\varphi}
   + \text{(neoclassical terms)}
 }
-\tag{9}
+\tag{10}
 $$
 
 where the neoclassical terms involve sums over species of
@@ -295,9 +330,14 @@ not replacements for the original radial profile arrays.
 
 The rotation input `Vphi` written by
 [`generate_multispec_input.py`](generate_multispec_input.py)
-is the toroidal geometric-angle rotation frequency in `rad/s`.
-Level 1 in this module accepts the physical toroidal velocity `v_phi` in
-`cm/s`, so when only the HDF5 input is available a practical proxy is
+is stored with the HDF5 unit attribute `rad / s`, while
+[`ntv_mod.f90`](../../../NEO-2-QL/ntv_mod.f90) documents it as a toroidal
+geometric-angle / flux-surface-averaged quantity and uses it directly in the
+`Vphi * (iota * bcovar_tht + bcovar_phi)` term of `compute_Er()`.
+That distinction matters.
+
+Level 1 in this Python module accepts the physical toroidal velocity `v_phi`
+in `cm/s`, so when only the HDF5 input is available a practical proxy is
 
 $$
 v_\varphi \approx R_0 V^\varphi,
@@ -311,6 +351,13 @@ $$
 \Delta \Omega_{tE}^{(1)} \approx
 \frac{V^\varphi B_\vartheta^\text{cov}}{\iota \sqrt{g} B^\varphi}.
 $$
+
+The strict repo-native alternative is
+[`compute_omte_toroidal_rotation_neo2_convention()`](compute_omte.py),
+which preserves the reduced `compute_Er()` algebra instead of converting
+`Vphi` to a velocity proxy.  On the AUG fixture below, that strict form is
+much farther from the full NEO-2 result because it still omits the transport
+terms in both numerator and denominator.
 
 
 ## Validation against NEO-2
@@ -346,7 +393,9 @@ For this AUG reference, the Level 1 proxy roughly halves the mean absolute
 error relative to Level 0, although it is still missing the poloidal-flow and
 transport terms from the full NEO-2 solve.
 
-Using the simple banana-regime Level 2 estimate with `K_i = -1.17`
+Using the simple banana-regime Level 2 estimate with `K_i = -1.17`,
+or equivalently the auto-selected low-collisionality branch of
+[`compute_omte_neoclassical_poloidal_auto_k()`](compute_omte.py),
 does not visibly move the curve for this reference:
 
 | $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 2 proxy $\Omega_{tE}$ | Ratio |
@@ -358,6 +407,20 @@ That near-overlap is expected from the simple analytic estimate because
 the `-v_\vartheta B_\varphi/c` contribution reduces to
 `-K_i (dT_i/dr)/(Z_i e c)` and is very small here compared to the toroidal
 rotation proxy term.
+
+Applying the strict reduced `isw_Vphi_loc=0` algebra gives a very different
+curve:
+
+| $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Strict `Vphi` convention $\Omega_{tE}$ | Ratio |
+|:-:|:-:|:-:|:-:|
+| 0.2527 | $-44.80\,\text{krad/s}$ | $+17087.17\,\text{krad/s}$ | -381.47 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $+11827.27\,\text{krad/s}$ | -106.46 |
+
+This is not a better reduced model.  It is a useful diagnostic because it
+shows that the bare `Vphi` term in the Fortran algebra is not sufficient by
+itself: once the transport-coefficient pieces in eq. (10) are removed, the
+remaining exact-convention term overshoots by two orders of magnitude and even
+flips sign on this case.
 
 
 ## Algebraic consistency with NEO-2 Fortran
@@ -393,6 +456,7 @@ $\langle|\nabla s|\rangle$, $\iota$, $\sqrt{g} B^\varphi$.
 | File | Role |
 |------|------|
 | [`compute_omte.py`](compute_omte.py) | Python implementation of force balance models |
+| [`plot_omte_reference.py`](plot_omte_reference.py) | Reproducible AUG comparison plot helper |
 | [`test_compute_omte.py`](../../test/test_compute_omte.py) | Unit + e2e tests |
 | [`omte_reference_aug30835.npz`](../../test/data/omte_reference_aug30835.npz) | Reference fixture (AUG #30835) |
 | [`generate_multispec_input.py`](generate_multispec_input.py) | Writes `Om_tE` profile to multispec HDF5 input |
