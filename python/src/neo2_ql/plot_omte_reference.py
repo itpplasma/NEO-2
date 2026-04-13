@@ -452,6 +452,38 @@ def make_figure_omte_reference(fixture=FIXTURE, transport_fixture=TRANSPORT_FIXT
     return fig, axes, {'aug': models, 'transport': transport_terms}
 
 
+def make_figure_level2_comparison(fixture=FIXTURE):
+    """Create a compact Level 2 comparison against the AUG reference fixture."""
+    models = get_omte_reference_models(fixture=fixture)
+    boozer_s = models['boozer_s']
+    lvl2_k_sweep = models['lvl2_k_sweep']
+
+    fig, axis = plt.subplots(1, 1, figsize=(8, 5), constrained_layout=True)
+    axis.plot(boozer_s, models['om_neo2'] / 1.0e3, 'o-k', label='NEO-2')
+    axis.plot(
+        boozer_s,
+        models['om_lvl2']['banana'] / 1.0e3,
+        '^-',
+        color='tab:green',
+        label='Level 2 banana (k=+1.17)',
+    )
+    axis.plot(
+        boozer_s,
+        lvl2_k_sweep['om_best'] / 1.0e3,
+        '--',
+        color='tab:red',
+        linewidth=1.5,
+        label=f'Level 2 best-fit k ({lvl2_k_sweep["best_k"]:.2f})',
+    )
+    axis.axhline(0.0, color='0.7', linewidth=1.0)
+    axis.set_xlabel('Boozer s')
+    axis.set_ylabel('Omega_tE [krad/s]')
+    axis.set_title('Level 2 comparison')
+    axis.legend()
+
+    return fig, axis, {'aug': models}
+
+
 def save_figure_omte_reference(
     output_path,
     fixture=FIXTURE,
@@ -468,18 +500,36 @@ def save_figure_omte_reference(
     return output_path
 
 
+def save_figure_level2_comparison(output_path, fixture=FIXTURE):
+    """Save the compact Level 2 comparison figure."""
+    fig, _, _ = make_figure_level2_comparison(fixture=fixture)
+    output_path = Path(output_path).resolve()
+    fig.savefig(output_path, dpi=200, bbox_inches='tight')
+    plt.close(fig)
+    return output_path
+
+
 def main():
-    """Write the default Om_tE comparison figure to a file."""
+    """Write an Om_tE comparison figure to a file."""
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        '--figure',
+        choices=('full', 'level2'),
+        default='full',
+        help='Which figure to render',
+    )
     parser.add_argument(
         '--output',
         default='/tmp/omte_reference_models.png',
         help='Path for the output PNG',
     )
     args = parser.parse_args()
-    output_path = save_figure_omte_reference(args.output)
+    if args.figure == 'level2':
+        output_path = save_figure_level2_comparison(args.output)
+    else:
+        output_path = save_figure_omte_reference(args.output)
     print(output_path)
 
 
