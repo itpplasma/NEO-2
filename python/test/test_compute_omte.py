@@ -139,13 +139,32 @@ def test_array_input():
         assert np.isclose(Er[i], Er_i, rtol=1e-12)
 
 
+def test_invalid_zero_density_raises():
+    """Public API should fail explicitly on zero-density input."""
+    try:
+        compute_omte_diamagnetic(
+            n=0.0,
+            T=1e-9,
+            dn_ds=-1e13,
+            dT_ds=0.0,
+            z=1.0,
+            aiota=0.5,
+            sqrtg_bctrvr_phi=1e6,
+            av_nabla_stor=0.01,
+        )
+    except ValueError as exc:
+        assert str(exc) == 'n must be nonzero to compute E_r and Om_tE'
+    else:
+        raise AssertionError('Expected ValueError for zero density')
+
+
 # --- E2E test against NEO-2 reference ---
 
 FIXTURE = os.path.join(os.path.dirname(__file__), 'data', 'omte_reference_aug30835.npz')
 
 
 def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
-    """Level 0 must match NEO-2 in sign; overestimates because flows are missing."""
+    """Level 0 must match NEO-2 in sign and stay within one order of magnitude."""
     if not os.path.isfile(FIXTURE):
         raise FileNotFoundError(
             f'Reference fixture not found: {FIXTURE}\n'
@@ -154,17 +173,23 @@ def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
 
     ref = np.load(FIXTURE)
 
-    # Fixture has per-surface species data: (nsurf, nspec)
-    # Ion species: z > 0
-    z_spec = ref['z_spec'][0]
-    ion_idx = np.where(z_spec > 0)[0][0]
-    z_i = z_spec[ion_idx]
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+
+    # The multispecies output stores scalar species state in n_spec/T_spec.
+    # The force-balance estimate must use the actual per-surface profile input.
+    assert not np.allclose(
+        ref['n_prof'][:, ion_idx], ref['n_spec'][:, ion_idx], rtol=0.0, atol=0.0
+    )
+    assert not np.allclose(
+        ref['T_prof'][:, ion_idx], ref['T_spec'][:, ion_idx], rtol=0.0, atol=0.0
+    )
 
     Om_tE_dia, Er_dia = compute_omte_diamagnetic(
-        n=ref['n_spec'][:, ion_idx],
-        T=ref['T_spec'][:, ion_idx],
-        dn_ds=ref['dn_ov_ds'][:, ion_idx],
-        dT_ds=ref['dT_ov_ds'][:, ion_idx],
+        n=ref['n_prof'][:, ion_idx],
+        T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
         z=z_i,
         aiota=ref['aiota'],
         sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
@@ -172,13 +197,13 @@ def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
     )
 
     # Regression values from verified computation (AUG #30835)
-    # using profiles from the actual NEO-2 namelists
-    Er_expected = np.array([-2.93232, -4.35886])
-    Om_tE_expected = np.array([-215417.4, -312319.9])
-    assert np.allclose(Er_dia, Er_expected, rtol=1e-4), (
+    # using the actual radial profile input consumed by the run
+    Er_expected = np.array([-0.20159416, -0.23357900])
+    Om_tE_expected = np.array([-14809.7343, -16736.3417])
+    assert np.allclose(Er_dia, Er_expected, rtol=1e-5), (
         f'Er regression: got {Er_dia}, expected {Er_expected}'
     )
-    assert np.allclose(Om_tE_dia, Om_tE_expected, rtol=1e-4), (
+    assert np.allclose(Om_tE_dia, Om_tE_expected, rtol=1e-5), (
         f'Om_tE regression: got {Om_tE_dia}, expected {Om_tE_expected}'
     )
 
@@ -192,14 +217,13 @@ def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
             f'dia={Om_tE_dia[i]:.1f}, neo2={Om_tE_neo2[i]:.1f}'
         )
 
-    # Diamagnetic alone OVERESTIMATES |Om_tE| because the toroidal
-    # rotation and neoclassical flow terms partially cancel the
-    # pressure gradient contribution.
+    # Diamagnetic alone underestimates because it omits toroidal rotation
+    # and the neoclassical transport terms that enter the full force balance.
     ratio = np.abs(Om_tE_dia / Om_tE_neo2)
     for i in range(len(ratio)):
-        assert 1.0 < ratio[i] < 10.0, (
+        assert 0.1 < ratio[i] < 1.0, (
             f'Unexpected ratio at s={ref["boozer_s"][i]:.4f}: '
-            f'ratio={ratio[i]:.4f} (expected between 1 and 10)'
+            f'ratio={ratio[i]:.4f}'
         )
 
 
@@ -210,5 +234,6 @@ if __name__ == '__main__':
     test_temperature_gradient_contribution()
     test_charge_number_scaling()
     test_array_input()
+    test_invalid_zero_density_raises()
     test_diamagnetic_vs_neo2_sign_and_order_of_magnitude()
     print('\nAll tests passed.')

@@ -33,9 +33,11 @@ def compute_omte_diamagnetic(n, T, dn_ds, dT_ds, z,
     Parameters
     ----------
     n : float or array
-        Ion density [1/cm^3].
+        Ion density [1/cm^3] evaluated on the same radial grid as the
+        derivatives.
     T : float or array
-        Ion temperature [erg].
+        Ion temperature [erg] evaluated on the same radial grid as the
+        derivatives.
     dn_ds : float or array
         Derivative of ion density w.r.t. s_tor [1/cm^3].
     dT_ds : float or array
@@ -55,7 +57,30 @@ def compute_omte_diamagnetic(n, T, dn_ds, dT_ds, z,
         E x B rotation frequency [rad/s].
     Er : float or array
         Radial electric field (w.r.t. effective radius) [statV/cm].
+
+    Notes
+    -----
+    `n`, `T`, `dn_ds`, and `dT_ds` must come from the radial profile input
+    used for the run. The scalar species state written to `n_spec`/`T_spec`
+    in the multispecies output is not a substitute for those profiles.
     """
+    n = np.asarray(n)
+    T = np.asarray(T)
+    dn_ds = np.asarray(dn_ds)
+    dT_ds = np.asarray(dT_ds)
+    aiota = np.asarray(aiota)
+    sqrtg_bctrvr_phi = np.asarray(sqrtg_bctrvr_phi)
+    av_nabla_stor = np.asarray(av_nabla_stor)
+
+    if np.any(n == 0.0):
+        raise ValueError('n must be nonzero to compute E_r and Om_tE')
+    if z == 0.0:
+        raise ValueError('z must be nonzero to compute E_r and Om_tE')
+    if np.any(aiota == 0.0):
+        raise ValueError('aiota must be nonzero to compute Om_tE')
+    if np.any(sqrtg_bctrvr_phi == 0.0):
+        raise ValueError('sqrtg_bctrvr_phi must be nonzero to compute Om_tE')
+
     dp_ds = T * dn_ds + n * dT_ds
     dp_dr = dp_ds * av_nabla_stor
     Er = dp_dr / (n * z * E_CGS)

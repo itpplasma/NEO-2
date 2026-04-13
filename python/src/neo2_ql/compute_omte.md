@@ -65,7 +65,7 @@ $$
 
 where $\iota = 1/q$ is the rotational transform, $\sqrt{g}\, B^\varphi$ is the
 Jacobian times the contravariant toroidal magnetic field component (in
-$\text{G}\,\text{cm}^2$), and $E_r$ is the radial electric field with respect
+$\text{G}\,\text{cm}$), and $E_r$ is the radial electric field with respect
 to the effective radius.
 
 This definition is the one used internally in NEO-2
@@ -258,23 +258,48 @@ where $\psi_t' = \mathrm{d}(\Phi_\text{tor}/2\pi)/\mathrm{d}s$
 $[\text{G}\,\text{cm}^2]$.
 
 
+## Input file conventions
+
+The profile generator
+[`generate_multispec_input.py`](generate_multispec_input.py)
+writes the radial input datasets
+`T_prof`, `n_prof`, `dT_ov_ds_prof`, and `dn_ov_ds_prof`
+to the multispecies HDF5 file. These arrays are indexed by
+radial point and species and are the authoritative source for any
+post-processing that wants to reproduce the run inputs.
+
+In `NEO-2-QL/neo2.f90`, `prepare_multispecies_scan()` reads those HDF5 arrays,
+selects one radial point `ind_boozer_s`, and fills the namelist vectors
+`T_vec`, `n_vec`, `dT_vec_ov_ds`, and `dn_vec_ov_ds` for that single run.
+Later in `neo2.f90` those vectors are copied into the module arrays
+`T_spec`, `n_spec`, `dT_spec_ov_ds`, and `dn_spec_ov_ds`, which represent the
+state of the currently active surface inside the solver.
+
+Finally, `write_multispec_output_a()` in
+[`ntv_mod.f90`](../../../NEO-2-QL/ntv_mod.f90)
+writes `T_spec` and `n_spec` back to `neo2_multispecies_out.h5`.
+Those fields are therefore solver state for a completed single-surface run,
+not replacements for the original radial profile arrays.
+
+
 ## Validation against NEO-2
 
 The Level 0 model is validated against full neoclassical NEO-2 output for
 ASDEX Upgrade shot #30835 (2 flux surfaces with `isw_calc_Er=1`).
-Species data is taken from the Fortran namelists (not the HDF5 multispec input,
-which was regenerated after the runs with different profiles).
+The comparison must use the actual per-surface profile input consumed by the
+run (`n_prof`, `T_prof`, `dn_ov_ds_prof`, `dT_ov_ds_prof`). The scalar
+species state written to `n_spec` and `T_spec` in the multispecies output is
+not the radial profile and produces the wrong Level 0 estimate.
 
 | $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 0 $\Omega_{tE}$ | Ratio |
 |:-:|:-:|:-:|:-:|
-| 0.2527 | $-44.80\,\text{krad/s}$ | $-215.42\,\text{krad/s}$ | 4.81 |
-| 0.4984 | $-111.09\,\text{krad/s}$ | $-312.32\,\text{krad/s}$ | 2.81 |
+| 0.2527 | $-44.80\,\text{krad/s}$ | $-14.81\,\text{krad/s}$ | 0.33 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $-16.74\,\text{krad/s}$ | 0.15 |
 
-Level 0 **overestimates** $|\Omega_{tE}|$ by a factor 3--5.  The sign is
+Level 0 **underestimates** $|\Omega_{tE}|$ because it omits the toroidal
+rotation and neoclassical transport terms that contribute in the full force
+balance. The sign is
 correct (negative $\Omega_{tE}$, corresponding to inward-pointing $E_r$).
-The overestimate is expected: the toroidal rotation and neoclassical flow
-terms in the full force balance partially cancel the diamagnetic contribution,
-reducing $|E_r|$.
 
 Test: [`test_diamagnetic_vs_neo2_sign_and_order_of_magnitude()`](../../test/test_compute_omte.py).
 
@@ -315,7 +340,6 @@ $\langle|\nabla s|\rangle$, $\iota$, $\sqrt{g} B^\varphi$.
 | [`test_compute_omte.py`](../../test/test_compute_omte.py) | Unit + e2e tests |
 | [`omte_reference_aug30835.npz`](../../test/data/omte_reference_aug30835.npz) | Reference fixture (AUG #30835) |
 | [`generate_multispec_input.py`](generate_multispec_input.py) | Writes `Om_tE` profile to multispec HDF5 input |
-| [`er_rotation_mod.f90`](../../../NEO-2-QL/er_rotation_mod.f90) | Fortran $\Omega_{tE} \leftrightarrow M_t/R$ conversion |
 | [`ntv_mod.f90`](../../../NEO-2-QL/ntv_mod.f90) | Fortran `compute_Er()` subroutine (lines 2038--2321) |
 | [`neo2.f90`](../../../NEO-2-QL/neo2.f90) | Reads `isw_calc_Er`, `Om_tE_prof` from input |
 
