@@ -22,6 +22,10 @@ contains
       real(dp), intent(in) :: m_spec(:)
       real(dp) :: Om_tE
 
+      if (size(MtOvR_spec) < 1) then
+         Om_tE = 0.0_dp
+         return
+      end if
       Om_tE = MtOvR_spec(1) * sqrt(2.0_dp * T_spec(1) / m_spec(1))
    end function MtOvR_spec_to_Om_tE
 
@@ -38,6 +42,11 @@ contains
 
       is_consistent = .true.
       if (size(MtOvR_spec) < 2) return
+      if (size(T_spec) /= size(MtOvR_spec) .or. &
+          size(m_spec) /= size(MtOvR_spec)) then
+         is_consistent = .false.
+         return
+      end if
 
       Om_tE_ref = MtOvR_spec(1) * sqrt(2.0_dp * T_spec(1) / m_spec(1))
 
