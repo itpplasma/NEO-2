@@ -268,7 +268,7 @@ def test_neoclassical_poloidal_rotation_formula():
         av_nabla_stor=0.02,
         k_i=-1.17,
     )
-    expected = -1.17 * (-2e-9 * 0.02) / (E_CGS * -2e4)
+    expected = -1.17 * C_CGS * (-2e-9 * 0.02) / (E_CGS * -2e4)
     assert np.isclose(v_theta, expected, rtol=1e-12)
 
 
@@ -801,8 +801,8 @@ def test_neoclassical_poloidal_with_neo2_component_pair_regression():
         k_i=-1.17,
     )
 
-    er_expected = np.array([-1.06905889, -1.15607731])
-    om_expected = np.array([-78536.3915, -82834.9494])
+    er_expected = np.array([-1.20009711, -1.27113728])
+    om_expected = np.array([-88162.8664, -91079.1957])
     assert np.allclose(er_lvl2, er_expected, rtol=1e-5)
     assert np.allclose(om_lvl2, om_expected, rtol=1e-5)
 
@@ -829,8 +829,8 @@ def test_neoclassical_poloidal_auto_k_with_neo2_component_pair_regression():
         b_phi=ref['bcovar_phi'],
         nu_star=nu_star,
     )
-    er_expected = np.array([-1.06905889, -1.15607731])
-    om_expected = np.array([-78536.3915, -82834.9494])
+    er_expected = np.array([-1.20009711, -1.27113728])
+    om_expected = np.array([-88162.8664, -91079.1957])
     assert np.allclose(er_lvl2, er_expected, rtol=1e-5)
     assert np.allclose(om_lvl2, om_expected, rtol=1e-5)
 
@@ -865,12 +865,13 @@ def test_reference_plot_models_regression():
     assert np.allclose(models['boozer_s'], np.array([0.25270707, 0.49841414]))
     assert np.allclose(models['om_lvl0'], np.array([-14809.7343, -16736.3417]), rtol=1e-5)
     assert np.allclose(models['om_lvl1'], np.array([-78536.3915, -82834.9494]), rtol=1e-5)
-    assert np.allclose(models['om_lvl2'], np.array([-78536.3915, -82834.9494]), rtol=1e-5)
+    assert np.allclose(models['om_lvl2']['banana'], np.array([-88162.8664, -91079.1957]), rtol=1e-5)
+    assert np.allclose(models['om_lvl2']['plateau'], np.array([-82650.2697, -86358.1316]), rtol=1e-5)
+    assert np.allclose(models['om_lvl2']['pfirsch_schluter'], np.array([-74422.5133, -79311.7672]), rtol=1e-5)
     assert np.allclose(models['om_exact'], np.array([17087170.7154, 11827270.8903]), rtol=1e-5)
     assert np.allclose(models['er_dia'], np.array([-0.20159416, -0.23357900]), rtol=1e-5)
     assert np.allclose(models['er_tor'], np.array([-0.86746473, -0.92249831]), rtol=1e-5)
-    assert np.allclose(models['er_pol'], np.array([4.40303258e-12, 3.82851702e-12]), rtol=1e-5)
-    assert np.allclose(models['er_remainder'], np.array([0.45925110, -0.39429395]), rtol=1e-5)
+    assert np.allclose(models['er_pol'], np.array([-0.13103822, -0.11505996]), rtol=1e-5)
 
 
 def test_transport_plot_decomposition_regression():

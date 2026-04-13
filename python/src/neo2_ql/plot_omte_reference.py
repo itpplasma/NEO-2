@@ -10,7 +10,7 @@ from .compute_omte import (
     C_CGS,
     compute_poloidal_rotation_neoclassical,
     compute_omte_diamagnetic,
-    compute_omte_neoclassical_poloidal_auto_k,
+    compute_omte_neoclassical_poloidal,
     compute_omte_toroidal_rotation,
     compute_omte_toroidal_rotation_neo2_convention,
 )
@@ -26,14 +26,12 @@ TRANSPORT_FIXTURE = (
 def get_omte_reference_models(fixture=FIXTURE):
     """Return Om_tE model curves for the stored AUG reference fixture.
 
-    The Level 1/2 curves use the NEO-2-native Boozer component pairs
-    `(Vphi, bcovar_tht)` and `(Vtheta, bcovar_phi)` rather than cylindrical
-    `R0`-based proxies.
+    Level 2 is computed for three collisionality regimes (banana, plateau,
+    Pfirsch-Schluter) with K_i = -1.17, -0.5, +0.5 respectively.
     """
     ref = np.load(fixture)
     ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
     z_i = ref['species_def'][0, ion_idx, 0]
-    nu_star = np.full_like(ref['boozer_s'], 0.05, dtype=float)
 
     common = {
         'n': ref['n_prof'][:, ion_idx],
@@ -45,6 +43,12 @@ def get_omte_reference_models(fixture=FIXTURE):
         'sqrtg_bctrvr_phi': ref['sqrtg_bctrvr_phi'],
         'av_nabla_stor': ref['av_nabla_stor'],
     }
+    lvl2_common = {
+        **common,
+        'v_phi': ref['Vphi'],
+        'b_theta': ref['bcovar_tht'],
+        'b_phi': ref['bcovar_phi'],
+    }
 
     om_neo2 = C_CGS * ref['Er_neo2'] / (ref['aiota'] * ref['sqrtg_bctrvr_phi'])
     om_lvl0, er_dia = compute_omte_diamagnetic(**common)
@@ -53,13 +57,16 @@ def get_omte_reference_models(fixture=FIXTURE):
         v_phi=ref['Vphi'],
         b_theta=ref['bcovar_tht'],
     )
-    om_lvl2, er_lvl2 = compute_omte_neoclassical_poloidal_auto_k(
-        **common,
-        v_phi=ref['Vphi'],
-        b_theta=ref['bcovar_tht'],
-        b_phi=ref['bcovar_phi'],
-        nu_star=nu_star,
-    )
+
+    k_regimes = {'banana': -1.17, 'plateau': -0.5, 'pfirsch_schluter': 0.5}
+    om_lvl2 = {}
+    er_lvl2 = {}
+    for regime, k_val in k_regimes.items():
+        k_arr = np.full_like(ref['boozer_s'], k_val, dtype=float)
+        om, er = compute_omte_neoclassical_poloidal(**lvl2_common, k_i=k_arr)
+        om_lvl2[regime] = om
+        er_lvl2[regime] = er
+
     om_exact, _ = compute_omte_toroidal_rotation_neo2_convention(
         **common,
         vphi=ref['Vphi'],
@@ -75,7 +82,6 @@ def get_omte_reference_models(fixture=FIXTURE):
     )
     er_tor = np.asarray(ref['Vphi']) * np.asarray(ref['bcovar_tht']) / C_CGS
     er_pol = -v_theta * np.asarray(ref['bcovar_phi']) / C_CGS
-    er_remainder = np.asarray(ref['Er_neo2']) - er_lvl2
 
     return {
         'boozer_s': ref['boozer_s'],
@@ -84,14 +90,12 @@ def get_omte_reference_models(fixture=FIXTURE):
         'om_lvl1': om_lvl1,
         'om_lvl2': om_lvl2,
         'om_exact': om_exact,
-        'nu_star': nu_star,
         'er_neo2': np.asarray(ref['Er_neo2']),
         'er_dia': er_dia,
         'er_tor': er_tor,
         'er_pol': er_pol,
         'er_lvl1': er_lvl1,
         'er_lvl2': er_lvl2,
-        'er_remainder': er_remainder,
     }
 
 
@@ -166,19 +170,25 @@ def make_figure_omte_reference(fixture=FIXTURE, transport_fixture=TRANSPORT_FIXT
         models['om_lvl1'] / 1.0e3,
         'd-.',
         color='tab:orange',
-        label='Level 1 (Vphi, bcovar_tht)',
+        label='Level 1',
     )
-    axes[0].plot(
-        boozer_s,
-        models['om_lvl2'] / 1.0e3,
-        '^-',
-        color='tab:green',
-        label='Level 2 (auto K_i)',
-    )
+    lvl2_styles = {
+        'banana': ('^-', 'tab:green', '$K_i = -1.17$'),
+        'plateau': ('v--', 'tab:red', '$K_i = -0.5$'),
+        'pfirsch_schluter': ('p:', 'tab:purple', '$K_i = +0.5$'),
+    }
+    for regime, (fmt, color, label) in lvl2_styles.items():
+        axes[0].plot(
+            boozer_s,
+            models['om_lvl2'][regime] / 1.0e3,
+            fmt,
+            color=color,
+            label=f'Level 2 ({label})',
+        )
     axes[0].axhline(0.0, color='0.7', linewidth=1.0)
     axes[0].set_ylabel('Omega_tE [krad/s]')
     axes[0].set_title('Reduced force-balance hierarchy')
-    axes[0].legend()
+    axes[0].legend(fontsize=8)
 
     x = np.arange(len(boozer_s))
     width = 0.18

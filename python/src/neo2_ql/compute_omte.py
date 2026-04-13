@@ -298,10 +298,15 @@ def select_poloidal_rotation_coefficient(nu_star):
 def compute_poloidal_rotation_neoclassical(dT_ds, z, b_phi, av_nabla_stor, k_i):
     """Estimate the Level 2 poloidal rotation quantity from dT/dr.
 
-    Uses the simple Kim-Diamond-Groebner-type estimate
-        v_theta = K_i / (Z e B_phi) * dT/dr
-    with
-        dT/dr = dT/ds * <|nabla s|>.
+    Uses the Kim-Diamond-Groebner estimate (KDG 1991, eq. 6) in CGS:
+
+        v_theta = K_i * c / (Z e B_phi) * dT/dr
+
+    with dT/dr = dT/ds * <|nabla s|>.
+
+    The factor of c (speed of light) is required in CGS and cancels
+    against the 1/c in the force balance term -v_theta * B_phi / c,
+    giving the net contribution Er_pol = -K_i * dT/dr / (Z e).
 
     If `b_phi` is a physical toroidal field [G], the return value is a
     physical poloidal velocity [cm/s]. If `b_phi` is the NEO-2 Boozer
@@ -319,7 +324,7 @@ def compute_poloidal_rotation_neoclassical(dT_ds, z, b_phi, av_nabla_stor, k_i):
         raise ValueError('b_phi must be nonzero to compute v_theta')
 
     dT_dr = dT_ds * av_nabla_stor
-    return k_i * dT_dr / (z * E_CGS * b_phi)
+    return k_i * C_CGS * dT_dr / (z * E_CGS * b_phi)
 
 
 def compute_omte_neoclassical_poloidal(
