@@ -19,7 +19,7 @@ set_tests_properties(nrutil_test PROPERTIES
 
 # Test executable for er_rotation module
 add_executable(test_er_rotation test_er_rotation.f90)
-target_link_libraries(test_er_rotation common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+target_link_libraries(test_er_rotation neo2_ql)
 
 add_test(NAME er_rotation_test
          COMMAND test_er_rotation
