@@ -104,7 +104,7 @@ def get_omte_reference_models(fixture=FIXTURE):
     """Return Om_tE model curves for the stored AUG reference fixture.
 
     Level 2 is computed for three collisionality regimes (banana, plateau,
-    Pfirsch-Schluter) with K_i = -1.17, -0.5, +0.5 respectively.
+    Pfirsch-Schluter) with K_i = +1.17, -0.5, +0.5 respectively.
     """
     ref = np.load(fixture)
     ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
@@ -163,7 +163,7 @@ def get_omte_reference_models(fixture=FIXTURE):
         b_theta=ref['bcovar_tht'],
     )
 
-    k_regimes = {'banana': -1.17, 'plateau': -0.5, 'pfirsch_schluter': 0.5}
+    k_regimes = {'banana': 1.17, 'plateau': -0.5, 'pfirsch_schluter': 0.5}
     om_lvl2 = {}
     er_lvl2 = {}
     for regime, k_val in k_regimes.items():
@@ -204,7 +204,7 @@ def get_omte_reference_models(fixture=FIXTURE):
         z=z_i,
         b_phi=ref['bcovar_phi'],
         av_nabla_stor=ref['av_nabla_stor'],
-        k_i=np.full_like(ref['boozer_s'], -1.17, dtype=float),
+        k_i=np.full_like(ref['boozer_s'], 1.17, dtype=float),
     )
     er_tor = np.asarray(ref['Vphi']) * np.asarray(ref['bcovar_tht']) / C_CGS
     er_pol = -v_theta * np.asarray(ref['bcovar_phi']) / C_CGS
@@ -392,7 +392,7 @@ def make_figure_omte_reference(fixture=FIXTURE, transport_fixture=TRANSPORT_FIXT
         label='Level 1',
     )
     lvl2_styles = {
-        'banana': ('^-', 'tab:green', '$K_i = -1.17$'),
+        'banana': ('^-', 'tab:green', '$K_i = +1.17$'),
         'plateau': ('v--', 'tab:red', '$K_i = -0.5$'),
         'pfirsch_schluter': ('p:', 'tab:purple', '$K_i = +0.5$'),
     }
