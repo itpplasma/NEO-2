@@ -1706,6 +1706,7 @@ CONTAINS
     IF (isw_calc_Er .EQ. 1) THEN
 
        CALL h5_add(h5id_multispec, 'Er', Er)
+       CALL h5_add(h5id_multispec, 'Om_tE', Om_tE)
        CALL h5_add(h5id_multispec, 'MtOvR', MtOvR_spec, &
             LBOUND(MtOvR_spec), UBOUND(MtOvR_spec))
 
