@@ -133,7 +133,70 @@ E_r^{(1)} = \frac{1}{Z_i e\, n_i}\, \frac{\mathrm{d}p_i}{\mathrm{d}r}
 $$
 
 This is the standard approach used in experimental $E_r$ determination; see
-Viezzer et al. [4] section 2.
+Viezzer et al. [4] section 2, and the Dirk Stieglitz AUGPED routines used at
+ASDEX Upgrade (Salerno TAC meeting 2026-04-13, slide 13).
+
+#### Why Level 1 uses $V^\varphi B_\vartheta$ and not the full Fortran numerator
+
+The full force balance (eq. 2) has two flow contributions:
+
+$$
+E_r = \frac{1}{Z e n}\frac{\mathrm{d}p}{\mathrm{d}r}
+    + \underbrace{V^\varphi B_\vartheta / c}_{\mathcal{O}(B_\vartheta)}
+    - \underbrace{V^\vartheta B_\varphi / c}_{\mathcal{O}(B_\varphi)}
+$$
+
+The $V^\vartheta B_\varphi$ term is potentially huge because $B_\varphi \gg
+B_\vartheta$ in a tokamak. However, $V^\vartheta$ is not a free parameter: the
+neoclassical parallel momentum constraint
+
+$$
+\langle V_\parallel B \rangle
+= V^\vartheta B_\vartheta + V^\varphi B_\varphi
+= -(D_{31} A_1 + D_{32} A_2 + D_{33} A_3)
+$$
+
+forces $V^\vartheta B_\varphi \approx -V^\varphi B_\varphi + \text{small}$,
+so the two $\mathcal{O}(B_\varphi)$ contributions cancel and only an
+$\mathcal{O}(B_\vartheta)$ residual survives. Setting $v_\vartheta = 0$ in
+Level 1 is therefore physically consistent: the large $V^\vartheta B_\varphi$
+term is absent because the neoclassical cancellation has already been applied.
+
+Inserting the geometric relation $V^\vartheta = \iota V^\varphi$ (field-line
+alignment) **without** the transport closure produces
+
+$$
+E_r \sim V^\varphi (\iota B_\vartheta + B_\varphi) / c
+$$
+
+which retains the uncancelled $\mathcal{O}(B_\varphi)$ piece and overshoots
+$E_r$ by two orders of magnitude. This is exactly what
+[`compute_omte_toroidal_rotation_neo2_convention()`](compute_omte.py) computes
+and why it must never be used as a standalone reduced model (see the
+"Strict NEO-2 Vphi convention" section below).
+
+#### Boozer pair-product identity
+
+The input `Vphi` from NEO-2 is the Boozer contravariant toroidal angular
+frequency $V^\varphi$ [rad/s], not a cylindrical velocity. Nevertheless, the
+product $V^\varphi B_\vartheta^\text{cov}$ equals the physical product
+$v_{\varphi,\text{phys}} B_{\vartheta,\text{phys}}$ because the metric factors
+cancel:
+
+$$
+v_{\varphi,\text{phys}} = R\, V^\varphi, \qquad
+B_{\vartheta,\text{phys}} = B_\vartheta^\text{cov} / R
+$$
+
+$$
+\Rightarrow\quad
+v_{\varphi,\text{phys}}\, B_{\vartheta,\text{phys}}
+= V^\varphi\, B_\vartheta^\text{cov}
+$$
+
+This identity holds to lowest order in the Boozer metric and is exact in the
+large-aspect-ratio limit. It allows the Python helper functions to accept
+either physical cylindrical pairs or NEO-2-native Boozer pairs interchangeably.
 
 The Python implementation is
 [`compute_omte_toroidal_rotation()`](compute_omte.py),
@@ -182,16 +245,15 @@ selects `K_i` from a simple collisionality map:
 **GitHub issue:**
 [#74](https://github.com/itpplasma/NEO-2/issues/74).
 
-### Auxiliary model: Strict NEO-2 `Vphi` convention
+### Auxiliary model: Strict NEO-2 `Vphi` convention (not a reduced model)
 
-The solver also supports a repo-native interpretation of the toroidal
-rotation input through the reduced `isw_Vphi_loc=0` algebra in
-[`compute_Er()`](../../../NEO-2-QL/ntv_mod.f90).  If the neoclassical
-transport terms are suppressed but the `Vphi` term is kept exactly as written
-in the Fortran, the resulting model is
+The Fortran `compute_Er()` for `isw_Vphi_loc=0` derives $E_r$ from a coupled
+system that includes the neoclassical parallel momentum constraint. If the
+transport coefficient sums ($D_{31}$, $D_{32}$, $D_{33}$) are dropped but
+the algebraic structure is otherwise preserved, the result is
 
 $$
-E_r^{(\text{exact }V_\varphi)} =
+E_r^{(\text{bare }V_\varphi)} =
 \frac{
   V_\varphi (\iota B_\vartheta + B_\varphi)
   + \frac{c\, T_i B_\vartheta}{Z_i e\, \sqrt{g} B^\varphi}
@@ -204,9 +266,21 @@ $$
 
 This is implemented by
 [`compute_omte_toroidal_rotation_neo2_convention()`](compute_omte.py).
-It is useful for checking consistency with the code path in NEO-2, but it is
-not the same thing as the Level 1 component-pair model above and it should not be
-interpreted as the next point in the experimental-model hierarchy.
+
+**This formula must not be used as a standalone reduced model.** The
+$V^\varphi (\iota B_\vartheta + B_\varphi)$ numerator term encodes the
+geometric relation $V^\vartheta = \iota V^\varphi$ (field-line alignment),
+which introduces a $V^\vartheta B_\varphi$ contribution of
+$\mathcal{O}(B_\varphi)$. In the full NEO-2 solve, the transport-coefficient
+sums provide the neoclassical parallel momentum closure that cancels this large
+term against the equally large $V^\varphi B_\varphi$ piece hidden inside
+$\langle V_\parallel B \rangle$. Without those sums, the cancellation is absent
+and $E_r$ overshoots by two orders of magnitude (see the validation table in
+the "Strict `Vphi` convention" row below).
+
+The function exists as a building block for the full-output reconstruction path
+in [`neo2_output_omte.py`](neo2_output_omte.py), where the transport terms are
+present and the formula is complete.
 
 ### Level 3: Full neoclassical (NEO-2 internal)
 
@@ -355,29 +429,28 @@ The rotation input `Vphi` written by
 [`generate_multispec_input.py`](generate_multispec_input.py)
 is stored with the HDF5 unit attribute `rad / s`. In the Kasilov 2014
 notation and in the NEO-2 force-balance implementation this is the
-contravariant toroidal angular frequency, not a cylindrical velocity.
-Accordingly, Level 1 and Level 2 in this Python module accept the
-NEO-2-native Boozer component pairs directly:
+contravariant toroidal angular frequency $V^\varphi$, not a cylindrical
+velocity. Level 1 and Level 2 in this Python module accept the NEO-2-native
+Boozer component pairs directly because the contravariant/covariant products
+equal the physical products (see the Boozer pair-product identity in the
+Level 1 section above):
 
 $$
-\Delta E_r^{(1)} = \frac{V^\varphi B_\vartheta^\text{cov}}{c},
+\Delta E_r^{(1)} = \frac{V^\varphi B_\vartheta^\text{cov}}{c}
+= \frac{v_{\varphi,\text{phys}} B_{\vartheta,\text{phys}}}{c},
 \qquad
 \Delta E_r^{(2)} = -\frac{V^\vartheta B_\varphi^\text{cov}}{c}.
 $$
 
-The helper functions are written so that either
+The helper functions therefore accept either physical cylindrical
+velocity/field pairs or Boozer contravariant/covariant pairs interchangeably.
 
-- physical cylindrical velocity/field pairs, or
-- Boozer contravariant/covariant pairs
-
-can be supplied, because only the products entering force balance matter.
-
-The reduced repo-native alternative is
-[`compute_omte_toroidal_rotation_neo2_convention()`](compute_omte.py),
-which preserves the reduced `compute_Er()` algebra without the transport
-terms. On the AUG fixture below, that strict form is
-much farther from the full NEO-2 result because it still omits the transport
-terms in both numerator and denominator.
+The strict reduced `compute_Er()` algebra is available through
+[`compute_omte_toroidal_rotation_neo2_convention()`](compute_omte.py)
+for use as a building block in the full-output reconstruction. On the AUG
+fixture below, that strict form without transport terms overshoots by two orders
+of magnitude because the $V^\vartheta B_\varphi$ cancellation is absent (see
+the "Strict NEO-2 Vphi convention" section above).
 
 
 ## Full-output reconstruction
