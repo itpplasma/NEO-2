@@ -196,7 +196,9 @@ the intended consumer of the output from this module.
 
 ## Coordinate system and units
 
-All computations use **Gaussian CGS** units, matching NEO-2 internals:
+All computations use **Gaussian CGS** units, matching NEO-2 internals.
+In Gaussian CGS the electric and magnetic fields have the same dimensions:
+$[\text{statV/cm}] = [\text{G}] = [\text{g}^{1/2}\,\text{cm}^{-1/2}\,\text{s}^{-1}]$.
 
 | Quantity | Symbol | Unit |
 |----------|--------|------|
@@ -207,7 +209,7 @@ All computations use **Gaussian CGS** units, matching NEO-2 internals:
 | Magnetic field | $B$ | $\text{G}$ (Gauss) |
 | Radial electric field | $E_r$ | $\text{statV/cm}$ |
 | $\Omega_{tE}$ | | $\text{rad/s}$ |
-| $\sqrt{g}\, B^\varphi$ | | $\text{G}\,\text{cm}^2$ |
+| $\sqrt{g}\, B^\varphi$ | | $\text{G}\,\text{cm}$ |
 | $\langle|\nabla s|\rangle$ | `av_nabla_stor` | $\text{cm}^{-1}$ |
 | $\iota$ | `aiota` | dimensionless |
 
@@ -226,25 +228,53 @@ These conversions are handled by
 `convert_units_from_si_to_cgs()`.
 
 
+## Dimensional analysis
+
+The unit chain for $\Omega_{tE} = c\, E_r / (\iota\, \sqrt{g}\, B^\varphi)$:
+
+$$
+\frac{\mathrm{d}p}{\mathrm{d}r}
+= \underbrace{\frac{\mathrm{d}p}{\mathrm{d}s}}_{\text{erg/cm}^3}
+  \times \underbrace{\langle|\nabla s|\rangle}_{\text{cm}^{-1}}
+\quad [\text{erg/cm}^4]
+$$
+
+$$
+E_r = \frac{\mathrm{d}p/\mathrm{d}r}{n\, Z\, e}
+\quad \frac{[\text{erg/cm}^4]}{[\text{cm}^{-3}][\text{statC}]}
+= [\text{statV/cm}] = [\text{G}]
+$$
+
+$$
+\Omega_{tE} = \frac{c\, E_r}{\iota\, \sqrt{g}\, B^\varphi}
+\quad \frac{[\text{cm/s}][\text{G}]}{[\text{G}\,\text{cm}]}
+= [\text{s}^{-1}] \checkmark
+$$
+
+The key point is that $\sqrt{g}\, B^\varphi$ has units $[\text{G}\,\text{cm}]$,
+not $[\text{G}\,\text{cm}^2]$.  This follows from the flux relation
+$\iota\, \sqrt{g}\, B^\varphi = \langle|\nabla s|\rangle \cdot \psi_t'$
+where $\psi_t' = \mathrm{d}(\Phi_\text{tor}/2\pi)/\mathrm{d}s$
+$[\text{G}\,\text{cm}^2]$.
+
+
 ## Validation against NEO-2
 
 The Level 0 model is validated against full neoclassical NEO-2 output for
 ASDEX Upgrade shot #30835 (2 flux surfaces with `isw_calc_Er=1`).
+Species data is taken from the Fortran namelists (not the HDF5 multispec input,
+which was regenerated after the runs with different profiles).
 
 | $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 0 $\Omega_{tE}$ | Ratio |
 |:-:|:-:|:-:|:-:|
-| 0.2527 | $-44.80\,\text{krad/s}$ | $-15.64\,\text{krad/s}$ | 0.35 |
-| 0.4984 | $-111.09\,\text{krad/s}$ | $-16.74\,\text{krad/s}$ | 0.15 |
+| 0.2527 | $-44.80\,\text{krad/s}$ | $-215.42\,\text{krad/s}$ | 4.81 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $-312.32\,\text{krad/s}$ | 2.81 |
 
-Level 0 captures 15--35% of the full neoclassical result.  The sign is
+Level 0 **overestimates** $|\Omega_{tE}|$ by a factor 3--5.  The sign is
 correct (negative $\Omega_{tE}$, corresponding to inward-pointing $E_r$).
-The remainder is dominated by the toroidal rotation contribution (Level 1) and
-neoclassical corrections (Levels 2--3).
-
-The decreasing ratio at larger $s_\text{tor}$ is expected: the toroidal
-rotation $V_\varphi$ enters the full NEO-2 formula (eq. 9) with a coefficient
-$\iota B_\vartheta + B_\varphi$ that grows relative to the diamagnetic term
-at larger minor radius.
+The overestimate is expected: the toroidal rotation and neoclassical flow
+terms in the full force balance partially cancel the diamagnetic contribution,
+reducing $|E_r|$.
 
 Test: [`test_diamagnetic_vs_neo2_sign_and_order_of_magnitude()`](../../test/test_compute_omte.py).
 

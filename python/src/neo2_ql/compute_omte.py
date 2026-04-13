@@ -45,7 +45,7 @@ def compute_omte_diamagnetic(n, T, dn_ds, dT_ds, z,
     aiota : float or array
         Rotational transform iota = 1/q.
     sqrtg_bctrvr_phi : float or array
-        sqrt(g) * B^phi contravariant component [G cm^2].
+        sqrt(g) * B^phi contravariant component [G cm].
     av_nabla_stor : float or array
         Flux surface average of |nabla s_tor| [1/cm].
 
