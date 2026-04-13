@@ -35,6 +35,8 @@ MODULE ntv_mod
   CHARACTER(len=100), PUBLIC :: in_file_pert
   !> toroidal mach number over R_major (Mt/R)
   REAL(kind=dp), PUBLIC :: MtOvR
+  !> ExB toroidal rotation frequency [rad/s], species-independent
+  REAL(kind=dp), PUBLIC :: Om_tE
   !> Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc) times B
   REAL(kind=dp), PUBLIC :: B_rho_L_loc
 
@@ -2032,6 +2034,7 @@ CONTAINS
        & Er, D33AX_spec_in, avEparB_ov_avb2_in)
 
     use nrtype
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -2303,11 +2306,11 @@ CONTAINS
     ! compute radial electric field
     Er = nom_Er / denom_Er
 
-    ! compute species Mach numbers
+    ! compute ExB rotation frequency and species Mach numbers
+    Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi)
     IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
     ALLOCATE(MtOvR_spec(0:num_spec-1))
-    MtOvR_spec = (c * Er / (aiota_loc * sqrtg_bctrvr_phi)) / &
-         SQRT(2.0_dp * T_spec / m_spec)
+    MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
 
     if (allocated(D33AX_spec)) deallocate(D33AX_spec)
   END SUBROUTINE compute_Er
@@ -2494,6 +2497,7 @@ CONTAINS
        D33AX_spec, Er, avEparB_ov_avb2)
 
     use nrtype
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -2835,11 +2839,11 @@ CONTAINS
          (denom_Epar_b*denom_Er_c - denom_Epar_d*denom_Er_a)
     Er = (nom_Er-denom_Epar_b*avEparB_ov_avb2)/denom_Er_a
 
-    ! compute species Mach numbers
+    ! compute ExB rotation frequency and species Mach numbers
+    Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi)
     IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
     ALLOCATE(MtOvR_spec(0:num_spec-1))
-    MtOvR_spec = (c * Er / (aiota_loc * sqrtg_bctrvr_phi)) / &
-         SQRT(2.0_dp * T_spec / m_spec)
+    MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
 
   END SUBROUTINE compute_Er_and_A3norm_a
 
