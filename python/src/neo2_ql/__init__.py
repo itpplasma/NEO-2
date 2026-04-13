@@ -17,3 +17,4 @@ from .plot_neo2_ql_input_profiles import get_neo2_ql_input_profiles
 from .plot_neo2_ql_input_profiles import make_figure_neo2_ql_input_profiles, add_profiles_to_axes
 from .write_profiles import write_profiles_to_dat_files
 from .get_fluxsurface_area import get_average_nabla_stor, get_fluxsurface_area
+from .compute_omte import compute_omte_diamagnetic
