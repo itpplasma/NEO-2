@@ -19,12 +19,15 @@ from neo2_ql.compute_omte import (
     E_CGS,
 )
 from neo2_ql.neo2_output_omte import (
+    compute_d31_reference_electron,
     decompose_neo2_er_transport_terms,
     compute_neo2_er_from_transport_coefficients,
+    compute_neo2_er_from_k_cof_transport_model,
     compute_neo2_omte_from_transport_coefficients,
     compute_omte_from_neo2_output,
 )
 from neo2_ql.plot_omte_reference import (
+    get_level2_k_scan_reference,
     get_omte_reference_models,
     get_transport_reference_decomposition,
 )
@@ -207,6 +210,34 @@ def test_toroidal_rotation_contribution():
 
     assert np.isclose(er, er_expected, rtol=1e-12)
     assert np.isclose(om_tE, om_expected, rtol=1e-12)
+
+
+def test_poloidal_rotation_pair_product_identity():
+    """Physical and Boozer b_phi must give the same v_theta * b_phi product.
+
+    The pair-product identity guarantees that the force balance contribution
+    -v_theta * B_phi / c is coordinate-independent: the metric factors in
+    v_theta and B_phi cancel exactly.
+    """
+    dT_ds = -1.0e-9
+    z = 1.0
+    av_nabla_stor = 0.02
+    k_i = -1.17
+    r0 = 170.0
+    b_phi_phys = -3.0e4
+    bcovar_phi = r0 * b_phi_phys
+
+    v_theta_phys = compute_poloidal_rotation_neoclassical(
+        dT_ds=dT_ds, z=z, b_phi=b_phi_phys, av_nabla_stor=av_nabla_stor, k_i=k_i,
+    )
+    v_theta_boozer = compute_poloidal_rotation_neoclassical(
+        dT_ds=dT_ds, z=z, b_phi=bcovar_phi, av_nabla_stor=av_nabla_stor, k_i=k_i,
+    )
+    er_pol_phys = -v_theta_phys * b_phi_phys / C_CGS
+    er_pol_boozer = -v_theta_boozer * bcovar_phi / C_CGS
+    assert np.isclose(er_pol_phys, er_pol_boozer, rtol=1e-12)
+    expected_er_pol = -k_i * dT_ds * av_nabla_stor / (z * E_CGS)
+    assert np.isclose(er_pol_phys, expected_er_pol, rtol=1e-12)
 
 
 def test_toroidal_rotation_neo2_convention_regression():
@@ -450,6 +481,127 @@ def test_transport_term_decomposition_matches_manual_formula():
     )
 
 
+def test_d31_reference_matches_stored_normalization_ratio():
+    """The electron D31 reference should match the stored raw/normalized ratio."""
+    with h5py.File(AXISYMMETRIC_OUTPUT_FIXTURE, 'r') as handle:
+        d31_ref = compute_d31_reference_electron(
+            T_e=float(np.asarray(handle['T_spec'])[0]),
+            z_e=float(np.asarray(handle['z_spec'])[0]),
+            aiota=float(np.asarray(handle['aiota'])),
+            sqrtg_bctrvr_phi=float(np.asarray(handle['sqrtg_bctrvr_phi'])),
+            bcovar_phi=float(np.asarray(handle['bcovar_phi'])),
+        )
+        stored_ratio = float(np.asarray(handle['D31_AX'])[0] / np.asarray(handle['D31_AX_D31ref'])[0])
+    assert np.isclose(d31_ref, stored_ratio, rtol=1e-5)
+
+
+def test_k_cof_transport_model_zero_d31_matches_exact_convention():
+    """Zero D31_hat must collapse to the no-transport exact-convention algebra."""
+    common = {
+        'n_spec': np.array([5.0e13, 2.0e13]),
+        'T_spec': np.array([8.0e-9, 3.0e-9]),
+        'dn_spec_ov_ds': np.array([-1.0e13, -2.0e13]),
+        'dT_spec_ov_ds': np.array([-1.0e-9, -3.0e-9]),
+        'species_tag': np.array([1, 2]),
+        'species_tag_vphi': 2,
+        'z_spec': np.array([-1.0, 1.0]),
+        'Vphi': 2.0e5,
+        'aiota': 0.6,
+        'sqrtg_bctrvr_phi': 9.0e5,
+        'av_nabla_stor': 0.02,
+        'bcovar_tht': -2.0e3,
+        'bcovar_phi': -4.0e4,
+    }
+    er_model = compute_neo2_er_from_k_cof_transport_model(
+        **common,
+        d31_hat=0.0,
+        k_cof=0.565,
+    )
+    _, er_exact = compute_omte_toroidal_rotation_neo2_convention(
+        n=common['n_spec'][1],
+        T=common['T_spec'][1],
+        dn_ds=common['dn_spec_ov_ds'][1],
+        dT_ds=common['dT_spec_ov_ds'][1],
+        z=common['z_spec'][1],
+        aiota=common['aiota'],
+        sqrtg_bctrvr_phi=common['sqrtg_bctrvr_phi'],
+        av_nabla_stor=common['av_nabla_stor'],
+        vphi=common['Vphi'],
+        bcovar_tht=common['bcovar_tht'],
+        bcovar_phi=common['bcovar_phi'],
+    )
+    assert np.isclose(er_model, er_exact, rtol=1e-12)
+
+
+def test_k_cof_transport_model_k_only_matters_with_temperature_gradient():
+    """Changing k_cof should have no effect when dT/ds vanishes."""
+    common = {
+        'n_spec': np.array([5.0e13, 2.0e13]),
+        'T_spec': np.array([8.0e-9, 3.0e-9]),
+        'dn_spec_ov_ds': np.array([-1.0e13, -2.0e13]),
+        'dT_spec_ov_ds': np.zeros(2),
+        'species_tag': np.array([1, 2]),
+        'species_tag_vphi': 2,
+        'z_spec': np.array([-1.0, 1.0]),
+        'Vphi': 2.0e5,
+        'aiota': 0.6,
+        'sqrtg_bctrvr_phi': 9.0e5,
+        'av_nabla_stor': 0.02,
+        'bcovar_tht': -2.0e3,
+        'bcovar_phi': -4.0e4,
+        'd31_hat': -1.0,
+    }
+    er_low_k = compute_neo2_er_from_k_cof_transport_model(**common, k_cof=0.2)
+    er_high_k = compute_neo2_er_from_k_cof_transport_model(**common, k_cof=1.4)
+    assert np.isclose(er_low_k, er_high_k, rtol=1e-12)
+
+
+def test_k_cof_transport_model_axisymmetric_fixture_regression():
+    """The minimal ion-ion transport model should strongly reduce the no-transport overshoot."""
+    with h5py.File(AXISYMMETRIC_OUTPUT_FIXTURE, 'r') as handle:
+        species_tag = np.asarray(handle['species_tag'])
+        species_tag_vphi = int(np.asarray(handle['species_tag_Vphi']).reshape(-1)[0])
+        ion_index = np.where(species_tag == species_tag_vphi)[0][0]
+        d31_hat = float(np.asarray(handle['D31_AX_D31ref'])[ion_index * species_tag.size + ion_index])
+        d32_hat = float(np.asarray(handle['D32_AX_D31ref'])[ion_index * species_tag.size + ion_index])
+        k_cof = 2.5 - d32_hat / d31_hat
+
+        er_model = compute_neo2_er_from_k_cof_transport_model(
+            n_spec=np.asarray(handle['n_spec']),
+            T_spec=np.asarray(handle['T_spec']),
+            dn_spec_ov_ds=np.asarray(handle['dn_spec_ov_ds']),
+            dT_spec_ov_ds=np.asarray(handle['dT_spec_ov_ds']),
+            species_tag=species_tag,
+            species_tag_vphi=species_tag_vphi,
+            z_spec=np.asarray(handle['z_spec']),
+            Vphi=float(np.asarray(handle['Vphi'])),
+            aiota=float(np.asarray(handle['aiota'])),
+            sqrtg_bctrvr_phi=float(np.asarray(handle['sqrtg_bctrvr_phi'])),
+            av_nabla_stor=float(np.asarray(handle['av_nabla_stor'])),
+            bcovar_tht=float(np.asarray(handle['bcovar_tht'])),
+            bcovar_phi=float(np.asarray(handle['bcovar_phi'])),
+            d31_hat=d31_hat,
+            k_cof=k_cof,
+        )
+        er_stored = float(np.asarray(handle['Er']))
+
+    _, er_no_transport = compute_omte_toroidal_rotation_neo2_convention(
+        n=float(np.asarray([2.13663262e+13, 2.13663262e+13])[1]),
+        T=float(np.asarray([2.49794945e-09, 2.54978413e-09])[1]),
+        dn_ds=float(np.asarray([-2.18434868e+13, -2.18434868e+13])[1]),
+        dT_ds=float(np.asarray([-3.10182216e-09, -1.81389942e-09])[1]),
+        z=1.0,
+        aiota=0.46411481338020744,
+        sqrtg_bctrvr_phi=898569.3223996271,
+        av_nabla_stor=0.02503408702076222,
+        vphi=22397.03710787831,
+        bcovar_tht=-122680.92474705892,
+        bcovar_phi=-2928048.8002521824,
+    )
+    assert np.isclose(er_model, 0.13877985508811017, rtol=1e-12)
+    assert abs(er_model - er_stored) < abs(er_no_transport - er_stored)
+
+
 def test_compute_omte_from_output_reads_stored_er():
     """Stored-output mode should return the exact stored Er curve."""
     with tempfile.NamedTemporaryFile(suffix='.h5') as tmp:
@@ -679,12 +831,13 @@ def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
     ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
     z_i = ref['species_def'][0, ion_idx, 0]
 
-    # The multispecies output stores scalar species state in n_spec/T_spec.
-    # The force-balance estimate must use the actual per-surface profile input.
-    assert not np.allclose(
+    # The rebuilt fixture now stores the exact run-local multispecies inputs
+    # from neo2.in, which should be consistent with the scalar state in the
+    # multispecies output.
+    assert np.allclose(
         ref['n_prof'][:, ion_idx], ref['n_spec'][:, ion_idx], rtol=0.0, atol=0.0
     )
-    assert not np.allclose(
+    assert np.allclose(
         ref['T_prof'][:, ion_idx], ref['T_spec'][:, ion_idx], rtol=0.0, atol=0.0
     )
 
@@ -701,8 +854,8 @@ def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
 
     # Regression values from verified computation (AUG #30835)
     # using the actual radial profile input consumed by the run
-    Er_expected = np.array([-0.20159416, -0.23357900])
-    Om_tE_expected = np.array([-14809.7343, -16736.3417])
+    Er_expected = np.array([-2.93232045, -4.35885986])
+    Om_tE_expected = np.array([-215417.3806, -312319.8873])
     assert np.allclose(Er_dia, Er_expected, rtol=1e-5), (
         f'Er regression: got {Er_dia}, expected {Er_expected}'
     )
@@ -725,13 +878,13 @@ def test_diamagnetic_vs_neo2_sign_and_order_of_magnitude():
     # terms (D31, D32, D33) that enter the full force balance.
     ratio = np.abs(Om_tE_dia / Om_tE_neo2)
     for i in range(len(ratio)):
-        assert 0.1 < ratio[i] < 1.0, (
+        assert 1.0 < ratio[i] < 10.0, (
             f'Unexpected ratio at s={ref["boozer_s"][i]:.4f}: '
             f'ratio={ratio[i]:.4f}'
         )
 
 
-def test_toroidal_rotation_from_neo2_component_pair_reduces_aug_reference_error():
+def test_toroidal_rotation_from_neo2_component_pair_regression():
     """Level 1 should accept the NEO-2 contravariant/covariant pair directly."""
     ref = np.load(FIXTURE)
 
@@ -762,8 +915,8 @@ def test_toroidal_rotation_from_neo2_component_pair_reduces_aug_reference_error(
         b_theta=ref['bcovar_tht'],
     )
 
-    er_expected = np.array([-1.06905889, -1.15607731])
-    om_expected = np.array([-78536.3915, -82834.9494])
+    er_expected = np.array([-3.14157553, -4.67126557])
+    om_expected = np.array([-230789.9101, -334704.2995])
     assert np.allclose(er_lvl1, er_expected, rtol=1e-5), (
         f'Level 1 Er regression: got {er_lvl1}, expected {er_expected}'
     )
@@ -771,68 +924,7 @@ def test_toroidal_rotation_from_neo2_component_pair_reduces_aug_reference_error(
         f'Level 1 Om_tE regression: got {om_lvl1}, expected {om_expected}'
     )
 
-    om_neo2 = C_CGS * ref['Er_neo2'] / (ref['aiota'] * ref['sqrtg_bctrvr_phi'])
-    dia_mae = np.mean(np.abs(om_dia - om_neo2))
-    lvl1_mae = np.mean(np.abs(om_lvl1 - om_neo2))
-    assert lvl1_mae < dia_mae, (
-        f'Expected Level 1 to improve MAE: level0={dia_mae}, level1={lvl1_mae}'
-    )
-
-
-def test_neoclassical_poloidal_with_neo2_component_pair_regression():
-    """Level 2 should accept NEO-2 covariant B components directly."""
-    ref = np.load(FIXTURE)
-
-    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
-    z_i = ref['species_def'][0, ion_idx, 0]
-
-    om_lvl2, er_lvl2 = compute_omte_neoclassical_poloidal(
-        n=ref['n_prof'][:, ion_idx],
-        T=ref['T_prof'][:, ion_idx],
-        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
-        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
-        z=z_i,
-        aiota=ref['aiota'],
-        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
-        av_nabla_stor=ref['av_nabla_stor'],
-        v_phi=ref['Vphi'],
-        b_theta=ref['bcovar_tht'],
-        b_phi=ref['bcovar_phi'],
-        k_i=-1.17,
-    )
-
-    er_expected = np.array([-1.20009711, -1.27113728])
-    om_expected = np.array([-88162.8664, -91079.1957])
-    assert np.allclose(er_lvl2, er_expected, rtol=1e-5)
-    assert np.allclose(om_lvl2, om_expected, rtol=1e-5)
-
-
-def test_neoclassical_poloidal_auto_k_with_neo2_component_pair_regression():
-    """Auto-K should reproduce the banana-regime result for low nu_star."""
-    ref = np.load(FIXTURE)
-
-    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
-    z_i = ref['species_def'][0, ion_idx, 0]
-    nu_star = np.array([0.05, 0.05])
-
-    om_lvl2, er_lvl2 = compute_omte_neoclassical_poloidal_auto_k(
-        n=ref['n_prof'][:, ion_idx],
-        T=ref['T_prof'][:, ion_idx],
-        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
-        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
-        z=z_i,
-        aiota=ref['aiota'],
-        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
-        av_nabla_stor=ref['av_nabla_stor'],
-        v_phi=ref['Vphi'],
-        b_theta=ref['bcovar_tht'],
-        b_phi=ref['bcovar_phi'],
-        nu_star=nu_star,
-    )
-    er_expected = np.array([-1.20009711, -1.27113728])
-    om_expected = np.array([-88162.8664, -91079.1957])
-    assert np.allclose(er_lvl2, er_expected, rtol=1e-5)
-    assert np.allclose(om_lvl2, om_expected, rtol=1e-5)
+    assert np.all(np.sign(om_dia) == np.sign(om_lvl1))
 
 
 def test_aug_reference_reduced_neo2_vphi_convention_regression():
@@ -853,25 +945,44 @@ def test_aug_reference_reduced_neo2_vphi_convention_regression():
         bcovar_tht=ref['bcovar_tht'],
         bcovar_phi=ref['bcovar_phi'],
     )
-    er_expected = np.array([232.59525273, 165.06607002])
-    om_expected = np.array([17087170.7154, 11827270.8903])
+    er_expected = np.array([53.22434201, 51.62016311])
+    om_expected = np.array([3910025.7094, 3698674.4302])
     assert np.allclose(er_exact, er_expected, rtol=1e-5)
     assert np.allclose(om_exact, om_expected, rtol=1e-5)
 
 
-def test_reference_plot_models_regression():
-    """The plotting helper should restore the reduced hierarchy curves."""
+def test_aug_reference_transport_replay_matches_stored_er():
+    """The rebuilt AUG fixture must replay the stored transport solution."""
     models = get_omte_reference_models(FIXTURE)
-    assert np.allclose(models['boozer_s'], np.array([0.25270707, 0.49841414]))
-    assert np.allclose(models['om_lvl0'], np.array([-14809.7343, -16736.3417]), rtol=1e-5)
-    assert np.allclose(models['om_lvl1'], np.array([-78536.3915, -82834.9494]), rtol=1e-5)
-    assert np.allclose(models['om_lvl2']['banana'], np.array([-88162.8664, -91079.1957]), rtol=1e-5)
-    assert np.allclose(models['om_lvl2']['plateau'], np.array([-82650.2697, -86358.1316]), rtol=1e-5)
-    assert np.allclose(models['om_lvl2']['pfirsch_schluter'], np.array([-74422.5133, -79311.7672]), rtol=1e-5)
-    assert np.allclose(models['om_exact'], np.array([17087170.7154, 11827270.8903]), rtol=1e-5)
-    assert np.allclose(models['er_dia'], np.array([-0.20159416, -0.23357900]), rtol=1e-5)
-    assert np.allclose(models['er_tor'], np.array([-0.86746473, -0.92249831]), rtol=1e-5)
-    assert np.allclose(models['er_pol'], np.array([-0.13103822, -0.11505996]), rtol=1e-5)
+    assert np.allclose(models['om_transport_replay'], models['om_neo2'], rtol=0.0, atol=1e-1)
+    assert np.allclose(models['er_transport_replay'], models['er_neo2'], rtol=0.0, atol=2e-6)
+
+
+def test_aug_reference_fixture_contains_full_geometry_fields():
+    """The AUG reference fixture should carry the extra geometry from source HDF5 files."""
+    ref = np.load(FIXTURE)
+    for name in [
+        'avbhat2',
+        'avb2',
+        'av_inv_bhat',
+        'av_gphph',
+        'D31ref0',
+        'avEparB_ov_avb2',
+        'D31_AX',
+        'D32_AX',
+        'D33_AX',
+        'D31_AX_D31ref',
+        'D32_AX_D31ref',
+        'D33_AX_norm',
+        'row_ind_spec',
+        'col_ind_spec',
+        'source_h5_paths',
+    ]:
+        assert name in ref.files
+
+    assert np.allclose(ref['avb2'], ref['avbhat2'] * ref['Bref'] ** 2, rtol=1e-12)
+    assert np.allclose(ref['Er_neo2'], ref['Er'], rtol=0.0, atol=0.0)
+    assert np.allclose(ref['sqrtg_bctrvr_phi'] / (1.0 / ref['aiota']), ref['sqrtg_bctrvr_tht'], rtol=1e-12)
 
 
 def test_transport_plot_decomposition_regression():

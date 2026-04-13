@@ -14,13 +14,90 @@ from .compute_omte import (
     compute_omte_toroidal_rotation,
     compute_omte_toroidal_rotation_neo2_convention,
 )
+from .neo2_output_omte import compute_neo2_omte_from_transport_coefficients
 from .neo2_output_omte import decompose_neo2_er_transport_terms
+from .neo2_output_omte import compute_neo2_omte_from_k_cof_transport_model
 
 
 FIXTURE = Path(__file__).resolve().parents[2] / 'test' / 'data' / 'omte_reference_aug30835.npz'
 TRANSPORT_FIXTURE = (
     Path(__file__).resolve().parents[2] / 'test' / 'data' / 'neo2_ql_axisymmetric_multispecies_out.h5'
 )
+LEVEL2_K_SWEEP_MIN = -2.5
+LEVEL2_K_SWEEP_MAX = 1.5
+LEVEL2_K_SWEEP_COUNT = 161
+LEVEL25_DEFAULT_D31_HAT = -1.0
+LEVEL25_DEFAULT_K_COF = 0.565
+
+
+def get_level2_k_scan_reference(
+    fixture=FIXTURE,
+    k_values=None,
+):
+    """Return a full-geometry Level 2 k sweep against the stored AUG fixture."""
+    ref = np.load(fixture)
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+
+    if k_values is None:
+        k_values = np.linspace(LEVEL2_K_SWEEP_MIN, LEVEL2_K_SWEEP_MAX, LEVEL2_K_SWEEP_COUNT)
+    else:
+        k_values = np.asarray(k_values, dtype=float)
+    if k_values.ndim != 1 or k_values.size == 0:
+        raise ValueError('k_values must be a non-empty 1D array')
+
+    om_scan = np.empty((k_values.size, ref['boozer_s'].size), dtype=float)
+    er_scan = np.empty_like(om_scan)
+    lvl2_common = {
+        'n': ref['n_prof'][:, ion_idx],
+        'T': ref['T_prof'][:, ion_idx],
+        'dn_ds': ref['dn_ov_ds_prof'][:, ion_idx],
+        'dT_ds': ref['dT_ov_ds_prof'][:, ion_idx],
+        'z': z_i,
+        'aiota': ref['aiota'],
+        'sqrtg_bctrvr_phi': ref['sqrtg_bctrvr_phi'],
+        'av_nabla_stor': ref['av_nabla_stor'],
+        'v_phi': ref['Vphi'],
+        'b_theta': ref['bcovar_tht'],
+        'b_phi': ref['bcovar_phi'],
+    }
+    for index, k_value in enumerate(k_values):
+        om_scan[index], er_scan[index] = compute_omte_neoclassical_poloidal(
+            **lvl2_common,
+            k_i=np.full_like(ref['boozer_s'], k_value, dtype=float),
+        )
+
+    om_neo2 = C_CGS * ref['Er_neo2'] / (ref['aiota'] * ref['sqrtg_bctrvr_phi'])
+    mae = np.mean(np.abs(om_scan - om_neo2), axis=1)
+    best_index = int(np.argmin(mae))
+    om_min = np.min(om_scan, axis=0)
+    om_max = np.max(om_scan, axis=0)
+    er_min = np.min(er_scan, axis=0)
+    er_max = np.max(er_scan, axis=0)
+    q = 1.0 / ref['aiota']
+    sqrtg_bctrvr_tht = ref['aiota'] * ref['sqrtg_bctrvr_phi']
+
+    return {
+        'boozer_s': ref['boozer_s'],
+        'k_values': k_values,
+        'om_scan': om_scan,
+        'er_scan': er_scan,
+        'om_neo2': om_neo2,
+        'om_min': om_min,
+        'om_max': om_max,
+        'er_min': er_min,
+        'er_max': er_max,
+        'best_k': float(k_values[best_index]),
+        'best_mae': float(mae[best_index]),
+        'om_best': om_scan[best_index],
+        'er_best': er_scan[best_index],
+        'neo2_inside_envelope': np.logical_and(om_neo2 >= om_min, om_neo2 <= om_max),
+        'q': q,
+        'sqrtg_bctrvr_tht': sqrtg_bctrvr_tht,
+        'psi_tor_prime_over_reff': np.asarray(ref['sqrtg_bctrvr_phi']),
+        'psi_pol_prime_over_reff': sqrtg_bctrvr_tht,
+        'psi_tor_prime_over_reff_ov_q': np.asarray(ref['sqrtg_bctrvr_phi']) / q,
+    }
 
 
 def get_omte_reference_models(fixture=FIXTURE):
@@ -51,6 +128,34 @@ def get_omte_reference_models(fixture=FIXTURE):
     }
 
     om_neo2 = C_CGS * ref['Er_neo2'] / (ref['aiota'] * ref['sqrtg_bctrvr_phi'])
+    om_transport_replay = np.empty_like(ref['boozer_s'], dtype=float)
+    er_transport_replay = np.empty_like(ref['boozer_s'], dtype=float)
+    for surface_index in range(ref['boozer_s'].size):
+        om_transport_replay[surface_index], er_transport_replay[surface_index] = (
+            compute_neo2_omte_from_transport_coefficients(
+                n_spec=ref['n_prof'][surface_index],
+                T_spec=ref['T_prof'][surface_index],
+                dn_spec_ov_ds=ref['dn_ov_ds_prof'][surface_index],
+                dT_spec_ov_ds=ref['dT_ov_ds_prof'][surface_index],
+                species_tag=ref['species_tag'],
+                species_tag_vphi=ref['species_tag_Vphi'],
+                z_spec=ref['z_spec'],
+                Vphi=ref['Vphi'][surface_index],
+                aiota=ref['aiota'][surface_index],
+                sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'][surface_index],
+                av_nabla_stor=ref['av_nabla_stor'][surface_index],
+                bcovar_tht=ref['bcovar_tht'][surface_index],
+                bcovar_phi=ref['bcovar_phi'][surface_index],
+                row_ind=ref['row_ind_spec'][surface_index],
+                col_ind=ref['col_ind_spec'][surface_index],
+                D31_AX=ref['D31_AX'][surface_index],
+                D32_AX=ref['D32_AX'][surface_index],
+                D33_AX=ref['D33_AX'][surface_index],
+                avEparB_ov_avb2=ref['avEparB_ov_avb2'][surface_index],
+                isw_Vphi_loc=0,
+            )
+        )
+    lvl2_k_sweep = get_level2_k_scan_reference(fixture=fixture)
     om_lvl0, er_dia = compute_omte_diamagnetic(**common)
     om_lvl1, er_lvl1 = compute_omte_toroidal_rotation(
         **common,
@@ -66,6 +171,27 @@ def get_omte_reference_models(fixture=FIXTURE):
         om, er = compute_omte_neoclassical_poloidal(**lvl2_common, k_i=k_arr)
         om_lvl2[regime] = om
         er_lvl2[regime] = er
+
+    om_lvl25 = np.empty_like(ref['boozer_s'], dtype=float)
+    er_lvl25 = np.empty_like(ref['boozer_s'], dtype=float)
+    for surface_index in range(ref['boozer_s'].size):
+        om_lvl25[surface_index], er_lvl25[surface_index] = compute_neo2_omte_from_k_cof_transport_model(
+            n_spec=ref['n_prof'][surface_index],
+            T_spec=ref['T_prof'][surface_index],
+            dn_spec_ov_ds=ref['dn_ov_ds_prof'][surface_index],
+            dT_spec_ov_ds=ref['dT_ov_ds_prof'][surface_index],
+            species_tag=ref['species_tag'],
+            species_tag_vphi=ref['species_tag_Vphi'],
+            z_spec=ref['z_spec'],
+            Vphi=ref['Vphi'][surface_index],
+            aiota=ref['aiota'][surface_index],
+            sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'][surface_index],
+            av_nabla_stor=ref['av_nabla_stor'][surface_index],
+            bcovar_tht=ref['bcovar_tht'][surface_index],
+            bcovar_phi=ref['bcovar_phi'][surface_index],
+            d31_hat=LEVEL25_DEFAULT_D31_HAT,
+            k_cof=LEVEL25_DEFAULT_K_COF,
+        )
 
     om_exact, _ = compute_omte_toroidal_rotation_neo2_convention(
         **common,
@@ -86,16 +212,25 @@ def get_omte_reference_models(fixture=FIXTURE):
     return {
         'boozer_s': ref['boozer_s'],
         'om_neo2': om_neo2,
+        'om_transport_replay': om_transport_replay,
         'om_lvl0': om_lvl0,
         'om_lvl1': om_lvl1,
         'om_lvl2': om_lvl2,
+        'lvl2_k_sweep': lvl2_k_sweep,
+        'om_lvl25': om_lvl25,
         'om_exact': om_exact,
         'er_neo2': np.asarray(ref['Er_neo2']),
+        'er_transport_replay': er_transport_replay,
         'er_dia': er_dia,
         'er_tor': er_tor,
         'er_pol': er_pol,
         'er_lvl1': er_lvl1,
         'er_lvl2': er_lvl2,
+        'er_lvl25': er_lvl25,
+        'lvl25_parameters': {
+            'd31_hat': LEVEL25_DEFAULT_D31_HAT,
+            'k_cof': LEVEL25_DEFAULT_K_COF,
+        },
     }
 
 
@@ -155,15 +290,99 @@ def _plot_transport_waterfall(axis, terms):
     axis.legend(ncol=4, fontsize=8)
 
 
+def get_aug_transport_reference_decomposition(fixture=FIXTURE):
+    """Return exact AUG transport-term decompositions for all stored surfaces."""
+    ref = np.load(fixture)
+    terms_by_surface = []
+    for surface_index in range(ref['boozer_s'].size):
+        terms = decompose_neo2_er_transport_terms(
+            n_spec=ref['n_prof'][surface_index],
+            T_spec=ref['T_prof'][surface_index],
+            dn_spec_ov_ds=ref['dn_ov_ds_prof'][surface_index],
+            dT_spec_ov_ds=ref['dT_ov_ds_prof'][surface_index],
+            species_tag=ref['species_tag'],
+            species_tag_vphi=ref['species_tag_Vphi'],
+            z_spec=ref['z_spec'],
+            Vphi=ref['Vphi'][surface_index],
+            aiota=ref['aiota'][surface_index],
+            sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'][surface_index],
+            av_nabla_stor=ref['av_nabla_stor'][surface_index],
+            bcovar_tht=ref['bcovar_tht'][surface_index],
+            bcovar_phi=ref['bcovar_phi'][surface_index],
+            row_ind=ref['row_ind_spec'][surface_index],
+            col_ind=ref['col_ind_spec'][surface_index],
+            D31_AX=ref['D31_AX'][surface_index],
+            D32_AX=ref['D32_AX'][surface_index],
+            D33_AX=ref['D33_AX'][surface_index],
+            avEparB_ov_avb2=ref['avEparB_ov_avb2'][surface_index],
+            isw_Vphi_loc=0,
+        )
+        terms['boozer_s'] = ref['boozer_s'][surface_index]
+        terms['er_stored'] = ref['Er_neo2'][surface_index]
+        terms_by_surface.append(terms)
+    return terms_by_surface
+
+
+def _plot_aug_transport_terms(axis, terms_by_surface):
+    labels = ['pressure', 'Vphi', 'D31', 'D32', 'D33', 'denom', 'total']
+    x = np.arange(len(labels))
+    width = 0.35
+    left = terms_by_surface[0]
+    right = terms_by_surface[1]
+    values_left = [
+        left['er_dia'], left['er_vphi'], left['er_d31'], left['er_d32'],
+        left['er_d33'], left['er_denom'], left['er_total'],
+    ]
+    values_right = [
+        right['er_dia'], right['er_vphi'], right['er_d31'], right['er_d32'],
+        right['er_d33'], right['er_denom'], right['er_total'],
+    ]
+    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', '0.2']
+    for index, (label, color) in enumerate(zip(labels, colors)):
+        axis.bar(x[index] - width / 2, values_left[index], width=width, color=color)
+        axis.bar(x[index] + width / 2, values_right[index], width=width, color=color)
+    axis.axhline(left['er_stored'], color='0.2', linewidth=1.0, linestyle='--')
+    axis.axhline(right['er_stored'], color='0.4', linewidth=1.0, linestyle=':')
+    axis.axhline(0.0, color='0.7', linewidth=1.0)
+    axis.set_xticks(x, labels)
+    axis.set_ylabel('Er [statV/cm]')
+    axis.set_title('AUG exact transport replay from the rebuilt fixture')
+    axis.text(
+        0.01,
+        0.98,
+        f's={left["boozer_s"]:.3f} dashed, s={right["boozer_s"]:.3f} dotted',
+        transform=axis.transAxes,
+        va='top',
+    )
+
+
 def make_figure_omte_reference(fixture=FIXTURE, transport_fixture=TRANSPORT_FIXTURE):
     """Create a three-panel figure for reduced curves and transport-term breakdown."""
     models = get_omte_reference_models(fixture=fixture)
-    transport_terms = get_transport_reference_decomposition(fixture=transport_fixture)
+    transport_terms = get_aug_transport_reference_decomposition(fixture=fixture)
     boozer_s = models['boozer_s']
+    lvl2_k_sweep = models['lvl2_k_sweep']
 
     fig, axes = plt.subplots(3, 1, figsize=(10, 12), constrained_layout=True)
 
+    axes[0].fill_between(
+        boozer_s,
+        lvl2_k_sweep['om_min'] / 1.0e3,
+        lvl2_k_sweep['om_max'] / 1.0e3,
+        color='0.88',
+        alpha=1.0,
+        label='Level 2 k envelope (no geom. corr.)',
+        zorder=0,
+    )
     axes[0].plot(boozer_s, models['om_neo2'] / 1.0e3, 'o-k', label='NEO-2')
+    axes[0].plot(
+        boozer_s,
+        models['om_transport_replay'] / 1.0e3,
+        '-k',
+        linewidth=1.0,
+        alpha=0.8,
+        label='Level 3a replay',
+    )
     axes[0].plot(boozer_s, models['om_lvl0'] / 1.0e3, 's--', color='tab:blue', label='Level 0')
     axes[0].plot(
         boozer_s,
@@ -185,6 +404,26 @@ def make_figure_omte_reference(fixture=FIXTURE, transport_fixture=TRANSPORT_FIXT
             color=color,
             label=f'Level 2 ({label})',
         )
+    axes[0].plot(
+        boozer_s,
+        lvl2_k_sweep['om_best'] / 1.0e3,
+        '--',
+        color='0.35',
+        linewidth=1.2,
+        label=f'Level 2 best k ({lvl2_k_sweep["best_k"]:.2f}, no geom. corr.)',
+    )
+    lvl25_params = models['lvl25_parameters']
+    axes[0].plot(
+        boozer_s,
+        models['om_lvl25'] / 1.0e3,
+        'x-',
+        color='tab:brown',
+        label=(
+            'Level 2.5 '
+            f'(D31hat={lvl25_params["d31_hat"]:.3g}, '
+            f'k={lvl25_params["k_cof"]:.3g})'
+        ),
+    )
     axes[0].axhline(0.0, color='0.7', linewidth=1.0)
     axes[0].set_ylabel('Omega_tE [krad/s]')
     axes[0].set_title('Reduced force-balance hierarchy')
@@ -208,7 +447,7 @@ def make_figure_omte_reference(fixture=FIXTURE, transport_fixture=TRANSPORT_FIXT
     axes[1].set_title('AUG common terms: what the reduced models actually contain')
     axes[1].legend()
 
-    _plot_transport_waterfall(axes[2], transport_terms)
+    _plot_aug_transport_terms(axes[2], transport_terms)
 
     return fig, axes, {'aug': models, 'transport': transport_terms}
 

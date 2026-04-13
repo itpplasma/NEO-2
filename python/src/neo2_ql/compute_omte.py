@@ -312,7 +312,8 @@ def compute_poloidal_rotation_neoclassical(dT_ds, z, b_phi, av_nabla_stor, k_i):
     physical poloidal velocity [cm/s]. If `b_phi` is the NEO-2 Boozer
     covariant component `bcovar_phi` [G cm], the return value is the
     matching contravariant poloidal angular frequency [rad/s]. In both cases
-    the product `v_theta * b_phi` entering force balance is identical.
+    the product `v_theta * b_phi` entering force balance is identical
+    (pair-product identity).
     """
     dT_ds = np.asarray(dT_ds)
     b_phi = np.asarray(b_phi)

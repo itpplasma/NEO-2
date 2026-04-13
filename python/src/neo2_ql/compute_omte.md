@@ -17,6 +17,12 @@ and a reference fixture extracted from an AUG #30835 NEO-2 run in
 GitHub tracking: umbrella issue
 [#75](https://github.com/itpplasma/NEO-2/issues/75).
 
+Current Level 2.5 status note:
+[compute_omte_level25_status.md](compute_omte_level25_status.md).
+That note documents the first transport-aware prototype, the relevant literature
+relation $k = 5/2 - D_{32}/D_{31}$, and why the present one-column closure is
+not yet an acceptable reduced model.
+
 
 ## Physics
 
@@ -232,6 +238,29 @@ The Python implementation is
 which uses
 [`compute_poloidal_rotation_neoclassical()`](compute_omte.py)
 with a manually selected coefficient `K_i`.
+
+When the full Boozer geometry is available, the implementation can also apply
+the tokamak geometry factor implied by the contravariant flow form,
+
+$$
+V^\vartheta \propto \frac{B_\varphi}{\sqrt{g}\,\langle B^2 \rangle}
+\frac{\mathrm{d}T_i}{\mathrm{d}r},
+$$
+
+which enters the force-balance contribution as
+
+$$
+E_r^{(\vartheta)} \propto
+-\frac{B_\varphi^2}{\sqrt{g} B^\vartheta \langle B^2 \rangle}
+\frac{K_i}{Z_i e}
+\frac{\mathrm{d}T_i}{\mathrm{d}r}.
+$$
+
+In code this corresponds to providing `av_b2` and `sqrtg_bctrvr_tht` to
+[`compute_poloidal_rotation_neoclassical()`](compute_omte.py). If those
+arguments are omitted, the helper falls back to the earlier large-aspect-ratio
+pair-product simplification.
+
 For convenience,
 [`compute_omte_neoclassical_poloidal_auto_k()`](compute_omte.py)
 selects `K_i` from a simple collisionality map:
@@ -480,16 +509,16 @@ which reruns a single-surface multispecies axisymmetric case and refreshes
 The Level 0 model is validated against full neoclassical NEO-2 output for
 ASDEX Upgrade shot #30835 (2 flux surfaces with `isw_calc_Er=1`).
 The comparison must use the actual per-surface profile input consumed by the
-run (`n_prof`, `T_prof`, `dn_ov_ds_prof`, `dT_ov_ds_prof`). The scalar
-species state written to `n_spec` and `T_spec` in the multispecies output is
-not the radial profile and produces the wrong Level 0 estimate.
+run. In the rebuilt reference fixture, those run-local inputs are taken
+directly from the original `neo2.in` files and therefore agree with the
+surface-local multispecies state stored in the output.
 
 | $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 0 $\Omega_{tE}$ | Ratio |
 |:-:|:-:|:-:|:-:|
-| 0.2527 | $-44.80\,\text{krad/s}$ | $-14.81\,\text{krad/s}$ | 0.33 |
-| 0.4984 | $-111.09\,\text{krad/s}$ | $-16.74\,\text{krad/s}$ | 0.15 |
+| 0.2527 | $-44.80\,\text{krad/s}$ | $-215.42\,\text{krad/s}$ | 4.81 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $-312.32\,\text{krad/s}$ | 2.81 |
 
-Level 0 **underestimates** $|\Omega_{tE}|$ because it omits the toroidal
+Level 0 **overestimates** $|\Omega_{tE}|$ because it omits the toroidal
 rotation and neoclassical transport terms that contribute in the full force
 balance. The sign is
 correct (negative $\Omega_{tE}$, corresponding to inward-pointing $E_r$).
@@ -501,34 +530,33 @@ curve:
 
 | $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 1 $\Omega_{tE}$ | Ratio |
 |:-:|:-:|:-:|:-:|
-| 0.2527 | $-44.80\,\text{krad/s}$ | $-78.54\,\text{krad/s}$ | 1.75 |
-| 0.4984 | $-111.09\,\text{krad/s}$ | $-82.83\,\text{krad/s}$ | 0.75 |
+| 0.2527 | $-44.80\,\text{krad/s}$ | $-230.79\,\text{krad/s}$ | 5.15 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $-334.70\,\text{krad/s}$ | 3.01 |
 
-For this AUG reference, Level 1 roughly halves the mean absolute
-error relative to Level 0, although it is still missing the poloidal-flow and
-transport terms from the full NEO-2 solve.
+For this rebuilt AUG reference, Level 1 still misses the dominant transport
+closure and therefore does not improve the curve by itself.
 
 Using the simple banana-regime Level 2 estimate with `K_i = -1.17`,
 or equivalently the auto-selected low-collisionality branch of
 [`compute_omte_neoclassical_poloidal_auto_k()`](compute_omte.py),
-does not visibly move the curve for this reference:
+remains far from the full transport result even when the Boozer geometry factor
+is included:
 
 | $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 2 $\Omega_{tE}$ | Ratio |
 |:-:|:-:|:-:|:-:|
-| 0.2527 | $-44.80\,\text{krad/s}$ | $-78.54\,\text{krad/s}$ | 1.75 |
-| 0.4984 | $-111.09\,\text{krad/s}$ | $-82.83\,\text{krad/s}$ | 0.75 |
+| 0.2527 | $-44.80\,\text{krad/s}$ | $-241.92\,\text{krad/s}$ | 5.40 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $-349.28\,\text{krad/s}$ | 3.14 |
 
-That near-overlap is expected from the simple analytic estimate because
-the `-v_\vartheta B_\varphi/c` contribution reduces to
-`-K_i (dT_i/dr)/(Z_i e c)` and is very small here compared to the toroidal
-rotation contribution.
+This is exactly why the rebuilt plot now also shows the exact Level 3a
+transport replay from the AUG fixture: the transport terms, not the simple
+force-balance correction alone, dominate the final cancellation.
 
 Applying the strict reduced `isw_Vphi_loc=0` algebra gives a very different
 curve:
 
 | $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Strict `Vphi` convention $\Omega_{tE}$ | Ratio |
 |:-:|:-:|:-:|:-:|
-| 0.2527 | $-44.80\,\text{krad/s}$ | $+17087.17\,\text{krad/s}$ | -381.47 |
+| 0.2527 | $-44.80\,\text{krad/s}$ | $+3910.03\,\text{krad/s}$ | -87.28 |
 | 0.4984 | $-111.09\,\text{krad/s}$ | $+11827.27\,\text{krad/s}$ | -106.46 |
 
 This is not a better reduced model.  It is a useful diagnostic because it

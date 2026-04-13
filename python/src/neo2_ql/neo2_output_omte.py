@@ -208,6 +208,128 @@ def compute_neo2_omte_from_transport_coefficients(**kwargs):
     return om_tE, er
 
 
+def _electron_species_index(z_spec):
+    z_spec = np.asarray(z_spec, dtype=float)
+    matches = np.where(z_spec < 0.0)[0]
+    if matches.size == 0:
+        raise ValueError('z_spec must contain at least one electron species')
+    return int(matches[0])
+
+
+def _normalize_z_spec(z_spec, num_species):
+    z_spec = np.asarray(z_spec, dtype=float)
+    if z_spec.ndim == 1:
+        return z_spec
+    if z_spec.ndim == 2 and z_spec.shape[1] == num_species:
+        if np.allclose(z_spec, z_spec[0], rtol=0.0, atol=0.0):
+            return z_spec[0]
+    raise ValueError('z_spec must be 1D or surface-invariant along the first axis')
+
+
+def compute_d31_reference_electron(T_e, z_e, aiota, sqrtg_bctrvr_phi, bcovar_phi):
+    """Return the D31 reference coefficient used for normalized transport entries.
+
+    This mirrors the effective reference scale written by the Fortran transport
+    pipeline: the stored normalized coefficients `D31_AX_D31ref` and
+    `D32_AX_D31ref` can be converted back to raw `D31_AX` and `D32_AX` by
+    multiplying with this factor.
+    """
+    if z_e == 0.0:
+        raise ValueError('z_e must be nonzero to compute D31 reference')
+    if aiota == 0.0:
+        raise ValueError('aiota must be nonzero to compute D31 reference')
+    if sqrtg_bctrvr_phi == 0.0:
+        raise ValueError('sqrtg_bctrvr_phi must be nonzero to compute D31 reference')
+    return C_CGS * T_e * bcovar_phi / (z_e * E_CGS * aiota * sqrtg_bctrvr_phi)
+
+
+def decompose_neo2_er_k_cof_transport_model(
+    n_spec,
+    T_spec,
+    dn_spec_ov_ds,
+    dT_spec_ov_ds,
+    species_tag,
+    species_tag_vphi,
+    z_spec,
+    Vphi,
+    aiota,
+    sqrtg_bctrvr_phi,
+    av_nabla_stor,
+    bcovar_tht,
+    bcovar_phi,
+    d31_hat,
+    k_cof,
+    transport_species_tag=None,
+    d33_ax=0.0,
+    avEparB_ov_avb2=0.0,
+):
+    """Evaluate a minimal Level 2.5 transport model on the exact `compute_Er()` algebra.
+
+    This is the smallest transport closure that still reuses the same numerator
+    and denominator decomposition as the full NEO-2 replay. It only models the
+    measured-ion row of the transport matrix:
+
+    - `D31_AX = d31_hat * D31_ref`
+    - `D32_AX = (2.5 - k_cof) * D31_AX`
+
+    The default column species is the measured-ion species itself, which gives a
+    compact ion-ion transport model. `k_cof` is taken as a direct user input so
+    it can be swept across collisionality regimes without computing it first.
+    """
+    species_tag = np.asarray(species_tag, dtype=int)
+    z_spec = _normalize_z_spec(z_spec, species_tag.size)
+    spec_i = _species_index_from_tag(species_tag, species_tag_vphi)
+    col_spec = spec_i
+    if transport_species_tag is not None:
+        col_spec = _species_index_from_tag(species_tag, transport_species_tag)
+
+    electron_index = _electron_species_index(z_spec)
+    d31_ref = compute_d31_reference_electron(
+        T_e=float(np.asarray(T_spec, dtype=float)[electron_index]),
+        z_e=float(z_spec[electron_index]),
+        aiota=float(aiota),
+        sqrtg_bctrvr_phi=float(sqrtg_bctrvr_phi),
+        bcovar_phi=float(bcovar_phi),
+    )
+    d31_ax = float(d31_hat) * d31_ref
+    d32_ax = (2.5 - float(k_cof)) * d31_ax
+
+    return decompose_neo2_er_transport_terms(
+        n_spec=n_spec,
+        T_spec=T_spec,
+        dn_spec_ov_ds=dn_spec_ov_ds,
+        dT_spec_ov_ds=dT_spec_ov_ds,
+        species_tag=species_tag,
+        species_tag_vphi=species_tag_vphi,
+        z_spec=z_spec,
+        Vphi=Vphi,
+        aiota=aiota,
+        sqrtg_bctrvr_phi=sqrtg_bctrvr_phi,
+        av_nabla_stor=av_nabla_stor,
+        bcovar_tht=bcovar_tht,
+        bcovar_phi=bcovar_phi,
+        row_ind=np.array([spec_i], dtype=int),
+        col_ind=np.array([col_spec], dtype=int),
+        D31_AX=np.array([d31_ax], dtype=float),
+        D32_AX=np.array([d32_ax], dtype=float),
+        D33_AX=np.array([float(d33_ax)], dtype=float),
+        avEparB_ov_avb2=avEparB_ov_avb2,
+        isw_Vphi_loc=0,
+    )
+
+
+def compute_neo2_er_from_k_cof_transport_model(**kwargs):
+    """Return `E_r` from the minimal `D31_hat` + `k_cof` transport model."""
+    return decompose_neo2_er_k_cof_transport_model(**kwargs)['er_total']
+
+
+def compute_neo2_omte_from_k_cof_transport_model(**kwargs):
+    """Return `Omega_tE` from the minimal `D31_hat` + `k_cof` transport model."""
+    er = compute_neo2_er_from_k_cof_transport_model(**kwargs)
+    om_tE = C_CGS * er / (kwargs['aiota'] * kwargs['sqrtg_bctrvr_phi'])
+    return om_tE, er
+
+
 def _dataset_or_none(handle, name):
     return None if name not in handle else np.asarray(handle[name])
 
