@@ -16,12 +16,15 @@ from .compute_omte import (
 )
 from .neo2_output_omte import compute_neo2_omte_from_transport_coefficients
 from .neo2_output_omte import decompose_neo2_er_transport_terms
+from .neo2_output_omte import compute_neo2_omte_from_k_cof_transport_model
 
 
 FIXTURE = Path(__file__).resolve().parents[2] / 'test' / 'data' / 'omte_reference_aug30835.npz'
 TRANSPORT_FIXTURE = (
     Path(__file__).resolve().parents[2] / 'test' / 'data' / 'neo2_ql_axisymmetric_multispecies_out.h5'
 )
+LEVEL25_DEFAULT_D31_HAT = -1.0
+LEVEL25_DEFAULT_K_COF = 0.565
 
 
 def get_omte_reference_models(fixture=FIXTURE):
@@ -90,6 +93,27 @@ def get_omte_reference_models(fixture=FIXTURE):
         k_i=np.full_like(ref['boozer_s'], 1.17, dtype=float),
     )
 
+    om_lvl25 = np.empty_like(ref['boozer_s'], dtype=float)
+    er_lvl25 = np.empty_like(ref['boozer_s'], dtype=float)
+    for surface_index in range(ref['boozer_s'].size):
+        om_lvl25[surface_index], er_lvl25[surface_index] = compute_neo2_omte_from_k_cof_transport_model(
+            n_spec=ref['n_prof'][surface_index],
+            T_spec=ref['T_prof'][surface_index],
+            dn_spec_ov_ds=ref['dn_ov_ds_prof'][surface_index],
+            dT_spec_ov_ds=ref['dT_ov_ds_prof'][surface_index],
+            species_tag=ref['species_tag'],
+            species_tag_vphi=ref['species_tag_Vphi'],
+            z_spec=ref['z_spec'],
+            Vphi=ref['Vphi'][surface_index],
+            aiota=ref['aiota'][surface_index],
+            sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'][surface_index],
+            av_nabla_stor=ref['av_nabla_stor'][surface_index],
+            bcovar_tht=ref['bcovar_tht'][surface_index],
+            bcovar_phi=ref['bcovar_phi'][surface_index],
+            d31_hat=LEVEL25_DEFAULT_D31_HAT,
+            k_cof=LEVEL25_DEFAULT_K_COF,
+        )
+
     om_exact, _ = compute_omte_toroidal_rotation_neo2_convention(
         **common,
         vphi=ref['Vphi'],
@@ -113,6 +137,7 @@ def get_omte_reference_models(fixture=FIXTURE):
         'om_lvl0': om_lvl0,
         'om_lvl1': om_lvl1,
         'om_lvl2_banana': om_lvl2_banana,
+        'om_lvl25': om_lvl25,
         'om_exact': om_exact,
         'er_neo2': np.asarray(ref['Er_neo2']),
         'er_transport_replay': er_transport_replay,
@@ -121,6 +146,11 @@ def get_omte_reference_models(fixture=FIXTURE):
         'er_pol': er_pol,
         'er_lvl1': er_lvl1,
         'er_lvl2_banana': er_lvl2_banana,
+        'er_lvl25': er_lvl25,
+        'lvl25_parameters': {
+            'd31_hat': LEVEL25_DEFAULT_D31_HAT,
+            'k_cof': LEVEL25_DEFAULT_K_COF,
+        },
     }
 
 
@@ -277,6 +307,18 @@ def make_figure_omte_reference(fixture=FIXTURE, transport_fixture=TRANSPORT_FIXT
         '^-',
         color='tab:green',
         label='Level 2 banana (k=+1.17)',
+    )
+    lvl25_params = models['lvl25_parameters']
+    axes[0].plot(
+        boozer_s,
+        models['om_lvl25'] / 1.0e3,
+        'x-',
+        color='tab:brown',
+        label=(
+            'Level 2.5 '
+            f'(D31hat={lvl25_params["d31_hat"]:.3g}, '
+            f'k={lvl25_params["k_cof"]:.3g})'
+        ),
     )
     axes[0].axhline(0.0, color='0.7', linewidth=1.0)
     axes[0].set_ylabel('Omega_tE [krad/s]')

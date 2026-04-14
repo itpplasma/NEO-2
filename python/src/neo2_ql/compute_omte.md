@@ -17,11 +17,11 @@ and a reference fixture extracted from an AUG #30835 NEO-2 run in
 GitHub tracking: umbrella issue
 [#75](https://github.com/itpplasma/NEO-2/issues/75).
 
-The experimental hierarchy documented here now stops at `Level 2` for reduced
-models and `Level 3` for exact replay from NEO-2 output. A previous one-column
-transport prototype was removed because it compressed the full multi-species
-transport closure into a single `k = 5/2 - D_{32}/D_{31}` input, which is not
-a faithful reduced model.
+Current Level 2.5 status note:
+[compute_omte_level25_status.md](compute_omte_level25_status.md).
+That note documents the first transport-aware prototype, the relevant literature
+relation $k = 5/2 - D_{32}/D_{31}$, and why the present one-column closure is
+not yet an acceptable reduced model.
 
 
 ## Physics
@@ -229,7 +229,7 @@ where $K_i$ depends on the collisionality regime:
 
 | Regime | $\nu^*$ range | $K_i$ |
 |--------|--------------|-------|
-| Banana | $\nu^* \ll 1$ | $+1.17$ |
+| Banana | $\nu^* \ll 1$ | $-1.17$ |
 | Plateau | $\nu^* \sim 1$ | $\approx -0.5$ |
 | Pfirsch--Schluter | $\nu^* \gg 1$ | $\approx +0.5$ |
 
@@ -267,7 +267,7 @@ selects `K_i` from a simple collisionality map:
 
 | Regime | $\nu^*$ range | $K_i$ |
 |--------|--------------|-------|
-| Banana | $\nu^* < 0.1$ | $+1.17$ |
+| Banana | $\nu^* < 0.1$ | $-1.17$ |
 | Plateau | $0.1 \le \nu^* < 10$ | $-0.5$ |
 | Pfirsch--Schluter | $\nu^* \ge 10$ | $+0.5$ |
 
@@ -359,42 +359,6 @@ The second path mirrors the Fortran `compute_Er()` algebra directly and is the
 right bridge between the reduced Python models and the full NEO-2 solve.
 It is not a reduced model.  It is an exact reconstruction path from NEO-2
 output data.
-
-### Level 2.8: Analytic transport-aware reduced model
-
-The next acceptable reduced model is not another scalar-$k$ closure. The exact
-replay and dense benchmark decomposition show that the final $E_r$ is a small
-residual of several large terms:
-
-- pressure gradient
-- measured $V^\varphi B_\vartheta$
-- $D_{31}$ transport drive
-- $D_{32}$ transport drive
-- denominator correction from the same transport row
-
-For the present axisymmetric benchmark, $D_{31}$ and $D_{32}$ are both large
-and largely cancel each other, while the denominator correction becomes
-important near the edge. This is exactly the regime where a banana-only
-$K_i\,\mathrm{d}T_i/\mathrm{d}r$ closure can keep the sign right but still miss
-the full curve.
-
-`Level 2.8` should therefore keep the exact replay algebraic structure but
-replace the stored transport coefficients by analytic arbitrary-collisionality
-tokamak formulas. The intended literature basis is the axisymmetric
-neoclassical transport family used by Houlberg/NCLASS and Sauter/Angioni,
-which provides analytic or fitted expressions for bootstrap/parallel-flow
-response over arbitrary collisionality and aspect ratio [7-10].
-
-The resulting model should:
-
-- stay axisymmetric-tokamak only in its first implementation
-- use the same profile and Boozer-geometry inputs already available in the
-  Python path
-- expose a term decomposition with the same names as the exact replay
-- keep `D33` optional and omit it in the first version unless a benchmark
-  check shows it matters
-- target the correct sign structure and radius dependence, not exact Level 3
-  parity
 
 
 ## Coordinate system and units
@@ -572,20 +536,20 @@ curve:
 For this rebuilt AUG reference, Level 1 still misses the dominant transport
 closure and therefore does not improve the curve by itself.
 
-Using the simple banana-regime Level 2 estimate with `K_i = +1.17`,
+Using the simple banana-regime Level 2 estimate with `K_i = -1.17`,
 or equivalently the auto-selected low-collisionality branch of
 [`compute_omte_neoclassical_poloidal_auto_k()`](compute_omte.py),
-gets much closer to the stored NEO-2 points and keeps the correct sign, but it
-still misses the transport-driven cancellation:
+remains far from the full transport result even when the Boozer geometry factor
+is included:
 
 | $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 2 $\Omega_{tE}$ | Ratio |
 |:-:|:-:|:-:|:-:|
-| 0.2527 | $-44.80\,\text{krad/s}$ | $-61.38\,\text{krad/s}$ | 1.37 |
-| 0.4984 | $-111.09\,\text{krad/s}$ | $-89.09\,\text{krad/s}$ | 0.80 |
+| 0.2527 | $-44.80\,\text{krad/s}$ | $-241.92\,\text{krad/s}$ | 5.40 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $-349.28\,\text{krad/s}$ | 3.14 |
 
 This is exactly why the rebuilt plot now also shows the exact Level 3a
 transport replay from the AUG fixture: the transport terms, not the simple
-banana correction alone, dominate the final cancellation.
+force-balance correction alone, dominate the final cancellation.
 
 Applying the strict reduced `isw_Vphi_loc=0` algebra gives a very different
 curve:
@@ -593,7 +557,7 @@ curve:
 | $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Strict `Vphi` convention $\Omega_{tE}$ | Ratio |
 |:-:|:-:|:-:|:-:|
 | 0.2527 | $-44.80\,\text{krad/s}$ | $+3910.03\,\text{krad/s}$ | -87.28 |
-| 0.4984 | $-111.09\,\text{krad/s}$ | $+3698.67\,\text{krad/s}$ | -33.30 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $+11827.27\,\text{krad/s}$ | -106.46 |
 
 This is not a better reduced model.  It is a useful diagnostic because it
 shows that the bare `Vphi` term in the Fortran algebra is not sufficient by
@@ -676,25 +640,3 @@ Chapter 12: Radial electric field and rotation.
 magnetic field perturbations in a tokamak,"
 *Phys. Plasmas* **21**, 092506 (2014).
 [doi:10.1063/1.4894479](https://doi.org/10.1063/1.4894479)
-
-[7] P. Helander, T. Fülöp, and P. J. Catto,
-"Controlling edge plasma rotation through poloidally localized refueling,"
-*Phys. Plasmas* **10**, 4396 (2003).
-[doi:10.1063/1.1616014](https://doi.org/10.1063/1.1616014)
-
-[8] W. A. Houlberg, K. C. Shaing, S. P. Hirshman, and M. C. Zarnstorff,
-"Bootstrap current and neoclassical transport in tokamaks of arbitrary collisionality and aspect ratio,"
-*Phys. Plasmas* **4**, 3230 (1997).
-[doi:10.1063/1.872422](https://doi.org/10.1063/1.872422)
-
-[9] W. A. Houlberg,
-NCLASS documentation and driver notes.
-NCLASS calculates multi-species neoclassical transport, rotation velocities,
-and radial electric field for axisymmetric plasmas of arbitrary geometry and
-collisionality.
-[https://w3.pppl.gov/ntcc/NCLASS/nclass_pt_info.html](https://w3.pppl.gov/ntcc/NCLASS/nclass_pt_info.html)
-
-[10] C. Angioni, R. Iacono, L. Marrelli, A. G. Peeters, and H. Weisen,
-"Neoclassical transport coefficients for general axisymmetric equilibria and arbitrary collisionality regime,"
-*Phys. Plasmas* **7**, 3162 (2000).
-[PDF](https://crppwww.epfl.ch/~sauter/neoclassical/AngioniPoP2000.pdf)

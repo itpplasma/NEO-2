@@ -22,10 +22,12 @@ from neo2_ql.neo2_output_omte import (
     compute_d31_reference_electron,
     decompose_neo2_er_transport_terms,
     compute_neo2_er_from_transport_coefficients,
+    compute_neo2_er_from_k_cof_transport_model,
     compute_neo2_omte_from_transport_coefficients,
     compute_omte_from_neo2_output,
 )
 from neo2_ql.plot_omte_reference import (
+    get_level2_k_scan_reference,
     get_omte_reference_models,
     get_transport_reference_decomposition,
 )
@@ -220,7 +222,7 @@ def test_poloidal_rotation_pair_product_identity():
     dT_ds = -1.0e-9
     z = 1.0
     av_nabla_stor = 0.02
-    k_i = 1.17
+    k_i = -1.17
     r0 = 170.0
     b_phi_phys = -3.0e4
     bcovar_phi = r0 * b_phi_phys
@@ -295,9 +297,9 @@ def test_neoclassical_poloidal_rotation_formula():
         z=1.0,
         b_phi=-2e4,
         av_nabla_stor=0.02,
-        k_i=1.17,
+        k_i=-1.17,
     )
-    expected = 1.17 * C_CGS * (-2e-9 * 0.02) / (E_CGS * -2e4)
+    expected = -1.17 * C_CGS * (-2e-9 * 0.02) / (E_CGS * -2e4)
     assert np.isclose(v_theta, expected, rtol=1e-12)
 
 
@@ -306,7 +308,7 @@ def test_neoclassical_poloidal_rotation_preserves_force_balance_product():
     dT_ds = -2e-9
     z = 1.0
     av_nabla_stor = 0.02
-    k_i = 1.17
+    k_i = -1.17
     r0 = 170.0
     b_phi_phys = -2e4
     bcovar_phi = r0 * b_phi_phys
@@ -333,7 +335,7 @@ def test_select_poloidal_rotation_coefficient():
     """Auto-K selection should follow the simple regime map."""
     nu_star = np.array([0.01, 1.0, 100.0])
     k_i = select_poloidal_rotation_coefficient(nu_star)
-    assert np.allclose(k_i, np.array([1.17, -0.5, 0.5]))
+    assert np.allclose(k_i, np.array([-1.17, -0.5, 0.5]))
 
 
 def test_transport_reconstruction_reduces_to_exact_convention_without_transport_terms():
@@ -491,6 +493,113 @@ def test_d31_reference_matches_stored_normalization_ratio():
         )
         stored_ratio = float(np.asarray(handle['D31_AX'])[0] / np.asarray(handle['D31_AX_D31ref'])[0])
     assert np.isclose(d31_ref, stored_ratio, rtol=1e-5)
+
+
+def test_k_cof_transport_model_zero_d31_matches_exact_convention():
+    """Zero D31_hat must collapse to the no-transport exact-convention algebra."""
+    common = {
+        'n_spec': np.array([5.0e13, 2.0e13]),
+        'T_spec': np.array([8.0e-9, 3.0e-9]),
+        'dn_spec_ov_ds': np.array([-1.0e13, -2.0e13]),
+        'dT_spec_ov_ds': np.array([-1.0e-9, -3.0e-9]),
+        'species_tag': np.array([1, 2]),
+        'species_tag_vphi': 2,
+        'z_spec': np.array([-1.0, 1.0]),
+        'Vphi': 2.0e5,
+        'aiota': 0.6,
+        'sqrtg_bctrvr_phi': 9.0e5,
+        'av_nabla_stor': 0.02,
+        'bcovar_tht': -2.0e3,
+        'bcovar_phi': -4.0e4,
+    }
+    er_model = compute_neo2_er_from_k_cof_transport_model(
+        **common,
+        d31_hat=0.0,
+        k_cof=0.565,
+    )
+    _, er_exact = compute_omte_toroidal_rotation_neo2_convention(
+        n=common['n_spec'][1],
+        T=common['T_spec'][1],
+        dn_ds=common['dn_spec_ov_ds'][1],
+        dT_ds=common['dT_spec_ov_ds'][1],
+        z=common['z_spec'][1],
+        aiota=common['aiota'],
+        sqrtg_bctrvr_phi=common['sqrtg_bctrvr_phi'],
+        av_nabla_stor=common['av_nabla_stor'],
+        vphi=common['Vphi'],
+        bcovar_tht=common['bcovar_tht'],
+        bcovar_phi=common['bcovar_phi'],
+    )
+    assert np.isclose(er_model, er_exact, rtol=1e-12)
+
+
+def test_k_cof_transport_model_k_only_matters_with_temperature_gradient():
+    """Changing k_cof should have no effect when dT/ds vanishes."""
+    common = {
+        'n_spec': np.array([5.0e13, 2.0e13]),
+        'T_spec': np.array([8.0e-9, 3.0e-9]),
+        'dn_spec_ov_ds': np.array([-1.0e13, -2.0e13]),
+        'dT_spec_ov_ds': np.zeros(2),
+        'species_tag': np.array([1, 2]),
+        'species_tag_vphi': 2,
+        'z_spec': np.array([-1.0, 1.0]),
+        'Vphi': 2.0e5,
+        'aiota': 0.6,
+        'sqrtg_bctrvr_phi': 9.0e5,
+        'av_nabla_stor': 0.02,
+        'bcovar_tht': -2.0e3,
+        'bcovar_phi': -4.0e4,
+        'd31_hat': -1.0,
+    }
+    er_low_k = compute_neo2_er_from_k_cof_transport_model(**common, k_cof=0.2)
+    er_high_k = compute_neo2_er_from_k_cof_transport_model(**common, k_cof=1.4)
+    assert np.isclose(er_low_k, er_high_k, rtol=1e-12)
+
+
+def test_k_cof_transport_model_axisymmetric_fixture_regression():
+    """The minimal ion-ion transport model should strongly reduce the no-transport overshoot."""
+    with h5py.File(AXISYMMETRIC_OUTPUT_FIXTURE, 'r') as handle:
+        species_tag = np.asarray(handle['species_tag'])
+        species_tag_vphi = int(np.asarray(handle['species_tag_Vphi']).reshape(-1)[0])
+        ion_index = np.where(species_tag == species_tag_vphi)[0][0]
+        d31_hat = float(np.asarray(handle['D31_AX_D31ref'])[ion_index * species_tag.size + ion_index])
+        d32_hat = float(np.asarray(handle['D32_AX_D31ref'])[ion_index * species_tag.size + ion_index])
+        k_cof = 2.5 - d32_hat / d31_hat
+
+        er_model = compute_neo2_er_from_k_cof_transport_model(
+            n_spec=np.asarray(handle['n_spec']),
+            T_spec=np.asarray(handle['T_spec']),
+            dn_spec_ov_ds=np.asarray(handle['dn_spec_ov_ds']),
+            dT_spec_ov_ds=np.asarray(handle['dT_spec_ov_ds']),
+            species_tag=species_tag,
+            species_tag_vphi=species_tag_vphi,
+            z_spec=np.asarray(handle['z_spec']),
+            Vphi=float(np.asarray(handle['Vphi'])),
+            aiota=float(np.asarray(handle['aiota'])),
+            sqrtg_bctrvr_phi=float(np.asarray(handle['sqrtg_bctrvr_phi'])),
+            av_nabla_stor=float(np.asarray(handle['av_nabla_stor'])),
+            bcovar_tht=float(np.asarray(handle['bcovar_tht'])),
+            bcovar_phi=float(np.asarray(handle['bcovar_phi'])),
+            d31_hat=d31_hat,
+            k_cof=k_cof,
+        )
+        er_stored = float(np.asarray(handle['Er']))
+
+    _, er_no_transport = compute_omte_toroidal_rotation_neo2_convention(
+        n=float(np.asarray([2.13663262e+13, 2.13663262e+13])[1]),
+        T=float(np.asarray([2.49794945e-09, 2.54978413e-09])[1]),
+        dn_ds=float(np.asarray([-2.18434868e+13, -2.18434868e+13])[1]),
+        dT_ds=float(np.asarray([-3.10182216e-09, -1.81389942e-09])[1]),
+        z=1.0,
+        aiota=0.46411481338020744,
+        sqrtg_bctrvr_phi=898569.3223996271,
+        av_nabla_stor=0.02503408702076222,
+        vphi=22397.03710787831,
+        bcovar_tht=-122680.92474705892,
+        bcovar_phi=-2928048.8002521824,
+    )
+    assert np.isclose(er_model, 0.13877985508811017, rtol=1e-12)
+    assert abs(er_model - er_stored) < abs(er_no_transport - er_stored)
 
 
 def test_compute_omte_from_output_reads_stored_er():
