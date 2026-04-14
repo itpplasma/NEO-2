@@ -23,6 +23,33 @@ That note documents the first transport-aware prototype, the relevant literature
 relation $k = 5/2 - D_{32}/D_{31}$, and why the present one-column closure is
 not yet an acceptable reduced model.
 
+## Current verdict
+
+The AUG 30835 benchmark now supports four distinct statements that should not
+be mixed:
+
+1. **Full NEO-2 `compute_Er()` is the transport-closure reference.**
+   It solves for `Er` from the multispecies closure after `Vphi`,
+   `species_tag_Vphi`, profiles, and geometry have been selected.
+2. **The reduced single-ion NEO-2 formula is internally consistent.**
+   On the benchmark it tracks the full NEO-2 result rather well, so the
+   remaining discrepancy is not a self-consistency failure of the reduced
+   NEO-2 algebra.
+3. **The canonical experimental-style check is now the direct pair
+   force-balance evaluator.**
+   It starts from the Boozer pair expression and rewrites the same toroidal and
+   poloidal products into local physical `vtor`/`vpol` pairs without changing
+   `Er`.
+4. **GACODE `vgen er_method=2` is an inverse local fit, not the reduced NEO-2
+   formula.**
+   It should therefore be compared as a separate GA-local model, not treated as
+   a surrogate for the reduced single-ion reference.
+
+The benchmark also showed that GACODE `vgen er_method=1` is not currently a
+usable external force-balance check, because the present `vgen` workflow wipes
+the working `vtor` and `vpol` arrays during initialization before the
+`er_method=1` branch evaluates `Er`.
+
 
 ## Physics
 
@@ -53,8 +80,11 @@ E_r = \frac{1}{Z_a e\, n_a}\, \frac{\mathrm{d}p_a}{\mathrm{d}r}
 $$
 
 Since $E_r$ is species-independent, any single species suffices.  In practice
-the main ion species is used because its profiles (from CXRS) are best
-characterised.
+the local force-balance formula is often evaluated with whichever species is
+actually measured. In AUG CXRS workflows that is frequently an impurity species
+for toroidal rotation and, in the edge system, also for poloidal rotation.
+NEO-2 mirrors that choice through `species_tag_Vphi`, which selects which
+species owns the measured rotation input inside `compute_Er()`.
 
 This is the standard form given in Ida & Fujita [2] eq. (1), Kim, Diamond &
 Groebner [3] eq. (1), and Viezzer et al. [4] eq. (1).
@@ -388,6 +418,14 @@ measured toroidal flow. That remaining gap is therefore a real closure
 difference, not a `k`-coefficient mismatch and not the deleted bookkeeping bug
 from the legacy `out.neo.theory*` path.
 
+The one-line rule for future work is:
+
+- compare **NEO-2 reduced/full** against the direct pair-force-balance
+  evaluator when checking analytic force balance,
+- compare **GA `vgen(2)`** only as an inverse GA-local model,
+- and do not use **GA `vgen(1)`** until the measured `vtor`/`vpol` inputs are
+  preserved through initialization.
+
 ### Verdict and improvement path
 
 The clean verdict is:
@@ -629,6 +667,13 @@ Finally, `write_multispec_output_a()` in
 writes `T_spec` and `n_spec` back to `neo2_multispecies_out.h5`.
 Those fields are therefore solver state for a completed single-surface run,
 not replacements for the original radial profile arrays.
+
+The species selector written alongside those fields matters physically.
+`species_tag_Vphi` identifies which species the measured rotation input belongs
+to. Changing it changes the active species index used in `compute_Er()`, and
+therefore changes the charge, density, temperature, gradients, and transport
+row that enter the force-balance solve. Using impurity rotation instead of
+main-ion rotation is therefore a real physics mode, not a bookkeeping flag.
 
 The same output writer now also stores the active reconstruction inputs
 `dn_spec_ov_ds`, `dT_spec_ov_ds`, `species_tag_Vphi`, `isw_Vphi_loc`, and
