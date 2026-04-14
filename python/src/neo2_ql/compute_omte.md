@@ -398,14 +398,15 @@ The clean verdict is:
 - therefore the remaining mismatch is on the GA/local-closure side, not inside
   the reduced single-ion NEO-2 algebra.
 
-This also gives a concrete improvement path.
+This also gave a concrete improvement path, which is now implemented in the
+AUG benchmark as `ga_local_reduced_formula_audit.py`.
 
 If the goal is to compare GACODE against the reduced single-ion NEO-2 formula,
 the right next step is **not** to iterate `vgen er_method=2` harder. The right
-step is to implement a direct GA-local evaluator of the reduced formula on the
-same profiles and on the same local GACODE geometry inputs (`q`, `bp0`, `bt0`,
-`bunit`, `grad_r0`, `rmaj`, `rmin`, and the mapped `Vphi` profile). That would
-create a new explicit comparison object:
+step is to evaluate a direct GA-local reduced force-balance model on the same
+profiles and on the same local GACODE geometry inputs (`bp0`, `bt0`, `rmaj`,
+`rmin`, and the mapped `Vphi` profile). That creates a new explicit comparison
+object:
 
 1. reduced single-ion NEO-2 on Boozer inputs,
 2. reduced single-ion analogue on local GACODE inputs,
@@ -414,8 +415,16 @@ create a new explicit comparison object:
 
 With that split, the remaining disagreement can be assigned cleanly to either
 geometry mapping, variable definition (`Vphi` versus `w0`), or the local GA
-inverse-fit closure. Without that direct evaluator, `vgen er_method=2` should
-never again be treated as if it were the reduced single-ion Kasilov formula.
+inverse-fit closure. The benchmark now does exactly that, so `vgen er_method=2`
+should never again be treated as if it were the reduced single-ion Kasilov
+formula.
+
+For the AUG 30835 benchmark, the implemented split shows that the mismatch is
+not dominated by a single effect. The direct GA-local reduced evaluator already
+moves the reduced single-ion curve upward substantially relative to the Boozer
+formula, and the remaining `vgen er_method=2` shift is of comparable size in
+the core window. So the residual GA-versus-NEO-2 disagreement is now cleanly
+partitioned between geometry/variable mapping and the GA inverse-fit closure.
 
 ### Auxiliary model: Strict NEO-2 `Vphi` convention (not a reduced model)
 
