@@ -71,11 +71,12 @@ jobs:
         id: data
         env:
           GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
+          NEO2_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -e
 
           TEMP_DIR=$(mktemp -d)
-          cd $TEMP_DIR 
+          cd $TEMP_DIR
 
           if [ ! -d "data" ]; then
             echo "Fetching test data..."
@@ -83,8 +84,19 @@ jobs:
           fi
 
           cd data
+          git fetch origin
+          if git ls-remote --exit-code --heads origin "$NEO2_BRANCH" > /dev/null; then
+            echo "Checking out data branch $NEO2_BRANCH"
+            git checkout "$NEO2_BRANCH"
+          else
+            echo "Branch '$NEO2_BRANCH' not found in data, using main"
+          fi
+          git lfs version || echo "git-lfs not installed"
+          git lfs pull --include="TESTS/NEO-2/golden_record/transport_k/" 2>&1
+          echo "Fixture content:"
+          head -1 TESTS/NEO-2/golden_record/transport_k/aug_30835_sauter_reference.json || echo "fixture file not found"
           echo "data_dir=$(pwd)" >> $GITHUB_OUTPUT
-          
+
       - name: Install libneo python required by NEO-2 python
         run: pip install git+https://github.com/itpplasma/libneo.git
 
@@ -93,6 +105,11 @@ jobs:
           cd python
           pip install -e .
 
+
+      - name: Run transport k regression test
+        env:
+          NEO2_DATA_DIR: ${{ steps.data.outputs.data_dir }}
+        run: python3 python/test/test_transport_k.py
 
       - name: Build NEO-2 (current version)
         id: build
@@ -137,19 +154,9 @@ jobs:
         run: |
           set -e
 
-          NEO2_BRANCH=${{ github.head_ref || github.ref_name }}
           TEST_DIR=TESTS/NEO-2/golden_record/
 
           cd ${{ steps.data.outputs.data_dir }}
-
-          git fetch origin
-          if git ls-remote --exit-code --heads origin "$NEO2_BRANCH" > /dev/null; then
-            echo "Checking out $NEO2_BRANCH"
-            git checkout "$NEO2_BRANCH"
-          else
-            echo "Branch '$NEO2_BRANCH' not found in data. Falling back to main"
-            git checkout main
-          fi
 
           git pull
           source activate.sh
