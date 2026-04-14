@@ -388,6 +388,35 @@ measured toroidal flow. That remaining gap is therefore a real closure
 difference, not a `k`-coefficient mismatch and not the deleted bookkeeping bug
 from the legacy `out.neo.theory*` path.
 
+### Verdict and improvement path
+
+The clean verdict is:
+
+- the reduced single-ion NEO-2 formula is internally consistent and tracks the
+  full NEO-2 result rather well on the AUG 30835 benchmark,
+- GA `vgen er_method=2` is not that reduced formula,
+- therefore the remaining mismatch is on the GA/local-closure side, not inside
+  the reduced single-ion NEO-2 algebra.
+
+This also gives a concrete improvement path.
+
+If the goal is to compare GACODE against the reduced single-ion NEO-2 formula,
+the right next step is **not** to iterate `vgen er_method=2` harder. The right
+step is to implement a direct GA-local evaluator of the reduced formula on the
+same profiles and on the same local GACODE geometry inputs (`q`, `bp0`, `bt0`,
+`bunit`, `grad_r0`, `rmaj`, `rmin`, and the mapped `Vphi` profile). That would
+create a new explicit comparison object:
+
+1. reduced single-ion NEO-2 on Boozer inputs,
+2. reduced single-ion analogue on local GACODE inputs,
+3. GA `vgen er_method=2` inverse fit,
+4. GA `vgen er_method=4` prescribed-`w0` response.
+
+With that split, the remaining disagreement can be assigned cleanly to either
+geometry mapping, variable definition (`Vphi` versus `w0`), or the local GA
+inverse-fit closure. Without that direct evaluator, `vgen er_method=2` should
+never again be treated as if it were the reduced single-ion Kasilov formula.
+
 ### Auxiliary model: Strict NEO-2 `Vphi` convention (not a reduced model)
 
 The Fortran `compute_Er()` for `isw_Vphi_loc=0` derives $E_r$ from a coupled
