@@ -426,6 +426,14 @@ formula, and the remaining `vgen er_method=2` shift is of comparable size in
 the core window. So the residual GA-versus-NEO-2 disagreement is now cleanly
 partitioned between geometry/variable mapping and the GA inverse-fit closure.
 
+The next obvious fallback would appear to be GACODE `vgen er_method=1`, which
+nominally computes `Er` from local force balance using physical `vtor(theta=0)`
+and `vpol(theta=0)`. However, the AUG benchmark audit shows that the present
+`vgen` workflow stores `vtor_measured` and then zeroes `EXPRO_vtor` and
+`EXPRO_vpol` during initialization before the `er_method=1` branch evaluates
+`Er`. So this branch is not currently a usable built-in consistency check for a
+prescribed external `vpol(theta=0)` profile.
+
 ### Auxiliary model: Strict NEO-2 `Vphi` convention (not a reduced model)
 
 The Fortran `compute_Er()` for `isw_Vphi_loc=0` derives $E_r$ from a coupled
