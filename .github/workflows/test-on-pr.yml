@@ -91,7 +91,10 @@ jobs:
           else
             echo "Branch '$NEO2_BRANCH' not found in data, using main"
           fi
-          git lfs pull --include="TESTS/NEO-2/golden_record/transport_k/"
+          git lfs version || echo "git-lfs not installed"
+          git lfs pull --include="TESTS/NEO-2/golden_record/transport_k/" 2>&1
+          echo "Fixture content:"
+          head -1 TESTS/NEO-2/golden_record/transport_k/aug_30835_sauter_reference.json || echo "fixture file not found"
           echo "data_dir=$(pwd)" >> $GITHUB_OUTPUT
 
       - name: Install libneo python required by NEO-2 python
