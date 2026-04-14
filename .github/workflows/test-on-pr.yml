@@ -92,6 +92,7 @@ jobs:
           else
             echo "Branch '$NEO2_BRANCH' not found in data, using main"
           fi
+          git config lfs.url "https://${GITLAB_DEPLOY_USER}:${GITLAB_DEPLOY_TOKEN}@gitlab.tugraz.at/plasma/data.git/info/lfs"
           git lfs pull --include="TESTS/NEO-2/golden_record/transport_k/"
           echo "data_dir=$(pwd)" >> $GITHUB_OUTPUT
 
