@@ -5,6 +5,8 @@ set(LATEX_DEFAULT_BUILD "SafePdf")
 
 project(neo-2-documentation)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/../cmake)
+
 find_package(LATEX)
 find_package(Doxygen
              REQUIRED dot
