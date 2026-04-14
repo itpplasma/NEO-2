@@ -16,3 +16,15 @@ set_tests_properties(nrutil_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+add_test(
+    NAME python_transport_k_test
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/cmake/run_python_transport_k_test.sh
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+
+set_tests_properties(python_transport_k_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All transport-k tests passed."
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)

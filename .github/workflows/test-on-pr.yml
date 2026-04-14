@@ -70,7 +70,8 @@ jobs:
       - name: Clone test data
         id: data
         env:
-          GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
+          GITLAB_DEPLOY_USER: ${{ secrets.GITLAB_DEPLOY_USER }}
+          GITLAB_DEPLOY_TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
         run: |
           set -e
 
@@ -79,12 +80,20 @@ jobs:
 
           if [ ! -d "data" ]; then
             echo "Fetching test data..."
-            git clone https://oauth2:${GITLAB_ACCESS_TOKEN}@gitlab.tugraz.at/plasma/data.git
+            git clone https://${GITLAB_DEPLOY_USER}:${GITLAB_DEPLOY_TOKEN}@gitlab.tugraz.at/plasma/data.git
           fi
 
           cd data
+          NEO2_BRANCH=${{ github.head_ref || github.ref_name }}
+          git fetch origin
+          if git ls-remote --exit-code --heads origin "$NEO2_BRANCH" > /dev/null; then
+            echo "Checking out data branch $NEO2_BRANCH"
+            git checkout "$NEO2_BRANCH"
+          else
+            echo "Branch '$NEO2_BRANCH' not found in data, using main"
+          fi
           echo "data_dir=$(pwd)" >> $GITHUB_OUTPUT
-          
+
       - name: Install libneo python required by NEO-2 python
         run: pip install git+https://github.com/itpplasma/libneo.git
 
@@ -93,6 +102,13 @@ jobs:
           cd python
           pip install -e .
 
+
+      - name: Run transport k regression test
+        env:
+          NEO2_DATA_DIR: ${{ steps.data.outputs.data_dir }}
+        run: |
+          cd python
+          PYTHONPATH=src python3 test/test_transport_k.py
 
       - name: Build NEO-2 (current version)
         id: build
