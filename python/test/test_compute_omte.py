@@ -9,6 +9,7 @@ import numpy as np
 from neo2_ql.compute_omte import (
     compute_omte_diamagnetic,
     compute_omte_force_balance,
+    compute_omte_neo2_single_ion_limit,
     compute_omte_neoclassical_poloidal,
     compute_omte_neoclassical_poloidal_auto_k,
     compute_omte_toroidal_rotation,
@@ -951,6 +952,95 @@ def test_aug_reference_reduced_neo2_vphi_convention_regression():
     assert np.allclose(om_exact, om_expected, rtol=1e-5)
 
 
+def test_aug_reference_single_ion_limit_bridges_simple_and_full_neo2():
+    """The reduced single-ion NEO-2 limit should explain most of the AUG gap."""
+    ref = np.load(FIXTURE)
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+    d31 = ref['D31_AX'][:, 3]
+    d32 = ref['D32_AX'][:, 3]
+    k_ii = 2.5 - d32 / d31
+
+    _, er_simple = compute_omte_neoclassical_poloidal(
+        n=ref['n_prof'][:, ion_idx],
+        T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i,
+        aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+        v_phi=ref['Vphi'],
+        b_theta=ref['bcovar_tht'],
+        b_phi=ref['bcovar_phi'],
+        k_i=k_ii,
+    )
+    om_reduced, er_reduced = compute_omte_neo2_single_ion_limit(
+        n=ref['n_prof'][:, ion_idx],
+        T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i,
+        aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+        v_phi=ref['Vphi'],
+        b_theta=ref['bcovar_tht'],
+        b_phi=ref['bcovar_phi'],
+        k_i=k_ii,
+    )
+
+    er_reduced_expected = np.array([-0.68487916, -1.69680401])
+    om_reduced_expected = np.array([-50313.3532212, -121578.95746675])
+    assert np.allclose(er_reduced, er_reduced_expected, rtol=1e-5)
+    assert np.allclose(om_reduced, om_reduced_expected, rtol=1e-5)
+
+    er_stored = ref['Er_neo2']
+    assert np.all(np.abs(er_reduced - er_stored) < np.abs(er_simple - er_stored))
+    assert np.all(np.sign(er_reduced) == np.sign(er_stored))
+
+
+def test_aug_reference_mars_banana_shortcut_is_closer_by_compensating_errors():
+    """The MARS k=1.17 shortcut can look closer for the wrong reason."""
+    ref = np.load(FIXTURE)
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+
+    _, er_mars = compute_omte_neoclassical_poloidal(
+        n=ref['n_prof'][:, ion_idx],
+        T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i,
+        aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+        v_phi=ref['Vphi'],
+        b_theta=ref['bcovar_tht'],
+        b_phi=ref['bcovar_phi'],
+        k_i=1.17,
+    )
+    _, er_reduced_banana = compute_omte_neo2_single_ion_limit(
+        n=ref['n_prof'][:, ion_idx],
+        T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i,
+        aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+        v_phi=ref['Vphi'],
+        b_theta=ref['bcovar_tht'],
+        b_phi=ref['bcovar_phi'],
+        k_i=1.17,
+    )
+
+    assert np.allclose(er_mars, np.array([-0.83550899, -1.24332478]), rtol=1e-5)
+    assert np.allclose(er_reduced_banana, np.array([0.37948147, 0.07855097]), rtol=1e-5)
+    assert np.all(np.sign(er_mars) == np.sign(ref['Er_neo2']))
+    assert np.all(np.sign(er_reduced_banana) != np.sign(ref['Er_neo2']))
+
+
 def test_aug_reference_transport_replay_matches_stored_er():
     """The rebuilt AUG fixture must replay the stored transport solution."""
     models = get_omte_reference_models(FIXTURE)
@@ -1025,5 +1115,7 @@ if __name__ == '__main__':
     test_neoclassical_poloidal_with_neo2_component_pair_regression()
     test_neoclassical_poloidal_auto_k_with_neo2_component_pair_regression()
     test_aug_reference_reduced_neo2_vphi_convention_regression()
+    test_aug_reference_single_ion_limit_bridges_simple_and_full_neo2()
+    test_aug_reference_mars_banana_shortcut_is_closer_by_compensating_errors()
     test_reference_plot_models_regression()
     print('\nAll tests passed.')

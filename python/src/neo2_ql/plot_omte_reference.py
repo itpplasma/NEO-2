@@ -23,8 +23,81 @@ FIXTURE = Path(__file__).resolve().parents[2] / 'test' / 'data' / 'omte_referenc
 TRANSPORT_FIXTURE = (
     Path(__file__).resolve().parents[2] / 'test' / 'data' / 'neo2_ql_axisymmetric_multispecies_out.h5'
 )
+LEVEL2_K_SWEEP_MIN = -2.5
+LEVEL2_K_SWEEP_MAX = 1.5
+LEVEL2_K_SWEEP_COUNT = 161
 LEVEL25_DEFAULT_D31_HAT = -1.0
 LEVEL25_DEFAULT_K_COF = 0.565
+
+
+def get_level2_k_scan_reference(
+    fixture=FIXTURE,
+    k_values=None,
+):
+    """Return a full-geometry Level 2 k sweep against the stored AUG fixture."""
+    ref = np.load(fixture)
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+
+    if k_values is None:
+        k_values = np.linspace(LEVEL2_K_SWEEP_MIN, LEVEL2_K_SWEEP_MAX, LEVEL2_K_SWEEP_COUNT)
+    else:
+        k_values = np.asarray(k_values, dtype=float)
+    if k_values.ndim != 1 or k_values.size == 0:
+        raise ValueError('k_values must be a non-empty 1D array')
+
+    om_scan = np.empty((k_values.size, ref['boozer_s'].size), dtype=float)
+    er_scan = np.empty_like(om_scan)
+    lvl2_common = {
+        'n': ref['n_prof'][:, ion_idx],
+        'T': ref['T_prof'][:, ion_idx],
+        'dn_ds': ref['dn_ov_ds_prof'][:, ion_idx],
+        'dT_ds': ref['dT_ov_ds_prof'][:, ion_idx],
+        'z': z_i,
+        'aiota': ref['aiota'],
+        'sqrtg_bctrvr_phi': ref['sqrtg_bctrvr_phi'],
+        'av_nabla_stor': ref['av_nabla_stor'],
+        'v_phi': ref['Vphi'],
+        'b_theta': ref['bcovar_tht'],
+        'b_phi': ref['bcovar_phi'],
+    }
+    for index, k_value in enumerate(k_values):
+        om_scan[index], er_scan[index] = compute_omte_neoclassical_poloidal(
+            **lvl2_common,
+            k_i=np.full_like(ref['boozer_s'], k_value, dtype=float),
+        )
+
+    om_neo2 = C_CGS * ref['Er_neo2'] / (ref['aiota'] * ref['sqrtg_bctrvr_phi'])
+    mae = np.mean(np.abs(om_scan - om_neo2), axis=1)
+    best_index = int(np.argmin(mae))
+    om_min = np.min(om_scan, axis=0)
+    om_max = np.max(om_scan, axis=0)
+    er_min = np.min(er_scan, axis=0)
+    er_max = np.max(er_scan, axis=0)
+    q = 1.0 / ref['aiota']
+    sqrtg_bctrvr_tht = ref['aiota'] * ref['sqrtg_bctrvr_phi']
+
+    return {
+        'boozer_s': ref['boozer_s'],
+        'k_values': k_values,
+        'om_scan': om_scan,
+        'er_scan': er_scan,
+        'om_neo2': om_neo2,
+        'om_min': om_min,
+        'om_max': om_max,
+        'er_min': er_min,
+        'er_max': er_max,
+        'best_k': float(k_values[best_index]),
+        'best_mae': float(mae[best_index]),
+        'om_best': om_scan[best_index],
+        'er_best': er_scan[best_index],
+        'neo2_inside_envelope': np.logical_and(om_neo2 >= om_min, om_neo2 <= om_max),
+        'q': q,
+        'sqrtg_bctrvr_tht': sqrtg_bctrvr_tht,
+        'psi_tor_prime_over_reff': np.asarray(ref['sqrtg_bctrvr_phi']),
+        'psi_pol_prime_over_reff': sqrtg_bctrvr_tht,
+        'psi_tor_prime_over_reff_ov_q': np.asarray(ref['sqrtg_bctrvr_phi']) / q,
+    }
 
 
 def get_omte_reference_models(fixture=FIXTURE):
@@ -88,10 +161,20 @@ def get_omte_reference_models(fixture=FIXTURE):
         b_theta=ref['bcovar_tht'],
     )
 
+    lvl2_k_sweep = get_level2_k_scan_reference(fixture=fixture)
     om_lvl2_banana, er_lvl2_banana = compute_omte_neoclassical_poloidal(
         **lvl2_common,
         k_i=np.full_like(ref['boozer_s'], 1.17, dtype=float),
     )
+    k_regimes = {'banana': -1.17, 'plateau': -0.5, 'pfirsch_schluter': 0.5}
+    om_lvl2 = {}
+    er_lvl2 = {}
+    for regime, k_val in k_regimes.items():
+        k_arr = np.full_like(ref['boozer_s'], k_val, dtype=float)
+        om_lvl2[regime], er_lvl2[regime] = compute_omte_neoclassical_poloidal(
+            **lvl2_common,
+            k_i=k_arr,
+        )
 
     om_lvl25 = np.empty_like(ref['boozer_s'], dtype=float)
     er_lvl25 = np.empty_like(ref['boozer_s'], dtype=float)
@@ -136,6 +219,8 @@ def get_omte_reference_models(fixture=FIXTURE):
         'om_transport_replay': om_transport_replay,
         'om_lvl0': om_lvl0,
         'om_lvl1': om_lvl1,
+        'om_lvl2': om_lvl2,
+        'lvl2_k_sweep': lvl2_k_sweep,
         'om_lvl2_banana': om_lvl2_banana,
         'om_lvl25': om_lvl25,
         'om_exact': om_exact,
@@ -145,6 +230,7 @@ def get_omte_reference_models(fixture=FIXTURE):
         'er_tor': er_tor,
         'er_pol': er_pol,
         'er_lvl1': er_lvl1,
+        'er_lvl2': er_lvl2,
         'er_lvl2_banana': er_lvl2_banana,
         'er_lvl25': er_lvl25,
         'lvl25_parameters': {

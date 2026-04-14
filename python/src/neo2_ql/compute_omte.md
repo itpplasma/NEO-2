@@ -239,27 +239,27 @@ which uses
 [`compute_poloidal_rotation_neoclassical()`](compute_omte.py)
 with a manually selected coefficient `K_i`.
 
-When the full Boozer geometry is available, the implementation can also apply
-the tokamak geometry factor implied by the contravariant flow form,
+This helper intentionally implements the local shortcut used in many
+experimental and MHD workflows:
 
 $$
-V^\vartheta \propto \frac{B_\varphi}{\sqrt{g}\,\langle B^2 \rangle}
-\frac{\mathrm{d}T_i}{\mathrm{d}r},
+E_r \approx \frac{1}{Z_i e n_i}\frac{\mathrm{d}p_i}{\mathrm{d}r}
+      + v_{\varphi,i}\frac{B_\vartheta}{c}
+      - K_i \frac{1}{Z_i e}\frac{\mathrm{d}T_i}{\mathrm{d}r}.
 $$
 
-which enters the force-balance contribution as
+That is the same algebraic structure used in the MARS Shaing/NTVTOK wrapper
+when `PROFWE.IN` is not supplied: in MARS `ntv_pre.f`,
+MARS computes
+$q\omega_E = \omega_\varphi - k_\mathrm{nc} q\omega_{*Ti} + q\omega_{*i}$
+with `knc = 1.17` in the banana regime. The sign attached to the numerical
+coefficient depends on the force-balance convention; what matters physically
+is the product multiplying $\mathrm{d}T_i/\mathrm{d}r$.
 
-$$
-E_r^{(\vartheta)} \propto
--\frac{B_\varphi^2}{\sqrt{g} B^\vartheta \langle B^2 \rangle}
-\frac{K_i}{Z_i e}
-\frac{\mathrm{d}T_i}{\mathrm{d}r}.
-$$
-
-In code this corresponds to providing `av_b2` and `sqrtg_bctrvr_tht` to
-[`compute_poloidal_rotation_neoclassical()`](compute_omte.py). If those
-arguments are omitted, the helper falls back to the earlier large-aspect-ratio
-pair-product simplification.
+This local shortcut is **not** the same as the reduced single-ion limit of
+NEO-2. The exact NEO-2 reduction keeps the Boozer geometry factor
+$B_\varphi / (\iota B_\vartheta + B_\varphi)$ and the toroidal factor
+$\sqrt{g} B^\vartheta / c$, so it must be treated as a separate model.
 
 For convenience,
 [`compute_omte_neoclassical_poloidal_auto_k()`](compute_omte.py)
@@ -273,6 +273,61 @@ selects `K_i` from a simple collisionality map:
 
 **GitHub issue:**
 [#74](https://github.com/itpplasma/NEO-2/issues/74).
+
+### Auxiliary model: Reduced single-ion NEO-2 limit
+
+If the full NEO-2 `compute_Er()` algebra is reduced with the analytic
+single-ion bootstrap coefficient $D_{31}^{ii}$ and negligible $D_{33}$, the
+result is
+
+$$
+E_r =
+\frac{\sqrt{g} B^\vartheta}{c} V^\varphi
++ \frac{1}{Z_i e n_i}\frac{\mathrm{d}p_i}{\mathrm{d}r}
+- \frac{k_i B_\varphi}{Z_i e (\iota B_\vartheta + B_\varphi)}
+\frac{\mathrm{d}T_i}{\mathrm{d}r}.
+$$
+
+This is implemented as
+[`compute_omte_neo2_single_ion_limit()`](compute_omte.py).
+It is the correct intermediate model when comparing the full multispecies
+NEO-2 result against local-force-balance formulas from GA NEO, MARS, or
+experimental preprocessing.
+
+### What AUG, GACODE, and MARS usually mean by `E_r`
+
+The phrase "compute `E_r` from radial force balance" is overloaded. In the
+literature relevant to this AUG comparison, three distinct workflows coexist:
+
+1. **Experimental AUG / CXRS force balance.**
+   The standard AUG workflow derives `E_r` from measured impurity pressure and
+   flow profiles via radial force balance. Viezzer *et al.* show explicitly
+   that the edge `E_r` is reconstructed from impurity CXRS data and that, in
+   established H-mode pedestals with small toroidal rotation, the result is
+   often close to the simple neoclassical estimate
+   $E_r \approx \nabla p_i / (e n_i)$ [9,10].
+
+2. **GACODE / transport workflow.**
+   In GACODE the primary rotation input is the flux function $\omega_0(\psi)$.
+   The official rotation notes state that if `E_r` is known from force balance,
+   then one maps it to $\omega_0 \rightarrow c E_r / (R B_p)$, and they
+   explicitly warn that this is a long-wavelength equilibrium relation [8].
+   This is a reduced equilibrium preprocessing step, not a full multispecies
+   transport closure.
+
+3. **MARS-Q / NTVTOK workflow.**
+   The MARS Shaing/NTVTOK wrapper uses the same kind of local preprocessing.
+   In `ntv_pre.f`, when `PROFWE.IN` is absent, it computes
+   $q \omega_E = \omega_\varphi - k_\mathrm{nc} q \omega_{*Ti} + q \omega_{*i}$
+   with `knc = 1.17` in the banana option; when `PROFWE.IN` is present, it
+   reads `omega_E` directly. Again, this is a reduced force-balance closure,
+   not the same object as the full NEO-2 multispecies `compute_Er()` solve [7].
+
+These are all legitimate "normal people" workflows, but they live on the
+**local force-balance** side of the comparison. The full NEO-2 `compute_Er()`
+result is a stricter object because it is obtained only after solving the
+transport closure represented by the $D_{31}$/$D_{32}$/$D_{33}$ sums in
+eq. (10).
 
 ### Auxiliary model: Strict NEO-2 `Vphi` convention (not a reduced model)
 
@@ -536,20 +591,63 @@ curve:
 For this rebuilt AUG reference, Level 1 still misses the dominant transport
 closure and therefore does not improve the curve by itself.
 
-Using the simple banana-regime Level 2 estimate with `K_i = -1.17`,
-or equivalently the auto-selected low-collisionality branch of
-[`compute_omte_neoclassical_poloidal_auto_k()`](compute_omte.py),
-remains far from the full transport result even when the Boozer geometry factor
-is included:
+Using the local banana-regime shortcut with the MARS/NTVTOK-style
+coefficient magnitude `1.17` gives the right order of magnitude,
+but that agreement is partly accidental:
 
-| $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Level 2 $\Omega_{tE}$ | Ratio |
+| $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | MARS-style local shortcut | Ratio |
 |:-:|:-:|:-:|:-:|
-| 0.2527 | $-44.80\,\text{krad/s}$ | $-241.92\,\text{krad/s}$ | 5.40 |
-| 0.4984 | $-111.09\,\text{krad/s}$ | $-349.28\,\text{krad/s}$ | 3.14 |
+| 0.2527 | $-44.80\,\text{krad/s}$ | $-61.38\,\text{krad/s}$ | 1.37 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $-89.09\,\text{krad/s}$ | 0.80 |
 
-This is exactly why the rebuilt plot now also shows the exact Level 3a
-transport replay from the AUG fixture: the transport terms, not the simple
-force-balance correction alone, dominate the final cancellation.
+The more important reconciliation is the exact reduced single-ion NEO-2
+limit with the **matched** NEO-2 transport coefficient
+$k_i = 5/2 - D_{32}^{ii}/D_{31}^{ii}$:
+
+| $s_\text{tor}$ | NEO-2 $\Omega_{tE}$ | Reduced single-ion NEO-2 | Ratio |
+|:-:|:-:|:-:|:-:|
+| 0.2527 | $-44.80\,\text{krad/s}$ | $-50.31\,\text{krad/s}$ | 1.12 |
+| 0.4984 | $-111.09\,\text{krad/s}$ | $-121.58\,\text{krad/s}$ | 1.09 |
+
+So the large gap in the original GA-vs-NEO-2 plot is not explained by
+`k` alone. Matching `k_i` only matches the coefficient multiplying the
+temperature-gradient term. It does **not** make the local shortcut identical
+to the reduced NEO-2 expression:
+
+$$
+\underbrace{V^\varphi B_\vartheta / c}_{\text{local shortcut}}
+\qquad \neq \qquad
+\underbrace{\sqrt{g} B^\vartheta V^\varphi / c}_{\text{reduced NEO-2}},
+$$
+
+and
+
+$$
+\underbrace{-k_i \frac{1}{Z_i e}\frac{\mathrm{d}T_i}{\mathrm{d}r}}_{\text{local shortcut}}
+\qquad \neq \qquad
+\underbrace{-k_i \frac{B_\varphi}{Z_i e (\iota B_\vartheta + B_\varphi)}
+\frac{\mathrm{d}T_i}{\mathrm{d}r}}_{\text{reduced NEO-2}}.
+$$
+
+For the rebuilt AUG #30835 reference, the temperature-term correction is
+small:
+
+| $s_\mathrm{tor}$ | $B_\varphi / (\iota B_\vartheta + B_\varphi)$ |
+|:-:|:-:|
+| 0.2527 | 0.9813 |
+| 0.4984 | 0.9808 |
+
+The dominant difference is instead the toroidal term:
+
+| $s_\mathrm{tor}$ | local $V^\varphi B_\vartheta/c$ | reduced $\sqrt{g} B^\vartheta V^\varphi/c$ | ratio |
+|:-:|:-:|:-:|:-:|
+| 0.2527 | $-0.2093$ | $+1.0488$ | $-5.01$ |
+| 0.4984 | $-0.3124$ | $+1.0753$ | $-3.44$ |
+
+So the large GA-vs-NEO-2 mismatch is mainly **not** a failure of the matched
+`k` coefficient. It is the consequence of comparing two different reduced
+models. Once the exact single-ion NEO-2 reduction is restored, the remaining
+mismatch to full NEO-2 is only the residual multispecies and $D_{33}$ physics.
 
 Applying the strict reduced `isw_Vphi_loc=0` algebra gives a very different
 curve:
@@ -640,3 +738,23 @@ Chapter 12: Radial electric field and rotation.
 magnetic field perturbations in a tokamak,"
 *Phys. Plasmas* **21**, 092506 (2014).
 [doi:10.1063/1.4894479](https://doi.org/10.1063/1.4894479)
+
+[7] Y. Sun, Y. Liang, K. C. Shaing, H. R. Koslowski, C. Wiegmann, and T. Zhang,
+"Modelling of the neoclassical toroidal plasma viscosity torque in tokamaks,"
+*Nucl. Fusion* **51**, 053015 (2011).
+[doi:10.1088/0029-5515/51/5/053015](https://doi.org/10.1088/0029-5515/51/5/053015)
+
+[8] GACODE documentation,
+"Rotation Theory,"
+official project documentation.
+[https://gafusion.github.io/doc/rotation.html](https://gafusion.github.io/doc/rotation.html)
+
+[9] E. Viezzer, T. Pütterich, R. Dux, R. M. McDermott, and the ASDEX Upgrade Team,
+"Investigations on the edge radial electric field at ASDEX Upgrade,"
+Invited talk / proceedings summary with CXRS force-balance methodology.
+[https://pure.mpg.de/rest/items/item_2146122_4/component/file_3320634/content](https://pure.mpg.de/rest/items/item_2146122_4/component/file_3320634/content)
+
+[10] E. Viezzer, R. M. McDermott, T. Pütterich, R. Dux, M. G. Dunne, and the ASDEX Upgrade Team,
+"Evidence for the neoclassical nature of the radial electric field in ASDEX Upgrade,"
+*Nucl. Fusion* **54**, 012003 (2014).
+[https://pure.mpg.de/rest/items/item_2033652/component/file_2034303/content](https://pure.mpg.de/rest/items/item_2033652/component/file_2034303/content)

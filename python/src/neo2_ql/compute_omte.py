@@ -13,6 +13,7 @@ Model levels:
   Level 0 (diamagnetic): pressure gradient only, no flows
   Level 1: adds toroidal rotation through a coordinate-consistent pair
   Level 2: adds a neoclassical poloidal rotation estimate
+  Reduced single-ion NEO-2 limit: analytic D31 reduction of the full solver
   Reduced NEO-2 Vphi convention: isw_Vphi_loc=0 algebra without transport
 """
 
@@ -289,7 +290,7 @@ def select_poloidal_rotation_coefficient(nu_star):
     """Select K_i from a simple collisionality regime map."""
     nu_star = np.asarray(nu_star)
     k_i = np.empty_like(nu_star, dtype=float)
-    k_i[nu_star < 0.1] = 1.17
+    k_i[nu_star < 0.1] = -1.17
     k_i[(nu_star >= 0.1) & (nu_star < 10.0)] = -0.5
     k_i[nu_star >= 10.0] = 0.5
     return k_i
@@ -369,6 +370,69 @@ def compute_omte_neoclassical_poloidal(
         v_theta=v_theta,
         b_phi=b_phi,
     )
+
+
+def compute_omte_neo2_single_ion_limit(
+    n,
+    T,
+    dn_ds,
+    dT_ds,
+    z,
+    aiota,
+    sqrtg_bctrvr_phi,
+    av_nabla_stor,
+    v_phi,
+    b_theta,
+    b_phi,
+    k_i,
+):
+    """Compute the reduced single-ion NEO-2 force-balance limit.
+
+    This implements the analytic reduction documented in
+    ``ripple_solver_normalizations_and_output.tex``:
+
+        E_r =
+            sqrt(g) B^theta / c * Vphi
+          + (1 / Z e n) dp/dr
+          - k_i * B_phi / (Z e (iota B_theta + B_phi)) * dT/dr
+
+    It is the exact single-ion, negligible-A3 limit of the NEO-2
+    ``compute_Er()`` algebra after substituting the analytic D31 bootstrap
+    coefficient. Unlike the local cylindrical shortcut used in Level 2, this
+    expression keeps the Boozer geometry factor that absorbs the large D31
+    denominator into the reduced force balance.
+    """
+    (
+        n,
+        T,
+        dn_ds,
+        dT_ds,
+        aiota,
+        sqrtg_bctrvr_phi,
+        av_nabla_stor,
+    ) = _prepare_common_inputs(
+        n, T, dn_ds, dT_ds, z, aiota, sqrtg_bctrvr_phi, av_nabla_stor
+    )
+
+    b_theta = np.asarray(b_theta)
+    b_phi = np.asarray(b_phi)
+    v_phi = np.asarray(v_phi)
+    denom_geom = aiota * b_theta + b_phi
+    if np.any(denom_geom == 0.0):
+        raise ValueError('aiota * b_theta + b_phi must be nonzero')
+
+    dp_ds = T * dn_ds + n * dT_ds
+    dp_dr = dp_ds * av_nabla_stor
+    dT_dr = dT_ds * av_nabla_stor
+    sqrtg_bctrvr_tht = aiota * sqrtg_bctrvr_phi
+
+    Er = (
+        sqrtg_bctrvr_tht * v_phi / C_CGS
+        + dp_dr / (n * z * E_CGS)
+        - (k_i * b_phi / (z * E_CGS * denom_geom)) * dT_dr
+    )
+    Om_tE = C_CGS * Er / (aiota * sqrtg_bctrvr_phi)
+    return Om_tE, Er
 
 
 def compute_omte_neoclassical_poloidal_auto_k(
