@@ -329,6 +329,56 @@ result is a stricter object because it is obtained only after solving the
 transport closure represented by the $D_{31}$/$D_{32}$/$D_{33}$ sums in
 eq. (10).
 
+### GA `vgen` versus NEO-2 semantics
+
+The most important practical lesson from the AUG 30835 benchmark is that
+GACODE `vgen er_method=2` and the full NEO-2 `compute_Er()` routine are not
+the same solve, even though both can be loosely summarized as using toroidal
+rotation information to obtain `E_r`.
+
+They differ in solve direction:
+
+- **NEO-2 `compute_Er()` is a forward closure solve.**
+  In [`ntv_mod.f90`](../../../NEO-2-QL/ntv_mod.f90), `Vphi` enters the
+  numerator directly and the code solves
+  `Er = nom_Er / denom_Er` after adding the multispecies
+  $D_{31}$/$D_{32}$/$D_{33}$ contributions.
+
+- **GA `vgen er_method=2` is an inverse local fit.**
+  In GACODE, [`vgen_init.f90`](../../../../external/gacode/vgen/src/vgen_init.f90)
+  first stores the measured toroidal rotation in `vtor_measured` and resets the
+  working flow arrays. Then [`vgen.f90`](../../../../external/gacode/vgen/src/vgen.f90)
+  calls local NEO with zero initial `Er` and forms the toroidal-flow residual
+  through [`vgen_compute_neo.f90`](../../../../external/gacode/vgen/src/vgen_compute_neo.f90),
+  using
+  `vtor_diff = vtor_measured - vtor_neo`.
+  The inferred `Er` is then the one needed for the local GA model to match the
+  measured toroidal flow at $\theta=0$.
+
+- **GA `vgen er_method=4` is the forward consume test.**
+  This mode does not infer `Er`. It consumes a prescribed GACODE `w0` profile
+  and computes the resulting flows.
+
+This distinction matters because the old benchmark implicitly compared the
+NEO-2 forward closure result against the GA inverse-fit result as if they were
+the same mathematical object. They are not.
+
+The clean comparison logic is therefore:
+
+1. Use full NEO-2 `compute_Er()` when the question is:
+   what radial electric field follows from the NEO-2 transport closure?
+2. Use GA `vgen er_method=2` when the question is:
+   what `Er` or `w0` must GACODE infer to reproduce a measured toroidal flow?
+3. Use GA `vgen er_method=4` when the question is:
+   if GACODE is given the `w0` implied by NEO-2 `Er`, does GACODE recover the
+   same toroidal flow?
+
+For the AUG 30835 benchmark, step 3 is the decisive one. It shows that when GA
+is fed the GACODE `w0` implied by the NEO-2 `Er`, GA does not recover the
+measured toroidal flow. That remaining gap is therefore a real closure
+difference, not a `k`-coefficient mismatch and not the deleted bookkeeping bug
+from the legacy `out.neo.theory*` path.
+
 ### Auxiliary model: Strict NEO-2 `Vphi` convention (not a reduced model)
 
 The Fortran `compute_Er()` for `isw_Vphi_loc=0` derives $E_r$ from a coupled
