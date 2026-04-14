@@ -18,8 +18,6 @@ from .interpolate_profiles import interpolate_profiles_to_same_grid
 from .neo2_output_omte import compute_neo2_er_from_transport_coefficients
 from .neo2_output_omte import compute_neo2_omte_from_transport_coefficients
 from .neo2_output_omte import compute_d31_reference_electron
-from .neo2_output_omte import compute_neo2_er_from_k_cof_transport_model
-from .neo2_output_omte import compute_neo2_omte_from_k_cof_transport_model
 from .neo2_output_omte import compute_omte_from_neo2_output
 from .write_profiles import write_profiles_to_dat_files
 from .get_fluxsurface_area import get_average_nabla_stor, get_fluxsurface_area
@@ -38,7 +36,6 @@ _LAZY_EXPORTS = {
         'make_figure_neo2_ql_input_profiles',
     ),
     'add_profiles_to_axes': ('.plot_neo2_ql_input_profiles', 'add_profiles_to_axes'),
-    'get_level2_k_scan_reference': ('.plot_omte_reference', 'get_level2_k_scan_reference'),
     'get_omte_reference_models': ('.plot_omte_reference', 'get_omte_reference_models'),
     'make_figure_omte_reference': ('.plot_omte_reference', 'make_figure_omte_reference'),
     'save_figure_omte_reference': ('.plot_omte_reference', 'save_figure_omte_reference'),
