@@ -72,11 +72,12 @@ jobs:
         env:
           GITLAB_DEPLOY_USER: ${{ secrets.GITLAB_DEPLOY_USER }}
           GITLAB_DEPLOY_TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
+          NEO2_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -e
 
           TEMP_DIR=$(mktemp -d)
-          cd $TEMP_DIR 
+          cd $TEMP_DIR
 
           if [ ! -d "data" ]; then
             echo "Fetching test data..."
@@ -84,7 +85,6 @@ jobs:
           fi
 
           cd data
-          NEO2_BRANCH=${{ github.head_ref || github.ref_name }}
           git fetch origin
           if git ls-remote --exit-code --heads origin "$NEO2_BRANCH" > /dev/null; then
             echo "Checking out data branch $NEO2_BRANCH"
@@ -153,19 +153,9 @@ jobs:
         run: |
           set -e
 
-          NEO2_BRANCH=${{ github.head_ref || github.ref_name }}
           TEST_DIR=TESTS/NEO-2/golden_record/
 
           cd ${{ steps.data.outputs.data_dir }}
-
-          git fetch origin
-          if git ls-remote --exit-code --heads origin "$NEO2_BRANCH" > /dev/null; then
-            echo "Checking out $NEO2_BRANCH"
-            git checkout "$NEO2_BRANCH"
-          else
-            echo "Branch '$NEO2_BRANCH' not found in data. Falling back to main"
-            git checkout main
-          fi
 
           git pull
           source activate.sh
