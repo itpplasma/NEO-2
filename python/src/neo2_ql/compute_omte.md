@@ -355,6 +355,15 @@ They differ in solve direction:
   The inferred `Er` is then the one needed for the local GA model to match the
   measured toroidal flow at $\theta=0$.
 
+This also means that **GA `vgen er_method=2` is not the reduced single-ion
+Kasilov/NEO-2 formula evaluator.** The reduced single-ion limit implemented by
+[`compute_omte_neo2_single_ion_limit()`](compute_omte.py) is a direct analytic
+formula in terms of `Vphi`, gradients, and Boozer geometry. By contrast,
+GACODE `vgen er_method=2` runs local NEO, computes a toroidal-flow residual at
+$\theta=0$, and converts that residual into `Er`. So even though both workflows
+use toroidal rotation information and return `Er`, they do not apply the same
+map from inputs to outputs.
+
 - **GA `vgen er_method=4` is the forward consume test.**
   This mode does not infer `Er`. It consumes a prescribed GACODE `w0` profile
   and computes the resulting flows.
