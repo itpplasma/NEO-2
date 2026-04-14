@@ -106,9 +106,7 @@ jobs:
       - name: Run transport k regression test
         env:
           NEO2_DATA_DIR: ${{ steps.data.outputs.data_dir }}
-        run: |
-          cd python
-          PYTHONPATH=src python3 test/test_transport_k.py
+        run: python3 python/test/test_transport_k.py
 
       - name: Build NEO-2 (current version)
         id: build

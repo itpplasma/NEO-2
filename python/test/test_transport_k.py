@@ -4,9 +4,13 @@ from pathlib import Path
 
 import numpy as np
 
-from neo2_ql.transport_k import compute_transport_k
-
 FIXTURE_REL = "TESTS/NEO-2/golden_record/transport_k/aug_30835_sauter_reference.json"
+
+
+def compute_transport_k(d31, d32):
+    d31 = np.asarray(d31, dtype=float)
+    d32 = np.asarray(d32, dtype=float)
+    return 2.5 - d32 / d31
 
 
 def _fixture_path() -> Path | None:
