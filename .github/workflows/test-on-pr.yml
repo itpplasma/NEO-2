@@ -169,6 +169,9 @@ jobs:
           export LEGACY_TOL=1e-8
           make ql
 
+          export TOL=1e-10
+          make transport_k
+
       - name: Upload test (against stable) output on failure
         if: steps.run_test_stable.outcome == 'failure'
         uses: actions/upload-artifact@v4
@@ -223,6 +226,9 @@ jobs:
           export TOL=1e-15
           export LEGACY_TOL=1e-8
           make ql
+
+          export TOL=1e-15
+          make transport_k
 
       - name: Upload test (against main) output on failure
         if: steps.run_test_main.outcome == 'failure'
