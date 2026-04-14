@@ -729,7 +729,9 @@ flux-surface Boozer toroidal angular frequency $\langle V^\varphi \rangle$,
 and \verb|species_tag_Vphi = 2| means that this measured rotation profile
 belongs to species 2. In the multispecies force-balance solve the selected
 species provides the charge, temperature, density, and gradients that enter
-the \verb|compute_Er()| closure.
+the \verb|compute_Er()| closure. The generated HDF5 profile files use positive
+species tags (\verb|1, 2, ...|), so \verb|species_tag_Vphi| must match one of
+those values in this workflow.
 
 Default for the DEMO
 runs was the profile file
