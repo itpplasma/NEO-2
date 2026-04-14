@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from neo2_ql import compute_transport_k
+from neo2_ql.transport_k import compute_transport_k
 
 FIXTURE_REL = "TESTS/NEO-2/golden_record/transport_k/aug_30835_sauter_reference.json"
 
