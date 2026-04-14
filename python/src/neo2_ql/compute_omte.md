@@ -426,13 +426,35 @@ formula, and the remaining `vgen er_method=2` shift is of comparable size in
 the core window. So the residual GA-versus-NEO-2 disagreement is now cleanly
 partitioned between geometry/variable mapping and the GA inverse-fit closure.
 
-The next obvious fallback would appear to be GACODE `vgen er_method=1`, which
-nominally computes `Er` from local force balance using physical `vtor(theta=0)`
-and `vpol(theta=0)`. However, the AUG benchmark audit shows that the present
-`vgen` workflow stores `vtor_measured` and then zeroes `EXPRO_vtor` and
-`EXPRO_vpol` during initialization before the `er_method=1` branch evaluates
-`Er`. So this branch is not currently a usable built-in consistency check for a
-prescribed external `vpol(theta=0)` profile.
+The discarded fallback was GACODE `vgen er_method=1`, which nominally computes
+`Er` from local force balance using physical `vtor(theta=0)` and
+`vpol(theta=0)`. The AUG benchmark audit shows that the present `vgen`
+workflow stores `vtor_measured` and then zeroes `EXPRO_vtor` and `EXPRO_vpol`
+during initialization before the `er_method=1` branch evaluates `Er`. So this
+branch is not a usable built-in consistency check for a prescribed external
+`vpol(theta=0)` profile, and it is no longer part of the benchmark workflow.
+
+The direct replacement is a Python-side experimental-force-balance evaluator.
+It starts from the canonical Boozer pair expression
+
+$$
+E_r = \frac{1}{Z e n}\frac{\mathrm{d}p}{\mathrm{d}r}
+    + \frac{V^\phi B_\vartheta}{c}
+    - \frac{V^\vartheta B_\varphi}{c},
+$$
+
+which is algebraically identical to the reduced single-ion NEO-2 formula on
+this benchmark. The same result can then be rewritten in local physical
+variables via the pair-preserving identities
+
+$$
+V^\phi B_\vartheta = v_{\phi,\mathrm{eff}} B_{\mathrm{pol}}(\theta=0), \qquad
+V^\vartheta B_\varphi = v_{\theta,\mathrm{eff}} B_{\mathrm{tor}}(\theta=0),
+$$
+
+without changing $E_r$. This is now the canonical experimental-style check in
+the data benchmark, because it avoids both the dead `vgen er_method=1` branch
+and the inverse-fit semantics of `vgen er_method=2`.
 
 ### Auxiliary model: Strict NEO-2 `Vphi` convention (not a reduced model)
 
