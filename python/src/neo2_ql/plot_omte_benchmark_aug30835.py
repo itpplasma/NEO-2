@@ -151,7 +151,164 @@ def make_figure(data=None, output_path=None):
     return fig
 
 
+def load_decomposition_data(benchmark_dir=BENCHMARK_DIR,
+                            multispec_input=MULTISPEC_INPUT):
+    """Load velocities and Er term decomposition for all surfaces."""
+    benchmark_dir = Path(benchmark_dir)
+    multispec_input = Path(multispec_input)
+
+    with h5py.File(multispec_input, 'r') as f:
+        boozer_s_in = np.asarray(f['boozer_s'])
+        species_tag = np.asarray(f['species_tag'])
+        species_tag_vphi = int(np.asarray(f['species_tag_Vphi']).flat[0])
+        ion_idx = int(np.where(species_tag == species_tag_vphi)[0][0])
+        z_i = float(np.asarray(f['species_def'])[0, ion_idx, 0])
+        n_prof = np.asarray(f['n_prof'])[ion_idx]
+        T_prof = np.asarray(f['T_prof'])[ion_idx]
+        dn_prof = np.asarray(f['dn_ov_ds_prof'])[ion_idx]
+        dT_prof = np.asarray(f['dT_ov_ds_prof'])[ion_idx]
+        vphi_in = np.asarray(f['Vphi'])
+
+    import glob as _glob
+    surface_dirs = sorted(_glob.glob(str(benchmark_dir / 'es_*')))
+    num = len(surface_dirs)
+
+    s = np.empty(num)
+    aiota = np.empty(num)
+    sqrtg_phi = np.empty(num)
+    bcovar_tht = np.empty(num)
+    bcovar_phi = np.empty(num)
+    av_nabla = np.empty(num)
+    d31_ii = np.empty(num)
+    d32_ii = np.empty(num)
+    Vtht_neo2 = np.empty(num)
+    Vphi_neo2 = np.empty(num)
+
+    for i, d in enumerate(surface_dirs):
+        with h5py.File(f'{d}/neo2_multispecies_out.h5', 'r') as f:
+            s[i] = float(np.asarray(f['boozer_s']))
+            aiota[i] = float(np.asarray(f['aiota']))
+            sqrtg_phi[i] = float(np.asarray(f['sqrtg_bctrvr_phi']))
+            bcovar_tht[i] = float(np.asarray(f['bcovar_tht']))
+            bcovar_phi[i] = float(np.asarray(f['bcovar_phi']))
+            D31 = np.asarray(f['D31_AX'])
+            D32 = np.asarray(f['D32_AX'])
+            row = np.asarray(f['row_ind_spec'])
+            col = np.asarray(f['col_ind_spec'])
+            for j in range(row.size):
+                if int(row.flat[j]) == ion_idx and int(col.flat[j]) == ion_idx:
+                    d31_ii[i] = float(D31.flat[j])
+                    d32_ii[i] = float(D32.flat[j])
+                    break
+            Vtht_neo2[i] = float(np.asarray(f['VthtB_spec']).flat[ion_idx])
+            Vphi_neo2[i] = float(np.asarray(f['VphiB_spec']).flat[ion_idx])
+        with h5py.File(f'{d}/fulltransp.h5', 'r') as f:
+            av_nabla[i] = float(np.asarray(f['avnabpsi']))
+
+    idx_map = np.array([int(np.argmin(np.abs(boozer_s_in - si))) for si in s])
+    vphi = vphi_in[idx_map]
+    dT_dr = dT_prof[idx_map] * av_nabla
+    dp_dr = (T_prof[idx_map] * dn_prof[idx_map]
+             + n_prof[idx_map] * dT_prof[idx_map]) * av_nabla
+    sqrtg_tht = aiota * sqrtg_phi
+    k_ii = 2.5 - d32_ii / d31_ii
+    Vtht_kdg = k_ii * C_CGS * dT_dr / (z_i * E_CGS * bcovar_phi)
+
+    er_dia = dp_dr / (n_prof[idx_map] * z_i * E_CGS)
+    er_rot = sqrtg_tht * vphi / C_CGS
+    er_kdg = -k_ii * dT_dr / (z_i * E_CGS)
+
+    return {
+        's': s,
+        'Vphi_input': vphi,
+        'Vphi_neo2': Vphi_neo2,
+        'Vtht_neo2': Vtht_neo2,
+        'Vtht_kdg': Vtht_kdg,
+        'k_ii': k_ii,
+        'er_dia': er_dia,
+        'er_rot': er_rot,
+        'er_kdg': er_kdg,
+    }
+
+
+def make_decomposition_figure(data=None, model_data=None, output_path=None):
+    """Create the 4-panel velocity and Er decomposition figure."""
+    if data is None:
+        data = load_decomposition_data()
+    if model_data is None:
+        model_data = load_benchmark_data()
+
+    s = data['s']
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+    ax = axes[0, 0]
+    ax.set_title(r'$V^\varphi$ [rad/s]', fontsize=12)
+    ax.plot(s, data['Vphi_neo2'], 'k-', lw=2, label=r'NEO-2 $V^\varphi$ (output)')
+    ax.plot(s, data['Vphi_input'], 'r--', lw=1.5, label=r'$V^\varphi$ (input)')
+    ax.set_xlabel('Boozer $s$')
+    ax.set_ylabel(r'$V^\varphi$ [rad/s]')
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    ax.set_xlim(0, 1)
+
+    ax = axes[0, 1]
+    ax.set_title(r'$V^\vartheta$ [rad/s]', fontsize=12)
+    ax.plot(s, data['Vtht_neo2'], 'k-', lw=2, label=r'NEO-2 $V^\vartheta$ (full)')
+    ax.plot(s, data['Vtht_kdg'], 'g--', lw=1.5, label=r'KDG estimate ($k_{ii}$)')
+    ax.axhline(0, color='gray', lw=0.5)
+    ax.set_xlabel('Boozer $s$')
+    ax.set_ylabel(r'$V^\vartheta$ [rad/s]')
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    ax.set_xlim(0, 1)
+
+    ax = axes[1, 0]
+    ax.set_title('$E_r$ term decomposition [statV/cm]', fontsize=12)
+    ax.axhline(0, color='gray', lw=0.5)
+    ax.fill_between(s, 0, data['er_dia'], alpha=0.3, color='blue',
+                    label=r'$\frac{1}{Z_i e n_i}\frac{dp_i}{dr}$')
+    ax.fill_between(s, 0, data['er_rot'], alpha=0.3, color='cyan',
+                    label=r'$\frac{\sqrt{g}B^\vartheta}{c} V^\varphi$')
+    ax.fill_between(s, 0, data['er_kdg'], alpha=0.3, color='green',
+                    label=r'$-\frac{k_i}{Z_i e}\frac{dT_i}{dr}$')
+    ax.plot(s, data['er_dia'] + data['er_rot'] + data['er_kdg'],
+            'g-', lw=2, label='Level 2 total')
+    ax.plot(s, model_data['er_neo2'], 'k-', lw=2, label='NEO-2 full')
+    ax.set_xlabel('Boozer $s$')
+    ax.set_ylabel('$E_r$ contribution [statV/cm]')
+    ax.legend(fontsize=8)
+    ax.grid(True, alpha=0.3)
+    ax.set_xlim(0, 1)
+
+    ax = axes[1, 1]
+    ax.set_title('$E_r$ model comparison [statV/cm]', fontsize=12)
+    ax.axhline(0, color='gray', lw=0.5)
+    ax.plot(s, model_data['er_neo2'], 'k-', lw=2, label='NEO-2 full', zorder=10)
+    ax.plot(s, model_data['er_lvl2'], 'g-', lw=1.5, label='Level 2 ($k_{ii}$)')
+    ax.plot(s, model_data['er_reduced'], 'm--', lw=1.5, label='Reduced single-ion')
+    ax.plot(s, model_data['er_lvl1'], 'c-', lw=1, alpha=0.7, label='Level 1')
+    ax.plot(s, model_data['er_lvl0'], 'b-', lw=1, alpha=0.7, label='Level 0')
+    ax.set_xlabel('Boozer $s$')
+    ax.set_ylabel('$E_r$ [statV/cm]')
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    ax.set_xlim(0, 1)
+
+    fig.suptitle('AUG 30835: Velocities, $E_r$ decomposition, and model hierarchy',
+                 fontsize=14, fontweight='bold')
+    fig.tight_layout()
+
+    if output_path is not None:
+        fig.savefig(output_path, dpi=200)
+    return fig
+
+
 if __name__ == '__main__':
-    data = load_benchmark_data()
-    make_figure(data, '/tmp/aug30835_100surf.png')
+    model_data = load_benchmark_data()
+    make_figure(model_data, '/tmp/aug30835_100surf.png')
     print('Saved /tmp/aug30835_100surf.png')
+
+    decomp_data = load_decomposition_data()
+    make_decomposition_figure(decomp_data, model_data,
+                              '/tmp/aug30835_decomposition.png')
+    print('Saved /tmp/aug30835_decomposition.png')
