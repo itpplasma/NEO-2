@@ -168,7 +168,7 @@ def get_omte_reference_models(fixture=FIXTURE):
         **lvl2_common,
         k_i=np.full_like(ref['boozer_s'], 1.17, dtype=float),
     )
-    k_regimes = {'banana': -1.17, 'plateau': -0.5, 'pfirsch_schluter': 0.5}
+    k_regimes = {'banana': 1.17, 'plateau': 0.5, 'pfirsch_schluter': -0.5}
     om_lvl2 = {}
     er_lvl2 = {}
     for regime, k_val in k_regimes.items():

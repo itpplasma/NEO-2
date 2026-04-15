@@ -336,7 +336,7 @@ def test_select_poloidal_rotation_coefficient():
     """Auto-K selection should follow the simple regime map."""
     nu_star = np.array([0.01, 1.0, 100.0])
     k_i = select_poloidal_rotation_coefficient(nu_star)
-    assert np.allclose(k_i, np.array([-1.17, -0.5, 0.5]))
+    assert np.allclose(k_i, np.array([1.17, 0.5, -0.5]))
 
 
 def test_transport_reconstruction_reduces_to_exact_convention_without_transport_terms():

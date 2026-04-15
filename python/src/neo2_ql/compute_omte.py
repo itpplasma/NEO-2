@@ -301,9 +301,9 @@ def select_poloidal_rotation_coefficient(nu_star):
     """Select K_i from a simple collisionality regime map."""
     nu_star = np.asarray(nu_star)
     k_i = np.empty_like(nu_star, dtype=float)
-    k_i[nu_star < 0.1] = -1.17
-    k_i[(nu_star >= 0.1) & (nu_star < 10.0)] = -0.5
-    k_i[nu_star >= 10.0] = 0.5
+    k_i[nu_star < 0.1] = 1.17
+    k_i[(nu_star >= 0.1) & (nu_star < 10.0)] = 0.5
+    k_i[nu_star >= 10.0] = -0.5
     return k_i
 
 

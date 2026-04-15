@@ -249,9 +249,9 @@ where $K_i$ depends on the collisionality regime:
 
 | Regime | $\nu^*$ range | $K_i$ |
 |--------|--------------|-------|
-| Banana | $\nu^* \ll 1$ | $-1.17$ |
-| Plateau | $\nu^* \sim 1$ | $\approx -0.5$ |
-| Pfirsch--Schluter | $\nu^* \gg 1$ | $\approx +0.5$ |
+| Banana | $\nu^* \ll 1$ | $+1.17$ |
+| Plateau | $\nu^* \sim 1$ | $\approx +0.5$ |
+| Pfirsch--Schluter | $\nu^* \gg 1$ | $\approx -0.5$ |
 
 The Python implementation is
 [`compute_omte_neoclassical_poloidal()`](compute_omte.py),
@@ -287,9 +287,9 @@ selects `K_i` from a simple collisionality map:
 
 | Regime | $\nu^*$ range | $K_i$ |
 |--------|--------------|-------|
-| Banana | $\nu^* < 0.1$ | $-1.17$ |
-| Plateau | $0.1 \le \nu^* < 10$ | $-0.5$ |
-| Pfirsch--Schluter | $\nu^* \ge 10$ | $+0.5$ |
+| Banana | $\nu^* < 0.1$ | $+1.17$ |
+| Plateau | $0.1 \le \nu^* < 10$ | $+0.5$ |
+| Pfirsch--Schluter | $\nu^* \ge 10$ | $-0.5$ |
 
 **GitHub issue:**
 [#74](https://github.com/itpplasma/NEO-2/issues/74).

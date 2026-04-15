@@ -131,8 +131,8 @@ def load_level2_k_band(benchmark_dir=BENCHMARK_DIR,
     idx_map = np.array([int(np.argmin(np.abs(boozer_s_in - si))) for si in s])
     dT_dr = dT_prof[idx_map] * av_nabla
 
-    k_banana = -1.17
-    k_ps = 0.5
+    k_banana = 1.17
+    k_ps = -0.5
     kdg_term_banana = -k_banana * dT_dr / (z_i * E_CGS)
     kdg_term_ps = -k_ps * dT_dr / (z_i * E_CGS)
     kdg_term_kii = -data['k_ii'] * dT_dr / (z_i * E_CGS)
@@ -180,7 +180,7 @@ def make_figure(data=None, output_path=None):
     ax.axhline(0, color='gray', lw=0.5)
 
     ax.fill_between(s, om_band_lo, om_band_hi, alpha=0.2, color='green',
-                    label='Level 2 band ($k = -1.17$ to $+0.5$)')
+                    label='Level 2 band ($k = -0.5$ to $+1.17$)')
 
     ax.plot(s, om_banana, 'g-', lw=0.8, alpha=0.5)
     ax.plot(s, om_ps, 'g-', lw=0.8, alpha=0.5)
