@@ -100,50 +100,103 @@ def load_benchmark_data(benchmark_dir=BENCHMARK_DIR,
     }
 
 
+def load_level2_k_band(benchmark_dir=BENCHMARK_DIR,
+                       multispec_input=MULTISPEC_INPUT):
+    """Compute Level 2 Er for the banana and PS limits and the NEO-2 k_ii."""
+    data = load_benchmark_data(benchmark_dir, multispec_input)
+    s = data['s']
+    er_lvl1 = data['er_lvl1']
+    aiota = data['aiota']
+    sqrtg_phi = data['sqrtg_bctrvr_phi']
+
+    benchmark_dir = Path(benchmark_dir)
+    multispec_input = Path(multispec_input)
+
+    with h5py.File(multispec_input, 'r') as f:
+        species_tag = np.asarray(f['species_tag'])
+        species_tag_vphi = int(np.asarray(f['species_tag_Vphi']).flat[0])
+        ion_idx = int(np.where(species_tag == species_tag_vphi)[0][0])
+        z_i = float(np.asarray(f['species_def'])[0, ion_idx, 0])
+        boozer_s_in = np.asarray(f['boozer_s'])
+        dT_prof = np.asarray(f['dT_ov_ds_prof'])[ion_idx]
+
+    import glob as _glob
+    surface_dirs = sorted(_glob.glob(str(benchmark_dir / 'es_*')))
+    av_nabla = np.empty(len(surface_dirs))
+    for i, d in enumerate(surface_dirs):
+        with h5py.File(f'{d}/fulltransp.h5', 'r') as f:
+            av_nabla[i] = float(np.asarray(f['avnabpsi']))
+
+    idx_map = np.array([int(np.argmin(np.abs(boozer_s_in - si))) for si in s])
+    dT_dr = dT_prof[idx_map] * av_nabla
+
+    k_banana = -1.17
+    k_ps = 0.5
+    kdg_term_banana = -k_banana * dT_dr / (z_i * E_CGS)
+    kdg_term_ps = -k_ps * dT_dr / (z_i * E_CGS)
+    kdg_term_kii = -data['k_ii'] * dT_dr / (z_i * E_CGS)
+
+    er_banana = er_lvl1 + kdg_term_banana
+    er_ps = er_lvl1 + kdg_term_ps
+    er_kii = data['er_lvl2']
+
+    return {
+        's': s,
+        'er_neo2': data['er_neo2'],
+        'er_lvl1': er_lvl1,
+        'er_banana': er_banana,
+        'er_ps': er_ps,
+        'er_kii': er_kii,
+        'k_ii': data['k_ii'],
+        'aiota': aiota,
+        'sqrtg_bctrvr_phi': sqrtg_phi,
+    }
+
+
 def make_figure(data=None, output_path=None):
-    """Create the 2-panel Er / Om_tE comparison figure."""
+    """Create the Om_tE figure with Level 1, Level 2 band, and NEO-2."""
     if data is None:
-        data = load_benchmark_data()
+        data = load_level2_k_band()
 
     s = data['s']
     aiota = data['aiota']
     sqrtg_phi = data['sqrtg_bctrvr_phi']
 
-    om = {k: C_CGS * data[k] / (aiota * sqrtg_phi)
-          for k in ['er_neo2', 'er_lvl0', 'er_lvl1', 'er_lvl2', 'er_reduced']}
+    def to_om(er):
+        return C_CGS * er / (aiota * sqrtg_phi)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    om_neo2 = to_om(data['er_neo2'])
+    om_lvl1 = to_om(data['er_lvl1'])
+    om_banana = to_om(data['er_banana'])
+    om_ps = to_om(data['er_ps'])
+    om_kii = to_om(data['er_kii'])
 
-    ax1.set_title('$E_r$ [statV/cm]', fontsize=13)
-    ax1.axhline(0, color='gray', lw=0.5)
-    ax1.plot(s, data['er_neo2'], 'k-', lw=2, label='NEO-2 full', zorder=10)
-    ax1.plot(s, data['er_lvl2'], 'g-', lw=1.5, label='Level 2 ($k_{ii}$)')
-    ax1.plot(s, data['er_reduced'], 'm--', lw=1.5,
-             label='Reduced single-ion ($k_{ii}$)')
-    ax1.plot(s, data['er_lvl1'], 'c-', lw=1, alpha=0.7, label='Level 1')
-    ax1.plot(s, data['er_lvl0'], 'b-', lw=1, alpha=0.7, label='Level 0')
-    ax1.set_xlabel('Boozer $s$')
-    ax1.set_ylabel('$E_r$ [statV/cm]')
-    ax1.legend(fontsize=9)
-    ax1.grid(True, alpha=0.3)
-    ax1.set_xlim(0, 1)
+    om_band_lo = np.minimum(om_banana, om_ps)
+    om_band_hi = np.maximum(om_banana, om_ps)
 
-    ax2.set_title(r'$\Omega_{tE}$ [rad/s]', fontsize=13)
-    ax2.axhline(0, color='gray', lw=0.5)
-    ax2.plot(s, om['er_neo2'], 'k-', lw=2, label='NEO-2 full', zorder=10)
-    ax2.plot(s, om['er_lvl2'], 'g-', lw=1.5, label='Level 2 ($k_{ii}$)')
-    ax2.plot(s, om['er_reduced'], 'm--', lw=1.5,
-             label='Reduced single-ion ($k_{ii}$)')
-    ax2.plot(s, om['er_lvl1'], 'c-', lw=1, alpha=0.7, label='Level 1')
-    ax2.plot(s, om['er_lvl0'], 'b-', lw=1, alpha=0.7, label='Level 0')
-    ax2.set_xlabel('Boozer $s$')
-    ax2.set_ylabel(r'$\Omega_{tE}$ [rad/s]')
-    ax2.legend(fontsize=9)
-    ax2.grid(True, alpha=0.3)
-    ax2.set_xlim(0, 1)
+    fig, ax = plt.subplots(figsize=(8, 5.5))
 
-    fig.suptitle('AUG 30835: Force-balance model hierarchy (100 surfaces)',
-                 fontsize=13, fontweight='bold')
+    ax.axhline(0, color='gray', lw=0.5)
+
+    ax.fill_between(s, om_band_lo, om_band_hi, alpha=0.2, color='green',
+                    label='Level 2 band ($k = -1.17$ to $+0.5$)')
+
+    ax.plot(s, om_banana, 'g-', lw=0.8, alpha=0.5)
+    ax.plot(s, om_ps, 'g-', lw=0.8, alpha=0.5)
+    ax.plot(s, om_kii, 'g-', lw=2,
+            label='Level 2 ($k_{ii}$ from $D_{31}, D_{32}$)')
+
+    ax.plot(s, om_lvl1, 'c-', lw=1.5, label='Level 1 (rotation only)')
+    ax.plot(s, om_neo2, 'k-', lw=2.5,
+            label='NEO-2 full transport closure', zorder=10)
+
+    ax.set_xlabel('Boozer $s$ (normalised toroidal flux)', fontsize=11)
+    ax.set_ylabel(r'$\Omega_{tE}$ [rad/s]', fontsize=11)
+    ax.set_xlim(0, 1)
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    ax.set_title('AUG 30835: $\\Omega_{tE}$ from force-balance hierarchy',
+                 fontsize=13)
     fig.tight_layout()
 
     if output_path is not None:
@@ -304,10 +357,11 @@ def make_decomposition_figure(data=None, model_data=None, output_path=None):
 
 
 if __name__ == '__main__':
-    model_data = load_benchmark_data()
-    make_figure(model_data, '/tmp/aug30835_100surf.png')
-    print('Saved /tmp/aug30835_100surf.png')
+    band_data = load_level2_k_band()
+    make_figure(band_data, '/tmp/aug30835_omte.png')
+    print('Saved /tmp/aug30835_omte.png')
 
+    model_data = load_benchmark_data()
     decomp_data = load_decomposition_data()
     make_decomposition_figure(decomp_data, model_data,
                               '/tmp/aug30835_decomposition.png')
