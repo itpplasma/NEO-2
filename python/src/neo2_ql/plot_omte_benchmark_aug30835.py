@@ -7,7 +7,10 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .compute_omte import C_CGS, E_CGS
+from .compute_omte import (
+    C_CGS, E_CGS,
+    compute_ftrap, compute_nui_star_sauter, compute_k_sauter,
+)
 
 
 BENCHMARK_DIR = Path(
@@ -118,8 +121,13 @@ def load_level2_k_band(benchmark_dir=BENCHMARK_DIR,
         species_tag_vphi = int(np.asarray(f['species_tag_Vphi']).flat[0])
         ion_idx = int(np.where(species_tag == species_tag_vphi)[0][0])
         z_i = float(np.asarray(f['species_def'])[0, ion_idx, 0])
+        m_i = float(np.asarray(f['species_def'])[1, ion_idx, 0])
         boozer_s_in = np.asarray(f['boozer_s'])
         dT_prof = np.asarray(f['dT_ov_ds_prof'])[ion_idx]
+        T_ion = np.asarray(f['T_prof'])[ion_idx]
+        n_ion = np.asarray(f['n_prof'])[ion_idx]
+        T_ele = np.asarray(f['T_prof'])[0]
+        n_ele = np.asarray(f['n_prof'])[0]
 
     import glob as _glob
     surface_dirs = sorted(_glob.glob(str(benchmark_dir / 'es_*')))
@@ -135,11 +143,39 @@ def load_level2_k_band(benchmark_dir=BENCHMARK_DIR,
     k_ps = -0.5
     kdg_term_banana = -k_banana * dT_dr / (z_i * E_CGS)
     kdg_term_ps = -k_ps * dT_dr / (z_i * E_CGS)
-    kdg_term_kii = -data['k_ii'] * dT_dr / (z_i * E_CGS)
 
     er_banana = er_lvl1 + kdg_term_banana
     er_ps = er_lvl1 + kdg_term_ps
     er_kii = data['er_lvl2']
+
+    from libneo import BoozerFile
+    bc = BoozerFile(str(benchmark_dir / 'axi.bc'))
+    s_bc = np.array(bc.s)
+    R_cm = bc.R * 100.0
+    k_sauter = np.empty_like(s)
+    for i_s in range(s.size):
+        idx_bc = int(np.argmin(np.abs(s_bc - s[i_s])))
+        m_modes = np.array(bc.m[idx_bc])
+        bmnc_s = np.array(bc.bmnc[idx_bc])
+        bmns_s = np.array(bc.bmns[idx_bc])
+        ntheta = 500
+        th = np.linspace(0, 2 * np.pi, ntheta, endpoint=False)
+        B = np.array([
+            sum(c * np.cos(mi * t) + ss * np.sin(mi * t)
+                for c, ss, mi in zip(bmnc_s, bmns_s, m_modes))
+            for t in th
+        ])
+        eps = (B.max() - B.min()) / (B.max() + B.min())
+        ftrap = compute_ftrap(B)
+        idx_p = idx_map[i_s]
+        nui_star = compute_nui_star_sauter(
+            n_ion[idx_p], T_ion[idx_p], m_i, z_i, R_cm,
+            1.0 / aiota[i_s], eps,
+            n_e=n_ele[idx_p], T_e=T_ele[idx_p],
+        )
+        k_sauter[i_s] = compute_k_sauter(ftrap, nui_star)
+
+    er_sauter = er_lvl1 - k_sauter * dT_dr / (z_i * E_CGS)
 
     return {
         's': s,
@@ -148,8 +184,10 @@ def load_level2_k_band(benchmark_dir=BENCHMARK_DIR,
         'er_banana': er_banana,
         'er_ps': er_ps,
         'er_kii': er_kii,
+        'er_sauter': er_sauter,
         'er_reduced': data['er_reduced'],
         'k_ii': data['k_ii'],
+        'k_sauter': k_sauter,
         'aiota': aiota,
         'sqrtg_bctrvr_phi': sqrtg_phi,
     }
@@ -172,6 +210,7 @@ def make_figure(data=None, output_path=None):
     om_banana = to_om(data['er_banana'])
     om_ps = to_om(data['er_ps'])
     om_kii = to_om(data['er_kii'])
+    om_sauter = to_om(data['er_sauter'])
     om_reduced = to_om(data['er_reduced'])
 
     om_band_lo = np.minimum(om_banana, om_ps)
@@ -188,6 +227,8 @@ def make_figure(data=None, output_path=None):
     ax.plot(s, om_ps, 'g-', lw=0.8, alpha=0.5)
     ax.plot(s, om_kii, 'g-', lw=2,
             label='Level 2 ($k_{ii}$ from $D_{31}, D_{32}$)')
+    ax.plot(s, om_sauter, 'r--', lw=1.5,
+            label='Level 2 ($k$ Sauter)')
     ax.plot(s, om_reduced, 'm--', lw=1.5,
             label='Level 3 (reduced single-ion)')
 
