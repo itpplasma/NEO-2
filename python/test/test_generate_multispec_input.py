@@ -49,6 +49,7 @@ multispec = {
     '/boozer_s': np.linspace(0, 1, 10),
     '/rho_pol': np.sqrt(np.linspace(0, 1, 10)),
     '/Vphi': np.linspace(10,1,10),
+    '/Om_tE': np.linspace(1e3, 1e4, 10),
     '/species_tag_Vphi': 1,
     '/isw_Vphi_loc': 0,
     '/rel_stages': 1*np.ones((10,)),
@@ -56,7 +57,7 @@ multispec = {
     '/dT_ov_ds_prof': np.column_stack([2*np.ones((10,)), 3*np.ones((10,))]),
     '/n_prof': np.column_stack([np.linspace(40,4,10), np.linspace(50,5,10)]),
     '/dn_ov_ds_prof': np.column_stack([4*np.ones((10,)), 5*np.ones((10,))]),
-    '/kappa_prof': np.column_stack([np.linspace(60,6,10), np.linspace(70,7,10)]), 
+    '/kappa_prof': np.column_stack([np.linspace(60,6,10), np.linspace(70,7,10)]),
 }
 
 multispec_types = {
@@ -67,6 +68,7 @@ multispec_types = {
     '/boozer_s': 'float64',
     '/rho_pol': 'float64',
     '/Vphi': 'float64',
+    '/Om_tE': 'float64',
     '/species_tag_Vphi': 'int32',
     '/isw_Vphi_loc': 'int32',
     '/rel_stages': 'int32',
@@ -82,6 +84,7 @@ multispec_attributes = {
     '/boozer_s': {'unit': '1'},
     '/rho_pol': {'unit': '1'},
     '/Vphi': {'unit': 'rad / s'},
+    '/Om_tE': {'unit': 'rad / s'},
     '/T_prof': {'unit': 'erg'},
     '/n_prof': {'unit': '1 / cm^3'}
 }

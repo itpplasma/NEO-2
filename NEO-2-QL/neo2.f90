@@ -61,7 +61,7 @@ module neo2_ql
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
-       MtOvR, B_rho_L_loc, xstart_cyl, isw_ripple_solver,           &
+       MtOvR, Om_tE, B_rho_L_loc, xstart_cyl, isw_ripple_solver,   &
        isw_calc_Er, isw_calc_MagDrift, species_tag_Vphi,            &
        isw_Vphi_loc, Vphi, R_Vphi, Z_Vphi, boozer_theta_Vphi,       &
        dn_spec_ov_ds, dT_spec_ov_ds
@@ -166,6 +166,7 @@ module neo2_ql
   INTEGER :: num_radial_pts, num_species_all
   INTEGER, DIMENSION(:), ALLOCATABLE :: rel_stages_prof, species_tag_prof
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: boozer_s_prof, Vphi_prof
+  REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Om_tE_prof
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: R_Vphi_prof, Z_Vphi_prof
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: boozer_theta_Vphi_prof
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: T_prof, n_prof
@@ -244,7 +245,7 @@ module neo2_ql
        plot_gauss,plot_prop
   ! Extra input for NTV computation
   NAMELIST /ntv_input/                                                        &
-       isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, B_rho_L_loc,          &
+       isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, Om_tE, B_rho_L_loc,  &
        isw_ripple_solver, isw_mag_shear
 
 contains
@@ -660,6 +661,7 @@ subroutine main
        CALL h5_define_group(h5_config_id, 'ntv_input', h5_config_group)
        CALL h5_add(h5_config_group, 'isw_qflux_NA', isw_qflux_NA)
        CALL h5_add(h5_config_group, 'MtOvR', MtOvR)
+       CALL h5_add(h5_config_group, 'Om_tE', Om_tE)
        CALL h5_add(h5_config_group, 'B_rho_L_loc', B_rho_L_loc)
        CALL h5_add(h5_config_group, 'isw_ripple_solver', isw_ripple_solver)
        CALL h5_add(h5_config_group, 'isw_mag_shear', isw_mag_shear)
@@ -890,6 +892,7 @@ subroutine main
     isw_ntv_mode = 0
     isw_qflux_NA = 0
     MtOvR = 0.0d0
+    Om_tE = 0.0d0
     B_rho_L_loc = 0.0d0
     isw_ripple_solver = 1
     isw_mag_shear = 0
@@ -1120,6 +1123,13 @@ subroutine main
       STOP
     END IF
 
+    ! get Om_tE profile (only required for isw_calc_Er=2)
+    IF (isw_calc_Er .EQ. 2) THEN
+      IF(ALLOCATED(Om_tE_prof)) DEALLOCATE(Om_tE_prof)
+      ALLOCATE(Om_tE_prof(num_radial_pts))
+      CALL h5_get(h5id_multispec_in,'Om_tE',Om_tE_prof)
+    END IF
+
     CALL h5_close(h5id_multispec_in)
 
     ! prepare directories for NEO-2 runs
@@ -1219,6 +1229,7 @@ subroutine main
       ! specify radial point
       boozer_s = boozer_s_prof(ind_boozer_s)
       Vphi = Vphi_prof(ind_boozer_s)
+      IF (isw_calc_Er .EQ. 2) Om_tE = Om_tE_prof(ind_boozer_s)
       IF (isw_Vphi_loc .EQ. 1) THEN
         write(*,*) "ERROR: Warning switch isw_Vphi_loc=1 is not tested!"
         STOP
