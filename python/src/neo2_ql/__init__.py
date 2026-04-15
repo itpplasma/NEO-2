@@ -29,6 +29,8 @@ from .compute_omte import compute_poloidal_rotation_neoclassical
 from .compute_omte import compute_omte_neoclassical_poloidal
 from .compute_omte import compute_omte_neoclassical_poloidal_auto_k
 from .compute_omte import select_poloidal_rotation_coefficient
+from .compute_omte import compute_ftrap
+from .compute_omte import compute_k_sauter
 from .compute_omte import compute_omte_toroidal_rotation_boozer
 from .compute_omte import compute_omte_neoclassical_poloidal_boozer
 

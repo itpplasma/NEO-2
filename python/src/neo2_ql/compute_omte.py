@@ -52,6 +52,67 @@ def _compute_diamagnetic_er(n, T, dn_ds, dT_ds, z, av_nabla_stor):
     return dp_dr / (n * z * E_CGS)
 
 
+def compute_ftrap(B_theta):
+    """Compute the trapped particle fraction from B(theta) on a flux surface.
+
+    Parameters
+    ----------
+    B_theta : array_like
+        Magnetic field magnitude [T or any unit] at uniformly spaced
+        Boozer theta from 0 to 2*pi (excluding endpoint).
+
+    Returns
+    -------
+    ftrap : float
+        Trapped particle fraction.
+    """
+    B = np.asarray(B_theta, dtype=float)
+    Bmax = B.max()
+    Bmag2_avg = np.mean(B ** 2)
+    nlambda = 500
+    lam = np.linspace(0.0, 1.0, nlambda)
+    dlam = lam[1] - lam[0]
+    integral = 0.0
+    for i in range(1, nlambda - 1):
+        avg_sqrt = np.mean(np.sqrt(np.maximum(0.0, 1.0 - lam[i] * B / Bmax)))
+        integral += lam[i] / avg_sqrt
+    integral *= dlam
+    return 1.0 - integral * 0.75 * Bmag2_avg / Bmax ** 2
+
+
+def compute_k_sauter(ftrap, nui_star):
+    """Compute the poloidal rotation coefficient k from the Sauter formula.
+
+    Implements the analytical fit from Sauter, Angioni & Lin-Liu,
+    Phys. Plasmas 6, 2834 (1999), as used in GACODE NEO.
+
+    In Kasilov notation k = 5/2 - D32/D31.  Banana limit: k -> +1.17.
+
+    Parameters
+    ----------
+    ftrap : float or array
+        Trapped particle fraction.
+    nui_star : float or array
+        Ion collisionality parameter nu*.
+
+    Returns
+    -------
+    k : float or array
+        Poloidal rotation coefficient (Kasilov convention).
+    """
+    ftrap = np.asarray(ftrap, dtype=float)
+    nui_star = np.asarray(nui_star, dtype=float)
+    alpha_0 = -1.17 * (1.0 - ftrap) / (
+        1.0 - 0.22 * ftrap - 0.19 * ftrap ** 2
+    )
+    alpha_S = (
+        (alpha_0 + 0.25 * (1.0 - ftrap ** 2) * np.sqrt(nui_star))
+        / (1.0 + 0.5 * np.sqrt(nui_star))
+        + 0.315 * nui_star ** 2 * ftrap ** 6
+    ) / (1.0 + 0.15 * nui_star ** 2 * ftrap ** 6)
+    return float(-alpha_S) if np.ndim(alpha_S) == 0 else -alpha_S
+
+
 def compute_omte_force_balance(
     n,
     T,
