@@ -211,49 +211,24 @@ $E_r$ by two orders of magnitude. This is exactly what
 and why it must never be used as a standalone reduced model (see the
 "Strict NEO-2 Vphi convention" section below).
 
-#### Boozer-to-physical metric correction
+#### Correct Boozer rotation product
 
-The input `Vphi` from NEO-2 is the Boozer contravariant toroidal angular
-frequency $V^\varphi$ [rad/s], not a cylindrical velocity. The physical
-toroidal velocity and poloidal field are related to the Boozer components by
-the covariant basis vectors:
+The rotation enters the Boozer force balance through the contravariant
+product $\sqrt{g}\,B^\vartheta \cdot V^\varphi$, obtained by inverting
+the velocity relation from Kasilov et al. (2014), eq. (6).  This is
+**not** the covariant product $V^\varphi \cdot B_\vartheta^\text{cov}$;
+they differ in sign and by a factor of 3--5 because the inverse metric
+mixes the dominant $B_\varphi^\text{cov}$ into the contravariant
+$B^\vartheta$.
 
-$$
-v_{\varphi,\text{phys}} = R\, V^\varphi, \qquad
-B_{\vartheta,\text{phys}} = \frac{B_\vartheta^\text{cov}}{|\mathbf{e}_\vartheta|}
-$$
+The quantity $\sqrt{g}\,B^\vartheta = \iota\,\sqrt{g}\,B^\varphi$
+is a flux function already stored in the NEO-2 output as
+`sqrtg_bctrvr_tht`.
 
-where $R = |\mathbf{e}_\varphi|$ is the major radius and
-$|\mathbf{e}_\vartheta| = \sqrt{(\partial R/\partial\vartheta)^2 +
-(\partial Z/\partial\vartheta)^2}$ is the poloidal basis vector magnitude,
-which scales with the minor radius rather than the major radius. The force
-balance product is therefore:
-
-$$
-v_{\varphi,\text{phys}}\, B_{\vartheta,\text{phys}}
-= \frac{R}{|\mathbf{e}_\vartheta|}\; V^\varphi\, B_\vartheta^\text{cov}
-$$
-
-The correction factor $R / |\mathbf{e}_\vartheta|$ is typically 2-4 for
-tokamak core surfaces (e.g. 3.6 at $s = 0.25$ on AUG 30835). It is NOT
-unity, so raw Boozer pairs cannot be used in the cylindrical force balance
-formula without this metric factor.
-
-Note that the KDG poloidal contribution IS coordinate-independent:
-$B_\varphi$ cancels in the product $v_\vartheta B_\varphi$ because the KDG
-formula defines $v_\vartheta \propto 1/B_\varphi$.
-
-$R$ and $|\mathbf{e}_\vartheta|$ are computed from the Fourier harmonics in
-the Boozer coordinate file via
-[`compute_boozer_metric()`](compute_omte.py) or from the NEO-2 output
-profiles `R_Vphi_prof`/`Z_Vphi_prof` via
-[`compute_boozer_metric_from_rz_profile()`](compute_omte.py).
-
-The metric-corrected Level 1 implementation is
-[`compute_omte_toroidal_rotation_physical()`](compute_omte.py).
-The uncorrected
-[`compute_omte_toroidal_rotation()`](compute_omte.py) is retained
-for use with genuine physical (cylindrical) inputs from experiments.
+The Boozer-correct Level 1 implementation is
+[`compute_omte_toroidal_rotation_boozer()`](compute_omte.py).
+The original [`compute_omte_toroidal_rotation()`](compute_omte.py)
+accepts physical (cylindrical) inputs from experiments.
 
 **GitHub issue:**
 [#73](https://github.com/itpplasma/NEO-2/issues/73).
@@ -701,16 +676,18 @@ The rotation input `Vphi` written by
 is stored with the HDF5 unit attribute `rad / s`. In the Kasilov 2014
 notation and in the NEO-2 force-balance implementation this is the
 contravariant toroidal angular frequency $V^\varphi$, not a cylindrical
-velocity. Level 1 and Level 2 in this Python module accept the NEO-2-native
-Boozer component pairs directly because the contravariant/covariant products
-equal the physical products (see the Boozer pair-product identity in the
-Level 1 section above):
+velocity. The Boozer-correct Level 1 and Level 2 functions
+(`compute_omte_toroidal_rotation_boozer`,
+`compute_omte_neoclassical_poloidal_boozer`) use the contravariant product:
 
 $$
-\Delta E_r^{(1)} = \frac{V^\varphi B_\vartheta^\text{cov}}{c}
-= \frac{v_{\varphi,\text{phys}} B_{\vartheta,\text{phys}}}{c},
-\qquad
-\Delta E_r^{(2)} = -\frac{V^\vartheta B_\varphi^\text{cov}}{c}.
+\Delta E_r^{(1)} = \frac{\sqrt{g}\,B^\vartheta\, V^\varphi}{c}.
+$$
+
+The KDG poloidal contribution is coordinate-independent:
+
+$$
+\Delta E_r^{(2)} = -\frac{k}{Z_i\,e}\frac{dT_i}{dr}.
 $$
 
 The helper functions therefore accept either physical cylindrical

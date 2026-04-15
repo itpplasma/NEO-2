@@ -1088,45 +1088,9 @@ def test_transport_plot_decomposition_regression():
     assert np.isclose(terms['er_stored'], 0.11359881049568062, rtol=0.0, atol=1e-15)
 
 
-# --- Boozer metric and physical Level 1/2 tests ---
+# --- Boozer-correct Level 1/2 tests ---
 
 FIXTURE = FIXTURE_DIR / 'omte_reference_aug30835.npz'
-BC_FILE = None  # resolved lazily from fixture
-
-
-def _get_bc_file():
-    global BC_FILE
-    if BC_FILE is not None:
-        return BC_FILE
-    ref = np.load(FIXTURE)
-    bc_path = str(ref['bc_file_path'])
-    if not bc_path or not Path(bc_path).exists():
-        return None
-    BC_FILE = bc_path
-    return BC_FILE
-
-
-def test_boozer_metric_circular_limit():
-    """Synthetic circular tokamak: R=R0+a*cos(theta), Z=a*sin(theta)."""
-    from neo2_ql.compute_omte import compute_boozer_metric
-
-    R0_m, a_m = 1.65, 0.5
-    m_modes = np.array([0, 1])
-    n_modes = np.array([0, 0])
-    rmnc = np.array([R0_m, a_m])
-    rmns = np.array([0.0, 0.0])
-    zmnc = np.array([0.0, 0.0])
-    zmns = np.array([0.0, a_m])
-
-    R_cm, e_cm = compute_boozer_metric(m_modes, n_modes, rmnc, rmns,
-                                       zmnc, zmns, nper=1, theta_B=0.0)
-    assert np.isclose(R_cm, (R0_m + a_m) * 100, rtol=1e-12)
-    assert np.isclose(e_cm, a_m * 100, rtol=1e-12)
-
-    R_pi, e_pi = compute_boozer_metric(m_modes, n_modes, rmnc, rmns,
-                                       zmnc, zmns, nper=1, theta_B=np.pi)
-    assert np.isclose(R_pi, (R0_m - a_m) * 100, rtol=1e-12)
-    assert np.isclose(e_pi, a_m * 100, rtol=1e-12)
 
 
 def test_boozer_level1_uses_sqrtg_bctrvr_tht():
