@@ -217,7 +217,10 @@ def test_derivative_visual_check():
     control_dy_dx = -2*np.cos(x)*np.sin(x)
     plt.plot(x, control_dy_dx - dy_dx)
     plt.title('Difference between control and calculated derivative')
-    plt.show()
+    output_file = '/tmp/test_derivative_visual_check.png'
+    plt.savefig(output_file)
+    plt.close()
+    assert os.path.exists(output_file)
 
     
 if __name__ == '__main__':

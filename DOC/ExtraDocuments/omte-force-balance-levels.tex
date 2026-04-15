@@ -1,0 +1,243 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{parskip}
+
+\newcommand{\rd}{{\rm d}}
+\newcommand{\tht}{\vartheta}
+\newcommand{\ph}{\varphi}
+\newcommand{\be}[1]{\begin{equation}\label{#1}}
+\newcommand{\ee}{\end{equation}}
+
+\title{$\Omega_{tE}$ Force-Balance Model Hierarchy\\[4pt]
+\large Notation following Kasilov et al., Phys.\ Plasmas \textbf{21}, 092506 (2014)}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Conventions}
+
+All quantities are in Gaussian CGS units.  Boozer coordinates
+$(r,\,\tht_B,\,\ph_B)$ with effective radius $r$ as the radial
+label.  Notation follows the NEO-2 NTV paper (Kasilov et al., 2014).
+
+\begin{center}
+\begin{tabular}{lll}
+  \toprule
+  Quantity & Symbol & Units \\
+  \midrule
+  Speed of light & $c$ & cm/s \\
+  Ion charge & $e_i = Z_i\,e$ & statC \\
+  Density & $n_i$ & 1/cm$^3$ \\
+  Temperature & $T_i$ & erg \\
+  Pressure & $p_i = n_i T_i$ & erg/cm$^3$ \\
+  Covariant $B$ components & $B_\tht,\,B_\ph$ & G\,cm \\
+  Contravariant flux products & $\sqrt{g}\,B^\tht,\,\sqrt{g}\,B^\ph$ & G\,cm \\
+  Safety factor & $q = 1/\iota$ & dimensionless \\
+  Contra-variant toroidal angular frequency & $V^\ph$ & rad/s \\
+  Radial electric field & $E_r$ & statV/cm \\
+  $E\times B$ rotation frequency & $\Omega_{tE}$ & rad/s \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+The relation $\sqrt{g}\,B^\tht = \iota\,\sqrt{g}\,B^\ph$ holds
+identically in Boozer coordinates.  Both are flux functions.
+
+The $E\times B$ rotation frequency (Kasilov et al., eq.~(19)):
+\be{omte}
+\Omega_{tE} = \frac{c\, E_r}{\sqrt{g}\,B^\tht} \cdot \iota
+            = \frac{c\, E_r}{\sqrt{g}\,B^\ph}.
+\ee
+
+\section{Parallel and perpendicular velocities (Kasilov et al.)}
+
+The divergence-free contra-variant velocities are
+(Kasilov et al., eqs.~(5)--(6)):
+\be{vpoltor}
+V^\tht = \frac{c\,k\,B_\ph}{e_i\sqrt{g}\langle B^2\rangle}
+         \frac{\rd T_i}{\rd r},
+\qquad
+V^\ph = \frac{c}{\sqrt{g}\,B^\tht}
+        \left(E_r - \frac{1}{e_i n_i}\frac{\rd p_i}{\rd r}\right)
+        + q\,V^\tht,
+\ee
+where the coefficient $k$ depending on plasma collisionality is
+(Kasilov et al., eq.~(8)):
+\be{kdef}
+k = \frac{5}{2} - \frac{D_{32}}{D_{31}}.
+\ee
+
+The transport coefficients $D_{31}$ and $D_{32}$ link the
+thermodynamic forces
+(Kasilov et al., eqs.~(9)--(11)):
+\be{termforces}
+A_1 = \frac{1}{n_\alpha}\frac{\rd n_\alpha}{\rd r}
+    - \frac{e_\alpha E_r}{T_\alpha}
+    - \frac{3}{2 T_\alpha}\frac{\rd T_\alpha}{\rd r},
+\qquad
+A_2 = \frac{1}{T_\alpha}\frac{\rd T_\alpha}{\rd r},
+\qquad
+A_3 = \frac{e_\alpha}{T_\alpha}
+      \frac{\langle E_\parallel B\rangle}{\langle B^2\rangle},
+\ee
+to thermodynamic fluxes $I_i$ via $I_i = -n_\alpha\sum_j D_{ij} A_j$.
+
+For ions with $D_{11}=D_{12}=D_{21}=0$, the coefficient $k$
+varies between $+1.17$ (banana) and $-0.5$
+(Pfirsch--Schl\"uter) for a tokamak at infinitesimal inverse
+aspect ratio.
+
+\section{Level 0 --- Diamagnetic}
+
+Pressure gradient only, no flow information:
+\be{level0}
+\boxed{E_r = \frac{1}{e_i\,n_i}\frac{\rd p_i}{\rd r}}
+\ee
+
+Obtained from~\eqref{vpoltor} by setting $V^\ph = V^\tht = 0$.
+
+\section{Level 1 --- Toroidal rotation}
+
+Add the measured toroidal rotation $V^\ph$, neglecting the poloidal
+velocity ($V^\tht = 0$).
+Inverting eq.~\eqref{vpoltor} for $E_r$:
+\be{level1}
+\boxed{E_r = \frac{1}{e_i\,n_i}\frac{\rd p_i}{\rd r}
+       + \frac{\sqrt{g}\,B^\tht}{c}\, V^\ph}
+\ee
+
+The rotation enters through the \textbf{contra-variant} product
+$\sqrt{g}\,B^\tht \cdot V^\ph$, which follows directly from
+inverting eq.~\eqref{vpoltor}.  This is \textbf{not} the same as
+the covariant product $V^\ph \cdot B_\tht$; they differ in sign
+and by a factor of $3$--$5$ because the inverse metric mixes the
+dominant $B_\ph$ component into the contra-variant $B^\tht$:
+\[
+B^\tht = g^{\tht\tht}\,B_\tht + g^{\tht\ph}\,B_\ph,
+\qquad |\,B_\ph / B_\tht\,| \approx 24\text{--}36.
+\]
+
+\section{Level 2 --- Neoclassical poloidal rotation}
+
+Add the neoclassical poloidal velocity estimate from
+eq.~\eqref{vpoltor}.  From $V^\ph = c\,(\sqrt{g}\,B^\tht)^{-1}
+(E_r - (e_i n_i)^{-1}\,\rd p_i/\rd r) + q\,V^\tht$ we get
+\be{level2}
+\boxed{E_r = \frac{1}{e_i\,n_i}\frac{\rd p_i}{\rd r}
+       + \frac{\sqrt{g}\,B^\tht}{c}\,V^\ph
+       - \frac{\sqrt{g}\,B^\tht}{c}\,q\,V^\tht}
+\ee
+
+Substituting eq.~\eqref{vpoltor} for $V^\tht$:
+\[
+\frac{\sqrt{g}\,B^\tht}{c}\,q\,V^\tht
+= \frac{q\,k\,B_\ph}{e_i\langle B^2\rangle}
+  \frac{\rd T_i}{\rd r}
+= \frac{k\,B_\ph}{e_i\,\iota\,\langle B^2\rangle}
+  \frac{\rd T_i}{\rd r}.
+\]
+
+In many experimental and MHD workflows (MARS, NTVTOK), this is
+further simplified by dropping the $\langle B^2\rangle$ average
+and setting $B_\ph / (\iota\,B_\tht + B_\ph) \approx 1$,
+giving the Kim--Diamond--Groebner (KDG) shortcut:
+\be{level2kdg}
+E_r \approx \frac{1}{e_i\,n_i}\frac{\rd p_i}{\rd r}
+     + \frac{\sqrt{g}\,B^\tht}{c}\,V^\ph
+     - \frac{k}{e_i}\frac{\rd T_i}{\rd r}.
+\ee
+
+The poloidal contribution $-k\,(\rd T_i/\rd r)\,/\,e_i$ is
+coordinate-independent: it does not depend on $B_\ph$ explicitly
+because $B_\ph$ cancels between $V^\tht$ and the factor
+$\sqrt{g}\,B^\tht\,q = \sqrt{g}\,B^\ph/\iota \cdot q
+= \sqrt{g}\,B^\ph$ in the product.
+
+\section{Level 3 --- Reduced single-ion NEO-2 limit}
+
+The analytic reduction of the full NEO-2 \texttt{compute\_Er()} algebra
+using the single-ion bootstrap coefficient $D_{31}^{ii}$ and
+negligible $D_{33}$.  From eqs.~\eqref{vpoltor} and \eqref{kdef},
+retaining the exact Boozer geometry:
+\be{reduced}
+\boxed{E_r = \frac{\sqrt{g}\,B^\tht}{c}\,V^\ph
+       + \frac{1}{e_i\,n_i}\frac{\rd p_i}{\rd r}
+       - \frac{k\,B_\ph}{e_i\,(\iota\,B_\tht + B_\ph)}
+         \frac{\rd T_i}{\rd r}}
+\ee
+
+Differs from Level~2 (KDG shortcut, eq.~\eqref{level2kdg})
+only by the geometry factor
+\[
+\frac{B_\ph}{\iota\,B_\tht + B_\ph} \approx 0.98
+\qquad\text{(AUG 30835)}.
+\]
+
+Agrees with full NEO-2 within $9$--$12\%$.
+
+\section{Full NEO-2 transport closure}
+
+The complete expression from \texttt{compute\_Er()} in
+\texttt{ntv\_mod.f90} (branch \texttt{isw\_Vphi\_loc=0}):
+\be{fullneo2}
+\boxed{
+E_r = \frac{
+  V^\ph\,(\iota\,B_\tht + B_\ph)
+  + \dfrac{c\,T_i\,B_\tht}{e_i\,\sqrt{g}\,B^\ph}
+    \,\dfrac{1}{p_i}\dfrac{\rd p_i}{\rd r}
+  + \displaystyle\sum_b \left(
+      D_{31}^{ab}\,A_{1b}
+    + \left(D_{32}^{ab} - \tfrac{5}{2}\,D_{31}^{ab}\right) A_{2b}
+    + D_{33}^{ab}\,A_{3b}
+    \right)
+}{
+  \dfrac{c\,B_\tht}{\sqrt{g}\,B^\ph}
+  + \displaystyle\sum_b D_{31}^{ab}\,\dfrac{e_b}{T_b}
+}}
+\ee
+
+where $A_{1b}$, $A_{2b}$, $A_{3b}$ are the thermodynamic forces
+from eq.~\eqref{termforces} (with species index $b$ replacing
+$\alpha$), and the sums run over all species pairs $(a,b)$ in the
+transport matrix with row $a$ being the measured-rotation species.
+
+The dominant effect of the transport terms is a ${\sim}500:1$
+cancellation between numerator and denominator contributions,
+transforming a raw rotation contribution of $+56\,$statV/cm into
+$E_r \approx -0.6\,$statV/cm.
+
+The reduced single-ion limit~\eqref{reduced} is obtained by keeping
+only the ion--ion diagonal of the transport matrix, substituting
+$D_{31}^{ii} = \hat{D}_{31}\,D_{31,\text{ref}}$ with the analytic
+reference
+\[
+D_{31,\text{ref}} = \frac{c\,T_e\,B_\ph}{e_e\,\iota\,\sqrt{g}\,B^\ph},
+\]
+and setting $D_{32}^{ii} = (5/2 - k)\,D_{31}^{ii}$,
+$D_{33} = 0$.
+
+\section{Summary: AUG 30835 benchmark}
+
+\begin{center}
+\begin{tabular}{lrrr}
+  \toprule
+  Model & $E_r(s\!=\!0.25)$ & $E_r(s\!=\!0.50)$ & Agreement \\
+  & [statV/cm] & [statV/cm] & with NEO-2 \\
+  \midrule
+  NEO-2 full                     & $-0.610$ & $-1.550$ & reference \\
+  Level 3 / reduced single-ion  & $-0.685$ & $-1.697$ & $9$--$12\%$ \\
+  Level 2 ($k_{ii}$)             & $-0.662$ & $-1.666$ & ${\sim}8\%$ \\
+  Level 1 (rotation only)        & $-1.883$ & $-3.284$ & ${\sim}3\times$ \\
+  Level 0 (diamagnetic)          & $-2.932$ & $-4.359$ & ${\sim}4\times$ \\
+  \midrule
+  \multicolumn{4}{l}{\emph{Wrong covariant pairing (historical):}} \\
+  Level 1 ($V^\ph B_\tht$) & $-3.142$ & $-4.671$ & wrong sign \\
+  Level 2 ($V^\ph B_\tht$, wrong $k$) & $-7.617$ & $-8.173$ & wrong \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}
