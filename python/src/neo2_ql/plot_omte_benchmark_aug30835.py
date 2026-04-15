@@ -61,8 +61,9 @@ def load_benchmark_data(benchmark_dir=BENCHMARK_DIR,
             D32 = np.asarray(f['D32_AX'])
             row = np.asarray(f['row_ind_spec'])
             col = np.asarray(f['col_ind_spec'])
+            ion_tag = species_tag_vphi
             for j in range(row.size):
-                if int(row.flat[j]) == ion_idx and int(col.flat[j]) == ion_idx:
+                if int(row.flat[j]) == ion_tag and int(col.flat[j]) == ion_tag:
                     d31_ii[i] = float(D31.flat[j])
                     d32_ii[i] = float(D32.flat[j])
                     break
@@ -248,8 +249,9 @@ def load_decomposition_data(benchmark_dir=BENCHMARK_DIR,
             D32 = np.asarray(f['D32_AX'])
             row = np.asarray(f['row_ind_spec'])
             col = np.asarray(f['col_ind_spec'])
+            ion_tag = species_tag_vphi
             for j in range(row.size):
-                if int(row.flat[j]) == ion_idx and int(col.flat[j]) == ion_idx:
+                if int(row.flat[j]) == ion_tag and int(col.flat[j]) == ion_tag:
                     d31_ii[i] = float(D31.flat[j])
                     d32_ii[i] = float(D32.flat[j])
                     break

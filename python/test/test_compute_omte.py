@@ -957,8 +957,9 @@ def test_aug_reference_single_ion_limit_bridges_simple_and_full_neo2():
     ref = np.load(FIXTURE)
     ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
     z_i = ref['species_def'][0, ion_idx, 0]
-    d31 = ref['D31_AX'][:, 3]
-    d32 = ref['D32_AX'][:, 3]
+    ii = _ion_ion_column(ref)
+    d31 = ref['D31_AX'][:, ii]
+    d32 = ref['D32_AX'][:, ii]
     k_ii = 2.5 - d32 / d31
 
     _, er_simple = compute_omte_neoclassical_poloidal(
@@ -1093,6 +1094,15 @@ def test_transport_plot_decomposition_regression():
 FIXTURE = FIXTURE_DIR / 'omte_reference_aug30835.npz'
 
 
+def _ion_ion_column(ref):
+    """Find the transport matrix column index for the ion-ion diagonal."""
+    ion_tag = int(ref['species_tag_Vphi'])
+    for j in range(ref['row_ind_spec'].shape[1]):
+        if ref['row_ind_spec'][0, j] == ion_tag and ref['col_ind_spec'][0, j] == ion_tag:
+            return j
+    raise ValueError('ion-ion diagonal not found in row_ind_spec/col_ind_spec')
+
+
 def test_boozer_level1_uses_sqrtg_bctrvr_tht():
     """Boozer Level 1 replaces V^phi*B_theta_cov with sqrtg*B^theta*V^phi."""
     from neo2_ql.compute_omte import compute_omte_toroidal_rotation_boozer
@@ -1125,8 +1135,9 @@ def test_boozer_level2_agrees_with_neo2():
     ref = np.load(FIXTURE)
     ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
     z_i = ref['species_def'][0, ion_idx, 0]
-    d31_ii = ref['D31_AX'][:, 3]
-    d32_ii = ref['D32_AX'][:, 3]
+    ii = _ion_ion_column(ref)
+    d31_ii = ref['D31_AX'][:, ii]
+    d32_ii = ref['D32_AX'][:, ii]
     k_ii = 2.5 - d32_ii / d31_ii
 
     _, er_boozer = compute_omte_neoclassical_poloidal_boozer(

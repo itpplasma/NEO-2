@@ -215,8 +215,14 @@ def get_omte_reference_models(fixture=FIXTURE):
     er_tor = np.asarray(ref['Vphi']) * np.asarray(ref['bcovar_tht']) / C_CGS
     er_pol = -v_theta * np.asarray(ref['bcovar_phi']) / C_CGS
 
-    d31_ii = ref['D31_AX'][:, 3]
-    d32_ii = ref['D32_AX'][:, 3]
+    ion_tag = int(ref['species_tag_Vphi'])
+    ii_col = None
+    for j in range(ref['row_ind_spec'].shape[1]):
+        if ref['row_ind_spec'][0, j] == ion_tag and ref['col_ind_spec'][0, j] == ion_tag:
+            ii_col = j
+            break
+    d31_ii = ref['D31_AX'][:, ii_col]
+    d32_ii = ref['D32_AX'][:, ii_col]
     k_ii = 2.5 - d32_ii / d31_ii
 
     om_lvl1_boozer, er_lvl1_boozer = compute_omte_toroidal_rotation_boozer(
