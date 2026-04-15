@@ -80,6 +80,56 @@ def compute_ftrap(B_theta):
     return 1.0 - integral * 0.75 * Bmag2_avg / Bmax ** 2
 
 
+def compute_nui_star_sauter(n_i, T_i, m_i, z_i, R_cm, q, eps, n_e=None,
+                            T_e=None):
+    """Compute Sauter's ion collisionality parameter.
+
+    Uses the Hinton-Hazeltine convention with the GACODE Coulomb
+    logarithm:
+
+        nu*_i = nu_HH * R * q / (eps^{3/2} * vth_i)
+
+    Parameters
+    ----------
+    n_i : float or array
+        Ion density [1/cm^3].
+    T_i : float or array
+        Ion temperature [erg].
+    m_i : float
+        Ion mass [g].
+    z_i : float
+        Ion charge number.
+    R_cm : float
+        Major radius [cm].
+    q : float or array
+        Safety factor.
+    eps : float or array
+        Inverse aspect ratio (Bmax-Bmin)/(Bmax+Bmin).
+    n_e : float or array, optional
+        Electron density [1/cm^3] for Coulomb log. Defaults to n_i.
+    T_e : float or array, optional
+        Electron temperature [erg] for Coulomb log. Defaults to T_i.
+
+    Returns
+    -------
+    nui_star : float or array
+        Sauter ion collisionality.
+    """
+    if n_e is None:
+        n_e = n_i
+    if T_e is None:
+        T_e = T_i
+    n_e_19 = np.asarray(n_e) * 1e6 / 1e19
+    T_e_keV = np.asarray(T_e) / 1.602e-9
+    loglam = 24.0 - np.log(np.sqrt(n_e_19 * 1e13) / (T_e_keV * 1000.0))
+    vth_i = np.sqrt(2.0 * np.asarray(T_i) / m_i)
+    nu_ii = (4.0 * np.sqrt(2.0 * np.pi) * np.asarray(n_i) * z_i ** 4
+             * E_CGS ** 4 * loglam / (3.0 * np.sqrt(m_i)
+             * np.asarray(T_i) ** 1.5))
+    nui_HH = nu_ii * 4.0 / (3.0 * np.sqrt(2.0 * np.pi))
+    return nui_HH * R_cm * np.asarray(q) / (np.asarray(eps) ** 1.5 * vth_i)
+
+
 def compute_k_sauter(ftrap, nui_star):
     """Compute the poloidal rotation coefficient k from the Sauter formula.
 
@@ -91,9 +141,9 @@ def compute_k_sauter(ftrap, nui_star):
     Parameters
     ----------
     ftrap : float or array
-        Trapped particle fraction.
+        Trapped particle fraction from ``compute_ftrap``.
     nui_star : float or array
-        Ion collisionality parameter nu*.
+        Ion collisionality from ``compute_nui_star_sauter``.
 
     Returns
     -------
