@@ -148,6 +148,7 @@ def load_level2_k_band(benchmark_dir=BENCHMARK_DIR,
         'er_banana': er_banana,
         'er_ps': er_ps,
         'er_kii': er_kii,
+        'er_reduced': data['er_reduced'],
         'k_ii': data['k_ii'],
         'aiota': aiota,
         'sqrtg_bctrvr_phi': sqrtg_phi,
@@ -171,6 +172,7 @@ def make_figure(data=None, output_path=None):
     om_banana = to_om(data['er_banana'])
     om_ps = to_om(data['er_ps'])
     om_kii = to_om(data['er_kii'])
+    om_reduced = to_om(data['er_reduced'])
 
     om_band_lo = np.minimum(om_banana, om_ps)
     om_band_hi = np.maximum(om_banana, om_ps)
@@ -186,6 +188,8 @@ def make_figure(data=None, output_path=None):
     ax.plot(s, om_ps, 'g-', lw=0.8, alpha=0.5)
     ax.plot(s, om_kii, 'g-', lw=2,
             label='Level 2 ($k_{ii}$ from $D_{31}, D_{32}$)')
+    ax.plot(s, om_reduced, 'm--', lw=1.5,
+            label='Level 3 (reduced single-ion)')
 
     ax.plot(s, om_lvl1, 'c-', lw=1.5, label='Level 1 (rotation only)')
     ax.plot(s, om_neo2, 'k-', lw=2.5,
