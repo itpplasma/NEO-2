@@ -211,34 +211,49 @@ $E_r$ by two orders of magnitude. This is exactly what
 and why it must never be used as a standalone reduced model (see the
 "Strict NEO-2 Vphi convention" section below).
 
-#### Boozer pair-product identity
+#### Boozer-to-physical metric correction
 
 The input `Vphi` from NEO-2 is the Boozer contravariant toroidal angular
-frequency $V^\varphi$ [rad/s], not a cylindrical velocity. Nevertheless, the
-product $V^\varphi B_\vartheta^\text{cov}$ equals the physical product
-$v_{\varphi,\text{phys}} B_{\vartheta,\text{phys}}$ because the metric factors
-cancel:
+frequency $V^\varphi$ [rad/s], not a cylindrical velocity. The physical
+toroidal velocity and poloidal field are related to the Boozer components by
+the covariant basis vectors:
 
 $$
 v_{\varphi,\text{phys}} = R\, V^\varphi, \qquad
-B_{\vartheta,\text{phys}} = B_\vartheta^\text{cov} / R
+B_{\vartheta,\text{phys}} = \frac{B_\vartheta^\text{cov}}{|\mathbf{e}_\vartheta|}
 $$
 
+where $R = |\mathbf{e}_\varphi|$ is the major radius and
+$|\mathbf{e}_\vartheta| = \sqrt{(\partial R/\partial\vartheta)^2 +
+(\partial Z/\partial\vartheta)^2}$ is the poloidal basis vector magnitude,
+which scales with the minor radius rather than the major radius. The force
+balance product is therefore:
+
 $$
-\Rightarrow\quad
 v_{\varphi,\text{phys}}\, B_{\vartheta,\text{phys}}
-= V^\varphi\, B_\vartheta^\text{cov}
+= \frac{R}{|\mathbf{e}_\vartheta|}\; V^\varphi\, B_\vartheta^\text{cov}
 $$
 
-This identity holds to lowest order in the Boozer metric and is exact in the
-large-aspect-ratio limit. It allows the Python helper functions to accept
-either physical cylindrical pairs or NEO-2-native Boozer pairs interchangeably.
+The correction factor $R / |\mathbf{e}_\vartheta|$ is typically 2-4 for
+tokamak core surfaces (e.g. 3.6 at $s = 0.25$ on AUG 30835). It is NOT
+unity, so raw Boozer pairs cannot be used in the cylindrical force balance
+formula without this metric factor.
 
-The Python implementation is
-[`compute_omte_toroidal_rotation()`](compute_omte.py),
-with the unified entry point
-[`compute_omte_force_balance()`](compute_omte.py)
-falling back to Level 0 when `v_phi` and `b_theta` are omitted.
+Note that the KDG poloidal contribution IS coordinate-independent:
+$B_\varphi$ cancels in the product $v_\vartheta B_\varphi$ because the KDG
+formula defines $v_\vartheta \propto 1/B_\varphi$.
+
+$R$ and $|\mathbf{e}_\vartheta|$ are computed from the Fourier harmonics in
+the Boozer coordinate file via
+[`compute_boozer_metric()`](compute_omte.py) or from the NEO-2 output
+profiles `R_Vphi_prof`/`Z_Vphi_prof` via
+[`compute_boozer_metric_from_rz_profile()`](compute_omte.py).
+
+The metric-corrected Level 1 implementation is
+[`compute_omte_toroidal_rotation_physical()`](compute_omte.py).
+The uncorrected
+[`compute_omte_toroidal_rotation()`](compute_omte.py) is retained
+for use with genuine physical (cylindrical) inputs from experiments.
 
 **GitHub issue:**
 [#73](https://github.com/itpplasma/NEO-2/issues/73).

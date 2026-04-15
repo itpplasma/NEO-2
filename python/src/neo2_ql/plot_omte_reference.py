@@ -11,7 +11,9 @@ from .compute_omte import (
     compute_poloidal_rotation_neoclassical,
     compute_omte_diamagnetic,
     compute_omte_neoclassical_poloidal,
+    compute_omte_neoclassical_poloidal_boozer,
     compute_omte_toroidal_rotation,
+    compute_omte_toroidal_rotation_boozer,
     compute_omte_toroidal_rotation_neo2_convention,
 )
 from .neo2_output_omte import compute_neo2_omte_from_transport_coefficients
@@ -213,6 +215,18 @@ def get_omte_reference_models(fixture=FIXTURE):
     er_tor = np.asarray(ref['Vphi']) * np.asarray(ref['bcovar_tht']) / C_CGS
     er_pol = -v_theta * np.asarray(ref['bcovar_phi']) / C_CGS
 
+    d31_ii = ref['D31_AX'][:, 3]
+    d32_ii = ref['D32_AX'][:, 3]
+    k_ii = 2.5 - d32_ii / d31_ii
+
+    om_lvl1_boozer, er_lvl1_boozer = compute_omte_toroidal_rotation_boozer(
+        **common, vphi=ref['Vphi'],
+    )
+
+    om_lvl2_boozer, er_lvl2_boozer = compute_omte_neoclassical_poloidal_boozer(
+        **common, vphi=ref['Vphi'], k_i=k_ii,
+    )
+
     return {
         'boozer_s': ref['boozer_s'],
         'om_neo2': om_neo2,
@@ -233,6 +247,11 @@ def get_omte_reference_models(fixture=FIXTURE):
         'er_lvl2': er_lvl2,
         'er_lvl2_banana': er_lvl2_banana,
         'er_lvl25': er_lvl25,
+        'om_lvl1_boozer': om_lvl1_boozer,
+        'er_lvl1_boozer': er_lvl1_boozer,
+        'om_lvl2_boozer': om_lvl2_boozer,
+        'er_lvl2_boozer': er_lvl2_boozer,
+        'k_ii': k_ii,
         'lvl25_parameters': {
             'd31_hat': LEVEL25_DEFAULT_D31_HAT,
             'k_cof': LEVEL25_DEFAULT_K_COF,

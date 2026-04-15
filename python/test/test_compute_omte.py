@@ -1088,6 +1088,116 @@ def test_transport_plot_decomposition_regression():
     assert np.isclose(terms['er_stored'], 0.11359881049568062, rtol=0.0, atol=1e-15)
 
 
+# --- Boozer metric and physical Level 1/2 tests ---
+
+FIXTURE = FIXTURE_DIR / 'omte_reference_aug30835.npz'
+BC_FILE = None  # resolved lazily from fixture
+
+
+def _get_bc_file():
+    global BC_FILE
+    if BC_FILE is not None:
+        return BC_FILE
+    ref = np.load(FIXTURE)
+    bc_path = str(ref['bc_file_path'])
+    if not bc_path or not Path(bc_path).exists():
+        return None
+    BC_FILE = bc_path
+    return BC_FILE
+
+
+def test_boozer_metric_circular_limit():
+    """Synthetic circular tokamak: R=R0+a*cos(theta), Z=a*sin(theta)."""
+    from neo2_ql.compute_omte import compute_boozer_metric
+
+    R0_m, a_m = 1.65, 0.5
+    m_modes = np.array([0, 1])
+    n_modes = np.array([0, 0])
+    rmnc = np.array([R0_m, a_m])
+    rmns = np.array([0.0, 0.0])
+    zmnc = np.array([0.0, 0.0])
+    zmns = np.array([0.0, a_m])
+
+    R_cm, e_cm = compute_boozer_metric(m_modes, n_modes, rmnc, rmns,
+                                       zmnc, zmns, nper=1, theta_B=0.0)
+    assert np.isclose(R_cm, (R0_m + a_m) * 100, rtol=1e-12)
+    assert np.isclose(e_cm, a_m * 100, rtol=1e-12)
+
+    R_pi, e_pi = compute_boozer_metric(m_modes, n_modes, rmnc, rmns,
+                                       zmnc, zmns, nper=1, theta_B=np.pi)
+    assert np.isclose(R_pi, (R0_m - a_m) * 100, rtol=1e-12)
+    assert np.isclose(e_pi, a_m * 100, rtol=1e-12)
+
+
+def test_boozer_level1_uses_sqrtg_bctrvr_tht():
+    """Boozer Level 1 replaces V^phi*B_theta_cov with sqrtg*B^theta*V^phi."""
+    from neo2_ql.compute_omte import compute_omte_toroidal_rotation_boozer
+    ref = np.load(FIXTURE)
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+    common = dict(
+        n=ref['n_prof'][:, ion_idx], T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i, aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+    )
+
+    _, er_old = compute_omte_toroidal_rotation(**common,
+        v_phi=ref['Vphi'], b_theta=ref['bcovar_tht'])
+    _, er_boozer = compute_omte_toroidal_rotation_boozer(**common, vphi=ref['Vphi'])
+
+    er_dia = er_old - ref['Vphi'] * ref['bcovar_tht'] / C_CGS
+    vphi_old = er_old - er_dia
+    vphi_boozer = er_boozer - er_dia
+    ratio = ref['sqrtg_bctrvr_tht'] / ref['bcovar_tht']
+    assert np.allclose(vphi_boozer / vphi_old, ratio, rtol=1e-10)
+
+
+def test_boozer_level2_agrees_with_neo2():
+    """Boozer-correct Level 2 with k_ii should agree with NEO-2 within 10%."""
+    from neo2_ql.compute_omte import compute_omte_neoclassical_poloidal_boozer
+    ref = np.load(FIXTURE)
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+    d31_ii = ref['D31_AX'][:, 3]
+    d32_ii = ref['D32_AX'][:, 3]
+    k_ii = 2.5 - d32_ii / d31_ii
+
+    _, er_boozer = compute_omte_neoclassical_poloidal_boozer(
+        n=ref['n_prof'][:, ion_idx], T=ref['T_prof'][:, ion_idx],
+        dn_ds=ref['dn_ov_ds_prof'][:, ion_idx],
+        dT_ds=ref['dT_ov_ds_prof'][:, ion_idx],
+        z=z_i, aiota=ref['aiota'],
+        sqrtg_bctrvr_phi=ref['sqrtg_bctrvr_phi'],
+        av_nabla_stor=ref['av_nabla_stor'],
+        vphi=ref['Vphi'], k_i=k_ii)
+
+    er_neo2 = ref['Er_neo2']
+    assert np.allclose(er_boozer, er_neo2, rtol=0.10), (
+        f'Boozer Level 2 Er={er_boozer} vs NEO-2 Er={er_neo2}')
+
+
+def test_kdg_poloidal_term_is_coordinate_independent():
+    """The KDG poloidal contribution is the same with physical or Boozer inputs."""
+    ref = np.load(FIXTURE)
+    ion_idx = np.where(ref['species_tag'] == ref['species_tag_Vphi'])[0][0]
+    z_i = ref['species_def'][0, ion_idx, 0]
+    k_i = 1.17
+
+    for i in range(ref['boozer_s'].size):
+        dT_dr = ref['dT_ov_ds_prof'][i, ion_idx] * ref['av_nabla_stor'][i]
+        kdg_term = -k_i * dT_dr / (z_i * E_CGS)
+
+        v_theta_boozer = compute_poloidal_rotation_neoclassical(
+            dT_ds=ref['dT_ov_ds_prof'][i, ion_idx], z=z_i,
+            b_phi=ref['bcovar_phi'][i],
+            av_nabla_stor=ref['av_nabla_stor'][i], k_i=k_i)
+        product_boozer = v_theta_boozer * ref['bcovar_phi'][i] / C_CGS
+        assert np.isclose(product_boozer, -kdg_term, rtol=1e-12)
+
+
 if __name__ == '__main__':
     test_uniform_profiles_give_zero()
     test_negative_density_gradient_gives_negative_omte()

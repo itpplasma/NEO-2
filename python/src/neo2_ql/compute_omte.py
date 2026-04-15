@@ -52,6 +52,124 @@ def _compute_diamagnetic_er(n, T, dn_ds, dT_ds, z, av_nabla_stor):
     return dp_dr / (n * z * E_CGS)
 
 
+def compute_boozer_metric(m_modes, n_modes, rmnc, rmns, zmnc, zmns,
+                          nper, theta_B, phi=0.0):
+    """Compute R and |e_theta| from Boozer Fourier harmonics.
+
+    Evaluates position and poloidal basis vector magnitude at a given
+    (theta_B, phi) point by analytically differentiating the Fourier
+    series from a Boozer coordinate file.
+
+    Parameters
+    ----------
+    m_modes, n_modes : array_like
+        Poloidal and toroidal mode numbers.
+    rmnc, rmns, zmnc, zmns : array_like
+        Fourier harmonics for R and Z [m].
+    nper : int
+        Number of field periods.
+    theta_B : float
+        Boozer poloidal angle [rad].
+    phi : float, optional
+        Boozer toroidal angle [rad]. Default 0 (outboard midplane).
+
+    Returns
+    -------
+    R_cm : float
+        Major radius [cm].
+    abs_e_theta_cm : float
+        Poloidal basis vector magnitude |e_theta| [cm].
+    """
+    m_modes = np.asarray(m_modes, dtype=float)
+    n_modes = np.asarray(n_modes, dtype=float)
+    rmnc = np.asarray(rmnc, dtype=float)
+    rmns = np.asarray(rmns, dtype=float)
+    zmnc = np.asarray(zmnc, dtype=float)
+    zmns = np.asarray(zmns, dtype=float)
+
+    angle = m_modes * theta_B - nper * n_modes * phi
+    cos_a = np.cos(angle)
+    sin_a = np.sin(angle)
+
+    R_m = np.dot(rmnc, cos_a) + np.dot(rmns, sin_a)
+    Z_m = np.dot(zmnc, cos_a) + np.dot(zmns, sin_a)
+
+    dR_dth = np.dot(-m_modes * rmnc, sin_a) + np.dot(m_modes * rmns, cos_a)
+    dZ_dth = np.dot(-m_modes * zmnc, sin_a) + np.dot(m_modes * zmns, cos_a)
+
+    R_cm = R_m * 100.0
+    abs_e_theta_cm = np.sqrt(dR_dth**2 + dZ_dth**2) * 100.0
+    return R_cm, abs_e_theta_cm
+
+
+def compute_boozer_metric_from_bc(bc_file_path, surface_s, theta_B=0.0,
+                                  phi=0.0):
+    """Load a .bc file and return R, |e_theta| at (s, theta_B, phi).
+
+    Parameters
+    ----------
+    bc_file_path : str or path-like
+        Path to the Boozer .bc file.
+    surface_s : float or array_like
+        Normalized toroidal flux label(s).
+    theta_B : float, optional
+        Boozer poloidal angle [rad]. Default 0.
+    phi : float, optional
+        Boozer toroidal angle [rad]. Default 0.
+
+    Returns
+    -------
+    R_cm : float or ndarray
+        Major radius [cm].
+    abs_e_theta_cm : float or ndarray
+        Poloidal basis vector magnitude [cm].
+    """
+    from libneo import BoozerFile
+
+    bc = BoozerFile(str(bc_file_path))
+    s_arr = np.asarray(bc.s, dtype=float)
+    surface_s = np.atleast_1d(np.asarray(surface_s, dtype=float))
+    R_list, e_list = [], []
+    for s_val in surface_s:
+        idx = int(np.argmin(np.abs(s_arr - s_val)))
+        R_cm, e_cm = compute_boozer_metric(
+            bc.m[idx], bc.n[idx], bc.rmnc[idx], bc.rmns[idx],
+            bc.zmnc[idx], bc.zmns[idx], bc.nper, theta_B, phi,
+        )
+        R_list.append(R_cm)
+        e_list.append(e_cm)
+    if len(R_list) == 1:
+        return R_list[0], e_list[0]
+    return np.array(R_list), np.array(e_list)
+
+
+def compute_boozer_metric_from_rz_profile(R_prof_cm, Z_prof_cm):
+    """Compute R and |e_theta| at theta_B=0 from NEO-2 profile arrays.
+
+    Parameters
+    ----------
+    R_prof_cm : array_like
+        R values [cm] at uniformly-spaced Boozer theta from 0 to 2*pi
+        (101 points, as stored in R_Vphi_prof).
+    Z_prof_cm : array_like
+        Z values [cm] at the same theta grid.
+
+    Returns
+    -------
+    R_cm : float
+        Major radius at theta_B=0 [cm].
+    abs_e_theta_cm : float
+        |e_theta| at theta_B=0 [cm], via central finite differences.
+    """
+    R_prof = np.asarray(R_prof_cm, dtype=float)
+    Z_prof = np.asarray(Z_prof_cm, dtype=float)
+    npts = R_prof.size
+    dtheta = 2.0 * np.pi / (npts - 1)
+    dR = (R_prof[1] - R_prof[-2]) / (2.0 * dtheta)
+    dZ = (Z_prof[1] - Z_prof[-2]) / (2.0 * dtheta)
+    return float(R_prof[0]), float(np.sqrt(dR**2 + dZ**2))
+
+
 def compute_omte_force_balance(
     n,
     T,
@@ -76,10 +194,19 @@ def compute_omte_force_balance(
         Om_tE = c E_r / (iota * sqrt(g) B^phi)
 
     Only the products ``v_phi * B_theta`` and ``v_theta * B_phi`` enter.
-    These must therefore be supplied as coordinate-consistent pairs:
-    physical cylindrical velocities [cm/s] with fields [G], or NEO-2 Boozer
-    contravariant angular frequencies [rad/s] with Boozer covariant field
-    components [G cm].
+    These must be supplied as physical cylindrical pairs: velocities [cm/s]
+    with fields [G].
+
+    .. warning::
+
+       Passing raw NEO-2 Boozer pairs ``(V^phi, bcovar_tht)`` here gives
+       the wrong toroidal product because ``B_theta_cov / R != B_pol``;
+       the correct relation is ``B_pol = B_theta_cov / |e_theta|`` where
+       ``|e_theta|`` is the poloidal basis vector magnitude (approximately
+       the minor radius, NOT the major radius R). Use
+       ``compute_omte_toroidal_rotation_physical`` or
+       ``compute_omte_neoclassical_poloidal_physical`` when the inputs are
+       Boozer-coordinate quantities from NEO-2.
 
     Parameters
     ----------
@@ -192,9 +319,10 @@ def compute_omte_toroidal_rotation(
 ):
     """Compute Om_tE including toroidal rotation (Level 1).
 
-    `v_phi` and `b_theta` may be supplied either as a physical
-    toroidal-velocity / poloidal-field pair or as the NEO-2-native
-    contravariant/covariant Boozer pair `(Vphi, bcovar_tht)`.
+    ``v_phi`` and ``b_theta`` must be a physical toroidal-velocity [cm/s]
+    and poloidal-field [G] pair.  For Boozer-coordinate inputs from NEO-2,
+    use ``compute_omte_toroidal_rotation_physical`` which applies the
+    metric correction factor ``R / |e_theta|``.
     """
     return compute_omte_force_balance(
         n=n,
@@ -345,9 +473,10 @@ def compute_omte_neoclassical_poloidal(
 ):
     """Compute Om_tE with toroidal and estimated poloidal rotation (Level 2).
 
-    The toroidal pair `(v_phi, b_theta)` and the poloidal pair
-    `(v_theta, b_phi)` may be supplied either in physical cylindrical form
-    or in the NEO-2 Boozer contravariant/covariant form.
+    ``v_phi`` and ``b_theta`` must be physical quantities [cm/s] and [G].
+    The KDG poloidal term is coordinate-independent (B_phi cancels), but
+    the toroidal product is not.  For Boozer-coordinate inputs from NEO-2,
+    use ``compute_omte_neoclassical_poloidal_physical``.
     """
     v_theta = compute_poloidal_rotation_neoclassical(
         dT_ds=dT_ds,
@@ -464,3 +593,76 @@ def compute_omte_neoclassical_poloidal_auto_k(
         b_phi=b_phi,
         k_i=select_poloidal_rotation_coefficient(nu_star),
     )
+
+
+def compute_omte_toroidal_rotation_boozer(
+    n,
+    T,
+    dn_ds,
+    dT_ds,
+    z,
+    aiota,
+    sqrtg_bctrvr_phi,
+    av_nabla_stor,
+    vphi,
+):
+    """Compute Om_tE including toroidal rotation in Boozer coordinates (Level 1).
+
+    Uses the correct Boozer-algebra rotation product
+    ``sqrt(g) B^theta * V^phi / c`` instead of the incorrect covariant
+    pairing ``V^phi * B_theta_cov / c``.  The covariant ``B_theta_cov``
+    and the contravariant ``sqrt(g) B^theta`` differ in sign and magnitude
+    because the inverse metric mixes the dominant ``B_phi_cov`` component
+    into ``B^theta``.
+    """
+    (
+        n, T, dn_ds, dT_ds, aiota, sqrtg_bctrvr_phi, av_nabla_stor,
+    ) = _prepare_common_inputs(
+        n, T, dn_ds, dT_ds, z, aiota, sqrtg_bctrvr_phi, av_nabla_stor
+    )
+
+    sqrtg_bctrvr_tht = aiota * sqrtg_bctrvr_phi
+
+    Er = _compute_diamagnetic_er(n, T, dn_ds, dT_ds, z, av_nabla_stor)
+    Er = Er + sqrtg_bctrvr_tht * np.asarray(vphi) / C_CGS
+
+    Om_tE = C_CGS * Er / (aiota * sqrtg_bctrvr_phi)
+    return Om_tE, Er
+
+
+def compute_omte_neoclassical_poloidal_boozer(
+    n,
+    T,
+    dn_ds,
+    dT_ds,
+    z,
+    aiota,
+    sqrtg_bctrvr_phi,
+    av_nabla_stor,
+    vphi,
+    k_i,
+):
+    """Compute Om_tE with Boozer-correct rotation and KDG poloidal estimate (Level 2).
+
+    Uses ``sqrt(g) B^theta * V^phi / c`` for the toroidal rotation term
+    and the coordinate-independent KDG poloidal contribution
+    ``-k_i * dT/dr / (Z e)``.  This is the minimal correct Boozer-algebra
+    force balance that agrees with the reduced single-ion NEO-2 limit to
+    within the small geometry factor ``B_phi / (iota B_theta + B_phi)``
+    on the KDG term (typically ~2% correction).
+    """
+    (
+        n, T, dn_ds, dT_ds, aiota, sqrtg_bctrvr_phi, av_nabla_stor,
+    ) = _prepare_common_inputs(
+        n, T, dn_ds, dT_ds, z, aiota, sqrtg_bctrvr_phi, av_nabla_stor
+    )
+
+    sqrtg_bctrvr_tht = aiota * sqrtg_bctrvr_phi
+    dT_dr = dT_ds * av_nabla_stor
+
+    Er = _compute_diamagnetic_er(n, T, dn_ds, dT_ds, z, av_nabla_stor)
+    Er = Er + sqrtg_bctrvr_tht * np.asarray(vphi) / C_CGS
+    Er = Er - np.asarray(k_i) * dT_dr / (z * E_CGS)
+
+    Om_tE = C_CGS * Er / (aiota * sqrtg_bctrvr_phi)
+    return Om_tE, Er

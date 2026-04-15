@@ -8,6 +8,11 @@ import numpy as np
 
 
 FIXTURE_PATH = Path(__file__).with_name('omte_reference_aug30835.npz')
+BC_FILE_PATH = Path(
+    '/home/ert/data/AUG/NEO-2/30835/'
+    '2016_controlled_fusion_rmp90_benchmark/'
+    'gacode_neo_comparison/sfincs_compare/converted_bc/axisymmetric.bc'
+)
 RUN_DIRS = [
     Path('/home/ert/data/AUG/NEO-2/30835/gorilla_axisymmetric_baseline/runs/ql_two_surfaces/es_0p25271'),
     Path('/home/ert/data/AUG/NEO-2/30835/gorilla_axisymmetric_baseline/runs/ql_two_surfaces/es_0p49841'),
@@ -20,6 +25,7 @@ SURFACE_FIELDS = [
     'Dp0',
     'D31ref0',
     'Er',
+    'R0',
     'aiota',
     'avEparB_ov_avb2',
     'av_gphph',
@@ -38,6 +44,11 @@ SURFACE_FIELDS = [
     'psi_pr_hat',
     'sqrtg_bctrvr_phi',
     'sqrtg_bctrvr_tht',
+]
+
+PROFILE_FIELDS = [
+    'R_Vphi_prof',
+    'Z_Vphi_prof',
 ]
 
 INVARIANT_VECTOR_FIELDS = [
@@ -223,6 +234,11 @@ def main():
 
     for field_name in STACKED_VECTOR_FIELDS + STACKED_MATRIX_FIELDS:
         regenerated[field_name] = _stack_field(SOURCE_H5_PATHS, field_name)
+
+    for field_name in PROFILE_FIELDS:
+        regenerated[field_name] = _stack_field(SOURCE_H5_PATHS, field_name)
+
+    regenerated['bc_file_path'] = str(BC_FILE_PATH) if BC_FILE_PATH.exists() else ''
 
     if not np.allclose(regenerated['n_prof'], regenerated['n_spec'], rtol=0.0, atol=0.0):
         raise ValueError('n_prof parsed from neo2.in does not match n_spec from HDF5 output')

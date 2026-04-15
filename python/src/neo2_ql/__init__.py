@@ -29,6 +29,11 @@ from .compute_omte import compute_poloidal_rotation_neoclassical
 from .compute_omte import compute_omte_neoclassical_poloidal
 from .compute_omte import compute_omte_neoclassical_poloidal_auto_k
 from .compute_omte import select_poloidal_rotation_coefficient
+from .compute_omte import compute_boozer_metric
+from .compute_omte import compute_boozer_metric_from_bc
+from .compute_omte import compute_boozer_metric_from_rz_profile
+from .compute_omte import compute_omte_toroidal_rotation_boozer
+from .compute_omte import compute_omte_neoclassical_poloidal_boozer
 
 _LAZY_EXPORTS = {
     'get_neo2_ql_input_profiles': ('.plot_neo2_ql_input_profiles', 'get_neo2_ql_input_profiles'),
