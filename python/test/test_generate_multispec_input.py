@@ -220,6 +220,62 @@ def test_derivative_visual_check():
     plt.show()
 
     
+def test_omte_profile_hdf5_roundtrip():
+    """Write a multispec file with Om_tE, read it back, verify exact match."""
+    fname = os.path.join(output_dir, 'test_omte_roundtrip.in')
+    Om_tE_in = np.array([1.0e3, 2.5e3, 4.0e3, 5.5e3, 7.0e3])
+    ms = {
+        '/num_radial_pts': 5,
+        '/num_species': 2,
+        '/species_tag': np.array([1, 2], dtype=np.int32),
+        '/species_def': np.tile(np.array([[-1,1],[9.109e-28, 3.344e-24]]), 5),
+        '/boozer_s': np.linspace(0.01, 0.99, 5),
+        '/rho_pol': np.sqrt(np.linspace(0.01, 0.99, 5)),
+        '/Vphi': np.zeros(5),
+        '/Om_tE': Om_tE_in,
+        '/species_tag_Vphi': 1,
+        '/isw_Vphi_loc': 0,
+        '/rel_stages': 2 * np.ones(5, dtype=np.int32),
+        '/T_prof': np.column_stack([np.full(5, 1.6e-9), np.full(5, 1.6e-9)]),
+        '/dT_ov_ds_prof': np.zeros((5, 2)),
+        '/n_prof': np.column_stack([np.full(5, 1e13), np.full(5, 1e13)]),
+        '/dn_ov_ds_prof': np.zeros((5, 2)),
+        '/kappa_prof': np.ones((5, 2)),
+    }
+    write_multispec_to_hdf5(fname, ms)
+    with h5py.File(fname, 'r') as f:
+        assert 'Om_tE' in f, "Om_tE dataset missing from HDF5"
+        Om_tE_out = f['Om_tE'][()]
+        assert np.array_equal(Om_tE_in, Om_tE_out), \
+            f"Om_tE mismatch: {Om_tE_in} vs {Om_tE_out}"
+        assert f['Om_tE'].attrs['unit'] == 'rad / s'
+
+def test_omte_absent_when_not_provided():
+    """Multispec file without Om_tE should not contain the dataset."""
+    fname = os.path.join(output_dir, 'test_no_omte.in')
+    ms = copy.deepcopy(multispec)
+    del ms['/Om_tE']
+    write_multispec_to_hdf5(fname, ms)
+    with h5py.File(fname, 'r') as f:
+        assert 'Om_tE' not in f, "Om_tE should be absent when not provided"
+
+def test_half_omte_differs():
+    """Two multispec files with different Om_tE profiles must differ."""
+    fname_full = os.path.join(output_dir, 'test_omte_full.in')
+    fname_half = os.path.join(output_dir, 'test_omte_half.in')
+    Om_tE_full = np.linspace(1e3, 1e4, 10)
+    ms_full = copy.deepcopy(multispec)
+    ms_full['/Om_tE'] = Om_tE_full
+    ms_half = copy.deepcopy(multispec)
+    ms_half['/Om_tE'] = Om_tE_full * 0.5
+    write_multispec_to_hdf5(fname_full, ms_full)
+    write_multispec_to_hdf5(fname_half, ms_half)
+    with h5py.File(fname_full, 'r') as f_full, h5py.File(fname_half, 'r') as f_half:
+        assert not np.array_equal(f_full['Om_tE'][()], f_half['Om_tE'][()]), \
+            "Full and half Om_tE should differ"
+        assert np.allclose(f_full['Om_tE'][()] * 0.5, f_half['Om_tE'][()]), \
+            "Half profile should be exactly half of full"
+
 if __name__ == '__main__':
     test_write_multispec_to_hdf5()
     test_derivative()
@@ -228,5 +284,8 @@ if __name__ == '__main__':
     test_generate_multispec_input_call()
     test_call_for_more_species()
     test_get_species_def_array()
+    test_omte_profile_hdf5_roundtrip()
+    test_omte_absent_when_not_provided()
+    test_half_omte_differs()
     print('All tests passed.')
     test_derivative_visual_check()
