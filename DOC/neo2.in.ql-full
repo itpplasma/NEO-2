@@ -136,7 +136,9 @@
  dn_vec_ov_ds = 2*-205346467242207.16 ! Radial derivatives of the densities of the species. [0.0d0]
  dt_vec_ov_ds = -1.2342081697267263e-007, -5.6876762615227536e-008 ! Radial derivatives of the temperatures of the species. [0.0d0]
  fname_multispec_in = "multi_spec_aug32169_t4.0210.in" ! ['']
- isw_calc_er = 1 ! [0]
+ isw_calc_er = 1 ! 0: no E_r computation (use scalar MtOvR from namelist) [default]
+                 ! 1: self-consistent E_r from neoclassical ambipolarity
+                 ! 2: externally prescribed Om_tE (from multispec HDF5 or namelist)
  isw_calc_magdrift = 1 ! [0]
  isw_coul_log = 0   ! 0: Coulomb logarithm set as species independent (overrides values for n_spec) [default]
                     ! 1: Coulomb logarithm computed for each species using n_spec, T_spec
@@ -177,7 +179,10 @@
                        ! 3 Arnoldi, 2nd order
                        ! 4 Arnoldi, 3rd order
  MtOvR = 0.0 ! The toroidal Mach number divided by major radius R0. [0.0d0]
-
+ Om_tE = 0.0 ! ExB toroidal precession frequency in rad/s. Used as scalar
+             ! fallback for single-surface runs (isw_multispecies_init=0);
+             ! for profile runs with isw_calc_Er=2 the per-surface values
+             ! come from the multispec HDF5 input. [0.0d0]
 /
 &plotting
  plot_gauss = 0 ! Plotting of gauss function in flint. [0]

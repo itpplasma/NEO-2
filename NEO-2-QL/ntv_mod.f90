@@ -42,7 +42,10 @@ MODULE ntv_mod
 
   ! ADDITIONAL INPUT FOR MULTI-SPECIES COMPUTATIONS (neo2.in)
 
-  !> switch: turn on(=1)/off(=0) computation of E_r
+  !> switch for radial electric field handling:
+  !>   0 = no E_r computation (use scalar MtOvR from namelist)
+  !>   1 = self-consistent E_r from neoclassical ambipolarity
+  !>   2 = externally prescribed Om_tE (from multispec HDF5 or namelist)
   INTEGER, PUBLIC :: isw_calc_Er
   !> switch: turn on(=1)/off(=0) computation of magnetic drift
   INTEGER, PUBLIC :: isw_calc_MagDrift
@@ -928,6 +931,7 @@ CONTAINS
   SUBROUTINE write_multispec_output_a()
 
     use nrtype
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : device, surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -1556,6 +1560,11 @@ CONTAINS
                ParFlow_NA_spec, ParFlow_NA_Ware_spec)
 
        END IF
+    ELSE IF (isw_calc_Er .EQ. 2) THEN
+       ! Externally prescribed Om_tE: compute species Mach numbers from it
+       IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
+       ALLOCATE(MtOvR_spec(0:num_spec-1))
+       MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
     END IF
 
     ! initialize HDF5 file
@@ -2029,7 +2038,7 @@ CONTAINS
         end if
       else
         write(*,*) 'WARNING: particle flux ambipolarity could not be checked,'
-        write(*,*) '  as isw_calc_er is 0'
+        write(*,*) '  as isw_calc_Er is not 1 (current value:', isw_calc_Er, ')'
       end if
     end function check_ambipolarity_particle_flux
   END SUBROUTINE write_multispec_output_a
