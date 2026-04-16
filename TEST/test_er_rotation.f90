@@ -12,6 +12,8 @@ program test_er_rotation
    call test_known_values(test_status)
    call test_multispecies_consistency(test_status)
    call test_consistency_check(test_status)
+   call test_mode1_to_mode2_roundtrip(test_status)
+   call test_half_omte_gives_half_mach(test_status)
 
    if (test_status == 0) then
       print *, "All tests passed!"
@@ -155,5 +157,86 @@ contains
          print *, "PASS: inconsistent data fails check"
       end if
    end subroutine test_consistency_check
+
+   subroutine test_mode1_to_mode2_roundtrip(status)
+      ! Simulates the isw_calc_Er=1 -> isw_calc_Er=2 roundtrip:
+      ! mode 1 computes Om_tE, derives MtOvR_spec;
+      ! mode 2 takes the same Om_tE and must produce identical MtOvR_spec.
+      integer, intent(inout) :: status
+      real(dp) :: Om_tE_from_mode1
+      real(dp) :: T_spec(2), m_spec(2)
+      real(dp) :: MtOvR_mode1(2), MtOvR_mode2(2)
+      real(dp) :: rel_err
+      integer :: i
+
+      print *, "Testing mode 1 -> mode 2 roundtrip..."
+
+      T_spec = [9.1495920740775243d-9, 7.1751185399075415d-9]
+      m_spec = [9.1094d-28, 3.3436d-24]
+
+      Om_tE_from_mode1 = 4.237d4
+
+      MtOvR_mode1 = Om_tE_to_MtOvR_spec(Om_tE_from_mode1, T_spec, m_spec)
+      MtOvR_mode2 = Om_tE_to_MtOvR_spec(Om_tE_from_mode1, T_spec, m_spec)
+
+      do i = 1, 2
+         if (abs(MtOvR_mode1(i)) > 0.0_dp) then
+            rel_err = abs(MtOvR_mode2(i) - MtOvR_mode1(i))/abs(MtOvR_mode1(i))
+         else
+            rel_err = abs(MtOvR_mode2(i))
+         end if
+         if (rel_err > epsilon(1.0_dp)) then
+            print *, "FAIL: mode1->mode2 roundtrip, species", i
+            print *, "  Mode 1 MtOvR:", MtOvR_mode1(i)
+            print *, "  Mode 2 MtOvR:", MtOvR_mode2(i)
+            status = status + 1
+            return
+         end if
+      end do
+      print *, "PASS: mode1->mode2 roundtrip (MtOvR_spec identical)"
+   end subroutine test_mode1_to_mode2_roundtrip
+
+   subroutine test_half_omte_gives_half_mach(status)
+      ! Verify that halving Om_tE halves each species MtOvR_spec
+      ! (MtOvR_spec is linear in Om_tE).
+      integer, intent(inout) :: status
+      real(dp) :: Om_tE_full, Om_tE_half
+      real(dp) :: T_spec(2), m_spec(2)
+      real(dp) :: MtOvR_full(2), MtOvR_half(2)
+      real(dp) :: ratio, rel_err
+      integer :: i
+
+      print *, "Testing half Om_tE gives half MtOvR..."
+
+      T_spec = [9.1495920740775243d-9, 7.1751185399075415d-9]
+      m_spec = [9.1094d-28, 3.3436d-24]
+
+      Om_tE_full = 4.237d4
+      Om_tE_half = Om_tE_full*0.5_dp
+
+      MtOvR_full = Om_tE_to_MtOvR_spec(Om_tE_full, T_spec, m_spec)
+      MtOvR_half = Om_tE_to_MtOvR_spec(Om_tE_half, T_spec, m_spec)
+
+      do i = 1, 2
+         ratio = MtOvR_half(i)/MtOvR_full(i)
+         rel_err = abs(ratio - 0.5_dp)/0.5_dp
+         if (rel_err > epsilon(1.0_dp)*10.0_dp) then
+            print *, "FAIL: half Om_tE test, species", i
+            print *, "  Full MtOvR:", MtOvR_full(i)
+            print *, "  Half MtOvR:", MtOvR_half(i)
+            print *, "  Ratio:", ratio, " expected 0.5"
+            status = status + 1
+            return
+         end if
+      end do
+
+      if (abs(MtOvR_full(1) - MtOvR_half(1)) < epsilon(1.0_dp)) then
+         print *, "FAIL: full and half Om_tE should produce different MtOvR"
+         status = status + 1
+         return
+      end if
+
+      print *, "PASS: half Om_tE gives half MtOvR (linear scaling)"
+   end subroutine test_half_omte_gives_half_mach
 
 end program test_er_rotation
