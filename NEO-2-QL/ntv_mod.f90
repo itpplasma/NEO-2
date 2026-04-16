@@ -33,9 +33,13 @@ MODULE ntv_mod
   INTEGER, PUBLIC :: isw_ripple_solver
   !> name of perturbation file
   CHARACTER(len=100), PUBLIC :: in_file_pert
-  !> toroidal mach number over R_major (Mt/R)
+  !> toroidal mach number over R_major (Mt/R).
+  !> Only used for legacy single-species NTV output (isw_calc_Er=0).
+  !> Ignored when isw_calc_Er >= 1; the multispecies code uses Om_tE instead.
   REAL(kind=dp), PUBLIC :: MtOvR
-  !> ExB toroidal rotation frequency [rad/s], species-independent
+  !> ExB toroidal rotation frequency [rad/s], species-independent.
+  !> Used by isw_calc_Er=1 (computed from ambipolarity) and
+  !> isw_calc_Er=2 (read from input). Ignored when isw_calc_Er=0.
   REAL(kind=dp), PUBLIC :: Om_tE
   !> Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc) times B
   REAL(kind=dp), PUBLIC :: B_rho_L_loc
