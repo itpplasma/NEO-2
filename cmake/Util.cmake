@@ -7,9 +7,17 @@ function(find_or_fetch DEPENDENCY)
     else()
         set(REPO_URL https://github.com/itpplasma/${DEPENDENCY}.git)
 
-        # Check if a specific git tag is provided for this dependency
+        # Ref precedence: <DEP>_BRANCH (cache or env) overrides everything so an
+        # upstream release can build this code against a candidate; then a pinned
+        # <DEP>_GIT_TAG; otherwise the matching-branch default.
         string(TOUPPER ${DEPENDENCY} DEPENDENCY_UPPER)
-        if(DEFINED ${DEPENDENCY_UPPER}_GIT_TAG)
+        if(DEFINED ${DEPENDENCY_UPPER}_BRANCH AND NOT "${${DEPENDENCY_UPPER}_BRANCH}" STREQUAL "")
+            set(REMOTE_BRANCH "${${DEPENDENCY_UPPER}_BRANCH}")
+            message(STATUS "Using ${DEPENDENCY} ref ${REMOTE_BRANCH} from ${REPO_URL}")
+        elseif(DEFINED ENV{${DEPENDENCY_UPPER}_BRANCH} AND NOT "$ENV{${DEPENDENCY_UPPER}_BRANCH}" STREQUAL "")
+            set(REMOTE_BRANCH "$ENV{${DEPENDENCY_UPPER}_BRANCH}")
+            message(STATUS "Using ${DEPENDENCY} ref ${REMOTE_BRANCH} from ${REPO_URL}")
+        elseif(DEFINED ${DEPENDENCY_UPPER}_GIT_TAG)
             set(REMOTE_BRANCH ${${DEPENDENCY_UPPER}_GIT_TAG})
             message(STATUS "Using ${DEPENDENCY} tag ${REMOTE_BRANCH} from ${REPO_URL}")
         else()
