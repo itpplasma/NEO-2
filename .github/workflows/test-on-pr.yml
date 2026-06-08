@@ -16,6 +16,10 @@ on:
         description: libneo branch, tag or commit to build against
         required: false
         default: ''
+      full:
+        description: run the full golden-record/performance/PAR suite (nightly)
+        required: false
+        default: 'false'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -117,6 +121,7 @@ jobs:
 
       - name: Build NEO-2 (reference version - latest stable release)
         id: build_reference_stable
+        if: github.event_name != 'workflow_dispatch' || inputs.full == 'true'
         run: |
           # Build reference version in temp directory
           REFERENCE_DIR=$(mktemp -d)
@@ -141,6 +146,7 @@ jobs:
           echo "neo2_par_stable=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
 
       - name: Run golden record test against stable version (rough check)
+        if: github.event_name != 'workflow_dispatch' || inputs.full == 'true'
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
           REFERENCE_NEO2_PAR: ${{ steps.build_reference_stable.outputs.neo2_par_stable }}
@@ -199,7 +205,7 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/out
 
       - name: Build NEO-2 (reference version - main branch)
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.full == 'true')
         id: build_reference_main
         run: |
           # Build reference version from main branch for PR comparison
@@ -217,7 +223,7 @@ jobs:
           echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
 
       - name: Run golden record test against main version (exact check)
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.full == 'true')
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
           REFERENCE_NEO2_PAR: ${{ steps.build_reference_main.outputs.neo2_par_main }}
@@ -254,7 +260,7 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/out
 
       - name: Run QL performance test
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.full == 'true')
         env:
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
           REFERENCE_NEO2_QL: ${{ steps.build_reference_main.outputs.neo2_ql_main }}
@@ -282,7 +288,7 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt
 
       - name: Run (slow) par golden record test on pull request
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.full == 'true')
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
         id: run_par_test
