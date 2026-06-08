@@ -2,6 +2,7 @@
 set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
 include(Util)
+set(LIBNEO_RELEASE release/26.2 CACHE STRING "libneo release branch to track")
 find_or_fetch(libneo)
 
 ### Path to the external libraries
