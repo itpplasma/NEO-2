@@ -1,16 +1,9 @@
 project(NEO-2-COMMON)
 
-### FGSL user-defined interface
-set(FGSL_USERINTERFACE_SOURCE_FILES
-      gsl_roots_routines_mod.f90
-      gsl_integration_routines_mod.f90
-      gsl_bspline_routines_mod.f90
-      gsl_specialfunctions_mod.f90
-)
-
 set(COMMON_FILES
   binarysplit_int.f90
   binarysplit_mod.f90
+  bspline_routines_mod.f90
   collisionality_mod.f90
   collision_operator_mems.f90
   collop_bspline.f90
@@ -24,6 +17,7 @@ set(COMMON_FILES
   device_mod.f90
   flint_mod.f90
   fluxsplitter.f90
+  integration_routines_mod.f90
   inter_interfaces.f90
   kin_allocate.f90
   lapack_band.f90
@@ -92,12 +86,8 @@ set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS 
 add_library(common STATIC
   ${COMMON_FILES}
   ${SUITESPARSE_SRC_FILES}
-  ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
-add_dependencies(common FGSL)
 target_link_libraries(common PUBLIC
-  ${LIBFGSL}
-  GSL::gsl
   ${MPE_lib}
   ${MPI_Fortran_LIBRARIES}
   BLAS::BLAS
@@ -114,6 +104,7 @@ endif()
 target_link_libraries(common PUBLIC
   LIBNEO::neo
   LIBNEO::magfie
+  LIBNEO::math
   NEO2MyMPILib
   LIBNEO::hdf5_tools
 )

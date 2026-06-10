@@ -1,8 +1,8 @@
 module collop_compute
 
   use hdf5_tools
-  use gsl_integration_routines_mod
-  use gsl_specialfunctions_mod
+  use integration_routines_mod
+  use neo_bessel_k, only : bessel_kn
   use collop_laguerre
   use collop_polynomial
   use collop_spline
@@ -465,7 +465,7 @@ contains
             - 135d0/(128d0 * mu**3) - 45d0/(32d0*mu**4) + 7425d0/(1024d0*mu**5) &
             - 675d0/(32d0*mu**6) + 1905525d0/(32768*mu**7)
     else
-       dmuk2ovk2 = -3d0 + mu - (mu*besselk(1,mu))/besselk(2,mu)
+       dmuk2ovk2 = -3d0 + mu - (mu*bessel_kn(1,mu))/bessel_kn(2,mu)
     end if
   end function dmuk2ovk2
   
@@ -478,8 +478,8 @@ contains
             - 65475d0/(1024d0 * mu**5) + 2942325d0/(16384d0 * mu**6)  &
             - 17380575d0/(32768d0*mu**7)
     else
-       ddmuk2ovk2 = (2*mu*(6 + (-3 + mu)*mu)*besselk(0,mu) &
-            + (24 + mu*(-12 + (7 - 2*mu)*mu))*besselk(1,mu))/(mu*besselk(2,mu))
+       ddmuk2ovk2 = (2*mu*(6 + (-3 + mu)*mu)*bessel_kn(0,mu) &
+            + (24 + mu*(-12 + (7 - 2*mu)*mu))*bessel_kn(1,mu))/(mu*bessel_kn(2,mu))
     end if
   end function ddmuk2ovk2
  
@@ -1996,7 +1996,7 @@ contains
 
                    if (ieee_is_nan(ailmm_s(m+1, mp+1, l+1))) then
                       write (*,*) "*** Matrix element is NaN. Check integration settings. ***"
-                      call disp_gsl_integration_error()
+                      call disp_integration_error()
                       stop
                    end if
                 end do
@@ -2431,9 +2431,9 @@ contains
     allocate(weightenerg_offset(0:lagmax))
     
     call compute_Minv(M_transform_inv)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     Amm_s=M_transform
 
   end subroutine compute_source
@@ -2477,9 +2477,9 @@ contains
     allocate(weightenerg_offset(0:lagmax))
 
     call compute_Minv(M_transform_inv)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     call compute_sources(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     Amm_s=M_transform
     
     gamma_ab = 1.0d0
@@ -2490,13 +2490,13 @@ contains
     write (*,'(A,A,A,A,A,ES13.6)') " Computing relativistic collision operator"
     
     call compute_lorentz(anumm_s)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     call compute_lorentz_inf(anumm_inf_s)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     call compute_energyscattering(denmm_s)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     call compute_integralpart(ailmm_s, legmax)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
 
   end subroutine compute_collop_rel
   
@@ -2525,11 +2525,11 @@ contains
     a_22_offset = 3.75d0
     
     call compute_lorentz(anumm_s)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     call compute_energyscattering(denmm_s)
-    call disp_gsl_integration_error()    
+    call disp_integration_error()    
     call compute_integralpart(ailmm_s, legmax)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     
   end subroutine compute_collop
   
@@ -2558,13 +2558,13 @@ contains
     a_22_offset = 3.75d0
     
     call compute_lorentz(anumm_s)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     call compute_lorentz_inf(anumm_inf_s)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     call compute_energyscattering(denmm_s)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
     call compute_integralpart(ailmm_s, legmax)
-    call disp_gsl_integration_error()
+    call disp_integration_error()
 
   end subroutine compute_collop_inf
 

@@ -1,6 +1,5 @@
 module collop_definitions
   use nrtype, only : dp, pi
-  use gsl_integration_routines_mod
   use collop_laguerre
   use collop_polynomial
   implicit none

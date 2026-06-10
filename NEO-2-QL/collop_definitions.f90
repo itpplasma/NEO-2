@@ -1,6 +1,5 @@
 module collop_definitions
   use nrtype, only : dp, pi
-  use gsl_integration_routines_mod
   implicit none
 
   !**********************************************************

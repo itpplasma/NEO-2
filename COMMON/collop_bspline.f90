@@ -1,12 +1,13 @@
 module collop_bspline
 
-  use gsl_bspline_routines_mod
+  use nrtype, only : dp
+  use bspline_routines_mod
 
   implicit none
-  
-  REAL(fgsl_double), DIMENSION(:), ALLOCATABLE, target :: xknots
-  real(fgsl_double), dimension(:), allocatable :: b, db
-  real(fgsl_double) :: xd
+
+  REAL(dp), DIMENSION(:), ALLOCATABLE, target :: xknots
+  real(dp), dimension(:), allocatable :: b, db
+  real(dp) :: xd
   integer :: i, j, knots
   integer :: nder
   logical, private :: bspline_initialized = .false.
