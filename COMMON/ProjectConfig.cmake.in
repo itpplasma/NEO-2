@@ -6,7 +6,7 @@ include(FetchContent)
 find_or_fetch(libneo)
 # fortnum may already be present as a target if a transitive dependency (e.g.
 # libneo) pulled it in; only declare it once. Prefer a local checkout in
-# $CODE/fortnum, otherwise fetch the pinned revision over SSH.
+# $CODE/fortnum, otherwise fetch the pinned revision over https.
 if(NOT TARGET fortnum)
     if(DEFINED ENV{CODE} AND EXISTS $ENV{CODE}/fortnum)
         message(STATUS "Using fortnum in $ENV{CODE}/fortnum")
@@ -14,7 +14,7 @@ if(NOT TARGET fortnum)
             EXCLUDE_FROM_ALL)
     else()
         FetchContent_Declare(fortnum
-            GIT_REPOSITORY git@github.com:lazy-fortran/fortnum.git
+            GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
             GIT_TAG a7faa3c
         )
         FetchContent_MakeAvailable(fortnum)
