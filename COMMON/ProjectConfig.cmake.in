@@ -2,24 +2,24 @@
 set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
 include(Util)
+include(FetchContent)
 find_or_fetch(libneo)
-
-### Path to the external libraries
-if (DEFINED ENV{CODE})
-    message(STATUS "External libraries prebuilt in $CODE=" $ENV{CODE})
-    add_custom_target(FGSL)
-
-    set(FGSL_PATH $ENV{CODE}/external/fgsl-1.6.0/ CACHE STRING "FGSL path")
-else()
-    message(STATUS "Downloading and building external libraries")
-    include(fgsl)
-
-    set(FGSL_PATH ${CMAKE_BINARY_DIR}/fgsl/src/FGSL CACHE STRING "FGSL path")
+# fortnum may already be present as a target if a transitive dependency (e.g.
+# libneo) pulled it in; only declare it once. Prefer a local checkout in
+# $CODE/fortnum, otherwise fetch the pinned revision over SSH.
+if(NOT TARGET fortnum)
+    if(DEFINED ENV{CODE} AND EXISTS $ENV{CODE}/fortnum)
+        message(STATUS "Using fortnum in $ENV{CODE}/fortnum")
+        add_subdirectory($ENV{CODE}/fortnum ${CMAKE_CURRENT_BINARY_DIR}/fortnum
+            EXCLUDE_FROM_ALL)
+    else()
+        FetchContent_Declare(fortnum
+            GIT_REPOSITORY git@github.com:lazy-fortran/fortnum.git
+            GIT_TAG a7faa3c
+        )
+        FetchContent_MakeAvailable(fortnum)
+    endif()
 endif()
-
-set(FGSL_INC ${FGSL_PATH} CACHE STRING "FGSL include")
-set(LIBFGSL ${FGSL_PATH}/.libs/libfgsl${CMAKE_STATIC_LIBRARY_SUFFIX} CACHE STRING "FGSL lib")
-
 
 ### Directories of MPE
 set(MPE_PATH /afs/itp.tugraz.at/opt/mpe/1.3.0/)
