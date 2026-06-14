@@ -1,10 +1,13 @@
 project(NEO-2-COMMON)
 
-### FGSL user-defined interface
+### FGSL user-defined interface (B-spline only; no fortnum equivalent yet)
 set(FGSL_USERINTERFACE_SOURCE_FILES
-      gsl_roots_routines_mod.f90
-      gsl_integration_routines_mod.f90
       gsl_bspline_routines_mod.f90
+)
+
+### fortnum-backed numerical helpers (integration, special functions)
+set(FORTNUM_USERINTERFACE_SOURCE_FILES
+      gsl_integration_routines_mod.f90
       gsl_specialfunctions_mod.f90
 )
 
@@ -93,9 +96,11 @@ add_library(common STATIC
   ${COMMON_FILES}
   ${SUITESPARSE_SRC_FILES}
   ${FGSL_USERINTERFACE_SOURCE_FILES}
+  ${FORTNUM_USERINTERFACE_SOURCE_FILES}
   )
 add_dependencies(common FGSL)
 target_link_libraries(common PUBLIC
+  fortnum
   ${LIBFGSL}
   GSL::gsl
   ${MPE_lib}

@@ -3,6 +3,7 @@ set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
 include(Util)
 find_or_fetch(libneo)
+find_or_fetch(fortnum lazy-fortran)
 
 ### Path to the external libraries
 if (DEFINED ENV{CODE})

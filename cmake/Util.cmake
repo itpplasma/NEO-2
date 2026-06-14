@@ -1,11 +1,18 @@
 include(FetchContent)
 
 function(find_or_fetch DEPENDENCY)
+    # Optional second positional argument: the GitHub organisation. Defaults to
+    # itpplasma; pass e.g. lazy-fortran for dependencies hosted elsewhere.
+    if(ARGC GREATER 1)
+        set(ORG ${ARGV1})
+    else()
+        set(ORG itpplasma)
+    endif()
     if(DEFINED ENV{CODE} AND EXISTS $ENV{CODE}/${DEPENDENCY})
         set(${DEPENDENCY}_SOURCE_DIR $ENV{CODE}/${DEPENDENCY})
         message(STATUS "Using ${DEPENDENCY} in $ENV{CODE}/${DEPENDENCY}")
     else()
-        set(REPO_URL https://github.com/itpplasma/${DEPENDENCY}.git)
+        set(REPO_URL https://github.com/${ORG}/${DEPENDENCY}.git)
 
         # Check if a specific git tag is provided for this dependency
         string(TOUPPER ${DEPENDENCY} DEPENDENCY_UPPER)
