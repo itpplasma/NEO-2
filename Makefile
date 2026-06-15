@@ -2,11 +2,15 @@ BUILD_DIR := build
 BUILD_NINJA := $(BUILD_DIR)/build.ninja
 CONFIG ?= Release
 
+# Prevent ambient shell values from silently changing the libneo fetch.
+# Pass LIBNEO_REF=<ref> on the make command line to override explicitly.
+unexport LIBNEO_REF LIBNEO_PATH LIBNEO_GIT_TAG LIBNEO_BRANCH
+
 .PHONY: all ninja test install clean coverage clean-coverage
 all: ninja
 
 $(BUILD_NINJA):
-	cmake --preset default -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_BUILD_TYPE=$(CONFIG) $(if $(LIBNEO_GIT_TAG),-DLIBNEO_GIT_TAG=$(LIBNEO_GIT_TAG))
+	cmake --preset default -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_BUILD_TYPE=$(CONFIG) $(if $(LIBNEO_REF),-DLIBNEO_REF=$(LIBNEO_REF))
 
 ninja: $(BUILD_NINJA)
 	cmake --build --preset default

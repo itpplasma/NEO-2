@@ -69,12 +69,12 @@ jobs:
           pip install numpy
 
       - name: Build NEO-2
-        env:
-          # Honored by the Makefile and forwarded to cmake. Empty on push/PR
-          # builds against the pinned libneo; set by a libneo gate dispatch to
-          # build against the candidate ref.
-          LIBNEO_GIT_TAG: ${{ inputs.libneo_ref }}
-        run: make
+        run: |
+          if [ -n "${{ inputs.libneo_ref }}" ]; then
+            make LIBNEO_REF=${{ inputs.libneo_ref }}
+          else
+            make
+          fi
 
       - name: Run unit tests
         run: make test

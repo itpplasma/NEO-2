@@ -7,11 +7,12 @@ function(find_or_fetch DEPENDENCY)
     else()
         set(REPO_URL https://github.com/itpplasma/${DEPENDENCY}.git)
 
-        # Check if a specific git tag is provided for this dependency
+        # Check if a specific ref (branch, tag, or SHA) is provided for this dependency.
+        # Pass -DLIBNEO_REF=<ref> on the cmake command line to override.
         string(TOUPPER ${DEPENDENCY} DEPENDENCY_UPPER)
-        if(DEFINED ${DEPENDENCY_UPPER}_GIT_TAG)
-            set(REMOTE_BRANCH ${${DEPENDENCY_UPPER}_GIT_TAG})
-            message(STATUS "Using ${DEPENDENCY} tag ${REMOTE_BRANCH} from ${REPO_URL}")
+        if(DEFINED ${DEPENDENCY_UPPER}_REF)
+            set(REMOTE_BRANCH ${${DEPENDENCY_UPPER}_REF})
+            message(STATUS "Using ${DEPENDENCY} ref ${REMOTE_BRANCH} from ${REPO_URL}")
         else()
             get_branch_or_main(${REPO_URL} REMOTE_BRANCH)
             message(STATUS "Using ${DEPENDENCY} branch ${REMOTE_BRANCH} from ${REPO_URL}")
