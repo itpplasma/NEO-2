@@ -2,6 +2,13 @@ BUILD_DIR := build
 BUILD_NINJA := $(BUILD_DIR)/build.ninja
 CONFIG ?= Release
 
+ifneq ($(filter command line environment,$(origin LIBNEO_GIT_TAG)),)
+$(error LIBNEO_GIT_TAG is deprecated; use LIBNEO_REF instead)
+endif
+ifneq ($(filter command line environment,$(origin LIBNEO_BRANCH)),)
+$(error LIBNEO_BRANCH is deprecated; use LIBNEO_REF instead)
+endif
+
 # Ignore an ambient LIBNEO_REF so the shell can't change the libneo fetch.
 ifeq ($(origin LIBNEO_REF),environment)
 LIBNEO_REF :=
