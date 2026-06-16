@@ -2,9 +2,10 @@ BUILD_DIR := build
 BUILD_NINJA := $(BUILD_DIR)/build.ninja
 CONFIG ?= Release
 
-# Prevent ambient shell values from silently changing the libneo fetch.
-# Pass LIBNEO_REF=<ref> on the make command line to override explicitly.
-unexport LIBNEO_REF LIBNEO_PATH LIBNEO_GIT_TAG LIBNEO_BRANCH
+# Ignore an ambient LIBNEO_REF so the shell can't change the libneo fetch.
+ifeq ($(origin LIBNEO_REF),environment)
+LIBNEO_REF :=
+endif
 
 .PHONY: all ninja test install clean coverage clean-coverage
 all: ninja

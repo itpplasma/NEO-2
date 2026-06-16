@@ -1,15 +1,8 @@
 include(FetchContent)
 
 function(find_or_fetch DEPENDENCY)
-    # Explicit local override only. Pass -D<DEP>_SOURCE_DIR=<path> (or its
-    # alias -D<DEP>_PATH=<path>) on the cmake command line to build against a
-    # local checkout. With neither set, the dependency is always fetched, so
-    # the build is hermetic regardless of any ambient environment.
+    # -D<dep>_SOURCE_DIR=<path> builds against a local checkout; else fetch.
     string(TOUPPER ${DEPENDENCY} DEPENDENCY_UPPER)
-    if(NOT ${DEPENDENCY}_SOURCE_DIR AND ${DEPENDENCY_UPPER}_PATH)
-        set(${DEPENDENCY}_SOURCE_DIR ${${DEPENDENCY_UPPER}_PATH})
-    endif()
-
     if(${DEPENDENCY}_SOURCE_DIR)
         message(STATUS "Using local ${DEPENDENCY} in ${${DEPENDENCY}_SOURCE_DIR}")
     else()

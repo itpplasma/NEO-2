@@ -119,11 +119,9 @@ jobs:
           echo "Building reference version from latest stable release: $LATEST_RELEASE"
           git checkout $LATEST_RELEASE
 
-          # Use same tag for libneo (synchronized versioning).
-          # The released Makefile honors LIBNEO_GIT_TAG; current code honors
-          # LIBNEO_REF. Pass both so the pin works regardless of release age.
+          # Synchronized versioning: the released Makefile honors LIBNEO_GIT_TAG.
           echo "Using synchronized libneo tag: $LATEST_RELEASE"
-          make LIBNEO_GIT_TAG=$LATEST_RELEASE LIBNEO_REF=$LATEST_RELEASE
+          make LIBNEO_GIT_TAG=$LATEST_RELEASE
 
           echo "neo2_ql_stable=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
           echo "neo2_par_stable=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
