@@ -1,17 +1,18 @@
 include(FetchContent)
 
 function(find_or_fetch DEPENDENCY)
-    if(DEFINED ENV{CODE} AND EXISTS $ENV{CODE}/${DEPENDENCY})
-        set(${DEPENDENCY}_SOURCE_DIR $ENV{CODE}/${DEPENDENCY})
-        message(STATUS "Using ${DEPENDENCY} in $ENV{CODE}/${DEPENDENCY}")
+    # -D<dep>_SOURCE_DIR=<path> builds against a local checkout; else fetch.
+    string(TOUPPER ${DEPENDENCY} DEPENDENCY_UPPER)
+    if(${DEPENDENCY}_SOURCE_DIR)
+        message(STATUS "Using local ${DEPENDENCY} in ${${DEPENDENCY}_SOURCE_DIR}")
     else()
         set(REPO_URL https://github.com/itpplasma/${DEPENDENCY}.git)
 
-        # Check if a specific git tag is provided for this dependency
-        string(TOUPPER ${DEPENDENCY} DEPENDENCY_UPPER)
-        if(DEFINED ${DEPENDENCY_UPPER}_GIT_TAG)
-            set(REMOTE_BRANCH ${${DEPENDENCY_UPPER}_GIT_TAG})
-            message(STATUS "Using ${DEPENDENCY} tag ${REMOTE_BRANCH} from ${REPO_URL}")
+        # Check if a specific ref (branch, tag, or SHA) is provided for this dependency.
+        # Pass -DLIBNEO_REF=<ref> on the cmake command line to override.
+        if(DEFINED ${DEPENDENCY_UPPER}_REF)
+            set(REMOTE_BRANCH ${${DEPENDENCY_UPPER}_REF})
+            message(STATUS "Using ${DEPENDENCY} ref ${REMOTE_BRANCH} from ${REPO_URL}")
         else()
             get_branch_or_main(${REPO_URL} REMOTE_BRANCH)
             message(STATUS "Using ${DEPENDENCY} branch ${REMOTE_BRANCH} from ${REPO_URL}")
