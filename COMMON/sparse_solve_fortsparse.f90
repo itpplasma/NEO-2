@@ -6,8 +6,8 @@ module sparse_solve_fortsparse
     ! retain a factorization across the factor/solve/free lifecycle that the
     ! callers in sparse_mod drive through iopt.
     use fortsparse, only: csc_t, csc_z_t, sparse_solver_t, sparse_factor, &
-        sparse_solve, sparse_free, fortsparse_status_t, status_ok, &
-        FORTSPARSE_BACKEND_UMFPACK_IPC
+        sparse_solve, sparse_free, sparse_vector, fortsparse_status_t, &
+        status_ok, FORTSPARSE_BACKEND_UMFPACK_IPC
     implicit none
     private
 
@@ -15,6 +15,8 @@ module sparse_solve_fortsparse
 
     public :: fs_solve_real
     public :: fs_solve_complex
+    public :: fs_vector_real
+    public :: fs_solve_real_2
 
     type(sparse_solver_t), save :: real_solver = &
         sparse_solver_t(backend_id=FORTSPARSE_BACKEND_UMFPACK_IPC)
@@ -73,6 +75,33 @@ contains
         end if
         if (iopt == 3 .or. iopt == 0) call sparse_free(complex_solver)
     end subroutine fs_solve_complex
+
+    ! A length-n real solve vector owned by the (already factored) real solver,
+    ! living in the helper's shared mapping. Filling it as the RHS and reading
+    ! the solution from such a vector makes the solve copy nothing across the
+    ! process boundary. Valid until the next factor; the caller never frees it.
+    function fs_vector_real(n) result(p)
+        integer, intent(in) :: n
+        real(dp), pointer   :: p(:)
+
+        p => sparse_vector(real_solver, n)
+    end function fs_vector_real
+
+    ! Two-vector real solve: A sol = rhs, reusing the resident factorization.
+    ! When rhs and sol are fs_vector_real vectors the helper reads and writes
+    ! them in shared memory directly, with no marshalling. The matrix must
+    ! already be factored (fs_solve_real with iopt=1).
+    subroutine fs_solve_real_2(rhs, sol, refine)
+        real(dp), target, contiguous, intent(in)  :: rhs(:)
+        real(dp), target, contiguous, intent(out) :: sol(:)
+        logical,                      intent(in)  :: refine
+
+        type(fortsparse_status_t) :: status
+
+        real_solver%refine = refine
+        call sparse_solve(real_solver, rhs, sol, status)
+        call check(status, 'fs_solve_real_2: solve')
+    end subroutine fs_solve_real_2
 
     ! Fill a real csc_t directly from NEO-2's 1-based CSC arrays.
     subroutine build_csc_real(nrow, ncol, nz, irow, pcol, val, A)
