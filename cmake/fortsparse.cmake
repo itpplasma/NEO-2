@@ -6,4 +6,5 @@ FetchContent_Declare(
   GIT_TAG main
 )
 
+set(FORTSPARSE_ENABLE_SUPERLU OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(fortsparse)
