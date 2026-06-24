@@ -25,6 +25,16 @@ add_executable(${EXE_NAME}
 
 target_link_libraries(${EXE_NAME} neo2_ql)
 
+# Co-locate the fortsparse UMFPACK helper next to the executable so the
+# self-locating fortsparse finds it without any env/PATH setup.
+add_custom_command(TARGET ${EXE_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:fortsparse_umfpack_helper>
+    $<TARGET_FILE_DIR:${EXE_NAME}>)
+
+install(PROGRAMS $<TARGET_FILE:fortsparse_umfpack_helper>
+  DESTINATION ${CMAKE_INSTALL_PREFIX})
+
 add_custom_target(copy
   COMMAND ${CMAKE_COMMAND} -E copy
   ${CMAKE_CURRENT_BINARY_DIR}/${EXE_NAME}
