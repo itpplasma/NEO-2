@@ -35,7 +35,6 @@ contains
 
         type(csc_t)               :: A
         type(fortsparse_status_t) :: status
-        real(dp), allocatable     :: x(:)
 
         real_solver%refine = refine
         if (iopt == 1 .or. iopt == 0) then
@@ -44,11 +43,8 @@ contains
             call check(status, 'fs_solve_real: factor')
         end if
         if (iopt == 2 .or. iopt == 0) then
-            allocate (x(size(b)))
-            call sparse_solve(real_solver, b, x, status)
+            call sparse_solve(real_solver, b, status)
             call check(status, 'fs_solve_real: solve')
-            b = x
-            deallocate (x)
         end if
         if (iopt == 3 .or. iopt == 0) call sparse_free(real_solver)
     end subroutine fs_solve_real
@@ -64,7 +60,6 @@ contains
 
         type(csc_z_t)             :: A
         type(fortsparse_status_t) :: status
-        complex(dp), allocatable  :: x(:)
 
         complex_solver%refine = refine
         if (iopt == 1 .or. iopt == 0) then
@@ -73,11 +68,8 @@ contains
             call check(status, 'fs_solve_complex: factor')
         end if
         if (iopt == 2 .or. iopt == 0) then
-            allocate (x(size(b)))
-            call sparse_solve(complex_solver, b, x, status)
+            call sparse_solve(complex_solver, b, status)
             call check(status, 'fs_solve_complex: solve')
-            b = x
-            deallocate (x)
         end if
         if (iopt == 3 .or. iopt == 0) call sparse_free(complex_solver)
     end subroutine fs_solve_complex
