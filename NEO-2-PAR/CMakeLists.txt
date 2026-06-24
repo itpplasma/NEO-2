@@ -22,15 +22,9 @@ target_include_directories(${EXE_NAME} PUBLIC "${CMAKE_BINARY_DIR}/COMMON")
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-# Co-locate the fortsparse UMFPACK helper next to the executable so the
-# self-locating fortsparse finds it without any env/PATH setup.
-add_custom_command(TARGET ${EXE_NAME} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    $<TARGET_FILE:fortsparse_umfpack_helper>
-    $<TARGET_FILE_DIR:${EXE_NAME}>)
-
-install(PROGRAMS $<TARGET_FILE:fortsparse_umfpack_helper>
-  DESTINATION ${CMAKE_INSTALL_PREFIX})
+# Co-locate the fortsparse UMFPACK helper next to the executable (and install it
+# alongside) so the self-locating fortsparse finds it without env/PATH setup.
+fortsparse_colocate_helper(${EXE_NAME} ${CMAKE_INSTALL_PREFIX})
 
 if (COPY_TO_ARCHIVE)
   add_custom_command(
