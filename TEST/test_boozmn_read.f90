@@ -10,7 +10,7 @@
 !   2. m_max / n_max set from mboz_b / nboz_b (not 1 as before the fix).
 !   3. pixm / pixn are valid indices into i_m / i_n.
 !   4. B(0,0) matches the circ.bc reference to TOL_EXACT.
-!   5. iota, curr_pol, curr_tor match committed fixture values to TOL_LOOSE.
+!   5. iota, curr_pol, curr_tor match committed fixture values to TOL_FP.
 !   6. Truncation regression: when max_m_mode is set below the data range
 !      the reader must honour it and not clip it up to MAXVAL(|ixm|).
 !
@@ -20,13 +20,17 @@
 !   read path redirects to INP_SWI_TOK which evaluates cos(m*theta + n*phi).
 !   The sign mismatch is harmless only when n=0 for all modes (nboz_b=0).
 !
-! circ.bc / boozmn_test.nc reference values (surface index 1, jlist[0]=2):
+! circ.bc / boozmn_test.nc reference values (surface index 1, jlist[0]=3):
 !   mboz_b = 18  -> m_max = 19
 !   nboz_b = 0   -> n_max = 1  (axisymmetric)
-!   iota(1)     = 0.9000140542
-!   curr_pol(1) = bvco_b[jlist[0]-1] = -3.552357024  (poloidal covariant B)
-!   curr_tor(1) = buco_b[jlist[0]-1] = -3.093771076e-3 (toroidal covariant B)
+!   iota(1)     = 0.89997   (bc.iota[0], written directly at jlist(1)=3)
+!   curr_pol(1) = -3.5508   (Jpol/nper * nfp * mu0/(2pi); written at jlist(1))
+!   curr_tor(1) = -4.7874e-3 (Itor * mu0/(2pi); written at jlist(1))
 !   bmnc(1, m=0,n=0) = 1.96335464 T  (copied without interpolation)
+!
+! Fixture regenerated with libneo bc_to_booz_xform after PR #347 radial-grid
+! fix; full-grid values at jlist(i) are written from .bc arrays directly, so
+! the reader recovers them to floating-point precision (TOL_FP = 1e-6).
 program test_boozmn_read
   use nrtype
   use neo_input
@@ -41,11 +45,11 @@ program test_boozmn_read
   real(dp) :: b00_val, rel_err
 
   real(dp), parameter :: REF_B00   =  1.96335464_dp
-  real(dp), parameter :: REF_IOTA  =  0.9000140542_dp
-  real(dp), parameter :: REF_CPOL  = -3.552357024_dp
-  real(dp), parameter :: REF_CTOR  = -3.093771076e-3_dp
+  real(dp), parameter :: REF_IOTA  =  0.89997_dp
+  real(dp), parameter :: REF_CPOL  = -3.5508_dp
+  real(dp), parameter :: REF_CTOR  = -4.7874e-3_dp
   real(dp), parameter :: TOL_EXACT = 1.0e-6_dp
-  real(dp), parameter :: TOL_LOOSE = 1.0e-4_dp
+  real(dp), parameter :: TOL_FP    = 1.0e-6_dp
 
   failures = 0
 
@@ -145,21 +149,21 @@ program test_boozmn_read
 
   ! iota
   rel_err = abs(iota(1) - REF_IOTA) / abs(REF_IOTA)
-  if (rel_err > TOL_LOOSE) then
+  if (rel_err > TOL_FP) then
     print *, 'FAIL: iota(1) =', iota(1), '  ref =', REF_IOTA
     failures = failures + 1
   end if
 
   ! curr_pol = bvco_b (poloidal covariant B)
   rel_err = abs(curr_pol(1) - REF_CPOL) / abs(REF_CPOL)
-  if (rel_err > TOL_LOOSE) then
+  if (rel_err > TOL_FP) then
     print *, 'FAIL: curr_pol(1) =', curr_pol(1), '  ref =', REF_CPOL
     failures = failures + 1
   end if
 
   ! curr_tor = buco_b (toroidal covariant B)
   rel_err = abs(curr_tor(1) - REF_CTOR) / abs(REF_CTOR)
-  if (rel_err > TOL_LOOSE) then
+  if (rel_err > TOL_FP) then
     print *, 'FAIL: curr_tor(1) =', curr_tor(1), '  ref =', REF_CTOR
     failures = failures + 1
   end if
