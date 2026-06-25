@@ -77,6 +77,8 @@ set(COMMON_FILES
 set_source_files_properties(${COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 
 
+add_subdirectory(MyMPILib)
+
 set(SUITESPARSE_SRC_FILES
   umf4_f77wrapper_ver_4_5.c
   umf4_f77zwrapper_ver_4_5.c
@@ -84,7 +86,7 @@ set(SUITESPARSE_SRC_FILES
 if(LEGACY_SUITESPARSE)
   set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
 else()
-  set(SUITESPARSE_FLAGS "")
+  set(SUITESPARSE_FLAGS "-I/usr/include/suitesparse")
 endif()
 set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
@@ -103,19 +105,20 @@ target_link_libraries(common PUBLIC
   BLAS::BLAS
   LAPACK::LAPACK
   ${NETCDF_LIBS}
+  -lumfpack
   -lz -lpthread
 )
-if(LEGACY_SUITESPARSE)
-  target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES})
-else()
-  target_link_libraries(common PUBLIC SuiteSparse::umfpack)
-endif()
 
 target_link_libraries(common PUBLIC
-  LIBNEO::neo
   LIBNEO::magfie
-  LIBNEO::MyMPILib
   LIBNEO::hdf5_tools
+  NEO2MyMPILib
+)
+
+target_include_directories(common PUBLIC
+  ${CMAKE_BINARY_DIR}/libneo/include
+  ${CMAKE_BINARY_DIR}/libneo/src/odeint
+  ${CMAKE_BINARY_DIR}/_deps/fortnum-build/include
 )
 
 target_link_libraries(common PUBLIC

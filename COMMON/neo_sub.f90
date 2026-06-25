@@ -2603,7 +2603,7 @@ CONTAINS
 
     INTEGER :: ncid, dimid, varid, status
     INTEGER :: i, j, i_alloc
-    INTEGER :: ns_b, mnmax_b, nsurf_b
+    INTEGER :: ns_b, mnmax_b, nsurf_b, mboz_b, nboz_b
     INTEGER :: m, n, num_m, num_n, m_found, n_found
     INTEGER :: lasym_int
     INTEGER, DIMENSION(:), ALLOCATABLE :: jlist
@@ -2626,10 +2626,11 @@ CONTAINS
     END IF
     status = nf90_get_var(ncid, varid, ns_b)
 
-    ! mode count: try mn_mode_b, mn_mode_nyq_b, mn_modes in that order
+    ! mode count: try mn_mode_b, mn_mode_nyq_b, mn_modes, mn_mode in that order
     status = nf90_inq_dimid(ncid, 'mn_mode_b', dimid)
     IF (status /= nf90_noerr) status = nf90_inq_dimid(ncid, 'mn_mode_nyq_b', dimid)
     IF (status /= nf90_noerr) status = nf90_inq_dimid(ncid, 'mn_modes', dimid)
+    IF (status /= nf90_noerr) status = nf90_inq_dimid(ncid, 'mn_mode', dimid)
     IF (status /= nf90_noerr) THEN
       WRITE(w_us,*) 'FATAL: boozmn missing mode count dimension'; STOP
     END IF
@@ -2647,6 +2648,14 @@ CONTAINS
     nfp  = 0
     status = nf90_inq_varid(ncid, 'nfp_b', varid)
     IF (status == nf90_noerr) status = nf90_get_var(ncid, varid, nfp)
+
+    mboz_b = 0
+    status = nf90_inq_varid(ncid, 'mboz_b', varid)
+    IF (status == nf90_noerr) status = nf90_get_var(ncid, varid, mboz_b)
+
+    nboz_b = 0
+    status = nf90_inq_varid(ncid, 'nboz_b', varid)
+    IF (status == nf90_noerr) status = nf90_get_var(ncid, varid, nboz_b)
 
     status = nf90_inq_varid(ncid, 'lasym__logical__', varid)
     IF (status == nf90_noerr) THEN
@@ -2666,12 +2675,16 @@ CONTAINS
 
     ns    = nsurf_b
     mnmax = mnmax_b
+    m0b   = mboz_b
+    n0b   = nboz_b
+    m_max = m0b + 1
+    n_max = 2*n0b + 1
 
     ALLOCATE(ixm(mnmax), ixn(mnmax), stat=i_alloc)
     IF (i_alloc /= 0) STOP 'neo_read_boozmn: ixm/ixn alloc failed'
     ALLOCATE(pixm(mnmax), pixn(mnmax), stat=i_alloc)
     IF (i_alloc /= 0) STOP 'neo_read_boozmn: pixm/pixn alloc failed'
-    ALLOCATE(i_m(mnmax), i_n(mnmax), stat=i_alloc)
+    ALLOCATE(i_m(m_max), i_n(n_max), stat=i_alloc)
     IF (i_alloc /= 0) STOP 'neo_read_boozmn: i_m/i_n alloc failed'
 
     status = nf90_inq_varid(ncid, 'ixm_b', varid)
@@ -2789,8 +2802,8 @@ CONTAINS
     DO i = 1, ns
       es(i)       = (jlist(i) - 1.5_dp) / (ns_b - 1)
       iota(i)     = iota_b(jlist(i))
-      curr_pol(i) = buco_b(jlist(i))
-      curr_tor(i) = bvco_b(jlist(i))
+      curr_pol(i) = bvco_b(jlist(i))
+      curr_tor(i) = buco_b(jlist(i))
       pprime(i)   = 0.0_dp
       sqrtg00(i)  = 0.0_dp
       IF (lasym_int == 0) THEN
@@ -2826,8 +2839,8 @@ CONTAINS
     flux  = phi_b(ns_b) * nfp
     psi_pr = ABS(flux) / twopi
 
-    max_m_mode = MAXVAL(ABS(ixm))
-    max_n_mode = MAXVAL(ABS(ixn))
+    max_m_mode = MIN(max_m_mode, MAXVAL(ABS(ixm)))
+    max_n_mode = MIN(max_n_mode, MAXVAL(ABS(ixn)))
 
     num_n = 0
     num_m = 0
