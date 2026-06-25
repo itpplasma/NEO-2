@@ -2651,11 +2651,17 @@ CONTAINS
 
     mboz_b = 0
     status = nf90_inq_varid(ncid, 'mboz_b', varid)
-    IF (status == nf90_noerr) status = nf90_get_var(ncid, varid, mboz_b)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable mboz_b (file too old)'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, mboz_b)
 
     nboz_b = 0
     status = nf90_inq_varid(ncid, 'nboz_b', varid)
-    IF (status == nf90_noerr) status = nf90_get_var(ncid, varid, nboz_b)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable nboz_b (file too old)'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, nboz_b)
 
     status = nf90_inq_varid(ncid, 'lasym__logical__', varid)
     IF (status == nf90_noerr) THEN

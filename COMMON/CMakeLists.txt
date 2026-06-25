@@ -77,8 +77,6 @@ set(COMMON_FILES
 set_source_files_properties(${COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 
 
-add_subdirectory(MyMPILib)
-
 set(SUITESPARSE_SRC_FILES
   umf4_f77wrapper_ver_4_5.c
   umf4_f77zwrapper_ver_4_5.c
@@ -110,9 +108,10 @@ target_link_libraries(common PUBLIC
 )
 
 target_link_libraries(common PUBLIC
+  LIBNEO::neo
   LIBNEO::magfie
-  LIBNEO::hdf5_tools
   NEO2MyMPILib
+  LIBNEO::hdf5_tools
 )
 
 target_include_directories(common PUBLIC
