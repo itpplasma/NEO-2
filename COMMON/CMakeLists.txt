@@ -84,7 +84,7 @@ set(SUITESPARSE_SRC_FILES
 if(LEGACY_SUITESPARSE)
   set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
 else()
-  set(SUITESPARSE_FLAGS "-I/usr/include/suitesparse")
+  set(SUITESPARSE_FLAGS "")
 endif()
 set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
@@ -103,21 +103,19 @@ target_link_libraries(common PUBLIC
   BLAS::BLAS
   LAPACK::LAPACK
   ${NETCDF_LIBS}
-  -lumfpack
   -lz -lpthread
 )
+if(LEGACY_SUITESPARSE)
+  target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES})
+else()
+  target_link_libraries(common PUBLIC SuiteSparse::umfpack)
+endif()
 
 target_link_libraries(common PUBLIC
   LIBNEO::neo
   LIBNEO::magfie
   NEO2MyMPILib
   LIBNEO::hdf5_tools
-)
-
-target_include_directories(common PUBLIC
-  ${CMAKE_BINARY_DIR}/libneo/include
-  ${CMAKE_BINARY_DIR}/libneo/src/odeint
-  ${CMAKE_BINARY_DIR}/_deps/fortnum-build/include
 )
 
 target_link_libraries(common PUBLIC
