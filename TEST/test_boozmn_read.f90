@@ -1,7 +1,7 @@
 ! Behavioral test for neo_read_boozmn (INP_SWI_BOOZMN = 10).
 !
-! Reads the committed fixture TEST/fixtures/boozmn_test.nc (generated once
-! from NEO-RT/examples/circ.bc via bc_to_booz_xform.py at PR time).
+! Reads the committed fixture TEST/fixtures/boozmn_test.nc (axisymmetric,
+! lasym=0, nboz_b=0, nfp=1, mboz_b=18, 63 computed surfaces).
 ! The fixture path is passed via the BOOZMN_TEST_FILE environment variable
 ! set by CMake; the test does not access /tmp or other repos at runtime.
 !
@@ -13,6 +13,12 @@
 !   5. iota, curr_pol, curr_tor match committed fixture values to TOL_LOOSE.
 !   6. Truncation regression: when max_m_mode is set below the data range
 !      the reader must honour it and not clip it up to MAXVAL(|ixm|).
+!
+! n-sign guard (not directly testable via CTest without subprocess):
+!   neo_read_boozmn calls STOP when lasym!=0 AND nboz_b!=0.
+!   booz_xform stores coefficients for cos(m*theta - n*phi); the asymmetric
+!   read path redirects to INP_SWI_TOK which evaluates cos(m*theta + n*phi).
+!   The sign mismatch is harmless only when n=0 for all modes (nboz_b=0).
 !
 ! circ.bc / boozmn_test.nc reference values (surface index 1, jlist[0]=2):
 !   mboz_b = 18  -> m_max = 19
