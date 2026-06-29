@@ -160,9 +160,8 @@ contains
 
    subroutine test_mode1_to_mode2_roundtrip(status)
       ! Simulates the isw_calc_Er=1 -> isw_calc_Er=2 roundtrip:
-      ! 1) Mode 1 computes Er, derives Om_tE, then MtOvR_spec
-      ! 2) Mode 2 takes that Om_tE as input and recomputes MtOvR_spec
-      ! Both must agree to machine precision.
+      ! mode 1 computes Om_tE, derives MtOvR_spec;
+      ! mode 2 takes the same Om_tE and must produce identical MtOvR_spec.
       integer, intent(inout) :: status
       real(dp) :: Om_tE_from_mode1
       real(dp) :: T_spec(2), m_spec(2)
@@ -175,13 +174,9 @@ contains
       T_spec = [9.1495920740775243d-9, 7.1751185399075415d-9]
       m_spec = [9.1094d-28, 3.3436d-24]
 
-      ! Simulate mode 1: compute_Er derives Om_tE from Er
       Om_tE_from_mode1 = 4.237d4
 
-      ! Mode 1 then computes MtOvR_spec from Om_tE
       MtOvR_mode1 = Om_tE_to_MtOvR_spec(Om_tE_from_mode1, T_spec, m_spec)
-
-      ! Mode 2 receives the same Om_tE as input and computes MtOvR_spec
       MtOvR_mode2 = Om_tE_to_MtOvR_spec(Om_tE_from_mode1, T_spec, m_spec)
 
       do i = 1, 2
@@ -202,8 +197,8 @@ contains
    end subroutine test_mode1_to_mode2_roundtrip
 
    subroutine test_half_omte_gives_half_mach(status)
-      ! Verify that halving Om_tE halves each species MtOvR_spec,
-      ! i.e. MtOvR_spec is linear in Om_tE.
+      ! Verify that halving Om_tE halves each species MtOvR_spec
+      ! (MtOvR_spec is linear in Om_tE).
       integer, intent(inout) :: status
       real(dp) :: Om_tE_full, Om_tE_half
       real(dp) :: T_spec(2), m_spec(2)

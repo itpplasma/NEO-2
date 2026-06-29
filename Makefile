@@ -2,11 +2,23 @@ BUILD_DIR := build
 BUILD_NINJA := $(BUILD_DIR)/build.ninja
 CONFIG ?= Release
 
+ifneq ($(filter command line environment,$(origin LIBNEO_GIT_TAG)),)
+$(error LIBNEO_GIT_TAG is deprecated; use LIBNEO_REF instead)
+endif
+ifneq ($(filter command line environment,$(origin LIBNEO_BRANCH)),)
+$(error LIBNEO_BRANCH is deprecated; use LIBNEO_REF instead)
+endif
+
+# Ignore an ambient LIBNEO_REF so the shell can't change the libneo fetch.
+ifeq ($(origin LIBNEO_REF),environment)
+LIBNEO_REF :=
+endif
+
 .PHONY: all ninja test install clean coverage clean-coverage
 all: ninja
 
 $(BUILD_NINJA):
-	cmake --preset default -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_BUILD_TYPE=$(CONFIG) $(if $(LIBNEO_GIT_TAG),-DLIBNEO_GIT_TAG=$(LIBNEO_GIT_TAG))
+	cmake --preset default -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_BUILD_TYPE=$(CONFIG) $(if $(LIBNEO_REF),-DLIBNEO_REF=$(LIBNEO_REF))
 
 ninja: $(BUILD_NINJA)
 	cmake --build --preset default

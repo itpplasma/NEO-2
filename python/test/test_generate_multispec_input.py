@@ -228,7 +228,7 @@ def test_omte_profile_hdf5_roundtrip():
         '/num_radial_pts': 5,
         '/num_species': 2,
         '/species_tag': np.array([1, 2], dtype=np.int32),
-        '/species_def': np.tile(np.array([[-1,1],[9.109e-28, 3.344e-24]]), 5),
+        '/species_def': np.tile(np.array([[-1, 1], [9.109e-28, 3.344e-24]]), 5),
         '/boozer_s': np.linspace(0.01, 0.99, 5),
         '/rho_pol': np.sqrt(np.linspace(0.01, 0.99, 5)),
         '/Vphi': np.zeros(5),
