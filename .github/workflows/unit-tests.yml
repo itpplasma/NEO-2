@@ -1,0 +1,80 @@
+name: Unit Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      libneo_ref:
+        description: libneo branch, tag or commit to build against
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-24.04
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+
+    env:
+      CC: gcc
+      CXX: g++
+      FC: gfortran
+      MPI_HOME: /usr
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Cache apt packages
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: git cmake make ninja-build gcc g++ gfortran jq libopenblas-dev liblapack-dev libsuitesparse-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev openmpi-bin openmpi-common libopenmpi-dev
+          version: 1.0
+          execute_install_scripts: true
+
+      - name: Ensure BLAS and MPI are properly configured
+        run: |
+          # Fallback installation to ensure pkg-config files are present
+          sudo apt-get update
+          sudo apt-get install -y --reinstall libopenblas-dev pkg-config
+          sudo apt-get install -y --reinstall openmpi-bin openmpi-common libopenmpi-dev
+
+          # Verify BLAS can be found
+          pkg-config --exists openblas && echo "OpenBLAS pkg-config found" || echo "Warning: OpenBLAS pkg-config not found"
+
+          # Verify MPI can be found
+          pkg-config --exists ompi && echo "OpenMPI pkg-config found" || echo "Warning: OpenMPI pkg-config not found"
+          which mpifort && echo "mpifort found at: $(which mpifort)" || echo "Warning: mpifort not found"
+
+          # Set environment variables to help CMake
+          echo "BLA_VENDOR=OpenBLAS" >> $GITHUB_ENV
+          echo "MPI_HOME=/usr" >> $GITHUB_ENV
+
+      - name: Set up Python 3
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy
+
+      - name: Build NEO-2
+        run: |
+          if [ -n "${{ inputs.libneo_ref }}" ]; then
+            make LIBNEO_REF=${{ inputs.libneo_ref }}
+          else
+            make
+          fi
+
+      - name: Run unit tests
+        run: make test
