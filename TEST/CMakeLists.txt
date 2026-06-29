@@ -19,6 +19,8 @@ set_tests_properties(nrutil_test PROPERTIES
     TIMEOUT 30
 )
 
+add_subdirectory(mympilib)
+
 # Test executable for er_rotation module
 add_executable(test_er_rotation test_er_rotation.f90)
 target_link_libraries(test_er_rotation neo2_ql)

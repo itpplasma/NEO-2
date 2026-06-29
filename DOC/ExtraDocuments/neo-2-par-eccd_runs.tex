@@ -220,12 +220,10 @@ institute it is linked against OpenMPI, where on clusters Intel MPI is
 mostly used. MyMPILib was developed so that in the code of \vv{NEO-2} no
 native MPI commands have to be used.
 
-Note that it was decided to no longer develop \vv{hdf5tools} and
-\vv{MyMPILib} separate, but to add them to \vv{libneo},
-which is intended to collect code that is used by multiple programs of
-the group. To be able to use only what is needed, compilation is still
-done into seperate library files. You can get \vv{libneo} from github (see
-Sec.~\ref{technicalbackground_git}).
+Note that \vv{hdf5tools} is provided by \vv{libneo}, while
+\vv{MyMPILib} is now part of the \vv{NEO-2} repository. This keeps the
+shared field and HDF5 code in \vv{libneo}, while the MPI scheduler code
+stays with its sole downstream consumer.
 
 % ----------------------------------------------------------------------
 \subsection{The Git repository\label{technicalbackground_git}}
