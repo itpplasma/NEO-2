@@ -22,6 +22,12 @@ Run
 
 inside the NEO-2 directory. This will handle the whole build process, including `cmake` calls.
 
+To build against a specific libneo branch, tag, or commit SHA, pass `LIBNEO_REF` on the make command line:
+
+    make LIBNEO_REF=<branch|tag|sha>
+
+The equivalent cmake option is `-DLIBNEO_REF=<branch|tag|sha>`. When unset, the build resolves libneo's default branch automatically. An ambient `LIBNEO_REF` in the shell does not affect the build.
+
 You obtain a `build` directory with subdirectories
 
 * `NEO-2-QL` with binary `neo_2_ql.x` for the tokamak version.
