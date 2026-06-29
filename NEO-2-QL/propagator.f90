@@ -810,7 +810,7 @@ CONTAINS
     REAL(kind=dp) :: gamma_fco(3,3)
     REAL(kind=dp) :: gamma_out(3,3)
     REAL(kind=dp) :: beta_out(3)
-    REAL(kind=dp) :: avnabpsi,avbhat2,dl1obhat
+    REAL(kind=dp) :: av_nabla_stor,avbhat2,dl1obhat
 
     INTEGER, PARAMETER, DIMENSION(3) :: ind_map = (/1,3,2/)
     INTEGER :: i, i_p, j, j_p
@@ -866,10 +866,10 @@ CONTAINS
     ! Final output
     IF ( iend .EQ. 1) THEN
       full_version = 2
-      avnabpsi = y(7) / y(6)
+      av_nabla_stor = y(7) / y(6)
       avbhat2 = y(9) / y(6)
       dl1obhat = y(6)
-      beta_out = (/ y(14)/y(13)/avnabpsi, y(14)/y(13)/avnabpsi, y(13)/y(14) /)
+      beta_out = (/ y(14)/y(13)/av_nabla_stor, y(14)/y(13)/av_nabla_stor, y(13)/y(14) /)
 
       DO i = 1,3
         i_p = ind_map(i)
@@ -892,7 +892,7 @@ CONTAINS
       call h5_add(h5id, 'collpar', collpar)
       call h5_add(h5id, 'conl_over_mfp', conl_over_mfp, 'collisionality parameter')
       call h5_add(h5id, 'z_eff', z_eff, 'effective charge')
-      call h5_add(h5id, 'avnabpsi', avnabpsi)
+      call h5_add(h5id, 'av_nabla_stor', av_nabla_stor)
       call h5_add(h5id, 'avbhat2', avbhat2)
       call h5_add(h5id, 'dl1obhat', dl1obhat)
       call h5_add(h5id, 'gamma_out', gamma_out, lbound(gamma_out), ubound(gamma_out))
@@ -904,7 +904,7 @@ CONTAINS
             full_version, &
             isw_lorentz, isw_integral, isw_energy, lag, leg, &
             conl_over_mfp, collpar, z_eff, &
-            avnabpsi, avbhat2, dl1obhat, &
+            av_nabla_stor, avbhat2, dl1obhat, &
             gamma_out
       CLOSE(uw)
 
