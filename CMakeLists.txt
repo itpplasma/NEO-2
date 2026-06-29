@@ -111,6 +111,7 @@ include_directories(${PROJECT_BINARY_DIR}/COMMON)
 include_directories(${FGSL_INC})
 
 ### Projects to build
+add_subdirectory(COMMON/MyMPILib)
 add_subdirectory(COMMON)
 add_subdirectory(NEO-2-PAR)
 add_subdirectory(NEO-2-QL)

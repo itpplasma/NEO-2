@@ -210,12 +210,9 @@ native MPI commands have to be used.
 Note that \vv{NEO-2-QL} does not use the scheduler-worker model
 implemented by \vv{MyMPILib}
 
-It was decided to no longer develop \vv{hdf5tools} and
-\vv{MyMPILib} separate, but to add them to \vv{libneo},
-which is intended to collect code that is used by multiple programs of
-the group. To be able to use only what is needed, compilation is still
-done into seperate library files. You can get \vv{libneo} from github (see
-Sec.~\ref{technicalbackground_git}).
+Here \vv{hdf5tools} still comes from \vv{libneo}, while
+\vv{MyMPILib} lives directly in the \vv{NEO-2} repository. That keeps
+the MPI support code with the codebase that actually uses it.
 
 % ----------------------------------------------------------------------
 \subsection{The Git repository\label{technicalbackground_git}}
@@ -724,6 +721,15 @@ bounds = [0.0, 1.0];
 
 generate_neo2_profile(hdf5FileName, path_to_shot, data_source, species_definition, isw_Vphi_loc, species_tag_Vphi, input_unit_type, bounds);
 \end{verbatim}
+Here \verb|isw_Vphi_loc = 0| means that the supplied rotation profile is the
+flux-surface Boozer toroidal angular frequency $\langle V^\varphi \rangle$,
+and \verb|species_tag_Vphi = 2| means that this measured rotation profile
+belongs to species 2. In the multispecies force-balance solve the selected
+species provides the charge, temperature, density, and gradients that enter
+the \verb|compute_Er()| closure. The generated HDF5 profile files use positive
+species tags (\verb|1, 2, ...|), so \verb|species_tag_Vphi| must match one of
+those values in this workflow.
+
 Default for the DEMO
 runs was the profile file
 \begin{verbatim}
