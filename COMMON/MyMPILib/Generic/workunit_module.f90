@@ -7,7 +7,7 @@ module workunit_module
   implicit none
   
   type, extends(packable), abstract :: workunit
-    real    :: fracIndex        !< Required for special purposes (correct sort order for matrix multiplication)
+    real    :: fracIndex = 0    !< Required for special purposes (correct sort order for matrix multiplication)
     character(len=1024) :: type = ''        !< Defines the type of the workunit to allocate the correct class. Has to be unique!
     integer :: client = -1      !< Defines the client on which the workunit will run
     integer :: oldClient = -1   !< Defines the client which was suspected to run the workunit, but has maybe changed by loadbalancing
