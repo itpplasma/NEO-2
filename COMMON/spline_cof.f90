@@ -676,7 +676,7 @@ CONTAINS
     END IF
 
     IF (row - col > lower_band .OR. col - row > upper_band) THEN
-      STOP 'splinecof3: unsupported common-case matrix entry outside band'
+      ERROR STOP 'splinecof3: unsupported common-case matrix entry outside band'
     END IF
 
     band_row = lower_band + upper_band + 1 + row - col
@@ -689,7 +689,7 @@ CONTAINS
     IF(i_alloc /= 0) THEN
       write(*,*) 'splinecof3: Allocation for band solve failed with error message:'
       write(*,*) trim(error_message)
-      stop
+      ERROR STOP 'splinecof3: allocation for common-case band solve failed'
     END IF
 
     band_row = lower_band + upper_band + 1
@@ -702,24 +702,24 @@ CONTAINS
          SIZE(band_matrix, 1), ipivot, info)
     IF (info /= 0) THEN
       PRINT *, 'splinecof3: INFO from common-case band factorization = ', info
-      STOP
+      ERROR STOP 'splinecof3: common-case band factorization failed'
     END IF
     CALL dgbtrs('N', size_dimension, lower_band, upper_band, 2, band_matrix, &
          SIZE(band_matrix, 1), ipivot, band_rhs, size_dimension, info)
     IF (info /= 0) THEN
       PRINT *, 'splinecof3: INFO from common-case band solve = ', info
-      STOP
+      ERROR STOP 'splinecof3: common-case band solve failed'
     END IF
 
     denominator = 1.0D0 + band_rhs(corner_col,2)
     IF (denominator == 0.0D0) THEN
-      STOP 'splinecof3: common-case Woodbury correction is singular'
+      ERROR STOP 'splinecof3: common-case Woodbury correction is singular'
     END IF
     correction = band_rhs(corner_col,1) / denominator
     inh = band_rhs(:,1) - band_rhs(:,2) * correction
 
     DEALLOCATE(ipivot, band_rhs, stat = i_alloc)
-    IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for band solve failed!'
+    IF(i_alloc /= 0) ERROR STOP 'splinecof3: deallocation for band solve failed'
   END SUBROUTINE solve_common_banded
 
 END SUBROUTINE splinecof3_a
