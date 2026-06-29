@@ -22,7 +22,12 @@ set(Interface_Libs
 )
 
 target_link_libraries(${PROJECT_EXE_NAME}
-	LIBNEO::neo
+	LIBNEO::coordinates
+	LIBNEO::vmec_support
+	LIBNEO::interpolate
+	LIBNEO::boozer
+	LIBNEO::vmec_field
+	LIBNEO::magfie
 	LIBNEO::hdf5_tools
 	${Interface_Libs}
 )
