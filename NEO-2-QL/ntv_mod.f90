@@ -33,14 +33,23 @@ MODULE ntv_mod
   INTEGER, PUBLIC :: isw_ripple_solver
   !> name of perturbation file
   CHARACTER(len=100), PUBLIC :: in_file_pert
-  !> toroidal mach number over R_major (Mt/R)
+  !> toroidal mach number over R_major (Mt/R).
+  !> Only used for legacy single-species NTV output (isw_calc_Er=0).
+  !> Ignored when isw_calc_Er >= 1; the multispecies code uses Om_tE instead.
   REAL(kind=dp), PUBLIC :: MtOvR
+  !> ExB toroidal rotation frequency [rad/s], species-independent.
+  !> Used by isw_calc_Er=1 (computed from ambipolarity) and
+  !> isw_calc_Er=2 (read from input). Ignored when isw_calc_Er=0.
+  REAL(kind=dp), PUBLIC :: Om_tE
   !> Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc) times B
   REAL(kind=dp), PUBLIC :: B_rho_L_loc
 
   ! ADDITIONAL INPUT FOR MULTI-SPECIES COMPUTATIONS (neo2.in)
 
-  !> switch: turn on(=1)/off(=0) computation of E_r
+  !> switch for radial electric field handling:
+  !>   0 = no E_r computation (use scalar MtOvR from namelist)
+  !>   1 = self-consistent E_r from neoclassical ambipolarity
+  !>   2 = externally prescribed Om_tE (from multispec HDF5 or namelist)
   INTEGER, PUBLIC :: isw_calc_Er
   !> switch: turn on(=1)/off(=0) computation of magnetic drift
   INTEGER, PUBLIC :: isw_calc_MagDrift
@@ -926,6 +935,7 @@ CONTAINS
   SUBROUTINE write_multispec_output_a()
 
     use nrtype
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : device, surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -1554,6 +1564,11 @@ CONTAINS
                ParFlow_NA_spec, ParFlow_NA_Ware_spec)
 
        END IF
+    ELSE IF (isw_calc_Er .EQ. 2) THEN
+       ! Externally prescribed Om_tE: compute species Mach numbers from it
+       IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
+       ALLOCATE(MtOvR_spec(0:num_spec-1))
+       MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
     END IF
 
     ! initialize HDF5 file
@@ -1700,12 +1715,17 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'D33_NA', D33_NA, LBOUND(D33_NA), UBOUND(D33_NA), &
       & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
 
-    ! add radial electric field and species Mach numbers
+    ! add ExB rotation frequency and species Mach numbers
+    IF (isw_calc_Er .GE. 1) THEN
+       CALL h5_add(h5id_multispec, 'Om_tE', Om_tE)
+       CALL h5_add(h5id_multispec, 'MtOvR', MtOvR_spec, &
+            LBOUND(MtOvR_spec), UBOUND(MtOvR_spec))
+    END IF
+
+    ! add radial electric field and derived quantities (neoclassical only)
     IF (isw_calc_Er .EQ. 1) THEN
 
        CALL h5_add(h5id_multispec, 'Er', Er)
-       CALL h5_add(h5id_multispec, 'MtOvR', MtOvR_spec, &
-            LBOUND(MtOvR_spec), UBOUND(MtOvR_spec))
 
        CALL h5_add(h5id_multispec, 'VthtB_spec', VthtB_spec, &
             LBOUND(VthtB_spec), UBOUND(VthtB_spec))
@@ -2022,7 +2042,7 @@ CONTAINS
         end if
       else
         write(*,*) 'WARNING: particle flux ambipolarity could not be checked,'
-        write(*,*) '  as isw_calc_er is 0'
+        write(*,*) '  as isw_calc_Er is not 1 (current value:', isw_calc_Er, ')'
       end if
     end function check_ambipolarity_particle_flux
   END SUBROUTINE write_multispec_output_a
@@ -2032,6 +2052,7 @@ CONTAINS
        & Er, D33AX_spec_in, avEparB_ov_avb2_in)
 
     use nrtype
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -2303,11 +2324,11 @@ CONTAINS
     ! compute radial electric field
     Er = nom_Er / denom_Er
 
-    ! compute species Mach numbers
+    ! compute ExB rotation frequency and species Mach numbers
+    Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi)
     IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
     ALLOCATE(MtOvR_spec(0:num_spec-1))
-    MtOvR_spec = (c * Er / (aiota_loc * sqrtg_bctrvr_phi)) / &
-         SQRT(2.0_dp * T_spec / m_spec)
+    MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
 
     if (allocated(D33AX_spec)) deallocate(D33AX_spec)
   END SUBROUTINE compute_Er
@@ -2494,6 +2515,7 @@ CONTAINS
        D33AX_spec, Er, avEparB_ov_avb2)
 
     use nrtype
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -2835,11 +2857,11 @@ CONTAINS
          (denom_Epar_b*denom_Er_c - denom_Epar_d*denom_Er_a)
     Er = (nom_Er-denom_Epar_b*avEparB_ov_avb2)/denom_Er_a
 
-    ! compute species Mach numbers
+    ! compute ExB rotation frequency and species Mach numbers
+    Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi)
     IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
     ALLOCATE(MtOvR_spec(0:num_spec-1))
-    MtOvR_spec = (c * Er / (aiota_loc * sqrtg_bctrvr_phi)) / &
-         SQRT(2.0_dp * T_spec / m_spec)
+    MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
 
   END SUBROUTINE compute_Er_and_A3norm_a
 

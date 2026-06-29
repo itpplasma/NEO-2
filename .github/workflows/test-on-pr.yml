@@ -136,7 +136,7 @@ jobs:
           echo "Building reference version from latest stable release: $LATEST_RELEASE"
           git checkout $LATEST_RELEASE
 
-          # Use same tag for libneo (synchronized versioning)
+          # Synchronized versioning: the released Makefile honors LIBNEO_GIT_TAG.
           echo "Using synchronized libneo tag: $LATEST_RELEASE"
           make LIBNEO_GIT_TAG=$LATEST_RELEASE
 
