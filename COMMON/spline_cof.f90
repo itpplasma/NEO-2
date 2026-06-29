@@ -70,7 +70,11 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
   use nrtype, only : I4B, DP
   USE inter_interfaces, ONLY: calc_opt_lambda3
-  USE sparse_mod, ONLY : sparse_talk
+  !! Modifications by Andreas F. Martitsch (06.08.2014)
+  !Replace standard solver from Lapack with sparse solver
+  !(Bad performance for more than 1000 flux surfaces ~ (3*nsurf)^2)
+  USE sparse_mod, ONLY : column_full2pointer, remap_rc, sparse_solve
+  !! End Modifications by Andreas F. Martitsch (06.08.2014)
 
   !---------------------------------------------------------------------
 
@@ -101,16 +105,17 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   INTEGER(I4B)            :: i, j, l, ii, ie
   INTEGER(I4B)            :: mu1, mu2, nu1, nu2
   INTEGER(I4B)            :: sig1, sig2, rho1, rho2
-  INTEGER(I4B)            :: lower_band, upper_band, band_row, info
-  INTEGER(I4B)            :: border_size, interior_size, border_left, border_right
+  INTEGER                 :: sparse_capacity, sparse_nz, sparse_nz_squeezed
+  INTEGER                 :: lower_band, upper_band, band_row, corner_row, corner_col
+  INTEGER                 :: info
   REAL(DP)                :: h, h_j, x_h, help_i, help_inh
   REAL(DP)                :: help_a, help_b, help_c, help_d
-  INTEGER, DIMENSION(:), ALLOCATABLE :: ipivot, border_index, interior_index
-  INTEGER, DIMENSION(:), ALLOCATABLE :: row_to_border, row_to_interior, small_ipivot
-  REAL(DP), DIMENSION(:),   ALLOCATABLE :: inh, lambda, omega
-  REAL(DP), DIMENSION(:),   ALLOCATABLE :: rhs_interior, rhs_border, solution_border
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: band_matrix, band_rhs, upper_right
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: lower_left, lower_right, schur_matrix
+  REAL(DP)                :: corner_val, corner_gamma, denominator, correction
+  LOGICAL                 :: use_common_banded
+  INTEGER, DIMENSION(:), ALLOCATABLE :: irow, icol, ipcol, sparse_hash
+  INTEGER, DIMENSION(:), ALLOCATABLE :: ipivot
+  REAL(DP), DIMENSION(:),   ALLOCATABLE :: inh, lambda, omega, sparse_val
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: band_matrix, band_rhs
   character(200) :: error_message
 
   len_x    = SIZE(x)
@@ -168,20 +173,37 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     stop 'SPLINECOF3: error  two identical boundary conditions'
   end if
 
-  lower_band = 7
-  upper_band = 7
-  CALL init_bordered_band_layout
-  ALLOCATE(band_matrix(2*lower_band + upper_band + 1, interior_size), &
-       ipivot(interior_size), rhs_interior(interior_size), rhs_border(border_size), &
-       upper_right(interior_size, border_size), lower_left(border_size, interior_size), &
-       lower_right(border_size, border_size), &
-       stat = i_alloc, errmsg=error_message)
-  if(i_alloc /= 0) then
-    write(*,*) 'splinecof3: Allocation for banded matrix arrays failed with error message:'
-    write(*,*) trim(error_message)
-    write(*,*) 'matrix rows should be ', 2*lower_band + upper_band + 1
-    write(*,*) 'matrix columns should be ', size_dimension
-    stop
+  use_common_banded = .FALSE.
+  if (sw1 == 2) then
+    if (sw2 == 4) use_common_banded = .TRUE.
+  end if
+
+  if (use_common_banded) then
+    lower_band = 7
+    upper_band = 7
+    corner_row = 7
+    corner_col = size_dimension - 1
+    corner_val = 0.0D0
+    corner_gamma = 1.0D0
+    ALLOCATE(band_matrix(2*lower_band + upper_band + 1, size_dimension), &
+         stat = i_alloc, errmsg=error_message)
+    if(i_alloc /= 0) then
+      write(*,*) 'splinecof3: Allocation for band matrix failed with error message:'
+      write(*,*) trim(error_message)
+      write(*,*) 'matrix rows should be ', 2*lower_band + upper_band + 1
+      write(*,*) 'matrix columns should be ', size_dimension
+      stop
+    end if
+  else
+    sparse_capacity = 64 * len_indx + 32
+    ALLOCATE(irow(sparse_capacity), icol(sparse_capacity), sparse_val(sparse_capacity), &
+         sparse_hash(4*sparse_capacity), stat = i_alloc, errmsg=error_message)
+    if(i_alloc /= 0) then
+      write(*,*) 'splinecof3: Allocation for sparse matrix arrays failed with error message:'
+      write(*,*) trim(error_message)
+      write(*,*) 'size should be ', sparse_capacity
+      stop
+    end if
   end if
   ALLOCATE(inh(size_dimension),  stat = i_alloc, errmsg=error_message)
   if(i_alloc /= 0) then
@@ -214,10 +236,12 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     cn = 0.0D0;
   END IF
 
-  band_matrix = 0.0D0
-  upper_right = 0.0D0
-  lower_left = 0.0D0
-  lower_right = 0.0D0
+  if (use_common_banded) then
+    band_matrix = 0.0D0
+  else
+    sparse_nz = 0
+    sparse_hash = 0
+  end if
   inh(:) = 0.0D0
 
   ! calculate optimal weights for smooting (lambda)
@@ -565,12 +589,15 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 ! ---------------------------
 
   ! solve system
-  IF (sparse_talk) THEN
-    PRINT *, 'splinecof3 banded solve: n=', size_dimension, &
-         ' lower_band=', lower_band, ' upper_band=', upper_band, &
-         ' ldab=', SIZE(band_matrix, 1), ' border_size=', border_size
-  END IF
-  CALL solve_bordered_band
+  if (use_common_banded) then
+    call solve_common_banded
+  else
+    CALL remap_rc(sparse_nz, sparse_nz_squeezed, irow, icol, sparse_val)
+    sparse_nz = sparse_nz_squeezed
+    CALL column_full2pointer(icol(1:sparse_nz), ipcol)
+    CALL sparse_solve(size_dimension, size_dimension, sparse_nz, &
+         irow(1:sparse_nz), ipcol, sparse_val(1:sparse_nz), inh)
+  end if
 
   ! take a(), b(), c(), d()
   DO i = 1, len_indx
@@ -581,10 +608,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   END DO
 
 
-  DEALLOCATE(band_matrix, ipivot, rhs_interior, rhs_border, upper_right, lower_left, &
-       lower_right, border_index, interior_index, row_to_border, row_to_interior, &
-       stat = i_alloc)
-  IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for arrays 1 failed!'
+  if (use_common_banded) then
+    DEALLOCATE(band_matrix,  stat = i_alloc)
+    IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for band matrix failed!'
+  else
+    DEALLOCATE(irow, icol, ipcol, sparse_val, sparse_hash,  stat = i_alloc)
+    IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for arrays 1 failed!'
+  end if
   DEALLOCATE(inh,  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for arrays 2 failed!'
   DEALLOCATE(lambda,  stat = i_alloc)
@@ -598,124 +628,99 @@ CONTAINS
     INTEGER, INTENT(IN) :: row, col
     REAL(DP), INTENT(IN) :: value
 
+    INTEGER :: entry, slot, start_slot
+
     IF (row < 1 .OR. row > size_dimension .OR. col < 1 .OR. col > size_dimension) THEN
-      STOP 'splinecof3: banded matrix index out of bounds'
+      STOP 'splinecof3: matrix index out of bounds'
     END IF
+
+    if (use_common_banded) then
+      call set_common_banded_entry(row, col, value)
+      return
+    END IF
+
+    slot = MOD(row + (col - 1)*size_dimension - 1, SIZE(sparse_hash)) + 1
+    start_slot = slot
+    DO
+      entry = sparse_hash(slot)
+      IF (entry == 0) EXIT
+      IF (irow(entry) == row .AND. icol(entry) == col) THEN
+        sparse_val(entry) = value
+        RETURN
+      END IF
+      slot = slot + 1
+      IF (slot > SIZE(sparse_hash)) slot = 1
+      IF (slot == start_slot) STOP 'splinecof3: sparse hash table exhausted'
+    END DO
 
     IF (value == 0.0D0) RETURN
-    IF (row_to_interior(row) > 0) THEN
-      IF (row_to_interior(col) > 0) THEN
-        IF (row - col > lower_band .OR. col - row > upper_band) THEN
-          STOP 'splinecof3: interior matrix entry outside band'
-        END IF
-        band_row = lower_band + upper_band + 1 + row_to_interior(row) - row_to_interior(col)
-        band_matrix(band_row, row_to_interior(col)) = value
-      ELSE
-        upper_right(row_to_interior(row), row_to_border(col)) = value
-      END IF
-      RETURN
-    END IF
+    IF (sparse_nz >= sparse_capacity) STOP 'splinecof3: sparse matrix capacity exceeded'
 
-    IF (row_to_interior(col) > 0) THEN
-      lower_left(row_to_border(row), row_to_interior(col)) = value
-    ELSE
-      lower_right(row_to_border(row), row_to_border(col)) = value
-    END IF
+    sparse_nz = sparse_nz + 1
+    irow(sparse_nz) = row
+    icol(sparse_nz) = col
+    sparse_val(sparse_nz) = value
+    sparse_hash(slot) = sparse_nz
   END SUBROUTINE set_matrix_entry
 
-  SUBROUTINE solve_bordered_band
-    INTEGER :: row, rhs_count
+  SUBROUTINE set_common_banded_entry(row, col, value)
+    INTEGER, INTENT(IN) :: row, col
+    REAL(DP), INTENT(IN) :: value
 
-    DO row = 1, interior_size
-      rhs_interior(row) = inh(interior_index(row))
-    END DO
-    DO row = 1, border_size
-      rhs_border(row) = inh(border_index(row))
-    END DO
+    IF (value == 0.0D0) RETURN
+    IF (row == corner_row) THEN
+      IF (col == corner_col) THEN
+        corner_val = value
+        RETURN
+      END IF
+    END IF
 
-    rhs_count = border_size + 1
-    ALLOCATE(band_rhs(interior_size, rhs_count), schur_matrix(border_size, border_size), &
-         solution_border(border_size), small_ipivot(border_size), &
+    IF (row - col > lower_band .OR. col - row > upper_band) THEN
+      STOP 'splinecof3: unsupported common-case matrix entry outside band'
+    END IF
+
+    band_row = lower_band + upper_band + 1 + row - col
+    band_matrix(band_row, col) = value
+  END SUBROUTINE set_common_banded_entry
+
+  SUBROUTINE solve_common_banded
+    ALLOCATE(ipivot(size_dimension), band_rhs(size_dimension, 2), &
          stat = i_alloc, errmsg=error_message)
     IF(i_alloc /= 0) THEN
-      write(*,*) 'splinecof3: Allocation for bordered band solve failed with error message:'
+      write(*,*) 'splinecof3: Allocation for band solve failed with error message:'
       write(*,*) trim(error_message)
       stop
     END IF
 
-    band_rhs(:, 1) = rhs_interior
-    band_rhs(:, 2:rhs_count) = upper_right
-    CALL dgbtrf(interior_size, interior_size, lower_band, upper_band, band_matrix, &
+    band_row = lower_band + upper_band + 1
+    band_matrix(band_row, corner_col) = band_matrix(band_row, corner_col) + corner_gamma
+    band_rhs(:,1) = inh
+    band_rhs(:,2) = 0.0D0
+    band_rhs(corner_row,2) = corner_val
+    band_rhs(corner_col,2) = -corner_gamma
+    CALL dgbtrf(size_dimension, size_dimension, lower_band, upper_band, band_matrix, &
          SIZE(band_matrix, 1), ipivot, info)
     IF (info /= 0) THEN
-      PRINT *, 'splinecof3: INFO from banded factorization = ', info
+      PRINT *, 'splinecof3: INFO from common-case band factorization = ', info
       STOP
     END IF
-    CALL dgbtrs('N', interior_size, lower_band, upper_band, rhs_count, band_matrix, &
-         SIZE(band_matrix, 1), ipivot, band_rhs, interior_size, info)
+    CALL dgbtrs('N', size_dimension, lower_band, upper_band, 2, band_matrix, &
+         SIZE(band_matrix, 1), ipivot, band_rhs, size_dimension, info)
     IF (info /= 0) THEN
-      PRINT *, 'splinecof3: INFO from banded solve = ', info
+      PRINT *, 'splinecof3: INFO from common-case band solve = ', info
       STOP
     END IF
 
-    schur_matrix = lower_right - MATMUL(lower_left, band_rhs(:, 2:rhs_count))
-    solution_border = rhs_border - MATMUL(lower_left, band_rhs(:, 1))
-    CALL dgesv(border_size, 1, schur_matrix, border_size, small_ipivot, &
-         solution_border, border_size, info)
-    IF (info /= 0) THEN
-      PRINT *, 'splinecof3: INFO from border solve = ', info
-      STOP
+    denominator = 1.0D0 + band_rhs(corner_col,2)
+    IF (denominator == 0.0D0) THEN
+      STOP 'splinecof3: common-case Woodbury correction is singular'
     END IF
+    correction = band_rhs(corner_col,1) / denominator
+    inh = band_rhs(:,1) - band_rhs(:,2) * correction
 
-    rhs_interior = band_rhs(:, 1) - MATMUL(band_rhs(:, 2:rhs_count), solution_border)
-    DO row = 1, interior_size
-      inh(interior_index(row)) = rhs_interior(row)
-    END DO
-    DO row = 1, border_size
-      inh(border_index(row)) = solution_border(row)
-    END DO
-
-    DEALLOCATE(band_rhs, schur_matrix, solution_border, small_ipivot)
-  END SUBROUTINE solve_bordered_band
-
-  SUBROUTINE init_bordered_band_layout
-    INTEGER :: idx, global_index
-
-    border_left = MIN(7, size_dimension)
-    border_right = MIN(21, MAX(0, size_dimension - border_left))
-    border_size = border_left + border_right
-    interior_size = size_dimension - border_size
-
-    ALLOCATE(border_index(border_size), interior_index(interior_size), &
-         row_to_border(size_dimension), row_to_interior(size_dimension), &
-         stat = i_alloc, errmsg=error_message)
-    IF(i_alloc /= 0) THEN
-      write(*,*) 'splinecof3: Allocation for bordered band layout failed with error message:'
-      write(*,*) trim(error_message)
-      stop
-    END IF
-
-    row_to_border = 0
-    row_to_interior = 0
-    DO idx = 1, border_left
-      border_index(idx) = idx
-      row_to_border(idx) = idx
-    END DO
-    DO idx = 1, border_right
-      global_index = size_dimension - border_right + idx
-      border_index(border_left + idx) = global_index
-      row_to_border(global_index) = border_left + idx
-    END DO
-
-    idx = 0
-    DO global_index = 1, size_dimension
-      IF (row_to_border(global_index) == 0) THEN
-        idx = idx + 1
-        interior_index(idx) = global_index
-        row_to_interior(global_index) = idx
-      END IF
-    END DO
-  END SUBROUTINE init_bordered_band_layout
+    DEALLOCATE(ipivot, band_rhs, stat = i_alloc)
+    IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for band solve failed!'
+  END SUBROUTINE solve_common_banded
 
 END SUBROUTINE splinecof3_a
 

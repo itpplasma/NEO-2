@@ -87,11 +87,6 @@ MODULE sparse_mod
           sparse_solveComplex_b1,sparse_solveComplex_b2,sparse_solveComplex_A_b1,sparse_solveComplex_A_b2
   END INTERFACE sparse_solve
 
-  PUBLIC sparse_solve_banded
-  INTERFACE sparse_solve_banded
-     MODULE PROCEDURE sparse_solve_banded_b1, sparse_solve_banded_b2
-  END INTERFACE sparse_solve_banded
-
   PUBLIC sparse_solve_suitesparse
   INTERFACE sparse_solve_suitesparse
      MODULE PROCEDURE sparse_solve_suitesparse_b1, sparse_solve_suitesparse_b2_loop, &
@@ -650,184 +645,6 @@ CONTAINS
   !-------------------------------------------------------------------------------
 
   !-------------------------------------------------------------------------------
-  SUBROUTINE sparse_band_profile(nrow,ncol,nz,irow,pcol,lower_band,upper_band)
-    INTEGER, INTENT(in) :: nrow,ncol,nz
-    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
-    INTEGER, INTENT(out) :: lower_band,upper_band
-
-    INTEGER :: ic,k,row
-
-    IF (SIZE(pcol,1) .NE. ncol+1) THEN
-       PRINT *, 'Wrong pcol'
-       STOP
-    END IF
-
-    lower_band = 0
-    upper_band = 0
-    DO ic = 1,ncol
-       DO k = pcol(ic),pcol(ic+1)-1
-          IF (k .LT. 1 .OR. k .GT. nz) THEN
-             PRINT *, 'Wrong pcol'
-             STOP
-          END IF
-          row = irow(k)
-          IF (row < 1 .OR. row > nrow) THEN
-             PRINT *, 'Wrong irow'
-             STOP
-          END IF
-          lower_band = MAX(lower_band,row-ic)
-          upper_band = MAX(upper_band,ic-row)
-       END DO
-    END DO
-  END SUBROUTINE sparse_band_profile
-  !-------------------------------------------------------------------------------
-
-  !-------------------------------------------------------------------------------
-  SUBROUTINE trace_sparse_solve(label,nrow,ncol,nz,irow,pcol,iopt,is_real)
-    CHARACTER(len=*), INTENT(in) :: label
-    INTEGER, INTENT(in) :: nrow,ncol,nz,iopt
-    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
-    LOGICAL, INTENT(in) :: is_real
-
-    INTEGER :: lower_band,upper_band,band_width,lapack_band_rows
-    LOGICAL :: banded_possible
-
-    IF (.NOT. sparse_talk) RETURN
-
-    CALL sparse_band_profile(nrow,ncol,nz,irow,pcol,lower_band,upper_band)
-    band_width = lower_band + upper_band + 1
-    lapack_band_rows = 2*lower_band + upper_band + 1
-    banded_possible = nrow .EQ. ncol
-    IF (banded_possible) banded_possible = is_real
-    IF (banded_possible) banded_possible = iopt .EQ. 0
-
-    PRINT *, 'sparse_solve trace: ', TRIM(label)
-    PRINT *, '  nrow=', nrow, ' ncol=', ncol, ' nz=', nz
-    PRINT *, '  lower_band=', lower_band, ' upper_band=', upper_band, &
-         ' band_width=', band_width, ' lapack_band_rows=', lapack_band_rows
-    PRINT *, '  method=', sparse_solve_method, ' iopt=', iopt, &
-         ' banded_method=4 possible=', banded_possible
-    IF (.NOT. is_real) PRINT *, '  banded_method=4 disabled: complex matrix'
-    IF (nrow .NE. ncol) PRINT *, '  banded_method=4 disabled: matrix is not square'
-    IF (iopt .NE. 0) PRINT *, '  banded_method=4 disabled: reusable factorization iopt is not implemented'
-  END SUBROUTINE trace_sparse_solve
-  !-------------------------------------------------------------------------------
-
-  !-------------------------------------------------------------------------------
-  SUBROUTINE sparse_to_band_real(nrow,ncol,nz,irow,pcol,val,lower_band,upper_band,band)
-    INTEGER, INTENT(in) :: nrow,ncol,nz
-    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
-    REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
-    INTEGER, INTENT(in) :: lower_band,upper_band
-    REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: band
-
-    INTEGER :: ic,k,row,band_row,ldab
-
-    ldab = 2*lower_band + upper_band + 1
-    IF (ALLOCATED(band)) DEALLOCATE(band)
-    ALLOCATE(band(ldab,ncol))
-    band = 0.0_dp
-
-    DO ic = 1,ncol
-       DO k = pcol(ic),pcol(ic+1)-1
-          row = irow(k)
-          band_row = lower_band + upper_band + 1 + row - ic
-          band(band_row,ic) = band(band_row,ic) + val(k)
-       END DO
-    END DO
-  END SUBROUTINE sparse_to_band_real
-  !-------------------------------------------------------------------------------
-
-  !-------------------------------------------------------------------------------
-  SUBROUTINE sparse_solve_banded_b1(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
-    INTEGER, INTENT(in) :: nrow,ncol,nz
-    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
-    REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
-    REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
-    INTEGER, INTENT(in), OPTIONAL :: iopt_in
-
-    INTEGER :: iopt = 0
-    INTEGER :: lower_band,upper_band,ldab,ldb,info
-    INTEGER, DIMENSION(:), ALLOCATABLE :: ipivot
-    REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: band,bb
-
-    IF (PRESENT(iopt_in)) iopt = iopt_in
-    CALL trace_sparse_solve('real_banded_b1',nrow,ncol,nz,irow,pcol,iopt,.TRUE.)
-
-    IF (nrow .NE. ncol) THEN
-       PRINT *, 'sparse_solve_banded requires a square matrix'
-       STOP
-    END IF
-    IF (iopt .NE. 0) THEN
-       PRINT *, 'sparse_solve_banded supports only one-shot solves with iopt=0'
-       STOP
-    END IF
-
-    CALL sparse_band_profile(nrow,ncol,nz,irow,pcol,lower_band,upper_band)
-    CALL sparse_to_band_real(nrow,ncol,nz,irow,pcol,val,lower_band,upper_band,band)
-
-    ldab = SIZE(band,1)
-    ldb = nrow
-    ALLOCATE(ipivot(nrow))
-    ALLOCATE(bb(nrow,1))
-    bb(:,1) = b
-    CALL dgbsv(nrow,lower_band,upper_band,1,band,ldab,ipivot,bb,ldb,info)
-    IF (info .NE. 0) THEN
-       PRINT *, 'INFO from banded solve = ', info
-       STOP
-    END IF
-    b = bb(:,1)
-
-    IF (ALLOCATED(ipivot)) DEALLOCATE(ipivot)
-    IF (ALLOCATED(band)) DEALLOCATE(band)
-    IF (ALLOCATED(bb)) DEALLOCATE(bb)
-  END SUBROUTINE sparse_solve_banded_b1
-  !-------------------------------------------------------------------------------
-
-  !-------------------------------------------------------------------------------
-  SUBROUTINE sparse_solve_banded_b2(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
-    INTEGER, INTENT(in) :: nrow,ncol,nz
-    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
-    REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
-    REAL(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
-    INTEGER, INTENT(in), OPTIONAL :: iopt_in
-
-    INTEGER :: iopt = 0
-    INTEGER :: lower_band,upper_band,ldab,ldb,info,nrhs
-    INTEGER, DIMENSION(:), ALLOCATABLE :: ipivot
-    REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: band
-
-    IF (PRESENT(iopt_in)) iopt = iopt_in
-    CALL trace_sparse_solve('real_banded_b2',nrow,ncol,nz,irow,pcol,iopt,.TRUE.)
-
-    IF (nrow .NE. ncol) THEN
-       PRINT *, 'sparse_solve_banded requires a square matrix'
-       STOP
-    END IF
-    IF (iopt .NE. 0) THEN
-       PRINT *, 'sparse_solve_banded supports only one-shot solves with iopt=0'
-       STOP
-    END IF
-
-    CALL sparse_band_profile(nrow,ncol,nz,irow,pcol,lower_band,upper_band)
-    CALL sparse_to_band_real(nrow,ncol,nz,irow,pcol,val,lower_band,upper_band,band)
-
-    ldab = SIZE(band,1)
-    ldb = nrow
-    nrhs = SIZE(b,2)
-    ALLOCATE(ipivot(nrow))
-    CALL dgbsv(nrow,lower_band,upper_band,nrhs,band,ldab,ipivot,b,ldb,info)
-    IF (info .NE. 0) THEN
-       PRINT *, 'INFO from banded solve = ', info
-       STOP
-    END IF
-
-    IF (ALLOCATED(ipivot)) DEALLOCATE(ipivot)
-    IF (ALLOCATED(band)) DEALLOCATE(band)
-  END SUBROUTINE sparse_solve_banded_b2
-  !-------------------------------------------------------------------------------
-
-  !-------------------------------------------------------------------------------
   ! solves A*x = b for sparse A and 1-D vector b
   ! A is specified through nrow,ncol,nz,irow,pcol,val
   ! results are returned in b
@@ -849,22 +666,6 @@ CONTAINS
     IF (SIZE(pcol,1) .EQ. SIZE(irow,1)) THEN
        CALL column_full2pointer(pcol,pcoln)
        pcol_modified = .TRUE.
-    END IF
-
-    IF (pcol_modified) THEN
-       CALL trace_sparse_solve('real_b1',nrow,ncol,nz,irow,pcoln,iopt,.TRUE.)
-    ELSE
-       CALL trace_sparse_solve('real_b1',nrow,ncol,nz,irow,pcol,iopt,.TRUE.)
-    END IF
-
-    IF (sparse_solve_method .EQ. 4) THEN
-       IF (pcol_modified) THEN
-          CALL sparse_solve_banded(nrow,ncol,nz,irow,pcoln,val,b,iopt)
-       ELSE
-          CALL sparse_solve_banded(nrow,ncol,nz,irow,pcol,val,b,iopt)
-       END IF
-       IF (ALLOCATED(pcoln)) DEALLOCATE(pcoln)
-       RETURN
     END IF
 
     ! check about existing factorization
@@ -930,12 +731,6 @@ CONTAINS
        pcol_modified = .TRUE.
     END IF
 
-    IF (pcol_modified) THEN
-       CALL trace_sparse_solve('complex_b1',nrow,ncol,nz,irow,pcoln,iopt,.FALSE.)
-    ELSE
-       CALL trace_sparse_solve('complex_b1',nrow,ncol,nz,irow,pcol,iopt,.FALSE.)
-    END IF
-
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
@@ -997,22 +792,6 @@ CONTAINS
     IF (SIZE(pcol,1) .EQ. SIZE(irow,1)) THEN
        CALL column_full2pointer(pcol,pcoln)
        pcol_modified = .TRUE.
-    END IF
-
-    IF (pcol_modified) THEN
-       CALL trace_sparse_solve('real_b2',nrow,ncol,nz,irow,pcoln,iopt,.TRUE.)
-    ELSE
-       CALL trace_sparse_solve('real_b2',nrow,ncol,nz,irow,pcol,iopt,.TRUE.)
-    END IF
-
-    IF (sparse_solve_method .EQ. 4) THEN
-       IF (pcol_modified) THEN
-          CALL sparse_solve_banded(nrow,ncol,nz,irow,pcoln,val,b,iopt)
-       ELSE
-          CALL sparse_solve_banded(nrow,ncol,nz,irow,pcol,val,b,iopt)
-       END IF
-       IF (ALLOCATED(pcoln)) DEALLOCATE(pcoln)
-       RETURN
     END IF
 
     ! check about existing factorization
@@ -1078,12 +857,6 @@ CONTAINS
        pcol_modified = .TRUE.
     END IF
 
-    IF (pcol_modified) THEN
-       CALL trace_sparse_solve('complex_b2',nrow,ncol,nz,irow,pcoln,iopt,.FALSE.)
-    ELSE
-       CALL trace_sparse_solve('complex_b2',nrow,ncol,nz,irow,pcol,iopt,.FALSE.)
-    END IF
-
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
@@ -1141,15 +914,6 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
-    CALL trace_sparse_solve('real_A_b1',nrow,ncol,nz,irow,pcol,iopt,.TRUE.)
-
-    IF (sparse_solve_method .EQ. 4) THEN
-       CALL sparse_solve_banded(nrow,ncol,nz,irow,pcol,val,b,iopt)
-       IF (ALLOCATED(irow)) DEALLOCATE(irow)
-       IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
-       IF (ALLOCATED(val))  DEALLOCATE(val)
-       RETURN
-    END IF
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
@@ -1198,7 +962,6 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
-    CALL trace_sparse_solve('complex_A_b1',nrow,ncol,nz,irow,pcol,iopt,.FALSE.)
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
@@ -1247,15 +1010,6 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
-    CALL trace_sparse_solve('real_A_b2',nrow,ncol,nz,irow,pcol,iopt,.TRUE.)
-
-    IF (sparse_solve_method .EQ. 4) THEN
-       CALL sparse_solve_banded(nrow,ncol,nz,irow,pcol,val,b,iopt)
-       IF (ALLOCATED(irow)) DEALLOCATE(irow)
-       IF (ALLOCATED(pcol)) DEALLOCATE(pcol)
-       IF (ALLOCATED(val))  DEALLOCATE(val)
-       RETURN
-    END IF
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
@@ -1304,7 +1058,6 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
-    CALL trace_sparse_solve('complex_A_b2',nrow,ncol,nz,irow,pcol,iopt,.FALSE.)
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
