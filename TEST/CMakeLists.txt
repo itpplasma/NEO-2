@@ -6,7 +6,7 @@ add_executable(test_nrutil test_nrutil.f90)
 target_link_libraries(test_nrutil common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 
 # Add the test
-add_test(NAME nrutil_test 
+add_test(NAME nrutil_test
          COMMAND test_nrutil
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -137,3 +137,19 @@ set_tests_properties(sparse_legacy_test PROPERTIES
     TIMEOUT 60
     PASS_REGULAR_EXPRESSION "Tests passed: *21"
     FAIL_REGULAR_EXPRESSION "STOP 1")
+
+add_subdirectory(mympilib)
+
+# Test executable for er_rotation module
+add_executable(test_er_rotation test_er_rotation.f90)
+target_link_libraries(test_er_rotation neo2_ql)
+
+add_test(NAME er_rotation_test
+         COMMAND test_er_rotation
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(er_rotation_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)

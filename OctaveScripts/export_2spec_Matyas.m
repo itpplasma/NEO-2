@@ -35,7 +35,7 @@ function [boozer_s_NEO2, TphiNA_tot_NEO2, TphiNA_int_tot_NEO2, TphiNA_int_ele_NE
   avb2_NEO2 = cell(num_data_NEO2,1);
   Er_NEO2 = cell(num_data_NEO2,1);
   avEparB_ov_avb2_NEO2 = cell(num_data_NEO2,1);
-  avnabpsi_NEO2 = cell(num_data_NEO2,1);
+  av_nabla_stor_NEO2 = cell(num_data_NEO2,1);
   Mt_e_NEO2 = cell(num_data_NEO2,1);
   Mt_d_NEO2 = cell(num_data_NEO2,1);
   TphiNA_tot_NEO2 = cell(num_data_NEO2,1);
@@ -68,7 +68,7 @@ function [boozer_s_NEO2, TphiNA_tot_NEO2, TphiNA_int_tot_NEO2, TphiNA_int_ele_NE
     R0_NEO2_tmp = zeros(numel(data_fname),1);
     Er_NEO2_tmp = zeros(numel(data_fname),1);
     avEparB_ov_avb2_NEO2_tmp = zeros(numel(data_fname),1);
-    avnabpsi_NEO2_tmp = zeros(numel(data_fname),1);
+    av_nabla_stor_NEO2_tmp = zeros(numel(data_fname),1);
     MteOvR_NEO2_tmp = zeros(numel(data_fname),1);
     MtdOvR_NEO2_tmp = zeros(numel(data_fname),1);
     TphiNA_tot_NEO2_tmp = zeros(numel(data_fname),1);
@@ -101,7 +101,7 @@ function [boozer_s_NEO2, TphiNA_tot_NEO2, TphiNA_int_tot_NEO2, TphiNA_int_ele_NE
       R0_NEO2_tmp(es_ind) = data_struct.(data_fname{es_ind}).R0;
       Er_NEO2_tmp(es_ind) = data_struct.(data_fname{es_ind}).Er;
       avEparB_ov_avb2_NEO2_tmp(es_ind) = data_struct.(data_fname{es_ind}).avEparB_ov_avb2;
-      avnabpsi_NEO2_tmp(es_ind) = data_struct.(data_fname{es_ind}).avnabpsi;
+      av_nabla_stor_NEO2_tmp(es_ind) = data_struct.(data_fname{es_ind}).av_nabla_stor;
       MteOvR_NEO2_tmp(es_ind) = data_struct.(data_fname{es_ind}).MtOvR(1);
       MtdOvR_NEO2_tmp(es_ind) = data_struct.(data_fname{es_ind}).MtOvR(2);
       TphiNA_tot_NEO2_tmp(es_ind) = data_struct.(data_fname{es_ind}).TphiNA_tot;
@@ -128,7 +128,7 @@ function [boozer_s_NEO2, TphiNA_tot_NEO2, TphiNA_int_tot_NEO2, TphiNA_int_ele_NE
     avb2_NEO2{file_ind} = avbhat2_NEO2_tmp(1:data_ctr).*(Bref_NEO2_tmp(1:data_ctr).^2);
     Er_NEO2{file_ind} = Er_NEO2_tmp(1:data_ctr);
     avEparB_ov_avb2_NEO2{file_ind} = avEparB_ov_avb2_NEO2_tmp(1:data_ctr);
-    avnabpsi_NEO2{file_ind} = avnabpsi_NEO2_tmp(1:data_ctr);
+    av_nabla_stor_NEO2{file_ind} = av_nabla_stor_NEO2_tmp(1:data_ctr);
     Mt_e_NEO2{file_ind} = MteOvR_NEO2_tmp(1:data_ctr).*R0_NEO2_tmp(1:data_ctr);
     Mt_d_NEO2{file_ind} = MtdOvR_NEO2_tmp(1:data_ctr).*R0_NEO2_tmp(1:data_ctr);
     TphiNA_tot_NEO2{file_ind} = TphiNA_tot_NEO2_tmp(1:data_ctr);
@@ -160,7 +160,7 @@ function [boozer_s_NEO2, TphiNA_tot_NEO2, TphiNA_int_tot_NEO2, TphiNA_int_ele_NE
     bcovar_tht_NEO2_tmp = bcovar_tht_NEO2{file_ind};
     bcovar_phi_NEO2_tmp = bcovar_phi_NEO2{file_ind};
     avb2_NEO2_tmp = avb2_NEO2{file_ind};
-    avnabpsi_NEO2_tmp = avnabpsi_NEO2{file_ind};
+    av_nabla_stor_NEO2_tmp = av_nabla_stor_NEO2{file_ind};
     TphiNA_tot_NEO2_tmp = TphiNA_tot_NEO2{file_ind};
     num_radial_pts = numel(TphiNA_tot_NEO2_tmp);
     TphiNA_ele_NEO2_tmp = zeros(num_radial_pts,1);
@@ -198,7 +198,7 @@ function [boozer_s_NEO2, TphiNA_tot_NEO2, TphiNA_int_tot_NEO2, TphiNA_int_ele_NE
     TphiNA_int_tot_NEO2{file_ind} = TphiNA_int_tot_NEO2_tmp;
     TphiNA_int_ele_NEO2{file_ind} = TphiNA_int_ele_NEO2_tmp;
     TphiNA_int_io_NEO2{file_ind} = TphiNA_int_io_NEO2_tmp;
-    surf_area_NEO2{file_ind} = (4*(pi^2)*avnabpsi_NEO2_tmp./avb2_NEO2_tmp).*...
+    surf_area_NEO2{file_ind} = (4*(pi^2)*av_nabla_stor_NEO2_tmp./avb2_NEO2_tmp).*...
         abs(boozer_psi_pr_NEO2_tmp.*(aiota_NEO2_tmp.*bcovar_tht_NEO2_tmp+bcovar_phi_NEO2_tmp));
   end
 

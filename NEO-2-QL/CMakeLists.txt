@@ -17,7 +17,7 @@ target_link_libraries(neo2_ql
   PUBLIC
   common
 )
-target_include_directories(neo2_ql PUBLIC "${PROJECT_BINARY_DIR}/../COMMON")
+target_include_directories(neo2_ql PUBLIC "${PROJECT_BINARY_DIR}/../COMMON" "${PROJECT_BINARY_DIR}/OBJS")
 
 add_executable(${EXE_NAME}
   neo2_main.f90
