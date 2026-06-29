@@ -106,14 +106,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   INTEGER(I4B)            :: mu1, mu2, nu1, nu2
   INTEGER(I4B)            :: sig1, sig2, rho1, rho2
   INTEGER                 :: sparse_capacity, sparse_nz, sparse_nz_squeezed
-  INTEGER                 :: lower_band, upper_band, band_row, corner_row, corner_col
+  INTEGER                 :: lower_band, upper_band, band_row, row_band, col_band
   INTEGER                 :: info
   REAL(DP)                :: h, h_j, x_h, help_i, help_inh
   REAL(DP)                :: help_a, help_b, help_c, help_d
-  REAL(DP)                :: corner_val, corner_gamma, denominator, correction
   LOGICAL                 :: use_common_banded
   INTEGER, DIMENSION(:), ALLOCATABLE :: irow, icol, ipcol, sparse_hash
-  INTEGER, DIMENSION(:), ALLOCATABLE :: ipivot
+  INTEGER, DIMENSION(:), ALLOCATABLE :: ipivot, old_to_band, band_to_old
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: inh, lambda, omega, sparse_val
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: band_matrix, band_rhs
   character(200) :: error_message
@@ -179,13 +178,10 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   end if
 
   if (use_common_banded) then
-    lower_band = 7
-    upper_band = 7
-    corner_row = 7
-    corner_col = size_dimension - 1
-    corner_val = 0.0D0
-    corner_gamma = 1.0D0
+    lower_band = 17
+    upper_band = 14
     ALLOCATE(band_matrix(2*lower_band + upper_band + 1, size_dimension), &
+         old_to_band(size_dimension), band_to_old(size_dimension), &
          stat = i_alloc, errmsg=error_message)
     if(i_alloc /= 0) then
       write(*,*) 'splinecof3: Allocation for band matrix failed with error message:'
@@ -194,6 +190,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
       write(*,*) 'matrix columns should be ', size_dimension
       stop
     end if
+    call init_common_band_order
   else
     sparse_capacity = 64 * len_indx + 32
     ALLOCATE(irow(sparse_capacity), icol(sparse_capacity), sparse_val(sparse_capacity), &
@@ -609,7 +606,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
 
   if (use_common_banded) then
-    DEALLOCATE(band_matrix,  stat = i_alloc)
+    DEALLOCATE(band_matrix, old_to_band, band_to_old,  stat = i_alloc)
     IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for band matrix failed!'
   else
     DEALLOCATE(irow, icol, ipcol, sparse_val, sparse_hash,  stat = i_alloc)
@@ -668,23 +665,19 @@ CONTAINS
     REAL(DP), INTENT(IN) :: value
 
     IF (value == 0.0D0) RETURN
-    IF (row == corner_row) THEN
-      IF (col == corner_col) THEN
-        corner_val = value
-        RETURN
-      END IF
-    END IF
 
-    IF (row - col > lower_band .OR. col - row > upper_band) THEN
+    row_band = old_to_band(row)
+    col_band = old_to_band(col)
+    IF (row_band - col_band > lower_band .OR. col_band - row_band > upper_band) THEN
       ERROR STOP 'splinecof3: unsupported common-case matrix entry outside band'
     END IF
 
-    band_row = lower_band + upper_band + 1 + row - col
-    band_matrix(band_row, col) = value
+    band_row = lower_band + upper_band + 1 + row_band - col_band
+    band_matrix(band_row, col_band) = value
   END SUBROUTINE set_common_banded_entry
 
   SUBROUTINE solve_common_banded
-    ALLOCATE(ipivot(size_dimension), band_rhs(size_dimension, 2), &
+    ALLOCATE(ipivot(size_dimension), band_rhs(size_dimension, 1), &
          stat = i_alloc, errmsg=error_message)
     IF(i_alloc /= 0) THEN
       write(*,*) 'splinecof3: Allocation for band solve failed with error message:'
@@ -692,35 +685,58 @@ CONTAINS
       ERROR STOP 'splinecof3: allocation for common-case band solve failed'
     END IF
 
-    band_row = lower_band + upper_band + 1
-    band_matrix(band_row, corner_col) = band_matrix(band_row, corner_col) + corner_gamma
-    band_rhs(:,1) = inh
-    band_rhs(:,2) = 0.0D0
-    band_rhs(corner_row,2) = corner_val
-    band_rhs(corner_col,2) = -corner_gamma
-    CALL dgbtrf(size_dimension, size_dimension, lower_band, upper_band, band_matrix, &
-         SIZE(band_matrix, 1), ipivot, info)
-    IF (info /= 0) THEN
-      PRINT *, 'splinecof3: INFO from common-case band factorization = ', info
-      ERROR STOP 'splinecof3: common-case band factorization failed'
-    END IF
-    CALL dgbtrs('N', size_dimension, lower_band, upper_band, 2, band_matrix, &
+    do i = 1, size_dimension
+      band_rhs(old_to_band(i),1) = inh(i)
+    end do
+    CALL dgbsv(size_dimension, lower_band, upper_band, 1, band_matrix, &
          SIZE(band_matrix, 1), ipivot, band_rhs, size_dimension, info)
     IF (info /= 0) THEN
       PRINT *, 'splinecof3: INFO from common-case band solve = ', info
-      ERROR STOP 'splinecof3: common-case band solve failed'
+      ERROR STOP 'splinecof3: common-case permuted band solve failed'
     END IF
-
-    denominator = 1.0D0 + band_rhs(corner_col,2)
-    IF (denominator == 0.0D0) THEN
-      ERROR STOP 'splinecof3: common-case Woodbury correction is singular'
-    END IF
-    correction = band_rhs(corner_col,1) / denominator
-    inh = band_rhs(:,1) - band_rhs(:,2) * correction
+    do i = 1, size_dimension
+      inh(band_to_old(i)) = band_rhs(i,1)
+    end do
 
     DEALLOCATE(ipivot, band_rhs, stat = i_alloc)
     IF(i_alloc /= 0) ERROR STOP 'splinecof3: deallocation for band solve failed'
   END SUBROUTINE solve_common_banded
+
+  SUBROUTINE init_common_band_order
+    INTEGER :: block_count, middle_block, offset, band_index
+    INTEGER :: block_left, block_right
+
+    block_count = (size_dimension + 2) / VAR
+    middle_block = (block_count + 1) / 2
+    band_index = 0
+    do offset = 0, block_count
+      block_right = middle_block + offset
+      if (block_right <= block_count) call add_common_band_block(block_right, band_index)
+      block_left = middle_block - offset
+      if (offset > 0) then
+        if (block_left >= 1) call add_common_band_block(block_left, band_index)
+      end if
+    end do
+    if (band_index /= size_dimension) then
+      ERROR STOP 'splinecof3: internal common-case band ordering size mismatch'
+    end if
+  END SUBROUTINE init_common_band_order
+
+  SUBROUTINE add_common_band_block(block_index, band_index)
+    INTEGER, INTENT(IN) :: block_index
+    INTEGER, INTENT(INOUT) :: band_index
+    INTEGER, DIMENSION(7), PARAMETER :: variable_order = [5, 6, 7, 1, 2, 3, 4]
+    INTEGER :: order_index, old_index
+
+    do order_index = 1, SIZE(variable_order)
+      old_index = (block_index - 1) * VAR + variable_order(order_index)
+      if (old_index <= size_dimension) then
+        band_index = band_index + 1
+        band_to_old(band_index) = old_index
+        old_to_band(old_index) = band_index
+      end if
+    end do
+  END SUBROUTINE add_common_band_block
 
 END SUBROUTINE splinecof3_a
 
