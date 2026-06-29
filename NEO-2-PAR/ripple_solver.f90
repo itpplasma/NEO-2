@@ -33,19 +33,19 @@ SUBROUTINE ripple_solver(                                 &
                             lsw_save_spitf
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
        column_full2pointer,sparse_solver_test,remap_rc
-  USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
+  USE mag_interface_mod, ONLY: &
                                surface_boozer_B00,travis_convfac,              &
                                mag_magfield
-       
+
   USE development
 
   use collop_compute, only: a_00_offset, a_02_offset, a_22_offset, weightenerg_offset
-  
+
   !*****************************
   ! HDF5
   !*****************************
   USE hdf5_tools
-  
+
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
@@ -63,7 +63,7 @@ SUBROUTINE ripple_solver(                                 &
   REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE, INTENT(inout) :: flux_m
   REAL(kind=dp), DIMENSION(:,:),  ALLOCATABLE, INTENT(out)   :: qflux
   INTEGER,                                    INTENT(out)   :: ierr
-  
+
   ! local stuff
 
   INTEGER :: add_global_eta
@@ -285,7 +285,7 @@ iprintflag=1
   IF (prop_reconstruct_levels .EQ. 0) THEN
      ! This is the old stuff
      ! here eta = eta_glob = eta_loc
-     ub_eta_loc = ub_eta   
+     ub_eta_loc = ub_eta
 
      ! eta
      IF (ALLOCATED(eta)) DEALLOCATE(eta)
@@ -317,11 +317,11 @@ iprintflag=1
      ! local: important for the local propagator
      ! additional: additional stuff which should be reconstructed after solving the local stuff
      ! global = local+additional: all together, used also for allocation of output quantities
-     ! 
+     !
      ! eta is the global eta
      ! In addition eta_loc (local) and eta_glob (global) exist
      !
-     ! All procedures after the solver (e.g. joining do not know about this local 
+     ! All procedures after the solver (e.g. joining do not know about this local
      ! treatment of eta. So before one returns to the calling routine, all relevant
      ! external quantities have to be interpolated to match the global eta!
      !
@@ -330,7 +330,7 @@ iprintflag=1
      !
      ! Now there exist the following new quantities
      !
-     ! add_global_eta - integer: 
+     ! add_global_eta - integer:
      !    1 - if additional levels exist; 0 - otherwise
      !
      ! eta_loc_ind(0:ub_eta_loc) - integer:
@@ -340,9 +340,9 @@ iprintflag=1
      !    index where the value of eta_glob can be found in eta_loc
      !    or -1 if it does not exist in eta_loc
      !
-     ! reconstruction has to be done, 
-     !    if (add_global_eta .gt. 0) 
-     ! 
+     ! reconstruction has to be done,
+     !    if (add_global_eta .gt. 0)
+     !
      ! So the usage is now (input file):
      !
      !  prop_reconstruct_levels = 0 : no reconstruction
@@ -352,10 +352,10 @@ iprintflag=1
      !                        1 : only local (no reconstruction possible)
      !                        2 : local + "absolute maximum" (reconstruction possible)
      !                        3 : local + "absolute maximum" + rest (reconstruction possible)
-     !                        4 : not recommended (no reconstruction possible) 
+     !                        4 : not recommended (no reconstruction possible)
      !     if reconstruction is not possible, prop_reconstruct_levels is automatically set to 0
      !
-     !  bsfunc_sigma_mult .ne. 1.0d0 : then splitting is done with the original value of sigma and 
+     !  bsfunc_sigma_mult .ne. 1.0d0 : then splitting is done with the original value of sigma and
      !                                 then also with the multiplied value
      !                                 sigma * bsfunc_sigma_mult
      !
@@ -381,7 +381,7 @@ iprintflag=1
      IF (ALLOCATED(eta_loc)) DEALLOCATE(eta_loc)
      ALLOCATE(eta_loc(0:ub_eta_loc))
      eta_loc = fieldpropagator%ch_act%eta_loc
-     
+
      ! index
      IF (ALLOCATED(eta_glob_ind)) DEALLOCATE(eta_glob_ind)
      ALLOCATE(eta_glob_ind(0:ub_eta))
@@ -692,7 +692,7 @@ PRINT *,'right boundary layer ignored'
      PRINT *, 'xetami,xetama          ', xetami,xetama
      PRINT *, 'rt0                    ', rt0
      PRINT *, 'collpar,conl_over_mfp  ', collpar,conl_over_mfp
-     
+
      if (prop_fileformat .eq. 0) then
         OPEN(123,file='bhat_mfl.dat')
         DO i=ibeg,iend
@@ -715,7 +715,7 @@ PRINT *,'right boundary layer ignored'
 
         call h5_close(h5id_bhat_mfl)
   end if
-     
+
      OPEN(123,file='eta.dat')
      DO i=0,ub_eta
         WRITE(123,*) phi_mfl(ibeg),eta(i)
@@ -834,9 +834,9 @@ PRINT *,'right boundary layer ignored'
 
     npart_loc=MAX(npart_loc,npassing)
 
-    IF(istep.EQ.ibeg) THEN 
+    IF(istep.EQ.ibeg) THEN
       npass_l=npassing+1
-    ELSEIF(istep.EQ.iend) THEN 
+    ELSEIF(istep.EQ.iend) THEN
       npass_r=npassing+1
     ENDIF
 
@@ -908,7 +908,7 @@ PRINT *,'right boundary layer ignored'
     ENDDO
 
     DO k=1,legmax+1
-! Caution: 
+! Caution:
 ! here power index is shifted (instead of term (k) -> term (k-1) is computed)
       km1=k-1
       vrecurr(km1,0,1:npassing+1)                                            &
@@ -1005,11 +1005,11 @@ PRINT *,'right boundary layer ignored'
         bvec_lapack(k,k)=1.d0
       ENDDO
 
-      CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)         
+      CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
 
-! bvec_lapack(j,k) - contribution to the derivative of the distribution 
-! function $\hat f^\sigma$ of the order j-1=0,1,2,3 at the boundary 
-! $\lambda=\lambda_i$ (at the level $\eta=\eta_i$) from the band i+k-2, 
+! bvec_lapack(j,k) - contribution to the derivative of the distribution
+! function $\hat f^\sigma$ of the order j-1=0,1,2,3 at the boundary
+! $\lambda=\lambda_i$ (at the level $\eta=\eta_i$) from the band i+k-2,
 ! where k=1,2,3,4. If i=1 contributing bands are i+k-1=1,2,3,4 (shift up by 1).
 ! If i=npassing, sigma=-1 fluxes start contribute:
 ! contributions for k=1,2,3,4 come from fun(N-1),fun(N),fun(N+1),fun_b(N*1)
@@ -1136,7 +1136,7 @@ PRINT *,'right boundary layer ignored'
 !    given spatial point; this block is split in two parts:
 ! a) co-passing particles:
 !    These occupy first npassing+1 elements of the Laguerre block, sequence
-!    of these elements is direct, 1:npassing+1 - 1st element corresponds 
+!    of these elements is direct, 1:npassing+1 - 1st element corresponds
 !    to f_1, i.e. the flux through the 1st band and last element - to
 !    the flux through incoplete band - boundary layer
 ! b) counter-passing particles:
@@ -2323,7 +2323,7 @@ call cpu_time(time1)
 
   write (*,*) "Parameters for offset correction: ", a_00_offset, a_02_offset, a_22_offset
   write (*,*) "Weightenerg for offset correction: ", weightenerg_offset
-  
+
   ! Drive 1 (Gradient driven)
   cg0_1_num=sum(avden_vector*source_vector(:,1))
   cg0_1_num_orig = cg0_1_num
@@ -2411,7 +2411,7 @@ call cpu_time(time1)
        open(iunit_dt_p,form='unformatted',file='dentf_p.'     &
             //trim(adjustl(propname))//'.dat')
        open(iunit_dt_m,form='unformatted',file='dentf_m.'     &
-            //trim(adjustl(propname))//'.dat')       
+            //trim(adjustl(propname))//'.dat')
        open(iunit_sp_p,form='unformatted',file='spitf_p.'     &
             //trim(adjustl(propname))//'.dat')
        open(iunit_sp_m,form='unformatted',file='spitf_m.'     &
@@ -2445,7 +2445,7 @@ call cpu_time(time1)
     allocate(spitf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
     allocate(enetf_m_h5(0:lag, 0:3, 0:nplp1, iend-ibeg+1))
 
-      
+
     do istep=ibeg,iend
       if(phi_mfl(istep).lt.phiplot.and.istep.ne.iend) cycle
       icounter=icounter+1
@@ -2521,7 +2521,7 @@ call cpu_time(time1)
 
        call h5_add(h5id_phi_mesh, 'cg0_3_num', cg0_3_num)
        call h5_add(h5id_phi_mesh, 'cg2_3_num', cg2_3_num)
-     
+
        call h5_add(h5id_phi_mesh, 'denom_mflint', denom_mflint)
 
        if (lsw_save_dentf) then
@@ -2547,7 +2547,7 @@ call cpu_time(time1)
                lbound(enetf_m_h5(:,:,:,1:icounter)), ubound(enetf_m_h5(:,:,:,1:icounter)))
           call h5_close(h5id_enetf)
        end if
-       
+
        call h5_close(h5id_phi_mesh)
 
        deallocate(phi_mfl_h5, bhat_mfl_h5, npassing_h5)
@@ -2580,7 +2580,7 @@ call cpu_time(time1)
             //trim(adjustl(propname))//'.dat')
        write(iunit_sizes,*) lag,nplp1,icounter,collpar,travis_convfac
        write(iunit_sizes,*) eta(0:nplp1)
-       close(iunit_sizes)       
+       close(iunit_sizes)
     end if
 
     DEALLOCATE(fun_write)
@@ -2951,7 +2951,7 @@ subroutine rearrange_phideps(ibeg,iend,npart,subsqmin,phi_divide,        &
                              phi_mfl,bhat_mfl,geodcu_mfl,h_phi_mfl,eta,  &
                              delt_pos,delt_neg,                          &
                              fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
-! Mnemonics: 
+! Mnemonics:
 ! fact_pos_b(i) - integration step in positive direction starts at point i
 ! fact_pos_e(i) - integration step in positive direction ends at point i
 ! fact_neg_b(i) - integration step in negative direction starts at point i

@@ -1265,9 +1265,9 @@ aiota\_loc = $\iota(s)=1/q(s)$.
  & & & Variable ref\_swi is specified in the input file ``neo.in'' .
 \\
 \hline
-77 & avnabpsi & scalar &
+77 & av_nabla_stor & scalar &
 Flux surface averaged gradient of the label [1/cm],
-avnabpsi = $\langle |\nabla s| \rangle$.
+av_nabla_stor = $\langle |\nabla s| \rangle$.
 \\
 \hline
 75 & avbhat & scalar &
@@ -1367,7 +1367,7 @@ $(\partial \psi /\partial s) /B_{\rm ref} = \psi_{\rm tor}^a/B_{\rm ref} = \Psi_
 30 & D31ref0 & scalar &  Ion-like Ware pinch coefficient \red{[cm$^2$ G / s]}, D31ref0=D31ref00  \\
  & & & where D31ref00 = $D_{13}^{AX,\alpha}$ Eq.~\eq{wareion} taken for $\alpha=1$ (usually electrons). \\
  & & & D31ref00 = vt0 * rho0 * bcovar\_phi\_hat * (bmod0*1e4) / \& \\
- & & & (2 aiota\_loc * boozer\_psi\_pr\_hat * avnabpsi) \\
+ & & & (2 aiota\_loc * boozer\_psi\_pr\_hat * av_nabla_stor) \\
 \hline
 %
 35 & D33L0\_Zeff & scalar & Rescaled Lorentz conductivity \red{[cm$^2$ G$^2$ / s]}, D33L0\_Zeff = D33L00\_Zeff, \\
@@ -1723,6 +1723,6 @@ the effective radius $r$ as follows,
 \qquad
 \difp{T_\alpha}{r}=\langle|\nabla s|\rangle \difp{T_\alpha}{s},
 \ee
-where $\langle|\nabla s|\rangle$ is given in the output file variable ``avnabpsi''.
+where $\langle|\nabla s|\rangle$ is given in the output file variable ``av_nabla_stor''.
 
 \end{document}

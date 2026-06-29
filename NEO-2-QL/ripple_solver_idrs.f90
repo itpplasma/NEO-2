@@ -14,7 +14,7 @@ SUBROUTINE ripple_solver_idrs( &
     ierr &
     )
 
-  USE nrtype, ONLY: DP, I4B
+  USE nrtype, ONLY: DP
   IMPLICIT NONE
 
   ! Interface matching existing ripple solvers

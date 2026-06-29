@@ -16,7 +16,8 @@ subroutine ripple_solver_ArnoldiO2( &
     use flint_mod, only: phi_divide                      !<-in Winny
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
-                                  isw_momentum, nvel, num_spec, lsw_multispecies
+                                  isw_momentum, nvel, num_spec, lsw_multispecies, &
+                                  T_spec, m_spec
 ! collpar - the same as $\kappa$ - inverse mean-free path times 4
   !! Modifications by Andreas F. Martitsch (01.04.2015)
     !
@@ -72,11 +73,12 @@ subroutine ripple_solver_ArnoldiO2( &
   !! End Modifications by Andreas F. Martitsch (12.06.2014)
   !! Modification by Andreas F. Martitsch (14.07.2015)
     ! Extra input for NTV computations
-    use ntv_mod, only: isw_qflux_NA, MtOvR, B_rho_L_loc, &
+    use ntv_mod, only: isw_qflux_NA, MtOvR, Om_tE, B_rho_L_loc, &
                        m_phi, qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val, &
                        qflux_symm_allspec, qflux_ntv_allspec, &
                        MtOvR_spec, isw_calc_Er, B_rho_L_loc_spec, isw_calc_MagDrift
     use ntv_mod, only: get_Er, get_B_rho_L_loc
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
   !! End Modification by Andreas F. Martitsch (14.07.2015)
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
@@ -2593,6 +2595,12 @@ subroutine ripple_solver_ArnoldiO2( &
             call get_Er(qflux_symm_allspec, Er, avEparB_ov_avb2)
             print *, 'Er, avEparB_ov_avb2: ', Er, avEparB_ov_avb2
         end if
+        MtOvR = MtOvR_spec(ispec)
+    end if
+    if (lsw_multispecies .AND. isw_calc_Er .EQ. 2) then
+        print *, 'Using externally specified Om_tE:', Om_tE
+        if (.not. allocated(MtOvR_spec)) allocate(MtOvR_spec(0:num_spec - 1))
+        MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
         MtOvR = MtOvR_spec(ispec)
     end if
     if (lsw_multispecies .AND. isw_calc_MagDrift .EQ. 1) then

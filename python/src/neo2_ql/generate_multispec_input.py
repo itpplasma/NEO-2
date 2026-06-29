@@ -24,6 +24,8 @@ def generate_multispec_input(config: dict, profiles_src: dict, profiles_interp_c
     multispec['/n_prof'] = profiles['n']
     multispec['/dn_ov_ds_prof'] = derivative(stor, profiles['n'])
     multispec['/Vphi'] = profiles['vrot']
+    if 'Om_tE' in profiles:
+        multispec['/Om_tE'] = profiles['Om_tE']
     ELEMENTARY_CHARGE_CGS = 1.60217662e-19 * 2.99792458e8 * 10
     charge = np.array(config['Z'])*ELEMENTARY_CHARGE_CGS
     charge = charge[:, np.newaxis]
@@ -84,6 +86,9 @@ def write_multispec_to_hdf5(hdf5_filename, multispec):
         f['Vphi'].attrs['unit'] = 'rad / s'
         f.create_dataset('/species_tag_Vphi', data=[multispec['/species_tag_Vphi']], dtype='int32')
         f.create_dataset('/isw_Vphi_loc', data=[multispec['/isw_Vphi_loc']], dtype='int32')
+        if '/Om_tE' in multispec:
+            f.create_dataset('/Om_tE', data=multispec['/Om_tE'], dtype='float64')
+            f['Om_tE'].attrs['unit'] = 'rad / s'
         f.create_dataset('/rel_stages', data=multispec['/rel_stages'], dtype='int32')
         f.create_dataset('/T_prof', data=multispec['/T_prof'], dtype='float64')
         f['T_prof'].attrs['unit'] = 'erg'
