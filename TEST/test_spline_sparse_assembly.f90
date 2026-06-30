@@ -45,7 +45,7 @@ contains
       max_err = max(max_err, abs(y_eval - y_values(i)))
     end do
 
-    if (max_err > 1.0e-10_DP) then
+    if (max_err > 1.0e-12_DP) then
       print *, "FAIL: spline reconstruction mismatch", max_err
       stop 1
     end if

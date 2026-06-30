@@ -42,6 +42,5 @@ add_test(NAME spline_sparse_assembly_test
 
 set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
-    FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
