@@ -166,16 +166,12 @@ jobs:
           cd "$TEST_DIR"
           echo "test_dir=$(pwd)" >> $GITHUB_OUTPUT
 
-          # Rough check against the pre-106 release: the sparse->band splinecof3
-          # backend swap shifts spline-derivative quantities by up to ~5e-11
-          # (magnetics) and integrated transport by ~1e-13. Widen only this
-          # stable comparison; the exact main-reference check stays tight.
-          export TOL=1e-12
+          export TOL=1e-14
           export LEGACY_TOL=1e-10
-          export MAGNETICS_TOL=1e-9
+          export MAGNETICS_TOL=1e-12
           make lorentz
 
-          export TOL=1e-9
+          export TOL=1e-10
           export LEGACY_TOL=1e-8
           make ql
 
