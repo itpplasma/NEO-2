@@ -2670,18 +2670,6 @@ CONTAINS
       lasym_int = 0
     END IF
 
-    ! booz_xform stores Fourier coefficients for cos(m*theta - n*phi).
-    ! The asymmetric read path redirects through INP_SWI_TOK which evaluates
-    ! cos(m*theta + n*phi).  For n=0 (nboz_b=0) the sign is irrelevant.
-    ! For nboz_b>0 the mismatch is a correctness error; reject until fixed.
-    IF (lasym_int /= 0 .AND. nboz_b /= 0) THEN
-      WRITE(w_us,*) 'FATAL: neo_read_boozmn: asymmetric boozmn files with ' // &
-        & 'non-zero n modes (nboz_b =', nboz_b, ') are not supported.'
-      WRITE(w_us,*) 'booz_xform uses cos(m*theta - n*phi); INP_SWI_TOK uses ' // &
-        & 'cos(m*theta + n*phi).  Only axisymmetric (nboz_b=0) asymmetric files work.'
-      STOP
-    END IF
-
     ALLOCATE(jlist(nsurf_b), stat=i_alloc)
     IF (i_alloc /= 0) STOP 'neo_read_boozmn: jlist alloc failed'
     status = nf90_inq_varid(ncid, 'jlist', varid)
@@ -2718,6 +2706,11 @@ CONTAINS
       STOP
     END IF
     status = nf90_get_var(ncid, varid, ixn)
+    IF (lasym_int /= 0) THEN
+      ! INP_SWI_TOK evaluates asymmetric spectra with m*theta + n*phi.
+      ! Import booz_xform's m*theta - n*phi modes by reversing n at the boundary.
+      ixn = -ixn
+    END IF
 
     ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns), stat=i_alloc)
     IF (i_alloc /= 0) STOP 'neo_read_boozmn: scalar surface alloc failed'
