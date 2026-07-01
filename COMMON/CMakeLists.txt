@@ -112,15 +112,11 @@ else()
 endif()
 
 target_link_libraries(common PUBLIC
-  LIBNEO::coordinates
-  LIBNEO::vmec_support
-  LIBNEO::interpolate
-  LIBNEO::odeint
-  LIBNEO::boozer
-  LIBNEO::vmec_field
   LIBNEO::magfie
-  NEO2MyMPILib
+  LIBNEO::odeint
   LIBNEO::hdf5_tools
+  LIBNEO::util
+  NEO2MyMPILib
 )
 
 target_link_libraries(common PUBLIC
