@@ -17,7 +17,8 @@ dependencies = [
     "numpy>=1.20.0",
     "omfit_classes>=3.2023.47.2",
     "libneo>=0.0.3",
-    "h5py>=3.10.0"
+    "h5py>=3.10.0",
+    "scipy>=1.7.0"
 ]
 
 [project.urls]
