@@ -1487,45 +1487,20 @@ CONTAINS
     avbhat2=y(9)/y(6)
     avb2=avbhat2*((bmod0*1.0e4_dp)**2)
 
-    ! compute radial electric field and species Mach numbers
+    ! Resolve the radial electric field (and, on the self-consistent
+    ! path, the inductive parallel field) and then dispatch to the
+    ! shared flux reconstruction in compute_species_fluxes_at_Er so
+    ! isw_calc_Er == 1 and isw_calc_Er == 2 share one implementation.
     IF (isw_calc_Er .EQ. 1) THEN
-       IF (num_spec .EQ. 1) THEN
+       PRINT *,'------------------------------'
+       CALL get_Er(qflux_symm_allspec, Er)
+       PRINT *,'Er: ', Er
+       PRINT *,'------------------------------'
 
-          PRINT *,'------------------------------'
-          CALL get_Er(qflux_symm_allspec, Er)
-          PRINT *,'Er: ', Er
-          PRINT *,'------------------------------'
-
-          CALL compute_VthtB_and_VphiB(row_ind_ptr, col_ind_ptr, &
-               D31_AX, D32_AX, Er, VthtB_spec, VphiB_spec)
-
-          CALL compute_Vphi_profile(row_ind_ptr, col_ind_ptr, &
-               D31_AX, D32_AX, Er, R_Vphi_prof, Z_Vphi_prof, &
-               Vphi_prof_spec, Vtht_prof_spec)
-
-          CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
-               D11_AX, D12_AX, Er, Gamma_AX_spec)
-          CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
-               D21_AX, D22_AX, Er, Qflux_AX_spec)
-          CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
-               D31_AX, D32_AX, Er, ParFlow_AX_spec)
-          CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
-               D11_NA, D12_NA, Er, Gamma_NA_spec)
-          CALL compute_TphiNA(Gamma_NA_spec, TphiNA_spec, TphiNA_tot)
-          CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
-               D21_NA, D22_NA, Er, Qflux_NA_spec)
-          CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
-               D31_NA, D32_NA, Er, ParFlow_NA_spec)
-
-       ELSE
-
-          PRINT *,'------------------------------'
-          CALL get_Er(qflux_symm_allspec, Er)
+       IF (num_spec .GT. 1) THEN
           CALL compute_Vphi_profile(row_ind_ptr, col_ind_ptr, &
                D31_AX, D32_AX, Er, R_Vphi_prof, Z_Vphi_prof, &
                Vphi_prof_woWare_spec, Vtht_prof_woWare_spec)
-          PRINT *,'Er: ', Er
-          PRINT *,'------------------------------'
           CALL compute_Er_and_A3norm(row_ind_ptr, col_ind_ptr, D31_AX, D32_AX, &
                D33_AX, Er, avEparB_ov_avb2)
           PRINT *,'Er, avEparB_ov_avb2: ', Er, avEparB_ov_avb2
@@ -1533,42 +1508,46 @@ CONTAINS
           CALL get_Er(qflux_symm_allspec, Er, avEparB_ov_avb2)
           PRINT *,'Er, avEparB_ov_avb2: ', Er, avEparB_ov_avb2
           PRINT *,'------------------------------'
-
-          CALL compute_VthtB_and_VphiB_b(row_ind_ptr, col_ind_ptr, &
-               D31_AX, D32_AX, D33_AX, Er, avEparB_ov_avb2, &
-               VthtB_spec, VphiB_spec, VthtB_Ware_spec, VphiB_Ware_spec)
-
-          CALL compute_Vphi_profile(row_ind_ptr, col_ind_ptr, &
-               & D31_AX, D32_AX, Er, R_Vphi_prof, Z_Vphi_prof, &
-               & Vphi_prof_spec, Vtht_prof_spec, D33_AX, avEparB_ov_avb2)
-
-          CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
-               D11_AX, D12_AX, D13_AX, Er, avEparB_ov_avb2, &
-               Gamma_AX_spec, Gamma_AX_Ware_spec)
-          CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
-               D21_AX, D22_AX, D23_AX, Er, avEparB_ov_avb2, &
-               Qflux_AX_spec, Qflux_AX_Ware_spec)
-          CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
-               D31_AX, D32_AX, D33_AX, Er, avEparB_ov_avb2, &
-               ParFlow_AX_spec, ParFlow_AX_Ware_spec)
-          CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
-               D11_NA, D12_NA, D13_NA, Er, avEparB_ov_avb2, &
-               Gamma_NA_spec, Gamma_NA_Ware_spec)
-          CALL compute_TphiNA(Gamma_NA_spec, TphiNA_spec, TphiNA_tot)
-          CALL compute_TphiNA(Gamma_NA_Ware_spec, TphiNA_Ware_spec, TphiNA_Ware_tot)
-          CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
-               D21_NA, D22_NA, D23_NA, Er, avEparB_ov_avb2, &
-               Qflux_NA_spec, Qflux_NA_Ware_spec)
-          CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
-               D31_NA, D32_NA, D33_NA, Er, avEparB_ov_avb2, &
-               ParFlow_NA_spec, ParFlow_NA_Ware_spec)
-
+       ELSE
+          avEparB_ov_avb2 = 0.0_dp
        END IF
+
+       CALL compute_species_fluxes_at_Er(row_ind_ptr, col_ind_ptr, Er, avEparB_ov_avb2)
+
+       ! Vphi profile on the Boozer grid - only produced on the
+       ! self-consistent path where compute_Vphi_profile is called.
+       IF (num_spec .EQ. 1) THEN
+          CALL compute_Vphi_profile(row_ind_ptr, col_ind_ptr, &
+               D31_AX, D32_AX, Er, R_Vphi_prof, Z_Vphi_prof, &
+               Vphi_prof_spec, Vtht_prof_spec)
+       ELSE
+          CALL compute_Vphi_profile(row_ind_ptr, col_ind_ptr, &
+               D31_AX, D32_AX, Er, R_Vphi_prof, Z_Vphi_prof, &
+               Vphi_prof_spec, Vtht_prof_spec, D33_AX, avEparB_ov_avb2)
+       END IF
+
     ELSE IF (isw_calc_Er .EQ. 2) THEN
-       ! Externally prescribed Om_tE: compute species Mach numbers from it
+       ! Prescribed Om_tE (NTV_INPUT namelist or multispec HDF5 profile).
+       ! Compute species Mach numbers and recover Er from the inverse of
+       ! the forward map Om_tE = c * Er / (aiota * sqrtg_bctrvr_phi)
+       ! used in compute_Er. avEparB_ov_avb2 is pinned at 0 because no
+       ! inductive-field solve is performed on this path; the Ware
+       ! arrays returned by the shared helper are then the zero-inductive
+       ! reduction of their self-consistent counterparts. Only the Vphi
+       ! profile (compute_Vphi_profile) stays unpopulated here.
        IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
        ALLOCATE(MtOvR_spec(0:num_spec-1))
        MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
+
+       Er = Om_tE * aiota_loc * sqrtg_bctrvr_phi / c
+       avEparB_ov_avb2 = 0.0_dp
+
+       PRINT *,'------------------------------'
+       PRINT *,'isw_calc_Er = 2: prescribed Om_tE = ', Om_tE
+       PRINT *,'isw_calc_Er = 2: recovered   Er   = ', Er
+       PRINT *,'------------------------------'
+
+       CALL compute_species_fluxes_at_Er(row_ind_ptr, col_ind_ptr, Er, avEparB_ov_avb2)
     END IF
 
     ! initialize HDF5 file
@@ -1722,8 +1701,15 @@ CONTAINS
             LBOUND(MtOvR_spec), UBOUND(MtOvR_spec))
     END IF
 
-    ! add radial electric field and derived quantities (neoclassical only)
-    IF (isw_calc_Er .EQ. 1) THEN
+    ! add radial electric field and fluxes derived from it
+    ! Both isw_calc_Er == 1 (Er from Vphi) and isw_calc_Er == 2 (Er from
+    ! prescribed Om_tE) populate the AX/NA flux arrays above, so share
+    ! the h5 writes. For num_spec > 1 the Ware-pinch variants are also
+    ! populated on both paths: isw_calc_Er == 1 solves for the inductive
+    ! E-field via compute_Er_and_A3norm; isw_calc_Er == 2 sets
+    ! avEparB_ov_avb2 = 0 and the Ware arrays are the zero-inductive
+    ! reduction of the same formulas.
+    IF (isw_calc_Er .GE. 1) THEN
 
        CALL h5_add(h5id_multispec, 'Er', Er)
 
@@ -1731,15 +1717,6 @@ CONTAINS
             LBOUND(VthtB_spec), UBOUND(VthtB_spec))
        CALL h5_add(h5id_multispec, 'VphiB_spec', VphiB_spec, &
             LBOUND(VphiB_spec), UBOUND(VphiB_spec))
-
-       CALL h5_add(h5id_multispec, 'R_Vphi_prof', R_Vphi_prof, &
-            LBOUND(R_Vphi_prof), UBOUND(R_Vphi_prof))
-       CALL h5_add(h5id_multispec, 'Z_Vphi_prof', Z_Vphi_prof, &
-            LBOUND(Z_Vphi_prof), UBOUND(Z_Vphi_prof))
-       CALL h5_add(h5id_multispec, 'Vphi_prof_spec', Vphi_prof_spec, &
-            LBOUND(Vphi_prof_spec), UBOUND(Vphi_prof_spec))
-       CALL h5_add(h5id_multispec, 'Vtht_prof_spec', Vtht_prof_spec, &
-            LBOUND(Vtht_prof_spec), UBOUND(Vtht_prof_spec))
 
        CALL h5_add(h5id_multispec, 'Gamma_AX_spec', Gamma_AX_spec, &
             LBOUND(Gamma_AX_spec), UBOUND(Gamma_AX_spec))
@@ -1767,11 +1744,6 @@ CONTAINS
           CALL h5_add(h5id_multispec, 'VphiB_Ware_spec', VphiB_Ware_spec, &
                LBOUND(VphiB_Ware_spec), UBOUND(VphiB_Ware_spec))
 
-          CALL h5_add(h5id_multispec, 'Vphi_prof_woWare_spec', Vphi_prof_woWare_spec, &
-               LBOUND(Vphi_prof_woWare_spec), UBOUND(Vphi_prof_woWare_spec))
-          CALL h5_add(h5id_multispec, 'Vtht_prof_woWare_spec', Vtht_prof_woWare_spec, &
-               LBOUND(Vtht_prof_woWare_spec), UBOUND(Vtht_prof_woWare_spec))
-
           CALL h5_add(h5id_multispec, 'Gamma_AX_Ware_spec', Gamma_AX_Ware_spec, &
                LBOUND(Gamma_AX_Ware_spec), UBOUND(Gamma_AX_Ware_spec))
           CALL h5_add(h5id_multispec, 'Qflux_AX_Ware_spec', Qflux_AX_Ware_spec, &
@@ -1792,6 +1764,26 @@ CONTAINS
        END IF
     END IF
 
+    ! Vphi profile fields (compute_Vphi_profile) are produced only on
+    ! the self-consistent Vphi path. The prescribed-Er branch does not
+    ! evaluate Vphi on the Boozer-theta / (R, Z) grid.
+    IF (isw_calc_Er .EQ. 1) THEN
+       CALL h5_add(h5id_multispec, 'R_Vphi_prof', R_Vphi_prof, &
+            LBOUND(R_Vphi_prof), UBOUND(R_Vphi_prof))
+       CALL h5_add(h5id_multispec, 'Z_Vphi_prof', Z_Vphi_prof, &
+            LBOUND(Z_Vphi_prof), UBOUND(Z_Vphi_prof))
+       CALL h5_add(h5id_multispec, 'Vphi_prof_spec', Vphi_prof_spec, &
+            LBOUND(Vphi_prof_spec), UBOUND(Vphi_prof_spec))
+       CALL h5_add(h5id_multispec, 'Vtht_prof_spec', Vtht_prof_spec, &
+            LBOUND(Vtht_prof_spec), UBOUND(Vtht_prof_spec))
+       IF (num_spec .GT. 1) THEN
+          CALL h5_add(h5id_multispec, 'Vphi_prof_woWare_spec', Vphi_prof_woWare_spec, &
+               LBOUND(Vphi_prof_woWare_spec), UBOUND(Vphi_prof_woWare_spec))
+          CALL h5_add(h5id_multispec, 'Vtht_prof_woWare_spec', Vtht_prof_woWare_spec, &
+               LBOUND(Vtht_prof_woWare_spec), UBOUND(Vtht_prof_woWare_spec))
+       END IF
+    END IF
+
     CALL h5_close(h5id_multispec)
 
     if (.not. check_coefficients(.true.)) then
@@ -1802,6 +1794,67 @@ CONTAINS
     end if
 
   contains
+
+    !> \brief Compute species fluxes and torque densities at a given Er.
+    !>
+    !> Shared by the self-consistent Vphi-force-balance branch
+    !> (isw_calc_Er == 1) and the prescribed-Om_tE branch
+    !> (isw_calc_Er == 2) so they run the identical flux chain. The
+    !> num_spec == 1 path uses the single-ion `compute_*` overloads;
+    !> num_spec > 1 uses the multi-species overloads that also populate
+    !> the Ware-pinch variants from the D13 / avEparB_ov_avb2 terms.
+    subroutine compute_species_fluxes_at_Er(row_ind_ptr, col_ind_ptr, &
+         Er_in, avEparB_ov_avb2_in)
+      integer, intent(in) :: row_ind_ptr(:), col_ind_ptr(:)
+      real(kind=dp), intent(in) :: Er_in
+      real(kind=dp), intent(in) :: avEparB_ov_avb2_in
+
+      IF (num_spec .EQ. 1) THEN
+         CALL compute_VthtB_and_VphiB(row_ind_ptr, col_ind_ptr, &
+              D31_AX, D32_AX, Er_in, VthtB_spec, VphiB_spec)
+
+         CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
+              D11_AX, D12_AX, Er_in, Gamma_AX_spec)
+         CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
+              D21_AX, D22_AX, Er_in, Qflux_AX_spec)
+         CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
+              D31_AX, D32_AX, Er_in, ParFlow_AX_spec)
+
+         CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
+              D11_NA, D12_NA, Er_in, Gamma_NA_spec)
+         CALL compute_TphiNA(Gamma_NA_spec, TphiNA_spec, TphiNA_tot)
+         CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
+              D21_NA, D22_NA, Er_in, Qflux_NA_spec)
+         CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
+              D31_NA, D32_NA, Er_in, ParFlow_NA_spec)
+      ELSE
+         CALL compute_VthtB_and_VphiB_b(row_ind_ptr, col_ind_ptr, &
+              D31_AX, D32_AX, D33_AX, Er_in, avEparB_ov_avb2_in, &
+              VthtB_spec, VphiB_spec, VthtB_Ware_spec, VphiB_Ware_spec)
+
+         CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
+              D11_AX, D12_AX, D13_AX, Er_in, avEparB_ov_avb2_in, &
+              Gamma_AX_spec, Gamma_AX_Ware_spec)
+         CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
+              D21_AX, D22_AX, D23_AX, Er_in, avEparB_ov_avb2_in, &
+              Qflux_AX_spec, Qflux_AX_Ware_spec)
+         CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
+              D31_AX, D32_AX, D33_AX, Er_in, avEparB_ov_avb2_in, &
+              ParFlow_AX_spec, ParFlow_AX_Ware_spec)
+
+         CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
+              D11_NA, D12_NA, D13_NA, Er_in, avEparB_ov_avb2_in, &
+              Gamma_NA_spec, Gamma_NA_Ware_spec)
+         CALL compute_TphiNA(Gamma_NA_spec, TphiNA_spec, TphiNA_tot)
+         CALL compute_TphiNA(Gamma_NA_Ware_spec, TphiNA_Ware_spec, TphiNA_Ware_tot)
+         CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
+              D21_NA, D22_NA, D23_NA, Er_in, avEparB_ov_avb2_in, &
+              Qflux_NA_spec, Qflux_NA_Ware_spec)
+         CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
+              D31_NA, D32_NA, D33_NA, Er_in, avEparB_ov_avb2_in, &
+              ParFlow_NA_spec, ParFlow_NA_Ware_spec)
+      END IF
+    end subroutine compute_species_fluxes_at_Er
 
     !> \brief Perform some sanity checks on the coefficients.
     function check_coefficients(verbose) result(passed)
@@ -2028,7 +2081,7 @@ CONTAINS
       sum_abs_fluxes = 0.0
       passed = .false.
 
-      if (isw_calc_Er == 1) then
+      if (isw_calc_Er >= 1) then
         do k = 1, num_spec
           sum_fluxes = sum_fluxes + Gamma_AX_spec(k-1)*z_spec(k-1)
           sum_abs_fluxes = sum_abs_fluxes + abs(Gamma_AX_spec(k-1)*z_spec(k-1))

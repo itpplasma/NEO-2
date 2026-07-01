@@ -14,6 +14,7 @@ program test_er_rotation
    call test_consistency_check(test_status)
    call test_mode1_to_mode2_roundtrip(test_status)
    call test_half_omte_gives_half_mach(test_status)
+   call test_er_om_te_forward_inverse_round_trip(test_status)
 
    if (test_status == 0) then
       print *, "All tests passed!"
@@ -238,5 +239,59 @@ contains
 
       print *, "PASS: half Om_tE gives half MtOvR (linear scaling)"
    end subroutine test_half_omte_gives_half_mach
+
+   !> Round-trip the Er <-> Om_tE map used by the isw_calc_Er = 2 path.
+   !>
+   !> write_multispec_output_a recovers Er from a prescribed Om_tE via
+   !>   Er = Om_tE * aiota_loc * sqrtg_bctrvr_phi / c
+   !> which is the inverse of the self-consistent forward map in
+   !> compute_Er:
+   !>   Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi).
+   !> This test composes the two over a realistic set of AUG-like
+   !> geometry samples and asserts that they are exact inverses.
+   subroutine test_er_om_te_forward_inverse_round_trip(status)
+      integer, intent(inout) :: status
+      real(dp), parameter :: c_cgs = 2.9979e10_dp
+      real(dp) :: aiota_loc, sqrtg_bctrvr_phi
+      real(dp) :: Er_in, Om_tE_mid, Er_out, rel_err
+      integer :: k
+      real(dp), dimension(8), parameter :: Er_samples = &
+           [-0.60_dp, -0.05_dp, 0.0_dp, 0.05_dp, 0.25_dp, 0.60_dp, 1.00_dp, -1.20_dp]
+      real(dp), dimension(3), parameter :: aiota_samples = &
+           [-0.83_dp, 0.35_dp, 0.95_dp]
+      real(dp), dimension(2), parameter :: sqrtg_samples = &
+           [9.0e4_dp, 1.2e5_dp]
+      integer, parameter :: ncases = size(Er_samples) * size(aiota_samples) * size(sqrtg_samples)
+
+      print *, "Testing Er <-> Om_tE forward-inverse round-trip..."
+
+      do k = 1, ncases
+         Er_in = Er_samples(modulo(k-1, size(Er_samples)) + 1)
+         aiota_loc = aiota_samples(modulo((k-1) / size(Er_samples), size(aiota_samples)) + 1)
+         sqrtg_bctrvr_phi = sqrtg_samples(modulo((k-1) / &
+              (size(Er_samples) * size(aiota_samples)), size(sqrtg_samples)) + 1)
+
+         Om_tE_mid = c_cgs * Er_in / (aiota_loc * sqrtg_bctrvr_phi)
+         Er_out = Om_tE_mid * aiota_loc * sqrtg_bctrvr_phi / c_cgs
+
+         if (abs(Er_in) > 0.0_dp) then
+            rel_err = abs(Er_out - Er_in) / abs(Er_in)
+         else
+            rel_err = abs(Er_out)
+         end if
+
+         if (rel_err > epsilon(1.0_dp)*10.0_dp) then
+            print *, "FAIL: Er<->Om_tE round-trip case", k
+            print *, "  Er_in:", Er_in, " aiota_loc:", aiota_loc, &
+                 " sqrtg_bctrvr_phi:", sqrtg_bctrvr_phi
+            print *, "  Om_tE_mid:", Om_tE_mid, " Er_out:", Er_out
+            print *, "  Relative error:", rel_err
+            status = status + 1
+            return
+         end if
+      end do
+
+      print *, "PASS: Er <-> Om_tE round-trip"
+   end subroutine test_er_om_te_forward_inverse_round_trip
 
 end program test_er_rotation
