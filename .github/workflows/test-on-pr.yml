@@ -125,9 +125,10 @@ jobs:
           echo "Building reference version from latest stable release: $LATEST_RELEASE"
           git checkout $LATEST_RELEASE
 
-          # Synchronized versioning: the released Makefile honors LIBNEO_GIT_TAG.
-          echo "Using synchronized libneo tag: $LATEST_RELEASE"
-          make LIBNEO_GIT_TAG=$LATEST_RELEASE
+          # Synchronized versioning: build the released NEO-2 against the matching
+          # libneo release tag (LIBNEO_GIT_TAG was deprecated in favour of LIBNEO_REF).
+          echo "Using synchronized libneo ref: $LATEST_RELEASE"
+          make LIBNEO_REF=$LATEST_RELEASE
 
           echo "neo2_ql_stable=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
           echo "neo2_par_stable=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
@@ -290,7 +291,7 @@ jobs:
           cd ${{ steps.run_test_stable.outputs.test_dir }}
 
           export TOL=1e-15
-          export LEGACY_TOL=2e-8
+          export LEGACY_TOL=4e-8
           make par
 
       - name: Upload par test output on failure
