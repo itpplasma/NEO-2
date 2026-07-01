@@ -2708,7 +2708,7 @@ CONTAINS
     status = nf90_get_var(ncid, varid, ixn)
     IF (lasym_int /= 0) THEN
       ! INP_SWI_TOK evaluates asymmetric spectra with m*theta + n*phi.
-      ! Import booz_xform's m*theta - n*phi modes by reversing n at the boundary.
+      ! Import booz_xform's m*theta - n*phi modes by reversing n.
       ixn = -ixn
     END IF
 
