@@ -13,8 +13,10 @@
 !   5. iota, curr_pol, curr_tor match committed fixture values to TOL_FP.
 !   6. Truncation regression: when max_m_mode is set below the data range
 !      the reader must honour it and not clip it up to MAXVAL(|ixm|).
-!   7. Asymmetric booz_xform modes are imported with NEO-2's INP_SWI_TOK
-!      sign convention: file ixn_b=+1 becomes ixn=-1 before evaluation.
+!   7. Stellarator-symmetric booz_xform modes keep file ixn_b signs and
+!      convert pmns_b to NEO-2's symmetric lambda sign.
+!   8. Asymmetric booz_xform modes and phase coefficients are imported with
+!      NEO-2's INP_SWI_TOK convention: file ixn_b signs are reversed.
 !
 ! circ.bc / boozmn_test.nc reference values (surface index 1, jlist[0]=3):
 !   mboz_b = 18  -> m_max = 19
@@ -49,12 +51,26 @@ program test_boozmn_read
   real(dp), parameter :: REF_CTOR  = -4.7874e-3_dp
   real(dp), parameter :: TOL_EXACT = 1.0e-6_dp
   real(dp), parameter :: TOL_FP    = 1.0e-6_dp
+  character(len=*), parameter :: SYM_BOOZMN_FILE = 'boozmn_sym_sign.nc'
   character(len=*), parameter :: ASYM_BOOZMN_FILE = 'boozmn_asym_sign.nc'
+  real(dp), parameter :: SYM_THETA = 0.3_dp
+  real(dp), parameter :: SYM_PHI   = 0.7_dp
+  real(dp), parameter :: SYM_B00   = 1.20_dp
+  real(dp), parameter :: SYM_BC11  = 0.35_dp
+  real(dp), parameter :: SYM_BC2M1 = -0.18_dp
+  real(dp), parameter :: SYM_PS11  = 0.04_dp
+  real(dp), parameter :: SYM_PS2M1 = -0.05_dp
   real(dp), parameter :: ASYM_THETA = 0.3_dp
   real(dp), parameter :: ASYM_PHI   = 0.7_dp
   real(dp), parameter :: ASYM_B00   = 1.25_dp
   real(dp), parameter :: ASYM_BC11  = 0.4_dp
   real(dp), parameter :: ASYM_BS11  = -0.2_dp
+  real(dp), parameter :: ASYM_BC2M1 = -0.15_dp
+  real(dp), parameter :: ASYM_BS2M1 = 0.25_dp
+  real(dp), parameter :: ASYM_PC11  = 0.07_dp
+  real(dp), parameter :: ASYM_PS11  = -0.06_dp
+  real(dp), parameter :: ASYM_PC2M1 = -0.03_dp
+  real(dp), parameter :: ASYM_PS2M1 = 0.02_dp
 
   failures = 0
 
@@ -225,7 +241,21 @@ program test_boozmn_read
   end if
 
   ! -----------------------------------------------------------------------
-  ! Pass 3: asymmetric booz_xform sign conversion.
+  ! Pass 3: stellarator-symmetric booz_xform sign convention.
+  ! -----------------------------------------------------------------------
+  call reset_neo_input()
+  call write_symmetric_boozmn_fixture(SYM_BOOZMN_FILE)
+
+  inp_swi    = INP_SWI_BOOZMN
+  max_m_mode = 9999
+  max_n_mode = 9999
+  in_file    = SYM_BOOZMN_FILE
+
+  call neo_read_boozmn()
+  call check_symmetric_sign_conversion(failures)
+
+  ! -----------------------------------------------------------------------
+  ! Pass 4: asymmetric booz_xform sign conversion.
   ! -----------------------------------------------------------------------
   call reset_neo_input()
   call write_asymmetric_boozmn_fixture(ASYM_BOOZMN_FILE)
@@ -244,7 +274,8 @@ program test_boozmn_read
     print *, '  m_max =', m_max, '  n_max =', n_max
     print *, '  psi_pr =', psi_pr
     print *, '  pass 2: max_m_mode after trunc =', max_m_mode
-    print *, '  pass 3: asymmetric ixn sign conversion verified'
+    print *, '  pass 3: symmetric ixn and lambda conversion verified'
+    print *, '  pass 4: asymmetric ixn and phase conversion verified'
   else
     print *, 'FAIL'
     error stop
@@ -276,10 +307,68 @@ contains
     if (allocated(b00))      deallocate(b00)
   end subroutine reset_neo_input
 
+  subroutine check_symmetric_sign_conversion(failures)
+    integer, intent(inout) :: failures
+
+    integer :: j, imn11, imn2m1
+    real(dp) :: actual_b, expected_b, angle
+
+    if (inp_swi == INP_SWI_TOK) then
+      print *, 'FAIL: symmetric boozmn switched to INP_SWI_TOK'
+      failures = failures + 1
+    end if
+    if (.not. allocated(lmnc)) then
+      print *, 'FAIL: symmetric lmnc not allocated'
+      failures = failures + 1
+      return
+    end if
+
+    imn11 = 0
+    imn2m1 = 0
+    actual_b = 0.0_dp
+    do j = 1, mnmax
+      if (ixm(j) == 1 .and. ixn(j) == 1) imn11 = j
+      if (ixm(j) == 2 .and. ixn(j) == -1) imn2m1 = j
+      angle = ixm(j)*SYM_THETA - ixn(j)*SYM_PHI
+      actual_b = actual_b + bmnc(1,j)*cos(angle)
+    end do
+
+    if (imn11 == 0) then
+      print *, 'FAIL: no symmetric (m=1, ixn=+1) mode found'
+      failures = failures + 1
+    end if
+    if (imn2m1 == 0) then
+      print *, 'FAIL: no symmetric (m=2, ixn=-1) mode found'
+      failures = failures + 1
+    end if
+
+    angle = SYM_THETA - SYM_PHI
+    expected_b = SYM_B00 + SYM_BC11*cos(angle)
+    angle = 2.0_dp*SYM_THETA + SYM_PHI
+    expected_b = expected_b + SYM_BC2M1*cos(angle)
+    if (abs(actual_b - expected_b) > 1.0e-12_dp) then
+      print *, 'FAIL: symmetric B sign convention mismatch'
+      print *, '      actual =', actual_b, ' expected =', expected_b
+      failures = failures + 1
+    end if
+    if (imn11 > 0) then
+      if (abs(lmnc(1,imn11) + SYM_PS11) > 1.0e-12_dp) then
+        print *, 'FAIL: symmetric (m=1,ixn=+1) phase coefficient mismatch'
+        failures = failures + 1
+      end if
+    end if
+    if (imn2m1 > 0) then
+      if (abs(lmnc(1,imn2m1) + SYM_PS2M1) > 1.0e-12_dp) then
+        print *, 'FAIL: symmetric (m=2,ixn=-1) phase coefficient mismatch'
+        failures = failures + 1
+      end if
+    end if
+  end subroutine check_symmetric_sign_conversion
+
   subroutine check_asymmetric_sign_conversion(failures)
     integer, intent(inout) :: failures
 
-    integer :: j, imn11
+    integer :: j, imn11, imn2m1
     real(dp) :: actual_b, expected_b, angle
 
     if (inp_swi /= INP_SWI_TOK) then
@@ -291,11 +380,18 @@ contains
       failures = failures + 1
       return
     end if
+    if (.not. allocated(lmns)) then
+      print *, 'FAIL: asymmetric lmns not allocated'
+      failures = failures + 1
+      return
+    end if
 
     imn11 = 0
+    imn2m1 = 0
     actual_b = 0.0_dp
     do j = 1, mnmax
       if (ixm(j) == 1 .and. ixn(j) == -1) imn11 = j
+      if (ixm(j) == 2 .and. ixn(j) == 1) imn2m1 = j
       angle = ixm(j)*ASYM_THETA + ixn(j)*ASYM_PHI
       actual_b = actual_b + bmnc(1,j)*cos(angle) + bmns(1,j)*sin(angle)
     end do
@@ -304,22 +400,146 @@ contains
       print *, 'FAIL: no converted (m=1, ixn=-1) asymmetric mode found'
       failures = failures + 1
     end if
+    if (imn2m1 == 0) then
+      print *, 'FAIL: no converted (m=2, ixn=+1) asymmetric mode found'
+      failures = failures + 1
+    end if
 
     angle = ASYM_THETA - ASYM_PHI
     expected_b = ASYM_B00 + ASYM_BC11*cos(angle) + ASYM_BS11*sin(angle)
+    angle = 2.0_dp*ASYM_THETA + ASYM_PHI
+    expected_b = expected_b + ASYM_BC2M1*cos(angle) + ASYM_BS2M1*sin(angle)
     if (abs(actual_b - expected_b) > 1.0e-12_dp) then
       print *, 'FAIL: asymmetric B sign convention mismatch'
       print *, '      actual =', actual_b, ' expected =', expected_b
       failures = failures + 1
     end if
+    if (imn11 > 0) then
+      if (abs(lmnc(1,imn11) - ASYM_PC11) > 1.0e-12_dp .or. &
+          abs(lmns(1,imn11) - ASYM_PS11) > 1.0e-12_dp) then
+        print *, 'FAIL: asymmetric (m=1,ixn=-1) phase coefficients mismatch'
+        failures = failures + 1
+      end if
+    end if
+    if (imn2m1 > 0) then
+      if (abs(lmnc(1,imn2m1) - ASYM_PC2M1) > 1.0e-12_dp .or. &
+          abs(lmns(1,imn2m1) - ASYM_PS2M1) > 1.0e-12_dp) then
+        print *, 'FAIL: asymmetric (m=2,ixn=+1) phase coefficients mismatch'
+        failures = failures + 1
+      end if
+    end if
   end subroutine check_asymmetric_sign_conversion
+
+  subroutine write_symmetric_boozmn_fixture(path)
+    character(len=*), intent(in) :: path
+
+    integer, parameter :: ns_full = 3
+    integer, parameter :: nsurf_half = 1
+    integer, parameter :: mn_modes = 3
+    integer :: ncid, dim_radius, dim_mode, dim_surf
+    integer :: var_ns, var_nfp, var_mboz, var_nboz, var_mnboz, var_lasym
+    integer :: var_jlist, var_ixm, var_ixn
+    integer :: var_iota, var_buco, var_bvco, var_phi
+    integer :: var_bmnc, var_rmnc, var_zmns, var_pmns
+    integer, dimension(nsurf_half) :: jlist_file
+    integer, dimension(mn_modes) :: ixm_file, ixn_file
+    real(dp), dimension(ns_full) :: iota_file, buco_file, bvco_file, phi_file
+    real(dp), dimension(mn_modes, nsurf_half) :: coeff
+
+    call check_nc(nf90_create(path, nf90_clobber, ncid), 'create boozmn')
+    call check_nc(nf90_def_dim(ncid, 'radius', ns_full, dim_radius), &
+      & 'define radius dimension')
+    call check_nc(nf90_def_dim(ncid, 'mn_mode', mn_modes, dim_mode), &
+      & 'define mode dimension')
+    call check_nc(nf90_def_dim(ncid, 'comput_surfs', nsurf_half, dim_surf), &
+      & 'define surface dimension')
+
+    call check_nc(nf90_def_var(ncid, 'ns_b', nf90_int, varid=var_ns), &
+      & 'define ns_b')
+    call check_nc(nf90_def_var(ncid, 'nfp_b', nf90_int, varid=var_nfp), &
+      & 'define nfp_b')
+    call check_nc(nf90_def_var(ncid, 'mboz_b', nf90_int, varid=var_mboz), &
+      & 'define mboz_b')
+    call check_nc(nf90_def_var(ncid, 'nboz_b', nf90_int, varid=var_nboz), &
+      & 'define nboz_b')
+    call check_nc(nf90_def_var(ncid, 'mnboz_b', nf90_int, varid=var_mnboz), &
+      & 'define mnboz_b')
+    call check_nc(nf90_def_var(ncid, 'lasym__logical__', nf90_int, &
+      & varid=var_lasym), 'define lasym')
+    call check_nc(nf90_def_var(ncid, 'jlist', nf90_int, [dim_surf], &
+      & var_jlist), 'define jlist')
+    call check_nc(nf90_def_var(ncid, 'ixm_b', nf90_int, [dim_mode], &
+      & var_ixm), 'define ixm_b')
+    call check_nc(nf90_def_var(ncid, 'ixn_b', nf90_int, [dim_mode], &
+      & var_ixn), 'define ixn_b')
+    call check_nc(nf90_def_var(ncid, 'iota_b', nf90_double, [dim_radius], &
+      & var_iota), 'define iota_b')
+    call check_nc(nf90_def_var(ncid, 'buco_b', nf90_double, [dim_radius], &
+      & var_buco), 'define buco_b')
+    call check_nc(nf90_def_var(ncid, 'bvco_b', nf90_double, [dim_radius], &
+      & var_bvco), 'define bvco_b')
+    call check_nc(nf90_def_var(ncid, 'phi_b', nf90_double, [dim_radius], &
+      & var_phi), 'define phi_b')
+    call check_nc(nf90_def_var(ncid, 'bmnc_b', nf90_double, &
+      & [dim_mode, dim_surf], var_bmnc), 'define bmnc_b')
+    call check_nc(nf90_def_var(ncid, 'rmnc_b', nf90_double, &
+      & [dim_mode, dim_surf], var_rmnc), 'define rmnc_b')
+    call check_nc(nf90_def_var(ncid, 'zmns_b', nf90_double, &
+      & [dim_mode, dim_surf], var_zmns), 'define zmns_b')
+    call check_nc(nf90_def_var(ncid, 'pmns_b', nf90_double, &
+      & [dim_mode, dim_surf], var_pmns), 'define pmns_b')
+
+    call check_nc(nf90_enddef(ncid), 'end boozmn definitions')
+
+    jlist_file = [2]
+    ixm_file = [0, 1, 2]
+    ixn_file = [0, 1, -1]
+    iota_file = [0.5_dp, 0.55_dp, 0.6_dp]
+    buco_file = [0.0_dp, 0.01_dp, 0.02_dp]
+    bvco_file = [0.2_dp, 0.25_dp, 0.3_dp]
+    phi_file = [0.0_dp, 0.5_dp, 1.0_dp]
+
+    call check_nc(nf90_put_var(ncid, var_ns, ns_full), 'write ns_b')
+    call check_nc(nf90_put_var(ncid, var_nfp, 1), 'write nfp_b')
+    call check_nc(nf90_put_var(ncid, var_mboz, 2), 'write mboz_b')
+    call check_nc(nf90_put_var(ncid, var_nboz, 1), 'write nboz_b')
+    call check_nc(nf90_put_var(ncid, var_mnboz, mn_modes), 'write mnboz_b')
+    call check_nc(nf90_put_var(ncid, var_lasym, 0), 'write lasym')
+    call check_nc(nf90_put_var(ncid, var_jlist, jlist_file), 'write jlist')
+    call check_nc(nf90_put_var(ncid, var_ixm, ixm_file), 'write ixm_b')
+    call check_nc(nf90_put_var(ncid, var_ixn, ixn_file), 'write ixn_b')
+    call check_nc(nf90_put_var(ncid, var_iota, iota_file), 'write iota_b')
+    call check_nc(nf90_put_var(ncid, var_buco, buco_file), 'write buco_b')
+    call check_nc(nf90_put_var(ncid, var_bvco, bvco_file), 'write bvco_b')
+    call check_nc(nf90_put_var(ncid, var_phi, phi_file), 'write phi_b')
+
+    coeff = 0.0_dp
+    coeff(1,1) = SYM_B00
+    coeff(2,1) = SYM_BC11
+    coeff(3,1) = SYM_BC2M1
+    call check_nc(nf90_put_var(ncid, var_bmnc, coeff), 'write bmnc_b')
+    coeff = 0.0_dp
+    coeff(1,1) = 1.0_dp
+    coeff(2,1) = 0.1_dp
+    coeff(3,1) = 0.2_dp
+    call check_nc(nf90_put_var(ncid, var_rmnc, coeff), 'write rmnc_b')
+    coeff = 0.0_dp
+    coeff(2,1) = 0.05_dp
+    coeff(3,1) = -0.02_dp
+    call check_nc(nf90_put_var(ncid, var_zmns, coeff), 'write zmns_b')
+    coeff = 0.0_dp
+    coeff(2,1) = SYM_PS11
+    coeff(3,1) = SYM_PS2M1
+    call check_nc(nf90_put_var(ncid, var_pmns, coeff), 'write pmns_b')
+    call check_nc(nf90_close(ncid), 'close boozmn')
+  end subroutine write_symmetric_boozmn_fixture
 
   subroutine write_asymmetric_boozmn_fixture(path)
     character(len=*), intent(in) :: path
 
     integer, parameter :: ns_full = 3
     integer, parameter :: nsurf_half = 1
-    integer, parameter :: mn_modes = 2
+    integer, parameter :: mn_modes = 3
     integer :: ncid, dim_radius, dim_mode, dim_surf
     integer :: var_ns, var_nfp, var_mboz, var_nboz, var_mnboz, var_lasym
     integer :: var_jlist, var_ixm, var_ixn
@@ -385,8 +605,8 @@ contains
     call check_nc(nf90_enddef(ncid), 'end boozmn definitions')
 
     jlist_file = [2]
-    ixm_file = [0, 1]
-    ixn_file = [0, 1]
+    ixm_file = [0, 1, 2]
+    ixn_file = [0, 1, -1]
     iota_file = [0.5_dp, 0.55_dp, 0.6_dp]
     buco_file = [0.0_dp, 0.01_dp, 0.02_dp]
     bvco_file = [0.2_dp, 0.25_dp, 0.3_dp]
@@ -394,7 +614,7 @@ contains
 
     call check_nc(nf90_put_var(ncid, var_ns, ns_full), 'write ns_b')
     call check_nc(nf90_put_var(ncid, var_nfp, 1), 'write nfp_b')
-    call check_nc(nf90_put_var(ncid, var_mboz, 1), 'write mboz_b')
+    call check_nc(nf90_put_var(ncid, var_mboz, 2), 'write mboz_b')
     call check_nc(nf90_put_var(ncid, var_nboz, 1), 'write nboz_b')
     call check_nc(nf90_put_var(ncid, var_mnboz, mn_modes), 'write mnboz_b')
     call check_nc(nf90_put_var(ncid, var_lasym, 1), 'write lasym')
@@ -409,27 +629,37 @@ contains
     coeff = 0.0_dp
     coeff(1,1) = ASYM_B00
     coeff(2,1) = ASYM_BC11
+    coeff(3,1) = ASYM_BC2M1
     call check_nc(nf90_put_var(ncid, var_bmnc, coeff), 'write bmnc_b')
     coeff = 0.0_dp
     coeff(1,1) = 1.0_dp
     coeff(2,1) = 0.1_dp
+    coeff(3,1) = 0.2_dp
     call check_nc(nf90_put_var(ncid, var_rmnc, coeff), 'write rmnc_b')
     coeff = 0.0_dp
     coeff(2,1) = 0.05_dp
+    coeff(3,1) = -0.02_dp
     call check_nc(nf90_put_var(ncid, var_zmns, coeff), 'write zmns_b')
     coeff = 0.0_dp
+    coeff(2,1) = ASYM_PS11
+    coeff(3,1) = ASYM_PS2M1
     call check_nc(nf90_put_var(ncid, var_pmns, coeff), 'write pmns_b')
 
     coeff = 0.0_dp
     coeff(2,1) = ASYM_BS11
+    coeff(3,1) = ASYM_BS2M1
     call check_nc(nf90_put_var(ncid, var_bmns, coeff), 'write bmns_b')
     coeff = 0.0_dp
     coeff(2,1) = 0.03_dp
+    coeff(3,1) = -0.06_dp
     call check_nc(nf90_put_var(ncid, var_rmns, coeff), 'write rmns_b')
     coeff = 0.0_dp
     coeff(2,1) = 0.04_dp
+    coeff(3,1) = -0.01_dp
     call check_nc(nf90_put_var(ncid, var_zmnc, coeff), 'write zmnc_b')
     coeff = 0.0_dp
+    coeff(2,1) = ASYM_PC11
+    coeff(3,1) = ASYM_PC2M1
     call check_nc(nf90_put_var(ncid, var_pmnc, coeff), 'write pmnc_b')
     call check_nc(nf90_close(ncid), 'close boozmn')
   end subroutine write_asymmetric_boozmn_fixture

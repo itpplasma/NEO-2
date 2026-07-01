@@ -2825,7 +2825,7 @@ CONTAINS
           bmnc(i,j) = bmnc_b(j,i)
           rmnc(i,j) = rmnc_b(j,i)
           zmnc(i,j) = zmns_b(j,i)
-          lmnc(i,j) = 0.0_dp
+          lmnc(i,j) = -pmns_b(j,i)
         END DO
       ELSE
         ! Asymmetric: z = sum(zmnc_b*cos + zmns_b*sin).
@@ -2838,8 +2838,8 @@ CONTAINS
           rmns(i,j) = rmns_b(j,i)
           zmnc(i,j) = zmnc_b(j,i)
           zmns(i,j) = zmns_b(j,i)
-          lmnc(i,j) = 0.0_dp
-          lmns(i,j) = 0.0_dp
+          lmnc(i,j) = pmnc_b(j,i)
+          lmns(i,j) = pmns_b(j,i)
         END DO
       END IF
     END DO
