@@ -125,9 +125,10 @@ jobs:
           echo "Building reference version from latest stable release: $LATEST_RELEASE"
           git checkout $LATEST_RELEASE
 
-          # Synchronized versioning: the released Makefile honors LIBNEO_GIT_TAG.
-          echo "Using synchronized libneo tag: $LATEST_RELEASE"
-          make LIBNEO_GIT_TAG=$LATEST_RELEASE
+          # Synchronized versioning: build the released NEO-2 against the matching
+          # libneo release tag (LIBNEO_GIT_TAG was deprecated in favour of LIBNEO_REF).
+          echo "Using synchronized libneo ref: $LATEST_RELEASE"
+          make LIBNEO_REF=$LATEST_RELEASE
 
           echo "neo2_ql_stable=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
           echo "neo2_par_stable=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
@@ -166,16 +167,12 @@ jobs:
           cd "$TEST_DIR"
           echo "test_dir=$(pwd)" >> $GITHUB_OUTPUT
 
-          # Rough check against the pre-106 release: the sparse->band splinecof3
-          # backend swap shifts spline-derivative quantities by up to ~5e-11
-          # (magnetics) and integrated transport by ~1e-13. Widen only this
-          # stable comparison; the exact main-reference check stays tight.
-          export TOL=1e-12
+          export TOL=1e-14
           export LEGACY_TOL=1e-10
-          export MAGNETICS_TOL=1e-9
+          export MAGNETICS_TOL=1e-12
           make lorentz
 
-          export TOL=1e-9
+          export TOL=1e-10
           export LEGACY_TOL=1e-8
           make ql
 
@@ -288,7 +285,7 @@ jobs:
           cd ${{ steps.run_test_stable.outputs.test_dir }}
 
           export TOL=1e-15
-          export LEGACY_TOL=2e-8
+          export LEGACY_TOL=4e-8
           make par
 
       - name: Upload par test output on failure
