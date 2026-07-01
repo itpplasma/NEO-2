@@ -103,6 +103,8 @@ jobs:
 
       - name: Build NEO-2 (reference version - latest stable release)
         id: build_reference_stable
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Build reference version in temp directory
           REFERENCE_DIR=$(mktemp -d)
@@ -110,8 +112,12 @@ jobs:
 
           git clone https://github.com/itpplasma/NEO-2.git .
 
-          # Get latest stable release tag from GitHub API
-          LATEST_RELEASE=$(curl -s https://api.github.com/repos/itpplasma/NEO-2/releases/latest | jq -r '.tag_name')
+          # Get latest stable release tag from GitHub API. Authenticated with
+          # the run's own GH_TOKEN: an anonymous curl call here shares the
+          # unauthenticated 60 req/hour rate limit across every concurrent CI
+          # run in the repo and starts failing under load.
+          LATEST_RELEASE=$(curl -s -H "Authorization: Bearer ${GH_TOKEN}" \
+            https://api.github.com/repos/itpplasma/NEO-2/releases/latest | jq -r '.tag_name')
           if [ -z "$LATEST_RELEASE" ] || [ "$LATEST_RELEASE" == "null" ]; then
             echo "Error: Failed to fetch the latest release tag from GitHub API." >&2
             exit 1
