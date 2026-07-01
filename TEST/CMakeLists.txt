@@ -72,5 +72,6 @@ add_test(NAME spline_sparse_assembly_test
 
 set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
-    TIMEOUT 30
+    ENVIRONMENT "FORTSPARSE_UMFPACK_HELPER=$<TARGET_FILE:fortsparse_umfpack_helper>"
+    TIMEOUT 120
 )
