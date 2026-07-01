@@ -1,6 +1,7 @@
 name: Unit Tests with Coverage
 
 on:
+  workflow_dispatch:
   # deactivated until fix
   # push:
   #   branches:
