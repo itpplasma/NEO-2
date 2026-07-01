@@ -29,6 +29,7 @@ MODULE gsl_integration_routines_mod
   USE fortnum_integrate, ONLY: integrate_integrand_t, integrate_workspace_t, &
        integrate_epstab_t, integrate_result_t, &
        integrate_qag, integrate_qags, integrate_qagp, integrate_qagiu
+  USE fortnum_cquad, ONLY: integrate_cquad
   USE fortnum_status, ONLY: fortnum_status_t, FORTNUM_OK, &
        FORTNUM_DOMAIN_ERROR, FORTNUM_CONVERGENCE_ERROR, FORTNUM_NOT_IMPLEMENTED
 
@@ -382,16 +383,11 @@ CONTAINS
     REAL(wp) :: epsrel
     REAL(wp), DIMENSION(2) :: res
 
-    TYPE(integrate_workspace_t) :: ws
-    TYPE(integrate_epstab_t) :: epstab
-    TYPE(integrate_result_t) :: result
     TYPE(fortnum_status_t) :: status
 
-    CALL integrate_qags(panel, x_low, x_up, epsabs, epsrel, ws, epstab, result, &
-         status, limit=GK_LIMIT)
+    CALL integrate_cquad(panel, x_low, x_up, res(1), status, epsabs=epsabs, &
+         epsrel=epsrel, abserr=res(2), limit=GK_LIMIT)
     CALL check_status(status)
-    res(1) = result%value
-    res(2) = result%abserr
 
   CONTAINS
     FUNCTION panel(x, ctx) RESULT(fx)
@@ -419,16 +415,11 @@ CONTAINS
     REAL(wp) :: epsabs, epsrel
     REAL(wp), DIMENSION(2) :: res
 
-    TYPE(integrate_workspace_t) :: ws
-    TYPE(integrate_epstab_t) :: epstab
-    TYPE(integrate_result_t) :: result
     TYPE(fortnum_status_t) :: status
 
-    CALL integrate_qags(panel, x_low, x_up, epsabs, epsrel, ws, epstab, result, &
-         status, limit=GK_LIMIT)
+    CALL integrate_cquad(panel, x_low, x_up, res(1), status, epsabs=epsabs, &
+         epsrel=epsrel, abserr=res(2), limit=GK_LIMIT)
     CALL check_status(status)
-    res(1) = result%value
-    res(2) = result%abserr
 
   CONTAINS
     FUNCTION panel(x, ctx) RESULT(fx)
