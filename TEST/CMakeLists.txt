@@ -44,3 +44,15 @@ set_tests_properties(er_rotation_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+add_executable(test_spline_sparse_assembly test_spline_sparse_assembly.f90)
+target_link_libraries(test_spline_sparse_assembly common)
+
+add_test(NAME spline_sparse_assembly_test
+         COMMAND test_spline_sparse_assembly
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(spline_sparse_assembly_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    TIMEOUT 30
+)

@@ -73,7 +73,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   !! Modifications by Andreas F. Martitsch (06.08.2014)
   !Replace standard solver from Lapack with sparse solver
   !(Bad performance for more than 1000 flux surfaces ~ (3*nsurf)^2)
-  USE sparse_mod, ONLY : sparse_solve
+  USE sparse_mod, ONLY : column_full2pointer, remap_rc, sparse_solve
   !! End Modifications by Andreas F. Martitsch (06.08.2014)
 
   !---------------------------------------------------------------------
@@ -100,16 +100,21 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
   INTEGER(I4B), PARAMETER :: VAR = 7
   INTEGER(I4B)            :: size_dimension
-  INTEGER(I4B)            :: i_alloc, info
+  INTEGER(I4B)            :: i_alloc
   INTEGER(I4B)            :: len_x, len_indx
   INTEGER(I4B)            :: i, j, l, ii, ie
   INTEGER(I4B)            :: mu1, mu2, nu1, nu2
   INTEGER(I4B)            :: sig1, sig2, rho1, rho2
-  INTEGER(I4B), DIMENSION(:),   ALLOCATABLE :: indx_lu
+  INTEGER                 :: sparse_capacity, sparse_nz, sparse_nz_squeezed
+  INTEGER                 :: lower_band, upper_band, band_row, row_band, col_band
+  INTEGER                 :: info
   REAL(DP)                :: h, h_j, x_h, help_i, help_inh
   REAL(DP)                :: help_a, help_b, help_c, help_d
-  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: MA
-  REAL(DP), DIMENSION(:),   ALLOCATABLE :: inh, simqa, lambda, omega
+  LOGICAL                 :: use_common_banded
+  INTEGER, DIMENSION(:), ALLOCATABLE :: irow, icol, ipcol, sparse_hash
+  INTEGER, DIMENSION(:), ALLOCATABLE :: ipivot, old_to_band, band_to_old
+  REAL(DP), DIMENSION(:),   ALLOCATABLE :: inh, lambda, omega, sparse_val
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE :: band_matrix, band_rhs
   character(200) :: error_message
 
   len_x    = SIZE(x)
@@ -167,25 +172,41 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     stop 'SPLINECOF3: error  two identical boundary conditions'
   end if
 
-  ALLOCATE(MA(size_dimension, size_dimension),  stat = i_alloc, errmsg=error_message)
-  if(i_alloc /= 0) then
-    write(*,*) 'splinecof3: Allocation for array ma failed with error message:'
-    write(*,*) trim(error_message)
-    write(*,*) 'size should be ', size_dimension, ' x ', size_dimension
-    stop
+  use_common_banded = .FALSE.
+  if (sw1 == 2) then
+    if (sw2 == 4) use_common_banded = .TRUE.
   end if
-  ALLOCATE(inh(size_dimension), indx_lu(size_dimension),  stat = i_alloc, errmsg=error_message)
+
+  if (use_common_banded) then
+    lower_band = 17
+    upper_band = 14
+    ALLOCATE(band_matrix(2*lower_band + upper_band + 1, size_dimension), &
+         old_to_band(size_dimension), band_to_old(size_dimension), &
+         stat = i_alloc, errmsg=error_message)
+    if(i_alloc /= 0) then
+      write(*,*) 'splinecof3: Allocation for band matrix failed with error message:'
+      write(*,*) trim(error_message)
+      write(*,*) 'matrix rows should be ', 2*lower_band + upper_band + 1
+      write(*,*) 'matrix columns should be ', size_dimension
+      stop
+    end if
+    call init_common_band_order
+  else
+    sparse_capacity = 64 * len_indx + 32
+    ALLOCATE(irow(sparse_capacity), icol(sparse_capacity), sparse_val(sparse_capacity), &
+         sparse_hash(4*sparse_capacity), stat = i_alloc, errmsg=error_message)
+    if(i_alloc /= 0) then
+      write(*,*) 'splinecof3: Allocation for sparse matrix arrays failed with error message:'
+      write(*,*) trim(error_message)
+      write(*,*) 'size should be ', sparse_capacity
+      stop
+    end if
+  end if
+  ALLOCATE(inh(size_dimension),  stat = i_alloc, errmsg=error_message)
   if(i_alloc /= 0) then
-    write(*,*) 'splinecof3: Allocation for arrays inh and indx_lu failed with error message:'
+    write(*,*) 'splinecof3: Allocation for array inh failed with error message:'
     write(*,*) trim(error_message)
     write(*,*) 'size should be ', size_dimension
-    stop
-  end if
-  ALLOCATE(simqa(size_dimension*size_dimension),  stat = i_alloc, errmsg=error_message)
-  if(i_alloc /= 0) then
-    write(*,*) 'splinecof3: Allocation for array simqa failed with error message:'
-    write(*,*) trim(error_message)
-    write(*,*) 'size should be ', size_dimension*size_dimension
     stop
   end if
   ALLOCATE(lambda(SIZE(lambda1)),  stat = i_alloc, errmsg=error_message)
@@ -212,9 +233,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     cn = 0.0D0;
   END IF
 
-  ! setting all to zero
-  MA(:,:) = 0.0D0
-  inh(:)  = 0.0D0
+  if (use_common_banded) then
+    band_matrix = 0.0D0
+  else
+    sparse_nz = 0
+    sparse_hash = 0
+  end if
+  inh(:) = 0.0D0
 
   ! calculate optimal weights for smooting (lambda)
   IF ( MAXVAL(lambda1) < 0.0D0 ) THEN
@@ -282,30 +307,30 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
 
   ! boundary condition 1
   i = i + 1
-  MA(i, 2) = DBLE(mu1)
-  MA(i, 3) = DBLE(nu1)
-  MA(i, (len_indx-1)*VAR + 2) = DBLE(sig1)
-  MA(i, (len_indx-1)*VAR + 3) = DBLE(rho1)
+  CALL set_matrix_entry(i, 2, DBLE(mu1))
+  CALL set_matrix_entry(i, 3, DBLE(nu1))
+  CALL set_matrix_entry(i, (len_indx-1)*VAR + 2, DBLE(sig1))
+  CALL set_matrix_entry(i, (len_indx-1)*VAR + 3, DBLE(rho1))
   inh(i) = c1
 
   ! A_i
   i = i + 1
-  MA(i, j+0  +0) =  1.0D0
-  MA(i, j+0  +1) =  h
-  MA(i, j+0  +2) =  h * h
-  MA(i, j+0  +3) =  h * h * h
-  MA(i, j+VAR+0) = -1.0D0
+  CALL set_matrix_entry(i, j+0  +0, 1.0D0)
+  CALL set_matrix_entry(i, j+0  +1, h)
+  CALL set_matrix_entry(i, j+0  +2, h * h)
+  CALL set_matrix_entry(i, j+0  +3, h * h * h)
+  CALL set_matrix_entry(i, j+VAR+0, -1.0D0)
   ! B_i
   i = i + 1
-  MA(i, j+0  +1) =  1.0D0
-  MA(i, j+0  +2) =  2.0D0 * h
-  MA(i, j+0  +3) =  3.0D0 * h * h
-  MA(i, j+VAR+1) = -1.0D0
+  CALL set_matrix_entry(i, j+0  +1, 1.0D0)
+  CALL set_matrix_entry(i, j+0  +2, 2.0D0 * h)
+  CALL set_matrix_entry(i, j+0  +3, 3.0D0 * h * h)
+  CALL set_matrix_entry(i, j+VAR+1, -1.0D0)
   ! C_i
   i = i + 1
-  MA(i, j+0  +2) =  1.0D0
-  MA(i, j+0  +3) =  3.0D0 * h
-  MA(i, j+VAR+2) = -1.0D0
+  CALL set_matrix_entry(i, j+0  +2, 1.0D0)
+  CALL set_matrix_entry(i, j+0  +3, 3.0D0 * h)
+  CALL set_matrix_entry(i, j+VAR+2, -1.0D0)
   ! delta a_i
   i = i + 1
   help_a = 0.0D0
@@ -322,11 +347,11 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     help_d = help_d + h_j * h_j * h_j * x_h
     help_i = help_i + f(x(l),m) * y(l)
   END DO  ! DO l = ii, ie
-  MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-  MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-  MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-  MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
-  MA(i, j+0  +4) =  1.0D0
+  CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
+  CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
+  CALL set_matrix_entry(i, j+0  +2, omega((j-1)/VAR+1) * help_c)
+  CALL set_matrix_entry(i, j+0  +3, omega((j-1)/VAR+1) * help_d)
+  CALL set_matrix_entry(i, j+0  +4, 1.0D0)
   inh(i)         =  omega((j-1)/VAR+1) * help_i
   ! delta b_i
   i = i + 1
@@ -344,14 +369,14 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     help_d = help_d + h_j * h_j * h_j * h_j * x_h
     help_i = help_i + h_j * f(x(l),m) * y(l)
   END DO  ! DO l = ii, ie
-  MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-  MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-  MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-  MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
-  MA(i, j+0  +4) =  h
-  MA(i, j+0  +5) =  1.0D0
-  MA(i, (len_indx-1)*VAR+4) = DBLE(mu1)
-  MA(i, (len_indx-1)*VAR+5) = DBLE(mu2)
+  CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
+  CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
+  CALL set_matrix_entry(i, j+0  +2, omega((j-1)/VAR+1) * help_c)
+  CALL set_matrix_entry(i, j+0  +3, omega((j-1)/VAR+1) * help_d)
+  CALL set_matrix_entry(i, j+0  +4, h)
+  CALL set_matrix_entry(i, j+0  +5, 1.0D0)
+  CALL set_matrix_entry(i, (len_indx-1)*VAR+4, DBLE(mu1))
+  CALL set_matrix_entry(i, (len_indx-1)*VAR+5, DBLE(mu2))
   inh(i)         =  omega((j-1)/VAR+1) * help_i
   ! delta c_i
   i = i + 1
@@ -369,15 +394,15 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
     help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
   END DO  ! DO l = ii, ie
-  MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-  MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-  MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-  MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
-  MA(i, j+0  +4) =  h * h
-  MA(i, j+0  +5) =  2.0D0 * h
-  MA(i, j+0  +6) =  1.0D0
-  MA(i, (len_indx-1)*VAR+4) = DBLE(nu1)
-  MA(i, (len_indx-1)*VAR+5) = DBLE(nu2)
+  CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
+  CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
+  CALL set_matrix_entry(i, j+0  +2, omega((j-1)/VAR+1) * help_c)
+  CALL set_matrix_entry(i, j+0  +3, omega((j-1)/VAR+1) * help_d)
+  CALL set_matrix_entry(i, j+0  +4, h * h)
+  CALL set_matrix_entry(i, j+0  +5, 2.0D0 * h)
+  CALL set_matrix_entry(i, j+0  +6, 1.0D0)
+  CALL set_matrix_entry(i, (len_indx-1)*VAR+4, DBLE(nu1))
+  CALL set_matrix_entry(i, (len_indx-1)*VAR+5, DBLE(nu2))
   inh(i)         =  omega((j-1)/VAR+1) * help_i
   ! delta DELTA d_i
   i = i + 1
@@ -395,13 +420,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
     help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
   END DO  ! DO l = ii, ie
-  MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-  MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-  MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-  MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1)
-  MA(i, j+0  +4) =  h * h * h
-  MA(i, j+0  +5) =  3.0D0 * h * h
-  MA(i, j+0  +6) =  3.0D0 * h
+  CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
+  CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
+  CALL set_matrix_entry(i, j+0  +2, omega((j-1)/VAR+1) * help_c)
+  CALL set_matrix_entry(i, j+0  +3, omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1))
+  CALL set_matrix_entry(i, j+0  +4, h * h * h)
+  CALL set_matrix_entry(i, j+0  +5, 3.0D0 * h * h)
+  CALL set_matrix_entry(i, j+0  +6, 3.0D0 * h)
   inh(i)         =  omega((j-1)/VAR+1) * help_i
 
   ! coefs for point 2 to len_x_points-1
@@ -411,22 +436,22 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     h  = x(indx((j-1)/VAR+2)) - x(ii)
     ! A_i
     i = i + 1
-    MA(i, j+0  +0) =  1.0D0
-    MA(i, j+0  +1) =  h
-    MA(i, j+0  +2) =  h * h
-    MA(i, j+0  +3) =  h * h * h
-    MA(i, j+VAR+0) = -1.0D0
+    CALL set_matrix_entry(i, j+0  +0, 1.0D0)
+    CALL set_matrix_entry(i, j+0  +1, h)
+    CALL set_matrix_entry(i, j+0  +2, h * h)
+    CALL set_matrix_entry(i, j+0  +3, h * h * h)
+    CALL set_matrix_entry(i, j+VAR+0, -1.0D0)
     ! B_i
     i = i + 1
-    MA(i, j+0  +1) =  1.0D0
-    MA(i, j+0  +2) =  2.0D0 * h
-    MA(i, j+0  +3) =  3.0D0 * h * h
-    MA(i, j+VAR+1) = -1.0D0
+    CALL set_matrix_entry(i, j+0  +1, 1.0D0)
+    CALL set_matrix_entry(i, j+0  +2, 2.0D0 * h)
+    CALL set_matrix_entry(i, j+0  +3, 3.0D0 * h * h)
+    CALL set_matrix_entry(i, j+VAR+1, -1.0D0)
     ! C_i
     i = i + 1
-    MA(i, j+0  +2) =  1.0D0
-    MA(i, j+0  +3) =  3.0D0 * h
-    MA(i, j+VAR+2) = -1.0D0
+    CALL set_matrix_entry(i, j+0  +2, 1.0D0)
+    CALL set_matrix_entry(i, j+0  +3, 3.0D0 * h)
+    CALL set_matrix_entry(i, j+VAR+2, -1.0D0)
     ! delta a_i
     i = i + 1
     help_a = 0.0D0
@@ -443,12 +468,12 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
       help_d = help_d + h_j * h_j * h_j * x_h
       help_i = help_i + f(x(l),m) * y(l)
     END DO   ! DO l = ii, ie
-    MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-    MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-    MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-    MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
-    MA(i, j+0  +4) =  1.0D0
-    MA(i, j-VAR+4) = -1.0D0
+    CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
+    CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
+    CALL set_matrix_entry(i, j+0  +2, omega((j-1)/VAR+1) * help_c)
+    CALL set_matrix_entry(i, j+0  +3, omega((j-1)/VAR+1) * help_d)
+    CALL set_matrix_entry(i, j+0  +4, 1.0D0)
+    CALL set_matrix_entry(i, j-VAR+4, -1.0D0)
     inh(i)         =  omega((j-1)/VAR+1) * help_i
     ! delta b_i
     i = i + 1
@@ -466,13 +491,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
       help_d = help_d + h_j * h_j * h_j * h_j * x_h
       help_i = help_i + h_j * f(x(l),m) * y(l)
     END DO  ! DO l = ii, ie
-    MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-    MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-    MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-    MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
-    MA(i, j+0  +4) =  h
-    MA(i, j+0  +5) =  1.0D0
-    MA(i, j-VAR+5) = -1.0D0
+    CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
+    CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
+    CALL set_matrix_entry(i, j+0  +2, omega((j-1)/VAR+1) * help_c)
+    CALL set_matrix_entry(i, j+0  +3, omega((j-1)/VAR+1) * help_d)
+    CALL set_matrix_entry(i, j+0  +4, h)
+    CALL set_matrix_entry(i, j+0  +5, 1.0D0)
+    CALL set_matrix_entry(i, j-VAR+5, -1.0D0)
     inh(i)         =  omega((j-1)/VAR+1) * help_i
     ! delta c_i
     i = i + 1
@@ -490,14 +515,14 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
       help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
       help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
     END DO  ! DO l = ii, ie
-    MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-    MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-    MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-    MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d
-    MA(i, j+0  +4) =  h * h
-    MA(i, j+0  +5) =  2.0D0 * h
-    MA(i, j+0  +6) =  1.0D0
-    MA(i, j-VAR+6) = -1.0D0
+    CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
+    CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
+    CALL set_matrix_entry(i, j+0  +2, omega((j-1)/VAR+1) * help_c)
+    CALL set_matrix_entry(i, j+0  +3, omega((j-1)/VAR+1) * help_d)
+    CALL set_matrix_entry(i, j+0  +4, h * h)
+    CALL set_matrix_entry(i, j+0  +5, 2.0D0 * h)
+    CALL set_matrix_entry(i, j+0  +6, 1.0D0)
+    CALL set_matrix_entry(i, j-VAR+6, -1.0D0)
     inh(i)         =  omega((j-1)/VAR+1) * help_i
     ! delta DELTA d_i
     i = i + 1
@@ -515,13 +540,13 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
       help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
       help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
     END DO  ! DO l = ii, ie
-    MA(i, j+0  +0) =  omega((j-1)/VAR+1) * help_a
-    MA(i, j+0  +1) =  omega((j-1)/VAR+1) * help_b
-    MA(i, j+0  +2) =  omega((j-1)/VAR+1) * help_c
-    MA(i, j+0  +3) =  omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1)
-    MA(i, j+0  +4) =  h * h * h
-    MA(i, j+0  +5) =  3.0D0 * h * h
-    MA(i, j+0  +6) =  3.0D0 * h
+    CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
+    CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
+    CALL set_matrix_entry(i, j+0  +2, omega((j-1)/VAR+1) * help_c)
+    CALL set_matrix_entry(i, j+0  +3, omega((j-1)/VAR+1) * help_d + lambda((j-1)/VAR+1))
+    CALL set_matrix_entry(i, j+0  +4, h * h * h)
+    CALL set_matrix_entry(i, j+0  +5, 3.0D0 * h * h)
+    CALL set_matrix_entry(i, j+0  +6, 3.0D0 * h)
     inh(i)         =  omega((j-1)/VAR+1) * help_i
   END DO  ! DO j = VAR+1, VAR*(len_indx-1)-1, VAR
 
@@ -536,32 +561,40 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   help_a   = help_a   + f(x(l),m) * f(x(l),m)
   help_inh = help_inh + f(x(l),m) * y(l)
 
-  MA(i, (len_indx-1)*VAR+1) = omega((j-1)/VAR+1) * help_a
-  MA(i, (len_indx-2)*VAR+5) = omega((j-1)/VAR+1) * (-1.0D0)
+  CALL set_matrix_entry(i, (len_indx-1)*VAR+1, omega((j-1)/VAR+1) * help_a)
+  CALL set_matrix_entry(i, (len_indx-2)*VAR+5, omega((j-1)/VAR+1) * (-1.0D0))
   inh(i)                    = omega((j-1)/VAR+1) * help_inh
   ! delta b_i
   i = i + 1
-  MA(i, (len_indx-2)*VAR+6) = -1.0D0
-  MA(i, (len_indx-1)*VAR+4) =  DBLE(sig1)
-  MA(i, (len_indx-1)*VAR+5) =  DBLE(sig2)
+  CALL set_matrix_entry(i, (len_indx-2)*VAR+6, -1.0D0)
+  CALL set_matrix_entry(i, (len_indx-1)*VAR+4, DBLE(sig1))
+  CALL set_matrix_entry(i, (len_indx-1)*VAR+5, DBLE(sig2))
   ! delta c_i
   i = i + 1
-  MA(i, (len_indx-2)*VAR+7) = -1.0D0
-  MA(i, (len_indx-1)*VAR+4) =  DBLE(rho1)
-  MA(i, (len_indx-1)*VAR+5) =  DBLE(rho2)
+  CALL set_matrix_entry(i, (len_indx-2)*VAR+7, -1.0D0)
+  CALL set_matrix_entry(i, (len_indx-1)*VAR+4, DBLE(rho1))
+  CALL set_matrix_entry(i, (len_indx-1)*VAR+5, DBLE(rho2))
 
   ! boundary condition 2
   i = i + 1
-  MA(i, 2) = DBLE(mu2)
-  MA(i, 3) = DBLE(nu2)
-  MA(i, (len_indx-1)*VAR + 2) = DBLE(sig2)
-  MA(i, (len_indx-1)*VAR + 3) = DBLE(rho2)
+  CALL set_matrix_entry(i, 2, DBLE(mu2))
+  CALL set_matrix_entry(i, 3, DBLE(nu2))
+  CALL set_matrix_entry(i, (len_indx-1)*VAR + 2, DBLE(sig2))
+  CALL set_matrix_entry(i, (len_indx-1)*VAR + 3, DBLE(rho2))
   inh(i) = cn
 
 ! ---------------------------
 
   ! solve system
-  CALL sparse_solve(MA, inh)
+  if (use_common_banded) then
+    call solve_common_banded
+  else
+    CALL remap_rc(sparse_nz, sparse_nz_squeezed, irow, icol, sparse_val)
+    sparse_nz = sparse_nz_squeezed
+    CALL column_full2pointer(icol(1:sparse_nz), ipcol)
+    CALL sparse_solve(size_dimension, size_dimension, sparse_nz, &
+         irow(1:sparse_nz), ipcol, sparse_val(1:sparse_nz), inh)
+  end if
 
   ! take a(), b(), c(), d()
   DO i = 1, len_indx
@@ -572,16 +605,138 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   END DO
 
 
-  DEALLOCATE(MA,  stat = i_alloc)
-  IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for arrays 1 failed!'
-  DEALLOCATE(inh, indx_lu,  stat = i_alloc)
+  if (use_common_banded) then
+    DEALLOCATE(band_matrix, old_to_band, band_to_old,  stat = i_alloc)
+    IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for band matrix failed!'
+  else
+    DEALLOCATE(irow, icol, ipcol, sparse_val, sparse_hash,  stat = i_alloc)
+    IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for arrays 1 failed!'
+  end if
+  DEALLOCATE(inh,  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for arrays 2 failed!'
-  DEALLOCATE(simqa,  stat = i_alloc)
-  IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for arrays 3 failed!'
   DEALLOCATE(lambda,  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for lambda failed!'
   DEALLOCATE(omega,  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for omega failed!'
+
+CONTAINS
+
+  SUBROUTINE set_matrix_entry(row, col, value)
+    INTEGER, INTENT(IN) :: row, col
+    REAL(DP), INTENT(IN) :: value
+
+    INTEGER :: entry, slot, start_slot
+
+    IF (row < 1 .OR. row > size_dimension .OR. col < 1 .OR. col > size_dimension) THEN
+      STOP 'splinecof3: matrix index out of bounds'
+    END IF
+
+    if (use_common_banded) then
+      call set_common_banded_entry(row, col, value)
+      return
+    END IF
+
+    slot = MOD(row + (col - 1)*size_dimension - 1, SIZE(sparse_hash)) + 1
+    start_slot = slot
+    DO
+      entry = sparse_hash(slot)
+      IF (entry == 0) EXIT
+      IF (irow(entry) == row .AND. icol(entry) == col) THEN
+        sparse_val(entry) = value
+        RETURN
+      END IF
+      slot = slot + 1
+      IF (slot > SIZE(sparse_hash)) slot = 1
+      IF (slot == start_slot) STOP 'splinecof3: sparse hash table exhausted'
+    END DO
+
+    IF (value == 0.0D0) RETURN
+    IF (sparse_nz >= sparse_capacity) STOP 'splinecof3: sparse matrix capacity exceeded'
+
+    sparse_nz = sparse_nz + 1
+    irow(sparse_nz) = row
+    icol(sparse_nz) = col
+    sparse_val(sparse_nz) = value
+    sparse_hash(slot) = sparse_nz
+  END SUBROUTINE set_matrix_entry
+
+  SUBROUTINE set_common_banded_entry(row, col, value)
+    INTEGER, INTENT(IN) :: row, col
+    REAL(DP), INTENT(IN) :: value
+
+    IF (value == 0.0D0) RETURN
+
+    row_band = old_to_band(row)
+    col_band = old_to_band(col)
+    IF (row_band - col_band > lower_band .OR. col_band - row_band > upper_band) THEN
+      ERROR STOP 'splinecof3: unsupported common-case matrix entry outside band'
+    END IF
+
+    band_row = lower_band + upper_band + 1 + row_band - col_band
+    band_matrix(band_row, col_band) = value
+  END SUBROUTINE set_common_banded_entry
+
+  SUBROUTINE solve_common_banded
+    ALLOCATE(ipivot(size_dimension), band_rhs(size_dimension, 1), &
+         stat = i_alloc, errmsg=error_message)
+    IF(i_alloc /= 0) THEN
+      write(*,*) 'splinecof3: Allocation for band solve failed with error message:'
+      write(*,*) trim(error_message)
+      ERROR STOP 'splinecof3: allocation for common-case band solve failed'
+    END IF
+
+    do i = 1, size_dimension
+      band_rhs(old_to_band(i),1) = inh(i)
+    end do
+    CALL dgbsv(size_dimension, lower_band, upper_band, 1, band_matrix, &
+         SIZE(band_matrix, 1), ipivot, band_rhs, size_dimension, info)
+    IF (info /= 0) THEN
+      PRINT *, 'splinecof3: INFO from common-case band solve = ', info
+      ERROR STOP 'splinecof3: common-case permuted band solve failed'
+    END IF
+    do i = 1, size_dimension
+      inh(band_to_old(i)) = band_rhs(i,1)
+    end do
+
+    DEALLOCATE(ipivot, band_rhs, stat = i_alloc)
+    IF(i_alloc /= 0) ERROR STOP 'splinecof3: deallocation for band solve failed'
+  END SUBROUTINE solve_common_banded
+
+  SUBROUTINE init_common_band_order
+    INTEGER :: block_count, middle_block, offset, band_index
+    INTEGER :: block_left, block_right
+
+    block_count = (size_dimension + 2) / VAR
+    middle_block = (block_count + 1) / 2
+    band_index = 0
+    do offset = 0, block_count
+      block_right = middle_block + offset
+      if (block_right <= block_count) call add_common_band_block(block_right, band_index)
+      block_left = middle_block - offset
+      if (offset > 0) then
+        if (block_left >= 1) call add_common_band_block(block_left, band_index)
+      end if
+    end do
+    if (band_index /= size_dimension) then
+      ERROR STOP 'splinecof3: internal common-case band ordering size mismatch'
+    end if
+  END SUBROUTINE init_common_band_order
+
+  SUBROUTINE add_common_band_block(block_index, band_index)
+    INTEGER, INTENT(IN) :: block_index
+    INTEGER, INTENT(INOUT) :: band_index
+    INTEGER, DIMENSION(7), PARAMETER :: variable_order = [5, 6, 7, 1, 2, 3, 4]
+    INTEGER :: order_index, old_index
+
+    do order_index = 1, SIZE(variable_order)
+      old_index = (block_index - 1) * VAR + variable_order(order_index)
+      if (old_index <= size_dimension) then
+        band_index = band_index + 1
+        band_to_old(band_index) = old_index
+        old_to_band(old_index) = band_index
+      end if
+    end do
+  END SUBROUTINE add_common_band_block
 
 END SUBROUTINE splinecof3_a
 
