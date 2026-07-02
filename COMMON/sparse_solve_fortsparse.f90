@@ -4,8 +4,10 @@ module sparse_solve_fortsparse
     ! wrapper, but reached out-of-process so neo_2_*.x no longer links
     ! SuiteSparse/UMFPACK. Two module-global solver handles (real, complex)
     ! retain a factorization across the factor/solve/free lifecycle that the
-    ! callers in sparse_mod drive through iopt.
-    use fortsparse, only: csc_t, csc_z_t, sparse_solver_t, sparse_factor, &
+    ! callers in sparse_mod drive through iopt. Factorization streams the CSC
+    ! arrays straight into the helper's shared memory (raw sparse_factor), so
+    ! this adapter adds no matrix-sized copy of its own.
+    use fortsparse, only: sparse_solver_t, sparse_factor, &
         sparse_solve, sparse_free, sparse_vector, fortsparse_status_t, &
         status_ok, FORTSPARSE_BACKEND_UMFPACK_IPC
     implicit none
@@ -35,13 +37,12 @@ contains
         integer,       intent(in)    :: iopt
         logical,       intent(in)    :: refine
 
-        type(csc_t)               :: A
         type(fortsparse_status_t) :: status
 
         real_solver%refine = refine
         if (iopt == 1 .or. iopt == 0) then
-            call build_csc_real(nrow, ncol, nz, irow, pcol, val, A)
-            call sparse_factor(real_solver, A, status)
+            call sparse_factor(real_solver, nrow, ncol, nz, pcol, irow, val, &
+                status)
             call check(status, 'fs_solve_real: factor')
         end if
         if (iopt == 2 .or. iopt == 0) then
@@ -60,13 +61,12 @@ contains
         integer,       intent(in)    :: iopt
         logical,       intent(in)    :: refine
 
-        type(csc_z_t)             :: A
         type(fortsparse_status_t) :: status
 
         complex_solver%refine = refine
         if (iopt == 1 .or. iopt == 0) then
-            call build_csc_complex(nrow, ncol, nz, irow, pcol, val, A)
-            call sparse_factor(complex_solver, A, status)
+            call sparse_factor(complex_solver, nrow, ncol, nz, pcol, irow, &
+                val, status)
             call check(status, 'fs_solve_complex: factor')
         end if
         if (iopt == 2 .or. iopt == 0) then
@@ -79,7 +79,8 @@ contains
     ! A length-n real solve vector owned by the (already factored) real solver,
     ! living in the helper's shared mapping. Filling it as the RHS and reading
     ! the solution from such a vector makes the solve copy nothing across the
-    ! process boundary. Valid until the next factor; the caller never frees it.
+    ! process boundary. Valid until the next factor or the iopt=3 free (which
+    ! releases the mapping); the caller never frees it.
     function fs_vector_real(n) result(p)
         integer, intent(in) :: n
         real(dp), pointer   :: p(:)
@@ -102,36 +103,6 @@ contains
         call sparse_solve(real_solver, rhs, sol, status)
         call check(status, 'fs_solve_real_2: solve')
     end subroutine fs_solve_real_2
-
-    ! Fill a real csc_t directly from NEO-2's 1-based CSC arrays.
-    subroutine build_csc_real(nrow, ncol, nz, irow, pcol, val, A)
-        integer,     intent(in)  :: nrow, ncol, nz
-        integer,     intent(in)  :: irow(:), pcol(:)
-        real(dp),    intent(in)  :: val(:)
-        type(csc_t), intent(out) :: A
-
-        A%nrow = nrow
-        A%ncol = ncol
-        A%nnz  = nz
-        A%col_ptr = pcol(1:ncol + 1)
-        A%row_idx = irow(1:nz)
-        A%val     = val(1:nz)
-    end subroutine build_csc_real
-
-    ! Fill a complex csc_z_t directly from NEO-2's 1-based CSC arrays.
-    subroutine build_csc_complex(nrow, ncol, nz, irow, pcol, val, A)
-        integer,       intent(in)  :: nrow, ncol, nz
-        integer,       intent(in)  :: irow(:), pcol(:)
-        complex(dp),   intent(in)  :: val(:)
-        type(csc_z_t), intent(out) :: A
-
-        A%nrow = nrow
-        A%ncol = ncol
-        A%nnz  = nz
-        A%col_ptr = pcol(1:ncol + 1)
-        A%row_idx = irow(1:nz)
-        A%val     = val(1:nz)
-    end subroutine build_csc_complex
 
     ! Abort with a diagnostic on any non-ok fortsparse status, mirroring the
     ! old umf4 PRINT-on-error-then-stop behavior.
