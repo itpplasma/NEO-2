@@ -17,12 +17,9 @@ set(Interface_Libs
 	hdf5::hdf5_hl
 	hdf5::hdf5_fortran
 	hdf5::hdf5_hl_fortran
-	BLAS::BLAS
-	LAPACK::LAPACK
 )
 
 target_link_libraries(${PROJECT_EXE_NAME}
-	LIBNEO::neo
 	LIBNEO::hdf5_tools
 	${Interface_Libs}
 )
