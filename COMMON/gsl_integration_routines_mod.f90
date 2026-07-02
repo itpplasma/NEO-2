@@ -390,11 +390,16 @@ CONTAINS
     CALL check_status(status)
 
   CONTAINS
+    ! Clamp the abscissa one ulp inside the segment: the Clenshaw-Curtis node
+    ! arithmetic (mid + half*cos) can land one ulp outside [x_low, x_up], and
+    ! the collision-operator integrands jump exactly at the B-spline knots
+    ! that bound each segment.
     FUNCTION panel(x, ctx) RESULT(fx)
       REAL(wp), INTENT(in) :: x
       CLASS(*), INTENT(in), OPTIONAL :: ctx
       REAL(wp) :: fx
-      fx = func1d_param0_user(x)
+      fx = func1d_param0_user(MIN(MAX(x, NEAREST(x_low, 1.0_wp)), &
+           NEAREST(x_up, -1.0_wp)))
     END FUNCTION panel
   END FUNCTION fint1d_param0_cquad
 
@@ -426,7 +431,8 @@ CONTAINS
       REAL(wp), INTENT(in) :: x
       CLASS(*), INTENT(in), OPTIONAL :: ctx
       REAL(wp) :: fx
-      fx = func1d_param1_user(x, param1)
+      fx = func1d_param1_user(MIN(MAX(x, NEAREST(x_low, 1.0_wp)), &
+           NEAREST(x_up, -1.0_wp)), param1)
     END FUNCTION panel
   END FUNCTION fint1d_param1_cquad
 
