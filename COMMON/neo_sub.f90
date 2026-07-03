@@ -941,6 +941,10 @@ CONTAINS
     !***********************************************************************
     ! Open input-unit and read first quantities
     !***********************************************************************
+    IF (inp_swi == INP_SWI_BOOZMN) THEN
+      CALL neo_read_boozmn()
+      RETURN
+    END IF
     OPEN(unit=r_u1,file=in_file,status='old',form='formatted')
     !***********************************************************************
     IF (inp_swi == INP_SWI_STEL) THEN
@@ -2445,11 +2449,15 @@ CONTAINS
     USE neo_exchange
 
     IMPLICIT NONE
-    CHARACTER(len=50)   :: o_file1, o_file2
+    CHARACTER(len=200)  :: o_file1, o_file2
     ! **********************************************************************
     ! File handling
     ! **********************************************************************
-    CALL strip_extension(in_file,'bc',o_file1)
+    IF (inp_swi == INP_SWI_BOOZMN) THEN
+      CALL strip_extension(in_file,'nc',o_file1)
+    ELSE
+      CALL strip_extension(in_file,'bc',o_file1)
+    END IF
     IF (fluxs_interp .NE. 0) THEN
       CALL add_extension(o_file1,'sp',o_file2)
     ELSE
@@ -2569,5 +2577,326 @@ CONTAINS
 
 
   END SUBROUTINE neo_write_bc
+
+  ! **********************************************************************
+  ! Read a booz_xform boozmn NetCDF file and populate neo_input arrays.
+  !
+  ! Variable layout (booz_xform convention):
+  !   Half-grid (jlist surfaces): bmnc_b, rmnc_b, zmns_b, pmns_b
+  !   Full-grid (1..ns_b):        iota_b, buco_b, bvco_b, phi_b
+  !   ixn_b already includes the nfp factor (n*nfp).
+  !   buco_b = covariant B_theta [T m], bvco_b = covariant B_phi [T m].
+  !   phi_b  = toroidal flux [Wb] on the full grid.
+  ! **********************************************************************
+  SUBROUTINE neo_read_boozmn()
+    use nrtype
+    use netcdf, only : nf90_open, nf90_close, nf90_nowrite, nf90_noerr, &
+      & nf90_inq_dimid, nf90_inquire_dimension, nf90_inq_varid, &
+      & nf90_get_var, nf90_strerror
+    USE neo_input
+    USE neo_exchange, only : iota, curr_pol, curr_tor
+    USE neo_units
+    USE neo_control, only : in_file, max_m_mode, max_n_mode, inp_swi, &
+      & INP_SWI_TOK
+
+    IMPLICIT NONE
+
+    INTEGER :: ncid, dimid, varid, status
+    INTEGER :: i, j, i_alloc
+    INTEGER :: ns_b, mnmax_b, nsurf_b, mboz_b, nboz_b
+    INTEGER :: m, n, num_m, num_n, m_found, n_found
+    INTEGER :: lasym_int
+    INTEGER, DIMENSION(:), ALLOCATABLE :: jlist
+    REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: iota_b, buco_b, bvco_b, phi_b
+    REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: bmnc_b, rmnc_b, zmns_b, pmns_b
+    REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: bmns_b, rmns_b, zmnc_b, pmnc_b
+
+    status = nf90_open(trim(adjustl(in_file)), nf90_nowrite, ncid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: cannot open boozmn file: ', TRIM(in_file)
+      WRITE(w_us,*) TRIM(nf90_strerror(status))
+      STOP
+    END IF
+
+    ! ns_b: total number of surfaces (variable, not dimension)
+    ns_b = 0
+    status = nf90_inq_varid(ncid, 'ns_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable ns_b'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, ns_b)
+
+    ! mode count: try mn_mode_b, mn_mode_nyq_b, mn_modes, mn_mode in that order
+    status = nf90_inq_dimid(ncid, 'mn_mode_b', dimid)
+    IF (status /= nf90_noerr) status = nf90_inq_dimid(ncid, 'mn_mode_nyq_b', dimid)
+    IF (status /= nf90_noerr) status = nf90_inq_dimid(ncid, 'mn_modes', dimid)
+    IF (status /= nf90_noerr) status = nf90_inq_dimid(ncid, 'mn_mode', dimid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing mode count dimension'; STOP
+    END IF
+    status = nf90_inquire_dimension(ncid, dimid, len=mnmax_b)
+
+    ! surface count (half-grid stored surfaces): try comput_surfs, radius_b, pack_rad
+    status = nf90_inq_dimid(ncid, 'comput_surfs', dimid)
+    IF (status /= nf90_noerr) status = nf90_inq_dimid(ncid, 'radius_b', dimid)
+    IF (status /= nf90_noerr) status = nf90_inq_dimid(ncid, 'pack_rad', dimid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing surface count dimension'; STOP
+    END IF
+    status = nf90_inquire_dimension(ncid, dimid, len=nsurf_b)
+
+    nfp  = 0
+    status = nf90_inq_varid(ncid, 'nfp_b', varid)
+    IF (status == nf90_noerr) status = nf90_get_var(ncid, varid, nfp)
+
+    mboz_b = 0
+    status = nf90_inq_varid(ncid, 'mboz_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable mboz_b (file too old)'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, mboz_b)
+
+    nboz_b = 0
+    status = nf90_inq_varid(ncid, 'nboz_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable nboz_b (file too old)'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, nboz_b)
+
+    status = nf90_inq_varid(ncid, 'lasym__logical__', varid)
+    IF (status == nf90_noerr) THEN
+      status = nf90_get_var(ncid, varid, lasym_int)
+    ELSE
+      lasym_int = 0
+    END IF
+
+    ALLOCATE(jlist(nsurf_b), stat=i_alloc)
+    IF (i_alloc /= 0) STOP 'neo_read_boozmn: jlist alloc failed'
+    status = nf90_inq_varid(ncid, 'jlist', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable jlist'
+      STOP
+    END IF
+    status = nf90_get_var(ncid, varid, jlist)
+
+    ns    = nsurf_b
+    mnmax = mnmax_b
+    m0b   = mboz_b
+    n0b   = nboz_b
+    m_max = m0b + 1
+    n_max = 2*n0b + 1
+
+    ALLOCATE(ixm(mnmax), ixn(mnmax), stat=i_alloc)
+    IF (i_alloc /= 0) STOP 'neo_read_boozmn: ixm/ixn alloc failed'
+    ALLOCATE(pixm(mnmax), pixn(mnmax), stat=i_alloc)
+    IF (i_alloc /= 0) STOP 'neo_read_boozmn: pixm/pixn alloc failed'
+    ALLOCATE(i_m(m_max), i_n(n_max), stat=i_alloc)
+    IF (i_alloc /= 0) STOP 'neo_read_boozmn: i_m/i_n alloc failed'
+
+    status = nf90_inq_varid(ncid, 'ixm_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable ixm_b'
+      STOP
+    END IF
+    status = nf90_get_var(ncid, varid, ixm)
+
+    status = nf90_inq_varid(ncid, 'ixn_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable ixn_b'
+      STOP
+    END IF
+    status = nf90_get_var(ncid, varid, ixn)
+    IF (lasym_int /= 0) THEN
+      ! INP_SWI_TOK evaluates asymmetric spectra with m*theta + n*phi.
+      ! Import booz_xform's m*theta - n*phi modes by reversing n.
+      ixn = -ixn
+    END IF
+
+    ALLOCATE(es(ns), iota(ns), curr_pol(ns), curr_tor(ns), stat=i_alloc)
+    IF (i_alloc /= 0) STOP 'neo_read_boozmn: scalar surface alloc failed'
+    ALLOCATE(pprime(ns), sqrtg00(ns), b00(ns), stat=i_alloc)
+    IF (i_alloc /= 0) STOP 'neo_read_boozmn: scalar surface alloc (2) failed'
+    ALLOCATE(bmnc(ns, mnmax), rmnc(ns, mnmax), zmnc(ns, mnmax), &
+      & lmnc(ns, mnmax), stat=i_alloc)
+    IF (i_alloc /= 0) STOP 'neo_read_boozmn: Fourier alloc failed'
+
+    ALLOCATE(iota_b(ns_b), buco_b(ns_b), bvco_b(ns_b), phi_b(ns_b), stat=i_alloc)
+    IF (i_alloc /= 0) STOP 'neo_read_boozmn: full-grid alloc failed'
+    ! NetCDF C/Fortran transposition: Python shape (nsurf_b, mnmax) -> Fortran (mnmax, nsurf_b)
+    ALLOCATE(bmnc_b(mnmax, nsurf_b), rmnc_b(mnmax, nsurf_b), &
+      & zmns_b(mnmax, nsurf_b), pmns_b(mnmax, nsurf_b), stat=i_alloc)
+    IF (i_alloc /= 0) STOP 'neo_read_boozmn: half-grid Fourier alloc failed'
+
+    status = nf90_inq_varid(ncid, 'iota_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable iota_b'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, iota_b)
+
+    status = nf90_inq_varid(ncid, 'buco_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable buco_b'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, buco_b)
+
+    status = nf90_inq_varid(ncid, 'bvco_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable bvco_b'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, bvco_b)
+
+    status = nf90_inq_varid(ncid, 'phi_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable phi_b'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, phi_b)
+
+    status = nf90_inq_varid(ncid, 'bmnc_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable bmnc_b'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, bmnc_b)
+
+    status = nf90_inq_varid(ncid, 'rmnc_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable rmnc_b'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, rmnc_b)
+
+    status = nf90_inq_varid(ncid, 'zmns_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable zmns_b'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, zmns_b)
+
+    status = nf90_inq_varid(ncid, 'pmns_b', varid)
+    IF (status /= nf90_noerr) THEN
+      WRITE(w_us,*) 'FATAL: boozmn missing variable pmns_b'; STOP
+    END IF
+    status = nf90_get_var(ncid, varid, pmns_b)
+
+    IF (lasym_int /= 0) THEN
+      ALLOCATE(bmns(ns, mnmax), rmns(ns, mnmax), zmns(ns, mnmax), &
+        & lmns(ns, mnmax), stat=i_alloc)
+      IF (i_alloc /= 0) STOP 'neo_read_boozmn: asymmetric Fourier alloc failed'
+      ALLOCATE(bmns_b(mnmax, nsurf_b), rmns_b(mnmax, nsurf_b), &
+        & zmnc_b(mnmax, nsurf_b), pmnc_b(mnmax, nsurf_b), stat=i_alloc)
+      IF (i_alloc /= 0) STOP 'neo_read_boozmn: asymmetric half-grid alloc failed'
+
+      status = nf90_inq_varid(ncid, 'bmns_b', varid)
+      IF (status /= nf90_noerr) THEN
+        WRITE(w_us,*) 'FATAL: boozmn missing variable bmns_b'; STOP
+      END IF
+      status = nf90_get_var(ncid, varid, bmns_b)
+
+      status = nf90_inq_varid(ncid, 'rmns_b', varid)
+      IF (status /= nf90_noerr) THEN
+        WRITE(w_us,*) 'FATAL: boozmn missing variable rmns_b'; STOP
+      END IF
+      status = nf90_get_var(ncid, varid, rmns_b)
+
+      status = nf90_inq_varid(ncid, 'zmnc_b', varid)
+      IF (status /= nf90_noerr) THEN
+        WRITE(w_us,*) 'FATAL: boozmn missing variable zmnc_b'; STOP
+      END IF
+      status = nf90_get_var(ncid, varid, zmnc_b)
+
+      status = nf90_inq_varid(ncid, 'pmnc_b', varid)
+      IF (status /= nf90_noerr) THEN
+        WRITE(w_us,*) 'FATAL: boozmn missing variable pmnc_b'; STOP
+      END IF
+      status = nf90_get_var(ncid, varid, pmnc_b)
+    END IF
+
+    status = nf90_close(ncid)
+
+    DO i = 1, ns
+      es(i)       = (jlist(i) - 1.5_dp) / (ns_b - 1)
+      iota(i)     = iota_b(jlist(i))
+      curr_pol(i) = bvco_b(jlist(i))
+      curr_tor(i) = buco_b(jlist(i))
+      pprime(i)   = 0.0_dp
+      sqrtg00(i)  = 0.0_dp
+      IF (lasym_int == 0) THEN
+        ! Symmetric: z = sum(zmns_b * sin(m*theta - n*phi)).
+        ! neo_magfie ELSE branch evals z via zi*sinv where zi=s_zmnc,
+        ! so store the sin coefficient in zmnc.
+        DO j = 1, mnmax
+          bmnc(i,j) = bmnc_b(j,i)
+          rmnc(i,j) = rmnc_b(j,i)
+          zmnc(i,j) = zmns_b(j,i)
+          lmnc(i,j) = -pmns_b(j,i)
+        END DO
+      ELSE
+        ! Asymmetric: z = sum(zmnc_b*cos + zmns_b*sin).
+        ! INP_SWI_TOK evals z via zi*cosv + zis*sinv
+        ! where zi=s_zmnc (cos coeff) and zis=s_zmns (sin coeff).
+        DO j = 1, mnmax
+          bmnc(i,j) = bmnc_b(j,i)
+          bmns(i,j) = bmns_b(j,i)
+          rmnc(i,j) = rmnc_b(j,i)
+          rmns(i,j) = rmns_b(j,i)
+          zmnc(i,j) = zmnc_b(j,i)
+          zmns(i,j) = zmns_b(j,i)
+          lmnc(i,j) = pmnc_b(j,i)
+          lmns(i,j) = pmns_b(j,i)
+        END DO
+      END IF
+    END DO
+
+    ! Redirect asymmetric fields through INP_SWI_TOK evaluation path in neo_magfie.
+    IF (lasym_int /= 0) inp_swi = INP_SWI_TOK
+
+    flux  = phi_b(ns_b) * nfp
+    psi_pr = ABS(flux) / twopi
+
+    max_m_mode = MIN(max_m_mode, MAXVAL(ABS(ixm)))
+    max_n_mode = MIN(max_n_mode, MAXVAL(ABS(ixn)))
+
+    num_n = 0
+    num_m = 0
+    DO j = 1, mnmax
+      m = ixm(j)
+      n = ixn(j)
+      IF (j == 1) THEN
+        num_m = 1
+        i_m(num_m) = m
+        pixm(j) = num_m
+        num_n = 1
+        i_n(num_n) = n
+        pixn(j) = num_n
+      ELSE
+        m_found = 0
+        DO i = 1, num_m
+          IF (m == i_m(i)) THEN
+            pixm(j) = i
+            m_found = 1
+          END IF
+        END DO
+        IF (m_found == 0) THEN
+          num_m = num_m + 1
+          i_m(num_m) = m
+          pixm(j) = num_m
+        END IF
+        n_found = 0
+        DO i = 1, num_n
+          IF (n == i_n(i)) THEN
+            pixn(j) = i
+            n_found = 1
+          END IF
+        END DO
+        IF (n_found == 0) THEN
+          num_n = num_n + 1
+          i_n(num_n) = n
+          pixn(j) = num_n
+        END IF
+      END IF
+    END DO
+
+    DEALLOCATE(jlist, iota_b, buco_b, bvco_b, phi_b)
+    DEALLOCATE(bmnc_b, rmnc_b, zmns_b, pmns_b)
+    IF (lasym_int /= 0) DEALLOCATE(bmns_b, rmns_b, zmnc_b, pmnc_b)
+
+  END SUBROUTINE neo_read_boozmn
 
 END MODULE neo_sub_mod
