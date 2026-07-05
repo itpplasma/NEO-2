@@ -1174,33 +1174,11 @@ def test_kdg_poloidal_term_is_coordinate_independent():
 
 
 if __name__ == '__main__':
-    test_uniform_profiles_give_zero()
-    test_negative_density_gradient_gives_negative_omte()
-    test_analytic_linear_profiles()
-    test_temperature_gradient_contribution()
-    test_force_balance_without_vphi_matches_diamagnetic()
-    test_charge_number_scaling()
-    test_array_input()
-    test_toroidal_rotation_contribution()
-    test_toroidal_rotation_neo2_convention_regression()
-    test_toroidal_rotation_neo2_convention_without_vphi_matches_diamagnetic()
-    test_neoclassical_poloidal_rotation_formula()
-    test_neoclassical_poloidal_rotation_preserves_force_balance_product()
-    test_select_poloidal_rotation_coefficient()
-    test_transport_reconstruction_reduces_to_exact_convention_without_transport_terms()
-    test_transport_reconstruction_matches_manual_formula()
-    test_compute_omte_from_output_reads_stored_er()
-    test_compute_omte_from_output_reconstructs_transport_mode()
-    test_invalid_zero_density_raises()
-    test_exact_neo2_convention_zero_pressure_raises()
-    test_missing_toroidal_rotation_pair_raises()
-    test_missing_poloidal_rotation_pair_raises()
-    test_diamagnetic_vs_neo2_sign_and_order_of_magnitude()
-    test_toroidal_rotation_from_neo2_component_pair_reduces_aug_reference_error()
-    test_neoclassical_poloidal_with_neo2_component_pair_regression()
-    test_neoclassical_poloidal_auto_k_with_neo2_component_pair_regression()
-    test_aug_reference_reduced_neo2_vphi_convention_regression()
-    test_aug_reference_single_ion_limit_bridges_simple_and_full_neo2()
-    test_aug_reference_mars_banana_shortcut_is_closer_by_compensating_errors()
-    test_reference_plot_models_regression()
-    print('\nAll tests passed.')
+    tests = [
+        obj
+        for name, obj in sorted(globals().items())
+        if name.startswith('test_') and callable(obj)
+    ]
+    for test in tests:
+        test()
+    print(f'\nAll {len(tests)} tests passed.')
