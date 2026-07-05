@@ -1,7 +1,10 @@
 MODULE sparse_utils_mod
   ! Sparse matrix utilities for CSR/CSC format conversions and operations
   ! Implements CSC<->CSR conversions, matrix-vector multiplication, diagonal extraction
-  
+  !
+  ! Reusable CSR/CSC helpers retained for the planned GMRES sparse path; not yet
+  ! called from production NEO-2-PAR/QL code. Exercised by TEST/test_sparse_utils.f90.
+
   USE sparse_types_mod, ONLY: dp, long
   IMPLICIT NONE
   

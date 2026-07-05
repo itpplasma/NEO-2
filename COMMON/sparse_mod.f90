@@ -1,10 +1,13 @@
 MODULE sparse_mod
 
   USE sparse_types_mod, ONLY: dp, long
-  USE sparse_conversion_mod
-  USE sparse_io_mod
-  USE sparse_arithmetic_mod
-  USE sparse_solvers_mod
+  USE sparse_conversion_mod, ONLY: column_pointer2full, column_full2pointer, &
+       sparse2full, full2sparse
+  USE sparse_io_mod, ONLY: load_mini_example, load_compressed_example, &
+       load_standard_example, load_octave_matrices, find_unit
+  USE sparse_arithmetic_mod, ONLY: sparse_matmul, sparse_solver_test, sparse_talk
+  USE sparse_solvers_mod, ONLY: sparse_solve, sparse_solve_suitesparse, &
+       sparse_solve_method, factorization_exists
   IMPLICIT NONE
 
   ! Re-export sparse_solve_method for backward compatibility
