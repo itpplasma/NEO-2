@@ -390,8 +390,8 @@ CONTAINS
     CALL check_status(status)
 
   CONTAINS
-    ! Clamp the abscissa one ulp inside the segment: the Clenshaw-Curtis node
-    ! arithmetic (mid + half*cos) can land one ulp outside [x_low, x_up], and
+    ! Clamp the abscissa one ulp inside the segment: the Gauss-Kronrod node
+    ! arithmetic (mid + half*node) can land one ulp outside [x_low, x_up], and
     ! the collision-operator integrands jump exactly at the B-spline knots
     ! that bound each segment.
     FUNCTION panel(x, ctx) RESULT(fx)
