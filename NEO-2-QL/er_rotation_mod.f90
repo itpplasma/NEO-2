@@ -4,8 +4,33 @@ module er_rotation_mod
    private
 
    public :: Om_tE_to_MtOvR_spec, MtOvR_spec_to_Om_tE, check_Om_tE_consistency
+   public :: Er_to_Om_tE, Om_tE_to_Er
 
 contains
+
+   !> Forward map from radial electric field to ExB rotation frequency,
+   !> Om_tE = c * Er / (aiota * sqrtg_bctrvr_phi). Used by compute_Er.
+   pure function Er_to_Om_tE(Er, aiota, sqrtg_bctrvr_phi, c) result(Om_tE)
+      real(dp), intent(in) :: Er
+      real(dp), intent(in) :: aiota
+      real(dp), intent(in) :: sqrtg_bctrvr_phi
+      real(dp), intent(in) :: c
+      real(dp) :: Om_tE
+
+      Om_tE = c * Er / (aiota * sqrtg_bctrvr_phi)
+   end function Er_to_Om_tE
+
+   !> Inverse of Er_to_Om_tE, recovering Er from a prescribed Om_tE. Used
+   !> by the isw_calc_Er = 2 path in write_multispec_output_a.
+   pure function Om_tE_to_Er(Om_tE, aiota, sqrtg_bctrvr_phi, c) result(Er)
+      real(dp), intent(in) :: Om_tE
+      real(dp), intent(in) :: aiota
+      real(dp), intent(in) :: sqrtg_bctrvr_phi
+      real(dp), intent(in) :: c
+      real(dp) :: Er
+
+      Er = Om_tE * aiota * sqrtg_bctrvr_phi / c
+   end function Om_tE_to_Er
 
    pure function Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec) result(MtOvR_spec)
       real(dp), intent(in) :: Om_tE

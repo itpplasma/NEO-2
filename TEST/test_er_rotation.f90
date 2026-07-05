@@ -1,7 +1,7 @@
 program test_er_rotation
    use nrtype, only: dp
    use er_rotation_mod, only: Om_tE_to_MtOvR_spec, MtOvR_spec_to_Om_tE, &
-                              check_Om_tE_consistency
+                              check_Om_tE_consistency, Er_to_Om_tE, Om_tE_to_Er
    implicit none
 
    integer :: test_status
@@ -243,12 +243,11 @@ contains
    !> Round-trip the Er <-> Om_tE map used by the isw_calc_Er = 2 path.
    !>
    !> write_multispec_output_a recovers Er from a prescribed Om_tE via
-   !>   Er = Om_tE * aiota_loc * sqrtg_bctrvr_phi / c
-   !> which is the inverse of the self-consistent forward map in
-   !> compute_Er:
-   !>   Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi).
-   !> This test composes the two over a realistic set of AUG-like
-   !> geometry samples and asserts that they are exact inverses.
+   !> Om_tE_to_Er, the inverse of the self-consistent forward map
+   !> Er_to_Om_tE used in compute_Er. Both live in er_rotation_mod and
+   !> are exercised here directly. This test composes the two over a
+   !> realistic set of AUG-like geometry samples and asserts that they
+   !> are exact inverses.
    subroutine test_er_om_te_forward_inverse_round_trip(status)
       integer, intent(inout) :: status
       real(dp), parameter :: c_cgs = 2.9979e10_dp
@@ -271,8 +270,8 @@ contains
          sqrtg_bctrvr_phi = sqrtg_samples(modulo((k-1) / &
               (size(Er_samples) * size(aiota_samples)), size(sqrtg_samples)) + 1)
 
-         Om_tE_mid = c_cgs * Er_in / (aiota_loc * sqrtg_bctrvr_phi)
-         Er_out = Om_tE_mid * aiota_loc * sqrtg_bctrvr_phi / c_cgs
+         Om_tE_mid = Er_to_Om_tE(Er_in, aiota_loc, sqrtg_bctrvr_phi, c_cgs)
+         Er_out = Om_tE_to_Er(Om_tE_mid, aiota_loc, sqrtg_bctrvr_phi, c_cgs)
 
          if (abs(Er_in) > 0.0_dp) then
             rel_err = abs(Er_out - Er_in) / abs(Er_in)

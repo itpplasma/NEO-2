@@ -935,7 +935,7 @@ CONTAINS
   SUBROUTINE write_multispec_output_a()
 
     use nrtype
-    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec, Om_tE_to_Er
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : device, surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -1539,7 +1539,7 @@ CONTAINS
        ALLOCATE(MtOvR_spec(0:num_spec-1))
        MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
 
-       Er = Om_tE * aiota_loc * sqrtg_bctrvr_phi / c
+       Er = Om_tE_to_Er(Om_tE, aiota_loc, sqrtg_bctrvr_phi, c)
        avEparB_ov_avb2 = 0.0_dp
 
        PRINT *,'------------------------------'
@@ -2105,7 +2105,7 @@ CONTAINS
        & Er, D33AX_spec_in, avEparB_ov_avb2_in)
 
     use nrtype
-    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec, Er_to_Om_tE
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -2378,7 +2378,7 @@ CONTAINS
     Er = nom_Er / denom_Er
 
     ! compute ExB rotation frequency and species Mach numbers
-    Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi)
+    Om_tE = Er_to_Om_tE(Er, aiota_loc, sqrtg_bctrvr_phi, c)
     IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
     ALLOCATE(MtOvR_spec(0:num_spec-1))
     MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
@@ -2568,7 +2568,7 @@ CONTAINS
        D33AX_spec, Er, avEparB_ov_avb2)
 
     use nrtype
-    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec, Er_to_Om_tE
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -2911,7 +2911,7 @@ CONTAINS
     Er = (nom_Er-denom_Epar_b*avEparB_ov_avb2)/denom_Er_a
 
     ! compute ExB rotation frequency and species Mach numbers
-    Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi)
+    Om_tE = Er_to_Om_tE(Er, aiota_loc, sqrtg_bctrvr_phi, c)
     IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
     ALLOCATE(MtOvR_spec(0:num_spec-1))
     MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
