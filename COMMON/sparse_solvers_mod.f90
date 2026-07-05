@@ -82,6 +82,7 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     pcol_modified = .FALSE.
+    ! pcol must be CSC column pointers, not COO column indices
     ! pcoln to remove "C convention" used in SuiteSparse
     IF (pcol(1) .EQ. 0) THEN
        pcol_modified = .TRUE.
@@ -141,6 +142,7 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     pcol_modified = .FALSE.
+    ! pcol must be CSC column pointers, not COO column indices
     ! pcoln to remove "C convention" used in SuiteSparse
     IF (pcol(1) .EQ. 0) THEN
        pcol_modified = .TRUE.
@@ -200,6 +202,7 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     pcol_modified = .FALSE.
+    ! pcol must be CSC column pointers, not COO column indices
     ! pcoln to remove "C convention" used in SuiteSparse
     IF (pcol(1) .EQ. 0) THEN
        pcol_modified = .TRUE.
@@ -259,6 +262,7 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
     
     pcol_modified = .FALSE.
+    ! pcol must be CSC column pointers, not COO column indices
     ! pcoln to remove "C convention" used in SuiteSparse
     IF (pcol(1) .EQ. 0) THEN
        pcol_modified = .TRUE.
@@ -318,7 +322,9 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: val
     
     IF (PRESENT(iopt_in)) iopt = iopt_in
-    
+
+    CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+
     ! check about existing factorization
     IF (factorization_exists_real .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
@@ -338,7 +344,6 @@ CONTAINS
     factorization_exists = factorization_exists_real
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
@@ -367,7 +372,9 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:), ALLOCATABLE :: val
     
     IF (PRESENT(iopt_in)) iopt = iopt_in
-    
+
+    CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+
     ! check about existing factorization
     IF (factorization_exists_complex .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
@@ -387,7 +394,6 @@ CONTAINS
     factorization_exists = factorization_exists_complex
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
@@ -416,7 +422,9 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: val
     
     IF (PRESENT(iopt_in)) iopt = iopt_in
-    
+
+    CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+
     ! check about existing factorization
     IF (factorization_exists_real .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
@@ -436,7 +444,6 @@ CONTAINS
     factorization_exists = factorization_exists_real
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
@@ -465,7 +472,9 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:), ALLOCATABLE :: val
     
     IF (PRESENT(iopt_in)) iopt = iopt_in
-    
+
+    CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+
     ! check about existing factorization
     IF (factorization_exists_complex .AND. iopt .EQ. IOPT_FACTORIZE_ONLY) THEN ! free memory first
        IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
@@ -485,7 +494,6 @@ CONTAINS
     factorization_exists = factorization_exists_complex
     
     IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
        CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'

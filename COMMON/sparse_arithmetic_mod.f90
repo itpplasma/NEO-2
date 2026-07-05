@@ -358,19 +358,20 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:,:), INTENT(in) :: b
     REAL(kind=dp), OPTIONAL, INTENT(out) :: max_abs_err_out,max_rel_err_out
     
-    REAL(kind=dp) :: max_abs_err,max_rel_err
+    REAL(kind=dp) :: max_abs_err,max_rel_err,abs_err
     REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: r
-    
+
     INTEGER :: n_rhs,i_rhs
-    
+
     n_rhs = SIZE(x,2)
     CALL sparse_matmul(nrow,ncol,irow,pcol,val,x,r)
     max_abs_err = 0.0_dp
     max_rel_err = 0.0_dp
     DO i_rhs = 1,n_rhs
        r(:,i_rhs) = ABS(r(:,i_rhs) - b(:,i_rhs))
-       max_abs_err = MAX(max_abs_err,MAXVAL(r(:,i_rhs)))
-       max_rel_err = MAX(max_rel_err,max_abs_err / MAXVAL(ABS(b(:,i_rhs))))
+       abs_err = MAXVAL(r(:,i_rhs))
+       max_abs_err = MAX(max_abs_err,abs_err)
+       max_rel_err = MAX(max_rel_err,abs_err / MAXVAL(ABS(b(:,i_rhs))))
     END DO
     IF (sparse_talk) THEN
        PRINT *, 'max_abs_err=',max_abs_err,' max_rel_err=',max_rel_err
@@ -393,19 +394,20 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:,:), INTENT(in) :: b
     REAL(kind=dp), OPTIONAL, INTENT(out) :: max_abs_err_out,max_rel_err_out
     
-    REAL(kind=dp) :: max_abs_err,max_rel_err
+    REAL(kind=dp) :: max_abs_err,max_rel_err,abs_err
     COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE :: r
-    
+
     INTEGER :: n_rhs,i_rhs
-    
+
     n_rhs = SIZE(x,2)
     CALL sparse_matmul(nrow,ncol,irow,pcol,val,x,r)
     max_abs_err = 0.0_dp
     max_rel_err = 0.0_dp
     DO i_rhs = 1,n_rhs
        r(:,i_rhs) = ABS(r(:,i_rhs) - b(:,i_rhs))
-       max_abs_err = MAX(max_abs_err,MAXVAL(SQRT(REAL(r(:,i_rhs))**2+AIMAG(r(:,i_rhs))**2)))
-       max_rel_err = MAX(max_rel_err,max_abs_err / MAXVAL(SQRT(REAL(b(:,i_rhs))**2+AIMAG(b(:,i_rhs))**2)))
+       abs_err = MAXVAL(SQRT(REAL(r(:,i_rhs))**2+AIMAG(r(:,i_rhs))**2))
+       max_abs_err = MAX(max_abs_err,abs_err)
+       max_rel_err = MAX(max_rel_err,abs_err / MAXVAL(SQRT(REAL(b(:,i_rhs))**2+AIMAG(b(:,i_rhs))**2)))
     END DO
     IF (sparse_talk) THEN
        PRINT *, 'max_abs_err=',max_abs_err,' max_rel_err=',max_rel_err
