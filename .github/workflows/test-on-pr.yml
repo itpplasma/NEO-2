@@ -90,6 +90,7 @@ jobs:
             git checkout "$NEO2_BRANCH"
           else
             echo "Branch '$NEO2_BRANCH' not found in data, using main"
+            git checkout main
           fi
           git lfs version || echo "git-lfs not installed"
           git config lfs.fetchinclude "TESTS/NEO-2/golden_record/transport_k/"

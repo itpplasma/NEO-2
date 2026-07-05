@@ -4,13 +4,9 @@ from pathlib import Path
 
 import numpy as np
 
+from neo2_ql.transport_k import compute_transport_k
+
 FIXTURE_REL = "TESTS/NEO-2/golden_record/transport_k/aug_30835_sauter_reference.json"
-
-
-def compute_transport_k(d31, d32):
-    d31 = np.asarray(d31, dtype=float)
-    d32 = np.asarray(d32, dtype=float)
-    return 2.5 - d32 / d31
 
 
 def _fixture_path() -> Path | None:
@@ -27,11 +23,16 @@ def test_compute_transport_k_formula():
     assert np.allclose(compute_transport_k(d31, d32), np.array([1.0, 1.0]))
 
 
-def test_transport_k_vs_sauter():
-    path = _fixture_path()
-    if path is None:
-        print("SKIP: NEO2_DATA_DIR not set or fixture not found")
-        return
+def test_compute_transport_k_zero_d31_raises():
+    try:
+        compute_transport_k(np.array([0.0, 1.0]), np.array([1.0, 1.0]))
+    except ValueError as exc:
+        assert "nonzero" in str(exc)
+    else:
+        raise AssertionError("expected ValueError when d31 contains zero")
+
+
+def test_transport_k_vs_sauter(path: Path):
     fixture = json.loads(path.read_text(encoding="utf-8"))
     tol = fixture["tolerance"]
     for surface in fixture["surfaces"]:
@@ -44,7 +45,16 @@ def test_transport_k_vs_sauter():
         )
 
 
+SKIP_EXIT_CODE = 77
+
+
 if __name__ == "__main__":
     test_compute_transport_k_formula()
-    test_transport_k_vs_sauter()
+    test_compute_transport_k_zero_d31_raises()
+    path = _fixture_path()
+    if path is None:
+        print("SKIP: NEO2_DATA_DIR not set or fixture not found; "
+              "Sauter comparison not run")
+        raise SystemExit(SKIP_EXIT_CODE)
+    test_transport_k_vs_sauter(path)
     print("All transport-k tests passed.")

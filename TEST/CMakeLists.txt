@@ -25,7 +25,7 @@ add_test(
 
 set_tests_properties(python_transport_k_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All transport-k tests passed."
-    FAIL_REGULAR_EXPRESSION "FAIL"
+    SKIP_RETURN_CODE 77
     TIMEOUT 30
 )
 
