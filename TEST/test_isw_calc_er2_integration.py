@@ -15,6 +15,11 @@ Checks:
   - Run 3 must produce different MtOvR (proving the input is used)
   - Transport coefficients must still match in run 3
 
+This is a manual integration test. It is not wired into CI because it needs
+the compiled neo_2_ql.x binary and the private golden_record/ql test data
+(gitlab.tugraz.at/plasma/data), and each of its three NEO-2-QL runs is far
+slower than a unit test. Run it by hand when changing the Er handling.
+
 Usage:
   python test_isw_calc_er2_integration.py <neo2_ql_binary> <data_dir>
 
@@ -45,9 +50,10 @@ def patch_neo2_in(src_path, dst_path, replacements):
         content = f.read()
 
     for key, value in replacements.items():
-        # Try to replace existing key
-        pattern = rf'({key}\s*=\s*)[^,/\n]+'
-        new_content = re.sub(pattern, rf'\g<1>{value}', content, flags=re.IGNORECASE)
+        # Try to replace existing key. Stop the value match before any
+        # trailing namelist comment ('!') so inline documentation survives.
+        pattern = rf'({key}\s*=\s*)[^,/!\n]+'
+        new_content = re.sub(pattern, rf'\g<1>{value} ', content, flags=re.IGNORECASE)
         if new_content != content:
             content = new_content
         else:
@@ -191,21 +197,8 @@ def main():
     ref_neo2_in = os.path.join(data_dir, 'reference', 'neo2.in')
     output_file = 'neo2_multispecies_out.h5'
 
-    # Reduced resolution for fast smoke test (~seconds instead of minutes).
-    # Physical accuracy is irrelevant; we only test that isw_calc_Er=2
-    # produces consistent Om_tE/MtOvR values.
-    # Reduced resolution for fast smoke test (~seconds instead of minutes).
-    # Disable NTV (ripple solver is the main cost) and use minimal grids.
-    # Physical accuracy is irrelevant; we only test that isw_calc_Er=2
-    # produces consistent Om_tE/MtOvR values.
-    # Reduced resolution for fast smoke test.
-    # Disable NTV and magnetic drift (the ripple solver and drift
-    # computation dominate runtime). Use minimal velocity grids.
-    # Physical accuracy is irrelevant; we only test that isw_calc_Er=2
-    # produces consistent Om_tE/MtOvR values.
-    # Reduced resolution for fast smoke test.
-    # Disable NTV (ripple solver is the main cost). Keep ISW_CALC_MAGDRIFT=1
-    # because the multispecies output path requires it.
+    # Reduced resolution for a fast smoke test (~seconds instead of minutes).
+    # Disable NTV (the ripple solver dominates runtime) and use minimal grids.
     # Physical accuracy is irrelevant; we only test that isw_calc_Er=2
     # produces consistent Om_tE/MtOvR values.
     fast_params = {

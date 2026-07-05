@@ -276,6 +276,7 @@ def test_half_omte_differs():
         assert np.allclose(f_full['Om_tE'][()] * 0.5, f_half['Om_tE'][()]), \
             "Half profile should be exactly half of full"
 
+
 if __name__ == '__main__':
     test_write_multispec_to_hdf5()
     test_derivative()

@@ -40,8 +40,8 @@ contains
       MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE_in, T_spec, m_spec)
       Om_tE_out = MtOvR_spec_to_Om_tE(MtOvR_spec, T_spec, m_spec)
 
-      rel_err = abs(Om_tE_out - Om_tE_in)/abs(Om_tE_in)
-      if (rel_err > epsilon(1.0_dp)*10.0_dp) then
+      rel_err = abs(Om_tE_out - Om_tE_in) / abs(Om_tE_in)
+      if (rel_err > epsilon(1.0_dp) * 10.0_dp) then
          print *, "FAIL: round-trip test"
          print *, "  Input Om_tE:", Om_tE_in
          print *, "  Output Om_tE:", Om_tE_out
@@ -63,13 +63,13 @@ contains
       T_spec = [1.6d-9]
       m_spec = [1.672621637d-24]
 
-      v_th = sqrt(2.0_dp*T_spec(1)/m_spec(1))
-      expected_MtOvR = Om_tE/v_th
+      v_th = sqrt(2.0_dp * T_spec(1) / m_spec(1))
+      expected_MtOvR = Om_tE / v_th
 
       MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
 
-      rel_err = abs(MtOvR_spec(1) - expected_MtOvR)/abs(expected_MtOvR)
-      if (rel_err > epsilon(1.0_dp)*10.0_dp) then
+      rel_err = abs(MtOvR_spec(1) - expected_MtOvR) / abs(expected_MtOvR)
+      if (rel_err > epsilon(1.0_dp) * 10.0_dp) then
          print *, "FAIL: known values test"
          print *, "  Expected MtOvR:", expected_MtOvR
          print *, "  Got MtOvR:", MtOvR_spec(1)
@@ -79,7 +79,7 @@ contains
          print *, "PASS: known values test"
       end if
 
-      if (abs(v_th - 4.3739733630d7)/4.3739733630d7 > 1.0d-8) then
+      if (abs(v_th - 4.3739733630d7) / 4.3739733630d7 > 1.0d-8) then
          print *, "FAIL: thermal velocity sanity check"
          print *, "  v_th:", v_th, " expected 4.3739733630e7 cm/s"
          status = status + 1
@@ -110,11 +110,11 @@ contains
          print *, "PASS: MtOvR_spec differs between species (electron/proton)"
       end if
 
-      Om_tE_from_electron = MtOvR_spec(1)*sqrt(2.0_dp*T_spec(1)/m_spec(1))
-      Om_tE_from_proton = MtOvR_spec(2)*sqrt(2.0_dp*T_spec(2)/m_spec(2))
+      Om_tE_from_electron = MtOvR_spec(1) * sqrt(2.0_dp * T_spec(1) / m_spec(1))
+      Om_tE_from_proton = MtOvR_spec(2) * sqrt(2.0_dp * T_spec(2) / m_spec(2))
 
-      rel_err = abs(Om_tE_from_electron - Om_tE_from_proton)/abs(Om_tE_in)
-      if (rel_err > epsilon(1.0_dp)*100.0_dp) then
+      rel_err = abs(Om_tE_from_electron - Om_tE_from_proton) / abs(Om_tE_in)
+      if (rel_err > epsilon(1.0_dp) * 100.0_dp) then
          print *, "FAIL: Om_tE should be species-independent"
          print *, "  From electron:", Om_tE_from_electron
          print *, "  From proton:", Om_tE_from_proton
@@ -147,7 +147,7 @@ contains
          print *, "PASS: consistent data passes check"
       end if
 
-      MtOvR_spec(2) = MtOvR_spec(2)*1.1_dp
+      MtOvR_spec(2) = MtOvR_spec(2) * 1.1_dp
       is_consistent = check_Om_tE_consistency(MtOvR_spec, T_spec, m_spec, 1.0d-12)
 
       if (is_consistent) then
@@ -230,7 +230,6 @@ contains
          end if
       end do
 
-      ! Also verify that full and half results actually differ
       if (abs(MtOvR_full(1) - MtOvR_half(1)) < epsilon(1.0_dp)) then
          print *, "FAIL: full and half Om_tE should produce different MtOvR"
          status = status + 1
