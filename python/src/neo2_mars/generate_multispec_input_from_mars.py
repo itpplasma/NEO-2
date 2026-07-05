@@ -59,10 +59,14 @@ def _parse_species_from_run_in(path):
         content = handle.read()
 
     def _values(name):
-        for line in content.splitlines():
-            if name in line:
-                _, values = line.split('=', 1)
-                return [float(value.strip().strip(',')) for value in values.split(',') if value.strip()]
+        for raw_line in content.splitlines():
+            line = raw_line.split('!', 1)[0]
+            if '=' not in line:
+                continue
+            key, values = line.split('=', 1)
+            if key.strip().upper() != name.upper():
+                continue
+            return [float(value.strip().strip(',')) for value in values.split(',') if value.strip()]
         raise ValueError(f'Could not find {name} in {path}')
 
     z_values = [int(value) for value in _values('ESPECIES_Z')]

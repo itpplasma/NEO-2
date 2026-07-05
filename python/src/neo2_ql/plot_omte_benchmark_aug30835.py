@@ -1,5 +1,6 @@
 """Plot Om_tE model hierarchy using the full 100-surface AUG 30835 benchmark."""
 
+import os
 from pathlib import Path
 
 import glob
@@ -13,8 +14,9 @@ from .compute_omte import (
 )
 
 
-BENCHMARK_DIR = Path(
-    '/home/ert/data/AUG/NEO-2/30835/2016_controlled_fusion_rmp90_benchmark'
+DATA_ROOT = Path(os.environ.get('NEO2_DATA_ROOT', '/home/ert/data'))
+BENCHMARK_DIR = (
+    DATA_ROOT / 'AUG/NEO-2/30835/2016_controlled_fusion_rmp90_benchmark'
 )
 MULTISPEC_INPUT = BENCHMARK_DIR / 'aug_30835.in'
 

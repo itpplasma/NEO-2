@@ -1,5 +1,6 @@
 """Regenerate the AUG 30835 Om_tE reference fixture from real NEO-2 outputs."""
 
+import os
 from pathlib import Path
 import re
 
@@ -8,14 +9,16 @@ import numpy as np
 
 
 FIXTURE_PATH = Path(__file__).with_name('omte_reference_aug30835.npz')
-BC_FILE_PATH = Path(
-    '/home/ert/data/AUG/NEO-2/30835/'
-    '2016_controlled_fusion_rmp90_benchmark/'
-    'gacode_neo_comparison/sfincs_compare/converted_bc/axisymmetric.bc'
+DATA_ROOT = Path(os.environ.get('NEO2_DATA_ROOT', '/home/ert/data'))
+BC_FILE_PATH = (
+    DATA_ROOT / 'AUG/NEO-2/30835'
+    / '2016_controlled_fusion_rmp90_benchmark'
+    / 'gacode_neo_comparison/sfincs_compare/converted_bc/axisymmetric.bc'
 )
+RUN_BASE = DATA_ROOT / 'AUG/NEO-2/30835/gorilla_axisymmetric_baseline/runs/ql_two_surfaces'
 RUN_DIRS = [
-    Path('/home/ert/data/AUG/NEO-2/30835/gorilla_axisymmetric_baseline/runs/ql_two_surfaces/es_0p25271'),
-    Path('/home/ert/data/AUG/NEO-2/30835/gorilla_axisymmetric_baseline/runs/ql_two_surfaces/es_0p49841'),
+    RUN_BASE / 'es_0p25271',
+    RUN_BASE / 'es_0p49841',
 ]
 SOURCE_H5_PATHS = [run_dir / 'neo2_multispecies_out.h5' for run_dir in RUN_DIRS]
 SOURCE_NEO2_INPUT_PATHS = [run_dir / 'neo2.in' for run_dir in RUN_DIRS]

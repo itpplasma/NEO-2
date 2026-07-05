@@ -1736,8 +1736,6 @@ CONTAINS
        CALL h5_add(h5id_multispec, 'R_Vphi', R_Vphi)
        CALL h5_add(h5id_multispec, 'Z_Vphi', Z_Vphi)
        CALL h5_add(h5id_multispec, 'boozer_theta_Vphi', boozer_theta_Vphi)
-       CALL h5_add(h5id_multispec, 'MtOvR', MtOvR_spec, &
-            LBOUND(MtOvR_spec), UBOUND(MtOvR_spec))
 
        CALL h5_add(h5id_multispec, 'VthtB_spec', VthtB_spec, &
             LBOUND(VthtB_spec), UBOUND(VthtB_spec))
