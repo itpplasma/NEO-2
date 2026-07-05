@@ -13,17 +13,8 @@ MODULE sparse_mod
   PRIVATE dp
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
-  PRIVATE long
-  INTEGER, PARAMETER :: long = 8
-
   PRIVATE factorization_exists
   LOGICAL :: factorization_exists = .FALSE.
-
-  !-------------------------------------------------------------------------------
-  !Initialization of the parameters of Super_LU c-Routines
-  PRIVATE factors
-  INTEGER(kind=long) :: factors
-  !-------------------------------------------------------------------------------
 
   PUBLIC load_mini_example
   PRIVATE load_mini_ex

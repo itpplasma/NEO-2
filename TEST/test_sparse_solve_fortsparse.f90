@@ -5,6 +5,8 @@ program test_sparse_solve_fortsparse
     ! through the b2_loop path. Each solution is checked against a known
     ! answer and a residual bound.
     use sparse_mod, only: sparse_solve, sparse_solve_method
+    use sparse_solve_fortsparse, only: fs_solve_real, fs_solve_real_2, &
+        fs_vector_real
     implicit none
 
     integer, parameter :: dp = kind(1.0d0)
@@ -24,6 +26,8 @@ program test_sparse_solve_fortsparse
     call test_complex_b2(3, status)
     call test_poisson(3, status)
     call test_poisson(2, status)
+    call test_real_two_vector(3, status)
+    call test_real_two_vector(2, status)
 
     if (status == 0) then
         print *, "All tests passed!"
@@ -207,6 +211,39 @@ contains
         call sparse_solve(n, n, nz, irow, pcol, val, b, 0)
         call check_real(b, xref, 'poisson', method, status)
     end subroutine test_poisson
+
+    ! Two-vector zero-copy solve: factor once via fs_solve_real(iopt=1), then
+    ! reuse the resident factorization through fs_solve_real_2 with the shared
+    ! fs_vector_real RHS/solution slots, mirroring ripple_solver's iteration
+    ! loop. Two right-hand sides confirm the factorization is reused, not rebuilt.
+    subroutine test_real_two_vector(method, status)
+        integer, intent(in) :: method
+        integer, intent(inout) :: status
+        integer :: nrow, ncol, nz
+        integer, allocatable :: irow(:), pcol(:)
+        real(dp), allocatable :: val(:), b(:), xref(:)
+        real(dp), pointer :: rhs(:), sol(:)
+        logical :: refine
+
+        sparse_solve_method = method
+        refine = method == 2
+        call small_real(nrow, ncol, nz, irow, pcol, val, b, xref)
+
+        call fs_solve_real(nrow, ncol, nz, irow, pcol, val, b, 1, refine)
+        rhs => fs_vector_real(ncol)
+        sol => fs_vector_real(ncol)
+
+        rhs = b
+        call fs_solve_real_2(rhs, sol, refine)
+        call check_real(sol, xref, 'real two-vector rhs1', method, status)
+
+        rhs = [7.0_dp, 9.0_dp, 14.0_dp]
+        call fs_solve_real_2(rhs, sol, refine)
+        call check_real(sol, [2.0_dp, 3.0_dp, 3.0_dp], 'real two-vector rhs2', &
+            method, status)
+
+        call fs_solve_real(nrow, ncol, nz, irow, pcol, val, b, 3, refine)
+    end subroutine test_real_two_vector
 
     subroutine check_real(x, xref, name, method, status)
         real(dp), intent(in) :: x(:), xref(:)
