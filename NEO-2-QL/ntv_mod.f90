@@ -2095,7 +2095,7 @@ CONTAINS
         end if
       else
         write(*,*) 'WARNING: particle flux ambipolarity could not be checked,'
-        write(*,*) '  as isw_calc_Er is not 1 (current value:', isw_calc_Er, ')'
+        write(*,*) '  as isw_calc_Er is less than 1 (current value:', isw_calc_Er, ')'
       end if
     end function check_ambipolarity_particle_flux
   END SUBROUTINE write_multispec_output_a
