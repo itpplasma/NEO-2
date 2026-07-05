@@ -193,6 +193,10 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/current/out
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/summary.h5
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/transport_k/current/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/transport_k/current/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/transport_k/reference/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/transport_k/reference/out
 
       - name: Build NEO-2 (reference version - main branch)
         if: github.event_name == 'pull_request'
@@ -251,6 +255,10 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/current/out
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/summary.h5
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/transport_k/current/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/transport_k/current/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/transport_k/reference/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/transport_k/reference/out
 
       - name: Run QL performance test
         if: github.event_name == 'pull_request'
