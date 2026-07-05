@@ -128,7 +128,7 @@ CONTAINS
     CASE (1);  key = 15
     CASE (2);  key = 21
     CASE (3);  key = 31
-    CASE (4);  key = 31
+    CASE (4);  key = 61
     CASE (5);  key = 61
     CASE (6);  key = 61
     CASE DEFAULT; key = 21
