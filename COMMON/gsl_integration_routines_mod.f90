@@ -288,7 +288,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with known singular points
-  RECURSIVE FUNCTION fint1d_param0_qagp(func1d_param0_user,pts,siz_pts,epsabs,epsrel) result(res)
+  RECURSIVE FUNCTION fint1d_param0_qagp(func1d_param0_user,pts,epsabs,epsrel) result(res)
 
     INTERFACE
        FUNCTION func1d_param0_user(x)
@@ -299,7 +299,6 @@ CONTAINS
     END INTERFACE
     REAL(wp) :: epsabs, epsrel
     REAL(wp), DIMENSION(:) :: pts
-    INTEGER :: siz_pts
     REAL(wp), DIMENSION(2) :: res
 
     TYPE(integrate_workspace_t) :: ws
@@ -328,7 +327,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with known singular points (parameter-valued input function)
-  RECURSIVE FUNCTION fint1d_param1_qagp(func1d_param1_user,param1,pts,siz_pts,epsabs,epsrel) result(res)
+  RECURSIVE FUNCTION fint1d_param1_qagp(func1d_param1_user,param1,pts,epsabs,epsrel) result(res)
 
     INTERFACE
        FUNCTION func1d_param1_user(x,param1)
@@ -340,7 +339,6 @@ CONTAINS
     REAL(wp) :: param1
     REAL(wp) :: epsabs, epsrel
     REAL(wp), DIMENSION(:) :: pts
-    INTEGER :: siz_pts
     REAL(wp), DIMENSION(2) :: res
 
     TYPE(integrate_workspace_t) :: ws
