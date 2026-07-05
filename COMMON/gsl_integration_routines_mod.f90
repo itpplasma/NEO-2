@@ -307,9 +307,9 @@ CONTAINS
     TYPE(integrate_result_t) :: result
     TYPE(fortnum_status_t) :: status
 
-    ! In GSL, pts holds the boundaries [a, interior break points..., b]. fortnum
-    ! takes (a, b, interior break points) separately.
-    CALL integrate_qagp(panel, pts(1), pts(SIZE(pts)), pts(2:SIZE(pts)-1), &
+    ! In GSL, pts(1:siz_pts) holds the boundaries [a, interior break points..., b].
+    ! fortnum takes (a, b, interior break points) separately.
+    CALL integrate_qagp(panel, pts(1), pts(siz_pts), pts(2:siz_pts-1), &
          epsabs, epsrel, ws, epstab, result, status, limit=GK_LIMIT)
     CALL check_status(status)
     res(1) = result%value
@@ -348,7 +348,7 @@ CONTAINS
     TYPE(integrate_result_t) :: result
     TYPE(fortnum_status_t) :: status
 
-    CALL integrate_qagp(panel, pts(1), pts(SIZE(pts)), pts(2:SIZE(pts)-1), &
+    CALL integrate_qagp(panel, pts(1), pts(siz_pts), pts(2:siz_pts-1), &
          epsabs, epsrel, ws, epstab, result, status, limit=GK_LIMIT)
     CALL check_status(status)
     res(1) = result%value
