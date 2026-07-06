@@ -17,7 +17,7 @@ subroutine ripple_solver_ArnoldiO2( &
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
                                   isw_momentum, nvel, num_spec, lsw_multispecies, &
-                                  T_spec, m_spec
+                                  T_spec, m_spec, z_spec
 ! collpar - the same as $\kappa$ - inverse mean-free path times 4
   !! Modifications by Andreas F. Martitsch (01.04.2015)
     !
@@ -77,7 +77,9 @@ subroutine ripple_solver_ArnoldiO2( &
     use ntv_mod, only: isw_qflux_NA, MtOvR, Om_tE, B_rho_L_loc, &
                        m_phi, qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val, &
                        qflux_symm_allspec, qflux_ntv_allspec, &
-                       MtOvR_spec, isw_calc_Er, B_rho_L_loc_spec, isw_calc_MagDrift
+                       MtOvR_spec, isw_calc_Er, B_rho_L_loc_spec, isw_calc_MagDrift, &
+                       isw_hel_drive, m_theta_hel, hel_brad_re, hel_brad_im, &
+                       hel_phim_re, hel_phim_im, clight_hel => c, echarge_hel => e
     use ntv_mod, only: get_Er, get_B_rho_L_loc
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
   !! End Modification by Andreas F. Martitsch (14.07.2015)
@@ -218,6 +220,12 @@ subroutine ripple_solver_ArnoldiO2( &
     complex(dp), dimension(:, :), allocatable :: q_rip_1
     complex(dp), dimension(:, :), allocatable :: q_rip_incompress
     complex(dp), dimension(:, :), allocatable :: q_rip_parflow
+    ! Single-helicity misalignment drive: band profiles along the field line
+    ! (q_hel_b: vpar corrugation piece, q_hel_e: ExB piece)
+    complex(dp), dimension(:, :), allocatable :: q_hel_b, q_hel_e
+    complex(dp) :: amp_hel_b, amp_hel_e, hel_phase, hel_phase_fac
+    real(dp) :: vt_hel, rho_hel
+    logical :: hel_drive_active
     real(dp), dimension(:, :, :), allocatable :: rhs_mat_energ
     real(dp), dimension(:, :, :), allocatable :: rhs_mat_energ2     !NTV
     real(dp), dimension(:, :, :), allocatable :: pleg_bra, pleg_ket
@@ -283,6 +291,8 @@ subroutine ripple_solver_ArnoldiO2( &
     integer :: i_ctr = 0, uw, uw_new
     logical :: lsw_debug_distfun = .FALSE.
     logical :: addboucol = .false.
+
+    hel_drive_active = .FALSE.
 
     ! multi-species part - MPI rank determines species
     ispec = mpro%getRank()
@@ -923,6 +933,10 @@ subroutine ripple_solver_ArnoldiO2( &
     allocate (q_rip_1(npart + 2, ibeg:iend))
     allocate (q_rip_incompress(npart + 2, ibeg:iend))
     allocate (q_rip_parflow(npart + 2, ibeg:iend))
+    allocate (q_hel_b(npart + 2, ibeg:iend))
+    allocate (q_hel_e(npart + 2, ibeg:iend))
+    q_hel_b = (0.d0, 0.d0)
+    q_hel_e = (0.d0, 0.d0)
     allocate (convol_flux(npart + 1, ibeg:iend), convol_curr(npart + 1, ibeg:iend))
     allocate (convol_flux_0(npart + 1, ibeg:iend))
     allocate (ind_start(ibeg:iend))
@@ -1008,6 +1022,7 @@ subroutine ripple_solver_ArnoldiO2( &
         deallocate (fun_coef, ttmp_mat)
         deallocate (rhs_mat_energ2)        !NTV
         deallocate (q_rip, q_rip_1, q_rip_incompress, q_rip_parflow)
+        deallocate (q_hel_b, q_hel_e)
         deallocate (convol_flux, convol_curr, convol_flux_0)
         deallocate (pleg_bra, pleg_ket, scalprod_pleg)
         write (*, *) 'ERROR: maxval(phi_divide) > 1, returning.'
@@ -3180,6 +3195,45 @@ subroutine ripple_solver_ArnoldiO2( &
         q_rip(:, istep, 2) = -2.d0*q_rip(:, istep, 2)*bnoverb0(istep)
     end do
 
+    ! Single-helicity misalignment drive: fill the band profiles along the
+    ! field line. Amplitudes and band integrals follow the CAS-checked
+    ! derivation referenced in the pull request:
+    !   vpar corrugation piece: band source cB (eta_k - eta_{k-1})/rho_alpha,
+    !     sigma-odd, velocity weights a3m (A1 channel) and x^2 (A2 channel);
+    !   ExB piece: band source 2 (lambda_{k-1} - lambda_k) vE^s_m /
+    !     (Bhat h^phi vT rho_alpha), sigma-even, velocity weights x^-1
+    !     (A1 channel) and a1m (A2 channel);
+    !   vE^s_m z e bmod0/(2 T c) reduces to the bmod0-free hat form used
+    !     for amp_hel_e below.
+    if (isw_hel_drive .ne. 0) then
+        hel_drive_active = .TRUE.
+        hel_phase_fac = imun*(DBLE(m_theta_hel)*aiota + DBLE(m_phi))
+        vt_hel = SQRT(2.d0*T_spec(ispec)/m_spec(ispec))
+        rho_hel = vt_hel*m_spec(ispec)*clight_hel &
+                  /(z_spec(ispec)*echarge_hel*(bmod0*1.0d4))
+        amp_hel_b = CMPLX(hel_brad_re, hel_brad_im, kind=dp)/rho_hel
+        amp_hel_e = imun*CMPLX(hel_phim_re, hel_phim_im, kind=dp) &
+                    *z_spec(ispec)*echarge_hel/(2.d0*T_spec(ispec)) &
+                    *(DBLE(m_phi)*bcovar_theta_hat - DBLE(m_theta_hel)*bcovar_phi_hat) &
+                    /(boozer_psi_pr_hat*denomjac)
+        do istep = ibeg, iend
+            npassing = npl(istep)
+            hel_phase = EXP(hel_phase_fac*phi_mfl(istep))
+            q_hel_b(:, istep) = (0.d0, 0.d0)
+            q_hel_e(:, istep) = (0.d0, 0.d0)
+            q_hel_b(1:npassing, istep) = amp_hel_b*hel_phase &
+                *(eta(1:npassing) - eta(0:npassing - 1))
+            q_hel_b(npassing + 1, istep) = amp_hel_b*hel_phase &
+                *(1.d0/bhat_mfl(istep) - eta(npassing))
+            q_hel_e(1:npassing, istep) = amp_hel_e*hel_phase &
+                *2.d0*(alambd(0:npassing - 1, istep) - alambd(1:npassing, istep)) &
+                /(bhat_mfl(istep)*h_phi_mfl(istep))
+            q_hel_e(npassing + 1, istep) = amp_hel_e*hel_phase &
+                *2.d0*alambd(npassing, istep) &
+                /(bhat_mfl(istep)*h_phi_mfl(istep))
+        end do
+    end if
+
     if (nobounceaver) then
     !! Modifications by Andreas F. Martitsch (18.08.2014)
         ! derivative along the periodic Boozer angle theta has
@@ -3312,6 +3366,7 @@ subroutine ripple_solver_ArnoldiO2( &
     deallocate (enu_coef2, dellampow2, rhs_mat_energ2)
     deallocate (npl, rhs_mat_fzero, rhs_mat_lorentz, rhs_mat_energ, q_rip, q_rip_1)
     deallocate (q_rip_incompress, q_rip_parflow)
+    deallocate (q_hel_b, q_hel_e)
     deallocate (fun_coef, ttmp_mat)
     deallocate (convol_flux, convol_curr, ind_start, convol_flux_0)
     deallocate (delt_pos, delt_neg, fact_pos_b, fact_neg_b, fact_pos_e, fact_neg_e)
@@ -4189,7 +4244,134 @@ CONTAINS
             end do
         end do
 
+        if (hel_drive_active .and. iplot .ne. 1) then
+            call add_hel_source(q_hel_b, asource(0:lag, 2), 1, -1)
+            call add_hel_source(q_hel_b, asource_hel(0:lag, 2), 3, -1)
+            call add_hel_source(q_hel_e, asource_hel(0:lag, 1), 1, 1)
+            call add_hel_source(q_hel_e, asource(0:lag, 1), 3, 1)
+        end if
+
     end subroutine source_flux
+
+!------------------------------------------------------------------------
+    subroutine add_hel_source(q_hel, amom, lcol, isig)
+
+! Adds one misalignment-drive piece (band profile q_hel, velocity moments
+! amom) to source_vector column lcol, following the integration-scheme
+! structure of the standard drives assembled above. isig = +1 for
+! sigma-even pieces (sign pattern of columns 1 and 3), isig = -1 for
+! sigma-odd pieces (sign pattern of column 2).
+
+        complex(dp), dimension(:, ibeg:), intent(in) :: q_hel
+        real(dp), dimension(0:), intent(in) :: amom
+        integer, intent(in) :: lcol, isig
+
+        integer :: is, mh, kh, kh_prev, np, np_prev, np_next
+        real(dp) :: sg
+
+        sg = DBLE(isig)
+
+        do is = ibeg, iend
+            np = npl(is)
+            do mh = 0, lag
+                kh = ind_start(is) + 2*(np + 1)*mh
+
+                if (is .GT. ibeg) then
+                    np_prev = npl(is - 1)
+                    kh_prev = ind_start(is - 1) + 2*(np_prev + 1)*mh
+                    if (MOD(is - ibeg, 2) .EQ. 1) then
+                        np_next = npl(is + 1)
+                        source_vector(kh + 1:kh + np + 1, lcol) &
+                            = source_vector(kh + 1:kh + np + 1, lcol) &
+                              + amom(mh)/1.5d0*q_hel(1:np + 1, is)*fact_pos_e(is)
+                        source_vector(kh + 1:kh + np_prev + 1, lcol) &
+                            = source_vector(kh + 1:kh + np_prev + 1, lcol) &
+                              + amom(mh)/2.4d0*q_hel(1:np_prev + 1, is - 1)*fact_pos_b(is - 1)
+                        source_vector(kh + 1:kh + np_next + 1, lcol) &
+                            = source_vector(kh + 1:kh + np_next + 1, lcol) &
+                              - amom(mh)/12d0*q_hel(1:np_next + 1, is + 1)*fact_pos_e(is + 1)
+                    else
+                        np_next = npl(is - 2)
+                        source_vector(kh + 1:kh + np + 1, lcol) &
+                            = source_vector(kh + 1:kh + np + 1, lcol) &
+                              + amom(mh)/2.4d0*q_hel(1:np + 1, is)*fact_pos_e(is)
+                        if (np_prev .LE. np) then
+                            source_vector(kh + 1:kh + np_prev + 1, lcol) &
+                                = source_vector(kh + 1:kh + np_prev + 1, lcol) &
+                                  + amom(mh)/1.5d0*q_hel(1:np_prev + 1, is - 1)*fact_pos_b(is - 1)
+                        else
+                            source_vector(kh + 1:kh + np + 1, lcol) &
+                                = source_vector(kh + 1:kh + np + 1, lcol) &
+                                  + amom(mh)/1.5d0*q_hel(1:np + 1, is - 1)*fact_pos_b(is - 1)
+                            source_vector(kh_prev + np_prev + 2, lcol) &
+                                = source_vector(kh_prev + np_prev + 2, lcol) &
+                                  + amom(mh)/1.5d0*q_hel(np_prev + 1, is - 1)*fact_pos_b(is - 1)
+                        end if
+                        if (np_next .LE. np) then
+                            source_vector(kh + 1:kh + np_next + 1, lcol) &
+                                = source_vector(kh + 1:kh + np_next + 1, lcol) &
+                                  - amom(mh)/12d0*q_hel(1:np_next + 1, is - 2)*fact_pos_b(is - 2)
+                        else
+                            source_vector(kh + 1:kh + np + 1, lcol) &
+                                = source_vector(kh + 1:kh + np + 1, lcol) &
+                                  - amom(mh)/12d0*q_hel(1:np + 1, is - 2)*fact_pos_b(is - 2)
+                            source_vector(kh_prev + np_prev + 2, lcol) &
+                                = source_vector(kh_prev + np_prev + 2, lcol) &
+                                  - amom(mh)/12d0*q_hel(np_next + 1, is - 2)*fact_pos_b(is - 2)
+                        end if
+                    end if
+                end if
+
+                if (is .LT. iend) then
+                    np_prev = npl(is + 1)
+                    kh_prev = ind_start(is + 1) + 2*(np_prev + 1)*mh
+                    if (MOD(is - ibeg, 2) .EQ. 1) then
+                        np_next = npl(is - 1)
+                        source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
+                            = source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
+                              + sg*amom(mh)/1.5d0*q_hel(np + 1:1:-1, is)*fact_neg_e(is)
+                        source_vector(kh + 2*np + 2 - np_prev:kh + 2*np + 2, lcol) &
+                            = source_vector(kh + 2*np + 2 - np_prev:kh + 2*np + 2, lcol) &
+                              + sg*amom(mh)/2.4d0*q_hel(np_prev + 1:1:-1, is + 1)*fact_neg_b(is + 1)
+                        source_vector(kh + 2*np + 2 - np_next:kh + 2*np + 2, lcol) &
+                            = source_vector(kh + 2*np + 2 - np_next:kh + 2*np + 2, lcol) &
+                              - sg*amom(mh)/12d0*q_hel(np_next + 1:1:-1, is - 1)*fact_neg_e(is - 1)
+                    else
+                        np_next = npl(is + 2)
+                        source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
+                            = source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
+                              + sg*amom(mh)/2.4d0*q_hel(np + 1:1:-1, is)*fact_neg_e(is)
+                        if (np_prev .LE. np) then
+                            source_vector(kh + 2*np + 2 - np_prev:kh + 2*np + 2, lcol) &
+                                = source_vector(kh + 2*np + 2 - np_prev:kh + 2*np + 2, lcol) &
+                                  + sg*amom(mh)/1.5d0*q_hel(np_prev + 1:1:-1, is + 1)*fact_neg_b(is + 1)
+                        else
+                            source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
+                                = source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
+                                  + sg*amom(mh)/1.5d0*q_hel(np + 1:1:-1, is + 1)*fact_neg_b(is + 1)
+                            source_vector(kh_prev + np_prev + 1, lcol) &
+                                = source_vector(kh_prev + np_prev + 1, lcol) &
+                                  + sg*amom(mh)/1.5d0*q_hel(np_prev + 1, is + 1)*fact_neg_b(is + 1)
+                        end if
+                        if (np_next .LE. np) then
+                            source_vector(kh + 2*np + 2 - np_next:kh + 2*np + 2, lcol) &
+                                = source_vector(kh + 2*np + 2 - np_next:kh + 2*np + 2, lcol) &
+                                  - sg*amom(mh)/12d0*q_hel(np_next + 1:1:-1, is + 2)*fact_neg_b(is + 2)
+                        else
+                            source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
+                                = source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
+                                  - sg*amom(mh)/12d0*q_hel(np + 1:1:-1, is + 2)*fact_neg_b(is + 2)
+                            source_vector(kh_prev + np_prev + 1, lcol) &
+                                = source_vector(kh_prev + np_prev + 1, lcol) &
+                                  - sg*amom(mh)/12d0*q_hel(np_next + 1, is + 2)*fact_neg_b(is + 2)
+                        end if
+                    end if
+                end if
+
+            end do
+        end do
+
+    end subroutine add_hel_source
 
 !------------------------------------------------------------------------
     subroutine add_f01_source

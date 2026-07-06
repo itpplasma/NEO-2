@@ -47,6 +47,18 @@ MODULE ntv_mod
   REAL(kind=dp), PUBLIC :: Om_tE
   !> Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc) times B
   REAL(kind=dp), PUBLIC :: B_rho_L_loc
+  !> switch: turn on(=1)/off(=0) the single-helicity misalignment drive
+  !> (additional RHS of the non-axisymmetric equation set)
+  INTEGER, PUBLIC :: isw_hel_drive
+  !> poloidal mode number m of the misalignment-drive harmonic
+  !> (toroidal mode number n is m_phi from the file or m_phi_input)
+  INTEGER, PUBLIC :: m_theta_hel
+  !> complex amplitude (delta B^s/B_0^phi)_mn of the radial corrugation,
+  !> dimensionless flux-function amplitude
+  REAL(kind=dp), PUBLIC :: hel_brad_re, hel_brad_im
+  !> complex amplitude Phi_mn of the electrostatic perturbation harmonic
+  !> in statvolt
+  REAL(kind=dp), PUBLIC :: hel_phim_re, hel_phim_im
 
   ! ADDITIONAL INPUT FOR MULTI-SPECIES COMPUTATIONS (neo2.in)
 

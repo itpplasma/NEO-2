@@ -188,6 +188,17 @@
              ! isw_calc_Er=1: computed from ambipolarity (this value ignored).
              ! isw_calc_Er=2: read from here (single-surface) or multispec HDF5
              !   (profile runs with isw_multispecies_init > 0). [0.0d0]
+ isw_hel_drive = 0 ! Turn on(=1)/off(=0) the single-helicity misalignment
+                   ! drive (additional RHS of the non-axisymmetric equation
+                   ! set: radial corrugation + electrostatic harmonic). [0]
+ m_theta_hel = 0 ! Poloidal mode number m of the misalignment-drive
+                 ! harmonic; toroidal mode number n is m_phi from the file
+                 ! or m_phi_input. [0]
+ hel_brad_re = 0.0 ! Re of the corrugation amplitude (delta B^s/B_0^phi)_mn,
+                   ! dimensionless flux-function amplitude. [0.0d0]
+ hel_brad_im = 0.0 ! Im of the corrugation amplitude. [0.0d0]
+ hel_phim_re = 0.0 ! Re of the electrostatic harmonic Phi_mn in statvolt. [0.0d0]
+ hel_phim_im = 0.0 ! Im of the electrostatic harmonic Phi_mn in statvolt. [0.0d0]
 /
 &plotting
  plot_gauss = 0 ! Plotting of gauss function in flint. [0]

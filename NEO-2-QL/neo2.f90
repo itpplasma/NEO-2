@@ -65,7 +65,9 @@ module neo2_ql
        MtOvR, Om_tE, B_rho_L_loc, xstart_cyl, isw_ripple_solver,   &
        isw_calc_Er, isw_calc_MagDrift, species_tag_Vphi,            &
        isw_Vphi_loc, Vphi, R_Vphi, Z_Vphi, boozer_theta_Vphi,       &
-       dn_spec_ov_ds, dT_spec_ov_ds, has_perturbation_file
+       dn_spec_ov_ds, dT_spec_ov_ds,                                &
+       isw_hel_drive, m_theta_hel, hel_brad_re, hel_brad_im,        &
+       hel_phim_re, hel_phim_im, has_perturbation_file
 
   ! derivative of iota for non-local NTV computations
   ! (with magnetic shear)
@@ -248,7 +250,9 @@ module neo2_ql
   NAMELIST /ntv_input/                                                        &
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, Om_tE, B_rho_L_loc,  &
        isw_ripple_solver, isw_mag_shear,                                      &
-       isw_m_phi_input, m_phi_input
+       isw_m_phi_input, m_phi_input,                                          &
+       isw_hel_drive, m_theta_hel, hel_brad_re, hel_brad_im,                  &
+       hel_phim_re, hel_phim_im
 
 contains
 
@@ -669,6 +673,12 @@ subroutine main
        CALL h5_add(h5_config_group, 'B_rho_L_loc', B_rho_L_loc)
        CALL h5_add(h5_config_group, 'isw_ripple_solver', isw_ripple_solver)
        CALL h5_add(h5_config_group, 'isw_mag_shear', isw_mag_shear)
+       CALL h5_add(h5_config_group, 'isw_hel_drive', isw_hel_drive)
+       CALL h5_add(h5_config_group, 'm_theta_hel', m_theta_hel)
+       CALL h5_add(h5_config_group, 'hel_brad_re', hel_brad_re)
+       CALL h5_add(h5_config_group, 'hel_brad_im', hel_brad_im)
+       CALL h5_add(h5_config_group, 'hel_phim_re', hel_phim_re)
+       CALL h5_add(h5_config_group, 'hel_phim_im', hel_phim_im)
        CALL h5_close_group(h5_config_group)
 
        CALL h5_close(h5_config_id)
@@ -903,6 +913,12 @@ subroutine main
     B_rho_L_loc = 0.0d0
     isw_ripple_solver = 1
     isw_mag_shear = 0
+    isw_hel_drive = 0
+    m_theta_hel = 0
+    hel_brad_re = 0.0d0
+    hel_brad_im = 0.0d0
+    hel_phim_re = 0.0d0
+    hel_phim_im = 0.0d0
     !! End Modification by Andreas F. Martitsch (14.07.2015)
 
     use_fpol = .false. ! to switch off some features, which are untested with neo-2
