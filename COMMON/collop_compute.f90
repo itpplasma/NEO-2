@@ -1546,28 +1546,31 @@ contains
     call chop(asource_s)
 
     ! Moments of the single-helicity misalignment drive (weights x^-1, x^2);
-    ! always computed by quadrature, no precomputed-matrix-element path.
-    if (allocated(asource_hel)) deallocate(asource_hel)
-    allocate(asource_hel(0:lagmax, 2))
-    if (isw_relativistic .eq. 0) then
-       do k = 1, 2
-          do m = 0, lagmax
-             asource_hel(m, k) = integrate(am_hel, 0d0)
+    ! computed by quadrature only (left unallocated on the precomputed
+    ! matrix-element path; the solver rejects the drive in that case).
+    if (.not. precomp) then
+       if (allocated(asource_hel)) deallocate(asource_hel)
+       allocate(asource_hel(0:lagmax, 2))
+       if (isw_relativistic .eq. 0) then
+          do k = 1, 2
+             do m = 0, lagmax
+                asource_hel(m, k) = integrate(am_hel, 0d0)
+             end do
           end do
-       end do
-    else
-       do k = 1, 2
-          do m = 0, lagmax
-             asource_hel(m, k) = norm_maxwell * integrate(am_hel_rel1, 0d0)
+       else
+          do k = 1, 2
+             do m = 0, lagmax
+                asource_hel(m, k) = norm_maxwell * integrate(am_hel_rel1, 0d0)
+             end do
           end do
-       end do
+       end if
+       if (make_ortho) then
+          do k = 1, 2
+             asource_hel(:,k) = matmul(M_transform_inv, asource_hel(:,k))
+          end do
+       end if
+       call chop(asource_hel)
     end if
-    if (make_ortho) then
-       do k = 1, 2
-          asource_hel(:,k) = matmul(M_transform_inv, asource_hel(:,k))
-       end do
-    end if
-    call chop(asource_hel)
 
     write (*,*) "Computing weighting coefficients..."
 
@@ -1641,11 +1644,12 @@ contains
       am = pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * x**(2*k - 1 - 5*kdelta(3,k))
     end function am
 
-    ! Misalignment-drive weights x^(3k-4): k=1 -> x^-1, k=2 -> x^2
+    ! Misalignment-drive weights x^(3k-4): k=1 -> x^-1, k=2 -> x^2.
+    ! Powers folded into one factor so the x=0 quadrature node stays finite.
     function am_hel(x)
       real(kind=dp) :: x, am_hel
 
-      am_hel = pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * x**(3*k - 4)
+      am_hel = pi**(-3d0/2d0) * x**(3*k + alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x)
     end function am_hel
 
     function am_hel_rel1(x)
@@ -1655,8 +1659,8 @@ contains
       exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
       gam = sqrt(1 + 2*x**2/rmu)
 
-      am_hel_rel1 = 1d0/gam * pi**(-3d0/2d0) * x**(4+alpha) * exp(-(exp_maxwell+beta)*x**2) &
-           * phi_prj(m, x) * x**(3*k - 4)
+      am_hel_rel1 = 1d0/gam * pi**(-3d0/2d0) * x**(3*k + alpha) * exp(-(exp_maxwell+beta)*x**2) &
+           * phi_prj(m, x)
     end function am_hel_rel1
 
     function am_rel1(x)

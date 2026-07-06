@@ -3206,6 +3206,22 @@ subroutine ripple_solver_ArnoldiO2( &
     !   vE^s_m z e bmod0/(2 T c) reduces to the bmod0-free hat form used
     !     for amp_hel_e below.
     if (isw_hel_drive .ne. 0) then
+        if (.not. allocated(asource_hel)) then
+            stop 'isw_hel_drive requires quadrature collision moments '// &
+                 '(incompatible with precomputed matrix elements)'
+        end if
+        if (isw_relativistic .ne. 0) then
+            stop 'isw_hel_drive: relativistic drive moments not validated'
+        end if
+        if (iplot .eq. 1) then
+            stop 'isw_hel_drive: reconstruction mode not supported'
+        end if
+        if (T_spec(ispec) .le. 0.d0 .or. m_spec(ispec) .le. 0.d0) then
+            stop 'isw_hel_drive: invalid species temperature or mass'
+        end if
+        if (z_spec(ispec) .eq. 0.d0) then
+            stop 'isw_hel_drive: invalid species charge number'
+        end if
         hel_drive_active = .TRUE.
         hel_phase_fac = imun*(DBLE(m_theta_hel)*aiota + DBLE(m_phi))
         vt_hel = SQRT(2.d0*T_spec(ispec)/m_spec(ispec))
