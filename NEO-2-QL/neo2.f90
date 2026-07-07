@@ -952,11 +952,17 @@ subroutine main
     end if
 
     if (isw_qflux_NA == 1 .and. .not. has_perturbation_file()) then
-      write(*,*) 'ERROR: non-axisymmetric solve has no source.'
-      write(*,*) "  isw_qflux_NA=1 with in_file_pert='none' provides no"
-      write(*,*) '  perturbation field. Provide a perturbation file.'
-      write(*,*) 'Aborting...'
-      stop
+      if (isw_hel_drive == 0 .or. &
+          (hel_phim_re == 0.0d0 .and. hel_phim_im == 0.0d0 .and. &
+           hel_brad_re == 0.0d0 .and. hel_brad_im == 0.0d0)) then
+        write(*,*) 'ERROR: non-axisymmetric solve has no source.'
+        write(*,*) "  isw_qflux_NA=1 with in_file_pert='none' provides no"
+        write(*,*) '  perturbation field, and the helical drive is off or zero.'
+        write(*,*) '  Provide a perturbation file, or set isw_hel_drive with a'
+        write(*,*) '  non-zero hel_phim/hel_brad amplitude.'
+        write(*,*) 'Aborting...'
+        stop
+      end if
     end if
   end subroutine check
 
