@@ -12,6 +12,26 @@
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: amat_asymm
     DOUBLE PRECISION, DIMENSION(:,:),   ALLOCATABLE :: f0_coll,f0_ttmp
     DOUBLE PRECISION, DIMENSION(:,:,:), ALLOCATABLE :: f0_coll_all,f0_ttmp_all
+  CONTAINS
+    SUBROUTINE deallocate_ntv_eqmat()
+      IF (ALLOCATED(irow_symm)) DEALLOCATE(irow_symm)
+      IF (ALLOCATED(icol_symm)) DEALLOCATE(icol_symm)
+      IF (ALLOCATED(amat_symm)) DEALLOCATE(amat_symm)
+      IF (ALLOCATED(irow_regper)) DEALLOCATE(irow_regper)
+      IF (ALLOCATED(icol_regper)) DEALLOCATE(icol_regper)
+      IF (ALLOCATED(amat_regper)) DEALLOCATE(amat_regper)
+      IF (ALLOCATED(irow_asymm)) DEALLOCATE(irow_asymm)
+      IF (ALLOCATED(icol_asymm)) DEALLOCATE(icol_asymm)
+      IF (ALLOCATED(amat_asymm)) DEALLOCATE(amat_asymm)
+      IF (ALLOCATED(irow_per_pos)) DEALLOCATE(irow_per_pos)
+      IF (ALLOCATED(icol_per_pos)) DEALLOCATE(icol_per_pos)
+      IF (ALLOCATED(irow_per_neg)) DEALLOCATE(irow_per_neg)
+      IF (ALLOCATED(icol_per_neg)) DEALLOCATE(icol_per_neg)
+      IF (ALLOCATED(f0_coll)) DEALLOCATE(f0_coll)
+      IF (ALLOCATED(f0_ttmp)) DEALLOCATE(f0_ttmp)
+      IF (ALLOCATED(f0_coll_all)) DEALLOCATE(f0_coll_all)
+      IF (ALLOCATED(f0_ttmp_all)) DEALLOCATE(f0_ttmp_all)
+    END SUBROUTINE deallocate_ntv_eqmat
   END MODULE ntv_eqmat_mod
 
 !Sergei 20.07.2006 : modification of boundary layer is done now locally,
@@ -63,7 +83,8 @@ SUBROUTINE ripple_solver(                                 &
   ! MPI SUPPORT for multi-species part
   ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
   USE ntv_eqmat_mod, ONLY : nz_symm,irow_symm,icol_symm,amat_symm,             &
-                            nz_regper,irow_regper,icol_regper,amat_regper
+                            nz_regper,irow_regper,icol_regper,amat_regper,     &
+                            deallocate_ntv_eqmat
   use mpiprovider_module, only : mpro
   USE collop
   !! End Modification by Andreas F. Martitsch (28.07.2015)
@@ -1967,6 +1988,8 @@ PRINT *,'right boundary layer ignored'
 
   enddo
 
+
+  CALL deallocate_ntv_eqmat()
 
   allocate(irow(nz),icol(nz),amat_sp(nz),ipcol(ncol),bvec_sp(ncol))
   allocate(irow_regper(nz_regper),icol_regper(nz_regper),amat_regper(nz_regper))
