@@ -934,6 +934,14 @@ subroutine main
       write(*,*) 'Aborting...'
       stop
     end if
+
+    if (isw_qflux_NA == 1 .and. .not. has_perturbation_file()) then
+      write(*,*) 'ERROR: non-axisymmetric solve has no source.'
+      write(*,*) "  isw_qflux_NA=1 with in_file_pert='none' provides no"
+      write(*,*) '  perturbation field. Provide a perturbation file.'
+      write(*,*) 'Aborting...'
+      stop
+    end if
   end subroutine check
 
 
