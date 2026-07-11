@@ -125,6 +125,19 @@ set_tests_properties(join_failure_diagnostic_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_ntv_output_geometry test_ntv_output_geometry.f90)
+target_link_libraries(test_ntv_output_geometry neo2_ql)
+
+add_test(NAME ntv_output_geometry_test
+         COMMAND test_ntv_output_geometry
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ntv_output_geometry_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_spline_sparse_assembly test_spline_sparse_assembly.f90)
 target_link_libraries(test_spline_sparse_assembly common)
 

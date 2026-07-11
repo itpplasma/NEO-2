@@ -128,6 +128,7 @@ MODULE ntv_mod
   INTEGER, PUBLIC :: m_phi
   ! Local copy of y-vector (see definition in rhs_kin.f90)
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE, PUBLIC :: y_ntv_mod
+  PUBLIC :: resolve_ntv_output_geometry
 
 
   PUBLIC write_ntv_output
@@ -212,6 +213,21 @@ MODULE ntv_mod
   PUBLIC has_perturbation_file, has_helical_drive_source
 
 CONTAINS
+
+  SUBROUTINE resolve_ntv_output_geometry(y, final_y)
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(out) :: y
+    REAL(kind=dp), DIMENSION(:), OPTIONAL, INTENT(in) :: final_y
+
+    IF (PRESENT(final_y)) THEN
+      ALLOCATE(y(SIZE(final_y)))
+      y = final_y
+    ELSE
+      IF (.NOT. ALLOCATED(y_ntv_mod)) &
+        ERROR STOP 'NTV output geometry is not available'
+      ALLOCATE(y(SIZE(y_ntv_mod)))
+      y = y_ntv_mod
+    END IF
+  END SUBROUTINE resolve_ntv_output_geometry
 
   LOGICAL FUNCTION has_helical_drive_source()
     has_helical_drive_source = .FALSE.
@@ -756,7 +772,7 @@ CONTAINS
   END SUBROUTINE compute_Dijab_a
 
 
-  SUBROUTINE write_ntv_output_a(qflux_in)
+  SUBROUTINE write_ntv_output_a(qflux_in, final_y)
 
     use nrtype
     USE neo_control, ONLY: lab_swi
@@ -772,6 +788,7 @@ CONTAINS
     ! input:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:,:), INTENT(in) :: qflux_in
+    REAL(kind=dp), DIMENSION(:), OPTIONAL, INTENT(in) :: final_y
     ! ---------------------------------------------------------------!
     ! local definitions:
     ! ---------------------------------------------------------------!
@@ -809,9 +826,7 @@ CONTAINS
     REAL(kind=dp) :: bcovar_phi, bcovar_tht, avbhat2, avb2, avbhat
     CHARACTER(len=30) :: file_name
 
-    ! copy y-vector (see definition in rhs_kin.f90)
-    ALLOCATE(y(SIZE(y_ntv_mod,1)))
-    y = y_ntv_mod
+    CALL resolve_ntv_output_geometry(y, final_y)
 
     ! R0, aiota, av_nabla_stor :
     rt0 = device%r0
