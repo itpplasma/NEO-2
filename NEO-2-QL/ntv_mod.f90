@@ -209,9 +209,19 @@ MODULE ntv_mod
      MODULE PROCEDURE compute_TphiNA_a
   END INTERFACE compute_TphiNA
 
-  PUBLIC has_perturbation_file
+  PUBLIC has_perturbation_file, has_helical_drive_source
 
 CONTAINS
+
+  LOGICAL FUNCTION has_helical_drive_source()
+    has_helical_drive_source = .FALSE.
+    IF (isw_hel_drive .EQ. 0) RETURN
+
+    IF (hel_brad_re .NE. 0.0_dp) has_helical_drive_source = .TRUE.
+    IF (hel_brad_im .NE. 0.0_dp) has_helical_drive_source = .TRUE.
+    IF (hel_phim_re .NE. 0.0_dp) has_helical_drive_source = .TRUE.
+    IF (hel_phim_im .NE. 0.0_dp) has_helical_drive_source = .TRUE.
+  END FUNCTION has_helical_drive_source
 
   LOGICAL FUNCTION has_perturbation_file()
     CHARACTER(len=100) :: file_name
