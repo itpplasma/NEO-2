@@ -119,6 +119,7 @@ module collop_compute
   integer(HID_T) :: h5id_matelem
   logical :: precomp=.false.
   logical :: make_ortho=.true.
+  logical :: expansion_has_constant_mode=.false.
 
   interface chop
      module procedure chop_0
@@ -305,20 +306,24 @@ contains
        stop
     end select
 
+    expansion_has_constant_mode = .false.
     select case (collop_base_exp)
     case (0)
+       expansion_has_constant_mode = .true.
        write (*,*) "Using Laguerre polynomials as collision operator expansion base."
        init_phi_exp => init_phi_laguerre
        phi_exp      => phi_laguerre
        d_phi_exp    => d_phi_laguerre
        dd_phi_exp   => dd_phi_laguerre
     case (1)
+       expansion_has_constant_mode = .true.
        write (*,*) "Using standard polynomials as collision operator expansion base."
        init_phi_exp => init_phi_polynomial
        phi_exp      => phi_polynomial
        d_phi_exp    => d_phi_polynomial
        dd_phi_exp   => dd_phi_polynomial     
     case (2)
+       expansion_has_constant_mode = .true.
        write (*,*) "Using squared polynomials as collision operator expansion base."
        init_phi_exp => init_phi_polynomial_2
        phi_exp      => phi_polynomial_2
@@ -1923,7 +1928,12 @@ contains
        if (isw_relativistic .eq. 0) then
           do m = 0, lagmax
              do mp = 0, lagmax
-                denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand, 0d0)
+                if ((mp == 0) .and. expansion_has_constant_mode .and. &
+                    (T_a == T_b)) then
+                   denmm_s(m+1, mp+1) = 0d0
+                else
+                   denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand, 0d0)
+                end if
              end do
           end do
        elseif (isw_relativistic .ge. 1) then
