@@ -2331,6 +2331,8 @@ CONTAINS
 
     ! qflux
     IF (prop_showall .EQ. 1) THEN
+       IF (ALLOCATED(o%p%qflux)) DEALLOCATE(o%p%qflux)
+       ALLOCATE(o%p%qflux(3,3))
        READ(prop_unit,*) o%p%qflux
     END IF
 
