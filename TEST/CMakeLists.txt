@@ -36,6 +36,19 @@ set_tests_properties(nrutil_test PROPERTIES
 
 add_subdirectory(mympilib)
 
+add_executable(test_return_distance test_return_distance.f90)
+target_link_libraries(test_return_distance common)
+
+add_test(NAME return_distance_test
+         COMMAND test_return_distance
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(return_distance_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 # Test executable for er_rotation module
 add_executable(test_er_rotation test_er_rotation.f90)
 target_link_libraries(test_er_rotation neo2_ql)
