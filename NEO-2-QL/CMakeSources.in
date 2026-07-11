@@ -2,6 +2,7 @@ set(NEO2_QL_SRC_FILES
   arnoldi_mod.f90
   er_rotation_mod.f90
   ntv_mod.f90
+  helical_source_mod.f90
   propagator.f90
   flint.f90
   ripple_solver_axi_test.f90

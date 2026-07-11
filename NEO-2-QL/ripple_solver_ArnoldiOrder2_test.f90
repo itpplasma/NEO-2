@@ -92,6 +92,7 @@ subroutine ripple_solver_ArnoldiO2( &
     use collop
     use arnoldi_mod, only: iterator, f_init_arnoldi, &
       & lsw_write_flux_surface_distribution, write_flux_surface_distribution
+    use helical_source_mod, only: add_helical_source
 
     implicit none
     complex(dp), parameter :: imun = (0.d0, 1.d0)
@@ -4261,133 +4262,23 @@ CONTAINS
         end do
 
         if (hel_drive_active .and. iplot .ne. 1) then
-            call add_hel_source(q_hel_b, asource(0:lag, 2), 1, -1)
-            call add_hel_source(q_hel_b, asource_hel(0:lag, 2), 3, -1)
-            call add_hel_source(q_hel_e, asource_hel(0:lag, 1), 1, 1)
-            call add_hel_source(q_hel_e, asource(0:lag, 1), 3, 1)
+            call add_helical_source(source_vector, q_hel_b, asource(0:lag, 2), &
+                1, -1, ibeg, iend, lag, npl, ind_start, fact_pos_b, &
+                fact_pos_e, fact_neg_b, fact_neg_e)
+            call add_helical_source(source_vector, q_hel_b, asource_hel(0:lag, 2), &
+                3, -1, ibeg, iend, lag, npl, ind_start, fact_pos_b, &
+                fact_pos_e, fact_neg_b, fact_neg_e)
+            call add_helical_source(source_vector, q_hel_e, asource_hel(0:lag, 1), &
+                1, 1, ibeg, iend, lag, npl, ind_start, fact_pos_b, &
+                fact_pos_e, fact_neg_b, fact_neg_e)
+            call add_helical_source(source_vector, q_hel_e, asource(0:lag, 1), &
+                3, 1, ibeg, iend, lag, npl, ind_start, fact_pos_b, &
+                fact_pos_e, fact_neg_b, fact_neg_e)
         end if
 
     end subroutine source_flux
 
 !------------------------------------------------------------------------
-    subroutine add_hel_source(q_hel, amom, lcol, isig)
-
-! Adds one misalignment-drive piece (band profile q_hel, velocity moments
-! amom) to source_vector column lcol, following the integration-scheme
-! structure of the standard drives assembled above. isig = +1 for
-! sigma-even pieces (sign pattern of columns 1 and 3), isig = -1 for
-! sigma-odd pieces (sign pattern of column 2).
-
-        complex(dp), dimension(:, ibeg:), intent(in) :: q_hel
-        real(dp), dimension(0:), intent(in) :: amom
-        integer, intent(in) :: lcol, isig
-
-        integer :: is, mh, kh, kh_prev, np, np_prev, np_next
-        real(dp) :: sg
-
-        sg = DBLE(isig)
-
-        do is = ibeg, iend
-            np = npl(is)
-            do mh = 0, lag
-                kh = ind_start(is) + 2*(np + 1)*mh
-
-                if (is .GT. ibeg) then
-                    np_prev = npl(is - 1)
-                    kh_prev = ind_start(is - 1) + 2*(np_prev + 1)*mh
-                    if (MOD(is - ibeg, 2) .EQ. 1) then
-                        np_next = npl(is + 1)
-                        source_vector(kh + 1:kh + np + 1, lcol) &
-                            = source_vector(kh + 1:kh + np + 1, lcol) &
-                              + amom(mh)/1.5d0*q_hel(1:np + 1, is)*fact_pos_e(is)
-                        source_vector(kh + 1:kh + np_prev + 1, lcol) &
-                            = source_vector(kh + 1:kh + np_prev + 1, lcol) &
-                              + amom(mh)/2.4d0*q_hel(1:np_prev + 1, is - 1)*fact_pos_b(is - 1)
-                        source_vector(kh + 1:kh + np_next + 1, lcol) &
-                            = source_vector(kh + 1:kh + np_next + 1, lcol) &
-                              - amom(mh)/12d0*q_hel(1:np_next + 1, is + 1)*fact_pos_e(is + 1)
-                    else
-                        np_next = npl(is - 2)
-                        source_vector(kh + 1:kh + np + 1, lcol) &
-                            = source_vector(kh + 1:kh + np + 1, lcol) &
-                              + amom(mh)/2.4d0*q_hel(1:np + 1, is)*fact_pos_e(is)
-                        if (np_prev .LE. np) then
-                            source_vector(kh + 1:kh + np_prev + 1, lcol) &
-                                = source_vector(kh + 1:kh + np_prev + 1, lcol) &
-                                  + amom(mh)/1.5d0*q_hel(1:np_prev + 1, is - 1)*fact_pos_b(is - 1)
-                        else
-                            source_vector(kh + 1:kh + np + 1, lcol) &
-                                = source_vector(kh + 1:kh + np + 1, lcol) &
-                                  + amom(mh)/1.5d0*q_hel(1:np + 1, is - 1)*fact_pos_b(is - 1)
-                            source_vector(kh_prev + np_prev + 2, lcol) &
-                                = source_vector(kh_prev + np_prev + 2, lcol) &
-                                  + amom(mh)/1.5d0*q_hel(np_prev + 1, is - 1)*fact_pos_b(is - 1)
-                        end if
-                        if (np_next .LE. np) then
-                            source_vector(kh + 1:kh + np_next + 1, lcol) &
-                                = source_vector(kh + 1:kh + np_next + 1, lcol) &
-                                  - amom(mh)/12d0*q_hel(1:np_next + 1, is - 2)*fact_pos_b(is - 2)
-                        else
-                            source_vector(kh + 1:kh + np + 1, lcol) &
-                                = source_vector(kh + 1:kh + np + 1, lcol) &
-                                  - amom(mh)/12d0*q_hel(1:np + 1, is - 2)*fact_pos_b(is - 2)
-                            source_vector(kh_prev + np_prev + 2, lcol) &
-                                = source_vector(kh_prev + np_prev + 2, lcol) &
-                                  - amom(mh)/12d0*q_hel(np_next + 1, is - 2)*fact_pos_b(is - 2)
-                        end if
-                    end if
-                end if
-
-                if (is .LT. iend) then
-                    np_prev = npl(is + 1)
-                    kh_prev = ind_start(is + 1) + 2*(np_prev + 1)*mh
-                    if (MOD(is - ibeg, 2) .EQ. 1) then
-                        np_next = npl(is - 1)
-                        source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
-                            = source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
-                              + sg*amom(mh)/1.5d0*q_hel(np + 1:1:-1, is)*fact_neg_e(is)
-                        source_vector(kh + 2*np + 2 - np_prev:kh + 2*np + 2, lcol) &
-                            = source_vector(kh + 2*np + 2 - np_prev:kh + 2*np + 2, lcol) &
-                              + sg*amom(mh)/2.4d0*q_hel(np_prev + 1:1:-1, is + 1)*fact_neg_b(is + 1)
-                        source_vector(kh + 2*np + 2 - np_next:kh + 2*np + 2, lcol) &
-                            = source_vector(kh + 2*np + 2 - np_next:kh + 2*np + 2, lcol) &
-                              - sg*amom(mh)/12d0*q_hel(np_next + 1:1:-1, is - 1)*fact_neg_e(is - 1)
-                    else
-                        np_next = npl(is + 2)
-                        source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
-                            = source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
-                              + sg*amom(mh)/2.4d0*q_hel(np + 1:1:-1, is)*fact_neg_e(is)
-                        if (np_prev .LE. np) then
-                            source_vector(kh + 2*np + 2 - np_prev:kh + 2*np + 2, lcol) &
-                                = source_vector(kh + 2*np + 2 - np_prev:kh + 2*np + 2, lcol) &
-                                  + sg*amom(mh)/1.5d0*q_hel(np_prev + 1:1:-1, is + 1)*fact_neg_b(is + 1)
-                        else
-                            source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
-                                = source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
-                                  + sg*amom(mh)/1.5d0*q_hel(np + 1:1:-1, is + 1)*fact_neg_b(is + 1)
-                            source_vector(kh_prev + np_prev + 1, lcol) &
-                                = source_vector(kh_prev + np_prev + 1, lcol) &
-                                  + sg*amom(mh)/1.5d0*q_hel(np_prev + 1, is + 1)*fact_neg_b(is + 1)
-                        end if
-                        if (np_next .LE. np) then
-                            source_vector(kh + 2*np + 2 - np_next:kh + 2*np + 2, lcol) &
-                                = source_vector(kh + 2*np + 2 - np_next:kh + 2*np + 2, lcol) &
-                                  - sg*amom(mh)/12d0*q_hel(np_next + 1:1:-1, is + 2)*fact_neg_b(is + 2)
-                        else
-                            source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
-                                = source_vector(kh + np + 2:kh + 2*np + 2, lcol) &
-                                  - sg*amom(mh)/12d0*q_hel(np + 1:1:-1, is + 2)*fact_neg_b(is + 2)
-                            source_vector(kh_prev + np_prev + 1, lcol) &
-                                = source_vector(kh_prev + np_prev + 1, lcol) &
-                                  - sg*amom(mh)/12d0*q_hel(np_next + 1, is + 2)*fact_neg_b(is + 2)
-                        end if
-                    end if
-                end if
-
-            end do
-        end do
-
-    end subroutine add_hel_source
 
 !------------------------------------------------------------------------
     subroutine add_f01_source
