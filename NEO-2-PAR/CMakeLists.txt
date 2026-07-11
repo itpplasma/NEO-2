@@ -48,3 +48,23 @@ ADD_TEST(Test_par_cubic_splines-Seq ${PROJECT_SOURCE_DIR}/../ShellScripts/test_f
 ADD_TEST(Test_par_cubic_splines-Par ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_cubic_splines" "6")
 ADD_TEST(Test_par_general_bsplines-Seq ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_general_bsplines" "0")
 ADD_TEST(Test_par_general_bsplines-Par ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "par_general_bsplines" "6")
+
+set(EXTERNAL_DATA_TESTS
+  Test_Testcase1-Seq
+  Test_Testcase1-Par
+  Test_Relativistic_BeliaevBudker-Seq
+  Test_Relativistic_BeliaevBudker-Par
+  Test_Relativistic_BraamsKarney-Seq
+  Test_Relativistic_BraamsKarney-Par
+  Test_par_standard_polynomials-Seq
+  Test_par_standard_polynomials-Par
+  Test_par_quadratic_polynomials-Seq
+  Test_par_quadratic_polynomials-Par
+  Test_par_cubic_splines-Seq
+  Test_par_cubic_splines-Par
+  Test_par_general_bsplines-Seq
+  Test_par_general_bsplines-Par
+)
+set_tests_properties(${EXTERNAL_DATA_TESTS} PROPERTIES
+  LABELS "regression;external-data"
+)
