@@ -8,7 +8,12 @@ program test_ntv_output_geometry
     call resolve_ntv_output_geometry(output_y, [1.0d0, 2.0d0, 3.0d0])
     if (any(output_y /= [1.0d0, 2.0d0, 3.0d0])) &
         error stop 'FAIL: final geometry was not selected'
+    if (.not. allocated(y_ntv_mod)) &
+        error stop 'FAIL: final geometry did not initialize output state'
+    if (any(y_ntv_mod /= [1.0d0, 2.0d0, 3.0d0])) &
+        error stop 'FAIL: final geometry did not synchronize output state'
 
+    deallocate(y_ntv_mod)
     allocate(y_ntv_mod(2))
     y_ntv_mod = [4.0d0, 5.0d0]
     call resolve_ntv_output_geometry(output_y)

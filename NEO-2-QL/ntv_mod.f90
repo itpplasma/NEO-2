@@ -219,14 +219,14 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), OPTIONAL, INTENT(in) :: final_y
 
     IF (PRESENT(final_y)) THEN
-      ALLOCATE(y(SIZE(final_y)))
-      y = final_y
-    ELSE
-      IF (.NOT. ALLOCATED(y_ntv_mod)) &
-        ERROR STOP 'NTV output geometry is not available'
-      ALLOCATE(y(SIZE(y_ntv_mod)))
-      y = y_ntv_mod
+      IF (ALLOCATED(y_ntv_mod)) DEALLOCATE(y_ntv_mod)
+      ALLOCATE(y_ntv_mod(SIZE(final_y)))
+      y_ntv_mod = final_y
     END IF
+    IF (.NOT. ALLOCATED(y_ntv_mod)) &
+      ERROR STOP 'NTV output geometry is not available'
+    ALLOCATE(y(SIZE(y_ntv_mod)))
+    y = y_ntv_mod
   END SUBROUTINE resolve_ntv_output_geometry
 
   LOGICAL FUNCTION has_helical_drive_source()
