@@ -50,6 +50,55 @@ set_tests_properties(er_rotation_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_ntv_perturbation_input test_ntv_perturbation_input.f90)
+target_link_libraries(test_ntv_perturbation_input neo2_ql)
+
+add_test(NAME ntv_perturbation_input_test
+         COMMAND test_ntv_perturbation_input
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ntv_perturbation_input_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_ntv_hel_drive_input test_ntv_hel_drive_input.f90)
+target_link_libraries(test_ntv_hel_drive_input neo2_ql)
+
+add_test(NAME ntv_hel_drive_input_test
+         COMMAND test_ntv_hel_drive_input
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ntv_hel_drive_input_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_ntv_source_guard test_ntv_source_guard.f90)
+target_link_libraries(test_ntv_source_guard neo2_ql)
+
+add_test(NAME ntv_zero_source_guard_test
+         COMMAND test_ntv_source_guard zero
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ntv_zero_source_guard_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "ERROR: non-axisymmetric solve has no source."
+    FAIL_REGULAR_EXPRESSION "FAIL;NaN;zhseqr;returned from rejected source"
+    TIMEOUT 5
+)
+
+add_test(NAME ntv_driven_source_guard_test
+         COMMAND test_ntv_source_guard driven
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ntv_driven_source_guard_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "Driven source accepted!"
+    FAIL_REGULAR_EXPRESSION "FAIL;NaN;zhseqr;non-axisymmetric solve has no source"
+    TIMEOUT 5
+)
+
 add_executable(test_spline_sparse_assembly test_spline_sparse_assembly.f90)
 target_link_libraries(test_spline_sparse_assembly common)
 
