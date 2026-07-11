@@ -95,7 +95,7 @@ SUBROUTINE ripple_solver(                                 &
        m_theta_hel,hel_brad_re,hel_brad_im,hel_phim_re,hel_phim_im, &
        clight_hel => c,echarge_hel => e
   USE partpa_mod, ONLY : bmod0
-  USE pointwise_current_mod, ONLY : current_profile_from_flux_vector
+  USE qflux_profile_mod, ONLY : qflux_contributions_from_flux_vector
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
   IMPLICIT NONE
@@ -243,9 +243,8 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: scalprod_pleg
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: phi_mfl
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: bhat_mfl,geodcu_mfl,h_phi_mfl
-  ! Pointwise helical current-profile diagnostic (guarded by isw_hel_drive)
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: cp_phiw
-  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: cp_c,cp_j
+  ! Per-point raw qflux contribution diagnostic
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: cp_c
   DOUBLE PRECISION, DIMENSION(3)                :: cp_channel
   INTEGER :: cp_istep,cp_k,cp_unit
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: dlogbdphi_mfl
@@ -2816,46 +2815,38 @@ DO ispecp=0,num_spec-1
    qflux_allspec(:,:,ispecp,ispec)=qflux
 ENDDO
 
-! Pointwise helical parallel-current profile: decompose the current channel
+! Per-point raw qflux partition: decompose the current channel
 ! qflux(2,k) = sum_col flux_vector(2,col)*source_vector(col,k) into its
 ! per-field-line-point contributions. Reuses the verified current-row sign and
 ! weight; the field-line sum reproduces qflux(2,k) exactly. Guarded so runs
 ! without the helical drive are bitwise unchanged.
 IF (isw_hel_drive.NE.0 .AND. num_spec.EQ.1 .AND. mpro%getrank().EQ.0) THEN
-   ALLOCATE(cp_phiw(ibeg:iend),cp_c(ibeg:iend,3),cp_j(ibeg:iend,3))
-   DO cp_istep=ibeg,iend
-      IF (cp_istep.EQ.ibeg) THEN
-         cp_phiw(cp_istep)=phi_mfl(ibeg+1)-phi_mfl(ibeg)
-      ELSEIF (cp_istep.EQ.iend) THEN
-         cp_phiw(cp_istep)=phi_mfl(iend)-phi_mfl(iend-1)
-      ELSE
-         cp_phiw(cp_istep)=0.5d0*(phi_mfl(cp_istep+1)-phi_mfl(cp_istep-1))
-      END IF
-   END DO
+   ALLOCATE(cp_c(ibeg:iend,3))
    DO cp_k=1,3
-      CALL current_profile_from_flux_vector(flux_vector(2,:), &
+      CALL qflux_contributions_from_flux_vector(flux_vector(2,:), &
            source_vector_all(:,cp_k,0),ind_start(ibeg:iend),npl(ibeg:iend), &
-           lag,cp_phiw,cp_c(:,cp_k),cp_j(:,cp_k),cp_channel(cp_k))
+           lag,cp_c(:,cp_k),cp_channel(cp_k))
       IF (ABS(cp_channel(cp_k)-qflux(2,cp_k)).GT. &
            1.0d-10*MAX(1.0d0,ABS(qflux(2,cp_k)))) &
-         ERROR STOP 'pointwise current profile does not reproduce qflux current channel'
+         ERROR STOP 'qflux contribution partition does not reproduce '// &
+              'qflux current channel'
    END DO
-   OPEN(newunit=cp_unit,file='current_profile.dat',status='replace')
-   WRITE(cp_unit,'(a)') '# helical parallel-current profile (mode-1 local solver)'
+   OPEN(newunit=cp_unit,file='qflux_current_contributions.dat',status='replace')
+   WRITE(cp_unit,'(a)') &
+        '# raw qflux current-channel contributions (mode-1 local solver)'
    WRITE(cp_unit,'(a,3(1x,i0))') '# m_theta_hel m_phi_input lag:', &
         m_theta_hel,m_phi_input,lag
    WRITE(cp_unit,'(a,3(1x,es22.14))') '# qflux_current_channel_k:', &
         qflux(2,1),qflux(2,2),qflux(2,3)
    WRITE(cp_unit,'(a,3(1x,es22.14))') '# reconstructed_channel_k:', &
         cp_channel(1),cp_channel(2),cp_channel(3)
-   WRITE(cp_unit,'(a)') '# phi_mfl c1 c2 c3 j1 j2 j3'
+   WRITE(cp_unit,'(a)') '# phi_mfl contribution_k1 contribution_k2 contribution_k3'
    DO cp_istep=ibeg,iend
-      WRITE(cp_unit,'(7(1x,es22.14))') phi_mfl(cp_istep), &
-           cp_c(cp_istep,1),cp_c(cp_istep,2),cp_c(cp_istep,3), &
-           cp_j(cp_istep,1),cp_j(cp_istep,2),cp_j(cp_istep,3)
+      WRITE(cp_unit,'(4(1x,es22.14))') phi_mfl(cp_istep), &
+           cp_c(cp_istep,1),cp_c(cp_istep,2),cp_c(cp_istep,3)
    END DO
    CLOSE(cp_unit)
-   DEALLOCATE(cp_phiw,cp_c,cp_j)
+   DEALLOCATE(cp_c)
 END IF
 ! order of species inidices (ispecp,ispec) interchanged
 ! (-> easier to handle within mpro%allgather)

@@ -1,5 +1,5 @@
-program test_pointwise_current
-    use pointwise_current_mod, only: current_profile_from_flux_vector
+program test_qflux_profile
+    use qflux_profile_mod, only: qflux_contributions_from_flux_vector
     implicit none
 
     integer, parameter :: dp = kind(1.0d0)
@@ -8,7 +8,7 @@ program test_pointwise_current
     integer :: block_npassing(npoint), block_base(npoint)
     integer :: i, nblk, base, col, ntot
     real(dp), allocatable :: flux_row(:), source_col(:)
-    real(dp) :: phi_weight(npoint), contribution(npoint), current_density(npoint)
+    real(dp) :: contribution(npoint)
     real(dp) :: channel, reference, sum_contrib
 
     block_npassing = [2, 1, 3]
@@ -18,20 +18,18 @@ program test_pointwise_current
         nblk = 2*(lag + 1)*(block_npassing(i) + 1)
         base = base + nblk
     end do
-    ntot = base                       ! 12 + 8 + 16 = 36
+    ntot = base ! 12 + 8 + 16 = 36
     allocate (flux_row(ntot), source_col(ntot))
     do col = 1, ntot
-        flux_row(col) = real(col, dp)*0.5_dp - 3.0_dp   ! spans negative and positive
+        flux_row(col) = real(col, dp)*0.5_dp - 3.0_dp ! spans negative and positive
         source_col(col) = 1.0_dp + 0.25_dp*real(mod(col, 5), dp)
     end do
-    phi_weight = [0.4_dp, 1.0_dp, 0.7_dp]
-
     ! 1. Partition identity: the block decomposition reproduces the full
     !    flux_vector . source_vector contraction (an off-by-one in block base
     !    or size breaks this).
     reference = dot_product(flux_row, source_col)
-    call current_profile_from_flux_vector(flux_row, source_col, block_base, &
-        block_npassing, lag, phi_weight, contribution, current_density, channel)
+    call qflux_contributions_from_flux_vector(flux_row, source_col, block_base, &
+        block_npassing, lag, contribution, channel)
     if (abs(channel - reference) > 1.0e-11_dp*max(1.0_dp, abs(reference))) &
         error stop 'FAIL: per-point contributions do not sum to the qflux current channel'
 
@@ -40,17 +38,11 @@ program test_pointwise_current
     if (abs(channel - sum_contrib) > 1.0e-12_dp*max(1.0_dp, abs(channel))) &
         error stop 'FAIL: channel is not the sum of per-point contributions'
 
-    ! 3. Current density divides out the phi measure.
-    do i = 1, npoint
-        if (abs(current_density(i) - contribution(i)/phi_weight(i)) > 1.0e-12_dp) &
-            error stop 'FAIL: current density does not divide out the phi weight'
-    end do
-
-    ! 4. Known closed form: unit flux and source give the block size per point.
+    ! 3. Known closed form: unit flux and source give the block size per point.
     flux_row = 1.0_dp
     source_col = 1.0_dp
-    call current_profile_from_flux_vector(flux_row, source_col, block_base, &
-        block_npassing, lag, phi_weight, contribution, current_density, channel)
+    call qflux_contributions_from_flux_vector(flux_row, source_col, block_base, &
+        block_npassing, lag, contribution, channel)
     do i = 1, npoint
         nblk = 2*(lag + 1)*(block_npassing(i) + 1)
         if (abs(contribution(i) - real(nblk, dp)) > 1.0e-12_dp) &
@@ -59,15 +51,15 @@ program test_pointwise_current
     if (abs(channel - real(ntot, dp)) > 1.0e-12_dp) &
         error stop 'FAIL: unit contraction total does not equal the vector length'
 
-    ! 5. Current-row sign propagates: a negative flux_vector entry (the
+    ! 4. Current-row sign propagates: a negative flux_vector entry (the
     !    counter-passing current weight) yields a negative contribution.
     flux_row = 1.0_dp
     flux_row(block_base(2) + 1) = -50.0_dp
     source_col = 1.0_dp
-    call current_profile_from_flux_vector(flux_row, source_col, block_base, &
-        block_npassing, lag, phi_weight, contribution, current_density, channel)
+    call qflux_contributions_from_flux_vector(flux_row, source_col, block_base, &
+        block_npassing, lag, contribution, channel)
     if (contribution(2) >= 0.0_dp) &
         error stop 'FAIL: negative current-row weight does not produce a negative contribution'
 
     print *, 'All tests passed!'
-end program test_pointwise_current
+end program test_qflux_profile

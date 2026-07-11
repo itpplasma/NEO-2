@@ -177,14 +177,14 @@ set_tests_properties(propagator_io_test PROPERTIES
     TIMEOUT 30
 )
 
-add_executable(test_pointwise_current test_pointwise_current.f90)
-target_link_libraries(test_pointwise_current neo2_ql)
+add_executable(test_qflux_profile test_qflux_profile.f90)
+target_link_libraries(test_qflux_profile neo2_ql)
 
-add_test(NAME pointwise_current_test
-         COMMAND test_pointwise_current
+add_test(NAME qflux_profile
+         COMMAND test_qflux_profile
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
-set_tests_properties(pointwise_current_test PROPERTIES
+set_tests_properties(qflux_profile PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
