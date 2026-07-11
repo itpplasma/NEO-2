@@ -1733,42 +1733,42 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'D12_AX', D12_AX, LBOUND(D12_AX), UBOUND(D12_AX), &
       & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
     CALL h5_add(h5id_multispec, 'D13_AX', D13_AX, LBOUND(D13_AX), UBOUND(D13_AX), &
-      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2 G/s')
 
     CALL h5_add(h5id_multispec, 'D21_AX', D21_AX, LBOUND(D21_AX), UBOUND(D21_AX), &
       & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
     CALL h5_add(h5id_multispec, 'D22_AX', D22_AX, LBOUND(D22_AX), UBOUND(D22_AX), &
       & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
     CALL h5_add(h5id_multispec, 'D23_AX', D23_AX, LBOUND(D23_AX), UBOUND(D23_AX), &
-      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2 G/s')
 
     CALL h5_add(h5id_multispec, 'D31_AX', D31_AX, LBOUND(D31_AX), UBOUND(D31_AX), &
-      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2 G/s')
     CALL h5_add(h5id_multispec, 'D32_AX', D32_AX, LBOUND(D32_AX), UBOUND(D32_AX), &
-      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2 G/s')
     CALL h5_add(h5id_multispec, 'D33_AX', D33_AX, LBOUND(D33_AX), UBOUND(D33_AX), &
-      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2/s')
+      & comment='dimensional diffusion coefficient for axisymmetric solution', unit='cm^2 G^2/s')
     !-> non-axisymmetric solution
     CALL h5_add(h5id_multispec, 'D11_NA', D11_NA, LBOUND(D11_NA), UBOUND(D11_NA), &
       & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
     CALL h5_add(h5id_multispec, 'D12_NA', D12_NA, LBOUND(D12_NA), UBOUND(D12_NA), &
       & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
     CALL h5_add(h5id_multispec, 'D13_NA', D13_NA, LBOUND(D13_NA), UBOUND(D13_NA), &
-      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2 G/s')
 
     CALL h5_add(h5id_multispec, 'D21_NA', D21_NA, LBOUND(D21_NA), UBOUND(D21_NA), &
       & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
     CALL h5_add(h5id_multispec, 'D22_NA', D22_NA, LBOUND(D22_NA), UBOUND(D22_NA), &
       & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
     CALL h5_add(h5id_multispec, 'D23_NA', D23_NA, LBOUND(D23_NA), UBOUND(D23_NA), &
-      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2 G/s')
 
     CALL h5_add(h5id_multispec, 'D31_NA', D31_NA, LBOUND(D31_NA), UBOUND(D31_NA), &
-      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2 G/s')
     CALL h5_add(h5id_multispec, 'D32_NA', D32_NA, LBOUND(D32_NA), UBOUND(D32_NA), &
-      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2 G/s')
     CALL h5_add(h5id_multispec, 'D33_NA', D33_NA, LBOUND(D33_NA), UBOUND(D33_NA), &
-      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2/s')
+      & comment='dimensional diffusion coefficient for non-axisymmetric solution', unit='cm^2 G^2/s')
 
     ! add ExB rotation frequency and species Mach numbers
     IF (isw_calc_Er .GE. 1) THEN
