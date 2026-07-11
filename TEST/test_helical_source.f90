@@ -1,14 +1,21 @@
 program test_helical_source
-    use helical_source_mod, only: add_helical_source
+    use helical_source_mod, only: add_helical_source, &
+        apply_reconstructed_incoming_rows
     implicit none
 
     integer, parameter :: dp = kind(1.0d0), ibeg = 0, iend = 4
+    integer, parameter :: replay_ibeg = 0, replay_iend = 2, replay_lag = 1
     complex(dp) :: even_source(24, 3), odd_source(24, 3), profile(3, ibeg:iend)
     complex(dp) :: forward_even(24, 3), forward_odd(24, 3)
     complex(dp) :: backward_even(24, 3), backward_odd(24, 3)
     complex(dp) :: weighted_sum
     real(dp) :: factors(ibeg:iend), moments(0:0), zero_factors(ibeg:iend)
     integer :: i, ind_start(ibeg:iend), npl(ibeg:iend)
+    real(dp) :: replay_source(24, 3), original_source(24, 3)
+    real(dp) :: flux_left(4, 3), flux_right(4, 3)
+    integer :: replay_ind_start(replay_ibeg:replay_iend)
+    integer :: replay_npl(replay_ibeg:replay_iend)
+    logical :: incoming_row(24)
 
     even_source = (0.0d0, 0.0d0)
     odd_source = (0.0d0, 0.0d0)
@@ -52,6 +59,34 @@ program test_helical_source
         error stop 'FAIL: shared source stencil changed'
     if (abs(sum(abs(even_source(:, 1))**2) - 111813.33333333333d0) > 1.0d-9) &
         error stop 'FAIL: shared source stencil norm changed'
+
+    replay_source = reshape([(real(i, dp), i = 1, size(replay_source))], &
+        shape(replay_source))
+    original_source = replay_source
+    flux_left = reshape([(100.0_dp + real(i, dp), i = 1, size(flux_left))], &
+        shape(flux_left))
+    flux_right = reshape([(200.0_dp + real(i, dp), i = 1, size(flux_right))], &
+        shape(flux_right))
+    replay_npl = 1
+    replay_ind_start = [0, 8, 16]
+    call apply_reconstructed_incoming_rows(replay_source, flux_left, flux_right, &
+        replay_ibeg, replay_iend, replay_lag, replay_npl, replay_ind_start)
+
+    if (any(replay_source(1:2, :) /= flux_left(1:2, :))) &
+        error stop 'FAIL: first left incoming Laguerre block was not restored'
+    if (any(replay_source(5:6, :) /= flux_left(3:4, :))) &
+        error stop 'FAIL: second left incoming Laguerre block was not restored'
+    if (any(replay_source(19:20, :) /= flux_right(2:1:-1, :))) &
+        error stop 'FAIL: first right incoming Laguerre block was not restored'
+    if (any(replay_source(23:24, :) /= flux_right(4:3:-1, :))) &
+        error stop 'FAIL: second right incoming Laguerre block was not restored'
+    incoming_row = .false.
+    incoming_row([1, 2, 5, 6, 19, 20, 23, 24]) = .true.
+    do i = 1, size(replay_source, 1)
+        if (incoming_row(i)) cycle
+        if (any(replay_source(i, :) /= original_source(i, :))) &
+            error stop 'FAIL: reconstruction changed an interior or outgoing row'
+    end do
 
     print *, 'All tests passed!'
 end program test_helical_source

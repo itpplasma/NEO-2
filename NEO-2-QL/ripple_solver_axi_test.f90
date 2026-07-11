@@ -87,7 +87,8 @@ SUBROUTINE ripple_solver(                                 &
                             deallocate_ntv_eqmat
   use mpiprovider_module, only : mpro
   USE collop
-  USE helical_source_mod, ONLY : add_helical_source
+  USE helical_source_mod, ONLY : add_helical_source, &
+       apply_reconstructed_incoming_rows
   USE neo_magfie, ONLY : boozer_iota,boozer_curr_tor_hat, &
        boozer_curr_pol_hat,boozer_psi_pr_hat
   USE ntv_mod, ONLY : isw_hel_drive,isw_m_phi_input,m_phi_input, &
@@ -868,6 +869,8 @@ PRINT *,'right boundary layer ignored'
   ALLOCATE(convol_polpow(0:legmax,1:npart+3))                      ! terms[2,3]
   ALLOCATE(pleg_bra(0:legmax,1:npart+1,ibeg:iend))                 ! terms[2,3]
   ALLOCATE(pleg_ket(0:legmax,1:npart+1,ibeg:iend))                 ! terms[2,3]
+  pleg_bra=0.d0
+  pleg_ket=0.d0
   ALLOCATE(npl(ibeg:iend))
   ALLOCATE(rhs_mat_fzero(4,ibeg:iend,0:1))
   ALLOCATE(rhs_mat_lorentz(5,npart+1,ibeg:iend))
@@ -1237,8 +1240,6 @@ PRINT *,'right boundary layer ignored'
       ERROR STOP 'helical drive requires quadrature collision moments'
     IF(isw_relativistic.NE.0) &
       ERROR STOP 'helical drive relativistic moments are not validated'
-    IF(iplot.EQ.1) &
-      ERROR STOP 'mode-1 helical drive does not support reconstruction mode'
     IF(T_spec(ispec).LE.0.d0.OR.m_spec(ispec).LE.0.d0.OR.z_spec(ispec).EQ.0.d0) &
       ERROR STOP 'helical drive species data are invalid'
     n_hel=m_phi_input
@@ -1640,7 +1641,7 @@ PRINT *,'right boundary layer ignored'
     enddo
   enddo
 
-  IF(hel_drive_active.AND.iplot.NE.1) THEN
+  IF(hel_drive_active) THEN
     ALLOCATE(helical_source(n_2d_size,3))
     helical_source=(0.d0,0.d0)
     CALL add_helical_source(helical_source,q_hel_b,asource(0:lag,2), &
@@ -1657,6 +1658,9 @@ PRINT *,'right boundary layer ignored'
       fact_neg_b,fact_neg_e)
     source_vector=source_vector+REAL(helical_source,dp)
     DEALLOCATE(helical_source)
+    IF(iplot.EQ.1.AND.isw_axisymm.NE.1) &
+      CALL apply_reconstructed_incoming_rows(source_vector,flux_pl,flux_mr, &
+        ibeg,iend,lag,npl,ind_start)
   ENDIF
 
 

@@ -4,8 +4,38 @@ module helical_source_mod
     private
 
     public :: add_helical_source
+    public :: apply_reconstructed_incoming_rows
 
 contains
+
+    subroutine apply_reconstructed_incoming_rows(source, flux_left, flux_right, &
+            ibeg, iend, lag, npl, ind_start)
+        real(dp), intent(inout) :: source(:, :)
+        real(dp), intent(in) :: flux_left(:, :), flux_right(:, :)
+        integer, intent(in) :: ibeg, iend, lag
+        integer, intent(in) :: npl(ibeg:iend), ind_start(ibeg:iend)
+        integer :: k_left, k_right, m, nleft, nright
+
+        nleft = npl(ibeg) + 1
+        nright = npl(iend) + 1
+        if (size(flux_left, 1) /= nleft*(lag + 1)) &
+            error stop 'reconstructed left boundary has the wrong size'
+        if (size(flux_right, 1) /= nright*(lag + 1)) &
+            error stop 'reconstructed right boundary has the wrong size'
+        if (size(flux_left, 2) /= size(source, 2)) &
+            error stop 'reconstructed left boundary has the wrong columns'
+        if (size(flux_right, 2) /= size(source, 2)) &
+            error stop 'reconstructed right boundary has the wrong columns'
+
+        do m = 0, lag
+            k_left = ind_start(ibeg) + 2*nleft*m
+            k_right = ind_start(iend) + 2*nright*m
+            source(k_left + 1:k_left + nleft, :) = &
+                flux_left(nleft*m + 1:nleft*(m + 1), :)
+            source(k_right + nright + 1:k_right + 2*nright, :) = &
+                flux_right(nright*(m + 1):nright*m + 1:-1, :)
+        end do
+    end subroutine apply_reconstructed_incoming_rows
 
     subroutine add_helical_source(source, profile, moments, column, sigma_sign, &
             ibeg, iend, lag, npl, ind_start, fact_pos_b, fact_pos_e, &
