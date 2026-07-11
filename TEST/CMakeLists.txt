@@ -99,6 +99,19 @@ set_tests_properties(ntv_driven_source_guard_test PROPERTIES
     TIMEOUT 5
 )
 
+add_executable(test_phi_divider_parity test_phi_divider_parity.f90)
+target_link_libraries(test_phi_divider_parity common)
+
+add_test(NAME phi_divider_parity_test
+         COMMAND test_phi_divider_parity
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(phi_divider_parity_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_spline_sparse_assembly test_spline_sparse_assembly.f90)
 target_link_libraries(test_spline_sparse_assembly common)
 
