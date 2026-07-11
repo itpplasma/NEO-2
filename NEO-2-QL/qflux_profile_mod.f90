@@ -4,6 +4,7 @@ module qflux_profile_mod
     private
 
     public :: qflux_contributions_from_flux_vector
+    public :: qflux_point_components_from_flux_vector
 
 contains
 
@@ -55,4 +56,50 @@ contains
             channel = channel + acc
         end do
     end subroutine qflux_contributions_from_flux_vector
+
+    subroutine qflux_point_components_from_flux_vector(flux_row, source_col, &
+            block_base, block_npassing, lag, step_plus, step_minus, raw_plus, &
+            raw_minus, contribution, channel)
+        real(dp), intent(in) :: flux_row(:), source_col(:)
+        integer, intent(in) :: block_base(:), block_npassing(:), lag
+        real(dp), intent(in) :: step_plus(:), step_minus(:)
+        real(dp), intent(out) :: raw_plus(:), raw_minus(:), contribution(:)
+        real(dp), intent(out) :: channel
+        integer :: i, m, npoint, nband, base, first
+        real(dp) :: weighted_plus, weighted_minus
+
+        npoint = size(block_base)
+        if (size(block_npassing) /= npoint .or. size(step_plus) /= npoint &
+            .or. size(step_minus) /= npoint .or. size(raw_plus) /= npoint &
+            .or. size(raw_minus) /= npoint .or. size(contribution) /= npoint) &
+            error stop 'qflux_point_components_from_flux_vector: point arrays disagree in size'
+
+        channel = 0.0_dp
+        do i = 1, npoint
+            if (step_plus(i) == 0.0_dp .or. step_minus(i) == 0.0_dp) &
+                error stop 'qflux_point_components_from_flux_vector: zero spatial weight'
+            nband = block_npassing(i) + 1
+            base = block_base(i)
+            if (base < 0 .or. base + 2*(lag + 1)*nband > size(flux_row) &
+                .or. base + 2*(lag + 1)*nband > size(source_col)) &
+                error stop 'qflux_point_components_from_flux_vector: block exceeds vector bounds'
+
+            weighted_plus = 0.0_dp
+            weighted_minus = 0.0_dp
+            do m = 0, lag
+                first = base + 2*m*nband + 1
+                weighted_plus = weighted_plus + dot_product( &
+                    flux_row(first:first + nband - 1), &
+                    source_col(first:first + nband - 1))
+                first = first + nband
+                weighted_minus = weighted_minus + dot_product( &
+                    flux_row(first:first + nband - 1), &
+                    source_col(first:first + nband - 1))
+            end do
+            raw_plus(i) = weighted_plus/step_plus(i)
+            raw_minus(i) = weighted_minus/step_minus(i)
+            contribution(i) = weighted_plus + weighted_minus
+            channel = channel + contribution(i)
+        end do
+    end subroutine qflux_point_components_from_flux_vector
 end module qflux_profile_mod

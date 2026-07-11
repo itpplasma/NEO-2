@@ -1,14 +1,18 @@
 program test_qflux_profile
-    use qflux_profile_mod, only: qflux_contributions_from_flux_vector
+    use qflux_profile_mod, only: qflux_contributions_from_flux_vector, &
+        qflux_point_components_from_flux_vector
     implicit none
 
     integer, parameter :: dp = kind(1.0d0)
     integer, parameter :: lag = 1
     integer, parameter :: npoint = 3
     integer :: block_npassing(npoint), block_base(npoint)
-    integer :: i, nblk, base, col, ntot
+    integer :: i, m, nblk, base, col, first, ntot
     real(dp), allocatable :: flux_row(:), source_col(:)
     real(dp) :: contribution(npoint)
+    real(dp) :: raw_plus(npoint), raw_minus(npoint), split_contribution(npoint)
+    real(dp) :: step_plus(npoint), step_minus(npoint)
+    real(dp) :: expected_plus, expected_minus, split_channel
     real(dp) :: channel, reference, sum_contrib
 
     block_npassing = [2, 1, 3]
@@ -60,6 +64,38 @@ program test_qflux_profile
         block_npassing, lag, contribution, channel)
     if (contribution(2) >= 0.0_dp) &
         error stop 'FAIL: negative current-row weight does not produce a negative contribution'
+
+    step_plus = [0.25_dp, 0.5_dp, 0.75_dp]
+    step_minus = [0.4_dp, 0.6_dp, 0.8_dp]
+    source_col = 1.0_dp
+    do i = 1, npoint
+        nblk = block_npassing(i) + 1
+        do m = 0, lag
+            first = block_base(i) + 2*m*nblk + 1
+            flux_row(first:first + nblk - 1) = &
+                step_plus(i)*real(i + m + 1, dp)
+            first = first + nblk
+            flux_row(first:first + nblk - 1) = &
+                -step_minus(i)*real(2*i + m + 1, dp)
+        end do
+    end do
+    call qflux_point_components_from_flux_vector(flux_row, source_col, block_base, &
+        block_npassing, lag, step_plus, step_minus, raw_plus, raw_minus, &
+        split_contribution, split_channel)
+    do i = 1, npoint
+        nblk = block_npassing(i) + 1
+        expected_plus = real(nblk, dp)*sum([(real(i + m + 1, dp), m = 0, lag)])
+        expected_minus = -real(nblk, dp)*sum([(real(2*i + m + 1, dp), m = 0, lag)])
+        if (abs(raw_plus(i) - expected_plus) > 1.0e-12_dp) &
+            error stop 'FAIL: co-passing component retains the spatial weight'
+        if (abs(raw_minus(i) - expected_minus) > 1.0e-12_dp) &
+            error stop 'FAIL: counter-passing component loses its current sign'
+        if (abs(split_contribution(i) - step_plus(i)*expected_plus &
+            - step_minus(i)*expected_minus) > 1.0e-12_dp) &
+            error stop 'FAIL: directional components do not reconstruct the contribution'
+    end do
+    if (abs(split_channel - sum(split_contribution)) > 1.0e-12_dp) &
+        error stop 'FAIL: split channel does not equal the contribution sum'
 
     print *, 'All tests passed!'
 end program test_qflux_profile

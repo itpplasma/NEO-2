@@ -95,7 +95,8 @@ SUBROUTINE ripple_solver(                                 &
        m_theta_hel,hel_brad_re,hel_brad_im,hel_phim_re,hel_phim_im, &
        clight_hel => c,echarge_hel => e
   USE partpa_mod, ONLY : bmod0
-  USE qflux_profile_mod, ONLY : qflux_contributions_from_flux_vector
+  USE qflux_profile_mod, ONLY : qflux_contributions_from_flux_vector, &
+       qflux_point_components_from_flux_vector
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
   IMPLICIT NONE
@@ -245,6 +246,8 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: bhat_mfl,geodcu_mfl,h_phi_mfl
   ! Per-point raw qflux contribution diagnostic
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: cp_c
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: cp_raw_p,cp_raw_m
+  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: cp_step_p,cp_step_m
   DOUBLE PRECISION, DIMENSION(3)                :: cp_channel
   INTEGER :: cp_istep,cp_k,cp_unit
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: dlogbdphi_mfl
@@ -271,7 +274,7 @@ SUBROUTINE ripple_solver(                                 &
   ! HDF5
   !***************************
   integer(HID_T) :: h5id_final_spitzer, h5id_phi_mesh, h5id_dentf, h5id_enetf, h5id_spitf, h5id_sizeplot
-  integer(HID_T) :: h5id_bhat_mfl
+  integer(HID_T) :: h5id_bhat_mfl,h5id_local_current
 
   !**********************************************************
   ! For faster read/write of whole HDF5 dataset
@@ -1320,6 +1323,7 @@ PRINT *,'right boundary layer ignored'
 ! Compute vectors for convolution of fluxes and source vectors:
 
   allocate(flux_vector(3,n_2d_size),source_vector(n_2d_size,3))
+  allocate(cp_step_p(ibeg:iend),cp_step_m(ibeg:iend))
   flux_vector=0.d0
   source_vector=0.d0
 
@@ -1344,6 +1348,8 @@ PRINT *,'right boundary layer ignored'
       step_factor_m=(delt_neg(istep-1)*fact_neg_b(istep)       &
                    + delt_neg(istep)*fact_neg_e(istep))/3.d0
     endif
+    cp_step_p(istep)=step_factor_p
+    cp_step_m(istep)=step_factor_m
 
     npassing=npl(istep)
 
@@ -2822,30 +2828,69 @@ ENDDO
 ! without the helical drive are bitwise unchanged.
 IF (isw_hel_drive.NE.0 .AND. num_spec.EQ.1 .AND. mpro%getrank().EQ.0) THEN
    ALLOCATE(cp_c(ibeg:iend,3))
+   IF (iplot.EQ.1) ALLOCATE(cp_raw_p(ibeg:iend,3),cp_raw_m(ibeg:iend,3))
    DO cp_k=1,3
-      CALL qflux_contributions_from_flux_vector(flux_vector(2,:), &
-           source_vector_all(:,cp_k,0),ind_start(ibeg:iend),npl(ibeg:iend), &
-           lag,cp_c(:,cp_k),cp_channel(cp_k))
+      IF (iplot.EQ.1) THEN
+         CALL qflux_point_components_from_flux_vector(flux_vector(2,:), &
+              source_vector_all(:,cp_k,0),ind_start(ibeg:iend),npl(ibeg:iend), &
+              lag,cp_step_p,cp_step_m,cp_raw_p(:,cp_k),cp_raw_m(:,cp_k), &
+              cp_c(:,cp_k),cp_channel(cp_k))
+      ELSE
+         CALL qflux_contributions_from_flux_vector(flux_vector(2,:), &
+              source_vector_all(:,cp_k,0),ind_start(ibeg:iend),npl(ibeg:iend), &
+              lag,cp_c(:,cp_k),cp_channel(cp_k))
+      END IF
       IF (ABS(cp_channel(cp_k)-qflux(2,cp_k)).GT. &
            1.0d-10*MAX(1.0d0,ABS(qflux(2,cp_k)))) &
          ERROR STOP 'qflux contribution partition does not reproduce '// &
               'qflux current channel'
    END DO
-   OPEN(newunit=cp_unit,file='qflux_current_contributions.dat',status='replace')
-   WRITE(cp_unit,'(a)') &
-        '# raw qflux current-channel contributions (mode-1 local solver)'
-   WRITE(cp_unit,'(a,3(1x,i0))') '# m_theta_hel m_phi_input lag:', &
-        m_theta_hel,m_phi_input,lag
-   WRITE(cp_unit,'(a,3(1x,es22.14))') '# qflux_current_channel_k:', &
-        qflux(2,1),qflux(2,2),qflux(2,3)
-   WRITE(cp_unit,'(a,3(1x,es22.14))') '# reconstructed_channel_k:', &
-        cp_channel(1),cp_channel(2),cp_channel(3)
-   WRITE(cp_unit,'(a)') '# phi_mfl contribution_k1 contribution_k2 contribution_k3'
-   DO cp_istep=ibeg,iend
-      WRITE(cp_unit,'(4(1x,es22.14))') phi_mfl(cp_istep), &
-           cp_c(cp_istep,1),cp_c(cp_istep,2),cp_c(cp_istep,3)
-   END DO
-   CLOSE(cp_unit)
+   IF (iplot.EQ.1) THEN
+      CALL h5_create('local_parallel_response_'//TRIM(ADJUSTL(propname))//'.h5', &
+           h5id_local_current)
+      CALL h5_add(h5id_local_current,'schema_version',1)
+      CALL h5_add(h5id_local_current,'m_theta_hel',m_theta_hel)
+      CALL h5_add(h5id_local_current,'m_phi_input',m_phi_input)
+      CALL h5_add(h5id_local_current,'lag',lag)
+      CALL h5_add(h5id_local_current,'phi_mfl',phi_mfl(ibeg:iend), &
+           LBOUND(phi_mfl(ibeg:iend)),UBOUND(phi_mfl(ibeg:iend)))
+      CALL h5_add(h5id_local_current,'bhat_mfl',bhat_mfl(ibeg:iend), &
+           LBOUND(bhat_mfl(ibeg:iend)),UBOUND(bhat_mfl(ibeg:iend)))
+      CALL h5_add(h5id_local_current,'h_phi_mfl',h_phi_mfl(ibeg:iend), &
+           LBOUND(h_phi_mfl(ibeg:iend)),UBOUND(h_phi_mfl(ibeg:iend)))
+      CALL h5_add(h5id_local_current,'npassing',npl(ibeg:iend), &
+           LBOUND(npl(ibeg:iend)),UBOUND(npl(ibeg:iend)))
+      CALL h5_add(h5id_local_current,'step_factor_p',cp_step_p, &
+           LBOUND(cp_step_p),UBOUND(cp_step_p))
+      CALL h5_add(h5id_local_current,'step_factor_m',cp_step_m, &
+           LBOUND(cp_step_m),UBOUND(cp_step_m))
+      CALL h5_add(h5id_local_current,'raw_current_co',cp_raw_p, &
+           LBOUND(cp_raw_p),UBOUND(cp_raw_p))
+      CALL h5_add(h5id_local_current,'raw_current_counter_signed',cp_raw_m, &
+           LBOUND(cp_raw_m),UBOUND(cp_raw_m))
+      CALL h5_add(h5id_local_current,'qflux_contribution',cp_c, &
+           LBOUND(cp_c),UBOUND(cp_c))
+      CALL h5_add(h5id_local_current,'qflux_local',cp_channel, &
+           LBOUND(cp_channel),UBOUND(cp_channel))
+      CALL h5_close(h5id_local_current)
+      DEALLOCATE(cp_raw_p,cp_raw_m)
+   ELSE
+      OPEN(newunit=cp_unit,file='qflux_current_contributions.dat',status='replace')
+      WRITE(cp_unit,'(a)') &
+           '# raw qflux current-channel contributions (mode-1 local solver)'
+      WRITE(cp_unit,'(a,3(1x,i0))') '# m_theta_hel m_phi_input lag:', &
+           m_theta_hel,m_phi_input,lag
+      WRITE(cp_unit,'(a,3(1x,es22.14))') '# qflux_current_channel_k:', &
+           qflux(2,1),qflux(2,2),qflux(2,3)
+      WRITE(cp_unit,'(a,3(1x,es22.14))') '# reconstructed_channel_k:', &
+           cp_channel(1),cp_channel(2),cp_channel(3)
+      WRITE(cp_unit,'(a)') '# phi_mfl contribution_k1 contribution_k2 contribution_k3'
+      DO cp_istep=ibeg,iend
+         WRITE(cp_unit,'(4(1x,es22.14))') phi_mfl(cp_istep), &
+              cp_c(cp_istep,1),cp_c(cp_istep,2),cp_c(cp_istep,3)
+      END DO
+      CLOSE(cp_unit)
+   END IF
    DEALLOCATE(cp_c)
 END IF
 ! order of species inidices (ispecp,ispec) interchanged
@@ -2900,6 +2945,7 @@ call cpu_time(time2)
     amat_minus_plus=0.d0
 
     deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
+    deallocate(cp_step_p,cp_step_m)
     if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
     DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
     DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
@@ -3045,6 +3091,7 @@ call cpu_time(time1)
 call cpu_time(time2)
 
   deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
+  deallocate(cp_step_p,cp_step_m)
   if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
 
   call cpu_time(time_solver)
