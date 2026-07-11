@@ -8,6 +8,7 @@ program test_helical_source
     complex(dp) :: even_source(24, 3), odd_source(24, 3), profile(3, ibeg:iend)
     complex(dp) :: forward_even(24, 3), forward_odd(24, 3)
     complex(dp) :: backward_even(24, 3), backward_odd(24, 3)
+    complex(dp) :: conj_source(24, 3), conj_profile(3, ibeg:iend)
     complex(dp) :: weighted_sum
     real(dp) :: factors(ibeg:iend), moments(0:0), zero_factors(ibeg:iend)
     integer :: i, ind_start(ibeg:iend), npl(ibeg:iend)
@@ -23,6 +24,7 @@ program test_helical_source
     forward_odd = (0.0d0, 0.0d0)
     backward_even = (0.0d0, 0.0d0)
     backward_odd = (0.0d0, 0.0d0)
+    conj_source = (0.0d0, 0.0d0)
     zero_factors = 0.0d0
     factors = [1.0d0, 2.0d0, 3.0d0, 4.0d0, 5.0d0]
     moments = 2.0d0
@@ -59,6 +61,16 @@ program test_helical_source
         error stop 'FAIL: shared source stencil changed'
     if (abs(sum(abs(even_source(:, 1))**2) - 111813.33333333333d0) > 1.0d-9) &
         error stop 'FAIL: shared source stencil norm changed'
+
+    ! Opposite-helicity drive (m,n) -> (m,-n) enters as conjg(profile); the
+    ! real-coefficient stencil must conjugate the source pointwise.
+    conj_profile = conjg(profile)
+    call add_helical_source(conj_source, conj_profile, moments, 1, 1, ibeg, iend, &
+        0, npl, ind_start, factors, factors, factors, factors)
+    if (maxval(abs(conj_source - conjg(even_source))) > 1.0d-14) &
+        error stop 'FAIL: conjugate profile did not conjugate the source pointwise'
+    if (maxval(abs(conj_source - even_source)) <= 1.0d-14) &
+        error stop 'FAIL: conjugacy check is vacuous, source has no imaginary part'
 
     replay_source = reshape([(real(i, dp), i = 1, size(replay_source))], &
         shape(replay_source))
