@@ -67,7 +67,8 @@ module neo2_ql
        isw_Vphi_loc, Vphi, R_Vphi, Z_Vphi, boozer_theta_Vphi,       &
        dn_spec_ov_ds, dT_spec_ov_ds,                                &
        isw_hel_drive, m_theta_hel, hel_brad_re, hel_brad_im,        &
-       hel_phim_re, hel_phim_im, has_perturbation_file
+       hel_phim_re, hel_phim_im, has_perturbation_file,             &
+       has_helical_drive_source
 
   ! derivative of iota for non-local NTV computations
   ! (with magnetic shear)
@@ -952,9 +953,7 @@ subroutine main
     end if
 
     if (isw_qflux_NA == 1 .and. .not. has_perturbation_file()) then
-      if (isw_hel_drive == 0 .or. &
-          (hel_phim_re == 0.0d0 .and. hel_phim_im == 0.0d0 .and. &
-           hel_brad_re == 0.0d0 .and. hel_brad_im == 0.0d0)) then
+      if (.not. has_helical_drive_source()) then
         write(*,*) 'ERROR: non-axisymmetric solve has no source.'
         write(*,*) "  isw_qflux_NA=1 with in_file_pert='none' provides no"
         write(*,*) '  perturbation field, and the helical drive is off or zero.'
