@@ -31,8 +31,6 @@ add_custom_target(copy
   ${PROJECT_SOURCE_DIR}/../../TEST_RUNS/${EXE_NAME}
   )
 
-ADD_TEST(NAME Test_Build_Code COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR})
-set_tests_properties(Test_Build_Code PROPERTIES RESOURCE_LOCK neo2_build_tree)
 ADD_TEST(Extended_QL_Multispecies  ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies" "2" "QL")
 ADD_TEST(Extended_QL_Multispecies_Read  ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies_Read" "2" "QL")
 set_tests_properties(

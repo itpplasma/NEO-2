@@ -33,7 +33,7 @@ if (COPY_TO_ARCHIVE)
 endif()
 
 ADD_TEST(NAME Test_Build_Code COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR})
-set_tests_properties(Test_Build_Code PROPERTIES RESOURCE_LOCK neo2_build_tree)
+set_tests_properties(Test_Build_Code PROPERTIES RUN_SERIAL TRUE)
 ADD_TEST(Test_Testcase1-Seq       ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "0")
 ADD_TEST(Test_Testcase1-Par       ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Testcase1" "6")
 ADD_TEST(Test_Relativistic_BeliaevBudker-Seq ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Relativistic_BeliaevBudker" "0")
