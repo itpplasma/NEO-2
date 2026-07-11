@@ -125,6 +125,19 @@ set_tests_properties(join_failure_diagnostic_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_ripple_solver_route test_ripple_solver_route.f90)
+target_link_libraries(test_ripple_solver_route neo2_ql)
+
+add_test(NAME ripple_solver_route_test
+         COMMAND test_ripple_solver_route
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ripple_solver_route_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_ntv_output_geometry test_ntv_output_geometry.f90)
 target_link_libraries(test_ntv_output_geometry neo2_ql)
 
