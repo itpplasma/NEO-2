@@ -96,6 +96,7 @@ add_library(common STATIC
   )
 add_dependencies(common FGSL)
 target_link_libraries(common PUBLIC
+  fortnum
   ${LIBFGSL}
   GSL::gsl
   ${MPE_lib}
