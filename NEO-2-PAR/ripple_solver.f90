@@ -33,8 +33,7 @@ SUBROUTINE ripple_solver(                                 &
                             lsw_save_spitf
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
        column_full2pointer,remap_rc,sparse_solver_test
-  USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
-                               surface_boozer_B00,travis_convfac,              &
+  USE mag_interface_mod, ONLY: surface_boozer_B00,travis_convfac,              &
                                mag_magfield
        
   USE development
