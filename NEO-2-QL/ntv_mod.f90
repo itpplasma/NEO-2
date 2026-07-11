@@ -33,6 +33,10 @@ MODULE ntv_mod
   INTEGER, PUBLIC :: isw_ripple_solver
   !> name of perturbation file
   CHARACTER(len=100), PUBLIC :: in_file_pert
+  !> switch: use m_phi_input instead of taking m_phi from the perturbation file
+  INTEGER, PUBLIC :: isw_m_phi_input
+  !> toroidal mode number used when isw_m_phi_input is enabled
+  INTEGER, PUBLIC :: m_phi_input
   !> toroidal mach number over R_major (Mt/R).
   !> Only used for legacy single-species NTV output (isw_calc_Er=0).
   !> Ignored when isw_calc_Er >= 1; the multispecies code uses Om_tE instead.
@@ -43,6 +47,18 @@ MODULE ntv_mod
   REAL(kind=dp), PUBLIC :: Om_tE
   !> Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc) times B
   REAL(kind=dp), PUBLIC :: B_rho_L_loc
+  !> switch: turn on(=1)/off(=0) the single-helicity misalignment drive
+  !> (additional RHS of the non-axisymmetric equation set)
+  INTEGER, PUBLIC :: isw_hel_drive
+  !> poloidal mode number m of the misalignment-drive harmonic
+  !> (toroidal mode number n is m_phi from the file or m_phi_input)
+  INTEGER, PUBLIC :: m_theta_hel
+  !> complex amplitude (delta B^s/B_0^phi)_mn of the radial corrugation,
+  !> dimensionless flux-function amplitude
+  REAL(kind=dp), PUBLIC :: hel_brad_re, hel_brad_im
+  !> complex amplitude Phi_mn of the electrostatic perturbation harmonic
+  !> in statvolt
+  REAL(kind=dp), PUBLIC :: hel_phim_re, hel_phim_im
 
   ! ADDITIONAL INPUT FOR MULTI-SPECIES COMPUTATIONS (neo2.in)
 
@@ -112,6 +128,7 @@ MODULE ntv_mod
   INTEGER, PUBLIC :: m_phi
   ! Local copy of y-vector (see definition in rhs_kin.f90)
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE, PUBLIC :: y_ntv_mod
+  PUBLIC :: resolve_ntv_output_geometry
 
 
   PUBLIC write_ntv_output
@@ -193,7 +210,46 @@ MODULE ntv_mod
      MODULE PROCEDURE compute_TphiNA_a
   END INTERFACE compute_TphiNA
 
+  PUBLIC has_perturbation_file, has_helical_drive_source
+
 CONTAINS
+
+  SUBROUTINE resolve_ntv_output_geometry(y, final_y)
+    REAL(kind=dp), DIMENSION(:), ALLOCATABLE, INTENT(out) :: y
+    REAL(kind=dp), DIMENSION(:), OPTIONAL, INTENT(in) :: final_y
+
+    IF (PRESENT(final_y)) THEN
+      IF (ALLOCATED(y_ntv_mod)) DEALLOCATE(y_ntv_mod)
+      ALLOCATE(y_ntv_mod(SIZE(final_y)))
+      y_ntv_mod = final_y
+    END IF
+    IF (.NOT. ALLOCATED(y_ntv_mod)) &
+      ERROR STOP 'NTV output geometry is not available'
+    ALLOCATE(y(SIZE(y_ntv_mod)))
+    y = y_ntv_mod
+  END SUBROUTINE resolve_ntv_output_geometry
+
+  LOGICAL FUNCTION has_helical_drive_source()
+    has_helical_drive_source = .FALSE.
+    IF (isw_hel_drive .EQ. 0) RETURN
+
+    IF (hel_brad_re .NE. 0.0_dp) has_helical_drive_source = .TRUE.
+    IF (hel_brad_im .NE. 0.0_dp) has_helical_drive_source = .TRUE.
+    IF (hel_phim_re .NE. 0.0_dp) has_helical_drive_source = .TRUE.
+    IF (hel_phim_im .NE. 0.0_dp) has_helical_drive_source = .TRUE.
+  END FUNCTION has_helical_drive_source
+
+  LOGICAL FUNCTION has_perturbation_file()
+    CHARACTER(len=100) :: file_name
+
+    file_name = ADJUSTL(in_file_pert)
+    has_perturbation_file = LEN_TRIM(file_name) .GT. 0
+    IF (has_perturbation_file) THEN
+       IF (TRIM(file_name) .EQ. 'none') has_perturbation_file = .FALSE.
+       IF (TRIM(file_name) .EQ. 'None') has_perturbation_file = .FALSE.
+       IF (TRIM(file_name) .EQ. 'NONE') has_perturbation_file = .FALSE.
+    END IF
+  END FUNCTION has_perturbation_file
 
   SUBROUTINE compute_Dij_norm_a(qflux_NA_in,qflux_AX_in,Dij_NA,Dij_AX)
 
@@ -716,7 +772,7 @@ CONTAINS
   END SUBROUTINE compute_Dijab_a
 
 
-  SUBROUTINE write_ntv_output_a(qflux_in)
+  SUBROUTINE write_ntv_output_a(qflux_in, final_y)
 
     use nrtype
     USE neo_control, ONLY: lab_swi
@@ -732,6 +788,7 @@ CONTAINS
     ! input:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:,:), INTENT(in) :: qflux_in
+    REAL(kind=dp), DIMENSION(:), OPTIONAL, INTENT(in) :: final_y
     ! ---------------------------------------------------------------!
     ! local definitions:
     ! ---------------------------------------------------------------!
@@ -769,9 +826,7 @@ CONTAINS
     REAL(kind=dp) :: bcovar_phi, bcovar_tht, avbhat2, avb2, avbhat
     CHARACTER(len=30) :: file_name
 
-    ! copy y-vector (see definition in rhs_kin.f90)
-    ALLOCATE(y(SIZE(y_ntv_mod,1)))
-    y = y_ntv_mod
+    CALL resolve_ntv_output_geometry(y, final_y)
 
     ! R0, aiota, av_nabla_stor :
     rt0 = device%r0

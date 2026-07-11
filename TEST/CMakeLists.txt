@@ -50,6 +50,107 @@ set_tests_properties(er_rotation_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_ntv_perturbation_input test_ntv_perturbation_input.f90)
+target_link_libraries(test_ntv_perturbation_input neo2_ql)
+
+add_test(NAME ntv_perturbation_input_test
+         COMMAND test_ntv_perturbation_input
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ntv_perturbation_input_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_ntv_hel_drive_input test_ntv_hel_drive_input.f90)
+target_link_libraries(test_ntv_hel_drive_input neo2_ql)
+
+add_test(NAME ntv_hel_drive_input_test
+         COMMAND test_ntv_hel_drive_input
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ntv_hel_drive_input_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_ntv_source_guard test_ntv_source_guard.f90)
+target_link_libraries(test_ntv_source_guard neo2_ql)
+
+add_test(NAME ntv_zero_source_guard_test
+         COMMAND test_ntv_source_guard zero
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ntv_zero_source_guard_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "ERROR: non-axisymmetric solve has no source."
+    FAIL_REGULAR_EXPRESSION "FAIL;NaN;zhseqr;returned from rejected source"
+    TIMEOUT 5
+)
+
+add_test(NAME ntv_driven_source_guard_test
+         COMMAND test_ntv_source_guard driven
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ntv_driven_source_guard_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "Driven source accepted!"
+    FAIL_REGULAR_EXPRESSION "FAIL;NaN;zhseqr;non-axisymmetric solve has no source"
+    TIMEOUT 5
+)
+
+add_executable(test_phi_divider_parity test_phi_divider_parity.f90)
+target_link_libraries(test_phi_divider_parity common)
+
+add_test(NAME phi_divider_parity_test
+         COMMAND test_phi_divider_parity
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(phi_divider_parity_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_join_failure_diagnostic test_join_failure_diagnostic.f90)
+target_link_libraries(test_join_failure_diagnostic neo2_ql)
+
+add_test(NAME join_failure_diagnostic_test
+         COMMAND test_join_failure_diagnostic
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(join_failure_diagnostic_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "join_ripples: DGBSV info=2"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_ntv_output_geometry test_ntv_output_geometry.f90)
+target_link_libraries(test_ntv_output_geometry neo2_ql)
+
+add_test(NAME ntv_output_geometry_test
+         COMMAND test_ntv_output_geometry
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(ntv_output_geometry_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_collop_zero_endpoint test_collop_zero_endpoint.f90)
+target_link_libraries(test_collop_zero_endpoint common)
+
+add_test(NAME collop_zero_endpoint_test
+         COMMAND test_collop_zero_endpoint
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(collop_zero_endpoint_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_spline_sparse_assembly test_spline_sparse_assembly.f90)
 target_link_libraries(test_spline_sparse_assembly common)
 

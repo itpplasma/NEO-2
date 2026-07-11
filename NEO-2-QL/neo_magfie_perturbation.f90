@@ -15,7 +15,8 @@ MODULE neo_magfie_perturbation
   USE partpa_mod,  ONLY : bmod0
   !! Modification by Andreas F. Martitsch (17.07.2014)
   ! Extra input for NTV computations
-  USE ntv_mod, ONLY : in_file_pert, m_phi
+  USE ntv_mod, ONLY : in_file_pert, isw_m_phi_input, m_phi_input, m_phi, &
+       has_perturbation_file
   !! End Modification by Andreas F. Martitsch (17.07.2014)
   ! coordinates of starting point
   USE mag_interface_mod, ONLY : boozer_s, boozer_theta_beg,&
@@ -65,6 +66,7 @@ MODULE neo_magfie_perturbation
   PRIVATE r_m_pert, r_mhalf_pert, sp_index_pert
   REAL(kind=dp), DIMENSION(:),   ALLOCATABLE :: r_m_pert, r_mhalf_pert
   INTEGER(I4B),  DIMENSION(:),   ALLOCATABLE :: sp_index_pert
+  LOGICAL :: perturbation_initialized = .FALSE.
 
   PUBLIC neo_magfie_pert
   PRIVATE neo_magfie_pert_a, neo_magfie_pert_b
@@ -94,6 +96,18 @@ CONTAINS
     ! open Boozer file and read first quantities
     r_un=27052014
     in_file_pert=TRIM(ADJUSTL(in_file_pert))
+
+    IF (.NOT. has_perturbation_file()) THEN
+       IF (isw_m_phi_input .EQ. 0) THEN
+          STOP "in_file_pert='none' requires isw_m_phi_input=1"
+       END IF
+       m_phi = m_phi_input
+       mnmax_pert = 0
+       ns_pert = 0
+       perturbation_initialized = .TRUE.
+       RETURN
+    END IF
+
     OPEN(unit=r_un,file=in_file_pert,status='old',form='formatted')
 
     IF (inp_swi == INP_SWI_TOK_CIRC) THEN ! NEW IPP TOKAMAK
@@ -206,8 +220,10 @@ CONTAINS
        PRINT *,'FATAL: There is yet no other Laboratory for the perturbed field defined!'
        STOP
     END IF
+    IF (isw_m_phi_input .NE. 0) m_phi = m_phi_input
     ! close Boozer file
     CLOSE (unit=r_un)
+    perturbation_initialized = .TRUE.
     RETURN
   END SUBROUTINE neo_read_pert
 
@@ -306,9 +322,9 @@ CONTAINS
 
     ! read Boozer file and prepare spline routines (1st call)
 
-    IF (.NOT. ALLOCATED(es_pert)) THEN
+    IF (.NOT. perturbation_initialized) THEN
        CALL neo_read_pert()
-       CALL neo_init_spline_pert()
+       IF (mnmax_pert .GT. 0) CALL neo_init_spline_pert()
     END IF
 
     ! direct summation of Fourier components
@@ -410,9 +426,9 @@ CONTAINS
 
     ! read Boozer file and prepare spline routines (1st call)
 
-    IF (.NOT. ALLOCATED(es_pert)) THEN
+    IF (.NOT. perturbation_initialized) THEN
        CALL neo_read_pert()
-       CALL neo_init_spline_pert()
+       IF (mnmax_pert .GT. 0) CALL neo_init_spline_pert()
     END IF
 
     ! direct summation of Fourier components
