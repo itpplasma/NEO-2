@@ -153,6 +153,21 @@ set_tests_properties(join_failure_diagnostic_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_lorentz_projection_diagnostic
+    test_lorentz_projection_diagnostic.f90)
+target_link_libraries(test_lorentz_projection_diagnostic neo2_ql)
+
+add_test(NAME lorentz_projection_diagnostic_test
+         COMMAND test_lorentz_projection_diagnostic
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(lorentz_projection_diagnostic_test PROPERTIES
+    ENVIRONMENT "NEO2_LOCAL_PROJECTION_TRACE_FILE=${CMAKE_CURRENT_BINARY_DIR}/local_projection_trace.csv"
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_qflux_interface_diagnostic test_qflux_interface_diagnostic.f90)
 target_link_libraries(test_qflux_interface_diagnostic neo2_ql)
 
