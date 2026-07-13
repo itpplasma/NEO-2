@@ -23,6 +23,8 @@ SUBROUTINE join_ends(ierr)
   USE propagator_mod
   USE lapack_band
   USE collisionality_mod, ONLY : isw_lorentz
+  USE join_diagnostics_mod, ONLY : join_end_trace_enabled, &
+                                   record_join_end_compatibility
 
   IMPLICIT NONE
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
@@ -34,7 +36,9 @@ SUBROUTINE join_ends(ierr)
 
 
   INTEGER :: ndim,i,i1,ntranseq,info,nl,nr,nts_r,nts_l,kl,kr,m,kr1,nvel
+  INTEGER :: idiag,jdiag,nconstraints,trace_info
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ipivot,iminvec,imaxvec
+  INTEGER,          DIMENSION(:),   ALLOCATABLE :: trace_pivot
 
   ! WINNY
   ! made it compatible with propagator_mod
@@ -49,6 +53,15 @@ SUBROUTINE join_ends(ierr)
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: alam_l,alam_r
 
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat,bvec_lapack,transmat
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: compatibility,dropped_p
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: dropped_m,left_null
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: compatibility_scale
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: dropped_p_scale
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: dropped_m_scale
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: right_null,periodic_matrix
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: periodic_rhs,trace_matrix
+  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: left_residual,right_residual
+  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: left_scale,right_scale
 
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: qflux,dqflux
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: source_m,dsource_m
@@ -61,9 +74,14 @@ SUBROUTINE join_ends(ierr)
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: amat_m_p,damat_m_p
   INTEGER :: ndupl,idupl
   DOUBLE PRECISION :: facnorm
+  DOUBLE PRECISION :: measure_sum,source_after(3),source_before(3)
+  DOUBLE PRECISION :: source_factor(3),source_scale(3),transfer_error(2)
+  LOGICAL :: trace_join_end
 
   ! initialize
   ierr = 0
+  trace_join_end = join_end_trace_enabled(ierr)
+  IF(ierr.NE.0) RETURN
   o => prop_c%prev
   n => prop_c
 
@@ -95,6 +113,39 @@ PRINT *,'nl,nr = ',nl,nr
   nts_l=nl*(nvel+1)
   nts_r=nr*(nvel+1)
 
+  IF(trace_join_end) THEN
+    source_factor=0.d0
+    source_before=SUM(o%p%source_p,DIM=1)+SUM(o%p%source_m,DIM=1)
+    source_scale=SUM(ABS(o%p%source_p),DIM=1) &
+                +SUM(ABS(o%p%source_m),DIM=1)
+    source_scale=MAX(source_scale,TINY(1.d0))
+    source_after=source_before
+    measure_sum=0.d0
+    transfer_error=0.d0
+    DO idiag=1,SIZE(c_forward,1)
+      DO jdiag=1,SIZE(c_forward,2)
+        IF(idiag.EQ.jdiag) THEN
+          transfer_error(1)=MAX(transfer_error(1), &
+                                ABS(c_forward(idiag,jdiag)-1.d0))
+        ELSE
+          transfer_error(1)=MAX(transfer_error(1), &
+                                ABS(c_forward(idiag,jdiag)))
+        ENDIF
+      ENDDO
+    ENDDO
+    DO idiag=1,SIZE(c_backward,1)
+      DO jdiag=1,SIZE(c_backward,2)
+        IF(idiag.EQ.jdiag) THEN
+          transfer_error(2)=MAX(transfer_error(2), &
+                                ABS(c_backward(idiag,jdiag)-1.d0))
+        ELSE
+          transfer_error(2)=MAX(transfer_error(2), &
+                                ABS(c_backward(idiag,jdiag)))
+        ENDIF
+      ENDDO
+    ENDDO
+  ENDIF
+
 
 ! Correction of sorce and flux symmetry due to Pfirsch-Schlueter current closure
 ! condition and asymmetry of electric drive (for Lorentz model only)
@@ -108,10 +159,13 @@ PRINT *,'nl,nr = ',nl,nr
     delta_eta_r(1:nr-1)=o%p%eta_r(1:nr-1)-o%p%eta_r(0:nr-2)
     delta_eta_r(nr) = o%p%eta_boundary_r - o%p%eta_r(nr-1)
 
+    IF(trace_join_end) measure_sum=SUM(delta_eta_l)+SUM(delta_eta_r)
+
     DO i=1,3
 
       facnorm=(SUM(o%p%source_p(:,i))+SUM(o%p%source_m(:,i)))          &
              *0.5d0/o%p%eta_boundary_r
+      IF(trace_join_end) source_factor(i)=facnorm
       o%p%source_p(:,i)=o%p%source_p(:,i)-delta_eta_r*facnorm
       o%p%source_m(:,i)=o%p%source_m(:,i)-delta_eta_l*facnorm
 
@@ -122,6 +176,9 @@ PRINT *,'nl,nr = ',nl,nr
       o%p%flux_m(i,:)=o%p%flux_m(i,:)-facnorm
 
     ENDDO
+
+    IF(trace_join_end) &
+      source_after=SUM(o%p%source_p,DIM=1)+SUM(o%p%source_m,DIM=1)
 
   ENDIF
 
@@ -282,6 +339,40 @@ CLOSE(111)
                      =MATMUL(c_backward,o%p%source_m(kl+1:kl+nl,1:3))
   ENDDO
 
+  IF(trace_join_end) THEN
+    nconstraints=1
+    IF(nvel.GT.0) nconstraints=2
+    ALLOCATE(periodic_matrix(ndim,ndim),periodic_rhs(ndim,ntranseq))
+    ALLOCATE(left_null(ndim,nconstraints),right_null(ndim,nconstraints))
+    ALLOCATE(compatibility(nconstraints,ntranseq))
+    ALLOCATE(dropped_p(nconstraints,ntranseq))
+    ALLOCATE(dropped_m(nconstraints,ntranseq))
+    ALLOCATE(compatibility_scale(nconstraints,ntranseq))
+    ALLOCATE(dropped_p_scale(nconstraints,ntranseq))
+    ALLOCATE(dropped_m_scale(nconstraints,ntranseq))
+    ALLOCATE(left_residual(nconstraints),right_residual(nconstraints))
+    ALLOCATE(left_scale(nconstraints),right_scale(nconstraints))
+    ALLOCATE(trace_matrix(ndim,ndim),trace_pivot(ndim))
+    periodic_matrix=amat
+    periodic_rhs=bvec_lapack
+    left_null=0.d0
+    DO m=0,nconstraints-1
+      left_null(m*nl+1:(m+1)*nl,m+1)=1.d0
+      left_null(nts_l+m*nr+1:nts_l+(m+1)*nr,m+1)=1.d0
+    ENDDO
+    compatibility=MATMUL(TRANSPOSE(left_null),periodic_rhs)
+    DO m=1,nconstraints
+      DO i=1,ntranseq
+        compatibility_scale(m,i)=MAX(SUM(ABS(periodic_rhs(:,i)) &
+                                      *ABS(left_null(:,m))),TINY(1.d0))
+      ENDDO
+      left_residual(m)=MAXVAL(ABS(MATMUL(TRANSPOSE(periodic_matrix), &
+                                       left_null(:,m))))
+      left_scale(m)=MAX(MAXVAL(MATMUL(TRANSPOSE(ABS(periodic_matrix)), &
+                                     ABS(left_null(:,m)))),TINY(1.d0))
+    ENDDO
+  ENDIF
+
 OPEN(751,file='amat_before.dat')
 OPEN(752,file='bvec_before.dat')
 DO i=1,ndim
@@ -305,6 +396,32 @@ if(nvel.gt.0) then
   amat(nts_l+2*nr,nts_l+nr+1:nts_l+2*nr)=1.d0
   bvec_lapack(nts_l+2*nr,:)=0.d0
 endif
+
+  IF(trace_join_end) THEN
+    trace_matrix=periodic_matrix
+    right_null=0.d0
+    trace_matrix(nts_l+nr,:)=0.d0
+    trace_matrix(nts_l+nr,1:nl)=1.d0
+    trace_matrix(nts_l+nr,nts_l+1:nts_l+nr)=1.d0
+    right_null(nts_l+nr,1)=1.d0
+    IF(nconstraints.GT.1) THEN
+      trace_matrix(nts_l+2*nr,:)=0.d0
+      trace_matrix(nts_l+2*nr,nl+1:2*nl)=1.d0
+      trace_matrix(nts_l+2*nr,nts_l+nr+1:nts_l+2*nr)=1.d0
+      right_null(nts_l+2*nr,2)=1.d0
+    ENDIF
+    CALL gbsv(ndim,ndim,trace_matrix,trace_pivot,right_null,trace_info)
+    IF(trace_info.NE.0) THEN
+      ierr=9
+      RETURN
+    ENDIF
+    DO m=1,nconstraints
+      right_residual(m)=MAXVAL(ABS(MATMUL(periodic_matrix, &
+                                        right_null(:,m))))
+      right_scale(m)=MAX(MAXVAL(MATMUL(ABS(periodic_matrix), &
+                                      ABS(right_null(:,m)))),TINY(1.d0))
+    ENDDO
+  ENDIF
 OPEN(751,file='amat_after.dat')
 OPEN(752,file='bvec_after.dat')
 DO i=1,ndim
@@ -318,6 +435,32 @@ CLOSE(752)
   IF(info.NE.0) THEN
     ierr=2
     RETURN
+  ENDIF
+
+  IF(trace_join_end) THEN
+    DO m=0,nconstraints-1
+      dropped_p(m+1,:)=MATMUL(periodic_matrix((m+1)*nl,:),bvec_lapack) &
+                       -periodic_rhs((m+1)*nl,:)
+      dropped_m(m+1,:)=MATMUL(periodic_matrix(nts_l+(m+1)*nr,:), &
+                              bvec_lapack) &
+                       -periodic_rhs(nts_l+(m+1)*nr,:)
+      DO i=1,ntranseq
+        dropped_p_scale(m+1,i)=MAX( &
+          DOT_PRODUCT(ABS(periodic_matrix((m+1)*nl,:)), &
+                      ABS(bvec_lapack(:,i))) &
+          +ABS(periodic_rhs((m+1)*nl,i)),TINY(1.d0))
+        dropped_m_scale(m+1,i)=MAX( &
+          DOT_PRODUCT(ABS(periodic_matrix(nts_l+(m+1)*nr,:)), &
+                      ABS(bvec_lapack(:,i))) &
+          +ABS(periodic_rhs(nts_l+(m+1)*nr,i)),TINY(1.d0))
+      ENDDO
+    ENDDO
+    CALL record_join_end_compatibility(source_factor,source_before, &
+         source_after,source_scale,measure_sum,compatibility,dropped_p, &
+         dropped_m,compatibility_scale,dropped_p_scale,dropped_m_scale, &
+         left_null,right_null,left_residual,right_residual,left_scale, &
+         right_scale,transfer_error,ierr)
+    IF(ierr.NE.0) RETURN
   ENDIF
 
 OPEN(752,file='bvec_solution.dat')
