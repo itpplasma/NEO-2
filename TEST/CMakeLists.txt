@@ -230,6 +230,19 @@ set_tests_properties(collop_zero_endpoint_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_collop_precompute_mass test_collop_precompute_mass.f90)
+target_link_libraries(test_collop_precompute_mass common)
+
+add_test(NAME collop_precompute_mass_test
+         COMMAND test_collop_precompute_mass
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(collop_precompute_mass_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_spline_sparse_assembly test_spline_sparse_assembly.f90)
 target_link_libraries(test_spline_sparse_assembly common)
 
