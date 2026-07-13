@@ -26,11 +26,12 @@ MODULE flint_mod
 
 contains
 
-  SUBROUTINE record_phi_placement(tag,interval,part,eta_index,phi_start, &
-       phi_end,hphi,ceiling_count,placed_count,ierr)
+  SUBROUTINE record_phi_placement(tag,outcome,interval,part,eta_index, &
+       phi_start,phi_end,hphi,decision_count,result_count,ierr)
     INTEGER, INTENT(in) :: tag,interval,part,eta_index
-    INTEGER, INTENT(in) :: ceiling_count,placed_count
+    INTEGER, INTENT(in) :: decision_count,result_count
     DOUBLE PRECISION, INTENT(in) :: phi_start,phi_end,hphi
+    CHARACTER(len=*), INTENT(in) :: outcome
     INTEGER, INTENT(out) :: ierr
 
     INTEGER :: iunit,status
@@ -47,9 +48,9 @@ contains
        RETURN
     END IF
     phi_placement_sequence = phi_placement_sequence + 1
-    WRITE(iunit,'(5(I0,","),3(ES23.15,","),I0,",",I0)',IOSTAT=status) &
-         phi_placement_sequence,tag,interval,part,eta_index,phi_start, &
-         phi_end,hphi,ceiling_count,placed_count
+    WRITE(iunit,'(2(I0,","),A,",",3(I0,","),3(ES23.15,","),I0,",",I0)', &
+         IOSTAT=status) phi_placement_sequence,tag,TRIM(outcome),interval, &
+         part,eta_index,phi_start,phi_end,hphi,decision_count,result_count
     CLOSE(iunit,IOSTAT=ierr)
     IF (status .NE. 0) ierr = status
   END SUBROUTINE record_phi_placement
@@ -76,8 +77,9 @@ contains
          ACTION='write',IOSTAT=status)
     IF (status .EQ. 0) THEN
        WRITE(iunit,'(A)',IOSTAT=status) &
-            'sequence,tag,interval,part,eta_index,phi_start,phi_end,hphi,'// &
-            'ceiling_count,placed_count'
+            'sequence,tag,outcome,interval,part,eta_index,phi_start,'// &
+            'phi_end,hphi,'// &
+            'decision_count,result_count'
        CLOSE(iunit,IOSTAT=ierr)
     END IF
     IF (status .NE. 0) ierr = status
@@ -907,8 +909,8 @@ contains
           ceiling_count = m
           m = MAX(phi_split_min,m - MOD(m+1,2))
        END IF
-       CALL record_phi_placement(fieldpropagator%tag,k,ip,i_eta,phi_sl, &
-            phi_el,hphi,ceiling_count,m,placement_ierr)
+       CALL record_phi_placement(fieldpropagator%tag,'placed',k,ip,i_eta, &
+            phi_sl,phi_el,hphi,ceiling_count,m,placement_ierr)
        IF (placement_ierr .NE. 0) &
             ERROR STOP 'phi_placer diagnostic output failed'
        dpl = (phi_el-phi_sl) / DBLE(m+1) ! local delta
