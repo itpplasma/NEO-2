@@ -26,6 +26,8 @@ MODULE gsl_integration_routines_mod
 
   USE fgsl ! Fortran interface of the GSL Library
   USE, INTRINSIC :: iso_c_binding
+  USE, INTRINSIC :: ieee_arithmetic, ONLY: ieee_get_flag, ieee_get_halting_mode, &
+       ieee_invalid, ieee_is_finite, ieee_set_flag, ieee_set_halting_mode
 
   IMPLICIT NONE
 
@@ -99,6 +101,7 @@ MODULE gsl_integration_routines_mod
   ! CQUAD doubly-adaptive integration
   PUBLIC fint1d_cquad
   PRIVATE fint1d_param0_cquad, fint1d_param1_cquad
+  PRIVATE begin_cquad_ieee, end_cquad_ieee, record_cquad_integrand
   INTERFACE fint1d_cquad
      MODULE PROCEDURE fint1d_param0_cquad, fint1d_param1_cquad
   END INTERFACE fint1d_cquad
@@ -112,6 +115,38 @@ MODULE gsl_integration_routines_mod
 
 
 CONTAINS
+
+  SUBROUTINE begin_cquad_ieee(invalid_before, invalid_halting)
+    LOGICAL, INTENT(OUT) :: invalid_before, invalid_halting
+
+    ! CQUAD raises invalid internally for exact-zero subintervals. Callbacks
+    ! record integrand exceptions separately, so invalid physics remains fatal.
+    CALL ieee_get_flag(ieee_invalid, invalid_before)
+    CALL ieee_get_halting_mode(ieee_invalid, invalid_halting)
+    CALL ieee_set_halting_mode(ieee_invalid, .FALSE.)
+    CALL ieee_set_flag(ieee_invalid, .FALSE.)
+  END SUBROUTINE begin_cquad_ieee
+
+  SUBROUTINE end_cquad_ieee(invalid_before, invalid_halting, user_invalid, ra, rda)
+    LOGICAL, INTENT(IN) :: invalid_before, invalid_halting, user_invalid
+    REAL(fgsl_double), INTENT(IN) :: ra, rda
+
+    CALL ieee_set_flag(ieee_invalid, invalid_before)
+    CALL ieee_set_halting_mode(ieee_invalid, invalid_halting)
+    IF(user_invalid) ERROR STOP 'CQUAD integrand raised IEEE invalid'
+    IF((.NOT. ieee_is_finite(ra)) .OR. (.NOT. ieee_is_finite(rda))) &
+       ERROR STOP 'CQUAD returned a nonfinite result'
+  END SUBROUTINE end_cquad_ieee
+
+  SUBROUTINE record_cquad_integrand(value, user_invalid)
+    REAL(c_double), INTENT(IN) :: value
+    LOGICAL, INTENT(INOUT) :: user_invalid
+    LOGICAL :: invalid_raised
+
+    CALL ieee_get_flag(ieee_invalid, invalid_raised)
+    user_invalid = user_invalid .OR. invalid_raised .OR. (.NOT. ieee_is_finite(value))
+    CALL ieee_set_flag(ieee_invalid, .FALSE.)
+  END SUBROUTINE record_cquad_integrand
 
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
@@ -624,6 +659,7 @@ CONTAINS
     TYPE(fgsl_integration_cquad_workspace) :: integ_cq
     TYPE(c_ptr) :: param0_ptr ! This pointer holds the C-location of user-specified
                               ! parameter (here is no parameter specified -> c_null_ptr)
+    LOGICAL :: invalid_before, invalid_halting, user_invalid
 
     ! Input/output parameter of the fgsl_integration_cquad function,
     ! thus better initialize.
@@ -643,8 +679,11 @@ CONTAINS
 
     ! Initialize solver 'fgsl_integration_cquad' to use the function 'stdfunc' and
     ! the user-specified parameters
+    CALL begin_cquad_ieee(invalid_before, invalid_halting)
+    user_invalid = .FALSE.
     statusval = fgsl_integration_cquad(stdfunc, x_low, x_up, &
        epsabs, epsrel, integ_cq, ra, rda, neval)
+    CALL end_cquad_ieee(invalid_before, invalid_halting, user_invalid, ra, rda)
     CALL check_error(statusval)
 
     ! Return the results (ra,rda,neval)
@@ -672,7 +711,9 @@ CONTAINS
       IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
 
       ! Wrap user-specified function to a C-interoperable function
+      CALL ieee_set_flag(ieee_invalid, .FALSE.)
       f2c_wrapper_func1d_param0 = func1d_param0_user(x)
+      CALL record_cquad_integrand(f2c_wrapper_func1d_param0, user_invalid)
 
     END FUNCTION f2c_wrapper_func1d_param0
   END FUNCTION fint1d_param0_cquad
@@ -705,6 +746,7 @@ CONTAINS
     TYPE(fgsl_integration_cquad_workspace) :: integ_cq
     TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of user-specified
     !                         ! parameter
+    LOGICAL :: invalid_before, invalid_halting, user_invalid
 
     ! Turn off error handler
     std = fgsl_set_error_handler_off()
@@ -720,8 +762,11 @@ CONTAINS
 
     ! Initialize solver 'fgsl_integration_cquad' to use the function 'stdfunc' and
     ! the user-specified parameters
+    CALL begin_cquad_ieee(invalid_before, invalid_halting)
+    user_invalid = .FALSE.
     status = fgsl_integration_cquad(stdfunc, x_low, x_up, &
        epsabs, epsrel, integ_cq, ra, rda, neval)
+    CALL end_cquad_ieee(invalid_before, invalid_halting, user_invalid, ra, rda)
     CALL check_error(status)
 
     ! Return the results (ra,rda,neval)
@@ -753,7 +798,9 @@ CONTAINS
       ! Cast C-pointer to the above-defined Fortran pointer
       CALL C_F_POINTER(params, p)
       ! Wrap user-specified function to a C-interoperable function
+      CALL ieee_set_flag(ieee_invalid, .FALSE.)
       f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
+      CALL record_cquad_integrand(f2c_wrapper_func1d_param1, user_invalid)
 
     END FUNCTION f2c_wrapper_func1d_param1
   END FUNCTION fint1d_param1_cquad
