@@ -316,24 +316,33 @@ contains
     end subroutine record_local_constant_stage_residuals
 
     subroutine record_local_constant_row(tag, row, irow, icol, values, state, &
-            rhs, ierr)
+            rhs, npl, ind_start, bhat, ibeg, iend, lag, ierr)
         integer, intent(in) :: tag, row, irow(:), icol(:)
         real(real64), intent(in) :: values(:), state(:), rhs(:)
+        integer, intent(in) :: npl(ibeg:), ind_start(ibeg:)
+        real(real64), intent(in) :: bhat(ibeg:)
+        integer, intent(in) :: ibeg, iend, lag
         integer, intent(out) :: ierr
         character(len=:), allocatable :: filename
-        integer :: entry, iunit, status
+        integer :: column_band, column_laguerre, column_sigma, column_step
+        integer :: entry, iunit, row_band, row_laguerre, row_sigma, row_step, status
 
         ierr = 1
         if (.not. allocated(output_filename)) return
         if (size(irow) /= size(icol) .or. size(irow) /= size(values)) return
         if (row < 1 .or. row > size(state) .or. size(rhs) /= size(state)) return
+        call decode_state_index(row, npl, ind_start, ibeg, iend, lag, &
+            row_step, row_laguerre, row_sigma, row_band, status)
+        if (status /= 0) return
         filename = output_filename//'.rows'
         status = 0
         if (.not. row_output_initialized) then
             open(newunit=iunit, file=filename, status='replace', action='write', &
                 iostat=status)
             if (status == 0) write(iunit, '(a)', iostat=status) &
-                'propagator,row,column,coefficient,state,contribution,rhs'
+                'propagator,row,row_step,row_laguerre,row_sigma,row_band,'// &
+                'column,column_step,column_laguerre,column_sigma,column_band,'// &
+                'column_bhat,coefficient,state,contribution,rhs'
             if (status == 0) close(iunit, iostat=status)
             if (status /= 0) return
             row_output_initialized = .true.
@@ -343,15 +352,49 @@ contains
         if (status /= 0) return
         do entry = 1, size(values)
             if (irow(entry) /= row) cycle
-            write(iunit, '(i0,",",i0,",",i0,4(",",es25.16e3))', &
-                iostat=status) &
-                tag, row, icol(entry), values(entry), state(icol(entry)), &
-                values(entry)*state(icol(entry)), rhs(row)
+            call decode_state_index(icol(entry), npl, ind_start, ibeg, iend, &
+                lag, column_step, column_laguerre, column_sigma, column_band, &
+                status)
+            if (status /= 0) exit
+            write(iunit, '(11(i0,","),5(es25.16e3,:,","))', iostat=status) &
+                tag, row, row_step, row_laguerre, row_sigma, row_band, &
+                icol(entry), column_step, column_laguerre, column_sigma, &
+                column_band, bhat(column_step), values(entry), &
+                state(icol(entry)), values(entry)*state(icol(entry)), rhs(row)
             if (status /= 0) exit
         end do
         close(iunit, iostat=ierr)
         if (status /= 0 .or. ierr /= 0) ierr = 3
     end subroutine record_local_constant_row
+
+    subroutine decode_state_index(index, npl, ind_start, ibeg, iend, lag, &
+            step, laguerre, sigma, band, ierr)
+        integer, intent(in) :: index, npl(ibeg:), ind_start(ibeg:)
+        integer, intent(in) :: ibeg, iend, lag
+        integer, intent(out) :: step, laguerre, sigma, band, ierr
+        integer :: block_size, local_index, nbands, within_block
+
+        ierr = 1
+        if (index < 1 .or. lag < 0 .or. ibeg > iend) return
+        step = ibeg
+        do while (step < iend .and. index > ind_start(step + 1))
+            step = step + 1
+        end do
+        nbands = npl(step) + 1
+        block_size = 2*nbands
+        local_index = index - ind_start(step) - 1
+        if (local_index < 0 .or. local_index >= (lag + 1)*block_size) return
+        laguerre = local_index/block_size
+        within_block = mod(local_index, block_size)
+        if (within_block < nbands) then
+            sigma = 1
+            band = within_block + 1
+        else
+            sigma = -1
+            band = 2*nbands - within_block
+        end if
+        ierr = 0
+    end subroutine decode_state_index
 
     subroutine write_value(iunit, tag, kind, index, value, scale, status)
         integer, intent(in) :: iunit, tag, index

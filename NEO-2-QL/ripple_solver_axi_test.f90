@@ -2563,7 +2563,7 @@ PRINT *,'right boundary layer ignored'
     ENDIF
     CALL record_local_constant_row(fieldpropagator%tag,constant_sparse_index, &
       irow(1:nz),icol(1:nz),amat_sp(1:nz),constant_state,constant_rhs, &
-      constant_trace_ierr)
+      npl,ind_start,bhat_mfl,ibeg,iend,lag,constant_trace_ierr)
     IF(constant_trace_ierr.NE.0) THEN
       ierr=constant_trace_ierr
       RETURN
@@ -2573,19 +2573,18 @@ PRINT *,'right boundary layer ignored'
       +2*(lag+1)*(npl(constant_sparse_step)+1))
       constant_sparse_step=constant_sparse_step+1
     ENDDO
-    constant_local_index=constant_sparse_index &
-      -ind_start(constant_sparse_step)-1
+    constant_local_index=constant_sparse_index-ind_start(constant_sparse_step)-1
     constant_sparse_laguerre=constant_local_index &
       /(2*(npl(constant_sparse_step)+1))
     constant_local_index=MOD(constant_local_index, &
-      2*(npl(constant_sparse_step)+1))+1
-    IF(constant_local_index.LE.npl(constant_sparse_step)+1) THEN
+      2*(npl(constant_sparse_step)+1))
+    IF(constant_local_index.LT.npl(constant_sparse_step)+1) THEN
       constant_sparse_sigma=1
-      constant_sparse_band=constant_local_index
+      constant_sparse_band=constant_local_index+1
     ELSE
       constant_sparse_sigma=-1
       constant_sparse_band=2*(npl(constant_sparse_step)+1) &
-        -constant_local_index+1
+        -constant_local_index
     ENDIF
   ENDIF
 

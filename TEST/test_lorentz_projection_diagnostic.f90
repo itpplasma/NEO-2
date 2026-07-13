@@ -79,7 +79,8 @@ program test_lorentz_projection_diagnostic
         residual_index, residual, scale, residual_index, 2, 0, -1, 1, ierr)
     if (ierr /= 0) error stop 'FAIL: constant-stage trace was not written'
     call record_local_constant_row(7, 1, matrix_index, matrix_index, &
-        matrix_values, constant_state, constant_state, ierr)
+        matrix_values, constant_state, constant_state, npl, ind_start, bhat, &
+        1, 2, 0, ierr)
     if (ierr /= 0) error stop 'FAIL: constant-row trace was not written'
     call get_environment_variable('NEO2_LOCAL_PROJECTION_TRACE_FILE', &
         value=filename, status=status)
