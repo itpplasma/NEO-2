@@ -182,13 +182,16 @@ contains
             .or. .not. all(ieee_is_finite(right_residual)) &
             .or. .not. all(ieee_is_finite(left_scale)) &
             .or. .not. all(ieee_is_finite(right_scale)) &
-            .or. any(compatibility_scale <= 0.0_real64) &
+            .or. .not. all(ieee_is_finite(transfer_error))) then
+            ierr = 7
+            return
+        end if
+        if (any(compatibility_scale <= 0.0_real64) &
             .or. any(dropped_p_scale <= 0.0_real64) &
             .or. any(dropped_m_scale <= 0.0_real64) &
             .or. any(left_scale <= 0.0_real64) &
             .or. any(right_scale <= 0.0_real64) &
-            .or. any(source_scale <= 0.0_real64) &
-            .or. .not. all(ieee_is_finite(transfer_error))) then
+            .or. any(source_scale <= 0.0_real64)) then
             ierr = 7
             return
         end if
