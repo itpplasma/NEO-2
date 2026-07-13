@@ -3729,11 +3729,12 @@ subroutine fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
                                     phi_mfl,bhat_mfl,eta)
 
   use device_mod
+  use phi_crossing_alignment_mod, only: nearest_phi_crossing_offset
 
   implicit none
 
   integer :: i,ibeg,iend,npart,istep,ibmin,npassing,npassing_prev
-  integer :: ncross_l,ncross_r,ib,ie
+  integer :: ncross_l,ncross_r,ib,ie,aligned_step,crossing_offset
 
   double precision :: subsqmin
 
@@ -3743,6 +3744,7 @@ subroutine fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
   double precision, dimension(0:npart)        :: eta
   double precision, dimension(ibeg:iend)      :: phi_mfl,bhat_mfl
   double precision, dimension(:), allocatable :: eta_cross_l,eta_cross_r
+  double precision :: bhat_crossing(-1:1)
 
 ! determine level crossings:
 
@@ -3804,25 +3806,18 @@ subroutine fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
       enddo
       do i=1,ncross_l
         istep=icross_l(i)
-        if(abs(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).lt. &
-           abs(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) then
-          open(111,file='phi_placement_problem.dat',position='append')
-          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
-                       ' step number = ',istep-1,                &
-                       ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
-                       ' eta = ',eta_cross_l(i)
-          close(111)
-          bhat_mfl(istep-1)=1/eta_cross_l(i)
-        elseif(abs(bhat_mfl(istep+1)*eta_cross_l(i)-1.d0).lt. &
-               abs(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) then
-          open(111,file='phi_placement_problem.dat',position='append')
-          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
-                       ' step number = ',istep+1,                &
-                       ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
-                       ' eta = ',eta_cross_l(i)
-          bhat_mfl(istep+1)=1/eta_cross_l(i)
-          close(111)
-        endif
+        bhat_crossing=bhat_mfl(istep)
+        if(istep.gt.ibeg) bhat_crossing(-1)=bhat_mfl(istep-1)
+        if(istep.lt.iend) bhat_crossing(1)=bhat_mfl(istep+1)
+        crossing_offset=nearest_phi_crossing_offset(bhat_crossing,eta_cross_l(i))
+        aligned_step=istep+crossing_offset
+        open(111,file='phi_placement_problem.dat',position='append')
+        write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                     ' step number = ',aligned_step,           &
+                     ' 1 / bhat = ',1.d0/bhat_mfl(aligned_step), &
+                     ' eta = ',eta_cross_l(i)
+        close(111)
+        bhat_mfl(aligned_step)=1.d0/eta_cross_l(i)
       enddo
       deallocate(icross_l,eta_cross_l)
     endif
@@ -3881,25 +3876,18 @@ subroutine fix_phiplacement_problem_old(ibeg,iend,npart,subsqmin,        &
       enddo
       do i=1,ncross_r
         istep=icross_r(i)
-        if(abs(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).lt. &
-           abs(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) then
-          open(111,file='phi_placement_problem.dat',position='append')
-          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
-                       ' step number = ',istep-1,                &
-                       ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
-                       ' eta = ',eta_cross_r(i)
-          close(111)
-          bhat_mfl(istep-1)=1/eta_cross_r(i)
-        elseif(abs(bhat_mfl(istep+1)*eta_cross_r(i)-1.d0).lt. &
-               abs(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) then
-          open(111,file='phi_placement_problem.dat',position='append')
-          write(111,*) ' propagator tag = ',fieldpropagator%tag, &
-                       ' step number = ',istep+1,                &
-                       ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
-                       ' eta = ',eta_cross_r(i)
-          close(111)
-          bhat_mfl(istep+1)=1/eta_cross_r(i)
-        endif
+        bhat_crossing=bhat_mfl(istep)
+        if(istep.gt.ibeg) bhat_crossing(-1)=bhat_mfl(istep-1)
+        if(istep.lt.iend) bhat_crossing(1)=bhat_mfl(istep+1)
+        crossing_offset=nearest_phi_crossing_offset(bhat_crossing,eta_cross_r(i))
+        aligned_step=istep+crossing_offset
+        open(111,file='phi_placement_problem.dat',position='append')
+        write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                     ' step number = ',aligned_step,           &
+                     ' 1 / bhat = ',1.d0/bhat_mfl(aligned_step), &
+                     ' eta = ',eta_cross_r(i)
+        close(111)
+        bhat_mfl(aligned_step)=1.d0/eta_cross_r(i)
       enddo
       deallocate(icross_r,eta_cross_r)
     endif
