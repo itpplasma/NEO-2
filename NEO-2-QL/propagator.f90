@@ -1064,7 +1064,9 @@ CONTAINS
          phi_split_min,hphi_mult,max_solver_try
     !! Modifications by Andreas F. Martitsch (15.03.2017)
     ! new: add exchange y-vector between ntv_mod and propagator_mod
-    USE collisionality_mod, ONLY : isw_axisymm, y_axi_averages
+    USE collisionality_mod, ONLY : isw_axisymm, isw_lorentz, y_axi_averages
+    USE lorentz_projection_diagnostics_mod, ONLY : &
+         record_local_projection_residuals
     USE ntv_mod, ONLY : y_ntv_mod
     !! End Modifications by Andreas F. Martitsch (15.03.2017)
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield
@@ -1328,6 +1330,15 @@ CONTAINS
        ! write eta at boundaries - replaced by modified stuff
        prop_c%p%eta_boundary_l = eta_modboundary_l
        prop_c%p%eta_boundary_r = eta_modboundary_r
+       IF (isw_lorentz .EQ. 1) THEN
+          CALL record_local_projection_residuals(fieldpropagator%tag, &
+               prop_c%p%source_p,prop_c%p%source_m,prop_c%p%flux_p, &
+               prop_c%p%flux_m,prop_c%p%amat_p_p,prop_c%p%amat_m_p, &
+               prop_c%p%amat_p_m,prop_c%p%amat_m_m,prop_c%p%eta_l, &
+               prop_c%p%eta_r,prop_c%p%eta_boundary_l, &
+               prop_c%p%eta_boundary_r,ierr_join)
+          IF (ierr_join .NE. 0) RETURN
+       END IF
        ! link actual to current (mainly for results and diagnostic)
        prop_a => prop_c
        ! writing of propagators
