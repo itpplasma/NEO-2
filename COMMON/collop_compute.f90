@@ -56,8 +56,8 @@ module collop_compute
   !**********************************************************
   ! Species
   !**********************************************************
-  real(kind=dp)    :: m_a
-  real(kind=dp)    :: m_b
+  real(kind=dp)    :: m_a = 1.0d0
+  real(kind=dp)    :: m_b = 1.0d0
   character(len=3) :: tag_a
   character(len=3) :: tag_b
 
@@ -955,7 +955,7 @@ contains
 
        if (lsw_split_interval) then
           do k = 1, kmax-1
-             n_sub = num_sub_intervals*max(int(log(m_b/m_a)), 1)
+             n_sub = scaled_num_sub_intervals()
              if ((.not. binknots) .and. (k .eq. kmax-1)) n_sub = num_sub_intervals_cutoff
              x_sub_del = (x_inter(k+1) - x_inter(k))/dble(n_sub)
              do k_sub = 1,n_sub
@@ -1033,7 +1033,7 @@ contains
 
        if (lsw_split_interval) then
           do k = 1, kmax-1
-             n_sub = num_sub_intervals*max(int(log(m_b/m_a)), 1)
+             n_sub = scaled_num_sub_intervals()
              if ((.not. binknots) .and. (k .eq. kmax-1)) n_sub = num_sub_intervals_cutoff
              x_sub_del = (x_inter(k+1) - x_inter(k))/dble(n_sub)
              do k_sub = 1,n_sub
@@ -1056,6 +1056,10 @@ contains
     end if
        
   end function integrate_a_to_b_param
+
+  integer function scaled_num_sub_intervals() result(n_sub)
+    n_sub = num_sub_intervals*max(int(log(m_b/m_a)), 1)
+  end function scaled_num_sub_intervals
 
   recursive function integrate_a_to_infinity(func1d, a) result(y)
     real(kind=dp) :: a

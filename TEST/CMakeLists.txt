@@ -230,6 +230,45 @@ set_tests_properties(collop_zero_endpoint_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_collop_precompute_mass test_collop_precompute_mass.f90)
+target_link_libraries(test_collop_precompute_mass common)
+
+add_test(NAME collop_precompute_mass_test
+         COMMAND test_collop_precompute_mass
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(collop_precompute_mass_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_collop_bspline_precompute test_collop_bspline_precompute.f90)
+target_link_libraries(test_collop_bspline_precompute common)
+
+add_test(NAME collop_bspline_precompute_test
+         COMMAND test_collop_bspline_precompute
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(collop_bspline_precompute_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL;Floating point exception"
+    TIMEOUT 30
+)
+
+add_executable(test_cquad_ieee_guard test_cquad_ieee_guard.f90)
+target_link_libraries(test_cquad_ieee_guard common)
+
+add_test(NAME cquad_ieee_guard_test
+         COMMAND test_cquad_ieee_guard
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(cquad_ieee_guard_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_spline_sparse_assembly test_spline_sparse_assembly.f90)
 target_link_libraries(test_spline_sparse_assembly common)
 
