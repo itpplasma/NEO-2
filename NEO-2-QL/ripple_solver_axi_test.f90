@@ -99,7 +99,8 @@ SUBROUTINE ripple_solver(                                 &
        qflux_point_components_from_flux_vector, record_qflux_interface_traces
   USE lorentz_projection_diagnostics_mod, ONLY : &
        assemble_local_constant_state, compute_sparse_constant_residual, &
-       local_projection_trace_enabled, record_local_constant_stage_residuals
+       local_projection_trace_enabled, record_local_constant_row, &
+       record_local_constant_stage_residuals
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
   IMPLICIT NONE
@@ -2556,6 +2557,13 @@ PRINT *,'right boundary layer ignored'
     CALL compute_sparse_constant_residual(irow(1:nz),icol(1:nz), &
       amat_sp(1:nz),constant_state,constant_rhs,constant_sparse_residual, &
       constant_sparse_scale,constant_sparse_index,constant_trace_ierr)
+    IF(constant_trace_ierr.NE.0) THEN
+      ierr=constant_trace_ierr
+      RETURN
+    ENDIF
+    CALL record_local_constant_row(fieldpropagator%tag,constant_sparse_index, &
+      irow(1:nz),icol(1:nz),amat_sp(1:nz),constant_state,constant_rhs, &
+      constant_trace_ierr)
     IF(constant_trace_ierr.NE.0) THEN
       ierr=constant_trace_ierr
       RETURN

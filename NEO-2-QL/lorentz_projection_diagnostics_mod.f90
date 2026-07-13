@@ -21,6 +21,7 @@ module lorentz_projection_diagnostics_mod
     character(len=:), allocatable, save :: output_filename
     integer, save :: record_sequence = 0
     logical, save :: output_initialized = .false.
+    logical, save :: row_output_initialized = .false.
 
     public :: compute_local_projection_residuals
     public :: assemble_local_constant_state
@@ -28,6 +29,7 @@ module lorentz_projection_diagnostics_mod
     public :: local_projection_trace_enabled
     public :: record_local_projection_residuals
     public :: record_local_constant_stage_residuals
+    public :: record_local_constant_row
 
 contains
 
@@ -312,6 +314,44 @@ contains
         close(iunit, iostat=ierr)
         if (status /= 0 .or. ierr /= 0) ierr = 3
     end subroutine record_local_constant_stage_residuals
+
+    subroutine record_local_constant_row(tag, row, irow, icol, values, state, &
+            rhs, ierr)
+        integer, intent(in) :: tag, row, irow(:), icol(:)
+        real(real64), intent(in) :: values(:), state(:), rhs(:)
+        integer, intent(out) :: ierr
+        character(len=:), allocatable :: filename
+        integer :: entry, iunit, status
+
+        ierr = 1
+        if (.not. allocated(output_filename)) return
+        if (size(irow) /= size(icol) .or. size(irow) /= size(values)) return
+        if (row < 1 .or. row > size(state) .or. size(rhs) /= size(state)) return
+        filename = output_filename//'.rows'
+        status = 0
+        if (.not. row_output_initialized) then
+            open(newunit=iunit, file=filename, status='replace', action='write', &
+                iostat=status)
+            if (status == 0) write(iunit, '(a)', iostat=status) &
+                'propagator,row,column,coefficient,state,contribution,rhs'
+            if (status == 0) close(iunit, iostat=status)
+            if (status /= 0) return
+            row_output_initialized = .true.
+        end if
+        open(newunit=iunit, file=filename, status='old', position='append', &
+            action='write', iostat=status)
+        if (status /= 0) return
+        do entry = 1, size(values)
+            if (irow(entry) /= row) cycle
+            write(iunit, '(i0,",",i0,",",i0,4(",",es25.16e3))', &
+                iostat=status) &
+                tag, row, icol(entry), values(entry), state(icol(entry)), &
+                values(entry)*state(icol(entry)), rhs(row)
+            if (status /= 0) exit
+        end do
+        close(iunit, iostat=ierr)
+        if (status /= 0 .or. ierr /= 0) ierr = 3
+    end subroutine record_local_constant_row
 
     subroutine write_value(iunit, tag, kind, index, value, scale, status)
         integer, intent(in) :: iunit, tag, index
