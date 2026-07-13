@@ -377,7 +377,8 @@ contains
         ierr = 1
         if (index < 1 .or. lag < 0 .or. ibeg > iend) return
         step = ibeg
-        do while (step < iend .and. index > ind_start(step + 1))
+        do while (step < iend)
+            if (index <= ind_start(step + 1)) exit
             step = step + 1
         end do
         nbands = npl(step) + 1
