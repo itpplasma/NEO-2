@@ -133,6 +133,7 @@ add_test(NAME join_failure_diagnostic_test
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 set_tests_properties(join_failure_diagnostic_test PROPERTIES
+    ENVIRONMENT "NEO2_JOIN_NORMALIZATION_FILE=${CMAKE_CURRENT_BINARY_DIR}/join_normalization.csv"
     PASS_REGULAR_EXPRESSION "join_ripples: DGBSV info=2"
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
