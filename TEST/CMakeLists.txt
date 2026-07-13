@@ -125,6 +125,20 @@ set_tests_properties(phi_divider_parity_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_phi_placement_diagnostic test_phi_placement_diagnostic.f90)
+target_link_libraries(test_phi_placement_diagnostic common)
+
+add_test(NAME phi_placement_diagnostic_test
+         COMMAND test_phi_placement_diagnostic
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(phi_placement_diagnostic_test PROPERTIES
+    ENVIRONMENT "NEO2_PHI_PLACEMENT_FILE=${CMAKE_CURRENT_BINARY_DIR}/phi_placement.csv"
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_join_failure_diagnostic test_join_failure_diagnostic.f90)
 target_link_libraries(test_join_failure_diagnostic neo2_ql)
 

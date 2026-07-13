@@ -2079,7 +2079,8 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
   ! input/output
   USE partpa_mod, ONLY : ipmax,ipmin
 
-  USE flint_mod, ONLY : phiarr,plot_prop, phi_divider, phi_placer
+  USE flint_mod, ONLY : phiarr,plot_prop, phi_divider, phi_placer, &
+       record_phi_placement
   USE magnetics_mod
   USE device_mod
   USE binarysplit_mod
@@ -2119,10 +2120,12 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
   INTEGER,       ALLOCATABLE :: phi_eta_ind(:,:)
   REAL(kind=dp), ALLOCATABLE :: o_eta_split(:)
   REAL(kind=dp) :: phibeg,phiend,hphi,phi
+  REAL(kind=dp) :: diagnostic_hphi
   REAL(kind=dp) :: bhat1,b1
   TYPE(fieldpropagator_struct), POINTER :: plotpropagator
 
-  INTEGER :: phi_placer_status
+  INTEGER :: phi_placer_status,placement_ierr
+  CHARACTER(len=16) :: placement_outcome
 
   INTEGER :: ubn
   INTEGER :: nlagrange = 5
@@ -2141,11 +2144,13 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
   ALLOCATE(phi_eta_ind(0:u_eta,2))
   phi_eta_ind(:,1) = 0
   phi_eta_ind(:,2) = -1
+  placement_outcome = ''
 
   ! constuct new phi-values
   IF (phi_split_mode .EQ. 1) THEN
      ! split steps into half
      CALL linspace(phibeg,phiend,2*ub+1,phiarr)
+     placement_outcome = 'halfstep'
   ELSE IF (phi_split_mode .EQ. 2) THEN
      ! split according to eta_split
      ALLOCATE (o_eta_split(1:UBOUND(eta_split,1)))
@@ -2157,13 +2162,25 @@ SUBROUTINE modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
         ! there is no eta-value available for this phi_range (intervall too small)
         ! split steps into half as in phi_split_mode .eq. 1
         CALL linspace(phibeg,phiend,2*ub+1,phiarr)
+        placement_outcome = 'no_eta_halfstep'
      END IF
   ELSE IF (phi_split_mode .EQ. 3) THEN
      ! new mode according to phi_divide
      CALL phi_divider(u_eta,phi_eta_ind)
+     placement_outcome = 'divider'
   ELSE
      PRINT *, 'not implemented'
      STOP
+  END IF
+
+  IF (LEN_TRIM(placement_outcome) .GT. 0) THEN
+     diagnostic_hphi = 0.0_dp
+     IF (ub .GT. 0) diagnostic_hphi = (phiend-phibeg)/DBLE(ub)
+     CALL record_phi_placement(fieldpropagator%tag,placement_outcome, &
+          0,0,-1,phibeg,phiend,diagnostic_hphi,ub+1, &
+          UBOUND(phiarr,1)+1,placement_ierr)
+     IF (placement_ierr .NE. 0) &
+          ERROR STOP 'modify_propagator diagnostic output failed'
   END IF
 
   ! now make the new RK-steps for pre-computed phi-values
