@@ -97,6 +97,10 @@ SUBROUTINE ripple_solver(                                 &
   USE partpa_mod, ONLY : bmod0
   USE qflux_profile_mod, ONLY : qflux_contributions_from_flux_vector, &
        qflux_point_components_from_flux_vector, record_qflux_interface_traces
+  USE lorentz_projection_diagnostics_mod, ONLY : &
+       assemble_local_constant_state, compute_sparse_constant_residual, &
+       local_projection_trace_enabled, record_local_constant_row, &
+       record_local_constant_stage_residuals
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
   IMPLICIT NONE
@@ -228,11 +232,17 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
+  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: constant_state,constant_rhs
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
   COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE :: helical_source
   COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE :: q_hel_b,q_hel_e
   COMPLEX(kind=dp) :: amp_hel_b,amp_hel_e,hel_phase,hel_phase_fac
-  LOGICAL :: hel_drive_active
+  LOGICAL :: hel_drive_active,trace_constant_state
+  DOUBLE PRECISION :: constant_sparse_residual,constant_sparse_scale
+  DOUBLE PRECISION :: constant_solve_residual,constant_solve_scale
+  INTEGER :: constant_sparse_index,constant_solve_index,constant_trace_ierr
+  INTEGER :: constant_sparse_step,constant_sparse_laguerre
+  INTEGER :: constant_sparse_sigma,constant_sparse_band,constant_local_index
   INTEGER :: n_hel
   INTEGER :: isw_lor,isw_ene,isw_intp
   INTEGER,          DIMENSION(:),       ALLOCATABLE :: npl
@@ -2528,6 +2538,56 @@ PRINT *,'right boundary layer ignored'
   print *,'non-zeros before and after truncation = ',nz,nz_sq
   nz=nz_sq
 
+  trace_constant_state=.FALSE.
+  IF(isw_lorentz.EQ.1) THEN
+    CALL local_projection_trace_enabled(trace_constant_state,constant_trace_ierr)
+    IF(constant_trace_ierr.NE.0) THEN
+      ierr=constant_trace_ierr
+      RETURN
+    ENDIF
+  ENDIF
+  IF(trace_constant_state) THEN
+    ALLOCATE(constant_state(n_2d_size),constant_rhs(n_2d_size))
+    CALL assemble_local_constant_state(constant_state,constant_rhs,npl, &
+      ind_start,eta,bhat_mfl,ibeg,iend,lag,constant_trace_ierr)
+    IF(constant_trace_ierr.NE.0) THEN
+      ierr=constant_trace_ierr
+      RETURN
+    ENDIF
+    CALL compute_sparse_constant_residual(irow(1:nz),icol(1:nz), &
+      amat_sp(1:nz),constant_state,constant_rhs,constant_sparse_residual, &
+      constant_sparse_scale,constant_sparse_index,constant_trace_ierr)
+    IF(constant_trace_ierr.NE.0) THEN
+      ierr=constant_trace_ierr
+      RETURN
+    ENDIF
+    CALL record_local_constant_row(fieldpropagator%tag,constant_sparse_index, &
+      irow(1:nz),icol(1:nz),amat_sp(1:nz),constant_state,constant_rhs, &
+      npl,ind_start,bhat_mfl,ibeg,iend,lag,constant_trace_ierr)
+    IF(constant_trace_ierr.NE.0) THEN
+      ierr=constant_trace_ierr
+      RETURN
+    ENDIF
+    constant_sparse_step=ibeg
+    DO WHILE(constant_sparse_index.GT.ind_start(constant_sparse_step) &
+      +2*(lag+1)*(npl(constant_sparse_step)+1))
+      constant_sparse_step=constant_sparse_step+1
+    ENDDO
+    constant_local_index=constant_sparse_index-ind_start(constant_sparse_step)-1
+    constant_sparse_laguerre=constant_local_index &
+      /(2*(npl(constant_sparse_step)+1))
+    constant_local_index=MOD(constant_local_index, &
+      2*(npl(constant_sparse_step)+1))
+    IF(constant_local_index.LT.npl(constant_sparse_step)+1) THEN
+      constant_sparse_sigma=1
+      constant_sparse_band=constant_local_index+1
+    ELSE
+      constant_sparse_sigma=-1
+      constant_sparse_band=2*(npl(constant_sparse_step)+1) &
+        -constant_local_index
+    ENDIF
+  ENDIF
+
   CALL column_full2pointer(icol(1:nz),ipcol)
 
 ! There are now three different calls sparse_solve
@@ -2549,6 +2609,28 @@ PRINT *,'right boundary layer ignored'
   print *,'factorization completed ',time_factorization - time_start,' sec'
 
   iopt=2
+
+  IF(trace_constant_state) THEN
+    bvec_sp=constant_rhs
+    CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
+      bvec_sp,iopt)
+    constant_solve_index=MAXLOC(ABS(bvec_sp-constant_state),DIM=1)
+    constant_solve_residual=bvec_sp(constant_solve_index) &
+      -constant_state(constant_solve_index)
+    constant_solve_scale=MAX(ABS(bvec_sp(constant_solve_index)) &
+      +ABS(constant_state(constant_solve_index)),TINY(1.d0))
+    CALL record_local_constant_stage_residuals(fieldpropagator%tag, &
+      constant_sparse_residual,constant_sparse_scale,constant_sparse_index, &
+      constant_solve_residual,constant_solve_scale,constant_solve_index, &
+      constant_sparse_step,constant_sparse_laguerre,constant_sparse_sigma, &
+      constant_sparse_band, &
+      constant_trace_ierr)
+    IF(constant_trace_ierr.NE.0) THEN
+      ierr=constant_trace_ierr
+      RETURN
+    ENDIF
+    DEALLOCATE(constant_state,constant_rhs)
+  ENDIF
 
 ! Solution of inhomogeneus equation (account of sources):
 
