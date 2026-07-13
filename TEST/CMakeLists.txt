@@ -139,6 +139,18 @@ set_tests_properties(phi_placement_diagnostic_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_phi_crossing_alignment test_phi_crossing_alignment.f90)
+target_link_libraries(test_phi_crossing_alignment neo2_ql)
+
+add_test(NAME phi_crossing_alignment_test
+         COMMAND test_phi_crossing_alignment)
+
+set_tests_properties(phi_crossing_alignment_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_join_failure_diagnostic test_join_failure_diagnostic.f90)
 target_link_libraries(test_join_failure_diagnostic neo2_ql)
 
