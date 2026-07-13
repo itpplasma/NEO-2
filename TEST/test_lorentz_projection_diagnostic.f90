@@ -75,7 +75,7 @@ program test_lorentz_projection_diagnostic
         0.4_real64, 0.6_real64, ierr)
     if (ierr /= 0) error stop 'FAIL: projection trace was not written'
     call record_local_constant_stage_residuals(7, residual, scale, &
-        residual_index, residual, scale, residual_index, ierr)
+        residual_index, residual, scale, residual_index, 2, 0, -1, 1, ierr)
     if (ierr /= 0) error stop 'FAIL: constant-stage trace was not written'
     call get_environment_variable('NEO2_LOCAL_PROJECTION_TRACE_FILE', &
         value=filename, status=status)
@@ -88,7 +88,7 @@ program test_lorentz_projection_diagnostic
         line_count = line_count + 1
     end do
     close (iunit)
-    if (line_count /= 13) error stop 'FAIL: projection trace row count differs'
+    if (line_count /= 17) error stop 'FAIL: projection trace row count differs'
 
     call compute_local_projection_residuals(source_p, source_m, flux_p, flux_m, &
         amat_p_p, amat_m_p, amat_p_m, amat_m_m, eta_l, eta_r, -0.4_real64, &

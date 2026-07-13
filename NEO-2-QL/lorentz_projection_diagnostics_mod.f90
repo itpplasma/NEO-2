@@ -280,8 +280,10 @@ contains
 
     subroutine record_local_constant_stage_residuals(tag, sparse_residual, &
             sparse_scale, sparse_index, solve_residual, solve_scale, &
-            solve_index, ierr)
-        integer, intent(in) :: tag, sparse_index, solve_index
+            solve_index, sparse_step, sparse_laguerre, sparse_sigma, &
+            sparse_band, ierr)
+        integer, intent(in) :: tag, sparse_index, solve_index, sparse_step
+        integer, intent(in) :: sparse_laguerre, sparse_sigma, sparse_band
         real(real64), intent(in) :: sparse_residual, sparse_scale
         real(real64), intent(in) :: solve_residual, solve_scale
         integer, intent(out) :: ierr
@@ -299,6 +301,14 @@ contains
             sparse_residual, sparse_scale, status)
         call write_value(iunit, tag, 'solved_constant', solve_index, &
             solve_residual, solve_scale, status)
+        call write_value(iunit, tag, 'sparse_step', sparse_step, &
+            sparse_residual, sparse_scale, status)
+        call write_value(iunit, tag, 'sparse_laguerre', sparse_laguerre, &
+            sparse_residual, sparse_scale, status)
+        call write_value(iunit, tag, 'sparse_sigma', sparse_sigma, &
+            sparse_residual, sparse_scale, status)
+        call write_value(iunit, tag, 'sparse_band', sparse_band, &
+            sparse_residual, sparse_scale, status)
         close(iunit, iostat=ierr)
         if (status /= 0 .or. ierr /= 0) ierr = 3
     end subroutine record_local_constant_stage_residuals

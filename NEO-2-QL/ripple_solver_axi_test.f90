@@ -240,6 +240,8 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION :: constant_sparse_residual,constant_sparse_scale
   DOUBLE PRECISION :: constant_solve_residual,constant_solve_scale
   INTEGER :: constant_sparse_index,constant_solve_index,constant_trace_ierr
+  INTEGER :: constant_sparse_step,constant_sparse_laguerre
+  INTEGER :: constant_sparse_sigma,constant_sparse_band,constant_local_index
   INTEGER :: n_hel
   INTEGER :: isw_lor,isw_ene,isw_intp
   INTEGER,          DIMENSION(:),       ALLOCATABLE :: npl
@@ -2558,6 +2560,25 @@ PRINT *,'right boundary layer ignored'
       ierr=constant_trace_ierr
       RETURN
     ENDIF
+    constant_sparse_step=ibeg
+    DO WHILE(constant_sparse_index.GT.ind_start(constant_sparse_step) &
+      +2*(lag+1)*(npl(constant_sparse_step)+1))
+      constant_sparse_step=constant_sparse_step+1
+    ENDDO
+    constant_local_index=constant_sparse_index &
+      -ind_start(constant_sparse_step)-1
+    constant_sparse_laguerre=constant_local_index &
+      /(2*(npl(constant_sparse_step)+1))
+    constant_local_index=MOD(constant_local_index, &
+      2*(npl(constant_sparse_step)+1))+1
+    IF(constant_local_index.LE.npl(constant_sparse_step)+1) THEN
+      constant_sparse_sigma=1
+      constant_sparse_band=constant_local_index
+    ELSE
+      constant_sparse_sigma=-1
+      constant_sparse_band=2*(npl(constant_sparse_step)+1) &
+        -constant_local_index+1
+    ENDIF
   ENDIF
 
   CALL column_full2pointer(icol(1:nz),ipcol)
@@ -2594,6 +2615,8 @@ PRINT *,'right boundary layer ignored'
     CALL record_local_constant_stage_residuals(fieldpropagator%tag, &
       constant_sparse_residual,constant_sparse_scale,constant_sparse_index, &
       constant_solve_residual,constant_solve_scale,constant_solve_index, &
+      constant_sparse_step,constant_sparse_laguerre,constant_sparse_sigma, &
+      constant_sparse_band, &
       constant_trace_ierr)
     IF(constant_trace_ierr.NE.0) THEN
       ierr=constant_trace_ierr
