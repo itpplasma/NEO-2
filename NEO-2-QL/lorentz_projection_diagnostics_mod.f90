@@ -23,9 +23,89 @@ module lorentz_projection_diagnostics_mod
     logical, save :: output_initialized = .false.
 
     public :: compute_local_projection_residuals
+    public :: assemble_local_constant_state
+    public :: compute_sparse_constant_residual
+    public :: local_projection_trace_enabled
     public :: record_local_projection_residuals
+    public :: record_local_constant_stage_residuals
 
 contains
+
+    subroutine local_projection_trace_enabled(enabled, ierr)
+        logical, intent(out) :: enabled
+        integer, intent(out) :: ierr
+
+        call initialize_output(ierr)
+        enabled = ierr == 0 .and. allocated(output_filename)
+    end subroutine local_projection_trace_enabled
+
+    subroutine assemble_local_constant_state(state, rhs, npl, ind_start, eta, &
+            bhat, ibeg, iend, lag, ierr)
+        real(real64), intent(out) :: state(:), rhs(:)
+        integer, intent(in) :: npl(ibeg:), ind_start(ibeg:)
+        real(real64), intent(in) :: eta(0:), bhat(ibeg:)
+        integer, intent(in) :: ibeg, iend, lag
+        integer, intent(out) :: ierr
+        real(real64), allocatable :: widths(:)
+        integer :: base, expected_size, istep, npass, nbands
+
+        ierr = 1
+        if (ibeg > iend .or. lag < 0) return
+        expected_size = ind_start(iend) + 2*(lag + 1)*(npl(iend) + 1)
+        if (size(state) /= expected_size .or. size(rhs) /= expected_size) return
+        if (size(eta) <= maxval(npl(ibeg:iend))) return
+        if (any(bhat(ibeg:iend) <= 0.0_real64)) return
+        allocate(widths(maxval(npl(ibeg:iend)) + 1))
+        state = 0.0_real64
+        rhs = 0.0_real64
+        do istep = ibeg, iend
+            npass = npl(istep)
+            nbands = npass + 1
+            base = ind_start(istep)
+            if (npass > 0) &
+                widths(1:npass) = eta(1:npass) - eta(0:npass - 1)
+            widths(nbands) = 1.0_real64/bhat(istep) - eta(npass)
+            if (any(widths(1:nbands) <= 0.0_real64)) return
+            state(base + 1:base + nbands) = widths(1:nbands)
+            state(base + nbands + 1:base + 2*nbands) = widths(nbands:1:-1)
+        end do
+        nbands = npl(ibeg) + 1
+        rhs(ind_start(ibeg) + 1:ind_start(ibeg) + nbands) = &
+            state(ind_start(ibeg) + 1:ind_start(ibeg) + nbands)
+        nbands = npl(iend) + 1
+        base = ind_start(iend)
+        rhs(base + nbands + 1:base + 2*nbands) = &
+            state(base + nbands + 1:base + 2*nbands)
+        ierr = 0
+    end subroutine assemble_local_constant_state
+
+    subroutine compute_sparse_constant_residual(irow, icol, values, state, rhs, &
+            residual, scale, ierr)
+        integer, intent(in) :: irow(:), icol(:)
+        real(real64), intent(in) :: values(:), state(:), rhs(:)
+        real(real64), intent(out) :: residual, scale
+        integer, intent(out) :: ierr
+        real(real64), allocatable :: row_residual(:), row_scale(:)
+        integer :: entry
+
+        ierr = 1
+        if (size(irow) /= size(icol) .or. size(irow) /= size(values)) return
+        if (size(state) /= size(rhs)) return
+        if (any(irow < 1) .or. any(irow > size(state))) return
+        if (any(icol < 1) .or. any(icol > size(state))) return
+        allocate(row_residual(size(state)), row_scale(size(state)))
+        row_residual = -rhs
+        row_scale = abs(rhs)
+        do entry = 1, size(values)
+            row_residual(irow(entry)) = row_residual(irow(entry)) + &
+                values(entry)*state(icol(entry))
+            row_scale(irow(entry)) = row_scale(irow(entry)) + &
+                abs(values(entry))*abs(state(icol(entry)))
+        end do
+        residual = maxval(abs(row_residual))
+        scale = max(maxval(row_scale), tiny(1.0_real64))
+        ierr = 0
+    end subroutine compute_sparse_constant_residual
 
     subroutine compute_local_projection_residuals(source_p, source_m, flux_p, &
             flux_m, amat_p_p, amat_m_p, amat_p_m, amat_m_m, eta_l, eta_r, &
@@ -195,6 +275,30 @@ contains
         close(iunit, iostat=ierr)
         if (status /= 0 .or. ierr /= 0) ierr = 3
     end subroutine record_local_projection_residuals
+
+    subroutine record_local_constant_stage_residuals(tag, sparse_residual, &
+            sparse_scale, solve_residual, solve_scale, ierr)
+        integer, intent(in) :: tag
+        real(real64), intent(in) :: sparse_residual, sparse_scale
+        real(real64), intent(in) :: solve_residual, solve_scale
+        integer, intent(out) :: ierr
+        integer :: iunit, status
+
+        call initialize_output(ierr)
+        if (ierr /= 0 .or. .not. allocated(output_filename)) return
+        open(newunit=iunit, file=output_filename, status='old', position='append', &
+            action='write', iostat=status)
+        if (status /= 0) then
+            ierr = 3
+            return
+        end if
+        call write_value(iunit, tag, 'sparse_constant', -1, sparse_residual, &
+            sparse_scale, status)
+        call write_value(iunit, tag, 'solved_constant', -1, solve_residual, &
+            solve_scale, status)
+        close(iunit, iostat=ierr)
+        if (status /= 0 .or. ierr /= 0) ierr = 3
+    end subroutine record_local_constant_stage_residuals
 
     subroutine write_value(iunit, tag, kind, index, value, scale, status)
         integer, intent(in) :: iunit, tag, index
