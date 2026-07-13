@@ -239,7 +239,7 @@ SUBROUTINE ripple_solver(                                 &
   LOGICAL :: hel_drive_active,trace_constant_state
   DOUBLE PRECISION :: constant_sparse_residual,constant_sparse_scale
   DOUBLE PRECISION :: constant_solve_residual,constant_solve_scale
-  INTEGER :: constant_trace_ierr
+  INTEGER :: constant_sparse_index,constant_solve_index,constant_trace_ierr
   INTEGER :: n_hel
   INTEGER :: isw_lor,isw_ene,isw_intp
   INTEGER,          DIMENSION(:),       ALLOCATABLE :: npl
@@ -2553,7 +2553,7 @@ PRINT *,'right boundary layer ignored'
     ENDIF
     CALL compute_sparse_constant_residual(irow(1:nz),icol(1:nz), &
       amat_sp(1:nz),constant_state,constant_rhs,constant_sparse_residual, &
-      constant_sparse_scale,constant_trace_ierr)
+      constant_sparse_scale,constant_sparse_index,constant_trace_ierr)
     IF(constant_trace_ierr.NE.0) THEN
       ierr=constant_trace_ierr
       RETURN
@@ -2586,12 +2586,15 @@ PRINT *,'right boundary layer ignored'
     bvec_sp=constant_rhs
     CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
       bvec_sp,iopt)
-    constant_solve_residual=MAXVAL(ABS(bvec_sp-constant_state))
-    constant_solve_scale=MAX(MAXVAL(ABS(bvec_sp)+ABS(constant_state)), &
-      TINY(1.d0))
+    constant_solve_index=MAXLOC(ABS(bvec_sp-constant_state),DIM=1)
+    constant_solve_residual=bvec_sp(constant_solve_index) &
+      -constant_state(constant_solve_index)
+    constant_solve_scale=MAX(ABS(bvec_sp(constant_solve_index)) &
+      +ABS(constant_state(constant_solve_index)),TINY(1.d0))
     CALL record_local_constant_stage_residuals(fieldpropagator%tag, &
-      constant_sparse_residual,constant_sparse_scale,constant_solve_residual, &
-      constant_solve_scale,constant_trace_ierr)
+      constant_sparse_residual,constant_sparse_scale,constant_sparse_index, &
+      constant_solve_residual,constant_solve_scale,constant_solve_index, &
+      constant_trace_ierr)
     IF(constant_trace_ierr.NE.0) THEN
       ierr=constant_trace_ierr
       RETURN

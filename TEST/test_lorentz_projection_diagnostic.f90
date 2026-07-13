@@ -14,7 +14,7 @@ program test_lorentz_projection_diagnostic
     real(real64) :: constant_state(8), constant_rhs(8), matrix_values(8)
     real(real64) :: residual, scale
     real(real64) :: eta(0:1), bhat(1:2)
-    integer :: npl(1:2), ind_start(1:2), matrix_index(8)
+    integer :: npl(1:2), ind_start(1:2), matrix_index(8), residual_index
     type(local_projection_residuals) :: residuals
     character(len=1024) :: filename, line
     integer :: ierr, iunit, line_count, status
@@ -65,7 +65,8 @@ program test_lorentz_projection_diagnostic
     matrix_index = [(status, status=1, 8)]
     matrix_values = 1.0_real64
     call compute_sparse_constant_residual(matrix_index, matrix_index, &
-        matrix_values, constant_state, constant_state, residual, scale, ierr)
+        matrix_values, constant_state, constant_state, residual, scale, &
+        residual_index, ierr)
     if (ierr /= 0 .or. residual /= 0.0_real64) &
         error stop 'FAIL: exact sparse constant state was not recognized'
 
@@ -73,8 +74,8 @@ program test_lorentz_projection_diagnostic
         flux_m, amat_p_p, amat_m_p, amat_p_m, amat_m_m, eta_l, eta_r, &
         0.4_real64, 0.6_real64, ierr)
     if (ierr /= 0) error stop 'FAIL: projection trace was not written'
-    call record_local_constant_stage_residuals(7, residual, scale, residual, &
-        scale, ierr)
+    call record_local_constant_stage_residuals(7, residual, scale, &
+        residual_index, residual, scale, residual_index, ierr)
     if (ierr /= 0) error stop 'FAIL: constant-stage trace was not written'
     call get_environment_variable('NEO2_LOCAL_PROJECTION_TRACE_FILE', &
         value=filename, status=status)

@@ -80,10 +80,11 @@ contains
     end subroutine assemble_local_constant_state
 
     subroutine compute_sparse_constant_residual(irow, icol, values, state, rhs, &
-            residual, scale, ierr)
+            residual, scale, residual_index, ierr)
         integer, intent(in) :: irow(:), icol(:)
         real(real64), intent(in) :: values(:), state(:), rhs(:)
         real(real64), intent(out) :: residual, scale
+        integer, intent(out) :: residual_index
         integer, intent(out) :: ierr
         real(real64), allocatable :: row_residual(:), row_scale(:)
         integer :: entry
@@ -102,8 +103,9 @@ contains
             row_scale(irow(entry)) = row_scale(irow(entry)) + &
                 abs(values(entry))*abs(state(icol(entry)))
         end do
-        residual = maxval(abs(row_residual))
-        scale = max(maxval(row_scale), tiny(1.0_real64))
+        residual_index = maxloc(abs(row_residual), dim=1)
+        residual = row_residual(residual_index)
+        scale = max(row_scale(residual_index), tiny(1.0_real64))
         ierr = 0
     end subroutine compute_sparse_constant_residual
 
@@ -277,8 +279,9 @@ contains
     end subroutine record_local_projection_residuals
 
     subroutine record_local_constant_stage_residuals(tag, sparse_residual, &
-            sparse_scale, solve_residual, solve_scale, ierr)
-        integer, intent(in) :: tag
+            sparse_scale, sparse_index, solve_residual, solve_scale, &
+            solve_index, ierr)
+        integer, intent(in) :: tag, sparse_index, solve_index
         real(real64), intent(in) :: sparse_residual, sparse_scale
         real(real64), intent(in) :: solve_residual, solve_scale
         integer, intent(out) :: ierr
@@ -292,10 +295,10 @@ contains
             ierr = 3
             return
         end if
-        call write_value(iunit, tag, 'sparse_constant', -1, sparse_residual, &
-            sparse_scale, status)
-        call write_value(iunit, tag, 'solved_constant', -1, solve_residual, &
-            solve_scale, status)
+        call write_value(iunit, tag, 'sparse_constant', sparse_index, &
+            sparse_residual, sparse_scale, status)
+        call write_value(iunit, tag, 'solved_constant', solve_index, &
+            solve_residual, solve_scale, status)
         close(iunit, iostat=ierr)
         if (status /= 0 .or. ierr /= 0) ierr = 3
     end subroutine record_local_constant_stage_residuals
