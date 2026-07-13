@@ -261,7 +261,6 @@ SUBROUTINE ripple_solver(                                 &
   double precision, dimension(:,:,:,:), allocatable :: dentf_p_h5, enetf_p_h5, spitf_p_h5
   double precision, dimension(:,:,:,:), allocatable :: dentf_m_h5, enetf_m_h5, spitf_m_h5
 
-  niter=1000
   isw_regper=1       !regulariization by periodic boundary condition
 
   !! Modification by Andreas F. Martitsch (28.07.2015)

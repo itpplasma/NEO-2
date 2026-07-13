@@ -61,3 +61,17 @@ set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     TIMEOUT 30
 )
+
+set(QL_NITER_TEST_DIR "${CMAKE_CURRENT_BINARY_DIR}/ql_niter_validation")
+file(MAKE_DIRECTORY "${QL_NITER_TEST_DIR}")
+configure_file(fixtures/neo2_invalid_niter.in
+               "${QL_NITER_TEST_DIR}/neo2.in" COPYONLY)
+
+add_test(NAME ql_niter_validation_test
+         COMMAND $<TARGET_FILE:neo_2_ql.x>
+         WORKING_DIRECTORY "${QL_NITER_TEST_DIR}")
+
+set_tests_properties(ql_niter_validation_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "ERROR: niter must be greater than zero."
+    TIMEOUT 30
+)
