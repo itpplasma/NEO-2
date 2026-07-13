@@ -96,7 +96,7 @@ SUBROUTINE ripple_solver(                                 &
        clight_hel => c,echarge_hel => e
   USE partpa_mod, ONLY : bmod0
   USE qflux_profile_mod, ONLY : qflux_contributions_from_flux_vector, &
-       qflux_point_components_from_flux_vector
+       qflux_point_components_from_flux_vector, record_qflux_interface_traces
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
   IMPLICIT NONE
@@ -249,7 +249,7 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: cp_raw_p,cp_raw_m
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: cp_step_p,cp_step_m
   DOUBLE PRECISION, DIMENSION(3)                :: cp_channel
-  INTEGER :: cp_istep,cp_k,cp_unit
+  INTEGER :: cp_istep,cp_k,cp_trace_status,cp_unit
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: dlogbdphi_mfl
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: delt_pos,delt_neg
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_b,fact_neg_b
@@ -2827,6 +2827,14 @@ ENDDO
 ! weight; the field-line sum reproduces qflux(2,k) exactly. Guarded so runs
 ! without the helical drive are bitwise unchanged.
 IF (isw_hel_drive.NE.0 .AND. num_spec.EQ.1 .AND. mpro%getrank().EQ.0) THEN
+   IF (iplot.EQ.1) THEN
+      CALL record_qflux_interface_traces(fieldpropagator%tag, &
+           phi_mfl(ibeg:iend),eta,ind_start(ibeg:iend),npl(ibeg:iend),lag, &
+           cp_step_p,cp_step_m,flux_vector(2,:),source_vector, &
+           source_vector_all(:,:,0),cp_trace_status)
+      IF (cp_trace_status.NE.0) &
+         ERROR STOP 'qflux interface trace diagnostic failed'
+   END IF
    ALLOCATE(cp_c(ibeg:iend,3))
    IF (iplot.EQ.1) ALLOCATE(cp_raw_p(ibeg:iend,3),cp_raw_m(ibeg:iend,3))
    DO cp_k=1,3
@@ -2928,10 +2936,10 @@ call cpu_time(time2)
     do kk=1,3
       k=ind_start(ibeg)+2*npass_l*m
       source_m(npass_l*m+1:npass_l*m+npass_l,kk) &
-          =source_vector(k+2*npass_l:k+npass_l+1:-1,kk)
+          =source_vector_all(k+2*npass_l:k+npass_l+1:-1,kk,ispec)
       k=ind_start(iend)+2*npass_r*m
       source_p(npass_r*m+1:npass_r*m+npass_r,kk) &
-          =source_vector(k+1:k+npass_r,kk)
+          =source_vector_all(k+1:k+npass_r,kk,ispec)
     enddo
   enddo
 

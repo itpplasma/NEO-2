@@ -1,10 +1,16 @@
 module qflux_profile_mod
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use nrtype, only: dp
     implicit none
     private
 
+    character(len=:), allocatable, save :: interface_trace_filename
+    integer, save :: interface_trace_sequence = 0
+    logical, save :: interface_trace_initialized = .false.
+
     public :: qflux_contributions_from_flux_vector
     public :: qflux_point_components_from_flux_vector
+    public :: record_qflux_interface_traces
 
 contains
 
@@ -102,4 +108,139 @@ contains
             channel = channel + contribution(i)
         end do
     end subroutine qflux_point_components_from_flux_vector
+
+    subroutine record_qflux_interface_traces(tag, phi, eta_grid, block_base, &
+            block_npassing, lag, step_plus, step_minus, flux_row, source_rhs, &
+            source_solution, ierr)
+        integer, intent(in) :: tag, block_base(:), block_npassing(:), lag
+        real(dp), intent(in) :: phi(:), eta_grid(0:), step_plus(:), step_minus(:)
+        real(dp), intent(in) :: flux_row(:), source_rhs(:, :)
+        real(dp), intent(in) :: source_solution(:, :)
+        integer, intent(out) :: ierr
+        character(len=5) :: side
+        integer :: band, base, column, endpoint, force, iunit, m, nband, point
+        integer :: status
+
+        ierr = 0
+        if (.not. interface_trace_initialized) call initialize_interface_trace(ierr)
+        if (ierr /= 0 .or. .not. allocated(interface_trace_filename)) return
+        if (size(phi) /= size(block_base) &
+            .or. size(block_npassing) /= size(block_base) &
+            .or. size(step_plus) /= size(block_base) &
+            .or. size(step_minus) /= size(block_base) &
+            .or. size(source_rhs, 1) /= size(flux_row) &
+            .or. any(shape(source_solution) /= shape(source_rhs)) &
+            .or. size(source_rhs, 2) /= 3 &
+            .or. lag < 0) then
+            ierr = 1
+            return
+        end if
+        if (size(block_base) < 2 &
+            .or. maxval(block_npassing) >= size(eta_grid) &
+            .or. any(block_npassing < 0) &
+            .or. any(step_plus == 0.0_dp) &
+            .or. any(step_minus == 0.0_dp)) then
+            ierr = 1
+            return
+        end if
+        if (.not. all(ieee_is_finite(phi)) &
+            .or. .not. all(ieee_is_finite(eta_grid)) &
+            .or. .not. all(ieee_is_finite(step_plus)) &
+            .or. .not. all(ieee_is_finite(step_minus)) &
+            .or. .not. all(ieee_is_finite(flux_row)) &
+            .or. .not. all(ieee_is_finite(source_rhs)) &
+            .or. .not. all(ieee_is_finite(source_solution))) then
+            ierr = 1
+            return
+        end if
+
+        open(newunit=iunit, file=interface_trace_filename, status='old', &
+            position='append', action='write', iostat=status)
+        if (status /= 0) then
+            ierr = status
+            return
+        end if
+        do endpoint = 1, 2
+            if (endpoint == 1) then
+                point = 1
+                side = 'left'
+            else
+                point = size(block_base)
+                side = 'right'
+            end if
+            nband = block_npassing(point) + 1
+            do m = 0, lag
+                base = block_base(point) + 2*m*nband
+                do band = 1, nband
+                    column = base + band
+                    do force = 1, 3
+                        call write_interface_trace(iunit, tag, side, 'p', m, &
+                            force, band - 1, eta_grid(band - 1), phi(point), &
+                            flux_row(column)/step_plus(point), &
+                            source_rhs(column, force), &
+                            source_solution(column, force), status)
+                        if (status /= 0) exit
+                    end do
+                    if (status /= 0) exit
+                    column = base + 2*nband - band + 1
+                    do force = 1, 3
+                        call write_interface_trace(iunit, tag, side, 'm', m, &
+                            force, band - 1, eta_grid(band - 1), phi(point), &
+                            flux_row(column)/step_minus(point), &
+                            source_rhs(column, force), &
+                            source_solution(column, force), status)
+                        if (status /= 0) exit
+                    end do
+                    if (status /= 0) exit
+                end do
+                if (status /= 0) exit
+            end do
+            if (status /= 0) exit
+        end do
+        close(iunit, iostat=ierr)
+        if (status /= 0) ierr = status
+    end subroutine record_qflux_interface_traces
+
+    subroutine write_interface_trace(iunit, tag, side, direction, laguerre, &
+            force, eta_index, eta_value, phi, flux_kernel, source_rhs, &
+            source_solution, status)
+        integer, intent(in) :: iunit, tag, laguerre, force, eta_index
+        character(len=*), intent(in) :: side, direction
+        real(dp), intent(in) :: eta_value, phi, flux_kernel, source_rhs
+        real(dp), intent(in) :: source_solution
+        integer, intent(out) :: status
+
+        interface_trace_sequence = interface_trace_sequence + 1
+        write(iunit, '(2(i0,","),a,",",a,",",3(i0,","),4(es25.16e3,","),' // &
+            'es25.16e3)', iostat=status) interface_trace_sequence, tag, &
+            trim(side), direction, laguerre, force, eta_index, eta_value, phi, &
+            flux_kernel, source_rhs, source_solution
+    end subroutine write_interface_trace
+
+    subroutine initialize_interface_trace(ierr)
+        integer, intent(out) :: ierr
+        integer :: iunit, length, status
+
+        ierr = 0
+        interface_trace_initialized = .true.
+        call get_environment_variable('NEO2_INTERFACE_TRACE_FILE', &
+            length=length, status=status)
+        if (status /= 0 .or. length == 0) return
+        allocate(character(len=length) :: interface_trace_filename)
+        call get_environment_variable('NEO2_INTERFACE_TRACE_FILE', &
+            value=interface_trace_filename, status=status)
+        if (status == 0) then
+            open(newunit=iunit, file=interface_trace_filename, status='replace', &
+                action='write', iostat=status)
+        end if
+        if (status == 0) then
+            write(iunit, '(a)', iostat=status) &
+                'sequence,tag,side,direction,laguerre,force,eta_index,eta,phi,' // &
+                'flux_kernel,source_rhs,source_solution'
+            close(iunit, iostat=ierr)
+        end if
+        if (status /= 0) ierr = status
+        if (ierr /= 0 .and. allocated(interface_trace_filename)) &
+            deallocate(interface_trace_filename)
+    end subroutine initialize_interface_trace
 end module qflux_profile_mod

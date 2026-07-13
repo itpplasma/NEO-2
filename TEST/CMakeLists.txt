@@ -153,6 +153,20 @@ set_tests_properties(join_failure_diagnostic_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_qflux_interface_diagnostic test_qflux_interface_diagnostic.f90)
+target_link_libraries(test_qflux_interface_diagnostic neo2_ql)
+
+add_test(NAME qflux_interface_diagnostic_test
+         COMMAND test_qflux_interface_diagnostic
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(qflux_interface_diagnostic_test PROPERTIES
+    ENVIRONMENT "NEO2_INTERFACE_TRACE_FILE=${CMAKE_CURRENT_BINARY_DIR}/qflux_interface_trace.csv"
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_ripple_solver_route test_ripple_solver_route.f90)
 target_link_libraries(test_ripple_solver_route neo2_ql)
 
