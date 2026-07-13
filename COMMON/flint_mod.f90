@@ -20,8 +20,70 @@ MODULE flint_mod
   LOGICAL :: bsfunc_shield
   LOGICAL :: bsfunc_lambda_loc_res
   DOUBLE PRECISION :: eta_savemem_dist1, eta_savemem_dist2, eta_savemem_sigma_mult
+  CHARACTER(len=:), ALLOCATABLE, SAVE :: phi_placement_output_filename
+  INTEGER, SAVE :: phi_placement_sequence = 0
+  LOGICAL, SAVE :: phi_placement_output_initialized = .FALSE.
 
 contains
+
+  SUBROUTINE record_phi_placement(tag,interval,part,eta_index,phi_start, &
+       phi_end,hphi,ceiling_count,placed_count,ierr)
+    INTEGER, INTENT(in) :: tag,interval,part,eta_index
+    INTEGER, INTENT(in) :: ceiling_count,placed_count
+    DOUBLE PRECISION, INTENT(in) :: phi_start,phi_end,hphi
+    INTEGER, INTENT(out) :: ierr
+
+    INTEGER :: iunit,status
+
+    ierr = 0
+    IF (.NOT. phi_placement_output_initialized) &
+         CALL initialize_phi_placement_output(ierr)
+    IF (ierr .NE. 0 .OR. &
+         .NOT. ALLOCATED(phi_placement_output_filename)) RETURN
+    OPEN(NEWUNIT=iunit,FILE=phi_placement_output_filename,STATUS='old', &
+         POSITION='append',ACTION='write',IOSTAT=status)
+    IF (status .NE. 0) THEN
+       ierr = status
+       RETURN
+    END IF
+    phi_placement_sequence = phi_placement_sequence + 1
+    WRITE(iunit,'(5(I0,","),3(ES23.15,","),I0,",",I0)',IOSTAT=status) &
+         phi_placement_sequence,tag,interval,part,eta_index,phi_start, &
+         phi_end,hphi,ceiling_count,placed_count
+    CLOSE(iunit,IOSTAT=ierr)
+    IF (status .NE. 0) ierr = status
+  END SUBROUTINE record_phi_placement
+
+  SUBROUTINE initialize_phi_placement_output(ierr)
+    INTEGER, INTENT(out) :: ierr
+
+    INTEGER :: iunit,length,status
+
+    ierr = 0
+    phi_placement_output_initialized = .TRUE.
+    CALL GET_ENVIRONMENT_VARIABLE('NEO2_PHI_PLACEMENT_FILE',LENGTH=length, &
+         STATUS=status)
+    IF (status .NE. 0 .OR. length .EQ. 0) RETURN
+    ALLOCATE(CHARACTER(len=length) :: phi_placement_output_filename)
+    CALL GET_ENVIRONMENT_VARIABLE('NEO2_PHI_PLACEMENT_FILE', &
+         VALUE=phi_placement_output_filename,STATUS=status)
+    IF (status .NE. 0) THEN
+       ierr = status
+       DEALLOCATE(phi_placement_output_filename)
+       RETURN
+    END IF
+    OPEN(NEWUNIT=iunit,FILE=phi_placement_output_filename,STATUS='replace', &
+         ACTION='write',IOSTAT=status)
+    IF (status .EQ. 0) THEN
+       WRITE(iunit,'(A)',IOSTAT=status) &
+            'sequence,tag,interval,part,eta_index,phi_start,phi_end,hphi,'// &
+            'ceiling_count,placed_count'
+       CLOSE(iunit,IOSTAT=ierr)
+    END IF
+    IF (status .NE. 0) ierr = status
+    IF (ierr .NE. 0 .AND. ALLOCATED(phi_placement_output_filename)) &
+         DEALLOCATE(phi_placement_output_filename)
+  END SUBROUTINE initialize_phi_placement_output
 
   !> this routine is called before flint and does the setup for magnetics
   !> it creates the
@@ -627,6 +689,7 @@ contains
 
     ! local stuff
     INTEGER :: imin,ub,ip,ips,ipe,iphi,i_eta,k,ie_dir,i,m,n
+    INTEGER :: ceiling_count,placement_ierr
     INTEGER :: phi_count,arr_phi_count
     INTEGER :: nfp,nstep
 
@@ -838,10 +901,16 @@ contains
        ! last one is only recorded for the last sub-intervall
        IF (phi_place_mode .EQ. 1) THEN
           m = 1 ! or only one point
+          ceiling_count = 1
        ELSE
           m = CEILING((phi_el-phi_sl)/(hphi))
+          ceiling_count = m
           m = MAX(phi_split_min,m - MOD(m+1,2))
        END IF
+       CALL record_phi_placement(fieldpropagator%tag,k,ip,i_eta,phi_sl, &
+            phi_el,hphi,ceiling_count,m,placement_ierr)
+       IF (placement_ierr .NE. 0) &
+            ERROR STOP 'phi_placer diagnostic output failed'
        dpl = (phi_el-phi_sl) / DBLE(m+1) ! local delta
 
        IF (k .EQ. arr_phi_count) m = m+1 ! for the last one
