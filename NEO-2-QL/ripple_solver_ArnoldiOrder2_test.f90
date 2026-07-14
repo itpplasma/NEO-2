@@ -800,6 +800,37 @@ subroutine ripple_solver_ArnoldiO2( &
     !! End Modifications by Andreas F. Martitsch (14.03.2014)
     end if
 
+    subsqmin = 1.d5*EPSILON(1.d0)
+    allocate (delt_pos(ibeg:iend), delt_neg(ibeg:iend))
+    allocate (fact_pos_b(ibeg:iend), fact_neg_b(ibeg:iend))
+    allocate (fact_pos_e(ibeg:iend), fact_neg_e(ibeg:iend))
+
+    nreal = 3
+    ncomp = 1
+    allocate (arr_real(ibeg:iend, nreal), arr_comp(ibeg:iend, ncomp))
+    arr_real(:, 1) = h_phi_mfl
+    arr_real(:, 2) = dlogbds_mfl
+    arr_real(:, 3) = bcovar_s_hat_mfl
+    arr_comp(:, 1) = geodcu_mfl
+
+    call rearrange_phideps(ibeg, iend, npart, ncomp, nreal, 3, subsqmin, &
+                           phi_divide, phi_mfl, bhat_mfl, dlogbdphi_mfl, &
+                           dbcovar_s_hat_dphi_mfl, arr_real, arr_comp, eta, &
+                           delt_pos, delt_neg, fact_pos_b, fact_neg_b, &
+                           fact_pos_e, fact_neg_e)
+
+    h_phi_mfl = arr_real(:, 1)
+    dlogbds_mfl = arr_real(:, 2)
+    bcovar_s_hat_mfl = arr_real(:, 3)
+    geodcu_mfl = arr_comp(:, 1)
+    deallocate (arr_real, arr_comp)
+
+    if (maxval(phi_divide) > 1) then
+        ierr = 3
+        write (*, *) 'ERROR: crossing geometry requires phi refinement.'
+        return
+    end if
+
     ! Computation of the perturbed quantities without
     ! usage of interfaces (fieldpropagator-structure,...)
     if (isw_qflux_na .ne. 0) then
@@ -993,42 +1024,6 @@ subroutine ripple_solver_ArnoldiO2( &
     allocate (amat(ndim, ndim), bvec_lapack(ndim, ndim), ipivot(ndim))
 
     npart_loc = 0
-    subsqmin = 1.d5*EPSILON(1.d0)
-
-    allocate (delt_pos(ibeg:iend), delt_neg(ibeg:iend))
-    allocate (fact_pos_b(ibeg:iend), fact_neg_b(ibeg:iend))
-    allocate (fact_pos_e(ibeg:iend), fact_neg_e(ibeg:iend))
-
-    nreal = 1
-    ncomp = 1
-    allocate (arr_real(ibeg:iend, nreal), arr_comp(ibeg:iend, ncomp))
-    arr_real(:, 1) = h_phi_mfl
-    arr_comp(:, 1) = geodcu_mfl
-
-    call rearrange_phideps(ibeg, iend, npart, ncomp, nreal, subsqmin, phi_divide, &
-                           phi_mfl, bhat_mfl, arr_real, arr_comp, eta, &
-                           delt_pos, delt_neg, &
-                           fact_pos_b, fact_neg_b, fact_pos_e, fact_neg_e)
-
-    h_phi_mfl = arr_real(:, 1)
-    geodcu_mfl = arr_comp(:, 1)
-    deallocate (arr_real, arr_comp)
-
-    ! Consistency check of phi_divide, ifnot sucessful, return from this
-    ! subroutine.
-    if (maxval(phi_divide) > 1) then
-        ierr = 3
-        deallocate (deriv_coef, npl)
-        deallocate (rhs_mat_lorentz, rhs_mat_energ)
-        deallocate (fun_coef, ttmp_mat)
-        deallocate (rhs_mat_energ2)        !NTV
-        deallocate (q_rip, q_rip_1, q_rip_incompress, q_rip_parflow)
-        deallocate (q_hel_b, q_hel_e)
-        deallocate (convol_flux, convol_curr, convol_flux_0)
-        deallocate (pleg_bra, pleg_ket, scalprod_pleg)
-        write (*, *) 'ERROR: maxval(phi_divide) > 1, returning.'
-        return
-    end if
 
     do istep = ibeg, iend
 
@@ -4942,8 +4937,10 @@ end subroutine ripple_solver_ArnoldiO2
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !! Modifications by Andreas F. Martitsch (27.07.2015)
 ! Multiple definitions avoided
-subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, subsqmin, phi_divide, &
-                             phi_mfl, bhat_mfl, arr_real, arr_comp, eta, &
+subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, bcovar_column, &
+                             subsqmin, phi_divide, phi_mfl, bhat_mfl, &
+                             dlogbdphi_mfl, dbcovar_s_hat_dphi_mfl, &
+                             arr_real, arr_comp, eta, &
                              delt_pos, delt_neg, &
                              fact_pos_b, fact_neg_b, fact_pos_e, fact_neg_e)
 
@@ -4953,18 +4950,18 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, subsqmin, phi_divi
 ! fact_neg_b(i) - integration step in negative direction starts at point i
 ! fact_neg_e(i) - integration step in negative direction ends at point i
 
-    use plagrange_mod
+    use plagrange_mod, only: plagrange_coeff
 
     implicit none
 
     integer, parameter :: dp = kind(1.0d0)
 
     logical, parameter :: stepmode = .FALSE.
-    integer, parameter :: npoi = 6, nder = 0, npoihalf = npoi/2, nstepmin = 8
+    integer, parameter :: npoi = 6, nder = 1, npoihalf = npoi/2, nstepmin = 8
     real(dp), parameter :: bparabmax = 0.2d0
 
     integer :: i, ibeg, iend, npart, istep, ibmin, npassing, npassing_prev
-    integer :: ncomp, nreal
+    integer :: ncomp, nreal, bcovar_column, failed_interval
     integer :: ncross_l, ncross_r, ib, ie, intb, inte, k, imid, isplit
 
     real(dp) :: subsqmin, ht, ht2, bparab, x1, x2, f1, f2
@@ -4976,21 +4973,31 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, subsqmin, phi_divi
     real(dp), dimension(0:nder, npoi)      :: coeff
     real(dp), dimension(0:npart)          :: eta
     real(dp), dimension(ibeg:iend)        :: phi_mfl, bhat_mfl
+    real(dp), dimension(ibeg:iend)        :: dlogbdphi_mfl
+    real(dp), dimension(ibeg:iend)        :: dbcovar_s_hat_dphi_mfl
     real(dp), dimension(ibeg:iend, nreal)  :: arr_real
     complex(dp), dimension(ibeg:iend, ncomp)  :: arr_comp
     real(dp), dimension(ibeg:iend)        :: delt_pos, delt_neg
     real(dp), dimension(ibeg:iend)        :: fact_pos_b, fact_neg_b
     real(dp), dimension(ibeg:iend)        :: fact_pos_e, fact_neg_e
     real(dp), dimension(:), allocatable   :: phi_new, bhat_new
+    real(dp), dimension(:), allocatable   :: dlogbdphi_new
+    real(dp), dimension(:), allocatable   :: dbcovar_s_hat_dphi_new
     real(dp), dimension(:, :), allocatable :: arr_real_new
     complex(dp), dimension(:, :), allocatable :: arr_comp_new
 
     npassing = -1
 
-    call fix_phiplacement_problem(ibeg, iend, npart, subsqmin, &
-                                  phi_mfl, bhat_mfl, eta)
-
     phi_divide = 1
+    call align_phi_crossing_geometry(ibeg, iend, npart, ncomp, nreal, &
+                                     ubound(phi_divide, 1), bcovar_column, &
+                                     subsqmin, phi_mfl, bhat_mfl, &
+                                     dlogbdphi_mfl, dbcovar_s_hat_dphi_mfl, &
+                                     arr_real, arr_comp, eta, failed_interval)
+    if (failed_interval > 0) then
+        phi_divide(failed_interval) = 2
+        return
+    end if
 
     delt_pos(ibeg + 1:iend) = phi_mfl(ibeg + 1:iend) - phi_mfl(ibeg:iend - 1)
     fact_pos_b = 1.d0
@@ -5182,10 +5189,13 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, subsqmin, phi_divi
     if (stepmode) then
 
         allocate (phi_new(ibeg:iend), bhat_new(ibeg:iend))
+        allocate (dlogbdphi_new(ibeg:iend), dbcovar_s_hat_dphi_new(ibeg:iend))
         allocate (arr_real_new(ibeg:iend, nreal))
         allocate (arr_comp_new(ibeg:iend, ncomp))
         phi_new = phi_mfl
         bhat_new = bhat_mfl
+        dlogbdphi_new = dlogbdphi_mfl
+        dbcovar_s_hat_dphi_new = dbcovar_s_hat_dphi_mfl
         arr_real_new = arr_real
         arr_comp_new = arr_comp
 
@@ -5208,6 +5218,12 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, subsqmin, phi_divi
                 call plagrange_coeff(npoi, nder, phi_new(istep), phi_mfl(intb:inte), coeff)
 
                 bhat_new(istep) = SUM(coeff(0, :)*bhat_mfl(intb:inte))
+                dlogbdphi_new(istep) = &
+                    SUM(coeff(1, :)*bhat_mfl(intb:inte))/bhat_new(istep)
+                if (bcovar_column > 0) then
+                    dbcovar_s_hat_dphi_new(istep) = &
+                        SUM(coeff(1, :)*arr_real(intb:inte, bcovar_column))
+                end if
                 arr_real_new(istep, :) = MATMUL(coeff(0, :), arr_real(intb:inte, :))
                 arr_comp_new(istep, :) = MATMUL(coeff(0, :), arr_comp(intb:inte, :))
             end do
@@ -5237,6 +5253,12 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, subsqmin, phi_divi
                 call plagrange_coeff(npoi, nder, phi_new(istep), phi_mfl(intb:inte), coeff)
 
                 bhat_new(istep) = SUM(coeff(0, :)*bhat_mfl(intb:inte))
+                dlogbdphi_new(istep) = &
+                    SUM(coeff(1, :)*bhat_mfl(intb:inte))/bhat_new(istep)
+                if (bcovar_column > 0) then
+                    dbcovar_s_hat_dphi_new(istep) = &
+                        SUM(coeff(1, :)*arr_real(intb:inte, bcovar_column))
+                end if
                 arr_real_new(istep, :) = MATMUL(coeff(0, :), arr_real(intb:inte, :))
                 arr_comp_new(istep, :) = MATMUL(coeff(0, :), arr_comp(intb:inte, :))
             end do
@@ -5249,10 +5271,13 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, subsqmin, phi_divi
 
         phi_mfl = phi_new
         bhat_mfl = bhat_new
+        dlogbdphi_mfl = dlogbdphi_new
+        dbcovar_s_hat_dphi_mfl = dbcovar_s_hat_dphi_new
         arr_real = arr_real_new
         arr_comp = arr_comp_new
 
-        deallocate (phi_new, bhat_new, arr_real_new, arr_comp_new)
+        deallocate (phi_new, bhat_new, dlogbdphi_new, &
+                    dbcovar_s_hat_dphi_new, arr_real_new, arr_comp_new)
 
     end if
 
@@ -5266,177 +5291,148 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, subsqmin, phi_divi
 end subroutine rearrange_phideps
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-subroutine fix_phiplacement_problem(ibeg, iend, npart, subsqmin, &
-                                    phi_mfl, bhat_mfl, eta)
+subroutine align_phi_crossing_geometry(ibeg, iend, npart, ncomp, nreal, ub_mag, &
+                                       bcovar_column, subsqmin, phi_mfl, &
+                                       bhat_mfl, dlogbdphi_mfl, &
+                                       dbcovar_s_hat_dphi_mfl, arr_real, &
+                                       arr_comp, eta, failed_interval)
 
-    use device_mod
-    use phi_crossing_alignment_mod, only: nearest_phi_crossing_offset
+    use device_mod, only: fieldpropagator
+    use phi_crossing_alignment_mod, only: bracketed_phi_crossing, &
+        claim_crossing_target, crossing_ok
 
     implicit none
 
     integer, parameter :: dp = kind(1.0d0)
+    integer, parameter :: stencil_size = 6
 
-    integer :: i, ibeg, iend, npart, istep, ibmin, npassing, npassing_prev
-    integer :: aligned_step, crossing_offset, ncross_l, ncross_r
+    integer, intent(in) :: ibeg, iend, npart, ncomp, nreal, ub_mag, bcovar_column
+    real(dp), intent(in) :: subsqmin
+    real(dp), intent(inout) :: phi_mfl(ibeg:iend), bhat_mfl(ibeg:iend)
+    real(dp), intent(inout) :: dlogbdphi_mfl(ibeg:iend)
+    real(dp), intent(inout) :: dbcovar_s_hat_dphi_mfl(ibeg:iend)
+    real(dp), intent(inout) :: arr_real(ibeg:iend, nreal)
+    complex(dp), intent(inout) :: arr_comp(ibeg:iend, ncomp)
+    real(dp), intent(in) :: eta(0:npart)
+    integer, intent(out) :: failed_interval
 
-    real(dp) :: subsqmin
+    complex(dp) :: arr_comp_original(ibeg:iend, ncomp)
+    real(dp) :: arr_real_original(ibeg:iend, nreal)
+    real(dp) :: bhat_original(ibeg:iend), phi_original(ibeg:iend)
+    real(dp) :: crossing_eta(2*(npart + 1)), crossing_phi(2*(npart + 1))
+    real(dp) :: derivative_weights(stencil_size, 2*(npart + 1))
+    real(dp) :: weights(stencil_size, 2*(npart + 1))
+    integer :: bracket_left(2*(npart + 1)), crossing_target(2*(npart + 1))
+    integer :: stencil_left(2*(npart + 1))
+    integer :: i, ibmin, istep, ncross, npassing, npassing_previous
+    integer :: root_status
+    logical :: claimed(0:iend)
 
-    integer, dimension(1)              :: idummy
-    integer, dimension(:), allocatable :: icross_l, icross_r
+    failed_interval = 0
+    phi_original = phi_mfl
+    bhat_original = bhat_mfl
+    arr_real_original = arr_real
+    arr_comp_original = arr_comp
+    claimed = .false.
+    ncross = 0
 
-    real(dp), dimension(0:npart)        :: eta
-    real(dp), dimension(ibeg:iend)      :: phi_mfl, bhat_mfl
-    real(dp), dimension(:), allocatable :: eta_cross_l, eta_cross_r
-    real(dp) :: bhat_crossing(-1:1)
-
-    npassing = -1
-
-! determine level crossings:
-
-    idummy = MINLOC(bhat_mfl(ibeg:iend))
-    ibmin = idummy(1) + ibeg - 1
-
-    ncross_l = 0
-    if (ibmin .GT. ibeg) then
-        istep = ibmin
-        do i = 0, npart
-            if (1.d0 - bhat_mfl(istep)*eta(i) .GT. subsqmin) then
-                npassing = i
-            else
-                EXIT
-            end if
-        end do
-        npassing_prev = npassing
-        do istep = ibmin - 1, ibeg, -1
-            do i = 0, npart
-                if (1.d0 - bhat_mfl(istep)*eta(i) .GT. subsqmin) then
-                    npassing = i
-                else
-                    EXIT
-                end if
-            end do
-            if (npassing .LT. npassing_prev) then
-                ncross_l = ncross_l + 1
-                npassing_prev = npassing
-            end if
-        end do
-        if (ncross_l .GT. 0) then
-            allocate (icross_l(ncross_l), eta_cross_l(ncross_l))
-            ncross_l = 0
-            istep = ibmin
-            do i = 0, npart
-                if (1.d0 - bhat_mfl(istep)*eta(i) .GT. subsqmin) then
-                    npassing = i
-                else
-                    EXIT
-                end if
-            end do
-            npassing_prev = npassing
-            do istep = ibmin - 1, ibeg, -1
-                do i = 0, npart
-                    if (1.d0 - bhat_mfl(istep)*eta(i) .GT. subsqmin) then
-                        npassing = i
-                    else
-                        EXIT
-                    end if
-                end do
-                if (npassing .LT. npassing_prev) then
-                    ncross_l = ncross_l + 1
-                    icross_l(ncross_l) = istep
-                    eta_cross_l(ncross_l) = eta(npassing_prev)
-                    npassing_prev = npassing
-                end if
-            end do
-            do i = 1, ncross_l
-                istep = icross_l(i)
-                bhat_crossing = bhat_mfl(istep)
-                if (istep .GT. ibeg) bhat_crossing(-1) = bhat_mfl(istep - 1)
-                if (istep .LT. iend) bhat_crossing(1) = bhat_mfl(istep + 1)
-                crossing_offset = nearest_phi_crossing_offset( &
-                    bhat_crossing, eta_cross_l(i))
-                aligned_step = istep + crossing_offset
-                open (111, file='phi_placement_problem.dat', position='append')
-                write (111, *) ' propagator tag = ', fieldpropagator%tag, &
-                    ' step number = ', aligned_step, &
-                    ' 1 / bhat = ', 1.d0/bhat_mfl(aligned_step), &
-                    ' eta = ', eta_cross_l(i)
-                close (111)
-                bhat_mfl(aligned_step) = 1.d0/eta_cross_l(i)
-            end do
-            deallocate (icross_l, eta_cross_l)
+    ibmin = minloc(bhat_original(0:ub_mag), dim=1) - 1
+    npassing_previous = passing_index(bhat_original(ibmin))
+    do istep = ibmin - 1, 0, -1
+        npassing = passing_index(bhat_original(istep))
+        if (npassing > npassing_previous) then
+            call reject_interval(istep)
+            return
         end if
-    end if
-
-    ncross_r = 0
-    if (ibmin .LT. iend) then
-        istep = ibmin
-        do i = 0, npart
-            if (1.d0 - bhat_mfl(istep)*eta(i) .GT. subsqmin) then
-                npassing = i
-            else
-                EXIT
+        if (npassing < npassing_previous) then
+            if (npassing_previous - npassing /= 1) then
+                call reject_interval(istep)
+                return
             end if
-        end do
-        npassing_prev = npassing
-        do istep = ibmin + 1, iend
-            do i = 0, npart
-                if (1.d0 - bhat_mfl(istep)*eta(i) .GT. subsqmin) then
-                    npassing = i
-                else
-                    EXIT
-                end if
-            end do
-            if (npassing .LT. npassing_prev) then
-                ncross_r = ncross_r + 1
-                npassing_prev = npassing
-            end if
-        end do
-        if (ncross_r .GT. 0) then
-            allocate (icross_r(ncross_r), eta_cross_r(ncross_r))
-            ncross_r = 0
-            istep = ibmin
-            do i = 0, npart
-                if (1.d0 - bhat_mfl(istep)*eta(i) .GT. subsqmin) then
-                    npassing = i
-                else
-                    EXIT
-                end if
-            end do
-            npassing_prev = npassing
-            do istep = ibmin + 1, iend
-                do i = 0, npart
-                    if (1.d0 - bhat_mfl(istep)*eta(i) .GT. subsqmin) then
-                        npassing = i
-                    else
-                        EXIT
-                    end if
-                end do
-                if (npassing .LT. npassing_prev) then
-                    ncross_r = ncross_r + 1
-                    icross_r(ncross_r) = istep
-                    eta_cross_r(ncross_r) = eta(npassing_prev)
-                    npassing_prev = npassing
-                end if
-            end do
-            do i = 1, ncross_r
-                istep = icross_r(i)
-                bhat_crossing = bhat_mfl(istep)
-                if (istep .GT. ibeg) bhat_crossing(-1) = bhat_mfl(istep - 1)
-                if (istep .LT. iend) bhat_crossing(1) = bhat_mfl(istep + 1)
-                crossing_offset = nearest_phi_crossing_offset( &
-                    bhat_crossing, eta_cross_r(i))
-                aligned_step = istep + crossing_offset
-                open (111, file='phi_placement_problem.dat', position='append')
-                write (111, *) ' propagator tag = ', fieldpropagator%tag, &
-                    ' step number = ', aligned_step, &
-                    ' 1 / bhat = ', 1.d0/bhat_mfl(aligned_step), &
-                    ' eta = ', eta_cross_r(i)
-                close (111)
-                bhat_mfl(aligned_step) = 1.d0/eta_cross_r(i)
-            end do
-            deallocate (icross_r, eta_cross_r)
+            ncross = ncross + 1
+            bracket_left(ncross) = istep
+            crossing_eta(ncross) = eta(npassing_previous)
+            npassing_previous = npassing
         end if
-    end if
+    end do
 
-end subroutine fix_phiplacement_problem
+    npassing_previous = passing_index(bhat_original(ibmin))
+    do istep = ibmin + 1, ub_mag
+        npassing = passing_index(bhat_original(istep))
+        if (npassing > npassing_previous) then
+            call reject_interval(istep - 1)
+            return
+        end if
+        if (npassing < npassing_previous) then
+            if (npassing_previous - npassing /= 1) then
+                call reject_interval(istep - 1)
+                return
+            end if
+            ncross = ncross + 1
+            bracket_left(ncross) = istep - 1
+            crossing_eta(ncross) = eta(npassing_previous)
+            npassing_previous = npassing
+        end if
+    end do
+
+    do i = 1, ncross
+        call bracketed_phi_crossing(0, ub_mag, phi_original(0:ub_mag), &
+            bhat_original(0:ub_mag), bracket_left(i), crossing_eta(i), &
+            crossing_phi(i), stencil_left(i), weights(:, i), &
+            derivative_weights(:, i), crossing_target(i), root_status)
+        if (root_status /= crossing_ok) then
+            call reject_interval(bracket_left(i))
+            return
+        end if
+        if (.not. claim_crossing_target(claimed, crossing_target(i))) then
+            call reject_interval(bracket_left(i))
+            return
+        end if
+    end do
+
+    do i = 1, ncross
+        istep = crossing_target(i)
+        phi_mfl(istep) = crossing_phi(i)
+        bhat_mfl(istep) = 1.0_dp/crossing_eta(i)
+        arr_real(istep, :) = matmul(weights(:, i), &
+            arr_real_original(stencil_left(i):stencil_left(i) + stencil_size - 1, :))
+        arr_comp(istep, :) = matmul(weights(:, i), &
+            arr_comp_original(stencil_left(i):stencil_left(i) + stencil_size - 1, :))
+        dlogbdphi_mfl(istep) = sum(derivative_weights(:, i)* &
+            bhat_original(stencil_left(i):stencil_left(i) + stencil_size - 1))/ &
+            bhat_mfl(istep)
+        if (bcovar_column > 0) then
+            dbcovar_s_hat_dphi_mfl(istep) = sum(derivative_weights(:, i)* &
+                arr_real_original(stencil_left(i): &
+                                  stencil_left(i) + stencil_size - 1, &
+                                  bcovar_column))
+        end if
+        open (111, file='phi_placement_problem.dat', position='append')
+        write (111, *) ' propagator tag = ', fieldpropagator%tag, &
+            ' step number = ', istep, ' phi = ', phi_mfl(istep), &
+            ' eta = ', crossing_eta(i)
+        close (111)
+    end do
+
+contains
+
+    integer function passing_index(bhat_value) result(index)
+        real(dp), intent(in) :: bhat_value
+
+        integer :: band
+
+        index = -1
+        do band = 0, npart
+            if (1.0_dp - bhat_value*eta(band) <= subsqmin) exit
+            index = band
+        end do
+    end function passing_index
+
+    subroutine reject_interval(left_index)
+        integer, intent(in) :: left_index
+
+        failed_interval = max(1, min(ub_mag, left_index + 1))
+    end subroutine reject_interval
+
+end subroutine align_phi_crossing_geometry
 !! End Modifications by Andreas F. Martitsch (27.07.2015)
