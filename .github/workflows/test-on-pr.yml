@@ -5,20 +5,47 @@ on:
     branches:
       - main
       - master
+  # 'edited' covers base-branch retargeting (guarded below so title/body
+  # edits do not rerun); 'labeled' lets the run-golden-record label start
+  # the job on stacked flux-pumping PRs, where it is label-gated because
+  # it builds NEO-2 three times and runs the full golden-record suites.
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited, labeled]
     branches:
       - main
       - master
+      - fix/flux-pumping/**
+      - diag/flux-pumping/**
+      - feat/flux-pumping/**
+      - integration/flux-pumping/**
+  workflow_dispatch:
+    inputs:
+      compare_against_main:
+        description: Also run the exact golden-record comparison against main
+        required: false
+        default: true
+        type: boolean
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || (github.event_name == 'workflow_dispatch' && github.run_id) || github.ref }}
   cancel-in-progress: true
 
 jobs:
   run-golden-record:
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    # Push and manual dispatch always run. Pull requests run when non-draft
+    # and either based on main/master or carrying the run-golden-record
+    # label (stacked flux-pumping bases). 'edited' events run only on base
+    # retargets; 'labeled' events only for the run-golden-record label.
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.draft == false &&
+       (github.event.action != 'edited' || github.event.changes.base != null) &&
+       (github.event.action != 'labeled' || github.event.label.name == 'run-golden-record') &&
+       (github.base_ref == 'main' || github.base_ref == 'master' ||
+        contains(github.event.pull_request.labels.*.name, 'run-golden-record')))
 
     env:
       CC: gcc
@@ -192,7 +219,7 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/out
 
       - name: Build NEO-2 (reference version - main branch)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compare_against_main)
         id: build_reference_main
         run: |
           # Build reference version from main branch for PR comparison
@@ -210,7 +237,7 @@ jobs:
           echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
 
       - name: Run golden record test against main version (exact check)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compare_against_main)
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
           REFERENCE_NEO2_PAR: ${{ steps.build_reference_main.outputs.neo2_par_main }}
@@ -247,7 +274,7 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/out
 
       - name: Run QL performance test
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compare_against_main)
         env:
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
           REFERENCE_NEO2_QL: ${{ steps.build_reference_main.outputs.neo2_ql_main }}
@@ -275,7 +302,7 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt
 
       - name: Run (slow) par golden record test on pull request
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compare_against_main)
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
         id: run_par_test

@@ -5,11 +5,18 @@ on:
     branches:
       - main
       - master
+  # 'edited' covers base-branch retargeting; the job condition below skips
+  # plain title/body edits. The flux-pumping patterns give stacked PRs
+  # (bases like fix/flux-pumping/*) unit-test coverage on every push.
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
     branches:
       - main
       - master
+      - fix/flux-pumping/**
+      - diag/flux-pumping/**
+      - feat/flux-pumping/**
+      - integration/flux-pumping/**
   workflow_dispatch:
     inputs:
       libneo_ref:
@@ -24,7 +31,10 @@ concurrency:
 jobs:
   unit-tests:
     runs-on: ubuntu-24.04
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.draft == false &&
+       (github.event.action != 'edited' || github.event.changes.base != null))
 
     env:
       CC: gcc
