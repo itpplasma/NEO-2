@@ -813,7 +813,7 @@ subroutine ripple_solver_ArnoldiO2( &
     arr_real(:, 3) = bcovar_s_hat_mfl
     arr_comp(:, 1) = geodcu_mfl
 
-    call rearrange_phideps(ibeg, iend, npart, ncomp, nreal, 3, subsqmin, &
+    call rearrange_phideps(ibeg, iend, ub_mag, npart, ncomp, nreal, 3, subsqmin, &
                            phi_divide, phi_mfl, bhat_mfl, dlogbdphi_mfl, &
                            dbcovar_s_hat_dphi_mfl, arr_real, arr_comp, eta, &
                            delt_pos, delt_neg, fact_pos_b, fact_neg_b, &
@@ -4937,9 +4937,9 @@ end subroutine ripple_solver_ArnoldiO2
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !! Modifications by Andreas F. Martitsch (27.07.2015)
 ! Multiple definitions avoided
-subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, bcovar_column, &
-                             subsqmin, phi_divide, phi_mfl, bhat_mfl, &
-                             dlogbdphi_mfl, dbcovar_s_hat_dphi_mfl, &
+subroutine rearrange_phideps(ibeg, iend, ub_mag, npart, ncomp, nreal, &
+                             bcovar_column, subsqmin, phi_divide, phi_mfl, &
+                             bhat_mfl, dlogbdphi_mfl, dbcovar_s_hat_dphi_mfl, &
                              arr_real, arr_comp, eta, &
                              delt_pos, delt_neg, &
                              fact_pos_b, fact_neg_b, fact_pos_e, fact_neg_e)
@@ -4960,6 +4960,8 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, bcovar_column, &
     integer, parameter :: npoi = 6, nder = 1, npoihalf = npoi/2, nstepmin = 8
     real(dp), parameter :: bparabmax = 0.2d0
 
+    integer, intent(in) :: ub_mag
+
     integer :: i, ibeg, iend, npart, istep, ibmin, npassing, npassing_prev
     integer :: ncomp, nreal, bcovar_column, failed_interval
     integer :: ncross_l, ncross_r, ib, ie, intb, inte, k, imid, isplit
@@ -4967,7 +4969,7 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, bcovar_column, &
     real(dp) :: subsqmin, ht, ht2, bparab, x1, x2, f1, f2
 
     integer, dimension(1)              :: idummy
-    integer, dimension(1:iend)         :: phi_divide
+    integer, dimension(1:ub_mag)       :: phi_divide
     integer, dimension(:), allocatable :: icross_l, icross_r
 
     real(dp), dimension(0:nder, npoi)      :: coeff
@@ -4990,7 +4992,7 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, bcovar_column, &
 
     phi_divide = 1
     call align_phi_crossing_geometry(ibeg, iend, npart, ncomp, nreal, &
-                                     ubound(phi_divide, 1), bcovar_column, &
+                                     ub_mag, bcovar_column, &
                                      subsqmin, phi_mfl, bhat_mfl, &
                                      dlogbdphi_mfl, dbcovar_s_hat_dphi_mfl, &
                                      arr_real, arr_comp, eta, failed_interval)
@@ -5145,7 +5147,7 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, bcovar_column, &
                 bparab = ABS((f1*x2 - f2*x1)*x2/((x1 - x2)*x1*f2))
                 if (bparab .GT. bparabmax) then
                     isplit = 2*MAX(NINT(0.5*float(nstepmin)/float(ie - ib)), 1)
-                    phi_divide(ib + 1:ie) = isplit
+                    phi_divide(max(1, ib + 1):min(ie, ub_mag)) = isplit
                 end if
             end if
             ie = ib
@@ -5153,7 +5155,7 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, bcovar_column, &
         ib = ibeg
         if (ie - ib .LT. nstepmin) then
             isplit = 2*MAX(NINT(0.5*float(nstepmin)/float(ie - ib)), 1)
-            phi_divide(ib + 1:ie) = isplit
+            phi_divide(max(1, ib + 1):min(ie, ub_mag)) = isplit
         end if
     end if
 
@@ -5170,7 +5172,7 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, bcovar_column, &
                 bparab = ABS((f1*x2 - f2*x1)*x2/((x1 - x2)*x1*f2))
                 if (bparab .GT. bparabmax) then
                     isplit = 2*MAX(NINT(0.5*float(nstepmin)/float(ie - ib)), 1)
-                    phi_divide(ib + 1:ie) = isplit
+                    phi_divide(max(1, ib + 1):min(ie, ub_mag)) = isplit
                 end if
             end if
             ib = ie
@@ -5178,7 +5180,7 @@ subroutine rearrange_phideps(ibeg, iend, npart, ncomp, nreal, bcovar_column, &
         ie = iend
         if (ie - ib .LT. nstepmin) then
             isplit = 2*MAX(NINT(0.5*float(nstepmin)/float(ie - ib)), 1)
-            phi_divide(ib + 1:ie) = isplit
+            phi_divide(max(1, ib + 1):min(ie, ub_mag)) = isplit
         end if
     end if
 

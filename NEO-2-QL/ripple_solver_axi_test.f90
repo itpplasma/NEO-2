@@ -787,7 +787,7 @@ PRINT *,'right boundary layer ignored'
   crossing_complex(:,1)=cmplx(geodcu_mfl,0.d0,kind=dp)
   unused_dbcovar_mfl=0.d0
 
-  call rearrange_phideps(ibeg,iend,npart,crossing_ncomp,crossing_nreal,0, &
+  call rearrange_phideps(ibeg,iend,ub_mag,npart,crossing_ncomp,crossing_nreal,0, &
        subsqmin,phi_divide,phi_mfl,bhat_mfl,dlogbdphi_mfl,              &
        unused_dbcovar_mfl,crossing_real,crossing_complex,eta,           &
        delt_pos,delt_neg,fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
