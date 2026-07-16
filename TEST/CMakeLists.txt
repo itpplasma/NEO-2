@@ -286,6 +286,20 @@ set_tests_properties(qflux_profile PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_peak_rss test_peak_rss.f90)
+target_link_libraries(test_peak_rss neo2_ql)
+
+add_test(NAME peak_rss_test
+         COMMAND test_peak_rss
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(peak_rss_test PROPERTIES
+    ENVIRONMENT "NEO2_PEAK_RSS_FILE=${CMAKE_CURRENT_BINARY_DIR}/peak_rss.csv"
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_ntv_output_geometry test_ntv_output_geometry.f90)
 target_link_libraries(test_ntv_output_geometry neo2_ql)
 

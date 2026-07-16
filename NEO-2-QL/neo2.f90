@@ -7,6 +7,7 @@ module neo2_ql
   USE hdf5_tools
   use system_utility, only : get_rusage
   use rusage_type, only : fortran_rusage, write_fortran_rusage
+  use peak_rss_mod, only : record_peak_rss
 
   USE size_mod
   USE flint_mod, ONLY : plot_gauss,plot_prop,phi_split_mode,        &
@@ -188,6 +189,7 @@ module neo2_ql
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dn_vec_ov_ds
 
   type(fortran_rusage) :: usage
+  INTEGER :: ierr_peak_rss
 
   !! End Modification by Andreas F. Martitsch (23.08.2015)
   ! groups for namelist
@@ -479,6 +481,12 @@ subroutine main
   if (mpro%isMaster()) then
     usage = get_rusage()
     call write_fortran_rusage(usage)
+    ! Opt-in per-process peak-RSS accounting (NEO2_PEAK_RSS_FILE).
+    call record_peak_rss(mpro%getRank(), ierr_peak_rss)
+    if (ierr_peak_rss .ne. 0) then
+      print *, 'WARNING: peak RSS accounting was not written, code ', &
+           ierr_peak_rss
+    end if
   end if
 
   !*******************************************
