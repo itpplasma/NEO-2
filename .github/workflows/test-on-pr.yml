@@ -5,19 +5,18 @@ on:
     branches:
       - main
       - master
-  # 'edited' covers base-branch retargeting (guarded below so title/body
-  # edits do not rerun); 'labeled' lets the run-golden-record label start
-  # the job on stacked flux-pumping PRs, where it is label-gated because
-  # it builds NEO-2 three times and runs the full golden-record suites.
+  # run-golden-record is the required status check on main. Its types and
+  # branches stay exactly as they are so that every check run named
+  # run-golden-record comes from a real run: a job skipped by its 'if'
+  # reports Success and would satisfy the branch protection gate. Label
+  # additions, base retargets, and pushes to labeled stacked flux-pumping
+  # PRs are handled by stacked-pr-dispatch.yml, which re-triggers this
+  # workflow via workflow_dispatch under a differently named job.
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, edited, labeled]
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - main
       - master
-      - fix/flux-pumping/**
-      - diag/flux-pumping/**
-      - feat/flux-pumping/**
-      - integration/flux-pumping/**
   workflow_dispatch:
     inputs:
       compare_against_main:
@@ -33,19 +32,13 @@ concurrency:
 jobs:
   run-golden-record:
     runs-on: ubuntu-24.04
-    # Push and manual dispatch always run. Pull requests run when non-draft
-    # and either based on main/master or carrying the run-golden-record
-    # label (stacked flux-pumping bases). 'edited' events run only on base
-    # retargets; 'labeled' events only for the run-golden-record label.
+    # Do not add event- or label-based skip conditions here: a skipped
+    # run-golden-record counts as Success for the required status check
+    # on main. Gating for stacked PRs lives in stacked-pr-dispatch.yml.
     if: >-
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.draft == false &&
-       (github.event.action != 'edited' || github.event.changes.base != null) &&
-       (github.event.action != 'labeled' || github.event.label.name == 'run-golden-record') &&
-       (github.base_ref == 'main' || github.base_ref == 'master' ||
-        contains(github.event.pull_request.labels.*.name, 'run-golden-record')))
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
 
     env:
       CC: gcc

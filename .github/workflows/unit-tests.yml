@@ -5,11 +5,13 @@ on:
     branches:
       - main
       - master
-  # 'edited' covers base-branch retargeting; the job condition below skips
-  # plain title/body edits. The flux-pumping patterns give stacked PRs
-  # (bases like fix/flux-pumping/*) unit-test coverage on every push.
+  # The flux-pumping patterns give stacked PRs (bases like
+  # fix/flux-pumping/*) unit-test coverage on every push. 'edited' stays
+  # out of types so a title/body edit never spawns a skipped run that
+  # shadows the latest real unit-tests result; base retargets are handled
+  # by stacked-pr-dispatch.yml via workflow_dispatch.
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, edited]
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - main
       - master
@@ -31,10 +33,7 @@ concurrency:
 jobs:
   unit-tests:
     runs-on: ubuntu-24.04
-    if: >-
-      github.event_name != 'pull_request' ||
-      (github.event.pull_request.draft == false &&
-       (github.event.action != 'edited' || github.event.changes.base != null))
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
 
     env:
       CC: gcc
