@@ -1310,6 +1310,12 @@ CONTAINS
              CALL modify_propagator(phi_split_mode,phi_place_mode,phi_split_min, &
                   UBOUND(prop_c%p%eta_l,1),prop_c%p%eta_l,mult_solv,count_solv)
              phi_split_mode = phi_split_mode_ori
+             ! One parseable detail line per adaptive recovery; the wording
+             ! must stay clear of the campaign failure and recovery markers.
+             WRITE (*,'(a,i0,a,i0,a,es13.6,a,i0)') &
+                  'reduce_hphi recovery: tag=',fieldpropagator%tag, &
+                  ' count_solv=',count_solv,' mult_solv=',mult_solv, &
+                  ' points=',UBOUND(fieldpropagator%coords%x2,1)+1
              PRINT *, 'Error in ripple_solver: ',ierr_solv
              PRINT *, ' I try it again ',count_solv+1
           ELSE IF (ierr_solv .EQ. 3 .AND. count_solv .GE. max_solver_try) THEN

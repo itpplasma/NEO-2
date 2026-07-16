@@ -455,8 +455,13 @@ CLOSE(752)
           +ABS(periodic_rhs(nts_l+(m+1)*nr,i)),TINY(1.d0))
       ENDDO
     ENDDO
+    ! The delta_eta arrays exist only when the Lorentz solvability
+    ! correction ran; export empty band vectors otherwise.
+    IF(.NOT.ALLOCATED(delta_eta_l)) ALLOCATE(delta_eta_l(0))
+    IF(.NOT.ALLOCATED(delta_eta_r)) ALLOCATE(delta_eta_r(0))
     CALL record_join_end_compatibility(source_factor,source_before, &
-         source_after,source_scale,measure_sum,compatibility,dropped_p, &
+         source_after,source_scale,measure_sum,delta_eta_l,delta_eta_r, &
+         compatibility,dropped_p, &
          dropped_m,compatibility_scale,dropped_p_scale,dropped_m_scale, &
          left_null,right_null,left_residual,right_residual,left_scale, &
          right_scale,transfer_error,ierr)
