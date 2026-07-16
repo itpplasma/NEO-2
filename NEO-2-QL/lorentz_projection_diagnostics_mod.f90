@@ -18,6 +18,13 @@ module lorentz_projection_diagnostics_mod
         real(real64) :: intertwining_scale
     end type local_projection_residuals
 
+    !> Distinct code for diagnostic-output I/O failures.  This must never be
+    !> 3: callers in ripple_solver_axi_test.f90 forward these codes as the
+    !> solver ierr, and propagator.f90 interprets ierr=3 as a retryable
+    !> phi-refinement request, so an I/O failure reported as 3 would trigger
+    !> pointless refinement retries instead of a hard stop.
+    integer, parameter, public :: local_projection_io_error = 13
+
     character(len=:), allocatable, save :: output_filename
     integer, save :: record_sequence = 0
     logical, save :: output_initialized = .false.
@@ -259,7 +266,7 @@ contains
         open(newunit=iunit, file=output_filename, status='old', position='append', &
             action='write', iostat=status)
         if (status /= 0) then
-            ierr = 3
+            ierr = local_projection_io_error
             return
         end if
         do force = 1, 3
@@ -277,7 +284,7 @@ contains
         call write_value(iunit, tag, 'measure', -1, residuals%measure, &
             max(abs(residuals%measure), tiny(1.0_real64)), status)
         close(iunit, iostat=ierr)
-        if (status /= 0 .or. ierr /= 0) ierr = 3
+        if (status /= 0 .or. ierr /= 0) ierr = local_projection_io_error
     end subroutine record_local_projection_residuals
 
     subroutine record_local_constant_stage_residuals(tag, sparse_residual, &
@@ -296,7 +303,7 @@ contains
         open(newunit=iunit, file=output_filename, status='old', position='append', &
             action='write', iostat=status)
         if (status /= 0) then
-            ierr = 3
+            ierr = local_projection_io_error
             return
         end if
         call write_value(iunit, tag, 'sparse_constant', sparse_index, &
@@ -312,7 +319,7 @@ contains
         call write_value(iunit, tag, 'sparse_band', sparse_band, &
             sparse_residual, sparse_scale, status)
         close(iunit, iostat=ierr)
-        if (status /= 0 .or. ierr /= 0) ierr = 3
+        if (status /= 0 .or. ierr /= 0) ierr = local_projection_io_error
     end subroutine record_local_constant_stage_residuals
 
     subroutine record_local_constant_row(tag, row, irow, icol, values, state, &
@@ -364,7 +371,7 @@ contains
             if (status /= 0) exit
         end do
         close(iunit, iostat=ierr)
-        if (status /= 0 .or. ierr /= 0) ierr = 3
+        if (status /= 0 .or. ierr /= 0) ierr = local_projection_io_error
     end subroutine record_local_constant_row
 
     subroutine decode_state_index(index, npl, ind_start, ibeg, iend, lag, &
@@ -437,7 +444,7 @@ contains
                 'sequence,propagator,kind,index,value,scale'
             close(iunit, iostat=ierr)
         end if
-        if (status /= 0 .or. ierr /= 0) ierr = 3
+        if (status /= 0 .or. ierr /= 0) ierr = local_projection_io_error
         if (ierr /= 0 .and. allocated(output_filename)) deallocate(output_filename)
     end subroutine initialize_output
 end module lorentz_projection_diagnostics_mod
