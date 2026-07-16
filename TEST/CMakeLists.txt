@@ -151,6 +151,19 @@ set_tests_properties(phi_crossing_alignment_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_crossing_geometry_padding test_crossing_geometry_padding.f90)
+target_link_libraries(test_crossing_geometry_padding neo2_ql)
+
+add_test(NAME crossing_geometry_padding_test
+         COMMAND test_crossing_geometry_padding
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(crossing_geometry_padding_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_join_failure_diagnostic test_join_failure_diagnostic.f90)
 target_link_libraries(test_join_failure_diagnostic neo2_ql)
 

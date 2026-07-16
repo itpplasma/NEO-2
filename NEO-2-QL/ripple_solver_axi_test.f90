@@ -261,6 +261,9 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(3)                :: cp_channel
   INTEGER :: cp_istep,cp_k,cp_trace_status,cp_unit
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: dlogbdphi_mfl
+  DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: unused_dbcovar_mfl
+  DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: crossing_real
+  COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE :: crossing_complex
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: delt_pos,delt_neg
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_b,fact_neg_b
   DOUBLE PRECISION, DIMENSION(:), ALLOCATABLE :: fact_pos_e,fact_neg_e
@@ -269,6 +272,7 @@ SUBROUTINE ripple_solver(                                 &
   !! Modification by Andreas F. Martitsch (28.07.2015)
   !  multi-species part
   INTEGER :: ispec, ispecp, ispecpp ! species indices
+  INTEGER :: crossing_ncomp, crossing_nreal
   INTEGER :: drive_spec
   INTEGER :: isw_regper, ipart1
   DOUBLE PRECISION :: deleta_factor
@@ -769,6 +773,35 @@ PRINT *,'right boundary layer ignored'
     h_phi_mfl(iend-1:iend)=h_phi_mfl(ub_mag)
     dlogbdphi_mfl(iend-1:iend)=dlogbdphi_mfl(ub_mag)
   ENDIF
+
+  subsqmin=1.d5*EPSILON(1.d0)
+  allocate(delt_pos(ibeg:iend),delt_neg(ibeg:iend))
+  allocate(fact_pos_b(ibeg:iend),fact_neg_b(ibeg:iend))
+  allocate(fact_pos_e(ibeg:iend),fact_neg_e(ibeg:iend))
+  allocate(unused_dbcovar_mfl(ibeg:iend))
+  crossing_nreal=1
+  crossing_ncomp=1
+  allocate(crossing_real(ibeg:iend,crossing_nreal))
+  allocate(crossing_complex(ibeg:iend,crossing_ncomp))
+  crossing_real(:,1)=h_phi_mfl
+  crossing_complex(:,1)=cmplx(geodcu_mfl,0.d0,kind=dp)
+  unused_dbcovar_mfl=0.d0
+
+  call rearrange_phideps(ibeg,iend,ub_mag,npart,crossing_ncomp,crossing_nreal,0, &
+       subsqmin,phi_divide,phi_mfl,bhat_mfl,dlogbdphi_mfl,              &
+       unused_dbcovar_mfl,crossing_real,crossing_complex,eta,           &
+       delt_pos,delt_neg,fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
+
+  h_phi_mfl=crossing_real(:,1)
+  geodcu_mfl=real(crossing_complex(:,1),kind=dp)
+  deallocate(crossing_real,crossing_complex,unused_dbcovar_mfl)
+
+  if(maxval(phi_divide).gt.1) then
+    ierr=3
+    write(*,*) 'ERROR: crossing geometry requires phi refinement.'
+    return
+  endif
+
   eta_modboundary_l=1.d0/bhat_mfl(ibeg)
   eta_modboundary_r=1.d0/bhat_mfl(iend)
   ! allocation
@@ -918,26 +951,6 @@ PRINT *,'right boundary layer ignored'
   ALLOCATE(amat(ndim,ndim),bvec_lapack(ndim,ndim),ipivot(ndim))
 
   npart_loc=0
-  subsqmin=1.d5*EPSILON(1.d0)
-
-  allocate(delt_pos(ibeg:iend),delt_neg(ibeg:iend))
-  allocate(fact_pos_b(ibeg:iend),fact_neg_b(ibeg:iend))
-  allocate(fact_pos_e(ibeg:iend),fact_neg_e(ibeg:iend))
-
-  call rearrange_phideps_old(ibeg,iend,npart,subsqmin,phi_divide,    &
-                         phi_mfl,bhat_mfl,geodcu_mfl,h_phi_mfl,eta,  &
-                         delt_pos,delt_neg,                          &
-                         fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
-
-  if(maxval(phi_divide).gt.1) then
-    ierr=3
-    DEALLOCATE(deriv_coef,npl)
-    DEALLOCATE(rhs_mat_lorentz,rhs_mat_energ)
-    DEALLOCATE(q_rip,q_hel_b,q_hel_e)
-    DEALLOCATE(convol_flux,convol_curr)
-    DEALLOCATE(pleg_bra,pleg_ket,scalprod_pleg)
-    return
-  endif
 
   DO istep=ibeg,iend
 
