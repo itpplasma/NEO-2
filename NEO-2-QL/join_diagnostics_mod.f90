@@ -128,14 +128,24 @@ contains
         join_end_trace_enabled = allocated(join_end_output_filename)
     end function join_end_trace_enabled
 
+    !> Append one periodic-join compatibility record to the join-end trace.
+    !>
+    !> delta_eta_l/delta_eta_r are the per-band pitch measures of the joined
+    !> propagator boundaries used by the Lorentz solvability correction in
+    !> join_ends.f90; they are empty when that correction is inactive.  The
+    !> emitted source_correction_m/source_correction_p rows are the per-band,
+    !> per-force products delta_eta_l*facnorm and delta_eta_r*facnorm that
+    !> join_ends subtracts from source_m and source_p, so the periodic-closure
+    !> projection footprint is reconstructible band by band.
     subroutine record_join_end_compatibility(source_factor, source_before, &
-            source_after, source_scale, measure_sum, compatibility, &
-            dropped_p, dropped_m, &
+            source_after, source_scale, measure_sum, delta_eta_l, delta_eta_r, &
+            compatibility, dropped_p, dropped_m, &
             compatibility_scale, dropped_p_scale, dropped_m_scale, left_null, &
             right_null, left_residual, right_residual, left_scale, right_scale, &
             transfer_error, ierr)
         real(real64), intent(in) :: source_factor(3), source_before(3)
         real(real64), intent(in) :: source_after(3), source_scale(3), measure_sum
+        real(real64), intent(in) :: delta_eta_l(:), delta_eta_r(:)
         real(real64), intent(in) :: compatibility(:, :), dropped_p(:, :)
         real(real64), intent(in) :: dropped_m(:, :), left_null(:, :)
         real(real64), intent(in) :: compatibility_scale(:, :)
@@ -145,7 +155,7 @@ contains
         real(real64), intent(in) :: right_scale(:), transfer_error(2)
         integer, intent(out) :: ierr
 
-        integer :: force, index, iunit, laguerre, status
+        integer :: band, force, index, iunit, laguerre, status
 
         ierr = 0
         if (.not. join_end_trace_enabled(ierr)) return
@@ -170,6 +180,8 @@ contains
             .or. .not. all(ieee_is_finite(source_after)) &
             .or. .not. all(ieee_is_finite(source_scale)) &
             .or. .not. ieee_is_finite(measure_sum) &
+            .or. .not. all(ieee_is_finite(delta_eta_l)) &
+            .or. .not. all(ieee_is_finite(delta_eta_r)) &
             .or. .not. all(ieee_is_finite(compatibility)) &
             .or. .not. all(ieee_is_finite(dropped_p)) &
             .or. .not. all(ieee_is_finite(dropped_m)) &
@@ -212,6 +224,24 @@ contains
                 source_after(force), status)
             call write_join_end_value(iunit, 'source_scale', -1, force, -1, &
                 source_scale(force), status)
+        end do
+        do band = 1, size(delta_eta_l)
+            call write_join_end_value(iunit, 'delta_eta_l', -1, 0, band, &
+                delta_eta_l(band), status)
+            do force = 1, 3
+                call write_join_end_value(iunit, 'source_correction_m', -1, &
+                    force, band, delta_eta_l(band)*source_factor(force), &
+                    status)
+            end do
+        end do
+        do band = 1, size(delta_eta_r)
+            call write_join_end_value(iunit, 'delta_eta_r', -1, 0, band, &
+                delta_eta_r(band), status)
+            do force = 1, 3
+                call write_join_end_value(iunit, 'source_correction_p', -1, &
+                    force, band, delta_eta_r(band)*source_factor(force), &
+                    status)
+            end do
         end do
         call write_join_end_value(iunit, 'measure_sum', -1, 0, -1, &
             measure_sum, status)
