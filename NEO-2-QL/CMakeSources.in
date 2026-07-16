@@ -12,6 +12,7 @@ set(NEO2_QL_SRC_FILES
   ripple_solver_ArnoldiOrder2_test.f90
   join_diagnostics_mod.f90
   lorentz_projection_diagnostics_mod.f90
+  stage2_attribution_mod.f90
   join_ripples_int.f90
   join_ripples.f90
   join_ends.f90

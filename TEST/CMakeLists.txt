@@ -193,6 +193,20 @@ set_tests_properties(lorentz_projection_diagnostic_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_stage2_attribution test_stage2_attribution.f90)
+target_link_libraries(test_stage2_attribution neo2_ql)
+
+add_test(NAME stage2_attribution_test
+         COMMAND test_stage2_attribution
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(stage2_attribution_test PROPERTIES
+    ENVIRONMENT "NEO2_STAGE2_ATTRIBUTION_FILE=${CMAKE_CURRENT_BINARY_DIR}/stage2_attribution_footprint.csv"
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_qflux_interface_diagnostic test_qflux_interface_diagnostic.f90)
 target_link_libraries(test_qflux_interface_diagnostic neo2_ql)
 

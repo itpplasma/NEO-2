@@ -101,6 +101,8 @@ SUBROUTINE ripple_solver(                                 &
        assemble_local_constant_state, compute_sparse_constant_residual, &
        local_projection_trace_enabled, record_local_constant_row, &
        record_local_constant_stage_residuals
+  USE stage2_attribution_mod, ONLY : stage2_attribution_enabled, &
+       apply_stage2_attribution
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
   IMPLICIT NONE
@@ -238,6 +240,8 @@ SUBROUTINE ripple_solver(                                 &
   COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE :: q_hel_b,q_hel_e
   COMPLEX(kind=dp) :: amp_hel_b,amp_hel_e,hel_phase,hel_phase_fac
   LOGICAL :: hel_drive_active,trace_constant_state
+  LOGICAL :: attribution_active
+  INTEGER :: attribution_ierr
   DOUBLE PRECISION :: constant_sparse_residual,constant_sparse_scale
   DOUBLE PRECISION :: constant_solve_residual,constant_solve_scale
   INTEGER :: constant_sparse_index,constant_solve_index,constant_trace_ierr
@@ -1695,6 +1699,25 @@ PRINT *,'right boundary layer ignored'
     IF(iplot.EQ.1.AND.isw_axisymm.NE.1) &
       CALL apply_reconstructed_incoming_rows(source_vector,flux_pl,flux_mr, &
         ibeg,iend,lag,npl,ind_start)
+  ENDIF
+
+! Stage-2 attribution experiment: subtract the stage-0 periodic-closure
+! projection footprint from the assembled right-hand side before the solve.
+! Guarded by NEO2_STAGE2_ATTRIBUTION_FILE; runs without it are unchanged.
+  IF(iplot.EQ.1) THEN
+    CALL stage2_attribution_enabled(attribution_active,attribution_ierr)
+    IF(attribution_ierr.NE.0) THEN
+      ierr=attribution_ierr
+      RETURN
+    ENDIF
+    IF(attribution_active) THEN
+      CALL apply_stage2_attribution(fieldpropagator%tag,source_vector, &
+        npl,ind_start,ibeg,iend,lag,attribution_ierr)
+      IF(attribution_ierr.NE.0) THEN
+        ierr=attribution_ierr
+        RETURN
+      ENDIF
+    ENDIF
   ENDIF
 
 
