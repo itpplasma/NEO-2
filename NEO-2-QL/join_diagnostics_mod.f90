@@ -11,11 +11,41 @@ module join_diagnostics_mod
     integer, save :: join_end_sequence = 0
     logical, save :: normalization_output_initialized = .false.
     logical, save :: join_end_output_initialized = .false.
+    logical, save :: correction_switch_initialized = .false.
+    logical, save :: correction_switch_disabled = .false.
 
-    public :: join_end_trace_enabled, record_join_end_compatibility
+    public :: join_end_trace_enabled, join_lorentz_correction_disabled
+    public :: record_join_end_compatibility
     public :: report_join_failure, validate_join_normalization
 
 contains
+
+    !> True when NEO2_DISABLE_JOIN_LORENTZ_CORRECTION=1 requests the
+    !> controlled A/B experiment: the periodic join then keeps the
+    !> uncorrected sources and extraction rows while the trace still
+    !> records the would-be correction factors.  The audit line below is
+    !> the loud marker a runner must require before trusting a disabled
+    !> run (mirror of the stage-2 attribution marker).
+    logical function join_lorentz_correction_disabled()
+        character(len=1) :: flag
+        integer :: length, status
+
+        if (.not. correction_switch_initialized) then
+            correction_switch_initialized = .true.
+            ! .and. does not short-circuit; flag must be defined even when
+            ! the variable is absent and the intrinsic leaves it alone.
+            flag = '0'
+            call get_environment_variable( &
+                'NEO2_DISABLE_JOIN_LORENTZ_CORRECTION', value=flag, &
+                length=length, status=status)
+            correction_switch_disabled = status == 0 .and. length == 1 &
+                .and. flag == '1'
+            if (correction_switch_disabled) write(*, '(a)') &
+                'join_ends: Lorentz solvability correction disabled by ' // &
+                'NEO2_DISABLE_JOIN_LORENTZ_CORRECTION'
+        end if
+        join_lorentz_correction_disabled = correction_switch_disabled
+    end function join_lorentz_correction_disabled
 
     subroutine report_join_failure(stage, info, old_tags, new_tags, ndim, ndim1, &
             matrix, rhs, ierr)
@@ -137,14 +167,28 @@ contains
     !> per-force products delta_eta_l*facnorm and delta_eta_r*facnorm that
     !> join_ends subtracts from source_m and source_p, so the periodic-closure
     !> projection footprint is reconstructible band by band.
+    !>
+    !> flux_factor is the per-force scalar that join_ends subtracts
+    !> uniformly from both flux extraction rows; flux_before/flux_after are
+    !> the measure-weighted extraction sums around that subtraction and
+    !> flux_scale their absolute-value counterpart.  The emitted
+    !> flux_correction_m/flux_correction_p rows repeat flux_factor per band
+    !> so the flux-side footprint has the same row format as the source
+    !> side.  Flux rows never enter the periodic solution (join_ripples
+    !> composes them only into qflux and other flux rows), so this channel
+    !> can shift extracted transport coefficients but not the pointwise
+    !> reconstruction.
     subroutine record_join_end_compatibility(source_factor, source_before, &
-            source_after, source_scale, measure_sum, delta_eta_l, delta_eta_r, &
+            source_after, source_scale, flux_factor, flux_before, &
+            flux_after, flux_scale, measure_sum, delta_eta_l, delta_eta_r, &
             compatibility, dropped_p, dropped_m, &
             compatibility_scale, dropped_p_scale, dropped_m_scale, left_null, &
             right_null, left_residual, right_residual, left_scale, right_scale, &
             transfer_error, ierr)
         real(real64), intent(in) :: source_factor(3), source_before(3)
         real(real64), intent(in) :: source_after(3), source_scale(3), measure_sum
+        real(real64), intent(in) :: flux_factor(3), flux_before(3)
+        real(real64), intent(in) :: flux_after(3), flux_scale(3)
         real(real64), intent(in) :: delta_eta_l(:), delta_eta_r(:)
         real(real64), intent(in) :: compatibility(:, :), dropped_p(:, :)
         real(real64), intent(in) :: dropped_m(:, :), left_null(:, :)
@@ -179,6 +223,10 @@ contains
             .or. .not. all(ieee_is_finite(source_before)) &
             .or. .not. all(ieee_is_finite(source_after)) &
             .or. .not. all(ieee_is_finite(source_scale)) &
+            .or. .not. all(ieee_is_finite(flux_factor)) &
+            .or. .not. all(ieee_is_finite(flux_before)) &
+            .or. .not. all(ieee_is_finite(flux_after)) &
+            .or. .not. all(ieee_is_finite(flux_scale)) &
             .or. .not. ieee_is_finite(measure_sum) &
             .or. .not. all(ieee_is_finite(delta_eta_l)) &
             .or. .not. all(ieee_is_finite(delta_eta_r)) &
@@ -203,7 +251,8 @@ contains
             .or. any(dropped_m_scale <= 0.0_real64) &
             .or. any(left_scale <= 0.0_real64) &
             .or. any(right_scale <= 0.0_real64) &
-            .or. any(source_scale <= 0.0_real64)) then
+            .or. any(source_scale <= 0.0_real64) &
+            .or. any(flux_scale <= 0.0_real64)) then
             ierr = 7
             return
         end if
@@ -224,6 +273,14 @@ contains
                 source_after(force), status)
             call write_join_end_value(iunit, 'source_scale', -1, force, -1, &
                 source_scale(force), status)
+            call write_join_end_value(iunit, 'flux_factor', -1, force, -1, &
+                flux_factor(force), status)
+            call write_join_end_value(iunit, 'flux_before', -1, force, -1, &
+                flux_before(force), status)
+            call write_join_end_value(iunit, 'flux_after', -1, force, -1, &
+                flux_after(force), status)
+            call write_join_end_value(iunit, 'flux_scale', -1, force, -1, &
+                flux_scale(force), status)
         end do
         do band = 1, size(delta_eta_l)
             call write_join_end_value(iunit, 'delta_eta_l', -1, 0, band, &
@@ -232,6 +289,8 @@ contains
                 call write_join_end_value(iunit, 'source_correction_m', -1, &
                     force, band, delta_eta_l(band)*source_factor(force), &
                     status)
+                call write_join_end_value(iunit, 'flux_correction_m', -1, &
+                    force, band, flux_factor(force), status)
             end do
         end do
         do band = 1, size(delta_eta_r)
@@ -241,6 +300,8 @@ contains
                 call write_join_end_value(iunit, 'source_correction_p', -1, &
                     force, band, delta_eta_r(band)*source_factor(force), &
                     status)
+                call write_join_end_value(iunit, 'flux_correction_p', -1, &
+                    force, band, flux_factor(force), status)
             end do
         end do
         call write_join_end_value(iunit, 'measure_sum', -1, 0, -1, &

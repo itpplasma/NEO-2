@@ -1,6 +1,7 @@
 program test_join_failure_diagnostic
     use, intrinsic :: ieee_arithmetic, only: ieee_quiet_nan, ieee_value
-    use join_diagnostics_mod, only: record_join_end_compatibility, &
+    use join_diagnostics_mod, only: join_lorentz_correction_disabled, &
+        record_join_end_compatibility, &
         report_join_failure, &
         validate_join_normalization
     use lapack_band, only: gbsv
@@ -16,6 +17,8 @@ program test_join_failure_diagnostic
     real(kind(1.0d0)) :: right_null(2, 1), right_residual(1), right_scale(1)
     real(kind(1.0d0)) :: source_after(3), source_before(3)
     real(kind(1.0d0)) :: source_factor(3), source_scale(3), transfer_error(2)
+    real(kind(1.0d0)) :: flux_after(3), flux_before(3), flux_factor(3)
+    real(kind(1.0d0)) :: flux_scale(3)
     real(kind(1.0d0)) :: value
     character(len=1024) :: filename
     character(len=128) :: header
@@ -24,6 +27,7 @@ program test_join_failure_diagnostic
     integer :: column, force, index, info, ierr, iunit, join, laguerre, line_count
     integer :: new_tags(2), old_tags(2), npass(2), pivot(2), sequence, status
     logical :: found_correction_p, found_delta_eta_l, found_right_null
+    logical :: found_flux_correction_m, found_flux_factor
     logical :: found_source_factor
 
     matrix = reshape([1.0d0, 2.0d0, 2.0d0, 4.0d0], shape(matrix))
@@ -58,10 +62,17 @@ program test_join_failure_diagnostic
         .or. factor /= 1.0d0) &
         error stop 'FAIL: join normalization record is wrong'
 
+    if (join_lorentz_correction_disabled()) &
+        error stop 'FAIL: correction reported disabled without the env switch'
+
     source_factor = [1.0d0, 2.0d0, 3.0d0]
     source_before = [4.0d0, 5.0d0, 6.0d0]
     source_after = [0.0d0, 0.0d0, 0.0d0]
     source_scale = [25.0d0, 26.0d0, 27.0d0]
+    flux_factor = [30.0d0, 31.0d0, 32.0d0]
+    flux_before = [33.0d0, 34.0d0, 35.0d0]
+    flux_after = [0.0d0, 0.0d0, 0.0d0]
+    flux_scale = [36.0d0, 37.0d0, 38.0d0]
     measure_sum = 2.0d0
     delta_eta_l = [0.5d0, 1.5d0]
     delta_eta_r = [2.5d0, 3.5d0]
@@ -79,7 +90,8 @@ program test_join_failure_diagnostic
     right_scale = [24.0d0]
     transfer_error = [18.0d0, 19.0d0]
     call record_join_end_compatibility(source_factor, source_before, &
-        source_after, source_scale, measure_sum, delta_eta_l, delta_eta_r, &
+        source_after, source_scale, flux_factor, flux_before, flux_after, &
+        flux_scale, measure_sum, delta_eta_l, delta_eta_r, &
         compatibility, dropped_p, dropped_m, &
         compatibility_scale, dropped_p_scale, dropped_m_scale, left_null, &
         right_null, left_residual, right_residual, left_scale, right_scale, &
@@ -88,7 +100,8 @@ program test_join_failure_diagnostic
 
     bad_dropped = 0.0d0
     call record_join_end_compatibility(source_factor, source_before, &
-        source_after, source_scale, measure_sum, delta_eta_l, delta_eta_r, &
+        source_after, source_scale, flux_factor, flux_before, flux_after, &
+        flux_scale, measure_sum, delta_eta_l, delta_eta_r, &
         compatibility, bad_dropped, dropped_m, &
         compatibility_scale, dropped_p_scale, dropped_m_scale, left_null, &
         right_null, left_residual, right_residual, left_scale, right_scale, &
@@ -97,7 +110,8 @@ program test_join_failure_diagnostic
 
     source_scale(1) = ieee_value(0.0d0, ieee_quiet_nan)
     call record_join_end_compatibility(source_factor, source_before, &
-        source_after, source_scale, measure_sum, delta_eta_l, delta_eta_r, &
+        source_after, source_scale, flux_factor, flux_before, flux_after, &
+        flux_scale, measure_sum, delta_eta_l, delta_eta_r, &
         compatibility, dropped_p, &
         dropped_m, compatibility_scale, dropped_p_scale, dropped_m_scale, &
         left_null, right_null, left_residual, right_residual, left_scale, &
@@ -107,13 +121,25 @@ program test_join_failure_diagnostic
 
     delta_eta_r(2) = ieee_value(0.0d0, ieee_quiet_nan)
     call record_join_end_compatibility(source_factor, source_before, &
-        source_after, source_scale, measure_sum, delta_eta_l, delta_eta_r, &
+        source_after, source_scale, flux_factor, flux_before, flux_after, &
+        flux_scale, measure_sum, delta_eta_l, delta_eta_r, &
         compatibility, dropped_p, &
         dropped_m, compatibility_scale, dropped_p_scale, dropped_m_scale, &
         left_null, right_null, left_residual, right_residual, left_scale, &
         right_scale, transfer_error, ierr)
     if (ierr /= 7) error stop 'FAIL: non-finite band correction was accepted'
     delta_eta_r(2) = 3.5d0
+
+    flux_scale(1) = ieee_value(0.0d0, ieee_quiet_nan)
+    call record_join_end_compatibility(source_factor, source_before, &
+        source_after, source_scale, flux_factor, flux_before, flux_after, &
+        flux_scale, measure_sum, delta_eta_l, delta_eta_r, &
+        compatibility, dropped_p, &
+        dropped_m, compatibility_scale, dropped_p_scale, dropped_m_scale, &
+        left_null, right_null, left_residual, right_residual, left_scale, &
+        right_scale, transfer_error, ierr)
+    if (ierr /= 7) error stop 'FAIL: non-finite flux scale was accepted'
+    flux_scale(1) = 36.0d0
 
     call get_environment_variable('NEO2_JOIN_END_TRACE_FILE', filename)
     open(newunit=iunit, file=trim(filename), status='old', action='read', &
@@ -126,6 +152,8 @@ program test_join_failure_diagnostic
     line_count = 0
     found_correction_p = .false.
     found_delta_eta_l = .false.
+    found_flux_correction_m = .false.
+    found_flux_factor = .false.
     found_right_null = .false.
     found_source_factor = .false.
     do
@@ -151,10 +179,19 @@ program test_join_failure_diagnostic
             ! delta_eta_r(1)*source_factor(2) = 2.5*2.0
             found_correction_p = value == 5.0d0
         end if
+        if (trim(record_kind) == 'flux_factor' .and. force == 2) then
+            found_flux_factor = value == 31.0d0
+        end if
+        if (trim(record_kind) == 'flux_correction_m' .and. force == 2 &
+            .and. index == 1) then
+            ! the flux correction is the uniform per-force scalar
+            found_flux_correction_m = value == 31.0d0
+        end if
     end do
     close(iunit)
-    if (line_count /= 60 .or. .not. found_source_factor &
+    if (line_count /= 84 .or. .not. found_source_factor &
         .or. .not. found_right_null .or. .not. found_delta_eta_l &
-        .or. .not. found_correction_p) &
+        .or. .not. found_correction_p .or. .not. found_flux_factor &
+        .or. .not. found_flux_correction_m) &
         error stop 'FAIL: join-end trace content is wrong'
 end program test_join_failure_diagnostic

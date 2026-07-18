@@ -24,6 +24,7 @@ SUBROUTINE join_ends(ierr)
   USE lapack_band
   USE collisionality_mod, ONLY : isw_lorentz
   USE join_diagnostics_mod, ONLY : join_end_trace_enabled, &
+                                   join_lorentz_correction_disabled, &
                                    record_join_end_compatibility
 
   IMPLICIT NONE
@@ -76,7 +77,9 @@ SUBROUTINE join_ends(ierr)
   DOUBLE PRECISION :: facnorm
   DOUBLE PRECISION :: measure_sum,source_after(3),source_before(3)
   DOUBLE PRECISION :: source_factor(3),source_scale(3),transfer_error(2)
-  LOGICAL :: trace_join_end
+  DOUBLE PRECISION :: flux_after(3),flux_before(3),flux_factor(3)
+  DOUBLE PRECISION :: flux_scale(3)
+  LOGICAL :: correction_disabled,trace_join_end
 
   ! initialize
   ierr = 0
@@ -120,6 +123,10 @@ PRINT *,'nl,nr = ',nl,nr
                 +SUM(ABS(o%p%source_m),DIM=1)
     source_scale=MAX(source_scale,TINY(1.d0))
     source_after=source_before
+    flux_factor=0.d0
+    flux_before=0.d0
+    flux_after=0.d0
+    flux_scale=TINY(1.d0)
     measure_sum=0.d0
     transfer_error=0.d0
     DO idiag=1,SIZE(c_forward,1)
@@ -161,19 +168,39 @@ PRINT *,'nl,nr = ',nl,nr
 
     IF(trace_join_end) measure_sum=SUM(delta_eta_l)+SUM(delta_eta_r)
 
+    ! Controlled A/B experiment: with the correction disabled the periodic
+    ! solve keeps the uncorrected sources and extraction rows while the
+    ! trace still records the would-be correction factors.
+    correction_disabled = join_lorentz_correction_disabled()
+
     DO i=1,3
 
       facnorm=(SUM(o%p%source_p(:,i))+SUM(o%p%source_m(:,i)))          &
              *0.5d0/o%p%eta_boundary_r
       IF(trace_join_end) source_factor(i)=facnorm
-      o%p%source_p(:,i)=o%p%source_p(:,i)-delta_eta_r*facnorm
-      o%p%source_m(:,i)=o%p%source_m(:,i)-delta_eta_l*facnorm
+      IF(.NOT.correction_disabled) THEN
+        o%p%source_p(:,i)=o%p%source_p(:,i)-delta_eta_r*facnorm
+        o%p%source_m(:,i)=o%p%source_m(:,i)-delta_eta_l*facnorm
+      ENDIF
 
       facnorm=(SUM(o%p%flux_p(i,:)*delta_eta_l)                        &
              +SUM(o%p%flux_m(i,:)*delta_eta_r))                        &
              *0.5d0/o%p%eta_boundary_r
-      o%p%flux_p(i,:)=o%p%flux_p(i,:)-facnorm
-      o%p%flux_m(i,:)=o%p%flux_m(i,:)-facnorm
+      IF(trace_join_end) THEN
+        flux_factor(i)=facnorm
+        flux_before(i)=SUM(o%p%flux_p(i,:)*delta_eta_l)               &
+                      +SUM(o%p%flux_m(i,:)*delta_eta_r)
+        flux_scale(i)=MAX(SUM(ABS(o%p%flux_p(i,:))*delta_eta_l)       &
+                         +SUM(ABS(o%p%flux_m(i,:))*delta_eta_r),      &
+                          TINY(1.d0))
+      ENDIF
+      IF(.NOT.correction_disabled) THEN
+        o%p%flux_p(i,:)=o%p%flux_p(i,:)-facnorm
+        o%p%flux_m(i,:)=o%p%flux_m(i,:)-facnorm
+      ENDIF
+      IF(trace_join_end)                                               &
+        flux_after(i)=SUM(o%p%flux_p(i,:)*delta_eta_l)                &
+                     +SUM(o%p%flux_m(i,:)*delta_eta_r)
 
     ENDDO
 
@@ -460,7 +487,8 @@ CLOSE(752)
     IF(.NOT.ALLOCATED(delta_eta_l)) ALLOCATE(delta_eta_l(0))
     IF(.NOT.ALLOCATED(delta_eta_r)) ALLOCATE(delta_eta_r(0))
     CALL record_join_end_compatibility(source_factor,source_before, &
-         source_after,source_scale,measure_sum,delta_eta_l,delta_eta_r, &
+         source_after,source_scale,flux_factor,flux_before,flux_after, &
+         flux_scale,measure_sum,delta_eta_l,delta_eta_r, &
          compatibility,dropped_p, &
          dropped_m,compatibility_scale,dropped_p_scale,dropped_m_scale, &
          left_null,right_null,left_residual,right_residual,left_scale, &
