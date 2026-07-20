@@ -119,6 +119,7 @@ module collop_compute
   integer(HID_T) :: h5id_matelem
   logical :: precomp=.false.
   logical :: make_ortho=.true.
+  logical :: expansion_has_constant_mode=.false.
 
   interface chop
      module procedure chop_0
@@ -305,20 +306,24 @@ contains
        stop
     end select
 
+    expansion_has_constant_mode = .false.
     select case (collop_base_exp)
     case (0)
+       expansion_has_constant_mode = .true.
        write (*,*) "Using Laguerre polynomials as collision operator expansion base."
        init_phi_exp => init_phi_laguerre
        phi_exp      => phi_laguerre
        d_phi_exp    => d_phi_laguerre
        dd_phi_exp   => dd_phi_laguerre
     case (1)
+       expansion_has_constant_mode = .true.
        write (*,*) "Using standard polynomials as collision operator expansion base."
        init_phi_exp => init_phi_polynomial
        phi_exp      => phi_polynomial
        d_phi_exp    => d_phi_polynomial
        dd_phi_exp   => dd_phi_polynomial     
     case (2)
+       expansion_has_constant_mode = .true.
        write (*,*) "Using squared polynomials as collision operator expansion base."
        init_phi_exp => init_phi_polynomial_2
        phi_exp      => phi_polynomial_2
@@ -1507,6 +1512,7 @@ contains
   end subroutine compute_Minv
 
   subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s, weightenerg_s)
+    use rkstep_mod, only : asource_hel
     real(kind=dp), dimension(:,:), intent(out) :: asource_s, weightlag_s
     real(kind=dp), dimension(:), intent(out)   :: weightden_s, weightparflow_s, weightenerg_s
     real(kind=dp) :: res_int
@@ -1543,6 +1549,34 @@ contains
     end if
 
     call chop(asource_s)
+
+    ! Moments of the single-helicity misalignment drive (weights x^-1, x^2);
+    ! computed by quadrature only (left unallocated on the precomputed
+    ! matrix-element path; the solver rejects the drive in that case).
+    if (.not. precomp) then
+       if (allocated(asource_hel)) deallocate(asource_hel)
+       allocate(asource_hel(0:lagmax, 2))
+       if (isw_relativistic .eq. 0) then
+          do k = 1, 2
+             do m = 0, lagmax
+                asource_hel(m, k) = integrate(am_hel, 0d0)
+             end do
+          end do
+       else
+          do k = 1, 2
+             do m = 0, lagmax
+                asource_hel(m, k) = norm_maxwell * integrate(am_hel_rel1, 0d0)
+             end do
+          end do
+       end if
+       if (make_ortho) then
+          do k = 1, 2
+             asource_hel(:,k) = matmul(M_transform_inv, asource_hel(:,k))
+          end do
+       end if
+       call chop(asource_hel)
+    end if
+
     write (*,*) "Computing weighting coefficients..."
 
     if (allocated(C_m)) deallocate(C_m)
@@ -1614,6 +1648,25 @@ contains
 
       am = pi**(-3d0/2d0) * x**(4+alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x) * x**(2*k - 1 - 5*kdelta(3,k))
     end function am
+
+    ! Misalignment-drive weights x^(3k-4): k=1 -> x^-1, k=2 -> x^2.
+    ! Powers folded into one factor so the x=0 quadrature node stays finite.
+    function am_hel(x)
+      real(kind=dp) :: x, am_hel
+
+      am_hel = pi**(-3d0/2d0) * x**(3*k + alpha) * exp(-(1+beta)*x**2) * phi_prj(m, x)
+    end function am_hel
+
+    function am_hel_rel1(x)
+      real(kind=dp) :: x, am_hel_rel1
+      real(kind=dp) :: exp_maxwell, gam
+
+      exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
+      gam = sqrt(1 + 2*x**2/rmu)
+
+      am_hel_rel1 = 1d0/gam * pi**(-3d0/2d0) * x**(3*k + alpha) * exp(-(exp_maxwell+beta)*x**2) &
+           * phi_prj(m, x)
+    end function am_hel_rel1
 
     function am_rel1(x)
       real(kind=dp) :: x, am_rel1
@@ -1875,7 +1928,12 @@ contains
        if (isw_relativistic .eq. 0) then
           do m = 0, lagmax
              do mp = 0, lagmax
-                denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand, 0d0)
+                if ((mp == 0) .and. expansion_has_constant_mode .and. &
+                    (T_a == T_b)) then
+                   denmm_s(m+1, mp+1) = 0d0
+                else
+                   denmm_s(m+1, mp+1) = 3d0/(4d0 * pi) * integrate(integrand, 0d0)
+                end if
              end do
           end do
        elseif (isw_relativistic .ge. 1) then
@@ -2594,14 +2652,18 @@ contains
         do x_loop = number_points_inner_kernel-1,0,-1
           ! For numerical reasons the negative l terms are treated separately, to avoid
           ! infinity/nans as result.
-          if (l < 0) then
+          if (l <= 0) then
             recurence_factor = 1.0d0
           else
             recurence_factor = ((x_loop*delta_x)/((x_loop+1)*delta_x))**l
           end if
-          table_inner_kernel_x_to_infty(x_loop, l, m) = &
-            & recurence_factor*table_inner_kernel_x_to_infty(x_loop+1, l, m) &
-            & + integrate_param(kernel_x_to_infty, x_loop*delta_x, x_loop*delta_x, (x_loop+1)*delta_x)
+          if ((x_loop == 0) .and. (l > 0)) then
+            table_inner_kernel_x_to_infty(x_loop, l, m) = 0.0d0
+          else
+            table_inner_kernel_x_to_infty(x_loop, l, m) = &
+              & recurence_factor*table_inner_kernel_x_to_infty(x_loop+1, l, m) &
+              & + integrate_param(kernel_x_to_infty, x_loop*delta_x, x_loop*delta_x, (x_loop+1)*delta_x)
+          end if
         end do
       end do
 
@@ -2622,6 +2684,10 @@ contains
       ! infinity/nans as result.
       if (l < 0) then
         kernel_x_to_infty = xp**(abs(l)+1) * exp(-xp**2) * phi_exp(m, xp)
+      else if (l == 0) then
+        kernel_x_to_infty = xp * exp(-xp**2) * phi_exp(m, xp)
+      else if (xval == 0.0_dp) then
+        kernel_x_to_infty = 0.0_dp
       else
         kernel_x_to_infty = xp * (xval/xp)**(l) * exp(-xp**2) * phi_exp(m, xp)
       end if
