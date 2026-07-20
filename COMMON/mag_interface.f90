@@ -297,6 +297,8 @@ MODULE mag_interface_mod
      MODULE PROCEDURE ripple_prop_join
   END INTERFACE
 
+  PUBLIC return_distance_improves
+
 
   ! ---------------------------------------------------------------------------
   ! private routines
@@ -340,6 +342,15 @@ MODULE mag_interface_mod
   END INTERFACE
 
 CONTAINS
+
+  PURE LOGICAL FUNCTION return_distance_improves(distance,best_distance)
+    REAL(kind=dp), INTENT(in) :: distance,best_distance
+    REAL(kind=dp), PARAMETER :: relative_tie_tolerance = &
+         8.0_dp*SQRT(EPSILON(1.0_dp))
+
+    return_distance_improves = &
+         distance < best_distance*(1.0_dp-relative_tie_tolerance)
+  END FUNCTION return_distance_improves
 
   ! ---------------------------------------------------------------------------
   ! make for device_struct
@@ -773,7 +784,7 @@ CONTAINS
              IF (i_period .LE. mag_nperiod_min) THEN
                 dist_min_req = MIN(dist_min_req,dist)
              ELSE
-                IF (dist .LT. dist_min_req) THEN
+                IF (return_distance_improves(dist,dist_min_req)) THEN
                    EXIT construct_periods
                 END IF
              END IF
@@ -790,7 +801,7 @@ CONTAINS
              IF (i_period .LE. mag_nperiod_min) THEN
                 dist_min_req = MIN(dist_min_req,dist)
              ELSE
-                IF (dist .LT. dist_min_req) THEN
+                IF (return_distance_improves(dist,dist_min_req)) THEN
                    EXIT construct_periods
                 END IF
              END IF
