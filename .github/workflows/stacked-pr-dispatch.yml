@@ -1,0 +1,73 @@
+name: Stacked PR Dispatch
+
+# Companion to test-on-pr.yml and unit-tests.yml for the stacked
+# flux-pumping PR chains. Those workflows keep their pull_request types
+# untouched so the required run-golden-record check is never created in a
+# skipped state: a job skipped by its 'if' reports Success, and the newest
+# check run with the same name on the head SHA is what the merge gate on
+# main evaluates, so a skipped run of the required job would launder a red
+# golden record into a mergeable PR. This workflow instead reacts to the
+# events the real workflows must not see (run-golden-record label
+# additions, base retargets, pushes to labeled stacked PRs) with a
+# differently named job and re-triggers them via workflow_dispatch, which
+# always produces real runs.
+#
+# workflow_dispatch uses the workflow definition on the target ref:
+# dispatching test-on-pr.yml on a stacked head works only once that head
+# contains the commit that added its workflow_dispatch trigger (rebase the
+# stack onto an updated main first).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, edited]
+    branches:
+      - main
+      - master
+      - fix/flux-pumping/**
+      - diag/flux-pumping/**
+      - feat/flux-pumping/**
+      - integration/flux-pumping/**
+
+permissions:
+  actions: write
+
+jobs:
+  # NOT named run-golden-record or unit-tests: skipped runs of this job
+  # must never shadow the real checks.
+  dispatch-stacked-checks:
+    runs-on: ubuntu-24.04
+    # React only to: base retargets ('edited' with a base change), the
+    # run-golden-record label being added, and events on labeled stacked
+    # PRs. Everything else is already covered by the pull_request triggers
+    # of the real workflows. Fork heads are excluded because
+    # workflow_dispatch can only target refs in this repository.
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      ((github.event.action == 'edited' && github.event.changes.base != null) ||
+       (github.event.action == 'labeled' && github.event.label.name == 'run-golden-record') ||
+       (github.event.action != 'edited' && github.event.action != 'labeled' &&
+        github.base_ref != 'main' && github.base_ref != 'master' &&
+        contains(github.event.pull_request.labels.*.name, 'run-golden-record')))
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+
+    steps:
+      - name: Dispatch unit tests on base retarget
+        # unit-tests.yml does not listen to 'edited', so a retargeted PR
+        # gets its unit-test run from here.
+        if: github.event.action == 'edited'
+        run: gh workflow run unit-tests.yml --repo "$GITHUB_REPOSITORY" --ref "$HEAD_REF"
+
+      - name: Dispatch golden record
+        # Label events and pushes to labeled stacked PRs always dispatch;
+        # a base retarget dispatches when the new base is main/master
+        # (where run-golden-record is required) or the PR carries the
+        # run-golden-record label.
+        if: >-
+          github.event.action != 'edited' ||
+          github.base_ref == 'main' || github.base_ref == 'master' ||
+          contains(github.event.pull_request.labels.*.name, 'run-golden-record')
+        run: gh workflow run test-on-pr.yml --repo "$GITHUB_REPOSITORY" --ref "$HEAD_REF"

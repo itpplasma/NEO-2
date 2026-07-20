@@ -5,20 +5,40 @@ on:
     branches:
       - main
       - master
+  # run-golden-record is the required status check on main. Its types and
+  # branches stay exactly as they are so that every check run named
+  # run-golden-record comes from a real run: a job skipped by its 'if'
+  # reports Success and would satisfy the branch protection gate. Label
+  # additions, base retargets, and pushes to labeled stacked flux-pumping
+  # PRs are handled by stacked-pr-dispatch.yml, which re-triggers this
+  # workflow via workflow_dispatch under a differently named job.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - main
       - master
+  workflow_dispatch:
+    inputs:
+      compare_against_main:
+        description: Also run the exact golden-record comparison against main
+        required: false
+        default: true
+        type: boolean
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || (github.event_name == 'workflow_dispatch' && github.run_id) || github.ref }}
   cancel-in-progress: true
 
 jobs:
   run-golden-record:
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    # Do not add event- or label-based skip conditions here: a skipped
+    # run-golden-record counts as Success for the required status check
+    # on main. Gating for stacked PRs lives in stacked-pr-dispatch.yml.
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
 
     env:
       CC: gcc
@@ -192,7 +212,7 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/out
 
       - name: Build NEO-2 (reference version - main branch)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compare_against_main)
         id: build_reference_main
         run: |
           # Build reference version from main branch for PR comparison
@@ -210,7 +230,7 @@ jobs:
           echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
 
       - name: Run golden record test against main version (exact check)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compare_against_main)
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
           REFERENCE_NEO2_PAR: ${{ steps.build_reference_main.outputs.neo2_par_main }}
@@ -247,7 +267,7 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/reference/out
 
       - name: Run QL performance test
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compare_against_main)
         env:
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
           REFERENCE_NEO2_QL: ${{ steps.build_reference_main.outputs.neo2_ql_main }}
@@ -275,7 +295,7 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt
 
       - name: Run (slow) par golden record test on pull request
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compare_against_main)
         env:
           CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
         id: run_par_test
