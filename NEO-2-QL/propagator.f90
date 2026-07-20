@@ -953,7 +953,7 @@ CONTAINS
         IF(lsw_multispecies) THEN ! multi-species output
           CALL write_multispec_output()
         ELSE ! single-species output
-          CALL write_ntv_output(prop_a%p%qflux)
+          CALL write_ntv_output(prop_a%p%qflux, y)
         END IF
       END IF
       !! End Modification by Andreas F. Martitsch (14.07.2015)
