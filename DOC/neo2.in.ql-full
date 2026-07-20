@@ -167,9 +167,12 @@
 &ntv_input
  B_rho_L_loc = 0.0 ! Larmor radius times magnetic field. [0.0d0]
  in_file_pert = 'filename' ! File that contains perturbation of the
-                           ! magnetic field.
+                           ! magnetic field. Use 'none' for source-only
+                           ! non-axisymmetric runs with prescribed m_phi.
  isw_mag_shear = 1 ! Turn on(=1)/off(=0) non-local computations (mag.
                    ! shear). [0]
+ isw_m_phi_input = 0 ! Use m_phi_input instead of the perturbation-file mode.
+                     ! Required when in_file_pert='none'. [0]
  isw_ntv_mode = 1  ! [0]
  isw_qflux_NA = 1 ! Turn on(=1)/off(=0) computation of non-axisymmetrix
                   ! part. [0]
@@ -178,12 +181,24 @@
                        ! 2 Arnoldi, 1st order
                        ! 3 Arnoldi, 2nd order
                        ! 4 Arnoldi, 3rd order
+ m_phi_input = 0 ! Toroidal mode number used when isw_m_phi_input=1. [0]
  MtOvR = 0.0 ! Legacy single-species Mt/R. Only used when isw_calc_Er=0;
              ! ignored when isw_calc_Er >= 1 (multispecies code uses Om_tE). [0.0d0]
  Om_tE = 0.0 ! ExB toroidal precession frequency in rad/s.
              ! isw_calc_Er=1: computed from ambipolarity (this value ignored).
              ! isw_calc_Er=2: read from here (single-surface) or multispec HDF5
              !   (profile runs with isw_multispecies_init > 0). [0.0d0]
+ isw_hel_drive = 0 ! Turn on(=1)/off(=0) the single-helicity misalignment
+                   ! drive (additional RHS of the non-axisymmetric equation
+                   ! set: radial corrugation + electrostatic harmonic). [0]
+ m_theta_hel = 0 ! Poloidal mode number m of the misalignment-drive
+                 ! harmonic; toroidal mode number n is m_phi from the file
+                 ! or m_phi_input. [0]
+ hel_brad_re = 0.0 ! Re of the corrugation amplitude (delta B^s/B_0^phi)_mn,
+                   ! dimensionless flux-function amplitude. [0.0d0]
+ hel_brad_im = 0.0 ! Im of the corrugation amplitude. [0.0d0]
+ hel_phim_re = 0.0 ! Re of the electrostatic harmonic Phi_mn in statvolt. [0.0d0]
+ hel_phim_im = 0.0 ! Im of the electrostatic harmonic Phi_mn in statvolt. [0.0d0]
 /
 &plotting
  plot_gauss = 0 ! Plotting of gauss function in flint. [0]
