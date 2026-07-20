@@ -1,0 +1,15 @@
+&multi_spec
+/
+&settings
+  niter = 0
+/
+&collision
+/
+&binsplit
+/
+&propagator
+/
+&plotting
+/
+&ntv_input
+/
