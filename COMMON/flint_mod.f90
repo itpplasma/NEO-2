@@ -899,7 +899,7 @@ contains
     INTEGER,       INTENT(inout) :: phi_eta_ind(0:u_eta,2)
 
     INTEGER :: ub
-    INTEGER :: iphi,idiv,cphi,cdiv,ieta
+    INTEGER :: iphi,idiv,cphi,cdiv,ieta,refinement_scale
     INTEGER, ALLOCATABLE :: phi_eta_ind_loc(:,:)
     REAL(kind=dp) :: hphi
     REAL(kind=dp), ALLOCATABLE :: phi(:)
@@ -910,6 +910,8 @@ contains
     phi_eta_ind_loc = phi_eta_ind
 
     ub   = UBOUND(fieldpropagator%coords%x2,1)
+    refinement_scale = 1
+    IF (MOD(SUM(phi_divide(1:ub)),2) .NE. 0) refinement_scale = 2
     ALLOCATE(phi(0:ub))
     phi    = fieldpropagator%coords%x2
     IF (ALLOCATED(phiarr)) DEALLOCATE(phiarr)
@@ -918,7 +920,7 @@ contains
     CALL set_new(phi_p,phi(0))
     cphi = 0 ! counter
     philoop: DO iphi = 1,ub
-       cdiv = phi_divide(iphi)
+       cdiv = refinement_scale*phi_divide(iphi)
        hphi = phi(iphi) - phi(iphi-1)
        divloop: DO idiv = 1,cdiv
           cphi = cphi + 1
