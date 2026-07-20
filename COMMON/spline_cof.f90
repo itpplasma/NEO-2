@@ -916,7 +916,8 @@ SUBROUTINE splinecof3_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
 
   ! find first regular point
   shift = 1
-  DO WHILE ( ( shift <= SIZE(w) ) .AND.  ( w(shift) == 0 ) )
+  DO WHILE ( shift <= SIZE(w) )
+    IF ( w(shift) /= 0 ) EXIT
     shift = shift + 1
   END DO
 
@@ -1424,7 +1425,8 @@ subroutine splinecof1_lo_driv_a(x, y, c1, cn, lambda, w, indx, &
 
   ! find first regular point
   shift = 1
-  do while ( ( shift <= size(w) ) .AND.  ( w(shift) == 0 ) )
+  do while ( shift <= size(w) )
+    if ( w(shift) /= 0 ) exit
      shift = shift + 1
   end do
 

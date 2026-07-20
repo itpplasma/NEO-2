@@ -1,3 +1,22 @@
+MODULE ripple_solver_route_mod
+  IMPLICIT NONE
+  PRIVATE
+
+  PUBLIC :: uses_single_propagator_route
+
+CONTAINS
+
+  PURE LOGICAL FUNCTION uses_single_propagator_route(magnetic_device, &
+       isw_axisymm, mag_magfield)
+    INTEGER, INTENT(in) :: magnetic_device, isw_axisymm, mag_magfield
+
+    uses_single_propagator_route = &
+         (magnetic_device .EQ. 0 .AND. isw_axisymm .EQ. 1) .OR. &
+         mag_magfield .EQ. 0
+  END FUNCTION uses_single_propagator_route
+
+END MODULE ripple_solver_route_mod
+
 !> this routine now walks through the specified fieldpropagators
 !>  (see main routine about how to set proptag_start and proptag_end)
 SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
@@ -21,6 +40,8 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
        prop_reconstruct, prop_reconstruct_levels
   USE collisionality_mod, ONLY : isw_lorentz,isw_axisymm,y_axi_averages, &
        isw_momentum
+  USE ntv_mod, ONLY : isw_ripple_solver
+  USE ripple_solver_route_mod, ONLY : uses_single_propagator_route
 
   USE rkstep_mod, ONLY : lag
   USE collisionality_mod, ONLY : collpar,collpar_min,collpar_max
@@ -53,6 +74,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   INTEGER :: x2_ub,i_min_sav,clear_old_ripple
   INTEGER :: proptag_first,proptag_last
   INTEGER :: start_at_begin
+  LOGICAL :: single_propagator_route
 
   INTEGER :: i_construct,i_construct_s,i_construct_e,i_construct_d
   INTEGER :: eta_min_loc(1)
@@ -1909,7 +1931,12 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   prop_ibegperiod = 1
   prop_count_call = 0
   PRINT *, 'Do the real computation - ripple_solver'
-  IF ( (magnetic_device .EQ. 0 .AND. isw_axisymm .EQ. 1) .OR. mag_magfield .EQ. 0 ) THEN
+  single_propagator_route = uses_single_propagator_route( &
+       magnetic_device,isw_axisymm,mag_magfield)
+  IF (isw_ripple_solver .EQ. 3 .AND. .NOT. single_propagator_route) THEN
+     ERROR STOP 'isw_ripple_solver=3 requires the single-propagator global route'
+  END IF
+  IF (single_propagator_route) THEN
      IF (mag_magfield .EQ. 0) THEN
         PRINT *, 'Use only one propagator for homogeneous field'
      ELSE

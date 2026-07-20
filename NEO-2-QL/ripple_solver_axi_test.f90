@@ -54,7 +54,7 @@ SUBROUTINE ripple_solver(                                 &
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
        isw_energy,isw_integral,isw_axisymm, & !<-in Winny
        isw_momentum,vel_distri_swi,vel_num,vel_max, &
-       nvel,vel_array,num_spec
+       nvel,vel_array,num_spec,isw_relativistic,T_spec,m_spec,z_spec
 
 ! collpar - the same as $\kappa$ - inverse mean-free path times 4
   USE lapack_band
@@ -87,6 +87,14 @@ SUBROUTINE ripple_solver(                                 &
                             deallocate_ntv_eqmat
   use mpiprovider_module, only : mpro
   USE collop
+  USE helical_source_mod, ONLY : add_helical_source, &
+       apply_reconstructed_incoming_rows
+  USE neo_magfie, ONLY : boozer_iota,boozer_curr_tor_hat, &
+       boozer_curr_pol_hat,boozer_psi_pr_hat
+  USE ntv_mod, ONLY : isw_hel_drive,isw_m_phi_input,m_phi_input, &
+       m_theta_hel,hel_brad_re,hel_brad_im,hel_phim_re,hel_phim_im, &
+       clight_hel => c,echarge_hel => e
+  USE partpa_mod, ONLY : bmod0
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
   IMPLICIT NONE
@@ -149,6 +157,7 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION                         :: diflam,diflampow,coefdir
   DOUBLE PRECISION                         :: coefenu,coefenu_averb   !!!term[1]
   DOUBLE PRECISION :: alambd_save1,alambd_save2,alambd_save3
+  DOUBLE PRECISION :: denomjac,vt_hel,rho_hel
   DOUBLE PRECISION :: diflam_flux,coef_cf
   DOUBLE PRECISION :: hxeta,fun_bound_new,amin2ovb
   DOUBLE PRECISION :: a11,a12,a21,a22,determ,deleta_b,dum_phi,dum_a3
@@ -218,6 +227,11 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
   DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: flux_vector,source_vector
+  COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE :: helical_source
+  COMPLEX(kind=dp), DIMENSION(:,:), ALLOCATABLE :: q_hel_b,q_hel_e
+  COMPLEX(kind=dp) :: amp_hel_b,amp_hel_e,hel_phase,hel_phase_fac
+  LOGICAL :: hel_drive_active
+  INTEGER :: n_hel
   INTEGER :: isw_lor,isw_ene,isw_intp
   INTEGER,          DIMENSION(:),       ALLOCATABLE :: npl
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE :: rhs_mat_fzero
@@ -855,11 +869,17 @@ PRINT *,'right boundary layer ignored'
   ALLOCATE(convol_polpow(0:legmax,1:npart+3))                      ! terms[2,3]
   ALLOCATE(pleg_bra(0:legmax,1:npart+1,ibeg:iend))                 ! terms[2,3]
   ALLOCATE(pleg_ket(0:legmax,1:npart+1,ibeg:iend))                 ! terms[2,3]
+  pleg_bra=0.d0
+  pleg_ket=0.d0
   ALLOCATE(npl(ibeg:iend))
   ALLOCATE(rhs_mat_fzero(4,ibeg:iend,0:1))
   ALLOCATE(rhs_mat_lorentz(5,npart+1,ibeg:iend))
   ALLOCATE(rhs_mat_energ(4,npart+1,ibeg:iend))
   ALLOCATE(q_rip(npart+2,ibeg:iend,0:2))
+  ALLOCATE(q_hel_b(npart+2,ibeg:iend),q_hel_e(npart+2,ibeg:iend))
+  q_hel_b=(0.d0,0.d0)
+  q_hel_e=(0.d0,0.d0)
+  hel_drive_active=.FALSE.
   ALLOCATE(convol_flux(npart+1,ibeg:iend),convol_curr(npart+1,ibeg:iend))
   ALLOCATE(ind_start(ibeg:iend))
   if (iplot.EQ.1) then
@@ -895,7 +915,7 @@ PRINT *,'right boundary layer ignored'
     ierr=3
     DEALLOCATE(deriv_coef,npl)
     DEALLOCATE(rhs_mat_lorentz,rhs_mat_energ)
-    DEALLOCATE(q_rip)
+    DEALLOCATE(q_rip,q_hel_b,q_hel_e)
     DEALLOCATE(convol_flux,convol_curr)
     DEALLOCATE(pleg_bra,pleg_ket,scalprod_pleg)
     return
@@ -1212,6 +1232,47 @@ PRINT *,'right boundary layer ignored'
     convol_curr(1:npassing+1,istep)=bhat_mfl(istep)/h_phi_mfl(istep)
 
   ENDDO
+
+  IF(isw_hel_drive.NE.0) THEN
+    IF(isw_m_phi_input.NE.1) &
+      ERROR STOP 'mode-1 helical drive requires explicit m_phi_input'
+    IF(.NOT.ALLOCATED(asource_hel)) &
+      ERROR STOP 'helical drive requires quadrature collision moments'
+    IF(isw_relativistic.NE.0) &
+      ERROR STOP 'helical drive relativistic moments are not validated'
+    IF(T_spec(ispec).LE.0.d0.OR.m_spec(ispec).LE.0.d0.OR.z_spec(ispec).EQ.0.d0) &
+      ERROR STOP 'helical drive species data are invalid'
+    n_hel=m_phi_input
+    aiota=boozer_iota
+    denomjac=aiota*boozer_curr_tor_hat+boozer_curr_pol_hat
+    IF(denomjac.EQ.0.d0.OR.boozer_psi_pr_hat.EQ.0.d0) &
+      ERROR STOP 'helical drive geometry denominator is zero'
+    hel_drive_active=.TRUE.
+    hel_phase_fac=(0.d0,1.d0)*(DBLE(m_theta_hel)*aiota+DBLE(n_hel))
+    vt_hel=SQRT(2.d0*T_spec(ispec)/m_spec(ispec))
+    rho_hel=vt_hel*m_spec(ispec)*clight_hel &
+      /(z_spec(ispec)*echarge_hel*(bmod0*1.d4))
+    amp_hel_b=CMPLX(hel_brad_re,hel_brad_im,kind=dp)/rho_hel
+    amp_hel_e=(0.d0,1.d0)*CMPLX(hel_phim_re,hel_phim_im,kind=dp) &
+      *z_spec(ispec)*echarge_hel/(2.d0*T_spec(ispec)) &
+      *(DBLE(n_hel)*boozer_curr_tor_hat-DBLE(m_theta_hel)*boozer_curr_pol_hat) &
+      /(boozer_psi_pr_hat*denomjac)
+    DO istep=ibeg,iend
+      npassing=npl(istep)
+      hel_phase=EXP(hel_phase_fac*phi_mfl(istep))
+      q_hel_b(:,istep)=(0.d0,0.d0)
+      q_hel_e(:,istep)=(0.d0,0.d0)
+      q_hel_b(1:npassing,istep)=amp_hel_b*hel_phase &
+        *(eta(1:npassing)-eta(0:npassing-1))
+      q_hel_b(npassing+1,istep)=amp_hel_b*hel_phase &
+        *(1.d0/bhat_mfl(istep)-eta(npassing))
+      q_hel_e(1:npassing,istep)=amp_hel_e*hel_phase*2.d0 &
+        *(alambd(0:npassing-1,istep)-alambd(1:npassing,istep)) &
+        /(bhat_mfl(istep)*h_phi_mfl(istep))
+      q_hel_e(npassing+1,istep)=amp_hel_e*hel_phase*2.d0 &
+        *alambd(npassing,istep)/(bhat_mfl(istep)*h_phi_mfl(istep))
+    ENDDO
+  ENDIF
 
   DEALLOCATE(amat,bvec_lapack,ipivot)
 
@@ -1579,6 +1640,28 @@ PRINT *,'right boundary layer ignored'
 
     enddo
   enddo
+
+  IF(hel_drive_active) THEN
+    ALLOCATE(helical_source(n_2d_size,3))
+    helical_source=(0.d0,0.d0)
+    CALL add_helical_source(helical_source,q_hel_b,asource(0:lag,2), &
+      1,-1,ibeg,iend,lag,npl,ind_start,fact_pos_b,fact_pos_e, &
+      fact_neg_b,fact_neg_e)
+    CALL add_helical_source(helical_source,q_hel_b,asource_hel(0:lag,2), &
+      3,-1,ibeg,iend,lag,npl,ind_start,fact_pos_b,fact_pos_e, &
+      fact_neg_b,fact_neg_e)
+    CALL add_helical_source(helical_source,q_hel_e,asource_hel(0:lag,1), &
+      1,1,ibeg,iend,lag,npl,ind_start,fact_pos_b,fact_pos_e, &
+      fact_neg_b,fact_neg_e)
+    CALL add_helical_source(helical_source,q_hel_e,asource(0:lag,1), &
+      3,1,ibeg,iend,lag,npl,ind_start,fact_pos_b,fact_pos_e, &
+      fact_neg_b,fact_neg_e)
+    source_vector=source_vector+REAL(helical_source,dp)
+    DEALLOCATE(helical_source)
+    IF(iplot.EQ.1.AND.isw_axisymm.NE.1) &
+      CALL apply_reconstructed_incoming_rows(source_vector,flux_pl,flux_mr, &
+        ibeg,iend,lag,npl,ind_start)
+  ENDIF
 
 
 ! Determine the size of arrays (number of non-zero elements):
@@ -2741,36 +2824,21 @@ ENDDO
 qflux_allspec=qflux_allspec_tmp
 IF(ALLOCATED(qflux_allspec_tmp)) DEALLOCATE(qflux_allspec_tmp)
 IF(mpro%getrank() .EQ. 0) THEN
-  ! D11
-  PRINT *,'qflux(1,1,0,0):'
-  PRINT *,qflux_allspec(1,1,0,0)
-  PRINT *,'qflux(1,1,1,0):'
-  PRINT *,qflux_allspec(1,1,1,0)
-  PRINT *,'qflux(1,1,0,1):'
-  PRINT *,qflux_allspec(1,1,0,1)
-  PRINT *,'qflux(1,1,1,1):'
-  PRINT *,qflux_allspec(1,1,1,1)
-  ! D12
-  PRINT *,'qflux(1,3,0,0):'
-  PRINT *,qflux_allspec(1,3,0,0)
-  PRINT *,'qflux(1,3,1,0):'
-  PRINT *,qflux_allspec(1,3,1,0)
-  PRINT *,'qflux(1,3,0,1):'
-  PRINT *,qflux_allspec(1,3,0,1)
-  PRINT *,'qflux(1,3,1,1):'
-  PRINT *,qflux_allspec(1,3,1,1)
+  PRINT *,'qflux(1,1,:,:):'
+  PRINT *,qflux_allspec(1,1,:,:)
+  PRINT *,'qflux(1,3,:,:):'
+  PRINT *,qflux_allspec(1,3,:,:)
   OPEN(070915,file='qflux_symm_allspec.dat')
   WRITE(070915,*) boozer_s, collpar, &
-        qflux_allspec(1,1,0,0), qflux_allspec(1,1,1,0), &
-        qflux_allspec(1,1,0,1), qflux_allspec(1,1,1,1), &
-        qflux_allspec(1,3,0,0), qflux_allspec(1,3,1,0), &
-        qflux_allspec(1,3,0,1), qflux_allspec(1,3,1,1)
+        ((qflux_allspec(1,1,ispecp,ispecpp),ispecp=0,num_spec-1), &
+          ispecpp=0,num_spec-1), &
+        ((qflux_allspec(1,3,ispecp,ispecpp),ispecp=0,num_spec-1), &
+          ispecpp=0,num_spec-1)
   CLOSE(070915)
 
 END IF
 !! End Modification by Andreas F. Martitsch (23.08.2015)
 call cpu_time(time2)
-RETURN
 
   do m=0,lag
     do kk=1,3
@@ -2796,7 +2864,7 @@ RETURN
     if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
     DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
     DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
-    DEALLOCATE(npl,rhs_mat_fzero,rhs_mat_lorentz,rhs_mat_energ,q_rip)
+    DEALLOCATE(npl,rhs_mat_fzero,rhs_mat_lorentz,rhs_mat_energ,q_rip,q_hel_b,q_hel_e)
     DEALLOCATE(convol_flux,convol_curr,ind_start)
     DEALLOCATE(phi_mfl,bhat_mfl,geodcu_mfl,h_phi_mfl,dlogbdphi_mfl,eta)
     DEALLOCATE(delt_pos,delt_neg,fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
@@ -3024,7 +3092,7 @@ CLOSE(111)
 PRINT *,' '
   DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
   DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
-  DEALLOCATE(npl,rhs_mat_fzero,rhs_mat_lorentz,rhs_mat_energ,q_rip)
+  DEALLOCATE(npl,rhs_mat_fzero,rhs_mat_lorentz,rhs_mat_energ,q_rip,q_hel_b,q_hel_e)
   DEALLOCATE(convol_flux,convol_curr,ind_start)
   DEALLOCATE(delt_pos,delt_neg,fact_pos_b,fact_neg_b,fact_pos_e,fact_neg_e)
 
