@@ -502,6 +502,7 @@ module collop
       if (allocated(denmm_a)) deallocate(denmm_a)
       if (allocated(Inbi_lmmp_a)) deallocate(Inbi_lmmp_a)
       if (allocated(asource)) deallocate(asource)
+      if (allocated(asource_hel)) deallocate(asource_hel)
       if (allocated(weightlag)) deallocate(weightlag)
       if (allocated(x1mm)) deallocate(x1mm)
       if (allocated(x2mm)) deallocate(x2mm)

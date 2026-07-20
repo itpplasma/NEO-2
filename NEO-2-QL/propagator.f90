@@ -72,7 +72,7 @@ MODULE propagator_mod
   ! ---------------------------------------------------------------------------
   ! ---------------------------------------------------------------------------
 
-  use hdf5_tools, only : HID_T
+  use hdf5_tools, only : HID_T, h5_add, h5_close, h5_create
 
   USE binarysplit_mod
 
@@ -899,6 +899,8 @@ CONTAINS
 
       call h5_close(h5id)
 
+      call write_helical_current_response(gamma_out)
+
       OPEN(uw,file='fulltransp.dat',status='replace')
       WRITE (uw,'(6(1x,i4),1000(1x,e18.5))')  &
             full_version, &
@@ -953,7 +955,7 @@ CONTAINS
         IF(lsw_multispecies) THEN ! multi-species output
           CALL write_multispec_output()
         ELSE ! single-species output
-          CALL write_ntv_output(prop_a%p%qflux)
+          CALL write_ntv_output(prop_a%p%qflux, y)
         END IF
       END IF
       !! End Modification by Andreas F. Martitsch (14.07.2015)
@@ -962,6 +964,89 @@ CONTAINS
 
     DEALLOCATE(y)
   END SUBROUTINE diag_propagator_res
+
+  SUBROUTINE write_helical_current_response(gamma)
+    USE collisionality_mod, ONLY : num_spec, z_spec, m_spec, T_spec
+    USE helical_response_mod, ONLY : dimensional_current_coefficients
+    USE ntv_mod, ONLY : c, e, has_perturbation_file, isw_hel_drive, &
+         isw_qflux_NA, isw_ripple_solver, m_phi_input, m_theta_hel, &
+         hel_brad_re, hel_brad_im, hel_phim_re, hel_phim_im
+    USE partpa_mod, ONLY : bmod0
+
+    REAL(kind=dp), INTENT(in) :: gamma(3,3)
+    REAL(kind=dp) :: gamma_current(2), d_current(2), bref, vt, rho
+    INTEGER :: baseline_exact, requires_off_reference
+    CHARACTER(len=16) :: quadrature
+
+    IF(isw_hel_drive.EQ.0.OR.isw_ripple_solver.NE.1.OR.num_spec.NE.1) RETURN
+
+    CALL dimensional_current_coefficients(gamma,T_spec(0),z_spec(0), &
+         gamma_current,d_current)
+    bref=bmod0*1.0e4_dp
+    vt=SQRT(2.0_dp*T_spec(0)/m_spec(0))
+    rho=vt*m_spec(0)*c/(z_spec(0)*e*bref)
+    baseline_exact=0
+    IF(isw_qflux_NA.EQ.1.AND..NOT.has_perturbation_file()) baseline_exact=1
+    requires_off_reference=1-baseline_exact
+    quadrature='mixed'
+    IF(hel_brad_im.EQ.0.0_dp.AND.hel_phim_im.EQ.0.0_dp) quadrature='real'
+    IF(hel_brad_re.EQ.0.0_dp.AND.hel_phim_re.EQ.0.0_dp) quadrature='imaginary'
+
+    CALL h5_create('helical_current_response.h5',h5id,1)
+    CALL write_helical_response_fields(gamma_current,d_current,bref,vt,rho, &
+         baseline_exact,requires_off_reference,quadrature)
+    CALL h5_close(h5id)
+  END SUBROUTINE write_helical_current_response
+
+  SUBROUTINE write_helical_response_fields(gamma_current,d_current,bref,vt, &
+       rho,baseline_exact,requires_off_reference,quadrature)
+    USE collisionality_mod, ONLY : num_spec, species_tag, z_spec, m_spec, &
+         n_spec, T_spec
+    USE device_mod, ONLY : surface
+    USE helical_response_mod, ONLY : D_CURRENT_UNIT
+    USE mag_interface_mod, ONLY : boozer_s
+    USE ntv_mod, ONLY : isw_hel_drive, isw_m_phi_input, isw_qflux_NA, &
+         isw_ripple_solver, m_phi_input, m_theta_hel, hel_brad_re, &
+         hel_brad_im, hel_phim_re, hel_phim_im
+
+    REAL(kind=dp), INTENT(in) :: gamma_current(2),d_current(2),bref,vt,rho
+    INTEGER, INTENT(in) :: baseline_exact,requires_off_reference
+    CHARACTER(len=*), INTENT(in) :: quadrature
+
+    CALL h5_add(h5id,'schema_version',1)
+    CALL h5_add(h5id,'response_kind','total_source_quadrature')
+    CALL h5_add(h5id,'input_amplitude_quadrature',TRIM(quadrature))
+    CALL h5_add(h5id,'phase_convention','exp(+i(m_theta*theta+m_phi*phi))')
+    CALL h5_add(h5id,'isw_ripple_solver',isw_ripple_solver)
+    CALL h5_add(h5id,'isw_hel_drive',isw_hel_drive)
+    CALL h5_add(h5id,'isw_qflux_NA',isw_qflux_NA)
+    CALL h5_add(h5id,'isw_m_phi_input',isw_m_phi_input)
+    CALL h5_add(h5id,'num_spec',num_spec)
+    CALL h5_add(h5id,'m_theta',m_theta_hel)
+    CALL h5_add(h5id,'m_phi',m_phi_input)
+    CALL h5_add(h5id,'boozer_s',boozer_s,unit='1')
+    CALL h5_add(h5id,'aiota',surface%aiota,unit='1')
+    CALL h5_add(h5id,'lambda_parallel', &
+         DBLE(m_theta_hel)*surface%aiota+DBLE(m_phi_input),unit='1')
+    CALL h5_add(h5id,'species_tag',species_tag(0))
+    CALL h5_add(h5id,'charge_number',z_spec(0),unit='1')
+    CALL h5_add(h5id,'mass',m_spec(0),unit='g')
+    CALL h5_add(h5id,'density',n_spec(0),unit='1/cm^3')
+    CALL h5_add(h5id,'temperature',T_spec(0),unit='erg')
+    CALL h5_add(h5id,'Bref',bref,unit='G')
+    CALL h5_add(h5id,'thermal_velocity',vt,unit='cm/s')
+    CALL h5_add(h5id,'signed_larmor_radius',rho,unit='cm')
+    CALL h5_add(h5id,'hel_brad_re',hel_brad_re,unit='1')
+    CALL h5_add(h5id,'hel_brad_im',hel_brad_im,unit='1')
+    CALL h5_add(h5id,'hel_phim_re',hel_phim_re,unit='statV')
+    CALL h5_add(h5id,'hel_phim_im',hel_phim_im,unit='statV')
+    CALL h5_add(h5id,'gamma_current_A1',gamma_current(1),unit='1')
+    CALL h5_add(h5id,'gamma_current_A2',gamma_current(2),unit='1')
+    CALL h5_add(h5id,'D31',d_current(1),unit=D_CURRENT_UNIT)
+    CALL h5_add(h5id,'D32',d_current(2),unit=D_CURRENT_UNIT)
+    CALL h5_add(h5id,'zero_source_baseline_exact',baseline_exact)
+    CALL h5_add(h5id,'requires_off_reference',requires_off_reference)
+  END SUBROUTINE write_helical_response_fields
 
   ! ---------------------------------------------------------------------------
   SUBROUTINE diag_propagator_dis
@@ -2246,6 +2331,8 @@ CONTAINS
 
     ! qflux
     IF (prop_showall .EQ. 1) THEN
+       IF (ALLOCATED(o%p%qflux)) DEALLOCATE(o%p%qflux)
+       ALLOCATE(o%p%qflux(3,3))
        READ(prop_unit,*) o%p%qflux
     END IF
 
