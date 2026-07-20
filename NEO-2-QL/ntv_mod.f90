@@ -1569,6 +1569,51 @@ CONTAINS
        IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
        ALLOCATE(MtOvR_spec(0:num_spec-1))
        MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
+
+       ! Recover the radial electric field consistent with the prescribed
+       ! Om_tE by inverting the code's own relation
+       !   Om_tE = c*Er/(aiota_loc*sqrtg_bctrvr_phi)   (see compute_Er, ~l.2328),
+       ! then run the same flux/torque chain as the isw_calc_Er==1 branch so
+       ! that Gamma_*/Qflux_*/ParFlow_*/TphiNA_spec are also emitted here
+       ! (previously only MtOvR_spec was computed, silently dropping the NTV
+       ! torque from neo2_multispecies_out.h5).
+       Er = Om_tE * aiota_loc * sqrtg_bctrvr_phi / c
+       PRINT *,'------------------------------'
+       PRINT *,'Er (inverted from prescribed Om_tE): ', Er
+       PRINT *,'------------------------------'
+
+       ! The inductive-field drive avEparB_ov_avb2 is only produced by the
+       ! self-consistent Er solve (compute_Er_and_A3norm), which is bypassed
+       ! when Om_tE/Er is prescribed externally. Without it the Ware-pinch
+       ! (A_3) contribution is undefined here, so the non-Ware
+       ! (num_spec==1-style) calls are used. This matches the validated
+       ! reconstruction in postprocess_neo2_torque.py exactly.
+       CALL compute_VthtB_and_VphiB(row_ind_ptr, col_ind_ptr, &
+            D31_AX, D32_AX, Er, VthtB_spec, VphiB_spec)
+
+       CALL compute_Vphi_profile(row_ind_ptr, col_ind_ptr, &
+            D31_AX, D32_AX, Er, R_Vphi_prof, Z_Vphi_prof, &
+            Vphi_prof_spec, Vtht_prof_spec)
+
+       CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
+            D11_AX, D12_AX, Er, Gamma_AX_spec)
+       CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
+            D21_AX, D22_AX, Er, Qflux_AX_spec)
+       CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
+            D31_AX, D32_AX, Er, ParFlow_AX_spec)
+       CALL compute_Gamma(row_ind_ptr, col_ind_ptr, &
+            D11_NA, D12_NA, Er, Gamma_NA_spec)
+       CALL compute_TphiNA(Gamma_NA_spec, TphiNA_spec, TphiNA_tot)
+       CALL compute_Qflux(row_ind_ptr, col_ind_ptr, &
+            D21_NA, D22_NA, Er, Qflux_NA_spec)
+       CALL compute_ParFlow(row_ind_ptr, col_ind_ptr, &
+            D31_NA, D32_NA, Er, ParFlow_NA_spec)
+    ELSE
+       ! isw_calc_Er == 0: legacy single-species path. Er is not reconstructed
+       ! here (the Mach number MtOvR is set on the legacy branch upstream), so
+       ! no flux/torque chain is run and the run stays torque-less by design.
+       ! Left unchanged intentionally; the multispecies flux/torque output is
+       ! only defined for isw_calc_Er >= 1.
     END IF
 
     ! initialize HDF5 file
@@ -1723,7 +1768,9 @@ CONTAINS
     END IF
 
     ! add radial electric field and derived quantities (neoclassical only)
-    IF (isw_calc_Er .EQ. 1) THEN
+    ! isw_calc_Er == 1: Er solved self-consistently; == 2: Er inverted from the
+    ! externally prescribed Om_tE. Both emit the same flux/torque datasets.
+    IF (isw_calc_Er .GE. 1) THEN
 
        CALL h5_add(h5id_multispec, 'Er', Er)
 
@@ -1759,7 +1806,11 @@ CONTAINS
             LBOUND(TphiNA_spec), UBOUND(TphiNA_spec))
        CALL h5_add(h5id_multispec, 'TphiNA_tot', TphiNA_tot)
 
-       IF (num_spec .GT. 1) THEN
+       ! Ware-pinch (inductive-field) variants are only computed on the
+       ! self-consistent Er solve (isw_calc_Er==1, num_spec>1). The
+       ! isw_calc_Er==2 branch uses the non-Ware chain, so these arrays are
+       ! unallocated there and must not be written.
+       IF (num_spec .GT. 1 .AND. isw_calc_Er .EQ. 1) THEN
           CALL h5_add(h5id_multispec, 'avEparB_ov_avb2', avEparB_ov_avb2)
 
           CALL h5_add(h5id_multispec, 'VthtB_Ware_spec', VthtB_Ware_spec, &
