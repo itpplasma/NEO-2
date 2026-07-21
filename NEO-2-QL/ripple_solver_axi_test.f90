@@ -86,6 +86,7 @@ SUBROUTINE ripple_solver(                                 &
                             nz_regper,irow_regper,icol_regper,amat_regper,     &
                             deallocate_ntv_eqmat
   use mpiprovider_module, only : mpro
+  USE multispecies_iteration_sync_mod, ONLY : gather_iteration_convergence
   USE mpi, ONLY : MPI_ALLREDUCE, MPI_COMM_WORLD, MPI_INTEGER, MPI_MAX, &
        MPI_SUCCESS
   USE collop
@@ -289,6 +290,7 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond1
   DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
   INTEGER :: prop_fileformat=0
+  LOGICAL :: iteration_converged
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
   !***************************
@@ -3136,10 +3138,12 @@ time3 = time3 + (time5-time4)
 
           bvec_sp=bvec_lor+bvec_iter
 
-          if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
-             sum(abs(bvec_prev))*epserr_iter) then
-            exit
-          endif
+          ! integral_part uses a world allgather; keep every species on the
+          ! same iteration count before the next propagator collective.
+          CALL gather_iteration_convergence( &
+               SUM(ABS(bvec_sp-bvec_prev)),SUM(ABS(bvec_prev))*epserr_iter, &
+               ispec,break_cond1,break_cond2,iteration_converged)
+          IF(iteration_converged) EXIT
 
         enddo
 
@@ -3192,10 +3196,10 @@ time3 = time3 + (time5-time4)
 
           bvec_sp=bvec_lor+bvec_iter
 
-          if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
-             sum(abs(bvec_prev))*epserr_iter) then
-             exit
-          endif
+          CALL gather_iteration_convergence( &
+               SUM(ABS(bvec_sp-bvec_prev)),SUM(ABS(bvec_prev))*epserr_iter, &
+               ispec,break_cond1,break_cond2,iteration_converged)
+          IF(iteration_converged) EXIT
 
         enddo
 
