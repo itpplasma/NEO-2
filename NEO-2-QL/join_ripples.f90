@@ -19,6 +19,7 @@ SUBROUTINE join_ripples(ierr)
   USE propagator_mod
   USE lapack_band
   USE collisionality_mod, ONLY : isw_lorentz
+  USE join_diagnostics_mod, ONLY : report_join_failure, validate_join_normalization
 USE development
 
   IMPLICIT NONE
@@ -138,7 +139,10 @@ USE development
   CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
 
   IF(info.NE.0) THEN
-    ierr=2
+    CALL report_join_failure(2,info,                                      &
+         [o%fieldpropagator_tag_s,o%fieldpropagator_tag_e],              &
+         [n%fieldpropagator_tag_s,n%fieldpropagator_tag_e],              &
+         ndim,ndim1,amat,bvec_lapack,ierr)
     RETURN
   ENDIF
 
@@ -179,7 +183,10 @@ USE development
   ! solution bvec_lapack -> $\ifour{\Fmat}{+}{}{o+1}{l,l}$
   CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
   IF(info.NE.0) THEN
-    ierr=3
+    CALL report_join_failure(3,info,                                      &
+         [o%fieldpropagator_tag_s,o%fieldpropagator_tag_e],              &
+         [n%fieldpropagator_tag_s,n%fieldpropagator_tag_e],              &
+         ndim,ndim1,amat,bvec_lapack,ierr)
     RETURN
   ENDIF
 
@@ -232,7 +239,10 @@ USE development
   ! solution bvec_lapack -> $\ifour{\Fmat}{+}{}{o+1}{r,l}$
   CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
   IF(info.NE.0) THEN
-    ierr=4
+    CALL report_join_failure(4,info,                                      &
+         [o%fieldpropagator_tag_s,o%fieldpropagator_tag_e],              &
+         [n%fieldpropagator_tag_s,n%fieldpropagator_tag_e],              &
+         ndim,ndim1,amat,bvec_lapack,ierr)
     RETURN
   ENDIF
 
@@ -281,11 +291,21 @@ USE development
   IF(isw_lorentz.EQ.1) THEN
     DO i=1,o%p%npass_l
       facnorm=SUM(o%p%amat_p_p(:,i))+SUM(o%p%amat_p_m(:,i))
+      CALL validate_join_normalization(facnorm,'p',i,                       &
+           [o%fieldpropagator_tag_s,o%fieldpropagator_tag_e],              &
+           [n%fieldpropagator_tag_s,n%fieldpropagator_tag_e],              &
+           o%p%npass_l,o%p%npass_r,ierr)
+      IF(ierr.NE.0) RETURN
       o%p%amat_p_p(:,i)=o%p%amat_p_p(:,i)/facnorm
       o%p%amat_p_m(:,i)=o%p%amat_p_m(:,i)/facnorm
     ENDDO
     DO i=1,o%p%npass_r
       facnorm=SUM(o%p%amat_m_p(:,i))+SUM(o%p%amat_m_m(:,i))
+      CALL validate_join_normalization(facnorm,'m',i,                       &
+           [o%fieldpropagator_tag_s,o%fieldpropagator_tag_e],              &
+           [n%fieldpropagator_tag_s,n%fieldpropagator_tag_e],              &
+           o%p%npass_l,o%p%npass_r,ierr)
+      IF(ierr.NE.0) RETURN
       o%p%amat_m_p(:,i)=o%p%amat_m_p(:,i)/facnorm
       o%p%amat_m_m(:,i)=o%p%amat_m_m(:,i)/facnorm
     ENDDO

@@ -5,6 +5,10 @@ MODULE rkstep_mod
   CHARACTER(len=3), DIMENSION(:), ALLOCATABLE       :: species_tags
   DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: Amm
   DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: asource
+  ! Velocity moments of the single-helicity misalignment drive
+  ! (column 1: weight x^-1, ExB piece / A1 channel;
+  !  column 2: weight x^2, vpar corrugation piece / A2 channel)
+  DOUBLE PRECISION, DIMENSION(:,:),     ALLOCATABLE :: asource_hel
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: anumm_a
   DOUBLE PRECISION, DIMENSION(:,:,:),   ALLOCATABLE, TARGET :: denmm_a
   DOUBLE PRECISION, DIMENSION(:,:,:,:), ALLOCATABLE, TARGET :: anumm_aa
