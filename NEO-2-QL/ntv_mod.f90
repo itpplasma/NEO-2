@@ -987,7 +987,7 @@ CONTAINS
   !> -------------
   !> - writes file to disk in current folder
   !> - (?)
-  SUBROUTINE write_multispec_output_a()
+  SUBROUTINE write_multispec_output_a(final_y)
 
     use nrtype
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
@@ -1006,6 +1006,8 @@ CONTAINS
     USE hdf5_tools
 
     ! ---------------------------------------------------------------!
+    ! input:
+    REAL(kind=dp), DIMENSION(:), OPTIONAL, INTENT(in) :: final_y
     ! local definitions:
     ! ---------------------------------------------------------------!
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: y
@@ -1147,9 +1149,9 @@ CONTAINS
     ! HDF5 file name
     CHARACTER(len=30) :: file_name
 
-    ! copy y-vector (see definition in rhs_kin.f90)
-    ALLOCATE(y(SIZE(y_ntv_mod,1)))
-    y = y_ntv_mod
+    ! Resolve the final geometry selected by the propagator.  The general
+    ! three-dimensional path does not initialize the legacy exchange array.
+    CALL resolve_ntv_output_geometry(y, final_y)
 
     ! R0, aiota, av_nabla_stor :
     rt0 = device%r0
