@@ -94,9 +94,9 @@ SUBROUTINE ripple_solver(                                 &
        apply_reconstructed_incoming_rows
   USE neo_magfie, ONLY : boozer_iota,boozer_curr_tor_hat, &
        boozer_curr_pol_hat,boozer_psi_pr_hat
-  USE ntv_mod, ONLY : isw_hel_drive,isw_m_phi_input,m_phi_input, &
+  USE ntv_mod, ONLY : isw_hel_drive,isw_m_phi_input,isw_qflux_NA,m_phi_input, &
        m_theta_hel,hel_brad_re,hel_brad_im,hel_phim_re,hel_phim_im, &
-       clight_hel => c,echarge_hel => e
+       qflux_symm_allspec,clight_hel => c,echarge_hel => e
   USE partpa_mod, ONLY : bmod0
   USE qflux_profile_mod, ONLY : qflux_contributions_from_flux_vector, &
        qflux_point_components_from_flux_vector, record_qflux_interface_traces
@@ -3046,6 +3046,14 @@ DO ispecp=0,num_spec-1
 ENDDO
 qflux_allspec=qflux_allspec_tmp
 IF(ALLOCATED(qflux_allspec_tmp)) DEALLOCATE(qflux_allspec_tmp)
+! Publish the completed multispecies matrix for the native output routine.
+! The Arnoldi solver performs the same handoff before returning; the
+! preconditioned solver historically only wrote the diagnostic text file.
+IF(isw_qflux_NA.EQ.0) THEN
+  IF(ALLOCATED(qflux_symm_allspec)) DEALLOCATE(qflux_symm_allspec)
+  ALLOCATE(qflux_symm_allspec(1:3,1:3,0:num_spec-1,0:num_spec-1))
+  qflux_symm_allspec=qflux_allspec
+END IF
 IF(mpro%getrank() .EQ. 0) THEN
   PRINT *,'qflux(1,1,:,:):'
   PRINT *,qflux_allspec(1,1,:,:)
