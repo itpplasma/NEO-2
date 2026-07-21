@@ -10,7 +10,7 @@ program test_qflux_interface_diagnostic
     integer :: block_base(2), block_npassing(2), rows
     real(real64) :: eta, eta_grid(0:1), flux_kernel, flux_row(8), phi
     real(real64) :: phi_grid(2), solution(8, 3), source_rhs, rhs(8, 3)
-    real(real64) :: step_minus(2), step_plus(2), value
+    real(real64) :: projected, step_minus(2), step_plus(2), value
     logical :: found_counter_record
 
     block_base = [0, 4]
@@ -34,14 +34,15 @@ program test_qflux_interface_diagnostic
     read(iunit, '(a)', iostat=status) header
     if (status /= 0 .or. trim(header) /= &
         'sequence,tag,side,direction,laguerre,force,eta_index,eta,phi,' // &
-        'flux_kernel,source_rhs,source_solution') &
+        'flux_kernel,source_rhs,source_solution,' // &
+        'source_solution_orthogonal') &
         error stop 'FAIL: interface trace header is wrong'
 
     rows = 0
     found_counter_record = .false.
     do
         read(iunit, *, iostat=status) sequence, tag, side, direction, laguerre, &
-            force, band, eta, phi, flux_kernel, source_rhs, value
+            force, band, eta, phi, flux_kernel, source_rhs, value, projected
         if (status < 0) exit
         if (status > 0) error stop 'FAIL: interface trace row cannot be read'
         rows = rows + 1
@@ -54,7 +55,10 @@ program test_qflux_interface_diagnostic
                 .or. abs(phi - 2.0_real64) > 1.0e-15_real64 &
                 .or. abs(flux_kernel - 0.7_real64) > 1.0e-15_real64 &
                 .or. abs(source_rhs - rhs(7, 3)) > 1.0e-15_real64 &
-                .or. abs(value - solution(7, 3)) > 1.0e-15_real64) &
+                .or. abs(value - solution(7, 3)) > 1.0e-15_real64 &
+                .or. abs(projected - (solution(7, 3) &
+                - sum(solution(5:8, 3))/4.0_real64)) &
+                > 1.0e-15_real64) &
                 error stop 'FAIL: counter-passing trace mapping is wrong'
         end if
     end do
