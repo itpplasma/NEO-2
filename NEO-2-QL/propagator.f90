@@ -1589,9 +1589,13 @@ CONTAINS
     !! Modification by Andreas F. Martitsch (27.07.2015)
     ! Switch for ripple_solver version
     USE ntv_mod, ONLY : isw_ripple_solver
+    USE mpi, ONLY : MPI_ALLREDUCE, MPI_COMM_WORLD, MPI_INTEGER, MPI_MAX, &
+         MPI_SUCCESS
     !! End Modification by Andreas F. Martitsch (27.07.2015)
 
     INTEGER :: ierr
+    INTEGER :: mpi_ierr
+    INTEGER, DIMENSION(2) :: local_status, global_status
 
     INTERFACE ripple_solver
        SUBROUTINE ripple_solver(                                 &
@@ -1671,6 +1675,26 @@ CONTAINS
        STOP "Undefined version of ripple_solver selected (isw_ripple_solver)!"
     ENDIF
     !! End Modification by Andreas F. Martitsch (27.07.2015)
+
+    ! In a multispecies run each MPI rank advances one species.  A crossing can
+    ! request phi refinement on only one species, but every rank must rebuild
+    ! the same propagator grid before later fixed-size collectives.  Promote a
+    ! recoverable or fatal status to all ranks, with fatal taking precedence.
+    local_status = 0
+    IF (ierr .EQ. 3) local_status(1) = 1
+    IF (ierr .NE. 0 .AND. ierr .NE. 3) local_status(2) = 1
+    CALL MPI_ALLREDUCE(local_status,global_status,SIZE(local_status), &
+         MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,mpi_ierr)
+    IF (mpi_ierr .NE. MPI_SUCCESS) THEN
+       ierr = 1
+       RETURN
+    ELSEIF (global_status(2) .NE. 0) THEN
+       ierr = 1
+    ELSEIF (global_status(1) .NE. 0) THEN
+       ierr = 3
+    ELSE
+       ierr = 0
+    END IF
 
     ! A recoverable crossing/refinement request (ierr=3) returns before the
     ! ripple solver allocates the propagator matrices.  The caller handles that
