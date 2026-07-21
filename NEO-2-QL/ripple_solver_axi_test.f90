@@ -86,6 +86,8 @@ SUBROUTINE ripple_solver(                                 &
                             nz_regper,irow_regper,icol_regper,amat_regper,     &
                             deallocate_ntv_eqmat
   use mpiprovider_module, only : mpro
+  USE mpi, ONLY : MPI_ALLREDUCE, MPI_COMM_WORLD, MPI_INTEGER, MPI_MAX, &
+       MPI_SUCCESS
   USE collop
   USE helical_source_mod, ONLY : add_helical_source, &
        apply_reconstructed_incoming_rows
@@ -276,6 +278,7 @@ SUBROUTINE ripple_solver(                                 &
   !! Modification by Andreas F. Martitsch (28.07.2015)
   !  multi-species part
   INTEGER :: ispec, ispecp, ispecpp ! species indices
+  INTEGER :: refine_local,refine_global,mpi_ierr
   INTEGER :: crossing_ncomp, crossing_nreal
   INTEGER :: drive_spec
   INTEGER :: isw_regper, ipart1
@@ -800,7 +803,14 @@ PRINT *,'right boundary layer ignored'
   geodcu_mfl=real(crossing_complex(:,1),kind=dp)
   deallocate(crossing_real,crossing_complex,unused_dbcovar_mfl)
 
-  if(maxval(phi_divide).gt.1) then
+  refine_local=MERGE(1,0,maxval(phi_divide).gt.1)
+  CALL MPI_ALLREDUCE(refine_local,refine_global,1,MPI_INTEGER,MPI_MAX, &
+       MPI_COMM_WORLD,mpi_ierr)
+  IF (mpi_ierr .NE. MPI_SUCCESS) THEN
+    ierr=1
+    RETURN
+  END IF
+  if(refine_global.ne.0) then
     ierr=3
     write(*,*) 'ERROR: crossing geometry requires phi refinement.'
     return
