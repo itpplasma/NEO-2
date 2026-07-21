@@ -6,6 +6,7 @@ set(NEO2_QL_SRC_FILES
   helical_response_mod.f90
   qflux_profile_mod.f90
   phi_crossing_alignment_mod.f90
+  multispecies_iteration_sync_mod.f90
   propagator.f90
   flint.f90
   ripple_solver_axi_test.f90

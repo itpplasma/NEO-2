@@ -86,6 +86,8 @@ subroutine ripple_solver_ArnoldiO2( &
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
     use mpiprovider_module, only: mpro
+    use mpi, only: MPI_ALLREDUCE, MPI_COMM_WORLD, MPI_INTEGER, MPI_MAX, &
+                   MPI_SUCCESS
     ! Load x1mm and x2mm (=energy dependence of drift frequencies)
     ! from collision operator module. This step allows for
     ! support of different basis functions and replaces routine "lagxmm".
@@ -277,6 +279,7 @@ subroutine ripple_solver_ArnoldiO2( &
   !! Modification by Andreas F. Martitsch (28.07.2015)
     !  multi-species part
     integer :: ispec, ispecp, ispecpp ! species indices
+    integer :: refine_local, refine_global, mpi_ierr
     integer :: drive_spec
     complex(dp), dimension(:, :, :), allocatable :: source_vector_all
     real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec
@@ -825,7 +828,14 @@ subroutine ripple_solver_ArnoldiO2( &
     geodcu_mfl = arr_comp(:, 1)
     deallocate (arr_real, arr_comp)
 
-    if (maxval(phi_divide) > 1) then
+    refine_local = merge(1, 0, maxval(phi_divide) > 1)
+    call MPI_ALLREDUCE(refine_local, refine_global, 1, MPI_INTEGER, MPI_MAX, &
+                       MPI_COMM_WORLD, mpi_ierr)
+    if (mpi_ierr /= MPI_SUCCESS) then
+        ierr = 1
+        return
+    end if
+    if (refine_global /= 0) then
         ierr = 3
         write (*, *) 'ERROR: crossing geometry requires phi refinement.'
         return

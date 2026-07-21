@@ -86,6 +86,9 @@ SUBROUTINE ripple_solver(                                 &
                             nz_regper,irow_regper,icol_regper,amat_regper,     &
                             deallocate_ntv_eqmat
   use mpiprovider_module, only : mpro
+  USE multispecies_iteration_sync_mod, ONLY : gather_iteration_convergence
+  USE mpi, ONLY : MPI_ALLREDUCE, MPI_COMM_WORLD, MPI_INTEGER, MPI_MAX, &
+       MPI_SUCCESS
   USE collop
   USE helical_source_mod, ONLY : add_helical_source, &
        apply_reconstructed_incoming_rows
@@ -276,6 +279,7 @@ SUBROUTINE ripple_solver(                                 &
   !! Modification by Andreas F. Martitsch (28.07.2015)
   !  multi-species part
   INTEGER :: ispec, ispecp, ispecpp ! species indices
+  INTEGER :: refine_local,refine_global,mpi_ierr
   INTEGER :: crossing_ncomp, crossing_nreal
   INTEGER :: drive_spec
   INTEGER :: isw_regper, ipart1
@@ -286,6 +290,7 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond1
   DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
   INTEGER :: prop_fileformat=0
+  LOGICAL :: iteration_converged
   !! End Modification by Andreas F. Martitsch (28.07.2015)
 
   !***************************
@@ -800,7 +805,14 @@ PRINT *,'right boundary layer ignored'
   geodcu_mfl=real(crossing_complex(:,1),kind=dp)
   deallocate(crossing_real,crossing_complex,unused_dbcovar_mfl)
 
-  if(maxval(phi_divide).gt.1) then
+  refine_local=MERGE(1,0,maxval(phi_divide).gt.1)
+  CALL MPI_ALLREDUCE(refine_local,refine_global,1,MPI_INTEGER,MPI_MAX, &
+       MPI_COMM_WORLD,mpi_ierr)
+  IF (mpi_ierr .NE. MPI_SUCCESS) THEN
+    ierr=1
+    RETURN
+  END IF
+  if(refine_global.ne.0) then
     ierr=3
     write(*,*) 'ERROR: crossing geometry requires phi refinement.'
     return
@@ -2947,7 +2959,8 @@ ENDDO
 IF (isw_hel_drive.NE.0 .AND. num_spec.EQ.1 .AND. mpro%getrank().EQ.0) THEN
    IF (iplot.EQ.1) THEN
       CALL record_qflux_interface_traces(fieldpropagator%tag, &
-           phi_mfl(ibeg:iend),eta,ind_start(ibeg:iend),npl(ibeg:iend),lag, &
+           phi_mfl(ibeg:iend),bhat_mfl(ibeg:iend),eta, &
+           ind_start(ibeg:iend),npl(ibeg:iend),lag, &
            cp_step_p,cp_step_m,flux_vector(2,:),source_vector, &
            source_vector_all(:,:,0),cp_trace_status)
       IF (cp_trace_status.NE.0) &
@@ -3125,10 +3138,12 @@ time3 = time3 + (time5-time4)
 
           bvec_sp=bvec_lor+bvec_iter
 
-          if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
-             sum(abs(bvec_prev))*epserr_iter) then
-            exit
-          endif
+          ! integral_part uses a world allgather; keep every species on the
+          ! same iteration count before the next propagator collective.
+          CALL gather_iteration_convergence( &
+               SUM(ABS(bvec_sp-bvec_prev)),SUM(ABS(bvec_prev))*epserr_iter, &
+               ispec,break_cond1,break_cond2,iteration_converged)
+          IF(iteration_converged) EXIT
 
         enddo
 
@@ -3181,10 +3196,10 @@ time3 = time3 + (time5-time4)
 
           bvec_sp=bvec_lor+bvec_iter
 
-          if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
-             sum(abs(bvec_prev))*epserr_iter) then
-             exit
-          endif
+          CALL gather_iteration_convergence( &
+               SUM(ABS(bvec_sp-bvec_prev)),SUM(ABS(bvec_prev))*epserr_iter, &
+               ispec,break_cond1,break_cond2,iteration_converged)
+          IF(iteration_converged) EXIT
 
         enddo
 

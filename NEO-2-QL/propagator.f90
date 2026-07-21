@@ -1672,6 +1672,12 @@ CONTAINS
     ENDIF
     !! End Modification by Andreas F. Martitsch (27.07.2015)
 
+    ! A recoverable crossing/refinement request (ierr=3) returns before the
+    ! ripple solver allocates the propagator matrices.  The caller handles that
+    ! status by refining phi and retrying; do not dereference the deliberately
+    ! absent matrices on this error path.
+    IF (ierr .NE. 0) RETURN
+
     prop_c%p%npass_l = SIZE(prop_c%p%amat_p_m,1)/(prop_c%p%nvelocity+1)
     prop_c%p%npass_r = SIZE(prop_c%p%amat_m_p,1)/(prop_c%p%nvelocity+1)
 

@@ -234,6 +234,23 @@ set_tests_properties(ripple_solver_route_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_multispecies_iteration_sync
+    test_multispecies_iteration_sync.f90)
+target_link_libraries(test_multispecies_iteration_sync neo2_ql)
+
+add_test(NAME multispecies_iteration_sync_test
+         COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2
+                 ${MPIEXEC_PREFLAGS}
+                 $<TARGET_FILE:test_multispecies_iteration_sync>
+                 ${MPIEXEC_POSTFLAGS})
+
+set_tests_properties(multispecies_iteration_sync_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    PROCESSORS 2
+    TIMEOUT 30
+)
+
 add_executable(test_helical_source test_helical_source.f90)
 target_link_libraries(test_helical_source neo2_ql)
 
