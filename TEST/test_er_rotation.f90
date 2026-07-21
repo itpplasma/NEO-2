@@ -1,7 +1,7 @@
 program test_er_rotation
    use nrtype, only: dp
    use er_rotation_mod, only: Om_tE_to_MtOvR_spec, MtOvR_spec_to_Om_tE, &
-                              check_Om_tE_consistency
+                              Om_tE_to_Er, check_Om_tE_consistency
    implicit none
 
    integer :: test_status
@@ -14,6 +14,7 @@ program test_er_rotation
    call test_consistency_check(test_status)
    call test_mode1_to_mode2_roundtrip(test_status)
    call test_half_omte_gives_half_mach(test_status)
+   call test_prescribed_rotation_to_Er(test_status)
 
    if (test_status == 0) then
       print *, "All tests passed!"
@@ -238,5 +239,34 @@ contains
 
       print *, "PASS: half Om_tE gives half MtOvR (linear scaling)"
    end subroutine test_half_omte_gives_half_mach
+
+   subroutine test_prescribed_rotation_to_Er(status)
+      integer, intent(inout) :: status
+      real(dp), parameter :: c_light = 2.9979e10_dp
+      real(dp), parameter :: Om_tE = -4.0e3_dp
+      real(dp), parameter :: aiota = 0.99_dp
+      real(dp), parameter :: sqrtg_bctrvr_phi = 2.5e4_dp
+      real(dp) :: Er, recovered_Om_tE
+
+      print *, "Testing prescribed Om_tE to Er conversion..."
+
+      Er = Om_tE_to_Er(Om_tE, aiota, sqrtg_bctrvr_phi, c_light)
+      recovered_Om_tE = c_light * Er / (aiota * sqrtg_bctrvr_phi)
+
+      if (abs(recovered_Om_tE - Om_tE) > epsilon(1.0_dp) * abs(Om_tE)) then
+         print *, "FAIL: prescribed Om_tE to Er conversion"
+         print *, "  Input Om_tE:", Om_tE
+         print *, "  Recovered Om_tE:", recovered_Om_tE
+         status = status + 1
+         return
+      end if
+      if (Er >= 0.0_dp) then
+         print *, "FAIL: Om_tE to Er conversion lost the input sign"
+         status = status + 1
+         return
+      end if
+
+      print *, "PASS: prescribed Om_tE to Er conversion"
+   end subroutine test_prescribed_rotation_to_Er
 
 end program test_er_rotation

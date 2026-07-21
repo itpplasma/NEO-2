@@ -3,7 +3,8 @@ module er_rotation_mod
    implicit none
    private
 
-   public :: Om_tE_to_MtOvR_spec, MtOvR_spec_to_Om_tE, check_Om_tE_consistency
+   public :: Om_tE_to_MtOvR_spec, MtOvR_spec_to_Om_tE, &
+             Om_tE_to_Er, check_Om_tE_consistency
 
 contains
 
@@ -28,6 +29,16 @@ contains
       end if
       Om_tE = MtOvR_spec(1) * sqrt(2.0_dp * T_spec(1) / m_spec(1))
    end function MtOvR_spec_to_Om_tE
+
+   pure function Om_tE_to_Er(Om_tE, aiota, sqrtg_bctrvr_phi, c_light) result(Er)
+      real(dp), intent(in) :: Om_tE
+      real(dp), intent(in) :: aiota
+      real(dp), intent(in) :: sqrtg_bctrvr_phi
+      real(dp), intent(in) :: c_light
+      real(dp) :: Er
+
+      Er = Om_tE * aiota * sqrtg_bctrvr_phi / c_light
+   end function Om_tE_to_Er
 
    pure function check_Om_tE_consistency(MtOvR_spec, T_spec, m_spec, tol) &
       result(is_consistent)

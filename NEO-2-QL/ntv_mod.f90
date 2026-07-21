@@ -990,7 +990,7 @@ CONTAINS
   SUBROUTINE write_multispec_output_a(final_y)
 
     use nrtype
-    use er_rotation_mod, only: Om_tE_to_MtOvR_spec
+    use er_rotation_mod, only: Om_tE_to_MtOvR_spec, Om_tE_to_Er
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : device, surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -1626,6 +1626,7 @@ CONTAINS
        IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
        ALLOCATE(MtOvR_spec(0:num_spec-1))
        MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
+       Er = Om_tE_to_Er(Om_tE, aiota_loc, sqrtg_bctrvr_phi, c)
     END IF
 
     ! initialize HDF5 file
@@ -1669,6 +1670,14 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'm_spec', m_spec, LBOUND(m_spec), UBOUND(m_spec), comment='mass of the species', unit='g')
     CALL h5_add(h5id_multispec, 'n_spec', n_spec, LBOUND(n_spec), UBOUND(n_spec), comment='density of the species', unit='1/cm^3')
     CALL h5_add(h5id_multispec, 'T_spec', T_spec, LBOUND(T_spec), UBOUND(T_spec), comment='temperature of the species', unit='erg')
+    CALL h5_add(h5id_multispec, 'dn_spec_ov_ds', dn_spec_ov_ds, &
+         LBOUND(dn_spec_ov_ds), UBOUND(dn_spec_ov_ds), &
+         comment='radial density derivative with respect to boozer_s', &
+         unit='1/cm^3')
+    CALL h5_add(h5id_multispec, 'dT_spec_ov_ds', dT_spec_ov_ds, &
+         LBOUND(dT_spec_ov_ds), UBOUND(dT_spec_ov_ds), &
+         comment='radial temperature derivative with respect to boozer_s', &
+         unit='erg')
     CALL h5_add(h5id_multispec, 'collpar_spec', collpar_spec, &
          LBOUND(collpar_spec), UBOUND(collpar_spec))
     CALL h5_add(h5id_multispec, 'nu_star_spec', nu_star_spec, &
@@ -1779,10 +1788,14 @@ CONTAINS
             LBOUND(MtOvR_spec), UBOUND(MtOvR_spec))
     END IF
 
-    ! add radial electric field and derived quantities (neoclassical only)
-    IF (isw_calc_Er .EQ. 1) THEN
+    ! add the radial electric field for computed and prescribed rotation
+    IF (isw_calc_Er .GE. 1) THEN
+       CALL h5_add(h5id_multispec, 'Er', Er, &
+            comment='radial electric field', unit='statV/cm')
+    END IF
 
-       CALL h5_add(h5id_multispec, 'Er', Er)
+    ! add derived quantities from the neoclassical electric-field solve
+    IF (isw_calc_Er .EQ. 1) THEN
 
        CALL h5_add(h5id_multispec, 'VthtB_spec', VthtB_spec, &
             LBOUND(VthtB_spec), UBOUND(VthtB_spec))
