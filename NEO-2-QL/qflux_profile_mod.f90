@@ -120,6 +120,7 @@ contains
         character(len=5) :: side
         integer :: band, base, column, endpoint, force, iunit, m, nband, point
         integer :: status
+        real(dp) :: constant_coordinate(3), source_solution_orthogonal
 
         ierr = 0
         if (.not. interface_trace_initialized) call initialize_interface_trace(ierr)
@@ -169,26 +170,50 @@ contains
                 side = 'right'
             end if
             nband = block_npassing(point) + 1
+            base = block_base(point)
+            ! The Lorentz collision operator's discrete right-null state is
+            ! one constant shared by the co- and counter-passing lag=0 rows.
+            ! Export the Euclidean-orthogonal component as a diagnostic; the
+            ! raw solution and all solver inputs remain unchanged.
+            do force = 1, 3
+                constant_coordinate(force) = sum( &
+                    source_solution(base + 1:base + nband, force))
+                constant_coordinate(force) = constant_coordinate(force) + sum( &
+                    source_solution(base + nband + 1:base + 2*nband, force))
+            end do
+            constant_coordinate = constant_coordinate/real(2*nband, dp)
             do m = 0, lag
                 base = block_base(point) + 2*m*nband
                 do band = 1, nband
                     column = base + band
                     do force = 1, 3
+                        source_solution_orthogonal = &
+                            source_solution(column, force)
+                        if (m == 0) source_solution_orthogonal = &
+                            source_solution_orthogonal - &
+                            constant_coordinate(force)
                         call write_interface_trace(iunit, tag, side, 'p', m, &
                             force, band - 1, eta_grid(band - 1), phi(point), &
                             flux_row(column)/step_plus(point), &
                             source_rhs(column, force), &
-                            source_solution(column, force), status)
+                            source_solution(column, force), &
+                            source_solution_orthogonal, status)
                         if (status /= 0) exit
                     end do
                     if (status /= 0) exit
                     column = base + 2*nband - band + 1
                     do force = 1, 3
+                        source_solution_orthogonal = &
+                            source_solution(column, force)
+                        if (m == 0) source_solution_orthogonal = &
+                            source_solution_orthogonal - &
+                            constant_coordinate(force)
                         call write_interface_trace(iunit, tag, side, 'm', m, &
                             force, band - 1, eta_grid(band - 1), phi(point), &
                             flux_row(column)/step_minus(point), &
                             source_rhs(column, force), &
-                            source_solution(column, force), status)
+                            source_solution(column, force), &
+                            source_solution_orthogonal, status)
                         if (status /= 0) exit
                     end do
                     if (status /= 0) exit
@@ -203,18 +228,19 @@ contains
 
     subroutine write_interface_trace(iunit, tag, side, direction, laguerre, &
             force, eta_index, eta_value, phi, flux_kernel, source_rhs, &
-            source_solution, status)
+            source_solution, source_solution_orthogonal, status)
         integer, intent(in) :: iunit, tag, laguerre, force, eta_index
         character(len=*), intent(in) :: side, direction
         real(dp), intent(in) :: eta_value, phi, flux_kernel, source_rhs
-        real(dp), intent(in) :: source_solution
+        real(dp), intent(in) :: source_solution, source_solution_orthogonal
         integer, intent(out) :: status
 
         interface_trace_sequence = interface_trace_sequence + 1
-        write(iunit, '(2(i0,","),a,",",a,",",3(i0,","),4(es25.16e3,","),' // &
+        write(iunit, '(2(i0,","),a,",",a,",",3(i0,","),5(es25.16e3,","),' // &
             'es25.16e3)', iostat=status) interface_trace_sequence, tag, &
             trim(side), direction, laguerre, force, eta_index, eta_value, phi, &
-            flux_kernel, source_rhs, source_solution
+            flux_kernel, source_rhs, source_solution, &
+            source_solution_orthogonal
     end subroutine write_interface_trace
 
     subroutine initialize_interface_trace(ierr)
@@ -236,7 +262,8 @@ contains
         if (status == 0) then
             write(iunit, '(a)', iostat=status) &
                 'sequence,tag,side,direction,laguerre,force,eta_index,eta,phi,' // &
-                'flux_kernel,source_rhs,source_solution'
+                'flux_kernel,source_rhs,source_solution,' // &
+                'source_solution_orthogonal'
             close(iunit, iostat=ierr)
         end if
         if (status /= 0) ierr = status
