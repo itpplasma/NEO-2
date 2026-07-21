@@ -6,16 +6,19 @@ program test_qflux_interface_diagnostic
     character(len=512) :: filename, header
     character(len=5) :: side
     character(len=1) :: direction
-    integer :: band, force, i, ierr, iunit, laguerre, sequence, status, tag
+    integer :: band, endpoint, force, i, ierr, iunit, laguerre, sequence
+    integer :: status, tag
     integer :: block_base(2), block_npassing(2), rows
-    real(real64) :: eta, eta_grid(0:1), flux_kernel, flux_row(8), phi
+    real(real64) :: bhat(2), eta, eta_grid(0:1), flux_kernel, flux_row(8), phi
     real(real64) :: phi_grid(2), solution(8, 3), source_rhs, rhs(8, 3)
+    real(real64) :: projected_sum(2, 3)
     real(real64) :: projected, step_minus(2), step_plus(2), value
     logical :: found_counter_record
 
     block_base = [0, 4]
     block_npassing = 1
-    eta_grid = [0.25_real64, 0.75_real64]
+    bhat = [1.0_real64, 0.8_real64]
+    eta_grid = [0.0_real64, 0.75_real64]
     phi_grid = [1.0_real64, 2.0_real64]
     step_plus = [2.0_real64, 4.0_real64]
     step_minus = [5.0_real64, 10.0_real64]
@@ -24,7 +27,7 @@ program test_qflux_interface_diagnostic
         shape(rhs))
     solution = rhs + 1000.0_real64
 
-    call record_qflux_interface_traces(12, phi_grid, eta_grid, block_base, &
+    call record_qflux_interface_traces(12, phi_grid, bhat, eta_grid, block_base, &
         block_npassing, 0, step_plus, step_minus, flux_row, rhs, solution, ierr)
     if (ierr /= 0) error stop 'FAIL: interface trace record returned an error'
     call get_environment_variable('NEO2_INTERFACE_TRACE_FILE', filename)
@@ -40,6 +43,7 @@ program test_qflux_interface_diagnostic
 
     rows = 0
     found_counter_record = .false.
+    projected_sum = 0.0_real64
     do
         read(iunit, *, iostat=status) sequence, tag, side, direction, laguerre, &
             force, band, eta, phi, flux_kernel, source_rhs, value, projected
@@ -48,6 +52,14 @@ program test_qflux_interface_diagnostic
         rows = rows + 1
         if (sequence /= rows .or. tag /= 12 .or. laguerre /= 0) &
             error stop 'FAIL: interface trace identity is wrong'
+        if (trim(side) == 'left') then
+            endpoint = 1
+        else if (trim(side) == 'right') then
+            endpoint = 2
+        else
+            error stop 'FAIL: interface trace side is wrong'
+        end if
+        projected_sum(endpoint, force) = projected_sum(endpoint, force) + projected
         if (trim(side) == 'right' .and. direction == 'm' .and. band == 1 &
             .and. force == 3) then
             found_counter_record = .true.
@@ -57,13 +69,15 @@ program test_qflux_interface_diagnostic
                 .or. abs(source_rhs - rhs(7, 3)) > 1.0e-15_real64 &
                 .or. abs(value - solution(7, 3)) > 1.0e-15_real64 &
                 .or. abs(projected - (solution(7, 3) &
-                - sum(solution(5:8, 3))/4.0_real64)) &
+                - 0.5_real64*sum(solution(5:8, 3))/2.5_real64)) &
                 > 1.0e-15_real64) &
                 error stop 'FAIL: counter-passing trace mapping is wrong'
         end if
     end do
     close(iunit)
     if (rows /= 24) error stop 'FAIL: interface trace row count is wrong'
+    if (maxval(abs(projected_sum)) > 1.0e-10_real64) &
+        error stop 'FAIL: projected trace retains the finite-volume null mass'
     if (.not. found_counter_record) &
         error stop 'FAIL: expected counter-passing trace record is absent'
 

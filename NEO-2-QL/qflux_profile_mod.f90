@@ -109,23 +109,27 @@ contains
         end do
     end subroutine qflux_point_components_from_flux_vector
 
-    subroutine record_qflux_interface_traces(tag, phi, eta_grid, block_base, &
+    subroutine record_qflux_interface_traces(tag, phi, bhat, eta_grid, block_base, &
             block_npassing, lag, step_plus, step_minus, flux_row, source_rhs, &
             source_solution, ierr)
         integer, intent(in) :: tag, block_base(:), block_npassing(:), lag
-        real(dp), intent(in) :: phi(:), eta_grid(0:), step_plus(:), step_minus(:)
+        real(dp), intent(in) :: phi(:), bhat(:), eta_grid(0:)
+        real(dp), intent(in) :: step_plus(:), step_minus(:)
         real(dp), intent(in) :: flux_row(:), source_rhs(:, :)
         real(dp), intent(in) :: source_solution(:, :)
         integer, intent(out) :: ierr
         character(len=5) :: side
         integer :: band, base, column, endpoint, force, iunit, m, nband, point
         integer :: status
-        real(dp) :: constant_coordinate(3), source_solution_orthogonal
+        real(dp), allocatable :: null_state(:)
+        real(dp) :: constant_coordinate(3), null_measure
+        real(dp) :: source_solution_orthogonal
 
         ierr = 0
         if (.not. interface_trace_initialized) call initialize_interface_trace(ierr)
         if (ierr /= 0 .or. .not. allocated(interface_trace_filename)) return
         if (size(phi) /= size(block_base) &
+            .or. size(bhat) /= size(block_base) &
             .or. size(block_npassing) /= size(block_base) &
             .or. size(step_plus) /= size(block_base) &
             .or. size(step_minus) /= size(block_base) &
@@ -139,12 +143,14 @@ contains
         if (size(block_base) < 2 &
             .or. maxval(block_npassing) >= size(eta_grid) &
             .or. any(block_npassing < 0) &
+            .or. any(bhat <= 0.0_dp) &
             .or. any(step_plus == 0.0_dp) &
             .or. any(step_minus == 0.0_dp)) then
             ierr = 1
             return
         end if
         if (.not. all(ieee_is_finite(phi)) &
+            .or. .not. all(ieee_is_finite(bhat)) &
             .or. .not. all(ieee_is_finite(eta_grid)) &
             .or. .not. all(ieee_is_finite(step_plus)) &
             .or. .not. all(ieee_is_finite(step_minus)) &
@@ -171,17 +177,27 @@ contains
             end if
             nband = block_npassing(point) + 1
             base = block_base(point)
-            ! The Lorentz collision operator's discrete right-null state is
-            ! one constant shared by the co- and counter-passing lag=0 rows.
-            ! Export the Euclidean-orthogonal component as a diagnostic; the
-            ! raw solution and all solver inputs remain unchanged.
+            ! In the finite-volume representation a constant distribution is
+            ! stored as the pitch-bin width vector, not as a vector of ones.
+            ! Remove its mass coordinate, shared by the co- and counter-
+            ! passing lag=0 rows.  This is the same left/right null pairing
+            ! used by the Lorentz solvability projection in join_ends.
+            allocate(null_state(nband))
+            if (nband > 1) null_state(1:nband - 1) = &
+                eta_grid(1:nband - 1) - eta_grid(0:nband - 2)
+            null_state(nband) = 1.0_dp/bhat(point) - eta_grid(nband - 1)
+            if (any(null_state <= 0.0_dp)) then
+                status = 1
+                exit
+            end if
+            null_measure = 2.0_dp*sum(null_state)
             do force = 1, 3
                 constant_coordinate(force) = sum( &
                     source_solution(base + 1:base + nband, force))
                 constant_coordinate(force) = constant_coordinate(force) + sum( &
                     source_solution(base + nband + 1:base + 2*nband, force))
             end do
-            constant_coordinate = constant_coordinate/real(2*nband, dp)
+            constant_coordinate = constant_coordinate/null_measure
             do m = 0, lag
                 base = block_base(point) + 2*m*nband
                 do band = 1, nband
@@ -191,7 +207,7 @@ contains
                             source_solution(column, force)
                         if (m == 0) source_solution_orthogonal = &
                             source_solution_orthogonal - &
-                            constant_coordinate(force)
+                            null_state(band)*constant_coordinate(force)
                         call write_interface_trace(iunit, tag, side, 'p', m, &
                             force, band - 1, eta_grid(band - 1), phi(point), &
                             flux_row(column)/step_plus(point), &
@@ -207,7 +223,7 @@ contains
                             source_solution(column, force)
                         if (m == 0) source_solution_orthogonal = &
                             source_solution_orthogonal - &
-                            constant_coordinate(force)
+                            null_state(band)*constant_coordinate(force)
                         call write_interface_trace(iunit, tag, side, 'm', m, &
                             force, band - 1, eta_grid(band - 1), phi(point), &
                             flux_row(column)/step_minus(point), &
@@ -220,6 +236,7 @@ contains
                 end do
                 if (status /= 0) exit
             end do
+            deallocate(null_state)
             if (status /= 0) exit
         end do
         close(iunit, iostat=ierr)

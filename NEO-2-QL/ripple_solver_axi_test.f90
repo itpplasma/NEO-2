@@ -2947,7 +2947,8 @@ ENDDO
 IF (isw_hel_drive.NE.0 .AND. num_spec.EQ.1 .AND. mpro%getrank().EQ.0) THEN
    IF (iplot.EQ.1) THEN
       CALL record_qflux_interface_traces(fieldpropagator%tag, &
-           phi_mfl(ibeg:iend),eta,ind_start(ibeg:iend),npl(ibeg:iend),lag, &
+           phi_mfl(ibeg:iend),bhat_mfl(ibeg:iend),eta, &
+           ind_start(ibeg:iend),npl(ibeg:iend),lag, &
            cp_step_p,cp_step_m,flux_vector(2,:),source_vector, &
            source_vector_all(:,:,0),cp_trace_status)
       IF (cp_trace_status.NE.0) &
