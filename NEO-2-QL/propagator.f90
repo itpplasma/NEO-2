@@ -953,7 +953,7 @@ CONTAINS
       !! Extra output for NTV computations
       if (mpro%isMaster()) then
         IF(lsw_multispecies) THEN ! multi-species output
-          CALL write_multispec_output()
+          CALL write_multispec_output(y)
         ELSE ! single-species output
           CALL write_ntv_output(prop_a%p%qflux, y)
         END IF
