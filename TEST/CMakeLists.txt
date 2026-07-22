@@ -61,3 +61,10 @@ set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     TIMEOUT 30
 )
+
+# Native coordinate/field probe used by cross-code manufactured tests.  It is
+# deliberately not a CTest target: the caller supplies a neo.in and magnetic
+# input in the working directory, then compares the emitted native quantities
+# with an independent Cartesian oracle.
+add_executable(neo2_coordinate_probe neo2_coordinate_probe.f90)
+target_link_libraries(neo2_coordinate_probe neo2_ql)

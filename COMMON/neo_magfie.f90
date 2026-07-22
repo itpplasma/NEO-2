@@ -1763,7 +1763,9 @@ CONTAINS
   !>   quantity not yet implemented.
   !> R: float, radius in cgs units.
   !> Z: float, vertical position in cgs units.
-  SUBROUTINE neo_magfie_c( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl, bcovar_s_hat_der, R, Z )
+  !> Phi: optional physical cylindrical azimuth in radians.
+  !> B_cart: optional physical Cartesian magnetic field, in bmod units.
+  SUBROUTINE neo_magfie_c( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl, bcovar_s_hat_der, R, Z, Phi, B_cart )
     ! input / output
     REAL(dp), DIMENSION(:),       INTENT(in)  :: x
     REAL(dp),                     INTENT(out) :: bmod
@@ -1775,11 +1777,33 @@ CONTAINS
     REAL(dp), DIMENSION(SIZE(x)), INTENT(out) :: bcovar_s_hat_der
     REAL(dp),                     INTENT(out) :: R
     REAL(dp),                     INTENT(out) :: Z
+    REAL(dp), OPTIONAL,           INTENT(out) :: Phi
+    REAL(dp), OPTIONAL, DIMENSION(3), INTENT(out) :: B_cart
+    REAL(dp), DIMENSION(3) :: e_s, e_tb, e_pb
 
     CALL neo_magfie_b( x, bmod, sqrtg, bder, hcovar, hctrvr, hcurl, bcovar_s_hat_der )
 
     R = r_val * 1.d2 ! conversion to cgs-units
     Z = z_val * 1.d2 ! conversion to cgs-units
+    IF (PRESENT(Phi)) Phi = p_val
+    IF (PRESENT(B_cart)) THEN
+      ! Coordinate basis in cm for x=(s,phi_B,theta_B).  The executable-native
+      ! hctrvr is B^i/B in inverse cm, so this contraction returns Cartesian B
+      ! in the same magnetic-field units as bmod (tesla for .bc/boozmn input).
+      e_s(1) = rs_val*COS(p_val)-ps_val*r_val*SIN(p_val)
+      e_s(2) = rs_val*SIN(p_val)+ps_val*r_val*COS(p_val)
+      e_s(3) = zs_val
+      e_tb(1) = rtb_val*COS(p_val)-ptb_val*r_val*SIN(p_val)
+      e_tb(2) = rtb_val*SIN(p_val)+ptb_val*r_val*COS(p_val)
+      e_tb(3) = ztb_val
+      e_pb(1) = rpb_val*COS(p_val)-ppb_val*r_val*SIN(p_val)
+      e_pb(2) = rpb_val*SIN(p_val)+ppb_val*r_val*COS(p_val)
+      e_pb(3) = zpb_val
+      e_s = 1.0d2*e_s
+      e_tb = 1.0d2*e_tb
+      e_pb = 1.0d2*e_pb
+      B_cart = bmod * (hctrvr(1)*e_s + hctrvr(2)*e_pb + hctrvr(3)*e_tb)
+    END IF
 
   END SUBROUTINE neo_magfie_c
 
