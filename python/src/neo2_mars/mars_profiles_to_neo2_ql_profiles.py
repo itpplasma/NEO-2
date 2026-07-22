@@ -30,6 +30,9 @@ def get_profiles_mars(mars_dir: str) -> dict:
     return profiles_mars
 
 def get_sqrtstor_profile(mars_dir: str) -> np.ndarray:
+    sqrtstor_file = os.path.join(mars_dir, 'sqrtstor.dat')
+    if os.path.exists(sqrtstor_file):
+        return np.loadtxt(sqrtstor_file)
     sqrtspol = get_mars_sqrtspol(mars_dir)
     sqrtstor = mars_sqrtspol2sqrtstor(mars_dir,sqrtspol)
     return np.array([sqrtspol, sqrtstor]).T
@@ -40,6 +43,10 @@ def get_mars_sqrtspol(mars_dir: str) -> np.ndarray:
     return sqrtspol
 
 def mars_sqrtspol2sqrtstor(mars_dir,sqrtspol):
+    sqrtstor_file = os.path.join(mars_dir, 'sqrtstor.dat')
+    if os.path.exists(sqrtstor_file):
+        data = np.loadtxt(sqrtstor_file)
+        return np.interp(sqrtspol, data[:, 0], data[:, 1])
     return np.sqrt(mars_sqrtspol2stor(mars_dir,sqrtspol))
 
 def mars_sqrtspol2stor(mars_dir,sqrtspol):
