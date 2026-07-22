@@ -66,6 +66,10 @@ set_tests_properties(er_rotation_test PROPERTIES
 add_executable(test_spline_sparse_assembly test_spline_sparse_assembly.f90)
 target_link_libraries(test_spline_sparse_assembly common)
 
+add_executable(probe_neo2_perturbation_fourier_kernel
+               probe_neo2_perturbation_fourier_kernel.f90)
+target_link_libraries(probe_neo2_perturbation_fourier_kernel neo2_ql)
+
 add_test(NAME spline_sparse_assembly_test
          COMMAND test_spline_sparse_assembly
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
