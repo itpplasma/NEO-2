@@ -671,8 +671,14 @@ CONTAINS
       ! Check, whether C-pointer 'params' is not associated (no parameter passed)
       IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
 
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
+      ! Wrap user-specified function to a C-interoperable function.
+      ! Clamp the abscissa to the open interval: the node arithmetic of the
+      ! quadrature rule can land one ulp outside [x_low, x_up], where the
+      ! collision-operator integrands jump at a B-spline knot shared with the
+      ! neighbouring segment.
+      f2c_wrapper_func1d_param0 = func1d_param0_user( &
+           MIN(MAX(x, NEAREST(x_low, 1.0_fgsl_double)), &
+           NEAREST(x_up, -1.0_fgsl_double)))
 
     END FUNCTION f2c_wrapper_func1d_param0
   END FUNCTION fint1d_param0_cquad
@@ -752,8 +758,12 @@ CONTAINS
 
       ! Cast C-pointer to the above-defined Fortran pointer
       CALL C_F_POINTER(params, p)
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
+      ! Wrap user-specified function to a C-interoperable function.
+      ! Clamp the abscissa to the open interval (see f2c_wrapper_func1d_param0
+      ! of fint1d_param0_cquad).
+      f2c_wrapper_func1d_param1 = func1d_param1_user( &
+           MIN(MAX(x, NEAREST(x_low, 1.0_fgsl_double)), &
+           NEAREST(x_up, -1.0_fgsl_double)), p)
 
     END FUNCTION f2c_wrapper_func1d_param1
   END FUNCTION fint1d_param1_cquad
