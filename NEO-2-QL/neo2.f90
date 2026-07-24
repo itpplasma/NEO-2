@@ -61,10 +61,13 @@ module neo2_ql
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
+       isw_m_phi_input, m_phi_input,                                &
        MtOvR, Om_tE, B_rho_L_loc, xstart_cyl, isw_ripple_solver,   &
        isw_calc_Er, isw_calc_MagDrift, species_tag_Vphi,            &
        isw_Vphi_loc, Vphi, R_Vphi, Z_Vphi, boozer_theta_Vphi,       &
-       dn_spec_ov_ds, dT_spec_ov_ds
+       dn_spec_ov_ds, dT_spec_ov_ds,                                &
+       isw_hel_drive, m_theta_hel, hel_brad_re, hel_brad_im,        &
+       hel_phim_re, hel_phim_im, has_perturbation_file
 
   ! derivative of iota for non-local NTV computations
   ! (with magnetic shear)
@@ -246,7 +249,10 @@ module neo2_ql
   ! Extra input for NTV computation
   NAMELIST /ntv_input/                                                        &
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, Om_tE, B_rho_L_loc,  &
-       isw_ripple_solver, isw_mag_shear
+       isw_ripple_solver, isw_mag_shear,                                      &
+       isw_m_phi_input, m_phi_input,                                          &
+       isw_hel_drive, m_theta_hel, hel_brad_re, hel_brad_im,                  &
+       hel_phim_re, hel_phim_im
 
 contains
 
@@ -660,11 +666,19 @@ subroutine main
        ! ntv_input
        CALL h5_define_group(h5_config_id, 'ntv_input', h5_config_group)
        CALL h5_add(h5_config_group, 'isw_qflux_NA', isw_qflux_NA)
+       CALL h5_add(h5_config_group, 'isw_m_phi_input', isw_m_phi_input)
+       CALL h5_add(h5_config_group, 'm_phi_input', m_phi_input)
        CALL h5_add(h5_config_group, 'MtOvR', MtOvR)
        CALL h5_add(h5_config_group, 'Om_tE', Om_tE)
        CALL h5_add(h5_config_group, 'B_rho_L_loc', B_rho_L_loc)
        CALL h5_add(h5_config_group, 'isw_ripple_solver', isw_ripple_solver)
        CALL h5_add(h5_config_group, 'isw_mag_shear', isw_mag_shear)
+       CALL h5_add(h5_config_group, 'isw_hel_drive', isw_hel_drive)
+       CALL h5_add(h5_config_group, 'm_theta_hel', m_theta_hel)
+       CALL h5_add(h5_config_group, 'hel_brad_re', hel_brad_re)
+       CALL h5_add(h5_config_group, 'hel_brad_im', hel_brad_im)
+       CALL h5_add(h5_config_group, 'hel_phim_re', hel_phim_re)
+       CALL h5_add(h5_config_group, 'hel_phim_im', hel_phim_im)
        CALL h5_close_group(h5_config_group)
 
        CALL h5_close(h5_config_id)
@@ -891,11 +905,20 @@ subroutine main
     ! ntv_input
     isw_ntv_mode = 0
     isw_qflux_NA = 0
+    in_file_pert = 'none'
+    isw_m_phi_input = 0
+    m_phi_input = 0
     MtOvR = 0.0d0
     Om_tE = 0.0d0
     B_rho_L_loc = 0.0d0
     isw_ripple_solver = 1
     isw_mag_shear = 0
+    isw_hel_drive = 0
+    m_theta_hel = 0
+    hel_brad_re = 0.0d0
+    hel_brad_im = 0.0d0
+    hel_phim_re = 0.0d0
+    hel_phim_im = 0.0d0
     !! End Modification by Andreas F. Martitsch (14.07.2015)
 
     use_fpol = .false. ! to switch off some features, which are untested with neo-2
@@ -924,6 +947,14 @@ subroutine main
     if (isw_calc_MagDrift == 0 .and. isw_mag_shear == 1) then
       write(*,*) 'ERROR: Magnetic shear without magnetic drift.'
       write(*,*) '  isw_calc_MagDrift must be 1 if isw_mag_shear == 1.'
+      write(*,*) 'Aborting...'
+      stop
+    end if
+
+    if (isw_qflux_NA == 1 .and. .not. has_perturbation_file()) then
+      write(*,*) 'ERROR: non-axisymmetric solve has no source.'
+      write(*,*) "  isw_qflux_NA=1 with in_file_pert='none' provides no"
+      write(*,*) '  perturbation field. Provide a perturbation file.'
       write(*,*) 'Aborting...'
       stop
     end if
@@ -1158,10 +1189,12 @@ subroutine main
            'if [ ! -e ' // TRIM(ADJUSTL(in_file)) // ' ]; then ln -s ../' // &
            TRIM(ADJUSTL(in_file)) // ' . ; fi'
       call command_line_wrapper(cmd_line)
-      cmd_line = &
-           'if [ ! -e ' // TRIM(ADJUSTL(in_file_pert)) // ' ]; then ln -s ../' // &
-           TRIM(ADJUSTL(in_file_pert)) // ' . ; fi'
-      call command_line_wrapper(cmd_line)
+      IF (has_perturbation_file()) THEN
+        cmd_line = &
+             'if [ ! -e ' // TRIM(ADJUSTL(in_file_pert)) // ' ]; then ln -s ../' // &
+             TRIM(ADJUSTL(in_file_pert)) // ' . ; fi'
+        call command_line_wrapper(cmd_line)
+      END IF
       cmd_line = &
            'if [ ! -e neo.in ]; then ln -s ../neo.in . ; fi'
       call command_line_wrapper(cmd_line)
