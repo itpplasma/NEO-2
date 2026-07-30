@@ -12,14 +12,6 @@ add_executable(${PROJECT_EXE_NAME}
 	./h5merge_multispec.f90
 )
 
-set(Interface_Libs
-	hdf5::hdf5
-	hdf5::hdf5_hl
-	hdf5::hdf5_fortran
-	hdf5::hdf5_hl_fortran
-)
-
 target_link_libraries(${PROJECT_EXE_NAME}
 	LIBNEO::hdf5_tools
-	${Interface_Libs}
 )
