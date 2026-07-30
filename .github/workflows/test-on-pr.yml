@@ -40,7 +40,7 @@ jobs:
       - name: Cache apt packages
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: git cmake make ninja-build gcc g++ gfortran jq libopenblas-dev liblapack-dev libsuitesparse-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev openmpi-bin openmpi-common libopenmpi-dev
+          packages: git cmake make ninja-build gcc g++ gfortran jq libopenblas-dev liblapack-dev libsuitesparse-dev libfftw3-dev libgsl-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev openmpi-bin openmpi-common libopenmpi-dev
           version: 1.0
           execute_install_scripts: true
 
@@ -86,7 +86,7 @@ jobs:
           echo "data_dir=$(pwd)" >> $GITHUB_OUTPUT
           
       - name: Install libneo python required by NEO-2 python
-        run: pip install git+https://github.com/itpplasma/libneo.git
+        run: pip install git+https://github.com/itpplasma/libneo.git@afa0e4243e5e3f3e41110960f19cd0f340834988
 
       - name: Install NEO-2 python
         run: |
