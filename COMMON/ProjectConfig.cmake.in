@@ -3,7 +3,7 @@ set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
 include(Util)
 if(NOT DEFINED LIBNEO_REF)
-    set(LIBNEO_REF 11fcdb5b856f02b8e72fe4b176c614563be51099)
+    set(LIBNEO_REF 0ae82a0079373b23cecb82d383fa98b9ebed74bc)
 endif()
 find_or_fetch(libneo)
 
