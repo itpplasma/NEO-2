@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
@@ -179,7 +179,7 @@ jobs:
 
       - name: Upload test (against stable) output on failure
         if: steps.run_test_stable.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: golden-test-stable-output
           path: |
@@ -234,7 +234,7 @@ jobs:
 
       - name: Upload test (against main) output on failure
         if: steps.run_test_main.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: golden-test-main-output
           path: |
@@ -263,7 +263,7 @@ jobs:
 
       - name: Upload performance test output on failure
         if: steps.run_performance_test.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: performance-test-output
           path: |
@@ -291,7 +291,7 @@ jobs:
 
       - name: Upload par test output on failure
         if: steps.run_par_test.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: golden-test-par-output
           path: |
