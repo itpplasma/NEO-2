@@ -54,8 +54,8 @@ jobs:
           which mpifort && echo "mpifort found at: $(which mpifort)" || echo "Warning: mpifort not found"
           
           # Set environment variables to help CMake
-          echo "BLA_VENDOR=OpenBLAS" >> $GITHUB_ENV
-          echo "MPI_HOME=/usr" >> $GITHUB_ENV
+          echo "BLA_VENDOR=OpenBLAS" >> "$GITHUB_ENV"
+          echo "MPI_HOME=/usr" >> "$GITHUB_ENV"
 
       - name: Set up Python 3
         run: |
@@ -100,8 +100,8 @@ jobs:
           cp coverage_filtered.info ../lcov.info
           
           # Show coverage summary
-          echo "=== Coverage Summary ===" >> $GITHUB_STEP_SUMMARY
-          lcov --summary coverage_filtered.info >> $GITHUB_STEP_SUMMARY || echo "No coverage data found" >> $GITHUB_STEP_SUMMARY
+          echo "=== Coverage Summary ===" >> "$GITHUB_STEP_SUMMARY"
+          lcov --summary coverage_filtered.info >> "$GITHUB_STEP_SUMMARY" || echo "No coverage data found" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage to Codacy
         uses: codacy/codacy-coverage-reporter-action@v1

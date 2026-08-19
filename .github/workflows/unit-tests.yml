@@ -60,8 +60,8 @@ jobs:
           which mpifort && echo "mpifort found at: $(which mpifort)" || echo "Warning: mpifort not found"
 
           # Set environment variables to help CMake
-          echo "BLA_VENDOR=OpenBLAS" >> $GITHUB_ENV
-          echo "MPI_HOME=/usr" >> $GITHUB_ENV
+          echo "BLA_VENDOR=OpenBLAS" >> "$GITHUB_ENV"
+          echo "MPI_HOME=/usr" >> "$GITHUB_ENV"
 
       - name: Set up Python 3
         run: |
@@ -69,9 +69,11 @@ jobs:
           pip install numpy h5py scipy matplotlib
 
       - name: Build NEO-2
+        env:
+          LIBNEO_REF: ${{ inputs.libneo_ref }}
         run: |
-          if [ -n "${{ inputs.libneo_ref }}" ]; then
-            make LIBNEO_REF=${{ inputs.libneo_ref }}
+          if [ -n "$LIBNEO_REF" ]; then
+            make LIBNEO_REF="$LIBNEO_REF"
           else
             make
           fi
