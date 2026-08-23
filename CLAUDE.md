@@ -64,7 +64,7 @@ Install with: `cd python && pip install -e .`
 ### Key Dependencies
 - **Fortran**: Primary language (F90/95/2008)
 - **MPI**: For parallel computation
-- **Libraries**: BLAS/LAPACK, SuiteSparse (UMFPACK), GSL/FGSL, HDF5, NetCDF, FFTW3
+- **Libraries**: BLAS/LAPACK, SuiteSparse (UMFPACK), fortnum, HDF5, NetCDF, FFTW3
 - **Python**: numpy, h5py, omfit_classes, libneo
 
 ### Input/Output

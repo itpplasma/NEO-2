@@ -105,10 +105,7 @@ endif()
 
 find_package(HDF5 COMPONENTS C HL Fortran Fortran_HL REQUIRED)
 
-find_package(GSL REQUIRED)
-
 include_directories(${PROJECT_BINARY_DIR}/COMMON)
-include_directories(${FGSL_INC})
 
 ### Projects to build
 add_subdirectory(COMMON/MyMPILib)

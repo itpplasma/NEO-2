@@ -14,7 +14,9 @@ Here is a list of libraries and tools required for building/running neo2.
     GNUMake.
   * SuiteSparse
   * Either OpenBLAS, MKL, or ATLAS for LAPACK/BLAS
-  * GSL, FGSL
+  * fortnum
+    Numerical backend (integration, special functions, B-splines). Fetched
+    together with libneo; replaces the former GSL/FGSL dependency.
   * MPI
     Used for parallelization.
   * HDF5

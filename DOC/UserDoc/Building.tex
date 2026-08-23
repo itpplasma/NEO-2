@@ -10,13 +10,11 @@ background on where there are used and how they are included in the
 code.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{GSL/FGSL}
-Then gnu scientific library is used via the fortran wrapper fgsl. The
-fgsl in turn is wrapped by neo-2. Only those files which actually use
-the fgsl code directly are compiled with the necessary include
-information.
-Currently besselfunction, numerical rootfinding, numerical integration
-and bsplines are used by \neotwo.
+\subsection{fortnum}
+The numerical backend is the fortnum library, fetched together with
+libneo. It provides the numerical integration, special functions and
+B-splines used by \neotwo. It replaces the former GSL/FGSL dependency,
+which is no longer required.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{SuperLu}

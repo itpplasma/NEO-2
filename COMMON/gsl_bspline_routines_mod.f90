@@ -2,33 +2,34 @@
 ! module: gsl_bspline_routines_mod                                                        !
 ! authors: TU Graz ITPcp Plasma, Andreas F. Martitsch                                     !
 ! date: 06.10.2016                                                                        !
-! version: 0.2.1                                                                          !
+! version: 0.3.0                                                                          !
 !-----------------------------------------------------------------------------------------!
 !-----------------------------------------------------------------------------------------!
 ! History                                                                                 !
 ! 0.1 - Initial version
 ! 0.2 - Redesign
+! 0.3 - Backend replaced by fortnum_bspline; public interface unchanged
 !-----------------------------------------------------------------------------------------!
 
 module gsl_bspline_routines_mod
-  use fgsl
+  use, intrinsic :: iso_fortran_env, only: fgsl_double => real64
+  use fortnum_bspline, only: bspline_workspace_t, bspline_init, bspline_set_knots, &
+    &  bspline_eval_basis, bspline_eval_deriv
+  use fortnum_status, only: fortnum_status_t, FORTNUM_OK
 
   implicit none
 
   !**********************************************************
-  ! FGSL Workspace
+  ! B-spline workspace (caller-owned, replaces FGSL handle)
   !**********************************************************
-  type(fgsl_bspline_workspace), private :: sw
+  type(bspline_workspace_t), private :: sw
 
   !**********************************************************
-  ! FGSL variables
+  ! Spline geometry
   !**********************************************************
-  integer(fgsl_size_t), private :: fgsl_order, fgsl_nbreak
-  integer(fgsl_size_t), private :: fgsl_ncbf
-  type(fgsl_vector), private :: fgsl_xd
-  type(fgsl_vector), private :: fgsl_by, fgsl_by_end
-  type(fgsl_matrix), private :: fgsl_dby, fgsl_dby_end
-  integer(fgsl_size_t)       :: fgsl_max_nder
+  integer, private :: bspline_order, bspline_nbreak
+  integer, private :: bspline_ncbf
+  integer, private :: bspline_max_nder
 
   !**********************************************************
   ! Fortran variables
@@ -43,90 +44,80 @@ module gsl_bspline_routines_mod
 
 contains
 
-  subroutine fgsl_check(status)
-    integer(fgsl_int) :: status
+  subroutine fortnum_check(status)
+    type(fortnum_status_t) :: status
 
-    if (status .ne. fgsl_success) then
-       write (*,*) "FGSL Error: ", status, fgsl_strerror(status)
+    if (status%code .ne. FORTNUM_OK) then
+       write (*,*) "fortnum B-spline error: ", status%code, trim(status%msg)
        stop
     end if
 
-  end subroutine fgsl_check
+  end subroutine fortnum_check
 
   subroutine init_bspline(order, nbreak)
     integer :: order, nbreak
+    type(fortnum_status_t) :: status
 
-    fgsl_order    = order
-    fgsl_nbreak   = nbreak
-    fgsl_ncbf     = nbreak + order - 2
-    fgsl_max_nder = order
+    bspline_order    = order
+    bspline_nbreak   = nbreak
+    bspline_ncbf     = nbreak + order - 2
+    bspline_max_nder = order
 
-    sw = fgsl_bspline_alloc(fgsl_order, fgsl_nbreak)
+    call bspline_init(sw, order, nbreak, status)
+    call fortnum_check(status)
 
     if (allocated(dby)) deallocate(dby)
-    allocate(dby(1:fgsl_max_nder+1, 1:nbreak+order-2))
-    fgsl_dby = fgsl_matrix_init(1.0_fgsl_double)
-    call fgsl_check(fgsl_matrix_align(dby, fgsl_max_nder+1, fgsl_max_nder+1, fgsl_ncbf, fgsl_dby))
+    allocate(dby(0:bspline_max_nder, 1:bspline_ncbf))
 
   end subroutine init_bspline
 
   subroutine set_bspline_knots(xd)
     real(fgsl_double), dimension(:), target :: xd
+    type(fortnum_status_t) :: status
 
     !**********************************************************
     ! Initialize knots
     !**********************************************************
     xd_beg = xd(1)
-    xd_end = xd(fgsl_nbreak)
+    xd_end = xd(bspline_nbreak)
 
-
-    fgsl_xd = fgsl_vector_init(1.0_fgsl_double)
-    call fgsl_check(fgsl_vector_align(xd, fgsl_nbreak, fgsl_xd, fgsl_nbreak, 0_fgsl_size_t, 1_fgsl_size_t))
-    call fgsl_check(fgsl_bspline_knots(fgsl_xd, sw))
-
-    fgsl_by  = fgsl_vector_init(1.0_fgsl_double)
+    call bspline_set_knots(sw, xd(1:bspline_nbreak), status)
+    call fortnum_check(status)
 
     if (allocated(by)) deallocate(by)
-    allocate(by(fgsl_ncbf))
-    call fgsl_check(fgsl_vector_align(by, fgsl_ncbf, fgsl_by, fgsl_ncbf, 0_fgsl_size_t, 1_fgsl_size_t))
+    allocate(by(bspline_ncbf))
 
     !**********************************************************
     ! Initialize Taylor expansion coefficients
     !**********************************************************
     if (allocated(by_end)) deallocate(by_end)
-    allocate(by_end(fgsl_ncbf))
-    fgsl_by_end = fgsl_vector_init(1.0_fgsl_double)
-    call fgsl_check(fgsl_vector_align(by_end, fgsl_ncbf, fgsl_by_end, fgsl_ncbf, 0_fgsl_size_t, 1_fgsl_size_t))
-    call fgsl_check(fgsl_bspline_eval(xd_end, fgsl_by_end, sw))
+    allocate(by_end(bspline_ncbf))
+    call bspline_eval_basis(sw, xd_end, by_end, status)
+    call fortnum_check(status)
 
     if (allocated(dby_end)) deallocate(dby_end)
-    allocate(dby_end(0:fgsl_max_nder, 1:fgsl_ncbf))
-    fgsl_dby_end = fgsl_matrix_init(1.0_fgsl_double)
-    call fgsl_check(fgsl_matrix_align(dby_end, fgsl_max_nder+1, fgsl_max_nder+1, fgsl_ncbf, fgsl_dby_end))
-    call fgsl_check(fgsl_bspline_deriv_eval(xd_end, fgsl_max_nder, fgsl_dby_end, sw))
+    allocate(dby_end(0:bspline_max_nder, 1:bspline_ncbf))
+    call bspline_eval_deriv(sw, xd_end, bspline_max_nder, dby_end, status)
+    call fortnum_check(status)
 
   end subroutine set_bspline_knots
-
-  subroutine set_bspline_knots_uniform(a, b)
-    real(fgsl_double) :: a, b
-    call fgsl_check(fgsl_bspline_knots_uniform(a, b, sw))
-
-  end subroutine set_bspline_knots_uniform
 
   recursive subroutine bspline_eval(x, by_loc)
     real(fgsl_double) :: x
     real(fgsl_double), dimension(:) :: by_loc
-    integer(fgsl_size_t) :: k, m
-    real(fgsl_double)    :: gam
+    type(fortnum_status_t) :: status
+    integer :: k, m
+    real(fgsl_double) :: gam
 
     if (x .le. xd_end) then
-       call fgsl_check(fgsl_bspline_eval(x, fgsl_by, sw))
-       by_loc = fgsl_by
+       call bspline_eval_basis(sw, x, by, status)
+       call fortnum_check(status)
+       by_loc = by
     elseif (taylorExpansion) then
        by_loc = by_end
-       do m = 1, fgsl_ncbf
+       do m = 1, bspline_ncbf
           gam = 1d0
-          do k = 1, fgsl_order-1
+          do k = 1, bspline_order-1
              gam = k * gam
              by_loc(m) = by_loc(m) + dby_end(k, m)/gam * (x - xd_end)**k
           end do
@@ -139,21 +130,21 @@ contains
 
   recursive subroutine bspline_deriv_eval(x, nder, dby_loc)
     real(fgsl_double) :: x
-    integer(fgsl_int) :: nder
-    integer(fgsl_size_t) :: fgsl_nder
+    integer :: nder
     real(fgsl_double), dimension(:) :: dby_loc
-    integer(fgsl_size_t) :: m, k
+    type(fortnum_status_t) :: status
+    integer :: m, k
     real(fgsl_double) :: gam
 
     if (x .le. xd_end) then
-       fgsl_nder = nder
-       call fgsl_check(fgsl_bspline_deriv_eval(x, fgsl_nder, fgsl_dby, sw))
-       dby_loc = dby(nder+1, :)
+       call bspline_eval_deriv(sw, x, bspline_max_nder, dby, status)
+       call fortnum_check(status)
+       dby_loc = dby(nder, :)
     elseif (taylorExpansion) then
        dby_loc = dby_end(nder, :)
-       do m = 1, fgsl_ncbf
+       do m = 1, bspline_ncbf
           gam = 1d0
-          do k = 1, fgsl_order - nder - 1
+          do k = 1, bspline_order - nder - 1
              gam = k * gam
              dby_loc(m) = dby_loc(m) + dby_end(k+nder, m)/gam * (x - xd_end)**k
           end do
