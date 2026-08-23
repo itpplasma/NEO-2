@@ -2,6 +2,27 @@
 set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
 include(Util)
+include(FetchContent)
+
+# fortnum must be declared before libneo: libneo also fetches fortnum, and
+# FetchContent's first declaration wins, so declaring here keeps this repo in
+# control of the revision (and of the compile flags fortnum defends itself
+# with). Prefer a local checkout in $CODE/fortnum, otherwise fetch the pinned
+# revision over https.
+if(NOT TARGET fortnum)
+    if(DEFINED ENV{CODE} AND EXISTS $ENV{CODE}/fortnum)
+        message(STATUS "Using fortnum in $ENV{CODE}/fortnum")
+        add_subdirectory($ENV{CODE}/fortnum ${CMAKE_CURRENT_BINARY_DIR}/fortnum
+            EXCLUDE_FROM_ALL)
+    else()
+        FetchContent_Declare(fortnum
+            GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
+            GIT_TAG f849f59cd347dc32cda85de10bd598b893e0f532
+        )
+        FetchContent_MakeAvailable(fortnum)
+    endif()
+endif()
+
 find_or_fetch(libneo)
 
 ### FGSL
