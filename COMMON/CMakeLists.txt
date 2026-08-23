@@ -64,6 +64,7 @@ set(COMMON_FILES
   sizey_cur.f90
   sizey_pla.f90
   solve_system.f90
+  sparse_solve_fortsparse.f90
   sparse_mod.f90
   sparsevec_mod.f90
   spline_cof.f90
@@ -76,22 +77,8 @@ set(COMMON_FILES
   )
 set_source_files_properties(${COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 
-
-set(SUITESPARSE_SRC_FILES
-  umf4_f77wrapper_ver_4_5.c
-  umf4_f77zwrapper_ver_4_5.c
-)
-if(LEGACY_SUITESPARSE)
-  set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
-else()
-  set(SUITESPARSE_FLAGS "")
-endif()
-set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
-
 add_library(common STATIC
   ${COMMON_FILES}
-  ${SUITESPARSE_SRC_FILES}
   ${FGSL_USERINTERFACE_SOURCE_FILES}
   )
 add_dependencies(common FGSL)
@@ -105,11 +92,7 @@ target_link_libraries(common PUBLIC
   ${NETCDF_LIBS}
   -lz -lpthread
 )
-if(LEGACY_SUITESPARSE)
-  target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES})
-else()
-  target_link_libraries(common PUBLIC SuiteSparse::umfpack)
-endif()
+target_link_libraries(common PUBLIC fortsparse)
 
 target_link_libraries(common PUBLIC
   LIBNEO::magfie

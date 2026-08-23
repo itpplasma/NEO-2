@@ -33,6 +33,7 @@ SUBROUTINE ripple_solver(                                 &
                             lsw_save_spitf
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
        column_full2pointer,remap_rc,sparse_solver_test
+  USE sparse_solve_fortsparse, ONLY : fs_vector_real, fs_solve_real_2
   USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
                                surface_boozer_B00,travis_convfac,              &
                                mag_magfield
@@ -173,8 +174,13 @@ SUBROUTINE ripple_solver(                                 &
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
+  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
+  ! Zero-copy iteration vectors: shared-memory slots from the solver. The
+  ! integral-part RHS goes into rhs_iter, the solve writes sol_iter, both in the
+  ! helper's mapping, so the iteration solve marshals nothing.
+  DOUBLE PRECISION, DIMENSION(:),   POINTER     :: rhs_iter => NULL()
+  DOUBLE PRECISION, DIMENSION(:),   POINTER     :: sol_iter => NULL()
 
 !  Off-set:
 
@@ -1882,7 +1888,7 @@ PRINT *,'right boundary layer ignored'
 
 
   allocate(irow(nz),icol(nz),amat_sp(nz),ipcol(ncol),bvec_sp(ncol))
-  if(isw_intp.eq.1) allocate(bvec_iter(ncol),bvec_lor(ncol),bvec_prev(ncol))
+  if(isw_intp.eq.1) allocate(bvec_lor(ncol),bvec_prev(ncol))
 
 ! Fill the arrays:
 
@@ -2274,6 +2280,13 @@ PRINT *,'right boundary layer ignored'
   call cpu_time(time_factorization)
   print *,'factorization completed ',time_factorization - time_start,' sec'
 
+  ! The factorization exists now, so the solver can hand out shared-memory
+  ! vectors. The iteration solve reuses these two for every right-hand side.
+  if(isw_intp.eq.1) then
+     rhs_iter => fs_vector_real(ncol)
+     sol_iter => fs_vector_real(ncol)
+  end if
+
   iopt=2
 
 ! Solution of inhomogeneus equation (account of sources):
@@ -2297,13 +2310,11 @@ call cpu_time(time1)
 
         call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start,   &
                            phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),   &
-                           ailmm,source_vector(:,k),bvec_iter)
+                           ailmm,source_vector(:,k),rhs_iter)
 
-        CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),        &
-                          bvec_iter,iopt)
+        call fs_solve_real_2(rhs_iter,sol_iter,sparse_solve_method .eq. 2)
 
-
-        source_vector(:,k)=bvec_lor+bvec_iter
+        source_vector(:,k)=bvec_lor+sol_iter
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
@@ -2612,7 +2623,10 @@ call cpu_time(time2)
     amat_minus_plus=0.d0
 
     deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
-    if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
+    if(isw_intp.eq.1) then
+       deallocate(bvec_lor,bvec_prev)
+       nullify(rhs_iter,sol_iter)
+    end if
     DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
     DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
     DEALLOCATE(npl,rhs_mat_fzero,rhs_mat_lorentz,rhs_mat_energ,q_rip)
@@ -2655,15 +2669,14 @@ time3 = time3 + (time5-time4)
 
           call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
-                             ailmm,bvec_sp,bvec_iter)
+                             ailmm,bvec_sp,rhs_iter)
 
           call cpu_time(time4)
-          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),      &
-                            bvec_iter,iopt)
+          call fs_solve_real_2(rhs_iter,sol_iter,sparse_solve_method .eq. 2)
           call cpu_time(time5)
           time3 = time3 + (time5-time4)
 
-          bvec_sp=bvec_lor+bvec_iter
+          bvec_sp=bvec_lor+sol_iter
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
@@ -2714,15 +2727,14 @@ time3 = time3 + (time5-time4)
 
           call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
-                             ailmm,bvec_sp,bvec_iter)
+                             ailmm,bvec_sp,rhs_iter)
 
           call cpu_time(time4)
-          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),      &
-                            bvec_iter,iopt)
+          call fs_solve_real_2(rhs_iter,sol_iter,sparse_solve_method .eq. 2)
           call cpu_time(time5)
           time3 = time3 + (time5-time4)
 
-          bvec_sp=bvec_lor+bvec_iter
+          bvec_sp=bvec_lor+sol_iter
 
           if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
              sum(abs(bvec_prev))*epserr_iter) then
@@ -2763,7 +2775,10 @@ call cpu_time(time1)
 call cpu_time(time2)
 
   deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
-  if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
+  if(isw_intp.eq.1) then
+     deallocate(bvec_lor,bvec_prev)
+     nullify(rhs_iter,sol_iter)
+  end if
 
 
   call cpu_time(time_solver)

@@ -34,6 +34,36 @@ set_tests_properties(nrutil_test PROPERTIES
     TIMEOUT 30
 )
 
+# Test executable for the fortsparse sparse-solve wrapper
+add_executable(test_sparse_solve_fortsparse test_sparse_solve_fortsparse.f90)
+target_link_libraries(test_sparse_solve_fortsparse common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+
+add_test(NAME sparse_solve_fortsparse_test
+         COMMAND test_sparse_solve_fortsparse
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(sparse_solve_fortsparse_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    ENVIRONMENT "FORTSPARSE_UMFPACK_HELPER=$<TARGET_FILE:fortsparse_umfpack_helper>"
+    TIMEOUT 120
+)
+
+# Boundary before/after equivalence vs dense LAPACK reference
+add_executable(test_sparse_boundary_equivalence test_sparse_boundary_equivalence.f90)
+target_link_libraries(test_sparse_boundary_equivalence common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+
+add_test(NAME sparse_boundary_equivalence_test
+         COMMAND test_sparse_boundary_equivalence
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(sparse_boundary_equivalence_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    ENVIRONMENT "FORTSPARSE_UMFPACK_HELPER=$<TARGET_FILE:fortsparse_umfpack_helper>"
+    TIMEOUT 120
+)
+
 add_subdirectory(mympilib)
 
 # Test executable for er_rotation module
@@ -59,5 +89,6 @@ add_test(NAME spline_sparse_assembly_test
 
 set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
-    TIMEOUT 30
+    ENVIRONMENT "FORTSPARSE_UMFPACK_HELPER=$<TARGET_FILE:fortsparse_umfpack_helper>"
+    TIMEOUT 120
 )
