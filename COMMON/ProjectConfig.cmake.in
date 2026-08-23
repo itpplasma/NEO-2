@@ -2,7 +2,25 @@
 set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
 include(Util)
+include(FetchContent)
 find_or_fetch(libneo)
+
+# fortnum may already be present as a target if a transitive dependency (e.g.
+# libneo) pulled it in; only declare it once. Prefer a local checkout in
+# $CODE/fortnum, otherwise fetch the pinned revision over https.
+if(NOT TARGET fortnum)
+    if(DEFINED ENV{CODE} AND EXISTS $ENV{CODE}/fortnum)
+        message(STATUS "Using fortnum in $ENV{CODE}/fortnum")
+        add_subdirectory($ENV{CODE}/fortnum ${CMAKE_CURRENT_BINARY_DIR}/fortnum
+            EXCLUDE_FROM_ALL)
+    else()
+        FetchContent_Declare(fortnum
+            GIT_REPOSITORY https://github.com/lazy-fortran/fortnum.git
+            GIT_TAG 62a559c0b8e1b28bd63550164a09ed9644e659b1
+        )
+        FetchContent_MakeAvailable(fortnum)
+    endif()
+endif()
 
 ### FGSL
 # Hermetic by default: fetch and build FGSL via the bundled ExternalProject.

@@ -50,6 +50,19 @@ set_tests_properties(er_rotation_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_besselk test_besselk.f90)
+target_link_libraries(test_besselk common)
+
+add_test(NAME besselk_test
+         COMMAND test_besselk
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(besselk_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_spline_sparse_assembly test_spline_sparse_assembly.f90)
 target_link_libraries(test_spline_sparse_assembly common)
 
