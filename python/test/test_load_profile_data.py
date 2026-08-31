@@ -5,12 +5,12 @@ import copy
 
 # Custom modules
 from neo2_mars import write_neo2_input_profiles_from_mars
+from mars_test_utils import create_test_mars_dir
 
 # Modules to test
 from neo2_ql import load_cgs_profiles_and_interp
 from neo2_ql import convert_units_from_norm_to_si, convert_units_from_si_to_cgs
 
-mars_dir = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
 output_dir = '/tmp/'
 profiles_src = {
     'sqrtspol': {'filename': os.path.join(output_dir, 'sqrtstor.dat'), 'column': 0},
@@ -24,11 +24,13 @@ profiles_src_2species['n']['column'] = [1,2]
 profiles_src_2species['T']['column'] = [1,2]
 mars_profiles_src = copy.deepcopy(profiles_src_2species)
 
-def test_write_and_read_compatiblity():
+def test_write_and_read_compatiblity(tmp_path):
+    mars_dir = create_test_mars_dir(tmp_path / 'mars')['mars_dir']
     write_neo2_input_profiles_from_mars(mars_dir, output_dir)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src)
 
-def test_output_type():
+def test_output_type(tmp_path):
+    mars_dir = create_test_mars_dir(tmp_path / 'mars')['mars_dir']
     write_neo2_input_profiles_from_mars(mars_dir, output_dir)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtspol'})
     assert is_profile_types_correct(profiles, sqrtspol, sqrtstor)
@@ -45,7 +47,8 @@ def is_profile_types_correct(profiles, sqrtspol, sqrtstor):
         bool = bool and type(profiles[profile]) == np.ndarray
     return bool
 
-def test_output_shape():
+def test_output_shape(tmp_path):
+    mars_dir = create_test_mars_dir(tmp_path / 'mars')['mars_dir']
     write_neo2_input_profiles_from_mars(mars_dir, output_dir)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtspol'})
     assert is_profile_shapes_correct(profiles, sqrtspol, sqrtstor)
@@ -66,7 +69,8 @@ def is_profile_shapes_correct(profiles, sqrtspol, sqrtstor):
             bool = bool and profiles[profile].shape == (n_s,)
     return bool
 
-def test_equidistant_grid():
+def test_equidistant_grid(tmp_path):
+    mars_dir = create_test_mars_dir(tmp_path / 'mars')['mars_dir']
     write_neo2_input_profiles_from_mars(mars_dir, output_dir)
     _, sqrtspol, _ = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtspol'})
     assert is_equidistant(sqrtspol)
@@ -241,7 +245,10 @@ def test_interpolation_visual_check():
     ax[0,1].set_title('equidist spol grid')
     ax[0,2].set_title('equidist sqrtstor grid')
     ax[0,3].set_title('equidist stor grid')
-    plt.show()
+    output_file = os.path.join(output_dir, 'test_interpolation_visual_check.png')
+    fig.savefig(output_file)
+    plt.close(fig)
+    assert os.path.exists(output_file)
 
 def plot_profiles(ax, profiles, sqrtspol):
     profiles = backconvert_trial_profiles_from_cgs(profiles)
