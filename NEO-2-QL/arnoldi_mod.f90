@@ -132,13 +132,14 @@ contains
 
       CALL arnoldi(n,narn, ispec, next_iteration)
 
-      IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
-
       IF(ierr.NE.0) THEN
         PRINT *,'ERROR in iterator: error in arnoldi'
-        DEALLOCATE(fzero,eigvecs,ritznum)
+        DEALLOCATE(fzero,ritznum)
+        IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
         RETURN
       ENDIF
+
+      IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 
     ENDIF
 
@@ -260,6 +261,7 @@ contains
   !>                     ierr           - error code (0 - normal work, 1 - error)
   SUBROUTINE arnoldi(n, mmax, ispec, next_iteration)
 
+    USE, INTRINSIC :: ieee_arithmetic, ONLY: ieee_is_finite
     use mpiprovider_module, only : mpro
 
     use collisionality_mod, only : num_spec
@@ -277,11 +279,13 @@ contains
     end interface
 
     integer, intent(in) :: ispec, n, mmax
-    INTEGER                                       :: m,k,j,mbeg,ncount
+    INTEGER                                       :: m,k,j,mbeg,ncount,m_ritz
     INTEGER :: driv_spec
     complex(kind=kind(1d0)),   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
     complex(kind=kind(1d0)),   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
     complex(kind=kind(1d0)),   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
+    DOUBLE PRECISION :: image_norm
+    LOGICAL :: happy_breakdown
 
     INTEGER :: m_tol, m_ind
     complex(kind=kind(1d0)), DIMENSION(500) :: ritzum_write
@@ -306,12 +310,35 @@ contains
     h_spec=0.0d0
     q_spec(ispec)=SUM(CONJG(fnew)*fnew)
     CALL mpro%allgather_inplace(q_spec)
-    qvecs_prev(:,1)=fnew/SQRT(SUM(q_spec))
     ierr=0
+    image_norm=SQRT(SUM(q_spec))
+    IF(.NOT.ieee_is_finite(image_norm)) THEN
+      ierr=1
+      ngrow=0
+      IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
+      ALLOCATE(eigvecs(n,0))
+      PRINT *,'arnoldi: initial vector contains non-finite values'
+      DEALLOCATE(fold,fnew,qvecs_prev,ritznum_prev,hmat)
+      DEALLOCATE(q_spec,h_spec)
+      RETURN
+    ENDIF
+    IF(image_norm.LE.TINY(1.0d0)) THEN
+      ngrow=0
+      IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
+      ALLOCATE(eigvecs(n,0))
+      PRINT *,'arnoldi: initial vector is zero; no Krylov iterations needed'
+      DEALLOCATE(fold,fnew,qvecs_prev,ritznum_prev,hmat)
+      DEALLOCATE(q_spec,h_spec)
+      RETURN
+    ENDIF
+    qvecs_prev(:,1)=fnew/image_norm
     mbeg=2
     ncount=0
 
     DO m=2,mmax
+
+      happy_breakdown=.FALSE.
+      m_ritz=m
 
       ALLOCATE(qvecs(n,m))
       qvecs(:,1:m-1)=qvecs_prev(:,1:m-1)
@@ -322,6 +349,10 @@ contains
         fold=qvecs(:,k-1)
         call next_iteration(n, fold, fnew)
         qvecs(:,k)=fnew
+        h_spec=0.0d0
+        h_spec(ispec)=SUM(CONJG(fnew)*fnew)
+        CALL mpro%allgather_inplace(h_spec)
+        image_norm=SQRT(SUM(h_spec))
         DO j=1,k-1
           h_spec=0.0d0
           h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
@@ -333,16 +364,33 @@ contains
         h_spec(ispec)=SUM(CONJG(qvecs(:,k))*qvecs(:,k))
         CALL mpro%allgather_inplace(h_spec)
         hmat(k,k-1)=SQRT(SUM(h_spec))
+        IF(ABS(hmat(k,k-1)).LE.SQRT(EPSILON(1.0d0))*MAX(1.0d0,image_norm)) THEN
+          happy_breakdown=.TRUE.
+          m_ritz=k-1
+          EXIT
+        ENDIF
         qvecs(:,k)=qvecs(:,k)/hmat(k,k-1)
       ENDDO
 
-      CALL try_eigvecvals(m,tol,hmat(1:m,1:m),ngrow,ritznum(1:m),eigh,ierr)
+      IF(m_ritz.NE.m) THEN
+        DEALLOCATE(eigh)
+        ALLOCATE(eigh(m_ritz,m_ritz))
+      ENDIF
+      CALL try_eigvecvals(m_ritz,tol,hmat(1:m_ritz,1:m_ritz),ngrow, &
+        & ritznum(1:m_ritz),eigh,ierr)
 
-      IF(m.GT.2) THEN
+      IF(ierr.NE.0) THEN
+        PRINT *,'arnoldi: Ritz solve failed at dimension ',m_ritz
+        DEALLOCATE(fold,fnew,qvecs,qvecs_prev,ritznum_prev,hmat,eigh)
+        DEALLOCATE(q_spec,h_spec)
+        RETURN
+      ENDIF
+
+      IF(m_ritz.GT.2) THEN
 
         ! check for convergence of ritznum exceeding tol
-        m_tol=m-1
-        DO m_ind = 1,m-1
+        m_tol=m_ritz-1
+        DO m_ind = 1,m_ritz-1
           IF(ABS(ritznum(m_ind)) .LT. tol) THEN
             m_tol = m_ind
             EXIT
@@ -354,15 +402,15 @@ contains
           ncount=0
         ENDIF
       ENDIF
-      ritznum_prev(1:m)=ritznum(1:m)
+      ritznum_prev(1:m_ritz)=ritznum(1:m_ritz)
 
-      IF(ncount.GE.ntol.OR.m.EQ.mmax) THEN
+      IF(happy_breakdown.OR.ncount.GE.ntol.OR.m.EQ.mmax) THEN
         IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
         ALLOCATE(eigvecs(n,ngrow))
 
-        eigvecs=MATMUL(qvecs(:,1:m),eigh(1:m,1:ngrow))
+        eigvecs=MATMUL(qvecs(:,1:m_ritz),eigh(:,1:ngrow))
 
-        PRINT *,'arnoldi: number of iterations = ',m
+        PRINT *,'arnoldi: number of iterations = ',m_ritz
         EXIT
       ENDIF
 
@@ -376,7 +424,8 @@ contains
 
     ENDDO
 
-    DEALLOCATE(fold,fnew,qvecs,qvecs_prev,hmat)
+    DEALLOCATE(fold,fnew,qvecs,qvecs_prev,ritznum_prev,hmat)
+    IF(ALLOCATED(eigh)) DEALLOCATE(eigh)
     DEALLOCATE(q_spec,h_spec)
 
 
@@ -452,7 +501,7 @@ contains
 
     IF(info.NE.0) THEN
       IF(info.GT.0) THEN
-        PRINT *,'try_eigvecvals: zhseqr failed to compute all eigenvalues'
+        PRINT *,'try_eigvecvals: zhseqr failed to compute all eigenvalues, info = ',info
       ELSE
         PRINT *,'try_eigvecvals: argument ',-info,' has illegal value in zhseqr'
       ENDIF
