@@ -876,6 +876,11 @@ CONTAINS
        CALL h5_delete(h5id_propfile, 'cg2_3_avg')
        CALL h5_add(h5id_propfile, 'cg2_3_avg', cg2_3_avg)
 
+       ! h5_copy requires a read-mode source handle, so flush the updates
+       ! above by closing the read-write handle and reopen read-only.
+       CALL h5_close(h5id_propfile)
+
+       CALL h5_open("taginfo.h5", h5id_propfile)
        CALL h5_copy(h5id_propfile, '/', h5id_neo2, "taginfo")
        CALL h5_close(h5id_propfile)
 
