@@ -17,15 +17,15 @@ Here is a list of libraries and tools required for building/running neo2.
   * GSL, FGSL
   * MPI
     Used for parallelization.
-  * HDF5
-    Used for output.
   * libneo
     Contains common to different codes of the group. E.g. interface to
-    rusage.
+    rusage. Its Fortio-backed compatibility modules provide the HDF5 and
+    NetCDF subset used by NEO-2, so system HDF5/NetCDF libraries are not
+    required.
   * mc_efit
     Part of libneo repository. Neo-2 uses magfie code of the library
   * hdf5_tools
-    Part of libneo repository. Fortran interface to HDF5.
+    Part of libneo. Stable Fortran compatibility interface backed by Fortio.
   * MyMPILib
     Part of the NEO-2 repository. Fortran interface to MPI used by the
     parallel code paths.
