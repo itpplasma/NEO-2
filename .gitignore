@@ -66,3 +66,14 @@ DOC/latex/*
 build/cmake_install.cmake
 
 .DS_Store
+
+# Coverage files
+lcov.info
+coverage.info
+coverage_filtered.info
+*.gcda
+*.gcno
+*.gcov
+
+# Third-party directories that might be accidentally added
+thirdparty/
