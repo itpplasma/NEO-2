@@ -196,10 +196,10 @@ MODULE propagator_mod
 
   PUBLIC prop_boundary
   TYPE prop_boundary
-          REAL(kind=dp)  :: fieldpropagator_tag_left
-          REAL(kind=dp)  :: fieldpropagator_tag_right
-          REAL(kind=dp)  :: fieldperiod_tag_left
-          REAL(kind=dp)  :: fieldperiod_tag_right
+          INTEGER  :: fieldpropagator_tag_left
+          INTEGER  :: fieldpropagator_tag_right
+          INTEGER  :: fieldperiod_tag_left
+          INTEGER  :: fieldperiod_tag_right
           REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_forward
           REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: c_backward
   END TYPE prop_boundary
