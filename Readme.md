@@ -6,12 +6,12 @@
 
 ### Prerequisites
 
-git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (OpenBLAS or MKL), SuiteSparse, FFTW, GSL, HDF5/NetCDF with Fortran libraries. If SuiteSparse is not available on your system, it will be built automatically by NEO-2. For code coverage, lcov is also required. On Debian or Ubuntu run
+git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (OpenBLAS or MKL), SuiteSparse, FFTW, and GSL. HDF5/NetCDF compatibility is provided through libneo and Fortio. If SuiteSparse is not available on your system, it will be built automatically by NEO-2. For code coverage, lcov is also required. On Debian or Ubuntu run
 
     sudo apt install git cmake make ninja-build gcc g++ gfortran
     sudo apt install openmpi-bin openmpi-common libopenmpi-dev
     sudo apt install libopenblas-dev libsuitesparse-dev
-    sudo apt install libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev
+    sudo apt install libfftw3-dev libgsl-dev
     sudo apt install lcov  # Optional, for code coverage
 
 ### Build
@@ -26,7 +26,7 @@ To build against a specific libneo branch, tag, or commit SHA, pass `LIBNEO_REF`
 
     make LIBNEO_REF=<branch|tag|sha>
 
-The equivalent cmake option is `-DLIBNEO_REF=<branch|tag|sha>`. When unset, the build resolves libneo's default branch automatically. An ambient `LIBNEO_REF` in the shell does not affect the build.
+The equivalent cmake option is `-DLIBNEO_REF=<branch|tag|sha>`. When unset, the build uses the tested libneo revision pinned in `COMMON/ProjectConfig.cmake.in`. An ambient `LIBNEO_REF` in the shell does not affect the build.
 
 You obtain a `build` directory with subdirectories
 
