@@ -102,7 +102,6 @@ target_link_libraries(common PUBLIC
   ${MPI_Fortran_LIBRARIES}
   BLAS::BLAS
   LAPACK::LAPACK
-  ${NETCDF_LIBS}
   -lz -lpthread
 )
 if(LEGACY_SUITESPARSE)
