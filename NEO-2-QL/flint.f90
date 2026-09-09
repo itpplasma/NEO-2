@@ -1890,6 +1890,10 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   !pause
   ! End of fixing magnetics in all propagators 
 
+  ! Optional source-bound record of the exact magnetic and pitch support
+  ! consumed below. The switch defaults to false in neo2_ql.
+  CALL h5_magnetics(device)
+
   ! Now do the real computation
 
   ! go to the first propagator which is wanted
