@@ -92,3 +92,17 @@ set_tests_properties(spline_sparse_assembly_test PROPERTIES
     ENVIRONMENT "FORTSPARSE_UMFPACK_HELPER=$<TARGET_FILE:fortsparse_umfpack_helper>"
     TIMEOUT 120
 )
+
+# Runtime contract for the optional NEO-2-QL magnetic/pitch-support record.
+add_executable(test_magnetics_pitch_support test_magnetics_pitch_support.f90)
+target_link_libraries(test_magnetics_pitch_support common)
+
+add_test(NAME magnetics_pitch_support_test
+         COMMAND test_magnetics_pitch_support
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(magnetics_pitch_support_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
