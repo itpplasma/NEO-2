@@ -75,6 +75,20 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     TIMEOUT 30
 )
 
+# Runtime contract for the optional NEO-2-QL magnetic/pitch-support record.
+add_executable(test_magnetics_pitch_support test_magnetics_pitch_support.f90)
+target_link_libraries(test_magnetics_pitch_support common)
+
+add_test(NAME magnetics_pitch_support_test
+         COMMAND test_magnetics_pitch_support
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(magnetics_pitch_support_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
