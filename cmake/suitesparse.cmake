@@ -9,4 +9,10 @@ FetchContent_Declare(
     OVERRIDE_FIND_PACKAGE TRUE
 )
 
+# NEO-2 only links UMFPACK. SuiteSparse defaults to building every project,
+# including the large GraphBLAS C/C++ tree, which is unrelated to this build
+# and can introduce platform-specific toolchain failures.
+set(SUITESPARSE_ENABLE_PROJECTS "umfpack" CACHE STRING
+    "SuiteSparse projects to build")
+
 FetchContent_MakeAvailable(SuiteSparse)
