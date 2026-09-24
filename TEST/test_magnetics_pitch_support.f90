@@ -20,12 +20,17 @@ program test_magnetics_pitch_support
   type(fieldpropagator_struct), pointer :: fieldpropagator
   type(fieldripple_struct), pointer :: fieldripple
   integer(HID_T) :: file_id, category_id, group_id
-  integer :: status, owner_tag, ios
-  logical :: output_exists
+  integer :: status, owner_tag, ios, keep_output_status
+  logical :: output_exists, keep_output
+  character(len=8) :: keep_output_env
   real(kind=dp) :: stored_b_ref, stored_b_min, stored_eta_left
   real(kind=dp) :: stored_bhat(3), stored_eta(3), expected_b(3)
 
   status = 0
+  keep_output_env = ''
+  call get_environment_variable('NEO2_KEEP_MAGNETICS_TEST_OUTPUT', &
+       keep_output_env, status=keep_output_status)
+  keep_output = keep_output_status == 0 .and. trim(keep_output_env) == '1'
   h5_magnetics_file_name = 'test_pitch_support_magnetics.h5'
   open(unit=99, file=h5_magnetics_file_name, status='old', iostat=ios)
   if (ios == 0) close(unit=99, status='delete')
@@ -82,8 +87,12 @@ program test_magnetics_pitch_support
      status = status + 1
   end if
 
-  open(unit=99, file=h5_magnetics_file_name, status='old', iostat=ios)
-  if (ios == 0) close(unit=99, status='delete')
+  if (keep_output) then
+     print *, 'Keeping analytic magnetic-support file: ', trim(h5_magnetics_file_name)
+  else
+     open(unit=99, file=h5_magnetics_file_name, status='old', iostat=ios)
+     if (ios == 0) close(unit=99, status='delete')
+  end if
 
   if (status == 0) then
      print *, 'All tests passed!'
