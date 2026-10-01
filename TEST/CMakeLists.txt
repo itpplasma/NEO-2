@@ -61,3 +61,16 @@ set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     TIMEOUT 30
 )
+
+add_executable(test_fieldline_closure test_fieldline_closure.f90)
+target_link_libraries(test_fieldline_closure common)
+
+add_test(NAME fieldline_closure_test
+         COMMAND test_fieldline_closure
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(fieldline_closure_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
