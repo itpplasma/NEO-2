@@ -10,8 +10,13 @@ Level 1  + rigid toroidal rotation, v_theta = 0       ``er_level1_toroidal_rotat
 Level 2  + neoclassical poloidal rotation, given k    ``er_level2_poloidal_rotation``
 Level 3  full multi-species NEO-2 closure             ``er_level3_neo2_multispecies``
 
-Level 3 replays ``compute_Er`` in ``NEO-2-QL/ntv_mod.f90`` for the
-``isw_Vphi_loc = 0`` branch. Levels 0-2 are closed-form reductions of the same
+Level 3 replays ``compute_Er`` in ``NEO-2-QL/ntv_mod.f90`` for all
+``isw_Vphi_loc`` branches (0: flux-surface average, 1, 2: Vphi given at one
+point). It reproduces the stored Er up to roundoff and, in general, the
+residual of NEO-2's fixed-point iteration for (Er, <E_par B>/<B^2>) (relative
+tolerance ``epserr_iter``), because Er is written from the iteration's last
+compute_Er call while <E_par B>/<B^2> is written after one more update.
+Levels 0-2 are closed-form reductions of the same
 force balance; ``poloidal_rotation_coefficient_from_neo2`` links Level 2 to
 Level 3 through NEO-2's own transport coefficients.
 
@@ -73,7 +78,7 @@ denominator, exactly as in ``compute_Er``.
 import numpy as np
 
 # Constants exactly as in NEO-2-QL/ntv_mod.f90 (rounded to 5 digits there), so
-# that Level 3 replays compute_Er bit-for-bit up to floating-point roundoff.
+# that Level 3 replays compute_Er without constant-rounding differences.
 C_CGS = 2.9979e10  # speed of light [cm/s]
 E_CGS = 4.8032e-10  # elementary charge [statC]
 STATV_PER_CM_TO_V_PER_M = 2.99792458e4  # 1 statV/cm = 29979.2458 V/m (exact)
@@ -372,7 +377,7 @@ def load_neo2_force_balance_inputs(path):
     needed to form ``vphi_loc_factor``. Mode 2 is checked against NEO-2
     runs; mode 1 shares the same algebra and differs only in how theta_B is
     found from (R_Vphi, Z_Vphi). In the tested revision, NEO-2 itself STOPs
-    in mode 1 for generic points (``calc_thetaB_RZloc`` runs separate Newton
+    in mode 1 for the tested points (``calc_thetaB_RZloc`` runs separate Newton
     iterations on R and Z, which converge to different roots).
     """
     import h5py
