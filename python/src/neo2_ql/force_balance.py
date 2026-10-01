@@ -206,7 +206,8 @@ def _ion_row(spec_i, row, col):
 def er_level3_neo2_multispecies(spec_i, n, T, dn_ds, dT_ds, z, row, col,
                                 D31, D32, vphi, aiota, av_nabla_stor,
                                 sqrtg_bctrvr_tht, bcovar_tht, bcovar_phi,
-                                D33=None, avEparB_ov_avb2=0.0):
+                                D33=None, avEparB_ov_avb2=0.0,
+                                vphi_loc_factor=None):
     """Level 3: full multi-species neoclassical E_r, replaying ``compute_Er``.
 
     Implements ``NEO-2-QL/ntv_mod.f90::compute_Er`` for ``isw_Vphi_loc = 0``.
@@ -233,6 +234,16 @@ def er_level3_neo2_multispecies(spec_i, n, T, dn_ds, dT_ds, z, row, col,
     D31, D32, D33 : array_like
         Dimensional axisymmetric coefficients ``D31_AX``, ``D32_AX``,
         ``D33_AX`` (NEO-2 HDF5 output), same ordering as ``row``/``col``.
+    vphi_loc_factor : float, optional
+        ``None`` (default) for ``isw_Vphi_loc = 0``. For ``isw_Vphi_loc = 1,
+        2`` (Vphi given at one point of the surface) the factor
+        ``f = B^phi (1 + 2 pi iota psi_tor' G_symm_tb) / <B^2>`` at that point,
+        see ``vphi_local_factor``. The local form of (1) is
+        ``Vphi = omega (1 - f B_phi) + f <V_par B>``, and ``compute_Er`` then
+        uses ``D = c (1 - f B_phi)/psi_pr + f sum_b D31_ib Z_b e/T_b`` and
+        ``N = Vphi + c (1 - f B_phi) T_i/(Z_i e psi_pr) dln p_i/dr
+        + f sum_b [...]``. ``f = 1/(B_phi + iota B_tht)`` (the flux-surface
+        average <B^phi>/<B^2>) reproduces the ``isw_Vphi_loc = 0`` result.
     avEparB_ov_avb2 : float
         <E_par B>/<B^2> as written by NEO-2 (``avEparB_ov_avb2``), units
         statV/(cm G); only used with D33.
@@ -254,22 +265,48 @@ def er_level3_neo2_multispecies(spec_i, n, T, dn_ds, dT_ds, z, row, col,
     nb, Tb, zb = n[cols], T[cols], z[cols]
     dlnn_b = av_nabla_stor * dn_ds[cols] / nb
     dlnT_b = av_nabla_stor * dT_ds[cols] / Tb
-    base = C_CGS * aiota * bcovar_tht / sqrtg_bctrvr_tht
+    if vphi_loc_factor is None:
+        # isw_Vphi_loc = 0 (ntv_mod.f90 compute_Er), multiplied through by
+        # B_phi + iota B_tht.
+        base = C_CGS * aiota * bcovar_tht / sqrtg_bctrvr_tht
+        scale = 1.0
+        num_vphi = vphi * (aiota * bcovar_tht + bcovar_phi)
+    else:
+        # isw_Vphi_loc = 1, 2 (ntv_mod.f90 compute_Er, fac1 branch).
+        base = (C_CGS / sqrtg_bctrvr_tht) * (1.0 - vphi_loc_factor * bcovar_phi)
+        scale = vphi_loc_factor
+        num_vphi = vphi
 
     terms = {
         'den_base': base,
-        'den_d31': np.sum(D31 * zb * E_CGS / Tb),
-        'num_vphi': vphi * (aiota * bcovar_tht + bcovar_phi),
+        'den_d31': scale * np.sum(D31 * zb * E_CGS / Tb),
+        'num_vphi': num_vphi,
         'num_dia': base * diamagnetic_er(n[spec_i], T[spec_i], dn_ds[spec_i],
                                          dT_ds[spec_i], z[spec_i],
                                          av_nabla_stor),
-        'num_d31': np.sum(D31 * (dlnn_b + dlnT_b)),
-        'num_d32': np.sum((D32 - 2.5 * D31) * dlnT_b),
-        'num_d33': np.sum(D33 * avEparB_ov_avb2 * zb * E_CGS / Tb),
+        'num_d31': scale * np.sum(D31 * (dlnn_b + dlnT_b)),
+        'num_d32': scale * np.sum((D32 - 2.5 * D31) * dlnT_b),
+        'num_d33': scale * np.sum(D33 * avEparB_ov_avb2 * zb * E_CGS / Tb),
     }
     num = sum(v for key, v in terms.items() if key.startswith('num_'))
     den = terms['den_base'] + terms['den_d31']
     return num / den, terms
+
+
+def vphi_local_factor(bctrvr_phi_Vphi, G_symm_tb_Vphi, aiota, psi_pr_hat,
+                      Bref, avbhat2):
+    """Factor f = B^phi (1 + 2 pi iota psi_tor' G_symm_tb) / <B^2>.
+
+    Evaluated at the point where Vphi is given (``isw_Vphi_loc = 1, 2``),
+    exactly as ``fac1`` in ``compute_Er``: ``bctrvr_phi_Vphi`` is the
+    contravariant Boozer B^phi there, ``G_symm_tb_Vphi`` the theta derivative
+    of G_symm (``compute_Gsymm``), which converts the Boozer toroidal angle
+    to that of symmetry flux coordinates; psi_tor' = ``psi_pr_hat * Bref``
+    and <B^2> = ``avbhat2 * Bref**2``.
+    """
+    return (bctrvr_phi_Vphi
+            * (1.0 + 2.0 * np.pi * aiota * psi_pr_hat * Bref * G_symm_tb_Vphi)
+            / (avbhat2 * Bref**2))
 
 
 def poloidal_rotation_coefficient_from_neo2(spec_i, row, col, D31, D32):
@@ -312,6 +349,9 @@ REQUIRED_DATASETS = (
     'col_ind_spec', 'D31_AX', 'D32_AX', 'D33_AX', 'Vphi', 'aiota',
     'av_nabla_stor', 'sqrtg_bctrvr_tht', 'bcovar_tht', 'bcovar_phi', 'Er')
 
+LOCAL_VPHI_DATASETS = ('bctrvr_phi_Vphi', 'G_symm_tb_Vphi', 'psi_pr_hat',
+                       'Bref', 'avbhat2')
+
 
 def load_neo2_force_balance_inputs(path):
     """Read the inputs of ``er_level3_neo2_multispecies`` from NEO-2 output.
@@ -325,10 +365,15 @@ def load_neo2_force_balance_inputs(path):
     ``dn_spec_ov_ds``, ``dT_spec_ov_ds``, ``Vphi``, ``species_tag_Vphi`` and
     ``isw_Vphi_loc``, which ``write_multispec_output_a`` writes only in
     revisions containing the issue #75 output change; older files raise
-    ``KeyError``. Only ``isw_Vphi_loc = 0`` is supported: the local modes 1
-    and 2 need the local B^phi and the theta derivative G_symm_tb at
-    the Vphi point, which are not written. For more
-    than one species ``avEparB_ov_avb2`` is required as well.
+    ``KeyError``. For more than one species ``avEparB_ov_avb2`` is required
+    as well. For ``isw_Vphi_loc = 1, 2`` (Vphi given at one point) the
+    local B^phi and G_symm_tb at that point (``bctrvr_phi_Vphi``,
+    ``G_symm_tb_Vphi``) and ``psi_pr_hat``, ``Bref``, ``avbhat2`` are
+    needed to form ``vphi_loc_factor``. Mode 2 is checked against NEO-2
+    runs; mode 1 shares the same algebra and differs only in how theta_B is
+    found from (R_Vphi, Z_Vphi). In the tested revision, NEO-2 itself STOPs
+    in mode 1 for generic points (``calc_thetaB_RZloc`` runs separate Newton
+    iterations on R and Z, which converge to different roots).
     """
     import h5py
 
@@ -340,11 +385,19 @@ def load_neo2_force_balance_inputs(path):
         # Written only for num_spec > 1, where it enters through D33.
         required.append('avEparB_ov_avb2')
     missing = [key for key in required if key not in g]
+    mode = int(g['isw_Vphi_loc']) if 'isw_Vphi_loc' in g else 0
+    if mode not in (0, 1, 2):
+        raise ValueError('isw_Vphi_loc must be 0, 1 or 2')
+    if mode >= 1:
+        missing += [key for key in LOCAL_VPHI_DATASETS if key not in g]
     if missing:
         raise KeyError('NEO-2 output lacks datasets needed for the E_r '
                        'replay: ' + ', '.join(missing))
-    if int(g['isw_Vphi_loc']) != 0:
-        raise ValueError('only isw_Vphi_loc = 0 is supported')
+    vphi_loc_factor = None
+    if mode >= 1:
+        vphi_loc_factor = float(vphi_local_factor(
+            g['bctrvr_phi_Vphi'], g['G_symm_tb_Vphi'], g['aiota'],
+            g['psi_pr_hat'], g['Bref'], g['avbhat2']))
     tags = np.asarray(g['species_tag'], dtype=int)
     index = {int(t): i for i, t in enumerate(tags)}
     matches = np.flatnonzero(tags == int(g['species_tag_Vphi']))
@@ -364,5 +417,6 @@ def load_neo2_force_balance_inputs(path):
         'sqrtg_bctrvr_tht': float(g['sqrtg_bctrvr_tht']),
         'bcovar_tht': float(g['bcovar_tht']),
         'bcovar_phi': float(g['bcovar_phi']),
+        'vphi_loc_factor': vphi_loc_factor,
         'Er_stored': float(g['Er']),
     }
