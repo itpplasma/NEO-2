@@ -45,6 +45,10 @@ ln -sf "$neo2_exe" "$tmpdir/neo_2.x"
         ./neo_2.x > /tmp/neo2_ql_axisymmetric_fixture.log 2>&1
 )
 
+# Refuse to replace the fixture with output the replay cannot use.
+PYTHONPATH="$repo_root/python/src" python3 -c \
+    "import sys; from neo2_ql.force_balance import load_neo2_force_balance_inputs as f; f(sys.argv[1])" \
+    "$tmpdir/neo2_multispecies_out.h5"
 cp "$tmpdir/neo2_multispecies_out.h5" "$fixture_path"
 echo "Wrote $fixture_path"
 echo "Run log: /tmp/neo2_ql_axisymmetric_fixture.log"
