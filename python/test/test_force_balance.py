@@ -111,6 +111,16 @@ def _single_ion_coefficients(k, T, z, psi_pr, bcovar_phi):
     return np.array([d31]), np.array([(2.5 - k) * d31])
 
 
+def test_rigid_rotation_defect_measures_violation():
+    # A D31 that is 2 % larger than the momentum-conserving value must be
+    # reported as a +2 % defect.
+    psi_pr, bphi = 4.17e5, -2.93e6
+    d31, _ = _single_ion_coefficients(0.0, ION_SI['T'], 1.0, psi_pr, bphi)
+    defect = rigid_rotation_defect(0, [ION_SI['T']], [1.0], [0], [0],
+                                   1.02 * d31, psi_pr, bphi)
+    assert_allclose(defect, 0.02, rtol=1e-12)
+
+
 def test_level3_single_ion_reduces_to_level2():
     geo = dict(aiota=0.46, bcovar_tht=-1.23e5, bcovar_phi=-2.93e6,
                sqrtg_bctrvr_tht=4.17e5)

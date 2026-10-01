@@ -31,7 +31,9 @@ Conventions (identical to ``compute_Er``; CGS-Gaussian units throughout)
 - ``B_tht = bcovar_tht``, ``B_phi = bcovar_phi`` [G cm] are the covariant
   Boozer components; ``aiota`` is the rotational transform.
 - ``vphi`` [rad/s] is the toroidal angular velocity ``Vphi`` of species ``i``
-  in the ``isw_Vphi_loc = 0`` sense.
+  in the ``isw_Vphi_loc = 0`` sense, i.e. the flux-surface average <V^phi>
+  of the contravariant Boozer component (for u_i = 0 it equals the rigid
+  geometric rotation frequency).
 - Temperatures are energies [erg]; ``Z`` is the charge number (electrons -1).
 
 Derivation
@@ -44,7 +46,9 @@ balance (Hinton & Hazeltine 1976, Rev. Mod. Phys. 48, 239, Sec. VI; Helander
     omega_a = Om_tE - c p_a' / (Z_a e n_a psi_pr),
 
 with primes denoting d/dr. Equivalently, in laboratory components,
-``E_r = p_a'/(Z_a e n_a) - v_theta B_phi / c + v_phi B_theta / c``.
+``E_r = p_a'/(Z_a e n_a) - v_theta B_tor / c + v_phi B_pol / c`` with
+physical (laboratory) field components B_tor, B_pol [G], not to be confused
+with the covariant Boozer components B_phi, B_tht [G cm] used elsewhere.
 Using ``V.B = omega B_phi + u B^2`` and ``B^phi (B_phi + iota B_tht) = B^2``
 (Boozer), the toroidal rotation that NEO-2 takes as input satisfies
 
@@ -75,9 +79,9 @@ E_CGS = 4.8032e-10  # elementary charge [statC]
 STATV_PER_CM_TO_V_PER_M = 2.99792458e4  # 1 statV/cm = 29979.2458 V/m (exact)
 
 # Asymptotic ion poloidal rotation coefficients k_i in the large-aspect-ratio
-# limit, sign convention of Kim, Diamond & Groebner, Phys. Fluids B 3, 2050
-# (1991), Eq. (29) / Hinton & Hazeltine (1976), Eq. (6.136):
-# u_theta,i = k_i c/(Z_i e B) dT_i/dr, positive k in the banana regime.
+# limit (Hinton & Hazeltine 1976; Kim, Diamond & Groebner, Phys. Fluids B 3,
+# 2050 (1991)). Sign convention: u_theta,i = k_i c/(Z_i e B) dT_i/dr, positive
+# k in the banana regime; operationally k_i = 5/2 - D32_ii/D31_ii in NEO-2.
 POLOIDAL_ROTATION_K_LIMITS = {
     'banana': 1.17,
     'plateau': -0.5,
@@ -115,8 +119,8 @@ def er_level1_toroidal_rotation(n, T, dn_ds, dT_ds, z, av_nabla_stor,
 
         E_r = p_i'/(Z_i e n_i) + psi_pr Vphi / c,
 
-    the familiar ``E_r = p'/(Z e n) + v_phi B_theta / c`` with
-    ``v_phi = R Vphi`` and ``R B_theta = d psi_pol/dr``. Returns E_r
+    the familiar ``E_r = p'/(Z e n) + v_phi B_pol / c`` with
+    ``v_phi = R Vphi`` and ``R B_pol = d psi_pol/dr`` (laboratory B_pol [G]). Returns E_r
     [statV/cm].
     """
     return (diamagnetic_er(n, T, dn_ds, dT_ds, z, av_nabla_stor)
@@ -125,10 +129,10 @@ def er_level1_toroidal_rotation(n, T, dn_ds, dT_ds, z, av_nabla_stor,
 
 def poloidal_rotation_er(k, T, dT_ds, z, av_nabla_stor, aiota,
                          bcovar_tht, bcovar_phi):
-    """Poloidal-rotation term ``-v_theta B_phi / c`` of (2) [statV/cm].
+    """Poloidal-rotation term ``-v_theta B_tor / c`` of (2) [statV/cm].
 
     Neoclassical theory gives ``u_i <B^2> = k_i c B_phi T_i' / (Z_i e
-    psi_pr)`` (Kim, Diamond & Groebner 1991, Eq. (29); Hirshman & Sigmar 1981,
+    psi_pr)`` (Kim, Diamond & Groebner 1991; Hirshman & Sigmar 1981,
     Nucl. Fusion 21, 1079). Inserting <V_par B> = omega B_phi + u <B^2> into
     (1) and (2) gives
 
@@ -169,7 +173,7 @@ def er_level2_poloidal_rotation(n, T, dn_ds, dT_ds, z, av_nabla_stor,
 def poloidal_rotation_coefficient_sauter(ftrap, nu_star_i):
     """Collisionality-dependent ion k from Sauter, Angioni & Lin-Liu (1999).
 
-    Phys. Plasmas 6, 2834, Eqs. (17a,b), with the erratum Phys. Plasmas 9,
+    Phys. Plasmas 6, 2834, ion poloidal-flow coefficient alpha, with the erratum Phys. Plasmas 9,
     5140 (2002); Sauter's alpha is the negative of k used here:
 
         alpha_0 = -1.17 (1 - f_t) / (1 - 0.22 f_t - 0.19 f_t^2)
