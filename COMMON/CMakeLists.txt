@@ -49,6 +49,7 @@ set(COMMON_FILES
   neo_work.f90
   nrtype.f90
   nrutil.f90
+  odeint_robust_mod.f90
   partpa_mod.f90
   plagrange_mod.f90
   plot_distrf.f90
