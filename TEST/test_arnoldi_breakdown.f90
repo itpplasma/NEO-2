@@ -1,5 +1,5 @@
 program test_arnoldi_breakdown
-    use, intrinsic :: ieee_arithmetic, only: ieee_quiet_nan, ieee_value
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_quiet_nan, ieee_value
     use arnoldi_mod, only: arnoldi, eigvecs, f_init_arnoldi, ierr, ngrow, &
         & ntol, ritznum, tol
     use collisionality_mod, only: num_spec
@@ -33,6 +33,16 @@ program test_arnoldi_breakdown
         print *, 'FAIL: retained Ritz values:', ngrow, ' expected 1'
         status = status + 1
     else
+        if (.not. ieee_is_finite(real(ritznum(1), kind=kind(1d0))) .or. &
+            & .not. ieee_is_finite(aimag(ritznum(1)))) then
+            print *, 'FAIL: Ritz value has non-finite components'
+            status = status + 1
+        end if
+        if (.not. all(ieee_is_finite(real(eigvecs(:, 1), kind=kind(1d0)))) .or. &
+            & .not. all(ieee_is_finite(aimag(eigvecs(:, 1))))) then
+            print *, 'FAIL: Ritz vector has non-finite components'
+            status = status + 1
+        end if
         if (abs(ritznum(1) - eigenvalue) > tolerance) then
             print *, 'FAIL: Ritz value:', ritznum(1), ' expected:', eigenvalue
             status = status + 1
