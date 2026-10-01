@@ -1232,6 +1232,14 @@ subroutine main
       boozer_s = boozer_s_prof(ind_boozer_s)
       IF (isw_calc_Er .EQ. 2) THEN
         Om_tE = Om_tE_prof(ind_boozer_s)
+        ! V_phi is not an input in this mode: write neutral values instead
+        ! of propagating unused rotation settings from the top-level neo2.in.
+        species_tag_Vphi = 0
+        isw_Vphi_loc = 0
+        Vphi = 0.0_dp
+        R_Vphi = 0.0_dp
+        Z_Vphi = 0.0_dp
+        boozer_theta_Vphi = 0.0_dp
       ELSE
         Vphi = Vphi_prof(ind_boozer_s)
         IF (isw_Vphi_loc .EQ. 1) THEN

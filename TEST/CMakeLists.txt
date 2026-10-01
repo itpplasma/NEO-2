@@ -78,3 +78,19 @@ if(Python3_Interpreter_FOUND)
       TIMEOUT 120
   )
 endif()
+
+# Per-surface isw_calc_Er=2 solve without V_phi. Needs the private golden
+# record data; enabled only when NEO2_QL_GOLDEN_DIR points to
+# <data>/TESTS/NEO-2/golden_record/ql at configure time.
+if(Python3_Interpreter_FOUND AND DEFINED ENV{NEO2_QL_GOLDEN_DIR})
+  add_test(NAME er_direct_solve_test
+           COMMAND ${Python3_EXECUTABLE}
+                   ${CMAKE_CURRENT_SOURCE_DIR}/test_er_direct_solve.py
+                   $<TARGET_FILE:neo_2_ql.x> $ENV{NEO2_QL_GOLDEN_DIR}
+           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  set_tests_properties(er_direct_solve_test PROPERTIES
+      PASS_REGULAR_EXPRESSION "All tests passed!"
+      FAIL_REGULAR_EXPRESSION "FAIL"
+      TIMEOUT 3600
+  )
+endif()
