@@ -22,6 +22,8 @@ from neo2_ql.force_balance import (
 
 FIXTURE = (Path(__file__).resolve().parent / 'data'
            / 'neo2_ql_axisymmetric_multispecies_out.h5')
+FIXTURE_LOC2 = FIXTURE.with_name(
+    'neo2_ql_axisymmetric_multispecies_out_vphi_loc2.h5')
 EV_TO_ERG = 1.602176634e-12
 AV_NABLA_STOR = 0.02  # 1/cm; d/ds = d/dr / AV_NABLA_STOR
 
@@ -208,24 +210,59 @@ def test_loader_rejects_multispecies_output_without_inductive_field():
             raise AssertionError('missing avEparB_ov_avb2 was accepted')
 
 
-def test_loader_rejects_local_vphi_modes():
-    # isw_Vphi_loc = 1, 2 need the local B^phi and G_symm_tb at the Vphi
-    # point, which NEO-2 does not write; the replay must refuse to guess.
+def _modified_copy(source, edit):
+    """Copy ``source`` to a new temporary directory and apply ``edit``."""
     import shutil
     import tempfile
     import h5py
-    for mode in (1, 2):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / 'local_vphi.h5'
-            shutil.copy(FIXTURE, path)
-            with h5py.File(path, 'r+') as f:
-                f['isw_Vphi_loc'][...] = mode
-            try:
-                load_neo2_force_balance_inputs(path)
-            except ValueError as exc:
-                assert 'isw_Vphi_loc' in str(exc)
-            else:
-                raise AssertionError(f'isw_Vphi_loc = {mode} was accepted')
+    tmp = tempfile.mkdtemp()
+    path = Path(tmp) / source.name
+    shutil.copy(source, path)
+    with h5py.File(path, 'r+') as f:
+        edit(f)
+    return path
+
+
+def test_level3_replays_fortran_er_local_vphi():
+    # Same deck run with isw_Vphi_loc = 2 (compute_Er's fac1 branch): Vphi
+    # is the local ion V^phi at theta_B = 16 * 2 pi / 100 taken from the
+    # Vphi_prof_spec output of the isw_Vphi_loc = 0 run. The local replay
+    # must therefore reproduce both this run's Er and, independently, the
+    # isw_Vphi_loc = 0 Er. Observed: 1.5e-11 for both.
+    data = load_neo2_force_balance_inputs(FIXTURE_LOC2)
+    er_stored = data.pop('Er_stored')
+    assert data['vphi_loc_factor'] is not None
+    er, _ = er_level3_neo2_multispecies(**data)
+    assert_allclose(er, er_stored, rtol=1e-9)
+    _, er_mode0 = _fixture()
+    assert_allclose(er, er_mode0, rtol=1e-9)
+
+
+def test_flux_averaged_local_factor_reproduces_mode0():
+    # The flux-surface average of the local factor, <B^phi>/<B^2> =
+    # 1/(B_phi + iota B_tht), must turn the local form of (1) into the
+    # isw_Vphi_loc = 0 form.
+    d, er_stored = _fixture()
+    f_avg = 1.0 / (d['bcovar_phi'] + d['aiota'] * d['bcovar_tht'])
+    er, _ = er_level3_neo2_multispecies(**dict(d, vphi_loc_factor=f_avg))
+    assert_allclose(er, er_stored, rtol=1e-9)
+
+
+def test_loader_requires_local_factors_and_valid_mode():
+    def drop(f):
+        del f['G_symm_tb_Vphi']
+
+    def bad_mode(f):
+        f['isw_Vphi_loc'][...] = 3
+
+    for edit, error in ((drop, KeyError), (bad_mode, ValueError)):
+        path = _modified_copy(FIXTURE_LOC2, edit)
+        try:
+            load_neo2_force_balance_inputs(path)
+        except error as exc:
+            assert 'G_symm_tb_Vphi' in str(exc) or 'isw_Vphi_loc' in str(exc)
+        else:
+            raise AssertionError(f'{edit.__name__} was accepted')
 
 
 def test_omte_matches_fortran_mach_number():

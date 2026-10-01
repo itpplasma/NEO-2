@@ -17,6 +17,11 @@ set -euo pipefail
 #   2056ace52db0d8a8  test_axi.bc
 #   17477f44ae664909  test_pert.bc
 
+#
+# neo2_ql_axisymmetric_multispecies_out_vphi_loc2.h5 is the same deck with
+# ISW_VPHI_LOC=2, BOOZER_THETA_VPHI=1.0053096491487339 (= 16*2*pi/100) and
+# VPHI=22708.09206775981, the ion Vphi_prof_spec(17) of the run above; it
+# additionally contains bctrvr_phi_Vphi and G_symm_tb_Vphi.
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 fixture_path="$repo_root/python/test/data/neo2_ql_axisymmetric_multispecies_out.h5"
 golden_dir="${NEO2_GOLDEN_QL_DIR:-/home/ert/data/TESTS/NEO-2/golden_record/ql}"
