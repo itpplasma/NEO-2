@@ -209,22 +209,23 @@ def test_loader_rejects_multispecies_output_without_inductive_field():
 
 
 def test_loader_rejects_local_vphi_modes():
-    # isw_Vphi_loc = 1, 2 need the local B^phi and G_symm at the Vphi point,
-    # which NEO-2 does not write; the replay must refuse instead of guessing.
+    # isw_Vphi_loc = 1, 2 need the local B^phi and G_symm_tb at the Vphi
+    # point, which NEO-2 does not write; the replay must refuse to guess.
     import shutil
     import tempfile
     import h5py
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / 'local_vphi.h5'
-        shutil.copy(FIXTURE, path)
-        with h5py.File(path, 'r+') as f:
-            f['isw_Vphi_loc'][...] = 2
-        try:
-            load_neo2_force_balance_inputs(path)
-        except ValueError as exc:
-            assert 'isw_Vphi_loc' in str(exc)
-        else:
-            raise AssertionError('isw_Vphi_loc = 2 was accepted')
+    for mode in (1, 2):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'local_vphi.h5'
+            shutil.copy(FIXTURE, path)
+            with h5py.File(path, 'r+') as f:
+                f['isw_Vphi_loc'][...] = mode
+            try:
+                load_neo2_force_balance_inputs(path)
+            except ValueError as exc:
+                assert 'isw_Vphi_loc' in str(exc)
+            else:
+                raise AssertionError(f'isw_Vphi_loc = {mode} was accepted')
 
 
 def test_omte_matches_fortran_mach_number():
