@@ -1703,10 +1703,6 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
       nsp[0] -= 1
       hout.create_dataset('num_species', data=nsp)
 
-      rs = np.array(hin['rel_stages'])
-      rs[...] -= 1
-      hout.create_dataset('rel_stages', data=rs)
-
       st = np.array(hin['species_tag'])
       st.resize( (hout['num_species'][0], ) )
       hout.create_dataset('species_tag', data=st)
@@ -1715,8 +1711,11 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
         # if two remaining species, special treatment for some
         # quantities: set both to electron value(s).
         if (dname in zero_dimension_special) and nsp[0] == 2:
+          # Quasi-neutrality with one ion species of charge Z: n_i = n_e / Z.
+          ion = [k for k in range(nsp[0] + 1) if k != index][1]
+          z_ion = np.array(hin['species_def'])[0, ion, ...]
           t = np.array(np.array(hin[dname])[0, ...], ndmin=2)
-          t = np.append(t, np.array(np.array(hin[dname])[0, ...], ndmin=2), 0)
+          t = np.append(t, np.array(np.array(hin[dname])[0, ...] / z_ion, ndmin=2), 0)
         else:
           t = np.array(hin[dname])[0:index, ...]
           t = np.append(t, np.array(hin[dname])[index+1:, ...], 0)
@@ -1726,6 +1725,13 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
         t = np.array(hin[dname])[:, 0:index, ...]
         t = np.append(t, np.array(hin[dname])[:, index+1:, ...], 1)
         hout.create_dataset(dname, data=t)
+
+      # Number of species with positive density per surface, as neo2.f90
+      # requires; a plain decrement is wrong where the removed species was
+      # absent.
+      rs = np.array(hin['rel_stages'])
+      rs[...] = (np.array(hout['n_prof']) > 0.0).sum(axis=0)
+      hout.create_dataset('rel_stages', data=rs)
 
       if nsp[0] == 2:
         kappa = np.array(np.array(hin['kappa_prof'])[0, ...], ndmin=2)
@@ -2182,6 +2188,7 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
   other files.
   """
 
+  import numpy as np
   from numpy import array
   from scipy.interpolate import CubicSpline
 
@@ -2196,6 +2203,36 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
     sp_n = CubicSpline(out['boozer_s'], out['n_prof'], axis=1)
     int_n = sp_n(new_s_grid)
     der_n = sp_n(new_s_grid, 1)
+
+    # Old surfaces around each new point (the point itself if it is an old
+    # surface; the outermost one outside the old range).
+    old_s = np.asarray(out['boozer_s'])
+    old_n = np.asarray(out['n_prof'])
+    old_rel = np.asarray(out['rel_stages'])
+    right = np.clip(np.searchsorted(old_s, new_s_grid), 0, old_s.size - 1)
+    left = np.where(np.isclose(old_s[right], new_s_grid, rtol=0, atol=1e-14),
+                    right, np.clip(right - 1, 0, old_s.size - 1))
+    # A species absent (n <= 0) on both surfaces around a new point stays
+    # absent there; this drops cubic-spline overshoot into absent regions.
+    absent = (old_n[:, left] <= 0.0) & (old_n[:, right] <= 0.0)
+    int_n = np.where(absent, 0.0, int_n)
+    der_n = np.where(absent, 0.0, der_n)
+    # rel_stages is the number of species with positive density per surface:
+    # neo2.f90 (prepare_mulitspecies_scan) uses it as num_spec and fills one
+    # slot per species with n_prof > 0 (STOP if more, unset slots if fewer).
+    # A cubic spline of rel_stages truncated to an integer could undercount.
+    # Count the species with positive density; where that leaves the range
+    # of the two old surfaces (the spline undershoots below zero for a
+    # species present on both), refuse to write an unusable file.
+    int_rel_stages = (int_n > 0.0).sum(axis=0)
+    bad = ((int_rel_stages < np.minimum(old_rel[left], old_rel[right]))
+           | (int_rel_stages > np.maximum(old_rel[left], old_rel[right])))
+    if np.any(bad):
+      raise ValueError('new_grid: interpolated densities change the number of '
+                       'species with positive density beyond the neighbouring '
+                       'surfaces at boozer_s = ' + str(new_s_grid[bad])
+                       + '; use a finer or different grid.')
+
     dset = out['n_prof']
     dset[...] = array(int_n)
     dset = out['dn_ov_ds_prof']
@@ -2224,15 +2261,8 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
     dset = out['rho_pol']
     dset[...] = array(int_rho)
 
-    # rel_stages is the number of species with positive density on each
-    # surface. neo2.f90 (prepare_mulitspecies_scan) uses it as num_spec and
-    # fills one slot per species with n_prof > 0: it stops if that count
-    # exceeds rel_stages and leaves slots unset if it is smaller. So set it to
-    # the number of species with positive interpolated density. A cubic
-    # spline of rel_stages truncated to an integer could undercount (e.g. 1.875
-    # between surfaces with 2 and 3 species) and a neighbour maximum could
-    # overcount where the interpolated density is not positive.
-    int_rel_stages = (array(int_n) > 0.0).sum(axis=0)
+    # rel_stages: number of species with positive density, computed and
+    # checked together with the densities above.
     dset = out['rel_stages']
     dset[...] = int_rel_stages
 
