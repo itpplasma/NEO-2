@@ -12,6 +12,7 @@ Oracles:
 """
 import h5py
 import numpy as np
+import pytest
 
 from neo2_ql import get_coulomb_logarithm, get_kappa
 from neo2_util.hdf5tools import new_grid, remove_species_from_profile_file
@@ -22,9 +23,10 @@ S_OLD = np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
 S_NEW = np.array([0.05, 0.3, 0.5, 0.55, 0.7, 0.95])
 
 
-def write_input(path, n_prof, rel_stages):
+def write_input(path, n_prof, rel_stages, t_scale=None):
     nspec, nrad = n_prof.shape
-    t_prof = np.tile(1.0e-9 * (2.0 - S_OLD), (nspec, 1))
+    t_scale = np.ones(nspec) if t_scale is None else np.asarray(t_scale)
+    t_prof = t_scale[:, None] * 1.0e-9 * (2.0 - S_OLD)
     species_def = np.zeros((2, nspec, nrad))
     species_def[0] = np.array([-1.0, 1.0, 6.0, 2.0][:nspec])[:, None]
     species_def[1] = np.array([9.1e-28, 3.3e-24, 2.0e-23, 6.6e-24][:nspec])[:, None]
@@ -71,8 +73,25 @@ def test_rel_stages_follow_species_with_density(tmp_path):
         right = np.searchsorted(S_OLD, s)
         left = max(right - 1, 0)
         assert rel_new[k] >= min(rel_old[left], rel_old[right]), (s, rel_new)
-    # Inside the carbon region all three species stay.
+    # Inside the carbon region all three species stay; between two surfaces
+    # without carbon (s = 0.95) the spline overshoot is dropped.
     assert rel_new[:2].tolist() == [3, 3]
+    assert rel_new[-1] == 2
+    with h5py.File(out, 'r') as f:
+        assert f['n_prof'][2, -1] == 0.0
+        assert f['dn_ov_ds_prof'][2, -1] == 0.0
+
+
+def test_rel_stages_undershoot_is_refused(tmp_path):
+    # Carbon is present on every old surface, but its cubic spline dips below
+    # zero at s = 0.3: that file would be rejected by neo2.f90.
+    n_e = np.full(S_OLD.size, 4.0e13)
+    n_c = 1.0e11 * np.array([1.0, 0.01, 0.01, 1.0, 1.0, 1.0])
+    n_prof = np.vstack([n_e, n_e - 6.0 * n_c, n_c])
+    src = tmp_path / 'in.h5'
+    write_input(src, n_prof, [3] * S_OLD.size)
+    with pytest.raises(ValueError, match='0.3'):
+        new_grid(str(src), str(tmp_path / 'out.h5'), S_NEW)
 
 
 def test_rel_stages_unchanged_when_constant(tmp_path):
@@ -85,23 +104,43 @@ def test_rel_stages_unchanged_when_constant(tmp_path):
         assert np.array_equal(fout['rel_stages'][()], fin['rel_stages'][()])
 
 
-def test_remove_species_leaving_two_recomputes_ion_kappa(tmp_path):
+@pytest.mark.parametrize('index, z_ion', [(2, 1.0), (1, 6.0)])
+def test_remove_species_leaving_two_recomputes_ion_kappa(tmp_path, index,
+                                                          z_ion):
+    # Remove carbon (keep D, Z = 1) or deuterium (keep C, Z = 6); electron
+    # and ion temperatures differ so the Coulomb logarithm source matters.
     n_e = 4.0e13 * (1.2 - S_OLD**2)
     n_prof = np.vstack([n_e, 0.9 * n_e, 0.0125 * n_e])
     src, out = tmp_path / 'in.h5', tmp_path / 'out.h5'
-    write_input(src, n_prof, [3] * S_OLD.size)
-    remove_species_from_profile_file(str(src), str(out), 2)
+    write_input(src, n_prof, [3] * S_OLD.size, t_scale=[1.0, 0.7, 0.5])
+    remove_species_from_profile_file(str(src), str(out), index)
     with h5py.File(src, 'r') as fin, h5py.File(out, 'r') as fout:
         assert fout['num_species'][()].tolist() == [2]
+        assert fout['rel_stages'][()].tolist() == [2] * S_OLD.size
         kappa = fout['kappa_prof'][()]
         n_out, t_out = fout['n_prof'][()], fout['T_prof'][()]
         assert kappa.shape == (2, S_OLD.size)
-        # Two species left: the ion takes the electron density (Z = 1).
-        assert np.array_equal(n_out[1], n_e)
+        # Quasi-neutrality with the remaining ion: n_i = n_e / Z.
+        assert np.allclose(n_out[1], n_e / z_ion, rtol=1e-15, atol=0)
         assert np.array_equal(kappa[0], fin['kappa_prof'][()][0])
         # Independent evaluation: 2 / mean free path with the electron
         # Coulomb logarithm, as written by the input generator.
         log_lambda = 52.43 - 1.15 * np.log10(n_e) + 2.3 * np.log10(t_out[0])
-        mfp = (3.0 / (4.0 * np.sqrt(np.pi)) * (t_out[1] / E_CGS)**2
-               / (n_out[1] * E_CGS**2 * log_lambda))
+        charge = z_ion * E_CGS
+        mfp = (3.0 / (4.0 * np.sqrt(np.pi)) * (t_out[1] / charge)**2
+               / (n_out[1] * charge**2 * log_lambda))
         assert np.allclose(kappa[1], 2.0 / mfp, rtol=1e-12, atol=0)
+
+
+def test_remove_locally_absent_species_keeps_counts(tmp_path):
+    # Carbon exists only inside s = 0.4; removing it must leave 2 species on
+    # every surface, not 1 where carbon was already absent.
+    n_e = 4.0e13 * (1.2 - S_OLD**2)
+    n_c = 1.0e12 * np.array([2.0, 1.8, 1.0, 0.0, 0.0, 0.0])
+    n_prof = np.vstack([n_e, n_e - 6.0 * n_c, n_c, 1.0e-3 * n_e])
+    src, out = tmp_path / 'in.h5', tmp_path / 'out.h5'
+    write_input(src, n_prof, (n_prof > 0).sum(axis=0))
+    remove_species_from_profile_file(str(src), str(out), 2)
+    with h5py.File(out, 'r') as f:
+        assert f['rel_stages'][()].tolist() == [3] * S_OLD.size
+        assert np.array_equal(f['n_prof'][()][2], 1.0e-3 * n_e)
