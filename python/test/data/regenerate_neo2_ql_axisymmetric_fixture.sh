@@ -10,6 +10,12 @@ set -euo pipefail
 # golden-record ql input deck below; it agrees with the earlier fixture from
 # PR #76 (commit e827e1c) to 5e-10 on every common dataset. The output is
 # validated with load_neo2_force_balance_inputs before it replaces the fixture.
+# Committed fixture: NEO-2 commit 11ff389, libneo 7262c32, GNU Fortran (Homebrew GCC 16.1.0) 16.1.0,
+# golden-record ql deck (sha256 prefixes):
+#   62a962565661c80c  reference/neo.in
+#   e4c38ae72a4f8a64  reference/neo2.in
+#   2056ace52db0d8a8  test_axi.bc
+#   17477f44ae664909  test_pert.bc
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 fixture_path="$repo_root/python/test/data/neo2_ql_axisymmetric_multispecies_out.h5"
