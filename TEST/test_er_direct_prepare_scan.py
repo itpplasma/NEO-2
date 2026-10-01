@@ -10,8 +10,10 @@ point.
 Cases:
   1. isw_calc_Er=2, input without any V_phi dataset: preparation succeeds and
      each surface gets the prescribed Om_tE.
-  2. isw_calc_Er=2, input with a V_phi profile: identical per-surface Om_tE
-     and species data as case 1, and the V_phi profile is not propagated.
+  2. isw_calc_Er=2, input with a V_phi profile and invalid V_phi settings in
+     the top-level neo2.in: identical per-surface Om_tE and species data as
+     case 1, and neutral V_phi settings in every surface (nothing of the
+     V_phi input is propagated).
   3. isw_calc_Er=1, input with V_phi: V_phi of each surface is propagated
      (the V_phi-driven mode keeps its behaviour).
   4. isw_calc_Er=1, input without V_phi: preparation must fail, since that
@@ -37,14 +39,14 @@ VPHI = np.array([7.0e3, -9.0e3, 1.1e4])
 Z = np.array([-1.0, 1.0])
 M = np.array([9.1093836e-28, 3.3436e-24])
 T = np.array([[2.0e-9, 1.5e-9, 1.0e-9], [2.5e-9, 1.75e-9, 0.75e-9]])
-N = np.array([[3.0e13, 2.0e13, 1.0e13], [3.0e13, 2.0e13, 1.0e13]])
+N = np.array([[3.0e13, 2.0e13, 1.0e13], [2.9e13, 1.8e13, 0.7e13]])
 
 NEO2_IN = """&multi_spec
  lsw_multispecies = .true.
  isw_multispecies_init = 1
  fname_multispec_in = 'multispec.h5'
  isw_calc_er = {isw_calc_er}
-/
+{extra}/
 &settings
 /
 &collision
@@ -85,11 +87,11 @@ def write_multispec(path, with_vphi):
             f['isw_Vphi_loc'] = np.array([0], dtype=np.int32)
 
 
-def run_prepare(binary, neo_in, workdir, isw_calc_er, with_vphi):
+def run_prepare(binary, neo_in, workdir, isw_calc_er, with_vphi, extra=''):
     os.makedirs(workdir)
     shutil.copy(neo_in, os.path.join(workdir, 'neo.in'))
     with open(os.path.join(workdir, 'neo2.in'), 'w') as f:
-        f.write(NEO2_IN.format(isw_calc_er=isw_calc_er))
+        f.write(NEO2_IN.format(isw_calc_er=isw_calc_er, extra=extra))
     write_multispec(os.path.join(workdir, 'multispec.h5'), with_vphi)
     return subprocess.run([binary], cwd=workdir, capture_output=True,
                           text=True, timeout=120)
@@ -111,11 +113,10 @@ def namelist_values(text, key):
         item = item.strip()
         if not item:
             continue
-        if '*' in item:
-            count, value = item.split('*')
-            values += [float(value)] * int(count)
-        else:
-            values.append(float(item.replace('d', 'e').replace('D', 'E')))
+        count, value = item.split('*') if '*' in item else ('1', item)
+        if value.upper() in ('T', '.TRUE.', 'F', '.FALSE.'):
+            value = '1' if value.upper().strip('.') == 'T' else '0'
+        values += [float(value.upper().replace('D', 'E'))] * int(count)
     return np.array(values)
 
 
@@ -127,16 +128,22 @@ def read_surfaces(workdir):
     return out
 
 
+def same(actual, expected):
+    expected = np.atleast_1d(expected)
+    return actual.shape == expected.shape and np.allclose(
+        actual, expected, rtol=1e-14, atol=0.0)
+
+
 def check_species_and_omte(texts, label):
     for k, text in enumerate(texts):
-        assert np.allclose(namelist_values(text, 'BOOZER_S'), BOOZER_S[k],
-                           rtol=1e-14), f'{label}: boozer_s at surface {k}'
-        assert np.allclose(namelist_values(text, 'OM_TE'), OM_TE[k],
-                           rtol=1e-14), f'{label}: Om_tE at surface {k}'
-        assert np.allclose(namelist_values(text, 'T_VEC'), T[:, k],
-                           rtol=1e-14), f'{label}: T_vec at surface {k}'
-        assert np.allclose(namelist_values(text, 'N_VEC'), N[:, k],
-                           rtol=1e-14), f'{label}: n_vec at surface {k}'
+        assert same(namelist_values(text, 'BOOZER_S'), BOOZER_S[k]), \
+            f'{label}: boozer_s at surface {k}'
+        assert same(namelist_values(text, 'OM_TE'), OM_TE[k]), \
+            f'{label}: Om_tE at surface {k}'
+        assert same(namelist_values(text, 'T_VEC'), T[:, k]), \
+            f'{label}: t_vec at surface {k}'
+        assert same(namelist_values(text, 'N_VEC'), N[:, k]), \
+            f'{label}: n_vec at surface {k}'
         assert np.all(namelist_values(text, 'ISW_CALC_ER') == 2), label
 
 
@@ -155,9 +162,9 @@ def main():
             failures += 1
             print(f'FAIL {name}: {err}')
 
-    def mode2(with_vphi):
+    def mode2(with_vphi, extra=''):
         workdir = os.path.join(base, f'mode2_vphi{int(with_vphi)}')
-        res = run_prepare(binary, neo_in, workdir, 2, with_vphi)
+        res = run_prepare(binary, neo_in, workdir, 2, with_vphi, extra)
         assert res.returncode == 0, res.stdout[-2000:] + res.stderr[-2000:]
         return read_surfaces(workdir)
 
@@ -165,19 +172,23 @@ def main():
         check_species_and_omte(mode2(False), 'no Vphi')
 
     def case2():
-        with_vphi = mode2(True)
+        poison = (' isw_vphi_loc = 3\n species_tag_vphi = 1\n'
+                  ' vphi = -1.0e12\n boozer_theta_vphi = 2.0\n')
+        with_vphi = mode2(True, poison)
         check_species_and_omte(with_vphi, 'with Vphi')
         for k, text in enumerate(with_vphi):
-            assert not np.isclose(namelist_values(text, 'VPHI'), VPHI[k]), \
-                f'V_phi of surface {k} was read in isw_calc_Er=2'
+            for key in ('VPHI', 'ISW_VPHI_LOC', 'SPECIES_TAG_VPHI',
+                        'BOOZER_THETA_VPHI', 'R_VPHI', 'Z_VPHI'):
+                assert same(namelist_values(text, key), 0.0), \
+                    f'{key} of surface {k} not neutral in isw_calc_Er=2'
 
     def case3():
         workdir = os.path.join(base, 'mode1_vphi1')
         res = run_prepare(binary, neo_in, workdir, 1, True)
         assert res.returncode == 0, res.stdout[-2000:] + res.stderr[-2000:]
         for k, text in enumerate(read_surfaces(workdir)):
-            assert np.allclose(namelist_values(text, 'VPHI'), VPHI[k],
-                               rtol=1e-14), f'Vphi at surface {k}'
+            assert same(namelist_values(text, 'VPHI'), VPHI[k]), \
+                f'Vphi at surface {k}'
             assert np.all(namelist_values(text, 'SPECIES_TAG_VPHI') == 2)
             assert np.all(namelist_values(text, 'ISW_CALC_ER') == 1)
 

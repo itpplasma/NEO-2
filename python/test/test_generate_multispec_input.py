@@ -277,20 +277,6 @@ def test_half_omte_differs():
             "Half profile should be exactly half of full"
 
 
-if __name__ == '__main__':
-    test_write_multispec_to_hdf5()
-    test_derivative()
-    test_coulomb_logarithm()
-    test_get_kappa()
-    test_generate_multispec_input_call()
-    test_call_for_more_species()
-    test_get_species_def_array()
-    test_omte_profile_hdf5_roundtrip()
-    test_omte_absent_when_not_provided()
-    test_half_omte_differs()
-    print('All tests passed.')
-    test_derivative_visual_check()
-
 def test_generate_omte_only_input_has_no_vphi():
     """Om_tE-only profiles (isw_calc_Er=2) yield a file without V_phi."""
     sqrtspol = np.linspace(0, 1, 11)
@@ -320,3 +306,20 @@ def test_generate_requires_vrot_or_omte():
     except ValueError:
         return
     raise AssertionError('missing vrot and Om_tE must raise ValueError')
+
+
+if __name__ == '__main__':
+    test_write_multispec_to_hdf5()
+    test_derivative()
+    test_coulomb_logarithm()
+    test_get_kappa()
+    test_generate_multispec_input_call()
+    test_call_for_more_species()
+    test_get_species_def_array()
+    test_omte_profile_hdf5_roundtrip()
+    test_omte_absent_when_not_provided()
+    test_half_omte_differs()
+    test_generate_omte_only_input_has_no_vphi()
+    test_generate_requires_vrot_or_omte()
+    print('All tests passed.')
+    test_derivative_visual_check()
