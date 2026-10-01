@@ -61,3 +61,15 @@ set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     TIMEOUT 30
 )
+
+add_executable(test_spline_band_cache test_spline_band_cache.f90)
+target_link_libraries(test_spline_band_cache common)
+
+add_test(NAME spline_band_cache_test
+         COMMAND test_spline_band_cache
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(spline_band_cache_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    TIMEOUT 30
+)
