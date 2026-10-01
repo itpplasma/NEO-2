@@ -143,8 +143,8 @@ def test_level3_single_ion_reduces_to_level2():
 
 
 # --- Benchmarks against a committed NEO-2-QL run ----------------------------
-# Fixture: two species (e, D), one surface, isw_calc_Er = 1, isw_Vphi_loc = 0,
-# written by a NEO-2-QL build that also stores dn/dT_spec_ov_ds and Vphi.
+# Fixture: golden-record ql deck, two species (e, D), one surface,
+# isw_calc_Er = 1, isw_Vphi_loc = 0, written by this branch's NEO-2-QL.
 
 
 def _fixture():
@@ -208,14 +208,35 @@ def test_loader_rejects_multispecies_output_without_inductive_field():
             raise AssertionError('missing avEparB_ov_avb2 was accepted')
 
 
+def test_loader_rejects_local_vphi_modes():
+    # isw_Vphi_loc = 1, 2 need the local B^phi and G_symm at the Vphi point,
+    # which NEO-2 does not write; the replay must refuse instead of guessing.
+    import shutil
+    import tempfile
+    import h5py
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / 'local_vphi.h5'
+        shutil.copy(FIXTURE, path)
+        with h5py.File(path, 'r+') as f:
+            f['isw_Vphi_loc'][...] = 2
+        try:
+            load_neo2_force_balance_inputs(path)
+        except ValueError as exc:
+            assert 'isw_Vphi_loc' in str(exc)
+        else:
+            raise AssertionError('isw_Vphi_loc = 2 was accepted')
+
+
 def test_omte_matches_fortran_mach_number():
     # NEO-2 writes MtOvR_spec = Om_tE / sqrt(2 T / m) (er_rotation_mod).
     import h5py
     d, er_stored = _fixture()
     with h5py.File(FIXTURE, 'r') as f:
         mtovr, m = f['MtOvR'][()], f['m_spec'][()]
+        omte_fortran = f['Om_tE'][()]
     omte = omte_from_er(er_stored, d['sqrtg_bctrvr_tht'])
     assert_allclose(omte, mtovr * np.sqrt(2.0 * d['T'] / m), rtol=1e-10)
+    assert_allclose(omte, omte_fortran, rtol=1e-12)
 
 
 def test_fixture_coefficients_conserve_momentum():
