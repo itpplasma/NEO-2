@@ -52,46 +52,65 @@ def write_input(path, n_prof, rel_stages, t_scale=None):
         f['isw_Vphi_loc'] = np.array([0], dtype=np.int32)
 
 
-def test_rel_stages_follow_species_with_density(tmp_path):
-    # Carbon (species 3) is present inside s = 0.4 and absent outside.
-    n_e = 4.0e13 * (1.2 - S_OLD**2)
+def carbon_edge_profiles(s_old):
+    # Carbon (species 3) is present inside s = 0.4 and absent outside;
+    # deuterium keeps the plasma quasi-neutral (n_e = n_D + 6 n_C).
+    n_e = 4.0e13 * (1.2 - s_old**2)
     n_c = 1.0e12 * np.array([2.0, 1.8, 1.0, 0.0, 0.0, 0.0])
-    n_prof = np.vstack([n_e, n_e - 6.0 * n_c, n_c])
+    return np.vstack([n_e, n_e - 6.0 * n_c, n_c])
+
+
+def test_rel_stages_follow_species_with_density(tmp_path):
+    n_prof = carbon_edge_profiles(S_OLD)
     rel_old = (n_prof > 0).sum(axis=0)
     assert rel_old.tolist() == [3, 3, 3, 2, 2, 2]
     src, out = tmp_path / 'in.h5', tmp_path / 'out.h5'
     write_input(src, n_prof, rel_old)
-    new_grid(str(src), str(out), S_NEW)
+    s_new = np.array([0.05, 0.3, 0.5, 0.55, 0.8, 1.0])
+    new_grid(str(src), str(out), s_new)
     with h5py.File(out, 'r') as f:
         rel_new = f['rel_stages'][()]
         n_new = f['n_prof'][()]
+        z = f['species_def'][0][:, 0]
         assert f['rel_stages'].dtype == np.int32
     # Contract of the Fortran reader on every surface.
     assert rel_new.tolist() == (n_new > 0).sum(axis=0).tolist()
     # Never fewer species than both neighbouring old surfaces.
-    for k, s in enumerate(S_NEW):
-        right = np.searchsorted(S_OLD, s)
-        left = max(right - 1, 0)
+    for k, s in enumerate(s_new):
+        right = min(np.searchsorted(S_OLD, s), S_OLD.size - 1)
+        left = right if np.isclose(S_OLD[right], s) else right - 1
         assert rel_new[k] >= min(rel_old[left], rel_old[right]), (s, rel_new)
-    # Inside the carbon region all three species stay; between two surfaces
-    # without carbon (s = 0.95) the spline overshoot is dropped.
-    assert rel_new[:2].tolist() == [3, 3]
-    assert rel_new[-1] == 2
-    with h5py.File(out, 'r') as f:
-        assert f['n_prof'][2, -1] == 0.0
-        assert f['dn_ov_ds_prof'][2, -1] == 0.0
+    assert rel_new.tolist() == [3, 3, 3, 3, 2, 2]
+    # Densities are not altered: quasi-neutrality holds on every surface.
+    assert np.allclose(z @ n_new, 0.0, rtol=0, atol=1e-12 * n_new[0].max())
 
 
-def test_rel_stages_undershoot_is_refused(tmp_path):
-    # Carbon is present on every old surface, but its cubic spline dips below
-    # zero at s = 0.3: that file would be rejected by neo2.f90.
+def test_overshoot_into_absent_region_is_refused(tmp_path):
+    # Between s = 0.8 and 1.0 carbon is absent on both surfaces, but its
+    # spline overshoots above zero at 0.95. Existing output stays untouched.
+    src, out = tmp_path / 'in.h5', tmp_path / 'out.h5'
+    n_prof = carbon_edge_profiles(S_OLD)
+    write_input(src, n_prof, (n_prof > 0).sum(axis=0))
+    out.write_bytes(b'keep')
+    with pytest.raises(ValueError, match='0.95'):
+        new_grid(str(src), str(out), S_NEW)
+    assert out.read_bytes() == b'keep'
+
+
+def test_extrapolation_compares_with_endpoint(tmp_path):
+    # Beyond the last old surface only that surface counts (2 species);
+    # the spline revives carbon at s = 0.945, which must be refused.
+    s_old = 0.9 * S_OLD
     n_e = np.full(S_OLD.size, 4.0e13)
-    n_c = 1.0e11 * np.array([1.0, 0.01, 0.01, 1.0, 1.0, 1.0])
+    n_c = 1.0e11 * np.array([1.0, 1.0, 1.0, 10.0, 1.0, 0.0])
     n_prof = np.vstack([n_e, n_e - 6.0 * n_c, n_c])
     src = tmp_path / 'in.h5'
-    write_input(src, n_prof, [3] * S_OLD.size)
-    with pytest.raises(ValueError, match='0.3'):
-        new_grid(str(src), str(tmp_path / 'out.h5'), S_NEW)
+    write_input(src, n_prof, (n_prof > 0).sum(axis=0))
+    with h5py.File(src, 'a') as f:
+        f['boozer_s'][...] = s_old
+    with pytest.raises(ValueError, match='0.945'):
+        new_grid(str(src), str(tmp_path / 'out.h5'),
+                 np.array([0.0, 0.2, 0.4, 0.6, 0.8, 0.945]))
 
 
 def test_rel_stages_unchanged_when_constant(tmp_path):
