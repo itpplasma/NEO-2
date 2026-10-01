@@ -61,3 +61,16 @@ set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     TIMEOUT 30
 )
+
+add_executable(test_sparse_solve_reuse test_sparse_solve_reuse.f90)
+target_link_libraries(test_sparse_solve_reuse common)
+
+add_test(NAME sparse_solve_reuse_test
+         COMMAND test_sparse_solve_reuse
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(sparse_solve_reuse_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
