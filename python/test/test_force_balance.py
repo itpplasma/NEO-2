@@ -248,6 +248,21 @@ def test_flux_averaged_local_factor_reproduces_mode0():
     assert_allclose(er, er_stored, rtol=1e-9)
 
 
+def test_mode1_uses_the_same_local_algebra_as_mode2():
+    # NEO-2 itself cannot run mode 1 here (calc_thetaB_RZloc STOPs); the
+    # loader must still accept it and apply the identical fac1 algebra.
+    def as_mode1(f):
+        f['isw_Vphi_loc'][...] = 1
+
+    mode2 = load_neo2_force_balance_inputs(FIXTURE_LOC2)
+    mode1 = load_neo2_force_balance_inputs(_modified_copy(FIXTURE_LOC2,
+                                                          as_mode1))
+    assert mode1['vphi_loc_factor'] == mode2['vphi_loc_factor']
+    mode1.pop('Er_stored')
+    er, _ = er_level3_neo2_multispecies(**mode1)
+    assert_allclose(er, mode2['Er_stored'], rtol=1e-9)
+
+
 def test_loader_requires_local_factors_and_valid_mode():
     def drop(f):
         del f['G_symm_tb_Vphi']

@@ -1796,7 +1796,7 @@ CONTAINS
              CALL h5_add(h5id_multispec, 'bctrvr_phi_Vphi', bctrvr_phi_Vphi, &
                   comment='contravariant B^phi at the V_phi position', unit='G/cm')
              CALL h5_add(h5id_multispec, 'G_symm_tb_Vphi', G_symm_tb_Vphi, &
-                  comment='d G_symm / d theta_B at the V_phi position', unit='1')
+                  comment='d G_symm / d theta_B at the V_phi position', unit='1/(G cm^2)')
           END IF
        END IF
 
