@@ -2156,16 +2156,21 @@ def change_neo2_profile_according_to_astra_output(path:str, neo2infilename:str, 
     out.close()
 
 
-def _regridded_species_count(infilename: str, new_s_grid):
-  """Number of species with positive density on each surface of new_s_grid.
+def _regridded_densities(infilename: str, new_s_grid):
+  """Densities on new_s_grid and the number of species with positive density.
 
   rel_stages in the profile input is the number of species with positive
   density on each surface: neo2.f90 (prepare_mulitspecies_scan) uses it as
   num_spec and fills one slot per species with n_prof > 0, stopping if there
   are more and leaving slots unset if there are fewer. After regridding it
   must therefore equal the count of positive interpolated densities. The
-  densities are interpolated with the same cubic spline as in new_grid; they
-  are not modified, which keeps quasi-neutrality of the interpolated profiles.
+  densities are interpolated with the same cubic spline as before. Values
+  within 1e-10 of a species' largest density from zero are spline roundoff
+  (e.g. at a knot with zero density) and are set to exactly zero; nothing else
+  is modified, which keeps quasi-neutrality of the interpolated profiles.
+
+  A negative interpolated density is refused: neo2.f90 would drop that
+  species and the remaining ones would no longer be quasi-neutral.
 
   The count must lie between the counts of the old surfaces around each new
   point (the surface itself on an old surface, the endpoint outside the old
@@ -2181,7 +2186,15 @@ def _regridded_species_count(infilename: str, new_s_grid):
     old_s = np.asarray(ref['boozer_s'])
     old_n = np.asarray(ref['n_prof'])
     old_rel = np.asarray(ref['rel_stages'])
-  count = (CubicSpline(old_s, old_n, axis=1)(new_s) > 0.0).sum(axis=0)
+  new_n = CubicSpline(old_s, old_n, axis=1)(new_s)
+  tol = 1.0e-10 * np.max(np.abs(old_n), axis=1, keepdims=True)
+  new_n = np.where(np.abs(new_n) <= tol, 0.0, new_n)
+  negative = np.any(new_n < 0.0, axis=0)
+  if np.any(negative):
+    raise ValueError('new_grid: interpolated density of a species is negative '
+                     'at boozer_s = ' + str(new_s[negative])
+                     + '; use a different grid.')
+  count = (new_n > 0.0).sum(axis=0)
 
   idx = np.searchsorted(old_s, new_s)
   right = np.minimum(idx, old_s.size - 1)
@@ -2197,7 +2210,7 @@ def _regridded_species_count(infilename: str, new_s_grid):
                      'species with positive density beyond the neighbouring '
                      'surfaces at boozer_s = ' + str(new_s[bad])
                      + '; use a different grid.')
-  return count
+  return new_n, count
 
 
 def new_grid(infilename: str, outfilename: str, new_s_grid):
@@ -2235,8 +2248,9 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
   from numpy import array
   from scipy.interpolate import CubicSpline
 
-  # Checked before the output file is created or replaced.
-  int_rel_stages = _regridded_species_count(infilename, new_s_grid)
+  # Densities and species counts, checked before the output file is
+  # created or replaced.
+  checked_n, int_rel_stages = _regridded_densities(infilename, new_s_grid)
 
   with get_hdf5file_replace(outfilename) as out:
     with get_hdf5file(infilename) as ref:
@@ -2247,7 +2261,7 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
     new_s_grid = array(new_s_grid)
 
     sp_n = CubicSpline(out['boozer_s'], out['n_prof'], axis=1)
-    int_n = sp_n(new_s_grid)
+    int_n = checked_n
     der_n = sp_n(new_s_grid, 1)
 
 
