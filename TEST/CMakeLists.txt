@@ -61,3 +61,18 @@ set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     TIMEOUT 30
 )
+
+# GMRES fixed-point solver of the QL ripple solver (non-axisymmetric pass).
+# Oracle: dense LAPACK solve of (I - A) f = q.
+add_executable(test_gmres_iterator test_gmres_iterator.f90)
+target_link_libraries(test_gmres_iterator neo2_ql)
+
+add_test(NAME gmres_iterator_test
+         COMMAND test_gmres_iterator
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(gmres_iterator_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 60
+)

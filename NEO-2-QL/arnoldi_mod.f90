@@ -165,8 +165,8 @@ contains
         IF(ALL(break_cond1 .LE. break_cond2)) EXIT
         !! End Modification by Andreas F. Martitsch (20.08.2015)
         fold=fnew
-        IF(iter.EQ.itermax) PRINT *, &
-                'iterator: maximum number of iterations reached'
+        IF(iter.EQ.itermax) CALL warn_not_converged('iterator (direct)', &
+                relerr*MAXVAL(break_cond1/MAX(break_cond2,TINY(1d0))), relerr)
       ENDDO
   !
       PRINT *,'iterator: number of direct iterations = ',iter-1
@@ -227,7 +227,8 @@ contains
       CALL mpro%allgather_inplace(break_cond2)
       IF(ALL(break_cond1 .LE. break_cond2)) EXIT
       fold = fnew
-      IF(iter.EQ.itermax) PRINT *,'iterator: maximum number of iterations reached'
+      IF(iter.EQ.itermax) CALL warn_not_converged('iterator (deflated)', &
+              relerr*MAXVAL(break_cond1/MAX(break_cond2,TINY(1d0))), relerr)
     ENDDO
 
     if (ispec .eq. 0) print *,'iterator: number of stabilized iterations = ', iter-1
@@ -237,6 +238,206 @@ contains
     DEALLOCATE(coefren,amat,bvec,ipiv,fold,fnew,fzero)
 
   END SUBROUTINE iterator
+
+  !---------------------------------------------------------------------------------
+  !> \brief Solves the fixed-point problem f = A f + c by restarted GMRES.
+  !>
+  !> "next_iteration" is the preconditioned Richardson step of the ripple
+  !> solver, fnew = A fold + c with c = Lbar q (module mode /= 2) and
+  !> fnew = A fold (mode = 2). The fixed point solves (I - A) f = c with
+  !> I - A = Lbar L, i.e. the kinetic equation L f = q left-preconditioned
+  !> by the sparse LU of L_V - L_D. GMRES needs no estimate of the
+  !> unstable eigenvalues of A, so it converges where the deflated
+  !> Richardson iteration of "iterator" stalls or diverges (eigenvalues of A
+  !> on or outside the unit circle, inaccurate Ritz values close to 1).
+  !> One GMRES iteration costs one call of next_iteration, the same as one
+  !> Richardson step, and no Arnoldi eigenvalue estimate is needed.
+  !>
+  !> In the multi-species case each MPI rank holds the part of the vector
+  !> for its species ispec; all inner products are reduced over species, so
+  !> all ranks take identical decisions and call next_iteration equally often.
+  !>
+  !> Residual: ||N(f) - f||_2 / ||f||_2 (global over species), the 2-norm
+  !> analogue of the criterion of "iterator", checked with the true residual
+  !> after each restart cycle (the recursive GMRES estimate only ends a
+  !> cycle). I - A can be nearly singular (Ritz values of A within 1e-5 of
+  !> 1, |f|/|c| ~ 1e3), so a residual of relerr does not yet give an error
+  !> of relerr in f. The iteration therefore continues to reltarget < relerr
+  !> or until a cycle no longer halves the residual (noise floor of the
+  !> sparse solves), and warns only if the residual stays above relerr.
+  !> The returned vector is one more step N(f).
+  !>
+  !> Input:  n         - local system size
+  !>         mrestart  - Krylov subspace size between restarts
+  !>         relerr    - relative residual that must be reached
+  !>         reltarget - relative residual aimed at (<= relerr)
+  !>         itermax   - maximum number of GMRES iterations
+  !>         result_   - source vector q (see next_iteration)
+  !> Output: result_   - solution f
+  subroutine gmres_iterator(n, mrestart, relerr, reltarget, itermax, result_, ispec, &
+      next_iteration)
+
+    integer, intent(in) :: n, mrestart, itermax, ispec
+    double precision, intent(in) :: relerr, reltarget
+    complex(kind=kind(1d0)), dimension(n), intent(inout) :: result_
+
+    interface
+      subroutine next_iteration(n,fold,fnew)
+        integer :: n
+        complex(kind=kind(1d0)), dimension(n) :: fold,fnew
+      end subroutine next_iteration
+    end interface
+
+    complex(kind=kind(1d0)), dimension(:,:), allocatable :: v, h
+    complex(kind=kind(1d0)), dimension(:), allocatable :: x, w, g, sn, y, hcol
+    double precision, dimension(:), allocatable :: cs
+    double precision :: cnorm, beta, relres, xnorm, relres_prev
+    complex(kind=kind(1d0)) :: temp
+    integer :: m, j, k, iter, ncycle
+    logical :: converged
+
+    m = max(1, min(mrestart, itermax))
+    allocate(fzero(n), x(n), w(n), v(n, m+1), h(m+1, m), g(m+1), sn(m), &
+      cs(m), y(m), hcol(m+1))
+    fzero = result_
+
+    ! c = N(0): right-hand side and initial residual for x = 0.
+    x = (0.d0, 0.d0)
+    mode = 1
+    call next_iteration(n, x, w)
+    cnorm = global_norm(w, ispec)
+    if (cnorm .eq. 0.d0) then
+      result_ = (0.d0, 0.d0)
+      call finish()
+      return
+    end if
+
+    iter = 0
+    ncycle = 0
+    xnorm = 0.d0
+    relres_prev = huge(1.d0)
+    converged = .false.
+    beta = cnorm
+    do
+      ncycle = ncycle + 1
+      v(:, 1) = w/beta
+      g = (0.d0, 0.d0)
+      g(1) = beta
+      mode = 2
+      do j = 1, m
+        iter = iter + 1
+        call next_iteration(n, v(:, j), w)
+        w = v(:, j) - w
+        ! classical Gram-Schmidt, twice (one reduction per pass)
+        call global_dot_block(v(:, 1:j), w, hcol(1:j), ispec)
+        w = w - matmul(v(:, 1:j), hcol(1:j))
+        h(1:j, j) = hcol(1:j)
+        call global_dot_block(v(:, 1:j), w, hcol(1:j), ispec)
+        w = w - matmul(v(:, 1:j), hcol(1:j))
+        h(1:j, j) = h(1:j, j) + hcol(1:j)
+        h(j+1, j) = global_norm(w, ispec)
+        if (abs(h(j+1, j)) .gt. 0.d0) v(:, j+1) = w/h(j+1, j)
+        ! apply previous Givens rotations, then eliminate h(j+1,j)
+        do k = 1, j - 1
+          temp = cs(k)*h(k, j) + sn(k)*h(k+1, j)
+          h(k+1, j) = -conjg(sn(k))*h(k, j) + cs(k)*h(k+1, j)
+          h(k, j) = temp
+        end do
+        call zlartg(h(j, j), h(j+1, j), cs(j), sn(j), temp)
+        h(j, j) = temp
+        h(j+1, j) = (0.d0, 0.d0)
+        g(j+1) = -conjg(sn(j))*g(j)
+        g(j) = cs(j)*g(j)
+        ! y = R^{-1} g (cheap, j <= m) to estimate ||x + V y||
+        do k = j, 1, -1
+          y(k) = (g(k) - sum(h(k, k+1:j)*y(k+1:j)))/h(k, k)
+        end do
+        relres = abs(g(j+1))/max(xnorm, sqrt(sum(abs(y(1:j))**2)))
+        if (ispec .eq. 0) print *, 'gmres_iterator: ', iter, relres
+        if (relres .le. reltarget .or. iter .ge. itermax) exit
+      end do
+      j = min(j, m)
+      x = x + matmul(v(:, 1:j), y(1:j))
+      xnorm = global_norm(x, ispec)
+      ! True residual r = N(x) - x decides convergence (the recursive GMRES
+      ! estimate can be too optimistic for this ill-conditioned operator)
+      ! and is the start vector of the next cycle.
+      mode = 1
+      call next_iteration(n, x, w)
+      w = w - x
+      beta = global_norm(w, ispec)
+      relres = beta/xnorm
+      converged = relres .le. reltarget
+      if (converged .or. iter .ge. itermax) exit
+      ! A cycle that does not halve the true residual has reached the noise
+      ! floor of next_iteration (rounding in the sparse solves); stop.
+      if (relres .gt. 0.5d0*relres_prev) then
+        if (ispec .eq. 0) print *, 'gmres_iterator: stagnation at the noise floor'
+        exit
+      end if
+      relres_prev = relres
+    end do
+
+    result_ = x + w
+    if (ispec .eq. 0) print *, 'gmres_iterator: iterations = ', iter, &
+      ' restarts = ', ncycle - 1, ' true relative residual = ', relres, &
+      ' |f|/|c| = ', xnorm/cnorm
+    if (relres .gt. relerr) call warn_not_converged('gmres_iterator', &
+      relres, relerr)
+    call finish()
+
+  contains
+
+    subroutine finish()
+      deallocate(fzero, x, w, v, h, g, sn, cs, y, hcol)
+      ! Do not let a later call of iterator reuse a stale preconditioner.
+      mode = 0
+    end subroutine finish
+
+  end subroutine gmres_iterator
+
+  !> Global 2-norm of a vector distributed over species (one rank per species).
+  function global_norm(vec, ispec) result(nrm)
+    use mpiprovider_module, only : mpro
+    use collisionality_mod, only : num_spec
+    complex(kind=kind(1d0)), dimension(:), intent(in) :: vec
+    integer, intent(in) :: ispec
+    double precision :: nrm
+    double precision, dimension(0:num_spec-1) :: buf
+
+    buf = 0.d0
+    buf(ispec) = sum(dble(vec)**2 + aimag(vec)**2)
+    call mpro%allgather_inplace(buf)
+    nrm = sqrt(sum(buf))
+  end function global_norm
+
+  !> Inner products dots(i) = <basis(:,i), vec>, reduced over species.
+  subroutine global_dot_block(basis, vec, dots, ispec)
+    use mpiprovider_module, only : mpro
+    use collisionality_mod, only : num_spec
+    complex(kind=kind(1d0)), dimension(:,:), intent(in) :: basis
+    complex(kind=kind(1d0)), dimension(:), intent(in) :: vec
+    complex(kind=kind(1d0)), dimension(:), intent(out) :: dots
+    integer, intent(in) :: ispec
+    complex(kind=kind(1d0)), dimension(size(dots), 0:num_spec-1) :: buf
+
+    buf = (0.d0, 0.d0)
+    buf(:, ispec) = conjg(matmul(conjg(vec), basis))
+    call mpro%allgather_inplace(buf)
+    dots = sum(buf, dim=2)
+  end subroutine global_dot_block
+
+  !> Loud warning for an iteration that stopped before reaching relerr.
+  subroutine warn_not_converged(name, achieved, relerr)
+    use, intrinsic :: iso_fortran_env, only : error_unit
+    character(len=*), intent(in) :: name
+    double precision, intent(in) :: achieved, relerr
+
+    write (*, '(a,a,a,es10.3,a,es10.3)') ' WARNING: ', name, &
+      ': NOT CONVERGED, relative error ', achieved, ' > tolerance ', relerr
+    write (error_unit, '(a,a,a,es10.3,a,es10.3)') 'WARNING: ', name, &
+      ': NOT CONVERGED, relative error ', achieved, ' > tolerance ', relerr
+  end subroutine warn_not_converged
 
   !-----------------------------------------------------------------------------
   !> Computes m Ritz eigenvalues (approximations to extreme eigenvalues)

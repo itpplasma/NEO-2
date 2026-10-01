@@ -3514,8 +3514,7 @@ CONTAINS
 
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
-                call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                            & source_vector_all(:, k, ispec), ispec, next_iteration)
+                call solve_fixed_point(source_vector_all(:, k, ispec))
             end do
 
         elseif (isw_intp .EQ. 1) then
@@ -3529,8 +3528,7 @@ CONTAINS
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
-                    call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                                & source_vector_all(:, k, ispecp), ispec, next_iteration)
+                    call solve_fixed_point(source_vector_all(:, k, ispecp))
                 end do
 
             end do
@@ -3709,6 +3707,26 @@ CONTAINS
         end if
 
     end subroutine solve_eqs
+
+    !> Pass 1 (axisymmetric, real): deflated Richardson iteration.
+    !> Pass 2 (non-axisymmetric, complex): GMRES, because its Richardson
+    !> operator has eigenvalues on and outside the unit circle that the
+    !> deflation does not remove reliably (stall or divergence). GMRES
+    !> aims three digits below epserr_iter because I - A is nearly singular.
+    subroutine solve_fixed_point(rhs_sol)
+        use arnoldi_mod, only: iterator, gmres_iterator
+
+        integer, parameter :: n_gmres_restart = 60
+        complex(dp), dimension(n_2d_size), intent(inout) :: rhs_sol
+
+        if (problem_type) then
+            call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter, &
+                        & rhs_sol, ispec, next_iteration)
+        else
+            call gmres_iterator(n_2d_size, n_gmres_restart, epserr_iter, &
+                        & 1d-3*epserr_iter, 2*niter, rhs_sol, ispec, next_iteration)
+        end if
+    end subroutine solve_fixed_point
 
 !------------------------------------------------------------------------
     subroutine source_flux
