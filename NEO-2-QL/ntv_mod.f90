@@ -68,6 +68,10 @@ MODULE ntv_mod
   REAL(kind=dp), PUBLIC :: R_Vphi, Z_Vphi
   !> only used for isw_Vphi_loc=2: \vartheta_B postion of V_\varphi
   REAL(kind=dp), PUBLIC :: boozer_theta_Vphi
+  !> only set for isw_Vphi_loc=1,2 by compute_Er: contravariant B^phi [G/cm]
+  !> and d G_symm/d theta at the V_\varphi position (written to the
+  !> multispecies output so that Er can be replayed, see issue #75)
+  REAL(kind=dp) :: bctrvr_phi_Vphi = 0.0_dp, G_symm_tb_Vphi = 0.0_dp
   ! Radial derivatives (w.r.t. boozer_s) of plasma parameter profiles (for all species)
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dn_spec_ov_ds ! species density [cm^-3]
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dT_spec_ov_ds ! species temperature [erg]
@@ -1657,6 +1661,11 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'm_spec', m_spec, LBOUND(m_spec), UBOUND(m_spec), comment='mass of the species', unit='g')
     CALL h5_add(h5id_multispec, 'n_spec', n_spec, LBOUND(n_spec), UBOUND(n_spec), comment='density of the species', unit='1/cm^3')
     CALL h5_add(h5id_multispec, 'T_spec', T_spec, LBOUND(T_spec), UBOUND(T_spec), comment='temperature of the species', unit='erg')
+    ! profile gradients w.r.t. boozer_s, needed to replay compute_Er (#75, #76)
+    CALL h5_add(h5id_multispec, 'dn_spec_ov_ds', dn_spec_ov_ds, &
+         LBOUND(dn_spec_ov_ds), UBOUND(dn_spec_ov_ds))
+    CALL h5_add(h5id_multispec, 'dT_spec_ov_ds', dT_spec_ov_ds, &
+         LBOUND(dT_spec_ov_ds), UBOUND(dT_spec_ov_ds))
     CALL h5_add(h5id_multispec, 'collpar_spec', collpar_spec, &
          LBOUND(collpar_spec), UBOUND(collpar_spec))
     CALL h5_add(h5id_multispec, 'nu_star_spec', nu_star_spec, &
@@ -1773,6 +1782,23 @@ CONTAINS
     IF (isw_calc_Er .GE. 1) THEN
 
        CALL h5_add(h5id_multispec, 'Er', Er)
+       IF (isw_calc_Er .EQ. 1) THEN
+          ! measured rotation entering the self-consistent Er (#75, #76);
+          ! not written for isw_calc_Er=2, whose output must not depend on
+          ! the V_phi settings
+          CALL h5_add(h5id_multispec, 'species_tag_Vphi', species_tag_Vphi)
+          CALL h5_add(h5id_multispec, 'isw_Vphi_loc', isw_Vphi_loc)
+          CALL h5_add(h5id_multispec, 'Vphi', Vphi)
+          CALL h5_add(h5id_multispec, 'R_Vphi', R_Vphi)
+          CALL h5_add(h5id_multispec, 'Z_Vphi', Z_Vphi)
+          CALL h5_add(h5id_multispec, 'boozer_theta_Vphi', boozer_theta_Vphi)
+          IF (isw_Vphi_loc .GE. 1) THEN
+             CALL h5_add(h5id_multispec, 'bctrvr_phi_Vphi', bctrvr_phi_Vphi, &
+                  comment='contravariant B^phi at the V_phi position', unit='G/cm')
+             CALL h5_add(h5id_multispec, 'G_symm_tb_Vphi', G_symm_tb_Vphi, &
+                  comment='d G_symm / d theta_B at the V_phi position', unit='1/(G cm^2)')
+          END IF
+       END IF
 
        CALL h5_add(h5id_multispec, 'VthtB_spec', VthtB_spec, &
             LBOUND(VthtB_spec), UBOUND(VthtB_spec))
@@ -2313,6 +2339,8 @@ CONTAINS
           denom_Er = denom_Er + denom_Er_1
        END DO
     ELSE IF (isw_Vphi_loc .GE. 1) THEN
+       bctrvr_phi_Vphi = hctrvr_tmp(2)*bmod_tmp*1.0e4_dp
+       G_symm_tb_Vphi = G_symm_tb
        fac1 = (hctrvr_tmp(2)*bmod_tmp*1.0e4_dp) * &
             (1.0_dp+TWOPI*aiota_loc*boozer_psi_pr*G_symm_tb) / avb2
        denom_Er = (c / sqrtg_bctrvr_tht) + &
