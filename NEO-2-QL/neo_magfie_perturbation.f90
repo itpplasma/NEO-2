@@ -221,7 +221,8 @@ CONTAINS
     ! local definitions
 
     ! loop variables, poloidal mode number
-    INTEGER :: i
+    INTEGER :: i, j, k
+    INTEGER, DIMENSION(:), ALLOCATABLE :: mode_order
     INTEGER(I4B) :: m
     ! some maximum value of poloidal mode numbers
     ! (used for the computation of r_mhalf)
@@ -273,13 +274,31 @@ CONTAINS
            & a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
       end if
     else
-      call splinecof3_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
-         & a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert, sp_index_pert, tf)
-      ! Additional data from Boozer files without Stellarator symmetry
-      if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
-        call splinecof3_hi_driv(es_pert, bmns_pert, r_mhalf_pert,&
-           & a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
-      end if
+      ! Visit modes in descending r_mhalf_pert so that splinecof3 can reuse
+      ! the factorization of the shared spline matrix (result is unchanged).
+      mode_order = [(i, i = 1, mnmax_pert)]
+      DO i = 2, mnmax_pert
+        k = mode_order(i)
+        j = i - 1
+        DO WHILE (j >= 1)
+          IF (r_mhalf_pert(mode_order(j)) >= r_mhalf_pert(k)) EXIT
+          mode_order(j+1) = mode_order(j)
+          j = j - 1
+        END DO
+        mode_order(j+1) = k
+      END DO
+      DO j = 1, mnmax_pert
+        i = mode_order(j)
+        call splinecof3_hi_driv(es_pert, bmnc_pert(:,i:i), r_mhalf_pert(i:i),&
+           & a_bmnc_pert(:,i:i), b_bmnc_pert(:,i:i), c_bmnc_pert(:,i:i), &
+           & d_bmnc_pert(:,i:i), sp_index_pert, tf)
+        ! Additional data from Boozer files without Stellarator symmetry
+        if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
+          call splinecof3_hi_driv(es_pert, bmns_pert(:,i:i), r_mhalf_pert(i:i),&
+             & a_bmns_pert(:,i:i), b_bmns_pert(:,i:i), c_bmns_pert(:,i:i), &
+             & d_bmns_pert(:,i:i), sp_index_pert, tf)
+        end if
+      END DO
     end if
 
   END SUBROUTINE neo_init_spline_pert

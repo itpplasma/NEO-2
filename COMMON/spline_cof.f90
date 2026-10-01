@@ -115,7 +115,23 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   INTEGER, DIMENSION(:), ALLOCATABLE :: ipivot, old_to_band, band_to_old
   REAL(DP), DIMENSION(:),   ALLOCATABLE :: inh, lambda, omega, sparse_val
   REAL(DP), DIMENSION(:,:), ALLOCATABLE :: band_matrix, band_rhs
+  REAL(DP), DIMENSION(:),   ALLOCATABLE :: fx
   character(200) :: error_message
+  INTEGER                 :: first_point, last_point
+  LOGICAL                 :: band_cache_hit
+
+  ! Single-entry cache of the LU-factorized band matrix (sw1=2, sw2=4 path).
+  ! The matrix depends only on x, f(x,m), omega, indx and the boundary
+  ! switches; y, c1 and cn enter the right-hand side alone. Callers that
+  ! spline several data sets on the same grid with the same test function
+  ! (Boozer mode columns of equal m, collision-operator splines) reuse the
+  ! factorization. dgbsv is dgbtrf followed by dgbtrs, so results are
+  ! bit-identical to a fresh solve. Not thread-safe (no parallel callers).
+  LOGICAL,  SAVE :: cache_valid = .FALSE.
+  INTEGER,  SAVE :: cache_sw1 = 0, cache_sw2 = 0
+  INTEGER,  DIMENSION(:),   ALLOCATABLE, SAVE :: cache_indx, cache_ipivot
+  REAL(DP), DIMENSION(:),   ALLOCATABLE, SAVE :: cache_x, cache_fx, cache_omega
+  REAL(DP), DIMENSION(:,:), ALLOCATABLE, SAVE :: cache_lu
 
   len_x    = SIZE(x)
   len_indx = SIZE(indx)
@@ -233,9 +249,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     cn = 0.0D0;
   END IF
 
-  if (use_common_banded) then
-    band_matrix = 0.0D0
-  else
+  if (.not. use_common_banded) then
     sparse_nz = 0
     sparse_hash = 0
   end if
@@ -248,6 +262,21 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     omega  = lambda1
   END IF
   lambda = 1.0D0 - omega
+
+  ! test function at the data points, evaluated once (f is pure in x, m)
+  first_point = indx(1)
+  last_point  = indx(len_indx)
+  ALLOCATE(fx(len_x))
+  fx = 0.0D0
+  DO l = first_point, last_point
+    fx(l) = f(x(l),m)
+  END DO
+
+  band_cache_hit = .FALSE.
+  if (use_common_banded) then
+    band_cache_hit = band_cache_matches()
+    if (.not. band_cache_hit) band_matrix = 0.0D0
+  end if
 
   IF (sw1 == 1) THEN
     mu1  = 1
@@ -340,12 +369,12 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   help_i = 0.0D0
   DO l = ii, ie
     h_j = x(l) - x(ii)
-    x_h    = f(x(l),m) * f(x(l),m)
+    x_h    = fx(l) * fx(l)
     help_a = help_a + x_h
     help_b = help_b + h_j * x_h
     help_c = help_c + h_j * h_j * x_h
     help_d = help_d + h_j * h_j * h_j * x_h
-    help_i = help_i + f(x(l),m) * y(l)
+    help_i = help_i + fx(l) * y(l)
   END DO  ! DO l = ii, ie
   CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
   CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
@@ -362,12 +391,12 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   help_i = 0.0D0
   DO l = ii, ie
     h_j = x(l) - x(ii)
-    x_h    = f(x(l),m) * f(x(l),m)
+    x_h    = fx(l) * fx(l)
     help_a = help_a + h_j * x_h
     help_b = help_b + h_j * h_j * x_h
     help_c = help_c + h_j * h_j * h_j * x_h
     help_d = help_d + h_j * h_j * h_j * h_j * x_h
-    help_i = help_i + h_j * f(x(l),m) * y(l)
+    help_i = help_i + h_j * fx(l) * y(l)
   END DO  ! DO l = ii, ie
   CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
   CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
@@ -387,12 +416,12 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   help_i = 0.0D0
   DO l = ii, ie
     h_j = x(l) - x(ii)
-    x_h    = f(x(l),m) * f(x(l),m)
+    x_h    = fx(l) * fx(l)
     help_a = help_a + h_j * h_j * x_h
     help_b = help_b + h_j * h_j * h_j * x_h
     help_c = help_c + h_j * h_j * h_j * h_j * x_h
     help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
-    help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
+    help_i = help_i + h_j * h_j * fx(l) * y(l)
   END DO  ! DO l = ii, ie
   CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
   CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
@@ -413,12 +442,12 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   help_i = 0.0D0
   DO l = ii, ie
     h_j = x(l) - x(ii)
-    x_h    = f(x(l),m) * f(x(l),m)
+    x_h    = fx(l) * fx(l)
     help_a = help_a + h_j * h_j * h_j * x_h
     help_b = help_b + h_j * h_j * h_j * h_j * x_h
     help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
     help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
-    help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
+    help_i = help_i + h_j * h_j * h_j * fx(l) * y(l)
   END DO  ! DO l = ii, ie
   CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
   CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
@@ -461,12 +490,12 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     help_i = 0.0D0
     DO l = ii, ie
       h_j = x(l) - x(ii)
-      x_h    = f(x(l),m) * f(x(l),m)
+      x_h    = fx(l) * fx(l)
       help_a = help_a + x_h
       help_b = help_b + h_j * x_h
       help_c = help_c + h_j * h_j * x_h
       help_d = help_d + h_j * h_j * h_j * x_h
-      help_i = help_i + f(x(l),m) * y(l)
+      help_i = help_i + fx(l) * y(l)
     END DO   ! DO l = ii, ie
     CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
     CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
@@ -484,12 +513,12 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     help_i = 0.0D0
     DO l = ii, ie
       h_j = x(l) - x(ii)
-      x_h    = f(x(l),m) * f(x(l),m)
+      x_h    = fx(l) * fx(l)
       help_a = help_a + h_j * x_h
       help_b = help_b + h_j * h_j * x_h
       help_c = help_c + h_j * h_j * h_j * x_h
       help_d = help_d + h_j * h_j * h_j * h_j * x_h
-      help_i = help_i + h_j * f(x(l),m) * y(l)
+      help_i = help_i + h_j * fx(l) * y(l)
     END DO  ! DO l = ii, ie
     CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
     CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
@@ -508,12 +537,12 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     help_i = 0.0D0
     DO l = ii, ie
       h_j = x(l) - x(ii)
-      x_h    = f(x(l),m) * f(x(l),m)
+      x_h    = fx(l) * fx(l)
       help_a = help_a + h_j * h_j * x_h
       help_b = help_b + h_j * h_j * h_j * x_h
       help_c = help_c + h_j * h_j * h_j * h_j * x_h
       help_d = help_d + h_j * h_j * h_j * h_j * h_j * x_h
-      help_i = help_i + h_j * h_j * f(x(l),m) * y(l)
+      help_i = help_i + h_j * h_j * fx(l) * y(l)
     END DO  ! DO l = ii, ie
     CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
     CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
@@ -533,12 +562,12 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
     help_i = 0.0D0
     DO l = ii, ie
       h_j = x(l) - x(ii)
-      x_h    = f(x(l),m) * f(x(l),m)
+      x_h    = fx(l) * fx(l)
       help_a = help_a + h_j * h_j * h_j * x_h
       help_b = help_b + h_j * h_j * h_j * h_j * x_h
       help_c = help_c + h_j * h_j * h_j * h_j * h_j * x_h
       help_d = help_d + h_j * h_j * h_j * h_j * h_j * h_j * x_h
-      help_i = help_i + h_j * h_j * h_j * f(x(l),m) * y(l)
+      help_i = help_i + h_j * h_j * h_j * fx(l) * y(l)
     END DO  ! DO l = ii, ie
     CALL set_matrix_entry(i, j+0  +0, omega((j-1)/VAR+1) * help_a)
     CALL set_matrix_entry(i, j+0  +1, omega((j-1)/VAR+1) * help_b)
@@ -558,8 +587,8 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   help_a   = 0.0D0
   help_inh = 0.0D0
   l = ii
-  help_a   = help_a   + f(x(l),m) * f(x(l),m)
-  help_inh = help_inh + f(x(l),m) * y(l)
+  help_a   = help_a   + fx(l) * fx(l)
+  help_inh = help_inh + fx(l) * y(l)
 
   CALL set_matrix_entry(i, (len_indx-1)*VAR+1, omega((j-1)/VAR+1) * help_a)
   CALL set_matrix_entry(i, (len_indx-2)*VAR+5, omega((j-1)/VAR+1) * (-1.0D0))
@@ -618,6 +647,7 @@ SUBROUTINE splinecof3_a(x, y, c1, cn, lambda1, indx, sw1, sw2, &
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for lambda failed!'
   DEALLOCATE(omega,  stat = i_alloc)
   IF(i_alloc /= 0) STOP 'splinecof3: Deallocation for omega failed!'
+  DEALLOCATE(fx)
 
 CONTAINS
 
@@ -632,7 +662,7 @@ CONTAINS
     END IF
 
     if (use_common_banded) then
-      call set_common_banded_entry(row, col, value)
+      if (.not. band_cache_hit) call set_common_banded_entry(row, col, value)
       return
     END IF
 
@@ -688,8 +718,18 @@ CONTAINS
     do i = 1, size_dimension
       band_rhs(old_to_band(i),1) = inh(i)
     end do
-    CALL dgbsv(size_dimension, lower_band, upper_band, 1, band_matrix, &
-         SIZE(band_matrix, 1), ipivot, band_rhs, size_dimension, info)
+    if (.not. band_cache_hit) then
+      cache_valid = .FALSE.
+      CALL dgbtrf(size_dimension, size_dimension, lower_band, upper_band, &
+           band_matrix, SIZE(band_matrix, 1), ipivot, info)
+      IF (info /= 0) THEN
+        PRINT *, 'splinecof3: INFO from common-case band solve = ', info
+        ERROR STOP 'splinecof3: common-case permuted band solve failed'
+      END IF
+      call band_cache_store
+    end if
+    CALL dgbtrs('N', size_dimension, lower_band, upper_band, 1, cache_lu, &
+         SIZE(cache_lu, 1), cache_ipivot, band_rhs, size_dimension, info)
     IF (info /= 0) THEN
       PRINT *, 'splinecof3: INFO from common-case band solve = ', info
       ERROR STOP 'splinecof3: common-case permuted band solve failed'
@@ -701,6 +741,43 @@ CONTAINS
     DEALLOCATE(ipivot, band_rhs, stat = i_alloc)
     IF(i_alloc /= 0) ERROR STOP 'splinecof3: deallocation for band solve failed'
   END SUBROUTINE solve_common_banded
+
+  LOGICAL FUNCTION band_cache_matches()
+    band_cache_matches = .FALSE.
+    IF (.NOT. cache_valid) RETURN
+    IF (cache_sw1 /= sw1 .OR. cache_sw2 /= sw2) RETURN
+    IF (SIZE(cache_x) /= len_x .OR. SIZE(cache_indx) /= len_indx) RETURN
+    IF (ANY(cache_indx /= indx)) RETURN
+    IF (.NOT. same_bits(cache_x(first_point:last_point), x(first_point:last_point))) RETURN
+    IF (.NOT. same_bits(cache_fx(first_point:last_point), fx(first_point:last_point))) RETURN
+    IF (.NOT. same_bits(cache_omega, omega)) RETURN
+    band_cache_matches = .TRUE.
+  END FUNCTION band_cache_matches
+
+  LOGICAL FUNCTION same_bits(u, v)
+    use, intrinsic :: iso_fortran_env, only : int64
+    REAL(DP), DIMENSION(:), INTENT(IN) :: u, v
+    INTEGER :: k
+    same_bits = .FALSE.
+    DO k = 1, SIZE(u)
+      IF (TRANSFER(u(k), 0_int64) /= TRANSFER(v(k), 0_int64)) RETURN
+    END DO
+    same_bits = .TRUE.
+  END FUNCTION same_bits
+
+  SUBROUTINE band_cache_store
+    IF (ALLOCATED(cache_lu)) DEALLOCATE(cache_lu, cache_ipivot, cache_x, &
+         cache_fx, cache_omega, cache_indx)
+    ALLOCATE(cache_lu, source=band_matrix)
+    ALLOCATE(cache_ipivot, source=ipivot)
+    ALLOCATE(cache_x, source=x)
+    ALLOCATE(cache_fx, source=fx)
+    ALLOCATE(cache_omega, source=omega)
+    ALLOCATE(cache_indx, source=indx)
+    cache_sw1 = sw1
+    cache_sw2 = sw2
+    cache_valid = .TRUE.
+  END SUBROUTINE band_cache_store
 
   SUBROUTINE init_common_band_order
     INTEGER :: block_count, middle_block, offset, band_index

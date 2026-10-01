@@ -151,7 +151,8 @@ CONTAINS
 
     IMPLICIT NONE
 
-    INTEGER      :: i
+    INTEGER      :: i, j, k
+    INTEGER, DIMENSION(:), ALLOCATABLE :: mode_order
     INTEGER(I4B) :: sw1, sw2
     REAL(dp)     :: m0, c1, cn
     REAL(dp), DIMENSION(:), ALLOCATABLE :: lambda
@@ -231,25 +232,43 @@ CONTAINS
             & a_bmns, b_bmns, c_bmns, d_bmns, sp_index, tf)
       end if
     else
-      ! 1-d splines of 2-d arrays
-      call splinecof3_hi_driv(es, rmnc, r_mhalf, &
-          & a_rmnc, b_rmnc, c_rmnc, d_rmnc, sp_index, tf)
-      call splinecof3_hi_driv(es, zmnc, r_mhalf, &
-          & a_zmnc, b_zmnc, c_zmnc, d_zmnc, sp_index, tf)
-      call splinecof3_hi_driv(es, lmnc, r_mhalf, &
-          & a_lmnc, b_lmnc, c_lmnc, d_lmnc, sp_index, tf)
-      call splinecof3_hi_driv(es, bmnc, r_mhalf, &
-          & a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
-      if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
-        call splinecof3_hi_driv(es, rmns, r_mhalf, &
-            & a_rmns, b_rmns, c_rmns, d_rmns, sp_index, tf)
-        call splinecof3_hi_driv(es, zmns, r_mhalf, &
-            & a_zmns, b_zmns, c_zmns, d_zmns, sp_index, tf)
-        call splinecof3_hi_driv(es, lmns, r_mhalf, &
-            & a_lmns, b_lmns, c_lmns, d_lmns, sp_index, tf)
-        call splinecof3_hi_driv(es, bmns, r_mhalf, &
-            & a_bmns, b_bmns, c_bmns, d_bmns, sp_index, tf)
-      end if
+      ! 1-d splines of 2-d arrays. Modes with equal r_mhalf share the spline
+      ! matrix; visiting them consecutively (descending r_mhalf, so m = 0 comes
+      ! last, followed by the m0 = 0 profile splines below) lets splinecof3
+      ! reuse its factorization. Columns are independent, so the order does
+      ! not change the result.
+      mode_order = [(i, i = 1, mnmax)]
+      DO i = 2, mnmax
+        k = mode_order(i)
+        j = i - 1
+        DO WHILE (j >= 1)
+          IF (r_mhalf(mode_order(j)) >= r_mhalf(k)) EXIT
+          mode_order(j+1) = mode_order(j)
+          j = j - 1
+        END DO
+        mode_order(j+1) = k
+      END DO
+      DO j = 1, mnmax
+        i = mode_order(j)
+        call splinecof3_hi_driv(es, rmnc(:,i:i), r_mhalf(i:i), &
+            & a_rmnc(:,i:i), b_rmnc(:,i:i), c_rmnc(:,i:i), d_rmnc(:,i:i), sp_index, tf)
+        call splinecof3_hi_driv(es, zmnc(:,i:i), r_mhalf(i:i), &
+            & a_zmnc(:,i:i), b_zmnc(:,i:i), c_zmnc(:,i:i), d_zmnc(:,i:i), sp_index, tf)
+        call splinecof3_hi_driv(es, lmnc(:,i:i), r_mhalf(i:i), &
+            & a_lmnc(:,i:i), b_lmnc(:,i:i), c_lmnc(:,i:i), d_lmnc(:,i:i), sp_index, tf)
+        call splinecof3_hi_driv(es, bmnc(:,i:i), r_mhalf(i:i), &
+            & a_bmnc(:,i:i), b_bmnc(:,i:i), c_bmnc(:,i:i), d_bmnc(:,i:i), sp_index, tf)
+        if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
+          call splinecof3_hi_driv(es, rmns(:,i:i), r_mhalf(i:i), &
+              & a_rmns(:,i:i), b_rmns(:,i:i), c_rmns(:,i:i), d_rmns(:,i:i), sp_index, tf)
+          call splinecof3_hi_driv(es, zmns(:,i:i), r_mhalf(i:i), &
+              & a_zmns(:,i:i), b_zmns(:,i:i), c_zmns(:,i:i), d_zmns(:,i:i), sp_index, tf)
+          call splinecof3_hi_driv(es, lmns(:,i:i), r_mhalf(i:i), &
+              & a_lmns(:,i:i), b_lmns(:,i:i), c_lmns(:,i:i), d_lmns(:,i:i), sp_index, tf)
+          call splinecof3_hi_driv(es, bmns(:,i:i), r_mhalf(i:i), &
+              & a_bmns(:,i:i), b_bmns(:,i:i), c_bmns(:,i:i), d_bmns(:,i:i), sp_index, tf)
+        end if
+      END DO
     end if
     !! End Modifications by Andreas F. Martitsch (06.08.2014)
 
