@@ -156,7 +156,8 @@ def er_level2_poloidal_rotation(n, T, dn_ds, dT_ds, z, av_nabla_stor,
     has no cross-species entries (D31_ib = D32_ib = 0 for b != i), (b) the
     diagonal entry satisfies the momentum identity of
     ``rigid_rotation_defect``, and (c) there is no inductive drive
-    (D33_ii <E_par B> = 0). Cross-species D31 drives do not cancel even when
+    (sum_b D33_ib Z_b e <E_par B> / (T_b <B^2>) = 0, e.g. <E_par B> = 0).
+    Cross-species D31 drives do not cancel even when
     the full row conserves momentum. Returns E_r [statV/cm].
     """
     return (er_level1_toroidal_rotation(n, T, dn_ds, dT_ds, z, av_nabla_stor,
@@ -319,14 +320,19 @@ def load_neo2_force_balance_inputs(path):
     Besides geometry, coefficients and ``Er``, the replay needs
     ``dn_spec_ov_ds``, ``dT_spec_ov_ds``, ``Vphi``, ``species_tag_Vphi`` and
     ``isw_Vphi_loc``. ``write_multispec_output_a`` on ``main`` does not write
-    them yet (issue #75); files without them raise ``KeyError``.
+    them yet (issue #75); files without them raise ``KeyError``. For more
+    than one species ``avEparB_ov_avb2`` is required as well.
     """
     import h5py
 
     with h5py.File(path, 'r') as f:
         g = {key: f[key][()] for key in f.keys()
              if isinstance(f[key], h5py.Dataset)}
-    missing = [key for key in REQUIRED_DATASETS if key not in g]
+    required = list(REQUIRED_DATASETS)
+    if len(np.atleast_1d(g.get('species_tag', []))) > 1:
+        # Written only for num_spec > 1, where it enters through D33.
+        required.append('avEparB_ov_avb2')
+    missing = [key for key in required if key not in g]
     if missing:
         raise KeyError('NEO-2 output lacks datasets needed for the E_r '
                        'replay: ' + ', '.join(missing))
