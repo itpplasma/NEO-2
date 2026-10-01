@@ -92,9 +92,34 @@ def test_overshoot_into_absent_region_is_refused(tmp_path):
     n_prof = carbon_edge_profiles(S_OLD)
     write_input(src, n_prof, (n_prof > 0).sum(axis=0))
     out.write_bytes(b'keep')
-    with pytest.raises(ValueError, match='0.95'):
-        new_grid(str(src), str(out), S_NEW)
+    with pytest.raises(ValueError, match=r'neighbouring.*0\.95'):
+        new_grid(str(src), str(out),
+                 np.array([0.05, 0.3, 0.5, 0.55, 0.8, 0.95]))
     assert out.read_bytes() == b'keep'
+
+
+def test_negative_density_is_refused(tmp_path):
+    # Between s = 0.6 and 0.8 the carbon spline dips below zero (s = 0.7);
+    # neo2.f90 would drop carbon there and lose quasi-neutrality.
+    src = tmp_path / 'in.h5'
+    n_prof = carbon_edge_profiles(S_OLD)
+    write_input(src, n_prof, (n_prof > 0).sum(axis=0))
+    with pytest.raises(ValueError, match='negative'):
+        new_grid(str(src), str(tmp_path / 'out.h5'),
+                 np.array([0.05, 0.3, 0.5, 0.55, 0.7, 0.8]))
+
+
+def test_identity_grid_keeps_zero_density_at_knot(tmp_path):
+    # Spline roundoff at a knot with zero density must not add a species.
+    n_e = np.full(S_OLD.size, 4.0e13)
+    n_c = 1.0e11 * np.array([1.0, 1.0, 1.0, 10.0, 1.0, 0.0])
+    n_prof = np.vstack([n_e, n_e - 6.0 * n_c, n_c])
+    src, out = tmp_path / 'in.h5', tmp_path / 'out.h5'
+    write_input(src, n_prof, (n_prof > 0).sum(axis=0))
+    new_grid(str(src), str(out), S_OLD)
+    with h5py.File(out, 'r') as f:
+        assert f['rel_stages'][()].tolist() == [3, 3, 3, 3, 3, 2]
+        assert f['n_prof'][2, -1] == 0.0
 
 
 def test_extrapolation_compares_with_endpoint(tmp_path):
@@ -108,9 +133,9 @@ def test_extrapolation_compares_with_endpoint(tmp_path):
     write_input(src, n_prof, (n_prof > 0).sum(axis=0))
     with h5py.File(src, 'a') as f:
         f['boozer_s'][...] = s_old
-    with pytest.raises(ValueError, match='0.945'):
+    with pytest.raises(ValueError, match=r'neighbouring.*0\.945'):
         new_grid(str(src), str(tmp_path / 'out.h5'),
-                 np.array([0.0, 0.2, 0.4, 0.6, 0.8, 0.945]))
+                 np.append(s_old[:-1], 0.945))
 
 
 def test_rel_stages_unchanged_when_constant(tmp_path):
