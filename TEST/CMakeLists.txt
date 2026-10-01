@@ -138,6 +138,15 @@ if(Python3_Interpreter_FOUND AND NOT NEO2_PYTHON_DEPS_MISSING)
         PASS_REGULAR_EXPRESSION "All tests passed!"
         TIMEOUT 60
     )
+    add_test(NAME python_force_balance_aug30835_test
+             COMMAND ${Python3_EXECUTABLE}
+                     ${CMAKE_CURRENT_SOURCE_DIR}/../python/test/test_force_balance_aug30835.py
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    set_tests_properties(python_force_balance_aug30835_test PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python/src"
+        PASS_REGULAR_EXPRESSION "All tests passed!"
+        TIMEOUT 60
+    )
 else()
-    message(STATUS "neo2_ql Python package not importable: skipping python_force_balance_test")
+    message(STATUS "neo2_ql Python package not importable: skipping python force-balance tests")
 endif()
