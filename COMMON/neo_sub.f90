@@ -148,6 +148,7 @@ CONTAINS
     USE inter_interfaces, ONLY: splinecof3_hi_driv, splinecof3, tf, &
       & splinecof1_hi_driv, splinecof1
     use neo_spline_data, only : lsw_linear_boozer
+    use radial_lagrange_cof, only : radial_cof3, radial_cof3_hi_driv
 
     IMPLICIT NONE
 
@@ -232,22 +233,22 @@ CONTAINS
       end if
     else
       ! 1-d splines of 2-d arrays
-      call splinecof3_hi_driv(es, rmnc, r_mhalf, &
+      call radial_cof3_hi_driv(es, rmnc, r_mhalf, &
           & a_rmnc, b_rmnc, c_rmnc, d_rmnc, sp_index, tf)
-      call splinecof3_hi_driv(es, zmnc, r_mhalf, &
+      call radial_cof3_hi_driv(es, zmnc, r_mhalf, &
           & a_zmnc, b_zmnc, c_zmnc, d_zmnc, sp_index, tf)
-      call splinecof3_hi_driv(es, lmnc, r_mhalf, &
+      call radial_cof3_hi_driv(es, lmnc, r_mhalf, &
           & a_lmnc, b_lmnc, c_lmnc, d_lmnc, sp_index, tf)
-      call splinecof3_hi_driv(es, bmnc, r_mhalf, &
+      call radial_cof3_hi_driv(es, bmnc, r_mhalf, &
           & a_bmnc, b_bmnc, c_bmnc, d_bmnc, sp_index, tf)
       if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
-        call splinecof3_hi_driv(es, rmns, r_mhalf, &
+        call radial_cof3_hi_driv(es, rmns, r_mhalf, &
             & a_rmns, b_rmns, c_rmns, d_rmns, sp_index, tf)
-        call splinecof3_hi_driv(es, zmns, r_mhalf, &
+        call radial_cof3_hi_driv(es, zmns, r_mhalf, &
             & a_zmns, b_zmns, c_zmns, d_zmns, sp_index, tf)
-        call splinecof3_hi_driv(es, lmns, r_mhalf, &
+        call radial_cof3_hi_driv(es, lmns, r_mhalf, &
             & a_lmns, b_lmns, c_lmns, d_lmns, sp_index, tf)
-        call splinecof3_hi_driv(es, bmns, r_mhalf, &
+        call radial_cof3_hi_driv(es, bmns, r_mhalf, &
             & a_bmns, b_bmns, c_bmns, d_bmns, sp_index, tf)
       end if
     end if
@@ -277,16 +278,16 @@ CONTAINS
           & a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, m0, tf)
     else
       ! 1-d splines of 1-d arrays
-      call splinecof3(es, iota, c1, cn, lambda, sp_index, sw1, sw2, &
-          & a_iota, b_iota, c_iota, d_iota, m0, tf)
-      call splinecof3(es, pprime, c1, cn, lambda, sp_index, sw1, sw2, &
-          & a_pprime, b_pprime, c_pprime, d_pprime, m0, tf)
-      call splinecof3(es, sqrtg00, c1, cn, lambda, sp_index, sw1, sw2, &
-          & a_sqrtg00, b_sqrtg00, c_sqrtg00, d_sqrtg00, m0, tf)
-      call splinecof3(es, curr_tor, c1, cn, lambda, sp_index, sw1, sw2, &
-          & a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, m0, tf)
-      call splinecof3(es, curr_pol, c1, cn, lambda, sp_index, sw1, sw2, &
-          & a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, m0, tf)
+      call radial_cof3(es, iota, &
+          & a_iota, b_iota, c_iota, d_iota, sp_index, tf)
+      call radial_cof3(es, pprime, &
+          & a_pprime, b_pprime, c_pprime, d_pprime, sp_index, tf)
+      call radial_cof3(es, sqrtg00, &
+          & a_sqrtg00, b_sqrtg00, c_sqrtg00, d_sqrtg00, sp_index, tf)
+      call radial_cof3(es, curr_tor, &
+          & a_curr_tor, b_curr_tor, c_curr_tor, d_curr_tor, sp_index, tf)
+      call radial_cof3(es, curr_pol, &
+          & a_curr_pol, b_curr_pol, c_curr_pol, d_curr_pol, sp_index, tf)
     end if
 
     DEALLOCATE( lambda )
@@ -1352,6 +1353,7 @@ CONTAINS
     USE neo_spline_b00
     use inter_interfaces, only : splinecof1, splinecof3, tf
     use neo_spline_data, only : lsw_linear_boozer
+    use radial_lagrange_cof, only : radial_cof3
 
     INTEGER                             :: i, j
     INTEGER(I4B) :: sw1, sw2
@@ -1390,8 +1392,8 @@ CONTAINS
       call splinecof1(es, b00, c1, cn, lambda, index_i, sw1, sw2, &
           & a_b00, b_b00, c_b00, d_b00, m0, tf)
     else
-      call splinecof3(es, b00, c1, cn, lambda, index_i, sw1, sw2, &
-          & a_b00, b_b00, c_b00, d_b00, m0, tf)
+      call radial_cof3(es, b00, &
+          & a_b00, b_b00, c_b00, d_b00, index_i, tf)
     end if
 
     DEALLOCATE( lambda )
