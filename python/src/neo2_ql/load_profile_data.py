@@ -40,8 +40,9 @@ def convert_units_from_norm_to_si(profiles):
     KRADS2RADS = 1.0e3
     NORM_DENSITY2SI_DENSITY = 1.0e+19
     profiles['T'] *= KEV2EV
-    profiles['vrot'] /= profiles['major_radius']
-    profiles['vrot'] *= KRADS2RADS
+    if 'vrot' in profiles:
+        profiles['vrot'] /= profiles['major_radius']
+        profiles['vrot'] *= KRADS2RADS
     profiles['n'] *= NORM_DENSITY2SI_DENSITY
     return profiles
 
