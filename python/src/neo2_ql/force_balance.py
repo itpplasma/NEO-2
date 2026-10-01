@@ -326,7 +326,8 @@ def load_neo2_force_balance_inputs(path):
     ``isw_Vphi_loc``, which ``write_multispec_output_a`` writes only in
     revisions containing the issue #75 output change; older files raise
     ``KeyError``. Only ``isw_Vphi_loc = 0`` is supported: the local modes 1
-    and 2 need B^phi and G_symm at the Vphi point, which are not written. For more
+    and 2 need the local B^phi and the theta derivative G_symm_tb at
+    the Vphi point, which are not written. For more
     than one species ``avEparB_ov_avb2`` is required as well.
     """
     import h5py
