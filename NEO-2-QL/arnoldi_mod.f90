@@ -284,8 +284,9 @@ contains
     complex(kind=kind(1d0)),   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
     complex(kind=kind(1d0)),   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
     complex(kind=kind(1d0)),   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
-    DOUBLE PRECISION :: image_norm
-    LOGICAL :: happy_breakdown
+    ! Norm of the candidate vector before orthogonalization.
+    DOUBLE PRECISION :: q_norm
+    LOGICAL :: subspace_closed
 
     INTEGER :: m_tol, m_ind
     complex(kind=kind(1d0)), DIMENSION(500) :: ritzum_write
@@ -311,8 +312,8 @@ contains
     q_spec(ispec)=SUM(CONJG(fnew)*fnew)
     CALL mpro%allgather_inplace(q_spec)
     ierr=0
-    image_norm=SQRT(SUM(q_spec))
-    IF(.NOT.ieee_is_finite(image_norm)) THEN
+    q_norm=SQRT(SUM(q_spec))
+    IF(.NOT.ieee_is_finite(q_norm)) THEN
       ierr=1
       ngrow=0
       IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
@@ -322,7 +323,7 @@ contains
       DEALLOCATE(q_spec,h_spec)
       RETURN
     ENDIF
-    IF(image_norm.LE.TINY(1.0d0)) THEN
+    IF(q_norm.LE.TINY(1.0d0)) THEN
       ngrow=0
       IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
       ALLOCATE(eigvecs(n,0))
@@ -331,13 +332,13 @@ contains
       DEALLOCATE(q_spec,h_spec)
       RETURN
     ENDIF
-    qvecs_prev(:,1)=fnew/image_norm
+    qvecs_prev(:,1)=fnew/q_norm
     mbeg=2
     ncount=0
 
     DO m=2,mmax
 
-      happy_breakdown=.FALSE.
+      subspace_closed=.FALSE.
       m_ritz=m
 
       ALLOCATE(qvecs(n,m))
@@ -352,7 +353,7 @@ contains
         h_spec=0.0d0
         h_spec(ispec)=SUM(CONJG(fnew)*fnew)
         CALL mpro%allgather_inplace(h_spec)
-        image_norm=SQRT(SUM(h_spec))
+        q_norm=SQRT(SUM(h_spec))
         DO j=1,k-1
           h_spec=0.0d0
           h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
@@ -364,8 +365,8 @@ contains
         h_spec(ispec)=SUM(CONJG(qvecs(:,k))*qvecs(:,k))
         CALL mpro%allgather_inplace(h_spec)
         hmat(k,k-1)=SQRT(SUM(h_spec))
-        IF(ABS(hmat(k,k-1)).LE.SQRT(EPSILON(1.0d0))*MAX(1.0d0,image_norm)) THEN
-          happy_breakdown=.TRUE.
+        IF(ABS(hmat(k,k-1)).LE.SQRT(EPSILON(1.0d0))*MAX(1.0d0,q_norm)) THEN
+          subspace_closed=.TRUE.
           m_ritz=k-1
           EXIT
         ENDIF
@@ -404,7 +405,7 @@ contains
       ENDIF
       ritznum_prev(1:m_ritz)=ritznum(1:m_ritz)
 
-      IF(happy_breakdown.OR.ncount.GE.ntol.OR.m.EQ.mmax) THEN
+      IF(subspace_closed.OR.ncount.GE.ntol.OR.m.EQ.mmax) THEN
         IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
         ALLOCATE(eigvecs(n,ngrow))
 
