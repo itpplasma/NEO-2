@@ -290,3 +290,33 @@ if __name__ == '__main__':
     test_half_omte_differs()
     print('All tests passed.')
     test_derivative_visual_check()
+
+def test_generate_omte_only_input_has_no_vphi():
+    """Om_tE-only profiles (isw_calc_Er=2) yield a file without V_phi."""
+    sqrtspol = np.linspace(0, 1, 11)
+    om_te = 2.0e4 * sqrtspol**2 - 5.0e3
+    write_trial_profiles(trial_profiles_2species, output_dir)
+    np.savetxt(os.path.join(output_dir, 'Om_tE.dat'), np.vstack([sqrtspol, om_te]).T)
+    src = copy.deepcopy(profiles_src_2species)
+    del src['vrot']
+    src['Om_tE'] = {'filename': os.path.join(output_dir, 'Om_tE.dat'), 'column': 1}
+    config = copy.deepcopy(config_2species)
+    del config['species_tag_of_vrot']
+    generate_multispec_input(config, src, profiles_interp_config={'n_s': 7})
+    with h5py.File(hdf5_filename, 'r') as f:
+        for name in ('Vphi', 'species_tag_Vphi', 'isw_Vphi_loc'):
+            assert name not in f, f'{name} must be absent for Om_tE-only input'
+        # quadratic profile is reproduced exactly by cubic interpolation
+        expected = 2.0e4 * f['rho_pol'][()]**2 - 5.0e3
+        assert np.allclose(f['Om_tE'][()], expected, rtol=1e-12, atol=1e-8)
+
+
+def test_generate_requires_vrot_or_omte():
+    write_trial_profiles(trial_profiles_2species, output_dir)
+    src = copy.deepcopy(profiles_src_2species)
+    del src['vrot']
+    try:
+        generate_multispec_input(copy.deepcopy(config_2species), src)
+    except ValueError:
+        return
+    raise AssertionError('missing vrot and Om_tE must raise ValueError')

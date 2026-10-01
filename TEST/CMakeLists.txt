@@ -75,6 +75,23 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     TIMEOUT 30
 )
 
+# isw_calc_Er=2 (prescribed Om_tE) must prepare a multi-species scan from an
+# input without V_phi. Drives the real neo_2_ql.x on synthetic HDF5 input.
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME er_direct_prepare_scan_test
+           COMMAND ${Python3_EXECUTABLE}
+                   ${CMAKE_CURRENT_SOURCE_DIR}/test_er_direct_prepare_scan.py
+                   $<TARGET_FILE:neo_2_ql.x>
+                   ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/neo_ql_prepare_scan.in
+           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  set_tests_properties(er_direct_prepare_scan_test PROPERTIES
+      PASS_REGULAR_EXPRESSION "All tests passed!"
+      FAIL_REGULAR_EXPRESSION "FAIL"
+      TIMEOUT 120
+  )
+endif()
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)

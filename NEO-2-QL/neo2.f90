@@ -1098,36 +1098,38 @@ subroutine main
     ALLOCATE(kappa_prof(num_radial_pts,num_species_all))
     CALL h5_get(h5id_multispec_in,'kappa_prof',kappa_prof)
 
-    ! get measured toroidal rotation profile and its species-tag
-    IF(ALLOCATED(Vphi_prof)) DEALLOCATE(Vphi_prof)
-    ALLOCATE(Vphi_prof(num_radial_pts))
-    CALL h5_get(h5id_multispec_in,'Vphi',Vphi_prof)
-    CALL h5_get(h5id_multispec_in,'species_tag_Vphi',species_tag_Vphi)
-    CALL h5_get(h5id_multispec_in,'isw_Vphi_loc',isw_Vphi_loc)
-    IF (isw_Vphi_loc .EQ. 1) THEN
-      write(*,*) "ERROR: switch isw_Vphi_loc=1 is not tested!"
-      STOP
-
-      IF(ALLOCATED(R_Vphi_prof)) DEALLOCATE(R_Vphi_prof)
-      ALLOCATE(R_Vphi_prof(num_radial_pts))
-      CALL h5_get(h5id_multispec_in,'R_Vphi',R_Vphi_prof)
-      IF(ALLOCATED(Z_Vphi_prof)) DEALLOCATE(Z_Vphi_prof)
-      ALLOCATE(Z_Vphi_prof(num_radial_pts))
-      CALL h5_get(h5id_multispec_in,'Z_Vphi',Z_Vphi_prof)
-    ELSE IF(isw_Vphi_loc .EQ. 2) THEN
-      IF(ALLOCATED(boozer_theta_Vphi_prof)) DEALLOCATE(boozer_theta_Vphi_prof)
-      ALLOCATE(boozer_theta_Vphi_prof(num_radial_pts))
-      CALL h5_get(h5id_multispec_in,'boozer_theta_Vphi',boozer_theta_Vphi_prof)
-    ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
-      write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
-      STOP
-    END IF
-
-    ! get Om_tE profile (only required for isw_calc_Er=2)
+    ! Rotation input. isw_calc_Er=2 prescribes Om_tE (equivalently Er)
+    ! directly, so the toroidal rotation V_phi is neither required nor read;
+    ! all other modes need V_phi and its species-tag as before.
     IF (isw_calc_Er .EQ. 2) THEN
       IF(ALLOCATED(Om_tE_prof)) DEALLOCATE(Om_tE_prof)
       ALLOCATE(Om_tE_prof(num_radial_pts))
       CALL h5_get(h5id_multispec_in,'Om_tE',Om_tE_prof)
+    ELSE
+      ! get measured toroidal rotation profile and its species-tag
+      IF(ALLOCATED(Vphi_prof)) DEALLOCATE(Vphi_prof)
+      ALLOCATE(Vphi_prof(num_radial_pts))
+      CALL h5_get(h5id_multispec_in,'Vphi',Vphi_prof)
+      CALL h5_get(h5id_multispec_in,'species_tag_Vphi',species_tag_Vphi)
+      CALL h5_get(h5id_multispec_in,'isw_Vphi_loc',isw_Vphi_loc)
+      IF (isw_Vphi_loc .EQ. 1) THEN
+        write(*,*) "ERROR: switch isw_Vphi_loc=1 is not tested!"
+        STOP
+
+        IF(ALLOCATED(R_Vphi_prof)) DEALLOCATE(R_Vphi_prof)
+        ALLOCATE(R_Vphi_prof(num_radial_pts))
+        CALL h5_get(h5id_multispec_in,'R_Vphi',R_Vphi_prof)
+        IF(ALLOCATED(Z_Vphi_prof)) DEALLOCATE(Z_Vphi_prof)
+        ALLOCATE(Z_Vphi_prof(num_radial_pts))
+        CALL h5_get(h5id_multispec_in,'Z_Vphi',Z_Vphi_prof)
+      ELSE IF(isw_Vphi_loc .EQ. 2) THEN
+        IF(ALLOCATED(boozer_theta_Vphi_prof)) DEALLOCATE(boozer_theta_Vphi_prof)
+        ALLOCATE(boozer_theta_Vphi_prof(num_radial_pts))
+        CALL h5_get(h5id_multispec_in,'boozer_theta_Vphi',boozer_theta_Vphi_prof)
+      ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
+        write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+        STOP
+      END IF
     END IF
 
     CALL h5_close(h5id_multispec_in)
@@ -1228,19 +1230,22 @@ subroutine main
 
       ! specify radial point
       boozer_s = boozer_s_prof(ind_boozer_s)
-      Vphi = Vphi_prof(ind_boozer_s)
-      IF (isw_calc_Er .EQ. 2) Om_tE = Om_tE_prof(ind_boozer_s)
-      IF (isw_Vphi_loc .EQ. 1) THEN
-        write(*,*) "ERROR: Warning switch isw_Vphi_loc=1 is not tested!"
-        STOP
+      IF (isw_calc_Er .EQ. 2) THEN
+        Om_tE = Om_tE_prof(ind_boozer_s)
+      ELSE
+        Vphi = Vphi_prof(ind_boozer_s)
+        IF (isw_Vphi_loc .EQ. 1) THEN
+          write(*,*) "ERROR: Warning switch isw_Vphi_loc=1 is not tested!"
+          STOP
 
-        R_Vphi = R_Vphi_prof(ind_boozer_s)
-        Z_Vphi = Z_Vphi_prof(ind_boozer_s)
-      ELSE IF(isw_Vphi_loc .EQ. 2) THEN
-        boozer_theta_Vphi = boozer_theta_Vphi_prof(ind_boozer_s)
-      ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
-        write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
-        STOP
+          R_Vphi = R_Vphi_prof(ind_boozer_s)
+          Z_Vphi = Z_Vphi_prof(ind_boozer_s)
+        ELSE IF(isw_Vphi_loc .EQ. 2) THEN
+          boozer_theta_Vphi = boozer_theta_Vphi_prof(ind_boozer_s)
+        ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
+          write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+          STOP
+        END IF
       END IF
 
       ! allocate species-tags
