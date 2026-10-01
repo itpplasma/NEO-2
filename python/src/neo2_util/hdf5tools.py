@@ -1590,12 +1590,17 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
     factor_hydrogen = (Ztrace - Zeff)/(Ztrace -1)
     factor_trace = (Zeff - 1)/(Ztrace*(Ztrace -1))
 
-  no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol', 'species_tag_Vphi']
+  no_change_needed = ['boozer_s', 'num_radial_pts', 'rho_pol']
+  # Rotation input: V_phi (isw_calc_Er=0/1) and/or Om_tE (isw_calc_Er=2).
+  copy_if_present = ['Vphi', 'isw_Vphi_loc', 'species_tag_Vphi', 'Om_tE']
 
   with get_hdf5file(infilename) as hin:
     with get_hdf5file_new(outfilename) as hout:
       for dname in no_change_needed:
         hout.create_dataset(dname, data=hin[dname])
+      for dname in copy_if_present:
+        if dname in hin:
+          hout.create_dataset(dname, data=hin[dname])
 
       nsp = np.array(hin['num_species'])
       nsp[0] += 1
@@ -1682,7 +1687,9 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
   import numpy as np
   from neo2_ql import get_kappa, get_coulomb_logarithm
 
-  no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol']
+  no_change_needed = ['boozer_s', 'num_radial_pts', 'rho_pol']
+  # Rotation input: V_phi (isw_calc_Er=0/1) and/or Om_tE (isw_calc_Er=2).
+  copy_if_present = ['Vphi', 'isw_Vphi_loc', 'Om_tE']
   special_treatment_needed = ['species_tag_Vphi']
   zero_dimension_species = ['T_prof', 'n_prof', 'kappa_prof', 'dn_ov_ds_prof', 'dT_ov_ds_prof']
   # special treatment if number of remaining species = 2
@@ -1693,11 +1700,15 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
     with get_hdf5file_new(outfilename) as hout:
       for dname in no_change_needed:
         hout.create_dataset(dname, data=hin[dname])
+      for dname in copy_if_present:
+        if dname in hin:
+          hout.create_dataset(dname, data=hin[dname])
 
-      nspecies_tag_vphi = np.array(hin['species_tag_Vphi'])
-      if index < nspecies_tag_vphi[0]:
-        nspecies_tag_vphi[0] -= 1
-      hout.create_dataset('species_tag_Vphi', data=nspecies_tag_vphi)
+      if 'species_tag_Vphi' in hin:
+        nspecies_tag_vphi = np.array(hin['species_tag_Vphi'])
+        if index < nspecies_tag_vphi[0]:
+          nspecies_tag_vphi[0] -= 1
+        hout.create_dataset('species_tag_Vphi', data=nspecies_tag_vphi)
 
       nsp = np.array(hin['num_species'])
       nsp[0] -= 1
@@ -1965,9 +1976,14 @@ def change_isw_vphi_loc(infilename: str, outfilename: str):
                       'T_prof', 'Vphi']
 
   with get_hdf5file(infilename) as hin:
+    if 'Vphi' not in hin:
+      raise ValueError(infilename + ' has no Vphi (Om_tE-only input for '
+                       'isw_calc_Er=2); isw_Vphi_loc does not apply.')
     with get_hdf5file_new(outfilename) as hout:
       for dname in no_change_needed:
         hout.create_dataset(dname, data=hin[dname])
+      if 'Om_tE' in hin:
+        hout.create_dataset('Om_tE', data=hin['Om_tE'])
 
       hout.create_dataset('isw_Vphi_loc', data=2)
 
@@ -2213,6 +2229,29 @@ def _regridded_densities(infilename: str, new_s_grid):
   return new_n, count
 
 
+def _set_dataset(h5group, name: str, data):
+  """Overwrite dataset name with data; recreate it if the size changes.
+
+  Writes of the same size go through dset[...] as before (keeping shape,
+  dtype and attributes); a different size, e.g. a new radial grid with
+  another number of points, recreates the dataset with the old dtype and
+  attributes.
+  """
+  import numpy as np
+
+  dset = h5group[name]
+  data = np.asarray(data)
+  if data.size == dset.size:
+    dset[...] = data.reshape(dset.shape)
+    return
+  dtype = dset.dtype
+  attrs = dict(dset.attrs)
+  del h5group[name]
+  new = h5group.create_dataset(name, data=data.astype(dtype))
+  for key, value in attrs.items():
+    new.attrs[key] = value
+
+
 def new_grid(infilename: str, outfilename: str, new_s_grid):
   """Reinterpolate existing neo-2 profile file to new grid.
 
@@ -2263,50 +2302,39 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
     sp_n = CubicSpline(out['boozer_s'], out['n_prof'], axis=1)
     int_n = checked_n
     der_n = sp_n(new_s_grid, 1)
-
-
-    dset = out['n_prof']
-    dset[...] = array(int_n)
-    dset = out['dn_ov_ds_prof']
-    dset[...] = array(der_n)
+    _set_dataset(out, 'n_prof', array(int_n))
+    _set_dataset(out, 'dn_ov_ds_prof', array(der_n))
 
     sp_t = CubicSpline(out['boozer_s'], out['T_prof'], axis=1)
     int_t = sp_t(new_s_grid)
     der_t = sp_t(new_s_grid, 1)
-    dset = out['T_prof']
-    dset[...] = array(int_t)
-    dset = out['dT_ov_ds_prof']
-    dset[...] = array(der_t)
+    _set_dataset(out, 'T_prof', array(int_t))
+    _set_dataset(out, 'dT_ov_ds_prof', array(der_t))
 
     sp_kappa = CubicSpline(out['boozer_s'], out['kappa_prof'], axis=1)
     int_kappa = sp_kappa(new_s_grid)
-    dset = out['kappa_prof']
-    dset[...] = array(int_kappa)
+    _set_dataset(out, 'kappa_prof', array(int_kappa))
 
     sp_species_def = CubicSpline(out['boozer_s'], out['species_def'], axis=2)
     int_species_def = sp_species_def(new_s_grid)
-    dset = out['species_def']
-    dset[...] = array(int_species_def)
+    _set_dataset(out, 'species_def', array(int_species_def))
 
     sp_rho = CubicSpline(out['boozer_s'], out['rho_pol'])
     int_rho = sp_rho(new_s_grid)
-    dset = out['rho_pol']
-    dset[...] = array(int_rho)
+    _set_dataset(out, 'rho_pol', array(int_rho))
 
-    dset = out['rel_stages']
-    dset[...] = int_rel_stages
+    _set_dataset(out, 'rel_stages', array(int_rel_stages))
 
-    sp_vphi = CubicSpline(out['boozer_s'], out['Vphi'])
-    int_vphi = sp_vphi(new_s_grid)
-    dset = out['Vphi']
-    dset[...] = array(int_vphi)
+    # Rotation input: V_phi (isw_calc_Er=0/1) and/or Om_tE (isw_calc_Er=2).
+    for dname in ('Vphi', 'Om_tE'):
+      if dname in out:
+        sp_rot = CubicSpline(out['boozer_s'], out[dname])
+        _set_dataset(out, dname, array(sp_rot(new_s_grid)))
 
 
-    dset = out['boozer_s']
-    dset[...] = new_s_grid
+    _set_dataset(out, 'boozer_s', new_s_grid)
 
-    dset = out['num_radial_pts']
-    dset[...] = len(new_s_grid)
+    _set_dataset(out, 'num_radial_pts', len(new_s_grid))
 
 
 if __name__ == "__main__":
