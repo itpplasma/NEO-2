@@ -1680,7 +1680,7 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
   name.
   """
   import numpy as np
-  from neo2_ql import get_kappa
+  from neo2_ql import get_kappa, get_coulomb_logarithm
 
   no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol']
   special_treatment_needed = ['species_tag_Vphi']
@@ -1731,7 +1731,10 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
         kappa = np.array(np.array(hin['kappa_prof'])[0, ...], ndmin=2)
         ELEMENTARY_CHARGE_CGS = 1.60217662e-19 * 2.99792458e8 * 10
         ion_charge = hout['species_def'][0, 1, ...] * ELEMENTARY_CHARGE_CGS
-        kappa_ion = get_kappa(hout['n_prof'][1, ...], hout['T_prof'][1, ...], ion_charge)
+        # Coulomb logarithm from the electrons, as in generate_multispec_input.
+        log_lambda = get_coulomb_logarithm(hout['n_prof'][0, ...], hout['T_prof'][0, ...])
+        kappa_ion = get_kappa(hout['n_prof'][1, ...], hout['T_prof'][1, ...], ion_charge,
+                              log_lambda)
         print(kappa_ion)
         print(hout['n_prof'][1, ...])
         print(hout['T_prof'][1, ...])
@@ -2221,10 +2224,17 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
     dset = out['rho_pol']
     dset[...] = array(int_rho)
 
-    sp_rel_stages = CubicSpline(out['boozer_s'], out['rel_stages'])
-    int_rel_stages = sp_rel_stages(new_s_grid)
+    # rel_stages is the number of species with positive density on each
+    # surface. neo2.f90 (prepare_mulitspecies_scan) uses it as num_spec and
+    # fills one slot per species with n_prof > 0: it stops if that count
+    # exceeds rel_stages and leaves slots unset if it is smaller. So set it to
+    # the number of species with positive interpolated density. A cubic
+    # spline of rel_stages truncated to an integer could undercount (e.g. 1.875
+    # between surfaces with 2 and 3 species) and a neighbour maximum could
+    # overcount where the interpolated density is not positive.
+    int_rel_stages = (array(int_n) > 0.0).sum(axis=0)
     dset = out['rel_stages']
-    dset[...] = array(int_rel_stages)
+    dset[...] = int_rel_stages
 
     sp_vphi = CubicSpline(out['boozer_s'], out['Vphi'])
     int_vphi = sp_vphi(new_s_grid)
