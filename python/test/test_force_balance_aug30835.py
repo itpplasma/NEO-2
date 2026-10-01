@@ -2,8 +2,7 @@
 
 The reference data ``data/omte_reference_aug30835.npz`` was extracted from two
 NEO-2-QL runs (e + D, axisymmetric AUG 30835 geometry at s = 0.253 and 0.498)
-made with an earlier NEO-2 revision than the one used for
-``neo2_ql_axisymmetric_multispecies_out.h5``; see
+that are independent of ``neo2_ql_axisymmetric_multispecies_out.h5``; see
 ``data/regenerate_omte_reference_aug30835_fixture.py``. Both runs use the same
 local plasma parameters (n, T, their gradients and Vphi); only the geometry
 differs. Unlike the axisymmetric fixture used by ``test_force_balance.py``,
