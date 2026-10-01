@@ -118,6 +118,28 @@ if(NEO2_PY_TEST_DEPS AND DEFINED ENV{NEO2_QL_GOLDEN_DIR})
   )
 endif()
 
+# Python force-balance checks (issue #75). Registered only when a Python 3
+# interpreter with numpy and h5py is available at configure time.
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+    execute_process(COMMAND ${Python3_EXECUTABLE} -c "import numpy, h5py"
+                    RESULT_VARIABLE NEO2_PYTHON_DEPS_MISSING
+                    OUTPUT_QUIET ERROR_QUIET)
+endif()
+if(Python3_Interpreter_FOUND AND NOT NEO2_PYTHON_DEPS_MISSING)
+    add_test(NAME python_force_balance_test
+             COMMAND ${Python3_EXECUTABLE}
+                     ${CMAKE_CURRENT_SOURCE_DIR}/../python/test/test_force_balance.py
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    set_tests_properties(python_force_balance_test PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python/src"
+        PASS_REGULAR_EXPRESSION "All tests passed!"
+        TIMEOUT 60
+    )
+else()
+    message(STATUS "Python 3 with numpy/h5py not found: skipping python_force_balance_test")
+endif()
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
