@@ -1842,68 +1842,40 @@ CONTAINS
   ! -> cylindrical "R"- or "Z"-coordinate.
   ! -> magnetic routines in NEO-2 are initialized on a specific flux surface (local)
   SUBROUTINE calc_thetaB_RZloc_a(R_loc,Z_loc,x_start,thetaB)
+    ! Boozer angle theta_B of the point (R_loc, Z_loc) [cm] on the flux
+    ! surface s = x_start(1) at phi = x_start(2). x_start(3) is not needed.
+    ! The point closest to (R_loc, Z_loc) on the surface cross section is
+    ! found with theta_rz_solver_mod (joint minimisation of the (R,Z)
+    ! distance); the run stops if the point is not on the surface.
+    USE theta_rz_solver_mod, ONLY : find_theta_of_rz
     ! input / output
     REAL(kind=dp), INTENT(in)               :: R_loc, Z_loc
     REAL(kind=dp), DIMENSION(3), INTENT(in) :: x_start
     REAL(kind=dp), INTENT(out)              :: thetaB
     ! local variables
-    INTEGER, PARAMETER :: kmax=100
-    REAL(kind=dp), PARAMETER :: accur=1.0e-5_dp
-    INTEGER :: k
-    REAL(kind=dp) :: fR, fRp, abserr_R, fZ, fZp, abserr_Z, abserr_tht
-    REAL(kind=dp) :: thtB_R_n, thtB_Z_n, thtB_R_np1, thtB_Z_np1
-    LOGICAL :: break_cond
-    REAL(kind=dp) :: R, R_tb, Z, Z_tb
+    REAL(kind=dp), PARAMETER :: rel_tol_dist = 1.0e-6_dp
+    REAL(kind=dp) :: dist, extent
     REAL(kind=dp), DIMENSION(3) :: x
 
-    ! intialize start vector
     x = x_start
-    thetaB = x_start(3)
-
-    ! Newton iterations
-    break_cond = .FALSE.
-    k = 0
-    thtB_R_n = thetaB
-    thtB_Z_n = thetaB
-    DO WHILE(.NOT. break_cond)
-       k = k + 1
-       IF (k .GT. kmax) THEN
-          PRINT *,"calc_thetaB_RZloc: Maximum number of Newton iterations reached!"
-          STOP
-       END IF
-
-       x(3) = thtB_R_n
-       CALL compute_RZ( x, R, R_tb, Z, Z_tb )
-       fR = R - R_loc
-       fRp = R_tb
-       thtB_R_np1 = thtB_R_n - fR / fRp
-       thtB_R_np1 = MODULO(thtB_R_np1,TWOPI)
-       abserr_R = ABS(thtB_R_n-thtB_R_np1)
-       thtB_R_n = thtB_R_np1
-       PRINT *,thtB_R_n,abserr_R,ABS(R-R_loc)
-
-       x(3) = thtB_Z_n
-       CALL compute_RZ( x, R, R_tb, Z, Z_tb )
-       fZ = Z - Z_loc
-       fZp = Z_tb
-       thtB_Z_np1 = thtB_Z_n - fZ / fZp
-       thtB_Z_np1 = MODULO(thtB_Z_np1,TWOPI)
-       abserr_Z = ABS(thtB_Z_n-thtB_Z_np1)
-       thtB_Z_n = thtB_Z_np1
-
-       PRINT *,thtB_Z_n,abserr_Z,ABS(Z-Z_loc)
-
-       IF( (abserr_R .LT. accur) .AND. (abserr_Z .LT. accur)) THEN
-          abserr_tht = ABS(thtB_R_n-thtB_Z_n)
-          IF( (abserr_tht .LT. accur) ) THEN
-             thetaB = thtB_R_n
-             break_cond=.TRUE.
-          END IF
-       END IF
-
-    END DO
+    CALL find_theta_of_rz(rz_on_surface, R_loc, Z_loc, thetaB, dist, extent)
+    IF (dist .GT. rel_tol_dist * extent) THEN
+       PRINT *,"calc_thetaB_RZloc: (R,Z) = ", R_loc, Z_loc, &
+            " is not on the flux surface: distance ", dist, " cm"
+       STOP
+    END IF
 
     PRINT *,"calc_thetaB_RZloc: thetaB = ",thetaB
+
+  CONTAINS
+
+    SUBROUTINE rz_on_surface(theta, R, R_tb, Z, Z_tb)
+      REAL(kind=dp), INTENT(in)  :: theta
+      REAL(kind=dp), INTENT(out) :: R, R_tb, Z, Z_tb
+      x(3) = theta
+      CALL compute_RZ( x, R, R_tb, Z, Z_tb )
+    END SUBROUTINE rz_on_surface
+
   END SUBROUTINE calc_thetaB_RZloc_a
   !! End Modifications by Andreas F. Martitsch (30.03.2017)
 
