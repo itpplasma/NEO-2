@@ -141,8 +141,10 @@ def main():
     check('mode 2 reproduces mode-1 Er and MtOvR',
           rel(m2['Er'], m1['Er']) < 1e-12 and rel(m2['MtOvR'], m1['MtOvR'])
           < 1e-12)
+    missing = [k for k in D_KEYS for o in (m1, m2, m2_neg) if k not in o]
+    check(f'transport coefficients present {missing}', not missing)
     check('transport coefficients unchanged',
-          all(rel(m2[k], m1[k]) < 1e-12 for k in D_KEYS if k in m1))
+          not missing and all(rel(m2[k], m1[k]) < 1e-12 for k in D_KEYS))
     ispec = list(m1['species_tag']).index(tag_vphi)
     vphi_rebuilt = m2['VphiB_spec'][ispec] + m1['VphiB_Ware_spec'][ispec]
     check(f'V_phi rebuilt from prescribed Er ({vphi_rebuilt:.6e} vs '
@@ -150,6 +152,7 @@ def main():
     check('sign of Om_tE flips Er and MtOvR',
           rel(m2_neg['Er'], -m2['Er']) < 1e-14
           and rel(m2_neg['MtOvR'], -m2['MtOvR']) < 1e-14
+          and not missing
           and all(rel(m2_neg[k], m2[k]) < 1e-12 for k in D_KEYS
                   if k.endswith('_AX')))
 
