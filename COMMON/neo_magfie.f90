@@ -188,6 +188,9 @@ MODULE neo_magfie
 
   PRIVATE calc_thetaB_RZloc_a
   PUBLIC calc_thetaB_RZloc
+  !> flux-surface position (s, phi, theta) used by rz_on_surface while
+  !> calc_thetaB_RZloc searches theta_B (module state like compute_RZ's)
+  REAL(dp), DIMENSION(3), PRIVATE :: x_rz_search = 0.0_dp
   INTERFACE calc_thetaB_RZloc
      MODULE PROCEDURE calc_thetaB_RZloc_a
   END INTERFACE calc_thetaB_RZloc
@@ -1846,7 +1849,10 @@ CONTAINS
     ! surface s = x_start(1) at phi = x_start(2). x_start(3) is not needed.
     ! The point closest to (R_loc, Z_loc) on the surface cross section is
     ! found with theta_rz_solver_mod (joint minimisation of the (R,Z)
-    ! distance); the run stops if the point is not on the surface.
+    ! distance); the run stops if the point is farther than 1e-6 of the
+    ! surface extent (about 2 micrometres for a 2 m surface) from the
+    ! surface, so (R_loc, Z_loc) must be taken from the equilibrium (e.g.
+    ! R_Vphi_prof/Z_Vphi_prof), not rounded measurement coordinates.
     USE theta_rz_solver_mod, ONLY : find_theta_of_rz
     ! input / output
     REAL(kind=dp), INTENT(in)               :: R_loc, Z_loc
@@ -1855,9 +1861,8 @@ CONTAINS
     ! local variables
     REAL(kind=dp), PARAMETER :: rel_tol_dist = 1.0e-6_dp
     REAL(kind=dp) :: dist, extent
-    REAL(kind=dp), DIMENSION(3) :: x
 
-    x = x_start
+    x_rz_search = x_start
     CALL find_theta_of_rz(rz_on_surface, R_loc, Z_loc, thetaB, dist, extent)
     IF (dist .GT. rel_tol_dist * extent) THEN
        PRINT *,"calc_thetaB_RZloc: (R,Z) = ", R_loc, Z_loc, &
@@ -1866,17 +1871,17 @@ CONTAINS
     END IF
 
     PRINT *,"calc_thetaB_RZloc: thetaB = ",thetaB
-
-  CONTAINS
-
-    SUBROUTINE rz_on_surface(theta, R, R_tb, Z, Z_tb)
-      REAL(kind=dp), INTENT(in)  :: theta
-      REAL(kind=dp), INTENT(out) :: R, R_tb, Z, Z_tb
-      x(3) = theta
-      CALL compute_RZ( x, R, R_tb, Z, Z_tb )
-    END SUBROUTINE rz_on_surface
-
   END SUBROUTINE calc_thetaB_RZloc_a
+
+  !> R, Z [cm] and their theta derivatives on the surface x_rz_search(1:2)
+  SUBROUTINE rz_on_surface(theta, R, R_tb, Z, Z_tb)
+    REAL(kind=dp), INTENT(in)  :: theta
+    REAL(kind=dp), INTENT(out) :: R, R_tb, Z, Z_tb
+    REAL(kind=dp), DIMENSION(3) :: x
+    x = x_rz_search
+    x(3) = theta
+    CALL compute_RZ( x, R, R_tb, Z, Z_tb )
+  END SUBROUTINE rz_on_surface
   !! End Modifications by Andreas F. Martitsch (30.03.2017)
 
 END MODULE neo_magfie
