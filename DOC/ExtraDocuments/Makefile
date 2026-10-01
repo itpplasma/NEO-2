@@ -1,4 +1,4 @@
-all: neo-2-par-eccd_runs.pdf neo-2-ql-demo_runs.pdf
+all: neo-2-par-eccd_runs.pdf neo-2-ql-demo_runs.pdf omte-force-balance-levels.pdf
 
 %.pdf: %.ps
 	ps2pdf $<
