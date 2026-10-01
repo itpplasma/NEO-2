@@ -3,11 +3,13 @@
 !>
 !> The stopping test is the one of the Richardson (fixed-point) iteration
 !> x_new = f0 + M x it replaces: sum(abs(r)) < eps * sum(abs(x)) with
-!> r = f0 + M x - x. It is monitored in the 1-norm on the GMRES residual
-!> inside a cycle and confirmed with the true residual at the end of each
-!> cycle. The returned solution is x + r = f0 + M x, i.e. one free
-!> fixed-point step on top of the last GMRES iterate, exactly what the
-!> Richardson loop returns after its final test.
+!> r = f0 + M x - x. It is evaluated in the 1-norm on the GMRES residual
+!> after every Arnoldi step (vector work only, no operator application)
+!> and on the true residual at the start of every restart cycle. If the
+!> true residual test terminates (convergence or budget), the returned
+!> solution is x + r = f0 + M x, as in the Richardson loop. Hence GMRES
+!> never needs more operator applications than Richardson for the same
+!> test, up to the 1-norm vs. 2-norm minimisation.
 !>
 !> Usage:
 !>   call gm%start(f0, eps, maxapply)
@@ -136,7 +138,7 @@ contains
 
     integer  :: i, j
     real(dp) :: hij, denom, temp, wnorm
-    logical  :: breakdown, cycle_end
+    logical  :: breakdown
 
     self%j = self%j + 1
     j = self%j
@@ -172,11 +174,16 @@ contains
     self%g(j+1) = -self%sn(j) * self%g(j)
     self%g(j) = self%cs(j) * self%g(j)
 
-    cycle_end = breakdown .or. j == self%nrestart .or. &
-         self%napply >= self%maxapply - 1
-    if (.not. cycle_end) cycle_end = gmres_resid_small(self)
-
-    if (cycle_end) then
+    if (gmres_resid_small(self)) then
+       ! Converged inside the cycle: the iterate is left in t.
+       self%x = self%t
+       self%converged = .true.
+       self%phase = PHASE_DONE
+    else if (self%napply >= self%maxapply) then
+       ! Budget exhausted: return the GMRES iterate, flagged unconverged.
+       call update_solution(self, self%x)
+       self%phase = PHASE_DONE
+    else if (breakdown .or. j == self%nrestart) then
        call update_solution(self, self%x)
        self%vin = self%x
        self%phase = PHASE_RESID
@@ -187,6 +194,7 @@ contains
 
   !> Fixed-point test on the current GMRES iterate in the 1-norm.
   !> The GMRES residual is r_j = V_{j+1} Q_j^T (g(j+1) e_{j+1}).
+  !> On return t holds the current iterate x_j.
   logical function gmres_resid_small(self)
     type(fixed_point_gmres_t), intent(inout) :: self
 
@@ -208,6 +216,7 @@ contains
     call update_solution(self, self%t)
     xnorm1 = sum(abs(self%t))
 
+    self%resid_rel = rnorm1 / max(xnorm1, tiny(1.0_dp))
     gmres_resid_small = rnorm1 <= self%eps * xnorm1
   end function gmres_resid_small
 

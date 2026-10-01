@@ -72,6 +72,20 @@ program test_fixed_point_gmres
   call check(gm%converged .and. gm%napply == 1 .and. all(gm%x == 0.0_dp), &
        'zero source')
 
+  ! 5. Strongly contracting M (few Richardson steps, like unit-vector
+  !    propagator sources): GMRES must not need more applications.
+  m = 0.05_dp * m
+  xr = f0
+  do nrich = 1, 100000
+     xnew = f0 + matmul(m, xr)
+     if (sum(abs(xnew - xr)) < 1.0e-10_dp * sum(abs(xr))) exit
+     xr = xnew
+  end do
+  call run(gm, 1.0e-10_dp, 1000, 30)
+  call check(gm%converged .and. gm%napply <= nrich, &
+       'GMRES applications <= Richardson for fast contraction')
+  print '(a,i0,a,i0)', ' applications: GMRES ', gm%napply, ', Richardson ', nrich
+
   if (ok) then
      print *, 'All tests passed!'
   else
