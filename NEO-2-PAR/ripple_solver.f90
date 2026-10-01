@@ -38,6 +38,7 @@ SUBROUTINE ripple_solver(                                 &
                                mag_magfield
        
   USE development
+  use fixed_point_gmres_mod, only : fixed_point_gmres_t
 
   use collop_compute, only: a_00_offset, a_02_offset, a_22_offset, weightenerg_offset
   
@@ -168,13 +169,13 @@ SUBROUTINE ripple_solver(                                 &
 
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
-  INTEGER :: iter,nphiequi,npassing_next
+  INTEGER :: nphiequi,npassing_next
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
-  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
+  DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter
+  type(fixed_point_gmres_t) :: intp_gmres
 
 !  Off-set:
 
@@ -1882,7 +1883,7 @@ PRINT *,'right boundary layer ignored'
 
 
   allocate(irow(nz),icol(nz),amat_sp(nz),ipcol(ncol),bvec_sp(ncol))
-  if(isw_intp.eq.1) allocate(bvec_iter(ncol),bvec_lor(ncol),bvec_prev(ncol))
+  if(isw_intp.eq.1) allocate(bvec_iter(ncol))
 
 ! Fill the arrays:
 
@@ -2290,31 +2291,20 @@ call cpu_time(time1)
   if(isw_intp.eq.1) then
 
     do k=1,3
-      bvec_lor=source_vector(:,k)
-
-      do iter=1,niter
-        bvec_prev=source_vector(:,k)
-
+      call intp_gmres%start(source_vector(:,k),epserr_iter,niter)
+      do while (intp_gmres%needs_apply())
         call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start,   &
                            phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),   &
-                           ailmm,source_vector(:,k),bvec_iter)
+                           ailmm,intp_gmres%vin,bvec_iter)
 
         CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),        &
                           bvec_iter,iopt)
 
-
-        source_vector(:,k)=bvec_lor+bvec_iter
-
-        if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
-           sum(abs(bvec_prev))*epserr_iter) then
-           write (*,*) "Source: ", k, "Number of iterations: ", iter
-           exit
-        endif
-     enddo
-     if (niter .eq. iter) then
-        write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
-        stop
-     end if
+        call intp_gmres%put(bvec_iter)
+      enddo
+      source_vector(:,k)=intp_gmres%x
+      write (*,*) "Source: ", k, "Number of iterations: ", intp_gmres%napply
+      call check_intp_convergence(intp_gmres,'qflux')
     enddo
 
   endif
@@ -2612,7 +2602,8 @@ call cpu_time(time2)
     amat_minus_plus=0.d0
 
     deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
-    if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
+    if(isw_intp.eq.1) deallocate(bvec_iter)
+    call intp_gmres%free()
     DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
     DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
     DEALLOCATE(npl,rhs_mat_fzero,rhs_mat_lorentz,rhs_mat_energ,q_rip)
@@ -2648,14 +2639,11 @@ time3 = time3 + (time5-time4)
 ! integral part:
 
       if(isw_intp.eq.1) then
-        bvec_lor=bvec_sp
-
-        do iter=1,niter
-          bvec_prev=bvec_sp
-
+        call intp_gmres%start(bvec_sp,epserr_iter,niter)
+        do while (intp_gmres%needs_apply())
           call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
-                             ailmm,bvec_sp,bvec_iter)
+                             ailmm,intp_gmres%vin,bvec_iter)
 
           call cpu_time(time4)
           CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),      &
@@ -2663,19 +2651,10 @@ time3 = time3 + (time5-time4)
           call cpu_time(time5)
           time3 = time3 + (time5-time4)
 
-          bvec_sp=bvec_lor+bvec_iter
-
-          if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
-             sum(abs(bvec_prev))*epserr_iter) then
-            exit
-          endif
-
+          call intp_gmres%put(bvec_iter)
         enddo
-
-        if (niter .eq. iter) then
-           write (*,*) "Left - Maximum number of iterations reached in ripple solver."
-           stop
-        end if
+        bvec_sp=intp_gmres%x
+        call check_intp_convergence(intp_gmres,'Left')
       endif
 
       do mm=0,lag
@@ -2707,14 +2686,11 @@ time3 = time3 + (time5-time4)
 ! integral part:
 
       if(isw_intp.eq.1) then
-        bvec_lor=bvec_sp
-
-        do iter=1,niter
-          bvec_prev=bvec_sp
-
+        call intp_gmres%start(bvec_sp,epserr_iter,niter)
+        do while (intp_gmres%needs_apply())
           call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
-                             ailmm,bvec_sp,bvec_iter)
+                             ailmm,intp_gmres%vin,bvec_iter)
 
           call cpu_time(time4)
           CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),      &
@@ -2722,19 +2698,10 @@ time3 = time3 + (time5-time4)
           call cpu_time(time5)
           time3 = time3 + (time5-time4)
 
-          bvec_sp=bvec_lor+bvec_iter
-
-          if(sum(abs(bvec_sp-bvec_prev)) .lt.                                 &
-             sum(abs(bvec_prev))*epserr_iter) then
-             exit
-          endif
-
+          call intp_gmres%put(bvec_iter)
         enddo
-
-        if (niter .eq. iter) then
-           write (*,*) "Right - Maximum number of iterations reached in ripple solver."
-           stop
-        end if
+        bvec_sp=intp_gmres%x
+        call check_intp_convergence(intp_gmres,'Right')
       endif
 
       do mm=0,lag
@@ -2763,7 +2730,8 @@ call cpu_time(time1)
 call cpu_time(time2)
 
   deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
-  if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
+  if(isw_intp.eq.1) deallocate(bvec_iter)
+  call intp_gmres%free()
 
 
   call cpu_time(time_solver)
@@ -2870,6 +2838,21 @@ PRINT *,' '
 
   !------------------------------------------------------------------------
   RETURN
+
+contains
+
+  !> Loud warning and output flag when the integral-part solve hits niter.
+  subroutine check_intp_convergence(gm, label)
+    type(fixed_point_gmres_t), intent(in) :: gm
+    character(len=*),          intent(in) :: label
+
+    if (gm%converged) return
+    intp_unconverged = intp_unconverged + 1
+    write (*,'(4a,i0,a,es10.3,a,es10.3)') ' WARNING: ripple_solver integral part (', &
+         label, ') not converged:', ' niter = ', gm%napply,                &
+         ' solves, relative change ', gm%resid_rel, ' > epserr_iter = ', epserr_iter
+  end subroutine check_intp_convergence
+
 END SUBROUTINE ripple_solver
 
 

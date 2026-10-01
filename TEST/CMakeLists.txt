@@ -61,3 +61,16 @@ set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     TIMEOUT 30
 )
+
+add_executable(test_fixed_point_gmres test_fixed_point_gmres.f90)
+target_link_libraries(test_fixed_point_gmres common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+
+add_test(NAME fixed_point_gmres_test
+         COMMAND test_fixed_point_gmres
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(fixed_point_gmres_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)

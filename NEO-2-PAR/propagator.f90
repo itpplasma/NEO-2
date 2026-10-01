@@ -884,7 +884,7 @@ CONTAINS
     USE device_mod
     USE collisionality_mod, ONLY : collpar, conl_over_mfp, &
          isw_lorentz, isw_integral, isw_energy, isw_axisymm, y_axi_averages
-    USE rkstep_mod, ONLY : asource,anumm,ailmm,lag,leg
+    USE rkstep_mod, ONLY : asource,anumm,ailmm,lag,leg,intp_unconverged
     USE collop, ONLY : z_eff
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield
 
@@ -1050,6 +1050,8 @@ CONTAINS
           k_cof = 2.5_dp - prop_a%p%qflux(2,3) / prop_a%p%qflux(2,1)
           write (*,*) "k", k_cof
           call h5_add(h5id, 'k_cof', k_cof)
+          call h5_add(h5id, 'intp_unconverged', intp_unconverged, &
+               'Integral-part solves of this process that hit niter (0 = converged)')
 
           call h5_close(h5id)
 

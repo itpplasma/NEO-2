@@ -24,5 +24,6 @@ MODULE rkstep_mod
   COMPLEX(kind=kind(1d0))        :: epserr_sink_cmplx ! Regularization
   DOUBLE PRECISION               :: epserr_iter       ! Relative error of integral part iterations
   INTEGER                        :: niter
+  INTEGER                        :: intp_unconverged = 0 ! integral-part solves that hit niter
   DOUBLE PRECISION, DIMENSION(3) :: fluxes
 END MODULE rkstep_mod
