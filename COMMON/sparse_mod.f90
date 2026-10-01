@@ -87,6 +87,8 @@ MODULE sparse_mod
           sparse_solveComplex_b1,sparse_solveComplex_b2,sparse_solveComplex_A_b1,sparse_solveComplex_A_b2
   END INTERFACE sparse_solve
 
+  PUBLIC sparse_solve_factorized
+
   PUBLIC sparse_solve_suitesparse
   INTERFACE sparse_solve_suitesparse
      MODULE PROCEDURE sparse_solve_suitesparse_b1, sparse_solve_suitesparse_b2_loop, &
@@ -1172,6 +1174,38 @@ CONTAINS
     IF (ALLOCATED(x))  DEALLOCATE(x)
 
   END SUBROUTINE sparse_solve_suitesparse_b1
+  !-------------------------------------------------------------------------------
+
+  !-------------------------------------------------------------------------------
+  ! Solves A*x = b for one real right-hand side with the existing real
+  ! SuiteSparse factorization (made before by sparse_solve with iopt = 1);
+  ! the result is returned in b. Same arithmetic as sparse_solve with
+  ! iopt = 2 and sparse_solve_method = 3, but without module or SAVE state
+  ! and without copying the matrix: the shared Numeric object is only read
+  ! (UMFPACK guarantees this for umfpack_*_solve). Independent right-hand
+  ! sides can therefore be solved concurrently, e.g. in an OpenMP loop.
+  SUBROUTINE sparse_solve_factorized(b)
+    REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
+
+    REAL(kind=dp) :: control_loc(20), info_loc(90)
+    REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: x
+
+    IF (.NOT. factorization_exists .OR. sparse_solve_method .NE. 3) THEN
+       PRINT *, 'sparse_solve_factorized: needs a factorization and sparse_solve_method = 3'
+       STOP
+    END IF
+
+    ALLOCATE(x(SIZE(b)))
+    CALL umf4def(control_loc)
+    CALL umf4sol(sys, x, b, numeric, control_loc, info_loc)
+    IF (info_loc(1) .LT. 0) THEN
+       PRINT *, 'sparse_solve_factorized: UMFPACK solve failed, status ', info_loc(1)
+       STOP
+    END IF
+    b = x
+    DEALLOCATE(x)
+
+  END SUBROUTINE sparse_solve_factorized
   !-------------------------------------------------------------------------------
 
   !-------------------------------------------------------------------------------
