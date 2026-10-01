@@ -4,11 +4,12 @@ set -euo pipefail
 # Regenerates the NEO-2-QL golden-record (ql) output used by
 # python/test/test_force_balance.py. The force-balance replay additionally
 # needs dn_spec_ov_ds, dT_spec_ov_ds, Vphi, species_tag_Vphi and isw_Vphi_loc
-# in neo2_multispecies_out.h5, which write_multispec_output_a on main does not
-# write yet (issue #75). The committed fixture was produced by commit e827e1c
-# on branch omte-force-balance-level0 (PR #76), whose NEO-2-QL/ntv_mod.f90
-# adds these h5_add calls, from the golden-record ql input deck below.
-# load_neo2_force_balance_inputs raises KeyError if any dataset is missing.
+# in neo2_multispecies_out.h5; write_multispec_output_a writes them since the
+# force-balance PR (port of the output hunk of PR #76). The committed fixture
+# was produced by this branch's neo_2_ql.x (gfortran, macOS arm64) from the
+# golden-record ql input deck below; it agrees with the earlier fixture from
+# PR #76 (commit e827e1c) to 5e-10 on every common dataset. The output is
+# validated with load_neo2_force_balance_inputs before it replaces the fixture.
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 fixture_path="$repo_root/python/test/data/neo2_ql_axisymmetric_multispecies_out.h5"
