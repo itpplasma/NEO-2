@@ -2253,6 +2253,10 @@ PRINT *,'right boundary layer ignored'
   print *,'system size = ',n_2d_size
   print *,'non-zeros before and after truncation = ',nz,nz_sq
   nz=nz_sq
+! Release the pre-truncation tail before the factorization memory peak
+  irow=irow(1:nz)
+  icol=icol(1:nz)
+  amat_sp=amat_sp(1:nz)
 
   CALL column_full2pointer(icol(1:nz),ipcol)
 

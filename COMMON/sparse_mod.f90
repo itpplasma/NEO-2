@@ -31,6 +31,12 @@ MODULE sparse_mod
   INTEGER(kind=long), PRIVATE :: sys=0
   !default values for control pg. 22
   REAL(kind=dp), PRIVATE :: control(20), info_suitesparse(90)
+  !Fill-reducing ordering: Control[UMFPACK_ORDERING] (C index 10).
+  !UMFPACK_ORDERING_BEST (4) tries AMD, METIS and CHOLMOD nested dissection
+  !and keeps the one with the least fill; it falls back to AMD when UMFPACK
+  !is built without CHOLMOD/METIS.
+  INTEGER, PARAMETER, PRIVATE :: umfpack_ordering_index = 11
+  REAL(kind=dp), PARAMETER, PRIVATE :: umfpack_ordering_best = 4.0_dp
   !-------------------------------------------------------------------------------
 
   PUBLIC load_mini_example
@@ -1115,6 +1121,7 @@ CONTAINS
 
     !   set default parameters
     CALL umf4def (control)
+    control(umfpack_ordering_index) = umfpack_ordering_best
 
     n = nrow !convert from 1 to 0-based indexing
     Ai=irow-1 !convert from 1 to 0-based indexing
@@ -1217,6 +1224,7 @@ CONTAINS
 
     !   set default parameters
     CALL umf4zdef (control)
+    control(umfpack_ordering_index) = umfpack_ordering_best
 
     n = nrow
     Ai=irow-1 !convert from 1 to 0-based indexing
@@ -1346,6 +1354,7 @@ CONTAINS
 
     !   set default parameters
     CALL umf4def (control)
+    control(umfpack_ordering_index) = umfpack_ordering_best
 
     n = nrow
     bloc = 0.0_dp
@@ -1464,6 +1473,7 @@ CONTAINS
 
     !   set default parameters
     CALL umf4zdef (control)
+    control(umfpack_ordering_index) = umfpack_ordering_best
 
 
     ! First, factorize the matrix. The factors are stored in *numeric* handle.
