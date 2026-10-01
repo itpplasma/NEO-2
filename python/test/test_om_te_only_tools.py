@@ -60,6 +60,8 @@ def write_input(path, nspec, with_vphi, with_om_te=True, theta_loc=False):
                                          dtype=np.int32)
             if theta_loc:
                 f['boozer_theta_Vphi'] = theta_vphi(S)
+                f['R_Vphi'] = 170.0 + 40.0 * S - 3.0 * S**3
+                f['Z_Vphi'] = -10.0 + 5.0 * S**2
 
 
 def test_new_grid_interpolates_om_te_on_longer_grid(tmp_path):
@@ -83,7 +85,8 @@ def test_new_grid_interpolates_om_te_on_longer_grid(tmp_path):
                            rtol=1e-12, atol=0)
         assert np.allclose(f['rho_pol'][()], 0.1 + s_new - 0.2 * s_new**2,
                            rtol=1e-12, atol=0)
-        assert np.allclose(f['species_def'][()][0, :, 0], [-1.0, 1.0])
+        assert np.array_equal(f['species_def'][()][0],
+                              np.array([[-1.0], [1.0]]) * np.ones(13))
         assert np.allclose(f['species_def'][()][1], np.array(
             [[9.1e-28], [3.3e-24]]) * np.ones(13), rtol=1e-12, atol=0)
         assert np.array_equal(f['boozer_s'][()], s_new)
@@ -103,9 +106,11 @@ def test_new_grid_interpolates_vphi_and_om_te(tmp_path):
         assert f['species_tag_Vphi'][()].tolist() == [2]
 
 
-@pytest.mark.parametrize('n_new', [4, 13])
+@pytest.mark.parametrize('n_new', [4, 7, 13])
 def test_new_grid_regrids_vphi_location(tmp_path, n_new):
-    # isw_Vphi_loc=2 inputs carry one boozer_theta_Vphi per surface.
+    # Location profiles (boozer_theta_Vphi for isw_Vphi_loc=2, R_Vphi and
+    # Z_Vphi for isw_Vphi_loc=1) are given per surface; n_new=7 is the same
+    # length as the input on different surfaces.
     src, out = tmp_path / 'in.h5', tmp_path / 'out.h5'
     write_input(src, 2, with_vphi=True, with_om_te=False, theta_loc=True)
     s_new = np.linspace(0.1, 0.9, n_new)
@@ -114,6 +119,10 @@ def test_new_grid_regrids_vphi_location(tmp_path, n_new):
         assert f['boozer_theta_Vphi'].shape == (n_new,)
         assert np.allclose(f['boozer_theta_Vphi'][()], theta_vphi(s_new),
                            rtol=1e-12, atol=1e-15)
+        assert np.allclose(f['R_Vphi'][()], 170 + 40 * s_new - 3 * s_new**3,
+                           rtol=1e-12, atol=0)
+        assert np.allclose(f['Z_Vphi'][()], -10 + 5 * s_new**2,
+                           rtol=1e-12, atol=0)
         assert f['Vphi'].shape == (n_new,)
         assert 'Om_tE' not in f
 
