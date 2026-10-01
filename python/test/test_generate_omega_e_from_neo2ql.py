@@ -55,15 +55,25 @@ def test_get_omega_e_from_neo2ql_single_surface(tmp_path):
     assert np.allclose(omega_e[0], OMEGA_E, rtol=1e-12)
 
 
-def test_get_omega_e_from_neo2ql_multiple_surfaces(tmp_path):
-    # Collected multi-surface output: (num_surfaces, num_species).
+@pytest.mark.parametrize("num_surfaces, num_species, collected_mass",
+                         [(3, 2, True), (2, 2, True), (3, 1, True), (3, 2, False)])
+def test_get_omega_e_from_neo2ql_multiple_surfaces(tmp_path, num_surfaces,
+                                                   num_species, collected_mass):
+    # Collected multi-surface output (neo2_util.hdf5tools) stacks every
+    # dataset along a leading surface axis, m_spec included.
     output_file = tmp_path / "neo2_multispecies_out.h5"
-    scale = np.array([1.0, 2.0, 3.0])[:, np.newaxis]
-    _write_h5(output_file, boozer_s=np.array([0.2, 0.5, 0.8]),
-              MtOvR=scale * MTOVR, T_spec=np.tile(T_SPEC, (3, 1)), m_spec=M_SPEC)
+    scale = np.arange(1.0, num_surfaces + 1.0)[:, np.newaxis]
+    t_spec = np.tile(T_SPEC[:num_species], (num_surfaces, 1))
+    m_spec = M_SPEC[:num_species]
+    if collected_mass:
+        m_spec = np.tile(m_spec, (num_surfaces, 1))
+    boozer_s = np.linspace(0.2, 0.8, num_surfaces)
+    _write_h5(output_file, boozer_s=boozer_s, MtOvR=scale * MTOVR[:num_species],
+              T_spec=t_spec, m_spec=m_spec)
     omega_e, stor = get_omega_e_from_neo2ql(output_file)
-    assert np.allclose(stor, [0.2, 0.5, 0.8])
-    assert np.allclose(omega_e, scale * OMEGA_E, rtol=1e-12)
+    assert np.allclose(stor, boozer_s)
+    assert omega_e.shape == (num_surfaces, num_species)
+    assert np.allclose(omega_e, scale * OMEGA_E[:num_species], rtol=1e-12)
 
 
 def test_generate_omega_e_for_mars_single_surface(tmp_path):

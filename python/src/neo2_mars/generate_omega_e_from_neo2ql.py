@@ -42,9 +42,15 @@ def get_omega_e_from_neo2ql(neo2ql_output_file):
             np.asarray(neo2ql['T_spec'], dtype=float),
             num_surfaces,
         )
-        species_mass = np.asarray(neo2ql['m_spec'], dtype=float).reshape(-1)
+        # m_spec is (num_species,) in a single-surface file and
+        # (num_surfaces, num_species) in collected output.
+        species_mass = np.asarray(neo2ql['m_spec'], dtype=float)
+        if species_mass.ndim <= 1:
+            species_mass = species_mass.reshape(1, -1)
+        else:
+            species_mass = _surface_species_array(species_mass, num_surfaces)
         species_omega_e = species_mach_over_major_radius * np.sqrt(
-            2.0 * species_temperature / species_mass[np.newaxis, :]
+            2.0 * species_temperature / species_mass
         )
     return species_omega_e, stor
 
