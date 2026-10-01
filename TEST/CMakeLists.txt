@@ -61,3 +61,16 @@ set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     TIMEOUT 30
 )
+
+add_executable(test_radial_lagrange test_radial_lagrange.f90)
+target_link_libraries(test_radial_lagrange common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+
+add_test(NAME radial_lagrange_test
+         COMMAND test_radial_lagrange
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(radial_lagrange_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
