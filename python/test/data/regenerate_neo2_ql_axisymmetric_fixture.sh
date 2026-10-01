@@ -22,6 +22,8 @@ set -euo pipefail
 # ISW_VPHI_LOC=2, BOOZER_THETA_VPHI=1.0053096491487339 (= 16*2*pi/100) and
 # VPHI=22708.09206775981, the ion Vphi_prof_spec(17) of the run above; it
 # additionally contains bctrvr_phi_Vphi and G_symm_tb_Vphi.
+# It was written before the unit attribute of G_symm_tb_Vphi was corrected
+# from '1' to '1/(G cm^2)'; the values are unaffected.
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 fixture_path="$repo_root/python/test/data/neo2_ql_axisymmetric_multispecies_out.h5"
 golden_dir="${NEO2_GOLDEN_QL_DIR:-/home/ert/data/TESTS/NEO-2/golden_record/ql}"
