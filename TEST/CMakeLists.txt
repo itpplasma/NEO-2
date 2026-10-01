@@ -105,11 +105,13 @@ if(NEO2_PY_TEST_DEPS AND DEFINED ENV{NEO2_QL_GOLDEN_DIR})
   )
 endif()
 
-# Python force-balance checks (issue #75). Registered only when a Python 3
-# interpreter with numpy and h5py is available at configure time.
+# Python force-balance checks (issue #75). Registered only when the neo2_ql
+# package and its dependencies import at configure time.
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
-    execute_process(COMMAND ${Python3_EXECUTABLE} -c "import numpy, h5py"
+    execute_process(COMMAND ${CMAKE_COMMAND} -E env
+                            "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python/src"
+                            ${Python3_EXECUTABLE} -c "import h5py, neo2_ql.force_balance"
                     RESULT_VARIABLE NEO2_PYTHON_DEPS_MISSING
                     OUTPUT_QUIET ERROR_QUIET)
 endif()
@@ -124,5 +126,5 @@ if(Python3_Interpreter_FOUND AND NOT NEO2_PYTHON_DEPS_MISSING)
         TIMEOUT 60
     )
 else()
-    message(STATUS "Python 3 with numpy/h5py not found: skipping python_force_balance_test")
+    message(STATUS "neo2_ql Python package not importable: skipping python_force_balance_test")
 endif()
