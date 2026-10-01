@@ -180,6 +180,24 @@ def test_loader_maps_species_tags_not_positions():
     assert_allclose(er, er_stored, rtol=1e-9)
 
 
+def test_loader_rejects_multispecies_output_without_inductive_field():
+    # Dropping <E_par B>/<B^2> would silently change E_r by 22 % here.
+    import shutil
+    import tempfile
+    import h5py
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / 'no_epar.h5'
+        shutil.copy(FIXTURE, path)
+        with h5py.File(path, 'r+') as f:
+            del f['avEparB_ov_avb2']
+        try:
+            load_neo2_force_balance_inputs(path)
+        except KeyError as exc:
+            assert 'avEparB_ov_avb2' in str(exc)
+        else:
+            raise AssertionError('missing avEparB_ov_avb2 was accepted')
+
+
 def test_omte_matches_fortran_mach_number():
     # NEO-2 writes MtOvR_spec = Om_tE / sqrt(2 T / m) (er_rotation_mod).
     import h5py
