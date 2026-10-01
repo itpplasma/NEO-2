@@ -152,9 +152,12 @@ def er_level2_poloidal_rotation(n, T, dn_ds, dT_ds, z, av_nabla_stor,
     ``k`` may be a regime value from ``POLOIDAL_ROTATION_K_LIMITS``,
     ``poloidal_rotation_coefficient_sauter`` or
     ``poloidal_rotation_coefficient_from_neo2``. With the latter, Level 2
-    equals Level 3 whenever the ion row of NEO-2's coefficient matrix
-    satisfies momentum conservation (see ``rigid_rotation_defect``) and the
-    cross-species D32 and D33 terms are negligible. Returns E_r [statV/cm].
+    equals Level 3 exactly if (a) the ion row of NEO-2's coefficient matrix
+    has no cross-species entries (D31_ib = D32_ib = 0 for b != i), (b) the
+    diagonal entry satisfies the momentum identity of
+    ``rigid_rotation_defect``, and (c) there is no inductive drive
+    (D33_ii <E_par B> = 0). Cross-species D31 drives do not cancel even when
+    the full row conserves momentum. Returns E_r [statV/cm].
     """
     return (er_level1_toroidal_rotation(n, T, dn_ds, dT_ds, z, av_nabla_stor,
                                         vphi, sqrtg_bctrvr_tht)
@@ -226,7 +229,8 @@ def er_level3_neo2_multispecies(spec_i, n, T, dn_ds, dT_ds, z, row, col,
         Dimensional axisymmetric coefficients ``D31_AX``, ``D32_AX``,
         ``D33_AX`` (NEO-2 HDF5 output), same ordering as ``row``/``col``.
     avEparB_ov_avb2 : float
-        <E_par B>/<B^2> [statV/cm]; only used with D33.
+        <E_par B>/<B^2> as written by NEO-2 (``avEparB_ov_avb2``), units
+        statV/(cm G); only used with D33.
 
     Returns
     -------
@@ -266,9 +270,11 @@ def er_level3_neo2_multispecies(spec_i, n, T, dn_ds, dT_ds, z, row, col,
 def poloidal_rotation_coefficient_from_neo2(spec_i, row, col, D31, D32):
     """Effective k_i = 5/2 - D32_ii / D31_ii from NEO-2's diagonal ion block.
 
-    For a single momentum-conserving ion species, (2) with NEO-2's parallel
-    flow reproduces Level 2 with exactly this k (Kim, Diamond & Groebner 1991
-    write the same relation in terms of viscosity coefficients).
+    For a single ion species whose coefficient row has no cross-species
+    entries, satisfies the momentum identity of ``rigid_rotation_defect`` and
+    has no inductive drive, (2) with NEO-2's parallel flow reproduces Level 2
+    with exactly this k (Kim, Diamond & Groebner 1991 write the same relation
+    in terms of viscosity coefficients). Otherwise it is an effective value.
     """
     entries, cols = _ion_row(spec_i, row, col)
     diag = entries[cols == spec_i]
@@ -295,6 +301,13 @@ def rigid_rotation_defect(spec_i, T, z, row, col, D31, sqrtg_bctrvr_tht,
     return (lhs - bcovar_phi) / bcovar_phi
 
 
+REQUIRED_DATASETS = (
+    'species_tag', 'species_tag_Vphi', 'isw_Vphi_loc', 'n_spec', 'T_spec',
+    'dn_spec_ov_ds', 'dT_spec_ov_ds', 'z_spec', 'row_ind_spec',
+    'col_ind_spec', 'D31_AX', 'D32_AX', 'D33_AX', 'Vphi', 'aiota',
+    'av_nabla_stor', 'sqrtg_bctrvr_tht', 'bcovar_tht', 'bcovar_phi', 'Er')
+
+
 def load_neo2_force_balance_inputs(path):
     """Read the inputs of ``er_level3_neo2_multispecies`` from NEO-2 output.
 
@@ -302,13 +315,22 @@ def load_neo2_force_balance_inputs(path):
     ``isw_calc_Er = 1``. Returns a dict of keyword arguments for
     ``er_level3_neo2_multispecies`` plus the stored ``Er``. Species tags in
     ``row_ind_spec``/``col_ind_spec`` are mapped to zero-based indices.
+
+    Besides geometry, coefficients and ``Er``, the replay needs
+    ``dn_spec_ov_ds``, ``dT_spec_ov_ds``, ``Vphi``, ``species_tag_Vphi`` and
+    ``isw_Vphi_loc``. ``write_multispec_output_a`` on ``main`` does not write
+    them yet (issue #75); files without them raise ``KeyError``.
     """
     import h5py
 
     with h5py.File(path, 'r') as f:
         g = {key: f[key][()] for key in f.keys()
              if isinstance(f[key], h5py.Dataset)}
-    if int(g.get('isw_Vphi_loc', 0)) != 0:
+    missing = [key for key in REQUIRED_DATASETS if key not in g]
+    if missing:
+        raise KeyError('NEO-2 output lacks datasets needed for the E_r '
+                       'replay: ' + ', '.join(missing))
+    if int(g['isw_Vphi_loc']) != 0:
         raise ValueError('only isw_Vphi_loc = 0 is supported')
     tags = np.asarray(g['species_tag'], dtype=int)
     index = {int(t): i for i, t in enumerate(tags)}

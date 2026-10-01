@@ -94,6 +94,15 @@ def test_sauter_coefficient_reaches_regime_limits():
                     rtol=1e-3)
 
 
+def test_sauter_coefficient_at_finite_collisionality():
+    # Hand evaluation of Sauter et al. (1999, erratum 2002), f_t = 0.5,
+    # nu*_i = 1: alpha_0 = -0.585 / 0.8425 = -0.694362;
+    # (alpha_0 + 0.1875) / 1.5 = -0.337908; + 0.315/64 = -0.332986;
+    # / (1 + 0.15/64) = -0.332208, so k = 0.332208.
+    assert_allclose(poloidal_rotation_coefficient_sauter(0.5, 1.0), 0.332208,
+                    rtol=2e-6)
+
+
 def _single_ion_coefficients(k, T, z, psi_pr, bcovar_phi):
     # Momentum-conserving single ion species: a rigid rotation carries
     # <V_par B> = omega B_phi, i.e. D31 Z e psi_pr / (c T) = B_phi.
@@ -149,6 +158,28 @@ def test_level3_replays_fortran_er():
     assert_allclose(er, er_stored, rtol=1e-9)
 
 
+def test_loader_maps_species_tags_not_positions():
+    # Relabel the fixture species with non-contiguous tags (1 -> 7, 2 -> 3);
+    # the physics, and hence E_r, must not change.
+    import shutil
+    import tempfile
+    import h5py
+    d, er_stored = _fixture()
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / 'relabelled.h5'
+        shutil.copy(FIXTURE, path)
+        relabel = {1: 7, 2: 3}
+        with h5py.File(path, 'r+') as f:
+            for key in ('species_tag', 'row_ind_spec', 'col_ind_spec'):
+                f[key][...] = [relabel[int(t)] for t in f[key][()]]
+            f['species_tag_Vphi'][...] = relabel[int(f['species_tag_Vphi'][()])]
+        relabelled = load_neo2_force_balance_inputs(path)
+    relabelled.pop('Er_stored')
+    assert relabelled['spec_i'] == d['spec_i']
+    er, _ = er_level3_neo2_multispecies(**relabelled)
+    assert_allclose(er, er_stored, rtol=1e-9)
+
+
 def test_omte_matches_fortran_mach_number():
     # NEO-2 writes MtOvR_spec = Om_tE / sqrt(2 T / m) (er_rotation_mod).
     import h5py
@@ -174,9 +205,9 @@ def test_fixture_coefficients_conserve_momentum():
 
 
 def test_level2_with_neo2_k_tracks_level3_without_inductive_drive():
-    # Level 2 with k = 5/2 - D32_ii/D31_ii neglects only electron cross
-    # coefficients and the momentum defect; on this surface they change
-    # E_r by 3.3 %. The inductive (D33) term is excluded from the comparison
+    # Level 2 with k = 5/2 - D32_ii/D31_ii neglects the electron cross
+    # coefficients D31_ie, D32_ie and the momentum defect; on this surface
+    # they change E_r by 3.3 %. The inductive (D33) term is excluded from the comparison
     # because Level 2 has no parallel electric field.
     d, _ = _fixture()
     k = poloidal_rotation_coefficient_from_neo2(d['spec_i'], d['row'],
