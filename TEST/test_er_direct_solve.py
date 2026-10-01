@@ -21,6 +21,8 @@ Checks (oracles independent of the code path under test):
     reproduces V_phi.
   - Flipping the sign of Om_tE flips Er and MtOvR and leaves the AX
     coefficients unchanged.
+  - The Python preprocessing helper er_to_om_te turns m1's Er (converted to
+    V/m) and sqrtg_bctrvr_tht into the Om_tE that NEO-2 computed in m1.
 
 Usage: test_er_direct_solve.py <neo_2_ql.x> <golden_record/ql directory>
 """
@@ -34,6 +36,10 @@ import tempfile
 
 import h5py
 import numpy as np
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                '..', 'python', 'src', 'neo2_ql'))
+from er_to_om_te import er_to_om_te  # noqa: E402
 
 C_CGS = 2.9979e10  # speed of light as in NEO-2 ntv_mod (c = 2.9979e10)
 OUT = 'neo2_multispecies_out.h5'
@@ -155,6 +161,13 @@ def main():
           and not missing
           and all(rel(m2_neg[k], m2[k]) < 1e-12 for k in D_KEYS
                   if k.endswith('_AX')))
+
+    # statV/cm -> V/m with NEO-2's c, so that only the helper's formula and
+    # the geometry dataset are tested (NEO-2's c = 2.9979e10 differs from the
+    # exact value by 8e-6 relative).
+    er_si = m1['Er'][0] * C_CGS * 1.0e-6
+    check('er_to_om_te reproduces NEO-2 Om_tE',
+          rel(er_to_om_te(er_si, m1['sqrtg_bctrvr_tht'][0]), om_te) < 1e-12)
 
     if all(checks):
         shutil.rmtree(base)
