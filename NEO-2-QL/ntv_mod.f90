@@ -1657,6 +1657,11 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'm_spec', m_spec, LBOUND(m_spec), UBOUND(m_spec), comment='mass of the species', unit='g')
     CALL h5_add(h5id_multispec, 'n_spec', n_spec, LBOUND(n_spec), UBOUND(n_spec), comment='density of the species', unit='1/cm^3')
     CALL h5_add(h5id_multispec, 'T_spec', T_spec, LBOUND(T_spec), UBOUND(T_spec), comment='temperature of the species', unit='erg')
+    ! profile gradients w.r.t. boozer_s, needed to replay compute_Er (#75, #76)
+    CALL h5_add(h5id_multispec, 'dn_spec_ov_ds', dn_spec_ov_ds, &
+         LBOUND(dn_spec_ov_ds), UBOUND(dn_spec_ov_ds))
+    CALL h5_add(h5id_multispec, 'dT_spec_ov_ds', dT_spec_ov_ds, &
+         LBOUND(dT_spec_ov_ds), UBOUND(dT_spec_ov_ds))
     CALL h5_add(h5id_multispec, 'collpar_spec', collpar_spec, &
          LBOUND(collpar_spec), UBOUND(collpar_spec))
     CALL h5_add(h5id_multispec, 'nu_star_spec', nu_star_spec, &
@@ -1773,6 +1778,17 @@ CONTAINS
     IF (isw_calc_Er .GE. 1) THEN
 
        CALL h5_add(h5id_multispec, 'Er', Er)
+       IF (isw_calc_Er .EQ. 1) THEN
+          ! measured rotation entering the self-consistent Er (#75, #76);
+          ! not written for isw_calc_Er=2, whose output must not depend on
+          ! the V_phi settings
+          CALL h5_add(h5id_multispec, 'species_tag_Vphi', species_tag_Vphi)
+          CALL h5_add(h5id_multispec, 'isw_Vphi_loc', isw_Vphi_loc)
+          CALL h5_add(h5id_multispec, 'Vphi', Vphi)
+          CALL h5_add(h5id_multispec, 'R_Vphi', R_Vphi)
+          CALL h5_add(h5id_multispec, 'Z_Vphi', Z_Vphi)
+          CALL h5_add(h5id_multispec, 'boozer_theta_Vphi', boozer_theta_Vphi)
+       END IF
 
        CALL h5_add(h5id_multispec, 'VthtB_spec', VthtB_spec, &
             LBOUND(VthtB_spec), UBOUND(VthtB_spec))
