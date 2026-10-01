@@ -32,7 +32,8 @@ SUBROUTINE ripple_solver(                                 &
                             prop_fileformat, lsw_save_dentf, lsw_save_enetf,   &
                             lsw_save_spitf
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
-       column_full2pointer,remap_rc,sparse_solver_test
+       column_full2pointer,remap_rc,sparse_solver_test,sparse_solve_factorized
+!$ USE omp_lib, ONLY : omp_get_max_threads
   USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
                                surface_boozer_B00,travis_convfac,              &
                                mag_magfield
@@ -169,6 +170,7 @@ SUBROUTINE ripple_solver(                                 &
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
   INTEGER :: iter,nphiequi,npassing_next
+  INTEGER, DIMENSION(3) :: iter_source
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
@@ -2289,6 +2291,12 @@ call cpu_time(time2)
 call cpu_time(time1)
   if(isw_intp.eq.1) then
 
+! The three sources are independent and share the factorization, so they
+! are iterated concurrently (one thread each, results bitwise identical to
+! the serial loop). The memory-bound triangular solves then overlap.
+!$omp parallel do num_threads(min(3,omp_get_max_threads())) schedule(static,1) &
+!$omp   private(k,iter,bvec_lor,bvec_prev,bvec_iter)                          &
+!$omp   if(sparse_solve_method.eq.3)
     do k=1,3
       bvec_lor=source_vector(:,k)
 
@@ -2299,22 +2307,30 @@ call cpu_time(time1)
                            phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),   &
                            ailmm,source_vector(:,k),bvec_iter)
 
-        CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),        &
-                          bvec_iter,iopt)
-
+        if(sparse_solve_method.eq.3) then
+          call sparse_solve_factorized(bvec_iter)
+        else
+          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),      &
+                            bvec_iter,iopt)
+        endif
 
         source_vector(:,k)=bvec_lor+bvec_iter
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
-           sum(abs(bvec_prev))*epserr_iter) then
-           write (*,*) "Source: ", k, "Number of iterations: ", iter
-           exit
-        endif
-     enddo
-     if (niter .eq. iter) then
+           sum(abs(bvec_prev))*epserr_iter) exit
+      enddo
+      iter_source(k)=iter
+    enddo
+!$omp end parallel do
+
+    do k=1,3
+      if (iter_source(k) .le. niter) then
+        write (*,*) "Source: ", k, "Number of iterations: ", iter_source(k)
+      end if
+      if (niter .eq. iter_source(k)) then
         write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
         stop
-     end if
+      end if
     enddo
 
   endif
