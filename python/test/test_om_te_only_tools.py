@@ -28,7 +28,11 @@ def vphi(s):
     return 3.0e4 * (1.0 - s**2) + 1.0e3 * s**3
 
 
-def write_input(path, nspec, with_vphi, with_om_te=True):
+def theta_vphi(s):
+    return 0.3 - 0.5 * s + 0.2 * s**3
+
+
+def write_input(path, nspec, with_vphi, with_om_te=True, theta_loc=False):
     nrad = S.size
     scale = np.arange(1, nspec + 1)[:, None]
     with h5py.File(path, 'w') as f:
@@ -52,7 +56,10 @@ def write_input(path, nspec, with_vphi, with_om_te=True):
         if with_vphi:
             f['Vphi'] = vphi(S)
             f['species_tag_Vphi'] = np.array([2], dtype=np.int32)
-            f['isw_Vphi_loc'] = np.array([0], dtype=np.int32)
+            f['isw_Vphi_loc'] = np.array([2 if theta_loc else 0],
+                                         dtype=np.int32)
+            if theta_loc:
+                f['boozer_theta_Vphi'] = theta_vphi(S)
 
 
 def test_new_grid_interpolates_om_te_on_longer_grid(tmp_path):
@@ -67,6 +74,18 @@ def test_new_grid_interpolates_om_te_on_longer_grid(tmp_path):
                            rtol=1e-12, atol=0)
         assert np.allclose(f['dn_ov_ds_prof'][()][0],
                            1.0e13 * (-1 + 3 * s_new**2), rtol=1e-12, atol=0)
+        scale = np.array([[1.0], [2.0]])
+        assert np.allclose(f['T_prof'][()], scale * 1.0e-9 * (2 - s_new**2),
+                           rtol=1e-12, atol=0)
+        assert np.allclose(f['dT_ov_ds_prof'][()],
+                           scale * 1.0e-9 * (-2 * s_new), rtol=1e-12, atol=0)
+        assert np.allclose(f['kappa_prof'][()], scale * 1.0e-5 * (1 + s_new**2),
+                           rtol=1e-12, atol=0)
+        assert np.allclose(f['rho_pol'][()], 0.1 + s_new - 0.2 * s_new**2,
+                           rtol=1e-12, atol=0)
+        assert np.allclose(f['species_def'][()][0, :, 0], [-1.0, 1.0])
+        assert np.allclose(f['species_def'][()][1], np.array(
+            [[9.1e-28], [3.3e-24]]) * np.ones(13), rtol=1e-12, atol=0)
         assert np.array_equal(f['boozer_s'][()], s_new)
         assert f['num_radial_pts'][()].tolist() == [13]
         assert f['rel_stages'][()].tolist() == [2] * 13
@@ -82,6 +101,41 @@ def test_new_grid_interpolates_vphi_and_om_te(tmp_path):
         assert np.allclose(f['Vphi'][()], vphi(s_new), rtol=1e-12, atol=0)
         assert np.allclose(f['Om_tE'][()], om_te(s_new), rtol=1e-12, atol=0)
         assert f['species_tag_Vphi'][()].tolist() == [2]
+
+
+@pytest.mark.parametrize('n_new', [4, 13])
+def test_new_grid_regrids_vphi_location(tmp_path, n_new):
+    # isw_Vphi_loc=2 inputs carry one boozer_theta_Vphi per surface.
+    src, out = tmp_path / 'in.h5', tmp_path / 'out.h5'
+    write_input(src, 2, with_vphi=True, with_om_te=False, theta_loc=True)
+    s_new = np.linspace(0.1, 0.9, n_new)
+    new_grid(str(src), str(out), s_new)
+    with h5py.File(out, 'r') as f:
+        assert f['boozer_theta_Vphi'].shape == (n_new,)
+        assert np.allclose(f['boozer_theta_Vphi'][()], theta_vphi(s_new),
+                           rtol=1e-12, atol=1e-15)
+        assert f['Vphi'].shape == (n_new,)
+        assert 'Om_tE' not in f
+
+
+def test_new_grid_same_length_keeps_layout(tmp_path):
+    # Same number of points: datasets are written in place, so dtype, shape
+    # and attributes of the original file survive.
+    src, out = tmp_path / 'in.h5', tmp_path / 'out.h5'
+    write_input(src, 2, with_vphi=True)
+    with h5py.File(src, 'a') as f:
+        f['Vphi'].attrs['unit'] = 'rad / s'
+        del f['num_radial_pts']
+        f['num_radial_pts'] = np.int32(S.size)  # scalar variant
+    s_new = np.linspace(0.1, 0.9, S.size)
+    new_grid(str(src), str(out), s_new)
+    with h5py.File(src, 'r') as fin, h5py.File(out, 'r') as fout:
+        for name in fin:
+            assert fout[name].shape == fin[name].shape, name
+            assert fout[name].dtype == fin[name].dtype, name
+        assert fout['Vphi'].attrs['unit'] == 'rad / s'
+        assert fout['num_radial_pts'][()] == S.size
+        assert np.allclose(fout['Vphi'][()], vphi(s_new), rtol=1e-12, atol=0)
 
 
 @pytest.mark.parametrize('with_vphi', [False, True])
