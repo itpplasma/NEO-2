@@ -374,11 +374,10 @@ def load_neo2_force_balance_inputs(path):
     as well. For ``isw_Vphi_loc = 1, 2`` (Vphi given at one point) the
     local B^phi and G_symm_tb at that point (``bctrvr_phi_Vphi``,
     ``G_symm_tb_Vphi``) and ``psi_pr_hat``, ``Bref``, ``avbhat2`` are
-    needed to form ``vphi_loc_factor``. Mode 2 is checked against NEO-2
-    runs; mode 1 shares the same algebra and differs only in how theta_B is
-    found from (R_Vphi, Z_Vphi). In the tested revision, NEO-2 itself STOPs
-    in mode 1 for the tested points (``calc_thetaB_RZloc`` runs separate Newton
-    iterations on R and Z, which converge to different roots).
+    needed to form ``vphi_loc_factor``. Modes 1 and 2 are both checked
+    against NEO-2 runs. Without the ``calc_thetaB_RZloc`` fix of PR #186,
+    NEO-2 itself STOPs in mode 1 for most (R, Z) points (separate R and Z
+    Newton iterations converge to different roots).
     """
     import h5py
 
