@@ -2325,8 +2325,10 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
 
     _set_dataset(out, 'rel_stages', array(int_rel_stages))
 
-    # Rotation input: V_phi (isw_calc_Er=0/1) and/or Om_tE (isw_calc_Er=2).
-    for dname in ('Vphi', 'Om_tE'):
+    # Rotation input: V_phi (isw_calc_Er=0/1) with its optional location
+    # profiles (isw_Vphi_loc=1: R_Vphi, Z_Vphi; =2: boozer_theta_Vphi),
+    # and/or Om_tE (isw_calc_Er=2).
+    for dname in ('Vphi', 'R_Vphi', 'Z_Vphi', 'boozer_theta_Vphi', 'Om_tE'):
       if dname in out:
         sp_rot = CubicSpline(out['boozer_s'], out[dname])
         _set_dataset(out, dname, array(sp_rot(new_s_grid)))
