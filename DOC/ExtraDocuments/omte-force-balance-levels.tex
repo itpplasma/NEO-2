@@ -70,8 +70,9 @@ as written by \code{ntv\_mod.f90} (also as the toroidal Mach number
 
 \section{Exact single-species force balance}
 
-Write the flow of species $a$ as $\mathbf{V}_a = \omega_a(r)\,R^2\nabla\ph +
-u_a(r)\,\mathbf{B}$.  Perpendicular momentum balance
+Write the flow of species $a$ as $\mathbf{V}_a = \omega_a(r)\,R^2\nabla\phi +
+u_a(r)\,\mathbf{B}$, where $\phi$ in $R^2\nabla\phi$ is the geometric toroidal
+angle (not the Boozer angle $\ph$).  Perpendicular momentum balance
 \cite{HintonHazeltine1976,HelanderSigmar2002} gives
 \begin{equation}\label{eq:omega}
   \omega_a = \Omega_{tE} - \frac{c}{e_a n_a \psi'}\frac{\rd p_a}{\rd r}.
@@ -101,8 +102,9 @@ $\langle V_\parallel B\rangle = \omega B_\ph$ and $\omega = V^\ph$:
 \begin{equation}\label{eq:level1}
   E_r = \frac{1}{e_i n_i}\frac{\rd p_i}{\rd r} + \frac{\psi'\,V^\ph}{c}.
 \end{equation}
-In laboratory components this is the familiar $v_\ph B_\mathrm{pol}/c$ with
-$v_\ph = R V^\ph$ and $R B_\mathrm{pol} = \rd\psi_\mathrm{pol}/\rd r$.  The
+Locally, $R B_\mathrm{pol} = |\psi'|\,|\nabla s|/\langle|\nabla s|\rangle$, so
+up to this metric factor (and its sign) the rotation term is the familiar
+laboratory $v_\phi B_\mathrm{pol}/c$ with $v_\phi = R V^\ph$.  The
 rotation multiplies the contravariant flux derivative $\psi' = \sqrt{g}B^\tht$,
 not the covariant $B_\tht$: on the AUG surfaces below $\psi'/B_\tht = -5.0$
 and $-3.4$, and $V^\ph B_\tht/c$ in place of $\psi' V^\ph/c$ moves $E_r$ in
@@ -185,7 +187,7 @@ the levels with the $E_r$ written by NEO-2.
   NEO-2 \code{Er}                         & $-0.610$ & & $-1.550$ & \\
   Level 3 (replay)                        & $-0.610$ & $<10^{-9}$ & $-1.550$ & $<10^{-9}$ \\
   Level 2, $k$ from NEO-2                 & $-0.685$ & $+12\%$ & $-1.697$ & $+9\%$ \\
-  Level 2, $k = 1.17$ (banana limit)      & $+0.380$ & wrong sign & $+0.079$ & wrong sign \\
+  Level 2, $k = 1.17$ (banana limit)      & $+0.379$ & wrong sign & $+0.079$ & wrong sign \\
   Level 1                                 & $-1.884$ & $\times 3.1$ & $-3.284$ & $\times 2.1$ \\
   Level 0                                 & $-2.932$ & $\times 4.8$ & $-4.359$ & $\times 2.8$ \\
   \midrule
@@ -201,14 +203,15 @@ Findings:
 \begin{itemize}
   \item Level~3 reproduces the Fortran $E_r$ to $6\times10^{-10}$ relative,
     and $c\,E_r/\psi'$ reproduces the Mach numbers \code{MtOvR} of both
-    species.  The output was written by an earlier NEO-2 revision than the
-    fixture used by \code{test\_force\_balance.py}, so this is an independent
-    check of the replay.
+    species.  These runs are independent of the fixture used by
+    \code{test\_force\_balance.py} and include cross-species coefficients and
+    an inductive drive, so this is an independent check of the replay.
   \item Level~2 with NEO-2's $k_i$ overestimates $|E_r|$ by $9$--$12\%$.  At
-    $s = 0.253$ the $12.3\%$ splits into $8.9\%$ from the inductive drive
-    ($D_{33}$), $2.1\%$ from the cross-species coefficients and $1.3\%$ from
-    the momentum defect of the ion--ion entry (the defect of the full row is
-    below $1\%$).
+    $s = 0.253$, removing in turn the inductive drive ($D_{33}$), the
+    cross-species coefficients and the momentum defect of the ion--ion entry
+    accounts for $8.9\%$, $2.0\%$ and $1.3\%$ of the $12.3\%$ (the split
+    depends on the order because each term also changes $D$; the defect of
+    the full row is below $1\%$).
   \item The banana-limit value $k = 1.17$ is about twice NEO-2's $k_i$ at the
     finite trapped fraction of these surfaces and gives $E_r$ of the wrong
     sign, although $\nu_* \approx 10^{-3}$.  Collisionality alone does not
@@ -242,16 +245,19 @@ contribution to $E_r$ (statV/cm):
 \paragraph{MARS-Q.}  \code{neo2\_mars.generate\_omega\_e\_from\_neo2ql}
 passes NEO-2's $\Omega_{tE}$ to MARS through \code{PROFWE.IN}.  Without
 that file, the MARS-Q NTV preprocessing evaluates a Level~2 estimate in the
-large-aspect-ratio form with the banana value $k = 1.17$ (as found in the
-audit of NEO-2 PR~\#76).  On the surfaces above that estimate has the wrong
-sign.
+large-aspect-ratio form, $q\,\omega_E = \omega_\phi - k\,q\,\omega_{*Ti} +
+q\,\omega_{*i}$, with the fixed banana value $k = 1.17$ (MARS-Q commit
+\code{8824bb1}, \code{MarsQ\_2FK/ntv\_pre.f} and \code{common\_ntv.f}).  On
+the surfaces above that estimate has the wrong sign.
 
-\paragraph{GACODE \code{vgen}.}  \code{er\_method = 2} is not a force-balance
-evaluation of the kind above: it runs local NEO and adjusts $E_r$ until the
-NEO toroidal flow at $\theta = 0$ matches the measured one.  It therefore
-answers a different question from \code{compute\_Er} (which $E_r$ follows from
-the closure, given $V^\ph$) and should not be compared with the levels as if
-it were one of them.  \code{er\_method = 1}, nominally local force balance with
+\paragraph{GACODE \code{vgen}.}  \code{er\_method = 2} also infers $E_r$
+from a neoclassical closure constrained by the toroidal rotation, but with a
+different closure and rotation definition: it evaluates local NEO at zero
+$E_r$ and corrects $E_r$ analytically from the residual between the measured
+and the NEO toroidal flow at $\theta = 0$.  Comparing it with \code{compute\_Er}
+(flux-surface-averaged $V^\ph$ for \code{isw\_Vphi\_loc = 0}) therefore
+requires matching rotation definitions and closures; differences are not
+evidence of an error in either code.  \code{er\_method = 1}, nominally local force balance with
 measured $v_\mathrm{tor}$ and $v_\mathrm{pol}$, cannot serve as a check
 either: \code{vgen\_init} sets \code{EXPRO\_vtor} and \code{EXPRO\_vpol} to
 zero before the \code{er\_method = 1} branch of \code{vgen} uses them
