@@ -23,6 +23,14 @@ set -euo pipefail
 # VPHI=22708.09206775981, the ion Vphi_prof_spec(17) of the run above; it
 # additionally contains bctrvr_phi_Vphi and G_symm_tb_Vphi.
 # Produced by NEO-2 commit 5ec428d (same toolchain and deck as above).
+#
+# neo2_ql_axisymmetric_multispecies_out_vphi_loc1.h5: same deck with
+# ISW_VPHI_LOC=1, R_VPHI=179.9682548728855, Z_VPHI=-44.57592354653217 and
+# VPHI=22914.12398627892, i.e. R_Vphi_prof, Z_Vphi_prof and the ion
+# Vphi_prof_spec at index 91 (theta_B = 90*2*pi/100) of the mode-0 run.
+# NEO-2 can only run this case with the calc_thetaB_RZloc fix of PR #186;
+# the file was produced by a local build of this branch (4202559) plus that
+# fix (61363bb). Reading it needs no Fortran change.
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 fixture_path="$repo_root/python/test/data/neo2_ql_axisymmetric_multispecies_out.h5"
 golden_dir="${NEO2_GOLDEN_QL_DIR:-/home/ert/data/TESTS/NEO-2/golden_record/ql}"

@@ -24,6 +24,8 @@ FIXTURE = (Path(__file__).resolve().parent / 'data'
            / 'neo2_ql_axisymmetric_multispecies_out.h5')
 FIXTURE_LOC2 = FIXTURE.with_name(
     'neo2_ql_axisymmetric_multispecies_out_vphi_loc2.h5')
+FIXTURE_LOC1 = FIXTURE.with_name(
+    'neo2_ql_axisymmetric_multispecies_out_vphi_loc1.h5')
 EV_TO_ERG = 1.602176634e-12
 AV_NABLA_STOR = 0.02  # 1/cm; d/ds = d/dr / AV_NABLA_STOR
 
@@ -232,6 +234,19 @@ def test_level3_replays_fortran_er_local_vphi():
     data = load_neo2_force_balance_inputs(FIXTURE_LOC2)
     er_stored = data.pop('Er_stored')
     assert data['vphi_loc_factor'] is not None
+    er, _ = er_level3_neo2_multispecies(**data)
+    assert_allclose(er, er_stored, rtol=1e-9)
+    _, er_mode0 = _fixture()
+    assert_allclose(er, er_mode0, rtol=1e-9)
+
+
+def test_level3_replays_fortran_er_vphi_at_rz_point():
+    # isw_Vphi_loc = 1: Vphi given at the (R, Z) point with theta_B = 5.655
+    # (lower half plane), again the local ion V^phi of the mode-0 run there.
+    # NEO-2 finds theta_B from (R, Z) itself; replay and mode-0 Er must agree.
+    # Observed: 1.1e-11 for both.
+    data = load_neo2_force_balance_inputs(FIXTURE_LOC1)
+    er_stored = data.pop('Er_stored')
     er, _ = er_level3_neo2_multispecies(**data)
     assert_allclose(er, er_stored, rtol=1e-9)
     _, er_mode0 = _fixture()
