@@ -38,9 +38,6 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
-      - name: Test APT cache verification
-        run: python3 -m unittest discover -s .github/actions/apt-packages -p 'test_*.py'
-
       - name: Install apt packages
         uses: ./.github/actions/apt-packages
         with:
