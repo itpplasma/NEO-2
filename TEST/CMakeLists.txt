@@ -68,7 +68,9 @@ add_executable(test_gmres_iterator test_gmres_iterator.f90)
 target_link_libraries(test_gmres_iterator neo2_ql)
 
 add_test(NAME gmres_iterator_test
-         COMMAND test_gmres_iterator
+         COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 1
+                 ${MPIEXEC_PREFLAGS} $<TARGET_FILE:test_gmres_iterator>
+                 ${MPIEXEC_POSTFLAGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 set_tests_properties(gmres_iterator_test PROPERTIES

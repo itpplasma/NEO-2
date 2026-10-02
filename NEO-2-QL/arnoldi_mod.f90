@@ -263,9 +263,8 @@ contains
   !> cycle). I - A can be nearly singular (Ritz values of A within 1e-5 of
   !> 1, |f|/|c| ~ 1e3), so a residual of relerr does not yet give an error
   !> of relerr in f. The iteration therefore continues to reltarget < relerr
-  !> or until a cycle no longer halves the residual (noise floor of the
-  !> sparse solves), and warns only if the residual stays above relerr.
-  !> The returned vector is one more step N(f).
+  !> or until target refinement stagnates after relerr has been reached.
+  !> The returned vector is the iterate whose true residual was checked.
   !>
   !> Input:  n         - local system size
   !>         mrestart  - Krylov subspace size between restarts
@@ -274,12 +273,17 @@ contains
   !>         itermax   - maximum number of GMRES iterations
   !>         result_   - source vector q (see next_iteration)
   !> Output: result_   - solution f
+  !>         converged_out - optional status: relerr reached (not reltarget)
   subroutine gmres_iterator(n, mrestart, relerr, reltarget, itermax, result_, ispec, &
-      next_iteration)
+      next_iteration, converged_out)
+
+    use, intrinsic :: ieee_arithmetic, only : ieee_is_finite
+    use, intrinsic :: iso_fortran_env, only : error_unit
 
     integer, intent(in) :: n, mrestart, itermax, ispec
     double precision, intent(in) :: relerr, reltarget
     complex(kind=kind(1d0)), dimension(n), intent(inout) :: result_
+    logical, intent(out), optional :: converged_out
 
     interface
       subroutine next_iteration(n,fold,fnew)
@@ -294,7 +298,24 @@ contains
     double precision :: cnorm, beta, relres, xnorm, relres_prev
     complex(kind=kind(1d0)) :: temp
     integer :: m, j, k, iter, ncycle
-    logical :: converged
+    logical :: converged, failed, valid_tolerance
+
+    if (present(converged_out)) converged_out = .false.
+    valid_tolerance = ieee_is_finite(relerr)
+    if (valid_tolerance) valid_tolerance = relerr > 0d0
+    if (.not. ieee_is_finite(reltarget)) valid_tolerance = .false.
+    if (valid_tolerance) valid_tolerance = reltarget >= 0d0
+    if (valid_tolerance) valid_tolerance = reltarget <= relerr
+    if (.not. valid_tolerance) then
+      result_ = (0d0, 0d0)
+      if (ispec == 0) then
+        write (*, '(a)') &
+          'WARNING: gmres_iterator: NOT CONVERGED, invalid tolerance'
+        write (error_unit, '(a)') &
+          'WARNING: gmres_iterator: NOT CONVERGED, invalid tolerance'
+      end if
+      return
+    end if
 
     m = max(1, min(mrestart, itermax))
     allocate(fzero(n), x(n), w(n), v(n, m+1), h(m+1, m), g(m+1), sn(m), &
@@ -306,8 +327,21 @@ contains
     mode = 1
     call next_iteration(n, x, w)
     cnorm = global_norm(w, ispec)
+    if (.not. ieee_is_finite(cnorm)) then
+      result_ = x
+      call warn_not_converged('gmres_iterator (nonfinite source)', huge(1d0), relerr)
+      call finish()
+      return
+    end if
     if (cnorm .eq. 0.d0) then
       result_ = (0.d0, 0.d0)
+      if (present(converged_out)) converged_out = .true.
+      call finish()
+      return
+    end if
+    if (itermax < 1) then
+      result_ = x
+      call warn_not_converged('gmres_iterator (zero budget)', huge(1d0), relerr)
       call finish()
       return
     end if
@@ -317,6 +351,8 @@ contains
     xnorm = 0.d0
     relres_prev = huge(1.d0)
     converged = .false.
+    failed = .false.
+    relres = huge(1d0)
     beta = cnorm
     do
       ncycle = ncycle + 1
@@ -336,6 +372,11 @@ contains
         w = w - matmul(v(:, 1:j), hcol(1:j))
         h(1:j, j) = h(1:j, j) + hcol(1:j)
         h(j+1, j) = global_norm(w, ispec)
+        if (.not. ieee_is_finite(dble(h(j+1, j)))) then
+          failed = .true.
+          exit
+        end if
+        v(:, j+1) = (0d0, 0d0)
         if (abs(h(j+1, j)) .gt. 0.d0) v(:, j+1) = w/h(j+1, j)
         ! apply previous Givens rotations, then eliminate h(j+1,j)
         do k = 1, j - 1
@@ -350,15 +391,29 @@ contains
         g(j) = cs(j)*g(j)
         ! y = R^{-1} g (cheap, j <= m) to estimate ||x + V y||
         do k = j, 1, -1
+          if (abs(h(k, k)) <= tiny(1d0)) then
+            failed = .true.
+            exit
+          end if
           y(k) = (g(k) - sum(h(k, k+1:j)*y(k+1:j)))/h(k, k)
+          if (.not. ieee_is_finite(dble(y(k)))) failed = .true.
+          if (.not. ieee_is_finite(aimag(y(k)))) failed = .true.
+          if (failed) exit
         end do
-        relres = abs(g(j+1))/max(xnorm, sqrt(sum(abs(y(1:j))**2)))
+        if (failed) exit
+        relres = abs(g(j+1))/max(xnorm, sqrt(sum(abs(y(1:j))**2)), tiny(1d0))
         if (ispec .eq. 0) print *, 'gmres_iterator: ', iter, relres
         if (relres .le. reltarget .or. iter .ge. itermax) exit
       end do
+      if (failed) exit
       j = min(j, m)
-      x = x + matmul(v(:, 1:j), y(1:j))
-      xnorm = global_norm(x, ispec)
+      w = x + matmul(v(:, 1:j), y(1:j))
+      xnorm = global_norm(w, ispec)
+      if (.not. ieee_is_finite(xnorm)) then
+        failed = .true.
+        exit
+      end if
+      x = w
       ! True residual r = N(x) - x decides convergence (the recursive GMRES
       ! estimate can be too optimistic for this ill-conditioned operator)
       ! and is the start vector of the next cycle.
@@ -366,22 +421,38 @@ contains
       call next_iteration(n, x, w)
       w = w - x
       beta = global_norm(w, ispec)
-      relres = beta/xnorm
+      relres = beta/max(xnorm, tiny(1d0))
+      if (.not. ieee_is_finite(relres)) then
+        failed = .true.
+        exit
+      end if
       converged = relres .le. reltarget
       if (converged .or. iter .ge. itermax) exit
-      ! A cycle that does not halve the true residual has reached the noise
-      ! floor of next_iteration (rounding in the sparse solves); stop.
-      if (relres .gt. 0.5d0*relres_prev) then
-        if (ispec .eq. 0) print *, 'gmres_iterator: stagnation at the noise floor'
-        exit
+      ! Slow improvement does not establish a noise floor. It can only
+      ! end optional refinement once the requested tolerance is satisfied.
+      if (relres <= relerr) then
+        if (relres .gt. 0.5d0*relres_prev) then
+          if (ispec .eq. 0) print *, 'gmres_iterator: target refinement stagnated'
+          exit
+        end if
       end if
       relres_prev = relres
     end do
 
-    result_ = x + w
-    if (ispec .eq. 0) print *, 'gmres_iterator: iterations = ', iter, &
-      ' restarts = ', ncycle - 1, ' true relative residual = ', relres, &
-      ' |f|/|c| = ', xnorm/cnorm
+    result_ = x
+    if (failed) relres = huge(1d0)
+    if (present(converged_out)) then
+      if (.not. failed) converged_out = relres <= relerr
+    end if
+    if (ispec .eq. 0) then
+      if (failed) then
+        print *, 'gmres_iterator: breakdown or nonfinite arithmetic, iterations = ', iter
+      else
+        print *, 'gmres_iterator: iterations = ', iter, &
+          ' restarts = ', ncycle - 1, ' true relative residual = ', relres, &
+          ' |f|/|c| = ', xnorm/cnorm
+      end if
+    end if
     if (relres .gt. relerr) call warn_not_converged('gmres_iterator', &
       relres, relerr)
     call finish()

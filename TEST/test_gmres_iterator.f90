@@ -9,15 +9,20 @@ module gmres_test_operator
   integer, parameter :: dp = kind(1d0)
   complex(dp), allocatable :: amat(:,:)
   double precision :: noise = 0d0
+  logical :: corrupt_operator = .false.
   integer(8) :: nseed = 777_8
 contains
   subroutine next_iteration(n, fold, fnew)
     use arnoldi_mod, only : fzero, mode
+    use, intrinsic :: ieee_arithmetic, only : ieee_value, ieee_quiet_nan
     integer :: n
     complex(dp), dimension(n) :: fold, fnew
     integer :: i
     fnew = matmul(amat, fold)
     if (mode .ne. 2) fnew = fnew + fzero
+    if (corrupt_operator) then
+      if (mode == 2) fnew(1) = cmplx(ieee_value(0d0, ieee_quiet_nan), 0d0, dp)
+    end if
     ! optional rounding-like noise, mimicking inexact sparse solves
     if (noise > 0d0) then
       do i = 1, n
@@ -34,6 +39,8 @@ program test_gmres_iterator
   use arnoldi_mod, only : gmres_iterator
   use mpiprovider_module, only : mpro
   use collisionality_mod, only : num_spec
+  use, intrinsic :: ieee_arithmetic, only : ieee_is_finite, ieee_value, &
+    ieee_positive_inf, ieee_quiet_nan
   implicit none
 
   integer, parameter :: n = 200
@@ -44,6 +51,8 @@ program test_gmres_iterator
   integer :: ipiv(n), info, i, j
   integer(8) :: seed
   logical :: ok
+  logical :: converged
+  double precision :: invalid_relerr(5), invalid_target(5)
 
   call mpro%init()
   num_spec = 1
@@ -97,24 +106,92 @@ program test_gmres_iterator
   noise = 1d-12
   call check(60, 300, 1d-9, 1d-16, 1d-4)
 
+  ! A noiseless restarted problem need not halve its residual every cycle.
+  ! (I-A) = diag(1,10) has the exact solution (1,0.1).
+  noise = 0d0
+  amat = (0d0, 0d0)
+  amat(2, 2) = -9d0
+  q = (0d0, 0d0)
+  q(1:2) = 1d0
+  fref = q
+  fref(2) = 0.1d0
+  call check(1, 100, 1d-10, 1d-10, 1d-9)
+
+  ! The fixed-point step N(x) can amplify a residual. Return checked x.
+  q(2) = 1d-8
+  fref(2) = 1d-9
+  call check(1, 1, 1d-7, 1d-10, 1d-7)
+
+  ! A=I and nonzero q is inconsistent: report failure and keep a finite x.
+  amat = (0d0, 0d0)
+  do i = 1, n
+    amat(i, i) = 1d0
+  end do
+  q(2) = 0d0
+  f = q
+  call gmres_iterator(n, 1, 1d-7, 1d-10, 5, f, 0, next_iteration, converged)
+  if (converged) ok = .false.
+  if (.not. all(ieee_is_finite(dble(f)))) ok = .false.
+  if (.not. all(ieee_is_finite(aimag(f)))) ok = .false.
+
+  ! A finite source followed by a nonfinite operator must fail explicitly.
+  amat = (0d0, 0d0)
+  corrupt_operator = .true.
+  f = q
+  call gmres_iterator(n, 1, 1d-7, 1d-10, 5, f, 0, next_iteration, converged)
+  call check_failure('nonfinite operator')
+  corrupt_operator = .false.
+
+  ! Invalid tolerances cannot turn a failure sentinel into convergence.
+  invalid_relerr = 1d-7
+  invalid_target = 1d-10
+  invalid_relerr(1) = ieee_value(0d0, ieee_positive_inf)
+  invalid_relerr(2) = ieee_value(0d0, ieee_quiet_nan)
+  invalid_target(3) = ieee_value(0d0, ieee_positive_inf)
+  invalid_target(4) = -1d-10
+  invalid_relerr(5) = 0d0
+  do i = 1, size(invalid_relerr)
+    f = q
+    call gmres_iterator(n, 1, invalid_relerr(i), invalid_target(i), 5, &
+      f, 0, next_iteration, converged)
+    call check_failure('invalid tolerance')
+  end do
+
   if (ok) then
     print *, 'All tests passed!'
   else
     print *, 'FAIL'
   end if
   call mpro%deinit(.false.)
+  if (.not. ok) error stop 'FAIL: gmres_iterator regression'
 
 contains
+
+  subroutine check_failure(label)
+    character(len=*), intent(in) :: label
+    logical :: valid
+    valid = .not. converged
+    if (.not. all(ieee_is_finite(dble(f)))) valid = .false.
+    if (.not. all(ieee_is_finite(aimag(f)))) valid = .false.
+    print *, label, ': finite unconverged result = ', valid
+    if (.not. valid) ok = .false.
+  end subroutine check_failure
 
   subroutine check(mrestart, itermax, relerr, reltarget, maxerr)
     integer, intent(in) :: mrestart, itermax
     double precision, intent(in) :: relerr, reltarget, maxerr
-    double precision :: err
+    double precision :: err, residual
+    logical :: achieved
     f = q
-    call gmres_iterator(n, mrestart, relerr, reltarget, itermax, f, 0, next_iteration)
+    call gmres_iterator(n, mrestart, relerr, reltarget, itermax, f, 0, &
+      next_iteration, achieved)
     err = sqrt(sum(abs(f - fref)**2)/sum(abs(fref)**2))
     print '(a,i4,a,es10.3)', ' restart ', mrestart, ': relative error vs zgesv ', err
     if (.not. (err <= maxerr)) ok = .false.
+    residual = sqrt(sum(abs(q + matmul(amat, f) - f)**2)) &
+      /max(sqrt(sum(abs(f)**2)), tiny(1d0))
+    if (.not. achieved) ok = .false.
+    if (.not. (residual <= relerr)) ok = .false.
   end subroutine check
 
   double precision function urand()

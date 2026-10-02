@@ -289,10 +289,8 @@ subroutine ripple_solver_ArnoldiO2( &
     print *, "Species: ", ispec
     call collop_set_species(ispec)
 
-    niter = 100       !maximum number of integral part iterations
     n_arnoldi = 500     !maximum number of Arnoldi iterations
     isw_regper = 1       !regulariization by periodic boundary condition
-    epserr_iter = 1.d-7  !relative error of integral part iterations
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
 
     addboucol = .true.
@@ -3708,19 +3706,22 @@ CONTAINS
 
     end subroutine solve_eqs
 
-    !> Pass 1 (axisymmetric, real): deflated Richardson iteration.
+    !> Pass 1 retains its legacy tolerance to preserve axisymmetric outputs.
     !> Pass 2 (non-axisymmetric, complex): GMRES, because its Richardson
     !> operator has eigenvalues on and outside the unit circle that the
     !> deflation does not remove reliably (stall or divergence). GMRES
-    !> aims three digits below epserr_iter because I - A is nearly singular.
+    !> honors epserr_iter and niter from /settings/ and aims three digits
+    !> below epserr_iter because I - A is nearly singular. Both passes use
+    !> the configured niter budget (default 100); GMRES allows 2*niter steps.
     subroutine solve_fixed_point(rhs_sol)
         use arnoldi_mod, only: iterator, gmres_iterator
 
         integer, parameter :: n_gmres_restart = 60
+        real(dp), parameter :: epserr_axi = 1.d-7
         complex(dp), dimension(n_2d_size), intent(inout) :: rhs_sol
 
         if (problem_type) then
-            call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter, &
+            call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_axi, niter, &
                         & rhs_sol, ispec, next_iteration)
         else
             call gmres_iterator(n_2d_size, n_gmres_restart, epserr_iter, &
