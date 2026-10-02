@@ -1,0 +1,54 @@
+name: Install cached APT packages
+description: Cache verified package downloads and install dependencies with APT.
+inputs:
+  packages:
+    description: Space-separated APT package names.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Refresh package indexes and resolve downloads
+      id: plan
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ inputs.packages }}
+      run: |
+        set -euo pipefail
+        read -r -a packages <<< "$APT_PACKAGES"
+        mkdir -p "$RUNNER_TEMP/neo2-apt-plan" "$RUNNER_TEMP/neo2-apt-archives"
+        sudo apt-get update -o APT::Update::Error-Mode=any
+        sudo apt-get --yes --download-only --print-uris -o Acquire::ForceHash=SHA256 \
+          -o Dir::Cache::archives="$RUNNER_TEMP/neo2-apt-plan" \
+          install "${packages[@]}" > "$RUNNER_TEMP/neo2-apt-manifest"
+        python3 "$GITHUB_ACTION_PATH/verify_apt_cache.py" \
+          "$RUNNER_TEMP/neo2-apt-manifest" "$RUNNER_TEMP/neo2-apt-plan" \
+          >> "$GITHUB_OUTPUT"
+
+    - name: Restore package downloads
+      id: cache
+      continue-on-error: true
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      with:
+        path: ${{ runner.temp }}/neo2-apt-archives/*.deb
+        key: apt-deb-v2-ubuntu-24.04-${{ runner.arch }}-${{ steps.plan.outputs.cache-key }}
+
+    - name: Verify downloads and install packages
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ inputs.packages }}
+      run: |
+        set -euo pipefail
+        python3 "$GITHUB_ACTION_PATH/verify_apt_cache.py" \
+          "$RUNNER_TEMP/neo2-apt-manifest" "$RUNNER_TEMP/neo2-apt-archives"
+        read -r -a packages <<< "$APT_PACKAGES"
+        sudo apt-get --yes -o APT::Keep-Downloaded-Packages=true \
+          -o Dir::Cache::archives="$RUNNER_TEMP/neo2-apt-archives" \
+          install "${packages[@]}"
+
+    - name: Save package downloads
+      if: steps.cache.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+      with:
+        path: ${{ runner.temp }}/neo2-apt-archives/*.deb
+        key: apt-deb-v2-ubuntu-24.04-${{ runner.arch }}-${{ steps.plan.outputs.cache-key }}
