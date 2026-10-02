@@ -4,12 +4,10 @@
 !> The stopping test is the one of the Richardson (fixed-point) iteration
 !> x_new = f0 + M x it replaces: sum(abs(r)) < eps * sum(abs(x)) with
 !> r = f0 + M x - x. It is evaluated in the 1-norm on the GMRES residual
-!> after every Arnoldi step (vector work only, no operator application)
-!> and on the true residual at the start of every restart cycle. If the
-!> true residual test terminates (convergence or budget), the returned
-!> solution is x + r = f0 + M x, as in the Richardson loop. Hence GMRES
-!> never needs more operator applications than Richardson for the same
-!> test, up to the 1-norm vs. 2-norm minimisation.
+!> after every Arnoldi step (vector work only, no operator application).
+!> A projected convergence estimate always requests a true residual check
+!> before convergence is reported. That check counts against maxapply.
+!> The converged result is the iterate whose true residual was checked.
 !>
 !> Usage:
 !>   call gm%start(f0, eps, maxapply)
@@ -21,6 +19,7 @@
 !>
 !> maxapply bounds the number of operator applications.
 module fixed_point_gmres_mod
+  use, intrinsic :: ieee_arithmetic, only : ieee_is_finite
   implicit none
   private
 
@@ -35,6 +34,7 @@ module fixed_point_gmres_mod
      integer  :: j = 0           !< Arnoldi step within the current cycle
      integer  :: phase = PHASE_DONE
      logical  :: converged = .false.
+     logical  :: failed = .false.
      real(dp) :: eps = 0.0_dp
      real(dp) :: resid_rel = huge(1.0_dp) !< last sum|r| / sum|x|
      real(dp), allocatable :: f0(:), x(:), vin(:)
@@ -76,12 +76,19 @@ contains
     self%napply = 0
     self%j = 0
     self%converged = .false.
+    self%failed = .false.
     self%resid_rel = huge(1.0_dp)
     self%f0 = f0
     self%x = f0
     self%vin = self%x
     self%phase = PHASE_RESID
     if (maxapply < 1) self%phase = PHASE_DONE
+    if (.not. all(ieee_is_finite(f0)) .or. .not. ieee_is_finite(eps)) then
+       self%x = 0.0_dp
+       call mark_failure(self)
+    else if (eps < 0.0_dp) then
+       call mark_failure(self)
+    end if
   end subroutine fpg_start
 
   logical function fpg_needs_apply(self)
@@ -95,6 +102,10 @@ contains
     real(dp), intent(in) :: y(:)
 
     self%napply = self%napply + 1
+    if (.not. all(ieee_is_finite(y))) then
+       call mark_failure(self)
+       return
+    end if
     select case (self%phase)
     case (PHASE_RESID)
        call true_residual_step(self, y)
@@ -111,13 +122,28 @@ contains
 
     ! Residual r = f0 + M x - x, kept in t.
     self%t = self%f0 + y - self%x
+    if (.not. all(ieee_is_finite(self%t))) then
+       call mark_failure(self)
+       return
+    end if
     rnorm1 = sum(abs(self%t))
     xnorm1 = sum(abs(self%x))
+    if (.not. ieee_is_finite(rnorm1) .or. .not. ieee_is_finite(xnorm1)) then
+       call mark_failure(self)
+       return
+    end if
     self%resid_rel = rnorm1 / max(xnorm1, tiny(1.0_dp))
     self%converged = rnorm1 <= self%eps * xnorm1
 
     if (self%converged .or. self%napply >= self%maxapply) then
-       self%x = self%x + self%t
+       if (.not. self%converged) then
+          self%vin = self%x + self%t
+          if (.not. all(ieee_is_finite(self%vin))) then
+             call mark_failure(self)
+             return
+          end if
+          self%x = self%vin
+       end if
        self%phase = PHASE_DONE
        return
     end if
@@ -138,13 +164,17 @@ contains
 
     integer  :: i, j
     real(dp) :: hij, denom, temp, wnorm
-    logical  :: breakdown
+    logical  :: breakdown, estimated
 
     self%j = self%j + 1
     j = self%j
 
     ! w = (I - M) v_j, orthogonalised by modified Gram-Schmidt into t.
     self%t = self%v(:, j) - y
+    if (.not. all(ieee_is_finite(self%t))) then
+       call mark_failure(self)
+       return
+    end if
     wnorm = norm2(self%t)
     do i = 1, j
        hij = dot_product(self%t, self%v(:, i))
@@ -153,6 +183,7 @@ contains
     end do
     self%h(j+1, j) = norm2(self%t)
     breakdown = self%h(j+1, j) <= epsilon(1.0_dp) * wnorm
+    self%v(:, j+1) = 0.0_dp
     if (.not. breakdown) self%v(:, j+1) = self%t / self%h(j+1, j)
 
     ! Givens rotations: keep h(1:j,1:j) upper triangular.
@@ -174,17 +205,24 @@ contains
     self%g(j+1) = -self%sn(j) * self%g(j)
     self%g(j) = self%cs(j) * self%g(j)
 
-    if (gmres_resid_small(self)) then
-       ! Converged inside the cycle: the iterate is left in t.
+    estimated = gmres_resid_small(self)
+    if (self%failed) return
+    if (estimated) then
+       ! The estimate can drift for an inexact operator application.
+       ! Verify the actual iterate without exceeding the solve budget.
        self%x = self%t
-       self%converged = .true.
-       self%phase = PHASE_DONE
+       if (self%napply >= self%maxapply) then
+          self%phase = PHASE_DONE
+       else
+          self%vin = self%x
+          self%phase = PHASE_RESID
+       end if
     else if (self%napply >= self%maxapply) then
        ! Budget exhausted: return the GMRES iterate, flagged unconverged.
-       call update_solution(self, self%x)
+       self%x = self%t
        self%phase = PHASE_DONE
     else if (breakdown .or. j == self%nrestart) then
-       call update_solution(self, self%x)
+       self%x = self%t
        self%vin = self%x
        self%phase = PHASE_RESID
     else
@@ -215,6 +253,12 @@ contains
     self%t = self%x
     call update_solution(self, self%t)
     xnorm1 = sum(abs(self%t))
+    if (.not. all(ieee_is_finite(self%t)) .or. &
+         .not. ieee_is_finite(rnorm1) .or. .not. ieee_is_finite(xnorm1)) then
+       gmres_resid_small = .false.
+       call mark_failure(self)
+       return
+    end if
 
     self%resid_rel = rnorm1 / max(xnorm1, tiny(1.0_dp))
     gmres_resid_small = rnorm1 <= self%eps * xnorm1
@@ -239,6 +283,15 @@ contains
     end do
     xout = xout + matmul(self%v(:, 1:j), c)
   end subroutine update_solution
+
+  subroutine mark_failure(self)
+    type(fixed_point_gmres_t), intent(inout) :: self
+
+    self%converged = .false.
+    self%failed = .true.
+    self%resid_rel = huge(1.0_dp)
+    self%phase = PHASE_DONE
+  end subroutine mark_failure
 
   subroutine fpg_free(self)
     class(fixed_point_gmres_t), intent(inout) :: self

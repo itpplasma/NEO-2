@@ -3,6 +3,7 @@
 !> part). Oracle: direct LAPACK solve of (I - M) x = f0.
 program test_fixed_point_gmres
   use fixed_point_gmres_mod, only : fixed_point_gmres_t
+  use, intrinsic :: ieee_arithmetic, only : ieee_value, ieee_quiet_nan, ieee_is_finite
   implicit none
 
   integer, parameter :: dp = kind(1.0d0)
@@ -72,8 +73,7 @@ program test_fixed_point_gmres
   call check(gm%converged .and. gm%napply == 1 .and. all(gm%x == 0.0_dp), &
        'zero source')
 
-  ! 5. Strongly contracting M (few Richardson steps, like unit-vector
-  !    propagator sources): GMRES must not need more applications.
+  ! 5. A strongly contracting operator still reaches its direct solution.
   m = 0.05_dp * m
   xr = f0
   do nrich = 1, 100000
@@ -82,9 +82,51 @@ program test_fixed_point_gmres
      xr = xnew
   end do
   call run(gm, 1.0e-10_dp, 1000, 30)
-  call check(gm%converged .and. gm%napply <= nrich, &
-       'GMRES applications <= Richardson for fast contraction')
+  call check(gm%converged, 'GMRES converged for fast contraction')
+  call check(sum(abs(f0 + matmul(m, gm%x) - gm%x)) <= &
+       1.0e-10_dp * sum(abs(gm%x)), 'returned iterate has small true residual')
   print '(a,i0,a,i0)', ' applications: GMRES ', gm%napply, ', Richardson ', nrich
+
+  ! 6. An exact scalar solve needs a final true-residual application.
+  call gm%start([1.0_dp], 1.0e-12_dp, 2, 1)
+  do while (gm%needs_apply())
+     call gm%put(0.5_dp * gm%vin)
+  end do
+  call check(.not. gm%converged .and. gm%napply == 2, &
+       'unverified projected convergence does not exceed the budget')
+  call gm%start([1.0_dp], 1.0e-12_dp, 3, 1)
+  do while (gm%needs_apply())
+     call gm%put(0.5_dp * gm%vin)
+  end do
+  call check(gm%converged .and. abs(gm%x(1) - 2.0_dp) < 1.0e-12_dp, &
+       'happy breakdown agrees with the exact scalar solution')
+
+  ! 7. Inexact applications can invalidate the projected residual.
+  !    The affine test operator has the exact fixed point 2.002.
+  call gm%start([1.0_dp], 1.0e-12_dp, 30, 1)
+  do while (gm%needs_apply())
+     call gm%put(0.5_dp * gm%vin + 0.001_dp)
+  end do
+  call check(gm%converged, 'inexact applications converge after verification')
+  call check(abs(gm%x(1) - 2.002_dp) < 1.0e-10_dp, &
+       'inexact application agrees with exact affine fixed point')
+  call check(abs(1.001_dp - 0.5_dp * gm%x(1)) <= &
+       1.0e-12_dp * abs(gm%x(1)), 'inexact true residual satisfies tolerance')
+
+  ! 8. M=I with nonzero source is inconsistent, never converged.
+  call gm%start([1.0_dp], 1.0e-12_dp, 5, 1)
+  do while (gm%needs_apply())
+     call gm%put(gm%vin)
+  end do
+  call check(.not. gm%converged .and. all(ieee_is_finite(gm%x)), &
+       'singular inconsistent operator stays finite and unconverged')
+
+  ! 9. An invalid operator response terminates explicitly.
+  call gm%start([1.0_dp], 1.0e-12_dp, 5, 1)
+  call gm%put([ieee_value(0.0_dp, ieee_quiet_nan)])
+  call check(gm%failed .and. .not. gm%converged .and. .not. gm%needs_apply(), &
+       'nonfinite operator response terminates with failure')
+  call check(all(ieee_is_finite(gm%x)), 'failed operator preserves finite iterate')
 
   if (ok) then
      print *, 'All tests passed!'

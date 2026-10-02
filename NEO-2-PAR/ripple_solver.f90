@@ -2848,9 +2848,14 @@ contains
 
     if (gm%converged) return
     intp_unconverged = intp_unconverged + 1
+    if (gm%failed) then
+       write (*,*) ' WARNING: ripple_solver integral part (', label, &
+            ') failed: nonfinite arithmetic or invalid input'
+       return
+    end if
     write (*,'(4a,i0,a,es10.3,a,es10.3)') ' WARNING: ripple_solver integral part (', &
          label, ') not converged:', ' niter = ', gm%napply,                &
-         ' solves, relative change ', gm%resid_rel, ' > epserr_iter = ', epserr_iter
+         ' solves, last residual estimate ', gm%resid_rel, ' tolerance = ', epserr_iter
   end subroutine check_intp_convergence
 
 END SUBROUTINE ripple_solver
