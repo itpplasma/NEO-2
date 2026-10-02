@@ -31,6 +31,9 @@ MODULE sparse_mod
   INTEGER(kind=long), PRIVATE :: sys=0
   !default values for control pg. 22
   REAL(kind=dp), PRIVATE :: control(20), info_suitesparse(90)
+  ! Scratch follows the singleton factorization. Legacy solves are serial;
+  ! concurrent callers must use a solver with independent workspace.
+  REAL(kind=dp), ALLOCATABLE, PRIVATE :: suitesparse_work(:, :)
   !-------------------------------------------------------------------------------
 
   PUBLIC load_mini_example
@@ -115,6 +118,8 @@ MODULE sparse_mod
   ! helper
   PRIVATE find_unit
   PRIVATE suitesparse_needs_matrix
+  PRIVATE suitesparse_prepare_workspace, suitesparse_require_workspace
+  PRIVATE suitesparse_release_workspace, suitesparse_check_factorization
 
 
 CONTAINS
@@ -143,6 +148,43 @@ CONTAINS
     suitesparse_needs_matrix = iopt .EQ. 0 .OR. iopt .EQ. 1 .OR. &
          (iopt .EQ. 2 .AND. sparse_solve_method .EQ. 2)
   END FUNCTION suitesparse_needs_matrix
+  !-------------------------------------------------------------------------------
+
+  SUBROUTINE suitesparse_prepare_workspace(nrow, nvectors)
+    INTEGER, INTENT(in) :: nrow, nvectors
+
+    IF (ALLOCATED(suitesparse_work)) THEN
+        IF (SIZE(suitesparse_work, 1) == nrow .AND. &
+            SIZE(suitesparse_work, 2) == nvectors) RETURN
+        DEALLOCATE(suitesparse_work)
+    END IF
+    ALLOCATE(suitesparse_work(nrow, nvectors))
+  END SUBROUTINE suitesparse_prepare_workspace
+
+  SUBROUTINE suitesparse_require_workspace(nrow, nvectors)
+    INTEGER, INTENT(in) :: nrow, nvectors
+
+    IF (.NOT. ALLOCATED(suitesparse_work)) THEN
+        ERROR STOP 'SuiteSparse solve requires a factorization workspace'
+    END IF
+    IF (SIZE(suitesparse_work, 1) /= nrow .OR. &
+        SIZE(suitesparse_work, 2) /= nvectors) THEN
+        CALL suitesparse_release_workspace()
+        ERROR STOP 'SuiteSparse solve workspace does not match the factorization'
+    END IF
+  END SUBROUTINE suitesparse_require_workspace
+
+  SUBROUTINE suitesparse_release_workspace()
+    IF (ALLOCATED(suitesparse_work)) DEALLOCATE(suitesparse_work)
+  END SUBROUTINE suitesparse_release_workspace
+
+  SUBROUTINE suitesparse_check_factorization()
+    IF (info_suitesparse(1) < 0.0_dp) THEN
+        CALL suitesparse_release_workspace()
+        PRINT *, 'SuiteSparse factorization failed: ', info_suitesparse(1)
+        ERROR STOP 'SuiteSparse factorization failed'
+    END IF
+  END SUBROUTINE suitesparse_check_factorization
   !-------------------------------------------------------------------------------
 
   !-------------------------------------------------------------------------------
@@ -1115,9 +1157,6 @@ CONTAINS
 
     INTEGER(kind=long) :: n
     INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
-    REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: x !vector to store the solution
-
-    ALLOCATE( x(SIZE(b)) )
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
@@ -1137,8 +1176,10 @@ CONTAINS
 
     ! First, factorize the matrix. The factors are stored in *numeric* handle.
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
+        CALL suitesparse_prepare_workspace(nrow, 2)
        !pre-order and symbolic analysis
        CALL umf4sym (n, n, Ap, Ai, val, symbolic, control, info_suitesparse)
+        CALL suitesparse_check_factorization()
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
           ELSE
@@ -1147,6 +1188,7 @@ CONTAINS
        ENDIF
 
        CALL umf4num (Ap, Ai, val, symbolic, numeric, control, info_suitesparse)
+        CALL suitesparse_check_factorization()
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -1160,12 +1202,15 @@ CONTAINS
 
     ! Second, solve the system using the existing factors.
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
+        CALL suitesparse_require_workspace(nrow, 2)
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
-          CALL umf4solr (sys, Ap, Ai, val, x, b, numeric, control, info_suitesparse) !iterative refinement
+        CALL umf4solr(sys, Ap, Ai, val, suitesparse_work(:, 1), b, numeric, &
+            control, info_suitesparse) ! Iterative refinement
        ELSE !or without (=3)) iterative refinement
-          CALL umf4sol (sys, x, b, numeric, control, info_suitesparse) !without iterative refinement
+        CALL umf4sol(sys, suitesparse_work(:, 1), b, numeric, control, &
+            info_suitesparse) ! Without iterative refinement
        END IF
-       b=x !store solution under b
+        b = suitesparse_work(:, 1) ! Store solution under b
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -1180,11 +1225,11 @@ CONTAINS
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 3) THEN
        CALL umf4fnum (numeric)
        CALL umf4fsym (symbolic)
+        CALL suitesparse_release_workspace()
     END IF
 
     IF (ALLOCATED(Ai)) DEALLOCATE(Ai)
     IF (ALLOCATED(Ap)) DEALLOCATE(Ap)
-    IF (ALLOCATED(x))  DEALLOCATE(x)
 
   END SUBROUTINE sparse_solve_suitesparse_b1
   !-------------------------------------------------------------------------------
@@ -1204,17 +1249,7 @@ CONTAINS
     INTEGER :: k
     INTEGER(kind=long) :: n
     INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
-    REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: xx,xz !vector to store the solution (real and imag. part)
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: valx, valz !val of matrix (real and imag. part)
-    REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: bx, bz !rhs (real and imag part)
-
-    ALLOCATE( xx(nrow) )
-    ALLOCATE( xz(nrow) )
-    ALLOCATE( bx(nrow) )
-    ALLOCATE( bz(nrow) )
-
-    bx=DBLE(b)
-    bz=AIMAG(b)
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
@@ -1238,8 +1273,10 @@ CONTAINS
 
     ! First, factorize the matrix. The factors are stored in *numeric* handle.
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
+        CALL suitesparse_prepare_workspace(nrow, 4)
        !pre-order and symbolic analysis
        CALL umf4zsym (n, n, Ap, Ai, valx, valz, symbolic, control, info_suitesparse)
+        CALL suitesparse_check_factorization()
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -1263,6 +1300,7 @@ CONTAINS
        ENDIF
 
        CALL umf4znum (Ap, Ai, valx, valz, symbolic, numeric, control, info_suitesparse)
+        CALL suitesparse_check_factorization()
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -1289,15 +1327,20 @@ CONTAINS
 
     ! Second, solve the system using the existing factors.
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
+        CALL suitesparse_require_workspace(nrow, 4)
+        suitesparse_work(:, 3) = DBLE(b)
+        suitesparse_work(:, 4) = AIMAG(b)
        IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
-          CALL umf4zsolr (sys, Ap, Ai, valx, valz, xx, xz, bx, bz, numeric, &
-               control, info_suitesparse) !iterative refinement
+        CALL umf4zsolr(sys, Ap, Ai, valx, valz, suitesparse_work(:, 1), &
+            suitesparse_work(:, 2), suitesparse_work(:, 3), suitesparse_work(:, 4), &
+            numeric, control, info_suitesparse) ! Iterative refinement
        ELSE !or without (=3)) iterative refinement
-          CALL umf4zsol (sys, xx, xz, bx, bz, numeric, control, &
-               info_suitesparse) !without iterative refinement
+        CALL umf4zsol(sys, suitesparse_work(:, 1), suitesparse_work(:, 2), &
+            suitesparse_work(:, 3), suitesparse_work(:, 4), numeric, control, &
+            info_suitesparse) ! Without iterative refinement
        END IF
 
-       b=CMPLX(xx,xz, kind=kind(0d0)) !store solution under b
+        b = CMPLX(suitesparse_work(:, 1), suitesparse_work(:, 2), kind=dp)
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -1312,14 +1355,11 @@ CONTAINS
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 3) THEN
        CALL umf4zfnum (numeric)
        CALL umf4zfsym (symbolic)
+        CALL suitesparse_release_workspace()
     END IF
 
     IF (ALLOCATED(Ai)) DEALLOCATE(Ai)
     IF (ALLOCATED(Ap)) DEALLOCATE(Ap)
-    IF (ALLOCATED(xx))  DEALLOCATE(xx)
-    IF (ALLOCATED(xz))  DEALLOCATE(xz)
-    IF (ALLOCATED(bx))  DEALLOCATE(bx)
-    IF (ALLOCATED(bz))  DEALLOCATE(bz)
     IF (ALLOCATED(valx))  DEALLOCATE(valx)
     IF (ALLOCATED(valz))  DEALLOCATE(valz)
 
@@ -1341,15 +1381,6 @@ CONTAINS
 
     INTEGER(kind=long) :: n, i
     INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
-    REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: x !vector to store the solution
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: bloc
-
-    !**********************************************************
-    ! Patch from TU Graz ITPcp Plasma - 01.09.2015
-    ! Wrong allocation size of x fixed
-    !**********************************************************
-    ALLOCATE( x(nrow) )
-    ALLOCATE(bloc(nrow))
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
@@ -1360,7 +1391,6 @@ CONTAINS
     CALL umf4def (control)
 
     n = nrow
-    bloc = 0.0_dp
     IF (suitesparse_needs_matrix(iopt_in)) THEN
        ALLOCATE( Ai(SIZE(irow)) )
        ALLOCATE( Ap(SIZE(pcol)) )
@@ -1373,11 +1403,12 @@ CONTAINS
        STOP
     END IF
 
-
     ! First, factorize the matrix. The factors are stored in *numeric* handle.
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
+        CALL suitesparse_prepare_workspace(nrow, 2)
        !pre-order and symbolic analysis
        CALL umf4sym (n, n, Ap, Ai, val, symbolic, control, info_suitesparse)
+        CALL suitesparse_check_factorization()
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
           ELSE
@@ -1386,6 +1417,7 @@ CONTAINS
        ENDIF
 
        CALL umf4num (Ap, Ai, val, symbolic, numeric, control, info_suitesparse)
+        CALL suitesparse_check_factorization()
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -1398,12 +1430,15 @@ CONTAINS
 
     ! Second, solve the system using the existing factors.
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
+        CALL suitesparse_require_workspace(nrow, 2)
        DO i = 1,SIZE(b,2)
-          bloc = b(:,i)
+            suitesparse_work(:, 2) = b(:, i)
           IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
-             CALL umf4solr (sys, Ap, Ai, val, x, bloc, numeric, control, info_suitesparse) !iterative refinement
+            CALL umf4solr(sys, Ap, Ai, val, suitesparse_work(:, 1), &
+                suitesparse_work(:, 2), numeric, control, info_suitesparse)
           ELSE !or without (=3)) iterative refinement
-             CALL umf4sol (sys, x, bloc, numeric, control, info_suitesparse) !without iterative refinement
+            CALL umf4sol(sys, suitesparse_work(:, 1), suitesparse_work(:, 2), &
+                numeric, control, info_suitesparse)
           END IF
 
           IF (sparse_talk) THEN
@@ -1412,7 +1447,7 @@ CONTAINS
                 PRINT *, 'INFO from solve = ', info_suitesparse(1)
              ENDIF
           END IF
-          b(:,i) = x
+            b(:, i) = suitesparse_work(:, 1)
        END DO
     END IF
 
@@ -1420,12 +1455,11 @@ CONTAINS
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 3) THEN
        CALL umf4fnum (numeric)
        CALL umf4fsym (symbolic)
+        CALL suitesparse_release_workspace()
     END IF
 
-    IF (ALLOCATED(bloc)) DEALLOCATE(bloc)
     IF (ALLOCATED(Ai)) DEALLOCATE(Ai)
     IF (ALLOCATED(Ap)) DEALLOCATE(Ap)
-    IF (ALLOCATED(x))  DEALLOCATE(x)
 
     RETURN
   END SUBROUTINE sparse_solve_suitesparse_b2_loop
@@ -1445,25 +1479,9 @@ CONTAINS
 
     INTEGER(kind=long) :: n, i
     INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
-    REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: xx,xz !vector to store the solution (real and imag. part)
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: valx, valz !val of matrix (real and imag. part)
-    REAL(kind=dp), ALLOCATABLE, DIMENSION(:,:) :: bx, bz !rhs (real and imag part)
-    REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: blocx, blocz
-
-    ALLOCATE( xx(nrow) )
-    ALLOCATE( xz(nrow) )
-    ALLOCATE( bx(nrow, SIZE(b,2)) )
-    ALLOCATE( bz(nrow, SIZE(b,2)) )
-
-    bx=DBLE(b)
-    bz=AIMAG(b)
-
-    ALLOCATE(blocx(nrow))
-    ALLOCATE(blocz(nrow))
 
     n = nrow
-    blocx = 0.0_dp
-    blocz = 0.0_dp
     IF (suitesparse_needs_matrix(iopt_in)) THEN
        ALLOCATE( valx(nz) )
        ALLOCATE( valz(nz) )
@@ -1483,11 +1501,12 @@ CONTAINS
     !   set default parameters
     CALL umf4zdef (control)
 
-
     ! First, factorize the matrix. The factors are stored in *numeric* handle.
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
+        CALL suitesparse_prepare_workspace(nrow, 4)
        !pre-order and symbolic analysis
        CALL umf4zsym (n, n, Ap, Ai, valx, valz, symbolic, control, info_suitesparse)
+        CALL suitesparse_check_factorization()
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -1512,6 +1531,7 @@ CONTAINS
        ENDIF
 
        CALL umf4znum (Ap, Ai, valx, valz, symbolic, numeric, control, info_suitesparse)
+        CALL suitesparse_check_factorization()
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -1538,15 +1558,18 @@ CONTAINS
 
     ! Second, solve the system using the existing factors.
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 2) THEN
+        CALL suitesparse_require_workspace(nrow, 4)
        DO i = 1,SIZE(b,2)
-          blocx = bx(:,i)
-          blocz = bz(:,i)
+            suitesparse_work(:, 3) = DBLE(b(:, i))
+            suitesparse_work(:, 4) = AIMAG(b(:, i))
           IF ( sparse_solve_method .EQ. 2 ) THEN ! SuiteSparse (with (=2)
-             CALL umf4zsolr (sys, Ap, Ai, valx, valz, xx, xz, blocx, blocz, numeric,&
-                  control, info_suitesparse) !iterative refinement
+            CALL umf4zsolr(sys, Ap, Ai, valx, valz, suitesparse_work(:, 1), &
+                suitesparse_work(:, 2), suitesparse_work(:, 3), &
+                suitesparse_work(:, 4), numeric, control, info_suitesparse)
           ELSE !or without (=3)) iterative refinement
-             CALL umf4zsol (sys, xx, xz, blocx, blocz, numeric,&
-                  control, info_suitesparse) !without iterative refinement
+            CALL umf4zsol(sys, suitesparse_work(:, 1), suitesparse_work(:, 2), &
+                suitesparse_work(:, 3), suitesparse_work(:, 4), numeric, &
+                control, info_suitesparse)
           END IF
 
           IF (sparse_talk) THEN
@@ -1555,7 +1578,7 @@ CONTAINS
                 PRINT *, 'INFO from solve = ', info_suitesparse(1)
              ENDIF
           END IF
-          b(:,i)=CMPLX(xx,xz, kind=kind(0d0))
+            b(:, i) = CMPLX(suitesparse_work(:, 1), suitesparse_work(:, 2), kind=dp)
        END DO
     END IF
 
@@ -1563,16 +1586,11 @@ CONTAINS
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 3) THEN
        CALL umf4zfnum (numeric)
        CALL umf4zfsym (symbolic)
+        CALL suitesparse_release_workspace()
     END IF
 
-    IF (ALLOCATED(blocx)) DEALLOCATE(blocx)
-    IF (ALLOCATED(blocz)) DEALLOCATE(blocz)
     IF (ALLOCATED(Ai)) DEALLOCATE(Ai)
     IF (ALLOCATED(Ap)) DEALLOCATE(Ap)
-    IF (ALLOCATED(xx))  DEALLOCATE(xx)
-    IF (ALLOCATED(xz))  DEALLOCATE(xz)
-    IF (ALLOCATED(bx))  DEALLOCATE(bx)
-    IF (ALLOCATED(bz))  DEALLOCATE(bz)
     IF (ALLOCATED(valx))  DEALLOCATE(valx)
     IF (ALLOCATED(valz))  DEALLOCATE(valz)
 

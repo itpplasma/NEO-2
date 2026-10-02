@@ -22,6 +22,8 @@ program test_sparse_solve_reuse
      sparse_solve_method = method
      call check_real(method)
      call check_complex(method)
+        call check_real_lifecycle(method)
+        call check_complex_lifecycle(method)
   end do
 
   if (nfail == 0) then
@@ -182,5 +184,167 @@ contains
     call expect(all(x2 == x20), 'complex b2 bitwise iopt=2 vs iopt=0', method)
     call sparse_solve(n, n, nz, irow, pcol, valc, x1, 3)
   end subroutine check_complex
+
+    subroutine lifecycle_matrix(m, rows, pointers, values, valuesc, dense, densec)
+        integer, intent(in) :: m
+        integer, allocatable, intent(out) :: rows(:), pointers(:)
+        real(dp), allocatable, intent(out) :: values(:), dense(:, :)
+        complex(dp), allocatable, intent(out) :: valuesc(:), densec(:, :)
+        integer :: i, j, k
+
+        allocate(rows(3*m - 2), pointers(m + 1), values(3*m - 2), &
+                 valuesc(3*m - 2), dense(m, m), densec(m, m))
+        dense = 0.0_dp
+        densec = (0.0_dp, 0.0_dp)
+        k = 0
+        do j = 1, m
+            pointers(j) = k + 1
+            do i = max(1, j - 1), min(m, j + 1)
+                k = k + 1
+                rows(k) = i
+                if (i == j) then
+                    values(k) = 4.0_dp + 0.1_dp*j
+                else if (i < j) then
+                    values(k) = -0.6_dp
+                else
+                    values(k) = -1.1_dp
+                end if
+                valuesc(k) = cmplx(values(k), 0.05_dp*(2*i - j), dp)
+                dense(i, j) = values(k)
+                densec(i, j) = valuesc(k)
+            end do
+        end do
+        pointers(m + 1) = k + 1
+    end subroutine lifecycle_matrix
+
+    subroutine check_real_lifecycle(method)
+        integer, intent(in) :: method
+        integer, parameter :: sizes(4) = [5, 12, 4, 9]
+        integer, parameter :: counts(4) = [2, 4, 1, 3]
+        integer :: stage, m, nb, nzloc, i, r, solve_method
+        integer, allocatable :: rows(:), pointers(:)
+        real(dp), allocatable :: values(:), dense(:, :), xt(:, :), b(:, :)
+        real(dp), allocatable :: x1(:), x2(:, :)
+        complex(dp), allocatable :: valuesc(:), densec(:, :)
+
+        do stage = 1, size(sizes)
+            m = sizes(stage)
+            nb = counts(stage)
+            call lifecycle_matrix(m, rows, pointers, values, valuesc, dense, densec)
+            nzloc = size(values)
+            if (allocated(xt)) deallocate(xt, b, x1, x2)
+            allocate(xt(m, nb), b(m, nb), x1(m), x2(m, nb))
+            do r = 1, nb
+                do i = 1, m
+                    xt(i, r) = cos(0.23_dp*i*r) + 0.01_dp*m
+                end do
+            end do
+            ! Dense multiplication supplies the manufactured oracle independently
+            ! of the sparse solve. Refactorization changes both matrix and shape.
+            b = matmul(dense, xt)
+            sparse_solve_method = method
+            x2 = b
+            call sparse_solve(m, m, nzloc, rows, pointers, values, x2, 1)
+            do solve_method = 2, 3
+                sparse_solve_method = solve_method
+                x1 = b(:, 1)
+                call sparse_solve(m, m, nzloc, rows, pointers, values, x1, 2)
+                call expect(all(abs(x1 - xt(:, 1)) < &
+                                tol*maxval(abs(xt(:, 1)))), &
+                            'real lifecycle b1 manufactured solution', solve_method)
+                x2 = b
+                call sparse_solve(m, m, nzloc, rows, pointers, values, x2(:, 1:1), 2)
+                call expect(all(abs(x2(:, 1) - xt(:, 1)) < &
+                                tol*maxval(abs(xt(:, 1)))), &
+                            'real lifecycle single-column b2', solve_method)
+                x2 = b
+                call sparse_solve(m, m, nzloc, rows, pointers, values, x2, 2)
+                call expect(all(abs(x2 - xt) < tol*maxval(abs(xt))), &
+                            'real lifecycle multiple-column b2', solve_method)
+            end do
+        end do
+
+        ! Free b2-created factors through b1; then create factors automatically
+        ! through each rank of RHS and free them through the opposite rank.
+        call sparse_solve(m, m, nzloc, rows, pointers, values, x1, 3)
+        sparse_solve_method = method
+        x1 = b(:, 1)
+        call sparse_solve(m, m, nzloc, rows, pointers, values, x1, 2)
+        call expect(all(abs(x1 - xt(:, 1)) < tol*maxval(abs(xt(:, 1)))), &
+                    'real lifecycle automatic b1 factorization', method)
+        call sparse_solve(m, m, nzloc, rows, pointers, values, x2, 3)
+        x2 = b
+        call sparse_solve(m, m, nzloc, rows, pointers, values, x2, 2)
+        call expect(all(abs(x2 - xt) < tol*maxval(abs(xt))), &
+                    'real lifecycle automatic b2 factorization', method)
+        call sparse_solve(m, m, nzloc, rows, pointers, values, x1, 3)
+        x2 = b
+        call sparse_solve(m, m, nzloc, rows, pointers, values, x2, 0)
+        call expect(all(abs(x2 - xt) < tol*maxval(abs(xt))), &
+                    'real lifecycle one-shot b2', method)
+    end subroutine check_real_lifecycle
+
+    subroutine check_complex_lifecycle(method)
+        integer, intent(in) :: method
+        integer, parameter :: sizes(4) = [5, 12, 4, 9]
+        integer, parameter :: counts(4) = [2, 4, 1, 3]
+        integer :: stage, m, nb, nzloc, i, r, solve_method
+        integer, allocatable :: rows(:), pointers(:)
+        real(dp), allocatable :: values(:), dense(:, :)
+        complex(dp), allocatable :: valuesc(:), densec(:, :), xt(:, :), b(:, :)
+        complex(dp), allocatable :: x1(:), x2(:, :)
+
+        do stage = 1, size(sizes)
+            m = sizes(stage)
+            nb = counts(stage)
+            call lifecycle_matrix(m, rows, pointers, values, valuesc, dense, densec)
+            nzloc = size(valuesc)
+            if (allocated(xt)) deallocate(xt, b, x1, x2)
+            allocate(xt(m, nb), b(m, nb), x1(m), x2(m, nb))
+            do r = 1, nb
+                do i = 1, m
+                    xt(i, r) = cmplx(cos(0.23_dp*i*r), sin(0.17_dp*i + r), dp)
+                end do
+            end do
+            b = matmul(densec, xt)
+            sparse_solve_method = method
+            x2 = b
+            call sparse_solve(m, m, nzloc, rows, pointers, valuesc, x2, 1)
+            do solve_method = 2, 3
+                sparse_solve_method = solve_method
+                x1 = b(:, 1)
+                call sparse_solve(m, m, nzloc, rows, pointers, valuesc, x1, 2)
+                call expect(all(abs(x1 - xt(:, 1)) < &
+                                tol*maxval(abs(xt(:, 1)))), &
+                            'complex lifecycle b1 manufactured solution', solve_method)
+                x2 = b
+                call sparse_solve(m, m, nzloc, rows, pointers, valuesc, x2(:, 1:1), 2)
+                call expect(all(abs(x2(:, 1) - xt(:, 1)) < &
+                                tol*maxval(abs(xt(:, 1)))), &
+                            'complex lifecycle single-column b2', solve_method)
+                x2 = b
+                call sparse_solve(m, m, nzloc, rows, pointers, valuesc, x2, 2)
+                call expect(all(abs(x2 - xt) < tol*maxval(abs(xt))), &
+                            'complex lifecycle multiple-column b2', solve_method)
+            end do
+        end do
+
+        call sparse_solve(m, m, nzloc, rows, pointers, valuesc, x1, 3)
+        sparse_solve_method = method
+        x1 = b(:, 1)
+        call sparse_solve(m, m, nzloc, rows, pointers, valuesc, x1, 2)
+        call expect(all(abs(x1 - xt(:, 1)) < tol*maxval(abs(xt(:, 1)))), &
+                    'complex lifecycle automatic b1 factorization', method)
+        call sparse_solve(m, m, nzloc, rows, pointers, valuesc, x2, 3)
+        x2 = b
+        call sparse_solve(m, m, nzloc, rows, pointers, valuesc, x2, 2)
+        call expect(all(abs(x2 - xt) < tol*maxval(abs(xt))), &
+                    'complex lifecycle automatic b2 factorization', method)
+        call sparse_solve(m, m, nzloc, rows, pointers, valuesc, x1, 3)
+        x2 = b
+        call sparse_solve(m, m, nzloc, rows, pointers, valuesc, x2, 0)
+        call expect(all(abs(x2 - xt) < tol*maxval(abs(xt))), &
+                    'complex lifecycle one-shot b2', method)
+    end subroutine check_complex_lifecycle
 
 end program test_sparse_solve_reuse
