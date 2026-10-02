@@ -6,9 +6,10 @@ program test_radial_lagrange
   !  2. fourth-order convergence of y and third-order of dy/ds for smooth g,
   !  3. the switch selects Lagrange or spline in radial_cof3_hi_driv.
   use nrtype, only : I4B, DP
-  use inter_interfaces, only : splint_horner3, tf, tfp, tfpp, tfppp
+  use inter_interfaces, only : splint_horner3, splinecof3, splinecof3_hi_driv, &
+    tf, tfp, tfpp, tfppp
   use radial_lagrange_cof, only : lsw_lagrange_boozer, lagrange_cof3, &
-    radial_cof3_hi_driv
+    radial_cof3, radial_cof3_hi_driv
   implicit none
 
   logical :: ok = .true.
@@ -28,6 +29,8 @@ program test_radial_lagrange
   call expect(e3(1) < 1.0e-7_DP, 'value accurate at n=200')
 
   call check_switch()
+    call check_coarse_fallback()
+    call check_fine_window()
 
   if (ok) then
     print *, 'All tests passed!'
@@ -146,6 +149,8 @@ contains
     integer(I4B) :: j, indx(n)
 
     call nodes(n, x)
+    ! Keep every radial stencil within the empirically validated spacing.
+    x = 0.5_DP + 0.05_DP * x
     indx = [(j, j = 1, n)]
     mh = [1.0_DP, 0.5_DP]
     do j = 1, n
@@ -175,5 +180,59 @@ contains
     call expect(maxval(err_lag(2:)) < 1.0e-4_DP .and. &
       maxval(err_spl(2:)) < 1.0e-3_DP, 'both accurate for smooth data')
   end subroutine check_switch
+
+    subroutine check_coarse_fallback()
+        integer(I4B), parameter :: n = 10
+        real(DP) :: x(n), y(n), a(n), b(n), c(n), d(n), lambda(n), c1, cn
+        real(DP) :: ar(n), br(n), cr(n), dr(n), mh(1), yh(n, 1)
+        real(DP) :: ah(n, 1), bh(n, 1), ch(n, 1), dh(n, 1)
+        real(DP) :: ahr(n, 1), bhr(n, 1), chr(n, 1), dhr(n, 1)
+        integer(I4B) :: j, indx(n)
+
+        x = [(0.0005_DP + 0.999_DP * real(j - 1, DP) / real(n - 1, DP), j = 1, n)]
+        y = exp(x)
+        indx = [(j, j = 1, n)]
+        lambda = 1.0_DP
+        c1 = 0.0_DP
+        cn = 0.0_DP
+        ! The established natural spline is the fallback's behavioral oracle.
+        call splinecof3(x, y, c1, cn, lambda, indx, 2_I4B, 4_I4B, &
+            ar, br, cr, dr, 0.0_DP, tf)
+        lsw_lagrange_boozer = .true.
+        call radial_cof3(x, y, a, b, c, d, indx, tf)
+        call expect(all(a == ar) .and. all(b == br) .and. all(c == cr) &
+            .and. all(d == dr), 'ten-node coarse profile retains spline')
+
+        mh = 1.0_DP
+        yh(:, 1) = x * exp(x)
+        call splinecof3_hi_driv(x, yh, mh, ahr, bhr, chr, dhr, indx, tf)
+        call radial_cof3_hi_driv(x, yh, mh, ah, bh, ch, dh, indx, tf)
+        call expect(all(ah == ahr) .and. all(bh == bhr) .and. all(ch == chr) &
+            .and. all(dh == dhr), 'ten-node coarse harmonic retains spline')
+        lsw_lagrange_boozer = .false.
+    end subroutine check_coarse_fallback
+
+    subroutine check_fine_window()
+        integer(I4B), parameter :: n = 5
+        real(DP) :: x(n), y(n, 1), mh(1), s, yv, ypv
+        real(DP) :: a(n, 1), b(n, 1), c(n, 1), d(n, 1)
+        integer(I4B) :: j, indx(n)
+
+        x = [(0.32075_DP + 0.0005_DP * real(j - 1, DP), j = 1, n)]
+        indx = [(j, j = 1, n)]
+        mh = 1.0_DP
+        do j = 1, n
+            y(j, 1) = x(j) * gcub(x(j))
+        end do
+        s = 0.5_DP * (x(4) + x(5))
+        lsw_lagrange_boozer = .true.
+        call radial_cof3_hi_driv(x, y, mh, a, b, c, d, indx, tf)
+        call eval(x, a(:, 1), b(:, 1), c(:, 1), d(:, 1), mh(1), s, yv, ypv)
+        call expect(abs(yv - s * gcub(s)) < 1.0e-13_DP, &
+            'five-node fine window reproduces cubic value')
+        call expect(abs(ypv - gcub(s) - s * gcub_s(s)) < 1.0e-11_DP, &
+            'five-node fine window reproduces cubic derivative')
+        lsw_lagrange_boozer = .false.
+    end subroutine check_fine_window
 
 end program test_radial_lagrange

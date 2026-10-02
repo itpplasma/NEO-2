@@ -23,6 +23,11 @@ module radial_lagrange_cof
   logical, save :: lsw_lagrange_boozer = .false.
 
   integer(I4B), parameter :: npoly = 4
+    ! Opt-in transport convergence has been checked for radial spacings
+    ! 0.001 and 0.002 in normalized toroidal flux (k differences < 1e-9).
+    ! The wider 0.004 and 0.008 studies lose accuracy; retain splines there.
+    real(DP), parameter :: max_lagrange_spacing = 0.002_DP
+    logical, save :: fallback_reported = .false.
 
   abstract interface
     function test_function(x, m)
@@ -34,6 +39,37 @@ module radial_lagrange_cof
   end interface
 
 contains
+
+    logical function use_local_lagrange(x, indx) result(admitted)
+        real(DP), intent(in) :: x(:)
+        integer(I4B), intent(in) :: indx(:)
+        integer(I4B) :: j
+        real(DP) :: spacing
+
+        admitted = .false.
+        if (.not. lsw_lagrange_boozer) return
+        if (any(indx < 1) .or. any(indx > size(x))) return
+        ! Weighted modes exclude the first node, so five nodes are needed
+        ! to retain a cubic stencil. Check every stencil conservatively.
+        if (size(indx) >= npoly + 1) then
+            admitted = .true.
+            do j = 1, size(indx) - 1
+                spacing = x(indx(j + 1)) - x(indx(j))
+                if (spacing <= 0.0_DP .or. spacing > max_lagrange_spacing &
+                    + 64.0_DP * epsilon(1.0_DP)) then
+                    admitted = .false.
+                    exit
+                end if
+            end do
+        end if
+        if (.not. admitted) then
+            if (.not. fallback_reported) then
+                print *, 'LSW_LAGRANGE_BOOZER: grid outside validated spacing; ', &
+                    'using splines (maximum supported normalized ds = 0.002)'
+                fallback_reported = .true.
+            end if
+        end if
+    end function use_local_lagrange
 
   subroutine lagrange_cof3(x, y, m, a, b, c, d, indx, f)
     ! Piecewise cubic Lagrange coefficients of y(x) / f(x, m) at the nodes
@@ -124,7 +160,7 @@ contains
     real(DP) :: c1, cn
     integer(I4B), parameter :: sw1 = 2, sw2 = 4
 
-    if (lsw_lagrange_boozer) then
+    if (use_local_lagrange(x, indx)) then
       call lagrange_cof3(x, y, m0, a, b, c, d, indx, f)
     else
       lambda = 1.0_DP
@@ -144,7 +180,7 @@ contains
     integer(I4B), dimension(:), intent(in) :: indx
     procedure(test_function) :: f
 
-    if (lsw_lagrange_boozer) then
+    if (use_local_lagrange(x, indx)) then
       call lagrange_cof3_hi_driv(x, y, m, a, b, c, d, indx, f)
     else
       call splinecof3_hi_driv(x, y, m, a, b, c, d, indx, f)
