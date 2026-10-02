@@ -22,6 +22,7 @@ set(COMMON_FILES
   compute_aiota.f90
   development.f90
   device_mod.f90
+  fieldline_step_mod.f90
   flint_mod.f90
   fluxsplitter.f90
   inter_interfaces.f90

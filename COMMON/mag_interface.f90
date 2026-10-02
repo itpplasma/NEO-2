@@ -282,6 +282,13 @@ MODULE mag_interface_mod
   END INTERFACE
   ! ---------------------------------------------------------------------------
 
+  ! closure test for tokamak field lines
+  PUBLIC tokamak_fieldline_closed
+  ! The chosen period length requires closure at n_close. A failed expected
+  ! closure is an integration/iota error; later periods cannot repair it.
+  INTEGER, PARAMETER, PUBLIC :: tokamak_closure_max_factor = 1
+  REAL(kind=dp), PARAMETER, PUBLIC :: tokamak_closure_dtheta = 1.0d-3
+
   ! ---------------------------------------------------------------------------
   ! fixes eta_values for the ripples
   PUBLIC ripple_eta_magnetics
@@ -433,6 +440,36 @@ CONTAINS
   ! ---------------------------------------------------------------------------
 
   ! ---------------------------------------------------------------------------
+  ! Poloidal closure test for a tokamak field line after period i_period.
+  ! The period length is chosen such that the line closes after n_close
+  ! periods (2 for isw_axisymm = 1, ceiling(1/iota) otherwise). Earlier
+  ! returns of theta are not accepted. A failed closure at the expected
+  ! period stops the run before an erroneous generic closure search grows
+  ! memory. The chosen toroidal period determines this bound analytically.
+  !
+  LOGICAL FUNCTION tokamak_fieldline_closed(i_period, n_close, &
+       theta_start, theta_end) &
+       RESULT(closed)
+    INTEGER,       INTENT(in) :: i_period, n_close
+    REAL(kind=dp), INTENT(in) :: theta_start, theta_end
+
+    REAL(kind=dp) :: dtheta
+
+    dtheta = MIN(ABS(theta_start - theta_end), &
+         ABS(theta_start - theta_end + 2.0_dp*pi), &
+         ABS(theta_start - theta_end - 2.0_dp*pi))
+    closed = i_period .GE. n_close .AND. dtheta .LT. tokamak_closure_dtheta
+    IF (.NOT. closed .AND. i_period .GE. tokamak_closure_max_factor*n_close) THEN
+       PRINT *, 'Tokamak field line did not close after ', i_period, &
+            ' periods (expected ', n_close, ')'
+       PRINT *, '  theta_start, theta_end, dtheta: ', &
+            theta_start, theta_end, dtheta
+       ERROR STOP 'Tokamak field line closure failed'
+    END IF
+  END FUNCTION tokamak_fieldline_closed
+  ! ---------------------------------------------------------------------------
+
+  ! ---------------------------------------------------------------------------
   ! make for fieldline_struct
   !
   SUBROUTINE make_mag_fieldline_newperiod(xstart)
@@ -463,6 +500,7 @@ CONTAINS
     ! local
     INTEGER       :: nperiod,nstep,ndim,nfp
     INTEGER       :: i_period,i
+    INTEGER       :: n_close_tok
 
     INTEGER       :: u1 = 117
 
@@ -488,6 +526,7 @@ CONTAINS
     INTEGER       :: back_period,back_period_end,i_start
     TYPE(fieldperiod_struct),     POINTER :: fieldperiod_delete
 
+    n_close_tok = 1
     r_start = 1.234e+5
     z_start = 1.234e+5
     x1_start = 1.234e+5
@@ -565,11 +604,13 @@ CONTAINS
        IF (mag_magfield .NE. 0 .AND. magnetic_device .EQ. 0) THEN ! Tokamak
           IF (isw_axisymm .EQ. 0) THEN
              period_length   = 2.0_dp*pi/aiota_tokamak/CEILING(1.0_dp/aiota_tokamak)
+             n_close_tok     = MAX(1, ABS(CEILING(1.0_dp/aiota_tokamak)))
           ELSEIF (isw_axisymm .EQ. 1) THEN
              ! the number 5 ensures that there are at least two periods
              ! otherwise there is a problem with logics regarding extra
              ! children of a period (there is only one possible)
              period_length   = 5.0_dp*pi/aiota_tokamak
+             n_close_tok     = 2
              split_inflection_points = .FALSE.
           ELSE
              PRINT *, 'isw_axisymm = ',isw_axisymm,' not implemented!'
@@ -583,11 +624,13 @@ CONTAINS
        IF (magnetic_device .EQ. 0) THEN ! Tokamak
           IF (isw_axisymm .EQ. 0) THEN
              period_length   = 2.0_dp*pi/boozer_iota/CEILING(1.0_dp/boozer_iota)
+             n_close_tok     = MAX(1, ABS(CEILING(1.0_dp/boozer_iota)))
           ELSEIF (isw_axisymm .EQ. 1) THEN
              ! the number 5 ensures that there are at least two periods
              ! otherwise there is a problem with logics regarding extra
              ! children of a period (there is only one possible)
              period_length   = 5.0_dp*pi/abs(boozer_iota)
+             n_close_tok     = 2
              split_inflection_points = .FALSE.
           ELSE
              PRINT *, 'isw_axisymm = ',isw_axisymm,' not implemented!'
@@ -764,9 +807,7 @@ CONTAINS
                 EXIT construct_periods
              END IF
           ELSEIF (mag_magfield .NE. 0 .AND. magnetic_device .EQ. 0) THEN ! Tokamak
-             IF ( ABS(theta_start - theta_e) .LT. 1.0d-3 .OR. &
-                  ABS(theta_start - theta_e + 2.0_dp*pi) .LT. 1.0d-3 .OR. &
-                  ABS(theta_start - theta_e - 2.0_dp*pi) .LT. 1.0d-3 ) THEN
+             IF (tokamak_fieldline_closed(i_period, n_close_tok, theta_start, theta_e)) THEN
                 EXIT construct_periods
              END IF
           ELSE ! no Tokamak
@@ -781,9 +822,7 @@ CONTAINS
        ELSE
           ! Boozer
           IF (magnetic_device .EQ. 0) THEN ! Tokamak
-             IF ( ABS(theta_start - theta_e) .LT. 1.0d-3 .OR. &
-                  ABS(theta_start - theta_e + 2.0_dp*pi) .LT. 1.0d-3 .OR. &
-                  ABS(theta_start - theta_e - 2.0_dp*pi) .LT. 1.0d-3 ) THEN
+             IF (tokamak_fieldline_closed(i_period, n_close_tok, theta_start, theta_e)) THEN
                 EXIT construct_periods
              END IF
           ELSE ! no Tokamak
