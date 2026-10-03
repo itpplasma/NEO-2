@@ -94,6 +94,9 @@ jobs:
           cd python
           pip install -e .
 
+      - name: Test malformed golden output rejection
+        run: python -m unittest discover -s TEST -p test_golden_hdf5_guard.py
+
 
       - name: Build NEO-2 (current version)
         id: build
@@ -196,6 +199,8 @@ jobs:
       - name: Build NEO-2 (reference version - main branch)
         if: github.event_name == 'pull_request'
         id: build_reference_main
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           # Build reference version from main branch for PR comparison
           REFERENCE_MAIN_DIR=$(mktemp -d)
@@ -203,13 +208,45 @@ jobs:
 
           git clone https://github.com/itpplasma/NEO-2.git .
 
-          echo "Building reference version from main branch"
-          git checkout main
+          echo "Building reference version at PR base $BASE_SHA"
+          git checkout "$BASE_SHA"
 
           make
 
-          echo "neo2_ql_main=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> "$GITHUB_OUTPUT"
-          echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> "$GITHUB_OUTPUT"
+          {
+            echo "neo2_ql_main=$(pwd)/build/NEO-2-QL/neo_2_ql.x"
+            echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x"
+            echo "source_dir=$(pwd)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build the same NEO-2 source with the previous libneo pin
+        if: github.event_name == 'pull_request'
+        id: build_previous_libneo
+        env:
+          BASE_SOURCE: ${{ steps.build_reference_main.outputs.source_dir }}
+        run: |
+          set -euo pipefail
+          OLD_REF=$(sed -n 's/^[[:space:]]*set(LIBNEO_REF \([^)]*\)).*/\1/p' "$BASE_SOURCE/COMMON/ProjectConfig.cmake.in")
+          NEW_REF=$(sed -n 's/^[[:space:]]*set(LIBNEO_REF \([^)]*\)).*/\1/p' COMMON/ProjectConfig.cmake.in)
+          test -n "$OLD_REF" && test -n "$NEW_REF"
+          if [ "$OLD_REF" = "$NEW_REF" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The pre-repair pin cannot reconstruct current NEO-2: Fortio rejects
+          # h5_copy from an open writer. Compare this transition against the
+          # merged copy repair; subsequent bumps use their actual base pin.
+          if [ "$OLD_REF" = 7262c32bf0406594a8ef27e84654d249aef2cb86 ]; then
+            echo "Previous libneo $OLD_REF contains the known Fortio copy defect; using merged repair 1a5fb7ecd08f7a130793ebc67993de28521ee57a as the numerical baseline." >> "$GITHUB_STEP_SUMMARY"
+            OLD_REF=1a5fb7ecd08f7a130793ebc67993de28521ee57a
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "NEO-2 $(git rev-parse HEAD), libneo $OLD_REF versus $NEW_REF" >> "$GITHUB_STEP_SUMMARY"
+          PREVIOUS_DIR=$(mktemp -d)
+          git archive HEAD | tar -x -C "$PREVIOUS_DIR"
+          make -C "$PREVIOUS_DIR" LIBNEO_REF="$OLD_REF"
+          echo "neo2_ql=$(realpath "$PREVIOUS_DIR/build/NEO-2-QL/neo_2_ql.x")" >> "$GITHUB_OUTPUT"
+          echo "neo2_par=$(realpath "$PREVIOUS_DIR/build/NEO-2-PAR/neo_2_par.x")" >> "$GITHUB_OUTPUT"
 
       - name: Run golden record test against main version (exact check)
         if: github.event_name == 'pull_request'
@@ -307,6 +344,54 @@ jobs:
             cat "${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Compare old and new libneo on the same NEO-2 source
+        if: steps.build_previous_libneo.outputs.changed == 'true'
+        id: run_libneo_comparison
+        continue-on-error: true
+        env:
+          CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
+          REFERENCE_NEO2_PAR: ${{ steps.build_previous_libneo.outputs.neo2_par }}
+          CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
+          REFERENCE_NEO2_QL: ${{ steps.build_previous_libneo.outputs.neo2_ql }}
+          GOLDEN_DIR: ${{ steps.run_test_stable.outputs.test_dir }}
+          GOLDEN_GUARD: ${{ github.workspace }}/ShellScripts/check_golden_hdf5.py
+        run: |
+          set -euo pipefail
+          strict_script=$(mktemp)
+          printf 'set -e -o pipefail\n' > "$strict_script"
+          export BASH_ENV="$strict_script"
+          make_strict() {
+            make SHELL=/bin/bash '.SHELLFLAGS=-e -o pipefail -c' "$@"
+          }
+          # Compare both pins with the same PAR process count and launch options.
+          cp "$GOLDEN_DIR/par/current/NEO2-all.sh" "$GOLDEN_DIR/par/reference/NEO2-all.sh"
+          for case in lorentz ql par; do
+            make_strict -C "$GOLDEN_DIR/$case/reference" clean
+            rm -f "$GOLDEN_DIR/$case/reference/summary.h5"
+            if [ "$case" = lorentz ]; then
+              TOL=1e-14 MAGNETICS_TOL=1e-12 make_strict -C "$GOLDEN_DIR/$case" comparison
+              tolerance=1e-14
+            else
+              TOL=1e-15 make_strict -C "$GOLDEN_DIR/$case" comparison
+              tolerance=1e-15
+            fi
+            python "$GOLDEN_GUARD" "$GOLDEN_DIR/$case/reference/summary.h5" \
+              "$GOLDEN_DIR/$case/current/summary.h5" "$tolerance"
+          done
+
+      - name: Upload libneo comparison output on failure
+        if: steps.run_libneo_comparison.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        with:
+          name: golden-libneo-comparison-output
+          path: |
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/*/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/*/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/*/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/*/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/par/*/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/par/*/out
+
       - name: Fail the job on test failure
-        if: steps.run_test_stable.outcome == 'failure' || steps.run_test_main.outcome == 'failure' || steps.run_par_test.outcome == 'failure' || steps.run_performance_test.outcome == 'failure'
+        if: steps.run_test_stable.outcome == 'failure' || steps.run_test_main.outcome == 'failure' || steps.run_par_test.outcome == 'failure' || steps.run_performance_test.outcome == 'failure' || steps.run_libneo_comparison.outcome == 'failure'
         run: exit 1
