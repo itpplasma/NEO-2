@@ -87,7 +87,11 @@ jobs:
           echo "data_dir=$(pwd)" >> "$GITHUB_OUTPUT"
           
       - name: Install libneo python required by NEO-2 python
-        run: pip install git+https://github.com/itpplasma/libneo.git@afa0e4243e5e3f3e41110960f19cd0f340834988
+        run: |
+          set -euo pipefail
+          LIBNEO_REF=$(sed -n 's/^[[:space:]]*set(LIBNEO_REF \([^)]*\)).*/\1/p' COMMON/ProjectConfig.cmake.in)
+          test -n "$LIBNEO_REF"
+          python -m pip install "git+https://github.com/itpplasma/libneo.git@${LIBNEO_REF}"
 
       - name: Install NEO-2 python
         run: |
