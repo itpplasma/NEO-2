@@ -217,9 +217,11 @@ jobs:
 
           make
 
-          echo "neo2_ql_main=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> "$GITHUB_OUTPUT"
-          echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> "$GITHUB_OUTPUT"
-          echo "source_dir=$(pwd)" >> "$GITHUB_OUTPUT"
+          {
+            echo "neo2_ql_main=$(pwd)/build/NEO-2-QL/neo_2_ql.x"
+            echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x"
+            echo "source_dir=$(pwd)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build the same NEO-2 source with the previous libneo pin
         if: github.event_name == 'pull_request'
