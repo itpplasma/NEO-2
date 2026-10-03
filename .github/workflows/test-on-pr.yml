@@ -237,8 +237,9 @@ jobs:
           # h5_copy from an open writer. Compare this transition against the
           # merged copy repair; subsequent bumps use their actual base pin.
           if [ "$OLD_REF" = 7262c32bf0406594a8ef27e84654d249aef2cb86 ]; then
-            echo "Previous libneo $OLD_REF contains the known Fortio copy defect; using merged repair 1a5fb7ecd08f7a130793ebc67993de28521ee57a as the numerical baseline." >> "$GITHUB_STEP_SUMMARY"
-            OLD_REF=1a5fb7ecd08f7a130793ebc67993de28521ee57a
+            BASELINE_REF=1a5fb7ecd08f7a130793ebc67993de28521ee57a
+            echo "Previous libneo $OLD_REF contains the known Fortio copy defect; using merged repair $BASELINE_REF as the numerical baseline." >> "$GITHUB_STEP_SUMMARY"
+            OLD_REF=$BASELINE_REF
           fi
           echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "NEO-2 $(git rev-parse HEAD), libneo $OLD_REF versus $NEW_REF" >> "$GITHUB_STEP_SUMMARY"
