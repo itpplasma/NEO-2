@@ -367,6 +367,8 @@ jobs:
           make_strict() {
             make SHELL=/bin/bash '.SHELLFLAGS=-e -o pipefail -c' "$@"
           }
+          # Compare both pins with the same PAR process count and launch options.
+          cp "$GOLDEN_DIR/par/current/NEO2-all.sh" "$GOLDEN_DIR/par/reference/NEO2-all.sh"
           for case in lorentz ql par; do
             make_strict -C "$GOLDEN_DIR/$case/reference" clean
             rm -f "$GOLDEN_DIR/$case/reference/summary.h5"
