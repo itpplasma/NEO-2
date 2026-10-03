@@ -226,8 +226,8 @@ jobs:
           BASE_SOURCE: ${{ steps.build_reference_main.outputs.source_dir }}
         run: |
           set -euo pipefail
-          OLD_REF=$(sed -n 's/^[[:space:]]*set(LIBNEO_REF \([^)]*\)).*/\1/p' "$BASE_SOURCE/COMMON/ProjectConfig.cmake.in")
-          NEW_REF=$(sed -n 's/^[[:space:]]*set(LIBNEO_REF \([^)]*\)).*/\1/p' COMMON/ProjectConfig.cmake.in)
+          OLD_REF=$(git -C "$BASE_SOURCE/build/_deps/libneo-src" rev-parse HEAD)
+          NEW_REF=$(git -C build/_deps/libneo-src rev-parse HEAD)
           test -n "$OLD_REF" && test -n "$NEW_REF"
           if [ "$OLD_REF" = "$NEW_REF" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
