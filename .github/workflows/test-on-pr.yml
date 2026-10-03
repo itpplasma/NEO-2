@@ -233,6 +233,13 @@ jobs:
           OLD_REF=$(sed -n 's/^[[:space:]]*set(LIBNEO_REF \([^)]*\)).*/\1/p' "$BASE_SOURCE/COMMON/ProjectConfig.cmake.in")
           NEW_REF=$(sed -n 's/^[[:space:]]*set(LIBNEO_REF \([^)]*\)).*/\1/p' COMMON/ProjectConfig.cmake.in)
           test -n "$OLD_REF" && test -n "$NEW_REF"
+          # The pre-repair pin cannot reconstruct current NEO-2: Fortio rejects
+          # h5_copy from an open writer. Compare this transition against the
+          # merged copy repair; subsequent bumps use their actual base pin.
+          if [ "$OLD_REF" = 7262c32bf0406594a8ef27e84654d249aef2cb86 ]; then
+            echo "Previous libneo $OLD_REF contains the known Fortio copy defect; using merged repair 1a5fb7ecd08f7a130793ebc67993de28521ee57a as the numerical baseline." >> "$GITHUB_STEP_SUMMARY"
+            OLD_REF=1a5fb7ecd08f7a130793ebc67993de28521ee57a
+          fi
           if [ "$OLD_REF" = "$NEW_REF" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -354,14 +361,20 @@ jobs:
           GOLDEN_GUARD: ${{ github.workspace }}/ShellScripts/check_golden_hdf5.py
         run: |
           set -euo pipefail
+          strict_script=$(mktemp)
+          printf 'set -e -o pipefail\n' > "$strict_script"
+          export BASH_ENV="$strict_script"
+          make_strict() {
+            make SHELL=/bin/bash '.SHELLFLAGS=-e -o pipefail -c' "$@"
+          }
           for case in lorentz ql par; do
-            make -C "$GOLDEN_DIR/$case/reference" clean
+            make_strict -C "$GOLDEN_DIR/$case/reference" clean
             rm -f "$GOLDEN_DIR/$case/reference/summary.h5"
             if [ "$case" = lorentz ]; then
-              TOL=1e-14 MAGNETICS_TOL=1e-12 make -C "$GOLDEN_DIR/$case" comparison
+              TOL=1e-14 MAGNETICS_TOL=1e-12 make_strict -C "$GOLDEN_DIR/$case" comparison
               tolerance=1e-14
             else
-              TOL=1e-15 make -C "$GOLDEN_DIR/$case" comparison
+              TOL=1e-15 make_strict -C "$GOLDEN_DIR/$case" comparison
               tolerance=1e-15
             fi
             python "$GOLDEN_GUARD" "$GOLDEN_DIR/$case/reference/summary.h5" \
