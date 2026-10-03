@@ -2,6 +2,22 @@ BUILD_DIR := build
 BUILD_NINJA := $(BUILD_DIR)/build.ninja
 CONFIG ?= Release
 
+# CMake's automatic compiler search can select an unusable `flang` executable
+# before gfortran (for example, when an incomplete LLVM installation is on
+# PATH).  NEO-2 is developed and tested with gfortran, so use it by default.
+# Keep both CMake's and the shell's compiler overrides working for users who
+# need a different Fortran compiler.
+ifneq ($(filter command line environment,$(origin CMAKE_Fortran_COMPILER)),)
+FORTRAN_COMPILER_ARG := -DCMAKE_Fortran_COMPILER=$(CMAKE_Fortran_COMPILER)
+else ifneq ($(filter command line environment,$(origin FC)),)
+FORTRAN_COMPILER_ARG := -DCMAKE_Fortran_COMPILER=$(FC)
+else
+DEFAULT_FORTRAN_COMPILER := $(shell command -v gfortran 2>/dev/null)
+ifneq ($(strip $(DEFAULT_FORTRAN_COMPILER)),)
+FORTRAN_COMPILER_ARG := -DCMAKE_Fortran_COMPILER=$(DEFAULT_FORTRAN_COMPILER)
+endif
+endif
+
 ifneq ($(filter command line environment,$(origin LIBNEO_GIT_TAG)),)
 $(error LIBNEO_GIT_TAG is deprecated; use LIBNEO_REF instead)
 endif
@@ -18,7 +34,7 @@ endif
 all: ninja
 
 $(BUILD_NINJA):
-	cmake --preset default -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_BUILD_TYPE=$(CONFIG) $(if $(LIBNEO_REF),-DLIBNEO_REF=$(LIBNEO_REF))
+	cmake --preset default -DCMAKE_COLOR_DIAGNOSTICS=ON -DCMAKE_BUILD_TYPE=$(CONFIG) $(FORTRAN_COMPILER_ARG) $(if $(LIBNEO_REF),-DLIBNEO_REF=$(LIBNEO_REF))
 
 ninja: $(BUILD_NINJA)
 	cmake --build --preset default

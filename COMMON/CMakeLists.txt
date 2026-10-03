@@ -107,7 +107,7 @@ target_link_libraries(common PUBLIC
 if(LEGACY_SUITESPARSE)
   target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES})
 else()
-  target_link_libraries(common PUBLIC SuiteSparse::umfpack)
+  target_link_libraries(common PUBLIC SuiteSparse::UMFPACK)
 endif()
 
 target_link_libraries(common PUBLIC
