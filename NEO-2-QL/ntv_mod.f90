@@ -3195,7 +3195,10 @@ CONTAINS
     ELSE
        ! boozer coordinates
 
-       IF (isw_Vphi_loc.GE.0 .AND. isw_Vphi_loc.LE.2) THEN
+       ! isw_Vphi_loc only describes the measured V_phi, which is not an
+       ! input for prescribed Om_tE (isw_calc_Er=2); do not validate it there.
+       IF (isw_calc_Er .EQ. 2 .OR. &
+            (isw_Vphi_loc.GE.0 .AND. isw_Vphi_loc.LE.2)) THEN
           x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
           CALL mag(x_tmp,bmod_tmp,sqrtg_tmp,bder_tmp,hcovar_tmp,&
                hctrvr_tmp,hcoder_tmp,hctder_tmp)

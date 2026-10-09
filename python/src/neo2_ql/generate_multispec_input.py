@@ -8,8 +8,8 @@ def generate_multispec_input(config: dict, profiles_src: dict, profiles_interp_c
     nspecies = len(config['Z'])
     multispec['/num_species'] = nspecies
     multispec['/species_tag'] = np.array(range(nspecies), dtype=np.int32) + 1
-    multispec['/species_tag_Vphi'] = config['species_tag_of_vrot']
-    multispec['/isw_Vphi_loc'] = 0
+    if 'vrot' not in profiles_src and 'Om_tE' not in profiles_src:
+        raise ValueError('profiles_src needs a "vrot" or an "Om_tE" profile')
 
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(profiles_src, profiles_interp_config)
 
@@ -23,7 +23,12 @@ def generate_multispec_input(config: dict, profiles_src: dict, profiles_interp_c
     multispec['/dT_ov_ds_prof'] = derivative(stor, profiles['T'])
     multispec['/n_prof'] = profiles['n']
     multispec['/dn_ov_ds_prof'] = derivative(stor, profiles['n'])
-    multispec['/Vphi'] = profiles['vrot']
+    # V_phi is optional: isw_calc_Er=2 takes Om_tE directly and does not
+    # read V_phi, so an Om_tE-only input omits the V_phi datasets.
+    if 'vrot' in profiles:
+        multispec['/Vphi'] = profiles['vrot']
+        multispec['/species_tag_Vphi'] = config['species_tag_of_vrot']
+        multispec['/isw_Vphi_loc'] = 0
     if 'Om_tE' in profiles:
         multispec['/Om_tE'] = profiles['Om_tE']
     ELEMENTARY_CHARGE_CGS = 1.60217662e-19 * 2.99792458e8 * 10
@@ -82,10 +87,11 @@ def write_multispec_to_hdf5(hdf5_filename, multispec):
         f['boozer_s'].attrs['unit'] = '1'
         f.create_dataset('/rho_pol', data=multispec['/rho_pol'], dtype='float64')
         f['rho_pol'].attrs['unit'] = '1'
-        f.create_dataset('/Vphi', data=multispec['/Vphi'], dtype='float64')
-        f['Vphi'].attrs['unit'] = 'rad / s'
-        f.create_dataset('/species_tag_Vphi', data=[multispec['/species_tag_Vphi']], dtype='int32')
-        f.create_dataset('/isw_Vphi_loc', data=[multispec['/isw_Vphi_loc']], dtype='int32')
+        if '/Vphi' in multispec:
+            f.create_dataset('/Vphi', data=multispec['/Vphi'], dtype='float64')
+            f['Vphi'].attrs['unit'] = 'rad / s'
+            f.create_dataset('/species_tag_Vphi', data=[multispec['/species_tag_Vphi']], dtype='int32')
+            f.create_dataset('/isw_Vphi_loc', data=[multispec['/isw_Vphi_loc']], dtype='int32')
         if '/Om_tE' in multispec:
             f.create_dataset('/Om_tE', data=multispec['/Om_tE'], dtype='float64')
             f['Om_tE'].attrs['unit'] = 'rad / s'

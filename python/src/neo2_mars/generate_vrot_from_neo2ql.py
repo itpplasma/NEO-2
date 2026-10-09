@@ -7,6 +7,12 @@ def generate_vrot_for_mars(neo2ql_input_file):
 
 def get_vrot_from_neo2ql(neo2ql_input_file):
     neo2ql = h5py.File(neo2ql_input_file, "r")
+    if "Vphi" not in neo2ql:
+        # An Om_tE-only input (isw_calc_Er=2) carries the ExB rotation, not the
+        # measured toroidal rotation MARS expects; do not substitute one for
+        # the other silently.
+        raise ValueError(f"{neo2ql_input_file} has no Vphi profile (Om_tE-only "
+                         "input for isw_calc_Er=2); MARS needs the toroidal rotation.")
     sqrtspol = np.array(neo2ql["rho_pol"])
     ion_vrot = np.array(neo2ql["Vphi"])
     return sqrtspol, ion_vrot
