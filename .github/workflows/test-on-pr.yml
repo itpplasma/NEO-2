@@ -37,21 +37,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy
 
-      - name: Cache apt packages
-        uses: awalsh128/cache-apt-pkgs-action@v1
+      - name: Install apt packages
+        uses: ./.github/actions/apt-packages
         with:
-          # The latest stable NEO-2 baseline still uses the system libraries;
-          # the candidate build below uses dependency-free Fortio through libneo.
+          # The stable reference build still needs these system libraries.
           packages: git cmake make ninja-build gcc g++ gfortran jq libopenblas-dev liblapack-dev libsuitesparse-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev openmpi-bin openmpi-common libopenmpi-dev
-          version: 1.0
-          execute_install_scripts: true
 
       - name: Ensure BLAS and MPI are properly configured
         run: |
           # Fallback installation to ensure pkg-config files are present
           sudo apt-get update
-          sudo apt-get install -y --reinstall libopenblas-dev pkg-config
-          sudo apt-get install -y --reinstall openmpi-bin openmpi-common libopenmpi-dev
+          sudo apt-get -o Dir::Cache::archives="$RUNNER_TEMP/neo2-apt-archives" \
+            install -y --reinstall libopenblas-dev pkg-config
+          sudo apt-get -o Dir::Cache::archives="$RUNNER_TEMP/neo2-apt-archives" \
+            install -y --reinstall openmpi-bin openmpi-common libopenmpi-dev
           
           # Verify BLAS can be found
           pkg-config --exists openblas && echo "OpenBLAS pkg-config found" || echo "Warning: OpenBLAS pkg-config not found"
