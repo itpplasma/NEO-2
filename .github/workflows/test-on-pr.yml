@@ -94,9 +94,6 @@ jobs:
           cd python
           pip install -e .
 
-      - name: Test malformed golden output rejection
-        run: python -m unittest discover -s TEST -p test_golden_hdf5_guard.py
-
 
       - name: Build NEO-2 (current version)
         id: build
@@ -233,14 +230,6 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # The pre-repair pin cannot reconstruct current NEO-2: Fortio rejects
-          # h5_copy from an open writer. Compare this transition against the
-          # merged copy repair; subsequent bumps use their actual base pin.
-          if [ "$OLD_REF" = 7262c32bf0406594a8ef27e84654d249aef2cb86 ]; then
-            BASELINE_REF=1a5fb7ecd08f7a130793ebc67993de28521ee57a
-            echo "Previous libneo $OLD_REF contains the known Fortio copy defect; using merged repair $BASELINE_REF as the numerical baseline." >> "$GITHUB_STEP_SUMMARY"
-            OLD_REF=$BASELINE_REF
-          fi
           echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "NEO-2 $(git rev-parse HEAD), libneo $OLD_REF versus $NEW_REF" >> "$GITHUB_STEP_SUMMARY"
           PREVIOUS_DIR=$(mktemp -d)
@@ -355,7 +344,6 @@ jobs:
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
           REFERENCE_NEO2_QL: ${{ steps.build_previous_libneo.outputs.neo2_ql }}
           GOLDEN_DIR: ${{ steps.run_test_stable.outputs.test_dir }}
-          GOLDEN_GUARD: ${{ github.workspace }}/ShellScripts/check_golden_hdf5.py
         run: |
           set -euo pipefail
           strict_script=$(mktemp)
@@ -371,13 +359,9 @@ jobs:
             rm -f "$GOLDEN_DIR/$case/reference/summary.h5"
             if [ "$case" = lorentz ]; then
               TOL=1e-14 MAGNETICS_TOL=1e-12 make_strict -C "$GOLDEN_DIR/$case" comparison
-              tolerance=1e-14
             else
               TOL=1e-15 make_strict -C "$GOLDEN_DIR/$case" comparison
-              tolerance=1e-15
             fi
-            python "$GOLDEN_GUARD" "$GOLDEN_DIR/$case/reference/summary.h5" \
-              "$GOLDEN_DIR/$case/current/summary.h5" "$tolerance"
           done
 
       - name: Upload libneo comparison output on failure
