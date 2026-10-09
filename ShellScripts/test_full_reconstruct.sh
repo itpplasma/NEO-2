@@ -95,8 +95,8 @@ function check_equality_dat {
 # calls an appropriate function from module hdf5tools, and exits with
 # return value depending on output of the function.
 #
-# Note that at the moment only differences in data are considered. If
-# the files differ in what fields are present, then this is ignored.
+# Require matching data and all reference fields. Additional fields in
+# the test output are allowed.
 #
 # input:
 # ------
@@ -125,7 +125,7 @@ function check_equality_hdf5 {
 
     echo "from hdf5tools import compare_hdf5_files; import sys; \
     res = compare_hdf5_files('$h5file', '${testfile}', ${accuracy}, [], '$referencepath_local/${testcase_local}/blacklist.txt', True); \
-    sys.exit(0 if res[0] else 1)" | python3
+    sys.exit(0 if all(res) else 1)" | python3
     res="$?"
     # Avoid setting the return value to zero, if it was already unequal
     # zero.
