@@ -62,6 +62,19 @@ set_tests_properties(spline_sparse_assembly_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_arnoldi_breakdown test_arnoldi_breakdown.f90)
+target_link_libraries(test_arnoldi_breakdown neo2_ql)
+
+add_test(NAME arnoldi_breakdown_test
+         COMMAND test_arnoldi_breakdown
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(arnoldi_breakdown_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 # theta_B from (R,Z) on a closed curve (used by calc_thetaB_RZloc for
 # isw_Vphi_loc=1); analytic-curve oracle.
 add_executable(test_theta_rz_solver test_theta_rz_solver.f90)
