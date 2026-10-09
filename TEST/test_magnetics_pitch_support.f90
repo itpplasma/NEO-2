@@ -1,6 +1,6 @@
 program test_magnetics_pitch_support
-  use hdf5, only: HID_T
-  use hdf5_tools, only: h5_init, h5_open, h5_open_group, h5_close_group, h5_close, h5_get
+  use hdf5_tools, only: HID_T, h5_init, h5_open, h5_open_group, &
+       h5_close_group, h5_close, h5_get
   use magnetics_mod, only: device_struct, surface_struct, fieldline_struct, &
        fieldperiod_struct, fieldpropagator_struct, fieldripple_struct, &
        coordinates_struct, magneticdata_struct, construct_magnetics, &
