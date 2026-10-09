@@ -1,0 +1,286 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{parskip}
+
+\newcommand{\rd}{\mathrm{d}}
+\newcommand{\tht}{\vartheta}
+\newcommand{\ph}{\varphi}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{Radial force balance for $E_r$ and $\Omega_{tE}$:\\
+the Level 0--3 hierarchy and the AUG 30835 benchmark}
+\date{}
+
+\begin{document}
+\maketitle
+\sloppy
+
+\section{Purpose}
+
+NEO-2-QL computes the radial electric field $E_r$ in \code{compute\_Er}
+(\code{NEO-2-QL/ntv\_mod.f90}) from the multi-species neoclassical closure,
+given the toroidal rotation \code{Vphi} of one species.  Most other
+workflows estimate $E_r$ from a reduced radial force balance instead.  This
+note derives a hierarchy of such estimates (Levels 0--3), states when they
+agree with NEO-2, and quantifies the differences on two AUG 30835 surfaces.
+
+The levels are implemented in \code{python/src/neo2\_ql/force\_balance.py}.
+Level~3 replays \code{compute\_Er} term by term.  The numbers in
+Sec.~\ref{sec:aug} are checked by
+\code{python/test/test\_force\_balance\_aug30835.py}; run it with
+\code{--table} to print them.
+
+\section{Conventions}
+
+Gaussian CGS units throughout.  The radial label is the effective radius
+$r$ with $\rd/\rd r = \langle|\nabla s|\rangle\,\rd/\rd s$, where $s$ is the
+normalized toroidal flux.  Boozer coordinates $(r,\tht,\ph)$; the rotation
+species is $i$ (\code{species\_tag\_Vphi}), with charge $e_i = Z_i e$.
+
+\begin{center}
+\begin{tabular}{lll}
+  \toprule
+  Symbol & NEO-2 output & Meaning \\
+  \midrule
+  $s$ & \code{boozer\_s} & normalized toroidal flux \\
+  $\langle|\nabla s|\rangle$ & \code{av\_nabla\_stor} & [1/cm] \\
+  $\psi' = \sqrt{g}B^\tht$ & \code{sqrtg\_bctrvr\_tht} &
+    $\rd\psi_\mathrm{pol}/\rd r$ [G\,cm], $\psi_\mathrm{pol}$ per radian \\
+  $B_\tht,\ B_\ph$ & \code{bcovar\_tht}, \code{bcovar\_phi} &
+    covariant Boozer components [G\,cm] \\
+  $\iota$ & \code{aiota} & rotational transform \\
+  $V^\ph$ & \code{Vphi} & toroidal rotation frequency [rad/s] \\
+  $D_{3j}^{ib}$ & \code{D31\_AX}, \code{D32\_AX}, \code{D33\_AX} &
+    axisymmetric coefficients, row $i$, column $b$ \\
+  $E_r$ & \code{Er} & $-\rd\Phi/\rd r$ [statV/cm] \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+In Boozer coordinates $B^\ph(B_\ph + \iota B_\tht) = B^2$, and $\psi' =
+\iota\sqrt{g}B^\ph$ is a flux function.  The $E\times B$ rotation frequency is
+\begin{equation}\label{eq:omte}
+  \Omega_{tE} = \frac{c\,E_r}{\psi'}
+  = \frac{c\,E_r}{\iota\,\sqrt{g}B^\ph},
+\end{equation}
+as written by \code{ntv\_mod.f90} (also as the toroidal Mach number
+\code{MtOvR} $=\Omega_{tE}/v_{T,a}$ with $v_{T,a}=\sqrt{2T_a/m_a}$).
+
+\section{Exact single-species force balance}
+
+Write the flow of species $a$ as $\mathbf{V}_a = \omega_a(r)\,R^2\nabla\phi +
+u_a(r)\,\mathbf{B}$, where $\phi$ in $R^2\nabla\phi$ is the geometric toroidal
+angle (not the Boozer angle $\ph$).  Perpendicular momentum balance
+\cite{HintonHazeltine1976,HelanderSigmar2002} gives
+\begin{equation}\label{eq:omega}
+  \omega_a = \Omega_{tE} - \frac{c}{e_a n_a \psi'}\frac{\rd p_a}{\rd r}.
+\end{equation}
+The toroidal rotation that NEO-2 takes as input, the flux-surface average of
+the contravariant component (\code{isw\_Vphi\_loc = 0}), satisfies
+$V^\ph(B_\ph + \iota B_\tht) = \omega\,\iota B_\tht + \langle V_\parallel
+B\rangle$.  Eliminating $\omega$ gives the exact relation
+\begin{equation}\label{eq:exact}
+  E_r = \frac{1}{e_i n_i}\frac{\rd p_i}{\rd r}
+      + \frac{\psi'}{c\,\iota B_\tht}
+        \Bigl[V^\ph(B_\ph + \iota B_\tht)
+              - \langle V_{\parallel i} B\rangle\Bigr].
+\end{equation}
+The levels differ only in the model for the parallel flow
+$\langle V_{\parallel i}B\rangle$.
+
+\section{The hierarchy}
+
+\paragraph{Level 0 --- diamagnetic.}  No flows ($V^\ph = 0$, $u_i = 0$):
+\begin{equation}\label{eq:level0}
+  E_r = \frac{1}{e_i n_i}\frac{\rd p_i}{\rd r}.
+\end{equation}
+
+\paragraph{Level 1 --- rigid toroidal rotation.}  With $u_i = 0$,
+$\langle V_\parallel B\rangle = \omega B_\ph$ and $\omega = V^\ph$:
+\begin{equation}\label{eq:level1}
+  E_r = \frac{1}{e_i n_i}\frac{\rd p_i}{\rd r} + \frac{\psi'\,V^\ph}{c}.
+\end{equation}
+Locally, $R B_\mathrm{pol} = |\psi'|\,|\nabla s|/\langle|\nabla s|\rangle$, so
+up to this metric factor (and its sign) the rotation term is the familiar
+laboratory $v_\phi B_\mathrm{pol}/c$ with $v_\phi = R V^\ph$.  The
+rotation multiplies the contravariant flux derivative $\psi' = \sqrt{g}B^\tht$,
+not the covariant $B_\tht$: on the AUG surfaces below $\psi'/B_\tht = -5.0$
+and $-3.4$, and $V^\ph B_\tht/c$ in place of $\psi' V^\ph/c$ moves $E_r$ in
+the wrong direction (Sec.~\ref{sec:aug}).
+
+\paragraph{Level 2 --- neoclassical poloidal rotation.}  Neoclassical theory
+gives $u_i\langle B^2\rangle = k_i\,c\,B_\ph\,T_i'/(e_i\psi')$
+\cite{HirshmanSigmar1981,KimDiamondGroebner1991}, hence
+\begin{equation}\label{eq:level2}
+  E_r = \frac{1}{e_i n_i}\frac{\rd p_i}{\rd r} + \frac{\psi'\,V^\ph}{c}
+      - \frac{k_i}{e_i}\,\frac{B_\ph}{B_\ph + \iota B_\tht}\,
+        \frac{\rd T_i}{\rd r}.
+\end{equation}
+For $B_\ph \gg \iota B_\tht$ the last term tends to $-k_i T_i'/e_i$, the
+large-aspect-ratio form used in many experimental and MHD workflows.  The
+coefficient $k_i$ (positive in the banana regime) can be taken from
+\begin{itemize}
+  \item the asymptotic regime values $1.17$ (banana), $-0.5$ (plateau) and
+    $-2.1$ (Pfirsch--Schl\"uter) \cite{HintonHazeltine1976,KimDiamondGroebner1991};
+  \item the Sauter--Angioni--Lin-Liu fit in the trapped fraction $f_t$ and
+    Sauter's ion collisionality $\nu_{*i}$ \cite{Sauter1999}
+    (\code{poloidal\_rotation\_coefficient\_sauter});
+  \item NEO-2's own coefficients, $k_i = 5/2 - D_{32}^{ii}/D_{31}^{ii}$
+    \cite{Kasilov2014} (\code{poloidal\_rotation\_coefficient\_from\_neo2}).
+\end{itemize}
+
+\paragraph{Level 3 --- full NEO-2 closure.}  NEO-2's parallel flow is
+$\langle V_{\parallel i}B\rangle = -\sum_b (D_{31}^{ib}A_{1b} + D_{32}^{ib}A_{2b}
++ D_{33}^{ib}A_{3b})$ with the thermodynamic forces \cite{Kernbichler2016}
+\begin{equation}\label{eq:forces}
+  A_{1b} = \frac{\rd\ln n_b}{\rd r} - \frac{3}{2}\frac{\rd\ln T_b}{\rd r}
+         - \frac{e_b E_r}{T_b},
+  \qquad
+  A_{2b} = \frac{\rd\ln T_b}{\rd r},
+  \qquad
+  A_{3b} = \frac{e_b\langle E_\parallel B\rangle}{T_b\langle B^2\rangle}.
+\end{equation}
+Because $A_{1b}$ contains $E_r$, Eq.~\eqref{eq:exact} becomes linear in $E_r$:
+\begin{equation}\label{eq:level3}
+  E_r = \frac{N}{D},\qquad
+  D = \frac{c\,\iota B_\tht}{\psi'} + \sum_b D_{31}^{ib}\frac{e_b}{T_b},
+\end{equation}
+\begin{multline*}
+  N = V^\ph(B_\ph + \iota B_\tht)
+    + \frac{c\,\iota B_\tht}{\psi'}\,\frac{1}{e_i n_i}\frac{\rd p_i}{\rd r}
+    + \sum_b\Bigl[D_{31}^{ib}\Bigl(\frac{\rd\ln n_b}{\rd r}
+                                   + \frac{\rd\ln T_b}{\rd r}\Bigr) \\
+      + \bigl(D_{32}^{ib} - \tfrac{5}{2}D_{31}^{ib}\bigr)\frac{\rd\ln T_b}{\rd r}
+      + D_{33}^{ib}\,\frac{e_b\langle E_\parallel B\rangle}{T_b\langle B^2\rangle}
+    \Bigr].
+\end{multline*}
+This is \code{compute\_Er} for \code{isw\_Vphi\_loc = 0}; the local modes
+1 and 2 replace $1/(B_\ph + \iota B_\tht)$ by a local factor and are covered
+in the docstring of \code{er\_level3\_neo2\_multispecies}.
+
+Level~2 with NEO-2's $k_i$ equals Level~3 exactly if (a) the ion row has no
+cross-species entries, (b) the diagonal entry satisfies the momentum identity
+$D_{31}^{ii}e_i\psi'/(c\,T_i) = B_\ph$ (checked by
+\code{rigid\_rotation\_defect}), and (c) there is no inductive drive.  Under
+(b) the denominator $D$ is $1 + B_\ph/(\iota B_\tht)$ times its first term,
+about $50$ on the surfaces below.
+
+\section{AUG 30835 benchmark}\label{sec:aug}
+
+The reference data \code{python/test/data/omte\_reference\_aug30835.npz} was
+extracted from two NEO-2-QL runs (electrons and deuterium, axisymmetric AUG
+30835 geometry, $s = 0.253$ and $0.498$).  Both runs use the same local
+plasma parameters ($n$, $T$, their gradients and $V^\ph = 7.70\times10^4$\,rad/s);
+only the geometry differs.  The ion row contains cross-species coefficients
+and $\langle E_\parallel B\rangle \neq 0$.  Table~\ref{tab:levels} compares
+the levels with the $E_r$ written by NEO-2.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrrr}
+  \toprule
+  & \multicolumn{2}{c}{$s = 0.253$} & \multicolumn{2}{c}{$s = 0.498$} \\
+  Model & $E_r$ [statV/cm] & vs.\ NEO-2 & $E_r$ [statV/cm] & vs.\ NEO-2 \\
+  \midrule
+  NEO-2 \code{Er}                         & $-0.610$ & & $-1.550$ & \\
+  Level 3 (replay)                        & $-0.610$ & $<10^{-9}$ & $-1.550$ & $<10^{-9}$ \\
+  Level 2, $k$ from NEO-2                 & $-0.685$ & $+12\%$ & $-1.697$ & $+9\%$ \\
+  Level 2, $k = 1.17$ (banana limit)      & $+0.379$ & wrong sign & $+0.079$ & wrong sign \\
+  Level 1                                 & $-1.884$ & $\times 3.1$ & $-3.284$ & $\times 2.1$ \\
+  Level 0                                 & $-2.932$ & $\times 4.8$ & $-4.359$ & $\times 2.8$ \\
+  \midrule
+  Level 1 with $V^\ph B_\tht/c$ (wrong)   & $-3.142$ & & $-4.671$ & \\
+  \bottomrule
+\end{tabular}
+\caption{$E_r$ from the force-balance levels on two AUG 30835 surfaces.
+NEO-2's poloidal rotation coefficient is $k_i = 0.620$ and $0.552$.}
+\label{tab:levels}
+\end{table}
+
+Findings:
+\begin{itemize}
+  \item Level~3 reproduces the Fortran $E_r$ to $6\times10^{-10}$ relative,
+    and $c\,E_r/\psi'$ reproduces the Mach numbers \code{MtOvR} of both
+    species.  These runs are independent of the fixture used by
+    \code{test\_force\_balance.py} and include cross-species coefficients and
+    an inductive drive, so this is an independent check of the replay.
+  \item Level~2 with NEO-2's $k_i$ overestimates $|E_r|$ by $9$--$12\%$.  At
+    $s = 0.253$, removing in turn the inductive drive ($D_{33}$), the
+    cross-species coefficients and the momentum defect of the ion--ion entry
+    accounts for $8.9\%$, $2.0\%$ and $1.3\%$ of the $12.3\%$ (the split
+    depends on the order because each term also changes $D$; the defect of
+    the full row is below $1\%$).
+  \item The banana-limit value $k = 1.17$ is about twice NEO-2's $k_i$ at the
+    finite trapped fraction of these surfaces and gives $E_r$ of the wrong
+    sign, although $\nu_* \approx 10^{-3}$.  Collisionality alone does not
+    fix $k$; it depends on $f_t$ as well.
+  \item Toroidal rotation alone (Level~1) still misses $E_r$ by a factor
+    $2$--$3$: the poloidal-rotation term is essential.
+\end{itemize}
+
+Each term of $N$ in Eq.~\eqref{eq:level3}, divided by $D$, is the additive
+contribution to $E_r$ (statV/cm):
+
+\begin{center}
+\begin{tabular}{lrr}
+  \toprule
+  Term & $s = 0.253$ & $s = 0.498$ \\
+  \midrule
+  rotation $V^\ph(B_\ph + \iota B_\tht)$ & $+1.042$ & $+1.069$ \\
+  diamagnetic                           & $-0.054$ & $-0.083$ \\
+  $D_{31}$                              & $-2.759$ & $-4.121$ \\
+  $D_{32} - \frac52 D_{31}$             & $+1.107$ & $+1.469$ \\
+  $D_{33}$ (inductive)                  & $+0.055$ & $+0.116$ \\
+  \midrule
+  $E_r$                                 & $-0.610$ & $-1.550$ \\
+  $D$ / first term of $D$               & $53.9$   & $52.4$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\section{Relation to other workflows}
+
+\paragraph{MARS-Q.}  \code{neo2\_mars.generate\_omega\_e\_from\_neo2ql}
+passes NEO-2's $\Omega_{tE}$ to MARS through \code{PROFWE.IN}.  Without
+that file, the MARS-Q NTV preprocessing evaluates a Level~2 estimate in the
+large-aspect-ratio form, $q\,\omega_E = \omega_\phi - k\,q\,\omega_{*Ti} +
+q\,\omega_{*i}$, with the fixed banana value $k = 1.17$ (MARS-Q commit
+\code{8824bb1}, \code{MarsQ\_2FK/ntv\_pre.f} and \code{common\_ntv.f}).  On
+the surfaces above that estimate has the wrong sign.
+
+\paragraph{GACODE \code{vgen}.}  \code{er\_method = 2} also infers $E_r$
+from a neoclassical closure constrained by the toroidal rotation, but with a
+different closure and rotation definition: it evaluates local NEO at zero
+$E_r$ and corrects $E_r$ analytically from the residual between the measured
+and the NEO toroidal flow at $\theta = 0$.  Comparing it with \code{compute\_Er}
+(flux-surface-averaged $V^\ph$ for \code{isw\_Vphi\_loc = 0}) therefore
+requires matching rotation definitions and closures; differences are not
+evidence of an error in either code.  \code{er\_method = 1}, nominally local force balance with
+measured $v_\mathrm{tor}$ and $v_\mathrm{pol}$, cannot serve as a check
+either: \code{vgen\_init} sets \code{EXPRO\_vtor} and \code{EXPRO\_vpol} to
+zero before the \code{er\_method = 1} branch of \code{vgen} uses them
+(gacode commit \code{f34a9dd}, \code{vgen/src/vgen\_init.f90} and
+\code{vgen/src/vgen.f90}).
+
+\begin{thebibliography}{9}
+\bibitem{HintonHazeltine1976} F.~L.~Hinton and R.~D.~Hazeltine,
+  Rev.\ Mod.\ Phys.\ \textbf{48}, 239 (1976).
+\bibitem{HelanderSigmar2002} P.~Helander and D.~J.~Sigmar,
+  \emph{Collisional Transport in Magnetized Plasmas} (Cambridge University
+  Press, 2002), Ch.~8.
+\bibitem{HirshmanSigmar1981} S.~P.~Hirshman and D.~J.~Sigmar,
+  Nucl.\ Fusion \textbf{21}, 1079 (1981).
+\bibitem{KimDiamondGroebner1991} Y.~B.~Kim, P.~H.~Diamond and
+  R.~J.~Groebner, Phys.\ Fluids B \textbf{3}, 2050 (1991).
+\bibitem{Sauter1999} O.~Sauter, C.~Angioni and Y.~R.~Lin-Liu,
+  Phys.\ Plasmas \textbf{6}, 2834 (1999); Erratum: Phys.\ Plasmas
+  \textbf{9}, 5140 (2002).
+\bibitem{Kasilov2014} S.~V.~Kasilov \emph{et al.},
+  Phys.\ Plasmas \textbf{21}, 092506 (2014).
+\bibitem{Kernbichler2016} W.~Kernbichler \emph{et al.},
+  Plasma Phys.\ Control.\ Fusion \textbf{58}, 104001 (2016).
+\end{thebibliography}
+
+\end{document}
