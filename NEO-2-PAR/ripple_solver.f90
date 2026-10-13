@@ -171,6 +171,7 @@ SUBROUTINE ripple_solver(                                 &
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
   INTEGER :: iter,nphiequi,npassing_next,source_step
   INTEGER :: source_threads, iter_source(3)
+  LOGICAL :: converged_source(3)
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
@@ -2296,6 +2297,7 @@ call cpu_time(time2)
 
 call cpu_time(time1)
   if(isw_intp.eq.1) then
+    converged_source=.false.
 
     if(k_coefficient_only.and.sparse_solve_method.eq.3) then
       ! The two retained source chains share one read-only factorization.
@@ -2314,19 +2316,20 @@ call cpu_time(time1)
           call sparse_solve_factorized(bvec_iter)
           source_vector(:,k)=bvec_lor+bvec_iter
           if(sum(abs(source_vector(:,k)-bvec_prev)) .lt. &
-             sum(abs(bvec_prev))*epserr_iter) exit
+             sum(abs(bvec_prev))*epserr_iter) then
+            converged_source(k)=.true.
+            exit
+          endif
         enddo
         iter_source(k)=iter
       enddo
 !$omp end parallel do
       do k=1,3,2
-        if(iter_source(k).le.niter) then
+        if(converged_source(k)) then
           write (*,*) "Source: ", k, "Number of iterations: ", iter_source(k)
         endif
-        if(niter.eq.iter_source(k)) then
-          write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
-          stop
-        endif
+        if(.not.converged_source(k)) &
+          error stop 'k_coefficient_only: integral iteration did not converge.'
       enddo
     else
     do k=1,3,source_step
@@ -2347,11 +2350,15 @@ call cpu_time(time1)
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
+           converged_source(k)=.true.
            write (*,*) "Source: ", k, "Number of iterations: ", iter
            exit
         endif
      enddo
-     if (niter .eq. iter) then
+     if (k_coefficient_only) then
+        if (.not. converged_source(k)) &
+           error stop 'k_coefficient_only: integral iteration did not converge.'
+     else if (niter .eq. iter) then
         write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
         stop
      end if
