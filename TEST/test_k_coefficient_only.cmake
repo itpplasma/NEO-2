@@ -135,3 +135,29 @@ run_neo(no_k_mode
 run_neo(iter_budget
         "&settings niter=1 /\n&collision k_coefficient_only=.true., k_iter_solver=1, isw_integral=1, isw_lorentz=0 /\n&binsplit /\n&propagator /\n&plotting /\n"
         "requires niter>=2")
+
+function(reject_backend name backend k_only iter_solver method message)
+  string(CONCAT config
+    "&settings magnetic_device=0, sparse_solve_method=${method} /\n"
+    "&collision k_coefficient_only=${k_only}, k_iter_solver=${iter_solver}, "
+    "k_sparse_backend=${backend}, isw_axisymm=1, isw_integral=1, isw_lorentz=0 /\n"
+    "&binsplit /\n&propagator prop_fileformat=1 /\n&plotting /\n")
+  run_neo("${name}" "${config}" "${message}")
+  file(GLOB output "${WORK_DIR}/${name}/*.h5")
+  if(output)
+    message(FATAL_ERROR "${name} wrote output before backend validation: ${output}")
+  endif()
+endfunction()
+reject_backend(backend_negative -1 .true. 1 3 "k_sparse_backend must be")
+reject_backend(backend_range 3 .true. 1 3 "k_sparse_backend must be")
+reject_backend(backend_no_k 1 .false. 0 3 "requires k_coefficient_only")
+reject_backend(backend_no_gmres 1 .true. 0 3 "requires k_iter_solver=1")
+reject_backend(backend_method 1 .true. 1 2 "requires sparse_solve_method=3")
+foreach(backend 1 2)
+  if(NOT NEO2_USE_FORTSPARSE OR
+     (backend EQUAL 1 AND NOT FORTSPARSE_ENABLE_SUPERLU) OR
+     (backend EQUAL 2 AND NOT FORTSPARSE_ENABLE_MUMPS))
+    reject_backend(backend_unavailable_${backend} ${backend} .true. 1 3
+                   "k_sparse_backend=${backend} requires fortsparse")
+  endif()
+endforeach()

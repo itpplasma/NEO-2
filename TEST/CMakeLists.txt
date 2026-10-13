@@ -84,8 +84,28 @@ add_test(NAME k_coefficient_only_test
         "-DFIXTURE=${BOOZMN_FIXTURE}"
         "-DCONTROL_TEMPLATE=${CMAKE_CURRENT_SOURCE_DIR}/../DOC/neo.in.par-full"
         "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/k_coefficient_only"
+        "-DNEO2_USE_FORTSPARSE=${NEO2_USE_FORTSPARSE}"
+        "-DFORTSPARSE_ENABLE_SUPERLU=${FORTSPARSE_ENABLE_SUPERLU}"
+        "-DFORTSPARSE_ENABLE_MUMPS=${FORTSPARSE_ENABLE_MUMPS}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/test_k_coefficient_only.cmake")
 set_tests_properties(k_coefficient_only_test PROPERTIES TIMEOUT 60 PROCESSORS 1)
+
+if(NEO2_USE_FORTSPARSE)
+    add_executable(test_k_sparse_backend test_k_sparse_backend.f90)
+    target_link_libraries(test_k_sparse_backend neo2_k_sparse_backend MPI::MPI_Fortran)
+    foreach(backend 1 2)
+        if((backend EQUAL 1 AND FORTSPARSE_ENABLE_SUPERLU) OR
+           (backend EQUAL 2 AND FORTSPARSE_ENABLE_MUMPS))
+            add_test(NAME k_sparse_backend_${backend}_test
+                COMMAND test_k_sparse_backend ${backend})
+            set_tests_properties(k_sparse_backend_${backend}_test PROPERTIES
+                PASS_REGULAR_EXPRESSION "All tests passed!"
+                FAIL_REGULAR_EXPRESSION "FAIL"
+                ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1;VECLIB_MAXIMUM_THREADS=1"
+                TIMEOUT 30 PROCESSORS 1)
+        endif()
+    endforeach()
+endif()
 
 add_executable(test_fixed_point_gmres test_fixed_point_gmres.f90)
 target_link_libraries(test_fixed_point_gmres common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})

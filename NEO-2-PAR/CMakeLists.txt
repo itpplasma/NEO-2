@@ -18,6 +18,26 @@ set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAG
 
 target_link_libraries(${EXE_NAME} common)
 target_include_directories(${EXE_NAME} PUBLIC "${CMAKE_BINARY_DIR}/COMMON")
+add_library(neo2_k_sparse_backend k_sparse_backend_mod.F90)
+target_include_directories(neo2_k_sparse_backend PUBLIC ${CMAKE_Fortran_MODULE_DIRECTORY})
+target_link_libraries(${EXE_NAME} neo2_k_sparse_backend)
+
+option(NEO2_USE_FORTSPARSE "Enable K-only fortsparse backends" OFF)
+if(NEO2_USE_FORTSPARSE)
+  include(FetchContent)
+  FetchContent_Declare(fortsparse
+    GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
+    GIT_TAG 07bf2d07c77e2070a0734407fc503c400cd66eab)
+  FetchContent_MakeAvailable(fortsparse)
+  target_compile_definitions(neo2_k_sparse_backend PRIVATE NEO2_HAVE_FORTSPARSE)
+  if(FORTSPARSE_ENABLE_SUPERLU)
+    target_compile_definitions(neo2_k_sparse_backend PRIVATE NEO2_HAVE_FORTSPARSE_SUPERLU)
+  endif()
+  if(FORTSPARSE_ENABLE_MUMPS)
+    target_compile_definitions(neo2_k_sparse_backend PRIVATE NEO2_HAVE_FORTSPARSE_MUMPS)
+  endif()
+  target_link_libraries(neo2_k_sparse_backend PUBLIC fortsparse)
+endif()
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)

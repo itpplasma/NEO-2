@@ -103,6 +103,8 @@
                               ! drive, transport matrices and distributions.
   k_iter_solver = 0         ! 0: Richardson; 1: K-only GMRES(30), same tolerance.
                            ! niter includes the independent final residual check.
+  k_sparse_backend = 0      ! 0: UMFPACK; 1: SuperLU; 2: MUMPS (optional fortsparse).
+                            ! Nonzero requires K-only GMRES and sparse_solve_method=3.
   isw_energy = 0            ! 0: no energy conservation [default]
                             ! 1: with energy conservation
   isw_integral = 0          ! 0: no momentum convervation [default]

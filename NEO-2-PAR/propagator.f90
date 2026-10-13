@@ -884,7 +884,7 @@ CONTAINS
     USE device_mod
     USE collisionality_mod, ONLY : collpar, conl_over_mfp, &
          isw_lorentz, isw_integral, isw_energy, isw_axisymm, y_axi_averages, &
-         k_coefficient_only, k_iter_solver, k_source_converged, &
+         k_coefficient_only, k_iter_solver, k_sparse_backend, k_source_converged, &
          k_source_applications, k_source_residual
     USE rkstep_mod, ONLY : asource,anumm,ailmm,lag,leg
     USE collop, ONLY : z_eff
@@ -932,6 +932,8 @@ CONTAINS
           k_cof = 2.5_dp - prop_a%p%qflux(2,3) / prop_a%p%qflux(2,1)
           call h5_create('fulltransp.h5', h5id, 1)
           call h5_add(h5id, 'k_coefficient_only', k_coefficient_only)
+          if (k_sparse_backend /= 0) &
+             call h5_add(h5id, 'k_sparse_backend', k_sparse_backend)
           if (k_iter_solver == 1) then
              call h5_add(h5id, 'k_iter_solver', k_iter_solver)
              call h5_add(h5id, 'k_source_ids', [1,3], [1], [2])
