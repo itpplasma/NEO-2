@@ -74,3 +74,16 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+add_executable(test_rk4_kin_retry test_rk4_kin_retry.f90)
+target_link_libraries(test_rk4_kin_retry common)
+
+add_test(NAME rk4_kin_retry_test
+         COMMAND test_rk4_kin_retry
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(rk4_kin_retry_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
