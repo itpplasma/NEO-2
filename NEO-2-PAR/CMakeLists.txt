@@ -29,6 +29,11 @@ if(NEO2_USE_FORTSPARSE)
     GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
     GIT_TAG 07bf2d07c77e2070a0734407fc503c400cd66eab)
   FetchContent_MakeAvailable(fortsparse)
+  if(APPLE AND FORTSPARSE_ENABLE_MUMPS AND MPI_Fortran_LINK_FLAGS MATCHES "flat_namespace")
+    message(FATAL_ERROR
+      "MUMPS with -flat_namespace can silently corrupt solutions when BLAS libraries coexist. "
+      "Remove -flat_namespace from MPI_Fortran_LINK_FLAGS in the CMake cache and reconfigure.")
+  endif()
   target_compile_definitions(neo2_k_sparse_backend PRIVATE NEO2_HAVE_FORTSPARSE)
   if(FORTSPARSE_ENABLE_SUPERLU)
     target_compile_definitions(neo2_k_sparse_backend PRIVATE NEO2_HAVE_FORTSPARSE_SUPERLU)
