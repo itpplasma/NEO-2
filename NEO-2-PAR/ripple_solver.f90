@@ -17,6 +17,7 @@ SUBROUTINE ripple_solver(                                 &
   USE size_mod, ONLY : ndim0
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
        isw_energy,isw_integral,isw_axisymm,k_coefficient_only, & !<-in Winny
+       k_iter_solver,k_source_applications,k_source_residual, &
        isw_momentum,vel_distri_swi,vel_num,vel_max, &
        nvel,vel_array
 
@@ -40,6 +41,7 @@ SUBROUTINE ripple_solver(                                 &
   USE development
 
   use collop_compute, only: a_00_offset, a_02_offset, a_22_offset, weightenerg_offset
+  use fixed_point_gmres_mod, only: fixed_point_gmres_t
   
   !*****************************
   ! HDF5
@@ -176,6 +178,7 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
+  type(fixed_point_gmres_t) :: source_gmres
 
 !  Off-set:
 
@@ -2299,6 +2302,35 @@ call cpu_time(time1)
     do k=1,3,source_step
       bvec_lor=source_vector(:,k)
       source_converged=.false.
+
+      if (k_iter_solver == 1) then
+        ! Reserve one application for the independent final residual check.
+        call source_gmres%start(bvec_lor, epserr_iter, niter-1, 30)
+        do while (source_gmres%needs_apply())
+          call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+                             phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
+                             ailmm,source_gmres%vin,bvec_iter)
+          call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
+                            bvec_iter,iopt)
+          call source_gmres%put(bvec_iter)
+        end do
+        source_vector(:,k) = source_gmres%x
+
+        call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+                           phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
+                           ailmm,source_vector(:,k),bvec_iter)
+        call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
+                          bvec_iter,iopt)
+        k_source_applications((k+1)/2) = source_gmres%napply + 1
+        k_source_residual((k+1)/2) = &
+          sum(abs(bvec_lor + bvec_iter - source_vector(:,k))) &
+          / sum(abs(source_vector(:,k)))
+        write (*,*) 'K source:', k, 'applications:', k_source_applications((k+1)/2), &
+                    'true residual:', k_source_residual((k+1)/2)
+        if (.not. k_source_residual((k+1)/2) <= epserr_iter) &
+          error stop 'K-only GMRES failed its true-residual convergence check.'
+        cycle
+      end if
 
       do iter=1,niter
         bvec_prev=source_vector(:,k)

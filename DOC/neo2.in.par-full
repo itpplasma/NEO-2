@@ -101,6 +101,8 @@
                               ! Requires one MPI rank, Laguerre momentum, HDF5,
                               ! prop_reconstruct=0 and no plots; omits Spitzer
                               ! drive, transport matrices and distributions.
+  k_iter_solver = 0         ! 0: Richardson; 1: K-only GMRES(30), same tolerance.
+                           ! niter includes the independent final residual check.
   isw_energy = 0            ! 0: no energy conservation [default]
                             ! 1: with energy conservation
   isw_integral = 0          ! 0: no momentum convervation [default]
