@@ -18,7 +18,7 @@ PROGRAM neo2
        eta_savemem_sigma_mult, flint_prepare, flint_prepare_2, set_collpar
   USE device_mod
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
-       isw_integral,isw_energy,isw_axisymm,k_coefficient_only,      &
+       isw_integral,isw_energy,isw_axisymm,k_coefficient_only,k_iter_solver,      &
        k_surface_batch,k_surface_converged,y_axi_averages,         &
        k_surface_k,k_surface_qcurr_g,k_surface_qcurr_t,             &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
@@ -180,7 +180,7 @@ PROGRAM neo2
        epserr_sink, epserr_iter, niter, lsw_linear_boozer
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
-       isw_integral,isw_energy,isw_axisymm,k_coefficient_only,                &
+       isw_integral,isw_energy,isw_axisymm,k_coefficient_only,k_iter_solver, &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
        collop_path, collop_base_prj, collop_base_exp,                         &
        scalprod_alpha, scalprod_beta, v_min_resolution, v_max_resolution,     &
@@ -1186,6 +1186,8 @@ CONTAINS
        CALL h5_add(h5_config_group, 'isw_axisymm', isw_axisymm, '')
        if (k_coefficient_only) &
          CALL h5_add(h5_config_group, 'k_coefficient_only', k_coefficient_only)
+       if (k_iter_solver /= 0) &
+         CALL h5_add(h5_config_group, 'k_iter_solver', k_iter_solver)
        CALL h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
        CALL h5_add(h5_config_group, 'collop_base_prj', collop_base_prj, 'Projection base of collision operator')
        CALL h5_add(h5_config_group, 'collop_base_exp', collop_base_exp, 'Expansion base of collision operator')
@@ -1287,6 +1289,15 @@ CONTAINS
       if (len_trim(k_output_file) == 0 .or. &
           trim(k_output_file) == trim(k_surface_file)) &
         error stop 'Invalid k_output_file.'
+    end if
+    if (k_iter_solver < 0 .or. k_iter_solver > 1) &
+      error stop 'k_iter_solver must be 0 (Richardson) or 1 (GMRES).'
+    if (k_iter_solver == 1) then
+      if (.not. k_coefficient_only) &
+        error stop 'k_iter_solver=1 requires k_coefficient_only.'
+      if (isw_integral /= 1 .or. isw_lorentz /= 0 .or. collop_only_precompute) &
+        error stop 'k_iter_solver=1 requires the full integral collision operator.'
+      if (niter < 2) error stop 'k_iter_solver=1 requires niter >= 2.'
     end if
     if (k_coefficient_only) then
       if (isw_axisymm /= 1 .or. magnetic_device /= 0 .or. lsw_multispecies) &

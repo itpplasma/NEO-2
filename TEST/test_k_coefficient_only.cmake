@@ -94,6 +94,32 @@ string(REPLACE "niter=100" "niter=${last_iter}" last_input "${only_input}")
 run_neo(laststep "${last_input}" "")
 string(REPLACE "niter=100" "niter=1" exhausted_input "${only_input}")
 run_neo(exhausted "${exhausted_input}" "integral iteration did not converge" "fulltransp.h5" TRUE)
+string(REPLACE "k_coefficient_only=.true." "k_coefficient_only=.true., k_iter_solver=1"
+       gmres_input "${only_input}")
+# GMRES needs a platform-dependent number of operator applications on this
+# ill-conditioned fixture. Measure it with a free budget, then rerun with the
+# budget that makes convergence fall on the final allowed application.
+run_neo(gmres_free "${gmres_input}" "")
+file(READ "${WORK_DIR}/gmres_free/run.log" gmres_log)
+string(REGEX MATCHALL "applications: +[0-9]+" counts "${gmres_log}")
+set(free_apps 0)
+foreach(count IN LISTS counts)
+  string(REGEX REPLACE ".* " "" count "${count}")
+  if(count GREATER free_apps)
+    set(free_apps ${count})
+  endif()
+endforeach()
+if(free_apps LESS 3)
+  message(FATAL_ERROR "Free GMRES run must take at least one Arnoldi step")
+endif()
+# The free run spends one extra application confirming the converged iterate.
+math(EXPR gmres_budget "${free_apps} - 1")
+string(REPLACE "niter=100" "niter=${gmres_budget}" gmres_last_input "${gmres_input}")
+run_neo(gmres "${gmres_last_input}" "")
+string(REPLACE "niter=100" "niter=2" gmres_exhausted_input "${gmres_input}")
+string(REPLACE "epserr_iter=5d-2" "epserr_iter=1d-14"
+       gmres_exhausted_input "${gmres_exhausted_input}")
+run_neo(exhaustion "${gmres_exhausted_input}" "failed its true-residual" "fulltransp.h5" TRUE)
 file(GLOB incomplete "${WORK_DIR}/only/efinal.*" "${WORK_DIR}/only/evolve_*.h5"
                      "${WORK_DIR}/only/qf*.dat" "${WORK_DIR}/only/eta_[pm].dat")
 if(incomplete)
@@ -151,3 +177,12 @@ reject_table(empty "# no surfaces\n" "" "Empty k_surface_file")
 reject_table(malformed "0.5 0 0\n" "" "Expected s, R, Z, conl_over_mfp")
 reject_table(nonfinite "NaN 0 0 0.01\n" "" "Non-finite surface input")
 reject_table(first_past_end "${surface_a}" "surface_first=2," "Invalid surface_first")
+reject(iter_solver "k_iter_solver=2" "" "k_iter_solver must be")
+reject(no_integral "k_iter_solver=1, isw_integral=0" ""
+       "requires the full integral")
+run_neo(no_k_mode
+        "&settings /\n&collision k_iter_solver=1 /\n&binsplit /\n&propagator /\n&plotting /\n"
+        "requires k_coefficient_only")
+run_neo(iter_budget
+        "&settings niter=1 /\n&collision k_coefficient_only=.true., k_iter_solver=1, isw_integral=1, isw_lorentz=0 /\n&binsplit /\n&propagator /\n&plotting /\n"
+        "requires niter >= 2")
