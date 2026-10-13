@@ -2447,6 +2447,7 @@ CONTAINS
     USE neo_support
     USE neo_control
     USE neo_exchange
+    use collisionality_mod, only: k_surface_batch
 
     IMPLICIT NONE
     CHARACTER(len=200)  :: o_file1, o_file2
@@ -2468,7 +2469,7 @@ CONTAINS
 
     CALL add_extension(o_file2,'chk.dat',chk_file)
     IF (chk_swi .EQ. 1) THEN
-      IF (mpro%isMaster()) THEN
+      IF (mpro%isMaster() .and. .not. k_surface_batch) THEN
         OPEN(unit=w_u3, file=chk_file, status='replace', action='write')
         CLOSE(unit=w_u3)
       END IF
@@ -2482,7 +2483,7 @@ CONTAINS
     CALL add_extension(o_file2,'cur.int.dat',curint_file)
     CALL add_extension(o_file2,'cur.dis.dat',curdis_file)
     IF (calc_eps .EQ. 1) THEN
-      IF (mpro%isMaster()) THEN
+      IF (mpro%isMaster() .and. .not. k_surface_batch) THEN
         OPEN(unit=w_u3, file=out_file, status='replace', action='write')
         CLOSE(unit=w_u3)
         OPEN(unit=w_u3, file=epslog_file, status='replace', action='write')
@@ -2492,12 +2493,12 @@ CONTAINS
 
     CALL add_extension(o_file2,'cur.dat',cur_file)
     IF (calc_cur .EQ. 1) THEN
-      IF (mpro%isMaster()) THEN
+      IF (mpro%isMaster() .and. .not. k_surface_batch) THEN
         OPEN(unit=w_u9, file=cur_file, status='replace', action='write')
         CLOSE(unit=w_u9)
       END IF
       IF (write_cur_inte .EQ. 1) THEN
-        IF (mpro%isMaster()) THEN
+        IF (mpro%isMaster() .and. .not. k_surface_batch) THEN
           OPEN(unit=w_u9, file=curcon_file, status='replace', action='write')
           CLOSE(unit=w_u9)
           OPEN(unit=w_u9, file=curint_file, status='replace', action='write')
@@ -2505,7 +2506,7 @@ CONTAINS
         END IF
       END IF
       IF (write_cur_disp .EQ. 1) THEN
-        IF (mpro%isMaster()) THEN
+        IF (mpro%isMaster() .and. .not. k_surface_batch) THEN
           OPEN(unit=w_u9, file=curdis_file, status='replace', action='write')
           CLOSE(unit=w_u9)
         END IF
@@ -2514,7 +2515,7 @@ CONTAINS
 
     CALL add_extension(o_file2,'pla.dat',pla_file)
     IF (calc_pla .EQ. 1) THEN
-      IF (mpro%isMaster()) THEN
+      IF (mpro%isMaster() .and. .not. k_surface_batch) THEN
         OPEN(unit=w_u9, file=pla_file, status='replace', action='write')
         CLOSE(unit=w_u9)
       END IF

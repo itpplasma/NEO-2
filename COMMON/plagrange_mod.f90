@@ -1128,6 +1128,7 @@ CONTAINS
                                       phi_mfl,bhat_mfl,eta)
 
     use device_mod, only : fieldpropagator
+    use collisionality_mod, only : k_surface_batch
 
     implicit none
 
@@ -1206,22 +1207,26 @@ CONTAINS
           istep=icross_l(i)
           if (abs(bhat_mfl(istep-1)*eta_cross_l(i)-1.d0).lt. &
               abs(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) then
-            open(111,file='phi_placement_problem.dat',position='append')
-            write(111,*) ' propagator tag = ',fieldpropagator%tag, &
-                         ' step number = ',istep-1,                &
-                         ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
-                         ' eta = ',eta_cross_l(i)
-            close(111)
+            if (.not. k_surface_batch) then
+              open(111,file='phi_placement_problem.dat',position='append')
+              write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                           ' step number = ',istep-1,                &
+                           ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
+                           ' eta = ',eta_cross_l(i)
+              close(111)
+            end if
             bhat_mfl(istep-1)=1/eta_cross_l(i)
           elseif (abs(bhat_mfl(istep+1)*eta_cross_l(i)-1.d0).lt. &
                   abs(bhat_mfl(istep)  *eta_cross_l(i)-1.d0)) then
-            open(111,file='phi_placement_problem.dat',position='append')
-            write(111,*) ' propagator tag = ',fieldpropagator%tag, &
-                         ' step number = ',istep+1,                &
-                         ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
-                         ' eta = ',eta_cross_l(i)
+            if (.not. k_surface_batch) then
+              open(111,file='phi_placement_problem.dat',position='append')
+              write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                           ' step number = ',istep+1,                &
+                           ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
+                           ' eta = ',eta_cross_l(i)
+            end if
             bhat_mfl(istep+1)=1/eta_cross_l(i)
-            close(111)
+            if (.not. k_surface_batch) close(111)
           end if
         end do
         deallocate(icross_l,eta_cross_l)
@@ -1283,21 +1288,25 @@ CONTAINS
           istep=icross_r(i)
           if (abs(bhat_mfl(istep-1)*eta_cross_r(i)-1.d0).lt. &
               abs(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) then
-            open(111,file='phi_placement_problem.dat',position='append')
-            write(111,*) ' propagator tag = ',fieldpropagator%tag, &
-                         ' step number = ',istep-1,                &
-                         ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
-                         ' eta = ',eta_cross_r(i)
-            close(111)
+            if (.not. k_surface_batch) then
+              open(111,file='phi_placement_problem.dat',position='append')
+              write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                           ' step number = ',istep-1,                &
+                           ' 1 / bhat = ',1.d0/bhat_mfl(istep-1),    &
+                           ' eta = ',eta_cross_r(i)
+              close(111)
+            end if
             bhat_mfl(istep-1)=1/eta_cross_r(i)
           elseif (abs(bhat_mfl(istep+1)*eta_cross_r(i)-1.d0).lt. &
                   abs(bhat_mfl(istep)  *eta_cross_r(i)-1.d0)) then
-            open(111,file='phi_placement_problem.dat',position='append')
-            write(111,*) ' propagator tag = ',fieldpropagator%tag, &
-                         ' step number = ',istep+1,                &
-                         ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
-                         ' eta = ',eta_cross_r(i)
-            close(111)
+            if (.not. k_surface_batch) then
+              open(111,file='phi_placement_problem.dat',position='append')
+              write(111,*) ' propagator tag = ',fieldpropagator%tag, &
+                           ' step number = ',istep+1,                &
+                           ' 1 / bhat = ',1.d0/bhat_mfl(istep+1),    &
+                           ' eta = ',eta_cross_r(i)
+              close(111)
+            end if
             bhat_mfl(istep+1)=1/eta_cross_r(i)
           end if
         end do

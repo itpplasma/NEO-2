@@ -181,6 +181,14 @@
 /
 
 &settings
+  ! Native K-only batch rows: boozer_s R_cm Z_cm conl_over_mfp (R/Z ignored in Boozer).
+  ! Blank lines and # comments are allowed; shared settings remain in this namelist.
+  k_surface_file = ''      ! Nonempty enables batching; requires k_coefficient_only.
+  k_output_file = 'k_coefficients.h5' ! One aggregate output, no per-surface files.
+  surface_first = 1        ! First table row, one-based [1].
+  surface_last = 2147483647 ! Last table row, capped at table length [all].
+  ! Output vectors: boozer_s, rbeg, zbeg, conl_over_mfp, k_cof, qcurr_g, qcurr_t.
+  ! integral_converged is 1 for convergence, 0 for an exhausted iteration budget.
   aiota_tokamak=0.35145    ! [1.0d0/3.0d0]
   asymp_margin_zero = 10   ! [10]
   asymp_margin_npass = 4   ! [4]

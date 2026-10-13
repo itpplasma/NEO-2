@@ -317,7 +317,7 @@ MODULE magnetics_mod
 
   ! ---------------------------------------------------------------------------
   ! destructor
-  PUBLIC destruct_magnetics
+  PUBLIC destruct_magnetics, reset_magnetics
   PRIVATE                            &
        destruct_mag_device,          &
        destruct_mag_surface,         &
@@ -2853,5 +2853,63 @@ CONTAINS
   ! end simple pointers
   ! ---------------------------------------------------------------------------
 
+
+  subroutine reset_magnetics(device)
+    type(device_struct), pointer, intent(inout) :: device
+    type(surface_struct), pointer :: surface
+    type(fieldline_struct), pointer :: fieldline
+    type(fieldperiod_struct), pointer :: fieldperiod
+    type(inumber_struct), pointer :: tag_child
+
+    if (associated(device)) then
+      ! Propagators span periods; destruction must proceed from the tail.
+      device%ch_act => device%ch_las
+      surface => device%ch_fir
+      do while (associated(surface))
+        surface%ch_act => surface%ch_las
+        fieldline => surface%ch_fir
+        do while (associated(fieldline))
+          fieldline%ch_act => fieldline%ch_las
+          fieldperiod => fieldline%ch_fir
+          do while (associated(fieldperiod))
+            fieldperiod%ch_act => fieldperiod%ch_las
+            ! Extras are destroyed separately, but setup also records their tags.
+            if (associated(fieldperiod%ch_ext)) then
+              tag_child => fieldperiod%tag_child
+              if (associated(tag_child)) then
+                do while (associated(tag_child%prev))
+                  tag_child => tag_child%prev
+                end do
+                do
+                  if (tag_child%i == fieldperiod%ch_ext%tag) then
+                    if (associated(tag_child%prev)) tag_child%prev%next => tag_child%next
+                    if (associated(tag_child%next)) tag_child%next%prev => tag_child%prev
+                    if (associated(fieldperiod%tag_child, tag_child)) then
+                      fieldperiod%tag_child => tag_child%prev
+                      if (.not. associated(fieldperiod%tag_child)) fieldperiod%tag_child => tag_child%next
+                    end if
+                    deallocate(tag_child)
+                    exit
+                  end if
+                  if (.not. associated(tag_child%next)) exit
+                  tag_child => tag_child%next
+                end do
+              end if
+            end if
+            fieldperiod => fieldperiod%next
+          end do
+          fieldline => fieldline%next
+        end do
+        surface => surface%next
+      end do
+      call destruct_magnetics(device)
+    end if
+    device_tag = 0
+    surface_tag = 0
+    fieldline_tag = 0
+    fieldperiod_tag = 0
+    fieldpropagator_tag = 0
+    fieldripple_tag = 0
+  end subroutine reset_magnetics
 
 END MODULE magnetics_mod

@@ -119,11 +119,13 @@ CONTAINS
   ! tensor elements
   SUBROUTINE magfie_deallocate_x
     use neo_magfie, only: curr_tor_array, curr_tor_s_array, &
-         curr_pol_array, curr_pol_s_array, iota_array,          &
-         bmod_spl, bb_s_spl, bb_tb_spl, bb_pb_spl,              &
+         curr_pol_array, curr_pol_s_array, iota_array, iota_s_array, &
+         pprime_array, sqrtg00_array,                         &
+         bmod_spl, bb_s_spl, bb_tb_spl, bb_pb_spl, gval_spl,    &
          gstb_spl, gspb_spl, gstb_tb_spl, gspb_tb_spl,          &
          gstb_pb_spl, gspb_pb_spl, R_spl, Z_spl,                &
-         Rtb_spl, Ztb_spl,                                      &
+         Rtb_spl, Ztb_spl, Phi_spl, Ptb_spl,                   &
+         Rpb_spl, Zpb_spl, Ppb_spl, Rs_spl, Zs_spl, Ps_spl,    &
          G_symm_spl, G_symm_tb_spl, G_symm_pb_spl,              &
          magfie_newspline
     
@@ -132,10 +134,14 @@ CONTAINS
     IF ( ALLOCATED( curr_pol_array ) )   DEALLOCATE( curr_pol_array )
     IF ( ALLOCATED( curr_pol_s_array ) ) DEALLOCATE( curr_pol_s_array )
     IF ( ALLOCATED( iota_array ) )       DEALLOCATE( iota_array )
+    if (allocated(iota_s_array)) deallocate(iota_s_array)
+    if (allocated(pprime_array)) deallocate(pprime_array)
+    if (allocated(sqrtg00_array)) deallocate(sqrtg00_array)
     IF ( ALLOCATED( bmod_spl ) )         DEALLOCATE( bmod_spl )
     IF ( ALLOCATED( bb_s_spl ) )         DEALLOCATE( bb_s_spl )
     IF ( ALLOCATED( bb_tb_spl ) )        DEALLOCATE( bb_tb_spl )
     IF ( ALLOCATED( bb_pb_spl ) )        DEALLOCATE( bb_pb_spl )
+    if (allocated(gval_spl)) deallocate(gval_spl)
     !! Modifications by Andreas F. Martitsch (11.03.2014)
     IF ( ALLOCATED( gstb_spl ) )         DEALLOCATE( gstb_spl )
     IF ( ALLOCATED( gspb_spl ) )         DEALLOCATE( gspb_spl )
@@ -147,6 +153,14 @@ CONTAINS
     IF ( ALLOCATED( Z_spl ) )            DEALLOCATE( Z_spl )
     IF ( ALLOCATED( Rtb_spl ) )          DEALLOCATE( Rtb_spl )
     IF ( ALLOCATED( Ztb_spl ) )          DEALLOCATE( Ztb_spl )
+    if (allocated(Phi_spl)) deallocate(Phi_spl)
+    if (allocated(Ptb_spl)) deallocate(Ptb_spl)
+    if (allocated(Rpb_spl)) deallocate(Rpb_spl)
+    if (allocated(Zpb_spl)) deallocate(Zpb_spl)
+    if (allocated(Ppb_spl)) deallocate(Ppb_spl)
+    if (allocated(Rs_spl)) deallocate(Rs_spl)
+    if (allocated(Zs_spl)) deallocate(Zs_spl)
+    if (allocated(Ps_spl)) deallocate(Ps_spl)
     !! End Modifications by Andreas F. Martitsch (11.03.2014)
     !! Modifications by Andreas F. Martitsch (28.03.2017)
     ! transformation function Boozer coord. -> Symm. flux coord.
@@ -161,7 +175,7 @@ CONTAINS
 
   SUBROUTINE stevvo_x( bigR, R0i, L1i, cbfi, bz0i, bf0 )
     USE neo_input,  ONLY: nfp 
-    USE neo_exchange,  ONLY: rt0, bmref_g
+    USE neo_exchange, ONLY: rt0, bmref_g
     use neo_magfie, only: magfie_spline, magfie_sarray
     REAL(dp),                     INTENT(out)        :: bigR
     REAL(dp),                     INTENT(out)        :: R0i
