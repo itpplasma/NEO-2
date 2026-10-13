@@ -35,13 +35,17 @@ set(input [=[
 
 function(run_neo name config expected_error)
   set(directory "${WORK_DIR}/${name}")
+  set(threads 1)
+  if(ARGC GREATER 3)
+    set(threads "${ARGV3}")
+  endif()
   file(MAKE_DIRECTORY "${directory}")
   file(WRITE "${directory}/neo2.in" "${config}")
   if(expected_error STREQUAL "")
     file(WRITE "${directory}/neo.in" "${control}")
     file(CREATE_LINK "${FIXTURE}" "${directory}/boozmn_test.nc" SYMBOLIC)
   endif()
-  execute_process(COMMAND "${CMAKE_COMMAND}" -E env OMP_NUM_THREADS=1
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E env "OMP_NUM_THREADS=${threads}"
                   OPENBLAS_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 "${NEO2_EXE}"
                   WORKING_DIRECTORY "${directory}" TIMEOUT 20
                   RESULT_VARIABLE result OUTPUT_FILE "${directory}/run.log"
@@ -62,14 +66,23 @@ string(REPLACE "@K_ONLY@" ".false." full_input "${input}")
 string(REPLACE "@K_ONLY@" ".true." only_input "${input}")
 run_neo(full "${full_input}" "")
 run_neo(only "${only_input}" "")
+run_neo(full2 "${full_input}" "" 2)
+run_neo(only2 "${only_input}" "" 2)
 file(GLOB incomplete "${WORK_DIR}/only/efinal.*" "${WORK_DIR}/only/evolve_*.h5"
-                     "${WORK_DIR}/only/qf*.dat" "${WORK_DIR}/only/eta_[pm].dat")
+                     "${WORK_DIR}/only/qf*.dat" "${WORK_DIR}/only/eta_[pm].dat"
+                     "${WORK_DIR}/only2/efinal.*" "${WORK_DIR}/only2/evolve_*.h5"
+                     "${WORK_DIR}/only2/qf*.dat" "${WORK_DIR}/only2/eta_[pm].dat")
 if(incomplete)
   message(FATAL_ERROR "K-only emitted transport/distribution files: ${incomplete}")
 endif()
 execute_process(COMMAND "${CHECK_EXE}" "${WORK_DIR}" RESULT_VARIABLE result)
 if(NOT result STREQUAL "0")
   message(FATAL_ERROR "K-only numerical comparison failed (${result})")
+endif()
+# UMFPACK factors may depend on OMP_NUM_THREADS, so compare at equal thread count.
+execute_process(COMMAND "${CHECK_EXE}" "${WORK_DIR}" "2" "2" RESULT_VARIABLE result)
+if(NOT result STREQUAL "0")
+  message(FATAL_ERROR "Two-thread K-only numerical comparison failed (${result})")
 endif()
 
 # These cases deliberately have no neo.in or geometry file.

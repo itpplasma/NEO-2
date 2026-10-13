@@ -7,12 +7,15 @@ program test_k_coefficient_only
 
     integer(HID_T) :: file_id
     character(len=1024) :: work_dir
+    character(len=16) :: suffix, full_suffix
     real(dp) :: expected(3), actual(3), qflux(3, 3)
     logical :: k_only
 
     call get_command_argument(1, work_dir)
+    call get_command_argument(2, suffix)
+    call get_command_argument(3, full_suffix)
     call h5_init()
-    call h5_open(trim(work_dir)//'/full/fulltransp.h5', file_id)
+    call h5_open(trim(work_dir)//'/full'//trim(full_suffix)//'/fulltransp.h5', file_id)
     call h5_get(file_id, 'k_cof', expected(1))
     call h5_get(file_id, 'qflux', qflux)
     expected(2:3) = [qflux(2, 1), qflux(2, 3)]
@@ -20,7 +23,7 @@ program test_k_coefficient_only
         error stop 'Default transport schema changed.'
     call h5_close(file_id)
 
-    call h5_open(trim(work_dir)//'/only/fulltransp.h5', file_id)
+    call h5_open(trim(work_dir)//'/only'//trim(suffix)//'/fulltransp.h5', file_id)
     call h5_get(file_id, 'k_cof', actual(1))
     call h5_get(file_id, 'qcurr_g', actual(2))
     call h5_get(file_id, 'qcurr_t', actual(3))
