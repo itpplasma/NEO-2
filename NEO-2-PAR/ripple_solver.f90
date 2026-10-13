@@ -13,6 +13,11 @@ SUBROUTINE ripple_solver(                                 &
      )
 
   USE device_mod
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+  use, intrinsic :: iso_fortran_env, only: int64
+  use arnoldi_mod, only: iterator, ar_mode => mode, ar_ierr => ierr, &
+      ar_fzero => fzero, ar_seed => f_init_arnoldi, ar_ritz => ritznum, &
+      ar_eigvecs => eigvecs, ar_ngrow => ngrow
   USE flint_mod, ONLY : phi_divide
   USE size_mod, ONLY : ndim0
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
@@ -169,6 +174,14 @@ SUBROUTINE ripple_solver(                                 &
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
   INTEGER :: iter,nphiequi,npassing_next,source_step
+  character(8) :: ar_environment
+  integer :: ar_env_status, ar_callbacks(3), ar_real_lu(3), ar_imag_lu(3)
+  real(dp) :: ar_operator_cpu(3), ar_lu_cpu(3), ar_operator_wall(3)
+  real(dp) :: ar_lu_wall(3), ar_call_cpu, ar_call_wall, ar_setup_cpu, ar_setup_wall
+  real(dp) :: ar_begin_cpu, ar_begin_wall, ar_now, ar_residual, ar_imag_norm
+  logical :: ar_enabled, ar_setup_pending
+  complex(dp), allocatable :: ar_result(:)
+  real(dp), allocatable :: ar_work(:)
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
@@ -239,6 +252,10 @@ SUBROUTINE ripple_solver(                                 &
 
 
   ierr=0
+  call get_environment_variable('NEO2_K_ARNOLDI', ar_environment, status=ar_env_status)
+  ar_enabled = ar_env_status == 0 .and. trim(ar_environment) == '1'
+  if (ar_enabled .and. .not. k_coefficient_only) &
+      error stop 'Experimental Arnoldi requires k_coefficient_only.'
   accurfac=ripple_solver_accurfac ! in develpment
   renormfac=1.d5
   deleta_b_min=1.d-12
@@ -2289,11 +2306,87 @@ call cpu_time(time1)
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
                     source_vector(:,1:3:source_step),iopt)
 call cpu_time(time2)
+  if (ar_enabled) print *, 'ARNOLDI_INITIAL real LU calls, CPU: ', 2, time2-time1
 
 ! integral part:
 
 call cpu_time(time1)
   if(isw_intp.eq.1) then
+
+    if (ar_enabled) then
+      if (n_2d_size < 2) error stop 'Arnoldi requires at least two unknowns.'
+      if (niter < 1) error stop 'Arnoldi requires a positive iteration budget.'
+      allocate(ar_result(n_2d_size), ar_work(n_2d_size))
+      ar_result = (0.0_dp, 0.0_dp)
+      call ar_release()
+      allocate(ar_seed(n_2d_size))
+      ar_seed = cmplx(source_vector(:,1), 0.0_dp, dp)
+      do k = 1, 3, 2
+        bvec_lor = source_vector(:,k)
+        ar_result = cmplx(bvec_lor, 0.0_dp, dp)
+        ar_callbacks = 0
+        ar_real_lu = 0
+        ar_imag_lu = 0
+        ar_operator_cpu = 0.0_dp
+        ar_lu_cpu = 0.0_dp
+        ar_operator_wall = 0.0_dp
+        ar_lu_wall = 0.0_dp
+        ar_setup_cpu = 0.0_dp
+        ar_setup_wall = 0.0_dp
+        ar_setup_pending = k == 1
+        call cpu_time(ar_begin_cpu)
+        ar_begin_wall = ar_clock()
+        ar_ierr = 0
+        call iterator(1, n_2d_size, 30, epserr_iter, niter, ar_result, 0, ar_next)
+        call cpu_time(ar_now)
+        ar_call_cpu = ar_now - ar_begin_cpu
+        ar_call_wall = ar_clock() - ar_begin_wall
+        if (ar_ierr /= 0) error stop 'Existing Arnoldi failed.'
+        if (.not. allocated(ar_ritz)) error stop 'Arnoldi lost Ritz state.'
+        if (.not. allocated(ar_eigvecs)) error stop 'Arnoldi lost eigenvector state.'
+        if (.not. all(ieee_is_finite(real(ar_result,dp)))) &
+            error stop 'Arnoldi returned nonfinite real values.'
+        if (.not. all(ieee_is_finite(aimag(ar_result)))) &
+            error stop 'Arnoldi returned nonfinite imaginary values.'
+        ar_imag_norm = sum(abs(aimag(ar_result)))
+        if (ar_imag_norm > 100.0_dp * epsilon(1.0_dp) * &
+            max(1.0_dp, sum(abs(real(ar_result,dp))))) &
+            error stop 'Arnoldi returned a significant imaginary solution.'
+
+        ! Independent original PAR residual: f0 + A^-1 C f - f.
+        call cpu_time(ar_now)
+        ar_residual = ar_clock()
+        call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+            phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),ailmm, &
+            real(ar_result,dp),bvec_iter)
+        call ar_lu(bvec_iter, 3, .false.)
+        ar_operator_cpu(3) = ar_operator_cpu(3) + ar_cpu_since(ar_now)
+        ar_operator_wall(3) = ar_operator_wall(3) + ar_clock() - ar_residual
+        ar_callbacks(3) = 1
+        ar_residual = sum(abs(bvec_lor + bvec_iter - real(ar_result,dp))) / &
+            max(tiny(1.0_dp), sum(abs(real(ar_result,dp))))
+        print *, 'ARNOLDI_SOURCE source, ngrow, imaginary_l1: ', k, ar_ngrow, ar_imag_norm
+        print *, 'ARNOLDI_TIME total/setup/iteration CPU: ', &
+            ar_call_cpu, ar_setup_cpu, ar_call_cpu-ar_setup_cpu
+        print *, 'ARNOLDI_TIME total/setup/iteration wall: ', &
+            ar_call_wall, ar_setup_wall, ar_call_wall-ar_setup_wall
+        print *, 'ARNOLDI_COUNTS setup/iteration/gate callbacks: ', ar_callbacks
+        print *, 'ARNOLDI_COUNTS setup/iteration/gate real LU: ', ar_real_lu
+        print *, 'ARNOLDI_COUNTS setup/iteration/gate imaginary LU: ', ar_imag_lu
+        print *, 'ARNOLDI_OPERATOR setup/iteration/gate CPU: ', ar_operator_cpu
+        print *, 'ARNOLDI_OPERATOR setup/iteration/gate wall: ', ar_operator_wall
+        print *, 'ARNOLDI_LU setup/iteration/gate CPU: ', ar_lu_cpu
+        print *, 'ARNOLDI_LU setup/iteration/gate wall: ', ar_lu_wall
+        print *, 'ARNOLDI_GATE source, relative_l1, target: ', k, ar_residual, epserr_iter
+        if (.not. ieee_is_finite(ar_residual)) &
+            error stop 'Arnoldi original-PAR residual is nonfinite.'
+        if (ar_residual > epserr_iter) &
+            error stop 'Arnoldi failed the original-PAR true-residual gate.'
+        source_vector(:,k) = real(ar_result,dp)
+      end do
+      call ar_release()
+      deallocate(ar_result, ar_work)
+    else
 
     do k=1,3,source_step
       bvec_lor=source_vector(:,k)
@@ -2322,7 +2415,10 @@ call cpu_time(time1)
         stop
      end if
     enddo
+    endif
 
+  else if (ar_enabled) then
+    error stop 'Experimental Arnoldi requires the integral collision operator.'
   endif
   call cpu_time(time2)
 
@@ -2878,6 +2974,86 @@ PRINT *,' '
 
   !------------------------------------------------------------------------
   RETURN
+contains
+
+  real(dp) function ar_clock()
+    integer(int64) :: count, rate
+    call system_clock(count, rate)
+    ar_clock = real(count,dp) / real(rate,dp)
+  end function ar_clock
+
+  real(dp) function ar_cpu_since(start)
+    real(dp), intent(in) :: start
+    real(dp) :: now
+    call cpu_time(now)
+    ar_cpu_since = now - start
+  end function ar_cpu_since
+
+  subroutine ar_lu(vector, phase, imaginary)
+    real(dp), intent(inout) :: vector(:)
+    integer, intent(in) :: phase
+    logical, intent(in) :: imaginary
+    real(dp) :: cpu, wall
+    call cpu_time(cpu)
+    wall = ar_clock()
+    call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),vector,2)
+    ar_lu_cpu(phase) = ar_lu_cpu(phase) + ar_cpu_since(cpu)
+    ar_lu_wall(phase) = ar_lu_wall(phase) + ar_clock() - wall
+    if (imaginary) then
+      ar_imag_lu(phase) = ar_imag_lu(phase) + 1
+    else
+      ar_real_lu(phase) = ar_real_lu(phase) + 1
+    endif
+  end subroutine ar_lu
+
+  subroutine ar_next(n, fold, fnew)
+    ! Match the unchanged iterator's callback interface.
+    integer :: n
+    complex(dp) :: fold(n), fnew(n)
+    integer :: phase
+    real(dp) :: cpu, wall
+    call cpu_time(cpu)
+    wall = ar_clock()
+    phase = 2
+    if (ar_mode == 2) phase = 1
+    if (phase == 2 .and. ar_setup_pending) then
+      ar_setup_cpu = cpu - ar_begin_cpu
+      ar_setup_wall = wall - ar_begin_wall
+      ar_setup_pending = .false.
+    endif
+    ar_work = real(fold,dp)
+    call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+        phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),ailmm,ar_work,bvec_iter)
+    call ar_lu(bvec_iter, phase, .false.)
+    fnew = cmplx(bvec_iter, 0.0_dp, dp)
+    if (any(aimag(fold) /= 0.0_dp)) then
+      ar_work = aimag(fold)
+      call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+          phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),ailmm,ar_work,bvec_iter)
+      call ar_lu(bvec_iter, phase, .true.)
+      fnew = cmplx(real(fnew,dp), bvec_iter, dp)
+    endif
+    if (ar_mode /= 2) fnew = fnew + ar_fzero
+    if (.not. all(ieee_is_finite(real(fnew,dp)))) &
+        error stop 'Arnoldi callback returned nonfinite real values.'
+    if (.not. all(ieee_is_finite(aimag(fnew)))) &
+        error stop 'Arnoldi callback returned nonfinite imaginary values.'
+    ar_callbacks(phase) = ar_callbacks(phase) + 1
+    ar_operator_cpu(phase) = ar_operator_cpu(phase) + ar_cpu_since(cpu)
+    ar_operator_wall(phase) = ar_operator_wall(phase) + ar_clock() - wall
+  end subroutine ar_next
+
+  subroutine ar_release()
+    ! iterator(3) assumes Ritz/eigenvector allocations are paired.
+    if (allocated(ar_ritz) .neqv. allocated(ar_eigvecs)) then
+      if (allocated(ar_ritz)) deallocate(ar_ritz)
+      if (allocated(ar_eigvecs)) deallocate(ar_eigvecs)
+    endif
+    call iterator(3,n_2d_size,30,epserr_iter,niter,ar_result,0,ar_next)
+    if (allocated(ar_seed)) deallocate(ar_seed)
+    if (allocated(ar_fzero)) deallocate(ar_fzero)
+  end subroutine ar_release
+
 END SUBROUTINE ripple_solver
 
 

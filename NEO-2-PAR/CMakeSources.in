@@ -8,6 +8,7 @@ if (MPI_SUPPORT)
 endif ()
 
 set(NEO2_PAR_SRC_FILES
+  ../NEO-2-QL/arnoldi_mod.f90
   ./propagator.f90
   ./flint.f90
   ./ripple_solver.f90
