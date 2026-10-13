@@ -17,10 +17,12 @@ PROGRAM neo2
        bsfunc_lambda_loc_res, eta_savemem_dist1, eta_savemem_dist2, &
        eta_savemem_sigma_mult, flint_prepare, flint_prepare_2, set_collpar
   USE device_mod
+  use k_sparse_backend_mod, only: require_k_sparse_backend
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
-       isw_integral,isw_energy,isw_axisymm,k_coefficient_only,      &
+       isw_integral,isw_energy,isw_axisymm,k_coefficient_only,k_iter_solver, &
        k_surface_batch,k_surface_converged,y_axi_averages,         &
        k_surface_k,k_surface_qcurr_g,k_surface_qcurr_t,             &
+       k_sparse_backend, &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
        phi_x_max, collop_bspline_order, collop_bspline_dist,        &
@@ -180,7 +182,8 @@ PROGRAM neo2
        epserr_sink, epserr_iter, niter, lsw_linear_boozer
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
-       isw_integral,isw_energy,isw_axisymm,k_coefficient_only,                &
+       isw_integral,isw_energy,isw_axisymm,k_coefficient_only,k_iter_solver, &
+       k_sparse_backend, &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
        collop_path, collop_base_prj, collop_base_exp,                         &
        scalprod_alpha, scalprod_beta, v_min_resolution, v_max_resolution,     &
@@ -836,6 +839,8 @@ CONTAINS
     count = surface_end - surface_begin + 1
     call h5_create(trim(k_output_file), output)
     call h5_add(output, 'k_coefficient_only', k_coefficient_only)
+    if (k_iter_solver /= 0) call h5_add(output, 'k_iter_solver', k_iter_solver)
+    if (k_sparse_backend /= 0) call h5_add(output, 'k_sparse_backend', k_sparse_backend)
     call h5_add(output, 'surface_first', surface_begin)
     call h5_add(output, 'surface_last', surface_end)
     call h5_add(output, 'boozer_s', surface_inputs(1,surface_begin:surface_end), [1], [count])
@@ -1181,6 +1186,10 @@ CONTAINS
        CALL h5_add(h5_config_group, 'isw_axisymm', isw_axisymm, '')
        if (k_coefficient_only) &
          CALL h5_add(h5_config_group, 'k_coefficient_only', k_coefficient_only)
+       if (k_iter_solver /= 0) &
+         CALL h5_add(h5_config_group, 'k_iter_solver', k_iter_solver)
+       if (k_sparse_backend /= 0) &
+         CALL h5_add(h5_config_group, 'k_sparse_backend', k_sparse_backend)
        CALL h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
        CALL h5_add(h5_config_group, 'collop_base_prj', collop_base_prj, 'Projection base of collision operator')
        CALL h5_add(h5_config_group, 'collop_base_exp', collop_base_exp, 'Expansion base of collision operator')
@@ -1282,6 +1291,29 @@ CONTAINS
         error stop 'k_surface_file does not support collision precomputation writes.'
       if (len_trim(k_output_file) == 0 .or. trim(k_output_file) == trim(k_surface_file)) &
         error stop 'Invalid k_output_file.'
+    end if
+    if (k_sparse_backend < 0 .or. k_sparse_backend > 2) &
+      call require_k_sparse_backend(k_sparse_backend)
+    if (k_sparse_backend /= 0) then
+      if (.not. k_coefficient_only) &
+        error stop 'k_sparse_backend requires k_coefficient_only.'
+      if (k_iter_solver /= 1) &
+        error stop 'k_sparse_backend requires k_iter_solver=1.'
+      if (sparse_solve_method /= 3) &
+        error stop 'k_sparse_backend requires sparse_solve_method=3.'
+    end if
+    call require_k_sparse_backend(k_sparse_backend)
+    if (k_iter_solver < 0 .or. k_iter_solver > 1) &
+      error stop 'k_iter_solver must be 0 (Richardson) or 1 (GMRES).'
+    if (k_iter_solver == 1) then
+      if (.not. k_coefficient_only) &
+        error stop 'k_iter_solver=1 requires k_coefficient_only.'
+      if (isw_integral /= 1 .or. isw_lorentz /= 0 .or. collop_only_precompute) &
+        error stop 'k_iter_solver=1 requires the full integral collision operator.'
+      if (niter < 2 .or. .not. ieee_is_finite(epserr_iter)) &
+        error stop 'k_iter_solver=1 requires niter>=2 and a finite tolerance.'
+      if (epserr_iter < 0.d0) &
+        error stop 'k_iter_solver=1 requires epserr_iter>=0.'
     end if
     if (k_coefficient_only) then
       if (niter < 1) error stop 'k_coefficient_only requires niter >= 1.'
