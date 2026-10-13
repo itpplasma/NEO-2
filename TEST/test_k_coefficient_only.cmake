@@ -37,7 +37,7 @@ function(run_neo name config expected_error)
   set(directory "${WORK_DIR}/${name}")
   file(MAKE_DIRECTORY "${directory}")
   file(WRITE "${directory}/neo2.in" "${config}")
-  if(expected_error STREQUAL "")
+  if(expected_error STREQUAL "" OR "${ARGV3}" STREQUAL "geometry")
     file(WRITE "${directory}/neo.in" "${control}")
     file(CREATE_LINK "${FIXTURE}" "${directory}/boozmn_test.nc" SYMBOLIC)
   endif()
@@ -62,6 +62,13 @@ string(REPLACE "@K_ONLY@" ".false." full_input "${input}")
 string(REPLACE "@K_ONLY@" ".true." only_input "${input}")
 run_neo(full "${full_input}" "")
 run_neo(only "${only_input}" "")
+string(REPLACE "k_coefficient_only=.true." "k_coefficient_only=.true., k_iter_solver=1"
+       gmres_input "${only_input}")
+run_neo(gmres "${gmres_input}" "")
+string(REPLACE "niter=100" "niter=2" exhausted_input "${gmres_input}")
+string(REPLACE "epserr_iter=5d-2" "epserr_iter=1d-14"
+       exhausted_input "${exhausted_input}")
+run_neo(exhaustion "${exhausted_input}" "failed its true-residual" geometry)
 file(GLOB incomplete "${WORK_DIR}/only/efinal.*" "${WORK_DIR}/only/evolve_*.h5"
                      "${WORK_DIR}/only/qf*.dat" "${WORK_DIR}/only/eta_[pm].dat")
 if(incomplete)
@@ -83,3 +90,12 @@ reject(momentum "isw_axisymm=1, isw_momentum=1" "prop_fileformat=1" "Laguerre mo
 reject(ascii "isw_axisymm=1" "prop_fileformat=0" "requires HDF5")
 reject(reconstruction "isw_axisymm=1" "prop_fileformat=1, prop_reconstruct=1" "requires HDF5")
 reject(plot "isw_axisymm=1" "prop_fileformat=1, prop_ripple_plot=1" "does not support")
+reject(iter_solver "k_iter_solver=2" "" "k_iter_solver must be")
+reject(no_integral "k_iter_solver=1, isw_integral=0" ""
+       "requires the full integral")
+run_neo(no_k_mode
+        "&settings /\n&collision k_iter_solver=1 /\n&binsplit /\n&propagator /\n&plotting /\n"
+        "requires k_coefficient_only")
+run_neo(iter_budget
+        "&settings niter=1 /\n&collision k_coefficient_only=.true., k_iter_solver=1, isw_integral=1, isw_lorentz=0 /\n&binsplit /\n&propagator /\n&plotting /\n"
+        "requires niter>=2")

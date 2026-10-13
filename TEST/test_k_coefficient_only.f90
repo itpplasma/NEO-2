@@ -8,6 +8,8 @@ program test_k_coefficient_only
     integer(HID_T) :: file_id
     character(len=1024) :: work_dir
     real(dp) :: expected(3), actual(3), qflux(3, 3)
+    real(dp) :: residual(2)
+    integer :: solver, source_ids(2), converged(2), applications(2)
     logical :: k_only
 
     call get_command_argument(1, work_dir)
@@ -30,7 +32,6 @@ program test_k_coefficient_only
         h5_exists(file_id, 'full_version')) &
         error stop 'Incomplete transport matrix was published.'
     call h5_close(file_id)
-    call h5_deinit()
 
     if (.not. all(ieee_is_finite(expected)) .or. &
         .not. all(ieee_is_finite(actual))) error stop 'Nonfinite transport result.'
@@ -40,5 +41,28 @@ program test_k_coefficient_only
         print *, 'K-only result: ', actual
         error stop 'K-only changed the current responses or k coefficient.'
     end if
+
+    call h5_open(trim(work_dir)//'/gmres/fulltransp.h5', file_id)
+    call h5_get(file_id, 'k_cof', actual(1))
+    call h5_get(file_id, 'qcurr_g', actual(2))
+    call h5_get(file_id, 'qcurr_t', actual(3))
+    call h5_get(file_id, 'k_iter_solver', solver)
+    call h5_get(file_id, 'k_source_ids', source_ids)
+    call h5_get(file_id, 'k_source_converged', converged)
+    call h5_get(file_id, 'k_source_applications', applications)
+    call h5_get(file_id, 'k_source_residual', residual)
+    call h5_close(file_id)
+    call h5_deinit()
+    if (.not. all(ieee_is_finite(actual)) .or. &
+        .not. all(ieee_is_finite(residual))) error stop 'Nonfinite GMRES result.'
+    if (solver /= 1 .or. any(source_ids /= [1,3]) .or. any(converged /= 1)) &
+        error stop 'Missing GMRES source convergence.'
+    if (any(residual > 5.d-2) .or. any(residual < 0.d0)) &
+        error stop 'GMRES residual exceeds the requested tolerance.'
+    if (any(applications > 100) .or. any(applications < 2)) &
+        error stop 'GMRES operator application budget was not respected.'
+    if (abs(actual(2)) <= tiny(1.0_dp)) error stop 'Zero GMRES current response.'
+    if (actual(1) /= 2.5_dp-actual(3)/actual(2)) &
+        error stop 'GMRES K coefficient disagrees with current responses.'
     print *, 'All tests passed!'
 end program test_k_coefficient_only

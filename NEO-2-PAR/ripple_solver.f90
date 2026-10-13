@@ -16,7 +16,8 @@ SUBROUTINE ripple_solver(                                 &
   USE flint_mod, ONLY : phi_divide
   USE size_mod, ONLY : ndim0
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
-       isw_energy,isw_integral,isw_axisymm,k_coefficient_only, & !<-in Winny
+       isw_energy,isw_integral,isw_axisymm,k_coefficient_only,k_iter_solver, &
+       k_source_converged,k_source_applications,k_source_residual, &
        isw_momentum,vel_distri_swi,vel_num,vel_max, &
        nvel,vel_array
 
@@ -40,6 +41,8 @@ SUBROUTINE ripple_solver(                                 &
   USE development
 
   use collop_compute, only: a_00_offset, a_02_offset, a_22_offset, weightenerg_offset
+  use fixed_point_gmres_mod, only: fixed_point_gmres_t
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
   
   !*****************************
   ! HDF5
@@ -175,6 +178,9 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
+  type(fixed_point_gmres_t) :: source_gmres
+  integer :: k_source_index
+  real(dp) :: k_residual_norm, k_solution_norm
 
 !  Off-set:
 
@@ -2295,8 +2301,56 @@ call cpu_time(time2)
 call cpu_time(time1)
   if(isw_intp.eq.1) then
 
+    if (k_iter_solver == 1) then
+      k_source_converged = 0
+      k_source_applications = 0
+      k_source_residual = -1.d0
+    end if
+
     do k=1,3,source_step
       bvec_lor=source_vector(:,k)
+
+      if (k_iter_solver == 1) then
+        ! Reserve one application for an independent returned-vector check.
+        call source_gmres%start(bvec_lor, epserr_iter, niter-1)
+        do while (source_gmres%needs_apply())
+          call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+                             phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
+                             ailmm,source_gmres%vin,bvec_iter)
+          call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
+                            bvec_iter,iopt)
+          call source_gmres%put(bvec_iter)
+        end do
+        if (source_gmres%failed) &
+          error stop 'K-only GMRES received a nonfinite operator response.'
+        source_vector(:,k) = source_gmres%x
+
+        ! Reapply the physical operator independently of GMRES state/estimates.
+        call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+                           phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
+                           ailmm,source_vector(:,k),bvec_iter)
+        call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
+                          bvec_iter,iopt)
+        bvec_iter = bvec_lor + bvec_iter - source_vector(:,k)
+        k_residual_norm = sum(abs(bvec_iter))
+        k_solution_norm = sum(abs(source_vector(:,k)))
+        k_source_index = (k+1)/2
+        k_source_applications(k_source_index) = source_gmres%napply + 1
+        k_source_residual(k_source_index) = &
+            k_residual_norm / max(k_solution_norm, tiny(1.d0))
+        if (source_gmres%converged .and. ieee_is_finite(k_residual_norm) .and. &
+            ieee_is_finite(k_solution_norm)) then
+          if (k_residual_norm <= epserr_iter*k_solution_norm) &
+            k_source_converged(k_source_index) = 1
+        end if
+        write (*,*) 'K source:', k, 'applications:', &
+            k_source_applications(k_source_index), 'true residual:', &
+            k_source_residual(k_source_index), 'converged:', &
+            k_source_converged(k_source_index)
+        if (k_source_converged(k_source_index) /= 1) &
+          error stop 'K-only GMRES failed its true-residual convergence check.'
+        cycle
+      end if
 
       do iter=1,niter
         bvec_prev=source_vector(:,k)
@@ -2322,6 +2376,8 @@ call cpu_time(time1)
         stop
      end if
     enddo
+
+    if (k_iter_solver == 1) call source_gmres%free()
 
   endif
   call cpu_time(time2)
