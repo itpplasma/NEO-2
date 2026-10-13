@@ -19,6 +19,8 @@ PROGRAM neo2
   USE device_mod
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
        isw_integral,isw_energy,isw_axisymm,k_coefficient_only,      &
+       k_surface_batch,k_surface_converged,y_axi_averages,         &
+       k_surface_k,k_surface_qcurr_g,k_surface_qcurr_t,             &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
        phi_x_max, collop_bspline_order, collop_bspline_dist,        &
@@ -32,7 +34,7 @@ PROGRAM neo2
        prop_write,prop_reconstruct,prop_ripple_plot,                &
        prop_reconstruct_levels, prop_fileformat,                    &
        prop_finaljoin_mode, lsw_save_dentf, lsw_save_enetf,         &
-       lsw_save_spitf
+       lsw_save_spitf,reset_propagators
   USE magnetics_mod, ONLY : mag_talk,mag_infotalk,mag_write_hdf5,   &
        h5_magnetics_file_name
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
@@ -63,7 +65,9 @@ PROGRAM neo2
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
   use field_eq_mod, only : use_fpol
   use neo_spline_data, only : lsw_linear_boozer
-  use neo_magfie, only: magfie_bcast_fourier
+  use magfie_mod, only: magfie_deallocate
+  use neo_magfie, only: magfie_bcast_fourier, magfie_sarray
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_value, ieee_quiet_nan
 
   !************************************
   ! HDF5
@@ -143,6 +147,13 @@ PROGRAM neo2
   INTEGER :: u1=10
   INTEGER :: ios
   INTEGER :: jf
+  character(512) :: k_surface_file = '', k_output_file = 'k_coefficients.h5'
+  integer :: surface_first = 1, surface_last = huge(1)
+  integer :: surface_index, surface_begin, surface_end
+  real(dp), allocatable :: surface_inputs(:,:), surface_results(:,:)
+  integer, allocatable :: surface_converged(:)
+  real(dp) :: saved_bsfunc_local_err
+  integer :: saved_proptag_begin
   CHARACTER(len=20), DIMENSION(2) :: fnames
   !! Modification by Andreas F. Martitsch (23.08.2015)
   ! multi-species part:
@@ -160,6 +171,7 @@ PROGRAM neo2
        eta_part_globalfac_p,eta_part_globalfac_t,                             &
        eta_alpha_p,eta_alpha_t,eta_part_trapped,                              &
        mag_coordinates,boozer_s,boozer_theta_beg,boozer_phi_beg,              &
+       k_surface_file,k_output_file,surface_first,surface_last,             &
        mag_dbhat_min,mag_dphi_inf_min,mag_inflection_mult,                    &
        solver_talk,switch_off_asymp,                                          &
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
@@ -425,7 +437,16 @@ PROGRAM neo2
      CLOSE(unit=u1)
   END DO
 
+  k_surface_batch = len_trim(k_surface_file) > 0
   call sanity_check_input_parameters()
+  surface_begin = 1
+  surface_end = 1
+  if (k_surface_batch) then
+    call read_k_surfaces()
+    mag_write_hdf5 = .false.
+  end if
+  saved_bsfunc_local_err = bsfunc_local_err
+  saved_proptag_begin = proptag_begin
 
   !! Modification by Andreas F. Martitsch (23.08.2015)
   ! multi-species part:
@@ -472,6 +493,23 @@ PROGRAM neo2
   IF (mpro%isMaster()) THEN
      CALL write_version_info()
   END IF
+
+  do surface_index = surface_begin, surface_end
+  if (k_surface_batch) then
+    boozer_s = surface_inputs(1,surface_index)
+    rbeg = surface_inputs(2,surface_index)
+    zbeg = surface_inputs(3,surface_index)
+    conl_over_mfp = surface_inputs(4,surface_index)
+    if (.not. allocated(conl_over_mfp_spec)) allocate(conl_over_mfp_spec(0:0))
+    conl_over_mfp_spec(0) = conl_over_mfp
+    bsfunc_local_err = saved_bsfunc_local_err
+    proptag_begin = saved_proptag_begin
+    k_surface_converged = .true.
+    k_surface_k = ieee_value(0.0_dp, ieee_quiet_nan)
+    k_surface_qcurr_g = k_surface_k
+    k_surface_qcurr_t = k_surface_k
+    write (*,*) 'K surface', surface_index, boozer_s
+  end if
 
   !**********************************************************
   ! Check reconstruction switch
@@ -548,7 +586,7 @@ PROGRAM neo2
      !*********************************************************
      ! Write information about the run to a HDF5 file
      !*********************************************************
-     IF (mpro%isMaster() .AND. prop_fileformat .EQ. 1) THEN
+     IF (mpro%isMaster() .AND. prop_fileformat .EQ. 1 .and. .not. k_surface_batch) THEN
         CALL write_run_info()
      END IF
 
@@ -603,7 +641,7 @@ PROGRAM neo2
      !**********************************************************
      ! Save runtime to HDF5 neo2_config file
      !**********************************************************
-     IF (mpro%isMaster()) THEN
+     IF (mpro%isMaster() .and. .not. k_surface_batch) THEN
 
         IF (prop_fileformat .EQ. 1) THEN
 
@@ -717,6 +755,17 @@ PROGRAM neo2
      CALL prop_reconstruct_3()
   END IF
 
+  if (k_surface_batch) then
+    surface_results(:,surface_index) = &
+      [k_surface_k, k_surface_qcurr_g, k_surface_qcurr_t]
+    if (.not. all(ieee_is_finite(surface_results(:,surface_index)))) &
+      error stop 'Non-finite K surface result.'
+    surface_converged(surface_index) = merge(1, 0, k_surface_converged)
+    call release_k_surface()
+  end if
+  end do
+  if (k_surface_batch) call write_k_surfaces()
+
   if (mpro%isMaster()) then
     usage = get_rusage()
     call write_fortran_rusage(usage)
@@ -738,6 +787,89 @@ PROGRAM neo2
   STOP
 
 CONTAINS
+
+  subroutine read_k_surfaces()
+    integer :: unit, stat, count, row
+    character(2048) :: line
+    real(dp) :: values(4)
+
+    open(newunit=unit, file=trim(k_surface_file), status='old', action='read', &
+         iostat=stat)
+    if (stat /= 0) error stop 'Cannot open k_surface_file.'
+    count = 0
+    do
+      read(unit, '(a)', iostat=stat) line
+      if (stat < 0) exit
+      if (stat /= 0) error stop 'Cannot read k_surface_file.'
+      line = adjustl(line)
+      if (len_trim(line) == 0) cycle
+      if (line(1:1) == '#') cycle
+      read(line, *, iostat=stat) values
+      if (stat /= 0) error stop 'Expected s, R, Z, conl_over_mfp in k_surface_file.'
+      if (.not. all(ieee_is_finite(values))) error stop 'Non-finite surface input.'
+      if (values(1) < 0.0_dp .or. values(1) > 1.0_dp .or. values(4) == 0.0_dp) &
+        error stop 'Invalid surface s or zero conl_over_mfp.'
+      count = count + 1
+    end do
+    if (count == 0) error stop 'Empty k_surface_file.'
+    surface_begin = surface_first
+    surface_end = min(surface_last, count)
+    if (surface_begin < 1 .or. surface_begin > surface_end) &
+      error stop 'Invalid surface_first/surface_last range.'
+    allocate(surface_inputs(4,count), surface_results(3,count), &
+             surface_converged(count))
+    rewind(unit)
+    row = 0
+    do
+      read(unit, '(a)', iostat=stat) line
+      if (stat < 0) exit
+      line = adjustl(line)
+      if (len_trim(line) == 0) cycle
+      if (line(1:1) == '#') cycle
+      row = row + 1
+      read(line, *) surface_inputs(:,row)
+    end do
+    close(unit)
+  end subroutine read_k_surfaces
+
+  subroutine write_k_surfaces()
+    integer(hid_t) :: output
+    integer :: i1, i2, n
+
+    i1 = surface_begin
+    i2 = surface_end
+    n = i2 - i1 + 1
+    call h5_create(trim(k_output_file), output)
+    call h5_add(output, 'k_coefficient_only', k_coefficient_only)
+    call h5_add(output, 'surface_first', i1)
+    call h5_add(output, 'surface_last', i2)
+    call h5_add(output, 'boozer_s', surface_inputs(1,i1:i2), [1], [n])
+    call h5_add(output, 'rbeg', surface_inputs(2,i1:i2), [1], [n], unit='cm')
+    call h5_add(output, 'zbeg', surface_inputs(3,i1:i2), [1], [n], unit='cm')
+    call h5_add(output, 'conl_over_mfp', surface_inputs(4,i1:i2), [1], [n])
+    call h5_add(output, 'k_cof', surface_results(1,i1:i2), [1], [n])
+    call h5_add(output, 'qcurr_g', surface_results(2,i1:i2), [1], [n])
+    call h5_add(output, 'qcurr_t', surface_results(3,i1:i2), [1], [n])
+    call h5_add(output, 'integral_converged', surface_converged(i1:i2), [1], [n])
+    call h5_add(output, 'lag', lag)
+    call h5_add(output, 'leg', leg)
+    call h5_add(output, 'z_eff', z_eff)
+    call h5_add(output, 'niter', niter)
+    call h5_add(output, 'epserr_iter', epserr_iter)
+    call h5_add(output, 'mag_coordinates', mag_coordinates)
+    call h5_close(output)
+  end subroutine write_k_surfaces
+
+  subroutine release_k_surface()
+    ! Discard surface state; retain the equilibrium and its radial splines.
+    call reset_propagators()
+    call reset_magnetics(device)
+    nullify(surface, fieldline, fieldperiod, fieldpropagator, fieldripple)
+    if (allocated(y_axi_averages)) deallocate(y_axi_averages)
+    call magfie_deallocate()
+    if (allocated(magfie_sarray)) deallocate(magfie_sarray)
+    call kin_allocate(.false.)
+  end subroutine release_k_surface
 
   SUBROUTINE prop_reconstruct_3()
 
@@ -1149,6 +1281,13 @@ CONTAINS
   END SUBROUTINE write_run_info
 
   subroutine sanity_check_input_parameters()
+    if (k_surface_batch) then
+      if (.not. k_coefficient_only) &
+        error stop 'k_surface_file requires k_coefficient_only.'
+      if (len_trim(k_output_file) == 0 .or. &
+          trim(k_output_file) == trim(k_surface_file)) &
+        error stop 'Invalid k_output_file.'
+    end if
     if (k_coefficient_only) then
       if (isw_axisymm /= 1 .or. magnetic_device /= 0 .or. lsw_multispecies) &
         error stop 'k_coefficient_only requires single-species axisymmetric mode.'

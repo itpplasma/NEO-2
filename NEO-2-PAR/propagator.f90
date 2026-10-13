@@ -884,7 +884,8 @@ CONTAINS
     USE device_mod
     USE collisionality_mod, ONLY : collpar, conl_over_mfp, &
          isw_lorentz, isw_integral, isw_energy, isw_axisymm, y_axi_averages, &
-         k_coefficient_only
+         k_coefficient_only, k_surface_batch, k_surface_k, &
+         k_surface_qcurr_g, k_surface_qcurr_t
     USE rkstep_mod, ONLY : asource,anumm,ailmm,lag,leg
     USE collop, ONLY : z_eff
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield
@@ -929,6 +930,12 @@ CONTAINS
     if (k_coefficient_only) then
        if (iend == 1) then
           k_cof = 2.5_dp - prop_a%p%qflux(2,3) / prop_a%p%qflux(2,1)
+          if (k_surface_batch) then
+             k_surface_k = k_cof
+             k_surface_qcurr_g = prop_a%p%qflux(2,1)
+             k_surface_qcurr_t = prop_a%p%qflux(2,3)
+             return
+          end if
           call h5_create('fulltransp.h5', h5id, 1)
           call h5_add(h5id, 'k_coefficient_only', k_coefficient_only)
           call h5_add(h5id, 'k_cof', k_cof)
@@ -3600,5 +3607,16 @@ CONTAINS
 
     call h5_close(h5id)
   end subroutine get_taginfo
+
+  subroutine reset_propagators()
+    if (associated(prop_l)) call destruct_all_propagators()
+    nullify(prop_a, prop_r, prop_c, prop_n, prop_l, prop_c_old, prop_c_new)
+    propagator_tag_counter = 0
+    prop_first_tag = 0
+    prop_last_tag = 0
+    prop_count_call = 0
+    prop_ibegperiod = 1
+    stime_tot = 0.0_dp
+  end subroutine reset_propagators
 
 END MODULE propagator_mod
