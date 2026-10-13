@@ -108,6 +108,22 @@ find_package(GSL REQUIRED)
 include_directories(${PROJECT_BINARY_DIR}/COMMON)
 include_directories(${FGSL_INC})
 
+option(NEO2_USE_FORTSPARSE "Enable the fortsparse MUMPS sparse backend (sparse_solve_method = 4)" OFF)
+if(NEO2_USE_FORTSPARSE)
+  include(FetchContent)
+  FetchContent_Declare(fortsparse
+    GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
+    GIT_TAG 447226832b48312f2fe44d6bda9fa21b946a0bb2)
+  FetchContent_MakeAvailable(fortsparse)
+  if(NOT FORTSPARSE_ENABLE_MUMPS)
+    message(FATAL_ERROR "NEO2_USE_FORTSPARSE requires FORTSPARSE_ENABLE_MUMPS.")
+  endif()
+  if(APPLE AND MPI_Fortran_LINK_FLAGS MATCHES "flat_namespace")
+    message(FATAL_ERROR "MUMPS with -flat_namespace can corrupt solutions; "
+      "remove it from MPI_Fortran_LINK_FLAGS.")
+  endif()
+endif()
+
 ### Projects to build
 add_subdirectory(COMMON/MyMPILib)
 add_subdirectory(COMMON)

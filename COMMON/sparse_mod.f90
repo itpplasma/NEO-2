@@ -1,9 +1,14 @@
 MODULE sparse_mod
 
+  USE sparse_mumps_mod, ONLY : sparse_mumps_available, sparse_solve_mumps
+
   IMPLICIT NONE
 
+  ! 2/3: UMFPACK with/without iterative refinement, 4: MUMPS (NEO2_USE_FORTSPARSE)
   PUBLIC sparse_solve_method
   INTEGER :: sparse_solve_method = 3
+
+  PUBLIC check_sparse_solve_method
 
   PUBLIC sparse_talk
   LOGICAL :: sparse_talk = .FALSE.
@@ -92,6 +97,12 @@ MODULE sparse_mod
      MODULE PROCEDURE sparse_solve_suitesparse_b1, sparse_solve_suitesparse_b2_loop, &
           sparse_solve_suitesparseComplex_b1, sparse_solve_suitesparseComplex_b2_loop
   END INTERFACE sparse_solve_suitesparse
+
+  PRIVATE sparse_solve_direct
+  INTERFACE sparse_solve_direct
+     MODULE PROCEDURE sparse_solve_directReal_b1, sparse_solve_directReal_b2, &
+          sparse_solve_directComplex_b1, sparse_solve_directComplex_b2
+  END INTERFACE sparse_solve_direct
 
   PUBLIC sparse_matmul
   INTERFACE sparse_matmul
@@ -670,20 +681,20 @@ CONTAINS
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF (direct_method()) THEN
           IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,3)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,3)
           ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,3)
           END IF
        END IF
     END IF
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF (direct_method()) THEN
           IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,1)
           ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,1)
           END IF
        END IF
        factorization_exists = .TRUE.
@@ -691,11 +702,11 @@ CONTAINS
     IF (iopt .EQ. 1) factorization_exists = .TRUE.
     IF (iopt .EQ. 3) factorization_exists = .FALSE.
 
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+    IF (direct_method()) THEN
        IF (pcol_modified) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,iopt)
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,iopt)
        ELSE
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
@@ -733,20 +744,20 @@ CONTAINS
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF (direct_method()) THEN
           IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,3)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,3)
           ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,3)
           END IF
        END IF
     END IF
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF (direct_method()) THEN
           IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,1)
           ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,1)
           END IF
        END IF
        factorization_exists = .TRUE.
@@ -754,11 +765,11 @@ CONTAINS
     IF (iopt .EQ. 1) factorization_exists = .TRUE.
     IF (iopt .EQ. 3) factorization_exists = .FALSE.
 
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+    IF (direct_method()) THEN
        IF (pcol_modified) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,iopt)
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,iopt)
        ELSE
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
@@ -796,20 +807,20 @@ CONTAINS
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF (direct_method()) THEN
           IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,3)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,3)
           ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,3)
           END IF
        END IF
     END IF
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF (direct_method()) THEN
           IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,1)
           ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,1)
           END IF
        END IF
        factorization_exists = .TRUE.
@@ -817,11 +828,11 @@ CONTAINS
     IF (iopt .EQ. 1) factorization_exists = .TRUE.
     IF (iopt .EQ. 3) factorization_exists = .FALSE.
 
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+    IF (direct_method()) THEN
        IF (pcol_modified) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,iopt)
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,iopt)
        ELSE
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
@@ -859,20 +870,20 @@ CONTAINS
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF (direct_method()) THEN
           IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,3)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,3)
           ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,3)
           END IF
        END IF
     END IF
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+       IF (direct_method()) THEN
           IF (pcol_modified) THEN
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,1)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,1)
           ELSE
-             CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
+             CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,1)
           END IF
        END IF
        factorization_exists = .TRUE.
@@ -880,11 +891,11 @@ CONTAINS
     IF (iopt .EQ. 1) factorization_exists = .TRUE.
     IF (iopt .EQ. 3) factorization_exists = .FALSE.
 
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
+    IF (direct_method()) THEN
        IF (pcol_modified) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcoln,val,b,iopt)
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcoln,val,b,iopt)
        ELSE
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,iopt)
        END IF
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
@@ -917,21 +928,21 @@ CONTAINS
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
+       IF (direct_method()) THEN
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
+       IF (direct_method()) THEN
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists = .TRUE.
     END IF
     IF (iopt .EQ. 1) factorization_exists = .TRUE.
     IF (iopt .EQ. 3) factorization_exists = .FALSE.
 
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    IF (direct_method()) THEN
+       CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
        STOP
@@ -965,21 +976,21 @@ CONTAINS
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
+       IF (direct_method()) THEN
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
+       IF (direct_method()) THEN
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists = .TRUE.
     END IF
     IF (iopt .EQ. 1) factorization_exists = .TRUE.
     IF (iopt .EQ. 3) factorization_exists = .FALSE.
 
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    IF (direct_method()) THEN
+       CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
        STOP
@@ -1013,21 +1024,21 @@ CONTAINS
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
+       IF (direct_method()) THEN
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
+       IF (direct_method()) THEN
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists = .TRUE.
     END IF
     IF (iopt .EQ. 1) factorization_exists = .TRUE.
     IF (iopt .EQ. 3) factorization_exists = .FALSE.
 
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    IF (direct_method()) THEN
+       CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
        STOP
@@ -1061,21 +1072,21 @@ CONTAINS
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,3)
+       IF (direct_method()) THEN
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,3)
        END IF
     END IF
     IF (.NOT. factorization_exists .AND. iopt .EQ. 2) THEN ! factorize first
-       IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-          CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,1)
+       IF (direct_method()) THEN
+          CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,1)
        END IF
        factorization_exists = .TRUE.
     END IF
     IF (iopt .EQ. 1) factorization_exists = .TRUE.
     IF (iopt .EQ. 3) factorization_exists = .FALSE.
 
-    IF ( (sparse_solve_method .EQ. 2) .OR. (sparse_solve_method .EQ. 3) ) THEN
-       CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    IF (direct_method()) THEN
+       CALL sparse_solve_direct(nrow,ncol,nz,irow,pcol,val,b,iopt)
     ELSE
        PRINT *, 'sparse_solve_method ',sparse_solve_method,'not implemented'
        STOP
@@ -1086,6 +1097,68 @@ CONTAINS
     IF (ALLOCATED(val))  DEALLOCATE(val)
 
   END SUBROUTINE sparse_solveComplex_A_b2
+  !-------------------------------------------------------------------------------
+
+  !-------------------------------------------------------------------------------
+  ! Stops at input time if the selected method is not available in this build.
+  SUBROUTINE check_sparse_solve_method()
+    IF (sparse_solve_method .EQ. 4 .AND. .NOT. sparse_mumps_available()) THEN
+       ERROR STOP 'sparse_solve_method = 4 (MUMPS) requires a build with NEO2_USE_FORTSPARSE=ON'
+    END IF
+  END SUBROUTINE check_sparse_solve_method
+
+  LOGICAL FUNCTION direct_method()
+    direct_method = sparse_solve_method .GE. 2 .AND. sparse_solve_method .LE. 4
+  END FUNCTION direct_method
+
+  ! Direct-solver dispatch: MUMPS for method 4, UMFPACK otherwise.
+  SUBROUTINE sparse_solve_directReal_b1(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    INTEGER, INTENT(in) :: nrow,ncol,nz,iopt
+    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
+    REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
+    REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
+    IF (sparse_solve_method .EQ. 4) THEN
+       CALL sparse_solve_mumps(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE
+       CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    END IF
+  END SUBROUTINE sparse_solve_directReal_b1
+
+  SUBROUTINE sparse_solve_directReal_b2(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    INTEGER, INTENT(in) :: nrow,ncol,nz,iopt
+    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
+    REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
+    REAL(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
+    IF (sparse_solve_method .EQ. 4) THEN
+       CALL sparse_solve_mumps(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE
+       CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    END IF
+  END SUBROUTINE sparse_solve_directReal_b2
+
+  SUBROUTINE sparse_solve_directComplex_b1(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    INTEGER, INTENT(in) :: nrow,ncol,nz,iopt
+    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
+    COMPLEX(kind=dp), DIMENSION(:), INTENT(in) :: val
+    COMPLEX(kind=dp), DIMENSION(:), INTENT(inout) :: b
+    IF (sparse_solve_method .EQ. 4) THEN
+       CALL sparse_solve_mumps(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE
+       CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    END IF
+  END SUBROUTINE sparse_solve_directComplex_b1
+
+  SUBROUTINE sparse_solve_directComplex_b2(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    INTEGER, INTENT(in) :: nrow,ncol,nz,iopt
+    INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
+    COMPLEX(kind=dp), DIMENSION(:), INTENT(in) :: val
+    COMPLEX(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
+    IF (sparse_solve_method .EQ. 4) THEN
+       CALL sparse_solve_mumps(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    ELSE
+       CALL sparse_solve_suitesparse(nrow,ncol,nz,irow,pcol,val,b,iopt)
+    END IF
+  END SUBROUTINE sparse_solve_directComplex_b2
   !-------------------------------------------------------------------------------
 
   !-------------------------------------------------------------------------------
