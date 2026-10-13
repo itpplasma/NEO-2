@@ -33,7 +33,8 @@ SUBROUTINE ripple_solver(                                 &
                             prop_fileformat, lsw_save_dentf, lsw_save_enetf,   &
                             lsw_save_spitf
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
-       column_full2pointer,remap_rc,sparse_solver_test
+       column_full2pointer,remap_rc,sparse_solver_test,sparse_solve_factorized
+!$ USE omp_lib, ONLY : omp_get_max_threads
   USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
                                surface_boozer_B00,travis_convfac,              &
                                mag_magfield
@@ -170,7 +171,8 @@ SUBROUTINE ripple_solver(                                 &
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
   INTEGER :: iter,nphiequi,npassing_next,source_step
-  LOGICAL :: source_converged
+  LOGICAL :: source_converged, converged_source(3)
+  INTEGER :: source_threads, iter_source(3)
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
@@ -2298,6 +2300,47 @@ call cpu_time(time2)
 call cpu_time(time1)
   if(isw_intp.eq.1) then
 
+    if(k_coefficient_only.and.sparse_solve_method.eq.3) then
+      ! The two retained source chains share one read-only factorization.
+      ! Preserve the arithmetic order within each independent source chain.
+      source_threads=1
+!$    source_threads=min(2,omp_get_max_threads())
+!$omp parallel do num_threads(source_threads) schedule(static,1) &
+!$omp private(k,iter,bvec_lor,bvec_prev,bvec_iter)
+      do k=1,3,2
+        bvec_lor=source_vector(:,k)
+        converged_source(k)=.false.
+        do iter=1,niter
+          bvec_prev=source_vector(:,k)
+          call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+                             phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
+                             ailmm,source_vector(:,k),bvec_iter)
+          call sparse_solve_factorized(bvec_iter)
+          source_vector(:,k)=bvec_lor+bvec_iter
+          if(sum(abs(source_vector(:,k)-bvec_prev)) .lt. &
+             sum(abs(bvec_prev))*epserr_iter) then
+            converged_source(k)=.true.
+            exit
+          endif
+        enddo
+        iter_source(k)=iter
+      enddo
+!$omp end parallel do
+      do k=1,3,2
+        if(converged_source(k)) then
+          write (*,*) "Source: ", k, "Number of iterations: ", iter_source(k)
+        endif
+        if(k_surface_batch) then
+          if(.not.converged_source(k)) then
+            k_surface_converged=.false.
+            write (*,*) "Source: ", k, "Maximum number of iterations reached."
+          endif
+        else if(niter.eq.iter_source(k)) then
+          write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
+          stop
+        endif
+      enddo
+    else
     do k=1,3,source_step
       bvec_lor=source_vector(:,k)
       source_converged=.false.
@@ -2332,6 +2375,7 @@ call cpu_time(time1)
         stop
      end if
     enddo
+    endif
 
   endif
   call cpu_time(time2)

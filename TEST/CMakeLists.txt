@@ -85,4 +85,4 @@ add_test(NAME k_coefficient_only_test
         "-DCONTROL_TEMPLATE=${CMAKE_CURRENT_SOURCE_DIR}/../DOC/neo.in.par-full"
         "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/k_coefficient_only"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/test_k_coefficient_only.cmake")
-set_tests_properties(k_coefficient_only_test PROPERTIES TIMEOUT 60 PROCESSORS 1)
+set_tests_properties(k_coefficient_only_test PROPERTIES TIMEOUT 60 PROCESSORS 2)

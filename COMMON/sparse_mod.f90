@@ -87,6 +87,8 @@ MODULE sparse_mod
           sparse_solveComplex_b1,sparse_solveComplex_b2,sparse_solveComplex_A_b1,sparse_solveComplex_A_b2
   END INTERFACE sparse_solve
 
+  PUBLIC sparse_solve_factorized
+
   PUBLIC sparse_solve_suitesparse
   INTERFACE sparse_solve_suitesparse
      MODULE PROCEDURE sparse_solve_suitesparse_b1, sparse_solve_suitesparse_b2_loop, &
@@ -1172,6 +1174,27 @@ CONTAINS
     IF (ALLOCATED(x))  DEALLOCATE(x)
 
   END SUBROUTINE sparse_solve_suitesparse_b1
+  !-------------------------------------------------------------------------------
+
+  ! Solve with existing real factors without copying the sparse matrix.
+  ! Numeric is read-only; control, info and workspace are private to each call.
+  SUBROUTINE sparse_solve_factorized(b)
+    REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
+
+    REAL(kind=dp) :: control_loc(20), info_loc(90)
+    REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: x
+
+    IF (.NOT. factorization_exists .OR. sparse_solve_method .NE. 3) &
+       ERROR STOP 'sparse_solve_factorized requires a method 3 factorization.'
+
+    ALLOCATE(x(SIZE(b)))
+    CALL umf4def(control_loc)
+    CALL umf4sol(sys, x, b, numeric, control_loc, info_loc)
+    IF (info_loc(1) .LT. 0) &
+       ERROR STOP 'sparse_solve_factorized: UMFPACK solve failed.'
+    b = x
+    DEALLOCATE(x)
+  END SUBROUTINE sparse_solve_factorized
   !-------------------------------------------------------------------------------
 
   !-------------------------------------------------------------------------------
