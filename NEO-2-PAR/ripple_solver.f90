@@ -176,6 +176,8 @@ SUBROUTINE ripple_solver(                                 &
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
+  integer, allocatable :: irow_trim(:)
+  real(dp), allocatable :: amat_trim(:)
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
   type(fixed_point_gmres_t) :: source_gmres
@@ -2262,6 +2264,17 @@ PRINT *,'right boundary layer ignored'
 
   CALL column_full2pointer(icol(1:nz),ipcol)
 
+  ! Column indices are now represented by ipcol; retain only the matrix prefix.
+  deallocate(icol)
+  if (nz < size(irow)) then
+    allocate(irow_trim(nz))
+    irow_trim = irow(1:nz)
+    call move_alloc(irow_trim, irow)
+    allocate(amat_trim(nz))
+    amat_trim = amat_sp(1:nz)
+    call move_alloc(amat_trim, amat_sp)
+  end if
+
 ! There are now three different calls sparse_solve
 !   iopt = 1 ; factorization
 !   iopt = 2 ; solve
@@ -2675,7 +2688,7 @@ call cpu_time(time2)
     amat_minus_minus=0.d0
     amat_minus_plus=0.d0
 
-    deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
+    deallocate(flux_vector,source_vector,irow,amat_sp,ipcol,bvec_sp)
     if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
     DEALLOCATE(deriv_coef,enu_coef,alambd,Vg_vp_over_B,scalprod_pleg)
     DEALLOCATE(alampow,vrecurr,dellampow,convol_polpow,pleg_bra,pleg_ket)
@@ -2826,7 +2839,7 @@ call cpu_time(time1)
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),bvec_sp,iopt)
 call cpu_time(time2)
 
-  deallocate(flux_vector,source_vector,irow,icol,amat_sp,ipcol,bvec_sp)
+  deallocate(flux_vector,source_vector,irow,amat_sp,ipcol,bvec_sp)
   if(isw_intp.eq.1) deallocate(bvec_iter,bvec_lor,bvec_prev)
 
 
