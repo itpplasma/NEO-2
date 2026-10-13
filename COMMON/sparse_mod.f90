@@ -120,6 +120,7 @@ MODULE sparse_mod
 
   ! helper
   PRIVATE find_unit
+  PRIVATE suitesparse_needs_matrix
 
 
 CONTAINS
@@ -136,6 +137,17 @@ CONTAINS
     END DO
 
   END SUBROUTINE find_unit
+  !-------------------------------------------------------------------------------
+
+  !-------------------------------------------------------------------------------
+  ! true if UMFPACK reads Ap, Ai and values for iopt: factorization and
+  ! solves with iterative refinement; plain solves use only the factors.
+  LOGICAL FUNCTION suitesparse_needs_matrix(iopt)
+    INTEGER, INTENT(in) :: iopt
+
+    suitesparse_needs_matrix = iopt .EQ. 0 .OR. iopt .EQ. 1 .OR. &
+         (iopt .EQ. 2 .AND. sparse_solve_method .EQ. 2)
+  END FUNCTION suitesparse_needs_matrix
   !-------------------------------------------------------------------------------
 
   !-------------------------------------------------------------------------------
@@ -1111,8 +1123,6 @@ CONTAINS
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: x !vector to store the solution
 
     ALLOCATE( x(SIZE(b)) )
-    ALLOCATE( Ai(SIZE(irow)) )
-    ALLOCATE( Ap(SIZE(pcol)) )
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
@@ -1124,8 +1134,12 @@ CONTAINS
     IF (sparse_pivot_tolerance > 0) control(1+3) = sparse_pivot_tolerance ! UMFPACK_PIVOT_TOLERANCE
 
     n = nrow !convert from 1 to 0-based indexing
-    Ai=irow-1 !convert from 1 to 0-based indexing
-    Ap=pcol-1 !convert from 1 to 0-based indexing
+    IF (suitesparse_needs_matrix(iopt_in)) THEN
+      ALLOCATE( Ai(SIZE(irow)) )
+      ALLOCATE( Ap(SIZE(pcol)) )
+      Ai=irow-1 !convert from 1 to 0-based indexing
+      Ap=pcol-1 !convert from 1 to 0-based indexing
+    END IF
 
     ! First, factorize the matrix. The factors are stored in *numeric* handle.
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
@@ -1204,18 +1218,9 @@ CONTAINS
     ALLOCATE( xz(nrow) )
     ALLOCATE( bx(nrow) )
     ALLOCATE( bz(nrow) )
-    ALLOCATE( valx(nz) )
-    ALLOCATE( valz(nz) )
-
 
     bx=DBLE(b)
     bz=AIMAG(b)
-
-    valx=DBLE(val)
-    valz=AIMAG(val)
-
-    ALLOCATE( Ai(SIZE(irow)) )
-    ALLOCATE( Ap(SIZE(pcol)) )
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
@@ -1227,8 +1232,16 @@ CONTAINS
     IF (sparse_pivot_tolerance > 0) control(1+3) = sparse_pivot_tolerance ! UMFPACK_PIVOT_TOLERANCE
 
     n = nrow
-    Ai=irow-1 !convert from 1 to 0-based indexing
-    Ap=pcol-1 !convert from 1 to 0-based indexing
+    IF (suitesparse_needs_matrix(iopt_in)) THEN
+      ALLOCATE( valx(nz) )
+      ALLOCATE( valz(nz) )
+      valx=DBLE(val)
+      valz=AIMAG(val)
+      ALLOCATE( Ai(SIZE(irow)) )
+      ALLOCATE( Ap(SIZE(pcol)) )
+      Ai=irow-1 !convert from 1 to 0-based indexing
+      Ap=pcol-1 !convert from 1 to 0-based indexing
+    END IF
 
     ! First, factorize the matrix. The factors are stored in *numeric* handle.
     IF (iopt_in .EQ. 0 .OR. iopt_in .EQ. 1) THEN
@@ -1343,8 +1356,6 @@ CONTAINS
     ! Wrong allocation size of x fixed
     !**********************************************************
     ALLOCATE( x(nrow) )
-    ALLOCATE( Ai(SIZE(irow)) )
-    ALLOCATE( Ap(SIZE(pcol)) )
     ALLOCATE(bloc(nrow))
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
@@ -1358,8 +1369,12 @@ CONTAINS
 
     n = nrow
     bloc = 0.0_dp
-    Ai=irow-1 !convert from 1 to 0-based indexing
-    Ap=pcol-1 !convert from 1 to 0-based indexing
+    IF (suitesparse_needs_matrix(iopt_in)) THEN
+      ALLOCATE( Ai(SIZE(irow)) )
+      ALLOCATE( Ap(SIZE(pcol)) )
+      Ai=irow-1 !convert from 1 to 0-based indexing
+      Ap=pcol-1 !convert from 1 to 0-based indexing
+    END IF
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
@@ -1447,24 +1462,26 @@ CONTAINS
     ALLOCATE( xz(nrow) )
     ALLOCATE( bx(nrow, SIZE(b,2)) )
     ALLOCATE( bz(nrow, SIZE(b,2)) )
-    ALLOCATE( valx(nz) )
-    ALLOCATE( valz(nz) )
 
     bx=DBLE(b)
     bz=AIMAG(b)
-    valx=DBLE(val)
-    valz=AIMAG(val)
 
-    ALLOCATE( Ai(SIZE(irow)) )
-    ALLOCATE( Ap(SIZE(pcol)) )
     ALLOCATE(blocx(nrow))
     ALLOCATE(blocz(nrow))
 
     n = nrow
     blocx = 0.0_dp
     blocz = 0.0_dp
-    Ai=irow-1 !convert from 1 to 0-based indexing
-    Ap=pcol-1 !convert from 1 to 0-based indexing
+    IF (suitesparse_needs_matrix(iopt_in)) THEN
+      ALLOCATE( valx(nz) )
+      ALLOCATE( valz(nz) )
+      valx=DBLE(val)
+      valz=AIMAG(val)
+      ALLOCATE( Ai(SIZE(irow)) )
+      ALLOCATE( Ap(SIZE(pcol)) )
+      Ai=irow-1 !convert from 1 to 0-based indexing
+      Ap=pcol-1 !convert from 1 to 0-based indexing
+    END IF
 
     IF (SIZE(pcol,1) .NE. ncol+1) THEN
        PRINT *, 'Wrong pcol'
