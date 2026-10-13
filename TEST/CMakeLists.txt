@@ -84,8 +84,19 @@ add_test(NAME k_coefficient_only_test
         "-DFIXTURE=${BOOZMN_FIXTURE}"
         "-DCONTROL_TEMPLATE=${CMAKE_CURRENT_SOURCE_DIR}/../DOC/neo.in.par-full"
         "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/k_coefficient_only"
+        "-DNEO2_USE_FORTSPARSE=${NEO2_USE_FORTSPARSE}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/test_k_coefficient_only.cmake")
 set_tests_properties(k_coefficient_only_test PROPERTIES TIMEOUT 60 PROCESSORS 1)
+
+if(NEO2_USE_FORTSPARSE)
+    add_executable(test_k_sparse_backend test_k_sparse_backend.f90)
+    target_link_libraries(test_k_sparse_backend neo2_k_sparse_backend MPI::MPI_Fortran)
+    add_test(NAME k_sparse_backend_test COMMAND test_k_sparse_backend)
+    set_tests_properties(k_sparse_backend_test PROPERTIES
+        PASS_REGULAR_EXPRESSION "All tests passed!"
+        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1"
+        TIMEOUT 30 PROCESSORS 1)
+endif()
 
 add_executable(test_fixed_point_gmres test_fixed_point_gmres.f90)
 target_link_libraries(test_fixed_point_gmres common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})

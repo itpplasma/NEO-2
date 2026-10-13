@@ -18,7 +18,7 @@ SUBROUTINE ripple_solver(                                 &
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
        isw_energy,isw_integral,isw_axisymm,k_coefficient_only, & !<-in Winny
        k_surface_batch,k_surface_converged, &
-       k_iter_solver,k_source_applications,k_source_residual, &
+       k_iter_solver,k_sparse_backend,k_source_applications,k_source_residual, &
        isw_momentum,vel_distri_swi,vel_num,vel_max, &
        nvel,vel_array
 
@@ -43,6 +43,7 @@ SUBROUTINE ripple_solver(                                 &
 
   use collop_compute, only: a_00_offset, a_02_offset, a_22_offset, weightenerg_offset
   use fixed_point_gmres_mod, only: fixed_point_gmres_t
+  use k_sparse_backend_mod, only: k_sparse_backend_t
   
   !*****************************
   ! HDF5
@@ -180,6 +181,7 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
   type(fixed_point_gmres_t) :: source_gmres
+  type(k_sparse_backend_t) :: k_backend
 
 !  Off-set:
 
@@ -2273,8 +2275,12 @@ PRINT *,'right boundary layer ignored'
   iopt=1
 
   call cpu_time(time_start)
-  CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                    bvec_sp,iopt)
+  if (k_sparse_backend /= 0) then
+    call k_backend%factor(nrow, ncol, nz, ipcol, irow(1:nz), amat_sp(1:nz))
+  else
+    CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
+                      bvec_sp,iopt)
+  end if
 
   call cpu_time(time_factorization)
   print *,'factorization completed ',time_factorization - time_start,' sec'
@@ -2291,8 +2297,14 @@ PRINT *,'right boundary layer ignored'
 
 call cpu_time(time1)
 
-  CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                    source_vector(:,1:3:source_step),iopt)
+  if (k_sparse_backend /= 0) then
+    do k = 1, 3, source_step
+      call k_backend%solve(source_vector(:,k))
+    end do
+  else
+    CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
+                      source_vector(:,1:3:source_step),iopt)
+  end if
 call cpu_time(time2)
 
 ! integral part:
@@ -2311,8 +2323,7 @@ call cpu_time(time1)
           call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
                              ailmm,source_gmres%vin,bvec_iter)
-          call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
-                            bvec_iter,iopt)
+          call solve_k_source(bvec_iter)
           call source_gmres%put(bvec_iter)
         end do
         source_vector(:,k) = source_gmres%x
@@ -2320,8 +2331,7 @@ call cpu_time(time1)
         call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                            phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
                            ailmm,source_vector(:,k),bvec_iter)
-        call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
-                          bvec_iter,iopt)
+        call solve_k_source(bvec_iter)
         k_source_applications((k+1)/2) = source_gmres%napply + 1
         k_source_residual((k+1)/2) = &
           sum(abs(bvec_lor + bvec_iter - source_vector(:,k))) &
@@ -2656,6 +2666,7 @@ call cpu_time(time2)
 
   if(iplot.eq.1.or.isw_axisymm.eq.1) then
 
+    if (k_sparse_backend /= 0) call k_backend%free()
     flux_p=0.d0
     flux_m=0.d0
     amat_plus_plus=0.d0
@@ -2922,6 +2933,18 @@ PRINT *,' '
 
   !------------------------------------------------------------------------
   RETURN
+contains
+
+  subroutine solve_k_source(rhs)
+    real(dp), intent(inout) :: rhs(:)
+
+    if (k_sparse_backend /= 0) then
+      call k_backend%solve(rhs)
+    else
+      call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),rhs,iopt)
+    end if
+  end subroutine solve_k_source
+
 END SUBROUTINE ripple_solver
 
 
