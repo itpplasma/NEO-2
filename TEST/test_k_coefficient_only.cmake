@@ -65,6 +65,24 @@ run_neo(only "${only_input}" "")
 string(REPLACE "k_coefficient_only=.true." "k_coefficient_only=.true., k_iter_solver=1"
        gmres_input "${only_input}")
 run_neo(gmres "${gmres_input}" "")
+# The scratch inner probe must pass the original returned-vector gate first,
+# and must stop without publishing a transport result.
+set(probe_dir "${WORK_DIR}/inner_probe")
+file(MAKE_DIRECTORY "${probe_dir}")
+file(WRITE "${probe_dir}/neo2.in" "${gmres_input}")
+file(WRITE "${probe_dir}/neo.in" "${control}")
+file(CREATE_LINK "${FIXTURE}" "${probe_dir}/boozmn_test.nc" SYMBOLIC)
+execute_process(COMMAND "${CMAKE_COMMAND}" -E env NEO2_K_INNER_PROBE=1
+    OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 "${NEO2_EXE}"
+    WORKING_DIRECTORY "${probe_dir}" TIMEOUT 20 RESULT_VARIABLE probe_status
+    OUTPUT_FILE "${probe_dir}/run.log" ERROR_FILE "${probe_dir}/run.log")
+file(READ "${probe_dir}/run.log" probe_log)
+if(NOT probe_status STREQUAL "77" OR
+   NOT probe_log MATCHES "INNER_PROBE_COMPLETE" OR
+   probe_log MATCHES "finite: F|NaN|Infinity" OR
+   EXISTS "${probe_dir}/fulltransp.h5")
+  message(FATAL_ERROR "Inner probe failed (${probe_status}); see ${probe_dir}/run.log")
+endif()
 string(REPLACE "niter=100" "niter=2" exhausted_input "${gmres_input}")
 string(REPLACE "epserr_iter=5d-2" "epserr_iter=1d-14"
        exhausted_input "${exhausted_input}")

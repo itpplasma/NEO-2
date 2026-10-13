@@ -8,6 +8,8 @@ MODULE sparse_mod
   PUBLIC sparse_talk
   LOGICAL :: sparse_talk = .FALSE.
 
+  PUBLIC sparse_umfpack_diagnostics
+
   PRIVATE dp
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
@@ -117,6 +119,13 @@ MODULE sparse_mod
 
 
 CONTAINS
+
+  subroutine sparse_umfpack_diagnostics(status, rcond)
+    real(dp), intent(out) :: status, rcond
+    ! UMFPACK_STATUS=0 and UMFPACK_RCOND=67 in the installed C header.
+    status = info_suitesparse(1)
+    rcond = info_suitesparse(68)
+  end subroutine sparse_umfpack_diagnostics
 
   !-------------------------------------------------------------------------------
   ! finds free unit

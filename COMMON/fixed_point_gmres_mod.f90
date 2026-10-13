@@ -20,6 +20,7 @@
 !> maxapply bounds the number of operator applications.
 module fixed_point_gmres_mod
   use, intrinsic :: ieee_arithmetic, only : ieee_is_finite
+  use, intrinsic :: iso_fortran_env, only: output_unit
   implicit none
   private
 
@@ -27,6 +28,8 @@ module fixed_point_gmres_mod
   integer, parameter, public :: fixed_point_gmres_default_restart = 30
 
   integer, parameter :: PHASE_DONE = 0, PHASE_RESID = 1, PHASE_ARNOLDI = 2
+  integer, save :: progress_lines = 0
+  integer, parameter :: max_progress_lines = 90
 
   type, public :: fixed_point_gmres_t
      integer  :: n = 0, nrestart = 0, maxapply = 0
@@ -37,6 +40,7 @@ module fixed_point_gmres_mod
      logical  :: failed = .false.
      real(dp) :: eps = 0.0_dp
      real(dp) :: resid_rel = huge(1.0_dp) !< last sum|r| / sum|x|
+     character(len=9) :: check_reason = 'initial'
      real(dp), allocatable :: f0(:), x(:), vin(:)
      real(dp), allocatable :: v(:,:), h(:,:), cs(:), sn(:), g(:), t(:)
    contains
@@ -78,6 +82,7 @@ contains
     self%converged = .false.
     self%failed = .false.
     self%resid_rel = huge(1.0_dp)
+    self%check_reason = 'initial'
     self%f0 = f0
     self%x = f0
     self%vin = self%x
@@ -118,8 +123,9 @@ contains
     type(fixed_point_gmres_t), intent(inout) :: self
     real(dp), intent(in) :: y(:)
 
-    real(dp) :: rnorm1, xnorm1, beta
+    real(dp) :: rnorm1, xnorm1, beta, projected_rel
 
+    projected_rel = self%resid_rel
     ! Residual r = f0 + M x - x, kept in t.
     self%t = self%f0 + y - self%x
     if (.not. all(ieee_is_finite(self%t))) then
@@ -134,6 +140,18 @@ contains
     end if
     self%resid_rel = rnorm1 / max(xnorm1, tiny(1.0_dp))
     self%converged = rnorm1 <= self%eps * xnorm1
+    if (progress_lines < max_progress_lines) then
+       write(output_unit,*) 'GMRES check:', trim(self%check_reason), &
+            ' apply:', self%napply, '/', self%maxapply, ' basis:', self%j, &
+            ' projected:', projected_rel, ' true:', self%resid_rel, &
+            ' abs_r:', rnorm1, ' norm_x:', xnorm1, &
+            ' norm_f0:', sum(abs(self%f0)), ' eps:', self%eps, &
+            ' converged:', self%converged
+       progress_lines = progress_lines + 1
+       if (progress_lines == max_progress_lines) &
+            write(output_unit,*) 'GMRES progress limit reached; final source checks remain.'
+       flush(output_unit)
+    end if
 
     if (self%converged .or. self%napply >= self%maxapply) then
        ! Preserve the iterate whose true residual was just evaluated.
@@ -201,6 +219,7 @@ contains
     estimated = gmres_resid_small(self)
     if (self%failed) return
     if (estimated) then
+       self%check_reason = 'estimate'
        ! The estimate can drift for an inexact operator application.
        ! Verify the actual iterate without exceeding the solve budget.
        self%x = self%t
@@ -215,6 +234,8 @@ contains
        self%x = self%t
        self%phase = PHASE_DONE
     else if (breakdown .or. j == self%nrestart) then
+       self%check_reason = 'restart'
+       if (breakdown) self%check_reason = 'breakdown'
        self%x = self%t
        self%vin = self%x
        self%phase = PHASE_RESID

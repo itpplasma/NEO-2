@@ -33,7 +33,7 @@ SUBROUTINE ripple_solver(                                 &
                             prop_fileformat, lsw_save_dentf, lsw_save_enetf,   &
                             lsw_save_spitf
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
-       column_full2pointer,remap_rc,sparse_solver_test
+       column_full2pointer,remap_rc,sparse_solver_test,sparse_umfpack_diagnostics
   USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
                                surface_boozer_B00,travis_convfac,              &
                                mag_magfield
@@ -43,6 +43,7 @@ SUBROUTINE ripple_solver(                                 &
   use collop_compute, only: a_00_offset, a_02_offset, a_22_offset, weightenerg_offset
   use fixed_point_gmres_mod, only: fixed_point_gmres_t
   use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+  use, intrinsic :: iso_fortran_env, only: output_unit
   
   !*****************************
   ! HDF5
@@ -181,6 +182,11 @@ SUBROUTINE ripple_solver(                                 &
   type(fixed_point_gmres_t) :: source_gmres
   integer :: k_source_index
   real(dp) :: k_residual_norm, k_solution_norm
+  logical :: inner_probe
+  integer :: inner_probe_status
+  character(len=8) :: inner_probe_env
+  real(dp) :: inner_factor_status, inner_factor_rcond
+  real(dp), allocatable :: inner_raw_source(:)
 
 !  Off-set:
 
@@ -229,6 +235,15 @@ SUBROUTINE ripple_solver(                                 &
   !------------------------------------------------------------------------
   ! values of reconstructed fluxes are put into fun_mr and fun_pl
   ! allocation in the 2nd-dimension is from 0 on
+  call get_environment_variable('NEO2_K_INNER_PROBE', inner_probe_env, &
+                                status=inner_probe_status)
+  inner_probe = .false.
+  if (inner_probe_status == 0) inner_probe = trim(inner_probe_env) == '1'
+  if (inner_probe) then
+    if (.not. k_coefficient_only .or. k_iter_solver /= 1 .or. &
+        sparse_solve_method /= 3) &
+      error stop 'K inner probe requires K-only GMRES and sparse method 3.'
+  end if
   ! (as requested by Sergei)
   IF (prop_reconstruct .EQ. 2) THEN
      prop_ripple_plot = 1
@@ -2280,6 +2295,13 @@ PRINT *,'right boundary layer ignored'
   call cpu_time(time_factorization)
   print *,'factorization completed ',time_factorization - time_start,' sec'
 
+  if (inner_probe) then
+    call sparse_umfpack_diagnostics(inner_factor_status, inner_factor_rcond)
+    write(output_unit,*) 'INNER factor status/RCOND:', &
+        inner_factor_status, inner_factor_rcond
+    inner_raw_source = source_vector(:,1)
+  end if
+
   iopt=2
 
 ! Solution of inhomogeneus equation (account of sources):
@@ -2312,6 +2334,9 @@ call cpu_time(time1)
 
       if (k_iter_solver == 1) then
         ! Reserve one application for an independent returned-vector check.
+        write(output_unit,*) 'GMRES source start:', k, ' apply budget:', niter, &
+            ' internal budget:', niter-1, ' eps:', epserr_iter
+        flush(output_unit)
         call source_gmres%start(bvec_lor, epserr_iter, niter-1)
         do while (source_gmres%needs_apply())
           call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
@@ -2347,8 +2372,15 @@ call cpu_time(time1)
             k_source_applications(k_source_index), 'true residual:', &
             k_source_residual(k_source_index), 'converged:', &
             k_source_converged(k_source_index)
+        flush(output_unit)
         if (k_source_converged(k_source_index) /= 1) &
           error stop 'K-only GMRES failed its true-residual convergence check.'
+        if (inner_probe .and. k == 1) then
+          call run_inner_probe()
+          write(output_unit,*) 'INNER_PROBE_COMPLETE; no transport result.'
+          flush(output_unit)
+          stop 77
+        end if
         cycle
       end if
 
@@ -2934,6 +2966,135 @@ PRINT *,' '
 
   !------------------------------------------------------------------------
   RETURN
+contains
+
+  subroutine run_inner_probe()
+    real(dp), allocatable :: rhs(:), w3(:), w2(:), trial(:), f0_refined(:)
+    real(dp), allocatable :: scaled_f(:)
+    real(dp), parameter :: scales(2) = [1.1_dp, 2.0_dp]
+    real(dp) :: scale, xnorm
+    integer :: iscale, method
+    character(len=32) :: label
+
+    allocate(rhs(nrow), w3(nrow), w2(nrow), trial(nrow), &
+             f0_refined(nrow), scaled_f(nrow))
+    xnorm = sum(abs(source_vector(:,1)))
+
+    ! The raw source is retained before the original Lorentz solve.
+    f0_refined = inner_raw_source
+    sparse_solve_method = 2
+    call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
+                      f0_refined,2)
+    call report_linear('f0_method2', inner_raw_source, f0_refined)
+    write(output_unit,*) 'INNER f0 method2/method3 rel difference:', &
+        sum(abs(f0_refined-bvec_lor))/max(sum(abs(bvec_lor)),tiny(1.0_dp))
+    sparse_solve_method = 3
+    trial = inner_raw_source
+    call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),trial,2)
+    call report_linear('f0_method3_repeat', inner_raw_source, trial)
+    write(output_unit,*) 'INNER f0 method3 repeat exact values:', &
+        all(trial == bvec_lor)
+
+    call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+                       phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
+                       ailmm,source_vector(:,1),rhs)
+    sparse_solve_method = 3
+    w3 = rhs
+    call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),w3,2)
+    call report_linear('M_method3', rhs, w3)
+    call report_mapping('M_method3', w3, w3, f0_refined, xnorm)
+
+    trial = rhs
+    call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),trial,2)
+    call report_linear('M_method3_repeat', rhs, trial)
+    write(output_unit,*) 'INNER method3 repeat exact values:', all(trial == w3)
+    call report_mapping('M_method3_repeat', trial, w3, f0_refined, xnorm)
+
+    sparse_solve_method = 2
+    w2 = rhs
+    call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),w2,2)
+    call report_linear('M_method2', rhs, w2)
+    call report_mapping('M_method2_vs3', w2, w3, f0_refined, xnorm)
+
+    do iscale = 1, size(scales)
+      scale = scales(iscale)
+      scaled_f = scale*source_vector(:,1)
+      call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+                         phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
+                         ailmm,scaled_f,rhs)
+      do method = 3, 2, -1
+        sparse_solve_method = method
+        trial = rhs
+        call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),trial,2)
+        write(label,'(A,I1,A,F3.1)') 'M_method',method,'_scale',scale
+        call report_linear(trim(label), rhs, trial)
+        trial = trial/scale
+        if (method == 3) then
+          call report_mapping(trim(label), trial, w3, f0_refined, xnorm)
+        else
+          call report_mapping(trim(label), trial, w2, f0_refined, xnorm)
+        end if
+      end do
+    end do
+    sparse_solve_method = 3
+  end subroutine run_inner_probe
+
+  subroutine report_mapping(label, applied, reference, f0_refined, xnorm)
+    character(len=*), intent(in) :: label
+    real(dp), intent(in) :: applied(:), reference(:), f0_refined(:), xnorm
+
+    write(output_unit,*) 'INNER mapping:', label, ' rel difference:', &
+        sum(abs(applied-reference))/max(sum(abs(reference)),tiny(1.0_dp)), &
+        ' FP f0_method3:', sum(abs(bvec_lor+applied-source_vector(:,1)))/ &
+            max(xnorm,tiny(1.0_dp)), &
+        ' FP f0_method2:', sum(abs(f0_refined+applied-source_vector(:,1)))/ &
+            max(xnorm,tiny(1.0_dp)), &
+        ' finite:', all(ieee_is_finite(applied))
+    flush(output_unit)
+  end subroutine report_mapping
+
+  subroutine report_linear(label, rhs, solution)
+    character(len=*), intent(in) :: label
+    real(dp), intent(in) :: rhs(:), solution(:)
+    real(dp), allocatable :: residual(:), denominator(:)
+    real(dp) :: anorm, normwise, componentwise, status, rcond
+    integer :: column, entry, row
+
+    allocate(residual(nrow), denominator(nrow))
+    residual = -rhs
+    denominator = abs(rhs)
+    anorm = 0.0_dp
+    do column = 1, ncol
+      anorm = max(anorm,sum(abs(amat_sp(ipcol(column):ipcol(column+1)-1))))
+      do entry = ipcol(column), ipcol(column+1)-1
+        row = irow(entry)
+        residual(row) = residual(row)+amat_sp(entry)*solution(column)
+        denominator(row) = denominator(row)+ &
+            abs(amat_sp(entry))*abs(solution(column))
+      end do
+    end do
+    normwise = sum(abs(residual))/ &
+        max(anorm*sum(abs(solution))+sum(abs(rhs)),tiny(1.0_dp))
+    componentwise = 0.0_dp
+    do row = 1, nrow
+      if (denominator(row) > 0.0_dp) then
+        componentwise = max(componentwise,abs(residual(row))/denominator(row))
+      else if (residual(row) /= 0.0_dp) then
+        componentwise = huge(1.0_dp)
+      end if
+    end do
+    call sparse_umfpack_diagnostics(status, rcond)
+    write(output_unit,*) 'INNER linear:', label, ' backward norm/component:', &
+        normwise, componentwise, ' residual norm:', sum(abs(residual)), &
+        ' solution norm:', sum(abs(solution)), ' RHS norm:', sum(abs(rhs)), &
+        ' matrix norm:', anorm, ' status:', status, &
+        ' finite:', all(ieee_is_finite(solution)) .and. &
+            all(ieee_is_finite(residual)) .and. &
+            all(ieee_is_finite(denominator)) .and. &
+            ieee_is_finite(normwise) .and. ieee_is_finite(componentwise)
+    flush(output_unit)
+  end subroutine report_linear
+
 END SUBROUTINE ripple_solver
 
 
