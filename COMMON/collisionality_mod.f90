@@ -7,6 +7,9 @@ MODULE collisionality_mod
   logical          :: k_surface_batch = .false.
   logical          :: k_surface_converged = .true.
   double precision :: k_surface_k, k_surface_qcurr_g, k_surface_qcurr_t
+  INTEGER          :: k_iter_solver = 0 ! 0: Richardson, 1: K-only GMRES(30)
+  INTEGER          :: k_source_applications(2) = 0
+  DOUBLE PRECISION :: k_source_residual(2) = -1.d0
   INTEGER          :: isw_relativistic
   DOUBLE PRECISION :: T_e
 
