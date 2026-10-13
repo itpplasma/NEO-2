@@ -75,6 +75,18 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_k_coefficient_only test_k_coefficient_only.f90)
+target_link_libraries(test_k_coefficient_only common)
+add_test(NAME k_coefficient_only_test
+    COMMAND ${CMAKE_COMMAND}
+        "-DNEO2_EXE=$<TARGET_FILE:neo_2_par.x>"
+        "-DCHECK_EXE=$<TARGET_FILE:test_k_coefficient_only>"
+        "-DFIXTURE=${BOOZMN_FIXTURE}"
+        "-DCONTROL_TEMPLATE=${CMAKE_CURRENT_SOURCE_DIR}/../DOC/neo.in.par-full"
+        "-DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/k_coefficient_only"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/test_k_coefficient_only.cmake")
+set_tests_properties(k_coefficient_only_test PROPERTIES TIMEOUT 60 PROCESSORS 1)
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)

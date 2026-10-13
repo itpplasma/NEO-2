@@ -1,0 +1,44 @@
+program test_k_coefficient_only
+    use, intrinsic :: iso_fortran_env, only: dp => real64
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+    use hdf5_tools, only: HID_T, h5_init, h5_deinit, h5_open, h5_get, h5_exists, &
+        h5_close
+    implicit none
+
+    integer(HID_T) :: file_id
+    character(len=1024) :: work_dir
+    real(dp) :: expected(3), actual(3), qflux(3, 3)
+    logical :: k_only
+
+    call get_command_argument(1, work_dir)
+    call h5_init()
+    call h5_open(trim(work_dir)//'/full/fulltransp.h5', file_id)
+    call h5_get(file_id, 'k_cof', expected(1))
+    call h5_get(file_id, 'qflux', qflux)
+    expected(2:3) = [qflux(2, 1), qflux(2, 3)]
+    if (h5_exists(file_id, 'k_coefficient_only')) &
+        error stop 'Default transport schema changed.'
+    call h5_close(file_id)
+
+    call h5_open(trim(work_dir)//'/only/fulltransp.h5', file_id)
+    call h5_get(file_id, 'k_cof', actual(1))
+    call h5_get(file_id, 'qcurr_g', actual(2))
+    call h5_get(file_id, 'qcurr_t', actual(3))
+    call h5_get(file_id, 'k_coefficient_only', k_only)
+    if (.not. k_only) error stop 'Missing k-only output marker.'
+    if (h5_exists(file_id, 'qflux') .or. h5_exists(file_id, 'gamma_out') .or. &
+        h5_exists(file_id, 'full_version')) &
+        error stop 'Incomplete transport matrix was published.'
+    call h5_close(file_id)
+    call h5_deinit()
+
+    if (.not. all(ieee_is_finite(expected)) .or. &
+        .not. all(ieee_is_finite(actual))) error stop 'Nonfinite transport result.'
+    if (abs(expected(2)) <= tiny(1.0_dp)) error stop 'Zero current response.'
+    if (any(actual /= expected)) then
+        print *, 'Full result: ', expected
+        print *, 'K-only result: ', actual
+        error stop 'K-only changed the current responses or k coefficient.'
+    end if
+    print *, 'All tests passed!'
+end program test_k_coefficient_only
