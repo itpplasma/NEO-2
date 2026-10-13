@@ -1146,6 +1146,7 @@ CONTAINS
 
   subroutine sanity_check_input_parameters()
     if (k_coefficient_only) then
+      if (niter < 1) error stop 'k_coefficient_only requires niter >= 1.'
       if (isw_axisymm /= 1 .or. magnetic_device /= 0 .or. lsw_multispecies) &
         error stop 'k_coefficient_only requires single-species axisymmetric mode.'
       if (isw_momentum /= 0 .or. mpro%isParallel()) &
