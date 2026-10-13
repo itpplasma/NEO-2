@@ -18,6 +18,19 @@ set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAG
 
 target_link_libraries(${EXE_NAME} common)
 target_include_directories(${EXE_NAME} PUBLIC "${CMAKE_BINARY_DIR}/COMMON")
+target_sources(${EXE_NAME} PRIVATE k_sparse_backend_mod.F90)
+
+option(NEO2_USE_FORTSPARSE "Enable experimental K-only fortsparse backends" OFF)
+if(NEO2_USE_FORTSPARSE)
+  include(FetchContent)
+  FetchContent_Declare(fortsparse
+    GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
+    GIT_TAG ee14df08b19883f4d91eba4aaddd5c71dbc4eceb)
+  FetchContent_MakeAvailable(fortsparse)
+  target_compile_definitions(${EXE_NAME} PRIVATE NEO2_HAVE_FORTSPARSE)
+  target_link_libraries(${EXE_NAME} fortsparse)
+  fortsparse_colocate_helper(${EXE_NAME})
+endif()
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
