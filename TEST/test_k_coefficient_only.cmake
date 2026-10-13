@@ -113,6 +113,11 @@ string(REPLACE "niter=100" "niter=2" gmres_exhausted_input "${gmres_input}")
 string(REPLACE "epserr_iter=5d-2" "epserr_iter=1d-14"
        gmres_exhausted_input "${gmres_exhausted_input}")
 run_neo(exhaustion "${gmres_exhausted_input}" "failed its true-residual" TRUE)
+if(NEO2_USE_FORTSPARSE)
+  string(REPLACE "k_iter_solver=1" "k_iter_solver=1, k_sparse_backend=2"
+         mumps_input "${gmres_input}")
+  run_neo(mumps "${mumps_input}" "")
+endif()
 file(GLOB incomplete "${WORK_DIR}/only/efinal.*" "${WORK_DIR}/only/evolve_*.h5"
                      "${WORK_DIR}/only/qf*.dat" "${WORK_DIR}/only/eta_[pm].dat")
 if(incomplete)
@@ -141,6 +146,12 @@ reject(plot "isw_axisymm=1" "prop_fileformat=1, prop_ripple_plot=1" "does not su
 reject(iter_solver "k_iter_solver=2" "" "k_iter_solver must be")
 reject(no_integral "k_iter_solver=1, isw_integral=0" ""
        "requires the full integral")
+reject(backend_range "k_iter_solver=1, k_sparse_backend=1" "" "k_sparse_backend must be")
+reject(backend_no_gmres "k_sparse_backend=2" "" "requires k_iter_solver=1")
+if(NOT NEO2_USE_FORTSPARSE)
+  reject(backend_unavailable "k_iter_solver=1, k_sparse_backend=2" ""
+         "requires NEO2_USE_FORTSPARSE")
+endif()
 run_neo(no_k_mode
         "&settings /\n&collision k_iter_solver=1 /\n&binsplit /\n&propagator /\n&plotting /\n"
         "requires k_coefficient_only")

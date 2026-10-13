@@ -5,6 +5,7 @@ MODULE collisionality_mod
   INTEGER          :: isw_axisymm
   LOGICAL          :: k_coefficient_only = .false.
   INTEGER          :: k_iter_solver = 0 ! 0: Richardson, 1: K-only GMRES(30)
+  INTEGER          :: k_sparse_backend = 0 ! 0: UMFPACK, 2: fortsparse MUMPS
   INTEGER          :: k_source_applications(2) = 0
   DOUBLE PRECISION :: k_source_residual(2) = -1.d0
   INTEGER          :: isw_relativistic
