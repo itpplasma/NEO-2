@@ -83,6 +83,14 @@ string(REPLACE "niter=100" "niter=0" zero_input "${only_input}")
 run_neo(zero_budget "${zero_input}" "requires niter >= 1")
 string(REPLACE "niter=100" "niter=-1" negative_input "${only_input}")
 run_neo(negative_budget "${negative_input}" "requires niter >= 1")
+string(REPLACE "k_coefficient_only=.true." "k_coefficient_only=.true., k_iter_solver=1"
+       gmres_input "${only_input}")
+string(REPLACE "niter=100" "niter=3" gmres_last_input "${gmres_input}")
+run_neo(gmres "${gmres_last_input}" "")
+string(REPLACE "niter=100" "niter=2" gmres_exhausted_input "${gmres_input}")
+string(REPLACE "epserr_iter=5d-2" "epserr_iter=1d-14"
+       gmres_exhausted_input "${gmres_exhausted_input}")
+run_neo(exhaustion "${gmres_exhausted_input}" "failed its true-residual" TRUE)
 file(GLOB incomplete "${WORK_DIR}/only/efinal.*" "${WORK_DIR}/only/evolve_*.h5"
                      "${WORK_DIR}/only/qf*.dat" "${WORK_DIR}/only/eta_[pm].dat")
 if(incomplete)
@@ -108,3 +116,22 @@ reject(momentum "isw_axisymm=1, isw_momentum=1" "prop_fileformat=1" "Laguerre mo
 reject(ascii "isw_axisymm=1" "prop_fileformat=0" "requires HDF5")
 reject(reconstruction "isw_axisymm=1" "prop_fileformat=1, prop_reconstruct=1" "requires HDF5")
 reject(plot "isw_axisymm=1" "prop_fileformat=1, prop_ripple_plot=1" "does not support")
+reject(iter_solver "k_iter_solver=2" "" "k_iter_solver must be")
+reject(iter_solver_negative "k_iter_solver=-1" "" "k_iter_solver must be")
+reject(no_integral "k_iter_solver=1, isw_integral=0" ""
+       "requires the full integral")
+reject(lorentz_only "k_iter_solver=1, isw_integral=1, isw_lorentz=1" ""
+       "requires the full integral")
+reject(precompute_only "k_iter_solver=1, collop_only_precompute=.true." ""
+       "requires the full integral")
+foreach(tolerance -1d0 NaN)
+  run_neo("tolerance_${tolerance}"
+          "&settings epserr_iter=${tolerance} /\n&collision k_coefficient_only=.true., k_iter_solver=1, isw_integral=1, isw_lorentz=0 /\n&binsplit /\n&propagator /\n&plotting /\n"
+          "requires (epserr_iter>=0|niter>=2 and a finite tolerance)")
+endforeach()
+run_neo(no_k_mode
+        "&settings /\n&collision k_iter_solver=1 /\n&binsplit /\n&propagator /\n&plotting /\n"
+        "requires k_coefficient_only")
+run_neo(iter_budget
+        "&settings niter=1 /\n&collision k_coefficient_only=.true., k_iter_solver=1, isw_integral=1, isw_lorentz=0 /\n&binsplit /\n&propagator /\n&plotting /\n"
+        "requires niter>=2")

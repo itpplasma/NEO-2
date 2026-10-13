@@ -4,6 +4,10 @@ MODULE collisionality_mod
   INTEGER          :: isw_energy
   INTEGER          :: isw_axisymm
   LOGICAL          :: k_coefficient_only = .false.
+  INTEGER          :: k_iter_solver = 0 ! 0: Richardson, 1: K-only GMRES(30)
+  INTEGER          :: k_source_converged(2) = 0
+  INTEGER          :: k_source_applications(2) = 0
+  DOUBLE PRECISION :: k_source_residual(2) = -1.d0
   INTEGER          :: isw_relativistic
   DOUBLE PRECISION :: T_e
 
