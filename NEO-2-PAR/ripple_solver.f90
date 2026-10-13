@@ -2335,9 +2335,8 @@ call cpu_time(time1)
             k_surface_converged=.false.
             write (*,*) "Source: ", k, "Maximum number of iterations reached."
           endif
-        else if(niter.eq.iter_source(k)) then
-          write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
-          stop
+        else if(.not.converged_source(k)) then
+          error stop 'k_coefficient_only: integral iteration did not converge.'
         endif
       enddo
     else
@@ -2370,6 +2369,9 @@ call cpu_time(time1)
            k_surface_converged=.false.
            write (*,*) "Source: ", k, "Maximum number of iterations reached."
         endif
+     else if (k_coefficient_only) then
+        if (.not. source_converged) &
+           error stop 'k_coefficient_only: integral iteration did not converge.'
      else if (niter .eq. iter) then
         write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
         stop
