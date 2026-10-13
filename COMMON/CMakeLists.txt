@@ -80,6 +80,7 @@ set_source_files_properties(${COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLA
 set(SUITESPARSE_SRC_FILES
   umf4_f77wrapper_ver_4_5.c
   umf4_f77zwrapper_ver_4_5.c
+  umfpack32.c
 )
 if(LEGACY_SUITESPARSE)
   set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
@@ -88,6 +89,7 @@ else()
 endif()
 set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
+set_source_files_properties(umfpack32.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS}")
 
 add_library(common STATIC
   ${COMMON_FILES}

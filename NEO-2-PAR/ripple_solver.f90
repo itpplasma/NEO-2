@@ -12,6 +12,7 @@ SUBROUTINE ripple_solver(                                 &
      ierr                                                 &
      )
 
+  USE, INTRINSIC :: iso_c_binding, ONLY: c_int, c_double, c_ptr, c_associated
   USE device_mod
   USE flint_mod, ONLY : phi_divide
   USE size_mod, ONLY : ndim0
@@ -47,6 +48,32 @@ SUBROUTINE ripple_solver(                                 &
   USE hdf5_tools
   
   IMPLICIT NONE
+    interface
+        function umf32_factor(n, nz, pcol, irow, values, status) &
+                bind(C, name="neo2_umf32_factor") result(numeric)
+            import c_int, c_double, c_ptr
+            integer(c_int), value, intent(in) :: n, nz
+            integer(c_int), intent(in) :: pcol(*), irow(*)
+            real(c_double), intent(in) :: values(*)
+            integer(c_int), intent(out) :: status
+            type(c_ptr) :: numeric
+        end function
+        function umf32_solve(n, numeric, b) &
+                bind(C, name="neo2_umf32_solve") result(status)
+            import c_int, c_double, c_ptr
+            integer(c_int), value, intent(in) :: n
+            type(c_ptr), value, intent(in) :: numeric
+            real(c_double), intent(inout) :: b(*)
+            integer(c_int) :: status
+        end function
+        subroutine umf32_free(numeric) bind(C, name="neo2_umf32_free")
+            import c_ptr
+            type(c_ptr), value, intent(in) :: numeric
+        end subroutine
+    end interface
+    type(c_ptr) :: numeric32
+    integer(c_int) :: status32
+    logical :: use_umf32
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
   ! parameter list
@@ -2268,8 +2295,18 @@ PRINT *,'right boundary layer ignored'
   iopt=1
 
   call cpu_time(time_start)
-  CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                    bvec_sp,iopt)
+    use_umf32 = k_coefficient_only .and. sparse_solve_method == 3
+    if (use_umf32) then
+        numeric32 = umf32_factor(nrow, nz, ipcol, irow(1:nz), &
+                                 amat_sp(1:nz), status32)
+        if (.not. c_associated(numeric32)) then
+            write (*, *) 'UMFPACK32 factorization status: ', status32
+            error stop 'UMFPACK32 factorization failed'
+        end if
+    else
+        call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, &
+                          amat_sp(1:nz), bvec_sp, iopt)
+    end if
 
   call cpu_time(time_factorization)
   print *,'factorization completed ',time_factorization - time_start,' sec'
@@ -2286,8 +2323,15 @@ PRINT *,'right boundary layer ignored'
 
 call cpu_time(time1)
 
-  CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                    source_vector(:,1:3:source_step),iopt)
+    if (use_umf32) then
+        do k = 1, 3, source_step
+            status32 = umf32_solve(nrow, numeric32, source_vector(:,k))
+            if (status32 < 0) error stop 'UMFPACK32 initial solve failed'
+        end do
+    else
+        call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), &
+                          source_vector(:,1:3:source_step), iopt)
+    end if
 call cpu_time(time2)
 
 ! integral part:
@@ -2305,8 +2349,13 @@ call cpu_time(time1)
                            phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),   &
                            ailmm,source_vector(:,k),bvec_iter)
 
-        CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),        &
-                          bvec_iter,iopt)
+        if (use_umf32) then
+            status32 = umf32_solve(nrow, numeric32, bvec_iter)
+            if (status32 < 0) error stop 'UMFPACK32 integral solve failed'
+        else
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, &
+                              amat_sp(1:nz), bvec_iter, iopt)
+        end if
 
 
         source_vector(:,k)=bvec_lor+bvec_iter
@@ -2611,6 +2660,8 @@ call cpu_time(time2)
   enddo
 
   if(iplot.eq.1.or.isw_axisymm.eq.1) then
+
+    if (use_umf32) call umf32_free(numeric32)
 
     flux_p=0.d0
     flux_m=0.d0
