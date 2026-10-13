@@ -4,6 +4,9 @@ MODULE collisionality_mod
   INTEGER          :: isw_energy
   INTEGER          :: isw_axisymm
   LOGICAL          :: k_coefficient_only = .false.
+  logical          :: k_surface_batch = .false.
+  logical          :: k_surface_converged = .true.
+  double precision :: k_surface_k, k_surface_qcurr_g, k_surface_qcurr_t
   INTEGER          :: isw_relativistic
   DOUBLE PRECISION :: T_e
 

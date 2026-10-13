@@ -17,6 +17,7 @@ SUBROUTINE ripple_solver(                                 &
   USE size_mod, ONLY : ndim0
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
        isw_energy,isw_integral,isw_axisymm,k_coefficient_only, & !<-in Winny
+       k_surface_batch,k_surface_converged, &
        isw_momentum,vel_distri_swi,vel_num,vel_max, &
        nvel,vel_array
 
@@ -169,6 +170,7 @@ SUBROUTINE ripple_solver(                                 &
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
   INTEGER :: iter,nphiequi,npassing_next,source_step
+  LOGICAL :: source_converged
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
@@ -2297,6 +2299,7 @@ call cpu_time(time1)
 
     do k=1,3,source_step
       bvec_lor=source_vector(:,k)
+      source_converged=.false.
 
       do iter=1,niter
         bvec_prev=source_vector(:,k)
@@ -2313,11 +2316,17 @@ call cpu_time(time1)
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
+           source_converged=.true.
            write (*,*) "Source: ", k, "Number of iterations: ", iter
            exit
         endif
      enddo
-     if (niter .eq. iter) then
+     if (k_surface_batch) then
+        if (.not. source_converged) then
+           k_surface_converged=.false.
+           write (*,*) "Source: ", k, "Maximum number of iterations reached."
+        endif
+     else if (niter .eq. iter) then
         write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
         stop
      end if
