@@ -18,7 +18,7 @@ PROGRAM neo2
        eta_savemem_sigma_mult, flint_prepare, flint_prepare_2, set_collpar
   USE device_mod
   USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
-       isw_integral,isw_energy,isw_axisymm,                         &
+       isw_integral,isw_energy,isw_axisymm,k_coefficient_only,      &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
        phi_x_max, collop_bspline_order, collop_bspline_dist,        &
@@ -167,7 +167,7 @@ PROGRAM neo2
        epserr_sink, epserr_iter, niter, lsw_linear_boozer
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
-       isw_integral,isw_energy,isw_axisymm,                                   &
+       isw_integral,isw_energy,isw_axisymm,k_coefficient_only,                &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                           &
        collop_path, collop_base_prj, collop_base_exp,                         &
        scalprod_alpha, scalprod_beta, v_min_resolution, v_max_resolution,     &
@@ -1048,6 +1048,8 @@ CONTAINS
        CALL h5_add(h5_config_group, 'isw_integral', isw_integral, '')
        CALL h5_add(h5_config_group, 'isw_energy', isw_energy, '')
        CALL h5_add(h5_config_group, 'isw_axisymm', isw_axisymm, '')
+       if (k_coefficient_only) &
+         CALL h5_add(h5_config_group, 'k_coefficient_only', k_coefficient_only)
        CALL h5_add(h5_config_group, 'collop_path', collop_path, 'Path to collision operator matrix')
        CALL h5_add(h5_config_group, 'collop_base_prj', collop_base_prj, 'Projection base of collision operator')
        CALL h5_add(h5_config_group, 'collop_base_exp', collop_base_exp, 'Expansion base of collision operator')
@@ -1143,6 +1145,16 @@ CONTAINS
   END SUBROUTINE write_run_info
 
   subroutine sanity_check_input_parameters()
+    if (k_coefficient_only) then
+      if (isw_axisymm /= 1 .or. magnetic_device /= 0 .or. lsw_multispecies) &
+        error stop 'k_coefficient_only requires single-species axisymmetric mode.'
+      if (isw_momentum /= 0 .or. mpro%isParallel()) &
+        error stop 'k_coefficient_only requires Laguerre momentum and one MPI rank.'
+      if (prop_fileformat /= 1 .or. prop_reconstruct /= 0) &
+        error stop 'k_coefficient_only requires HDF5 and prop_reconstruct=0.'
+      if (prop_ripple_plot /= 0 .or. plot_gauss /= 0 .or. plot_prop /= 0) &
+        error stop 'k_coefficient_only does not support distribution or propagator plots.'
+    end if
     if ((magnetic_device .eq. 1) .and. (isw_axisymm == 1)) then
       write(*,*) 'ERROR: stellerators are not axisymmetric.'
       write(*,*) '  Setting magnetic_device=1 and isw_axisymm=1 makes no sense.'

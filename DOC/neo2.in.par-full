@@ -97,6 +97,10 @@
   conl_over_mfp = 1.0e-3    ! collisionality parameter [1.0d-3]
   conl_over_mfp_vec = 0.0d0 ! [0.0d0]
   isw_axisymm  = 0          ! [0]
+  k_coefficient_only = .false. ! Single-species axisymmetric k_cof output only.
+                              ! Requires one MPI rank, Laguerre momentum, HDF5,
+                              ! prop_reconstruct=0 and no plots; omits Spitzer
+                              ! drive, transport matrices and distributions.
   isw_energy = 0            ! 0: no energy conservation [default]
                             ! 1: with energy conservation
   isw_integral = 0          ! 0: no momentum convervation [default]
