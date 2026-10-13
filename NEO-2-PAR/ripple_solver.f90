@@ -169,6 +169,7 @@ SUBROUTINE ripple_solver(                                 &
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
   INTEGER :: iter,nphiequi,npassing_next,source_step
+  LOGICAL :: source_converged
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
@@ -2297,6 +2298,7 @@ call cpu_time(time1)
 
     do k=1,3,source_step
       bvec_lor=source_vector(:,k)
+      source_converged=.false.
 
       do iter=1,niter
         bvec_prev=source_vector(:,k)
@@ -2313,11 +2315,15 @@ call cpu_time(time1)
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
+           source_converged=.true.
            write (*,*) "Source: ", k, "Number of iterations: ", iter
            exit
         endif
      enddo
-     if (niter .eq. iter) then
+     if (k_coefficient_only) then
+        if (.not. source_converged) &
+           error stop 'k_coefficient_only: integral iteration did not converge.'
+     else if (niter .eq. iter) then
         write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
         stop
      end if
