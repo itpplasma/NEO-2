@@ -95,3 +95,10 @@ set_tests_properties(fixed_point_gmres_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30)
+
+if(NEO2_USE_FORTSPARSE)
+  add_executable(test_k_ilu_gmres test_k_ilu_gmres.f90)
+  target_link_libraries(test_k_ilu_gmres common fortsparse ${LAPACK_LIBRARIES})
+  add_test(NAME k_ilu_gmres_test COMMAND test_k_ilu_gmres)
+  set_tests_properties(k_ilu_gmres_test PROPERTIES TIMEOUT 30)
+endif()

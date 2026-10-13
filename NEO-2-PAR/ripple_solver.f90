@@ -42,6 +42,7 @@ SUBROUTINE ripple_solver(                                 &
 
   use collop_compute, only: a_00_offset, a_02_offset, a_22_offset, weightenerg_offset
   use fixed_point_gmres_mod, only: fixed_point_gmres_t
+  use k_ilu_backend_mod, only: k_ilu_backend_t
   use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
   
   !*****************************
@@ -179,6 +180,9 @@ SUBROUTINE ripple_solver(                                 &
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
   type(fixed_point_gmres_t) :: source_gmres
+  type(k_ilu_backend_t) :: ilu
+  real(kind=dp), allocatable :: ilu_mat(:), ilu_q(:,:)
+  real(kind=dp) :: ilu_full_residual
   integer :: k_source_index
   real(dp) :: k_residual_norm, k_solution_norm
 
@@ -2274,8 +2278,12 @@ PRINT *,'right boundary layer ignored'
   iopt=1
 
   call cpu_time(time_start)
+  call ilu%factor(k_coefficient_only, k_iter_solver, sparse_solve_method, &
+      ncol, nz, ipcol, irow(1:nz), amat_sp(1:nz))
+  if (.not. ilu%active) then
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
                     bvec_sp,iopt)
+  end if
 
   call cpu_time(time_factorization)
   print *,'factorization completed ',time_factorization - time_start,' sec'
@@ -2292,8 +2300,16 @@ PRINT *,'right boundary layer ignored'
 
 call cpu_time(time1)
 
-  CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                    source_vector(:,1:3:source_step),iopt)
+  if (ilu%active) then
+    allocate(ilu_mat(ncol), ilu_q(ncol,2))
+    ilu_q = source_vector(:,1:3:2)
+    do k = 1, 3, source_step
+      call ilu%solve(source_vector(:,k))
+    end do
+  else
+    CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
+                      source_vector(:,1:3:source_step),iopt)
+  end if
 call cpu_time(time2)
 
 ! integral part:
@@ -2317,9 +2333,22 @@ call cpu_time(time1)
           call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                              phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
                              ailmm,source_gmres%vin,bvec_iter)
-          call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
-                            bvec_iter,iopt)
+          if (ilu%active) then
+            ! (A-C)f=q, left preconditioned: Mv=v-P^-1(A-C)v.
+            call ilu%matvec(source_gmres%vin, ilu_mat)
+            bvec_iter = ilu_mat - bvec_iter
+            call ilu%solve(bvec_iter)
+            bvec_iter = source_gmres%vin - bvec_iter
+          else
+            call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
+                              bvec_iter,iopt)
+          end if
           call source_gmres%put(bvec_iter)
+          if (ilu%active) then
+            if (mod(source_gmres%napply,10) == 0) write (*,*) &
+                'K ILU progress source/apps/last checked residual:', &
+                k, source_gmres%napply, source_gmres%resid_rel
+          end if
         end do
         if (source_gmres%failed) &
           error stop 'K-only GMRES received a nonfinite operator response.'
@@ -2329,9 +2358,19 @@ call cpu_time(time1)
         call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
                            phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
                            ailmm,source_vector(:,k),bvec_iter)
-        call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
-                          bvec_iter,iopt)
-        bvec_iter = bvec_lor + bvec_iter - source_vector(:,k)
+        if (ilu%active) then
+          ! Independent physical residual, formed using original A and q.
+          call ilu%matvec(source_vector(:,k), ilu_mat)
+          bvec_iter = ilu_q(:,(k+1)/2) - ilu_mat + bvec_iter
+          ilu_full_residual = sum(abs(bvec_iter))/ &
+              max(sum(abs(ilu_q(:,(k+1)/2))), tiny(1.d0))
+          write (*,*) 'K ILU source:', k, 'full residual/q:', ilu_full_residual
+          call ilu%solve(bvec_iter)
+        else
+          call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz), &
+                            bvec_iter,iopt)
+          bvec_iter = bvec_lor + bvec_iter - source_vector(:,k)
+        end if
         k_residual_norm = sum(abs(bvec_iter))
         k_solution_norm = sum(abs(source_vector(:,k)))
         k_source_index = (k+1)/2
@@ -2343,10 +2382,16 @@ call cpu_time(time1)
           if (k_residual_norm <= epserr_iter*k_solution_norm) &
             k_source_converged(k_source_index) = 1
         end if
+        if (ilu%active) then
+          if (.not. ieee_is_finite(ilu_full_residual)) &
+              k_source_converged(k_source_index) = 0
+        end if
         write (*,*) 'K source:', k, 'applications:', &
             k_source_applications(k_source_index), 'true residual:', &
             k_source_residual(k_source_index), 'converged:', &
             k_source_converged(k_source_index)
+        if (ilu%active) write (*,*) 'K ILU solve count/CPU seconds:', &
+            ilu%solve_count, ilu%solve_cpu
         if (k_source_converged(k_source_index) /= 1) &
           error stop 'K-only GMRES failed its true-residual convergence check.'
         cycle
@@ -2668,6 +2713,8 @@ call cpu_time(time2)
 
   if(iplot.eq.1.or.isw_axisymm.eq.1) then
 
+    call ilu%free()
+    if (allocated(ilu_mat)) deallocate(ilu_mat, ilu_q)
     flux_p=0.d0
     flux_m=0.d0
     amat_plus_plus=0.d0
