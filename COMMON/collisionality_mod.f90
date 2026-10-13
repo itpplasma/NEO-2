@@ -3,6 +3,7 @@ MODULE collisionality_mod
   INTEGER          :: isw_integral
   INTEGER          :: isw_energy
   INTEGER          :: isw_axisymm
+  LOGICAL          :: k_coefficient_only = .false.
   INTEGER          :: isw_relativistic
   DOUBLE PRECISION :: T_e
 

@@ -16,7 +16,7 @@ SUBROUTINE ripple_solver(                                 &
   USE flint_mod, ONLY : phi_divide
   USE size_mod, ONLY : ndim0
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
-       isw_energy,isw_integral,isw_axisymm, & !<-in Winny
+       isw_energy,isw_integral,isw_axisymm,k_coefficient_only, & !<-in Winny
        isw_momentum,vel_distri_swi,vel_num,vel_max, &
        nvel,vel_array
 
@@ -168,7 +168,7 @@ SUBROUTINE ripple_solver(                                 &
 
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
-  INTEGER :: iter,nphiequi,npassing_next
+  INTEGER :: iter,nphiequi,npassing_next,source_step
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
@@ -2278,10 +2278,16 @@ PRINT *,'right boundary layer ignored'
 
 ! Solution of inhomogeneus equation (account of sources):
 
+  source_step=1
+  if(k_coefficient_only) then
+    source_step=2
+    source_vector(:,2)=0.d0
+  endif
+
 call cpu_time(time1)
 
   CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                    source_vector(:,1:3),iopt)
+                    source_vector(:,1:3:source_step),iopt)
 call cpu_time(time2)
 
 ! integral part:
@@ -2289,7 +2295,7 @@ call cpu_time(time2)
 call cpu_time(time1)
   if(isw_intp.eq.1) then
 
-    do k=1,3
+    do k=1,3,source_step
       bvec_lor=source_vector(:,k)
 
       do iter=1,niter
@@ -2338,6 +2344,7 @@ call cpu_time(time1)
   print *,'Local off-set drive 1: ',cg0_1_num/denom_mflint,cg2_1_num/denom_mflint, denom_mflint
 
   ! Drive 2 (Spitzer)
+  if(.not.k_coefficient_only) then
   cg0_2_num=sum(avden_vector*source_vector(:,2))
   cg0_2_num_orig = cg0_2_num
   cg2_2_num=sum(avpres_vector*source_vector(:,2))
@@ -2349,6 +2356,7 @@ call cpu_time(time1)
   cg0_2_num=cg0_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
   cg2_2_num=cg2_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
   print *,'Local off-set drive 2: ',cg0_2_num/denom_mflint,cg2_2_num/denom_mflint, denom_mflint
+  endif
 
   ! Drive 3
   cg0_3_num=sum(avden_vector*source_vector(:,3))
