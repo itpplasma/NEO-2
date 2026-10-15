@@ -219,28 +219,6 @@ jobs:
             echo "source_dir=$(pwd)"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build the same NEO-2 source with the previous libneo pin
-        if: github.event_name == 'pull_request'
-        id: build_previous_libneo
-        env:
-          BASE_SOURCE: ${{ steps.build_reference_main.outputs.source_dir }}
-        run: |
-          set -euo pipefail
-          OLD_REF=$(git -C "$BASE_SOURCE/build/_deps/libneo-src" rev-parse HEAD)
-          NEW_REF=$(git -C build/_deps/libneo-src rev-parse HEAD)
-          test -n "$OLD_REF" && test -n "$NEW_REF"
-          if [ "$OLD_REF" = "$NEW_REF" ]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-          echo "NEO-2 $(git rev-parse HEAD), libneo $OLD_REF versus $NEW_REF" >> "$GITHUB_STEP_SUMMARY"
-          PREVIOUS_DIR=$(mktemp -d)
-          git archive HEAD | tar -x -C "$PREVIOUS_DIR"
-          make -C "$PREVIOUS_DIR" LIBNEO_REF="$OLD_REF"
-          echo "neo2_ql=$(realpath "$PREVIOUS_DIR/build/NEO-2-QL/neo_2_ql.x")" >> "$GITHUB_OUTPUT"
-          echo "neo2_par=$(realpath "$PREVIOUS_DIR/build/NEO-2-PAR/neo_2_par.x")" >> "$GITHUB_OUTPUT"
-
       - name: Run golden record test against main version (exact check)
         if: github.event_name == 'pull_request'
         env:
@@ -339,6 +317,28 @@ jobs:
             cat "${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Build the same NEO-2 source with the previous libneo pin
+        if: github.event_name == 'pull_request'
+        id: build_previous_libneo
+        env:
+          BASE_SOURCE: ${{ steps.build_reference_main.outputs.source_dir }}
+        run: |
+          set -euo pipefail
+          OLD_REF=$(git -C "$BASE_SOURCE/build/_deps/libneo-src" rev-parse HEAD)
+          NEW_REF=$(git -C build/_deps/libneo-src rev-parse HEAD)
+          test -n "$OLD_REF" && test -n "$NEW_REF"
+          if [ "$OLD_REF" = "$NEW_REF" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "NEO-2 $(git rev-parse HEAD), libneo $OLD_REF versus $NEW_REF" >> "$GITHUB_STEP_SUMMARY"
+          PREVIOUS_DIR=$(mktemp -d)
+          git archive HEAD | tar -x -C "$PREVIOUS_DIR"
+          make -C "$PREVIOUS_DIR" LIBNEO_REF="$OLD_REF"
+          echo "neo2_ql=$(realpath "$PREVIOUS_DIR/build/NEO-2-QL/neo_2_ql.x")" >> "$GITHUB_OUTPUT"
+          echo "neo2_par=$(realpath "$PREVIOUS_DIR/build/NEO-2-PAR/neo_2_par.x")" >> "$GITHUB_OUTPUT"
+
       - name: Compare old and new libneo on the same NEO-2 source
         if: steps.build_previous_libneo.outputs.changed == 'true'
         id: run_libneo_comparison
@@ -353,10 +353,8 @@ jobs:
           set -e
           cd "$GOLDEN_DIR"
 
-          # REFERENCE_* point at the previous-libneo build, so make reruns
-          # only the reference. That build predates the main reference run,
-          # so touch it, or make would keep the stale reference/.run outputs.
-          touch "$REFERENCE_NEO2_PAR" "$REFERENCE_NEO2_QL"
+          # REFERENCE_* point at the previous-libneo build, built after the
+          # main reference runs, so make reruns only the reference.
           status=0
           TOL=1e-14 MAGNETICS_TOL=1e-12 make -k lorentz || status=1
           TOL=1e-15 make -k ql || status=1
