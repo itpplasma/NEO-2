@@ -38,6 +38,17 @@ subroutine ripple_solver_ArnoldiO2( &
     ! becomes then: hatOmegaE = $\bar{\Omega}_{tE}$ = $\frac{M_t}{\kappa R}$
     !
   !! End Modifications by Andreas F. Martitsch (01.04.2015)
+    use ntv_work_export, only: ntv_work_export_t, work_begin, work_basis, &
+                               work_vector, work_end, work_node_deltas
+    use device_mod, only: work_device => device
+    use ntv_mod, only: work_c => c, work_e => e, work_y => y_ntv_mod, &
+                       work_dn => dn_spec_ov_ds, work_dT => dT_spec_ov_ds
+    use collisionality_mod, only: work_z => z_spec, work_n => n_spec, &
+                                  work_order => collop_bspline_order, &
+                                  work_taylor => collop_bspline_taylor
+    use collop_bspline, only: work_knots => xknots
+    use neo_control, only: work_lab => lab_swi
+    use mag_interface_mod, only: work_coords => mag_coordinates
     use lapack_band
     use rkstep_mod
     use polleg_mod
@@ -278,6 +289,14 @@ subroutine ripple_solver_ArnoldiO2( &
     logical :: colltest = .FALSE.
     logical :: ttmptest = .FALSE.
     logical :: nobounceaver = .TRUE.
+    ! Diagnostic only; absent request means no coefficient allocation or output.
+    type(ntv_work_export_t) :: work_dump
+    logical :: orbit_dump_enabled, orbit_request_exists
+    integer :: orbit_u, orbit_ios, orbit_species
+    integer, save :: orbit_dump_serial=0
+    real(dp) :: orbit_surface
+    real(dp), allocatable :: orbit_a1(:,:), orbit_a2(:,:)
+    integer, allocatable :: orbit_valid(:,:)
 
 ! DEBUGGING
     integer :: i_ctr = 0, uw, uw_new
@@ -1060,6 +1079,12 @@ subroutine ripple_solver_ArnoldiO2( &
 
     n_2d_size = ind_start(iend) + 2*(lag + 1)*(npl(iend) + 1)
 
+    ! Axisymmetric-only mode returns before the non-axisymmetric work closure.
+    if (isw_qflux_NA == 1) then
+        call work_begin(work_dump, boozer_s, ispec, n_2d_size, &
+                        sum(npl(ibeg:iend) + 1))
+    end if
+
     if (allocated(f_init_arnoldi)) deallocate (f_init_arnoldi)
     allocate (f_init_arnoldi(n_2d_size))
 
@@ -1240,6 +1265,9 @@ subroutine ripple_solver_ArnoldiO2( &
 !> Actual derivative can be obtained by summation of corresponding
 !> band-integrated fluxes, $f_{i+k-2}$, multiplied with these contributions
 
+            call work_basis(work_dump, istep, i, i1min + 1, &
+                            alambd(i, istep), eta0, amin2ovb, &
+                            bvec_lapack(1:4, 1:4))
             if (iplot .EQ. 1) derivs_plot(0:3, 1:4, i, istep) = bvec_lapack(1:4, 1:4)
             deriv_coef(:, i) = bvec_lapack(2, :)*coefdir*MIN(eta(i), eta0)
             fun_coef(:, i) = bvec_lapack(1, :)*MIN(eta(i), eta0)
@@ -2636,6 +2664,22 @@ subroutine ripple_solver_ArnoldiO2( &
     hatOmegaB = hatOmegaB*sign(1.d0, boozer_psi_pr_hat*bcovar_phi_hat*boozer_isqrg)
 
     print *, 'hatOmegaB,hatOmegaE: ', hatOmegaB, hatOmegaE
+    orbit_dump_enabled = .false.
+    inquire(file='NEO2_ORBIT.REQUEST',exist=orbit_request_exists)
+    if (orbit_request_exists) then
+        open(newunit=orbit_u,file='NEO2_ORBIT.REQUEST',status='old',action='read',iostat=orbit_ios)
+        if (orbit_ios /= 0) error stop 'Cannot open orbit request'
+        read(orbit_u,*,iostat=orbit_ios) orbit_surface, orbit_species
+        close(orbit_u)
+        if (orbit_ios /= 0) error stop 'Invalid orbit request'
+        orbit_dump_enabled = abs(boozer_s-orbit_surface)<1.d-10 .and. ispec==orbit_species
+    end if
+    if (orbit_dump_enabled) then
+        allocate(orbit_a1(2,ibeg:iend),orbit_a2(2,ibeg:iend),orbit_valid(2,ibeg:iend))
+        orbit_a1=0.d0
+        orbit_a2=0.d0
+        orbit_valid=0
+    end if
 
   !! End Modifications by Andreas F. Martitsch (14.07.2015)
 
@@ -2898,6 +2942,11 @@ subroutine ripple_solver_ArnoldiO2( &
         a2b = a1b + 2.d0*(dbcovar_theta_hat_ds + dbcovar_phi_hat_ds/aiota &
                           - bcovar_phi_hat*boozer_iota_s/(aiota**2) &
                           - dbcovar_s_hat_dphi_mfl(istep)/aiota)/denomjac
+        if (orbit_dump_enabled) then
+            orbit_a1(1,istep)=a1b
+            orbit_a2(1,istep)=a2b
+            orbit_valid(1,istep)=1
+        end if
     !! End Modifications by Andreas F. Martitsch (17.03.2016)
     !! End Modifications by Andreas F. Martitsch (14.03.2014)
 
@@ -2997,6 +3046,11 @@ subroutine ripple_solver_ArnoldiO2( &
         a2b = a1b + 2.d0*(dbcovar_theta_hat_ds + dbcovar_phi_hat_ds/aiota &
                           - bcovar_phi_hat*boozer_iota_s/(aiota**2) &
                           - dbcovar_s_hat_dphi_mfl(istep)/aiota)/denomjac
+        if (orbit_dump_enabled) then
+            orbit_a1(2,istep)=a1b
+            orbit_a2(2,istep)=a2b
+            orbit_valid(2,istep)=1
+        end if
      !! End Modifications by Andreas F. Martitsch (17.03.2016)
      !! End Modifications by Andreas F. Martitsch (14.03.2014)
 
@@ -3227,6 +3281,10 @@ subroutine ripple_solver_ArnoldiO2( &
 
     expforw = EXP(imun*m_phi*(phi_mfl(iend) - phi_mfl(ibeg)))
     expbackw = (1.d0, 0.d0)/expforw
+    if (orbit_dump_enabled) then
+        call dump_live_orbit
+        deallocate(orbit_a1,orbit_a2,orbit_valid)
+    end if
     perbou_pos = (1.d0, 0.d0) - expbackw
     perbou_neg = (1.d0, 0.d0) - expforw
 
@@ -3340,6 +3398,77 @@ subroutine ripple_solver_ArnoldiO2( &
     !------------------------------------------------------------------------
 
 CONTAINS
+    subroutine dump_work_layout()
+        integer :: wu, j, b
+        real(dp) :: work_deltas(2)
+
+        wu = work_dump%text_unit
+        write(wu, *) 'DIMS ', n_2d_size, num_spec, ispec, lag, legmax, &
+                    ibeg, iend, npart, m_phi
+        write(wu, *) 'META ', boozer_s, collpar, Om_tE, hatOmegaE, hatOmegaB
+        write(wu, *) 'MODEL ', work_lab, work_coords, isw_qflux_NA, &
+                    isw_calc_Er, isw_calc_MagDrift, isw_intp, &
+                    merge(1, 0, lsw_multispecies)
+        write(wu, *) 'CGS ', work_c, work_e, work_device%r0
+        write(wu, *) 'GEOM ', aiota, sign_of_bphi, boozer_isqrg, &
+                    boozer_psi_pr_hat, bmod0*1.d4, bcovar_theta_hat, &
+                    bcovar_phi_hat, boozer_iota_s
+        write(wu, *) 'PHASE ', phi_mfl(iend)-phi_mfl(ibeg), &
+                    real(expforw), aimag(expforw), real(expbackw), &
+                    aimag(expbackw), real(rotfactor), aimag(rotfactor)
+        write(wu, *) 'Y_NTV ', work_y
+        write(wu, *) 'ENERGY_DEF ', collop_base_prj, collop_base_exp, &
+                    scalprod_alpha, scalprod_beta, work_order, &
+                    merge(1, 0, work_taylor)
+        if (allocated(work_knots)) write(wu, *) 'ENERGY_KNOTS ', work_knots
+        write(wu, *) 'ETA ', eta(0:npart)
+        do b = 0, num_spec-1
+            write(wu, *) 'SPEC ', b, work_z(b), m_spec(b), work_n(b), &
+                        T_spec(b), work_dn(b), work_dT(b)
+        end do
+        do j = ibeg, iend
+            call work_node_deltas(j, ibeg, iend, delt_pos, delt_neg, work_deltas)
+            write(wu, *) 'NODE ', j, ind_start(j), npl(j), phi_mfl(j), &
+                        bhat_mfl(j), h_phi_mfl(j), dlogbdphi_mfl(j), &
+                        dlogbds_mfl(j), bcovar_s_hat_mfl(j), &
+                        dbcovar_s_hat_dphi_mfl(j), work_deltas(1), work_deltas(2), &
+                        fact_pos_b(j), fact_pos_e(j), fact_neg_b(j), fact_neg_e(j)
+            write(wu, *) 'LAMBDA ', j, alambd(0:npl(j)+3, j)
+        end do
+        write(wu, '(A)') 'ENERGY_BASIS_ARCHIVE collop.h5'
+    end subroutine dump_work_layout
+
+    subroutine dump_live_orbit
+        integer :: ou, j, k, mm
+        character(80) :: name
+        orbit_dump_serial=orbit_dump_serial+1
+        write(name,'(A,I0,A,I0,A)') 'NEO2_ORBIT_s',ispec,'_k',orbit_dump_serial,'.txt'
+        open(newunit=ou,file=trim(name),status='new',action='write')
+        write(ou,'(A)') 'NEO2_LIVE_ORBIT_V1'
+        write(ou,*) 'DIMS',ibeg,iend,npart,lag,ispec,m_phi
+        write(ou,*) 'META',boozer_s,T_spec(ispec),m_spec(ispec),collpar,Om_tE,hatOmegaE,hatOmegaB
+        write(ou,*) 'GEOM',aiota,sign_of_bphi,boozer_isqrg,boozer_psi_pr_hat,bmod0*1.d4, &
+            bcovar_theta_hat,bcovar_phi_hat,boozer_iota_s,dbcovar_theta_hat_ds,dbcovar_phi_hat_ds
+        write(ou,*) 'PHASE',phi_mfl(iend)-phi_mfl(ibeg),real(expforw),aimag(expforw), &
+            real(expbackw),aimag(expbackw),real(rotfactor),aimag(rotfactor)
+        write(ou,*) 'ETA',eta(0:npart)
+        do j=ibeg,iend
+            write(ou,*) 'NODE',j,phi_mfl(j),bhat_mfl(j),h_phi_mfl(j),dlogbdphi_mfl(j), &
+                dlogbds_mfl(j),bcovar_s_hat_mfl(j),dbcovar_s_hat_dphi_mfl(j),npl(j)
+            write(ou,*) 'DRIFT',j,orbit_valid(:,j),orbit_a1(:,j),orbit_a2(:,j)
+            write(ou,*) 'LAMBDA',j,alambd(0:npl(j)+1,j)
+            do k=1,npl(j)+1
+                write(ou,*) 'RHS',j,k,rhs_mat_energ(:,k,j),rhs_mat_energ2(:,k,j)
+            end do
+        end do
+        do mm=0,lag
+            write(ou,*) 'X1',mm,x1mm(mm,0:lag)
+            write(ou,*) 'X2',mm,x2mm(mm,0:lag)
+        end do
+        write(ou,'(A)') 'END_NEO2_LIVE_ORBIT_V1'
+        close(ou)
+    end subroutine dump_live_orbit
+
 
 !------------------------------------------------------------------------
     subroutine plotsource(iunit_base, sourcevec_tmp)
@@ -3514,6 +3643,10 @@ CONTAINS
 
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
+                if (.not. problem_type) then
+                    call work_vector(work_dump, 'RHS', k, ispec, &
+                                     source_vector_all(:, k, ispec))
+                end if
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                             & source_vector_all(:, k, ispec), ispec, next_iteration)
             end do
@@ -3529,6 +3662,10 @@ CONTAINS
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
+                    if (.not. problem_type) then
+                        call work_vector(work_dump, 'RHS', k, ispecp, &
+                                         source_vector_all(:, k, ispecp))
+                    end if
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                                 & source_vector_all(:, k, ispecp), ispec, next_iteration)
                 end do
@@ -3670,10 +3807,29 @@ CONTAINS
         if (allocated(qflux_allspec)) deallocate (qflux_allspec)
         allocate (qflux_allspec(1:3, 1:3, 0:num_spec - 1, 0:num_spec - 1))
         qflux_allspec = 0.0d0
+        if (.not. problem_type) then
+            if (work_dump%enabled) then
+                call dump_work_layout()
+                call work_vector(work_dump, 'FLUX', 1, ispec, flux_vector(1, :))
+            end if
+        end if
         do ispecp = 0, num_spec - 1
+            if (.not. problem_type) then
+                call work_vector(work_dump, 'SOL', 1, ispecp, &
+                                 source_vector_all(:, 1, ispecp))
+                call work_vector(work_dump, 'SOL', 3, ispecp, &
+                                 source_vector_all(:, 3, ispecp))
+            end if
             qflux = 0.5d0*REAL(MATMUL(CONJG(flux_vector), source_vector_all(:, 1:3, ispecp)), dp)
             qflux_allspec(:, :, ispecp, ispec) = qflux
+            if (.not. problem_type) then
+                if (work_dump%enabled) then
+                    write(work_dump%text_unit, *) 'QFLUX ', ispecp, &
+                                                 qflux(1, 1), qflux(1, 3)
+                end if
+            end if
         end do
+        if (.not. problem_type) call work_end(work_dump)
         ! order of species inidices (ispecp,ispec) interchanged
         ! (-> easier to handle within mpro%allgather)
         call mpro%allgather_inplace(qflux_allspec)
