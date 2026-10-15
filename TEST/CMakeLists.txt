@@ -74,3 +74,17 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+# Real .bc reader: simultaneous surfaces must match independent single calls.
+add_executable(test_neo_magfie_multisurface test_neo_magfie_multisurface.f90)
+target_link_libraries(test_neo_magfie_multisurface common)
+add_test(NAME neo_magfie_multisurface_reader_test
+  COMMAND ${CMAKE_COMMAND}
+    -DBINARY=$<TARGET_FILE:test_neo_magfie_multisurface>
+    -DFIELD=${CMAKE_CURRENT_SOURCE_DIR}/../DOC/example_bg_field.bc
+    -DFIXTURE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/magfie_multisurface
+    -DWORKROOT=${CMAKE_CURRENT_BINARY_DIR}/magfie_multisurface_run
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/check_neo_magfie_multisurface.cmake)
+set_tests_properties(neo_magfie_multisurface_reader_test PROPERTIES
+  PASS_REGULAR_EXPRESSION "All tests passed!"
+  TIMEOUT 30)
