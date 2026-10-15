@@ -15,14 +15,16 @@ find_or_fetch(libneo)
 ### FGSL
 # Hermetic by default: fetch and build FGSL via the bundled ExternalProject.
 # Pass -DFGSL_PATH=<prebuilt-fgsl-dir> to build against a local FGSL instead.
-if (FGSL_PATH)
+# The bundled build caches FGSL_PATH too; only a different path is local.
+set(FGSL_BUNDLED_PATH ${CMAKE_BINARY_DIR}/fgsl/src/FGSL)
+if (FGSL_PATH AND NOT FGSL_PATH STREQUAL FGSL_BUNDLED_PATH)
     message(STATUS "Using local FGSL in ${FGSL_PATH}")
     add_custom_target(FGSL)
 else()
     message(STATUS "Downloading and building FGSL")
     include(fgsl)
 
-    set(FGSL_PATH ${CMAKE_BINARY_DIR}/fgsl/src/FGSL CACHE STRING "FGSL path")
+    set(FGSL_PATH ${FGSL_BUNDLED_PATH} CACHE STRING "FGSL path")
 endif()
 
 set(FGSL_INC ${FGSL_PATH} CACHE STRING "FGSL include")
