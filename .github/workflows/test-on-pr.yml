@@ -169,14 +169,17 @@ jobs:
           cd "$TEST_DIR"
           echo "test_dir=$(pwd)" >> "$GITHUB_OUTPUT"
 
+          # Run every fast comparison and report all failures together.
+          status=0
           export TOL=1e-14
           export LEGACY_TOL=1e-10
           export MAGNETICS_TOL=1e-12
-          make lorentz
+          make -k lorentz || status=1
 
           export TOL=1e-10
           export LEGACY_TOL=1e-8
-          make ql
+          make -k ql || status=1
+          exit "$status"
 
       - name: Upload test (against stable) output on failure
         if: steps.run_test_stable.outcome == 'failure'
@@ -224,14 +227,16 @@ jobs:
           set -e
           cd ${{ steps.run_test_stable.outputs.test_dir }}
 
+          status=0
           export TOL=1e-14
           export LEGACY_TOL=1e-10
           export MAGNETICS_TOL=1e-12
-          make lorentz
+          make -k lorentz || status=1
 
           export TOL=1e-15
           export LEGACY_TOL=1e-8
-          make ql
+          make -k ql || status=1
+          exit "$status"
 
       - name: Upload test (against main) output on failure
         if: steps.run_test_main.outcome == 'failure'
