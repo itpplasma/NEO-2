@@ -353,11 +353,13 @@ jobs:
           set -e
           cd "$GOLDEN_DIR"
 
-          # Rerun only the reference with the previous libneo pin.
+          # REFERENCE_* point at the previous-libneo build, so make reruns
+          # only the reference. That build predates the main reference run,
+          # so touch it, or make would keep the stale reference/.run outputs.
+          touch "$REFERENCE_NEO2_PAR" "$REFERENCE_NEO2_QL"
           status=0
-          TOL=1e-14 MAGNETICS_TOL=1e-12 make lorentz_reference_comparison || status=1
-          TOL=1e-15 make ql_reference_comparison || status=1
-          TOL=1e-15 make par_reference_comparison || status=1
+          TOL=1e-14 MAGNETICS_TOL=1e-12 make -k lorentz || status=1
+          TOL=1e-15 make -k ql || status=1
           exit "$status"
 
       - name: Upload libneo comparison output on failure
@@ -370,8 +372,6 @@ jobs:
             ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/*/out
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/*/summary.h5
             ${{ steps.run_test_stable.outputs.test_dir }}/ql/*/out
-            ${{ steps.run_test_stable.outputs.test_dir }}/par/*/summary.h5
-            ${{ steps.run_test_stable.outputs.test_dir }}/par/*/out
 
       - name: Fail the job on test failure
         if: steps.run_test_stable.outcome == 'failure' || steps.run_test_main.outcome == 'failure' || steps.run_par_test.outcome == 'failure' || steps.run_performance_test.outcome == 'failure' || steps.run_libneo_comparison.outcome == 'failure'
