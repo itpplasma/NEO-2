@@ -46,3 +46,23 @@ claim to repair that scientific limitation. NEO-RT explicitly uses its existing
 zero-radial-field approximation and marks the toroidal curl component unavailable;
 its separately retained curl identity tests qualify the determined axisymmetric
 components. No complete general-field curl or rigorous certificate is claimed.
+
+## Laboratory-10 curl orientation
+
+In the stored coordinate order `(s, phi, theta)`, the contravariant curl is
+`(d_phi h_theta-d_theta h_phi, d_theta h_s-d_s h_theta,
+  d_s h_phi-d_phi h_s)/J`. All three numerators therefore change by the same
+factor when the denominator's orientation changes. The historical reduced curl
+expressions use `J0=-psi_pr*(curr_pol+iota*curr_tor)/B**2*1e6`. Laboratory 10
+replaces that sign by the geometry sign: `J=abs(J0)*sign(J_geometry)`.
+The matching orientation factor is `sign(J0)*sign(J_geometry)`. Applying it to
+all computed curl components preserves the original formulas for other
+laboratory modes, rather than changing one component to fit an observed sign.
+
+The independent regression differentiates the returned covariant field at two
+step sizes and Richardson-extrapolates. It checks the determined axisymmetric
+radial and poloidal components at five angles, both chart orientations and both
+iota signs, with the existing `1e-8` relative gate. A laboratory-8 case checks the
+unchanged orientation path. This correction does not supply the omitted radial
+covariant-field derivative terms described above; no complete general 3-D curl
+claim follows from it.
