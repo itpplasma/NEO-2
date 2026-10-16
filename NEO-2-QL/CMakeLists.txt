@@ -11,6 +11,7 @@ include(CMakeSources.in)
 
 add_library(neo2_ql STATIC
   ${NEO2_QL_SRC_FILES}
+  neo_field_provider.f90
   ${COLLOPLIB_FILES}
 )
 target_link_libraries(neo2_ql
@@ -35,3 +36,19 @@ ADD_TEST(NAME Test_Build_Code COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DI
 ADD_TEST(Extended_QL_Multispecies  ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies" "2" "QL")
 ADD_TEST(Extended_QL_Multispecies_Read  ${PROJECT_SOURCE_DIR}/../ShellScripts/test_full_reconstruct.sh "Extended_QL_Multispecies_Read" "2" "QL")
 #ADD_TEST(Extended_QL_Multispecies  ${CMAKE_SOURCE_DIR}/../ShellScripts/test_scan.sh "Extended_QL_Scan_Kink" "QL")
+
+add_executable(test_field_provider ../TEST/test_field_provider.f90)
+target_link_libraries(test_field_provider PRIVATE neo2_ql)
+add_test(NAME field_provider_conventions COMMAND test_field_provider)
+set_tests_properties(field_provider_conventions PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}" ENVIRONMENT "OMP_NUM_THREADS=1"
+  TIMEOUT 10)
+
+foreach(failure IN ITEMS bad-format outside multi-n)
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/field_failure_${failure}")
+  add_test(NAME field_provider_rejects_${failure}
+    COMMAND test_field_provider ${failure})
+  set_tests_properties(field_provider_rejects_${failure} PROPERTIES
+    WILL_FAIL TRUE WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/field_failure_${failure}"
+    ENVIRONMENT "OMP_NUM_THREADS=1" TIMEOUT 10)
+endforeach()
