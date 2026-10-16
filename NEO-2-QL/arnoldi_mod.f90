@@ -279,7 +279,7 @@ contains
     end interface
 
     integer, intent(in) :: ispec, n, mmax
-    INTEGER                                       :: m,j,ncount,m_ritz
+    INTEGER                                       :: m,k,j,mbeg,ncount,m_ritz
     INTEGER :: driv_spec
     complex(kind=kind(1d0)),   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
     complex(kind=kind(1d0)),   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
@@ -293,7 +293,7 @@ contains
 
     ALLOCATE(fold(n),fnew(n))
     ALLOCATE(qvecs_prev(n,1),ritznum_prev(mmax))
-    ALLOCATE(hmat(mmax+1,mmax))
+    ALLOCATE(hmat(mmax,mmax))
 
     fold=(0.d0,0.d0)
 
@@ -333,45 +333,50 @@ contains
       RETURN
     ENDIF
     qvecs_prev(:,1)=fnew/q_norm
+    mbeg=2
     ncount=0
 
-    DO m=1,mmax
+    DO m=2,mmax
 
       subspace_closed=.FALSE.
       m_ritz=m
 
-      ! Retain one extra vector for the Arnoldi residual.  Every column of
-      ! the m-dimensional projection requires its own operator application,
-      ! including the final column when the subspace has not closed.
-      ALLOCATE(qvecs(n,m+1))
-      qvecs(:,1:m)=qvecs_prev(:,1:m)
+      ALLOCATE(qvecs(n,m))
+      qvecs(:,1:m-1)=qvecs_prev(:,1:m-1)
 
       ALLOCATE(eigh(m,m))
 
-      fold=qvecs(:,m)
-      call next_iteration(n, fold, fnew)
-      qvecs(:,m+1)=fnew
-      h_spec=0.0d0
-      h_spec(ispec)=SUM(CONJG(fnew)*fnew)
-      CALL mpro%allgather_inplace(h_spec)
-      q_norm=SQRT(SUM(h_spec))
-      DO j=1,m
+      DO k=mbeg,m
+        fold=qvecs(:,k-1)
+        call next_iteration(n, fold, fnew)
+        qvecs(:,k)=fnew
         h_spec=0.0d0
-        h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,m+1))
+        h_spec(ispec)=SUM(CONJG(fnew)*fnew)
         CALL mpro%allgather_inplace(h_spec)
-        hmat(j,m)=SUM(h_spec)
-        qvecs(:,m+1)=qvecs(:,m+1)-hmat(j,m)*qvecs(:,j)
+        q_norm=SQRT(SUM(h_spec))
+        DO j=1,k-1
+          h_spec=0.0d0
+          h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
+          CALL mpro%allgather_inplace(h_spec)
+          hmat(j,k-1)=SUM(h_spec)
+          qvecs(:,k)=qvecs(:,k)-hmat(j,k-1)*qvecs(:,j)
+        ENDDO
+        h_spec=0.0d0
+        h_spec(ispec)=SUM(CONJG(qvecs(:,k))*qvecs(:,k))
+        CALL mpro%allgather_inplace(h_spec)
+        hmat(k,k-1)=SQRT(SUM(h_spec))
+        IF(ABS(hmat(k,k-1)).LE.SQRT(EPSILON(1.0d0))*MAX(1.0d0,q_norm)) THEN
+          subspace_closed=.TRUE.
+          m_ritz=k-1
+          EXIT
+        ENDIF
+        qvecs(:,k)=qvecs(:,k)/hmat(k,k-1)
       ENDDO
-      h_spec=0.0d0
-      h_spec(ispec)=SUM(CONJG(qvecs(:,m+1))*qvecs(:,m+1))
-      CALL mpro%allgather_inplace(h_spec)
-      hmat(m+1,m)=SQRT(SUM(h_spec))
-      IF(ABS(hmat(m+1,m)).LE.SQRT(EPSILON(1.0d0))*MAX(1.0d0,q_norm)) THEN
-        subspace_closed=.TRUE.
-      ELSE
-        qvecs(:,m+1)=qvecs(:,m+1)/hmat(m+1,m)
-      ENDIF
 
+      IF(m_ritz.NE.m) THEN
+        DEALLOCATE(eigh)
+        ALLOCATE(eigh(m_ritz,m_ritz))
+      ENDIF
       CALL try_eigvecvals(m_ritz,tol,hmat(1:m_ritz,1:m_ritz),ngrow, &
         & ritznum(1:m_ritz),eigh,ierr)
 
@@ -411,11 +416,12 @@ contains
       ENDIF
 
       DEALLOCATE(qvecs_prev)
-      ALLOCATE(qvecs_prev(n,m+1))
+      ALLOCATE(qvecs_prev(n,m))
       qvecs_prev=qvecs
       DEALLOCATE(qvecs)
 
       DEALLOCATE(eigh)
+      mbeg=m+1
 
     ENDDO
 
