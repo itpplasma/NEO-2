@@ -64,6 +64,7 @@ set(COMMON_FILES
   sizey_cur.f90
   sizey_pla.f90
   solve_system.f90
+  neo2_sparse_config.F90
   sparse_mod.f90
   sparsevec_mod.f90
   spline_cof.f90

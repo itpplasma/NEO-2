@@ -58,7 +58,8 @@ module neo2_ql
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
-  USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
+  USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example, &
+       sparse_host_memory_limit_bytes,sparse_low_memory,sparse_validate_memory_options
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
        MtOvR, Om_tE, B_rho_L_loc, xstart_cyl, isw_ripple_solver,   &
@@ -209,6 +210,7 @@ module neo2_ql
        solver_talk,switch_off_asymp,                                          &
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
+       sparse_host_memory_limit_bytes,sparse_low_memory, &
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
        mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer
   NAMELIST /collision/                                                        &
@@ -269,6 +271,7 @@ subroutine main
      CLOSE(unit=u1)
   END DO
 
+  call sparse_validate_memory_options()
   call check()
 
   ! Prepare  multi-species computations for a given profile
@@ -564,6 +567,10 @@ subroutine main
        CALL h5_add(h5_config_group, 'eta_alpha_p', eta_alpha_p)
        CALL h5_add(h5_config_group, 'eta_alpha_t', eta_alpha_t)
        CALL h5_add(h5_config_group, 'sparse_solve_method', sparse_solve_method)
+       ! One-element int64 dataset preserves byte caps above default integer range.
+       CALL h5_add(h5_config_group, 'sparse_host_memory_limit_bytes', &
+            [sparse_host_memory_limit_bytes], unit='bytes')
+       CALL h5_add(h5_config_group, 'sparse_low_memory', sparse_low_memory)
        CALL h5_add(h5_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
        CALL h5_add(h5_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
        CALL h5_add(h5_config_group, 'boozer_s', boozer_s, 'Flux surface')

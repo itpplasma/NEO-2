@@ -1,32 +1,49 @@
 ! Native provider for the existing sparse_mod interface. NEO-2 owns the
 ! factor/solve/free policy; FortSparse owns sparse mathematics and refinement.
 module neo2_native_sparse
-    use, intrinsic :: iso_fortran_env, only: error_unit
+    use, intrinsic :: iso_fortran_env, only: error_unit, int64
+    use neo2_sparse_config, only: sparse_host_memory_limit_bytes, sparse_low_memory, &
+        sparse_validate_memory_options, sparse_abort
     use fortsparse, only: dp, csc_t, csc_z_t, csc_from_triplet, sparse_solver_t, &
         fortsparse_status_t, FORTSPARSE_OK, FORTSPARSE_BACKEND_NATIVE, &
         FORTSPARSE_SYM_GENERAL, sparse_factor, sparse_refactor, sparse_solve, &
-        sparse_destroy
+        sparse_destroy, sparse_factor_stats, sparse_factor_stats_t, &
+        FORTSPARSE_MEMORY_AUTO, FORTSPARSE_MEMORY_LOW
     implicit none
     private
     public :: native_sparse_solve
     type(sparse_solver_t), save :: solver
     integer, save :: scalar_kind = 0, factored_method = 0
+    integer(int64), save :: factored_host_limit = 0_int64
+    logical, save :: factored_low_memory = .false.
     interface native_sparse_solve
         module procedure real_vector, complex_vector, real_block, complex_block
     end interface
 contains
-    subroutine fail(message)
+    subroutine fail(message, code)
         character(*), intent(in) :: message
+        integer, optional, intent(in) :: code
         call release()
         write(error_unit,'(a)') 'NEO-2 native sparse: '//message
-        error stop 1
+        call sparse_abort('', code)
     end subroutine
 
     subroutine checked(status)
         type(fortsparse_status_t), intent(in) :: status
+        type(sparse_factor_stats_t) :: stats
+        type(fortsparse_status_t) :: ignored
         if (status%code /= FORTSPARSE_OK) then
             write(error_unit,'(a,i0)') 'FortSparse status=',status%code
-            call fail(trim(status%msg))
+            write(error_unit,'(a,i0)') 'Sparse host payload limit bytes=', &
+                sparse_host_memory_limit_bytes
+            call sparse_factor_stats(solver, stats, ignored)
+            if (ignored%code == FORTSPARSE_OK) then
+                write(error_unit,'(a,i0)') 'Sparse budget required bytes=', &
+                    stats%budget_required_bytes
+                write(error_unit,'(a,i0)') 'Sparse budget available bytes=', &
+                    stats%budget_available_bytes
+            end if
+            call fail(trim(status%msg), status%code)
         end if
     end subroutine
 
@@ -34,6 +51,8 @@ contains
         call sparse_destroy(solver)
         scalar_kind = 0
         factored_method = 0
+        factored_host_limit = 0_int64
+        factored_low_memory = .false.
     end subroutine
 
     integer function operation(method, iopt) result(op)
@@ -85,7 +104,9 @@ contains
         fresh = op == 0 .or. op == 1 .or. .not. solver%factored
         if (.not. fresh) then
             if (scalar_kind /= 1) call fail('retained factor scalar kind mismatch')
-            if (method == factored_method) return
+            if (method == factored_method .and. &
+                sparse_host_memory_limit_bytes == factored_host_limit .and. &
+                (sparse_low_memory .eqv. factored_low_memory)) return
         end if
         if (size(values) /= nz) call fail('value count differs from nz')
         call columns(nrow,ncol,nz,rows,pointer,cols)
@@ -95,6 +116,9 @@ contains
         solver%backend_id = FORTSPARSE_BACKEND_NATIVE
         solver%options%symmetry = FORTSPARSE_SYM_GENERAL
         solver%options%verbose = verbose
+        solver%options%host_memory_limit_bytes = sparse_host_memory_limit_bytes
+        solver%options%memory_policy = FORTSPARSE_MEMORY_AUTO
+        if (sparse_low_memory) solver%options%memory_policy = FORTSPARSE_MEMORY_LOW
         solver%refine = method == 2
         if (fresh) then
             call sparse_factor(solver,matrix,status)
@@ -106,6 +130,8 @@ contains
         call checked(status)
         scalar_kind = 1
         factored_method = method
+        factored_host_limit = sparse_host_memory_limit_bytes
+        factored_low_memory = sparse_low_memory
     end subroutine
 
     subroutine prepare_complex(nrow,ncol,nz,rows,pointer,values,method,verbose,op)
@@ -119,7 +145,9 @@ contains
         fresh = op == 0 .or. op == 1 .or. .not. solver%factored
         if (.not. fresh) then
             if (scalar_kind /= 2) call fail('retained factor scalar kind mismatch')
-            if (method == factored_method) return
+            if (method == factored_method .and. &
+                sparse_host_memory_limit_bytes == factored_host_limit .and. &
+                (sparse_low_memory .eqv. factored_low_memory)) return
         end if
         if (size(values) /= nz) call fail('value count differs from nz')
         call columns(nrow,ncol,nz,rows,pointer,cols)
@@ -129,6 +157,9 @@ contains
         solver%backend_id = FORTSPARSE_BACKEND_NATIVE
         solver%options%symmetry = FORTSPARSE_SYM_GENERAL
         solver%options%verbose = verbose
+        solver%options%host_memory_limit_bytes = sparse_host_memory_limit_bytes
+        solver%options%memory_policy = FORTSPARSE_MEMORY_AUTO
+        if (sparse_low_memory) solver%options%memory_policy = FORTSPARSE_MEMORY_LOW
         solver%refine = method == 2
         if (fresh) then
             call sparse_factor(solver,matrix,status)
@@ -138,6 +169,8 @@ contains
         call checked(status)
         scalar_kind = 2
         factored_method = method
+        factored_host_limit = sparse_host_memory_limit_bytes
+        factored_low_memory = sparse_low_memory
     end subroutine
 
     subroutine real_vector(nrow,ncol,nz,rows,pointer,values,b,method,verbose,iopt)
@@ -153,6 +186,7 @@ contains
             call release()
             return
         end if
+        call sparse_validate_memory_options()
         if (size(b) /= nrow) call fail('incompatible RHS dimensions')
         call prepare_real(nrow,ncol,nz,rows,pointer,values,method,verbose,op)
         if (op == 0 .or. op == 2) then
@@ -175,6 +209,7 @@ contains
             call release()
             return
         end if
+        call sparse_validate_memory_options()
         if (size(b) /= nrow) call fail('incompatible RHS dimensions')
         call prepare_complex(nrow,ncol,nz,rows,pointer,values,method,verbose,op)
         if (op == 0 .or. op == 2) then
@@ -197,6 +232,7 @@ contains
             call release()
             return
         end if
+        call sparse_validate_memory_options()
         if (size(b,1) /= nrow) call fail('incompatible block RHS dimensions')
         call prepare_real(nrow,ncol,nz,rows,pointer,values,method,verbose,op)
         if (op == 0 .or. op == 2) then
@@ -221,6 +257,7 @@ contains
             call release()
             return
         end if
+        call sparse_validate_memory_options()
         if (size(b,1) /= nrow) call fail('incompatible block RHS dimensions')
         call prepare_complex(nrow,ncol,nz,rows,pointer,values,method,verbose,op)
         if (op == 0 .or. op == 2) then

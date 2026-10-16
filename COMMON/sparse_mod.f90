@@ -1,4 +1,6 @@
 MODULE sparse_mod
+  USE neo2_sparse_config, ONLY: sparse_host_memory_limit_bytes, sparse_low_memory, &
+       sparse_validate_memory_options
 #ifdef NEO2_NATIVE_SPARSE
   USE neo2_native_sparse, ONLY: native_sparse_solve
 #endif
@@ -662,6 +664,9 @@ CONTAINS
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
     LOGICAL :: pcol_modified = .FALSE.
 
+#ifndef NEO2_NATIVE_SPARSE
+    CALL sparse_validate_memory_options()
+#endif
 #ifdef NEO2_NATIVE_SPARSE
     CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
          sparse_solve_method,sparse_talk,iopt_in)
@@ -730,6 +735,9 @@ CONTAINS
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
     LOGICAL :: pcol_modified = .FALSE.
 
+#ifndef NEO2_NATIVE_SPARSE
+    CALL sparse_validate_memory_options()
+#endif
 #ifdef NEO2_NATIVE_SPARSE
     CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
          sparse_solve_method,sparse_talk,iopt_in)
@@ -798,6 +806,9 @@ CONTAINS
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
     LOGICAL :: pcol_modified = .FALSE.
 
+#ifndef NEO2_NATIVE_SPARSE
+    CALL sparse_validate_memory_options()
+#endif
 #ifdef NEO2_NATIVE_SPARSE
     CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
          sparse_solve_method,sparse_talk,iopt_in)
@@ -866,6 +877,9 @@ CONTAINS
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
     LOGICAL :: pcol_modified = .FALSE.
 
+#ifndef NEO2_NATIVE_SPARSE
+    CALL sparse_validate_memory_options()
+#endif
 #ifdef NEO2_NATIVE_SPARSE
     CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
          sparse_solve_method,sparse_talk,iopt_in)
@@ -937,6 +951,9 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+#ifndef NEO2_NATIVE_SPARSE
+    CALL sparse_validate_memory_options()
+#endif
 #ifdef NEO2_NATIVE_SPARSE
     CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
          sparse_solve_method,sparse_talk,iopt_in)
@@ -991,6 +1008,9 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+#ifndef NEO2_NATIVE_SPARSE
+    CALL sparse_validate_memory_options()
+#endif
 #ifdef NEO2_NATIVE_SPARSE
     CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
          sparse_solve_method,sparse_talk,iopt_in)
@@ -1045,6 +1065,9 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+#ifndef NEO2_NATIVE_SPARSE
+    CALL sparse_validate_memory_options()
+#endif
 #ifdef NEO2_NATIVE_SPARSE
     CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
          sparse_solve_method,sparse_talk,iopt_in)
@@ -1099,6 +1122,9 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+#ifndef NEO2_NATIVE_SPARSE
+    CALL sparse_validate_memory_options()
+#endif
 #ifdef NEO2_NATIVE_SPARSE
     CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
          sparse_solve_method,sparse_talk,iopt_in)
@@ -1158,6 +1184,8 @@ CONTAINS
     INTEGER(kind=long) :: n
     INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: x !vector to store the solution
+
+    CALL sparse_validate_memory_options()
 
     ALLOCATE( x(SIZE(b)) )
     ALLOCATE( Ai(SIZE(irow)) )
@@ -1256,6 +1284,8 @@ CONTAINS
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: xx,xz !vector to store the solution (real and imag. part)
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: valx, valz !val of matrix (real and imag. part)
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: bx, bz !rhs (real and imag part)
+
+    CALL sparse_validate_memory_options()
 
     ALLOCATE( xx(nrow) )
     ALLOCATE( xz(nrow) )
@@ -1407,6 +1437,8 @@ CONTAINS
     ! Patch from TU Graz ITPcp Plasma - 01.09.2015
     ! Wrong allocation size of x fixed
     !**********************************************************
+    CALL sparse_validate_memory_options()
+
     ALLOCATE( x(nrow) )
     ALLOCATE( Ai(SIZE(irow)) )
     ALLOCATE( Ap(SIZE(pcol)) )
@@ -1515,6 +1547,8 @@ CONTAINS
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:) :: valx, valz !val of matrix (real and imag. part)
     REAL(kind=dp), ALLOCATABLE, DIMENSION(:,:) :: bx, bz !rhs (real and imag part)
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: blocx, blocz
+
+    CALL sparse_validate_memory_options()
 
     ALLOCATE( xx(nrow) )
     ALLOCATE( xz(nrow) )

@@ -59,7 +59,8 @@ PROGRAM neo2
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
-  USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
+  USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example, &
+       sparse_host_memory_limit_bytes,sparse_low_memory,sparse_validate_memory_options
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
   use field_eq_mod, only : use_fpol
   use neo_spline_data, only : lsw_linear_boozer
@@ -163,6 +164,7 @@ PROGRAM neo2
        solver_talk,switch_off_asymp,                                          &
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
+       sparse_host_memory_limit_bytes,sparse_low_memory, &
        sparse_talk,sparse_solve_method,mag_symmetric,mag_symmetric_shorten,   &
        epserr_sink, epserr_iter, niter, lsw_linear_boozer
   NAMELIST /collision/                                                        &
@@ -424,6 +426,7 @@ PROGRAM neo2
      CLOSE(unit=u1)
   END DO
 
+  call sparse_validate_memory_options()
   call sanity_check_input_parameters()
 
   !! Modification by Andreas F. Martitsch (23.08.2015)
@@ -1009,6 +1012,10 @@ CONTAINS
        CALL h5_add(h5_config_group, 'eta_alpha_p', eta_alpha_p)
        CALL h5_add(h5_config_group, 'eta_alpha_t', eta_alpha_t)
        CALL h5_add(h5_config_group, 'sparse_solve_method', sparse_solve_method)
+       ! One-element int64 dataset preserves byte caps above default integer range.
+       CALL h5_add(h5_config_group, 'sparse_host_memory_limit_bytes', &
+            [sparse_host_memory_limit_bytes], unit='bytes')
+       CALL h5_add(h5_config_group, 'sparse_low_memory', sparse_low_memory)
        CALL h5_add(h5_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
        CALL h5_add(h5_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
        CALL h5_add(h5_config_group, 'boozer_s', boozer_s, 'Flux surface')

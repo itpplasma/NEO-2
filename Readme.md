@@ -48,6 +48,37 @@ omits it. Changing method on a retained factor refactors the supplied matrix
 to update the retained refinement policy. Numeric solver errors stop with a
 diagnostic instead of returning an unchecked result.
 
+Native sparse memory controls are in `/settings/` for both QL and PAR:
+
+```fortran
+&settings
+  sparse_host_memory_limit_bytes = 2147483648 ! 2 GiB per MPI process; 0: unlimited
+  sparse_low_memory = .true.                 ! RAM-only LOW_MEMORY schedule
+/
+```
+
+Defaults are zero/unlimited and `.false.`, preserving the existing schedule.
+The limit is a 64-bit count of **solver-owned host array payload**, including
+factors, refinement, scratch and retained-factor overlap. It excludes NEO-2's
+matrix assembly and dense/COO-to-CSC conversion, caller RHS/results, fixed
+runtime descriptors, allocator overhead and process RSS. Leave separate node
+memory for those costs and for every MPI process; this is not a whole-job limit.
+NEO-2's operators use general real/complex LU, whose pivot-dependent fill has no
+exact pre-factor memory forecast. The exact real-SPD planning API is not used or
+claimed for these operators. A refused cap reports FortSparse RESOURCE_LIMIT
+with required/available payload bytes; operating-system allocation failure is
+a distinct status. No fallback silently ignores the requested cap.
+
+A changed cap or LOW_MEMORY setting on a retained factor triggers refactorization
+of the supplied matrix before the next solve, just as a method change does.
+Freeing a factor remains available after changing settings. Both controls are
+recorded in HDF5 configuration; the byte cap is a one-element int64 dataset,
+so values above 2 GiB retain their exact integer value. Negative caps are rejected;
+the explicit legacy provider accepts only the default memory controls.
+A terminal native failure aborts the existing MPI job when MPI is active, so
+peers cannot hang in scheduler communication. No collective is added to sparse
+operations, and no distributed sparse solver is introduced.
+
 All audited PAR, QL axi and Arnoldi calls use normal solves. Arnoldi's real
 branch still splits complex RHS into real/imaginary solves against one real
 factor; its complex branch uses a complex factor. There is one active shared
