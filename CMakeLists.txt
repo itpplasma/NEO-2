@@ -89,18 +89,33 @@ endif()
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
-find_package(SuiteSparse)
-if(SUITESPARSE_FOUND)
-  # In Debian bookworm being standard in 2025, SuiteSparse v5.12 packages don't have
-  # their own CMake files for find_package. As soon as this changes,
-  # find_package(SuiteSparse) should be replaced by find_package(UMFPACK) and
-  # the legacy switch removed.
-  set(LEGACY_SUITESPARSE ON)
-  message(STATUS "SuiteSparse found.")
+option(NEO2_NATIVE_SPARSE "Use native CPU FortSparse instead of legacy UMFPACK" ON)
+if(NEO2_NATIVE_SPARSE)
+  set(FORTSPARSE_REF 1cc17e31a01f5fa3ec5db58f5f399e2f7eb97955 CACHE STRING
+      "Tested native FortSparse revision")
+  # The application chooses native CPU explicitly; do not build/fetch external
+  # sparse solvers, the GPL helper, CUDA, or the dependency's own test suite.
+  foreach(feature SUPERLU UMFPACK_IPC MUMPS NATIVE_CUDA)
+    set(FORTSPARSE_ENABLE_${feature} OFF CACHE BOOL "Native NEO-2 configuration" FORCE)
+  endforeach()
+  set(FORTSPARSE_BUILD_TESTING OFF CACHE BOOL "Dependency tests" FORCE)
+  set(FORTSPARSE_BUILD_BENCHMARKS OFF CACHE BOOL "Dependency benchmarks" FORCE)
+  set(FORTSPARSE_INSTALL_HELPER OFF CACHE BOOL "No GPL helper" FORCE)
+  find_or_fetch(fortsparse https://github.com/lazy-fortran/fortsparse.git)
 else()
-  # Use more recent SuiteSparse v7.6.1 from GitHub.
-  message(STATUS "SuiteSparse not found. Building.")
-  include(suitesparse)
+  find_package(SuiteSparse)
+  if(SUITESPARSE_FOUND)
+    # In Debian bookworm being standard in 2025, SuiteSparse v5.12 packages don't have
+    # their own CMake files for find_package. As soon as this changes,
+    # find_package(SuiteSparse) should be replaced by find_package(UMFPACK) and
+    # the legacy switch removed.
+    set(LEGACY_SUITESPARSE ON)
+    message(STATUS "SuiteSparse found.")
+  else()
+    # Use more recent SuiteSparse v7.6.1 from GitHub.
+    message(STATUS "SuiteSparse not found. Building.")
+    include(suitesparse)
+  endif()
 endif()
 
 find_package(GSL REQUIRED)
