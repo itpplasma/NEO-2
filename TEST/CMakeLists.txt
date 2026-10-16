@@ -1,5 +1,6 @@
 project(NEO-2-TESTS)
 enable_testing()
+include(${CMAKE_CURRENT_SOURCE_DIR}/ntv_work_export_tests.cmake)
 
 # Test executable for boozmn reading (INP_SWI_BOOZMN path).
 add_executable(test_boozmn_read test_boozmn_read.f90)
