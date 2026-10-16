@@ -69,8 +69,27 @@ add_test(NAME arnoldi_breakdown_test
          COMMAND test_arnoldi_breakdown
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
+add_test(NAME arnoldi_projection_mpi
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
+        $<TARGET_FILE:test_arnoldi_breakdown> ${MPIEXEC_POSTFLAGS} --distributed)
+set_tests_properties(arnoldi_projection_mpi PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!" FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30 PROCESSORS 2 LABELS "arnoldi;mpi;fast"
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
 set_tests_properties(arnoldi_breakdown_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+# Generated point kernel checked against independent covariant-field derivatives.
+add_executable(test_covariant_curl_leaf test_covariant_curl_leaf.f90)
+target_link_libraries(test_covariant_curl_leaf PRIVATE neo_covariant_curl)
+add_test(NAME covariant_curl_leaf COMMAND test_covariant_curl_leaf)
+set_tests_properties(covariant_curl_leaf PROPERTIES TIMEOUT 1 LABELS "field;fast")
+
+add_executable(test_spline_value_derivatives test_spline_value_derivatives.f90)
+target_link_libraries(test_spline_value_derivatives PRIVATE common)
+add_test(NAME spline_value_derivatives COMMAND test_spline_value_derivatives)
+set_tests_properties(spline_value_derivatives PROPERTIES TIMEOUT 1 LABELS "field;fast")

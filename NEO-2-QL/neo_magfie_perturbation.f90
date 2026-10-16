@@ -67,12 +67,76 @@ MODULE neo_magfie_perturbation
   INTEGER(I4B),  DIMENSION(:),   ALLOCATABLE :: sp_index_pert
 
   PUBLIC neo_magfie_pert
+  INTEGER, PRIVATE :: perturbation_switch = -1
   PRIVATE neo_magfie_pert_a, neo_magfie_pert_b
   INTERFACE neo_magfie_pert
      MODULE PROCEDURE neo_magfie_pert_a, neo_magfie_pert_b
   END INTERFACE neo_magfie_pert
 
 CONTAINS
+
+  ! Explicit lifecycle for library consumers. The historic lazy entry remains.
+  SUBROUTINE neo_load_pert(path, input_switch)
+    CHARACTER(*), INTENT(IN) :: path
+    INTEGER, INTENT(IN) :: input_switch
+
+    IF (input_switch /= INP_SWI_TOK_CIRC .AND. input_switch /= INP_SWI_TOK) &
+         ERROR STOP "neo_load_pert: input switch must be 8 or 9"
+    IF (LEN_TRIM(path) > LEN(in_file_pert)) ERROR STOP "perturbation path too long"
+    CALL neo_free_pert()
+    in_file_pert = path
+    perturbation_switch = input_switch
+    CALL neo_read_pert()
+    CALL neo_init_spline_pert()
+  END SUBROUTINE neo_load_pert
+
+  SUBROUTINE neo_free_pert()
+
+    IF (ALLOCATED(ixm_pert)) DEALLOCATE(ixm_pert)
+    IF (ALLOCATED(ixn_pert)) DEALLOCATE(ixn_pert)
+    IF (ALLOCATED(es_pert)) DEALLOCATE(es_pert)
+    IF (ALLOCATED(rmnc_pert)) DEALLOCATE(rmnc_pert)
+    IF (ALLOCATED(zmnc_pert)) DEALLOCATE(zmnc_pert)
+    IF (ALLOCATED(lmnc_pert)) DEALLOCATE(lmnc_pert)
+    IF (ALLOCATED(bmnc_pert)) DEALLOCATE(bmnc_pert)
+    IF (ALLOCATED(rmns_pert)) DEALLOCATE(rmns_pert)
+    IF (ALLOCATED(zmns_pert)) DEALLOCATE(zmns_pert)
+    IF (ALLOCATED(lmns_pert)) DEALLOCATE(lmns_pert)
+    IF (ALLOCATED(bmns_pert)) DEALLOCATE(bmns_pert)
+    IF (ALLOCATED(a_bmnc_pert)) DEALLOCATE(a_bmnc_pert)
+    IF (ALLOCATED(b_bmnc_pert)) DEALLOCATE(b_bmnc_pert)
+    IF (ALLOCATED(c_bmnc_pert)) DEALLOCATE(c_bmnc_pert)
+    IF (ALLOCATED(d_bmnc_pert)) DEALLOCATE(d_bmnc_pert)
+    IF (ALLOCATED(a_bmns_pert)) DEALLOCATE(a_bmns_pert)
+    IF (ALLOCATED(b_bmns_pert)) DEALLOCATE(b_bmns_pert)
+    IF (ALLOCATED(c_bmns_pert)) DEALLOCATE(c_bmns_pert)
+    IF (ALLOCATED(d_bmns_pert)) DEALLOCATE(d_bmns_pert)
+    IF (ALLOCATED(r_m_pert)) DEALLOCATE(r_m_pert)
+    IF (ALLOCATED(r_mhalf_pert)) DEALLOCATE(r_mhalf_pert)
+    IF (ALLOCATED(sp_index_pert)) DEALLOCATE(sp_index_pert)
+    perturbation_switch = -1
+  END SUBROUTINE neo_free_pert
+
+  INTEGER FUNCTION pert_input_switch()
+    pert_input_switch = inp_swi
+    IF (perturbation_switch > 0) pert_input_switch = perturbation_switch
+  END FUNCTION pert_input_switch
+
+  ! Toroidal Fourier coefficient: phase is deliberately evaluated at phi=0.
+  ! This retains the provider's existing m-sign, sine and normalization rules.
+  SUBROUTINE neo_magfie_pert_amplitude(x, amplitude)
+    REAL(dp), INTENT(IN) :: x(:)
+    COMPLEX(dp), INTENT(OUT) :: amplitude
+    REAL(dp) :: position(3)
+
+    IF (.NOT. ALLOCATED(ixn_pert)) ERROR STOP "amplitude before perturbation load"
+    IF (ANY(ixn_pert /= ixn_pert(1))) &
+         ERROR STOP "toroidal amplitude requires one toroidal harmonic"
+    position = x(1:3)
+    position(1) = MAX(es_pert(1), MIN(es_pert(SIZE(es_pert)), position(1)))
+    position(2) = 0.0_dp
+    CALL neo_magfie_pert(position, amplitude)
+  END SUBROUTINE neo_magfie_pert_amplitude
 
   ! Read Boozer files for the perturbation field
   SUBROUTINE neo_read_pert()
@@ -96,7 +160,7 @@ CONTAINS
     in_file_pert=TRIM(ADJUSTL(in_file_pert))
     OPEN(unit=r_un,file=in_file_pert,status='old',form='formatted')
 
-    IF (inp_swi == INP_SWI_TOK_CIRC) THEN ! NEW IPP TOKAMAK
+    IF (pert_input_switch() == INP_SWI_TOK_CIRC) THEN ! NEW IPP TOKAMAK
        READ (r_un,*) char_dummy
        READ (r_un,*) char_dummy
        READ (r_un,*) char_dummy
@@ -140,7 +204,7 @@ CONTAINS
                   bmnc_pert(i,j)
           END DO
        END DO
-    ELSEIF (inp_swi == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
+    ELSEIF (pert_input_switch() == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
        READ (r_un,*) char_dummy
        READ (r_un,*) char_dummy
        READ (r_un,*) char_dummy
@@ -231,7 +295,7 @@ CONTAINS
     ALLOCATE ( a_bmnc_pert(ns_pert,mnmax_pert), b_bmnc_pert(ns_pert,mnmax_pert) )
     ALLOCATE ( c_bmnc_pert(ns_pert,mnmax_pert), d_bmnc_pert(ns_pert,mnmax_pert) )
     ! Additional data from Boozer files without Stellarator symmetry
-    IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
+    IF (pert_input_switch() == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
        ALLOCATE ( a_bmns_pert(ns_pert,mnmax_pert), b_bmns_pert(ns_pert,mnmax_pert) )
        ALLOCATE ( c_bmns_pert(ns_pert,mnmax_pert), d_bmns_pert(ns_pert,mnmax_pert) )
     END IF
@@ -268,7 +332,7 @@ CONTAINS
       call splinecof1_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
          & a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert, sp_index_pert, tf)
       ! Additional data from Boozer files without Stellarator symmetry
-      if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
+      if (pert_input_switch() == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
         call splinecof1_hi_driv(es_pert, bmns_pert, r_mhalf_pert,&
            & a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
       end if
@@ -276,7 +340,7 @@ CONTAINS
       call splinecof3_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
          & a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert, sp_index_pert, tf)
       ! Additional data from Boozer files without Stellarator symmetry
-      if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
+      if (pert_input_switch() == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
         call splinecof3_hi_driv(es_pert, bmns_pert, r_mhalf_pert,&
            & a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
       end if
@@ -321,7 +385,7 @@ CONTAINS
             & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
             & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
          ! Additional data from Boozer files without Stellarator symmetry
-         if (inp_swi == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
+         if (pert_input_switch() == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
            call splint_horner1(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
               & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
               & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
@@ -331,14 +395,14 @@ CONTAINS
             & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
             & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
          ! Additional data from Boozer files without Stellarator symmetry
-         if (inp_swi == INP_SWI_TOK) then ! ASDEX-U (E. Strumberger)
+         if (pert_input_switch() == INP_SWI_TOK) then ! ASDEX-U (E. Strumberger)
            call splint_horner3(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
               & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
               & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
          end if
        end if
 
-       IF (inp_swi == INP_SWI_TOK_CIRC) THEN ! NEW IPP TOKAMAK
+       IF (pert_input_switch() == INP_SWI_TOK_CIRC) THEN ! NEW IPP TOKAMAK
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
@@ -360,7 +424,7 @@ CONTAINS
           !m = ixm_pert(i)
           !bn_hat_pert = bn_hat_pert + bmnc_pert_val * COS((m*boozer_iota-n)*x(2)) - &
           !     imun * bmnc_pert_val * SIN((m*boozer_iota-n)*x(2))
-       ELSEIF (inp_swi == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
+       ELSEIF (pert_input_switch() == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
@@ -426,7 +490,7 @@ CONTAINS
             & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
             & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
          ! Additional data from Boozer files without Stellarator symmetry
-         if (inp_swi == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
+         if (pert_input_switch() == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
            call splint_horner1(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
               & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
               & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
@@ -436,13 +500,13 @@ CONTAINS
             & c_bmnc_pert(:,i), d_bmnc_pert(:,i), swd, r_mhalf_pert(i),&
             & x(1), tf, tfp, tfpp, tfppp, bmnc_pert_val, yp, ypp, yppp)
          ! Additional data from Boozer files without Stellarator symmetry
-         if (inp_swi == INP_SWI_TOK) then ! ASDEX-U (E. Strumberger)
+         if (pert_input_switch() == INP_SWI_TOK) then ! ASDEX-U (E. Strumberger)
            call splint_horner3(es_pert, a_bmns_pert(:,i), b_bmns_pert(:,i),&
               & c_bmns_pert(:,i), d_bmns_pert(:,i), swd, r_mhalf_pert(i),&
               & x(1), tf, tfp, tfpp, tfppp, bmns_pert_val, yp, ypp, yppp)
          end if
        end if
-       IF (inp_swi == INP_SWI_TOK_CIRC) THEN ! NEW IPP TOKAMAK
+       IF (pert_input_switch() == INP_SWI_TOK_CIRC) THEN ! NEW IPP TOKAMAK
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)
@@ -460,7 +524,7 @@ CONTAINS
           ! part corresponding to the expansion over the periodic angle
           bn_hat_pert = bn_hat_pert + bmnc_pert_val * expv
           dbn_hat_pert_dtheta = dbn_hat_pert_dtheta + imun * m * bmnc_pert_val * expv
-       ELSEIF (inp_swi == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
+       ELSEIF (pert_input_switch() == INP_SWI_TOK) THEN ! ASDEX-U (E. Strumberger)
           ! requested representation of the perturbation field
           ! $B_n = \sum_{m>-\infty} \tilde{b}_{mn} \exp{i(m\vartheta_B+n\varphi_B)}$
           n = ixn_pert(i)

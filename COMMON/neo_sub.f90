@@ -2201,9 +2201,6 @@ CONTAINS
   END SUBROUTINE neo_bderiv
   ! **********************************************************************
   SUBROUTINE neo_dealloc
-    ! **********************************************************************
-    ! Modules
-    ! **********************************************************************
     use nrtype
     USE neo_input
     USE neo_work
@@ -2214,68 +2211,117 @@ CONTAINS
     USE neo_van
     USE neo_actual_spectra
     USE neo_spline_data
-    ! **********************************************************************
-    ! Local Definitions
-    ! **********************************************************************
+    USE neo_spline_b00
     IMPLICIT NONE
-    ! *******************************************************************
-    ! DeAllocate Storage Arrays
-    ! *******************************************************************
-    DEALLOCATE (es,iota,curr_pol,curr_tor,pprime,sqrtg00)
-    DEALLOCATE (theta_arr,phi_arr)
-    DEALLOCATE (rmnc,zmnc,lmnc,bmnc)
-    DEALLOCATE (ixm, ixn)
-    DEALLOCATE (pixm, pixn)
-    DEALLOCATE (i_m, i_n)
-    DEALLOCATE (b_spl,k_spl,g_spl,p_spl,r_spl)
-    DEALLOCATE (b,sqrg11,kg,pard)
-    IF (calc_cur .EQ. 1 .OR. calc_fourier .EQ. 0) THEN
-      DEALLOCATE (bqtphi)
-    END IF
-    IF (calc_cur .EQ. 1) THEN
-      DEALLOCATE (q_spl)
-    END IF
-    DEALLOCATE (fluxs_arr)
-    DEALLOCATE (li_minima)
-    DEALLOCATE (s_rmnc, s_zmnc, s_lmnc, s_bmnc)
-    !! Modifications by Andreas F. Martitsch (06.08.2014)
-    ! Additional data from Boozer files without Stellarator symmetry
-    IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
-      DEALLOCATE (s_rmns, s_zmns, s_lmns, s_bmns)
-    END IF
-    !! End Modifications by Andreas F. Martitsch (06.08.2014)
-
-    IF (fluxs_interp .NE. 0) THEN
-      DEALLOCATE ( a_rmnc, b_rmnc, c_rmnc, d_rmnc )
-      DEALLOCATE ( a_zmnc, b_zmnc, c_zmnc, d_zmnc )
-      DEALLOCATE ( a_lmnc, b_lmnc, c_lmnc, d_lmnc )
-      DEALLOCATE ( a_bmnc, b_bmnc, c_bmnc, d_bmnc )
-      !! Modifications by Andreas F. Martitsch (06.08.2014)
-      ! Additional data from Boozer files without Stellarator symmetry
-      IF (inp_swi == INP_SWI_TOK) THEN        ! ASDEX-U (E. Strumberger)
-        DEALLOCATE ( a_rmns, b_rmns, c_rmns, d_rmns )
-        DEALLOCATE ( a_zmns, b_zmns, c_zmns, d_zmns )
-        DEALLOCATE ( a_lmns, b_lmns, c_lmns, d_lmns )
-        DEALLOCATE ( a_bmns, b_bmns, c_bmns, d_bmns )
-      END IF
-      !! End Modifications by Andreas F. Martitsch (06.08.2014)
-
-      DEALLOCATE ( a_iota, b_iota )
-      DEALLOCATE ( c_iota, d_iota )
-      DEALLOCATE ( a_pprime, b_pprime )
-      DEALLOCATE ( c_pprime, d_pprime )
-      DEALLOCATE ( a_sqrtg00, b_sqrtg00 )
-      DEALLOCATE ( c_sqrtg00, d_sqrtg00 )
-      DEALLOCATE ( a_curr_tor, b_curr_tor )
-      DEALLOCATE ( c_curr_tor, d_curr_tor )
-      DEALLOCATE ( a_curr_pol, b_curr_pol )
-      DEALLOCATE ( c_curr_pol, d_curr_pol )
-
-      DEALLOCATE ( r_m, r_mhalf )
-      DEALLOCATE ( sp_index )
-    END IF
-    ! *******************************************************************
-    RETURN
+    ! Safe for a field-only or partially initialized instance, including reloads.
+    IF (ALLOCATED(es)) DEALLOCATE(es)
+    IF (ALLOCATED(iota)) DEALLOCATE(iota)
+    IF (ALLOCATED(curr_pol)) DEALLOCATE(curr_pol)
+    IF (ALLOCATED(curr_tor)) DEALLOCATE(curr_tor)
+    IF (ALLOCATED(pprime)) DEALLOCATE(pprime)
+    IF (ALLOCATED(sqrtg00)) DEALLOCATE(sqrtg00)
+    IF (ALLOCATED(theta_arr)) DEALLOCATE(theta_arr)
+    IF (ALLOCATED(phi_arr)) DEALLOCATE(phi_arr)
+    IF (ALLOCATED(rmnc)) DEALLOCATE(rmnc)
+    IF (ALLOCATED(zmnc)) DEALLOCATE(zmnc)
+    IF (ALLOCATED(lmnc)) DEALLOCATE(lmnc)
+    IF (ALLOCATED(bmnc)) DEALLOCATE(bmnc)
+    IF (ALLOCATED(ixm)) DEALLOCATE(ixm)
+    IF (ALLOCATED(ixn)) DEALLOCATE(ixn)
+    IF (ALLOCATED(pixm)) DEALLOCATE(pixm)
+    IF (ALLOCATED(pixn)) DEALLOCATE(pixn)
+    IF (ALLOCATED(i_m)) DEALLOCATE(i_m)
+    IF (ALLOCATED(i_n)) DEALLOCATE(i_n)
+    IF (ALLOCATED(b_spl)) DEALLOCATE(b_spl)
+    IF (ALLOCATED(k_spl)) DEALLOCATE(k_spl)
+    IF (ALLOCATED(g_spl)) DEALLOCATE(g_spl)
+    IF (ALLOCATED(p_spl)) DEALLOCATE(p_spl)
+    IF (ALLOCATED(r_spl)) DEALLOCATE(r_spl)
+    IF (ALLOCATED(b)) DEALLOCATE(b)
+    IF (ALLOCATED(sqrg11)) DEALLOCATE(sqrg11)
+    IF (ALLOCATED(kg)) DEALLOCATE(kg)
+    IF (ALLOCATED(pard)) DEALLOCATE(pard)
+    IF (ALLOCATED(bqtphi)) DEALLOCATE(bqtphi)
+    IF (ALLOCATED(q_spl)) DEALLOCATE(q_spl)
+    IF (ALLOCATED(fluxs_arr)) DEALLOCATE(fluxs_arr)
+    IF (ALLOCATED(li_minima)) DEALLOCATE(li_minima)
+    IF (ALLOCATED(s_rmnc)) DEALLOCATE(s_rmnc)
+    IF (ALLOCATED(s_zmnc)) DEALLOCATE(s_zmnc)
+    IF (ALLOCATED(s_lmnc)) DEALLOCATE(s_lmnc)
+    IF (ALLOCATED(s_bmnc)) DEALLOCATE(s_bmnc)
+    IF (ALLOCATED(s_rmns)) DEALLOCATE(s_rmns)
+    IF (ALLOCATED(s_zmns)) DEALLOCATE(s_zmns)
+    IF (ALLOCATED(s_lmns)) DEALLOCATE(s_lmns)
+    IF (ALLOCATED(s_bmns)) DEALLOCATE(s_bmns)
+    IF (ALLOCATED(a_rmnc)) DEALLOCATE(a_rmnc)
+    IF (ALLOCATED(b_rmnc)) DEALLOCATE(b_rmnc)
+    IF (ALLOCATED(c_rmnc)) DEALLOCATE(c_rmnc)
+    IF (ALLOCATED(d_rmnc)) DEALLOCATE(d_rmnc)
+    IF (ALLOCATED(a_zmnc)) DEALLOCATE(a_zmnc)
+    IF (ALLOCATED(b_zmnc)) DEALLOCATE(b_zmnc)
+    IF (ALLOCATED(c_zmnc)) DEALLOCATE(c_zmnc)
+    IF (ALLOCATED(d_zmnc)) DEALLOCATE(d_zmnc)
+    IF (ALLOCATED(a_lmnc)) DEALLOCATE(a_lmnc)
+    IF (ALLOCATED(b_lmnc)) DEALLOCATE(b_lmnc)
+    IF (ALLOCATED(c_lmnc)) DEALLOCATE(c_lmnc)
+    IF (ALLOCATED(d_lmnc)) DEALLOCATE(d_lmnc)
+    IF (ALLOCATED(a_bmnc)) DEALLOCATE(a_bmnc)
+    IF (ALLOCATED(b_bmnc)) DEALLOCATE(b_bmnc)
+    IF (ALLOCATED(c_bmnc)) DEALLOCATE(c_bmnc)
+    IF (ALLOCATED(d_bmnc)) DEALLOCATE(d_bmnc)
+    IF (ALLOCATED(a_rmns)) DEALLOCATE(a_rmns)
+    IF (ALLOCATED(b_rmns)) DEALLOCATE(b_rmns)
+    IF (ALLOCATED(c_rmns)) DEALLOCATE(c_rmns)
+    IF (ALLOCATED(d_rmns)) DEALLOCATE(d_rmns)
+    IF (ALLOCATED(a_zmns)) DEALLOCATE(a_zmns)
+    IF (ALLOCATED(b_zmns)) DEALLOCATE(b_zmns)
+    IF (ALLOCATED(c_zmns)) DEALLOCATE(c_zmns)
+    IF (ALLOCATED(d_zmns)) DEALLOCATE(d_zmns)
+    IF (ALLOCATED(a_lmns)) DEALLOCATE(a_lmns)
+    IF (ALLOCATED(b_lmns)) DEALLOCATE(b_lmns)
+    IF (ALLOCATED(c_lmns)) DEALLOCATE(c_lmns)
+    IF (ALLOCATED(d_lmns)) DEALLOCATE(d_lmns)
+    IF (ALLOCATED(a_bmns)) DEALLOCATE(a_bmns)
+    IF (ALLOCATED(b_bmns)) DEALLOCATE(b_bmns)
+    IF (ALLOCATED(c_bmns)) DEALLOCATE(c_bmns)
+    IF (ALLOCATED(d_bmns)) DEALLOCATE(d_bmns)
+    IF (ALLOCATED(a_iota)) DEALLOCATE(a_iota)
+    IF (ALLOCATED(b_iota)) DEALLOCATE(b_iota)
+    IF (ALLOCATED(c_iota)) DEALLOCATE(c_iota)
+    IF (ALLOCATED(d_iota)) DEALLOCATE(d_iota)
+    IF (ALLOCATED(a_pprime)) DEALLOCATE(a_pprime)
+    IF (ALLOCATED(b_pprime)) DEALLOCATE(b_pprime)
+    IF (ALLOCATED(c_pprime)) DEALLOCATE(c_pprime)
+    IF (ALLOCATED(d_pprime)) DEALLOCATE(d_pprime)
+    IF (ALLOCATED(a_sqrtg00)) DEALLOCATE(a_sqrtg00)
+    IF (ALLOCATED(b_sqrtg00)) DEALLOCATE(b_sqrtg00)
+    IF (ALLOCATED(c_sqrtg00)) DEALLOCATE(c_sqrtg00)
+    IF (ALLOCATED(d_sqrtg00)) DEALLOCATE(d_sqrtg00)
+    IF (ALLOCATED(a_curr_tor)) DEALLOCATE(a_curr_tor)
+    IF (ALLOCATED(b_curr_tor)) DEALLOCATE(b_curr_tor)
+    IF (ALLOCATED(c_curr_tor)) DEALLOCATE(c_curr_tor)
+    IF (ALLOCATED(d_curr_tor)) DEALLOCATE(d_curr_tor)
+    IF (ALLOCATED(a_curr_pol)) DEALLOCATE(a_curr_pol)
+    IF (ALLOCATED(b_curr_pol)) DEALLOCATE(b_curr_pol)
+    IF (ALLOCATED(c_curr_pol)) DEALLOCATE(c_curr_pol)
+    IF (ALLOCATED(d_curr_pol)) DEALLOCATE(d_curr_pol)
+    IF (ALLOCATED(r_m)) DEALLOCATE(r_m)
+    IF (ALLOCATED(r_mhalf)) DEALLOCATE(r_mhalf)
+    IF (ALLOCATED(sp_index)) DEALLOCATE(sp_index)
+    IF (ALLOCATED(b00)) DEALLOCATE(b00)
+    IF (ALLOCATED(rmns)) DEALLOCATE(rmns)
+    IF (ALLOCATED(zmns)) DEALLOCATE(zmns)
+    IF (ALLOCATED(lmns)) DEALLOCATE(lmns)
+    IF (ALLOCATED(bmns)) DEALLOCATE(bmns)
+    IF (ALLOCATED(cosmth)) DEALLOCATE(cosmth)
+    IF (ALLOCATED(sinmth)) DEALLOCATE(sinmth)
+    IF (ALLOCATED(cosnph)) DEALLOCATE(cosnph)
+    IF (ALLOCATED(sinnph)) DEALLOCATE(sinnph)
+    IF (ALLOCATED(r_nabpsi)) DEALLOCATE(r_nabpsi)
+    IF (ALLOCATED(a_b00)) DEALLOCATE(a_b00)
+    IF (ALLOCATED(b_b00)) DEALLOCATE(b_b00)
+    IF (ALLOCATED(c_b00)) DEALLOCATE(c_b00)
+    IF (ALLOCATED(d_b00)) DEALLOCATE(d_b00)
   END SUBROUTINE neo_dealloc
 
   ! *******************************************************************
