@@ -65,6 +65,7 @@ set(COMMON_FILES
   sizey_pla.f90
   solve_system.f90
   sparse_mod.f90
+  sparse_mumps_mod.F90
   sparsevec_mod.f90
   spline_cof.f90
   spline_int.f90
@@ -121,6 +122,12 @@ target_link_libraries(common PUBLIC
 target_link_libraries(common PUBLIC
   MPI::MPI_Fortran
 )
+
+if(NEO2_USE_FORTSPARSE)
+  set_source_files_properties(sparse_mumps_mod.F90 PROPERTIES
+    COMPILE_DEFINITIONS NEO2_HAVE_FORTSPARSE_MUMPS)
+  target_link_libraries(common PUBLIC fortsparse)
+endif()
 
 if ($ENV{COMMON_UNIT_TESTS}x STREQUAL "TRUEx")
   find_package(PFUNIT REQUIRED)
