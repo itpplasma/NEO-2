@@ -321,7 +321,6 @@ CONTAINS
 
     REAL(dp) :: isqrg, sqrg11
     REAL(dp) :: redef_sig_sqrtg
-    REAL(dp) :: curl_orientation
 
     ! To silence a warning maybe used uninitialized (should be false positive).
     bis = 0.0
@@ -1617,16 +1616,11 @@ CONTAINS
        fac1  = fac  / bmod                 ! sqrtg*bmod
        fac = fac * psi_pr
        sqrtg = - fac1 / bmod * psi_pr * 1d6
-       curl_orientation = 1.0_dp
        !! Modifications by Andreas F. Martitsch (28.06.2017)
        !-> changes of signs to account for left-handed coordinate system
        !-> affects sign of transport coefficients related to Ware pinch
        !-> and Bootstrap current
        IF (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
-          ! The Levi-Civita curl expressions below were reduced using this
-          ! algebraic Jacobian. Preserve their orientation when the metric
-          ! Jacobian replaces its sign (both left- and right-handed charts).
-          curl_orientation = SIGN(1.0_dp, sqrtg)*SIGN(1.0_dp, sqrtg_direct)
           sqrtg = ABS(sqrtg) * SIGN(1.0d0,sqrtg_direct)
        END IF
        !! End Modifications by Andreas F. Martitsch (28.06.2017)
@@ -1653,7 +1647,6 @@ CONTAINS
        hcurl(3)  = (curr_pol * bb_s       - bmod     * curr_pol_s) / fac
        hcurl(2)  = (bmod     * curr_tor_s - curr_tor * bb_s      ) / fac
        hcurl=hcurl * 1d-4
-       IF (lab_swi .EQ. 10) hcurl = hcurl*curl_orientation
 
        !! Modifications by Andreas F. Martitsch (12.03.2014)
        ! boozer_curr_tor, boozer_curr_pol, boozer_psi_pr,

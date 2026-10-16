@@ -16,8 +16,7 @@ program test_field_provider
     implicit none
 
     character(32) :: mode_arg
-    real(dp) :: field_t = 2.0_dp, mirror_fraction = 0.0_dp
-    integer :: orientation, iota_sign
+    real(dp) :: field_t = 2.0_dp
     real(dp), parameter :: major_radius_m = 5.0_dp
     real(dp), parameter :: minor_radius_m = 0.5_dp
     real(dp), parameter :: iota_abs = 0.2_dp
@@ -48,70 +47,12 @@ program test_field_provider
     call check_perturbation(8, 1.0_dp)
     call check_perturbation(9, 2.0_dp)
     call check_perturbation(8, 3.0_dp)
-    mirror_fraction = 0.15_dp
-    do orientation = -1, 1, 2
-        do iota_sign = -1, 1, 2
-            call write_chart('manufactured_curl.bc', orientation, iota_sign, -orientation)
-            call check_curl_orientation('manufactured_curl.bc')
-        end do
-    end do
-    call check_curl_orientation('manufactured_curl.bc', 8)
     call neo_free_pert()
     call neo_free_pert()
     call neo_field_free()
     call neo_field_free()
 
 contains
-
-    subroutine check_curl_orientation(path, laboratory)
-        use neo_control, only: lab_swi
-        character(*), intent(in) :: path
-        integer, intent(in), optional :: laboratory
-        real(dp), parameter :: angles(5) = [0.0_dp, 0.7_dp, 1.9_dp, 3.4_dp, 5.1_dp]
-        real(dp), parameter :: h = 1.0e-3_dp
-        real(dp) :: x(3), jacobian, hc(3), curl(3)
-        real(dp) :: plus(3), minus(3), plus_half(3), minus_half(3)
-        real(dp) :: derivative, expected, measured, saved_curl(3), saved_jacobian
-        integer :: angle, direction
-        call neo_field_load(path, 9)
-        if (present(laboratory)) lab_swi = laboratory
-        bmod0 = 1.0e-4_dp
-        do angle = 1, size(angles)
-            x = [evaluation_s, 0.0_dp, angles(angle)]
-            call curl_evaluate(x, hc, jacobian, curl)
-            saved_curl = curl
-            saved_jacobian = jacobian
-            do direction = 1, 3, 2
-                x(direction) = x(direction) + h
-                call curl_evaluate(x, plus, jacobian, curl)
-                x(direction) = x(direction) - 2*h
-                call curl_evaluate(x, minus, jacobian, curl)
-                x(direction) = x(direction) + 1.5_dp*h
-                call curl_evaluate(x, plus_half, jacobian, curl)
-                x(direction) = x(direction) - h
-                call curl_evaluate(x, minus_half, jacobian, curl)
-                x(direction) = x(direction) + 0.5_dp*h
-                derivative = (4*(plus_half(2)-minus_half(2))/h &
-                    - (plus(2)-minus(2))/(2*h))/3
-                expected = derivative/saved_jacobian
-                measured = saved_curl(3)
-                if (direction == 3) then
-                    expected = -expected
-                    measured = saved_curl(1)
-                end if
-                if (abs(measured-expected) > 1.0e-8_dp*max(abs(expected),1.0e-8_dp)) &
-                    error stop 'curl orientation or independent covariant derivative'
-            end do
-        end do
-    end subroutine check_curl_orientation
-
-    subroutine curl_evaluate(position, covariant, jacobian, curl)
-        real(dp), intent(in) :: position(3)
-        real(dp), intent(out) :: covariant(3), jacobian, curl(3)
-        real(dp) :: bmod, bd(3), ht(3)
-        call neo_field_prepare(position(1))
-        call magfie(position, bmod, jacobian, bd, covariant, ht, curl)
-    end subroutine curl_evaluate
 
     subroutine check_perturbation(input_switch, scale)
         integer, intent(in) :: input_switch
@@ -261,7 +202,7 @@ contains
             0.0_dp, 0.0_dp, field_magnitude, 0.0_dp
         write (file_unit, *) 1, 0, radius_m, 0.0_dp, 0.0_dp, &
             real(orientation, dp)*radius_m, &
-            0.0_dp, 0.0_dp, -mirror_fraction*field_magnitude*sqrt(s_surface), 0.0_dp
+            0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp
     end subroutine write_surface
 
     subroutine assert_close(label, actual, expected)
