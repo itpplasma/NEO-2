@@ -1298,8 +1298,8 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
 
   This function checks if two given h5py groups contain the same
   subgroups and datasets.
-  The groups are considered to differ, if the lengths do not match, or
-  if the reference does contain keys which are not in the other group.
+  Every reference key must be present with the same object type in the
+  other group. Additional keys in the other group are allowed.
 
   input
   ----------
@@ -1338,7 +1338,10 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
 
   for key in lr:
     if key in lo:
-      if isinstance(reference_group[key], h5py.Group):
+      if isinstance(reference_group[key], h5py.Group) != isinstance(other_group[key], h5py.Group):
+        return_value = False
+        print("Object type differs for '" + reference_group[key].name + "'.")
+      elif isinstance(reference_group[key], h5py.Group):
         return_value = return_value and compare_hdf5_group_keys(reference_group[key], other_group[key], verbose)
     else:
       return_value = False
@@ -1376,13 +1379,15 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   This function checks if two given h5py groups contain the same data,
   i.e. if the respective datasets are equal.
   Subgroups are checked recursively.
-  Equality for a dataset of floats thereby means that the normalized
+  Equality for a dataset of floats or complex numbers means that the normalized
   values (to maximum value in dataset) differ less than a given delta.
   The difference is determined from the objects attribute 'accuracy' if
   it exists (considered to be an absolute accuracy) and from the
   parameter 'delta_relative' if the attribute does not exist or is
   either infinite or nan.
-  For integers and strings it refers to direct equality.
+  Shapes must match. Other data types are compared by direct equality.
+  Nonfinite numeric values fail, including in datasets present in only
+  one group. Missing reference keys are reported by compare_hdf5_group_keys.
   Either a whitelist of keys to compare or a blacklist of keys to not
   compare, can be given.
 
@@ -1401,7 +1406,7 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   reference_group, other_group: h5 (group) objects, the elements which
     should be compared.
   delta_relative: float, default value for the maximum error to use.
-    This will only be used if the onject (1) is a float (2) has no
+    This will only be used if the object (1) is float or complex (2) has no
     attribute 'accuracy'. If the latter exists, then this is used as
     absolute accuracy.
   whitelist, blacklist: Both of these can be empty ([]), or one of them
@@ -1423,11 +1428,6 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   ----------
   There should be no side effects.
 
-  limitations
-  ----------
-  Not sure how nan and inf are treated.
-  At least encountering a nan should lead to a warning
-  'RuntimeWarning: invalid value encountered in greater'.
   """
   import numpy
   import h5py
@@ -1444,38 +1444,60 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   whitelist = fill_list(whitelist)
   blacklist = fill_list(blacklist)
 
-  for key in lr:
+  for key in lr + [key for key in lo if key not in reference_group]:
     if (not whitelist or key in whitelist) and (not blacklist or key not in blacklist):
-      if key in lo:
-        if isinstance(reference_group[key], h5py.Dataset):
-          if reference_group[key].dtype.kind == 'f':
-            max_value_dataset = max(numpy.nditer(abs(numpy.array(reference_group[key]))))
+      reference = reference_group.get(key)
+      other = other_group.get(key)
+      # Check non-overlapping data against itself so nonfinite values cannot
+      # pass merely because the other file does not contain that dataset.
+      if reference is None:
+        reference = other
+      if other is None:
+        other = reference
+
+      if isinstance(reference, h5py.Group) != isinstance(other, h5py.Group):
+        return_value = False
+        if verbose:
+          print('Object type differs for ' + reference.name)
+      elif isinstance(reference, h5py.Dataset):
+        reference_data = reference[()]
+        other_data = other[()]
+        if reference.shape != other.shape:
+          return_value = False
+          if verbose:
+            print('Shape differs for ' + reference.name)
+        elif any(data.dtype.kind in 'fc' and not numpy.isfinite(data).all()
+                 for data in (numpy.asarray(reference_data), numpy.asarray(other_data))):
+          return_value = False
+          if verbose:
+            print('Nonfinite data in ' + reference.name)
+        elif reference.dtype.kind in 'fc':
+          if other.dtype.kind not in 'biufc':
+            return_value = False
+            if verbose:
+              print('Non-numeric data in ' + other.name)
+          elif numpy.size(reference_data):
+            max_value_dataset = numpy.max(numpy.abs(reference_data))
             if max_value_dataset == 0:
               max_value_dataset = 1.0
-            abs_differences = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key])))
-            delta_abs = reference_group[key].attrs.get('accuracy', -1.0)
+            abs_differences = numpy.abs(numpy.subtract(reference_data, other_data))
+            delta_abs = reference.attrs.get('accuracy', -1.0)
             if (delta_abs < 0) or isnan(delta_abs) or isinf(delta_abs):
               delta_abs = delta_relative * max_value_dataset
-
-            if (abs_differences > delta_abs).any():
+            if not (abs_differences <= delta_abs).all():
               return_value = False
-              if (verbose):
-                print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(abs_differences/max_value_dataset)))))
-          elif reference_group[key].dtype.kind == 'i':
-            if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
-              return_value = False
-              print('Difference in ' + key)
-          elif reference_group[key].dtype.kind == 'S':
-            if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
-              return_value = False
-              print('Difference in ' + key)
-
+              if verbose:
+                print('Difference in ' + reference.name + ': ' + str(numpy.max(abs_differences / max_value_dataset)))
+        elif not numpy.array_equal(reference_data, other_data):
+          return_value = False
+          if verbose:
+            print('Difference in ' + reference.name)
+      else:
+        # Allow short circuited evaluation only if not verbose.
+        if verbose:
+          return_value = all([return_value, compare_hdf5_group_data(reference, other, delta_relative, whitelist, blacklist, verbose)])
         else:
-          # Allow short circuited evaluation only if not verbose.
-          if (verbose):
-            return_value = all([return_value, compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)])
-          else:
-            return_value = return_value and compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)
+          return_value = return_value and compare_hdf5_group_data(reference, other, delta_relative, whitelist, blacklist, verbose)
 
   return return_value
 
@@ -1501,8 +1523,8 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
   List with to boolean values.
   The first one is true, if the files are the same, in the sense given
   above, false if not.
-  The second one will be true of the keys of the two files match, i.e.
-  the number and the names datasets are the same.
+  The second one is true if every reference key is present with the same
+  object type in the other file; additional keys in the other file are allowed.
 
   side effects
   ----------
