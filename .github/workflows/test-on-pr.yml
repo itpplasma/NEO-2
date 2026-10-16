@@ -173,14 +173,17 @@ jobs:
           cd "$TEST_DIR"
           echo "test_dir=$(pwd)" >> "$GITHUB_OUTPUT"
 
+          # Run every fast comparison and report all failures together.
+          status=0
           export TOL=1e-14
           export LEGACY_TOL=1e-10
           export MAGNETICS_TOL=1e-12
-          make lorentz
+          make -k lorentz || status=1
 
           export TOL=1e-10
           export LEGACY_TOL=1e-8
-          make ql
+          make -k ql || status=1
+          exit "$status"
 
       - name: Upload test (against stable) output on failure
         if: steps.run_test_stable.outcome == 'failure'
@@ -200,6 +203,8 @@ jobs:
       - name: Build NEO-2 (reference version - main branch)
         if: github.event_name == 'pull_request'
         id: build_reference_main
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           # Build reference version from main branch for PR comparison
           REFERENCE_MAIN_DIR=$(mktemp -d)
@@ -207,13 +212,16 @@ jobs:
 
           git clone https://github.com/itpplasma/NEO-2.git .
 
-          echo "Building reference version from main branch"
-          git checkout main
+          echo "Building reference version at PR base $BASE_SHA"
+          git checkout "$BASE_SHA"
 
           make
 
-          echo "neo2_ql_main=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> "$GITHUB_OUTPUT"
-          echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> "$GITHUB_OUTPUT"
+          {
+            echo "neo2_ql_main=$(pwd)/build/NEO-2-QL/neo_2_ql.x"
+            echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x"
+            echo "source_dir=$(pwd)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Run golden record test against main version (exact check)
         if: github.event_name == 'pull_request'
@@ -228,14 +236,16 @@ jobs:
           set -e
           cd ${{ steps.run_test_stable.outputs.test_dir }}
 
+          status=0
           export TOL=1e-14
           export LEGACY_TOL=1e-10
           export MAGNETICS_TOL=1e-12
-          make lorentz
+          make -k lorentz || status=1
 
           export TOL=1e-15
           export LEGACY_TOL=1e-8
-          make ql
+          make -k ql || status=1
+          exit "$status"
 
       - name: Upload test (against main) output on failure
         if: steps.run_test_main.outcome == 'failure'
@@ -311,6 +321,60 @@ jobs:
             cat "${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Build the same NEO-2 source with the previous libneo pin
+        if: github.event_name == 'pull_request'
+        id: build_previous_libneo
+        env:
+          BASE_SOURCE: ${{ steps.build_reference_main.outputs.source_dir }}
+        run: |
+          set -euo pipefail
+          OLD_REF=$(git -C "$BASE_SOURCE/build/_deps/libneo-src" rev-parse HEAD)
+          NEW_REF=$(git -C build/_deps/libneo-src rev-parse HEAD)
+          test -n "$OLD_REF" && test -n "$NEW_REF"
+          if [ "$OLD_REF" = "$NEW_REF" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "NEO-2 $(git rev-parse HEAD), libneo $OLD_REF versus $NEW_REF" >> "$GITHUB_STEP_SUMMARY"
+          PREVIOUS_DIR=$(mktemp -d)
+          git archive HEAD | tar -x -C "$PREVIOUS_DIR"
+          make -C "$PREVIOUS_DIR" LIBNEO_REF="$OLD_REF"
+          echo "neo2_ql=$(realpath "$PREVIOUS_DIR/build/NEO-2-QL/neo_2_ql.x")" >> "$GITHUB_OUTPUT"
+          echo "neo2_par=$(realpath "$PREVIOUS_DIR/build/NEO-2-PAR/neo_2_par.x")" >> "$GITHUB_OUTPUT"
+
+      - name: Compare old and new libneo on the same NEO-2 source
+        if: steps.build_previous_libneo.outputs.changed == 'true'
+        id: run_libneo_comparison
+        continue-on-error: true
+        env:
+          CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
+          REFERENCE_NEO2_PAR: ${{ steps.build_previous_libneo.outputs.neo2_par }}
+          CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
+          REFERENCE_NEO2_QL: ${{ steps.build_previous_libneo.outputs.neo2_ql }}
+          GOLDEN_DIR: ${{ steps.run_test_stable.outputs.test_dir }}
+        run: |
+          set -e
+          cd "$GOLDEN_DIR"
+
+          # REFERENCE_* point at the previous-libneo build, built after the
+          # main reference runs, so make reruns only the reference.
+          status=0
+          TOL=1e-14 MAGNETICS_TOL=1e-12 make -k lorentz || status=1
+          TOL=1e-15 make -k ql || status=1
+          exit "$status"
+
+      - name: Upload libneo comparison output on failure
+        if: steps.run_libneo_comparison.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        with:
+          name: golden-libneo-comparison-output
+          path: |
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/*/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/*/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/*/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/*/out
+
       - name: Fail the job on test failure
-        if: steps.run_test_stable.outcome == 'failure' || steps.run_test_main.outcome == 'failure' || steps.run_par_test.outcome == 'failure' || steps.run_performance_test.outcome == 'failure'
+        if: steps.run_test_stable.outcome == 'failure' || steps.run_test_main.outcome == 'failure' || steps.run_par_test.outcome == 'failure' || steps.run_performance_test.outcome == 'failure' || steps.run_libneo_comparison.outcome == 'failure'
         run: exit 1
