@@ -82,3 +82,14 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+# Generated point kernel checked against independent covariant-field derivatives.
+add_executable(test_covariant_curl_leaf test_covariant_curl_leaf.f90)
+target_link_libraries(test_covariant_curl_leaf PRIVATE neo_covariant_curl)
+add_test(NAME covariant_curl_leaf COMMAND test_covariant_curl_leaf)
+set_tests_properties(covariant_curl_leaf PROPERTIES TIMEOUT 1 LABELS "field;fast")
+
+add_executable(test_spline_value_derivatives test_spline_value_derivatives.f90)
+target_link_libraries(test_spline_value_derivatives PRIVATE common)
+add_test(NAME spline_value_derivatives COMMAND test_spline_value_derivatives)
+set_tests_properties(spline_value_derivatives PROPERTIES TIMEOUT 1 LABELS "field;fast")
