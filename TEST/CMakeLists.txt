@@ -1,6 +1,12 @@
 project(NEO-2-TESTS)
 enable_testing()
 
+add_executable(test_magfie_multisurface test_magfie_multisurface.f90)
+target_link_libraries(test_magfie_multisurface common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+add_test(NAME magfie_multisurface_test COMMAND test_magfie_multisurface
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(magfie_multisurface_test PROPERTIES ENVIRONMENT "OMP_NUM_THREADS=1")
+
 # Test executable for boozmn reading (INP_SWI_BOOZMN path).
 add_executable(test_boozmn_read test_boozmn_read.f90)
 target_link_libraries(test_boozmn_read common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
