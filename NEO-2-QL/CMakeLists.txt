@@ -44,7 +44,7 @@ set_tests_properties(field_provider_conventions PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}" ENVIRONMENT "OMP_NUM_THREADS=1"
   TIMEOUT 10)
 
-foreach(failure IN ITEMS bad-format outside multi-n)
+foreach(failure IN ITEMS bad-format outside multi-n bad-theta-grid bad-phi-grid)
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/field_failure_${failure}")
   add_test(NAME field_provider_rejects_${failure}
     COMMAND test_field_provider ${failure})
@@ -52,3 +52,12 @@ foreach(failure IN ITEMS bad-format outside multi-n)
     WILL_FAIL TRUE WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/field_failure_${failure}"
     ENVIRONMENT "OMP_NUM_THREADS=1" TIMEOUT 10)
 endforeach()
+
+add_executable(test_field_complete_curl ../TEST/test_field_complete_curl.f90)
+target_link_libraries(test_field_complete_curl PRIVATE neo2_ql)
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/complete_curl")
+add_test(NAME field_provider_complete_curl COMMAND test_field_complete_curl)
+set_tests_properties(field_provider_complete_curl PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/complete_curl"
+  ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1"
+  TIMEOUT 180 LABELS "field;regression")

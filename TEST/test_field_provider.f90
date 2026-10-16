@@ -32,6 +32,10 @@ program test_field_provider
     call write_chart("manufactured_left.bc", 1, -1, -1)
     call write_chart("manufactured_left_positive_iota.bc", 1, 1, -1)
     call write_chart("manufactured_right.bc", -1, 1, 1)
+    if (mode_arg == 'bad-theta-grid') &
+        call neo_field_load('manufactured_left.bc', 9, theta_points=4)
+    if (mode_arg == 'bad-phi-grid') &
+        call neo_field_load('manufactured_left.bc', 9, phi_points=4)
     if (mode_arg == 'outside') then
         call neo_field_load('manufactured_left.bc', 9)
         call neo_field_prepare(2.0_dp)
