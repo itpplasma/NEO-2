@@ -91,7 +91,7 @@ find_package(LAPACK REQUIRED)
 
 option(NEO2_NATIVE_SPARSE "Use native CPU FortSparse instead of legacy UMFPACK" ON)
 if(NEO2_NATIVE_SPARSE)
-  set(FORTSPARSE_REF f7a50d97454052e2f527c037990b3f3780217c5c CACHE STRING
+  set(FORTSPARSE_REF 014c3814e5e50a5a99987865b3b6791c27cf30d5 CACHE STRING
       "Tested native FortSparse revision")
   # The application chooses native CPU explicitly; do not build/fetch external
   # sparse solvers, the GPL helper, CUDA, or the dependency's own test suite.
