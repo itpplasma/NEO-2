@@ -11,9 +11,7 @@ Loading a different file releases the old spectra and angular caches.
 The implementation calls the existing `neo_init` and `magfie` routines, with
 laboratory 10's geometry-derived Jacobian/current orientation. It does not
 introduce alternative field equations. Angular interpolation uses 1025 poloidal
-and 9 toroidal nodes by default, cubic radial interpolation and magnetic shear.
-Optional `theta_points` and `phi_points` select other grids before cache
-allocation; each requires at least 5 points. Those are
+and 9 toroidal nodes, cubic radial interpolation and magnetic shear. Those are
 reference-provider settings qualified on the committed fixtures, not a general
 accuracy bound for arbitrary spectra. No error enclosure is provided. Consumers
 must qualify other inputs at their required observable accuracy.
@@ -39,17 +37,15 @@ type 8; that envelope is distinct from the provider's full complex coefficient.
 `field_provider_conventions` checks both handedness signs and iota signs,
 reloads different field strengths, returns to the original profile, and checks
 signed-m perturbations, sine/cosine phases, normalization and repeated free.
-The failure cases reject unsupported formats, out-of-range surfaces, angular
-grids with fewer than five nodes and a multi-toroidal-harmonic amplitude request.
+The failure cases reject unsupported formats, out-of-range surfaces and a
+multi-toroidal-harmonic amplitude request.
 
-The CGS `magfie_result=0` curl now includes the angular derivatives of its
-nonzero radial covariant field. The retained [FortSym definition and independent
-oracles](complete-covariant-curl.md) specify its signed-Jacobian convention and
-qualification limits. NEO-RT separately keeps its zero-radial-field
-approximation and marks its toroidal curl component unavailable; this upstream
-repair does not change that consumer choice. The unused `magfie_result=1`
-legacy output and the missing radial derivative in `neo_magfie_b` remain outside
-this qualification. No rigorous field certificate is supplied.
+The original general `magfie` curl implementation omits derivatives of its
+nonzero radial covariant field from two components. This lifecycle API does not
+claim to repair that scientific limitation. NEO-RT explicitly uses its existing
+zero-radial-field approximation and marks the toroidal curl component unavailable;
+its separately retained curl identity tests qualify the determined axisymmetric
+components. No complete general-field curl or rigorous certificate is claimed.
 
 ## Laboratory-10 curl orientation
 
@@ -59,16 +55,14 @@ In the stored coordinate order `(s, phi, theta)`, the contravariant curl is
 factor when the denominator's orientation changes. The historical reduced curl
 expressions use `J0=-psi_pr*(curr_pol+iota*curr_tor)/B**2*1e6`. Laboratory 10
 replaces that sign by the geometry sign: `J=abs(J0)*sign(J_geometry)`.
-The previous reduced formulas required a matching orientation factor
-`sign(J0)*sign(J_geometry)`. The complete generated curl instead divides by the
-final signed J directly, so that additional factor is no longer applied.
-The laboratory-specific Jacobian/current convention itself is unchanged.
+The matching orientation factor is `sign(J0)*sign(J_geometry)`. Applying it to
+all computed curl components preserves the original formulas for other
+laboratory modes, rather than changing one component to fit an observed sign.
 
 The independent regression differentiates the returned covariant field at two
 step sizes and Richardson-extrapolates. It checks the determined axisymmetric
 radial and poloidal components at five angles, both chart orientations and both
 iota signs, with the existing `1e-8` relative gate. A laboratory-8 case checks the
-unchanged Jacobian/current orientation path. The additional complete-curl test
-checks all three components against derivatives of the actual returned
-covariant field on the separately documented manufactured 3D charts. This
-checks interpolation consistency, not arbitrary-spectrum physical accuracy.
+unchanged orientation path. This correction does not supply the omitted radial
+covariant-field derivative terms described above; no complete general 3-D curl
+claim follows from it.

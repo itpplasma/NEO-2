@@ -9,7 +9,7 @@ module neo_field_provider
     real(dp), protected :: field_minor_radius_m = 0.0_dp, field_major_radius_m = 0.0_dp
     real(dp), protected :: field_s_min = 0.0_dp, field_s_max = 0.0_dp
 contains
-    subroutine neo_field_load(path, input_switch, theta_points, phi_points)
+    subroutine neo_field_load(path, input_switch)
         use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
         use neo_control
         use neo_input, only: es
@@ -19,7 +19,6 @@ contains
         use neo_magfie, only: magfie_spline, magfie_result, isw_mag_shear
         character(*), intent(in) :: path
         integer, intent(in) :: input_switch
-        integer, intent(in), optional :: theta_points, phi_points
         integer :: unit, npsi, j, i1, i2, i3, i4
         real(dp) :: flux
         character(1024) :: header
@@ -47,14 +46,6 @@ contains
         ! consumer's independent 1e-8 curl-consistency gate for tested charts.
         theta_n = 1025
         phi_n = 9
-        if (present(theta_points)) then
-            if (theta_points < 5) error stop "Boozer theta grid requires >=5 points"
-            theta_n = theta_points
-        end if
-        if (present(phi_points)) then
-            if (phi_points < 5) error stop "Boozer phi grid requires >=5 points"
-            phi_n = phi_points
-        end if
         max_m_mode = huge(1)
         max_n_mode = huge(1)
         write_progress = 0
