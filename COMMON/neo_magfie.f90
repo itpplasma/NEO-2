@@ -1,5 +1,7 @@
 MODULE neo_magfie
 
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+  use neo_covariant_curl_generated, only: covariant_curl
   use nrtype
   USE neo_input,                                                       &
        ONLY: es, ixm, ixn, mnmax, psi_pr, pixm, pixn, nfp
@@ -31,7 +33,7 @@ MODULE neo_magfie
        ONLY: cosmth, cosnph, sinmth, sinnph, theta_int, phi_int,       &
        theta_start, theta_end, phi_start, phi_end
   USE neo_actual_fluxs, ONLY : s_sqrtg00
-  USE spline_mod, ONLY: spl2d, poi2d, eva2d
+  USE spline_mod, ONLY: spl2d, poi2d, eva2d, eva2d_fd
   !! Modifications by Andreas F. Martitsch (12.03.2014)
   ! Use this quantity for normalization. Note:
   ! Variable is computed in mag_interface.f90 ("boozer_bmod0").
@@ -320,8 +322,8 @@ CONTAINS
     REAL(dp), DIMENSION(:,:,:,:), POINTER            :: p_spl
 
     REAL(dp) :: isqrg, sqrg11
+    REAL(dp) :: value_angular_derivatives(2)
     REAL(dp) :: redef_sig_sqrtg
-    REAL(dp) :: curl_orientation
 
     ! To silence a warning maybe used uninitialized (should be false positive).
     bis = 0.0
@@ -1488,6 +1490,26 @@ CONTAINS
           ! Compute the values of the additionally needed
           ! B-field components
           ! 28.06.2017: account of left-handed coord. system
+          if (magfie_result == 0) then
+             ! Differentiate the SAME value polynomials returned to callers.
+             ! Separate interpolants of analytic partials are not derivatives
+             ! of those discrete values. eva2d_fd order is (theta,phi).
+             p_spl => bmod_spl(:,:,:,:,k_es)
+             call eva2d_fd(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d, &
+                  p_spl,value_angular_derivatives)
+             bb_tb = value_angular_derivatives(1)
+             bb_pb = value_angular_derivatives(2)
+             p_spl => gstb_spl(:,:,:,:,k_es)
+             call eva2d_fd(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d, &
+                  p_spl,value_angular_derivatives)
+             gstb_tb = value_angular_derivatives(1)
+             gstb_pb = value_angular_derivatives(2)
+             p_spl => gspb_spl(:,:,:,:,k_es)
+             call eva2d_fd(theta_n,phi_n,theta_ind,phi_ind,theta_d,phi_d, &
+                  p_spl,value_angular_derivatives)
+             gspb_tb = value_angular_derivatives(1)
+             gspb_pb = value_angular_derivatives(2)
+          end if
           bcovar_s = (bmod*bmod / fac)*(gstb*iota+gspb)
           dbcovar_s_dtheta = (2.0d0*bmod*bb_tb/fac)*(gstb*iota+gspb) + &
                (bmod*bmod / fac)*(gstb_tb*iota+gspb_tb)
@@ -1617,16 +1639,11 @@ CONTAINS
        fac1  = fac  / bmod                 ! sqrtg*bmod
        fac = fac * psi_pr
        sqrtg = - fac1 / bmod * psi_pr * 1d6
-       curl_orientation = 1.0_dp
        !! Modifications by Andreas F. Martitsch (28.06.2017)
        !-> changes of signs to account for left-handed coordinate system
        !-> affects sign of transport coefficients related to Ware pinch
        !-> and Bootstrap current
        IF (lab_swi .EQ. 10) THEN         ! ASDEX-U (E. Strumberger)
-          ! The Levi-Civita curl expressions below were reduced using this
-          ! algebraic Jacobian. Preserve their orientation when the metric
-          ! Jacobian replaces its sign (both left- and right-handed charts).
-          curl_orientation = SIGN(1.0_dp, sqrtg)*SIGN(1.0_dp, sqrtg_direct)
           sqrtg = ABS(sqrtg) * SIGN(1.0d0,sqrtg_direct)
        END IF
        !! End Modifications by Andreas F. Martitsch (28.06.2017)
@@ -1649,11 +1666,16 @@ CONTAINS
        hctrvr(2) = 1.0_dp / fac1
        hctrvr=hctrvr * 1d-2
 
-       hcurl(1)  = (curr_tor * bb_pb      - curr_pol * bb_tb     ) / fac
-       hcurl(3)  = (curr_pol * bb_s       - bmod     * curr_pol_s) / fac
-       hcurl(2)  = (bmod     * curr_tor_s - curr_tor * bb_s      ) / fac
-       hcurl=hcurl * 1d-4
-       IF (lab_swi .EQ. 10) hcurl = hcurl*curl_orientation
+       ! Curl of the ACTUAL returned covariant h, in (s,phi,theta).
+       ! Use the final signed CGS Jacobian, including laboratory orientation.
+       if (.not. all(ieee_is_finite([bmod, bcovar_s, curr_pol, curr_tor, &
+           bb_s, bb_tb, bb_pb, dbcovar_s_dtheta, dbcovar_s_dphi, &
+           curr_tor_s, curr_pol_s, sqrtg]))) error stop 'nonfinite covariant curl'
+       if (bmod <= 0.0_dp .or. sqrtg == 0.0_dp) &
+           error stop 'singular covariant curl domain'
+       call covariant_curl(bmod, bcovar_s, curr_pol, curr_tor, bb_s, bb_tb, &
+           bb_pb, dbcovar_s_dtheta, dbcovar_s_dphi, curr_tor_s, curr_pol_s, &
+           sqrtg, hcurl(1), hcurl(2), hcurl(3))
 
        !! Modifications by Andreas F. Martitsch (12.03.2014)
        ! boozer_curr_tor, boozer_curr_pol, boozer_psi_pr,
