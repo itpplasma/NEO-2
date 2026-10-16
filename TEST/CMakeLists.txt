@@ -1,6 +1,19 @@
 project(NEO-2-TESTS)
 enable_testing()
 
+if(NEO2_NATIVE_SPARSE)
+  add_executable(test_native_sparse_adapter test_native_sparse_adapter.f90)
+  target_link_libraries(test_native_sparse_adapter PRIVATE common)
+  add_test(NAME native_sparse_adapter COMMAND test_native_sparse_adapter)
+  set_tests_properties(native_sparse_adapter PROPERTIES
+      PASS_REGULAR_EXPRESSION "All tests passed!" TIMEOUT 1 LABELS "sparse;fast")
+  add_test(NAME native_sparse_singular
+      COMMAND ${CMAKE_COMMAND} -DEXECUTABLE=$<TARGET_FILE:test_native_sparse_adapter>
+          -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_native_failure.cmake)
+  set_tests_properties(native_sparse_singular PROPERTIES
+      TIMEOUT 1 LABELS "sparse;fast")
+endif()
+
 # Test executable for boozmn reading (INP_SWI_BOOZMN path).
 add_executable(test_boozmn_read test_boozmn_read.f90)
 target_link_libraries(test_boozmn_read common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})

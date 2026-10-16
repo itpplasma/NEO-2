@@ -6,11 +6,12 @@
 
 ### Prerequisites
 
-git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (OpenBLAS or MKL), SuiteSparse, FFTW, and GSL. HDF5/NetCDF compatibility is provided through libneo and Fortio. If SuiteSparse is not available on your system, it will be built automatically by NEO-2. For code coverage, lcov is also required. On Debian or Ubuntu run
+git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (OpenBLAS or MKL), FFTW, and GSL. HDF5/NetCDF compatibility is provided through libneo and Fortio. Native CPU FortSparse is the default sparse solver; its tested revision is fetched during configuration. Optional AMD/METIS ordering libraries are permitted, while SuperLU, MUMPS and the GPL UMFPACK helper are disabled in this configuration. SuiteSparse is required only for the explicit legacy configuration below. For code coverage, lcov is also required. On Debian or Ubuntu run
 
     sudo apt install git cmake make ninja-build gcc g++ gfortran
     sudo apt install openmpi-bin openmpi-common libopenmpi-dev
-    sudo apt install libopenblas-dev libsuitesparse-dev
+    sudo apt install libopenblas-dev
+    sudo apt install libsuitesparse-dev  # Optional ordering libraries / legacy provider
     sudo apt install libfftw3-dev libgsl-dev
     sudo apt install lcov  # Optional, for code coverage
 
@@ -27,6 +28,40 @@ To build against a specific libneo branch, tag, or commit SHA, pass `LIBNEO_REF`
     make LIBNEO_REF=<branch|tag|sha>
 
 The equivalent cmake option is `-DLIBNEO_REF=<branch|tag|sha>`. When unset, the build uses the tested libneo revision pinned in `COMMON/ProjectConfig.cmake.in`. An ambient `LIBNEO_REF` in the shell does not affect the build.
+
+The sparse provider is selected at configure time:
+
+```sh
+# Default: native CPU factorization, with no external sparse-solver linkage.
+cmake --preset default -DNEO2_NATIVE_SPARSE=ON
+# Explicit historical UMFPACK provider, for compatibility comparisons.
+cmake --preset default -DNEO2_NATIVE_SPARSE=OFF
+```
+
+`FORTSPARSE_REF` selects the tested dependency revision; an explicit
+`-Dfortsparse_SOURCE_DIR=/path/to/fortsparse` uses a local source checkout.
+The native provider preserves `sparse_solve` and its real/complex, dense/COO/CSC
+and multiple-RHS overloads. Operations 0/1/2/3 mean factor-solve-free,
+factor-only, solve with retained factors (auto-factor if absent), and free.
+Method 2 requests FortSparse's original-matrix iterative refinement; method 3
+omits it. Changing method on a retained factor refactors the supplied matrix
+to update the retained refinement policy. Numeric solver errors stop with a
+diagnostic instead of returning an unchecked result.
+
+All audited PAR, QL axi and Arnoldi calls use normal solves. Arnoldi's real
+branch still splits complex RHS into real/imaginary solves against one real
+factor; its complex branch uses a complex factor. There is one active shared
+factor per process, as in the historical module. This adapter does not add
+thread-safe concurrent handles, distributed factors or new transpose callers.
+The spline LAPACK band path remains available. Native capabilities do not
+establish large-application performance or full scientific-run admission.
+
+Focused checks after building:
+
+```sh
+cmake --build --preset default --target test_native_sparse_adapter test_spline_sparse_assembly test_arnoldi_breakdown
+ctest --test-dir build -R 'native_sparse_|spline_sparse_assembly_test|arnoldi_breakdown_test' --output-on-failure
+```
 
 You obtain a `build` directory with subdirectories
 

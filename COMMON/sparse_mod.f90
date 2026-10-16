@@ -1,4 +1,7 @@
 MODULE sparse_mod
+#ifdef NEO2_NATIVE_SPARSE
+  USE neo2_native_sparse, ONLY: native_sparse_solve
+#endif
 
   IMPLICIT NONE
 
@@ -659,6 +662,11 @@ CONTAINS
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
     LOGICAL :: pcol_modified = .FALSE.
 
+#ifdef NEO2_NATIVE_SPARSE
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+    RETURN
+#endif
     !optional input
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
@@ -722,6 +730,11 @@ CONTAINS
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
     LOGICAL :: pcol_modified = .FALSE.
 
+#ifdef NEO2_NATIVE_SPARSE
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+    RETURN
+#endif
     !optional input
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
@@ -785,6 +798,11 @@ CONTAINS
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
     LOGICAL :: pcol_modified = .FALSE.
 
+#ifdef NEO2_NATIVE_SPARSE
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+    RETURN
+#endif
     !optional input
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
@@ -848,6 +866,11 @@ CONTAINS
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
     LOGICAL :: pcol_modified = .FALSE.
 
+#ifdef NEO2_NATIVE_SPARSE
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+    RETURN
+#endif
     !optional input
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
@@ -914,6 +937,12 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+#ifdef NEO2_NATIVE_SPARSE
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+    RETURN
+#endif
+
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
@@ -962,6 +991,12 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+#ifdef NEO2_NATIVE_SPARSE
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+    RETURN
+#endif
+
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
@@ -1010,6 +1045,12 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+#ifdef NEO2_NATIVE_SPARSE
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+    RETURN
+#endif
+
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
@@ -1058,6 +1099,12 @@ CONTAINS
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
+#ifdef NEO2_NATIVE_SPARSE
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+    RETURN
+#endif
+
 
     ! check about existing factorization
     IF (factorization_exists .AND. iopt .EQ. 1) THEN ! free memory first
@@ -1094,6 +1141,14 @@ CONTAINS
   ! results are returned in b
   ! Routines from SuperLU-Distribution
   SUBROUTINE sparse_solve_suitesparse_b1(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
+#ifdef NEO2_NATIVE_SPARSE
+    INTEGER, INTENT(in) :: nrow,ncol,nz,iopt_in
+    INTEGER, INTENT(in) :: irow(:),pcol(:)
+    REAL(kind=dp), INTENT(in) :: val(:)
+    REAL(kind=dp), INTENT(inout) :: b(:)
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+#else
     INTEGER, INTENT(in) :: nrow,ncol,nz
     INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
@@ -1171,6 +1226,7 @@ CONTAINS
     IF (ALLOCATED(Ap)) DEALLOCATE(Ap)
     IF (ALLOCATED(x))  DEALLOCATE(x)
 
+#endif
   END SUBROUTINE sparse_solve_suitesparse_b1
   !-------------------------------------------------------------------------------
 
@@ -1180,6 +1236,14 @@ CONTAINS
   ! results are returned in b
   ! Routines from SuperLU-Distribution
   SUBROUTINE sparse_solve_suitesparseComplex_b1(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
+#ifdef NEO2_NATIVE_SPARSE
+    INTEGER, INTENT(in) :: nrow,ncol,nz,iopt_in
+    INTEGER, INTENT(in) :: irow(:),pcol(:)
+    COMPLEX(kind=dp), INTENT(in) :: val(:)
+    COMPLEX(kind=dp), INTENT(inout) :: b(:)
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+#else
     INTEGER, INTENT(in) :: nrow,ncol,nz
     INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
     COMPLEX(kind=dp), DIMENSION(:), INTENT(in) :: val
@@ -1309,6 +1373,7 @@ CONTAINS
     IF (ALLOCATED(valx))  DEALLOCATE(valx)
     IF (ALLOCATED(valz))  DEALLOCATE(valz)
 
+#endif
   END SUBROUTINE sparse_solve_suitesparseComplex_b1
   !-------------------------------------------------------------------------------
 
@@ -1319,6 +1384,14 @@ CONTAINS
   ! results are returned in b
   ! Routines from SuiteSparse-Distribution
   SUBROUTINE sparse_solve_suitesparse_b2_loop(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
+#ifdef NEO2_NATIVE_SPARSE
+    INTEGER, INTENT(in) :: nrow,ncol,nz,iopt_in
+    INTEGER, INTENT(in) :: irow(:),pcol(:)
+    REAL(kind=dp), INTENT(in) :: val(:)
+    REAL(kind=dp), INTENT(inout) :: b(:,:)
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+#else
     INTEGER, INTENT(in) :: nrow,ncol,nz
     INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
@@ -1412,6 +1485,7 @@ CONTAINS
     IF (ALLOCATED(x))  DEALLOCATE(x)
 
     RETURN
+#endif
   END SUBROUTINE sparse_solve_suitesparse_b2_loop
   !-------------------------------------------------------------------------------
 
@@ -1421,6 +1495,14 @@ CONTAINS
   ! results are returned in b
   ! Routines from SuiteSparse-Distribution
   SUBROUTINE sparse_solve_suitesparseComplex_b2_loop(nrow,ncol,nz,irow,pcol,val,b,iopt_in)
+#ifdef NEO2_NATIVE_SPARSE
+    INTEGER, INTENT(in) :: nrow,ncol,nz,iopt_in
+    INTEGER, INTENT(in) :: irow(:),pcol(:)
+    COMPLEX(kind=dp), INTENT(in) :: val(:)
+    COMPLEX(kind=dp), INTENT(inout) :: b(:,:)
+    CALL native_sparse_solve(nrow,ncol,nz,irow,pcol,val,b, &
+         sparse_solve_method,sparse_talk,iopt_in)
+#else
     INTEGER, INTENT(in) :: nrow,ncol,nz
     INTEGER, DIMENSION(:), INTENT(in) :: irow,pcol
     COMPLEX(kind=dp), DIMENSION(:), INTENT(in) :: val
@@ -1558,6 +1640,7 @@ CONTAINS
     IF (ALLOCATED(valx))  DEALLOCATE(valx)
     IF (ALLOCATED(valz))  DEALLOCATE(valz)
 
+#endif
   END SUBROUTINE sparse_solve_suitesparseComplex_b2_loop
   !-------------------------------------------------------------------------------
 

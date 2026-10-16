@@ -77,17 +77,22 @@ set(COMMON_FILES
 set_source_files_properties(${COMMON_FILES} PROPERTIES COMPILE_FLAGS "${DEBUGFLAG} ${FFLAG_DEBUG} ${FFLAGS} ${MPIFLAGS}")
 
 
-set(SUITESPARSE_SRC_FILES
-  umf4_f77wrapper_ver_4_5.c
-  umf4_f77zwrapper_ver_4_5.c
-)
-if(LEGACY_SUITESPARSE)
-  set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
+set_source_files_properties(sparse_mod.f90 PROPERTIES Fortran_PREPROCESS ON)
+if(NEO2_NATIVE_SPARSE)
+  list(APPEND COMMON_FILES neo2_native_sparse.f90)
 else()
-  set(SUITESPARSE_FLAGS "")
+  set(SUITESPARSE_SRC_FILES
+    umf4_f77wrapper_ver_4_5.c
+    umf4_f77zwrapper_ver_4_5.c
+  )
+  if(LEGACY_SUITESPARSE)
+    set(SUITESPARSE_FLAGS "-I${SUITESPARSE_INCLUDE_DIRS}")
+  else()
+    set(SUITESPARSE_FLAGS "")
+  endif()
+  set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
+  set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 endif()
-set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
-set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
 add_library(common STATIC
   ${COMMON_FILES}
@@ -104,10 +109,15 @@ target_link_libraries(common PUBLIC
   LAPACK::LAPACK
   -lz -lpthread
 )
-if(LEGACY_SUITESPARSE)
-  target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES})
+if(NEO2_NATIVE_SPARSE)
+  target_compile_definitions(common PRIVATE NEO2_NATIVE_SPARSE)
+  target_link_libraries(common PUBLIC fortsparse)
 else()
-  target_link_libraries(common PUBLIC SuiteSparse::umfpack)
+  if(LEGACY_SUITESPARSE)
+    target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES})
+  else()
+    target_link_libraries(common PUBLIC SuiteSparse::umfpack)
+  endif()
 endif()
 
 target_link_libraries(common PUBLIC

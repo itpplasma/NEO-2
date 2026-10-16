@@ -12,7 +12,11 @@ function(find_or_fetch DEPENDENCY)
             OR ${DEPENDENCY_UPPER}_REF STREQUAL ${DEPENDENCY}_FETCHED_REF))
         message(STATUS "Using fetched ${DEPENDENCY} in ${${DEPENDENCY}_SOURCE_DIR}")
     else()
-        set(REPO_URL https://github.com/itpplasma/${DEPENDENCY}.git)
+        if(ARGC GREATER 1)
+            set(REPO_URL "${ARGV1}")
+        else()
+            set(REPO_URL https://github.com/itpplasma/${DEPENDENCY}.git)
+        endif()
 
         # Check if a specific ref (branch, tag, or SHA) is provided for this dependency.
         # Pass -DLIBNEO_REF=<ref> on the cmake command line to override.
