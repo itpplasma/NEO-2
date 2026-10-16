@@ -69,6 +69,14 @@ add_test(NAME arnoldi_breakdown_test
          COMMAND test_arnoldi_breakdown
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
+add_test(NAME arnoldi_projection_mpi
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
+        $<TARGET_FILE:test_arnoldi_breakdown> ${MPIEXEC_POSTFLAGS} --distributed)
+set_tests_properties(arnoldi_projection_mpi PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!" FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30 PROCESSORS 2 LABELS "arnoldi;mpi;fast"
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
 set_tests_properties(arnoldi_breakdown_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     FAIL_REGULAR_EXPRESSION "FAIL"
