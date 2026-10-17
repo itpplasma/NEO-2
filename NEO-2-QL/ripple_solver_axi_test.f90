@@ -1123,7 +1123,8 @@ PRINT *,'right boundary layer ignored'
 
       if (uses_krook()) then
         enu_coef(:,i) = krook_pitch_mass(collpar, h_phi_mfl(istep), &
-          bhat_mfl(istep), dellampow(:,i), bvec_lapack)
+          bhat_mfl(istep), dellampow(:,i), bvec_lapack, &
+          alambd(i,istep), alambd(i-1,istep), 1.0_dp/fieldline%b_abs_max)
       else
         enu_coef(:,i) = matmul(dellampow(:,i),bvec_lapack)*coefenu
       end if

@@ -7,7 +7,9 @@ add_test(NAME collision_krook_test COMMAND test_collision_krook)
 set_tests_properties(collision_krook_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!" TIMEOUT 30
     ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
-foreach(rejection unknown-model negative-rate missing-rate nan-rate integral grid cache)
+foreach(rejection unknown-model negative-rate missing-rate nan-rate integral grid cache
+                  zero-trapped negative-passing nan-trapped nan-passing
+                  infinite-trapped infinite-passing)
     add_test(NAME collision_krook_rejects_${rejection}
              COMMAND test_collision_krook ${rejection})
     set_tests_properties(collision_krook_rejects_${rejection} PROPERTIES

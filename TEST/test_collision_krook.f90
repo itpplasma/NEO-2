@@ -1,9 +1,11 @@
 program test_collision_krook
-    use, intrinsic :: iso_fortran_env, only: dp => real64
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+    use, intrinsic :: iso_fortran_env, only: dp => real64, int64
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, &
+        ieee_positive_inf
     use collision_model_mod, only: resolve_collision_model, uses_krook, &
         krook_carrier_scale, krook_pitch_mass
     use collisionality_mod, only: collision_model, krook_nu, num_spec, &
+        krook_geometry_trapped, krook_geometry_passing, &
         isw_lorentz, isw_energy, isw_integral, isw_momentum, isw_relativistic, &
         lsw_nbi, lsw_multispecies, collpar_spec, m_spec, T_spec, n_spec, z_spec, &
         phi_x_max, collop_bspline_order, collop_bspline_dist, &
@@ -55,6 +57,18 @@ program test_collision_krook
             krook_nu(3) = 0.0_dp
         case ('nan-rate')
             krook_nu(1) = ieee_value(0.0_dp, ieee_quiet_nan)
+        case ('zero-trapped')
+            krook_geometry_trapped = 0.0_dp
+        case ('negative-passing')
+            krook_geometry_passing = -1.0_dp
+        case ('nan-trapped')
+            krook_geometry_trapped = ieee_value(0.0_dp, ieee_quiet_nan)
+        case ('nan-passing')
+            krook_geometry_passing = ieee_value(0.0_dp, ieee_quiet_nan)
+        case ('infinite-trapped')
+            krook_geometry_trapped = ieee_value(0.0_dp, ieee_positive_inf)
+        case ('infinite-passing')
+            krook_geometry_passing = ieee_value(0.0_dp, ieee_positive_inf)
         case ('integral')
             isw_integral = 1
         case ('grid')
@@ -125,6 +139,7 @@ program test_collision_krook
         if (any(anumm_a /= 0.0_dp)) error stop 'Krook retains pitch diffusion'
         if (any(ailmm_aa /= 0.0_dp)) error stop 'Krook retains interspecies FP integral'
         call check_pitch_action(expected(1,1))
+        call check_geometry_projection()
     end do
     call h5_deinit()
     call mpro%deinit()
@@ -189,6 +204,109 @@ contains
         krook_nu = [10.0_dp, 20.0_dp, 30.0_dp]
     end subroutine check_named_modes
 
+    subroutine check_geometry_projection()
+        real(dp), parameter :: bounds(0:4) = [1.0_dp,0.8_dp,0.6_dp,0.4_dp,0.0_dp]
+        real(dp), parameter :: cuts(5) = [0.0_dp,0.3_dp,0.5_dp,0.6_dp,1.0_dp]
+        real(dp) :: bands(4,4), inverse(4,4), moments(4), flux(4), row(4)
+        real(dp) :: baseline(4), legacy(4), scaled(4), reverse(4), drift(4)
+        real(dp) :: lower, upper, cut, bhat, eta_t, factorial, value, oracle
+        real(dp) :: trapped_integral, passing_integral, error, matrix_error
+        integer :: band, j, n, degree, icut, ipiv(4), info
+
+        error = 0.0_dp
+        matrix_error = 0.0_dp
+        bhat = 1.7_dp
+        do band = 1, 4
+            lower = bounds(band)
+            upper = bounds(band-1)
+            ! Independent reconstruction: flux=2/B integral lambda*f d lambda.
+            ! Taylor basis is local to this row, as in the production solvers.
+            factorial = 1.0_dp
+            do n = 0, 3
+                if (n > 0) factorial = factorial*real(n,dp)
+                do j = 1, 4
+                    bands(j,n+1) = 2.0_dp/bhat/factorial*( &
+                        ((bounds(j-1)-lower)**(n+2)-(bounds(j)-lower)**(n+2)) &
+                        /real(n+2,dp) + lower*((bounds(j-1)-lower)**(n+1) &
+                        -(bounds(j)-lower)**(n+1))/real(n+1,dp))
+                end do
+                moments(n+1) = (upper-lower)**(n+1)/(factorial*real(n+1,dp))
+            end do
+            inverse = 0.0_dp
+            do j = 1, 4
+                inverse(j,j) = 1.0_dp
+            end do
+            call dgesv(4,4,bands,4,ipiv,inverse,4,info)
+            if (info /= 0) error stop 'Geometry reconstruction is singular'
+            krook_geometry_trapped = 1.0_dp
+            krook_geometry_passing = 1.0_dp
+            baseline = krook_pitch_mass(0.37_dp,1.3_dp,bhat,moments,inverse, &
+                lower,upper,0.75_dp/bhat)
+            do j = 1, 4
+                legacy(j) = dot_product(moments,inverse(:,j))* &
+                    ((bhat*1.3_dp)**(-1.0_dp)*0.37_dp*(-1.0_dp))
+            end do
+            if (any(transfer(baseline,[0_int64],4) /= transfer(legacy,[0_int64],4))) &
+                error stop 'Default geometry changed legacy pitch arithmetic'
+            krook_geometry_trapped = 4.0_dp
+            krook_geometry_passing = 4.0_dp
+            scaled = krook_pitch_mass(0.37_dp,1.3_dp,bhat,moments,inverse, &
+                lower,upper,0.75_dp/bhat)
+            if (any(scaled /= 4.0_dp*baseline)) &
+                error stop 'Equal geometry factors failed exact matrix scaling'
+            ! Tensor with each actual species/energy matrix for BOTH rate laws.
+            do j = 1, 4
+                matrix_error = max(matrix_error, maxval(abs( &
+                    denmm_a*scaled(j)-4.0_dp*(denmm_a*baseline(j)))) &
+                    /max(1.0_dp,maxval(abs(4.0_dp*denmm_a*baseline(j)))))
+            end do
+            if (matrix_error > 32.0_dp*epsilon(1.0_dp)) &
+                error stop 'Equal factors failed native energy-pitch tensor scaling'
+            drift = krook_pitch_mass(0.37_dp,1.3_dp,bhat,moments,inverse, &
+                lower,upper,0.75_dp/bhat,with_geometry=.false.)
+            if (any(transfer(drift,[0_int64],4) /= transfer(baseline,[0_int64],4))) &
+                error stop 'Common geometry factor changed rotation/drift mass'
+            krook_geometry_trapped = 2.5_dp
+            krook_geometry_passing = 0.75_dp
+            do icut = 1, size(cuts)
+                eta_t = (1.0_dp-cuts(icut)**2)/bhat
+                row = krook_pitch_mass(0.37_dp,1.3_dp,bhat,moments,inverse, &
+                    lower,upper,eta_t)
+                drift = krook_pitch_mass(0.37_dp,1.3_dp,bhat,moments,inverse, &
+                    lower,upper,eta_t,with_geometry=.false.)
+                if (any(transfer(drift,[0_int64],4) /= transfer(baseline,[0_int64],4))) &
+                    error stop 'Pitch geometry step changed rotation/drift mass'
+                reverse = krook_pitch_mass(0.37_dp,-1.3_dp,bhat,moments,inverse, &
+                    lower,upper,eta_t)
+                if (maxval(abs(row+reverse)) > 3.0e-14_dp) &
+                    error stop 'Geometry projection failed direction reversal'
+                cut = max(lower,min(upper,cuts(icut)))
+                do degree = 0, 3
+                    do j = 1, 4
+                        flux(j) = 2.0_dp/bhat*(bounds(j-1)**(degree+2) - &
+                            bounds(j)**(degree+2))/real(degree+2,dp)
+                    end do
+                    ! Direct global-power integrals, independent of the
+                    ! generated local Taylor moments (including crossing bands).
+                    trapped_integral = (cut**(degree+1)-lower**(degree+1)) &
+                        /real(degree+1,dp)
+                    passing_integral = (upper**(degree+1)-cut**(degree+1)) &
+                        /real(degree+1,dp)
+                    oracle = -0.37_dp/(1.3_dp*bhat)*( &
+                        2.5_dp*trapped_integral+0.75_dp*passing_integral)
+                    value = dot_product(row,flux)
+                    error = max(error,abs(value-oracle))
+                    if (abs(value-oracle) > 3.0e-12_dp) &
+                        error stop 'Geometry projection failed analytic step oracle'
+                end do
+            end do
+        end do
+        krook_geometry_trapped = 1.0_dp
+        krook_geometry_passing = 1.0_dp
+        print *, 'Geometry projection: 80 integrals, max error = ', error
+        print *, 'Equal-factor native tensor max relative error = ', matrix_error
+    end subroutine check_geometry_projection
+
     subroutine check_pitch_action(velocity_moment)
         real(dp), intent(in) :: velocity_moment
         real(dp), parameter :: bounds(0:4) = [1.0_dp,0.8_dp,0.6_dp,0.4_dp,0.0_dp]
@@ -219,8 +337,10 @@ contains
                 moments(degree+1) = (bounds(j-1)**(degree+1)- &
                     bounds(j)**(degree+1))/real(degree+1,dp)
             end do
-            row = krook_pitch_mass(0.37_dp, 1.3_dp, 1.0_dp, moments, inverse)
-            reverse_row = krook_pitch_mass(0.37_dp,-1.3_dp,1.0_dp,moments,inverse)
+            row = krook_pitch_mass(0.37_dp, 1.3_dp, 1.0_dp, moments, inverse, &
+                bounds(j), bounds(j-1), 0.75_dp)
+            reverse_row = krook_pitch_mass(0.37_dp,-1.3_dp,1.0_dp,moments,inverse, &
+                bounds(j), bounds(j-1), 0.75_dp)
             if (maxval(abs(reverse_row+row)) > 3.0e-14_dp) &
                 error stop 'Native pitch mass failed field-direction reversal'
             do degree = 0, 3
