@@ -2,7 +2,7 @@ program test_electromagnetic_work
     use, intrinsic :: iso_fortran_env, only: dp => real64, int64
     use electromagnetic_work_mod, only: work_back_geometry, &
         work_pitch_convolution, compute_electromagnetic_work, &
-        work_geometry_supported
+        work_geometry_supported, work_geometry_scale
     implicit none
     real(dp), parameter :: pi = acos(-1.0_dp), c = 2.9979e10_dp
     real(dp), parameter :: elementary_charge = 4.8032e-10_dp
@@ -23,31 +23,34 @@ program test_electromagnetic_work
     real(dp) :: qflux(3,3,0:2,0:2), torque(0:2), expected(0:2)
     real(dp) :: source_weight(3,0:2), physical_weight(3,0:2)
     real(dp) :: dn_ds(0:2), dT_ds(0:2), er, epar, dl_over_b, max_error
-    integer :: drive, harmonic, m_phi, orientation
+    integer :: drive, harmonic, m_phi, orientation, pitch_sign
 
     max_error = 0.0_dp
     ! hphi=kappa*Bhat is the Boozer-consistent choice for
     ! Bhat=1+eps*cos(theta), whose uniform-angle mean is exactly one.
     dl_over_b = 2.0_dp*pi/(kappa*(1.0_dp - eps**2)**1.5_dp)
     call check_native_orientation()
-    do orientation = -1, 1, 2
-        scale = orientation*0.003_dp
-        call check_original_operation_order()
-        do drive = 1, 3
-            call set_physical_drive(drive)
-            do harmonic = 1, 2
-                m_phi = 2
-                if (harmonic == 2) m_phi = -3
-                call build_native_response(m_phi)
-                call compute_electromagnetic_work(qflux, mass, charge, density, &
-                    temperature, dn_ds, dT_ds, er, epar, bref, g, dl_over_b, &
-                    scale, torque, source_weight)
-                call four_phase_physical_torque(m_phi, expected)
-                call check_close('physical source amplitudes', &
-                    reshape(source_weight, [9]), reshape(physical_weight, [9]))
-                call check_close('four-phase CGS torque', torque, expected)
-                print '(a,i2,a,i1,a,i3,a,3es16.7)', 'scale sign ', orientation, &
-                    ', drive ', drive, ', n=', m_phi, ', torque [erg/cm^3]:', torque
+    do pitch_sign = -1, 1, 2
+        do orientation = -1, 1, 2
+            scale = orientation*0.003_dp
+            call check_original_operation_order()
+            do drive = 1, 3
+                call set_physical_drive(drive)
+                do harmonic = 1, 2
+                    m_phi = 2
+                    if (harmonic == 2) m_phi = -3
+                    call build_native_response(m_phi)
+                    call compute_electromagnetic_work(qflux, mass, charge, density, &
+                        temperature, dn_ds, dT_ds, er, epar, bref, g, dl_over_b, &
+                        scale, torque, source_weight)
+                    call four_phase_physical_torque(m_phi, expected)
+                    call check_close('physical source amplitudes', &
+                        reshape(source_weight, [9]), reshape(physical_weight, [9]))
+                    call check_close('four-phase CGS torque', torque, expected)
+                    print '(a,i2,a,i2,a,i1,a,i3,a,3es16.7)', &
+                        'pitch sign ', pitch_sign, ', scale sign ', orientation, &
+                        ', drive ', drive, ', n=', m_phi, ', torque [erg/cm^3]:', torque
+                end do
             end do
         end do
     end do
@@ -217,7 +220,7 @@ contains
                         do b = 0, 2
                             do channel = 1, 3
                                 pitch_shape = 1.0_dp + 0.3_dp*channel*lambda(l)**2 &
-                                    + (0.07_dp*b - 0.03_dp*a)*lambda(l)
+                                    + (0.07_dp*b - 0.03_dp*a)*pitch_sign*lambda(l)
                                 amplitude = response(a, b, channel, theta)
                                 physical_distribution = density(a) &
                                     *physical_weight(channel,b)*pitch_shape &
@@ -253,8 +256,20 @@ contains
 
     subroutine check_original_operation_order()
         complex(dp) :: bn, coefficient, original, actual
-        real(dp) :: bhat, hphi, pol0, pol2
+        real(dp) :: bhat, hphi, pol0, pol2, expected_scale, actual_scale
         integer :: j
+
+        ! Both actual orientation signs, preserving native operation order.
+        do j = -1, 1, 2
+            expected_scale = 1.0_dp/(-0.9625_dp*(j*36302.0_dp))
+            expected_scale = expected_scale &
+                *sign(1.0_dp, (j*36302.0_dp)*(j*637.0_dp)*(j*3.56e-8_dp))
+            actual_scale = work_geometry_scale(-0.9625_dp, j*36302.0_dp, &
+                j*637.0_dp, j*3.56e-8_dp)
+            if (transfer(actual_scale, 0_int64) /= &
+                    transfer(expected_scale, 0_int64)) &
+                error stop 'Full signed native scale changed'
+        end do
 
         do j = 1, 17
             bhat = 0.61_dp + 0.071_dp*j
