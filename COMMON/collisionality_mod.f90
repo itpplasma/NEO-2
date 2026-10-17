@@ -1,4 +1,7 @@
 MODULE collisionality_mod
+  CHARACTER(len=32) :: collision_model = 'native'
+  ! Physical damping frequencies [s^-1], ordered like species_tag_vec.
+  DOUBLE PRECISION, ALLOCATABLE :: krook_nu(:)
   INTEGER          :: isw_lorentz
   INTEGER          :: isw_integral
   INTEGER          :: isw_energy
