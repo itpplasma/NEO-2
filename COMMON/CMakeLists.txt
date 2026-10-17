@@ -12,6 +12,7 @@ set(COMMON_FILES
   binarysplit_int.f90
   binarysplit_mod.f90
   collisionality_mod.f90
+  collision_model_mod.f90
   collision_operator_mems.f90
   collop_bspline.f90
   collop_compute.f90

@@ -14,6 +14,7 @@ subroutine ripple_solver_ArnoldiO2( &
 
     use device_mod
     use flint_mod, only: phi_divide                      !<-in Winny
+    use collision_model_mod, only: uses_krook, krook_pitch_mass
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
                                   isw_momentum, nvel, num_spec, lsw_multispecies, &
@@ -392,6 +393,13 @@ subroutine ripple_solver_ArnoldiO2( &
         isw_lor = 1
         isw_ene = isw_energy
         isw_intp = isw_integral
+    end if
+    if (uses_krook()) then
+        ! Retain the Lorentz assembly topology for the independent ttmp source;
+        ! its matrix is zero. The energy carrier now holds only scalar reaction.
+        isw_ene = 1
+        isw_intp = 0
+        isw_regper = 0
     end if
 
     nvelocity = nvel
@@ -1246,7 +1254,12 @@ subroutine ripple_solver_ArnoldiO2( &
             deriv_coef(:, i) = bvec_lapack(2, :)*coefdir*MIN(eta(i), eta0)
             fun_coef(:, i) = bvec_lapack(1, :)*MIN(eta(i), eta0)
 
-            enu_coef(:, i) = MATMUL(dellampow(:, i), bvec_lapack)*coefenu      !!!term[1]
+            if (uses_krook()) then
+                enu_coef(:,i) = krook_pitch_mass(collpar, h_phi_mfl(istep), &
+                    bhat_mfl(istep), dellampow(:,i), bvec_lapack)
+            else
+                enu_coef(:,i) = matmul(dellampow(:,i),bvec_lapack)*coefenu
+            end if
             enu_coef2(:, i) = MATMUL(dellampow2(:, i), bvec_lapack)*coefenu    !!!NTV
 
             if (i .EQ. 1) then
@@ -4576,8 +4589,10 @@ CONTAINS
 
             ! -> remove null-space of axisymmetric
             ! solution (particle and energy conservation)
-            coef_dens = sum(densvec_bra*fnew)/denom_dens
-            fnew = fnew - (1.d0 - tol)*coef_dens*densvec_ket
+            if (.not. uses_krook()) then
+                coef_dens = sum(densvec_bra*fnew)/denom_dens
+                fnew = fnew - (1.d0 - tol)*coef_dens*densvec_ket
+            end if
 
             if (isw_intp .eq. 1) then
                 coef_energ = sum(energvec_bra*fnew)/denom_energ
