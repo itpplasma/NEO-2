@@ -57,6 +57,8 @@ subroutine ripple_solver_ArnoldiO2( &
                              nz_regper, irow_regper, icol_regper, amat_regper, &
                              deallocate_ntv_eqmat
     use partpa_mod, only: bmod0
+    use electromagnetic_work_mod, only: work_back_geometry, &
+                                       work_pitch_convolution
     use development
   !! Modifications by Andreas F. Martitsch (12.03.2014)
     ! boozer_curr_tor, boozer_curr_pol, boozer_psi_pr,
@@ -152,7 +154,6 @@ subroutine ripple_solver_ArnoldiO2( &
     real(dp)                         :: diflam, diflampow, coefdir
     real(dp)                         :: coefenu, coefenu_averb   !!!term[1]
     real(dp) :: amin2ovb
-    complex(dp) :: coef_cf
 
     real(dp), dimension(6)           :: alp, bet, gam, del
     real(dp), dimension(:, :), allocatable :: amat, bvec_lapack, deriv_coef
@@ -1317,10 +1318,10 @@ subroutine ripple_solver_ArnoldiO2( &
         pleg_bra(0:legmax, 1:npassing + 1, istep) &
             = pleg_bra(0:legmax, 1:npassing + 1, istep)*coefenu_averb
 
-        coef_cf = (1.d0, 0.d0)/bhat_mfl(istep)**2/h_phi_mfl(istep)
         convol_flux_0(1:npassing + 1, istep) &
-            = (convol_polpow(0, 1:npassing + 1) + convol_polpow(2, 1:npassing + 1)) &
-              *coef_cf
+            = work_pitch_convolution(convol_polpow(0, 1:npassing + 1), &
+                convol_polpow(2, 1:npassing + 1), &
+                bhat_mfl(istep), h_phi_mfl(istep))
 
 ! levels
 
@@ -3185,7 +3186,7 @@ subroutine ripple_solver_ArnoldiO2( &
   !! End Modifications by Andreas F. Martitsch (13.06.2014)
     denomjac = aiota*bcovar_theta_hat + bcovar_phi_hat
 
-    geodcu_back = scalefac_kG*imun*m_phi*bnoverb0*bhat_mfl
+    geodcu_back = work_back_geometry(scalefac_kG, m_phi, bnoverb0, bhat_mfl)
     geodcu_forw = geodcu_back
 
     ! Ware pinch effect

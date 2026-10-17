@@ -1,6 +1,14 @@
 project(NEO-2-TESTS)
 enable_testing()
 
+add_executable(test_electromagnetic_work test_electromagnetic_work.f90)
+target_link_libraries(test_electromagnetic_work neo2_ql)
+add_test(NAME electromagnetic_work_test COMMAND test_electromagnetic_work)
+set_tests_properties(electromagnetic_work_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL" TIMEOUT 30
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
 add_executable(test_collision_krook test_collision_krook.f90)
 target_link_libraries(test_collision_krook common)
 add_test(NAME collision_krook_test COMMAND test_collision_krook)
