@@ -12,6 +12,7 @@ subroutine ripple_solver_ArnoldiO2( &
     ierr &
     )
 
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use device_mod
     use flint_mod, only: phi_divide                      !<-in Winny
     use collision_model_mod, only: uses_krook, krook_pitch_mass
@@ -47,7 +48,10 @@ subroutine ripple_solver_ArnoldiO2( &
                               prop_reconstruct_levels
     use sparse_mod, only: sparse_solve_method, sparse_solve, &
                           column_full2pointer, remap_rc, sparse_solver_test
-    use mag_interface_mod, only: surface_boozer_B00, travis_convfac, boozer_s, mag_magfield
+    use mag_interface_mod, only: surface_boozer_B00, travis_convfac, boozer_s, &
+                                mag_magfield, mag_coordinates
+    use neo_control, only: lab_swi
+    use neo_input, only: n0b
     use ntv_eqmat_mod, only: nz_symm, nz_asymm, nz_per_pos, nz_per_neg, &
                              irow_symm, icol_symm, amat_symm, &
                              irow_per_pos, icol_per_pos, &
@@ -58,9 +62,12 @@ subroutine ripple_solver_ArnoldiO2( &
                              deallocate_ntv_eqmat
     use partpa_mod, only: bmod0
     use electromagnetic_work_mod, only: work_back_geometry, &
-                                       work_pitch_convolution
+        work_pitch_convolution, compute_electromagnetic_work
     use response_witness_mod, only: lsw_response_witness, &
         response_witness_begin, response_witness_complex, response_witness_end
+    use work_only_response_mod, only: lsw_work_only_response, &
+        work_only_scope_supported, work_only_constant_b, &
+        evaluate_work_only_response
     use hdf5_tools, only: hid_t, h5_add
     use development
   !! Modifications by Andreas F. Martitsch (12.03.2014)
@@ -71,7 +78,8 @@ subroutine ripple_solver_ArnoldiO2( &
     ! ripple_solver.f90!
     use neo_magfie, only: boozer_iota, boozer_curr_pol_hat, &
                           boozer_curr_tor_hat, boozer_psi_pr_hat, boozer_curr_pol_hat_s, &
-                          boozer_curr_tor_hat_s, boozer_iota_s, boozer_isqrg
+                          boozer_curr_tor_hat_s, boozer_iota_s, boozer_isqrg, &
+                          isw_mag_shear, magfie_result
   !! End Modifications by Andreas F. Martitsch (12.03.2014)
   !! Modifications by Andreas F. Martitsch (12.06.2014)
     ! quantities of the perturbation field extracted
@@ -85,7 +93,7 @@ subroutine ripple_solver_ArnoldiO2( &
                        qflux_symm_allspec, qflux_ntv_allspec, &
                        MtOvR_spec, isw_calc_Er, B_rho_L_loc_spec, isw_calc_MagDrift
     use ntv_mod, only: get_Er, get_B_rho_L_loc, &
-        dn_spec_ov_ds, dT_spec_ov_ds
+        dn_spec_ov_ds, dT_spec_ov_ds, y_ntv_mod
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
   !! End Modification by Andreas F. Martitsch (14.07.2015)
     ! MPI SUPPORT for multi-species part
@@ -283,6 +291,9 @@ subroutine ripple_solver_ArnoldiO2( &
     real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec
     logical :: problem_type
     real(dp), dimension(:, :), allocatable :: source_vector_real
+    real(dp), allocatable :: work_source_weight(:, :)
+    complex(dp), allocatable :: work_bwork(:), work_bcomplete(:), work_shift(:)
+    complex(dp), allocatable :: work_geodcu_axis(:)
   !! End Modification by Andreas F. Martitsch (28.07.2015)
     complex(dp), dimension(:), allocatable :: ttmpfact
     logical :: colltest = .FALSE.
@@ -2532,11 +2543,13 @@ subroutine ripple_solver_ArnoldiO2( &
             call response_witness_complex(witness_id, 'axisymmetric_auxiliary4', &
                 source_vector_all(:, 4, :))
         end if
+        if (lsw_work_only_response) call prepare_work_only_response()
         problem_type = .TRUE.
         call solve_eqs(.TRUE.)
         if (lsw_response_witness) &
             call response_witness_complex(witness_id, 'axisymmetric_y0', &
                 source_vector_all(:, 1:3, :))
+        if (lsw_work_only_response) call retain_work_only_shift()
 
         ! Debugging - plot distribution function (axisymmetric problem)
         if (lsw_debug_distfun) then
@@ -3255,6 +3268,14 @@ subroutine ripple_solver_ArnoldiO2( &
         call response_witness_complex(witness_id, 'geodcu_forward', geodcu_forw)
         call response_witness_complex(witness_id, 'geodcu_work_back', geodcu_back)
     end if
+    if (lsw_work_only_response) then
+        call h5_add(witness_id, 'work_only_geometry_split_defect', &
+            maxval(abs(geodcu_forw+bnoverb0(ibeg)*work_geodcu_axis-geodcu_back)))
+        call work_require(maxval(abs(geodcu_forw + &
+            bnoverb0(ibeg)*work_geodcu_axis-geodcu_back)) <= &
+            256.0_dp*epsilon(1.0_dp)*maxval(abs(geodcu_back)), &
+            'Work-only source geometry identity is outside admitted scope')
+    end if
     do ispecp = 0, num_spec - 1
         if (nobounceaver) then
             f0_ttmp(:, :) = f0_ttmp_all(:, :, ispecp)
@@ -3282,12 +3303,16 @@ subroutine ripple_solver_ArnoldiO2( &
                 call response_witness_complex(witness_id, trim(witness_key), &
                     source_vector(:, 1:3))
             end if
+            if (lsw_work_only_response) work_bwork = work_bwork + &
+                work_source_weight(1,ispecp)*source_vector(:,1)
             call add_f01_source
             if (lsw_response_witness) then
                 write(witness_key, '(a,i0)') 'complete_rhs_b', ispecp
                 call response_witness_complex(witness_id, trim(witness_key), &
                     source_vector(:, 1:3))
             end if
+            if (lsw_work_only_response) work_bcomplete = work_bcomplete + &
+                work_source_weight(1,ispecp)*source_vector(:,1)
 
             deallocate (ttmpfact)
         end if
@@ -3295,6 +3320,13 @@ subroutine ripple_solver_ArnoldiO2( &
     end do
 
     expforw = EXP(imun*m_phi*(phi_mfl(iend) - phi_mfl(ibeg)))
+    if (lsw_work_only_response) then
+        call response_witness_complex(witness_id, 'work_only_seam_phase', [expforw])
+        call work_require(abs(expforw-1.0_dp) <= &
+            128.0_dp*epsilon(1.0_dp)*max(1.0_dp, &
+                abs(m_phi*(phi_mfl(iend)-phi_mfl(ibeg)))), &
+            'Work-only response requires periodic phase closure')
+    end if
     expbackw = (1.d0, 0.d0)/expforw
     perbou_pos = (1.d0, 0.d0) - expbackw
     perbou_neg = (1.d0, 0.d0) - expforw
@@ -3415,6 +3447,185 @@ subroutine ripple_solver_ArnoldiO2( &
     !------------------------------------------------------------------------
 
 CONTAINS
+
+    subroutine work_require(supported, message)
+        logical, intent(in) :: supported
+        character(len=*), intent(in) :: message
+
+        if (work_global_sum(merge(0.0_dp, 1.0_dp, supported)) > 0.0_dp) &
+            error stop message
+    end subroutine work_require
+
+    function work_global_sum(value) result(total)
+        real(dp), intent(in) :: value
+        real(dp) :: total
+        real(dp), allocatable :: contributions(:)
+
+        allocate(contributions(mpro%getNumProcs()))
+        call mpro%allgather(value, contributions)
+        total = sum(contributions)
+    end function work_global_sum
+
+    subroutine prepare_work_only_response()
+        real(dp), parameter :: c_work = 2.9979e10_dp
+        real(dp) :: g_work, er_work, sqrtg_bth, sqrtg_bphi
+        real(dp) :: zero_q(1,3,0:num_spec-1,0:num_spec-1)
+        real(dp) :: zero_torque(0:num_spec-1)
+        real(dp), allocatable :: phase_parts(:)
+
+        allocate(phase_parts(mpro%getNumProcs()))
+        call work_require(work_only_scope_supported(lsw_response_witness, &
+            lsw_multispecies, 3, isw_qflux_NA, isw_calc_Er, mag_coordinates, &
+            lab_swi, isw_mag_shear, isw_axisymm, n0b) .and. nobounceaver &
+            .and. magfie_result == 0 .and. m_phi /= 0, &
+            'Work-only response requires prescribed pure-E Boozer lab8/9 scope')
+        call work_require(mpro%getNumProcs() == num_spec, &
+            'Work-only response requires one MPI receiving rank per species')
+        call work_require(allocated(y_ntv_mod), 'Work-only response lacks geometry')
+        call work_require(size(y_ntv_mod) >= 7, 'Work-only geometry is too short')
+        call work_require(allocated(dn_spec_ov_ds) .and. allocated(dT_spec_ov_ds), &
+            'Work-only response lacks actual profile derivatives')
+        call work_require(size(dn_spec_ov_ds) == num_spec .and. &
+            size(dT_spec_ov_ds) == num_spec, 'Work-only profile size mismatch')
+        call work_require(all(ieee_is_finite([surface%aiota, boozer_iota, &
+            boozer_psi_pr_hat, bcovar_phi_hat, bcovar_theta_hat, boozer_isqrg, &
+            bmod0, y_ntv_mod(6), y_ntv_mod(7), Om_tE, scalefac_kG])), &
+            'Work-only response requires finite signed geometry and drive')
+        call work_require(surface%aiota > 0.0_dp .and. boozer_psi_pr_hat > 0.0_dp &
+            .and. bcovar_phi_hat > 0.0_dp .and. boozer_isqrg > 0.0_dp &
+            .and. bmod0 > 0.0_dp .and. y_ntv_mod(6) > 0.0_dp &
+            .and. y_ntv_mod(7) > 0.0_dp .and. sign_of_bphi == 1.0_dp &
+            .and. scalefac_kG /= 0.0_dp .and. Om_tE /= 0.0_dp &
+            .and. bcovar_phi_hat+surface%aiota*bcovar_theta_hat > 0.0_dp &
+            .and. abs(surface%aiota-boozer_iota) <= &
+                128.0_dp*epsilon(1.0_dp)*abs(boozer_iota), &
+            'Work-only response requires the positive Boozer chart')
+        call work_require(all(ieee_is_finite(m_spec)) .and. &
+            all(ieee_is_finite(z_spec)) .and. all(ieee_is_finite(n_spec)) &
+            .and. all(ieee_is_finite(T_spec)) .and. &
+            all(m_spec > 0.0_dp) .and. all(n_spec > 0.0_dp) .and. &
+            all(T_spec > 0.0_dp) .and. all(z_spec /= 0.0_dp) .and. &
+            all(dn_spec_ov_ds == 0.0_dp) .and. all(dT_spec_ov_ds == 0.0_dp), &
+            'Work-only response requires finite physical species and flat profiles')
+        call work_require(work_only_constant_b(bnoverb0, dbnoverb0_dphi_mfl, &
+            phi_mfl(iend)-phi_mfl(ibeg)), &
+            'Work-only response requires constant complex relative perturbation')
+        call mpro%allgather(real(bnoverb0(ibeg), dp), phase_parts)
+        call work_require(maxval(abs(phase_parts-phase_parts(1))) == 0.0_dp, &
+            'Work-only perturbation real phase differs between receiving ranks')
+        call mpro%allgather(aimag(bnoverb0(ibeg)), phase_parts)
+        call work_require(maxval(abs(phase_parts-phase_parts(1))) == 0.0_dp, &
+            'Work-only perturbation imaginary phase differs between receiving ranks')
+
+        g_work = y_ntv_mod(7)/y_ntv_mod(6)
+        sqrtg_bth = g_work*surface%aiota*boozer_psi_pr_hat*(bmod0*1.0e4_dp)
+        sqrtg_bphi = sqrtg_bth/surface%aiota
+        er_work = Om_tE*surface%aiota*sqrtg_bphi/c_work
+        allocate(work_source_weight(3,0:num_spec-1), work_bwork(n_2d_size), &
+            work_bcomplete(n_2d_size), work_shift(n_2d_size))
+        zero_q = 0.0_dp
+        call compute_electromagnetic_work(zero_q, m_spec, z_spec, n_spec, T_spec, &
+            dn_spec_ov_ds, dT_spec_ov_ds, er_work, 0.0_dp, bmod0*1.0e4_dp, &
+            g_work, y_ntv_mod(6), scalefac_kG, zero_torque, work_source_weight)
+        call work_require(all(ieee_is_finite(work_source_weight)) .and. &
+            all(work_source_weight(2:3,:) == 0.0_dp), &
+            'Work-only response requires actual pure-E source weights')
+        work_bwork = bnoverb0(ibeg)* &
+            matmul(source_vector_all(:,1,:), work_source_weight(1,:))
+        work_bcomplete = 0.0_dp
+        work_geodcu_axis = geodcu_forw
+        call h5_add(witness_id, 'work_only_source_weight', work_source_weight, &
+            lbound(work_source_weight), ubound(work_source_weight))
+        call h5_add(witness_id, 'work_only_Er_statV_per_cm', er_work)
+        call h5_add(witness_id, 'work_only_g', g_work)
+        call h5_add(witness_id, 'work_only_dl_over_b', y_ntv_mod(6))
+        call h5_add(witness_id, 'work_only_raw_to_torque', &
+            -2.0_dp*n_spec(ispec)*T_spec(ispec)/(scalefac_kG*y_ntv_mod(6)))
+        call h5_add(witness_id, 'work_only_constant_b_relative_tolerance', &
+            128.0_dp*epsilon(1.0_dp))
+        call h5_add(witness_id, 'work_only_b_variation', &
+            maxval(abs(bnoverb0-bnoverb0(ibeg))))
+        call h5_add(witness_id, 'work_only_b_derivative', &
+            maxval(abs(dbnoverb0_dphi_mfl)))
+    end subroutine prepare_work_only_response
+
+    subroutine retain_work_only_shift()
+        real(dp) :: imaginary_norm, real_norm
+
+        work_shift = matmul(source_vector_all(:,1,:), work_source_weight(1,:))
+        imaginary_norm = sqrt(work_global_sum(sum(aimag(work_shift)**2)))
+        real_norm = sqrt(work_global_sum(sum(real(work_shift, dp)**2)))
+        call h5_add(witness_id, 'work_only_axisymmetric_imaginary_l2', imaginary_norm)
+        call h5_add(witness_id, 'work_only_axisymmetric_real_l2', real_norm)
+        call work_require(imaginary_norm <= &
+            128.0_dp*epsilon(1.0_dp)*max(real_norm, tiny(1.0_dp)), &
+            'Work-only axisymmetric response has significant imaginary part')
+        work_shift = bnoverb0(ibeg)*real(work_shift, dp)
+    end subroutine retain_work_only_shift
+
+    subroutine solve_work_only_response()
+        use arnoldi_mod, only: arnoldi_mode => mode, arnoldi_ierr => ierr, &
+            fzero, ritznum, eigvecs, ngrow
+        logical :: cache_supported
+        real(dp), allocatable :: cache_sizes(:)
+        complex(dp) :: y1_physical(n_2d_size)
+
+        allocate(cache_sizes(mpro%getNumProcs()))
+        cache_supported = iopt == 2 .and. arnoldi_mode == 1 .and. &
+            arnoldi_ierr == 0 .and. .not. allocated(fzero) .and. ngrow >= 0
+        if (.not. allocated(ritznum)) cache_supported = .false.
+        if (.not. allocated(eigvecs)) cache_supported = .false.
+        call work_require(cache_supported, 'Work-only Arnoldi cache is unavailable')
+        call work_require(size(ritznum) >= ngrow .and. &
+            size(eigvecs,1) == n_2d_size .and. size(eigvecs,2) == ngrow, &
+            'Work-only Arnoldi cache dimensions differ')
+        call work_require(all(ieee_is_finite(real(ritznum(1:ngrow), dp))) .and. &
+            all(ieee_is_finite(aimag(ritznum(1:ngrow)))) .and. &
+            all(ieee_is_finite(real(eigvecs, dp))) .and. &
+            all(ieee_is_finite(aimag(eigvecs))), 'Work-only Arnoldi cache is nonfinite')
+        call mpro%allgather(real(ngrow, dp), cache_sizes)
+        call work_require(all(cache_sizes == cache_sizes(1)), &
+            'Work-only Arnoldi collective counts differ')
+        call mpro%allgather(real(isw_intp, dp), cache_sizes)
+        call work_require(all(cache_sizes == cache_sizes(1)), &
+            'Work-only integral operator modes differ')
+        y1_physical = matmul(source_vector_all(:,1,:), work_source_weight(1,:))
+        call evaluate_work_only_response(witness_id, work_bwork, work_bcomplete, &
+            y1_physical, work_shift, flux_vector(1,:), work_cached_solve, &
+            work_apply_ln, work_global_sum)
+    end subroutine solve_work_only_response
+
+    subroutine work_cached_solve(value)
+        complex(dp), intent(inout) :: value(:)
+        integer :: work_mode
+
+        work_mode = 1
+        call iterator(work_mode, n_2d_size, n_arnoldi, epserr_iter, niter, &
+            value, ispec, next_iteration)
+        call work_require(all(ieee_is_finite(real(value, dp))) .and. &
+            all(ieee_is_finite(aimag(value))), 'Work-only solve returned nonfinite')
+    end subroutine work_cached_solve
+
+    subroutine work_apply_ln(value, action)
+        complex(dp), intent(in) :: value(:)
+        complex(dp), intent(out) :: action(:)
+        integer :: entry
+
+        if (isw_intp == 1) then
+            call integral_part(value, action)
+            action = -action
+        else
+            action = 0.0_dp
+        end if
+        ! Includes every native constraint and complex periodic-seam row.
+        !$omp parallel do
+        do entry = 1, nz
+            !$omp atomic update
+            action(irow(entry)) = action(irow(entry)) + &
+                amat_sp(entry)*value(icol(entry))
+        end do
+        !$omp end parallel do
+    end subroutine work_apply_ln
 
     ! Save consumed native topology and quadrature, without reconstruction.
     subroutine begin_native_witness()
@@ -3697,6 +3908,9 @@ CONTAINS
             end do
 
         end if
+
+        if (lsw_work_only_response .and. .not. problem_type) &
+            call solve_work_only_response()
 
         if (lsw_write_flux_surface_distribution) then
             call write_flux_surface_distribution(flux_vector_plot, source_vector_all, &

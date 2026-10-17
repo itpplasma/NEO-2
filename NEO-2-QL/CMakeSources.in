@@ -3,6 +3,7 @@ set(NEO2_QL_SRC_FILES
   er_rotation_mod.f90
   electromagnetic_work_mod.f90
   response_witness_mod.f90
+  work_only_response_mod.f90
   ntv_mod.f90
   propagator.f90
   flint.f90

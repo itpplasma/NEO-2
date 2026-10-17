@@ -134,3 +134,19 @@ add_test(NAME response_witness_rejects_overwrite
 set_tests_properties(response_witness_rejects_overwrite PROPERTIES
     WILL_FAIL TRUE TIMEOUT 10
     ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
+add_executable(test_work_only_response test_work_only_response.f90
+    ../NEO-2-QL/response_witness_mod.f90
+    ../NEO-2-QL/work_only_response_mod.f90)
+target_link_libraries(test_work_only_response LIBNEO::hdf5_tools)
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/work_only_response_modules")
+set_target_properties(test_work_only_response PROPERTIES Fortran_MODULE_DIRECTORY
+    "${CMAKE_CURRENT_BINARY_DIR}/work_only_response_modules")
+target_include_directories(test_work_only_response PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/work_only_response_modules")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/work_only_response")
+add_test(NAME work_only_response_test COMMAND test_work_only_response
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/work_only_response")
+set_tests_properties(work_only_response_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!" FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
