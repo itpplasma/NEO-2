@@ -18,6 +18,27 @@ set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS "${MPI_Fortran_LINK_FLAG
 
 target_link_libraries(${EXE_NAME} common)
 target_include_directories(${EXE_NAME} PUBLIC "${CMAKE_BINARY_DIR}/COMMON")
+add_library(neo2_k_sparse_backend k_sparse_backend_mod.F90)
+target_include_directories(neo2_k_sparse_backend PUBLIC ${CMAKE_Fortran_MODULE_DIRECTORY})
+target_link_libraries(${EXE_NAME} neo2_k_sparse_backend)
+
+option(NEO2_USE_FORTSPARSE "Enable the fortsparse MUMPS backend for K-only GMRES" OFF)
+if(NEO2_USE_FORTSPARSE)
+  include(FetchContent)
+  FetchContent_Declare(fortsparse
+    GIT_REPOSITORY https://github.com/lazy-fortran/fortsparse.git
+    GIT_TAG 25dbe2d995af6192ab5dc4290afb7b26f676d189)
+  FetchContent_MakeAvailable(fortsparse)
+  if(NOT FORTSPARSE_ENABLE_MUMPS)
+    message(FATAL_ERROR "NEO2_USE_FORTSPARSE requires FORTSPARSE_ENABLE_MUMPS.")
+  endif()
+  if(APPLE AND MPI_Fortran_LINK_FLAGS MATCHES "flat_namespace")
+    message(FATAL_ERROR "MUMPS with -flat_namespace can corrupt solutions; "
+      "remove it from MPI_Fortran_LINK_FLAGS.")
+  endif()
+  target_compile_definitions(neo2_k_sparse_backend PRIVATE NEO2_HAVE_FORTSPARSE_MUMPS)
+  target_link_libraries(neo2_k_sparse_backend PUBLIC fortsparse)
+endif()
 
 install (TARGETS ${EXE_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
 set_property(TARGET ${EXE_NAME} PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)

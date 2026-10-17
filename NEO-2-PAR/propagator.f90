@@ -883,7 +883,10 @@ CONTAINS
 
     USE device_mod
     USE collisionality_mod, ONLY : collpar, conl_over_mfp, &
-         isw_lorentz, isw_integral, isw_energy, isw_axisymm, y_axi_averages
+         isw_lorentz, isw_integral, isw_energy, isw_axisymm, y_axi_averages, &
+         k_coefficient_only, k_surface_batch, k_surface_k, &
+         k_surface_qcurr_g, k_surface_qcurr_t, &
+          k_iter_solver, k_source_applications, k_source_residual
     USE rkstep_mod, ONLY : asource,anumm,ailmm,lag,leg
     USE collop, ONLY : z_eff
     USE mag_interface_mod, ONLY : magnetic_device,mag_magfield
@@ -924,6 +927,36 @@ CONTAINS
     ! For D11_ov_Dpl
     !**********************************************************
     real(kind=dp) :: fac1, fac2, D11_NA_Dpl
+
+    if (k_coefficient_only) then
+       if (iend == 1) then
+          k_cof = 2.5_dp - prop_a%p%qflux(2,3) / prop_a%p%qflux(2,1)
+          if (k_surface_batch) then
+             k_surface_k = k_cof
+             k_surface_qcurr_g = prop_a%p%qflux(2,1)
+             k_surface_qcurr_t = prop_a%p%qflux(2,3)
+             return
+          end if
+          call h5_create('fulltransp.h5', h5id, 1)
+          call h5_add(h5id, 'k_coefficient_only', k_coefficient_only)
+          if (k_iter_solver == 1) then
+             call h5_add(h5id, 'k_iter_solver', k_iter_solver)
+             call h5_add(h5id, 'k_source_applications', k_source_applications, [1], [2])
+             call h5_add(h5id, 'k_source_residual', k_source_residual, [1], [2])
+          end if
+          call h5_add(h5id, 'k_cof', k_cof)
+          call h5_add(h5id, 'qcurr_g', prop_a%p%qflux(2,1))
+          call h5_add(h5id, 'qcurr_t', prop_a%p%qflux(2,3))
+          call h5_add(h5id, 'lag', lag)
+          call h5_add(h5id, 'leg', leg)
+          call h5_add(h5id, 'collpar', collpar)
+          call h5_add(h5id, 'conl_over_mfp', conl_over_mfp)
+          call h5_add(h5id, 'z_eff', z_eff)
+          call h5_close(h5id)
+          write (*,*) 'k', k_cof
+       end if
+       return
+    end if
 
     allocate(gamma_out(3,3))
 
@@ -1130,7 +1163,9 @@ CONTAINS
   END SUBROUTINE diag_propagator_res
   ! ---------------------------------------------------------------------------
   SUBROUTINE diag_propagator_dis
+    USE collisionality_mod, ONLY : k_coefficient_only
 
+    if (k_coefficient_only) return
     CALL plot_distrf_interface
 
   END SUBROUTINE diag_propagator_dis
@@ -3578,5 +3613,16 @@ CONTAINS
 
     call h5_close(h5id)
   end subroutine get_taginfo
+
+  subroutine reset_propagators()
+    if (associated(prop_l)) call destruct_all_propagators()
+    nullify(prop_a, prop_r, prop_c, prop_n, prop_l, prop_c_old, prop_c_new)
+    propagator_tag_counter = 0
+    prop_first_tag = 0
+    prop_last_tag = 0
+    prop_count_call = 0
+    prop_ibegperiod = 1
+    stime_tot = 0.0_dp
+  end subroutine reset_propagators
 
 END MODULE propagator_mod
