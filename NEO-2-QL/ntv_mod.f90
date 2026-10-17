@@ -936,6 +936,8 @@ CONTAINS
 
     use nrtype
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
+    use electromagnetic_work_mod, only: compute_electromagnetic_work, &
+        work_geometry_supported
     USE neo_control, ONLY: lab_swi
     USE device_mod, ONLY : device, surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
@@ -1065,6 +1067,10 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Gamma_NA_spec, Gamma_NA_Ware_spec
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: TphiNA_spec, TphiNA_Ware_spec
     REAL(kind=dp) :: TphiNA_tot, TphiNA_Ware_tot
+    real(dp), allocatable :: TphiEM_spec(:), em_source_weight(:,:)
+    real(dp), allocatable :: em_raw_moment(:,:,:)
+    real(dp) :: em_scale, em_epar, TphiEM_tot
+    integer :: em_geometry_qualified
     ! species heat flux densities (AX + NA)
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Qflux_AX_spec, Qflux_AX_Ware_spec
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: Qflux_NA_spec, Qflux_NA_Ware_spec
@@ -1616,6 +1622,33 @@ CONTAINS
        ! only defined for isw_calc_Er >= 1.
     END IF
 
+    ! The independent magnetic-work observable uses the physical SOL source
+    ! normalization. Restrict admission to the orientation proved in DOC.
+    ! Existing flux/torque outputs above remain unchanged.
+    em_geometry_qualified = 0
+    if (isw_calc_Er >= 1 .and. isw_qflux_NA == 1 .and. &
+            isw_ripple_solver == 3 .and. &
+            allocated(qflux_ntv_allspec)) then
+        if (work_geometry_supported(mag_coordinates, lab_swi, sqrtg_tmp, &
+                hctrvr_tmp(2), bcovar_phi_hat, aiota_loc, &
+                boozer_psi_pr_hat, av_nabla_stor, y(6))) then
+            em_geometry_qualified = 1
+            em_scale = 1.0_dp/(aiota_loc*boozer_psi_pr_hat)
+            em_epar = 0.0_dp
+            if (isw_calc_Er == 1 .and. num_spec > 1) &
+                em_epar = avEparB_ov_avb2
+            allocate(TphiEM_spec(0:num_spec-1))
+            allocate(em_source_weight(3,0:num_spec-1))
+            allocate(em_raw_moment(3,0:num_spec-1,0:num_spec-1))
+            em_raw_moment = qflux_ntv_allspec(1,:,:,:)
+            call compute_electromagnetic_work(qflux_ntv_allspec, m_spec, &
+                z_spec, n_spec, T_spec, dn_spec_ov_ds, dT_spec_ov_ds, &
+                Er, em_epar, bmod0*1.0e4_dp, av_nabla_stor, y(6), &
+                em_scale, TphiEM_spec, em_source_weight)
+            TphiEM_tot = sum(TphiEM_spec)
+        end if
+    end if
+
     ! initialize HDF5 file
     file_name='neo2_multispecies_out.h5'
     CALL h5_create(TRIM(ADJUSTL(file_name)), h5id_multispec)
@@ -1636,6 +1669,30 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'dbcovar_theta_ds', dbcovar_theta_hat_ds*bmod0*1.0e4_dp)
     CALL h5_add(h5id_multispec, 'dbcovar_phi_ds', dbcovar_phi_hat_ds*bmod0*1.0e4_dp)
     CALL h5_add(h5id_multispec, 'avbhat', avbhat)
+    call h5_add(h5id_multispec, 'TphiEM_geometry_qualified', &
+        em_geometry_qualified, &
+        comment='1: Arnoldi3, lab8/9 Boozer, positive Bphi; DOC scope')
+    if (em_geometry_qualified == 1) then
+        call h5_add(h5id_multispec, 'TphiEM_observable_version', 1)
+        call h5_add(h5id_multispec, 'TphiEM_spec', TphiEM_spec, &
+            lbound(TphiEM_spec), ubound(TphiEM_spec), &
+            comment='Direct magnetic work -<f11 d_phi H1>; native model', &
+            unit='erg/cm^3')
+        call h5_add(h5id_multispec, 'TphiEM_tot', TphiEM_tot, &
+            comment='Sum of direct magnetic work over species', unit='erg/cm^3')
+        call h5_add(h5id_multispec, 'TphiEM_source_weight', em_source_weight, &
+            lbound(em_source_weight), ubound(em_source_weight), &
+            comment='Physical f11/FM source coefficients; channels A1,A3,A2')
+        call h5_add(h5id_multispec, 'TphiEM_qflux_row1', em_raw_moment, &
+            lbound(em_raw_moment), ubound(em_raw_moment), &
+            comment='Raw native back-bra moment: channel,response,source')
+        call h5_add(h5id_multispec, 'TphiEM_dl_over_b', y(6), unit='cm')
+        call h5_add(h5id_multispec, 'TphiEM_scale_kG', em_scale, unit='1/cm^2')
+        call h5_add(h5id_multispec, 'TphiEM_b00_estimate_ratio', avbhat, &
+            comment='Finite-line B00/Bref estimate y14/y13; tends to 1')
+        call h5_add(h5id_multispec, 'TphiEM_epar_over_b2', em_epar, &
+            comment='Parallel source <Epar B>/<B^2> used by observer')
+    end if
     CALL h5_add(h5id_multispec, 'avbhat2', avbhat2)
     CALL h5_add(h5id_multispec, 'av_inv_bhat', av_inv_bhat_val)
     CALL h5_add(h5id_multispec, 'av_gphph', av_gphph_val)
