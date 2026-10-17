@@ -2,11 +2,13 @@
 ! This observable does not use a collision-momentum conservation identity.
 module electromagnetic_work_mod
     use, intrinsic :: iso_fortran_env, only: dp => real64
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     implicit none
     private
     public :: work_back_geometry, work_pitch_convolution
     public :: compute_electromagnetic_work
     public :: work_geometry_supported
+    public :: work_lab10_geometry_supported, work_geometry_scale
 
 contains
 
@@ -24,6 +26,45 @@ contains
             bphi_hat > 0.0_dp .and. psi_hat > 0.0_dp .and. &
             abs(iota) > 0.0_dp .and. g > 0.0_dp .and. dl_over_b > 0.0_dp
     end function work_geometry_supported
+
+    ! Signed-flux, axisymmetric lab 10 / input 9 with the TC24 orientation.
+    ! Check the actual returned CGS geometry, including its lab-specific
+    ! Jacobian convention. This is separate from the established lab 8/9 gate.
+    pure logical function work_lab10_geometry_supported(coordinates, laboratory, &
+            input_format, n_toroidal, sqrtg, hphi, bphi_hat, btheta_hat, &
+            iota, psi_hat, isqrg, bhat, g, dl_over_b) result(supported)
+        integer, intent(in) :: coordinates, laboratory, input_format, n_toroidal
+        real(dp), intent(in) :: sqrtg, hphi, bphi_hat, btheta_hat
+        real(dp), intent(in) :: iota, psi_hat, isqrg, bhat, g, dl_over_b
+        real(dp), parameter :: tolerance = 128.0_dp*epsilon(1.0_dp)
+        real(dp) :: cboozer
+
+        supported = .false.
+        if (coordinates == 0 .or. laboratory /= 10 .or. &
+                input_format /= 9 .or. n_toroidal /= 0) return
+        if (.not. all(ieee_is_finite([sqrtg, hphi, bphi_hat, btheta_hat, &
+                iota, psi_hat, isqrg, bhat, g, dl_over_b]))) return
+        if (sqrtg >= 0.0_dp .or. hphi >= 0.0_dp .or. &
+                bphi_hat >= 0.0_dp .or. psi_hat >= 0.0_dp .or. &
+                isqrg >= 0.0_dp .or. iota >= 0.0_dp .or. &
+                bhat <= 0.0_dp .or. g <= 0.0_dp .or. dl_over_b <= 0.0_dp) return
+        cboozer = bphi_hat + iota*btheta_hat
+        if (.not. ieee_is_finite(cboozer)) return
+        if (cboozer >= 0.0_dp) return
+        if (abs(sqrtg*isqrg - 1.0_dp) > tolerance) return
+        if (abs(hphi*cboozer/bhat - 1.0_dp) > tolerance) return
+        if (abs(sqrtg*bhat**2/(cboozer*psi_hat) + 1.0_dp) > tolerance) return
+        supported = .true.
+    end function work_lab10_geometry_supported
+
+    ! Preserve the native Arnoldi scale's operation order, including S.
+    pure function work_geometry_scale(iota, psi_hat, bphi_hat, isqrg) result(scale)
+        real(dp), intent(in) :: iota, psi_hat, bphi_hat, isqrg
+        real(dp) :: scale
+
+        scale = 1.0_dp/(iota*psi_hat)
+        scale = scale*sign(1.0_dp, psi_hat*bphi_hat*isqrg)
+    end function work_geometry_scale
 
     pure elemental function work_back_geometry(scale, m_phi, bn, bhat) result(back)
         real(dp), intent(in) :: scale, bhat

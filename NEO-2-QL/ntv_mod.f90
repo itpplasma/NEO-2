@@ -937,14 +937,16 @@ CONTAINS
     use nrtype
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
     use electromagnetic_work_mod, only: compute_electromagnetic_work, &
-        work_geometry_supported
-    USE neo_control, ONLY: lab_swi
+        work_geometry_supported, work_lab10_geometry_supported, work_geometry_scale
+    USE neo_control, ONLY: lab_swi, inp_swi
+    use neo_input, only: n0b
     USE device_mod, ONLY : device, surface
     USE mag_interface_mod, ONLY : mag_coordinates, &
          boozer_s, boozer_theta_beg, boozer_phi_beg
     USE partpa_mod,  ONLY : bmod0
     USE mag_sub, ONLY: mag
-    use neo_magfie, only : boozer_curr_pol_hat, boozer_psi_pr_hat, &
+    use neo_magfie, only : boozer_curr_pol_hat, boozer_curr_tor_hat, &
+         boozer_psi_pr_hat, boozer_isqrg, &
          boozer_curr_tor_hat_s, boozer_curr_pol_hat_s, &
       & boozer_iota_s
     USE collisionality_mod, ONLY : collpar, num_spec, species_tag, &
@@ -1633,7 +1635,16 @@ CONTAINS
                 hctrvr_tmp(2), bcovar_phi_hat, aiota_loc, &
                 boozer_psi_pr_hat, av_nabla_stor, y(6))) then
             em_geometry_qualified = 1
-            em_scale = 1.0_dp/(aiota_loc*boozer_psi_pr_hat)
+        end if
+        if (work_lab10_geometry_supported(mag_coordinates, lab_swi, inp_swi, &
+                n0b, sqrtg_tmp, hctrvr_tmp(2), bcovar_phi_hat, &
+                boozer_curr_tor_hat, aiota_loc, boozer_psi_pr_hat, &
+                boozer_isqrg, bmod_tmp/bmod0, av_nabla_stor, y(6))) then
+            em_geometry_qualified = 1
+        end if
+        if (em_geometry_qualified == 1) then
+            em_scale = work_geometry_scale(aiota_loc, boozer_psi_pr_hat, &
+                bcovar_phi_hat, boozer_isqrg)
             em_epar = 0.0_dp
             if (isw_calc_Er == 1 .and. num_spec > 1) &
                 em_epar = avEparB_ov_avb2
@@ -1671,7 +1682,7 @@ CONTAINS
     CALL h5_add(h5id_multispec, 'avbhat', avbhat)
     call h5_add(h5id_multispec, 'TphiEM_geometry_qualified', &
         em_geometry_qualified, &
-        comment='1: Arnoldi3, lab8/9 Boozer, positive Bphi; DOC scope')
+        comment='1: Arnoldi3; supported Boozer orientation; see DOC scope')
     if (em_geometry_qualified == 1) then
         call h5_add(h5id_multispec, 'TphiEM_observable_version', 1)
         call h5_add(h5id_multispec, 'TphiEM_spec', TphiEM_spec, &
