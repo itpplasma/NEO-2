@@ -2,6 +2,7 @@ module collision_model_mod
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use collisionality_mod, only: collision_model, krook_nu, num_spec, &
+        krook_geometry_trapped, krook_geometry_passing, &
         isw_lorentz, isw_energy, isw_integral, isw_momentum, isw_relativistic, &
         lsw_nbi
     implicit none
@@ -16,6 +17,12 @@ contains
 
     subroutine resolve_collision_model(read_precom, write_precom)
         logical, intent(in) :: read_precom, write_precom
+
+        if (.not. ieee_is_finite(krook_geometry_trapped) .or. &
+            .not. ieee_is_finite(krook_geometry_passing)) &
+            error stop 'Krook geometry factors must be finite'
+        if (min(krook_geometry_trapped, krook_geometry_passing) <= 0.0_dp) &
+            error stop 'Krook geometry factors must be positive'
 
         select case (trim(collision_model))
         case ('native')
@@ -77,11 +84,14 @@ contains
         if (scale <= 0.0_dp) error stop 'Unrepresentable Krook carrier scale'
     end function krook_carrier_scale
 
-    function krook_pitch_mass(kappa, h_phi, bhat, moments, reconstruction) &
-            result(row)
+    function krook_pitch_mass(kappa, h_phi, bhat, moments, reconstruction, &
+            lambda_lower, lambda_upper, eta_trapped, with_geometry) result(row)
         real(dp), intent(in) :: kappa, h_phi, bhat
         real(dp), intent(in) :: moments(:), reconstruction(:, :)
+        real(dp), intent(in) :: lambda_lower, lambda_upper, eta_trapped
+        logical, intent(in), optional :: with_geometry
         real(dp) :: row(size(reconstruction, 2)), coefficient
+        real(dp) :: weighted_moments(size(moments)), lambda_trapped
         integer :: j
 
         ! Same signed weak pitch mass as the native energy carrier. This
@@ -90,7 +100,42 @@ contains
         do j = 1, size(row)
             row(j) = dot_product(moments,reconstruction(:,j))*coefficient
         end do
+
+        ! Rotation/drift share the original mass but must not acquire damping
+        ! geometry. Keep their arithmetic identical to the unit-factor case.
+        if (present(with_geometry)) then
+            if (.not. with_geometry) return
+        end if
+
+        ! Retain precisely the original arithmetic for the default factors.
+        if (krook_geometry_trapped == krook_geometry_passing) then
+            if (krook_geometry_passing /= 1.0_dp) &
+                row = krook_geometry_passing*row
+            return
+        end if
+
+        ! Native unknowns are band-integrated fluxes, reconstructed as a
+        ! cubic Taylor polynomial about lambda_lower, lambda=|v_parallel|/v.
+        ! eta=(1-lambda**2)/bhat; trapped eta>1/B_max means lambda<lambda_t.
+        ! Integrate the step over the band BEFORE applying reconstruction;
+        ! choosing a factor at a band centre would misproject crossing bands.
+        lambda_trapped = sqrt(max(0.0_dp, 1.0_dp - bhat*eta_trapped))
+        if (lambda_trapped <= lambda_lower) then
+            row = krook_geometry_passing*row
+        else if (lambda_trapped >= lambda_upper) then
+            row = krook_geometry_trapped*row
+        else
+            if (size(moments) /= 4) error stop 'Krook requires cubic pitch moments'
+            call krook_geometry_leaf(lambda_upper - lambda_lower, &
+                lambda_trapped - lambda_lower, krook_geometry_trapped, &
+                krook_geometry_passing, weighted_moments(1), &
+                weighted_moments(2), weighted_moments(3), weighted_moments(4))
+            do j = 1, size(row)
+                row(j) = dot_product(weighted_moments,reconstruction(:,j))*coefficient
+            end do
+        end if
     end function krook_pitch_mass
 
     include 'generated/krook_leaf.inc'
+    include 'generated/krook_geometry_leaf.inc'
 end module collision_model_mod
