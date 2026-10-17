@@ -51,6 +51,7 @@ SUBROUTINE ripple_solver(                                 &
   USE device_mod
   USE flint_mod, ONLY : phi_divide                      !<-in Winny
   USE size_mod, ONLY : ndim0
+  use collision_model_mod, only: uses_krook, krook_pitch_mass
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
        isw_energy,isw_integral,isw_axisymm, & !<-in Winny
        isw_momentum,vel_distri_swi,vel_num,vel_max, &
@@ -371,6 +372,11 @@ SUBROUTINE ripple_solver(                                 &
     isw_ene=isw_energy
     isw_intp=isw_integral
   ENDIF
+  if (uses_krook()) then
+    isw_ene = 1
+    isw_intp = 0
+    isw_regper = 0
+  end if
 
   nvelocity=nvel
 
@@ -1115,7 +1121,12 @@ PRINT *,'right boundary layer ignored'
       IF(iplot.EQ.1) derivs_plot(0:3,1:4,i,istep)=bvec_lapack(1:4,1:4)
       deriv_coef(:,i)=bvec_lapack(2,:)*coefdir*MIN(eta(i),eta0)
 
-      enu_coef(:,i)=MATMUL(dellampow(:,i),bvec_lapack)*coefenu      !!!term[1]
+      if (uses_krook()) then
+        enu_coef(:,i) = krook_pitch_mass(collpar, h_phi_mfl(istep), &
+          bhat_mfl(istep), dellampow(:,i), bvec_lapack)
+      else
+        enu_coef(:,i) = matmul(dellampow(:,i),bvec_lapack)*coefenu
+      end if
 
       IF(i.EQ.1) THEN
         convol_polpow(0:legmax,i:i+3)=convol_polpow(0:legmax,i:i+3)          &
