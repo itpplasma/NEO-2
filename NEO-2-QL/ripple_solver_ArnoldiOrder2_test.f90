@@ -18,7 +18,7 @@ subroutine ripple_solver_ArnoldiO2( &
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
                                   isw_momentum, nvel, num_spec, lsw_multispecies, &
-                                  T_spec, m_spec
+                                  T_spec, m_spec, n_spec, z_spec
 ! collpar - the same as $\kappa$ - inverse mean-free path times 4
   !! Modifications by Andreas F. Martitsch (01.04.2015)
     !
@@ -59,6 +59,9 @@ subroutine ripple_solver_ArnoldiO2( &
     use partpa_mod, only: bmod0
     use electromagnetic_work_mod, only: work_back_geometry, &
                                        work_pitch_convolution
+    use response_witness_mod, only: lsw_response_witness, &
+        response_witness_begin, response_witness_complex, response_witness_end
+    use hdf5_tools, only: hid_t, h5_add
     use development
   !! Modifications by Andreas F. Martitsch (12.03.2014)
     ! boozer_curr_tor, boozer_curr_pol, boozer_psi_pr,
@@ -81,7 +84,8 @@ subroutine ripple_solver_ArnoldiO2( &
                        m_phi, qflux_symm, eps_M_2_val, av_gphph_val, av_inv_bhat_val, &
                        qflux_symm_allspec, qflux_ntv_allspec, &
                        MtOvR_spec, isw_calc_Er, B_rho_L_loc_spec, isw_calc_MagDrift
-    use ntv_mod, only: get_Er, get_B_rho_L_loc
+    use ntv_mod, only: get_Er, get_B_rho_L_loc, &
+        dn_spec_ov_ds, dT_spec_ov_ds
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
   !! End Modification by Andreas F. Martitsch (14.07.2015)
     ! MPI SUPPORT for multi-species part
@@ -114,6 +118,10 @@ subroutine ripple_solver_ArnoldiO2( &
     integer, intent(out)   :: ierr
 
     ! local stuff
+
+    integer(hid_t) :: witness_id = -1
+    character(len=160) :: witness_filename
+    character(len=32) :: witness_key
 
     integer :: add_global_eta
     integer :: ub_eta, ub_mag, ub_eta_loc
@@ -2517,8 +2525,18 @@ subroutine ripple_solver_ArnoldiO2( &
         source_vector_all(:, 1:4, ispec) = source_vector(:, 1:4)
     !! End Modification by Andreas F. Martitsch (23.08.2015)
 
+        if (lsw_response_witness) then
+            call begin_native_witness()
+            call response_witness_complex(witness_id, 'axisymmetric_rhs', &
+                source_vector_all(:, 1:3, :))
+            call response_witness_complex(witness_id, 'axisymmetric_auxiliary4', &
+                source_vector_all(:, 4, :))
+        end if
         problem_type = .TRUE.
         call solve_eqs(.TRUE.)
+        if (lsw_response_witness) &
+            call response_witness_complex(witness_id, 'axisymmetric_y0', &
+                source_vector_all(:, 1:3, :))
 
         ! Debugging - plot distribution function (axisymmetric problem)
         if (lsw_debug_distfun) then
@@ -2649,6 +2667,12 @@ subroutine ripple_solver_ArnoldiO2( &
 
     hatOmegaB = hatOmegaB*sign(1.d0, boozer_psi_pr_hat*bcovar_phi_hat*boozer_isqrg)
 
+    if (lsw_response_witness) then
+        call h5_add(witness_id, 'hatOmegaE', hatOmegaE)
+        call h5_add(witness_id, 'hatOmegaB', hatOmegaB)
+        call h5_add(witness_id, 'MtOvR', MtOvR)
+        call h5_add(witness_id, 'Om_tE_rad_s', Om_tE)
+    end if
     print *, 'hatOmegaB,hatOmegaE: ', hatOmegaB, hatOmegaE
 
   !! End Modifications by Andreas F. Martitsch (14.07.2015)
@@ -3112,6 +3136,11 @@ subroutine ripple_solver_ArnoldiO2( &
                                             *REAL(source_vector_all(icol_coll(nz), 1:3, ispecp), dp)
             end do
 
+            if (lsw_response_witness) then
+                write(witness_key, '(a,i0)') 'collision_differential_b', ispecp
+                call h5_add(witness_id, trim(witness_key), f0_coll, &
+                    lbound(f0_coll), ubound(f0_coll))
+            end if
             if (isw_intp .EQ. 1) then
                 allocate (bvec_iter(ncol), bvec_prev(ncol))
 
@@ -3119,6 +3148,12 @@ subroutine ripple_solver_ArnoldiO2( &
                     bvec_prev = source_vector_all(:, i, ispecp)
 
                     call integral_part(bvec_prev, bvec_iter)
+                    if (lsw_response_witness) then
+                        write(witness_key, '(a,i0,a,i0)') &
+                            'collision_integral_b', ispecp, '_k', i
+                        call response_witness_complex(witness_id, &
+                            trim(witness_key), bvec_iter)
+                    end if
 
                     ! fixed warning: Possible change of value in conversion
                     ! from COMPLEX(8) to REAL(8)
@@ -3142,6 +3177,12 @@ subroutine ripple_solver_ArnoldiO2( &
 
         end do
 
+        if (lsw_response_witness) then
+            call h5_add(witness_id, 'collision_combined_native', f0_coll_all, &
+                lbound(f0_coll_all), ubound(f0_coll_all))
+            call h5_add(witness_id, 'mirror_native', f0_ttmp_all, &
+                lbound(f0_ttmp_all), ubound(f0_ttmp_all))
+        end if
         if (colltest) then
 
             call source_flux
@@ -3210,6 +3251,10 @@ subroutine ripple_solver_ArnoldiO2( &
     !! End Modifications by Andreas F. Martitsch (28.08.2014)
     end if
 
+    if (lsw_response_witness) then
+        call response_witness_complex(witness_id, 'geodcu_forward', geodcu_forw)
+        call response_witness_complex(witness_id, 'geodcu_work_back', geodcu_back)
+    end if
     do ispecp = 0, num_spec - 1
         if (nobounceaver) then
             f0_ttmp(:, :) = f0_ttmp_all(:, :, ispecp)
@@ -3232,7 +3277,17 @@ subroutine ripple_solver_ArnoldiO2( &
             ttmpfact = dbnoverb0_dphi_mfl
         !! End Modifications by Andreas F. Martitsch (13.06.2014)
 
+            if (lsw_response_witness) then
+                write(witness_key, '(a,i0)') 'forward_rhs_b', ispecp
+                call response_witness_complex(witness_id, trim(witness_key), &
+                    source_vector(:, 1:3))
+            end if
             call add_f01_source
+            if (lsw_response_witness) then
+                write(witness_key, '(a,i0)') 'complete_rhs_b', ispecp
+                call response_witness_complex(witness_id, trim(witness_key), &
+                    source_vector(:, 1:3))
+            end if
 
             deallocate (ttmpfact)
         end if
@@ -3266,6 +3321,12 @@ subroutine ripple_solver_ArnoldiO2( &
 
     problem_type = .FALSE.
     call solve_eqs(.TRUE.)
+    if (lsw_response_witness) then
+        call response_witness_complex(witness_id, 'nonaxisymmetric_y1', &
+            source_vector_all(:, 1:3, :))
+        call response_witness_complex(witness_id, 'work_flux_vector', flux_vector)
+        call response_witness_end(witness_id)
+    end if
   !! Modification by Andreas F. Martitsch (23.08.2015)
     ! NEO-2 can treat now multiple species -> qflux is now a 4D array
     ! (at the moment these arrays cannot be handled correctly using the
@@ -3354,6 +3415,92 @@ subroutine ripple_solver_ArnoldiO2( &
     !------------------------------------------------------------------------
 
 CONTAINS
+
+    ! Save consumed native topology and quadrature, without reconstruction.
+    subroutine begin_native_witness()
+        integer :: driver
+
+        if (isw_qflux_NA /= 1) &
+            error stop 'Response witness requires the nonaxisymmetric solve'
+        call response_witness_begin(fieldpropagator%tag, ispec, &
+            witness_id, witness_filename)
+        call h5_add(witness_id, 'ibeg', ibeg)
+        call h5_add(witness_id, 'iend', iend)
+        call h5_add(witness_id, 'lag', lag)
+        call h5_add(witness_id, 'leg', leg)
+        call h5_add(witness_id, 'num_species', num_spec)
+        call h5_add(witness_id, 'driving_species_index', &
+            [(driver, driver=0,num_spec-1)], [1], [num_spec])
+        call h5_add(witness_id, 'channels', 'A1,A3,A2')
+        call h5_add(witness_id, 'boozer_s', boozer_s)
+        call h5_add(witness_id, 'Bref_G', bmod0*1.0e4_dp)
+        call h5_add(witness_id, 'epserr_iter', epserr_iter)
+        call h5_add(witness_id, 'niter', niter)
+        call h5_add(witness_id, 'n_arnoldi', n_arnoldi)
+        call h5_add(witness_id, 'isw_regper', isw_regper)
+        call h5_add(witness_id, 'n_2d_size', n_2d_size)
+        call h5_add(witness_id, 'collop_base_prj', collop_base_prj)
+        call h5_add(witness_id, 'collop_base_exp', collop_base_exp)
+        call h5_add(witness_id, 'ind_start', ind_start, &
+            lbound(ind_start), ubound(ind_start))
+        call h5_add(witness_id, 'npl', npl, &
+            lbound(npl), ubound(npl))
+        call h5_add(witness_id, 'eta', eta, &
+            lbound(eta), ubound(eta))
+        call h5_add(witness_id, 'alambd', alambd, &
+            lbound(alambd), ubound(alambd))
+        call h5_add(witness_id, 'phi_mfl', phi_mfl, &
+            lbound(phi_mfl), ubound(phi_mfl))
+        call h5_add(witness_id, 'bhat_mfl', bhat_mfl, &
+            lbound(bhat_mfl), ubound(bhat_mfl))
+        call h5_add(witness_id, 'h_phi_mfl', h_phi_mfl, &
+            lbound(h_phi_mfl), ubound(h_phi_mfl))
+        call h5_add(witness_id, 'dlogbdphi_mfl', dlogbdphi_mfl, &
+            lbound(dlogbdphi_mfl), ubound(dlogbdphi_mfl))
+        call response_witness_complex(witness_id, 'bnoverb0', bnoverb0)
+        call response_witness_complex(witness_id, 'dbnoverb0_dphi', &
+            dbnoverb0_dphi_mfl)
+        call response_witness_complex(witness_id, 'geodcu_axisymmetric', &
+            geodcu_forw)
+        call h5_add(witness_id, 'delt_pos', delt_pos(ibeg+1:iend), &
+            [ibeg+1], [iend])
+        call h5_add(witness_id, 'delt_neg', delt_neg(ibeg:iend-1), &
+            [ibeg], [iend-1])
+        call h5_add(witness_id, 'fact_pos_b', fact_pos_b, &
+            lbound(fact_pos_b), ubound(fact_pos_b))
+        call h5_add(witness_id, 'fact_pos_e', fact_pos_e, &
+            lbound(fact_pos_e), ubound(fact_pos_e))
+        call h5_add(witness_id, 'fact_neg_b', fact_neg_b, &
+            lbound(fact_neg_b), ubound(fact_neg_b))
+        call h5_add(witness_id, 'fact_neg_e', fact_neg_e, &
+            lbound(fact_neg_e), ubound(fact_neg_e))
+        call h5_add(witness_id, 'asource', asource, &
+            lbound(asource), ubound(asource))
+        call h5_add(witness_id, 'weightlag', weightlag, &
+            lbound(weightlag), ubound(weightlag))
+        call h5_add(witness_id, 'aiota', aiota)
+        call h5_add(witness_id, 'bcovar_theta_hat', bcovar_theta_hat)
+        call h5_add(witness_id, 'bcovar_phi_hat', bcovar_phi_hat)
+        call h5_add(witness_id, 'psi_pr_hat', boozer_psi_pr_hat)
+        call h5_add(witness_id, 'scalefac_kG', scalefac_kG)
+        call h5_add(witness_id, 'collpar', collpar)
+        call h5_add(witness_id, 'm_phi', m_phi)
+        call h5_add(witness_id, 'mass_g', m_spec, &
+            lbound(m_spec), ubound(m_spec))
+        call h5_add(witness_id, 'temperature_erg', T_spec, &
+            lbound(T_spec), ubound(T_spec))
+        call h5_add(witness_id, 'density_cm3', n_spec, &
+            lbound(n_spec), ubound(n_spec))
+        call h5_add(witness_id, 'charge_number', z_spec, &
+            lbound(z_spec), ubound(z_spec))
+        call h5_add(witness_id, 'dn_ds_cm3', dn_spec_ov_ds, &
+            lbound(dn_spec_ov_ds), ubound(dn_spec_ov_ds))
+        call h5_add(witness_id, 'dT_ds_erg', dT_spec_ov_ds, &
+            lbound(dT_spec_ov_ds), ubound(dT_spec_ov_ds))
+        call h5_add(witness_id, 'isw_integral_effective', isw_intp)
+        call h5_add(witness_id, 'isw_calc_Er', isw_calc_Er)
+        call h5_add(witness_id, 'isw_calc_MagDrift', isw_calc_MagDrift)
+    end subroutine begin_native_witness
 
 !------------------------------------------------------------------------
     subroutine plotsource(iunit_base, sourcevec_tmp)

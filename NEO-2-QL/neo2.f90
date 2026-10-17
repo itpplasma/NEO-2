@@ -62,6 +62,7 @@ module neo2_ql
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
   ! Extra input for NTV computations
+  use response_witness_mod, only: lsw_response_witness
   USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
        MtOvR, Om_tE, B_rho_L_loc, xstart_cyl, isw_ripple_solver,   &
        isw_calc_Er, isw_calc_MagDrift, species_tag_Vphi,            &
@@ -249,7 +250,7 @@ module neo2_ql
   ! Extra input for NTV computation
   NAMELIST /ntv_input/                                                        &
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, Om_tE, B_rho_L_loc,  &
-       isw_ripple_solver, isw_mag_shear
+       isw_ripple_solver, isw_mag_shear, lsw_response_witness
 
 contains
 
@@ -912,6 +913,7 @@ subroutine main
     B_rho_L_loc = 0.0d0
     isw_ripple_solver = 1
     isw_mag_shear = 0
+    lsw_response_witness = .false.
     !! End Modification by Andreas F. Martitsch (14.07.2015)
 
     use_fpol = .false. ! to switch off some features, which are untested with neo-2
@@ -923,6 +925,11 @@ subroutine main
 
 
   subroutine check()
+    if (lsw_response_witness) then
+      if (.not. lsw_multispecies .or. isw_ripple_solver /= 3 .or. &
+          isw_qflux_NA /= 1 .or. isw_calc_Er < 1) &
+        error stop 'Response witness requires multispecies Arnoldi O2 NTV with Er'
+    end if
     call resolve_collision_model(lsw_read_precom, lsw_write_precom)
     if (any(t_vec < 0.0)) then
       write(*,*) 'ERROR: negative temperature.'

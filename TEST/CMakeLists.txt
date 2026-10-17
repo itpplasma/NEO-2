@@ -112,3 +112,25 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+add_executable(test_response_witness test_response_witness.f90
+    ../NEO-2-QL/response_witness_mod.f90)
+target_link_libraries(test_response_witness LIBNEO::hdf5_tools)
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/response_witness_modules")
+set_target_properties(test_response_witness PROPERTIES Fortran_MODULE_DIRECTORY
+    "${CMAKE_CURRENT_BINARY_DIR}/response_witness_modules")
+target_include_directories(test_response_witness PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/response_witness_modules")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/response_witness")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/response_witness_overwrite")
+add_test(NAME response_witness_test COMMAND test_response_witness
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/response_witness")
+set_tests_properties(response_witness_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!" FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30 ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+add_test(NAME response_witness_rejects_overwrite
+    COMMAND test_response_witness overwrite
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/response_witness_overwrite")
+set_tests_properties(response_witness_rejects_overwrite PROPERTIES
+    WILL_FAIL TRUE TIMEOUT 10
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
