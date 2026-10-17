@@ -26,7 +26,7 @@ module neo2_ql
        isw_relativistic, T_e, lsw_multispecies, isw_coul_log,       &
        num_spec, species_tag, conl_over_mfp_spec, z_spec, m_spec,   &
        T_spec, n_spec, collop_bspline_taylor, lsw_nbi, m_nbi, T_nbi, &
-       collision_model, krook_nu
+       collision_model, krook_nu, krook_geometry_trapped, krook_geometry_passing
   USE propagator_mod, ONLY : reconstruct_prop_dist,                 &
        prop_diagphys,prop_overwrite,                                &
        prop_diagnostic,prop_binary,                                 &
@@ -215,6 +215,7 @@ module neo2_ql
        mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer
   NAMELIST /collision/                                                        &
        collision_model,krook_nu,                                             &
+       krook_geometry_trapped,krook_geometry_passing,                         &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
        isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &
@@ -600,6 +601,8 @@ subroutine main
        if (uses_krook()) then
          call h5_add(h5_config_group, 'krook_nu_s_inv', krook_nu(1:num_spec), &
               [1], [num_spec], 'Physical positive damping frequencies [s^-1]')
+         call h5_add(h5_config_group, 'krook_geometry_trapped', krook_geometry_trapped)
+         call h5_add(h5_config_group, 'krook_geometry_passing', krook_geometry_passing)
          call h5_add(h5_config_group, 'collision_relaxed_variable', &
               'native_thermodynamic_response')
          call h5_add(h5_config_group, 'collision_relaxed_variable_qualified', 0)
@@ -823,6 +826,8 @@ subroutine main
     ! collision
     collision_model = 'native'
     krook_nu = 0d0
+    krook_geometry_trapped = 1d0
+    krook_geometry_passing = 1d0
     conl_over_mfp = 1.0d-3
     lag=10
     leg=20

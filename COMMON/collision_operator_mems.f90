@@ -16,6 +16,7 @@ module collop
        isw_relativistic, T_e, &
        lsw_multispecies, isw_coul_log, num_spec, conl_over_mfp_spec, collpar_spec, &
        z_spec, m_spec, T_spec, n_spec, collision_model, krook_nu, &
+       krook_geometry_trapped, krook_geometry_passing, &
        collop_bspline_dist, collop_bspline_order, lsw_nbi, T_nbi, m_nbi
   use device_mod, only : device
 
@@ -882,6 +883,8 @@ module collop
       if (uses_krook()) then
          call h5_add(h5id_meta, 'krook_nu_s_inv', krook_nu(1:num_spec), &
               [1], [num_spec], 'Physical positive damping frequencies [s^-1]')
+         call h5_add(h5id_meta, 'krook_geometry_trapped', krook_geometry_trapped)
+         call h5_add(h5id_meta, 'krook_geometry_passing', krook_geometry_passing)
          call h5_add(h5id_meta, 'collision_relaxed_variable', &
               'native_thermodynamic_response')
          call h5_add(h5id_meta, 'collision_relaxed_variable_qualified', 0)
