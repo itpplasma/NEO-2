@@ -1,6 +1,14 @@
 project(NEO-2-TESTS)
 enable_testing()
 
+add_executable(test_electromagnetic_work test_electromagnetic_work.f90)
+target_link_libraries(test_electromagnetic_work neo2_ql)
+add_test(NAME electromagnetic_work_test COMMAND test_electromagnetic_work)
+set_tests_properties(electromagnetic_work_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL" TIMEOUT 30
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
 # Test executable for boozmn reading (INP_SWI_BOOZMN path).
 add_executable(test_boozmn_read test_boozmn_read.f90)
 target_link_libraries(test_boozmn_read common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
