@@ -2,6 +2,18 @@ project(NEO-2-TESTS)
 enable_testing()
 
 add_executable(test_collision_krook test_collision_krook.f90)
+add_executable(test_linear_system_diagnostic test_linear_system_diagnostic.f90)
+target_link_libraries(test_linear_system_diagnostic common)
+add_test(NAME linear_system_diagnostic_disabled COMMAND test_linear_system_diagnostic)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(NAME linear_system_diagnostic_dense_oracle
+    COMMAND ${CMAKE_COMMAND} -E env
+        "NEO2_DIAGNOSTIC_TEST_EXE=$<TARGET_FILE:test_linear_system_diagnostic>"
+        "OMP_NUM_THREADS=1" "OPENBLAS_NUM_THREADS=1"
+        ${Python3_EXECUTABLE} -m pytest -q -p no:cacheprovider
+        --basetemp=${CMAKE_CURRENT_BINARY_DIR}/diagnostic-pytest
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_dense_linear_system_oracle.py)
+set_tests_properties(linear_system_diagnostic_dense_oracle PROPERTIES TIMEOUT 30)
 target_link_libraries(test_collision_krook common)
 add_test(NAME collision_krook_test COMMAND test_collision_krook)
 set_tests_properties(collision_krook_test PROPERTIES
@@ -14,6 +26,30 @@ foreach(rejection unknown-model negative-rate missing-rate nan-rate integral gri
              COMMAND test_collision_krook ${rejection})
     set_tests_properties(collision_krook_rejects_${rejection} PROPERTIES
         WILL_FAIL TRUE TIMEOUT 10
+        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+endforeach()
+
+add_executable(test_electromagnetic_work test_electromagnetic_work.f90)
+target_link_libraries(test_electromagnetic_work neo2_ql)
+add_test(NAME electromagnetic_work_test COMMAND test_electromagnetic_work)
+set_tests_properties(electromagnetic_work_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL" TIMEOUT 30
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
+add_executable(test_electromagnetic_work_geometry test_electromagnetic_work_geometry.f90)
+target_link_libraries(test_electromagnetic_work_geometry neo2_ql)
+foreach(EM_LAB 8 10)
+    set(EM_GEOMETRY_DIR "${CMAKE_CURRENT_BINARY_DIR}/em_work_lab${EM_LAB}")
+    file(MAKE_DIRECTORY "${EM_GEOMETRY_DIR}")
+    configure_file(fixtures/em_work_geometry/neo.in.in
+                   "${EM_GEOMETRY_DIR}/neo.in" @ONLY)
+    add_test(NAME electromagnetic_work_lab${EM_LAB}_geometry_test
+             COMMAND test_electromagnetic_work_geometry ${EM_LAB}
+             WORKING_DIRECTORY "${EM_GEOMETRY_DIR}")
+    set_tests_properties(electromagnetic_work_lab${EM_LAB}_geometry_test PROPERTIES
+        PASS_REGULAR_EXPRESSION "All tests passed!"
+        FAIL_REGULAR_EXPRESSION "FAIL" TIMEOUT 30
         ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 endforeach()
 
@@ -90,3 +126,14 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+add_executable(test_iterator_convergence test_iterator_convergence.f90)
+target_link_libraries(test_iterator_convergence neo2_ql)
+add_test(NAME iterator_convergence_test COMMAND test_iterator_convergence)
+set_tests_properties(iterator_convergence_test PROPERTIES TIMEOUT 30)
+if(MPI_SUPPORT)
+    add_test(NAME iterator_convergence_mpi_test
+        COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2
+        ${MPIEXEC_PREFLAGS} $<TARGET_FILE:test_iterator_convergence> ${MPIEXEC_POSTFLAGS})
+    set_tests_properties(iterator_convergence_mpi_test PROPERTIES TIMEOUT 30 PROCESSORS 2)
+endif()
