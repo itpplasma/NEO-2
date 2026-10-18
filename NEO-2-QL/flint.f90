@@ -7,7 +7,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
      bin_split_mode,proptag_start,proptag_end)
 
   USE size_mod, ONLY : npart
-  USE flint_mod, ONLY : plot_gauss,plot_prop,phi_split_mode,        &
+  USE flint_mod, ONLY : plot_gauss,plot_prop,phi_split_mode,split_eta_part_trapped, &
        phi_place_mode,phi_split_min,hphi_mult,max_solver_try,       &
        bsfunc_local_err_max_mult,bsfunc_max_mult_reach,             &
        bsfunc_modelfunc_num,bsfunc_divide,                          &
@@ -264,8 +264,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
         eta_part_1 = MAX(FLOOR(de1/(de1+de2)*DBLE(eta_part)),3)
         eta_part_2 = MAX(eta_part - eta_part_1,3)
      ELSE
-        eta_part_1 = MAX(3,eta_part-eta_part_trapped)
-        eta_part_2 = MAX(3,eta_part_trapped)
+        CALL split_eta_part_trapped(eta_part,eta_part_trapped,eta_part_1,eta_part_2)
         WRITE(*,fmt='(A,I3,A1,I3,A1)') &
              'flint.f90 725> (eta_part_1,eta_part_2)=(',eta_part_1,',',eta_part_2,')'
      END IF

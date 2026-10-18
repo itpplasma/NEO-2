@@ -23,6 +23,26 @@ MODULE flint_mod
 
 contains
 
+  !> Split the base pitch levels for a requested trapped-level count.
+  !> eta_part is the TOTAL base level count, so eta_part_trapped moves levels
+  !> from the passing to the trapped region. Both regions need at least three
+  !> levels; a request outside that range was formerly clamped silently, which
+  !> changed the total and starved the passing grid.
+  subroutine split_eta_part_trapped(eta_part, eta_part_trapped, eta_part_1, &
+      eta_part_2)
+    implicit none
+    integer, intent(in) :: eta_part, eta_part_trapped
+    integer, intent(out) :: eta_part_1, eta_part_2
+
+    if (eta_part_trapped < 3) &
+      error stop 'eta_part_trapped must be 0 (automatic split) or at least 3'
+    if (eta_part - eta_part_trapped < 3) &
+      error stop 'eta_part is the total base level count: ' // &
+        'eta_part - eta_part_trapped must leave at least 3 passing levels'
+    eta_part_1 = eta_part - eta_part_trapped
+    eta_part_2 = eta_part_trapped
+  end subroutine split_eta_part_trapped
+
   !> this routine is called before flint and does the setup for magnetics
   !> it creates the
   !>  device (stevvo, ....)

@@ -17,6 +17,18 @@ foreach(rejection unknown-model negative-rate missing-rate nan-rate integral gri
         ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 endforeach()
 
+add_executable(test_eta_part_split test_eta_part_split.f90)
+target_link_libraries(test_eta_part_split common)
+add_test(NAME eta_part_split_test COMMAND test_eta_part_split)
+set_tests_properties(eta_part_split_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!" TIMEOUT 10)
+foreach(rejection starved-passing two-passing few-trapped)
+    add_test(NAME eta_part_split_rejects_${rejection}
+             COMMAND test_eta_part_split ${rejection})
+    set_tests_properties(eta_part_split_rejects_${rejection} PROPERTIES
+        WILL_FAIL TRUE TIMEOUT 10)
+endforeach()
+
 # Test executable for boozmn reading (INP_SWI_BOOZMN path).
 add_executable(test_boozmn_read test_boozmn_read.f90)
 target_link_libraries(test_boozmn_read common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
