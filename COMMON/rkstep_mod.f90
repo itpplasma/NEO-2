@@ -23,6 +23,7 @@ MODULE rkstep_mod
   DOUBLE PRECISION               :: epserr_sink       ! Regularization
   COMPLEX(kind=kind(1d0))        :: epserr_sink_cmplx ! Regularization
   DOUBLE PRECISION               :: epserr_iter       ! Relative error of integral part iterations
-  INTEGER                        :: niter
+  INTEGER                        :: niter = 100
+  INTEGER                        :: n_arnoldi = 500
   DOUBLE PRECISION, DIMENSION(3) :: fluxes
 END MODULE rkstep_mod
