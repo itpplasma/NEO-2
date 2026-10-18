@@ -309,6 +309,187 @@ contains
   END SUBROUTINE iterator
 
   !-----------------------------------------------------------------------------
+  !> Restarted GMRES for the same fixed point f = N(f) = T f + c that "iterator"
+  !> approaches by deflated Richardson steps (N = next_iteration, mode 1; T f is
+  !> mode 2). It needs no eigenvalue estimate, so eigenvalues of T close to or
+  !> outside the unit circle that the Arnoldi deflation resolves poorly do not
+  !> stall it. Acceptance uses the caller's original-equation residual
+  !> (evaluate_residual) of the candidate N(x) after every restart cycle, the
+  !> same gate as "iterator". Status: 0 converged, 1 iteration limit,
+  !> 5 nonfinite residual, 6 stagnation (a cycle reduces neither the fixed-point
+  !> nor the equation residual). The filter factor tol is that of "iterator".
+  subroutine gmres_iterator(n, mrestart, relerr, itermax, result_, ispec, &
+      next_iteration, evaluate_residual, status, iterations, equation_residual, trace)
+
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+
+    integer, intent(in) :: n, mrestart, itermax, ispec
+    double precision, intent(in) :: relerr
+    complex(kind=kind(1d0)), dimension(n), intent(inout) :: result_
+    integer, intent(out) :: status, iterations
+    double precision, intent(out) :: equation_residual
+    logical, intent(in) :: trace
+
+    interface
+      subroutine next_iteration(n,fold,fnew)
+        integer :: n
+        complex(kind=kind(1d0)), dimension(n) :: fold,fnew
+      end subroutine next_iteration
+      subroutine evaluate_residual(n, solution, residual)
+        integer, intent(in) :: n
+        complex(kind=kind(1d0)), intent(in) :: solution(n)
+        double precision, intent(out) :: residual
+      end subroutine evaluate_residual
+    end interface
+
+    complex(kind=kind(1d0)), dimension(:,:), allocatable :: v, h
+    complex(kind=kind(1d0)), dimension(:), allocatable :: x, w, g, sn, y, hcol
+    double precision, dimension(:), allocatable :: cs
+    double precision :: beta, relres, xnorm, relres_prev, eqres, eqres_prev
+    complex(kind=kind(1d0)) :: temp
+    integer :: m, j, k, iter, ncycle
+
+    status = 1
+    iterations = 0
+    equation_residual = huge(1.0d0)
+    if (mrestart < 1 .or. itermax < 1 .or. .not. ieee_is_finite(relerr) .or. &
+        relerr <= 0.0d0) then
+      status = 4
+      return
+    end if
+    m = min(mrestart, itermax)
+    allocate(fzero(n), x(n), w(n), v(n, m+1), h(m+1, m), g(m+1), sn(m), &
+      cs(m), y(m), hcol(m+1))
+    fzero = result_
+    tol = 0.5d0
+
+    ! x = 0: true residual N(0) - 0 = c.
+    x = (0.d0, 0.d0)
+    mode = 1
+    call next_iteration(n, x, w)
+    beta = global_norm(w, ispec)
+    iter = 0
+    ncycle = 0
+    xnorm = 0.d0
+    relres_prev = huge(1.d0)
+    eqres_prev = huge(1.d0)
+    do
+      if (.not. ieee_is_finite(beta)) then
+        status = 5
+        exit
+      end if
+      if (beta == 0.d0) then
+        j = 0
+      else
+        ncycle = ncycle + 1
+        v(:, 1) = w/beta
+        g = (0.d0, 0.d0)
+        g(1) = beta
+        mode = 2
+        do j = 1, m
+          iter = iter + 1
+          call next_iteration(n, v(:, j), w)
+          w = v(:, j) - w
+          call global_dot_block(v(:, 1:j), w, hcol(1:j), ispec)
+          w = w - matmul(v(:, 1:j), hcol(1:j))
+          h(1:j, j) = hcol(1:j)
+          call global_dot_block(v(:, 1:j), w, hcol(1:j), ispec)
+          w = w - matmul(v(:, 1:j), hcol(1:j))
+          h(1:j, j) = h(1:j, j) + hcol(1:j)
+          h(j+1, j) = global_norm(w, ispec)
+          if (abs(h(j+1, j)) > 0.d0) v(:, j+1) = w/h(j+1, j)
+          do k = 1, j - 1
+            temp = cs(k)*h(k, j) + sn(k)*h(k+1, j)
+            h(k+1, j) = -conjg(sn(k))*h(k, j) + cs(k)*h(k+1, j)
+            h(k, j) = temp
+          end do
+          call zlartg(h(j, j), h(j+1, j), cs(j), sn(j), temp)
+          h(j, j) = temp
+          h(j+1, j) = (0.d0, 0.d0)
+          g(j+1) = -conjg(sn(j))*g(j)
+          g(j) = cs(j)*g(j)
+          do k = j, 1, -1
+            y(k) = (g(k) - sum(h(k, k+1:j)*y(k+1:j)))/h(k, k)
+          end do
+          relres = abs(g(j+1))/max(xnorm, sqrt(sum(abs(y(1:j))**2)), tiny(1.d0))
+          if (trace .and. ispec == 0) print *, 'gmres_iterator: ', iter, relres
+          if (relres <= 1.0d-3*relerr .or. iter >= itermax) exit
+        end do
+        j = min(j, m)
+        x = x + matmul(v(:, 1:j), y(1:j))
+      end if
+      xnorm = global_norm(x, ispec)
+      ! Candidate N(x); w = N(x) - x is the true fixed-point residual.
+      mode = 1
+      call next_iteration(n, x, w)
+      call evaluate_residual(n, w, eqres)
+      if (.not. ieee_is_finite(eqres) .or. eqres < 0.0d0) eqres = huge(1.0d0)
+      w = w - x
+      beta = global_norm(w, ispec)
+      relres = beta/max(xnorm, tiny(1.d0))
+      equation_residual = eqres
+      iterations = iter
+      if (ispec == 0) print *, 'gmres_iterator: cycle ', ncycle, ' iterations ', iter, &
+        ' fixed-point residual ', relres, ' equation residual ', eqres
+      if (eqres == huge(1.0d0)) then
+        status = 5
+        exit
+      end if
+      if (eqres <= relerr) then
+        status = 0
+        exit
+      end if
+      if (iter >= itermax) exit
+      if (beta == 0.d0) then
+        status = 6
+        exit
+      end if
+      if (relres > 0.5d0*relres_prev .and. eqres > 0.9d0*eqres_prev) then
+        if (ispec == 0) print *, 'gmres_iterator: stagnation'
+        status = 6
+        exit
+      end if
+      relres_prev = relres
+      eqres_prev = eqres
+    end do
+    result_ = x + w
+    deallocate(fzero, x, w, v, h, g, sn, cs, y, hcol)
+    ! A later "iterator" call must recompute its Arnoldi preconditioner.
+    mode = 0
+  end subroutine gmres_iterator
+
+  !> Global 2-norm of a vector distributed over species (one rank per species).
+  function global_norm(vec, ispec) result(nrm)
+    use mpiprovider_module, only : mpro
+    use collisionality_mod, only : num_spec
+    complex(kind=kind(1d0)), dimension(:), intent(in) :: vec
+    integer, intent(in) :: ispec
+    double precision :: nrm
+    double precision, dimension(0:num_spec-1) :: buf
+
+    buf = 0.d0
+    buf(ispec) = sum(dble(vec)**2 + aimag(vec)**2)
+    call mpro%allgather_inplace(buf)
+    nrm = sqrt(sum(buf))
+  end function global_norm
+
+  !> Inner products dots(i) = <basis(:,i), vec>, reduced over species.
+  subroutine global_dot_block(basis, vec, dots, ispec)
+    use mpiprovider_module, only : mpro
+    use collisionality_mod, only : num_spec
+    complex(kind=kind(1d0)), dimension(:,:), intent(in) :: basis
+    complex(kind=kind(1d0)), dimension(:), intent(in) :: vec
+    complex(kind=kind(1d0)), dimension(:), intent(out) :: dots
+    integer, intent(in) :: ispec
+    complex(kind=kind(1d0)), dimension(size(dots), 0:num_spec-1) :: buf
+
+    buf = (0.d0, 0.d0)
+    buf(:, ispec) = conjg(matmul(conjg(vec), basis))
+    call mpro%allgather_inplace(buf)
+    dots = sum(buf, dim=2)
+  end subroutine global_dot_block
+
+  !-----------------------------------------------------------------------------
   !> Computes m Ritz eigenvalues (approximations to extreme eigenvalues)
   !> of the iteration procedure of the vector with dimension n.
   !> Eigenvalues are computed by means of Arnoldi iterations.

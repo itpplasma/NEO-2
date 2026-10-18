@@ -8,6 +8,8 @@ MODULE sparse_mod
   PUBLIC sparse_talk
   LOGICAL :: sparse_talk = .FALSE.
 
+  PUBLIC sparse_umfpack_diagnostics
+
   PRIVATE dp
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
@@ -117,6 +119,17 @@ MODULE sparse_mod
 
 
 CONTAINS
+
+  !> UMFPACK info of the last factorization or solve. Fortran indices are the
+  !> C header values + 1: STATUS 0, RCOND 67, IR_TAKEN 80, OMEGA1 82, OMEGA2 83.
+  subroutine sparse_umfpack_diagnostics(status, rcond, ir_taken, omega1, omega2)
+    real(dp), intent(out) :: status, rcond, ir_taken, omega1, omega2
+    status = info_suitesparse(1)
+    rcond = info_suitesparse(68)
+    ir_taken = info_suitesparse(81)
+    omega1 = info_suitesparse(83)
+    omega2 = info_suitesparse(84)
+  end subroutine sparse_umfpack_diagnostics
 
   !-------------------------------------------------------------------------------
   ! finds free unit

@@ -47,7 +47,8 @@ subroutine ripple_solver_ArnoldiO2( &
                               eta_modboundary_l, eta_modboundary_r, &
                               prop_reconstruct_levels
     use sparse_mod, only: sparse_solve_method, sparse_solve, &
-                          column_full2pointer, remap_rc, sparse_solver_test
+                          column_full2pointer, remap_rc, sparse_solver_test, &
+                          sparse_umfpack_diagnostics
     use mag_interface_mod, only: surface_boozer_B00, travis_convfac, boozer_s, mag_magfield
     use ntv_eqmat_mod, only: nz_symm, nz_asymm, nz_per_pos, nz_per_neg, &
                              irow_symm, icol_symm, amat_symm, &
@@ -214,6 +215,11 @@ subroutine ripple_solver_ArnoldiO2( &
     logical :: common_energy_gauge = .false.
     real(dp), dimension(:), allocatable :: gauge_right, gauge_left
     complex(dp) :: denom_energ_common
+    ! NEO2_AX_SOLVER=gmres solves the axisymmetric fixed point by restarted GMRES
+    ! (same map and residual gate); NEO2_AX_TRACE=1 prints per-iteration equation
+    ! residuals and UMFPACK conditioning; NEO2_SPARSE_SOLVE_METHOD=2 enables
+    ! UMFPACK iterative refinement. All unset: historical behaviour.
+    logical :: ax_gmres = .false., ax_trace = .false.
     ! End Use pre-conditioned iterations
     complex(dp), dimension(:, :), allocatable :: flux_vector, source_vector
     complex(dp), dimension(:, :), allocatable :: flux_vector_plot
@@ -305,6 +311,7 @@ subroutine ripple_solver_ArnoldiO2( &
     isw_regper = 1       !regulariization by periodic boundary condition
     common_energy_gauge = energy_gauge_from_environment()
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
+    call solver_options_from_environment()
 
     addboucol = .true.
     !------------------------------------------------------------------------
@@ -3501,9 +3508,10 @@ CONTAINS
     subroutine solve_eqs(clean)
 ! Solve the linear equation set:
 
-        use arnoldi_mod, only: iterator, f_init_arnoldi
+        use arnoldi_mod, only: iterator, f_init_arnoldi, gmres_iterator
 
         logical :: clean
+        integer, parameter :: n_gmres_restart = 20
         real(dp), dimension(:), allocatable :: bvec_sp_real
         !  multi-species part
         integer :: ispecpp ! species indices (loop over sources)
@@ -3556,6 +3564,7 @@ CONTAINS
 
         call CPU_TIME(time_factorization)
         print *, 'factorization completed ', time_factorization - time_start, ' sec'
+        if (ax_trace) call print_umfpack_diagnostics('factorization')
 
         iopt = 2
 
@@ -3604,9 +3613,16 @@ CONTAINS
                     normalized_residual_species = huge(1.0d0)
                     density_constraint_species = 0.0d0
                     energy_constraint_species = 0.0d0
-                    call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                                & source_vector_all(:, k, ispecp), ispec, next_iteration, &
-                                & solve_status, solve_iterations, solve_residual, equation_residual)
+                    if (problem_type .and. ax_gmres) then
+                        call gmres_iterator(n_2d_size, n_gmres_restart, epserr_iter, &
+                                & 2*niter, source_vector_all(:, k, ispecp), ispec, &
+                                & next_iteration, equation_residual, solve_status, &
+                                & solve_iterations, solve_residual, ax_trace)
+                    else
+                        call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
+                                    & source_vector_all(:, k, ispecp), ispec, next_iteration, &
+                                    & solve_status, solve_iterations, solve_residual, equation_residual)
+                    end if
                     call report_solve(k, ispecp, solve_status, solve_iterations, solve_residual)
                 end do
 
@@ -4672,6 +4688,8 @@ CONTAINS
         if (.not. ieee_is_finite(sum(denominators))) return
         normalized_residual_species = numerators/max(denominators, tiny(1.0d0))
         residual = maxval(normalized_residual_species)
+        if (ax_trace .and. ispec == 0) print *, 'equation residual: ', residual, &
+            ' by species ', normalized_residual_species
     end subroutine equation_residual
 
     subroutine report_solve(source_index, driving_species, status, iterations, residual)
@@ -4702,6 +4720,8 @@ CONTAINS
             reason = 'invalid_controls'
         case (5)
             reason = 'nonfinite_residual'
+        case (6)
+            reason = 'stagnation'
         end select
         if (ispec == 0) then
             block
@@ -4734,6 +4754,46 @@ CONTAINS
         ! No rank may continue to publish transport from an unconverged solve.
         if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
     end subroutine report_solve
+
+    subroutine solver_options_from_environment()
+        character(len=32) :: value
+        integer :: length, status
+        call get_environment_variable('NEO2_AX_SOLVER', value, length, status)
+        if (status == 0 .and. length > 0) then
+            select case (trim(adjustl(value)))
+            case ('richardson')
+                ax_gmres = .false.
+            case ('gmres')
+                ax_gmres = .true.
+            case default
+                error stop 'NEO2_AX_SOLVER must be richardson or gmres'
+            end select
+        end if
+        call get_environment_variable('NEO2_AX_TRACE', value, length, status)
+        if (status == 0 .and. length > 0) ax_trace = trim(adjustl(value)) == '1'
+        call get_environment_variable('NEO2_SPARSE_SOLVE_METHOD', value, length, status)
+        if (status == 0 .and. length > 0) then
+            select case (trim(adjustl(value)))
+            case ('2')
+                sparse_solve_method = 2
+            case ('3')
+                sparse_solve_method = 3
+            case default
+                error stop 'NEO2_SPARSE_SOLVE_METHOD must be 2 or 3'
+            end select
+        end if
+        if (ispec == 0 .and. (ax_gmres .or. ax_trace .or. sparse_solve_method /= 3)) &
+            print *, 'solver options: ax_gmres=', ax_gmres, ' ax_trace=', ax_trace, &
+            ' sparse_solve_method=', sparse_solve_method
+    end subroutine solver_options_from_environment
+
+    subroutine print_umfpack_diagnostics(label)
+        character(len=*), intent(in) :: label
+        real(dp) :: status, rcond, ir_taken, omega1, omega2
+        call sparse_umfpack_diagnostics(status, rcond, ir_taken, omega1, omega2)
+        print *, 'umfpack ', label, ': species ', ispec, ' status ', status, ' rcond ', &
+            rcond, ' refinement steps ', ir_taken, ' omega1 ', omega1, ' omega2 ', omega2
+    end subroutine print_umfpack_diagnostics
 
     logical function energy_gauge_from_environment() result(use_common)
         character(len=32) :: value
@@ -4840,6 +4900,7 @@ CONTAINS
             fnew_imag = AIMAG(fnew)
             call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
                               fnew_real, iopt)
+            if (ax_trace) call print_umfpack_diagnostics('solve')
             call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
                               fnew_imag, iopt)
             fnew = fnew_real + (0.d0, 1.d0)*fnew_imag
