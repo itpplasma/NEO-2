@@ -74,3 +74,14 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+add_executable(test_iterator_convergence test_iterator_convergence.f90)
+target_link_libraries(test_iterator_convergence neo2_ql)
+add_test(NAME iterator_convergence_test COMMAND test_iterator_convergence)
+set_tests_properties(iterator_convergence_test PROPERTIES TIMEOUT 30)
+if(MPI_SUPPORT)
+    add_test(NAME iterator_convergence_mpi_test
+        COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2
+        ${MPIEXEC_PREFLAGS} $<TARGET_FILE:test_iterator_convergence> ${MPIEXEC_POSTFLAGS})
+    set_tests_properties(iterator_convergence_mpi_test PROPERTIES TIMEOUT 30 PROCESSORS 2)
+endif()
