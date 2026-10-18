@@ -208,6 +208,12 @@ subroutine ripple_solver_ArnoldiO2( &
     complex(dp) :: denom_energ, coef_energ, denom_dens, coef_dens
     complex(dp), dimension(:), allocatable :: energvec_bra, energvec_ket
     complex(dp), dimension(:), allocatable :: densvec_bra, densvec_ket
+    ! Coupled species conserve only total energy: per-species energy projection is
+    ! not a nullspace gauge. NEO2_AX_ENERGY_GAUGE=common projects the discrete
+    ! common-temperature null mode (weights from the assembled operator) instead.
+    logical :: common_energy_gauge = .false.
+    real(dp), dimension(:), allocatable :: gauge_right, gauge_left
+    complex(dp) :: denom_energ_common
     ! End Use pre-conditioned iterations
     complex(dp), dimension(:, :), allocatable :: flux_vector, source_vector
     complex(dp), dimension(:, :), allocatable :: flux_vector_plot
@@ -297,6 +303,7 @@ subroutine ripple_solver_ArnoldiO2( &
     call collop_set_species(ispec)
 
     isw_regper = 1       !regulariization by periodic boundary condition
+    common_energy_gauge = energy_gauge_from_environment()
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
 
     addboucol = .true.
@@ -3556,6 +3563,9 @@ CONTAINS
 
         denom_energ = sum(energvec_bra*energvec_ket)
         denom_dens = sum(densvec_bra*densvec_ket)
+        if (problem_type .and. isw_intp == 1 .and. common_energy_gauge) then
+            call setup_common_energy_gauge()
+        end if
 
         if (isw_intp .EQ. 0) then
             ! no integral part:
@@ -4725,6 +4735,81 @@ CONTAINS
         if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
     end subroutine report_solve
 
+    logical function energy_gauge_from_environment() result(use_common)
+        character(len=32) :: value
+        integer :: length, status
+        use_common = .false.
+        call get_environment_variable('NEO2_AX_ENERGY_GAUGE', value, length, status)
+        if (status /= 0 .or. length == 0) return
+        select case (trim(adjustl(value)))
+        case ('species')
+            use_common = .false.
+        case ('common')
+            use_common = .true.
+        case default
+            error stop 'NEO2_AX_ENERGY_GAUGE must be species or common'
+        end select
+    end function energy_gauge_from_environment
+
+    !> Common-temperature energy gauge for the coupled axisymmetric equation.
+    !> G(b,a) = <energvec_bra_b, (M - C_integral) e_a>_b with e_a the energy ket of
+    !> species a alone. Total energy conservation makes G rank deficient; its right
+    !> and left singular vectors of the smallest singular value give the species
+    !> weights of the discrete null mode and of its conservation functional.
+    subroutine setup_common_energy_gauge()
+        complex(dp), dimension(n_2d_size) :: work, collision, lhs
+        real(dp) :: column(0:num_spec - 1), gmat(num_spec, num_spec)
+        real(dp) :: sigma(num_spec), left(num_spec, num_spec), right_t(num_spec, num_spec)
+        real(dp) :: lapack_work(64)
+        complex(dp) :: denominators(0:num_spec - 1)
+        integer :: species, entry, info
+
+        do species = 0, num_spec - 1
+            work = (0.0d0, 0.0d0)
+            if (ispec == species) work = energvec_ket
+            collision = (0.0d0, 0.0d0)
+            call integral_part(work, collision)
+            lhs = (0.0d0, 0.0d0)
+            do entry = 1, nz_symm
+                lhs(irow_symm(entry)) = lhs(irow_symm(entry)) + &
+                    amat_symm(entry)*work(icol_symm(entry))
+            end do
+            column = 0.0d0
+            column(ispec) = real(sum(energvec_bra*(lhs - collision)), dp)
+            call mpro%allgather_inplace(column)
+            gmat(:, species + 1) = column
+        end do
+        if (ispec == 0) then
+            print *, 'energy gauge: G(b,a) = ', gmat
+        end if
+        call dgesvd('A', 'A', num_spec, num_spec, gmat, num_spec, sigma, left, num_spec, &
+                    right_t, num_spec, lapack_work, size(lapack_work), info)
+        if (info /= 0) error stop 'energy gauge: dgesvd failed'
+        if (allocated(gauge_right)) deallocate (gauge_right, gauge_left)
+        allocate (gauge_right(0:num_spec - 1), gauge_left(0:num_spec - 1))
+        gauge_right = right_t(num_spec, :)
+        gauge_left = left(:, num_spec)
+        if (gauge_right(maxloc(abs(gauge_right), 1) - 1) < 0.0d0) gauge_right = -gauge_right
+        if (gauge_left(maxloc(abs(gauge_left), 1) - 1) < 0.0d0) gauge_left = -gauge_left
+        denominators = (0.0d0, 0.0d0)
+        denominators(ispec) = gauge_left(ispec)*gauge_right(ispec)*denom_energ
+        call mpro%allgather_inplace(denominators)
+        denom_energ_common = sum(denominators)
+        if (ispec == 0) then
+            print *, 'energy gauge: singular values = ', sigma
+            print *, 'energy gauge: null-mode weights = ', gauge_right
+            print *, 'energy gauge: functional weights = ', gauge_left
+            print *, 'energy gauge: denominator = ', denom_energ_common
+        end if
+        if (num_spec > 1) then
+            if (sigma(num_spec) > 1.0d-6*sigma(1)) then
+                if (ispec == 0) print *, 'energy gauge: no clean null mode, ratio = ', &
+                    sigma(num_spec)/sigma(1)
+            end if
+        end if
+        if (abs(denom_energ_common) <= tiny(1.0d0)) error stop 'energy gauge: zero denominator'
+    end subroutine setup_common_energy_gauge
+
     subroutine next_iteration(n, fold, fnew)
 
         use arnoldi_mod, only: fzero, mode, tol
@@ -4734,6 +4819,7 @@ CONTAINS
         integer :: n
         complex(dp), dimension(n) :: fold, fnew
         real(dp), dimension(:), allocatable :: fnew_real, fnew_imag
+        complex(dp) :: energy_moments(0:num_spec - 1)
 
         if (isw_intp .eq. 1) then
             call integral_part(fold, fnew)
@@ -4769,8 +4855,16 @@ CONTAINS
             end if
 
             if (isw_intp .eq. 1) then
-                coef_energ = sum(energvec_bra*fnew)/denom_energ
-                fnew = fnew - (1.d0 - tol)*coef_energ*energvec_ket
+                if (common_energy_gauge) then
+                    energy_moments = (0.0d0, 0.0d0)
+                    energy_moments(ispec) = gauge_left(ispec)*sum(energvec_bra*fnew)
+                    call mpro%allgather_inplace(energy_moments)
+                    coef_energ = sum(energy_moments)/denom_energ_common
+                    fnew = fnew - (1.d0 - tol)*coef_energ*gauge_right(ispec)*energvec_ket
+                else
+                    coef_energ = sum(energvec_bra*fnew)/denom_energ
+                    fnew = fnew - (1.d0 - tol)*coef_energ*energvec_ket
+                end if
             end if
         else
 
