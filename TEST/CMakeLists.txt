@@ -17,6 +17,30 @@ foreach(rejection unknown-model negative-rate missing-rate nan-rate integral gri
         ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
 endforeach()
 
+add_executable(test_electromagnetic_work test_electromagnetic_work.f90)
+target_link_libraries(test_electromagnetic_work neo2_ql)
+add_test(NAME electromagnetic_work_test COMMAND test_electromagnetic_work)
+set_tests_properties(electromagnetic_work_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL" TIMEOUT 30
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
+add_executable(test_electromagnetic_work_geometry test_electromagnetic_work_geometry.f90)
+target_link_libraries(test_electromagnetic_work_geometry neo2_ql)
+foreach(EM_LAB 8 10)
+    set(EM_GEOMETRY_DIR "${CMAKE_CURRENT_BINARY_DIR}/em_work_lab${EM_LAB}")
+    file(MAKE_DIRECTORY "${EM_GEOMETRY_DIR}")
+    configure_file(fixtures/em_work_geometry/neo.in.in
+                   "${EM_GEOMETRY_DIR}/neo.in" @ONLY)
+    add_test(NAME electromagnetic_work_lab${EM_LAB}_geometry_test
+             COMMAND test_electromagnetic_work_geometry ${EM_LAB}
+             WORKING_DIRECTORY "${EM_GEOMETRY_DIR}")
+    set_tests_properties(electromagnetic_work_lab${EM_LAB}_geometry_test PROPERTIES
+        PASS_REGULAR_EXPRESSION "All tests passed!"
+        FAIL_REGULAR_EXPRESSION "FAIL" TIMEOUT 30
+        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+endforeach()
+
 # Test executable for boozmn reading (INP_SWI_BOOZMN path).
 add_executable(test_boozmn_read test_boozmn_read.f90)
 target_link_libraries(test_boozmn_read common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
