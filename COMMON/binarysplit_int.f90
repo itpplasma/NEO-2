@@ -296,7 +296,13 @@ CONTAINS
     END IF
     IF (.NOT. l3) THEN
       PRINT *, 'Message: Maximum index reached!'
-      STOP
+      BLOCK
+        CHARACTER(len=16) :: need, have
+        WRITE (need, '(I0)') maxind
+        WRITE (have, '(I0)') bsfunc_max_index
+        ERROR STOP 'binarysplit: number of eta levels exceeds bsfunc_max_index (' &
+             //TRIM(have)//'); index '//TRIM(need)//' requested, increase bsfunc_max_index'
+      END BLOCK
     END IF
   END FUNCTION eval_bslimit_3
 
