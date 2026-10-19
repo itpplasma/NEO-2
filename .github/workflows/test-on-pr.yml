@@ -6,10 +6,7 @@ on:
       - main
       - master
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - main
-      - master
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -18,7 +15,13 @@ concurrency:
 jobs:
   run-golden-record:
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    # Upper layers of a PR stack (base is not main) skip the golden record
+    # unless the PR is labeled full-ci.
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false &&
+      (github.event.pull_request.base.ref == github.event.repository.default_branch ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')))
 
     env:
       CC: gcc
