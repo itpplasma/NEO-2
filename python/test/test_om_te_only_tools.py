@@ -187,6 +187,22 @@ def test_change_isw_vphi_loc(tmp_path):
         assert int(np.ravel(f['isw_Vphi_loc'][()])[0]) == 2
 
 
+@pytest.mark.parametrize('operation', ['add', 'remove'])
+def test_species_edits_preserve_rotation_location(tmp_path, operation):
+    src, out = tmp_path / 'in.h5', tmp_path / 'out.h5'
+    write_input(src, 2 if operation == 'add' else 4,
+                with_vphi=True, theta_loc=True)
+    if operation == 'add':
+        add_species_to_profile_file(str(src), str(out), Zeff=1.5,
+                                    Ztrace=6.0, mtrace=2.0e-23)
+    else:
+        remove_species_from_profile_file(str(src), str(out), 0)
+    with h5py.File(src, 'r') as original, h5py.File(out, 'r') as edited:
+        for key in ('boozer_theta_Vphi', 'R_Vphi', 'Z_Vphi'):
+            assert key in edited
+            np.testing.assert_array_equal(edited[key][()], original[key][()])
+
+
 def test_plot_reader_and_mars_export(tmp_path):
     om_only, both = tmp_path / 'om.h5', tmp_path / 'both.h5'
     write_input(om_only, 2, with_vphi=False)

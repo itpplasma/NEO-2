@@ -1592,7 +1592,8 @@ def add_species_to_profile_file(infilename: str, outfilename: str, Zeff: float, 
 
   no_change_needed = ['boozer_s', 'num_radial_pts', 'rho_pol']
   # Rotation input: V_phi (isw_calc_Er=0/1) and/or Om_tE (isw_calc_Er=2).
-  copy_if_present = ['Vphi', 'isw_Vphi_loc', 'species_tag_Vphi', 'Om_tE']
+  copy_if_present = ['Vphi', 'isw_Vphi_loc', 'species_tag_Vphi', 'Om_tE',
+                     'boozer_theta_Vphi', 'R_Vphi', 'Z_Vphi']
 
   with get_hdf5file(infilename) as hin:
     with get_hdf5file_new(outfilename) as hout:
@@ -1689,7 +1690,8 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
 
   no_change_needed = ['boozer_s', 'num_radial_pts', 'rho_pol']
   # Rotation input: V_phi (isw_calc_Er=0/1) and/or Om_tE (isw_calc_Er=2).
-  copy_if_present = ['Vphi', 'isw_Vphi_loc', 'Om_tE']
+  copy_if_present = ['Vphi', 'isw_Vphi_loc', 'Om_tE',
+                     'boozer_theta_Vphi', 'R_Vphi', 'Z_Vphi']
   special_treatment_needed = ['species_tag_Vphi']
   zero_dimension_species = ['T_prof', 'n_prof', 'kappa_prof', 'dn_ov_ds_prof', 'dT_ov_ds_prof']
   # special treatment if number of remaining species = 2
