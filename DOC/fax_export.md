@@ -122,3 +122,10 @@ operators or physical device transport. Supply `--consumer` with the native
 APPLETS energy-test executable to compare its reconstructed distribution with
 the native band moments in passing, trapped-passing and incomplete turning
 bands (matrix-scale tolerance 2%, including interpolation).
+
+Before writing a regular consumer table, the converter also integrates its
+energy blocks and reconstructs the native density-drive transport row using
+the original spatial/pitch-band quadrature. Every field species must reproduce
+its native D11 row to 2% of that row's maximum magnitude, including every
+driving species. This checks the regular table's interpolation in addition
+to the much tighter lossless raw-export energy oracle.
