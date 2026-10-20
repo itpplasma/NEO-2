@@ -293,22 +293,34 @@ def consumer_oracle(d, table, executable, amplitudes):
         raise ValueError('consumer oracle requires nonzero source amplitudes')
     maxerr = 0.
     samples, queries, refs = [], [], []
+    pitches = []
     for sample in range(8):
         st = int(d['sample_step'][sample])
-        band = int(d['sample_band'][sample])-1
         n = int(d['npassing'][st])+1
         x, values = pitch_rows(d,st)
-        col = band if d['sample_sign'][sample] < 0 else 2*n-band-1
-        if d['phi_direction'].item() < 0:
-            col = 2*n-col-1
-        theta, pitch = float(position(d)[st]), float(x[col])
-        for j in (1,2,3,4,5):
-            energy = float(d['temperature_erg'][d['field_species']]*d['sample_x'][j]**2)
-            queries.append((d['field_species']+1, theta, pitch, energy))
+        tp = np.searchsorted(d['eta'],1/np.max(d['bhat']),side='right')-1
+        # Passing, trapped-passing boundary and the incomplete turning band.
+        bands = sorted({int(d['sample_band'][sample])-1, int(np.clip(tp,0,n-1)), n-1})
+        for band in bands:
+            col = band if d['sample_sign'][sample] < 0 else 2*n-band-1
+            if d['phi_direction'].item() < 0:
+                col = 2*n-col-1
+            theta, pitch = float(position(d)[st]), float(x[col])
+            pitches.append(pitch)
             lo = d['eta'][band]
             hi = d['eta'][band+1] if band+1 < n else 1/d['bhat'][st]
-            ref = float(np.sum(d['sample_g'][:,:,j,sample]*amplitudes)/(hi-lo))
-            refs.append(ref)
+            row = int(d['offset'][st])+band
+            if d['sample_sign'][sample] < 0:
+                row = int(d['offset'][st])+2*n-band-1
+            ids = row+2*n*np.arange(d['lag']+1)
+            for j in (1,2,3,4,5):
+                energy = float(d['temperature_erg'][d['field_species']]*d['sample_x'][j]**2)
+                queries.append((d['field_species']+1, theta, pitch, energy))
+                # Native phi_exp values (not the exported polynomial evaluator)
+                # and native band integrals provide the independent moment.
+                ref = float(np.einsum('mkb,m,kb->',d['g_real'][ids],
+                                     d['sample_basis'][:,j],amplitudes)/(hi-lo))
+                refs.append(ref)
     import tempfile
     with tempfile.NamedTemporaryFile(mode='w', suffix='.dat') as f:
         np.savetxt(f, queries, fmt=['%d','%.17e','%.17e','%.17e'])
@@ -322,6 +334,8 @@ def consumer_oracle(d, table, executable, amplitudes):
     scale = max(1e-30,max(abs(ref) for _,ref in samples))
     maxerr = max(abs(got-ref)/scale for got,ref in samples)
     out = dict(native_consumer_max_error=maxerr, tolerance=0.02, samples=len(samples),
+               pitch_range=[float(min(pitches)),float(max(pitches))],
+               bands='passing, trapped-passing boundary, incomplete turning band',
                normalization='max absolute native sample; finite-volume pitch-band means')
     if maxerr > out['tolerance']:
         raise ValueError(f'APPLETS versus native NEO-2 distribution: {out}')
