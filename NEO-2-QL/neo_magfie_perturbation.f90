@@ -68,7 +68,7 @@ MODULE neo_magfie_perturbation
 
   PUBLIC neo_magfie_pert
   INTEGER, PRIVATE :: perturbation_switch = -1
-  PRIVATE neo_magfie_pert_a, neo_magfie_pert_b
+  PRIVATE neo_magfie_pert_a, neo_magfie_pert_b, compact_perturbation_surfaces
   INTERFACE neo_magfie_pert
      MODULE PROCEDURE neo_magfie_pert_a, neo_magfie_pert_b
   END INTERFACE neo_magfie_pert
@@ -87,8 +87,59 @@ CONTAINS
     in_file_pert = path
     perturbation_switch = input_switch
     CALL neo_read_pert()
+    CALL compact_perturbation_surfaces()
     CALL neo_init_spline_pert()
   END SUBROUTINE neo_load_pert
+
+  SUBROUTINE compact_perturbation_surfaces()
+    INTEGER :: i, kept
+    LOGICAL :: same
+
+    kept = 1
+    DO i = 2, ns_pert
+      IF (es_pert(i) < es_pert(kept)) ERROR STOP "decreasing perturbation surfaces"
+      IF (es_pert(i) > es_pert(kept)) THEN
+        kept = kept + 1
+      ELSE
+        same = ALL(ABS(rmnc_pert(i,:)-rmnc_pert(kept,:)) <= 0.0_dp) .AND. &
+               ALL(ABS(zmnc_pert(i,:)-zmnc_pert(kept,:)) <= 0.0_dp) .AND. &
+               ALL(ABS(lmnc_pert(i,:)-lmnc_pert(kept,:)) <= 0.0_dp) .AND. &
+               ALL(ABS(bmnc_pert(i,:)-bmnc_pert(kept,:)) <= 0.0_dp)
+        IF (pert_input_switch() == INP_SWI_TOK) THEN
+          same = same .AND. ALL(ABS(rmns_pert(i,:)-rmns_pert(kept,:)) <= 0.0_dp) .AND. &
+                 ALL(ABS(zmns_pert(i,:)-zmns_pert(kept,:)) <= 0.0_dp) .AND. &
+                 ALL(ABS(lmns_pert(i,:)-lmns_pert(kept,:)) <= 0.0_dp) .AND. &
+                 ALL(ABS(bmns_pert(i,:)-bmns_pert(kept,:)) <= 0.0_dp)
+        END IF
+        IF (.NOT. same) ERROR STOP "conflicting repeated perturbation surface"
+        CYCLE
+      END IF
+      es_pert(kept) = es_pert(i)
+      rmnc_pert(kept,:) = rmnc_pert(i,:)
+      zmnc_pert(kept,:) = zmnc_pert(i,:)
+      lmnc_pert(kept,:) = lmnc_pert(i,:)
+      bmnc_pert(kept,:) = bmnc_pert(i,:)
+      IF (pert_input_switch() == INP_SWI_TOK) THEN
+        rmns_pert(kept,:) = rmns_pert(i,:)
+        zmns_pert(kept,:) = zmns_pert(i,:)
+        lmns_pert(kept,:) = lmns_pert(i,:)
+        bmns_pert(kept,:) = bmns_pert(i,:)
+      END IF
+    END DO
+    IF (kept == ns_pert) RETURN
+    ns_pert = kept
+    es_pert = es_pert(:kept)
+    rmnc_pert = rmnc_pert(:kept,:)
+    zmnc_pert = zmnc_pert(:kept,:)
+    lmnc_pert = lmnc_pert(:kept,:)
+    bmnc_pert = bmnc_pert(:kept,:)
+    IF (pert_input_switch() == INP_SWI_TOK) THEN
+      rmns_pert = rmns_pert(:kept,:)
+      zmns_pert = zmns_pert(:kept,:)
+      lmns_pert = lmns_pert(:kept,:)
+      bmns_pert = bmns_pert(:kept,:)
+    END IF
+  END SUBROUTINE compact_perturbation_surfaces
 
   SUBROUTINE neo_free_pert()
 
