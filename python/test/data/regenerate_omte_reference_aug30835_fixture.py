@@ -10,11 +10,6 @@ import numpy as np
 
 FIXTURE_PATH = Path(__file__).with_name('omte_reference_aug30835.npz')
 DATA_ROOT = Path(os.environ.get('NEO2_DATA_ROOT', '/home/ert/data'))
-BC_FILE_PATH = (
-    DATA_ROOT / 'AUG/NEO-2/30835'
-    / '2016_controlled_fusion_rmp90_benchmark'
-    / 'gacode_neo_comparison/sfincs_compare/converted_bc/axisymmetric.bc'
-)
 RUN_BASE = DATA_ROOT / 'AUG/NEO-2/30835/gorilla_axisymmetric_baseline/runs/ql_two_surfaces'
 RUN_DIRS = [
     RUN_BASE / 'es_0p25271',
@@ -24,107 +19,12 @@ SOURCE_H5_PATHS = [run_dir / 'neo2_multispecies_out.h5' for run_dir in RUN_DIRS]
 SOURCE_NEO2_INPUT_PATHS = [run_dir / 'neo2.in' for run_dir in RUN_DIRS]
 
 SURFACE_FIELDS = [
-    'Bref',
-    'Dp0',
-    'D31ref0',
-    'Er',
-    'R0',
-    'aiota',
-    'avEparB_ov_avb2',
-    'av_gphph',
-    'av_inv_bhat',
-    'av_nabla_stor',
-    'avbhat',
-    'avbhat2',
-    'bcovar_phi',
-    'bcovar_tht',
-    'boozer_s',
-    'dbcovar_phi_ds',
-    'dbcovar_theta_ds',
-    'diota_ds',
-    'eps_M_2',
-    'm_phi',
-    'psi_pr_hat',
-    'sqrtg_bctrvr_phi',
-    'sqrtg_bctrvr_tht',
+    'Er', 'aiota', 'avEparB_ov_avb2', 'av_nabla_stor',
+    'bcovar_phi', 'bcovar_tht', 'boozer_s', 'sqrtg_bctrvr_tht',
 ]
 
-PROFILE_FIELDS = [
-    'R_Vphi_prof',
-    'Z_Vphi_prof',
-]
-
-INVARIANT_VECTOR_FIELDS = [
-    'species_tag',
-    'z_spec',
-    'm_spec',
-]
-
-STACKED_VECTOR_FIELDS = [
-    'n_spec',
-    'T_spec',
-    'collpar_spec',
-    'nu_star_spec',
-    'MtOvR',
-    'VphiB_spec',
-    'VphiB_Ware_spec',
-    'VthtB_spec',
-    'VthtB_Ware_spec',
-    'Gamma_AX_spec',
-    'Gamma_AX_Ware_spec',
-    'Gamma_NA_spec',
-    'Gamma_NA_Ware_spec',
-    'Qflux_AX_spec',
-    'Qflux_AX_Ware_spec',
-    'Qflux_NA_spec',
-    'Qflux_NA_Ware_spec',
-    'ParFlow_AX_spec',
-    'ParFlow_AX_Ware_spec',
-    'ParFlow_NA_spec',
-    'ParFlow_NA_Ware_spec',
-    'TphiNA_spec',
-    'TphiNA_Ware_spec',
-]
-
-STACKED_MATRIX_FIELDS = [
-    'row_ind_spec',
-    'col_ind_spec',
-    'D11_AX',
-    'D11_AX_Dpl',
-    'D11_NA',
-    'D11_NA_Dpl',
-    'D12_AX',
-    'D12_AX_Dpl',
-    'D12_NA',
-    'D12_NA_Dpl',
-    'D13_AX',
-    'D13_AX_D31ref',
-    'D13_NA',
-    'D13_NA_D31ref',
-    'D21_AX',
-    'D21_AX_Dpl',
-    'D21_NA',
-    'D21_NA_Dpl',
-    'D22_AX',
-    'D22_AX_Dpl',
-    'D22_NA',
-    'D22_NA_Dpl',
-    'D23_AX',
-    'D23_AX_D31ref',
-    'D23_NA',
-    'D23_NA_D31ref',
-    'D31_AX',
-    'D31_AX_D31ref',
-    'D31_NA',
-    'D31_NA_D31ref',
-    'D32_AX',
-    'D32_AX_D31ref',
-    'D32_NA',
-    'D32_NA_D31ref',
-    'D33_AX',
-    'D33_AX_norm',
-    'D33_NA',
-    'D33_NA_norm',
+STACKED_FIELDS = [
+    'MtOvR', 'row_ind_spec', 'col_ind_spec', 'D31_AX', 'D32_AX', 'D33_AX',
 ]
 
 PROFILE_VECTOR_FIELDS = {
@@ -172,13 +72,6 @@ def _load_multispec_input(path):
     return parsed
 
 
-def _species_def(z_spec, m_spec, num_surfaces):
-    species_def = np.empty((2, z_spec.size, num_surfaces), dtype=float)
-    species_def[0] = np.repeat(z_spec[:, np.newaxis], num_surfaces, axis=1)
-    species_def[1] = np.repeat(m_spec[:, np.newaxis], num_surfaces, axis=1)
-    return species_def
-
-
 def _scalar_field(path, field_name):
     with h5py.File(path, 'r') as handle:
         return float(np.asarray(handle[field_name]).reshape(-1)[0])
@@ -193,8 +86,7 @@ def _stack_field(path_list, field_name):
 
 
 def main():
-    existing = dict(np.load(FIXTURE_PATH))
-    regenerated = dict(existing)
+    regenerated = {}
 
     for path in SOURCE_H5_PATHS:
         if not path.exists():
@@ -204,7 +96,6 @@ def main():
             raise FileNotFoundError(path)
 
     parsed_inputs = [_load_multispec_input(path) for path in SOURCE_NEO2_INPUT_PATHS]
-    num_surfaces = len(parsed_inputs)
     invariant = parsed_inputs[0]
 
     regenerated['source_h5_paths'] = np.array([str(path) for path in SOURCE_H5_PATHS])
@@ -214,12 +105,6 @@ def main():
     regenerated['species_tag_Vphi'] = invariant['species_tag_Vphi']
     regenerated['z_spec'] = invariant['z_spec']
     regenerated['m_spec'] = invariant['m_spec']
-    regenerated['species_def'] = _species_def(
-        z_spec=invariant['z_spec'],
-        m_spec=invariant['m_spec'],
-        num_surfaces=num_surfaces,
-    )
-
     for field_name in PROFILE_VECTOR_FIELDS:
         regenerated[field_name] = np.stack(
             [parsed[field_name] for parsed in parsed_inputs],
@@ -232,20 +117,12 @@ def main():
             _scalar_field(path, field_name) for path in SOURCE_H5_PATHS
         ])
 
-    regenerated['Er_neo2'] = regenerated['Er'].copy()
-    regenerated['avb2'] = regenerated['avbhat2'] * regenerated['Bref'] ** 2
-
-    for field_name in STACKED_VECTOR_FIELDS + STACKED_MATRIX_FIELDS:
+    for field_name in STACKED_FIELDS:
         regenerated[field_name] = _stack_field(SOURCE_H5_PATHS, field_name)
 
-    for field_name in PROFILE_FIELDS:
-        regenerated[field_name] = _stack_field(SOURCE_H5_PATHS, field_name)
-
-    regenerated['bc_file_path'] = str(BC_FILE_PATH) if BC_FILE_PATH.exists() else ''
-
-    if not np.allclose(regenerated['n_prof'], regenerated['n_spec'], rtol=0.0, atol=0.0):
+    if not np.allclose(regenerated['n_prof'], _stack_field(SOURCE_H5_PATHS, 'n_spec'), rtol=0.0, atol=0.0):
         raise ValueError('n_prof parsed from neo2.in does not match n_spec from HDF5 output')
-    if not np.allclose(regenerated['T_prof'], regenerated['T_spec'], rtol=0.0, atol=0.0):
+    if not np.allclose(regenerated['T_prof'], _stack_field(SOURCE_H5_PATHS, 'T_spec'), rtol=0.0, atol=0.0):
         raise ValueError('T_prof parsed from neo2.in does not match T_spec from HDF5 output')
 
     np.savez(FIXTURE_PATH, **regenerated)

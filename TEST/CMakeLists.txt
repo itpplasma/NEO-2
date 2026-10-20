@@ -120,7 +120,6 @@ endif()
 
 # Python force-balance checks (issue #75). Registered only when the neo2_ql
 # package and its dependencies import at configure time.
-find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
     execute_process(COMMAND ${CMAKE_COMMAND} -E env
                             "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python/src"
