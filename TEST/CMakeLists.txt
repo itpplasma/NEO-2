@@ -146,3 +146,8 @@ add_executable(test_spline_value_derivatives test_spline_value_derivatives.f90)
 target_link_libraries(test_spline_value_derivatives PRIVATE common)
 add_test(NAME spline_value_derivatives COMMAND test_spline_value_derivatives)
 set_tests_properties(spline_value_derivatives PROPERTIES TIMEOUT 1 LABELS "field;fast")
+
+add_executable(test_periodic_spline_underflow test_periodic_spline_underflow.f90)
+target_link_libraries(test_periodic_spline_underflow PRIVATE common)
+add_test(NAME periodic_spline_underflow COMMAND test_periodic_spline_underflow)
+set_tests_properties(periodic_spline_underflow PROPERTIES TIMEOUT 1 LABELS "field;fast")
