@@ -53,7 +53,8 @@ subroutine ripple_solver_ArnoldiO2( &
                              irow_per_neg, icol_per_neg, &
                              irow_asymm, icol_asymm, amat_asymm, &
                              f0_coll, f0_ttmp, f0_coll_all, f0_ttmp_all, &
-                             nz_regper, irow_regper, icol_regper, amat_regper
+                             nz_regper, irow_regper, icol_regper, amat_regper, &
+                             deallocate_ntv_eqmat
     use partpa_mod, only: bmod0
     use development
   !! Modifications by Andreas F. Martitsch (12.03.2014)
@@ -1861,6 +1862,8 @@ subroutine ripple_solver_ArnoldiO2( &
         end do
 
     end do
+
+    call deallocate_ntv_eqmat()
 
     allocate (irow(nz), icol(nz), amat_sp(nz))
     allocate (irow_coll(nz_coll), icol_coll(nz_coll), amat_coll(nz_coll))
