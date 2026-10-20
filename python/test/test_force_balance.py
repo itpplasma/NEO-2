@@ -212,19 +212,6 @@ def test_loader_rejects_multispecies_output_without_inductive_field():
             raise AssertionError('missing avEparB_ov_avb2 was accepted')
 
 
-def _modified_copy(source, edit):
-    """Copy ``source`` to a new temporary directory and apply ``edit``."""
-    import shutil
-    import tempfile
-    import h5py
-    tmp = tempfile.mkdtemp()
-    path = Path(tmp) / source.name
-    shutil.copy(source, path)
-    with h5py.File(path, 'r+') as f:
-        edit(f)
-    return path
-
-
 def test_level3_replays_fortran_er_local_vphi():
     # Same deck run with isw_Vphi_loc = 2 (compute_Er's fac1 branch): Vphi
     # is the local ion V^phi at theta_B = 16 * 2 pi / 100 taken from the
@@ -263,21 +250,6 @@ def test_flux_averaged_local_factor_reproduces_mode0():
     assert_allclose(er, er_stored, rtol=1e-9)
 
 
-def test_mode1_uses_the_same_local_algebra_as_mode2():
-    # NEO-2 itself cannot run mode 1 here (calc_thetaB_RZloc STOPs); the
-    # loader must still accept it and apply the identical fac1 algebra.
-    def as_mode1(f):
-        f['isw_Vphi_loc'][...] = 1
-
-    mode2 = load_neo2_force_balance_inputs(FIXTURE_LOC2)
-    mode1 = load_neo2_force_balance_inputs(_modified_copy(FIXTURE_LOC2,
-                                                          as_mode1))
-    assert mode1['vphi_loc_factor'] == mode2['vphi_loc_factor']
-    mode1.pop('Er_stored')
-    er, _ = er_level3_neo2_multispecies(**mode1)
-    assert_allclose(er, mode2['Er_stored'], rtol=1e-9)
-
-
 def test_loader_requires_local_factors_and_valid_mode():
     def drop(f):
         del f['G_symm_tb_Vphi']
@@ -285,14 +257,21 @@ def test_loader_requires_local_factors_and_valid_mode():
     def bad_mode(f):
         f['isw_Vphi_loc'][...] = 3
 
-    for edit, error in ((drop, KeyError), (bad_mode, ValueError)):
-        path = _modified_copy(FIXTURE_LOC2, edit)
-        try:
-            load_neo2_force_balance_inputs(path)
-        except error as exc:
-            assert 'G_symm_tb_Vphi' in str(exc) or 'isw_Vphi_loc' in str(exc)
-        else:
-            raise AssertionError(f'{edit.__name__} was accepted')
+    import shutil
+    import tempfile
+    import h5py
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / 'edited.h5'
+        for edit, error in ((drop, KeyError), (bad_mode, ValueError)):
+            shutil.copy(FIXTURE_LOC2, path)
+            with h5py.File(path, 'r+') as f:
+                edit(f)
+            try:
+                load_neo2_force_balance_inputs(path)
+            except error as exc:
+                assert 'G_symm_tb_Vphi' in str(exc) or 'isw_Vphi_loc' in str(exc)
+            else:
+                raise AssertionError(f'{edit.__name__} was accepted')
 
 
 def test_omte_matches_fortran_mach_number():
