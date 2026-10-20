@@ -100,10 +100,14 @@ def oracles(d):
     ref = d["qflux"]
     scale = np.maximum(1e-30, np.max(np.abs(ref), axis=(0, 1)))
     err = float(np.max(np.abs(got-ref)/scale))
+    entry_scale = np.maximum(np.abs(ref), 1e-12*scale[None,None,:])
+    entry_error = float(np.max(np.abs(got-ref)/entry_scale))
     out.update(energy_weight_error=float(np.max(np.abs(weights-d["weightlag"]))),
-               transport_error=err, transport_tolerance=2e-8,
+               transport_error=err, transport_entrywise_error=entry_error,
+               transport_tolerance=2e-8,
+               entrywise_zero_floor_fraction=1e-12,
                qflux_native=ref.tolist(), qflux_reconstructed=got.tolist())
-    if err > out["transport_tolerance"]:
+    if max(err, entry_error) > out["transport_tolerance"]:
         raise ValueError(f"energy-integrated qflux reconstruction failed: {out}")
     return out
 

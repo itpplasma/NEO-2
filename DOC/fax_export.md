@@ -94,7 +94,8 @@ The oracle compares native `phi_exp` and distribution samples at tolerance
 `2e-10*max(1,abs(reference))`. It independently integrates the Maxwellian energy
 weights (powers 4,3,6 in internal source order), then contracts the complete
 pitch/spatial distribution to recover the native qflux matrix, with a relative
-matrix-scale tolerance `2e-8` per driving species. The monoenergetic Lorentz
+matrix-scale tolerance `2e-8` per driving species, also checked entrywise
+with a zero floor of `1e-12` of that matrix scale. The monoenergetic Lorentz
 model has no Maxwellian energy integral. These are reconstruction checks;
 they do not establish solver or physical transport convergence.
 
