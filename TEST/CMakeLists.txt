@@ -146,3 +146,31 @@ add_executable(test_spline_value_derivatives test_spline_value_derivatives.f90)
 target_link_libraries(test_spline_value_derivatives PRIVATE common)
 add_test(NAME spline_value_derivatives COMMAND test_spline_value_derivatives)
 set_tests_properties(spline_value_derivatives PROPERTIES TIMEOUT 1 LABELS "field;fast")
+
+add_executable(test_periodic_spline_underflow test_periodic_spline_underflow.f90)
+target_link_libraries(test_periodic_spline_underflow PRIVATE common)
+add_test(NAME periodic_spline_underflow COMMAND test_periodic_spline_underflow)
+set_tests_properties(periodic_spline_underflow PROPERTIES TIMEOUT 1 LABELS "field;fast")
+
+add_executable(test_perturbation_repeated_surfaces test_perturbation_repeated_surfaces.f90)
+target_link_libraries(test_perturbation_repeated_surfaces PRIVATE neo2_ql)
+add_test(NAME perturbation_repeated_surfaces COMMAND test_perturbation_repeated_surfaces)
+set_tests_properties(perturbation_repeated_surfaces PROPERTIES TIMEOUT 5 LABELS "field;fast"
+    PASS_REGULAR_EXPRESSION "repeated perturbation surfaces: PASS")
+add_test(NAME perturbation_conflicting_surfaces COMMAND test_perturbation_repeated_surfaces conflict)
+set_tests_properties(perturbation_conflicting_surfaces PROPERTIES TIMEOUT 5 LABELS "field;fast"
+    WILL_FAIL TRUE)
+
+# eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
+# bsfunc_max_index instead of exiting with status 0.
+add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
+target_link_libraries(test_binarysplit_max_index common)
+
+add_test(NAME binarysplit_max_index_test
+         COMMAND test_binarysplit_max_index
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(binarysplit_max_index_test PROPERTIES
+    WILL_FAIL TRUE
+    TIMEOUT 30
+)
