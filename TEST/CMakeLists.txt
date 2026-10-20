@@ -88,3 +88,17 @@ add_test(NAME neo_magfie_multisurface_reader_test
 set_tests_properties(neo_magfie_multisurface_reader_test PROPERTIES
   PASS_REGULAR_EXPRESSION "All tests passed!"
   TIMEOUT 30)
+
+# eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
+# bsfunc_max_index instead of exiting with status 0.
+add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
+target_link_libraries(test_binarysplit_max_index common)
+
+add_test(NAME binarysplit_max_index_test
+         COMMAND test_binarysplit_max_index
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(binarysplit_max_index_test PROPERTIES
+    WILL_FAIL TRUE
+    TIMEOUT 30
+)
