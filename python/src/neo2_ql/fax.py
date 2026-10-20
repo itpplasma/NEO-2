@@ -244,6 +244,48 @@ def regular_blocks(d, theta, lambdas):
     return values.transpose(4,3,0,1,2), slopes.transpose(4,3,0,1,2)
 
 
+def regular_transport_oracle(d, values, theta, lambdas):
+    """Energy-integrate the actual regular table, then use native band quadrature.
+
+    Linearity lets the independently verified energy weights integrate each
+    polynomial block before position/pitch interpolation. The source forces
+    are kept separate: this checks D11, not a cancellation of profile forces.
+    """
+    integrated = np.einsum('ltmkb,m->ltkb', values, d['weightlag'][0])
+    got = np.zeros((3,d['num_species']))
+    vt = position(d)
+    for st in range(len(d['npassing'])):
+        n = int(d['npassing'][st])+1
+        x, _ = pitch_rows(d,st)
+        it = int(np.clip(np.searchsorted(theta,vt[st])-1,0,len(theta)-2))
+        ft = np.clip((vt[st]-theta[it])/(theta[it+1]-theta[it]),0,1)
+        row = (1-ft)*integrated[:,it]+ft*integrated[:,it+1]
+        il = np.clip(np.searchsorted(lambdas,x)-1,0,len(lambdas)-2)
+        fl = np.clip((x-lambdas[il])/(lambdas[il+1]-lambdas[il]),0,1)
+        band = (1-fl)[:,None,None]*row[il]+fl[:,None,None]*row[il+1]
+        if d['phi_direction'].item() < 0:
+            band = band[::-1]
+        native = np.concatenate([band[n:][::-1],band[:n][::-1]])
+        hi = np.r_[d['eta'][1:n],1/d['bhat'][st]]
+        widths = hi-d['eta'][:n]
+        native *= np.r_[widths,widths[::-1]][:,None,None]
+        off = int(d['offset'][st])
+        got += np.einsum('i,ikb->kb',d['flux_geometry'][0,off:off+2*n],native)
+    # Driving-species rho factors convert the complete density-drive row to
+    # physical D11; the common field-species factor cancels in this ratio.
+    rho = np.sqrt(2*d['temperature_erg']/d['mass_g'])*d['mass_g']/d['charge_number']
+    ref = d['qflux'][0,0]*rho
+    value = got[0]*rho
+    error = float(np.max(np.abs(value-ref))/max(1e-30,np.max(np.abs(ref))))
+    result = dict(D11_row_error=error,tolerance=0.02,
+                  norm='native D11 field-row maximum, all driving species',
+                  qflux_density_native=d['qflux'][0,0].tolist(),
+                  qflux_density_regular_table=got[0].tolist())
+    if error > result['tolerance']:
+        raise ValueError(f'regular-table energy-integrated D11 failed: {result}')
+    return result
+
+
 def write_table(exports, path, er, epar=0., nt=181, nl=401):
     import hashlib
     ds = sorted((read_fax(f) for f in exports), key=lambda d: d['field_species'])
@@ -263,6 +305,7 @@ def write_table(exports, path, er, epar=0., nt=181, nl=401):
     records = [d['mass_g'], d['charge_number'], d['temperature_erg'], amp,
                d['basis_edges'], d['basis_centers'], d['basis_coeff'], theta, lambdas]
     blocks = [regular_blocks(v,theta,lambdas) for v in ds]
+    transport = [regular_transport_oracle(v,b[0],theta,lambdas) for v,b in zip(ds,blocks)]
     # Retain each source independently; no profile-gradient division or lost cross-species term.
     records += [np.stack([b[channel] for b in blocks],axis=-1) for channel in (0,1)]
     path = Path(path)
@@ -276,7 +319,7 @@ def write_table(exports, path, er, epar=0., nt=181, nl=401):
             # Bounded records also keep Fortran list-directed input portable.
             for off in range(0,len(flat),6):
                 f.write(' '.join(f'{float(x):.17e}' for x in flat[off:off+6])+'\n')
-    receipt = dict(table=str(path), sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+    receipt = dict(regular_table_transport=transport, table=str(path), sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
                    source_exports={str(f): hashlib.sha256(Path(f).read_bytes()).hexdigest()
                                    for f in exports}, source_amplitudes=amp.tolist(),
                    Er_statV_per_cm=er, EparB_over_B2=epar, admission=checks,
