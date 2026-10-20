@@ -91,8 +91,6 @@ find_package(LAPACK REQUIRED)
 
 include(fortsparse)
 
-find_package(HDF5 COMPONENTS C HL Fortran Fortran_HL REQUIRED)
-
 find_package(GSL REQUIRED)
 
 include_directories(${PROJECT_BINARY_DIR}/COMMON)

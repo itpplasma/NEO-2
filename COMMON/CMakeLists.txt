@@ -89,16 +89,16 @@ target_link_libraries(common PUBLIC
   ${MPI_Fortran_LIBRARIES}
   BLAS::BLAS
   LAPACK::LAPACK
-  ${NETCDF_LIBS}
   -lz -lpthread
 )
 target_link_libraries(common PUBLIC fortsparse)
 
 target_link_libraries(common PUBLIC
-  LIBNEO::neo
   LIBNEO::magfie
-  NEO2MyMPILib
+  LIBNEO::odeint
   LIBNEO::hdf5_tools
+  LIBNEO::util
+  NEO2MyMPILib
 )
 
 target_link_libraries(common PUBLIC

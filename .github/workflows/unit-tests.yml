@@ -1,15 +1,9 @@
 name: Unit Tests
 
 on:
-  push:
-    branches:
-      - main
-      - master
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - main
-      - master
+  merge_group:
   workflow_dispatch:
     inputs:
       libneo_ref:
@@ -34,23 +28,23 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
-      - name: Cache apt packages
-        uses: awalsh128/cache-apt-pkgs-action@v1
+      - name: Install apt packages
+        uses: ./.github/actions/apt-packages
         with:
-          packages: git cmake make ninja-build gcc g++ gfortran jq libopenblas-dev liblapack-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev openmpi-bin openmpi-common libopenmpi-dev
-          version: 1.0
-          execute_install_scripts: true
+          packages: git cmake make ninja-build gcc g++ gfortran jq libopenblas-dev liblapack-dev libfftw3-dev libgsl-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev openmpi-bin openmpi-common libopenmpi-dev
 
       - name: Ensure BLAS and MPI are properly configured
         run: |
           # Fallback installation to ensure pkg-config files are present
           sudo apt-get update
-          sudo apt-get install -y --reinstall libopenblas-dev pkg-config
-          sudo apt-get install -y --reinstall openmpi-bin openmpi-common libopenmpi-dev
+          sudo apt-get -o Dir::Cache::archives="$RUNNER_TEMP/neo2-apt-archives" \
+            install -y --reinstall libopenblas-dev pkg-config
+          sudo apt-get -o Dir::Cache::archives="$RUNNER_TEMP/neo2-apt-archives" \
+            install -y --reinstall openmpi-bin openmpi-common libopenmpi-dev
 
           # Verify BLAS can be found
           pkg-config --exists openblas && echo "OpenBLAS pkg-config found" || echo "Warning: OpenBLAS pkg-config not found"
@@ -60,8 +54,8 @@ jobs:
           which mpifort && echo "mpifort found at: $(which mpifort)" || echo "Warning: mpifort not found"
 
           # Set environment variables to help CMake
-          echo "BLA_VENDOR=OpenBLAS" >> $GITHUB_ENV
-          echo "MPI_HOME=/usr" >> $GITHUB_ENV
+          echo "BLA_VENDOR=OpenBLAS" >> "$GITHUB_ENV"
+          echo "MPI_HOME=/usr" >> "$GITHUB_ENV"
 
       - name: Set up Python 3
         run: |
@@ -69,9 +63,11 @@ jobs:
           pip install numpy h5py scipy matplotlib
 
       - name: Build NEO-2
+        env:
+          LIBNEO_REF: ${{ inputs.libneo_ref }}
         run: |
-          if [ -n "${{ inputs.libneo_ref }}" ]; then
-            make LIBNEO_REF=${{ inputs.libneo_ref }}
+          if [ -n "$LIBNEO_REF" ]; then
+            make LIBNEO_REF="$LIBNEO_REF"
           else
             make
           fi
