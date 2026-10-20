@@ -2566,7 +2566,7 @@ subroutine ripple_solver_ArnoldiO2( &
         if (lsw_export_fax) call export_fax(ibeg, iend, eta, npl, ind_start, &
             phi_mfl, bhat_mfl, dlogbdphi_mfl, h_phi_mfl, &
             source_vector_all, flux_vector, qflux_allspec(:, :, ispec, :), &
-            scalefac_kG, bcovar_theta_hat, bcovar_phi_hat)
+            scalefac_kG, bcovar_theta_hat, bcovar_phi_hat, sign_of_bphi)
 
         deallocate (irow, icol, amat_sp)
 

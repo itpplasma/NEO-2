@@ -21,6 +21,8 @@ def read_fax(path):
     n = d["num_species"]
     if d["g_real"].shape[1:] != (3, n):
         raise ValueError(f"{path}: missing source/species axes")
+    if abs(float(d['phi_direction'].item())) != 1:
+        raise ValueError(f'{path}: invalid parallel-branch orientation')
     if not np.isfinite(d["g_real"]).all():
         raise ValueError(f"{path}: nonfinite distribution")
     if np.max(np.abs(d["g_imag"])) > 1e-12*max(1., np.max(np.abs(d["g_real"]))):
@@ -139,12 +141,24 @@ def pitch_rows(d, step):
     xx = np.r_[-lam, lam[::-1]]
     yy = np.concatenate([g[:, n:][:, ::-1]/width[None,:,None,None],
                          g[:, :n][:, ::-1]/width[None,::-1,None,None]], axis=1)
+    if d['phi_direction'].item() < 0:
+        xx, yy = -xx[::-1], yy[:, ::-1]
     return xx, yy
 
 
 def position(d):
     b = d['bhat']
-    return np.sign(d['dlogb_dphi'])*np.arccos(np.clip(1-2*(b-b.min())/(b.max()-b.min()),-1,1))
+    signs = np.sign(d['dlogb_dphi']).copy()
+    nonzero = np.flatnonzero(signs)
+    if not len(nonzero):
+        raise ValueError('field has no position branch')
+    # An extremum has no derivative sign. Use a neighbouring branch there;
+    # the two maximum labels +/-pi are the same periodic position.
+    for j in np.flatnonzero(signs == 0):
+        previous = nonzero[nonzero < j]
+        signs[j] = signs[previous[-1] if len(previous) else nonzero[0]]
+    return d['phi_direction'].item()*signs*np.arccos(np.clip(
+        1-2*(b-b.min())/(b.max()-b.min()),-1,1))
 
 
 def admission(d):
@@ -157,7 +171,8 @@ def admission(d):
         raise ValueError(f"field species {d['field_species']}: single-well admission failed; "
                          f"{changes} interior branch changes")
     return dict(interior_branch_changes=changes, Bmin_hat=float(b.min()),
-                Bmax_hat=float(b.max()), position_chart='single well, sign(dlogB/dphi)',
+                Bmax_hat=float(b.max()), position_chart='single well, sign(b^phi dlogB/dphi)',
+                phi_direction=float(d['phi_direction'].item()),
                 energy_basis=int(d['collop_base_exp']), energy_blocks=d['lag']+1,
                 driving_species=d['num_species'], field_species=d['field_species'],
                 physical_transport_qualified=False)
@@ -241,25 +256,33 @@ def consumer_oracle(d, table, executable, amplitudes):
     if not np.any(amplitudes):
         raise ValueError('consumer oracle requires nonzero source amplitudes')
     maxerr = 0.
-    samples = []
+    samples, queries, refs = [], [], []
     for sample in range(8):
         st = int(d['sample_step'][sample])
         band = int(d['sample_band'][sample])-1
         n = int(d['npassing'][st])+1
         x, values = pitch_rows(d,st)
         col = band if d['sample_sign'][sample] < 0 else 2*n-band-1
+        if d['phi_direction'].item() < 0:
+            col = 2*n-col-1
         theta, pitch = float(position(d)[st]), float(x[col])
         for j in (1,2,3,4,5):
             energy = float(d['temperature_erg'][d['field_species']]*d['sample_x'][j]**2)
-            args = [str(executable), str(table), str(d['field_species']+1),
-                    str(theta), str(pitch), str(energy)]
-            p = subprocess.run(args,capture_output=True,text=True,check=True)
-            line = next(l for l in p.stdout.splitlines() if l.startswith('RESPONSE'))
-            got = float(line.split()[1])
+            queries.append((d['field_species']+1, theta, pitch, energy))
             lo = d['eta'][band]
             hi = d['eta'][band+1] if band+1 < n else 1/d['bhat'][st]
             ref = float(np.sum(d['sample_g'][:,:,j,sample]*amplitudes)/(hi-lo))
-            samples.append((got,ref))
+            refs.append(ref)
+    import tempfile
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.dat') as f:
+        np.savetxt(f, queries, fmt=['%d','%.17e','%.17e','%.17e'])
+        f.flush()
+        p = subprocess.run([str(executable),str(table),f.name],capture_output=True,
+                           text=True,check=True)
+    got = [float(l.split()[1]) for l in p.stdout.splitlines() if l.startswith('RESPONSE')]
+    if len(got) != len(refs):
+        raise ValueError('consumer did not return every sample')
+    samples = list(zip(got,refs))
     scale = max(1e-30,max(abs(ref) for _,ref in samples))
     maxerr = max(abs(got-ref)/scale for got,ref in samples)
     out = dict(native_consumer_max_error=maxerr, tolerance=0.02, samples=len(samples),

@@ -120,6 +120,9 @@ if(NEO2_FAX_ORACLE_FILES)
       ${CMAKE_SOURCE_DIR}/python/src/neo2_ql/fax.py ${NEO2_FAX_ORACLE_FILES}
       --out ${CMAKE_CURRENT_BINARY_DIR}/fax_oracle.json)
   set_tests_properties(fax_native_distribution_transport PROPERTIES TIMEOUT 180)
+  add_test(NAME fax_branch_orientation
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_fax_branch.py
+      ${CMAKE_SOURCE_DIR}/python/src/neo2_ql/fax.py)
 endif()
 
 add_executable(test_iterator_convergence test_iterator_convergence.f90)

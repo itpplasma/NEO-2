@@ -54,7 +54,7 @@ contains
     end subroutine fax_basis
 
     subroutine export_fax(ibeg, iend, eta, npl, offsets, phi, bhat, dlogb, &
-            hphi, solution, flux, qflux, scalefac, btheta, bphi)
+            hphi, solution, flux, qflux, scalefac, btheta, bphi, phi_direction)
         use collop, only: collop_base_exp, collop_base_prj, scalprod_alpha, &
             scalprod_beta, phi_exp
         use rkstep_mod, only: lag, weightlag
@@ -68,7 +68,7 @@ contains
             y_ntv_mod
         integer, intent(in) :: ibeg, iend, npl(ibeg:), offsets(ibeg:)
         real(dp), intent(in) :: eta(0:), phi(ibeg:), bhat(ibeg:), dlogb(ibeg:)
-        real(dp), intent(in) :: hphi(ibeg:), scalefac, btheta, bphi
+        real(dp), intent(in) :: hphi(ibeg:), scalefac, btheta, bphi, phi_direction
         complex(dp), intent(in) :: solution(:, :, 0:), flux(:, :)
         real(dp), intent(in) :: qflux(:, :, 0:)
         real(dp), allocatable :: coeff(:, :, :), edges(:), centers(:), samples(:, :)
@@ -182,7 +182,8 @@ contains
             [ibeg], [iend])
         call h5_add(file_id, 'dlogb_dphi', dlogb(ibeg:iend), &
             [ibeg], [iend])
-        call h5_add(file_id, 'h_phi', hphi(ibeg:iend), &
+        call h5_add(file_id, 'phi_direction', phi_direction)
+        call h5_add(file_id, 'h_contravariant_phi_abs', hphi(ibeg:iend), &
             [ibeg], [iend])
         call h5_add(file_id, 'g_real', real(solution(:, 1:3, :), dp), &
             [1,1,0], [size(solution,1),3,num_spec-1])

@@ -29,8 +29,12 @@ HDF5 bounds attributes retain the Fortran index origins.
   At position `t`, positive-band `i=1:npassing(t)+1`, block `m`, the Fortran
   solution index is `offset(t)+2*(npassing(t)+1)*m+i`. The corresponding
   negative-band index is `offset(t)+2*(npassing(t)+1)*(m+1)-i+1`.
-- `phi`, `bhat`, `dlogb_dphi`, `h_phi`: field-line position/branch geometry;
-  `bhat=B/B_ref`. These are not a global label for multiple magnetic wells.
+- `phi`, `bhat`, `dlogb_dphi`, `h_contravariant_phi_abs`: field-line position/branch geometry;
+  `bhat=B/B_ref`. `phi_direction=sign(b^phi)` is saved before the native
+  solver replaces the contravariant field component by its absolute value.
+  Native sigma labels increasing/decreasing phi; physical signed pitch is
+  `lambda=phi_direction*lambda_native`. The position-chart branch is likewise
+  `sign(phi_direction*dlogb_dphi)`. These are not labels for multiple wells.
 - `basis_coeff`: `(power=0:degree, block=0:lag, segment)`. At
   `x=v/v_T=sqrt(E/T_field)`, evaluate the polynomial in
   `x-basis_centers(segment)`, using `basis_edges` to choose a segment.
