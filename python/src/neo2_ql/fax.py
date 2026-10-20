@@ -1,0 +1,306 @@
+"""Lossless reader and independent oracles for NEO-2-QL f_AX exports.
+
+Fortran indices in offset/sample_row are one based offsets as documented in
+DOC/fax_export.md. Arrays are returned in Fortran axis order, not h5py order.
+"""
+from pathlib import Path
+import json
+import math
+import numpy as np
+import h5py
+
+
+def read_fax(path):
+    with h5py.File(path) as f:
+        d = {k: np.asarray(v[()]).T.copy() for k, v in f.items()}
+    for k in ("format_version", "field_species", "num_species", "lag",
+              "collop_base_exp", "isw_lorentz", "isw_calc_Er"):
+        d[k] = int(d[k].item())
+    if d["format_version"] != 1:
+        raise ValueError(f"{path}: unsupported f_AX format")
+    n = d["num_species"]
+    if d["g_real"].shape[1:] != (3, n):
+        raise ValueError(f"{path}: missing source/species axes")
+    if not np.isfinite(d["g_real"]).all():
+        raise ValueError(f"{path}: nonfinite distribution")
+    if np.max(np.abs(d["g_imag"])) > 1e-12*max(1., np.max(np.abs(d["g_real"]))):
+        raise ValueError(f"{path}: axisymmetric solution is complex")
+    return d
+
+
+def basis(d, x):
+    x = float(x)
+    if x < 0:
+        raise ValueError("x=v/v_T must be nonnegative")
+    if not d["basis_extend"].item() and x > d["basis_edges"][-1]:
+        return np.zeros(d["lag"]+1)
+    j = np.clip(np.searchsorted(d["basis_edges"], x, side="right")-1,
+                0, len(d["basis_centers"])-1)
+    return np.polynomial.polynomial.polyval(x-d["basis_centers"][j],
+                                          d["basis_coeff"][:, :, j])
+
+
+def block(d, step):
+    """Band-integrated g: (energy block, signed band, source, drive species)."""
+    n = int(d["npassing"][step])+1
+    off = int(d["offset"][step])
+    nb = d["lag"]+1
+    return d["g_real"][off:off+2*n*nb].reshape(nb, 2*n, 3, d["num_species"])
+
+
+def oracles(d):
+    """Native phi_exp samples and independent energy quadrature -> qflux.
+
+    Norms use max(1, |reference|) for distribution samples; transport uses a
+    matrix infinity scale per source species, preserving near-zero entries.
+    The monoenergetic Lorentz model has no Maxwellian energy integral.
+    """
+    from scipy.integrate import quad
+    basis_error = max(np.max(np.abs(basis(d, x)-d["sample_basis"][:, j]) /
+                             np.maximum(1., np.abs(d["sample_basis"][:, j])))
+                      for j, x in enumerate(d["sample_x"]))
+    point_error = 0.
+    for t, st in enumerate(d["sample_step"]):
+        n = int(d["npassing"][st])+1
+        row = int(d["sample_row"][t])-1
+        ids = row+2*n*np.arange(d["lag"]+1)
+        for j, x in enumerate(d["sample_x"]):
+            got = np.einsum('mkb,m->kb', d["g_real"][ids], basis(d, x))
+            ref = d["sample_g"][:, :, j, t]
+            point_error = max(point_error, float(np.max(np.abs(got-ref) /
+                                                       np.maximum(1., np.abs(ref)))))
+    out = dict(basis_error=float(basis_error), pointwise_error=point_error,
+               pointwise_tolerance=2e-10, samples=8*6*3*d["num_species"])
+    if max(basis_error, point_error) > out["pointwise_tolerance"]:
+        raise ValueError(f"native distribution reconstruction failed: {out}")
+    if d["isw_lorentz"] == 1:
+        out["energy_integral"] = "not defined for monoenergetic Lorentz model"
+        return out
+    weights = np.empty((3, d["lag"]+1))
+    for k, power in enumerate((4, 3, 6)):  # NEO-2 swaps the last two sources
+        for m in range(d["lag"]+1):
+            edges = list(d["basis_edges"])
+            if d["basis_extend"].item():
+                edges[-1] = np.inf
+            weights[k, m] = sum(quad(lambda x: math.exp(-x*x)*x**power*basis(d,x)[m],
+                                      lo, hi, epsabs=1e-11, epsrel=1e-11)[0]
+                                  for lo, hi in zip(edges[:-1], edges[1:]))/math.sqrt(math.pi)
+    # Build the phase-space convolution using independently integrated phi_m,
+    # not the exported NEO-2 weightlag or flux_vector.
+    flux = np.empty_like(d["flux_geometry"])
+    for st in range(len(d["npassing"])):
+        n = int(d["npassing"][st])+1
+        off = int(d["offset"][st])
+        for m in range(d["lag"]+1):
+            sl = slice(off+2*n*m, off+2*n*(m+1))
+            flux[:, sl] = d["flux_geometry"][:, sl]*weights[:, m, None]
+    got = np.einsum('ji,ikb->jkb', flux, d["g_real"])
+    ref = d["qflux"]
+    scale = np.maximum(1e-30, np.max(np.abs(ref), axis=(0, 1)))
+    err = float(np.max(np.abs(got-ref)/scale))
+    out.update(energy_weight_error=float(np.max(np.abs(weights-d["weightlag"]))),
+               transport_error=err, transport_tolerance=2e-8,
+               qflux_native=ref.tolist(), qflux_reconstructed=got.tolist())
+    if err > out["transport_tolerance"]:
+        raise ValueError(f"energy-integrated qflux reconstruction failed: {out}")
+    return out
+
+
+def source_amplitudes(d, er, eparb_over_b2=0.):
+    """beta_b A_k^b in CODE source order (density, parallel E, temperature).
+
+    DOC/ripple_solver_normalizations_and_output.tex, multispec:fa1norm and
+    multispec:fa1basisfun. Er is in statV/cm; all metadata are CGS.
+    """
+    n, t, m, z = (d[k] for k in ('density_cm3', 'temperature_erg', 'mass_g',
+                                 'charge_number'))
+    grad = d['y_ntv'][6]/d['y_ntv'][5]
+    beta = np.sqrt(2*t/m)*m*2.9979e10/(z*4.8032e-10*d['B_ref_G'])/grad
+    a2 = grad*d['dT_ds_erg']/t
+    a1 = grad*d['dn_ds_cm3']/n-1.5*a2-er*z*4.8032e-10/t
+    a3 = z*4.8032e-10/t*eparb_over_b2
+    return np.asarray([beta*a1, d['B_ref_G']*a3, beta*a2])
+
+
+def pitch_rows(d, step):
+    """Band means of signed lambda and normalized g (m, lambda, k, b)."""
+    n = int(d['npassing'][step])+1
+    b = d['bhat'][step]
+    lo = d['eta'][:n]
+    hi = np.r_[d['eta'][1:n], 1./b]
+    width = hi-lo
+    if np.any(width <= 0):
+        raise ValueError(f"step {step}: nonpositive pitch band")
+    # Exact band mean of |lambda|, identical to the legacy circular compiler.
+    lam = 2./(3.*b)*(np.maximum(1-b*lo,0)**1.5-
+                     np.maximum(1-b*hi,0)**1.5)/width
+    g = block(d, step)
+    # Counter-passing occupies reversed bands; positive lambda increases as eta falls.
+    xx = np.r_[-lam, lam[::-1]]
+    yy = np.concatenate([g[:, n:][:, ::-1]/width[None,:,None,None],
+                         g[:, :n][:, ::-1]/width[None,::-1,None,None]], axis=1)
+    return xx, yy
+
+
+def position(d):
+    b = d['bhat']
+    return np.sign(d['dlogb_dphi'])*np.arccos(np.clip(1-2*(b-b.min())/(b.max()-b.min()),-1,1))
+
+
+def admission(d):
+    """Reject geometry that the single-well vartheta chart cannot represent."""
+    b = d['bhat']
+    derivative = d['dlogb_dphi']
+    sig = np.sign(derivative[np.abs(derivative) > 1e-8*np.max(np.abs(derivative))])
+    changes = int(np.count_nonzero(sig[1:] != sig[:-1]))
+    if b.max() <= b.min() or len(sig) < 2 or changes > 2:
+        raise ValueError(f"field species {d['field_species']}: single-well admission failed; "
+                         f"{changes} interior branch changes")
+    return dict(interior_branch_changes=changes, Bmin_hat=float(b.min()),
+                Bmax_hat=float(b.max()), position_chart='single well, sign(dlogB/dphi)',
+                energy_basis=int(d['collop_base_exp']), energy_blocks=d['lag']+1,
+                driving_species=d['num_species'], field_species=d['field_species'],
+                physical_transport_qualified=False)
+
+
+def regular_blocks(d, theta, lambdas):
+    # C order output axes: basis, source, driving species, theta, lambda.
+    vt = position(d)
+    order = np.argsort(vt, kind='stable')
+    keep = np.r_[True, np.diff(vt[order]) > 1e-12]
+    order = order[keep]
+    v = vt[order]
+    v = np.r_[v-2*np.pi, v, v+2*np.pi]
+    shape = (d['lag']+1, 3, d['num_species'], len(theta), len(lambdas))
+    values, slopes = np.empty(shape), np.empty(shape)
+    for m in range(d['lag']+1):
+        rows, derivs = [], []
+        for st in order:
+            x, y = pitch_rows(d, st)
+            rows.append(np.stack([[np.interp(lambdas, x, y[m,:,k,b])
+                                   for b in range(d['num_species'])] for k in range(3)]))
+            dy = np.gradient(y[m], x, axis=0)
+            derivs.append(np.stack([[np.interp(lambdas, x, dy[:,k,b])
+                                     for b in range(d['num_species'])] for k in range(3)]))
+        for out, data in ((values, rows), (slopes, derivs)):
+            data = np.asarray(data)
+            data = np.concatenate([data, data, data], axis=0)
+            for k in range(3):
+                for b in range(d['num_species']):
+                    for l in range(len(lambdas)):
+                        out[m,k,b,:,l] = np.interp(theta, v, data[:,k,b,l])
+    # Native consumer order (lambda, theta, basis, source, driving species).
+    return values.transpose(4,3,0,1,2), slopes.transpose(4,3,0,1,2)
+
+
+def write_table(exports, path, er, epar=0., nt=181, nl=401):
+    import hashlib
+    ds = sorted((read_fax(f) for f in exports), key=lambda d: d['field_species'])
+    d = ds[0]
+    n = d['num_species']
+    if len(ds) != n or [v['field_species'] for v in ds] != list(range(n)):
+        raise ValueError('one export for EACH field species is required')
+    for other in ds[1:]:
+        for k in ('species_tag', 'mass_g', 'charge_number', 'temperature_erg',
+                  'density_cm3', 'basis_coeff', 'basis_edges', 'basis_extend', 's_tor'):
+            if not np.array_equal(d[k], other[k]):
+                raise ValueError(f'field species metadata differ: {k}')
+    checks = [admission(v) for v in ds]
+    amp = source_amplitudes(d, er, epar)
+    theta, lambdas = np.linspace(-np.pi,np.pi,nt), np.linspace(-1,1,nl)
+    degree, nb, segments = d['basis_coeff'].shape
+    records = [d['mass_g'], d['charge_number'], d['temperature_erg'], amp,
+               d['basis_edges'], d['basis_centers'], d['basis_coeff'], theta, lambdas]
+    blocks = [regular_blocks(v,theta,lambdas) for v in ds]
+    # Retain each source independently; no profile-gradient division or lost cross-species term.
+    records += [np.stack([b[channel] for b in blocks],axis=-1) for channel in (0,1)]
+    path = Path(path)
+    with path.open('w') as f:
+        f.write('# NEO-2 physical f_AX/f_M; source order density, E_parallel, temperature\n')
+        f.write('FAX_ENERGY_V1\n')
+        f.write(f'{nt} {nl} {nb} {n} {degree-1} {segments} '
+                f'{"T" if d["basis_extend"].item() else "F"}\n')
+        for r in records:
+            flat = np.asarray(r).ravel(order='F')
+            # Bounded records also keep Fortran list-directed input portable.
+            for off in range(0,len(flat),6):
+                f.write(' '.join(f'{float(x):.17e}' for x in flat[off:off+6])+'\n')
+    receipt = dict(table=str(path), sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+                   source_exports={str(f): hashlib.sha256(Path(f).read_bytes()).hexdigest()
+                                   for f in exports}, source_amplitudes=amp.tolist(),
+                   Er_statV_per_cm=er, EparB_over_B2=epar, admission=checks,
+                   dimensions=dict(theta=nt,pitch=nl,basis=nb,species=n),
+                   transport_qualified=False)
+    path.with_suffix(path.suffix+'.json').write_text(json.dumps(receipt,indent=2)+'\n')
+    return receipt
+
+
+def consumer_oracle(d, table, executable, amplitudes):
+    """Compare native distribution band moments with the actual APPLETS reader."""
+    import subprocess
+    if not np.any(amplitudes):
+        raise ValueError('consumer oracle requires nonzero source amplitudes')
+    maxerr = 0.
+    samples = []
+    for sample in range(8):
+        st = int(d['sample_step'][sample])
+        band = int(d['sample_band'][sample])-1
+        n = int(d['npassing'][st])+1
+        x, values = pitch_rows(d,st)
+        col = band if d['sample_sign'][sample] < 0 else 2*n-band-1
+        theta, pitch = float(position(d)[st]), float(x[col])
+        for j in (1,2,3,4,5):
+            energy = float(d['temperature_erg'][d['field_species']]*d['sample_x'][j]**2)
+            args = [str(executable), str(table), str(d['field_species']+1),
+                    str(theta), str(pitch), str(energy)]
+            p = subprocess.run(args,capture_output=True,text=True,check=True)
+            line = next(l for l in p.stdout.splitlines() if l.startswith('RESPONSE'))
+            got = float(line.split()[1])
+            lo = d['eta'][band]
+            hi = d['eta'][band+1] if band+1 < n else 1/d['bhat'][st]
+            ref = float(np.sum(d['sample_g'][:,:,j,sample]*amplitudes)/(hi-lo))
+            samples.append((got,ref))
+    scale = max(1e-30,max(abs(ref) for _,ref in samples))
+    maxerr = max(abs(got-ref)/scale for got,ref in samples)
+    out = dict(native_consumer_max_error=maxerr, tolerance=0.02, samples=len(samples),
+               normalization='max absolute native sample; finite-volume pitch-band means')
+    if maxerr > out['tolerance']:
+        raise ValueError(f'APPLETS versus native NEO-2 distribution: {out}')
+    return out
+
+
+def main():
+    import argparse
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('exports',type=Path,nargs='+')
+    p.add_argument('--out',type=Path,required=True)
+    p.add_argument('--table',type=Path)
+    p.add_argument('--er-cgs',type=float)
+    p.add_argument('--neo2-output',type=Path)
+    p.add_argument('--n-theta',type=int,default=181)
+    p.add_argument('--n-lambda',type=int,default=401)
+    p.add_argument('--consumer',type=Path)
+    a = p.parse_args()
+    result = {str(f): oracles(read_fax(f)) for f in a.exports}
+    er, epar = a.er_cgs, 0.
+    if a.neo2_output:
+        with h5py.File(a.neo2_output) as f:
+            er = float(np.asarray(f['Er'][()]).item())
+            if 'avEparB_ov_avb2' in f:
+                epar = float(np.asarray(f['avEparB_ov_avb2'][()]).item())
+    if a.table:
+        if er is None:
+            p.error('--table requires --er-cgs or --neo2-output; no implicit electric-field normalization')
+        receipt = write_table(a.exports,a.table,er,epar,a.n_theta,a.n_lambda)
+        result['table'] = receipt
+        if a.consumer:
+            result['consumer'] = [consumer_oracle(read_fax(f),a.table.resolve(),a.consumer.resolve(),
+                                                   np.asarray(receipt['source_amplitudes']))
+                                  for f in a.exports]
+    a.out.write_text(json.dumps(result,indent=2)+'\n')
+    print(json.dumps({str(k): {n:v for n,v in r.items() if not n.startswith('qflux')}
+                      if isinstance(r,dict) else r for k,r in result.items()},indent=2))
+
+
+if __name__ == '__main__':
+    main()

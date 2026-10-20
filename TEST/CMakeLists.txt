@@ -88,3 +88,20 @@ set_tests_properties(binarysplit_max_index_test PROPERTIES
     WILL_FAIL TRUE
     TIMEOUT 30
 )
+
+add_executable(test_fax_basis test_fax_basis.f90)
+target_link_libraries(test_fax_basis neo2_ql)
+add_test(NAME fax_basis_test COMMAND test_fax_basis)
+set_tests_properties(fax_basis_test PROPERTIES TIMEOUT 30)
+
+# Optional native-solve fixtures for the distribution/transport reconstruction oracle.
+# Each file is an unmodified lsw_export_fax output, not a fitted reference table.
+set(NEO2_FAX_ORACLE_FILES "" CACHE STRING "Native f_AX export files for reconstruction oracle")
+if(NEO2_FAX_ORACLE_FILES)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  add_test(NAME fax_native_distribution_transport
+    COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_SOURCE_DIR}/python/src/neo2_ql/fax.py ${NEO2_FAX_ORACLE_FILES}
+      --out ${CMAKE_CURRENT_BINARY_DIR}/fax_oracle.json)
+  set_tests_properties(fax_native_distribution_transport PROPERTIES TIMEOUT 180)
+endif()

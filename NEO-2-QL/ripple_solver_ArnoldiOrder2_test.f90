@@ -88,6 +88,8 @@ subroutine ripple_solver_ArnoldiO2( &
     ! from collision operator module. This step allows for
     ! support of different basis functions and replaces routine "lagxmm".
     use collop
+    use fax_export_mod, only: export_fax
+    use ntv_mod, only: lsw_export_fax
     use arnoldi_mod, only: iterator, f_init_arnoldi, &
       & lsw_write_flux_surface_distribution, write_flux_surface_distribution
 
@@ -2532,6 +2534,11 @@ subroutine ripple_solver_ArnoldiO2( &
                 call plotsource(uw_new, aimag(source_vector_all(:, :, ispec)))
             end do
         end if
+
+        if (lsw_export_fax) call export_fax(ibeg, iend, eta, npl, ind_start, &
+            phi_mfl, bhat_mfl, dlogbdphi_mfl, h_phi_mfl, &
+            source_vector_all, flux_vector, qflux_allspec(:, :, ispec, :), &
+            scalefac_kG, bcovar_theta_hat, bcovar_phi_hat)
 
         deallocate (irow, icol, amat_sp)
 
