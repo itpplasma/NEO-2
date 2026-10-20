@@ -76,6 +76,13 @@ Here `beta_1=beta_2=rho_b/<|grad s|>`, `beta_3=B_ref`,
 order is density, temperature, parallel electric field. The file uses internal
 order **1,3,2**. `A1=<|grad s|> n'/n - 1.5 A2 - z e Er/T`,
 `A2=<|grad s|> T'/T`, `A3=z e <E_parallel B>/(T <B^2>)`.
+The implementation in `ntv_mod.f90` also retains the native FSA normalization
+`avbhat=y_ntv(14)/y_ntv(13)`: the actual code factors are
+`beta_1=beta_2=avbhat*rho_b/<|grad s|>` and `beta_3=B_ref/avbhat`.
+The converter preserves these factors, rather than dropping them as unity.
+With `--neo2-output` it independently rescales the energy-integrated qflux
+and checks all nine dimensional `Djk_AX` matrices against native output
+(entrywise tolerance `2e-8`, zero floor `1e-12` of the matrix scale).
 All quantities are CGS. An electric field must be supplied explicitly or read
 from the completed native multispecies output; the export occurs before the
 final force-balance output and its `Om_tE` is not a substitute for that field.
@@ -101,7 +108,8 @@ they do not establish solver or physical transport convergence.
 
 For native CTest registration, configure `NEO2_FAX_ORACLE_FILES` with a
 semicolon-separated list of native exports and `Python3_EXECUTABLE` with the
-Python interpreter containing these packages. `fax_basis_test` is always
+Python interpreter containing these packages. Set `NEO2_FAX_ORACLE_OUTPUT`
+to the matching native multispecies output to include the dimensional check. `fax_basis_test` is always
 registered and compares the exported Laguerre/B-spline polynomials, including
 the tail, with the original basis routines.
 

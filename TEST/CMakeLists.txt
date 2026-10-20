@@ -113,12 +113,17 @@ set_tests_properties(fax_basis_test PROPERTIES TIMEOUT 30)
 # Optional native-solve fixtures for the distribution/transport reconstruction oracle.
 # Each file is an unmodified lsw_export_fax output, not a fitted reference table.
 set(NEO2_FAX_ORACLE_FILES "" CACHE STRING "Native f_AX export files for reconstruction oracle")
+set(NEO2_FAX_ORACLE_OUTPUT "" CACHE FILEPATH "Native multispecies output for CGS normalization oracle")
 if(NEO2_FAX_ORACLE_FILES)
+  set(_fax_output_args)
+  if(NEO2_FAX_ORACLE_OUTPUT)
+    list(APPEND _fax_output_args --neo2-output ${NEO2_FAX_ORACLE_OUTPUT})
+  endif()
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   add_test(NAME fax_native_distribution_transport
     COMMAND ${Python3_EXECUTABLE}
       ${CMAKE_SOURCE_DIR}/python/src/neo2_ql/fax.py ${NEO2_FAX_ORACLE_FILES}
-      --out ${CMAKE_CURRENT_BINARY_DIR}/fax_oracle.json)
+      --out ${CMAKE_CURRENT_BINARY_DIR}/fax_oracle.json ${_fax_output_args})
   set_tests_properties(fax_native_distribution_transport PROPERTIES TIMEOUT 180)
   add_test(NAME fax_branch_orientation
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_fax_branch.py
