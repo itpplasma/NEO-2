@@ -1,24 +1,26 @@
 name: Run Test
 
 on:
-  push:
-    branches:
-      - main
-      - master
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - main
-      - master
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  merge_group:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Only commits cancel a running job; a label event must never cancel it (its
+  # run is skipped below unless full-ci, and a skipped required check passes).
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name == 'full-ci' && 'full' || 'std' }}
+  cancel-in-progress: ${{ github.event.action != 'labeled' }}
 
 jobs:
   run-golden-record:
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    # Full tier: runs in the merge queue. Pull requests, including stacked
+    # layers, skip the golden record unless labeled full-ci.
+    if: >-
+      github.event_name == 'merge_group' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false &&
+      (github.event.action != 'labeled' || github.event.label.name == 'full-ci') &&
+      contains(github.event.pull_request.labels.*.name, 'full-ci'))
 
     env:
       CC: gcc

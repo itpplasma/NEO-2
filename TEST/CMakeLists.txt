@@ -150,3 +150,16 @@ if(Python3_Interpreter_FOUND AND NOT NEO2_PYTHON_DEPS_MISSING)
 else()
     message(STATUS "neo2_ql Python package not importable: skipping python force-balance tests")
 endif()
+# eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
+# bsfunc_max_index instead of exiting with status 0.
+add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
+target_link_libraries(test_binarysplit_max_index common)
+
+add_test(NAME binarysplit_max_index_test
+         COMMAND test_binarysplit_max_index
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(binarysplit_max_index_test PROPERTIES
+    WILL_FAIL TRUE
+    TIMEOUT 30
+)
