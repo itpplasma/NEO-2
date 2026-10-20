@@ -7,9 +7,10 @@ MODULE neo_control
   INTEGER, PARAMETER                 :: INP_SWI_STEL = 6, &
                                         INP_SWI_STEL_QPS = 7, &
                                         INP_SWI_TOK_CIRC = 8, &
-                                        INP_SWI_TOK = 9
+                                        INP_SWI_TOK = 9, &
+                                        INP_SWI_BOOZMN = 10
 
-  CHARACTER(20)                      :: in_file
+  CHARACTER(200)                     :: in_file
   INTEGER                            :: theta_n
   INTEGER                            :: phi_n
   INTEGER                            :: s_ind_in
