@@ -2,9 +2,15 @@ include(FetchContent)
 
 function(find_or_fetch DEPENDENCY)
     # -D<dep>_SOURCE_DIR=<path> builds against a local checkout; else fetch.
+    # FetchContent caches <dep>_SOURCE_DIR as well, so a cached path inside the
+    # fetch directory is our own checkout and is refetched when the ref changes.
     string(TOUPPER ${DEPENDENCY} DEPENDENCY_UPPER)
-    if(${DEPENDENCY}_SOURCE_DIR)
+    set(FETCHED_DIR ${FETCHCONTENT_BASE_DIR}/${DEPENDENCY}-src)
+    if(${DEPENDENCY}_SOURCE_DIR AND NOT ${DEPENDENCY}_SOURCE_DIR STREQUAL FETCHED_DIR)
         message(STATUS "Using local ${DEPENDENCY} in ${${DEPENDENCY}_SOURCE_DIR}")
+    elseif(${DEPENDENCY}_SOURCE_DIR AND (NOT DEFINED ${DEPENDENCY_UPPER}_REF
+            OR ${DEPENDENCY_UPPER}_REF STREQUAL ${DEPENDENCY}_FETCHED_REF))
+        message(STATUS "Using fetched ${DEPENDENCY} in ${${DEPENDENCY}_SOURCE_DIR}")
     else()
         set(REPO_URL https://github.com/itpplasma/${DEPENDENCY}.git)
 
@@ -25,6 +31,8 @@ function(find_or_fetch DEPENDENCY)
             GIT_TAG ${REMOTE_BRANCH}
         )
         FetchContent_Populate(${DEPENDENCY})
+        set(${DEPENDENCY}_FETCHED_REF ${REMOTE_BRANCH} CACHE INTERNAL
+            "${DEPENDENCY} ref of the fetched checkout")
     endif()
 
     add_subdirectory(${${DEPENDENCY}_SOURCE_DIR}

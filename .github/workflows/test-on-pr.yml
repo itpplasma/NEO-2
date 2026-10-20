@@ -1,24 +1,26 @@
 name: Run Test
 
 on:
-  push:
-    branches:
-      - main
-      - master
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - main
-      - master
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  merge_group:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Only commits cancel a running job; a label event must never cancel it (its
+  # run is skipped below unless full-ci, and a skipped required check passes).
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name == 'full-ci' && 'full' || 'std' }}
+  cancel-in-progress: ${{ github.event.action != 'labeled' }}
 
 jobs:
   run-golden-record:
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    # Full tier: runs in the merge queue. Pull requests, including stacked
+    # layers, skip the golden record unless labeled full-ci.
+    if: >-
+      github.event_name == 'merge_group' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false &&
+      (github.event.action != 'labeled' || github.event.label.name == 'full-ci') &&
+      contains(github.event.pull_request.labels.*.name, 'full-ci'))
 
     env:
       CC: gcc
@@ -28,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
@@ -37,19 +39,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install numpy
 
-      - name: Cache apt packages
-        uses: awalsh128/cache-apt-pkgs-action@v1
+      - name: Install apt packages
+        uses: ./.github/actions/apt-packages
         with:
+          # The stable reference build still needs these system libraries.
           packages: git cmake make ninja-build gcc g++ gfortran jq libopenblas-dev liblapack-dev libsuitesparse-dev libfftw3-dev libgsl-dev libhdf5-dev libnetcdf-dev libnetcdff-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev openmpi-bin openmpi-common libopenmpi-dev
-          version: 1.0
-          execute_install_scripts: true
 
       - name: Ensure BLAS and MPI are properly configured
         run: |
           # Fallback installation to ensure pkg-config files are present
           sudo apt-get update
-          sudo apt-get install -y --reinstall libopenblas-dev pkg-config
-          sudo apt-get install -y --reinstall openmpi-bin openmpi-common libopenmpi-dev
+          sudo apt-get -o Dir::Cache::archives="$RUNNER_TEMP/neo2-apt-archives" \
+            install -y --reinstall libopenblas-dev pkg-config
+          sudo apt-get -o Dir::Cache::archives="$RUNNER_TEMP/neo2-apt-archives" \
+            install -y --reinstall openmpi-bin openmpi-common libopenmpi-dev
           
           # Verify BLAS can be found
           pkg-config --exists openblas && echo "OpenBLAS pkg-config found" || echo "Warning: OpenBLAS pkg-config not found"
@@ -59,8 +62,8 @@ jobs:
           which mpifort && echo "mpifort found at: $(which mpifort)" || echo "Warning: mpifort not found"
           
           # Set environment variables to help CMake
-          echo "BLA_VENDOR=OpenBLAS" >> $GITHUB_ENV
-          echo "MPI_HOME=/usr" >> $GITHUB_ENV
+          echo "BLA_VENDOR=OpenBLAS" >> "$GITHUB_ENV"
+          echo "MPI_HOME=/usr" >> "$GITHUB_ENV"
 
       - name: Set up Python 3
         run: |
@@ -75,18 +78,22 @@ jobs:
           set -e
 
           TEMP_DIR=$(mktemp -d)
-          cd $TEMP_DIR 
+          cd "$TEMP_DIR"
 
           if [ ! -d "data" ]; then
             echo "Fetching test data..."
-            git clone https://oauth2:${GITLAB_ACCESS_TOKEN}@gitlab.tugraz.at/plasma/data.git
+            git clone "https://oauth2:${GITLAB_ACCESS_TOKEN}@gitlab.tugraz.at/plasma/data.git"
           fi
 
           cd data
-          echo "data_dir=$(pwd)" >> $GITHUB_OUTPUT
+          echo "data_dir=$(pwd)" >> "$GITHUB_OUTPUT"
           
       - name: Install libneo python required by NEO-2 python
-        run: pip install git+https://github.com/itpplasma/libneo.git
+        run: |
+          set -euo pipefail
+          LIBNEO_REF=$(jq -er '.libneo' cmake/dependency_versions.json)
+          test -n "$LIBNEO_REF"
+          python -m pip install "git+https://github.com/itpplasma/libneo.git@${LIBNEO_REF}"
 
       - name: Install NEO-2 python
         run: |
@@ -98,8 +105,8 @@ jobs:
         id: build
         run: |
           make
-          echo "neo2_par=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
-          echo "neo2_ql=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
+          echo "neo2_par=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> "$GITHUB_OUTPUT"
+          echo "neo2_ql=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> "$GITHUB_OUTPUT"
 
       - name: Build NEO-2 (reference version - latest stable release)
         id: build_reference_stable
@@ -108,7 +115,7 @@ jobs:
         run: |
           # Build reference version in temp directory
           REFERENCE_DIR=$(mktemp -d)
-          cd $REFERENCE_DIR
+          cd "$REFERENCE_DIR"
 
           git clone https://github.com/itpplasma/NEO-2.git .
 
@@ -123,15 +130,15 @@ jobs:
             exit 1
           fi
           echo "Building reference version from latest stable release: $LATEST_RELEASE"
-          git checkout $LATEST_RELEASE
+          git checkout "$LATEST_RELEASE"
 
           # Synchronized versioning: build the released NEO-2 against the matching
           # libneo release tag (LIBNEO_GIT_TAG was deprecated in favour of LIBNEO_REF).
           echo "Using synchronized libneo ref: $LATEST_RELEASE"
-          make LIBNEO_REF=$LATEST_RELEASE
+          make LIBNEO_REF="$LATEST_RELEASE"
 
-          echo "neo2_ql_stable=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
-          echo "neo2_par_stable=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
+          echo "neo2_ql_stable=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> "$GITHUB_OUTPUT"
+          echo "neo2_par_stable=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> "$GITHUB_OUTPUT"
 
       - name: Run golden record test against stable version (rough check)
         env:
@@ -139,15 +146,16 @@ jobs:
           REFERENCE_NEO2_PAR: ${{ steps.build_reference_stable.outputs.neo2_par_stable }}
           CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
           REFERENCE_NEO2_QL: ${{ steps.build_reference_stable.outputs.neo2_ql_stable }}
+          NEO2_BRANCH: ${{ github.head_ref || github.ref_name }}
+          DATA_DIR: ${{ steps.data.outputs.data_dir }}
         id: run_test_stable
         continue-on-error: true
         run: |
           set -e
 
-          NEO2_BRANCH=${{ github.head_ref || github.ref_name }}
           TEST_DIR=TESTS/NEO-2/golden_record/
 
-          cd ${{ steps.data.outputs.data_dir }}
+          cd "$DATA_DIR"
 
           git fetch origin
           if git ls-remote --exit-code --heads origin "$NEO2_BRANCH" > /dev/null; then
@@ -165,23 +173,26 @@ jobs:
           git lfs pull
           git lfs checkout "$TEST_DIR"
           cd "$TEST_DIR"
-          echo "test_dir=$(pwd)" >> $GITHUB_OUTPUT
+          echo "test_dir=$(pwd)" >> "$GITHUB_OUTPUT"
 
+          # Run every fast comparison and report all failures together.
+          status=0
           export TOL=1e-14
           export LEGACY_TOL=1e-10
           export MAGNETICS_TOL=1e-12
-          make lorentz
+          make -k lorentz || status=1
 
           export TOL=1e-10
           export LEGACY_TOL=1e-8
-          make ql
+          make -k ql || status=1
+          exit "$status"
 
           export TOL=1e-10
           make transport_k
 
       - name: Upload test (against stable) output on failure
         if: steps.run_test_stable.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: golden-test-stable-output
           path: |
@@ -201,20 +212,25 @@ jobs:
       - name: Build NEO-2 (reference version - main branch)
         if: github.event_name == 'pull_request'
         id: build_reference_main
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           # Build reference version from main branch for PR comparison
           REFERENCE_MAIN_DIR=$(mktemp -d)
-          cd $REFERENCE_MAIN_DIR
+          cd "$REFERENCE_MAIN_DIR"
 
           git clone https://github.com/itpplasma/NEO-2.git .
 
-          echo "Building reference version from main branch"
-          git checkout main
+          echo "Building reference version at PR base $BASE_SHA"
+          git checkout "$BASE_SHA"
 
           make
 
-          echo "neo2_ql_main=$(pwd)/build/NEO-2-QL/neo_2_ql.x" >> $GITHUB_OUTPUT
-          echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x" >> $GITHUB_OUTPUT
+          {
+            echo "neo2_ql_main=$(pwd)/build/NEO-2-QL/neo_2_ql.x"
+            echo "neo2_par_main=$(pwd)/build/NEO-2-PAR/neo_2_par.x"
+            echo "source_dir=$(pwd)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Run golden record test against main version (exact check)
         if: github.event_name == 'pull_request'
@@ -229,21 +245,23 @@ jobs:
           set -e
           cd ${{ steps.run_test_stable.outputs.test_dir }}
 
+          status=0
           export TOL=1e-14
           export LEGACY_TOL=1e-10
           export MAGNETICS_TOL=1e-12
-          make lorentz
+          make -k lorentz || status=1
 
           export TOL=1e-15
           export LEGACY_TOL=1e-8
-          make ql
+          make -k ql || status=1
+          exit "$status"
 
           export TOL=1e-15
           make transport_k
 
       - name: Upload test (against main) output on failure
         if: steps.run_test_main.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: golden-test-main-output
           path: |
@@ -276,7 +294,7 @@ jobs:
 
       - name: Upload performance test output on failure
         if: steps.run_performance_test.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: performance-test-output
           path: |
@@ -304,7 +322,7 @@ jobs:
 
       - name: Upload par test output on failure
         if: steps.run_par_test.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: golden-test-par-output
           path: |
@@ -315,10 +333,64 @@ jobs:
         if: always()
         run: |
           if [ -f "${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt" ]; then
-            echo "## Performance Test Results" >> $GITHUB_STEP_SUMMARY
-            cat "${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt" >> $GITHUB_STEP_SUMMARY
+            echo "## Performance Test Results" >> "$GITHUB_STEP_SUMMARY"
+            cat "${{ steps.run_test_stable.outputs.test_dir }}/performance_ql/performance_report.txt" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Build the same NEO-2 source with the previous libneo pin
+        if: github.event_name == 'pull_request'
+        id: build_previous_libneo
+        env:
+          BASE_SOURCE: ${{ steps.build_reference_main.outputs.source_dir }}
+        run: |
+          set -euo pipefail
+          OLD_REF=$(git -C "$BASE_SOURCE/build/_deps/libneo-src" rev-parse HEAD)
+          NEW_REF=$(git -C build/_deps/libneo-src rev-parse HEAD)
+          test -n "$OLD_REF" && test -n "$NEW_REF"
+          if [ "$OLD_REF" = "$NEW_REF" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "NEO-2 $(git rev-parse HEAD), libneo $OLD_REF versus $NEW_REF" >> "$GITHUB_STEP_SUMMARY"
+          PREVIOUS_DIR=$(mktemp -d)
+          git archive HEAD | tar -x -C "$PREVIOUS_DIR"
+          make -C "$PREVIOUS_DIR" LIBNEO_REF="$OLD_REF"
+          echo "neo2_ql=$(realpath "$PREVIOUS_DIR/build/NEO-2-QL/neo_2_ql.x")" >> "$GITHUB_OUTPUT"
+          echo "neo2_par=$(realpath "$PREVIOUS_DIR/build/NEO-2-PAR/neo_2_par.x")" >> "$GITHUB_OUTPUT"
+
+      - name: Compare old and new libneo on the same NEO-2 source
+        if: steps.build_previous_libneo.outputs.changed == 'true'
+        id: run_libneo_comparison
+        continue-on-error: true
+        env:
+          CURRENT_NEO2_PAR: ${{ steps.build.outputs.neo2_par }}
+          REFERENCE_NEO2_PAR: ${{ steps.build_previous_libneo.outputs.neo2_par }}
+          CURRENT_NEO2_QL: ${{ steps.build.outputs.neo2_ql }}
+          REFERENCE_NEO2_QL: ${{ steps.build_previous_libneo.outputs.neo2_ql }}
+          GOLDEN_DIR: ${{ steps.run_test_stable.outputs.test_dir }}
+        run: |
+          set -e
+          cd "$GOLDEN_DIR"
+
+          # REFERENCE_* point at the previous-libneo build, built after the
+          # main reference runs, so make reruns only the reference.
+          status=0
+          TOL=1e-14 MAGNETICS_TOL=1e-12 make -k lorentz || status=1
+          TOL=1e-15 make -k ql || status=1
+          exit "$status"
+
+      - name: Upload libneo comparison output on failure
+        if: steps.run_libneo_comparison.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        with:
+          name: golden-libneo-comparison-output
+          path: |
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/*/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/lorentz/*/out
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/*/summary.h5
+            ${{ steps.run_test_stable.outputs.test_dir }}/ql/*/out
+
       - name: Fail the job on test failure
-        if: steps.run_test_stable.outcome == 'failure' || steps.run_test_main.outcome == 'failure' || steps.run_par_test.outcome == 'failure' || steps.run_performance_test.outcome == 'failure'
+        if: steps.run_test_stable.outcome == 'failure' || steps.run_test_main.outcome == 'failure' || steps.run_par_test.outcome == 'failure' || steps.run_performance_test.outcome == 'failure' || steps.run_libneo_comparison.outcome == 'failure'
         run: exit 1
