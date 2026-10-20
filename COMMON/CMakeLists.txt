@@ -102,7 +102,6 @@ target_link_libraries(common PUBLIC
   ${MPI_Fortran_LIBRARIES}
   BLAS::BLAS
   LAPACK::LAPACK
-  ${NETCDF_LIBS}
   -lz -lpthread
 )
 if(LEGACY_SUITESPARSE)
@@ -112,10 +111,11 @@ else()
 endif()
 
 target_link_libraries(common PUBLIC
-  LIBNEO::neo
   LIBNEO::magfie
-  NEO2MyMPILib
+  LIBNEO::odeint
   LIBNEO::hdf5_tools
+  LIBNEO::util
+  NEO2MyMPILib
 )
 
 target_link_libraries(common PUBLIC
