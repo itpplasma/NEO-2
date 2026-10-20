@@ -121,11 +121,43 @@ def source_amplitudes(d, er, eparb_over_b2=0.):
     n, t, m, z = (d[k] for k in ('density_cm3', 'temperature_erg', 'mass_g',
                                  'charge_number'))
     grad = d['y_ntv'][6]/d['y_ntv'][5]
-    beta = np.sqrt(2*t/m)*m*2.9979e10/(z*4.8032e-10*d['B_ref_G'])/grad
+    avbhat = d['y_ntv'][13]/d['y_ntv'][12]
+    beta = avbhat*np.sqrt(2*t/m)*m*2.9979e10/(z*4.8032e-10*d['B_ref_G'])/grad
     a2 = grad*d['dT_ds_erg']/t
     a1 = grad*d['dn_ds_cm3']/n-1.5*a2-er*z*4.8032e-10/t
     a3 = z*4.8032e-10/t*eparb_over_b2
-    return np.asarray([beta*a1, d['B_ref_G']*a3, beta*a2])
+    return np.asarray([beta*a1, d['B_ref_G']/avbhat*a3, beta*a2])
+
+
+def dimensional_oracle(d, native_output, reconstructed_qflux):
+    """Independent CGS coefficient check against ntv_mod's public Dij output.
+
+    Keep the native FSA factors beta_out in ntv_mod:286. This additionally
+    checks charge signs, field/driving species order and the 1,3,2 source map.
+    """
+    m,t,z = (d[k] for k in ('mass_g','temperature_erg','charge_number'))
+    y = d['y_ntv']
+    grad, avbhat = y[6]/y[5], y[13]/y[12]
+    rho = np.sqrt(2*t/m)*m*2.9979e10/(z*4.8032e-10*d['B_ref_G'])
+    beta = np.stack([avbhat*rho/grad, avbhat*rho/grad,
+                     np.full_like(rho,float(d['B_ref_G'])/avbhat)])
+    a,n = d['field_species'],d['num_species']
+    q = np.asarray(reconstructed_qflux)
+    mapping = (0,2,1)
+    got, ref = np.empty((3,3,n)), np.empty((3,3,n))
+    with h5py.File(native_output) as h:
+        for j in range(3):
+            for k in range(3):
+                got[j,k] = -np.sqrt(2*t[a]/m[a])*beta[j,a]*beta[k]/y[5] * q[mapping[j],mapping[k]]
+                ref[j,k] = np.asarray(h[f'D{j+1}{k+1}_AX'][()]).reshape(n,n)[a]
+    scale = np.maximum(np.abs(ref),1e-12*np.max(np.abs(ref)))
+    error = float(np.max(np.abs(got-ref)/np.maximum(1e-30,scale)))
+    result = dict(max_entrywise_error=error,tolerance=2e-8,avbhat=float(avbhat),
+                  D11_native_cm2_s=ref[0,0].tolist(),
+                  D11_reconstructed_cm2_s=got[0,0].tolist())
+    if error > result['tolerance']:
+        raise ValueError(f'native dimensional transport normalization failed: {result}')
+    return result
 
 
 def pitch_rows(d, step):
@@ -315,6 +347,10 @@ def main():
             er = float(np.asarray(f['Er'][()]).item())
             if 'avEparB_ov_avb2' in f:
                 epar = float(np.asarray(f['avEparB_ov_avb2'][()]).item())
+    if a.neo2_output:
+        result['dimensional_normalization'] = [dimensional_oracle(
+            read_fax(f), a.neo2_output, result[str(f)]['qflux_reconstructed'])
+            for f in a.exports]
     if a.table:
         if er is None:
             p.error('--table requires --er-cgs or --neo2-output; no implicit electric-field normalization')
