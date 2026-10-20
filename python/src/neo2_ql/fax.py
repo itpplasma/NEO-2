@@ -300,7 +300,7 @@ def consumer_oracle(d, table, executable, amplitudes):
         x, values = pitch_rows(d,st)
         tp = np.searchsorted(d['eta'],1/np.max(d['bhat']),side='right')-1
         # Passing, trapped-passing boundary and the incomplete turning band.
-        bands = sorted({int(d['sample_band'][sample])-1, int(np.clip(tp,0,n-1)), n-1})
+        bands = sorted({0, int(d['sample_band'][sample])-1, int(np.clip(tp,0,n-1)), n-1})
         for band in bands:
             col = band if d['sample_sign'][sample] < 0 else 2*n-band-1
             if d['phi_direction'].item() < 0:
