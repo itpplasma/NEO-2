@@ -103,8 +103,6 @@ else()
   include(suitesparse)
 endif()
 
-find_package(HDF5 COMPONENTS C HL Fortran Fortran_HL REQUIRED)
-
 include_directories(${PROJECT_BINARY_DIR}/COMMON)
 
 ### Projects to build
