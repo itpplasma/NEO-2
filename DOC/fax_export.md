@@ -120,4 +120,5 @@ pitch grid. This single-well position chart rejects multiple branch reversals;
 it does not qualify radial coverage, interpolation convergence, collision
 operators or physical device transport. Supply `--consumer` with the native
 APPLETS energy-test executable to compare its reconstructed distribution with
-the native band moments (matrix-scale tolerance 2%, including interpolation).
+the native band moments in passing, trapped-passing and incomplete turning
+bands (matrix-scale tolerance 2%, including interpolation).
