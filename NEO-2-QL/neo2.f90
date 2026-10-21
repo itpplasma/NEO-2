@@ -31,7 +31,8 @@ module neo2_ql
        prop_timing,prop_join_ends,prop_fluxsplitmode,               &
        prop_write,prop_reconstruct,prop_ripple_plot,                &
        prop_reconstruct_levels
-  USE magnetics_mod, ONLY : mag_talk,mag_infotalk
+  USE magnetics_mod, ONLY : mag_talk,mag_infotalk,mag_write_hdf5,   &
+       h5_magnetics_file_name
   USE mag_interface_mod, ONLY : mag_local_sigma, hphi_lim,          &
        mag_magfield,mag_nperiod_min,mag_save_memory,                &
        magnetic_device,mag_cycle_ripples,mag_start_special,         &
@@ -237,7 +238,7 @@ module neo2_ql
        prop_diagphys,prop_overwrite,                                          &
        prop_diagnostic,prop_binary,prop_timing,prop_join_ends,                &
        prop_fluxsplitmode,                                                    &
-       mag_talk,mag_infotalk,                                                 &
+       mag_talk,mag_infotalk,mag_write_hdf5,                                  &
        hphi_lim,                                                              &
        prop_write,prop_reconstruct,prop_ripple_plot,                          &
        prop_reconstruct_levels
@@ -344,6 +345,17 @@ subroutine main
   ! Initialize MPI module
   !**********************************************************
   CALL mpro%init()
+
+  ! magnetics.h5 is a diagnostic producer. Keep the production default off,
+  ! and ensure that only the master rank owns a fresh file when requested.
+  IF (mag_write_hdf5) THEN
+     IF (mpro%isMaster()) THEN
+        OPEN(unit=1234,iostat=ios,file=h5_magnetics_file_name,status='old')
+        IF (ios .EQ. 0) CLOSE(unit=1234,status='delete')
+     ELSE
+        mag_write_hdf5 = .FALSE.
+     END IF
+  END IF
 
 
   !****************************************************
@@ -646,6 +658,7 @@ subroutine main
        CALL h5_add(h5_config_group, 'prop_fluxsplitmode', prop_fluxsplitmode)
        CALL h5_add(h5_config_group, 'mag_talk', mag_talk)
        CALL h5_add(h5_config_group, 'mag_infotalk',mag_infotalk )
+       CALL h5_add(h5_config_group, 'mag_write_hdf5',mag_write_hdf5 )
        CALL h5_add(h5_config_group, 'hphi_lim', hphi_lim)
        CALL h5_add(h5_config_group, 'prop_write', prop_write)
        CALL h5_add(h5_config_group, 'prop_reconstruct',prop_reconstruct )
@@ -883,6 +896,7 @@ subroutine main
     prop_reconstruct_levels = 0
     mag_talk = .TRUE.
     mag_infotalk = .TRUE.
+    mag_write_hdf5 = .FALSE.
     hphi_lim = 1.0d-6
     ! plotting
     plot_gauss = 0
