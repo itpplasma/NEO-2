@@ -28,5 +28,6 @@ MODULE neo_spline_data
   INTEGER(I4B),  DIMENSION(:),   ALLOCATABLE :: sp_index
 
   logical, save :: lsw_linear_boozer
+  logical, save :: lsw_lagrange_boozer = .false.
 
 END MODULE neo_spline_data

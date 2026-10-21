@@ -54,6 +54,7 @@ set(COMMON_FILES
   plot_distrf.f90
   polleg.f90
   prodband.f90
+  radial_lagrange_cof.f90
   rel_kernels.f90
   rhs_kin.f90
   rk4_kin.f90
