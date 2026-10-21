@@ -50,7 +50,7 @@ jobs:
       - name: Install apt packages
         uses: ./.github/actions/apt-packages
         with:
-          packages: git cmake make ninja-build gcc g++ gfortran jq libopenblas-dev liblapack-dev libsuitesparse-dev libfftw3-dev libgsl-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev openmpi-bin openmpi-common libopenmpi-dev
+          packages: git cmake make ninja-build gcc g++ gfortran jq libopenblas-dev liblapack-dev libfftw3-dev libgsl-dev python3-dev libevent-dev libnuma-dev libhwloc-dev libnl-3-dev libnl-route-3-dev libltdl-dev openmpi-bin openmpi-common libopenmpi-dev
 
         if: ${{ github.event.pull_request.head.repo.fork }}
       - name: Ensure BLAS and MPI are properly configured
