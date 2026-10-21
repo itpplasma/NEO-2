@@ -27,6 +27,7 @@ MODULE ntv_mod
   !> switch: turn on(=1)/off(=0) ntv mode (not used at the moment)
   INTEGER, PUBLIC :: isw_ntv_mode
   !> switch: 0=compute qflux only for the symmetric case; 1=do all computations
+  logical, public :: lsw_export_fax = .false.
   INTEGER, PUBLIC :: isw_qflux_NA
   !> switch for rippler_solver versions
   !> (1=preconditioned; 2=Arnoldi Order 1; 3=Arnoldi Order 2)

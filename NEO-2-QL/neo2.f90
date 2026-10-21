@@ -60,7 +60,7 @@ module neo2_ql
        ripple_solver_accurfac
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
   ! Extra input for NTV computations
-  USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
+  USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, lsw_export_fax, in_file_pert,     &
        MtOvR, Om_tE, B_rho_L_loc, xstart_cyl, isw_ripple_solver,   &
        isw_calc_Er, isw_calc_MagDrift, species_tag_Vphi,            &
        isw_Vphi_loc, Vphi, R_Vphi, Z_Vphi, boozer_theta_Vphi,       &
@@ -245,7 +245,7 @@ module neo2_ql
        plot_gauss,plot_prop
   ! Extra input for NTV computation
   NAMELIST /ntv_input/                                                        &
-       isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, Om_tE, B_rho_L_loc,  &
+       isw_ntv_mode, isw_qflux_NA, lsw_export_fax, in_file_pert, MtOvR, Om_tE, B_rho_L_loc,  &
        isw_ripple_solver, isw_mag_shear
 
 contains
@@ -660,6 +660,7 @@ subroutine main
        ! ntv_input
        CALL h5_define_group(h5_config_id, 'ntv_input', h5_config_group)
        CALL h5_add(h5_config_group, 'isw_qflux_NA', isw_qflux_NA)
+       CALL h5_add(h5_config_group, 'lsw_export_fax', lsw_export_fax)
        CALL h5_add(h5_config_group, 'MtOvR', MtOvR)
        CALL h5_add(h5_config_group, 'Om_tE', Om_tE)
        CALL h5_add(h5_config_group, 'B_rho_L_loc', B_rho_L_loc)
@@ -890,6 +891,7 @@ subroutine main
     !! Modification by Andreas F. Martitsch (14.07.2015)
     ! ntv_input
     isw_ntv_mode = 0
+    lsw_export_fax = .false.
     isw_qflux_NA = 0
     MtOvR = 0.0d0
     Om_tE = 0.0d0
