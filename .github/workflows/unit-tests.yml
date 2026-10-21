@@ -2,7 +2,7 @@ name: Unit Tests
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   merge_group:
   workflow_dispatch:
     inputs:

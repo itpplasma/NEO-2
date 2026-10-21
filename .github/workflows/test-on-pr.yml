@@ -7,7 +7,7 @@ on:
   push:
     branches:
       - main
-
+  workflow_dispatch:
 concurrency:
   # Only commits cancel a running job; a label event must never cancel it (its
   # run is skipped below unless full-ci, and a skipped required check passes).
