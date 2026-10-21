@@ -103,10 +103,7 @@ else()
   include(suitesparse)
 endif()
 
-find_package(GSL REQUIRED)
-
 include_directories(${PROJECT_BINARY_DIR}/COMMON)
-include_directories(${FGSL_INC})
 
 ### Projects to build
 add_subdirectory(COMMON/MyMPILib)
