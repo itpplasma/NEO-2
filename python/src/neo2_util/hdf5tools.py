@@ -1680,7 +1680,7 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
   name.
   """
   import numpy as np
-  from neo2_ql import get_kappa
+  from neo2_ql import get_kappa, get_coulomb_logarithm
 
   no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol']
   special_treatment_needed = ['species_tag_Vphi']
@@ -1703,10 +1703,6 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
       nsp[0] -= 1
       hout.create_dataset('num_species', data=nsp)
 
-      rs = np.array(hin['rel_stages'])
-      rs[...] -= 1
-      hout.create_dataset('rel_stages', data=rs)
-
       st = np.array(hin['species_tag'])
       st.resize( (hout['num_species'][0], ) )
       hout.create_dataset('species_tag', data=st)
@@ -1715,8 +1711,11 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
         # if two remaining species, special treatment for some
         # quantities: set both to electron value(s).
         if (dname in zero_dimension_special) and nsp[0] == 2:
+          # Quasi-neutrality with one ion species of charge Z: n_i = n_e / Z.
+          ion = [k for k in range(nsp[0] + 1) if k != index][1]
+          z_ion = np.array(hin['species_def'])[0, ion, ...]
           t = np.array(np.array(hin[dname])[0, ...], ndmin=2)
-          t = np.append(t, np.array(np.array(hin[dname])[0, ...], ndmin=2), 0)
+          t = np.append(t, np.array(np.array(hin[dname])[0, ...] / z_ion, ndmin=2), 0)
         else:
           t = np.array(hin[dname])[0:index, ...]
           t = np.append(t, np.array(hin[dname])[index+1:, ...], 0)
@@ -1727,11 +1726,21 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
         t = np.append(t, np.array(hin[dname])[:, index+1:, ...], 1)
         hout.create_dataset(dname, data=t)
 
+      # Number of species with positive density per surface, as neo2.f90
+      # requires; a plain decrement is wrong where the removed species was
+      # absent.
+      rs = np.array(hin['rel_stages'])
+      rs[...] = (np.array(hout['n_prof']) > 0.0).sum(axis=0)
+      hout.create_dataset('rel_stages', data=rs)
+
       if nsp[0] == 2:
         kappa = np.array(np.array(hin['kappa_prof'])[0, ...], ndmin=2)
         ELEMENTARY_CHARGE_CGS = 1.60217662e-19 * 2.99792458e8 * 10
         ion_charge = hout['species_def'][0, 1, ...] * ELEMENTARY_CHARGE_CGS
-        kappa_ion = get_kappa(hout['n_prof'][1, ...], hout['T_prof'][1, ...], ion_charge)
+        # Coulomb logarithm from the electrons, as in generate_multispec_input.
+        log_lambda = get_coulomb_logarithm(hout['n_prof'][0, ...], hout['T_prof'][0, ...])
+        kappa_ion = get_kappa(hout['n_prof'][1, ...], hout['T_prof'][1, ...], ion_charge,
+                              log_lambda)
         print(kappa_ion)
         print(hout['n_prof'][1, ...])
         print(hout['T_prof'][1, ...])
@@ -2147,6 +2156,63 @@ def change_neo2_profile_according_to_astra_output(path:str, neo2infilename:str, 
     out.close()
 
 
+def _regridded_densities(infilename: str, new_s_grid):
+  """Densities on new_s_grid and the number of species with positive density.
+
+  rel_stages in the profile input is the number of species with positive
+  density on each surface: neo2.f90 (prepare_mulitspecies_scan) uses it as
+  num_spec and fills one slot per species with n_prof > 0, stopping if there
+  are more and leaving slots unset if there are fewer. After regridding it
+  must therefore equal the count of positive interpolated densities. The
+  densities are interpolated with the same cubic spline as before. Values
+  within 1e-10 of a species' largest density from zero are spline roundoff
+  (e.g. at a knot with zero density) and are set to exactly zero; nothing else
+  is modified, which keeps quasi-neutrality of the interpolated profiles.
+
+  A negative interpolated density is refused: neo2.f90 would drop that
+  species and the remaining ones would no longer be quasi-neutral.
+
+  The count must lie between the counts of the old surfaces around each new
+  point (the surface itself on an old surface, the endpoint outside the old
+  range). Otherwise the spline has crossed zero for a species present on both
+  (undershoot) or absent on both (overshoot), and a ValueError is raised
+  rather than writing a profile file with spurious or missing species.
+  """
+  import numpy as np
+  from scipy.interpolate import CubicSpline
+
+  new_s = np.asarray(new_s_grid, dtype=float)
+  with get_hdf5file(infilename) as ref:
+    old_s = np.asarray(ref['boozer_s'])
+    old_n = np.asarray(ref['n_prof'])
+    old_rel = np.asarray(ref['rel_stages'])
+  new_n = CubicSpline(old_s, old_n, axis=1)(new_s)
+  tol = 1.0e-10 * np.max(np.abs(old_n), axis=1, keepdims=True)
+  new_n = np.where(np.abs(new_n) <= tol, 0.0, new_n)
+  negative = np.any(new_n < 0.0, axis=0)
+  if np.any(negative):
+    raise ValueError('new_grid: interpolated density of a species is negative '
+                     'at boozer_s = ' + str(new_s[negative])
+                     + '; use a different grid.')
+  count = (new_n > 0.0).sum(axis=0)
+
+  idx = np.searchsorted(old_s, new_s)
+  right = np.minimum(idx, old_s.size - 1)
+  left = np.maximum(idx - 1, 0)
+  on_old = np.isclose(old_s[right], new_s, rtol=0, atol=1e-14)
+  outside = (idx == 0) | (idx == old_s.size)
+  left = np.where(on_old | outside, right, left)
+  low = np.minimum(old_rel[left], old_rel[right])
+  high = np.maximum(old_rel[left], old_rel[right])
+  bad = (count < low) | (count > high)
+  if np.any(bad):
+    raise ValueError('new_grid: interpolated densities change the number of '
+                     'species with positive density beyond the neighbouring '
+                     'surfaces at boozer_s = ' + str(new_s[bad])
+                     + '; use a different grid.')
+  return new_n, count
+
+
 def new_grid(infilename: str, outfilename: str, new_s_grid):
   """Reinterpolate existing neo-2 profile file to new grid.
 
@@ -2182,6 +2248,10 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
   from numpy import array
   from scipy.interpolate import CubicSpline
 
+  # Densities and species counts, checked before the output file is
+  # created or replaced.
+  checked_n, int_rel_stages = _regridded_densities(infilename, new_s_grid)
+
   with get_hdf5file_replace(outfilename) as out:
     with get_hdf5file(infilename) as ref:
       # Copy everything, then change what needs to be changed.
@@ -2191,8 +2261,10 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
     new_s_grid = array(new_s_grid)
 
     sp_n = CubicSpline(out['boozer_s'], out['n_prof'], axis=1)
-    int_n = sp_n(new_s_grid)
+    int_n = checked_n
     der_n = sp_n(new_s_grid, 1)
+
+
     dset = out['n_prof']
     dset[...] = array(int_n)
     dset = out['dn_ov_ds_prof']
@@ -2221,10 +2293,8 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
     dset = out['rho_pol']
     dset[...] = array(int_rho)
 
-    sp_rel_stages = CubicSpline(out['boozer_s'], out['rel_stages'])
-    int_rel_stages = sp_rel_stages(new_s_grid)
     dset = out['rel_stages']
-    dset[...] = array(int_rel_stages)
+    dset[...] = int_rel_stages
 
     sp_vphi = CubicSpline(out['boozer_s'], out['Vphi'])
     int_vphi = sp_vphi(new_s_grid)
