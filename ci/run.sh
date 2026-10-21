@@ -45,6 +45,11 @@ load_job_environment() {
     while IFS= read -r item; do [ -z "$item" ] || export PATH="$item:$PATH"; done < "$GITHUB_PATH"
 }
 case "$tier" in
+  golden-record)
+    export SCI_ROOT=$root
+    export CMAKE_TOOLCHAIN_FILE=$src/ci/golden-toolchain.cmake
+    bash ci/golden.sh
+    ;;
   unit-tests-unit-tests)
     python3 -m venv "$root/venv"
     . "$root/venv/bin/activate"
