@@ -405,6 +405,8 @@ CONTAINS
        !****************************************************************
        ! Loop over predefined s-values
        !****************************************************************
+       ! Reuse this workspace; the single-surface extrema below still need it.
+       ALLOCATE( bmod_a(theta_n,phi_n) )
        DO k_es = 1, magfie_sarray_len
           s = magfie_sarray(k_es)
           !*************************************************************
@@ -560,7 +562,6 @@ CONTAINS
           IF (write_progress .EQ. 1) THEN
              PRINT *, 'Do Fourier'
           END IF
-          ALLOCATE( bmod_a(theta_n,phi_n) )
           ALLOCATE( bb_s_a(theta_n,phi_n) )
           ALLOCATE( bb_tb_a(theta_n,phi_n) )
           ALLOCATE( bb_pb_a(theta_n,phi_n) )
