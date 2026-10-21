@@ -36,14 +36,16 @@ The build system uses CMake with Ninja as the generator. Executables are created
 
 ## Testing
 
-Golden record tests are run via GitHub Actions on PRs. To run tests locally:
+Current migration state and continuation gates are in
+[`ci/OWNED_CI_STATE.md`](ci/OWNED_CI_STATE.md). PR events skip required CI;
+the merge queue performs authoritative native validation on owned capacity.
+To run unit tests locally:
 ```bash
 make test
 ```
 
-For PR submissions, the CI runs:
-- Lorentz and QL tests on all pushes
-- PAR tests only on pull requests (due to longer runtime)
+The native golden tier retains Lorentz, QL, performance and PAR comparisons.
+Its private input bundle must remain outside Git and public artifacts.
 
 ## Code Architecture
 
