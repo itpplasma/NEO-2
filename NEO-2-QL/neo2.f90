@@ -58,7 +58,8 @@ module neo2_ql
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
-  USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
+  USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example, &
+       check_sparse_solve_method
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
        MtOvR, Om_tE, B_rho_L_loc, xstart_cyl, isw_ripple_solver,   &
@@ -927,6 +928,8 @@ subroutine main
       write(*,*) 'Aborting...'
       stop
     end if
+
+    call check_sparse_solve_method()
   end subroutine check
 
 

@@ -59,7 +59,8 @@ PROGRAM neo2
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
-  USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
+  USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example, &
+       check_sparse_solve_method
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
   use field_eq_mod, only : use_fpol
   use neo_spline_data, only : lsw_linear_boozer
@@ -425,6 +426,7 @@ PROGRAM neo2
   END DO
 
   call sanity_check_input_parameters()
+  call check_sparse_solve_method()
 
   !! Modification by Andreas F. Martitsch (23.08.2015)
   ! multi-species part:
