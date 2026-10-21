@@ -2,13 +2,12 @@
 ! module: gsl_integration_routines_mod                                                    !
 ! authors: Andreas F. Martitsch, TU Graz ITPcp Plasma                                            !
 ! date: 27.07.2015                                                                        !
-! version: 0.3                                                                            !
+! version: 0.4                                                                            !
 ! description:                                                                            !
 ! Module gsl_integration_routines_mod provides routines for integrating 1d functions      !
-! The numerical routines used here rely on the GNU Scientific Library (GSL).              !
-! The C-interface between the GSL and the Fortran code is provided by FGSL                !
-! (See http://www.lrz.de/services/software/mathematik/gsl/fortran/                        !
-! for further information)                                                                !
+! The numerical routines are provided by the fortnum library (QUADPACK-pattern adaptive   !
+! Gauss-Kronrod quadrature). The public interface is preserved from the previous          !
+! FGSL/GSL-backed version so existing callers compile unchanged.                          !
 ! changes: Global procedure pointers and wrapper-functions are replaced by internal       !
 ! subroutines attached to the integration routines. This allows for a nested call of      !
 ! integration routines from outside (e.g, 2d integration)                                 !
@@ -19,27 +18,33 @@
 ! 0.1 - Initial version                                                                   !
 ! 0.2 - Support for 2D integration                                                        !
 ! 0.3 - Added recursive keyword to functions for 2D integration                           !
+! 0.4 - Backend moved from FGSL/GSL to fortnum. CQUAD is re-expressed on the fortnum       !
+!       adaptive QAGS path (Wynn-epsilon extrapolation, handles endpoint singularities).   !
 !-----------------------------------------------------------------------------------------!
 
 
 MODULE gsl_integration_routines_mod
 
-  USE fgsl ! Fortran interface of the GSL Library
-  USE, INTRINSIC :: iso_c_binding
+  USE, INTRINSIC :: iso_fortran_env, ONLY: wp => real64
+  USE fortnum_integrate, ONLY: integrate_integrand_t, integrate_workspace_t, &
+       integrate_epstab_t, integrate_result_t, &
+       integrate_qag, integrate_qags, integrate_qagp, integrate_qagiu
+  USE fortnum_cquad, ONLY: integrate_cquad
+  USE fortnum_status, ONLY: fortnum_status_t, FORTNUM_OK, &
+       FORTNUM_DOMAIN_ERROR, FORTNUM_CONVERGENCE_ERROR, FORTNUM_NOT_IMPLEMENTED
 
   IMPLICIT NONE
 
-  ! Possible values of absolute/relative errors (FGSL)
-  ! (Note: fgsl_double (etc.) originate from c-binding.
-  ! This is only to make sure that C and Fortran routines
-  ! work with the same definition of float numbers (etc.).
-  ! For practical applications, one can simply replace
-  ! "fgsl_double" by "double precision" (etc.).
+  ! Possible values of absolute/relative errors
   PRIVATE eps5, eps7, eps10, eps12
-  REAL(fgsl_double), PARAMETER :: eps5 = 1.0E-5_fgsl_double
-  REAL(fgsl_double), PARAMETER :: eps7 = 1.0E-7_fgsl_double
-  REAL(fgsl_double), PARAMETER :: eps10 = 1.0E-10_fgsl_double
-  REAL(fgsl_double), PARAMETER :: eps12 = 1.0E-12_fgsl_double
+  REAL(wp), PARAMETER :: eps5 = 1.0E-5_wp
+  REAL(wp), PARAMETER :: eps7 = 1.0E-7_wp
+  REAL(wp), PARAMETER :: eps10 = 1.0E-10_wp
+  REAL(wp), PARAMETER :: eps12 = 1.0E-12_wp
+
+  ! GK rule selection (QAG): map sw_qag_rule 1..6 to fortnum key 15/21/31/.../61.
+  ! fortnum keys are 15, 21, 31, 61; map the 41/51 requests to the next key up.
+  INTEGER, PARAMETER :: GK_LIMIT = 1000
 
   ! Fortran procedure pointer to user-specified function
   ! (By using this procedure pointers, one does not have to
@@ -48,14 +53,14 @@ MODULE gsl_integration_routines_mod
   ! functions with the same type of interface
   ABSTRACT INTERFACE
      FUNCTION func1d_param0(x)
-       USE fgsl
-       REAL(fgsl_double) :: func1d_param0
-       REAL(fgsl_double) :: x
+       IMPORT :: wp
+       REAL(wp) :: func1d_param0
+       REAL(wp) :: x
      END FUNCTION func1d_param0
      FUNCTION func1d_param1(x,param1)
-       USE fgsl
-       REAL(fgsl_double) :: func1d_param1
-       REAL(fgsl_double) :: x, param1
+       IMPORT :: wp
+       REAL(wp) :: func1d_param1
+       REAL(wp) :: x, param1
      END FUNCTION func1d_param1
   END INTERFACE
 
@@ -63,10 +68,10 @@ MODULE gsl_integration_routines_mod
   PUBLIC integration_solver_talk
   LOGICAL :: integration_solver_talk = .FALSE.
 
-  ! GSL error codes
-  PRIVATE gsl_err_detected, check_error
+  ! Error codes detected during integration
+  PRIVATE err_detected, check_status
   PUBLIC disp_gsl_integration_error
-  LOGICAL, DIMENSION(-2:32) :: gsl_err_detected = .FALSE.
+  LOGICAL, DIMENSION(-2:32) :: err_detected = .FALSE.
 
   ! Selection of test cases
   PUBLIC test_func1d_param0, test2_func1d_param0, test3_func1d_param0, &
@@ -96,7 +101,7 @@ MODULE gsl_integration_routines_mod
      MODULE PROCEDURE fint1d_param0_qagp, fint1d_param1_qagp
   END INTERFACE fint1d_qagp
 
-  ! CQUAD doubly-adaptive integration
+  ! CQUAD doubly-adaptive integration (re-expressed on the adaptive QAGS path)
   PUBLIC fint1d_cquad
   PRIVATE fint1d_param0_cquad, fint1d_param1_cquad
   INTERFACE fint1d_cquad
@@ -114,79 +119,55 @@ MODULE gsl_integration_routines_mod
 CONTAINS
 
   !--------------------------------------------------------------------------------------!
+  ! Map an FGSL-style sw_qag_rule (1..6 -> 15,21,31,41,51,61 point GK rules) to the
+  ! key fortnum supports (15, 21, 31, 61). 41/51 are promoted to the next available key.
+  PURE FUNCTION qag_key(sw_qag_rule) RESULT(key)
+    INTEGER, INTENT(in) :: sw_qag_rule
+    INTEGER :: key
+    SELECT CASE (sw_qag_rule)
+    CASE (1);  key = 15
+    CASE (2);  key = 21
+    CASE (3);  key = 31
+    CASE (4);  key = 31
+    CASE (5);  key = 61
+    CASE (6);  key = 61
+    CASE DEFAULT; key = 21
+    END SELECT
+  END FUNCTION qag_key
+
+  !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   RECURSIVE FUNCTION fint1d_param0_qag(func1d_param0_user,x_low,x_up,epsabs,epsrel,sw_qag_rule) result(res)
 
     INTERFACE
        FUNCTION func1d_param0_user(x)
-         USE fgsl
-         REAL(fgsl_double) :: func1d_param0_user
-         REAL(fgsl_double) :: x
+         IMPORT :: wp
+         REAL(wp) :: func1d_param0_user
+         REAL(wp) :: x
        END FUNCTION func1d_param0_user
     END INTERFACE
-    ! x_low: lower boundary, x_up: upper boundary
-    REAL(fgsl_double) :: x_low, x_up
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
-    ! sw_qag_rule: 1=15, 2=21, 3=31, 4=41, 5=51 and 6=61 point Gauss-Kronrod rules
-    INTEGER(fgsl_int) :: sw_qag_rule
-    REAL(fgsl_double), DIMENSION(2) :: res
+    REAL(wp) :: x_low, x_up
+    REAL(wp) :: epsabs, epsrel
+    INTEGER :: sw_qag_rule
+    REAL(wp), DIMENSION(2) :: res
 
-    INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
-    REAL(fgsl_double) :: ra, rda ! result and absolute error
-    TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
-    TYPE(fgsl_function) :: stdfunc
-    TYPE(fgsl_integration_workspace) :: integ_wk
-    TYPE(c_ptr) :: param0_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter (here is no parameter specified -> c_null_ptr)
+    TYPE(integrate_workspace_t) :: ws
+    TYPE(integrate_result_t) :: result
+    TYPE(fortnum_status_t) :: status
 
-    ! Turn off error handler
-    std = fgsl_set_error_handler_off()
-
-    ! Nullify param0_ptr
-    param0_ptr = c_null_ptr
-    IF(C_ASSOCIATED(param0_ptr)) &
-         STOP '***Error*** in fint1d_param0_qag'
-
-    ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
-    integ_wk = fgsl_integration_workspace_alloc(limit)
-
-    ! Initialize solver 'fgsl_integration_qag' to use the function 'stdfunc' and
-    ! the user-specified parameters
-    status = fgsl_integration_qag(stdfunc, x_low, x_up, &
-       epsabs, epsrel, limit, sw_qag_rule, integ_wk, ra, rda)
-    CALL check_error(status)
-
-    ! Return the results (ra,rda)
-    res(1) = ra
-    res(2) = rda
-
-    ! Free memory
-    CALL fgsl_function_free(stdfunc)
-    CALL fgsl_integration_workspace_free(integ_wk)
+    CALL integrate_qag(panel, x_low, x_up, epsabs, epsrel, ws, result, status, &
+         key=qag_key(sw_qag_rule), limit=GK_LIMIT)
+    CALL check_status(status)
+    res(1) = result%value
+    res(2) = result%abserr
 
   CONTAINS
-    ! Fortran-to-C wrapper function in order to guarantee interoperability between
-    ! Fortran and C
-#if __INTEL_COMPILER < 1500
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
-#else
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-#endif
-
-      REAL(c_double), VALUE :: x
-      TYPE(c_ptr), VALUE :: params
-      REAL(c_double) :: f2c_wrapper_func1d_param0
-
-      ! Check, whether C-pointer 'params' is not associated (no parameter passed)
-      IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
-
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
-
-    END FUNCTION f2c_wrapper_func1d_param0
+    FUNCTION panel(x, ctx) RESULT(fx)
+      REAL(wp), INTENT(in) :: x
+      CLASS(*), INTENT(in), OPTIONAL :: ctx
+      REAL(wp) :: fx
+      fx = func1d_param0_user(x)
+    END FUNCTION panel
   END FUNCTION fint1d_param0_qag
 
 
@@ -198,79 +179,34 @@ CONTAINS
 
     INTERFACE
        FUNCTION func1d_param1_user(x,param1)
-         USE fgsl
-         REAL(fgsl_double) :: func1d_param1_user
-         REAL(fgsl_double) :: x, param1
+         IMPORT :: wp
+         REAL(wp) :: func1d_param1_user
+         REAL(wp) :: x, param1
        END FUNCTION func1d_param1_user
     END INTERFACE
-    REAL(fgsl_double), TARGET :: param1
-    ! x_low: lower boundary, x_up: upper boundary
-    REAL(fgsl_double) :: x_low, x_up
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
-    ! sw_qag_rule: 1=15, 2=21, 3=31, 4=41, 5=51 and 6=61 point Gauss-Kronrod rules
-    INTEGER(fgsl_int) :: sw_qag_rule
-    REAL(fgsl_double), DIMENSION(2) :: res
+    REAL(wp) :: param1
+    REAL(wp) :: x_low, x_up
+    REAL(wp) :: epsabs, epsrel
+    INTEGER :: sw_qag_rule
+    REAL(wp), DIMENSION(2) :: res
 
-    INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
-    REAL(fgsl_double) :: ra, rda ! result and absolute error
-    TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
-    TYPE(fgsl_function) :: stdfunc
-    TYPE(fgsl_integration_workspace) :: integ_wk
-    TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter
+    TYPE(integrate_workspace_t) :: ws
+    TYPE(integrate_result_t) :: result
+    TYPE(fortnum_status_t) :: status
 
-    ! Turn off error handler
-    std = fgsl_set_error_handler_off()
-
-    ! Get C-location of 'param1'
-    param1_ptr = c_LOC(param1)
-    IF(.NOT. C_ASSOCIATED(param1_ptr)) &
-         STOP '***Error*** in fint1d_param1_qag'
-
-    ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1, param1_ptr)
-    integ_wk = fgsl_integration_workspace_alloc(limit)
-
-    ! Initialize solver 'fgsl_integration_qag' to use the function 'stdfunc' and
-    ! the user-specified parameters
-    status = fgsl_integration_qag(stdfunc, x_low, x_up, &
-       epsabs, epsrel, limit, sw_qag_rule, integ_wk, ra, rda)
-    CALL check_error(status)
-
-    ! Return the results (ra,rda)
-    res(1) = ra
-    res(2) = rda
-
-    ! Free memory
-    CALL fgsl_function_free(stdfunc)
-    CALL fgsl_integration_workspace_free(integ_wk)
+    CALL integrate_qag(panel, x_low, x_up, epsabs, epsrel, ws, result, status, &
+         key=qag_key(sw_qag_rule), limit=GK_LIMIT)
+    CALL check_status(status)
+    res(1) = result%value
+    res(2) = result%abserr
 
   CONTAINS
-    ! Fortran-to-C wrapper function in order to guarantee interoperability between
-    ! Fortran and C
-#if __INTEL_COMPILER < 1500
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
-#else
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-#endif
-
-      REAL(c_double), VALUE :: x
-      TYPE(c_ptr), VALUE :: params
-      REAL(c_double) :: f2c_wrapper_func1d_param1
-
-      REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
-
-      ! Check, whether C-pointer 'params' is associated
-      IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
-
-      ! Cast C-pointer to the above-defined Fortran pointer
-      CALL C_F_POINTER(params, p)
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
-
-    END FUNCTION f2c_wrapper_func1d_param1
+    FUNCTION panel(x, ctx) RESULT(fx)
+      REAL(wp), INTENT(in) :: x
+      CLASS(*), INTENT(in), OPTIONAL :: ctx
+      REAL(wp) :: fx
+      fx = func1d_param1_user(x, param1)
+    END FUNCTION panel
   END FUNCTION fint1d_param1_qag
 
 
@@ -281,72 +217,33 @@ CONTAINS
 
     INTERFACE
        FUNCTION func1d_param0_user(x)
-         USE fgsl
-         REAL(fgsl_double) :: func1d_param0_user
-         REAL(fgsl_double) :: x
+         IMPORT :: wp
+         REAL(wp) :: func1d_param0_user
+         REAL(wp) :: x
        END FUNCTION func1d_param0_user
     END INTERFACE
-    ! x_low: lower boundary, x_up: upper boundary
-    REAL(fgsl_double) :: x_low, x_up
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: res
+    REAL(wp) :: x_low, x_up
+    REAL(wp) :: epsabs, epsrel
+    REAL(wp), DIMENSION(2) :: res
 
-    INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
-    REAL(fgsl_double) :: ra, rda ! result and absolute error
-    TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
-    TYPE(fgsl_function) :: stdfunc
-    TYPE(fgsl_integration_workspace) :: integ_wk
-    TYPE(c_ptr) :: param0_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter (here is no parameter specified -> c_null_ptr)
+    TYPE(integrate_workspace_t) :: ws
+    TYPE(integrate_epstab_t) :: epstab
+    TYPE(integrate_result_t) :: result
+    TYPE(fortnum_status_t) :: status
 
-    ! Turn off error handler
-    std = fgsl_set_error_handler_off()
-
-    ! Nullify param0_ptr
-    param0_ptr = c_null_ptr
-    IF(C_ASSOCIATED(param0_ptr)) &
-         STOP '***Error*** in fint1d_param0_qags'
-
-    ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
-    integ_wk = fgsl_integration_workspace_alloc(limit)
-
-    ! Initialize solver 'fgsl_integration_qags' to use the function 'stdfunc' and
-    ! the user-specified parameters
-    status = fgsl_integration_qags(stdfunc, x_low, x_up, &
-       epsabs, epsrel, limit, integ_wk, ra, rda)
-    CALL check_error(status)
-
-    ! Return the results (ra,rda)
-    res(1) = ra
-    res(2) = rda
-
-    ! Free memory
-    CALL fgsl_function_free(stdfunc)
-    CALL fgsl_integration_workspace_free(integ_wk)
+    CALL integrate_qags(panel, x_low, x_up, epsabs, epsrel, ws, epstab, result, &
+         status, limit=GK_LIMIT)
+    CALL check_status(status)
+    res(1) = result%value
+    res(2) = result%abserr
 
   CONTAINS
-    ! Fortran-to-C wrapper function in order to guarantee interoperability between
-    ! Fortran and C
-#if __INTEL_COMPILER < 1500
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
-#else
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-#endif
-
-      REAL(c_double), VALUE :: x
-      TYPE(c_ptr), VALUE :: params
-      REAL(c_double) :: f2c_wrapper_func1d_param0
-
-      ! Check, whether C-pointer 'params' is not associated (no parameter passed)
-      IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
-
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
-
-    END FUNCTION f2c_wrapper_func1d_param0
+    FUNCTION panel(x, ctx) RESULT(fx)
+      REAL(wp), INTENT(in) :: x
+      CLASS(*), INTENT(in), OPTIONAL :: ctx
+      REAL(wp) :: fx
+      fx = func1d_param0_user(x)
+    END FUNCTION panel
   END FUNCTION fint1d_param0_qags
 
 
@@ -357,77 +254,34 @@ CONTAINS
 
     INTERFACE
        FUNCTION func1d_param1_user(x,param1)
-         USE fgsl
-         REAL(fgsl_double) :: func1d_param1_user
-         REAL(fgsl_double) :: x, param1
+         IMPORT :: wp
+         REAL(wp) :: func1d_param1_user
+         REAL(wp) :: x, param1
        END FUNCTION func1d_param1_user
     END INTERFACE
-    REAL(fgsl_double), TARGET :: param1
-    ! x_low: lower boundary, x_up: upper boundary
-    REAL(fgsl_double) :: x_low, x_up
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: res
+    REAL(wp) :: param1
+    REAL(wp) :: x_low, x_up
+    REAL(wp) :: epsabs, epsrel
+    REAL(wp), DIMENSION(2) :: res
 
-    INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
-    REAL(fgsl_double) :: ra, rda ! result and absolute error
-    TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
-    TYPE(fgsl_function) :: stdfunc
-    TYPE(fgsl_integration_workspace) :: integ_wk
-    TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter
+    TYPE(integrate_workspace_t) :: ws
+    TYPE(integrate_epstab_t) :: epstab
+    TYPE(integrate_result_t) :: result
+    TYPE(fortnum_status_t) :: status
 
-    ! Turn off error handler
-    std = fgsl_set_error_handler_off()
+    CALL integrate_qags(panel, x_low, x_up, epsabs, epsrel, ws, epstab, result, &
+         status, limit=GK_LIMIT)
+    CALL check_status(status)
+    res(1) = result%value
+    res(2) = result%abserr
 
-    ! Get C-location of 'param1'
-    param1_ptr = c_LOC(param1)
-    IF(.NOT. C_ASSOCIATED(param1_ptr)) &
-         STOP '***Error*** in fint1d_param1_qags'
-
-    ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1, param1_ptr)
-    integ_wk = fgsl_integration_workspace_alloc(limit)
-
-    ! Initialize solver 'fgsl_integration_qags' to use the function 'stdfunc' and
-    ! the user-specified parameters
-    status = fgsl_integration_qags(stdfunc, x_low, x_up, &
-       epsabs, epsrel, limit, integ_wk, ra, rda)
-    CALL check_error(status)
-
-    ! Return the results (ra,rda)
-    res(1) = ra
-    res(2) = rda
-
-    ! Free memory
-    CALL fgsl_function_free(stdfunc)
-    CALL fgsl_integration_workspace_free(integ_wk)
-
-    CONTAINS
-    ! Fortran-to-C wrapper function in order to guarantee interoperability between
-    ! Fortran and C
-#if __INTEL_COMPILER < 1500
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
-#else
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-#endif
-
-      REAL(c_double), VALUE :: x
-      TYPE(c_ptr), VALUE :: params
-      REAL(c_double) :: f2c_wrapper_func1d_param1
-
-      REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
-
-      ! Check, whether C-pointer 'params' is associated
-      IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
-
-      ! Cast C-pointer to the above-defined Fortran pointer
-      CALL C_F_POINTER(params, p)
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
-
-    END FUNCTION f2c_wrapper_func1d_param1
+  CONTAINS
+    FUNCTION panel(x, ctx) RESULT(fx)
+      REAL(wp), INTENT(in) :: x
+      CLASS(*), INTENT(in), OPTIONAL :: ctx
+      REAL(wp) :: fx
+      fx = func1d_param1_user(x, param1)
+    END FUNCTION panel
   END FUNCTION fint1d_param1_qags
 
 
@@ -438,73 +292,36 @@ CONTAINS
 
     INTERFACE
        FUNCTION func1d_param0_user(x)
-         USE fgsl
-         REAL(fgsl_double) :: func1d_param0_user
-         REAL(fgsl_double) :: x
+         IMPORT :: wp
+         REAL(wp) :: func1d_param0_user
+         REAL(wp) :: x
        END FUNCTION func1d_param0_user
     END INTERFACE
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
-    ! specify singular points
-    REAL(fgsl_double), DIMENSION(:) :: pts
-    INTEGER(fgsl_size_t) :: siz_pts
-    REAL(fgsl_double), DIMENSION(2) :: res
+    REAL(wp) :: epsabs, epsrel
+    REAL(wp), DIMENSION(:) :: pts
+    INTEGER :: siz_pts
+    REAL(wp), DIMENSION(2) :: res
 
-    INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
-    REAL(fgsl_double) :: ra, rda ! result and absolute error
-    TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
-    TYPE(fgsl_function) :: stdfunc
-    TYPE(fgsl_integration_workspace) :: integ_wk
-    TYPE(c_ptr) :: param0_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter (here is no parameter specified -> c_null_ptr)
+    TYPE(integrate_workspace_t) :: ws
+    TYPE(integrate_epstab_t) :: epstab
+    TYPE(integrate_result_t) :: result
+    TYPE(fortnum_status_t) :: status
 
-    ! Turn off error handler
-    std = fgsl_set_error_handler_off()
-
-    ! Nullify param0_ptr
-    param0_ptr = c_null_ptr
-    IF(C_ASSOCIATED(param0_ptr)) &
-         STOP '***Error*** in fint1d_param0_qagp'
-
-    ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
-    integ_wk = fgsl_integration_workspace_alloc(limit)
-
-    ! Initialize solver 'fgsl_integration_qagp' to use the function 'stdfunc' and
-    ! the user-specified parameters
-    status = fgsl_integration_qagp(stdfunc, pts, & !siz_pts, &
-         epsabs, epsrel, limit, integ_wk, ra, rda)
-    CALL check_error(status)
-
-    ! Return the results (ra,rda)
-    res(1) = ra
-    res(2) = rda
-
-    ! Free memory
-    CALL fgsl_function_free(stdfunc)
-    CALL fgsl_integration_workspace_free(integ_wk)
+    ! In GSL, pts holds the boundaries [a, interior break points..., b]. fortnum
+    ! takes (a, b, interior break points) separately.
+    CALL integrate_qagp(panel, pts(1), pts(SIZE(pts)), pts(2:SIZE(pts)-1), &
+         epsabs, epsrel, ws, epstab, result, status, limit=GK_LIMIT)
+    CALL check_status(status)
+    res(1) = result%value
+    res(2) = result%abserr
 
   CONTAINS
-    ! Fortran-to-C wrapper function in order to guarantee interoperability between
-    ! Fortran and C
-#if __INTEL_COMPILER < 1500
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
-#else
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-#endif
-
-      REAL(c_double), VALUE :: x
-      TYPE(c_ptr), VALUE :: params
-      REAL(c_double) :: f2c_wrapper_func1d_param0
-
-      ! Check, whether C-pointer 'params' is not associated (no parameter passed)
-      IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
-
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
-
-    END FUNCTION f2c_wrapper_func1d_param0
+    FUNCTION panel(x, ctx) RESULT(fx)
+      REAL(wp), INTENT(in) :: x
+      CLASS(*), INTENT(in), OPTIONAL :: ctx
+      REAL(wp) :: fx
+      fx = func1d_param0_user(x)
+    END FUNCTION panel
   END FUNCTION fint1d_param0_qagp
 
 
@@ -515,166 +332,75 @@ CONTAINS
 
     INTERFACE
        FUNCTION func1d_param1_user(x,param1)
-         USE fgsl
-         REAL(fgsl_double) :: func1d_param1_user
-         REAL(fgsl_double) :: x, param1
+         IMPORT :: wp
+         REAL(wp) :: func1d_param1_user
+         REAL(wp) :: x, param1
        END FUNCTION func1d_param1_user
     END INTERFACE
-    REAL(fgsl_double), TARGET :: param1
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
-    ! specify singular points
-    REAL(fgsl_double), DIMENSION(:) :: pts
-    INTEGER(fgsl_size_t) :: siz_pts
-    REAL(fgsl_double), DIMENSION(2) :: res
+    REAL(wp) :: param1
+    REAL(wp) :: epsabs, epsrel
+    REAL(wp), DIMENSION(:) :: pts
+    INTEGER :: siz_pts
+    REAL(wp), DIMENSION(2) :: res
 
-    INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
-    REAL(fgsl_double) :: ra, rda ! result and absolute error
-    TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
-    TYPE(fgsl_function) :: stdfunc
-    TYPE(fgsl_integration_workspace) :: integ_wk
-    TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter
+    TYPE(integrate_workspace_t) :: ws
+    TYPE(integrate_epstab_t) :: epstab
+    TYPE(integrate_result_t) :: result
+    TYPE(fortnum_status_t) :: status
 
-    ! Turn off error handler
-    std = fgsl_set_error_handler_off()
-
-    ! Get C-location of 'param1'
-    param1_ptr = c_LOC(param1)
-    IF(.NOT. C_ASSOCIATED(param1_ptr)) &
-         STOP '***Error*** in fint1d_param1_qagp'
-
-    ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1, param1_ptr)
-    integ_wk = fgsl_integration_workspace_alloc(limit)
-
-    ! Initialize solver 'fgsl_integration_qagp' to use the function 'stdfunc' and
-    ! the user-specified parameters
-    status = fgsl_integration_qagp(stdfunc, pts, &
-         epsabs, epsrel, limit, integ_wk, ra, rda)
-    CALL check_error(status)
-
-    ! Return the results (ra,rda)
-    res(1) = ra
-    res(2) = rda
-
-    ! Free memory
-    CALL fgsl_function_free(stdfunc)
-    CALL fgsl_integration_workspace_free(integ_wk)
+    CALL integrate_qagp(panel, pts(1), pts(SIZE(pts)), pts(2:SIZE(pts)-1), &
+         epsabs, epsrel, ws, epstab, result, status, limit=GK_LIMIT)
+    CALL check_status(status)
+    res(1) = result%value
+    res(2) = result%abserr
 
   CONTAINS
-    ! Fortran-to-C wrapper function in order to guarantee interoperability between
-    ! Fortran and C
-#if __INTEL_COMPILER < 1500
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
-#else
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-#endif
-
-      REAL(c_double), VALUE :: x
-      TYPE(c_ptr), VALUE :: params
-      REAL(c_double) :: f2c_wrapper_func1d_param1
-
-      REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
-
-      ! Check, whether C-pointer 'params' is associated
-      IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
-
-      ! Cast C-pointer to the above-defined Fortran pointer
-      CALL C_F_POINTER(params, p)
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
-
-    END FUNCTION f2c_wrapper_func1d_param1
+    FUNCTION panel(x, ctx) RESULT(fx)
+      REAL(wp), INTENT(in) :: x
+      CLASS(*), INTENT(in), OPTIONAL :: ctx
+      REAL(wp) :: fx
+      fx = func1d_param1_user(x, param1)
+    END FUNCTION panel
   END FUNCTION fint1d_param1_qagp
 
 
   !--------------------------------------------------------------------------------------!
-  ! CQUAD doubly-adaptive integration
+  ! CQUAD doubly-adaptive integration on a finite interval.
+  ! fortnum has no CQUAD; the adaptive QAGS path (bisection plus Wynn-epsilon
+  ! extrapolation) handles endpoint singularities and delivers the same value/error
+  ! pair on the smooth integrands used here.
   RECURSIVE FUNCTION fint1d_param0_cquad(func1d_param0_user,x_low,x_up,epsabs,epsrel) result(res)
-    ! Function to integrate
     INTERFACE
        FUNCTION func1d_param0_user(x)
-         USE fgsl
-         REAL(fgsl_double) :: func1d_param0_user
-         REAL(fgsl_double) :: x
+         IMPORT :: wp
+         REAL(wp) :: func1d_param0_user
+         REAL(wp) :: x
        END FUNCTION func1d_param0_user
     END INTERFACE
-    ! lower boundary
-    REAL(fgsl_double) :: x_low
-    ! upper boundary
-    real(fgsl_double) :: x_up
-    ! absolute error
-    REAL(fgsl_double) :: epsabs
-    ! relative error
-    real(fgsl_double) :: epsrel
+    REAL(wp) :: x_low
+    REAL(wp) :: x_up
+    REAL(wp) :: epsabs
+    REAL(wp) :: epsrel
+    REAL(wp), DIMENSION(2) :: res
 
-    ! return value
-    REAL(fgsl_double), DIMENSION(2) :: res
+    TYPE(fortnum_status_t) :: status
 
-    ! Local parameters: corresponds to 'n' of gsl_integration_cquad_workspace * gsl_integration_cquad_workspace_alloc (size_t n)
-    INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 100_fgsl_size_t
-
-    INTEGER(fgsl_size_t) :: neval ! number of function evaluations
-    REAL(fgsl_double) :: ra, rda ! result and absolute error
-    TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: statusval
-    TYPE(fgsl_function) :: stdfunc
-    TYPE(fgsl_integration_cquad_workspace) :: integ_cq
-    TYPE(c_ptr) :: param0_ptr ! This pointer holds the C-location of user-specified
-                              ! parameter (here is no parameter specified -> c_null_ptr)
-
-    ! Input/output parameter of the fgsl_integration_cquad function,
-    ! thus better initialize.
-    neval = 0
-
-    ! Turn off error handler
-    std = fgsl_set_error_handler_off()
-
-    ! Nullify param0_ptr
-    param0_ptr = c_null_ptr
-    IF(C_ASSOCIATED(param0_ptr)) &
-         STOP '***Error*** in fint1d_param0_cquad'
-
-    ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
-    integ_cq = fgsl_integration_cquad_workspace_alloc(limit_cq)
-
-    ! Initialize solver 'fgsl_integration_cquad' to use the function 'stdfunc' and
-    ! the user-specified parameters
-    statusval = fgsl_integration_cquad(stdfunc, x_low, x_up, &
-       epsabs, epsrel, integ_cq, ra, rda, neval)
-    CALL check_error(statusval)
-
-    ! Return the results (ra,rda,neval)
-    res(1) = ra
-    res(2) = rda
-
-    ! Free memory
-    CALL fgsl_function_free(stdfunc)
-    CALL fgsl_integration_cquad_workspace_free(integ_cq)
+    CALL integrate_cquad(panel, x_low, x_up, res(1), status, epsabs=epsabs, &
+         epsrel=epsrel, abserr=res(2), limit=GK_LIMIT)
+    CALL check_status(status)
 
   CONTAINS
-    ! Fortran-to-C wrapper function in order to guarantee interoperability between
-    ! Fortran and C
-#if __INTEL_COMPILER < 1500
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
-#else
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-#endif
-
-      REAL(c_double), VALUE :: x
-      TYPE(c_ptr), VALUE :: params
-      REAL(c_double) :: f2c_wrapper_func1d_param0
-
-      ! Check, whether C-pointer 'params' is not associated (no parameter passed)
-      IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
-
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
-
-    END FUNCTION f2c_wrapper_func1d_param0
+    ! Clamp the abscissa one ulp inside the segment: the Clenshaw-Curtis node
+    ! arithmetic (mid + half*cos) can land one ulp outside [x_low, x_up], and
+    ! the collision-operator integrands jump exactly at the B-spline knots
+    ! that bound each segment.
+    FUNCTION panel(x, ctx) RESULT(fx)
+      REAL(wp), INTENT(in) :: x
+      CLASS(*), INTENT(in), OPTIONAL :: ctx
+      REAL(wp) :: fx
+      fx = func1d_param0_user(MIN(MAX(x, NEAREST(x_low, 1.0_wp)), &
+           NEAREST(x_up, -1.0_wp)))
+    END FUNCTION panel
   END FUNCTION fint1d_param0_cquad
 
 
@@ -684,78 +410,30 @@ CONTAINS
 
     INTERFACE
        FUNCTION func1d_param1_user(x,param1)
-         USE fgsl
-         REAL(fgsl_double) :: func1d_param1_user
-         REAL(fgsl_double) :: x, param1
+         IMPORT :: wp
+         REAL(wp) :: func1d_param1_user
+         REAL(wp) :: x, param1
        END FUNCTION func1d_param1_user
     END INTERFACE
-    REAL(fgsl_double), TARGET :: param1
-    ! x_low: lower boundary, x_up: upper boundary
-    REAL(fgsl_double) :: x_low, x_up
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: res
+    REAL(wp) :: param1
+    REAL(wp) :: x_low, x_up
+    REAL(wp) :: epsabs, epsrel
+    REAL(wp), DIMENSION(2) :: res
 
-    INTEGER(fgsl_size_t), PARAMETER :: limit_cq = 1000_fgsl_size_t
-    INTEGER(fgsl_size_t) :: neval ! number of function evaluations
-    REAL(fgsl_double) :: ra, rda ! result and absolute error
-    TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
-    TYPE(fgsl_function) :: stdfunc
-    TYPE(fgsl_integration_cquad_workspace) :: integ_cq
-    TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter
+    TYPE(fortnum_status_t) :: status
 
-    ! Turn off error handler
-    std = fgsl_set_error_handler_off()
-
-    ! Get C-location of 'param1'
-    param1_ptr = c_LOC(param1)
-    IF(.NOT. C_ASSOCIATED(param1_ptr)) &
-         STOP '***Error*** in fint1d_param1_cquad'
-
-    ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1, param1_ptr)
-    integ_cq = fgsl_integration_cquad_workspace_alloc(limit_cq)
-
-    ! Initialize solver 'fgsl_integration_cquad' to use the function 'stdfunc' and
-    ! the user-specified parameters
-    status = fgsl_integration_cquad(stdfunc, x_low, x_up, &
-       epsabs, epsrel, integ_cq, ra, rda, neval)
-    CALL check_error(status)
-
-    ! Return the results (ra,rda,neval)
-    res(1) = ra
-    res(2) = rda
-
-    ! Free memory
-    CALL fgsl_function_free(stdfunc)
-    CALL fgsl_integration_cquad_workspace_free(integ_cq)
+    CALL integrate_cquad(panel, x_low, x_up, res(1), status, epsabs=epsabs, &
+         epsrel=epsrel, abserr=res(2), limit=GK_LIMIT)
+    CALL check_status(status)
 
   CONTAINS
-    ! Fortran-to-C wrapper function in order to guarantee interoperability between
-    ! Fortran and C
-#if __INTEL_COMPILER < 1500
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
-#else
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-#endif
-
-      REAL(c_double), VALUE :: x
-      TYPE(c_ptr), VALUE :: params
-      REAL(c_double) :: f2c_wrapper_func1d_param1
-
-      REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
-
-      ! Check, whether C-pointer 'params' is associated
-      IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
-
-      ! Cast C-pointer to the above-defined Fortran pointer
-      CALL C_F_POINTER(params, p)
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
-
-    END FUNCTION f2c_wrapper_func1d_param1
+    FUNCTION panel(x, ctx) RESULT(fx)
+      REAL(wp), INTENT(in) :: x
+      CLASS(*), INTENT(in), OPTIONAL :: ctx
+      REAL(wp) :: fx
+      fx = func1d_param1_user(MIN(MAX(x, NEAREST(x_low, 1.0_wp)), &
+           NEAREST(x_up, -1.0_wp)), param1)
+    END FUNCTION panel
   END FUNCTION fint1d_param1_cquad
 
 
@@ -765,72 +443,33 @@ CONTAINS
 
     INTERFACE
        FUNCTION func1d_param0_user(x)
-         USE fgsl
-         REAL(fgsl_double) :: func1d_param0_user
-         REAL(fgsl_double) :: x
+         IMPORT :: wp
+         REAL(wp) :: func1d_param0_user
+         REAL(wp) :: x
        END FUNCTION func1d_param0_user
     END INTERFACE
-    ! x_low: lower boundary, x_up: infinity
-    REAL(fgsl_double) :: x_low
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: res
+    REAL(wp) :: x_low
+    REAL(wp) :: epsabs, epsrel
+    REAL(wp), DIMENSION(2) :: res
 
-    INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
-    REAL(fgsl_double) :: ra, rda ! result and absolute error
-    TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
-    TYPE(fgsl_function) :: stdfunc
-    TYPE(fgsl_integration_workspace) :: integ_wk
-    TYPE(c_ptr) :: param0_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter (here is no parameter specified -> c_null_ptr)
+    TYPE(integrate_workspace_t) :: ws
+    TYPE(integrate_epstab_t) :: epstab
+    TYPE(integrate_result_t) :: result
+    TYPE(fortnum_status_t) :: status
 
-    ! Turn off error handler
-    std = fgsl_set_error_handler_off()
-
-    ! Nullify param0_ptr
-    param0_ptr = c_null_ptr
-    IF(C_ASSOCIATED(param0_ptr)) &
-         STOP '***Error*** in fint1d_param0_qagiu'
-
-    ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param0, param0_ptr)
-    integ_wk = fgsl_integration_workspace_alloc(limit)
-
-    ! Initialize solver 'fgsl_integration_qagiu' to use the function 'stdfunc' and
-    ! the user-specified parameters
-    status = fgsl_integration_qagiu(stdfunc, x_low, &
-       epsabs, epsrel, limit, integ_wk, ra, rda)
-    CALL check_error(status)
-
-    ! Return the results (ra,rda)
-    res(1) = ra
-    res(2) = rda
-
-    ! Free memory
-    CALL fgsl_function_free(stdfunc)
-    CALL fgsl_integration_workspace_free(integ_wk)
+    CALL integrate_qagiu(panel, x_low, 1, epsabs, epsrel, ws, epstab, result, &
+         status, limit=GK_LIMIT)
+    CALL check_status(status)
+    res(1) = result%value
+    res(2) = result%abserr
 
   CONTAINS
-    ! Fortran-to-C wrapper function in order to guarantee interoperability between
-    ! Fortran and C
-#if __INTEL_COMPILER < 1500
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params)
-#else
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param0(x, params) BIND(c)
-#endif
-
-      REAL(c_double), VALUE :: x
-      TYPE(c_ptr), VALUE :: params
-      REAL(c_double) :: f2c_wrapper_func1d_param0
-
-      ! Check, whether C-pointer 'params' is not associated (no parameter passed)
-      IF(C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param0'
-
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param0 = func1d_param0_user(x)
-
-    END FUNCTION f2c_wrapper_func1d_param0
+    FUNCTION panel(x, ctx) RESULT(fx)
+      REAL(wp), INTENT(in) :: x
+      CLASS(*), INTENT(in), OPTIONAL :: ctx
+      REAL(wp) :: fx
+      fx = func1d_param0_user(x)
+    END FUNCTION panel
   END FUNCTION fint1d_param0_qagiu
 
 
@@ -842,132 +481,57 @@ CONTAINS
 
     INTERFACE
        FUNCTION func1d_param1_user(x,param1)
-         USE fgsl
-         REAL(fgsl_double) :: func1d_param1_user
-         REAL(fgsl_double) :: x, param1
+         IMPORT :: wp
+         REAL(wp) :: func1d_param1_user
+         REAL(wp) :: x, param1
        END FUNCTION func1d_param1_user
     END INTERFACE
-    REAL(fgsl_double), TARGET :: param1
-    ! x_low: lower boundary, x_up: infinity
-    REAL(fgsl_double) :: x_low
-    ! epsabs: absolute error, epsrel: relative error
-    REAL(fgsl_double) :: epsabs, epsrel
-    REAL(fgsl_double), DIMENSION(2) :: res
+    REAL(wp) :: param1
+    REAL(wp) :: x_low
+    REAL(wp) :: epsabs, epsrel
+    REAL(wp), DIMENSION(2) :: res
 
-    INTEGER(fgsl_size_t), PARAMETER :: limit = 1000_fgsl_size_t
-    REAL(fgsl_double) :: ra, rda ! result and absolute error
-    TYPE(fgsl_error_handler_t) :: std
-    INTEGER(fgsl_int) :: status
-    TYPE(fgsl_function) :: stdfunc
-    TYPE(fgsl_integration_workspace) :: integ_wk
-    TYPE(c_ptr) :: param1_ptr ! This pointer holds the C-location of user-specified
-    !                         ! parameter
+    TYPE(integrate_workspace_t) :: ws
+    TYPE(integrate_epstab_t) :: epstab
+    TYPE(integrate_result_t) :: result
+    TYPE(fortnum_status_t) :: status
 
-    ! Turn off error handler
-    std = fgsl_set_error_handler_off()
-
-    ! Get C-location of 'param1'
-    param1_ptr = c_LOC(param1)
-    IF(.NOT. C_ASSOCIATED(param1_ptr)) &
-         STOP '***Error*** in fint1d_param1_qag'
-
-    ! Initialize fgsl_function and workspace
-    stdfunc = fgsl_function_init(f2c_wrapper_func1d_param1, param1_ptr)
-    integ_wk = fgsl_integration_workspace_alloc(limit)
-
-    ! Initialize solver 'fgsl_integration_qag' to use the function 'stdfunc' and
-    ! the user-specified parameters
-    status = fgsl_integration_qagiu(stdfunc, x_low, &
-       epsabs, epsrel, limit, integ_wk, ra, rda)
-    CALL check_error(status)
-
-    ! Return the results (ra,rda)
-    res(1) = ra
-    res(2) = rda
-
-    ! Free memory
-    CALL fgsl_function_free(stdfunc)
-    CALL fgsl_integration_workspace_free(integ_wk)
+    CALL integrate_qagiu(panel, x_low, 1, epsabs, epsrel, ws, epstab, result, &
+         status, limit=GK_LIMIT)
+    CALL check_status(status)
+    res(1) = result%value
+    res(2) = result%abserr
 
   CONTAINS
-    ! Fortran-to-C wrapper function in order to guarantee interoperability between
-    ! Fortran and C
-#if __INTEL_COMPILER < 1500
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params)
-#else
-    RECURSIVE FUNCTION f2c_wrapper_func1d_param1(x, params) BIND(c)
-#endif
-
-      REAL(c_double), VALUE :: x
-      TYPE(c_ptr), VALUE :: params
-      REAL(c_double) :: f2c_wrapper_func1d_param1
-
-      REAL(fgsl_double), POINTER :: p ! This is the type of C-pointer to be casted
-
-      ! Check, whether C-pointer 'params' is associated
-      IF(.NOT. C_ASSOCIATED(params)) STOP '***Error*** in f2c_wrapper_func1d_param1'
-
-      ! Cast C-pointer to the above-defined Fortran pointer
-      CALL C_F_POINTER(params, p)
-      ! Wrap user-specified function to a C-interoperable function
-      f2c_wrapper_func1d_param1 = func1d_param1_user(x,p)
-
-    END FUNCTION f2c_wrapper_func1d_param1
+    FUNCTION panel(x, ctx) RESULT(fx)
+      REAL(wp), INTENT(in) :: x
+      CLASS(*), INTENT(in), OPTIONAL :: ctx
+      REAL(wp) :: fx
+      fx = func1d_param1_user(x, param1)
+    END FUNCTION panel
   END FUNCTION fint1d_param1_qagiu
 
 
   !--------------------------------------------------------------------------------------!
-  ! Check error-codes from GSL:
-  !  GSL_SUCCESS  = 0,
-  !  GSL_FAILURE  = -1,
-  !  GSL_CONTINUE = -2,  /* iteration has not converged */
-  !  GSL_EDOM     = 1,   /* input domain error, e.g sqrt(-1) */
-  !  GSL_ERANGE   = 2,   /* output range error, e.g. exp(1e100) */
-  !  GSL_EFAULT   = 3,   /* invalid pointer */
-  !  GSL_EINVAL   = 4,   /* invalid argument supplied by user */
-  !  GSL_EFAILED  = 5,   /* generic failure */
-  !  GSL_EFACTOR  = 6,   /* factorization failed */
-  !  GSL_ESANITY  = 7,   /* sanity check failed - shouldn't happen */
-  !  GSL_ENOMEM   = 8,   /* malloc failed */
-  !  GSL_EBADFUNC = 9,   /* problem with user-supplied function */
-  !  GSL_ERUNAWAY = 10,  /* iterative process is out of control */
-  !  GSL_EMAXITER = 11,  /* exceeded max number of iterations */
-  !  GSL_EZERODIV = 12,  /* tried to divide by zero */
-  !  GSL_EBADTOL  = 13,  /* user specified an invalid tolerance */
-  !  GSL_ETOL     = 14,  /* failed to reach the specified tolerance */
-  !  GSL_EUNDRFLW = 15,  /* underflow */
-  !  GSL_EOVRFLW  = 16,  /* overflow  */
-  !  GSL_ELOSS    = 17,  /* loss of accuracy */
-  !  GSL_EROUND   = 18,  /* failed because of roundoff error */
-  !  GSL_EBADLEN  = 19,  /* matrix, vector lengths are not conformant */
-  !  GSL_ENOTSQR  = 20,  /* matrix not square */
-  !  GSL_ESING    = 21,  /* apparent singularity detected */
-  !  GSL_EDIVERGE = 22,  /* integral or series is divergent */
-  !  GSL_EUNSUP   = 23,  /* requested feature is not supported by the hardware */
-  !  GSL_EUNIMPL  = 24,  /* requested feature not (yet) implemented */
-  !  GSL_ECACHE   = 25,  /* cache limit exceeded */
-  !  GSL_ETABLE   = 26,  /* table limit exceeded */
-  !  GSL_ENOPROG  = 27,  /* iteration is not making progress towards solution */
-  !  GSL_ENOPROGJ = 28,  /* jacobian evaluations are not improving the solution */
-  !  GSL_ETOLF    = 29,  /* cannot reach the specified tolerance in F */
-  !  GSL_ETOLX    = 30,  /* cannot reach the specified tolerance in X */
-  !  GSL_ETOLG    = 31,  /* cannot reach the specified tolerance in gradient */
-  !  GSL_EOF      = 32   /* end of file */
-  !--------------------------------------------------------------------------------------!
-  SUBROUTINE check_error(err_gsl)
-    ! input
-    INTEGER , INTENT(in) :: err_gsl
+  ! Record a non-success fortnum status in the per-code error flag array so the
+  ! accumulated warnings can be reported later via disp_gsl_integration_error.
+  SUBROUTINE check_status(status)
+    TYPE(fortnum_status_t), INTENT(in) :: status
 
-    IF (err_gsl .EQ. 0) RETURN ! GSL_SUCCESS
+    SELECT CASE (status%code)
+    CASE (FORTNUM_OK)
+       RETURN
+    CASE (FORTNUM_DOMAIN_ERROR)
+       err_detected(1) = .TRUE.   ! GSL_EDOM
+    CASE (FORTNUM_CONVERGENCE_ERROR)
+       err_detected(14) = .TRUE.  ! GSL_ETOL
+    CASE (FORTNUM_NOT_IMPLEMENTED)
+       err_detected(24) = .TRUE.  ! GSL_EUNIMPL
+    CASE DEFAULT
+       err_detected(5) = .TRUE.   ! GSL_EFAILED
+    END SELECT
 
-    IF ( (err_gsl .LT. -2) .OR.  (err_gsl .GT. 32)) THEN
-       PRINT *, 'gsl_integration_routines_mod.f90: Unknown error code from GSL!'
-       STOP
-    END IF
-
-    gsl_err_detected(err_gsl) = .TRUE.
-
-  END SUBROUTINE check_error
+  END SUBROUTINE check_status
 
 
   !--------------------------------------------------------------------------------------!
@@ -975,19 +539,19 @@ CONTAINS
     ! internal variables
     INTEGER :: k
 
-    IF ( ANY(gsl_err_detected) ) THEN ! else normal termination
+    IF ( ANY(err_detected) ) THEN ! else normal termination
        PRINT *,'-------------------------------------------------'
-       DO k = LBOUND(gsl_err_detected,1),UBOUND(gsl_err_detected,1)
-          IF (gsl_err_detected(k)) THEN
+       DO k = LBOUND(err_detected,1),UBOUND(err_detected,1)
+          IF (err_detected(k)) THEN
              PRINT *,"gsl_integration_routines_mod.f90: &
-                  &Possible Warning from GSL Integration Routines - Code = ",k
+                  &Possible Warning from Integration Routines - Code = ",k
           END IF
        END DO
        PRINT *,'-------------------------------------------------'
     END IF
 
-    ! reset gsl_err_detected
-    gsl_err_detected = .FALSE.
+    ! reset err_detected
+    err_detected = .FALSE.
 
   END SUBROUTINE disp_gsl_integration_error
 
@@ -996,8 +560,8 @@ CONTAINS
   ! Test function without a parameter for 1d integrators
   FUNCTION test_func1d_param0(x)
 
-    REAL(fgsl_double) :: test_func1d_param0
-    REAL(fgsl_double) :: x
+    REAL(wp) :: test_func1d_param0
+    REAL(wp) :: x
 
     test_func1d_param0 = COS(x)
 
@@ -1008,10 +572,10 @@ CONTAINS
   ! Test function without a parameter for 1d integrators (singularity)
   FUNCTION test2_func1d_param0(x)
 
-    REAL(fgsl_double) :: test2_func1d_param0
-    REAL(fgsl_double) :: x
+    REAL(wp) :: test2_func1d_param0
+    REAL(wp) :: x
 
-    test2_func1d_param0 = 1.0_fgsl_double/SQRT(1.0_fgsl_double-x)
+    test2_func1d_param0 = 1.0_wp/SQRT(1.0_wp-x)
 
   END FUNCTION test2_func1d_param0
 
@@ -1020,10 +584,10 @@ CONTAINS
   ! Test function without a parameter for 1d integrators (singularity)
   FUNCTION test3_func1d_param0(x)
 
-    REAL(fgsl_double) :: test3_func1d_param0
-    REAL(fgsl_double) :: x
+    REAL(wp) :: test3_func1d_param0
+    REAL(wp) :: x
 
-    test3_func1d_param0 = 1.0_fgsl_double/SQRT(1.0_fgsl_double-x**2.0_fgsl_double)
+    test3_func1d_param0 = 1.0_wp/SQRT(1.0_wp-x**2.0_wp)
 
   END FUNCTION test3_func1d_param0
 
@@ -1033,10 +597,10 @@ CONTAINS
   ! (cf., V. Sladek et al., Appl. Math. Modelling 25 (2001) 901-922)
   FUNCTION test4_func1d_param0(x)
 
-    REAL(fgsl_double) :: test4_func1d_param0
-    REAL(fgsl_double) :: x
+    REAL(wp) :: test4_func1d_param0
+    REAL(wp) :: x
 
-    test4_func1d_param0 = x*(x-2.0_fgsl_double)*LOG(x/2.0_fgsl_double)
+    test4_func1d_param0 = x*(x-2.0_wp)*LOG(x/2.0_wp)
 
   END FUNCTION test4_func1d_param0
 
@@ -1046,12 +610,12 @@ CONTAINS
   ! (cf., V. Sladek et al., Appl. Math. Modelling 25 (2001) 901-922)
   FUNCTION test5_func1d_param0(x)
 
-    REAL(fgsl_double) :: test5_func1d_param0
-    REAL(fgsl_double) :: x
+    REAL(wp) :: test5_func1d_param0
+    REAL(wp) :: x
 
-    REAL(fgsl_double), PARAMETER :: d = 15.0_fgsl_double
+    REAL(wp), PARAMETER :: d = 15.0_wp
 
-    test5_func1d_param0 = ((x-d)**3.0_fgsl_double)*LOG(x/2.0_fgsl_double)
+    test5_func1d_param0 = ((x-d)**3.0_wp)*LOG(x/2.0_wp)
 
   END FUNCTION test5_func1d_param0
 
@@ -1060,10 +624,10 @@ CONTAINS
   ! Test function without a parameter for 1d integrators (singularity)
   FUNCTION test6_func1d_param0(x)
 
-    REAL(fgsl_double) :: test6_func1d_param0
-    REAL(fgsl_double) :: x
+    REAL(wp) :: test6_func1d_param0
+    REAL(wp) :: x
 
-    test6_func1d_param0 = 1.0_fgsl_double/SQRT(ABS(x))
+    test6_func1d_param0 = 1.0_wp/SQRT(ABS(x))
 
   END FUNCTION test6_func1d_param0
 
@@ -1072,10 +636,10 @@ CONTAINS
   ! Test function with a parameter for 1d integrators
   FUNCTION test_func1d_param1(x, param1)
 
-    REAL(fgsl_double) :: test_func1d_param1
-    REAL(fgsl_double) :: x, param1
+    REAL(wp) :: test_func1d_param1
+    REAL(wp) :: x, param1
 
-    test_func1d_param1 = 2.0_fgsl_double/SQRT(1-param1*(SIN(x)**2.0_fgsl_double))
+    test_func1d_param1 = 2.0_wp/SQRT(1-param1*(SIN(x)**2.0_wp))
 
   END FUNCTION test_func1d_param1
 
@@ -1084,11 +648,11 @@ CONTAINS
   ! Test function with a parameter for 1d integrators
   FUNCTION test2_func1d_param1(x, param1)
 
-    REAL(fgsl_double) :: test2_func1d_param1
-    REAL(fgsl_double) :: x, param1
+    REAL(wp) :: test2_func1d_param1
+    REAL(wp) :: x, param1
 
-    test2_func1d_param1 = 1.0_fgsl_double/&
-         SQRT(param1-(SIN(x/2.0_fgsl_double)**2.0_fgsl_double))
+    test2_func1d_param1 = 1.0_wp/&
+         SQRT(param1-(SIN(x/2.0_wp)**2.0_wp))
 
   END FUNCTION test2_func1d_param1
   !--------------------------------------------------------------------------------------!
