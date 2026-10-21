@@ -4,7 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
   merge_group:
-
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 concurrency:
   # Only commits cancel a running job; a label event must never cancel it (its
   # run is skipped below unless full-ci, and a skipped required check passes).
@@ -17,10 +20,7 @@ jobs:
     # Full tier: runs in the merge queue. Pull requests, including stacked
     # layers, skip the golden record unless labeled full-ci.
     if: >-
-      github.event_name == 'merge_group' ||
-      (github.event_name == 'pull_request' && github.event.pull_request.draft == false &&
-      (github.event.action != 'labeled' || github.event.label.name == 'full-ci') &&
-      contains(github.event.pull_request.labels.*.name, 'full-ci'))
+      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (github.event_name == 'merge_group' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false && (github.event.action != 'labeled' || github.event.label.name == 'full-ci') && contains(github.event.pull_request.labels.*.name, 'full-ci')))
 
     env:
       CC: gcc
@@ -53,14 +53,14 @@ jobs:
             install -y --reinstall libopenblas-dev pkg-config
           sudo apt-get -o Dir::Cache::archives="$RUNNER_TEMP/neo2-apt-archives" \
             install -y --reinstall openmpi-bin openmpi-common libopenmpi-dev
-          
+
           # Verify BLAS can be found
           pkg-config --exists openblas && echo "OpenBLAS pkg-config found" || echo "Warning: OpenBLAS pkg-config not found"
-          
+
           # Verify MPI can be found
           pkg-config --exists ompi && echo "OpenMPI pkg-config found" || echo "Warning: OpenMPI pkg-config not found"
           which mpifort && echo "mpifort found at: $(which mpifort)" || echo "Warning: mpifort not found"
-          
+
           # Set environment variables to help CMake
           echo "BLA_VENDOR=OpenBLAS" >> "$GITHUB_ENV"
           echo "MPI_HOME=/usr" >> "$GITHUB_ENV"
@@ -87,7 +87,7 @@ jobs:
 
           cd data
           echo "data_dir=$(pwd)" >> "$GITHUB_OUTPUT"
-          
+
       - name: Install libneo python required by NEO-2 python
         run: |
           set -euo pipefail
