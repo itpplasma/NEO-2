@@ -268,6 +268,8 @@ program test_boozmn_read
   call neo_read_boozmn()
   call check_asymmetric_sign_conversion(failures)
 
+  call check_axisymmetric_flux_invariance(failures)
+
   if (failures == 0) then
     print *, 'All tests passed!'
     print *, '  pass 1: ns =', ns, '  mnmax =', mnmax, '  nfp =', nfp
@@ -282,6 +284,33 @@ program test_boozmn_read
   end if
 
 contains
+
+  subroutine check_axisymmetric_flux_invariance(failures)
+    integer, intent(inout) :: failures
+    integer :: periods, orientation
+    real(dp) :: expected_flux
+    real(dp), parameter :: pi = acos(-1.0_dp), edge_flux = 1.7_dp
+
+    ! The same axisymmetric spectra and prescribed full-torus flux are read
+    ! with different period counts. This relabeling cannot change the flux.
+    do orientation = -1, 1, 2
+      expected_flux = orientation*edge_flux
+      do periods = 1, 5, 2
+        call reset_neo_input()
+        call write_symmetric_boozmn_fixture('boozmn_flux.nc', periods, expected_flux)
+        inp_swi = INP_SWI_BOOZMN
+        max_m_mode = 9999
+        max_n_mode = 9999
+        in_file = 'boozmn_flux.nc'
+        call neo_read_boozmn()
+        if (abs(flux - expected_flux) > 1.0e-12_dp .or. &
+            abs(psi_pr - abs(expected_flux)/(2*pi)) > 1.0e-12_dp) then
+          print *, 'FAIL: full-torus flux, nfp =', periods, flux, expected_flux
+          failures = failures + 1
+        end if
+      end do
+    end do
+  end subroutine check_axisymmetric_flux_invariance
 
   subroutine reset_neo_input()
     if (allocated(bmnc))     deallocate(bmnc)
@@ -430,8 +459,10 @@ contains
     end if
   end subroutine check_asymmetric_sign_conversion
 
-  subroutine write_symmetric_boozmn_fixture(path)
+  subroutine write_symmetric_boozmn_fixture(path, periods, edge_flux)
     character(len=*), intent(in) :: path
+    integer, intent(in), optional :: periods
+    real(dp), intent(in), optional :: edge_flux
 
     integer, parameter :: ns_full = 3
     integer, parameter :: nsurf_half = 1
@@ -500,7 +531,13 @@ contains
     phi_file = [0.0_dp, 0.5_dp, 1.0_dp]
 
     call check_nc(nf90_put_var(ncid, var_ns, ns_full), 'write ns_b')
-    call check_nc(nf90_put_var(ncid, var_nfp, 1), 'write nfp_b')
+    if (present(periods)) then
+      ixn_file = 0
+      call check_nc(nf90_put_var(ncid, var_nfp, periods), 'write nfp_b')
+    else
+      call check_nc(nf90_put_var(ncid, var_nfp, 1), 'write nfp_b')
+    end if
+    if (present(edge_flux)) phi_file = [0.0_dp, 0.5_dp, 1.0_dp]*edge_flux
     call check_nc(nf90_put_var(ncid, var_mboz, 2), 'write mboz_b')
     call check_nc(nf90_put_var(ncid, var_nboz, 1), 'write nboz_b')
     call check_nc(nf90_put_var(ncid, var_mnboz, mn_modes), 'write mnboz_b')
@@ -517,6 +554,7 @@ contains
     coeff(1,1) = SYM_B00
     coeff(2,1) = SYM_BC11
     coeff(3,1) = SYM_BC2M1
+    if (present(periods)) coeff(2:3,1) = 0.0_dp
     call check_nc(nf90_put_var(ncid, var_bmnc, coeff), 'write bmnc_b')
     coeff = 0.0_dp
     coeff(1,1) = 1.0_dp
