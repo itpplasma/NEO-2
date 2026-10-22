@@ -69,6 +69,7 @@ module neo2_ql
   ! derivative of iota for non-local NTV computations
   ! (with magnetic shear)
   use neo_magfie, only : isw_mag_shear
+  use phi_ma_response_mod, only: phi_m, delta_m, phi_ma_m
 
   use neo_spline_data, only : lsw_linear_boozer
   USE neo_sub_mod, ONLY : neo_read_control ! only used for preparation of multi-spec input
@@ -246,7 +247,7 @@ module neo2_ql
   ! Extra input for NTV computation
   NAMELIST /ntv_input/                                                        &
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, Om_tE, B_rho_L_loc,  &
-       isw_ripple_solver, isw_mag_shear
+       isw_ripple_solver, isw_mag_shear, phi_m, delta_m, phi_ma_m
 
 contains
 
@@ -896,6 +897,9 @@ subroutine main
     B_rho_L_loc = 0.0d0
     isw_ripple_solver = 1
     isw_mag_shear = 0
+    phi_m = (0.0d0, 0.0d0)
+    delta_m = (0.0d0, 0.0d0)
+    phi_ma_m = 0
     !! End Modification by Andreas F. Martitsch (14.07.2015)
 
     use_fpol = .false. ! to switch off some features, which are untested with neo-2
@@ -907,6 +911,14 @@ subroutine main
 
 
   subroutine check()
+    if (phi_m /= (0.0d0, 0.0d0) .or. delta_m /= (0.0d0, 0.0d0)) then
+      if (isw_ripple_solver /= 3 .or. isw_qflux_NA /= 1 .or. &
+          magnetic_device /= 0 .or. isw_axisymm /= 1 .or. &
+          mag_coordinates /= 1 .or. prop_reconstruct /= 0) &
+          error stop 'Phi^MA requires the local tokamak Arnoldi O2 NA path'
+      if (.not. lsw_multispecies) &
+          error stop 'Phi^MA requires explicit species profiles (lsw_multispecies)'
+    end if
     if (any(t_vec < 0.0)) then
       write(*,*) 'ERROR: negative temperature.'
       write(*,*) '  Temperature should be >= 0'
