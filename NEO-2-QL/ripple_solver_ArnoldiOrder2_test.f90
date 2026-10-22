@@ -80,6 +80,7 @@ subroutine ripple_solver_ArnoldiO2( &
                        MtOvR_spec, isw_calc_Er, B_rho_L_loc_spec, isw_calc_MagDrift
     use ntv_mod, only: get_Er, get_B_rho_L_loc
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
+    use phi1_mod, only: isw_phi1, phi1_kinetic_response_pending
   !! End Modification by Andreas F. Martitsch (14.07.2015)
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
@@ -3251,6 +3252,7 @@ subroutine ripple_solver_ArnoldiO2( &
     amat_sp(nz_per_neg + 1:nz_asymm) = amat_asymm(nz_per_neg + 1:nz_asymm)*rotfactor
 
     problem_type = .FALSE.
+    if (isw_phi1 /= 0) call phi1_kinetic_response_pending()
     call solve_eqs(.TRUE.)
   !! Modification by Andreas F. Martitsch (23.08.2015)
     ! NEO-2 can treat now multiple species -> qflux is now a 4D array

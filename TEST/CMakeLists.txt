@@ -36,6 +36,16 @@ set_tests_properties(nrutil_test PROPERTIES
 
 add_subdirectory(mympilib)
 
+add_executable(test_phi1_qn test_phi1_qn.f90)
+target_link_libraries(test_phi1_qn neo2_ql)
+add_test(NAME phi1_qn_test COMMAND test_phi1_qn
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_qn_2x2.nml")
+set_tests_properties(phi1_qn_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 # Test executable for er_rotation module
 add_executable(test_er_rotation test_er_rotation.f90)
 target_link_libraries(test_er_rotation neo2_ql)

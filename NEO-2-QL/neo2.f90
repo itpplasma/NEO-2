@@ -7,6 +7,8 @@ module neo2_ql
   USE hdf5_tools
   use system_utility, only : get_rusage
   use rusage_type, only : fortran_rusage, write_fortran_rusage
+    use phi1_mod, only: isw_phi1, phi1_num_m, phi1_m, phi1_qn_rtol, &
+        phi1_rcond_min, phi1_validate_config
 
   USE size_mod
   USE flint_mod, ONLY : plot_gauss,plot_prop,phi_split_mode,        &
@@ -246,7 +248,8 @@ module neo2_ql
   ! Extra input for NTV computation
   NAMELIST /ntv_input/                                                        &
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, Om_tE, B_rho_L_loc,  &
-       isw_ripple_solver, isw_mag_shear
+       isw_ripple_solver, isw_mag_shear, isw_phi1, phi1_num_m, phi1_m, &
+       phi1_qn_rtol, phi1_rcond_min
 
 contains
 
@@ -665,6 +668,14 @@ subroutine main
        CALL h5_add(h5_config_group, 'B_rho_L_loc', B_rho_L_loc)
        CALL h5_add(h5_config_group, 'isw_ripple_solver', isw_ripple_solver)
        CALL h5_add(h5_config_group, 'isw_mag_shear', isw_mag_shear)
+        if (isw_phi1 /= 0) then
+            call h5_add(h5_config_group, 'isw_phi1', isw_phi1)
+            call h5_add(h5_config_group, 'phi1_num_m', phi1_num_m)
+            call h5_add(h5_config_group, 'phi1_m', phi1_m(1:phi1_num_m), &
+                [1], [phi1_num_m])
+            call h5_add(h5_config_group, 'phi1_qn_rtol', phi1_qn_rtol)
+            call h5_add(h5_config_group, 'phi1_rcond_min', phi1_rcond_min)
+        end if
        CALL h5_close_group(h5_config_group)
 
        CALL h5_close(h5_config_id)
@@ -907,6 +918,17 @@ subroutine main
 
 
   subroutine check()
+        if (isw_phi1 /= 0) then
+            call phi1_validate_config()
+            if (isw_qflux_NA /= 1 .or. isw_ripple_solver /= 3) &
+                error stop 'Phi_1 requires isw_qflux_NA=1 and isw_ripple_solver=3'
+            if (isw_axisymm /= 1 .or. magnetic_device /= 0) &
+                error stop 'Phi_1 requires the direct axisymmetric tokamak route'
+            if (mag_coordinates /= 1 .or. isw_relativistic /= 0) &
+                error stop 'Phi_1 requires nonrelativistic Boozer coordinates'
+            if (vel_distri_swi /= 0 .or. isw_calc_Er /= 2) &
+                error stop 'Phi_1 requires the speed basis and prescribed Om_tE'
+        end if
     if (any(t_vec < 0.0)) then
       write(*,*) 'ERROR: negative temperature.'
       write(*,*) '  Temperature should be >= 0'
@@ -1337,7 +1359,11 @@ subroutine main
         END IF
         !! Modification by Andreas F. Martitsch (17.07.2014)
         ! ntv_input
-        WRITE(u1,nml=ntv_input,iostat=ios)
+        if (isw_phi1 == 0) then
+            call write_legacy_ntv_input(u1, ios)
+        else
+            write(u1,nml=ntv_input,iostat=ios)
+        end if
         IF (ios .NE. 0) THEN
           PRINT *, 'WARNING: group ntv_input in ',fname_multispec,' cannot be WRITTEN!'
           PRINT *, ''
@@ -1352,6 +1378,16 @@ subroutine main
 
     END DO
   end subroutine prepare_mulitspecies_scan
+
+    ! Keep generated default-off scan inputs byte-for-byte in the legacy form.
+    subroutine write_legacy_ntv_input(unit, ios)
+        integer, intent(in) :: unit
+        integer, intent(out) :: ios
+        namelist /ntv_input/ isw_ntv_mode, isw_qflux_NA, in_file_pert, &
+            MtOvR, Om_tE, B_rho_L_loc, isw_ripple_solver, isw_mag_shear
+
+        write(unit,nml=ntv_input,iostat=ios)
+    end subroutine write_legacy_ntv_input
 
 
   !> \brief Wrapper for executing a string in a command line.
