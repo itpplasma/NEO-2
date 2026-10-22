@@ -1,0 +1,30 @@
+CC synthetic circular smoke fixture
+CC hand-written Fourier coefficients
+CC no machine data
+CC units m,T
+m0 n0 ns nfp flux a R
+1 0 4 1 0.6 0.3 3.0
+s iota Jpol Itor pprime sqrtg
+units
+0.1 0.7 3e7 0 0 1
+m n Rcos Rsin Zcos Zsin Vcos Vsin Bcos Bsin
+0 1 0 0 0 0 0 0 0 0
+1 1 0 0 0 0 0 0 0 0
+s iota Jpol Itor pprime sqrtg
+units
+0.3 0.7 3e7 0 0 1
+m n Rcos Rsin Zcos Zsin Vcos Vsin Bcos Bsin
+0 1 0 0 0 0 0 0 0 0
+1 1 0 0 0 0 0 0 0 0
+s iota Jpol Itor pprime sqrtg
+units
+0.6 0.7 3e7 0 0 1
+m n Rcos Rsin Zcos Zsin Vcos Vsin Bcos Bsin
+0 1 0 0 0 0 0 0 0 0
+1 1 0 0 0 0 0 0 0 0
+s iota Jpol Itor pprime sqrtg
+units
+0.9 0.7 3e7 0 0 1
+m n Rcos Rsin Zcos Zsin Vcos Vsin Bcos Bsin
+0 1 0 0 0 0 0 0 0 0
+1 1 0 0 0 0 0 0 0 0
