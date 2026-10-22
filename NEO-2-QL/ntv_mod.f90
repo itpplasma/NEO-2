@@ -12,6 +12,7 @@
 MODULE ntv_mod
   ! module containing numerical constants
   use nrtype
+  use phi1_mod, only: isw_phi1, phi1_write_output
 
   IMPLICIT NONE
 
@@ -1843,6 +1844,7 @@ CONTAINS
        END IF
     END IF
 
+    if (isw_phi1 /= 0) call phi1_write_output(h5id_multispec)
     CALL h5_close(h5id_multispec)
 
     if (.not. check_coefficients(.true.)) then

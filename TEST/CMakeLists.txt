@@ -39,7 +39,8 @@ add_subdirectory(mympilib)
 add_executable(test_phi1_qn test_phi1_qn.f90)
 target_link_libraries(test_phi1_qn neo2_ql)
 add_test(NAME phi1_qn_test COMMAND test_phi1_qn
-    "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_qn_2x2.nml")
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_qn_2x2.nml"
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_qn_complex.nml")
 set_tests_properties(phi1_qn_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     FAIL_REGULAR_EXPRESSION "FAIL"
@@ -98,3 +99,19 @@ set_tests_properties(binarysplit_max_index_test PROPERTIES
     WILL_FAIL TRUE
     TIMEOUT 30
 )
+
+add_executable(test_phi1_moments test_phi1_moments.f90)
+target_link_libraries(test_phi1_moments neo2_ql)
+add_test(NAME phi1_moments_test COMMAND test_phi1_moments
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_exb.nml"
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_density.nml")
+set_tests_properties(phi1_moments_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!" TIMEOUT 30)
+
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(NAME phi1_ql_test COMMAND ${Python3_EXECUTABLE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_phi1_ql.py"
+    $<TARGET_FILE:neo_2_ql.x> "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_ql"
+    "${CMAKE_CURRENT_BINARY_DIR}/phi1-ql" "${MPIEXEC_EXECUTABLE}")
+set_tests_properties(phi1_ql_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!" TIMEOUT 60)

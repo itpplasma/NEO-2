@@ -80,7 +80,9 @@ subroutine ripple_solver_ArnoldiO2( &
                        MtOvR_spec, isw_calc_Er, B_rho_L_loc_spec, isw_calc_MagDrift
     use ntv_mod, only: get_Er, get_B_rho_L_loc
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
-    use phi1_mod, only: isw_phi1, phi1_kinetic_response_pending
+    use phi1_mod, only: isw_phi1, phi1_num_m, phi1_m, phi1_qn_rtol, &
+        phi1_rcond_min, phi1_result, phi1_basis, phi1_fieldline_weights, &
+        phi1_gram, phi1_assemble_qn, phi1_solve_qn, phi1_exb_band, phi1_density
   !! End Modification by Andreas F. Martitsch (14.07.2015)
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
@@ -3252,7 +3254,6 @@ subroutine ripple_solver_ArnoldiO2( &
     amat_sp(nz_per_neg + 1:nz_asymm) = amat_asymm(nz_per_neg + 1:nz_asymm)*rotfactor
 
     problem_type = .FALSE.
-    if (isw_phi1 /= 0) call phi1_kinetic_response_pending()
     call solve_eqs(.TRUE.)
   !! Modification by Andreas F. Martitsch (23.08.2015)
     ! NEO-2 can treat now multiple species -> qflux is now a 4D array
@@ -3558,6 +3559,8 @@ CONTAINS
             end do
         end if
 
+        if (isw_phi1 /= 0 .and. .not. problem_type) call close_phi1()
+
         if (clean) then
             mode_iter = 3
 
@@ -3713,6 +3716,379 @@ CONTAINS
     end subroutine solve_eqs
 
 !------------------------------------------------------------------------
+    subroutine close_phi1()
+        use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+        use collop_compute, only: compute_phi1_speed
+        use collisionality_mod, only: z_spec, n_spec
+        use mag_interface_mod, only: boozer_theta_beg, boozer_phi_beg
+        use ntv_mod, only: y_ntv_mod, e, dn_spec_ov_ds, dT_spec_ov_ds
+        use mpi, only: MPI_BCAST, MPI_INTEGER, MPI_DOUBLE_COMPLEX, &
+            MPI_DOUBLE_PRECISION, MPI_COMM_WORLD, MPI_SUCCESS
+        integer :: nb, ns, nn, j, b, channel, t, p, mm, off, count, ierr_mpi
+        integer :: status, norm_index
+        real(dp) :: g, bref, electric_field, length, vthermal, rho, beta_drive
+        real(dp) :: force(2), scale, sp, sm, quality(2)
+        real(dp), allocatable :: speed(:,:), aE1(:), weights(:), beta_species(:)
+        complex(dp), allocatable :: psi(:,:), us(:,:), bands(:,:,:), exb_bra(:,:)
+        complex(dp), allocatable :: moments(:,:,:), solution(:), collision(:)
+        complex(dp), allocatable :: projected(:,:), response(:,:,:), ur(:)
+        complex(dp), allocatable :: magnetic_bra(:,:), shift(:), raw(:)
+        complex(dp), allocatable :: gram(:,:), matrix(:,:), rhs(:), potential(:)
+        real(dp), allocatable :: coll_norm(:,:)
+        logical :: common_temperature
+
+        nb = phi1_num_m
+        ns = num_spec
+        nn = iend-ibeg+1
+        if (mpro%getNumProcs() /= ns) &
+            error stop 'Phi_1 requires one MPI rank per kinetic species'
+        if (abs(abs(aiota*(phi_mfl(iend)-phi_mfl(ibeg)))-2.0_dp*PI) &
+            > 1.0e-5_dp) error stop 'Phi_1 requires one complete poloidal period'
+        if (boozer_isqrg <= 0.0_dp) &
+            error stop 'Phi_1 requires right-handed Boozer coordinates'
+        if (abs(sum(z_spec*n_spec)) > 1.0e-8_dp*sum(abs(z_spec)*n_spec)) &
+            error stop 'Phi_1 requires a neutral equilibrium'
+        if (any(n_spec <= 0.0_dp) .or. any(T_spec <= 0.0_dp)) &
+            error stop 'Phi_1 requires positive physical densities and temperatures'
+        g = y_ntv_mod(7)/y_ntv_mod(6)
+        bref = bmod0*1.0e4_dp
+        electric_field = Om_tE*aiota*g*bref*boozer_psi_pr_hat/c
+        vthermal = sqrt(2.0_dp*T_spec(ispec)/m_spec(ispec))
+        rho = vthermal*m_spec(ispec)*c/(z_spec(ispec)*e*bref)
+        length = 0.0_dp
+        do t = ibeg, iend-1
+            length = length + 0.5_dp*(phi_mfl(t+1)-phi_mfl(t)) &
+                *(1.0_dp/(bhat_mfl(t)*h_phi_mfl(t)) &
+                 +1.0_dp/(bhat_mfl(t+1)*h_phi_mfl(t+1)))
+        end do
+        allocate(psi(nn,nb), us(nn,nb), weights(nn), beta_species(0:ns-1))
+        allocate(speed(0:lag,3), aE1(0:lag), bands(npart+2,ibeg:iend,2))
+        allocate(exb_bra(n_2d_size,2*nb), magnetic_bra(2,n_2d_size))
+        allocate(solution(n_2d_size), collision(n_2d_size), shift(n_2d_size))
+        allocate(raw(n_2d_size), moments(nn+2+2*nb,0:nb,0:ns-1))
+        allocate(projected(nb,ns), response(nb,nb,ns), ur(nn))
+        allocate(gram(nb,nb), matrix(nb,nb), rhs(nb), potential(nb))
+        allocate(coll_norm(nb,0:ns-1))
+        moments = 0.0_dp
+        coll_norm = 0.0_dp
+        common_temperature = all(T_spec == T_spec(0))
+        call phi1_basis(phi_mfl, boozer_theta_beg, boozer_phi_beg, aiota, &
+            phi1_m(1:nb), m_phi, psi)
+        call phi1_fieldline_weights(phi_mfl, bhat_mfl, h_phi_mfl, weights, status)
+        if (status /= 0) error stop 'Invalid Phi_1 field-line weights'
+        call phi1_gram(psi, weights, gram, status)
+        if (status /= 0) error stop 'Invalid Phi_1 Gram matrix'
+        call compute_phi1_speed(aE1)
+        speed = 0.0_dp
+        speed(:,1) = aE1
+        speed(:,2) = asource(:,2)
+        speed(:,3) = asource(:,1)
+        magnetic_bra(1,:) = flux_vector(1,:)
+        magnetic_bra(2,:) = flux_vector(3,:)
+        exb_bra = 0.0_dp
+        do b = 0, ns-1
+            beta_species(b) = sqrt(2.0_dp*T_spec(b)*m_spec(b))*c &
+                /(z_spec(b)*e*bref*g)
+        end do
+
+        ! D8 dimensional ExB bras, with exactly the legacy RK branch weights.
+        do j = 1, nb
+            do t = ibeg, iend
+                p = npl(t)+1
+                call phi1_exb_band(psi(t-ibeg+1,j), phi1_m(j), m_phi, &
+                    bcovar_theta_hat, bcovar_phi_hat, aiota, bref, &
+                    boozer_psi_pr_hat, vthermal, rho, bhat_mfl(t), h_phi_mfl(t), &
+                    alambd(0:p-1,t), alambd(1:p,t), us(t-ibeg+1,j), &
+                    bands(1:p,t,1))
+                call phi1_step_weights(t, sp, sm)
+                do mm = 0, lag
+                    off = ind_start(t)+2*p*mm
+                    exb_bra(off+1:off+p,j) = sp*weightden(mm)*4.0_dp &
+                        *us(t-ibeg+1,j)/g/bhat_mfl(t)*pleg_bra(0,1:p,t)
+                    exb_bra(off+p+1:off+2*p,j) = sm*weightden(mm)*4.0_dp &
+                        *us(t-ibeg+1,j)/g/bhat_mfl(t)*pleg_bra(0,p:1:-1,t)
+                    exb_bra(off+1:off+p,nb+j) = sp*T_spec(ispec)*weightlag(1,mm) &
+                        *4.0_dp*us(t-ibeg+1,j)/g/bhat_mfl(t)*pleg_bra(0,1:p,t)
+                    exb_bra(off+p+1:off+2*p,nb+j) = sm*T_spec(ispec)*weightlag(1,mm) &
+                        *4.0_dp*us(t-ibeg+1,j)/g/bhat_mfl(t)*pleg_bra(0,p:1:-1,t)
+                end do
+            end do
+        end do
+
+        ! Legacy columns remain in A1/A3/A2 order and are never overwritten.
+        do b = 0, ns-1
+            force(2) = g*dT_spec_ov_ds(b)/T_spec(b)
+            force(1) = g*dn_spec_ov_ds(b)/n_spec(b)-1.5_dp*force(2) &
+                -electric_field*z_spec(b)*e/T_spec(b)
+            do channel = 1, 2
+                norm_index = 2*channel-1
+                call phi1_store_moments(source_vector_all(:,norm_index,b), &
+                    beta_species(b)*force(channel), 0, moments, magnetic_bra, &
+                    exb_bra, vthermal*rho/g, length)
+            end do
+        end do
+
+        do j = 1, nb
+            bands = 0.0_dp
+            do t = ibeg, iend
+                p = npl(t)+1
+                call phi1_exb_band(psi(t-ibeg+1,j), phi1_m(j), m_phi, &
+                    bcovar_theta_hat, bcovar_phi_hat, aiota, bref, &
+                    boozer_psi_pr_hat, vthermal, rho, bhat_mfl(t), h_phi_mfl(t), &
+                    alambd(0:p-1,t), alambd(1:p,t), us(t-ibeg+1,j), &
+                    bands(1:p,t,1))
+            end do
+            call phi1_source_flux(speed, bands)
+            do b = 0, ns-1
+                force(2) = g*dT_spec_ov_ds(b)/T_spec(b)
+                force(1) = g*dn_spec_ov_ds(b)/n_spec(b)-1.5_dp*force(2) &
+                    -electric_field*z_spec(b)*e/T_spec(b)
+                do channel = 1, 3
+                    solution = 0.0_dp
+                    if (channel <= 2) then
+                        if (ispec == b) solution = source_vector(:,2*channel-1)
+                        scale = beta_species(b)*force(channel)
+                    else
+                        ! Each independent density shift is collision-null at
+                        ! common T. Keep this channel separate from A1/A2.
+                        collision = 0.0_dp
+                        if (.not. common_temperature) then
+                            shift = 0.0_dp
+                            if (ispec == b) shift = densvec_ket &
+                                *z_spec(b)*e/(T_spec(b)*beta_species(b))
+                            do t = ibeg, iend
+                                off = ind_start(t)
+                                count = 2*(npl(t)+1)*(lag+1)
+                                shift(off+1:off+count) = shift(off+1:off+count) &
+                                    *psi(t-ibeg+1,j)
+                            end do
+                            call phi1_collision_action(shift, collision, raw)
+                        end if
+                        solution = collision
+                        coll_norm(j,ispec) = max(coll_norm(j,ispec), &
+                            maxval(abs(collision)))
+                        scale = beta_species(b)
+                    end if
+                    drive_spec = b
+                    f_init_arnoldi = source_vector_all(:,1,ispec)
+                    ! All ranks enter every RHS, including zero local forcing.
+                    call iterator(1, n_2d_size, n_arnoldi, epserr_iter, niter, &
+                        solution, ispec, next_iteration)
+                    if (.not. all(ieee_is_finite(real(solution,dp)))) &
+                        error stop 'Nonfinite Phi_1 kinetic response'
+                    if (.not. all(ieee_is_finite(aimag(solution)))) &
+                        error stop 'Nonfinite Phi_1 kinetic response'
+                    call phi1_store_moments(solution, scale, j, moments, &
+                        magnetic_bra, exb_bra, vthermal*rho/g, length)
+                end do
+            end do
+        end do
+        call mpro%allgather_inplace(moments)
+        call mpro%allgather_inplace(coll_norm)
+        do b = 1, ns
+            do j = 1, nb
+                projected(j,b) = sum(weights*conjg(psi(:,j))*moments(1:nn,0,b-1))
+                do channel = 1, nb
+                    response(j,channel,b) = sum(weights*conjg(psi(:,j)) &
+                        *moments(1:nn,channel,b-1))
+                end do
+            end do
+        end do
+        call phi1_assemble_qn(e*z_spec, n_spec, T_spec, gram, response, &
+            projected, matrix, rhs, phi1_result%chi, status)
+        if (status /= 0) error stop 'Invalid Phi_1 quasineutrality assembly'
+        if (mpro%isMaster()) then
+            call phi1_solve_qn(matrix, rhs, phi1_qn_rtol, phi1_rcond_min, &
+                potential, quality(1), quality(2), status)
+            if (status /= 0) print *, 'Phi_1 QN rejected: info, residual, rcond', &
+                status, quality
+        end if
+        call MPI_BCAST(status, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr_mpi)
+        if (status /= 0) error stop 'Singular or ill-conditioned Phi_1 QN system'
+        call MPI_BCAST(potential, nb, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD, ierr_mpi)
+        if (ierr_mpi /= MPI_SUCCESS) error stop 'Phi_1 broadcast failed'
+        call MPI_BCAST(quality, 2, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr_mpi)
+        phi1_result%n = m_phi
+        phi1_result%theta_beg = boozer_theta_beg
+        phi1_result%phi_beg = boozer_phi_beg
+        phi1_result%phi = potential
+        phi1_result%gram = gram
+        phi1_result%matrix = matrix
+        phi1_result%rhs = rhs
+        phi1_result%density_dB = projected
+        phi1_result%response = response
+        phi1_result%residual = quality(1)
+        phi1_result%rcond = quality(2)
+        phi1_result%grid = phi_mfl
+        phi1_result%weights = weights
+        phi1_result%collision_norm = coll_norm
+        phi1_result%sampled_phi = matmul(psi,potential)
+        ur = matmul(us,potential)/g
+        allocate(phi1_result%n1(nn,ns), phi1_result%gamma_B(ns), &
+            phi1_result%gamma_E(ns), phi1_result%energy_B(ns), &
+            phi1_result%energy_E(ns), phi1_result%torque(ns))
+        do b = 1, ns
+            do j = 1, nb
+                moments(:,0,b-1) = moments(:,0,b-1)+potential(j)*moments(:,j,b-1)
+            end do
+            phi1_result%n1(:,b) = moments(1:nn,0,b-1) &
+                -e*z_spec(b-1)*n_spec(b-1)/T_spec(b-1)*phi1_result%sampled_phi
+            phi1_result%gamma_B(b) = 0.5_dp*real(moments(nn+1,0,b-1),dp)
+            phi1_result%energy_B(b) = 0.5_dp*real(moments(nn+2,0,b-1),dp)
+            phi1_result%gamma_E(b) = 0.5_dp*real(sum(conjg(potential) &
+                *moments(nn+3:nn+2+nb,0,b-1)),dp)
+            phi1_result%energy_E(b) = 0.5_dp*real(sum(conjg(potential) &
+                *moments(nn+3+nb:nn+2+2*nb,0,b-1)),dp)
+            phi1_result%torque(b) = -g*aiota*bref*boozer_psi_pr_hat/c &
+                *e*z_spec(b-1)*(phi1_result%gamma_B(b)+phi1_result%gamma_E(b))
+        end do
+        phi1_result%boltzmann_flux = phi1_result%chi*0.5_dp &
+            *real(sum(weights*conjg(ur)*phi1_result%sampled_phi),dp)
+        phi1_result%qn_flux_check = sum(e*z_spec*phi1_result%gamma_E) &
+            -phi1_result%boltzmann_flux
+    end subroutine close_phi1
+
+    subroutine phi1_step_weights(t, sp, sm)
+        integer, intent(in) :: t
+        real(dp), intent(out) :: sp, sm
+
+        if (t == ibeg) then
+            sp = delt_pos(ibeg+1)*fact_pos_b(ibeg)/3.0_dp
+            sm = delt_neg(ibeg)*fact_neg_e(ibeg)/3.0_dp
+        elseif (t == iend) then
+            sp = delt_pos(iend)*fact_pos_e(iend)/3.0_dp
+            sm = delt_neg(iend-1)*fact_neg_b(iend)/3.0_dp
+        elseif (mod(t-ibeg,2) == 1) then
+            sp = (delt_pos(t+1)*fact_pos_b(t)+delt_pos(t)*fact_pos_e(t))/1.5_dp
+            sm = (delt_neg(t-1)*fact_neg_b(t)+delt_neg(t)*fact_neg_e(t))/1.5_dp
+        else
+            sp = (delt_pos(t+1)*fact_pos_b(t)+delt_pos(t)*fact_pos_e(t))/3.0_dp
+            sm = (delt_neg(t-1)*fact_neg_b(t)+delt_neg(t)*fact_neg_e(t))/3.0_dp
+        end if
+    end subroutine phi1_step_weights
+
+    subroutine phi1_store_moments(y, scale, j, moments, magnetic, exb, vbeta, length)
+        use collisionality_mod, only: n_spec
+        complex(dp), intent(in) :: y(:), magnetic(:,:), exb(:,:)
+        real(dp), intent(in) :: scale, vbeta, length
+        integer, intent(in) :: j
+        complex(dp), intent(inout) :: moments(:,0:,0:)
+        integer :: t, p, off, nn
+
+        nn = iend-ibeg+1
+        do t = ibeg, iend
+            p = npl(t)+1
+            off = ind_start(t)
+            moments(t-ibeg+1,j,ispec) = moments(t-ibeg+1,j,ispec) &
+                +n_spec(ispec)*scale*phi1_density( &
+                reshape(y(off+1:off+2*p*(lag+1)),[2*p,lag+1]), &
+                pleg_bra(0,1:p,t), weightden, h_phi_mfl(t))
+        end do
+        moments(nn+1,j,ispec) = moments(nn+1,j,ispec) &
+            +n_spec(ispec)*scale*vbeta/length*sum(conjg(magnetic(1,:))*y)
+        moments(nn+2,j,ispec) = moments(nn+2,j,ispec) &
+            +n_spec(ispec)*scale*vbeta/length*T_spec(ispec) &
+                *sum(conjg(magnetic(2,:))*y)
+        moments(nn+3:,j,ispec) = moments(nn+3:,j,ispec) &
+            +n_spec(ispec)*scale/length*matmul(transpose(conjg(exb)),y)
+    end subroutine phi1_store_moments
+
+    ! D10: the stored raw entries are -L_diff / streaming divisor. Apply
+    ! their native trapezoidal assembly and subtract the coupled L_integral.
+    subroutine phi1_collision_action(shift, source, raw)
+        complex(dp), intent(in) :: shift(:)
+        complex(dp), intent(out) :: source(:), raw(:)
+        integer :: z, t, mm, p, q, off, prev, sign_branch, band
+        real(dp) :: factor
+        complex(dp), allocatable :: integral(:)
+
+        allocate(integral(n_2d_size))
+        raw = 0.0_dp
+        do z = 1, nz_coll
+            raw(irow_coll(z)) = raw(irow_coll(z)) &
+                +amat_coll(z)*shift(icol_coll(z))
+        end do
+        ! At each endpoint only the outgoing sweep owns raw collision rows.
+        do mm = 0, lag
+            p = npl(ibeg)+1
+            off = ind_start(ibeg)+2*p*mm
+            raw(off+1:off+p) = raw(off+2*p:off+p+1:-1)
+            p = npl(iend)+1
+            off = ind_start(iend)+2*p*mm
+            raw(off+p+1:off+2*p) = raw(off+p:off+1:-1)
+        end do
+        source = 0.0_dp
+        do sign_branch = -1, 1, 2
+            do t = ibeg, iend
+                if (t-sign_branch < ibeg .or. t-sign_branch > iend) cycle
+                p = npl(t)+1
+                q = npl(t-sign_branch)+1
+                if (sign_branch == 1) then
+                    factor = 0.5_dp*fact_pos_e(t)
+                else
+                    factor = 0.5_dp*fact_neg_e(t)
+                end if
+                do mm = 0, lag
+                    off = ind_start(t)+2*p*mm
+                    prev = ind_start(t-sign_branch)+2*q*mm
+                    do band = 1, p
+                        if (sign_branch == 1) then
+                            z = off+band
+                            source(z) = factor*raw(z)
+                            if (band <= q) then
+                                source(z) = source(z)+factor*raw(prev+band)
+                            elseif (addboucol) then
+                                source(z) = source(z)+factor*raw(off+2*p-band+1)
+                            end if
+                        else
+                            z = off+2*p-band+1
+                            source(z) = factor*raw(z)
+                            if (band <= q) then
+                                source(z) = source(z)+factor*raw(prev+2*q-band+1)
+                            elseif (addboucol) then
+                                source(z) = source(z)+factor*raw(off+band)
+                            end if
+                        end if
+                    end do
+                end do
+            end do
+        end do
+        if (isw_intp == 1) then
+            call integral_part(shift, integral)
+            source = source-integral
+        end if
+    end subroutine phi1_collision_action
+
+    ! Only the enabled path substitutes unit-force source data. Keeping the
+    ! original source_flux procedure intact also retains its zero-based source
+    ! channel bounds and default-path arithmetic.
+    subroutine phi1_source_flux(speed, bands)
+        real(dp), intent(in) :: speed(0:,:)
+        complex(dp), intent(in) :: bands(:,ibeg:,:)
+        integer :: saved_column
+        real(dp), allocatable :: saved_speed(:,:)
+        complex(dp), allocatable :: saved_bands(:,:,:), saved_pitch(:,:)
+        complex(dp), allocatable :: saved_geometry(:)
+
+        ! source_flux uses host k for row indexing, while solve_eqs still needs
+        ! its source-column index for the subsequent iterator cleanup call.
+        saved_column = k
+        saved_speed = asource
+        saved_bands = q_rip
+        saved_pitch = q_rip_1
+        saved_geometry = geodcu_forw
+        asource = speed
+        q_rip_1 = bands(:,:,1)
+        q_rip(:,:,2) = 0.0_dp
+        geodcu_forw = 1.0_dp
+        call source_flux
+        asource = saved_speed
+        q_rip = saved_bands
+        q_rip_1 = saved_pitch
+        geodcu_forw = saved_geometry
+        k = saved_column
+    end subroutine phi1_source_flux
+
     subroutine source_flux
 
         do istep = ibeg, iend

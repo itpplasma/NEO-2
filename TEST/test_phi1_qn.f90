@@ -69,6 +69,24 @@ program test_phi1_qn
     call require(info == -2, 'ill-conditioned system rejection')
     call require(rcond < 1.0e-12_dp, 'small reciprocal condition estimate')
 
+    ! W4 complex reference, with both kinetic species and nonidentity Gram.
+    call get_command_argument(2, fixture)
+    open(newunit=unit, file=trim(fixture), status='old', action='read')
+    read(unit,nml=qn_fixture)
+    close(unit)
+    call phi1_assemble_qn(charge, density, temperature, gram, response, dB, &
+        matrix, rhs, chi, info)
+    call require(info == 0, 'complex reference assembly')
+    call require(maxval(abs(matrix-matrix_expected)) < tol, 'complex matrix')
+    call check_solution('complex reference')
+    response(:,:,2) = 0.0_dp
+    expected = [cmplx(1585121.0_dp/4078680.0_dp,351679.0_dp/1359560.0_dp,dp), &
+        cmplx(-2065981.0_dp/4078680.0_dp,192181.0_dp/1359560.0_dp,dp)]
+    call phi1_assemble_qn(charge, density, temperature, gram, response, dB, &
+        matrix, rhs, chi, info)
+    call require(info == 0, 'complex adiabatic assembly')
+    call check_solution('complex adiabatic reference')
+
     call phi1_basis([0.3_dp,0.8_dp,1.3_dp], 0.2_dp, 0.3_dp, 0.7_dp, &
                      [-1,2], -2, psi)
     call require(maxval(abs(psi(:,1) - &

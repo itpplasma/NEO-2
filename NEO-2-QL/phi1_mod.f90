@@ -11,7 +11,20 @@ module phi1_mod
     real(dp), public :: phi1_qn_rtol = 1.0e-8_dp, phi1_rcond_min = 1.0e-12_dp
     public :: phi1_validate_config, phi1_basis, phi1_fieldline_weights
     public :: phi1_gram, phi1_assemble_qn, phi1_solve_qn
-    public :: phi1_kinetic_response_pending
+    public :: phi1_exb_band, phi1_density, phi1_write_output
+
+    type, public :: phi1_result_t
+        integer :: n
+        real(dp) :: residual, rcond, chi, qn_flux_check, boltzmann_flux
+        real(dp) :: theta_beg, phi_beg
+        complex(dp), allocatable :: phi(:), gram(:,:), matrix(:,:), rhs(:)
+        complex(dp), allocatable :: density_dB(:,:), response(:,:,:)
+        complex(dp), allocatable :: sampled_phi(:), n1(:,:)
+        real(dp), allocatable :: grid(:), weights(:), gamma_B(:), gamma_E(:)
+        real(dp), allocatable :: energy_B(:), energy_E(:), torque(:)
+        real(dp), allocatable :: collision_norm(:,:)
+    end type phi1_result_t
+    type(phi1_result_t), public, save :: phi1_result
 
     interface
         subroutine zgesv(n, nrhs, a, lda, ipiv, b, ldb, info)
@@ -226,10 +239,111 @@ contains
         phi = solution(:,1)
     end subroutine phi1_solve_qn
 
-    subroutine phi1_kinetic_response_pending()
-        ! Replace this hook only after W4's normalized source and density
-        ! contraction are verified. Never report a legacy solve as Phi_1.
-        error stop 'Phi_1 kinetic source and density response are not implemented'
-    end subroutine phi1_kinetic_response_pending
+    ! D7: both streaming branches have this sign. rho is signed, in cm.
+    pure subroutine phi1_exb_band(psi, m, n, btheta, bphi, iota, bref, &
+                                 psi_prime, vthermal, rho, bhat, hphi, &
+                                 lambda_hi, lambda_lo, us, source)
+        complex(dp), intent(in) :: psi
+        integer, intent(in) :: m, n
+        real(dp), intent(in) :: btheta, bphi, iota, bref, psi_prime
+        real(dp), intent(in) :: vthermal, rho, bhat, hphi
+        real(dp), intent(in) :: lambda_hi(:), lambda_lo(:)
+        complex(dp), intent(out) :: us, source(size(lambda_hi))
+
+        us = cmplx(0.0_dp,2.9979e10_dp,dp)*(n*btheta-m*bphi)*psi &
+            /(bref*psi_prime*(iota*btheta+bphi))
+        source = -2.0_dp*us*(lambda_hi-lambda_lo) &
+            /(vthermal*rho*bhat*hphi)
+    end subroutine phi1_exb_band
+
+    ! D8 local density or energy moment. Negative-sigma bands are reversed.
+    pure function phi1_density(y, pitch_bra, speed_weight, hphi) result(value)
+        complex(dp), intent(in) :: y(:,:)
+        real(dp), intent(in) :: pitch_bra(:), speed_weight(:), hphi
+        complex(dp) :: value
+        integer :: m, nb
+
+        nb = size(pitch_bra)
+        value = 0.0_dp
+        do m = 1, size(speed_weight)
+            value = value + speed_weight(m)*sum(pitch_bra &
+                *(y(1:nb,m)+y(2*nb:nb+1:-1,m)))
+        end do
+        value = 4.0_dp*hphi*value
+    end function phi1_density
+
+    subroutine phi1_write_output(file_id)
+        use hdf5_tools, only: hid_t, h5_define_group, h5_close_group, h5_add
+        use collisionality_mod, only: species_tag
+        integer(hid_t), intent(in) :: file_id
+        integer(hid_t) :: group
+
+        if (isw_phi1 == 0) return
+        if (.not. allocated(phi1_result%phi)) &
+            error stop 'Phi_1 output requested without a closed solution'
+        call h5_define_group(file_id, 'phi1', group)
+        call h5_add(group, 'm', phi1_m(1:phi1_num_m), [1], [phi1_num_m])
+        call h5_add(group, 'n', phi1_result%n)
+        call h5_add(group, 'normalization_version', 1)
+        call h5_add(group, 'species_tag', species_tag, &
+            lbound(species_tag), ubound(species_tag))
+        call h5_add(group, 'theta_beg', phi1_result%theta_beg)
+        call h5_add(group, 'phi_beg', phi1_result%phi_beg)
+        call vector('Phi_re', real(phi1_result%phi,dp), 'statvolt')
+        call vector('Phi_im', aimag(phi1_result%phi), 'statvolt')
+        call matrix('Gram_re', real(phi1_result%gram,dp))
+        call matrix('Gram_im', aimag(phi1_result%gram))
+        call matrix('M_re', real(phi1_result%matrix,dp))
+        call matrix('M_im', aimag(phi1_result%matrix))
+        call vector('rhs_re', real(phi1_result%rhs,dp), 'statC cm^-3')
+        call vector('rhs_im', aimag(phi1_result%rhs), 'statC cm^-3')
+        call h5_add(group, 'residual', phi1_result%residual)
+        call h5_add(group, 'rcond', phi1_result%rcond)
+        call h5_add(group, 'chi', phi1_result%chi)
+        call vector('phi_mfl', phi1_result%grid, 'rad')
+        call vector('weights', phi1_result%weights, '1')
+        call vector('Phi1_re', real(phi1_result%sampled_phi,dp), 'statvolt')
+        call vector('Phi1_im', aimag(phi1_result%sampled_phi), 'statvolt')
+        call matrix('n1_re', real(phi1_result%n1,dp), 'cm^-3')
+        call matrix('n1_im', aimag(phi1_result%n1), 'cm^-3')
+        call matrix('density_dB_re', real(phi1_result%density_dB,dp), 'cm^-3')
+        call matrix('density_dB_im', aimag(phi1_result%density_dB), 'cm^-3')
+        call h5_add(group, 'density_response_re', real(phi1_result%response,dp), &
+            lbound(phi1_result%response), ubound(phi1_result%response), &
+            unit='cm^-3/statvolt')
+        call h5_add(group, 'density_response_im', aimag(phi1_result%response), &
+            lbound(phi1_result%response), ubound(phi1_result%response), &
+            unit='cm^-3/statvolt')
+        call vector('Gamma_magnetic', phi1_result%gamma_B, 'cm^-2 s^-1')
+        call vector('Gamma_ExB', phi1_result%gamma_E, 'cm^-2 s^-1')
+        call vector('Gamma_total', phi1_result%gamma_B+phi1_result%gamma_E, &
+            'cm^-2 s^-1')
+        call vector('Q_magnetic', phi1_result%energy_B, 'erg cm^-2 s^-1')
+        call vector('Q_ExB', phi1_result%energy_E, 'erg cm^-2 s^-1')
+        call vector('Q_total', phi1_result%energy_B+phi1_result%energy_E, &
+            'erg cm^-2 s^-1')
+        call vector('torque_species', phi1_result%torque, 'dyn cm^-2')
+        call h5_add(group, 'torque_total', sum(phi1_result%torque), &
+            comment='Torque from the requested ftilde*v_g1 product; D9 ordering applies')
+        call h5_add(group, 'qn_flux_check', phi1_result%qn_flux_check)
+        call h5_add(group, 'chi_Phi1_Ur', phi1_result%boltzmann_flux)
+        call matrix('collision_source_norm', phi1_result%collision_norm)
+        call h5_close_group(group)
+
+    contains
+
+        subroutine vector(name, value, unit)
+            character(*), intent(in) :: name, unit
+            real(dp), intent(in) :: value(:)
+            call h5_add(group, name, value, [1], [size(value)], unit=unit)
+        end subroutine vector
+
+        subroutine matrix(name, value, unit)
+            character(*), intent(in) :: name
+            real(dp), intent(in) :: value(:,:)
+            character(*), optional, intent(in) :: unit
+            call h5_add(group, name, value, [1,1], shape(value), unit=unit)
+        end subroutine matrix
+    end subroutine phi1_write_output
 
 end module phi1_mod
