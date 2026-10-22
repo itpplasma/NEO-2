@@ -16,7 +16,9 @@ SUBROUTINE ripple_solver(                                 &
   USE flint_mod, ONLY : phi_divide
   USE size_mod, ONLY : ndim0
   USE collisionality_mod, ONLY : collpar,conl_over_mfp,isw_lorentz, &
-       isw_energy,isw_integral,isw_axisymm, & !<-in Winny
+       isw_energy,isw_integral,isw_axisymm,k_coefficient_only, & !<-in Winny
+       k_surface_batch,k_surface_converged, &
+       k_iter_solver,k_sparse_backend,k_source_applications,k_source_residual, &
        isw_momentum,vel_distri_swi,vel_num,vel_max, &
        nvel,vel_array
 
@@ -40,6 +42,8 @@ SUBROUTINE ripple_solver(                                 &
   USE development
 
   use collop_compute, only: a_00_offset, a_02_offset, a_22_offset, weightenerg_offset
+  use fixed_point_gmres_mod, only: fixed_point_gmres_t
+  use k_sparse_backend_mod, only: k_sparse_backend_t
   
   !*****************************
   ! HDF5
@@ -168,13 +172,16 @@ SUBROUTINE ripple_solver(                                 &
 
   CHARACTER(len=100) :: propname
   INTEGER :: n_2d_size,nrow,ncol,iopt,nz,nz_sq,nz_beg,npassing_prev,k_prev,mm
-  INTEGER :: iter,nphiequi,npassing_next
+  INTEGER :: iter,nphiequi,npassing_next,source_step
+  LOGICAL :: source_converged
   DOUBLE PRECISION :: delphim1,deloneovb,step_factor_p,step_factor_m
 
   INTEGER,          DIMENSION(:),   ALLOCATABLE :: ind_start,irow,icol,ipcol
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: amat_sp,funsol_p,funsol_m
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_sp,bvec_iter,bvec_lor
   DOUBLE PRECISION, DIMENSION(:),   ALLOCATABLE :: bvec_prev
+  type(fixed_point_gmres_t) :: source_gmres
+  type(k_sparse_backend_t) :: k_backend
 
 !  Off-set:
 
@@ -2268,8 +2275,12 @@ PRINT *,'right boundary layer ignored'
   iopt=1
 
   call cpu_time(time_start)
-  CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                    bvec_sp,iopt)
+  if (k_sparse_backend /= 0) then
+    call k_backend%factor(nrow, ncol, nz, ipcol, irow(1:nz), amat_sp(1:nz))
+  else
+    CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
+                      bvec_sp,iopt)
+  end if
 
   call cpu_time(time_factorization)
   print *,'factorization completed ',time_factorization - time_start,' sec'
@@ -2278,10 +2289,22 @@ PRINT *,'right boundary layer ignored'
 
 ! Solution of inhomogeneus equation (account of sources):
 
+  source_step=1
+  if(k_coefficient_only) then
+    source_step=2
+    source_vector(:,2)=0.d0
+  endif
+
 call cpu_time(time1)
 
-  CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
-                    source_vector(:,1:3),iopt)
+  if (k_sparse_backend /= 0) then
+    do k = 1, 3, source_step
+      call k_backend%solve(source_vector(:,k))
+    end do
+  else
+    CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),       &
+                      source_vector(:,1:3:source_step),iopt)
+  end if
 call cpu_time(time2)
 
 ! integral part:
@@ -2289,8 +2312,36 @@ call cpu_time(time2)
 call cpu_time(time1)
   if(isw_intp.eq.1) then
 
-    do k=1,3
+    do k=1,3,source_step
       bvec_lor=source_vector(:,k)
+      source_converged=.false.
+
+      if (k_iter_solver == 1) then
+        ! Reserve one application for the independent final residual check.
+        call source_gmres%start(bvec_lor, epserr_iter, niter-1, 30)
+        do while (source_gmres%needs_apply())
+          call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+                             phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
+                             ailmm,source_gmres%vin,bvec_iter)
+          call solve_k_source(bvec_iter)
+          call source_gmres%put(bvec_iter)
+        end do
+        source_vector(:,k) = source_gmres%x
+
+        call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start, &
+                           phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:), &
+                           ailmm,source_vector(:,k),bvec_iter)
+        call solve_k_source(bvec_iter)
+        k_source_applications((k+1)/2) = source_gmres%napply + 1
+        k_source_residual((k+1)/2) = &
+          sum(abs(bvec_lor + bvec_iter - source_vector(:,k))) &
+          / sum(abs(source_vector(:,k)))
+        write (*,*) 'K source:', k, 'applications:', k_source_applications((k+1)/2), &
+                    'true residual:', k_source_residual((k+1)/2)
+        if (.not. k_source_residual((k+1)/2) <= epserr_iter) &
+          error stop 'K-only GMRES failed its true-residual convergence check.'
+        cycle
+      end if
 
       do iter=1,niter
         bvec_prev=source_vector(:,k)
@@ -2307,11 +2358,20 @@ call cpu_time(time1)
 
         if(sum(abs(source_vector(:,k)-bvec_prev)) .lt.                        &
            sum(abs(bvec_prev))*epserr_iter) then
+           source_converged=.true.
            write (*,*) "Source: ", k, "Number of iterations: ", iter
            exit
         endif
      enddo
-     if (niter .eq. iter) then
+     if (k_surface_batch) then
+        if (.not. source_converged) then
+           k_surface_converged=.false.
+           write (*,*) "Source: ", k, "Maximum number of iterations reached."
+        endif
+     else if (k_coefficient_only) then
+        if (.not. source_converged) &
+           error stop 'k_coefficient_only: integral iteration did not converge.'
+     else if (niter .eq. iter) then
         write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
         stop
      end if
@@ -2338,6 +2398,7 @@ call cpu_time(time1)
   print *,'Local off-set drive 1: ',cg0_1_num/denom_mflint,cg2_1_num/denom_mflint, denom_mflint
 
   ! Drive 2 (Spitzer)
+  if(.not.k_coefficient_only) then
   cg0_2_num=sum(avden_vector*source_vector(:,2))
   cg0_2_num_orig = cg0_2_num
   cg2_2_num=sum(avpres_vector*source_vector(:,2))
@@ -2349,6 +2410,7 @@ call cpu_time(time1)
   cg0_2_num=cg0_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
   cg2_2_num=cg2_2_num*collpar*3.d0*sqrt(3.14159265358979d0)/(8.d0*surface_boozer_B00)  !<=Normalization!
   print *,'Local off-set drive 2: ',cg0_2_num/denom_mflint,cg2_2_num/denom_mflint, denom_mflint
+  endif
 
   ! Drive 3
   cg0_3_num=sum(avden_vector*source_vector(:,3))
@@ -2604,6 +2666,7 @@ call cpu_time(time2)
 
   if(iplot.eq.1.or.isw_axisymm.eq.1) then
 
+    if (k_sparse_backend /= 0) call k_backend%free()
     flux_p=0.d0
     flux_m=0.d0
     amat_plus_plus=0.d0
@@ -2870,6 +2933,18 @@ PRINT *,' '
 
   !------------------------------------------------------------------------
   RETURN
+contains
+
+  subroutine solve_k_source(rhs)
+    real(dp), intent(inout) :: rhs(:)
+
+    if (k_sparse_backend /= 0) then
+      call k_backend%solve(rhs)
+    else
+      call sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),rhs,iopt)
+    end if
+  end subroutine solve_k_source
+
 END SUBROUTINE ripple_solver
 
 

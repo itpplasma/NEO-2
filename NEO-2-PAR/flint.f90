@@ -22,7 +22,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   USE propagator_mod, ONLY : prop_ibegperiod,prop_count_call,propagator_solver, &
        prop_reconstruct, prop_reconstruct_levels, prop_write, prop_ctaginfo
   USE collisionality_mod, ONLY : isw_lorentz,isw_axisymm,y_axi_averages, &
-       isw_momentum
+       isw_momentum,k_surface_batch
 
   USE rkstep_mod, ONLY : lag ! anumm => anumm_lag
   USE collisionality_mod, ONLY : collpar,collpar_min,collpar_max
@@ -350,11 +350,13 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
 
   call h5_magnetics('eta_ori',eta_ori)
 
-  OPEN(9999,file='eta_ori.dat')
-  DO i = LBOUND(eta_ori,1),UBOUND(eta_ori,1)
-     WRITE(9999,*) i, eta_ori(i)
-  END DO
-  CLOSE(9999)
+  if (.not. k_surface_batch) then
+     OPEN(9999,file='eta_ori.dat')
+     DO i = LBOUND(eta_ori,1),UBOUND(eta_ori,1)
+        WRITE(9999,*) i, eta_ori(i)
+     END DO
+     CLOSE(9999)
+  end if
 
 
   ! modify proptag_start, proptag_end
@@ -1968,7 +1970,7 @@ SUBROUTINE flint(eta_part_globalfac,eta_part_globalfac_p,eta_part_globalfac_t, &
   !**********************************************************
   ! 15.01.2016 - taginfo is written also if prop_write .eq. 0
   !**********************************************************
-  IF (prop_reconstruct .EQ. 0) THEN
+  IF (prop_reconstruct .EQ. 0 .AND. .NOT. k_surface_batch) THEN
 
      ! --- MPI SUPPORT ---
 
