@@ -26,7 +26,8 @@ jobs:
     if: >-
       github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]')
-    timeout-minutes: 90
+    # Includes three builds, golden cases, and dispatch/queue overhead.
+    timeout-minutes: 150
     steps:
       - name: Checkout exact validation revision
         uses: actions/checkout@v6
@@ -57,7 +58,7 @@ jobs:
       - name: Run native golden comparisons on sCluster
         env:
           SCI_OUT: ${{ runner.temp }}/golden-receipts
-        run: sci-dispatch native "$RUNNER_TEMP/neo2-golden.tar.zst"
+        run: sci-dispatch golden "$RUNNER_TEMP/neo2-golden.tar.zst"
       - name: Report golden outcomes
         if: always()
         run: |
