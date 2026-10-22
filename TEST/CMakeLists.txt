@@ -36,6 +36,27 @@ set_tests_properties(nrutil_test PROPERTIES
 
 add_subdirectory(mympilib)
 
+add_executable(test_phi_ma_moments test_phi_ma_moments.f90)
+target_link_libraries(test_phi_ma_moments neo2_ql)
+add_test(NAME phi_ma_moments_test COMMAND test_phi_ma_moments)
+set_tests_properties(phi_ma_moments_test PROPERTIES TIMEOUT 30)
+
+find_program(NEO2_TEST_PYTHON NAMES python3)
+if(NEO2_TEST_PYTHON)
+  foreach(test_name IN ITEMS response switch_off)
+    set(test_option)
+    if(test_name STREQUAL "switch_off")
+      set(test_option --switch-off)
+    endif()
+    add_test(NAME phi_ma_${test_name}_test
+      COMMAND ${NEO2_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_phi_ma_response.py
+        $<TARGET_FILE:neo_2_ql.x> ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi_ma
+        ${CMAKE_CURRENT_BINARY_DIR} ${test_option})
+    set_tests_properties(phi_ma_${test_name}_test PROPERTIES
+      TIMEOUT 240 SKIP_RETURN_CODE 77)
+  endforeach()
+endif()
+
 # Test executable for er_rotation module
 add_executable(test_er_rotation test_er_rotation.f90)
 target_link_libraries(test_er_rotation neo2_ql)

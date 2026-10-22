@@ -80,6 +80,10 @@ subroutine ripple_solver_ArnoldiO2( &
                        MtOvR_spec, isw_calc_Er, B_rho_L_loc_spec, isw_calc_MagDrift
     use ntv_mod, only: get_Er, get_B_rho_L_loc
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
+    use phi_ma_response_mod, only: phi_m, delta_m, phi_ma_m, &
+                                  misaligned_potential, write_phi_ma_current, &
+                                  normalize_phi_ma_j_hat
+    use collop_compute, only: compute_exb_source
   !! End Modification by Andreas F. Martitsch (14.07.2015)
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
@@ -236,6 +240,9 @@ subroutine ripple_solver_ArnoldiO2( &
     integer          :: nreal, ncomp
     complex(dp) :: expforw, expbackw, perbou_pos, perbou_neg, rotfactor
     real(dp) :: Er, avEparB_ov_avb2 ! radial and inductive electric field
+    complex(dp) :: phi_ma
+    real(dp) :: phi_ma_er, phi_ma_g, phi_ma_rho, phi_ma_vt, phi_ma_sg
+    logical :: phi_ma_requested
     real(dp) :: a1b, a2b, hatOmegaE, hatOmegaB, denomjac
   !! Modifications by Andreas F. Martitsch (14.03.2014)
     ! Subsequent quantities are given now in cgs-units and they are
@@ -2623,6 +2630,8 @@ subroutine ripple_solver_ArnoldiO2( &
     !hatOmegaE=2.0d0*Mt/(collpar*(device%r0))
     !this is the correct definition with collpar=4/$l_c$ ($l_c=2 v_{Ta} \tau_{aa}$)
     hatOmegaE = MtOvR/collpar
+    phi_ma_requested = phi_m /= (0.0d0, 0.0d0) .or. delta_m /= (0.0d0, 0.0d0)
+    if (phi_ma_requested) call prepare_phi_ma
     ! normalized magnetic rotation frequency ($\hat{\Omega}_{tB}^{\rm ref}$)
     ! specified via Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc)
     !definition with conl_over_mfp suffers again from wrong conversion to
@@ -3341,6 +3350,115 @@ subroutine ripple_solver_ArnoldiO2( &
 
 CONTAINS
 
+    subroutine prepare_phi_ma
+        use collisionality_mod, only: z_spec
+        use ntv_mod, only: c, e, y_ntv_mod
+        use mag_interface_mod, only: boozer_theta_beg, boozer_phi_beg
+        use neo_control, only: lab_swi
+        use mag_sub, only: mag
+        real(dp) :: x(3), bmod, sqrtg, bder(3), hcovar(3), hctrvr(3)
+        real(dp) :: hcoder(3, 3), hctder(3, 3), sqrtg_bphi
+
+        if (mpro%getNumProcs() /= num_spec) &
+            error stop 'Phi^MA requires one MPI rank per species'
+        phi_ma_g = y_ntv_mod(7)/y_ntv_mod(6)
+        phi_ma_vt = sqrt(2.0d0*T_spec(ispec)/m_spec(ispec))
+        phi_ma_rho = phi_ma_vt*m_spec(ispec)*c &
+                     /(z_spec(ispec)*e*bmod0*1.0d4)
+        x = [boozer_s, boozer_phi_beg, boozer_theta_beg]
+        call mag(x, bmod, sqrtg, bder, hcovar, hctrvr, hcoder, hctder)
+        sqrtg_bphi = phi_ma_g*boozer_psi_pr_hat*bmod0*1.0d4
+        if (lab_swi == 10) &
+            sqrtg_bphi = phi_ma_g*sqrtg*hctrvr(2)*bmod*1.0d4
+        phi_ma_sg = sqrtg_bphi
+        ! Invert ntv_mod's Om_tE=c*Er/(iota*sqrtg_bctrvr_phi).
+        ! Its force convention (A1 contains -z*e*Er/T) gives Phi_0'=-Er.
+        phi_ma_er = MtOvR*phi_ma_vt*aiota*sqrtg_bphi/c
+        phi_ma = misaligned_potential(phi_ma_er)
+        if (phi_ma == (0.0d0, 0.0d0)) return
+        if (allocated(aE1)) deallocate(aE1)
+        allocate(aE1(0:lag))
+        call compute_exb_source(aE1)
+    end subroutine prepare_phi_ma
+
+    subroutine phi_ma_phase(phi, theta, phase)
+        use mag_interface_mod, only: boozer_theta_beg, boozer_phi_beg
+        real(dp), intent(in) :: phi
+        real(dp), intent(out) :: theta
+        complex(dp), intent(out) :: phase
+
+        theta = boozer_theta_beg + aiota*(phi - boozer_phi_beg)
+        phase = exp(imun*(phi_ma_m*theta + m_phi*phi))
+    end subroutine phi_ma_phase
+
+    subroutine solve_phi_ma_current
+        use collisionality_mod, only: n_spec, z_spec
+        use ntv_mod, only: e, dn_spec_ov_ds, dT_spec_ov_ds
+        use arnoldi_mod, only: iterator, f_init_arnoldi
+        complex(dp), allocatable :: response(:), current(:, :), row(:), jhat(:)
+        real(dp), allocatable :: theta(:), weight(:)
+        real(dp) :: a1, a2, prefactor, step_weight
+        integer :: imoment, first, last
+        complex(dp) :: phase
+        logical :: jhat_valid
+
+        allocate(response(n_2d_size), current(ibeg:iend, 0:num_spec - 1))
+        allocate(row(0:num_spec - 1), theta(ibeg:iend), weight(ibeg:iend))
+        allocate(jhat(ibeg:iend))
+        a2 = phi_ma_g*dT_spec_ov_ds(ispec)/T_spec(ispec)
+        a1 = phi_ma_g*dn_spec_ov_ds(ispec)/n_spec(ispec) - 1.5d0*a2 &
+             - z_spec(ispec)*e*phi_ma_er/T_spec(ispec)
+        response = (0.0d0, 0.0d0)
+        if (phi_ma /= (0.0d0, 0.0d0)) then
+            ! Reuse the complete RK and turning-band assembly, changing
+            ! only the velocity moments and pitch-integrated drive (D7).
+            call source_flux(.true.)
+            response = (phi_ma_rho/phi_ma_g) &
+                       *(a1*source_vector(:, 1) + a2*source_vector(:, 3))
+            f_init_arnoldi = response
+            mode_iter = 1
+            call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter, &
+                          response, ispec, next_iteration)
+            mode_iter = 3
+            call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter, &
+                          response, ispec, next_iteration)
+        end if
+
+        current = (0.0d0, 0.0d0)
+        row = (0.0d0, 0.0d0)
+        prefactor = z_spec(ispec)*e*n_spec(ispec)*phi_ma_vt
+        imoment = maxloc(abs(weightlag(2, :)), dim=1) - 1
+        do istep = ibeg, iend
+            call phi_ma_phase(phi_mfl(istep), theta(istep), phase)
+            npassing = npl(istep)
+            first = ind_start(istep) + 1
+            last = first + 2*(npassing + 1)*(lag + 1) - 1
+            ! The current bra is sigma-odd and already has sign_of_bphi.
+            ! Multiplication by h^phi removes the line-integration measure.
+            current(istep, ispec) = prefactor*h_phi_mfl(istep) &
+                *sum(conjg(flux_vector_plot(2, first:last))*response(first:last))
+            k = ind_start(istep) + 2*(npassing + 1)*imoment + 1
+            ! rearrange_phideps makes the two sigma RK weights identical.
+            step_weight = real(flux_vector(2, k) &
+                /(weightlag(2, imoment)*convol_curr(1, istep)), dp)
+            weight(istep) = step_weight/(bhat_mfl(istep)*h_phi_mfl(istep))
+        end do
+        ! No Fourier half-product: this is a complex linear current, not
+        ! the real quadratic transport coefficient computed above.
+        row(ispec) = prefactor*sum(conjg(flux_vector(2, :))*response)/sum(weight)
+        call mpro%allgather_inplace(current)
+        call mpro%allgather_inplace(row)
+        jhat_valid = .false.
+        jhat = (0.0d0, 0.0d0)
+        if (num_spec == 1 .and. a2 == 0.0d0) then
+            call normalize_phi_ma_j_hat(current(:, 0), z_spec(0), n_spec(0), &
+                T_spec(0), m_spec(0), a1, phi_ma, phi_ma_er, jhat, jhat_valid)
+        end if
+        if (mpro%isMaster()) call write_phi_ma_current(phi_mfl, theta, &
+            bhat_mfl, weight, sum(current, dim=2), sum(row), phi_ma, phi_ma_er, &
+            m_phi, jhat, jhat_valid)
+    end subroutine solve_phi_ma_current
+
 !------------------------------------------------------------------------
     subroutine plotsource(iunit_base, sourcevec_tmp)
 
@@ -3690,6 +3808,10 @@ CONTAINS
         if (allocated(qflux_allspec_tmp)) deallocate (qflux_allspec_tmp)
     !! End Modification by Andreas F. Martitsch (23.08.2015)
 
+        if (.not. problem_type) then
+            if (phi_ma_requested) call solve_phi_ma_current
+        end if
+
         if (clean) then
 
             iopt = 3
@@ -3711,7 +3833,24 @@ CONTAINS
     end subroutine solve_eqs
 
 !------------------------------------------------------------------------
-    subroutine source_flux
+    subroutine source_flux(electrostatic)
+        use ntv_mod, only: c
+        use rkstep_mod, only: legacy_asource => asource
+        logical, optional, intent(in) :: electrostatic
+        real(dp), pointer :: asource(:, :)
+        real(dp), target :: exb_moments(0:lag, 3)
+        complex(dp) :: us, phase
+        real(dp) :: theta
+
+        asource => legacy_asource
+        if (present(electrostatic)) then
+            if (electrostatic) then
+                exb_moments = legacy_asource
+                exb_moments(:, 1) = aE1
+                exb_moments(:, 3) = legacy_asource(:, 1)
+                asource => exb_moments
+            end if
+        end if
 
         do istep = ibeg, iend
             npassing = npl(istep)
@@ -3720,6 +3859,22 @@ CONTAINS
             convol_flux(1:npassing + 1, istep) = convol_flux_0(1:npassing + 1, istep) &
                                                  *geodcu_back(istep)
         end do
+
+        if (present(electrostatic)) then
+            if (electrostatic) then
+                do istep = ibeg, iend
+                    call phi_ma_phase(phi_mfl(istep), theta, phase)
+                    us = phi_ma_g*c*imun &
+                        *(m_phi*bcovar_theta_hat - phi_ma_m*bcovar_phi_hat) &
+                        *phase*phi_ma/(phi_ma_sg &
+                        *(aiota*bcovar_theta_hat + bcovar_phi_hat))
+                    npassing = npl(istep)
+                    q_rip(1:npassing + 1, istep, 1) = -2.0d0*us &
+                        *(alambd(0:npassing, istep) - alambd(1:npassing + 1, istep)) &
+                        /(phi_ma_vt*phi_ma_rho*bhat_mfl(istep)*h_phi_mfl(istep))
+                end do
+            end if
+        end if
 
         flux_vector = 0.d0
         source_vector = 0.d0
