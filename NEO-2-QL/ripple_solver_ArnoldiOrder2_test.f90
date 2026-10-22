@@ -14,6 +14,7 @@ subroutine ripple_solver_ArnoldiO2( &
 
     use device_mod
     use flint_mod, only: phi_divide                      !<-in Winny
+    use collision_model_mod, only: uses_krook, krook_pitch_mass
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
                                   isw_momentum, nvel, num_spec, lsw_multispecies, &
@@ -219,6 +220,8 @@ subroutine ripple_solver_ArnoldiO2( &
     complex(dp), dimension(:, :), allocatable :: q_rip_incompress
     complex(dp), dimension(:, :), allocatable :: q_rip_parflow
     real(dp), dimension(:, :, :), allocatable :: rhs_mat_energ
+    ! Collision mass is distinct from the mass used by rotation/drift.
+    real(dp), dimension(:, :, :), allocatable :: rhs_mat_collision
     real(dp), dimension(:, :, :), allocatable :: rhs_mat_energ2     !NTV
     real(dp), dimension(:, :, :), allocatable :: pleg_bra, pleg_ket
     complex(dp), dimension(:, :), allocatable :: convol_flux, convol_curr
@@ -390,6 +393,13 @@ subroutine ripple_solver_ArnoldiO2( &
         isw_lor = 1
         isw_ene = isw_energy
         isw_intp = isw_integral
+    end if
+    if (uses_krook()) then
+        ! Retain the Lorentz assembly topology for the independent ttmp source;
+        ! its matrix is zero. The energy carrier now holds only scalar reaction.
+        isw_ene = 1
+        isw_intp = 0
+        isw_regper = 0
     end if
 
     nvelocity = nvel
@@ -918,6 +928,7 @@ subroutine ripple_solver_ArnoldiO2( &
     allocate (rhs_mat_lorentz(5, npart + 1, ibeg:iend))
     allocate (ttmp_mat(5, npart + 1, ibeg:iend))
     allocate (rhs_mat_energ(4, npart + 1, ibeg:iend))
+    allocate (rhs_mat_collision(4, npart + 1, ibeg:iend))
     allocate (rhs_mat_energ2(4, npart + 1, ibeg:iend))              !NTV
     allocate (q_rip(npart + 2, ibeg:iend, 0:2))
     allocate (q_rip_1(npart + 2, ibeg:iend))
@@ -1004,7 +1015,7 @@ subroutine ripple_solver_ArnoldiO2( &
     if (maxval(phi_divide) > 1) then
         ierr = 3
         deallocate (deriv_coef, npl)
-        deallocate (rhs_mat_lorentz, rhs_mat_energ)
+        deallocate (rhs_mat_lorentz, rhs_mat_energ, rhs_mat_collision)
         deallocate (fun_coef, ttmp_mat)
         deallocate (rhs_mat_energ2)        !NTV
         deallocate (q_rip, q_rip_1, q_rip_incompress, q_rip_parflow)
@@ -1244,7 +1255,19 @@ subroutine ripple_solver_ArnoldiO2( &
             deriv_coef(:, i) = bvec_lapack(2, :)*coefdir*MIN(eta(i), eta0)
             fun_coef(:, i) = bvec_lapack(1, :)*MIN(eta(i), eta0)
 
-            enu_coef(:, i) = MATMUL(dellampow(:, i), bvec_lapack)*coefenu      !!!term[1]
+            if (uses_krook()) then
+                enu_coef(:,i) = krook_pitch_mass(collpar, h_phi_mfl(istep), &
+                    bhat_mfl(istep), dellampow(:,i), bvec_lapack, &
+                    alambd(i,istep), alambd(i-1,istep), &
+                    1.0_dp/fieldline%b_abs_max, with_geometry=.false.)
+                rhs_mat_collision(:,i,istep) = krook_pitch_mass(collpar, &
+                    h_phi_mfl(istep), bhat_mfl(istep), dellampow(:,i), &
+                    bvec_lapack, alambd(i,istep), alambd(i-1,istep), &
+                    1.0_dp/fieldline%b_abs_max)
+            else
+                enu_coef(:,i) = matmul(dellampow(:,i),bvec_lapack)*coefenu
+                rhs_mat_collision(:,i,istep) = enu_coef(:,i)
+            end if
             enu_coef2(:, i) = MATMUL(dellampow2(:, i), bvec_lapack)*coefenu    !!!NTV
 
             if (i .EQ. 1) then
@@ -2102,7 +2125,8 @@ subroutine ripple_solver_ArnoldiO2( &
                                 nz = nz + 1
                                 irow(nz) = k + ipart
                                 icol(nz) = k + MAX(0, ipart - 2) + kk + 2*(npassing + 1)*(mm - m)
-                                amat_sp(nz) = denmm(m, mm)*rhs_mat_energ(kk, ipart, istep)*0.5d0
+                                amat_sp(nz) = denmm(m, mm)* &
+                                    rhs_mat_collision(kk, ipart, istep)*0.5d0
                                 nz_coll = nz_coll + 1
                                 irow_coll(nz_coll) = irow(nz)
                                 icol_coll(nz_coll) = icol(nz)
@@ -2118,7 +2142,8 @@ subroutine ripple_solver_ArnoldiO2( &
                                     nz = nz + 1
                                     irow(nz) = k + ipart
                                     icol(nz) = k_prev + MAX(0, ipart - 2) + kk + 2*(npassing_prev + 1)*(mm - m)
-                                    amat_sp(nz) = denmm(m, mm)*rhs_mat_energ(kk, ipart, istep - 1)*0.5d0
+                                    amat_sp(nz) = denmm(m, mm)* &
+                                        rhs_mat_collision(kk, ipart, istep - 1)*0.5d0
                                 end do
                             end do
                         elseif (ipart .gt. npassing_prev + 1 .and. addboucol) then
@@ -2127,7 +2152,8 @@ subroutine ripple_solver_ArnoldiO2( &
                                     nz = nz + 1
                                     irow(nz) = k + ipart
                                     icol(nz) = k + ipart + 3 - kk + 2*(npassing + 1)*(mm - m)
-                                    amat_sp(nz) = denmm(m, mm)*rhs_mat_energ(kk, ipart, istep)*0.5d0
+                                    amat_sp(nz) = denmm(m, mm)* &
+                                        rhs_mat_collision(kk, ipart, istep)*0.5d0
                                 end do
                             end do
                         end if
@@ -2369,7 +2395,8 @@ subroutine ripple_solver_ArnoldiO2( &
                                 nz = nz + 1
                                 irow(nz) = k - ipart
                                 icol(nz) = k - MAX(0, ipart - 2) - kk + 2*(npassing + 1)*(mm - m)
-                                amat_sp(nz) = denmm(m, mm)*rhs_mat_energ(kk, ipart, istep)*0.5d0
+                                amat_sp(nz) = denmm(m, mm)* &
+                                    rhs_mat_collision(kk, ipart, istep)*0.5d0
                                 nz_coll = nz_coll + 1
                                 irow_coll(nz_coll) = irow(nz)
                                 icol_coll(nz_coll) = icol(nz)
@@ -2385,7 +2412,8 @@ subroutine ripple_solver_ArnoldiO2( &
                                     nz = nz + 1
                                     irow(nz) = k - ipart
                                     icol(nz) = k_prev - MAX(0, ipart - 2) - kk + 2*(npassing_prev + 1)*(mm - m)
-                                    amat_sp(nz) = denmm(m, mm)*rhs_mat_energ(kk, ipart, istep + 1)*0.5d0
+                                    amat_sp(nz) = denmm(m, mm)* &
+                                        rhs_mat_collision(kk, ipart, istep + 1)*0.5d0
                                 end do
                             end do
                         elseif (ipart .gt. npassing_prev + 1 .and. addboucol) then
@@ -2394,7 +2422,8 @@ subroutine ripple_solver_ArnoldiO2( &
                                     nz = nz + 1
                                     irow(nz) = k - ipart
                                     icol(nz) = k - ipart - 3 + kk + 2*(npassing + 1)*(mm - m)
-                                    amat_sp(nz) = denmm(m, mm)*rhs_mat_energ(kk, ipart, istep)*0.5d0
+                                    amat_sp(nz) = denmm(m, mm)* &
+                                        rhs_mat_collision(kk, ipart, istep)*0.5d0
                                 end do
                             end do
                         end if
@@ -3310,6 +3339,7 @@ subroutine ripple_solver_ArnoldiO2( &
     deallocate (deriv_coef, enu_coef, alambd, Vg_vp_over_B, scalprod_pleg)
     deallocate (alampow, vrecurr, dellampow, convol_polpow, pleg_bra, pleg_ket)
     deallocate (enu_coef2, dellampow2, rhs_mat_energ2)
+    deallocate (rhs_mat_collision)
     deallocate (npl, rhs_mat_fzero, rhs_mat_lorentz, rhs_mat_energ, q_rip, q_rip_1)
     deallocate (q_rip_incompress, q_rip_parflow)
     deallocate (fun_coef, ttmp_mat)
@@ -4569,8 +4599,10 @@ CONTAINS
 
             ! -> remove null-space of axisymmetric
             ! solution (particle and energy conservation)
-            coef_dens = sum(densvec_bra*fnew)/denom_dens
-            fnew = fnew - (1.d0 - tol)*coef_dens*densvec_ket
+            if (.not. uses_krook()) then
+                coef_dens = sum(densvec_bra*fnew)/denom_dens
+                fnew = fnew - (1.d0 - tol)*coef_dens*densvec_ket
+            end if
 
             if (isw_intp .eq. 1) then
                 coef_energ = sum(energvec_bra*fnew)/denom_energ

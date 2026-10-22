@@ -1,4 +1,10 @@
 MODULE collisionality_mod
+  CHARACTER(len=32) :: collision_model = 'native'
+  ! Physical damping frequencies [s^-1], ordered like species_tag_vec.
+  DOUBLE PRECISION, ALLOCATABLE :: krook_nu(:)
+  ! Dimensionless multipliers on either side of eta = 1/B_max.
+  DOUBLE PRECISION :: krook_geometry_trapped = 1d0
+  DOUBLE PRECISION :: krook_geometry_passing = 1d0
   INTEGER          :: isw_lorentz
   INTEGER          :: isw_integral
   INTEGER          :: isw_energy
