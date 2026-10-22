@@ -123,3 +123,20 @@ if(NEO2_TEST_PYTHON)
     ${CMAKE_CURRENT_BINARY_DIR} ${MPIEXEC_EXECUTABLE})
   set_tests_properties(phi1_response_test PROPERTIES TIMEOUT 300)
 endif()
+
+add_executable(test_phi1_qn test_phi1_qn.f90)
+target_link_libraries(test_phi1_qn neo2_ql)
+add_test(NAME phi1_qn_test COMMAND test_phi1_qn
+  ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_qn_complex.nml)
+set_tests_properties(phi1_qn_test PROPERTIES TIMEOUT 30)
+add_executable(test_phi1_read test_phi1_read.f90)
+target_link_libraries(test_phi1_read neo2_ql)
+if(NEO2_TEST_PYTHON)
+  add_test(NAME phi1_closure_test COMMAND ${NEO2_TEST_PYTHON}
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_phi1_closure.py
+    $<TARGET_FILE:neo_2_ql.x> $<TARGET_FILE:test_phi1_read>
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi_ma
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_neo2.in
+    ${CMAKE_CURRENT_BINARY_DIR} ${MPIEXEC_EXECUTABLE})
+  set_tests_properties(phi1_closure_test PROPERTIES TIMEOUT 300)
+endif()

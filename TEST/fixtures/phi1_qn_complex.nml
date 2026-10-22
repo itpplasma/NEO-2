@@ -1,0 +1,18 @@
+! Synthetic reference: neo2-phi1 ee1286b097a5f553dea00d95d421dee341029009.
+! reference/neo2/quasineutrality.json, derivation/normalised/derive.py.
+! Checked by derivation/normalised/probes.py and run.py (derive.out/probes.out).
+! Fortsym 7e8ef7abdd90c49bb5f75e2c119e7d181656bcc6. Column-major order.
+&qn_fixture
+ charge=1,-1
+ density=2,2
+ temperature=2,1
+ gram=(1,0),(.25,-.125),(.25,.125),(1,0)
+ response=(.5,.25),(0,.125),(.125,0),(.333333333333333333,-.25),
+          (-.25,0),(.125,0),(0,.125),(-.5,.25)
+ dB=(.666666666666666667,.447916666666666667),
+    (-.965277777777777778,.25), 2*(0,0)
+ chi_expected=3
+ matrix_expected=(-2.25,.25),(-.875,.5),(-.625,-.5),
+                 (-2.166666666666666667,-.5)
+ expected=(.5,.333333333333333333),(-.666666666666666667,.25)
+/

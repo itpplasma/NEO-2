@@ -81,7 +81,8 @@ subroutine ripple_solver_ArnoldiO2( &
     use ntv_mod, only: get_Er, get_B_rho_L_loc
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
     use phi1_mod, only: isw_phi1, phi1_num_m, phi1_m, phi1_result, &
-        phi1_basis, phi1_density
+        phi1_basis, phi1_density, phi1_assemble_qn, phi1_solve_qn, &
+        phi1_qn_rtol, phi1_rcond_min, phi1_write_bc
     use phi_ma_response_mod, only: phi_m, delta_m, phi_ma_m, &
                                   misaligned_potential, write_phi_ma_current, &
                                   normalize_phi_ma_j_hat
@@ -3848,6 +3849,8 @@ CONTAINS
         complex(dp), allocatable :: psi(:,:), moments(:,:,:), solution(:)
         complex(dp), allocatable :: projected(:,:), response(:,:,:)
         complex(dp), allocatable :: shift(:), raw(:), collision(:)
+        complex(dp), allocatable :: magnetic(:,:)
+        real(dp) :: length
         complex(dp) :: saved_phi
         real(dp), allocatable :: coll_norm(:,:)
         logical :: common_temperature
@@ -3878,7 +3881,17 @@ CONTAINS
         phi_ma = 1.0_dp
         allocate(psi(nn,nb), beta_species(0:ns-1), solution(n_2d_size))
         allocate(collision(n_2d_size), shift(n_2d_size), raw(n_2d_size))
-        allocate(moments(nn,0:nb,0:ns-1), coll_norm(nb,0:ns-1))
+        allocate(moments(2*nn+2,0:nb,0:ns-1), coll_norm(nb,0:ns-1))
+        if (isw_phi1 == 2) allocate(phi1_result%drift(nn,nb))
+        magnetic = flux_vector([1,3],:)
+        length = 0.0_dp
+        imoment = maxloc(abs(weightlag(2,:)),dim=1)-1
+        do t = ibeg, iend
+            off = ind_start(t)+2*(npl(t)+1)*imoment+1
+            length = length+real(flux_vector(2,off) &
+                /(weightlag(2,imoment)*convol_curr(1,t)),dp) &
+                /(bhat_mfl(t)*h_phi_mfl(t))
+        end do
         allocate(projected(nb,ns), response(nb,nb,ns))
         moments = 0.0_dp
         coll_norm = 0.0_dp
@@ -3897,13 +3910,17 @@ CONTAINS
             do channel = 1, 2
                 norm_index = 2*channel-1
                 call phi1_store_density(source_vector_all(:,norm_index,b), &
-                    beta_species(b)*force(channel), 0, moments)
+                    beta_species(b)*force(channel), 0, moments, magnetic, length)
             end do
         end do
 
         do j = 1, nb
             phi_ma_m = phi1_m(j)
-            call source_flux(.true.)
+            if (isw_phi1 == 2) then
+                call source_flux(.true., phi1_result%drift(:,j))
+            else
+                call source_flux(.true.)
+            end if
             do b = 0, ns-1
                 force(2) = g*dT_spec_ov_ds(b)/T_spec(b)
                 force(1) = g*dn_spec_ov_ds(b)/n_spec(b)-1.5_dp*force(2) &
@@ -3940,7 +3957,7 @@ CONTAINS
                     ! All ranks enter every RHS, including zero local forcing.
                     call iterator(1, n_2d_size, n_arnoldi, epserr_iter, niter, &
                         solution, ispec, next_iteration)
-                    call phi1_store_density(solution, scale, j, moments)
+                    call phi1_store_density(solution, scale, j, moments, magnetic, length)
                 end do
             end do
         end do
@@ -3966,10 +3983,10 @@ CONTAINS
             end do
             do b = 1, ns
                 projected(j,b) = sum(phi1_result%weights &
-                    *conjg(psi(:,j))*moments(:,0,b-1))
+                    *conjg(psi(:,j))*moments(1:nn,0,b-1))
                 do channel = 1, nb
                     response(j,channel,b) = sum(phi1_result%weights &
-                        *conjg(psi(:,j))*moments(:,channel,b-1))
+                        *conjg(psi(:,j))*moments(1:nn,channel,b-1))
                 end do
             end do
         end do
@@ -3981,12 +3998,13 @@ CONTAINS
         phi1_result%density_dB = projected
         phi1_result%response = response
         phi1_result%collision_norm = coll_norm
+        if (isw_phi1 == 2) call close_phi1(moments, g, bref)
     end subroutine respond_phi1
 
-    subroutine phi1_store_density(y, scale, j, moments)
+    subroutine phi1_store_density(y, scale, j, moments, magnetic, length)
         use collisionality_mod, only: n_spec
-        complex(dp), intent(in) :: y(:)
-        real(dp), intent(in) :: scale
+        complex(dp), intent(in) :: y(:), magnetic(:,:)
+        real(dp), intent(in) :: scale, length
         integer, intent(in) :: j
         complex(dp), intent(inout) :: moments(:,0:,0:)
         integer :: t, p, off, nn
@@ -3999,8 +4017,87 @@ CONTAINS
                 +n_spec(ispec)*scale*phi1_density( &
                 reshape(y(off+1:off+2*p*(lag+1)),[2*p,lag+1]), &
                 pleg_bra(0,1:p,t), weightden, h_phi_mfl(t))
+            if (isw_phi1 == 2) then
+                moments(nn+t-ibeg+1,j,ispec) = moments(nn+t-ibeg+1,j,ispec) &
+                    +n_spec(ispec)*scale*T_spec(ispec)*phi1_density( &
+                    reshape(y(off+1:off+2*p*(lag+1)),[2*p,lag+1]), &
+                    pleg_bra(0,1:p,t), weightlag(1,:), h_phi_mfl(t))
+            end if
         end do
+        if (isw_phi1 /= 2) return
+        moments(2*nn+1,j,ispec) = moments(2*nn+1,j,ispec) &
+            +n_spec(ispec)*scale*phi_ma_vt*phi_ma_rho/phi_ma_g/length &
+            *sum(conjg(magnetic(1,:))*y)
+        moments(2*nn+2,j,ispec) = moments(2*nn+2,j,ispec) &
+            +n_spec(ispec)*scale*phi_ma_vt*phi_ma_rho/phi_ma_g/length &
+            *T_spec(ispec)*sum(conjg(magnetic(2,:))*y)
     end subroutine phi1_store_density
+
+    subroutine close_phi1(moments, g, bref)
+        use collisionality_mod, only: z_spec, n_spec
+        use ntv_mod, only: e
+        use mpi, only: MPI_BCAST, MPI_INTEGER, MPI_DOUBLE_COMPLEX, &
+            MPI_DOUBLE_PRECISION, MPI_COMM_WORLD, MPI_SUCCESS
+        complex(dp), intent(inout) :: moments(:,0:,0:)
+        real(dp), intent(in) :: g, bref
+        integer :: nb, ns, nn, b, j, status, ierr_mpi
+        complex(dp), allocatable :: potential(:), matrix(:,:), rhs(:), ur(:)
+        real(dp) :: quality(2)
+
+        nb = phi1_num_m
+        ns = num_spec
+        nn = iend-ibeg+1
+        allocate(potential(nb), matrix(nb,nb), rhs(nb))
+        matrix = 0.0_dp
+        rhs = 0.0_dp
+        quality = [huge(1.0_dp),0.0_dp]
+        if (mpro%isMaster()) then
+            call phi1_assemble_qn(e*z_spec, n_spec, T_spec, phi1_result%gram, &
+                phi1_result%response, phi1_result%density_dB, matrix, rhs, &
+                phi1_result%chi, status)
+            if (status == 0) call phi1_solve_qn(matrix, rhs, phi1_qn_rtol, &
+                phi1_rcond_min, potential, quality(1), quality(2), status)
+            if (status /= 0) print *, 'Phi_1 QN rejected: info, residual, rcond', &
+                status, quality
+        end if
+        call MPI_BCAST(status, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr_mpi)
+        if (status /= 0) error stop 'Singular or ill-conditioned Phi_1 QN system'
+        call MPI_BCAST(potential, nb, MPI_DOUBLE_COMPLEX, 0, MPI_COMM_WORLD, ierr_mpi)
+        if (ierr_mpi /= MPI_SUCCESS) error stop 'Phi_1 broadcast failed'
+        call MPI_BCAST(quality, 2, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr_mpi)
+        call MPI_BCAST(phi1_result%chi, 1, MPI_DOUBLE_PRECISION, 0, &
+            MPI_COMM_WORLD, ierr_mpi)
+        phi1_result%phi = potential
+        phi1_result%matrix = matrix
+        phi1_result%rhs = rhs
+        phi1_result%residual = quality(1)
+        phi1_result%rcond = quality(2)
+        phi1_result%sampled_phi = matmul(phi1_result%basis,potential)
+        ur = matmul(phi1_result%drift,potential)
+        allocate(phi1_result%n1(nn,ns), phi1_result%gamma_B(ns), &
+            phi1_result%gamma_E(ns), phi1_result%energy_B(ns), &
+            phi1_result%energy_E(ns), phi1_result%torque(ns))
+        do b = 1, ns
+            do j = 1, nb
+                moments(:,0,b-1) = moments(:,0,b-1)+potential(j)*moments(:,j,b-1)
+            end do
+            phi1_result%n1(:,b) = moments(1:nn,0,b-1) &
+                -e*z_spec(b-1)*n_spec(b-1)/T_spec(b-1)*phi1_result%sampled_phi
+            phi1_result%gamma_B(b) = 0.5_dp*real(moments(2*nn+1,0,b-1),dp)
+            phi1_result%energy_B(b) = 0.5_dp*real(moments(2*nn+2,0,b-1),dp)
+            phi1_result%gamma_E(b) = 0.5_dp*real(sum(phi1_result%weights &
+                *conjg(ur)*moments(1:nn,0,b-1)),dp)
+            phi1_result%energy_E(b) = 0.5_dp*real(sum(phi1_result%weights &
+                *conjg(ur)*moments(nn+1:2*nn,0,b-1)),dp)
+            phi1_result%torque(b) = -g*aiota*bref*boozer_psi_pr_hat/c &
+                *e*z_spec(b-1)*(phi1_result%gamma_B(b)+phi1_result%gamma_E(b))
+        end do
+        phi1_result%boltzmann_flux = phi1_result%chi*0.5_dp &
+            *real(sum(phi1_result%weights*conjg(ur)*phi1_result%sampled_phi),dp)
+        phi1_result%qn_flux_check = sum(e*z_spec*phi1_result%gamma_E) &
+            -phi1_result%boltzmann_flux
+        if (mpro%isMaster()) call phi1_write_bc()
+    end subroutine close_phi1
 
     ! D10: the stored raw entries are -L_diff / streaming divisor. Apply
     ! their native trapezoidal assembly and subtract the coupled L_integral.
@@ -4068,10 +4165,11 @@ CONTAINS
         end if
     end subroutine phi1_collision_action
 
-    subroutine source_flux(electrostatic)
+    subroutine source_flux(electrostatic, radial_drift)
         use ntv_mod, only: c
         use rkstep_mod, only: legacy_asource => asource
         logical, optional, intent(in) :: electrostatic
+        complex(dp), optional, intent(out) :: radial_drift(iend-ibeg+1)
         real(dp), pointer :: asource(:, :)
         real(dp), target :: exb_moments(0:lag, 3)
         complex(dp) :: us, phase
@@ -4103,6 +4201,7 @@ CONTAINS
                         *(m_phi*bcovar_theta_hat - phi_ma_m*bcovar_phi_hat) &
                         *phase*phi_ma/(phi_ma_sg &
                         *(aiota*bcovar_theta_hat + bcovar_phi_hat))
+                    if (present(radial_drift)) radial_drift(istep-ibeg+1) = us/phi_ma_g
                     npassing = npl(istep)
                     q_rip(1:npassing + 1, istep, 1) = -2.0d0*us &
                         *(alambd(0:npassing, istep) - alambd(1:npassing + 1, istep)) &
