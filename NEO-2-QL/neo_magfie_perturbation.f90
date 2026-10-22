@@ -16,6 +16,7 @@ MODULE neo_magfie_perturbation
   !! Modification by Andreas F. Martitsch (17.07.2014)
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : in_file_pert, m_phi
+  use phi1_mod, only: isw_phi1
   !! End Modification by Andreas F. Martitsch (17.07.2014)
   ! coordinates of starting point
   USE mag_interface_mod, ONLY : boozer_s, boozer_theta_beg,&
@@ -206,6 +207,10 @@ CONTAINS
        PRINT *,'FATAL: There is yet no other Laboratory for the perturbed field defined!'
        STOP
     END IF
+    if (isw_phi1 /= 0) then
+       if (m_phi == 0 .or. any(ixn_pert /= m_phi)) &
+          error stop 'Phi_1 requires one common nonzero toroidal mode'
+    end if
     ! close Boozer file
     CLOSE (unit=r_un)
     RETURN

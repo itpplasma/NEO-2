@@ -1,0 +1,32 @@
+&multi_spec
+ lsw_multispecies=.true., num_spec=2, species_tag_vec=1,2,
+ isw_multispecies_init=0, isw_coul_log=0, conl_over_mfp_vec=-1d-3,-1d-3,
+ z_vec=1,-1, m_vec=3.34d-24,9.10938215d-28, n_vec=1d13,1d13, t_vec=1.6d-9,1.6d-9,
+ dn_vec_ov_ds=-1d13,-1d13, dt_vec_ov_ds=-1.6d-9,-1.6d-9,
+ isw_calc_er=2, isw_calc_magdrift=0, species_tag_vphi=1,
+/
+&settings
+ nstep=80, nperiod=2, ndim0=14, mag_magfield=1, eta_part_trapped=8,
+ magnetic_device=0, mag_coordinates=1, boozer_s=.5,
+ boozer_theta_beg=3.141592653589793d0, boozer_phi_beg=0,
+ mag_symmetric=.false., omp_num_threads=1,
+/
+&collision
+ lag=2, leg=2, legmax=2, isw_lorentz=0, isw_integral=1,
+ isw_energy=1, isw_axisymm=1, isw_momentum=0,
+ collop_base_prj=0, collop_base_exp=0, isw_relativistic=0,
+ lsw_read_precom=.false., lsw_write_precom=.false.,
+/
+&binsplit
+ bin_split_mode=0, eta_part=12,
+ phi_split_mode=1, phi_place_mode=1, phi_split_min=1, hphi_mult=1, max_solver_try=10,
+/
+&propagator
+ prop_reconstruct=0, prop_write=0,
+/
+&plotting
+/
+&ntv_input
+ isw_phi1=1, phi1_num_m=3, phi1_m=-1,0,1,
+ isw_qflux_NA=1, isw_ripple_solver=3, in_file_pert='pert.bc', Om_tE=1d3,
+/

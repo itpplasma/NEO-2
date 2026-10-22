@@ -69,6 +69,7 @@ module neo2_ql
   ! derivative of iota for non-local NTV computations
   ! (with magnetic shear)
   use neo_magfie, only : isw_mag_shear
+  use phi1_mod, only: isw_phi1, phi1_num_m, phi1_m, phi1_validate_config
   use phi_ma_response_mod, only: phi_m, delta_m, phi_ma_m
 
   use neo_spline_data, only : lsw_linear_boozer
@@ -247,7 +248,8 @@ module neo2_ql
   ! Extra input for NTV computation
   NAMELIST /ntv_input/                                                        &
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, Om_tE, B_rho_L_loc,  &
-       isw_ripple_solver, isw_mag_shear, phi_m, delta_m, phi_ma_m
+       isw_ripple_solver, isw_mag_shear, phi_m, delta_m, phi_ma_m, &
+       isw_phi1, phi1_num_m, phi1_m
 
 contains
 
@@ -911,6 +913,22 @@ subroutine main
 
 
   subroutine check()
+        if (isw_phi1 /= 0) then
+            call phi1_validate_config()
+            if (isw_qflux_NA /= 1 .or. isw_ripple_solver /= 3) &
+                error stop 'Phi_1 requires isw_qflux_NA=1 and isw_ripple_solver=3'
+            if (isw_axisymm /= 1 .or. magnetic_device /= 0) &
+                error stop 'Phi_1 requires the direct axisymmetric tokamak route'
+            if (mag_coordinates /= 1 .or. isw_relativistic /= 0) &
+                error stop 'Phi_1 requires nonrelativistic Boozer coordinates'
+            if (.not. lsw_multispecies .or. prop_reconstruct /= 0) &
+                error stop 'Phi_1 requires explicit species and local output'
+            if (vel_distri_swi /= 0 .or. isw_calc_Er /= 2) &
+                error stop 'Phi_1 requires the speed basis and prescribed Om_tE'
+            if (phi_m /= (0.0d0,0.0d0) .or. delta_m /= (0.0d0,0.0d0)) &
+                error stop 'Use either the L1 prescribed drive or Phi_1 basis responses'
+        end if
+
     if (phi_m /= (0.0d0, 0.0d0) .or. delta_m /= (0.0d0, 0.0d0)) then
       if (isw_ripple_solver /= 3 .or. isw_qflux_NA /= 1 .or. &
           magnetic_device /= 0 .or. isw_axisymm /= 1 .or. &
@@ -1349,7 +1367,11 @@ subroutine main
         END IF
         !! Modification by Andreas F. Martitsch (17.07.2014)
         ! ntv_input
-        WRITE(u1,nml=ntv_input,iostat=ios)
+        if (isw_phi1 == 0) then
+            call write_l1_ntv_input(u1, ios)
+        else
+            write(u1,nml=ntv_input,iostat=ios)
+        end if
         IF (ios .NE. 0) THEN
           PRINT *, 'WARNING: group ntv_input in ',fname_multispec,' cannot be WRITTEN!'
           PRINT *, ''
@@ -1365,6 +1387,15 @@ subroutine main
     END DO
   end subroutine prepare_mulitspecies_scan
 
+
+  subroutine write_l1_ntv_input(unit, ios)
+    integer, intent(in) :: unit
+    integer, intent(out) :: ios
+    namelist /ntv_input/ isw_ntv_mode, isw_qflux_NA, in_file_pert, &
+        MtOvR, Om_tE, B_rho_L_loc, isw_ripple_solver, isw_mag_shear, &
+        phi_m, delta_m, phi_ma_m
+    write(unit,nml=ntv_input,iostat=ios)
+  end subroutine write_l1_ntv_input
 
   !> \brief Wrapper for executing a string in a command line.
   subroutine command_line_wrapper(cmd_line)

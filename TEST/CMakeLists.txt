@@ -109,3 +109,17 @@ set_tests_properties(binarysplit_max_index_test PROPERTIES
     WILL_FAIL TRUE
     TIMEOUT 30
 )
+
+add_executable(test_phi1_density test_phi1_density.f90)
+target_link_libraries(test_phi1_density neo2_ql)
+add_test(NAME phi1_density_test COMMAND test_phi1_density
+  ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_density.nml)
+set_tests_properties(phi1_density_test PROPERTIES TIMEOUT 30)
+if(NEO2_TEST_PYTHON)
+  add_test(NAME phi1_response_test COMMAND ${NEO2_TEST_PYTHON}
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_phi1_response.py
+    $<TARGET_FILE:neo_2_ql.x> ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi_ma
+    ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi1_neo2.in
+    ${CMAKE_CURRENT_BINARY_DIR} ${MPIEXEC_EXECUTABLE})
+  set_tests_properties(phi1_response_test PROPERTIES TIMEOUT 300)
+endif()

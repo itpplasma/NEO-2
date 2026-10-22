@@ -49,7 +49,7 @@ def complex_data(data, key):
     return data[key + "_real"] + 1j * data[key + "_imag"]
 
 
-def identical_legacy(left, right):
+def identical_legacy(left, right, unordered_text=()):
     count = 0
     for name in ("collop.h5", "fulltransp.h5", "neo2_multispecies_out.h5", "neo2_config.h5"):
         with h5py.File(left / name) as a, h5py.File(right / name) as b:
@@ -57,9 +57,11 @@ def identical_legacy(left, right):
             def compare(key, item):
                 nonlocal count
                 if isinstance(item, h5py.Dataset):
-                    # neo2.f90 writes a random run ID and wall-clock time.
+                    # Revision identities and run metadata differ between builds.
                     if name == "neo2_config.h5" and key in (
-                            "metadata/Run_0", "metadata/Timestamp_start_0"):
+                            "metadata/Run_0", "metadata/Timestamp_start_0",
+                            "metadata/NEO-2 Version", "metadata/NEO-2 Version Additional",
+                            "metadata/MPILib Version"):
                         return
                     other = b[key]
                     assert item.shape == other.shape and item.dtype == other.dtype, key
@@ -67,8 +69,13 @@ def identical_legacy(left, right):
                     count += 1
             a.visititems(compare)
     for source in left.glob("*.dat"):
-        assert source.read_bytes() == (right / source.name).read_bytes(), source.name
-    print(f"PASS: {count} deterministic legacy datasets and all .dat files bitwise identical")
+        other = right / source.name
+        if source.name in unordered_text:
+            # MPI ranks append this diagnostic without a shared ordering.
+            assert sorted(source.read_bytes().splitlines()) == sorted(other.read_bytes().splitlines()), source.name
+        else:
+            assert source.read_bytes() == other.read_bytes(), source.name
+    print(f"PASS: {count} deterministic legacy datasets/text bitwise identical; MPI diagnostics checked as line multisets")
 
 
 def main():
