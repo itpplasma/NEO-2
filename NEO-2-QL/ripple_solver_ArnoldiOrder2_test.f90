@@ -46,7 +46,8 @@ subroutine ripple_solver_ArnoldiO2( &
                               prop_reconstruct_levels
     use sparse_mod, only: sparse_solve_method, sparse_solve, &
                           column_full2pointer, remap_rc, sparse_solver_test, &
-                          sparse_method_from_environment, sparse_umfpack_diagnostics
+                          sparse_method_from_environment, sparse_umfpack_diagnostics, &
+                          sparse_coo_action
     use mag_interface_mod, only: surface_boozer_B00, travis_convfac, boozer_s, mag_magfield
     use ntv_eqmat_mod, only: nz_symm, nz_asymm, nz_per_pos, nz_per_neg, &
                              irow_symm, icol_symm, amat_symm, &
@@ -278,7 +279,7 @@ subroutine ripple_solver_ArnoldiO2( &
     real(dp), dimension(:, :), allocatable :: source_vector_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
     complex(dp), dimension(:), allocatable :: ttmpfact
-    logical :: sparse_trace = .false.
+    logical :: sparse_trace = .false., ax_operator_probe = .false.
     character(len=32) :: sparse_trace_value
     integer :: sparse_trace_status
     logical :: colltest = .FALSE.
@@ -302,6 +303,9 @@ subroutine ripple_solver_ArnoldiO2( &
                                   status=sparse_trace_status)
     if (sparse_trace_status == 0) sparse_trace = trim(sparse_trace_value) == '1'
     if (sparse_trace) print *, 'native sparse method: ', sparse_solve_method
+    call get_environment_variable('NEO2_AX_OPERATOR_PROBE', sparse_trace_value, &
+                                  status=sparse_trace_status)
+    if (sparse_trace_status == 0) ax_operator_probe = trim(sparse_trace_value) == '1'
 
     addboucol = .true.
     !------------------------------------------------------------------------
@@ -3485,6 +3489,12 @@ CONTAINS
         nz = nz_sq
 
         call column_full2pointer(icol(1:nz), ipcol)
+        if (problem_type .and. ax_operator_probe) then
+            call probe_axisymmetric_actions()
+            if (ispec == 0) print *, 'NEO2_DIAGNOSTIC_ONLY operator_kets NO_TORQUE'
+            call mpro%deinit()
+            stop
+        end if
 
 ! There are now three different calls sparse_solve
 !   iopt = 1 ; factorization
@@ -4673,6 +4683,104 @@ CONTAINS
         ! No rank may continue to publish transport from an unconverged solve.
         if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
     end subroutine report_solve
+
+    subroutine probe_axisymmetric_actions()
+        use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+        complex(dp), allocatable :: z(:), mz(:), cz(:), rz(:), kz(:), w(:)
+        complex(dp), allocatable :: ez(:,:), el(:,:)
+        complex(dp) :: gram(2,0:num_spec-1)
+        real(dp) :: scale(0:num_spec-1), znorm(2,0:num_spec-1), stats(12,0:num_spec-1)
+        real(dp) :: amplitude
+        integer :: source, kind, point, bands, offset, band, term, a, b
+        allocate(z(nrow), mz(nrow), cz(nrow), rz(nrow), kz(nrow), w(nrow))
+        if (isw_intp == 1) allocate(ez(nrow,0:num_spec-1), el(nrow,0:num_spec-1))
+        do kind = 1, 2
+            do source = 0, num_spec-1
+                z = (0.0_dp,0.0_dp)
+                if (ispec == source) then
+                    if (isw_intp == 1) then
+                        if (kind == 1) z = densvec_ket
+                        if (kind == 2) z = energvec_ket
+                    else
+                        ! Unit speed coefficient m=kind-1, native isotropic bands.
+                        do point = ibeg, iend
+                            bands = npl(point)
+                            offset = ind_start(point)+2*(bands+1)*(kind-1)
+                            do band = 1, bands
+                                z(offset+band) = eta(band)-eta(band-1)
+                                z(offset+2*bands+3-band) = z(offset+band)
+                            end do
+                            z(offset+bands+1) = 1.0_dp/bhat_mfl(point)-eta(bands)
+                            z(offset+bands+2) = z(offset+bands+1)
+                        end do
+                    end if
+                end if
+                scale(ispec) = maxval(abs(z))
+                call mpro%allgather_inplace(scale)
+                amplitude = maxval(scale)
+                if (.not. ieee_is_finite(amplitude)) error stop 'nonfinite probe ket'
+                if (amplitude <= tiny(1.0_dp)) error stop 'zero probe ket'
+                ! Global infinity norm one; do not divide by a near-zero action.
+                z = z/amplitude
+                znorm(:,ispec) = [sum(abs(z)),sum(abs(z)**2)]
+                call mpro%allgather_inplace(znorm)
+                call sparse_coo_action(irow_symm, icol_symm, amat_symm, z, mz)
+                cz = (0.0_dp,0.0_dp)
+                ! Collective collision application has the original residual MPI order.
+                if (isw_intp == 1) call integral_part(z, cz)
+                rz = (0.0_dp,0.0_dp)
+                if (nz_regper > 0) &
+                    call sparse_coo_action(irow_regper, icol_regper, amat_regper, z, rz)
+                call sparse_coo_action(irow(1:nz), icol(1:nz), &
+                    real(amat_sp(1:nz),dp), z, kz)
+                do term = 1, 6 ! M,C,L=M-C,R,K,K-M-R in the native stored entry orders.
+                    select case (term)
+                    case (1); w = mz
+                    case (2); w = cz
+                    case (3); w = mz-cz
+                    case (4); w = rz
+                    case (5); w = kz
+                    case (6); w = kz-mz-rz
+                    end select
+                    if (term == 3 .and. kind == 2 .and. isw_intp == 1) then
+                        ez(:,source) = z
+                        el(:,source) = w
+                    end if
+                    stats(2*term-1:2*term,ispec) = [sum(abs(w)),sum(abs(w)**2)]
+                end do
+                call mpro%allgather_inplace(stats)
+                if (.not. all(ieee_is_finite(stats))) &
+                    error stop 'nonfinite operator probe'
+                if (ispec == 0) then
+                    print *, 'OPERATOR_KET source/kind/input_inf/zL1/zL2 ', &
+                        source, kind, &
+                        amplitude, sum(znorm(1,:)), sqrt(sum(znorm(2,:)))
+                    do term = 1, 6
+                        print *, 'OPERATOR_ACTION term/source/kind ', &
+                            term, source, kind, &
+                            ' speciesL1/L2 ', &
+                            stats(2*term-1,:), sqrt(stats(2*term,:)), &
+                            ' globalL1/L2 ', &
+                            sum(stats(2*term-1,:)), sqrt(sum(stats(2*term,:)))
+                    end do
+                end if
+            end do
+        end do
+        if (isw_intp == 1) then
+            do a = 0, num_spec-1
+                do b = 0, num_spec-1
+                    gram(:,ispec) = [sum(conjg(el(:,a))*el(:,b)), &
+                        sum(conjg(ez(:,a))*ez(:,b))]
+                    call mpro%allgather_inplace(gram)
+                    if (.not. all(ieee_is_finite(real(gram,dp))) .or. &
+                        .not. all(ieee_is_finite(aimag(gram)))) &
+                        error stop 'nonfinite full action Gram'
+                    if (ispec == 0) print *, 'ENERGY_FULL_ACTION_GRAM a/b/H/ketGram ', &
+                        a, b, sum(gram(1,:)), sum(gram(2,:))
+                end do
+            end do
+        end if
+    end subroutine probe_axisymmetric_actions
 
     subroutine print_sparse_diagnostics(label)
         character(len=*), intent(in) :: label

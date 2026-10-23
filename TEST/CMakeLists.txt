@@ -135,3 +135,8 @@ set_tests_properties(sparse_method_invalid PROPERTIES
     ENVIRONMENT "NEO2_SPARSE_SOLVE_METHOD=invalid" WILL_FAIL TRUE)
 set_tests_properties(sparse_method_default sparse_method_refined
     sparse_method_explicit_default sparse_method_invalid PROPERTIES TIMEOUT 30)
+
+add_executable(test_operator_ket_actions test_operator_ket_actions.f90)
+target_link_libraries(test_operator_ket_actions common)
+add_test(NAME operator_ket_actions COMMAND test_operator_ket_actions)
+set_tests_properties(operator_ket_actions PROPERTIES TIMEOUT 30)
