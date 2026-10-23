@@ -417,86 +417,12 @@ name of an efit file to be read and converted to a boozer file. The
 result is writen in a file with the second name.
 """
 def efit_to_boozer(filename, outputfile):
-  import matplotlib.pyplot as plt
-  import numpy as np
+  from libneo.eqdsk_to_boozer import convert_eqdsk_to_bc
 
-  import boozer
-
-  number_of_fluxsurfaces=30
-  efitvar = efit_type(filename)
-
-  rgrid = compute_rgrid(efitvar)
-  zgrid = compute_zgrid(efitvar)
-
-  #~ contourlevels = compute_contourlevels(efitvar, number_of_fluxsurfaces)
-  #~ contourlines = conrec(efitvar.psi2d, efitvar.nw, efitvar.nh, contourlevels, rgrid, zgrid)
-  contourlines = []
-  cn = plt.contour(efitvar.psi2d,number_of_fluxsurfaces)
-  contourlevels = cn.levels
-
-  # Determine the number of closed surfaces in advance, as this is equal
-  # to the parameter nsurf, required for the header.
-  j = 0
-  for k in range(len(cn.collections)):
-    for p in cn.collections[k].get_paths():
-      if (closed(p)):
-        j = j+1
-
-  # \todo Use correct values.
-  m0b =20 #
-  n0b = 0 # Data only for single poloidal cut, thus only zero mode can be calculated.
-  nsurf = j
-  nfp = 1 #
-  psi_tor_a = -3.0 #
-  aminor = 0.5 #
-  Rmajor = efitvar.rmaxis
-  vmnb = np.zeros(m0b+1) #
-  bmnb = np.zeros(m0b+1) #
-  radial_restriction_parameter = 1.01
-  s = (cn.levels - radial_restriction_parameter*min(cn.levels))/(radial_restriction_parameter*(max(cn.levels) - min(cn.levels))) #
-  iota_ = 1.0/efitvar.q
-  # Scale efitvar.psi to be in the range [0,1] as s is scaled that way.
-  iotavec = recompute_from_to(iota_, efitvar.psi/max(efitvar.psi), s)
-  bsubvB = 0.0 #
-  bsubuB = 0.0 #
-  pprime = 0.0 #
-  vp = 0.0 #
-  nb = np.zeros(m0b+1, dtype=int)
-  mb = range(m0b+1)
-  shot = efitvar.shootnr
-
-  boozer.write_boozer_head(outputfile, '01', shot, m0b, n0b, nsurf, nfp, psi_tor_a, aminor, Rmajor)
-
-  for (k, psi, iota) in zip(range(len(cn.collections)-1,0-1, -1), s, iotavec):
-    for p in cn.collections[k].get_paths():
-
-      if (closed(p)):
-        x = []
-        z = []
-        for v in p.iter_segments():
-          x.append(v[0][0])
-          z.append(v[0][1])
-
-        # Final length chosen such, that there will be m0b modes, not counting the zero mode (constant) and the first order (sine(x)).
-        [xl, zl] = make_length(x, z, 2*(m0b + 0))
-        # Make the fouriertrafo.
-        xf = make_fouriertrafo(xl)
-        zf = make_fouriertrafo(zl)
-
-        boozer.append_boozer_block_head(outputfile, psi, iota, bsubvB, bsubuB, pprime, vp, nfp)
-        boozer.append_boozer_block(outputfile, mb, nb, xf, zf, vmnb, bmnb, nfp)
-
-  # As test plot the contour lines.
-  #~ plt.figure()
-  #~ colormap = plt.get_cmap('cool', 30)
-  #~ for k in range(number_of_fluxsurfaces):
-    #~ for l in range(len(contourlines[k])):
-      #~ plt.plot([contourlines[k][l][0], contourlines[k][l][2]], [contourlines[k][l][1], contourlines[k][l][3]], color=colormap(float(k)/float(number_of_fluxsurfaces-1)))
-  #~ plt.savefig('test')
+  convert_eqdsk_to_bc(filename, outputfile)
 
 ########################################################################
 if __name__ == "__main__":
-  import matplotlib.pyplot as plt
   import sys
 
   # Check input arguments for input and output filename.
