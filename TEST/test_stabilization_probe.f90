@@ -9,7 +9,7 @@ program test_stabilization_probe
     ! Analytic singular values 3 and 1, complex diagonal phase retained.
     a=(0.0_dp,0.0_dp); b=a
     a(1,1)=(0.0_dp,3.0_dp); a(2,2)=1.0_dp
-    b(1,1)=(0.0_dp,-1.0_dp/3.0_dp); b(2,2)=1.0_dp
+    b(1,1)=cmplx(0.0_dp,-1.0_dp/3.0_dp,kind=dp); b(2,2)=1.0_dp
     call probe_singular_values(a,singular)
     if (maxval(abs(singular-[3.0_dp,1.0_dp]))>1.0e-13_dp) error stop 'SVD'
     if (probe_inverse_defect(a,b)>1.0e-13_dp) error stop 'inverse'
