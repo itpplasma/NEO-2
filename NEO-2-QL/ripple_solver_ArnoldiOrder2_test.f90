@@ -283,6 +283,7 @@ subroutine ripple_solver_ArnoldiO2( &
   !! End Modification by Andreas F. Martitsch (28.07.2015)
     complex(dp), dimension(:), allocatable :: ttmpfact
     logical :: sparse_trace = .false., ax_operator_probe = .false.
+    logical :: early_original_accept = .false.
     character(len=32) :: sparse_trace_value
     integer :: sparse_trace_status
     logical :: colltest = .FALSE.
@@ -311,6 +312,21 @@ subroutine ripple_solver_ArnoldiO2( &
                                   status=sparse_trace_status)
     if (sparse_trace_status == 0) ax_operator_probe = trim(sparse_trace_value) == '1'
 
+    early_original_accept=.false.
+    call get_environment_variable('NEO2_ORIGINAL_RESIDUAL_ACCEPT', sparse_trace_value, &
+                                  status=sparse_trace_status)
+    if (sparse_trace_status == 0) then
+        select case(trim(sparse_trace_value))
+        case('0')
+        case('1')
+            early_original_accept=.true.
+        case default
+            error stop 'NEO2_ORIGINAL_RESIDUAL_ACCEPT must be0or1'
+        end select
+    else if (sparse_trace_status /= 1) then
+        error stop 'Original residual acceptance environment read failed'
+    end if
+    print *, 'native original residual early accept: ',early_original_accept
     stabilization_probe=.false.
     call get_environment_variable('NEO2_AX_STABILIZATION_PROBE', sparse_trace_value, &
                                   status=sparse_trace_status)
@@ -319,7 +335,7 @@ subroutine ripple_solver_ArnoldiO2( &
         stabilization_probe=.true.
         if (any([isw_lorentz,isw_energy,isw_integral] /= 0)) &
             error stop 'Stabilization probe requires effective pitch model'
-        if (ax_operator_probe) error stop 'Conflicting AX probes'
+        if (ax_operator_probe .or. early_original_accept) error stop 'Conflicting AX probes'
     else if (sparse_trace_status /= 1) then
         error stop 'Stabilization probe environment read failed'
     end if
@@ -3562,7 +3578,9 @@ CONTAINS
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                             & source_vector_all(:, k, ispec), ispec, next_iteration, &
                             & solve_status, solve_iterations, solve_residual, equation_residual, &
-                            & physical_action=source_free_pitch_action)
+                            & physical_action=source_free_pitch_action, &
+                            & early_original_accept=early_original_accept, &
+                            & evaluate_constraints=original_constraints)
                 call report_solve(k, ispec, solve_status, solve_iterations, solve_residual)
             end do
 
@@ -3582,7 +3600,9 @@ CONTAINS
                     energy_constraint_species = 0.0d0
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                                 & source_vector_all(:, k, ispecp), ispec, next_iteration, &
-                                & solve_status, solve_iterations, solve_residual, equation_residual)
+                                & solve_status, solve_iterations, solve_residual, equation_residual, &
+                                & early_original_accept=early_original_accept, &
+                                & evaluate_constraints=original_constraints)
                     call report_solve(k, ispecp, solve_status, solve_iterations, solve_residual)
                 end do
 
@@ -4643,6 +4663,23 @@ CONTAINS
         if (sparse_trace .and. ispec == 0) print *, 'native equation residual: ', &
             residual, ' by species ', normalized_residual_species
     end subroutine equation_residual
+
+    ! Called immediately after unchanged equation_residual evaluated candidate.
+    subroutine original_constraints(n, candidate, constraint)
+        use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: candidate(n)
+        real(dp), intent(out) :: constraint
+        constraint=huge(1.0d0)
+        if (.not. all(ieee_is_finite(real(candidate,dp)))) return
+        if (.not. all(ieee_is_finite(aimag(candidate)))) return
+        constraint=0.0d0
+        if (problem_type) then
+            constraint=maxval(density_constraint_species)
+            if (isw_intp == 1) &
+                constraint=max(constraint,maxval(energy_constraint_species))
+        end if
+    end subroutine original_constraints
 
     subroutine source_free_pitch_action(v, lv, entry_sum)
         complex(dp), intent(in) :: v(:)

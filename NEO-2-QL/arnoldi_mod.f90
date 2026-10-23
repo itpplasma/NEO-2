@@ -71,7 +71,8 @@ contains
   !> Output parameters:
   !>            Formal: result         - solution vector
   SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, &
-    & next_iteration, status, iterations, equation_residual, evaluate_residual, physical_action)
+    & next_iteration, status, iterations, equation_residual, evaluate_residual, physical_action, &
+    & early_original_accept, evaluate_constraints)
 
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use mpiprovider_module, only : mpro
@@ -98,6 +99,16 @@ contains
       end subroutine evaluate_residual
     end interface
     optional :: evaluate_residual
+    logical, optional, intent(in) :: early_original_accept
+    logical :: early_accept
+    interface
+      subroutine evaluate_constraints(n, candidate, constraint)
+        integer, intent(in) :: n
+        complex(kind=kind(1d0)), intent(in) :: candidate(n)
+        double precision, intent(out) :: constraint
+      end subroutine evaluate_constraints
+    end interface
+    optional :: evaluate_constraints
     interface
       subroutine physical_action(v, lv, entry_sum)
         complex(kind=kind(1d0)), intent(in) :: v(:)
@@ -137,12 +148,20 @@ contains
       if (.not. present(physical_action)) error stop 'probe needs physical L'
       if (mode_in /= 1) error stop 'probe requires first stabilized AX solve'
     end if
+    early_accept=.false.
+    if (present(early_original_accept)) early_accept=early_original_accept
     solve_status = 1
     completed_iterations = 0
     residual_value = huge(1.0d0)
     if (present(status)) status = solve_status
     if (present(iterations)) iterations = completed_iterations
     if (present(equation_residual)) equation_residual = residual_value
+    if (early_accept .and. mode_in /= 3) then
+      if (.not. present(evaluate_residual) .or. .not. present(evaluate_constraints)) then
+        if (present(status)) status=4
+        return
+      end if
+    end if
     if (mode_in /= 3) then
       if (itermax < 1 .or. (mode_in == 1 .and. narn < 2) .or. .not. ieee_is_finite(relerr) .or. relerr <= 0.0d0) then
         if (present(status)) status = 4
@@ -340,6 +359,16 @@ contains
           evaluate_residual,physical_action)
       end if
       IF(mode.EQ.2) fnew=fnew+fzero
+      if (early_accept) then
+        ! A valid original-equation candidate needs no approximate Ritz repair.
+        ! Both original physical residual and native constraints must pass.
+        call check_equation(fnew, converged)
+        if (converged .or. solve_status /= 1) then
+          print *, 'native original predeflation decision: ', &
+            iter,ispec,residual_value,converged,solve_status
+          exit
+        end if
+      end if
       DO j=1,nsize
         coefren_spec(ispec)=SUM(bvec(j,:)                           &
                   *MATMUL(TRANSPOSE(CONJG(eigvecs(:,1:nsize))),fnew-fold))
@@ -379,7 +408,7 @@ contains
     subroutine check_equation(candidate, accepted)
       complex(kind=kind(1d0)), intent(in) :: candidate(n)
       logical, intent(out) :: accepted
-      double precision :: local_residual
+      double precision :: local_residual, constraints(0:num_spec-1)
       completed_iterations = iter
       if (present(evaluate_residual)) then
         call evaluate_residual(n, candidate, local_residual)
@@ -399,6 +428,17 @@ contains
       residual_value = maxval(break_cond1)
       if (residual_value == huge(1.0d0)) solve_status = 5
       accepted = residual_value <= relerr
+      if (early_accept) then
+        ! The callback follows the residual call, so its native moment readback
+        ! is for this candidate. Never relabel a moment as an equation residual.
+        call evaluate_constraints(n,candidate,constraints(ispec))
+        if (.not. ieee_is_finite(constraints(ispec)) .or. constraints(ispec)<0.0d0) &
+          constraints(ispec)=huge(1.0d0)
+        call mpro%allgather_inplace(constraints)
+        if (maxval(constraints)==huge(1.0d0)) solve_status=5
+        accepted=accepted .and. maxval(constraints)<=relerr
+        print *, 'native original acceptance constraints: ',ispec,maxval(constraints)
+      end if
       if (accepted) solve_status = 0
     end subroutine check_equation
 

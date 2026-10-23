@@ -178,3 +178,15 @@ add_test(NAME stabilization_probe_test COMMAND test_stabilization_probe
 set_tests_properties(stabilization_probe_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!" FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30 LABELS "arnoldi;fast")
+
+add_executable(test_early_original_accept test_early_original_accept.f90)
+target_link_libraries(test_early_original_accept neo2_ql)
+add_test(NAME early_original_accept_test COMMAND test_early_original_accept
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+add_test(NAME early_original_accept_mpi
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
+        $<TARGET_FILE:test_early_original_accept> ${MPIEXEC_POSTFLAGS})
+set_tests_properties(early_original_accept_test early_original_accept_mpi PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!" FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30 PROCESSORS 2 LABELS "arnoldi;fast"
+    ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
