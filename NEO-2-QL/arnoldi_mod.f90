@@ -6,6 +6,7 @@ MODULE arnoldi_mod
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: f_init_arnoldi
   complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: eigvecs
 
+  logical :: stabilization_probe = .false., stabilization_stage_trace = .false.
   logical :: lsw_write_flux_surface_distribution = .true.
 
 contains
@@ -70,7 +71,7 @@ contains
   !> Output parameters:
   !>            Formal: result         - solution vector
   SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, &
-    & next_iteration, status, iterations, equation_residual, evaluate_residual)
+    & next_iteration, status, iterations, equation_residual, evaluate_residual, physical_action)
 
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use mpiprovider_module, only : mpro
@@ -97,11 +98,26 @@ contains
       end subroutine evaluate_residual
     end interface
     optional :: evaluate_residual
+    interface
+      subroutine physical_action(v, lv, entry_sum)
+        complex(kind=kind(1d0)), intent(in) :: v(:)
+        complex(kind=kind(1d0)), intent(out) :: lv(:)
+        double precision, intent(out) :: entry_sum
+      end subroutine physical_action
+    end interface
+    optional :: physical_action
     integer, optional, intent(out) :: status, iterations
     double precision, optional, intent(out) :: equation_residual
     integer :: solve_status, completed_iterations
     double precision :: residual_value
     logical :: converged
+    integer :: saved_mode
+    double precision, allocatable :: gsv(:), ssv(:)
+    double precision :: residual_bound, inverse_defect
+    double precision :: global_norms(0:num_spec-1), full_defect_sq
+    complex(kind=kind(1d0)), allocatable :: gram_probe(:,:), s_probe(:,:)
+    complex(kind=kind(1d0)), allocatable :: before_probe(:), action_probe(:)
+    double precision :: entry_bound, defect_norm, vector_norm
 
     integer :: ispec
     INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
@@ -116,6 +132,11 @@ contains
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: coefren_spec
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: amat_spec
 
+    if (stabilization_probe) then
+      if (.not. present(evaluate_residual)) error stop 'probe needs residual'
+      if (.not. present(physical_action)) error stop 'probe needs physical L'
+      if (mode_in /= 1) error stop 'probe requires first stabilized AX solve'
+    end if
     solve_status = 1
     completed_iterations = 0
     residual_value = huge(1.0d0)
@@ -180,6 +201,8 @@ contains
 
     mode = mode_in
 
+    if (stabilization_probe .and. ngrow /= 4) &
+      error stop 'diagnostic expected measured four-mode space'
     ! there are no bad eigenvalues, use direct iterations:
     IF(ngrow.EQ.0) THEN
 
@@ -218,16 +241,76 @@ contains
     IF(ALLOCATED(amat_spec)) DEALLOCATE(amat_spec)
     ALLOCATE(amat_spec(0:num_spec-1))
 
+    if (stabilization_probe) then
+      allocate(gsv(nsize),ssv(nsize))
+      allocate(gram_probe(nsize,nsize), s_probe(nsize,nsize))
+      allocate(before_probe(n), action_probe(n))
+    end if
     DO i=1,nsize
       bvec(i,i)=(1.d0,0.d0)
       DO j=1,nsize
         amat_spec(ispec)=SUM(CONJG(eigvecs(:,i))*eigvecs(:,j))
         CALL mpro%allgather_inplace(amat_spec)
         amat(i,j)=SUM(amat_spec)*(ritznum(j)-(1.d0,0.d0))
+        if (stabilization_probe) gram_probe(i,j)=sum(amat_spec)
       ENDDO
     ENDDO
 
+    if (stabilization_probe) s_probe=amat
     CALL zgesv(nsize,nsize,amat,nsize,ipiv,bvec,nsize,info)
+    if (stabilization_probe) then
+      call probe_singular_values(gram_probe,gsv(1:nsize))
+      call probe_singular_values(s_probe,ssv(1:nsize))
+      if (ispec == 0) then
+        print *, 'STAB_PROBE G singular_values ',gsv(1:nsize)
+        print *, 'STAB_PROBE S singular_values ',ssv(1:nsize)
+        print *, 'STAB_PROBE G/S reciprocal_condition2 ', &
+          gsv(nsize)/max(gsv(1),tiny(1.0d0)), &
+          ssv(nsize)/max(ssv(1),tiny(1.0d0))
+        print *, 'STAB_PROBE zgesv info ',info
+        do i=1,nsize
+          print *, 'STAB_PROBE matrix row/G/S/inverse ',i, &
+            gram_probe(i,:),s_probe(i,:),bvec(i,:)
+        end do
+      end if
+      if (info /= 0) error stop 'diagnostic projected inverse failed'
+      inverse_defect=probe_inverse_defect(s_probe,bvec)
+      if (ispec == 0) then
+        print *, 'STAB_PROBE inverse I-SB Frobenius ',inverse_defect
+        print *, 'STAB_PROBE scaled inverse residual ',inverse_defect/ &
+          max(sqrt(sum(abs(s_probe)**2))*sqrt(sum(abs(bvec)**2))+ &
+          sqrt(dble(nsize)),tiny(1.0d0))
+      end if
+      saved_mode=mode
+      mode=2 ! Exact native homogeneous map, source omitted only here.
+      full_defect_sq=0.0d0
+      do j=1,nsize
+        before_probe=eigvecs(:,j) ! Callback fold has native inout semantics.
+        call next_iteration(n,before_probe,fnew)
+        call probe_action_metrics(eigvecs(:,j),fnew,ritznum(j), &
+          defect_norm,vector_norm)
+        global_norms(ispec)=defect_norm**2
+        call mpro%allgather_inplace(global_norms)
+        defect_norm=sqrt(sum(global_norms))
+        full_defect_sq=full_defect_sq+defect_norm**2
+        global_norms(ispec)=vector_norm**2
+        call mpro%allgather_inplace(global_norms)
+        vector_norm=sqrt(sum(global_norms))
+        call physical_action(eigvecs(:,j),action_probe,entry_bound)
+        print *, 'STAB_PROBE Ritz species/mode/L1/L2/B_M ',ispec,j, &
+          sum(abs(action_probe)),sqrt(sum(abs(action_probe)**2)),entry_bound
+        if (ispec == 0) print *, 'STAB_PROBE full_T defect/vnorm/gap/relative/gap_ratio ',j, &
+          defect_norm,vector_norm,abs(ritznum(j)-1.0d0), &
+          defect_norm/max(vector_norm,tiny(1.0d0)), &
+          defect_norm/max(vector_norm*abs(ritznum(j)-1.0d0),tiny(1.0d0))
+      end do
+      mode=saved_mode
+      ! A posteriori exact-arithmetic bound on ||(T V-V Lambda)V^+||2.
+      ! Rounded matvecs/SVD make this an observed indicator, not certification.
+      residual_bound=huge(1.0d0)
+      if (gsv(nsize)>0.0d0) residual_bound=sqrt(full_defect_sq/gsv(nsize))
+      if (ispec == 0) print *, 'STAB_PROBE invariance_bound_indicator ',residual_bound
+    end if
 
     IF(info.NE.0) THEN
       IF(info.GT.0) THEN
@@ -245,7 +328,17 @@ contains
     fold=fzero
 
     DO iter=1,itermax
+      if (stabilization_probe) then
+        call probe_stage('fold',n,fold,fold,ispec,evaluate_residual,physical_action)
+        stabilization_stage_trace=.true.
+      end if
       CALL next_iteration(n,fold,fnew)
+      stabilization_stage_trace=.false.
+      if (stabilization_probe) then
+        before_probe=fnew
+        call probe_stage('before_deflation',n,fnew,fold,ispec, &
+          evaluate_residual,physical_action)
+      end if
       IF(mode.EQ.2) fnew=fnew+fzero
       DO j=1,nsize
         coefren_spec(ispec)=SUM(bvec(j,:)                           &
@@ -254,6 +347,15 @@ contains
         coefren(j)=ritznum(j)*SUM(coefren_spec)
       ENDDO
       fnew=fnew-MATMUL(eigvecs(:,1:nsize),coefren)
+      if (stabilization_probe) then
+        call probe_stage('after_deflation',n,fnew,before_probe,ispec, &
+          evaluate_residual,physical_action)
+        call probe_stage('stabilized_update',n,fnew,fold,ispec, &
+          evaluate_residual,physical_action)
+        if (ispec == 0) print *, 'NEO2_DIAGNOSTIC_ONLY stabilization NO_TORQUE'
+        call mpro%deinit()
+        stop ! No check_equation/report_solve/transport admission on this path.
+      end if
       break_cond1(ispec)=SUM(ABS(fnew-fold))
       break_cond2(ispec)=relerr*SUM(ABS(fnew))
       print *,iter,break_cond1(ispec),break_cond2(ispec),ispec
@@ -307,6 +409,72 @@ contains
     end subroutine publish_status
 
   END SUBROUTINE iterator
+
+  subroutine probe_singular_values(a, singular)
+    use, intrinsic :: iso_fortran_env, only: dp => real64
+    implicit none
+    complex(dp), intent(in) :: a(:,:)
+    real(dp), intent(out) :: singular(:)
+    complex(dp) :: copy(size(a,1),size(a,2)), dummy_u(1,1), dummy_v(1,1)
+    complex(dp) :: work(8*size(a,1))
+    real(dp) :: rwork(5*size(a,1))
+    integer :: k, info
+    k=size(a,1)
+    copy=a
+    call zgesvd('N','N',k,k,copy,k,singular,dummy_u,1,dummy_v,1, &
+      work,size(work),rwork,info)
+    if (info /= 0) error stop 'diagnostic SVD failed'
+  end subroutine probe_singular_values
+
+  double precision function probe_inverse_defect(a,b) result(defect)
+    implicit none
+    complex(kind=kind(1d0)), intent(in) :: a(:,:),b(:,:)
+    complex(kind=kind(1d0)) :: error(size(a,1),size(a,1))
+    integer :: i
+    error=-matmul(a,b)
+    do i=1,size(a,1)
+      error(i,i)=error(i,i)+1.0d0
+    end do
+    defect=sqrt(sum(abs(error)**2))
+  end function probe_inverse_defect
+
+  subroutine probe_action_metrics(v,tv,lambda,defect,vnorm)
+    implicit none
+    complex(kind=kind(1d0)), intent(in) :: v(:),tv(:),lambda
+    double precision, intent(out) :: defect,vnorm
+    defect=sqrt(sum(abs(tv-lambda*v)**2))
+    vnorm=sqrt(sum(abs(v)**2))
+  end subroutine probe_action_metrics
+
+  subroutine probe_stage(label,n,v,reference,ispec,residual,action)
+    implicit none
+    character(len=*), intent(in) :: label
+    integer, intent(in) :: n,ispec
+    complex(kind=kind(1d0)), intent(in) :: v(n),reference(n)
+    interface
+      subroutine residual(n,v,rho)
+        integer, intent(in) :: n
+        complex(kind=kind(1d0)), intent(in) :: v(n)
+        double precision, intent(out) :: rho
+      end subroutine residual
+      subroutine action(v,lv,bound)
+        complex(kind=kind(1d0)), intent(in) :: v(:)
+        complex(kind=kind(1d0)), intent(out) :: lv(:)
+        double precision, intent(out) :: bound
+      end subroutine action
+    end interface
+    complex(kind=kind(1d0)) :: lv(n),delta(n),ld(n)
+    double precision :: rho,bound,delta_bound
+    call residual(n,v,rho) ! Native q, original BC and max-species denominator.
+    call action(v,lv,bound)
+    delta=v-reference
+    call action(delta,ld,delta_bound)
+    print *, 'STAB_PROBE stage species/label/rho ',ispec,trim(label),rho
+    print *, 'STAB_PROBE vector L1/L2/Lv_L1/Lv_L2/B_M ',sum(abs(v)), &
+      sqrt(sum(abs(v)**2)),sum(abs(lv)),sqrt(sum(abs(lv)**2)),bound
+    print *, 'STAB_PROBE delta L1/L2/Ldelta_L1/Ldelta_L2/B_M ',sum(abs(delta)), &
+      sqrt(sum(abs(delta)**2)),sum(abs(ld)),sqrt(sum(abs(ld)**2)),delta_bound
+  end subroutine probe_stage
 
   !-----------------------------------------------------------------------------
   !> Computes m Ritz eigenvalues (approximations to extreme eigenvalues)

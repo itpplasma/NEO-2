@@ -170,3 +170,11 @@ foreach(policy native none all invalid_filter invalid_regper reject_fp
     endif()
 endforeach()
 set_tests_properties(ax_solver_default PROPERTIES TIMEOUT 30)
+
+add_executable(test_stabilization_probe test_stabilization_probe.f90)
+target_link_libraries(test_stabilization_probe neo2_ql)
+add_test(NAME stabilization_probe_test COMMAND test_stabilization_probe
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(stabilization_probe_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!" FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30 LABELS "arnoldi;fast")

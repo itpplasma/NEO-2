@@ -92,6 +92,7 @@ subroutine ripple_solver_ArnoldiO2( &
     ! from collision operator module. This step allows for
     ! support of different basis functions and replaces routine "lagxmm".
     use collop
+    use arnoldi_mod, only: stabilization_probe, stabilization_stage_trace, probe_stage
     use arnoldi_mod, only: iterator, f_init_arnoldi, &
       & lsw_write_flux_surface_distribution, write_flux_surface_distribution
 
@@ -309,6 +310,19 @@ subroutine ripple_solver_ArnoldiO2( &
     call get_environment_variable('NEO2_AX_OPERATOR_PROBE', sparse_trace_value, &
                                   status=sparse_trace_status)
     if (sparse_trace_status == 0) ax_operator_probe = trim(sparse_trace_value) == '1'
+
+    stabilization_probe=.false.
+    call get_environment_variable('NEO2_AX_STABILIZATION_PROBE', sparse_trace_value, &
+                                  status=sparse_trace_status)
+    if (sparse_trace_status == 0) then
+        if (trim(sparse_trace_value) /= '1') error stop 'Invalid stabilization probe'
+        stabilization_probe=.true.
+        if (any([isw_lorentz,isw_energy,isw_integral] /= 0)) &
+            error stop 'Stabilization probe requires effective pitch model'
+        if (ax_operator_probe) error stop 'Conflicting AX probes'
+    else if (sparse_trace_status /= 1) then
+        error stop 'Stabilization probe environment read failed'
+    end if
 
     addboucol = .true.
     !------------------------------------------------------------------------
@@ -3547,7 +3561,8 @@ CONTAINS
                 energy_constraint_species = 0.0d0
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                             & source_vector_all(:, k, ispec), ispec, next_iteration, &
-                            & solve_status, solve_iterations, solve_residual, equation_residual)
+                            & solve_status, solve_iterations, solve_residual, equation_residual, &
+                            & physical_action=source_free_pitch_action)
                 call report_solve(k, ispec, solve_status, solve_iterations, solve_residual)
             end do
 
@@ -4629,6 +4644,15 @@ CONTAINS
             residual, ' by species ', normalized_residual_species
     end subroutine equation_residual
 
+    subroutine source_free_pitch_action(v, lv, entry_sum)
+        complex(dp), intent(in) :: v(:)
+        complex(dp), intent(out) :: lv(:)
+        real(dp), intent(out) :: entry_sum
+        if (.not. problem_type .or. isw_intp /= 0) &
+            error stop 'Diagnostic source-free action requires AX pitch'
+        call sparse_coo_action(irow_symm,icol_symm,amat_symm,v,lv,entry_sum)
+    end subroutine source_free_pitch_action
+
     subroutine report_solve(source_index, driving_species, status, iterations, residual)
         integer, intent(in) :: source_index, driving_species, status, iterations
         real(dp), intent(in) :: residual
@@ -4848,7 +4872,7 @@ CONTAINS
         integer :: n
         complex(dp), dimension(n) :: fold, fnew
         real(dp), dimension(:), allocatable :: fnew_real, fnew_imag
-        complex(dp), allocatable :: inverse_rhs(:)
+        complex(dp), allocatable :: inverse_rhs(:), before_filter(:)
 
         if (isw_intp .eq. 1) then
             call integral_part(fold, fnew)
@@ -4880,9 +4904,17 @@ CONTAINS
 
             fnew = fnew + fold
 
+            if (stabilization_stage_trace) then
+                before_filter=fnew
+                call probe_stage('before_density_filter',n,fnew,fold,ispec, &
+                    equation_residual,source_free_pitch_action)
+            end if
             call apply_ax_filters(fnew, densvec_bra, densvec_ket, &
                 energvec_bra, energvec_ket, denom_dens, denom_energ, tol, &
                 isw_intp == 1, problem_type)
+            if (stabilization_stage_trace) &
+                call probe_stage('after_density_filter',n,fnew,before_filter,ispec, &
+                    equation_residual,source_free_pitch_action)
         else
 
             do i = 1, nz
