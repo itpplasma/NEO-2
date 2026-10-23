@@ -947,6 +947,7 @@ CONTAINS
       & boozer_iota_s
     USE collisionality_mod, ONLY : collpar, num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec, collpar_spec, isw_coul_log
+    USE local_parflow_mod, ONLY : lsw_local_parflow, write_local_parflow
     ! Output stored as HDF5-file
     USE hdf5_tools
 
@@ -1844,6 +1845,7 @@ CONTAINS
     END IF
 
     CALL h5_close(h5id_multispec)
+    IF (lsw_local_parflow) CALL write_local_parallel_flow()
 
     if (.not. check_coefficients(.true.)) then
       write(*,*) 'WARNING: sanity checks of the D1-_AX coefficients failed.'
@@ -1853,6 +1855,42 @@ CONTAINS
     end if
 
   contains
+
+    !> \brief Local counterpart of D3j and ParFlow_spec on the field line.
+    !>
+    !> compute_Dijab is linear in qflux, so its value for a unit qflux is
+    !> the existing conversion factor of each D3j. The forces are those of
+    !> compute_ParFlow; A3 enters only on its isw_calc_Er=1 multispecies branch.
+    subroutine write_local_parallel_flow()
+      real(kind=dp), allocatable :: unit_qflux(:,:,:,:), d_na(:,:,:), d_ax(:,:,:)
+      real(kind=dp), allocatable :: d_norm_na(:,:,:), d_norm_ax(:,:,:)
+      integer, allocatable :: row_spec(:), col_spec(:), row_ptr(:), col_ptr(:)
+      real(kind=dp) :: coef_ax(3, 0:num_spec-1, 0:num_spec-1)
+      real(kind=dp) :: coef_na(3, 0:num_spec-1, 0:num_spec-1)
+      real(kind=dp) :: forces(3, 0:num_spec-1)
+      integer :: a, b
+
+      allocate(unit_qflux(3, 3, 0:num_spec-1, 0:num_spec-1))
+      unit_qflux = 1.0_dp
+      call compute_Dijab(unit_qflux, unit_qflux, row_spec, col_spec, &
+           row_ptr, col_ptr, d_na, d_ax, d_norm_na, d_norm_ax)
+      do a = 0, num_spec-1
+        do b = 0, num_spec-1
+          coef_ax(:, b, a) = d_ax(3, :, a*num_spec + b)
+          coef_na(:, b, a) = d_na(3, :, a*num_spec + b)
+        end do
+      end do
+      forces = 0.0_dp
+      if (isw_calc_Er /= 0) then
+        forces(2, :) = av_nabla_stor*dT_spec_ov_ds/T_spec
+        forces(1, :) = av_nabla_stor*dn_spec_ov_ds/n_spec - 1.5_dp*forces(2, :) &
+             - Er*z_spec*e/T_spec
+        if (isw_calc_Er == 1 .and. num_spec > 1) &
+             forces(3, :) = avEparB_ov_avb2*z_spec*e/T_spec
+      end if
+      call write_local_parflow(coef_ax, coef_na, forces, isw_calc_Er /= 0, &
+           y(6), z_spec, n_spec, e, bmod0*1.0e4_dp, m_phi)
+    end subroutine write_local_parallel_flow
 
     !> \brief Perform some sanity checks on the coefficients.
     function check_coefficients(verbose) result(passed)

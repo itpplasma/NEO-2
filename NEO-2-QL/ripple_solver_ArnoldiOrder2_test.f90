@@ -84,6 +84,7 @@ subroutine ripple_solver_ArnoldiO2( &
                                   misaligned_potential, write_phi_ma_current, &
                                   normalize_phi_ma_j_hat
     use collop_compute, only: compute_exb_source
+    use local_parflow_mod, only: lsw_local_parflow, store_local_parflow
   !! End Modification by Andreas F. Martitsch (14.07.2015)
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
@@ -3459,6 +3460,36 @@ CONTAINS
             m_phi, jhat, jhat_valid)
     end subroutine solve_phi_ma_current
 
+    subroutine store_local_parallel_flow
+        ! Split the flux_vector(2,:) contraction of qflux per RK step. For both
+        ! sigma halves flux_vector(2,:) is the step weight times
+        ! flux_vector_plot(2,:), because step_factor_p equals step_factor_m.
+        use mag_interface_mod, only: boozer_theta_beg, boozer_phi_beg
+        complex(dp), allocatable :: moment(:, :, :, :)
+        real(dp), allocatable :: weight(:)
+        integer :: first, last, imoment, drive
+
+        allocate(moment(ibeg:iend, 3, 0:num_spec - 1, 0:num_spec - 1))
+        allocate(weight(ibeg:iend))
+        moment = (0.0d0, 0.0d0)
+        imoment = maxloc(abs(weightlag(2, :)), dim=1) - 1
+        do istep = ibeg, iend
+            first = ind_start(istep) + 1
+            last = first + 2*(npl(istep) + 1)*(lag + 1) - 1
+            do drive = 0, num_spec - 1
+                moment(istep, :, drive, ispec) = matmul( &
+                    conjg(flux_vector_plot(2, first:last)), &
+                    source_vector_all(first:last, 1:3, drive))
+            end do
+            k = first + 2*(npl(istep) + 1)*imoment
+            weight(istep) = real(flux_vector(2, k)/flux_vector_plot(2, k), dp)
+        end do
+        call mpro%allgather_inplace(moment)
+        call store_local_parflow(problem_type, phi_mfl(ibeg:iend), &
+            boozer_theta_beg + aiota*(phi_mfl(ibeg:iend) - boozer_phi_beg), &
+            bhat_mfl(ibeg:iend), h_phi_mfl(ibeg:iend), weight, moment)
+    end subroutine store_local_parallel_flow
+
 !------------------------------------------------------------------------
     subroutine plotsource(iunit_base, sourcevec_tmp)
 
@@ -3807,6 +3838,8 @@ CONTAINS
         qflux_allspec = qflux_allspec_tmp
         if (allocated(qflux_allspec_tmp)) deallocate (qflux_allspec_tmp)
     !! End Modification by Andreas F. Martitsch (23.08.2015)
+
+        if (lsw_local_parflow) call store_local_parallel_flow
 
         if (.not. problem_type) then
             if (phi_ma_requested) call solve_phi_ma_current
