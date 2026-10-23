@@ -16,7 +16,7 @@ classifiers = [
 dependencies = [
     "numpy>=1.20.0",
     "omfit_classes>=3.2023.47.2",
-    "libneo>=0.0.3",
+    "libneo @ git+https://github.com/itpplasma/libneo.git@b60770c90b88bb3914c707ff82f0c161990ceffd",
     "h5py>=3.10.0",
     "scipy>=1.7.0",
     "matplotlib>=3.4.0"
