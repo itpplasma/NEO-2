@@ -1,6 +1,7 @@
 program test_coulomb_model_controls
     use collisionality_mod, only: collision_model, isw_lorentz, &
-        isw_energy, isw_integral, lag
+        isw_energy, isw_integral
+    use rkstep_mod, only: lag
     use collision_model_mod, only: resolve_collision_model
     implicit none
     character(len=32) :: mode
