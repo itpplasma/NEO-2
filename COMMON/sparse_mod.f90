@@ -138,16 +138,23 @@ CONTAINS
   end subroutine sparse_method_from_environment
 
   ! Coordinate action in stored entry order, as in the native AX residual.
-  subroutine sparse_coo_action(irow, icol, val, z, action)
+  subroutine sparse_coo_action(irow, icol, val, z, action, entry_abs_sum)
     integer, intent(in) :: irow(:), icol(:)
     real(dp), intent(in) :: val(:)
     complex(dp), intent(in) :: z(:)
     complex(dp), intent(out) :: action(:)
+    real(dp), intent(out), optional :: entry_abs_sum
     integer :: entry
     action = (0.0_dp, 0.0_dp)
     do entry = 1, size(val)
       action(irow(entry)) = action(irow(entry)) + val(entry)*z(icol(entry))
     end do
+    if (present(entry_abs_sum)) then
+      entry_abs_sum = 0.0_dp
+      do entry = 1, size(val)
+        entry_abs_sum = entry_abs_sum + abs(val(entry)*z(icol(entry)))
+      end do
+    end if
   end subroutine sparse_coo_action
 
   ! Fortran Info indices are the installed UMFPACK C header constants + 1.

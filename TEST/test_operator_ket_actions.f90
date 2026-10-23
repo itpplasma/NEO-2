@@ -4,6 +4,7 @@ program test_operator_ket_actions
     implicit none
     complex(dp) :: z(3), m(3), c(3), r(3), k(3), e0(3), e1(3)
     complex(dp) :: actions(3,3), gram(3,3)
+    real(dp) :: entry_sum
     integer :: source
     ! Analytic exchange Laplacian: common temperature is null, each species is not.
     do source = 0, 3
@@ -41,5 +42,13 @@ program test_operator_ket_actions
         if (source == 0 .and. abs(k(1)-1.0_dp) > 1e-14_dp) error stop 'fixed m0'
         if (source == 1 .and. maxval(abs(k)) > 1e-14_dp) error stop 'remaining m1 null'
     end do
+    z = (1.0_dp,0.0_dp)
+    call sparse_coo_action([1,1],[1,2],[1.0_dp,-1.0_dp],z,m,entry_sum)
+    if (maxval(abs(m)) /= 0.0_dp .or. entry_sum /= 2.0_dp) &
+        error stop 'cancelled action needs nonzero entry scale'
+    z = (0.0_dp,0.0_dp)
+    call sparse_coo_action([1,1],[1,2],[1.0_dp,-1.0_dp],z,m,entry_sum)
+    if (maxval(abs(m)) /= 0.0_dp .or. entry_sum /= 0.0_dp) &
+        error stop 'zero entry scale'
     print *, 'All tests passed!'
 end program test_operator_ket_actions

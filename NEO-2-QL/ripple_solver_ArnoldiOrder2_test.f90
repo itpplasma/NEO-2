@@ -13,6 +13,8 @@ subroutine ripple_solver_ArnoldiO2( &
     )
 
     use device_mod
+    use axisym_solver_controls_mod, only: read_axisym_solver_controls, &
+        regper_speed_selected, apply_ax_filters
     use flint_mod, only: phi_divide                      !<-in Winny
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
@@ -204,7 +206,7 @@ subroutine ripple_solver_ArnoldiO2( &
     complex(dp), dimension(:), allocatable :: bvec_parflow
     ! Use pre-conditioned iterations:
     ! -> remove null-space of axisymmetric solution (energy conservation)
-    complex(dp) :: denom_energ, coef_energ, denom_dens, coef_dens
+    complex(dp) :: denom_energ, denom_dens
     complex(dp), dimension(:), allocatable :: energvec_bra, energvec_ket
     complex(dp), dimension(:), allocatable :: densvec_bra, densvec_ket
     ! End Use pre-conditioned iterations
@@ -299,6 +301,7 @@ subroutine ripple_solver_ArnoldiO2( &
     isw_regper = 1       !regulariization by periodic boundary condition
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
     call sparse_method_from_environment()
+    call read_axisym_solver_controls(isw_lorentz, isw_energy, isw_integral)
     call get_environment_variable('NEO2_AX_TRACE', sparse_trace_value, &
                                   status=sparse_trace_status)
     if (sparse_trace_status == 0) sparse_trace = trim(sparse_trace_value) == '1'
@@ -1471,7 +1474,7 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+            if (isw_regper == 1 .and. regper_speed_selected(m, .true.)) then
                 do ipart = 1, 1
 !          if(ipart.le.npassing) then
 !            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
@@ -1691,7 +1694,7 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+            if (isw_regper == 1 .and. regper_speed_selected(m, .true.)) then
                 do ipart = 1, 1
 !          if(ipart.le.npassing) then
 !            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
@@ -1924,7 +1927,7 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+            if (isw_regper == 1 .and. regper_speed_selected(m, .true.)) then
                 do ipart = 1, 1
                     if (ipart .LE. npassing) then
                         deleta_factor = (eta(ipart) - eta(ipart - 1))*bhat_mfl(istep)
@@ -2191,7 +2194,7 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+            if (isw_regper == 1 .and. regper_speed_selected(m, .true.)) then
                 do ipart = 1, 1
                     if (ipart .LE. npassing) then
                         deleta_factor = (eta(ipart) - eta(ipart - 1))*bhat_mfl(istep)
@@ -2423,6 +2426,7 @@ subroutine ripple_solver_ArnoldiO2( &
 
     end do
 
+    if (nz_regper /= size(amat_regper)) error stop 'AX regularizer count/fill mismatch'
     if (.false.) then
         ! test particle conservation by the equation matrix (stops the execution after plotting).
         call test_conservation(nz, irow, icol, amat_sp)
@@ -3489,6 +3493,8 @@ CONTAINS
         nz = nz_sq
 
         call column_full2pointer(icol(1:nz), ipcol)
+        if (problem_type) print *, &
+            'native AX regularizer lag/isw_intp/nz_regper: ', lag, isw_intp, nz_regper
         if (problem_type .and. ax_operator_probe) then
             call probe_axisymmetric_actions()
             if (ispec == 0) print *, 'NEO2_DIAGNOSTIC_ONLY operator_kets NO_TORQUE'
@@ -4690,17 +4696,20 @@ CONTAINS
         complex(dp), allocatable :: ez(:,:), el(:,:)
         complex(dp) :: gram(2,0:num_spec-1)
         real(dp) :: scale(0:num_spec-1), znorm(2,0:num_spec-1), stats(12,0:num_spec-1)
-        real(dp) :: amplitude
+        real(dp) :: amplitude, entry_sums(0:num_spec-1)
         integer :: source, kind, point, bands, offset, band, term, a, b
         allocate(z(nrow), mz(nrow), cz(nrow), rz(nrow), kz(nrow), w(nrow))
         if (isw_intp == 1) allocate(ez(nrow,0:num_spec-1), el(nrow,0:num_spec-1))
-        do kind = 1, 2
+        do kind = 1, merge(2,3,isw_intp == 1)
             do source = 0, num_spec-1
                 z = (0.0_dp,0.0_dp)
                 if (ispec == source) then
                     if (isw_intp == 1) then
                         if (kind == 1) z = densvec_ket
                         if (kind == 2) z = energvec_ket
+                    else if (kind == 3) then
+                        ! Actual species Maxwellian from native generate_maxwellian.
+                        z = densvec_ket
                     else
                         ! Unit speed coefficient m=kind-1, native isotropic bands.
                         do point = ibeg, iend
@@ -4724,7 +4733,21 @@ CONTAINS
                 z = z/amplitude
                 znorm(:,ispec) = [sum(abs(z)),sum(abs(z)**2)]
                 call mpro%allgather_inplace(znorm)
-                call sparse_coo_action(irow_symm, icol_symm, amat_symm, z, mz)
+                if (isw_intp == 0) then
+                    call sparse_coo_action(irow_symm, icol_symm, amat_symm, z, mz, &
+                        entry_sums(ispec))
+                    call mpro%allgather_inplace(entry_sums)
+                    if (.not. all(ieee_is_finite(entry_sums))) &
+                        error stop 'nonfinite entry absolute sum'
+                    if (.not. ieee_is_finite(sum(entry_sums))) &
+                        error stop 'nonfinite global entry absolute sum'
+                    ! Raw B_M=sum_entries |M_ij*z_j|; zero is reported without division.
+                    if (ispec == 0) print *, &
+                        'OPERATOR_ENTRY_SUM source/kind/species/global ', &
+                        source, kind, entry_sums, sum(entry_sums)
+                else
+                    call sparse_coo_action(irow_symm, icol_symm, amat_symm, z, mz)
+                end if
                 cz = (0.0_dp,0.0_dp)
                 ! Collective collision application has the original residual MPI order.
                 if (isw_intp == 1) call integral_part(z, cz)
@@ -4857,15 +4880,9 @@ CONTAINS
 
             fnew = fnew + fold
 
-            ! -> remove null-space of axisymmetric
-            ! solution (particle and energy conservation)
-            coef_dens = sum(densvec_bra*fnew)/denom_dens
-            fnew = fnew - (1.d0 - tol)*coef_dens*densvec_ket
-
-            if (isw_intp .eq. 1) then
-                coef_energ = sum(energvec_bra*fnew)/denom_energ
-                fnew = fnew - (1.d0 - tol)*coef_energ*energvec_ket
-            end if
+            call apply_ax_filters(fnew, densvec_bra, densvec_ket, &
+                energvec_bra, energvec_ket, denom_dens, denom_energ, tol, &
+                isw_intp == 1, problem_type)
         else
 
             do i = 1, nz
