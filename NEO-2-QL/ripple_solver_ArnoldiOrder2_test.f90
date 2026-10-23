@@ -45,7 +45,8 @@ subroutine ripple_solver_ArnoldiO2( &
                               eta_modboundary_l, eta_modboundary_r, &
                               prop_reconstruct_levels
     use sparse_mod, only: sparse_solve_method, sparse_solve, &
-                          column_full2pointer, remap_rc, sparse_solver_test
+                          column_full2pointer, remap_rc, sparse_solver_test, &
+                          sparse_method_from_environment, sparse_umfpack_diagnostics
     use mag_interface_mod, only: surface_boozer_B00, travis_convfac, boozer_s, mag_magfield
     use ntv_eqmat_mod, only: nz_symm, nz_asymm, nz_per_pos, nz_per_neg, &
                              irow_symm, icol_symm, amat_symm, &
@@ -277,6 +278,9 @@ subroutine ripple_solver_ArnoldiO2( &
     real(dp), dimension(:, :), allocatable :: source_vector_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
     complex(dp), dimension(:), allocatable :: ttmpfact
+    logical :: sparse_trace = .false.
+    character(len=32) :: sparse_trace_value
+    integer :: sparse_trace_status
     logical :: colltest = .FALSE.
     logical :: ttmptest = .FALSE.
     logical :: nobounceaver = .TRUE.
@@ -293,6 +297,11 @@ subroutine ripple_solver_ArnoldiO2( &
 
     isw_regper = 1       !regulariization by periodic boundary condition
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
+    call sparse_method_from_environment()
+    call get_environment_variable('NEO2_AX_TRACE', sparse_trace_value, &
+                                  status=sparse_trace_status)
+    if (sparse_trace_status == 0) sparse_trace = trim(sparse_trace_value) == '1'
+    if (sparse_trace) print *, 'native sparse method: ', sparse_solve_method
 
     addboucol = .true.
     !------------------------------------------------------------------------
@@ -3501,6 +3510,7 @@ CONTAINS
 
         call CPU_TIME(time_factorization)
         print *, 'factorization completed ', time_factorization - time_start, ' sec'
+        if (sparse_trace) call print_sparse_diagnostics('factorization')
 
         iopt = 2
 
@@ -4599,6 +4609,8 @@ CONTAINS
         if (.not. ieee_is_finite(sum(denominators))) return
         normalized_residual_species = numerators/max(denominators, tiny(1.0d0))
         residual = maxval(normalized_residual_species)
+        if (sparse_trace .and. ispec == 0) print *, 'native equation residual: ', &
+            residual, ' by species ', normalized_residual_species
     end subroutine equation_residual
 
     subroutine report_solve(source_index, driving_species, status, iterations, residual)
@@ -4662,6 +4674,40 @@ CONTAINS
         if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
     end subroutine report_solve
 
+    subroutine print_sparse_diagnostics(label)
+        character(len=*), intent(in) :: label
+        real(dp) :: status, rcond, ir_taken, omega1, omega2
+        call sparse_umfpack_diagnostics(status, rcond, ir_taken, omega1, omega2)
+        print *, 'native sparse ', label, ': species ', ispec, &
+            ' method ', sparse_solve_method, ' status ', status, ' rcond ', rcond, &
+            ' IR steps ', ir_taken, ' omega1 ', omega1, ' omega2 ', omega2
+    end subroutine print_sparse_diagnostics
+
+    ! Independent explicit assembled-M matvec, before adding fold or projecting.
+    ! Scaled residual: ||b-Mx||_1/(||b||_1+||Mx||_1), not ||M||*||x||.
+    ! This inverse check is separate from the original unregularized equation.
+    subroutine trace_inverse(rhs, solution)
+        complex(dp), intent(in) :: rhs(:), solution(:)
+        complex(dp), allocatable :: lhs(:)
+        real(dp) :: backward_error
+        integer :: entry
+        allocate(lhs(size(rhs)))
+        lhs = (0.0d0, 0.0d0)
+        do entry = 1, nz
+            if (problem_type) then
+                lhs(irow(entry)) = lhs(irow(entry)) + &
+                    real(amat_sp(entry), dp)*solution(icol(entry))
+            else
+                lhs(irow(entry)) = lhs(irow(entry)) + &
+                    amat_sp(entry)*solution(icol(entry))
+            end if
+        end do
+        backward_error = sum(abs(rhs-lhs)) / &
+            max(sum(abs(rhs))+sum(abs(lhs)), tiny(1.0d0))
+        print *, 'native inverse before projection: species ', ispec, &
+            ' residual_l1_over_rhs_plus_Ax_l1 ', backward_error
+    end subroutine trace_inverse
+
     subroutine next_iteration(n, fold, fnew)
 
         use arnoldi_mod, only: fzero, mode, tol
@@ -4671,6 +4717,7 @@ CONTAINS
         integer :: n
         complex(dp), dimension(n) :: fold, fnew
         real(dp), dimension(:), allocatable :: fnew_real, fnew_imag
+        complex(dp), allocatable :: inverse_rhs(:)
 
         if (isw_intp .eq. 1) then
             call integral_part(fold, fnew)
@@ -4686,15 +4733,19 @@ CONTAINS
             do i = 1, nz_symm
                 fnew(irow_symm(i)) = fnew(irow_symm(i)) - amat_symm(i)*fold(icol_symm(i))
             end do
+            if (sparse_trace) inverse_rhs = fnew
             allocate (fnew_real(n), fnew_imag(n))
             fnew_real = DBLE(fnew)
             fnew_imag = AIMAG(fnew)
             call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
                               fnew_real, iopt)
+            if (sparse_trace) call print_sparse_diagnostics('real solve')
             call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
                               fnew_imag, iopt)
+            if (sparse_trace) call print_sparse_diagnostics('imag solve')
             fnew = fnew_real + (0.d0, 1.d0)*fnew_imag
             deallocate (fnew_real, fnew_imag)
+            if (sparse_trace) call trace_inverse(inverse_rhs, fnew)
 
             fnew = fnew + fold
 
@@ -4712,8 +4763,13 @@ CONTAINS
             do i = 1, nz
                 fnew(irow(i)) = fnew(irow(i)) - amat_sp(i)*fold(icol(i))
             end do
+            if (sparse_trace) inverse_rhs = fnew
             call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), &
                               fnew, iopt)
+            if (sparse_trace) then
+                call print_sparse_diagnostics('complex solve')
+                call trace_inverse(inverse_rhs, fnew)
+            end if
 
             fnew = fnew + fold
         end if

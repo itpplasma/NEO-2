@@ -117,3 +117,21 @@ foreach(model native pitch_angle test_particle full_fp monoenergetic_lorentz)
 endforeach()
 add_test(NAME coulomb_controls_invalid COMMAND test_coulomb_model_controls invalid)
 set_tests_properties(coulomb_controls_invalid PROPERTIES WILL_FAIL TRUE TIMEOUT 30)
+
+# Existing UMFPACK refinement selector: preserve default and reject invalid input.
+add_executable(test_sparse_method_controls test_sparse_method_controls.f90)
+target_link_libraries(test_sparse_method_controls common)
+add_test(NAME sparse_method_default
+    COMMAND ${CMAKE_COMMAND} -E env --unset=NEO2_SPARSE_SOLVE_METHOD
+        $<TARGET_FILE:test_sparse_method_controls> 3)
+add_test(NAME sparse_method_refined COMMAND test_sparse_method_controls 2)
+set_tests_properties(sparse_method_refined PROPERTIES
+    ENVIRONMENT "NEO2_SPARSE_SOLVE_METHOD=2")
+add_test(NAME sparse_method_explicit_default COMMAND test_sparse_method_controls 3)
+set_tests_properties(sparse_method_explicit_default PROPERTIES
+    ENVIRONMENT "NEO2_SPARSE_SOLVE_METHOD=3")
+add_test(NAME sparse_method_invalid COMMAND test_sparse_method_controls invalid)
+set_tests_properties(sparse_method_invalid PROPERTIES
+    ENVIRONMENT "NEO2_SPARSE_SOLVE_METHOD=invalid" WILL_FAIL TRUE)
+set_tests_properties(sparse_method_default sparse_method_refined
+    sparse_method_explicit_default sparse_method_invalid PROPERTIES TIMEOUT 30)

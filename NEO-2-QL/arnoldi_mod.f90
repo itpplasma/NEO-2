@@ -355,7 +355,10 @@ contains
     complex(kind=kind(1d0)),   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
     ! Norm of the candidate vector before orthogonalization.
     DOUBLE PRECISION :: q_norm
-    LOGICAL :: subspace_closed
+    LOGICAL :: subspace_closed, trace_projection
+    character(len=32) :: trace_value
+    integer :: trace_status
+    double precision :: projection_error
 
     INTEGER :: m_tol, m_ind
     complex(kind=kind(1d0)), DIMENSION(500) :: ritzum_write
@@ -403,6 +406,9 @@ contains
     ENDIF
     qvecs_prev(:,1)=fnew/q_norm
     ncount=0
+    trace_projection = .false.
+    call get_environment_variable('NEO2_AX_TRACE', trace_value, status=trace_status)
+    if (trace_status == 0) trace_projection = trim(trace_value) == '1'
 
     DO m=1,mmax
 
@@ -475,6 +481,17 @@ contains
 
         eigvecs=MATMUL(qvecs(:,1:m_ritz),eigh(:,1:ngrow))
 
+        if (trace_projection) then
+          print *, 'native Arnoldi: dimension ', m_ritz, ' closed ', subspace_closed, &
+            ' stable_count ', ncount, ' stability_target ', ntol, &
+            ' subdiagonal ', abs(hmat(m_ritz+1,m_ritz)), ' modes ', ngrow
+          do j=1,ngrow
+            projection_error = sum(abs(matmul(hmat(1:m_ritz,1:m_ritz),eigh(:,j)) &
+              -ritznum(j)*eigh(:,j)))
+            print *, 'native Ritz: mode ', j, ' projected_defect_l1 ', projection_error, &
+              ' Arnoldi_tail ', abs(hmat(m_ritz+1,m_ritz)*eigh(m_ritz,j))
+          end do
+        end if
         PRINT *,'arnoldi: number of iterations = ',m_ritz
         EXIT
       ENDIF

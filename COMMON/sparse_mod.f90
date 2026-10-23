@@ -118,6 +118,35 @@ MODULE sparse_mod
 
 CONTAINS
 
+  ! Runtime selector and diagnostics extracted from owning b7eb28ef455eb665.
+  ! No variable: retain the caller's existing default (QL selects method 3).
+  subroutine sparse_method_from_environment()
+    character(len=32) :: value
+    integer :: length, status
+    call get_environment_variable('NEO2_SPARSE_SOLVE_METHOD', value, length, status)
+    if (status == 1) return
+    if (status /= 0) error stop 'Cannot read NEO2_SPARSE_SOLVE_METHOD'
+    if (length == 0) return
+    select case (trim(adjustl(value)))
+    case ('2')
+      sparse_solve_method = 2
+    case ('3')
+      sparse_solve_method = 3
+    case default
+      error stop 'NEO2_SPARSE_SOLVE_METHOD must be 2 or 3'
+    end select
+  end subroutine sparse_method_from_environment
+
+  ! Fortran Info indices are the installed UMFPACK C header constants + 1.
+  subroutine sparse_umfpack_diagnostics(status, rcond, ir_taken, omega1, omega2)
+    real(dp), intent(out) :: status, rcond, ir_taken, omega1, omega2
+    status = info_suitesparse(1)
+    rcond = info_suitesparse(68)
+    ir_taken = info_suitesparse(81)
+    omega1 = info_suitesparse(83)
+    omega2 = info_suitesparse(84)
+  end subroutine sparse_umfpack_diagnostics
+
   !-------------------------------------------------------------------------------
   ! finds free unit
   SUBROUTINE find_unit(unit)
