@@ -1,6 +1,7 @@
 set(NEO2_QL_SRC_FILES
   arnoldi_mod.f90
   axisym_solver_controls_mod.f90
+  fullfp_stage_probe_mod.f90
   er_rotation_mod.f90
   ntv_mod.f90
   propagator.f90

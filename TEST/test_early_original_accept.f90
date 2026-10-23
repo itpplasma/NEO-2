@@ -8,7 +8,7 @@ program test_early_original_accept
     implicit none
     complex(kind=kind(1d0)) :: q(2),solution(2),legacy(2),scale
     double precision :: rho,legacy_rho
-    integer :: rank,status,iterations,legacy_status
+    integer :: rank,status,iterations,legacy_status,observations
     logical :: bad_moment,bad_residual,finite_bad_moment
     call mpro%init()
     num_spec=mpro%getNumProcs();rank=mpro%getRank()
@@ -25,10 +25,12 @@ program test_early_original_accept
     if (status==0 .or. rho<0.9d0) error stop 'old destructive correction not reproduced'
     call retained_pair()
     solution=q
+    observations=0
     call iterator(1,2,2,1.0d-5,1,solution,rank,next_step,status,iterations,rho,residual, &
-        early_original_accept=.false.)
+        early_original_accept=.false.,observe_iteration=observe)
     if (status/=legacy_status .or. rho/=legacy_rho .or. any(solution/=legacy)) &
         error stop 'disabled/default changed'
+    if (observations/=2) error stop 'stabilized observer boundaries'
     call retained_pair()
     solution=q
     call iterator(1,2,2,1.0d-5,1,solution,rank,next_step,status,iterations,rho,residual, &
@@ -59,6 +61,17 @@ program test_early_original_accept
     call mpro%deinit()
     print *, 'All tests passed!'
 contains
+    subroutine observe(n,iteration,before,candidate,finished)
+        integer, intent(in) :: n,iteration
+        complex(kind=kind(1d0)), intent(in) :: before(n),candidate(n)
+        logical, intent(in) :: finished
+        if (iteration/=1) error stop 'unexpected observer iteration'
+        if (finished .neqv. (observations==1)) error stop 'observer ordering'
+        if (.not. finished) then
+            if (any(before/=candidate)) error stop 'observer initial vector'
+        end if
+        observations=observations+1
+    end subroutine observe
     subroutine retained_pair()
         mode=1;ngrow=1
         if (allocated(eigvecs)) deallocate(eigvecs)

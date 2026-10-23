@@ -93,6 +93,10 @@ subroutine ripple_solver_ArnoldiO2( &
     ! support of different basis functions and replaces routine "lagxmm".
     use collop
     use arnoldi_mod, only: stabilization_probe, stabilization_stage_trace, probe_stage
+    use fullfp_stage_probe_mod, only: fullfp_probe_configure, fullfp_probe_enabled, &
+        fullfp_probe_active, fullfp_probe_begin, fullfp_probe_finish, &
+        fullfp_probe_seed, fullfp_probe_raw, fullfp_probe_density, &
+        fullfp_probe_energy, fullfp_probe_inverse
     use arnoldi_mod, only: iterator, f_init_arnoldi, &
       & lsw_write_flux_surface_distribution, write_flux_surface_distribution
 
@@ -339,6 +343,10 @@ subroutine ripple_solver_ArnoldiO2( &
     else if (sparse_trace_status /= 1) then
         error stop 'Stabilization probe environment read failed'
     end if
+    call fullfp_probe_configure(isw_lorentz, isw_energy, isw_integral, &
+        early_original_accept)
+    if (fullfp_probe_enabled .and. ax_operator_probe) &
+        error stop 'Conflicting full-FP stage/operator probes'
 
     addboucol = .true.
     !------------------------------------------------------------------------
@@ -3598,11 +3606,25 @@ CONTAINS
                     normalized_residual_species = huge(1.0d0)
                     density_constraint_species = 0.0d0
                     energy_constraint_species = 0.0d0
+                    if (fullfp_probe_enabled) then
+                        if (k == 1 .and. ispecp == 0) &
+                            fullfp_probe_seed = f_init_arnoldi
+                        call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, &
+                            niter, source_vector_all(:, k, ispecp), ispec, &
+                            next_iteration, solve_status, solve_iterations, &
+                            solve_residual, equation_residual, &
+                            early_original_accept=early_original_accept, &
+                            evaluate_constraints=original_constraints, &
+                            observe_iteration=observe_fullfp_iteration)
+                        if (k == 1 .and. ispecp == 1) &
+                            error stop 'Full-FP diagnostic point was not reached'
+                    else
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                                 & source_vector_all(:, k, ispecp), ispec, next_iteration, &
                                 & solve_status, solve_iterations, solve_residual, equation_residual, &
                                 & early_original_accept=early_original_accept, &
                                 & evaluate_constraints=original_constraints)
+                    end if
                     call report_solve(k, ispecp, solve_status, solve_iterations, solve_residual)
                 end do
 
@@ -4688,6 +4710,37 @@ CONTAINS
         end if
     end subroutine original_constraints
 
+    subroutine observe_fullfp_iteration(n, iteration, before, candidate, finished)
+        use arnoldi_mod, only: fzero, eigvecs, ritznum, ngrow
+        integer, intent(in) :: n, iteration
+        complex(dp), intent(in) :: before(n), candidate(n)
+        logical, intent(in) :: finished
+        if (.not. finished) then
+            call fullfp_probe_begin(n, k, drive_spec, iteration)
+            return
+        end if
+        if (.not. fullfp_probe_active) return
+        call fullfp_probe_finish(fzero, before, candidate, ritznum(:ngrow), &
+            eigvecs(:, :ngrow), densvec_bra, energvec_bra, coupled_stage_action)
+        if (ispec == 0) print *, 'NEO2_DIAGNOSTIC_ONLY fullfp_stages NO_TORQUE'
+        call mpro%deinit()
+        stop
+    end subroutine observe_fullfp_iteration
+
+    subroutine coupled_stage_action(vector, matrix, collision)
+        complex(dp), intent(in) :: vector(:)
+        complex(dp), intent(out) :: matrix(:), collision(:)
+        complex(dp) :: work(size(vector))
+        integer :: entry
+        work = vector
+        call integral_part(work, collision)
+        matrix = (0.0_dp, 0.0_dp)
+        do entry = 1, nz_symm
+            matrix(irow_symm(entry)) = matrix(irow_symm(entry)) + &
+                amat_symm(entry)*vector(icol_symm(entry))
+        end do
+    end subroutine coupled_stage_action
+
     subroutine source_free_pitch_action(v, lv, entry_sum)
         complex(dp), intent(in) :: v(:)
         complex(dp), intent(out) :: lv(:)
@@ -4946,16 +4999,25 @@ CONTAINS
             deallocate (fnew_real, fnew_imag)
             if (sparse_trace) call trace_inverse(inverse_rhs, fnew)
 
+            if (fullfp_probe_active) fullfp_probe_inverse = fnew
             fnew = fnew + fold
+            if (fullfp_probe_active) fullfp_probe_raw = fnew
 
             if (stabilization_stage_trace) then
                 before_filter=fnew
                 call probe_stage('before_density_filter',n,fnew,fold,ispec, &
                     equation_residual,source_free_pitch_action)
             end if
+            if (fullfp_probe_active) then
+                call apply_ax_filters(fnew, densvec_bra, densvec_ket, &
+                    energvec_bra, energvec_ket, denom_dens, denom_energ, tol, &
+                    isw_intp == 1, problem_type, fullfp_probe_density, &
+                    fullfp_probe_energy)
+            else
             call apply_ax_filters(fnew, densvec_bra, densvec_ket, &
                 energvec_bra, energvec_ket, denom_dens, denom_energ, tol, &
                 isw_intp == 1, problem_type)
+            end if
             if (stabilization_stage_trace) &
                 call probe_stage('after_density_filter',n,fnew,before_filter,ispec, &
                     equation_residual,source_free_pitch_action)

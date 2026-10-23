@@ -190,3 +190,27 @@ set_tests_properties(early_original_accept_test early_original_accept_mpi PROPER
     PASS_REGULAR_EXPRESSION "All tests passed!" FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30 PROCESSORS 2 LABELS "arnoldi;fast"
     ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+
+add_executable(test_fullfp_stage_probe test_fullfp_stage_probe.f90)
+target_link_libraries(test_fullfp_stage_probe neo2_ql)
+foreach(mode serial mpi)
+    set(stage_dir "${CMAKE_CURRENT_BINARY_DIR}/fullfp-stage-${mode}")
+    file(MAKE_DIRECTORY "${stage_dir}")
+    if(mode STREQUAL "mpi")
+        add_test(NAME fullfp_stage_${mode}
+            COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2
+            ${MPIEXEC_PREFLAGS} $<TARGET_FILE:test_fullfp_stage_probe>
+            ${MPIEXEC_POSTFLAGS})
+    else()
+        add_test(NAME fullfp_stage_${mode} COMMAND test_fullfp_stage_probe)
+    endif()
+    set_tests_properties(fullfp_stage_${mode} PROPERTIES TIMEOUT 30 PROCESSORS 2
+        PASS_REGULAR_EXPRESSION "All tests passed!"
+        ENVIRONMENT "NEO2_FULLFP_STAGE_PROBE_DIR=${stage_dir};OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1;NEO2_AX_FILTER_POLICY=native;NEO2_AX_REGPER_SPEED=native")
+endforeach()
+add_test(NAME fullfp_stage_off COMMAND ${CMAKE_COMMAND} -E env
+    --unset=NEO2_FULLFP_STAGE_PROBE_DIR $<TARGET_FILE:test_fullfp_stage_probe> off)
+add_test(NAME fullfp_stage_reject_pitch COMMAND test_fullfp_stage_probe reject_pitch)
+set_tests_properties(fullfp_stage_off fullfp_stage_reject_pitch PROPERTIES TIMEOUT 30)
+set_tests_properties(fullfp_stage_reject_pitch PROPERTIES WILL_FAIL TRUE
+    ENVIRONMENT "NEO2_FULLFP_STAGE_PROBE_DIR=${CMAKE_CURRENT_BINARY_DIR}/fullfp-stage-serial")

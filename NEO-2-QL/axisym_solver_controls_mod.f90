@@ -50,20 +50,25 @@ contains
     end function regper_speed_selected
 
     subroutine apply_ax_filters(f, dbra, dket, ebra, eket, dd, ed, tol, &
-                                energy_enabled, axisymmetric)
+                                energy_enabled, axisymmetric, density_stage, energy_stage)
         complex(dp), intent(inout) :: f(:)
         complex(dp), intent(in) :: dbra(:), dket(:), ebra(:), eket(:), dd, ed
         real(dp), intent(in) :: tol
         logical, intent(in) :: energy_enabled, axisymmetric
+        complex(dp), optional, intent(out) :: density_stage(:), energy_stage(:)
         complex(dp) :: coef_dens, coef_energ
+        if (present(density_stage)) density_stage = f
+        if (present(energy_stage)) energy_stage = f
         ! NA has no such filter; an AX option must not change or abort its path.
         if (.not. axisymmetric) return
         if (omit_filters) return
         coef_dens = sum(dbra*f)/dd
         f = f - (1.0_dp - tol)*coef_dens*dket
+        if (present(density_stage)) density_stage = f
         if (energy_enabled) then
             coef_energ = sum(ebra*f)/ed
             f = f - (1.0_dp - tol)*coef_energ*eket
         end if
+        if (present(energy_stage)) energy_stage = f
     end subroutine apply_ax_filters
 end module axisym_solver_controls_mod

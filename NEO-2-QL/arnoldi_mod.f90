@@ -72,7 +72,7 @@ contains
   !>            Formal: result         - solution vector
   SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, &
     & next_iteration, status, iterations, equation_residual, evaluate_residual, physical_action, &
-    & early_original_accept, evaluate_constraints)
+    & early_original_accept, evaluate_constraints, observe_iteration)
 
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use mpiprovider_module, only : mpro
@@ -109,6 +109,14 @@ contains
       end subroutine evaluate_constraints
     end interface
     optional :: evaluate_constraints
+    interface
+      subroutine observe_iteration(n, iteration, before, candidate, finished)
+        integer, intent(in) :: n, iteration
+        complex(kind=kind(1d0)), intent(in) :: before(n), candidate(n)
+        logical, intent(in) :: finished
+      end subroutine observe_iteration
+    end interface
+    optional :: observe_iteration
     interface
       subroutine physical_action(v, lv, entry_sum)
         complex(kind=kind(1d0)), intent(in) :: v(:)
@@ -228,8 +236,12 @@ contains
       fold = (0.0d0, 0.0d0)
 
       DO iter=1,itermax
+        if (present(observe_iteration)) &
+          call observe_iteration(n,iter,fold,fold,.false.)
         CALL next_iteration(n,fold,fnew)
         if (mode .EQ. 2) fnew = fnew + fzero
+        if (present(observe_iteration)) &
+          call observe_iteration(n,iter,fold,fnew,.true.)
         break_cond1(ispec)=SUM(ABS(fnew-fold))
         break_cond2(ispec)=relerr*SUM(ABS(fnew))
         PRINT *,iter,ispec,break_cond1(ispec),break_cond2(ispec)
@@ -347,6 +359,8 @@ contains
     fold=fzero
 
     DO iter=1,itermax
+      if (present(observe_iteration)) &
+        call observe_iteration(n,iter,fold,fold,.false.)
       if (stabilization_probe) then
         call probe_stage('fold',n,fold,fold,ispec,evaluate_residual,physical_action)
         stabilization_stage_trace=.true.
@@ -376,6 +390,8 @@ contains
         coefren(j)=ritznum(j)*SUM(coefren_spec)
       ENDDO
       fnew=fnew-MATMUL(eigvecs(:,1:nsize),coefren)
+      if (present(observe_iteration)) &
+        call observe_iteration(n,iter,fold,fnew,.true.)
       if (stabilization_probe) then
         call probe_stage('after_deflation',n,fnew,before_probe,ispec, &
           evaluate_residual,physical_action)
