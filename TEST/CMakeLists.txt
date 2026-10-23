@@ -55,6 +55,11 @@ if(NEO2_TEST_PYTHON)
     set_tests_properties(phi_ma_${test_name}_test PROPERTIES
       TIMEOUT 240 SKIP_RETURN_CODE 77)
   endforeach()
+  add_test(NAME local_parallel_flow_test
+    COMMAND ${NEO2_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/test_local_parallel_flow.py
+      $<TARGET_FILE:neo_2_ql.x> ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/phi_ma
+      ${CMAKE_CURRENT_BINARY_DIR})
+  set_tests_properties(local_parallel_flow_test PROPERTIES TIMEOUT 240)
 endif()
 
 # Test executable for er_rotation module
