@@ -4673,11 +4673,18 @@ CONTAINS
         constraint=huge(1.0d0)
         if (.not. all(ieee_is_finite(real(candidate,dp)))) return
         if (.not. all(ieee_is_finite(aimag(candidate)))) return
-        constraint=0.0d0
         if (problem_type) then
+            if (.not. all(ieee_is_finite(density_constraint_species))) return
+            if (any(density_constraint_species < 0.0d0)) return
+            if (isw_intp == 1) then
+                if (.not. all(ieee_is_finite(energy_constraint_species))) return
+                if (any(energy_constraint_species < 0.0d0)) return
+            end if
             constraint=maxval(density_constraint_species)
             if (isw_intp == 1) &
                 constraint=max(constraint,maxval(energy_constraint_species))
+        else
+            constraint=0.0d0
         end if
     end subroutine original_constraints
 
