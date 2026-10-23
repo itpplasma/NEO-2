@@ -1,4 +1,5 @@
 MODULE collisionality_mod
+  CHARACTER(len=32) :: collision_model = 'native'
   INTEGER          :: isw_lorentz
   INTEGER          :: isw_integral
   INTEGER          :: isw_energy

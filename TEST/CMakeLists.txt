@@ -106,3 +106,14 @@ if(MPI_SUPPORT)
         ${MPIEXEC_PREFLAGS} $<TARGET_FILE:test_iterator_convergence> ${MPIEXEC_POSTFLAGS})
     set_tests_properties(iterator_convergence_mpi_test PROPERTIES TIMEOUT 30 PROCESSORS 2)
 endif()
+
+# Existing Coulomb switch contract; native preserves non-default controls.
+add_executable(test_coulomb_model_controls test_coulomb_model_controls.f90)
+target_link_libraries(test_coulomb_model_controls common)
+foreach(model native pitch_angle test_particle full_fp monoenergetic_lorentz)
+    add_test(NAME coulomb_controls_${model}
+        COMMAND test_coulomb_model_controls ${model})
+    set_tests_properties(coulomb_controls_${model} PROPERTIES TIMEOUT 30)
+endforeach()
+add_test(NAME coulomb_controls_invalid COMMAND test_coulomb_model_controls invalid)
+set_tests_properties(coulomb_controls_invalid PROPERTIES WILL_FAIL TRUE TIMEOUT 30)

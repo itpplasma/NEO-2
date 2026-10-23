@@ -1,4 +1,5 @@
 module neo2_ql
+  use collision_model_mod, only : resolve_collision_model
 
   !**********************************************************
   ! MPI Support
@@ -17,7 +18,7 @@ module neo2_ql
        bsfunc_local_shield_factor,bsfunc_shield, flint_prepare,     &
        flint_prepare_2, set_collpar
   USE device_mod
-  USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,         &
+  USE collisionality_mod, ONLY : conl_over_mfp,isw_lorentz,collision_model, &
        isw_integral,isw_energy,isw_axisymm,                         &
        isw_momentum,vel_distri_swi,vel_num,vel_max,                 &
        nvel,vel_array,v_max_resolution,v_min_resolution,            &
@@ -213,6 +214,7 @@ module neo2_ql
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
        mag_symmetric,mag_symmetric_shorten, epserr_iter, niter, n_arnoldi, lsw_linear_boozer
   NAMELIST /collision/                                                        &
+       collision_model,                                                    &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
        isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &
@@ -600,6 +602,7 @@ subroutine main
        CALL h5_close_group(h5_config_group)
 
        CALL h5_define_group(h5_config_id, 'collision', h5_config_group)
+       CALL h5_add(h5_config_group, 'collision_model', trim(collision_model))
        CALL h5_add(h5_config_group, 'conl_over_mfp', conl_over_mfp, 'Collisionality parameter')
        CALL h5_add(h5_config_group, 'lag', lag, 'Number of Laguerre polynomials')
        CALL h5_add(h5_config_group, 'leg', leg, 'Number of Legendre polynomials')
@@ -824,6 +827,7 @@ subroutine main
     leg=20
     legmax=20
     z_eff=1.d0
+    collision_model = 'native'
     isw_lorentz = 1
     isw_integral = 0
     isw_energy = 0
@@ -919,6 +923,7 @@ subroutine main
 
 
   subroutine check()
+    call resolve_collision_model()
     if (any(t_vec < 0.0)) then
       write(*,*) 'ERROR: negative temperature.'
       write(*,*) '  Temperature should be >= 0'
