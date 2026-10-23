@@ -54,6 +54,7 @@ module neo2_ql
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
        scalprod_beta, lsw_read_precom, lsw_write_precom
   USE rkstep_mod, ONLY : lag, leg, legmax, epserr_iter
+  use arnoldi_mod, only: ql_iteration_limit, arnoldi_stable_updates
 
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
@@ -210,7 +211,8 @@ module neo2_ql
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
-       mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer
+       mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer, &
+       ql_iteration_limit, arnoldi_stable_updates
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
@@ -785,6 +787,8 @@ subroutine main
     xetami=0.0d0
     xetama=1.300001d0
     epserr_iter = 1e-5
+    ql_iteration_limit = 100
+    arnoldi_stable_updates = 10
     eta_part_global = 0
     eta_part_trapped = 10
     eta_part_globalfac = 3.0_dp
@@ -907,6 +911,9 @@ subroutine main
 
 
   subroutine check()
+    if (ql_iteration_limit < 1 .or. arnoldi_stable_updates < 1) then
+      error stop "QL numerical iteration controls must be positive"
+    end if
     if (any(t_vec < 0.0)) then
       write(*,*) 'ERROR: negative temperature.'
       write(*,*) '  Temperature should be >= 0'

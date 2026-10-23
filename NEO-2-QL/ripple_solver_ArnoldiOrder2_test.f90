@@ -88,7 +88,7 @@ subroutine ripple_solver_ArnoldiO2( &
     ! from collision operator module. This step allows for
     ! support of different basis functions and replaces routine "lagxmm".
     use collop
-    use arnoldi_mod, only: iterator, f_init_arnoldi, &
+    use arnoldi_mod, only: iterator, f_init_arnoldi, ql_iteration_limit, &
       & lsw_write_flux_surface_distribution, write_flux_surface_distribution
 
     implicit none
@@ -289,7 +289,7 @@ subroutine ripple_solver_ArnoldiO2( &
     print *, "Species: ", ispec
     call collop_set_species(ispec)
 
-    niter = 100       !maximum number of integral part iterations
+    niter = ql_iteration_limit !maximum number of integral part iterations
     n_arnoldi = 500     !maximum number of Arnoldi iterations
     isw_regper = 1       !regulariization by periodic boundary condition
     epserr_iter = 1.d-7  !relative error of integral part iterations

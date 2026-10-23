@@ -1,12 +1,13 @@
 program test_arnoldi_breakdown
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_quiet_nan, ieee_value
-    use arnoldi_mod, only: arnoldi, eigvecs, f_init_arnoldi, ierr, ngrow, &
-        & ntol, ritznum, tol
+    use arnoldi_mod, only: arnoldi, iterator, eigvecs, f_init_arnoldi, ierr, ngrow, &
+        & ntol, ritznum, tol, arnoldi_stable_updates
     use collisionality_mod, only: num_spec
     use mpiprovider_module, only: mpro
     implicit none
 
     integer :: applications, status
+    complex(kind=kind(1d0)) :: solution(2)
     double precision, parameter :: eigenvalue = 2.0d0
     double precision, parameter :: tolerance = 100.0d0 * epsilon(1.0d0)
 
@@ -57,6 +58,22 @@ program test_arnoldi_breakdown
         end if
     end if
 
+    ! The iterator must consume an explicit stability count, not reset it to 10.
+    arnoldi_stable_updates = 30
+    solution = [(1.0d0, 0.0d0), (0.0d0, 0.0d0)]
+    call iterator(1, 2, 2, 1.0d-7, 100, solution, 0, affine_operator)
+    if (ntol /= 30) then
+        print *, 'FAIL: explicit Arnoldi stability count was overwritten'
+        status = status + 1
+    end if
+    if (maxval(abs(solution - [(-1.0d0, 0.0d0), (0.0d0, 0.0d0)])) > 1.0d-7) then
+        print *, 'FAIL: controlled iterator violates the manufactured solution'
+        status = status + 1
+    end if
+    call iterator(3, 2, 2, 1.0d-7, 100, solution, 0, affine_operator)
+    allocate(ritznum(2))
+    arnoldi_stable_updates = 10
+
     applications = 0
     f_init_arnoldi = (0.0d0, 0.0d0)
     call arnoldi(2, 2, 0, rank_one_operator)
@@ -95,6 +112,18 @@ program test_arnoldi_breakdown
     print *, 'All tests passed!'
 
 contains
+
+    subroutine affine_operator(n, input, output)
+        integer :: n
+        complex(kind=kind(1d0)), dimension(n) :: input, output
+
+        call rank_one_operator(n, input, output)
+        ! Arnoldi requests only the homogeneous operator in mode 2.
+        block
+            use arnoldi_mod, only: mode
+            if (mode /= 2) output(1) = output(1) + 1.0d0
+        end block
+    end subroutine affine_operator
 
     subroutine rank_one_operator(n, input, output)
         integer :: n

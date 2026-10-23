@@ -1,6 +1,8 @@
 MODULE arnoldi_mod
   INTEGER :: ngrow,ierr
   INTEGER :: ntol,mode=0
+  ! Numerical controls for QL solver 3; historical defaults.
+  INTEGER :: ql_iteration_limit=100, arnoldi_stable_updates=10
   DOUBLE PRECISION :: tol
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: f_init_arnoldi
@@ -78,7 +80,6 @@ contains
     IMPLICIT NONE
 
     ! tol0 - largest eigenvalue tolerated in combined iterations:
-    INTEGER,          PARAMETER :: ntol0=10
     DOUBLE PRECISION, PARAMETER :: tol0=0.5d0
 
     interface
@@ -128,7 +129,7 @@ contains
 
       ! estimate NARN largest eigenvalues:
       tol=tol0
-      ntol=ntol0
+      ntol=arnoldi_stable_updates
 
       CALL arnoldi(n,narn, ispec, next_iteration)
 
