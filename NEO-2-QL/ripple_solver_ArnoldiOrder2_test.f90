@@ -14,7 +14,8 @@ subroutine ripple_solver_ArnoldiO2( &
 
     use device_mod
     use axisym_solver_controls_mod, only: read_axisym_solver_controls, &
-        regper_speed_selected, apply_ax_filters
+        regper_speed_selected, apply_ax_filters, configure_ax_feasibility, &
+        record_ax_feasibility, ax_feasibility_complete
     use flint_mod, only: phi_divide                      !<-in Winny
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
@@ -347,6 +348,9 @@ subroutine ripple_solver_ArnoldiO2( &
         early_original_accept)
     if (fullfp_probe_enabled .and. ax_operator_probe) &
         error stop 'Conflicting full-FP stage/operator probes'
+    call configure_ax_feasibility(isw_lorentz, isw_energy, isw_integral, num_spec, &
+        early_original_accept, epserr_iter, niter, n_arnoldi, &
+        ax_operator_probe .or. fullfp_probe_enabled .or. stabilization_probe)
 
     addboucol = .true.
     !------------------------------------------------------------------------
@@ -2559,6 +2563,15 @@ subroutine ripple_solver_ArnoldiO2( &
 
         problem_type = .TRUE.
         call solve_eqs(.TRUE.)
+        if (ax_feasibility_complete()) then
+            if (ispec == 0) then
+                print *, 'NEO2_DIAGNOSTIC_ONLY AX_STRICT_FEASIBILITY ', &
+                    'NO_TRANSPORT accepted_ax_solves=9'
+                flush(6)
+            end if
+            call mpro%deinit()
+            stop
+        end if
 
         ! Debugging - plot distribution function (axisymmetric problem)
         if (lsw_debug_distfun) then
@@ -4905,6 +4918,8 @@ CONTAINS
         ! Every rank receives the same globally reduced convergence decision.
         ! No rank may continue to publish transport from an unconverged solve.
         if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
+        if (problem_type) &
+            call record_ax_feasibility(source_index, driving_species, status)
     end subroutine report_solve
 
     subroutine probe_axisymmetric_actions()

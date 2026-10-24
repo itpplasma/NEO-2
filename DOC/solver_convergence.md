@@ -46,3 +46,12 @@ The physical operator, source, NA arithmetic and original residual plus enabled
 moment acceptance are unchanged. This changes the iteration map and requires a
 fresh Arnoldi construction. It is not a normalization repair or a claim that the
 removed direction is a physical right null vector.
+
+`NEO2_AX_ONLY_FEASIBILITY=1` is a default-off, diagnostic-only boundary for the
+three-species full-energy strategy with original acceptance and unchanged
+1e-5/100/500 controls. It rejects conflicting probes and invalid invocations.
+Only after all nine distinct AX source/driver solves have passed the existing
+native equation and enabled-moment validator does it stop before NA, with
+`AX_STRICT_FEASIBILITY NO_TRANSPORT`. Missing, duplicate or failed solves cannot
+produce this marker. Unset or `0` retains normal execution. The marker attests
+AX feasibility only and never admits transport.

@@ -1,7 +1,8 @@
 program test_axisym_solver_controls
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use axisym_solver_controls_mod, only: read_axisym_solver_controls, &
-        regper_speed_selected, apply_ax_filters
+        regper_speed_selected, apply_ax_filters, configure_ax_feasibility, &
+        record_ax_feasibility, ax_feasibility_complete, ax_feasibility_enabled
     use sparse_mod, only: sparse_solve, sparse_solve_method, sparse_coo_action
     implicit none
     character(len=32) :: mode
@@ -12,6 +13,11 @@ program test_axisym_solver_controls
     logical :: no_filters, all_speeds
     integer :: speed, i, j
     call get_command_argument(1,mode)
+    if (index(mode,'feas_') == 1) then
+        call feasibility_guard_oracle(trim(mode))
+        print *, 'All tests passed!'
+        stop
+    end if
     select case (trim(mode))
     case ('reject_fp')
         call read_axisym_solver_controls(0,1,1)
@@ -105,6 +111,46 @@ program test_axisym_solver_controls
     end if
     print *, 'All tests passed!'
 contains
+    subroutine feasibility_guard_oracle(selection)
+        character(len=*), intent(in) :: selection
+        integer :: source, driver
+        call read_axisym_solver_controls(0,1,1)
+        if (selection == 'feas_default' .or. selection == 'feas_off') then
+            ! Unset control must leave the default route untouched, even when
+            ! the deliberately incompatible diagnostic-only arguments are given.
+            call configure_ax_feasibility(1,0,0,1,.false.,1.0_dp,1,1,.true.)
+            if (ax_feasibility_enabled .or. ax_feasibility_complete()) &
+                error stop 'Default AX feasibility changed normal execution'
+            call record_ax_feasibility(-1,-1,1)
+            return
+        end if
+        call configure_ax_feasibility(0,1,1,3,.true.,1.0e-5_dp,100,500, &
+            selection == 'feas_incompatible')
+        if (selection == 'feas_invalid' .or. &
+            selection == 'feas_incompatible') stop 0
+        if (.not. ax_feasibility_enabled) error stop 'AX feasibility not enabled'
+        do source = 1, 3
+            do driver = 0, 2
+                if (selection == 'feas_partial' .and. &
+                    source == 3 .and. driver == 2) cycle
+                if (selection == 'feas_failed') then
+                    call record_ax_feasibility(source,driver,1)
+                    stop 0
+                end if
+                call record_ax_feasibility(source,driver,0)
+                if (selection == 'feas_duplicate') then
+                    call record_ax_feasibility(source,driver,0)
+                    stop 0
+                end if
+            end do
+        end do
+        if (selection == 'feas_partial') then
+            if (ax_feasibility_complete()) stop 0
+            stop 0
+        end if
+        if (.not. ax_feasibility_complete()) error stop 'Nine AX reports incomplete'
+    end subroutine feasibility_guard_oracle
+
     subroutine full_energy_oracles()
         complex(dp) :: v(2), initial(2), bd(2), kd(2), be(2), ke(2)
         complex(dp) :: dn, en

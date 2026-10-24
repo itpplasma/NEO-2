@@ -4,6 +4,10 @@ module axisym_solver_controls_mod
     implicit none
     private
     public :: read_axisym_solver_controls, regper_speed_selected, apply_ax_filters
+    public :: configure_ax_feasibility, record_ax_feasibility, ax_feasibility_complete
+    public :: ax_feasibility_enabled
+    logical, protected :: ax_feasibility_enabled = .false.
+    logical :: accepted_ax(3,0:2) = .false.
     logical :: omit_filters = .false., all_speeds = .false.
     logical :: full_energy_projection = .false.
 contains
@@ -51,6 +55,55 @@ contains
             print *, 'native AX regper speed: native'
         end if
     end subroutine read_axisym_solver_controls
+
+    subroutine configure_ax_feasibility(lorentz, energy, integral, species, &
+                                        early_accept, tolerance, iterations, &
+                                        arnoldi, probe)
+        integer, intent(in) :: lorentz, energy, integral, species, iterations, arnoldi
+        logical, intent(in) :: early_accept, probe
+        real(dp), intent(in) :: tolerance
+        character(len=8) :: value
+        integer :: status
+        ax_feasibility_enabled = .false.
+        accepted_ax = .false.
+        call get_environment_variable('NEO2_AX_ONLY_FEASIBILITY', value, status=status)
+        if (status == 1) return
+        if (status /= 0) error stop 'AX feasibility control read failed'
+        select case (trim(value))
+        case ('0')
+            return
+        case ('1')
+        case default
+            error stop 'AX feasibility control must be0or1'
+        end select
+        if (any([lorentz, energy, integral] /= [0, 1, 1]) .or. species /= 3) &
+            error stop 'AX feasibility requires three-species full_fp'
+        if (.not. full_energy_projection .or. omit_filters .or. all_speeds) &
+            error stop 'AX feasibility requires full energy and native other policies'
+        if (.not. early_accept .or. probe) &
+            error stop 'AX feasibility requires original acceptance without probes'
+        if (tolerance /= 1.0e-5_dp .or. iterations /= 100 .or. arnoldi /= 500) &
+            error stop 'AX feasibility requires unchanged1e-5/100/500 controls'
+        ax_feasibility_enabled = .true.
+    end subroutine configure_ax_feasibility
+
+    subroutine record_ax_feasibility(source, driver, status)
+        integer, intent(in) :: source, driver, status
+        if (.not. ax_feasibility_enabled) return
+        if (source < 1 .or. source > 3 .or. driver < 0 .or. driver > 2) &
+            error stop 'Invalid AX feasibility source/driver'
+        if (accepted_ax(source,driver)) error stop 'Duplicate AX feasibility solve'
+        ! Status0 is the existing original-equation/all-enabled-moment decision.
+        if (status /= 0) error stop 'Unconverged AX feasibility solve'
+        accepted_ax(source,driver) = .true.
+    end subroutine record_ax_feasibility
+
+    logical function ax_feasibility_complete() result(complete)
+        complete = .false.
+        if (.not. ax_feasibility_enabled) return
+        if (.not. all(accepted_ax)) error stop 'Partial AX feasibility is not success'
+        complete = .true.
+    end function ax_feasibility_complete
 
     logical function regper_speed_selected(m, axisymmetric) result(selected)
         integer, intent(in) :: m

@@ -193,6 +193,31 @@ foreach(policy full invalid conflict reject_pitch reject_test_particle reject_lo
     endif()
 endforeach()
 
+foreach(guard default off complete invalid incompatible partial duplicate failed)
+    if(guard STREQUAL "default")
+        add_test(NAME ax_feasibility_${guard} COMMAND ${CMAKE_COMMAND} -E env
+            --unset=NEO2_AX_ONLY_FEASIBILITY
+            $<TARGET_FILE:test_axisym_solver_controls> feas_${guard})
+    else()
+        add_test(NAME ax_feasibility_${guard}
+            COMMAND test_axisym_solver_controls feas_${guard})
+        set(value 1)
+        if(guard STREQUAL "invalid")
+            set(value invalid)
+        elseif(guard STREQUAL "off")
+            set(value 0)
+        endif()
+        set_tests_properties(ax_feasibility_${guard} PROPERTIES
+            ENVIRONMENT "NEO2_AX_ONLY_FEASIBILITY=${value}")
+    endif()
+    set_tests_properties(ax_feasibility_${guard} PROPERTIES TIMEOUT 30)
+    set_property(TEST ax_feasibility_${guard} APPEND PROPERTY ENVIRONMENT
+        "NEO2_AX_FILTER_POLICY=native;NEO2_AX_REGPER_SPEED=native;NEO2_AX_ENERGY_FILTER_POLICY=full")
+    if(NOT guard MATCHES "^(default|off|complete)$")
+        set_tests_properties(ax_feasibility_${guard} PROPERTIES WILL_FAIL TRUE)
+    endif()
+endforeach()
+
 add_executable(test_stabilization_probe test_stabilization_probe.f90)
 target_link_libraries(test_stabilization_probe neo2_ql)
 add_test(NAME stabilization_probe_test COMMAND test_stabilization_probe
