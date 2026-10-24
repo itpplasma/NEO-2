@@ -5,6 +5,7 @@ module axisym_solver_controls_mod
     private
     public :: read_axisym_solver_controls, regper_speed_selected, apply_ax_filters
     logical :: omit_filters = .false., all_speeds = .false.
+    logical :: full_energy_projection = .false.
 contains
     logical function alternative_selected(name, alternative) result(selected)
         character(len=*), intent(in) :: name, alternative
@@ -26,6 +27,15 @@ contains
         integer, intent(in) :: lorentz, energy, integral
         omit_filters = alternative_selected('NEO2_AX_FILTER_POLICY', 'none')
         all_speeds = alternative_selected('NEO2_AX_REGPER_SPEED', 'all')
+        full_energy_projection = &
+            alternative_selected('NEO2_AX_ENERGY_FILTER_POLICY', 'full')
+        if (full_energy_projection) then
+            if (any([lorentz, energy, integral] /= [0, 1, 1])) &
+                error stop 'AX full energy projection requires full_fp'
+            if (omit_filters) &
+                error stop 'AX full energy projection conflicts with omitted filters'
+            print *, 'native AX energy filter policy: full'
+        end if
         if (all_speeds) then
             if (any([lorentz,energy,integral] /= 0)) &
                 error stop 'AX all-speed regularizer requires effective pitch model'
@@ -67,7 +77,11 @@ contains
         if (present(density_stage)) density_stage = f
         if (energy_enabled) then
             coef_energ = sum(ebra*f)/ed
-            f = f - (1.0_dp - tol)*coef_energ*eket
+            if (full_energy_projection) then
+                f = f - coef_energ*eket
+            else
+                f = f - (1.0_dp - tol)*coef_energ*eket
+            end if
         end if
         if (present(energy_stage)) energy_stage = f
     end subroutine apply_ax_filters

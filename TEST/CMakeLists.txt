@@ -145,6 +145,7 @@ add_executable(test_axisym_solver_controls test_axisym_solver_controls.f90)
 target_link_libraries(test_axisym_solver_controls neo2_ql)
 add_test(NAME ax_solver_default COMMAND ${CMAKE_COMMAND} -E env
     --unset=NEO2_AX_FILTER_POLICY --unset=NEO2_AX_REGPER_SPEED
+    --unset=NEO2_AX_ENERGY_FILTER_POLICY
     $<TARGET_FILE:test_axisym_solver_controls> native)
 foreach(policy native none all invalid_filter invalid_regper reject_fp
         reject_test_particle reject_lorentz)
@@ -165,11 +166,32 @@ foreach(policy native none all invalid_filter invalid_regper reject_fp
     add_test(NAME ax_solver_${policy} COMMAND test_axisym_solver_controls ${argument})
     set_tests_properties(ax_solver_${policy} PROPERTIES TIMEOUT 30
         ENVIRONMENT "NEO2_AX_FILTER_POLICY=${filter};NEO2_AX_REGPER_SPEED=${regper}")
+    set_property(TEST ax_solver_${policy} APPEND PROPERTY ENVIRONMENT
+        "NEO2_AX_ENERGY_FILTER_POLICY=native")
     if(policy MATCHES "^(invalid_|reject_)")
         set_tests_properties(ax_solver_${policy} PROPERTIES WILL_FAIL TRUE)
     endif()
 endforeach()
 set_tests_properties(ax_solver_default PROPERTIES TIMEOUT 30)
+
+foreach(policy full invalid conflict reject_pitch reject_test_particle reject_lorentz)
+    set(energy full)
+    set(filter native)
+    if(policy STREQUAL "invalid")
+        set(energy invalid)
+    elseif(policy STREQUAL "conflict")
+        set(filter none)
+    endif()
+    add_test(NAME ax_energy_${policy}
+        COMMAND test_axisym_solver_controls energy_${policy})
+    set_tests_properties(ax_energy_${policy} PROPERTIES TIMEOUT 30
+        ENVIRONMENT "NEO2_AX_FILTER_POLICY=${filter};NEO2_AX_REGPER_SPEED=native")
+    set_property(TEST ax_energy_${policy} APPEND PROPERTY ENVIRONMENT
+        "NEO2_AX_ENERGY_FILTER_POLICY=${energy}")
+    if(NOT policy STREQUAL "full")
+        set_tests_properties(ax_energy_${policy} PROPERTIES WILL_FAIL TRUE)
+    endif()
+endforeach()
 
 add_executable(test_stabilization_probe test_stabilization_probe.f90)
 target_link_libraries(test_stabilization_probe neo2_ql)

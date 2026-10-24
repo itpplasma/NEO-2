@@ -19,13 +19,25 @@ program test_axisym_solver_controls
         call read_axisym_solver_controls(0,1,0)
     case ('reject_lorentz')
         call read_axisym_solver_controls(1,0,0)
-    case ('none')
+    case ('none','energy_full','energy_invalid','energy_conflict')
         call read_axisym_solver_controls(0,1,1)
+    case ('energy_reject_pitch')
+        call read_axisym_solver_controls(0,0,0)
+    case ('energy_reject_test_particle')
+        call read_axisym_solver_controls(0,1,0)
+    case ('energy_reject_lorentz')
+        call read_axisym_solver_controls(1,0,0)
     case default
         call read_axisym_solver_controls(0,0,0)
     end select
     ! WILL_FAIL must reject success if an invalid/misused option was accepted.
     if (trim(mode) == 'invalid' .or. index(mode,'reject_') == 1) stop 0
+    if (index(mode,'energy_') == 1 .and. trim(mode) /= 'energy_full') stop 0
+    if (trim(mode) == 'energy_full') then
+        call full_energy_oracles()
+        print *, 'All tests passed!'
+        stop
+    end if
     no_filters = trim(mode) == 'none'
     all_speeds = trim(mode) == 'all'
     one = (1.0_dp,0.0_dp)
@@ -92,4 +104,40 @@ program test_axisym_solver_controls
             error stop 'legacy speed regularizer parity'
     end if
     print *, 'All tests passed!'
+contains
+    subroutine full_energy_oracles()
+        complex(dp) :: v(2), initial(2), bd(2), kd(2), be(2), ke(2)
+        complex(dp) :: dn, en
+        ! Independent normalized Maxwellian moments: <1>=1,
+        ! <x^2-3/2>=0 and <(x^2-3/2)^2>=3/2.
+        bd = [(1.0_dp,0.0_dp),(0.0_dp,0.0_dp)]
+        kd = bd
+        be = [(0.0_dp,0.0_dp),(1.5_dp,0.0_dp)]
+        ke = [(0.0_dp,0.0_dp),(1.0_dp,0.0_dp)]
+        dn = (1.0_dp,0.0_dp)
+        en = (1.5_dp,0.0_dp)
+        initial = [(2.0_dp,1.0_dp),(-3.0_dp,4.0_dp)]
+        v = initial
+        call apply_ax_filters(v,bd,kd,be,ke,dn,en,0.5_dp,.true.,.true.)
+        if (any(v /= [(1.0_dp,0.5_dp),(0.0_dp,0.0_dp)])) &
+            error stop 'full energy complex Maxwellian oracle'
+        ! Actual helper NA branch must preserve the complex vector exactly.
+        v = initial
+        call apply_ax_filters(v,bd,kd,be,ke,dn,en,0.5_dp,.true.,.false.)
+        if (any(v /= initial)) error stop 'full energy policy changed NA'
+        ! Nonorthogonal rows: full energy removal changes density too. Literal
+        ! rational result checks ordering and complex phase without reusing code.
+        bd = [(1.0_dp,0.0_dp),(0.0_dp,0.0_dp)]
+        kd = [(1.0_dp,0.0_dp),(0.25_dp,0.0_dp)]
+        be = [(0.0_dp,0.0_dp),(1.0_dp,0.0_dp)]
+        ke = [(0.5_dp,0.0_dp),(1.0_dp,0.0_dp)]
+        initial = [(1.0_dp,0.5_dp),(-0.5_dp,0.25_dp)]
+        v = initial
+        call apply_ax_filters(v,bd,kd,be,ke,dn,dn,0.5_dp,.true.,.true.)
+        if (any(v /= [(0.8125_dp,0.15625_dp),(0.0_dp,0.0_dp)])) &
+            error stop 'full energy nonorthogonal literal oracle'
+        if (sum(be*v) /= (0.0_dp,0.0_dp)) error stop 'full energy moment'
+        if (sum(bd*v) == (0.0_dp,0.0_dp)) &
+            error stop 'density must remain a separate enabled constraint'
+    end subroutine full_energy_oracles
 end program test_axisym_solver_controls

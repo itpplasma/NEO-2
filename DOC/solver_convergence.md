@@ -36,3 +36,13 @@ nullspace gauge; an exposed residual floor requires investigation.
 Zero numerator and zero denominator give zero residual. Invalid controls,
 nonfinite residuals, Arnoldi/subtraction failures, and iteration exhaustion
 are failures. Existing iteration progress lines remain available.
+
+`NEO2_AX_ENERGY_FILTER_POLICY=full` is an opt-in numerical iteration strategy for
+resolved `full_fp`. It removes the full centered energy component using the native
+bra, ket and denominator, while retaining the historical density damping.
+Unset or `native` preserves the historical arithmetic. Invalid values, other
+collision models and combination with `NEO2_AX_FILTER_POLICY=none` are rejected.
+The physical operator, source, NA arithmetic and original residual plus enabled
+moment acceptance are unchanged. This changes the iteration map and requires a
+fresh Arnoldi construction. It is not a normalization repair or a claim that the
+removed direction is a physical right null vector.
