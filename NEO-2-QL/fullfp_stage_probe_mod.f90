@@ -6,6 +6,7 @@ module fullfp_stage_probe_mod
     implicit none
     private
     public :: fullfp_probe_configure, fullfp_probe_begin, fullfp_probe_finish
+    public :: fullfp_probe_at_target
     public :: fullfp_probe_enabled, fullfp_probe_active, fullfp_probe_seed
     public :: fullfp_probe_raw, fullfp_probe_density, fullfp_probe_energy
     public :: fullfp_probe_inverse, stage_identity_units, fullfp_probe_moments
@@ -44,11 +45,17 @@ contains
         fullfp_probe_enabled = .true.
     end subroutine fullfp_probe_configure
 
+    pure logical function fullfp_probe_at_target(source, driver) result(at_target)
+        integer, intent(in) :: source, driver
+        at_target = source == 3 .and. driver == 1
+    end function fullfp_probe_at_target
+
     subroutine fullfp_probe_begin(n, source, driver, iteration)
         integer, intent(in) :: n, source, driver, iteration
         fullfp_probe_active = .false.
         if (.not. fullfp_probe_enabled) return
-        if (source /= 1 .or. driver /= 1 .or. iteration /= 10) return
+        if (.not. fullfp_probe_at_target(source, driver)) return
+        if (iteration /= 30) return
         if (allocated(fullfp_probe_raw)) error stop 'Stage observer repeated'
         allocate(fullfp_probe_raw(n), fullfp_probe_density(n), &
             fullfp_probe_energy(n), fullfp_probe_inverse(n))
@@ -83,7 +90,7 @@ contains
             action='write', iostat=ios)
         if (ios /= 0) error stop 'Cannot create full-FP moment summary'
         write(unit, '(a)') 'NEO2_FULLFP_MOMENT_V1 DIAGNOSTIC_ONLY NO_TORQUE'
-        write(unit, '(a,3(1x,i0))') 'source driving_species iteration', 1, 1, 10
+        write(unit, '(a,3(1x,i0))') 'source driving_species iteration', 3, 1, 30
         write(unit, '(a,i0)') 'rank ', rank
         write(unit, '(a)') 'physical rows: n_cm-3 T_erg m_g Z kappa_cm-1 vT_cm_s'
         do direction = 0, num_spec-1
@@ -230,7 +237,7 @@ contains
             action='write', iostat=ios)
         if (ios /= 0) error stop 'Cannot create full-FP stage summary'
         write(unit, '(a)') 'NEO2_FULLFP_STAGE_V1 DIAGNOSTIC_ONLY NO_TORQUE'
-        write(unit, '(a,3(1x,i0))') 'source driving_species iteration', 1, 1, 10
+        write(unit, '(a,3(1x,i0))') 'source driving_species iteration', 3, 1, 30
         write(unit, '(a,3(1x,i0))') 'vector_size ranks modes', n, num_spec, size(ritz)
         write(unit, '(a)') 'vectors: native complex(real64), stream, Fortran order'
         write(unit, '(a)') 'identity_units is a floating-point indicator, not a bound'

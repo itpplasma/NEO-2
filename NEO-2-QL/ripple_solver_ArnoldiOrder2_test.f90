@@ -95,6 +95,7 @@ subroutine ripple_solver_ArnoldiO2( &
     use collop
     use arnoldi_mod, only: stabilization_probe, stabilization_stage_trace, probe_stage
     use fullfp_stage_probe_mod, only: fullfp_probe_configure, fullfp_probe_enabled, &
+        fullfp_probe_at_target, &
         fullfp_probe_active, fullfp_probe_begin, fullfp_probe_finish, &
         fullfp_probe_seed, fullfp_probe_raw, fullfp_probe_density, &
         fullfp_probe_energy, fullfp_probe_inverse, fullfp_probe_moments
@@ -3629,7 +3630,7 @@ CONTAINS
                             early_original_accept=early_original_accept, &
                             evaluate_constraints=original_constraints, &
                             observe_iteration=observe_fullfp_iteration)
-                        if (k == 1 .and. ispecp == 1) &
+                        if (fullfp_probe_at_target(k, ispecp)) &
                             error stop 'Full-FP diagnostic point was not reached'
                     else
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&

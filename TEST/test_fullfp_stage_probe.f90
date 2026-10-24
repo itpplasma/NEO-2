@@ -11,7 +11,7 @@ program test_fullfp_stage_probe
     character(len=32) :: argument, rank_text, label, keyword
     real(dp) :: stats(8), scale, total_scale
     real(dp), allocatable :: physical(:,:)
-    integer :: rank, unit, status, i
+    integer :: rank, unit, status, i, source, driver, iteration
 
     call get_command_argument(1, argument)
     call mpro%init()
@@ -24,7 +24,7 @@ program test_fullfp_stage_probe
     call fullfp_probe_configure(0, 1, 1, .true.)
     if (trim(argument) == 'off') then
         if (fullfp_probe_enabled) error stop 'unset observer enabled'
-        call fullfp_probe_begin(2, 1, 1, 10)
+        call fullfp_probe_begin(2, 3, 1, 30)
         if (fullfp_probe_active) error stop 'disabled observer active'
         call mpro%deinit()
         stop
@@ -35,11 +35,17 @@ program test_fullfp_stage_probe
     path = trim(directory)//'/rank'//trim(rank_text)
     call clean_outputs()
     call read_axisym_solver_controls(0, 1, 1)
-    call fullfp_probe_begin(2, 1, 0, 10)
+    if (fullfp_probe_at_target(1, 1)) error stop 'old target guard retained'
+    if (fullfp_probe_at_target(3, 0)) error stop 'wrong driver guard'
+    if (.not. fullfp_probe_at_target(3, 1)) error stop 'missing target guard'
+    call fullfp_probe_begin(2, 1, 1, 30)
+    if (fullfp_probe_active) error stop 'wrong source observed'
+    call fullfp_probe_begin(2, 3, 0, 30)
     if (fullfp_probe_active) error stop 'wrong driver observed'
-    call fullfp_probe_begin(2, 1, 1, 9)
+    call fullfp_probe_begin(2, 3, 1, 29)
     if (fullfp_probe_active) error stop 'wrong iteration observed'
-    call fullfp_probe_begin(2, 1, 1, 10)
+    call fullfp_probe_begin(2, 3, 1, 30)
+    if (.not. fullfp_probe_active) error stop 'target observer not active'
     scale = real(rank + 1, dp)
     total_scale = real(num_spec*(num_spec + 1), dp)/2.0_dp
     q = [2.0_dp, 3.0_dp]
@@ -92,6 +98,10 @@ program test_fullfp_stage_probe
     if (maxval(abs(observed-expected)) > 1.0e-14_dp) &
         error stop 'physical common-dT scale and separate regularizer'
     open(newunit=unit, file=trim(path)//'-moments.txt', status='old')
+    read(unit, '(a)') line
+    read(unit, *) keyword, label, argument, source, driver, iteration
+    if (source /= 3 .or. driver /= 1 .or. iteration /= 30) &
+        error stop 'wrong moment target metadata'
     do
         read(unit, '(a)', iostat=status) line
         if (status /= 0) error stop 'missing complex source moments'
@@ -112,6 +122,10 @@ program test_fullfp_stage_probe
     if (maxval(abs(observed - expected)) > 1.0e-14_dp) &
         error stop 'stored original coupled residual'
     open(newunit=unit, file=trim(path)//'-summary.txt', status='old')
+    read(unit, '(a)') line
+    read(unit, *) keyword, label, argument, source, driver, iteration
+    if (source /= 3 .or. driver /= 1 .or. iteration /= 30) &
+        error stop 'wrong stage target metadata'
     i = 0
     do
         read(unit, '(a)', iostat=status) line
