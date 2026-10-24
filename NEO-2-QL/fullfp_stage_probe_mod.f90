@@ -8,7 +8,7 @@ module fullfp_stage_probe_mod
     public :: fullfp_probe_configure, fullfp_probe_begin, fullfp_probe_finish
     public :: fullfp_probe_enabled, fullfp_probe_active, fullfp_probe_seed
     public :: fullfp_probe_raw, fullfp_probe_density, fullfp_probe_energy
-    public :: fullfp_probe_inverse, stage_identity_units
+    public :: fullfp_probe_inverse, stage_identity_units, fullfp_probe_moments
     logical :: fullfp_probe_enabled = .false., fullfp_probe_active = .false.
     complex(dp), allocatable :: fullfp_probe_seed(:), fullfp_probe_raw(:)
     complex(dp), allocatable :: fullfp_probe_density(:), fullfp_probe_energy(:)
@@ -55,6 +55,137 @@ contains
         fullfp_probe_active = .true.
     end subroutine fullfp_probe_begin
 
+    ! Called only after the actual fixed candidate and original stage observation.
+    ! Bras are bilinear native rows: sum(bra*vector), without conjugation.
+    subroutine fullfp_probe_moments(q, before, candidate, dbra, dket, ebra, eket, &
+            dd, ed, equation_number, equation_energy, physical, action)
+        complex(dp), intent(in) :: q(:), before(:), candidate(:)
+        complex(dp), intent(in) :: dbra(:), dket(:), ebra(:), eket(:), dd, ed
+        complex(dp), intent(in) :: equation_number(:), equation_energy(:)
+        real(dp), intent(in) :: physical(6,0:num_spec-1)
+        interface
+            subroutine action(vector, matrix, collision, regularizer)
+                import :: dp
+                complex(dp), intent(in) :: vector(:)
+                complex(dp), intent(out) :: matrix(:), collision(:), regularizer(:)
+            end subroutine action
+        end interface
+        complex(dp), allocatable :: vector(:), matrix(:), collision(:), regularizer(:)
+        character(len=1200) :: prefix
+        character(len=32) :: rank_text, label
+        integer :: rank, unit, ios, direction, stage
+
+        if (.not. fullfp_probe_active) error stop 'Inactive full-FP moment observation'
+        rank = mpro%getRank()
+        write(rank_text, '(i0)') rank
+        prefix = trim(output_directory)//'/rank'//trim(rank_text)
+        open(newunit=unit, file=trim(prefix)//'-moments.txt', status='new', &
+            action='write', iostat=ios)
+        if (ios /= 0) error stop 'Cannot create full-FP moment summary'
+        write(unit, '(a)') 'NEO2_FULLFP_MOMENT_V1 DIAGNOSTIC_ONLY NO_TORQUE'
+        write(unit, '(a,3(1x,i0))') 'source driving_species iteration', 1, 1, 10
+        write(unit, '(a,i0)') 'rank ', rank
+        write(unit, '(a)') 'physical rows: n_cm-3 T_erg m_g Z kappa_cm-1 vT_cm_s'
+        do direction = 0, num_spec-1
+            write(unit, '(a,i0,6(1x,es24.16e3))') &
+                'physical ', direction, physical(:,direction)
+        end do
+        write(unit, '(a,4(1x,es24.16e3))') 'filter_denominators ', &
+            real(dd,dp), aimag(dd), real(ed,dp), aimag(ed)
+        write(unit, '(a)') 'moment rows: label density_re density_im '// &
+            'centered_energy_re centered_energy_im '// &
+            'uncentered_energy_re uncentered_energy_im'
+        call vector_file('density-bra', dbra)
+        call vector_file('density-ket', dket)
+        call vector_file('energy-bra', ebra)
+        call vector_file('energy-ket', eket)
+        call vector_file('equation-number-bra', equation_number)
+        call vector_file('equation-energy-bra', equation_energy)
+        call moments('source', q)
+        call moments('fold', before)
+        call moments('raw', fullfp_probe_raw)
+        call moments('density', fullfp_probe_density)
+        call moments('energy', fullfp_probe_energy)
+        call moments('deflation', candidate)
+        call moments('density-ket', dket)
+        call moments('energy-ket', eket)
+        allocate(vector(size(q)), matrix(size(q)), collision(size(q)), &
+            regularizer(size(q)))
+        ! Separately saved terms permit the native denominator for fixed beta readback.
+        do stage = 1, 3
+            select case (stage)
+            case (1)
+                label = 'density'
+                vector = fullfp_probe_density
+            case (2)
+                label = 'energy'
+                vector = fullfp_probe_energy
+            case (3)
+                label = 'energy-delta'
+                vector = fullfp_probe_energy - fullfp_probe_density
+            end select
+            call action(vector, matrix, collision, regularizer)
+            call vector_file(trim(label)//'-M', matrix)
+            call vector_file(trim(label)//'-C', collision)
+            call action_moments(trim(label))
+        end do
+        ! Individual consumed energy directions followed by a prescribed common-dT
+        ! direction, scaled by T(reference rank 1)/T(a). No nullspace is assumed.
+        do direction = 0, num_spec
+            vector = (0.0_dp, 0.0_dp)
+            if (direction < num_spec) then
+                if (rank == direction) vector = eket
+                write(label, '(a,i0)') 'energy-species', direction
+            else
+                vector = eket*physical(2,min(1,num_spec-1))/physical(2,rank)
+                label = 'energy-common-dT'
+            end if
+            call moments(trim(label)//'-input', vector)
+            call action(vector, matrix, collision, regularizer)
+            call vector_file(trim(label)//'-M', matrix)
+            call vector_file(trim(label)//'-C', collision)
+            call vector_file(trim(label)//'-R', regularizer)
+            call action_moments(trim(label))
+        end do
+        close(unit)
+    contains
+        subroutine moments(name, v)
+            character(len=*), intent(in) :: name
+            complex(dp), intent(in) :: v(:)
+            complex(dp) :: density, energy
+            density = sum(dbra*v)
+            energy = sum(ebra*v)
+            write(unit, '(a,a,6(1x,es24.16e3))') 'moment ', name, &
+                real(density,dp), aimag(density), real(energy,dp), aimag(energy), &
+                real(energy + 1.5_dp*density,dp), aimag(energy + 1.5_dp*density)
+            density = sum(equation_number*v)
+            energy = sum(equation_energy*v)
+            write(unit, '(a,a,4(1x,es24.16e3))') 'equation_moment ', name, &
+                real(density,dp), aimag(density), real(energy,dp), aimag(energy)
+        end subroutine moments
+        subroutine action_moments(name)
+            character(len=*), intent(in) :: name
+            ! These are the actual filter functionals on equation vectors. They
+            ! are deliberately not labelled physical collision conservation rows.
+            call moments(name//'-M', matrix)
+            call moments(name//'-C', collision)
+            call moments(name//'-L', matrix - collision)
+            call moments(name//'-R', regularizer)
+        end subroutine action_moments
+        subroutine vector_file(name, v)
+            character(len=*), intent(in) :: name
+            complex(dp), intent(in) :: v(:)
+            integer :: output, status
+            open(newunit=output, file=trim(prefix)//'-'//name//'.bin', &
+                access='stream', form='unformatted', status='new', &
+                action='write', iostat=status)
+            if (status /= 0) error stop 'Cannot create full-FP moment vector'
+            write(output, iostat=status) v
+            if (status /= 0) error stop 'Cannot write full-FP moment vector'
+            close(output)
+        end subroutine vector_file
+    end subroutine fullfp_probe_moments
+
     real(dp) function stage_identity_units(residual, previous, delta_m, delta_c, &
             scale) result(units)
         complex(dp), intent(in) :: residual(:), previous(:), delta_m(:), delta_c(:)
@@ -86,7 +217,8 @@ contains
 
         if (.not. fullfp_probe_active) error stop 'Inactive full-FP observation'
         n = size(q)
-        dump_bytes = 16_int64*n*num_spec*(20_int64 + size(ritz))
+        dump_bytes = 16_int64*n*num_spec* &
+            (35_int64 + 3_int64*num_spec + size(ritz)) + 2_int64*1024**2
         if (dump_bytes > 2_int64*1024**3) error stop 'Stage dump exceeds 2 GiB'
         if (.not. allocated(fullfp_probe_seed)) &
             error stop 'Missing original Arnoldi seed'

@@ -2417,6 +2417,30 @@ contains
     
   end subroutine compute_I4_mmp_s
 
+  ! Observation only: weak rows for the collision output, which is divided by x.
+  ! Use the currently initialized native expansion basis and quadrature controls.
+  subroutine collision_weak_moment_rows(rows)
+    real(kind=dp), intent(out) :: rows(2,0:lagmax)
+    integer :: moment, mode
+    real(kind=dp) :: raw(0:lagmax)
+    if (isw_relativistic /= 0) error stop 'Nonrelativistic moment observer only'
+    do moment = 1, 2
+       do mode = 0, lagmax
+          raw(mode) = integrate(kernel, 0d0)
+       end do
+       if (make_ortho) then
+          rows(moment,:) = raw
+       else
+          rows(moment,:) = matmul(raw, M_transform_inv)
+       end if
+    end do
+  contains
+    function kernel(x) result(value)
+      real(kind=dp) :: x, value
+      value = exp(-x*x)*x**(2*moment+1)*phi_exp(mode,x)
+    end function kernel
+  end subroutine collision_weak_moment_rows
+
   subroutine compute_source(asource_s, weightlag_s, bzero_s, weightparflow_s, weightenerg_s, Amm_s)
     real(kind=dp), dimension(:,:), intent(out) :: Amm_s, asource_s, weightlag_s
     real(kind=dp), dimension(:), intent(out)   :: bzero_s, weightparflow_s, weightenerg_s

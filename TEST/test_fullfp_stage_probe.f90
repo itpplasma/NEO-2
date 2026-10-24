@@ -10,6 +10,7 @@ program test_fullfp_stage_probe
     character(len=1024) :: directory, path, line
     character(len=32) :: argument, rank_text, label, keyword
     real(dp) :: stats(8), scale, total_scale
+    real(dp), allocatable :: physical(:,:)
     integer :: rank, unit, status, i
 
     call get_command_argument(1, argument)
@@ -60,6 +61,47 @@ program test_fullfp_stage_probe
     basis(:,1) = [1.0_dp, 0.0_dp]
     ritz = 0.5_dp
     call fullfp_probe_finish(q, before, candidate, ritz, basis, d, e, coupled_action)
+    allocate(physical(6,0:num_spec-1))
+    physical = 1.0_dp
+    do i = 0, num_spec-1
+        physical(2,i) = real(i + 2, dp)
+    end do
+    call fullfp_probe_moments(q + cmplx(0.0_dp,1.0_dp,dp)*[1.0_dp,-2.0_dp], &
+        before, candidate, d, d, e, cmplx(1.0_dp,1.0_dp,dp)*e, &
+        cmplx(1.0_dp,0.0_dp,dp), cmplx(1.0_dp,0.0_dp,dp), d, e, &
+        physical, split_action)
+    open(newunit=unit, file=trim(path)//'-energy-species0-M.bin', &
+        access='stream', form='unformatted', status='old')
+    read(unit) observed
+    close(unit)
+    expected = (0.0_dp,0.0_dp)
+    if (rank == 0) expected = [(1.0_dp,1.0_dp),(3.0_dp,3.0_dp)]
+    if (any(observed /= expected)) error stop 'individual energy M action'
+    open(newunit=unit, file=trim(path)//'-energy-species0-C.bin', &
+        access='stream', form='unformatted', status='old')
+    read(unit) observed
+    close(unit)
+    if (any(observed /= [(0.25_dp,0.25_dp),(0.0_dp,0.0_dp)])) &
+        error stop 'coupled energy C action'
+    open(newunit=unit, file=trim(path)//'-energy-common-dT-R.bin', &
+        access='stream', form='unformatted', status='old')
+    read(unit) observed
+    close(unit)
+    expected = [(0.0_dp,0.0_dp),(0.125_dp,0.125_dp)]* &
+        physical(2,min(1,num_spec-1))/physical(2,rank)
+    if (maxval(abs(observed-expected)) > 1.0e-14_dp) &
+        error stop 'physical common-dT scale and separate regularizer'
+    open(newunit=unit, file=trim(path)//'-moments.txt', status='old')
+    do
+        read(unit, '(a)', iostat=status) line
+        if (status /= 0) error stop 'missing complex source moments'
+        if (index(line, 'moment source ') /= 1) cycle
+        read(line, *) keyword, label, stats(1:6)
+        if (any(abs(stats(1:6)-[2.0_dp,1.0_dp,3.0_dp,-2.0_dp,6.0_dp,-0.5_dp]) &
+            > 1.0e-14_dp)) error stop 'complex native moment phase'
+        exit
+    end do
+    close(unit)
     open(newunit=unit, file=trim(path)//'-energy-residual.bin', &
         access='stream', form='unformatted', status='old')
     read(unit) observed
@@ -87,6 +129,7 @@ program test_fullfp_stage_probe
     end do
     close(unit)
     if (i /= 4) error stop 'missing observed stages'
+    call test_weak_rows()
     call clean_outputs()
     call mpro%deinit()
     print *, 'All tests passed!'
@@ -98,7 +141,39 @@ contains
             [character(len=12) :: 'source', 'fold', 'inverse', 'seed', 'ritz', 'basis1']
         character(len=12), parameter :: suffix(4) = &
             [character(len=12) :: '', '-residual', '-delta', '-Ldelta']
+        character(len=32) :: name
         integer :: a, b
+        call delete_output('-moments.txt')
+        call delete_output('-equation-number-bra.bin')
+        call delete_output('-equation-energy-bra.bin')
+        do a = 1, 4
+            select case (a)
+            case (1); name = 'density-bra'
+            case (2); name = 'density-ket'
+            case (3); name = 'energy-bra'
+            case (4); name = 'energy-ket'
+            end select
+            call delete_output('-'//trim(name)//'.bin')
+        end do
+        do a = 0, num_spec
+            if (a < num_spec) then
+                write(name,'(a,i0)') 'energy-species', a
+            else
+                name = 'energy-common-dT'
+            end if
+            call delete_output('-'//trim(name)//'-M.bin')
+            call delete_output('-'//trim(name)//'-C.bin')
+            call delete_output('-'//trim(name)//'-R.bin')
+        end do
+        do a = 1, 3
+            select case (a)
+            case (1); name = 'density'
+            case (2); name = 'energy'
+            case (3); name = 'energy-delta'
+            end select
+            call delete_output('-'//trim(name)//'-M.bin')
+            call delete_output('-'//trim(name)//'-C.bin')
+        end do
         call delete_output('-summary.txt')
         do a = 1, size(fixed)
             call delete_output('-'//trim(fixed(a))//'.bin')
@@ -118,6 +193,43 @@ contains
         open(newunit=file_unit, file=trim(path)//suffix, status='old')
         close(file_unit, status='delete')
     end subroutine delete_output
+    subroutine test_weak_rows()
+        use collop_compute, only: collision_weak_moment_rows, phi_exp, lagmax, &
+            make_ortho, isw_relativistic, integral_cutoff, lsw_split_interval, &
+            M_transform_inv
+        real(dp) :: rows(2,0:1)
+        lagmax = 1
+        phi_exp => monomial
+        make_ortho = .true.
+        isw_relativistic = 0
+        integral_cutoff = .false.
+        lsw_split_interval = .false.
+        call collision_weak_moment_rows(rows)
+        ! Independent Gaussian integrals: integral x^(2k+1) exp(-x*x)=k!/2.
+        if (maxval(abs(rows(:,0)-[0.5_dp,1.0_dp])) > 1.0e-11_dp .or. &
+            maxval(abs(rows(:,1)-[1.0_dp,3.0_dp])) > 1.0e-11_dp) &
+            error stop 'native collision weak rows'
+        allocate(M_transform_inv(0:1,0:1))
+        M_transform_inv = 0.0_dp
+        M_transform_inv(0,0) = 2.0_dp
+        M_transform_inv(1,1) = 3.0_dp
+        make_ortho = .false.
+        call collision_weak_moment_rows(rows)
+        if (maxval(abs(rows(:,0)-[1.0_dp,2.0_dp])) > 1.0e-11_dp .or. &
+            maxval(abs(rows(:,1)-[3.0_dp,9.0_dp])) > 1.0e-11_dp) &
+            error stop 'projected collision weak rows'
+    end subroutine test_weak_rows
+    function monomial(mode, x) result(value)
+        integer :: mode
+        real(dp) :: x, value
+        value = x**(2*mode)
+    end function monomial
+    subroutine split_action(vector, matrix, collision, regularizer)
+        complex(dp), intent(in) :: vector(:)
+        complex(dp), intent(out) :: matrix(:), collision(:), regularizer(:)
+        call coupled_action(vector, matrix, collision)
+        regularizer = [0.5_dp*vector(1), 0.125_dp*vector(2)]
+    end subroutine split_action
     subroutine coupled_action(vector, matrix, collision)
         complex(dp), intent(in) :: vector(:)
         complex(dp), intent(out) :: matrix(:), collision(:)

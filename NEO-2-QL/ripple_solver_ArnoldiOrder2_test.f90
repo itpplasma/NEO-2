@@ -96,7 +96,7 @@ subroutine ripple_solver_ArnoldiO2( &
     use fullfp_stage_probe_mod, only: fullfp_probe_configure, fullfp_probe_enabled, &
         fullfp_probe_active, fullfp_probe_begin, fullfp_probe_finish, &
         fullfp_probe_seed, fullfp_probe_raw, fullfp_probe_density, &
-        fullfp_probe_energy, fullfp_probe_inverse
+        fullfp_probe_energy, fullfp_probe_inverse, fullfp_probe_moments
     use arnoldi_mod, only: iterator, f_init_arnoldi, &
       & lsw_write_flux_surface_distribution, write_flux_surface_distribution
 
@@ -4715,6 +4715,8 @@ CONTAINS
         integer, intent(in) :: n, iteration
         complex(dp), intent(in) :: before(n), candidate(n)
         logical, intent(in) :: finished
+        real(dp) :: physical(6,0:num_spec-1)
+        complex(dp), allocatable :: equation_number(:), equation_energy(:)
         if (.not. finished) then
             call fullfp_probe_begin(n, k, drive_spec, iteration)
             return
@@ -4722,6 +4724,17 @@ CONTAINS
         if (.not. fullfp_probe_active) return
         call fullfp_probe_finish(fzero, before, candidate, ritznum(:ngrow), &
             eigvecs(:, :ngrow), densvec_bra, energvec_bra, coupled_stage_action)
+        physical(1,:) = n_spec
+        physical(2,:) = T_spec
+        physical(3,:) = m_spec
+        physical(4,:) = z_spec
+        physical(5,:) = collpar_spec
+        physical(6,:) = sqrt(2.0_dp*T_spec/m_spec)
+        allocate(equation_number(n), equation_energy(n))
+        call write_collision_moment_data(equation_number, equation_energy)
+        call fullfp_probe_moments(fzero, before, candidate, densvec_bra, &
+            densvec_ket, energvec_bra, energvec_ket, denom_dens, denom_energ, &
+            equation_number, equation_energy, physical, coupled_moment_action)
         if (ispec == 0) print *, 'NEO2_DIAGNOSTIC_ONLY fullfp_stages NO_TORQUE'
         call mpro%deinit()
         stop
@@ -4740,6 +4753,89 @@ CONTAINS
                 amat_symm(entry)*vector(icol_symm(entry))
         end do
     end subroutine coupled_stage_action
+
+    subroutine coupled_moment_action(vector, matrix, collision, regularizer)
+        complex(dp), intent(in) :: vector(:)
+        complex(dp), intent(out) :: matrix(:), collision(:), regularizer(:)
+        call coupled_stage_action(vector, matrix, collision)
+        regularizer = (0.0_dp, 0.0_dp)
+        if (nz_regper > 0) call sparse_coo_action(irow_regper, icol_regper, &
+            amat_regper, vector, regularizer)
+    end subroutine coupled_moment_action
+
+    subroutine write_collision_moment_data(equation_number, equation_energy)
+        use collop_compute, only: collision_weak_moment_rows, make_ortho
+        complex(dp), intent(out) :: equation_number(:), equation_energy(:)
+        real(dp) :: rows(2,0:lag), block(0:lag,0:lag)
+        real(dp) :: number_row(0:lag), energy_row(0:lag), frequency
+        character(len=1024) :: directory
+        character(len=32) :: rank_text
+        integer :: unit, status, source, row, step, passing, mode, offset
+        call get_environment_variable('NEO2_FULLFP_STAGE_PROBE_DIR', directory, &
+            status=status)
+        if (status /= 0) error stop 'Missing native moment directory'
+        write(rank_text, '(i0)') ispec
+        open(newunit=unit, file=trim(directory)//'/rank'//trim(rank_text)// &
+            '-velocity.txt', status='new', action='write', iostat=status)
+        if (status /= 0) error stop 'Cannot create native collision moment metadata'
+        call collision_weak_moment_rows(rows)
+        equation_number = (0.0_dp,0.0_dp)
+        equation_energy = (0.0_dp,0.0_dp)
+        ! Native test_conservation's equation-row quadrature, generalized to the
+        ! consumed collision/x number and energy weak velocity rows.
+        do step = ibeg, iend
+            passing = npl(step)
+            do mode = 0, lag
+                offset = ind_start(step) + 2*(passing + 1)*mode
+                equation_number(offset+1:offset+passing+1) = &
+                    delt_pos(step)*rows(1,mode)
+                equation_energy(offset+1:offset+passing+1) = &
+                    delt_pos(step)*rows(2,mode)
+                equation_number(offset+passing+2:offset+2*(passing+1)) = &
+                    delt_neg(step)*rows(1,mode)
+                equation_energy(offset+passing+2:offset+2*(passing+1)) = &
+                    delt_neg(step)*rows(2,mode)
+            end do
+        end do
+        frequency = collpar_spec(ispec)*sqrt(2.0_dp*T_spec(ispec)/m_spec(ispec))
+        write(unit, '(a)') 'NEO2_COLLISION_MOMENT_V1 DIAGNOSTIC_ONLY NO_TORQUE'
+        write(unit, '(a,2(1x,i0),1x,l1)') 'lag leg make_ortho', lag, leg, make_ortho
+        write(unit, '(a,2(1x,es24.16e3))') &
+            'scalar_product_alpha_beta', scalprod_alpha, scalprod_beta
+        write(unit, '(a,2(1x,es24.16e3))') &
+            'relative_number_energy_prefactors', &
+            n_spec(ispec)*frequency, n_spec(ispec)*frequency*T_spec(ispec)
+        write(unit, '(a,2(1x,es24.16e3))') &
+            'relative_equation_number_energy_prefactors', &
+            n_spec(ispec)*sqrt(2.0_dp*T_spec(ispec)/m_spec(ispec)), &
+            n_spec(ispec)*sqrt(2.0_dp*T_spec(ispec)/m_spec(ispec))*T_spec(ispec)
+        write(unit, '(a)') 'weak rows use collision/x output; common constants omitted'
+        do row = 0, lag
+            write(unit, '(a,i0,7(1x,es24.16e3))') 'weights ', row, &
+                rows(:,row), weightden(row), weightlag(1,row), weightlag(2,row), &
+                asource(row,2), weightenerg(row)
+        end do
+        ! For l=0 the Lorentz term vanishes and the native 1/2 pitch factor
+        ! cancels integral(P_0 P_0)=2. Store the consumed differential/field
+        ! matrices and their combined weak rows, never an assumed zero.
+        do source = 0, num_spec-1
+            block = ailmm_aa(:,:,0,ispec,source)
+            if (source == ispec) block = block + denmm_a(:,:,ispec)
+            number_row = matmul(rows(1,:),block)
+            energy_row = matmul(rows(2,:),block)
+            do row = 0, lag
+                write(unit, '(a,2(1x,i0),2(1x,es24.16e3))') &
+                    'weak_collision_row', source, row, number_row(row), energy_row(row)
+                write(unit, '(a,2(1x,i0),*(1x,es24.16e3))') &
+                    'field_row', source, row, ailmm_aa(row,:,0,ispec,source)
+            end do
+        end do
+        do row = 0, lag
+            write(unit, '(a,i0,*(1x,es24.16e3))') &
+                'differential_row ', row, denmm_a(row,:,ispec)
+        end do
+        close(unit)
+    end subroutine write_collision_moment_data
 
     subroutine source_free_pitch_action(v, lv, entry_sum)
         complex(dp), intent(in) :: v(:)
