@@ -53,6 +53,7 @@ module neo2_ql
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
        scalprod_beta, lsw_read_precom, lsw_write_precom
+  use ql_gmres_mod, only: ql_gmres, gmres_restart, gmres_maxiter, gmres_tol
   USE rkstep_mod, ONLY : lag, leg, legmax, epserr_iter
 
   USE development, ONLY : solver_talk,switch_off_asymp, &
@@ -210,7 +211,8 @@ module neo2_ql
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
-       mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer
+       mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer, &
+       ql_gmres, gmres_restart, gmres_maxiter, gmres_tol
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
@@ -563,6 +565,10 @@ subroutine main
        CALL h5_add(h5_config_group, 'eta_part_trapped',eta_part_trapped )
        CALL h5_add(h5_config_group, 'eta_alpha_p', eta_alpha_p)
        CALL h5_add(h5_config_group, 'eta_alpha_t', eta_alpha_t)
+       call h5_add(h5_config_group, 'ql_gmres', ql_gmres)
+       call h5_add(h5_config_group, 'gmres_restart', gmres_restart)
+       call h5_add(h5_config_group, 'gmres_maxiter', gmres_maxiter)
+       call h5_add(h5_config_group, 'gmres_tol', gmres_tol)
        CALL h5_add(h5_config_group, 'sparse_solve_method', sparse_solve_method)
        CALL h5_add(h5_config_group, 'magnetic_device', magnetic_device, 'Magnetic device (0: Tokamak, 1: W7-AS)')
        CALL h5_add(h5_config_group, 'mag_coordinates', mag_coordinates, '0: Cylindrical, 1: Boozer')
@@ -907,6 +913,17 @@ subroutine main
 
 
   subroutine check()
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+
+    if (ql_gmres) then
+      if (gmres_restart < 1 .or. gmres_maxiter < 1) &
+        error stop 'QL GMRES requires positive restart and maxiter'
+      if (.not. ieee_is_finite(gmres_tol)) error stop 'QL GMRES tolerance is not finite'
+      if (gmres_tol <= 0 .or. gmres_tol >= 1) &
+        error stop 'QL GMRES requires 0 < gmres_tol < 1'
+      if (isw_ripple_solver /= 3) error stop 'QL GMRES requires isw_ripple_solver=3'
+    end if
+
     if (any(t_vec < 0.0)) then
       write(*,*) 'ERROR: negative temperature.'
       write(*,*) '  Temperature should be >= 0'

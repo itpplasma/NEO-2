@@ -88,3 +88,12 @@ set_tests_properties(binarysplit_max_index_test PROPERTIES
     WILL_FAIL TRUE
     TIMEOUT 30
 )
+
+add_executable(test_ql_gmres test_ql_gmres.f90)
+target_link_libraries(test_ql_gmres neo2_ql)
+add_test(NAME ql_gmres_test COMMAND test_ql_gmres)
+set_tests_properties(ql_gmres_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)

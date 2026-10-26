@@ -3454,8 +3454,11 @@ CONTAINS
 ! Solve the linear equation set:
 
         use arnoldi_mod, only: iterator, f_init_arnoldi
+        use ql_gmres_mod, only: ql_gmres
+        use sparse_mod, only: sparse_pivot_tolerance
 
         logical :: clean
+        real(dp) :: old_pivot_tolerance
         real(dp), dimension(:), allocatable :: bvec_sp_real
         !  multi-species part
         integer :: ispecpp ! species indices (loop over sources)
@@ -3485,6 +3488,12 @@ CONTAINS
 
         bvec_sp = 0.d0
         iopt = 1
+        ! GMRES needs the LU preconditioner to be a fixed linear map. UMFPACK's
+        ! default threshold pivoting (0.1) can leave normwise backward errors of
+        ! 1e-10 for this badly scaled matrix when it picks the unsymmetric
+        ! strategy (UMFPACK 5.7), which GMRES sees as a nonlinear operator.
+        old_pivot_tolerance = sparse_pivot_tolerance
+        if (ql_gmres) sparse_pivot_tolerance = 1.0_dp
 
         call CPU_TIME(time_start)
         if (problem_type) then
@@ -3497,6 +3506,7 @@ CONTAINS
                               bvec_sp, iopt)
         end if
 
+        sparse_pivot_tolerance = old_pivot_tolerance
         call CPU_TIME(time_factorization)
         print *, 'factorization completed ', time_factorization - time_start, ' sec'
 
@@ -3514,8 +3524,12 @@ CONTAINS
 
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
-                call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                            & source_vector_all(:, k, ispec), ispec, next_iteration)
+                if (ql_gmres) then
+                    call gmres_source(source_vector_all(:, k, ispec))
+                else
+                    call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
+                                & source_vector_all(:, k, ispec), ispec, next_iteration)
+                end if
             end do
 
         elseif (isw_intp .EQ. 1) then
@@ -3529,8 +3543,12 @@ CONTAINS
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
-                    call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                                & source_vector_all(:, k, ispecp), ispec, next_iteration)
+                    if (ql_gmres) then
+                        call gmres_source(source_vector_all(:, k, ispecp))
+                    else
+                        call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
+                                    & source_vector_all(:, k, ispecp), ispec, next_iteration)
+                    end if
                 end do
 
             end do
@@ -3556,7 +3574,7 @@ CONTAINS
             end do
         end if
 
-        if (clean) then
+        if (clean .and. .not. ql_gmres) then
             mode_iter = 3
 
             call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter, &
@@ -4516,6 +4534,72 @@ CONTAINS
         deallocate (vec_tmp)
 
     end subroutine integral_part
+
+    subroutine gmres_source(source)
+        use arnoldi_mod, only: fzero, mode, tol
+        use ql_gmres_mod, only: gmres_solve, gmres_tol, gmres_maxiter, gmres_restart
+        complex(dp), intent(inout) :: source(:)
+        complex(dp), allocatable :: rhs(:), zero(:)
+        real(dp) :: residual
+        integer :: status, steps, old_mode
+
+        ! The same projected L^-1 q and homogeneous map as iterator.
+        old_mode = mode
+        tol = 0.5_dp
+        allocate(fzero(size(source)), rhs(size(source)), zero(size(source)))
+        fzero = source
+        zero = 0
+        mode = 1
+        call next_iteration(size(source), zero, rhs)
+        mode = 2
+        call gmres_solve(size(source), rhs, source, gmres_operator, gmres_dot, &
+                         gmres_tol, gmres_maxiter, gmres_restart, status, steps, residual)
+        deallocate(fzero)
+        mode = old_mode
+        print *, 'QL GMRES status, steps, residual:', status, steps, residual
+        ! A stagnated solve is accepted only near the requested accuracy.
+        if (status == 3 .and. residual <= 100*gmres_tol) then
+            print *, 'WARNING: QL GMRES stagnated above gmres_tol at the operator rounding level'
+        else if (status /= 0) then
+            error stop 'QL GMRES failed to converge'
+        end if
+    end subroutine gmres_source
+
+    subroutine gmres_operator(n, x, y)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: x(n)
+        complex(dp), intent(out) :: y(n)
+        complex(dp), allocatable :: work(:)
+
+        work = x
+        if (problem_type) then
+            ! next_iteration has a legacy inout interface but does not modify fold.
+            call next_iteration(n, work, y)
+        else
+            ! The mode-2 map x + L^-1 (I x - L x) of next_iteration equals L^-1 I x,
+            ! because the factorized matrix is the one applied there. Solving for
+            ! L^-1 I x directly avoids the cancellation x - L^-1 L x, whose rounding
+            ! noise (cond(L) eps |x|) makes the operator nonlinear for GMRES.
+            if (isw_intp .eq. 1) then
+                call integral_part(work, y)
+            else
+                y = (0.0d0, 0.0d0)
+            end if
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), y, iopt)
+        end if
+        y = x - y
+    end subroutine gmres_operator
+
+    function gmres_dot(n, x, y) result(z)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: x(n), y(n)
+        complex(dp) :: z, species_dot(0:num_spec-1)
+
+        species_dot = 0
+        species_dot(ispec) = sum(conjg(x)*y)
+        call mpro%allgather_inplace(species_dot)
+        z = sum(species_dot)
+    end function gmres_dot
 
     !---------------------------------------------------------------------------------
     !> Single step of a preconditioned Richardson iteration which for equation set
