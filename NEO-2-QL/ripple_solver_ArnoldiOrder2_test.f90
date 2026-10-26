@@ -3455,8 +3455,10 @@ CONTAINS
 
         use arnoldi_mod, only: iterator, f_init_arnoldi
         use ql_gmres_mod, only: ql_gmres
+        use sparse_mod, only: sparse_pivot_tolerance
 
         logical :: clean
+        real(dp) :: old_pivot_tolerance
         real(dp), dimension(:), allocatable :: bvec_sp_real
         !  multi-species part
         integer :: ispecpp ! species indices (loop over sources)
@@ -3486,6 +3488,12 @@ CONTAINS
 
         bvec_sp = 0.d0
         iopt = 1
+        ! GMRES needs the LU preconditioner to be a fixed linear map. UMFPACK's
+        ! default threshold pivoting (0.1) can leave normwise backward errors of
+        ! 1e-10 for this badly scaled matrix when it picks the unsymmetric
+        ! strategy (UMFPACK 5.7), which GMRES sees as a nonlinear operator.
+        old_pivot_tolerance = sparse_pivot_tolerance
+        if (ql_gmres) sparse_pivot_tolerance = 1.0_dp
 
         call CPU_TIME(time_start)
         if (problem_type) then
@@ -3498,6 +3506,7 @@ CONTAINS
                               bvec_sp, iopt)
         end if
 
+        sparse_pivot_tolerance = old_pivot_tolerance
         call CPU_TIME(time_factorization)
         print *, 'factorization completed ', time_factorization - time_start, ' sec'
 
@@ -4526,20 +4535,6 @@ CONTAINS
 
     end subroutine integral_part
 
-    !---------------------------------------------------------------------------------
-    !> Single step of a preconditioned Richardson iteration which for equation set
-    !>
-    !>     L f = q,
-    !>
-    !> where L = L_V - L_D - L_I is evolution operator with L_V being Vlasov operator
-    !> L_D - differential part of collision operator and L_I - integral part of collision operator.
-    !>
-    !> defines next iteration f_new via previous iteration f_old as follows:
-    !>
-    !>     f_new = f_old + Lbar (q - L f_old)
-    !>
-    !> Here Lbar (preconditioner) is the approximate inverse to L_V-L_D computed by sparse solver
-    !> In case mode=2 skips q in the iteration (used by Arnoldi iterations)
     subroutine gmres_source(source)
         use arnoldi_mod, only: fzero, mode, tol
         use ql_gmres_mod, only: gmres_solve, gmres_tol, gmres_maxiter, gmres_restart
@@ -4588,6 +4583,20 @@ CONTAINS
         z = sum(species_dot)
     end function gmres_dot
 
+    !---------------------------------------------------------------------------------
+    !> Single step of a preconditioned Richardson iteration which for equation set
+    !>
+    !>     L f = q,
+    !>
+    !> where L = L_V - L_D - L_I is evolution operator with L_V being Vlasov operator
+    !> L_D - differential part of collision operator and L_I - integral part of collision operator.
+    !>
+    !> defines next iteration f_new via previous iteration f_old as follows:
+    !>
+    !>     f_new = f_old + Lbar (q - L f_old)
+    !>
+    !> Here Lbar (preconditioner) is the approximate inverse to L_V-L_D computed by sparse solver
+    !> In case mode=2 skips q in the iteration (used by Arnoldi iterations)
     subroutine next_iteration(n, fold, fnew)
 
         use arnoldi_mod, only: fzero, mode, tol
