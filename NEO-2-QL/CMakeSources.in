@@ -1,4 +1,5 @@
 set(NEO2_QL_SRC_FILES
+  ax_iteration_capture_mod.f90
   arnoldi_mod.f90
   er_rotation_mod.f90
   ntv_mod.f90

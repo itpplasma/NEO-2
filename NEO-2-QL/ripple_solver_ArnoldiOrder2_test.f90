@@ -12,6 +12,8 @@ subroutine ripple_solver_ArnoldiO2( &
     ierr &
     )
 
+    use ax_iteration_capture_mod, only: ax_capture_scope, ax_capture_active, &
+        ax_capture_vector, ax_capture_scalar, ax_capture_sparse
     use device_mod
     use flint_mod, only: phi_divide                      !<-in Winny
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
@@ -3519,6 +3521,7 @@ CONTAINS
                 normalized_residual_species = huge(1.0d0)
                 density_constraint_species = 0.0d0
                 energy_constraint_species = 0.0d0
+                call ax_capture_scope(problem_type, k, ispec, ispec)
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                             & source_vector_all(:, k, ispec), ispec, next_iteration, &
                             & solve_status, solve_iterations, solve_residual, equation_residual)
@@ -3539,6 +3542,7 @@ CONTAINS
                     normalized_residual_species = huge(1.0d0)
                     density_constraint_species = 0.0d0
                     energy_constraint_species = 0.0d0
+                    call ax_capture_scope(problem_type, k, ispecp, ispec)
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                                 & source_vector_all(:, k, ispecp), ispec, next_iteration, &
                                 & solve_status, solve_iterations, solve_residual, equation_residual)
@@ -4573,6 +4577,15 @@ CONTAINS
                 lhs(irow(entry)) = lhs(irow(entry)) + amat_sp(entry)*solution(icol(entry))
             end do
         end if
+        if (ax_capture_active()) then
+            call ax_capture_vector('callback_candidate', solution)
+            call ax_capture_vector('callback_q', fzero)
+            call ax_capture_vector('callback_Cf', collision)
+            call ax_capture_vector('callback_Mf_native', lhs)
+            call ax_capture_vector('callback_raw_residual', fzero + collision - lhs)
+            call ax_capture_sparse('callback_Mf', irow_symm(1:nz_symm), icol_symm(1:nz_symm), &
+                amat_symm(1:nz_symm), solution)
+        end if
         numerators(ispec) = sum(abs(fzero + collision - lhs))
         denominators(ispec) = sum(abs(fzero)) + sum(abs(collision)) + sum(abs(lhs))
         call mpro%allgather_inplace(numerators)
@@ -4678,6 +4691,11 @@ CONTAINS
             fnew = (0.0d0, 0.0d0)
         end if
 
+        if (ax_capture_active()) then
+            call ax_capture_vector('incoming_f', fold)
+            call ax_capture_vector('incoming_Cf', fnew)
+            call ax_capture_vector('incoming_q', fzero)
+        end if
         if (mode .ne. 2) then
             fnew = fnew + fzero
         end if
@@ -4686,6 +4704,11 @@ CONTAINS
             do i = 1, nz_symm
                 fnew(irow_symm(i)) = fnew(irow_symm(i)) - amat_symm(i)*fold(icol_symm(i))
             end do
+            if (ax_capture_active()) then
+                call ax_capture_vector('incoming_raw_residual', fnew)
+                call ax_capture_sparse('incoming_Mf', irow_symm(1:nz_symm), icol_symm(1:nz_symm), &
+                    amat_symm(1:nz_symm), fold)
+            end if
             allocate (fnew_real(n), fnew_imag(n))
             fnew_real = DBLE(fnew)
             fnew_imag = AIMAG(fnew)
@@ -4694,18 +4717,47 @@ CONTAINS
             call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
                               fnew_imag, iopt)
             fnew = fnew_real + (0.d0, 1.d0)*fnew_imag
+            if (ax_capture_active()) then
+                call ax_capture_vector('inverse_x', fnew)
+                call capture_bar_action('Mbar_x', fnew)
+                call ax_capture_sparse('original_Mx', irow_symm(1:nz_symm), icol_symm(1:nz_symm), &
+                    amat_symm(1:nz_symm), fnew)
+                call ax_capture_vector('density_bra', densvec_bra)
+                call ax_capture_vector('density_ket', densvec_ket)
+                call ax_capture_vector('energy_bra', energvec_bra)
+                call ax_capture_vector('energy_ket', energvec_ket)
+                call ax_capture_scalar('density_denominator', denom_dens)
+                call ax_capture_scalar('energy_denominator', denom_energ)
+                call ax_capture_scalar('filter_tol', cmplx(tol,0.0_dp,dp))
+                call capture_bar_action('Mbar_f', fold)
+                call capture_bar_action('Mbar_density_ket', densvec_ket)
+                call capture_bar_action('Mbar_energy_ket', energvec_ket)
+            end if
             deallocate (fnew_real, fnew_imag)
 
             fnew = fnew + fold
 
             ! -> remove null-space of axisymmetric
             ! solution (particle and energy conservation)
+            call ax_capture_vector('pre_density', fnew)
             coef_dens = sum(densvec_bra*fnew)/denom_dens
+            call ax_capture_scalar('density_coefficient', coef_dens)
+            if (ax_capture_active()) &
+                call ax_capture_vector('density_half_subtraction', (1.d0-tol)*coef_dens*densvec_ket)
             fnew = fnew - (1.d0 - tol)*coef_dens*densvec_ket
+            call ax_capture_vector('post_density', fnew)
 
             if (isw_intp .eq. 1) then
                 coef_energ = sum(energvec_bra*fnew)/denom_energ
+                call ax_capture_scalar('energy_coefficient', coef_energ)
+                if (ax_capture_active()) &
+                    call ax_capture_vector('energy_half_subtraction', (1.d0-tol)*coef_energ*energvec_ket)
                 fnew = fnew - (1.d0 - tol)*coef_energ*energvec_ket
+                call ax_capture_vector('post_energy', fnew)
+            end if
+            if (ax_capture_active()) then
+                call ax_capture_vector('unaccelerated_update', fnew-fold)
+                call capture_bar_action('Mbar_unaccelerated_update', fnew-fold)
             end if
         else
 
@@ -4719,6 +4771,13 @@ CONTAINS
         end if
 
     end subroutine next_iteration
+
+    subroutine capture_bar_action(name, vector)
+        character(len=*), intent(in) :: name
+        complex(dp), intent(in) :: vector(:)
+        ! COO columns remain available after column_full2pointer; ipcol is separate.
+        call ax_capture_sparse(name, irow(1:nz), icol(1:nz), real(amat_sp(1:nz),dp), vector)
+    end subroutine capture_bar_action
 
     subroutine save_qflux_symm_allspec()
         implicit none

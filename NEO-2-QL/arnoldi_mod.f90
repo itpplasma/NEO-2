@@ -75,6 +75,8 @@ contains
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use mpiprovider_module, only : mpro
     use collisionality_mod, only : num_spec
+    use ax_iteration_capture_mod, only: ax_capture_iteration, ax_capture_active, &
+      ax_capture_vector, ax_capture_matrix
 
     IMPLICIT NONE
 
@@ -186,8 +188,10 @@ contains
       fold = (0.0d0, 0.0d0)
 
       DO iter=1,itermax
+        call ax_capture_iteration(iter)
         CALL next_iteration(n,fold,fnew)
         if (mode .EQ. 2) fnew = fnew + fzero
+        call ax_capture_vector('post_ritz_candidate', fnew)
         break_cond1(ispec)=SUM(ABS(fnew-fold))
         break_cond2(ispec)=relerr*SUM(ABS(fnew))
         PRINT *,iter,ispec,break_cond1(ispec),break_cond2(ispec)
@@ -245,6 +249,7 @@ contains
     fold=fzero
 
     DO iter=1,itermax
+      call ax_capture_iteration(iter)
       CALL next_iteration(n,fold,fnew)
       IF(mode.EQ.2) fnew=fnew+fzero
       DO j=1,nsize
@@ -253,7 +258,16 @@ contains
         CALL mpro%allgather_inplace(coefren_spec)
         coefren(j)=ritznum(j)*SUM(coefren_spec)
       ENDDO
+      if (ax_capture_active()) then
+        call ax_capture_vector('pre_ritz_candidate', fnew)
+        call ax_capture_matrix('ritz_basis', eigvecs(:,1:nsize))
+        call ax_capture_vector('ritz_eigenvalues', ritznum(1:nsize))
+        call ax_capture_matrix('ritz_inverse_subtraction_matrix', bvec)
+        call ax_capture_vector('ritz_coefficients', coefren)
+        call ax_capture_vector('ritz_correction', matmul(eigvecs(:,1:nsize),coefren))
+      end if
       fnew=fnew-MATMUL(eigvecs(:,1:nsize),coefren)
+      call ax_capture_vector('post_ritz_candidate', fnew)
       break_cond1(ispec)=SUM(ABS(fnew-fold))
       break_cond2(ispec)=relerr*SUM(ABS(fnew))
       print *,iter,break_cond1(ispec),break_cond2(ispec),ispec
