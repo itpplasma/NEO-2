@@ -15,6 +15,8 @@ subroutine ripple_solver_ArnoldiO2( &
     use device_mod
     use flint_mod, only: phi_divide                      !<-in Winny
     use collision_model_mod, only: uses_krook, krook_pitch_mass
+    use linear_system_diagnostic_mod, only: diagnostic_system, diagnostic_array
+    use dimension_preflight_mod, only: dimension_preflight_enabled
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
                                   isw_momentum, nvel, num_spec, lsw_multispecies, &
@@ -189,7 +191,7 @@ subroutine ripple_solver_ArnoldiO2( &
 
     CHARACTER(len=100) :: propname
     integer :: n_2d_size, nz_sq, nz_beg, npassing_prev, k_prev, mm
-    integer :: iter, nphiequi, npassing_next, n_arnoldi, mode_iter
+    integer :: iter, nphiequi, npassing_next, mode_iter
     integer :: isw_regper, nz_coll, nz_ttmp, nz_coll_beg
     integer :: nrow, ncol, nz, iopt
     real(dp) :: delphim1, deloneovb, step_factor_p, step_factor_m
@@ -275,6 +277,8 @@ subroutine ripple_solver_ArnoldiO2( &
     integer :: drive_spec
     complex(dp), dimension(:, :, :), allocatable :: source_vector_all
     real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec
+    real(dp) :: normalized_residual_species(0:num_spec-1)
+    real(dp) :: density_constraint_species(0:num_spec-1), energy_constraint_species(0:num_spec-1)
     logical :: problem_type
     real(dp), dimension(:, :), allocatable :: source_vector_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
@@ -293,10 +297,7 @@ subroutine ripple_solver_ArnoldiO2( &
     print *, "Species: ", ispec
     call collop_set_species(ispec)
 
-    niter = 100       !maximum number of integral part iterations
-    n_arnoldi = 500     !maximum number of Arnoldi iterations
     isw_regper = 1       !regulariization by periodic boundary condition
-    epserr_iter = 1.d-7  !relative error of integral part iterations
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
 
     addboucol = .true.
@@ -1071,6 +1072,10 @@ subroutine ripple_solver_ArnoldiO2( &
     end do
 
     n_2d_size = ind_start(iend) + 2*(lag + 1)*(npl(iend) + 1)
+
+    ! Opt-in NEO2_DIMENSION_PREFLIGHT: record the consumed grid and stop all
+    ! ranks before N-sized vectors, sparse assembly, LU or Arnoldi.
+    if (dimension_preflight_enabled()) call write_dimension_preflight()
 
     if (allocated(f_init_arnoldi)) deallocate (f_init_arnoldi)
     allocate (f_init_arnoldi(n_2d_size))
@@ -3248,7 +3253,17 @@ subroutine ripple_solver_ArnoldiO2( &
             ttmpfact = dbnoverb0_dphi_mfl
         !! End Modifications by Andreas F. Martitsch (13.06.2014)
 
+            if (uses_krook()) then
+                call diagnostic_array(.false., ispec, &
+                    'drive'//integer_label(ispecp)//'_geometric_source', &
+                    source_vector(:,1:3))
+            end if
             call add_f01_source
+            if (uses_krook()) then
+                call diagnostic_array(.false., ispec, &
+                    'drive'//integer_label(ispecp)//'_total_source', &
+                    source_vector(:,1:3))
+            end if
 
             deallocate (ttmpfact)
         end if
@@ -3373,6 +3388,103 @@ subroutine ripple_solver_ArnoldiO2( &
 CONTAINS
 
 !------------------------------------------------------------------------
+    ! Collective over all ranks and never returns; see dimension_preflight_mod.
+    subroutine write_dimension_preflight()
+        use dimension_preflight_mod, only: preflight_open, preflight_section, &
+            preflight_end_section, preflight_value, preflight_grid, &
+            preflight_finish
+        use binarysplit_int, only: bsfunc_local_solver, bsfunc_max_index, &
+            bsfunc_max_splitlevel, bsfunc_local_err, bsfunc_min_distance
+        use flint_mod, only: phi_place_mode, phi_split_mode, phi_split_min, &
+            max_solver_try, hphi_mult
+        use collisionality_mod, only: collision_model, isw_relativistic
+        use neo_control, only: lab_swi, inp_swi
+        use ntv_mod, only: isw_ripple_solver
+
+        call preflight_open(ispec)
+        call preflight_section('run')
+        call preflight_value('rank', ispec)
+        call preflight_value('numranks', mpro%getNumProcs())
+        call preflight_value('num_spec', num_spec)
+        call preflight_value('isw_ripple_solver', isw_ripple_solver)
+        call preflight_value('ub_mag', ub_mag)
+        call preflight_value('propagator_tag', fieldpropagator%tag)
+        call preflight_value('fieldperiod_tag', fieldpropagator%parent%tag)
+        call preflight_value('surface_nstep', &
+                             fieldpropagator%parent%parent%parent%nstep)
+        call preflight_value('surface_nperiod', &
+                             fieldpropagator%parent%parent%parent%nperiod)
+        call preflight_end_section()
+
+        call preflight_grid(ibeg, iend, lag, ub_eta, n_2d_size, npl, &
+                            ind_start, phi_mfl, eta)
+
+        call preflight_section('passing')
+        call preflight_value('npart', npart)
+        call preflight_value('npart_loc', npart_loc)
+        call preflight_value('npass_l', npass_l)
+        call preflight_value('npass_r', npass_r)
+        call preflight_end_section()
+
+        call preflight_section('adaptive_controls')
+        call preflight_value('bin_split_mode', bin_split_mode)
+        call preflight_value('bsfunc_local_solver', bsfunc_local_solver)
+        call preflight_value('bsfunc_max_index', bsfunc_max_index)
+        call preflight_value('bsfunc_max_splitlevel', bsfunc_max_splitlevel)
+        call preflight_value('bsfunc_local_err', bsfunc_local_err)
+        call preflight_value('bsfunc_min_distance', bsfunc_min_distance)
+        call preflight_value('phi_place_mode', phi_place_mode)
+        call preflight_value('phi_split_mode', phi_split_mode)
+        call preflight_value('phi_split_min', phi_split_min)
+        call preflight_value('max_solver_try', max_solver_try)
+        call preflight_value('hphi_mult', hphi_mult)
+        call preflight_end_section()
+
+        call preflight_section('iteration_controls')
+        call preflight_value('epserr_iter', epserr_iter)
+        call preflight_value('niter', niter)
+        call preflight_value('n_arnoldi', n_arnoldi)
+        call preflight_value('isw_regper', isw_regper)
+        call preflight_end_section()
+
+        call preflight_section('collision')
+        call preflight_value('collision_model', collision_model)
+        call preflight_value('isw_lorentz', isw_lorentz)
+        call preflight_value('isw_energy', isw_energy)
+        call preflight_value('isw_integral', isw_integral)
+        call preflight_value('isw_momentum', isw_momentum)
+        call preflight_value('isw_relativistic', isw_relativistic)
+        call preflight_value('isw_axisymm', isw_axisymm)
+        call preflight_value('isw_lor', isw_lor)
+        call preflight_value('isw_ene', isw_ene)
+        call preflight_value('isw_intp', isw_intp)
+        call preflight_value('leg', leg)
+        call preflight_value('legmax', legmax)
+        call preflight_value('nvel', nvel)
+        call preflight_end_section()
+
+        call preflight_section('reconstruction')
+        call preflight_value('prop_reconstruct', prop_reconstruct)
+        call preflight_value('prop_reconstruct_levels', prop_reconstruct_levels)
+        call preflight_value('add_global_eta', add_global_eta)
+        call preflight_value('ub_eta_loc', ub_eta_loc)
+        call preflight_end_section()
+
+        call preflight_section('lab_and_signs')
+        call preflight_value('lab_swi', lab_swi)
+        call preflight_value('inp_swi', inp_swi)
+        call preflight_value('sign_of_bphi', sign_of_bphi)
+        call preflight_value('scalefac_kG_sign', sign(1.0_dp, scalefac_kG))
+        call preflight_value('boozer_iota', boozer_iota)
+        call preflight_value('boozer_psi_pr_hat', boozer_psi_pr_hat)
+        call preflight_value('boozer_isqrg', boozer_isqrg)
+        call preflight_value('bcovar_phi_hat', bcovar_phi_hat)
+        call preflight_end_section()
+
+        call preflight_finish()
+    end subroutine write_dimension_preflight
+
+!------------------------------------------------------------------------
     subroutine plotsource(iunit_base, sourcevec_tmp)
 
         integer, intent(in) :: iunit_base
@@ -3493,10 +3605,19 @@ CONTAINS
         real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec_tmp
 
         integer :: i_src ! own source index for plotting the distribution function
+        integer :: solve_status, solve_iterations
+        real(dp) :: solve_residual
+
 
         if (isw_intp .EQ. 1) allocate (bvec_iter(ncol), bvec_prev(ncol))
 
         call remap_rc(nz, nz_sq, irow, icol, amat_sp)
+
+        if (uses_krook()) then
+            ! Krook disables the axisymmetric regularizer: capture its exact matrix.
+            call diagnostic_system(problem_type, ispec, n_2d_size, &
+                irow(1:nz_sq), icol(1:nz_sq), amat_sp(1:nz_sq), flux_vector)
+        end if
 
         print *, 'information for species = ', ispec
         print *, 'system size = ', n_2d_size
@@ -3545,8 +3666,20 @@ CONTAINS
 
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
+                normalized_residual_species = huge(1.0d0)
+                density_constraint_species = 0.0d0
+                energy_constraint_species = 0.0d0
+                if (uses_krook()) call diagnostic_array(problem_type, ispec, &
+                    'source'//integer_label(k)//'_rhs', &
+                    source_vector_all(:,k:k,ispec))
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                            & source_vector_all(:, k, ispec), ispec, next_iteration)
+                            & source_vector_all(:, k, ispec), ispec, next_iteration, &
+                            & solve_status, solve_iterations, solve_residual, equation_residual)
+                ! Preserve failure evidence before report_solve terminates all ranks.
+                if (uses_krook()) call diagnostic_array(problem_type, ispec, &
+                    'source'//integer_label(k)//'_solution', &
+                    source_vector_all(:,k:k,ispec))
+                call report_solve(k, ispec, solve_status, solve_iterations, solve_residual)
             end do
 
         elseif (isw_intp .EQ. 1) then
@@ -3560,8 +3693,13 @@ CONTAINS
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
+                    normalized_residual_species = huge(1.0d0)
+                    density_constraint_species = 0.0d0
+                    energy_constraint_species = 0.0d0
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                                & source_vector_all(:, k, ispecp), ispec, next_iteration)
+                                & source_vector_all(:, k, ispecp), ispec, next_iteration, &
+                                & solve_status, solve_iterations, solve_residual, equation_residual)
+                    call report_solve(k, ispecp, solve_status, solve_iterations, solve_residual)
                 end do
 
             end do
@@ -3740,6 +3878,14 @@ CONTAINS
         end if
 
     end subroutine solve_eqs
+
+    function integer_label(value) result(label)
+        integer, intent(in) :: value
+        character(:), allocatable :: label
+        character(32) :: buffer
+        write(buffer, '(i0)') value
+        label = trim(buffer)
+    end function integer_label
 
 !------------------------------------------------------------------------
     subroutine source_flux
@@ -4562,6 +4708,125 @@ CONTAINS
     !>
     !> Here Lbar (preconditioner) is the approximate inverse to L_V-L_D computed by sparse solver
     !> In case mode=2 skips q in the iteration (used by Arnoldi iterations)
+    ! Original coupled assembled equation: M f - C_integral f = q.
+    ! Evaluate before the sparse inverse and conservation-nullspace projection.
+    ! Maximum species normwise backward error, not a Richardson update norm:
+    ! ||q+C_integral f-M f||_1 / (||q||_1+||C_integral f||_1+||M f||_1).
+    subroutine equation_residual(n, solution, residual)
+        use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+        use arnoldi_mod, only: fzero
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: solution(n)
+        real(dp), intent(out) :: residual
+        complex(dp) :: collision(n), lhs(n), work(n)
+        real(dp) :: numerators(0:num_spec-1), denominators(0:num_spec-1)
+        integer :: entry
+
+        collision = (0.0d0, 0.0d0)
+        if (isw_intp == 1) then
+            work = solution
+            call integral_part(work, collision)
+        end if
+        lhs = (0.0d0, 0.0d0)
+        if (problem_type) then
+            do entry = 1, nz_symm
+                lhs(irow_symm(entry)) = lhs(irow_symm(entry)) + &
+                    amat_symm(entry)*solution(icol_symm(entry))
+            end do
+        else
+            do entry = 1, nz
+                lhs(irow(entry)) = lhs(irow(entry)) + amat_sp(entry)*solution(icol(entry))
+            end do
+        end if
+        numerators(ispec) = sum(abs(fzero + collision - lhs))
+        denominators(ispec) = sum(abs(fzero)) + sum(abs(collision)) + sum(abs(lhs))
+        call mpro%allgather_inplace(numerators)
+        call mpro%allgather_inplace(denominators)
+        density_constraint_species = 0.0d0
+        energy_constraint_species = 0.0d0
+        if (problem_type) then
+            density_constraint_species(ispec) = abs(sum(densvec_bra*solution))/ &
+                max(sum(abs(densvec_bra))*maxval(abs(solution)), tiny(1.0d0))
+            if (isw_intp == 1) then
+                energy_constraint_species(ispec) = abs(sum(energvec_bra*solution))/ &
+                    max(sum(abs(energvec_bra))*maxval(abs(solution)), tiny(1.0d0))
+            end if
+            call mpro%allgather_inplace(density_constraint_species)
+            call mpro%allgather_inplace(energy_constraint_species)
+        end if
+        where (.not. ieee_is_finite(density_constraint_species)) density_constraint_species = huge(1.0d0)
+        where (.not. ieee_is_finite(energy_constraint_species)) energy_constraint_species = huge(1.0d0)
+        residual = huge(1.0d0)
+        normalized_residual_species = huge(1.0d0)
+        if (.not. all(ieee_is_finite(numerators))) return
+        if (.not. all(ieee_is_finite(denominators))) return
+        if (.not. ieee_is_finite(sum(numerators))) return
+        if (.not. ieee_is_finite(sum(denominators))) return
+        normalized_residual_species = numerators/max(denominators, tiny(1.0d0))
+        residual = maxval(normalized_residual_species)
+    end subroutine equation_residual
+
+    subroutine report_solve(source_index, driving_species, status, iterations, residual)
+        integer, intent(in) :: source_index, driving_species, status, iterations
+        real(dp), intent(in) :: residual
+        character(len=20) :: system_name, reason
+        character(len=5) :: converged_json
+        character(len=32) :: tolerance_json, number_json
+        character(len=1024) :: record_head
+        character(len=:), allocatable :: record_json
+        integer :: species_index
+        if (problem_type) then
+            system_name = 'axisymmetric'
+        else
+            system_name = 'nonaxisymmetric'
+        end if
+        reason = 'iteration_limit'
+        converged_json = 'false'
+        select case (status)
+        case (0)
+            reason = 'converged'
+            converged_json = 'true'
+        case (2)
+            reason = 'arnoldi_failure'
+        case (3)
+            reason = 'singular_subtraction'
+        case (4)
+            reason = 'invalid_controls'
+        case (5)
+            reason = 'nonfinite_residual'
+        end select
+        if (ispec == 0) then
+            block
+                use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+                tolerance_json = 'null'
+                if (ieee_is_finite(epserr_iter)) write(tolerance_json, '(es24.16e3)') epserr_iter
+            end block
+            write(record_head, '(a,a,a,i0,a,i0,a,a,a,i0,a,i0,a,i0,a,es24.16e3,a,a,a,a,a)') &
+                'NEO2_SOLVE_JSON {"system":"', trim(system_name), &
+                '","source":', source_index, ',"driving_species":', driving_species, &
+                ',"tolerance":', trim(tolerance_json), ',"iteration_limit":', niter, &
+                ',"arnoldi_limit":', n_arnoldi, ',"iterations":', iterations, &
+                ',"normalized_equation_residual":', residual, ',"converged":', trim(converged_json), &
+                ',"reason":"', trim(reason), '",'
+            record_json = trim(record_head) // &
+                '"residual_norm":"max_species_normwise_backward_error_l1",' // &
+                '"normalized_equation_residual_by_species":['
+            do species_index = 0, num_spec-1
+                if (species_index > 0) record_json = record_json // ','
+                write(number_json, '(es24.16e3)') normalized_residual_species(species_index)
+                record_json = record_json // trim(number_json)
+            end do
+            write(record_head, '(a,es24.16e3,a,es24.16e3,a)') &
+                '],"density_constraint_residual":', maxval(density_constraint_species), &
+                ',"energy_constraint_residual":', maxval(energy_constraint_species), '}'
+            write(*, '(a)') record_json // trim(record_head)
+            flush(6)
+        end if
+        ! Every rank receives the same globally reduced convergence decision.
+        ! No rank may continue to publish transport from an unconverged solve.
+        if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
+    end subroutine report_solve
+
     subroutine next_iteration(n, fold, fnew)
 
         use arnoldi_mod, only: fzero, mode, tol

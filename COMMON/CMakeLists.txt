@@ -13,6 +13,7 @@ set(COMMON_FILES
   binarysplit_mod.f90
   collisionality_mod.f90
   collision_model_mod.f90
+  linear_system_diagnostic_mod.f90
   collision_operator_mems.f90
   collop_bspline.f90
   collop_compute.f90
@@ -23,6 +24,7 @@ set(COMMON_FILES
   compute_aiota.f90
   development.f90
   device_mod.f90
+  dimension_preflight_mod.f90
   flint_mod.f90
   fluxsplitter.f90
   inter_interfaces.f90
