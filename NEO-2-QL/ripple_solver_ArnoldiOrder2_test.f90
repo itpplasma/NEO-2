@@ -2496,6 +2496,7 @@ subroutine ripple_solver_ArnoldiO2( &
     !! End Modifications by Andreas F. Martitsch (28.08.2014)
 
         call source_flux
+        call capture_spatial_metadata
     !! Modification by Andreas F. Martitsch (23.08.2015)
         ! save solution of the differential part for species=ispec
         ! (diffusion coeff. driven by thermodyn. forces of other
@@ -3709,6 +3710,104 @@ CONTAINS
         end if
 
     end subroutine solve_eqs
+
+!------------------------------------------------------------------------
+    ! Geometry-only capture; no collision calls or changes to the iteration.
+    subroutine capture_spatial_metadata
+        use linear_system_diagnostic_mod, only: diagnostic_array
+        implicit none
+        character(4096) :: directory
+        character(8) :: enabled
+        character(96) :: label
+        integer :: length, status, j, jm, block, count_band, entry, count_entry
+        complex(dp), allocatable :: grid(:, :), controls(:, :), closure(:, :)
+        complex(dp), allocatable :: closure_source(:, :)
+        logical, allocatable :: closure_row(:)
+
+        call get_environment_variable('NEO2_DUMP_SPATIAL_METADATA', enabled, &
+                                      length=length, status=status)
+        if (status == 1) return
+        if (status /= 0) error stop 'Invalid spatial metadata switch'
+        if (length == 0) return
+        if (trim(enabled) == '0') return
+        if (trim(enabled) /= '1') error stop 'Spatial metadata switch must be 1'
+        call get_environment_variable('NEO2_DUMP_LINEAR_SYSTEM', directory, &
+                                      length=length, status=status)
+        if (status /= 0) error stop 'Spatial metadata needs diagnostic directory'
+        if (length == 0) error stop 'Spatial metadata needs diagnostic directory'
+        if (iend - ibeg + 1 > 4096) error stop 'Spatial metadata exceeds 4096 knots'
+
+        allocate (grid(iend - ibeg + 1, 12))
+        grid = (0.0_dp, 0.0_dp)
+        grid(:, 1) = phi_mfl
+        grid(:, 2) = bhat_mfl
+        grid(:, 3) = h_phi_mfl
+        grid(:, 4) = real(npl + 1, dp)
+        grid(:, 5) = real(ind_start, dp)
+        ! These two closure steps are uninitialized in the native arrays.
+        grid(2:, 6) = delt_pos(ibeg + 1:iend)
+        grid(:iend - ibeg, 7) = delt_neg(ibeg:iend - 1)
+        grid(:, 8) = fact_pos_b
+        grid(:, 9) = fact_pos_e
+        grid(:, 10) = fact_neg_b
+        grid(:, 11) = fact_neg_e
+        grid(:, 12) = 1.0_dp/bhat_mfl
+        write (label, '("spatial_tag",i0,"_grid")') fieldpropagator%tag
+        call diagnostic_array(.true., ispec, trim(label), grid)
+        deallocate (grid)
+
+        allocate (controls(14, 1))
+        controls(:, 1) = cmplx([1.0_dp, real(ibeg, dp), real(iend, dp), &
+            real(lag, dp), real(npart, dp), real(n_2d_size, dp), &
+            real(isw_axisymm, dp), real(isw_intp, dp), real(modify_bl, dp), &
+            real(modify_br, dp), merge(1.0_dp, 0.0_dp, addboucol), &
+            0.0_dp, 1.0_dp, real(fieldpropagator%tag, dp)], 0.0_dp, dp)
+        write (label, '("spatial_tag",i0,"_controls")') fieldpropagator%tag
+        call diagnostic_array(.true., ispec, trim(label), controls)
+        deallocate (controls)
+        write (label, '("spatial_tag",i0,"_eta")') fieldpropagator%tag
+        call diagnostic_array(.true., ispec, trim(label), &
+            reshape(cmplx(eta, 0.0_dp, dp), [size(eta), 1]))
+
+        allocate (closure_row(n_2d_size))
+        closure_row = .false.
+        do jm = 0, lag
+            count_band = npl(ibeg) + 1
+            block = ind_start(ibeg) + 2*count_band*jm
+            closure_row(block + 1:block + count_band) = .true.
+            count_band = npl(iend) + 1
+            block = ind_start(iend) + 2*count_band*jm
+            closure_row(block + count_band + 1:block + 2*count_band) = .true.
+        end do
+        ! Capture the ORIGINAL equation rows, excluding periodic regularizer.
+        count_entry = 0
+        do j = 1, nz_symm
+            if (closure_row(irow_symm(j))) count_entry = count_entry + 1
+        end do
+        allocate (closure(count_entry, 3))
+        entry = 0
+        do j = 1, nz_symm
+            if (.not. closure_row(irow_symm(j))) cycle
+            entry = entry + 1
+            closure(entry, 1) = real(irow_symm(j), dp)
+            closure(entry, 2) = real(icol_symm(j), dp)
+            closure(entry, 3) = amat_symm(j)
+        end do
+        write (label, '("spatial_tag",i0,"_closure_matrix")') fieldpropagator%tag
+        call diagnostic_array(.true., ispec, trim(label), closure)
+        deallocate (closure)
+        allocate (closure_source(count(closure_row), 5))
+        entry = 0
+        do j = 1, n_2d_size
+            if (.not. closure_row(j)) cycle
+            entry = entry + 1
+            closure_source(entry, 1) = real(j, dp)
+            closure_source(entry, 2:5) = source_vector(j, 1:4)
+        end do
+        write (label, '("spatial_tag",i0,"_closure_source")') fieldpropagator%tag
+        call diagnostic_array(.true., ispec, trim(label), closure_source)
+        deallocate (closure_source, closure_row)
+    end subroutine capture_spatial_metadata
 
 !------------------------------------------------------------------------
     subroutine source_flux
