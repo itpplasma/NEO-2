@@ -63,6 +63,7 @@ module neo2_ql
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
   ! Extra input for NTV computations
   use response_witness_mod, only: lsw_response_witness
+  use work_only_response_mod, only: lsw_work_only_response
   USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
        MtOvR, Om_tE, B_rho_L_loc, xstart_cyl, isw_ripple_solver,   &
        isw_calc_Er, isw_calc_MagDrift, species_tag_Vphi,            &
@@ -250,7 +251,8 @@ module neo2_ql
   ! Extra input for NTV computation
   NAMELIST /ntv_input/                                                        &
        isw_ntv_mode, isw_qflux_NA, in_file_pert, MtOvR, Om_tE, B_rho_L_loc,  &
-       isw_ripple_solver, isw_mag_shear, lsw_response_witness
+       isw_ripple_solver, isw_mag_shear, lsw_response_witness, &
+       lsw_work_only_response
 
 contains
 
@@ -914,6 +916,7 @@ subroutine main
     isw_ripple_solver = 1
     isw_mag_shear = 0
     lsw_response_witness = .false.
+    lsw_work_only_response = .false.
     !! End Modification by Andreas F. Martitsch (14.07.2015)
 
     use_fpol = .false. ! to switch off some features, which are untested with neo-2
@@ -925,6 +928,10 @@ subroutine main
 
 
   subroutine check()
+    if (lsw_work_only_response) then
+      if (.not. lsw_response_witness .or. isw_calc_Er /= 2) &
+        error stop 'Work-only response requires raw witness and prescribed Er2'
+    end if
     if (lsw_response_witness) then
       if (.not. lsw_multispecies .or. isw_ripple_solver /= 3 .or. &
           isw_qflux_NA /= 1 .or. isw_calc_Er < 1) &
