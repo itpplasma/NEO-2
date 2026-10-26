@@ -64,11 +64,48 @@
 #include "umfpack.h"
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #ifdef NULL
 #undef NULL
 #endif
 #define NULL 0
 #define LEN 200
+
+/* Scratch-only ordering experiment: no namelist or product API additions. */
+static int profile_enabled, profile_registered;
+static unsigned long long profile_solve_calls, profile_solve_failures;
+static double profile_solve_wall, profile_solve_flops;
+
+static void profile_summary (void)
+{
+    fprintf (stderr, "UMF_PROFILE phase=solve_summary calls=%llu failures=%llu "
+        "wall=%.17g flops=%.17g\n", profile_solve_calls,
+        profile_solve_failures, profile_solve_wall, profile_solve_flops);
+}
+
+static void override_control (const char *name, double *value, long max_value)
+{
+    const char *text = getenv (name);
+    char *end;
+    long parsed;
+    if (!text) return;
+    parsed = strtol (text, &end, 10);
+    if (!*text || *end || parsed < 0 || parsed > max_value)
+    {
+        fprintf (stderr, "Invalid scratch control %s=%s\n", name, text);
+        exit (2);
+    }
+    *value = (double) parsed;
+}
+
+static void profile_solve (const double Info [UMFPACK_INFO])
+{
+    if (!profile_enabled) return;
+    ++profile_solve_calls;
+    profile_solve_failures += Info [UMFPACK_STATUS] != UMFPACK_OK;
+    profile_solve_wall += Info [UMFPACK_SOLVE_WALLTIME];
+    profile_solve_flops += Info [UMFPACK_SOLVE_FLOPS];
+}
 
 /* -------------------------------------------------------------------------- */
 /* integer type: int or SuiteSparse_long */
@@ -146,6 +183,14 @@ static void make_filename (Int filenum, char *prefix, char *filename)
 void umf4def_ (double Control [UMFPACK_CONTROL])
 {
     UMFPACK_defaults (Control) ;
+    override_control ("NEO2_UMF_ORDERING", &Control [UMFPACK_ORDERING], 7);
+    override_control ("NEO2_UMF_SCALE", &Control [UMFPACK_SCALE], 2);
+    profile_enabled = getenv ("NEO2_UMF_PROFILE") != NULL;
+    if (profile_enabled && !profile_registered)
+    {
+        atexit (profile_summary);
+        profile_registered = 1;
+    }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -172,6 +217,19 @@ void umf4sym_ (Int *m, Int *n, Int Ap [ ], Int Ai [ ],
     double Control [UMFPACK_CONTROL], double Info [UMFPACK_INFO])
 {
     (void) UMFPACK_symbolic (*m, *n, Ap, Ai, Ax, Symbolic, Control, Info) ;
+    if (profile_enabled)
+        fprintf (stderr, "UMF_PROFILE phase=symbolic status=%.0f n=%.0f nz=%.0f "
+            "ordering=%.0f strategy=%.0f scale=%.0f actual_ordering=%.0f "
+            "actual_strategy=%.0f wall=%.17g estimated_numeric_bytes=%.0f "
+            "estimated_peak_bytes=%.0f estimated_flops=%.17g\n",
+            Info [UMFPACK_STATUS], Info [UMFPACK_NCOL], Info [UMFPACK_NZ],
+            Control [UMFPACK_ORDERING], Control [UMFPACK_STRATEGY],
+            Control [UMFPACK_SCALE], Info [UMFPACK_ORDERING_USED],
+            Info [UMFPACK_STRATEGY_USED], Info [UMFPACK_SYMBOLIC_WALLTIME],
+            Info [UMFPACK_NUMERIC_SIZE_ESTIMATE] * Info [UMFPACK_SIZE_OF_UNIT],
+            Info [UMFPACK_PEAK_MEMORY_ESTIMATE] * Info [UMFPACK_SIZE_OF_UNIT],
+            Info [UMFPACK_FLOPS_ESTIMATE]);
+    if (getenv ("NEO2_UMF_SYMBOLIC_ONLY")) exit (0);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -185,6 +243,18 @@ void umf4num_ (Int Ap [ ], Int Ai [ ], double Ax [ ],
     double Control [UMFPACK_CONTROL], double Info [UMFPACK_INFO])
 {
     (void) UMFPACK_numeric (Ap, Ai, Ax, *Symbolic, Numeric, Control, Info);
+    if (profile_enabled)
+        fprintf (stderr, "UMF_PROFILE phase=numeric status=%.0f wall=%.17g "
+            "lnz=%.0f unz=%.0f lu_entries=%.0f compressed_pattern=%.0f "
+            "numeric_bytes=%.0f peak_bytes=%.0f flops=%.17g rcond=%.17g "
+            "scaled=%.0f udiag_nz=%.0f umin=%.17g umax=%.17g\n",
+            Info [UMFPACK_STATUS], Info [UMFPACK_NUMERIC_WALLTIME],
+            Info [UMFPACK_LNZ], Info [UMFPACK_UNZ], Info [UMFPACK_LU_ENTRIES],
+            Info [UMFPACK_COMPRESSED_PATTERN],
+            Info [UMFPACK_NUMERIC_SIZE] * Info [UMFPACK_SIZE_OF_UNIT],
+            Info [UMFPACK_PEAK_MEMORY] * Info [UMFPACK_SIZE_OF_UNIT],
+            Info [UMFPACK_FLOPS], Info [UMFPACK_RCOND], Info [UMFPACK_WAS_SCALED],
+            Info [UMFPACK_UDIAG_NZ], Info [UMFPACK_UMIN], Info [UMFPACK_UMAX]);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -198,6 +268,7 @@ void umf4solr_ (Int *sys, Int Ap [ ], Int Ai [ ], double Ax [ ],
     double Control [UMFPACK_CONTROL], double Info [UMFPACK_INFO])
 {
     (void) UMFPACK_solve (*sys, Ap, Ai, Ax, x, b, *Numeric, Control, Info) ;
+    profile_solve (Info);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -212,6 +283,7 @@ void umf4sol_ (Int *sys, double x [ ], double b [ ], void **Numeric,
     Control [UMFPACK_IRSTEP] = 0 ;
     (void) UMFPACK_solve (*sys, (Int *) NULL, (Int *) NULL, (double *) NULL,
 	x, b, *Numeric, Control, Info) ;
+    profile_solve (Info);
 }
 
 /* -------------------------------------------------------------------------- */
