@@ -3454,6 +3454,7 @@ CONTAINS
 ! Solve the linear equation set:
 
         use arnoldi_mod, only: iterator, f_init_arnoldi
+        use ql_gmres_mod, only: ql_gmres
 
         logical :: clean
         real(dp), dimension(:), allocatable :: bvec_sp_real
@@ -3514,8 +3515,12 @@ CONTAINS
 
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
-                call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                            & source_vector_all(:, k, ispec), ispec, next_iteration)
+                if (ql_gmres) then
+                    call gmres_source(source_vector_all(:, k, ispec))
+                else
+                    call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
+                                & source_vector_all(:, k, ispec), ispec, next_iteration)
+                end if
             end do
 
         elseif (isw_intp .EQ. 1) then
@@ -3529,8 +3534,12 @@ CONTAINS
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
-                    call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                                & source_vector_all(:, k, ispecp), ispec, next_iteration)
+                    if (ql_gmres) then
+                        call gmres_source(source_vector_all(:, k, ispecp))
+                    else
+                        call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
+                                    & source_vector_all(:, k, ispecp), ispec, next_iteration)
+                    end if
                 end do
 
             end do
@@ -3556,7 +3565,7 @@ CONTAINS
             end do
         end if
 
-        if (clean) then
+        if (clean .and. .not. ql_gmres) then
             mode_iter = 3
 
             call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter, &
@@ -4531,6 +4540,54 @@ CONTAINS
     !>
     !> Here Lbar (preconditioner) is the approximate inverse to L_V-L_D computed by sparse solver
     !> In case mode=2 skips q in the iteration (used by Arnoldi iterations)
+    subroutine gmres_source(source)
+        use arnoldi_mod, only: fzero, mode, tol
+        use ql_gmres_mod, only: gmres_solve, gmres_tol, gmres_maxiter, gmres_restart
+        complex(dp), intent(inout) :: source(:)
+        complex(dp), allocatable :: rhs(:), zero(:)
+        real(dp) :: residual
+        integer :: status, steps, old_mode
+
+        ! The same projected L^-1 q and homogeneous map as iterator.
+        old_mode = mode
+        tol = 0.5_dp
+        allocate(fzero(size(source)), rhs(size(source)), zero(size(source)))
+        fzero = source
+        zero = 0
+        mode = 1
+        call next_iteration(size(source), zero, rhs)
+        mode = 2
+        call gmres_solve(size(source), rhs, source, gmres_operator, gmres_dot, &
+                         gmres_tol, gmres_maxiter, gmres_restart, status, steps, residual)
+        deallocate(fzero)
+        mode = old_mode
+        print *, 'QL GMRES status, steps, residual:', status, steps, residual
+        if (status /= 0) error stop 'QL GMRES failed to converge'
+    end subroutine gmres_source
+
+    subroutine gmres_operator(n, x, y)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: x(n)
+        complex(dp), intent(out) :: y(n)
+        complex(dp), allocatable :: work(:)
+
+        ! next_iteration has a legacy inout interface but does not modify fold.
+        work = x
+        call next_iteration(n, work, y)
+        y = x - y
+    end subroutine gmres_operator
+
+    function gmres_dot(n, x, y) result(z)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: x(n), y(n)
+        complex(dp) :: z, species_dot(0:num_spec-1)
+
+        species_dot = 0
+        species_dot(ispec) = sum(conjg(x)*y)
+        call mpro%allgather_inplace(species_dot)
+        z = sum(species_dot)
+    end function gmres_dot
+
     subroutine next_iteration(n, fold, fnew)
 
         use arnoldi_mod, only: fzero, mode, tol

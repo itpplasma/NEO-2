@@ -1,4 +1,5 @@
 set(NEO2_QL_SRC_FILES
+  ql_gmres_mod.f90
   arnoldi_mod.f90
   er_rotation_mod.f90
   ntv_mod.f90

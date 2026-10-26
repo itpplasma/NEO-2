@@ -222,6 +222,13 @@
  boozer_phi_beg = -3.1415926 ! [0.0d0]
  boozer_s = 4.9e-3 ! Defines the flux surface as normalized toroidal flux. [0.5d0]
  boozer_theta_beg =  3.1415926 ! [0.0d0]
+ ! Optional outer GMRES for the second-order QL ripple solver (isw_ripple_solver=3).
+ ! Solves (I-A)f = projected L^-1 q using the existing LU factorization.
+ ! Defaults preserve Arnoldi-Richardson and its existing iteration controls.
+ ql_gmres = .false.
+ gmres_restart = 100 ! Krylov vectors per cycle (complex storage per species).
+ gmres_maxiter = 3000 ! Total Arnoldi steps; true residual checks are additional.
+ gmres_tol = 1d-7 ! Relative global 2-norm of the preconditioned equation residual.
  epserr_iter = 1d-5 ! relative error of integral part iterations [1.0d-5]
  eta_alpha_p =  2.0 ! Specify refinement differently [4.0d0]
  eta_alpha_t = -1.0 ! [1.0d0]
