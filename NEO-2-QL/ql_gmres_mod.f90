@@ -27,7 +27,9 @@ module ql_gmres_mod
     end interface
 contains
     ! Solve B x = b from x=0. dot must sum over every participating species.
-    ! info=0: true relative 2-norm residual <= eps; 1: exhausted; 2: breakdown.
+    ! info=0: true relative 2-norm residual <= eps; 1: exhausted; 2: breakdown;
+    ! 3: stagnation, the true residual did not halve over five restarts (rounding
+    ! noise of B); x is then the iterate with the smallest true residual relres.
     subroutine gmres_solve(n, b, x, apply, dot, eps, maxiter, restart, &
                            info, iterations, relres)
         integer, intent(in) :: n, maxiter, restart
@@ -38,11 +40,11 @@ contains
         real(dp), intent(in) :: eps
         integer, intent(out) :: info, iterations
         real(dp), intent(out) :: relres
-        complex(dp), allocatable :: v(:, :), h(:, :), w(:), g(:), y(:), sn(:)
+        complex(dp), allocatable :: v(:, :), h(:, :), w(:), g(:), y(:), sn(:), xbest(:)
         real(dp), allocatable :: cs(:)
-        real(dp) :: bnorm, beta, wnorm, hnorm
+        real(dp) :: bnorm, beta, wnorm, hnorm, best
         complex(dp) :: z, rot, rdiag
-        integer :: m, i, j, pass
+        integer :: m, i, j, pass, stalled
         logical :: breakdown
 
         x = 0
@@ -51,7 +53,7 @@ contains
         relres = huge(1._dp)
         if (restart < 1 .or. maxiter < 1 .or. eps <= 0) return
         m = min(restart, maxiter)
-        allocate(v(n, m+1), h(m+1, m), w(n), g(m+1), y(m), sn(m), cs(m))
+        allocate(v(n, m+1), h(m+1, m), w(n), g(m+1), y(m), sn(m), cs(m), xbest(n))
         bnorm = sqrt(real(dot(n, b, b), dp))
         if (.not. ieee_is_finite(bnorm)) return
         if (bnorm == 0) then
@@ -60,6 +62,8 @@ contains
             return
         end if
         w = b
+        best = huge(1._dp)
+        stalled = 0
         do
             beta = sqrt(real(dot(n, w, w), dp))
             relres = beta / bnorm
@@ -67,6 +71,21 @@ contains
             if (.not. ieee_is_finite(relres)) return
             if (relres <= eps) then
                 info = 0
+                return
+            end if
+            if (relres < 0.5_dp*best) then
+                stalled = 0
+            else
+                stalled = stalled + 1
+            end if
+            if (relres < best) then
+                best = relres
+                xbest = x
+            end if
+            if (stalled >= 5) then
+                x = xbest
+                relres = best
+                info = 3
                 return
             end if
             if (iterations >= maxiter) then

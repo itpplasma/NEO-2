@@ -229,6 +229,8 @@
  gmres_restart = 100 ! Krylov vectors per cycle (complex storage per species).
  gmres_maxiter = 3000 ! Total Arnoldi steps; true residual checks are additional.
  gmres_tol = 1d-7 ! Relative global 2-norm of the preconditioned equation residual.
+ ! A solve whose true residual stops improving (rounding noise of the operator)
+ ! is accepted with a warning if it is below 100*gmres_tol, otherwise it stops.
  epserr_iter = 1d-5 ! relative error of integral part iterations [1.0d-5]
  eta_alpha_p =  2.0 ! Specify refinement differently [4.0d0]
  eta_alpha_t = -1.0 ! [1.0d0]
