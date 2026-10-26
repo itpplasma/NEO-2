@@ -14,9 +14,9 @@ contains
   !>
   !> Iterates the system which may be unstable at direct iterations
   !> using subtraction of unstable eigenvectors. Iterations are terminated
-  !> when relative error, defined as $\sum(|f_n-f_{n-1}|)/\sum(|f_n|)$
-  !> is below the input value or maximum number of combined iterations
-  !> is reached.
+  !> when the supplied original-equation residual is below relerr.
+  !> Without a residual callback, uses the unaccelerated fixed-point defect.
+  !> Iteration exhaustion returns a nonzero status; it is not convergence.
   !>
   !> Method is a brand of preconditioned iteration:
   !>
@@ -70,8 +70,9 @@ contains
   !> Output parameters:
   !>            Formal: result         - solution vector
   SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, &
-    & next_iteration)
+    & next_iteration, status, iterations, equation_residual, evaluate_residual)
 
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use mpiprovider_module, only : mpro
     use collisionality_mod, only : num_spec
 
@@ -88,6 +89,20 @@ contains
       end subroutine next_iteration
     end interface
 
+    interface
+      subroutine evaluate_residual(n, solution, residual)
+        integer, intent(in) :: n
+        complex(kind=kind(1d0)), intent(in) :: solution(n)
+        double precision, intent(out) :: residual
+      end subroutine evaluate_residual
+    end interface
+    optional :: evaluate_residual
+    integer, optional, intent(out) :: status, iterations
+    double precision, optional, intent(out) :: equation_residual
+    integer :: solve_status, completed_iterations
+    double precision :: residual_value
+    logical :: converged
+
     integer :: ispec
     INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
     DOUBLE PRECISION :: relerr
@@ -100,6 +115,19 @@ contains
     DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: coefren_spec
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: amat_spec
+
+    solve_status = 1
+    completed_iterations = 0
+    residual_value = huge(1.0d0)
+    if (present(status)) status = solve_status
+    if (present(iterations)) iterations = completed_iterations
+    if (present(equation_residual)) equation_residual = residual_value
+    if (mode_in /= 3) then
+      if (itermax < 1 .or. (mode_in == 1 .and. narn < 2) .or. .not. ieee_is_finite(relerr) .or. relerr <= 0.0d0) then
+        if (present(status)) status = 4
+        return
+      end if
+    end if
 
     IF(mode_in.EQ.3) THEN
       mode=mode_in
@@ -118,6 +146,7 @@ contains
       ngrow=0
     ELSE
       PRINT *,'unknown mode'
+      if (present(status)) status = 4
       RETURN
     ENDIF
 
@@ -134,6 +163,7 @@ contains
 
       IF(ierr.NE.0) THEN
         PRINT *,'ERROR in iterator: error in arnoldi'
+        if (present(status)) status = 2
         DEALLOCATE(fzero,ritznum)
         IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
         RETURN
@@ -163,14 +193,16 @@ contains
         PRINT *,iter,ispec,break_cond1(ispec),break_cond2(ispec)
         CALL mpro%allgather_inplace(break_cond1)
         CALL mpro%allgather_inplace(break_cond2)
-        IF(ALL(break_cond1 .LE. break_cond2)) EXIT
+        call check_equation(fnew, converged)
+        if (converged .or. solve_status /= 1) exit
         !! End Modification by Andreas F. Martitsch (20.08.2015)
         fold=fnew
         IF(iter.EQ.itermax) PRINT *, &
                 'iterator: maximum number of iterations reached'
       ENDDO
   !
-      PRINT *,'iterator: number of direct iterations = ',iter-1
+      PRINT *,'iterator: number of direct iterations = ',completed_iterations
+      call publish_status()
 
       RESULT_=fnew
       DEALLOCATE(fold,fnew,fzero)
@@ -203,6 +235,7 @@ contains
       ELSE
         PRINT *,'iterator: argument ',-info,' has illigal value in zgesv'
       ENDIF
+      if (present(status)) status = 3
       DEALLOCATE(ritznum,coefren,amat,bvec,ipiv)
       DEALLOCATE(fzero,fold,fnew,eigvecs)
       RETURN
@@ -226,16 +259,52 @@ contains
       print *,iter,break_cond1(ispec),break_cond2(ispec),ispec
       CALL mpro%allgather_inplace(break_cond1)
       CALL mpro%allgather_inplace(break_cond2)
-      IF(ALL(break_cond1 .LE. break_cond2)) EXIT
+      call check_equation(fnew, converged)
+      if (converged .or. solve_status /= 1) exit
       fold = fnew
       IF(iter.EQ.itermax) PRINT *,'iterator: maximum number of iterations reached'
     ENDDO
 
-    if (ispec .eq. 0) print *,'iterator: number of stabilized iterations = ', iter-1
+    if (ispec .eq. 0) print *,'iterator: number of stabilized iterations = ', completed_iterations
+    call publish_status()
 
     RESULT_=fnew
 
     DEALLOCATE(coefren,amat,bvec,ipiv,fold,fnew,fzero)
+
+  contains
+
+    subroutine check_equation(candidate, accepted)
+      complex(kind=kind(1d0)), intent(in) :: candidate(n)
+      logical, intent(out) :: accepted
+      double precision :: local_residual
+      completed_iterations = iter
+      if (present(evaluate_residual)) then
+        call evaluate_residual(n, candidate, local_residual)
+      else
+        ! Generic iterator contract: the unaccelerated fixed-point equation.
+        ! The kinetic caller supplies the original assembled-equation oracle.
+        call next_iteration(n, candidate, fold)
+        if (mode == 2) fold = fold + fzero
+        local_residual = sum(abs(fold-candidate)) / &
+          max(sum(abs(fold))+sum(abs(candidate)), tiny(1.0d0))
+      end if
+      if (.not. ieee_is_finite(local_residual) .or. local_residual < 0.0d0) then
+        local_residual = huge(1.0d0)
+      end if
+      break_cond1(ispec) = local_residual
+      call mpro%allgather_inplace(break_cond1)
+      residual_value = maxval(break_cond1)
+      if (residual_value == huge(1.0d0)) solve_status = 5
+      accepted = residual_value <= relerr
+      if (accepted) solve_status = 0
+    end subroutine check_equation
+
+    subroutine publish_status()
+      if (present(status)) status = solve_status
+      if (present(iterations)) iterations = completed_iterations
+      if (present(equation_residual)) equation_residual = residual_value
+    end subroutine publish_status
 
   END SUBROUTINE iterator
 

@@ -2,6 +2,18 @@ project(NEO-2-TESTS)
 enable_testing()
 
 add_executable(test_collision_krook test_collision_krook.f90)
+add_executable(test_linear_system_diagnostic test_linear_system_diagnostic.f90)
+target_link_libraries(test_linear_system_diagnostic common)
+add_test(NAME linear_system_diagnostic_disabled COMMAND test_linear_system_diagnostic)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(NAME linear_system_diagnostic_dense_oracle
+    COMMAND ${CMAKE_COMMAND} -E env
+        "NEO2_DIAGNOSTIC_TEST_EXE=$<TARGET_FILE:test_linear_system_diagnostic>"
+        "OMP_NUM_THREADS=1" "OPENBLAS_NUM_THREADS=1"
+        ${Python3_EXECUTABLE} -m pytest -q -p no:cacheprovider
+        --basetemp=${CMAKE_CURRENT_BINARY_DIR}/diagnostic-pytest
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_dense_linear_system_oracle.py)
+set_tests_properties(linear_system_diagnostic_dense_oracle PROPERTIES TIMEOUT 30)
 target_link_libraries(test_collision_krook common)
 add_test(NAME collision_krook_test COMMAND test_collision_krook)
 set_tests_properties(collision_krook_test PROPERTIES
@@ -114,3 +126,14 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+add_executable(test_iterator_convergence test_iterator_convergence.f90)
+target_link_libraries(test_iterator_convergence neo2_ql)
+add_test(NAME iterator_convergence_test COMMAND test_iterator_convergence)
+set_tests_properties(iterator_convergence_test PROPERTIES TIMEOUT 30)
+if(MPI_SUPPORT)
+    add_test(NAME iterator_convergence_mpi_test
+        COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2
+        ${MPIEXEC_PREFLAGS} $<TARGET_FILE:test_iterator_convergence> ${MPIEXEC_POSTFLAGS})
+    set_tests_properties(iterator_convergence_mpi_test PROPERTIES TIMEOUT 30 PROCESSORS 2)
+endif()
