@@ -1483,7 +1483,9 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+! Without energy scattering every energy mode m has its own isotropic
+! null vector, so each m needs the regularizer, not only m = 0.
+            if (isw_regper .EQ. 1 .AND. (m .LT. 1 .OR. isw_ene .EQ. 0)) then
                 do ipart = 1, 1
 !          if(ipart.le.npassing) then
 !            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
@@ -1703,7 +1705,9 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+! Without energy scattering every energy mode m has its own isotropic
+! null vector, so each m needs the regularizer, not only m = 0.
+            if (isw_regper .EQ. 1 .AND. (m .LT. 1 .OR. isw_ene .EQ. 0)) then
                 do ipart = 1, 1
 !          if(ipart.le.npassing) then
 !            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
@@ -1936,7 +1940,9 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+! Without energy scattering every energy mode m has its own isotropic
+! null vector, so each m needs the regularizer, not only m = 0.
+            if (isw_regper .EQ. 1 .AND. (m .LT. 1 .OR. isw_ene .EQ. 0)) then
                 do ipart = 1, 1
                     if (ipart .LE. npassing) then
                         deleta_factor = (eta(ipart) - eta(ipart - 1))*bhat_mfl(istep)
@@ -2206,7 +2212,9 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+! Without energy scattering every energy mode m has its own isotropic
+! null vector, so each m needs the regularizer, not only m = 0.
+            if (isw_regper .EQ. 1 .AND. (m .LT. 1 .OR. isw_ene .EQ. 0)) then
                 do ipart = 1, 1
                     if (ipart .LE. npassing) then
                         deleta_factor = (eta(ipart) - eta(ipart - 1))*bhat_mfl(istep)

@@ -48,6 +48,17 @@ program test_iterator_convergence
                       status, iterations, residual, original_residual)
         if (status /= 0 .or. maxval(abs(solution-exact)) > 1.0d-10) error stop 'stabilized oracle'
         call iterator(3, 2, 2, 1.0d-12, 100, solution, rank, apply_iteration)
+
+        ! Singular but compatible equation: the unit eigenvalue of the
+        ! iteration is a null-space mode and must not be subtracted.
+        diagonal = [(1.0d0,0.0d0), (0.25d0,0.0d0)]
+        source = [(0.0d0,0.0d0), (0.75d0,0.0d0)*exact(2)]
+        f_init_arnoldi = [(1.0d0,0.0d0), (1.0d0,0.0d0)]
+        solution = source
+        call iterator(1, 2, 4, 1.0d-12, 100, solution, rank, apply_iteration, &
+                      status, iterations, residual, original_residual)
+        if (status /= 0 .or. abs(solution(2)-exact(2)) > 1.0d-10) error stop 'neutral mode oracle'
+        call iterator(3, 2, 2, 1.0d-12, 100, solution, rank, apply_iteration)
         deallocate(f_init_arnoldi)
     end if
 
