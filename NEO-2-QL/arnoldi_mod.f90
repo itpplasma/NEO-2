@@ -81,6 +81,8 @@ contains
     ! tol0 - largest eigenvalue tolerated in combined iterations:
     INTEGER,          PARAMETER :: ntol0=10
     DOUBLE PRECISION, PARAMETER :: tol0=0.5d0
+    ! Ritz values this close to one are not subtracted (see below).
+    DOUBLE PRECISION, PARAMETER :: neutral_tol=1.0d-6
 
     interface
       subroutine next_iteration(n,fold,fnew)
@@ -170,6 +172,22 @@ contains
       ENDIF
 
       IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
+
+      ! A unit eigenvalue belongs to the null space of a singular but
+      ! compatible equation (e.g. pitch-angle scattering without energy
+      ! scattering). It does not grow, and the subtraction matrix below
+      ! scales with ritznum-1, so subtracting it would amplify round-off.
+      nsize=0
+      DO j=1,ngrow
+        IF(ABS(ritznum(j)-(1.d0,0.d0)) .GT. neutral_tol) THEN
+          nsize=nsize+1
+          ritznum(nsize)=ritznum(j)
+          eigvecs(:,nsize)=eigvecs(:,j)
+        ENDIF
+      ENDDO
+      IF(nsize .LT. ngrow .AND. ispec .EQ. 0) PRINT *, &
+        'iterator: neutral modes not subtracted = ',ngrow-nsize
+      ngrow=nsize
 
     ENDIF
 
