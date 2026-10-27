@@ -1,12 +1,13 @@
 program test_arnoldi_breakdown
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_quiet_nan, ieee_value
-    use arnoldi_mod, only: arnoldi, eigvecs, f_init_arnoldi, ierr, ngrow, &
-        & ntol, ritznum, tol
+    use arnoldi_mod, only: arnoldi, eigvecs, f_init_arnoldi, ierr, iterator, &
+        & ngrow, ntol, ritznum, tol
     use collisionality_mod, only: num_spec
     use mpiprovider_module, only: mpro
     implicit none
 
     integer :: applications, status
+    complex(kind=kind(1d0)) :: solution(2)
     double precision, parameter :: eigenvalue = 2.0d0
     double precision, parameter :: tolerance = 100.0d0 * epsilon(1.0d0)
 
@@ -87,8 +88,21 @@ program test_arnoldi_breakdown
         status = status + 1
     end if
 
+    ! Singular but compatible L f = q with L = I - A, A = diag(1, 1/4):
+    ! the unit eigenvalue of A is a null-space mode and must not be
+    ! subtracted. The second component of the solution is exactly one.
+    f_init_arnoldi = [(1.0d0, 0.0d0), (1.0d0, 0.0d0)]
+    solution = [(0.0d0, 0.0d0), (0.75d0, 0.0d0)]
+    call iterator(1, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
+    if (abs(solution(2) - 1.0d0) > 1.0d-10) then
+        print *, 'FAIL: singular compatible solve:', solution(2), ' expected 1'
+        status = status + 1
+    end if
+    call iterator(3, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
+
     call mpro%deinit()
-    deallocate(f_init_arnoldi, ritznum)
+    deallocate(f_init_arnoldi)
+    if (allocated(ritznum)) deallocate(ritznum)
     if (allocated(eigvecs)) deallocate(eigvecs)
 
     if (status /= 0) error stop
@@ -104,5 +118,14 @@ contains
         output = (0.0d0, 0.0d0)
         output(1) = eigenvalue * input(1)
     end subroutine rank_one_operator
+
+    subroutine neutral_operator(n, input, output)
+        use arnoldi_mod, only: fzero, mode
+        integer :: n
+        complex(kind=kind(1d0)), dimension(n) :: input, output
+
+        output = [input(1), 0.25d0 * input(2)]
+        if (mode /= 2) output = output + fzero
+    end subroutine neutral_operator
 
 end program test_arnoldi_breakdown
