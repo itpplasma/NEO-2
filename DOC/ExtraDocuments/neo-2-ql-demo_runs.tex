@@ -454,11 +454,24 @@ switch and integer switch, respectively.
  \item \verb|boozer_s| \newline
  Defines the flux surface as normalized toroidal flux.
  \item \verb|conl_over_mfp|\newline
- This is the collisionality parameter. When provided positive it is
- $L_c/l_c$ (connection length over mean free path) and when provided as
- negative value it is $\kappa = 2/l_c$. Please be aware that in our
- papers we define $\kappa = 1/l_c$, while internally in \vv{NEO-2} it has a
- slightly different normalization.
+ Let $c$ denote this input and $R_0$ the magnetic provider's reference
+ radius in cm. The internal parameter is
+ $\kappa=2c/(\pi R_0)$ for $c>0$, and $\kappa=-c$ for $c\leq0$;
+ thus a negative input supplies $-\kappa$ in $\mathrm{cm}^{-1}$.
+ These are the assignments in \texttt{COMMON/flint\_mod.f90},
+ subroutine \texttt{set\_collpar}.
+ For the monoenergetic Lorentz model, define the deflection frequency
+ $\nu_D$ by $C[f]=(\nu_D/2)\partial_\xi[(1-\xi^2)\partial_\xi f]$,
+ where $\xi=v_\parallel/v$. Then $\kappa=2\nu_D/v=1/l_c$ with
+ $l_c=v/(2\nu_D)$. With $\nu_\perp=\nu_D$ this
+ gives $l_c=v/(2\nu_\perp)$ and $\nu_*=\pi R\nu_\perp/v=\pi R\kappa/2$.
+ The factor $1/2$ in the pitch flux is explicit in
+ \texttt{NEO-2-PAR/ripple\_solver.f90} (\texttt{coefdir}).
+ For positive input this implies $\nu_*=cR/R_0$, with both radii
+ in the same units. For legacy Boozer files $R_0$ is the $m=n=0$
+ cylindrical-radius coefficient of the innermost supplied surface
+ (\texttt{COMMON/neo\_sub.f90}), which can differ from the file header's
+ major radius. Other collision models require their own frequency definition.
  \item \verb|lag|\newline
  Number of basis functions
  \item \verb|leg|\newline
