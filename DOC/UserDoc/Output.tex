@@ -26,6 +26,19 @@ Written in \file{collision\_operator\_mems.f90}.
 \subsection{collpar.dat}
 
 \subsection{efinal.h5}
+For the monoenergetic parallel calculation, the datasets
+\texttt{dmono\_over\_dplateau} and \texttt{D11\_ov\_Dpl} use different
+plateau normalizations. They satisfy
+\[
+  \texttt{D11\_ov\_Dpl}
+  = 4\sqrt{2}\,\texttt{dmono\_over\_dplateau}.
+\]
+The first is formed with the prefactor $2\sqrt{2}R_0\iota/\pi$ and the
+second with $16R_0\iota/\pi$, where $R_0$ is the device reference radius
+and $\iota$ is the rotational transform. These definitions are in
+\file{NEO-2-PAR/propagator.f90}, in the assignments to
+\texttt{dmono\_over\_dplateau}, \texttt{fac1}, and \texttt{D11\_NA\_Dpl}.
+Use the same dataset throughout a collisionality or resolution comparison.
 
 \subsection{eta\_m.dat}
 \subsection{eta\_ori.dat}
