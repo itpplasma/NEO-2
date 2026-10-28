@@ -57,8 +57,13 @@ case "$tier" in
     echo 'Set up Python 3'
     (
 python -m pip install --upgrade pip
-pip install numpy h5py scipy matplotlib
+pip install numpy h5py scipy matplotlib pytest
 
+    )
+    load_job_environment
+    echo 'Test HDF5 comparisons'
+    (
+PYTHONPATH=python/src python -m pytest python/test/test_hdf5_comparison.py
     )
     load_job_environment
     echo 'Build NEO-2'
