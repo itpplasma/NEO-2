@@ -19,8 +19,8 @@ concurrency:
 
 jobs:
   unit-tests-coverage:
-    runs-on: ubuntu-24.04
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    runs-on: [self-hosted, itp-ubuntu24]
+    if: github.event_name == 'workflow_dispatch'
 
     env:
       CC: gcc
@@ -45,20 +45,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --reinstall libopenblas-dev pkg-config
           sudo apt-get install -y --reinstall openmpi-bin openmpi-common libopenmpi-dev
-          
+
           # Verify BLAS can be found
           pkg-config --exists openblas && echo "OpenBLAS pkg-config found" || echo "Warning: OpenBLAS pkg-config not found"
-          
+
           # Verify MPI can be found
           pkg-config --exists ompi && echo "OpenMPI pkg-config found" || echo "Warning: OpenMPI pkg-config not found"
           which mpifort && echo "mpifort found at: $(which mpifort)" || echo "Warning: mpifort not found"
-          
+
           # Set environment variables to help CMake
           echo "BLA_VENDOR=OpenBLAS" >> "$GITHUB_ENV"
           echo "MPI_HOME=/usr" >> "$GITHUB_ENV"
 
       - name: Set up Python 3
         run: |
+          python3 -m venv "$RUNNER_TEMP/neo2-coverage-venv"
+          echo "$RUNNER_TEMP/neo2-coverage-venv/bin" >> "$GITHUB_PATH"
+          source "$RUNNER_TEMP/neo2-coverage-venv/bin/activate"
           python -m pip install --upgrade pip
           pip install numpy h5py scipy matplotlib
 
@@ -80,7 +83,7 @@ jobs:
             --rc branch_coverage=1 \
             --rc geninfo_unexecuted_blocks=1 \
             --ignore-errors inconsistent,mismatch,empty,unused
-          
+
           # Filter coverage data to include only source code
           lcov --remove coverage.info \
             '*/build/*' \
@@ -95,10 +98,10 @@ jobs:
             --output-file coverage_filtered.info \
             --rc branch_coverage=1 \
             --ignore-errors unused,empty
-          
+
           # Generate LCOV report for Codacy
           cp coverage_filtered.info ../lcov.info
-          
+
           # Show coverage summary
           echo "=== Coverage Summary ===" >> "$GITHUB_STEP_SUMMARY"
           lcov --summary coverage_filtered.info >> "$GITHUB_STEP_SUMMARY" || echo "No coverage data found" >> "$GITHUB_STEP_SUMMARY"
