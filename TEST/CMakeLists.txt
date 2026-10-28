@@ -1,6 +1,59 @@
 project(NEO-2-TESTS)
 enable_testing()
 
+add_executable(test_sparse_memory_config test_sparse_memory_config.f90)
+target_link_libraries(test_sparse_memory_config PRIVATE common)
+add_test(NAME sparse_memory_config COMMAND test_sparse_memory_config)
+set_tests_properties(sparse_memory_config PROPERTIES TIMEOUT 1 LABELS "sparse;fast"
+    PASS_REGULAR_EXPRESSION "All tests passed!")
+add_test(NAME sparse_memory_negative
+    COMMAND ${CMAKE_COMMAND} -DEXECUTABLE=$<TARGET_FILE:test_sparse_memory_config>
+        -DARGUMENT=--negative "-DEXPECTED=sparse_host_memory_limit_bytes must be nonnegative"
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_sparse_config_failure.cmake)
+set_tests_properties(sparse_memory_negative PROPERTIES TIMEOUT 1 LABELS "sparse;fast")
+if(NOT NEO2_NATIVE_SPARSE)
+    foreach(option cap low)
+        add_test(NAME sparse_memory_legacy_${option}
+            COMMAND ${CMAKE_COMMAND} -DEXECUTABLE=$<TARGET_FILE:test_sparse_memory_config>
+                -DARGUMENT=--legacy-${option} "-DEXPECTED=memory controls require NEO2_NATIVE_SPARSE=ON"
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_sparse_config_failure.cmake)
+        set_tests_properties(sparse_memory_legacy_${option} PROPERTIES
+            TIMEOUT 1 LABELS "sparse;fast")
+    endforeach()
+endif()
+
+if(NEO2_NATIVE_SPARSE)
+  add_executable(test_native_sparse_memory test_native_sparse_memory.f90)
+  target_link_libraries(test_native_sparse_memory PRIVATE common)
+  add_test(NAME native_sparse_memory COMMAND test_native_sparse_memory)
+  set_tests_properties(native_sparse_memory PROPERTIES
+      PASS_REGULAR_EXPRESSION "All tests passed!" TIMEOUT 1 LABELS "sparse;fast")
+  foreach(case cap-real cap-complex retained-cap)
+    add_test(NAME native_sparse_memory_${case}
+        COMMAND ${CMAKE_COMMAND} -DEXECUTABLE=$<TARGET_FILE:test_native_sparse_memory>
+            -DARGUMENT=--${case} -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_native_failure.cmake)
+    set_tests_properties(native_sparse_memory_${case} PROPERTIES
+        TIMEOUT 1 LABELS "sparse;fast")
+  endforeach()
+  add_test(NAME native_sparse_memory_mpi
+      COMMAND ${CMAKE_COMMAND} -DEXECUTABLE=$<TARGET_FILE:test_native_sparse_memory>
+          -DARGUMENT=--mpi-cap -DMPIEXEC=${MPIEXEC_EXECUTABLE}
+          -DNUMPROC_FLAG=${MPIEXEC_NUMPROC_FLAG}
+          -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_native_failure.cmake)
+  set_tests_properties(native_sparse_memory_mpi PROPERTIES TIMEOUT 8 PROCESSORS 2
+      LABELS "sparse;mpi;fast" ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1")
+  add_executable(test_native_sparse_adapter test_native_sparse_adapter.f90)
+  target_link_libraries(test_native_sparse_adapter PRIVATE common)
+  add_test(NAME native_sparse_adapter COMMAND test_native_sparse_adapter)
+  set_tests_properties(native_sparse_adapter PROPERTIES
+      PASS_REGULAR_EXPRESSION "All tests passed!" TIMEOUT 1 LABELS "sparse;fast")
+  add_test(NAME native_sparse_singular
+      COMMAND ${CMAKE_COMMAND} -DEXECUTABLE=$<TARGET_FILE:test_native_sparse_adapter>
+          -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_native_failure.cmake)
+  set_tests_properties(native_sparse_singular PROPERTIES
+      TIMEOUT 1 LABELS "sparse;fast")
+endif()
+
 # Test executable for boozmn reading (INP_SWI_BOOZMN path).
 add_executable(test_boozmn_read test_boozmn_read.f90)
 target_link_libraries(test_boozmn_read common ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})

@@ -227,6 +227,10 @@
   solver_talk = 0          ! [0]
   sparse_solve_method = 3  ! [3]
   sparse_talk = .false.    ! [.false.]
+ sparse_host_memory_limit_bytes = 0 ! [0] Solver-owned host payload bytes per MPI process.
+ sparse_low_memory = .false. ! [.false.] Native RAM-only LOW_MEMORY schedule.
+ ! Assembly/conversion, RHS, allocator/runtime overhead and RSS are outside this cap.
+ ! Legacy provider requires both defaults; native general LU has no exact fill forecast.
   switch_off_asymp = 0     ! [0]
   xetama = 1.300001d0      ! Seems to be not used, value is overwriten in ripple
                            ! solver. [1.300001d0]
