@@ -46,6 +46,10 @@ MODULE neo_magfie
   REAL(dp), DIMENSION(:), ALLOCATABLE              :: magfie_sarray
   INTEGER                                          :: magfie_spline    = 0
   INTEGER                                          :: magfie_newspline = 1
+  ! If set, only MPI rank 0 performs the Fourier summation onto the
+  ! theta-phi grid and broadcasts the result to all other ranks. All ranks
+  ! must then call neo_magfie_a collectively while a new spline is built.
+  LOGICAL                                          :: magfie_bcast_fourier = .FALSE.
   ! switch for different output:
   !  0:  output for SMT and BMC
   !  1:  output for NEO
@@ -215,6 +219,7 @@ CONTAINS
         & phi_bmin,phi_bmax
     use neo_spline_data, only : lsw_linear_boozer
     use neo_work, only : phi_arr, theta_arr
+    use mpiprovider_module, only: mpro
 
     ! input / output
     REAL(dp), DIMENSION(:),       INTENT(in)            :: x
@@ -252,6 +257,7 @@ CONTAINS
     INTEGER                                          :: k_es
     INTEGER                                          :: s_detected
     INTEGER                                          :: imn
+    INTEGER                                          :: mnmax_sum
     INTEGER                                          :: it, ip, im, in
     INTEGER                                          :: mt = 1
     INTEGER                                          :: mp = 1
@@ -636,7 +642,12 @@ CONTAINS
           p_pbpb = 0.0d0
           !! End Modifications by Andreas F. Martitsch (11.03.2014)
 
-          DO imn=1,mnmax
+          ! Ranks that receive the grid from rank 0 skip the summation.
+          mnmax_sum = mnmax
+          IF (magfie_bcast_fourier) THEN
+             IF (.NOT. mpro%isMaster()) mnmax_sum = 0
+          END IF
+          DO imn = 1, mnmax_sum
              ri = s_rmnc(imn) ! NEW
              zi = s_zmnc(imn)
              li = s_lmnc(imn)
@@ -839,6 +850,7 @@ CONTAINS
                 END DO
              END DO
           END DO
+          IF (magfie_bcast_fourier) CALL bcast_fourier_grid()
           DEALLOCATE( s_bmnc )
           DEALLOCATE( s_bmnc_s )
           DEALLOCATE( s_rmnc )
@@ -1706,6 +1718,43 @@ CONTAINS
     ! Conversion from SI- to cgs-units has not yet been
     ! checked for this quantity
     boozer_sqrtg00 = s_sqrtg00
+
+  CONTAINS
+
+    !> Broadcast the Fourier sums on the theta-phi grid from rank 0.
+    SUBROUTINE bcast_fourier_grid()
+      CALL mpro%bcast(bmod_a, 0)
+      CALL mpro%bcast(bb_s_a, 0)
+      CALL mpro%bcast(bb_tb_a, 0)
+      CALL mpro%bcast(bb_pb_a, 0)
+      CALL mpro%bcast(r, 0)
+      CALL mpro%bcast(z, 0)
+      CALL mpro%bcast(l, 0)
+      CALL mpro%bcast(r_tb, 0)
+      CALL mpro%bcast(z_tb, 0)
+      CALL mpro%bcast(p_tb, 0)
+      CALL mpro%bcast(r_pb, 0)
+      CALL mpro%bcast(z_pb, 0)
+      CALL mpro%bcast(p_pb, 0)
+      CALL mpro%bcast(r_s, 0)
+      CALL mpro%bcast(z_s, 0)
+      CALL mpro%bcast(p_s, 0)
+      CALL mpro%bcast(r_stb, 0)
+      CALL mpro%bcast(z_stb, 0)
+      CALL mpro%bcast(p_stb, 0)
+      CALL mpro%bcast(r_tbtb, 0)
+      CALL mpro%bcast(z_tbtb, 0)
+      CALL mpro%bcast(p_tbtb, 0)
+      CALL mpro%bcast(r_pbtb, 0)
+      CALL mpro%bcast(z_pbtb, 0)
+      CALL mpro%bcast(p_pbtb, 0)
+      CALL mpro%bcast(r_spb, 0)
+      CALL mpro%bcast(z_spb, 0)
+      CALL mpro%bcast(p_spb, 0)
+      CALL mpro%bcast(r_pbpb, 0)
+      CALL mpro%bcast(z_pbpb, 0)
+      CALL mpro%bcast(p_pbpb, 0)
+    END SUBROUTINE bcast_fourier_grid
 
   END SUBROUTINE neo_magfie_a
 
