@@ -12,7 +12,8 @@ Checks:
   - Transport coefficients D11..D33 must match between runs 1 and 2
     (the kinetic solve is independent of Er)
   - Om_tE and MtOvR must match between runs 1 and 2
-  - Run 3 must produce different MtOvR (proving the input is used)
+  - Run 3 must give exactly half the MtOvR of run 2 (MtOvR is linear in
+    the prescribed Om_tE, so this proves the input is used)
   - Transport coefficients must still match in run 3
 
 This is a manual integration test. It is not wired into CI because it needs
@@ -43,8 +44,10 @@ def patch_neo2_in(src_path, dst_path, replacements):
     """Copy neo2.in and replace specific namelist values.
 
     replacements is a dict of {KEY: new_value_string}.
-    Handles both existing keys (replace value) and new keys that need
-    to be inserted into the correct namelist section.
+    Handles both existing keys (replace value) and OM_TE, which is inserted
+    into &NTV_INPUT when absent. Any other absent key is an error, so a
+    renamed or missing namelist entry cannot silently fall back to the
+    reference value.
     """
     with open(src_path, 'r') as f:
         content = f.read()
@@ -59,12 +62,16 @@ def patch_neo2_in(src_path, dst_path, replacements):
         else:
             # Key not found — insert before the closing / of NTV_INPUT
             # (Om_tE lives in that namelist)
-            if key.upper() == 'OM_TE':
-                content = re.sub(
-                    r'(&NTV_INPUT.*?)(^\s*/)',
-                    rf'\1 {key}={value},\n/',
-                    content,
-                    flags=re.IGNORECASE | re.MULTILINE | re.DOTALL)
+            if key.upper() != 'OM_TE':
+                raise KeyError(f"{key} not found in {src_path}")
+            new_content = re.sub(
+                r'(&NTV_INPUT.*?)(^\s*/)',
+                rf'\1 {key}={value},\n/',
+                content,
+                flags=re.IGNORECASE | re.MULTILINE | re.DOTALL)
+            if new_content == content:
+                raise KeyError(f"&NTV_INPUT not found in {src_path}")
+            content = new_content
 
     with open(dst_path, 'w') as f:
         f.write(content)
@@ -138,6 +145,7 @@ def compare_outputs(ref_file, test_file, keys, tol, label):
     with h5py.File(ref_file, 'r') as ref, h5py.File(test_file, 'r') as test:
         for key in keys:
             if key not in ref:
+                mismatches.append(f"  {key}: missing in reference output")
                 continue
             if key not in test:
                 mismatches.append(f"  {key}: missing in test output")
@@ -163,19 +171,26 @@ def compare_outputs(ref_file, test_file, keys, tol, label):
     return True
 
 
-def verify_outputs_differ(ref_file, test_file, keys, label):
-    """Verify that at least one key differs between outputs."""
+def verify_scaled(ref_file, test_file, key, factor, rtol, label):
+    """Verify test[key] == factor * ref[key] to relative tolerance rtol."""
     with h5py.File(ref_file, 'r') as ref, h5py.File(test_file, 'r') as test:
-        for key in keys:
-            if key not in ref or key not in test:
-                continue
-            ref_val = np.atleast_1d(np.array(ref[key], dtype=float))
-            test_val = np.atleast_1d(np.array(test[key], dtype=float))
-            if not np.allclose(ref_val, test_val, rtol=1e-6):
-                print(f"PASS: {label} (differs in {key})")
-                return True
-    print(f"FAIL: {label} (no differences found)")
-    return False
+        if key not in ref or key not in test:
+            print(f"FAIL: {label} ({key} missing)")
+            return False
+        expected = factor * np.atleast_1d(np.array(ref[key], dtype=float))
+        actual = np.atleast_1d(np.array(test[key], dtype=float))
+    if expected.shape != actual.shape:
+        print(f"FAIL: {label} (shape mismatch {expected.shape} vs {actual.shape})")
+        return False
+    if not np.all(np.isfinite(actual)) or np.max(np.abs(expected)) == 0:
+        print(f"FAIL: {label} (degenerate {key}: {actual})")
+        return False
+    rel = np.max(np.abs(actual - expected)) / np.max(np.abs(expected))
+    if rel > rtol:
+        print(f"FAIL: {label} (rel diff {rel:.3e} > rtol {rtol:.0e})")
+        return False
+    print(f"PASS: {label} (rel diff {rel:.3e})")
+    return True
 
 
 def main():
@@ -219,7 +234,10 @@ def main():
         # === Run 1: isw_calc_Er=1 (self-consistent) ===
         print("=== Run 1: isw_calc_Er=1 (self-consistent Er) ===")
         run1_dir = setup_run_dir(base_dir, 'run1_mode1', data_dir, neo2_binary)
-        patch_neo2_in(ref_neo2_in, os.path.join(run1_dir, 'neo2.in'), fast_params)
+        patch_neo2_in(ref_neo2_in, os.path.join(run1_dir, 'neo2.in'), {
+            **fast_params,
+            'ISW_CALC_ER': '1',
+        })
         run_neo2(run1_dir)
         out1 = os.path.join(run1_dir, output_file)
 
@@ -280,8 +298,18 @@ def main():
                                "MtOvR matches (mode 1 vs mode 2, same Om_tE)"):
             status += 1
 
-        if not verify_outputs_differ(out2, out3, ['MtOvR', 'Om_tE'],
-                                     "MtOvR/Om_tE differ with half Om_tE"):
+        if not compare_outputs(out1, out2, ['Gamma_NA_spec', 'TphiNA_spec'], 1e-10,
+                               "NA flux and torque match (mode 1 vs mode 2, same Om_tE)"):
+            status += 1
+
+        # MtOvR = Om_tE / sqrt(2T/m) is linear in the prescribed Om_tE, so
+        # halving Om_tE must halve MtOvR exactly (up to rounding).
+        if not verify_scaled(out2, out3, 'Om_tE', 0.5, 1e-12,
+                             "Om_tE halves (mode 2, half Om_tE)"):
+            status += 1
+
+        if not verify_scaled(out2, out3, 'MtOvR', 0.5, 1e-12,
+                             "MtOvR halves with half Om_tE (mode 2)"):
             status += 1
 
         # AX transport coefficients are independent of Er, so even with
