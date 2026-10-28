@@ -128,6 +128,9 @@ module mpiprovider_module
 
     procedure :: barrier => barrier_mpiprovider
 
+    procedure :: bcast_double_2 => bcast_double_2_mpiprovider
+    generic, public :: bcast => bcast_double_2
+
     !> For benchmark analysis
     procedure :: randomSleep => randomSleep_mpiprovider
     procedure, private :: initRandomSeed => initRandomSeed_mpiprovider
@@ -733,6 +736,21 @@ contains
   end subroutine allgather_inplace_complex_5_mpiprovider
 
 !> END wrappers for allgather with MPI_IN_PLACE
+
+  !> Wrapper function for broadcast of a contiguous two-dimensional array
+  subroutine bcast_double_2_mpiprovider(this, buffer, root)
+    class(mpiprovider) :: this
+    double precision, dimension(:,:), contiguous, intent(inout) :: buffer
+    integer, intent(in) :: root
+    integer :: ierr
+
+    call MPI_BCAST(buffer, size(buffer), MPI_DOUBLE_PRECISION, root, &
+                   MPI_COMM_WORLD, ierr)
+    if (ierr /= MPI_SUCCESS) then
+       write (*,*) "Error in MPI_BCAST", ierr
+       stop
+    end if
+  end subroutine bcast_double_2_mpiprovider
 
 
   subroutine barrier_mpiprovider(this)
