@@ -1,6 +1,21 @@
 # NEO-2
 
+NEO-2 solves the linearized drift kinetic equation to compute neoclassical
+transport coefficients in tokamaks and stellarators, including the toroidal
+torque (neoclassical toroidal viscosity) caused by non-axisymmetric magnetic
+perturbations. It is developed at the Institute of Theoretical and
+Computational Physics, TU Graz.
+
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/71e55b695f624fd9b5e18f97acdf95fd)](https://app.codacy.com/gh/itpplasma/NEO-2/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
+
+The repository contains two variants of the code:
+
+* NEO-2-QL (`neo_2_ql.x`): tokamaks with small non-axisymmetric perturbations,
+  multispecies plasmas, toroidal torque.
+* NEO-2-PAR (`neo_2_par.x`): stellarators and unperturbed tokamaks, with
+  relativistic options (e.g. for current drive calculations), MPI-parallel.
+
+Python tools for preparing runs and reading output are in `python/`.
 
 ## Installation
 
@@ -13,6 +28,15 @@ git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (
     sudo apt install libopenblas-dev libsuitesparse-dev
     sudo apt install libfftw3-dev libgsl-dev
     sudo apt install lcov  # Optional, for code coverage
+
+If you have additional compilers and MPI implementations (e.g. Intel) installed, be sure to set the environment like
+
+    export CC=gcc
+    export CXX=g++
+    export FC=gfortran
+    export MPI_HOME=/usr
+
+before the build. You may also need to `deactivate` Python environments such as Anaconda.
 
 ### Build
 
@@ -33,47 +57,15 @@ You obtain a `build` directory with subdirectories
 * `NEO-2-QL` with binary `neo_2_ql.x` for the tokamak version.
 * `NEO-2-PAR` with binary `neo_2_par.x` for the stellarator version.
 
-## Testing
+More details on dependencies and cluster builds are in [Build.md](Build.md).
 
-To run tests:
+## Testing
 
     make test
 
-To generate code coverage report:
-
-    make coverage
-
-This will build with coverage instrumentation, run all tests, and display a coverage summary. Coverage data files are generated in the `build` directory.
-
-To view detailed coverage report:
-
-    # After running make coverage, view the summary
-    lcov --summary build/coverage_filtered.info
-    
-    # Generate HTML report for detailed viewing
-    cd build && genhtml coverage_filtered.info --output-directory coverage_html
-    # Open build/coverage_html/index.html in a web browser
-
-If you have additional compilers and MPI implementations (e.g. Intel) installed, be sure to set the environment like
-
-    export CC=gcc
-    export CXX=g++
-    export FC=gfortran
-    export MPI_HOME=/usr
-
-before the build. You may also need to `deactivate` Python environments such as Anaconda.
-
-## Merging
-
-- Pull requests, including every layer of a stacked PR, run the fast CI tier.
-  Label a PR `full-ci` to run the full tier on it before queueing.
-- Review a stack layer by layer. When it is ready, collapse it into one PR into
-  `main` (retarget the top layer to `main`); the lower PRs then show as merged.
-- Click "Merge when ready" (or `gh pr merge --merge --auto`). The PR enters the
-  merge queue, the full CI tier runs on the exact merge result, and on success
-  it lands on `main` as a merge commit. `main` itself is not re-tested on push.
-- A branch need not be up to date with `main`. Merge `main` into a PR only
-  when it conflicts.
+runs the CTest suite. `make coverage` rebuilds with coverage instrumentation,
+runs the tests and prints a summary; see [CONTRIBUTING.md](CONTRIBUTING.md) for
+the HTML report.
 
 ## Run
 
@@ -81,3 +73,37 @@ NEO-2 requires Boozer files for MHD equilibria in text format (`.bc` ending). Th
 
 * `efit_to_boozer` for tokamaks
 * `vmec_to_boozer` for stellarators: https://github.com/itpplasma/libneo/blob/main/python/libneo/boozer.py
+
+Annotated example input files are in `DOC/`: `neo2.in.ql-full` and
+`neo2.in.par-full` (NEO-2 settings), `neo.in.ql-full` and `neo.in.par-full`
+(magnetic field settings), and the example Boozer files `example_bg_field.bc`
+and `example_pert_field.bc`.
+
+## Documentation
+
+* `DOC/UserDoc/` — user manual (LaTeX): building, input, output, running,
+  theory. Build it with `make doc`.
+* `DOC/ExtraDocuments/` — worked run descriptions for NEO-2-PAR (ECCD) and
+  NEO-2-QL (NTV).
+* `DOC/NEO-2-QL_Quick_Start_Manual/` — quick start manual for NEO-2-QL.
+* `DOC/ripple_solver_normalizations_and_output.tex` — normalizations and
+  output quantities of the ripple solver.
+
+## Citing
+
+If you use NEO-2 in published work, please cite
+
+* W. Kernbichler, S. V. Kasilov, G. Kapper, A. F. Martitsch, V. V. Nemov,
+  C. G. Albert and M. F. Heyn, Plasma Phys. Control. Fusion 58, 104001 (2016),
+  https://doi.org/10.1088/0741-3335/58/10/104001
+
+and, for the toroidal torque computed by NEO-2-QL, S. V. Kasilov et al.,
+Phys. Plasmas 21, 092506 (2014).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the review and merge workflow.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
