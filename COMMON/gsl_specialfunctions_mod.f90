@@ -19,8 +19,9 @@ module gsl_specialfunctions_mod
   contains
 
   function besselk(n, z)
-    integer :: n
-    real(wp) :: z, besselk
+    integer, intent(in) :: n
+    real(wp), intent(in) :: z
+    real(wp) :: besselk
 
     besselk = bessel_kn(n, z)
 

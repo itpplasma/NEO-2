@@ -18,8 +18,8 @@
 ! 0.1 - Initial version                                                                   !
 ! 0.2 - Support for 2D integration                                                        !
 ! 0.3 - Added recursive keyword to functions for 2D integration                           !
-! 0.4 - Backend moved from FGSL/GSL to fortnum. CQUAD is re-expressed on the fortnum       !
-!       adaptive QAGS path (Wynn-epsilon extrapolation, handles endpoint singularities).   !
+! 0.4 - Backend moved from FGSL/GSL to fortnum. CQUAD maps to fortnum's doubly-adaptive   !
+!       Clenshaw-Curtis integrate_cquad.                                                  !
 !-----------------------------------------------------------------------------------------!
 
 
@@ -101,7 +101,7 @@ MODULE gsl_integration_routines_mod
      MODULE PROCEDURE fint1d_param0_qagp, fint1d_param1_qagp
   END INTERFACE fint1d_qagp
 
-  ! CQUAD doubly-adaptive integration (re-expressed on the adaptive QAGS path)
+  ! CQUAD doubly-adaptive integration (fortnum integrate_cquad)
   PUBLIC fint1d_cquad
   PRIVATE fint1d_param0_cquad, fint1d_param1_cquad
   INTERFACE fint1d_cquad
@@ -288,7 +288,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with known singular points
-  RECURSIVE FUNCTION fint1d_param0_qagp(func1d_param0_user,pts,siz_pts,epsabs,epsrel) result(res)
+  RECURSIVE FUNCTION fint1d_param0_qagp(func1d_param0_user,pts,epsabs,epsrel) result(res)
 
     INTERFACE
        FUNCTION func1d_param0_user(x)
@@ -299,7 +299,6 @@ CONTAINS
     END INTERFACE
     REAL(wp) :: epsabs, epsrel
     REAL(wp), DIMENSION(:) :: pts
-    INTEGER :: siz_pts
     REAL(wp), DIMENSION(2) :: res
 
     TYPE(integrate_workspace_t) :: ws
@@ -307,9 +306,9 @@ CONTAINS
     TYPE(integrate_result_t) :: result
     TYPE(fortnum_status_t) :: status
 
-    ! In GSL, pts(1:siz_pts) holds the boundaries [a, interior break points..., b].
-    ! fortnum takes (a, b, interior break points) separately.
-    CALL integrate_qagp(panel, pts(1), pts(siz_pts), pts(2:siz_pts-1), &
+    ! In GSL, pts holds the boundaries [a, interior break points..., b]. fortnum
+    ! takes (a, b, interior break points) separately.
+    CALL integrate_qagp(panel, pts(1), pts(SIZE(pts)), pts(2:SIZE(pts)-1), &
          epsabs, epsrel, ws, epstab, result, status, limit=GK_LIMIT)
     CALL check_status(status)
     res(1) = result%value
@@ -328,7 +327,7 @@ CONTAINS
   !--------------------------------------------------------------------------------------!
   ! Q(uadrature) A(daptive) G(eneral integrand) integration procedure
   ! with known singular points (parameter-valued input function)
-  RECURSIVE FUNCTION fint1d_param1_qagp(func1d_param1_user,param1,pts,siz_pts,epsabs,epsrel) result(res)
+  RECURSIVE FUNCTION fint1d_param1_qagp(func1d_param1_user,param1,pts,epsabs,epsrel) result(res)
 
     INTERFACE
        FUNCTION func1d_param1_user(x,param1)
@@ -340,7 +339,6 @@ CONTAINS
     REAL(wp) :: param1
     REAL(wp) :: epsabs, epsrel
     REAL(wp), DIMENSION(:) :: pts
-    INTEGER :: siz_pts
     REAL(wp), DIMENSION(2) :: res
 
     TYPE(integrate_workspace_t) :: ws
@@ -348,7 +346,7 @@ CONTAINS
     TYPE(integrate_result_t) :: result
     TYPE(fortnum_status_t) :: status
 
-    CALL integrate_qagp(panel, pts(1), pts(siz_pts), pts(2:siz_pts-1), &
+    CALL integrate_qagp(panel, pts(1), pts(SIZE(pts)), pts(2:SIZE(pts)-1), &
          epsabs, epsrel, ws, epstab, result, status, limit=GK_LIMIT)
     CALL check_status(status)
     res(1) = result%value
@@ -365,10 +363,8 @@ CONTAINS
 
 
   !--------------------------------------------------------------------------------------!
-  ! CQUAD doubly-adaptive integration on a finite interval.
-  ! fortnum has no CQUAD; the adaptive QAGS path (bisection plus Wynn-epsilon
-  ! extrapolation) handles endpoint singularities and delivers the same value/error
-  ! pair on the smooth integrands used here.
+  ! CQUAD doubly-adaptive integration on a finite interval, backed by fortnum's
+  ! doubly-adaptive Clenshaw-Curtis integrate_cquad (Gonnet 2010, as GSL CQUAD).
   RECURSIVE FUNCTION fint1d_param0_cquad(func1d_param0_user,x_low,x_up,epsabs,epsrel) result(res)
     INTERFACE
        FUNCTION func1d_param0_user(x)

@@ -20,7 +20,7 @@ jobs:
     if: >-
       github.repository == 'itpplasma/NEO-2' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, itp-light]
     timeout-minutes: 10
     env:
       EUFUS_GITLAB_TOKEN: ${{ secrets.EUFUS_GITLAB_TOKEN }}
