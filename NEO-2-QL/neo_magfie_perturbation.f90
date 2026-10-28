@@ -216,6 +216,7 @@ CONTAINS
 
     use inter_interfaces, only : splinecof1_hi_driv
     use neo_spline_data, only : lsw_linear_boozer
+    use radial_lagrange_cof, only : radial_cof3_hi_driv
 
 
     ! local definitions
@@ -273,11 +274,11 @@ CONTAINS
            & a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
       end if
     else
-      call splinecof3_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
+      call radial_cof3_hi_driv(es_pert, bmnc_pert, r_mhalf_pert,&
          & a_bmnc_pert, b_bmnc_pert, c_bmnc_pert, d_bmnc_pert, sp_index_pert, tf)
       ! Additional data from Boozer files without Stellarator symmetry
       if (inp_swi == INP_SWI_TOK) then        ! ASDEX-U (E. Strumberger)
-        call splinecof3_hi_driv(es_pert, bmns_pert, r_mhalf_pert,&
+        call radial_cof3_hi_driv(es_pert, bmns_pert, r_mhalf_pert,&
            & a_bmns_pert, b_bmns_pert, c_bmns_pert, d_bmns_pert, sp_index_pert, tf)
       end if
     end if
