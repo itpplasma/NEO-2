@@ -89,6 +89,10 @@ endif()
 set_source_files_properties(umf4_f77wrapper_ver_4_5.c  PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DDLONG")
 set_source_files_properties(umf4_f77zwrapper_ver_4_5.c PROPERTIES COMPILE_FLAGS "${SUITESPARSE_FLAGS} -DZLONG")
 
+# Small self-contained generated leaf also has an independent point oracle.
+add_library(neo_covariant_curl STATIC generated/neo_covariant_curl_generated.f90)
+target_include_directories(neo_covariant_curl PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
+
 add_library(common STATIC
   ${COMMON_FILES}
   ${SUITESPARSE_SRC_FILES}
@@ -96,6 +100,7 @@ add_library(common STATIC
   )
 add_dependencies(common FGSL)
 target_link_libraries(common PUBLIC
+  neo_covariant_curl
   ${LIBFGSL}
   GSL::gsl
   ${MPE_lib}

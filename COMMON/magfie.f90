@@ -118,44 +118,77 @@ CONTAINS
   ! (over the flux-surface) of the additionally needed metric
   ! tensor elements
   SUBROUTINE magfie_deallocate_x
-    use neo_magfie, only: curr_tor_array, curr_tor_s_array, &
-         curr_pol_array, curr_pol_s_array, iota_array,          &
-         bmod_spl, bb_s_spl, bb_tb_spl, bb_pb_spl,              &
-         gstb_spl, gspb_spl, gstb_tb_spl, gspb_tb_spl,          &
-         gstb_pb_spl, gspb_pb_spl, R_spl, Z_spl,                &
-         Rtb_spl, Ztb_spl,                                      &
-         G_symm_spl, G_symm_tb_spl, G_symm_pb_spl,              &
-         magfie_newspline
-    
-    IF ( ALLOCATED( curr_tor_array ) )   DEALLOCATE( curr_tor_array )
-    IF ( ALLOCATED( curr_tor_s_array ) ) DEALLOCATE( curr_tor_s_array )
-    IF ( ALLOCATED( curr_pol_array ) )   DEALLOCATE( curr_pol_array )
-    IF ( ALLOCATED( curr_pol_s_array ) ) DEALLOCATE( curr_pol_s_array )
-    IF ( ALLOCATED( iota_array ) )       DEALLOCATE( iota_array )
-    IF ( ALLOCATED( bmod_spl ) )         DEALLOCATE( bmod_spl )
-    IF ( ALLOCATED( bb_s_spl ) )         DEALLOCATE( bb_s_spl )
-    IF ( ALLOCATED( bb_tb_spl ) )        DEALLOCATE( bb_tb_spl )
-    IF ( ALLOCATED( bb_pb_spl ) )        DEALLOCATE( bb_pb_spl )
-    !! Modifications by Andreas F. Martitsch (11.03.2014)
-    IF ( ALLOCATED( gstb_spl ) )         DEALLOCATE( gstb_spl )
-    IF ( ALLOCATED( gspb_spl ) )         DEALLOCATE( gspb_spl )
-    IF ( ALLOCATED( gstb_tb_spl ) )      DEALLOCATE( gstb_tb_spl )
-    IF ( ALLOCATED( gspb_tb_spl ) )      DEALLOCATE( gspb_tb_spl )
-    IF ( ALLOCATED( gstb_pb_spl ) )      DEALLOCATE( gstb_pb_spl )
-    IF ( ALLOCATED( gspb_pb_spl ) )      DEALLOCATE( gspb_pb_spl )
-    IF ( ALLOCATED( R_spl ) )            DEALLOCATE( R_spl )
-    IF ( ALLOCATED( Z_spl ) )            DEALLOCATE( Z_spl )
-    IF ( ALLOCATED( Rtb_spl ) )          DEALLOCATE( Rtb_spl )
-    IF ( ALLOCATED( Ztb_spl ) )          DEALLOCATE( Ztb_spl )
-    !! End Modifications by Andreas F. Martitsch (11.03.2014)
-    !! Modifications by Andreas F. Martitsch (28.03.2017)
-    ! transformation function Boozer coord. -> Symm. flux coord.
-    IF ( ALLOCATED( G_symm_spl ) )       DEALLOCATE( G_symm_spl )
-    IF ( ALLOCATED( G_symm_tb_spl ) )    DEALLOCATE( G_symm_tb_spl )
-    IF ( ALLOCATED( G_symm_pb_spl ) )    DEALLOCATE( G_symm_pb_spl )
-    !! End Modifications by Andreas F. Martitsch (28.03.2017)
+    USE neo_magfie, ONLY: magfie_newspline, &
+         magfie_sarray, &
+         curr_tor_array, &
+         curr_tor_s_array, &
+         curr_pol_array, &
+         curr_pol_s_array, &
+         iota_array, &
+         iota_s_array, &
+         pprime_array, &
+         sqrtg00_array, &
+         bmod_spl, &
+         bb_s_spl, &
+         bb_tb_spl, &
+         bb_pb_spl, &
+         gval_spl, &
+         gstb_spl, &
+         gspb_spl, &
+         gstb_tb_spl, &
+         gspb_tb_spl, &
+         gstb_pb_spl, &
+         gspb_pb_spl, &
+         R_spl, &
+         Z_spl, &
+         Phi_spl, &
+         Rtb_spl, &
+         Ztb_spl, &
+         Ptb_spl, &
+         Rpb_spl, &
+         Zpb_spl, &
+         Ppb_spl, &
+         Rs_spl, &
+         Zs_spl, &
+         Ps_spl, &
+         G_symm_spl, &
+         G_symm_tb_spl, &
+         G_symm_pb_spl
+    IF (ALLOCATED(curr_tor_array)) DEALLOCATE(curr_tor_array)
+    IF (ALLOCATED(curr_tor_s_array)) DEALLOCATE(curr_tor_s_array)
+    IF (ALLOCATED(curr_pol_array)) DEALLOCATE(curr_pol_array)
+    IF (ALLOCATED(curr_pol_s_array)) DEALLOCATE(curr_pol_s_array)
+    IF (ALLOCATED(iota_array)) DEALLOCATE(iota_array)
+    IF (ALLOCATED(iota_s_array)) DEALLOCATE(iota_s_array)
+    IF (ALLOCATED(pprime_array)) DEALLOCATE(pprime_array)
+    IF (ALLOCATED(sqrtg00_array)) DEALLOCATE(sqrtg00_array)
+    IF (ALLOCATED(bmod_spl)) DEALLOCATE(bmod_spl)
+    IF (ALLOCATED(bb_s_spl)) DEALLOCATE(bb_s_spl)
+    IF (ALLOCATED(bb_tb_spl)) DEALLOCATE(bb_tb_spl)
+    IF (ALLOCATED(bb_pb_spl)) DEALLOCATE(bb_pb_spl)
+    IF (ALLOCATED(gval_spl)) DEALLOCATE(gval_spl)
+    IF (ALLOCATED(gstb_spl)) DEALLOCATE(gstb_spl)
+    IF (ALLOCATED(gspb_spl)) DEALLOCATE(gspb_spl)
+    IF (ALLOCATED(gstb_tb_spl)) DEALLOCATE(gstb_tb_spl)
+    IF (ALLOCATED(gspb_tb_spl)) DEALLOCATE(gspb_tb_spl)
+    IF (ALLOCATED(gstb_pb_spl)) DEALLOCATE(gstb_pb_spl)
+    IF (ALLOCATED(gspb_pb_spl)) DEALLOCATE(gspb_pb_spl)
+    IF (ALLOCATED(R_spl)) DEALLOCATE(R_spl)
+    IF (ALLOCATED(Z_spl)) DEALLOCATE(Z_spl)
+    IF (ALLOCATED(Phi_spl)) DEALLOCATE(Phi_spl)
+    IF (ALLOCATED(Rtb_spl)) DEALLOCATE(Rtb_spl)
+    IF (ALLOCATED(Ztb_spl)) DEALLOCATE(Ztb_spl)
+    IF (ALLOCATED(Ptb_spl)) DEALLOCATE(Ptb_spl)
+    IF (ALLOCATED(Rpb_spl)) DEALLOCATE(Rpb_spl)
+    IF (ALLOCATED(Zpb_spl)) DEALLOCATE(Zpb_spl)
+    IF (ALLOCATED(Ppb_spl)) DEALLOCATE(Ppb_spl)
+    IF (ALLOCATED(Rs_spl)) DEALLOCATE(Rs_spl)
+    IF (ALLOCATED(Zs_spl)) DEALLOCATE(Zs_spl)
+    IF (ALLOCATED(Ps_spl)) DEALLOCATE(Ps_spl)
+    IF (ALLOCATED(G_symm_spl)) DEALLOCATE(G_symm_spl)
+    IF (ALLOCATED(G_symm_tb_spl)) DEALLOCATE(G_symm_tb_spl)
+    IF (ALLOCATED(G_symm_pb_spl)) DEALLOCATE(G_symm_pb_spl)
     magfie_newspline = 1
-    
   END SUBROUTINE magfie_deallocate_x
   !! End Modifications by Andreas F. Martitsch (11.03.2014)
 
