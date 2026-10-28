@@ -63,6 +63,7 @@ PROGRAM neo2
   USE neo_control, ONLY: in_file, inp_swi, lab_swi
   use field_eq_mod, only : use_fpol
   use neo_spline_data, only : lsw_linear_boozer
+  use neo_magfie, only: magfie_bcast_fourier
 
   !************************************
   ! HDF5
@@ -500,7 +501,10 @@ PROGRAM neo2
 
      ! ---------------------------------------------------------------------------
      ! prepare the whole configuration
+     ! Rank 0 computes the Fourier grid of the field and broadcasts it.
+     magfie_bcast_fourier = mpro%isParallel()
      CALL flint_prepare(phimi,rbeg,zbeg,nstep,nperiod,bin_split_mode,eta_s_lim)
+     magfie_bcast_fourier = .FALSE.
      call set_collpar()
 
      ! ---------------------------------------------------------------------------
