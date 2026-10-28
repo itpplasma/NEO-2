@@ -13,8 +13,12 @@ def get_neo2_ql_input_profiles(input_hdf5: str):
 
 def read_profiles(inputs):
     profiles = {}
-    profiles_names = ['T_prof', 'dT_ov_ds_prof', 'n_prof', 'dn_ov_ds_prof', 'kappa_prof', 'Vphi', 'rho_pol']
+    profiles_names = ['T_prof', 'dT_ov_ds_prof', 'n_prof', 'dn_ov_ds_prof', 'kappa_prof', 'Vphi', 'Om_tE', 'rho_pol']
+    # Vphi is absent for isw_calc_Er=2 inputs, Om_tE for the other modes.
+    optional_names = ['Vphi', 'Om_tE']
     for name in profiles_names:
+        if name in optional_names and name not in inputs:
+            continue
         profiles[name] = {}
         profiles[name]['x'] = np.array(inputs['boozer_s'])
         profiles[name]['y'] = np.array(inputs[name])
