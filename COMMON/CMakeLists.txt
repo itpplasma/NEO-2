@@ -2,7 +2,6 @@ project(NEO-2-COMMON)
 
 ### FGSL user-defined interface
 set(FGSL_USERINTERFACE_SOURCE_FILES
-      gsl_roots_routines_mod.f90
       gsl_integration_routines_mod.f90
       gsl_bspline_routines_mod.f90
       gsl_specialfunctions_mod.f90
@@ -96,6 +95,7 @@ add_library(common STATIC
   )
 add_dependencies(common FGSL)
 target_link_libraries(common PUBLIC
+  fortnum
   ${LIBFGSL}
   GSL::gsl
   ${MPE_lib}
