@@ -88,3 +88,18 @@ set_tests_properties(binarysplit_max_index_test PROPERTIES
     WILL_FAIL TRUE
     TIMEOUT 30
 )
+
+# fint1d_cquad must clamp every integrand sample to the open segment: the
+# Clenshaw-Curtis endpoint node can round one ulp outside [x_low, x_up].
+add_executable(test_cquad_clamp test_cquad_clamp.f90)
+target_link_libraries(test_cquad_clamp common)
+
+add_test(NAME cquad_clamp_test
+         COMMAND test_cquad_clamp
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(cquad_clamp_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
