@@ -2,7 +2,7 @@
 
 sudo -Sy --needed git cmake make ninja patch gcc gcc-fortran \
     openblas hdf5 netcdf netcdf-fortran suitesparse boost openmpi \
-    fftw gsl python python-numpy debugedit fakeroot autoconf automake \
+    fftw python python-numpy debugedit fakeroot autoconf automake \
     pkgconf
 
 pushd /tmp
