@@ -293,7 +293,8 @@ subroutine ripple_solver_ArnoldiO2( &
     n_arnoldi = 500     !maximum number of Arnoldi iterations
     isw_regper = 1       !regulariization by periodic boundary condition
     epserr_iter = 1.d-7  !relative error of integral part iterations
-    sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
+    ! UMFPACK without iterative refinement unless MUMPS (4) was selected
+    if (sparse_solve_method /= 4) sparse_solve_method = 3
 
     addboucol = .true.
     !------------------------------------------------------------------------

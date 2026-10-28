@@ -75,6 +75,17 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     TIMEOUT 30
 )
 
+if(NEO2_USE_FORTSPARSE)
+    add_executable(test_sparse_mumps test_sparse_mumps.f90)
+    target_link_libraries(test_sparse_mumps common)
+    add_test(NAME sparse_mumps_test COMMAND test_sparse_mumps)
+    set_tests_properties(sparse_mumps_test PROPERTIES
+        PASS_REGULAR_EXPRESSION "All tests passed!"
+        FAIL_REGULAR_EXPRESSION "FAIL"
+        ENVIRONMENT "OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1"
+        TIMEOUT 30 PROCESSORS 1)
+endif()
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
