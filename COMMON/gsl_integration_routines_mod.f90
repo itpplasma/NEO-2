@@ -18,8 +18,8 @@
 ! 0.1 - Initial version                                                                   !
 ! 0.2 - Support for 2D integration                                                        !
 ! 0.3 - Added recursive keyword to functions for 2D integration                           !
-! 0.4 - Backend moved from FGSL/GSL to fortnum. CQUAD is re-expressed on the fortnum       !
-!       adaptive QAGS path (Wynn-epsilon extrapolation, handles endpoint singularities).   !
+! 0.4 - Backend moved from FGSL/GSL to fortnum. CQUAD maps to fortnum's doubly-adaptive   !
+!       Clenshaw-Curtis integrate_cquad.                                                  !
 !-----------------------------------------------------------------------------------------!
 
 
@@ -101,7 +101,7 @@ MODULE gsl_integration_routines_mod
      MODULE PROCEDURE fint1d_param0_qagp, fint1d_param1_qagp
   END INTERFACE fint1d_qagp
 
-  ! CQUAD doubly-adaptive integration (re-expressed on the adaptive QAGS path)
+  ! CQUAD doubly-adaptive integration (fortnum integrate_cquad)
   PUBLIC fint1d_cquad
   PRIVATE fint1d_param0_cquad, fint1d_param1_cquad
   INTERFACE fint1d_cquad
@@ -363,10 +363,8 @@ CONTAINS
 
 
   !--------------------------------------------------------------------------------------!
-  ! CQUAD doubly-adaptive integration on a finite interval.
-  ! fortnum has no CQUAD; the adaptive QAGS path (bisection plus Wynn-epsilon
-  ! extrapolation) handles endpoint singularities and delivers the same value/error
-  ! pair on the smooth integrands used here.
+  ! CQUAD doubly-adaptive integration on a finite interval, backed by fortnum's
+  ! doubly-adaptive Clenshaw-Curtis integrate_cquad (Gonnet 2010, as GSL CQUAD).
   RECURSIVE FUNCTION fint1d_param0_cquad(func1d_param0_user,x_low,x_up,epsabs,epsrel) result(res)
     INTERFACE
        FUNCTION func1d_param0_user(x)
@@ -388,8 +386,8 @@ CONTAINS
     CALL check_status(status)
 
   CONTAINS
-    ! Clamp the abscissa one ulp inside the segment: the Gauss-Kronrod node
-    ! arithmetic (mid + half*node) can land one ulp outside [x_low, x_up], and
+    ! Clamp the abscissa one ulp inside the segment: the Clenshaw-Curtis node
+    ! arithmetic (mid + half*cos) can land one ulp outside [x_low, x_up], and
     ! the collision-operator integrands jump exactly at the B-spline knots
     ! that bound each segment.
     FUNCTION panel(x, ctx) RESULT(fx)
