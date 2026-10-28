@@ -75,6 +75,18 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_spline_band_cache test_spline_band_cache.f90)
+target_link_libraries(test_spline_band_cache common)
+
+add_test(NAME spline_band_cache_test
+         COMMAND test_spline_band_cache
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(spline_band_cache_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    TIMEOUT 30
+)
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
