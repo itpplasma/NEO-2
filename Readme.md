@@ -21,12 +21,12 @@ Python tools for preparing runs and reading output are in `python/`.
 
 ### Prerequisites
 
-git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (OpenBLAS or MKL), SuiteSparse, FFTW, and GSL. HDF5/NetCDF compatibility is provided through libneo and Fortio. If SuiteSparse is not available on your system, it will be built automatically by NEO-2. For code coverage, lcov is also required. On Debian or Ubuntu run
+git, cmake, make, ninja, gcc/g++/gfortran, MPI (OpenMPI or MPICH), BLAS/LAPACK (OpenBLAS or MKL), SuiteSparse, and FFTW. HDF5/NetCDF compatibility is provided through libneo and Fortio. If SuiteSparse is not available on your system, it will be built automatically by NEO-2. For code coverage, lcov is also required. On Debian or Ubuntu run
 
     sudo apt install git cmake make ninja-build gcc g++ gfortran
     sudo apt install openmpi-bin openmpi-common libopenmpi-dev
     sudo apt install libopenblas-dev libsuitesparse-dev
-    sudo apt install libfftw3-dev libgsl-dev
+    sudo apt install libfftw3-dev
     sudo apt install lcov  # Optional, for code coverage
 
 If you have additional compilers and MPI implementations (e.g. Intel) installed, be sure to set the environment like
