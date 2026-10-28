@@ -1,4 +1,5 @@
 module collop_compute
+  use collision_model_mod, only : krook_weight_leaf, uses_krook
 
   use hdf5_tools
   use gsl_integration_routines_mod
@@ -389,7 +390,7 @@ contains
        end if
     end if
 
-    if (lsw_precompute_inner_kernel) then
+    if (lsw_precompute_inner_kernel .and. .not. uses_krook()) then
       if (allocated(table_inner_kernel_zero_to_x)) deallocate(table_inner_kernel_zero_to_x)
       allocate(table_inner_kernel_zero_to_x(0:number_points_inner_kernel, 0:legmax+2, 0:lagmax))
 
@@ -1752,6 +1753,50 @@ contains
     end function integrand_x2mmp
 
   end subroutine compute_xmmp
+
+  subroutine compute_krook_projection(inverse_cube, matrix)
+    logical, intent(in) :: inverse_cube
+    real(kind=dp), intent(out) :: matrix(:,:)
+    real(kind=dp) :: cnorm
+    real(kind=dp) :: raw_matrix(size(matrix,1),size(matrix,2))
+    integer :: m, mp
+
+    ! Scalar damping divided by streaming speed has the u^3 weak weight.
+    ! Multiplication by u^-3 changes this to u^0; no speed floor is needed.
+    if (.not. ieee_is_finite(alpha) .or. .not. ieee_is_finite(beta)) &
+      error stop 'Krook requires finite scalar-product weights'
+    if (beta <= -1d0) error stop 'Krook requires integrable Gaussian weight'
+    if (inverse_cube) then
+      if (alpha <= -1d0) error stop 'Inverse-cube Krook requires alpha > -1'
+    else
+      if (alpha <= -4d0) error stop 'Constant Krook requires alpha > -4'
+    end if
+    cnorm = 1d0/(pi*sqrt(pi))
+    do mp = 0, lagmax
+      do m = 0, lagmax
+        raw_matrix(m+1,mp+1) = cnorm*integrate(integrand, 0d0)
+      end do
+    end do
+    if (make_ortho) then
+      matrix = matmul(M_transform_inv, raw_matrix)
+    else
+      matrix = raw_matrix
+    end if
+    call chop(matrix)
+  contains
+    function integrand(speed) result(value)
+      ! Native FGSL callback interface has no INTENT on its scalar argument.
+      real(kind=dp) :: speed
+      real(kind=dp) :: value, constant_weight, inverse_cube_weight
+      call krook_weight_leaf(speed, alpha, beta, phi_prj(m,speed), &
+        phi_exp(mp,speed), constant_weight, inverse_cube_weight)
+      if (inverse_cube) then
+        value = inverse_cube_weight
+      else
+        value = constant_weight
+      end if
+    end function integrand
+  end subroutine compute_krook_projection
   
   subroutine compute_lorentz(anumm_s)
     real(kind=dp), dimension(:,:) :: anumm_s

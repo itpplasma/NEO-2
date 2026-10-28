@@ -1,4 +1,5 @@
 module collop
+  use collision_model_mod, only : uses_krook, krook_carrier_scale
   use rkstep_mod
   use hdf5_tools
   use collop_compute, only : init_collop, &
@@ -6,14 +7,16 @@ module collop
        m_ele, m_d, m_C, m_alp, m_W, compute_collop_inf, C_m, compute_xmmp, &
        nu_D_hat, phi_exp, d_phi_exp, dd_phi_exp, &
        compute_collop_rel, lagmax, integral_cutoff, num_sub_intervals, num_sub_intervals_cutoff, &
-       epsabs, epsrel, x_cutoff, c, m_ele, eV, lsw_split_interval, compute_nbisource
+       epsabs, epsrel, x_cutoff, c, m_ele, eV, lsw_split_interval, compute_nbisource, &
+       compute_krook_projection
   use mpiprovider_module
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
        v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz, conl_over_mfp, &
        isw_relativistic, T_e, &
        lsw_multispecies, isw_coul_log, num_spec, conl_over_mfp_spec, collpar_spec, &
-       z_spec, m_spec, T_spec, n_spec, &
+       z_spec, m_spec, T_spec, n_spec, collision_model, krook_nu, &
+       krook_geometry_trapped, krook_geometry_passing, &
        collop_bspline_dist, collop_bspline_order, lsw_nbi, T_nbi, m_nbi
   use device_mod, only : device
 
@@ -89,6 +92,7 @@ module collop
       use collop_nbi, only : legmax_nbi
 
       real(kind=dp), dimension(:), allocatable :: asource_temp
+      real(kind=dp), allocatable :: krook_matrix(:,:)
 
       real(kind=dp) :: alpha_temp, beta_temp
       integer       :: a,b,ispec
@@ -204,7 +208,31 @@ module collop
       !**********************************************************
       call init_collop(collop_base_prj, collop_base_exp, scalprod_alpha, scalprod_beta)
 
-      if (.not. lsw_multispecies) then
+      if (uses_krook()) then
+         gamma_ab = 1d0 ! Scalar local reaction has no target-species velocity ratio.
+         call compute_source(asource, weightlag, weightden, weightparflow, &
+              weightenerg, Amm)
+         call compute_xmmp(x1mm, x2mm)
+         allocate(krook_matrix(0:lag,0:lag))
+         call compute_krook_projection( &
+              trim(collision_model) == 'krook_inverse_cube', krook_matrix)
+         ! All Coulomb pieces are absent. denmm is used solely as the native
+         ! weak scalar-mass carrier; no energy derivative is evaluated.
+         anumm_aa = 0d0
+         anumm_a = 0d0
+         denmm_aa = 0d0
+         ailmm_aa = 0d0
+         do a = 0, num_spec-1
+            if (lsw_multispecies) then
+               coll_a_temp = collpar_spec(a)
+            else
+               coll_a_temp = collpar
+            end if
+            denmm_a(:,:,a) = -krook_carrier_scale(krook_nu(a+1), &
+                 coll_a_temp, T_spec(a), m_spec(a))*krook_matrix
+         end do
+         call collop_set_species(ispec)
+      else if (.not. lsw_multispecies) then
 
          ! WINNY - for flint
          ! without any formula at the moment
@@ -851,6 +879,16 @@ module collop
       call h5_create('collop.h5', h5id_collop)
 
       call h5_define_group(h5id_collop, 'meta', h5id_meta)
+      call h5_add(h5id_meta, 'collision_model', trim(collision_model))
+      if (uses_krook()) then
+         call h5_add(h5id_meta, 'krook_nu_s_inv', krook_nu(1:num_spec), &
+              [1], [num_spec], 'Physical positive damping frequencies [s^-1]')
+         call h5_add(h5id_meta, 'krook_geometry_trapped', krook_geometry_trapped)
+         call h5_add(h5id_meta, 'krook_geometry_passing', krook_geometry_passing)
+         call h5_add(h5id_meta, 'collision_relaxed_variable', &
+              'native_thermodynamic_response')
+         call h5_add(h5id_meta, 'collision_relaxed_variable_qualified', 0)
+      end if
 
       call h5_add(h5id_meta, 'lag', lag, &
         & comment='number of basis polynoms')
