@@ -8,6 +8,7 @@ set(EXE_NAME "neo_2_ql.x")
 set(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/OBJS)
 
 include(CMakeSources.in)
+include(ntv_work_export_targets.cmake)
 
 add_library(neo2_ql STATIC
   ${NEO2_QL_SRC_FILES}
@@ -16,6 +17,7 @@ add_library(neo2_ql STATIC
 target_link_libraries(neo2_ql
   PUBLIC
   common
+  ntv_work_export
 )
 target_include_directories(neo2_ql PUBLIC "${PROJECT_BINARY_DIR}/../COMMON" "${PROJECT_BINARY_DIR}/OBJS")
 
