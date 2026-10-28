@@ -8,7 +8,13 @@ program test_integration_routines
   real(wp), parameter :: pi = acos(-1.0_wp)
   real(wp), parameter :: epsabs = 1.0e-10_wp
   real(wp), parameter :: epsrel = 1.0e-10_wp
-  real(wp) :: res(2)
+  ! Knot-bounded segment from the ql golden case: the Clenshaw-Curtis
+  ! endpoint node mid - half rounds one ulp below seg_low.
+  real(wp), parameter :: seg_low = 8.0_wp/3.0_wp
+  real(wp), parameter :: seg_up = 3.0_wp
+  real(wp), parameter :: outside = 5.4e5_wp
+  real(wp) :: res(2), seg_exact
+  logical :: sampled_outside = .false.
 
   res = fint1d_qag(cosine, 0.0_wp, 0.5_wp*pi, epsabs, epsrel, 3)
   call assert_close(res(1), 1.0_wp, 1.0e-9_wp, "qag cos over [0,pi/2]")
@@ -28,6 +34,32 @@ program test_integration_routines
   res = fint1d_cquad(decaying_param, 2.0_wp, 0.0_wp, 1.0_wp, epsabs, epsrel)
   call assert_close(res(1), 0.5_wp*(1.0_wp - exp(-2.0_wp)), 1.0e-9_wp, &
        "cquad exp(-p*x) over [0,1]")
+
+  ! cquad must not sample outside the segment: the step integrands are
+  ! large there, as the collision-operator integrands are in the
+  ! neighbouring knot cell. Reference values are the exact integrals.
+  if (0.5_wp*(seg_low + seg_up) - 0.5_wp*(seg_up - seg_low) >= seg_low) then
+    print *, "FAIL: knot segment no longer has a node below seg_low"
+    stop 1
+  end if
+
+  res = fint1d_cquad(step_zero, seg_low, seg_up, 1.0e-13_wp, 1.0e-13_wp)
+  call assert_close(res(1), 0.0_wp, 0.0_wp, "cquad zero step on knot segment")
+
+  seg_exact = 0.5_wp*(seg_up - seg_low)**2
+  res = fint1d_cquad(step_ramp, seg_low, seg_up, 1.0e-13_wp, 1.0e-13_wp)
+  call assert_close(res(1), seg_exact, 1.0e-14_wp*seg_exact, &
+       "cquad ramp step on knot segment")
+
+  res = fint1d_cquad(step_ramp_param, 2.0_wp, seg_low, seg_up, 1.0e-13_wp, &
+       1.0e-13_wp)
+  call assert_close(res(1), 2.0_wp*seg_exact, 2.0e-14_wp*seg_exact, &
+       "cquad parameter ramp step on knot segment")
+
+  if (sampled_outside) then
+    print *, "FAIL: cquad sampled the integrand outside [x_low, x_up]"
+    stop 1
+  end if
 
   print *, "All tests passed!"
 
@@ -77,4 +109,40 @@ contains
 
     decaying_param = exp(-param1*x)
   end function decaying_param
+
+  function step_zero(x)
+    real(wp) :: step_zero
+    real(wp) :: x
+
+    if (x < seg_low .or. x > seg_up) then
+      sampled_outside = .true.
+      step_zero = outside
+    else
+      step_zero = 0.0_wp
+    end if
+  end function step_zero
+
+  function step_ramp(x)
+    real(wp) :: step_ramp
+    real(wp) :: x
+
+    if (x < seg_low .or. x > seg_up) then
+      sampled_outside = .true.
+      step_ramp = outside
+    else
+      step_ramp = x - seg_low
+    end if
+  end function step_ramp
+
+  function step_ramp_param(x, param1)
+    real(wp) :: step_ramp_param
+    real(wp) :: x, param1
+
+    if (x < seg_low .or. x > seg_up) then
+      sampled_outside = .true.
+      step_ramp_param = outside
+    else
+      step_ramp_param = param1*(x - seg_low)
+    end if
+  end function step_ramp_param
 end program test_integration_routines
