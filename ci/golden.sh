@@ -53,6 +53,7 @@ export REFERENCE_NEO2_PAR=$root/stable/build/NEO-2-PAR/neo_2_par.x
 export REFERENCE_NEO2_QL=$root/stable/build/NEO-2-QL/neo_2_ql.x
 check stable-lorentz env TOL=1e-14 LEGACY_TOL=1e-10 MAGNETICS_TOL=1e-12 make -k lorentz
 check stable-ql env TOL=1e-10 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12 make -k ql
+check stable-transport-k env TOL=1e-10 make -k transport_k
 
 # Keep the native order: a freshly built base reference invalidates the
 # timestamp-based case outputs from the stable-reference comparisons.
@@ -62,6 +63,7 @@ export REFERENCE_NEO2_PAR=$root/base/build/NEO-2-PAR/neo_2_par.x
 export REFERENCE_NEO2_QL=$root/base/build/NEO-2-QL/neo_2_ql.x
 check base-lorentz env TOL=1e-14 LEGACY_TOL=1e-10 MAGNETICS_TOL=1e-12 make -k lorentz
 check base-ql env TOL=1e-15 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12 make -k ql
+check base-transport-k env TOL=1e-15 make -k transport_k
 check performance-ql env TOL=1e-15 make performance_ql
 check par env TOL=1e-15 LEGACY_TOL=4e-8 make par
 if [ -f "$test_dir/performance_ql/performance_report.txt" ]; then
