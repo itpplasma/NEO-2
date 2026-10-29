@@ -1,0 +1,3 @@
+{
+  "Golden record": "SCI_DATA_BRANCH=\"$GITHUB_REF_NAME\" ci/golden_record.sh \"${NIGHTLY_BASE_SHA:-HEAD~1}\""
+}

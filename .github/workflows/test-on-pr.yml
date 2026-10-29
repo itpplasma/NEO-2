@@ -3,7 +3,6 @@ name: Run Test
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled]
-  merge_group:
   push:
     branches: [main]
   workflow_dispatch:
@@ -23,8 +22,9 @@ jobs:
   run-golden-record:
     # Trusted dispatch includes Git LFS and campus access for input preparation.
     runs-on: [self-hosted, itp-dispatch]
+    # About an hour, so it runs nightly (nightly.yml), not in the merge queue.
     if: >-
-      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]')
     # Includes three builds, golden cases, and dispatch/queue overhead.
     timeout-minutes: 150
@@ -35,30 +35,14 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Resolve comparison revisions
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BASE_REF: ${{ github.event.merge_group.base_sha || github.event.before || inputs.base_ref || github.event.repository.default_branch }}
-        run: |
-          base=$(git rev-parse --verify --end-of-options "$BASE_REF^{commit}" ||
-            git rev-parse --verify --end-of-options "refs/remotes/origin/$BASE_REF^{commit}")
-          stable=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" \
-            https://api.github.com/repos/itpplasma/NEO-2/releases/latest | jq -er .tag_name)
-          test -n "$stable" && test "$stable" != null
-          git rev-parse --verify "$stable^{commit}"
-          echo "SCI_BASE_SHA=$base" >> "$GITHUB_ENV"
-          echo "SCI_STABLE_REF=$stable" >> "$GITHUB_ENV"
-      - name: Prepare private runtime bundle
-        env:
-          SCI_TIER: golden-record
-          SCI_DATA_BRANCH: ${{ github.head_ref || github.ref_name }}
-          GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
-        run: |
-          TMPDIR="$RUNNER_TEMP" ci/bundle.sh "$RUNNER_TEMP/neo2-golden.tar.zst"
       - name: Run native golden comparisons on sCluster
         env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.event.before || inputs.base_ref || github.event.repository.default_branch }}
+          SCI_DATA_BRANCH: ${{ github.head_ref || github.ref_name }}
+          GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
           SCI_OUT: ${{ runner.temp }}/golden-receipts
-        run: sci-dispatch golden "$RUNNER_TEMP/neo2-golden.tar.zst"
+        run: ci/golden_record.sh "$BASE_REF"
       - name: Report golden outcomes
         if: always()
         run: |
@@ -70,6 +54,3 @@ jobs:
               fi
             done
           fi
-      - name: Remove private runtime bundle
-        if: always()
-        run: rm -f "$RUNNER_TEMP/neo2-golden.tar.zst"

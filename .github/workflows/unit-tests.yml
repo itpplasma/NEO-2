@@ -41,3 +41,5 @@ jobs:
         env:
           SCI_LIBNEO_REF: ${{ inputs.libneo_ref }}
         run: ci/run.sh unit-tests-unit-tests
+      - name: Check the nightly triage
+        run: python3 ci/test_nightly_triage.py
