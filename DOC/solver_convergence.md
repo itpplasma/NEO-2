@@ -27,11 +27,31 @@ same coupled collision action used by the equation. Evaluation occurs
 before the sparse inverse, conservation-nullspace projection, and Arnoldi
 stabilization. Thus the reported error is neither the preconditioned
 Richardson update nor a proof of a transport discretization error bound.
-Density and energy projection remains in the iteration. The separate
-`density_constraint_residual` and `energy_constraint_residual` diagnostics
-report normalized moment constraints and never replace the equation residual.
-For coupled species, per-species energy projection need not be a true
-nullspace gauge; an exposed residual floor requires investigation.
+The separate `density_constraint_residual` and `energy_constraint_residual`
+diagnostics report normalized moment constraints and never replace the
+equation residual.
+
+## Axisymmetric conservation constraints
+
+The axisymmetric iteration solves the bordered system
+
+    [L  K] [f     ]   [q]
+    [B' 0] [lambda] = [0],     L = M - C_integral,
+
+where the columns of `K` are the species' Maxwellian density and (with the
+integral part) energy kets and `B` holds the matching moment bras. Its
+Richardson step with preconditioner `[P K; B' 0]`, `P` the factorized
+regularized matrix, reduces to the plain step `y = f + P^-1 (q - L f)`
+followed by
+
+    f_new = y - G (B' G)^-1 B' y,     G = P^-1 K.
+
+A fixed point satisfies `B' f = 0` and `L f + K lambda = q`. The kets are only
+approximate null vectors of the coupled operator, so `K lambda` is the part of
+the equation residual that the constraints cost; it is included in the
+reported residual. The earlier filter subtracted half of the ket component,
+`y - (1 - tol) K (B' y)/(B' K)` with `tol = 0.5`, whose fixed point carries
+the residual `(1 - tol) P K c` instead.
 
 Zero numerator and zero denominator give zero residual. Invalid controls,
 nonfinite residuals, Arnoldi/subtraction failures, and iteration exhaustion
