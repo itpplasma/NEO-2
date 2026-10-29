@@ -1,0 +1,92 @@
+name: nightly
+
+# The slow tier once a night on main: the golden-record comparisons (about an
+# hour), which the merge queue no longer runs. Each night compares main with
+# the head of the previous nightly run, so every merged commit is compared
+# once. When the comparison fails, the triage job bisects it between the last
+# green nightly and this commit, comparing each step with that green commit,
+# and files or updates one issue labelled nightly-failure; the next green
+# nightly closes it. The job command lives in ci/nightly-jobs.json.
+
+on:
+  schedule:
+    - cron: "37 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  golden:
+    name: Golden record
+    runs-on: [self-hosted, itp-dispatch]
+    timeout-minutes: 150
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare with the previous nightly
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
+          SCI_OUT: ${{ runner.temp }}/golden-receipts
+        run: |
+          NIGHTLY_BASE_SHA=$(python3 ci/nightly_triage.py previous)
+          export NIGHTLY_BASE_SHA
+          python3 ci/nightly_triage.py run "Golden record"
+      - name: Report golden outcomes
+        if: always()
+        run: |
+          if [ -d "$RUNNER_TEMP/golden-receipts" ]; then
+            for receipt in revisions.txt data-revision.txt checks.tsv performance_report.txt; do
+              if [ -f "$RUNNER_TEMP/golden-receipts/$receipt" ]; then
+                echo "### $receipt" >> "$GITHUB_STEP_SUMMARY"
+                cat "$RUNNER_TEMP/golden-receipts/$receipt" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            done
+          fi
+
+  triage:
+    name: Bisect failing jobs and report
+    needs: [golden]
+    if: failure()
+    runs-on: [self-hosted, itp-dispatch]
+    timeout-minutes: 600
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bisect and file or update the nightly-failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
+          SCI_OUT: ${{ runner.temp }}/golden-receipts
+        run: python3 ci/nightly_triage.py failure
+
+  close:
+    name: Close the nightly-failure issue
+    needs: [golden]
+    runs-on: [self-hosted, itp-light]
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Close the issue once the nightly is green
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 ci/nightly_triage.py success
