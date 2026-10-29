@@ -1293,6 +1293,17 @@ def interpolate_hdf5_file(in_filename: str, out_filename: str, new_points: list)
 
     o['/num_radial_pts'][()] = np.array(num_new)
 
+def _comparison_keys(group):
+  """Resolve the published flux-gradient dataset rename without changing files."""
+  keys = {key: key for key in group.keys()}
+  if group.name.rsplit('/', 1)[-1] in ('fulltransp', 'neo2_multispecies_out'):
+    old, new = 'avnabpsi', 'av_nabla_stor'
+    if old in keys and new in keys:
+      raise ValueError('Ambiguous dataset names in ' + group.name)
+    if old in keys:
+      keys[new] = keys.pop(old)
+  return keys
+
 def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
   """Check if two h5py groups contain the same subgroups/datasets.
 
@@ -1323,8 +1334,10 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
   """
   import h5py
 
-  lr = list(reference_group.keys())
-  lo = list(other_group.keys())
+  reference_keys = _comparison_keys(reference_group)
+  other_keys = _comparison_keys(other_group)
+  lr = list(reference_keys)
+  lo = list(other_keys)
 
   return_value = True
 
@@ -1338,11 +1351,11 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
 
   for key in lr:
     if key in lo:
-      if isinstance(reference_group[key], h5py.Group) != isinstance(other_group[key], h5py.Group):
+      if isinstance(reference_group[reference_keys[key]], h5py.Group) != isinstance(other_group[other_keys[key]], h5py.Group):
         return_value = False
-        print("Object type differs for '" + reference_group[key].name + "'.")
-      elif isinstance(reference_group[key], h5py.Group):
-        return_value = return_value and compare_hdf5_group_keys(reference_group[key], other_group[key], verbose)
+        print("Object type differs for '" + reference_group[reference_keys[key]].name + "'.")
+      elif isinstance(reference_group[reference_keys[key]], h5py.Group):
+        return_value = return_value and compare_hdf5_group_keys(reference_group[reference_keys[key]], other_group[other_keys[key]], verbose)
     else:
       return_value = False
       print("Key '" + key + "' only found in reference.")
@@ -1433,8 +1446,10 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   import h5py
   from math import isnan, isinf
 
-  lr = list(reference_group.keys())
-  lo = list(other_group.keys())
+  reference_keys = _comparison_keys(reference_group)
+  other_keys = _comparison_keys(other_group)
+  lr = list(reference_keys)
+  lo = list(other_keys)
 
   return_value = True
 
@@ -1444,10 +1459,11 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   whitelist = fill_list(whitelist)
   blacklist = fill_list(blacklist)
 
-  for key in lr + [key for key in lo if key not in reference_group]:
-    if (not whitelist or key in whitelist) and (not blacklist or key not in blacklist):
-      reference = reference_group.get(key)
-      other = other_group.get(key)
+  for key in lr + [key for key in lo if key not in reference_keys]:
+    name = reference_keys.get(key, other_keys.get(key))
+    if (not whitelist or name in whitelist) and (not blacklist or name not in blacklist):
+      reference = reference_group[reference_keys[key]] if key in reference_keys else None
+      other = other_group[other_keys[key]] if key in other_keys else None
       # Check non-overlapping data against itself so nonfinite values cannot
       # pass merely because the other file does not contain that dataset.
       if reference is None:
