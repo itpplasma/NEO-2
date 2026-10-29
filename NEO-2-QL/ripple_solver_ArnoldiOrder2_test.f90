@@ -202,9 +202,11 @@ subroutine ripple_solver_ArnoldiO2( &
     complex(dp), dimension(:), allocatable :: bvec_parflow
     ! Use pre-conditioned iterations:
     ! -> remove null-space of axisymmetric solution (energy conservation)
-    complex(dp) :: denom_energ, coef_energ, denom_dens, coef_dens
     complex(dp), dimension(:), allocatable :: energvec_bra, energvec_ket
     complex(dp), dimension(:), allocatable :: densvec_bra, densvec_ket
+    ! Constraint bras B and directions G = P^-1 K of the bordered
+    ! axisymmetric solve (see arnoldi_mod::bordered_projection).
+    real(dp), dimension(:, :), allocatable :: conservation_bras, conservation_directions
     ! End Use pre-conditioned iterations
     complex(dp), dimension(:, :), allocatable :: flux_vector, source_vector
     complex(dp), dimension(:, :), allocatable :: flux_vector_plot
@@ -1408,7 +1410,6 @@ subroutine ripple_solver_ArnoldiO2( &
     allocate (densvec_bra(n_2d_size), densvec_ket(n_2d_size))
     energvec_ket = 0.d0
     energvec_bra = 0.d0
-    denom_energ = 0.d0
     ! End Use pre-conditioned iterations
 
     if (isw_lorentz .EQ. 1) then
@@ -3506,8 +3507,7 @@ CONTAINS
 
 ! Solution of inhomogeneus equation (account of sources):
 
-        denom_energ = sum(energvec_bra*energvec_ket)
-        denom_dens = sum(densvec_bra*densvec_ket)
+        if (problem_type) call prepare_conservation_border()
 
         if (isw_intp .EQ. 0) then
             ! no integral part:
@@ -3720,7 +3720,33 @@ CONTAINS
 
         end if
 
+        if (allocated(conservation_bras)) deallocate (conservation_bras, conservation_directions)
+
     end subroutine solve_eqs
+
+    !> Density and, with the integral part, energy of the own species are
+    !> held at zero by bordering the equation with the Maxwellian kets K.
+    !> The kets are only approximate null vectors of the coupled operator,
+    !> so the border direction is G = P^-1 K with P the factorized matrix.
+    subroutine prepare_conservation_border()
+        integer :: nconstraints, constraint
+
+        nconstraints = 1
+        if (isw_intp .eq. 1) nconstraints = 2
+        if (allocated(conservation_bras)) deallocate (conservation_bras, conservation_directions)
+        allocate (conservation_bras(n_2d_size, nconstraints))
+        allocate (conservation_directions(n_2d_size, nconstraints))
+        conservation_bras(:, 1) = real(densvec_bra, dp)
+        conservation_directions(:, 1) = real(densvec_ket, dp)
+        if (nconstraints == 2) then
+            conservation_bras(:, 2) = real(energvec_bra, dp)
+            conservation_directions(:, 2) = real(energvec_ket, dp)
+        end if
+        do constraint = 1, nconstraints
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
+                conservation_directions(:, constraint), iopt)
+        end do
+    end subroutine prepare_conservation_border
 
 !------------------------------------------------------------------------
     subroutine source_flux
@@ -4664,7 +4690,7 @@ CONTAINS
 
     subroutine next_iteration(n, fold, fnew)
 
-        use arnoldi_mod, only: fzero, mode, tol
+        use arnoldi_mod, only: fzero, mode, bordered_projection
 
         implicit none
 
@@ -4698,15 +4724,9 @@ CONTAINS
 
             fnew = fnew + fold
 
-            ! -> remove null-space of axisymmetric
-            ! solution (particle and energy conservation)
-            coef_dens = sum(densvec_bra*fnew)/denom_dens
-            fnew = fnew - (1.d0 - tol)*coef_dens*densvec_ket
-
-            if (isw_intp .eq. 1) then
-                coef_energ = sum(energvec_bra*fnew)/denom_energ
-                fnew = fnew - (1.d0 - tol)*coef_energ*energvec_ket
-            end if
+            ! Particle and energy conservation: bordered Richardson step.
+            call bordered_projection(n, size(conservation_bras, 2), conservation_bras, &
+                conservation_directions, fnew)
         else
 
             do i = 1, nz
