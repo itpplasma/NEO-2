@@ -838,7 +838,8 @@ subroutine main
     collop_path = ''
     collop_base_prj = 0
     collop_base_exp = 0
-    scalprod_alpha = 0d0
+    ! The x^3 weight admits the B-spline particle-density test function.
+    scalprod_alpha = -1d0
     scalprod_beta  = 0d0
     v_min_resolution = 0.1d0
     v_max_resolution = 5.0d0

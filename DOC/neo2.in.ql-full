@@ -114,7 +114,7 @@
                  ! B-Splines are distributed between $x=0$ and this
                  ! value. A typical choice is $5$. Above this value the
                  ! B-Splines are extrapolated with a Taylor series. [5.0d0]
- scalprod_alpha = 0.0 ! [0.0d0]
+ scalprod_alpha = -1.0 ! [-1.0d0]
  scalprod_beta = 0.0 ! [0.0d0]
  t_e = 1.0 ! Electron temperature for relativistic collision operator in eV. [1.0]
  T_nbi = 1.0 ! [70d3]

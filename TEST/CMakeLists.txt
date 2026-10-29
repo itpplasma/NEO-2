@@ -95,6 +95,17 @@ set_tests_properties(bordered_conservation_test PROPERTIES
     TIMEOUT 30
 )
 
+# Per-species particle conservation of the energy projection: the shipped
+# scalprod_alpha must admit x^(-1-alpha) in the span of the B-spline basis.
+add_executable(test_collop_density_conservation test_collop_density_conservation.f90)
+target_link_libraries(test_collop_density_conservation neo2_ql)
+add_test(NAME collop_density_conservation_test COMMAND test_collop_density_conservation)
+set_tests_properties(collop_density_conservation_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 120
+)
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)

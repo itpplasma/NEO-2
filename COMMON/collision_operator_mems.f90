@@ -30,7 +30,7 @@ module collop
   character(len=100), public  :: collop_path
   integer                     :: collop_base_prj  = 0 ! 0...Laguerre (Default), 1...Polynomial
   integer                     :: collop_base_exp  = 0
-  real(kind=dp)               :: scalprod_alpha = 0d0
+  real(kind=dp)               :: scalprod_alpha = -1d0
   real(kind=dp)               :: scalprod_beta  = 0d0
   logical                     :: collop_only_precompute = .false.
 
