@@ -309,6 +309,36 @@ contains
   END SUBROUTINE iterator
 
   !-----------------------------------------------------------------------------
+  !> Richardson step for the bordered system
+  !>
+  !>     [L  K] [f     ]   [q]
+  !>     [B' 0] [lambda] = [0]
+  !>
+  !> with preconditioner [P K; B' 0]. Eliminating lambda turns the step into
+  !> the plain step y = f + P^-1 (q - L f) followed by
+  !>
+  !>     f_new = y - G (B' G)^-1 B' y,   G = P^-1 K.
+  !>
+  !> A fixed point satisfies B' f = 0 and L f + K lambda = q exactly, with
+  !> lambda = (B' G)^-1 B' y. Here bras holds B and directions holds G.
+  subroutine bordered_projection(n, m, bras, directions, f)
+    integer, intent(in) :: n, m
+    double precision, intent(in) :: bras(n, m), directions(n, m)
+    complex(kind=kind(1d0)), intent(inout) :: f(n)
+    double precision :: gram(m, m)
+    complex(kind=kind(1d0)) :: coefficients(m, 1), gram_complex(m, m)
+    integer :: pivots(m), info
+
+    if (m == 0) return
+    gram = matmul(transpose(bras), directions)
+    gram_complex = gram
+    coefficients(:, 1) = matmul(transpose(bras), f)
+    call zgesv(m, 1, gram_complex, m, pivots, coefficients, m, info)
+    if (info /= 0) error stop 'bordered_projection: singular constraint Gram matrix'
+    f = f - matmul(directions, coefficients(:, 1))
+  end subroutine bordered_projection
+
+  !-----------------------------------------------------------------------------
   !> Computes m Ritz eigenvalues (approximations to extreme eigenvalues)
   !> of the iteration procedure of the vector with dimension n.
   !> Eigenvalues are computed by means of Arnoldi iterations.

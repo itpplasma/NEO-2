@@ -86,6 +86,15 @@ if(MPI_SUPPORT)
     set_tests_properties(iterator_convergence_mpi_test PROPERTIES TIMEOUT 30 PROCESSORS 2)
 endif()
 
+add_executable(test_bordered_conservation test_bordered_conservation.f90)
+target_link_libraries(test_bordered_conservation neo2_ql)
+add_test(NAME bordered_conservation_test COMMAND test_bordered_conservation)
+set_tests_properties(bordered_conservation_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
