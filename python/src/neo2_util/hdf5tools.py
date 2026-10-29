@@ -1293,6 +1293,17 @@ def interpolate_hdf5_file(in_filename: str, out_filename: str, new_points: list)
 
     o['/num_radial_pts'][()] = np.array(num_new)
 
+def _comparison_keys(group):
+  """Resolve the published flux-gradient dataset rename without changing files."""
+  keys = {key: key for key in group.keys()}
+  if group.name.rsplit('/', 1)[-1] in ('fulltransp', 'neo2_multispecies_out'):
+    old, new = 'avnabpsi', 'av_nabla_stor'
+    if old in keys and new in keys:
+      raise ValueError('Ambiguous dataset names in ' + group.name)
+    if old in keys:
+      keys[new] = keys.pop(old)
+  return keys
+
 def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
   """Check if two h5py groups contain the same subgroups/datasets.
 
@@ -1323,8 +1334,10 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
   """
   import h5py
 
-  lr = list(reference_group.keys())
-  lo = list(other_group.keys())
+  reference_keys = _comparison_keys(reference_group)
+  other_keys = _comparison_keys(other_group)
+  lr = list(reference_keys)
+  lo = list(other_keys)
 
   return_value = True
 
@@ -1338,8 +1351,8 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
 
   for key in lr:
     if key in lo:
-      if isinstance(reference_group[key], h5py.Group):
-        return_value = return_value and compare_hdf5_group_keys(reference_group[key], other_group[key], verbose)
+      if isinstance(reference_group[reference_keys[key]], h5py.Group):
+        return_value = return_value and compare_hdf5_group_keys(reference_group[reference_keys[key]], other_group[other_keys[key]], verbose)
     else:
       return_value = False
       print("Key '" + key + "' only found in reference.")
@@ -1433,8 +1446,10 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   import h5py
   from math import isnan, isinf
 
-  lr = list(reference_group.keys())
-  lo = list(other_group.keys())
+  reference_keys = _comparison_keys(reference_group)
+  other_keys = _comparison_keys(other_group)
+  lr = list(reference_keys)
+  lo = list(other_keys)
 
   return_value = True
 
@@ -1445,15 +1460,15 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   blacklist = fill_list(blacklist)
 
   for key in lr:
-    if (not whitelist or key in whitelist) and (not blacklist or key not in blacklist):
+    if (not whitelist or reference_keys[key] in whitelist) and (not blacklist or reference_keys[key] not in blacklist):
       if key in lo:
-        if isinstance(reference_group[key], h5py.Dataset):
-          if reference_group[key].dtype.kind == 'f':
-            max_value_dataset = max(numpy.nditer(abs(numpy.array(reference_group[key]))))
+        if isinstance(reference_group[reference_keys[key]], h5py.Dataset):
+          if reference_group[reference_keys[key]].dtype.kind == 'f':
+            max_value_dataset = max(numpy.nditer(abs(numpy.array(reference_group[reference_keys[key]]))))
             if max_value_dataset == 0:
               max_value_dataset = 1.0
-            abs_differences = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key])))
-            delta_abs = reference_group[key].attrs.get('accuracy', -1.0)
+            abs_differences = abs(numpy.subtract(numpy.array(reference_group[reference_keys[key]]), numpy.array(other_group[other_keys[key]])))
+            delta_abs = reference_group[reference_keys[key]].attrs.get('accuracy', -1.0)
             if (delta_abs < 0) or isnan(delta_abs) or isinf(delta_abs):
               delta_abs = delta_relative * max_value_dataset
 
@@ -1461,21 +1476,21 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
               return_value = False
               if (verbose):
                 print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(abs_differences/max_value_dataset)))))
-          elif reference_group[key].dtype.kind == 'i':
-            if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
+          elif reference_group[reference_keys[key]].dtype.kind == 'i':
+            if (numpy.array(reference_group[reference_keys[key]]) != numpy.array(other_group[other_keys[key]])).any():
               return_value = False
               print('Difference in ' + key)
-          elif reference_group[key].dtype.kind == 'S':
-            if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
+          elif reference_group[reference_keys[key]].dtype.kind == 'S':
+            if (numpy.array(reference_group[reference_keys[key]]) != numpy.array(other_group[other_keys[key]])).any():
               return_value = False
               print('Difference in ' + key)
 
         else:
           # Allow short circuited evaluation only if not verbose.
           if (verbose):
-            return_value = all([return_value, compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)])
+            return_value = all([return_value, compare_hdf5_group_data(reference_group[reference_keys[key]], other_group[other_keys[key]], delta_relative, whitelist, blacklist, verbose)])
           else:
-            return_value = return_value and compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)
+            return_value = return_value and compare_hdf5_group_data(reference_group[reference_keys[key]], other_group[other_keys[key]], delta_relative, whitelist, blacklist, verbose)
 
   return return_value
 
