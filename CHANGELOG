@@ -4,6 +4,8 @@ Contains changelog of neo-2 code. Tags are also included.
   - QL honors epserr_iter from the input instead of resetting it to 1e-7.
     Inputs that omit it retain the effective default 1e-7. Explicit values
     that were previously ignored can change convergence and results.
+  - Collision-matrix quadrature includes the tail beyond the last B-spline
+    knot and accounts for cancellation in the field-particle energy moment.
 
 Note: use git tag --list to get a list of available tags.
 
