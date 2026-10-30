@@ -12,7 +12,7 @@ module packBuffer_module
   !> Class for send- or receive-buffer
   type :: packBuffer
   
-    !> Default send- and receive-buffer size
+    !> Send- and receive-buffer capacity in bytes
     integer :: buffersize
 
     integer, allocatable, dimension(:) :: sendBuffer, recvBuffer
@@ -94,10 +94,10 @@ module packBuffer_module
     class(packBuffer) :: this
     integer :: buffersize
 
-    this%buffersize = buffersize * 1024 * 1024 / 4
+    this%buffersize = buffersize * 1024 * 1024
 
-    allocate(this%sendBuffer(this%buffersize))
-    allocate(this%recvBuffer(this%buffersize))
+    allocate(this%sendBuffer(this%buffersize / (storage_size(0) / 8)))
+    allocate(this%recvBuffer(this%buffersize / (storage_size(0) / 8)))
 
   end subroutine allocateBuffers_packBuffer
 
