@@ -187,7 +187,7 @@ subroutine ripple_solver_ArnoldiO2( &
 
     CHARACTER(len=100) :: propname
     integer :: n_2d_size, nz_sq, nz_beg, npassing_prev, k_prev, mm
-    integer :: iter, nphiequi, npassing_next, n_arnoldi, mode_iter
+    integer :: iter, nphiequi, npassing_next, mode_iter
     integer :: isw_regper, nz_coll, nz_ttmp, nz_coll_beg
     integer :: nrow, ncol, nz, iopt
     real(dp) :: delphim1, deloneovb, step_factor_p, step_factor_m
@@ -202,9 +202,11 @@ subroutine ripple_solver_ArnoldiO2( &
     complex(dp), dimension(:), allocatable :: bvec_parflow
     ! Use pre-conditioned iterations:
     ! -> remove null-space of axisymmetric solution (energy conservation)
-    complex(dp) :: denom_energ, coef_energ, denom_dens, coef_dens
     complex(dp), dimension(:), allocatable :: energvec_bra, energvec_ket
     complex(dp), dimension(:), allocatable :: densvec_bra, densvec_ket
+    ! Constraint bras B and directions G = P^-1 K of the bordered
+    ! axisymmetric solve (see arnoldi_mod::bordered_projection).
+    real(dp), dimension(:, :), allocatable :: conservation_bras, conservation_directions
     ! End Use pre-conditioned iterations
     complex(dp), dimension(:, :), allocatable :: flux_vector, source_vector
     complex(dp), dimension(:, :), allocatable :: flux_vector_plot
@@ -271,6 +273,8 @@ subroutine ripple_solver_ArnoldiO2( &
     integer :: drive_spec
     complex(dp), dimension(:, :, :), allocatable :: source_vector_all
     real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec
+    real(dp) :: normalized_residual_species(0:num_spec-1)
+    real(dp) :: density_constraint_species(0:num_spec-1), energy_constraint_species(0:num_spec-1)
     logical :: problem_type
     real(dp), dimension(:, :), allocatable :: source_vector_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
@@ -289,10 +293,7 @@ subroutine ripple_solver_ArnoldiO2( &
     print *, "Species: ", ispec
     call collop_set_species(ispec)
 
-    niter = 100       !maximum number of integral part iterations
-    n_arnoldi = 500     !maximum number of Arnoldi iterations
     isw_regper = 1       !regulariization by periodic boundary condition
-    epserr_iter = 1.d-7  !relative error of integral part iterations
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
 
     addboucol = .true.
@@ -1409,7 +1410,6 @@ subroutine ripple_solver_ArnoldiO2( &
     allocate (densvec_bra(n_2d_size), densvec_ket(n_2d_size))
     energvec_ket = 0.d0
     energvec_bra = 0.d0
-    denom_energ = 0.d0
     ! End Use pre-conditioned iterations
 
     if (isw_lorentz .EQ. 1) then
@@ -3462,6 +3462,9 @@ CONTAINS
         real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec_tmp
 
         integer :: i_src ! own source index for plotting the distribution function
+        integer :: solve_status, solve_iterations
+        real(dp) :: solve_residual
+
 
         if (isw_intp .EQ. 1) allocate (bvec_iter(ncol), bvec_prev(ncol))
 
@@ -3504,8 +3507,7 @@ CONTAINS
 
 ! Solution of inhomogeneus equation (account of sources):
 
-        denom_energ = sum(energvec_bra*energvec_ket)
-        denom_dens = sum(densvec_bra*densvec_ket)
+        if (problem_type) call prepare_conservation_border()
 
         if (isw_intp .EQ. 0) then
             ! no integral part:
@@ -3514,8 +3516,13 @@ CONTAINS
 
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
+                normalized_residual_species = huge(1.0d0)
+                density_constraint_species = 0.0d0
+                energy_constraint_species = 0.0d0
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                            & source_vector_all(:, k, ispec), ispec, next_iteration)
+                            & source_vector_all(:, k, ispec), ispec, next_iteration, &
+                            & solve_status, solve_iterations, solve_residual, equation_residual)
+                call report_solve(k, ispec, solve_status, solve_iterations, solve_residual)
             end do
 
         elseif (isw_intp .EQ. 1) then
@@ -3529,8 +3536,13 @@ CONTAINS
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
+                    normalized_residual_species = huge(1.0d0)
+                    density_constraint_species = 0.0d0
+                    energy_constraint_species = 0.0d0
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                                & source_vector_all(:, k, ispecp), ispec, next_iteration)
+                                & source_vector_all(:, k, ispecp), ispec, next_iteration, &
+                                & solve_status, solve_iterations, solve_residual, equation_residual)
+                    call report_solve(k, ispecp, solve_status, solve_iterations, solve_residual)
                 end do
 
             end do
@@ -3708,7 +3720,33 @@ CONTAINS
 
         end if
 
+        if (allocated(conservation_bras)) deallocate (conservation_bras, conservation_directions)
+
     end subroutine solve_eqs
+
+    !> Density and, with the integral part, energy of the own species are
+    !> held at zero by bordering the equation with the Maxwellian kets K.
+    !> The kets are only approximate null vectors of the coupled operator,
+    !> so the border direction is G = P^-1 K with P the factorized matrix.
+    subroutine prepare_conservation_border()
+        integer :: nconstraints, constraint
+
+        nconstraints = 1
+        if (isw_intp .eq. 1) nconstraints = 2
+        if (allocated(conservation_bras)) deallocate (conservation_bras, conservation_directions)
+        allocate (conservation_bras(n_2d_size, nconstraints))
+        allocate (conservation_directions(n_2d_size, nconstraints))
+        conservation_bras(:, 1) = real(densvec_bra, dp)
+        conservation_directions(:, 1) = real(densvec_ket, dp)
+        if (nconstraints == 2) then
+            conservation_bras(:, 2) = real(energvec_bra, dp)
+            conservation_directions(:, 2) = real(energvec_ket, dp)
+        end if
+        do constraint = 1, nconstraints
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
+                conservation_directions(:, constraint), iopt)
+        end do
+    end subroutine prepare_conservation_border
 
 !------------------------------------------------------------------------
     subroutine source_flux
@@ -4531,9 +4569,128 @@ CONTAINS
     !>
     !> Here Lbar (preconditioner) is the approximate inverse to L_V-L_D computed by sparse solver
     !> In case mode=2 skips q in the iteration (used by Arnoldi iterations)
+    ! Original coupled assembled equation: M f - C_integral f = q.
+    ! Evaluate before the sparse inverse and conservation-nullspace projection.
+    ! Maximum species normwise backward error, not a Richardson update norm:
+    ! ||q+C_integral f-M f||_1 / (||q||_1+||C_integral f||_1+||M f||_1).
+    subroutine equation_residual(n, solution, residual)
+        use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+        use arnoldi_mod, only: fzero
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: solution(n)
+        real(dp), intent(out) :: residual
+        complex(dp) :: collision(n), lhs(n), work(n)
+        real(dp) :: numerators(0:num_spec-1), denominators(0:num_spec-1)
+        integer :: entry
+
+        collision = (0.0d0, 0.0d0)
+        if (isw_intp == 1) then
+            work = solution
+            call integral_part(work, collision)
+        end if
+        lhs = (0.0d0, 0.0d0)
+        if (problem_type) then
+            do entry = 1, nz_symm
+                lhs(irow_symm(entry)) = lhs(irow_symm(entry)) + &
+                    amat_symm(entry)*solution(icol_symm(entry))
+            end do
+        else
+            do entry = 1, nz
+                lhs(irow(entry)) = lhs(irow(entry)) + amat_sp(entry)*solution(icol(entry))
+            end do
+        end if
+        numerators(ispec) = sum(abs(fzero + collision - lhs))
+        denominators(ispec) = sum(abs(fzero)) + sum(abs(collision)) + sum(abs(lhs))
+        call mpro%allgather_inplace(numerators)
+        call mpro%allgather_inplace(denominators)
+        density_constraint_species = 0.0d0
+        energy_constraint_species = 0.0d0
+        if (problem_type) then
+            density_constraint_species(ispec) = abs(sum(densvec_bra*solution))/ &
+                max(sum(abs(densvec_bra))*maxval(abs(solution)), tiny(1.0d0))
+            if (isw_intp == 1) then
+                energy_constraint_species(ispec) = abs(sum(energvec_bra*solution))/ &
+                    max(sum(abs(energvec_bra))*maxval(abs(solution)), tiny(1.0d0))
+            end if
+            call mpro%allgather_inplace(density_constraint_species)
+            call mpro%allgather_inplace(energy_constraint_species)
+        end if
+        where (.not. ieee_is_finite(density_constraint_species)) density_constraint_species = huge(1.0d0)
+        where (.not. ieee_is_finite(energy_constraint_species)) energy_constraint_species = huge(1.0d0)
+        residual = huge(1.0d0)
+        normalized_residual_species = huge(1.0d0)
+        if (.not. all(ieee_is_finite(numerators))) return
+        if (.not. all(ieee_is_finite(denominators))) return
+        if (.not. ieee_is_finite(sum(numerators))) return
+        if (.not. ieee_is_finite(sum(denominators))) return
+        normalized_residual_species = numerators/max(denominators, tiny(1.0d0))
+        residual = maxval(normalized_residual_species)
+    end subroutine equation_residual
+
+    subroutine report_solve(source_index, driving_species, status, iterations, residual)
+        integer, intent(in) :: source_index, driving_species, status, iterations
+        real(dp), intent(in) :: residual
+        character(len=20) :: system_name, reason
+        character(len=5) :: converged_json
+        character(len=32) :: tolerance_json, number_json
+        character(len=1024) :: record_head
+        character(len=:), allocatable :: record_json
+        integer :: species_index
+        if (problem_type) then
+            system_name = 'axisymmetric'
+        else
+            system_name = 'nonaxisymmetric'
+        end if
+        reason = 'iteration_limit'
+        converged_json = 'false'
+        select case (status)
+        case (0)
+            reason = 'converged'
+            converged_json = 'true'
+        case (2)
+            reason = 'arnoldi_failure'
+        case (3)
+            reason = 'singular_subtraction'
+        case (4)
+            reason = 'invalid_controls'
+        case (5)
+            reason = 'nonfinite_residual'
+        end select
+        if (ispec == 0) then
+            block
+                use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+                tolerance_json = 'null'
+                if (ieee_is_finite(epserr_iter)) write(tolerance_json, '(es24.16e3)') epserr_iter
+            end block
+            write(record_head, '(a,a,a,i0,a,i0,a,a,a,i0,a,i0,a,i0,a,es24.16e3,a,a,a,a,a)') &
+                'NEO2_SOLVE_JSON {"system":"', trim(system_name), &
+                '","source":', source_index, ',"driving_species":', driving_species, &
+                ',"tolerance":', trim(tolerance_json), ',"iteration_limit":', niter, &
+                ',"arnoldi_limit":', n_arnoldi, ',"iterations":', iterations, &
+                ',"normalized_equation_residual":', residual, ',"converged":', trim(converged_json), &
+                ',"reason":"', trim(reason), '",'
+            record_json = trim(record_head) // &
+                '"residual_norm":"max_species_normwise_backward_error_l1",' // &
+                '"normalized_equation_residual_by_species":['
+            do species_index = 0, num_spec-1
+                if (species_index > 0) record_json = record_json // ','
+                write(number_json, '(es24.16e3)') normalized_residual_species(species_index)
+                record_json = record_json // trim(number_json)
+            end do
+            write(record_head, '(a,es24.16e3,a,es24.16e3,a)') &
+                '],"density_constraint_residual":', maxval(density_constraint_species), &
+                ',"energy_constraint_residual":', maxval(energy_constraint_species), '}'
+            write(*, '(a)') record_json // trim(record_head)
+            flush(6)
+        end if
+        ! Every rank receives the same globally reduced convergence decision.
+        ! No rank may continue to publish transport from an unconverged solve.
+        if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
+    end subroutine report_solve
+
     subroutine next_iteration(n, fold, fnew)
 
-        use arnoldi_mod, only: fzero, mode, tol
+        use arnoldi_mod, only: fzero, mode, bordered_projection
 
         implicit none
 
@@ -4567,15 +4724,9 @@ CONTAINS
 
             fnew = fnew + fold
 
-            ! -> remove null-space of axisymmetric
-            ! solution (particle and energy conservation)
-            coef_dens = sum(densvec_bra*fnew)/denom_dens
-            fnew = fnew - (1.d0 - tol)*coef_dens*densvec_ket
-
-            if (isw_intp .eq. 1) then
-                coef_energ = sum(energvec_bra*fnew)/denom_energ
-                fnew = fnew - (1.d0 - tol)*coef_energ*energvec_ket
-            end if
+            ! Particle and energy conservation: bordered Richardson step.
+            call bordered_projection(n, size(conservation_bras, 2), conservation_bras, &
+                conservation_directions, fnew)
         else
 
             do i = 1, nz
