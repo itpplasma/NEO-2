@@ -97,6 +97,14 @@
   conl_over_mfp = 1.0e-3    ! collisionality parameter [1.0d-3]
   conl_over_mfp_vec = 0.0d0 ! [0.0d0]
   isw_axisymm  = 0          ! [0]
+  k_coefficient_only = .false. ! Single-species axisymmetric k_cof output only.
+                              ! Requires one MPI rank, Laguerre momentum, HDF5,
+                              ! prop_reconstruct=0 and no plots; omits Spitzer
+                              ! drive, transport matrices and distributions.
+  k_iter_solver = 0         ! 0: Richardson; 1: K-only GMRES(30), same tolerance.
+                           ! niter includes the independent final residual check.
+  k_sparse_backend = 0      ! 0: UMFPACK; 2: MUMPS (needs NEO2_USE_FORTSPARSE),
+                            ! requires k_iter_solver=1 and sparse_solve_method=3.
   isw_energy = 0            ! 0: no energy conservation [default]
                             ! 1: with energy conservation
   isw_integral = 0          ! 0: no momentum convervation [default]
@@ -177,6 +185,11 @@
 /
 
 &settings
+  ! K-only surface batch: rows 'boozer_s R_cm Z_cm conl_over_mfp', # comments allowed.
+  k_surface_file = ''      ! Nonempty enables batching; requires k_coefficient_only.
+  k_output_file = 'k_coefficients.h5' ! Aggregate result incl. integral_converged flags.
+  surface_first = 1        ! First table row, one-based [1].
+  surface_last = 2147483647 ! Last table row, capped at table length [all].
   aiota_tokamak=0.35145    ! [1.0d0/3.0d0]
   asymp_margin_zero = 10   ! [10]
   asymp_margin_npass = 4   ! [4]

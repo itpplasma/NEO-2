@@ -11,7 +11,7 @@ module collop
   ! WINNY
   use collisionality_mod, only : collpar,collpar_min,collpar_max, &
        v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz, conl_over_mfp, &
-       isw_relativistic, T_e, &
+       isw_relativistic, T_e, k_surface_batch, &
        lsw_multispecies, isw_coul_log, num_spec, conl_over_mfp_spec, collpar_spec, &
        z_spec, m_spec, T_spec, n_spec, &
        collop_bspline_dist, collop_bspline_order, lsw_nbi, T_nbi, m_nbi
@@ -223,12 +223,14 @@ module collop
             collpar_min = collpar * nu_D_hat(v_max_resolution)
          end if
 
-         open(400,file='collpar.dat')
-         write (400,*) "Collpar", collpar
-         write (400,*) "Collpar_max", collpar_max
-         write (400,*) "Collpar_min", collpar_min
-         write (400,*) "nu_D_hat at v_min_res", nu_D_hat(v_min_resolution)
-         write (400,*) "nu_D_hat at v_max_res", nu_D_hat(v_max_resolution)
+         if (.not. k_surface_batch) then
+            open(400,file='collpar.dat')
+            write (400,*) "Collpar", collpar
+            write (400,*) "Collpar_max", collpar_max
+            write (400,*) "Collpar_min", collpar_min
+            write (400,*) "nu_D_hat at v_min_res", nu_D_hat(v_min_resolution)
+            write (400,*) "nu_D_hat at v_max_res", nu_D_hat(v_max_resolution)
+         end if
 
          ! Non-relativistic Limit according to Trubnikov
 
@@ -442,7 +444,7 @@ module collop
       weightlag(3,:) = asource_temp
       deallocate(asource_temp)
 
-      if (mpro%isMaster()) call write_collop()
+      if (mpro%isMaster() .and. .not. k_surface_batch) call write_collop()
 
     contains
 
