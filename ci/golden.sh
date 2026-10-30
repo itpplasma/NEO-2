@@ -63,7 +63,7 @@ export REFERENCE_NEO2_QL=$root/base/build/NEO-2-QL/neo_2_ql.x
 check base-lorentz env TOL=1e-14 LEGACY_TOL=1e-10 MAGNETICS_TOL=1e-12 make -k lorentz
 check base-ql env TOL=1e-15 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12 make -k ql
 check performance-ql env TOL=1e-15 make performance_ql
-check par env TOL=1e-15 LEGACY_TOL=4e-8 make par
+check par env TOL=1e-15 LEGACY_TOL=1e-8 make par
 if [ -f "$test_dir/performance_ql/performance_report.txt" ]; then
     cp "$test_dir/performance_ql/performance_report.txt" ci-out/
 fi
