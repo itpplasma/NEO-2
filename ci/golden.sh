@@ -40,19 +40,11 @@ for reference in stable base; do
 done
 git -C "$root/stable" checkout --detach "$SCI_STABLE_REF"
 make -C "$root/stable" LIBNEO_REF="$SCI_STABLE_REF"
-status=0
-check() {
-    local name=$1
-    shift
-    local rc=0
-    (cd "$test_dir" && "$@") || rc=$?
-    printf '%s\t%s\n' "$name" "$rc" | tee -a "$src/ci-out/checks.tsv"
-    [ "$rc" -eq 0 ] || status=1
-}
+. "$src/ci/golden-checks.sh"
 export REFERENCE_NEO2_PAR=$root/stable/build/NEO-2-PAR/neo_2_par.x
 export REFERENCE_NEO2_QL=$root/stable/build/NEO-2-QL/neo_2_ql.x
-check stable-lorentz env TOL=1e-14 LEGACY_TOL=1e-10 MAGNETICS_TOL=1e-12 make -k lorentz
-check stable-ql env TOL=1e-10 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12 make -k ql
+compare stable-lorentz lorentz TOL=1e-14 LEGACY_TOL=1e-10 MAGNETICS_TOL=1e-12
+compare stable-ql ql TOL=1e-10 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12
 
 # Keep the native order: a freshly built base reference invalidates the
 # timestamp-based case outputs from the stable-reference comparisons.
@@ -60,9 +52,12 @@ git -C "$root/base" checkout --detach "$SCI_BASE_SHA"
 make -C "$root/base"
 export REFERENCE_NEO2_PAR=$root/base/build/NEO-2-PAR/neo_2_par.x
 export REFERENCE_NEO2_QL=$root/base/build/NEO-2-QL/neo_2_ql.x
-check base-lorentz env TOL=1e-14 LEGACY_TOL=1e-10 MAGNETICS_TOL=1e-12 make -k lorentz
-check base-ql env TOL=1e-15 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12 make -k ql
-check performance-ql env TOL=1e-15 make performance_ql
+compare base-lorentz lorentz TOL=1e-14 LEGACY_TOL=1e-10 MAGNETICS_TOL=1e-12
+compare base-ql ql TOL=1e-15 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12
+# The performance case has no legacy record, only the base comparison.
+base_check=check
+[ "${SCI_GOLDEN_CHANGE:-0}" != 1 ] || base_check=report
+$base_check performance-ql env TOL=1e-15 make performance_ql
 check par env TOL=1e-15 LEGACY_TOL=4e-8 make par
 if [ -f "$test_dir/performance_ql/performance_report.txt" ]; then
     cp "$test_dir/performance_ql/performance_report.txt" ci-out/
