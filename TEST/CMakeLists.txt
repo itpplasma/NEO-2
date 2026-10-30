@@ -88,3 +88,8 @@ set_tests_properties(binarysplit_max_index_test PROPERTIES
     WILL_FAIL TRUE
     TIMEOUT 30
 )
+
+# Dry run of the golden-change CI path; skipped without jq.
+add_test(NAME golden_change_ci_test
+         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_golden_change.sh)
+set_tests_properties(golden_change_ci_test PROPERTIES SKIP_RETURN_CODE 77)
