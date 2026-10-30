@@ -19,7 +19,8 @@ dependencies = [
     "libneo>=0.0.3",
     "h5py>=3.10.0",
     "scipy>=1.7.0",
-    "matplotlib>=3.4.0"
+    "matplotlib>=3.4.0",
+    "f90nml>=1.4"
 ]
 
 [project.urls]
