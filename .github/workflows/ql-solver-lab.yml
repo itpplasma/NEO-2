@@ -71,13 +71,29 @@ jobs:
           set -o pipefail
           cmake -S . -B build/native -G Ninja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee native-receipts/configure.log
           cmake --build build/native --target neo_2_ql.x --parallel 2 2>&1 | tee native-receipts/build.log
-      - name: Capture public two-species kinetic system
+          mkdir -p native-receipts/runtime/lib
+          cp build/native/NEO-2-QL/neo_2_ql.x native-receipts/runtime/
+          ldd build/native/NEO-2-QL/neo_2_ql.x > native-receipts/runtime/ldd.txt
+          ldd build/native/NEO-2-QL/neo_2_ql.x | awk '/=> \/.* / {print $3}' | while read lib; do cp -L "$lib" native-receipts/runtime/lib/; done
+      - name: Capture public two-species kinetic systems
         run: |
-          python3 TEST/solver_lab/capture_native.py --prepare native-receipts/small --eta 8 --steps 12 --lag 3 --density 1e13
           exe="$PWD/build/native/NEO-2-QL/neo_2_ql.x"
-          cd native-receipts/small
-          /usr/bin/time -v env NEO2_CAPTURE=AX timeout 240 mpiexec --oversubscribe -n 2 "$exe" > capture.log 2>&1
-          test -s native_AX_0.bin && test -s native_AX_1.bin
+          root="$PWD"
+          printf 'case\texit\n' > native-receipts/capture-status.tsv
+          for entry in 'small 8 12 3 1.0d-3' 'medium 20 32 3 1.0d-3' 'large 40 64 3 1.0d-3' 'collisional 20 32 3 1.0d0'; do
+            read name eta steps lag nu <<< "$entry"
+            dest="$root/native-receipts/$name"
+            python3 TEST/solver_lab/capture_native.py --prepare "$dest" --eta "$eta" --steps "$steps" --lag "$lag" --density 1e13
+            sed -i -E 's/^( *isw_coul_log *=)[^!]* /\1 0 /' "$dest/neo2.in"
+            sed -i -E "s/^( *conl_over_mfp *=)[^!]*/\1 $nu /" "$dest/neo2.in"
+            sha256sum "$dest/neo2.in" > "$dest/final-input.sha256"
+            set +e
+            (cd "$dest" && /usr/bin/time -v env NEO2_CAPTURE=AX timeout 180 mpiexec --oversubscribe -n 2 "$exe" > capture.log 2>&1)
+            result=$?
+            set -e
+            printf '%s\t%s\n' "$name" "$result" >> native-receipts/capture-status.tsv
+          done
+          test -s native-receipts/small/native_AX_0.bin && test -s native-receipts/small/native_AX_1.bin
       - name: Upload public operator data and logs
         if: always()
         uses: actions/upload-artifact@v4
