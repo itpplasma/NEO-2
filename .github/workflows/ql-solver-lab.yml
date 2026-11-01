@@ -1,0 +1,48 @@
+name: QL solver lab
+
+on:
+  push:
+    branches: [feat/ql-moment-schur-20261101]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ql-solver-lab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      OPENBLAS_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install isolated solver prerequisites
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends gfortran libblas-dev liblapack-dev ninja-build
+      - name: Record exact public source
+        run: |
+          mkdir -p receipts
+          git rev-parse HEAD > receipts/source-commit.txt
+          git archive --format=tar.gz HEAD > receipts/source.tar.gz
+          gfortran --version > receipts/compiler.txt
+          lscpu > receipts/cpu.txt
+      - name: Build and test reference kernels
+        run: |
+          set -o pipefail
+          cmake -S TEST/moment_reduction -B build/solver-lab -G Ninja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee receipts/configure.log
+          cmake --build build/solver-lab --parallel 2 2>&1 | tee receipts/build.log
+          ctest --test-dir build/solver-lab -V 2>&1 | tee receipts/tests.log
+      - name: Upload reproducibility receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ql-solver-lab-${{ github.sha }}
+          path: receipts/
+          retention-days: 1
+          if-no-files-found: error
