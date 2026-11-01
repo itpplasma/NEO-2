@@ -64,3 +64,11 @@ set_tests_properties(ql_moment_factorization ql_moment_schur PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 60
     ENVIRONMENT "OPENBLAS_NUM_THREADS=1;OMP_NUM_THREADS=1")
+
+# Opt-in CPU microbenchmark (NOT CTest: timed tests are not CI correctness gates).
+add_executable(bench_ql_moment_vs_full bench_moment_vs_full.f90)
+target_link_libraries(bench_ql_moment_vs_full PRIVATE neo2_moment_test_core)
+set_target_properties(bench_ql_moment_vs_full PROPERTIES Fortran_MODULE_DIRECTORY "${MOMENT_MOD_DIR}")
+if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(bench_ql_moment_vs_full PRIVATE -ffree-line-length-none)
+endif()

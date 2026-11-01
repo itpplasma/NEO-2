@@ -71,3 +71,42 @@ does not apply to untouched legacy sources.
 The implementation is kept off the production selection path until these gates
 are addressed. Reported floating-point agreement verifies these fixtures; it
 is not a general analytic conditioning or convergence bound.
+
+## Opt-in performance microbenchmark (synthetic, 2026-11-01)
+
+Run `cmake --build build/moment-release --target bench_ql_moment_vs_full`, then
+`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 build/moment-release/bench_ql_moment_vs_full`.
+The benchmark compares the same complex restarted GMRES implementation in two
+coordinates: full-space `W=I, D=UCV` and moment-space `W=V, D=UC`. Both use
+**the same** manufactured full original operator `L=P-UCV`, forward-substitution
+`P^-1` from a bidiagonal streaming surrogate, collision Legendre deposition
+patterns (including parity and bounce), two species and manufactured coefficients.
+The original equation and complete reconstructed vector are checked after every
+solve. The required original residual is `2e-10*||q||_2`; restart is 20 and the
+maximum is 120 Krylov iterations. Eight timed samples follow a warmup; only
+solve time is measured (no model or coefficient setup or sparse factorization).
+
+Measured on the available container AMD EPYC 9V74 virtual CPU, GNU Fortran 14.2,
+Release `-O3`, one BLAS/OpenMP thread, process affined to CPU 2:
+
+| Full dimensions | Moment dimensions | Full median CPU | Moment median CPU | Speedup | Full/moment Krylov steps | Original residual full/moment |
+|---:|---:|---:|---:|---:|---:|---:|
+| 9,792 | 1,152 | 22.832 ms | 9.932 ms | 2.30x | 17 / 17 | 3.22e-9 / 2.66e-9 |
+| 52,224 | 2,048 | 424.876 ms | 111.986 ms | 3.79x | 53 / 56 | 5.59e-8 / 1.47e-8 |
+| 145,600 | 3,200 | 1,084.468 ms | 265.901 ms | 4.08x | 50 / 54 | 6.19e-8 / 1.18e-8 |
+
+Maximum full-versus-moment reconstructed vector differences were 9.3e-11,
+3.4e-9 and 5.6e-9 respectively. The full-space and moment-space algorithms
+satisfy the same original-equation tolerance; the reduced solver used 0, 3
+and 4 more Krylov steps respectively, but fewer and shorter global-vector
+orthogonalizations. Timings vary with CPU scheduling. Earlier repetitions
+showed approximately 2.3–2.9x, 3.5–3.9x, and 3.9–4.2x respectively.
+
+**Limitations.** This is not the production Arnoldi-Richardson baseline, nor
+production NEO-2's streaming matrix, actual collision coefficients, MPI,
+physical inputs, n1e21 or lag-14 results. In an additional uncommitted stress
+setting (gain 1.7 for the largest case), *both* full and moment GMRES exhausted
+120 iterations and had O(10) original residual norms. Moment reduction alone
+does not cure a highly unfavorable spectrum or inverse noise floor.
+No production speedup, wall-time improvement over native NEO-2, or Stafford-
+specific acceleration is established.
