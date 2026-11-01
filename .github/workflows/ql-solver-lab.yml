@@ -46,3 +46,43 @@ jobs:
           path: receipts/
           retention-days: 1
           if-no-files-found: error
+
+  native-public-capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      OPENBLAS_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install native QL dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends gfortran gcc g++ cmake ninja-build make autoconf automake libtool pkg-config libblas-dev liblapack-dev libsuitesparse-dev libgsl-dev libnetcdf-dev libnetcdff-dev libhdf5-dev libfftw3-dev libopenmpi-dev openmpi-bin
+      - name: Instrument capture without changing discretization
+        run: |
+          mkdir -p native-receipts
+          git rev-parse HEAD > native-receipts/source-commit.txt
+          python3 TEST/solver_lab/capture_native.py --instrument | tee native-receipts/instrumentation.log
+      - name: Build native QL
+        run: |
+          set -o pipefail
+          cmake -S . -B build/native -G Ninja -DCMAKE_BUILD_TYPE=Release 2>&1 | tee native-receipts/configure.log
+          cmake --build build/native --target neo_2_ql.x --parallel 2 2>&1 | tee native-receipts/build.log
+      - name: Capture public two-species kinetic system
+        run: |
+          python3 TEST/solver_lab/capture_native.py --prepare native-receipts/small --eta 8 --steps 12 --lag 3 --density 1e13
+          exe="$PWD/build/native/NEO-2-QL/neo_2_ql.x"
+          cd native-receipts/small
+          /usr/bin/time -v env NEO2_CAPTURE=AX timeout 240 mpiexec --oversubscribe -n 2 "$exe" > capture.log 2>&1
+          test -s native_AX_0.bin && test -s native_AX_1.bin
+      - name: Upload public operator data and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ql-native-public-${{ github.sha }}
+          path: native-receipts/
+          retention-days: 1
+          if-no-files-found: error
