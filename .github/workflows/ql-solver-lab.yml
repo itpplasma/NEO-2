@@ -70,16 +70,17 @@ jobs:
           cp build/native/NEO-2-QL/neo_2_ql.x native-receipts/runtime/
           cp -L /usr/bin/orterun /usr/bin/orted native-receipts/runtime/usr/bin/
           cp -r /usr/share/openmpi native-receipts/runtime/usr/share/
-          cp -r /usr/lib/x86_64-linux-gnu/openmpi native-receipts/runtime/usr/lib/x86_64-linux-gnu/
+          cp -r /usr/lib/x86_64-linux-gnu/openmpi /usr/lib/x86_64-linux-gnu/pmix2 native-receipts/runtime/usr/lib/x86_64-linux-gnu/
           cp /usr/include/suitesparse/umfpack*.h native-receipts/runtime/include/
           ldd build/native/NEO-2-QL/neo_2_ql.x > native-receipts/runtime/ldd.txt
-          { ldd build/native/NEO-2-QL/neo_2_ql.x; ldd /usr/bin/orterun; } | awk '/=> \/.* / {print $3}' | sort -u | while read lib; do cp -L "$lib" native-receipts/runtime/lib/; done
-      - name: Capture public fixed-grid and collisional kinetic systems
+          { ldd build/native/NEO-2-QL/neo_2_ql.x; ldd /usr/bin/orterun; ldd /usr/lib/x86_64-linux-gnu/openmpi/lib/openmpi3/mca_pmix_ext3x.so; ldd /usr/lib/x86_64-linux-gnu/openmpi/lib/openmpi3/mca_reachable_netlink.so; } | awk '/=> \/.* / {print $3}' | sort -u | while read lib; do cp -L "$lib" native-receipts/runtime/lib/; done
+          tar --exclude='*.git*' -czf native-receipts/native-build.tar.gz build/native
+      - name: Capture closed-orbit public kinetic systems
         run: |
           exe="$PWD/build/native/NEO-2-QL/neo_2_ql.x"
           root="$PWD"
           printf 'case\texit\n' > native-receipts/capture-status.tsv
-          for entry in 'fixed8 8 24 3 0 1' 'fixed24 24 48 3 0 1' 'fixed48 48 96 3 0 1' 'highnu 20 32 3 1 100'; do
+          for entry in 'closed8 8 480 3 0 1' 'closed24 24 480 3 0 1' 'closed48 48 480 3 0 1' 'closed_highnu 24 480 3 0 100'; do
             read name eta steps lag bins scale <<< "$entry"
             dest="$root/native-receipts/$name"
             python3 TEST/solver_lab/capture_native.py --prepare "$dest" --eta "$eta" --steps "$steps" --lag "$lag" --density 1e13
@@ -87,7 +88,7 @@ jobs:
           import sys,re,hashlib
           from pathlib import Path
           p=Path(sys.argv[1]);text=p.read_text();scale=float(sys.argv[3])
-          values={'isw_coul_log':'0','bin_split_mode':sys.argv[2],
+          values={'isw_coul_log':'0','bin_split_mode':sys.argv[2],'nperiod':'2',
                   'conl_over_mfp_vec':f'{-2.8980601244164802e-6*scale:.16e}, {-4.7125144425366139e-6*scale:.16e}'}
           for key,value in values.items():
               text,n=re.subn(rf'(?im)^(\s*{key}\s*=)[^!\n]*',lambda m:m[1]+' '+value+' ',text)
@@ -100,7 +101,7 @@ jobs:
             set -e
             printf '%s\t%s\n' "$name" "$result" >> native-receipts/capture-status.tsv
           done
-          test -s native-receipts/fixed8/native_AX_0.bin && test -s native-receipts/fixed8/native_AX_1.bin
+          test -s native-receipts/closed8/native_AX_0.bin && test -s native-receipts/closed8/native_AX_1.bin
       - name: Upload public operator data and logs
         if: always()
         uses: actions/upload-artifact@v4
