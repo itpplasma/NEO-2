@@ -88,3 +88,5 @@ set_tests_properties(binarysplit_max_index_test PROPERTIES
     WILL_FAIL TRUE
     TIMEOUT 30
 )
+
+add_subdirectory(moment_reduction)
