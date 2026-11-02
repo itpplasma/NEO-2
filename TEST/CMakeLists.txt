@@ -95,6 +95,15 @@ set_tests_properties(bordered_conservation_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_bordered_residual test_bordered_residual.f90)
+target_link_libraries(test_bordered_residual neo2_ql)
+add_test(NAME bordered_residual_test COMMAND test_bordered_residual)
+set_tests_properties(bordered_residual_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_collop_energy_conservation test_collop_energy_conservation.f90)
 target_link_libraries(test_collop_energy_conservation common)
 add_test(NAME collop_energy_conservation_test COMMAND test_collop_energy_conservation)

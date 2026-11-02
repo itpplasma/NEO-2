@@ -20,7 +20,12 @@ The normalized equation residual is the maximum species normwise backward error:
 
 Each species has its own numerator and denominator; their ratios appear in
 `normalized_equation_residual_by_species` and the scalar is their maximum.
-`residual_norm` is `max_species_normwise_backward_error_l1`. Here `M` is the
+For the axisymmetric system the numerator is the residual of the bordered
+system below, `q + C_integral f - M f - K lambda` with the least-squares
+multiplier `lambda`, and `residual_norm` is
+`max_species_normwise_backward_error_l1_bordered`. The multiplier force
+`||K lambda||_1`, normalized by the same denominator, is reported as
+`multiplier_force`. Here `M` is the
 assembled kinetic operator (`amat_symm` for the axisymmetric system,
 `amat_sp` for the nonaxisymmetric system); `C_integral` is applied with the
 same coupled collision action used by the equation. Evaluation occurs
@@ -47,9 +52,12 @@ followed by
     f_new = y - G (B' G)^-1 B' y,     G = P^-1 K.
 
 A fixed point satisfies `B' f = 0` and `L f + K lambda = q`. The kets are only
-approximate null vectors of the coupled operator, so `K lambda` is the part of
-the equation residual that the constraints cost; it is included in the
-reported residual. The earlier filter subtracted half of the ket component,
+approximate null vectors of the coupled operator (collisions exchange energy
+between species, and the assembled operator conserves energy only
+approximately), so `lambda` does not vanish and the plain residual `q - L f`
+stalls at the multiplier force for every outer solver. The acceptance
+therefore measures the bordered residual and reports `multiplier_force`
+separately. The earlier filter subtracted half of the ket component,
 `y - (1 - tol) K (B' y)/(B' K)` with `tol = 0.5`, whose fixed point carries
 the residual `(1 - tol) P K c` instead.
 

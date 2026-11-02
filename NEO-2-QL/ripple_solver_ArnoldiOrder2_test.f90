@@ -207,6 +207,8 @@ subroutine ripple_solver_ArnoldiO2( &
     ! Constraint bras B and directions G = P^-1 K of the bordered
     ! axisymmetric solve (see arnoldi_mod::bordered_projection).
     real(dp), dimension(:, :), allocatable :: conservation_bras, conservation_directions
+    ! The kets K themselves, for the multiplier of the bordered residual.
+    real(dp), dimension(:, :), allocatable :: conservation_kets
     ! End Use pre-conditioned iterations
     complex(dp), dimension(:, :), allocatable :: flux_vector, source_vector
     complex(dp), dimension(:, :), allocatable :: flux_vector_plot
@@ -275,6 +277,7 @@ subroutine ripple_solver_ArnoldiO2( &
     real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec
     real(dp) :: normalized_residual_species(0:num_spec-1)
     real(dp) :: density_constraint_species(0:num_spec-1), energy_constraint_species(0:num_spec-1)
+    real(dp) :: multiplier_force_species(0:num_spec-1)
     logical :: problem_type
     real(dp), dimension(:, :), allocatable :: source_vector_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
@@ -3721,6 +3724,7 @@ CONTAINS
         end if
 
         if (allocated(conservation_bras)) deallocate (conservation_bras, conservation_directions)
+        if (allocated(conservation_kets)) deallocate (conservation_kets)
 
     end subroutine solve_eqs
 
@@ -3742,6 +3746,8 @@ CONTAINS
             conservation_bras(:, 2) = real(energvec_bra, dp)
             conservation_directions(:, 2) = real(energvec_ket, dp)
         end if
+        if (allocated(conservation_kets)) deallocate (conservation_kets)
+        allocate (conservation_kets, source=conservation_directions)
         do constraint = 1, nconstraints
             call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
                 conservation_directions(:, constraint), iopt)
@@ -4572,15 +4578,16 @@ CONTAINS
     ! Original coupled assembled equation: M f - C_integral f = q.
     ! Evaluate before the sparse inverse and conservation-nullspace projection.
     ! Maximum species normwise backward error, not a Richardson update norm:
-    ! ||q+C_integral f-M f||_1 / (||q||_1+||C_integral f||_1+||M f||_1).
+    ! ||q+C_integral f-M f-K lambda||_1 / (||q||_1+||C_integral f||_1+||M f||_1),
+    ! with the bordered multiplier lambda in the axisymmetric system only.
     subroutine equation_residual(n, solution, residual)
         use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
-        use arnoldi_mod, only: fzero
+        use arnoldi_mod, only: fzero, multiplier_force
         integer, intent(in) :: n
         complex(dp), intent(in) :: solution(n)
         real(dp), intent(out) :: residual
-        complex(dp) :: collision(n), lhs(n), work(n)
-        real(dp) :: numerators(0:num_spec-1), denominators(0:num_spec-1)
+        complex(dp) :: collision(n), lhs(n), work(n), residual_vector(n), kforce(n)
+        real(dp) :: numerators(0:num_spec-1), denominators(0:num_spec-1), force(0:num_spec-1)
         integer :: entry
 
         collision = (0.0d0, 0.0d0)
@@ -4599,10 +4606,22 @@ CONTAINS
                 lhs(irow(entry)) = lhs(irow(entry)) + amat_sp(entry)*solution(icol(entry))
             end do
         end if
-        numerators(ispec) = sum(abs(fzero + collision - lhs))
+        residual_vector = fzero + collision - lhs
         denominators(ispec) = sum(abs(fzero)) + sum(abs(collision)) + sum(abs(lhs))
+        force(ispec) = 0.0d0
+        if (problem_type .and. allocated(conservation_kets)) then
+            ! Residual of the bordered equation [L K; B' 0][f; lambda] = [q; 0]
+            ! with the least-squares lambda; the force K lambda is reported.
+            call multiplier_force(n, size(conservation_kets, 2), conservation_kets, &
+                residual_vector, kforce, own_species)
+            residual_vector = residual_vector - kforce
+            force(ispec) = sum(abs(kforce))
+        end if
+        numerators(ispec) = sum(abs(residual_vector))
         call mpro%allgather_inplace(numerators)
         call mpro%allgather_inplace(denominators)
+        call mpro%allgather_inplace(force)
+        multiplier_force_species = force/max(denominators, tiny(1.0d0))
         density_constraint_species = 0.0d0
         energy_constraint_species = 0.0d0
         if (problem_type) then
@@ -4670,16 +4689,17 @@ CONTAINS
                 ',"normalized_equation_residual":', residual, ',"converged":', trim(converged_json), &
                 ',"reason":"', trim(reason), '",'
             record_json = trim(record_head) // &
-                '"residual_norm":"max_species_normwise_backward_error_l1",' // &
+                '"residual_norm":"max_species_normwise_backward_error_l1_bordered",' // &
                 '"normalized_equation_residual_by_species":['
             do species_index = 0, num_spec-1
                 if (species_index > 0) record_json = record_json // ','
                 write(number_json, '(es24.16e3)') normalized_residual_species(species_index)
                 record_json = record_json // trim(number_json)
             end do
-            write(record_head, '(a,es24.16e3,a,es24.16e3,a)') &
+            write(record_head, '(a,es24.16e3,a,es24.16e3,a,es24.16e3,a)') &
                 '],"density_constraint_residual":', maxval(density_constraint_species), &
-                ',"energy_constraint_residual":', maxval(energy_constraint_species), '}'
+                ',"energy_constraint_residual":', maxval(energy_constraint_species), &
+                ',"multiplier_force":', maxval(multiplier_force_species), '}'
             write(*, '(a)') record_json // trim(record_head)
             flush(6)
         end if
@@ -4687,6 +4707,12 @@ CONTAINS
         ! No rank may continue to publish transport from an unconverged solve.
         if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
     end subroutine report_solve
+
+    !> The conservation columns of this solve belong to the own species only.
+    subroutine own_species(k, x)
+        integer, intent(in) :: k
+        complex(dp), intent(inout) :: x(k)
+    end subroutine own_species
 
     subroutine next_iteration(n, fold, fnew)
 

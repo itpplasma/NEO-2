@@ -338,6 +338,36 @@ contains
     f = f - matmul(directions, coefficients(:, 1))
   end subroutine bordered_projection
 
+  !> Least-squares multiplier force K lambda of a residual r of the bordered
+  !> system [L K; B' 0][f; lambda] = [q; 0]. reduce sums a complex vector over
+  !> the ranks that share a constraint column (identity for species-local
+  !> columns).
+  subroutine multiplier_force(n, m, kets, r, kforce, reduce)
+    integer, intent(in) :: n, m
+    double precision, intent(in) :: kets(n, m)
+    complex(kind=kind(1d0)), intent(in) :: r(n)
+    complex(kind=kind(1d0)), intent(out) :: kforce(n)
+    interface
+      subroutine reduce(k, x)
+        integer, intent(in) :: k
+        complex(kind=kind(1d0)), intent(inout) :: x(k)
+      end subroutine reduce
+    end interface
+    complex(kind=kind(1d0)) :: gram(m, m), lambda(m, 1), sums(m*m + m)
+    integer :: pivots(m), info
+
+    kforce = (0d0, 0d0)
+    if (m == 0) return
+    sums(1:m*m) = reshape(cmplx(matmul(transpose(kets), kets), 0d0, kind(1d0)), [m*m])
+    sums(m*m + 1:) = matmul(transpose(kets), r)
+    call reduce(m*m + m, sums)
+    gram = reshape(sums(1:m*m), [m, m])
+    lambda(:, 1) = sums(m*m + 1:)
+    call zgesv(m, 1, gram, m, pivots, lambda, m, info)
+    if (info /= 0) error stop 'multiplier_force: singular ket Gram matrix'
+    kforce = matmul(kets, lambda(:, 1))
+  end subroutine multiplier_force
+
   !-----------------------------------------------------------------------------
   !> Computes m Ritz eigenvalues (approximations to extreme eigenvalues)
   !> of the iteration procedure of the vector with dimension n.
