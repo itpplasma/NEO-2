@@ -3724,25 +3724,58 @@ CONTAINS
 
     end subroutine solve_eqs
 
-    !> Density and, with the integral part, energy of the own species are
-    !> held at zero by bordering the equation with the Maxwellian kets K.
+    !> The density of each species and, with the integral part, the total
+    !> energy are held at zero by bordering the equation with the kets K.
     !> The kets are only approximate null vectors of the coupled operator,
     !> so the border direction is G = P^-1 K with P the factorized matrix.
+    !> Energy is held only in total: holding each species' energy at zero
+    !> leaves a multiplier residual K*lambda of the energy exchange.
     subroutine prepare_conservation_border()
-        integer :: nconstraints, constraint
+        use arnoldi_mod, only: energy_null_pair
+        integer :: nconstraints, constraint, other, entry
+        real(dp) :: exchange(0:num_spec-1, 0:num_spec-1), ratio(num_spec)
+        real(dp) :: ket_weight(num_spec), bra_weight(num_spec)
+        complex(dp), allocatable :: ket(:), collision(:), lhs(:)
 
-        nconstraints = 1
-        if (isw_intp .eq. 1) nconstraints = 2
+        ! One density constraint per species (column ispec+1) and, with the
+        ! integral part, one shared total-energy constraint (last column).
+        nconstraints = num_spec
+        if (isw_intp .eq. 1) nconstraints = num_spec + 1
         if (allocated(conservation_bras)) deallocate (conservation_bras, conservation_directions)
         allocate (conservation_bras(n_2d_size, nconstraints))
         allocate (conservation_directions(n_2d_size, nconstraints))
-        conservation_bras(:, 1) = real(densvec_bra, dp)
-        conservation_directions(:, 1) = real(densvec_ket, dp)
-        if (nconstraints == 2) then
-            conservation_bras(:, 2) = real(energvec_bra, dp)
-            conservation_directions(:, 2) = real(energvec_ket, dp)
+        conservation_bras = 0.0d0
+        conservation_directions = 0.0d0
+        conservation_bras(:, ispec + 1) = real(densvec_bra, dp)
+        conservation_directions(:, ispec + 1) = real(densvec_ket, dp)
+        if (isw_intp .eq. 1) then
+            ! Energy moments of the assembled operator M - C on each species'
+            ! energy ket. Per-species energy is exchanged between species, so
+            ! only the null combination of these kets is held at zero.
+            allocate (ket(n_2d_size), collision(n_2d_size), lhs(n_2d_size))
+            exchange = 0.0d0
+            do other = 0, num_spec - 1
+                ket = (0.0d0, 0.0d0)
+                if (other == ispec) ket = energvec_ket
+                call integral_part(ket, collision)
+                lhs = (0.0d0, 0.0d0)
+                do entry = 1, nz_symm
+                    lhs(irow_symm(entry)) = lhs(irow_symm(entry)) + &
+                        amat_symm(entry)*ket(icol_symm(entry))
+                end do
+                ! Column ispec holds this species' moments for the column gather.
+                exchange(other, ispec) = real(sum(energvec_bra*(lhs - collision)), dp)
+            end do
+            call mpro%allgather_inplace(exchange)
+            call energy_null_pair(num_spec, transpose(exchange), ket_weight, bra_weight, ratio)
+            if (ispec == 0) print '(a,*(es11.3))', &
+                ' QL energy exchange singular values / largest:', ratio
+            conservation_bras(:, nconstraints) = bra_weight(ispec + 1)*real(energvec_bra, dp)
+            conservation_directions(:, nconstraints) = ket_weight(ispec + 1)*real(energvec_ket, dp)
+            deallocate (ket, collision, lhs)
         end if
         do constraint = 1, nconstraints
+            if (all(conservation_directions(:, constraint) == 0.0d0)) cycle
             call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
                 conservation_directions(:, constraint), iopt)
         end do
@@ -4608,12 +4641,19 @@ CONTAINS
         if (problem_type) then
             density_constraint_species(ispec) = abs(sum(densvec_bra*solution))/ &
                 max(sum(abs(densvec_bra))*maxval(abs(solution)), tiny(1.0d0))
-            if (isw_intp == 1) then
-                energy_constraint_species(ispec) = abs(sum(energvec_bra*solution))/ &
-                    max(sum(abs(energvec_bra))*maxval(abs(solution)), tiny(1.0d0))
-            end if
             call mpro%allgather_inplace(density_constraint_species)
-            call mpro%allgather_inplace(energy_constraint_species)
+            if (isw_intp == 1 .and. allocated(conservation_bras)) then
+                ! The shared total-energy constraint, reported for every species.
+                block
+                    complex(dp) :: energy(2)
+                    integer :: last
+                    last = size(conservation_bras, 2)
+                    energy(1) = sum(conservation_bras(:, last)*solution)
+                    energy(2) = sum(abs(conservation_bras(:, last)))*maxval(abs(solution))
+                    call species_sum(2, energy)
+                    energy_constraint_species = abs(energy(1))/max(real(energy(2), dp), tiny(1.0d0))
+                end block
+            end if
         end if
         where (.not. ieee_is_finite(density_constraint_species)) density_constraint_species = huge(1.0d0)
         where (.not. ieee_is_finite(energy_constraint_species)) energy_constraint_species = huge(1.0d0)
@@ -4688,9 +4728,19 @@ CONTAINS
         if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
     end subroutine report_solve
 
+    subroutine species_sum(k, x)
+        integer, intent(in) :: k
+        complex(dp), intent(inout) :: x(k)
+        complex(dp) :: parts(k, 0:num_spec-1)
+        parts = (0.0d0, 0.0d0)
+        parts(:, ispec) = x
+        call mpro%allgather_inplace(parts)
+        x = sum(parts, dim=2)
+    end subroutine species_sum
+
     subroutine next_iteration(n, fold, fnew)
 
-        use arnoldi_mod, only: fzero, mode, bordered_projection
+        use arnoldi_mod, only: fzero, mode, reduced_bordered_projection
 
         implicit none
 
@@ -4725,8 +4775,8 @@ CONTAINS
             fnew = fnew + fold
 
             ! Particle and energy conservation: bordered Richardson step.
-            call bordered_projection(n, size(conservation_bras, 2), conservation_bras, &
-                conservation_directions, fnew)
+            call reduced_bordered_projection(n, size(conservation_bras, 2), &
+                conservation_bras, conservation_directions, fnew, species_sum)
         else
 
             do i = 1, nz
