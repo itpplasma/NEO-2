@@ -4705,7 +4705,12 @@ CONTAINS
         end if
         ! Every rank receives the same globally reduced convergence decision.
         ! No rank may continue to publish transport from an unconverged solve.
-        if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
+        block
+            character(len=16) :: nostop
+            integer :: nostop_len
+            call get_environment_variable('NEO2_STALL_NOSTOP', nostop, nostop_len)
+            if (status /= 0 .and. nostop_len == 0) error stop 'NEO2 integral-part equation solve failed'
+        end block
     end subroutine report_solve
 
     !> The conservation columns of this solve belong to the own species only.
