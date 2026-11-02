@@ -1,10 +1,12 @@
 program test_total_energy_border
     ! Two species with four unknowns each. L0 = (I-Pi) D (I-Pi) has the
-    ! density and energy kets of each species as null vectors. An energy
-    ! exchange of order one, nu*(K_E1 - K_E2)(u_1 - u_2) with u_a the energy
-    ! amplitude of species a, couples them as D-T collisions do, so only the
-    ! common energy ket K_E1 + K_E2 stays null. The exact solution has zero
-    ! densities and zero total energy but opposite species energies.
+    ! density and energy kets of each species as null vectors and their bras
+    ! as left null vectors. An energy exchange of order one,
+    ! nu*(w_1 - w_2)(u_1 - u_2), couples the species as D-T collisions do:
+    ! u_a is the energy amplitude of species a (dual bra, blind to density)
+    ! and w_a its density-free energy ket, so densities stay conserved and
+    ! only the common energy ket K_E1 + K_E2 stays null. The exact solution
+    ! has zero densities and zero total energy but opposite species energies.
     use arnoldi_mod, only: iterator, bordered_projection, &
         reduced_bordered_projection, energy_null_pair
     use collisionality_mod, only: num_spec
@@ -17,7 +19,7 @@ program test_total_energy_border
     real(dp) :: local_bras(n, 2*nspec), local_directions(n, 2*nspec)
     real(dp) :: shared_bras(n, nspec + 1), shared_directions(n, nspec + 1)
     real(dp) :: exchange(nspec, nspec), alpha(nspec), beta(nspec), ratio(nspec)
-    real(dp) :: amplitude(nspec), residual
+    real(dp) :: amplitude(nspec), residual, dual(n, 2*nspec), free(n, nspec)
     complex(dp) :: source(n), solution(n)
     integer :: status, iterations, i, j, a, b, energy_column(nspec)
     logical :: use_shared
@@ -44,11 +46,15 @@ program test_total_energy_border
     proj = eye - matmul(kets, matmul(inverse(matmul(transpose(bras), kets), 2*nspec), &
         transpose(bras)))
     lmat = matmul(proj, matmul(diag, proj))
+    dual = matmul(bras, transpose(inverse(matmul(transpose(kets), bras), 2*nspec)))
+    do a = 1, nspec
+        free(:, a) = kets(:, energy_column(a)) - kets(:, 2*a - 1)* &
+            sum(bras(:, 2*a - 1)*kets(:, energy_column(a)))/sum(bras(:, 2*a - 1)*kets(:, 2*a - 1))
+    end do
     do a = 1, nspec
         do b = 1, nspec
-            lmat = lmat + nu*sign(1.0d0, 1.5d0 - abs(a - b))* &
-                outer(kets(:, energy_column(a)), bras(:, energy_column(b))/ &
-                sum(bras(:, energy_column(b))*kets(:, energy_column(b))))
+            lmat = lmat + nu*sign(1.0d0, 0.5d0 - abs(a - b))* &
+                outer(free(:, a), dual(:, energy_column(b)))
         end do
     end do
     do i = 1, n
@@ -62,7 +68,7 @@ program test_total_energy_border
     do i = 1, n
         exact(i) = 1.0d0 - 1.5d0*real(i - 1, dp)/real(n - 1, dp) + 0.3d0*sin(real(i - 1, dp))
     end do
-    exact = matmul(proj, exact) + 0.2d0*(kets(:, 2) - kets(:, 4))
+    exact = matmul(proj, exact) + 0.2d0*(free(:, 1) - free(:, 2))
     source = matmul(lmat, exact)
 
     ! Holding the energy of each species is inconsistent with this exact
