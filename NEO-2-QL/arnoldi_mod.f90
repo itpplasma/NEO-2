@@ -368,6 +368,57 @@ contains
     kforce = matmul(kets, lambda(:, 1))
   end subroutine multiplier_force
 
+  !> Bordered step whose constraint sums B'G and B'y run over all species.
+  !> Each rank holds its species' rows of B and G; reduce sums a complex
+  !> vector over the ranks. Column j of B and G is zero on ranks that do
+  !> not carry constraint j, so per-species and shared constraints mix.
+  subroutine reduced_bordered_projection(n, m, bras, directions, f, reduce)
+    integer, intent(in) :: n, m
+    double precision, intent(in) :: bras(n, m), directions(n, m)
+    complex(kind=kind(1d0)), intent(inout) :: f(n)
+    interface
+      subroutine reduce(k, x)
+        integer, intent(in) :: k
+        complex(kind=kind(1d0)), intent(inout) :: x(k)
+      end subroutine reduce
+    end interface
+    complex(kind=kind(1d0)) :: gram(m, m), coefficients(m, 1), sums(m*m + m)
+    integer :: pivots(m), info
+
+    if (m == 0) return
+    sums(1:m*m) = reshape(cmplx(matmul(transpose(bras), directions), 0d0, kind(1d0)), [m*m])
+    sums(m*m + 1:) = matmul(transpose(bras), f)
+    call reduce(m*m + m, sums)
+    gram = reshape(sums(1:m*m), [m, m])
+    coefficients(:, 1) = sums(m*m + 1:)
+    call zgesv(m, 1, gram, m, pivots, coefficients, m, info)
+    if (info /= 0) error stop 'reduced_bordered_projection: singular constraint Gram matrix'
+    f = f - matmul(directions, coefficients(:, 1))
+  end subroutine reduced_bordered_projection
+
+  !> Collisions conserve the total energy of all species, not the energy
+  !> of each. exchange(a,b) is the energy moment of species a of the
+  !> coupled operator applied to the energy ket of species b. Its right
+  !> and left singular vectors of the smallest singular value give the
+  !> species weights of the conserved energy ket (alpha) and bra (beta).
+  !> ratio(k) = sigma_k/sigma_1 in descending order.
+  subroutine energy_null_pair(nspec, exchange, alpha, beta, ratio)
+    integer, intent(in) :: nspec
+    double precision, intent(in) :: exchange(nspec, nspec)
+    double precision, intent(out) :: alpha(nspec), beta(nspec), ratio(nspec)
+    double precision :: a(nspec, nspec), sv(nspec), u(nspec, nspec), vt(nspec, nspec)
+    double precision :: work(max(1, 5*nspec)*4)
+    integer :: info
+
+    a = exchange
+    call dgesvd('A', 'A', nspec, nspec, a, nspec, sv, u, nspec, vt, nspec, &
+      work, size(work), info)
+    if (info /= 0) error stop 'energy_null_pair: SVD failed'
+    alpha = vt(nspec, :)
+    beta = u(:, nspec)
+    ratio = sv/max(sv(1), tiny(1d0))
+  end subroutine energy_null_pair
+
   !-----------------------------------------------------------------------------
   !> Computes m Ritz eigenvalues (approximations to extreme eigenvalues)
   !> of the iteration procedure of the vector with dimension n.

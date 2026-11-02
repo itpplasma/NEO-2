@@ -43,8 +43,15 @@ The axisymmetric iteration solves the bordered system
     [L  K] [f     ]   [q]
     [B' 0] [lambda] = [0],     L = M - C_integral,
 
-where the columns of `K` are the species' Maxwellian density and (with the
-integral part) energy kets and `B` holds the matching moment bras. Its
+where the columns of `K` are the Maxwellian density ket of each species and,
+with the integral part, one total-energy ket, and `B` holds the matching
+moment bras. Collisions exchange energy between species, so the energy ket
+of a single species is not a null vector of `L`; holding each species'
+energy at zero forces a multiplier of the size of the energy exchange. The
+total-energy ket and bra combine the species' energy kets and bras with the
+right and left singular vectors of the smallest singular value of the
+exchange matrix `X_ab = B_E,a' L K_E,b`; rank zero prints its singular
+values relative to the largest. Its
 Richardson step with preconditioner `[P K; B' 0]`, `P` the factorized
 regularized matrix, reduces to the plain step `y = f + P^-1 (q - L f)`
 followed by
