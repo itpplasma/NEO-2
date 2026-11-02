@@ -3457,8 +3457,11 @@ CONTAINS
 ! Solve the linear equation set:
 
         use arnoldi_mod, only: iterator, f_init_arnoldi
+        use ql_gmres_mod, only: ql_gmres
+        use sparse_mod, only: sparse_pivot_tolerance
 
         logical :: clean
+        real(dp) :: old_pivot_tolerance
         real(dp), dimension(:), allocatable :: bvec_sp_real
         !  multi-species part
         integer :: ispecpp ! species indices (loop over sources)
@@ -3491,6 +3494,12 @@ CONTAINS
 
         bvec_sp = 0.d0
         iopt = 1
+        ! GMRES needs the LU preconditioner to be a fixed linear map. UMFPACK's
+        ! default threshold pivoting (0.1) can leave normwise backward errors of
+        ! 1e-10 for this badly scaled matrix when it picks the unsymmetric
+        ! strategy (UMFPACK 5.7), which GMRES sees as a nonlinear operator.
+        old_pivot_tolerance = sparse_pivot_tolerance
+        if (ql_gmres) sparse_pivot_tolerance = 1.0_dp
 
         call CPU_TIME(time_start)
         if (problem_type) then
@@ -3503,6 +3512,7 @@ CONTAINS
                               bvec_sp, iopt)
         end if
 
+        sparse_pivot_tolerance = old_pivot_tolerance
         call CPU_TIME(time_factorization)
         print *, 'factorization completed ', time_factorization - time_start, ' sec'
 
@@ -3522,9 +3532,14 @@ CONTAINS
                 normalized_residual_species = huge(1.0d0)
                 density_constraint_species = 0.0d0
                 energy_constraint_species = 0.0d0
-                call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                            & source_vector_all(:, k, ispec), ispec, next_iteration, &
-                            & solve_status, solve_iterations, solve_residual, equation_residual)
+                if (ql_gmres) then
+                    call gmres_source(source_vector_all(:, k, ispec), solve_status, &
+                        solve_iterations, solve_residual)
+                else
+                    call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter, &
+                        source_vector_all(:, k, ispec), ispec, next_iteration, &
+                        solve_status, solve_iterations, solve_residual, equation_residual)
+                end if
                 call report_solve(k, ispec, solve_status, solve_iterations, solve_residual)
             end do
 
@@ -3542,9 +3557,14 @@ CONTAINS
                     normalized_residual_species = huge(1.0d0)
                     density_constraint_species = 0.0d0
                     energy_constraint_species = 0.0d0
-                    call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                                & source_vector_all(:, k, ispecp), ispec, next_iteration, &
-                                & solve_status, solve_iterations, solve_residual, equation_residual)
+                    if (ql_gmres) then
+                        call gmres_source(source_vector_all(:, k, ispecp), solve_status, &
+                            solve_iterations, solve_residual)
+                    else
+                        call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter, &
+                            source_vector_all(:, k, ispecp), ispec, next_iteration, &
+                            solve_status, solve_iterations, solve_residual, equation_residual)
+                    end if
                     call report_solve(k, ispecp, solve_status, solve_iterations, solve_residual)
                 end do
 
@@ -3571,7 +3591,7 @@ CONTAINS
             end do
         end if
 
-        if (clean) then
+        if (clean .and. .not. ql_gmres) then
             mode_iter = 3
 
             call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter, &
@@ -4593,6 +4613,98 @@ CONTAINS
         deallocate (vec_tmp)
 
     end subroutine integral_part
+
+    subroutine gmres_source(source, solve_status, solve_iterations, solve_residual)
+        use arnoldi_mod, only: fzero, mode, tol
+        use ql_gmres_mod, only: gmres_solve, gmres_tol, gmres_maxiter, gmres_restart
+        complex(dp), intent(inout) :: source(:)
+        integer, intent(out) :: solve_status, solve_iterations
+        real(dp), intent(out) :: solve_residual
+        complex(dp), allocatable :: rhs(:), zero(:), correction(:), update(:)
+        real(dp) :: residual
+        integer :: status, steps, old_mode, pass
+
+        ! The same projected L^-1 q and homogeneous map as iterator.
+        old_mode = mode
+        tol = 0.5_dp
+        allocate(fzero(size(source)), rhs(size(source)), zero(size(source)))
+        allocate(correction(size(source)), update(size(source)))
+        fzero = source
+        zero = 0
+        mode = 1
+        call next_iteration(size(source), zero, rhs)
+        mode = 2
+        call gmres_solve(size(source), rhs, source, gmres_operator, gmres_dot, &
+            gmres_tol, gmres_maxiter, gmres_restart, status, steps, residual)
+        print *, 'QL GMRES status, steps, residual:', status, steps, residual
+        solve_iterations = steps
+        ! Accept by the original assembled equation, as the Richardson path does.
+        ! gmres_tol bounds the preconditioned residual only, so correct until
+        ! the original equation holds or a correction no longer converges.
+        call equation_residual(size(source), source, solve_residual)
+        do pass = 1, 4
+            if (solve_residual <= epserr_iter .or. status /= 0) exit
+            call gmres_operator(size(source), source, correction)
+            correction = rhs - correction
+            call gmres_solve(size(source), correction, update, gmres_operator, gmres_dot, &
+                1.e-2_dp, gmres_maxiter, gmres_restart, status, steps, residual)
+            source = source + update
+            solve_iterations = solve_iterations + steps
+            call equation_residual(size(source), source, solve_residual)
+            print *, 'QL GMRES correction status, steps, residual, equation residual:', &
+                status, steps, residual, solve_residual
+        end do
+        mode = old_mode
+        deallocate(fzero)
+        solve_status = 1
+        if (solve_residual == huge(1.0_dp)) then
+            solve_status = 5
+        else if (solve_residual <= epserr_iter) then
+            solve_status = 0
+        end if
+        if (status == 3 .and. residual <= 100*gmres_tol) then
+            print *, 'WARNING: QL GMRES stagnated above gmres_tol at the operator rounding level'
+        else if (status /= 0) then
+            print *, 'QL GMRES failed to converge'
+            if (solve_status == 0) solve_status = 1
+        end if
+    end subroutine gmres_source
+
+    subroutine gmres_operator(n, x, y)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: x(n)
+        complex(dp), intent(out) :: y(n)
+        complex(dp), allocatable :: work(:)
+
+        work = x
+        if (problem_type) then
+            ! next_iteration has a legacy inout interface but does not modify fold.
+            call next_iteration(n, work, y)
+        else
+            ! The mode-2 map x + L^-1 (I x - L x) of next_iteration equals L^-1 I x,
+            ! because the factorized matrix is the one applied there. Solving for
+            ! L^-1 I x directly avoids the cancellation x - L^-1 L x, whose rounding
+            ! noise (cond(L) eps |x|) makes the operator nonlinear for GMRES.
+            if (isw_intp .eq. 1) then
+                call integral_part(work, y)
+            else
+                y = (0.0d0, 0.0d0)
+            end if
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), y, iopt)
+        end if
+        y = x - y
+    end subroutine gmres_operator
+
+    function gmres_dot(n, x, y) result(z)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: x(n), y(n)
+        complex(dp) :: z, species_dot(0:num_spec-1)
+
+        species_dot = 0
+        species_dot(ispec) = sum(conjg(x)*y)
+        call mpro%allgather_inplace(species_dot)
+        z = sum(species_dot)
+    end function gmres_dot
 
     !---------------------------------------------------------------------------------
     !> Single step of a preconditioned Richardson iteration which for equation set
