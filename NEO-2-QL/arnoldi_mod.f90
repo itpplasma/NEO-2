@@ -2,6 +2,8 @@ MODULE arnoldi_mod
   INTEGER :: ngrow,ierr
   INTEGER :: ntol,mode=0
   DOUBLE PRECISION :: tol
+  ! Shared resolution for Ritz convergence and the unit-eigenvalue filter.
+  DOUBLE PRECISION, PARAMETER :: epserr_ritznum=1.0d-3
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: f_init_arnoldi
   complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: eigvecs
@@ -80,8 +82,6 @@ contains
     ! tol0 - largest eigenvalue tolerated in combined iterations:
     INTEGER,          PARAMETER :: ntol0=10
     DOUBLE PRECISION, PARAMETER :: tol0=0.5d0
-    ! Ritz values this close to one are not subtracted (see below).
-    DOUBLE PRECISION, PARAMETER :: neutral_tol=1.0d-6
 
     interface
       subroutine next_iteration(n,fold,fnew)
@@ -146,10 +146,12 @@ contains
       ! A unit eigenvalue belongs to the null space of a singular but
       ! compatible equation (e.g. pitch-angle scattering without energy
       ! scattering). It does not grow, and the subtraction matrix below
-      ! scales with ritznum-1, so subtracting it would amplify round-off.
+      ! scales with ritznum-1. Do not invert distances smaller than the
+      ! accuracy requested from Arnoldi; they cannot resolve a unit mode.
+      ! The original-equation residual still decides convergence.
       nsize=0
       DO j=1,ngrow
-        IF(ABS(ritznum(j)-(1.d0,0.d0)) .GT. neutral_tol) THEN
+        IF(ABS(ritznum(j)-(1.d0,0.d0)) .GT. epserr_ritznum) THEN
           nsize=nsize+1
           ritznum(nsize)=ritznum(j)
           eigvecs(:,nsize)=eigvecs(:,j)
@@ -285,9 +287,6 @@ contains
     use collisionality_mod, only : num_spec
 
     IMPLICIT NONE
-
-    ! set independent accuracy-level for eigenvalue computation
-    DOUBLE PRECISION, PARAMETER :: epserr_ritznum=1.0d-3
 
     interface
       subroutine next_iteration(n,fold,fnew)

@@ -6,8 +6,9 @@ program test_arnoldi_breakdown
     use mpiprovider_module, only: mpro
     implicit none
 
-    integer :: applications, status
+    integer :: applications, status, solve_status, trial
     complex(kind=kind(1d0)) :: solution(2)
+    double precision :: neutral_eigenvalue
     double precision, parameter :: eigenvalue = 2.0d0
     double precision, parameter :: tolerance = 100.0d0 * epsilon(1.0d0)
 
@@ -91,11 +92,42 @@ program test_arnoldi_breakdown
     ! Singular but compatible L f = q with L = I - A, A = diag(1, 1/4):
     ! the unit eigenvalue of A is a null-space mode and must not be
     ! subtracted. The second component of the solution is exactly one.
+    neutral_eigenvalue = 1.0d0
     f_init_arnoldi = [(1.0d0, 0.0d0), (1.0d0, 0.0d0)]
     solution = [(0.0d0, 0.0d0), (0.75d0, 0.0d0)]
     call iterator(1, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
     if (abs(solution(2) - 1.0d0) > 1.0d-10) then
         print *, 'FAIL: singular compatible solve:', solution(2), ' expected 1'
+        status = status + 1
+    end if
+    call iterator(3, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
+
+    ! A unit mode split by less than the Ritz accuracy must stay out of
+    ! the subtraction solve, on either side of one. The compatible source
+    ! excites only the well-separated eigenvalue 1/4, with solution two = 1.
+    do trial = 1, 2
+        neutral_eigenvalue = 1.0d0 + (-1.0d0)**trial * 1.05d-6
+        f_init_arnoldi = [(1.0d0, 0.0d0), (1.0d0, 0.0d0)]
+        solution = [(0.0d0, 0.0d0), (0.75d0, 0.0d0)]
+        call iterator(1, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator, &
+            & status=solve_status)
+        if (ngrow /= 0 .or. solve_status /= 0 .or. &
+            & abs(solution(2) - 1.0d0) > 1.0d-10) then
+            print *, 'FAIL: unresolved unit mode:', neutral_eigenvalue, ngrow, solve_status
+            status = status + 1
+        end if
+        call iterator(3, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
+    end do
+
+    ! A resolved unstable eigenvalue still needs subtraction: (I-A)^-1 q
+    ! is exactly (-10, 1) for A = diag(1.1, 1/4), q = (1, 3/4).
+    neutral_eigenvalue = 1.1d0
+    solution = [(1.0d0, 0.0d0), (0.75d0, 0.0d0)]
+    call iterator(1, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator, &
+        & status=solve_status)
+    if (ngrow /= 1 .or. solve_status /= 0 .or. &
+        & maxval(abs(solution - [(-10.0d0, 0.0d0), (1.0d0, 0.0d0)])) > 1.0d-10) then
+        print *, 'FAIL: resolved unstable mode:', solution, ngrow, solve_status
         status = status + 1
     end if
     call iterator(3, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
@@ -124,7 +156,7 @@ contains
         integer :: n
         complex(kind=kind(1d0)), dimension(n) :: input, output
 
-        output = [input(1), 0.25d0 * input(2)]
+        output = [neutral_eigenvalue * input(1), 0.25d0 * input(2)]
         if (mode /= 2) output = output + fzero
     end subroutine neutral_operator
 
