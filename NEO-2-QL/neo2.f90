@@ -58,7 +58,7 @@ module neo2_ql
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
        ripple_solver_accurfac
-  USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example
+  USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_example,sparse_pivot_tolerance
   ! Extra input for NTV computations
   USE ntv_mod, ONLY : isw_ntv_mode, isw_qflux_NA, in_file_pert,     &
        MtOvR, Om_tE, B_rho_L_loc, xstart_cyl, isw_ripple_solver,   &
@@ -210,7 +210,7 @@ module neo2_ql
        solver_talk,switch_off_asymp,                                          &
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
-       sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
+       sparse_talk,sparse_solve_method,sparse_pivot_tolerance,OMP_NUM_THREADS,&
        mag_symmetric,mag_symmetric_shorten, epserr_iter, niter, n_arnoldi, lsw_linear_boozer
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
@@ -593,6 +593,7 @@ subroutine main
        CALL h5_add(h5_config_group, 'ripple_solver_accurfac', ripple_solver_accurfac)
        CALL h5_add(h5_config_group, 'sparse_talk', sparse_talk)
        CALL h5_add(h5_config_group, 'epserr_iter', epserr_iter)
+       CALL h5_add(h5_config_group, 'sparse_pivot_tolerance', sparse_pivot_tolerance)
        CALL h5_add(h5_config_group, 'niter', niter)
        CALL h5_add(h5_config_group, 'n_arnoldi', n_arnoldi)
        CALL h5_add(h5_config_group, 'mag_symmetric', mag_symmetric)
