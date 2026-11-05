@@ -9,7 +9,7 @@ module local_parflow_mod
     private
 
     logical, public :: lsw_local_parflow = .false.
-    public :: store_local_parflow, write_local_parflow
+    public :: store_local_parflow, write_local_parflow, parallel_field_force_leaf
 
     ! NEO-2 source k = 1, 2, 3 drives A1, A3, A2 (ntv_mod ind_map).
     integer, parameter :: source_of_drive(3) = [1, 3, 2]
@@ -48,10 +48,12 @@ contains
         real(dp), intent(in) :: volume, z(0:), density(0:), charge, bref
         integer, intent(in) :: n
         integer(hid_t) :: file_id
-        real(dp), allocatable :: weight(:)
+        real(dp), allocatable :: weight(:), d3_scale(:), j_scale(:)
 
         if (.not. allocated(moment_ax)) return
-        weight = step_weight/(bhat*h_phi)
+        allocate(weight, d3_scale, j_scale, mold=bhat)
+        call local_parflow_scales_leaf(step_weight, volume, bhat, h_phi, charge, bref, &
+            weight, d3_scale, j_scale)
         call h5_create('local_parallel_flow.h5', file_id)
         call h5_add(file_id, 'phi_mfl', phi, lbound(phi), ubound(phi), unit='rad', &
                     comment='Boozer phi along the field line')
@@ -85,7 +87,7 @@ contains
             do a = lbound(moment, 4), ubound(moment, 4)
                 do b = lbound(moment, 3), ubound(moment, 3)
                     do j = 1, 3
-                        d3(:, j, b, a) = coef(j, b, a)*volume*bhat*h_phi &
+                        d3(:, j, b, a) = coef(j, b, a)*d3_scale &
                                          *moment(:, source_of_drive(j), b, a)
                     end do
                 end do
@@ -102,7 +104,7 @@ contains
                     vparb(:, a) = vparb(:, a) - matmul(d3(:, :, b, a), forces(:, b))
                 end do
             end do
-            jpar = charge*matmul(vparb, z*density)/(bref*bhat)
+            jpar = j_scale*matmul(vparb, z*density)
             call h5_add(file_id, 'VparB_'//suffix//'_real', real(vparb, dp), &
                         lbound(vparb), ubound(vparb), unit='cm*G/s', &
                         comment='(step, species); positive along B')
@@ -115,4 +117,6 @@ contains
                         lbound(jpar), ubound(jpar), unit='statA/cm^2')
         end subroutine write_problem
     end subroutine write_local_parflow
+    include 'generated/local_parflow_leaves.inc'
+
 end module local_parflow_mod

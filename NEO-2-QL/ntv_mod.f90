@@ -947,7 +947,9 @@ CONTAINS
       & boozer_iota_s
     USE collisionality_mod, ONLY : collpar, num_spec, species_tag, &
          z_spec, m_spec, n_spec, T_spec, collpar_spec, isw_coul_log
-    USE local_parflow_mod, ONLY : lsw_local_parflow, write_local_parflow
+    USE local_parflow_mod, ONLY : lsw_local_parflow, write_local_parflow, &
+         parallel_field_force_leaf
+    USE phi_ma_leaves_mod, ONLY : thermodynamic_forces_leaf
     ! Output stored as HDF5-file
     USE hdf5_tools
 
@@ -1882,11 +1884,11 @@ CONTAINS
       end do
       forces = 0.0_dp
       if (isw_calc_Er /= 0) then
-        forces(2, :) = av_nabla_stor*dT_spec_ov_ds/T_spec
-        forces(1, :) = av_nabla_stor*dn_spec_ov_ds/n_spec - 1.5_dp*forces(2, :) &
-             - Er*z_spec*e/T_spec
+        call thermodynamic_forces_leaf(av_nabla_stor, dn_spec_ov_ds, n_spec, &
+          dT_spec_ov_ds, T_spec, z_spec*e, Er, forces(1, :), forces(2, :))
         if (isw_calc_Er == 1 .and. num_spec > 1) &
-             forces(3, :) = avEparB_ov_avb2*z_spec*e/T_spec
+          call parallel_field_force_leaf(avEparB_ov_avb2, z_spec*e, T_spec, &
+          forces(3, :))
       end if
       call write_local_parflow(coef_ax, coef_na, forces, isw_calc_Er /= 0, &
            y(6), z_spec, n_spec, e, bmod0*1.0e4_dp, m_phi)
