@@ -58,9 +58,8 @@ case "$tier" in
     (
 python -m pip install --upgrade pip
 pip install numpy h5py scipy matplotlib pytest
-libneo_ref=$(python -c 'import json; print(json.load(open("cmake/dependency_versions.json"))["libneo"])')
-pip install "git+https://github.com/itpplasma/libneo.git@$libneo_ref"
-pip install ./python
+# The comparator needs only numpy and h5py; libneo does not build from source here.
+pip install --no-deps ./python
 
     )
     load_job_environment
