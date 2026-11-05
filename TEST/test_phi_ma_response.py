@@ -57,9 +57,12 @@ def identical_legacy(left, right):
             def compare(key, item):
                 nonlocal count
                 if isinstance(item, h5py.Dataset):
-                    # neo2.f90 writes a random run ID and wall-clock time.
+                    # neo2.f90 writes a random run ID, wall-clock time and the
+                    # build's own version, which differ between any two builds.
                     if name == "neo2_config.h5" and key in (
-                            "metadata/Run_0", "metadata/Timestamp_start_0"):
+                            "metadata/Run_0", "metadata/Timestamp_start_0",
+                            "metadata/MPILib Version", "metadata/NEO-2 Version",
+                            "metadata/NEO-2 Version Additional"):
                         return
                     other = b[key]
                     assert item.shape == other.shape and item.dtype == other.dtype, key

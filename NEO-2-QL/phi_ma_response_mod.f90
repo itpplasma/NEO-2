@@ -2,6 +2,7 @@ module phi_ma_response_mod
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use hdf5_tools, only: hid_t, h5_create, h5_add, h5_close
     use ntv_mod, only: e
+    use phi_ma_leaves_mod, only: phi_ma_jhat_leaf
     implicit none
     private
 
@@ -16,8 +17,6 @@ module phi_ma_response_mod
     real(dp), parameter, public :: ampere_m2_per_statampere_cm2 = &
         1.0e4_dp*ampere_per_statampere
     public :: misaligned_potential, write_phi_ma_current, normalize_phi_ma_j_hat
-    public :: phi_ma_scales_leaf, thermodynamic_forces_leaf, field_line_theta_leaf, &
-        phi_ma_phase_leaf, phi_ma_drift_leaf, phi_ma_band_leaf
 
 contains
 
@@ -105,6 +104,4 @@ contains
         end if
         call h5_close(file_id)
     end subroutine write_phi_ma_current
-    include 'generated/phi_ma_leaves.inc'
-
 end module phi_ma_response_mod

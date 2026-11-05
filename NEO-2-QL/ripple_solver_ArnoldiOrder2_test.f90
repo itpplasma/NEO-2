@@ -82,9 +82,9 @@ subroutine ripple_solver_ArnoldiO2( &
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
     use phi_ma_response_mod, only: phi_m, delta_m, phi_ma_m, &
                                   misaligned_potential, write_phi_ma_current, &
-                                  normalize_phi_ma_j_hat, phi_ma_scales_leaf, &
-                                  thermodynamic_forces_leaf, field_line_theta_leaf, &
-                                  phi_ma_phase_leaf, phi_ma_drift_leaf, phi_ma_band_leaf
+                                  normalize_phi_ma_j_hat
+    use phi_ma_leaves_mod, only: phi_ma_scales_leaf, thermodynamic_forces_leaf, &
+        field_line_theta_leaf, phi_ma_phase_leaf, phi_ma_drift_leaf, phi_ma_band_leaf
     use collop_compute, only: compute_exb_source
   !! End Modification by Andreas F. Martitsch (14.07.2015)
     ! MPI SUPPORT for multi-species part
