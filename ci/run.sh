@@ -65,7 +65,7 @@ pip install --no-deps ./python
     load_job_environment
     echo 'Test HDF5 comparisons'
     (
-python -m pytest python/test/test_hdf5_comparison.py
+python -m pytest python/test/test_hdf5_comparison.py python/test/test_compare_hdf5_files.py
     )
     load_job_environment
     echo 'Build NEO-2'
