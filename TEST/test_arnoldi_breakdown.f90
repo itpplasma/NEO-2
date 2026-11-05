@@ -7,6 +7,7 @@ program test_arnoldi_breakdown
     implicit none
 
     integer :: applications, status, trial
+    logical :: converged
     complex(kind=kind(1d0)) :: solution(2)
     double precision :: neutral_eigenvalue
     double precision, parameter :: eigenvalue = 2.0d0
@@ -128,6 +129,23 @@ program test_arnoldi_breakdown
         status = status + 1
     end if
     call iterator(3, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
+
+    ! Direct iterations contract by 0.9 per step: too few must be reported
+    ! as not converged instead of returning the unfinished iterate.
+    neutral_eigenvalue = 0.9d0
+    solution = [(1.0d0, 0.0d0), (0.75d0, 0.0d0)]
+    call iterator(0, 2, 4, 1.0d-12, 5, solution, 0, neutral_operator, converged)
+    if (converged) then
+        print *, 'FAIL: exhausted iteration reported as converged'
+        status = status + 1
+    end if
+    solution = [(1.0d0, 0.0d0), (0.75d0, 0.0d0)]
+    call iterator(0, 2, 4, 1.0d-12, 400, solution, 0, neutral_operator, converged)
+    if (.not. converged .or. &
+        & maxval(abs(solution - [(10.0d0, 0.0d0), (1.0d0, 0.0d0)])) > 1.0d-9) then
+        print *, 'FAIL: converged direct iteration:', converged, solution
+        status = status + 1
+    end if
 
     call mpro%deinit()
     deallocate(f_init_arnoldi)
