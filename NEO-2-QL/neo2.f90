@@ -53,7 +53,7 @@ module neo2_ql
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
        scalprod_beta, lsw_read_precom, lsw_write_precom
-  USE rkstep_mod, ONLY : lag, leg, legmax, epserr_iter
+  USE rkstep_mod, ONLY : lag, leg, legmax, epserr_iter, niter, n_arnoldi
 
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
@@ -210,7 +210,7 @@ module neo2_ql
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
-       mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer
+       mag_symmetric,mag_symmetric_shorten, epserr_iter, niter, n_arnoldi, lsw_linear_boozer
   NAMELIST /collision/                                                        &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
@@ -785,6 +785,8 @@ subroutine main
     xetami=0.0d0
     xetama=1.300001d0
     epserr_iter = 1e-5
+    niter = 100
+    n_arnoldi = 500
     eta_part_global = 0
     eta_part_trapped = 10
     eta_part_globalfac = 3.0_dp

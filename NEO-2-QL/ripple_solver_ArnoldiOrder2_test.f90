@@ -187,7 +187,8 @@ subroutine ripple_solver_ArnoldiO2( &
 
     CHARACTER(len=100) :: propname
     integer :: n_2d_size, nz_sq, nz_beg, npassing_prev, k_prev, mm
-    integer :: iter, nphiequi, npassing_next, n_arnoldi, mode_iter
+    integer :: iter, nphiequi, npassing_next, mode_iter
+    logical :: solve_converged
     integer :: isw_regper, nz_coll, nz_ttmp, nz_coll_beg
     integer :: nrow, ncol, nz, iopt
     real(dp) :: delphim1, deloneovb, step_factor_p, step_factor_m
@@ -289,9 +290,9 @@ subroutine ripple_solver_ArnoldiO2( &
     print *, "Species: ", ispec
     call collop_set_species(ispec)
 
-    niter = 100       !maximum number of integral part iterations
-    n_arnoldi = 500     !maximum number of Arnoldi iterations
     isw_regper = 1       !regulariization by periodic boundary condition
+    ! Stays fixed: a residual-based stop at the input tolerance cannot reach
+    ! this accuracy yet, because the residual levels off between 1e-6 and 1e-5.
     epserr_iter = 1.d-7  !relative error of integral part iterations
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
 
@@ -3523,7 +3524,10 @@ CONTAINS
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                            & source_vector_all(:, k, ispec), ispec, next_iteration)
+                    & source_vector_all(:, k, ispec), ispec, next_iteration, &
+                    & solve_converged)
+                if (.not. solve_converged) &
+                    error stop 'ripple_solver_ArnoldiO2: integral-part iteration failed'
             end do
 
         elseif (isw_intp .EQ. 1) then
@@ -3538,7 +3542,10 @@ CONTAINS
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                                & source_vector_all(:, k, ispecp), ispec, next_iteration)
+                        & source_vector_all(:, k, ispecp), ispec, next_iteration, &
+                        & solve_converged)
+                    if (.not. solve_converged) &
+                        error stop 'ripple_solver_ArnoldiO2: integral-part iteration failed'
                 end do
 
             end do
