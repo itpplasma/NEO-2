@@ -1,4 +1,6 @@
 # %%Standard Python modules
+import os
+import pytest
 import numpy as np
 from numpy.testing import assert_allclose
 import matplotlib.pyplot as plt
@@ -24,6 +26,9 @@ control_sqrtstor = np.array([0, 0.0008, 0.0016, 0.0024, 0.0032, 0.0040, 0.0048, 
 test_mars_dir = "/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/"
 # The mars folder has the following equilibrium file as basis
 test_eqdsk_file = '/proj/plasma/DATA/DEMO/teams/Equilibrium_DEMO2019_CHEASE/MOD_Qprof_Test/EQDSK_DEMO2019_q1_COCOS_02.OUT'
+pytestmark = pytest.mark.skipif(
+    not (os.path.isdir(test_mars_dir) and os.path.isfile(test_eqdsk_file)),
+    reason='institute MARS and DEMO equilibrium data not available')
 
 def test_mars_sqrtspol2sqrtstor():
 
