@@ -184,7 +184,6 @@ module neo2_ql
   REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: dn_vec_ov_ds
 
   type(fortran_rusage) :: usage
-  real(dp), parameter :: unset_iteration_tolerance = -huge(1.0_dp)
 
   !! End Modification by Andreas F. Martitsch (23.08.2015)
   ! groups for namelist
@@ -269,12 +268,6 @@ subroutine main
      END IF
      CLOSE(unit=u1)
   END DO
-
-  ! Preserve each solver's historical default while honoring explicit input.
-  if (epserr_iter == unset_iteration_tolerance) then
-    epserr_iter = 1.0d-5
-    if (isw_ripple_solver == 3) epserr_iter = 1.0d-7
-  end if
 
   call check()
 
@@ -794,7 +787,8 @@ subroutine main
     nperiod=500
     xetami=0.0d0
     xetama=1.300001d0
-    epserr_iter = unset_iteration_tolerance
+    ! The residual of the original equation can level off near 1e-7.
+    epserr_iter = 1.0d-5
     niter = 100
     n_arnoldi = 500
     eta_part_global = 0

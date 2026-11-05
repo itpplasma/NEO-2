@@ -1,8 +1,8 @@
 # Order2 integral-part solve convergence
 
 The `settings` namelist accepts `epserr_iter`, `niter` and `n_arnoldi`.
-Order2 defaults are `1e-7`, `100` and `500`; explicit values are honored.
-The other ripple solver retains its historical `epserr_iter=1e-5` default.
+The defaults are `1e-5`, `100` and `500` for every ripple solver; explicit
+values are honored.
 Consumed controls appear in `neo2_config.h5` under `settings/epserr_iter`,
 `settings/niter` and `settings/n_arnoldi`.
 
