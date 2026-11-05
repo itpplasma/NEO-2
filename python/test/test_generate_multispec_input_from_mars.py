@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import h5py
+import pytest
 
 # Homebrew modules
 from neo2_ql import get_neo2_ql_input_profiles
@@ -14,7 +15,24 @@ from neo2_mars import generate_multispec_input_from_mars
 
 test_mars_dir = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
 test_outpu_dir = '/tmp/'
+requires_mars_dir = pytest.mark.skipif(not os.path.isdir(test_mars_dir),
+                                       reason=f'missing test data: {test_mars_dir}')
+PROTON_MASS_CGS = 1.67262192369e-24
 
+
+@pytest.mark.parametrize('z_list, m_list', [('-1, 1', '0.000544617, 2.0'),
+                                            ('1, -1', '2.0, 0.000544617')])
+def test_get_species_cgs_from_mars_run_in(tmp_path, z_list, m_list):
+    # MARS gives masses in units of the proton mass; the result is ordered
+    # (electron, ion) whatever the order in RUN.IN.
+    (tmp_path / 'RUN.IN').write_text(
+        f'&KINETIC\n ESPECIES_Z = {z_list}\n ESPECIES_M = {m_list}\n/\n')
+    Z, m = get_species_cgs_from_mars(str(tmp_path))
+    assert Z == [-1, 1]
+    assert np.isclose(m[0], 9.1093837e-28, rtol=1e-5, atol=0)  # electron mass
+    assert np.isclose(m[1], 2.0 * PROTON_MASS_CGS, rtol=1e-12, atol=0)
+
+@requires_mars_dir
 def test_get_species_cgs_from_mars():
     Z, m = get_species_cgs_from_mars(test_mars_dir)
     assert Z[0] == -1
@@ -22,11 +40,13 @@ def test_get_species_cgs_from_mars():
     assert np.isclose(m[0], 9.10938356e-28, rtol=1e-4, atol=0)
     assert np.isclose(m[1], 3.343583719e-24, rtol=1e-3, atol=0) # off due MARS using not atomic unit, but proton mass
 
+@requires_mars_dir
 def test_generate_multispec_input_from_mars_init():
     output_file = os.path.join(test_outpu_dir, 'multi_spec.in')
     generate_multispec_input_from_mars(test_mars_dir, output_file, 
                                        number_of_surfaces=10, bounds=[0.0, 1.0])
 
+@requires_mars_dir
 def test_generate_multispec_input_from_mars_ion_tag_vrot():
     output_file = os.path.join(test_outpu_dir, 'multi_spec.in')
     generate_multispec_input_from_mars(test_mars_dir, output_file, 
@@ -36,6 +56,7 @@ def test_generate_multispec_input_from_mars_ion_tag_vrot():
         assert Z == 1
         assert np.isclose(m, 3.343583719e-24, rtol=1e-3, atol=0) # off due MARS using not atomic unit, but proton mass
 
+@requires_mars_dir
 def test_generate_multispec_input_from_mars_visual_check():
     output_file = os.path.join(test_outpu_dir, 'multi_spec.in')
     generate_multispec_input_from_mars(test_mars_dir, output_file, 
