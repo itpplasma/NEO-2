@@ -1526,8 +1526,8 @@ contains
       real(kind=dp) :: x ! integrate's callback interface has no INTENT.
       real(kind=dp) :: value
 
-      ! Combine the x^-1 with the measure before evaluating at x=0.
-      value = pi**(-1.5d0)*x**(3+alpha)*exp(-(1+beta)*x**2)*phi_prj(m,x)
+      ! The leaf combines the x^-1 with the measure before evaluating at x=0.
+      call exb_weight_leaf(x, alpha, beta, phi_prj(m, x), value)
     end function exb_kernel
   end subroutine compute_exb_source
 
@@ -2724,5 +2724,7 @@ contains
     endif
 
   end subroutine fplusminus
+
+  include 'generated/exb_weight_leaf.inc'
 
 end module collop_compute

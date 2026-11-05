@@ -16,6 +16,8 @@ module phi_ma_response_mod
     real(dp), parameter, public :: ampere_m2_per_statampere_cm2 = &
         1.0e4_dp*ampere_per_statampere
     public :: misaligned_potential, write_phi_ma_current, normalize_phi_ma_j_hat
+    public :: phi_ma_scales_leaf, thermodynamic_forces_leaf, field_line_theta_leaf, &
+        phi_ma_phase_leaf, phi_ma_drift_leaf, phi_ma_band_leaf
 
 contains
 
@@ -32,16 +34,14 @@ contains
         real(dp), intent(in) :: z, density, temperature, mass, a1, er
         complex(dp), intent(out) :: jhat(:)
         logical, intent(out) :: valid
-        real(dp) :: vt_neo, vt_contract
 
         jhat = (0.0_dp, 0.0_dp)
         valid = potential /= (0.0_dp, 0.0_dp) .and. a1 /= 0.0_dp &
                 .and. er /= 0.0_dp .and. z /= 0.0_dp &
                 .and. density > 0.0_dp .and. temperature > 0.0_dp .and. mass > 0.0_dp
         if (.not. valid) return
-        vt_neo = sqrt(2.0_dp*temperature/mass)
-        vt_contract = vt_neo/sqrt(2.0_dp)
-        jhat = jpar/(z*e*density*vt_contract*a1*potential/er)
+        call phi_ma_jhat_leaf(jpar, er, z*e, density, temperature, mass, a1, &
+            potential, jhat)
     end subroutine normalize_phi_ma_j_hat
 
     subroutine write_phi_ma_current(phi, theta, bhat, weight, jpar, row, &
@@ -105,4 +105,6 @@ contains
         end if
         call h5_close(file_id)
     end subroutine write_phi_ma_current
+    include 'generated/phi_ma_leaves.inc'
+
 end module phi_ma_response_mod

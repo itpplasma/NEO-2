@@ -82,7 +82,9 @@ subroutine ripple_solver_ArnoldiO2( &
     use er_rotation_mod, only: Om_tE_to_MtOvR_spec
     use phi_ma_response_mod, only: phi_m, delta_m, phi_ma_m, &
                                   misaligned_potential, write_phi_ma_current, &
-                                  normalize_phi_ma_j_hat
+                                  normalize_phi_ma_j_hat, phi_ma_scales_leaf, &
+                                  thermodynamic_forces_leaf, field_line_theta_leaf, &
+                                  phi_ma_phase_leaf, phi_ma_drift_leaf, phi_ma_band_leaf
     use collop_compute, only: compute_exb_source
   !! End Modification by Andreas F. Martitsch (14.07.2015)
     ! MPI SUPPORT for multi-species part
@@ -3362,18 +3364,16 @@ CONTAINS
         if (mpro%getNumProcs() /= num_spec) &
             error stop 'Phi^MA requires one MPI rank per species'
         phi_ma_g = y_ntv_mod(7)/y_ntv_mod(6)
-        phi_ma_vt = sqrt(2.0d0*T_spec(ispec)/m_spec(ispec))
-        phi_ma_rho = phi_ma_vt*m_spec(ispec)*c &
-                     /(z_spec(ispec)*e*bmod0*1.0d4)
         x = [boozer_s, boozer_phi_beg, boozer_theta_beg]
         call mag(x, bmod, sqrtg, bder, hcovar, hctrvr, hcoder, hctder)
         sqrtg_bphi = phi_ma_g*boozer_psi_pr_hat*bmod0*1.0d4
         if (lab_swi == 10) &
             sqrtg_bphi = phi_ma_g*sqrtg*hctrvr(2)*bmod*1.0d4
         phi_ma_sg = sqrtg_bphi
-        ! Invert ntv_mod's Om_tE=c*Er/(iota*sqrtg_bctrvr_phi).
-        ! Its force convention (A1 contains -z*e*Er/T) gives Phi_0'=-Er.
-        phi_ma_er = MtOvR*phi_ma_vt*aiota*sqrtg_bphi/c
+        ! Inverts ntv_mod's Om_tE=c*Er/(iota*sqrtg_bctrvr_phi); its force
+        ! convention (A1 contains -z*e*Er/T) gives Phi_0'=-Er.
+        call phi_ma_scales_leaf(T_spec(ispec), m_spec(ispec), z_spec(ispec)*e, c, &
+            bmod0*1.0d4, MtOvR, aiota, sqrtg_bphi, phi_ma_vt, phi_ma_rho, phi_ma_er)
         phi_ma = misaligned_potential(phi_ma_er)
         if (phi_ma == (0.0d0, 0.0d0)) return
         if (allocated(aE1)) deallocate(aE1)
@@ -3387,8 +3387,8 @@ CONTAINS
         real(dp), intent(out) :: theta
         complex(dp), intent(out) :: phase
 
-        theta = boozer_theta_beg + aiota*(phi - boozer_phi_beg)
-        phase = exp(imun*(phi_ma_m*theta + m_phi*phi))
+        call field_line_theta_leaf(boozer_theta_beg, aiota, phi, boozer_phi_beg, theta)
+        call phi_ma_phase_leaf(real(phi_ma_m, dp), theta, real(m_phi, dp), phi, phase)
     end subroutine phi_ma_phase
 
     subroutine solve_phi_ma_current
@@ -3405,9 +3405,8 @@ CONTAINS
         allocate(response(n_2d_size), current(ibeg:iend, 0:num_spec - 1))
         allocate(row(0:num_spec - 1), theta(ibeg:iend), weight(ibeg:iend))
         allocate(jhat(ibeg:iend))
-        a2 = phi_ma_g*dT_spec_ov_ds(ispec)/T_spec(ispec)
-        a1 = phi_ma_g*dn_spec_ov_ds(ispec)/n_spec(ispec) - 1.5d0*a2 &
-             - z_spec(ispec)*e*phi_ma_er/T_spec(ispec)
+        call thermodynamic_forces_leaf(phi_ma_g, dn_spec_ov_ds(ispec), n_spec(ispec), &
+            dT_spec_ov_ds(ispec), T_spec(ispec), z_spec(ispec)*e, phi_ma_er, a1, a2)
         response = (0.0d0, 0.0d0)
         if (phi_ma /= (0.0d0, 0.0d0)) then
             ! Reuse the complete RK and turning-band assembly, changing
@@ -3864,14 +3863,14 @@ CONTAINS
             if (electrostatic) then
                 do istep = ibeg, iend
                     call phi_ma_phase(phi_mfl(istep), theta, phase)
-                    us = phi_ma_g*c*imun &
-                        *(m_phi*bcovar_theta_hat - phi_ma_m*bcovar_phi_hat) &
-                        *phase*phi_ma/(phi_ma_sg &
-                        *(aiota*bcovar_theta_hat + bcovar_phi_hat))
+                    call phi_ma_drift_leaf(phi_ma_g, c, real(m_phi, dp), &
+                        bcovar_theta_hat, real(phi_ma_m, dp), bcovar_phi_hat, &
+                        phase, phi_ma, phi_ma_sg, aiota, us)
                     npassing = npl(istep)
-                    q_rip(1:npassing + 1, istep, 1) = -2.0d0*us &
-                        *(alambd(0:npassing, istep) - alambd(1:npassing + 1, istep)) &
-                        /(phi_ma_vt*phi_ma_rho*bhat_mfl(istep)*h_phi_mfl(istep))
+                    call phi_ma_band_leaf(us, &
+                        alambd(0:npassing, istep) - alambd(1:npassing + 1, istep), &
+                        phi_ma_vt, phi_ma_rho, bhat_mfl(istep), h_phi_mfl(istep), &
+                        q_rip(1:npassing + 1, istep, 1))
                 end do
             end if
         end if
