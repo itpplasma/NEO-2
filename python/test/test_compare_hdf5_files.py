@@ -19,17 +19,19 @@ def test_fulltransp_renamed_dataset(tmp_path, group, reverse, value, expected):
     assert compare_hdf5_files(reference, other, 1e-8, [], [], True) == [expected, True]
 
 
-@pytest.mark.parametrize("ambiguous_reference", [False, True])
-def test_fulltransp_ambiguous_dataset_names(tmp_path, ambiguous_reference):
-    reference = tmp_path / "reference.h5"
-    other = tmp_path / "other.h5"
-    for filename in [reference, other]:
-        with h5py.File(filename, "w") as file:
+@pytest.mark.parametrize("file_with_both_names", ["reference", "other"])
+def test_file_with_old_and_new_name_is_rejected(tmp_path, file_with_both_names):
+    # If one file holds both avnabpsi and av_nabla_stor, it is unclear which
+    # of the two to compare with the single dataset of the other file, so the
+    # comparison must refuse instead of picking one.
+    paths = {"reference": tmp_path / "reference.h5", "other": tmp_path / "other.h5"}
+    for role, path in paths.items():
+        with h5py.File(path, "w") as file:
             file.create_dataset("fulltransp/av_nabla_stor", data=2.0)
-            if (filename == reference) == ambiguous_reference:
+            if role == file_with_both_names:
                 file.create_dataset("fulltransp/avnabpsi", data=2.0)
     with pytest.raises(ValueError, match="Ambiguous dataset names"):
-        compare_hdf5_files(reference, other, 1e-8, [], [], True)
+        compare_hdf5_files(paths["reference"], paths["other"], 1e-8, [], [], True)
 
 
 def test_renamed_dataset_reference_accuracy_and_filter(tmp_path):
