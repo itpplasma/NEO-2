@@ -57,8 +57,15 @@ case "$tier" in
     echo 'Set up Python 3'
     (
 python -m pip install --upgrade pip
-pip install numpy h5py scipy matplotlib
+pip install numpy h5py scipy matplotlib pytest
+# The comparator needs only numpy and h5py; libneo does not build from source here.
+pip install --no-deps ./python
 
+    )
+    load_job_environment
+    echo 'Test HDF5 comparisons'
+    (
+python -m pytest python/test/test_hdf5_comparison.py
     )
     load_job_environment
     echo 'Build NEO-2'
