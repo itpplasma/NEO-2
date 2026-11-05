@@ -6,7 +6,7 @@ program test_arnoldi_breakdown
     use mpiprovider_module, only: mpro
     implicit none
 
-    integer :: applications, status, solve_status, trial
+    integer :: applications, status, trial
     complex(kind=kind(1d0)) :: solution(2)
     double precision :: neutral_eigenvalue
     double precision, parameter :: eigenvalue = 2.0d0
@@ -109,11 +109,9 @@ program test_arnoldi_breakdown
         neutral_eigenvalue = 1.0d0 + (-1.0d0)**trial * 1.05d-6
         f_init_arnoldi = [(1.0d0, 0.0d0), (1.0d0, 0.0d0)]
         solution = [(0.0d0, 0.0d0), (0.75d0, 0.0d0)]
-        call iterator(1, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator, &
-            & status=solve_status)
-        if (ngrow /= 0 .or. solve_status /= 0 .or. &
-            & abs(solution(2) - 1.0d0) > 1.0d-10) then
-            print *, 'FAIL: unresolved unit mode:', neutral_eigenvalue, ngrow, solve_status
+        call iterator(1, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
+        if (ngrow /= 0 .or. abs(solution(2) - 1.0d0) > 1.0d-10) then
+            print *, 'FAIL: unresolved unit mode:', neutral_eigenvalue, ngrow
             status = status + 1
         end if
         call iterator(3, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
@@ -123,11 +121,10 @@ program test_arnoldi_breakdown
     ! is exactly (-10, 1) for A = diag(1.1, 1/4), q = (1, 3/4).
     neutral_eigenvalue = 1.1d0
     solution = [(1.0d0, 0.0d0), (0.75d0, 0.0d0)]
-    call iterator(1, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator, &
-        & status=solve_status)
-    if (ngrow /= 1 .or. solve_status /= 0 .or. &
+    call iterator(1, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
+    if (ngrow /= 1 .or. &
         & maxval(abs(solution - [(-10.0d0, 0.0d0), (1.0d0, 0.0d0)])) > 1.0d-10) then
-        print *, 'FAIL: resolved unstable mode:', solution, ngrow, solve_status
+        print *, 'FAIL: resolved unstable mode:', solution, ngrow
         status = status + 1
     end if
     call iterator(3, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
