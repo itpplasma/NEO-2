@@ -148,7 +148,6 @@ contains
       ! scattering). It does not grow, and the subtraction matrix below
       ! scales with ritznum-1. Do not invert distances smaller than the
       ! accuracy requested from Arnoldi; they cannot resolve a unit mode.
-      ! The original-equation residual still decides convergence.
       nsize=0
       DO j=1,ngrow
         IF(ABS(ritznum(j)-(1.d0,0.d0)) .GT. epserr_ritznum) THEN
