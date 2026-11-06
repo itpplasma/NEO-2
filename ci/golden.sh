@@ -35,6 +35,17 @@ printf 'source=%s\nbase=%s\nstable=%s\n' "$(git rev-parse HEAD)" \
 make
 export CURRENT_NEO2_PAR=$src/build/NEO-2-PAR/neo_2_par.x
 export CURRENT_NEO2_QL=$src/build/NEO-2-QL/neo_2_ql.x
+# Run time and peak memory of every solver run, per build, through wrappers
+# the case Makefiles call instead of the executables.
+mkdir -p ci-out/runs
+measure() {
+    local log=$1
+    shift
+    for var in "$@"; do
+        export "$var=$(python -m neo2_util.golden_measure wrap "$src/ci-out/runs/$log.ranks" "${!var}")"
+    done
+}
+measure current CURRENT_NEO2_PAR CURRENT_NEO2_QL
 for reference in stable base; do
     git clone --no-hardlinks --dissociate "$src" "$root/$reference"
 done
@@ -43,6 +54,7 @@ make -C "$root/stable" LIBNEO_REF="$SCI_STABLE_REF"
 . "$src/ci/golden-checks.sh"
 export REFERENCE_NEO2_PAR=$root/stable/build/NEO-2-PAR/neo_2_par.x
 export REFERENCE_NEO2_QL=$root/stable/build/NEO-2-QL/neo_2_ql.x
+measure stable REFERENCE_NEO2_PAR REFERENCE_NEO2_QL
 compare stable-lorentz lorentz TOL=1e-14 LEGACY_TOL=1e-10 MAGNETICS_TOL=1e-12
 compare stable-ql ql TOL=1e-10 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12
 
@@ -52,6 +64,7 @@ git -C "$root/base" checkout --detach "$SCI_BASE_SHA"
 make -C "$root/base"
 export REFERENCE_NEO2_PAR=$root/base/build/NEO-2-PAR/neo_2_par.x
 export REFERENCE_NEO2_QL=$root/base/build/NEO-2-QL/neo_2_ql.x
+measure base REFERENCE_NEO2_PAR REFERENCE_NEO2_QL
 compare base-lorentz lorentz TOL=1e-14 LEGACY_TOL=1e-10 MAGNETICS_TOL=1e-12
 compare base-ql ql TOL=1e-15 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12
 # The performance case has no legacy record, only the base comparison.
@@ -61,6 +74,8 @@ $base_check performance-ql env TOL=1e-15 make performance_ql
 differences performance-ql performance_ql TOL=1e-15
 check par env TOL=1e-15 LEGACY_TOL=4e-8 make par
 differences par par TOL=1e-15 LEGACY_TOL=4e-8
+python -m neo2_util.golden_measure summary ci-out/runs/*.ranks > ci-out/performance.tsv ||
+    echo 'No run-time summary' >&2
 if [ -f "$test_dir/performance_ql/performance_report.txt" ]; then
     cp "$test_dir/performance_ql/performance_report.txt" ci-out/
 fi
