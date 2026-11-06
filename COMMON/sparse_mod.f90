@@ -1115,6 +1115,7 @@ CONTAINS
 
     !   set default parameters
     CALL umf4def (control)
+    CALL umf_diag_control(control)
 
     n = nrow !convert from 1 to 0-based indexing
     Ai=irow-1 !convert from 1 to 0-based indexing
@@ -1132,6 +1133,7 @@ CONTAINS
        ENDIF
 
        CALL umf4num (Ap, Ai, val, symbolic, numeric, control, info_suitesparse)
+       CALL umf_diag_report(info_suitesparse, INT(n))
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -1346,6 +1348,7 @@ CONTAINS
 
     !   set default parameters
     CALL umf4def (control)
+    CALL umf_diag_control(control)
 
     n = nrow
     bloc = 0.0_dp
@@ -1370,6 +1373,7 @@ CONTAINS
        ENDIF
 
        CALL umf4num (Ap, Ai, val, symbolic, numeric, control, info_suitesparse)
+       CALL umf_diag_report(info_suitesparse, INT(n))
 
        IF (sparse_talk) THEN
           IF (info_suitesparse(1) .EQ. 0) THEN
@@ -2548,5 +2552,29 @@ CONTAINS
 
   END SUBROUTINE remap_rc_cmplx
   !-------------------------------------------------------------------------------
+
+  ! diag: NEO2_UMF_ORDERING selects the UMFPACK ordering (0 CHOLMOD, 1 AMD/COLAMD,
+  ! 3 METIS, 4 best); NEO2_UMF_STATS prints the factor statistics.
+  SUBROUTINE umf_diag_control(control)
+    REAL(kind=dp), INTENT(inout) :: control(:)
+    CHARACTER(len=16) :: value
+    INTEGER :: length
+    CALL get_environment_variable('NEO2_UMF_ORDERING', value, length)
+    IF (length > 0) READ (value, *) control(11)
+  END SUBROUTINE umf_diag_control
+
+  SUBROUTINE umf_diag_report(info, n)
+    REAL(kind=dp), INTENT(in) :: info(:)
+    INTEGER, INTENT(in) :: n
+    INTEGER :: length
+    REAL(kind=dp) :: unit_bytes
+    CALL get_environment_variable('NEO2_UMF_STATS', length=length)
+    IF (length == 0) RETURN
+    unit_bytes = info(4)
+    PRINT '(a,i0,a,i0,a,i0,a,es10.3,a,f10.3,a,f10.3,a,es9.2,a,f8.2,a,f8.2)', 'NEO2_UMF n=', n, &
+      ' strategy=', NINT(info(19)), ' ordering=', NINT(info(20)), ' lu_nnz=', info(44) + info(45), &
+      ' numeric_GiB=', info(41)*unit_bytes/2d0**30, ' peak_GiB=', info(42)*unit_bytes/2d0**30, &
+      ' flops=', info(43), ' symbolic_s=', info(18), ' numeric_s=', info(76)
+  END SUBROUTINE umf_diag_report
 
 END MODULE sparse_mod
