@@ -175,7 +175,9 @@ def run_case(data, case, source, work):
     work = Path(work).resolve()
     case_dir = work / case
     shutil.rmtree(case_dir, ignore_errors=True)
-    shutil.copytree(Path(data) / case, case_dir, symlinks=True)
+    # Cases link files above their directory (../../collect_h5.py), so copy
+    # the link targets rather than the links.
+    shutil.copytree(Path(data) / case, case_dir)
     log = work / f"{case}.ranks"
     log.unlink(missing_ok=True)
     env = dict(os.environ)

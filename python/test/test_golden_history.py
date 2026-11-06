@@ -93,6 +93,7 @@ with h5py.File("out.h5", "w") as f:
 
 CASE_MAKEFILE = """all: summary.h5
 summary.h5: .run
+\ttest -f shared.txt
 \tcp out.h5 summary.h5
 .run: neo_2.x
 \t./neo_2.x
@@ -102,6 +103,16 @@ neo_2.x: $(CURRENT_NEO2_QL)
 clean:
 \trm -f .run out.h5 summary.h5 neo_2.x
 """
+
+
+def toy_case(data, roles=("current",), makefile=CASE_MAKEFILE):
+    # Like the real cases, a run directory links a file above the case.
+    data.mkdir(parents=True, exist_ok=True)
+    (data / "shared.txt").write_text("shared")
+    for role in roles:
+        (data / "toy" / role).mkdir(parents=True)
+        (data / "toy" / role / "Makefile").write_text(makefile)
+        (data / "toy" / role / "shared.txt").symlink_to("../../shared.txt")
 
 
 def fake_tree(path, size):
@@ -118,8 +129,7 @@ def fake_tree(path, size):
 
 def test_record_measures_paired_runs_and_renders(tmp_path):
     data = tmp_path / "golden"
-    (data / "toy" / "current").mkdir(parents=True)
-    (data / "toy" / "current" / "Makefile").write_text(CASE_MAKEFILE)
+    toy_case(data)
     current = fake_tree(tmp_path / "current", 300)
     reference = fake_tree(tmp_path / "reference", 1)
     out = tmp_path / "record"
@@ -142,17 +152,14 @@ def test_record_measures_paired_runs_and_renders(tmp_path):
 
 def test_failed_case_is_marked(tmp_path):
     data = tmp_path / "golden"
-    (data / "toy" / "current").mkdir(parents=True)
-    (data / "toy" / "current" / "Makefile").write_text(CASE_MAKEFILE.replace("./neo_2.x", "false"))
+    toy_case(data, makefile=CASE_MAKEFILE.replace("./neo_2.x", "false"))
     result = golden_history.record(data, fake_tree(tmp_path / "tree", 1), tmp_path / "out", ["toy"])
     assert result["cases"]["toy"]["status"] == "failed"
 
 
 def test_collect_measures_runs_of_the_golden_job(tmp_path):
     data = tmp_path / "golden"
-    for role in ("current", "reference"):
-        (data / "toy" / role).mkdir(parents=True)
-        (data / "toy" / role / "Makefile").write_text(CASE_MAKEFILE)
+    toy_case(data, ("current", "reference"))
     current = fake_tree(tmp_path / "current", 1)
     reference = fake_tree(tmp_path / "reference", 1)
     history = tmp_path / "history"
