@@ -189,7 +189,6 @@ subroutine ripple_solver_ArnoldiO2( &
     integer :: n_2d_size, nz_sq, nz_beg, npassing_prev, k_prev, mm
     integer :: iter, nphiequi, npassing_next, mode_iter
     logical :: solve_converged
-    logical :: strict_lu = .false.
     integer :: isw_regper, nz_coll, nz_ttmp, nz_coll_beg
     integer :: nrow, ncol, nz, iopt
     real(dp) :: delphim1, deloneovb, step_factor_p, step_factor_m
@@ -3495,7 +3494,6 @@ CONTAINS
 ! factorization:
 
         bvec_sp = 0.d0
-        strict_lu = .false.
         iopt = 1
 
         call CPU_TIME(time_start)
@@ -3531,7 +3529,7 @@ CONTAINS
                     & source_vector_all(:, k, ispec), ispec, next_iteration, &
                     & solve_converged)
                 if (.not. solve_converged) then
-                    call refactorize_strict_lu()
+                    call use_refined_solves()
                     source_vector_all(:, k, ispec) = source_copy
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
@@ -3560,7 +3558,7 @@ CONTAINS
                         & source_vector_all(:, k, ispecp), ispec, next_iteration, &
                         & solve_converged)
                     if (.not. solve_converged) then
-                        call refactorize_strict_lu()
+                        call use_refined_solves()
                         source_vector_all(:, k, ispecp) = source_copy
                         f_init_arnoldi = source_vector_all(:, 1, ispec)
                         call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
@@ -4557,41 +4555,16 @@ CONTAINS
 
     end subroutine integral_part
 
-    !> Refactorize the preconditioner once with strict partial pivoting. With
-    !> UMFPACK's default threshold pivoting the LU of a badly scaled QL matrix
-    !> can have backward errors that make x - L^-1 L x nonlinear at the 1e-3
-    !> level, which stalls the stabilized iteration and GMRES alike (b0e9802b).
-    subroutine refactorize_strict_lu()
-        use sparse_mod, only: sparse_pivot_tolerance
-        real(dp), allocatable :: rhs_real(:)
-        complex(dp), allocatable :: rhs(:)
-        real(dp) :: default_tolerance
-
-        if (strict_lu) return
-        strict_lu = .true.
-        print *, 'refactorizing the QL preconditioner with strict partial pivoting'
-        default_tolerance = sparse_pivot_tolerance
-        sparse_pivot_tolerance = 1.0_dp
-        if (problem_type) then
-            allocate (rhs_real(ncol))
-            rhs_real = 0
-            iopt = 3
-            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
-                rhs_real, iopt)
-            iopt = 1
-            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
-                rhs_real, iopt)
-        else
-            allocate (rhs(ncol))
-            rhs = 0
-            iopt = 3
-            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), rhs, iopt)
-            iopt = 1
-            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), rhs, iopt)
-        end if
-        sparse_pivot_tolerance = default_tolerance
-        iopt = 2
-    end subroutine refactorize_strict_lu
+    !> Switch the LU solves to UMFPACK's iterative refinement for the rest of
+    !> this solve. Without it, the backward error of x - L^-1 L x can be large
+    !> enough on badly scaled QL matrices to stall the stabilized iteration and
+    !> GMRES alike; with it the golden QL case solves to a backward error of
+    !> 1e-21 instead of 1e-14.
+    subroutine use_refined_solves()
+        if (sparse_solve_method == 2) return
+        print *, 'switching the QL preconditioner solves to iterative refinement'
+        sparse_solve_method = 2
+    end subroutine use_refined_solves
 
     !> Solve (I - A) f = b with restarted GMRES, preconditioned by the same LU
     !> factorization as the stabilized iteration, when that iteration exhausts
