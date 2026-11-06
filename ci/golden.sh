@@ -58,7 +58,9 @@ compare base-ql ql TOL=1e-15 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12
 base_check=check
 [ "${SCI_GOLDEN_CHANGE:-0}" != 1 ] || base_check=report
 $base_check performance-ql env TOL=1e-15 make performance_ql
+differences performance-ql performance_ql TOL=1e-15
 check par env TOL=1e-15 LEGACY_TOL=4e-8 make par
+differences par par TOL=1e-15 LEGACY_TOL=4e-8
 if [ -f "$test_dir/performance_ql/performance_report.txt" ]; then
     cp "$test_dir/performance_ql/performance_report.txt" ci-out/
 fi
@@ -75,5 +77,6 @@ if [ "$old_ref" != "$new_ref" ]; then
     check libneo-lorentz env TOL=1e-14 MAGNETICS_TOL=1e-12 make -k lorentz
     check libneo-ql env TOL=1e-15 make -k ql
 fi
-# ci-out contains receipts and scalar performance summaries, no private raw data.
+# ci-out contains receipts, console logs, relative differences and scalar
+# performance summaries, no private raw data.
 exit "$status"
