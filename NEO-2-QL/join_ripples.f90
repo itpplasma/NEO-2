@@ -139,6 +139,7 @@ USE development
 
   IF(info.NE.0) THEN
     ierr=2
+    CALL report_gbsv_failure
     RETURN
   ENDIF
 
@@ -180,6 +181,7 @@ USE development
   CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
   IF(info.NE.0) THEN
     ierr=3
+    CALL report_gbsv_failure
     RETURN
   ENDIF
 
@@ -233,6 +235,7 @@ USE development
   CALL gbsv(ndim,ndim,amat,ipivot,bvec_lapack,info)
   IF(info.NE.0) THEN
     ierr=4
+    CALL report_gbsv_failure
     RETURN
   ENDIF
 
@@ -329,6 +332,15 @@ ENDDO
 CLOSE(111)
 print *,'join ripples written'
 endif
+
+CONTAINS
+
+  SUBROUTINE report_gbsv_failure
+    ! info<0: illegal argument; info>0: exactly zero pivot U(info,info)
+    PRINT *,'join_ripples: stage',ierr,' DGBSV info =',info,' ndim =',ndim, &
+      ' tags old/new =',o%fieldpropagator_tag_s,o%fieldpropagator_tag_e, &
+      n%fieldpropagator_tag_s,n%fieldpropagator_tag_e
+  END SUBROUTINE report_gbsv_failure
 
 END SUBROUTINE join_ripples
 
