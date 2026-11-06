@@ -189,6 +189,7 @@ subroutine ripple_solver_ArnoldiO2( &
     integer :: n_2d_size, nz_sq, nz_beg, npassing_prev, k_prev, mm
     integer :: iter, nphiequi, npassing_next, mode_iter
     logical :: solve_converged
+    logical :: strict_lu = .false.
     integer :: isw_regper, nz_coll, nz_ttmp, nz_coll_beg
     integer :: nrow, ncol, nz, iopt
     real(dp) :: delphim1, deloneovb, step_factor_p, step_factor_m
@@ -3332,6 +3333,7 @@ CONTAINS
 
         logical :: clean
         real(dp), dimension(:), allocatable :: bvec_sp_real
+        complex(dp), dimension(:), allocatable :: source_copy
         !  multi-species part
         integer :: ispecpp ! species indices (loop over sources)
         real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec_tmp
@@ -3356,6 +3358,7 @@ CONTAINS
 ! factorization:
 
         bvec_sp = 0.d0
+        strict_lu = .false.
         iopt = 1
 
         call CPU_TIME(time_start)
@@ -3386,11 +3389,22 @@ CONTAINS
 
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
+                source_copy = source_vector_all(:, k, ispec)
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                     & source_vector_all(:, k, ispec), ispec, next_iteration, &
                     & solve_converged)
-                if (.not. solve_converged) &
-                    error stop 'ripple_solver_ArnoldiO2: integral-part iteration failed'
+                if (.not. solve_converged) then
+                    call refactorize_strict_lu()
+                    source_vector_all(:, k, ispec) = source_copy
+                    f_init_arnoldi = source_vector_all(:, 1, ispec)
+                    call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
+                        & source_vector_all(:, k, ispec), ispec, next_iteration, &
+                        & solve_converged)
+                end if
+                if (.not. solve_converged) then
+                    source_vector_all(:, k, ispec) = source_copy
+                    call gmres_source(source_vector_all(:, k, ispec), epserr_iter)
+                end if
             end do
 
         elseif (isw_intp .EQ. 1) then
@@ -3404,11 +3418,22 @@ CONTAINS
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
+                    source_copy = source_vector_all(:, k, ispecp)
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                         & source_vector_all(:, k, ispecp), ispec, next_iteration, &
                         & solve_converged)
-                    if (.not. solve_converged) &
-                        error stop 'ripple_solver_ArnoldiO2: integral-part iteration failed'
+                    if (.not. solve_converged) then
+                        call refactorize_strict_lu()
+                        source_vector_all(:, k, ispecp) = source_copy
+                        f_init_arnoldi = source_vector_all(:, 1, ispec)
+                        call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
+                            & source_vector_all(:, k, ispecp), ispec, next_iteration, &
+                            & solve_converged)
+                    end if
+                    if (.not. solve_converged) then
+                        source_vector_all(:, k, ispecp) = source_copy
+                        call gmres_source(source_vector_all(:, k, ispecp), epserr_iter)
+                    end if
                 end do
 
             end do
@@ -4394,6 +4419,113 @@ CONTAINS
         deallocate (vec_tmp)
 
     end subroutine integral_part
+
+    !> Refactorize the preconditioner once with strict partial pivoting. With
+    !> UMFPACK's default threshold pivoting the LU of a badly scaled QL matrix
+    !> can have backward errors that make x - L^-1 L x nonlinear at the 1e-3
+    !> level, which stalls the stabilized iteration and GMRES alike (b0e9802b).
+    subroutine refactorize_strict_lu()
+        use sparse_mod, only: sparse_pivot_tolerance
+        real(dp), allocatable :: rhs_real(:)
+        complex(dp), allocatable :: rhs(:)
+        real(dp) :: default_tolerance
+
+        if (strict_lu) return
+        strict_lu = .true.
+        print *, 'refactorizing the QL preconditioner with strict partial pivoting'
+        default_tolerance = sparse_pivot_tolerance
+        sparse_pivot_tolerance = 1.0_dp
+        if (problem_type) then
+            allocate (rhs_real(ncol))
+            rhs_real = 0
+            iopt = 3
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
+                rhs_real, iopt)
+            iopt = 1
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
+                rhs_real, iopt)
+        else
+            allocate (rhs(ncol))
+            rhs = 0
+            iopt = 3
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), rhs, iopt)
+            iopt = 1
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), rhs, iopt)
+        end if
+        sparse_pivot_tolerance = default_tolerance
+        iopt = 2
+    end subroutine refactorize_strict_lu
+
+    !> Solve (I - A) f = b with restarted GMRES, preconditioned by the same LU
+    !> factorization as the stabilized iteration, when that iteration exhausts
+    !> niter: it cannot converge where the deflated operator keeps an eigenvalue
+    !> near or beyond the unit circle.
+    subroutine gmres_source(source, eps)
+        use arnoldi_mod, only: fzero, mode, tol
+        use ql_gmres_mod, only: gmres_solve, gmres_maxiter, gmres_restart
+        complex(dp), intent(inout) :: source(:)
+        real(dp), intent(in) :: eps
+        complex(dp), allocatable :: rhs(:), zero(:)
+        real(dp) :: residual
+        integer :: status, steps, old_mode
+
+        ! The same projected L^-1 q and homogeneous map as iterator.
+        old_mode = mode
+        tol = 0.5_dp
+        allocate(fzero(size(source)), rhs(size(source)), zero(size(source)))
+        fzero = source
+        zero = 0
+        mode = 1
+        call next_iteration(size(source), zero, rhs)
+        mode = 2
+        call gmres_solve(size(source), rhs, source, gmres_operator, gmres_dot, &
+            eps, gmres_maxiter, gmres_restart, status, steps, residual)
+        deallocate(fzero)
+        mode = old_mode
+        print *, 'QL GMRES status, steps, residual:', status, steps, residual
+        ! A stagnated solve is accepted only near the requested accuracy.
+        if (status == 3 .and. residual <= 100*eps) then
+            print *, 'WARNING: QL GMRES stagnated above eps at the operator rounding level'
+        else if (status /= 0) then
+            error stop 'QL GMRES failed to converge'
+        end if
+    end subroutine gmres_source
+
+    subroutine gmres_operator(n, x, y)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: x(n)
+        complex(dp), intent(out) :: y(n)
+        complex(dp), allocatable :: work(:)
+
+        work = x
+        if (problem_type) then
+            ! next_iteration has a legacy inout interface but does not modify fold.
+            call next_iteration(n, work, y)
+        else
+            ! The mode-2 map x + L^-1 (I x - L x) of next_iteration equals L^-1 I x,
+            ! because the factorized matrix is the one applied there. Solving for
+            ! L^-1 I x directly avoids the cancellation x - L^-1 L x, whose rounding
+            ! noise (cond(L) eps |x|) makes the operator nonlinear for GMRES.
+            if (isw_intp .eq. 1) then
+                call integral_part(work, y)
+            else
+                y = (0.0d0, 0.0d0)
+            end if
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), y, iopt)
+        end if
+        y = x - y
+    end subroutine gmres_operator
+
+    function gmres_dot(n, x, y) result(z)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: x(n), y(n)
+        complex(dp) :: z, species_dot(0:num_spec-1)
+
+        species_dot = 0
+        species_dot(ispec) = sum(conjg(x)*y)
+        call mpro%allgather_inplace(species_dot)
+        z = sum(species_dot)
+    end function gmres_dot
 
     !---------------------------------------------------------------------------------
     !> Single step of a preconditioned Richardson iteration which for equation set

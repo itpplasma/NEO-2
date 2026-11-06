@@ -125,6 +125,16 @@ else()
   message(STATUS "numpy/h5py not found: skipping er_direct_prepare_scan_test")
 endif()
 
+# Restarted complex GMRES of the QL fallback solve.
+add_executable(test_ql_gmres test_ql_gmres.f90)
+target_link_libraries(test_ql_gmres neo2_ql)
+add_test(NAME ql_gmres_test COMMAND test_ql_gmres)
+set_tests_properties(ql_gmres_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
