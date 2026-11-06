@@ -3561,6 +3561,15 @@ CONTAINS
 
         elseif (isw_intp .EQ. 1) then
             ! with integral part:
+            block
+                integer :: length
+                call get_environment_variable('NEO2_QL_DIRECT_MEASURE', length=length)
+                if (length > 0) then
+                    call measure_direct()
+                    call mpro%barrier()
+                    stop
+                end if
+            end block
 
             mode_iter = 1
 
@@ -4425,28 +4434,162 @@ CONTAINS
     end subroutine add_f01_source
 
 !------------------------------------------------------------------------
+    !> diag: factorize the augmented axisymmetric system of one species,
+    !> [M, -K A; B, -I] (f, t) = (q, 0) with the moments t = B f, so that
+    !> M f - K A B f = q, and print the UMFPACK statistics. K A and B are
+    !> probed from integral_expand and integral_moments.
+    subroutine measure_direct()
+        integer :: nmom, nstep_mom, ntot, istep, m, l, c, r, src, p, j, cnt, maxblock
+        integer, allocatable :: step_of(:), block(:), ri(:), ci(:), pcol(:)
+        complex(dp), allocatable :: vals(:), vec(:), out(:)
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scal, work
+        real(dp), allocatable :: b(:)
+        nstep_mom = (lag + 1)*(leg + 1)
+        nmom = nstep_mom*(iend - ibeg + 1)
+        ntot = n_2d_size + nmom
+        allocate (step_of(n_2d_size), block(ibeg:iend), vec(n_2d_size), out(n_2d_size))
+        step_of = -1
+        do istep = ibeg, iend
+            block(istep) = 2*(npl(istep) + 1)*(lag + 1)
+            step_of(ind_start(istep) + 1:ind_start(istep) + block(istep)) = istep
+        end do
+        if (any(step_of < 0)) stop 'measure_direct: steps do not tile the unknowns'
+        cnt = 0
+        allocate (ri(1024), ci(1024), vals(1024))
+        do j = 1, nz_symm
+            call coo_add(ri, ci, vals, cnt, irow_symm(j), icol_symm(j), cmplx(amat_symm(j), 0, dp))
+        end do
+        do m = 0, lag
+            do l = 0, leg
+                do c = 0, 3
+                    scal = 0
+                    do istep = ibeg + c, iend, 4
+                        scal(m, l, istep, ispec) = 1
+                    end do
+                    work = scal
+                    call integral_expand(work, out)
+                    do r = 1, n_2d_size
+                        if (out(r) == (0.0d0, 0.0d0)) cycle
+                        src = -1
+                        do istep = max(ibeg, step_of(r) - 1), min(iend, step_of(r) + 1)
+                            if (mod(istep - ibeg, 4) == c) src = istep
+                        end do
+                        if (src < 0) stop 'measure_direct: expand reaches beyond a neighbour'
+                        call coo_add(ri, ci, vals, cnt, r, n_2d_size + mom_index(m, l, src), -out(r))
+                    end do
+                end do
+            end do
+        end do
+        maxblock = maxval(block)
+        do p = 0, maxblock - 1
+            vec = 0
+            do istep = ibeg, iend
+                if (p < block(istep)) vec(ind_start(istep) + 1 + p) = 1
+            end do
+            call integral_moments(vec, scal)
+            do istep = ibeg, iend
+                if (p >= block(istep)) cycle
+                do m = 0, lag
+                    do l = 0, leg
+                        if (scal(m, l, istep, ispec) /= (0.0d0, 0.0d0)) call coo_add(ri, ci, vals, cnt, n_2d_size &
+                            + mom_index(m, l, istep), ind_start(istep) + 1 + p, scal(m, l, istep, ispec))
+                    end do
+                end do
+            end do
+        end do
+        do j = 1, nmom
+            call coo_add(ri, ci, vals, cnt, n_2d_size + j, n_2d_size + j, (-1.0d0, 0.0d0))
+        end do
+        ri = ri(1:cnt)
+        ci = ci(1:cnt)
+        vals = vals(1:cnt)
+        print '(a,i0,a,i0,a,i0,a,i0,a,es10.2)', 'NEO2_DIRECT rank ', ispec, ' n ', n_2d_size, &
+            ' moments ', nmom, ' nnz ', cnt, ' max |imag| ', maxval(abs(aimag(vals)))
+        block
+            integer, allocatable :: order(:)
+            allocate (order(cnt), pcol(ntot + 1), b(ntot))
+            call sort_by_column(ci, ri, order)
+            ri = ri(order)
+            ci = ci(order)
+            vals = vals(order)
+            call column_full2pointer(ci, pcol)
+            b = 0
+            call sparse_solve(ntot, ntot, cnt, ri, pcol, real(vals, dp), b, 1)
+        end block
+    end subroutine measure_direct
+
+    integer function mom_index(m, l, istep)
+        integer, intent(in) :: m, l, istep
+        mom_index = 1 + m + (lag + 1)*(l + (leg + 1)*(istep - ibeg))
+    end function mom_index
+
+    subroutine coo_add(ri, ci, vals, cnt, row, col, value)
+        integer, allocatable, intent(inout) :: ri(:), ci(:)
+        complex(dp), allocatable, intent(inout) :: vals(:)
+        integer, intent(inout) :: cnt
+        integer, intent(in) :: row, col
+        complex(dp), intent(in) :: value
+        integer, allocatable :: grow_i(:)
+        complex(dp), allocatable :: grow_v(:)
+        if (cnt == size(vals)) then
+            allocate (grow_i(2*cnt)); grow_i(1:cnt) = ri; call move_alloc(grow_i, ri)
+            allocate (grow_i(2*cnt)); grow_i(1:cnt) = ci; call move_alloc(grow_i, ci)
+            allocate (grow_v(2*cnt)); grow_v(1:cnt) = vals; call move_alloc(grow_v, vals)
+        end if
+        cnt = cnt + 1
+        ri(cnt) = row
+        ci(cnt) = col
+        vals(cnt) = value
+    end subroutine coo_add
+
+    !> Order of the entries sorted by column, rows ascending within a column:
+    !> two stable counting sorts, by row and then by column.
+    subroutine sort_by_column(col, row, order)
+        integer, intent(in) :: col(:), row(:)
+        integer, intent(out) :: order(:)
+        integer, allocatable :: by_row(:)
+        integer :: i
+        allocate (by_row(size(row)))
+        call counting_sort(row, [(i, i=1, size(row))], by_row)
+        call counting_sort(col(by_row), by_row, order)
+    end subroutine sort_by_column
+
+    subroutine counting_sort(key, input, output)
+        integer, intent(in) :: key(:), input(:)
+        integer, intent(out) :: output(:)
+        integer, allocatable :: next(:)
+        integer :: k
+        allocate (next(maxval(key) + 1))
+        next = 0
+        do k = 1, size(key)
+            next(key(k) + 1) = next(key(k) + 1) + 1
+        end do
+        next(1) = 1
+        do k = 2, size(next)
+            next(k) = next(k) + next(k - 1)
+        end do
+        do k = 1, size(key)
+            output(next(key(k))) = input(k)
+            next(key(k)) = next(key(k)) + 1
+        end do
+    end subroutine counting_sort
+
+    !> C_I f: velocity moments of f at each step (integral_moments), exchanged
+    !> between the species ranks, mixed and mapped back (integral_expand).
     subroutine integral_part(vec_in, vec_out)
-
-        implicit none
-
-        integer :: l, m, i, k, istep, npassing, k_prev
-
         complex(dp), dimension(n_2d_size) :: vec_in, vec_out
-    !! Modification by Andreas F. Martitsch (20.08.2015)
-        ! Array extended by 3rd (phi-steps) and 4th dimension (species)
         complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg
-        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg_tmp
-        ! Species index
-        integer :: ispecp
-    !! End Modification by Andreas F. Martitsch (20.08.2015)
-        complex(dp), dimension(:, :, :), allocatable :: vec_tmp
+        call integral_moments(vec_in, scalprod_pleg)
+        call mpro%allgather_inplace(scalprod_pleg)
+        call integral_expand(scalprod_pleg, vec_out)
+    end subroutine integral_part
 
-        allocate (vec_tmp(0:lag, 2*(npart + 1), ibeg:iend))
-        vec_tmp = 0.d0
-
-!! Modification by Andreas F. Martitsch (20.08.2015)
-! Array scalprod_pleg extended by 3rd (phi-steps) and
-! 4th dimension (species)
+    !> Legendre moments of each Laguerre block of this species at each step.
+    subroutine integral_moments(vec_in, scalprod_pleg)
+        complex(dp), dimension(n_2d_size), intent(in) :: vec_in
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1), intent(out) :: scalprod_pleg
+        integer :: l, m, k, istep, npassing
+        scalprod_pleg = (0.0d0, 0.0d0)
         do istep = ibeg, iend
 
             npassing = npl(istep)
@@ -4475,7 +4618,21 @@ CONTAINS
 !! Modification by Andreas F. Martitsch (20.08.2015)
 ! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
 ! (mpro%allgather supports 3D and 4D matrices)
-        call mpro%allgather_inplace(scalprod_pleg)
+
+    end subroutine integral_moments
+
+    !> Mix the moments of all species with ailmm_aa and map them back onto the
+    !> pitch-angle grid of this species.
+    subroutine integral_expand(scalprod_pleg, vec_out)
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1), intent(inout) :: scalprod_pleg
+        complex(dp), dimension(n_2d_size), intent(out) :: vec_out
+        integer :: l, m, i, k, istep, npassing, k_prev, ispecp
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg_tmp
+        complex(dp), dimension(:, :, :), allocatable :: vec_tmp
+
+        allocate (vec_tmp(0:lag, 2*(npart + 1), ibeg:iend))
+        vec_tmp = 0.d0
+
 
         do istep = ibeg, iend
 
@@ -4581,7 +4738,7 @@ CONTAINS
 
         deallocate (vec_tmp)
 
-    end subroutine integral_part
+    end subroutine integral_expand
 
     logical function no_projection()
         character(len=16) :: value
