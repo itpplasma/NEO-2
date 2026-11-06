@@ -89,6 +89,19 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     TIMEOUT 30
 )
 
+# Reading a stored propagator must allocate its fixed-shape qflux.
+add_executable(test_propagator_io test_propagator_io.f90)
+target_link_libraries(test_propagator_io neo2_ql)
+
+add_test(NAME propagator_io_test
+         COMMAND test_propagator_io
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(propagator_io_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
