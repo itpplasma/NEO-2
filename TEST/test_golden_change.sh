@@ -3,7 +3,8 @@
 set -euo pipefail
 command -v jq > /dev/null || exit 77
 ci=$(cd "$(dirname "${BASH_SOURCE[0]}")/../ci" && pwd)
-work=$(mktemp -d)
+# The stub curl must be executable; CI mounts /tmp noexec, so stay in the build tree.
+work=$(mktemp -d "$PWD/golden-change.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
