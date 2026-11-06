@@ -1506,6 +1506,31 @@ contains
     end function phim_phimp_rel1
   end subroutine compute_Minv
 
+  subroutine compute_exb_source(aE1_s)
+    ! Same projection measure and orthogonalisation as compute_sources.
+    ! Called lazily by QL, after the collision basis has been initialised.
+    real(kind=dp), intent(out) :: aE1_s(0:lagmax)
+    integer :: m
+
+    if (isw_relativistic /= 0) error stop 'Phi^MA requires a nonrelativistic basis'
+    if (.not. allocated(M_transform_inv)) &
+        error stop 'Phi^MA requires an initialised collision basis'
+    do m = 0, lagmax
+      aE1_s(m) = integrate(exb_kernel, 0d0)
+    end do
+    if (make_ortho) aE1_s = matmul(M_transform_inv, aE1_s)
+
+  contains
+
+    function exb_kernel(x) result(value)
+      real(kind=dp) :: x ! integrate's callback interface has no INTENT.
+      real(kind=dp) :: value
+
+      ! The leaf combines the x^-1 with the measure before evaluating at x=0.
+      call exb_weight_leaf(x, alpha, beta, phi_prj(m, x), value)
+    end function exb_kernel
+  end subroutine compute_exb_source
+
   subroutine compute_sources(asource_s, weightlag_s, weightden_s, weightparflow_s, weightenerg_s)
     real(kind=dp), dimension(:,:), intent(out) :: asource_s, weightlag_s
     real(kind=dp), dimension(:), intent(out)   :: weightden_s, weightparflow_s, weightenerg_s
@@ -2699,5 +2724,7 @@ contains
     endif
 
   end subroutine fplusminus
+
+  include 'generated/exb_weight_leaf.inc'
 
 end module collop_compute
