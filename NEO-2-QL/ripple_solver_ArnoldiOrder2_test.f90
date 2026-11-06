@@ -3525,9 +3525,13 @@ CONTAINS
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
                 source_copy = source_vector_all(:, k, ispec)
+                if (use_krylov()) then
+                    call krylov_source(source_vector_all(:, k, ispec), epserr_iter, solve_converged)
+                else
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                     & source_vector_all(:, k, ispec), ispec, next_iteration, &
                     & solve_converged)
+                end if
                 if (.not. solve_converged) then
                     call use_refined_solves()
                     source_vector_all(:, k, ispec) = source_copy
@@ -3554,9 +3558,14 @@ CONTAINS
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
                     source_copy = source_vector_all(:, k, ispecp)
+                    if (use_krylov()) then
+                        call krylov_source(source_vector_all(:, k, ispecp), epserr_iter, &
+                            solve_converged)
+                    else
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                         & source_vector_all(:, k, ispecp), ispec, next_iteration, &
                         & solve_converged)
+                    end if
                     if (.not. solve_converged) then
                         call use_refined_solves()
                         source_vector_all(:, k, ispecp) = source_copy
@@ -4554,6 +4563,95 @@ CONTAINS
         deallocate (vec_tmp)
 
     end subroutine integral_part
+
+    logical function use_krylov()
+        character(len=16) :: value
+        call get_environment_variable('NEO2_QL_SOLVER', value)
+        use_krylov = trim(value) == 'krylov'
+    end function use_krylov
+
+    !> Solve the QL integral-part equation M f - C_I f = q with right-preconditioned
+    !> GMRES: M is the assembled kinetic operator, C_I the integral part, and the
+    !> preconditioner the existing LU factorization. Vectors are distributed over
+    !> species ranks (gmres_dot sums over them); the density and energy null-space
+    !> components are removed per species afterwards, as the stabilized iteration does.
+    subroutine krylov_source(source, eps, converged)
+        use ql_gmres_mod, only: gmres_solve
+        complex(dp), intent(inout) :: source(:)
+        real(dp), intent(in) :: eps
+        logical, intent(out) :: converged
+        complex(dp), allocatable :: y(:), x(:)
+        real(dp) :: residual
+        integer :: info, iterations
+
+        allocate (y(size(source)), x(size(source)))
+        ! Right preconditioning: GMRES on (M - C_I) P^-1 y = q, then f = P^-1 y.
+        call gmres_solve(size(source), source, y, krylov_right, gmres_dot, eps, &
+            2000, 100, info, iterations, residual)
+        if (ispec == 0) print '(a,i0,a,i0,a,es10.3)', 'QL FGMRES info ', info, &
+            ' iterations ', iterations, ' residual ', residual
+        converged = info == 0 .or. (info == 3 .and. residual <= 100*eps)
+        call krylov_precondition(y, x)
+        source = x
+        if (problem_type) then
+            source = source - sum(densvec_bra*source)/denom_dens*densvec_ket
+            if (isw_intp == 1) source = source &
+                - sum(energvec_bra*source)/denom_energ*energvec_ket
+        end if
+    end subroutine krylov_source
+
+    subroutine krylov_right(n, input, output)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: input(n)
+        complex(dp), intent(out) :: output(n)
+        complex(dp), allocatable :: work(:)
+        allocate (work(n))
+        call krylov_precondition(input, work)
+        call krylov_matvec(work, output)
+    end subroutine krylov_right
+
+    subroutine krylov_matvec(input, output)
+        complex(dp), intent(in) :: input(:)
+        complex(dp), intent(out) :: output(:)
+        complex(dp), allocatable :: work(:)
+        integer :: entry
+        output = (0.0d0, 0.0d0)
+        if (isw_intp == 1) then
+            work = input
+            call integral_part(work, output)
+            output = -output
+        end if
+        if (problem_type) then
+            do entry = 1, nz_symm
+                output(irow_symm(entry)) = output(irow_symm(entry)) &
+                    + amat_symm(entry)*input(icol_symm(entry))
+            end do
+        else
+            do entry = 1, nz
+                output(irow(entry)) = output(irow(entry)) + amat_sp(entry)*input(icol(entry))
+            end do
+        end if
+    end subroutine krylov_matvec
+
+    subroutine krylov_precondition(input, output)
+        complex(dp), intent(in) :: input(:)
+        complex(dp), intent(out) :: output(:)
+        real(dp), allocatable :: part_real(:), part_imag(:)
+        iopt = 2
+        if (problem_type) then
+            part_real = real(input, dp)
+            part_imag = aimag(input)
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
+                part_real, iopt)
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
+                part_imag, iopt)
+            output = cmplx(part_real, part_imag, dp)
+        else
+            output = input
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), output, iopt)
+        end if
+    end subroutine krylov_precondition
+
 
     !> Switch the LU solves to UMFPACK's iterative refinement for the rest of
     !> this solve. Without it, the backward error of x - L^-1 L x can be large
