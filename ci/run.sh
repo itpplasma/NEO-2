@@ -58,14 +58,18 @@ case "$tier" in
     (
 python -m pip install --upgrade pip
 pip install numpy h5py scipy matplotlib pytest
-# The comparator needs only numpy and h5py; libneo does not build from source here.
-pip install --no-deps ./python
+# pip runs build tools such as meson from its temporary build environment,
+# which fails on a noexec /tmp; the job's own temporary directory allows it.
+export TMPDIR=$RUNNER_TEMP
+libneo_ref=$(python -c 'import json; print(json.load(open("cmake/dependency_versions.json"))["libneo"])')
+pip install "git+https://github.com/itpplasma/libneo.git@$libneo_ref"
+pip install ./python
 
     )
     load_job_environment
-    echo 'Test HDF5 comparisons'
+    echo 'Test Python tools'
     (
-python -m pytest python/test/test_hdf5_comparison.py python/test/test_compare_hdf5_files.py python/test/test_golden_report.py
+python -m pytest python/test
     )
     load_job_environment
     echo 'Build NEO-2'
