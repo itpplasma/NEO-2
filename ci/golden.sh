@@ -76,6 +76,12 @@ check par env TOL=1e-15 LEGACY_TOL=4e-8 make par
 differences par par TOL=1e-15 LEGACY_TOL=4e-8
 python -m neo2_util.golden_measure summary ci-out/runs/*.ranks > ci-out/performance.tsv ||
     echo 'No run-time summary' >&2
+# A golden-change PR leaves its record for the history site (golden-history.yml).
+if [ "${SCI_GOLDEN_CHANGE:-0}" = 1 ]; then
+    python -m neo2_util.golden_history collect --data "$test_dir" --build "$src" \
+        --reference-build "$root/base" --runs ci-out/runs --out ci-out/history-record.json ||
+        echo 'No history record for this golden change' >&2
+fi
 if [ -f "$test_dir/performance_ql/performance_report.txt" ]; then
     cp "$test_dir/performance_ql/performance_report.txt" ci-out/
 fi
