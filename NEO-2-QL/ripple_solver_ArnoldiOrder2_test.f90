@@ -84,9 +84,8 @@ subroutine ripple_solver_ArnoldiO2( &
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
     use mpiprovider_module, only: mpro
-    ! Load x1mm and x2mm (=energy dependence of drift frequencies)
-    ! from collision operator module. This step allows for
-    ! support of different basis functions and replaces routine "lagxmm".
+    ! x1mm and x2mm (energy dependence of the drift frequencies) come from
+    ! the collision operator module, so any basis works.
     use collop
     use arnoldi_mod, only: iterator, f_init_arnoldi, &
       & lsw_write_flux_surface_distribution, write_flux_surface_distribution
