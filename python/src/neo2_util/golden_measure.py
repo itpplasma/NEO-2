@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
 """Wall time and peak memory of the NEO-2 runs in a golden-record job.
 
-  golden_measure.py wrap LOG BINARY     print an executable that runs BINARY
-                                        through `rank` and logs to LOG
-  golden_measure.py rank LOG BINARY ... run one MPI rank or serial stage
-  golden_measure.py summary LOG...      one row per case and log: runs,
-                                        median rank-0 wall time, peak memory
+  python -m neo2_util.golden_measure wrap LOG BINARY
+      print an executable that runs BINARY through `rank` and logs to LOG
+  python -m neo2_util.golden_measure rank LOG BINARY ARGS...
+      run one MPI rank or serial stage
+  python -m neo2_util.golden_measure summary LOG...
+      one row per case and log: runs, median rank-0 wall time, peak memory
 
 The case Makefiles run CURRENT_NEO2_* and REFERENCE_NEO2_*, so pointing these
 at the wrapper measures every run without changing a case.
@@ -42,7 +42,7 @@ def rank(log, binary, args):
 def wrap(log, binary):
     log, binary = Path(log).resolve(), Path(binary).resolve()
     path = log.parent / f"{log.stem}-{binary.name}"
-    path.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{Path(__file__).resolve()}" '
+    path.write_text(f'#!/bin/sh\nexec "{sys.executable}" -m neo2_util.golden_measure '
                     f'rank "{log}" "{binary}" "$@"\n')
     path.chmod(0o755)
     return path

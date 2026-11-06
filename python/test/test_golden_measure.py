@@ -1,10 +1,9 @@
-"""ci/golden_measure.py: wrapper timing and peak memory of golden-case runs."""
+"""neo2_util.golden_measure: wrapper timing and peak memory of golden-case runs."""
 import json
 import os
 import subprocess
 import sys
 
-SCRIPT = os.path.join(os.path.dirname(__file__), "..", "..", "ci", "golden_measure.py")
 
 
 def test_wrapper_records_case_time_memory_and_exit(tmp_path):
@@ -15,7 +14,7 @@ def test_wrapper_records_case_time_memory_and_exit(tmp_path):
     binary.chmod(0o755)
     log = tmp_path / "runs" / "current.ranks"
     log.parent.mkdir()
-    wrapper = subprocess.run([sys.executable, SCRIPT, "wrap", str(log), str(binary)],
+    wrapper = subprocess.run([sys.executable, "-m", "neo2_util.golden_measure", "wrap", str(log), str(binary)],
                              check=True, capture_output=True, text=True).stdout.strip()
     run_dir = tmp_path / "ql" / "current"
     run_dir.mkdir(parents=True)
@@ -25,7 +24,7 @@ def test_wrapper_records_case_time_memory_and_exit(tmp_path):
     assert [e["case"] for e in entries] == ["ql", "ql"]
     assert [e["exit"] for e in entries] == [0, 3]
     assert all(e["peak_rss_mib"] >= 64 for e in entries)
-    table = subprocess.run([sys.executable, SCRIPT, "summary", str(log)], check=True,
+    table = subprocess.run([sys.executable, "-m", "neo2_util.golden_measure", "summary", str(log)], check=True,
                            capture_output=True, text=True).stdout.splitlines()
     assert table[0].split("\t") == ["case", "build", "runs", "median_wall_s", "peak_rss_mib"]
     case, build, runs, _, peak = table[1].split("\t")

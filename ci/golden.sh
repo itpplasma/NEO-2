@@ -42,7 +42,7 @@ measure() {
     local log=$1
     shift
     for var in "$@"; do
-        export "$var=$(python "$src/ci/golden_measure.py" wrap "$src/ci-out/runs/$log.ranks" "${!var}")"
+        export "$var=$(python -m neo2_util.golden_measure wrap "$src/ci-out/runs/$log.ranks" "${!var}")"
     done
 }
 measure current CURRENT_NEO2_PAR CURRENT_NEO2_QL
@@ -74,7 +74,7 @@ $base_check performance-ql env TOL=1e-15 make performance_ql
 differences performance-ql performance_ql TOL=1e-15
 check par env TOL=1e-15 LEGACY_TOL=4e-8 make par
 differences par par TOL=1e-15 LEGACY_TOL=4e-8
-python ci/golden_measure.py summary ci-out/runs/*.ranks > ci-out/performance.tsv ||
+python -m neo2_util.golden_measure summary ci-out/runs/*.ranks > ci-out/performance.tsv ||
     echo 'No run-time summary' >&2
 if [ -f "$test_dir/performance_ql/performance_report.txt" ]; then
     cp "$test_dir/performance_ql/performance_report.txt" ci-out/
