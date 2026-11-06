@@ -288,9 +288,6 @@ SUBROUTINE ripple_solver(                                 &
   !  one should call a normal solver in this case
   !
   ! These are three possibilities to call sparse_solve
-  !  CALL sparse_solve(nrow,ncol,nz,irow,icol,val,b)  ! full column index
-  !  CALL sparse_solve(nrow,ncol,nz,irow,pcol,val,b)  ! column pointer
-  !  CALL sparse_solve(A,b)                           ! full matrix
   ! results are returned in b
   !
   ! Input
@@ -305,13 +302,6 @@ SUBROUTINE ripple_solver(                                 &
   !  REAL(kind=dp), DIMENSION(:,:), ALLOCATABLE :: b
   !
   ! Matrix - square
-  !  ncol = nrow
-  !  ALLOCATE( irow(nz) )     ! row index
-  !  ALLOCATE( icol(nz) )     ! column index (column ordering)
-  !  ALLOCATE( pcol(ncol+1) ) ! column pointer (other possibility)
-  !  ALLOCATE( val(nz) )      ! values
-  !  ALLOCATE( A(nrow,ncol) ) ! full matrix will be converted to sparse
-  !
   ! rhs
   !  ALLOCATE( b(nrow) )
   ! or
@@ -1598,9 +1588,6 @@ PRINT *,'right boundary layer ignored'
 
     do ipart=1,npassing+1
       nz=nz+1
-!      irow(nz)=k+ipart
-!      icol(nz)=k+ipart
-!      amat_sp(nz)=1.d0
     enddo
 
     if(isw_axisymm.eq.1) then
@@ -1608,28 +1595,14 @@ PRINT *,'right boundary layer ignored'
 
       do ipart=1,npassing+1
         nz=nz+1
-!        irow(nz)=k+ipart
-!        icol(nz)=k_prev+ipart
-!        amat_sp(nz)=-1.d0
       enddo
 
       if(isw_regper.eq.1.and.m.lt.1) then
         do ipart=1,npassing+1
-!          if(ipart.le.npassing) then
-!            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
-!          else
-!            deleta_factor=1.d0-eta(ipart-1)*bhat_mfl(istep)
-!          endif
 
           do ipart1=1,npassing+1
             nz_regper=nz_regper+1
-!            irow_regper(nz_regper)=k+ipart
-!            icol_regper(nz_regper)=k_prev+ipart1
-!            amat_regper(nz_regper)=deleta_factor
             nz_regper=nz_regper+1
-!            irow_regper(nz_regper)=k+ipart
-!            icol_regper(nz_regper)=k+npassing+1+ipart1
-!            amat_regper(nz_regper)=deleta_factor
           enddo
 
         enddo
@@ -1653,23 +1626,14 @@ PRINT *,'right boundary layer ignored'
 
       do ipart=1,npassing+1
         nz=nz+1
-!        irow(nz)=k+ipart
-!        icol(nz)=k+ipart
-!        amat_sp(nz)=delphim1
       enddo
 
       do ipart=1,npassing
         nz=nz+1
-!        irow(nz)=k+ipart
-!        icol(nz)=k_prev+ipart
-!        amat_sp(nz)=-delphim1
       enddo
 
       if(npassing_prev.ge.npassing) then
         nz=nz+1
-!        irow(nz)=k+npassing+1
-!        icol(nz)=k_prev+npassing+1
-!        amat_sp(nz)=-delphim1
       endif
 
 ! mirroring:
@@ -1678,23 +1642,14 @@ PRINT *,'right boundary layer ignored'
 
         do kk=1,4
           nz=nz+1
-!          irow(nz)=k+npassing+1
-!          icol(nz)=k+npassing+kk-1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
         enddo
 
         do kk=1,4
           nz=nz+1
-!          irow(nz)=k+npassing+1
-!          icol(nz)=k_prev+npassing_prev+kk-1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
         enddo
 
       elseif(npassing_prev.gt.npassing) then
         nz=nz+1
-!        irow(nz)=k_prev+npassing_prev+2
-!        icol(nz)=k_prev+npassing_prev+1
-!        amat_sp(nz)=-delphim1
       endif
 
 ! collisions:
@@ -1709,9 +1664,6 @@ PRINT *,'right boundary layer ignored'
             do kk=1,5
               do mm=0,lag
                 nz=nz+1
-!                irow(nz)=k+ipart
-!                icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                           *fact_pos_e(istep)
               enddo
             enddo
@@ -1722,9 +1674,6 @@ PRINT *,'right boundary layer ignored'
           do kk=1,4
             do mm=0,lag
               nz=nz+1
-!              irow(nz)=k+npassing+1
-!              icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1)  &
 !                         *fact_pos_e(istep)
             enddo
           enddo
@@ -1732,9 +1681,6 @@ PRINT *,'right boundary layer ignored'
           do kk=1,4
             do mm=0,lag
               nz=nz+1
-!              irow(nz)=k+npassing+1
-!              icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep-1,1)
 !                         *fact_pos_b(istep-1)
             enddo
           enddo
@@ -1751,9 +1697,6 @@ PRINT *,'right boundary layer ignored'
             do kk=1,4
               do mm=0,lag
                 nz=nz+1
-!                irow(nz)=k+ipart
-!                icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
               enddo
             enddo
           enddo
@@ -1761,9 +1704,6 @@ PRINT *,'right boundary layer ignored'
           do kk=1,4
             do mm=0,lag
               nz=nz+1
-!              irow(nz)=k+npassing+1
-!              icol(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing+1,istep)
             enddo
           enddo
@@ -1771,9 +1711,6 @@ PRINT *,'right boundary layer ignored'
           do kk=1,4
             do mm=0,lag
               nz=nz+1
-!              irow(nz)=k+npassing+1
-!              icol(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing_prev+1,istep-1)
             enddo
           enddo
@@ -1799,9 +1736,6 @@ PRINT *,'right boundary layer ignored'
 
     do ipart=1,npassing+1
       nz=nz+1
-!      irow(nz)=k-ipart
-!      icol(nz)=k-ipart
-!      amat_sp(nz)=1.d0
     enddo
 
     if(isw_axisymm.eq.1) then
@@ -1809,28 +1743,14 @@ PRINT *,'right boundary layer ignored'
 
       do ipart=1,npassing+1
         nz=nz+1
-!        irow(nz)=k-ipart
-!        icol(nz)=k_prev-ipart
-!        amat_sp(nz)=-1.d0
       enddo
 
       if(isw_regper.eq.1.and.m.lt.1) then
         do ipart=1,npassing+1
-!          if(ipart.le.npassing) then
-!            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
-!          else
-!            deleta_factor=1.d0-eta(ipart-1)*bhat_mfl(istep)
-!          endif
 
           do ipart1=1,npassing+1
             nz_regper=nz_regper+1
-!            irow_regper(nz_regper)=k-ipart
-!            icol_regper(nz_regper)=k_prev-ipart1
-!            amat_regper(nz_regper)=deleta_factor
             nz_regper=nz_regper+1
-!            irow_regper(nz_regper)=k-ipart
-!            icol_regper(nz_regper)=k-npassing-1-ipart1
-!            amat_regper(nz_regper)=deleta_factor
           enddo
 
         enddo
@@ -1854,23 +1774,14 @@ PRINT *,'right boundary layer ignored'
 
       do ipart=1,npassing+1
         nz=nz+1
-!        irow(nz)=k-ipart
-!        icol(nz)=k-ipart
-!        amat_sp(nz)=delphim1
       enddo
 
       do ipart=1,npassing
         nz=nz+1
-!        irow(nz)=k-ipart
-!        icol(nz)=k_prev-ipart
-!        amat_sp(nz)=-delphim1
       enddo
 
       if(npassing_prev.ge.npassing) then
         nz=nz+1
-!        irow(nz)=k-npassing-1
-!        icol(nz)=k_prev-npassing-1
-!        amat_sp(nz)=-delphim1
       endif
 
 ! mirroring:
@@ -1879,23 +1790,14 @@ PRINT *,'right boundary layer ignored'
 
         do kk=1,4
           nz=nz+1
-!          irow(nz)=k-npassing-1
-!          icol(nz)=k-npassing-kk+1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
         enddo
 
         do kk=1,4
           nz=nz+1
-!          irow(nz)=k-npassing-1
-!          icol(nz)=k_prev-npassing_prev-kk+1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
         enddo
 
       elseif(npassing_prev.gt.npassing) then
         nz=nz+1
-!        irow(nz)=k_prev-npassing_prev-2
-!        icol(nz)=k_prev-npassing_prev-1
-!        amat_sp(nz)=-delphim1
       endif
 
 ! collisions:
@@ -1910,9 +1812,6 @@ PRINT *,'right boundary layer ignored'
             do kk=1,5
               do mm=0,lag
                 nz=nz+1
-!                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                           *fact_neg_e(istep)
               enddo
             enddo
@@ -1923,9 +1822,6 @@ PRINT *,'right boundary layer ignored'
           do kk=1,4
             do mm=0,lag
               nz=nz+1
-!              irow(nz)=k-npassing-1
-!              icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=-0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep,1) &
 !                         *fact_neg_e(istep)
             enddo
           enddo
@@ -1933,9 +1829,6 @@ PRINT *,'right boundary layer ignored'
           do kk=1,4
             do mm=0,lag
               nz=nz+1
-!              irow(nz)=k-npassing-1
-!              icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*anumm(m,mm)*rhs_mat_fzero(kk,istep+1,1) &
 !                         *fact_neg_b(istep+1)
             enddo
           enddo
@@ -1952,9 +1845,6 @@ PRINT *,'right boundary layer ignored'
             do kk=1,4
               do mm=0,lag
                 nz=nz+1
-!                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)
               enddo
             enddo
           enddo
@@ -1962,9 +1852,6 @@ PRINT *,'right boundary layer ignored'
           do kk=1,4
             do mm=0,lag
               nz=nz+1
-!              irow(nz)=k-npassing-1
-!              icol(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing+1,istep)
             enddo
           enddo
@@ -1972,9 +1859,6 @@ PRINT *,'right boundary layer ignored'
           do kk=1,4
             do mm=0,lag
               nz=nz+1
-!              irow(nz)=k-npassing-1
-!              icol(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
-!              amat_sp(nz)=0.5d0*denmm(m,mm)                                  &
 !                         *rhs_mat_energ(kk,npassing_prev+1,istep+1)
             enddo
           enddo
@@ -2437,9 +2321,6 @@ PRINT *,'right boundary layer ignored'
   CALL column_full2pointer(icol(1:nz),ipcol)
 
 ! There are now three different calls sparse_solve
-!   iopt = 1 ; factorization
-!   iopt = 2 ; solve
-!   iopt = 3 ; free memory
 ! without iopt or with iopt = 0: old behaviour (factorize,solve,free)
 
 ! factorization:
