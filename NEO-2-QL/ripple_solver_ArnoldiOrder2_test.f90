@@ -3467,6 +3467,7 @@ CONTAINS
         logical :: clean
         real(dp), dimension(:), allocatable :: bvec_sp_real
         complex(dp), dimension(:), allocatable :: source_copy
+        integer :: solve_path
         !  multi-species part
         integer :: ispecpp ! species indices (loop over sources)
         real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec_tmp
@@ -3525,7 +3526,9 @@ CONTAINS
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
                 source_copy = source_vector_all(:, k, ispec)
+                solve_path = 1
                 if (use_krylov()) then
+                    solve_path = 4
                     call krylov_source(source_vector_all(:, k, ispec), epserr_iter, solve_converged)
                 else
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
@@ -3534,6 +3537,7 @@ CONTAINS
                 end if
                 if (.not. solve_converged) then
                     call use_refined_solves()
+                    solve_path = 2
                     source_vector_all(:, k, ispec) = source_copy
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
@@ -3543,7 +3547,10 @@ CONTAINS
                 if (.not. solve_converged) then
                     source_vector_all(:, k, ispec) = source_copy
                     call gmres_source(source_vector_all(:, k, ispec), epserr_iter)
+                    solve_path = 3
                 end if
+                call report_solve(k, ispec, solve_path, source_copy, &
+                    source_vector_all(:, k, ispec))
             end do
 
         elseif (isw_intp .EQ. 1) then
@@ -3558,7 +3565,9 @@ CONTAINS
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
                     source_copy = source_vector_all(:, k, ispecp)
+                    solve_path = 1
                     if (use_krylov()) then
+                        solve_path = 4
                         call krylov_source(source_vector_all(:, k, ispecp), epserr_iter, &
                             solve_converged)
                     else
@@ -3568,6 +3577,7 @@ CONTAINS
                     end if
                     if (.not. solve_converged) then
                         call use_refined_solves()
+                        solve_path = 2
                         source_vector_all(:, k, ispecp) = source_copy
                         f_init_arnoldi = source_vector_all(:, 1, ispec)
                         call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
@@ -3577,7 +3587,10 @@ CONTAINS
                     if (.not. solve_converged) then
                         source_vector_all(:, k, ispecp) = source_copy
                         call gmres_source(source_vector_all(:, k, ispecp), epserr_iter)
+                        solve_path = 3
                     end if
+                    call report_solve(k, ispecp, solve_path, source_copy, &
+                        source_vector_all(:, k, ispecp))
                 end do
 
             end do
@@ -4652,6 +4665,86 @@ CONTAINS
         end if
     end subroutine krylov_precondition
 
+
+    !> Print one NEO2_SOLVE_JSON record per source solve from rank 0: the solve
+    !> path (1 stabilized iteration, 2 retry with refined LU solves, 3 GMRES
+    !> fallback, 4 preconditioned GMRES), and per species the normwise backward error of the original
+    !> equation, ||q + C_I f - M f||_1/(||q||_1 + ||C_I f||_1 + ||M f||_1),
+    !> together with the density and energy constraints of the axisymmetric
+    !> system. Diagnostic only: this residual levels off near 1e-6 and does not
+    !> decide convergence.
+    subroutine report_solve(source_index, driving_species, path, source, solution)
+        integer, intent(in) :: source_index, driving_species, path
+        complex(dp), intent(in) :: source(:), solution(:)
+        complex(dp), allocatable :: collision(:), lhs(:), work(:)
+        real(dp) :: numerators(0:num_spec-1), denominators(0:num_spec-1)
+        real(dp) :: density(0:num_spec-1), energy(0:num_spec-1)
+        character(len=:), allocatable :: by_species
+        integer :: entry, species
+        character(len=*), parameter :: paths(4) = [character(len=9) :: &
+            'iteration', 'refined', 'gmres', 'krylov']
+
+        allocate (collision(size(solution)), lhs(size(solution)))
+        collision = (0.0d0, 0.0d0)
+        if (isw_intp == 1) then
+            work = solution
+            call integral_part(work, collision)
+        end if
+        lhs = (0.0d0, 0.0d0)
+        if (problem_type) then
+            do entry = 1, nz_symm
+                lhs(irow_symm(entry)) = lhs(irow_symm(entry)) + &
+                    amat_symm(entry)*solution(icol_symm(entry))
+            end do
+        else
+            do entry = 1, nz
+                lhs(irow(entry)) = lhs(irow(entry)) + amat_sp(entry)*solution(icol(entry))
+            end do
+        end if
+        numerators = 0; denominators = 0; density = 0; energy = 0
+        numerators(ispec) = sum(abs(source + collision - lhs))
+        denominators(ispec) = sum(abs(source)) + sum(abs(collision)) + sum(abs(lhs))
+        if (problem_type) then
+            density(ispec) = abs(sum(densvec_bra*solution)) &
+                /max(sum(abs(densvec_bra))*maxval(abs(solution)), tiny(1.0d0))
+            if (isw_intp == 1) energy(ispec) = abs(sum(energvec_bra*solution)) &
+                /max(sum(abs(energvec_bra))*maxval(abs(solution)), tiny(1.0d0))
+        end if
+        call mpro%allgather_inplace(numerators)
+        call mpro%allgather_inplace(denominators)
+        call mpro%allgather_inplace(density)
+        call mpro%allgather_inplace(energy)
+        if (ispec /= 0) return
+        by_species = ''
+        do species = 0, num_spec - 1
+            by_species = by_species//json_real(numerators(species) &
+                /max(denominators(species), tiny(1.0d0)))
+            if (species < num_spec - 1) by_species = by_species//','
+        end do
+        print '(a)', 'NEO2_SOLVE_JSON {"system":"' &
+            //trim(merge('axisymmetric   ', 'nonaxisymmetric', problem_type)) &
+            //'","source":'//json_int(source_index)//',"driving_species":'//json_int(driving_species) &
+            //',"path":"'//trim(paths(path))//'","tolerance":'//json_real(epserr_iter) &
+            //',"iteration_limit":'//json_int(niter) &
+            //',"normalized_equation_residual_by_species":['//by_species &
+            //'],"density_constraint_residual":'//json_real(maxval(density)) &
+            //',"energy_constraint_residual":'//json_real(maxval(energy))//'}'
+    end subroutine report_solve
+
+    function json_int(i) result(text)
+        integer, intent(in) :: i
+        character(len=:), allocatable :: text
+        character(len=16) :: buffer
+        write (buffer, '(i0)') i
+        text = trim(buffer)
+    end function json_int
+    function json_real(x) result(text)
+        real(dp), intent(in) :: x
+        character(len=:), allocatable :: text
+        character(len=32) :: buffer
+        write (buffer, '(es12.4e3)') x
+        text = trim(adjustl(buffer))
+    end function json_real
 
     !> Switch the LU solves to UMFPACK's iterative refinement for the rest of
     !> this solve. Without it, the backward error of x - L^-1 L x can be large
