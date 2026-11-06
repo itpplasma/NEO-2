@@ -2,6 +2,9 @@ MODULE arnoldi_mod
   INTEGER :: ngrow,ierr
   INTEGER :: ntol,mode=0
   DOUBLE PRECISION :: tol
+  ! Largest eigenvalue tolerated in combined iterations, and the damping of
+  ! the density and energy projection of the axisymmetric solution.
+  DOUBLE PRECISION, PARAMETER :: tol0=0.5d0
   ! Shared resolution for Ritz convergence and the unit-eigenvalue filter.
   DOUBLE PRECISION, PARAMETER :: epserr_ritznum=1.0d-3
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
@@ -81,7 +84,6 @@ contains
 
     ! tol0 - largest eigenvalue tolerated in combined iterations:
     INTEGER,          PARAMETER :: ntol0=10
-    DOUBLE PRECISION, PARAMETER :: tol0=0.5d0
 
     interface
       subroutine next_iteration(n,fold,fnew)

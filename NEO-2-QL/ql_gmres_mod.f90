@@ -38,7 +38,7 @@ contains
         real(dp), intent(in) :: eps
         integer, intent(out) :: info, iterations
         real(dp), intent(out) :: relres
-        complex(dp), allocatable :: v(:, :), h(:, :), w(:), g(:), y(:), sn(:), xbest(:)
+        complex(dp), allocatable :: v(:, :), h(:, :), w(:), g(:), y(:), sn(:), xbest(:), hraw(:, :)
         real(dp), allocatable :: cs(:)
         real(dp) :: bnorm, beta, wnorm, hnorm, best
         complex(dp) :: z, rot, rdiag
@@ -51,7 +51,7 @@ contains
         relres = huge(1._dp)
         if (restart < 1 .or. maxiter < 1 .or. eps <= 0) return
         m = min(restart, maxiter)
-        allocate(v(n, m+1), h(m+1, m), w(n), g(m+1), y(m), sn(m), cs(m), xbest(n))
+        allocate(v(n, m+1), h(m+1, m), w(n), g(m+1), y(m), sn(m), cs(m), xbest(n), hraw(m+1, m))
         bnorm = sqrt(real(dot(n, b, b), dp))
         if (.not. ieee_is_finite(bnorm)) return
         if (bnorm == 0) then
@@ -92,6 +92,7 @@ contains
             end if
             v(:, 1) = w / beta
             h = 0
+            hraw = 0
             g = 0
             g(1) = beta
             do j = 1, min(m, maxiter-iterations)
@@ -110,6 +111,7 @@ contains
                 hnorm = sqrt(real(dot(n, w, w), dp))
                 if (.not. ieee_is_finite(hnorm)) return
                 h(j+1, j) = hnorm
+                hraw(1:j+1, j) = h(1:j+1, j)
                 breakdown = hnorm <= epsilon(1._dp)*wnorm
                 if (.not. breakdown) v(:, j+1) = w / hnorm
                 do i = 1, j-1
@@ -130,6 +132,7 @@ contains
                         y(i) = (y(i)-sum(h(i, i+1:j)*y(i+1:j))) / h(i, i)
                     end do
                     x = x + matmul(v(:, 1:j), y(1:j))
+                    call print_ritz(hraw(1:j, 1:j), j, sqrt(real(dot(n, x, x), dp))/bnorm)
                     call apply(n, x, w)
                     w = b - w
                     exit
@@ -137,4 +140,23 @@ contains
             end do
         end do
     end subroutine gmres_solve
+
+    subroutine print_ritz(hsq, j, xnorm)
+        integer, intent(in) :: j
+        complex(dp), intent(in) :: hsq(j, j)
+        real(dp), intent(in) :: xnorm
+        complex(dp) :: a(j, j), ev(j), dummy(1, 1), work(4*j)
+        real(dp) :: rwork(2*j)
+        real(dp) :: mag(j), low(3)
+        integer :: info, k
+        a = hsq
+        call zgeev('N', 'N', j, a, j, ev, dummy, 1, dummy, 1, work, 4*j, rwork, info)
+        mag = abs(ev)
+        do k = 1, min(3, j)
+            low(k) = minval(mag)
+            mag(minloc(mag)) = huge(1._dp)
+        end do
+        print '(a,es10.3,a,*(es10.2))', 'QL GMRES |x|/|b| ', xnorm, &
+            ' smallest |ritz| ', low(1:min(3, j)), maxval(abs(ev))
+    end subroutine print_ritz
 end module ql_gmres_mod

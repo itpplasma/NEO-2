@@ -294,6 +294,12 @@ subroutine ripple_solver_ArnoldiO2( &
     ! Stays fixed: a residual-based stop at the input tolerance cannot reach
     ! this accuracy yet, because the residual levels off between 1e-6 and 1e-5.
     epserr_iter = 1.d-7  !relative error of integral part iterations
+    block
+        character(len=32) :: value
+        integer :: length
+        call get_environment_variable('NEO2_QL_EPS', value, length)
+        if (length > 0) read (value, *) epserr_iter
+    end block
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
 
     addboucol = .true.
@@ -4577,6 +4583,12 @@ CONTAINS
 
     end subroutine integral_part
 
+    logical function no_projection()
+        character(len=16) :: value
+        call get_environment_variable('NEO2_QL_NOPROJ', value)
+        no_projection = trim(value) == '1'
+    end function no_projection
+
     logical function use_krylov()
         character(len=16) :: value
         call get_environment_variable('NEO2_QL_SOLVER', value)
@@ -4588,65 +4600,133 @@ CONTAINS
     !> preconditioner the existing LU factorization. Vectors are distributed over
     !> species ranks (gmres_dot sums over them); the density and energy null-space
     !> components are removed per species afterwards, as the stabilized iteration does.
+    !> GMRES on the fixed point of the stabilized iteration,
+    !> f = Pi (f + P^-1 (q + C_I f - M f)), with P = M + R the factorized
+    !> matrix and Pi the damped density and energy projection. Since
+    !> P^-1 M f = f - P^-1 R f, its operator is I - Pi P^-1 (C_I + R), formed
+    !> without M P^-1. GMRES only reaches the accuracy of the LU solves, so an
+    !> outer refinement computes the true defect r = q + C_I f - M f like the
+    !> iteration, whose increment Pi (f + P^-1 r) - f is the right-hand side of
+    !> the correction, and stops by the iteration's rule.
     subroutine krylov_source(source, eps, converged)
         use ql_gmres_mod, only: gmres_solve
         complex(dp), intent(inout) :: source(:)
         real(dp), intent(in) :: eps
         logical, intent(out) :: converged
-        complex(dp), allocatable :: y(:), x(:)
-        real(dp) :: residual
-        integer :: info, iterations
+        real(dp), parameter :: inner_eps = 1.0d-4
+        integer, parameter :: max_outer = 10
+        complex(dp), allocatable :: f(:), defect(:), increment(:), correction(:)
+        real(dp) :: residual, change(0:num_spec-1), size_f(0:num_spec-1)
+        integer :: info, iterations, n, outer, total
 
-        allocate (y(size(source)), x(size(source)))
-        ! Right preconditioning: GMRES on (M - C_I) P^-1 y = q, then f = P^-1 y.
-        call gmres_solve(size(source), source, y, krylov_right, gmres_dot, eps, &
-            2000, 100, info, iterations, residual)
-        if (ispec == 0) print '(a,i0,a,i0,a,es10.3)', 'QL FGMRES info ', info, &
-            ' iterations ', iterations, ' residual ', residual
-        converged = info == 0 .or. (info == 3 .and. residual <= 100*eps)
-        call krylov_precondition(y, x)
-        source = x
-        if (problem_type) then
-            source = source - sum(densvec_bra*source)/denom_dens*densvec_ket
-            if (isw_intp == 1) source = source &
-                - sum(energvec_bra*source)/denom_energ*energvec_ket
-        end if
+        n = size(source)
+        allocate (f(n), defect(n), increment(n), correction(n))
+        f = (0.0d0, 0.0d0)
+        total = 0
+        converged = .false.
+        do outer = 1, max_outer
+            call true_defect(source, f, defect)
+            call lu_solve(defect, increment)
+            increment = f + increment
+            call damped_projection(increment)
+            increment = increment - f
+            call gmres_solve(n, increment, correction, krylov_fixed, gmres_dot, &
+                inner_eps, 200, 100, info, iterations, residual)
+            total = total + iterations
+            f = f + correction
+            change = 0
+            size_f = 0
+            change(ispec) = sum(abs(correction))
+            size_f(ispec) = eps*sum(abs(f))
+            call mpro%allgather_inplace(change)
+            call mpro%allgather_inplace(size_f)
+            if (all(change <= size_f)) then
+                converged = .true.
+                exit
+            end if
+        end do
+        if (ispec == 0) print '(a,l2,a,i0,a,i0)', 'QL GMRES converged', converged, &
+            ' refinements ', min(outer, max_outer), ' iterations ', total
+        source = f
     end subroutine krylov_source
 
-    subroutine krylov_right(n, input, output)
-        integer, intent(in) :: n
-        complex(dp), intent(in) :: input(n)
-        complex(dp), intent(out) :: output(n)
-        complex(dp), allocatable :: work(:)
-        allocate (work(n))
-        call krylov_precondition(input, work)
-        call krylov_matvec(work, output)
-    end subroutine krylov_right
-
-    subroutine krylov_matvec(input, output)
-        complex(dp), intent(in) :: input(:)
-        complex(dp), intent(out) :: output(:)
+    !> q + C_I f - M f with the equation matrix M, as in next_iteration.
+    subroutine true_defect(q, f, defect)
+        complex(dp), intent(in) :: q(:), f(:)
+        complex(dp), intent(out) :: defect(:)
         complex(dp), allocatable :: work(:)
         integer :: entry
-        output = (0.0d0, 0.0d0)
+        defect = q
         if (isw_intp == 1) then
-            work = input
-            call integral_part(work, output)
-            output = -output
+            allocate (work(size(f)))
+            work = f
+            call integral_part(work, defect)
+            defect = defect + q
         end if
         if (problem_type) then
             do entry = 1, nz_symm
-                output(irow_symm(entry)) = output(irow_symm(entry)) &
-                    + amat_symm(entry)*input(icol_symm(entry))
+                defect(irow_symm(entry)) = defect(irow_symm(entry)) &
+                    - amat_symm(entry)*f(icol_symm(entry))
             end do
         else
             do entry = 1, nz
-                output(irow(entry)) = output(irow(entry)) + amat_sp(entry)*input(icol(entry))
+                defect(irow(entry)) = defect(irow(entry)) - amat_sp(entry)*f(icol(entry))
             end do
         end if
-    end subroutine krylov_matvec
+    end subroutine true_defect
 
-    subroutine krylov_precondition(input, output)
+    subroutine krylov_fixed(n, input, output)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: input(n)
+        complex(dp), intent(out) :: output(n)
+        complex(dp), allocatable :: coupled(:), solved(:)
+        integer :: entry
+        allocate (coupled(n), solved(n))
+        coupled = (0.0d0, 0.0d0)
+        if (isw_intp == 1) then
+            solved = input
+            call integral_part(solved, coupled)
+        end if
+        if (problem_type) then
+            do entry = 1, nz_regper
+                coupled(irow_regper(entry)) = coupled(irow_regper(entry)) &
+                    + amat_regper(entry)*input(icol_regper(entry))
+            end do
+        end if
+        call lu_solve(coupled, solved)
+        call damped_projection(solved)
+        output = input - solved
+    end subroutine krylov_fixed
+
+    !> The projection of next_iteration, applied in the same order.
+    subroutine damped_projection(f)
+        use arnoldi_mod, only: tol0
+        complex(dp), intent(inout) :: f(:)
+        if (.not. problem_type) return
+        f = f - (1.d0 - tol0)*sum(densvec_bra*f)/denom_dens*densvec_ket
+        if (isw_intp == 1) f = f - (1.d0 - tol0)*sum(energvec_bra*f)/denom_energ*energvec_ket
+    end subroutine damped_projection
+
+    subroutine linearity_check(n)
+        integer, intent(in) :: n
+        complex(dp), allocatable :: u(:), v(:), a(:), b(:), c(:), d(:)
+        real(dp), allocatable :: re(:), im(:)
+        allocate (u(n), v(n), a(n), b(n), c(n), d(n), re(n), im(n))
+        call random_number(re); call random_number(im); u = cmplx(re - 0.5d0, im - 0.5d0, dp)
+        call random_number(re); call random_number(im); v = cmplx(re - 0.5d0, im - 0.5d0, dp)
+        call krylov_fixed(n, u, a); call krylov_fixed(n, u, b)
+        call krylov_fixed(n, v, c); call krylov_fixed(n, u + v, d)
+        print '(a,i0,2es10.2)', 'LINCHECK fixed rank ', ispec, rel(a - b, a), rel(d - a - c, d)
+    end subroutine linearity_check
+
+    real(dp) function rel(x, y)
+        complex(dp), intent(in) :: x(:), y(:)
+        rel = sqrt(sum(abs(x)**2))/max(sqrt(sum(abs(y)**2)), tiny(1d0))
+    end function rel
+
+
+
+    subroutine lu_solve(input, output)
         complex(dp), intent(in) :: input(:)
         complex(dp), intent(out) :: output(:)
         real(dp), allocatable :: part_real(:), part_imag(:)
@@ -4663,7 +4743,7 @@ CONTAINS
             output = input
             call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), output, iopt)
         end if
-    end subroutine krylov_precondition
+    end subroutine lu_solve
 
 
     !> Print one NEO2_SOLVE_JSON record per source solve from rank 0: the solve
