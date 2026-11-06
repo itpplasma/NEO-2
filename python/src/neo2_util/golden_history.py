@@ -36,6 +36,8 @@ METADATA = {
     "MPILib Version", "NEO-2 Version", "NEO-2 Version Additional", "Run_0",
     "Timestamp_start_0",
 }
+# Multistage runs add one run number and start and stop time per stage.
+STAGE_METADATA = re.compile(r"^(Run|Timestamp_start|Timestamp_stop)_[0-9]+$")
 TOLERANCE = re.compile(r"(?i)\b(\w*tol|\w*accuracy|delta_\w+)\s*\??[:=]\s*([0-9][0-9.e+-]*)")
 
 
@@ -288,7 +290,7 @@ def relative_changes(reference, other):
     def walk(a, b):
         ka, kb = _comparison_keys(a), _comparison_keys(b)
         for key in sorted(set(ka) | set(kb)):
-            if key in METADATA:
+            if key in METADATA or STAGE_METADATA.match(key):
                 continue
             name = f"{a.name.rstrip('/')}/{key}"
             if key not in ka or key not in kb:

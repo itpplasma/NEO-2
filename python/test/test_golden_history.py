@@ -43,14 +43,16 @@ def write_h5(path, values):
 
 def test_relative_changes_follow_the_golden_comparison(tmp_path):
     write_h5(tmp_path / "a.h5", {"fulltransp/avnabpsi": [1.0, 2.0], "x": [4.0, -2.0],
-                                 "neo2_config/metadata/NEO-2 Version": "a", "gone": 1.0})
+                                 "neo2_config/metadata/NEO-2 Version": "a", "gone": 1.0,
+                                 "neo2_config/metadata/Timestamp_stop_2": "a"})
     write_h5(tmp_path / "b.h5", {"fulltransp/av_nabla_stor": [1.0, 2.0], "x": [4.0, -2.0 + 4e-9],
-                                 "neo2_config/metadata/NEO-2 Version": "b", "new": 1.0})
+                                 "neo2_config/metadata/NEO-2 Version": "b", "new": 1.0,
+                                 "neo2_config/metadata/Timestamp_stop_2": "b"})
     changes = golden_history.relative_changes(tmp_path / "a.h5", tmp_path / "b.h5")
     assert changes["/x"] == pytest.approx(1e-9)
     assert changes["/fulltransp/av_nabla_stor"] == 0.0
     assert changes["/gone"] == changes["/new"] == 1.0
-    assert not any("Version" in name for name in changes)
+    assert not any("Version" in name or "Timestamp" in name for name in changes)
 
 
 def test_events_are_record_refreshes_and_tolerance_changes(tmp_path):
