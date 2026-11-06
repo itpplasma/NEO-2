@@ -1,5 +1,6 @@
 !> Calling eval_bslimit with an index beyond bsfunc_max_index must terminate
-!> with a nonzero exit status (registered with WILL_FAIL in CMake).
+!> with the bsfunc_max_index error; CMake matches that message, so another
+!> failure does not pass.
 program test_binarysplit_max_index
     use nrtype, only: dp
     use binarysplit_int, only: create_bslimit, eval_bslimit

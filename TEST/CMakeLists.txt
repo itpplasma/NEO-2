@@ -99,7 +99,8 @@ add_test(NAME binarysplit_max_index_test
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 set_tests_properties(binarysplit_max_index_test PROPERTIES
-    WILL_FAIL TRUE
+    PASS_REGULAR_EXPRESSION "number of eta levels exceeds bsfunc_max_index"
+    FAIL_REGULAR_EXPRESSION "FAIL|unexpected"
     TIMEOUT 30
 )
 
