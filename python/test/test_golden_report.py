@@ -29,9 +29,9 @@ def test_relative_differences_and_plot(tmp_path):
     rows = [line.split("\t") for line in
             (tmp_path / "out" / "base-ql.tsv").read_text().splitlines()[1:]]
     values = {(r[0], r[1]): float(r[2]) for r in rows}
-    assert abs(values[("reference", "out/D11")] / (0.002 / 2.002) - 1) < 1e-3
-    assert values[("legacy", "out/D11")] == 0.0
-    assert ("reference", "out/only_current") not in values
+    assert abs(values[("reference", "/out/D11")] / (0.002 / 2.002) - 1) < 1e-3
+    assert values[("legacy", "/out/D11")] == 0.0
+    assert ("reference", "/out/only_current") not in values
     assert (tmp_path / "out" / "base-ql.png").stat().st_size > 0
 
 
