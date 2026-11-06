@@ -10,6 +10,15 @@ Note: use git tag --list to get a list of available tags.
   Security [in case of vulnerabilities]
 
 
+Unreleased
+  Changed [changes in existing functionality]
+  - NEO-2-QL orders its sparse LU factorizations with METIS instead of
+    AMD/COLAMD. On an AUG LAG8 surface (1.25e6 unknowns) the LU of each rank
+    shrinks from 30 GiB to 10.8 GiB and its factorization from 150 s to 49 s.
+    Golden-record outputs change by at most 4.6e-11 relative (rounding).
+    NEO-2-PAR is unchanged.
+
+
   Added [for new features]
   - Basis for NBI.
   - Relativistic effects for PAR version
