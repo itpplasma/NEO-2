@@ -36,7 +36,7 @@ METADATA = {
     "MPILib Version", "NEO-2 Version", "NEO-2 Version Additional", "Run_0",
     "Timestamp_start_0",
 }
-TOLERANCE = re.compile(r"(?i)\b(\w*tol|\w*accuracy)\s*\??[:=]\s*([0-9][0-9.e+-]*)")
+TOLERANCE = re.compile(r"(?i)\b(\w*tol|\w*accuracy|delta_\w+)\s*\??[:=]\s*([0-9][0-9.e+-]*)")
 
 
 def git(repo, *args):

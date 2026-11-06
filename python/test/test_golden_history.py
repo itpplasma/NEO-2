@@ -59,6 +59,9 @@ def test_events_are_record_refreshes_and_tolerance_changes(tmp_path):
     commit(data, {f"{case}/Makefile": "TOL ?= 1e-15\n", f"{case}/legacy/summary.h5": "1"}, "add")
     commit(data, {f"{case}/Makefile": "TOL ?= 1e-11\n"}, "relax")
     commit(data, {f"{case}/README.md": "text"}, "docs")
+    commit(data, {f"{case}/compare_h5.py": "f(a, delta_relative=1e-8)\n"}, "compare")
+    commit(data, {f"{case}/compare_h5.py": "f(a,  delta_relative=1e-8)\n"}, "reformat")
+    commit(data, {f"{case}/compare_h5.py": "f(a, delta_relative=2e-8)\n"}, "relax par")
     commit(data, {f"{case}/legacy/summary.h5": "2"}, "refresh")
     neo2 = new_repo(tmp_path / "neo2")
     commit(neo2, {"ci/golden.sh": "compare base-ql ql TOL=1e-15\n"}, "golden")
@@ -67,7 +70,8 @@ def test_events_are_record_refreshes_and_tolerance_changes(tmp_path):
     rows = golden_history.events(data, neo2)
     found = [(r["source"], r["subject"], r["kind"], r["cases"]) for r in rows]
     assert found == [("data", "add", "record+tolerance", "ql"), ("data", "relax", "tolerance", ""),
-                     ("data", "refresh", "record", "ql"), ("neo2", "golden", "tolerance", ""),
+                     ("data", "compare", "tolerance", ""),
+                     ("data", "relax par", "tolerance", ""), ("data", "refresh", "record", "ql"), ("neo2", "golden", "tolerance", ""),
                      ("neo2", "relax ci", "tolerance", "")]
 
 
