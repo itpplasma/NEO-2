@@ -1,13 +1,11 @@
 program gen_phi_ma
     ! Pointwise leaves of the prescribed Phi^MA drive (DOC/phi_ma_response.md).
     use, intrinsic :: iso_fortran_env, only: real64
-    use fortsym_arena, only: arena_t
-    use fortsym_expr, only: expr_t, sym, num, pi_expr, i_expr, exp, sqrt, &
+    use fortsym_expr, only: expr_t, sym, num, rat, pi_expr, i_expr, exp, sqrt, &
         operator(*), operator(/), operator(+), operator(-), operator(**)
     use fortsym_kernel, only: kernel_spec_t, emit_kernel
     use fortsym_string, only: chars, str, str_t
     implicit none
-    type(arena_t), target :: arena
     type(expr_t) :: temperature, mass, charge, light_speed, bref, mtovr, iota, sg
     type(expr_t) :: g, dn_ds, density, dt_ds, er, a1, a2, vt
     type(expr_t) :: n, m, bcov_theta, bcov_phi, phase, phi_ma, us
@@ -22,46 +20,45 @@ program gen_phi_ma
     if (len_trim(qlfile) == 0 .or. len_trim(commonfile) == 0 &
         .or. len_trim(revision) == 0) &
         error stop 'usage: gen_phi_ma QL_INC COMMON_INC FORTSYM_REVISION'
-    call arena%init()
-    ii = i_expr(arena)
-    temperature = sym(arena, 'temperature')
-    mass = sym(arena, 'mass')
-    charge = sym(arena, 'charge')
-    light_speed = sym(arena, 'light_speed')
-    bref = sym(arena, 'bref')
-    mtovr = sym(arena, 'mtovr')
-    iota = sym(arena, 'iota')
-    sg = sym(arena, 'sg')
-    g = sym(arena, 'g')
-    dn_ds = sym(arena, 'dn_ds')
-    density = sym(arena, 'density')
-    dt_ds = sym(arena, 'dt_ds')
-    er = sym(arena, 'er')
-    a1 = sym(arena, 'a1')
-    n = sym(arena, 'n')
-    m = sym(arena, 'm')
-    bcov_theta = sym(arena, 'bcov_theta')
-    bcov_phi = sym(arena, 'bcov_phi')
-    phase = sym(arena, 'phase')
-    phi_ma = sym(arena, 'phi_ma')
-    us = sym(arena, 'us')
-    dlambda = sym(arena, 'dlambda')
-    rho = sym(arena, 'rho')
-    bhat = sym(arena, 'bhat')
-    h_phi = sym(arena, 'h_phi')
-    jpar = sym(arena, 'jpar')
-    potential = sym(arena, 'potential')
-    phi = sym(arena, 'phi')
-    theta = sym(arena, 'theta')
-    theta_beg = sym(arena, 'theta_beg')
-    phi_beg = sym(arena, 'phi_beg')
-    x = sym(arena, 'x')
-    alpha = sym(arena, 'alpha')
-    beta = sym(arena, 'beta')
-    prj = sym(arena, 'prj')
+    ii = i_expr()
+    temperature = sym('temperature')
+    mass = sym('mass')
+    charge = sym('charge')
+    light_speed = sym('light_speed')
+    bref = sym('bref')
+    mtovr = sym('mtovr')
+    iota = sym('iota')
+    sg = sym('sg')
+    g = sym('g')
+    dn_ds = sym('dn_ds')
+    density = sym('density')
+    dt_ds = sym('dt_ds')
+    er = sym('er')
+    a1 = sym('a1')
+    n = sym('n')
+    m = sym('m')
+    bcov_theta = sym('bcov_theta')
+    bcov_phi = sym('bcov_phi')
+    phase = sym('phase')
+    phi_ma = sym('phi_ma')
+    us = sym('us')
+    dlambda = sym('dlambda')
+    rho = sym('rho')
+    bhat = sym('bhat')
+    h_phi = sym('h_phi')
+    jpar = sym('jpar')
+    potential = sym('potential')
+    phi = sym('phi')
+    theta = sym('theta')
+    theta_beg = sym('theta_beg')
+    phi_beg = sym('phi_beg')
+    x = sym('x')
+    alpha = sym('alpha')
+    beta = sym('beta')
+    prj = sym('prj')
 
     open (newunit=unit, file=trim(qlfile), status='replace')
-    vt = sqrt(num(arena, 2)*temperature/mass)
+    vt = sqrt(num(2)*temperature/mass)
     ! Thermal speed, gyroradius at Bref, and E_r from ntv_mod's
     ! Om_tE = c*E_r/(iota*sg) with Om_tE = MtOvR*vt.
     call emit_real(unit, 'phi_ma_scales_leaf', &
@@ -72,7 +69,7 @@ program gen_phi_ma
     ! NEO-2's thermodynamic forces in the effective radius, Phi_0' = -E_r.
     a2 = g*dt_ds/temperature
     call emit_real(unit, 'thermodynamic_forces_leaf', &
-        [g*dn_ds/density - rat_half3()*a2 - charge*er/temperature, a2], &
+        [g*dn_ds/density - rat(3, 2)*a2 - charge*er/temperature, a2], &
         [str('g'), str('dn_ds'), str('density'), str('dt_ds'), &
         str('temperature'), str('charge'), str('er')], [str('a1'), str('a2')])
     call emit_real(unit, 'field_line_theta_leaf', &
@@ -93,7 +90,7 @@ program gen_phi_ma
         str('complex(dp)'), str('real(dp)'), str('real(dp)')])
     ! Pitch-integrated drive of one turning band (D7).
     call emit_complex(unit, 'phi_ma_band_leaf', &
-        [num(arena, -2)*us*dlambda/(vt_sym()*rho*bhat*h_phi)], &
+        [num(-2)*us*dlambda/(sym('vt')*rho*bhat*h_phi)], &
         [str('us'), str('dlambda'), str('vt'), str('rho'), str('bhat'), &
         str('h_phi')], [str('q')], [str('complex(dp)'), str('real(dp)'), &
         str('real(dp)'), str('real(dp)'), str('real(dp)'), str('real(dp)')])
@@ -110,27 +107,12 @@ program gen_phi_ma
     ! Integrand of the x^-1 speed moment of the ExB source, with the basis
     ! measure combined before evaluation at x = 0.
     call emit_real(unit, 'exb_weight_leaf', &
-        [pi_expr(arena)**rat_m32()*x**(num(arena, 3) + alpha) &
-        *exp(-(num(arena, 1) + beta)*x**2)*prj], &
+        [pi_expr()**rat(-3, 2)*x**(num(3) + alpha) &
+        *exp(-(num(1) + beta)*x**2)*prj], &
         [str('x'), str('alpha'), str('beta'), str('prj')], [str('value')])
     close (unit)
 
 contains
-
-    function rat_half3() result(e)
-        type(expr_t) :: e
-        e = num(arena, 3)/num(arena, 2)
-    end function rat_half3
-
-    function rat_m32() result(e)
-        type(expr_t) :: e
-        e = num(arena, -3)/num(arena, 2)
-    end function rat_m32
-
-    function vt_sym() result(e)
-        type(expr_t) :: e
-        e = sym(arena, 'vt')
-    end function vt_sym
 
     subroutine emit_real(out, name, roots, args, outputs)
         integer, intent(in) :: out
