@@ -4499,6 +4499,8 @@ CONTAINS
             //'","source":'//json_int(source_index)//',"driving_species":'//json_int(driving_species) &
             //',"path":"'//trim(paths(path))//'","tolerance":'//json_real(epserr_iter) &
             //',"iteration_limit":'//json_int(niter) &
+            //',"normalized_equation_residual":' &
+            //json_real(sum(numerators)/max(sum(denominators), tiny(1.0d0))) &
             //',"normalized_equation_residual_by_species":['//by_species &
             //'],"density_constraint_residual":'//json_real(maxval(density)) &
             //',"energy_constraint_residual":'//json_real(maxval(energy))//'}'
