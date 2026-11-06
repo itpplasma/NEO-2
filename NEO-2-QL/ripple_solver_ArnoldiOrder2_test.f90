@@ -44,7 +44,7 @@ subroutine ripple_solver_ArnoldiO2( &
     use propagator_mod, only: prop_ripple_plot, prop_reconstruct, flux_mr, flux_pl, &
                               eta_modboundary_l, eta_modboundary_r, &
                               prop_reconstruct_levels
-    use sparse_mod, only: sparse_solve_method, sparse_solve, &
+    use sparse_mod, only: sparse_solve_method, sparse_ordering, sparse_solve, &
                           column_full2pointer, remap_rc, sparse_solver_test
     use mag_interface_mod, only: surface_boozer_B00, travis_convfac, boozer_s, mag_magfield
     use ntv_eqmat_mod, only: nz_symm, nz_asymm, nz_per_pos, nz_per_neg, &
@@ -296,6 +296,9 @@ subroutine ripple_solver_ArnoldiO2( &
     ! this accuracy yet, because the residual levels off between 1e-6 and 1e-5.
     epserr_iter = 1.d-7  !relative error of integral part iterations
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
+    ! METIS cuts the LU of the large AUG cases by two thirds and its
+    ! factorization time by three compared with AMD/COLAMD.
+    sparse_ordering = 3
 
     addboucol = .true.
     !------------------------------------------------------------------------
