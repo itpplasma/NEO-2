@@ -8,6 +8,11 @@ MODULE sparse_mod
   PUBLIC sparse_talk
   LOGICAL :: sparse_talk = .FALSE.
 
+  ! UMFPACK fill-reducing ordering (Control[UMFPACK_ORDERING]): 3 is METIS.
+  ! Negative keeps the UMFPACK default, AMD/COLAMD.
+  PUBLIC sparse_ordering
+  INTEGER :: sparse_ordering = -1
+
   PRIVATE dp
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
@@ -1115,6 +1120,7 @@ CONTAINS
 
     !   set default parameters
     CALL umf4def (control)
+    IF (sparse_ordering >= 0) control(11) = sparse_ordering
 
     n = nrow !convert from 1 to 0-based indexing
     Ai=irow-1 !convert from 1 to 0-based indexing
@@ -1217,6 +1223,7 @@ CONTAINS
 
     !   set default parameters
     CALL umf4zdef (control)
+    IF (sparse_ordering >= 0) control(11) = sparse_ordering
 
     n = nrow
     Ai=irow-1 !convert from 1 to 0-based indexing
@@ -1346,6 +1353,7 @@ CONTAINS
 
     !   set default parameters
     CALL umf4def (control)
+    IF (sparse_ordering >= 0) control(11) = sparse_ordering
 
     n = nrow
     bloc = 0.0_dp
@@ -1464,6 +1472,7 @@ CONTAINS
 
     !   set default parameters
     CALL umf4zdef (control)
+    IF (sparse_ordering >= 0) control(11) = sparse_ordering
 
 
     ! First, factorize the matrix. The factors are stored in *numeric* handle.
