@@ -44,7 +44,7 @@ subroutine ripple_solver_ArnoldiO2( &
     use propagator_mod, only: prop_ripple_plot, prop_reconstruct, flux_mr, flux_pl, &
                               eta_modboundary_l, eta_modboundary_r, &
                               prop_reconstruct_levels
-    use sparse_mod, only: sparse_solve_method, sparse_solve, &
+    use sparse_mod, only: sparse_pivot_tolerance, sparse_solve_method, sparse_solve, &
                           column_full2pointer, remap_rc, sparse_solver_test
     use mag_interface_mod, only: surface_boozer_B00, travis_convfac, boozer_s, mag_magfield
     use ntv_eqmat_mod, only: nz_symm, nz_asymm, nz_per_pos, nz_per_neg, &
@@ -296,6 +296,13 @@ subroutine ripple_solver_ArnoldiO2( &
     ! this accuracy yet, because the residual levels off between 1e-6 and 1e-5.
     epserr_iter = 1.d-7  !relative error of integral part iterations
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
+    block
+        character(len=8) :: flag
+        call get_environment_variable('NEO2_DIAG_REFINE', flag)
+        if (flag == '1') sparse_solve_method = 2
+        call get_environment_variable('NEO2_DIAG_PIVOT', flag)
+        if (flag == '1') sparse_pivot_tolerance = 1.0_dp
+    end block
 
     addboucol = .true.
     !------------------------------------------------------------------------
@@ -3512,6 +3519,7 @@ CONTAINS
 
         call CPU_TIME(time_factorization)
         print *, 'factorization completed ', time_factorization - time_start, ' sec'
+        if (problem_type) call lu_backward_error()
 
         iopt = 2
 
@@ -4647,6 +4655,28 @@ CONTAINS
         write (buffer, '(es12.4e3)') x
         text = trim(adjustl(buffer))
     end function json_real
+
+    subroutine lu_backward_error()
+        use sparse_mod, only: sparse_last_rcond
+        real(dp), allocatable :: b(:), x(:), r(:), rowsum(:)
+        real(dp) :: rcond
+        integer :: entry
+        rcond = sparse_last_rcond()
+        allocate (b(nrow), x(nrow), r(nrow), rowsum(nrow))
+        call random_number(b)
+        x = b
+        iopt = 2
+        call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), x, iopt)
+        r = -b; rowsum = 0
+        do entry = 1, nz
+            r(irow(entry)) = r(irow(entry)) + DBLE(amat_sp(entry))*x(icol(entry))
+            rowsum(irow(entry)) = rowsum(irow(entry)) + abs(DBLE(amat_sp(entry)))
+        end do
+        print '(a,i0,a,es10.2,a,es10.2,a,i0)', 'NEO2_LU_DIAG n=', nrow, ' backward_error=', &
+            maxval(abs(r))/(maxval(rowsum)*maxval(abs(x)) + maxval(abs(b))), ' rcond=', rcond, &
+            ' method=', sparse_solve_method
+        iopt = 2
+    end subroutine lu_backward_error
 
     !> Refactorize the preconditioner once with strict partial pivoting. With
     !> UMFPACK's default threshold pivoting the LU of a badly scaled QL matrix

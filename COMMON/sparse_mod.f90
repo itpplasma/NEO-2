@@ -88,6 +88,7 @@ MODULE sparse_mod
   END INTERFACE full2sparse
 
   PUBLIC sparse_solve
+  PUBLIC sparse_last_rcond
   INTERFACE sparse_solve
      MODULE PROCEDURE sparse_solveReal_b1,sparse_solveReal_b2,sparse_solveReal_A_b1,sparse_solveReal_A_b2, &
           sparse_solveComplex_b1,sparse_solveComplex_b2,sparse_solveComplex_A_b1,sparse_solveComplex_A_b2
@@ -2558,5 +2559,10 @@ CONTAINS
 
   END SUBROUTINE remap_rc_cmplx
   !-------------------------------------------------------------------------------
+
+  FUNCTION sparse_last_rcond() RESULT(r)
+    REAL(kind=dp) :: r
+    r = info_suitesparse(68) ! UMFPACK_RCOND (0-based 67)
+  END FUNCTION sparse_last_rcond
 
 END MODULE sparse_mod
