@@ -2599,9 +2599,15 @@ contains
           else
             recurence_factor = ((x_loop*delta_x)/((x_loop+1)*delta_x))**l
           end if
-          table_inner_kernel_x_to_infty(x_loop, l, m) = &
-            & recurence_factor*table_inner_kernel_x_to_infty(x_loop+1, l, m) &
-            & + integrate_param(kernel_x_to_infty, x_loop*delta_x, x_loop*delta_x, (x_loop+1)*delta_x)
+          if (x_loop == 0 .and. l > 0) then
+            ! (xval/xp)**l vanishes for xval = 0, and CQUAD raises IEEE invalid
+            ! on an identically zero integrand.
+            table_inner_kernel_x_to_infty(x_loop, l, m) = 0.0d0
+          else
+            table_inner_kernel_x_to_infty(x_loop, l, m) = &
+              & recurence_factor*table_inner_kernel_x_to_infty(x_loop+1, l, m) &
+              & + integrate_param(kernel_x_to_infty, x_loop*delta_x, x_loop*delta_x, (x_loop+1)*delta_x)
+          end if
         end do
       end do
 
@@ -2622,6 +2628,9 @@ contains
       ! infinity/nans as result.
       if (l < 0) then
         kernel_x_to_infty = xp**(abs(l)+1) * exp(-xp**2) * phi_exp(m, xp)
+      else if (xp == 0.0_dp) then
+        ! Removable endpoint: CQUAD probes xp = 0 on the first interval.
+        kernel_x_to_infty = 0.0_dp
       else
         kernel_x_to_infty = xp * (xval/xp)**(l) * exp(-xp**2) * phi_exp(m, xp)
       end if
