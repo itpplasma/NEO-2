@@ -35,6 +35,17 @@ printf 'source=%s\nbase=%s\nstable=%s\n' "$(git rev-parse HEAD)" \
 make
 export CURRENT_NEO2_PAR=$src/build/NEO-2-PAR/neo_2_par.x
 export CURRENT_NEO2_QL=$src/build/NEO-2-QL/neo_2_ql.x
+# A golden-change PR leaves a record of its run time, memory and changes for
+# the history site; the wrappers measure the runs the checks make anyway.
+history=$root/history
+measure() {
+    [ "${SCI_GOLDEN_CHANGE:-0}" = 1 ] || return 0
+    mkdir -p "$history"
+    for var in "$1_NEO2_PAR" "$1_NEO2_QL"; do
+        export "$var=$(python -m neo2_util.golden_history wrap "$history/$2.ranks" "${!var}")"
+    done
+}
+measure CURRENT current
 for reference in stable base; do
     git clone --no-hardlinks --dissociate "$src" "$root/$reference"
 done
@@ -52,6 +63,7 @@ git -C "$root/base" checkout --detach "$SCI_BASE_SHA"
 make -C "$root/base"
 export REFERENCE_NEO2_PAR=$root/base/build/NEO-2-PAR/neo_2_par.x
 export REFERENCE_NEO2_QL=$root/base/build/NEO-2-QL/neo_2_ql.x
+measure REFERENCE reference
 compare base-lorentz lorentz TOL=1e-14 LEGACY_TOL=1e-10 MAGNETICS_TOL=1e-12
 compare base-ql ql TOL=1e-15 LEGACY_TOL=1e-8 MAGNETICS_TOL=1e-12
 # The performance case has no legacy record, only the base comparison.
@@ -59,6 +71,11 @@ base_check=check
 [ "${SCI_GOLDEN_CHANGE:-0}" != 1 ] || base_check=report
 $base_check performance-ql env TOL=1e-15 make performance_ql
 check par env TOL=1e-15 LEGACY_TOL=4e-8 make par
+if [ "${SCI_GOLDEN_CHANGE:-0}" = 1 ]; then
+    python -m neo2_util.golden_history collect --data "$test_dir" --build "$src" \
+        --reference-build "$root/base" --history "$history" --out ci-out/history-record.json ||
+        echo 'No history record for this golden change' >&2
+fi
 if [ -f "$test_dir/performance_ql/performance_report.txt" ]; then
     cp "$test_dir/performance_ql/performance_report.txt" ci-out/
 fi

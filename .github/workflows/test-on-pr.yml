@@ -88,6 +88,13 @@ jobs:
               fi
             done
           fi
+      - name: Keep the history record of a golden change
+        if: always() && env.SCI_GOLDEN_CHANGE == '1' && github.event_name == 'merge_group'
+        uses: actions/upload-artifact@v6
+        with:
+          name: golden-history-record
+          path: ${{ runner.temp }}/golden-receipts/history-record.json
+          if-no-files-found: warn
       - name: Remove private runtime bundle
         if: always()
         run: rm -f "$RUNNER_TEMP/neo2-golden.tar.zst"

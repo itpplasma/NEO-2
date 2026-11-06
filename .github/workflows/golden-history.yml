@@ -1,0 +1,71 @@
+name: Golden-record history
+
+# A golden-change PR leaves a record of its merge-queue run (ci/golden.sh).
+# When the PR lands, the record joins the history site on gh-pages.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: read
+concurrency:
+  group: golden-history
+  cancel-in-progress: false
+
+jobs:
+  append-record:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find the golden-change PR and its merge-queue record
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq '[.[] | select(any(.labels[]; .name == "golden-change"))][0] // empty' > "$RUNNER_TEMP/pr.json"
+          if [ ! -s "$RUNNER_TEMP/pr.json" ]; then
+            echo "No golden-change PR behind $GITHUB_SHA"
+            exit 0
+          fi
+          pr=$(jq -r .number "$RUNNER_TEMP/pr.json")
+          jq -r .title "$RUNNER_TEMP/pr.json" > "$RUNNER_TEMP/title"
+          # The merge queue lands the commit it tested, so its run has this SHA.
+          run=$(gh run list -R "$GITHUB_REPOSITORY" --workflow test-on-pr.yml --event merge_group \
+            --commit "$GITHUB_SHA" --status success --json databaseId --jq '.[0].databaseId')
+          gh run download "$run" -R "$GITHUB_REPOSITORY" -n golden-history-record -D "$RUNNER_TEMP/record"
+          echo "PR_NUMBER=$pr" >> "$GITHUB_ENV"
+      - name: Check out main
+        if: env.PR_NUMBER
+        uses: actions/checkout@v6
+        with:
+          path: main
+          persist-credentials: false
+      - name: Check out gh-pages
+        if: env.PR_NUMBER
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: site
+      - name: Add the record and render the site
+        if: env.PR_NUMBER
+        run: |
+          python3 -m pip install --quiet numpy h5py matplotlib
+          python3 -m pip install --quiet --no-deps ./main/python
+          python3 - "$RUNNER_TEMP/record/history-record.json" "$RUNNER_TEMP/title" <<'EOF'
+          import json, os, sys
+          record = json.load(open(sys.argv[1]))
+          record["event"] = {"source": "neo2", "pr": int(os.environ["PR_NUMBER"]),
+                             "description": open(sys.argv[2]).read().strip(),
+                             "classification": "intended"}
+          name = f"site/records/{record['date'][:10]}-{record['neo2'][:10]}.json"
+          os.makedirs("site/records", exist_ok=True)
+          json.dump(record, open(name, "w"), indent=1)
+          EOF
+          python3 -m neo2_util.golden_history render site/records/*.json --out site
+          cd site
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add records index.html ./*.png
+          git commit -m "Add golden-change record of #$PR_NUMBER"
+          git push origin gh-pages
