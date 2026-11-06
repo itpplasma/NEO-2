@@ -264,6 +264,10 @@ def record(data, source, out, cases=CASES, paired=None, concurrent=False):
             (out / "reference" / case).mkdir(parents=True, exist_ok=True)
             shutil.copy2(runs["reference"][1], out / "reference" / case / "summary.h5")
         result["cases"][case] = entry
+    # Keep the solver logs of failed runs; the copied cases are rebuilt at will.
+    for log in (out / "work").glob("*/*.log"):
+        (out / "logs").mkdir(exist_ok=True)
+        shutil.copy2(log, out / "logs" / f"{log.parent.name}-{log.name}")
     shutil.rmtree(out / "work", ignore_errors=True)
     (out / "record.json").write_text(json.dumps(result, indent=1))
     return result
