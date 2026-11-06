@@ -279,7 +279,9 @@ def relative_changes(reference, other):
     """max|other - reference| / max|reference| for every numeric dataset.
 
     This is the measure of the golden-record comparison (neo2_util.hdf5tools).
-    A dataset present in only one file, or of different shape, counts as 1.
+    A dataset with an absolute 'accuracy' attribute counts as unchanged
+    within that accuracy, as in the comparison. A dataset present in only one
+    file, or of different shape, has no relative change and is stored as None.
     """
     import h5py
     import numpy
@@ -294,19 +296,23 @@ def relative_changes(reference, other):
                 continue
             name = f"{a.name.rstrip('/')}/{key}"
             if key not in ka or key not in kb:
-                changes[name] = 1.0
+                changes[name] = None
                 continue
             x, y = a[ka[key]], b[kb[key]]
             if isinstance(x, h5py.Group) and isinstance(y, h5py.Group):
                 walk(x, y)
             elif isinstance(x, h5py.Group) or isinstance(y, h5py.Group) or x.shape != y.shape:
-                changes[name] = 1.0
+                changes[name] = None
             elif x.dtype.kind in "biufc" and y.dtype.kind in "biufc":
                 u, v = numpy.asarray(x[()], dtype=complex), numpy.asarray(y[()], dtype=complex)
                 if u.size == 0:
                     continue
                 scale = numpy.max(numpy.abs(u)) or 1.0
-                diff = float(numpy.max(numpy.abs(v - u)) / scale)
+                delta = numpy.max(numpy.abs(v - u))
+                accuracy = x.attrs.get("accuracy", -1.0)
+                if numpy.isfinite(accuracy) and 0 <= accuracy and delta <= accuracy:
+                    delta = 0.0
+                diff = float(delta / scale)
                 changes[name] = diff if numpy.isfinite(diff) else 1.0
             else:
                 changes[name] = 0.0 if numpy.array_equal(x[()], y[()]) else 1.0
@@ -377,7 +383,8 @@ def render(records, out):
 
     def change(case, entry, r, label):
         values = r.get("changes", {}).get(label, {}).get(case)
-        return max(max(values.values(), default=0.0), 1e-17) if values else None
+        numbers = [v for v in (values or {}).values() if v is not None]
+        return max(max(numbers, default=0.0), 1e-17) if values else None
 
     def wall(case, entry, r):
         if entry.get("reference_wall_s"):
@@ -551,7 +558,7 @@ def main(argv=None):
     if a.command == "compare":
         changes = compare(a.record, a.other, a.label)
         for case, values in changes.items():
-            print(case, max(values.values(), default=0.0), sep="\t")
+            print(case, max((v for v in values.values() if v is not None), default=0.0), sep="\t")
     if a.command == "events":
         columns = ("date", "source", "commit", "kind", "cases", "subject")
         print(*columns, sep="\t")
