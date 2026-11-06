@@ -13,33 +13,7 @@ differences leave the run: the golden inputs are not public.
 import os
 import sys
 
-import h5py
-import numpy as np
-
-
-def datasets(path):
-    found = {}
-
-    def visit(name, obj):
-        if isinstance(obj, h5py.Dataset) and obj.dtype.kind in "fciu":
-            found[name] = np.asarray(obj[()], dtype=complex)
-
-    with h5py.File(path, "r") as f:
-        f.visititems(visit)
-    return found
-
-
-def relative_differences(current, other):
-    rows = []
-    for name, a in sorted(current.items()):
-        b = other.get(name)
-        if b is None or a.shape != b.shape:
-            continue
-        scale = np.max(np.abs(b)) if b.size else 0.0
-        diff = np.max(np.abs(a - b)) if a.size else 0.0
-        rel = diff / scale if scale > 0 else diff
-        rows.append((name, float(rel)))
-    return rows
+from neo2_util.golden_changes import relative_changes
 
 
 def main():
@@ -48,13 +22,13 @@ def main():
     if not os.path.isfile(current_file):
         return
     os.makedirs(out_dir, exist_ok=True)
-    current = datasets(current_file)
     results = {}
     for label, tol_name in (("reference", "TOL"), ("legacy", "LEGACY_TOL")):
         path = os.path.join(case_dir, label, "summary.h5")
         if os.path.isfile(path):
-            results[label] = (relative_differences(current, datasets(path)),
-                              os.environ.get(tol_name))
+            changes = relative_changes(path, current_file)
+            rows = [(name, rel) for name, rel in sorted(changes.items()) if rel is not None]
+            results[label] = (rows, os.environ.get(tol_name))
     with open(os.path.join(out_dir, name + ".tsv"), "w") as out:
         out.write("against\tdataset\tmax_relative_difference\n")
         for label, (rows, _) in results.items():
