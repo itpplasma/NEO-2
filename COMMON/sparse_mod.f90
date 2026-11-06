@@ -16,6 +16,12 @@ MODULE sparse_mod
   PRIVATE dp
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
 
+  ! UMFPACK threshold partial pivoting tolerance (UMFPACK_PIVOT_TOLERANCE);
+  ! <= 0 keeps the library default, 1 gives strict partial pivoting.
+  ! The symmetric strategy's diagonal tolerance is left at its default.
+  PUBLIC sparse_pivot_tolerance
+  REAL(kind=dp) :: sparse_pivot_tolerance = -1.0_dp
+
   PRIVATE long
   INTEGER, PARAMETER :: long = 8
 
@@ -1121,6 +1127,7 @@ CONTAINS
     !   set default parameters
     CALL umf4def (control)
     IF (sparse_ordering >= 0) control(11) = sparse_ordering
+    IF (sparse_pivot_tolerance > 0) control(1+3) = sparse_pivot_tolerance ! UMFPACK_PIVOT_TOLERANCE
 
     n = nrow !convert from 1 to 0-based indexing
     Ai=irow-1 !convert from 1 to 0-based indexing
@@ -1224,6 +1231,7 @@ CONTAINS
     !   set default parameters
     CALL umf4zdef (control)
     IF (sparse_ordering >= 0) control(11) = sparse_ordering
+    IF (sparse_pivot_tolerance > 0) control(1+3) = sparse_pivot_tolerance ! UMFPACK_PIVOT_TOLERANCE
 
     n = nrow
     Ai=irow-1 !convert from 1 to 0-based indexing
@@ -1354,6 +1362,7 @@ CONTAINS
     !   set default parameters
     CALL umf4def (control)
     IF (sparse_ordering >= 0) control(11) = sparse_ordering
+    IF (sparse_pivot_tolerance > 0) control(1+3) = sparse_pivot_tolerance ! UMFPACK_PIVOT_TOLERANCE
 
     n = nrow
     bloc = 0.0_dp
@@ -1473,6 +1482,7 @@ CONTAINS
     !   set default parameters
     CALL umf4zdef (control)
     IF (sparse_ordering >= 0) control(11) = sparse_ordering
+    IF (sparse_pivot_tolerance > 0) control(1+3) = sparse_pivot_tolerance ! UMFPACK_PIVOT_TOLERANCE
 
 
     ! First, factorize the matrix. The factors are stored in *numeric* handle.
