@@ -36,7 +36,7 @@ git -C "$stage/src" remote set-url origin "https://github.com/${GITHUB_REPOSITOR
 git -C "$src" rev-parse HEAD > "$stage/revision.txt"
 printf '%s\n' "${SCI_TIER:?SCI_TIER missing}" > "$stage/tier.txt"
 : > "$stage/task.env"
-for key in SCI_BASE_SHA SCI_STABLE_REF SCI_LIBNEO_REF; do
+for key in SCI_BASE_SHA SCI_STABLE_REF SCI_LIBNEO_REF SCI_GOLDEN_CHANGE; do
     printf 'export %s=%q\n' "$key" "${!key:-}" >> "$stage/task.env"
 done
 while IFS= read -r key; do

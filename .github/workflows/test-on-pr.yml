@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || format('{0}-{1}', github.ref, github.run_id) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -48,10 +49,18 @@ jobs:
           git rev-parse --verify "$stable^{commit}"
           echo "SCI_BASE_SHA=$base" >> "$GITHUB_ENV"
           echo "SCI_STABLE_REF=$stable" >> "$GITHUB_ENV"
+      - name: Resolve pull request data branch and golden-change label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          ci/resolve-pr.sh
+          if grep -qx SCI_GOLDEN_CHANGE=1 "$GITHUB_ENV"; then
+            echo "::warning title=golden-change::Base and stable comparisons are report-only; legacy records stay strict."
+          fi
       - name: Prepare private runtime bundle
         env:
           SCI_TIER: golden-record
-          SCI_DATA_BRANCH: ${{ github.head_ref || github.ref_name }}
           GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
         run: |
           TMPDIR="$RUNNER_TEMP" ci/bundle.sh "$RUNNER_TEMP/neo2-golden.tar.zst"
@@ -62,8 +71,17 @@ jobs:
       - name: Report golden outcomes
         if: always()
         run: |
+          if [ "${SCI_GOLDEN_CHANGE:-0}" = 1 ]; then
+            cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          > [!WARNING]
+          > This PR carries the \`golden-change\` label: it changes results on purpose.
+          > The base and stable comparisons ran in report-only mode and do not fail this check;
+          > their differences are listed under golden-change.txt. The legacy comparisons
+          > against the records on plasma/data branch \`$SCI_DATA_BRANCH\` stayed strict.
+          EOF
+          fi
           if [ -d "$RUNNER_TEMP/golden-receipts" ]; then
-            for receipt in revisions.txt data-revision.txt checks.tsv performance_report.txt; do
+            for receipt in revisions.txt data-revision.txt checks.tsv performance_report.txt golden-change.txt; do
               if [ -f "$RUNNER_TEMP/golden-receipts/$receipt" ]; then
                 echo "### $receipt" >> "$GITHUB_STEP_SUMMARY"
                 cat "$RUNNER_TEMP/golden-receipts/$receipt" >> "$GITHUB_STEP_SUMMARY"
