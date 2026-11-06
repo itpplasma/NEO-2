@@ -4621,6 +4621,11 @@ CONTAINS
 
         n = size(source)
         allocate (f(n), defect(n), increment(n), correction(n))
+        block
+            integer :: length
+            call get_environment_variable('NEO2_QL_LUREFINE', length=length)
+            if (length > 0) call use_refined_solves()
+        end block
         f = (0.0d0, 0.0d0)
         total = 0
         converged = .false.
@@ -4640,6 +4645,10 @@ CONTAINS
             size_f(ispec) = eps*sum(abs(f))
             call mpro%allgather_inplace(change)
             call mpro%allgather_inplace(size_f)
+            if (ispec == 0) print '(a,i0,a,i0,a,i0,a,es10.3,a,*(es10.2))', &
+                'QL GMRES-IR outer ', outer, ' info ', info, ' steps ', iterations, &
+                ' inner residual ', residual, ' change/eps|f| per species ', &
+                change/max(size_f, tiny(1d0))
             if (all(change <= size_f)) then
                 converged = .true.
                 exit
