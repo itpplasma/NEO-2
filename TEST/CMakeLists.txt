@@ -125,6 +125,16 @@ else()
   message(STATUS "numpy/h5py not found: skipping er_direct_prepare_scan_test")
 endif()
 
+add_executable(test_collop_energy_conservation test_collop_energy_conservation.f90)
+target_link_libraries(test_collop_energy_conservation common)
+add_test(NAME collop_energy_conservation_test COMMAND test_collop_energy_conservation)
+set_tests_properties(collop_energy_conservation_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 120
+)
+
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
