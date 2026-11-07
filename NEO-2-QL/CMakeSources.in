@@ -5,6 +5,7 @@ set(NEO2_QL_SRC_FILES
   propagator.f90
   flint.f90
   ripple_solver_axi_test.f90
+  source_stencil_mod.f90
   ripple_solver_ArnoldiOrder2_test.f90
   join_ripples_int.f90
   join_ripples.f90
