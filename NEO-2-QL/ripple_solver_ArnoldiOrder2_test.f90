@@ -84,9 +84,8 @@ subroutine ripple_solver_ArnoldiO2( &
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
     use mpiprovider_module, only: mpro
-    ! Load x1mm and x2mm (=energy dependence of drift frequencies)
-    ! from collision operator module. This step allows for
-    ! support of different basis functions and replaces routine "lagxmm".
+    ! x1mm and x2mm (energy dependence of the drift frequencies) come from
+    ! the collision operator module, so any basis works.
     use collop
     use arnoldi_mod, only: iterator, f_init_arnoldi, &
       & lsw_write_flux_surface_distribution, write_flux_surface_distribution
@@ -315,9 +314,6 @@ subroutine ripple_solver_ArnoldiO2( &
     !  one should call a normal solver in this case
     !
     ! These are three possibilities to call sparse_solve
-    !  call sparse_solve(nrow,ncol,nz,irow,icol,val,b)  ! full column index
-    !  call sparse_solve(nrow,ncol,nz,irow,pcol,val,b)  ! column pointer
-    !  call sparse_solve(A,b)                           ! full matrix
     ! results are returned in b
     !
     ! Input
@@ -332,13 +328,6 @@ subroutine ripple_solver_ArnoldiO2( &
     !  real(dp), dimension(:,:), allocatable :: b
     !
     ! Matrix - square
-    !  ncol = nrow
-    !  allocate( irow(nz) )     ! row index
-    !  allocate( icol(nz) )     ! column index (column ordering)
-    !  allocate( pcol(ncol+1) ) ! column pointer (other possibility)
-    !  allocate( val(nz) )      ! values
-    !  allocate( A(nrow,ncol) ) ! full matrix will be converted to sparse
-    !
     ! rhs
     !  allocate( b(nrow) )
     ! or
@@ -1438,9 +1427,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
         do ipart = 1, npassing + 1
             nz = nz + 1
-!      irow(nz)=k+ipart
-!      icol(nz)=k+ipart
-!      amat_sp(nz)=(1.d0,0.d0)
         end do
 
         if (isw_axisymm .EQ. 1) then
@@ -1449,9 +1435,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
             do ipart = 1, npassing + 1
                 nz = nz + 1
-!        irow(nz)=k+ipart
-!        icol(nz)=k_prev+ipart
-!        amat_sp(nz)=(-1.d0,0.d0)
             end do
 
 !! Modifications by Andreas F. Martitsch (12.12.2016)
@@ -1465,21 +1448,10 @@ subroutine ripple_solver_ArnoldiO2( &
 ! null vector, so each m needs the regularizer, not only m = 0.
             if (isw_regper .EQ. 1 .AND. (m .LT. 1 .OR. isw_ene .EQ. 0)) then
                 do ipart = 1, 1
-!          if(ipart.le.npassing) then
-!            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
-!          else
-!            deleta_factor=1.d0-eta(ipart-1)*bhat_mfl(istep)
-!          end if
 
                     do ipart1 = 1, npassing + 1
                         nz_regper = nz_regper + 1
-!            irow_regper(nz_regper)=k+ipart
-!            icol_regper(nz_regper)=k_prev+ipart1
-!            amat_regper(nz_regper)=deleta_factor
                         nz_regper = nz_regper + 1
-!            irow_regper(nz_regper)=k+ipart
-!            icol_regper(nz_regper)=k+npassing+1+ipart1
-!            amat_regper(nz_regper)=deleta_factor
                     end do
 !
                 end do
@@ -1505,25 +1477,16 @@ subroutine ripple_solver_ArnoldiO2( &
 
             do ipart = 1, npassing + 1
                 nz = nz + 1
-!        irow(nz)=k+ipart
-!        icol(nz)=k+ipart
-!        amat_sp(nz)=delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end do
 
             do ipart = 1, npassing
                 nz = nz + 1
-!        irow(nz)=k+ipart
-!        icol(nz)=k_prev+ipart
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end do
 
             if (npassing_prev .GE. npassing) then
                 nz = nz + 1
-!        irow(nz)=k+npassing+1
-!        icol(nz)=k_prev+npassing+1
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end if
 
@@ -1533,25 +1496,16 @@ subroutine ripple_solver_ArnoldiO2( &
 
                 do kk = 1, 4
                     nz = nz + 1
-!          irow(nz)=k+npassing+1
-!          icol(nz)=k+npassing+kk-1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
                     if (colltest) nz_ttmp = nz_ttmp + 1
                 end do
 
                 do kk = 1, 4
                     nz = nz + 1
-!          irow(nz)=k+npassing+1
-!          icol(nz)=k_prev+npassing_prev+kk-1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
                     if (colltest) nz_ttmp = nz_ttmp + 1
                 end do
 
             elseif (npassing_prev .GT. npassing) then
                 nz = nz + 1
-!        irow(nz)=k_prev+npassing_prev+2
-!        icol(nz)=k_prev+npassing_prev+1
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end if
 
@@ -1567,9 +1521,6 @@ subroutine ripple_solver_ArnoldiO2( &
                             do mm = 0, lag
                                 nz = nz + 1
                                 nz_coll = nz_coll + 1
-!                irow(nz)=k+ipart
-!                icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)   &
 !                           *fact_pos_e(istep)*0.5d0
 
                                 if (.NOT. colltest .AND. mm .EQ. m) then
@@ -1578,9 +1529,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
                                 if (ipart .LE. npassing_prev + 1) then
                                     nz = nz + 1
-!                  irow(nz)=k+ipart
-!                  icol(nz)=k_prev+max(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep-1) &
 !                             *fact_pos_e(istep)*0.5d0
 
                                     if (.NOT. colltest .AND. mm .EQ. m) then
@@ -1588,9 +1536,6 @@ subroutine ripple_solver_ArnoldiO2( &
                                     end if
                                 elseif (ipart .gt. npassing_prev + 1 .and. addboucol) then
                                     nz = nz + 1
-!                  irow(nz) = k + ipart
-!                  icol(nz) = k + ipart + 4 - kk + 2*(npassing+1)*(mm-m)
-!                  amat_sp(nz) = anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                             *fact_pos_e(istep)*0.5d0
                                 end if
                             end do
@@ -1610,9 +1555,6 @@ subroutine ripple_solver_ArnoldiO2( &
                             do mm = 0, lag
                                 nz = nz + 1
                                 nz_coll = nz_coll + 1
-!                irow(nz)=k+ipart
-!                icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
                             end do
                         end do
 
@@ -1620,18 +1562,12 @@ subroutine ripple_solver_ArnoldiO2( &
                             do kk = 1, 4
                                 do mm = 0, lag
                                     nz = nz + 1
-!                  irow(nz)=k+ipart
-!                  icol(nz)=k_prev+max(0,ipart-2)+kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
                                 end do
                             end do
                         elseif (ipart .gt. npassing_prev + 1 .and. addboucol) then
                             do kk = 1, 4
                                 do mm = 0, lag
                                     nz = nz + 1
-!                  irow(nz) = k + ipart
-!                  icol(nz) = k + ipart + 3 - kk + 2*(npassing+1)*(mm-m)
-!                  amat_sp(nz) = denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
                                 end do
                             end do
                         end if
@@ -1660,9 +1596,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
         do ipart = 1, npassing + 1
             nz = nz + 1
-!      irow(nz)=k-ipart
-!      icol(nz)=k-ipart
-!      amat_sp(nz)=(1.d0,0.d0)
         end do
 
         if (isw_axisymm .EQ. 1) then
@@ -1671,9 +1604,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
             do ipart = 1, npassing + 1
                 nz = nz + 1
-!        irow(nz)=k-ipart
-!        icol(nz)=k_prev-ipart
-!        amat_sp(nz)=(-1.d0,0.d0)
             end do
 
 !! Modifications by Andreas F. Martitsch (12.12.2016)
@@ -1687,21 +1617,10 @@ subroutine ripple_solver_ArnoldiO2( &
 ! null vector, so each m needs the regularizer, not only m = 0.
             if (isw_regper .EQ. 1 .AND. (m .LT. 1 .OR. isw_ene .EQ. 0)) then
                 do ipart = 1, 1
-!          if(ipart.le.npassing) then
-!            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
-!          else
-!            deleta_factor=1.d0-eta(ipart-1)*bhat_mfl(istep)
-!          end if
 
                     do ipart1 = 1, npassing + 1
                         nz_regper = nz_regper + 1
-!            irow_regper(nz_regper)=k-ipart
-!            icol_regper(nz_regper)=k_prev-ipart1
-!            amat_regper(nz_regper)=deleta_factor
                         nz_regper = nz_regper + 1
-!            irow_regper(nz_regper)=k-ipart
-!            icol_regper(nz_regper)=k-npassing-1-ipart1
-!            amat_regper(nz_regper)=deleta_factor
                     end do
 
                 end do
@@ -1726,25 +1645,16 @@ subroutine ripple_solver_ArnoldiO2( &
 
             do ipart = 1, npassing + 1
                 nz = nz + 1
-!        irow(nz)=k-ipart
-!        icol(nz)=k-ipart
-!        amat_sp(nz)=delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end do
 !
             do ipart = 1, npassing
                 nz = nz + 1
-!        irow(nz)=k-ipart
-!        icol(nz)=k_prev-ipart
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end do
 
             if (npassing_prev .GE. npassing) then
                 nz = nz + 1
-!        irow(nz)=k-npassing-1
-!        icol(nz)=k_prev-npassing-1
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end if
 
@@ -1754,25 +1664,16 @@ subroutine ripple_solver_ArnoldiO2( &
 
                 do kk = 1, 4
                     nz = nz + 1
-!          irow(nz)=k-npassing-1
-!          icol(nz)=k-npassing-kk+1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
                     if (colltest) nz_ttmp = nz_ttmp + 1
                 end do
 
                 do kk = 1, 4
                     nz = nz + 1
-!          irow(nz)=k-npassing-1
-!          icol(nz)=k_prev-npassing_prev-kk+1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
                     if (colltest) nz_ttmp = nz_ttmp + 1
                 end do
 !
             elseif (npassing_prev .GT. npassing) then
                 nz = nz + 1
-!        irow(nz)=k_prev-npassing_prev-2
-!        icol(nz)=k_prev-npassing_prev-1
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end if
 
@@ -1788,9 +1689,6 @@ subroutine ripple_solver_ArnoldiO2( &
                             do mm = 0, lag
                                 nz = nz + 1
                                 nz_coll = nz_coll + 1
-!                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                           *fact_neg_e(istep)*0.5d0
 
                                 if (.NOT. colltest .AND. mm .EQ. m) then
@@ -1799,9 +1697,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
                                 if (ipart .LE. npassing_prev + 1) then
                                     nz = nz + 1
-!                  irow(nz)=k-ipart
-!                  icol(nz)=k_prev-max(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep+1) &
 !                             *fact_neg_e(istep)*0.5d0
 
                                     if (.NOT. colltest .AND. mm .EQ. m) then
@@ -1809,9 +1704,6 @@ subroutine ripple_solver_ArnoldiO2( &
                                     end if
                                 elseif (ipart .gt. npassing_prev + 1 .and. addboucol) then
                                     nz = nz + 1
-!                  irow(nz) = k - ipart
-!                  icol(nz) = k - ipart - 4 + kk + 2*(npassing+1)*(mm-m)
-!                  amat_sp(nz) = anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                             *fact_neg_e(istep)*0.5d0
                                 end if
                             end do
@@ -1831,9 +1723,6 @@ subroutine ripple_solver_ArnoldiO2( &
                             do mm = 0, lag
                                 nz = nz + 1
                                 nz_coll = nz_coll + 1
-!                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
                             end do
                         end do
 
@@ -1841,18 +1730,12 @@ subroutine ripple_solver_ArnoldiO2( &
                             do kk = 1, 4
                                 do mm = 0, lag
                                     nz = nz + 1
-!                  irow(nz)=k-ipart
-!                  icol(nz)=k_prev-max(0,ipart-2)-kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
                                 end do
                             end do
                         elseif (ipart .gt. npassing_prev + 1 .and. addboucol) then
                             do kk = 1, 4
                                 do mm = 0, lag
                                     nz = nz + 1
-!                  irow(nz) = k - ipart
-!                  icol(nz) = k - ipart - 3 + kk + 2*(npassing+1)*(mm-m)
-!                  amat_sp(nz) = denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
                                 end do
                             end do
                         end if
@@ -2774,9 +2657,6 @@ subroutine ripple_solver_ArnoldiO2( &
                     do kk = 1, 4
                         do mm = 0, lag
                             nz = nz + 1
-!              irow_asymm(nz)=k+ipart
-!              icol_asymm(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!              amat_asymm(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)
                         end do
                     end do
                 end do
@@ -2784,9 +2664,6 @@ subroutine ripple_solver_ArnoldiO2( &
                 do kk = 1, 4
                     do mm = 0, lag
                         nz = nz + 1
-!            irow_asymm(nz)=k+npassing+1
-!            icol_asymm(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
-!            amat_asymm(nz)=0.5d0*x1mm(m,mm)                                  &
 !                       *rhs_mat_energ(kk,npassing+1,istep)
                     end do
                 end do
@@ -2794,9 +2671,6 @@ subroutine ripple_solver_ArnoldiO2( &
                 do kk = 1, 4
                     do mm = 0, lag
                         nz = nz + 1
-!            irow_asymm(nz)=k+npassing+1
-!            icol_asymm(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
-!            amat_asymm(nz)=0.5d0*x1mm(m,mm)                                  &
 !                       *rhs_mat_energ(kk,npassing_prev+1,istep-1)
                     end do
                 end do
@@ -2828,9 +2702,6 @@ subroutine ripple_solver_ArnoldiO2( &
                     do kk = 1, 4
                         do mm = 0, lag
                             nz = nz + 1
-!              irow_asymm(nz)=k-ipart
-!              icol_asymm(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!              amat_asymm(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)
                         end do
                     end do
                 end do
@@ -2838,9 +2709,6 @@ subroutine ripple_solver_ArnoldiO2( &
                 do kk = 1, 4
                     do mm = 0, lag
                         nz = nz + 1
-!            irow_asymm(nz)=k-npassing-1
-!            icol_asymm(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
-!            amat_asymm(nz)=0.5d0*x1mm(m,mm)                                  &
 !                       *rhs_mat_energ(kk,npassing+1,istep)
                     end do
                 end do
@@ -2848,9 +2716,6 @@ subroutine ripple_solver_ArnoldiO2( &
                 do kk = 1, 4
                     do mm = 0, lag
                         nz = nz + 1
-!            irow_asymm(nz)=k-npassing-1
-!            icol_asymm(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
-!            amat_asymm(nz)=0.5d0*x1mm(m,mm)                                  &
 !                       *rhs_mat_energ(kk,npassing_prev+1,istep+1)
                     end do
                 end do
@@ -3487,9 +3352,6 @@ CONTAINS
         call column_full2pointer(icol(1:nz), ipcol)
 
 ! There are now three different calls sparse_solve
-!   iopt = 1 ; factorization
-!   iopt = 2 ; solve
-!   iopt = 3 ; free memory
 ! without iopt or with iopt = 0: old behaviour (factorize,solve,free)
 
 ! factorization:

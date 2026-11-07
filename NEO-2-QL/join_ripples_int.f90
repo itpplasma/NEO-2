@@ -25,11 +25,6 @@
 !  translation of variables
 !
 !   old name              =>   new name
-!   amat_plus_plus        =>   o%p%amat_p_p
-!   amat_plus_minus       =>   o%p%amat_p_m
-!   amat_plus_plus_new    =>   n%p%amat_p_p
-!   amat_plus_minus_new   =>   n%p%amat_p_m
-!   source_p              =>   o%p%source_p_g
 !                         =>   o%p%source_p_e
 !   source_p_new          =>   n%p%source_p_g
 !                         =>   n%p%source_p_e

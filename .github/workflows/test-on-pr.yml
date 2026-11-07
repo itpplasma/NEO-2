@@ -81,13 +81,21 @@ jobs:
           EOF
           fi
           if [ -d "$RUNNER_TEMP/golden-receipts" ]; then
-            for receipt in revisions.txt data-revision.txt checks.tsv performance_report.txt golden-change.txt; do
+            for receipt in revisions.txt data-revision.txt checks.tsv performance.tsv performance_report.txt golden-change.txt; do
               if [ -f "$RUNNER_TEMP/golden-receipts/$receipt" ]; then
                 echo "### $receipt" >> "$GITHUB_STEP_SUMMARY"
                 cat "$RUNNER_TEMP/golden-receipts/$receipt" >> "$GITHUB_STEP_SUMMARY"
               fi
             done
           fi
+      - name: Upload golden logs and differences
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: golden-record-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/golden-receipts
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Remove private runtime bundle
         if: always()
         run: rm -f "$RUNNER_TEMP/neo2-golden.tar.zst"
