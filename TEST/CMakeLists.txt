@@ -165,3 +165,15 @@ set_tests_properties(source_stencil_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+# k_cof = 5/2 - D32/D31 in neo2_multispecies_out.h5.
+add_executable(test_k_cof_output test_k_cof_output.f90)
+target_link_libraries(test_k_cof_output neo2_ql)
+add_test(NAME k_cof_output_test
+         COMMAND test_k_cof_output
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(k_cof_output_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
