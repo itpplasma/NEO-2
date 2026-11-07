@@ -4470,7 +4470,7 @@ CONTAINS
     !> near or beyond the unit circle.
     subroutine gmres_source(source, eps)
         use arnoldi_mod, only: fzero, mode, tol
-        use ql_gmres_mod, only: gmres_solve, gmres_maxiter, gmres_restart
+        use gmres_mod, only: gmres_solve, gmres_maxiter, gmres_restart
         complex(dp), intent(inout) :: source(:)
         real(dp), intent(in) :: eps
         complex(dp), allocatable :: rhs(:), zero(:)
