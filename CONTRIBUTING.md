@@ -52,7 +52,28 @@ How a PR that changes results is handled depends on how far they move:
   cut a release soon after, so that the stable comparison is green again for
   other PRs. In a stack, each layer that changes results brings its own data
   branch and records.
+- Every `golden-change` queue run measures run time, peak memory per MPI rank
+  and the relative change of every output against the base; once the PR
+  lands, this record joins the history site on the `gh-pages` branch.
 
 Without the label every comparison stays strict, and the stored records come
 from the data branch named like the PR's head branch if it exists, otherwise
 from data `main`.
+
+## Golden-record history
+
+One command builds a NEO-2 revision with a libneo revision (by default its
+pin, or before the pin the libneo `main` of the commit date), runs the
+golden-record cases and writes one record:
+
+    python -m neo2_util.golden_replay run --neo2 REV --work WORK \
+        --data DATA/TESTS/NEO-2/golden_record --out OUT \
+        [--paired-build MAIN_TREE --concurrent]
+
+`OUT/record.json` holds the run times, peak memory per MPI rank and, after
+`golden_replay compare OUT OTHER --label previous|main`, the relative changes
+of every compared output. It contains no absolute outputs and may be
+published. `OUT/<case>/summary.h5` holds the outputs and stays with the
+golden-record data. `python -m neo2_util.golden_changes events` lists the
+record refreshes and tolerance changes, and `golden_history render` writes
+the site.
