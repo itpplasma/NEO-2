@@ -154,3 +154,14 @@ set_tests_properties(binarysplit_max_index_test PROPERTIES
 add_test(NAME golden_change_ci_test
          COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_golden_change.sh)
 set_tests_properties(golden_change_ci_test PROPERTIES SKIP_RETURN_CODE 77)
+
+# Quadrature stencils of the QL source terms stay on the field line for an
+# odd number of steps (issue 123).
+add_executable(test_source_stencil test_source_stencil.f90)
+target_link_libraries(test_source_stencil neo2_ql)
+add_test(NAME source_stencil_test COMMAND test_source_stencil)
+set_tests_properties(source_stencil_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)

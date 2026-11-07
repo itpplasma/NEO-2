@@ -14,6 +14,7 @@ subroutine ripple_solver_ArnoldiO2( &
 
     use device_mod
     use flint_mod, only: phi_divide                      !<-in Winny
+    use source_stencil_mod, only: forward_stencil_centred, backward_stencil_centred
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
                                   isw_momentum, nvel, num_spec, lsw_multispecies, &
@@ -3729,7 +3730,7 @@ CONTAINS
                     npassing_prev = npl(istep - 1)
                     k_prev = ind_start(istep - 1) + 2*(npassing_prev + 1)*m
 
-                    if (ioddeven .EQ. 1) then
+                    if (forward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep + 1)
                         source_vector(k + 1:k + npassing + 1, 1) &
                             = source_vector(k + 1:k + npassing + 1, 1) &
@@ -3910,7 +3911,7 @@ CONTAINS
                 if (istep .LT. iend) then
                     npassing_prev = npl(istep + 1)
                     k_prev = ind_start(istep + 1) + 2*(npassing_prev + 1)*m
-                    if (ioddeven .EQ. 1) then
+                    if (backward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep - 1)
                         source_vector(k + npassing + 2:k + 2*npassing + 2, 1) &
                             = source_vector(k + npassing + 2:k + 2*npassing + 2, 1) &
@@ -4110,7 +4111,7 @@ CONTAINS
                 if (istep .GT. ibeg) then
                     npassing_prev = npl(istep - 1)
                     k_prev = ind_start(istep - 1) + 2*(npassing_prev + 1)*m
-                    if (ioddeven .EQ. 1) then
+                    if (forward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep + 1)
                         k_next = ind_start(istep + 1) + 2*(npassing_next + 1)*m
                         source_vector(k + 1:k + npassing + 1, 1:3) &
@@ -4178,7 +4179,7 @@ CONTAINS
                 if (istep .LT. iend) then
                     npassing_prev = npl(istep + 1)
                     k_prev = ind_start(istep + 1) + 2*(npassing_prev + 1)*m
-                    if (ioddeven .EQ. 1) then
+                    if (backward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep - 1)
                         k_next = ind_start(istep - 1) + 2*(npassing_next + 1)*m
                         source_vector(k + npassing + 2:k + 2*npassing + 2, 1:3) &
