@@ -136,11 +136,11 @@ set_tests_properties(collop_energy_conservation_test PROPERTIES
 
 
 
-# Restarted complex GMRES of the QL fallback solve.
-add_executable(test_ql_gmres test_ql_gmres.f90)
-target_link_libraries(test_ql_gmres neo2_ql)
-add_test(NAME ql_gmres_test COMMAND test_ql_gmres)
-set_tests_properties(ql_gmres_test PROPERTIES
+# Restarted complex GMRES of the QL and PAR fallback solves.
+add_executable(test_gmres test_gmres.f90)
+target_link_libraries(test_gmres common)
+add_test(NAME gmres_test COMMAND test_gmres)
+set_tests_properties(gmres_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
@@ -165,3 +165,14 @@ set_tests_properties(binarysplit_max_index_test PROPERTIES
 add_test(NAME golden_change_ci_test
          COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_golden_change.sh)
 set_tests_properties(golden_change_ci_test PROPERTIES SKIP_RETURN_CODE 77)
+
+# Quadrature stencils of the QL source terms stay on the field line for an
+# odd number of steps (issue 123).
+add_executable(test_source_stencil test_source_stencil.f90)
+target_link_libraries(test_source_stencil neo2_ql)
+add_test(NAME source_stencil_test COMMAND test_source_stencil)
+set_tests_properties(source_stencil_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)

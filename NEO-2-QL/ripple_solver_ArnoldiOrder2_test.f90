@@ -14,6 +14,7 @@ subroutine ripple_solver_ArnoldiO2( &
 
     use device_mod
     use flint_mod, only: phi_divide                      !<-in Winny
+    use source_stencil_mod, only: forward_stencil_centred, backward_stencil_centred
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
                                   isw_momentum, nvel, num_spec, lsw_multispecies, &
@@ -44,7 +45,7 @@ subroutine ripple_solver_ArnoldiO2( &
     use propagator_mod, only: prop_ripple_plot, prop_reconstruct, flux_mr, flux_pl, &
                               eta_modboundary_l, eta_modboundary_r, &
                               prop_reconstruct_levels
-    use sparse_mod, only: sparse_solve_method, sparse_ordering, sparse_solve, &
+    use sparse_mod, only: sparse_solve_method, sparse_solve, &
                           column_full2pointer, remap_rc, sparse_solver_test
     use mag_interface_mod, only: surface_boozer_B00, travis_convfac, boozer_s, mag_magfield
     use ntv_eqmat_mod, only: nz_symm, nz_asymm, nz_per_pos, nz_per_neg, &
@@ -84,9 +85,8 @@ subroutine ripple_solver_ArnoldiO2( &
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
     use mpiprovider_module, only: mpro
-    ! Load x1mm and x2mm (=energy dependence of drift frequencies)
-    ! from collision operator module. This step allows for
-    ! support of different basis functions and replaces routine "lagxmm".
+    ! x1mm and x2mm (energy dependence of the drift frequencies) come from
+    ! the collision operator module, so any basis works.
     use collop
     use arnoldi_mod, only: iterator, f_init_arnoldi, &
       & lsw_write_flux_surface_distribution, write_flux_surface_distribution
@@ -296,9 +296,6 @@ subroutine ripple_solver_ArnoldiO2( &
     ! this accuracy yet, because the residual levels off between 1e-6 and 1e-5.
     epserr_iter = 1.d-7  !relative error of integral part iterations
     sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
-    ! METIS cuts the LU of the large AUG cases by two thirds and its
-    ! factorization time by three compared with AMD/COLAMD.
-    sparse_ordering = 3
 
     addboucol = .true.
     !------------------------------------------------------------------------
@@ -3744,7 +3741,7 @@ CONTAINS
                     npassing_prev = npl(istep - 1)
                     k_prev = ind_start(istep - 1) + 2*(npassing_prev + 1)*m
 
-                    if (ioddeven .EQ. 1) then
+                    if (forward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep + 1)
                         source_vector(k + 1:k + npassing + 1, 1) &
                             = source_vector(k + 1:k + npassing + 1, 1) &
@@ -3925,7 +3922,7 @@ CONTAINS
                 if (istep .LT. iend) then
                     npassing_prev = npl(istep + 1)
                     k_prev = ind_start(istep + 1) + 2*(npassing_prev + 1)*m
-                    if (ioddeven .EQ. 1) then
+                    if (backward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep - 1)
                         source_vector(k + npassing + 2:k + 2*npassing + 2, 1) &
                             = source_vector(k + npassing + 2:k + 2*npassing + 2, 1) &
@@ -4125,7 +4122,7 @@ CONTAINS
                 if (istep .GT. ibeg) then
                     npassing_prev = npl(istep - 1)
                     k_prev = ind_start(istep - 1) + 2*(npassing_prev + 1)*m
-                    if (ioddeven .EQ. 1) then
+                    if (forward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep + 1)
                         k_next = ind_start(istep + 1) + 2*(npassing_next + 1)*m
                         source_vector(k + 1:k + npassing + 1, 1:3) &
@@ -4193,7 +4190,7 @@ CONTAINS
                 if (istep .LT. iend) then
                     npassing_prev = npl(istep + 1)
                     k_prev = ind_start(istep + 1) + 2*(npassing_prev + 1)*m
-                    if (ioddeven .EQ. 1) then
+                    if (backward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep - 1)
                         k_next = ind_start(istep - 1) + 2*(npassing_next + 1)*m
                         source_vector(k + npassing + 2:k + 2*npassing + 2, 1:3) &
@@ -4276,28 +4273,22 @@ CONTAINS
     end subroutine add_f01_source
 
 !------------------------------------------------------------------------
+    !> C_I f: velocity moments of f at each step (integral_moments), exchanged
+    !> between the species ranks, mixed and mapped back (integral_expand).
     subroutine integral_part(vec_in, vec_out)
-
-        implicit none
-
-        integer :: l, m, i, k, istep, npassing, k_prev
-
         complex(dp), dimension(n_2d_size) :: vec_in, vec_out
-    !! Modification by Andreas F. Martitsch (20.08.2015)
-        ! Array extended by 3rd (phi-steps) and 4th dimension (species)
         complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg
-        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg_tmp
-        ! Species index
-        integer :: ispecp
-    !! End Modification by Andreas F. Martitsch (20.08.2015)
-        complex(dp), dimension(:, :, :), allocatable :: vec_tmp
+        call integral_moments(vec_in, scalprod_pleg)
+        call mpro%allgather_inplace(scalprod_pleg)
+        call integral_expand(scalprod_pleg, vec_out)
+    end subroutine integral_part
 
-        allocate (vec_tmp(0:lag, 2*(npart + 1), ibeg:iend))
-        vec_tmp = 0.d0
-
-!! Modification by Andreas F. Martitsch (20.08.2015)
-! Array scalprod_pleg extended by 3rd (phi-steps) and
-! 4th dimension (species)
+    !> Legendre moments of each Laguerre block of this species at each step.
+    subroutine integral_moments(vec_in, scalprod_pleg)
+        complex(dp), dimension(n_2d_size), intent(in) :: vec_in
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1), intent(out) :: scalprod_pleg
+        integer :: l, m, k, istep, npassing
+        scalprod_pleg = (0.0d0, 0.0d0)
         do istep = ibeg, iend
 
             npassing = npl(istep)
@@ -4326,7 +4317,21 @@ CONTAINS
 !! Modification by Andreas F. Martitsch (20.08.2015)
 ! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
 ! (mpro%allgather supports 3D and 4D matrices)
-        call mpro%allgather_inplace(scalprod_pleg)
+
+    end subroutine integral_moments
+
+    !> Mix the moments of all species with ailmm_aa and map them back onto the
+    !> pitch-angle grid of this species.
+    subroutine integral_expand(scalprod_pleg, vec_out)
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1), intent(inout) :: scalprod_pleg
+        complex(dp), dimension(n_2d_size), intent(out) :: vec_out
+        integer :: l, m, i, k, istep, npassing, k_prev, ispecp
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg_tmp
+        complex(dp), dimension(:, :, :), allocatable :: vec_tmp
+
+        allocate (vec_tmp(0:lag, 2*(npart + 1), ibeg:iend))
+        vec_tmp = 0.d0
+
 
         do istep = ibeg, iend
 
@@ -4432,7 +4437,7 @@ CONTAINS
 
         deallocate (vec_tmp)
 
-    end subroutine integral_part
+    end subroutine integral_expand
 
     !> Print one NEO2_SOLVE_JSON record per source solve from rank 0: the solve
     !> path (1 stabilized iteration, 2 retry after strict-pivot refactorization,
@@ -4556,7 +4561,7 @@ CONTAINS
     !> near or beyond the unit circle.
     subroutine gmres_source(source, eps)
         use arnoldi_mod, only: fzero, mode, tol
-        use ql_gmres_mod, only: gmres_solve, gmres_maxiter, gmres_restart
+        use gmres_mod, only: gmres_solve, gmres_maxiter, gmres_restart
         complex(dp), intent(inout) :: source(:)
         real(dp), intent(in) :: eps
         complex(dp), allocatable :: rhs(:), zero(:)

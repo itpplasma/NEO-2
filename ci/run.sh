@@ -69,6 +69,8 @@ pip install ./python
     load_job_environment
     echo 'Test Python tools'
     (
+# Some tests run small executables from pytest's temporary directory.
+export TMPDIR=$RUNNER_TEMP
 python -m pytest python/test
     )
     load_job_environment

@@ -29,7 +29,7 @@ MODULE ntv_mod
   !> switch: 0=compute qflux only for the symmetric case; 1=do all computations
   INTEGER, PUBLIC :: isw_qflux_NA
   !> switch for rippler_solver versions
-  !> (1=preconditioned; 2=Arnoldi Order 1; 3=Arnoldi Order 2)
+  !> (1=preconditioned; 3=Arnoldi Order 2)
   INTEGER, PUBLIC :: isw_ripple_solver
   !> name of perturbation file
   CHARACTER(len=100), PUBLIC :: in_file_pert
@@ -38,7 +38,7 @@ MODULE ntv_mod
   !> Ignored when isw_calc_Er >= 1; the multispecies code uses Om_tE instead.
   REAL(kind=dp), PUBLIC :: MtOvR
   !> ExB toroidal rotation frequency [rad/s], species-independent.
-  !> Used by isw_calc_Er=1 (computed from ambipolarity) and
+  !> Used by isw_calc_Er=1 (computed from the force balance with Vphi) and
   !> isw_calc_Er=2 (read from input). Ignored when isw_calc_Er=0.
   REAL(kind=dp), PUBLIC :: Om_tE
   !> Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc) times B
@@ -48,7 +48,8 @@ MODULE ntv_mod
 
   !> switch for radial electric field handling:
   !>   0 = no E_r computation (use scalar MtOvR from namelist)
-  !>   1 = self-consistent E_r from neoclassical ambipolarity
+  !>   1 = E_r from the radial force balance of species species_tag_Vphi
+  !>       with its prescribed toroidal rotation Vphi (not from ambipolarity)
   !>   2 = externally prescribed Om_tE (from multispec HDF5 or namelist)
   INTEGER, PUBLIC :: isw_calc_Er
   !> switch: turn on(=1)/off(=0) computation of magnetic drift

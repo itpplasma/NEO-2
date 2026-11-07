@@ -137,7 +137,8 @@
  dt_vec_ov_ds = -1.2342081697267263e-007, -5.6876762615227536e-008 ! Radial derivatives of the temperatures of the species. [0.0d0]
  fname_multispec_in = "multi_spec_aug32169_t4.0210.in" ! ['']
  isw_calc_er = 1 ! 0: no E_r computation (use scalar MtOvR from namelist) [default]
-                 ! 1: self-consistent E_r from neoclassical ambipolarity
+                 ! 1: E_r from the radial force balance of species species_tag_vphi
+                 !    with its prescribed toroidal rotation vphi (not from ambipolarity)
                  ! 2: externally prescribed Om_tE (from multispec HDF5 or namelist)
  isw_calc_magdrift = 1 ! [0]
  isw_coul_log = 0   ! 0: Coulomb logarithm set as species independent (overrides values for n_spec) [default]
@@ -175,13 +176,11 @@
                   ! part. [0]
  isw_ripple_solver = 3 ! Which ripple solver version should be used.
                        ! 1 first order direct [default]
-                       ! 2 Arnoldi, 1st order
                        ! 3 Arnoldi, 2nd order
-                       ! 4 Arnoldi, 3rd order
  MtOvR = 0.0 ! Legacy single-species Mt/R. Only used when isw_calc_Er=0;
              ! ignored when isw_calc_Er >= 1 (multispecies code uses Om_tE). [0.0d0]
  Om_tE = 0.0 ! ExB toroidal precession frequency in rad/s.
-             ! isw_calc_Er=1: computed from ambipolarity (this value ignored).
+             ! isw_calc_Er=1: computed from the force balance with vphi (this value ignored).
              ! isw_calc_Er=2: read from here (single-surface) or multispec HDF5
              !   (profile runs with isw_multispecies_init > 0). [0.0d0]
 /
