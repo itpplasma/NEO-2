@@ -1922,7 +1922,7 @@ contains
       
       exp_maxwell = 2d0/(sqrt(1+2*x**2/rmu) + 1)
       integrand_rel1 = exp(-exp_maxwell*x**2) * x**2 * D_uu(rmu, x) &
-           * d_phi_prj(mp,x) * (phi_prj(m,x) + x*d_phi_prj(m,x))
+        * d_phi_exp(mp,x) * (phi_prj(m,x) + x*d_phi_prj(m,x))
 
     end function integrand_rel1
   end subroutine compute_energyscattering

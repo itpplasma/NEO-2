@@ -144,3 +144,20 @@ set_tests_properties(binarysplit_max_index_test PROPERTIES
 add_test(NAME golden_change_ci_test
          COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_golden_change.sh)
 set_tests_properties(golden_change_ci_test PROPERTIES SKIP_RETURN_CODE 77)
+
+# Relativistic energy scattering in the non-relativistic limit, with
+# different projection and expansion bases. Not on Apple: the relativistic
+# integrals abort there on main as well (nested GSL callbacks).
+if(NOT APPLE)
+    add_executable(test_collop_rel_energy_basis test_collop_rel_energy_basis.f90)
+    target_link_libraries(test_collop_rel_energy_basis common)
+
+    add_test(NAME collop_rel_energy_basis_test
+             COMMAND test_collop_rel_energy_basis
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    set_tests_properties(collop_rel_energy_basis_test PROPERTIES
+        PASS_REGULAR_EXPRESSION "All tests passed!"
+        FAIL_REGULAR_EXPRESSION "FAIL"
+        TIMEOUT 120
+    )
+endif()
