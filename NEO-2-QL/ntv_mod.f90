@@ -1578,6 +1578,7 @@ CONTAINS
        ! that Gamma_*/Qflux_*/ParFlow_*/TphiNA_spec are also emitted here
        ! (previously only MtOvR_spec was computed, silently dropping the NTV
        ! torque from neo2_multispecies_out.h5).
+       PRINT '(a,es24.16)', 'NEO2_OM_TE ', Om_tE
        Er = Om_tE * aiota_loc * sqrtg_bctrvr_phi / c
        PRINT *,'------------------------------'
        PRINT *,'Er (inverted from prescribed Om_tE): ', Er
@@ -2378,6 +2379,7 @@ CONTAINS
 
     ! compute ExB rotation frequency and species Mach numbers
     Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi)
+    PRINT '(a,es24.16)', 'NEO2_OM_TE ', Om_tE
     IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
     ALLOCATE(MtOvR_spec(0:num_spec-1))
     MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
@@ -2911,6 +2913,7 @@ CONTAINS
 
     ! compute ExB rotation frequency and species Mach numbers
     Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi)
+    PRINT '(a,es24.16)', 'NEO2_OM_TE ', Om_tE
     IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
     ALLOCATE(MtOvR_spec(0:num_spec-1))
     MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
