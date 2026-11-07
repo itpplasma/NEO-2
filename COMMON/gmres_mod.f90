@@ -1,6 +1,6 @@
-! Matrix-free complex GMRES for the LU-preconditioned QL equation.
-! As in PAR's fixed_point_gmres_mod, acceptance requires a fresh residual.
-module ql_gmres_mod
+! Matrix-free complex GMRES for the LU-preconditioned QL and PAR equations.
+! Acceptance requires a fresh residual.
+module gmres_mod
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     implicit none
@@ -65,7 +65,7 @@ contains
         do
             beta = sqrt(real(dot(n, w, w), dp))
             relres = beta / bnorm
-            print *, 'QL GMRES true residual:', iterations, relres
+            print *, 'GMRES true residual:', iterations, relres
             if (.not. ieee_is_finite(relres)) return
             if (relres <= eps) then
                 info = 0
@@ -137,4 +137,4 @@ contains
             end do
         end do
     end subroutine gmres_solve
-end module ql_gmres_mod
+end module gmres_mod
