@@ -4236,28 +4236,22 @@ CONTAINS
     end subroutine add_f01_source
 
 !------------------------------------------------------------------------
+    !> C_I f: velocity moments of f at each step (integral_moments), exchanged
+    !> between the species ranks, mixed and mapped back (integral_expand).
     subroutine integral_part(vec_in, vec_out)
-
-        implicit none
-
-        integer :: l, m, i, k, istep, npassing, k_prev
-
         complex(dp), dimension(n_2d_size) :: vec_in, vec_out
-    !! Modification by Andreas F. Martitsch (20.08.2015)
-        ! Array extended by 3rd (phi-steps) and 4th dimension (species)
         complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg
-        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg_tmp
-        ! Species index
-        integer :: ispecp
-    !! End Modification by Andreas F. Martitsch (20.08.2015)
-        complex(dp), dimension(:, :, :), allocatable :: vec_tmp
+        call integral_moments(vec_in, scalprod_pleg)
+        call mpro%allgather_inplace(scalprod_pleg)
+        call integral_expand(scalprod_pleg, vec_out)
+    end subroutine integral_part
 
-        allocate (vec_tmp(0:lag, 2*(npart + 1), ibeg:iend))
-        vec_tmp = 0.d0
-
-!! Modification by Andreas F. Martitsch (20.08.2015)
-! Array scalprod_pleg extended by 3rd (phi-steps) and
-! 4th dimension (species)
+    !> Legendre moments of each Laguerre block of this species at each step.
+    subroutine integral_moments(vec_in, scalprod_pleg)
+        complex(dp), dimension(n_2d_size), intent(in) :: vec_in
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1), intent(out) :: scalprod_pleg
+        integer :: l, m, k, istep, npassing
+        scalprod_pleg = (0.0d0, 0.0d0)
         do istep = ibeg, iend
 
             npassing = npl(istep)
@@ -4286,7 +4280,21 @@ CONTAINS
 !! Modification by Andreas F. Martitsch (20.08.2015)
 ! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
 ! (mpro%allgather supports 3D and 4D matrices)
-        call mpro%allgather_inplace(scalprod_pleg)
+
+    end subroutine integral_moments
+
+    !> Mix the moments of all species with ailmm_aa and map them back onto the
+    !> pitch-angle grid of this species.
+    subroutine integral_expand(scalprod_pleg, vec_out)
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1), intent(inout) :: scalprod_pleg
+        complex(dp), dimension(n_2d_size), intent(out) :: vec_out
+        integer :: l, m, i, k, istep, npassing, k_prev, ispecp
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg_tmp
+        complex(dp), dimension(:, :, :), allocatable :: vec_tmp
+
+        allocate (vec_tmp(0:lag, 2*(npart + 1), ibeg:iend))
+        vec_tmp = 0.d0
+
 
         do istep = ibeg, iend
 
@@ -4392,7 +4400,7 @@ CONTAINS
 
         deallocate (vec_tmp)
 
-    end subroutine integral_part
+    end subroutine integral_expand
 
     !---------------------------------------------------------------------------------
     !> Single step of a preconditioned Richardson iteration which for equation set
