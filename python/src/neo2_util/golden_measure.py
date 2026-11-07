@@ -48,6 +48,22 @@ def wrap(log, binary):
     return path
 
 
+def measurements(log):
+    """Per case: summed rank-0 wall time, peak memory per rank and exit status."""
+    cases = {}
+    lines = Path(log).read_text().splitlines() if Path(log).exists() else []
+    for entry in map(json.loads, lines):
+        case = cases.setdefault(entry["case"], {"wall_s": 0.0, "peaks": {}, "exit": 0})
+        if entry["rank"] == 0:
+            case["wall_s"] = round(case["wall_s"] + entry["wall_s"], 3)
+        case["peaks"][entry["rank"]] = max(case["peaks"].get(entry["rank"], 0.0),
+                                           entry["peak_rss_mib"])
+        case["exit"] = case["exit"] or entry["exit"]
+    return {name: {"wall_s": c["wall_s"], "exit": c["exit"],
+                   "peak_rss_mib": [c["peaks"][r] for r in sorted(c["peaks"])]}
+            for name, c in cases.items()}
+
+
 def summary(logs):
     print("case\tbuild\truns\tmedian_wall_s\tpeak_rss_mib")
     for log in logs:
