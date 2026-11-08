@@ -295,7 +295,6 @@ subroutine ripple_solver_ArnoldiO2( &
     ! Stays fixed: a residual-based stop at the input tolerance cannot reach
     ! this accuracy yet, because the residual levels off between 1e-6 and 1e-5.
     epserr_iter = 1.d-7  !relative error of integral part iterations
-    sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
 
     addboucol = .true.
     !------------------------------------------------------------------------
