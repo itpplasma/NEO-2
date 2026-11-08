@@ -56,6 +56,7 @@ subroutine ripple_solver_ArnoldiO2( &
                              f0_coll, f0_ttmp, f0_coll_all, f0_ttmp_all, &
                              nz_regper, irow_regper, icol_regper, amat_regper, &
                              deallocate_ntv_eqmat
+    use solve_report_mod, only: csr_add
     use partpa_mod, only: bmod0
     use development
   !! Modifications by Andreas F. Martitsch (12.03.2014)
@@ -3329,6 +3330,7 @@ CONTAINS
         logical :: clean
         real(dp), dimension(:), allocatable :: bvec_sp_real
         complex(dp), dimension(:), allocatable :: source_copy
+        integer :: solve_path
         !  multi-species part
         integer :: ispecpp ! species indices (loop over sources)
         real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec_tmp
@@ -3385,11 +3387,13 @@ CONTAINS
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
                 source_copy = source_vector_all(:, k, ispec)
+                solve_path = 1
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                     & source_vector_all(:, k, ispec), ispec, next_iteration, &
                     & solve_converged)
                 if (.not. solve_converged) then
                     call refactorize_strict_lu()
+                    solve_path = 2
                     source_vector_all(:, k, ispec) = source_copy
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
@@ -3399,7 +3403,10 @@ CONTAINS
                 if (.not. solve_converged) then
                     source_vector_all(:, k, ispec) = source_copy
                     call gmres_source(source_vector_all(:, k, ispec), epserr_iter)
+                    solve_path = 3
                 end if
+                call report_solve(k, ispec, solve_path, solve_converged, &
+                    & source_copy, source_vector_all(:, k, ispec))
             end do
 
         elseif (isw_intp .EQ. 1) then
@@ -3414,11 +3421,13 @@ CONTAINS
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
                     source_copy = source_vector_all(:, k, ispecp)
+                    solve_path = 1
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
                         & source_vector_all(:, k, ispecp), ispec, next_iteration, &
                         & solve_converged)
                     if (.not. solve_converged) then
                         call refactorize_strict_lu()
+                        solve_path = 2
                         source_vector_all(:, k, ispecp) = source_copy
                         f_init_arnoldi = source_vector_all(:, 1, ispec)
                         call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
@@ -3428,7 +3437,10 @@ CONTAINS
                     if (.not. solve_converged) then
                         source_vector_all(:, k, ispecp) = source_copy
                         call gmres_source(source_vector_all(:, k, ispecp), epserr_iter)
+                        solve_path = 3
                     end if
+                    call report_solve(k, ispecp, solve_path, solve_converged, &
+                        & source_copy, source_vector_all(:, k, ispecp))
                 end do
 
             end do
@@ -4266,6 +4278,96 @@ CONTAINS
         call mpro%allgather_inplace(scalprod_pleg)
         call integral_expand(scalprod_pleg, vec_out)
     end subroutine integral_part
+
+    !------------------------------------------------------------------------
+    !> One NEO2_SOLVE_JSON record per source solve, from rank 0.
+    !>
+    !> The iteration stops on a fixed-point increment rule,
+    !> ||f_new - f_old||_1 <= increment_tolerance * ||f_new||_1, so
+    !> increment_tolerance is what epserr_iter means and it is not the error of
+    !> the equation. The reported quantity is the normwise backward error of the
+    !> assembled equation over every entry of the matrix that was handed to the
+    !> solver, matrix_entries = nz_symm + nz_regper for the axisymmetric system
+    !> and nz for the nonaxisymmetric one. It is diagnostic: a backward error
+    !> above increment_tolerance is expected and does not mean the solve failed,
+    !> while a residual taken over part of the matrix would report the error of
+    !> a system that was never solved.
+    subroutine report_solve(source_index, driving_species, path, converged, &
+            & source, solution)
+        integer, intent(in) :: source_index, driving_species, path
+        logical, intent(in) :: converged
+        complex(dp), intent(in) :: source(:), solution(:)
+        complex(dp), dimension(:), allocatable :: collision, lhs
+        real(dp), dimension(:), allocatable :: numerators, denominators
+        real(dp), dimension(:), allocatable :: density, energy
+        real(dp) :: error(num_spec)
+        character(len=:), allocatable :: by_species
+        integer :: species
+        character(len=*), parameter :: paths(3) = [character(len=9) :: &
+            'iteration', 'strict_lu', 'gmres']
+
+        allocate(collision(size(solution)), lhs(size(solution)))
+        collision = (0.0d0, 0.0d0)
+        if (isw_intp == 1) call integral_part(solution, collision)
+        lhs = (0.0d0, 0.0d0)
+        call csr_add(nz, irow, icol, amat_sp, solution, lhs)
+
+        allocate(numerators(num_spec), denominators(num_spec))
+        allocate(density(num_spec), energy(num_spec))
+        numerators = 0; denominators = 0; density = 0; energy = 0
+        numerators(ispec + 1) = sum(abs(source + collision - lhs))
+        denominators(ispec + 1) = sum(abs(source)) + sum(abs(collision)) &
+            & + sum(abs(lhs))
+        if (problem_type) then
+            density(ispec + 1) = abs(sum(densvec_bra*solution)) &
+                & / max(sum(abs(densvec_bra))*maxval(abs(solution)), tiny(1.0d0))
+            if (isw_intp == 1) energy(ispec + 1) = abs(sum(energvec_bra*solution)) &
+                & / max(sum(abs(energvec_bra))*maxval(abs(solution)), tiny(1.0d0))
+        end if
+        call mpro%allgather_inplace(numerators)
+        call mpro%allgather_inplace(denominators)
+        call mpro%allgather_inplace(density)
+        call mpro%allgather_inplace(energy)
+        if (ispec /= 0) return
+
+        do species = 0, num_spec - 1
+            error(species + 1) = numerators(species + 1) &
+                & / max(denominators(species + 1), tiny(1.0d0))
+        end do
+        by_species = ''
+        do species = 0, num_spec - 1
+            by_species = by_species//json_real(error(species + 1))
+            if (species < num_spec - 1) by_species = by_species//','
+        end do
+        print '(a)', 'NEO2_SOLVE_JSON {"system":"' &
+            & //trim(merge('axisymmetric   ', 'nonaxisymmetric', problem_type)) &
+            & //'","source":'//json_int(source_index) &
+            & //',"driving_species":'//json_int(driving_species) &
+            & //',"path":"'//trim(paths(path)) &
+            & //'","converged":'//trim(merge('true ', 'false', converged)) &
+            & //',"increment_tolerance":'//json_real(epserr_iter) &
+            & //',"iteration_limit":'//json_int(niter) &
+            & //',"matrix_entries":'//json_int(nz) &
+            & //',"backward_error_by_species":['//by_species &
+            & //'],"density_constraint_residual":'//json_real(maxval(density)) &
+            & //',"energy_constraint_residual":'//json_real(maxval(energy))//'}'
+    end subroutine report_solve
+
+    function json_int(i) result(text)
+        integer, intent(in) :: i
+        character(len=:), allocatable :: text
+        character(len=16) :: buffer
+        write(buffer, '(i0)') i
+        text = trim(buffer)
+    end function json_int
+
+    function json_real(x) result(text)
+        real(dp), intent(in) :: x
+        character(len=:), allocatable :: text
+        character(len=32) :: buffer
+        write(buffer, '(es12.4e3)') x
+        text = trim(buffer)
+    end function json_real
 
     !> Legendre moments of each Laguerre block of this species at each step.
     subroutine integral_moments(vec_in, scalprod_pleg)
