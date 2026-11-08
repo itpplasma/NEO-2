@@ -292,9 +292,6 @@ subroutine ripple_solver_ArnoldiO2( &
     call collop_set_species(ispec)
 
     isw_regper = 1       !regulariization by periodic boundary condition
-    ! Stays fixed: a residual-based stop at the input tolerance cannot reach
-    ! this accuracy yet, because the residual levels off between 1e-6 and 1e-5.
-    epserr_iter = 1.d-7  !relative error of integral part iterations
     ! METIS cuts the LU of the large AUG cases by two thirds and its
     ! factorization time by three compared with AMD/COLAMD.
     sparse_ordering = 3
