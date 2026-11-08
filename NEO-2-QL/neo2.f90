@@ -784,7 +784,7 @@ subroutine main
     nperiod=500
     xetami=0.0d0
     xetama=1.300001d0
-    epserr_iter = 1e-5
+    epserr_iter = 1.0d-7
     niter = 100
     n_arnoldi = 500
     eta_part_global = 0
