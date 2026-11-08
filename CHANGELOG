@@ -1,5 +1,10 @@
 Contains changelog of neo-2 code. Tags are also included.
 
+  Fixed
+  - QL honors epserr_iter from the input instead of resetting it to 1e-7.
+    Inputs that omit it retain the effective default 1e-7. Explicit values
+    that were previously ignored can change convergence and results.
+
 Note: use git tag --list to get a list of available tags.
 
   Added [for new features]
