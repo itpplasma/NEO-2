@@ -1234,6 +1234,11 @@ subroutine main
       boozer_s = boozer_s_prof(ind_boozer_s)
       IF (isw_calc_Er .EQ. 2) THEN
         Om_tE = Om_tE_prof(ind_boozer_s)
+        ! State the rotation that will be used, and where it came from. A
+        ! prescribed mode whose profile carries no rotation otherwise runs at
+        ! Om_tE = 0 with no trace, which reads like a computed rotation.
+        write(*,*) 'NEO2_ROTATION mode=prescribed Om_tE=', Om_tE, &
+          & ' profile_index=', ind_boozer_s, ' boozer_s=', boozer_s
         ! V_phi is not an input in this mode: write neutral values instead
         ! of propagating unused rotation settings from the top-level neo2.in.
         species_tag_Vphi = 0
@@ -1244,6 +1249,8 @@ subroutine main
         boozer_theta_Vphi = 0.0_dp
       ELSE
         Vphi = Vphi_prof(ind_boozer_s)
+        write(*,*) 'NEO2_ROTATION mode=from_Vphi Vphi=', Vphi, &
+          & ' profile_index=', ind_boozer_s, ' boozer_s=', boozer_s
         IF (isw_Vphi_loc .EQ. 1) THEN
           write(*,*) "ERROR: Warning switch isw_Vphi_loc=1 is not tested!"
           STOP

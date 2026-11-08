@@ -165,3 +165,14 @@ set_tests_properties(source_stencil_test PROPERTIES
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
+
+# The axisymmetric residual must be taken over every block of the matrix that
+# was handed to the solver, not only the bulk block (issue 81 follow-up).
+add_executable(test_solve_report test_solve_report.f90)
+target_link_libraries(test_solve_report neo2_ql)
+add_test(NAME solve_report_test COMMAND test_solve_report)
+set_tests_properties(solve_report_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
