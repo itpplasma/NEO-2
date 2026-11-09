@@ -66,6 +66,7 @@ set(COMMON_FILES
   sizey_pla.f90
   solve_system.f90
   sparse_mod.f90
+  fixed_point_gmres_mod.f90
   sparsevec_mod.f90
   spline_cof.f90
   spline_int.f90
