@@ -1,7 +1,7 @@
-program test_ql_gmres
+program test_gmres
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
-    use ql_gmres_mod, only: gmres_solve
+    use gmres_mod, only: gmres_solve
     implicit none
     integer, parameter :: n = 24
     complex(dp) :: a(n, n), exact(n), b(n), x(n), w(n)
