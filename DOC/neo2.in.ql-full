@@ -91,11 +91,17 @@
                         ! $\kappa = 1/l_c$, while internally in NEO-2 it
                         ! has a slightly different normalization. [1.0d-3]
  isw_axisymm = 1        ! [0]
- isw_energy = 1         ! 0: no energy conservation [default]
-                        ! 1: with energy conservation
- isw_integral = 1     ! 0: no momentum convervation [default]
-                      ! 1: (mainly) have momentum conservation
- isw_lorentz = 0      ! [1]
+ collision_model = 'full_fp' ! Collision operator; replaces isw_lorentz,
+                      ! isw_energy and isw_integral (give one or the other):
+                      ! 'full_fp' full linearised Fokker-Planck operator,
+                      ! 'test_particle' pitch-angle and energy scattering,
+                      ! 'pitch_angle' pitch-angle scattering only,
+                      ! 'monoenergetic_lorentz' the monoenergetic mode.
+                      ! Legacy flags, used only without collision_model:
+                      ! isw_energy (energy scattering) [0],
+                      ! isw_integral (field-particle part) [0],
+                      ! isw_lorentz = 1 the monoenergetic mode, not
+                      ! pitch-angle scattering [1].
  isw_momentum = 0     ! [0]
  isw_relativistic = 0 ! 0: Non-relativistic limit [default].
                       ! 1: Braams/Karney model. If $leg>1$, then higher
