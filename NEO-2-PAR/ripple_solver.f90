@@ -2312,10 +2312,7 @@ call cpu_time(time1)
         endif
      enddo
      ! A DO loop that runs out leaves iter = niter + 1.
-     if (iter > niter) then
-        write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
-        error stop
-     end if
+     if (iter > niter) call integral_fallback(source_vector(:,k), bvec_lor, 'qflux')
     enddo
 
   endif
@@ -2674,10 +2671,7 @@ time3 = time3 + (time5-time4)
         enddo
 
         ! A DO loop that runs out leaves iter = niter + 1.
-        if (iter > niter) then
-           write (*,*) "Left - Maximum number of iterations reached in ripple solver."
-           error stop
-        end if
+        if (iter > niter) call integral_fallback(bvec_sp, bvec_lor, 'Left')
       endif
 
       do mm=0,lag
@@ -2734,10 +2728,7 @@ time3 = time3 + (time5-time4)
         enddo
 
         ! A DO loop that runs out leaves iter = niter + 1.
-        if (iter > niter) then
-           write (*,*) "Right - Maximum number of iterations reached in ripple solver."
-           error stop
-        end if
+        if (iter > niter) call integral_fallback(bvec_sp, bvec_lor, 'Right')
       endif
 
       do mm=0,lag
@@ -2873,6 +2864,40 @@ PRINT *,' '
 
   !------------------------------------------------------------------------
   RETURN
+contains
+
+  !> The fixed-point iteration x = x_lor + L^-1 I x of the integral part
+  !> did not converge within niter steps: solve (1 - L^-1 I) x = x_lor by
+  !> restarted GMRES with the same factorization of L (iopt = 2).
+  subroutine integral_fallback(x, xlor, label)
+    use fixed_point_gmres_mod, only: gmres_solve_real
+    double precision, intent(inout) :: x(:)
+    double precision, intent(in) :: xlor(:)
+    character(*), intent(in) :: label
+    integer :: info, its
+    double precision :: relres
+    write (*,*) trim(label)//" - integral-part iteration did not converge; GMRES"
+    call gmres_solve_real(size(x), xlor, x, fixed_point_operator, epserr_iter, &
+                          20*niter, 100, info, its, relres)
+    write (*,*) trim(label)//" - GMRES iterations, relative residual: ", its, relres
+    if (relres > epserr_iter) then
+      write (*,*) trim(label)//" - integral-part GMRES did not converge."
+      error stop
+    end if
+  end subroutine integral_fallback
+
+  subroutine fixed_point_operator(n, x, y)
+    integer, intent(in) :: n
+    double precision, intent(in) :: x(n)
+    double precision, intent(out) :: y(n)
+    double precision :: v(n)
+    call integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start,   &
+                       phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),   &
+                       ailmm,x,v)
+    CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),v,iopt)
+    y = x - v
+  end subroutine fixed_point_operator
+
 END SUBROUTINE ripple_solver
 
 
