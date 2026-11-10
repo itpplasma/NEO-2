@@ -75,6 +75,15 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_conservation_step test_conservation_step.f90)
+target_link_libraries(test_conservation_step neo2_ql)
+add_test(NAME conservation_step_test COMMAND test_conservation_step)
+set_tests_properties(conservation_step_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 add_executable(test_iterator_convergence test_iterator_convergence.f90)
 target_link_libraries(test_iterator_convergence neo2_ql)
 add_test(NAME iterator_convergence_test COMMAND test_iterator_convergence)
