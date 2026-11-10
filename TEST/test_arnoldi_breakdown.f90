@@ -100,6 +100,8 @@ program test_arnoldi_breakdown
     end if
     call iterator(3, 2, 4, 1.0d-12, 100, solution, 0, neutral_operator)
 
+    call nonclosed_projection()
+
     call mpro%deinit()
     deallocate(f_init_arnoldi)
     if (allocated(ritznum)) deallocate(ritznum)
@@ -109,6 +111,51 @@ program test_arnoldi_breakdown
     print *, 'All tests passed!'
 
 contains
+
+    subroutine nonclosed_projection()
+        integer :: j
+        double precision :: expected(2)
+        complex(kind=kind(1d0)) :: residual(3), q(3,2)
+
+        deallocate(f_init_arnoldi)
+        if (allocated(ritznum)) deallocate(ritznum)
+        allocate(f_init_arnoldi(3), ritznum(2))
+        f_init_arnoldi = (1.0d0, 0.0d0)
+        applications = 0
+        call arnoldi(3, 2, 0, diagonal_operator)
+        ! For diag(2,3,4) and the constant start, Q* A Q has diagonal
+        ! (3,3) and off-diagonal sqrt(2/3); the residual is nonzero.
+        expected = [3.0d0 + sqrt(2.0d0/3.0d0), 3.0d0 - sqrt(2.0d0/3.0d0)]
+        q(:,1) = 1.0d0/sqrt(3.0d0)
+        q(:,2) = [-1.0d0, 0.0d0, 1.0d0]/sqrt(2.0d0)
+        if (ierr /= 0 .or. ngrow /= 2 .or. applications /= 2) then
+            print *, 'FAIL: nonclosed projection:', ierr, ngrow, applications
+            status = status + 1
+            return
+        end if
+        do j = 1,2
+            if (.not.ieee_is_finite(abs(ritznum(j))) .or. &
+                & abs(ritznum(j)-expected(j)) > 1.0d-12) then
+                print *, 'FAIL: nonclosed Ritz value:', ritznum(j), expected(j)
+                status = status + 1
+            end if
+            residual = [2.0d0,3.0d0,4.0d0]*eigvecs(:,j)-ritznum(j)*eigvecs(:,j)
+            if (.not.all(ieee_is_finite(abs(residual))) .or. &
+                & maxval(abs(matmul(conjg(transpose(q)),residual))) > 1.0d-12 .or. &
+                & maxval(abs(residual)) < 1.0d-3) then
+                print *, 'FAIL: nonclosed Galerkin residual:', residual
+                status = status + 1
+            end if
+        end do
+    end subroutine nonclosed_projection
+
+    subroutine diagonal_operator(n, input, output)
+        integer :: n
+        complex(kind=kind(1d0)), dimension(n) :: input, output
+
+        applications = applications + 1
+        output = [2.0d0,3.0d0,4.0d0]*input
+    end subroutine diagonal_operator
 
     subroutine rank_one_operator(n, input, output)
         integer :: n
