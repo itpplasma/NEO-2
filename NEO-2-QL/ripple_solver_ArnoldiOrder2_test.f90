@@ -3742,11 +3742,63 @@ CONTAINS
             conservation_bras(:, 2) = real(energvec_bra, dp)
             conservation_directions(:, 2) = real(energvec_ket, dp)
         end if
+        call stall_diag_moments()
         do constraint = 1, nconstraints
             call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
                 conservation_directions(:, constraint), iopt)
         end do
     end subroutine prepare_conservation_border
+
+    ! DIAGNOSTIC ONLY: moment defects b'(M v - C v) of the assembled operator.
+    subroutine stall_diag_moments()
+        character(len=16) :: flag
+        integer :: flag_len, entry, iv, ib
+        complex(dp) :: v(n_2d_size), cv(n_2d_size), mv(n_2d_size)
+        real(dp) :: bra(n_2d_size), defect, scale_m, scale_c, raw
+        call get_environment_variable('NEO2_STALL_DIAG', flag, flag_len)
+        if (flag_len == 0) return
+        do iv = 1, 3
+            do ib = 1, 2
+                if (ib == 1) bra = real(densvec_bra, dp)
+                if (ib == 2) bra = real(energvec_bra, dp)
+                raw = real(sum(bra*source_vector_all(:, iv, ispec)), dp)
+                scale_m = sum(abs(bra*source_vector_all(:, iv, ispec)))
+                write (*, '(a,i0,a,i0,a,i0,a,es14.6,a,es14.6)') 'STALL_SRC species=', ispec, &
+                    ' source=', iv, ' bra=', ib, ' raw=', raw, ' rel=', abs(raw)/max(scale_m, tiny(1d0))
+            end do
+        end do
+        do iv = 1, 3
+            select case (iv)
+            case (1)
+                do entry = 1, n_2d_size
+                    v(entry) = cmplx(sin(0.37d0*entry + 0.1d0*ispec) + 0.5d0, 0d0, dp)
+                end do
+            case (2)
+                v = densvec_ket
+            case (3)
+                v = energvec_ket
+            end select
+            cv = (0d0, 0d0)
+            if (isw_intp == 1) call integral_part(v, cv)
+            mv = (0d0, 0d0)
+            do entry = 1, nz_symm
+                mv(irow_symm(entry)) = mv(irow_symm(entry)) + amat_symm(entry)*v(icol_symm(entry))
+            end do
+            do ib = 1, 2
+                if (ib == 1) bra = real(densvec_bra, dp)
+                if (ib == 2) bra = real(energvec_bra, dp)
+                raw = real(sum(bra*(mv - cv)), dp)
+                scale_m = sum(abs(bra*mv))
+                scale_c = sum(abs(bra*cv))
+                defect = abs(raw)/max(scale_m + scale_c, tiny(1d0))
+                write (*, '(a,i0,a,i0,a,i0,a,es14.6,a,es14.6,a,es14.6,a,es14.6,a,es14.6)') &
+                    'STALL_DIAG species=', ispec, ' vec=', iv, ' bra=', ib, ' raw=', raw, &
+                    ' rel=', defect, ' bM=', real(sum(bra*mv), dp), ' bC=', real(sum(bra*cv), dp), &
+                    ' scale=', scale_m + scale_c
+            end do
+        end do
+        flush (6)
+    end subroutine stall_diag_moments
 
 !------------------------------------------------------------------------
     subroutine source_flux
@@ -4685,7 +4737,12 @@ CONTAINS
         end if
         ! Every rank receives the same globally reduced convergence decision.
         ! No rank may continue to publish transport from an unconverged solve.
-        if (status /= 0) error stop 'NEO2 integral-part equation solve failed'
+        block
+            character(len=16) :: nostop
+            integer :: nostop_len
+            call get_environment_variable('NEO2_STALL_NOSTOP', nostop, nostop_len)
+            if (status /= 0 .and. nostop_len == 0) error stop 'NEO2 integral-part equation solve failed'
+        end block
     end subroutine report_solve
 
     subroutine next_iteration(n, fold, fnew)
