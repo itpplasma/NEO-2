@@ -287,6 +287,7 @@ subroutine ripple_solver_ArnoldiO2( &
     real(dp), dimension(:, :), allocatable :: source_vector_real
   !! End Modification by Andreas F. Martitsch (28.07.2015)
     complex(dp), dimension(:), allocatable :: ttmpfact
+    logical :: pitch_matrix_probe = .false.
     logical :: sparse_trace = .false., ax_operator_probe = .false.
     logical :: early_original_accept = .false.
     character(len=32) :: sparse_trace_value
@@ -316,6 +317,19 @@ subroutine ripple_solver_ArnoldiO2( &
     call get_environment_variable('NEO2_AX_OPERATOR_PROBE', sparse_trace_value, &
                                   status=sparse_trace_status)
     if (sparse_trace_status == 0) ax_operator_probe = trim(sparse_trace_value) == '1'
+
+    call get_environment_variable('NEO2_PRIVATE_PITCH_MATRIX', sparse_trace_value, &
+                                  status=sparse_trace_status)
+    if (sparse_trace_status == 0) then
+        if (trim(sparse_trace_value) /= '1') &
+            error stop 'Private pitch matrix flag must be1'
+        if (any([isw_lorentz,isw_energy,isw_integral] /= 0)) &
+            error stop 'Private matrix diagnostic requires effective pitch'
+        if (ax_operator_probe) error stop 'Conflicting private/operator probes'
+        pitch_matrix_probe = .true.
+    else if (sparse_trace_status /= 1) then
+        error stop 'Private matrix diagnostic environment read failed'
+    end if
 
     early_original_accept=.false.
     call get_environment_variable('NEO2_ORIGINAL_RESIDUAL_ACCEPT', sparse_trace_value, &
@@ -348,9 +362,14 @@ subroutine ripple_solver_ArnoldiO2( &
         early_original_accept)
     if (fullfp_probe_enabled .and. ax_operator_probe) &
         error stop 'Conflicting full-FP stage/operator probes'
+    if (pitch_matrix_probe) then
+        if (early_original_accept .or. stabilization_probe .or. &
+            fullfp_probe_enabled) error stop 'Conflicting private pitch probe'
+    end if
     call configure_ax_feasibility(isw_lorentz, isw_energy, isw_integral, num_spec, &
         early_original_accept, epserr_iter, niter, n_arnoldi, &
-        ax_operator_probe .or. fullfp_probe_enabled .or. stabilization_probe)
+        ax_operator_probe .or. fullfp_probe_enabled .or. stabilization_probe .or. &
+        pitch_matrix_probe)
 
     addboucol = .true.
     !------------------------------------------------------------------------
@@ -3543,6 +3562,13 @@ CONTAINS
         print *, 'maximum value = ', maxval(abs(amat_sp))
         nz = nz_sq
 
+        if (problem_type .and. pitch_matrix_probe) then
+            call dump_private_pitch_matrix()
+            if (ispec == 0) print *, &
+                'NEO2_PRIVATE_DIAGNOSTIC pitch_matrix NO_SOLVE NO_TORQUE'
+            call mpro%deinit()
+            stop
+        end if
         call column_full2pointer(icol(1:nz), ipcol)
         if (problem_type) print *, &
             'native AX regularizer lag/isw_intp/nz_regper: ', lag, isw_intp, nz_regper
@@ -4921,6 +4947,71 @@ CONTAINS
         if (problem_type) &
             call record_ax_feasibility(source_index, driving_species, status)
     end subroutine report_solve
+
+    ! Private diagnostic only: the unregularized pitch equation is M because
+    ! the inter-species integral operator is disabled. Dump original COO entries,
+    ! every actual native source and all lag+1 isotropic speed coefficients.
+    ! source_flux has already filled source_vector and copied columns 1:4
+    ! into source_vector_all(:,:,ispec) immediately before solve_eqs. The
+    ! pitch branch passes these same columns 1:3 to its native iterator.
+    ! amat_symm remains the original unregularized COO array: remap_rc
+    ! modifies only irow/icol/amat_sp, which also contains R. In pitch,
+    ! equation_residual uses amat_symm and skips integral_part (isw_intp=0).
+    ! No filtering, regularization, factorization or solver is applied here.
+    subroutine dump_private_pitch_matrix()
+        integer :: unit, entry, row, speed, point, bands, offset, band, status
+        character(len=80) :: filename
+        complex(dp), allocatable :: z(:), az(:)
+        real(dp) :: entry_sum
+        if (any([isw_lorentz,isw_energy,isw_integral] /= 0)) &
+            error stop 'Private matrix dump requires pitch'
+        if (isw_intp /= 0) error stop 'Private dump found integral action'
+        write(filename,'(a,i0,a)') 'private_pitch_species_',ispec,'.dat'
+        open(newunit=unit,file=trim(filename),status='new',action='write', &
+             iostat=status)
+        if (status /= 0) error stop 'Cannot create private matrix dump'
+        write(unit,'(a,5(1x,i0))') 'HEADER',ispec,num_spec,nrow,ncol,lag
+        do entry=1,nz_symm
+            write(unit,'(a,2(1x,i0),1x,es26.17e3)') 'A', &
+                irow_symm(entry),icol_symm(entry),amat_symm(entry)
+        end do
+        do entry=1,nz_regper
+            write(unit,'(a,2(1x,i0),1x,es26.17e3)') 'R', &
+                irow_regper(entry),icol_regper(entry),amat_regper(entry)
+        end do
+        do row=1,nrow
+            do entry=1,3
+                write(unit,'(a,2(1x,i0),2(1x,es26.17e3))') 'B', &
+                    entry,row,real(source_vector_all(row,entry,ispec),dp), &
+                    aimag(source_vector_all(row,entry,ispec))
+            end do
+        end do
+        allocate(z(nrow),az(nrow))
+        do speed=0,lag
+            z=(0.0_dp,0.0_dp)
+            do point=ibeg,iend
+                bands=npl(point)
+                offset=ind_start(point)+2*(bands+1)*speed
+                do band=1,bands
+                    z(offset+band)=eta(band)-eta(band-1)
+                    z(offset+2*bands+3-band)=z(offset+band)
+                end do
+                z(offset+bands+1)=1.0_dp/bhat_mfl(point)-eta(bands)
+                z(offset+bands+2)=z(offset+bands+1)
+            end do
+            call sparse_coo_action(irow_symm,icol_symm,amat_symm,z,az, &
+                                   entry_sum)
+            write(unit,'(a,1x,i0,3(1x,es26.17e3))') 'ACTION',speed, &
+                sum(abs(z)),sum(abs(az)),entry_sum
+            do row=1,nrow
+                if (abs(z(row)) == 0.0_dp) cycle
+                write(unit,'(a,2(1x,i0),2(1x,es26.17e3))') 'Z', &
+                    speed,row,real(z(row),dp),aimag(z(row))
+            end do
+        end do
+        write(unit,'(a)') 'COMPLETE_NO_SOLVE_NO_TORQUE'
+        close(unit)
+    end subroutine dump_private_pitch_matrix
 
     subroutine probe_axisymmetric_actions()
         use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
