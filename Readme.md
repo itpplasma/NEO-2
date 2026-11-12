@@ -50,7 +50,7 @@ To build against a specific libneo branch, tag, or commit SHA, pass `LIBNEO_REF`
 
     make LIBNEO_REF=<branch|tag|sha>
 
-The equivalent cmake option is `-DLIBNEO_REF=<branch|tag|sha>`. When unset, the build uses the tested libneo revision pinned in `COMMON/ProjectConfig.cmake.in`. An ambient `LIBNEO_REF` in the shell does not affect the build.
+The equivalent cmake option is `-DITP_LIBNEO_REF=<branch|tag|sha>`, and `-DFETCHCONTENT_SOURCE_DIR_LIBNEO=<dir>` builds against a local libneo checkout. When unset, the build uses the tested libneo revision pinned in `cmake/dependency_versions.json`, added through [ItpDeps](https://github.com/itpplasma/cmake-deps). An ambient `LIBNEO_REF` in the shell does not affect the build.
 
 You obtain a `build` directory with subdirectories
 
