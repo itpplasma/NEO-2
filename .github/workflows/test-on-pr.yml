@@ -65,7 +65,7 @@ jobs:
           GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
         run: |
           TMPDIR="$RUNNER_TEMP" ci/bundle.sh "$RUNNER_TEMP/neo2-golden.tar.zst"
-      - name: Run native golden comparisons on sCluster
+      - name: Run native golden comparisons
         env:
           SCI_OUT: ${{ runner.temp }}/golden-receipts
         run: sci-dispatch golden "$RUNNER_TEMP/neo2-golden.tar.zst"
