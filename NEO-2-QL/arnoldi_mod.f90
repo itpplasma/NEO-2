@@ -2,6 +2,8 @@ MODULE arnoldi_mod
   INTEGER :: ngrow,ierr
   INTEGER :: ntol,mode=0
   DOUBLE PRECISION :: tol
+  ! Shared resolution for Ritz convergence and the unit-eigenvalue filter.
+  DOUBLE PRECISION, PARAMETER :: epserr_ritznum=1.0d-3
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: f_init_arnoldi
   complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: eigvecs
@@ -70,7 +72,7 @@ contains
   !> Output parameters:
   !>            Formal: result         - solution vector
   SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, &
-    & next_iteration)
+      & next_iteration, converged)
 
     use mpiprovider_module, only : mpro
     use collisionality_mod, only : num_spec
@@ -90,6 +92,8 @@ contains
 
     integer :: ispec
     INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
+    ! False unless an iteration loop met its stopping rule within itermax.
+    LOGICAL, OPTIONAL, INTENT(OUT) :: converged
     DOUBLE PRECISION :: relerr
     COMPLEX(kind=kind(1d0)), DIMENSION(n), intent(inout) :: RESULT_
     INTEGER,        DIMENSION(:),   ALLOCATABLE :: ipiv
@@ -100,6 +104,8 @@ contains
     DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: coefren_spec
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: amat_spec
+
+    IF(PRESENT(converged)) converged = .FALSE.
 
     IF(mode_in.EQ.3) THEN
       mode=mode_in
@@ -132,13 +138,31 @@ contains
 
       CALL arnoldi(n,narn, ispec, next_iteration)
 
-      IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
-
       IF(ierr.NE.0) THEN
         PRINT *,'ERROR in iterator: error in arnoldi'
-        DEALLOCATE(fzero,eigvecs,ritznum)
+        DEALLOCATE(fzero,ritznum)
+        IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
         RETURN
       ENDIF
+
+      IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
+
+      ! A unit eigenvalue belongs to the null space of a singular but
+      ! compatible equation (e.g. pitch-angle scattering without energy
+      ! scattering). It does not grow, and the subtraction matrix below
+      ! scales with ritznum-1. Do not invert distances smaller than the
+      ! accuracy requested from Arnoldi; they cannot resolve a unit mode.
+      nsize=0
+      DO j=1,ngrow
+        IF(ABS(ritznum(j)-(1.d0,0.d0)) .GT. epserr_ritznum) THEN
+          nsize=nsize+1
+          ritznum(nsize)=ritznum(j)
+          eigvecs(:,nsize)=eigvecs(:,j)
+        ENDIF
+      ENDDO
+      IF(nsize .LT. ngrow .AND. ispec .EQ. 0) PRINT *, &
+        'iterator: neutral modes not subtracted = ',ngrow-nsize
+      ngrow=nsize
 
     ENDIF
 
@@ -170,6 +194,7 @@ contains
       ENDDO
   !
       PRINT *,'iterator: number of direct iterations = ',iter-1
+      IF(PRESENT(converged)) converged = iter <= itermax
 
       RESULT_=fnew
       DEALLOCATE(fold,fnew,fzero)
@@ -231,6 +256,7 @@ contains
     ENDDO
 
     if (ispec .eq. 0) print *,'iterator: number of stabilized iterations = ', iter-1
+    IF(PRESENT(converged)) converged = iter <= itermax
 
     RESULT_=fnew
 
@@ -260,14 +286,12 @@ contains
   !>                     ierr           - error code (0 - normal work, 1 - error)
   SUBROUTINE arnoldi(n, mmax, ispec, next_iteration)
 
+    USE, INTRINSIC :: ieee_arithmetic, ONLY: ieee_is_finite
     use mpiprovider_module, only : mpro
 
     use collisionality_mod, only : num_spec
 
     IMPLICIT NONE
-
-    ! set independent accuracy-level for eigenvalue computation
-    DOUBLE PRECISION, PARAMETER :: epserr_ritznum=1.0d-3
 
     interface
       subroutine next_iteration(n,fold,fnew)
@@ -277,11 +301,14 @@ contains
     end interface
 
     integer, intent(in) :: ispec, n, mmax
-    INTEGER                                       :: m,k,j,mbeg,ncount
+    INTEGER                                       :: m,k,j,mbeg,ncount,m_ritz
     INTEGER :: driv_spec
     complex(kind=kind(1d0)),   DIMENSION(:),   ALLOCATABLE :: fold,fnew,ritznum_prev
     complex(kind=kind(1d0)),   DIMENSION(:,:), ALLOCATABLE :: qvecs,hmat,eigh,qvecs_prev
     complex(kind=kind(1d0)),   DIMENSION(:), ALLOCATABLE :: q_spec, h_spec
+    ! Norm of the candidate vector before orthogonalization.
+    DOUBLE PRECISION :: q_norm
+    LOGICAL :: subspace_closed
 
     INTEGER :: m_tol, m_ind
     complex(kind=kind(1d0)), DIMENSION(500) :: ritzum_write
@@ -306,12 +333,35 @@ contains
     h_spec=0.0d0
     q_spec(ispec)=SUM(CONJG(fnew)*fnew)
     CALL mpro%allgather_inplace(q_spec)
-    qvecs_prev(:,1)=fnew/SQRT(SUM(q_spec))
     ierr=0
+    q_norm=SQRT(SUM(q_spec))
+    IF(.NOT.ieee_is_finite(q_norm)) THEN
+      ierr=1
+      ngrow=0
+      IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
+      ALLOCATE(eigvecs(n,0))
+      PRINT *,'arnoldi: initial vector contains non-finite values'
+      DEALLOCATE(fold,fnew,qvecs_prev,ritznum_prev,hmat)
+      DEALLOCATE(q_spec,h_spec)
+      RETURN
+    ENDIF
+    IF(q_norm.LE.TINY(1.0d0)) THEN
+      ngrow=0
+      IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
+      ALLOCATE(eigvecs(n,0))
+      PRINT *,'arnoldi: initial vector is zero; no Krylov iterations needed'
+      DEALLOCATE(fold,fnew,qvecs_prev,ritznum_prev,hmat)
+      DEALLOCATE(q_spec,h_spec)
+      RETURN
+    ENDIF
+    qvecs_prev(:,1)=fnew/q_norm
     mbeg=2
     ncount=0
 
     DO m=2,mmax
+
+      subspace_closed=.FALSE.
+      m_ritz=m
 
       ALLOCATE(qvecs(n,m))
       qvecs(:,1:m-1)=qvecs_prev(:,1:m-1)
@@ -322,6 +372,10 @@ contains
         fold=qvecs(:,k-1)
         call next_iteration(n, fold, fnew)
         qvecs(:,k)=fnew
+        h_spec=0.0d0
+        h_spec(ispec)=SUM(CONJG(fnew)*fnew)
+        CALL mpro%allgather_inplace(h_spec)
+        q_norm=SQRT(SUM(h_spec))
         DO j=1,k-1
           h_spec=0.0d0
           h_spec(ispec)=SUM(CONJG(qvecs(:,j))*qvecs(:,k))
@@ -333,16 +387,33 @@ contains
         h_spec(ispec)=SUM(CONJG(qvecs(:,k))*qvecs(:,k))
         CALL mpro%allgather_inplace(h_spec)
         hmat(k,k-1)=SQRT(SUM(h_spec))
+        IF(ABS(hmat(k,k-1)).LE.SQRT(EPSILON(1.0d0))*MAX(1.0d0,q_norm)) THEN
+          subspace_closed=.TRUE.
+          m_ritz=k-1
+          EXIT
+        ENDIF
         qvecs(:,k)=qvecs(:,k)/hmat(k,k-1)
       ENDDO
 
-      CALL try_eigvecvals(m,tol,hmat(1:m,1:m),ngrow,ritznum(1:m),eigh,ierr)
+      IF(m_ritz.NE.m) THEN
+        DEALLOCATE(eigh)
+        ALLOCATE(eigh(m_ritz,m_ritz))
+      ENDIF
+      CALL try_eigvecvals(m_ritz,tol,hmat(1:m_ritz,1:m_ritz),ngrow, &
+        & ritznum(1:m_ritz),eigh,ierr)
 
-      IF(m.GT.2) THEN
+      IF(ierr.NE.0) THEN
+        PRINT *,'arnoldi: Ritz solve failed at dimension ',m_ritz
+        DEALLOCATE(fold,fnew,qvecs,qvecs_prev,ritznum_prev,hmat,eigh)
+        DEALLOCATE(q_spec,h_spec)
+        RETURN
+      ENDIF
+
+      IF(m_ritz.GT.2) THEN
 
         ! check for convergence of ritznum exceeding tol
-        m_tol=m-1
-        DO m_ind = 1,m-1
+        m_tol=m_ritz-1
+        DO m_ind = 1,m_ritz-1
           IF(ABS(ritznum(m_ind)) .LT. tol) THEN
             m_tol = m_ind
             EXIT
@@ -354,15 +425,15 @@ contains
           ncount=0
         ENDIF
       ENDIF
-      ritznum_prev(1:m)=ritznum(1:m)
+      ritznum_prev(1:m_ritz)=ritznum(1:m_ritz)
 
-      IF(ncount.GE.ntol.OR.m.EQ.mmax) THEN
+      IF(subspace_closed.OR.ncount.GE.ntol.OR.m.EQ.mmax) THEN
         IF(ALLOCATED(eigvecs)) DEALLOCATE(eigvecs)
         ALLOCATE(eigvecs(n,ngrow))
 
-        eigvecs=MATMUL(qvecs(:,1:m),eigh(1:m,1:ngrow))
+        eigvecs=MATMUL(qvecs(:,1:m_ritz),eigh(:,1:ngrow))
 
-        PRINT *,'arnoldi: number of iterations = ',m
+        PRINT *,'arnoldi: number of iterations = ',m_ritz
         EXIT
       ENDIF
 
@@ -376,7 +447,8 @@ contains
 
     ENDDO
 
-    DEALLOCATE(fold,fnew,qvecs,qvecs_prev,hmat)
+    DEALLOCATE(fold,fnew,qvecs,qvecs_prev,ritznum_prev,hmat)
+    IF(ALLOCATED(eigh)) DEALLOCATE(eigh)
     DEALLOCATE(q_spec,h_spec)
 
 
@@ -452,7 +524,7 @@ contains
 
     IF(info.NE.0) THEN
       IF(info.GT.0) THEN
-        PRINT *,'try_eigvecvals: zhseqr failed to compute all eigenvalues'
+        PRINT *,'try_eigvecvals: zhseqr failed to compute all eigenvalues, info = ',info
       ELSE
         PRINT *,'try_eigvecvals: argument ',-info,' has illegal value in zhseqr'
       ENDIF

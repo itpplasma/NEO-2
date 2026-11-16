@@ -36,6 +36,20 @@ set_tests_properties(nrutil_test PROPERTIES
 
 add_subdirectory(mympilib)
 
+# Test executable for collision_model module
+add_executable(test_collision_model test_collision_model.f90)
+target_link_libraries(test_collision_model neo2_ql)
+
+add_test(NAME collision_model_test
+         COMMAND test_collision_model
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(collision_model_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 # Test executable for er_rotation module
 add_executable(test_er_rotation test_er_rotation.f90)
 target_link_libraries(test_er_rotation neo2_ql)
@@ -59,5 +73,132 @@ add_test(NAME spline_sparse_assembly_test
 
 set_tests_properties(spline_sparse_assembly_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
+    TIMEOUT 30
+)
+
+# theta_B from (R,Z) on a closed curve (used by calc_thetaB_RZloc for
+# isw_Vphi_loc=1); analytic-curve oracle.
+add_executable(test_theta_rz_solver test_theta_rz_solver.f90)
+target_link_libraries(test_theta_rz_solver common)
+
+add_test(NAME theta_rz_solver_test
+         COMMAND test_theta_rz_solver
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(theta_rz_solver_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_arnoldi_breakdown test_arnoldi_breakdown.f90)
+target_link_libraries(test_arnoldi_breakdown neo2_ql)
+
+add_test(NAME arnoldi_breakdown_test
+         COMMAND test_arnoldi_breakdown
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(arnoldi_breakdown_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+# Reading a stored propagator must allocate its fixed-shape qflux.
+add_executable(test_propagator_io test_propagator_io.f90)
+target_link_libraries(test_propagator_io neo2_ql)
+
+add_test(NAME propagator_io_test
+         COMMAND test_propagator_io
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(propagator_io_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+# isw_calc_Er=2 (prescribed Om_tE) must prepare a multi-species scan from an
+# input without V_phi. Drives the real neo_2_ql.x on synthetic HDF5 input.
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+  execute_process(COMMAND ${Python3_EXECUTABLE} -c "import numpy, h5py"
+                  RESULT_VARIABLE _neo2_py_deps OUTPUT_QUIET ERROR_QUIET)
+endif()
+if(Python3_Interpreter_FOUND AND _neo2_py_deps EQUAL 0)
+  add_test(NAME er_direct_prepare_scan_test
+           COMMAND ${Python3_EXECUTABLE}
+                   ${CMAKE_CURRENT_SOURCE_DIR}/test_er_direct_prepare_scan.py
+                   $<TARGET_FILE:neo_2_ql.x>
+                   ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/neo_ql_prepare_scan.in
+           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  set_tests_properties(er_direct_prepare_scan_test PROPERTIES
+      PASS_REGULAR_EXPRESSION "All tests passed!"
+      FAIL_REGULAR_EXPRESSION "FAIL"
+      TIMEOUT 120
+  )
+else()
+  message(STATUS "numpy/h5py not found: skipping er_direct_prepare_scan_test")
+endif()
+
+# Restarted complex GMRES of the QL fallback solve.
+add_executable(test_ql_gmres test_ql_gmres.f90)
+target_link_libraries(test_ql_gmres neo2_ql)
+add_test(NAME ql_gmres_test COMMAND test_ql_gmres)
+set_tests_properties(ql_gmres_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+# eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
+# bsfunc_max_index instead of exiting with status 0.
+add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
+target_link_libraries(test_binarysplit_max_index common)
+
+add_test(NAME binarysplit_max_index_test
+         COMMAND test_binarysplit_max_index
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(binarysplit_max_index_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "number of eta levels exceeds bsfunc_max_index"
+    FAIL_REGULAR_EXPRESSION "FAIL|unexpected"
+    TIMEOUT 30
+)
+
+# Dry run of the golden-change CI path; skipped without jq.
+add_test(NAME golden_change_ci_test
+         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_golden_change.sh)
+set_tests_properties(golden_change_ci_test PROPERTIES SKIP_RETURN_CODE 77)
+
+# Quadrature stencils of the QL source terms stay on the field line for an
+# odd number of steps (issue 123).
+add_executable(test_source_stencil test_source_stencil.f90)
+target_link_libraries(test_source_stencil neo2_ql)
+add_test(NAME source_stencil_test COMMAND test_source_stencil)
+set_tests_properties(source_stencil_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+# The axisymmetric residual must be taken over every block of the matrix that
+# was handed to the solver, not only the bulk block (issue 81 follow-up).
+add_executable(test_solve_report test_solve_report.f90)
+target_link_libraries(test_solve_report neo2_ql)
+add_test(NAME solve_report_test COMMAND test_solve_report)
+set_tests_properties(solve_report_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+# k_cof = 5/2 - D32/D31 in neo2_multispecies_out.h5.
+add_executable(test_k_cof_output test_k_cof_output.f90)
+target_link_libraries(test_k_cof_output neo2_ql)
+add_test(NAME k_cof_output_test
+         COMMAND test_k_cof_output
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(k_cof_output_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )

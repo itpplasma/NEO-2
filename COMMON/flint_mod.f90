@@ -159,7 +159,8 @@ contains
     use mpiprovider_module, only : mpro
 
     use collisionality_mod, only : collpar, conl_over_mfp, collpar_min, &
-      & collpar_max, lsw_multispecies, num_spec, conl_over_mfp_spec, collpar_spec
+            & collpar_max, lsw_multispecies, num_spec, conl_over_mfp_spec, collpar_spec, &
+            & isw_coul_log, z_spec, n_spec, T_spec, coulomb_log
     use device_mod, only : device
 
     implicit none
@@ -194,6 +195,13 @@ contains
                &must be >0 or <=0"
           stop
        end if
+            if (isw_coul_log .eq. 1) then
+                ! collpar = 2/l_c, l_c = 3/(4 sqrt(pi)) T^2/(n z^4 e^4 lnL_aa), e = 4.8032d-10 esu
+                do ispec = 0, num_spec-1
+                    collpar_spec(ispec) = 8d0*sqrt(pi)/3d0*n_spec(ispec)*z_spec(ispec)**4* &
+                        4.8032d-10**4*coulomb_log(ispec, ispec)/T_spec(ispec)**2
+                end do
+            end if
        ! species index
        ispec = mpro%getRank()
        ! set collisionality parameter for species 'ispec'

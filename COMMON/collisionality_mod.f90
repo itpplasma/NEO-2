@@ -44,4 +44,24 @@ MODULE collisionality_mod
   double precision :: m_nbi, T_nbi
   LOGICAL          :: lsw_nbi
 
+CONTAINS
+
+  ! Coulomb logarithm of the pair (a,b), isw_coul_log = 1: e-e 14.9, e-i 15.2 (electron n, T),
+  ! i-i 17.3 with 1.5 ln T (test-species n, T); n in 1e20 m^-3, T in keV (Wesson, Tokamaks).
+  DOUBLE PRECISION FUNCTION coulomb_log(a, b)
+    INTEGER, INTENT(in) :: a, b
+    DOUBLE PRECISION, PARAMETER :: erg_per_keV = 1.602176634d-9
+    INTEGER :: k
+    k = a
+    IF (z_spec(b) .LT. 0d0) k = b
+    IF (z_spec(a) .LT. 0d0 .AND. z_spec(b) .LT. 0d0) THEN
+      coulomb_log = 14.9d0 - 0.5d0*LOG(n_spec(k)*1d-14) + LOG(T_spec(k)/erg_per_keV)
+    ELSE IF (z_spec(a) .LT. 0d0 .OR. z_spec(b) .LT. 0d0) THEN
+      coulomb_log = 15.2d0 - 0.5d0*LOG(n_spec(k)*1d-14) + LOG(T_spec(k)/erg_per_keV)
+    ELSE
+      coulomb_log = 17.3d0 - 0.5d0*LOG(n_spec(k)*1d-14) + 1.5d0*LOG(T_spec(k)/erg_per_keV)
+    END IF
+    coulomb_log = coulomb_log - LOG(ABS(z_spec(a)*z_spec(b)))
+  END FUNCTION coulomb_log
+
 END MODULE collisionality_mod

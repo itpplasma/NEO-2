@@ -6,7 +6,8 @@ ExternalProject_Add(
     PREFIX ${CMAKE_BINARY_DIR}/fgsl
     URL https://github.com/reinh-bader/fgsl/archive/refs/tags/v1.6.0.tar.gz
     CONFIGURE_COMMAND mkdir m4 && autoreconf -i && ./configure
-    BUILD_COMMAND make
+    # fgsl.o and fgsl.lo both write fgsl.mod; override inherited make parallelism.
+    BUILD_COMMAND make -j1
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE 1
     BUILD_BYPRODUCTS

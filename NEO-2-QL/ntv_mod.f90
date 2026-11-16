@@ -29,7 +29,7 @@ MODULE ntv_mod
   !> switch: 0=compute qflux only for the symmetric case; 1=do all computations
   INTEGER, PUBLIC :: isw_qflux_NA
   !> switch for rippler_solver versions
-  !> (1=preconditioned; 2=Arnoldi Order 1; 3=Arnoldi Order 2)
+  !> (1=preconditioned; 3=Arnoldi Order 2)
   INTEGER, PUBLIC :: isw_ripple_solver
   !> name of perturbation file
   CHARACTER(len=100), PUBLIC :: in_file_pert
@@ -38,7 +38,7 @@ MODULE ntv_mod
   !> Ignored when isw_calc_Er >= 1; the multispecies code uses Om_tE instead.
   REAL(kind=dp), PUBLIC :: MtOvR
   !> ExB toroidal rotation frequency [rad/s], species-independent.
-  !> Used by isw_calc_Er=1 (computed from ambipolarity) and
+  !> Used by isw_calc_Er=1 (computed from the force balance with Vphi) and
   !> isw_calc_Er=2 (read from input). Ignored when isw_calc_Er=0.
   REAL(kind=dp), PUBLIC :: Om_tE
   !> Larmor radius associated with $B_{00}^{Booz}$ (rho_L_loc) times B
@@ -48,7 +48,8 @@ MODULE ntv_mod
 
   !> switch for radial electric field handling:
   !>   0 = no E_r computation (use scalar MtOvR from namelist)
-  !>   1 = self-consistent E_r from neoclassical ambipolarity
+  !>   1 = E_r from the radial force balance of species species_tag_Vphi
+  !>       with its prescribed toroidal rotation Vphi (not from ambipolarity)
   !>   2 = externally prescribed Om_tE (from multispec HDF5 or namelist)
   INTEGER, PUBLIC :: isw_calc_Er
   !> switch: turn on(=1)/off(=0) computation of magnetic drift
@@ -1577,6 +1578,7 @@ CONTAINS
        ! that Gamma_*/Qflux_*/ParFlow_*/TphiNA_spec are also emitted here
        ! (previously only MtOvR_spec was computed, silently dropping the NTV
        ! torque from neo2_multispecies_out.h5).
+       PRINT '(a,es24.16)', 'NEO2_OM_TE ', Om_tE
        Er = Om_tE * aiota_loc * sqrtg_bctrvr_phi / c
        PRINT *,'------------------------------'
        PRINT *,'Er (inverted from prescribed Om_tE): ', Er
@@ -1692,6 +1694,7 @@ CONTAINS
          LBOUND(D31_AX_D31ref), UBOUND(D31_AX_D31ref))
     CALL h5_add(h5id_multispec, 'D32_AX_D31ref', D32_AX_D31ref, &
          LBOUND(D32_AX_D31ref), UBOUND(D32_AX_D31ref))
+    CALL write_k_cof(h5id_multispec, D31_AX_D31ref, D32_AX_D31ref)
     CALL h5_add(h5id_multispec, 'D33_AX_norm', D33_AX_norm, &
          LBOUND(D33_AX_norm), UBOUND(D33_AX_norm))
     !-> non-axisymmetric solution
@@ -2098,6 +2101,24 @@ CONTAINS
     end function check_ambipolarity_particle_flux
   END SUBROUTINE write_multispec_output_a
 
+  !> Writes k = 5/2 - D32/D31 of every species pair (layout of D31_AX_D31ref),
+  !> the coefficient that write_ntv_output gives in ntv_out.dat for one species.
+  !> Where D31 vanishes the axisymmetric solution was not computed, and k = 0
+  !> as in ntv_out.dat.
+  SUBROUTINE write_k_cof(h5id, D31_AX_D31ref, D32_AX_D31ref)
+    USE hdf5_tools, ONLY : HID_T, h5_add
+
+    INTEGER(HID_T), INTENT(in) :: h5id
+    REAL(kind=dp), DIMENSION(0:), INTENT(in) :: D31_AX_D31ref, D32_AX_D31ref
+    REAL(kind=dp), DIMENSION(0:SIZE(D31_AX_D31ref)-1) :: k_cof
+
+    k_cof = 0.0_dp
+    WHERE (D31_AX_D31ref /= 0.0_dp) k_cof = 2.5_dp - D32_AX_D31ref/D31_AX_D31ref
+    CALL h5_add(h5id, 'k_cof', k_cof, LBOUND(k_cof), UBOUND(k_cof), &
+      comment='5/2 - D32_AX/D31_AX per species pair (row_ind_spec, &
+      &col_ind_spec); the diagonal pairs are the single-species k_cof', unit='1')
+  END SUBROUTINE write_k_cof
+
 
   SUBROUTINE compute_Er(row_ind_ptr, col_ind_ptr, D31AX_spec, D32AX_spec, &
        & Er, D33AX_spec_in, avEparB_ov_avb2_in)
@@ -2377,6 +2398,7 @@ CONTAINS
 
     ! compute ExB rotation frequency and species Mach numbers
     Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi)
+    PRINT '(a,es24.16)', 'NEO2_OM_TE ', Om_tE
     IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
     ALLOCATE(MtOvR_spec(0:num_spec-1))
     MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
@@ -2910,6 +2932,7 @@ CONTAINS
 
     ! compute ExB rotation frequency and species Mach numbers
     Om_tE = c * Er / (aiota_loc * sqrtg_bctrvr_phi)
+    PRINT '(a,es24.16)', 'NEO2_OM_TE ', Om_tE
     IF (ALLOCATED(MtOvR_spec)) DEALLOCATE(MtOvR_spec)
     ALLOCATE(MtOvR_spec(0:num_spec-1))
     MtOvR_spec = Om_tE_to_MtOvR_spec(Om_tE, T_spec, m_spec)
@@ -3195,7 +3218,10 @@ CONTAINS
     ELSE
        ! boozer coordinates
 
-       IF (isw_Vphi_loc.GE.0 .AND. isw_Vphi_loc.LE.2) THEN
+      ! isw_Vphi_loc only describes the measured V_phi, which is not an
+      ! input for prescribed Om_tE (isw_calc_Er=2); do not validate it there.
+      IF (isw_calc_Er .EQ. 2 .OR. &
+        (isw_Vphi_loc.GE.0 .AND. isw_Vphi_loc.LE.2)) THEN
           x_tmp = (/boozer_s,boozer_phi_beg,boozer_theta_beg/)
           CALL mag(x_tmp,bmod_tmp,sqrtg_tmp,bder_tmp,hcovar_tmp,&
                hctrvr_tmp,hcoder_tmp,hctder_tmp)

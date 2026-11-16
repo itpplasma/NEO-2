@@ -9,6 +9,7 @@ module neo2_ql
   use rusage_type, only : fortran_rusage, write_fortran_rusage
 
   USE size_mod
+  use collision_model_mod, only : resolve_collision_model, COLLISION_FLAG_UNSET
   USE flint_mod, ONLY : plot_gauss,plot_prop,phi_split_mode,        &
        phi_place_mode,phi_split_min,hphi_mult,max_solver_try,       &
        bsfunc_local_err_max_mult,bsfunc_max_mult_reach,             &
@@ -53,7 +54,7 @@ module neo2_ql
   !! End Modifications by Andreas F. Martitsch (15.07.2014)
        collop_base_prj, collop_base_exp, scalprod_alpha,            &
        scalprod_beta, lsw_read_precom, lsw_write_precom
-  USE rkstep_mod, ONLY : lag, leg, legmax, epserr_iter
+  USE rkstep_mod, ONLY : lag, leg, legmax, epserr_iter, niter, n_arnoldi
 
   USE development, ONLY : solver_talk,switch_off_asymp, &
        asymp_margin_zero, asymp_margin_npass, asymp_pardeleta,      &
@@ -81,6 +82,9 @@ module neo2_ql
   USE hdf5_tools_f2003
 
   IMPLICIT NONE
+
+  !> Collision operator selector of &collision (collision_model_mod).
+  character(len=32) :: collision_model = ''
 
   INTEGER, PARAMETER :: dp = KIND(1.0d0)
   INTEGER, PARAMETER :: MAXDIM = 1000
@@ -210,8 +214,9 @@ module neo2_ql
        asymp_margin_zero,asymp_margin_npass,asymp_pardeleta,                  &
        ripple_solver_accurfac,                                                &
        sparse_talk,sparse_solve_method, OMP_NUM_THREADS,                      &
-       mag_symmetric,mag_symmetric_shorten, epserr_iter, lsw_linear_boozer
+       mag_symmetric,mag_symmetric_shorten, epserr_iter, niter, n_arnoldi, lsw_linear_boozer
   NAMELIST /collision/                                                        &
+       collision_model,                                                       &
        conl_over_mfp,lag,leg,legmax,z_eff,isw_lorentz,                        &
        isw_integral,isw_energy,isw_axisymm,                                   &
        isw_momentum,vel_distri_swi,vel_num,vel_max,collop_path,               &
@@ -595,6 +600,7 @@ subroutine main
        CALL h5_add(h5_config_group, 'leg', leg, 'Number of Legendre polynomials')
        CALL h5_add(h5_config_group, 'legmax', legmax, 'Maximum number of Legendre polynomials')
        CALL h5_add(h5_config_group, 'z_eff', z_eff, 'Effective charge')
+       CALL h5_add(h5_config_group, 'collision_model', trim(collision_model))
        CALL h5_add(h5_config_group, 'isw_lorentz', isw_lorentz, '')
        CALL h5_add(h5_config_group, 'isw_integral', isw_integral, '')
        CALL h5_add(h5_config_group, 'isw_energy', isw_energy, '')
@@ -784,7 +790,9 @@ subroutine main
     nperiod=500
     xetami=0.0d0
     xetama=1.300001d0
-    epserr_iter = 1e-5
+    epserr_iter = 1.0d-7
+    niter = 100
+    n_arnoldi = 500
     eta_part_global = 0
     eta_part_trapped = 10
     eta_part_globalfac = 3.0_dp
@@ -812,9 +820,12 @@ subroutine main
     leg=20
     legmax=20
     z_eff=1.d0
-    isw_lorentz = 1
-    isw_integral = 0
-    isw_energy = 0
+    ! Unset until the deck is read; collision_model or the legacy defaults
+    ! fill them (collision_model_mod).
+    collision_model = ''
+    isw_lorentz = COLLISION_FLAG_UNSET
+    isw_integral = COLLISION_FLAG_UNSET
+    isw_energy = COLLISION_FLAG_UNSET
     isw_axisymm = 0
     isw_momentum = 0
     isw_relativistic = 0  ! 0 is non-relativistic, 1 is Braams and Karney, 2 is high order Legendre
@@ -953,6 +964,14 @@ subroutine main
     rewind(namelist_file_unit)
     read(namelist_file_unit,nml=collision,iostat=ios)
     stop_program = stop_program .or. check_iostat(ios, 'collision', namelist_file_unit)
+    block
+      character(len=200) :: message
+      call resolve_collision_model(collision_model, isw_lorentz, isw_energy, isw_integral, message)
+      if (len_trim(message) > 0) then
+        write(*,'(a)') 'ERROR in &collision: '//trim(message)
+        stop_program = .true.
+      end if
+    end block
 
     rewind(namelist_file_unit)
     read(namelist_file_unit,nml=binsplit,iostat=ios)
@@ -1098,36 +1117,38 @@ subroutine main
     ALLOCATE(kappa_prof(num_radial_pts,num_species_all))
     CALL h5_get(h5id_multispec_in,'kappa_prof',kappa_prof)
 
-    ! get measured toroidal rotation profile and its species-tag
-    IF(ALLOCATED(Vphi_prof)) DEALLOCATE(Vphi_prof)
-    ALLOCATE(Vphi_prof(num_radial_pts))
-    CALL h5_get(h5id_multispec_in,'Vphi',Vphi_prof)
-    CALL h5_get(h5id_multispec_in,'species_tag_Vphi',species_tag_Vphi)
-    CALL h5_get(h5id_multispec_in,'isw_Vphi_loc',isw_Vphi_loc)
-    IF (isw_Vphi_loc .EQ. 1) THEN
-      write(*,*) "ERROR: switch isw_Vphi_loc=1 is not tested!"
-      STOP
-
-      IF(ALLOCATED(R_Vphi_prof)) DEALLOCATE(R_Vphi_prof)
-      ALLOCATE(R_Vphi_prof(num_radial_pts))
-      CALL h5_get(h5id_multispec_in,'R_Vphi',R_Vphi_prof)
-      IF(ALLOCATED(Z_Vphi_prof)) DEALLOCATE(Z_Vphi_prof)
-      ALLOCATE(Z_Vphi_prof(num_radial_pts))
-      CALL h5_get(h5id_multispec_in,'Z_Vphi',Z_Vphi_prof)
-    ELSE IF(isw_Vphi_loc .EQ. 2) THEN
-      IF(ALLOCATED(boozer_theta_Vphi_prof)) DEALLOCATE(boozer_theta_Vphi_prof)
-      ALLOCATE(boozer_theta_Vphi_prof(num_radial_pts))
-      CALL h5_get(h5id_multispec_in,'boozer_theta_Vphi',boozer_theta_Vphi_prof)
-    ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
-      write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
-      STOP
-    END IF
-
-    ! get Om_tE profile (only required for isw_calc_Er=2)
+    ! Rotation input. isw_calc_Er=2 prescribes Om_tE (equivalently Er)
+    ! directly, so the toroidal rotation V_phi is neither required nor read;
+    ! all other modes need V_phi and its species-tag as before.
     IF (isw_calc_Er .EQ. 2) THEN
       IF(ALLOCATED(Om_tE_prof)) DEALLOCATE(Om_tE_prof)
       ALLOCATE(Om_tE_prof(num_radial_pts))
       CALL h5_get(h5id_multispec_in,'Om_tE',Om_tE_prof)
+    ELSE
+      ! get measured toroidal rotation profile and its species-tag
+      IF(ALLOCATED(Vphi_prof)) DEALLOCATE(Vphi_prof)
+      ALLOCATE(Vphi_prof(num_radial_pts))
+      CALL h5_get(h5id_multispec_in,'Vphi',Vphi_prof)
+      CALL h5_get(h5id_multispec_in,'species_tag_Vphi',species_tag_Vphi)
+      CALL h5_get(h5id_multispec_in,'isw_Vphi_loc',isw_Vphi_loc)
+      IF (isw_Vphi_loc .EQ. 1) THEN
+        write(*,*) "ERROR: switch isw_Vphi_loc=1 is not tested!"
+        STOP
+
+        IF(ALLOCATED(R_Vphi_prof)) DEALLOCATE(R_Vphi_prof)
+        ALLOCATE(R_Vphi_prof(num_radial_pts))
+        CALL h5_get(h5id_multispec_in,'R_Vphi',R_Vphi_prof)
+        IF(ALLOCATED(Z_Vphi_prof)) DEALLOCATE(Z_Vphi_prof)
+        ALLOCATE(Z_Vphi_prof(num_radial_pts))
+        CALL h5_get(h5id_multispec_in,'Z_Vphi',Z_Vphi_prof)
+      ELSE IF(isw_Vphi_loc .EQ. 2) THEN
+        IF(ALLOCATED(boozer_theta_Vphi_prof)) DEALLOCATE(boozer_theta_Vphi_prof)
+        ALLOCATE(boozer_theta_Vphi_prof(num_radial_pts))
+        CALL h5_get(h5id_multispec_in,'boozer_theta_Vphi',boozer_theta_Vphi_prof)
+      ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
+        write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+        STOP
+      END IF
     END IF
 
     CALL h5_close(h5id_multispec_in)
@@ -1228,19 +1249,37 @@ subroutine main
 
       ! specify radial point
       boozer_s = boozer_s_prof(ind_boozer_s)
-      Vphi = Vphi_prof(ind_boozer_s)
-      IF (isw_calc_Er .EQ. 2) Om_tE = Om_tE_prof(ind_boozer_s)
-      IF (isw_Vphi_loc .EQ. 1) THEN
-        write(*,*) "ERROR: Warning switch isw_Vphi_loc=1 is not tested!"
-        STOP
+      IF (isw_calc_Er .EQ. 2) THEN
+        Om_tE = Om_tE_prof(ind_boozer_s)
+        ! State the rotation that will be used, and where it came from. A
+        ! prescribed mode whose profile carries no rotation otherwise runs at
+        ! Om_tE = 0 with no trace, which reads like a computed rotation.
+        write(*,*) 'NEO2_ROTATION mode=prescribed Om_tE=', Om_tE, &
+          & ' profile_index=', ind_boozer_s, ' boozer_s=', boozer_s
+        ! V_phi is not an input in this mode: write neutral values instead
+        ! of propagating unused rotation settings from the top-level neo2.in.
+        species_tag_Vphi = 0
+        isw_Vphi_loc = 0
+        Vphi = 0.0_dp
+        R_Vphi = 0.0_dp
+        Z_Vphi = 0.0_dp
+        boozer_theta_Vphi = 0.0_dp
+      ELSE
+        Vphi = Vphi_prof(ind_boozer_s)
+        write(*,*) 'NEO2_ROTATION mode=from_Vphi Vphi=', Vphi, &
+          & ' profile_index=', ind_boozer_s, ' boozer_s=', boozer_s
+        IF (isw_Vphi_loc .EQ. 1) THEN
+          write(*,*) "ERROR: Warning switch isw_Vphi_loc=1 is not tested!"
+          STOP
 
-        R_Vphi = R_Vphi_prof(ind_boozer_s)
-        Z_Vphi = Z_Vphi_prof(ind_boozer_s)
-      ELSE IF(isw_Vphi_loc .EQ. 2) THEN
-        boozer_theta_Vphi = boozer_theta_Vphi_prof(ind_boozer_s)
-      ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
-        write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
-        STOP
+          R_Vphi = R_Vphi_prof(ind_boozer_s)
+          Z_Vphi = Z_Vphi_prof(ind_boozer_s)
+        ELSE IF(isw_Vphi_loc .EQ. 2) THEN
+          boozer_theta_Vphi = boozer_theta_Vphi_prof(ind_boozer_s)
+        ELSE IF (isw_Vphi_loc.LT.0 .OR. isw_Vphi_loc.GT.2) THEN
+          write(*,*) "ERROR: Undefined state of switch isw_Vphi_loc (= 0 / 1 / 2)!"
+          STOP
+        END IF
       END IF
 
       ! allocate species-tags
