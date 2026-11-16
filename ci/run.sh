@@ -17,7 +17,7 @@ else
     export OPENBLAS_NUM_THREADS=1 MPLBACKEND=Agg
 fi
 unset DISPLAY
-export CMAKE_TOOLCHAIN_FILE=$src/ci/cluster-toolchain.cmake
+export CMAKE_TOOLCHAIN_FILE=$src/ci/system-toolchain.cmake
 if [ -d "$root/mirrors" ]; then
     export GIT_CONFIG_GLOBAL=$root/gitconfig
     : > "$GIT_CONFIG_GLOBAL"
