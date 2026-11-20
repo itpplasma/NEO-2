@@ -2314,7 +2314,7 @@ call cpu_time(time1)
      ! A DO loop that runs out leaves iter = niter + 1.
      if (iter > niter) then
         write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
-        error stop
+        call gmres_source(k)
      end if
     enddo
 
@@ -2873,6 +2873,50 @@ PRINT *,' '
 
   !------------------------------------------------------------------------
   RETURN
+
+CONTAINS
+
+  ! Re-solve source k of (I - L^-1 I) f = L^-1 q with restarted GMRES after the
+  ! fixed-point iteration exhausted niter; it can stall on an eigenvalue of
+  ! L^-1 I close to 1. Krylov vectors stay real because the map and q are real.
+  SUBROUTINE gmres_source(k)
+    USE gmres_mod, ONLY : gmres_solve, gmres_maxiter, gmres_restart
+    INTEGER, INTENT(in) :: k
+    COMPLEX(kind(1d0)), ALLOCATABLE :: rhs(:), sol(:)
+    DOUBLE PRECISION :: residual
+    INTEGER :: status, steps
+
+    rhs = CMPLX(bvec_lor, 0.d0, kind(1d0))
+    ALLOCATE(sol(SIZE(rhs)))
+    CALL gmres_solve(SIZE(rhs), rhs, sol, gmres_operator, gmres_dot, &
+      epserr_iter, gmres_maxiter, gmres_restart, status, steps, residual)
+    WRITE (*,*) "Source: ", k, "GMRES status, steps, residual: ", status, steps, residual
+    IF (status /= 0) ERROR STOP 'PAR GMRES failed to converge'
+    source_vector(:,k) = REAL(sol, kind(1d0))
+  END SUBROUTINE gmres_source
+
+  SUBROUTINE gmres_operator(n, x, y)
+    INTEGER, INTENT(in) :: n
+    COMPLEX(kind(1d0)), INTENT(in) :: x(n)
+    COMPLEX(kind(1d0)), INTENT(out) :: y(n)
+
+    bvec_prev = REAL(x, kind(1d0))
+    CALL integral_part(npart,leg,lag,ibeg,iend,n_2d_size,npl,ind_start,   &
+      phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),   &
+      ailmm,bvec_prev,bvec_iter)
+    CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),        &
+      bvec_iter,iopt)
+    y = x - CMPLX(bvec_iter, 0.d0, kind(1d0))
+  END SUBROUTINE gmres_operator
+
+  FUNCTION gmres_dot(n, x, y) RESULT(z)
+    INTEGER, INTENT(in) :: n
+    COMPLEX(kind(1d0)), INTENT(in) :: x(n), y(n)
+    COMPLEX(kind(1d0)) :: z
+
+    z = SUM(CONJG(x)*y)
+  END FUNCTION gmres_dot
+
 END SUBROUTINE ripple_solver
 
 
