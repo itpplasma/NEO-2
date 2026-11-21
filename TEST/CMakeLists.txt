@@ -139,6 +139,16 @@ else()
   message(STATUS "numpy/h5py not found: skipping er_direct_prepare_scan_test")
 endif()
 
+# Restarted real GMRES of the PAR integral-part fallback.
+add_executable(test_fixed_point_gmres test_fixed_point_gmres.f90)
+target_link_libraries(test_fixed_point_gmres common)
+add_test(NAME fixed_point_gmres_test COMMAND test_fixed_point_gmres)
+set_tests_properties(fixed_point_gmres_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 # Restarted complex GMRES of the QL fallback solve.
 add_executable(test_ql_gmres test_ql_gmres.f90)
 target_link_libraries(test_ql_gmres neo2_ql)
