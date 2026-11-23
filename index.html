@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>NEO-2 golden-record history</title>
+<style>body{font-family:sans-serif;max-width:60rem;margin:auto;padding:0 1rem}
+img{max-width:100%}table{border-collapse:collapse;font-size:90%}
+td,th{border-bottom:1px solid #ccc;padding:.2rem .4rem;text-align:left;vertical-align:top}</style>
+</head><body><h1>NEO-2 golden-record history</h1>
+<p>Each row is a build of NEO-2 with the libneo it used, run on the golden-record test cases.
+Relative change is max|x &minus; x<sub>ref</sub>| / max|x<sub>ref</sub>| over each output dataset,
+largest over the datasets of a case. Filled circles mark NEO-2 events, open triangles libneo events,
+dotted lines builds or cases that failed.</p>
+<img src="changes.png" alt="changes"><img src="changes_main.png" alt="changes_main"><img src="wall_time.png" alt="wall_time"><img src="memory.png" alt="memory">
+<table><tr><th>date</th><th>event</th><th>NEO-2</th><th>libneo</th><th>change</th>
+<th>classification</th><th>status</th></tr>
+<tr><td>2026-11-23</td><td>neo2</td><td><a href="https://github.com/itpplasma/NEO-2/commit/5295a1237cda3296e231d89281e8e1c4a9046fa3">5295a123</a> (<a href="https://github.com/itpplasma/NEO-2/pull/255">#255</a>)</td><td><a href="https://github.com/itpplasma/libneo/commit/94f59c176714c8598ca1b43607a353b29a2ca2a7">94f59c17</a></td><td>Conserve total energy in the collision-matrix quadrature</td><td>intended</td><td>ok</td></tr>
+</table></body></html>
