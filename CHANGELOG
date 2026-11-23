@@ -6,6 +6,8 @@ Contains changelog of neo-2 code. Tags are also included.
     that were previously ignored can change convergence and results.
   - Collision-matrix quadrature includes the tail beyond the last B-spline
     knot and accounts for cancellation in the field-particle energy moment.
+  - Collision-matrix quadrature keeps CQUAD samples inside each B-spline
+    knot interval so endpoint rounding cannot sample a neighboring interval.
 
 Note: use git tag --list to get a list of available tags.
 
