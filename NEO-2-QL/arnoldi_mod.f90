@@ -72,7 +72,7 @@ contains
   !> Output parameters:
   !>            Formal: result         - solution vector
   SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, &
-    & next_iteration)
+      & next_iteration, converged)
 
     use mpiprovider_module, only : mpro
     use collisionality_mod, only : num_spec
@@ -92,6 +92,8 @@ contains
 
     integer :: ispec
     INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
+    ! False unless an iteration loop met its stopping rule within itermax.
+    LOGICAL, OPTIONAL, INTENT(OUT) :: converged
     DOUBLE PRECISION :: relerr
     COMPLEX(kind=kind(1d0)), DIMENSION(n), intent(inout) :: RESULT_
     INTEGER,        DIMENSION(:),   ALLOCATABLE :: ipiv
@@ -102,6 +104,8 @@ contains
     DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: coefren_spec
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: amat_spec
+
+    IF(PRESENT(converged)) converged = .FALSE.
 
     IF(mode_in.EQ.3) THEN
       mode=mode_in
@@ -190,6 +194,7 @@ contains
       ENDDO
   !
       PRINT *,'iterator: number of direct iterations = ',iter-1
+      IF(PRESENT(converged)) converged = iter <= itermax
 
       RESULT_=fnew
       DEALLOCATE(fold,fnew,fzero)
@@ -251,6 +256,7 @@ contains
     ENDDO
 
     if (ispec .eq. 0) print *,'iterator: number of stabilized iterations = ', iter-1
+    IF(PRESENT(converged)) converged = iter <= itermax
 
     RESULT_=fnew
 

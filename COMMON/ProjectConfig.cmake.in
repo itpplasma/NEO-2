@@ -1,16 +1,14 @@
 ### Installation directory
 set (CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR})
 
-include(Util)
+include(${PROJECT_SOURCE_DIR}/cmake/ItpDeps.cmake)
 set(_dependency_versions_file
     "${PROJECT_SOURCE_DIR}/cmake/dependency_versions.json")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${_dependency_versions_file}")
-if(NOT DEFINED LIBNEO_REF)
-    file(READ "${_dependency_versions_file}" _dependency_versions)
-    string(JSON LIBNEO_REF GET "${_dependency_versions}" libneo)
-endif()
-find_or_fetch(libneo)
+file(READ "${_dependency_versions_file}" _dependency_versions)
+string(JSON _neo2_libneo_ref GET "${_dependency_versions}" libneo)
+itp_add_dependency(libneo REF ${_neo2_libneo_ref} TARGET LIBNEO::magfie)
 
 ### FGSL
 # Hermetic by default: fetch and build FGSL via the bundled ExternalProject.

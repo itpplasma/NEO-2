@@ -1,4 +1,4 @@
-# sCluster system GCC 12.2; keep dependency discovery outside conda sysroots.
+# Debian 12 system GCC 12.2 of the CI runner image, outside conda sysroots.
 set(CMAKE_Fortran_COMPILER /usr/bin/gfortran)
 set(CMAKE_C_COMPILER /usr/bin/gcc)
 set(CMAKE_CXX_COMPILER /usr/bin/g++)
