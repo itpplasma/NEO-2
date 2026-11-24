@@ -50,7 +50,12 @@ for reference in stable base; do
     git clone --no-hardlinks --dissociate "$src" "$root/$reference"
 done
 git -C "$root/stable" checkout --detach "$SCI_STABLE_REF"
-make -C "$root/stable" LIBNEO_REF="$SCI_STABLE_REF"
+# Releases before the dependency manifest used matching NEO-2 and libneo tags.
+if [ -f "$root/stable/cmake/dependency_versions.json" ]; then
+    make -C "$root/stable"
+else
+    make -C "$root/stable" LIBNEO_REF="$SCI_STABLE_REF"
+fi
 . "$src/ci/golden-checks.sh"
 export REFERENCE_NEO2_PAR=$root/stable/build/NEO-2-PAR/neo_2_par.x
 export REFERENCE_NEO2_QL=$root/stable/build/NEO-2-QL/neo_2_ql.x
