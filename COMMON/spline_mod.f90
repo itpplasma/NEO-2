@@ -397,7 +397,13 @@ CONTAINS
       beta = 4.d0-1.d0/beta
       amx1(i) = SQRT(beta)
       amx2(i) = 1.d0/amx1(i)
-      amx3(i) = -amx3(i1)/amx1(i)/amx1(i1)
+      ! The cyclic coupling decays geometrically. Below sqrt(tiny), its
+      ! squared contribution to ss is unrepresentable; avoid underflow both
+      ! in this recurrence and in the squared norm below.
+      amx3(i) = 0.0_dp
+      IF (ABS(amx3(i1)) >= SQRT(TINY(1.0_dp))*amx1(i)*amx1(i1)) THEN
+        amx3(i) = -amx3(i1)/amx1(i)/amx1(i1)
+      END IF
     END DO
     amx3(n1) = amx3(n1)+1.d0/amx1(n1)
     amx2(n1) = amx3(n1)

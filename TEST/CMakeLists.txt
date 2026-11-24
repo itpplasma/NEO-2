@@ -112,6 +112,11 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_periodic_spline_underflow test_periodic_spline_underflow.f90)
+target_link_libraries(test_periodic_spline_underflow PRIVATE common)
+add_test(NAME periodic_spline_underflow COMMAND test_periodic_spline_underflow)
+set_tests_properties(periodic_spline_underflow PROPERTIES TIMEOUT 1 LABELS "field;fast")
+
 # Reading a stored propagator must allocate its fixed-shape qflux.
 add_executable(test_propagator_io test_propagator_io.f90)
 target_link_libraries(test_propagator_io neo2_ql)
