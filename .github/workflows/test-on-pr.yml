@@ -22,8 +22,9 @@ concurrency:
 
 jobs:
   run-golden-record:
-    # Trusted dispatch includes Git LFS and campus access for input preparation.
-    runs-on: [self-hosted, itp-dispatch]
+    # Trusted dispatch includes Git LFS and campus access for input preparation;
+    # itp-golden is the 8-CPU runner that ci/golden.sh requires.
+    runs-on: [self-hosted, itp-dispatch, itp-golden]
     if: >-
       github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]')
@@ -64,7 +65,7 @@ jobs:
           GITLAB_ACCESS_TOKEN: ${{ secrets.GITLAB_ACCESS_TOKEN }}
         run: |
           TMPDIR="$RUNNER_TEMP" ci/bundle.sh "$RUNNER_TEMP/neo2-golden.tar.zst"
-      - name: Run native golden comparisons on sCluster
+      - name: Run native golden comparisons
         env:
           SCI_OUT: ${{ runner.temp }}/golden-receipts
         run: sci-dispatch golden "$RUNNER_TEMP/neo2-golden.tar.zst"

@@ -91,11 +91,17 @@
                         ! $\kappa = 1/l_c$, while internally in NEO-2 it
                         ! has a slightly different normalization. [1.0d-3]
  isw_axisymm = 1        ! [0]
- isw_energy = 1         ! 0: no energy conservation [default]
-                        ! 1: with energy conservation
- isw_integral = 1     ! 0: no momentum convervation [default]
-                      ! 1: (mainly) have momentum conservation
- isw_lorentz = 0      ! [1]
+ collision_model = 'full_fp' ! Collision operator; replaces isw_lorentz,
+                      ! isw_energy and isw_integral (give one or the other):
+                      ! 'full_fp' full linearised Fokker-Planck operator,
+                      ! 'test_particle' pitch-angle and energy scattering,
+                      ! 'pitch_angle' pitch-angle scattering only,
+                      ! 'monoenergetic_lorentz' the monoenergetic mode.
+                      ! Legacy flags, used only without collision_model:
+                      ! isw_energy (energy scattering) [0],
+                      ! isw_integral (field-particle part) [0],
+                      ! isw_lorentz = 1 the monoenergetic mode, not
+                      ! pitch-angle scattering [1].
  isw_momentum = 0     ! [0]
  isw_relativistic = 0 ! 0: Non-relativistic limit [default].
                       ! 1: Braams/Karney model. If $leg>1$, then higher
@@ -221,7 +227,8 @@
  boozer_phi_beg = -3.1415926 ! [0.0d0]
  boozer_s = 4.9e-3 ! Defines the flux surface as normalized toroidal flux. [0.5d0]
  boozer_theta_beg =  3.1415926 ! [0.0d0]
- epserr_iter = 1d-5 ! relative error of integral part iterations [1.0d-5]
+ epserr_iter = 1d-7 ! relative stopping tolerance of integral part iterations [1.0d-7]
+                    ! This is not a bound on the physical equation residual.
  eta_alpha_p =  2.0 ! Specify refinement differently [4.0d0]
  eta_alpha_t = -1.0 ! [1.0d0]
  eta_part_global =  0 !-1: equal distribution
@@ -267,7 +274,7 @@
  rbeg = 210.0  ! starting R. [181.d0]
  ripple_solver_accurfac = 3.0 ! [3.0d0]
  solver_talk = 0 ! [0]
- sparse_solve_method = 3 ! [3]
+ sparse_solve_method = 3 ! 2: UMFPACK with iterative refinement; 3: without. [3]
  sparse_talk = .false. ! [.false.]
  switch_off_asymp = 0 ! [0]
  xetama = 1.300001 ! Seems to be not used, value is overwriten in ripple
