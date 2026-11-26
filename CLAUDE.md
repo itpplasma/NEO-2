@@ -79,3 +79,4 @@ Install with: `cd python && pip install -e .`
 - Output data in HDF5 format for efficiency
 - Keep MPI code isolated to PAR variant
 - Test changes with golden record tests before submitting PRs
+- A PR that changes golden-record results follows "Pull requests that change results on purpose" in `CONTRIBUTING.md`, including the explanation of why the outputs move as far as they do

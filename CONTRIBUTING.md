@@ -46,15 +46,26 @@ How a PR that changes results is handled depends on how far they move:
   and unchanged.
 - Larger, intended changes: open a plasma/data branch with the same name as
   the PR's head branch, regenerate its records on the cluster from the PR head
-  and record the NEO-2 commit and the cluster job in the data commit message.
-  Label the PR `golden-change`, put the measured differences against the old
-  records in the PR body, merge the data merge request, then queue the PR, and
-  cut a release soon after, so that the stable comparison is green again for
-  other PRs. In a stack, each layer that changes results brings its own data
+  and record the NEO-2 commit and the cluster job in the data commit message
+  and a link to the PR. Label the PR `golden-change`, put the measured
+  differences against the old records in the PR body, merge the data merge
+  request, then queue the PR, and cut a release soon after, so that the stable
+  comparison is green again for other PRs. In a stack, each layer that changes results brings its own data
   branch and records.
 - Every `golden-change` queue run measures run time, peak memory per MPI rank
   and the relative change of every output against the base; once the PR
   lands, this record joins the history site on the `gh-pages` branch.
+- A `golden-change` PR body explains from the start why the outputs move as far
+  as they do, so that the reviewer can see that the drift is the expected one
+  and not a side effect. It writes each stage from the changed input to the
+  compared output (for example matrix action, kinetic solve, flux sum) as an
+  equation with its symbols defined and a permalink to the code. It gives the
+  measured relative change after each stage, names the cause of every
+  amplification (normalisation, conditioning, cancellation in a sum) and shows
+  one figure of the relative change per stage. The explanation of the
+  collision-matrix clamp in
+  [#117](https://github.com/itpplasma/NEO-2/pull/117#issuecomment-7160065763)
+  is the model.
 
 Without the label every comparison stays strict, and the stored records come
 from the data branch named like the PR's head branch if it exists, otherwise
