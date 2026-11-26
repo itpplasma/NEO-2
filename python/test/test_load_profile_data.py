@@ -1,5 +1,6 @@
 #%% Standard modules
 import os
+import pytest
 import numpy as np
 import copy
 
@@ -11,6 +12,8 @@ from neo2_ql import load_cgs_profiles_and_interp
 from neo2_ql import convert_units_from_norm_to_si, convert_units_from_si_to_cgs
 
 mars_dir = '/proj/plasma/DATA/DEMO/MARS/MARSQ_INPUTS_KNTV21_NEO2profs_RUN/'
+requires_mars_dir = pytest.mark.skipif(not os.path.isdir(mars_dir),
+                                       reason='institute MARS data not available')
 output_dir = '/tmp/'
 profiles_src = {
     'sqrtspol': {'filename': os.path.join(output_dir, 'sqrtstor.dat'), 'column': 0},
@@ -24,10 +27,12 @@ profiles_src_2species['n']['column'] = [1,2]
 profiles_src_2species['T']['column'] = [1,2]
 mars_profiles_src = copy.deepcopy(profiles_src_2species)
 
+@requires_mars_dir
 def test_write_and_read_compatiblity():
     write_neo2_input_profiles_from_mars(mars_dir, output_dir)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src)
 
+@requires_mars_dir
 def test_output_type():
     write_neo2_input_profiles_from_mars(mars_dir, output_dir)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtspol'})
@@ -45,6 +50,7 @@ def is_profile_types_correct(profiles, sqrtspol, sqrtstor):
         bool = bool and type(profiles[profile]) == np.ndarray
     return bool
 
+@requires_mars_dir
 def test_output_shape():
     write_neo2_input_profiles_from_mars(mars_dir, output_dir)
     profiles, sqrtspol, sqrtstor = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtspol'})
@@ -66,6 +72,7 @@ def is_profile_shapes_correct(profiles, sqrtspol, sqrtstor):
             bool = bool and profiles[profile].shape == (n_s,)
     return bool
 
+@requires_mars_dir
 def test_equidistant_grid():
     write_neo2_input_profiles_from_mars(mars_dir, output_dir)
     _, sqrtspol, _ = load_cgs_profiles_and_interp(mars_profiles_src, interp_config={'grid':'sqrtspol'})
