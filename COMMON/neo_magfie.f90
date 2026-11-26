@@ -360,6 +360,10 @@ CONTAINS
        ! Allocation
        !****************************************************************
        ALLOCATE( bmod_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
+       ! bmod_a survives the surface loop: the single-surface extrema after the
+       ! loop read it, and allocating it inside the loop crashes on the second
+       ! surface because the first iteration never freed it.
+       ALLOCATE( bmod_a(theta_n,phi_n) )
        ALLOCATE( bb_s_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
        ALLOCATE( bb_tb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
        ALLOCATE( bb_pb_spl(4,4,theta_n,phi_n,magfie_sarray_len) )
@@ -569,7 +573,6 @@ CONTAINS
           IF (write_progress .EQ. 1) THEN
              PRINT *, 'Do Fourier'
           END IF
-          ALLOCATE( bmod_a(theta_n,phi_n) )
           ALLOCATE( bb_s_a(theta_n,phi_n) )
           ALLOCATE( bb_tb_a(theta_n,phi_n) )
           ALLOCATE( bb_pb_a(theta_n,phi_n) )
