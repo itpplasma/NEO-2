@@ -6,6 +6,9 @@ torque (neoclassical toroidal viscosity) caused by non-axisymmetric magnetic
 perturbations. It is developed at the Institute of Theoretical and
 Computational Physics, TU Graz.
 
+NEO-2-QL supports named Coulomb collision modes and experimental physical
+Krook damping. See [collision model inputs and normalization](DOC/collision_models.md).
+
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/71e55b695f624fd9b5e18f97acdf95fd)](https://app.codacy.com/gh/itpplasma/NEO-2/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 
 The repository contains two variants of the code:

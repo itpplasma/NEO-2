@@ -6,6 +6,8 @@
 !>                          field-particle part                         (0, 1, 0)
 !>   pitch_angle            pitch-angle scattering only                 (0, 0, 0)
 !>   monoenergetic_lorentz  the monoenergetic mode of isw_lorentz = 1   (1, 0, 0)
+!>   krook_constant, krook_inverse_cube
+!>                          Krook damping, see DOC/collision_models.md (0, 0, 0)
 !> as (isw_lorentz, isw_energy, isw_integral). Note that isw_lorentz = 1 is
 !> not pitch-angle scattering of a multispecies plasma but the monoenergetic
 !> mode. Giving collision_model together with any legacy flag is an error.
@@ -49,9 +51,13 @@ contains
          call set(0, 0, 0)
       case ('monoenergetic_lorentz')
          call set(1, 0, 0)
+      case ('krook_constant', 'krook_inverse_cube')
+         ! Krook damping replaces the Coulomb operator (COMMON krook_mod).
+         call set(0, 0, 0)
       case default
          message = 'unknown collision_model "'//trim(model)// &
-            '"; use full_fp, test_particle, pitch_angle or monoenergetic_lorentz'
+            '"; use full_fp, test_particle, pitch_angle, monoenergetic_lorentz, '// &
+            'krook_constant or krook_inverse_cube'
       end select
    contains
       subroutine set(l, e, i)

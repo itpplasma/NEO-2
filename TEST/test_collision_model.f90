@@ -10,12 +10,15 @@ program test_collision_model
    call expect('pitch_angle', COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, 0, 0, 0)
    call expect('monoenergetic_lorentz', COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, &
       COLLISION_FLAG_UNSET, 1, 0, 0)
+   call expect('krook_constant', COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, 0, 0, 0)
+   call expect('krook_inverse_cube', COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, &
+      COLLISION_FLAG_UNSET, 0, 0, 0)
    ! Legacy decks: defaults (1, 0, 0) where unset, given flags unchanged.
    call expect('', COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, 1, 0, 0)
    call expect('', 0, 1, 1, 0, 1, 1)
    call expect('', 0, COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, 0, 0, 0)
    call refuse('pitch_angle', 0, COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET)
-   call refuse('krook', COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET)
+   call refuse('krook_harmonic', COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET, COLLISION_FLAG_UNSET)
    if (failures > 0) then
       print '(a)', 'FAIL'
       error stop 1
