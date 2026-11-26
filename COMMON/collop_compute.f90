@@ -1,5 +1,5 @@
 module collop_compute
-  use collision_model_mod, only : krook_weight_leaf, uses_krook
+  use krook_mod, only : krook_weight_leaf, uses_krook
 
   use hdf5_tools
   use gsl_integration_routines_mod
@@ -919,7 +919,8 @@ contains
        kmax = 0
        binknots = .false.
        
-       if (a .lt. t_vec(1)) then
+       ! The knot loop below adds a only if some knot lies above it.
+       if (a .lt. t_vec(1) .or. a .ge. t_vec(ubound(t_vec, 1))) then
           kmax = kmax + 1
           x_inter(kmax) = a
        end if
@@ -997,7 +998,8 @@ contains
        kmax = 0
        binknots = .false.
        
-       if (a .lt. t_vec(1)) then
+       ! The knot loop below adds a only if some knot lies above it.
+       if (a .lt. t_vec(1) .or. a .ge. t_vec(ubound(t_vec, 1))) then
           kmax = kmax + 1
           x_inter(kmax) = a
        end if
@@ -1976,8 +1978,17 @@ contains
     real(kind=dp), dimension(:,:,:) :: ailmm_s
     integer, intent(in) :: legmax_local
     integer                         :: l, m, mp
+    real(kind=dp)                   :: epsabs_save, epsrel_save, speed_ratio
 
     write (*,*) "Computing momentum conservation part..."
+
+    ! Scaling the integrals by gamma_ab**3 amplifies absolute error only.
+    ! The energy-moment cancellation amplifies both errors by O(gamma_ab**2).
+    speed_ratio = max(1d0, gamma_ab)
+    epsabs_save = epsabs
+    epsrel_save = epsrel
+    epsabs = epsabs/speed_ratio**5
+    epsrel = epsrel/speed_ratio**2
 
     if (precomp) then ! load pre-computed momentum conservation part
        call h5_open(trim(adjustl(matelem_name)), h5id_matelem)
@@ -2053,6 +2064,9 @@ contains
           end do
        end if
     end if
+
+    epsabs = epsabs_save
+    epsrel = epsrel_save
 
   end subroutine compute_integralpart
    

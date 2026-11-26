@@ -1,5 +1,5 @@
 module collop
-  use collision_model_mod, only : uses_krook, krook_carrier_scale
+  use krook_mod, only : uses_krook, krook_carrier_scale
   use rkstep_mod
   use hdf5_tools
   use collop_compute, only : init_collop, &
@@ -15,7 +15,7 @@ module collop
        v_max_resolution, v_min_resolution, phi_x_max, isw_lorentz, conl_over_mfp, &
        isw_relativistic, T_e, &
        lsw_multispecies, isw_coul_log, num_spec, conl_over_mfp_spec, collpar_spec, &
-       z_spec, m_spec, T_spec, n_spec, collision_model, krook_nu, &
+       z_spec, m_spec, T_spec, n_spec, coulomb_log, collision_model, krook_nu, &
        krook_geometry_trapped, krook_geometry_passing, &
        collop_bspline_dist, collop_bspline_order, lsw_nbi, T_nbi, m_nbi
   use device_mod, only : device
@@ -432,11 +432,12 @@ module collop
                if (isw_coul_log .eq. 0) then
                   taa_ov_tab_temp = (coll_b_temp/coll_a_temp) * &
                        (((T_spec(b)*za_temp)/(T_spec(a)*zb_temp))**2)
+          else if (isw_coul_log .eq. 1) then
+            taa_ov_tab_temp = (n_spec(b)*zb_temp**2*coulomb_log(a, b)) / &
+              (n_spec(a)*za_temp**2*coulomb_log(a, a))
                else
-                  write(*,*) "ERROR: collision_operator_mems.f90: &
-                       &species-dependent Coulomb logarithm not yet implemented!"
-                  write(*,*) "Please use switch isw_coul_log = 0."
-                  stop
+            write(*,*) "ERROR: collision_operator_mems.f90: unknown isw_coul_log"
+            stop
                end if
                anumm_a(:,:,a) = &
                     anumm_a(:,:,a) + anumm_aa(:,:,a,b) * taa_ov_tab_temp

@@ -1,4 +1,4 @@
-module collision_model_mod
+module krook_mod
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use collisionality_mod, only: collision_model, krook_nu, num_spec, &
@@ -7,7 +7,7 @@ module collision_model_mod
         lsw_nbi
     implicit none
     private
-    public :: resolve_collision_model, uses_krook, krook_carrier_scale
+    public :: check_krook_input, uses_krook, krook_carrier_scale
     public :: krook_weight_leaf, krook_pitch_mass
 contains
     logical function uses_krook()
@@ -15,7 +15,9 @@ contains
             trim(collision_model) == 'krook_inverse_cube'
     end function uses_krook
 
-    subroutine resolve_collision_model(read_precom, write_precom)
+    !> Krook inputs after collision_model has set the three legacy flags
+    !> (NEO-2-QL collision_model_mod).
+    subroutine check_krook_input(read_precom, write_precom)
         logical, intent(in) :: read_precom, write_precom
 
         if (.not. ieee_is_finite(krook_geometry_trapped) .or. &
@@ -24,26 +26,7 @@ contains
         if (min(krook_geometry_trapped, krook_geometry_passing) <= 0.0_dp) &
             error stop 'Krook geometry factors must be positive'
 
-        select case (trim(collision_model))
-        case ('native')
-            ! Preserve every existing switch and the legacy default exactly.
-        case ('pitch_angle')
-            isw_lorentz = 0
-            isw_energy = 0
-            isw_integral = 0
-        case ('test_particle')
-            isw_lorentz = 0
-            isw_energy = 1
-            isw_integral = 0
-        case ('full_fp')
-            isw_lorentz = 0
-            isw_energy = 1
-            isw_integral = 1
-        case ('monoenergetic_lorentz')
-            isw_lorentz = 1
-            isw_energy = 0
-            isw_integral = 0
-        case ('krook_constant', 'krook_inverse_cube')
+        if (uses_krook()) then
             if (isw_lorentz /= 0 .or. isw_energy /= 0 .or. isw_integral /= 0) &
                 error stop 'Krook requires isw_lorentz=isw_energy=isw_integral=0'
             if (isw_momentum /= 0 .or. isw_relativistic /= 0) &
@@ -58,17 +41,11 @@ contains
                 error stop 'Krook rates must be finite'
             if (any(krook_nu(1:num_spec) <= 0.0_dp)) &
                 error stop 'Krook requires a positive physical rate for every species'
-        case default
-            error stop 'Unknown collision_model'
-        end select
-
-        if (.not. uses_krook()) then
-            if (allocated(krook_nu)) then
-                if (any(krook_nu /= 0.0_dp)) &
-                    error stop 'krook_nu is only valid for a Krook model'
-            end if
+        else if (allocated(krook_nu)) then
+            if (any(krook_nu /= 0.0_dp)) &
+                error stop 'krook_nu is only valid for a Krook model'
         end if
-    end subroutine resolve_collision_model
+    end subroutine check_krook_input
 
     function krook_carrier_scale(nu, kappa, temperature, mass) result(scale)
         real(dp), intent(in) :: nu, kappa, temperature, mass
@@ -138,4 +115,4 @@ contains
 
     include 'generated/krook_leaf.inc'
     include 'generated/krook_geometry_leaf.inc'
-end module collision_model_mod
+end module krook_mod

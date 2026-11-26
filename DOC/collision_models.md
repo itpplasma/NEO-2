@@ -1,12 +1,12 @@
 # Collision models in NEO-2-QL
 
-`&collision collision_model` selects an operator. The default, `'native'`,
-preserves the existing collision switches and their numerical implementation.
-The named Coulomb modes resolve these switches as follows:
+`&collision collision_model` selects an operator. Without it, the legacy
+switches `isw_lorentz`, `isw_energy` and `isw_integral` keep their meaning and
+defaults. Giving `collision_model` together with any of them is an error. The
+named modes set these switches as follows:
 
 | `collision_model` | `isw_lorentz` | `isw_energy` | `isw_integral` | Operator |
 |---|---:|---:|---:|---|
-| `native` | unchanged | unchanged | unchanged | Existing input contract |
 | `pitch_angle` | 0 | 0 | 0 | Pitch scattering at the requested energy resolution |
 | `test_particle` | 0 | 1 | 0 | Coulomb pitch and energy scattering |
 | `full_fp` | 0 | 1 | 1 | Linearized multispecies Coulomb operator with field-particle terms |
@@ -146,7 +146,7 @@ orbit assumptions. PENTRC's harmonic factor `1+h^2/4` acts on orbit Fourier
 harmonics (`pentrc/energy.f90`, harmonic branch); `h` is not a pitch Legendre
 index. In bounce angle it would require `1-(1/4)*d^2/dtheta_b^2`, with an
 orbit-dependent coordinate and normalization. NEO-2's scalar weak pitch mass
-(`collision_model_mod::krook_pitch_mass`) contains no orbit-harmonic index or
+(`krook_mod::krook_pitch_mass`) contains no orbit-harmonic index or
 bounce-angle derivative. No additional scalar local factor reproduces this
 harmonic dependence, and it is not implemented here.
 Unknown model names are rejected.

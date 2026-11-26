@@ -2,7 +2,7 @@ program test_collision_krook
     use, intrinsic :: iso_fortran_env, only: dp => real64, int64
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, &
         ieee_positive_inf
-    use collision_model_mod, only: resolve_collision_model, uses_krook, &
+    use krook_mod, only: check_krook_input, uses_krook, &
         krook_carrier_scale, krook_pitch_mass
     use collisionality_mod, only: collision_model, krook_nu, num_spec, &
         krook_geometry_trapped, krook_geometry_passing, &
@@ -49,8 +49,6 @@ program test_collision_krook
     call get_command_argument(1, arg)
     if (len_trim(arg) /= 0) then
         select case (trim(arg))
-        case ('unknown-model')
-            collision_model = 'krook_harmonic'
         case ('negative-rate')
             krook_nu(2) = -1.0_dp
         case ('missing-rate')
@@ -74,17 +72,16 @@ program test_collision_krook
         case ('grid')
             isw_momentum = 1
         case ('cache')
-            call resolve_collision_model(.true., .false.)
+            call check_krook_input(.true., .false.)
         case default
             error stop 'Unknown test rejection mode'
         end select
-        call resolve_collision_model(.false., .false.)
+        call check_krook_input(.false., .false.)
         print *, 'FAIL: rejection test unexpectedly accepted input'
         stop 0
     end if
-    call resolve_collision_model(.false., .false.)
+    call check_krook_input(.false., .false.)
     if (.not. uses_krook()) error stop 'Krook dispatch absent'
-    call check_named_modes()
     call mpro%init()
     call h5_init()
     lsw_multispecies = .true.
@@ -180,29 +177,6 @@ contains
         if (real(dot_product(forcing,rhs),dp) <= 0.0_dp) &
             error stop 'Native reaction resolvent has negative dissipation'
     end subroutine check_energy_resolvent
-
-    subroutine check_named_modes()
-        character(len=32), parameter :: names(5) = [character(len=32) :: &
-            'native', 'pitch_angle', 'test_particle', 'full_fp', &
-            'monoenergetic_lorentz']
-        integer, parameter :: switches(3,5) = reshape( &
-            [1,0,0, 0,0,0, 0,1,0, 0,1,1, 1,0,0], [3,5])
-        integer :: j
-        krook_nu = 0.0_dp
-        do j = 1, size(names)
-            collision_model = names(j)
-            isw_lorentz = 1
-            isw_energy = 0
-            isw_integral = 0
-            call resolve_collision_model(.false., .false.)
-            if (isw_lorentz /= switches(1,j) .or. &
-                isw_energy /= switches(2,j) .or. isw_integral /= switches(3,j)) &
-                error stop 'Named collision switch resolution is incorrect'
-        end do
-        collision_model = 'krook_constant'
-        isw_lorentz = 0
-        krook_nu = [10.0_dp, 20.0_dp, 30.0_dp]
-    end subroutine check_named_modes
 
     subroutine check_geometry_projection()
         real(dp), parameter :: bounds(0:4) = [1.0_dp,0.8_dp,0.6_dp,0.4_dp,0.0_dp]

@@ -14,7 +14,8 @@ subroutine ripple_solver_ArnoldiO2( &
 
     use device_mod
     use flint_mod, only: phi_divide                      !<-in Winny
-    use collision_model_mod, only: uses_krook, krook_pitch_mass
+    use krook_mod, only: uses_krook, krook_pitch_mass
+    use source_stencil_mod, only: forward_stencil_centred, backward_stencil_centred
     use collisionality_mod, only: collpar, conl_over_mfp, isw_lorentz, &
                                   isw_energy, isw_integral, isw_axisymm, & !<-in Winny
                                   isw_momentum, nvel, num_spec, lsw_multispecies, &
@@ -56,6 +57,7 @@ subroutine ripple_solver_ArnoldiO2( &
                              f0_coll, f0_ttmp, f0_coll_all, f0_ttmp_all, &
                              nz_regper, irow_regper, icol_regper, amat_regper, &
                              deallocate_ntv_eqmat
+    use solve_report_mod, only: csr_add
     use partpa_mod, only: bmod0
     use development
   !! Modifications by Andreas F. Martitsch (12.03.2014)
@@ -85,9 +87,8 @@ subroutine ripple_solver_ArnoldiO2( &
     ! MPI SUPPORT for multi-species part
     ! (run with, e.g.,  mpiexec -np 3 ./neo2.x)
     use mpiprovider_module, only: mpro
-    ! Load x1mm and x2mm (=energy dependence of drift frequencies)
-    ! from collision operator module. This step allows for
-    ! support of different basis functions and replaces routine "lagxmm".
+    ! x1mm and x2mm (energy dependence of the drift frequencies) come from
+    ! the collision operator module, so any basis works.
     use collop
     use arnoldi_mod, only: iterator, f_init_arnoldi, &
       & lsw_write_flux_surface_distribution, write_flux_surface_distribution
@@ -188,7 +189,9 @@ subroutine ripple_solver_ArnoldiO2( &
 
     CHARACTER(len=100) :: propname
     integer :: n_2d_size, nz_sq, nz_beg, npassing_prev, k_prev, mm
-    integer :: iter, nphiequi, npassing_next, n_arnoldi, mode_iter
+    integer :: iter, nphiequi, npassing_next, mode_iter
+    logical :: solve_converged
+    logical :: strict_lu = .false.
     integer :: isw_regper, nz_coll, nz_ttmp, nz_coll_beg
     integer :: nrow, ncol, nz, iopt
     real(dp) :: delphim1, deloneovb, step_factor_p, step_factor_m
@@ -292,12 +295,7 @@ subroutine ripple_solver_ArnoldiO2( &
     print *, "Species: ", ispec
     call collop_set_species(ispec)
 
-    niter = 100       !maximum number of integral part iterations
-    n_arnoldi = 500     !maximum number of Arnoldi iterations
     isw_regper = 1       !regulariization by periodic boundary condition
-    epserr_iter = 1.d-7  !relative error of integral part iterations
-    sparse_solve_method = 3 !2,3 - with and without iterative refinement, resp.
-
     addboucol = .true.
     !------------------------------------------------------------------------
     ! END SERGEI
@@ -316,9 +314,6 @@ subroutine ripple_solver_ArnoldiO2( &
     !  one should call a normal solver in this case
     !
     ! These are three possibilities to call sparse_solve
-    !  call sparse_solve(nrow,ncol,nz,irow,icol,val,b)  ! full column index
-    !  call sparse_solve(nrow,ncol,nz,irow,pcol,val,b)  ! column pointer
-    !  call sparse_solve(A,b)                           ! full matrix
     ! results are returned in b
     !
     ! Input
@@ -333,13 +328,6 @@ subroutine ripple_solver_ArnoldiO2( &
     !  real(dp), dimension(:,:), allocatable :: b
     !
     ! Matrix - square
-    !  ncol = nrow
-    !  allocate( irow(nz) )     ! row index
-    !  allocate( icol(nz) )     ! column index (column ordering)
-    !  allocate( pcol(ncol+1) ) ! column pointer (other possibility)
-    !  allocate( val(nz) )      ! values
-    !  allocate( A(nrow,ncol) ) ! full matrix will be converted to sparse
-    !
     ! rhs
     !  allocate( b(nrow) )
     ! or
@@ -1459,9 +1447,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
         do ipart = 1, npassing + 1
             nz = nz + 1
-!      irow(nz)=k+ipart
-!      icol(nz)=k+ipart
-!      amat_sp(nz)=(1.d0,0.d0)
         end do
 
         if (isw_axisymm .EQ. 1) then
@@ -1470,9 +1455,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
             do ipart = 1, npassing + 1
                 nz = nz + 1
-!        irow(nz)=k+ipart
-!        icol(nz)=k_prev+ipart
-!        amat_sp(nz)=(-1.d0,0.d0)
             end do
 
 !! Modifications by Andreas F. Martitsch (12.12.2016)
@@ -1482,23 +1464,14 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+! Without energy scattering every energy mode m has its own isotropic
+! null vector, so each m needs the regularizer, not only m = 0.
+            if (isw_regper .EQ. 1 .AND. (m .LT. 1 .OR. isw_ene .EQ. 0)) then
                 do ipart = 1, 1
-!          if(ipart.le.npassing) then
-!            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
-!          else
-!            deleta_factor=1.d0-eta(ipart-1)*bhat_mfl(istep)
-!          end if
 
                     do ipart1 = 1, npassing + 1
                         nz_regper = nz_regper + 1
-!            irow_regper(nz_regper)=k+ipart
-!            icol_regper(nz_regper)=k_prev+ipart1
-!            amat_regper(nz_regper)=deleta_factor
                         nz_regper = nz_regper + 1
-!            irow_regper(nz_regper)=k+ipart
-!            icol_regper(nz_regper)=k+npassing+1+ipart1
-!            amat_regper(nz_regper)=deleta_factor
                     end do
 !
                 end do
@@ -1524,25 +1497,16 @@ subroutine ripple_solver_ArnoldiO2( &
 
             do ipart = 1, npassing + 1
                 nz = nz + 1
-!        irow(nz)=k+ipart
-!        icol(nz)=k+ipart
-!        amat_sp(nz)=delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end do
 
             do ipart = 1, npassing
                 nz = nz + 1
-!        irow(nz)=k+ipart
-!        icol(nz)=k_prev+ipart
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end do
 
             if (npassing_prev .GE. npassing) then
                 nz = nz + 1
-!        irow(nz)=k+npassing+1
-!        icol(nz)=k_prev+npassing+1
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end if
 
@@ -1552,25 +1516,16 @@ subroutine ripple_solver_ArnoldiO2( &
 
                 do kk = 1, 4
                     nz = nz + 1
-!          irow(nz)=k+npassing+1
-!          icol(nz)=k+npassing+kk-1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
                     if (colltest) nz_ttmp = nz_ttmp + 1
                 end do
 
                 do kk = 1, 4
                     nz = nz + 1
-!          irow(nz)=k+npassing+1
-!          icol(nz)=k_prev+npassing_prev+kk-1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep-1,0)
                     if (colltest) nz_ttmp = nz_ttmp + 1
                 end do
 
             elseif (npassing_prev .GT. npassing) then
                 nz = nz + 1
-!        irow(nz)=k_prev+npassing_prev+2
-!        icol(nz)=k_prev+npassing_prev+1
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end if
 
@@ -1586,9 +1541,6 @@ subroutine ripple_solver_ArnoldiO2( &
                             do mm = 0, lag
                                 nz = nz + 1
                                 nz_coll = nz_coll + 1
-!                irow(nz)=k+ipart
-!                icol(nz)=k+max(0,ipart-3)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep)   &
 !                           *fact_pos_e(istep)*0.5d0
 
                                 if (.NOT. colltest .AND. mm .EQ. m) then
@@ -1597,9 +1549,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
                                 if (ipart .LE. npassing_prev + 1) then
                                     nz = nz + 1
-!                  irow(nz)=k+ipart
-!                  icol(nz)=k_prev+max(0,ipart-3)+kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep-1) &
 !                             *fact_pos_e(istep)*0.5d0
 
                                     if (.NOT. colltest .AND. mm .EQ. m) then
@@ -1607,9 +1556,6 @@ subroutine ripple_solver_ArnoldiO2( &
                                     end if
                                 elseif (ipart .gt. npassing_prev + 1 .and. addboucol) then
                                     nz = nz + 1
-!                  irow(nz) = k + ipart
-!                  icol(nz) = k + ipart + 4 - kk + 2*(npassing+1)*(mm-m)
-!                  amat_sp(nz) = anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                             *fact_pos_e(istep)*0.5d0
                                 end if
                             end do
@@ -1629,9 +1575,6 @@ subroutine ripple_solver_ArnoldiO2( &
                             do mm = 0, lag
                                 nz = nz + 1
                                 nz_coll = nz_coll + 1
-!                irow(nz)=k+ipart
-!                icol(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
                             end do
                         end do
 
@@ -1639,18 +1582,12 @@ subroutine ripple_solver_ArnoldiO2( &
                             do kk = 1, 4
                                 do mm = 0, lag
                                     nz = nz + 1
-!                  irow(nz)=k+ipart
-!                  icol(nz)=k_prev+max(0,ipart-2)+kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep-1)*0.5d0
                                 end do
                             end do
                         elseif (ipart .gt. npassing_prev + 1 .and. addboucol) then
                             do kk = 1, 4
                                 do mm = 0, lag
                                     nz = nz + 1
-!                  irow(nz) = k + ipart
-!                  icol(nz) = k + ipart + 3 - kk + 2*(npassing+1)*(mm-m)
-!                  amat_sp(nz) = denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
                                 end do
                             end do
                         end if
@@ -1679,9 +1616,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
         do ipart = 1, npassing + 1
             nz = nz + 1
-!      irow(nz)=k-ipart
-!      icol(nz)=k-ipart
-!      amat_sp(nz)=(1.d0,0.d0)
         end do
 
         if (isw_axisymm .EQ. 1) then
@@ -1690,9 +1624,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
             do ipart = 1, npassing + 1
                 nz = nz + 1
-!        irow(nz)=k-ipart
-!        icol(nz)=k_prev-ipart
-!        amat_sp(nz)=(-1.d0,0.d0)
             end do
 
 !! Modifications by Andreas F. Martitsch (12.12.2016)
@@ -1702,23 +1633,14 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+! Without energy scattering every energy mode m has its own isotropic
+! null vector, so each m needs the regularizer, not only m = 0.
+            if (isw_regper .EQ. 1 .AND. (m .LT. 1 .OR. isw_ene .EQ. 0)) then
                 do ipart = 1, 1
-!          if(ipart.le.npassing) then
-!            deleta_factor=(eta(ipart)-eta(ipart-1))*bhat_mfl(istep)
-!          else
-!            deleta_factor=1.d0-eta(ipart-1)*bhat_mfl(istep)
-!          end if
 
                     do ipart1 = 1, npassing + 1
                         nz_regper = nz_regper + 1
-!            irow_regper(nz_regper)=k-ipart
-!            icol_regper(nz_regper)=k_prev-ipart1
-!            amat_regper(nz_regper)=deleta_factor
                         nz_regper = nz_regper + 1
-!            irow_regper(nz_regper)=k-ipart
-!            icol_regper(nz_regper)=k-npassing-1-ipart1
-!            amat_regper(nz_regper)=deleta_factor
                     end do
 
                 end do
@@ -1743,25 +1665,16 @@ subroutine ripple_solver_ArnoldiO2( &
 
             do ipart = 1, npassing + 1
                 nz = nz + 1
-!        irow(nz)=k-ipart
-!        icol(nz)=k-ipart
-!        amat_sp(nz)=delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end do
 !
             do ipart = 1, npassing
                 nz = nz + 1
-!        irow(nz)=k-ipart
-!        icol(nz)=k_prev-ipart
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end do
 
             if (npassing_prev .GE. npassing) then
                 nz = nz + 1
-!        irow(nz)=k-npassing-1
-!        icol(nz)=k_prev-npassing-1
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end if
 
@@ -1771,25 +1684,16 @@ subroutine ripple_solver_ArnoldiO2( &
 
                 do kk = 1, 4
                     nz = nz + 1
-!          irow(nz)=k-npassing-1
-!          icol(nz)=k-npassing-kk+1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep,0)
                     if (colltest) nz_ttmp = nz_ttmp + 1
                 end do
 
                 do kk = 1, 4
                     nz = nz + 1
-!          irow(nz)=k-npassing-1
-!          icol(nz)=k_prev-npassing_prev-kk+1
-!          amat_sp(nz)=deloneovb*rhs_mat_fzero(kk,istep+1,0)
                     if (colltest) nz_ttmp = nz_ttmp + 1
                 end do
 !
             elseif (npassing_prev .GT. npassing) then
                 nz = nz + 1
-!        irow(nz)=k_prev-npassing_prev-2
-!        icol(nz)=k_prev-npassing_prev-1
-!        amat_sp(nz)=-delphim1
                 if (colltest) nz_ttmp = nz_ttmp + 1
             end if
 
@@ -1805,9 +1709,6 @@ subroutine ripple_solver_ArnoldiO2( &
                             do mm = 0, lag
                                 nz = nz + 1
                                 nz_coll = nz_coll + 1
-!                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-3)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                           *fact_neg_e(istep)*0.5d0
 
                                 if (.NOT. colltest .AND. mm .EQ. m) then
@@ -1816,9 +1717,6 @@ subroutine ripple_solver_ArnoldiO2( &
 
                                 if (ipart .LE. npassing_prev + 1) then
                                     nz = nz + 1
-!                  irow(nz)=k-ipart
-!                  icol(nz)=k_prev-max(0,ipart-3)-kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep+1) &
 !                             *fact_neg_e(istep)*0.5d0
 
                                     if (.NOT. colltest .AND. mm .EQ. m) then
@@ -1826,9 +1724,6 @@ subroutine ripple_solver_ArnoldiO2( &
                                     end if
                                 elseif (ipart .gt. npassing_prev + 1 .and. addboucol) then
                                     nz = nz + 1
-!                  irow(nz) = k - ipart
-!                  icol(nz) = k - ipart - 4 + kk + 2*(npassing+1)*(mm-m)
-!                  amat_sp(nz) = anumm(m,mm)*rhs_mat_lorentz(kk,ipart,istep) &
 !                             *fact_neg_e(istep)*0.5d0
                                 end if
                             end do
@@ -1848,9 +1743,6 @@ subroutine ripple_solver_ArnoldiO2( &
                             do mm = 0, lag
                                 nz = nz + 1
                                 nz_coll = nz_coll + 1
-!                irow(nz)=k-ipart
-!                icol(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!                amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
                             end do
                         end do
 
@@ -1858,18 +1750,12 @@ subroutine ripple_solver_ArnoldiO2( &
                             do kk = 1, 4
                                 do mm = 0, lag
                                     nz = nz + 1
-!                  irow(nz)=k-ipart
-!                  icol(nz)=k_prev-max(0,ipart-2)-kk+2*(npassing_prev+1)*(mm-m)
-!                  amat_sp(nz)=denmm(m,mm)*rhs_mat_energ(kk,ipart,istep+1)*0.5d0
                                 end do
                             end do
                         elseif (ipart .gt. npassing_prev + 1 .and. addboucol) then
                             do kk = 1, 4
                                 do mm = 0, lag
                                     nz = nz + 1
-!                  irow(nz) = k - ipart
-!                  icol(nz) = k - ipart - 3 + kk + 2*(npassing+1)*(mm-m)
-!                  amat_sp(nz) = denmm(m,mm)*rhs_mat_energ(kk,ipart,istep)*0.5d0
                                 end do
                             end do
                         end if
@@ -1935,7 +1821,9 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+! Without energy scattering every energy mode m has its own isotropic
+! null vector, so each m needs the regularizer, not only m = 0.
+            if (isw_regper .EQ. 1 .AND. (m .LT. 1 .OR. isw_ene .EQ. 0)) then
                 do ipart = 1, 1
                     if (ipart .LE. npassing) then
                         deleta_factor = (eta(ipart) - eta(ipart - 1))*bhat_mfl(istep)
@@ -2205,7 +2093,9 @@ subroutine ripple_solver_ArnoldiO2( &
 ! -> Removal of null-space of axisymmetric equation without
 ! integral part of the collision operator
 ! (solution to the problem without iterations --> correct)
-            if (isw_regper .EQ. 1 .AND. m .LT. 1) then
+! Without energy scattering every energy mode m has its own isotropic
+! null vector, so each m needs the regularizer, not only m = 0.
+            if (isw_regper .EQ. 1 .AND. (m .LT. 1 .OR. isw_ene .EQ. 0)) then
                 do ipart = 1, 1
                     if (ipart .LE. npassing) then
                         deleta_factor = (eta(ipart) - eta(ipart - 1))*bhat_mfl(istep)
@@ -2793,9 +2683,6 @@ subroutine ripple_solver_ArnoldiO2( &
                     do kk = 1, 4
                         do mm = 0, lag
                             nz = nz + 1
-!              irow_asymm(nz)=k+ipart
-!              icol_asymm(nz)=k+max(0,ipart-2)+kk+2*(npassing+1)*(mm-m)
-!              amat_asymm(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)
                         end do
                     end do
                 end do
@@ -2803,9 +2690,6 @@ subroutine ripple_solver_ArnoldiO2( &
                 do kk = 1, 4
                     do mm = 0, lag
                         nz = nz + 1
-!            irow_asymm(nz)=k+npassing+1
-!            icol_asymm(nz)=k+npassing-1+kk+2*(npassing+1)*(mm-m)
-!            amat_asymm(nz)=0.5d0*x1mm(m,mm)                                  &
 !                       *rhs_mat_energ(kk,npassing+1,istep)
                     end do
                 end do
@@ -2813,9 +2697,6 @@ subroutine ripple_solver_ArnoldiO2( &
                 do kk = 1, 4
                     do mm = 0, lag
                         nz = nz + 1
-!            irow_asymm(nz)=k+npassing+1
-!            icol_asymm(nz)=k_prev+npassing_prev-1+kk+2*(npassing_prev+1)*(mm-m)
-!            amat_asymm(nz)=0.5d0*x1mm(m,mm)                                  &
 !                       *rhs_mat_energ(kk,npassing_prev+1,istep-1)
                     end do
                 end do
@@ -2847,9 +2728,6 @@ subroutine ripple_solver_ArnoldiO2( &
                     do kk = 1, 4
                         do mm = 0, lag
                             nz = nz + 1
-!              irow_asymm(nz)=k-ipart
-!              icol_asymm(nz)=k-max(0,ipart-2)-kk+2*(npassing+1)*(mm-m)
-!              amat_asymm(nz)=x1mm(m,mm)*rhs_mat_energ(kk,ipart,istep)
                         end do
                     end do
                 end do
@@ -2857,9 +2735,6 @@ subroutine ripple_solver_ArnoldiO2( &
                 do kk = 1, 4
                     do mm = 0, lag
                         nz = nz + 1
-!            irow_asymm(nz)=k-npassing-1
-!            icol_asymm(nz)=k-npassing+1-kk+2*(npassing+1)*(mm-m)
-!            amat_asymm(nz)=0.5d0*x1mm(m,mm)                                  &
 !                       *rhs_mat_energ(kk,npassing+1,istep)
                     end do
                 end do
@@ -2867,9 +2742,6 @@ subroutine ripple_solver_ArnoldiO2( &
                 do kk = 1, 4
                     do mm = 0, lag
                         nz = nz + 1
-!            irow_asymm(nz)=k-npassing-1
-!            icol_asymm(nz)=k_prev-npassing_prev+1-kk+2*(npassing_prev+1)*(mm-m)
-!            amat_asymm(nz)=0.5d0*x1mm(m,mm)                                  &
 !                       *rhs_mat_energ(kk,npassing_prev+1,istep+1)
                     end do
                 end do
@@ -3487,6 +3359,8 @@ CONTAINS
 
         logical :: clean
         real(dp), dimension(:), allocatable :: bvec_sp_real
+        complex(dp), dimension(:), allocatable :: source_copy
+        integer :: solve_path
         !  multi-species part
         integer :: ispecpp ! species indices (loop over sources)
         real(dp), dimension(:, :, :, :), allocatable :: qflux_allspec_tmp
@@ -3506,14 +3380,12 @@ CONTAINS
         call column_full2pointer(icol(1:nz), ipcol)
 
 ! There are now three different calls sparse_solve
-!   iopt = 1 ; factorization
-!   iopt = 2 ; solve
-!   iopt = 3 ; free memory
 ! without iopt or with iopt = 0: old behaviour (factorize,solve,free)
 
 ! factorization:
 
         bvec_sp = 0.d0
+        strict_lu = .false.
         iopt = 1
 
         call CPU_TIME(time_start)
@@ -3544,8 +3416,27 @@ CONTAINS
 
             do k = 1, 3
                 f_init_arnoldi = source_vector_all(:, 1, ispec)
+                source_copy = source_vector_all(:, k, ispec)
+                solve_path = 1
                 call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                            & source_vector_all(:, k, ispec), ispec, next_iteration)
+                    & source_vector_all(:, k, ispec), ispec, next_iteration, &
+                    & solve_converged)
+                if (.not. solve_converged) then
+                    call refactorize_strict_lu()
+                    solve_path = 2
+                    source_vector_all(:, k, ispec) = source_copy
+                    f_init_arnoldi = source_vector_all(:, 1, ispec)
+                    call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
+                        & source_vector_all(:, k, ispec), ispec, next_iteration, &
+                        & solve_converged)
+                end if
+                if (.not. solve_converged) then
+                    source_vector_all(:, k, ispec) = source_copy
+                    call gmres_source(source_vector_all(:, k, ispec), epserr_iter)
+                    solve_path = 3
+                end if
+                call report_solve(k, ispec, solve_path, solve_converged, &
+                    & source_copy, source_vector_all(:, k, ispec))
             end do
 
         elseif (isw_intp .EQ. 1) then
@@ -3559,8 +3450,27 @@ CONTAINS
                     f_init_arnoldi = source_vector_all(:, 1, ispec)
                     if (ispec .eq. 0) print *, 'source ', k, ' driving species', ispecp, ':'
                     drive_spec = ispecp
+                    source_copy = source_vector_all(:, k, ispecp)
+                    solve_path = 1
                     call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
-                                & source_vector_all(:, k, ispecp), ispec, next_iteration)
+                        & source_vector_all(:, k, ispecp), ispec, next_iteration, &
+                        & solve_converged)
+                    if (.not. solve_converged) then
+                        call refactorize_strict_lu()
+                        solve_path = 2
+                        source_vector_all(:, k, ispecp) = source_copy
+                        f_init_arnoldi = source_vector_all(:, 1, ispec)
+                        call iterator(mode_iter, n_2d_size, n_arnoldi, epserr_iter, niter,&
+                            & source_vector_all(:, k, ispecp), ispec, next_iteration, &
+                            & solve_converged)
+                    end if
+                    if (.not. solve_converged) then
+                        source_vector_all(:, k, ispecp) = source_copy
+                        call gmres_source(source_vector_all(:, k, ispecp), epserr_iter)
+                        solve_path = 3
+                    end if
+                    call report_solve(k, ispecp, solve_path, solve_converged, &
+                        & source_copy, source_vector_all(:, k, ispecp))
                 end do
 
             end do
@@ -3857,7 +3767,7 @@ CONTAINS
                     npassing_prev = npl(istep - 1)
                     k_prev = ind_start(istep - 1) + 2*(npassing_prev + 1)*m
 
-                    if (ioddeven .EQ. 1) then
+                    if (forward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep + 1)
                         source_vector(k + 1:k + npassing + 1, 1) &
                             = source_vector(k + 1:k + npassing + 1, 1) &
@@ -4038,7 +3948,7 @@ CONTAINS
                 if (istep .LT. iend) then
                     npassing_prev = npl(istep + 1)
                     k_prev = ind_start(istep + 1) + 2*(npassing_prev + 1)*m
-                    if (ioddeven .EQ. 1) then
+                    if (backward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep - 1)
                         source_vector(k + npassing + 2:k + 2*npassing + 2, 1) &
                             = source_vector(k + npassing + 2:k + 2*npassing + 2, 1) &
@@ -4238,7 +4148,7 @@ CONTAINS
                 if (istep .GT. ibeg) then
                     npassing_prev = npl(istep - 1)
                     k_prev = ind_start(istep - 1) + 2*(npassing_prev + 1)*m
-                    if (ioddeven .EQ. 1) then
+                    if (forward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep + 1)
                         k_next = ind_start(istep + 1) + 2*(npassing_next + 1)*m
                         source_vector(k + 1:k + npassing + 1, 1:3) &
@@ -4306,7 +4216,7 @@ CONTAINS
                 if (istep .LT. iend) then
                     npassing_prev = npl(istep + 1)
                     k_prev = ind_start(istep + 1) + 2*(npassing_prev + 1)*m
-                    if (ioddeven .EQ. 1) then
+                    if (backward_stencil_centred(istep, ibeg, iend)) then
                         npassing_next = npl(istep - 1)
                         k_next = ind_start(istep - 1) + 2*(npassing_next + 1)*m
                         source_vector(k + npassing + 2:k + 2*npassing + 2, 1:3) &
@@ -4389,28 +4299,112 @@ CONTAINS
     end subroutine add_f01_source
 
 !------------------------------------------------------------------------
+    !> C_I f: velocity moments of f at each step (integral_moments), exchanged
+    !> between the species ranks, mixed and mapped back (integral_expand).
     subroutine integral_part(vec_in, vec_out)
-
-        implicit none
-
-        integer :: l, m, i, k, istep, npassing, k_prev
-
         complex(dp), dimension(n_2d_size) :: vec_in, vec_out
-    !! Modification by Andreas F. Martitsch (20.08.2015)
-        ! Array extended by 3rd (phi-steps) and 4th dimension (species)
         complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg
-        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg_tmp
-        ! Species index
-        integer :: ispecp
-    !! End Modification by Andreas F. Martitsch (20.08.2015)
-        complex(dp), dimension(:, :, :), allocatable :: vec_tmp
+        call integral_moments(vec_in, scalprod_pleg)
+        call mpro%allgather_inplace(scalprod_pleg)
+        call integral_expand(scalprod_pleg, vec_out)
+    end subroutine integral_part
 
-        allocate (vec_tmp(0:lag, 2*(npart + 1), ibeg:iend))
-        vec_tmp = 0.d0
+    !------------------------------------------------------------------------
+    !> One NEO2_SOLVE_JSON record per source solve, from rank 0.
+    !>
+    !> The iteration stops on a fixed-point increment rule,
+    !> ||f_new - f_old||_1 <= increment_tolerance * ||f_new||_1, so
+    !> increment_tolerance is what epserr_iter means and it is not the error of
+    !> the equation. The reported quantity is the normwise backward error of the
+    !> assembled equation over every entry of the matrix that was handed to the
+    !> solver, matrix_entries = nz_symm + nz_regper for the axisymmetric system
+    !> and nz for the nonaxisymmetric one. It is diagnostic: a backward error
+    !> above increment_tolerance is expected and does not mean the solve failed,
+    !> while a residual taken over part of the matrix would report the error of
+    !> a system that was never solved.
+    subroutine report_solve(source_index, driving_species, path, converged, &
+            & source, solution)
+        integer, intent(in) :: source_index, driving_species, path
+        logical, intent(in) :: converged
+        complex(dp), intent(in) :: source(:), solution(:)
+        complex(dp), dimension(:), allocatable :: collision, lhs
+        real(dp), dimension(:), allocatable :: numerators, denominators
+        real(dp), dimension(:), allocatable :: density, energy
+        real(dp) :: error(num_spec)
+        character(len=:), allocatable :: by_species
+        integer :: species
+        character(len=*), parameter :: paths(3) = [character(len=9) :: &
+            'iteration', 'strict_lu', 'gmres']
 
-!! Modification by Andreas F. Martitsch (20.08.2015)
-! Array scalprod_pleg extended by 3rd (phi-steps) and
-! 4th dimension (species)
+        allocate(collision(size(solution)), lhs(size(solution)))
+        collision = (0.0d0, 0.0d0)
+        if (isw_intp == 1) call integral_part(solution, collision)
+        lhs = (0.0d0, 0.0d0)
+        call csr_add(nz, irow, icol, amat_sp, solution, lhs)
+
+        allocate(numerators(num_spec), denominators(num_spec))
+        allocate(density(num_spec), energy(num_spec))
+        numerators = 0; denominators = 0; density = 0; energy = 0
+        numerators(ispec + 1) = sum(abs(source + collision - lhs))
+        denominators(ispec + 1) = sum(abs(source)) + sum(abs(collision)) &
+            & + sum(abs(lhs))
+        if (problem_type) then
+            density(ispec + 1) = abs(sum(densvec_bra*solution)) &
+                & / max(sum(abs(densvec_bra))*maxval(abs(solution)), tiny(1.0d0))
+            if (isw_intp == 1) energy(ispec + 1) = abs(sum(energvec_bra*solution)) &
+                & / max(sum(abs(energvec_bra))*maxval(abs(solution)), tiny(1.0d0))
+        end if
+        call mpro%allgather_inplace(numerators)
+        call mpro%allgather_inplace(denominators)
+        call mpro%allgather_inplace(density)
+        call mpro%allgather_inplace(energy)
+        if (ispec /= 0) return
+
+        do species = 0, num_spec - 1
+            error(species + 1) = numerators(species + 1) &
+                & / max(denominators(species + 1), tiny(1.0d0))
+        end do
+        by_species = ''
+        do species = 0, num_spec - 1
+            by_species = by_species//json_real(error(species + 1))
+            if (species < num_spec - 1) by_species = by_species//','
+        end do
+        print '(a)', 'NEO2_SOLVE_JSON {"system":"' &
+            & //trim(merge('axisymmetric   ', 'nonaxisymmetric', problem_type)) &
+            & //'","source":'//json_int(source_index) &
+            & //',"driving_species":'//json_int(driving_species) &
+            & //',"path":"'//trim(paths(path)) &
+            & //'","converged":'//trim(merge('true ', 'false', converged)) &
+            & //',"increment_tolerance":'//json_real(epserr_iter) &
+            & //',"iteration_limit":'//json_int(niter) &
+            & //',"matrix_entries":'//json_int(nz) &
+            & //',"backward_error_by_species":['//by_species &
+            & //'],"density_constraint_residual":'//json_real(maxval(density)) &
+            & //',"energy_constraint_residual":'//json_real(maxval(energy))//'}'
+    end subroutine report_solve
+
+    function json_int(i) result(text)
+        integer, intent(in) :: i
+        character(len=:), allocatable :: text
+        character(len=16) :: buffer
+        write(buffer, '(i0)') i
+        text = trim(buffer)
+    end function json_int
+
+    function json_real(x) result(text)
+        real(dp), intent(in) :: x
+        character(len=:), allocatable :: text
+        character(len=32) :: buffer
+        write(buffer, '(es12.4e3)') x
+        text = trim(buffer)
+    end function json_real
+
+    !> Legendre moments of each Laguerre block of this species at each step.
+    subroutine integral_moments(vec_in, scalprod_pleg)
+        complex(dp), dimension(n_2d_size), intent(in) :: vec_in
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1), intent(out) :: scalprod_pleg
+        integer :: l, m, k, istep, npassing
+        scalprod_pleg = (0.0d0, 0.0d0)
         do istep = ibeg, iend
 
             npassing = npl(istep)
@@ -4439,7 +4433,21 @@ CONTAINS
 !! Modification by Andreas F. Martitsch (20.08.2015)
 ! MPI Barrier -> collect scalprod (4D - leg,lag,phi,species)
 ! (mpro%allgather supports 3D and 4D matrices)
-        call mpro%allgather_inplace(scalprod_pleg)
+
+    end subroutine integral_moments
+
+    !> Mix the moments of all species with ailmm_aa and map them back onto the
+    !> pitch-angle grid of this species.
+    subroutine integral_expand(scalprod_pleg, vec_out)
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1), intent(inout) :: scalprod_pleg
+        complex(dp), dimension(n_2d_size), intent(out) :: vec_out
+        integer :: l, m, i, k, istep, npassing, k_prev, ispecp
+        complex(dp), dimension(0:lag, 0:leg, ibeg:iend, 0:num_spec - 1) :: scalprod_pleg_tmp
+        complex(dp), dimension(:, :, :), allocatable :: vec_tmp
+
+        allocate (vec_tmp(0:lag, 2*(npart + 1), ibeg:iend))
+        vec_tmp = 0.d0
+
 
         do istep = ibeg, iend
 
@@ -4545,7 +4553,114 @@ CONTAINS
 
         deallocate (vec_tmp)
 
-    end subroutine integral_part
+    end subroutine integral_expand
+
+    !> Refactorize the preconditioner once with strict partial pivoting. With
+    !> UMFPACK's default threshold pivoting the LU of a badly scaled QL matrix
+    !> can have backward errors that make x - L^-1 L x nonlinear at the 1e-3
+    !> level, which stalls the stabilized iteration and GMRES alike (b0e9802b).
+    subroutine refactorize_strict_lu()
+        use sparse_mod, only: sparse_pivot_tolerance
+        real(dp), allocatable :: rhs_real(:)
+        complex(dp), allocatable :: rhs(:)
+        real(dp) :: default_tolerance
+
+        if (strict_lu) return
+        strict_lu = .true.
+        print *, 'refactorizing the QL preconditioner with strict partial pivoting'
+        default_tolerance = sparse_pivot_tolerance
+        sparse_pivot_tolerance = 1.0_dp
+        if (problem_type) then
+            allocate (rhs_real(ncol))
+            rhs_real = 0
+            iopt = 3
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
+                rhs_real, iopt)
+            iopt = 1
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, DBLE(amat_sp(1:nz)), &
+                rhs_real, iopt)
+        else
+            allocate (rhs(ncol))
+            rhs = 0
+            iopt = 3
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), rhs, iopt)
+            iopt = 1
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), rhs, iopt)
+        end if
+        sparse_pivot_tolerance = default_tolerance
+        iopt = 2
+    end subroutine refactorize_strict_lu
+
+    !> Solve (I - A) f = b with restarted GMRES, preconditioned by the same LU
+    !> factorization as the stabilized iteration, when that iteration exhausts
+    !> niter: it cannot converge where the deflated operator keeps an eigenvalue
+    !> near or beyond the unit circle.
+    subroutine gmres_source(source, eps)
+        use arnoldi_mod, only: fzero, mode, tol
+        use ql_gmres_mod, only: gmres_solve, gmres_maxiter, gmres_restart
+        complex(dp), intent(inout) :: source(:)
+        real(dp), intent(in) :: eps
+        complex(dp), allocatable :: rhs(:), zero(:)
+        real(dp) :: residual
+        integer :: status, steps, old_mode
+
+        ! The same projected L^-1 q and homogeneous map as iterator.
+        old_mode = mode
+        tol = 0.5_dp
+        allocate(fzero(size(source)), rhs(size(source)), zero(size(source)))
+        fzero = source
+        zero = 0
+        mode = 1
+        call next_iteration(size(source), zero, rhs)
+        mode = 2
+        call gmres_solve(size(source), rhs, source, gmres_operator, gmres_dot, &
+            eps, gmres_maxiter, gmres_restart, status, steps, residual)
+        deallocate(fzero)
+        mode = old_mode
+        print *, 'QL GMRES status, steps, residual:', status, steps, residual
+        ! A stagnated solve is accepted only near the requested accuracy.
+        if (status == 3 .and. residual <= 100*eps) then
+            print *, 'WARNING: QL GMRES stagnated above eps at the operator rounding level'
+        else if (status /= 0) then
+            error stop 'QL GMRES failed to converge'
+        end if
+    end subroutine gmres_source
+
+    subroutine gmres_operator(n, x, y)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: x(n)
+        complex(dp), intent(out) :: y(n)
+        complex(dp), allocatable :: work(:)
+
+        work = x
+        if (problem_type) then
+            ! next_iteration has a legacy inout interface but does not modify fold.
+            call next_iteration(n, work, y)
+        else
+            ! The mode-2 map x + L^-1 (I x - L x) of next_iteration equals L^-1 I x,
+            ! because the factorized matrix is the one applied there. Solving for
+            ! L^-1 I x directly avoids the cancellation x - L^-1 L x, whose rounding
+            ! noise (cond(L) eps |x|) makes the operator nonlinear for GMRES.
+            if (isw_intp .eq. 1) then
+                call integral_part(work, y)
+            else
+                y = (0.0d0, 0.0d0)
+            end if
+            call sparse_solve(nrow, ncol, nz, irow(1:nz), ipcol, amat_sp(1:nz), y, iopt)
+        end if
+        y = x - y
+    end subroutine gmres_operator
+
+    function gmres_dot(n, x, y) result(z)
+        integer, intent(in) :: n
+        complex(dp), intent(in) :: x(n), y(n)
+        complex(dp) :: z, species_dot(0:num_spec-1)
+
+        species_dot = 0
+        species_dot(ispec) = sum(conjg(x)*y)
+        call mpro%allgather_inplace(species_dot)
+        z = sum(species_dot)
+    end function gmres_dot
 
     !---------------------------------------------------------------------------------
     !> Single step of a preconditioned Richardson iteration which for equation set
