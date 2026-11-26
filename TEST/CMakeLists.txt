@@ -196,6 +196,19 @@ add_test(NAME golden_change_ci_test
          COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_golden_change.sh)
 set_tests_properties(golden_change_ci_test PROPERTIES SKIP_RETURN_CODE 77)
 
+# A precomputed single-species operator written with z_eff = 0 is read back.
+add_executable(test_precom_collop_zeff test_precom_collop_zeff.f90)
+target_link_libraries(test_precom_collop_zeff common)
+
+add_test(NAME precom_collop_zeff_test
+         COMMAND test_precom_collop_zeff
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(precom_collop_zeff_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 120
+)
+
 # Quadrature stencils of the QL source terms stay on the field line for an
 # odd number of steps (issue 123).
 add_executable(test_source_stencil test_source_stencil.f90)
