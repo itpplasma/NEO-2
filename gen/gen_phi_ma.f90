@@ -11,15 +11,17 @@ program gen_phi_ma
     type(expr_t) :: n, m, bcov_theta, bcov_phi, phase, phi_ma, us
     type(expr_t) :: dlambda, rho, bhat, h_phi, jpar, potential
     type(expr_t) :: phi, theta, theta_beg, phi_beg, x, alpha, beta, prj, ii
-    character(len=2048) :: qlfile, commonfile, revision
+    character(len=2048) :: qlfile, commonfile, flowfile, revision
+    type(expr_t) :: eparb, volume, step_weight
     integer :: unit
 
     call get_command_argument(1, qlfile)
     call get_command_argument(2, commonfile)
-    call get_command_argument(3, revision)
+    call get_command_argument(3, flowfile)
+    call get_command_argument(4, revision)
     if (len_trim(qlfile) == 0 .or. len_trim(commonfile) == 0 &
-        .or. len_trim(revision) == 0) &
-        error stop 'usage: gen_phi_ma QL_INC COMMON_INC FORTSYM_REVISION'
+        .or. len_trim(flowfile) == 0 .or. len_trim(revision) == 0) &
+        error stop 'usage: gen_phi_ma QL_INC COMMON_INC FLOW_INC FORTSYM_REVISION'
     ii = i_expr()
     temperature = sym('temperature')
     mass = sym('mass')
@@ -56,6 +58,9 @@ program gen_phi_ma
     alpha = sym('alpha')
     beta = sym('beta')
     prj = sym('prj')
+    eparb = sym('eparb')
+    volume = sym('volume')
+    step_weight = sym('step_weight')
 
     open (newunit=unit, file=trim(qlfile), status='replace')
     vt = sqrt(num(2)*temperature/mass)
@@ -112,6 +117,19 @@ program gen_phi_ma
         [str('x'), str('alpha'), str('beta'), str('prj')], [str('value')])
     close (unit)
 
+    open (newunit=unit, file=trim(flowfile), status='replace')
+    ! A3 of compute_ParFlow from <E_par B>/<B^2>.
+    call emit_real(unit, 'parallel_field_force_leaf', &
+        [eparb*charge/temperature], &
+        [str('eparb'), str('charge'), str('temperature')], [str('a3')])
+    ! Surface-average weight of one RK step, local D3j per unit surface
+    ! volume, and the conversion of the parallel flow v_par*B to a current.
+    call emit_real(unit, 'local_parflow_scales_leaf', &
+        [step_weight/(bhat*h_phi), volume*bhat*h_phi, charge/(bref*bhat)], &
+        [str('step_weight'), str('volume'), str('bhat'), str('h_phi'), &
+        str('charge'), str('bref')], [str('weight'), str('d3_scale'), str('j_scale')])
+    close (unit)
+
 contains
 
     subroutine emit_real(out, name, roots, args, outputs)
@@ -150,7 +168,8 @@ contains
         spec%generator = str('gen/gen_phi_ma.f90')
         spec%generator_revision = str(trim(revision))
         spec%regenerate_command = str('gen_phi_ma NEO-2-QL/generated/phi_ma_leaves.inc '// &
-            'COMMON/generated/exb_weight_leaf.inc FORTSYM_REVISION')
+            'COMMON/generated/exb_weight_leaf.inc '// &
+            'NEO-2-QL/generated/local_parflow_leaves.inc FORTSYM_REVISION')
     end subroutine fill_spec
 
     subroutine write_kernel(out, roots, spec)
