@@ -1137,7 +1137,7 @@ CONTAINS
     !   set default parameters
     CALL umf4def (control)
     IF (sparse_pivot_tolerance > 0) control(1+3) = sparse_pivot_tolerance ! UMFPACK_PIVOT_TOLERANCE
-    IF (sparse_ordering >= 0) control(11) = sparse_ordering
+    IF (sparse_ordering >= 0) control(1+10) = sparse_ordering ! UMFPACK_ORDERING
 
     n = nrow !convert from 1 to 0-based indexing
     IF (suitesparse_needs_matrix(iopt_in)) THEN
@@ -1236,7 +1236,7 @@ CONTAINS
     !   set default parameters
     CALL umf4zdef (control)
     IF (sparse_pivot_tolerance > 0) control(1+3) = sparse_pivot_tolerance ! UMFPACK_PIVOT_TOLERANCE
-    IF (sparse_ordering >= 0) control(11) = sparse_ordering
+    IF (sparse_ordering >= 0) control(1+10) = sparse_ordering ! UMFPACK_ORDERING
 
     n = nrow
     IF (suitesparse_needs_matrix(iopt_in)) THEN
@@ -1373,7 +1373,7 @@ CONTAINS
     !   set default parameters
     CALL umf4def (control)
     IF (sparse_pivot_tolerance > 0) control(1+3) = sparse_pivot_tolerance ! UMFPACK_PIVOT_TOLERANCE
-    IF (sparse_ordering >= 0) control(11) = sparse_ordering
+    IF (sparse_ordering >= 0) control(1+10) = sparse_ordering ! UMFPACK_ORDERING
 
     n = nrow
     bloc = 0.0_dp
@@ -1499,7 +1499,7 @@ CONTAINS
     !   set default parameters
     CALL umf4zdef (control)
     IF (sparse_pivot_tolerance > 0) control(1+3) = sparse_pivot_tolerance ! UMFPACK_PIVOT_TOLERANCE
-    IF (sparse_ordering >= 0) control(11) = sparse_ordering
+    IF (sparse_ordering >= 0) control(1+10) = sparse_ordering ! UMFPACK_ORDERING
 
 
     ! First, factorize the matrix. The factors are stored in *numeric* handle.
