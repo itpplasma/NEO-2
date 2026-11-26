@@ -24,6 +24,7 @@ set(COMMON_FILES
   device_mod.f90
   flint_mod.f90
   fluxsplitter.f90
+  gmres_mod.f90
   inter_interfaces.f90
   kin_allocate.f90
   lapack_band.f90
