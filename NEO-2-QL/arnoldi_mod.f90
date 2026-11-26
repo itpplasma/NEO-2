@@ -2,6 +2,8 @@ MODULE arnoldi_mod
   INTEGER :: ngrow,ierr
   INTEGER :: ntol,mode=0
   DOUBLE PRECISION :: tol
+  ! Shared resolution for Ritz convergence and the unit-eigenvalue filter.
+  DOUBLE PRECISION, PARAMETER :: epserr_ritznum=1.0d-3
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: fzero,ritznum
   complex(kind=kind(1d0)), DIMENSION(:),   ALLOCATABLE :: f_init_arnoldi
   complex(kind=kind(1d0)), DIMENSION(:,:), ALLOCATABLE :: eigvecs
@@ -70,7 +72,7 @@ contains
   !> Output parameters:
   !>            Formal: result         - solution vector
   SUBROUTINE iterator(mode_in,n,narn,relerr,itermax,RESULT_, ispec, &
-    & next_iteration)
+      & next_iteration, converged)
 
     use mpiprovider_module, only : mpro
     use collisionality_mod, only : num_spec
@@ -90,6 +92,8 @@ contains
 
     integer :: ispec
     INTEGER :: mode_in,n,narn,itermax,i,j,iter,nsize,info,iarnflag
+    ! False unless an iteration loop met its stopping rule within itermax.
+    LOGICAL, OPTIONAL, INTENT(OUT) :: converged
     DOUBLE PRECISION :: relerr
     COMPLEX(kind=kind(1d0)), DIMENSION(n), intent(inout) :: RESULT_
     INTEGER,        DIMENSION(:),   ALLOCATABLE :: ipiv
@@ -100,6 +104,8 @@ contains
     DOUBLE PRECISION, DIMENSION(0:num_spec-1) :: break_cond2
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: coefren_spec
     complex(kind=kind(1d0)), DIMENSION(:), ALLOCATABLE :: amat_spec
+
+    IF(PRESENT(converged)) converged = .FALSE.
 
     IF(mode_in.EQ.3) THEN
       mode=mode_in
@@ -141,6 +147,23 @@ contains
 
       IF(ngrow .GT. 0) PRINT *,'ritznum = ',ritznum(1:ngrow)
 
+      ! A unit eigenvalue belongs to the null space of a singular but
+      ! compatible equation (e.g. pitch-angle scattering without energy
+      ! scattering). It does not grow, and the subtraction matrix below
+      ! scales with ritznum-1. Do not invert distances smaller than the
+      ! accuracy requested from Arnoldi; they cannot resolve a unit mode.
+      nsize=0
+      DO j=1,ngrow
+        IF(ABS(ritznum(j)-(1.d0,0.d0)) .GT. epserr_ritznum) THEN
+          nsize=nsize+1
+          ritznum(nsize)=ritznum(j)
+          eigvecs(:,nsize)=eigvecs(:,j)
+        ENDIF
+      ENDDO
+      IF(nsize .LT. ngrow .AND. ispec .EQ. 0) PRINT *, &
+        'iterator: neutral modes not subtracted = ',ngrow-nsize
+      ngrow=nsize
+
     ENDIF
 
     if (ispec .eq. 0) print *,'iterator: number of bad modes = ', ngrow
@@ -171,6 +194,7 @@ contains
       ENDDO
   !
       PRINT *,'iterator: number of direct iterations = ',iter-1
+      IF(PRESENT(converged)) converged = iter <= itermax
 
       RESULT_=fnew
       DEALLOCATE(fold,fnew,fzero)
@@ -232,6 +256,7 @@ contains
     ENDDO
 
     if (ispec .eq. 0) print *,'iterator: number of stabilized iterations = ', iter-1
+    IF(PRESENT(converged)) converged = iter <= itermax
 
     RESULT_=fnew
 
@@ -267,9 +292,6 @@ contains
     use collisionality_mod, only : num_spec
 
     IMPLICIT NONE
-
-    ! set independent accuracy-level for eigenvalue computation
-    DOUBLE PRECISION, PARAMETER :: epserr_ritznum=1.0d-3
 
     interface
       subroutine next_iteration(n,fold,fnew)

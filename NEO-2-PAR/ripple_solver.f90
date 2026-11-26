@@ -2311,9 +2311,10 @@ call cpu_time(time1)
            exit
         endif
      enddo
-     if (niter .eq. iter) then
+     ! A DO loop that runs out leaves iter = niter + 1.
+     if (iter > niter) then
         write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
-        stop
+        error stop
      end if
     enddo
 
@@ -2672,9 +2673,10 @@ time3 = time3 + (time5-time4)
 
         enddo
 
-        if (niter .eq. iter) then
+        ! A DO loop that runs out leaves iter = niter + 1.
+        if (iter > niter) then
            write (*,*) "Left - Maximum number of iterations reached in ripple solver."
-           stop
+           error stop
         end if
       endif
 
@@ -2731,9 +2733,10 @@ time3 = time3 + (time5-time4)
 
         enddo
 
-        if (niter .eq. iter) then
+        ! A DO loop that runs out leaves iter = niter + 1.
+        if (iter > niter) then
            write (*,*) "Right - Maximum number of iterations reached in ripple solver."
-           stop
+           error stop
         end if
       endif
 

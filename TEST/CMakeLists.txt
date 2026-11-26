@@ -62,6 +62,29 @@ if(NEO2_TEST_PYTHON)
   set_tests_properties(local_parallel_flow_test PROPERTIES TIMEOUT 240)
 endif()
 
+# Test executable for collision_model module
+add_executable(test_collision_model test_collision_model.f90)
+target_link_libraries(test_collision_model neo2_ql)
+
+add_test(NAME collision_model_test
+         COMMAND test_collision_model
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(collision_model_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_collop_energy_conservation test_collop_energy_conservation.f90)
+target_link_libraries(test_collop_energy_conservation common)
+add_test(NAME collop_energy_conservation_test COMMAND test_collop_energy_conservation)
+set_tests_properties(collop_energy_conservation_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 120
+)
+
 # Test executable for er_rotation module
 add_executable(test_er_rotation test_er_rotation.f90)
 target_link_libraries(test_er_rotation neo2_ql)
@@ -115,6 +138,70 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     TIMEOUT 30
 )
 
+add_executable(test_periodic_spline_underflow test_periodic_spline_underflow.f90)
+target_link_libraries(test_periodic_spline_underflow PRIVATE common)
+add_test(NAME periodic_spline_underflow COMMAND test_periodic_spline_underflow)
+set_tests_properties(periodic_spline_underflow PROPERTIES TIMEOUT 1 LABELS "field;fast")
+
+# Reading a stored propagator must allocate its fixed-shape qflux.
+add_executable(test_propagator_io test_propagator_io.f90)
+target_link_libraries(test_propagator_io neo2_ql)
+
+add_test(NAME propagator_io_test
+         COMMAND test_propagator_io
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(propagator_io_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+# isw_calc_Er=2 (prescribed Om_tE) must prepare a multi-species scan from an
+# input without V_phi. Drives the real neo_2_ql.x on synthetic HDF5 input.
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+  execute_process(COMMAND ${Python3_EXECUTABLE} -c "import numpy, h5py"
+                  RESULT_VARIABLE _neo2_py_deps OUTPUT_QUIET ERROR_QUIET)
+endif()
+if(Python3_Interpreter_FOUND AND _neo2_py_deps EQUAL 0)
+  add_test(NAME er_direct_prepare_scan_test
+           COMMAND ${Python3_EXECUTABLE}
+                   ${CMAKE_CURRENT_SOURCE_DIR}/test_er_direct_prepare_scan.py
+                   $<TARGET_FILE:neo_2_ql.x>
+                   ${CMAKE_CURRENT_SOURCE_DIR}/fixtures/neo_ql_prepare_scan.in
+           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  set_tests_properties(er_direct_prepare_scan_test PROPERTIES
+      PASS_REGULAR_EXPRESSION "All tests passed!"
+      FAIL_REGULAR_EXPRESSION "FAIL"
+      TIMEOUT 120
+  )
+else()
+  message(STATUS "numpy/h5py not found: skipping er_direct_prepare_scan_test")
+endif()
+
+# Restarted complex GMRES of the QL fallback solve.
+add_executable(test_ql_gmres test_ql_gmres.f90)
+target_link_libraries(test_ql_gmres neo2_ql)
+add_test(NAME ql_gmres_test COMMAND test_ql_gmres)
+set_tests_properties(ql_gmres_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+add_executable(test_sparse_solve_reuse test_sparse_solve_reuse.f90)
+target_link_libraries(test_sparse_solve_reuse common)
+
+add_test(NAME sparse_solve_reuse_test
+         COMMAND test_sparse_solve_reuse
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(sparse_solve_reuse_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
 # eval_bslimit must fail (nonzero exit) when the eta-level index exceeds
 # bsfunc_max_index instead of exiting with status 0.
 add_executable(test_binarysplit_max_index test_binarysplit_max_index.f90)
@@ -125,6 +212,61 @@ add_test(NAME binarysplit_max_index_test
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 set_tests_properties(binarysplit_max_index_test PROPERTIES
-    WILL_FAIL TRUE
+    PASS_REGULAR_EXPRESSION "number of eta levels exceeds bsfunc_max_index"
+    FAIL_REGULAR_EXPRESSION "FAIL|unexpected"
+    TIMEOUT 30
+)
+
+# Dry run of the golden-change CI path; skipped without jq.
+add_test(NAME golden_change_ci_test
+         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_golden_change.sh)
+set_tests_properties(golden_change_ci_test PROPERTIES SKIP_RETURN_CODE 77)
+
+# Quadrature stencils of the QL source terms stay on the field line for an
+# odd number of steps (issue 123).
+add_executable(test_source_stencil test_source_stencil.f90)
+target_link_libraries(test_source_stencil neo2_ql)
+add_test(NAME source_stencil_test COMMAND test_source_stencil)
+set_tests_properties(source_stencil_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+# The axisymmetric residual must be taken over every block of the matrix that
+# was handed to the solver, not only the bulk block (issue 81 follow-up).
+add_executable(test_solve_report test_solve_report.f90)
+target_link_libraries(test_solve_report neo2_ql)
+add_test(NAME solve_report_test COMMAND test_solve_report)
+set_tests_properties(solve_report_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+# k_cof = 5/2 - D32/D31 in neo2_multispecies_out.h5.
+add_executable(test_k_cof_output test_k_cof_output.f90)
+target_link_libraries(test_k_cof_output neo2_ql)
+add_test(NAME k_cof_output_test
+         COMMAND test_k_cof_output
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+set_tests_properties(k_cof_output_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
+    TIMEOUT 30
+)
+
+# fint1d_cquad must clamp every integrand sample to the open segment: the
+# Clenshaw-Curtis endpoint node can round one ulp outside [x_low, x_up].
+add_executable(test_cquad_clamp test_cquad_clamp.f90)
+target_link_libraries(test_cquad_clamp common)
+
+add_test(NAME cquad_clamp_test
+         COMMAND test_cquad_clamp
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(cquad_clamp_test PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed!"
+    FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
 )
