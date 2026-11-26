@@ -1293,13 +1293,24 @@ def interpolate_hdf5_file(in_filename: str, out_filename: str, new_points: list)
 
     o['/num_radial_pts'][()] = np.array(num_new)
 
+def _comparison_keys(group):
+  """Resolve the published flux-gradient dataset rename without changing files."""
+  keys = {key: key for key in group.keys()}
+  if group.name.rsplit('/', 1)[-1] in ('fulltransp', 'neo2_multispecies_out'):
+    old, new = 'avnabpsi', 'av_nabla_stor'
+    if old in keys and new in keys:
+      raise ValueError('Ambiguous dataset names in ' + group.name)
+    if old in keys:
+      keys[new] = keys.pop(old)
+  return keys
+
 def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
   """Check if two h5py groups contain the same subgroups/datasets.
 
   This function checks if two given h5py groups contain the same
   subgroups and datasets.
-  The groups are considered to differ, if the lengths do not match, or
-  if the reference does contain keys which are not in the other group.
+  Every reference key must be present with the same object type in the
+  other group. Additional keys in the other group are allowed.
 
   input
   ----------
@@ -1323,8 +1334,10 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
   """
   import h5py
 
-  lr = list(reference_group.keys())
-  lo = list(other_group.keys())
+  reference_keys = _comparison_keys(reference_group)
+  other_keys = _comparison_keys(other_group)
+  lr = list(reference_keys)
+  lo = list(other_keys)
 
   return_value = True
 
@@ -1338,8 +1351,11 @@ def compare_hdf5_group_keys(reference_group, other_group, verbose: bool):
 
   for key in lr:
     if key in lo:
-      if isinstance(reference_group[key], h5py.Group):
-        return_value = return_value and compare_hdf5_group_keys(reference_group[key], other_group[key], verbose)
+      if isinstance(reference_group[reference_keys[key]], h5py.Group) != isinstance(other_group[other_keys[key]], h5py.Group):
+        return_value = False
+        print("Object type differs for '" + reference_group[reference_keys[key]].name + "'.")
+      elif isinstance(reference_group[reference_keys[key]], h5py.Group):
+        return_value = return_value and compare_hdf5_group_keys(reference_group[reference_keys[key]], other_group[other_keys[key]], verbose)
     else:
       return_value = False
       print("Key '" + key + "' only found in reference.")
@@ -1376,13 +1392,15 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   This function checks if two given h5py groups contain the same data,
   i.e. if the respective datasets are equal.
   Subgroups are checked recursively.
-  Equality for a dataset of floats thereby means that the normalized
+  Equality for a dataset of floats or complex numbers means that the normalized
   values (to maximum value in dataset) differ less than a given delta.
   The difference is determined from the objects attribute 'accuracy' if
   it exists (considered to be an absolute accuracy) and from the
   parameter 'delta_relative' if the attribute does not exist or is
   either infinite or nan.
-  For integers and strings it refers to direct equality.
+  Shapes must match. Other data types are compared by direct equality.
+  Nonfinite numeric values fail, including in datasets present in only
+  one group. Missing reference keys are reported by compare_hdf5_group_keys.
   Either a whitelist of keys to compare or a blacklist of keys to not
   compare, can be given.
 
@@ -1401,7 +1419,7 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   reference_group, other_group: h5 (group) objects, the elements which
     should be compared.
   delta_relative: float, default value for the maximum error to use.
-    This will only be used if the onject (1) is a float (2) has no
+    This will only be used if the object (1) is float or complex (2) has no
     attribute 'accuracy'. If the latter exists, then this is used as
     absolute accuracy.
   whitelist, blacklist: Both of these can be empty ([]), or one of them
@@ -1423,18 +1441,15 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   ----------
   There should be no side effects.
 
-  limitations
-  ----------
-  Not sure how nan and inf are treated.
-  At least encountering a nan should lead to a warning
-  'RuntimeWarning: invalid value encountered in greater'.
   """
   import numpy
   import h5py
   from math import isnan, isinf
 
-  lr = list(reference_group.keys())
-  lo = list(other_group.keys())
+  reference_keys = _comparison_keys(reference_group)
+  other_keys = _comparison_keys(other_group)
+  lr = list(reference_keys)
+  lo = list(other_keys)
 
   return_value = True
 
@@ -1444,38 +1459,61 @@ def compare_hdf5_group_data(reference_group, other_group, delta_relative: float,
   whitelist = fill_list(whitelist)
   blacklist = fill_list(blacklist)
 
-  for key in lr:
-    if (not whitelist or key in whitelist) and (not blacklist or key not in blacklist):
-      if key in lo:
-        if isinstance(reference_group[key], h5py.Dataset):
-          if reference_group[key].dtype.kind == 'f':
-            max_value_dataset = max(numpy.nditer(abs(numpy.array(reference_group[key]))))
+  for key in lr + [key for key in lo if key not in reference_keys]:
+    name = reference_keys.get(key, other_keys.get(key))
+    if (not whitelist or name in whitelist) and (not blacklist or name not in blacklist):
+      reference = reference_group[reference_keys[key]] if key in reference_keys else None
+      other = other_group[other_keys[key]] if key in other_keys else None
+      # Check non-overlapping data against itself so nonfinite values cannot
+      # pass merely because the other file does not contain that dataset.
+      if reference is None:
+        reference = other
+      if other is None:
+        other = reference
+
+      if isinstance(reference, h5py.Group) != isinstance(other, h5py.Group):
+        return_value = False
+        if verbose:
+          print('Object type differs for ' + reference.name)
+      elif isinstance(reference, h5py.Dataset):
+        reference_data = reference[()]
+        other_data = other[()]
+        if reference.shape != other.shape:
+          return_value = False
+          if verbose:
+            print('Shape differs for ' + reference.name)
+        elif any(data.dtype.kind in 'fc' and not numpy.isfinite(data).all()
+                 for data in (numpy.asarray(reference_data), numpy.asarray(other_data))):
+          return_value = False
+          if verbose:
+            print('Nonfinite data in ' + reference.name)
+        elif reference.dtype.kind in 'fc':
+          if other.dtype.kind not in 'biufc':
+            return_value = False
+            if verbose:
+              print('Non-numeric data in ' + other.name)
+          elif numpy.size(reference_data):
+            max_value_dataset = numpy.max(numpy.abs(reference_data))
             if max_value_dataset == 0:
               max_value_dataset = 1.0
-            abs_differences = abs(numpy.subtract(numpy.array(reference_group[key]), numpy.array(other_group[key])))
-            delta_abs = reference_group[key].attrs.get('accuracy', -1.0)
+            abs_differences = numpy.abs(numpy.subtract(reference_data, other_data))
+            delta_abs = reference.attrs.get('accuracy', -1.0)
             if (delta_abs < 0) or isnan(delta_abs) or isinf(delta_abs):
               delta_abs = delta_relative * max_value_dataset
-
-            if (abs_differences > delta_abs).any():
+            if not (abs_differences <= delta_abs).all():
               return_value = False
-              if (verbose):
-                print('Difference in ' + key + ': ' + '{}'.format(float(max(numpy.nditer(abs_differences/max_value_dataset)))))
-          elif reference_group[key].dtype.kind == 'i':
-            if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
-              return_value = False
-              print('Difference in ' + key)
-          elif reference_group[key].dtype.kind == 'S':
-            if (numpy.array(reference_group[key]) != numpy.array(other_group[key])).any():
-              return_value = False
-              print('Difference in ' + key)
-
+              if verbose:
+                print('Difference in ' + reference.name + ': ' + str(numpy.max(abs_differences / max_value_dataset)))
+        elif not numpy.array_equal(reference_data, other_data):
+          return_value = False
+          if verbose:
+            print('Difference in ' + reference.name)
+      else:
+        # Allow short circuited evaluation only if not verbose.
+        if verbose:
+          return_value = all([return_value, compare_hdf5_group_data(reference, other, delta_relative, whitelist, blacklist, verbose)])
         else:
-          # Allow short circuited evaluation only if not verbose.
-          if (verbose):
-            return_value = all([return_value, compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)])
-          else:
-            return_value = return_value and compare_hdf5_group_data(reference_group[key], other_group[key], delta_relative, whitelist, blacklist, verbose)
+          return_value = return_value and compare_hdf5_group_data(reference, other, delta_relative, whitelist, blacklist, verbose)
 
   return return_value
 
@@ -1501,8 +1539,8 @@ def compare_hdf5_files(reference_filename: str, other_filename: str, delta_relat
   List with to boolean values.
   The first one is true, if the files are the same, in the sense given
   above, false if not.
-  The second one will be true of the keys of the two files match, i.e.
-  the number and the names datasets are the same.
+  The second one is true if every reference key is present with the same
+  object type in the other file; additional keys in the other file are allowed.
 
   side effects
   ----------
@@ -1680,7 +1718,7 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
   name.
   """
   import numpy as np
-  from neo2_ql import get_kappa
+  from neo2_ql import get_kappa, get_coulomb_logarithm
 
   no_change_needed = ['Vphi', 'boozer_s', 'isw_Vphi_loc', 'num_radial_pts', 'rho_pol']
   special_treatment_needed = ['species_tag_Vphi']
@@ -1703,10 +1741,6 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
       nsp[0] -= 1
       hout.create_dataset('num_species', data=nsp)
 
-      rs = np.array(hin['rel_stages'])
-      rs[...] -= 1
-      hout.create_dataset('rel_stages', data=rs)
-
       st = np.array(hin['species_tag'])
       st.resize( (hout['num_species'][0], ) )
       hout.create_dataset('species_tag', data=st)
@@ -1715,8 +1749,11 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
         # if two remaining species, special treatment for some
         # quantities: set both to electron value(s).
         if (dname in zero_dimension_special) and nsp[0] == 2:
+          # Quasi-neutrality with one ion species of charge Z: n_i = n_e / Z.
+          ion = [k for k in range(nsp[0] + 1) if k != index][1]
+          z_ion = np.array(hin['species_def'])[0, ion, ...]
           t = np.array(np.array(hin[dname])[0, ...], ndmin=2)
-          t = np.append(t, np.array(np.array(hin[dname])[0, ...], ndmin=2), 0)
+          t = np.append(t, np.array(np.array(hin[dname])[0, ...] / z_ion, ndmin=2), 0)
         else:
           t = np.array(hin[dname])[0:index, ...]
           t = np.append(t, np.array(hin[dname])[index+1:, ...], 0)
@@ -1727,11 +1764,21 @@ def remove_species_from_profile_file(infilename: str, outfilename: str, index: i
         t = np.append(t, np.array(hin[dname])[:, index+1:, ...], 1)
         hout.create_dataset(dname, data=t)
 
+      # Number of species with positive density per surface, as neo2.f90
+      # requires; a plain decrement is wrong where the removed species was
+      # absent.
+      rs = np.array(hin['rel_stages'])
+      rs[...] = (np.array(hout['n_prof']) > 0.0).sum(axis=0)
+      hout.create_dataset('rel_stages', data=rs)
+
       if nsp[0] == 2:
         kappa = np.array(np.array(hin['kappa_prof'])[0, ...], ndmin=2)
         ELEMENTARY_CHARGE_CGS = 1.60217662e-19 * 2.99792458e8 * 10
         ion_charge = hout['species_def'][0, 1, ...] * ELEMENTARY_CHARGE_CGS
-        kappa_ion = get_kappa(hout['n_prof'][1, ...], hout['T_prof'][1, ...], ion_charge)
+        # Coulomb logarithm from the electrons, as in generate_multispec_input.
+        log_lambda = get_coulomb_logarithm(hout['n_prof'][0, ...], hout['T_prof'][0, ...])
+        kappa_ion = get_kappa(hout['n_prof'][1, ...], hout['T_prof'][1, ...], ion_charge,
+                              log_lambda)
         print(kappa_ion)
         print(hout['n_prof'][1, ...])
         print(hout['T_prof'][1, ...])
@@ -2147,6 +2194,63 @@ def change_neo2_profile_according_to_astra_output(path:str, neo2infilename:str, 
     out.close()
 
 
+def _regridded_densities(infilename: str, new_s_grid):
+  """Densities on new_s_grid and the number of species with positive density.
+
+  rel_stages in the profile input is the number of species with positive
+  density on each surface: neo2.f90 (prepare_mulitspecies_scan) uses it as
+  num_spec and fills one slot per species with n_prof > 0, stopping if there
+  are more and leaving slots unset if there are fewer. After regridding it
+  must therefore equal the count of positive interpolated densities. The
+  densities are interpolated with the same cubic spline as before. Values
+  within 1e-10 of a species' largest density from zero are spline roundoff
+  (e.g. at a knot with zero density) and are set to exactly zero; nothing else
+  is modified, which keeps quasi-neutrality of the interpolated profiles.
+
+  A negative interpolated density is refused: neo2.f90 would drop that
+  species and the remaining ones would no longer be quasi-neutral.
+
+  The count must lie between the counts of the old surfaces around each new
+  point (the surface itself on an old surface, the endpoint outside the old
+  range). Otherwise the spline has crossed zero for a species present on both
+  (undershoot) or absent on both (overshoot), and a ValueError is raised
+  rather than writing a profile file with spurious or missing species.
+  """
+  import numpy as np
+  from scipy.interpolate import CubicSpline
+
+  new_s = np.asarray(new_s_grid, dtype=float)
+  with get_hdf5file(infilename) as ref:
+    old_s = np.asarray(ref['boozer_s'])
+    old_n = np.asarray(ref['n_prof'])
+    old_rel = np.asarray(ref['rel_stages'])
+  new_n = CubicSpline(old_s, old_n, axis=1)(new_s)
+  tol = 1.0e-10 * np.max(np.abs(old_n), axis=1, keepdims=True)
+  new_n = np.where(np.abs(new_n) <= tol, 0.0, new_n)
+  negative = np.any(new_n < 0.0, axis=0)
+  if np.any(negative):
+    raise ValueError('new_grid: interpolated density of a species is negative '
+                     'at boozer_s = ' + str(new_s[negative])
+                     + '; use a different grid.')
+  count = (new_n > 0.0).sum(axis=0)
+
+  idx = np.searchsorted(old_s, new_s)
+  right = np.minimum(idx, old_s.size - 1)
+  left = np.maximum(idx - 1, 0)
+  on_old = np.isclose(old_s[right], new_s, rtol=0, atol=1e-14)
+  outside = (idx == 0) | (idx == old_s.size)
+  left = np.where(on_old | outside, right, left)
+  low = np.minimum(old_rel[left], old_rel[right])
+  high = np.maximum(old_rel[left], old_rel[right])
+  bad = (count < low) | (count > high)
+  if np.any(bad):
+    raise ValueError('new_grid: interpolated densities change the number of '
+                     'species with positive density beyond the neighbouring '
+                     'surfaces at boozer_s = ' + str(new_s[bad])
+                     + '; use a different grid.')
+  return new_n, count
+
+
 def new_grid(infilename: str, outfilename: str, new_s_grid):
   """Reinterpolate existing neo-2 profile file to new grid.
 
@@ -2182,6 +2286,10 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
   from numpy import array
   from scipy.interpolate import CubicSpline
 
+  # Densities and species counts, checked before the output file is
+  # created or replaced.
+  checked_n, int_rel_stages = _regridded_densities(infilename, new_s_grid)
+
   with get_hdf5file_replace(outfilename) as out:
     with get_hdf5file(infilename) as ref:
       # Copy everything, then change what needs to be changed.
@@ -2191,8 +2299,10 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
     new_s_grid = array(new_s_grid)
 
     sp_n = CubicSpline(out['boozer_s'], out['n_prof'], axis=1)
-    int_n = sp_n(new_s_grid)
+    int_n = checked_n
     der_n = sp_n(new_s_grid, 1)
+
+
     dset = out['n_prof']
     dset[...] = array(int_n)
     dset = out['dn_ov_ds_prof']
@@ -2221,10 +2331,8 @@ def new_grid(infilename: str, outfilename: str, new_s_grid):
     dset = out['rho_pol']
     dset[...] = array(int_rho)
 
-    sp_rel_stages = CubicSpline(out['boozer_s'], out['rel_stages'])
-    int_rel_stages = sp_rel_stages(new_s_grid)
     dset = out['rel_stages']
-    dset[...] = array(int_rel_stages)
+    dset[...] = int_rel_stages
 
     sp_vphi = CubicSpline(out['boozer_s'], out['Vphi'])
     int_vphi = sp_vphi(new_s_grid)

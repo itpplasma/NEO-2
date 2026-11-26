@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
-project(NEO-2)
+project(NEO-2 LANGUAGES C Fortran)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 enable_language(C Fortran)
 enable_testing()
@@ -9,7 +9,6 @@ enable_testing()
 if(EXISTS ${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
   include (${CMAKE_BINARY_DIR}/BuildConfig.cmake.in)
 endif()
-include(${PROJECT_SOURCE_DIR}/COMMON/ProjectConfig.cmake.in)
 
 if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
   message("Building in release mode (default)...")
@@ -26,7 +25,10 @@ add_compile_options(-g -fPIC)
 if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   set(CMAKE_Fortran_FLAGS_RELEASE " -O2 -fbacktrace -fopenmp -ffpe-summary=invalid,zero,overflow")
   if(APPLE)
-    add_compile_options(-march=native)
+    # GCC on Apple Silicon uses -mcpu for native ARM tuning. Combining
+    # -march=native with -mcpu=native from libneo makes GCC resolve the
+    # architecture to apple-m3, which gfortran does not accept as -march.
+    add_compile_options(-mcpu=native)
   else()
     add_compile_options(-march=x86-64-v2 -mtune=generic)
   endif()
@@ -86,8 +88,19 @@ if(MPE_SUPPORT)
   find_library(MPE_lib mpe ${MPE_PATH}/lib)
 endif()
 
+if(APPLE)
+  # Keep FindBLAS deterministic across reconfiguration. On macOS the system
+  # Accelerate framework is the supported BLAS/LAPACK provider; an explicit
+  # BLA_VENDOR supplied by the user is preserved by the CACHE assignment.
+  set(BLA_VENDOR Apple CACHE STRING "BLAS vendor")
+endif()
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
+
+# libneo's FortNum component also requires LAPACK while it is added below.
+# Discover the numerical libraries first so that dependency configuration is
+# independent of CMake's cache state.
+include(${PROJECT_SOURCE_DIR}/COMMON/ProjectConfig.cmake.in)
 
 find_package(SuiteSparse)
 if(SUITESPARSE_FOUND)

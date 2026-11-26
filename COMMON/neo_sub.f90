@@ -2847,7 +2847,8 @@ CONTAINS
     ! Redirect asymmetric fields through INP_SWI_TOK evaluation path in neo_magfie.
     IF (lasym_int /= 0) inp_swi = INP_SWI_TOK
 
-    flux  = phi_b(ns_b) * nfp
+    ! booz_xform phi_b is already the signed full-torus flux [Wb].
+    flux  = phi_b(ns_b)
     psi_pr = ABS(flux) / twopi
 
     max_m_mode = MIN(max_m_mode, MAXVAL(ABS(ixm)))

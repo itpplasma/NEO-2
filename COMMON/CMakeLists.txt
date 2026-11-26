@@ -39,6 +39,7 @@ set(COMMON_FILES
   neo_exchange.f90
   neo_input.f90
   neo_magfie.f90
+  theta_rz_solver_mod.f90
   neo_spline_b00.f90
   neo_spline_data.f90
   neo_spline.f90
@@ -107,7 +108,7 @@ target_link_libraries(common PUBLIC
 if(LEGACY_SUITESPARSE)
   target_link_libraries(common PUBLIC ${SUITESPARSE_LIBRARIES})
 else()
-  target_link_libraries(common PUBLIC SuiteSparse::umfpack)
+  target_link_libraries(common PUBLIC SuiteSparse::UMFPACK)
 endif()
 
 target_link_libraries(common PUBLIC

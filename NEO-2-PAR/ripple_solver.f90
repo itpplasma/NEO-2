@@ -2322,13 +2322,12 @@ call cpu_time(time1)
 !$omp end parallel do
 
     do k=1,3
-      if (iter_source(k) .le. niter) then
-        write (*,*) "Source: ", k, "Number of iterations: ", iter_source(k)
-      end if
-      if (niter .eq. iter_source(k)) then
+      ! A DO loop that runs out leaves iter = niter + 1.
+      if (iter_source(k) > niter) then
         write (*,*) "qflux - Maximum number of iterations reached in ripple solver."
-        stop
+        error stop
       end if
+      write (*,*) "Source: ", k, "Number of iterations: ", iter_source(k)
     enddo
 
   endif
@@ -2686,9 +2685,10 @@ time3 = time3 + (time5-time4)
 
         enddo
 
-        if (niter .eq. iter) then
+        ! A DO loop that runs out leaves iter = niter + 1.
+        if (iter > niter) then
            write (*,*) "Left - Maximum number of iterations reached in ripple solver."
-           stop
+           error stop
         end if
       endif
 
@@ -2745,9 +2745,10 @@ time3 = time3 + (time5-time4)
 
         enddo
 
-        if (niter .eq. iter) then
+        ! A DO loop that runs out leaves iter = niter + 1.
+        if (iter > niter) then
            write (*,*) "Right - Maximum number of iterations reached in ripple solver."
-           stop
+           error stop
         end if
       endif
 
