@@ -11,12 +11,13 @@ if [ -n "${SLURM_JOB_ID:-}" ]; then
     export PATH=/home/ert/.local/bin:$PATH
 else
     tier=${1:?usage: ci/run.sh TIER}
-    root=$(mktemp -d "${RUNNER_TEMP:-/tmp}/native-ci.XXXXXX")
+    # sci-dispatch unpacks the bundle, golden data included, in SCI_ROOT.
+    root=${SCI_ROOT:-$(mktemp -d "${RUNNER_TEMP:-/tmp}/native-ci.XXXXXX")}
     export FC=/usr/bin/gfortran CC=/usr/bin/gcc CXX=/usr/bin/g++
     export OPENBLAS_NUM_THREADS=1 MPLBACKEND=Agg
 fi
 unset DISPLAY
-export CMAKE_TOOLCHAIN_FILE=$src/ci/cluster-toolchain.cmake
+export CMAKE_TOOLCHAIN_FILE=$src/ci/system-toolchain.cmake
 if [ -d "$root/mirrors" ]; then
     export GIT_CONFIG_GLOBAL=$root/gitconfig
     : > "$GIT_CONFIG_GLOBAL"
@@ -69,6 +70,8 @@ pip install ./python
     load_job_environment
     echo 'Test Python tools'
     (
+# Some tests run small executables from pytest's temporary directory.
+export TMPDIR=$RUNNER_TEMP
 python -m pytest python/test
     )
     load_job_environment
