@@ -32,7 +32,7 @@ SUBROUTINE ripple_solver(                                 &
                             prop_fileformat, lsw_save_dentf, lsw_save_enetf,   &
                             lsw_save_spitf
   USE sparse_mod, ONLY : sparse_talk,sparse_solve_method,sparse_solve, &
-       column_full2pointer,remap_rc,sparse_solver_test,sparse_solve_factorized
+       column_full2pointer,remap_rc,sparse_solver_test
 !$ USE omp_lib, ONLY : omp_get_max_threads
   USE mag_interface_mod, ONLY: average_bhat,average_one_over_bhat,             &
                                surface_boozer_B00,travis_convfac,              &
@@ -2294,7 +2294,7 @@ call cpu_time(time1)
 ! The three sources are independent and share the factorization.
 !$omp parallel do num_threads(min(3,omp_get_max_threads())) schedule(dynamic,1) &
 !$omp   private(k,iter,bvec_lor,bvec_prev,bvec_iter)                          &
-!$omp   if(sparse_solve_method.eq.3)
+    !$omp   if(sparse_solve_method.eq.2 .or. sparse_solve_method.eq.3)
     do k=1,3
       bvec_lor=source_vector(:,k)
 
@@ -2305,12 +2305,8 @@ call cpu_time(time1)
                            phi_mfl,pleg_bra(0:leg,:,:),pleg_ket(0:leg,:,:),   &
                            ailmm,source_vector(:,k),bvec_iter)
 
-        if(sparse_solve_method.eq.3) then
-          call sparse_solve_factorized(bvec_iter)
-        else
-          CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),      &
-                            bvec_iter,iopt)
-        endif
+        CALL sparse_solve(nrow,ncol,nz,irow(1:nz),ipcol,amat_sp(1:nz),        &
+                          bvec_iter,iopt)
 
         source_vector(:,k)=bvec_lor+bvec_iter
 

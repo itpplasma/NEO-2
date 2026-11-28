@@ -112,14 +112,14 @@ set_tests_properties(arnoldi_breakdown_test PROPERTIES
     TIMEOUT 30
 )
 
-add_executable(test_sparse_solve_factorized test_sparse_solve_factorized.f90)
-target_link_libraries(test_sparse_solve_factorized common)
+add_executable(test_sparse_solve_concurrent test_sparse_solve_concurrent.f90)
+target_link_libraries(test_sparse_solve_concurrent common)
 
-add_test(NAME sparse_solve_factorized_test
-         COMMAND test_sparse_solve_factorized
+add_test(NAME sparse_solve_concurrent_test
+         COMMAND test_sparse_solve_concurrent
          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
-set_tests_properties(sparse_solve_factorized_test PROPERTIES
+set_tests_properties(sparse_solve_concurrent_test PROPERTIES
     PASS_REGULAR_EXPRESSION "All tests passed!"
     FAIL_REGULAR_EXPRESSION "FAIL"
     TIMEOUT 30
