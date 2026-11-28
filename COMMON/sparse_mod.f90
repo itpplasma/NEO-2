@@ -35,8 +35,6 @@ MODULE sparse_mod
   INTEGER(kind=long), PRIVATE :: symbolic, numeric
   !Solves A*x=b (e.g. sys=2 -> solves (A^T)*x=b; further options manual pg. 26)
   INTEGER(kind=long), PRIVATE :: sys=0
-  !default values for control pg. 22
-  REAL(kind=dp), PRIVATE :: control(20), info_suitesparse(90)
   !-------------------------------------------------------------------------------
 
   PUBLIC load_mini_example
@@ -673,14 +671,16 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
 
-    INTEGER :: iopt = 0
+    INTEGER :: iopt
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
-    LOGICAL :: pcol_modified = .FALSE.
+    LOGICAL :: pcol_modified
 
     !optional input
+    iopt = 0
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     ! make sure that pcol is a pointer, otherwise create pcoln
+    pcol_modified = .FALSE.
     IF (SIZE(pcol,1) .EQ. SIZE(irow,1)) THEN
        CALL column_full2pointer(pcol,pcoln)
        pcol_modified = .TRUE.
@@ -736,14 +736,16 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:), INTENT(inout) :: b
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
 
-    INTEGER :: iopt = 0
+    INTEGER :: iopt
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
-    LOGICAL :: pcol_modified = .FALSE.
+    LOGICAL :: pcol_modified
 
     !optional input
+    iopt = 0
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     ! make sure that pcol is a pointer, otherwise create pcoln
+    pcol_modified = .FALSE.
     IF (SIZE(pcol,1) .EQ. SIZE(irow,1)) THEN
        CALL column_full2pointer(pcol,pcoln)
        pcol_modified = .TRUE.
@@ -799,14 +801,16 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
 
-    INTEGER :: iopt = 0
+    INTEGER :: iopt
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
-    LOGICAL :: pcol_modified = .FALSE.
+    LOGICAL :: pcol_modified
 
     !optional input
+    iopt = 0
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     ! make sure that pcol is a pointer, otherwise create pcoln
+    pcol_modified = .FALSE.
     IF (SIZE(pcol,1) .EQ. SIZE(irow,1)) THEN
        CALL column_full2pointer(pcol,pcoln)
        pcol_modified = .TRUE.
@@ -862,14 +866,16 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
 
-    INTEGER :: iopt = 0
+    INTEGER :: iopt
     INTEGER, DIMENSION(:), ALLOCATABLE :: pcoln
-    LOGICAL :: pcol_modified = .FALSE.
+    LOGICAL :: pcol_modified
 
     !optional input
+    iopt = 0
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     ! make sure that pcol is a pointer, otherwise create pcoln
+    pcol_modified = .FALSE.
     IF (SIZE(pcol,1) .EQ. SIZE(irow,1)) THEN
        CALL column_full2pointer(pcol,pcoln)
        pcol_modified = .TRUE.
@@ -923,12 +929,13 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
 
-    INTEGER :: iopt = 0
+    INTEGER :: iopt
     INTEGER :: nrow,ncol,nz
     INTEGER, DIMENSION(:), ALLOCATABLE :: irow,pcol
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: val
 
     !optional input
+    iopt = 0
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
@@ -971,12 +978,13 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:), INTENT(inout) :: b
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
 
-    INTEGER :: iopt = 0
+    INTEGER :: iopt
     INTEGER :: nrow,ncol,nz
     INTEGER, DIMENSION(:), ALLOCATABLE :: irow,pcol
     COMPLEX(kind=dp), DIMENSION(:), ALLOCATABLE :: val
 
     !optional input
+    iopt = 0
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
@@ -1019,12 +1027,13 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
 
-    INTEGER :: iopt = 0
+    INTEGER :: iopt
     INTEGER :: nrow,ncol,nz
     INTEGER, DIMENSION(:), ALLOCATABLE :: irow,pcol
     REAL(kind=dp), DIMENSION(:), ALLOCATABLE :: val
 
     !optional input
+    iopt = 0
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
@@ -1067,12 +1076,13 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
     INTEGER, INTENT(in), OPTIONAL :: iopt_in
 
-    INTEGER :: iopt = 0
+    INTEGER :: iopt
     INTEGER :: nrow,ncol,nz
     INTEGER, DIMENSION(:), ALLOCATABLE :: irow,pcol
     COMPLEX(kind=dp), DIMENSION(:), ALLOCATABLE :: val
 
     !optional input
+    iopt = 0
     IF (PRESENT(iopt_in)) iopt = iopt_in
 
     CALL full2sparse(A,irow,pcol,val,nrow,ncol,nz)
@@ -1117,6 +1127,8 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
     REAL(kind=dp), DIMENSION(:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
+    ! UMFPACK control and info per call, so concurrent solves share no state.
+    REAL(kind=dp) :: control(20), info_suitesparse(90)
 
     INTEGER(kind=long) :: n
     INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
@@ -1206,6 +1218,8 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:), INTENT(in) :: val
     COMPLEX(kind=dp), DIMENSION(:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
+    ! UMFPACK control and info per call, so concurrent solves share no state.
+    REAL(kind=dp) :: control(20), info_suitesparse(90)
 
     INTEGER :: k
     INTEGER(kind=long) :: n
@@ -1345,6 +1359,8 @@ CONTAINS
     REAL(kind=dp), DIMENSION(:), INTENT(in) :: val
     REAL(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
+    ! UMFPACK control and info per call, so concurrent solves share no state.
+    REAL(kind=dp) :: control(20), info_suitesparse(90)
 
     INTEGER(kind=long) :: n, i
     INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
@@ -1450,6 +1466,8 @@ CONTAINS
     COMPLEX(kind=dp), DIMENSION(:), INTENT(in) :: val
     COMPLEX(kind=dp), DIMENSION(:,:), INTENT(inout) :: b
     INTEGER, INTENT(in) :: iopt_in
+    ! UMFPACK control and info per call, so concurrent solves share no state.
+    REAL(kind=dp) :: control(20), info_suitesparse(90)
 
     INTEGER(kind=long) :: n, i
     INTEGER(kind=long), ALLOCATABLE, DIMENSION(:) :: Ai, Ap  !row-index Ai, column-pointer Ap
